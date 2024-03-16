@@ -14,7 +14,7 @@ jobs:
           go-version: '1.22.x'
 
       - name: Install dependencies
-        run: go get ./...
+        run: go mod download
 
       - name: Build
         run: go build -v ./...
