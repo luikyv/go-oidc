@@ -1,0 +1,43 @@
+package constants
+
+import "net/http"
+
+type GrantType string
+
+const (
+	ClientCredentials GrantType = "client_credentials"
+	AuthorizationCode GrantType = "authorization_code"
+)
+
+type ResponseType string
+
+const (
+	Code ResponseType = "code"
+)
+
+type ClientAuthnType string
+
+const (
+	None         ClientAuthnType = "none"
+	ClientSecret ClientAuthnType = "client_secret"
+)
+
+type TokenType string
+
+const (
+	Bearer TokenType = "Bearer"
+)
+
+type ErrorCode string
+
+const (
+	AccessDenied   ErrorCode = "access_denied"
+	InvalidRequest ErrorCode = "invalid_request"
+	InvalidScope   ErrorCode = "invalid_scope"
+)
+
+var ErrorCodeToStatusCode map[ErrorCode]int = map[ErrorCode]int{
+	AccessDenied:   http.StatusForbidden,
+	InvalidRequest: http.StatusBadRequest,
+	InvalidScope:   http.StatusBadRequest,
+}
