@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
@@ -64,14 +65,14 @@ var FinishFlowWithFailureStep *AuthnStep = NewStep(
 	nil,
 	func(session *AuthnSession, ctx *gin.Context) constants.AuthnStatus {
 
-		errorParams := make(map[string]string, 3)
-		errorParams["error"] = "access_denied"
-		errorParams["error_description"] = "access denied"
-		if session.State != "" {
-			errorParams["state"] = session.State
+		redirectError := issues.RedirectError{
+			ErrorCode:        constants.AccessDenied,
+			ErrorDescription: "access denied",
+			RedirectUri:      session.RedirectUri,
+			State:            session.State,
 		}
+		redirectError.BindErrorToResponse(ctx)
 
-		ctx.Redirect(http.StatusFound, unit.GetUrlWithParams(session.RedirectUri, errorParams))
 		return constants.Failure
 	},
 )

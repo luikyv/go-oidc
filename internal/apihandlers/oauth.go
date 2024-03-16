@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
@@ -61,38 +60,14 @@ func HandleTokenRequest(ctx utils.Context) {
 
 func bindErrorToResponse(err error, requestContext *gin.Context) {
 
-	var redirectErr *issues.RedirectError
-	if errors.As(err, &redirectErr) {
-		bindRedirectErrorToResponse(*redirectErr, requestContext)
-		return
-	}
-
-	var jsonErr *issues.JsonError
-	if errors.As(err, &jsonErr) {
-		bindJsonErrorToResponse(*jsonErr, requestContext)
+	var oauthErr issues.OAuthError
+	if errors.As(err, &oauthErr) {
+		oauthErr.BindErrorToResponse(requestContext)
 		return
 	}
 
 	requestContext.JSON(http.StatusBadRequest, gin.H{
 		"error":             constants.AccessDenied,
 		"error_description": err.Error(),
-	})
-}
-
-func bindRedirectErrorToResponse(err issues.RedirectError, requestContext *gin.Context) {
-	errorParams := make(map[string]string, 3)
-	errorParams["error"] = string(err.ErrorCode)
-	errorParams["error_description"] = err.ErrorDescription
-	if err.State != "" {
-		errorParams["state"] = err.State
-	}
-
-	requestContext.Redirect(http.StatusFound, unit.GetUrlWithParams(err.RedirectUri, errorParams))
-}
-
-func bindJsonErrorToResponse(err issues.JsonError, requestContext *gin.Context) {
-	requestContext.JSON(err.GetStatusCode(), gin.H{
-		"error":             err.ErrorCode,
-		"error_description": err.ErrorDescription,
 	})
 }
