@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/luikymagno/auth-server/internal/apihandlers"
 	"github.com/luikymagno/auth-server/internal/crud"
-	"github.com/luikymagno/auth-server/internal/crud/session"
+	"github.com/luikymagno/auth-server/internal/crud/mock"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
@@ -23,17 +23,17 @@ func NewManager() *OAuthManager {
 		crudManager: crud.CRUDManager{},
 		server:      gin.Default(),
 	}
-	manager.setInMemoryConfig()
+	manager.setMockedConfig()
 	return manager
 }
 
-func (manager *OAuthManager) setInMemoryConfig() {
+func (manager *OAuthManager) setMockedConfig() {
 	manager.crudManager = crud.CRUDManager{
-		ScopeManager:        crud.NewInMemoryScopeManager(),
-		TokenModelManager:   crud.NewInMemoryTokenModelManager(),
-		ClientManager:       crud.NewInMemoryClientManager(),
-		TokenSessionManager: session.NewInMemoryTokenSessionManager(),
-		AuthnSessionManager: session.NewInMemoryAuthnSessionManager(),
+		ScopeManager:        mock.NewMockedScopeManager(),
+		TokenModelManager:   mock.NewMockedTokenModelManager(),
+		ClientManager:       mock.NewMockedClientManager(),
+		TokenSessionManager: mock.NewTokenSessionManager(),
+		AuthnSessionManager: mock.NewMockedAuthnSessionManager(),
 	}
 }
 

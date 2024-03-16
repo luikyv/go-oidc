@@ -1,27 +1,21 @@
-package session
+package mock
 
 import (
 	issues "github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 )
 
-type TokenSessionManager interface {
-	Create(token models.Token) error
-	Get(id string) (models.Token, error)
-	Delete(id string)
-}
-
-type InMemoryTokenSessionManager struct {
+type TokenSessionManager struct {
 	tokens map[string]models.Token
 }
 
-func NewInMemoryTokenSessionManager() *InMemoryTokenSessionManager {
-	return &InMemoryTokenSessionManager{
+func NewTokenSessionManager() *TokenSessionManager {
+	return &TokenSessionManager{
 		tokens: make(map[string]models.Token),
 	}
 }
 
-func (manager *InMemoryTokenSessionManager) Create(token models.Token) error {
+func (manager *TokenSessionManager) Create(token models.Token) error {
 	_, exists := manager.tokens[token.Id]
 	if exists {
 		return issues.EntityAlreadyExistsError{Id: token.Id}
@@ -31,7 +25,7 @@ func (manager *InMemoryTokenSessionManager) Create(token models.Token) error {
 	return nil
 }
 
-func (manager *InMemoryTokenSessionManager) Get(id string) (models.Token, error) {
+func (manager *TokenSessionManager) Get(id string) (models.Token, error) {
 	token, exists := manager.tokens[id]
 	if !exists {
 		return models.Token{}, issues.EntityNotFoundError{Id: id}
@@ -40,6 +34,6 @@ func (manager *InMemoryTokenSessionManager) Get(id string) (models.Token, error)
 	return token, nil
 }
 
-func (manager *InMemoryTokenSessionManager) Delete(id string) {
+func (manager *TokenSessionManager) Delete(id string) {
 	delete(manager.tokens, id)
 }

@@ -1,28 +1,21 @@
-package crud
+package mock
 
 import (
 	issues "github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 )
 
-type TokenModelManager interface {
-	Create(model models.TokenModel) error
-	Update(id string, model models.TokenModel) error
-	Get(id string) (models.TokenModel, error)
-	Delete(id string)
-}
-
-type InMemoryTokenModelManager struct {
+type MockedTokenModelManager struct {
 	models map[string]models.TokenModel
 }
 
-func NewInMemoryTokenModelManager() *InMemoryTokenModelManager {
-	return &InMemoryTokenModelManager{
+func NewMockedTokenModelManager() *MockedTokenModelManager {
+	return &MockedTokenModelManager{
 		models: make(map[string]models.TokenModel),
 	}
 }
 
-func (manager *InMemoryTokenModelManager) Create(model models.TokenModel) error {
+func (manager *MockedTokenModelManager) Create(model models.TokenModel) error {
 	opaqueModel, _ := model.(models.OpaqueTokenModel)
 	_, exists := manager.models[opaqueModel.Id]
 	if exists {
@@ -33,7 +26,7 @@ func (manager *InMemoryTokenModelManager) Create(model models.TokenModel) error 
 	return nil
 }
 
-func (manager *InMemoryTokenModelManager) Update(id string, model models.TokenModel) error {
+func (manager *MockedTokenModelManager) Update(id string, model models.TokenModel) error {
 	opaqueModel, _ := model.(models.OpaqueTokenModel)
 	_, exists := manager.models[id]
 	if !exists {
@@ -44,7 +37,7 @@ func (manager *InMemoryTokenModelManager) Update(id string, model models.TokenMo
 	return nil
 }
 
-func (manager *InMemoryTokenModelManager) Get(id string) (models.TokenModel, error) {
+func (manager *MockedTokenModelManager) Get(id string) (models.TokenModel, error) {
 	model, exists := manager.models[id]
 	if !exists {
 		return nil, issues.EntityNotFoundError{Id: id}
@@ -53,6 +46,6 @@ func (manager *InMemoryTokenModelManager) Get(id string) (models.TokenModel, err
 	return model, nil
 }
 
-func (manager *InMemoryTokenModelManager) Delete(id string) {
+func (manager *MockedTokenModelManager) Delete(id string) {
 	delete(manager.models, id)
 }
