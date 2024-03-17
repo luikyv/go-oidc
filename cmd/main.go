@@ -8,7 +8,7 @@ import (
 
 func main() {
 
-	oauthManager := oauth.NewManager()
+	oauthManager := oauth.NewManager(oauth.SetMockedEntitiesConfig, oauth.SetMockedSessionsConfig)
 
 	// Add Mocks
 	oauthManager.AddTokenModel(models.OpaqueTokenModel{

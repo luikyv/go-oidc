@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/luikymagno/auth-server/internal/crud"
+	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
@@ -24,7 +25,7 @@ func HandleTokenCreation(
 	case constants.ClientCredentials:
 		token, err = handleClientCredentialsGrantTokenCreation(grantInfo)
 	case constants.AuthorizationCode:
-		token, err = handleAuthorizationCodeGrantTokenCreation(grantInfo)
+		token, err = handleAuthorizationCodeGrantTokenCreation(ctx, grantInfo)
 	default:
 		err = errors.New("invalid grant")
 	}
@@ -88,21 +89,30 @@ func getAuthenticatedClient(clientManager crud.ClientManager, authnContext model
 
 //---------------------------------------- Client Credentials ----------------------------------------//
 
-func handleClientCredentialsGrantTokenCreation(context models.GrantInfo) (models.Token, error) {
-	if err := validateClientCredentialsGrantRequest(context); err != nil {
+func handleClientCredentialsGrantTokenCreation(grantInfo models.GrantInfo) (models.Token, error) {
+	if err := validateClientCredentialsGrantRequest(grantInfo); err != nil {
 		return models.Token{}, err
 	}
 
-	return context.TokenModel.GenerateToken(models.TokenContextInfo{
-		Subject:  context.AuthenticatedClient.Id,
-		ClientId: context.AuthenticatedClient.Id,
-		Scopes:   context.Scopes,
+	return grantInfo.TokenModel.GenerateToken(models.TokenContextInfo{
+		Subject:  grantInfo.AuthenticatedClient.Id,
+		ClientId: grantInfo.AuthenticatedClient.Id,
+		Scopes:   grantInfo.Scopes,
 	}), nil
 }
 
-func validateClientCredentialsGrantRequest(context models.GrantInfo) error {
-	if !context.AuthenticatedClient.AreScopesAllowed(context.Scopes) {
-		return errors.New("invalid scope")
+func validateClientCredentialsGrantRequest(grantInfo models.GrantInfo) error {
+	if grantInfo.RedirectUri != "" || grantInfo.AuthorizationCode != "" {
+		return issues.JsonError{
+			ErrorCode:        constants.InvalidRequest,
+			ErrorDescription: "invalid parameter for client credentials",
+		}
+	}
+	if !grantInfo.AuthenticatedClient.AreScopesAllowed(grantInfo.Scopes) {
+		return issues.JsonError{
+			ErrorCode:        constants.InvalidScope,
+			ErrorDescription: "invalid scope",
+		}
 	}
 
 	return nil
@@ -110,20 +120,37 @@ func validateClientCredentialsGrantRequest(context models.GrantInfo) error {
 
 //---------------------------------------- Authorization Code ----------------------------------------//
 
-func handleAuthorizationCodeGrantTokenCreation(context models.GrantInfo) (models.Token, error) {
-	// TODO
-	err := validateAuthorizationCodeGrantRequest(context)
+func handleAuthorizationCodeGrantTokenCreation(ctx Context, grantInfo models.GrantInfo) (models.Token, error) {
+	err := validateAuthorizationCodeGrantRequest(grantInfo)
 	if err != nil {
 		return models.Token{}, err
 	}
 
-	return models.Token{}, errors.ErrUnsupported
+	session, err := ctx.CrudManager.AuthnSessionManager.GetByAuthorizationCode(grantInfo.AuthorizationCode)
+	if err != nil {
+		return models.Token{}, err
+	}
+
+	if session.ClientId != grantInfo.AuthenticatedClient.Id {
+		return models.Token{}, issues.JsonError{
+			ErrorCode:        constants.InvalidRequest,
+			ErrorDescription: "the authorization code was not issue to the client",
+		}
+	}
+
+	return grantInfo.TokenModel.GenerateToken(models.TokenContextInfo{
+		Subject:  session.Subject,
+		ClientId: session.ClientId,
+		Scopes:   session.Scopes,
+	}), nil
 }
 
-func validateAuthorizationCodeGrantRequest(context models.GrantInfo) error {
-	// TODO
-	if context.AuthorizationCode == "" {
-		return errors.New("the authorization code was not informed")
+func validateAuthorizationCodeGrantRequest(grantInfo models.GrantInfo) error {
+	if len(grantInfo.Scopes) != 0 || grantInfo.AuthorizationCode == "" || grantInfo.RedirectUri == "" {
+		return issues.JsonError{
+			ErrorCode:        constants.InvalidRequest,
+			ErrorDescription: "invalid parameter for authorization code",
+		}
 	}
 
 	return nil

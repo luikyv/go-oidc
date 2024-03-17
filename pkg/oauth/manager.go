@@ -16,25 +16,28 @@ type OAuthManager struct {
 	server      *gin.Engine
 }
 
-// Create a new OAuthManager.
-// By default, all internal manager are set to store infomation in memory.
-func NewManager() *OAuthManager {
+func NewManager(settings ...func(*OAuthManager)) *OAuthManager {
 	manager := &OAuthManager{
 		crudManager: crud.CRUDManager{},
 		server:      gin.Default(),
 	}
-	manager.setMockedConfig()
+
+	for _, setting := range settings {
+		setting(manager)
+	}
+
 	return manager
 }
 
-func (manager *OAuthManager) setMockedConfig() {
-	manager.crudManager = crud.CRUDManager{
-		ScopeManager:        mock.NewMockedScopeManager(),
-		TokenModelManager:   mock.NewMockedTokenModelManager(),
-		ClientManager:       mock.NewMockedClientManager(),
-		TokenSessionManager: mock.NewTokenSessionManager(),
-		AuthnSessionManager: mock.NewMockedAuthnSessionManager(),
-	}
+func SetMockedEntitiesConfig(manager *OAuthManager) {
+	manager.crudManager.ScopeManager = mock.NewMockedScopeManager()
+	manager.crudManager.TokenModelManager = mock.NewMockedTokenModelManager()
+	manager.crudManager.ClientManager = mock.NewMockedClientManager()
+}
+
+func SetMockedSessionsConfig(manager *OAuthManager) {
+	manager.crudManager.TokenSessionManager = mock.NewTokenSessionManager()
+	manager.crudManager.AuthnSessionManager = mock.NewMockedAuthnSessionManager()
 }
 
 func (manager *OAuthManager) AddTokenModel(model models.TokenModel) error {
