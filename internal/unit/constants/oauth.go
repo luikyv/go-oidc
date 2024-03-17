@@ -12,7 +12,8 @@ const (
 type ResponseType string
 
 const (
-	Code ResponseType = "code"
+	Code    ResponseType = "code"
+	IdToken ResponseType = "id_token"
 )
 
 type ClientAuthnType string

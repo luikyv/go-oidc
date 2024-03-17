@@ -62,7 +62,7 @@ func validateAuthorizeRequest(client models.Client, req models.AuthorizeRequest)
 			State:            req.State,
 		}
 	}
-	if !client.AreResponseTypesAllowed(strings.Split(req.ResponseType, "")) {
+	if !client.AreResponseTypesAllowed(strings.Split(req.ResponseType, " ")) {
 		return issues.RedirectError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "response type not allowed",

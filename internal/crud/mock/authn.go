@@ -7,22 +7,22 @@ import (
 )
 
 type MockedAuthnSessionManager struct {
-	sessions map[string]models.AuthnSession
+	Sessions map[string]models.AuthnSession
 }
 
 func NewMockedAuthnSessionManager() *MockedAuthnSessionManager {
 	return &MockedAuthnSessionManager{
-		sessions: make(map[string]models.AuthnSession),
+		Sessions: make(map[string]models.AuthnSession),
 	}
 }
 
 func (manager *MockedAuthnSessionManager) CreateOrUpdate(session models.AuthnSession) error {
-	manager.sessions[session.CallbackId] = session
+	manager.Sessions[session.CallbackId] = session
 	return nil
 }
 
 func (manager *MockedAuthnSessionManager) GetByCallbackId(callbackId string) (models.AuthnSession, error) {
-	session, exists := manager.sessions[callbackId]
+	session, exists := manager.Sessions[callbackId]
 	if !exists {
 		return models.AuthnSession{}, issues.EntityNotFoundError{Id: callbackId}
 	}
@@ -31,8 +31,8 @@ func (manager *MockedAuthnSessionManager) GetByCallbackId(callbackId string) (mo
 }
 
 func (manager *MockedAuthnSessionManager) GetByAuthorizationCode(authorizationCode string) (models.AuthnSession, error) {
-	sessions := make([]models.AuthnSession, len(manager.sessions))
-	for _, s := range manager.sessions {
+	sessions := make([]models.AuthnSession, 0, len(manager.Sessions))
+	for _, s := range manager.Sessions {
 		sessions = append(sessions, s)
 	}
 
@@ -47,5 +47,5 @@ func (manager *MockedAuthnSessionManager) GetByAuthorizationCode(authorizationCo
 }
 
 func (manager *MockedAuthnSessionManager) Delete(id string) {
-	delete(manager.sessions, id)
+	delete(manager.Sessions, id)
 }
