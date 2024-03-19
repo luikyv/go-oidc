@@ -1,68 +1,28 @@
-package utils
+package utils_test
 
 import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/luikymagno/auth-server/internal/crud"
 	"github.com/luikymagno/auth-server/internal/crud/mock"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
+	"github.com/luikymagno/auth-server/internal/utils"
 )
-
-var client models.Client = models.Client{
-	Id:            "random_client_id",
-	RedirectUris:  []string{"https://example.com"},
-	Scopes:        []string{"scope1", "scope2"},
-	ResponseTypes: []constants.ResponseType{constants.Code},
-}
-
-func setUp() (ctx Context, tearDown func()) {
-	ctx = getMockedContext()
-	ctx.CrudManager.ClientManager.Create(client)
-
-	return ctx, func() {
-		ctx.CrudManager.ClientManager.Delete(client.Id)
-	}
-}
-
-func getMockedRequestContext() *gin.Context {
-	gin.SetMode(gin.TestMode)
-	// session := &AuthnSession{}
-	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
-	ctx.Request = &http.Request{}
-	return ctx
-}
-
-func getMockedContext() Context {
-	crudManager := crud.CRUDManager{
-		ScopeManager:        mock.NewMockedScopeManager(),
-		TokenModelManager:   mock.NewMockedTokenModelManager(),
-		ClientManager:       mock.NewMockedClientManager(),
-		TokenSessionManager: mock.NewTokenSessionManager(),
-		AuthnSessionManager: mock.NewMockedAuthnSessionManager(),
-	}
-
-	return Context{
-		CrudManager:    crudManager,
-		RequestContext: getMockedRequestContext(),
-	}
-}
 
 func TestInitAuthenticationNoClientFound(t *testing.T) {
 
 	// When
-	ctx, tearDown := setUp()
+	ctx, tearDown := utils.SetUp()
 	defer tearDown()
 
 	// Then
-	err := InitAuthentication(ctx, models.AuthorizeRequest{ClientId: "invalid_client_id"})
+	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{ClientId: "invalid_client_id"})
 
 	// Assert
 	if err == nil {
@@ -76,12 +36,12 @@ func TestInitAuthenticationNoClientFound(t *testing.T) {
 
 func TestInitAuthenticationInvalidRedirectUri(t *testing.T) {
 	// When
-	ctx, tearDown := setUp()
+	ctx, tearDown := utils.SetUp()
 	defer tearDown()
 
 	// Then
-	err := InitAuthentication(ctx, models.AuthorizeRequest{
-		ClientId:    client.Id,
+	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
+		ClientId:    utils.ValidClient.Id,
 		RedirectUri: "https://invalid.com",
 	})
 
@@ -98,13 +58,13 @@ func TestInitAuthenticationInvalidRedirectUri(t *testing.T) {
 
 func TestInitAuthenticationInvalidScope(t *testing.T) {
 	// When
-	ctx, tearDown := setUp()
+	ctx, tearDown := utils.SetUp()
 	defer tearDown()
 
 	// Then
-	err := InitAuthentication(ctx, models.AuthorizeRequest{
-		ClientId:     client.Id,
-		RedirectUri:  client.RedirectUris[0],
+	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
+		ClientId:     utils.ValidClient.Id,
+		RedirectUri:  utils.ValidClient.RedirectUris[0],
 		Scope:        "invalid_scope",
 		ResponseType: string(constants.Code),
 	})
@@ -122,14 +82,14 @@ func TestInitAuthenticationInvalidScope(t *testing.T) {
 
 func TestInitAuthenticationInvalidResponseType(t *testing.T) {
 	// When
-	ctx, tearDown := setUp()
+	ctx, tearDown := utils.SetUp()
 	defer tearDown()
 
 	// Then
-	err := InitAuthentication(ctx, models.AuthorizeRequest{
-		ClientId:     client.Id,
-		RedirectUri:  client.RedirectUris[0],
-		Scope:        strings.Join(client.Scopes, " "),
+	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
+		ClientId:     utils.ValidClient.Id,
+		RedirectUri:  utils.ValidClient.RedirectUris[0],
+		Scope:        strings.Join(utils.ValidClient.Scopes, " "),
 		ResponseType: string(constants.IdToken),
 	})
 
@@ -146,14 +106,14 @@ func TestInitAuthenticationInvalidResponseType(t *testing.T) {
 
 func TestInitAuthenticationNoPolicyAvailable(t *testing.T) {
 	// When
-	ctx, tearDown := setUp()
+	ctx, tearDown := utils.SetUp()
 	defer tearDown()
 
 	// Then
-	err := InitAuthentication(ctx, models.AuthorizeRequest{
-		ClientId:     client.Id,
-		RedirectUri:  client.RedirectUris[0],
-		Scope:        strings.Join(client.Scopes, " "),
+	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
+		ClientId:     utils.ValidClient.Id,
+		RedirectUri:  utils.ValidClient.RedirectUris[0],
+		Scope:        strings.Join(utils.ValidClient.Scopes, " "),
 		ResponseType: string(constants.Code),
 	})
 
@@ -165,7 +125,7 @@ func TestInitAuthenticationNoPolicyAvailable(t *testing.T) {
 
 func TestInitAuthenticationPolicyEndsWithError(t *testing.T) {
 	// When
-	ctx, tearDown := setUp()
+	ctx, tearDown := utils.SetUp()
 	defer tearDown()
 	firstStep := models.NewStep(
 		"init_step",
@@ -182,10 +142,10 @@ func TestInitAuthenticationPolicyEndsWithError(t *testing.T) {
 	})
 
 	// Then
-	err := InitAuthentication(ctx, models.AuthorizeRequest{
-		ClientId:     client.Id,
-		RedirectUri:  client.RedirectUris[0],
-		Scope:        strings.Join(client.Scopes, " "),
+	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
+		ClientId:     utils.ValidClient.Id,
+		RedirectUri:  utils.ValidClient.RedirectUris[0],
+		Scope:        strings.Join(utils.ValidClient.Scopes, " "),
 		ResponseType: string(constants.Code),
 	})
 
@@ -212,7 +172,7 @@ func TestInitAuthenticationPolicyEndsWithError(t *testing.T) {
 
 func TestInitAuthenticationPolicyEndsInProgress(t *testing.T) {
 	// When
-	ctx, tearDown := setUp()
+	ctx, tearDown := utils.SetUp()
 	defer tearDown()
 	firstStep := models.NewStep(
 		"init_step",
@@ -229,10 +189,10 @@ func TestInitAuthenticationPolicyEndsInProgress(t *testing.T) {
 	})
 
 	// Then
-	err := InitAuthentication(ctx, models.AuthorizeRequest{
-		ClientId:     client.Id,
-		RedirectUri:  client.RedirectUris[0],
-		Scope:        strings.Join(client.Scopes, " "),
+	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
+		ClientId:     utils.ValidClient.Id,
+		RedirectUri:  utils.ValidClient.RedirectUris[0],
+		Scope:        strings.Join(utils.ValidClient.Scopes, " "),
 		ResponseType: string(constants.Code),
 	})
 
@@ -270,7 +230,7 @@ func TestInitAuthenticationPolicyEndsInProgress(t *testing.T) {
 
 func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 	// When
-	ctx, tearDown := setUp()
+	ctx, tearDown := utils.SetUp()
 	defer tearDown()
 	firstStep := models.NewStep(
 		"init_step",
@@ -287,10 +247,10 @@ func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 	})
 
 	// Then
-	err := InitAuthentication(ctx, models.AuthorizeRequest{
-		ClientId:     client.Id,
-		RedirectUri:  client.RedirectUris[0],
-		Scope:        strings.Join(client.Scopes, " "),
+	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
+		ClientId:     utils.ValidClient.Id,
+		RedirectUri:  utils.ValidClient.RedirectUris[0],
+		Scope:        strings.Join(utils.ValidClient.Scopes, " "),
 		ResponseType: string(constants.Code),
 	})
 
@@ -323,7 +283,7 @@ func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 func TestContinueAuthenticationFindsSession(t *testing.T) {
 
 	// When
-	ctx, tearDown := setUp()
+	ctx, tearDown := utils.SetUp()
 	defer tearDown()
 	firstStep := models.NewStep(
 		"init_step",
@@ -341,7 +301,7 @@ func TestContinueAuthenticationFindsSession(t *testing.T) {
 	})
 
 	// Then
-	err := ContinueAuthentication(ctx, callbackId)
+	err := utils.ContinueAuthentication(ctx, callbackId)
 
 	// Assert
 	if err != nil {
