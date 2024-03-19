@@ -54,7 +54,12 @@ func validateAuthorizeRequest(client models.Client, req models.AuthorizeRequest)
 			ErrorDescription: "invalid redirect uri",
 		}
 	}
-	if !client.AreScopesAllowed(strings.Split(req.Scope, " ")) {
+
+	scopes := []string{}
+	if req.Scope != "" {
+		scopes = strings.Split(req.Scope, " ")
+	}
+	if !client.AreScopesAllowed(scopes) {
 		return issues.RedirectError{
 			ErrorCode:        constants.InvalidScope,
 			ErrorDescription: "invalid scope",
@@ -62,6 +67,7 @@ func validateAuthorizeRequest(client models.Client, req models.AuthorizeRequest)
 			State:            req.State,
 		}
 	}
+
 	if !client.AreResponseTypesAllowed(strings.Split(req.ResponseType, " ")) {
 		return issues.RedirectError{
 			ErrorCode:        constants.InvalidRequest,

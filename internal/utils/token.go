@@ -63,11 +63,15 @@ func getGrantInfo(
 		return models.GrantInfo{}, err
 	}
 
+	scopes := []string{}
+	if request.Scope != "" {
+		scopes = strings.Split(request.Scope, " ")
+	}
 	return models.GrantInfo{
 		GrantType:           request.GrantType,
 		AuthenticatedClient: authenticatedClient,
 		TokenModel:          tokenModel,
-		Scopes:              strings.Split(request.Scope, " "),
+		Scopes:              scopes,
 		AuthorizationCode:   request.AuthorizationCode,
 		RedirectUri:         request.RedirectUri,
 	}, nil

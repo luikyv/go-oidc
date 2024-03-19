@@ -100,18 +100,24 @@ func TestClientCredentialsHandleTokenCreation(t *testing.T) {
 }
 
 func TestAuthorizationCodeHandleTokenCreation(t *testing.T) {
-	t.Skip()
-	//TODO Finish it.
 
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
 
 	authorizationCode := "random_authz_code"
+	session := models.AuthnSession{
+		ClientId:          utils.ValidClient.Id,
+		Scopes:            utils.ValidClient.Scopes,
+		RedirectUri:       utils.ValidClient.RedirectUris[0],
+		AuthorizationCode: authorizationCode,
+		Subject:           "user_id",
+	}
+	ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(session)
+
 	req := models.TokenRequest{
 		ClientId:          utils.ValidClient.Id,
 		GrantType:         constants.AuthorizationCode,
-		Scope:             strings.Join(utils.ValidClient.Scopes, " "),
 		ClientSecret:      utils.ValidClientSecret,
 		RedirectUri:       utils.ValidClient.RedirectUris[0],
 		AuthorizationCode: authorizationCode,
@@ -131,7 +137,7 @@ func TestAuthorizationCodeHandleTokenCreation(t *testing.T) {
 		return
 	}
 
-	if token.Subject != utils.ValidClient.Id {
+	if token.Subject != session.Subject {
 		t.Error("the token subject should be the client")
 		return
 	}
