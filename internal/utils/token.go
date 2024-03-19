@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/luikymagno/auth-server/internal/crud"
@@ -27,7 +26,10 @@ func HandleTokenCreation(
 	case constants.AuthorizationCode:
 		token, err = handleAuthorizationCodeGrantTokenCreation(ctx, grantInfo)
 	default:
-		err = errors.New("invalid grant")
+		err = issues.JsonError{
+			ErrorCode:        constants.InvalidRequest,
+			ErrorDescription: "invalid grant type",
+		}
 	}
 
 	if err != nil {
@@ -81,7 +83,10 @@ func getAuthenticatedClient(clientManager crud.ClientManager, authnContext model
 		ClientSecret: authnContext.ClientSecret,
 	}
 	if !client.Authenticator.IsAuthenticated(clientAuthnContext) {
-		return models.Client{}, errors.New("client not authenticated")
+		return models.Client{}, issues.JsonError{
+			ErrorCode:        constants.AccessDenied,
+			ErrorDescription: "client not authenticated",
+		}
 	}
 
 	return client, nil
@@ -102,6 +107,12 @@ func handleClientCredentialsGrantTokenCreation(grantInfo models.GrantInfo) (mode
 }
 
 func validateClientCredentialsGrantRequest(grantInfo models.GrantInfo) error {
+	if !grantInfo.AuthenticatedClient.IsGrantTypeAllowed(constants.ClientCredentials) {
+		return issues.JsonError{
+			ErrorCode:        constants.InvalidRequest,
+			ErrorDescription: "invalid grant type",
+		}
+	}
 	if grantInfo.RedirectUri != "" || grantInfo.AuthorizationCode != "" {
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
@@ -146,6 +157,12 @@ func handleAuthorizationCodeGrantTokenCreation(ctx Context, grantInfo models.Gra
 }
 
 func validateAuthorizationCodeGrantRequest(grantInfo models.GrantInfo) error {
+	if !grantInfo.AuthenticatedClient.IsGrantTypeAllowed(constants.AuthorizationCode) {
+		return issues.JsonError{
+			ErrorCode:        constants.InvalidRequest,
+			ErrorDescription: "invalid grant type",
+		}
+	}
 	if len(grantInfo.Scopes) != 0 || grantInfo.AuthorizationCode == "" || grantInfo.RedirectUri == "" {
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,

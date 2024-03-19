@@ -9,17 +9,43 @@ import (
 	"github.com/luikymagno/auth-server/internal/crud/mock"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
+	"golang.org/x/crypto/bcrypt"
 )
 
-var ValidClient models.Client = models.Client{
-	Id:            "random_client_id",
-	RedirectUris:  []string{"https://example.com"},
-	Scopes:        []string{"scope1", "scope2"},
-	ResponseTypes: []constants.ResponseType{constants.Code},
+var ValidClientSecret = "password"
+
+var ValidTokenModel models.OpaqueTokenModel
+var ValidClient models.Client
+
+func init() {
+
+	ValidTokenModel = models.OpaqueTokenModel{
+		TokenLength: 20,
+		BaseTokenModel: models.BaseTokenModel{
+			Id:            "my_token_model",
+			Issuer:        "https://example.com",
+			ExpiresInSecs: 60,
+			IsRefreshable: false,
+		},
+	}
+
+	clientHashedSecret, _ := bcrypt.GenerateFromPassword([]byte(ValidClientSecret), 0)
+	ValidClient = models.Client{
+		Id:                  "random_client_id",
+		RedirectUris:        []string{"https://example.com"},
+		Scopes:              []string{"scope1", "scope2"},
+		GrantTypes:          []constants.GrantType{constants.ClientCredentials, constants.AuthorizationCode},
+		ResponseTypes:       []constants.ResponseType{constants.Code},
+		DefaultTokenModelId: ValidTokenModel.Id,
+		Authenticator: models.SecretClientAuthenticator{
+			HashedSecret: string(clientHashedSecret),
+		},
+	}
 }
 
 func SetUp() (ctx Context, tearDown func()) {
 	ctx = GetMockedContext()
+	ctx.CrudManager.TokenModelManager.Create(ValidTokenModel)
 	ctx.CrudManager.ClientManager.Create(ValidClient)
 
 	return ctx, func() {
@@ -40,7 +66,7 @@ func GetMockedContext() Context {
 		ScopeManager:        mock.NewMockedScopeManager(),
 		TokenModelManager:   mock.NewMockedTokenModelManager(),
 		ClientManager:       mock.NewMockedClientManager(),
-		TokenSessionManager: mock.NewTokenSessionManager(),
+		TokenSessionManager: mock.NewMockedTokenSessionManager(),
 		AuthnSessionManager: mock.NewMockedAuthnSessionManager(),
 	}
 

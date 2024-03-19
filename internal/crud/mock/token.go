@@ -5,28 +5,28 @@ import (
 	"github.com/luikymagno/auth-server/internal/models"
 )
 
-type TokenSessionManager struct {
-	tokens map[string]models.Token
+type MockedTokenSessionManager struct {
+	Tokens map[string]models.Token
 }
 
-func NewTokenSessionManager() *TokenSessionManager {
-	return &TokenSessionManager{
-		tokens: make(map[string]models.Token),
+func NewMockedTokenSessionManager() *MockedTokenSessionManager {
+	return &MockedTokenSessionManager{
+		Tokens: make(map[string]models.Token),
 	}
 }
 
-func (manager *TokenSessionManager) Create(token models.Token) error {
-	_, exists := manager.tokens[token.Id]
+func (manager *MockedTokenSessionManager) Create(token models.Token) error {
+	_, exists := manager.Tokens[token.Id]
 	if exists {
 		return issues.EntityAlreadyExistsError{Id: token.Id}
 	}
 
-	manager.tokens[token.Id] = token
+	manager.Tokens[token.Id] = token
 	return nil
 }
 
-func (manager *TokenSessionManager) Get(id string) (models.Token, error) {
-	token, exists := manager.tokens[id]
+func (manager *MockedTokenSessionManager) Get(id string) (models.Token, error) {
+	token, exists := manager.Tokens[id]
 	if !exists {
 		return models.Token{}, issues.EntityNotFoundError{Id: id}
 	}
@@ -34,6 +34,6 @@ func (manager *TokenSessionManager) Get(id string) (models.Token, error) {
 	return token, nil
 }
 
-func (manager *TokenSessionManager) Delete(id string) {
-	delete(manager.tokens, id)
+func (manager *MockedTokenSessionManager) Delete(id string) {
+	delete(manager.Tokens, id)
 }
