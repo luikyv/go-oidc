@@ -36,7 +36,7 @@ func SetMockedEntitiesConfig(manager *OAuthManager) {
 }
 
 func SetMockedSessionsConfig(manager *OAuthManager) {
-	manager.crudManager.TokenSessionManager = mock.NewTokenSessionManager()
+	manager.crudManager.TokenSessionManager = mock.NewMockedTokenSessionManager()
 	manager.crudManager.AuthnSessionManager = mock.NewMockedAuthnSessionManager()
 }
 
