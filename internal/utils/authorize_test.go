@@ -25,12 +25,10 @@ func TestInitAuthenticationNoClientFound(t *testing.T) {
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{ClientId: "invalid_client_id"})
 
 	// Assert
-	if err == nil {
-		t.Error("InitAuthentication should not find any client")
-	}
 	var notFoundErr issues.EntityNotFoundError
-	if !errors.As(err, &notFoundErr) {
+	if err == nil || !errors.As(err, &notFoundErr) {
 		t.Error("InitAuthentication should not find any client")
+		return
 	}
 }
 
@@ -49,10 +47,12 @@ func TestInitAuthenticationInvalidRedirectUri(t *testing.T) {
 	var jsonErr issues.JsonError
 	if err == nil || !errors.As(err, &jsonErr) {
 		t.Error("the redirect URI should not be valid")
+		return
 	}
 
 	if jsonErr.ErrorCode != constants.InvalidRequest {
 		t.Errorf("invalid error code: %s", jsonErr.ErrorCode)
+		return
 	}
 }
 
@@ -73,10 +73,12 @@ func TestInitAuthenticationInvalidScope(t *testing.T) {
 	var redirectErr issues.RedirectError
 	if err == nil || !errors.As(err, &redirectErr) {
 		t.Error("the scope should not be valid")
+		return
 	}
 
 	if redirectErr.ErrorCode != constants.InvalidScope {
 		t.Errorf("invalid error code: %s", redirectErr.ErrorCode)
+		return
 	}
 }
 
@@ -97,10 +99,12 @@ func TestInitAuthenticationInvalidResponseType(t *testing.T) {
 	var redirectErr issues.RedirectError
 	if err == nil || !errors.As(err, &redirectErr) {
 		t.Error("the response type should not be allowed")
+		return
 	}
 
 	if redirectErr.ErrorCode != constants.InvalidRequest {
 		t.Errorf("invalid error code: %s", redirectErr.ErrorCode)
+		return
 	}
 }
 
@@ -120,6 +124,7 @@ func TestInitAuthenticationNoPolicyAvailable(t *testing.T) {
 	// Assert
 	if err == nil {
 		t.Error("no policy should be available")
+		return
 	}
 }
 
@@ -152,11 +157,13 @@ func TestInitAuthenticationPolicyEndsWithError(t *testing.T) {
 	// Assert
 	if err != nil {
 		t.Errorf("no error should happen: %s", err.Error())
+		return
 	}
 
 	redirectUrl := ctx.RequestContext.Writer.Header().Get("Location")
 	if !strings.Contains(redirectUrl, "error") {
 		t.Errorf("the policy should finish redirecting with error. redirect URL: %s", redirectUrl)
+		return
 	}
 
 	sessionManager, _ := ctx.CrudManager.AuthnSessionManager.(*mock.MockedAuthnSessionManager)
@@ -166,6 +173,7 @@ func TestInitAuthenticationPolicyEndsWithError(t *testing.T) {
 	}
 	if len(sessions) != 0 {
 		t.Error("no authentication session should remain")
+		return
 	}
 
 }
@@ -199,11 +207,13 @@ func TestInitAuthenticationPolicyEndsInProgress(t *testing.T) {
 	// Assert
 	if err != nil {
 		t.Errorf("no error should happen: %s", err.Error())
+		return
 	}
 
 	responseStatus := ctx.RequestContext.Writer.Status()
 	if responseStatus != http.StatusOK {
 		t.Errorf("invalid status code for in progress status: %v", responseStatus)
+		return
 	}
 
 	sessionManager, _ := ctx.CrudManager.AuthnSessionManager.(*mock.MockedAuthnSessionManager)
@@ -213,17 +223,21 @@ func TestInitAuthenticationPolicyEndsInProgress(t *testing.T) {
 	}
 	if len(sessions) != 1 {
 		t.Error("the should be only one authentication session")
+		return
 	}
 
 	session := sessions[0]
 	if session.CallbackId == "" {
 		t.Error("the callback ID was not filled")
+		return
 	}
 	if session.AuthorizationCode != "" {
 		t.Error("the authorization code cannot be generated if the flow is still in progress")
+		return
 	}
 	if session.StepId != firstStep.Id {
 		t.Errorf("the current step ID: %s is not as expected", session.StepId)
+		return
 	}
 
 }
@@ -257,6 +271,7 @@ func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 	// Assert
 	if err != nil {
 		t.Errorf("no error should happen: %s", err.Error())
+		return
 	}
 
 	sessionManager, _ := ctx.CrudManager.AuthnSessionManager.(*mock.MockedAuthnSessionManager)
@@ -266,16 +281,19 @@ func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 	}
 	if len(sessions) != 1 {
 		t.Error("the should be only one authentication session")
+		return
 	}
 
 	session := sessions[0]
 	if session.AuthorizationCode == "" {
 		t.Error("the authorization code should be filled when the policy ends successfully")
+		return
 	}
 
 	redirectUrl := ctx.RequestContext.Writer.Header().Get("Location")
 	if !strings.Contains(redirectUrl, fmt.Sprintf("code=%s", session.AuthorizationCode)) {
 		t.Errorf("the policy should finish redirecting with error. redirect URL: %s", redirectUrl)
+		return
 	}
 
 }
@@ -306,6 +324,7 @@ func TestContinueAuthenticationFindsSession(t *testing.T) {
 	// Assert
 	if err != nil {
 		t.Errorf("no error should happen: %s", err.Error())
+		return
 	}
 
 	sessionManager, _ := ctx.CrudManager.AuthnSessionManager.(*mock.MockedAuthnSessionManager)
@@ -315,5 +334,6 @@ func TestContinueAuthenticationFindsSession(t *testing.T) {
 	}
 	if len(sessions) != 1 {
 		t.Error("the should be only one authentication session")
+		return
 	}
 }

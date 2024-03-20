@@ -17,24 +17,43 @@ func InitAuthentication(ctx Context, req models.AuthorizeRequest) error {
 	if err != nil {
 		return err
 	}
-	if err = validateAuthorizeRequest(client, req); err != nil {
+
+	if err = validateAuthorizeParams(client, req); err != nil {
 		return err
 	}
+
 	policy, policyIsAvailable := models.GetPolicy(client, ctx.RequestContext)
 	if !policyIsAvailable {
 		return errors.New("no policy available")
 	}
 
-	session := &models.AuthnSession{
-		Id:          uuid.NewString(),
-		CallbackId:  unit.GenerateCallbackId(),
-		StepId:      policy.FirstStep.Id,
-		ClientId:    client.Id,
-		Scopes:      strings.Split(req.Scope, " "),
-		RedirectUri: req.RedirectUri,
-		State:       req.State,
+	session, err := setUpSession(ctx, req)
+	if err != nil {
+		return err
 	}
+	session.StepId = policy.FirstStep.Id
+
 	return authenticate(ctx, session)
+}
+
+func setUpSession(ctx Context, req models.AuthorizeRequest) (*models.AuthnSession, error) {
+	if req.RequestUri == "" {
+		return &models.AuthnSession{
+			Id:          uuid.NewString(),
+			CallbackId:  unit.GenerateCallbackId(),
+			ClientId:    req.ClientId,
+			Scopes:      strings.Split(req.Scope, " "),
+			RedirectUri: req.RedirectUri,
+			State:       req.State,
+		}, nil
+	}
+
+	session, err := ctx.CrudManager.AuthnSessionManager.GetByRequestUri(req.RequestUri)
+	if err != nil {
+		return &models.AuthnSession{}, err
+	}
+
+	return &session, nil
 }
 
 func ContinueAuthentication(ctx Context, callbackId string) error {
@@ -46,7 +65,12 @@ func ContinueAuthentication(ctx Context, callbackId string) error {
 	return authenticate(ctx, &session)
 }
 
-func validateAuthorizeRequest(client models.Client, req models.AuthorizeRequest) error {
+func validateAuthorizeParams(client models.Client, req models.AuthorizeRequest) error {
+
+	if req.RequestUri != "" {
+		return validateAuthorizeParamsAfterPAR(client, req)
+	}
+
 	// We must validate the redirect URI first, since the other errors are of redirection type
 	if !client.IsRedirectUriAllowed(req.RedirectUri) {
 		return issues.JsonError{
@@ -84,6 +108,19 @@ func validateAuthorizeRequest(client models.Client, req models.AuthorizeRequest)
 	return nil
 }
 
+func validateAuthorizeParamsAfterPAR(client models.Client, req models.AuthorizeRequest) error {
+
+	// Make sure the client who created the PAR request is the same one trying to authorize.
+	if client.Id != req.ClientId {
+		return issues.JsonError{
+			ErrorCode:        constants.AccessDenied,
+			ErrorDescription: "invalid client",
+		}
+	}
+
+	return nil
+}
+
 // Execute the authentication steps.
 func authenticate(ctx Context, session *models.AuthnSession) error {
 
@@ -99,14 +136,14 @@ func authenticate(ctx Context, session *models.AuthnSession) error {
 		currentStep = nextStep
 	}
 
-	session.StepId = currentStep.Id
 	if status == constants.Failure {
 		// The flow finished with failure, so we don't need to keep its session anymore.
 		ctx.CrudManager.AuthnSessionManager.Delete(session.Id)
 		return nil
-	} else {
-		return ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(*session)
 	}
+
+	session.StepId = currentStep.Id
+	return ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(*session)
 
 }
 

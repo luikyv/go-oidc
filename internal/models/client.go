@@ -29,6 +29,13 @@ func (authenticator SecretClientAuthenticator) IsAuthenticated(ctx ClientAuthnCo
 	return err == nil
 }
 
+type PrivateKeyJwtClientAuthenticator struct{}
+
+func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(ctx ClientAuthnContext) bool {
+	// TODO
+	return false
+}
+
 //---------------------------------------- Client ----------------------------------------//
 
 type ClientOut struct{}

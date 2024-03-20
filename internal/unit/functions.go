@@ -25,6 +25,10 @@ func GenerateCallbackId() string {
 	return GenerateRandomString(constants.CallbackIdLength, constants.CallbackIdLength)
 }
 
+func GenerateRequestUri() string {
+	return "urn:goidc:request_uri" + GenerateRandomString(constants.RequestUriLength, constants.RequestUriLength)
+}
+
 func GenerateAuthorizationCode() string {
 	return GenerateRandomString(constants.AuthorizationCodeLength, constants.AuthorizationCodeLength)
 }

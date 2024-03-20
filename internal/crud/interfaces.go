@@ -33,5 +33,6 @@ type AuthnSessionManager interface {
 	CreateOrUpdate(session models.AuthnSession) error
 	GetByCallbackId(callbackId string) (models.AuthnSession, error)
 	GetByAuthorizationCode(authorizationCode string) (models.AuthnSession, error)
+	GetByRequestUri(requestUri string) (models.AuthnSession, error)
 	Delete(id string)
 }

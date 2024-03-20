@@ -17,12 +17,23 @@ func NewMockedAuthnSessionManager() *MockedAuthnSessionManager {
 }
 
 func (manager *MockedAuthnSessionManager) CreateOrUpdate(session models.AuthnSession) error {
-	manager.Sessions[session.CallbackId] = session
+	manager.Sessions[session.Id] = session
 	return nil
 }
 
+func (manager *MockedAuthnSessionManager) findFirstSession(condition func(models.AuthnSession) bool) (models.AuthnSession, bool) {
+	sessions := make([]models.AuthnSession, 0, len(manager.Sessions))
+	for _, s := range manager.Sessions {
+		sessions = append(sessions, s)
+	}
+
+	return unit.FindFirst(sessions, condition)
+}
+
 func (manager *MockedAuthnSessionManager) GetByCallbackId(callbackId string) (models.AuthnSession, error) {
-	session, exists := manager.Sessions[callbackId]
+	session, exists := manager.findFirstSession(func(s models.AuthnSession) bool {
+		return s.CallbackId == callbackId
+	})
 	if !exists {
 		return models.AuthnSession{}, issues.EntityNotFoundError{Id: callbackId}
 	}
@@ -31,16 +42,22 @@ func (manager *MockedAuthnSessionManager) GetByCallbackId(callbackId string) (mo
 }
 
 func (manager *MockedAuthnSessionManager) GetByAuthorizationCode(authorizationCode string) (models.AuthnSession, error) {
-	sessions := make([]models.AuthnSession, 0, len(manager.Sessions))
-	for _, s := range manager.Sessions {
-		sessions = append(sessions, s)
-	}
-
-	session, exists := unit.FindFirst(sessions, func(s models.AuthnSession) bool {
+	session, exists := manager.findFirstSession(func(s models.AuthnSession) bool {
 		return s.AuthorizationCode == authorizationCode
 	})
 	if !exists {
 		return models.AuthnSession{}, issues.EntityNotFoundError{Id: authorizationCode}
+	}
+
+	return session, nil
+}
+
+func (manager *MockedAuthnSessionManager) GetByRequestUri(requestUri string) (models.AuthnSession, error) {
+	session, exists := manager.findFirstSession(func(s models.AuthnSession) bool {
+		return s.RequestUri == requestUri
+	})
+	if !exists {
+		return models.AuthnSession{}, issues.EntityNotFoundError{Id: requestUri}
 	}
 
 	return session, nil

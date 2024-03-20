@@ -11,6 +11,22 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
+//---------------------------------------- Pushed Authorization Request - PAR ----------------------------------------//
+
+func HandlePARRequest(ctx utils.Context) {
+	var req models.PARRequest
+	if err := ctx.RequestContext.ShouldBind(&req); err != nil {
+		bindErrorToResponse(err, ctx.RequestContext)
+		return
+	}
+
+	err := utils.PushAuthorization(ctx, req)
+	if err != nil {
+		bindErrorToResponse(err, ctx.RequestContext)
+		return
+	}
+}
+
 //---------------------------------------- Authorize ----------------------------------------//
 
 func HandleAuthorizeRequest(ctx utils.Context) {

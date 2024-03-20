@@ -57,8 +57,10 @@ func (manager *OAuthManager) Run(port int) {
 	manager.server.LoadHTMLGlob("../cmd/templates/*")
 
 	// Set endpoints.
-	manager.server.POST("/token", func(ctx *gin.Context) {
-		apihandlers.HandleTokenRequest(utils.Context{CrudManager: manager.crudManager, RequestContext: ctx})
+	manager.server.POST("/par", func(ctx *gin.Context) {
+		apihandlers.HandlePARRequest(
+			utils.Context{CrudManager: manager.crudManager, RequestContext: ctx},
+		)
 	})
 	manager.server.GET("/authorize", func(ctx *gin.Context) {
 		apihandlers.HandleAuthorizeRequest(
@@ -69,6 +71,9 @@ func (manager *OAuthManager) Run(port int) {
 		apihandlers.HandleAuthorizeCallbackRequest(
 			utils.Context{CrudManager: manager.crudManager, RequestContext: ctx},
 		)
+	})
+	manager.server.POST("/token", func(ctx *gin.Context) {
+		apihandlers.HandleTokenRequest(utils.Context{CrudManager: manager.crudManager, RequestContext: ctx})
 	})
 
 	// Start the server.

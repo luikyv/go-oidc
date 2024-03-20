@@ -5,6 +5,7 @@ type AuthnSession struct {
 	CallbackId        string
 	StepId            string
 	ClientId          string
+	RequestUri        string
 	Scopes            []string
 	RedirectUri       string
 	State             string
