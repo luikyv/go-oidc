@@ -10,8 +10,13 @@ type AuthnSession struct {
 	State             string
 	AuthorizationCode string
 	Subject           string
+	ErrorDescription  string
 }
 
 func (session *AuthnSession) SetUserId(userId string) {
 	session.Subject = userId
+}
+
+func (session *AuthnSession) SetError(errorDescription string) {
+	session.ErrorDescription = errorDescription
 }

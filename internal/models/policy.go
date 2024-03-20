@@ -22,29 +22,15 @@ type AuthnStep struct {
 
 var stepMap map[string]*AuthnStep = make(map[string]*AuthnStep)
 
-// Create a new step and register it internally.
-func NewStep(id string, nextStepIfSuccess *AuthnStep, nextStepIfFailure *AuthnStep, authnFunc AuthnFunc) *AuthnStep {
-	step := &AuthnStep{
-		Id:                id,
-		AuthnFunc:         authnFunc,
-		NextStepIfSuccess: nextStepIfSuccess,
-		NextStepIfFailure: nextStepIfFailure,
-	}
-
-	stepMap[step.Id] = step
-
-	return step
-}
-
 func GetStep(id string) *AuthnStep {
 	return stepMap[id]
 }
 
-var FinishFlowSuccessfullyStep *AuthnStep = NewStep(
-	"finish_flow_successfully",
-	nil,
-	nil,
-	func(session *AuthnSession, ctx *gin.Context) constants.AuthnStatus {
+var FinishFlowSuccessfullyStep *AuthnStep = &AuthnStep{
+	Id:                "finish_flow_successfully",
+	NextStepIfSuccess: nil,
+	NextStepIfFailure: nil,
+	AuthnFunc: func(session *AuthnSession, ctx *gin.Context) constants.AuthnStatus {
 		authzCode := unit.GenerateAuthorizationCode()
 		session.AuthorizationCode = authzCode
 
@@ -57,17 +43,21 @@ var FinishFlowSuccessfullyStep *AuthnStep = NewStep(
 		ctx.Redirect(http.StatusFound, unit.GetUrlWithParams(session.RedirectUri, params))
 		return constants.Success
 	},
-)
+}
 
-var FinishFlowWithFailureStep *AuthnStep = NewStep(
-	"finish_flow_with_failure",
-	nil,
-	nil,
-	func(session *AuthnSession, ctx *gin.Context) constants.AuthnStatus {
+var FinishFlowWithFailureStep *AuthnStep = &AuthnStep{
+	Id:                "finish_flow_with_failure",
+	NextStepIfSuccess: nil,
+	NextStepIfFailure: nil,
+	AuthnFunc: func(session *AuthnSession, ctx *gin.Context) constants.AuthnStatus {
 
+		errorDescription := "access denied"
+		if session.ErrorDescription != "" {
+			errorDescription = session.ErrorDescription
+		}
 		redirectError := issues.RedirectError{
 			ErrorCode:        constants.AccessDenied,
-			ErrorDescription: "access denied",
+			ErrorDescription: errorDescription,
 			RedirectUri:      session.RedirectUri,
 			State:            session.State,
 		}
@@ -75,7 +65,26 @@ var FinishFlowWithFailureStep *AuthnStep = NewStep(
 
 		return constants.Failure
 	},
-)
+}
+
+// Create a new step and register it internally.
+func NewStep(id string, nextStepIfSuccess *AuthnStep, nextStepIfFailure *AuthnStep, authnFunc AuthnFunc) *AuthnStep {
+	if nextStepIfFailure == nil {
+		nextStepIfFailure = FinishFlowWithFailureStep
+	}
+	if nextStepIfSuccess == nil {
+		nextStepIfSuccess = FinishFlowSuccessfullyStep
+	}
+	step := &AuthnStep{
+		Id:                id,
+		AuthnFunc:         authnFunc,
+		NextStepIfSuccess: nextStepIfSuccess,
+		NextStepIfFailure: nextStepIfFailure,
+	}
+	stepMap[step.Id] = step
+
+	return step
+}
 
 //---------------------------------------- Policy ----------------------------------------//
 
@@ -88,6 +97,18 @@ type AuthnPolicy struct {
 }
 
 var policyMap map[string]AuthnPolicy = make(map[string]AuthnPolicy)
+
+func NewPolicy(
+	id string,
+	firstStep *AuthnStep,
+	isAvailableFunc CheckPolicyAvailabilityFunc,
+) AuthnPolicy {
+	return AuthnPolicy{
+		Id:              id,
+		FirstStep:       firstStep,
+		IsAvailableFunc: isAvailableFunc,
+	}
+}
 
 // Add a new policy by registering it internally.
 func AddPolicy(policy AuthnPolicy) {

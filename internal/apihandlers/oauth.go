@@ -28,7 +28,7 @@ func HandleAuthorizeRequest(ctx utils.Context) {
 }
 
 func HandleAuthorizeCallbackRequest(ctx utils.Context) {
-	err := utils.ContinueAuthentication(ctx, ctx.RequestContext.Param("callback_id"))
+	err := utils.ContinueAuthentication(ctx, ctx.RequestContext.Param("callback"))
 	if err != nil {
 		ctx.RequestContext.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	}

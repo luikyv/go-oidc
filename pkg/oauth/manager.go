@@ -48,7 +48,13 @@ func (manager *OAuthManager) AddClient(client models.Client) error {
 	return manager.crudManager.ClientManager.Create(client)
 }
 
+func (manager *OAuthManager) AddPolicy(policy models.AuthnPolicy) {
+	models.AddPolicy(policy)
+}
+
 func (manager *OAuthManager) Run(port int) {
+
+	manager.server.LoadHTMLGlob("../cmd/templates/*")
 
 	// Set endpoints.
 	manager.server.POST("/token", func(ctx *gin.Context) {
@@ -59,7 +65,7 @@ func (manager *OAuthManager) Run(port int) {
 			utils.Context{CrudManager: manager.crudManager, RequestContext: ctx},
 		)
 	})
-	manager.server.GET("/authorize/:callback", func(ctx *gin.Context) {
+	manager.server.POST("/authorize/:callback", func(ctx *gin.Context) {
 		apihandlers.HandleAuthorizeCallbackRequest(
 			utils.Context{CrudManager: manager.crudManager, RequestContext: ctx},
 		)

@@ -31,7 +31,7 @@ func getTestContext() *gin.Context {
 	return ctx
 }
 
-func TestNewStepRegistersStep(t *testing.T) {
+func TestNewStepShouldRegisterStep(t *testing.T) {
 	tearDown := setUp()
 	defer tearDown()
 	// When
@@ -43,6 +43,24 @@ func TestNewStepRegistersStep(t *testing.T) {
 	// Assert
 	if _, stepWasRegistered := stepMap[stepId]; !stepWasRegistered {
 		t.Error("NewStep is not registering the step")
+	}
+}
+
+func TestNewStepShouldReplaceNilNextSteps(t *testing.T) {
+	tearDown := setUp()
+	defer tearDown()
+	// When
+	stepId := "step_id"
+
+	// Then
+	step := NewStep(stepId, nil, nil, nil)
+
+	// Assert
+	if step.NextStepIfFailure != FinishFlowWithFailureStep {
+		t.Error("failure step was not replaced")
+	}
+	if step.NextStepIfSuccess != FinishFlowSuccessfullyStep {
+		t.Error("failure step was not replaced")
 	}
 }
 
