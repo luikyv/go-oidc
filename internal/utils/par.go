@@ -11,6 +11,8 @@ import (
 )
 
 func PushAuthorization(ctx Context, req models.PARRequest) error {
+
+	// Authenticate the client as in the token endpoint.
 	client, err := getAuthenticatedClient(ctx.CrudManager.ClientManager, models.ClientAuthnContext{
 		ClientId:     req.ClientId,
 		ClientSecret: req.ClientSecret,
@@ -26,7 +28,6 @@ func PushAuthorization(ctx Context, req models.PARRequest) error {
 	ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(models.AuthnSession{
 		Id:          uuid.NewString(),
 		RequestUri:  unit.GenerateRequestUri(),
-		CallbackId:  unit.GenerateCallbackId(),
 		ClientId:    client.Id,
 		Scopes:      strings.Split(req.Scope, " "),
 		RedirectUri: req.RedirectUri,

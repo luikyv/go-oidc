@@ -1,9 +1,11 @@
 package constants
 
-const Charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const Charset string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-const CallbackIdLength = 20
+const CallbackIdLength int = 20
 
-const RequestUriLength = 20
+const RequestUriLength int = 20
 
-const AuthorizationCodeLength = 30
+const RequestUriDomain string = "goidc"
+
+const AuthorizationCodeLength int = 30

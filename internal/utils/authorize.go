@@ -18,7 +18,14 @@ func InitAuthentication(ctx Context, req models.AuthorizeRequest) error {
 		return err
 	}
 
-	if err = validateAuthorizeParams(client, req); err != nil {
+	// Init the session and make sure it is valid.
+	var session models.AuthnSession
+	if req.RequestUri != "" {
+		session, err = initValidAuthenticationSessionWithPAR(ctx, client, req)
+	} else {
+		session, err = initValidAuthenticationSession(ctx, client, req)
+	}
+	if err != nil {
 		return err
 	}
 
@@ -26,34 +33,44 @@ func InitAuthentication(ctx Context, req models.AuthorizeRequest) error {
 	if !policyIsAvailable {
 		return errors.New("no policy available")
 	}
-
-	session, err := setUpSession(ctx, req)
-	if err != nil {
-		return err
-	}
 	session.StepId = policy.FirstStep.Id
 
 	return authenticate(ctx, session)
+
 }
 
-func setUpSession(ctx Context, req models.AuthorizeRequest) (*models.AuthnSession, error) {
-	if req.RequestUri == "" {
-		return &models.AuthnSession{
-			Id:          uuid.NewString(),
-			CallbackId:  unit.GenerateCallbackId(),
-			ClientId:    req.ClientId,
-			Scopes:      strings.Split(req.Scope, " "),
-			RedirectUri: req.RedirectUri,
-			State:       req.State,
-		}, nil
+func initValidAuthenticationSession(_ Context, client models.Client, req models.AuthorizeRequest) (models.AuthnSession, error) {
+
+	if err := validateAuthorizeParams(client, req); err != nil {
+		return models.AuthnSession{}, err
 	}
 
+	return models.AuthnSession{
+		Id:          uuid.NewString(),
+		CallbackId:  unit.GenerateCallbackId(),
+		ClientId:    req.ClientId,
+		Scopes:      strings.Split(req.Scope, " "),
+		RedirectUri: req.RedirectUri,
+		State:       req.State,
+	}, nil
+
+}
+
+func initValidAuthenticationSessionWithPAR(ctx Context, client models.Client, req models.AuthorizeRequest) (models.AuthnSession, error) {
 	session, err := ctx.CrudManager.AuthnSessionManager.GetByRequestUri(req.RequestUri)
 	if err != nil {
-		return &models.AuthnSession{}, err
+		return models.AuthnSession{}, err
 	}
 
-	return &session, nil
+	if err = validateAuthorizeWithPARParams(client, req); err != nil {
+		// If any of the parameters is invalid, we delete the session right away.
+		ctx.CrudManager.AuthnSessionManager.Delete(session.Id)
+		return models.AuthnSession{}, err
+	}
+
+	session.RequestUri = "" // Make sure the request URI can't be used again.
+	session.CallbackId = unit.GenerateCallbackId()
+	return session, nil
 }
 
 func ContinueAuthentication(ctx Context, callbackId string) error {
@@ -62,16 +79,11 @@ func ContinueAuthentication(ctx Context, callbackId string) error {
 		return err
 	}
 
-	return authenticate(ctx, &session)
+	return authenticate(ctx, session)
 }
 
 func validateAuthorizeParams(client models.Client, req models.AuthorizeRequest) error {
-
-	if req.RequestUri != "" {
-		return validateAuthorizeParamsAfterPAR(client, req)
-	}
-
-	// We must validate the redirect URI first, since the other errors are of redirection type
+	// We must validate the redirect URI first, since the other errors will be redirected.
 	if !client.IsRedirectUriAllowed(req.RedirectUri) {
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
@@ -108,7 +120,7 @@ func validateAuthorizeParams(client models.Client, req models.AuthorizeRequest) 
 	return nil
 }
 
-func validateAuthorizeParamsAfterPAR(client models.Client, req models.AuthorizeRequest) error {
+func validateAuthorizeWithPARParams(client models.Client, req models.AuthorizeRequest) error {
 
 	// Make sure the client who created the PAR request is the same one trying to authorize.
 	if client.Id != req.ClientId {
@@ -118,16 +130,30 @@ func validateAuthorizeParamsAfterPAR(client models.Client, req models.AuthorizeR
 		}
 	}
 
+	paramsThatShouldBeEmpty := []string{req.RedirectUri, req.Scope, req.ResponseType, req.State}
+	_, foundNonEmptyParam := unit.FindFirst(
+		paramsThatShouldBeEmpty,
+		func(param string) bool {
+			return param != ""
+		},
+	)
+	if foundNonEmptyParam {
+		return issues.JsonError{
+			ErrorCode:        constants.InvalidRequest,
+			ErrorDescription: "invalid parameter when using PAR",
+		}
+	}
+
 	return nil
 }
 
 // Execute the authentication steps.
-func authenticate(ctx Context, session *models.AuthnSession) error {
+func authenticate(ctx Context, session models.AuthnSession) error {
 
 	currentStep := models.GetStep(session.StepId)
 	status := constants.InProgress
 	for {
-		status = currentStep.AuthnFunc(session, ctx.RequestContext)
+		status = currentStep.AuthnFunc(&session, ctx.RequestContext)
 		nextStep := getNextStep(status, currentStep)
 		if nextStep == nil {
 			break
@@ -143,7 +169,7 @@ func authenticate(ctx Context, session *models.AuthnSession) error {
 	}
 
 	session.StepId = currentStep.Id
-	return ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(*session)
+	return ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(session)
 
 }
 

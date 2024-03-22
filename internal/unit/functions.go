@@ -1,6 +1,7 @@
 package unit
 
 import (
+	"fmt"
 	"math/rand"
 	"net/url"
 	"slices"
@@ -26,7 +27,7 @@ func GenerateCallbackId() string {
 }
 
 func GenerateRequestUri() string {
-	return "urn:goidc:request_uri" + GenerateRandomString(constants.RequestUriLength, constants.RequestUriLength)
+	return fmt.Sprintf("urn:%s:request_uri:%s", constants.RequestUriDomain, GenerateRandomString(constants.RequestUriLength, constants.RequestUriLength))
 }
 
 func GenerateAuthorizationCode() string {
@@ -53,9 +54,11 @@ func Contains[T comparable](superSet []T, subSet []T) bool {
 	return true
 }
 
-func FindFirst[T interface{}](slice []T, filter func(T) bool) (element T, ok bool) {
+// Return the first element in a slice for which the condition is true.
+// If no element is found, 'ok' is set to false.
+func FindFirst[T interface{}](slice []T, condition func(T) bool) (element T, ok bool) {
 	for _, element = range slice {
-		if filter(element) {
+		if condition(element) {
 			return element, true
 		}
 	}
