@@ -8,6 +8,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/pkg/oauth"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func main() {
@@ -24,6 +25,7 @@ func main() {
 			IsRefreshable: false,
 		},
 	})
+	hashedSecret, _ := bcrypt.GenerateFromPassword([]byte("secret"), 0)
 	oauthManager.AddClient(models.Client{
 		Id:                  "client_id",
 		GrantTypes:          []constants.GrantType{constants.ClientCredentials, constants.AuthorizationCode},
@@ -31,7 +33,9 @@ func main() {
 		RedirectUris:        []string{"http://localhost:80/callback"},
 		ResponseTypes:       []constants.ResponseType{constants.Code},
 		DefaultTokenModelId: "my_token_model",
-		Authenticator:       models.NoneClientAuthenticator{},
+		Authenticator: models.SecretClientAuthenticator{
+			HashedSecret: string(hashedSecret),
+		},
 	})
 
 	// Create Steps
@@ -99,7 +103,6 @@ func main() {
 	)
 
 	// Run
-	// http://localhost:80/authorize?client_id=client_id&scope=email&response_type=code&state=random_state&redirect_uri=http%3A%2F%2Flocalhost%3A80%2Fcallback
 	oauthManager.AddPolicy(policy)
 	oauthManager.Run(80)
 }

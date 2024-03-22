@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/google/uuid"
@@ -46,5 +47,16 @@ func validatePushedAuthorizationParams(client models.Client, req models.PARReque
 	}
 
 	// The PAR request should accept the same params as the authorize request.
-	return validateAuthorizeParams(client, req.ToAuthorizeRequest())
+	err := validateAuthorizeParams(client, req.ToAuthorizeRequest())
+
+	// Convert redirection errors to json.
+	var redirectErr issues.RedirectError
+	if errors.As(err, &redirectErr) {
+		return issues.JsonError{
+			ErrorCode:        redirectErr.ErrorCode,
+			ErrorDescription: redirectErr.ErrorDescription,
+		}
+	}
+
+	return err
 }

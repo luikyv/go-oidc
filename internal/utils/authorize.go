@@ -29,6 +29,7 @@ func InitAuthentication(ctx Context, req models.AuthorizeRequest) error {
 		return err
 	}
 
+	// Fetch the first policy available.
 	policy, policyIsAvailable := models.GetPolicy(client, ctx.RequestContext)
 	if !policyIsAvailable {
 		return errors.New("no policy available")
@@ -57,6 +58,7 @@ func initValidAuthenticationSession(_ Context, client models.Client, req models.
 }
 
 func initValidAuthenticationSessionWithPAR(ctx Context, client models.Client, req models.AuthorizeRequest) (models.AuthnSession, error) {
+	// The session was already created by the client in the PAR endpoint.
 	session, err := ctx.CrudManager.AuthnSessionManager.GetByRequestUri(req.RequestUri)
 	if err != nil {
 		return models.AuthnSession{}, err
@@ -68,6 +70,7 @@ func initValidAuthenticationSessionWithPAR(ctx Context, client models.Client, re
 		return models.AuthnSession{}, err
 	}
 
+	// FIXME: Treating the request_uri as one-time use will cause problems when the user refreshes the page.
 	session.RequestUri = "" // Make sure the request URI can't be used again.
 	session.CallbackId = unit.GenerateCallbackId()
 	return session, nil

@@ -3,7 +3,7 @@ POST http://localhost:80/token HTTP/1.1
 Content-Type: application/x-www-form-urlencoded
 
 client_id=client_id
-&secret=password
+&client_secret=secret
 &grant_type=authorization_code
-&code=ROKAy8JGzYCuBgXJy6X6ajeLTTTnfq
+&code=rqf7UGq7KzovdOMdaRVYVs3krTrm0W
 &redirect_uri=http://localhost:80/callback

@@ -1,0 +1,10 @@
+
+POST http://localhost:80/par HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+client_id=client_id
+&client_secret=secret
+&scope=email
+&response_type=code
+&redirect_uri=http://localhost:80/callback
+&state=random_state

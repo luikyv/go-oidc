@@ -1,0 +1,1 @@
+GET http://localhost:80/authorize?client_id=client_id&request_uri=urn:goidc:request_uri:u6lk4nZFTsuY1wErjqtL HTTP/1.1
