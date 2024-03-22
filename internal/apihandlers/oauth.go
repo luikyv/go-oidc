@@ -20,11 +20,16 @@ func HandlePARRequest(ctx utils.Context) {
 		return
 	}
 
-	err := utils.PushAuthorization(ctx, req)
+	requestUri, err := utils.PushAuthorization(ctx, req)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
 	}
+
+	ctx.RequestContext.JSON(http.StatusAccepted, models.PARResponse{
+		RequestUri: requestUri,
+		ExpiresIn:  constants.PARLifetimeSecs,
+	})
 }
 
 //---------------------------------------- Authorize ----------------------------------------//

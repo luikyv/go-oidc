@@ -10,7 +10,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
-func PushAuthorization(ctx Context, req models.PARRequest) error {
+func PushAuthorization(ctx Context, req models.PARRequest) (requestUri string, err error) {
 
 	// Authenticate the client as in the token endpoint.
 	client, err := getAuthenticatedClient(ctx.CrudManager.ClientManager, models.ClientAuthnContext{
@@ -18,22 +18,23 @@ func PushAuthorization(ctx Context, req models.PARRequest) error {
 		ClientSecret: req.ClientSecret,
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if err = validatePushedAuthorizationParams(client, req); err != nil {
-		return err
+		return "", err
 	}
 
+	requestUri = unit.GenerateRequestUri()
 	ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(models.AuthnSession{
 		Id:          uuid.NewString(),
-		RequestUri:  unit.GenerateRequestUri(),
+		RequestUri:  requestUri,
 		ClientId:    client.Id,
 		Scopes:      strings.Split(req.Scope, " "),
 		RedirectUri: req.RedirectUri,
 		State:       req.State,
 	})
-	return nil
+	return requestUri, nil
 }
 
 func validatePushedAuthorizationParams(client models.Client, req models.PARRequest) error {

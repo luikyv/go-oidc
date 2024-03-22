@@ -8,4 +8,6 @@ const RequestUriLength int = 20
 
 const RequestUriDomain string = "goidc"
 
+const PARLifetimeSecs int = 60
+
 const AuthorizationCodeLength int = 30
