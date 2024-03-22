@@ -9,6 +9,12 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
+func init() {
+	// Register the default steps
+	stepMap[FinishFlowSuccessfullyStep.Id] = FinishFlowSuccessfullyStep
+	stepMap[FinishFlowWithFailureStep.Id] = FinishFlowWithFailureStep
+}
+
 //---------------------------------------- Step ----------------------------------------//
 
 type AuthnFunc func(*AuthnSession, *gin.Context) constants.AuthnStatus
@@ -51,16 +57,19 @@ var FinishFlowWithFailureStep *AuthnStep = &AuthnStep{
 	NextStepIfFailure: nil,
 	AuthnFunc: func(session *AuthnSession, ctx *gin.Context) constants.AuthnStatus {
 
+		errorCode := constants.AccessDenied
 		errorDescription := "access denied"
-		if session.ErrorDescription != "" {
+		if session.ErrorCode != "" {
+			errorCode = session.ErrorCode
 			errorDescription = session.ErrorDescription
 		}
 		redirectError := issues.RedirectError{
-			ErrorCode:        constants.AccessDenied,
+			ErrorCode:        errorCode,
 			ErrorDescription: errorDescription,
 			RedirectUri:      session.RedirectUri,
 			State:            session.State,
 		}
+
 		redirectError.BindErrorToResponse(ctx)
 
 		return constants.Failure

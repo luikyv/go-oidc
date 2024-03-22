@@ -12,16 +12,17 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func TestHandleTokenCreationWhenClientIsNotFound(t *testing.T) {
+func TestHandleTokenCreationShouldNotFindClient(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
+	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
 
 	// Then
 	_, err := utils.HandleTokenCreation(ctx, models.TokenRequest{
 		ClientId:     "invalid_client_id",
 		GrantType:    constants.ClientCredentials,
-		Scope:        strings.Join(utils.ValidClient.Scopes, " "),
+		Scope:        strings.Join(client.Scopes, " "),
 		ClientSecret: utils.ValidClientSecret,
 	})
 
@@ -33,23 +34,24 @@ func TestHandleTokenCreationWhenClientIsNotFound(t *testing.T) {
 	}
 }
 
-func TestHandleTokenCreationWhenClientIsNotAuthenticated(t *testing.T) {
+func TestHandleTokenCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
+	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
 
 	// Then
 	_, err := utils.HandleTokenCreation(ctx, models.TokenRequest{
-		ClientId:     utils.ValidClient.Id,
+		ClientId:     utils.ValidClientId,
 		GrantType:    constants.ClientCredentials,
-		Scope:        strings.Join(utils.ValidClient.Scopes, " "),
+		Scope:        strings.Join(client.Scopes, " "),
 		ClientSecret: "invalid_password",
 	})
 
 	// Assert
 	var jsonError issues.JsonError
 	if err == nil || !errors.As(err, &jsonError) {
-		t.Error("the client should be authenticated")
+		t.Error("the client should not be authenticated")
 		return
 	}
 	if jsonError.ErrorCode != constants.AccessDenied {
@@ -62,10 +64,11 @@ func TestClientCredentialsHandleTokenCreation(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
+	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
 	req := models.TokenRequest{
-		ClientId:     utils.ValidClient.Id,
+		ClientId:     utils.ValidClientId,
 		GrantType:    constants.ClientCredentials,
-		Scope:        strings.Join(utils.ValidClient.Scopes, " "),
+		Scope:        strings.Join(client.Scopes, " "),
 		ClientSecret: utils.ValidClientSecret,
 	}
 
@@ -78,12 +81,12 @@ func TestClientCredentialsHandleTokenCreation(t *testing.T) {
 		return
 	}
 
-	if token.ClientId != utils.ValidClient.Id {
+	if token.ClientId != utils.ValidClientId {
 		t.Error("the token was assigned to a different client")
 		return
 	}
 
-	if token.Subject != utils.ValidClient.Id {
+	if token.Subject != utils.ValidClientId {
 		t.Error("the token subject should be the client")
 		return
 	}
@@ -104,22 +107,23 @@ func TestAuthorizationCodeHandleTokenCreation(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
+	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
 
 	authorizationCode := "random_authz_code"
 	session := models.AuthnSession{
-		ClientId:          utils.ValidClient.Id,
-		Scopes:            utils.ValidClient.Scopes,
-		RedirectUri:       utils.ValidClient.RedirectUris[0],
+		ClientId:          utils.ValidClientId,
+		Scopes:            client.Scopes,
+		RedirectUri:       client.RedirectUris[0],
 		AuthorizationCode: authorizationCode,
 		Subject:           "user_id",
 	}
 	ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(session)
 
 	req := models.TokenRequest{
-		ClientId:          utils.ValidClient.Id,
+		ClientId:          utils.ValidClientId,
 		GrantType:         constants.AuthorizationCode,
 		ClientSecret:      utils.ValidClientSecret,
-		RedirectUri:       utils.ValidClient.RedirectUris[0],
+		RedirectUri:       client.RedirectUris[0],
 		AuthorizationCode: authorizationCode,
 	}
 
@@ -132,7 +136,7 @@ func TestAuthorizationCodeHandleTokenCreation(t *testing.T) {
 		return
 	}
 
-	if token.ClientId != utils.ValidClient.Id {
+	if token.ClientId != utils.ValidClientId {
 		t.Error("the token was assigned to a different client")
 		return
 	}

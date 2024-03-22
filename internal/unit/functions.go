@@ -65,3 +65,14 @@ func FindFirst[T interface{}](slice []T, condition func(T) bool) (element T, ok 
 
 	return element, false
 }
+
+// Return true if all the elements in the slice respect the condition.
+func All[T interface{}](slice []T, condition func(T) bool) bool {
+	for _, element := range slice {
+		if !condition(element) {
+			return false
+		}
+	}
+
+	return true
+}

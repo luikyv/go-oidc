@@ -84,18 +84,14 @@ func ContinueAuthentication(ctx Context, callbackId string) error {
 
 func validateAuthorizeParams(client models.Client, req models.AuthorizeRequest) error {
 	// We must validate the redirect URI first, since the other errors will be redirected.
-	if !client.IsRedirectUriAllowed(req.RedirectUri) {
+	if req.RedirectUri == "" || !client.IsRedirectUriAllowed(req.RedirectUri) {
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "invalid redirect uri",
 		}
 	}
 
-	scopes := []string{}
-	if req.Scope != "" {
-		scopes = strings.Split(req.Scope, " ")
-	}
-	if !client.AreScopesAllowed(scopes) {
+	if req.Scope == "" || !client.AreScopesAllowed(strings.Split(req.Scope, " ")) {
 		return issues.RedirectError{
 			ErrorCode:        constants.InvalidScope,
 			ErrorDescription: "invalid scope",
@@ -104,11 +100,7 @@ func validateAuthorizeParams(client models.Client, req models.AuthorizeRequest) 
 		}
 	}
 
-	responseTypes := []string{}
-	if req.ResponseType != "" {
-		responseTypes = strings.Split(req.ResponseType, " ")
-	}
-	if !client.AreResponseTypesAllowed(responseTypes) {
+	if req.ResponseType == "" || !client.AreResponseTypesAllowed(strings.Split(req.ResponseType, " ")) {
 		return issues.RedirectError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "response type not allowed",
@@ -130,14 +122,13 @@ func validateAuthorizeWithPARParams(client models.Client, req models.AuthorizeRe
 		}
 	}
 
-	paramsThatShouldBeEmpty := []string{req.RedirectUri, req.Scope, req.ResponseType, req.State}
-	_, foundNonEmptyParam := unit.FindFirst(
-		paramsThatShouldBeEmpty,
+	allParamsAreEmpty := unit.All(
+		[]string{req.RedirectUri, req.Scope, req.ResponseType, req.State},
 		func(param string) bool {
-			return param != ""
+			return param == ""
 		},
 	)
-	if foundNonEmptyParam {
+	if !allParamsAreEmpty {
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "invalid parameter when using PAR",

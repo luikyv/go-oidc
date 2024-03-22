@@ -12,17 +12,18 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var ValidClientSecret = "password"
+const ValidClientId string = "random_client_id"
 
-var ValidTokenModel models.OpaqueTokenModel
-var ValidClient models.Client
+const ValidClientSecret string = "password"
 
-func init() {
+const ValidTokenModelId string = "random_token_model"
 
-	ValidTokenModel = models.OpaqueTokenModel{
+func SetUp() (ctx Context, tearDown func()) {
+	// Create
+	tokenModel := models.OpaqueTokenModel{
 		TokenLength: 20,
 		BaseTokenModel: models.BaseTokenModel{
-			Id:            "my_token_model",
+			Id:            ValidTokenModelId,
 			Issuer:        "https://example.com",
 			ExpiresInSecs: 60,
 			IsRefreshable: false,
@@ -30,26 +31,26 @@ func init() {
 	}
 
 	clientHashedSecret, _ := bcrypt.GenerateFromPassword([]byte(ValidClientSecret), 0)
-	ValidClient = models.Client{
+	client := models.Client{
 		Id:                  "random_client_id",
 		RedirectUris:        []string{"https://example.com"},
 		Scopes:              []string{"scope1", "scope2"},
 		GrantTypes:          []constants.GrantType{constants.ClientCredentials, constants.AuthorizationCode},
 		ResponseTypes:       []constants.ResponseType{constants.Code},
-		DefaultTokenModelId: ValidTokenModel.Id,
+		DefaultTokenModelId: ValidTokenModelId,
 		Authenticator: models.SecretClientAuthenticator{
 			HashedSecret: string(clientHashedSecret),
 		},
 	}
-}
 
-func SetUp() (ctx Context, tearDown func()) {
+	// Save
 	ctx = GetMockedContext()
-	ctx.CrudManager.TokenModelManager.Create(ValidTokenModel)
-	ctx.CrudManager.ClientManager.Create(ValidClient)
+	ctx.CrudManager.TokenModelManager.Create(tokenModel)
+	ctx.CrudManager.ClientManager.Create(client)
 
 	return ctx, func() {
-		ctx.CrudManager.ClientManager.Delete(ValidClient.Id)
+		ctx.CrudManager.TokenModelManager.Delete(ValidTokenModelId)
+		ctx.CrudManager.ClientManager.Delete(ValidClientId)
 	}
 }
 
@@ -74,4 +75,14 @@ func GetMockedContext() Context {
 		CrudManager:    crudManager,
 		RequestContext: GetMockedRequestContext(),
 	}
+}
+
+func GetSessionsFromMock(ctx Context) []models.AuthnSession {
+	sessionManager, _ := ctx.CrudManager.AuthnSessionManager.(*mock.MockedAuthnSessionManager)
+	sessions := make([]models.AuthnSession, 0, len(sessionManager.Sessions))
+	for _, s := range sessionManager.Sessions {
+		sessions = append(sessions, s)
+	}
+
+	return sessions
 }

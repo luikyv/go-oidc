@@ -1,5 +1,7 @@
 package models
 
+import "github.com/luikymagno/auth-server/internal/unit/constants"
+
 type AuthnSession struct {
 	Id                string
 	CallbackId        string
@@ -11,6 +13,7 @@ type AuthnSession struct {
 	State             string
 	AuthorizationCode string
 	Subject           string
+	ErrorCode         constants.ErrorCode
 	ErrorDescription  string
 	Store             map[string]string // Allow the developer to store information in memory and, hence, between steps.
 }
@@ -19,7 +22,8 @@ func (session *AuthnSession) SetUserId(userId string) {
 	session.Subject = userId
 }
 
-func (session *AuthnSession) SetError(errorDescription string) {
+func (session *AuthnSession) SetError(errorCode constants.ErrorCode, errorDescription string) {
+	session.ErrorCode = errorCode
 	session.ErrorDescription = errorDescription
 }
 
