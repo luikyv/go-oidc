@@ -15,24 +15,28 @@ func main() {
 
 	oauthManager := oauth.NewManager(oauth.SetMockedEntitiesConfig, oauth.SetMockedSessionsConfig)
 
+	clientId := "client_id"
+	clientSecret := "secret"
+	tokenModelId := "my_token_model"
+	userPassword := "password"
 	// Add Mocks
 	oauthManager.AddTokenModel(models.OpaqueTokenModel{
 		TokenLength: 20,
 		BaseTokenModel: models.BaseTokenModel{
-			Id:            "my_token_model",
+			Id:            tokenModelId,
 			Issuer:        "https://example.com",
 			ExpiresInSecs: 60,
 			IsRefreshable: false,
 		},
 	})
-	hashedSecret, _ := bcrypt.GenerateFromPassword([]byte("secret"), 0)
+	hashedSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 0)
 	oauthManager.AddClient(models.Client{
-		Id:                  "client_id",
+		Id:                  clientId,
 		GrantTypes:          []constants.GrantType{constants.ClientCredentials, constants.AuthorizationCode},
 		Scopes:              []string{"email"},
 		RedirectUris:        []string{"http://localhost:80/callback"},
 		ResponseTypes:       []constants.ResponseType{constants.Code},
-		DefaultTokenModelId: "my_token_model",
+		DefaultTokenModelId: tokenModelId,
 		Authenticator: models.SecretClientAuthenticator{
 			HashedSecret: string(hashedSecret),
 		},
@@ -57,7 +61,7 @@ func main() {
 				return constants.InProgress
 			}
 
-			if passwordForm.Password != "password" {
+			if passwordForm.Password != userPassword {
 				ctx.HTML(http.StatusOK, "password.html", gin.H{
 					"callbackId": session.CallbackId,
 					"error":      "invalid password",

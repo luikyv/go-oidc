@@ -21,7 +21,7 @@ func InitAuthentication(ctx Context, req models.AuthorizeRequest) error {
 	// Init the session and make sure it is valid.
 	var session models.AuthnSession
 	if req.RequestUri != "" {
-		session, err = initValidAuthenticationSessionWithPAR(ctx, client, req)
+		session, err = initValidAuthenticationSessionWithPAR(ctx, req)
 	} else {
 		session, err = initValidAuthenticationSession(ctx, client, req)
 	}
@@ -47,24 +47,25 @@ func initValidAuthenticationSession(_ Context, client models.Client, req models.
 	}
 
 	return models.AuthnSession{
-		Id:          uuid.NewString(),
-		CallbackId:  unit.GenerateCallbackId(),
-		ClientId:    req.ClientId,
-		Scopes:      strings.Split(req.Scope, " "),
-		RedirectUri: req.RedirectUri,
-		State:       req.State,
+		Id:                 uuid.NewString(),
+		CallbackId:         unit.GenerateCallbackId(),
+		ClientId:           req.ClientId,
+		Scopes:             strings.Split(req.Scope, " "),
+		RedirectUri:        req.RedirectUri,
+		State:              req.State,
+		CreatedAtTimestamp: unit.GetTimestampNow(),
 	}, nil
 
 }
 
-func initValidAuthenticationSessionWithPAR(ctx Context, client models.Client, req models.AuthorizeRequest) (models.AuthnSession, error) {
+func initValidAuthenticationSessionWithPAR(ctx Context, req models.AuthorizeRequest) (models.AuthnSession, error) {
 	// The session was already created by the client in the PAR endpoint.
 	session, err := ctx.CrudManager.AuthnSessionManager.GetByRequestUri(req.RequestUri)
 	if err != nil {
 		return models.AuthnSession{}, err
 	}
 
-	if err = validateAuthorizeWithPARParams(client, req); err != nil {
+	if err = validateAuthorizeWithPARParams(session, req); err != nil {
 		// If any of the parameters is invalid, we delete the session right away.
 		ctx.CrudManager.AuthnSessionManager.Delete(session.Id)
 		return models.AuthnSession{}, err
@@ -115,10 +116,17 @@ func validateAuthorizeParams(client models.Client, req models.AuthorizeRequest) 
 	return nil
 }
 
-func validateAuthorizeWithPARParams(client models.Client, req models.AuthorizeRequest) error {
+func validateAuthorizeWithPARParams(session models.AuthnSession, req models.AuthorizeRequest) error {
+
+	if session.CreatedAtTimestamp+constants.PARLifetimeSecs > unit.GetTimestampNow() {
+		return issues.JsonError{
+			ErrorCode:        constants.InvalidRequest,
+			ErrorDescription: "the request uri expired",
+		}
+	}
 
 	// Make sure the client who created the PAR request is the same one trying to authorize.
-	if client.Id != req.ClientId {
+	if session.ClientId != req.ClientId {
 		return issues.JsonError{
 			ErrorCode:        constants.AccessDenied,
 			ErrorDescription: "invalid client",

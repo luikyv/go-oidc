@@ -28,12 +28,13 @@ func PushAuthorization(ctx Context, req models.PARRequest) (requestUri string, e
 
 	requestUri = unit.GenerateRequestUri()
 	ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(models.AuthnSession{
-		Id:          uuid.NewString(),
-		RequestUri:  requestUri,
-		ClientId:    client.Id,
-		Scopes:      strings.Split(req.Scope, " "),
-		RedirectUri: req.RedirectUri,
-		State:       req.State,
+		Id:                 uuid.NewString(),
+		RequestUri:         requestUri,
+		ClientId:           client.Id,
+		Scopes:             strings.Split(req.Scope, " "),
+		RedirectUri:        req.RedirectUri,
+		State:              req.State,
+		CreatedAtTimestamp: unit.GetTimestampNow(),
 	})
 	return requestUri, nil
 }

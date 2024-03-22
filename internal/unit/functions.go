@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"net/url"
 	"slices"
+	"time"
 
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
@@ -75,4 +76,8 @@ func All[T interface{}](slice []T, condition func(T) bool) bool {
 	}
 
 	return true
+}
+
+func GetTimestampNow() int {
+	return int(time.Now().Unix())
 }

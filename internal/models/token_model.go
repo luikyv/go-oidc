@@ -1,8 +1,6 @@
 package models
 
 import (
-	"time"
-
 	"github.com/luikymagno/auth-server/internal/unit"
 )
 
@@ -36,7 +34,7 @@ func (model OpaqueTokenModel) GenerateToken(basicInfo TokenContextInfo) Token {
 		Id:                 token,
 		TokenString:        token,
 		ExpiresInSecs:      model.ExpiresInSecs,
-		CreatedAtTimestamp: int(time.Now().Unix()),
+		CreatedAtTimestamp: unit.GetTimestampNow(),
 		TokenContextInfo:   basicInfo,
 	}
 }
