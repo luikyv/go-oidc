@@ -42,3 +42,7 @@ var ErrorCodeToStatusCode map[ErrorCode]int = map[ErrorCode]int{
 	InvalidRequest: http.StatusBadRequest,
 	InvalidScope:   http.StatusBadRequest,
 }
+
+type Header string
+
+const CorrelationIdHeader Header = "X-Correlation-ID"

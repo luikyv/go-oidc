@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"log/slog"
 	"strings"
 
 	"github.com/google/uuid"
@@ -14,15 +15,17 @@ import (
 func PushAuthorization(ctx Context, req models.PARRequest) (requestUri string, err error) {
 
 	// Authenticate the client as in the token endpoint.
-	client, err := getAuthenticatedClient(ctx.CrudManager.ClientManager, models.ClientAuthnContext{
+	client, err := getAuthenticatedClient(ctx, models.ClientAuthnContext{
 		ClientId:     req.ClientId,
 		ClientSecret: req.ClientSecret,
 	})
 	if err != nil {
+		ctx.Logger.Info("could not authenticate the client", slog.String("client_id", req.ClientId))
 		return "", err
 	}
 
 	if err = validatePushedAuthorizationParams(client, req); err != nil {
+		ctx.Logger.Info("request has invalid params")
 		return "", err
 	}
 
@@ -38,6 +41,7 @@ func PushAuthorization(ctx Context, req models.PARRequest) (requestUri string, e
 		CreatedAtTimestamp: unit.GetTimestampNow(),
 	}, errorCh)
 	if err = <-errorCh; err != nil {
+		ctx.Logger.Debug("could not authenticate the client", slog.String("client_id", req.ClientId))
 		return "", err
 	}
 

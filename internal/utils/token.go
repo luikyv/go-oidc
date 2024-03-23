@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"log/slog"
 	"strings"
 
 	"github.com/luikymagno/auth-server/internal/crud"
@@ -52,7 +53,7 @@ func getGrantInfo(
 	error,
 ) {
 	authenticatedClient, err := getAuthenticatedClient(
-		ctx.CrudManager.ClientManager,
+		ctx,
 		models.ClientAuthnContext{
 			ClientId:     request.ClientId,
 			ClientSecret: request.ClientSecret,
@@ -169,11 +170,12 @@ func validateAuthorizationCodeGrantRequest(grantInfo models.GrantInfo, session m
 	return nil
 }
 
-func getAuthenticatedClient(clientManager crud.ClientManager, authnContext models.ClientAuthnContext) (models.Client, error) {
+func getAuthenticatedClient(ctx Context, authnContext models.ClientAuthnContext) (models.Client, error) {
 	clientCh := make(chan crud.ClientGetResult, 1)
-	clientManager.Get(authnContext.ClientId, clientCh)
+	ctx.CrudManager.ClientManager.Get(authnContext.ClientId, clientCh)
 	clientResult := <-clientCh
 	if clientResult.Error != nil {
+		ctx.Logger.Info("client notß found", slog.String("client_id", authnContext.ClientId))
 		return models.Client{}, clientResult.Error
 	}
 
@@ -181,6 +183,7 @@ func getAuthenticatedClient(clientManager crud.ClientManager, authnContext model
 		ClientSecret: authnContext.ClientSecret,
 	}
 	if !clientResult.Client.Authenticator.IsAuthenticated(clientAuthnContext) {
+		ctx.Logger.Info("client not authenticated", slog.String("client_id", authnContext.ClientId))
 		return models.Client{}, issues.JsonError{
 			ErrorCode:        constants.AccessDenied,
 			ErrorDescription: "client not authenticated",
