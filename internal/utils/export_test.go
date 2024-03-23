@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 
@@ -74,6 +75,7 @@ func GetMockedContext() Context {
 	return Context{
 		CrudManager:    crudManager,
 		RequestContext: GetMockedRequestContext(),
+		Logger:         slog.Default(),
 	}
 }
 
