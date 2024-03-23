@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/luikymagno/auth-server/internal/crud"
 	"github.com/luikymagno/auth-server/internal/crud/mock"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
@@ -16,7 +17,9 @@ func TestHandleTokenCreationShouldNotFindClient(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
+	clientCh := make(chan crud.ClientGetResult, 1)
+	ctx.CrudManager.ClientManager.Get(utils.ValidClientId, clientCh)
+	client := (<-clientCh).Client
 
 	// Then
 	_, err := utils.HandleTokenCreation(ctx, models.TokenRequest{
@@ -38,7 +41,9 @@ func TestHandleTokenCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
+	clientCh := make(chan crud.ClientGetResult, 1)
+	ctx.CrudManager.ClientManager.Get(utils.ValidClientId, clientCh)
+	client := (<-clientCh).Client
 
 	// Then
 	_, err := utils.HandleTokenCreation(ctx, models.TokenRequest{
@@ -64,7 +69,9 @@ func TestClientCredentialsHandleTokenCreation(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
+	clientCh := make(chan crud.ClientGetResult, 1)
+	ctx.CrudManager.ClientManager.Get(utils.ValidClientId, clientCh)
+	client := (<-clientCh).Client
 	req := models.TokenRequest{
 		ClientId:     utils.ValidClientId,
 		GrantType:    constants.ClientCredentials,
@@ -107,7 +114,9 @@ func TestAuthorizationCodeHandleTokenCreation(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
+	clientCh := make(chan crud.ClientGetResult, 1)
+	ctx.CrudManager.ClientManager.Get(utils.ValidClientId, clientCh)
+	client := (<-clientCh).Client
 
 	authorizationCode := "random_authz_code"
 	session := models.AuthnSession{
@@ -117,7 +126,7 @@ func TestAuthorizationCodeHandleTokenCreation(t *testing.T) {
 		AuthorizationCode: authorizationCode,
 		Subject:           "user_id",
 	}
-	ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(session)
+	ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(session, make(chan error, 1))
 
 	req := models.TokenRequest{
 		ClientId:          utils.ValidClientId,

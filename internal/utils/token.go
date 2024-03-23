@@ -31,12 +31,16 @@ func HandleTokenCreation(
 			ErrorDescription: "invalid grant type",
 		}
 	}
-
 	if err != nil {
 		return models.Token{}, err
 	}
 
-	ctx.CrudManager.TokenSessionManager.Create(token)
+	errorCh := make(chan error, 1)
+	ctx.CrudManager.TokenSessionManager.Create(token, errorCh)
+	if err = <-errorCh; err != nil {
+		return models.Token{}, err
+	}
+
 	return token, nil
 }
 
@@ -58,9 +62,11 @@ func getGrantInfo(
 		return models.GrantInfo{}, err
 	}
 
-	tokenModel, err := ctx.CrudManager.TokenModelManager.Get(authenticatedClient.DefaultTokenModelId)
-	if err != nil {
-		return models.GrantInfo{}, err
+	tokenModelCh := make(chan crud.TokenModelGetResult, 1)
+	ctx.CrudManager.TokenModelManager.Get(authenticatedClient.DefaultTokenModelId, tokenModelCh)
+	tokenModelResult := <-tokenModelCh
+	if tokenModelResult.Error != nil {
+		return models.GrantInfo{}, tokenModelResult.Error
 	}
 
 	scopes := []string{}
@@ -70,7 +76,7 @@ func getGrantInfo(
 	return models.GrantInfo{
 		GrantType:           request.GrantType,
 		AuthenticatedClient: authenticatedClient,
-		TokenModel:          tokenModel,
+		TokenModel:          tokenModelResult.TokenModel,
 		Scopes:              scopes,
 		AuthorizationCode:   request.AuthorizationCode,
 		RedirectUri:         request.RedirectUri,
@@ -117,26 +123,26 @@ func validateClientCredentialsGrantRequest(grantInfo models.GrantInfo) error {
 //---------------------------------------- Authorization Code ----------------------------------------//
 
 func handleAuthorizationCodeGrantTokenCreation(ctx Context, grantInfo models.GrantInfo) (models.Token, error) {
-
-	session, err := ctx.CrudManager.AuthnSessionManager.GetByAuthorizationCode(grantInfo.AuthorizationCode)
-	if err != nil {
+	sessionCh := make(chan crud.AuthnSessionGetResult, 1)
+	ctx.CrudManager.AuthnSessionManager.GetByAuthorizationCode(grantInfo.AuthorizationCode, sessionCh)
+	sessionResult := <-sessionCh
+	if sessionResult.Error != nil {
 		return models.Token{}, issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "invalid authorization code",
 		}
 	}
 	// Always delete the session at the end.
-	defer ctx.CrudManager.AuthnSessionManager.Delete(session.Id)
+	go ctx.CrudManager.AuthnSessionManager.Delete(sessionResult.Session.Id)
 
-	err = validateAuthorizationCodeGrantRequest(grantInfo, session)
-	if err != nil {
+	if err := validateAuthorizationCodeGrantRequest(grantInfo, sessionResult.Session); err != nil {
 		return models.Token{}, err
 	}
 
 	return grantInfo.TokenModel.GenerateToken(models.TokenContextInfo{
-		Subject:  session.Subject,
-		ClientId: session.ClientId,
-		Scopes:   session.Scopes,
+		Subject:  sessionResult.Session.Subject,
+		ClientId: sessionResult.Session.ClientId,
+		Scopes:   sessionResult.Session.Scopes,
 	}), nil
 }
 
@@ -164,20 +170,22 @@ func validateAuthorizationCodeGrantRequest(grantInfo models.GrantInfo, session m
 }
 
 func getAuthenticatedClient(clientManager crud.ClientManager, authnContext models.ClientAuthnContext) (models.Client, error) {
-	client, err := clientManager.Get(authnContext.ClientId)
-	if err != nil {
-		return models.Client{}, err
+	clientCh := make(chan crud.ClientGetResult, 1)
+	clientManager.Get(authnContext.ClientId, clientCh)
+	clientResult := <-clientCh
+	if clientResult.Error != nil {
+		return models.Client{}, clientResult.Error
 	}
 
 	clientAuthnContext := models.ClientAuthnContext{
 		ClientSecret: authnContext.ClientSecret,
 	}
-	if !client.Authenticator.IsAuthenticated(clientAuthnContext) {
+	if !clientResult.Client.Authenticator.IsAuthenticated(clientAuthnContext) {
 		return models.Client{}, issues.JsonError{
 			ErrorCode:        constants.AccessDenied,
 			ErrorDescription: "client not authenticated",
 		}
 	}
 
-	return client, nil
+	return clientResult.Client, nil
 }

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/luikymagno/auth-server/internal/crud"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -13,24 +14,27 @@ import (
 
 func InitAuthentication(ctx Context, req models.AuthorizeRequest) error {
 
-	client, err := ctx.CrudManager.ClientManager.Get(req.ClientId)
-	if err != nil {
-		return err
+	clientCh := make(chan crud.ClientGetResult, 1)
+	ctx.CrudManager.ClientManager.Get(req.ClientId, clientCh)
+	clientResult := <-clientCh
+	if clientResult.Error != nil {
+		return clientResult.Error
 	}
 
 	// Init the session and make sure it is valid.
 	var session models.AuthnSession
+	var err error
 	if req.RequestUri != "" {
 		session, err = initValidAuthenticationSessionWithPAR(ctx, req)
 	} else {
-		session, err = initValidAuthenticationSession(ctx, client, req)
+		session, err = initValidAuthenticationSession(ctx, clientResult.Client, req)
 	}
 	if err != nil {
 		return err
 	}
 
 	// Fetch the first policy available.
-	policy, policyIsAvailable := models.GetPolicy(client, ctx.RequestContext)
+	policy, policyIsAvailable := models.GetPolicy(clientResult.Client, ctx.RequestContext)
 	if !policyIsAvailable {
 		return errors.New("no policy available")
 	}
@@ -60,30 +64,34 @@ func initValidAuthenticationSession(_ Context, client models.Client, req models.
 
 func initValidAuthenticationSessionWithPAR(ctx Context, req models.AuthorizeRequest) (models.AuthnSession, error) {
 	// The session was already created by the client in the PAR endpoint.
-	session, err := ctx.CrudManager.AuthnSessionManager.GetByRequestUri(req.RequestUri)
-	if err != nil {
-		return models.AuthnSession{}, err
+	sessionCh := make(chan crud.AuthnSessionGetResult, 1)
+	ctx.CrudManager.AuthnSessionManager.GetByRequestUri(req.RequestUri, sessionCh)
+	sessionResult := <-sessionCh
+	if sessionResult.Error != nil {
+		return models.AuthnSession{}, sessionResult.Error
 	}
 
-	if err = validateAuthorizeWithPARParams(session, req); err != nil {
+	if err := validateAuthorizeWithPARParams(sessionResult.Session, req); err != nil {
 		// If any of the parameters is invalid, we delete the session right away.
-		ctx.CrudManager.AuthnSessionManager.Delete(session.Id)
+		ctx.CrudManager.AuthnSessionManager.Delete(sessionResult.Session.Id)
 		return models.AuthnSession{}, err
 	}
 
 	// FIXME: Treating the request_uri as one-time use will cause problems when the user refreshes the page.
-	session.RequestUri = "" // Make sure the request URI can't be used again.
-	session.CallbackId = unit.GenerateCallbackId()
-	return session, nil
+	sessionResult.Session.RequestUri = "" // Make sure the request URI can't be used again.
+	sessionResult.Session.CallbackId = unit.GenerateCallbackId()
+	return sessionResult.Session, nil
 }
 
 func ContinueAuthentication(ctx Context, callbackId string) error {
-	session, err := ctx.CrudManager.AuthnSessionManager.GetByCallbackId(callbackId)
-	if err != nil {
-		return err
+	sessionCh := make(chan crud.AuthnSessionGetResult, 1)
+	ctx.CrudManager.AuthnSessionManager.GetByCallbackId(callbackId, sessionCh)
+	sessionResult := <-sessionCh
+	if sessionResult.Error != nil {
+		return sessionResult.Error
 	}
 
-	return authenticate(ctx, session)
+	return authenticate(ctx, sessionResult.Session)
 }
 
 func validateAuthorizeParams(client models.Client, req models.AuthorizeRequest) error {
@@ -171,8 +179,9 @@ func authenticate(ctx Context, session models.AuthnSession) error {
 	}
 
 	session.StepId = currentStep.Id
-	return ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(session)
-
+	errorCh := make(chan error, 1)
+	ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(session, errorCh)
+	return <-errorCh
 }
 
 func getNextStep(status constants.AuthnStatus, step *models.AuthnStep) *models.AuthnStep {

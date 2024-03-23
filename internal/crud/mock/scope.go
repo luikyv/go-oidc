@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"github.com/luikymagno/auth-server/internal/crud"
 	issues "github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 )
@@ -15,33 +16,42 @@ func NewMockedScopeManager() *MockedScopeManager {
 	}
 }
 
-func (manager *MockedScopeManager) Create(scope models.Scope) error {
+func (manager *MockedScopeManager) Create(scope models.Scope, ch chan error) {
 	_, exists := manager.scopes[scope.Id]
 	if exists {
-		return issues.EntityAlreadyExistsError{Id: scope.Id}
+		ch <- issues.EntityAlreadyExistsError{Id: scope.Id}
+		return
 	}
 
 	manager.scopes[scope.Id] = scope
-	return nil
+	ch <- nil
 }
 
-func (manager *MockedScopeManager) Update(id string, scope models.Scope) error {
+func (manager *MockedScopeManager) Update(id string, scope models.Scope, ch chan error) {
 	_, exists := manager.scopes[id]
 	if !exists {
-		return issues.EntityNotFoundError{Id: id}
+		ch <- issues.EntityNotFoundError{Id: id}
+		return
 	}
 
 	manager.scopes[id] = scope
-	return nil
+	ch <- nil
 }
 
-func (manager *MockedScopeManager) Get(id string) (models.Scope, error) {
+func (manager *MockedScopeManager) Get(id string, ch chan crud.ScopeGetResult) {
 	scope, exists := manager.scopes[id]
 	if !exists {
-		return models.Scope{}, issues.EntityNotFoundError{Id: id}
+		ch <- crud.ScopeGetResult{
+			Scope: models.Scope{},
+			Error: issues.EntityNotFoundError{Id: id},
+		}
+		return
 	}
 
-	return scope, nil
+	ch <- crud.ScopeGetResult{
+		Scope: scope,
+		Error: nil,
+	}
 }
 
 func (manager *MockedScopeManager) Delete(id string) {

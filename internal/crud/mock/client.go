@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"github.com/luikymagno/auth-server/internal/crud"
 	issues "github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 )
@@ -15,33 +16,42 @@ func NewMockedClientManager() *MockedClientManager {
 	}
 }
 
-func (manager *MockedClientManager) Create(client models.Client) error {
+func (manager *MockedClientManager) Create(client models.Client, ch chan error) {
 	_, exists := manager.clients[client.Id]
 	if exists {
-		return issues.EntityAlreadyExistsError{Id: client.Id}
+		ch <- issues.EntityAlreadyExistsError{Id: client.Id}
+		return
 	}
 
 	manager.clients[client.Id] = client
-	return nil
+	ch <- nil
 }
 
-func (manager *MockedClientManager) Update(id string, client models.Client) error {
+func (manager *MockedClientManager) Update(id string, client models.Client, ch chan error) {
 	_, exists := manager.clients[id]
 	if !exists {
-		return issues.EntityNotFoundError{Id: id}
+		ch <- issues.EntityNotFoundError{Id: id}
+		return
 	}
 
 	manager.clients[id] = client
-	return nil
+	ch <- nil
 }
 
-func (manager *MockedClientManager) Get(id string) (models.Client, error) {
+func (manager *MockedClientManager) Get(id string, ch chan crud.ClientGetResult) {
 	client, exists := manager.clients[id]
 	if !exists {
-		return models.Client{}, issues.EntityNotFoundError{Id: id}
+		ch <- crud.ClientGetResult{
+			Client: models.Client{},
+			Error:  issues.EntityNotFoundError{Id: id},
+		}
+		return
 	}
 
-	return client, nil
+	ch <- crud.ClientGetResult{
+		Client: client,
+		Error:  nil,
+	}
 }
 
 func (manager *MockedClientManager) Delete(id string) {

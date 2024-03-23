@@ -41,11 +41,15 @@ func SetMockedSessionsConfig(manager *OAuthManager) {
 }
 
 func (manager *OAuthManager) AddTokenModel(model models.TokenModel) error {
-	return manager.crudManager.TokenModelManager.Create(model)
+	errorCh := make(chan error)
+	manager.crudManager.TokenModelManager.Create(model, errorCh)
+	return <-errorCh
 }
 
 func (manager *OAuthManager) AddClient(client models.Client) error {
-	return manager.crudManager.ClientManager.Create(client)
+	errorCh := make(chan error)
+	manager.crudManager.ClientManager.Create(client, errorCh)
+	return <-errorCh
 }
 
 func (manager *OAuthManager) AddPolicy(policy models.AuthnPolicy) {
@@ -59,21 +63,23 @@ func (manager *OAuthManager) Run(port int) {
 	// Set endpoints.
 	manager.server.POST("/par", func(ctx *gin.Context) {
 		apihandlers.HandlePARRequest(
-			utils.Context{CrudManager: manager.crudManager, RequestContext: ctx},
+			utils.NewContext(manager.crudManager, ctx),
 		)
 	})
 	manager.server.GET("/authorize", func(ctx *gin.Context) {
 		apihandlers.HandleAuthorizeRequest(
-			utils.Context{CrudManager: manager.crudManager, RequestContext: ctx},
+			utils.NewContext(manager.crudManager, ctx),
 		)
 	})
 	manager.server.POST("/authorize/:callback", func(ctx *gin.Context) {
 		apihandlers.HandleAuthorizeCallbackRequest(
-			utils.Context{CrudManager: manager.crudManager, RequestContext: ctx},
+			utils.NewContext(manager.crudManager, ctx),
 		)
 	})
 	manager.server.POST("/token", func(ctx *gin.Context) {
-		apihandlers.HandleTokenRequest(utils.Context{CrudManager: manager.crudManager, RequestContext: ctx})
+		apihandlers.HandleTokenRequest(
+			utils.NewContext(manager.crudManager, ctx),
+		)
 	})
 
 	// Start the server.

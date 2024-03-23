@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"github.com/luikymagno/auth-server/internal/crud"
 	issues "github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 )
@@ -15,23 +16,31 @@ func NewMockedTokenSessionManager() *MockedTokenSessionManager {
 	}
 }
 
-func (manager *MockedTokenSessionManager) Create(token models.Token) error {
+func (manager *MockedTokenSessionManager) Create(token models.Token, ch chan error) {
 	_, exists := manager.Tokens[token.Id]
 	if exists {
-		return issues.EntityAlreadyExistsError{Id: token.Id}
+		ch <- issues.EntityAlreadyExistsError{Id: token.Id}
+		return
 	}
 
 	manager.Tokens[token.Id] = token
-	return nil
+	ch <- nil
 }
 
-func (manager *MockedTokenSessionManager) Get(id string) (models.Token, error) {
+func (manager *MockedTokenSessionManager) Get(id string, ch chan crud.TokenSessionGetResult) {
 	token, exists := manager.Tokens[id]
 	if !exists {
-		return models.Token{}, issues.EntityNotFoundError{Id: id}
+		ch <- crud.TokenSessionGetResult{
+			Token: models.Token{},
+			Error: issues.EntityNotFoundError{Id: id},
+		}
+		return
 	}
 
-	return token, nil
+	ch <- crud.TokenSessionGetResult{
+		Token: token,
+		Error: nil,
+	}
 }
 
 func (manager *MockedTokenSessionManager) Delete(id string) {

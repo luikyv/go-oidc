@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/luikymagno/auth-server/internal/crud"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -38,7 +39,9 @@ func TestPushAuthorizationWhenRequestUriIsSent(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
+	clientCh := make(chan crud.ClientGetResult, 1)
+	ctx.CrudManager.ClientManager.Get(utils.ValidClientId, clientCh)
+	client := (<-clientCh).Client
 
 	// Then
 	_, err := utils.PushAuthorization(ctx, models.PARRequest{
@@ -66,7 +69,9 @@ func TestPushAuthorizationShouldGenerateRequestUri(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
+	clientCh := make(chan crud.ClientGetResult, 1)
+	ctx.CrudManager.ClientManager.Get(utils.ValidClientId, clientCh)
+	client := (<-clientCh).Client
 
 	// Then
 	requestUri, err := utils.PushAuthorization(ctx, models.PARRequest{

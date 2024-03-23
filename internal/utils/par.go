@@ -27,7 +27,8 @@ func PushAuthorization(ctx Context, req models.PARRequest) (requestUri string, e
 	}
 
 	requestUri = unit.GenerateRequestUri()
-	ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(models.AuthnSession{
+	errorCh := make(chan error, 1)
+	go ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(models.AuthnSession{
 		Id:                 uuid.NewString(),
 		RequestUri:         requestUri,
 		ClientId:           client.Id,
@@ -35,7 +36,11 @@ func PushAuthorization(ctx Context, req models.PARRequest) (requestUri string, e
 		RedirectUri:        req.RedirectUri,
 		State:              req.State,
 		CreatedAtTimestamp: unit.GetTimestampNow(),
-	})
+	}, errorCh)
+	if err = <-errorCh; err != nil {
+		return "", err
+	}
+
 	return requestUri, nil
 }
 

@@ -9,3 +9,7 @@ type Context struct {
 	CrudManager    crud.CRUDManager
 	RequestContext *gin.Context
 }
+
+func NewContext(crudManager crud.CRUDManager, reqContext *gin.Context) Context {
+	return Context{CrudManager: crudManager, RequestContext: reqContext}
+}
