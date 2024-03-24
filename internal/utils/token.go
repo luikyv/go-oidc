@@ -63,11 +63,13 @@ func getGrantInfo(
 		return models.GrantInfo{}, err
 	}
 
+	// Fetch the token model.
 	tokenModelCh := make(chan crud.TokenModelGetResult, 1)
 	ctx.CrudManager.TokenModelManager.Get(authenticatedClient.DefaultTokenModelId, tokenModelCh)
 	tokenModelResult := <-tokenModelCh
-	if tokenModelResult.Error != nil {
-		return models.GrantInfo{}, tokenModelResult.Error
+	tokenModel, err := tokenModelResult.TokenModel, tokenModelResult.Error
+	if err != nil {
+		return models.GrantInfo{}, err
 	}
 
 	scopes := []string{}
@@ -77,7 +79,7 @@ func getGrantInfo(
 	return models.GrantInfo{
 		GrantType:           request.GrantType,
 		AuthenticatedClient: authenticatedClient,
-		TokenModel:          tokenModelResult.TokenModel,
+		TokenModel:          tokenModel,
 		Scopes:              scopes,
 		AuthorizationCode:   request.AuthorizationCode,
 		RedirectUri:         request.RedirectUri,
@@ -124,19 +126,28 @@ func validateClientCredentialsGrantRequest(grantInfo models.GrantInfo) error {
 //---------------------------------------- Authorization Code ----------------------------------------//
 
 func handleAuthorizationCodeGrantTokenCreation(ctx Context, grantInfo models.GrantInfo) (models.Token, error) {
-	sessionCh := make(chan crud.AuthnSessionGetResult, 1)
-	ctx.CrudManager.AuthnSessionManager.GetByAuthorizationCode(grantInfo.AuthorizationCode, sessionCh)
-	sessionResult := <-sessionCh
-	if sessionResult.Error != nil {
+	if grantInfo.AuthorizationCode == "" {
 		return models.Token{}, issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "invalid authorization code",
 		}
 	}
-	// Always delete the session at the end.
-	go ctx.CrudManager.AuthnSessionManager.Delete(sessionResult.Session.Id)
 
-	if err := validateAuthorizationCodeGrantRequest(grantInfo, sessionResult.Session); err != nil {
+	// Fetch the session using the authorization code.
+	sessionCh := make(chan crud.AuthnSessionGetResult, 1)
+	ctx.CrudManager.AuthnSessionManager.GetByAuthorizationCode(grantInfo.AuthorizationCode, sessionCh)
+	sessionResult := <-sessionCh
+	session, err := sessionResult.Session, sessionResult.Error
+	if err != nil {
+		return models.Token{}, issues.JsonError{
+			ErrorCode:        constants.InvalidRequest,
+			ErrorDescription: "invalid authorization code",
+		}
+	}
+	// Always delete the session.
+	go ctx.CrudManager.AuthnSessionManager.Delete(session.Id)
+
+	if err := validateAuthorizationCodeGrantRequest(grantInfo, session); err != nil {
 		return models.Token{}, err
 	}
 
@@ -171,18 +182,21 @@ func validateAuthorizationCodeGrantRequest(grantInfo models.GrantInfo, session m
 }
 
 func getAuthenticatedClient(ctx Context, authnContext models.ClientAuthnContext) (models.Client, error) {
+	// Fetch the client.
 	clientCh := make(chan crud.ClientGetResult, 1)
 	ctx.CrudManager.ClientManager.Get(authnContext.ClientId, clientCh)
 	clientResult := <-clientCh
-	if clientResult.Error != nil {
-		ctx.Logger.Info("client notß found", slog.String("client_id", authnContext.ClientId))
-		return models.Client{}, clientResult.Error
+	client, err := clientResult.Client, clientResult.Error
+	if err != nil {
+		ctx.Logger.Info("client not found", slog.String("client_id", authnContext.ClientId))
+		return models.Client{}, err
 	}
 
+	// Verify that the client is authenticated.
 	clientAuthnContext := models.ClientAuthnContext{
 		ClientSecret: authnContext.ClientSecret,
 	}
-	if !clientResult.Client.Authenticator.IsAuthenticated(clientAuthnContext) {
+	if !client.Authenticator.IsAuthenticated(clientAuthnContext) {
 		ctx.Logger.Info("client not authenticated", slog.String("client_id", authnContext.ClientId))
 		return models.Client{}, issues.JsonError{
 			ErrorCode:        constants.AccessDenied,

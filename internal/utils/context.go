@@ -23,6 +23,7 @@ func NewContext(crudManager crud.CRUDManager, reqContext *gin.Context) Context {
 	// Set shared information.
 	correlationId, _ := reqContext.MustGet(constants.CorrelationIdKey).(string)
 	logger = logger.With(
+		// Always log the correlation ID.
 		slog.String(constants.CorrelationIdKey, correlationId),
 	)
 
