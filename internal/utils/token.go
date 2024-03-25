@@ -52,13 +52,18 @@ func getGrantInfo(
 	models.GrantInfo,
 	error,
 ) {
-	authenticatedClient, err := getAuthenticatedClient(
+	// Fetch the authenticated client.
+	ch := make(chan crud.ClientGetResult, 1)
+	getAuthenticatedClient(
 		ctx,
 		models.ClientAuthnContext{
 			ClientId:     request.ClientId,
 			ClientSecret: request.ClientSecret,
 		},
+		ch,
 	)
+	clientResult := <-ch
+	authenticatedClient, err := clientResult.Client, clientResult.Error
 	if err != nil {
 		return models.GrantInfo{}, err
 	}
@@ -181,28 +186,35 @@ func validateAuthorizationCodeGrantRequest(grantInfo models.GrantInfo, session m
 	return nil
 }
 
-func getAuthenticatedClient(ctx Context, authnContext models.ClientAuthnContext) (models.Client, error) {
+func getAuthenticatedClient(ctx Context, authnContext models.ClientAuthnContext, ch chan crud.ClientGetResult) {
 	// Fetch the client.
-	clientCh := make(chan crud.ClientGetResult, 1)
-	ctx.CrudManager.ClientManager.Get(authnContext.ClientId, clientCh)
-	clientResult := <-clientCh
+	ctx.CrudManager.ClientManager.Get(authnContext.ClientId, ch)
+	clientResult := <-ch
 	client, err := clientResult.Client, clientResult.Error
 	if err != nil {
 		ctx.Logger.Info("client not found", slog.String("client_id", authnContext.ClientId))
-		return models.Client{}, err
+		ch <- crud.ClientGetResult{
+			Client: models.Client{},
+			Error:  err,
+		}
+		return
 	}
 
 	// Verify that the client is authenticated.
-	clientAuthnContext := models.ClientAuthnContext{
-		ClientSecret: authnContext.ClientSecret,
-	}
-	if !client.Authenticator.IsAuthenticated(clientAuthnContext) {
+	if !client.Authenticator.IsAuthenticated(authnContext) {
 		ctx.Logger.Info("client not authenticated", slog.String("client_id", authnContext.ClientId))
-		return models.Client{}, issues.JsonError{
-			ErrorCode:        constants.AccessDenied,
-			ErrorDescription: "client not authenticated",
+		ch <- crud.ClientGetResult{
+			Client: models.Client{},
+			Error: issues.JsonError{
+				ErrorCode:        constants.AccessDenied,
+				ErrorDescription: "client not authenticated",
+			},
 		}
+		return
 	}
 
-	return clientResult.Client, nil
+	ch <- crud.ClientGetResult{
+		Client: client,
+		Error:  nil,
+	}
 }

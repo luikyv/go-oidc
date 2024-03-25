@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/luikymagno/auth-server/internal/crud"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -15,10 +16,13 @@ import (
 func PushAuthorization(ctx Context, req models.PARRequest) (requestUri string, err error) {
 
 	// Authenticate the client as in the token endpoint.
-	client, err := getAuthenticatedClient(ctx, models.ClientAuthnContext{
+	ch := make(chan crud.ClientGetResult, 1)
+	getAuthenticatedClient(ctx, models.ClientAuthnContext{
 		ClientId:     req.ClientId,
 		ClientSecret: req.ClientSecret,
-	})
+	}, ch)
+	clientResult := <-ch
+	client, err := clientResult.Client, clientResult.Error
 	if err != nil {
 		ctx.Logger.Info("could not authenticate the client", slog.String("client_id", req.ClientId))
 		return "", err
