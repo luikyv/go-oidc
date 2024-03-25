@@ -1,7 +1,6 @@
 package mock
 
 import (
-	"github.com/luikymagno/auth-server/internal/crud"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -17,9 +16,9 @@ func NewMockedAuthnSessionManager() *MockedAuthnSessionManager {
 	}
 }
 
-func (manager *MockedAuthnSessionManager) CreateOrUpdate(session models.AuthnSession, ch chan error) {
+func (manager *MockedAuthnSessionManager) CreateOrUpdate(session models.AuthnSession) error {
 	manager.Sessions[session.Id] = session
-	ch <- nil
+	return nil
 }
 
 func (manager *MockedAuthnSessionManager) getFirstSession(condition func(models.AuthnSession) bool) (models.AuthnSession, bool) {
@@ -31,60 +30,40 @@ func (manager *MockedAuthnSessionManager) getFirstSession(condition func(models.
 	return unit.FindFirst(sessions, condition)
 }
 
-func (manager *MockedAuthnSessionManager) GetByCallbackId(callbackId string, ch chan crud.AuthnSessionGetResult) {
+func (manager *MockedAuthnSessionManager) GetByCallbackId(callbackId string) (models.AuthnSession, error) {
 	session, exists := manager.getFirstSession(func(s models.AuthnSession) bool {
 		return s.CallbackId == callbackId
 	})
 	if !exists {
-		ch <- crud.AuthnSessionGetResult{
-			Session: models.AuthnSession{},
-			Error:   issues.EntityNotFoundError{Id: callbackId},
-		}
-		return
+		return models.AuthnSession{}, issues.EntityNotFoundError{Id: callbackId}
 	}
 
-	ch <- crud.AuthnSessionGetResult{
-		Session: session,
-		Error:   nil,
-	}
+	return session, nil
 }
 
-func (manager *MockedAuthnSessionManager) GetByAuthorizationCode(authorizationCode string, ch chan crud.AuthnSessionGetResult) {
+func (manager *MockedAuthnSessionManager) GetByAuthorizationCode(authorizationCode string) (models.AuthnSession, error) {
 	session, exists := manager.getFirstSession(func(s models.AuthnSession) bool {
 		return s.AuthorizationCode == authorizationCode
 	})
 	if !exists {
-		ch <- crud.AuthnSessionGetResult{
-			Session: models.AuthnSession{},
-			Error:   issues.EntityNotFoundError{Id: authorizationCode},
-		}
-		return
+		return models.AuthnSession{}, issues.EntityNotFoundError{Id: authorizationCode}
 	}
 
-	ch <- crud.AuthnSessionGetResult{
-		Session: session,
-		Error:   nil,
-	}
+	return session, nil
 }
 
-func (manager *MockedAuthnSessionManager) GetByRequestUri(requestUri string, ch chan crud.AuthnSessionGetResult) {
+func (manager *MockedAuthnSessionManager) GetByRequestUri(requestUri string) (models.AuthnSession, error) {
 	session, exists := manager.getFirstSession(func(s models.AuthnSession) bool {
 		return s.RequestUri == requestUri
 	})
 	if !exists {
-		ch <- crud.AuthnSessionGetResult{
-			Session: models.AuthnSession{},
-			Error:   issues.EntityNotFoundError{Id: requestUri},
-		}
-		return
+		return models.AuthnSession{}, issues.EntityNotFoundError{Id: requestUri}
 	}
 
-	ch <- crud.AuthnSessionGetResult{
-		Session: session,
-		Error:   nil,
-	}
+	return session, nil
 }
 
-func (manager *MockedAuthnSessionManager) Delete(id string) {
+func (manager *MockedAuthnSessionManager) Delete(id string) error {
 	delete(manager.Sessions, id)
+	return nil
 }

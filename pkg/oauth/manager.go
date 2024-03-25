@@ -43,15 +43,11 @@ func SetMockedSessionsConfig(manager *OAuthManager) {
 }
 
 func (manager *OAuthManager) AddTokenModel(model models.TokenModel) error {
-	errorCh := make(chan error)
-	manager.crudManager.TokenModelManager.Create(model, errorCh)
-	return <-errorCh
+	return manager.crudManager.TokenModelManager.Create(model)
 }
 
 func (manager *OAuthManager) AddClient(client models.Client) error {
-	errorCh := make(chan error)
-	manager.crudManager.ClientManager.Create(client, errorCh)
-	return <-errorCh
+	return manager.crudManager.ClientManager.Create(client)
 }
 
 func (manager *OAuthManager) AddPolicy(policy models.AuthnPolicy) {

@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/luikymagno/auth-server/internal/crud"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -36,9 +35,8 @@ func HandleTokenCreation(
 		return models.Token{}, err
 	}
 
-	errorCh := make(chan error, 1)
-	ctx.CrudManager.TokenSessionManager.Create(token, errorCh)
-	if err = <-errorCh; err != nil {
+	err = ctx.CrudManager.TokenSessionManager.Create(token)
+	if err != nil {
 		return models.Token{}, err
 	}
 
@@ -53,26 +51,19 @@ func getGrantInfo(
 	error,
 ) {
 	// Fetch the authenticated client.
-	ch := make(chan crud.ClientGetResult, 1)
-	getAuthenticatedClient(
+	authenticatedClient, err := getAuthenticatedClient(
 		ctx,
 		models.ClientAuthnContext{
 			ClientId:     request.ClientId,
 			ClientSecret: request.ClientSecret,
 		},
-		ch,
 	)
-	clientResult := <-ch
-	authenticatedClient, err := clientResult.Client, clientResult.Error
 	if err != nil {
 		return models.GrantInfo{}, err
 	}
 
 	// Fetch the token model.
-	tokenModelCh := make(chan crud.TokenModelGetResult, 1)
-	ctx.CrudManager.TokenModelManager.Get(authenticatedClient.DefaultTokenModelId, tokenModelCh)
-	tokenModelResult := <-tokenModelCh
-	tokenModel, err := tokenModelResult.TokenModel, tokenModelResult.Error
+	tokenModel, err := ctx.CrudManager.TokenModelManager.Get(authenticatedClient.DefaultTokenModelId)
 	if err != nil {
 		return models.GrantInfo{}, err
 	}
@@ -139,10 +130,7 @@ func handleAuthorizationCodeGrantTokenCreation(ctx Context, grantInfo models.Gra
 	}
 
 	// Fetch the session using the authorization code.
-	sessionCh := make(chan crud.AuthnSessionGetResult, 1)
-	ctx.CrudManager.AuthnSessionManager.GetByAuthorizationCode(grantInfo.AuthorizationCode, sessionCh)
-	sessionResult := <-sessionCh
-	session, err := sessionResult.Session, sessionResult.Error
+	session, err := ctx.CrudManager.AuthnSessionManager.GetByAuthorizationCode(grantInfo.AuthorizationCode)
 	if err != nil {
 		return models.Token{}, issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
@@ -157,9 +145,9 @@ func handleAuthorizationCodeGrantTokenCreation(ctx Context, grantInfo models.Gra
 	}
 
 	return grantInfo.TokenModel.GenerateToken(models.TokenContextInfo{
-		Subject:  sessionResult.Session.Subject,
-		ClientId: sessionResult.Session.ClientId,
-		Scopes:   sessionResult.Session.Scopes,
+		Subject:  session.Subject,
+		ClientId: session.ClientId,
+		Scopes:   session.Scopes,
 	}), nil
 }
 
@@ -186,35 +174,22 @@ func validateAuthorizationCodeGrantRequest(grantInfo models.GrantInfo, session m
 	return nil
 }
 
-func getAuthenticatedClient(ctx Context, authnContext models.ClientAuthnContext, ch chan crud.ClientGetResult) {
+func getAuthenticatedClient(ctx Context, authnContext models.ClientAuthnContext) (models.Client, error) {
 	// Fetch the client.
-	ctx.CrudManager.ClientManager.Get(authnContext.ClientId, ch)
-	clientResult := <-ch
-	client, err := clientResult.Client, clientResult.Error
+	client, err := ctx.CrudManager.ClientManager.Get(authnContext.ClientId)
 	if err != nil {
 		ctx.Logger.Info("client not found", slog.String("client_id", authnContext.ClientId))
-		ch <- crud.ClientGetResult{
-			Client: models.Client{},
-			Error:  err,
-		}
-		return
+		return models.Client{}, err
 	}
 
 	// Verify that the client is authenticated.
 	if !client.Authenticator.IsAuthenticated(authnContext) {
 		ctx.Logger.Info("client not authenticated", slog.String("client_id", authnContext.ClientId))
-		ch <- crud.ClientGetResult{
-			Client: models.Client{},
-			Error: issues.JsonError{
-				ErrorCode:        constants.AccessDenied,
-				ErrorDescription: "client not authenticated",
-			},
+		return models.Client{}, issues.JsonError{
+			ErrorCode:        constants.AccessDenied,
+			ErrorDescription: "client not authenticated",
 		}
-		return
 	}
 
-	ch <- crud.ClientGetResult{
-		Client: client,
-		Error:  nil,
-	}
+	return client, nil
 }

@@ -1,7 +1,6 @@
 package mock
 
 import (
-	"github.com/luikymagno/auth-server/internal/crud"
 	issues "github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 )
@@ -16,46 +15,38 @@ func NewMockedTokenModelManager() *MockedTokenModelManager {
 	}
 }
 
-func (manager *MockedTokenModelManager) Create(model models.TokenModel, ch chan error) {
+func (manager *MockedTokenModelManager) Create(model models.TokenModel) error {
 	opaqueModel, _ := model.(models.OpaqueTokenModel)
 	_, exists := manager.models[opaqueModel.Id]
 	if exists {
-		ch <- issues.EntityAlreadyExistsError{Id: opaqueModel.Id}
-		return
+		return issues.EntityAlreadyExistsError{Id: opaqueModel.Id}
 	}
 
 	manager.models[opaqueModel.Id] = model
-	ch <- nil
+	return nil
 }
 
-func (manager *MockedTokenModelManager) Update(id string, model models.TokenModel, ch chan error) {
+func (manager *MockedTokenModelManager) Update(id string, model models.TokenModel) error {
 	opaqueModel, _ := model.(models.OpaqueTokenModel)
 	_, exists := manager.models[id]
 	if !exists {
-		ch <- issues.EntityNotFoundError{Id: id}
-		return
+		return issues.EntityNotFoundError{Id: id}
 	}
 
 	manager.models[id] = opaqueModel
-	ch <- nil
+	return nil
 }
 
-func (manager *MockedTokenModelManager) Get(id string, ch chan crud.TokenModelGetResult) {
+func (manager *MockedTokenModelManager) Get(id string) (models.TokenModel, error) {
 	model, exists := manager.models[id]
 	if !exists {
-		ch <- crud.TokenModelGetResult{
-			TokenModel: nil,
-			Error:      issues.EntityNotFoundError{Id: id},
-		}
-		return
+		return nil, issues.EntityNotFoundError{Id: id}
 	}
 
-	ch <- crud.TokenModelGetResult{
-		TokenModel: model,
-		Error:      nil,
-	}
+	return model, nil
 }
 
-func (manager *MockedTokenModelManager) Delete(id string) {
+func (manager *MockedTokenModelManager) Delete(id string) error {
 	delete(manager.models, id)
+	return nil
 }

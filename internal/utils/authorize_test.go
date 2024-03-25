@@ -9,7 +9,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/luikymagno/auth-server/internal/crud"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -61,9 +60,7 @@ func TestInitAuthenticationWhenInvalidScope(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	clientCh := make(chan crud.ClientGetResult, 1)
-	ctx.CrudManager.ClientManager.Get(utils.ValidClientId, clientCh)
-	client := (<-clientCh).Client
+	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
@@ -90,9 +87,7 @@ func TestInitAuthenticationWhenInvalidResponseType(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	clientCh := make(chan crud.ClientGetResult, 1)
-	ctx.CrudManager.ClientManager.Get(utils.ValidClientId, clientCh)
-	client := (<-clientCh).Client
+	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
@@ -119,9 +114,7 @@ func TestInitAuthenticationWhenNoPolicyIsAvailable(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	clientCh := make(chan crud.ClientGetResult, 1)
-	ctx.CrudManager.ClientManager.Get(utils.ValidClientId, clientCh)
-	client := (<-clientCh).Client
+	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
@@ -142,9 +135,7 @@ func TestInitAuthenticationShouldEndWithError(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	clientCh := make(chan crud.ClientGetResult, 1)
-	ctx.CrudManager.ClientManager.Get(utils.ValidClientId, clientCh)
-	client := (<-clientCh).Client
+	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
 	firstStep := models.NewStep(
 		"init_step",
 		models.FinishFlowSuccessfullyStep,
@@ -191,9 +182,7 @@ func TestInitAuthenticationShouldEndInProgress(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	clientCh := make(chan crud.ClientGetResult, 1)
-	ctx.CrudManager.ClientManager.Get(utils.ValidClientId, clientCh)
-	client := (<-clientCh).Client
+	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
 	firstStep := models.NewStep(
 		"init_step",
 		models.FinishFlowSuccessfullyStep,
@@ -254,9 +243,7 @@ func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	clientCh := make(chan crud.ClientGetResult, 1)
-	ctx.CrudManager.ClientManager.Get(utils.ValidClientId, clientCh)
-	client := (<-clientCh).Client
+	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
 	firstStep := models.NewStep(
 		"init_step",
 		models.FinishFlowSuccessfullyStep,
@@ -308,9 +295,7 @@ func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 func TestInitAuthenticationWithPAR(t *testing.T) {
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	clientCh := make(chan crud.ClientGetResult, 1)
-	ctx.CrudManager.ClientManager.Get(utils.ValidClientId, clientCh)
-	client := (<-clientCh).Client
+	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
 	requestUri := "urn:goidc:random_value"
 	ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(
 		models.AuthnSession{
@@ -320,7 +305,6 @@ func TestInitAuthenticationWithPAR(t *testing.T) {
 			Scopes:      client.Scopes,
 			RedirectUri: client.RedirectUris[0],
 		},
-		make(chan error, 1),
 	)
 	models.AddPolicy(models.AuthnPolicy{
 		Id:              "policy_id",
@@ -377,7 +361,7 @@ func TestContinueAuthentication(t *testing.T) {
 	ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(models.AuthnSession{
 		StepId:     firstStep.Id,
 		CallbackId: callbackId,
-	}, make(chan error, 1))
+	})
 
 	// Then
 	err := utils.ContinueAuthentication(ctx, callbackId)

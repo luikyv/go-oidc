@@ -46,8 +46,8 @@ func SetUp() (ctx Context, tearDown func()) {
 
 	// Save
 	ctx = GetMockedContext()
-	ctx.CrudManager.TokenModelManager.Create(tokenModel, make(chan error, 1))
-	ctx.CrudManager.ClientManager.Create(client, make(chan error, 1))
+	ctx.CrudManager.TokenModelManager.Create(tokenModel)
+	ctx.CrudManager.ClientManager.Create(client)
 
 	return ctx, func() {
 		ctx.CrudManager.TokenModelManager.Delete(ValidTokenModelId)

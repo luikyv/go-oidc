@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/luikymagno/auth-server/internal/crud"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -14,10 +13,7 @@ import (
 
 func InitAuthentication(ctx Context, req models.AuthorizeRequest) error {
 	// Fetch the client.
-	clientCh := make(chan crud.ClientGetResult, 1)
-	ctx.CrudManager.ClientManager.Get(req.ClientId, clientCh)
-	clientResult := <-clientCh
-	client, err := clientResult.Client, clientResult.Error
+	client, err := ctx.CrudManager.ClientManager.Get(req.ClientId)
 	if err != nil {
 		return err
 	}
@@ -65,10 +61,7 @@ func initValidAuthenticationSession(_ Context, client models.Client, req models.
 func initValidAuthenticationSessionWithPAR(ctx Context, req models.AuthorizeRequest) (models.AuthnSession, error) {
 	// The session was already created by the client in the PAR endpoint.
 	// Fetch it using the request URI.
-	sessionCh := make(chan crud.AuthnSessionGetResult, 1)
-	ctx.CrudManager.AuthnSessionManager.GetByRequestUri(req.RequestUri, sessionCh)
-	sessionResult := <-sessionCh
-	session, err := sessionResult.Session, sessionResult.Error
+	session, err := ctx.CrudManager.AuthnSessionManager.GetByRequestUri(req.RequestUri)
 	if err != nil {
 		return models.AuthnSession{}, err
 	}
@@ -88,10 +81,7 @@ func initValidAuthenticationSessionWithPAR(ctx Context, req models.AuthorizeRequ
 func ContinueAuthentication(ctx Context, callbackId string) error {
 
 	// Fetch the session using the callback ID.
-	sessionCh := make(chan crud.AuthnSessionGetResult, 1)
-	ctx.CrudManager.AuthnSessionManager.GetByCallbackId(callbackId, sessionCh)
-	sessionResult := <-sessionCh
-	session, err := sessionResult.Session, sessionResult.Error
+	session, err := ctx.CrudManager.AuthnSessionManager.GetByCallbackId(callbackId)
 	if err != nil {
 		return err
 	}
@@ -184,9 +174,7 @@ func authenticate(ctx Context, session models.AuthnSession) error {
 	}
 
 	session.StepId = currentStep.Id
-	errorCh := make(chan error, 1)
-	ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(session, errorCh)
-	return <-errorCh
+	return ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(session)
 }
 
 func getNextStep(status constants.AuthnStatus, step *models.AuthnStep) *models.AuthnStep {
