@@ -3,20 +3,21 @@ package models
 import "github.com/luikymagno/auth-server/internal/unit/constants"
 
 type AuthnSession struct {
-	Id                 string
-	CallbackId         string
-	StepId             string
-	ClientId           string
-	RequestUri         string
-	Scopes             []string
-	RedirectUri        string
-	State              string
-	AuthorizationCode  string
-	Subject            string
-	ErrorCode          constants.ErrorCode
-	ErrorDescription   string
-	Store              map[string]string // Allow the developer to store information in memory and, hence, between steps.
-	CreatedAtTimestamp int
+	Id                    string
+	CallbackId            string
+	StepId                string
+	ClientId              string
+	RequestUri            string
+	Scopes                []string
+	RedirectUri           string
+	State                 string
+	AuthorizationCode     string
+	AuthorizedAtTimestamp int
+	Subject               string
+	ErrorCode             constants.ErrorCode
+	ErrorDescription      string
+	Store                 map[string]string // Allow the developer to store information in memory and, hence, between steps.
+	CreatedAtTimestamp    int
 }
 
 func (session *AuthnSession) SetUserId(userId string) {

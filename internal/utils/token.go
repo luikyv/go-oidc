@@ -133,6 +133,13 @@ func handleAuthorizationCodeGrantTokenCreation(ctx Context, req models.TokenRequ
 }
 
 func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client models.Client, session models.AuthnSession) error {
+	if req.Scope != "" || req.AuthorizationCode == "" || req.RedirectUri == "" {
+		return issues.JsonError{
+			ErrorCode:        constants.InvalidRequest,
+			ErrorDescription: "invalid parameter for authorization code",
+		}
+	}
+
 	if !client.IsGrantTypeAllowed(constants.AuthorizationCode) {
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
@@ -140,12 +147,13 @@ func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client model
 		}
 	}
 
-	if req.Scope != "" || req.AuthorizationCode == "" || req.RedirectUri == "" {
+	if session.AuthorizedAtTimestamp+constants.AuthorizationCodeLifetimeSecs > unit.GetTimestampNow() {
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
-			ErrorDescription: "invalid parameter for authorization code",
+			ErrorDescription: "the authorization code is expired",
 		}
 	}
+
 	if session.ClientId != req.ClientId {
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,

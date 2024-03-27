@@ -39,6 +39,7 @@ var FinishFlowSuccessfullyStep *AuthnStep = &AuthnStep{
 	AuthnFunc: func(session *AuthnSession, ctx *gin.Context) constants.AuthnStatus {
 		authzCode := unit.GenerateAuthorizationCode()
 		session.AuthorizationCode = authzCode
+		session.AuthorizedAtTimestamp = unit.GetTimestampNow()
 
 		params := make(map[string]string, 2)
 		params["code"] = authzCode
