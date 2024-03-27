@@ -1,6 +1,10 @@
 package models
 
-import "github.com/luikymagno/auth-server/internal/unit/constants"
+import (
+	"errors"
+
+	"github.com/luikymagno/auth-server/internal/unit/constants"
+)
 
 type GrantInfo struct {
 	GrantType           constants.GrantType
@@ -42,7 +46,23 @@ type TokenRequest struct {
 }
 
 func (req TokenRequest) IsValid() error {
-	//TODO
+	switch req.GrantType {
+	case constants.ClientCredentials:
+		if req.AuthorizationCode != "" || req.RedirectUri != "" || req.RefreshToken != "" {
+			return errors.New("invalid parameter for client credentials grant")
+		}
+	case constants.AuthorizationCode:
+		if req.AuthorizationCode == "" || req.RedirectUri == "" || req.RefreshToken != "" || req.Scope != "" {
+			return errors.New("invalid parameter for authorization code grant")
+		}
+	case constants.RefreshToken:
+		if req.RefreshToken == "" || req.AuthorizationCode != "" || req.RedirectUri != "" {
+			return errors.New("invalid parameter for refresh token grant")
+		}
+	default:
+		return errors.New("invalid grant type")
+	}
+
 	return nil
 }
 
@@ -64,7 +84,12 @@ type AuthorizeRequest struct {
 }
 
 func (req AuthorizeRequest) IsValid() error {
-	//TODO
+	if req.RequestUri == "" && (req.RedirectUri == "" || req.Scope == "" || req.ResponseType == "") {
+		return errors.New("invalid parameter")
+	}
+	if req.RequestUri != "" && (req.RedirectUri != "" || req.Scope != "" || req.ResponseType != "") {
+		return errors.New("invalid parameter")
+	}
 	return nil
 }
 
@@ -84,8 +109,15 @@ func (req PARRequest) ToAuthorizeRequest() AuthorizeRequest {
 		Scope:        req.Scope,
 		ResponseType: req.ResponseType,
 		State:        req.State,
-		RequestUri:   "", // Make sure the request URI is set as its null value here.
+		RequestUri:   "", // Make sure the request URI is set as its null value here. This will force the authorize params to be validated.
 	}
+}
+
+func (req PARRequest) IsValid() error {
+	if req.RequestUri != "" {
+		return errors.New("invalid parameter")
+	}
+	return req.ToAuthorizeRequest().IsValid()
 }
 
 type PARResponse struct {

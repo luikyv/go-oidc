@@ -66,13 +66,6 @@ func handleClientCredentialsGrantTokenCreation(ctx Context, req models.TokenRequ
 }
 
 func validateClientCredentialsGrantRequest(ctx Context, client models.Client, req models.TokenRequest) error {
-	if req.RedirectUri != "" || req.AuthorizationCode != "" || req.RefreshToken != "" {
-		ctx.Logger.Info("invalid parameter for client credentials")
-		return issues.JsonError{
-			ErrorCode:        constants.InvalidRequest,
-			ErrorDescription: "invalid parameter for client credentials",
-		}
-	}
 
 	if !client.IsGrantTypeAllowed(constants.ClientCredentials) {
 		ctx.Logger.Info("grant type not allowed")
@@ -96,12 +89,6 @@ func validateClientCredentialsGrantRequest(ctx Context, client models.Client, re
 //---------------------------------------- Authorization Code ----------------------------------------//
 
 func handleAuthorizationCodeGrantTokenCreation(ctx Context, req models.TokenRequest) (models.Token, error) {
-	if req.AuthorizationCode == "" {
-		return models.Token{}, issues.JsonError{
-			ErrorCode:        constants.InvalidRequest,
-			ErrorDescription: "invalid authorization code",
-		}
-	}
 
 	authenticatedClient, session, err := getAuthenticatedClientAndSession(ctx, req)
 	if err != nil {
@@ -130,12 +117,6 @@ func handleAuthorizationCodeGrantTokenCreation(ctx Context, req models.TokenRequ
 }
 
 func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client models.Client, session models.AuthnSession) error {
-	if req.Scope != "" || req.RefreshToken != "" || req.AuthorizationCode == "" || req.RedirectUri == "" {
-		return issues.JsonError{
-			ErrorCode:        constants.InvalidRequest,
-			ErrorDescription: "invalid parameter for authorization code",
-		}
-	}
 
 	if !client.IsGrantTypeAllowed(constants.AuthorizationCode) {
 		return issues.JsonError{
@@ -222,12 +203,6 @@ func getAuthenticatedClient(ctx Context, req models.ClientAuthnRequest) (models.
 //---------------------------------------- Refresh Token ----------------------------------------//
 
 func handleRefreshTokenGrantTokenCreation(ctx Context, req models.TokenRequest) (models.Token, error) {
-	if req.RefreshToken == "" {
-		return models.Token{}, issues.JsonError{
-			ErrorCode:        constants.InvalidRequest,
-			ErrorDescription: "invalid refresh token",
-		}
-	}
 
 	authenticatedClient, token, err := getAuthenticatedClientAndToken(ctx, req)
 	if err != nil {

@@ -94,14 +94,14 @@ func ContinueAuthentication(ctx Context, callbackId string) error {
 
 func validateAuthorizeParams(client models.Client, req models.AuthorizeRequest) error {
 	// We must validate the redirect URI first, since the other errors will be redirected.
-	if req.RedirectUri == "" || !client.IsRedirectUriAllowed(req.RedirectUri) {
+	if !client.IsRedirectUriAllowed(req.RedirectUri) {
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "invalid redirect uri",
 		}
 	}
 
-	if req.Scope == "" || !client.AreScopesAllowed(unit.SplitString(req.Scope)) {
+	if !client.AreScopesAllowed(unit.SplitString(req.Scope)) {
 		return issues.RedirectError{
 			ErrorCode:        constants.InvalidScope,
 			ErrorDescription: "invalid scope",
@@ -110,7 +110,7 @@ func validateAuthorizeParams(client models.Client, req models.AuthorizeRequest) 
 		}
 	}
 
-	if req.ResponseType == "" || !client.AreResponseTypesAllowed(strings.Split(req.ResponseType, " ")) {
+	if !client.AreResponseTypesAllowed(strings.Split(req.ResponseType, " ")) {
 		return issues.RedirectError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "response type not allowed",

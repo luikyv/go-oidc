@@ -20,6 +20,11 @@ func HandlePARRequest(ctx utils.Context) {
 		return
 	}
 
+	if err := req.IsValid(); err != nil {
+		bindErrorToResponse(err, ctx.RequestContext)
+		return
+	}
+
 	requestUri, err := utils.PushAuthorization(ctx, req)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
@@ -37,6 +42,11 @@ func HandlePARRequest(ctx utils.Context) {
 func HandleAuthorizeRequest(ctx utils.Context) {
 	var req models.AuthorizeRequest
 	if err := ctx.RequestContext.ShouldBindQuery(&req); err != nil {
+		bindErrorToResponse(err, ctx.RequestContext)
+		return
+	}
+
+	if err := req.IsValid(); err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
 	}
@@ -60,6 +70,11 @@ func HandleAuthorizeCallbackRequest(ctx utils.Context) {
 func HandleTokenRequest(ctx utils.Context) {
 	var req models.TokenRequest
 	if err := ctx.RequestContext.ShouldBind(&req); err != nil {
+		bindErrorToResponse(err, ctx.RequestContext)
+		return
+	}
+
+	if err := req.IsValid(); err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
 	}

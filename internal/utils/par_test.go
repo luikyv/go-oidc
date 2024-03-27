@@ -36,36 +36,6 @@ func TestPushAuthorizationShouldRejectUnauthenticatedClient(t *testing.T) {
 	}
 }
 
-func TestPushAuthorizationWhenRequestUriIsSent(t *testing.T) {
-	// When
-	ctx, tearDown := utils.SetUp()
-	defer tearDown()
-	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
-
-	// Then
-	_, err := utils.PushAuthorization(ctx, models.PARRequest{
-		ClientAuthnRequest: models.ClientAuthnRequest{
-			ClientId:     utils.ValidClientId,
-			ClientSecret: utils.ValidClientSecret,
-		},
-		RedirectUri:  client.RedirectUris[0],
-		Scope:        strings.Join(client.Scopes, " "),
-		ResponseType: string(constants.Code),
-		RequestUri:   "not_empty",
-	})
-
-	// Assert
-	var jsonError issues.JsonError
-	if err == nil || !errors.As(err, &jsonError) {
-		t.Error("the request must not contain a request_uri")
-		return
-	}
-	if jsonError.ErrorCode != constants.InvalidRequest {
-		t.Errorf("invalid error code: %s", jsonError.ErrorCode)
-		return
-	}
-}
-
 func TestPushAuthorizationShouldGenerateRequestUri(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
