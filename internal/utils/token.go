@@ -6,25 +6,22 @@ import (
 
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
 func HandleTokenCreation(
 	ctx Context,
-	request models.TokenRequest,
+	req models.TokenRequest,
 ) (models.Token, error) {
 
-	grantInfo, err := getGrantInfo(ctx, request)
-	if err != nil {
-		return models.Token{}, err
-	}
-
 	var token models.Token
-	switch grantInfo.GrantType {
+	var err error
+	switch req.GrantType {
 	case constants.ClientCredentials:
-		token, err = handleClientCredentialsGrantTokenCreation(grantInfo)
+		token, err = handleClientCredentialsGrantTokenCreation(ctx, req)
 	case constants.AuthorizationCode:
-		token, err = handleAuthorizationCodeGrantTokenCreation(ctx, grantInfo)
+		token, err = handleAuthorizationCodeGrantTokenCreation(ctx, req)
 	default:
 		err = issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
@@ -43,73 +40,53 @@ func HandleTokenCreation(
 	return token, nil
 }
 
-func getGrantInfo(
-	ctx Context,
-	request models.TokenRequest,
-) (
-	models.GrantInfo,
-	error,
-) {
-	// Fetch the authenticated client.
-	authenticatedClient, err := getAuthenticatedClient(
-		ctx,
-		models.ClientAuthnContext{
-			ClientId:     request.ClientId,
-			ClientSecret: request.ClientSecret,
-		},
-	)
-	if err != nil {
-		return models.GrantInfo{}, err
-	}
-
-	// Fetch the token model.
-	tokenModel, err := ctx.CrudManager.TokenModelManager.Get(authenticatedClient.DefaultTokenModelId)
-	if err != nil {
-		return models.GrantInfo{}, err
-	}
-
-	scopes := []string{}
-	if request.Scope != "" {
-		scopes = strings.Split(request.Scope, " ")
-	}
-	return models.GrantInfo{
-		GrantType:           request.GrantType,
-		AuthenticatedClient: authenticatedClient,
-		TokenModel:          tokenModel,
-		Scopes:              scopes,
-		AuthorizationCode:   request.AuthorizationCode,
-		RedirectUri:         request.RedirectUri,
-	}, nil
-}
-
 //---------------------------------------- Client Credentials ----------------------------------------//
 
-func handleClientCredentialsGrantTokenCreation(grantInfo models.GrantInfo) (models.Token, error) {
-	if err := validateClientCredentialsGrantRequest(grantInfo); err != nil {
+func handleClientCredentialsGrantTokenCreation(ctx Context, req models.TokenRequest) (models.Token, error) {
+	authenticatedClient, err := getAuthenticatedClient(ctx, req.ClientAuthnRequest)
+	if err != nil {
 		return models.Token{}, err
 	}
 
-	return grantInfo.TokenModel.GenerateToken(models.TokenContextInfo{
-		Subject:  grantInfo.AuthenticatedClient.Id,
-		ClientId: grantInfo.AuthenticatedClient.Id,
-		Scopes:   grantInfo.Scopes,
+	if err := validateClientCredentialsGrantRequest(ctx, authenticatedClient, req); err != nil {
+		return models.Token{}, err
+	}
+
+	tokenModel, err := ctx.CrudManager.TokenModelManager.Get(authenticatedClient.DefaultTokenModelId)
+	if err != nil {
+		return models.Token{}, err
+	}
+
+	return tokenModel.GenerateToken(models.TokenContextInfo{
+		Subject:  authenticatedClient.Id,
+		ClientId: authenticatedClient.Id,
+		Scopes:   unit.SplitString(req.Scope),
 	}), nil
 }
 
-func validateClientCredentialsGrantRequest(grantInfo models.GrantInfo) error {
-	if !grantInfo.AuthenticatedClient.IsGrantTypeAllowed(constants.ClientCredentials) {
-		return issues.JsonError{
-			ErrorCode:        constants.InvalidRequest,
-			ErrorDescription: "invalid grant type",
-		}
-	}
-	if grantInfo.RedirectUri != "" || grantInfo.AuthorizationCode != "" {
+func validateClientCredentialsGrantRequest(ctx Context, client models.Client, req models.TokenRequest) error {
+	if req.RedirectUri != "" || req.AuthorizationCode != "" {
+		ctx.Logger.Info("invalid parameter for client credentials")
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "invalid parameter for client credentials",
 		}
 	}
-	if !grantInfo.AuthenticatedClient.AreScopesAllowed(grantInfo.Scopes) {
+
+	if !client.IsGrantTypeAllowed(constants.ClientCredentials) {
+		ctx.Logger.Info("grant type not allowed")
+		return issues.JsonError{
+			ErrorCode:        constants.InvalidRequest,
+			ErrorDescription: "invalid grant type",
+		}
+	}
+
+	scopes := []string{}
+	if req.Scope != "" {
+		scopes = strings.Split(req.Scope, " ")
+	}
+	if !client.AreScopesAllowed(scopes) {
+		ctx.Logger.Info("scope not allowed")
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidScope,
 			ErrorDescription: "invalid scope",
@@ -121,50 +98,55 @@ func validateClientCredentialsGrantRequest(grantInfo models.GrantInfo) error {
 
 //---------------------------------------- Authorization Code ----------------------------------------//
 
-func handleAuthorizationCodeGrantTokenCreation(ctx Context, grantInfo models.GrantInfo) (models.Token, error) {
-	if grantInfo.AuthorizationCode == "" {
+func handleAuthorizationCodeGrantTokenCreation(ctx Context, req models.TokenRequest) (models.Token, error) {
+	if req.AuthorizationCode == "" {
 		return models.Token{}, issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "invalid authorization code",
 		}
 	}
 
-	// Fetch the session using the authorization code.
-	session, err := ctx.CrudManager.AuthnSessionManager.GetByAuthorizationCode(grantInfo.AuthorizationCode)
+	authenticatedClient, session, err := getAuthenticatedClientAndSession(ctx, req)
 	if err != nil {
-		return models.Token{}, issues.JsonError{
-			ErrorCode:        constants.InvalidRequest,
-			ErrorDescription: "invalid authorization code",
-		}
-	}
-	// Always delete the session.
-	go ctx.CrudManager.AuthnSessionManager.Delete(session.Id)
-
-	if err := validateAuthorizationCodeGrantRequest(grantInfo, session); err != nil {
+		ctx.Logger.Debug("error while loading the client or session.", slog.String("error", err.Error()))
 		return models.Token{}, err
 	}
 
-	return grantInfo.TokenModel.GenerateToken(models.TokenContextInfo{
+	if err := validateAuthorizationCodeGrantRequest(req, authenticatedClient, session); err != nil {
+		ctx.Logger.Debug("invalid parameters for the token request.", slog.String("error", err.Error()))
+		return models.Token{}, err
+	}
+
+	ctx.Logger.Debug("get the token model.")
+	tokenModel, err := ctx.CrudManager.TokenModelManager.Get(authenticatedClient.DefaultTokenModelId)
+	if err != nil {
+		ctx.Logger.Debug("error while loading the token model.", slog.String("error", err.Error()))
+		return models.Token{}, err
+	}
+	ctx.Logger.Debug("the token model was loaded successfully.")
+
+	return tokenModel.GenerateToken(models.TokenContextInfo{
 		Subject:  session.Subject,
 		ClientId: session.ClientId,
 		Scopes:   session.Scopes,
 	}), nil
 }
 
-func validateAuthorizationCodeGrantRequest(grantInfo models.GrantInfo, session models.AuthnSession) error {
-	if !grantInfo.AuthenticatedClient.IsGrantTypeAllowed(constants.AuthorizationCode) {
+func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client models.Client, session models.AuthnSession) error {
+	if !client.IsGrantTypeAllowed(constants.AuthorizationCode) {
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "invalid grant type",
 		}
 	}
-	if len(grantInfo.Scopes) != 0 || grantInfo.AuthorizationCode == "" || grantInfo.RedirectUri == "" {
+
+	if req.Scope != "" || req.AuthorizationCode == "" || req.RedirectUri == "" {
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "invalid parameter for authorization code",
 		}
 	}
-	if session.ClientId != grantInfo.AuthenticatedClient.Id {
+	if session.ClientId != req.ClientId {
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "the authorization code was not issued to the client",
@@ -174,17 +156,55 @@ func validateAuthorizationCodeGrantRequest(grantInfo models.GrantInfo, session m
 	return nil
 }
 
-func getAuthenticatedClient(ctx Context, authnContext models.ClientAuthnContext) (models.Client, error) {
-	// Fetch the client.
-	client, err := ctx.CrudManager.ClientManager.Get(authnContext.ClientId)
+func getAuthenticatedClientAndSession(ctx Context, req models.TokenRequest) (models.Client, models.AuthnSession, error) {
+	ctx.Logger.Debug("get the session using the authorization code.")
+	type sessionResultType struct {
+		session models.AuthnSession
+		err     error
+	}
+	sessionCh := make(chan sessionResultType)
+	go func(chan<- sessionResultType) {
+		session, err := ctx.CrudManager.AuthnSessionManager.GetByAuthorizationCode(req.AuthorizationCode)
+		sessionCh <- sessionResultType{
+			session: session,
+			err:     err,
+		}
+		// Always delete the session.
+		ctx.CrudManager.AuthnSessionManager.Delete(session.Id)
+	}(sessionCh)
+
+	// Fetch the client while the session is being fetched.
+	ctx.Logger.Debug("get the client while the session is being loaded.")
+	authenticatedClient, err := getAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
-		ctx.Logger.Info("client not found", slog.String("client_id", authnContext.ClientId))
+		ctx.Logger.Debug("error while loading the client.", slog.String("error", err.Error()))
+		return models.Client{}, models.AuthnSession{}, err
+	}
+	ctx.Logger.Debug("the client was loaded successfully.")
+
+	ctx.Logger.Debug("wait for the session.")
+	sessionResult := <-sessionCh
+	session, err := sessionResult.session, sessionResult.err
+	if err != nil {
+		ctx.Logger.Debug("error while loading the session.", slog.String("error", err.Error()))
+		return models.Client{}, models.AuthnSession{}, err
+	}
+	ctx.Logger.Debug("the session was loaded successfully.")
+
+	return authenticatedClient, session, nil
+}
+
+func getAuthenticatedClient(ctx Context, req models.ClientAuthnRequest) (models.Client, error) {
+	// Fetch the client.
+	client, err := ctx.CrudManager.ClientManager.Get(req.ClientId)
+	if err != nil {
+		ctx.Logger.Info("client not found", slog.String("client_id", req.ClientId))
 		return models.Client{}, err
 	}
 
 	// Verify that the client is authenticated.
-	if !client.Authenticator.IsAuthenticated(authnContext) {
-		ctx.Logger.Info("client not authenticated", slog.String("client_id", authnContext.ClientId))
+	if !client.Authenticator.IsAuthenticated(req) {
+		ctx.Logger.Info("client not authenticated", slog.String("client_id", req.ClientId))
 		return models.Client{}, issues.JsonError{
 			ErrorCode:        constants.AccessDenied,
 			ErrorDescription: "client not authenticated",

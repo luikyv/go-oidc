@@ -15,10 +15,7 @@ import (
 func PushAuthorization(ctx Context, req models.PARRequest) (requestUri string, err error) {
 
 	// Authenticate the client as in the token endpoint.
-	client, err := getAuthenticatedClient(ctx, models.ClientAuthnContext{
-		ClientId:     req.ClientId,
-		ClientSecret: req.ClientSecret,
-	})
+	client, err := getAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
 		ctx.Logger.Info("could not authenticate the client", slog.String("client_id", req.ClientId))
 		return "", err

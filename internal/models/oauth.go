@@ -11,11 +11,6 @@ type GrantInfo struct {
 	RedirectUri         string
 }
 
-type ClientAuthnContext struct {
-	ClientId     string
-	ClientSecret string
-}
-
 type TokenContextInfo struct {
 	Subject  string
 	ClientId string
@@ -30,11 +25,15 @@ type Token struct {
 	TokenContextInfo
 }
 
+type ClientAuthnRequest struct {
+	ClientId     string `form:"client_id" binding:"required"`
+	ClientSecret string `form:"client_secret"`
+}
+
 type TokenRequest struct {
-	ClientId          string              `form:"client_id" binding:"required"`
+	ClientAuthnRequest
 	GrantType         constants.GrantType `form:"grant_type" binding:"required"`
 	Scope             string              `form:"scope"`
-	ClientSecret      string              `form:"client_secret"`
 	AuthorizationCode string              `form:"code"`
 	RedirectUri       string              `form:"redirect_uri"`
 }
@@ -56,8 +55,7 @@ type AuthorizeRequest struct {
 }
 
 type PARRequest struct {
-	ClientId     string `form:"client_id" binding:"required"`
-	ClientSecret string `form:"client_secret"`
+	ClientAuthnRequest
 	RedirectUri  string `form:"redirect_uri" binding:"required"`
 	Scope        string `form:"scope" binding:"required"`
 	ResponseType string `form:"response_type" binding:"required"`

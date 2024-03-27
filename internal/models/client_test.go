@@ -10,22 +10,22 @@ import (
 
 func TestNoneAuthenticatorValidInfo(t *testing.T) {
 	authenticator := NoneClientAuthenticator{}
-	authnContext := ClientAuthnContext{
+	req := ClientAuthnRequest{
 		ClientId: "client_id",
 	}
 
-	if !authenticator.IsAuthenticated(authnContext) {
+	if !authenticator.IsAuthenticated(req) {
 		t.Error("The client should be authenticated")
 	}
 }
 
 func TestNoneAuthenticatorInvalidInfo(t *testing.T) {
 	authenticator := NoneClientAuthenticator{}
-	authnContext := ClientAuthnContext{
+	req := ClientAuthnRequest{
 		ClientId:     "client_id",
 		ClientSecret: "client_secret",
 	}
-	if authenticator.IsAuthenticated(authnContext) {
+	if authenticator.IsAuthenticated(req) {
 		t.Error("The client should not be authenticated")
 	}
 }
@@ -36,12 +36,12 @@ func TestSecretClientAuthenticatorValidInfo(t *testing.T) {
 	authenticator := SecretClientAuthenticator{
 		HashedSecret: string(hashedClientSecret),
 	}
-	authnContext := ClientAuthnContext{
+	req := ClientAuthnRequest{
 		ClientId:     "client_id",
 		ClientSecret: clientSecret,
 	}
 
-	if !authenticator.IsAuthenticated(authnContext) {
+	if !authenticator.IsAuthenticated(req) {
 		t.Error("The client should be authenticated")
 	}
 }
@@ -52,12 +52,12 @@ func TestSecretClientAuthenticatorInvalidInfo(t *testing.T) {
 	authenticator := SecretClientAuthenticator{
 		HashedSecret: string(hashedClientSecret),
 	}
-	authnContext := ClientAuthnContext{
+	req := ClientAuthnRequest{
 		ClientId:     "client_id",
 		ClientSecret: "invalid_secret",
 	}
 
-	if authenticator.IsAuthenticated(authnContext) {
+	if authenticator.IsAuthenticated(req) {
 		t.Error("The client should not be authenticated")
 	}
 }

@@ -18,8 +18,10 @@ func TestPushAuthorizationShouldRejectUnauthenticatedClient(t *testing.T) {
 
 	// Then
 	_, err := utils.PushAuthorization(ctx, models.PARRequest{
-		ClientId:     utils.ValidClientId,
-		ClientSecret: "invalid_password",
+		ClientAuthnRequest: models.ClientAuthnRequest{
+			ClientId:     utils.ValidClientId,
+			ClientSecret: "invalid_password",
+		},
 	})
 
 	// Assert
@@ -42,8 +44,10 @@ func TestPushAuthorizationWhenRequestUriIsSent(t *testing.T) {
 
 	// Then
 	_, err := utils.PushAuthorization(ctx, models.PARRequest{
-		ClientId:     utils.ValidClientId,
-		ClientSecret: utils.ValidClientSecret,
+		ClientAuthnRequest: models.ClientAuthnRequest{
+			ClientId:     utils.ValidClientId,
+			ClientSecret: utils.ValidClientSecret,
+		},
 		RedirectUri:  client.RedirectUris[0],
 		Scope:        strings.Join(client.Scopes, " "),
 		ResponseType: string(constants.Code),
@@ -70,8 +74,10 @@ func TestPushAuthorizationShouldGenerateRequestUri(t *testing.T) {
 
 	// Then
 	requestUri, err := utils.PushAuthorization(ctx, models.PARRequest{
-		ClientId:     utils.ValidClientId,
-		ClientSecret: utils.ValidClientSecret,
+		ClientAuthnRequest: models.ClientAuthnRequest{
+			ClientId:     utils.ValidClientId,
+			ClientSecret: utils.ValidClientSecret,
+		},
 		RedirectUri:  client.RedirectUris[0],
 		Scope:        strings.Join(client.Scopes, " "),
 		ResponseType: string(constants.Code),

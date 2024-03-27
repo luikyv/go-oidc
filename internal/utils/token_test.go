@@ -20,10 +20,12 @@ func TestHandleTokenCreationShouldNotFindClient(t *testing.T) {
 
 	// Then
 	_, err := utils.HandleTokenCreation(ctx, models.TokenRequest{
-		ClientId:     "invalid_client_id",
-		GrantType:    constants.ClientCredentials,
-		Scope:        strings.Join(client.Scopes, " "),
-		ClientSecret: utils.ValidClientSecret,
+		ClientAuthnRequest: models.ClientAuthnRequest{
+			ClientId:     "invalid_client_id",
+			ClientSecret: utils.ValidClientSecret,
+		},
+		GrantType: constants.ClientCredentials,
+		Scope:     strings.Join(client.Scopes, " "),
 	})
 
 	// Assert
@@ -42,10 +44,12 @@ func TestHandleTokenCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 
 	// Then
 	_, err := utils.HandleTokenCreation(ctx, models.TokenRequest{
-		ClientId:     utils.ValidClientId,
-		GrantType:    constants.ClientCredentials,
-		Scope:        strings.Join(client.Scopes, " "),
-		ClientSecret: "invalid_password",
+		ClientAuthnRequest: models.ClientAuthnRequest{
+			ClientId:     utils.ValidClientId,
+			ClientSecret: "invalid_password",
+		},
+		GrantType: constants.ClientCredentials,
+		Scope:     strings.Join(client.Scopes, " "),
 	})
 
 	// Assert
@@ -66,10 +70,12 @@ func TestClientCredentialsHandleTokenCreation(t *testing.T) {
 	defer tearDown()
 	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
 	req := models.TokenRequest{
-		ClientId:     utils.ValidClientId,
-		GrantType:    constants.ClientCredentials,
-		Scope:        strings.Join(client.Scopes, " "),
-		ClientSecret: utils.ValidClientSecret,
+		ClientAuthnRequest: models.ClientAuthnRequest{
+			ClientId:     utils.ValidClientId,
+			ClientSecret: utils.ValidClientSecret,
+		},
+		GrantType: constants.ClientCredentials,
+		Scope:     strings.Join(client.Scopes, " "),
 	}
 
 	// Then
@@ -120,9 +126,11 @@ func TestAuthorizationCodeHandleTokenCreation(t *testing.T) {
 	ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(session)
 
 	req := models.TokenRequest{
-		ClientId:          utils.ValidClientId,
+		ClientAuthnRequest: models.ClientAuthnRequest{
+			ClientId:     utils.ValidClientId,
+			ClientSecret: utils.ValidClientSecret,
+		},
 		GrantType:         constants.AuthorizationCode,
-		ClientSecret:      utils.ValidClientSecret,
 		RedirectUri:       client.RedirectUris[0],
 		AuthorizationCode: authorizationCode,
 	}

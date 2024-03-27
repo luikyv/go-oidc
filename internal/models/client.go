@@ -11,27 +11,31 @@ import (
 //---------------------------------------- Client Authentication ----------------------------------------//
 
 type ClientAuthenticator interface {
-	IsAuthenticated(ctx ClientAuthnContext) bool
+	IsAuthenticated(req ClientAuthnRequest) bool
 }
 
 type NoneClientAuthenticator struct{}
 
-func (authenticator NoneClientAuthenticator) IsAuthenticated(ctx ClientAuthnContext) bool {
-	return ctx.ClientSecret == ""
+func (authenticator NoneClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
+	return req.ClientSecret == ""
 }
 
 type SecretClientAuthenticator struct {
 	HashedSecret string
 }
 
-func (authenticator SecretClientAuthenticator) IsAuthenticated(ctx ClientAuthnContext) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(authenticator.HashedSecret), []byte(ctx.ClientSecret))
+func (authenticator SecretClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
+	if req.ClientSecret == "" {
+		return false
+	}
+
+	err := bcrypt.CompareHashAndPassword([]byte(authenticator.HashedSecret), []byte(req.ClientSecret))
 	return err == nil
 }
 
 type PrivateKeyJwtClientAuthenticator struct{}
 
-func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(ctx ClientAuthnContext) bool {
+func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
 	// TODO
 	return false
 }

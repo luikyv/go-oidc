@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"net/url"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -80,4 +81,13 @@ func All[T interface{}](slice []T, condition func(T) bool) bool {
 
 func GetTimestampNow() int {
 	return int(time.Now().Unix())
+}
+
+func SplitString(s string) []string {
+	slice := []string{}
+	if s != "" {
+		slice = strings.Split(s, " ")
+	}
+
+	return slice
 }
