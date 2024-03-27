@@ -27,7 +27,7 @@ func SetUp() (ctx Context, tearDown func()) {
 			Id:            ValidTokenModelId,
 			Issuer:        "https://example.com",
 			ExpiresInSecs: 60,
-			IsRefreshable: false,
+			IsRefreshable: true,
 		},
 	}
 
@@ -87,4 +87,14 @@ func GetSessionsFromMock(ctx Context) []models.AuthnSession {
 	}
 
 	return sessions
+}
+
+func GetTokenFromMock(ctx Context) []models.Token {
+	tokenManager, _ := ctx.CrudManager.TokenSessionManager.(*mock.MockedTokenSessionManager)
+	tokens := make([]models.Token, 0, len(tokenManager.Tokens))
+	for _, t := range tokenManager.Tokens {
+		tokens = append(tokens, t)
+	}
+
+	return tokens
 }

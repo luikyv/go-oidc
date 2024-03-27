@@ -167,7 +167,7 @@ func getAuthenticatedClientAndSession(ctx Context, req models.TokenRequest) (mod
 		session models.AuthnSession
 		err     error
 	}
-	sessionCh := make(chan sessionResultType)
+	sessionCh := make(chan sessionResultType, 1)
 	go func(chan<- sessionResultType) {
 		session, err := ctx.CrudManager.AuthnSessionManager.GetByAuthorizationCode(req.AuthorizationCode)
 		sessionCh <- sessionResultType{
@@ -256,7 +256,7 @@ func getAuthenticatedClientAndToken(ctx Context, req models.TokenRequest) (model
 		token models.Token
 		err   error
 	}
-	tokenCh := make(chan tokenResultType)
+	tokenCh := make(chan tokenResultType, 1)
 	go func(chan<- tokenResultType) {
 		token, err := ctx.CrudManager.TokenSessionManager.GetByRefreshToken(req.RefreshToken)
 		tokenCh <- tokenResultType{
