@@ -7,6 +7,7 @@ type GrantType string
 const (
 	ClientCredentials GrantType = "client_credentials"
 	AuthorizationCode GrantType = "authorization_code"
+	RefreshToken      GrantType = "refresh_token"
 )
 
 type ResponseType string

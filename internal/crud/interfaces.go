@@ -26,6 +26,7 @@ type ClientManager interface {
 type TokenSessionManager interface {
 	Create(token models.Token) error
 	Get(id string) (models.Token, error)
+	GetByRefreshToken(refreshToken string) (models.Token, error)
 	Delete(id string) error
 }
 

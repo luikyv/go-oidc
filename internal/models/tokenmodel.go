@@ -29,14 +29,19 @@ func (model OpaqueTokenModel) ToOutput() TokenModelOut {
 }
 
 func (model OpaqueTokenModel) GenerateToken(basicInfo TokenContextInfo) Token {
-	token := unit.GenerateRandomString(model.TokenLength, model.TokenLength)
-	return Token{
-		Id:                 token,
-		TokenString:        token,
+	tokenString := unit.GenerateRandomString(model.TokenLength, model.TokenLength)
+	token := Token{
+		Id:                 tokenString,
+		TokenModelId:       model.Id,
+		TokenString:        tokenString,
 		ExpiresInSecs:      model.ExpiresInSecs,
 		CreatedAtTimestamp: unit.GetTimestampNow(),
 		TokenContextInfo:   basicInfo,
 	}
+	if model.IsRefreshable {
+		token.RefreshToken = unit.GenerateRefreshToken()
+	}
+	return token
 }
 
 type TokenModelIn struct{}

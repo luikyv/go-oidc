@@ -36,6 +36,10 @@ func GenerateAuthorizationCode() string {
 	return GenerateRandomString(constants.AuthorizationCodeLength, constants.AuthorizationCodeLength)
 }
 
+func GenerateRefreshToken() string {
+	return GenerateRandomString(constants.RefreshTokenLength, constants.RefreshTokenLength)
+}
+
 func GetUrlWithParams(redirectUri string, params map[string]string) string {
 	u, _ := url.Parse(redirectUri)
 	q := u.Query()

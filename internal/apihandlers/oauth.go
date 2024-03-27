@@ -71,9 +71,10 @@ func HandleTokenRequest(ctx utils.Context) {
 	}
 
 	ctx.RequestContext.JSON(http.StatusAccepted, models.TokenResponse{
-		AccessToken: token.TokenString,
-		ExpiresIn:   token.ExpiresInSecs,
-		TokenType:   constants.Bearer,
+		AccessToken:  token.TokenString,
+		RefreshToken: token.RefreshToken,
+		ExpiresIn:    token.ExpiresInSecs,
+		TokenType:    constants.Bearer,
 	})
 }
 

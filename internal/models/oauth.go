@@ -19,7 +19,9 @@ type TokenContextInfo struct {
 
 type Token struct {
 	Id                 string
+	TokenModelId       string
 	TokenString        string
+	RefreshToken       string
 	ExpiresInSecs      int
 	CreatedAtTimestamp int
 	TokenContextInfo
@@ -36,13 +38,20 @@ type TokenRequest struct {
 	Scope             string              `form:"scope"`
 	AuthorizationCode string              `form:"code"`
 	RedirectUri       string              `form:"redirect_uri"`
+	RefreshToken      string              `form:"refresh_token"`
+}
+
+func (req TokenRequest) IsValid() error {
+	//TODO
+	return nil
 }
 
 type TokenResponse struct {
-	AccessToken string              `json:"access_token"`
-	ExpiresIn   int                 `json:"expires_in"`
-	TokenType   constants.TokenType `json:"token_type"`
-	Scope       string              `json:"scope,omitempty"`
+	AccessToken  string              `json:"access_token"`
+	RefreshToken string              `json:"refresh_token,omitempty"`
+	ExpiresIn    int                 `json:"expires_in"`
+	TokenType    constants.TokenType `json:"token_type"`
+	Scope        string              `json:"scope,omitempty"`
 }
 
 type AuthorizeRequest struct {
@@ -52,6 +61,11 @@ type AuthorizeRequest struct {
 	ResponseType string `form:"response_type"`
 	State        string `form:"state"`
 	RequestUri   string `form:"request_uri"`
+}
+
+func (req AuthorizeRequest) IsValid() error {
+	//TODO
+	return nil
 }
 
 type PARRequest struct {
