@@ -1,7 +1,5 @@
 package constants
 
-const Charset string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
 const CallbackIdLength int = 20
 
 const RequestUriLength int = 20

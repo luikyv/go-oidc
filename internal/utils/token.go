@@ -2,7 +2,6 @@ package utils
 
 import (
 	"log/slog"
-	"strings"
 
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
@@ -81,11 +80,7 @@ func validateClientCredentialsGrantRequest(ctx Context, client models.Client, re
 		}
 	}
 
-	scopes := []string{}
-	if req.Scope != "" {
-		scopes = strings.Split(req.Scope, " ")
-	}
-	if !client.AreScopesAllowed(scopes) {
+	if !client.AreScopesAllowed(unit.SplitString(req.Scope)) {
 		ctx.Logger.Info("scope not allowed")
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidScope,

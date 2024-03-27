@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"log/slog"
 	"strings"
 
 	"github.com/google/uuid"
@@ -32,8 +33,10 @@ func InitAuthentication(ctx Context, req models.AuthorizeRequest) error {
 	// Fetch the first policy available.
 	policy, policyIsAvailable := models.GetPolicy(client, ctx.RequestContext)
 	if !policyIsAvailable {
+		ctx.Logger.Info("no policy available")
 		return errors.New("no policy available")
 	}
+	ctx.Logger.Info("policy available", slog.String("policy_id", policy.Id))
 	session.StepId = policy.FirstStep.Id
 
 	return authenticate(ctx, session)
@@ -50,7 +53,7 @@ func initValidAuthenticationSession(_ Context, client models.Client, req models.
 		Id:                 uuid.NewString(),
 		CallbackId:         unit.GenerateCallbackId(),
 		ClientId:           req.ClientId,
-		Scopes:             strings.Split(req.Scope, " "),
+		Scopes:             unit.SplitString(req.Scope),
 		RedirectUri:        req.RedirectUri,
 		State:              req.State,
 		CreatedAtTimestamp: unit.GetTimestampNow(),
@@ -98,7 +101,7 @@ func validateAuthorizeParams(client models.Client, req models.AuthorizeRequest) 
 		}
 	}
 
-	if req.Scope == "" || !client.AreScopesAllowed(strings.Split(req.Scope, " ")) {
+	if req.Scope == "" || !client.AreScopesAllowed(unit.SplitString(req.Scope)) {
 		return issues.RedirectError{
 			ErrorCode:        constants.InvalidScope,
 			ErrorDescription: "invalid scope",

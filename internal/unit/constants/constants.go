@@ -1,5 +1,7 @@
 package constants
 
+const Charset string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
 type AuthnStatus string
 
 const (
