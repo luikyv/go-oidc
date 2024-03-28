@@ -210,7 +210,7 @@ func handleRefreshTokenGrantTokenCreation(ctx Context, req models.TokenRequest) 
 		return models.Token{}, err
 	}
 
-	if err = validateRefreshTokenGrantRequest(req, authenticatedClient, token); err != nil {
+	if err = validateRefreshTokenGrantRequest(authenticatedClient, token); err != nil {
 		return models.Token{}, err
 	}
 
@@ -263,8 +263,8 @@ func getAuthenticatedClientAndToken(ctx Context, req models.TokenRequest) (model
 	return authenticatedClient, token, nil
 }
 
-func validateRefreshTokenGrantRequest(req models.TokenRequest, client models.Client, token models.Token) error {
-	if req.ClientId != token.ClientId {
+func validateRefreshTokenGrantRequest(client models.Client, token models.Token) error {
+	if client.Id != token.ClientId {
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "the refresh token was not issued to the client",
