@@ -71,3 +71,140 @@ func TestTokenRequestIsValidWhenGrantTypeIsClientCredentials(t *testing.T) {
 	}
 
 }
+
+func getValidTokenRequestForAuthorizationCodeGrant() models.TokenRequest {
+	return models.TokenRequest{
+		ClientAuthnRequest: models.ClientAuthnRequest{
+			ClientId: "client_id",
+		},
+		GrantType:         constants.AuthorizationCode,
+		AuthorizationCode: "random_authorization_code",
+		RedirectUri:       "random_redirect_uri",
+	}
+}
+
+func TestTokenRequestIsValidWhenGrantTypeIsAuthorizationCode(t *testing.T) {
+
+	// When.
+	testCases := []struct {
+		isValid      bool
+		tokenRequest models.TokenRequest
+	}{
+		{true, getValidTokenRequestForAuthorizationCodeGrant()},
+		{
+			false,
+			func() models.TokenRequest {
+				req := getValidTokenRequestForAuthorizationCodeGrant()
+				req.AuthorizationCode = ""
+				return req
+			}(),
+		},
+		{
+			false,
+			func() models.TokenRequest {
+				req := getValidTokenRequestForAuthorizationCodeGrant()
+				req.RedirectUri = ""
+				return req
+			}(),
+		},
+		{
+			false,
+			func() models.TokenRequest {
+				req := getValidTokenRequestForAuthorizationCodeGrant()
+				req.Scope = "scope1"
+				return req
+			}(),
+		},
+		{
+			false,
+			func() models.TokenRequest {
+				req := getValidTokenRequestForAuthorizationCodeGrant()
+				req.RefreshToken = "random_refresh_token"
+				return req
+			}(),
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(
+			fmt.Sprintf("request should be valid? %v. request data: %v", testCase.isValid, testCase.tokenRequest),
+			func(t *testing.T) {
+
+				// Then.
+				err := testCase.tokenRequest.IsValid()
+
+				// Assert.
+				actualIsValid := err == nil
+				if actualIsValid != testCase.isValid {
+					t.Error("invalid result")
+				}
+
+			},
+		)
+	}
+
+}
+
+func getValidTokenRequestForRefreshTokenGrant() models.TokenRequest {
+	return models.TokenRequest{
+		ClientAuthnRequest: models.ClientAuthnRequest{
+			ClientId: "client_id",
+		},
+		GrantType:    constants.RefreshToken,
+		RefreshToken: "random_refresh_token",
+	}
+}
+
+func TestTokenRequestIsValidWhenGrantTypeIsRefreshToken(t *testing.T) {
+
+	// When.
+	testCases := []struct {
+		isValid      bool
+		tokenRequest models.TokenRequest
+	}{
+		{true, getValidTokenRequestForRefreshTokenGrant()},
+		{
+			false,
+			func() models.TokenRequest {
+				req := getValidTokenRequestForRefreshTokenGrant()
+				req.RefreshToken = ""
+				return req
+			}(),
+		},
+		{
+			false,
+			func() models.TokenRequest {
+				req := getValidTokenRequestForRefreshTokenGrant()
+				req.AuthorizationCode = "random_authorization_code"
+				return req
+			}(),
+		},
+		{
+			false,
+			func() models.TokenRequest {
+				req := getValidTokenRequestForRefreshTokenGrant()
+				req.RedirectUri = "random_redirect_uri"
+				return req
+			}(),
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(
+			fmt.Sprintf("request should be valid? %v. request data: %v", testCase.isValid, testCase.tokenRequest),
+			func(t *testing.T) {
+
+				// Then.
+				err := testCase.tokenRequest.IsValid()
+
+				// Assert.
+				actualIsValid := err == nil
+				if actualIsValid != testCase.isValid {
+					t.Error("invalid result")
+				}
+
+			},
+		)
+	}
+
+}
