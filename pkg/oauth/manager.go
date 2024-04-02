@@ -16,6 +16,7 @@ import (
 type OAuthManager struct {
 	crudManager crud.CRUDManager
 	server      *gin.Engine
+	jwks        models.JWKSet
 }
 
 func NewManager(settings ...func(*OAuthManager)) *OAuthManager {
@@ -54,6 +55,10 @@ func (manager *OAuthManager) AddPolicy(policy models.AuthnPolicy) {
 	models.AddPolicy(policy)
 }
 
+func (manager *OAuthManager) SetJWKS(jwks models.JWKSet) {
+	manager.jwks = jwks
+}
+
 func (manager *OAuthManager) Run(port int) {
 
 	// Configure the server.
@@ -68,24 +73,29 @@ func (manager *OAuthManager) Run(port int) {
 	})
 
 	// Set endpoints.
+	manager.server.GET("/JWKS", func(ctx *gin.Context) {
+		apihandlers.HandleJWKSRequest(
+			utils.NewContext(manager.crudManager, ctx, manager.jwks),
+		)
+	})
 	manager.server.POST("/par", func(ctx *gin.Context) {
 		apihandlers.HandlePARRequest(
-			utils.NewContext(manager.crudManager, ctx),
+			utils.NewContext(manager.crudManager, ctx, manager.jwks),
 		)
 	})
 	manager.server.GET("/authorize", func(ctx *gin.Context) {
 		apihandlers.HandleAuthorizeRequest(
-			utils.NewContext(manager.crudManager, ctx),
+			utils.NewContext(manager.crudManager, ctx, manager.jwks),
 		)
 	})
 	manager.server.POST("/authorize/:callback", func(ctx *gin.Context) {
 		apihandlers.HandleAuthorizeCallbackRequest(
-			utils.NewContext(manager.crudManager, ctx),
+			utils.NewContext(manager.crudManager, ctx, manager.jwks),
 		)
 	})
 	manager.server.POST("/token", func(ctx *gin.Context) {
 		apihandlers.HandleTokenRequest(
-			utils.NewContext(manager.crudManager, ctx),
+			utils.NewContext(manager.crudManager, ctx, manager.jwks),
 		)
 	})
 

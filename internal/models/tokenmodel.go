@@ -1,7 +1,12 @@
 package models
 
 import (
+	"strings"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/unit"
+	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
 type TokenModelOut struct{}
@@ -19,33 +24,84 @@ type BaseTokenModel struct {
 	RefreshLifetimeSecs int
 }
 
+type TokenModelIn struct{}
+
+func (model TokenModelIn) ToInternal() TokenModel {
+	return OpaqueTokenModel{}
+}
+
+//---------------------------------------- Opaque ----------------------------------------//
+
 type OpaqueTokenModel struct {
 	TokenLength int
 	BaseTokenModel
+}
+
+func (tokenModel OpaqueTokenModel) GenerateToken(basicInfo TokenContextInfo) Token {
+	tokenString := unit.GenerateRandomString(tokenModel.TokenLength, tokenModel.TokenLength)
+	token := Token{
+		Id:                 tokenString,
+		TokenModelId:       tokenModel.Id,
+		TokenString:        tokenString,
+		ExpiresInSecs:      tokenModel.ExpiresInSecs,
+		CreatedAtTimestamp: unit.GetTimestampNow(),
+		TokenContextInfo:   basicInfo,
+	}
+	if tokenModel.IsRefreshable {
+		token.RefreshToken = unit.GenerateRefreshToken()
+	}
+	return token
 }
 
 func (model OpaqueTokenModel) ToOutput() TokenModelOut {
 	return TokenModelOut{}
 }
 
-func (model OpaqueTokenModel) GenerateToken(basicInfo TokenContextInfo) Token {
-	tokenString := unit.GenerateRandomString(model.TokenLength, model.TokenLength)
-	token := Token{
-		Id:                 tokenString,
-		TokenModelId:       model.Id,
-		TokenString:        tokenString,
-		ExpiresInSecs:      model.ExpiresInSecs,
-		CreatedAtTimestamp: unit.GetTimestampNow(),
-		TokenContextInfo:   basicInfo,
-	}
-	if model.IsRefreshable {
-		token.RefreshToken = unit.GenerateRefreshToken()
-	}
-	return token
+//---------------------------------------- JWT ----------------------------------------//
+
+type JWTTokenModel struct {
+	jwk JWK
+	BaseTokenModel
 }
 
-type TokenModelIn struct{}
+func (model JWTTokenModel) getJWTSigningKey(signingAlg constants.SigningAlgorithm) jwt.SigningMethod {
+	switch signingAlg {
+	case constants.HS256:
+		return jwt.SigningMethodHS256
+	default:
+		//TODO: Improve this.
+		return jwt.SigningMethodHS256
+	}
+}
 
-func (model TokenModelIn) ToInternal() TokenModel {
-	return OpaqueTokenModel{}
+func (tokenModel JWTTokenModel) GenerateToken(basicInfo TokenContextInfo) Token {
+	createdAtTimestamp := unit.GetTimestampNow()
+	tokenString, _ := jwt.NewWithClaims(
+		tokenModel.getJWTSigningKey(tokenModel.jwk.SigningAlgorithm),
+		jwt.MapClaims{
+			"sub":       basicInfo.Subject,
+			"client_id": basicInfo.ClientId,
+			"scope":     strings.Join(basicInfo.Scopes, " "),
+			"exp":       createdAtTimestamp + tokenModel.ExpiresInSecs,
+			"iat":       createdAtTimestamp,
+		},
+	).SignedString(tokenModel.jwk.Key)
+
+	token := Token{
+		Id:                 uuid.NewString(),
+		TokenModelId:       tokenModel.Id,
+		TokenString:        tokenString,
+		ExpiresInSecs:      tokenModel.ExpiresInSecs,
+		CreatedAtTimestamp: createdAtTimestamp,
+		TokenContextInfo:   basicInfo,
+	}
+	if tokenModel.IsRefreshable {
+		token.RefreshToken = unit.GenerateRefreshToken()
+	}
+
+	return Token{}
+}
+
+func (model JWTTokenModel) ToOutput() TokenModelOut {
+	return TokenModelOut{}
 }

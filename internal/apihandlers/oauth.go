@@ -11,6 +11,10 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
+func HandleJWKSRequest(ctx utils.Context) {
+	ctx.RequestContext.JSON(http.StatusAccepted, ctx.Jwks)
+}
+
 //---------------------------------------- Pushed Authorization Request - PAR ----------------------------------------//
 
 func HandlePARRequest(ctx utils.Context) {

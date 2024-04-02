@@ -1,6 +1,8 @@
 package constants
 
-import "net/http"
+import (
+	"net/http"
+)
 
 type GrantType string
 
@@ -28,6 +30,12 @@ type TokenType string
 
 const (
 	Bearer TokenType = "Bearer"
+)
+
+type SigningAlgorithm string
+
+const (
+	HS256 SigningAlgorithm = "HS256"
 )
 
 type ErrorCode string

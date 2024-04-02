@@ -52,9 +52,9 @@ func TestTokenRequestIsValidWhenGrantTypeIsClientCredentials(t *testing.T) {
 		},
 	}
 
-	for _, testCase := range testCases {
+	for i, testCase := range testCases {
 		t.Run(
-			fmt.Sprintf("request should be valid? %v. request data: %v", testCase.isValid, testCase.tokenRequest),
+			fmt.Sprintf("case %v", i),
 			func(t *testing.T) {
 
 				// Then.
@@ -125,9 +125,9 @@ func TestTokenRequestIsValidWhenGrantTypeIsAuthorizationCode(t *testing.T) {
 		},
 	}
 
-	for _, testCase := range testCases {
+	for i, testCase := range testCases {
 		t.Run(
-			fmt.Sprintf("request should be valid? %v. request data: %v", testCase.isValid, testCase.tokenRequest),
+			fmt.Sprintf("case %v", i),
 			func(t *testing.T) {
 
 				// Then.
@@ -189,9 +189,9 @@ func TestTokenRequestIsValidWhenGrantTypeIsRefreshToken(t *testing.T) {
 		},
 	}
 
-	for _, testCase := range testCases {
+	for i, testCase := range testCases {
 		t.Run(
-			fmt.Sprintf("request should be valid? %v. request data: %v", testCase.isValid, testCase.tokenRequest),
+			fmt.Sprintf("case %v", i),
 			func(t *testing.T) {
 
 				// Then.

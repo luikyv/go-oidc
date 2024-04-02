@@ -3,16 +3,27 @@ package models
 import (
 	"errors"
 
+	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
-type GrantInfo struct {
-	GrantType           constants.GrantType
-	AuthenticatedClient Client
-	TokenModel          TokenModel
-	Scopes              []string
-	AuthorizationCode   string
-	RedirectUri         string
+type JWK struct {
+	KeyId            string                     `json:"kid"`
+	SigningAlgorithm constants.SigningAlgorithm `json:"alg"`
+	KeyType          string                     `json:"kty"`
+	Key              string                     `json:"k"`
+}
+
+type JWKSet struct {
+	Keys []JWK `json:"keys"`
+}
+
+func (jwks JWKSet) GetKey(keyId string) JWK {
+	jwk, _ := unit.FindFirst(jwks.Keys, func(jwk JWK) bool {
+		return jwk.KeyId == keyId
+	})
+
+	return jwk
 }
 
 type TokenContextInfo struct {
