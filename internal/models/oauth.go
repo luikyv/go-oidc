@@ -43,8 +43,10 @@ type Token struct {
 }
 
 type ClientAuthnRequest struct {
-	ClientId     string `form:"client_id" binding:"required"`
-	ClientSecret string `form:"client_secret"`
+	ClientId            string                        `form:"client_id" binding:"required"`
+	ClientSecret        string                        `form:"client_secret"`
+	ClientAssertionType constants.ClientAssertionType `form:"client_assertion_type"`
+	ClientAssertion     string                        `form:"client_assertion"`
 }
 
 type TokenRequest struct {

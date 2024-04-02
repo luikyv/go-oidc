@@ -3,6 +3,7 @@ package models
 import (
 	"slices"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"golang.org/x/crypto/bcrypt"
@@ -17,7 +18,7 @@ type ClientAuthenticator interface {
 type NoneClientAuthenticator struct{}
 
 func (authenticator NoneClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
-	return req.ClientSecret == ""
+	return req.ClientSecret == "" && req.ClientAssertionType == "" && req.ClientAssertion == ""
 }
 
 type SecretClientAuthenticator struct {
@@ -25,7 +26,7 @@ type SecretClientAuthenticator struct {
 }
 
 func (authenticator SecretClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
-	if req.ClientSecret == "" {
+	if req.ClientSecret == "" || req.ClientAssertionType != "" || req.ClientAssertion != "" {
 		return false
 	}
 
@@ -33,11 +34,33 @@ func (authenticator SecretClientAuthenticator) IsAuthenticated(req ClientAuthnRe
 	return err == nil
 }
 
-type PrivateKeyJwtClientAuthenticator struct{}
+type PrivateKeyJwtClientAuthenticator struct {
+	PublicJwk JWK
+}
 
 func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
-	// TODO
-	return false
+	if req.ClientSecret != "" || req.ClientAssertionType != constants.JWTBearer || req.ClientAssertion == "" {
+		return false
+	}
+
+	var claims jwt.MapClaims
+	jwtToken, err := jwt.ParseWithClaims(req.ClientAssertion, &claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(authenticator.PublicJwk.Key), nil
+	})
+
+	if err != nil || !jwtToken.Valid || jwtToken.Method.Alg() != string(authenticator.PublicJwk.SigningAlgorithm) {
+		return false
+	}
+
+	if issuer, err := claims.GetIssuer(); err != nil || issuer != req.ClientId {
+		return false
+	}
+	if subject, err := claims.GetSubject(); err != nil || subject != req.ClientId {
+		return false
+	}
+	// TODO: validate the audience as the oauth server.
+
+	return true
 }
 
 //---------------------------------------- Client ----------------------------------------//

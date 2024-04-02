@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -59,6 +61,38 @@ func TestSecretClientAuthenticatorInvalidInfo(t *testing.T) {
 
 	if authenticator.IsAuthenticated(req) {
 		t.Error("The client should not be authenticated")
+	}
+}
+
+func TestPrivateKeyJWTClientAuthenticatorValidInfo(t *testing.T) {
+	jwk := JWK{
+		KeyType:          constants.Octet,
+		KeyId:            "0afee142-a0af-4410-abcc-9f2d44ff45b5",
+		SigningAlgorithm: constants.HS256,
+		Key:              "FdFYFzERwC2uCBB46pZQi4GG85LujR8obt-KWRBICVQ",
+	}
+	authenticator := PrivateKeyJwtClientAuthenticator{
+		PublicJwk: jwk,
+	}
+	clientId := "random_client_id"
+	createdAtTimestamp := unit.GetTimestampNow()
+	tokenString, _ := jwt.NewWithClaims(
+		jwt.SigningMethodHS256,
+		jwt.MapClaims{
+			"sub": clientId,
+			"iss": clientId,
+			"exp": createdAtTimestamp + 60,
+			"iat": createdAtTimestamp,
+		},
+	).SignedString([]byte(jwk.Key))
+	req := ClientAuthnRequest{
+		ClientId:            clientId,
+		ClientAssertionType: constants.JWTBearer,
+		ClientAssertion:     tokenString,
+	}
+
+	if !authenticator.IsAuthenticated(req) {
+		t.Error("The client should be authenticated")
 	}
 }
 

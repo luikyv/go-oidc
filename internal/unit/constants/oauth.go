@@ -22,8 +22,15 @@ const (
 type ClientAuthnType string
 
 const (
-	None         ClientAuthnType = "none"
-	ClientSecret ClientAuthnType = "client_secret"
+	None          ClientAuthnType = "none"
+	ClientSecret  ClientAuthnType = "client_secret"
+	PrivateKeyJWT ClientAuthnType = "private_key_jwt"
+)
+
+type ClientAssertionType string
+
+const (
+	JWTBearer ClientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 )
 
 type TokenType string
