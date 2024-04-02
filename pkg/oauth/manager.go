@@ -63,7 +63,7 @@ func (manager *OAuthManager) SetJWKS(jwks models.JWKSet) {
 func (manager *OAuthManager) Run(port int) {
 
 	// Configure the server.
-	manager.server.LoadHTMLGlob("./cmd/templates/*")
+	manager.server.LoadHTMLGlob("../cmd/templates/*")
 	manager.server.Use(func(ctx *gin.Context) {
 		// Set the correlation ID to be used in the logs.
 		correlationId := ctx.GetHeader(string(constants.CorrelationIdHeader))

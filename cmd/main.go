@@ -28,8 +28,17 @@ func main() {
 	tokenModelId := "my_token_model"
 	userPassword := "password"
 	// Add Mocks
-	oauthManager.AddTokenModel(models.OpaqueTokenModel{
-		TokenLength: 20,
+	// oauthManager.AddTokenModel(models.OpaqueTokenModel{
+	// 	TokenLength: 20,
+	// 	BaseTokenModel: models.BaseTokenModel{
+	// 		Id:            tokenModelId,
+	// 		Issuer:        "https://example.com",
+	// 		ExpiresInSecs: 60,
+	// 		IsRefreshable: false,
+	// 	},
+	// })
+	oauthManager.AddTokenModel(models.JWTTokenModel{
+		Jwk: jwk,
 		BaseTokenModel: models.BaseTokenModel{
 			Id:            tokenModelId,
 			Issuer:        "https://example.com",

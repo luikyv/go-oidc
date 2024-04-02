@@ -125,7 +125,7 @@ func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client model
 		}
 	}
 
-	if session.AuthorizedAtTimestamp+constants.AuthorizationCodeLifetimeSecs > unit.GetTimestampNow() {
+	if unit.GetTimestampNow() > session.AuthorizedAtTimestamp+constants.AuthorizationCodeLifetimeSecs {
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "the authorization code is expired",

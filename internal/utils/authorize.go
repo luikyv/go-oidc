@@ -124,7 +124,7 @@ func validateAuthorizeParams(client models.Client, req models.AuthorizeRequest) 
 
 func validateAuthorizeWithPARParams(session models.AuthnSession, req models.AuthorizeRequest) error {
 
-	if session.CreatedAtTimestamp+constants.PARLifetimeSecs > unit.GetTimestampNow() {
+	if unit.GetTimestampNow() > session.CreatedAtTimestamp+constants.PARLifetimeSecs {
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "the request uri expired",

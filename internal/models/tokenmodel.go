@@ -50,6 +50,7 @@ func (tokenModel OpaqueTokenModel) GenerateToken(basicInfo TokenContextInfo) Tok
 	if tokenModel.IsRefreshable {
 		token.RefreshToken = unit.GenerateRefreshToken()
 	}
+
 	return token
 }
 
@@ -60,11 +61,11 @@ func (model OpaqueTokenModel) ToOutput() TokenModelOut {
 //---------------------------------------- JWT ----------------------------------------//
 
 type JWTTokenModel struct {
-	jwk JWK
+	Jwk JWK
 	BaseTokenModel
 }
 
-func (model JWTTokenModel) getJWTSigningKey(signingAlg constants.SigningAlgorithm) jwt.SigningMethod {
+func (model JWTTokenModel) getJWTSigningMethod(signingAlg constants.SigningAlgorithm) jwt.SigningMethod {
 	switch signingAlg {
 	case constants.HS256:
 		return jwt.SigningMethodHS256
@@ -77,7 +78,7 @@ func (model JWTTokenModel) getJWTSigningKey(signingAlg constants.SigningAlgorith
 func (tokenModel JWTTokenModel) GenerateToken(basicInfo TokenContextInfo) Token {
 	createdAtTimestamp := unit.GetTimestampNow()
 	tokenString, _ := jwt.NewWithClaims(
-		tokenModel.getJWTSigningKey(tokenModel.jwk.SigningAlgorithm),
+		tokenModel.getJWTSigningMethod(tokenModel.Jwk.SigningAlgorithm),
 		jwt.MapClaims{
 			"sub":       basicInfo.Subject,
 			"client_id": basicInfo.ClientId,
@@ -85,7 +86,7 @@ func (tokenModel JWTTokenModel) GenerateToken(basicInfo TokenContextInfo) Token 
 			"exp":       createdAtTimestamp + tokenModel.ExpiresInSecs,
 			"iat":       createdAtTimestamp,
 		},
-	).SignedString(tokenModel.jwk.Key)
+	).SignedString([]byte(tokenModel.Jwk.Key))
 
 	token := Token{
 		Id:                 uuid.NewString(),
@@ -99,7 +100,7 @@ func (tokenModel JWTTokenModel) GenerateToken(basicInfo TokenContextInfo) Token 
 		token.RefreshToken = unit.GenerateRefreshToken()
 	}
 
-	return Token{}
+	return token
 }
 
 func (model JWTTokenModel) ToOutput() TokenModelOut {

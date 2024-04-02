@@ -15,25 +15,31 @@ func NewMockedTokenModelManager() *MockedTokenModelManager {
 	}
 }
 
-func (manager *MockedTokenModelManager) Create(model models.TokenModel) error {
-	opaqueModel, _ := model.(models.OpaqueTokenModel)
-	_, exists := manager.models[opaqueModel.Id]
-	if exists {
-		return issues.EntityAlreadyExistsError{Id: opaqueModel.Id}
+func (manager *MockedTokenModelManager) Create(tokenModel models.TokenModel) error {
+
+	var id string
+	switch tm := tokenModel.(type) {
+	case models.OpaqueTokenModel:
+	case models.JWTTokenModel:
+		id = tm.Id
 	}
 
-	manager.models[opaqueModel.Id] = model
+	_, exists := manager.models[id]
+	if exists {
+		return issues.EntityAlreadyExistsError{Id: id}
+	}
+
+	manager.models[id] = tokenModel
 	return nil
 }
 
 func (manager *MockedTokenModelManager) Update(id string, model models.TokenModel) error {
-	opaqueModel, _ := model.(models.OpaqueTokenModel)
 	_, exists := manager.models[id]
 	if !exists {
 		return issues.EntityNotFoundError{Id: id}
 	}
 
-	manager.models[id] = opaqueModel
+	manager.models[id] = model
 	return nil
 }
 
