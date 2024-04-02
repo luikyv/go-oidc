@@ -10,7 +10,7 @@ import (
 type JWK struct {
 	KeyId            string                     `json:"kid"`
 	SigningAlgorithm constants.SigningAlgorithm `json:"alg"`
-	KeyType          string                     `json:"kty"`
+	KeyType          constants.KeyType          `json:"kty"`
 	Key              string                     `json:"k"`
 }
 

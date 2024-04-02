@@ -19,10 +19,11 @@ type OAuthManager struct {
 	jwks        models.JWKSet
 }
 
-func NewManager(settings ...func(*OAuthManager)) *OAuthManager {
+func NewManager(jwks models.JWKSet, settings ...func(*OAuthManager)) *OAuthManager {
 	manager := &OAuthManager{
 		crudManager: crud.CRUDManager{},
 		server:      gin.Default(),
+		jwks:        jwks,
 	}
 
 	for _, setting := range settings {
@@ -62,7 +63,7 @@ func (manager *OAuthManager) SetJWKS(jwks models.JWKSet) {
 func (manager *OAuthManager) Run(port int) {
 
 	// Configure the server.
-	manager.server.LoadHTMLGlob("../cmd/templates/*")
+	manager.server.LoadHTMLGlob("./cmd/templates/*")
 	manager.server.Use(func(ctx *gin.Context) {
 		// Set the correlation ID to be used in the logs.
 		correlationId := ctx.GetHeader(string(constants.CorrelationIdHeader))

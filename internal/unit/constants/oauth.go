@@ -38,6 +38,12 @@ const (
 	HS256 SigningAlgorithm = "HS256"
 )
 
+type KeyType string
+
+const (
+	Octet KeyType = "oct" // Octet sequence (used to represent symmetric keys).
+)
+
 type ErrorCode string
 
 const (
