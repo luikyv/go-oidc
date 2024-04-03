@@ -118,11 +118,13 @@ func TestAuthorizationCodeHandleTokenCreation(t *testing.T) {
 
 	authorizationCode := "random_authz_code"
 	session := models.AuthnSession{
-		ClientId:          utils.ValidClientId,
-		Scopes:            client.Scopes,
-		RedirectUri:       client.RedirectUris[0],
-		AuthorizationCode: authorizationCode,
-		Subject:           "user_id",
+		ClientId:              utils.ValidClientId,
+		Scopes:                client.Scopes,
+		RedirectUri:           client.RedirectUris[0],
+		AuthorizationCode:     authorizationCode,
+		Subject:               "user_id",
+		CreatedAtTimestamp:    unit.GetTimestampNow(),
+		AuthorizedAtTimestamp: unit.GetTimestampNow(),
 	}
 	ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(session)
 

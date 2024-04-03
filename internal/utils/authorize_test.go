@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
@@ -299,11 +300,12 @@ func TestInitAuthenticationWithPAR(t *testing.T) {
 	requestUri := "urn:goidc:random_value"
 	ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(
 		models.AuthnSession{
-			Id:          uuid.NewString(),
-			RequestUri:  requestUri,
-			ClientId:    client.Id,
-			Scopes:      client.Scopes,
-			RedirectUri: client.RedirectUris[0],
+			Id:                 uuid.NewString(),
+			RequestUri:         requestUri,
+			ClientId:           client.Id,
+			Scopes:             client.Scopes,
+			RedirectUri:        client.RedirectUris[0],
+			CreatedAtTimestamp: unit.GetTimestampNow(),
 		},
 	)
 	models.AddPolicy(models.AuthnPolicy{

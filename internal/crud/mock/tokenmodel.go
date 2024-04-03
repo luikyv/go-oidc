@@ -20,6 +20,7 @@ func (manager *MockedTokenModelManager) Create(tokenModel models.TokenModel) err
 	var id string
 	switch tm := tokenModel.(type) {
 	case models.OpaqueTokenModel:
+		id = tm.Id
 	case models.JWTTokenModel:
 		id = tm.Id
 	}
