@@ -6,18 +6,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/luikymagno/auth-server/internal/crud"
-	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
 type Context struct {
 	CrudManager    crud.CRUDManager
 	RequestContext *gin.Context
-	Jwks           models.JWKSet
 	Logger         *slog.Logger
 }
 
-func NewContext(crudManager crud.CRUDManager, reqContext *gin.Context, jwks models.JWKSet) Context {
+func NewContext(crudManager crud.CRUDManager, reqContext *gin.Context) Context {
 
 	// Create logger.
 	jsonHandler := slog.NewJSONHandler(os.Stdout, nil)
@@ -32,7 +30,6 @@ func NewContext(crudManager crud.CRUDManager, reqContext *gin.Context, jwks mode
 	return Context{
 		CrudManager:    crudManager,
 		RequestContext: reqContext,
-		Jwks:           jwks,
 		Logger:         logger,
 	}
 }

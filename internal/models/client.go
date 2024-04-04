@@ -3,7 +3,8 @@ package models
 import (
 	"slices"
 
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"golang.org/x/crypto/bcrypt"
@@ -35,7 +36,7 @@ func (authenticator SecretClientAuthenticator) IsAuthenticated(req ClientAuthnRe
 }
 
 type PrivateKeyJwtClientAuthenticator struct {
-	PublicJwk JWK
+	PublicJwk jose.JSONWebKey
 }
 
 func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
@@ -43,19 +44,20 @@ func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(req Client
 		return false
 	}
 
-	var claims jwt.MapClaims
-	jwtToken, err := jwt.ParseWithClaims(req.ClientAssertion, &claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(authenticator.PublicJwk.Key), nil
-	})
-
-	if err != nil || !jwtToken.Valid || jwtToken.Method.Alg() != string(authenticator.PublicJwk.SigningAlgorithm) {
+	jwt, err := jwt.ParseSigned(req.ClientAssertion, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(authenticator.PublicJwk.Algorithm)})
+	if err != nil {
 		return false
 	}
 
-	if issuer, err := claims.GetIssuer(); err != nil || issuer != req.ClientId {
+	claims := make(map[string]interface{})
+	if err := jwt.Claims(authenticator.PublicJwk.Key, &claims); err != nil {
 		return false
 	}
-	if subject, err := claims.GetSubject(); err != nil || subject != req.ClientId {
+
+	if issuer, ok := claims["iss"]; !ok || issuer != req.ClientId {
+		return false
+	}
+	if subject, ok := claims["sub"]; !ok || subject != req.ClientId {
 		return false
 	}
 	// TODO: validate the audience as the oauth server.

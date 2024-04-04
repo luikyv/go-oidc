@@ -22,3 +22,6 @@ go.work
 
 ## VS Code files
 .vscode
+
+## Folder to write random code
+playground/

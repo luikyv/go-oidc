@@ -4,11 +4,13 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-jose/go-jose/v4"
 	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/apihandlers"
 	"github.com/luikymagno/auth-server/internal/crud"
 	"github.com/luikymagno/auth-server/internal/crud/mock"
 	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
@@ -16,19 +18,25 @@ import (
 type OAuthManager struct {
 	crudManager crud.CRUDManager
 	server      *gin.Engine
-	jwks        models.JWKSet
 }
 
-func NewManager(jwks models.JWKSet, settings ...func(*OAuthManager)) *OAuthManager {
+func NewManager(
+	privateJWKS jose.JSONWebKeySet,
+	publicJWKS jose.JSONWebKeySet,
+	settings ...func(*OAuthManager),
+) *OAuthManager {
+
 	manager := &OAuthManager{
 		crudManager: crud.CRUDManager{},
 		server:      gin.Default(),
-		jwks:        jwks,
 	}
 
 	for _, setting := range settings {
 		setting(manager)
 	}
+
+	unit.SetPrivateJWKS(privateJWKS)
+	unit.SetPublicJWKS(publicJWKS)
 
 	return manager
 }
@@ -56,10 +64,6 @@ func (manager *OAuthManager) AddPolicy(policy models.AuthnPolicy) {
 	models.AddPolicy(policy)
 }
 
-func (manager *OAuthManager) SetJWKS(jwks models.JWKSet) {
-	manager.jwks = jwks
-}
-
 func (manager *OAuthManager) Run(port int) {
 
 	// Configure the server.
@@ -74,29 +78,29 @@ func (manager *OAuthManager) Run(port int) {
 	})
 
 	// Set endpoints.
-	manager.server.GET("/JWKS", func(ctx *gin.Context) {
+	manager.server.GET("/jwks.json", func(ctx *gin.Context) {
 		apihandlers.HandleJWKSRequest(
-			utils.NewContext(manager.crudManager, ctx, manager.jwks),
+			utils.NewContext(manager.crudManager, ctx),
 		)
 	})
 	manager.server.POST("/par", func(ctx *gin.Context) {
 		apihandlers.HandlePARRequest(
-			utils.NewContext(manager.crudManager, ctx, manager.jwks),
+			utils.NewContext(manager.crudManager, ctx),
 		)
 	})
 	manager.server.GET("/authorize", func(ctx *gin.Context) {
 		apihandlers.HandleAuthorizeRequest(
-			utils.NewContext(manager.crudManager, ctx, manager.jwks),
+			utils.NewContext(manager.crudManager, ctx),
 		)
 	})
 	manager.server.POST("/authorize/:callback", func(ctx *gin.Context) {
 		apihandlers.HandleAuthorizeCallbackRequest(
-			utils.NewContext(manager.crudManager, ctx, manager.jwks),
+			utils.NewContext(manager.crudManager, ctx),
 		)
 	})
 	manager.server.POST("/token", func(ctx *gin.Context) {
 		apihandlers.HandleTokenRequest(
-			utils.NewContext(manager.crudManager, ctx, manager.jwks),
+			utils.NewContext(manager.crudManager, ctx),
 		)
 	})
 

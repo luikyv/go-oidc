@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
@@ -48,6 +49,14 @@ func GetUrlWithParams(redirectUri string, params map[string]string) string {
 	}
 	u.RawQuery = q.Encode()
 	return u.String()
+}
+
+func SetPrivateJWKS(privateJWKS jose.JSONWebKeySet) {
+	constants.PrivateJWKS = privateJWKS
+}
+
+func SetPublicJWKS(publicJWKS jose.JSONWebKeySet) {
+	constants.PublicJWKS = publicJWKS
 }
 
 func Contains[T comparable](superSet []T, subSet []T) bool {

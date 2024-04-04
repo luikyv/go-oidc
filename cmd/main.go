@@ -12,15 +12,8 @@ import (
 )
 
 func main() {
-	jwk := models.JWK{
-		KeyType:          constants.Octet,
-		KeyId:            "0afee142-a0af-4410-abcc-9f2d44ff45b5",
-		SigningAlgorithm: constants.HS256,
-		Key:              "FdFYFzERwC2uCBB46pZQi4GG85LujR8obt-KWRBICVQ",
-	}
-	jwks := models.JWKSet{
-		Keys: []models.JWK{jwk},
-	}
+
+	jwks := ""
 	oauthManager := oauth.NewManager(jwks, oauth.SetMockedEntitiesConfig, oauth.SetMockedSessionsConfig)
 
 	clientId := "client_id"
@@ -38,7 +31,7 @@ func main() {
 	// 	},
 	// })
 	oauthManager.AddTokenModel(models.JWTTokenModel{
-		Jwk: jwk,
+		KeyId: "",
 		BaseTokenModel: models.BaseTokenModel{
 			Id:            tokenModelId,
 			Issuer:        "https://example.com",

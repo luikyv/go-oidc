@@ -2,6 +2,8 @@ package constants
 
 import (
 	"net/http"
+
+	"github.com/go-jose/go-jose/v4"
 )
 
 type GrantType string
@@ -39,16 +41,16 @@ const (
 	Bearer TokenType = "Bearer"
 )
 
-type SigningAlgorithm string
+type Claim string
 
 const (
-	HS256 SigningAlgorithm = "HS256"
-)
-
-type KeyType string
-
-const (
-	Octet KeyType = "oct" // Octet sequence (used to represent symmetric keys).
+	TokenId  Claim = "jti"
+	Issuer   Claim = "iss"
+	Subject  Claim = "sub"
+	Audience Claim = "aud"
+	Expiry   Claim = "exp"
+	IssuedAt Claim = "iat"
+	Scope    Claim = "scope"
 )
 
 type ErrorCode string
@@ -68,3 +70,6 @@ var ErrorCodeToStatusCode map[ErrorCode]int = map[ErrorCode]int{
 type Header string
 
 const CorrelationIdHeader Header = "X-Correlation-ID"
+
+var PublicJWKS jose.JSONWebKeySet
+var PrivateJWKS jose.JSONWebKeySet

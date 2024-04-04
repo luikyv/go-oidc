@@ -1,10 +1,12 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"golang.org/x/crypto/bcrypt"
@@ -65,33 +67,40 @@ func TestSecretClientAuthenticatorInvalidInfo(t *testing.T) {
 }
 
 func TestPrivateKeyJWTClientAuthenticatorValidInfo(t *testing.T) {
-	jwk := JWK{
-		KeyType:          constants.Octet,
-		KeyId:            "0afee142-a0af-4410-abcc-9f2d44ff45b5",
-		SigningAlgorithm: constants.HS256,
-		Key:              "FdFYFzERwC2uCBB46pZQi4GG85LujR8obt-KWRBICVQ",
-	}
+
+	// When
+	jwkBytes, _ := json.Marshal(map[string]any{
+		"kty": "oct",
+		"kid": "0afee142-a0af-4410-abcc-9f2d44ff45b5",
+		"alg": "HS256",
+		"k":   "FdFYFzERwC2uCBB46pZQi4GG85LujR8obt-KWRBICVQ",
+	})
+	var jwk jose.JSONWebKey
+	jwk.UnmarshalJSON(jwkBytes)
 	authenticator := PrivateKeyJwtClientAuthenticator{
 		PublicJwk: jwk,
 	}
 	clientId := "random_client_id"
 	createdAtTimestamp := unit.GetTimestampNow()
-	tokenString, _ := jwt.NewWithClaims(
-		jwt.SigningMethodHS256,
-		jwt.MapClaims{
-			"sub": clientId,
-			"iss": clientId,
-			"exp": createdAtTimestamp + 60,
-			"iat": createdAtTimestamp,
-		},
-	).SignedString([]byte(jwk.Key))
+	signer, _ := jose.NewSigner(jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key}, nil)
+	claims := map[string]any{
+		string(constants.Issuer):   clientId,
+		string(constants.Subject):  clientId,
+		string(constants.IssuedAt): createdAtTimestamp,
+		string(constants.Expiry):   createdAtTimestamp + 60,
+	}
+	tokenString, _ := jwt.Signed(signer).Claims(claims).Serialize()
 	req := ClientAuthnRequest{
 		ClientId:            clientId,
 		ClientAssertionType: constants.JWTBearer,
 		ClientAssertion:     tokenString,
 	}
 
-	if !authenticator.IsAuthenticated(req) {
+	// Then
+	isAuthenticated := authenticator.IsAuthenticated(req)
+
+	// Assert
+	if !isAuthenticated {
 		t.Error("The client should be authenticated")
 	}
 }

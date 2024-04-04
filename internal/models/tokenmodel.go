@@ -3,7 +3,8 @@ package models
 import (
 	"strings"
 
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -61,39 +62,31 @@ func (model OpaqueTokenModel) ToOutput() TokenModelOut {
 //---------------------------------------- JWT ----------------------------------------//
 
 type JWTTokenModel struct {
-	Jwk JWK
+	KeyId string
 	BaseTokenModel
 }
 
-func (model JWTTokenModel) getJWTSigningMethod(signingAlg constants.SigningAlgorithm) jwt.SigningMethod {
-	switch signingAlg {
-	case constants.HS256:
-		return jwt.SigningMethodHS256
-	default:
-		//TODO: Improve this.
-		return jwt.SigningMethodHS256
-	}
-}
-
 func (tokenModel JWTTokenModel) GenerateToken(basicInfo TokenContextInfo) Token {
-	createdAtTimestamp := unit.GetTimestampNow()
-	tokenString, _ := jwt.NewWithClaims(
-		tokenModel.getJWTSigningMethod(tokenModel.Jwk.SigningAlgorithm),
-		jwt.MapClaims{
-			"sub":       basicInfo.Subject,
-			"client_id": basicInfo.ClientId,
-			"scope":     strings.Join(basicInfo.Scopes, " "),
-			"exp":       createdAtTimestamp + tokenModel.ExpiresInSecs,
-			"iat":       createdAtTimestamp,
-		},
-	).SignedString([]byte(tokenModel.Jwk.Key))
+	jti := uuid.NewString()
+	jwk := constants.PrivateJWKS.Key(tokenModel.KeyId)[0]
+	signer, _ := jose.NewSigner(jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key}, nil)
+	timestampNow := unit.GetTimestampNow()
+	claims := map[string]any{
+		string(constants.TokenId):  jti,
+		string(constants.Issuer):   tokenModel.Issuer,
+		string(constants.Subject):  basicInfo.Subject,
+		string(constants.Scope):    strings.Join(basicInfo.Scopes, " "),
+		string(constants.IssuedAt): timestampNow,
+		string(constants.Expiry):   timestampNow + tokenModel.ExpiresInSecs,
+	}
+	tokenString, _ := jwt.Signed(signer).Claims(claims).Serialize()
 
 	token := Token{
-		Id:                 uuid.NewString(),
+		Id:                 jti,
 		TokenModelId:       tokenModel.Id,
 		TokenString:        tokenString,
 		ExpiresInSecs:      tokenModel.ExpiresInSecs,
-		CreatedAtTimestamp: createdAtTimestamp,
+		CreatedAtTimestamp: timestampNow,
 		TokenContextInfo:   basicInfo,
 	}
 	if tokenModel.IsRefreshable {
