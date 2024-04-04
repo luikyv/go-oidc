@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/pkg/oauth"
@@ -13,8 +14,7 @@ import (
 
 func main() {
 
-	jwks := ""
-	oauthManager := oauth.NewManager(jwks, oauth.SetMockedEntitiesConfig, oauth.SetMockedSessionsConfig)
+	oauthManager := oauth.NewManager(jose.JSONWebKeySet{}, jose.JSONWebKeySet{}, oauth.SetMockedEntitiesConfig, oauth.SetMockedSessionsConfig)
 
 	clientId := "client_id"
 	clientSecret := "secret"
