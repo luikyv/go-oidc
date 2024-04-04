@@ -1,8 +1,10 @@
 package utils
 
 import (
+	"errors"
 	"log/slog"
 
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -188,10 +190,16 @@ func getAuthenticatedClientAndSession(ctx Context, req models.TokenRequest) (mod
 }
 
 func getAuthenticatedClient(ctx Context, req models.ClientAuthnRequest) (models.Client, error) {
-	// Fetch the client.
-	client, err := ctx.CrudManager.ClientManager.Get(req.ClientId)
+
+	clientId, err := getClientId(req)
 	if err != nil {
-		ctx.Logger.Info("client not found", slog.String("client_id", req.ClientId))
+		return models.Client{}, err
+	}
+
+	// Fetch the client.
+	client, err := ctx.CrudManager.ClientManager.Get(clientId)
+	if err != nil {
+		ctx.Logger.Info("client not found", slog.String("client_id", clientId))
 		return models.Client{}, err
 	}
 
@@ -205,6 +213,34 @@ func getAuthenticatedClient(ctx Context, req models.ClientAuthnRequest) (models.
 	}
 
 	return client, nil
+}
+
+// Get the client ID from either directly in the request
+// or use the value provided in the client assertion.
+func getClientId(req models.ClientAuthnRequest) (string, error) {
+	if req.ClientId != "" {
+		return req.ClientId, nil
+	}
+
+	assertion, err := jwt.ParseSigned(req.ClientAssertion, constants.ClientSigningAlgorithms)
+	if err != nil {
+		return "", errors.New("invalid assertion")
+	}
+
+	var claims map[constants.Claim]any
+	assertion.UnsafeClaimsWithoutVerification(claims)
+	clientId, ok := claims[constants.Issuer]
+	if !ok {
+		return "", errors.New("invalid assertion")
+	}
+
+	clientIdAsString, ok := clientId.(string)
+	if !ok {
+		return "", errors.New("invalid assertion")
+	}
+
+	return clientIdAsString, nil
+
 }
 
 //---------------------------------------- Refresh Token ----------------------------------------//
