@@ -100,12 +100,12 @@ type AuthorizeRequest struct {
 func (req AuthorizeRequest) IsValid() error {
 
 	// If the request URI is not passed, all the other parameters must be provided.
-	if req.RequestUri == "" && (req.RedirectUri == "" || req.Scope == "" || req.ResponseType == "" || req.State == "" || req.CodeChallenge == "" || req.CodeChallengeMethod == "") {
+	if req.RequestUri == "" && (req.RedirectUri == "" || req.Scope == "" || req.ResponseType == "" || req.CodeChallenge == "" || req.CodeChallengeMethod == "") {
 		return errors.New("invalid parameter")
 	}
 
 	// If the request URI is passed, all the other parameters must be empty.
-	if req.RequestUri != "" && (req.RedirectUri != "" || req.Scope != "" || req.ResponseType != "" || req.State != "" || req.CodeChallenge == "" || req.CodeChallengeMethod == "") {
+	if req.RequestUri != "" && (req.RedirectUri != "" || req.Scope != "" || req.ResponseType != "" || req.CodeChallenge == "" || req.CodeChallengeMethod == "") {
 		return errors.New("invalid parameter")
 	}
 

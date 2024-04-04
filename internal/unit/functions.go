@@ -63,17 +63,14 @@ func SetPublicJWKS(publicJWKS jose.JSONWebKeySet) {
 
 func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod constants.CodeChallengeMethod) bool {
 	switch codeChallengeMethod {
-
 	case constants.Plain:
 		return codeChallenge == codeVerifier
-
 	case constants.SHA256:
 		h := sha256.New()
 		h.Write([]byte(codeVerifier))
 		hashedCodeVerifier := h.Sum(nil)
 		encodedHashedCodeVerifier := base64.URLEncoding.EncodeToString([]byte(hashedCodeVerifier))
 		return codeChallenge == strings.Replace(string(encodedHashedCodeVerifier), "=", "", -1)
-
 	}
 
 	return false

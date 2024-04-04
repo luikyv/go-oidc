@@ -71,7 +71,7 @@ type Client struct {
 	Scopes              []string
 	PkceIsRequired      bool
 	DefaultTokenModelId string
-	ExtraParams         map[string]string
+	Attributes          map[string]string
 	Authenticator       ClientAuthenticator
 }
 
