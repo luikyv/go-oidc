@@ -32,7 +32,7 @@ const (
 type ClientAssertionType string
 
 const (
-	JWTBearer ClientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+	JWTBearerAssertion ClientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 )
 
 type TokenType string
@@ -51,6 +51,13 @@ const (
 	Expiry   Claim = "exp"
 	IssuedAt Claim = "iat"
 	Scope    Claim = "scope"
+)
+
+type CodeChallengeMethod string
+
+const (
+	SHA256 CodeChallengeMethod = "S256"
+	Plain  CodeChallengeMethod = "plain"
 )
 
 type ErrorCode string

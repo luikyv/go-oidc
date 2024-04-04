@@ -11,6 +11,8 @@ type AuthnSession struct {
 	Scopes                []string
 	RedirectUri           string
 	State                 string
+	CodeChallenge         string
+	CodeChallengeMethod   constants.CodeChallengeMethod
 	AuthorizationCode     string
 	AuthorizedAtTimestamp int
 	Subject               string

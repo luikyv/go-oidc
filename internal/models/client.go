@@ -19,7 +19,7 @@ type ClientAuthenticator interface {
 type NoneClientAuthenticator struct{}
 
 func (authenticator NoneClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
-	return req.ClientSecret == "" && req.ClientAssertionType == "" && req.ClientAssertion == ""
+	return true
 }
 
 type SecretClientAuthenticator struct {
@@ -27,9 +27,6 @@ type SecretClientAuthenticator struct {
 }
 
 func (authenticator SecretClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
-	if req.ClientSecret == "" || req.ClientAssertionType != "" || req.ClientAssertion != "" {
-		return false
-	}
 
 	err := bcrypt.CompareHashAndPassword([]byte(authenticator.HashedSecret), []byte(req.ClientSecret))
 	return err == nil
@@ -40,9 +37,6 @@ type PrivateKeyJwtClientAuthenticator struct {
 }
 
 func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
-	if req.ClientSecret != "" || req.ClientAssertionType != constants.JWTBearer || req.ClientAssertion == "" {
-		return false
-	}
 
 	jwt, err := jwt.ParseSigned(req.ClientAssertion, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(authenticator.PublicJwk.Algorithm)})
 	if err != nil {
@@ -75,7 +69,7 @@ type Client struct {
 	ResponseTypes       []constants.ResponseType
 	GrantTypes          []constants.GrantType
 	Scopes              []string
-	PkceIsRequired      string
+	PkceIsRequired      bool
 	DefaultTokenModelId string
 	ExtraParams         map[string]string
 	Authenticator       ClientAuthenticator

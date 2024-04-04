@@ -50,13 +50,15 @@ func initValidAuthenticationSession(_ Context, client models.Client, req models.
 	}
 
 	return models.AuthnSession{
-		Id:                 uuid.NewString(),
-		CallbackId:         unit.GenerateCallbackId(),
-		ClientId:           req.ClientId,
-		Scopes:             unit.SplitString(req.Scope),
-		RedirectUri:        req.RedirectUri,
-		State:              req.State,
-		CreatedAtTimestamp: unit.GetTimestampNow(),
+		Id:                  uuid.NewString(),
+		CallbackId:          unit.GenerateCallbackId(),
+		ClientId:            req.ClientId,
+		Scopes:              unit.SplitStringWithSpaces(req.Scope),
+		RedirectUri:         req.RedirectUri,
+		State:               req.State,
+		CodeChallenge:       req.CodeChallenge,
+		CodeChallengeMethod: req.CodeChallengeMethod,
+		CreatedAtTimestamp:  unit.GetTimestampNow(),
 	}, nil
 
 }
@@ -101,7 +103,16 @@ func validateAuthorizeParams(client models.Client, req models.AuthorizeRequest) 
 		}
 	}
 
-	if !client.AreScopesAllowed(unit.SplitString(req.Scope)) {
+	if client.PkceIsRequired && req.CodeChallenge == "" {
+		return issues.RedirectError{
+			ErrorCode:        constants.InvalidRequest,
+			ErrorDescription: "PKCE is required",
+			RedirectUri:      req.RedirectUri,
+			State:            req.State,
+		}
+	}
+
+	if !client.AreScopesAllowed(unit.SplitStringWithSpaces(req.Scope)) {
 		return issues.RedirectError{
 			ErrorCode:        constants.InvalidScope,
 			ErrorDescription: "invalid scope",

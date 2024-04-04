@@ -92,7 +92,7 @@ func TestPrivateKeyJWTClientAuthenticatorValidInfo(t *testing.T) {
 	tokenString, _ := jwt.Signed(signer).Claims(claims).Serialize()
 	req := ClientAuthnRequest{
 		ClientId:            clientId,
-		ClientAssertionType: constants.JWTBearer,
+		ClientAssertionType: constants.JWTBearerAssertion,
 		ClientAssertion:     tokenString,
 	}
 

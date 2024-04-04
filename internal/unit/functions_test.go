@@ -66,8 +66,8 @@ func TestGetUrlWithParams(t *testing.T) {
 		{"http://example", map[string]string{"param1": "value1", "param2": "value2"}, "http://example?param1=value1&param2=value2"},
 	}
 
-	for _, testCase := range testCases {
-		t.Run(testCase.Url, func(t *testing.T) {
+	for i, testCase := range testCases {
+		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
 			parameterizedUrl := unit.GetUrlWithParams(testCase.Url, testCase.params)
 
 			if parameterizedUrl != testCase.ExpectedParameterizedUrl {
@@ -76,6 +76,32 @@ func TestGetUrlWithParams(t *testing.T) {
 		})
 	}
 
+}
+
+func TestIsPkceValid(t *testing.T) {
+	testCases := []struct {
+		codeVerifier        string
+		codeChallenge       string
+		codeChallengeMethod constants.CodeChallengeMethod
+		isValid             bool
+	}{
+		{"4ea55634198fb6a0c120d46b26359cf50ccea86fd03302b9bca9fa98", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", constants.SHA256, true},
+		{"42d92ec716da149b8c0a553d5cbbdc5fd474625cdffe7335d643105b", "yQ0Wg2MXS83nBOaS3yit-n-xEaEw5LQ8TlhtX_2NkLw", constants.SHA256, true},
+		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", constants.SHA256, false},
+		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", constants.SHA256, false},
+		{"", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", constants.SHA256, false},
+		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "", constants.SHA256, false},
+		{"random_string", "random_string", constants.Plain, true},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
+			isValid := unit.IsPkceValid(testCase.codeVerifier, testCase.codeChallenge, testCase.codeChallengeMethod)
+			if testCase.isValid != isValid {
+				t.Error("error validating PKCE")
+			}
+		})
+	}
 }
 
 func TestContains(t *testing.T) {

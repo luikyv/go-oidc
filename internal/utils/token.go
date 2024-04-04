@@ -61,7 +61,7 @@ func handleClientCredentialsGrantTokenCreation(ctx Context, req models.TokenRequ
 	return tokenModel.GenerateToken(models.TokenContextInfo{
 		Subject:  authenticatedClient.Id,
 		ClientId: authenticatedClient.Id,
-		Scopes:   unit.SplitString(req.Scope),
+		Scopes:   unit.SplitStringWithSpaces(req.Scope),
 	}), nil
 }
 
@@ -75,7 +75,7 @@ func validateClientCredentialsGrantRequest(ctx Context, client models.Client, re
 		}
 	}
 
-	if !client.AreScopesAllowed(unit.SplitString(req.Scope)) {
+	if !client.AreScopesAllowed(unit.SplitStringWithSpaces(req.Scope)) {
 		ctx.Logger.Info("scope not allowed")
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidScope,
@@ -136,6 +136,13 @@ func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client model
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "the authorization code was not issued to the client",
+		}
+	}
+
+	if session.CodeChallenge != "" && (req.CodeVerifier == "" || !unit.IsPkceValid(req.CodeVerifier, session.CodeChallenge, session.CodeChallengeMethod)) {
+		return issues.JsonError{
+			ErrorCode:        constants.InvalidRequest,
+			ErrorDescription: "invalid PKCE",
 		}
 	}
 
