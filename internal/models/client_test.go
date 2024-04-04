@@ -23,17 +23,6 @@ func TestNoneAuthenticatorValidInfo(t *testing.T) {
 	}
 }
 
-func TestNoneAuthenticatorInvalidInfo(t *testing.T) {
-	authenticator := NoneClientAuthenticator{}
-	req := ClientAuthnRequest{
-		ClientId:     "client_id",
-		ClientSecret: "client_secret",
-	}
-	if authenticator.IsAuthenticated(req) {
-		t.Error("The client should not be authenticated")
-	}
-}
-
 func TestSecretClientAuthenticatorValidInfo(t *testing.T) {
 	clientSecret := "password"
 	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 0)

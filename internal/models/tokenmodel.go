@@ -68,8 +68,6 @@ type JWTTokenModel struct {
 
 func (tokenModel JWTTokenModel) GenerateToken(basicInfo TokenContextInfo) Token {
 	jti := uuid.NewString()
-	jwk := constants.PrivateJWKS.Key(tokenModel.KeyId)[0]
-	signer, _ := jose.NewSigner(jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key}, nil)
 	timestampNow := unit.GetTimestampNow()
 	claims := map[string]any{
 		string(constants.TokenId):  jti,
@@ -79,6 +77,9 @@ func (tokenModel JWTTokenModel) GenerateToken(basicInfo TokenContextInfo) Token 
 		string(constants.IssuedAt): timestampNow,
 		string(constants.Expiry):   timestampNow + tokenModel.ExpiresInSecs,
 	}
+
+	jwk := unit.GetPrivateKey(tokenModel.KeyId)
+	signer, _ := jose.NewSigner(jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key}, nil)
 	tokenString, _ := jwt.Signed(signer).Claims(claims).Serialize()
 
 	token := Token{

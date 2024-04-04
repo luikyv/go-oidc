@@ -32,7 +32,7 @@ func GenerateCallbackId() string {
 }
 
 func GenerateRequestUri() string {
-	return fmt.Sprintf("urn:%s:request_uri:%s", constants.RequestUriDomain, GenerateRandomString(constants.RequestUriLength, constants.RequestUriLength))
+	return fmt.Sprintf("urn:ietf:params:oauth:request_uri:%s", GenerateRandomString(constants.RequestUriLength, constants.RequestUriLength))
 }
 
 func GenerateAuthorizationCode() string {
@@ -57,8 +57,22 @@ func SetPrivateJWKS(privateJWKS jose.JSONWebKeySet) {
 	constants.PrivateJWKS = privateJWKS
 }
 
-func SetPublicJWKS(publicJWKS jose.JSONWebKeySet) {
-	constants.PublicJWKS = publicJWKS
+func GetPrivateKey(keyId string) jose.JSONWebKey {
+	return constants.PrivateJWKS.Key(keyId)[0]
+}
+
+func GetPublicKeys() jose.JSONWebKeySet {
+	publicKeys := []jose.JSONWebKey{}
+	for _, privateKey := range constants.PrivateJWKS.Keys {
+		publicKey := privateKey.Public()
+		// If the key is not of assymetric type, publicKey holds a null value.
+		// To know if it is the case, we'll check if its key ID is not a null value which would mean privateKey is symetric and cannot be public.
+		if publicKey.KeyID != "" {
+			publicKeys = append(publicKeys, privateKey.Public())
+		}
+	}
+
+	return jose.JSONWebKeySet{Keys: publicKeys}
 }
 
 func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod constants.CodeChallengeMethod) bool {

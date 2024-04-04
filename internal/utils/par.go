@@ -27,13 +27,15 @@ func PushAuthorization(ctx Context, req models.PARRequest) (requestUri string, e
 
 	requestUri = unit.GenerateRequestUri()
 	err = ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(models.AuthnSession{
-		Id:                 uuid.NewString(),
-		RequestUri:         requestUri,
-		ClientId:           client.Id,
-		Scopes:             strings.Split(req.Scope, " "),
-		RedirectUri:        req.RedirectUri,
-		State:              req.State,
-		CreatedAtTimestamp: unit.GetTimestampNow(),
+		Id:                  uuid.NewString(),
+		RequestUri:          requestUri,
+		ClientId:            client.Id,
+		Scopes:              strings.Split(req.Scope, " "),
+		RedirectUri:         req.RedirectUri,
+		State:               req.State,
+		CodeChallenge:       req.CodeChallenge,
+		CodeChallengeMethod: req.CodeChallengeMethod,
+		CreatedAtTimestamp:  unit.GetTimestampNow(),
 	})
 	if err != nil {
 		ctx.Logger.Debug("could not authenticate the client", slog.String("client_id", req.ClientId))

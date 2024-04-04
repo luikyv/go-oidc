@@ -22,7 +22,6 @@ type OAuthManager struct {
 
 func NewManager(
 	privateJWKS jose.JSONWebKeySet,
-	publicJWKS jose.JSONWebKeySet,
 	settings ...func(*OAuthManager),
 ) *OAuthManager {
 
@@ -36,7 +35,6 @@ func NewManager(
 	}
 
 	unit.SetPrivateJWKS(privateJWKS)
-	unit.SetPublicJWKS(publicJWKS)
 
 	return manager
 }

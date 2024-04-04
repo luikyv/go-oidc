@@ -40,8 +40,10 @@ func TestInitAuthenticationWhenInvalidRedirectUri(t *testing.T) {
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
-		ClientId:    utils.ValidClientId,
-		RedirectUri: "https://invalid.com",
+		ClientId: utils.ValidClientId,
+		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
+			RedirectUri: "https://invalid.com",
+		},
 	})
 
 	// Assert
@@ -65,10 +67,12 @@ func TestInitAuthenticationWhenInvalidScope(t *testing.T) {
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
-		ClientId:     utils.ValidClientId,
-		RedirectUri:  client.RedirectUris[0],
-		Scope:        "invalid_scope",
-		ResponseType: string(constants.Code),
+		ClientId: utils.ValidClientId,
+		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
+			RedirectUri:  client.RedirectUris[0],
+			Scope:        "invalid_scope",
+			ResponseType: string(constants.Code),
+		},
 	})
 
 	// Assert
@@ -92,10 +96,12 @@ func TestInitAuthenticationWhenInvalidResponseType(t *testing.T) {
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
-		ClientId:     utils.ValidClientId,
-		RedirectUri:  client.RedirectUris[0],
-		Scope:        strings.Join(client.Scopes, " "),
-		ResponseType: string(constants.IdToken),
+		ClientId: utils.ValidClientId,
+		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
+			RedirectUri:  client.RedirectUris[0],
+			Scope:        strings.Join(client.Scopes, " "),
+			ResponseType: string(constants.IdToken),
+		},
 	})
 
 	// Assert
@@ -119,10 +125,12 @@ func TestInitAuthenticationWhenNoPolicyIsAvailable(t *testing.T) {
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
-		ClientId:     utils.ValidClientId,
-		RedirectUri:  client.RedirectUris[0],
-		Scope:        strings.Join(client.Scopes, " "),
-		ResponseType: string(constants.Code),
+		ClientId: utils.ValidClientId,
+		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
+			RedirectUri:  client.RedirectUris[0],
+			Scope:        strings.Join(client.Scopes, " "),
+			ResponseType: string(constants.Code),
+		},
 	})
 
 	// Assert
@@ -153,10 +161,12 @@ func TestInitAuthenticationShouldEndWithError(t *testing.T) {
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
-		ClientId:     utils.ValidClientId,
-		RedirectUri:  client.RedirectUris[0],
-		Scope:        strings.Join(client.Scopes, " "),
-		ResponseType: string(constants.Code),
+		ClientId: utils.ValidClientId,
+		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
+			RedirectUri:  client.RedirectUris[0],
+			Scope:        strings.Join(client.Scopes, " "),
+			ResponseType: string(constants.Code),
+		},
 	})
 
 	// Assert
@@ -200,10 +210,12 @@ func TestInitAuthenticationShouldEndInProgress(t *testing.T) {
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
-		ClientId:     utils.ValidClientId,
-		RedirectUri:  client.RedirectUris[0],
-		Scope:        strings.Join(client.Scopes, " "),
-		ResponseType: string(constants.Code),
+		ClientId: utils.ValidClientId,
+		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
+			RedirectUri:  client.RedirectUris[0],
+			Scope:        strings.Join(client.Scopes, " "),
+			ResponseType: string(constants.Code),
+		},
 	})
 
 	// Assert
@@ -261,10 +273,12 @@ func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
-		ClientId:     utils.ValidClientId,
-		RedirectUri:  client.RedirectUris[0],
-		Scope:        strings.Join(client.Scopes, " "),
-		ResponseType: string(constants.Code),
+		ClientId: utils.ValidClientId,
+		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
+			RedirectUri:  client.RedirectUris[0],
+			Scope:        strings.Join(client.Scopes, " "),
+			ResponseType: string(constants.Code),
+		},
 	})
 
 	// Assert
@@ -316,8 +330,10 @@ func TestInitAuthenticationWithPAR(t *testing.T) {
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
-		ClientId:   utils.ValidClientId,
-		RequestUri: requestUri,
+		ClientId: utils.ValidClientId,
+		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
+			RequestUri: requestUri,
+		},
 	})
 
 	// Assert

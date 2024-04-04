@@ -23,10 +23,30 @@ type Token struct {
 }
 
 type ClientAuthnRequest struct {
-	ClientId            string                        `form:"client_id" binding:"required"`
+	ClientId            string                        `form:"client_id"`
 	ClientSecret        string                        `form:"client_secret"`
 	ClientAssertionType constants.ClientAssertionType `form:"client_assertion_type"`
 	ClientAssertion     string                        `form:"client_assertion"`
+}
+
+func (req ClientAuthnRequest) IsValid() error {
+
+	// Either the client ID or the client assertion must be present to identity the client.
+	if req.ClientId == "" && req.ClientAssertion == "" {
+		return errors.New("invalid authentication parameter")
+	}
+
+	// Validate parameters for client secret authentication.
+	if req.ClientSecret != "" && (req.ClientAssertionType != "" || req.ClientAssertion != "") {
+		return errors.New("invalid authentication parameter")
+	}
+
+	// Validate parameters for private key jwt authentication.
+	if req.ClientAssertion != "" && (req.ClientAssertionType != constants.JWTBearerAssertion || req.ClientSecret != "") {
+		return errors.New("invalid authentication parameter")
+	}
+
+	return nil
 }
 
 type TokenRequest struct {
@@ -41,14 +61,8 @@ type TokenRequest struct {
 
 func (req TokenRequest) IsValid() error {
 
-	// Validate parameters for client secret authentication.
-	if req.ClientSecret != "" && (req.ClientAssertionType != "" || req.ClientAssertion != "") {
-		return errors.New("invalid authentication parameter")
-	}
-
-	// Validate parameters for private key jwt authentication.
-	if req.ClientAssertion != "" && (req.ClientAssertionType != constants.JWTBearerAssertion || req.ClientSecret != "") {
-		return errors.New("invalid authentication parameter")
+	if err := req.ClientAuthnRequest.IsValid(); err != nil {
+		return err
 	}
 
 	// RFC 7636. "...with a minimum length of 43 characters and a maximum length of 128 characters."
@@ -86,8 +100,7 @@ type TokenResponse struct {
 	Scope        string              `json:"scope,omitempty"`
 }
 
-type AuthorizeRequest struct {
-	ClientId            string                        `form:"client_id" binding:"required"`
+type BaseAuthorizeRequest struct {
 	RedirectUri         string                        `form:"redirect_uri"`
 	Scope               string                        `form:"scope"`
 	ResponseType        string                        `form:"response_type"`
@@ -97,15 +110,20 @@ type AuthorizeRequest struct {
 	RequestUri          string                        `form:"request_uri"`
 }
 
+type AuthorizeRequest struct {
+	ClientId string `form:"client_id" binding:"required"`
+	BaseAuthorizeRequest
+}
+
 func (req AuthorizeRequest) IsValid() error {
 
 	// If the request URI is not passed, all the other parameters must be provided.
-	if req.RequestUri == "" && (req.RedirectUri == "" || req.Scope == "" || req.ResponseType == "" || req.CodeChallenge == "" || req.CodeChallengeMethod == "") {
+	if req.RequestUri == "" && (req.RedirectUri == "" || req.Scope == "" || req.ResponseType == "") {
 		return errors.New("invalid parameter")
 	}
 
 	// If the request URI is passed, all the other parameters must be empty.
-	if req.RequestUri != "" && (req.RedirectUri != "" || req.Scope != "" || req.ResponseType != "" || req.CodeChallenge == "" || req.CodeChallengeMethod == "") {
+	if req.RequestUri != "" && (req.RedirectUri != "" || req.Scope != "" || req.ResponseType != "") {
 		return errors.New("invalid parameter")
 	}
 
@@ -117,33 +135,28 @@ func (req AuthorizeRequest) IsValid() error {
 	return nil
 }
 
-// TODO embed AuthorizeRequest.
 type PARRequest struct {
 	ClientAuthnRequest
-	RedirectUri         string                        `form:"redirect_uri" binding:"required"`
-	Scope               string                        `form:"scope" binding:"required"`
-	ResponseType        string                        `form:"response_type" binding:"required"`
-	State               string                        `form:"state"`
-	CodeChallenge       string                        `form:"code_challenge"`
-	CodeChallengeMethod constants.CodeChallengeMethod `form:"code_challenge_method"`
-	RequestUri          string                        `form:"request_uri"` // It is here only to make sure the client doesn't pass it during the request.
+	BaseAuthorizeRequest
 }
 
 func (req PARRequest) ToAuthorizeRequest() AuthorizeRequest {
 	return AuthorizeRequest{
-		ClientId:     req.ClientId,
-		RedirectUri:  req.RedirectUri,
-		Scope:        req.Scope,
-		ResponseType: req.ResponseType,
-		State:        req.State,
-		RequestUri:   "", // Make sure the request URI is set as its null value here. This will force the authorize params to be validated.
+		ClientId:             req.ClientId,
+		BaseAuthorizeRequest: req.BaseAuthorizeRequest,
 	}
 }
 
 func (req PARRequest) IsValid() error {
+
 	if req.RequestUri != "" {
 		return errors.New("invalid parameter")
 	}
+
+	if err := req.ClientAuthnRequest.IsValid(); err != nil {
+		return err
+	}
+
 	return req.ToAuthorizeRequest().IsValid()
 }
 

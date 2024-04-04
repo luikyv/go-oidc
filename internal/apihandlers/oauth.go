@@ -7,12 +7,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
 func HandleJWKSRequest(ctx utils.Context) {
-	ctx.RequestContext.JSON(http.StatusAccepted, constants.PublicJWKS)
+	ctx.RequestContext.JSON(http.StatusAccepted, unit.GetPublicKeys())
 }
 
 //---------------------------------------- Pushed Authorization Request - PAR ----------------------------------------//

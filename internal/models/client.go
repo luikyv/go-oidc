@@ -48,10 +48,10 @@ func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(req Client
 		return false
 	}
 
-	if issuer, ok := claims["iss"]; !ok || issuer != req.ClientId {
+	if issuer, ok := claims[string(constants.Issuer)]; !ok || issuer != req.ClientId {
 		return false
 	}
-	if subject, ok := claims["sub"]; !ok || subject != req.ClientId {
+	if subject, ok := claims[string(constants.Subject)]; !ok || subject != req.ClientId {
 		return false
 	}
 	// TODO: validate the audience as the oauth server.

@@ -1,8 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
@@ -13,13 +17,29 @@ import (
 )
 
 func main() {
-
-	oauthManager := oauth.NewManager(jose.JSONWebKeySet{}, jose.JSONWebKeySet{}, oauth.SetMockedEntitiesConfig, oauth.SetMockedSessionsConfig)
-
 	clientId := "client_id"
 	clientSecret := "secret"
 	tokenModelId := "my_token_model"
 	userPassword := "password"
+	privateKeyId := "rsa_key"
+
+	// Load the private JWKS.
+	absPath, _ := filepath.Abs("./jwks.json")
+	jwksFile, err := os.Open(absPath)
+	if err != nil {
+		panic(err.Error())
+	}
+	defer jwksFile.Close()
+	jwksBytes, err := io.ReadAll(jwksFile)
+	if err != nil {
+		panic(err.Error())
+	}
+	var jwks jose.JSONWebKeySet
+	json.Unmarshal(jwksBytes, &jwks)
+
+	// Create the manager.
+	oauthManager := oauth.NewManager(jwks, oauth.SetMockedEntitiesConfig, oauth.SetMockedSessionsConfig)
+
 	// Add Mocks
 	// oauthManager.AddTokenModel(models.OpaqueTokenModel{
 	// 	TokenLength: 20,
@@ -31,7 +51,7 @@ func main() {
 	// 	},
 	// })
 	oauthManager.AddTokenModel(models.JWTTokenModel{
-		KeyId: "",
+		KeyId: privateKeyId,
 		BaseTokenModel: models.BaseTokenModel{
 			Id:            tokenModelId,
 			Issuer:        "https://example.com",

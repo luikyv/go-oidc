@@ -78,5 +78,4 @@ type Header string
 
 const CorrelationIdHeader Header = "X-Correlation-ID"
 
-var PublicJWKS jose.JSONWebKeySet
 var PrivateJWKS jose.JSONWebKeySet
