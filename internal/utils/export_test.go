@@ -36,7 +36,7 @@ func SetUp() (ctx Context, tearDown func()) {
 		Id:                  "random_client_id",
 		RedirectUris:        []string{"https://example.com"},
 		Scopes:              []string{"scope1", "scope2"},
-		GrantTypes:          []constants.GrantType{constants.ClientCredentials, constants.AuthorizationCode},
+		GrantTypes:          []constants.GrantType{constants.ClientCredentials, constants.AuthorizationCode, constants.RefreshToken},
 		ResponseTypes:       []constants.ResponseType{constants.Code},
 		DefaultTokenModelId: ValidTokenModelId,
 		Authenticator: models.SecretClientAuthenticator{

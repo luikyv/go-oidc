@@ -36,7 +36,7 @@ func TestOpaqueTokenModelGenerateToken(t *testing.T) {
 	if tokenSession.Token == "" || len(tokenSession.Token) < opaqueTokenModel.TokenLength {
 		t.Errorf("the opaque token %s is invalid", tokenSession.Token)
 	}
-	if tokenSession.Id != tokenSession.Token {
+	if tokenSession.TokenId != tokenSession.Token {
 		t.Errorf("the token id: %s should be equal to the opaque token value: %s", tokenSession.Id, tokenSession.Token)
 	}
 	if tokenSession.ExpiresInSecs != opaqueTokenModel.ExpiresInSecs {
