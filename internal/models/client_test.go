@@ -78,11 +78,11 @@ func TestPrivateKeyJWTClientAuthenticatorValidInfo(t *testing.T) {
 		string(constants.IssuedAt): createdAtTimestamp,
 		string(constants.Expiry):   createdAtTimestamp + 60,
 	}
-	tokenString, _ := jwt.Signed(signer).Claims(claims).Serialize()
+	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
 	req := ClientAuthnRequest{
 		ClientId:            clientId,
 		ClientAssertionType: constants.JWTBearerAssertion,
-		ClientAssertion:     tokenString,
+		ClientAssertion:     assertion,
 	}
 
 	// Then

@@ -2,6 +2,7 @@ package models
 
 import (
 	"slices"
+	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
@@ -37,27 +38,24 @@ type PrivateKeyJwtClientAuthenticator struct {
 }
 
 func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
+	// TODO: validate the audience as the oauth server.
+	// TODO: Do I need to validate the "kid" header to make sure is the same in the client's JWK?
 
-	jwt, err := jwt.ParseSigned(req.ClientAssertion, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(authenticator.PublicJwk.Algorithm)})
+	assertion, err := jwt.ParseSigned(req.ClientAssertion, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(authenticator.PublicJwk.Algorithm)})
 	if err != nil {
 		return false
 	}
 
-	claims := make(map[string]interface{})
-	if err := jwt.Claims(authenticator.PublicJwk.Key, &claims); err != nil {
+	claims := jwt.Claims{}
+	if err := assertion.Claims(authenticator.PublicJwk.Key, &claims); err != nil {
 		return false
 	}
 
-	if issuer, ok := claims[string(constants.Issuer)]; !ok || issuer != req.ClientId {
-		return false
-	}
-	if subject, ok := claims[string(constants.Subject)]; !ok || subject != req.ClientId {
-		return false
-	}
-	// TODO: validate the audience as the oauth server.
-	// TODO: Do I need to validate the "kid" header to make sure is the same in the client's JWK?
-
-	return true
+	err = claims.ValidateWithLeeway(jwt.Expected{
+		Issuer:  claims.Subject,
+		Subject: claims.Subject,
+	}, time.Duration(0))
+	return err == nil
 }
 
 //---------------------------------------- Client ----------------------------------------//

@@ -4,21 +4,40 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/pkg/oauth"
 	"golang.org/x/crypto/bcrypt"
 )
 
+func createClientAssertion(client models.Client, jwk jose.JSONWebKey) string {
+	createdAtTimestamp := unit.GetTimestampNow()
+	signer, _ := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", "random value"),
+	)
+	claims := map[string]any{
+		string(constants.Issuer):   client.Id,
+		string(constants.Subject):  client.Id,
+		string(constants.IssuedAt): createdAtTimestamp,
+		string(constants.Expiry):   createdAtTimestamp,
+	}
+	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
+
+	return assertion
+}
+
 func main() {
 	clientId := "client_id"
-	clientSecret := "secret"
 	opaqueTokenModelId := "opaque_token_model"
 	jwtTokenModelId := "jwt_token_model"
 	userPassword := "password"
@@ -61,21 +80,41 @@ func main() {
 			RefreshLifetimeSecs: 60,
 		},
 	})
-	hashedSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 0)
-	oauthManager.AddClient(models.Client{
+
+	// Load the client JWK.
+	absPath, _ = filepath.Abs("./client_jwk.json")
+	clientJwkFile, err := os.Open(absPath)
+	if err != nil {
+		panic(err.Error())
+	}
+	defer jwksFile.Close()
+	clientJwkBytes, err := io.ReadAll(clientJwkFile)
+	if err != nil {
+		panic(err.Error())
+	}
+	var clientJwk jose.JSONWebKey
+	clientJwk.UnmarshalJSON(clientJwkBytes)
+
+	hashedSecret, _ := bcrypt.GenerateFromPassword([]byte("secret"), 0)
+	// Create the client
+	client := models.Client{
 		Id:                  clientId,
 		GrantTypes:          []constants.GrantType{constants.ClientCredentials, constants.AuthorizationCode, constants.RefreshToken},
-		Scopes:              []string{"email"},
+		Scopes:              []string{"email", "profile"},
 		RedirectUris:        []string{"http://localhost:80/callback"},
 		ResponseTypes:       []constants.ResponseType{constants.Code},
 		DefaultTokenModelId: jwtTokenModelId,
+		// Authenticator: models.PrivateKeyJwtClientAuthenticator{
+		// 	PublicJwk: clientJwk.Public(),
+		// },
 		Authenticator: models.SecretClientAuthenticator{
 			HashedSecret: string(hashedSecret),
 		},
 		Attributes: map[string]string{
 			"custom_attribute": "random_attribute",
 		},
-	})
+	}
+	oauthManager.AddClient(client)
 
 	// Create Steps
 	passwordStep := models.NewStep(
@@ -144,6 +183,13 @@ func main() {
 	)
 
 	// Run
+	opts := &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}
+	jsonHandler := slog.NewJSONHandler(os.Stdout, opts)
+	logger := slog.New(jsonHandler)
+	logger.Debug("client assertion", slog.String("client_assertion", createClientAssertion(client, clientJwk)))
+
 	oauthManager.AddPolicy(policy)
 	oauthManager.Run(80)
 }

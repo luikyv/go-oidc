@@ -343,7 +343,7 @@ func getClientId(req models.ClientAuthnRequest) (string, error) {
 	}
 
 	var claims map[constants.Claim]any
-	assertion.UnsafeClaimsWithoutVerification(claims)
+	assertion.UnsafeClaimsWithoutVerification(&claims)
 
 	clientId, ok := claims[constants.Issuer]
 	if !ok {
