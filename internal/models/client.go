@@ -55,6 +55,7 @@ func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(req Client
 		return false
 	}
 	// TODO: validate the audience as the oauth server.
+	// TODO: Do I need to validate the "kid" header to make sure is the same in the client's JWK?
 
 	return true
 }

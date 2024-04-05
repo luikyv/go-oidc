@@ -14,10 +14,10 @@ import (
 func HandleTokenCreation(
 	ctx Context,
 	req models.TokenRequest,
-) (models.Token, error) {
+) (models.TokenSession, error) {
 
-	var token models.Token
-	var err error
+	var token models.TokenSession
+	var err error = nil
 	switch req.GrantType {
 	case constants.ClientCredentials:
 		token, err = handleClientCredentialsGrantTokenCreation(ctx, req)
@@ -25,19 +25,9 @@ func HandleTokenCreation(
 		token, err = handleAuthorizationCodeGrantTokenCreation(ctx, req)
 	case constants.RefreshToken:
 		token, err = handleRefreshTokenGrantTokenCreation(ctx, req)
-	default:
-		err = issues.JsonError{
-			ErrorCode:        constants.InvalidRequest,
-			ErrorDescription: "invalid grant type",
-		}
 	}
 	if err != nil {
-		return models.Token{}, err
-	}
-
-	err = ctx.CrudManager.TokenSessionManager.Create(token)
-	if err != nil {
-		return models.Token{}, err
+		return models.TokenSession{}, err
 	}
 
 	return token, nil
@@ -45,26 +35,37 @@ func HandleTokenCreation(
 
 //---------------------------------------- Client Credentials ----------------------------------------//
 
-func handleClientCredentialsGrantTokenCreation(ctx Context, req models.TokenRequest) (models.Token, error) {
+func handleClientCredentialsGrantTokenCreation(ctx Context, req models.TokenRequest) (models.TokenSession, error) {
 	authenticatedClient, err := getAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
-		return models.Token{}, err
+		return models.TokenSession{}, err
 	}
 
 	if err := validateClientCredentialsGrantRequest(ctx, authenticatedClient, req); err != nil {
-		return models.Token{}, err
+		return models.TokenSession{}, err
 	}
 
 	tokenModel, err := ctx.CrudManager.TokenModelManager.Get(authenticatedClient.DefaultTokenModelId)
 	if err != nil {
-		return models.Token{}, err
+		return models.TokenSession{}, err
 	}
 
-	return tokenModel.GenerateToken(models.TokenContextInfo{
-		Subject:  authenticatedClient.Id,
-		ClientId: authenticatedClient.Id,
-		Scopes:   unit.SplitStringWithSpaces(req.Scope),
-	}), nil
+	tokenSession := tokenModel.GenerateToken(
+		models.NewClientCredentialsGrantTokenContextInfoFromAuthnSession(authenticatedClient, req),
+	)
+
+	_, isOpaque := tokenModel.(models.OpaqueTokenModel)
+	if isOpaque {
+		// We only need to create a token session for client credentials when the token is not self-contained,
+		// i.e. it is a refecence token.
+		ctx.Logger.Debug("create token session")
+		err = ctx.CrudManager.TokenSessionManager.CreateOrUpdate(tokenSession)
+	}
+	if err != nil {
+		return models.TokenSession{}, err
+	}
+
+	return tokenSession, nil
 }
 
 func validateClientCredentialsGrantRequest(ctx Context, client models.Client, req models.TokenRequest) error {
@@ -90,32 +91,44 @@ func validateClientCredentialsGrantRequest(ctx Context, client models.Client, re
 
 //---------------------------------------- Authorization Code ----------------------------------------//
 
-func handleAuthorizationCodeGrantTokenCreation(ctx Context, req models.TokenRequest) (models.Token, error) {
+func handleAuthorizationCodeGrantTokenCreation(ctx Context, req models.TokenRequest) (models.TokenSession, error) {
 
 	authenticatedClient, session, err := getAuthenticatedClientAndSession(ctx, req)
 	if err != nil {
 		ctx.Logger.Debug("error while loading the client or session", slog.String("error", err.Error()))
-		return models.Token{}, err
+		return models.TokenSession{}, err
 	}
 
 	if err := validateAuthorizationCodeGrantRequest(req, authenticatedClient, session); err != nil {
 		ctx.Logger.Debug("invalid parameters for the token request", slog.String("error", err.Error()))
-		return models.Token{}, err
+		return models.TokenSession{}, err
 	}
 
-	ctx.Logger.Debug("get the token model")
+	ctx.Logger.Debug("fetch the token model")
 	tokenModel, err := ctx.CrudManager.TokenModelManager.Get(authenticatedClient.DefaultTokenModelId)
 	if err != nil {
 		ctx.Logger.Debug("error while loading the token model", slog.String("error", err.Error()))
-		return models.Token{}, err
+		return models.TokenSession{}, err
 	}
 	ctx.Logger.Debug("the token model was loaded successfully")
 
-	return tokenModel.GenerateToken(models.TokenContextInfo{
-		Subject:  session.Subject,
-		ClientId: session.ClientId,
-		Scopes:   session.Scopes,
-	}), nil
+	tokenSession := tokenModel.GenerateToken(
+		models.NewAuthorizationCodeGrantTokenContextInfoFromAuthnSession(session),
+	)
+
+	err = nil
+	_, isOpaque := tokenModel.(models.OpaqueTokenModel)
+	if isOpaque || tokenSession.RefreshToken != "" {
+		// We only need to create a token session for the authorization code grant when the token is not self-contained,
+		// i.e. it is a refecence token, or when the refresh token is issued.
+		ctx.Logger.Debug("create token session")
+		err = ctx.CrudManager.TokenSessionManager.CreateOrUpdate(tokenSession)
+	}
+	if err != nil {
+		return models.TokenSession{}, err
+	}
+
+	return tokenSession, nil
 }
 
 func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client models.Client, session models.AuthnSession) error {
@@ -141,6 +154,7 @@ func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client model
 		}
 	}
 
+	// If the session was created with a code challenge, the token request must contain the right code verifier.
 	if session.CodeChallenge != "" && (req.CodeVerifier == "" || !unit.IsPkceValid(req.CodeVerifier, session.CodeChallenge, session.CodeChallengeMethod)) {
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
@@ -152,6 +166,7 @@ func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client model
 }
 
 func getAuthenticatedClientAndSession(ctx Context, req models.TokenRequest) (models.Client, models.AuthnSession, error) {
+
 	ctx.Logger.Debug("get the session using the authorization code.")
 	type sessionResultType struct {
 		session models.AuthnSession
@@ -168,7 +183,6 @@ func getAuthenticatedClientAndSession(ctx Context, req models.TokenRequest) (mod
 		ctx.CrudManager.AuthnSessionManager.Delete(session.Id)
 	}(sessionCh)
 
-	// Fetch the client while the session is being fetched.
 	ctx.Logger.Debug("get the client while the session is being loaded.")
 	authenticatedClient, err := getAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
@@ -189,6 +203,100 @@ func getAuthenticatedClientAndSession(ctx Context, req models.TokenRequest) (mod
 	return authenticatedClient, session, nil
 }
 
+//---------------------------------------- Refresh Token ----------------------------------------//
+
+func handleRefreshTokenGrantTokenCreation(ctx Context, req models.TokenRequest) (models.TokenSession, error) {
+
+	authenticatedClient, tokenSession, err := getAuthenticatedClientAndTokenSession(ctx, req)
+	if err != nil {
+		ctx.Logger.Debug("error while loading the client or token.", slog.String("error", err.Error()))
+		return models.TokenSession{}, err
+	}
+
+	if err = validateRefreshTokenGrantRequest(authenticatedClient, tokenSession); err != nil {
+		return models.TokenSession{}, err
+	}
+
+	ctx.Logger.Debug("get the token model")
+	tokenModel, err := ctx.CrudManager.TokenModelManager.Get(tokenSession.TokenModelId)
+	if err != nil {
+		ctx.Logger.Debug("error while loading the token model", slog.String("error", err.Error()))
+		return models.TokenSession{}, err
+	}
+	ctx.Logger.Debug("the token model was loaded successfully")
+
+	tokenSession = tokenModel.GenerateToken(
+		models.NewRefreshTokenGrantTokenContextInfoFromAuthnSession(tokenSession),
+	)
+
+	ctx.Logger.Debug("create token session")
+	err = ctx.CrudManager.TokenSessionManager.CreateOrUpdate(tokenSession)
+	if err != nil {
+		return models.TokenSession{}, err
+	}
+
+	return tokenSession, nil
+}
+
+func getAuthenticatedClientAndTokenSession(ctx Context, req models.TokenRequest) (models.Client, models.TokenSession, error) {
+	ctx.Logger.Debug("get the token session using the refresh token.")
+	type tokenSessionResultType struct {
+		token models.TokenSession
+		err   error
+	}
+	tokenSessionCh := make(chan tokenSessionResultType, 1)
+	go func(chan<- tokenSessionResultType) {
+		tokenSession, err := ctx.CrudManager.TokenSessionManager.GetByRefreshToken(req.RefreshToken)
+		tokenSessionCh <- tokenSessionResultType{
+			token: tokenSession,
+			err:   err,
+		}
+		// Always delete the token session.
+		ctx.CrudManager.TokenSessionManager.Delete(tokenSession.Id)
+	}(tokenSessionCh)
+
+	// Fetch the client while the token is being fetched.
+	ctx.Logger.Debug("get the client while the token is being loaded.")
+	authenticatedClient, err := getAuthenticatedClient(ctx, req.ClientAuthnRequest)
+	if err != nil {
+		ctx.Logger.Debug("error while loading the client.", slog.String("error", err.Error()))
+		return models.Client{}, models.TokenSession{}, err
+	}
+	ctx.Logger.Debug("the client was loaded successfully.")
+
+	ctx.Logger.Debug("wait for the session.")
+	tokenSessionResult := <-tokenSessionCh
+	tokenSession, err := tokenSessionResult.token, tokenSessionResult.err
+	if err != nil {
+		ctx.Logger.Debug("error while loading the token.", slog.String("error", err.Error()))
+		return models.Client{}, models.TokenSession{}, err
+	}
+	ctx.Logger.Debug("the session was loaded successfully.")
+
+	return authenticatedClient, tokenSession, nil
+}
+
+func validateRefreshTokenGrantRequest(client models.Client, tokenSession models.TokenSession) error {
+
+	if !client.IsGrantTypeAllowed(constants.RefreshToken) {
+		return issues.JsonError{
+			ErrorCode:        constants.InvalidRequest,
+			ErrorDescription: "invalid grant type",
+		}
+	}
+
+	if client.Id != tokenSession.ClientId {
+		return issues.JsonError{
+			ErrorCode:        constants.InvalidRequest,
+			ErrorDescription: "the refresh token was not issued to the client",
+		}
+	}
+
+	return nil
+}
+
+//---------------------------------------- Helpers ----------------------------------------//
+
 func getAuthenticatedClient(ctx Context, req models.ClientAuthnRequest) (models.Client, error) {
 
 	clientId, err := getClientId(req)
@@ -196,14 +304,12 @@ func getAuthenticatedClient(ctx Context, req models.ClientAuthnRequest) (models.
 		return models.Client{}, err
 	}
 
-	// Fetch the client.
 	client, err := ctx.CrudManager.ClientManager.Get(clientId)
 	if err != nil {
 		ctx.Logger.Info("client not found", slog.String("client_id", clientId))
 		return models.Client{}, err
 	}
 
-	// Verify that the client is authenticated.
 	if !client.Authenticator.IsAuthenticated(req) {
 		ctx.Logger.Info("client not authenticated", slog.String("client_id", req.ClientId))
 		return models.Client{}, issues.JsonError{
@@ -215,8 +321,7 @@ func getAuthenticatedClient(ctx Context, req models.ClientAuthnRequest) (models.
 	return client, nil
 }
 
-// Get the client ID from either directly in the request
-// or use the value provided in the client assertion.
+// Get the client ID from either directly in the request or use the value provided in the client assertion.
 func getClientId(req models.ClientAuthnRequest) (string, error) {
 	if req.ClientId != "" {
 		return req.ClientId, nil
@@ -229,6 +334,7 @@ func getClientId(req models.ClientAuthnRequest) (string, error) {
 
 	var claims map[constants.Claim]any
 	assertion.UnsafeClaimsWithoutVerification(claims)
+
 	clientId, ok := claims[constants.Issuer]
 	if !ok {
 		return "", errors.New("invalid assertion")
@@ -241,78 +347,4 @@ func getClientId(req models.ClientAuthnRequest) (string, error) {
 
 	return clientIdAsString, nil
 
-}
-
-//---------------------------------------- Refresh Token ----------------------------------------//
-
-func handleRefreshTokenGrantTokenCreation(ctx Context, req models.TokenRequest) (models.Token, error) {
-
-	authenticatedClient, token, err := getAuthenticatedClientAndToken(ctx, req)
-	if err != nil {
-		ctx.Logger.Debug("error while loading the client or token.", slog.String("error", err.Error()))
-		return models.Token{}, err
-	}
-
-	if err = validateRefreshTokenGrantRequest(authenticatedClient, token); err != nil {
-		return models.Token{}, err
-	}
-
-	ctx.Logger.Debug("get the token model")
-	tokenModel, err := ctx.CrudManager.TokenModelManager.Get(token.TokenModelId)
-	if err != nil {
-		ctx.Logger.Debug("error while loading the token model", slog.String("error", err.Error()))
-		return models.Token{}, err
-	}
-	ctx.Logger.Debug("the token model was loaded successfully")
-
-	return tokenModel.GenerateToken(token.TokenContextInfo), nil
-}
-
-func getAuthenticatedClientAndToken(ctx Context, req models.TokenRequest) (models.Client, models.Token, error) {
-	ctx.Logger.Debug("get the token session using the refresh token.")
-	type tokenResultType struct {
-		token models.Token
-		err   error
-	}
-	tokenCh := make(chan tokenResultType, 1)
-	go func(chan<- tokenResultType) {
-		token, err := ctx.CrudManager.TokenSessionManager.GetByRefreshToken(req.RefreshToken)
-		tokenCh <- tokenResultType{
-			token: token,
-			err:   err,
-		}
-		// Always delete the token session.
-		ctx.CrudManager.TokenSessionManager.Delete(token.Id)
-	}(tokenCh)
-
-	// Fetch the client while the token is being fetched.
-	ctx.Logger.Debug("get the client while the token is being loaded.")
-	authenticatedClient, err := getAuthenticatedClient(ctx, req.ClientAuthnRequest)
-	if err != nil {
-		ctx.Logger.Debug("error while loading the client.", slog.String("error", err.Error()))
-		return models.Client{}, models.Token{}, err
-	}
-	ctx.Logger.Debug("the client was loaded successfully.")
-
-	ctx.Logger.Debug("wait for the session.")
-	tokenResult := <-tokenCh
-	token, err := tokenResult.token, tokenResult.err
-	if err != nil {
-		ctx.Logger.Debug("error while loading the token.", slog.String("error", err.Error()))
-		return models.Client{}, models.Token{}, err
-	}
-	ctx.Logger.Debug("the session was loaded successfully.")
-
-	return authenticatedClient, token, nil
-}
-
-func validateRefreshTokenGrantRequest(client models.Client, token models.Token) error {
-	if client.Id != token.ClientId {
-		return issues.JsonError{
-			ErrorCode:        constants.InvalidRequest,
-			ErrorDescription: "the refresh token was not issued to the client",
-		}
-	}
-
-	return nil
 }

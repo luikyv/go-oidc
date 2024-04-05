@@ -19,7 +19,8 @@ import (
 func main() {
 	clientId := "client_id"
 	clientSecret := "secret"
-	tokenModelId := "my_token_model"
+	opaqueTokenModelId := "opaque_token_model"
+	jwtTokenModelId := "jwt_token_model"
 	userPassword := "password"
 	privateKeyId := "rsa_key"
 
@@ -41,22 +42,23 @@ func main() {
 	oauthManager := oauth.NewManager(jwks, oauth.SetMockedEntitiesConfig, oauth.SetMockedSessionsConfig)
 
 	// Add Mocks
-	// oauthManager.AddTokenModel(models.OpaqueTokenModel{
-	// 	TokenLength: 20,
-	// 	BaseTokenModel: models.BaseTokenModel{
-	// 		Id:            tokenModelId,
-	// 		Issuer:        "https://example.com",
-	// 		ExpiresInSecs: 60,
-	// 		IsRefreshable: false,
-	// 	},
-	// })
-	oauthManager.AddTokenModel(models.JWTTokenModel{
-		KeyId: privateKeyId,
-		BaseTokenModel: models.BaseTokenModel{
-			Id:            tokenModelId,
+	oauthManager.AddTokenModel(models.OpaqueTokenModel{
+		TokenLength: 20,
+		TokenModelInfo: models.TokenModelInfo{
+			Id:            opaqueTokenModelId,
 			Issuer:        "https://example.com",
 			ExpiresInSecs: 60,
 			IsRefreshable: false,
+		},
+	})
+	oauthManager.AddTokenModel(models.JWTTokenModel{
+		KeyId: privateKeyId,
+		TokenModelInfo: models.TokenModelInfo{
+			Id:                  jwtTokenModelId,
+			Issuer:              "https://example.com",
+			ExpiresInSecs:       60,
+			IsRefreshable:       true,
+			RefreshLifetimeSecs: 600,
 		},
 	})
 	hashedSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 0)
@@ -66,9 +68,12 @@ func main() {
 		Scopes:              []string{"email"},
 		RedirectUris:        []string{"http://localhost:80/callback"},
 		ResponseTypes:       []constants.ResponseType{constants.Code},
-		DefaultTokenModelId: tokenModelId,
+		DefaultTokenModelId: jwtTokenModelId,
 		Authenticator: models.SecretClientAuthenticator{
 			HashedSecret: string(hashedSecret),
+		},
+		Attributes: map[string]string{
+			"custom_attribute": "random_attribute",
 		},
 	})
 
@@ -125,6 +130,8 @@ func main() {
 			}
 
 			session.SetUserId(identityForm.Username)
+			session.SetCustomClaim("custom_claim", "random_value")
+			session.SetCustomClaim("client_attribute", session.ClientAttributes["custom_attribute"])
 			return constants.Success
 		},
 	)

@@ -3,23 +3,46 @@ package models
 import (
 	"errors"
 
+	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
 type TokenContextInfo struct {
-	Subject  string
-	ClientId string
-	Scopes   []string
+	Subject          string
+	ClientId         string
+	Scopes           []string
+	GrantType        constants.GrantType
+	AdditionalClaims map[string]string
 }
 
-type Token struct {
-	Id                 string
-	TokenModelId       string
-	TokenString        string
-	RefreshToken       string
-	ExpiresInSecs      int
-	CreatedAtTimestamp int
-	TokenContextInfo
+func NewClientCredentialsGrantTokenContextInfoFromAuthnSession(client Client, req TokenRequest) TokenContextInfo {
+	return TokenContextInfo{
+		Subject:          client.Id,
+		ClientId:         client.Id,
+		Scopes:           unit.SplitStringWithSpaces(req.Scope),
+		GrantType:        constants.ClientCredentials,
+		AdditionalClaims: make(map[string]string),
+	}
+}
+
+func NewAuthorizationCodeGrantTokenContextInfoFromAuthnSession(session AuthnSession) TokenContextInfo {
+	return TokenContextInfo{
+		Subject:          session.Subject,
+		ClientId:         session.ClientId,
+		Scopes:           session.Scopes,
+		GrantType:        constants.AuthorizationCode,
+		AdditionalClaims: session.AdditionalClaims,
+	}
+}
+
+func NewRefreshTokenGrantTokenContextInfoFromAuthnSession(session TokenSession) TokenContextInfo {
+	return TokenContextInfo{
+		Subject:          session.Subject,
+		ClientId:         session.ClientId,
+		Scopes:           session.Scopes,
+		GrantType:        constants.RefreshToken,
+		AdditionalClaims: session.AdditionalClaims,
+	}
 }
 
 type ClientAuthnRequest struct {
@@ -94,6 +117,7 @@ func (req TokenRequest) IsValid() error {
 
 type TokenResponse struct {
 	AccessToken  string              `json:"access_token"`
+	IdToken      string              `json:"id_token,omitempty"`
 	RefreshToken string              `json:"refresh_token,omitempty"`
 	ExpiresIn    int                 `json:"expires_in"`
 	TokenType    constants.TokenType `json:"token_type"`

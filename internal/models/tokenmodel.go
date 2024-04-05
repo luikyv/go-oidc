@@ -10,20 +10,39 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
-type TokenModelOut struct{}
-
-type TokenModel interface {
-	ToOutput() TokenModelOut
-	GenerateToken(TokenContextInfo) Token
-}
-
-type BaseTokenModel struct {
+type TokenModelInfo struct {
 	Id                  string
 	Issuer              string
 	ExpiresInSecs       int
 	IsRefreshable       bool
 	RefreshLifetimeSecs int
+	IdTokenKeyId        string
 }
+
+func (tokenModelInfo TokenModelInfo) GenerateTokenSession(sessionId string, accessToken string, ctxInfo TokenContextInfo) TokenSession {
+	tokenSession := TokenSession{
+		Id:                 sessionId,
+		TokenModelId:       tokenModelInfo.Id,
+		Token:              accessToken,
+		ExpiresInSecs:      tokenModelInfo.ExpiresInSecs,
+		CreatedAtTimestamp: unit.GetTimestampNow(),
+		Subject:            ctxInfo.Subject,
+		ClientId:           ctxInfo.ClientId,
+		Scopes:             ctxInfo.Scopes,
+		AdditionalClaims:   ctxInfo.AdditionalClaims,
+	}
+	if ctxInfo.GrantType != constants.ClientCredentials && tokenModelInfo.IsRefreshable {
+		tokenSession.RefreshToken = unit.GenerateRefreshToken()
+	}
+	return tokenSession
+}
+
+type TokenModel interface {
+	ToOutput() TokenModelOut
+	GenerateToken(TokenContextInfo) TokenSession
+}
+
+type TokenModelOut struct{}
 
 type TokenModelIn struct{}
 
@@ -35,24 +54,12 @@ func (model TokenModelIn) ToInternal() TokenModel {
 
 type OpaqueTokenModel struct {
 	TokenLength int
-	BaseTokenModel
+	TokenModelInfo
 }
 
-func (tokenModel OpaqueTokenModel) GenerateToken(basicInfo TokenContextInfo) Token {
-	tokenString := unit.GenerateRandomString(tokenModel.TokenLength, tokenModel.TokenLength)
-	token := Token{
-		Id:                 tokenString,
-		TokenModelId:       tokenModel.Id,
-		TokenString:        tokenString,
-		ExpiresInSecs:      tokenModel.ExpiresInSecs,
-		CreatedAtTimestamp: unit.GetTimestampNow(),
-		TokenContextInfo:   basicInfo,
-	}
-	if tokenModel.IsRefreshable {
-		token.RefreshToken = unit.GenerateRefreshToken()
-	}
-
-	return token
+func (tokenModel OpaqueTokenModel) GenerateToken(ctxInfo TokenContextInfo) TokenSession {
+	accessToken := unit.GenerateRandomString(tokenModel.TokenLength, tokenModel.TokenLength)
+	return tokenModel.TokenModelInfo.GenerateTokenSession(accessToken, accessToken, ctxInfo)
 }
 
 func (model OpaqueTokenModel) ToOutput() TokenModelOut {
@@ -63,38 +70,34 @@ func (model OpaqueTokenModel) ToOutput() TokenModelOut {
 
 type JWTTokenModel struct {
 	KeyId string
-	BaseTokenModel
+	TokenModelInfo
 }
 
-func (tokenModel JWTTokenModel) GenerateToken(basicInfo TokenContextInfo) Token {
-	jti := uuid.NewString()
+func (tokenModel JWTTokenModel) GenerateToken(ctxInfo TokenContextInfo) TokenSession {
+	jwtId := uuid.NewString()
 	timestampNow := unit.GetTimestampNow()
 	claims := map[string]any{
-		string(constants.TokenId):  jti,
+		string(constants.TokenId):  jwtId,
 		string(constants.Issuer):   tokenModel.Issuer,
-		string(constants.Subject):  basicInfo.Subject,
-		string(constants.Scope):    strings.Join(basicInfo.Scopes, " "),
+		string(constants.Subject):  ctxInfo.Subject,
+		string(constants.Scope):    strings.Join(ctxInfo.Scopes, " "),
 		string(constants.IssuedAt): timestampNow,
 		string(constants.Expiry):   timestampNow + tokenModel.ExpiresInSecs,
 	}
+	for k, v := range ctxInfo.AdditionalClaims {
+		claims[k] = v
+	}
 
 	jwk := unit.GetPrivateKey(tokenModel.KeyId)
-	signer, _ := jose.NewSigner(jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key}, nil)
-	tokenString, _ := jwt.Signed(signer).Claims(claims).Serialize()
+	signer, _ := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
+		// RFC9068. "...This specification registers the "application/at+jwt" media type,
+		// which can be used to indicate that the content is a JWT access token."
+		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", tokenModel.KeyId),
+	)
 
-	token := Token{
-		Id:                 jti,
-		TokenModelId:       tokenModel.Id,
-		TokenString:        tokenString,
-		ExpiresInSecs:      tokenModel.ExpiresInSecs,
-		CreatedAtTimestamp: timestampNow,
-		TokenContextInfo:   basicInfo,
-	}
-	if tokenModel.IsRefreshable {
-		token.RefreshToken = unit.GenerateRefreshToken()
-	}
-
-	return token
+	accessToken, _ := jwt.Signed(signer).Claims(claims).Serialize()
+	return tokenModel.TokenModelInfo.GenerateTokenSession(jwtId, accessToken, ctxInfo)
 }
 
 func (model JWTTokenModel) ToOutput() TokenModelOut {

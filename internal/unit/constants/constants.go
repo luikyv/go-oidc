@@ -11,3 +11,10 @@ const (
 )
 
 const CorrelationIdKey string = "correlation_id"
+
+type TokenModelType string
+
+const (
+	JWT    TokenModelType = "jwt"
+	Opaque TokenModelType = "opaque"
+)

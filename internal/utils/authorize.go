@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -49,17 +48,7 @@ func initValidAuthenticationSession(_ Context, client models.Client, req models.
 		return models.AuthnSession{}, err
 	}
 
-	return models.AuthnSession{
-		Id:                  uuid.NewString(),
-		CallbackId:          unit.GenerateCallbackId(),
-		ClientId:            req.ClientId,
-		Scopes:              unit.SplitStringWithSpaces(req.Scope),
-		RedirectUri:         req.RedirectUri,
-		State:               req.State,
-		CodeChallenge:       req.CodeChallenge,
-		CodeChallengeMethod: req.CodeChallengeMethod,
-		CreatedAtTimestamp:  unit.GetTimestampNow(),
-	}, nil
+	return models.NewSessionForAuthorizeRequest(req, client), nil
 
 }
 

@@ -3,12 +3,9 @@ package utils
 import (
 	"errors"
 	"log/slog"
-	"strings"
 
-	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/unit"
 )
 
 func PushAuthorization(ctx Context, req models.PARRequest) (requestUri string, err error) {
@@ -25,24 +22,14 @@ func PushAuthorization(ctx Context, req models.PARRequest) (requestUri string, e
 		return "", err
 	}
 
-	requestUri = unit.GenerateRequestUri()
-	err = ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(models.AuthnSession{
-		Id:                  uuid.NewString(),
-		RequestUri:          requestUri,
-		ClientId:            client.Id,
-		Scopes:              strings.Split(req.Scope, " "),
-		RedirectUri:         req.RedirectUri,
-		State:               req.State,
-		CodeChallenge:       req.CodeChallenge,
-		CodeChallengeMethod: req.CodeChallengeMethod,
-		CreatedAtTimestamp:  unit.GetTimestampNow(),
-	})
+	authnSession := models.NewSessionForPARRequest(req, client)
+	err = ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(authnSession)
 	if err != nil {
 		ctx.Logger.Debug("could not authenticate the client", slog.String("client_id", req.ClientId))
 		return "", err
 	}
 
-	return requestUri, nil
+	return authnSession.RequestUri, nil
 }
 
 func validatePushedAuthorizationParams(client models.Client, req models.PARRequest) error {

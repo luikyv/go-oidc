@@ -99,8 +99,8 @@ func TestClientCredentialsHandleTokenCreation(t *testing.T) {
 	}
 
 	tokenSessionManager, _ := ctx.CrudManager.TokenSessionManager.(*mock.MockedTokenSessionManager)
-	tokens := make([]models.Token, 0, len(tokenSessionManager.Tokens))
-	for _, tk := range tokenSessionManager.Tokens {
+	tokens := make([]models.TokenSession, 0, len(tokenSessionManager.TokenSessions))
+	for _, tk := range tokenSessionManager.TokenSessions {
 		tokens = append(tokens, tk)
 	}
 	if len(tokens) != 1 {
@@ -125,6 +125,8 @@ func TestAuthorizationCodeHandleTokenCreation(t *testing.T) {
 		Subject:               "user_id",
 		CreatedAtTimestamp:    unit.GetTimestampNow(),
 		AuthorizedAtTimestamp: unit.GetTimestampNow(),
+		Store:                 make(map[string]string),
+		AdditionalClaims:      make(map[string]string),
 	}
 	ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(session)
 
@@ -173,20 +175,18 @@ func TestRefreshTokenHandleTokenCreation(t *testing.T) {
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
-	token := models.Token{
+	token := models.TokenSession{
 		Id:                 "random_id",
 		TokenModelId:       utils.ValidTokenModelId,
-		TokenString:        "token",
+		Token:              "token",
 		RefreshToken:       refreshToken,
 		ExpiresInSecs:      60,
 		CreatedAtTimestamp: unit.GetTimestampNow(),
-		TokenContextInfo: models.TokenContextInfo{
-			Subject:  username,
-			ClientId: utils.ValidClientId,
-			Scopes:   client.Scopes,
-		},
+		Subject:            username,
+		ClientId:           utils.ValidClientId,
+		Scopes:             client.Scopes,
 	}
-	ctx.CrudManager.TokenSessionManager.Create(token)
+	ctx.CrudManager.TokenSessionManager.CreateOrUpdate(token)
 
 	req := models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{

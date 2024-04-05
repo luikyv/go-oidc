@@ -7,55 +7,50 @@ import (
 )
 
 type MockedTokenSessionManager struct {
-	Tokens map[string]models.Token
+	TokenSessions map[string]models.TokenSession
 }
 
 func NewMockedTokenSessionManager() *MockedTokenSessionManager {
 	return &MockedTokenSessionManager{
-		Tokens: make(map[string]models.Token),
+		TokenSessions: make(map[string]models.TokenSession),
 	}
 }
 
-func (manager *MockedTokenSessionManager) Create(token models.Token) error {
-	_, exists := manager.Tokens[token.Id]
-	if exists {
-		return issues.EntityAlreadyExistsError{Id: token.Id}
-	}
-
-	manager.Tokens[token.Id] = token
+func (manager *MockedTokenSessionManager) CreateOrUpdate(tokenSession models.TokenSession) error {
+	manager.TokenSessions[tokenSession.Id] = tokenSession
 	return nil
 }
 
-func (manager *MockedTokenSessionManager) Get(id string) (models.Token, error) {
-	token, exists := manager.Tokens[id]
+func (manager *MockedTokenSessionManager) Get(id string) (models.TokenSession, error) {
+	tokenSession, exists := manager.TokenSessions[id]
 	if !exists {
-		return models.Token{}, issues.EntityNotFoundError{Id: id}
+		return models.TokenSession{}, issues.EntityNotFoundError{Id: id}
 	}
 
-	return token, nil
+	return tokenSession, nil
 }
 
-func (manager *MockedTokenSessionManager) getFirstToken(condition func(models.Token) bool) (models.Token, bool) {
-	tokens := make([]models.Token, 0, len(manager.Tokens))
-	for _, t := range manager.Tokens {
-		tokens = append(tokens, t)
+func (manager *MockedTokenSessionManager) getFirstToken(condition func(models.TokenSession) bool) (models.TokenSession, bool) {
+	tokenSessions := make([]models.TokenSession, 0, len(manager.TokenSessions))
+	for _, t := range manager.TokenSessions {
+		tokenSessions = append(tokenSessions, t)
 	}
 
-	return unit.FindFirst(tokens, condition)
+	return unit.FindFirst(tokenSessions, condition)
 }
 
-func (manager *MockedTokenSessionManager) GetByRefreshToken(refreshToken string) (models.Token, error) {
-	token, exists := manager.getFirstToken(func(t models.Token) bool {
+func (manager *MockedTokenSessionManager) GetByRefreshToken(refreshToken string) (models.TokenSession, error) {
+	tokenSession, exists := manager.getFirstToken(func(t models.TokenSession) bool {
 		return t.RefreshToken == refreshToken
 	})
 	if !exists {
-		return models.Token{}, issues.EntityNotFoundError{Id: refreshToken}
+		return models.TokenSession{}, issues.EntityNotFoundError{Id: refreshToken}
 	}
 
-	return token, nil
+	return tokenSession, nil
 }
 
 func (manager *MockedTokenSessionManager) Delete(id string) error {
-	delete(manager.Tokens, id)
+	delete(manager.TokenSessions, id)
 	return nil
 }

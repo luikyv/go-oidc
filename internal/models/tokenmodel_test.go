@@ -12,44 +12,46 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
-var opaqueTokenModel = models.OpaqueTokenModel{
-	TokenLength: 20,
-	BaseTokenModel: models.BaseTokenModel{
-		Id:            "opaque_token_model",
-		Issuer:        "https://example.com",
-		ExpiresInSecs: 60,
-	},
-}
-
 func TestOpaqueTokenModelGenerateToken(t *testing.T) {
 
+	// When.
+	opaqueTokenModel := models.OpaqueTokenModel{
+		TokenLength: 20,
+		TokenModelInfo: models.TokenModelInfo{
+			Id:            "opaque_token_model",
+			Issuer:        "https://example.com",
+			ExpiresInSecs: 60,
+		},
+	}
 	tokenContextInfo := models.TokenContextInfo{
 		Subject:  "user_id",
 		ClientId: "client_id",
 		Scopes:   []string{"scope1", "scope2"},
 	}
 
-	token := opaqueTokenModel.GenerateToken(tokenContextInfo)
+	// Then.
+	tokenSession := opaqueTokenModel.GenerateToken(tokenContextInfo)
 
-	if token.TokenString == "" || len(token.TokenString) < opaqueTokenModel.TokenLength {
-		t.Errorf("the opaque token %s is invalid", token.TokenString)
+	// Assert.
+	if tokenSession.Token == "" || len(tokenSession.Token) < opaqueTokenModel.TokenLength {
+		t.Errorf("the opaque token %s is invalid", tokenSession.Token)
 	}
-	if token.Id != token.TokenString {
-		t.Errorf("the token id: %s should be equal to the opaque token value: %s", token.Id, token.TokenString)
+	if tokenSession.Id != tokenSession.Token {
+		t.Errorf("the token id: %s should be equal to the opaque token value: %s", tokenSession.Id, tokenSession.Token)
 	}
-	if token.ExpiresInSecs != opaqueTokenModel.ExpiresInSecs {
+	if tokenSession.ExpiresInSecs != opaqueTokenModel.ExpiresInSecs {
 		t.Error("the token expiration time is different from the model's one")
 	}
-	if token.Subject != tokenContextInfo.Subject {
+	if tokenSession.Subject != tokenContextInfo.Subject {
 		t.Error("the subject is invalid")
 	}
-	if token.ClientId != tokenContextInfo.ClientId {
+	if tokenSession.ClientId != tokenContextInfo.ClientId {
 		t.Error("the client id is invalid")
 	}
-	if len(tokenContextInfo.Scopes) != len(token.Scopes) || !unit.Contains(tokenContextInfo.Scopes, token.Scopes) {
+	if len(tokenContextInfo.Scopes) != len(tokenSession.Scopes) || !unit.Contains(tokenContextInfo.Scopes, tokenSession.Scopes) {
 		t.Error("the scopes are invalid")
 	}
-	if token.CreatedAtTimestamp != int(time.Now().Unix()) {
+	if tokenSession.CreatedAtTimestamp != int(time.Now().Unix()) {
 		t.Error("invalid creation time")
 	}
 }
@@ -72,7 +74,7 @@ func TestJWTTokenModelGenerateToken(t *testing.T) {
 
 	var jwtTokenModel = models.JWTTokenModel{
 		KeyId: keyId,
-		BaseTokenModel: models.BaseTokenModel{
+		TokenModelInfo: models.TokenModelInfo{
 			Id:            "jwt_token_model",
 			Issuer:        "https://example.com",
 			ExpiresInSecs: 60,
@@ -86,10 +88,10 @@ func TestJWTTokenModelGenerateToken(t *testing.T) {
 	}
 
 	// Then
-	token := jwtTokenModel.GenerateToken(tokenContextInfo)
+	tokenSession := jwtTokenModel.GenerateToken(tokenContextInfo)
 
 	// Assert
-	jwt, err := jwt.ParseSigned(token.TokenString, []jose.SignatureAlgorithm{jose.HS256})
+	jwt, err := jwt.ParseSigned(tokenSession.Token, []jose.SignatureAlgorithm{jose.HS256})
 	if err != nil {
 		t.Errorf("error parsing the token: %s", err.Error())
 	}
@@ -103,19 +105,19 @@ func TestJWTTokenModelGenerateToken(t *testing.T) {
 		t.Errorf("invalid subject: %s", subject)
 	}
 
-	if token.ExpiresInSecs != jwtTokenModel.ExpiresInSecs {
+	if tokenSession.ExpiresInSecs != jwtTokenModel.ExpiresInSecs {
 		t.Error("the token expiration time is different from the model's one")
 	}
-	if token.Subject != tokenContextInfo.Subject {
+	if tokenSession.Subject != tokenContextInfo.Subject {
 		t.Error("the subject is invalid")
 	}
-	if token.ClientId != tokenContextInfo.ClientId {
+	if tokenSession.ClientId != tokenContextInfo.ClientId {
 		t.Error("the client id is invalid")
 	}
-	if len(tokenContextInfo.Scopes) != len(token.Scopes) || !unit.Contains(tokenContextInfo.Scopes, token.Scopes) {
+	if len(tokenContextInfo.Scopes) != len(tokenSession.Scopes) || !unit.Contains(tokenContextInfo.Scopes, tokenSession.Scopes) {
 		t.Error("the scopes are invalid")
 	}
-	if token.CreatedAtTimestamp != int(time.Now().Unix()) {
+	if tokenSession.CreatedAtTimestamp != int(time.Now().Unix()) {
 		t.Error("invalid creation time")
 	}
 }

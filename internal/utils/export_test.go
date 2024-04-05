@@ -23,7 +23,7 @@ func SetUp() (ctx Context, tearDown func()) {
 	// Create
 	tokenModel := models.OpaqueTokenModel{
 		TokenLength: 20,
-		BaseTokenModel: models.BaseTokenModel{
+		TokenModelInfo: models.TokenModelInfo{
 			Id:            ValidTokenModelId,
 			Issuer:        "https://example.com",
 			ExpiresInSecs: 60,
@@ -57,7 +57,6 @@ func SetUp() (ctx Context, tearDown func()) {
 
 func GetMockedRequestContext() *gin.Context {
 	gin.SetMode(gin.TestMode)
-	// session := &AuthnSession{}
 	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
 	ctx.Request = &http.Request{}
 	return ctx
@@ -89,10 +88,10 @@ func GetSessionsFromMock(ctx Context) []models.AuthnSession {
 	return sessions
 }
 
-func GetTokenFromMock(ctx Context) []models.Token {
+func GetTokenFromMock(ctx Context) []models.TokenSession {
 	tokenManager, _ := ctx.CrudManager.TokenSessionManager.(*mock.MockedTokenSessionManager)
-	tokens := make([]models.Token, 0, len(tokenManager.Tokens))
-	for _, t := range tokenManager.Tokens {
+	tokens := make([]models.TokenSession, 0, len(tokenManager.TokenSessions))
+	for _, t := range tokenManager.TokenSessions {
 		tokens = append(tokens, t)
 	}
 

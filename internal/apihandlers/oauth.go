@@ -84,16 +84,17 @@ func HandleTokenRequest(ctx utils.Context) {
 		return
 	}
 
-	token, err := utils.HandleTokenCreation(ctx, req)
+	tokenSession, err := utils.HandleTokenCreation(ctx, req)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
 	}
 
 	ctx.RequestContext.JSON(http.StatusAccepted, models.TokenResponse{
-		AccessToken:  token.TokenString,
-		RefreshToken: token.RefreshToken,
-		ExpiresIn:    token.ExpiresInSecs,
+		AccessToken:  tokenSession.Token,
+		IdToken:      tokenSession.IdToken,
+		RefreshToken: tokenSession.RefreshToken,
+		ExpiresIn:    tokenSession.ExpiresInSecs,
 		TokenType:    constants.Bearer,
 	})
 }
