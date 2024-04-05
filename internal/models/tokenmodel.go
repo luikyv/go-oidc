@@ -19,9 +19,10 @@ type TokenModelInfo struct {
 	IdTokenKeyId        string
 }
 
-func (tokenModelInfo TokenModelInfo) GenerateTokenSession(sessionId string, accessToken string, ctxInfo TokenContextInfo) TokenSession {
+func (tokenModelInfo TokenModelInfo) GenerateTokenSession(tokenId string, accessToken string, ctxInfo TokenContextInfo) TokenSession {
 	tokenSession := TokenSession{
-		Id:                 sessionId,
+		Id:                 uuid.NewString(),
+		TokenId:            tokenId,
 		TokenModelId:       tokenModelInfo.Id,
 		Token:              accessToken,
 		ExpiresInSecs:      tokenModelInfo.ExpiresInSecs,
@@ -33,6 +34,7 @@ func (tokenModelInfo TokenModelInfo) GenerateTokenSession(sessionId string, acce
 	}
 	if ctxInfo.GrantType != constants.ClientCredentials && tokenModelInfo.IsRefreshable {
 		tokenSession.RefreshToken = unit.GenerateRefreshToken()
+		tokenSession.RefreshTokenExpiresIn = tokenModelInfo.RefreshLifetimeSecs
 	}
 	return tokenSession
 }

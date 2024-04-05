@@ -227,3 +227,46 @@ func TestRefreshTokenHandleTokenCreation(t *testing.T) {
 		return
 	}
 }
+
+func TestRefreshTokenHandleTokenCreationShouldDenyExpiredRefreshToken(t *testing.T) {
+
+	// When
+	ctx, tearDown := utils.SetUp()
+	defer tearDown()
+	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
+
+	refreshToken := "random_refresh_token"
+	username := "user_id"
+	token := models.TokenSession{
+		Id:                    "random_id",
+		TokenModelId:          utils.ValidTokenModelId,
+		Token:                 "token",
+		RefreshToken:          refreshToken,
+		ExpiresInSecs:         60,
+		RefreshTokenExpiresIn: 0,
+		CreatedAtTimestamp:    unit.GetTimestampNow() - 10,
+		Subject:               username,
+		ClientId:              utils.ValidClientId,
+		Scopes:                client.Scopes,
+	}
+	ctx.CrudManager.TokenSessionManager.CreateOrUpdate(token)
+
+	req := models.TokenRequest{
+		ClientAuthnRequest: models.ClientAuthnRequest{
+			ClientId:     utils.ValidClientId,
+			ClientSecret: utils.ValidClientSecret,
+		},
+		GrantType:    constants.RefreshToken,
+		RefreshToken: refreshToken,
+	}
+
+	// Then
+	_, err := utils.HandleTokenCreation(ctx, req)
+
+	// Assert
+	if err == nil {
+		t.Errorf("the refresh token request should be denied")
+		return
+	}
+
+}

@@ -58,13 +58,13 @@ func main() {
 			Issuer:              "https://example.com",
 			ExpiresInSecs:       60,
 			IsRefreshable:       true,
-			RefreshLifetimeSecs: 600,
+			RefreshLifetimeSecs: 60,
 		},
 	})
 	hashedSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 0)
 	oauthManager.AddClient(models.Client{
 		Id:                  clientId,
-		GrantTypes:          []constants.GrantType{constants.ClientCredentials, constants.AuthorizationCode},
+		GrantTypes:          []constants.GrantType{constants.ClientCredentials, constants.AuthorizationCode, constants.RefreshToken},
 		Scopes:              []string{"email"},
 		RedirectUris:        []string{"http://localhost:80/callback"},
 		ResponseTypes:       []constants.ResponseType{constants.Code},

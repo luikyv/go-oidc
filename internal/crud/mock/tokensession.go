@@ -39,6 +39,17 @@ func (manager *MockedTokenSessionManager) getFirstToken(condition func(models.To
 	return unit.FindFirst(tokenSessions, condition)
 }
 
+func (manager *MockedTokenSessionManager) GetByTokenId(tokenId string) (models.TokenSession, error) {
+	tokenSession, exists := manager.getFirstToken(func(t models.TokenSession) bool {
+		return t.TokenId == tokenId
+	})
+	if !exists {
+		return models.TokenSession{}, issues.EntityNotFoundError{Id: tokenId}
+	}
+
+	return tokenSession, nil
+}
+
 func (manager *MockedTokenSessionManager) GetByRefreshToken(refreshToken string) (models.TokenSession, error) {
 	tokenSession, exists := manager.getFirstToken(func(t models.TokenSession) bool {
 		return t.RefreshToken == refreshToken

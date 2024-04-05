@@ -225,17 +225,20 @@ func handleRefreshTokenGrantTokenCreation(ctx Context, req models.TokenRequest) 
 	}
 	ctx.Logger.Debug("the token model was loaded successfully")
 
-	tokenSession = tokenModel.GenerateToken(
+	updatedTokenSession := tokenModel.GenerateToken(
 		models.NewRefreshTokenGrantTokenContextInfoFromAuthnSession(tokenSession),
 	)
+	// Make sure a new session is not created, but the existing one is updated.
+	updatedTokenSession.Id = tokenSession.Id
+	updatedTokenSession.CreatedAtTimestamp = tokenSession.CreatedAtTimestamp
 
 	ctx.Logger.Debug("create token session")
-	err = ctx.CrudManager.TokenSessionManager.CreateOrUpdate(tokenSession)
+	err = ctx.CrudManager.TokenSessionManager.CreateOrUpdate(updatedTokenSession)
 	if err != nil {
 		return models.TokenSession{}, err
 	}
 
-	return tokenSession, nil
+	return updatedTokenSession, nil
 }
 
 func getAuthenticatedClientAndTokenSession(ctx Context, req models.TokenRequest) (models.Client, models.TokenSession, error) {
@@ -251,8 +254,6 @@ func getAuthenticatedClientAndTokenSession(ctx Context, req models.TokenRequest)
 			token: tokenSession,
 			err:   err,
 		}
-		// Always delete the token session.
-		ctx.CrudManager.TokenSessionManager.Delete(tokenSession.Id)
 	}(tokenSessionCh)
 
 	// Fetch the client while the token is being fetched.
@@ -269,7 +270,7 @@ func getAuthenticatedClientAndTokenSession(ctx Context, req models.TokenRequest)
 	tokenSession, err := tokenSessionResult.token, tokenSessionResult.err
 	if err != nil {
 		ctx.Logger.Debug("error while loading the token.", slog.String("error", err.Error()))
-		return models.Client{}, models.TokenSession{}, err
+		return models.Client{}, models.TokenSession{}, errors.New("invalid refresh token")
 	}
 	ctx.Logger.Debug("the session was loaded successfully.")
 
@@ -289,6 +290,15 @@ func validateRefreshTokenGrantRequest(client models.Client, tokenSession models.
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "the refresh token was not issued to the client",
+		}
+	}
+
+	expirationTimestamp := tokenSession.CreatedAtTimestamp + tokenSession.RefreshTokenExpiresIn
+	if unit.GetTimestampNow() > expirationTimestamp {
+		//TODO: How to handle the expired sessions?
+		return issues.JsonError{
+			ErrorCode:        constants.InvalidRequest,
+			ErrorDescription: "the refresh token is expired",
 		}
 	}
 
