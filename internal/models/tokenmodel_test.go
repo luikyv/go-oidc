@@ -82,10 +82,10 @@ func TestJWTTokenModelGenerateToken(t *testing.T) {
 	}
 
 	tokenContextInfo := models.TokenContextInfo{
-		Subject:          "user_id",
-		ClientId:         "client_id",
-		Scopes:           []string{"scope1", "scope2"},
-		AdditionalClaims: map[string]string{"custom_claim": "custom_value"},
+		Subject:               "user_id",
+		ClientId:              "client_id",
+		Scopes:                []string{"scope1", "scope2"},
+		AdditionalTokenClaims: map[string]string{"custom_claim": "custom_value"},
 	}
 
 	// Then

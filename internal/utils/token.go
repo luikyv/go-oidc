@@ -158,7 +158,7 @@ func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client model
 	if session.CodeChallenge != "" && (req.CodeVerifier == "" || !unit.IsPkceValid(req.CodeVerifier, session.CodeChallenge, session.CodeChallengeMethod)) {
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
-			ErrorDescription: "invalid PKCE",
+			ErrorDescription: "invalid pkce",
 		}
 	}
 

@@ -126,7 +126,7 @@ func TestAuthorizationCodeHandleTokenCreation(t *testing.T) {
 		CreatedAtTimestamp:    unit.GetTimestampNow(),
 		AuthorizedAtTimestamp: unit.GetTimestampNow(),
 		Store:                 make(map[string]string),
-		AdditionalClaims:      make(map[string]string),
+		AdditionalTokenClaims: make(map[string]string),
 	}
 	ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(session)
 

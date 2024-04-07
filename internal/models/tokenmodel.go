@@ -26,6 +26,10 @@ func (tokenModelInfo TokenModelInfo) generateIdToken(ctxInfo TokenContextInfo) s
 		string(constants.Subject):  ctxInfo.Subject,
 		string(constants.IssuedAt): timestampNow,
 		string(constants.Expiry):   timestampNow + tokenModelInfo.ExpiresInSecs,
+		string(constants.Nonce):    ctxInfo.Nonce,
+	}
+	for k, v := range ctxInfo.AdditionalIdTokenClaims {
+		claims[k] = v
 	}
 
 	jwk := unit.GetPrivateKey(tokenModelInfo.OpenIdKeyId)
@@ -40,16 +44,18 @@ func (tokenModelInfo TokenModelInfo) generateIdToken(ctxInfo TokenContextInfo) s
 
 func (tokenModelInfo TokenModelInfo) generateTokenSession(tokenId string, accessToken string, ctxInfo TokenContextInfo) TokenSession {
 	tokenSession := TokenSession{
-		Id:                 uuid.NewString(),
-		TokenId:            tokenId,
-		TokenModelId:       tokenModelInfo.Id,
-		Token:              accessToken,
-		ExpiresInSecs:      tokenModelInfo.ExpiresInSecs,
-		CreatedAtTimestamp: unit.GetTimestampNow(),
-		Subject:            ctxInfo.Subject,
-		ClientId:           ctxInfo.ClientId,
-		Scopes:             ctxInfo.Scopes,
-		AdditionalClaims:   ctxInfo.AdditionalClaims,
+		Id:                      uuid.NewString(),
+		TokenId:                 tokenId,
+		TokenModelId:            tokenModelInfo.Id,
+		Token:                   accessToken,
+		ExpiresInSecs:           tokenModelInfo.ExpiresInSecs,
+		CreatedAtTimestamp:      unit.GetTimestampNow(),
+		Subject:                 ctxInfo.Subject,
+		ClientId:                ctxInfo.ClientId,
+		Scopes:                  ctxInfo.Scopes,
+		Nonce:                   ctxInfo.Nonce,
+		AdditionalTokenClaims:   ctxInfo.AdditionalTokenClaims,
+		AdditionalIdTokenClaims: ctxInfo.AdditionalIdTokenClaims,
 	}
 
 	if ctxInfo.GrantType != constants.ClientCredentials && tokenModelInfo.IsRefreshable {
@@ -111,7 +117,7 @@ func (tokenModel JWTTokenModel) GenerateToken(ctxInfo TokenContextInfo) TokenSes
 		string(constants.IssuedAt): timestampNow,
 		string(constants.Expiry):   timestampNow + tokenModel.ExpiresInSecs,
 	}
-	for k, v := range ctxInfo.AdditionalClaims {
+	for k, v := range ctxInfo.AdditionalTokenClaims {
 		claims[k] = v
 	}
 

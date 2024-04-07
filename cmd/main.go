@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -18,6 +17,40 @@ import (
 	"github.com/luikymagno/auth-server/pkg/oauth"
 	"golang.org/x/crypto/bcrypt"
 )
+
+func loadJwks() jose.JSONWebKeySet {
+	absPath, _ := filepath.Abs("./jwks.json")
+	jwksFile, err := os.Open(absPath)
+	if err != nil {
+		panic(err.Error())
+	}
+	defer jwksFile.Close()
+	jwksBytes, err := io.ReadAll(jwksFile)
+	if err != nil {
+		panic(err.Error())
+	}
+	var jwks jose.JSONWebKeySet
+	json.Unmarshal(jwksBytes, &jwks)
+
+	return jwks
+}
+
+func getClientJwk() jose.JSONWebKey {
+	absPath, _ := filepath.Abs("./client_jwk.json")
+	clientJwkFile, err := os.Open(absPath)
+	if err != nil {
+		panic(err.Error())
+	}
+	defer clientJwkFile.Close()
+	clientJwkBytes, err := io.ReadAll(clientJwkFile)
+	if err != nil {
+		panic(err.Error())
+	}
+	var clientJwk jose.JSONWebKey
+	clientJwk.UnmarshalJSON(clientJwkBytes)
+
+	return clientJwk
+}
 
 func createClientAssertion(client models.Client, jwk jose.JSONWebKey) string {
 	createdAtTimestamp := unit.GetTimestampNow()
@@ -42,25 +75,12 @@ func main() {
 	jwtTokenModelId := "jwt_token_model"
 	userPassword := "password"
 	privateKeyId := "rsa_key"
-
-	// Load the private JWKS.
-	absPath, _ := filepath.Abs("./jwks.json")
-	jwksFile, err := os.Open(absPath)
-	if err != nil {
-		panic(err.Error())
-	}
-	defer jwksFile.Close()
-	jwksBytes, err := io.ReadAll(jwksFile)
-	if err != nil {
-		panic(err.Error())
-	}
-	var jwks jose.JSONWebKeySet
-	json.Unmarshal(jwksBytes, &jwks)
+	jwks := loadJwks()
 
 	// Create the manager.
 	oauthManager := oauth.NewManager(jwks, oauth.SetMockedEntitiesConfig, oauth.SetMockedSessionsConfig)
 
-	// Add Mocks
+	// Add token model mocks.
 	oauthManager.AddTokenModel(models.OpaqueTokenModel{
 		TokenLength: 20,
 		TokenModelInfo: models.TokenModelInfo{
@@ -83,20 +103,7 @@ func main() {
 		},
 	})
 
-	// Load the client JWK.
-	absPath, _ = filepath.Abs("./client_jwk.json")
-	clientJwkFile, err := os.Open(absPath)
-	if err != nil {
-		panic(err.Error())
-	}
-	defer jwksFile.Close()
-	clientJwkBytes, err := io.ReadAll(clientJwkFile)
-	if err != nil {
-		panic(err.Error())
-	}
-	var clientJwk jose.JSONWebKey
-	clientJwk.UnmarshalJSON(clientJwkBytes)
-
+	// Add client mock.
 	hashedSecret, _ := bcrypt.GenerateFromPassword([]byte("secret"), 0)
 	// Create the client
 	client := models.Client{
@@ -106,9 +113,6 @@ func main() {
 		RedirectUris:        []string{"http://localhost:80/callback"},
 		ResponseTypes:       []constants.ResponseType{constants.Code},
 		DefaultTokenModelId: jwtTokenModelId,
-		// Authenticator: models.PrivateKeyJwtClientAuthenticator{
-		// 	PublicJwk: clientJwk.Public(),
-		// },
 		Authenticator: models.SecretClientAuthenticator{
 			HashedSecret: string(hashedSecret),
 		},
@@ -171,8 +175,9 @@ func main() {
 			}
 
 			session.SetUserId(identityForm.Username)
-			session.SetCustomClaim("custom_claim", "random_value")
-			session.SetCustomClaim("client_attribute", session.ClientAttributes["custom_attribute"])
+			session.SetCustomTokenClaim("custom_claim", "random_value")
+			session.SetCustomTokenClaim("client_attribute", session.ClientAttributes["custom_attribute"])
+			session.SetCustomIdTokenClaim("email", "random@email.com")
 			return constants.Success
 		},
 	)
@@ -185,13 +190,6 @@ func main() {
 	)
 
 	// Run
-	opts := &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}
-	jsonHandler := slog.NewJSONHandler(os.Stdout, opts)
-	logger := slog.New(jsonHandler)
-	logger.Debug("client assertion", slog.String("client_assertion", createClientAssertion(client, clientJwk)))
-
 	oauthManager.AddPolicy(policy)
 	oauthManager.Run(80)
 }

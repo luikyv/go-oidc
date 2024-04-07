@@ -18,7 +18,10 @@ type Context struct {
 func NewContext(crudManager crud.CRUDManager, reqContext *gin.Context) Context {
 
 	// Create logger.
-	jsonHandler := slog.NewJSONHandler(os.Stdout, nil)
+	opts := &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}
+	jsonHandler := slog.NewJSONHandler(os.Stdout, opts)
 	logger := slog.New(jsonHandler)
 	// Set shared information.
 	correlationId, _ := reqContext.MustGet(constants.CorrelationIdKey).(string)

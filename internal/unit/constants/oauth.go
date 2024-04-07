@@ -51,6 +51,7 @@ const (
 	Expiry   Claim = "exp"
 	IssuedAt Claim = "iat"
 	Scope    Claim = "scope"
+	Nonce    Claim = "nonce"
 )
 
 type CodeChallengeMethod string

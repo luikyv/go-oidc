@@ -8,40 +8,46 @@ import (
 )
 
 type TokenContextInfo struct {
-	Subject          string
-	ClientId         string
-	Scopes           []string
-	GrantType        constants.GrantType
-	AdditionalClaims map[string]string
+	Subject                 string
+	ClientId                string
+	Scopes                  []string
+	GrantType               constants.GrantType
+	Nonce                   string
+	AdditionalTokenClaims   map[string]string
+	AdditionalIdTokenClaims map[string]string
 }
 
 func NewClientCredentialsGrantTokenContextInfoFromAuthnSession(client Client, req TokenRequest) TokenContextInfo {
 	return TokenContextInfo{
-		Subject:          client.Id,
-		ClientId:         client.Id,
-		Scopes:           unit.SplitStringWithSpaces(req.Scope),
-		GrantType:        constants.ClientCredentials,
-		AdditionalClaims: make(map[string]string),
+		Subject:                 client.Id,
+		ClientId:                client.Id,
+		Scopes:                  unit.SplitStringWithSpaces(req.Scope),
+		GrantType:               constants.ClientCredentials,
+		AdditionalTokenClaims:   make(map[string]string),
+		AdditionalIdTokenClaims: make(map[string]string),
 	}
 }
 
 func NewAuthorizationCodeGrantTokenContextInfoFromAuthnSession(session AuthnSession) TokenContextInfo {
 	return TokenContextInfo{
-		Subject:          session.Subject,
-		ClientId:         session.ClientId,
-		Scopes:           session.Scopes,
-		GrantType:        constants.AuthorizationCode,
-		AdditionalClaims: session.AdditionalClaims,
+		Subject:                 session.Subject,
+		ClientId:                session.ClientId,
+		Scopes:                  session.Scopes,
+		GrantType:               constants.AuthorizationCode,
+		Nonce:                   session.Nonce,
+		AdditionalTokenClaims:   session.AdditionalTokenClaims,
+		AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
 	}
 }
 
 func NewRefreshTokenGrantTokenContextInfoFromAuthnSession(session TokenSession) TokenContextInfo {
 	return TokenContextInfo{
-		Subject:          session.Subject,
-		ClientId:         session.ClientId,
-		Scopes:           session.Scopes,
-		GrantType:        constants.RefreshToken,
-		AdditionalClaims: session.AdditionalClaims,
+		Subject:               session.Subject,
+		ClientId:              session.ClientId,
+		Scopes:                session.Scopes,
+		GrantType:             constants.RefreshToken,
+		Nonce:                 session.Nonce,
+		AdditionalTokenClaims: session.AdditionalTokenClaims,
 	}
 }
 
@@ -132,6 +138,7 @@ type BaseAuthorizeRequest struct {
 	CodeChallenge       string                        `form:"code_challenge"`
 	CodeChallengeMethod constants.CodeChallengeMethod `form:"code_challenge_method"`
 	RequestUri          string                        `form:"request_uri"`
+	Nonce               string                        `form:"nonce"`
 }
 
 type AuthorizeRequest struct {
