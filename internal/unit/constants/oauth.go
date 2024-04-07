@@ -79,3 +79,5 @@ type Header string
 const CorrelationIdHeader Header = "X-Correlation-ID"
 
 var PrivateJWKS jose.JSONWebKeySet
+
+const OpenIdScope string = "openid"

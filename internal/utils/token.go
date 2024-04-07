@@ -295,7 +295,7 @@ func validateRefreshTokenGrantRequest(client models.Client, tokenSession models.
 
 	expirationTimestamp := tokenSession.CreatedAtTimestamp + tokenSession.RefreshTokenExpiresIn
 	if unit.GetTimestampNow() > expirationTimestamp {
-		//TODO: How to handle the expired sessions?
+		//TODO: How to handle the expired sessions? There are just hanging for now.
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "the refresh token is expired",

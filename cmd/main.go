@@ -68,6 +68,7 @@ func main() {
 			Issuer:        "https://example.com",
 			ExpiresInSecs: 60,
 			IsRefreshable: false,
+			OpenIdKeyId:   privateKeyId,
 		},
 	})
 	oauthManager.AddTokenModel(models.JWTTokenModel{
@@ -78,6 +79,7 @@ func main() {
 			ExpiresInSecs:       60,
 			IsRefreshable:       true,
 			RefreshLifetimeSecs: 60,
+			OpenIdKeyId:         privateKeyId,
 		},
 	})
 
@@ -100,7 +102,7 @@ func main() {
 	client := models.Client{
 		Id:                  clientId,
 		GrantTypes:          []constants.GrantType{constants.ClientCredentials, constants.AuthorizationCode, constants.RefreshToken},
-		Scopes:              []string{"email", "profile"},
+		Scopes:              []string{"openid", "email", "profile"},
 		RedirectUris:        []string{"http://localhost:80/callback"},
 		ResponseTypes:       []constants.ResponseType{constants.Code},
 		DefaultTokenModelId: jwtTokenModelId,

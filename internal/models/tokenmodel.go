@@ -16,10 +16,29 @@ type TokenModelInfo struct {
 	ExpiresInSecs       int
 	IsRefreshable       bool
 	RefreshLifetimeSecs int
-	IdTokenKeyId        string
+	OpenIdKeyId         string
 }
 
-func (tokenModelInfo TokenModelInfo) GenerateTokenSession(tokenId string, accessToken string, ctxInfo TokenContextInfo) TokenSession {
+func (tokenModelInfo TokenModelInfo) generateIdToken(ctxInfo TokenContextInfo) string {
+	timestampNow := unit.GetTimestampNow()
+	claims := map[string]any{
+		string(constants.Issuer):   tokenModelInfo.Issuer,
+		string(constants.Subject):  ctxInfo.Subject,
+		string(constants.IssuedAt): timestampNow,
+		string(constants.Expiry):   timestampNow + tokenModelInfo.ExpiresInSecs,
+	}
+
+	jwk := unit.GetPrivateKey(tokenModelInfo.OpenIdKeyId)
+	signer, _ := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", tokenModelInfo.OpenIdKeyId),
+	)
+
+	idToken, _ := jwt.Signed(signer).Claims(claims).Serialize()
+	return idToken
+}
+
+func (tokenModelInfo TokenModelInfo) generateTokenSession(tokenId string, accessToken string, ctxInfo TokenContextInfo) TokenSession {
 	tokenSession := TokenSession{
 		Id:                 uuid.NewString(),
 		TokenId:            tokenId,
@@ -32,10 +51,16 @@ func (tokenModelInfo TokenModelInfo) GenerateTokenSession(tokenId string, access
 		Scopes:             ctxInfo.Scopes,
 		AdditionalClaims:   ctxInfo.AdditionalClaims,
 	}
+
 	if ctxInfo.GrantType != constants.ClientCredentials && tokenModelInfo.IsRefreshable {
 		tokenSession.RefreshToken = unit.GenerateRefreshToken()
 		tokenSession.RefreshTokenExpiresIn = tokenModelInfo.RefreshLifetimeSecs
 	}
+
+	if unit.Contains(ctxInfo.Scopes, []string{constants.OpenIdScope}) {
+		tokenSession.IdToken = tokenModelInfo.generateIdToken(ctxInfo)
+	}
+
 	return tokenSession
 }
 
@@ -61,7 +86,7 @@ type OpaqueTokenModel struct {
 
 func (tokenModel OpaqueTokenModel) GenerateToken(ctxInfo TokenContextInfo) TokenSession {
 	accessToken := unit.GenerateRandomString(tokenModel.TokenLength, tokenModel.TokenLength)
-	return tokenModel.TokenModelInfo.GenerateTokenSession(accessToken, accessToken, ctxInfo)
+	return tokenModel.TokenModelInfo.generateTokenSession(accessToken, accessToken, ctxInfo)
 }
 
 func (model OpaqueTokenModel) ToOutput() TokenModelOut {
@@ -99,7 +124,7 @@ func (tokenModel JWTTokenModel) GenerateToken(ctxInfo TokenContextInfo) TokenSes
 	)
 
 	accessToken, _ := jwt.Signed(signer).Claims(claims).Serialize()
-	return tokenModel.TokenModelInfo.GenerateTokenSession(jwtId, accessToken, ctxInfo)
+	return tokenModel.TokenModelInfo.generateTokenSession(jwtId, accessToken, ctxInfo)
 }
 
 func (model JWTTokenModel) ToOutput() TokenModelOut {
