@@ -30,7 +30,8 @@ func SetUp() (ctx Context, tearDown func()) {
 		},
 	}
 
-	clientHashedSecret, _ := bcrypt.GenerateFromPassword([]byte(ValidClientSecret), 0)
+	clientSecretSalt := "random_salt"
+	clientHashedSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecretSalt+ValidClientSecret), 0)
 	client := models.Client{
 		Id:                  "random_client_id",
 		RedirectUris:        []string{"https://example.com"},
@@ -39,6 +40,7 @@ func SetUp() (ctx Context, tearDown func()) {
 		ResponseTypes:       []constants.ResponseType{constants.Code},
 		DefaultTokenModelId: ValidTokenModelId,
 		Authenticator: models.SecretClientAuthenticator{
+			Salt:         clientSecretSalt,
 			HashedSecret: string(clientHashedSecret),
 		},
 	}

@@ -24,12 +24,14 @@ func (authenticator NoneClientAuthenticator) IsAuthenticated(req ClientAuthnRequ
 }
 
 type SecretClientAuthenticator struct {
+	Salt         string
 	HashedSecret string
 }
 
 func (authenticator SecretClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
 
-	err := bcrypt.CompareHashAndPassword([]byte(authenticator.HashedSecret), []byte(req.ClientSecret))
+	saltedSecret := authenticator.Salt + req.ClientSecret
+	err := bcrypt.CompareHashAndPassword([]byte(authenticator.HashedSecret), []byte(saltedSecret))
 	return err == nil
 }
 

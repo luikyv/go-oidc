@@ -73,6 +73,7 @@ func createClientAssertion(client models.Client, jwk jose.JSONWebKey) string {
 func main() {
 	clientId := "random_client"
 	clientSecret := "random_secret"
+	clientSecretSalt := "random_salt"
 	opaqueTokenModelId := "opaque_token_model"
 	jwtTokenModelId := "jwt_token_model"
 	userPassword := "password"
@@ -107,7 +108,7 @@ func main() {
 	})
 
 	// Add client mock.
-	hashedSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 0)
+	hashedSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecretSalt+clientSecret), 0)
 	// Create the client
 	client := models.Client{
 		Id:                  clientId,
@@ -117,6 +118,7 @@ func main() {
 		ResponseTypes:       []constants.ResponseType{constants.Code},
 		DefaultTokenModelId: jwtTokenModelId,
 		Authenticator: models.SecretClientAuthenticator{
+			Salt:         clientSecretSalt,
 			HashedSecret: string(hashedSecret),
 		},
 		Attributes: map[string]string{
