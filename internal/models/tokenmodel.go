@@ -100,6 +100,11 @@ func (model OpaqueTokenModel) ToOutput() TokenModelOut {
 	return TokenModelOut{}
 }
 
+func IsOpaqueTokenModel(tokenModel TokenModel) bool {
+	_, isOpaque := tokenModel.(OpaqueTokenModel)
+	return isOpaque
+}
+
 //---------------------------------------- JWT ----------------------------------------//
 
 type JWTTokenModel struct {

@@ -174,6 +174,18 @@ func authenticate(ctx Context, session models.AuthnSession) error {
 	return updateOrDeleteSession(ctx, session, currentStep)
 }
 
+// Find the next step depending on the status informed by the current step.
+func getNextStep(currentStepStatus constants.AuthnStatus, step *AuthnStep) *AuthnStep {
+	switch currentStepStatus {
+	case constants.Failure:
+		return step.NextStepIfFailure
+	case constants.Success:
+		return step.NextStepIfSuccess
+	default:
+		return nil
+	}
+}
+
 func updateOrDeleteSession(ctx Context, session models.AuthnSession, currentStep *AuthnStep) error {
 
 	if currentStep == FinishFlowWithFailureStep {
@@ -189,15 +201,4 @@ func updateOrDeleteSession(ctx Context, session models.AuthnSession, currentStep
 
 	session.StepId = currentStep.Id
 	return ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(session)
-}
-
-func getNextStep(status constants.AuthnStatus, step *AuthnStep) *AuthnStep {
-	switch status {
-	case constants.Failure:
-		return step.NextStepIfFailure
-	case constants.Success:
-		return step.NextStepIfSuccess
-	default:
-		return nil
-	}
 }
