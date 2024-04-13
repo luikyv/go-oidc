@@ -19,7 +19,7 @@ type TokenModelInfo struct {
 	OpenIdKeyId         string
 }
 
-func (tokenModelInfo TokenModelInfo) generateIdToken(ctxInfo TokenContextInfo) string {
+func (tokenModelInfo TokenModelInfo) GenerateIdToken(ctxInfo TokenContextInfo) string {
 	timestampNow := unit.GetTimestampNow()
 	claims := map[string]any{
 		string(constants.Issuer):   tokenModelInfo.Issuer,
@@ -64,7 +64,7 @@ func (tokenModelInfo TokenModelInfo) generateTokenSession(tokenId string, access
 	}
 
 	if unit.Contains(ctxInfo.Scopes, []string{constants.OpenIdScope}) {
-		tokenSession.IdToken = tokenModelInfo.generateIdToken(ctxInfo)
+		tokenSession.IdToken = tokenModelInfo.GenerateIdToken(ctxInfo)
 	}
 
 	return tokenSession
@@ -73,6 +73,7 @@ func (tokenModelInfo TokenModelInfo) generateTokenSession(tokenId string, access
 type TokenModel interface {
 	ToOutput() TokenModelOut
 	GenerateToken(TokenContextInfo) TokenSession
+	GenerateIdToken(TokenContextInfo) string
 }
 
 type TokenModelOut struct{}

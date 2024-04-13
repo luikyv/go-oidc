@@ -3,6 +3,7 @@ package utils
 import (
 	"errors"
 	"log/slog"
+	"slices"
 	"strings"
 
 	"github.com/luikymagno/auth-server/internal/issues"
@@ -30,7 +31,7 @@ func InitAuthentication(ctx Context, req models.AuthorizeRequest) error {
 	}
 
 	// Fetch the first policy available.
-	policy, policyIsAvailable := models.GetPolicy(client, ctx.RequestContext)
+	policy, policyIsAvailable := GetPolicy(client, ctx.RequestContext)
 	if !policyIsAvailable {
 		ctx.Logger.Info("no policy available")
 		return errors.New("no policy available")
@@ -158,10 +159,10 @@ func validateAuthorizeWithPARParams(session models.AuthnSession, req models.Auth
 // Execute the authentication steps.
 func authenticate(ctx Context, session models.AuthnSession) error {
 
-	currentStep := models.GetStep(session.StepId)
+	currentStep := GetStep(session.StepId)
 	status := constants.InProgress
 	for {
-		status = currentStep.AuthnFunc(&session, ctx.RequestContext)
+		status = currentStep.AuthnFunc(ctx, &session)
 		nextStep := getNextStep(status, currentStep)
 		if nextStep == nil {
 			break
@@ -170,17 +171,27 @@ func authenticate(ctx Context, session models.AuthnSession) error {
 		currentStep = nextStep
 	}
 
-	if status == constants.Failure {
-		// The flow finished with failure, so we don't need to keep its session anymore.
-		ctx.CrudManager.AuthnSessionManager.Delete(session.Id)
-		return nil
+	return updateOrDeleteSession(ctx, session, currentStep)
+}
+
+func updateOrDeleteSession(ctx Context, session models.AuthnSession, currentStep *AuthnStep) error {
+
+	if currentStep == FinishFlowWithFailureStep {
+		// The flow finished with failure, so we don't keep the session anymore.
+		return ctx.CrudManager.AuthnSessionManager.Delete(session.Id)
+	}
+
+	if currentStep == FinishFlowSuccessfullyStep && !slices.Contains(session.ResponseTypes, constants.Code) {
+		// The client didn't request an authorization code to later exchange it for an access token,
+		// so we don't keep the session anymore.
+		return ctx.CrudManager.AuthnSessionManager.Delete(session.Id)
 	}
 
 	session.StepId = currentStep.Id
 	return ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(session)
 }
 
-func getNextStep(status constants.AuthnStatus, step *models.AuthnStep) *models.AuthnStep {
+func getNextStep(status constants.AuthnStatus, step *AuthnStep) *AuthnStep {
 	switch status {
 	case constants.Failure:
 		return step.NextStepIfFailure

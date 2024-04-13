@@ -54,8 +54,7 @@ func handleClientCredentialsGrantTokenCreation(ctx Context, req models.TokenRequ
 		models.NewClientCredentialsGrantTokenContextInfoFromAuthnSession(authenticatedClient, req),
 	)
 
-	_, isOpaque := tokenModel.(models.OpaqueTokenModel)
-	if isOpaque {
+	if isOpaqueTokenModel(tokenModel) {
 		// We only need to create a token session for client credentials when the token is not self-contained,
 		// i.e. it is a refecence token.
 		ctx.Logger.Debug("create token session")
@@ -117,8 +116,7 @@ func handleAuthorizationCodeGrantTokenCreation(ctx Context, req models.TokenRequ
 	)
 
 	err = nil
-	_, isOpaque := tokenModel.(models.OpaqueTokenModel)
-	if isOpaque || tokenSession.RefreshToken != "" {
+	if isOpaqueTokenModel(tokenModel) || tokenSession.RefreshToken != "" {
 		// We only need to create a token session for the authorization code grant when the token is not self-contained,
 		// i.e. it is a refecence token, or when the refresh token is issued.
 		ctx.Logger.Debug("create token session")
@@ -357,4 +355,9 @@ func getClientId(req models.ClientAuthnRequest) (string, error) {
 
 	return clientIdAsString, nil
 
+}
+
+func isOpaqueTokenModel(tokenModel models.TokenModel) bool {
+	_, isOpaque := tokenModel.(models.OpaqueTokenModel)
+	return isOpaque
 }

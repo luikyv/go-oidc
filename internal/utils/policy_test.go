@@ -1,12 +1,13 @@
-package models
+package utils
 
 import (
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
 func setUp() (tearDown func()) {
@@ -21,14 +22,6 @@ func setUp() (tearDown func()) {
 		}
 		policyMap = make(map[string]AuthnPolicy)
 	}
-}
-
-func getTestContext() *gin.Context {
-	gin.SetMode(gin.TestMode)
-	// session := &AuthnSession{}
-	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
-	ctx.Request = &http.Request{}
-	return ctx
 }
 
 func TestNewStepShouldRegisterStep(t *testing.T) {
@@ -114,7 +107,7 @@ func TestGetPolicy(t *testing.T) {
 	unavailablePolicy := AuthnPolicy{
 		Id:        "unavailable_policy",
 		FirstStep: nil,
-		IsAvailableFunc: func(c Client, ctx *gin.Context) bool {
+		IsAvailableFunc: func(c models.Client, ctx *gin.Context) bool {
 			return false
 		},
 	}
@@ -123,14 +116,14 @@ func TestGetPolicy(t *testing.T) {
 	availablePolicy := AuthnPolicy{
 		Id:        "available_policy",
 		FirstStep: nil,
-		IsAvailableFunc: func(c Client, ctx *gin.Context) bool {
+		IsAvailableFunc: func(c models.Client, ctx *gin.Context) bool {
 			return true
 		},
 	}
 	policyMap[availablePolicy.Id] = availablePolicy
 
 	// Then
-	policy, policyIsAvailable := GetPolicy(Client{}, nil)
+	policy, policyIsAvailable := GetPolicy(models.Client{}, nil)
 
 	// Assert
 	if !policyIsAvailable {
@@ -150,14 +143,14 @@ func TestGetPolicyNoPolicyAvailable(t *testing.T) {
 	unavailablePolicy := AuthnPolicy{
 		Id:        "unavailable_policy",
 		FirstStep: nil,
-		IsAvailableFunc: func(c Client, ctx *gin.Context) bool {
+		IsAvailableFunc: func(c models.Client, ctx *gin.Context) bool {
 			return false
 		},
 	}
 	policyMap[unavailablePolicy.Id] = unavailablePolicy
 
 	// Then
-	_, policyIsAvailable := GetPolicy(Client{}, nil)
+	_, policyIsAvailable := GetPolicy(models.Client{}, nil)
 
 	// Assert
 	if policyIsAvailable {
@@ -174,24 +167,25 @@ func TestFinishFlowSuccessfullyStepShouldHaveNoNextSteps(t *testing.T) {
 
 func TestFinishFlowSuccessfullyStep(t *testing.T) {
 	// When
-	session := &AuthnSession{
-		RedirectUri: "https://example.com",
-		State:       "random_state",
+	session := &models.AuthnSession{
+		RedirectUri:   "https://example.com",
+		State:         "random_state",
+		ResponseTypes: []constants.ResponseType{constants.Code},
 	}
-	ctx := getTestContext()
+	ctx := GetMockedContext()
 
 	// Then
-	FinishFlowSuccessfullyStep.AuthnFunc(session, ctx)
+	FinishFlowSuccessfullyStep.AuthnFunc(ctx, session)
 
 	// Assert
 	if session.AuthorizationCode == "" {
 		t.Error("the authorization code was not filled")
 	}
-	if http.StatusFound != ctx.Writer.Status() {
-		t.Errorf("response status is: %v, but should be 302", ctx.Request.Response.StatusCode)
+	if http.StatusFound != ctx.RequestContext.Writer.Status() {
+		t.Errorf("response status is: %v, but should be 302", ctx.RequestContext.Request.Response.StatusCode)
 	}
 	expectedRedirectUrl := fmt.Sprintf(session.RedirectUri+"?code=%s&state=%s", session.AuthorizationCode, session.State)
-	if redirectUrl := ctx.Writer.Header().Get("Location"); redirectUrl != expectedRedirectUrl {
+	if redirectUrl := ctx.RequestContext.Writer.Header().Get("Location"); redirectUrl != expectedRedirectUrl {
 		t.Errorf("the redirect url: %s is not as expected", redirectUrl)
 	}
 }
@@ -204,21 +198,21 @@ func TestFinishFlowWithFailureStepShouldHaveNoNextSteps(t *testing.T) {
 
 func TestFinishFlowWithFailureStep(t *testing.T) {
 	// When
-	session := &AuthnSession{
+	session := &models.AuthnSession{
 		RedirectUri: "https://example.com",
 		State:       "random_state",
 	}
-	ctx := getTestContext()
+	ctx := GetMockedContext()
 
 	// Then
-	FinishFlowWithFailureStep.AuthnFunc(session, ctx)
+	FinishFlowWithFailureStep.AuthnFunc(ctx, session)
 
 	// Assert
-	if http.StatusFound != ctx.Writer.Status() {
-		t.Errorf("response status is: %v, but should be 302", ctx.Request.Response.StatusCode)
+	if http.StatusFound != ctx.RequestContext.Writer.Status() {
+		t.Errorf("response status is: %v, but should be 302", ctx.RequestContext.Request.Response.StatusCode)
 	}
 	expectedRedirectUrl := fmt.Sprintf(session.RedirectUri+"?error=%s&error_description=%s&state=%s", "access_denied", "access+denied", session.State)
-	if redirectUrl := ctx.Writer.Header().Get("Location"); redirectUrl != expectedRedirectUrl {
+	if redirectUrl := ctx.RequestContext.Writer.Header().Get("Location"); redirectUrl != expectedRedirectUrl {
 		t.Errorf("the redirect url: %s is not as expected", redirectUrl)
 	}
 }

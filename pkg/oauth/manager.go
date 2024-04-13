@@ -58,8 +58,8 @@ func (manager *OAuthManager) AddClient(client models.Client) error {
 	return manager.crudManager.ClientManager.Create(client)
 }
 
-func (manager *OAuthManager) AddPolicy(policy models.AuthnPolicy) {
-	models.AddPolicy(policy)
+func (manager *OAuthManager) AddPolicy(policy utils.AuthnPolicy) {
+	utils.AddPolicy(policy)
 }
 
 func (manager *OAuthManager) Run(port int) {

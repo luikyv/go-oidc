@@ -14,6 +14,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
+	"github.com/luikymagno/auth-server/internal/utils"
 	"github.com/luikymagno/auth-server/pkg/oauth"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -70,11 +71,13 @@ func createClientAssertion(client models.Client, jwk jose.JSONWebKey) string {
 }
 
 func main() {
-	clientId := "client_id"
+	clientId := "ailson"
+	clientSecret := "secret"
 	opaqueTokenModelId := "opaque_token_model"
 	jwtTokenModelId := "jwt_token_model"
 	userPassword := "password"
 	privateKeyId := "rsa_key"
+	issuer := "https://example.com"
 	jwks := loadJwks()
 
 	// Create the manager.
@@ -85,7 +88,7 @@ func main() {
 		TokenLength: 20,
 		TokenModelInfo: models.TokenModelInfo{
 			Id:            opaqueTokenModelId,
-			Issuer:        "https://example.com",
+			Issuer:        issuer,
 			ExpiresInSecs: 60,
 			IsRefreshable: false,
 			OpenIdKeyId:   privateKeyId,
@@ -95,7 +98,7 @@ func main() {
 		KeyId: privateKeyId,
 		TokenModelInfo: models.TokenModelInfo{
 			Id:                  jwtTokenModelId,
-			Issuer:              "https://example.com",
+			Issuer:              issuer,
 			ExpiresInSecs:       60,
 			IsRefreshable:       true,
 			RefreshLifetimeSecs: 60,
@@ -104,7 +107,7 @@ func main() {
 	})
 
 	// Add client mock.
-	hashedSecret, _ := bcrypt.GenerateFromPassword([]byte("secret"), 0)
+	hashedSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 0)
 	// Create the client
 	client := models.Client{
 		Id:                  clientId,
@@ -123,26 +126,26 @@ func main() {
 	oauthManager.AddClient(client)
 
 	// Create Steps
-	passwordStep := models.NewStep(
+	passwordStep := utils.NewStep(
 		"password",
-		models.FinishFlowSuccessfullyStep,
-		models.FinishFlowWithFailureStep,
-		func(session *models.AuthnSession, ctx *gin.Context) constants.AuthnStatus {
+		utils.FinishFlowSuccessfullyStep,
+		utils.FinishFlowWithFailureStep,
+		func(ctx utils.Context, session *models.AuthnSession) constants.AuthnStatus {
 
 			var passwordForm struct {
 				Password string `form:"password"`
 			}
-			ctx.ShouldBind(&passwordForm)
+			ctx.RequestContext.ShouldBind(&passwordForm)
 
 			if passwordForm.Password == "" {
-				ctx.HTML(http.StatusOK, "password.html", gin.H{
+				ctx.RequestContext.HTML(http.StatusOK, "password.html", gin.H{
 					"callbackId": session.CallbackId,
 				})
 				return constants.InProgress
 			}
 
 			if passwordForm.Password != userPassword {
-				ctx.HTML(http.StatusOK, "password.html", gin.H{
+				ctx.RequestContext.HTML(http.StatusOK, "password.html", gin.H{
 					"callbackId": session.CallbackId,
 					"error":      "invalid password",
 				})
@@ -153,22 +156,22 @@ func main() {
 		},
 	)
 
-	identityStep := models.NewStep(
+	identityStep := utils.NewStep(
 		"identity",
 		passwordStep,
-		models.FinishFlowWithFailureStep,
-		func(session *models.AuthnSession, ctx *gin.Context) constants.AuthnStatus {
+		utils.FinishFlowWithFailureStep,
+		func(ctx utils.Context, session *models.AuthnSession) constants.AuthnStatus {
 
 			var identityForm struct {
 				Username string `form:"username"`
 			}
-			ctx.ShouldBind(&identityForm)
+			ctx.RequestContext.ShouldBind(&identityForm)
 
-			a := ctx.PostForm("username")
+			a := ctx.RequestContext.PostForm("username")
 			fmt.Println(a)
 
 			if identityForm.Username == "" {
-				ctx.HTML(http.StatusOK, "identity.html", gin.H{
+				ctx.RequestContext.HTML(http.StatusOK, "identity.html", gin.H{
 					"callbackId": session.CallbackId,
 				})
 				return constants.InProgress
@@ -183,7 +186,7 @@ func main() {
 	)
 
 	// Create Policy
-	policy := models.NewPolicy(
+	policy := utils.NewPolicy(
 		"policy",
 		identityStep,
 		func(c models.Client, ctx *gin.Context) bool { return true },

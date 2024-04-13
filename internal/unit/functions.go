@@ -135,3 +135,16 @@ func SplitStringWithSpaces(s string) []string {
 
 	return slice
 }
+
+func SplitResponseTypes(s string) []constants.ResponseType {
+	responseTypes := []constants.ResponseType{}
+	if s == "" {
+		return responseTypes
+	}
+
+	for _, responseType := range strings.Split(s, " ") {
+		responseTypes = append(responseTypes, constants.ResponseType(responseType))
+	}
+
+	return responseTypes
+}
