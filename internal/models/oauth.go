@@ -158,7 +158,12 @@ func (req AuthorizeRequest) IsValid() error {
 		return errors.New("invalid parameter")
 	}
 
+	if !unit.AreResponseTypesValid(req.ResponseType) {
+		return errors.New("invalid response type")
+	}
+
 	// Validate PKCE parameters.
+	// The code challenge cannot be informed without the method and vice versa.
 	if (req.CodeChallenge != "" && req.CodeChallengeMethod == "") || (req.CodeChallenge == "" && req.CodeChallengeMethod != "") {
 		return errors.New("invalid parameters for PKCE")
 	}

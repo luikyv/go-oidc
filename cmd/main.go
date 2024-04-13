@@ -71,8 +71,8 @@ func createClientAssertion(client models.Client, jwk jose.JSONWebKey) string {
 }
 
 func main() {
-	clientId := "ailson"
-	clientSecret := "secret"
+	clientId := "random_client"
+	clientSecret := "random_secret"
 	opaqueTokenModelId := "opaque_token_model"
 	jwtTokenModelId := "jwt_token_model"
 	userPassword := "password"

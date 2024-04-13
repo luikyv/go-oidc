@@ -90,6 +90,14 @@ func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod 
 	return false
 }
 
+func AreResponseTypesValid(responseTypeString string) bool {
+	responseTypes := SplitResponseTypes(responseTypeString)
+	return Contains(
+		[]constants.ResponseType{constants.Code, constants.IdToken},
+		responseTypes,
+	)
+}
+
 func Contains[T comparable](superSet []T, subSet []T) bool {
 	for _, e := range subSet {
 		if !slices.Contains(superSet, e) {
