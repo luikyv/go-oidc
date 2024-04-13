@@ -40,13 +40,25 @@ var FinishFlowSuccessfullyStep *AuthnStep = &AuthnStep{
 	NextStepIfFailure: nil,
 	AuthnFunc: func(ctx Context, session *models.AuthnSession) constants.AuthnStatus {
 
-		params := make(map[string]string, 2)
+		params := make(map[string]string)
 
 		// Generate the authorization code if the client requested it.
 		if slices.Contains(session.ResponseTypes, constants.Code) {
 			session.AuthorizationCode = unit.GenerateAuthorizationCode()
 			session.AuthorizedAtTimestamp = unit.GetTimestampNow()
-			params["code"] = session.AuthorizationCode
+			params[string(constants.Code)] = session.AuthorizationCode
+		}
+
+		// Generate an ID token if the client requested it.
+		if slices.Contains(session.ResponseTypes, constants.IdToken) {
+			tokenModel, err := ctx.TokenModelManager.Get(session.TokenModelId)
+			if err != nil {
+				session.SetError(constants.InternalError, "error generating id token")
+				return FinishFlowWithFailureStep.AuthnFunc(ctx, session)
+			}
+			params[string(constants.IdToken)] = tokenModel.GenerateIdToken(
+				models.NewAuthorizationCodeGrantTokenContextInfoFromAuthnSession(*session),
+			)
 		}
 
 		if session.State != "" {

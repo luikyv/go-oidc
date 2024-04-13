@@ -1,13 +1,16 @@
 package utils
 
 import (
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/crud/mock"
 	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -20,10 +23,23 @@ const ValidTokenModelId string = "random_token_model"
 
 func SetUp() (ctx Context, tearDown func()) {
 	// Create
+	keyId := "0afee142-a0af-4410-abcc-9f2d44ff45b5"
+	jwkBytes, _ := json.Marshal(map[string]any{
+		"kty": "oct",
+		"kid": keyId,
+		"alg": "HS256",
+		"k":   "FdFYFzERwC2uCBB46pZQi4GG85LujR8obt-KWRBICVQ",
+	})
+	var jwk jose.JSONWebKey
+	jwk.UnmarshalJSON(jwkBytes)
+	unit.SetPrivateJWKS(jose.JSONWebKeySet{
+		Keys: []jose.JSONWebKey{jwk},
+	})
 	tokenModel := models.OpaqueTokenModel{
 		TokenLength: 20,
 		TokenModelInfo: models.TokenModelInfo{
 			Id:            ValidTokenModelId,
+			OpenIdKeyId:   keyId,
 			Issuer:        "https://example.com",
 			ExpiresInSecs: 60,
 			IsRefreshable: true,
@@ -37,7 +53,7 @@ func SetUp() (ctx Context, tearDown func()) {
 		RedirectUris:        []string{"https://example.com"},
 		Scopes:              []string{"scope1", "scope2"},
 		GrantTypes:          []constants.GrantType{constants.ClientCredentials, constants.AuthorizationCode, constants.RefreshToken},
-		ResponseTypes:       []constants.ResponseType{constants.Code},
+		ResponseTypes:       []constants.ResponseType{constants.Code, constants.IdToken},
 		DefaultTokenModelId: ValidTokenModelId,
 		Authenticator: models.SecretClientAuthenticator{
 			Salt:         clientSecretSalt,

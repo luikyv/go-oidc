@@ -67,6 +67,7 @@ const (
 	AccessDenied   ErrorCode = "access_denied"
 	InvalidRequest ErrorCode = "invalid_request"
 	InvalidScope   ErrorCode = "invalid_scope"
+	InternalError  ErrorCode = "internal_error"
 )
 
 var ErrorCodeToStatusCode map[ErrorCode]int = map[ErrorCode]int{

@@ -115,7 +115,7 @@ func main() {
 		GrantTypes:          []constants.GrantType{constants.ClientCredentials, constants.AuthorizationCode, constants.RefreshToken},
 		Scopes:              []string{"openid", "email", "profile"},
 		RedirectUris:        []string{"http://localhost:80/callback"},
-		ResponseTypes:       []constants.ResponseType{constants.Code},
+		ResponseTypes:       []constants.ResponseType{constants.Code, constants.IdToken},
 		DefaultTokenModelId: jwtTokenModelId,
 		Authenticator: models.SecretClientAuthenticator{
 			Salt:         clientSecretSalt,

@@ -93,6 +93,8 @@ func TestInitAuthenticationWhenInvalidResponseType(t *testing.T) {
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
 	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
+	client.ResponseTypes = []constants.ResponseType{constants.Code}
+	ctx.ClientManager.Update(utils.ValidClientId, client)
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
@@ -277,7 +279,7 @@ func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
-			ResponseType: string(constants.Code),
+			ResponseType: strings.Join([]string{string(constants.Code), string(constants.IdToken)}, " "),
 		},
 	})
 
@@ -301,6 +303,10 @@ func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 
 	redirectUrl := ctx.RequestContext.Writer.Header().Get("Location")
 	if !strings.Contains(redirectUrl, fmt.Sprintf("code=%s", session.AuthorizationCode)) {
+		t.Errorf("the policy should finish redirecting with error. redirect URL: %s", redirectUrl)
+		return
+	}
+	if !strings.Contains(redirectUrl, "id_token=") {
 		t.Errorf("the policy should finish redirecting with error. redirect URL: %s", redirectUrl)
 		return
 	}
