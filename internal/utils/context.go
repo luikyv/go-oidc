@@ -10,12 +10,23 @@ import (
 )
 
 type Context struct {
-	CrudManager    crud.CRUDManager
-	RequestContext *gin.Context
-	Logger         *slog.Logger
+	ScopeManager        crud.ScopeManager
+	TokenModelManager   crud.TokenModelManager
+	ClientManager       crud.ClientManager
+	TokenSessionManager crud.TokenSessionManager
+	AuthnSessionManager crud.AuthnSessionManager
+	RequestContext      *gin.Context
+	Logger              *slog.Logger
 }
 
-func NewContext(crudManager crud.CRUDManager, reqContext *gin.Context) Context {
+func NewContext(
+	scopeManager crud.ScopeManager,
+	tokenModelManager crud.TokenModelManager,
+	clientManager crud.ClientManager,
+	tokenSessionManager crud.TokenSessionManager,
+	authnSessionManager crud.AuthnSessionManager,
+	reqContext *gin.Context,
+) Context {
 
 	// Create logger.
 	opts := &slog.HandlerOptions{
@@ -31,8 +42,12 @@ func NewContext(crudManager crud.CRUDManager, reqContext *gin.Context) Context {
 	)
 
 	return Context{
-		CrudManager:    crudManager,
-		RequestContext: reqContext,
-		Logger:         logger,
+		ScopeManager:        scopeManager,
+		TokenModelManager:   tokenModelManager,
+		ClientManager:       clientManager,
+		TokenSessionManager: tokenSessionManager,
+		AuthnSessionManager: authnSessionManager,
+		RequestContext:      reqContext,
+		Logger:              logger,
 	}
 }

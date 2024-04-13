@@ -14,7 +14,7 @@ import (
 
 func InitAuthentication(ctx Context, req models.AuthorizeRequest) error {
 	// Fetch the client.
-	client, err := ctx.CrudManager.ClientManager.Get(req.ClientId)
+	client, err := ctx.ClientManager.Get(req.ClientId)
 	if err != nil {
 		return err
 	}
@@ -56,14 +56,14 @@ func initValidAuthenticationSession(_ Context, client models.Client, req models.
 func initValidAuthenticationSessionWithPAR(ctx Context, req models.AuthorizeRequest) (models.AuthnSession, error) {
 	// The session was already created by the client in the PAR endpoint.
 	// Fetch it using the request URI.
-	session, err := ctx.CrudManager.AuthnSessionManager.GetByRequestUri(req.RequestUri)
+	session, err := ctx.AuthnSessionManager.GetByRequestUri(req.RequestUri)
 	if err != nil {
 		return models.AuthnSession{}, err
 	}
 
 	if err := validateAuthorizeWithPARParams(session, req); err != nil {
 		// If any of the parameters is invalid, we delete the session right away.
-		ctx.CrudManager.AuthnSessionManager.Delete(session.Id)
+		ctx.AuthnSessionManager.Delete(session.Id)
 		return models.AuthnSession{}, err
 	}
 
@@ -76,7 +76,7 @@ func initValidAuthenticationSessionWithPAR(ctx Context, req models.AuthorizeRequ
 func ContinueAuthentication(ctx Context, callbackId string) error {
 
 	// Fetch the session using the callback ID.
-	session, err := ctx.CrudManager.AuthnSessionManager.GetByCallbackId(callbackId)
+	session, err := ctx.AuthnSessionManager.GetByCallbackId(callbackId)
 	if err != nil {
 		return err
 	}
@@ -190,15 +190,15 @@ func updateOrDeleteSession(ctx Context, session models.AuthnSession, currentStep
 
 	if currentStep == FinishFlowWithFailureStep {
 		// The flow finished with failure, so we don't keep the session anymore.
-		return ctx.CrudManager.AuthnSessionManager.Delete(session.Id)
+		return ctx.AuthnSessionManager.Delete(session.Id)
 	}
 
 	if currentStep == FinishFlowSuccessfullyStep && !slices.Contains(session.ResponseTypes, constants.Code) {
 		// The client didn't request an authorization code to later exchange it for an access token,
 		// so we don't keep the session anymore.
-		return ctx.CrudManager.AuthnSessionManager.Delete(session.Id)
+		return ctx.AuthnSessionManager.Delete(session.Id)
 	}
 
 	session.StepId = currentStep.Id
-	return ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(session)
+	return ctx.AuthnSessionManager.CreateOrUpdate(session)
 }

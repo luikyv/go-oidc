@@ -40,7 +40,7 @@ func TestPushAuthorizationShouldGenerateRequestUri(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
+	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 
 	// Then
 	requestUri, err := utils.PushAuthorization(ctx, models.PARRequest{

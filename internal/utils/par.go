@@ -23,7 +23,7 @@ func PushAuthorization(ctx Context, req models.PARRequest) (requestUri string, e
 	}
 
 	authnSession := models.NewSessionForPARRequest(req, client)
-	err = ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(authnSession)
+	err = ctx.AuthnSessionManager.CreateOrUpdate(authnSession)
 	if err != nil {
 		ctx.Logger.Debug("could not authenticate the client", slog.String("client_id", req.ClientId))
 		return "", err

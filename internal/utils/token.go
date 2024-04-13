@@ -45,7 +45,7 @@ func handleClientCredentialsGrantTokenCreation(ctx Context, req models.TokenRequ
 		return models.TokenSession{}, err
 	}
 
-	tokenModel, err := ctx.CrudManager.TokenModelManager.Get(authenticatedClient.DefaultTokenModelId)
+	tokenModel, err := ctx.TokenModelManager.Get(authenticatedClient.DefaultTokenModelId)
 	if err != nil {
 		return models.TokenSession{}, err
 	}
@@ -58,7 +58,7 @@ func handleClientCredentialsGrantTokenCreation(ctx Context, req models.TokenRequ
 		// We only need to create a token session for client credentials when the token is not self-contained,
 		// i.e. it is a refecence token.
 		ctx.Logger.Debug("create token session")
-		err = ctx.CrudManager.TokenSessionManager.CreateOrUpdate(tokenSession)
+		err = ctx.TokenSessionManager.CreateOrUpdate(tokenSession)
 	}
 	if err != nil {
 		return models.TokenSession{}, err
@@ -104,7 +104,7 @@ func handleAuthorizationCodeGrantTokenCreation(ctx Context, req models.TokenRequ
 	}
 
 	ctx.Logger.Debug("fetch the token model")
-	tokenModel, err := ctx.CrudManager.TokenModelManager.Get(authenticatedClient.DefaultTokenModelId)
+	tokenModel, err := ctx.TokenModelManager.Get(authenticatedClient.DefaultTokenModelId)
 	if err != nil {
 		ctx.Logger.Debug("error while loading the token model", slog.String("error", err.Error()))
 		return models.TokenSession{}, err
@@ -120,7 +120,7 @@ func handleAuthorizationCodeGrantTokenCreation(ctx Context, req models.TokenRequ
 		// We only need to create a token session for the authorization code grant when the token is not self-contained,
 		// i.e. it is a refecence token, or when the refresh token is issued.
 		ctx.Logger.Debug("create token session")
-		err = ctx.CrudManager.TokenSessionManager.CreateOrUpdate(tokenSession)
+		err = ctx.TokenSessionManager.CreateOrUpdate(tokenSession)
 	}
 	if err != nil {
 		return models.TokenSession{}, err
@@ -190,7 +190,7 @@ func getAuthenticatedClientAndSession(ctx Context, req models.TokenRequest) (mod
 }
 
 func getSessionByAuthorizationCode(ctx Context, authorizationCode string, ch chan<- ResultChannel) {
-	session, err := ctx.CrudManager.AuthnSessionManager.GetByAuthorizationCode(authorizationCode)
+	session, err := ctx.AuthnSessionManager.GetByAuthorizationCode(authorizationCode)
 	if err != nil {
 		ch <- ResultChannel{
 			result: models.AuthnSession{},
@@ -200,7 +200,7 @@ func getSessionByAuthorizationCode(ctx Context, authorizationCode string, ch cha
 
 	// The session must be used only once when requesting a token.
 	// By deleting it, we prevent replay attacks.
-	err = ctx.CrudManager.AuthnSessionManager.Delete(session.Id)
+	err = ctx.AuthnSessionManager.Delete(session.Id)
 	if err != nil {
 		ch <- ResultChannel{
 			result: models.AuthnSession{},
@@ -229,7 +229,7 @@ func handleRefreshTokenGrantTokenCreation(ctx Context, req models.TokenRequest) 
 	}
 
 	ctx.Logger.Debug("get the token model")
-	tokenModel, err := ctx.CrudManager.TokenModelManager.Get(tokenSession.TokenModelId)
+	tokenModel, err := ctx.TokenModelManager.Get(tokenSession.TokenModelId)
 	if err != nil {
 		ctx.Logger.Debug("error while loading the token model", slog.String("error", err.Error()))
 		return models.TokenSession{}, err
@@ -238,7 +238,7 @@ func handleRefreshTokenGrantTokenCreation(ctx Context, req models.TokenRequest) 
 
 	ctx.Logger.Debug("update the token session")
 	updatedTokenSession := generateUpdatedTokenSession(tokenModel, tokenSession)
-	err = ctx.CrudManager.TokenSessionManager.CreateOrUpdate(updatedTokenSession)
+	err = ctx.TokenSessionManager.CreateOrUpdate(updatedTokenSession)
 	if err != nil {
 		return models.TokenSession{}, err
 	}
@@ -273,7 +273,7 @@ func getAuthenticatedClientAndTokenSession(ctx Context, req models.TokenRequest)
 }
 
 func getTokenSessionByRefreshToken(ctx Context, refreshToken string, ch chan<- ResultChannel) {
-	tokenSession, err := ctx.CrudManager.TokenSessionManager.GetByRefreshToken(refreshToken)
+	tokenSession, err := ctx.TokenSessionManager.GetByRefreshToken(refreshToken)
 	if err != nil {
 		ch <- ResultChannel{
 			result: models.TokenSession{},
@@ -340,7 +340,7 @@ func getAuthenticatedClient(ctx Context, req models.ClientAuthnRequest) (models.
 		return models.Client{}, err
 	}
 
-	client, err := ctx.CrudManager.ClientManager.Get(clientId)
+	client, err := ctx.ClientManager.Get(clientId)
 	if err != nil {
 		ctx.Logger.Info("client not found", slog.String("client_id", clientId))
 		return models.Client{}, err

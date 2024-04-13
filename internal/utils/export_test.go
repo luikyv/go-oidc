@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 
 	"github.com/gin-gonic/gin"
-	"github.com/luikymagno/auth-server/internal/crud"
 	"github.com/luikymagno/auth-server/internal/crud/mock"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -46,12 +45,12 @@ func SetUp() (ctx Context, tearDown func()) {
 
 	// Save
 	ctx = GetMockedContext()
-	ctx.CrudManager.TokenModelManager.Create(tokenModel)
-	ctx.CrudManager.ClientManager.Create(client)
+	ctx.TokenModelManager.Create(tokenModel)
+	ctx.ClientManager.Create(client)
 
 	return ctx, func() {
-		ctx.CrudManager.TokenModelManager.Delete(ValidTokenModelId)
-		ctx.CrudManager.ClientManager.Delete(ValidClientId)
+		ctx.TokenModelManager.Delete(ValidTokenModelId)
+		ctx.ClientManager.Delete(ValidClientId)
 	}
 }
 
@@ -63,23 +62,19 @@ func GetMockedRequestContext() *gin.Context {
 }
 
 func GetMockedContext() Context {
-	crudManager := crud.CRUDManager{
+	return Context{
 		ScopeManager:        mock.NewMockedScopeManager(),
 		TokenModelManager:   mock.NewMockedTokenModelManager(),
 		ClientManager:       mock.NewMockedClientManager(),
 		TokenSessionManager: mock.NewMockedTokenSessionManager(),
 		AuthnSessionManager: mock.NewMockedAuthnSessionManager(),
-	}
-
-	return Context{
-		CrudManager:    crudManager,
-		RequestContext: GetMockedRequestContext(),
-		Logger:         slog.Default(),
+		RequestContext:      GetMockedRequestContext(),
+		Logger:              slog.Default(),
 	}
 }
 
 func GetSessionsFromMock(ctx Context) []models.AuthnSession {
-	sessionManager, _ := ctx.CrudManager.AuthnSessionManager.(*mock.MockedAuthnSessionManager)
+	sessionManager, _ := ctx.AuthnSessionManager.(*mock.MockedAuthnSessionManager)
 	sessions := make([]models.AuthnSession, 0, len(sessionManager.Sessions))
 	for _, s := range sessionManager.Sessions {
 		sessions = append(sessions, s)
@@ -89,7 +84,7 @@ func GetSessionsFromMock(ctx Context) []models.AuthnSession {
 }
 
 func GetTokenFromMock(ctx Context) []models.TokenSession {
-	tokenManager, _ := ctx.CrudManager.TokenSessionManager.(*mock.MockedTokenSessionManager)
+	tokenManager, _ := ctx.TokenSessionManager.(*mock.MockedTokenSessionManager)
 	tokens := make([]models.TokenSession, 0, len(tokenManager.TokenSessions))
 	for _, t := range tokenManager.TokenSessions {
 		tokens = append(tokens, t)

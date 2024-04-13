@@ -17,7 +17,7 @@ func TestHandleTokenCreationShouldNotFindClient(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
+	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 
 	// Then
 	_, err := utils.HandleTokenCreation(ctx, models.TokenRequest{
@@ -41,7 +41,7 @@ func TestHandleTokenCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
+	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 
 	// Then
 	_, err := utils.HandleTokenCreation(ctx, models.TokenRequest{
@@ -69,7 +69,7 @@ func TestClientCredentialsHandleTokenCreation(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
+	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 	req := models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
 			ClientId:     utils.ValidClientId,
@@ -98,7 +98,7 @@ func TestClientCredentialsHandleTokenCreation(t *testing.T) {
 		return
 	}
 
-	tokenSessionManager, _ := ctx.CrudManager.TokenSessionManager.(*mock.MockedTokenSessionManager)
+	tokenSessionManager, _ := ctx.TokenSessionManager.(*mock.MockedTokenSessionManager)
 	tokens := make([]models.TokenSession, 0, len(tokenSessionManager.TokenSessions))
 	for _, tk := range tokenSessionManager.TokenSessions {
 		tokens = append(tokens, tk)
@@ -114,7 +114,7 @@ func TestAuthorizationCodeHandleTokenCreation(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
+	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 
 	authorizationCode := "random_authz_code"
 	session := models.AuthnSession{
@@ -128,7 +128,7 @@ func TestAuthorizationCodeHandleTokenCreation(t *testing.T) {
 		Store:                 make(map[string]string),
 		AdditionalTokenClaims: make(map[string]string),
 	}
-	ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(session)
+	ctx.AuthnSessionManager.CreateOrUpdate(session)
 
 	req := models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
@@ -171,7 +171,7 @@ func TestRefreshTokenHandleTokenCreation(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
+	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
@@ -186,7 +186,7 @@ func TestRefreshTokenHandleTokenCreation(t *testing.T) {
 		ClientId:           utils.ValidClientId,
 		Scopes:             client.Scopes,
 	}
-	ctx.CrudManager.TokenSessionManager.CreateOrUpdate(token)
+	ctx.TokenSessionManager.CreateOrUpdate(token)
 
 	req := models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
@@ -233,7 +233,7 @@ func TestRefreshTokenHandleTokenCreationShouldDenyExpiredRefreshToken(t *testing
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
+	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
@@ -249,7 +249,7 @@ func TestRefreshTokenHandleTokenCreationShouldDenyExpiredRefreshToken(t *testing
 		ClientId:              utils.ValidClientId,
 		Scopes:                client.Scopes,
 	}
-	ctx.CrudManager.TokenSessionManager.CreateOrUpdate(token)
+	ctx.TokenSessionManager.CreateOrUpdate(token)
 
 	req := models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{

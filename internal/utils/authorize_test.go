@@ -63,7 +63,7 @@ func TestInitAuthenticationWhenInvalidScope(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
+	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
@@ -92,7 +92,7 @@ func TestInitAuthenticationWhenInvalidResponseType(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
+	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
@@ -121,7 +121,7 @@ func TestInitAuthenticationWhenNoPolicyIsAvailable(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
+	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
@@ -144,7 +144,7 @@ func TestInitAuthenticationShouldEndWithError(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
+	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 	firstStep := utils.NewStep(
 		"init_step",
 		utils.FinishFlowSuccessfullyStep,
@@ -193,7 +193,7 @@ func TestInitAuthenticationShouldEndInProgress(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
+	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 	firstStep := utils.NewStep(
 		"init_step",
 		utils.FinishFlowSuccessfullyStep,
@@ -256,7 +256,7 @@ func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
+	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 	firstStep := utils.NewStep(
 		"init_step",
 		utils.FinishFlowSuccessfullyStep,
@@ -310,9 +310,9 @@ func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 func TestInitAuthenticationWithPAR(t *testing.T) {
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
-	client, _ := ctx.CrudManager.ClientManager.Get(utils.ValidClientId)
+	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 	requestUri := "urn:goidc:random_value"
-	ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(
+	ctx.AuthnSessionManager.CreateOrUpdate(
 		models.AuthnSession{
 			Id:                 uuid.NewString(),
 			RequestUri:         requestUri,
@@ -377,7 +377,7 @@ func TestContinueAuthentication(t *testing.T) {
 	)
 
 	callbackId := "random_callback_id"
-	ctx.CrudManager.AuthnSessionManager.CreateOrUpdate(models.AuthnSession{
+	ctx.AuthnSessionManager.CreateOrUpdate(models.AuthnSession{
 		StepId:     firstStep.Id,
 		CallbackId: callbackId,
 	})

@@ -16,8 +16,12 @@ import (
 )
 
 type OAuthManager struct {
-	crudManager crud.CRUDManager
-	server      *gin.Engine
+	ScopeManager        crud.ScopeManager
+	TokenModelManager   crud.TokenModelManager
+	ClientManager       crud.ClientManager
+	TokenSessionManager crud.TokenSessionManager
+	AuthnSessionManager crud.AuthnSessionManager
+	server              *gin.Engine
 }
 
 func NewManager(
@@ -26,8 +30,7 @@ func NewManager(
 ) *OAuthManager {
 
 	manager := &OAuthManager{
-		crudManager: crud.CRUDManager{},
-		server:      gin.Default(),
+		server: gin.Default(),
 	}
 
 	for _, setting := range settings {
@@ -40,26 +43,37 @@ func NewManager(
 }
 
 func SetMockedEntitiesConfig(manager *OAuthManager) {
-	manager.crudManager.ScopeManager = mock.NewMockedScopeManager()
-	manager.crudManager.TokenModelManager = mock.NewMockedTokenModelManager()
-	manager.crudManager.ClientManager = mock.NewMockedClientManager()
+	manager.ScopeManager = mock.NewMockedScopeManager()
+	manager.TokenModelManager = mock.NewMockedTokenModelManager()
+	manager.ClientManager = mock.NewMockedClientManager()
 }
 
 func SetMockedSessionsConfig(manager *OAuthManager) {
-	manager.crudManager.TokenSessionManager = mock.NewMockedTokenSessionManager()
-	manager.crudManager.AuthnSessionManager = mock.NewMockedAuthnSessionManager()
+	manager.TokenSessionManager = mock.NewMockedTokenSessionManager()
+	manager.AuthnSessionManager = mock.NewMockedAuthnSessionManager()
 }
 
 func (manager *OAuthManager) AddTokenModel(model models.TokenModel) error {
-	return manager.crudManager.TokenModelManager.Create(model)
+	return manager.TokenModelManager.Create(model)
 }
 
 func (manager *OAuthManager) AddClient(client models.Client) error {
-	return manager.crudManager.ClientManager.Create(client)
+	return manager.ClientManager.Create(client)
 }
 
 func (manager *OAuthManager) AddPolicy(policy utils.AuthnPolicy) {
 	utils.AddPolicy(policy)
+}
+
+func (manager OAuthManager) getContext(requestContext *gin.Context) utils.Context {
+	return utils.NewContext(
+		manager.ScopeManager,
+		manager.TokenModelManager,
+		manager.ClientManager,
+		manager.TokenSessionManager,
+		manager.AuthnSessionManager,
+		requestContext,
+	)
 }
 
 func (manager *OAuthManager) Run(port int) {
@@ -76,29 +90,29 @@ func (manager *OAuthManager) Run(port int) {
 	})
 
 	// Set endpoints.
-	manager.server.GET("/jwks.json", func(ctx *gin.Context) {
+	manager.server.GET("/jwks.json", func(requestCtx *gin.Context) {
 		apihandlers.HandleJWKSRequest(
-			utils.NewContext(manager.crudManager, ctx),
+			manager.getContext(requestCtx),
 		)
 	})
-	manager.server.POST("/par", func(ctx *gin.Context) {
+	manager.server.POST("/par", func(requestCtx *gin.Context) {
 		apihandlers.HandlePARRequest(
-			utils.NewContext(manager.crudManager, ctx),
+			manager.getContext(requestCtx),
 		)
 	})
-	manager.server.GET("/authorize", func(ctx *gin.Context) {
+	manager.server.GET("/authorize", func(requestCtx *gin.Context) {
 		apihandlers.HandleAuthorizeRequest(
-			utils.NewContext(manager.crudManager, ctx),
+			manager.getContext(requestCtx),
 		)
 	})
-	manager.server.POST("/authorize/:callback", func(ctx *gin.Context) {
+	manager.server.POST("/authorize/:callback", func(requestCtx *gin.Context) {
 		apihandlers.HandleAuthorizeCallbackRequest(
-			utils.NewContext(manager.crudManager, ctx),
+			manager.getContext(requestCtx),
 		)
 	})
-	manager.server.POST("/token", func(ctx *gin.Context) {
+	manager.server.POST("/token", func(requestCtx *gin.Context) {
 		apihandlers.HandleTokenRequest(
-			utils.NewContext(manager.crudManager, ctx),
+			manager.getContext(requestCtx),
 		)
 	})
 
