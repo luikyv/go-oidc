@@ -52,26 +52,33 @@ func NewRefreshTokenGrantTokenContextInfoFromAuthnSession(session TokenSession) 
 }
 
 type ClientAuthnRequest struct {
-	ClientId            string                        `form:"client_id"`
-	ClientSecret        string                        `form:"client_secret"`
-	ClientAssertionType constants.ClientAssertionType `form:"client_assertion_type"`
-	ClientAssertion     string                        `form:"client_assertion"`
+	ClientIdBasicAuthn     string
+	ClientSecretBasicAuthn string
+	ClientIdPost           string                        `form:"client_id"`
+	ClientSecretPost       string                        `form:"client_secret"`
+	ClientAssertionType    constants.ClientAssertionType `form:"client_assertion_type"`
+	ClientAssertion        string                        `form:"client_assertion"`
 }
 
 func (req ClientAuthnRequest) IsValid() error {
 
 	// Either the client ID or the client assertion must be present to identity the client.
-	if req.ClientId == "" && req.ClientAssertion == "" {
+	if req.ClientIdBasicAuthn == "" && req.ClientIdPost == "" && req.ClientAssertion == "" {
 		return errors.New("invalid authentication parameter")
 	}
 
-	// Validate parameters for client secret authentication.
-	if req.ClientSecret != "" && (req.ClientAssertionType != "" || req.ClientAssertion != "") {
+	// Validate parameters for client secret basic authentication.
+	if req.ClientIdBasicAuthn != "" && (req.ClientSecretBasicAuthn == "" || req.ClientIdPost != "" || req.ClientSecretPost != "" || req.ClientAssertionType != "" || req.ClientAssertion != "") {
+		return errors.New("invalid authentication parameter")
+	}
+
+	// Validate parameters for client secret post authentication.
+	if req.ClientIdPost != "" && (req.ClientSecretPost == "" || req.ClientIdBasicAuthn != "" || req.ClientSecretBasicAuthn != "" || req.ClientAssertionType != "" || req.ClientAssertion != "") {
 		return errors.New("invalid authentication parameter")
 	}
 
 	// Validate parameters for private key jwt authentication.
-	if req.ClientAssertion != "" && (req.ClientAssertionType != constants.JWTBearerAssertion || req.ClientSecret != "") {
+	if req.ClientAssertion != "" && (req.ClientAssertionType != constants.JWTBearerAssertion || req.ClientIdBasicAuthn != "" || req.ClientSecretBasicAuthn != "" || req.ClientIdPost != "" || req.ClientSecretPost != "") {
 		return errors.New("invalid authentication parameter")
 	}
 
@@ -178,7 +185,7 @@ type PARRequest struct {
 
 func (req PARRequest) ToAuthorizeRequest() AuthorizeRequest {
 	return AuthorizeRequest{
-		ClientId:             req.ClientId,
+		ClientId:             req.ClientIdPost,
 		BaseAuthorizeRequest: req.BaseAuthorizeRequest,
 	}
 }
@@ -199,4 +206,8 @@ func (req PARRequest) IsValid() error {
 type PARResponse struct {
 	RequestUri string `json:"request_uri"`
 	ExpiresIn  int    `json:"expires_in"`
+}
+
+type UserInfoResponse struct {
+	UserId string `json:"sub"`
 }

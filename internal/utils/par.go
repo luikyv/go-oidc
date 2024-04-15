@@ -13,7 +13,7 @@ func PushAuthorization(ctx Context, req models.PARRequest) (requestUri string, e
 	// Authenticate the client as in the token endpoint.
 	client, err := getAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
-		ctx.Logger.Info("could not authenticate the client", slog.String("client_id", req.ClientId))
+		ctx.Logger.Info("could not authenticate the client", slog.String("client_id", req.ClientIdPost))
 		return "", err
 	}
 
@@ -25,7 +25,7 @@ func PushAuthorization(ctx Context, req models.PARRequest) (requestUri string, e
 	authnSession := models.NewSessionForPARRequest(req, client)
 	err = ctx.AuthnSessionManager.CreateOrUpdate(authnSession)
 	if err != nil {
-		ctx.Logger.Debug("could not authenticate the client", slog.String("client_id", req.ClientId))
+		ctx.Logger.Debug("could not authenticate the client", slog.String("client_id", req.ClientIdPost))
 		return "", err
 	}
 

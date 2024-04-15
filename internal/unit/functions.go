@@ -44,13 +44,13 @@ func GenerateRefreshToken() string {
 }
 
 func GetUrlWithParams(redirectUri string, params map[string]string) string {
-	u, _ := url.Parse(redirectUri)
-	q := u.Query()
-	for p, v := range params {
-		q.Add(p, v)
+	parsedUrl, _ := url.Parse(redirectUri)
+	query := parsedUrl.Query()
+	for param, value := range params {
+		query.Add(param, value)
 	}
-	u.RawQuery = q.Encode()
-	return u.String()
+	parsedUrl.RawQuery = query.Encode()
+	return parsedUrl.String()
 }
 
 func SetPrivateJWKS(privateJWKS jose.JSONWebKeySet) {

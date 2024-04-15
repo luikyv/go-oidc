@@ -22,8 +22,8 @@ func TestHandleTokenCreationShouldNotFindClient(t *testing.T) {
 	// Then
 	_, err := utils.HandleTokenCreation(ctx, models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
-			ClientId:     "invalid_client_id",
-			ClientSecret: utils.ValidClientSecret,
+			ClientIdPost:     "invalid_client_id",
+			ClientSecretPost: utils.ValidClientSecret,
 		},
 		GrantType: constants.ClientCredentials,
 		Scope:     strings.Join(client.Scopes, " "),
@@ -46,8 +46,8 @@ func TestHandleTokenCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	// Then
 	_, err := utils.HandleTokenCreation(ctx, models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
-			ClientId:     utils.ValidClientId,
-			ClientSecret: "invalid_password",
+			ClientIdPost:     utils.ValidClientId,
+			ClientSecretPost: "invalid_password",
 		},
 		GrantType: constants.ClientCredentials,
 		Scope:     strings.Join(client.Scopes, " "),
@@ -72,8 +72,8 @@ func TestClientCredentialsHandleTokenCreation(t *testing.T) {
 	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 	req := models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
-			ClientId:     utils.ValidClientId,
-			ClientSecret: utils.ValidClientSecret,
+			ClientIdPost:     utils.ValidClientId,
+			ClientSecretPost: utils.ValidClientSecret,
 		},
 		GrantType: constants.ClientCredentials,
 		Scope:     strings.Join(client.Scopes, " "),
@@ -132,8 +132,8 @@ func TestAuthorizationCodeHandleTokenCreation(t *testing.T) {
 
 	req := models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
-			ClientId:     utils.ValidClientId,
-			ClientSecret: utils.ValidClientSecret,
+			ClientIdPost:     utils.ValidClientId,
+			ClientSecretPost: utils.ValidClientSecret,
 		},
 		GrantType:         constants.AuthorizationCode,
 		RedirectUri:       client.RedirectUris[0],
@@ -190,8 +190,8 @@ func TestRefreshTokenHandleTokenCreation(t *testing.T) {
 
 	req := models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
-			ClientId:     utils.ValidClientId,
-			ClientSecret: utils.ValidClientSecret,
+			ClientIdPost:     utils.ValidClientId,
+			ClientSecretPost: utils.ValidClientSecret,
 		},
 		GrantType:    constants.RefreshToken,
 		RefreshToken: refreshToken,
@@ -253,8 +253,8 @@ func TestRefreshTokenHandleTokenCreationShouldDenyExpiredRefreshToken(t *testing
 
 	req := models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
-			ClientId:     utils.ValidClientId,
-			ClientSecret: utils.ValidClientSecret,
+			ClientIdPost:     utils.ValidClientId,
+			ClientSecretPost: utils.ValidClientSecret,
 		},
 		GrantType:    constants.RefreshToken,
 		RefreshToken: refreshToken,

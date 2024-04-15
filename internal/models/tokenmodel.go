@@ -24,6 +24,7 @@ func (tokenModelInfo TokenModelInfo) GenerateIdToken(ctxInfo TokenContextInfo) s
 	claims := map[string]any{
 		string(constants.Issuer):   tokenModelInfo.Issuer,
 		string(constants.Subject):  ctxInfo.Subject,
+		string(constants.Audience): ctxInfo.ClientId,
 		string(constants.IssuedAt): timestampNow,
 		string(constants.Expiry):   timestampNow + tokenModelInfo.ExpiresInSecs,
 		string(constants.Nonce):    ctxInfo.Nonce,

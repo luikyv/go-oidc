@@ -15,7 +15,7 @@ import (
 func TestNoneAuthenticatorValidInfo(t *testing.T) {
 	authenticator := NoneClientAuthenticator{}
 	req := ClientAuthnRequest{
-		ClientId: "client_id",
+		ClientIdPost: "client_id",
 	}
 
 	if !authenticator.IsAuthenticated(req) {
@@ -33,8 +33,8 @@ func TestSecretClientAuthenticatorValidInfo(t *testing.T) {
 		HashedSecret: string(hashedClientSecret),
 	}
 	req := ClientAuthnRequest{
-		ClientId:     "client_id",
-		ClientSecret: clientSecret,
+		ClientIdPost:     "client_id",
+		ClientSecretPost: clientSecret,
 	}
 
 	if !authenticator.IsAuthenticated(req) {
@@ -51,8 +51,8 @@ func TestSecretClientAuthenticatorInvalidInfo(t *testing.T) {
 		HashedSecret: string(hashedClientSecret),
 	}
 	req := ClientAuthnRequest{
-		ClientId:     "client_id",
-		ClientSecret: "invalid_secret",
+		ClientIdPost:     "client_id",
+		ClientSecretPost: "invalid_secret",
 	}
 
 	if authenticator.IsAuthenticated(req) {
@@ -85,7 +85,7 @@ func TestPrivateKeyJWTClientAuthenticatorValidInfo(t *testing.T) {
 	}
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
 	req := ClientAuthnRequest{
-		ClientId:            clientId,
+		ClientIdPost:        clientId,
 		ClientAssertionType: constants.JWTBearerAssertion,
 		ClientAssertion:     assertion,
 	}

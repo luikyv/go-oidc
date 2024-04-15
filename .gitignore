@@ -26,3 +26,4 @@ go.work
 ## Random files
 playground/
 *.http
+*.pem

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
@@ -114,7 +115,7 @@ func main() {
 		Id:                  clientId,
 		GrantTypes:          []constants.GrantType{constants.ClientCredentials, constants.AuthorizationCode, constants.RefreshToken},
 		Scopes:              []string{"openid", "email", "profile"},
-		RedirectUris:        []string{"http://localhost:80/callback"},
+		RedirectUris:        []string{"http://localhost:80/callback", "https://localhost.emobix.co.uk:8443/test/a/first_test/callback", "https://localhost:8443/test/a/first_test/callback"},
 		ResponseTypes:       []constants.ResponseType{constants.Code, constants.IdToken},
 		DefaultTokenModelId: jwtTokenModelId,
 		Authenticator: models.SecretClientAuthenticator{
@@ -182,7 +183,9 @@ func main() {
 			session.SetUserId(identityForm.Username)
 			session.SetCustomTokenClaim("custom_claim", "random_value")
 			session.SetCustomTokenClaim("client_attribute", session.ClientAttributes["custom_attribute"])
-			session.SetCustomIdTokenClaim("email", "random@email.com")
+			if slices.Contains(session.Scopes, "email") {
+				session.SetCustomIdTokenClaim("email", "random@email.com")
+			}
 			return constants.Success
 		},
 	)
@@ -196,5 +199,5 @@ func main() {
 
 	// Run
 	oauthManager.AddPolicy(policy)
-	oauthManager.Run(80)
+	oauthManager.RunTLS(443)
 }

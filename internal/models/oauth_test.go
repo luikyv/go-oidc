@@ -11,7 +11,8 @@ import (
 func getValidTokenRequestForClientCredentials() models.TokenRequest {
 	return models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
-			ClientId: "client_id",
+			ClientIdPost:     "client_id",
+			ClientSecretPost: "random_secret",
 		},
 		GrantType: constants.ClientCredentials,
 		Scope:     "scope1 scope2",
@@ -75,7 +76,8 @@ func TestTokenRequestIsValidWhenGrantTypeIsClientCredentials(t *testing.T) {
 func getValidTokenRequestForAuthorizationCodeGrant() models.TokenRequest {
 	return models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
-			ClientId: "client_id",
+			ClientIdPost:     "random_client",
+			ClientSecretPost: "random_secret",
 		},
 		GrantType:         constants.AuthorizationCode,
 		AuthorizationCode: "random_authorization_code",
@@ -148,7 +150,8 @@ func TestTokenRequestIsValidWhenGrantTypeIsAuthorizationCode(t *testing.T) {
 func getValidTokenRequestForRefreshTokenGrant() models.TokenRequest {
 	return models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
-			ClientId: "client_id",
+			ClientIdPost:     "client_id",
+			ClientSecretPost: "random_secret",
 		},
 		GrantType:    constants.RefreshToken,
 		RefreshToken: "random_refresh_token",

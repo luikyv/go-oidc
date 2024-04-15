@@ -145,7 +145,7 @@ func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client model
 		}
 	}
 
-	if session.ClientId != req.ClientId {
+	if session.ClientId != client.Id {
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "the authorization code was not issued to the client",
@@ -347,7 +347,7 @@ func getAuthenticatedClient(ctx Context, req models.ClientAuthnRequest) (models.
 	}
 
 	if !client.Authenticator.IsAuthenticated(req) {
-		ctx.Logger.Info("client not authenticated", slog.String("client_id", req.ClientId))
+		ctx.Logger.Info("client not authenticated", slog.String("client_id", req.ClientIdPost))
 		return models.Client{}, issues.JsonError{
 			ErrorCode:        constants.AccessDenied,
 			ErrorDescription: "client not authenticated",
@@ -359,8 +359,12 @@ func getAuthenticatedClient(ctx Context, req models.ClientAuthnRequest) (models.
 
 // Get the client ID from either directly in the request or use the value provided in the client assertion.
 func getClientId(req models.ClientAuthnRequest) (string, error) {
-	if req.ClientId != "" {
-		return req.ClientId, nil
+	if req.ClientIdPost != "" {
+		return req.ClientIdPost, nil
+	}
+
+	if req.ClientIdBasicAuthn != "" {
+		return req.ClientIdBasicAuthn, nil
 	}
 
 	assertion, err := jwt.ParseSigned(req.ClientAssertion, constants.ClientSigningAlgorithms)

@@ -30,7 +30,14 @@ type SecretClientAuthenticator struct {
 
 func (authenticator SecretClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
 
-	saltedSecret := authenticator.Salt + req.ClientSecret
+	var clientSecret string
+	if req.ClientSecretPost != "" {
+		clientSecret = req.ClientSecretPost
+	} else {
+		clientSecret = req.ClientSecretBasicAuthn
+	}
+
+	saltedSecret := authenticator.Salt + clientSecret
 	err := bcrypt.CompareHashAndPassword([]byte(authenticator.HashedSecret), []byte(saltedSecret))
 	return err == nil
 }

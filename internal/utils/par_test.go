@@ -19,8 +19,8 @@ func TestPushAuthorizationShouldRejectUnauthenticatedClient(t *testing.T) {
 	// Then
 	_, err := utils.PushAuthorization(ctx, models.PARRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
-			ClientId:     utils.ValidClientId,
-			ClientSecret: "invalid_password",
+			ClientIdPost:     utils.ValidClientId,
+			ClientSecretPost: "invalid_password",
 		},
 	})
 
@@ -45,8 +45,8 @@ func TestPushAuthorizationShouldGenerateRequestUri(t *testing.T) {
 	// Then
 	requestUri, err := utils.PushAuthorization(ctx, models.PARRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
-			ClientId:     utils.ValidClientId,
-			ClientSecret: utils.ValidClientSecret,
+			ClientIdPost:     utils.ValidClientId,
+			ClientSecretPost: utils.ValidClientSecret,
 		},
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RedirectUri:  client.RedirectUris[0],

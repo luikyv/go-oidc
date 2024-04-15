@@ -25,6 +25,12 @@ func HandlePARRequest(ctx utils.Context) {
 		return
 	}
 
+	clientIdBasic, clientSecretBasic, hasBasicAuthn := ctx.RequestContext.Request.BasicAuth()
+	if hasBasicAuthn {
+		req.ClientIdBasicAuthn = clientIdBasic
+		req.ClientSecretBasicAuthn = clientSecretBasic
+	}
+
 	if err := req.IsValid(); err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
@@ -79,6 +85,12 @@ func HandleTokenRequest(ctx utils.Context) {
 		return
 	}
 
+	clientIdBasic, clientSecretBasic, hasBasicAuthn := ctx.RequestContext.Request.BasicAuth()
+	if hasBasicAuthn {
+		req.ClientIdBasicAuthn = clientIdBasic
+		req.ClientSecretBasicAuthn = clientSecretBasic
+	}
+
 	if err := req.IsValid(); err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
@@ -96,6 +108,14 @@ func HandleTokenRequest(ctx utils.Context) {
 		RefreshToken: tokenSession.RefreshToken,
 		ExpiresIn:    tokenSession.ExpiresInSecs,
 		TokenType:    constants.Bearer,
+	})
+}
+
+//---------------------------------------- User Info ----------------------------------------//
+
+func HandleUserInfoRequest(ctx utils.Context) {
+	ctx.RequestContext.JSON(http.StatusOK, gin.H{
+		"sub": "luiky",
 	})
 }
 

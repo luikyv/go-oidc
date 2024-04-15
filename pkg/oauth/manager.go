@@ -16,12 +16,13 @@ import (
 )
 
 type OAuthManager struct {
-	ScopeManager        crud.ScopeManager
-	TokenModelManager   crud.TokenModelManager
-	ClientManager       crud.ClientManager
-	TokenSessionManager crud.TokenSessionManager
-	AuthnSessionManager crud.AuthnSessionManager
+	scopeManager        crud.ScopeManager
+	tokenModelManager   crud.TokenModelManager
+	clientManager       crud.ClientManager
+	tokenSessionManager crud.TokenSessionManager
+	authnSessionManager crud.AuthnSessionManager
 	server              *gin.Engine
+	host                string // TODO
 }
 
 func NewManager(
@@ -43,22 +44,22 @@ func NewManager(
 }
 
 func SetMockedEntitiesConfig(manager *OAuthManager) {
-	manager.ScopeManager = mock.NewMockedScopeManager()
-	manager.TokenModelManager = mock.NewMockedTokenModelManager()
-	manager.ClientManager = mock.NewMockedClientManager()
+	manager.scopeManager = mock.NewMockedScopeManager()
+	manager.tokenModelManager = mock.NewMockedTokenModelManager()
+	manager.clientManager = mock.NewMockedClientManager()
 }
 
 func SetMockedSessionsConfig(manager *OAuthManager) {
-	manager.TokenSessionManager = mock.NewMockedTokenSessionManager()
-	manager.AuthnSessionManager = mock.NewMockedAuthnSessionManager()
+	manager.tokenSessionManager = mock.NewMockedTokenSessionManager()
+	manager.authnSessionManager = mock.NewMockedAuthnSessionManager()
 }
 
 func (manager *OAuthManager) AddTokenModel(model models.TokenModel) error {
-	return manager.TokenModelManager.Create(model)
+	return manager.tokenModelManager.Create(model)
 }
 
 func (manager *OAuthManager) AddClient(client models.Client) error {
-	return manager.ClientManager.Create(client)
+	return manager.clientManager.Create(client)
 }
 
 func (manager *OAuthManager) AddPolicy(policy utils.AuthnPolicy) {
@@ -67,16 +68,16 @@ func (manager *OAuthManager) AddPolicy(policy utils.AuthnPolicy) {
 
 func (manager OAuthManager) getContext(requestContext *gin.Context) utils.Context {
 	return utils.NewContext(
-		manager.ScopeManager,
-		manager.TokenModelManager,
-		manager.ClientManager,
-		manager.TokenSessionManager,
-		manager.AuthnSessionManager,
+		manager.scopeManager,
+		manager.tokenModelManager,
+		manager.clientManager,
+		manager.tokenSessionManager,
+		manager.authnSessionManager,
 		requestContext,
 	)
 }
 
-func (manager *OAuthManager) Run(port int) {
+func (manager *OAuthManager) run() {
 
 	// Configure the server.
 	manager.server.LoadHTMLGlob("../cmd/templates/*")
@@ -115,7 +116,21 @@ func (manager *OAuthManager) Run(port int) {
 			manager.getContext(requestCtx),
 		)
 	})
+	manager.server.GET("/userinfo", func(requestCtx *gin.Context) {
+		apihandlers.HandleUserInfoRequest(
+			manager.getContext(requestCtx),
+		)
+	})
+}
 
+func (manager *OAuthManager) Run(port int) {
+	manager.run()
 	// Start the server.
 	manager.server.Run(":" + fmt.Sprint(port))
+}
+
+func (manager *OAuthManager) RunTLS(port int) {
+	manager.run()
+	// Start the server.
+	manager.server.RunTLS(":"+fmt.Sprint(port), "cert.pem", "key.pem")
 }
