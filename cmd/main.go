@@ -11,9 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
-	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 	"github.com/luikymagno/auth-server/pkg/oauth"
@@ -37,39 +35,39 @@ func loadJwks() jose.JSONWebKeySet {
 	return jwks
 }
 
-func getClientJwk() jose.JSONWebKey {
-	absPath, _ := filepath.Abs("./client_jwk.json")
-	clientJwkFile, err := os.Open(absPath)
-	if err != nil {
-		panic(err.Error())
-	}
-	defer clientJwkFile.Close()
-	clientJwkBytes, err := io.ReadAll(clientJwkFile)
-	if err != nil {
-		panic(err.Error())
-	}
-	var clientJwk jose.JSONWebKey
-	clientJwk.UnmarshalJSON(clientJwkBytes)
+// func getClientJwk() jose.JSONWebKey {
+// 	absPath, _ := filepath.Abs("./client_jwk.json")
+// 	clientJwkFile, err := os.Open(absPath)
+// 	if err != nil {
+// 		panic(err.Error())
+// 	}
+// 	defer clientJwkFile.Close()
+// 	clientJwkBytes, err := io.ReadAll(clientJwkFile)
+// 	if err != nil {
+// 		panic(err.Error())
+// 	}
+// 	var clientJwk jose.JSONWebKey
+// 	clientJwk.UnmarshalJSON(clientJwkBytes)
 
-	return clientJwk
-}
+// 	return clientJwk
+// }
 
-func createClientAssertion(client models.Client, jwk jose.JSONWebKey) string {
-	createdAtTimestamp := unit.GetTimestampNow()
-	signer, _ := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", "random value"),
-	)
-	claims := map[string]any{
-		string(constants.Issuer):   client.Id,
-		string(constants.Subject):  client.Id,
-		string(constants.IssuedAt): createdAtTimestamp,
-		string(constants.Expiry):   createdAtTimestamp,
-	}
-	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
+// func createClientAssertion(client models.Client, jwk jose.JSONWebKey) string {
+// 	createdAtTimestamp := unit.GetTimestampNow()
+// 	signer, _ := jose.NewSigner(
+// 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
+// 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", "random value"),
+// 	)
+// 	claims := map[string]any{
+// 		string(constants.Issuer):   client.Id,
+// 		string(constants.Subject):  client.Id,
+// 		string(constants.IssuedAt): createdAtTimestamp,
+// 		string(constants.Expiry):   createdAtTimestamp,
+// 	}
+// 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
 
-	return assertion
-}
+// 	return assertion
+// }
 
 func main() {
 	clientId := "random_client"
@@ -83,7 +81,7 @@ func main() {
 	jwks := loadJwks()
 
 	// Create the manager.
-	oauthManager := oauth.NewManager(jwks, oauth.SetMockedEntitiesConfig, oauth.SetMockedSessionsConfig)
+	oauthManager := oauth.NewManager(jwks, "./templates/*", oauth.SetMockedEntitiesConfig, oauth.SetMockedSessionsConfig)
 
 	// Add token model mocks.
 	oauthManager.AddTokenModel(models.OpaqueTokenModel{
@@ -113,12 +111,13 @@ func main() {
 	// Create the client
 	client := models.Client{
 		Id:                  clientId,
-		GrantTypes:          []constants.GrantType{constants.ClientCredentials, constants.AuthorizationCode, constants.RefreshToken},
+		GrantTypes:          constants.GrantTypes,
 		Scopes:              []string{"openid", "email", "profile"},
 		RedirectUris:        []string{"http://localhost:80/callback", "https://localhost.emobix.co.uk:8443/test/a/first_test/callback", "https://localhost:8443/test/a/first_test/callback"},
-		ResponseTypes:       []constants.ResponseType{constants.Code, constants.IdToken},
+		ResponseTypes:       constants.ResponseTypes,
+		ResponseModes:       constants.ResponseModes,
 		DefaultTokenModelId: jwtTokenModelId,
-		Authenticator: models.SecretClientAuthenticator{
+		Authenticator: models.SecretPostClientAuthenticator{
 			Salt:         clientSecretSalt,
 			HashedSecret: string(hashedSecret),
 		},

@@ -176,15 +176,16 @@ func TestRefreshTokenHandleTokenCreation(t *testing.T) {
 	refreshToken := "random_refresh_token"
 	username := "user_id"
 	token := models.TokenSession{
-		Id:                 "random_id",
-		TokenModelId:       utils.ValidTokenModelId,
-		Token:              "token",
-		RefreshToken:       refreshToken,
-		ExpiresInSecs:      60,
-		CreatedAtTimestamp: unit.GetTimestampNow(),
-		Subject:            username,
-		ClientId:           utils.ValidClientId,
-		Scopes:             client.Scopes,
+		Id:                    "random_id",
+		TokenModelId:          utils.ValidTokenModelId,
+		Token:                 "token",
+		ExpiresInSecs:         60,
+		RefreshToken:          refreshToken,
+		RefreshTokenExpiresIn: 30,
+		CreatedAtTimestamp:    unit.GetTimestampNow(),
+		Subject:               username,
+		ClientId:              utils.ValidClientId,
+		Scopes:                client.Scopes,
 	}
 	ctx.TokenSessionManager.CreateOrUpdate(token)
 

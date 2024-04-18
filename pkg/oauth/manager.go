@@ -15,24 +15,26 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-type OAuthManager struct {
+type OpenIDManager struct {
+	host                string // TODO
 	scopeManager        crud.ScopeManager
 	tokenModelManager   crud.TokenModelManager
 	clientManager       crud.ClientManager
 	tokenSessionManager crud.TokenSessionManager
 	authnSessionManager crud.AuthnSessionManager
 	server              *gin.Engine
-	host                string // TODO
 }
 
 func NewManager(
 	privateJWKS jose.JSONWebKeySet,
-	settings ...func(*OAuthManager),
-) *OAuthManager {
+	templates string,
+	settings ...func(*OpenIDManager),
+) *OpenIDManager {
 
-	manager := &OAuthManager{
+	manager := &OpenIDManager{
 		server: gin.Default(),
 	}
+	manager.server.LoadHTMLGlob(templates)
 
 	for _, setting := range settings {
 		setting(manager)
@@ -43,31 +45,32 @@ func NewManager(
 	return manager
 }
 
-func SetMockedEntitiesConfig(manager *OAuthManager) {
+func SetMockedEntitiesConfig(manager *OpenIDManager) {
 	manager.scopeManager = mock.NewMockedScopeManager()
 	manager.tokenModelManager = mock.NewMockedTokenModelManager()
 	manager.clientManager = mock.NewMockedClientManager()
 }
 
-func SetMockedSessionsConfig(manager *OAuthManager) {
+func SetMockedSessionsConfig(manager *OpenIDManager) {
 	manager.tokenSessionManager = mock.NewMockedTokenSessionManager()
 	manager.authnSessionManager = mock.NewMockedAuthnSessionManager()
 }
 
-func (manager *OAuthManager) AddTokenModel(model models.TokenModel) error {
+func (manager *OpenIDManager) AddTokenModel(model models.TokenModel) error {
 	return manager.tokenModelManager.Create(model)
 }
 
-func (manager *OAuthManager) AddClient(client models.Client) error {
+func (manager *OpenIDManager) AddClient(client models.Client) error {
 	return manager.clientManager.Create(client)
 }
 
-func (manager *OAuthManager) AddPolicy(policy utils.AuthnPolicy) {
+func (manager *OpenIDManager) AddPolicy(policy utils.AuthnPolicy) {
 	utils.AddPolicy(policy)
 }
 
-func (manager OAuthManager) getContext(requestContext *gin.Context) utils.Context {
+func (manager OpenIDManager) getContext(requestContext *gin.Context) utils.Context {
 	return utils.NewContext(
+		manager.host,
 		manager.scopeManager,
 		manager.tokenModelManager,
 		manager.clientManager,
@@ -77,10 +80,9 @@ func (manager OAuthManager) getContext(requestContext *gin.Context) utils.Contex
 	)
 }
 
-func (manager *OAuthManager) run() {
+func (manager *OpenIDManager) run() {
 
 	// Configure the server.
-	manager.server.LoadHTMLGlob("../cmd/templates/*")
 	manager.server.Use(func(ctx *gin.Context) {
 		// Set the correlation ID to be used in the logs.
 		correlationId := ctx.GetHeader(string(constants.CorrelationIdHeader))
@@ -123,13 +125,13 @@ func (manager *OAuthManager) run() {
 	})
 }
 
-func (manager *OAuthManager) Run(port int) {
+func (manager *OpenIDManager) Run(port int) {
 	manager.run()
 	// Start the server.
 	manager.server.Run(":" + fmt.Sprint(port))
 }
 
-func (manager *OAuthManager) RunTLS(port int) {
+func (manager *OpenIDManager) RunTLS(port int) {
 	manager.run()
 	// Start the server.
 	manager.server.RunTLS(":"+fmt.Sprint(port), "cert.pem", "key.pem")

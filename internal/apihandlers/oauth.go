@@ -13,7 +13,7 @@ import (
 )
 
 func HandleJWKSRequest(ctx utils.Context) {
-	ctx.RequestContext.JSON(http.StatusAccepted, unit.GetPublicKeys())
+	ctx.RequestContext.JSON(http.StatusOK, unit.GetPublicKeys())
 }
 
 //---------------------------------------- Pushed Authorization Request - PAR ----------------------------------------//

@@ -43,13 +43,23 @@ func GenerateRefreshToken() string {
 	return GenerateRandomString(constants.RefreshTokenLength, constants.RefreshTokenLength)
 }
 
-func GetUrlWithParams(redirectUri string, params map[string]string) string {
+func GetUrlWithQueryParams(redirectUri string, params map[string]string) string {
 	parsedUrl, _ := url.Parse(redirectUri)
 	query := parsedUrl.Query()
 	for param, value := range params {
 		query.Add(param, value)
 	}
 	parsedUrl.RawQuery = query.Encode()
+	return parsedUrl.String()
+}
+
+func GetUrlWithFragmentParams(redirectUri string, params map[string]string) string {
+	parsedUrl, _ := url.Parse(redirectUri)
+	fragments, _ := url.ParseQuery(parsedUrl.Fragment)
+	for param, value := range params {
+		fragments.Add(param, value)
+	}
+	parsedUrl.Fragment = fragments.Encode()
 	return parsedUrl.String()
 }
 
@@ -93,7 +103,7 @@ func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod 
 func AreResponseTypesValid(responseTypeString string) bool {
 	responseTypes := SplitResponseTypes(responseTypeString)
 	return Contains(
-		[]constants.ResponseType{constants.Code, constants.IdToken},
+		constants.ResponseTypes,
 		responseTypes,
 	)
 }

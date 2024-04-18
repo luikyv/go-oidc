@@ -64,5 +64,5 @@ func (err RedirectError) BindErrorToResponse(requestContext *gin.Context) {
 		errorParams["state"] = err.State
 	}
 
-	requestContext.Redirect(http.StatusFound, unit.GetUrlWithParams(err.RedirectUri, errorParams))
+	requestContext.Redirect(http.StatusFound, unit.GetUrlWithQueryParams(err.RedirectUri, errorParams))
 }

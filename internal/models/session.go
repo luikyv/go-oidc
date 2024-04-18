@@ -18,6 +18,7 @@ type AuthnSession struct {
 	Scopes                  []string
 	RedirectUri             string
 	ResponseTypes           []constants.ResponseType
+	ResponseMode            constants.ResponseMode
 	State                   string
 	Nonce                   string
 	CodeChallenge           string
@@ -41,6 +42,7 @@ func newSessionForBaseAuthorizeRequest(req BaseAuthorizeRequest, client Client) 
 		Scopes:                  unit.SplitStringWithSpaces(req.Scope),
 		RedirectUri:             req.RedirectUri,
 		ResponseTypes:           unit.SplitResponseTypes(req.ResponseType),
+		ResponseMode:            req.ResponseMode,
 		State:                   req.State,
 		Nonce:                   req.Nonce,
 		CodeChallenge:           req.CodeChallenge,

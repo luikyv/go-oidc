@@ -28,7 +28,7 @@ func TestSecretClientAuthenticatorValidInfo(t *testing.T) {
 	clientSecretSalt := "random_salt"
 	clientSecret := "password"
 	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecretSalt+clientSecret), 0)
-	authenticator := SecretClientAuthenticator{
+	authenticator := SecretPostClientAuthenticator{
 		Salt:         clientSecretSalt,
 		HashedSecret: string(hashedClientSecret),
 	}
@@ -46,7 +46,7 @@ func TestSecretClientAuthenticatorInvalidInfo(t *testing.T) {
 	clientSecretSalt := "random_salt"
 	clientSecret := "password"
 	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecretSalt+clientSecret), 0)
-	authenticator := SecretClientAuthenticator{
+	authenticator := SecretPostClientAuthenticator{
 		Salt:         clientSecretSalt,
 		HashedSecret: string(hashedClientSecret),
 	}

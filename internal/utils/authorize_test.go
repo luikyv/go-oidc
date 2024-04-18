@@ -168,6 +168,7 @@ func TestInitAuthenticationShouldEndWithError(t *testing.T) {
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
 			ResponseType: string(constants.Code),
+			ResponseMode: constants.Query,
 		},
 	})
 
@@ -217,6 +218,7 @@ func TestInitAuthenticationShouldEndInProgress(t *testing.T) {
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
 			ResponseType: string(constants.Code),
+			ResponseMode: constants.Query,
 		},
 	})
 
@@ -280,6 +282,7 @@ func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
 			ResponseType: strings.Join([]string{string(constants.Code), string(constants.IdToken)}, " "),
+			ResponseMode: constants.Query,
 		},
 	})
 

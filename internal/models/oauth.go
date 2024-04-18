@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -141,6 +142,7 @@ type BaseAuthorizeRequest struct {
 	RedirectUri         string                        `form:"redirect_uri"`
 	Scope               string                        `form:"scope"`
 	ResponseType        string                        `form:"response_type"`
+	ResponseMode        constants.ResponseMode        `form:"response_mode,default=query"`
 	State               string                        `form:"state"`
 	CodeChallenge       string                        `form:"code_challenge"`
 	CodeChallengeMethod constants.CodeChallengeMethod `form:"code_challenge_method"`
@@ -148,12 +150,7 @@ type BaseAuthorizeRequest struct {
 	Nonce               string                        `form:"nonce"`
 }
 
-type AuthorizeRequest struct {
-	ClientId string `form:"client_id" binding:"required"`
-	BaseAuthorizeRequest
-}
-
-func (req AuthorizeRequest) IsValid() error {
+func (req BaseAuthorizeRequest) IsValid() error {
 
 	// If the request URI is not passed, all the other parameters must be provided.
 	if req.RequestUri == "" && (req.RedirectUri == "" || req.Scope == "" || req.ResponseType == "") {
@@ -169,6 +166,10 @@ func (req AuthorizeRequest) IsValid() error {
 		return errors.New("invalid response type")
 	}
 
+	if req.ResponseMode != "" && !slices.Contains(constants.ResponseModes, req.ResponseMode) {
+		return errors.New("invalid response mode")
+	}
+
 	// Validate PKCE parameters.
 	// The code challenge cannot be informed without the method and vice versa.
 	if (req.CodeChallenge != "" && req.CodeChallengeMethod == "") || (req.CodeChallenge == "" && req.CodeChallengeMethod != "") {
@@ -178,16 +179,14 @@ func (req AuthorizeRequest) IsValid() error {
 	return nil
 }
 
-type PARRequest struct {
-	ClientAuthnRequest
+type AuthorizeRequest struct {
+	ClientId string `form:"client_id" binding:"required"`
 	BaseAuthorizeRequest
 }
 
-func (req PARRequest) ToAuthorizeRequest() AuthorizeRequest {
-	return AuthorizeRequest{
-		ClientId:             req.ClientIdPost,
-		BaseAuthorizeRequest: req.BaseAuthorizeRequest,
-	}
+type PARRequest struct {
+	ClientAuthnRequest
+	BaseAuthorizeRequest
 }
 
 func (req PARRequest) IsValid() error {
@@ -200,7 +199,7 @@ func (req PARRequest) IsValid() error {
 		return err
 	}
 
-	return req.ToAuthorizeRequest().IsValid()
+	return req.BaseAuthorizeRequest.IsValid()
 }
 
 type PARResponse struct {

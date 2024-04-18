@@ -14,6 +14,12 @@ const (
 	RefreshToken      GrantType = "refresh_token"
 )
 
+var GrantTypes []GrantType = []GrantType{
+	ClientCredentials,
+	AuthorizationCode,
+	RefreshToken,
+}
+
 type ResponseType string
 
 const (
@@ -21,13 +27,41 @@ const (
 	IdToken ResponseType = "id_token"
 )
 
+var ResponseTypes []ResponseType = []ResponseType{
+	Code,
+	IdToken,
+}
+
+// TODO: Implement the response modes.
+type ResponseMode string
+
+const (
+	Query    ResponseMode = "query"
+	Fragment ResponseMode = "fragment"
+	FormPost ResponseMode = "form_post"
+)
+
+var ResponseModes []ResponseMode = []ResponseMode{
+	Query,
+	Fragment,
+	FormPost,
+}
+
 type ClientAuthnType string
 
 const (
-	None          ClientAuthnType = "none"
-	ClientSecret  ClientAuthnType = "client_secret"
-	PrivateKeyJWT ClientAuthnType = "private_key_jwt"
+	None              ClientAuthnType = "none"
+	ClientSecretBasic ClientAuthnType = "client_secret_basic"
+	ClientSecretPost  ClientAuthnType = "client_secret_post"
+	PrivateKeyJWT     ClientAuthnType = "private_key_jwt"
 )
+
+var ClientAuthnTypes []ClientAuthnType = []ClientAuthnType{
+	None,
+	ClientSecretBasic,
+	ClientSecretPost,
+	PrivateKeyJWT,
+}
 
 type ClientAssertionType string
 
@@ -60,6 +94,11 @@ const (
 	SHA256 CodeChallengeMethod = "S256"
 	Plain  CodeChallengeMethod = "plain"
 )
+
+var CodeChallengeMethods []CodeChallengeMethod = []CodeChallengeMethod{
+	SHA256,
+	Plain,
+}
 
 type ErrorCode string
 

@@ -55,7 +55,7 @@ func TestGenerateAuthorizationCodeRightLength(t *testing.T) {
 	}
 }
 
-func TestGetUrlWithParams(t *testing.T) {
+func TestGetUrlWithQueryParams(t *testing.T) {
 	testCases := []struct {
 		Url                      string
 		params                   map[string]string
@@ -68,7 +68,30 @@ func TestGetUrlWithParams(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
-			parameterizedUrl := unit.GetUrlWithParams(testCase.Url, testCase.params)
+			parameterizedUrl := unit.GetUrlWithQueryParams(testCase.Url, testCase.params)
+
+			if parameterizedUrl != testCase.ExpectedParameterizedUrl {
+				t.Errorf("%s is different from %s", parameterizedUrl, testCase.ExpectedParameterizedUrl)
+			}
+		})
+	}
+
+}
+
+func TestGetUrlWithFragmentParams(t *testing.T) {
+	testCases := []struct {
+		Url                      string
+		params                   map[string]string
+		ExpectedParameterizedUrl string
+	}{
+		{"http://example", map[string]string{"param1": "value1"}, "http://example#param1=value1"},
+		{"http://example#param=value", map[string]string{"param1": "value1"}, "http://example#param=value&param1=value1"},
+		{"http://example", map[string]string{"param1": "value1", "param2": "value2"}, "http://example#param1=value1&param2=value2"},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
+			parameterizedUrl := unit.GetUrlWithFragmentParams(testCase.Url, testCase.params)
 
 			if parameterizedUrl != testCase.ExpectedParameterizedUrl {
 				t.Errorf("%s is different from %s", parameterizedUrl, testCase.ExpectedParameterizedUrl)

@@ -1,0 +1,20 @@
+<html>
+<body onload="javascript:document.forms[0].submit()">
+    <form id="form" method="post" action="{{ .redirect_uri }}">
+        <input type="hidden" name="code" value="{{ .code }}"/>
+        <input type="hidden" name="id_token" value="{{ .id_token }}"/>
+        <input type="hidden" name="state" value="{{ .state }}"/>
+    </form>
+</body>
+
+<script>
+    var form = document.getElementById('form');
+    form.addEventListener('formdata', function(event) {
+        let formData = event.formData;
+        for (let [name, value] of Array.from(formData.entries())) {
+            if (value === '') formData.delete(name);
+        }
+    });
+</script>
+
+</html>

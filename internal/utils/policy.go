@@ -61,11 +61,24 @@ var FinishFlowSuccessfullyStep *AuthnStep = &AuthnStep{
 			)
 		}
 
+		// Echo the state parameter.
 		if session.State != "" {
 			params["state"] = session.State
 		}
 
-		ctx.RequestContext.Redirect(http.StatusFound, unit.GetUrlWithParams(session.RedirectUri, params))
+		// Build the response to the client.
+		switch session.ResponseMode {
+		case constants.Fragment:
+			redirectUrl := unit.GetUrlWithFragmentParams(session.RedirectUri, params)
+			ctx.RequestContext.Redirect(http.StatusFound, redirectUrl)
+		case constants.FormPost:
+			params["redirect_uri"] = session.RedirectUri
+			ctx.RequestContext.HTML(http.StatusOK, "internal_form_post.html", params)
+		default:
+			redirectUrl := unit.GetUrlWithQueryParams(session.RedirectUri, params)
+			ctx.RequestContext.Redirect(http.StatusFound, redirectUrl)
+		}
+
 		return constants.Success
 	},
 }

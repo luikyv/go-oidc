@@ -45,7 +45,7 @@ func InitAuthentication(ctx Context, req models.AuthorizeRequest) error {
 
 func initValidAuthenticationSession(_ Context, client models.Client, req models.AuthorizeRequest) (models.AuthnSession, error) {
 
-	if err := validateAuthorizeParams(client, req); err != nil {
+	if err := validateAuthorizeParams(client, req.BaseAuthorizeRequest); err != nil {
 		return models.AuthnSession{}, err
 	}
 
@@ -84,7 +84,7 @@ func ContinueAuthentication(ctx Context, callbackId string) error {
 	return authenticate(ctx, session)
 }
 
-func validateAuthorizeParams(client models.Client, req models.AuthorizeRequest) error {
+func validateAuthorizeParams(client models.Client, req models.BaseAuthorizeRequest) error {
 	// We must validate the redirect URI first, since the other errors will be redirected.
 	if !client.IsRedirectUriAllowed(req.RedirectUri) {
 		return issues.JsonError{
@@ -115,6 +115,15 @@ func validateAuthorizeParams(client models.Client, req models.AuthorizeRequest) 
 		return issues.RedirectError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "response type not allowed",
+			RedirectUri:      req.RedirectUri,
+			State:            req.State,
+		}
+	}
+
+	if !client.IsResponseModeAllowed(req.ResponseMode) {
+		return issues.RedirectError{
+			ErrorCode:        constants.InvalidRequest,
+			ErrorDescription: "response mode not allowed",
 			RedirectUri:      req.RedirectUri,
 			State:            req.State,
 		}

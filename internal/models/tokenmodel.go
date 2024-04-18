@@ -27,7 +27,9 @@ func (tokenModelInfo TokenModelInfo) GenerateIdToken(ctxInfo TokenContextInfo) s
 		string(constants.Audience): ctxInfo.ClientId,
 		string(constants.IssuedAt): timestampNow,
 		string(constants.Expiry):   timestampNow + tokenModelInfo.ExpiresInSecs,
-		string(constants.Nonce):    ctxInfo.Nonce,
+	}
+	if ctxInfo.Nonce != "" {
+		claims[string(constants.Nonce)] = ctxInfo.Nonce
 	}
 	for k, v := range ctxInfo.AdditionalIdTokenClaims {
 		claims[k] = v

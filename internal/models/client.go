@@ -23,21 +23,26 @@ func (authenticator NoneClientAuthenticator) IsAuthenticated(req ClientAuthnRequ
 	return true
 }
 
-type SecretClientAuthenticator struct {
+type SecretBasicClientAuthenticator struct {
 	Salt         string
 	HashedSecret string
 }
 
-func (authenticator SecretClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
+func (authenticator SecretBasicClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
 
-	var clientSecret string
-	if req.ClientSecretPost != "" {
-		clientSecret = req.ClientSecretPost
-	} else {
-		clientSecret = req.ClientSecretBasicAuthn
-	}
+	saltedSecret := authenticator.Salt + req.ClientSecretBasicAuthn
+	err := bcrypt.CompareHashAndPassword([]byte(authenticator.HashedSecret), []byte(saltedSecret))
+	return err == nil
+}
 
-	saltedSecret := authenticator.Salt + clientSecret
+type SecretPostClientAuthenticator struct {
+	Salt         string
+	HashedSecret string
+}
+
+func (authenticator SecretPostClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
+
+	saltedSecret := authenticator.Salt + req.ClientSecretPost
 	err := bcrypt.CompareHashAndPassword([]byte(authenticator.HashedSecret), []byte(saltedSecret))
 	return err == nil
 }
@@ -75,6 +80,7 @@ type Client struct {
 	Id                  string
 	RedirectUris        []string
 	ResponseTypes       []constants.ResponseType
+	ResponseModes       []constants.ResponseMode
 	GrantTypes          []constants.GrantType
 	Scopes              []string
 	PkceIsRequired      bool
@@ -103,6 +109,10 @@ func (client Client) AreResponseTypesAllowed(responseTypes []string) bool {
 
 func (client Client) isResponseTypeAllowed(responseType constants.ResponseType) bool {
 	return slices.Contains(client.ResponseTypes, responseType)
+}
+
+func (client Client) IsResponseModeAllowed(responseMode constants.ResponseMode) bool {
+	return slices.Contains(client.ResponseModes, responseMode)
 }
 
 func (client Client) IsGrantTypeAllowed(grantType constants.GrantType) bool {
