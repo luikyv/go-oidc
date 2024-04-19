@@ -13,14 +13,14 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func TestHandleTokenCreationShouldNotFindClient(t *testing.T) {
+func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
 	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 
 	// Then
-	_, err := utils.HandleTokenCreation(ctx, models.TokenRequest{
+	_, err := utils.HandleGrantCreation(ctx, models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
 			ClientIdPost:     "invalid_client_id",
 			ClientSecretPost: utils.ValidClientSecret,
@@ -37,14 +37,14 @@ func TestHandleTokenCreationShouldNotFindClient(t *testing.T) {
 	}
 }
 
-func TestHandleTokenCreationShouldRejectUnauthenticatedClient(t *testing.T) {
+func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
 	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 
 	// Then
-	_, err := utils.HandleTokenCreation(ctx, models.TokenRequest{
+	_, err := utils.HandleGrantCreation(ctx, models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
 			ClientIdPost:     utils.ValidClientId,
 			ClientSecretPost: "invalid_password",
@@ -65,7 +65,7 @@ func TestHandleTokenCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	}
 }
 
-func TestClientCredentialsHandleTokenCreation(t *testing.T) {
+func TestClientCredentialsHandleGrantCreation(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUp()
 	defer tearDown()
@@ -80,7 +80,7 @@ func TestClientCredentialsHandleTokenCreation(t *testing.T) {
 	}
 
 	// Then
-	token, err := utils.HandleTokenCreation(ctx, req)
+	token, err := utils.HandleGrantCreation(ctx, req)
 
 	// Assert
 	if err != nil {
@@ -109,7 +109,7 @@ func TestClientCredentialsHandleTokenCreation(t *testing.T) {
 	}
 }
 
-func TestAuthorizationCodeHandleTokenCreation(t *testing.T) {
+func TestAuthorizationCodeHandleGrantCreation(t *testing.T) {
 
 	// When
 	ctx, tearDown := utils.SetUp()
@@ -141,7 +141,7 @@ func TestAuthorizationCodeHandleTokenCreation(t *testing.T) {
 	}
 
 	// Then
-	token, err := utils.HandleTokenCreation(ctx, req)
+	token, err := utils.HandleGrantCreation(ctx, req)
 
 	// Assert
 	if err != nil {
@@ -166,7 +166,7 @@ func TestAuthorizationCodeHandleTokenCreation(t *testing.T) {
 	}
 }
 
-func TestRefreshTokenHandleTokenCreation(t *testing.T) {
+func TestRefreshTokenHandleGrantCreation(t *testing.T) {
 
 	// When
 	ctx, tearDown := utils.SetUp()
@@ -199,7 +199,7 @@ func TestRefreshTokenHandleTokenCreation(t *testing.T) {
 	}
 
 	// Then
-	newToken, err := utils.HandleTokenCreation(ctx, req)
+	newToken, err := utils.HandleGrantCreation(ctx, req)
 
 	// Assert
 	if err != nil {
@@ -229,7 +229,7 @@ func TestRefreshTokenHandleTokenCreation(t *testing.T) {
 	}
 }
 
-func TestRefreshTokenHandleTokenCreationShouldDenyExpiredRefreshToken(t *testing.T) {
+func TestRefreshTokenHandleGrantCreationShouldDenyExpiredRefreshToken(t *testing.T) {
 
 	// When
 	ctx, tearDown := utils.SetUp()
@@ -262,7 +262,7 @@ func TestRefreshTokenHandleTokenCreationShouldDenyExpiredRefreshToken(t *testing
 	}
 
 	// Then
-	_, err := utils.HandleTokenCreation(ctx, req)
+	_, err := utils.HandleGrantCreation(ctx, req)
 
 	// Assert
 	if err == nil {

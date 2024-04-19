@@ -12,7 +12,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
-func HandleTokenCreation(
+func HandleGrantCreation(
 	ctx Context,
 	req models.TokenRequest,
 ) (models.GrantSession, error) {
@@ -198,7 +198,10 @@ func getSessionByAuthorizationCode(ctx Context, authorizationCode string, ch cha
 	if err != nil {
 		ch <- ResultChannel{
 			result: models.AuthnSession{},
-			err:    err,
+			err: issues.JsonError{
+				ErrorCode:        constants.InvalidGrant,
+				ErrorDescription: "invalid authorization code",
+			},
 		}
 	}
 

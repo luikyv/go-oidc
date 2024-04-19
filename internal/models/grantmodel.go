@@ -10,6 +10,15 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
+type GrantMetaInfo struct {
+	Id                  string
+	Issuer              string
+	ExpiresInSecs       int
+	IsRefreshable       bool
+	RefreshLifetimeSecs int
+	OpenIdKeyId         string
+}
+
 //---------------------------------------- Token Makers ----------------------------------------//
 
 type Token struct {
@@ -36,7 +45,7 @@ func (maker OpaqueTokenMaker) MakeToken(grantMeta GrantMetaInfo, grantCtx GrantC
 }
 
 type JWTTokenMaker struct {
-	KeyId string
+	SigningKeyId string
 }
 
 func (maker JWTTokenMaker) MakeToken(grantMeta GrantMetaInfo, grantCtx GrantContext) Token {
@@ -54,12 +63,12 @@ func (maker JWTTokenMaker) MakeToken(grantMeta GrantMetaInfo, grantCtx GrantCont
 		claims[k] = v
 	}
 
-	jwk, _ := unit.GetPrivateKey(maker.KeyId)
+	jwk, _ := unit.GetPrivateKey(maker.SigningKeyId)
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
 		// RFC9068. "...This specification registers the "application/at+jwt" media type,
 		// which can be used to indicate that the content is a JWT access token."
-		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", maker.KeyId),
+		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", maker.SigningKeyId),
 	)
 
 	accessToken, _ := jwt.Signed(signer).Claims(claims).Serialize()
@@ -68,15 +77,6 @@ func (maker JWTTokenMaker) MakeToken(grantMeta GrantMetaInfo, grantCtx GrantCont
 		Format: constants.JWT,
 		Value:  accessToken,
 	}
-}
-
-type GrantMetaInfo struct {
-	Id                  string
-	Issuer              string
-	ExpiresInSecs       int
-	IsRefreshable       bool
-	RefreshLifetimeSecs int
-	OpenIdKeyId         string
 }
 
 //---------------------------------------- Grant Model ----------------------------------------//
@@ -130,14 +130,23 @@ func (grantModel GrantModel) GenerateGrantSession(grantCtx GrantContext) GrantSe
 		AdditionalIdTokenClaims: grantCtx.AdditionalIdTokenClaims,
 	}
 
-	if grantCtx.GrantType != constants.ClientCredentials && grantModel.Meta.IsRefreshable {
+	if grantModel.shouldGenerateRefreshToken(grantCtx) {
 		grantSession.RefreshToken = unit.GenerateRefreshToken()
 		grantSession.RefreshTokenExpiresIn = grantModel.Meta.RefreshLifetimeSecs
 	}
 
-	if unit.Contains(grantCtx.Scopes, []string{constants.OpenIdScope}) {
+	if grantModel.shouldGenerateIdToken(grantCtx) {
 		grantSession.IdToken = grantModel.GenerateIdToken(grantCtx)
 	}
 
 	return grantSession
+}
+
+func (grantModel GrantModel) shouldGenerateRefreshToken(grantCtx GrantContext) bool {
+	// There is no need to create a refresh token for the client credentials grant since no user consent is needed.
+	return grantCtx.GrantType != constants.ClientCredentials && grantModel.Meta.IsRefreshable
+}
+
+func (grantModel GrantModel) shouldGenerateIdToken(grantCtx GrantContext) bool {
+	return unit.Contains(grantCtx.Scopes, []string{constants.OpenIdScope})
 }

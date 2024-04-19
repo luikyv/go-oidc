@@ -76,7 +76,7 @@ func TestJWTGrantModelGenerateToken(t *testing.T) {
 	})
 	grantModel := models.GrantModel{
 		TokenMaker: models.JWTTokenMaker{
-			KeyId: keyId,
+			SigningKeyId: keyId,
 		},
 		Meta: models.GrantMetaInfo{
 			Id:            "jwt_token_model",

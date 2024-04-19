@@ -98,7 +98,7 @@ func main() {
 	})
 	oauthManager.AddGrantModel(models.GrantModel{
 		TokenMaker: models.JWTTokenMaker{
-			KeyId: privateKeyId,
+			SigningKeyId: privateKeyId,
 		},
 		Meta: models.GrantMetaInfo{
 			Id:                  jwtGrantModelId,
@@ -121,7 +121,7 @@ func main() {
 		ResponseTypes:       constants.ResponseTypes,
 		ResponseModes:       constants.ResponseModes,
 		DefaultGrantModelId: jwtGrantModelId,
-		Authenticator: models.SecretPostClientAuthenticator{
+		Authenticator: models.SecretBasicClientAuthenticator{
 			Salt:         clientSecretSalt,
 			HashedSecret: string(hashedSecret),
 		},

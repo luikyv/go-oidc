@@ -104,6 +104,7 @@ type ErrorCode string
 
 const (
 	AccessDenied   ErrorCode = "access_denied"
+	InvalidGrant   ErrorCode = "invalid_grant"
 	InvalidRequest ErrorCode = "invalid_request"
 	InvalidScope   ErrorCode = "invalid_scope"
 	InternalError  ErrorCode = "internal_error"
@@ -111,6 +112,7 @@ const (
 
 var ErrorCodeToStatusCode map[ErrorCode]int = map[ErrorCode]int{
 	AccessDenied:   http.StatusForbidden,
+	InvalidGrant:   http.StatusBadRequest,
 	InvalidRequest: http.StatusBadRequest,
 	InvalidScope:   http.StatusBadRequest,
 }

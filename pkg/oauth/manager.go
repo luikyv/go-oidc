@@ -127,6 +127,11 @@ func (manager *OpenIDManager) run() {
 			manager.getContext(requestCtx),
 		)
 	})
+	manager.server.POST("/userinfo", func(requestCtx *gin.Context) {
+		apihandlers.HandleUserInfoRequest(
+			manager.getContext(requestCtx),
+		)
+	})
 }
 
 func (manager *OpenIDManager) Run(port int) {

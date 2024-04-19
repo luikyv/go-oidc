@@ -87,7 +87,7 @@ func HandleTokenRequest(ctx utils.Context) {
 		return
 	}
 
-	grantSession, err := utils.HandleTokenCreation(ctx, req)
+	grantSession, err := utils.HandleGrantCreation(ctx, req)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
