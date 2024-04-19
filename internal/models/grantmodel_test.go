@@ -22,7 +22,6 @@ func TestOpaqueGrantModelGenerateToken(t *testing.T) {
 		TokenMaker: tokenMaker,
 		Meta: models.GrantMetaInfo{
 			Id:            "opaque_token_model",
-			Issuer:        "https://example.com",
 			ExpiresInSecs: 60,
 		},
 	}
@@ -80,7 +79,6 @@ func TestJWTGrantModelGenerateToken(t *testing.T) {
 		},
 		Meta: models.GrantMetaInfo{
 			Id:            "jwt_token_model",
-			Issuer:        "https://example.com",
 			ExpiresInSecs: 60,
 		},
 	}

@@ -23,6 +23,7 @@ const ValidGrantModelId string = "random_token_model"
 
 func SetUp() (ctx Context, tearDown func()) {
 	// Create
+	unit.SetHost("https://example.com")
 	keyId := "0afee142-a0af-4410-abcc-9f2d44ff45b5"
 	jwkBytes, _ := json.Marshal(map[string]any{
 		"kty": "oct",
@@ -42,7 +43,6 @@ func SetUp() (ctx Context, tearDown func()) {
 		Meta: models.GrantMetaInfo{
 			Id:            ValidGrantModelId,
 			OpenIdKeyId:   keyId,
-			Issuer:        "https://example.com",
 			ExpiresInSecs: 60,
 			IsRefreshable: true,
 		},

@@ -52,11 +52,12 @@ type PrivateKeyJwtClientAuthenticator struct {
 }
 
 func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
-	// TODO: validate the audience as the oauth server.
-	// TODO: Do I need to validate the "kid" header to make sure is the same in the client's JWK?
 
 	assertion, err := jwt.ParseSigned(req.ClientAssertion, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(authenticator.PublicJwk.Algorithm)})
 	if err != nil {
+		return false
+	}
+	if len(assertion.Headers) != 0 && assertion.Headers[0].KeyID != authenticator.PublicJwk.KeyID {
 		return false
 	}
 
@@ -66,8 +67,9 @@ func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(req Client
 	}
 
 	err = claims.ValidateWithLeeway(jwt.Expected{
-		Issuer:  claims.Subject,
-		Subject: claims.Subject,
+		Issuer:      claims.Subject,
+		Subject:     claims.Subject,
+		AnyAudience: []string{unit.GetHost()},
 	}, time.Duration(0))
 	return err == nil
 }

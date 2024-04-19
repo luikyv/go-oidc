@@ -81,7 +81,7 @@ func main() {
 	jwks := loadJwks()
 
 	// Create the manager.
-	oauthManager := oauth.NewManager(jwks, "./templates/*", oauth.SetMockedEntitiesConfig, oauth.SetMockedSessionsConfig)
+	oauthManager := oauth.NewManager(issuer, jwks, "./templates/*", oauth.SetMockedEntitiesConfig, oauth.SetMockedSessionsConfig)
 
 	// Add token model mocks.
 	oauthManager.AddGrantModel(models.GrantModel{
@@ -90,7 +90,6 @@ func main() {
 		},
 		Meta: models.GrantMetaInfo{
 			Id:            opaqueGrantModelId,
-			Issuer:        issuer,
 			ExpiresInSecs: 60,
 			IsRefreshable: false,
 			OpenIdKeyId:   privateKeyId,
@@ -102,7 +101,6 @@ func main() {
 		},
 		Meta: models.GrantMetaInfo{
 			Id:                  jwtGrantModelId,
-			Issuer:              issuer,
 			ExpiresInSecs:       60,
 			IsRefreshable:       true,
 			RefreshLifetimeSecs: 60,

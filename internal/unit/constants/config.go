@@ -17,3 +17,5 @@ const RefreshTokenLength int = 30
 var ClientSigningAlgorithms []jose.SignatureAlgorithm = []jose.SignatureAlgorithm{
 	jose.RS256,
 }
+
+var Host string

@@ -64,6 +64,14 @@ func GetUrlWithFragmentParams(redirectUri string, params map[string]string) stri
 	return parsedUrl.String()
 }
 
+func SetHost(host string) {
+	constants.Host = host
+}
+
+func GetHost() string {
+	return constants.Host
+}
+
 func SetPrivateJWKS(privateJWKS jose.JSONWebKeySet) {
 	constants.PrivateJWKS = privateJWKS
 }

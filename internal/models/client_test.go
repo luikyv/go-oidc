@@ -63,9 +63,12 @@ func TestSecretClientAuthenticatorInvalidInfo(t *testing.T) {
 func TestPrivateKeyJWTClientAuthenticatorValidInfo(t *testing.T) {
 
 	// When
+	unit.SetHost("https://example.com")
+
+	keyId := "0afee142-a0af-4410-abcc-9f2d44ff45b5"
 	jwkBytes, _ := json.Marshal(map[string]any{
 		"kty": "oct",
-		"kid": "0afee142-a0af-4410-abcc-9f2d44ff45b5",
+		"kid": keyId,
 		"alg": "HS256",
 		"k":   "FdFYFzERwC2uCBB46pZQi4GG85LujR8obt-KWRBICVQ",
 	})
@@ -74,16 +77,22 @@ func TestPrivateKeyJWTClientAuthenticatorValidInfo(t *testing.T) {
 	authenticator := PrivateKeyJwtClientAuthenticator{
 		PublicJwk: jwk,
 	}
+
 	clientId := "random_client_id"
 	createdAtTimestamp := unit.GetTimestampNow()
-	signer, _ := jose.NewSigner(jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key}, nil)
+	signer, _ := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", keyId),
+	)
 	claims := map[string]any{
 		string(constants.Issuer):   clientId,
 		string(constants.Subject):  clientId,
+		string(constants.Audience): unit.GetHost(),
 		string(constants.IssuedAt): createdAtTimestamp,
 		string(constants.Expiry):   createdAtTimestamp + 60,
 	}
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
+
 	req := ClientAuthnRequest{
 		ClientIdPost:        clientId,
 		ClientAssertionType: constants.JWTBearerAssertion,

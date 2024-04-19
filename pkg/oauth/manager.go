@@ -16,7 +16,6 @@ import (
 )
 
 type OpenIDManager struct {
-	host                string // TODO
 	scopeManager        crud.ScopeManager
 	grantModelManager   crud.GrantModelManager
 	clientManager       crud.ClientManager
@@ -26,10 +25,13 @@ type OpenIDManager struct {
 }
 
 func NewManager(
+	host string,
 	privateJWKS jose.JSONWebKeySet,
 	templates string,
 	settings ...func(*OpenIDManager),
 ) *OpenIDManager {
+
+	unit.SetHost(host)
 
 	manager := &OpenIDManager{
 		server: gin.Default(),
@@ -70,7 +72,6 @@ func (manager *OpenIDManager) AddPolicy(policy utils.AuthnPolicy) {
 
 func (manager OpenIDManager) getContext(requestContext *gin.Context) utils.Context {
 	return utils.NewContext(
-		manager.host,
 		manager.scopeManager,
 		manager.grantModelManager,
 		manager.clientManager,

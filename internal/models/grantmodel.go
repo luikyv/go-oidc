@@ -12,7 +12,6 @@ import (
 
 type GrantMetaInfo struct {
 	Id                  string
-	Issuer              string
 	ExpiresInSecs       int
 	IsRefreshable       bool
 	RefreshLifetimeSecs int
@@ -53,7 +52,7 @@ func (maker JWTTokenMaker) MakeToken(grantMeta GrantMetaInfo, grantCtx GrantCont
 	timestampNow := unit.GetTimestampNow()
 	claims := map[string]any{
 		string(constants.TokenId):  jwtId,
-		string(constants.Issuer):   grantMeta.Issuer,
+		string(constants.Issuer):   unit.GetHost(),
 		string(constants.Subject):  grantCtx.Subject,
 		string(constants.Scope):    strings.Join(grantCtx.Scopes, " "),
 		string(constants.IssuedAt): timestampNow,
@@ -89,7 +88,7 @@ type GrantModel struct {
 func (grantModel GrantModel) GenerateIdToken(grantCtx GrantContext) string {
 	timestampNow := unit.GetTimestampNow()
 	claims := map[string]any{
-		string(constants.Issuer):   grantModel.Meta.Issuer,
+		string(constants.Issuer):   unit.GetHost(),
 		string(constants.Subject):  grantCtx.Subject,
 		string(constants.Audience): grantCtx.ClientId,
 		string(constants.IssuedAt): timestampNow,

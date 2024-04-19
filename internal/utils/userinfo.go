@@ -58,7 +58,9 @@ func getTokenId(token string) (string, error) {
 		}
 	}
 
-	if err := claims.ValidateWithLeeway(jwt.Expected{}, time.Duration(0)); err != nil {
+	if err := claims.ValidateWithLeeway(jwt.Expected{
+		Issuer: constants.Host,
+	}, time.Duration(0)); err != nil {
 		return "", issues.JsonError{
 			ErrorCode:        constants.AccessDenied,
 			ErrorDescription: "invalid token",
