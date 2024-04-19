@@ -84,7 +84,7 @@ type Client struct {
 	GrantTypes          []constants.GrantType
 	Scopes              []string
 	PkceIsRequired      bool
-	DefaultTokenModelId string
+	DefaultGrantModelId string
 	Attributes          map[string]string
 	Authenticator       ClientAuthenticator
 }

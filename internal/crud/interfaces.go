@@ -9,10 +9,10 @@ type ScopeManager interface {
 	Delete(id string) error
 }
 
-type TokenModelManager interface {
-	Create(model models.TokenModel) error
-	Update(id string, model models.TokenModel) error
-	Get(id string) (models.TokenModel, error)
+type GrantModelManager interface {
+	Create(model models.GrantModel) error
+	Update(id string, model models.GrantModel) error
+	Get(id string) (models.GrantModel, error)
 	Delete(id string) error
 }
 
@@ -23,11 +23,11 @@ type ClientManager interface {
 	Delete(id string) error
 }
 
-type TokenSessionManager interface {
-	CreateOrUpdate(token models.TokenSession) error
-	Get(id string) (models.TokenSession, error)
-	GetByTokenId(tokenId string) (models.TokenSession, error)
-	GetByRefreshToken(refreshToken string) (models.TokenSession, error)
+type GrantSessionManager interface {
+	CreateOrUpdate(token models.GrantSession) error
+	Get(id string) (models.GrantSession, error)
+	GetByTokenId(tokenId string) (models.GrantSession, error)
+	GetByRefreshToken(refreshToken string) (models.GrantSession, error)
 	Delete(id string) error
 }
 

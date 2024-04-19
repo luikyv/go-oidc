@@ -19,7 +19,7 @@ const ValidClientId string = "random_client_id"
 
 const ValidClientSecret string = "password"
 
-const ValidTokenModelId string = "random_token_model"
+const ValidGrantModelId string = "random_token_model"
 
 func SetUp() (ctx Context, tearDown func()) {
 	// Create
@@ -35,10 +35,12 @@ func SetUp() (ctx Context, tearDown func()) {
 	unit.SetPrivateJWKS(jose.JSONWebKeySet{
 		Keys: []jose.JSONWebKey{jwk},
 	})
-	tokenModel := models.OpaqueTokenModel{
-		TokenLength: 20,
-		TokenModelInfo: models.TokenModelInfo{
-			Id:            ValidTokenModelId,
+	grantModel := models.GrantModel{
+		TokenMaker: models.OpaqueTokenMaker{
+			TokenLength: 20,
+		},
+		Meta: models.GrantMetaInfo{
+			Id:            ValidGrantModelId,
 			OpenIdKeyId:   keyId,
 			Issuer:        "https://example.com",
 			ExpiresInSecs: 60,
@@ -55,7 +57,7 @@ func SetUp() (ctx Context, tearDown func()) {
 		GrantTypes:          constants.GrantTypes,
 		ResponseTypes:       constants.ResponseTypes,
 		ResponseModes:       constants.ResponseModes,
-		DefaultTokenModelId: ValidTokenModelId,
+		DefaultGrantModelId: ValidGrantModelId,
 		Authenticator: models.SecretPostClientAuthenticator{
 			Salt:         clientSecretSalt,
 			HashedSecret: string(clientHashedSecret),
@@ -64,11 +66,11 @@ func SetUp() (ctx Context, tearDown func()) {
 
 	// Save
 	ctx = GetMockedContext()
-	ctx.TokenModelManager.Create(tokenModel)
+	ctx.GrantModelManager.Create(grantModel)
 	ctx.ClientManager.Create(client)
 
 	return ctx, func() {
-		ctx.TokenModelManager.Delete(ValidTokenModelId)
+		ctx.GrantModelManager.Delete(ValidGrantModelId)
 		ctx.ClientManager.Delete(ValidClientId)
 	}
 }
@@ -83,9 +85,9 @@ func GetMockedRequestContext() *gin.Context {
 func GetMockedContext() Context {
 	return Context{
 		ScopeManager:        mock.NewMockedScopeManager(),
-		TokenModelManager:   mock.NewMockedTokenModelManager(),
+		GrantModelManager:   mock.NewMockedGrantModelManager(),
 		ClientManager:       mock.NewMockedClientManager(),
-		TokenSessionManager: mock.NewMockedTokenSessionManager(),
+		GrantSessionManager: mock.NewMockedGrantSessionManager(),
 		AuthnSessionManager: mock.NewMockedAuthnSessionManager(),
 		RequestContext:      GetMockedRequestContext(),
 		Logger:              slog.Default(),
@@ -102,10 +104,10 @@ func GetSessionsFromMock(ctx Context) []models.AuthnSession {
 	return sessions
 }
 
-func GetTokenFromMock(ctx Context) []models.TokenSession {
-	tokenManager, _ := ctx.TokenSessionManager.(*mock.MockedTokenSessionManager)
-	tokens := make([]models.TokenSession, 0, len(tokenManager.TokenSessions))
-	for _, t := range tokenManager.TokenSessions {
+func GetTokenFromMock(ctx Context) []models.GrantSession {
+	tokenManager, _ := ctx.GrantSessionManager.(*mock.MockedGrantSessionManager)
+	tokens := make([]models.GrantSession, 0, len(tokenManager.GrantSessions))
+	for _, t := range tokenManager.GrantSessions {
 		tokens = append(tokens, t)
 	}
 

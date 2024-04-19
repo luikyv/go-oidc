@@ -2,9 +2,9 @@ package models
 
 import "github.com/luikymagno/auth-server/internal/unit/constants"
 
-type TokenSession struct {
+type GrantSession struct {
 	Id                      string
-	TokenModelId            string
+	GrantModelId            string
 	TokenId                 string
 	Token                   string
 	TokenFormat             constants.TokenFormat

@@ -12,9 +12,9 @@ import (
 type Context struct {
 	Host                string
 	ScopeManager        crud.ScopeManager
-	TokenModelManager   crud.TokenModelManager
+	GrantModelManager   crud.GrantModelManager
 	ClientManager       crud.ClientManager
-	TokenSessionManager crud.TokenSessionManager
+	GrantSessionManager crud.GrantSessionManager
 	AuthnSessionManager crud.AuthnSessionManager
 	RequestContext      *gin.Context
 	Logger              *slog.Logger
@@ -23,9 +23,9 @@ type Context struct {
 func NewContext(
 	host string,
 	scopeManager crud.ScopeManager,
-	tokenModelManager crud.TokenModelManager,
+	grantModelManager crud.GrantModelManager,
 	clientManager crud.ClientManager,
-	tokenSessionManager crud.TokenSessionManager,
+	grantSessionManager crud.GrantSessionManager,
 	authnSessionManager crud.AuthnSessionManager,
 	reqContext *gin.Context,
 ) Context {
@@ -46,9 +46,9 @@ func NewContext(
 	return Context{
 		Host:                host,
 		ScopeManager:        scopeManager,
-		TokenModelManager:   tokenModelManager,
+		GrantModelManager:   grantModelManager,
 		ClientManager:       clientManager,
-		TokenSessionManager: tokenSessionManager,
+		GrantSessionManager: grantSessionManager,
 		AuthnSessionManager: authnSessionManager,
 		RequestContext:      reqContext,
 		Logger:              logger,

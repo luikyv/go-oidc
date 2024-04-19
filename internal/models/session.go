@@ -9,7 +9,7 @@ import (
 type AuthnSession struct {
 	Id                      string
 	CallbackId              string
-	TokenModelId            string
+	GrantModelId            string
 	StepId                  string
 	CreatedAtTimestamp      int
 	Subject                 string
@@ -38,7 +38,7 @@ func newSessionForBaseAuthorizeRequest(req BaseAuthorizeRequest, client Client) 
 	return AuthnSession{
 		Id:                      uuid.NewString(),
 		ClientId:                client.Id,
-		TokenModelId:            client.DefaultTokenModelId,
+		GrantModelId:            client.DefaultGrantModelId,
 		Scopes:                  unit.SplitStringWithSpaces(req.Scope),
 		RedirectUri:             req.RedirectUri,
 		ResponseTypes:           unit.SplitResponseTypes(req.ResponseType),

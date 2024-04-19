@@ -5,36 +5,28 @@ import (
 	"github.com/luikymagno/auth-server/internal/models"
 )
 
-type MockedTokenModelManager struct {
-	models map[string]models.TokenModel
+type MockedGrantModelManager struct {
+	models map[string]models.GrantModel
 }
 
-func NewMockedTokenModelManager() *MockedTokenModelManager {
-	return &MockedTokenModelManager{
-		models: make(map[string]models.TokenModel),
+func NewMockedGrantModelManager() *MockedGrantModelManager {
+	return &MockedGrantModelManager{
+		models: make(map[string]models.GrantModel),
 	}
 }
 
-func (manager *MockedTokenModelManager) Create(tokenModel models.TokenModel) error {
+func (manager *MockedGrantModelManager) Create(grantModel models.GrantModel) error {
 
-	var id string
-	switch tm := tokenModel.(type) {
-	case models.OpaqueTokenModel:
-		id = tm.Id
-	case models.JWTTokenModel:
-		id = tm.Id
-	}
-
-	_, exists := manager.models[id]
+	_, exists := manager.models[grantModel.Meta.Id]
 	if exists {
-		return issues.EntityAlreadyExistsError{Id: id}
+		return issues.EntityAlreadyExistsError{Id: grantModel.Meta.Id}
 	}
 
-	manager.models[id] = tokenModel
+	manager.models[grantModel.Meta.Id] = grantModel
 	return nil
 }
 
-func (manager *MockedTokenModelManager) Update(id string, model models.TokenModel) error {
+func (manager *MockedGrantModelManager) Update(id string, model models.GrantModel) error {
 	_, exists := manager.models[id]
 	if !exists {
 		return issues.EntityNotFoundError{Id: id}
@@ -44,16 +36,16 @@ func (manager *MockedTokenModelManager) Update(id string, model models.TokenMode
 	return nil
 }
 
-func (manager *MockedTokenModelManager) Get(id string) (models.TokenModel, error) {
+func (manager *MockedGrantModelManager) Get(id string) (models.GrantModel, error) {
 	model, exists := manager.models[id]
 	if !exists {
-		return nil, issues.EntityNotFoundError{Id: id}
+		return models.GrantModel{}, issues.EntityNotFoundError{Id: id}
 	}
 
 	return model, nil
 }
 
-func (manager *MockedTokenModelManager) Delete(id string) error {
+func (manager *MockedGrantModelManager) Delete(id string) error {
 	delete(manager.models, id)
 	return nil
 }

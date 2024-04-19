@@ -12,51 +12,54 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
-func TestOpaqueTokenModelGenerateToken(t *testing.T) {
+func TestOpaqueGrantModelGenerateToken(t *testing.T) {
 
 	// When.
-	opaqueTokenModel := models.OpaqueTokenModel{
+	tokenMaker := models.OpaqueTokenMaker{
 		TokenLength: 20,
-		TokenModelInfo: models.TokenModelInfo{
+	}
+	grantModel := models.GrantModel{
+		TokenMaker: tokenMaker,
+		Meta: models.GrantMetaInfo{
 			Id:            "opaque_token_model",
 			Issuer:        "https://example.com",
 			ExpiresInSecs: 60,
 		},
 	}
-	tokenContextInfo := models.TokenContextInfo{
+	grantContext := models.GrantContext{
 		Subject:  "user_id",
 		ClientId: "client_id",
 		Scopes:   []string{"scope1", "scope2"},
 	}
 
 	// Then.
-	tokenSession := opaqueTokenModel.GenerateToken(tokenContextInfo)
+	grantSession := grantModel.GenerateGrantSession(grantContext)
 
 	// Assert.
-	if tokenSession.Token == "" || len(tokenSession.Token) < opaqueTokenModel.TokenLength {
-		t.Errorf("the opaque token %s is invalid", tokenSession.Token)
+	if grantSession.Token == "" || len(grantSession.Token) < tokenMaker.TokenLength {
+		t.Errorf("the opaque token %s is invalid", grantSession.Token)
 	}
-	if tokenSession.TokenId != tokenSession.Token {
-		t.Errorf("the token id: %s should be equal to the opaque token value: %s", tokenSession.Id, tokenSession.Token)
+	if grantSession.TokenId != grantSession.Token {
+		t.Errorf("the token id: %s should be equal to the opaque token value: %s", grantSession.Id, grantSession.Token)
 	}
-	if tokenSession.ExpiresInSecs != opaqueTokenModel.ExpiresInSecs {
+	if grantSession.ExpiresInSecs != grantModel.Meta.ExpiresInSecs {
 		t.Error("the token expiration time is different from the model's one")
 	}
-	if tokenSession.Subject != tokenContextInfo.Subject {
+	if grantSession.Subject != grantContext.Subject {
 		t.Error("the subject is invalid")
 	}
-	if tokenSession.ClientId != tokenContextInfo.ClientId {
+	if grantSession.ClientId != grantContext.ClientId {
 		t.Error("the client id is invalid")
 	}
-	if len(tokenContextInfo.Scopes) != len(tokenSession.Scopes) || !unit.Contains(tokenContextInfo.Scopes, tokenSession.Scopes) {
+	if len(grantContext.Scopes) != len(grantSession.Scopes) || !unit.Contains(grantContext.Scopes, grantSession.Scopes) {
 		t.Error("the scopes are invalid")
 	}
-	if tokenSession.CreatedAtTimestamp != int(time.Now().Unix()) {
+	if grantSession.CreatedAtTimestamp != int(time.Now().Unix()) {
 		t.Error("invalid creation time")
 	}
 }
 
-func TestJWTTokenModelGenerateToken(t *testing.T) {
+func TestJWTGrantModelGenerateToken(t *testing.T) {
 
 	// When
 	keyId := "0afee142-a0af-4410-abcc-9f2d44ff45b5"
@@ -71,17 +74,18 @@ func TestJWTTokenModelGenerateToken(t *testing.T) {
 	unit.SetPrivateJWKS(jose.JSONWebKeySet{
 		Keys: []jose.JSONWebKey{jwk},
 	})
-
-	var jwtTokenModel = models.JWTTokenModel{
-		KeyId: keyId,
-		TokenModelInfo: models.TokenModelInfo{
+	grantModel := models.GrantModel{
+		TokenMaker: models.JWTTokenMaker{
+			KeyId: keyId,
+		},
+		Meta: models.GrantMetaInfo{
 			Id:            "jwt_token_model",
 			Issuer:        "https://example.com",
 			ExpiresInSecs: 60,
 		},
 	}
 
-	tokenContextInfo := models.TokenContextInfo{
+	grantContext := models.GrantContext{
 		Subject:               "user_id",
 		ClientId:              "client_id",
 		Scopes:                []string{"scope1", "scope2"},
@@ -89,10 +93,10 @@ func TestJWTTokenModelGenerateToken(t *testing.T) {
 	}
 
 	// Then
-	tokenSession := jwtTokenModel.GenerateToken(tokenContextInfo)
+	grantSession := grantModel.GenerateGrantSession(grantContext)
 
 	// Assert
-	jwt, err := jwt.ParseSigned(tokenSession.Token, []jose.SignatureAlgorithm{jose.HS256})
+	jwt, err := jwt.ParseSigned(grantSession.Token, []jose.SignatureAlgorithm{jose.HS256})
 	if err != nil {
 		t.Errorf("error parsing the token: %s", err.Error())
 	}
@@ -102,23 +106,23 @@ func TestJWTTokenModelGenerateToken(t *testing.T) {
 		t.Errorf("error verifying signature: %s", err.Error())
 	}
 
-	if subject, ok := claims[string(constants.Subject)]; !ok || subject != tokenContextInfo.Subject {
+	if subject, ok := claims[string(constants.Subject)]; !ok || subject != grantContext.Subject {
 		t.Errorf("invalid subject: %s", subject)
 	}
 
-	if tokenSession.ExpiresInSecs != jwtTokenModel.ExpiresInSecs {
+	if grantSession.ExpiresInSecs != grantModel.Meta.ExpiresInSecs {
 		t.Error("the token expiration time is different from the model's one")
 	}
-	if tokenSession.Subject != tokenContextInfo.Subject {
+	if grantSession.Subject != grantContext.Subject {
 		t.Error("the subject is invalid")
 	}
-	if tokenSession.ClientId != tokenContextInfo.ClientId {
+	if grantSession.ClientId != grantContext.ClientId {
 		t.Error("the client id is invalid")
 	}
-	if len(tokenContextInfo.Scopes) != len(tokenSession.Scopes) || !unit.Contains(tokenContextInfo.Scopes, tokenSession.Scopes) {
+	if len(grantContext.Scopes) != len(grantSession.Scopes) || !unit.Contains(grantContext.Scopes, grantSession.Scopes) {
 		t.Error("the scopes are invalid")
 	}
-	if tokenSession.CreatedAtTimestamp != int(time.Now().Unix()) {
+	if grantSession.CreatedAtTimestamp != int(time.Now().Unix()) {
 		t.Error("invalid creation time")
 	}
 }

@@ -87,17 +87,17 @@ func HandleTokenRequest(ctx utils.Context) {
 		return
 	}
 
-	tokenSession, err := utils.HandleTokenCreation(ctx, req)
+	grantSession, err := utils.HandleTokenCreation(ctx, req)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
 	}
 
 	ctx.RequestContext.JSON(http.StatusOK, models.TokenResponse{
-		AccessToken:  tokenSession.Token,
-		IdToken:      tokenSession.IdToken,
-		RefreshToken: tokenSession.RefreshToken,
-		ExpiresIn:    tokenSession.ExpiresInSecs,
+		AccessToken:  grantSession.Token,
+		IdToken:      grantSession.IdToken,
+		RefreshToken: grantSession.RefreshToken,
+		ExpiresIn:    grantSession.ExpiresInSecs,
 		TokenType:    constants.Bearer,
 	})
 }
@@ -114,14 +114,14 @@ func HandleUserInfoRequest(ctx utils.Context) {
 		return
 	}
 
-	tokenSession, err := utils.HandleUserInfoRequest(ctx, token)
+	grantSession, err := utils.HandleUserInfoRequest(ctx, token)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
 	}
 
-	response := gin.H{string(constants.Subject): tokenSession.Subject}
-	for k, v := range tokenSession.AdditionalIdTokenClaims {
+	response := gin.H{string(constants.Subject): grantSession.Subject}
+	for k, v := range grantSession.AdditionalIdTokenClaims {
 		response[k] = v
 	}
 

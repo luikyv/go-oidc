@@ -12,23 +12,23 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
-func HandleUserInfoRequest(ctx Context, token string) (models.TokenSession, error) {
+func HandleUserInfoRequest(ctx Context, token string) (models.GrantSession, error) {
 
 	tokenId, err := getTokenId(token)
 	if err != nil {
-		return models.TokenSession{}, err
+		return models.GrantSession{}, err
 	}
 
-	tokenSession, err := ctx.TokenSessionManager.GetByTokenId(tokenId)
+	grantSession, err := ctx.GrantSessionManager.GetByTokenId(tokenId)
 	if err != nil {
-		return models.TokenSession{}, err
+		return models.GrantSession{}, err
 	}
 
-	if !slices.Contains(tokenSession.Scopes, constants.OpenIdScope) {
-		return models.TokenSession{}, errors.New("invalid scope")
+	if !slices.Contains(grantSession.Scopes, constants.OpenIdScope) {
+		return models.GrantSession{}, errors.New("invalid scope")
 	}
 
-	return tokenSession, nil
+	return grantSession, nil
 }
 
 func getTokenId(token string) (string, error) {

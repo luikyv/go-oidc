@@ -8,7 +8,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
-type TokenContextInfo struct {
+type GrantContext struct {
 	Subject                 string
 	ClientId                string
 	Scopes                  []string
@@ -18,8 +18,8 @@ type TokenContextInfo struct {
 	AdditionalIdTokenClaims map[string]string
 }
 
-func NewClientCredentialsGrantTokenContextInfoFromAuthnSession(client Client, req TokenRequest) TokenContextInfo {
-	return TokenContextInfo{
+func NewClientCredentialsGrantGrantContextFromAuthnSession(client Client, req TokenRequest) GrantContext {
+	return GrantContext{
 		Subject:                 client.Id,
 		ClientId:                client.Id,
 		Scopes:                  unit.SplitStringWithSpaces(req.Scope),
@@ -29,8 +29,8 @@ func NewClientCredentialsGrantTokenContextInfoFromAuthnSession(client Client, re
 	}
 }
 
-func NewAuthorizationCodeGrantTokenContextInfoFromAuthnSession(session AuthnSession) TokenContextInfo {
-	return TokenContextInfo{
+func NewAuthorizationCodeGrantGrantContextFromAuthnSession(session AuthnSession) GrantContext {
+	return GrantContext{
 		Subject:                 session.Subject,
 		ClientId:                session.ClientId,
 		Scopes:                  session.Scopes,
@@ -41,8 +41,8 @@ func NewAuthorizationCodeGrantTokenContextInfoFromAuthnSession(session AuthnSess
 	}
 }
 
-func NewRefreshTokenGrantTokenContextInfoFromAuthnSession(session TokenSession) TokenContextInfo {
-	return TokenContextInfo{
+func NewRefreshTokenGrantGrantContextFromAuthnSession(session GrantSession) GrantContext {
+	return GrantContext{
 		Subject:               session.Subject,
 		ClientId:              session.ClientId,
 		Scopes:                session.Scopes,

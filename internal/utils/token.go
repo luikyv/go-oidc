@@ -15,9 +15,9 @@ import (
 func HandleTokenCreation(
 	ctx Context,
 	req models.TokenRequest,
-) (models.TokenSession, error) {
+) (models.GrantSession, error) {
 
-	var token models.TokenSession
+	var token models.GrantSession
 	var err error = nil
 	switch req.GrantType {
 	case constants.ClientCredentials:
@@ -28,7 +28,7 @@ func HandleTokenCreation(
 		token, err = handleRefreshTokenGrantTokenCreation(ctx, req)
 	}
 	if err != nil {
-		return models.TokenSession{}, err
+		return models.GrantSession{}, err
 	}
 
 	return token, nil
@@ -36,36 +36,36 @@ func HandleTokenCreation(
 
 //---------------------------------------- Client Credentials ----------------------------------------//
 
-func handleClientCredentialsGrantTokenCreation(ctx Context, req models.TokenRequest) (models.TokenSession, error) {
+func handleClientCredentialsGrantTokenCreation(ctx Context, req models.TokenRequest) (models.GrantSession, error) {
 	authenticatedClient, err := getAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
-		return models.TokenSession{}, err
+		return models.GrantSession{}, err
 	}
 
 	if err := validateClientCredentialsGrantRequest(ctx, authenticatedClient, req); err != nil {
-		return models.TokenSession{}, err
+		return models.GrantSession{}, err
 	}
 
-	tokenModel, err := ctx.TokenModelManager.Get(authenticatedClient.DefaultTokenModelId)
+	grantModel, err := ctx.GrantModelManager.Get(authenticatedClient.DefaultGrantModelId)
 	if err != nil {
-		return models.TokenSession{}, err
+		return models.GrantSession{}, err
 	}
 
-	tokenSession := tokenModel.GenerateToken(
-		models.NewClientCredentialsGrantTokenContextInfoFromAuthnSession(authenticatedClient, req),
+	grantSession := grantModel.GenerateGrantSession(
+		models.NewClientCredentialsGrantGrantContextFromAuthnSession(authenticatedClient, req),
 	)
 
-	if shouldCreateTokenSessionForClientCredentialsGrant(tokenSession) {
+	if shouldCreateGrantSessionForClientCredentialsGrant(grantSession) {
 		// We only need to create a token session for client credentials when the token is not self-contained,
 		// i.e. it is a refecence token.
 		ctx.Logger.Debug("create token session")
-		err = ctx.TokenSessionManager.CreateOrUpdate(tokenSession)
+		err = ctx.GrantSessionManager.CreateOrUpdate(grantSession)
 	}
 	if err != nil {
-		return models.TokenSession{}, err
+		return models.GrantSession{}, err
 	}
 
-	return tokenSession, nil
+	return grantSession, nil
 }
 
 func validateClientCredentialsGrantRequest(ctx Context, client models.Client, req models.TokenRequest) error {
@@ -89,48 +89,48 @@ func validateClientCredentialsGrantRequest(ctx Context, client models.Client, re
 	return nil
 }
 
-func shouldCreateTokenSessionForClientCredentialsGrant(tokenSession models.TokenSession) bool {
+func shouldCreateGrantSessionForClientCredentialsGrant(grantSession models.GrantSession) bool {
 	// We only need to create a token session for the authorization code grant when the token is not self-contained,
 	// i.e. it is a refecence token, when the refresh token is issued or the the openid scope was requested.
-	return tokenSession.TokenFormat == constants.Opaque
+	return grantSession.TokenFormat == constants.Opaque
 }
 
 //---------------------------------------- Authorization Code ----------------------------------------//
 
-func handleAuthorizationCodeGrantTokenCreation(ctx Context, req models.TokenRequest) (models.TokenSession, error) {
+func handleAuthorizationCodeGrantTokenCreation(ctx Context, req models.TokenRequest) (models.GrantSession, error) {
 
 	authenticatedClient, session, err := getAuthenticatedClientAndSession(ctx, req)
 	if err != nil {
 		ctx.Logger.Debug("error while loading the client or session", slog.String("error", err.Error()))
-		return models.TokenSession{}, err
+		return models.GrantSession{}, err
 	}
 
 	if err := validateAuthorizationCodeGrantRequest(req, authenticatedClient, session); err != nil {
 		ctx.Logger.Debug("invalid parameters for the token request", slog.String("error", err.Error()))
-		return models.TokenSession{}, err
+		return models.GrantSession{}, err
 	}
 
 	ctx.Logger.Debug("fetch the token model")
-	tokenModel, err := ctx.TokenModelManager.Get(authenticatedClient.DefaultTokenModelId)
+	grantModel, err := ctx.GrantModelManager.Get(authenticatedClient.DefaultGrantModelId)
 	if err != nil {
 		ctx.Logger.Debug("error while loading the token model", slog.String("error", err.Error()))
-		return models.TokenSession{}, err
+		return models.GrantSession{}, err
 	}
 	ctx.Logger.Debug("the token model was loaded successfully")
 
-	tokenSession := tokenModel.GenerateToken(
-		models.NewAuthorizationCodeGrantTokenContextInfoFromAuthnSession(session),
+	grantSession := grantModel.GenerateGrantSession(
+		models.NewAuthorizationCodeGrantGrantContextFromAuthnSession(session),
 	)
 	err = nil
-	if shouldCreateTokenSessionForAuthorizationCodeGrant(tokenSession) {
+	if shouldCreateGrantSessionForAuthorizationCodeGrant(grantSession) {
 		ctx.Logger.Debug("create token session")
-		err = ctx.TokenSessionManager.CreateOrUpdate(tokenSession)
+		err = ctx.GrantSessionManager.CreateOrUpdate(grantSession)
 	}
 	if err != nil {
-		return models.TokenSession{}, err
+		return models.GrantSession{}, err
 	}
 
-	return tokenSession, nil
+	return grantSession, nil
 }
 
 func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client models.Client, session models.AuthnSession) error {
@@ -218,83 +218,83 @@ func getSessionByAuthorizationCode(ctx Context, authorizationCode string, ch cha
 	}
 }
 
-func shouldCreateTokenSessionForAuthorizationCodeGrant(tokenSession models.TokenSession) bool {
+func shouldCreateGrantSessionForAuthorizationCodeGrant(grantSession models.GrantSession) bool {
 	// We only need to create a token session for the authorization code grant when the token is not self-contained,
 	// i.e. it is a refecence token, when the refresh token is issued or the the openid scope was requested
 	// in which case the client can later request information about the user.
-	return tokenSession.TokenFormat == constants.Opaque || tokenSession.RefreshToken != "" || slices.Contains(tokenSession.Scopes, constants.OpenIdScope)
+	return grantSession.TokenFormat == constants.Opaque || grantSession.RefreshToken != "" || slices.Contains(grantSession.Scopes, constants.OpenIdScope)
 }
 
 //---------------------------------------- Refresh Token ----------------------------------------//
 
-func handleRefreshTokenGrantTokenCreation(ctx Context, req models.TokenRequest) (models.TokenSession, error) {
+func handleRefreshTokenGrantTokenCreation(ctx Context, req models.TokenRequest) (models.GrantSession, error) {
 
-	authenticatedClient, tokenSession, err := getAuthenticatedClientAndTokenSession(ctx, req)
+	authenticatedClient, grantSession, err := getAuthenticatedClientAndGrantSession(ctx, req)
 	if err != nil {
 		ctx.Logger.Debug("error while loading the client or token.", slog.String("error", err.Error()))
-		return models.TokenSession{}, err
+		return models.GrantSession{}, err
 	}
 
-	if err = validateRefreshTokenGrantRequest(authenticatedClient, tokenSession); err != nil {
-		return models.TokenSession{}, err
+	if err = validateRefreshTokenGrantRequest(authenticatedClient, grantSession); err != nil {
+		return models.GrantSession{}, err
 	}
 
-	err = ctx.TokenSessionManager.Delete(tokenSession.Id)
+	err = ctx.GrantSessionManager.Delete(grantSession.Id)
 	if err != nil {
-		return models.TokenSession{}, err
+		return models.GrantSession{}, err
 	}
 
 	ctx.Logger.Debug("update the token session")
-	updatedTokenSession, err := generateUpdatedTokenSession(ctx, tokenSession)
+	updatedGrantSession, err := generateUpdatedGrantSession(ctx, grantSession)
 	if err != nil {
-		return models.TokenSession{}, err
+		return models.GrantSession{}, err
 	}
 
-	return updatedTokenSession, nil
+	return updatedGrantSession, nil
 }
 
-func getAuthenticatedClientAndTokenSession(ctx Context, req models.TokenRequest) (models.Client, models.TokenSession, error) {
+func getAuthenticatedClientAndGrantSession(ctx Context, req models.TokenRequest) (models.Client, models.GrantSession, error) {
 
 	ctx.Logger.Debug("get the token session using the refresh token.")
-	tokenSessionResultCh := make(chan ResultChannel)
-	go getTokenSessionByRefreshToken(ctx, req.RefreshToken, tokenSessionResultCh)
+	grantSessionResultCh := make(chan ResultChannel)
+	go getGrantSessionByRefreshToken(ctx, req.RefreshToken, grantSessionResultCh)
 
 	ctx.Logger.Debug("get the client while the token is being loaded.")
 	authenticatedClient, err := getAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
 		ctx.Logger.Debug("error while loading the client.", slog.String("error", err.Error()))
-		return models.Client{}, models.TokenSession{}, err
+		return models.Client{}, models.GrantSession{}, err
 	}
 	ctx.Logger.Debug("the client was loaded successfully.")
 
 	ctx.Logger.Debug("wait for the session.")
-	tokenSessionResult := <-tokenSessionResultCh
-	tokenSession, err := tokenSessionResult.result.(models.TokenSession), tokenSessionResult.err
+	grantSessionResult := <-grantSessionResultCh
+	grantSession, err := grantSessionResult.result.(models.GrantSession), grantSessionResult.err
 	if err != nil {
 		ctx.Logger.Debug("error while loading the token.", slog.String("error", err.Error()))
-		return models.Client{}, models.TokenSession{}, errors.New("invalid refresh token")
+		return models.Client{}, models.GrantSession{}, errors.New("invalid refresh token")
 	}
 	ctx.Logger.Debug("the session was loaded successfully.")
 
-	return authenticatedClient, tokenSession, nil
+	return authenticatedClient, grantSession, nil
 }
 
-func getTokenSessionByRefreshToken(ctx Context, refreshToken string, ch chan<- ResultChannel) {
-	tokenSession, err := ctx.TokenSessionManager.GetByRefreshToken(refreshToken)
+func getGrantSessionByRefreshToken(ctx Context, refreshToken string, ch chan<- ResultChannel) {
+	grantSession, err := ctx.GrantSessionManager.GetByRefreshToken(refreshToken)
 	if err != nil {
 		ch <- ResultChannel{
-			result: models.TokenSession{},
+			result: models.GrantSession{},
 			err:    err,
 		}
 	}
 
 	ch <- ResultChannel{
-		result: tokenSession,
+		result: grantSession,
 		err:    err,
 	}
 }
 
-func validateRefreshTokenGrantRequest(client models.Client, tokenSession models.TokenSession) error {
+func validateRefreshTokenGrantRequest(client models.Client, grantSession models.GrantSession) error {
 
 	if !client.IsGrantTypeAllowed(constants.RefreshToken) {
 		return issues.JsonError{
@@ -303,14 +303,14 @@ func validateRefreshTokenGrantRequest(client models.Client, tokenSession models.
 		}
 	}
 
-	if client.Id != tokenSession.ClientId {
+	if client.Id != grantSession.ClientId {
 		return issues.JsonError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "the refresh token was not issued to the client",
 		}
 	}
 
-	expirationTimestamp := tokenSession.CreatedAtTimestamp + tokenSession.RefreshTokenExpiresIn
+	expirationTimestamp := grantSession.CreatedAtTimestamp + grantSession.RefreshTokenExpiresIn
 	if unit.GetTimestampNow() > expirationTimestamp {
 		//TODO: How to handle the expired sessions? There are just hanging for now.
 		return issues.JsonError{
@@ -322,23 +322,23 @@ func validateRefreshTokenGrantRequest(client models.Client, tokenSession models.
 	return nil
 }
 
-func generateUpdatedTokenSession(ctx Context, tokenSession models.TokenSession) (models.TokenSession, error) {
+func generateUpdatedGrantSession(ctx Context, grantSession models.GrantSession) (models.GrantSession, error) {
 	ctx.Logger.Debug("get the token model")
-	tokenModel, err := ctx.TokenModelManager.Get(tokenSession.TokenModelId)
+	grantModel, err := ctx.GrantModelManager.Get(grantSession.GrantModelId)
 	if err != nil {
 		ctx.Logger.Debug("error while loading the token model", slog.String("error", err.Error()))
-		return models.TokenSession{}, err
+		return models.GrantSession{}, err
 	}
 	ctx.Logger.Debug("the token model was loaded successfully")
 
-	updatedTokenSession := tokenModel.GenerateToken(
-		models.NewRefreshTokenGrantTokenContextInfoFromAuthnSession(tokenSession),
+	updatedGrantSession := grantModel.GenerateGrantSession(
+		models.NewRefreshTokenGrantGrantContextFromAuthnSession(grantSession),
 	)
 	// Keep the same creation time to make sure the session will expire.
-	updatedTokenSession.CreatedAtTimestamp = tokenSession.CreatedAtTimestamp
-	ctx.TokenSessionManager.CreateOrUpdate(updatedTokenSession)
+	updatedGrantSession.CreatedAtTimestamp = grantSession.CreatedAtTimestamp
+	ctx.GrantSessionManager.CreateOrUpdate(updatedGrantSession)
 
-	return updatedTokenSession, nil
+	return updatedGrantSession, nil
 }
 
 //---------------------------------------- Helpers ----------------------------------------//

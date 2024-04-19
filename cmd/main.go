@@ -73,8 +73,8 @@ func main() {
 	clientId := "random_client"
 	clientSecret := "random_secret"
 	clientSecretSalt := "random_salt"
-	opaqueTokenModelId := "opaque_token_model"
-	jwtTokenModelId := "jwt_token_model"
+	opaqueGrantModelId := "opaque_token_model"
+	jwtGrantModelId := "jwt_token_model"
 	userPassword := "password"
 	privateKeyId := "rsa_key"
 	issuer := "https://example.com"
@@ -84,20 +84,24 @@ func main() {
 	oauthManager := oauth.NewManager(jwks, "./templates/*", oauth.SetMockedEntitiesConfig, oauth.SetMockedSessionsConfig)
 
 	// Add token model mocks.
-	oauthManager.AddTokenModel(models.OpaqueTokenModel{
-		TokenLength: 20,
-		TokenModelInfo: models.TokenModelInfo{
-			Id:            opaqueTokenModelId,
+	oauthManager.AddGrantModel(models.GrantModel{
+		TokenMaker: models.OpaqueTokenMaker{
+			TokenLength: 20,
+		},
+		Meta: models.GrantMetaInfo{
+			Id:            opaqueGrantModelId,
 			Issuer:        issuer,
 			ExpiresInSecs: 60,
 			IsRefreshable: false,
 			OpenIdKeyId:   privateKeyId,
 		},
 	})
-	oauthManager.AddTokenModel(models.JWTTokenModel{
-		KeyId: privateKeyId,
-		TokenModelInfo: models.TokenModelInfo{
-			Id:                  jwtTokenModelId,
+	oauthManager.AddGrantModel(models.GrantModel{
+		TokenMaker: models.JWTTokenMaker{
+			KeyId: privateKeyId,
+		},
+		Meta: models.GrantMetaInfo{
+			Id:                  jwtGrantModelId,
 			Issuer:              issuer,
 			ExpiresInSecs:       60,
 			IsRefreshable:       true,
@@ -116,7 +120,7 @@ func main() {
 		RedirectUris:        []string{"http://localhost:80/callback", "https://localhost.emobix.co.uk:8443/test/a/first_test/callback", "https://localhost:8443/test/a/first_test/callback"},
 		ResponseTypes:       constants.ResponseTypes,
 		ResponseModes:       constants.ResponseModes,
-		DefaultTokenModelId: jwtTokenModelId,
+		DefaultGrantModelId: jwtGrantModelId,
 		Authenticator: models.SecretPostClientAuthenticator{
 			Salt:         clientSecretSalt,
 			HashedSecret: string(hashedSecret),

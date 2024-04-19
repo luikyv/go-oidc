@@ -51,13 +51,13 @@ var FinishFlowSuccessfullyStep *AuthnStep = &AuthnStep{
 
 		// Generate an ID token if the client requested it.
 		if slices.Contains(session.ResponseTypes, constants.IdToken) {
-			tokenModel, err := ctx.TokenModelManager.Get(session.TokenModelId)
+			grantModel, err := ctx.GrantModelManager.Get(session.GrantModelId)
 			if err != nil {
 				session.SetError(constants.InternalError, "error generating id token")
 				return FinishFlowWithFailureStep.AuthnFunc(ctx, session)
 			}
-			params[string(constants.IdToken)] = tokenModel.GenerateIdToken(
-				models.NewAuthorizationCodeGrantTokenContextInfoFromAuthnSession(*session),
+			params[string(constants.IdToken)] = grantModel.GenerateIdToken(
+				models.NewAuthorizationCodeGrantGrantContextFromAuthnSession(*session),
 			)
 		}
 

@@ -10,7 +10,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
-type TokenModelInfo struct {
+type GrantModelInfo struct {
 	Id                  string
 	Issuer              string
 	ExpiresInSecs       int
@@ -19,14 +19,14 @@ type TokenModelInfo struct {
 	OpenIdKeyId         string
 }
 
-func (tokenModelInfo TokenModelInfo) GenerateIdToken(ctxInfo TokenContextInfo) string {
+func (grantModelInfo GrantModelInfo) GenerateIdToken(ctxInfo GrantContext) string {
 	timestampNow := unit.GetTimestampNow()
 	claims := map[string]any{
-		string(constants.Issuer):   tokenModelInfo.Issuer,
+		string(constants.Issuer):   grantModelInfo.Issuer,
 		string(constants.Subject):  ctxInfo.Subject,
 		string(constants.Audience): ctxInfo.ClientId,
 		string(constants.IssuedAt): timestampNow,
-		string(constants.Expiry):   timestampNow + tokenModelInfo.ExpiresInSecs,
+		string(constants.Expiry):   timestampNow + grantModelInfo.ExpiresInSecs,
 	}
 	if ctxInfo.Nonce != "" {
 		claims[string(constants.Nonce)] = ctxInfo.Nonce
@@ -35,29 +35,29 @@ func (tokenModelInfo TokenModelInfo) GenerateIdToken(ctxInfo TokenContextInfo) s
 		claims[k] = v
 	}
 
-	jwk, _ := unit.GetPrivateKey(tokenModelInfo.OpenIdKeyId)
+	jwk, _ := unit.GetPrivateKey(grantModelInfo.OpenIdKeyId)
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", tokenModelInfo.OpenIdKeyId),
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", grantModelInfo.OpenIdKeyId),
 	)
 
 	idToken, _ := jwt.Signed(signer).Claims(claims).Serialize()
 	return idToken
 }
 
-func (tokenModelInfo TokenModelInfo) generateTokenSession(
+func (grantModelInfo GrantModelInfo) generateGrantSession(
 	tokenId string,
 	accessToken string,
 	tokenFormat constants.TokenFormat,
-	ctxInfo TokenContextInfo,
-) TokenSession {
-	tokenSession := TokenSession{
+	ctxInfo GrantContext,
+) GrantSession {
+	grantSession := GrantSession{
 		Id:                      uuid.NewString(),
 		TokenId:                 tokenId,
-		TokenModelId:            tokenModelInfo.Id,
+		GrantModelId:            grantModelInfo.Id,
 		Token:                   accessToken,
 		TokenFormat:             tokenFormat,
-		ExpiresInSecs:           tokenModelInfo.ExpiresInSecs,
+		ExpiresInSecs:           grantModelInfo.ExpiresInSecs,
 		CreatedAtTimestamp:      unit.GetTimestampNow(),
 		Subject:                 ctxInfo.Subject,
 		ClientId:                ctxInfo.ClientId,
@@ -67,82 +67,82 @@ func (tokenModelInfo TokenModelInfo) generateTokenSession(
 		AdditionalIdTokenClaims: ctxInfo.AdditionalIdTokenClaims,
 	}
 
-	if ctxInfo.GrantType != constants.ClientCredentials && tokenModelInfo.IsRefreshable {
-		tokenSession.RefreshToken = unit.GenerateRefreshToken()
-		tokenSession.RefreshTokenExpiresIn = tokenModelInfo.RefreshLifetimeSecs
+	if ctxInfo.GrantType != constants.ClientCredentials && grantModelInfo.IsRefreshable {
+		grantSession.RefreshToken = unit.GenerateRefreshToken()
+		grantSession.RefreshTokenExpiresIn = grantModelInfo.RefreshLifetimeSecs
 	}
 
 	if unit.Contains(ctxInfo.Scopes, []string{constants.OpenIdScope}) {
-		tokenSession.IdToken = tokenModelInfo.GenerateIdToken(ctxInfo)
+		grantSession.IdToken = grantModelInfo.GenerateIdToken(ctxInfo)
 	}
 
-	return tokenSession
+	return grantSession
 }
 
-type TokenModel interface {
-	ToOutput() TokenModelOut
-	GenerateToken(TokenContextInfo) TokenSession
-	GenerateIdToken(TokenContextInfo) string
+type GrantModel interface {
+	ToOutput() GrantModelOut
+	GenerateToken(GrantContext) GrantSession
+	GenerateIdToken(GrantContext) string
 }
 
-type TokenModelOut struct{}
+type GrantModelOut struct{}
 
-type TokenModelIn struct{}
+type GrantModelIn struct{}
 
-func (model TokenModelIn) ToInternal() TokenModel {
-	return OpaqueTokenModel{}
+func (model GrantModelIn) ToInternal() GrantModel {
+	return OpaqueGrantModel{}
 }
 
 //---------------------------------------- Opaque ----------------------------------------//
 
-type OpaqueTokenModel struct {
+type OpaqueGrantModel struct {
 	TokenLength int
-	TokenModelInfo
+	GrantModelInfo
 }
 
-func (tokenModel OpaqueTokenModel) GenerateToken(ctxInfo TokenContextInfo) TokenSession {
-	accessToken := unit.GenerateRandomString(tokenModel.TokenLength, tokenModel.TokenLength)
-	return tokenModel.TokenModelInfo.generateTokenSession(accessToken, accessToken, constants.Opaque, ctxInfo)
+func (grantModel OpaqueGrantModel) GenerateToken(ctxInfo GrantContext) GrantSession {
+	accessToken := unit.GenerateRandomString(grantModel.TokenLength, grantModel.TokenLength)
+	return grantModel.GrantModelInfo.generateGrantSession(accessToken, accessToken, constants.Opaque, ctxInfo)
 }
 
-func (model OpaqueTokenModel) ToOutput() TokenModelOut {
-	return TokenModelOut{}
+func (model OpaqueGrantModel) ToOutput() GrantModelOut {
+	return GrantModelOut{}
 }
 
 //---------------------------------------- JWT ----------------------------------------//
 
-type JWTTokenModel struct {
+type JWTGrantModel struct {
 	KeyId string
-	TokenModelInfo
+	GrantModelInfo
 }
 
-func (tokenModel JWTTokenModel) GenerateToken(ctxInfo TokenContextInfo) TokenSession {
+func (grantModel JWTGrantModel) GenerateToken(ctxInfo GrantContext) GrantSession {
 	jwtId := uuid.NewString()
 	timestampNow := unit.GetTimestampNow()
 	claims := map[string]any{
 		string(constants.TokenId):  jwtId,
-		string(constants.Issuer):   tokenModel.Issuer,
+		string(constants.Issuer):   grantModel.Issuer,
 		string(constants.Subject):  ctxInfo.Subject,
 		string(constants.Scope):    strings.Join(ctxInfo.Scopes, " "),
 		string(constants.IssuedAt): timestampNow,
-		string(constants.Expiry):   timestampNow + tokenModel.ExpiresInSecs,
+		string(constants.Expiry):   timestampNow + grantModel.ExpiresInSecs,
 	}
 	for k, v := range ctxInfo.AdditionalTokenClaims {
 		claims[k] = v
 	}
 
-	jwk, _ := unit.GetPrivateKey(tokenModel.KeyId)
+	jwk, _ := unit.GetPrivateKey(grantModel.KeyId)
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
 		// RFC9068. "...This specification registers the "application/at+jwt" media type,
 		// which can be used to indicate that the content is a JWT access token."
-		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", tokenModel.KeyId),
+		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", grantModel.KeyId),
 	)
 
 	accessToken, _ := jwt.Signed(signer).Claims(claims).Serialize()
-	return tokenModel.TokenModelInfo.generateTokenSession(jwtId, accessToken, constants.JWT, ctxInfo)
+	return grantModel.GrantModelInfo.generateGrantSession(jwtId, accessToken, constants.JWT, ctxInfo)
 }
 
-func (model JWTTokenModel) ToOutput() TokenModelOut {
-	return TokenModelOut{}
+func (model JWTGrantModel) ToOutput() GrantModelOut {
+	return GrantModelOut{}
 }

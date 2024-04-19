@@ -18,9 +18,9 @@ import (
 type OpenIDManager struct {
 	host                string // TODO
 	scopeManager        crud.ScopeManager
-	tokenModelManager   crud.TokenModelManager
+	grantModelManager   crud.GrantModelManager
 	clientManager       crud.ClientManager
-	tokenSessionManager crud.TokenSessionManager
+	grantSessionManager crud.GrantSessionManager
 	authnSessionManager crud.AuthnSessionManager
 	server              *gin.Engine
 }
@@ -47,17 +47,17 @@ func NewManager(
 
 func SetMockedEntitiesConfig(manager *OpenIDManager) {
 	manager.scopeManager = mock.NewMockedScopeManager()
-	manager.tokenModelManager = mock.NewMockedTokenModelManager()
+	manager.grantModelManager = mock.NewMockedGrantModelManager()
 	manager.clientManager = mock.NewMockedClientManager()
 }
 
 func SetMockedSessionsConfig(manager *OpenIDManager) {
-	manager.tokenSessionManager = mock.NewMockedTokenSessionManager()
+	manager.grantSessionManager = mock.NewMockedGrantSessionManager()
 	manager.authnSessionManager = mock.NewMockedAuthnSessionManager()
 }
 
-func (manager *OpenIDManager) AddTokenModel(model models.TokenModel) error {
-	return manager.tokenModelManager.Create(model)
+func (manager *OpenIDManager) AddGrantModel(model models.GrantModel) error {
+	return manager.grantModelManager.Create(model)
 }
 
 func (manager *OpenIDManager) AddClient(client models.Client) error {
@@ -72,9 +72,9 @@ func (manager OpenIDManager) getContext(requestContext *gin.Context) utils.Conte
 	return utils.NewContext(
 		manager.host,
 		manager.scopeManager,
-		manager.tokenModelManager,
+		manager.grantModelManager,
 		manager.clientManager,
-		manager.tokenSessionManager,
+		manager.grantSessionManager,
 		manager.authnSessionManager,
 		requestContext,
 	)

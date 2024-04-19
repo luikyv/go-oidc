@@ -98,9 +98,9 @@ func TestClientCredentialsHandleTokenCreation(t *testing.T) {
 		return
 	}
 
-	tokenSessionManager, _ := ctx.TokenSessionManager.(*mock.MockedTokenSessionManager)
-	tokens := make([]models.TokenSession, 0, len(tokenSessionManager.TokenSessions))
-	for _, tk := range tokenSessionManager.TokenSessions {
+	grantSessionManager, _ := ctx.GrantSessionManager.(*mock.MockedGrantSessionManager)
+	tokens := make([]models.GrantSession, 0, len(grantSessionManager.GrantSessions))
+	for _, tk := range grantSessionManager.GrantSessions {
 		tokens = append(tokens, tk)
 	}
 	if len(tokens) != 1 {
@@ -175,9 +175,9 @@ func TestRefreshTokenHandleTokenCreation(t *testing.T) {
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
-	token := models.TokenSession{
+	token := models.GrantSession{
 		Id:                    "random_id",
-		TokenModelId:          utils.ValidTokenModelId,
+		GrantModelId:          utils.ValidGrantModelId,
 		Token:                 "token",
 		ExpiresInSecs:         60,
 		RefreshToken:          refreshToken,
@@ -187,7 +187,7 @@ func TestRefreshTokenHandleTokenCreation(t *testing.T) {
 		ClientId:              utils.ValidClientId,
 		Scopes:                client.Scopes,
 	}
-	ctx.TokenSessionManager.CreateOrUpdate(token)
+	ctx.GrantSessionManager.CreateOrUpdate(token)
 
 	req := models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
@@ -238,9 +238,9 @@ func TestRefreshTokenHandleTokenCreationShouldDenyExpiredRefreshToken(t *testing
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
-	token := models.TokenSession{
+	token := models.GrantSession{
 		Id:                    "random_id",
-		TokenModelId:          utils.ValidTokenModelId,
+		GrantModelId:          utils.ValidGrantModelId,
 		Token:                 "token",
 		RefreshToken:          refreshToken,
 		ExpiresInSecs:         60,
@@ -250,7 +250,7 @@ func TestRefreshTokenHandleTokenCreationShouldDenyExpiredRefreshToken(t *testing
 		ClientId:              utils.ValidClientId,
 		Scopes:                client.Scopes,
 	}
-	ctx.TokenSessionManager.CreateOrUpdate(token)
+	ctx.GrantSessionManager.CreateOrUpdate(token)
 
 	req := models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
