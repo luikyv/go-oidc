@@ -24,12 +24,7 @@ func HandlePARRequest(ctx utils.Context) {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
 	}
-
-	clientIdBasic, clientSecretBasic, hasBasicAuthn := ctx.RequestContext.Request.BasicAuth()
-	if hasBasicAuthn {
-		req.ClientIdBasicAuthn = clientIdBasic
-		req.ClientSecretBasicAuthn = clientSecretBasic
-	}
+	addBasicCredentialsToRequest(ctx, &req.ClientAuthnRequest)
 
 	if err := req.IsValid(); err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
@@ -42,7 +37,7 @@ func HandlePARRequest(ctx utils.Context) {
 		return
 	}
 
-	ctx.RequestContext.JSON(http.StatusAccepted, models.PARResponse{
+	ctx.RequestContext.JSON(http.StatusCreated, models.PARResponse{
 		RequestUri: requestUri,
 		ExpiresIn:  constants.PARLifetimeSecs,
 	})
@@ -72,7 +67,8 @@ func HandleAuthorizeRequest(ctx utils.Context) {
 func HandleAuthorizeCallbackRequest(ctx utils.Context) {
 	err := utils.ContinueAuthentication(ctx, ctx.RequestContext.Param("callback"))
 	if err != nil {
-		ctx.RequestContext.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		bindErrorToResponse(err, ctx.RequestContext)
+		return
 	}
 }
 
@@ -84,12 +80,7 @@ func HandleTokenRequest(ctx utils.Context) {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
 	}
-
-	clientIdBasic, clientSecretBasic, hasBasicAuthn := ctx.RequestContext.Request.BasicAuth()
-	if hasBasicAuthn {
-		req.ClientIdBasicAuthn = clientIdBasic
-		req.ClientSecretBasicAuthn = clientSecretBasic
-	}
+	addBasicCredentialsToRequest(ctx, &req.ClientAuthnRequest)
 
 	if err := req.IsValid(); err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
@@ -102,7 +93,7 @@ func HandleTokenRequest(ctx utils.Context) {
 		return
 	}
 
-	ctx.RequestContext.JSON(http.StatusAccepted, models.TokenResponse{
+	ctx.RequestContext.JSON(http.StatusOK, models.TokenResponse{
 		AccessToken:  tokenSession.Token,
 		IdToken:      tokenSession.IdToken,
 		RefreshToken: tokenSession.RefreshToken,
@@ -114,12 +105,30 @@ func HandleTokenRequest(ctx utils.Context) {
 //---------------------------------------- User Info ----------------------------------------//
 
 func HandleUserInfoRequest(ctx utils.Context) {
-	ctx.RequestContext.JSON(http.StatusOK, gin.H{
-		"sub": "luiky",
-	})
+	token, ok := unit.GetBearerToken(ctx.RequestContext)
+	if !ok {
+		bindErrorToResponse(issues.JsonError{
+			ErrorCode:        constants.AccessDenied,
+			ErrorDescription: "no token found",
+		}, ctx.RequestContext)
+		return
+	}
+
+	tokenSession, err := utils.HandleUserInfoRequest(ctx, token)
+	if err != nil {
+		bindErrorToResponse(err, ctx.RequestContext)
+		return
+	}
+
+	response := gin.H{string(constants.Subject): tokenSession.Subject}
+	for k, v := range tokenSession.AdditionalIdTokenClaims {
+		response[k] = v
+	}
+
+	ctx.RequestContext.JSON(http.StatusOK, response)
 }
 
-//---------------------------------------- Error Handling ----------------------------------------//
+//---------------------------------------- Helpers ----------------------------------------//
 
 func bindErrorToResponse(err error, requestContext *gin.Context) {
 
@@ -133,4 +142,12 @@ func bindErrorToResponse(err error, requestContext *gin.Context) {
 		"error":             constants.AccessDenied,
 		"error_description": err.Error(),
 	})
+}
+
+func addBasicCredentialsToRequest(ctx utils.Context, req *models.ClientAuthnRequest) {
+	clientIdBasic, clientSecretBasic, hasBasicAuthn := ctx.RequestContext.Request.BasicAuth()
+	if hasBasicAuthn {
+		req.ClientIdBasicAuthn = clientIdBasic
+		req.ClientSecretBasicAuthn = clientSecretBasic
+	}
 }

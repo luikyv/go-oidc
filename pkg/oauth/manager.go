@@ -90,6 +90,10 @@ func (manager *OpenIDManager) run() {
 			correlationId = uuid.NewString()
 		}
 		ctx.Set(constants.CorrelationIdKey, correlationId)
+
+		// Avoiding caching.
+		ctx.Writer.Header().Set("Cache-Control", "no-cache, no-store")
+		ctx.Writer.Header().Set("Pragma", "no-cache")
 	})
 
 	// Set endpoints.

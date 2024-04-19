@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
@@ -67,8 +68,26 @@ func SetPrivateJWKS(privateJWKS jose.JSONWebKeySet) {
 	constants.PrivateJWKS = privateJWKS
 }
 
-func GetPrivateKey(keyId string) jose.JSONWebKey {
-	return constants.PrivateJWKS.Key(keyId)[0]
+func GetPrivateKey(keyId string) (jose.JSONWebKey, bool) {
+	keys := constants.PrivateJWKS.Key(keyId)
+	if len(keys) != 1 {
+		return jose.JSONWebKey{}, false
+	}
+	return keys[0], true
+}
+
+func GetPublicKey(keyId string) (jose.JSONWebKey, bool) {
+	privateKey, ok := GetPrivateKey(keyId)
+	if !ok {
+		return jose.JSONWebKey{}, false
+	}
+
+	publicKey := privateKey.Public()
+	if publicKey.KeyID == "" {
+		return jose.JSONWebKey{}, false
+	}
+
+	return publicKey, true
 }
 
 func GetPublicKeys() jose.JSONWebKeySet {
@@ -83,6 +102,14 @@ func GetPublicKeys() jose.JSONWebKeySet {
 	}
 
 	return jose.JSONWebKeySet{Keys: publicKeys}
+}
+
+func GetSigningAlgorithms() []jose.SignatureAlgorithm {
+	algorithms := []jose.SignatureAlgorithm{}
+	for _, privateKey := range constants.PrivateJWKS.Keys {
+		algorithms = append(algorithms, jose.SignatureAlgorithm(privateKey.Algorithm))
+	}
+	return algorithms
 }
 
 func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod constants.CodeChallengeMethod) bool {
@@ -106,6 +133,20 @@ func AreResponseTypesValid(responseTypeString string) bool {
 		constants.ResponseTypes,
 		responseTypes,
 	)
+}
+
+func GetBearerToken(requestCtx *gin.Context) (string, bool) {
+	bearerToken := requestCtx.Request.Header.Get("Authorization")
+	if bearerToken == "" {
+		return "", false
+	}
+
+	bearerTokenParts := strings.Split(bearerToken, " ")
+	if len(bearerTokenParts) != 2 {
+		return "", false
+	}
+
+	return bearerTokenParts[1], true
 }
 
 func Contains[T comparable](superSet []T, subSet []T) bool {

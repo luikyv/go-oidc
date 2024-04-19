@@ -35,7 +35,7 @@ func (tokenModelInfo TokenModelInfo) GenerateIdToken(ctxInfo TokenContextInfo) s
 		claims[k] = v
 	}
 
-	jwk := unit.GetPrivateKey(tokenModelInfo.OpenIdKeyId)
+	jwk, _ := unit.GetPrivateKey(tokenModelInfo.OpenIdKeyId)
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", tokenModelInfo.OpenIdKeyId),
@@ -45,12 +45,18 @@ func (tokenModelInfo TokenModelInfo) GenerateIdToken(ctxInfo TokenContextInfo) s
 	return idToken
 }
 
-func (tokenModelInfo TokenModelInfo) generateTokenSession(tokenId string, accessToken string, ctxInfo TokenContextInfo) TokenSession {
+func (tokenModelInfo TokenModelInfo) generateTokenSession(
+	tokenId string,
+	accessToken string,
+	tokenFormat constants.TokenFormat,
+	ctxInfo TokenContextInfo,
+) TokenSession {
 	tokenSession := TokenSession{
 		Id:                      uuid.NewString(),
 		TokenId:                 tokenId,
 		TokenModelId:            tokenModelInfo.Id,
 		Token:                   accessToken,
+		TokenFormat:             tokenFormat,
 		ExpiresInSecs:           tokenModelInfo.ExpiresInSecs,
 		CreatedAtTimestamp:      unit.GetTimestampNow(),
 		Subject:                 ctxInfo.Subject,
@@ -96,16 +102,11 @@ type OpaqueTokenModel struct {
 
 func (tokenModel OpaqueTokenModel) GenerateToken(ctxInfo TokenContextInfo) TokenSession {
 	accessToken := unit.GenerateRandomString(tokenModel.TokenLength, tokenModel.TokenLength)
-	return tokenModel.TokenModelInfo.generateTokenSession(accessToken, accessToken, ctxInfo)
+	return tokenModel.TokenModelInfo.generateTokenSession(accessToken, accessToken, constants.Opaque, ctxInfo)
 }
 
 func (model OpaqueTokenModel) ToOutput() TokenModelOut {
 	return TokenModelOut{}
-}
-
-func IsOpaqueTokenModel(tokenModel TokenModel) bool {
-	_, isOpaque := tokenModel.(OpaqueTokenModel)
-	return isOpaque
 }
 
 //---------------------------------------- JWT ----------------------------------------//
@@ -130,7 +131,7 @@ func (tokenModel JWTTokenModel) GenerateToken(ctxInfo TokenContextInfo) TokenSes
 		claims[k] = v
 	}
 
-	jwk := unit.GetPrivateKey(tokenModel.KeyId)
+	jwk, _ := unit.GetPrivateKey(tokenModel.KeyId)
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
 		// RFC9068. "...This specification registers the "application/at+jwt" media type,
@@ -139,7 +140,7 @@ func (tokenModel JWTTokenModel) GenerateToken(ctxInfo TokenContextInfo) TokenSes
 	)
 
 	accessToken, _ := jwt.Signed(signer).Claims(claims).Serialize()
-	return tokenModel.TokenModelInfo.generateTokenSession(jwtId, accessToken, ctxInfo)
+	return tokenModel.TokenModelInfo.generateTokenSession(jwtId, accessToken, constants.JWT, ctxInfo)
 }
 
 func (model JWTTokenModel) ToOutput() TokenModelOut {

@@ -12,9 +12,9 @@ const (
 
 const CorrelationIdKey string = "correlation_id"
 
-type TokenModelType string
+type TokenFormat string
 
 const (
-	JWT    TokenModelType = "jwt"
-	Opaque TokenModelType = "opaque"
+	JWT    TokenFormat = "jwt"
+	Opaque TokenFormat = "opaque"
 )

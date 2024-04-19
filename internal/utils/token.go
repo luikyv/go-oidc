@@ -3,6 +3,7 @@ package utils
 import (
 	"errors"
 	"log/slog"
+	"slices"
 
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/issues"
@@ -54,7 +55,7 @@ func handleClientCredentialsGrantTokenCreation(ctx Context, req models.TokenRequ
 		models.NewClientCredentialsGrantTokenContextInfoFromAuthnSession(authenticatedClient, req),
 	)
 
-	if models.IsOpaqueTokenModel(tokenModel) {
+	if shouldCreateTokenSessionForClientCredentialsGrant(tokenSession) {
 		// We only need to create a token session for client credentials when the token is not self-contained,
 		// i.e. it is a refecence token.
 		ctx.Logger.Debug("create token session")
@@ -88,6 +89,12 @@ func validateClientCredentialsGrantRequest(ctx Context, client models.Client, re
 	return nil
 }
 
+func shouldCreateTokenSessionForClientCredentialsGrant(tokenSession models.TokenSession) bool {
+	// We only need to create a token session for the authorization code grant when the token is not self-contained,
+	// i.e. it is a refecence token, when the refresh token is issued or the the openid scope was requested.
+	return tokenSession.TokenFormat == constants.Opaque
+}
+
 //---------------------------------------- Authorization Code ----------------------------------------//
 
 func handleAuthorizationCodeGrantTokenCreation(ctx Context, req models.TokenRequest) (models.TokenSession, error) {
@@ -114,11 +121,8 @@ func handleAuthorizationCodeGrantTokenCreation(ctx Context, req models.TokenRequ
 	tokenSession := tokenModel.GenerateToken(
 		models.NewAuthorizationCodeGrantTokenContextInfoFromAuthnSession(session),
 	)
-
 	err = nil
-	if models.IsOpaqueTokenModel(tokenModel) || tokenSession.RefreshToken != "" {
-		// We only need to create a token session for the authorization code grant when the token is not self-contained,
-		// i.e. it is a refecence token, or when the refresh token is issued.
+	if shouldCreateTokenSessionForAuthorizationCodeGrant(tokenSession) {
 		ctx.Logger.Debug("create token session")
 		err = ctx.TokenSessionManager.CreateOrUpdate(tokenSession)
 	}
@@ -214,6 +218,13 @@ func getSessionByAuthorizationCode(ctx Context, authorizationCode string, ch cha
 	}
 }
 
+func shouldCreateTokenSessionForAuthorizationCodeGrant(tokenSession models.TokenSession) bool {
+	// We only need to create a token session for the authorization code grant when the token is not self-contained,
+	// i.e. it is a refecence token, when the refresh token is issued or the the openid scope was requested
+	// in which case the client can later request information about the user.
+	return tokenSession.TokenFormat == constants.Opaque || tokenSession.RefreshToken != "" || slices.Contains(tokenSession.Scopes, constants.OpenIdScope)
+}
+
 //---------------------------------------- Refresh Token ----------------------------------------//
 
 func handleRefreshTokenGrantTokenCreation(ctx Context, req models.TokenRequest) (models.TokenSession, error) {
@@ -228,17 +239,13 @@ func handleRefreshTokenGrantTokenCreation(ctx Context, req models.TokenRequest) 
 		return models.TokenSession{}, err
 	}
 
-	ctx.Logger.Debug("get the token model")
-	tokenModel, err := ctx.TokenModelManager.Get(tokenSession.TokenModelId)
+	err = ctx.TokenSessionManager.Delete(tokenSession.Id)
 	if err != nil {
-		ctx.Logger.Debug("error while loading the token model", slog.String("error", err.Error()))
 		return models.TokenSession{}, err
 	}
-	ctx.Logger.Debug("the token model was loaded successfully")
 
 	ctx.Logger.Debug("update the token session")
-	updatedTokenSession := generateUpdatedTokenSession(tokenModel, tokenSession)
-	err = ctx.TokenSessionManager.CreateOrUpdate(updatedTokenSession)
+	updatedTokenSession, err := generateUpdatedTokenSession(ctx, tokenSession)
 	if err != nil {
 		return models.TokenSession{}, err
 	}
@@ -315,15 +322,23 @@ func validateRefreshTokenGrantRequest(client models.Client, tokenSession models.
 	return nil
 }
 
-func generateUpdatedTokenSession(tokenModel models.TokenModel, tokenSession models.TokenSession) models.TokenSession {
+func generateUpdatedTokenSession(ctx Context, tokenSession models.TokenSession) (models.TokenSession, error) {
+	ctx.Logger.Debug("get the token model")
+	tokenModel, err := ctx.TokenModelManager.Get(tokenSession.TokenModelId)
+	if err != nil {
+		ctx.Logger.Debug("error while loading the token model", slog.String("error", err.Error()))
+		return models.TokenSession{}, err
+	}
+	ctx.Logger.Debug("the token model was loaded successfully")
+
 	updatedTokenSession := tokenModel.GenerateToken(
 		models.NewRefreshTokenGrantTokenContextInfoFromAuthnSession(tokenSession),
 	)
-	// Make sure a new session is not created, but the existing one is updated.
-	updatedTokenSession.Id = tokenSession.Id
+	// Keep the same creation time to make sure the session will expire.
 	updatedTokenSession.CreatedAtTimestamp = tokenSession.CreatedAtTimestamp
+	ctx.TokenSessionManager.CreateOrUpdate(updatedTokenSession)
 
-	return updatedTokenSession
+	return updatedTokenSession, nil
 }
 
 //---------------------------------------- Helpers ----------------------------------------//
