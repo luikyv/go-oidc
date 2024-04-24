@@ -117,7 +117,7 @@ func NewStep(id string, authnFunc AuthnFunc) AuthnStep {
 
 //---------------------------------------- Policy ----------------------------------------//
 
-type CheckPolicyAvailabilityFunc func(models.Client, *gin.Context) bool
+type CheckPolicyAvailabilityFunc func(models.AuthnSession, *gin.Context) bool
 
 type AuthnPolicy struct {
 	Id              string
@@ -147,10 +147,10 @@ func NewPolicy(
 	return policy
 }
 
-func GetPolicy(ctx Context, client models.Client) (policy AuthnPolicy, policyIsAvailable bool) {
+func GetPolicy(ctx Context, session models.AuthnSession) (policy AuthnPolicy, policyIsAvailable bool) {
 	for _, policyId := range ctx.PolicyIds {
 		policy = policyMap[policyId]
-		if policyIsAvailable = policy.IsAvailableFunc(client, ctx.RequestContext); policyIsAvailable {
+		if policyIsAvailable = policy.IsAvailableFunc(session, ctx.RequestContext); policyIsAvailable {
 			break
 		}
 	}

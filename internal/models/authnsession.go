@@ -86,6 +86,10 @@ func (session *AuthnSession) GetParameter(key string, value string) string {
 	return session.Store[key]
 }
 
+func (session *AuthnSession) GetClientAttribute(key string, value string) string {
+	return session.ClientAttributes[key]
+}
+
 // Set a new claim that will be mapped in the access token when issued.
 func (session *AuthnSession) SetCustomTokenClaim(key string, value string) {
 	session.AdditionalTokenClaims[key] = value

@@ -156,7 +156,7 @@ func TestInitAuthenticationShouldEndWithError(t *testing.T) {
 	policy := utils.NewPolicy(
 		"policy_id",
 		[]utils.AuthnStep{firstStep},
-		func(c models.Client, ctx *gin.Context) bool { return true },
+		func(c models.AuthnSession, ctx *gin.Context) bool { return true },
 	)
 	ctx.PolicyIds = append(ctx.PolicyIds, policy.Id)
 
@@ -205,7 +205,7 @@ func TestInitAuthenticationShouldEndInProgress(t *testing.T) {
 	policy := utils.NewPolicy(
 		"policy_id",
 		[]utils.AuthnStep{firstStep},
-		func(c models.Client, ctx *gin.Context) bool { return true },
+		func(c models.AuthnSession, ctx *gin.Context) bool { return true },
 	)
 	ctx.PolicyIds = append(ctx.PolicyIds, policy.Id)
 
@@ -268,7 +268,7 @@ func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 	policy := utils.NewPolicy(
 		"policy_id",
 		[]utils.AuthnStep{firstStep},
-		func(c models.Client, ctx *gin.Context) bool { return true },
+		func(c models.AuthnSession, ctx *gin.Context) bool { return true },
 	)
 	ctx.PolicyIds = append(ctx.PolicyIds, policy.Id)
 
@@ -332,7 +332,7 @@ func TestInitAuthenticationWithPAR(t *testing.T) {
 	policy := utils.NewPolicy(
 		"policy_id",
 		[]utils.AuthnStep{},
-		func(c models.Client, ctx *gin.Context) bool { return true },
+		func(s models.AuthnSession, ctx *gin.Context) bool { return true },
 	)
 	ctx.PolicyIds = append(ctx.PolicyIds, policy.Id)
 

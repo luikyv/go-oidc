@@ -194,7 +194,7 @@ func main() {
 	policy := utils.NewPolicy(
 		"policy",
 		[]utils.AuthnStep{identityStep, passwordStep},
-		func(c models.Client, ctx *gin.Context) bool { return true },
+		func(c models.AuthnSession, ctx *gin.Context) bool { return true },
 	)
 
 	// Run

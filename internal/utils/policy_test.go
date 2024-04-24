@@ -88,14 +88,14 @@ func TestGetPolicy(t *testing.T) {
 	unavailablePolicy := utils.NewPolicy(
 		"unavailable_policy",
 		[]utils.AuthnStep{},
-		func(c models.Client, ctx *gin.Context) bool {
+		func(c models.AuthnSession, ctx *gin.Context) bool {
 			return false
 		},
 	)
 	availablePolicy := utils.NewPolicy(
 		"available_policy",
 		[]utils.AuthnStep{},
-		func(c models.Client, ctx *gin.Context) bool {
+		func(c models.AuthnSession, ctx *gin.Context) bool {
 			return true
 		},
 	)
@@ -103,7 +103,7 @@ func TestGetPolicy(t *testing.T) {
 	ctx.PolicyIds = []string{unavailablePolicy.Id, availablePolicy.Id}
 
 	// Then
-	policy, policyIsAvailable := utils.GetPolicy(ctx, models.Client{})
+	policy, policyIsAvailable := utils.GetPolicy(ctx, models.AuthnSession{})
 
 	// Assert
 	if !policyIsAvailable {
@@ -123,7 +123,7 @@ func TestGetPolicyNoPolicyAvailable(t *testing.T) {
 	unavailablePolicy := utils.NewPolicy(
 		"unavailable_policy",
 		[]utils.AuthnStep{},
-		func(c models.Client, ctx *gin.Context) bool {
+		func(c models.AuthnSession, ctx *gin.Context) bool {
 			return false
 		},
 	)
@@ -132,7 +132,7 @@ func TestGetPolicyNoPolicyAvailable(t *testing.T) {
 
 	// Then
 
-	_, policyIsAvailable := utils.GetPolicy(ctx, models.Client{})
+	_, policyIsAvailable := utils.GetPolicy(ctx, models.AuthnSession{})
 
 	// Assert
 	if policyIsAvailable {
