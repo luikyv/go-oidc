@@ -147,9 +147,10 @@ func NewPolicy(
 	return policy
 }
 
-func GetPolicy(client models.Client, requestContext *gin.Context) (policy AuthnPolicy, policyIsAvailable bool) {
-	for _, policy = range policyMap {
-		if policyIsAvailable = policy.IsAvailableFunc(client, requestContext); policyIsAvailable {
+func GetPolicy(ctx Context, client models.Client) (policy AuthnPolicy, policyIsAvailable bool) {
+	for _, policyId := range ctx.PolicyIds {
+		policy = policyMap[policyId]
+		if policyIsAvailable = policy.IsAvailableFunc(client, ctx.RequestContext); policyIsAvailable {
 			break
 		}
 	}

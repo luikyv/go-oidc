@@ -29,7 +29,7 @@ func InitAuthentication(ctx Context, req models.AuthorizeRequest) error {
 	}
 
 	// Fetch the first policy available.
-	policy, policyIsAvailable := GetPolicy(client, ctx.RequestContext)
+	policy, policyIsAvailable := GetPolicy(ctx, client)
 	if !policyIsAvailable {
 		ctx.Logger.Info("no policy available")
 		return errors.New("no policy available")

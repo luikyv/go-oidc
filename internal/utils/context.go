@@ -15,6 +15,7 @@ type Context struct {
 	ClientManager       crud.ClientManager
 	GrantSessionManager crud.GrantSessionManager
 	AuthnSessionManager crud.AuthnSessionManager
+	PolicyIds           []string
 	RequestContext      *gin.Context
 	Logger              *slog.Logger
 }
@@ -25,6 +26,7 @@ func NewContext(
 	clientManager crud.ClientManager,
 	grantSessionManager crud.GrantSessionManager,
 	authnSessionManager crud.AuthnSessionManager,
+	policyIds []string,
 	reqContext *gin.Context,
 ) Context {
 
@@ -47,6 +49,7 @@ func NewContext(
 		ClientManager:       clientManager,
 		GrantSessionManager: grantSessionManager,
 		AuthnSessionManager: authnSessionManager,
+		PolicyIds:           policyIds,
 		RequestContext:      reqContext,
 		Logger:              logger,
 	}

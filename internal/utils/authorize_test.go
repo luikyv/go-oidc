@@ -153,11 +153,12 @@ func TestInitAuthenticationShouldEndWithError(t *testing.T) {
 			return constants.Failure
 		},
 	)
-	utils.NewPolicy(
+	policy := utils.NewPolicy(
 		"policy_id",
 		[]utils.AuthnStep{firstStep},
 		func(c models.Client, ctx *gin.Context) bool { return true },
 	)
+	ctx.PolicyIds = append(ctx.PolicyIds, policy.Id)
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
@@ -201,11 +202,12 @@ func TestInitAuthenticationShouldEndInProgress(t *testing.T) {
 			return constants.InProgress
 		},
 	)
-	utils.NewPolicy(
+	policy := utils.NewPolicy(
 		"policy_id",
 		[]utils.AuthnStep{firstStep},
 		func(c models.Client, ctx *gin.Context) bool { return true },
 	)
+	ctx.PolicyIds = append(ctx.PolicyIds, policy.Id)
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
@@ -263,11 +265,12 @@ func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 			return constants.Success
 		},
 	)
-	utils.NewPolicy(
+	policy := utils.NewPolicy(
 		"policy_id",
 		[]utils.AuthnStep{firstStep},
 		func(c models.Client, ctx *gin.Context) bool { return true },
 	)
+	ctx.PolicyIds = append(ctx.PolicyIds, policy.Id)
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
@@ -326,11 +329,12 @@ func TestInitAuthenticationWithPAR(t *testing.T) {
 			CreatedAtTimestamp: unit.GetTimestampNow(),
 		},
 	)
-	utils.NewPolicy(
+	policy := utils.NewPolicy(
 		"policy_id",
 		[]utils.AuthnStep{},
 		func(c models.Client, ctx *gin.Context) bool { return true },
 	)
+	ctx.PolicyIds = append(ctx.PolicyIds, policy.Id)
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{

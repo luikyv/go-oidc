@@ -120,7 +120,7 @@ func main() {
 		ResponseTypes:       constants.ResponseTypes,
 		ResponseModes:       constants.ResponseModes,
 		DefaultGrantModelId: jwtGrantModelId,
-		Authenticator: models.SecretBasicClientAuthenticator{
+		Authenticator: models.SecretPostClientAuthenticator{
 			Salt:         clientSecretSalt,
 			HashedSecret: string(hashedSecret),
 		},
@@ -142,7 +142,7 @@ func main() {
 
 			if passwordForm.Password == "" {
 				ctx.RequestContext.HTML(http.StatusOK, "password.html", gin.H{
-					"host":       fmt.Sprintf("https://host.docker.internal:%v", port),
+					"host":       fmt.Sprintf("https://localhost:%v", port),
 					"callbackId": session.CallbackId,
 				})
 				return constants.InProgress
@@ -174,7 +174,7 @@ func main() {
 
 			if identityForm.Username == "" {
 				ctx.RequestContext.HTML(http.StatusOK, "identity.html", gin.H{
-					"host":       fmt.Sprintf("https://host.docker.internal:%v", port),
+					"host":       fmt.Sprintf("https://localhost:%v", port),
 					"callbackId": session.CallbackId,
 				})
 				return constants.InProgress
@@ -191,12 +191,13 @@ func main() {
 	)
 
 	// Create Policy
-	utils.NewPolicy(
+	policy := utils.NewPolicy(
 		"policy",
 		[]utils.AuthnStep{identityStep, passwordStep},
 		func(c models.Client, ctx *gin.Context) bool { return true },
 	)
 
 	// Run
+	oauthManager.AddPolicy(policy)
 	oauthManager.RunTLS(port)
 }

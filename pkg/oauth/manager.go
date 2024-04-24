@@ -21,6 +21,7 @@ type OpenIDManager struct {
 	clientManager       crud.ClientManager
 	grantSessionManager crud.GrantSessionManager
 	authnSessionManager crud.AuthnSessionManager
+	policyIds           []string
 	server              *gin.Engine
 }
 
@@ -34,7 +35,8 @@ func NewManager(
 	unit.SetHost(host)
 
 	manager := &OpenIDManager{
-		server: gin.Default(),
+		policyIds: make([]string, 0),
+		server:    gin.Default(),
 	}
 	manager.server.LoadHTMLGlob(templates)
 
@@ -66,6 +68,10 @@ func (manager *OpenIDManager) AddClient(client models.Client) error {
 	return manager.clientManager.Create(client)
 }
 
+func (manager *OpenIDManager) AddPolicy(policy utils.AuthnPolicy) {
+	manager.policyIds = append(manager.policyIds, policy.Id)
+}
+
 func (manager OpenIDManager) getContext(requestContext *gin.Context) utils.Context {
 	return utils.NewContext(
 		manager.scopeManager,
@@ -73,6 +79,7 @@ func (manager OpenIDManager) getContext(requestContext *gin.Context) utils.Conte
 		manager.clientManager,
 		manager.grantSessionManager,
 		manager.authnSessionManager,
+		manager.policyIds,
 		requestContext,
 	)
 }

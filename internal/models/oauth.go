@@ -163,7 +163,7 @@ func (req BaseAuthorizeRequest) IsValid() error {
 		return errors.New("invalid parameter")
 	}
 
-	if !slices.Contains(constants.ResponseTypes, req.ResponseType) {
+	if req.ResponseType != "" && !slices.Contains(constants.ResponseTypes, req.ResponseType) {
 		return errors.New("invalid response type")
 	}
 

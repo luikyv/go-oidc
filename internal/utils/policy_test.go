@@ -62,7 +62,7 @@ func TestGetStep(t *testing.T) {
 	}
 }
 
-func TestAddPolicyRegistersStep(t *testing.T) {
+func TestNewPolicyRegistersStep(t *testing.T) {
 	// When
 	tearDown := setUp()
 	defer tearDown()
@@ -92,8 +92,6 @@ func TestGetPolicy(t *testing.T) {
 			return false
 		},
 	)
-	utils.PolicyMap[unavailablePolicy.Id] = unavailablePolicy
-
 	availablePolicy := utils.NewPolicy(
 		"available_policy",
 		[]utils.AuthnStep{},
@@ -101,10 +99,11 @@ func TestGetPolicy(t *testing.T) {
 			return true
 		},
 	)
-	utils.PolicyMap[availablePolicy.Id] = availablePolicy
+	ctx := utils.GetMockedContext()
+	ctx.PolicyIds = []string{unavailablePolicy.Id, availablePolicy.Id}
 
 	// Then
-	policy, policyIsAvailable := utils.GetPolicy(models.Client{}, nil)
+	policy, policyIsAvailable := utils.GetPolicy(ctx, models.Client{})
 
 	// Assert
 	if !policyIsAvailable {
@@ -128,10 +127,12 @@ func TestGetPolicyNoPolicyAvailable(t *testing.T) {
 			return false
 		},
 	)
-	utils.PolicyMap[unavailablePolicy.Id] = unavailablePolicy
+	ctx := utils.GetMockedContext()
+	ctx.PolicyIds = []string{unavailablePolicy.Id}
 
 	// Then
-	_, policyIsAvailable := utils.GetPolicy(models.Client{}, nil)
+
+	_, policyIsAvailable := utils.GetPolicy(ctx, models.Client{})
 
 	// Assert
 	if policyIsAvailable {
