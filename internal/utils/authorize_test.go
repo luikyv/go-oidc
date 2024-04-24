@@ -71,7 +71,7 @@ func TestInitAuthenticationWhenInvalidScope(t *testing.T) {
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        "invalid_scope",
-			ResponseType: string(constants.Code),
+			ResponseType: constants.Code,
 		},
 	})
 
@@ -102,7 +102,7 @@ func TestInitAuthenticationWhenInvalidResponseType(t *testing.T) {
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
-			ResponseType: string(constants.IdToken),
+			ResponseType: constants.IdToken,
 		},
 	})
 
@@ -131,7 +131,7 @@ func TestInitAuthenticationWhenNoPolicyIsAvailable(t *testing.T) {
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
-			ResponseType: string(constants.Code),
+			ResponseType: constants.Code,
 		},
 	})
 
@@ -167,7 +167,7 @@ func TestInitAuthenticationShouldEndWithError(t *testing.T) {
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
-			ResponseType: string(constants.Code),
+			ResponseType: constants.Code,
 			ResponseMode: constants.Query,
 		},
 	})
@@ -217,7 +217,7 @@ func TestInitAuthenticationShouldEndInProgress(t *testing.T) {
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
-			ResponseType: string(constants.Code),
+			ResponseType: constants.Code,
 			ResponseMode: constants.Query,
 		},
 	})
@@ -281,7 +281,7 @@ func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
-			ResponseType: strings.Join([]string{string(constants.Code), string(constants.IdToken)}, " "),
+			ResponseType: constants.CodeAndIdToken,
 			ResponseMode: constants.Query,
 		},
 	})
@@ -328,7 +328,7 @@ func TestInitAuthenticationWithPAR(t *testing.T) {
 			ClientId:           client.Id,
 			Scopes:             client.Scopes,
 			RedirectUri:        client.RedirectUris[0],
-			ResponseTypes:      []constants.ResponseType{constants.Code},
+			ResponseType:       constants.Code,
 			CreatedAtTimestamp: unit.GetTimestampNow(),
 		},
 	)

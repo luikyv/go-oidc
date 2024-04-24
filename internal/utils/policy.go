@@ -2,7 +2,6 @@ package utils
 
 import (
 	"net/http"
-	"slices"
 
 	"github.com/gin-gonic/gin"
 	"github.com/luikymagno/auth-server/internal/issues"
@@ -43,14 +42,14 @@ var FinishFlowSuccessfullyStep *AuthnStep = &AuthnStep{
 		params := make(map[string]string)
 
 		// Generate the authorization code if the client requested it.
-		if slices.Contains(session.ResponseTypes, constants.Code) {
+		if unit.ResponseContainsCode(session.ResponseType) {
 			session.AuthorizationCode = unit.GenerateAuthorizationCode()
 			session.AuthorizedAtTimestamp = unit.GetTimestampNow()
 			params[string(constants.Code)] = session.AuthorizationCode
 		}
 
 		// Generate an ID token if the client requested it.
-		if slices.Contains(session.ResponseTypes, constants.IdToken) {
+		if unit.ResponseContainsIdToken(session.ResponseType) {
 			grantModel, err := ctx.GrantModelManager.Get(session.GrantModelId)
 			if err != nil {
 				session.SetError(constants.InternalError, "error generating id token")

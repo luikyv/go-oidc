@@ -3,8 +3,6 @@ package utils
 import (
 	"errors"
 	"log/slog"
-	"slices"
-	"strings"
 
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
@@ -111,7 +109,7 @@ func validateAuthorizeParams(client models.Client, req models.BaseAuthorizeReque
 		}
 	}
 
-	if !client.AreResponseTypesAllowed(strings.Split(req.ResponseType, " ")) {
+	if !client.IsResponseTypeAllowed(req.ResponseType) {
 		return issues.RedirectError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "response type not allowed",
@@ -150,7 +148,7 @@ func validateAuthorizeWithPARParams(session models.AuthnSession, req models.Auth
 	}
 
 	allParamsAreEmpty := unit.All(
-		[]string{req.RedirectUri, req.Scope, req.ResponseType, req.State},
+		[]string{req.RedirectUri, req.Scope, string(req.ResponseType), req.State},
 		func(param string) bool {
 			return param == ""
 		},
@@ -202,7 +200,7 @@ func updateOrDeleteSession(ctx Context, session models.AuthnSession, currentStep
 		return ctx.AuthnSessionManager.Delete(session.Id)
 	}
 
-	if currentStep == FinishFlowSuccessfullyStep && !slices.Contains(session.ResponseTypes, constants.Code) {
+	if currentStep == FinishFlowSuccessfullyStep && !unit.ResponseContainsCode(session.ResponseType) {
 		// The client didn't request an authorization code to later exchange it for an access token,
 		// so we don't keep the session anymore.
 		return ctx.AuthnSessionManager.Delete(session.Id)

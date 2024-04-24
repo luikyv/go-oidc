@@ -137,19 +137,19 @@ func TestAreResponseTypesAllowed(t *testing.T) {
 		ResponseTypes: []constants.ResponseType{constants.Code},
 	}
 	testCases := []struct {
-		requestedResponseTypes []string
-		expectedResult         bool
+		requestedResponseType constants.ResponseType
+		expectedResult        bool
 	}{
-		{[]string{"code"}, true},
-		{[]string{"code", "token"}, false},
+		{constants.Code, true},
+		{constants.CodeAndIdToken, false},
 	}
 
-	for _, testCase := range testCases {
+	for i, testCase := range testCases {
 		t.Run(
-			fmt.Sprint(testCase.requestedResponseTypes),
+			fmt.Sprintf("case %v", i),
 			func(t *testing.T) {
-				if client.AreResponseTypesAllowed(testCase.requestedResponseTypes) != testCase.expectedResult {
-					t.Errorf("the response types %v should be valid? %v", testCase.requestedResponseTypes, testCase.expectedResult)
+				if client.IsResponseTypeAllowed(testCase.requestedResponseType) != testCase.expectedResult {
+					t.Errorf("the response types %v should be valid? %v", testCase.requestedResponseType, testCase.expectedResult)
 				}
 			},
 		)

@@ -168,9 +168,9 @@ func TestFinishFlowSuccessfullyStepShouldHaveNoNextSteps(t *testing.T) {
 func TestFinishFlowSuccessfullyStep(t *testing.T) {
 	// When
 	session := &models.AuthnSession{
-		RedirectUri:   "https://example.com",
-		State:         "random_state",
-		ResponseTypes: []constants.ResponseType{constants.Code},
+		RedirectUri:  "https://example.com",
+		State:        "random_state",
+		ResponseType: constants.Code,
 	}
 	ctx := GetMockedContext()
 

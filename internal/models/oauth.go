@@ -4,6 +4,7 @@ import (
 	"errors"
 	"slices"
 
+	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
@@ -141,7 +142,7 @@ type TokenResponse struct {
 type BaseAuthorizeRequest struct {
 	RedirectUri         string                        `form:"redirect_uri"`
 	Scope               string                        `form:"scope"`
-	ResponseType        string                        `form:"response_type"`
+	ResponseType        constants.ResponseType        `form:"response_type"`
 	ResponseMode        constants.ResponseMode        `form:"response_mode,default=query"`
 	State               string                        `form:"state"`
 	CodeChallenge       string                        `form:"code_challenge"`
@@ -162,7 +163,7 @@ func (req BaseAuthorizeRequest) IsValid() error {
 		return errors.New("invalid parameter")
 	}
 
-	if !unit.AreResponseTypesValid(req.ResponseType) {
+	if !slices.Contains(constants.ResponseTypes, req.ResponseType) {
 		return errors.New("invalid response type")
 	}
 
@@ -207,6 +208,17 @@ type PARResponse struct {
 	ExpiresIn  int    `json:"expires_in"`
 }
 
-type UserInfoResponse struct {
-	UserId string `json:"sub"`
+type OpenIdConfiguration struct {
+	Issuer                   string                            `json:"issuer"`
+	AuthorizationEndpoint    string                            `json:"authorization_endpoint"`
+	TokenEndpoint            string                            `json:"token_endpoint"`
+	UserinfoEndpoint         string                            `json:"userinfo_endpoint"`
+	JwksUri                  string                            `json:"jwks_uri"`
+	ParEndpoint              string                            `json:"pushed_authorization_request_endpoint"`
+	ResponseTypes            []constants.ResponseType          `json:"response_types_supported"`
+	ResponseModes            []constants.ResponseMode          `json:"response_modes_supported"`
+	GrantTypes               []constants.GrantType             `json:"grant_types_supported"`
+	SubjectIdentifierTypes   []constants.SubjectIdentifierType `json:"subject_types_supported"`
+	IdTokenSigningAlgorithms []jose.SignatureAlgorithm         `json:"id_token_signing_alg_values_supported"`
+	ClientAuthnMethods       []constants.ClientAuthnType       `json:"token_endpoint_auth_methods_supported"`
 }

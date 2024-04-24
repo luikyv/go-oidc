@@ -12,6 +12,14 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
+//---------------------------------------- Well Known ----------------------------------------//
+
+func HandleWellKnownRequest(ctx utils.Context) {
+	ctx.RequestContext.JSON(http.StatusOK, utils.GetOpenIdConfiguration(ctx))
+}
+
+//---------------------------------------- JWKS ----------------------------------------//
+
 func HandleJWKSRequest(ctx utils.Context) {
 	ctx.RequestContext.JSON(http.StatusOK, unit.GetPublicKeys())
 }

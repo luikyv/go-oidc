@@ -98,37 +98,42 @@ func (manager *OpenIDManager) run() {
 	})
 
 	// Set endpoints.
-	manager.server.GET("/jwks.json", func(requestCtx *gin.Context) {
+	manager.server.GET(string(constants.WellKnownEndpoint), func(requestCtx *gin.Context) {
+		apihandlers.HandleWellKnownRequest(
+			manager.getContext(requestCtx),
+		)
+	})
+	manager.server.GET(string(constants.JsonWebKeySetEndpoint), func(requestCtx *gin.Context) {
 		apihandlers.HandleJWKSRequest(
 			manager.getContext(requestCtx),
 		)
 	})
-	manager.server.POST("/par", func(requestCtx *gin.Context) {
+	manager.server.POST(string(constants.PushedAuthorizationRequestEndpoint), func(requestCtx *gin.Context) {
 		apihandlers.HandlePARRequest(
 			manager.getContext(requestCtx),
 		)
 	})
-	manager.server.GET("/authorize", func(requestCtx *gin.Context) {
+	manager.server.GET(string(constants.AuthorizationEndpoint), func(requestCtx *gin.Context) {
 		apihandlers.HandleAuthorizeRequest(
 			manager.getContext(requestCtx),
 		)
 	})
-	manager.server.POST("/authorize/:callback", func(requestCtx *gin.Context) {
+	manager.server.POST(string(constants.AuthorizationCallbackEndpoint), func(requestCtx *gin.Context) {
 		apihandlers.HandleAuthorizeCallbackRequest(
 			manager.getContext(requestCtx),
 		)
 	})
-	manager.server.POST("/token", func(requestCtx *gin.Context) {
+	manager.server.POST(string(constants.TokenEndpoint), func(requestCtx *gin.Context) {
 		apihandlers.HandleTokenRequest(
 			manager.getContext(requestCtx),
 		)
 	})
-	manager.server.GET("/userinfo", func(requestCtx *gin.Context) {
+	manager.server.GET(string(constants.UserInfoEndpoint), func(requestCtx *gin.Context) {
 		apihandlers.HandleUserInfoRequest(
 			manager.getContext(requestCtx),
 		)
 	})
-	manager.server.POST("/userinfo", func(requestCtx *gin.Context) {
+	manager.server.POST(string(constants.UserInfoEndpoint), func(requestCtx *gin.Context) {
 		apihandlers.HandleUserInfoRequest(
 			manager.getContext(requestCtx),
 		)

@@ -4,7 +4,7 @@
 </head>
 <body>
     <h1>Username Form</h1>
-    <form action="https://localhost:443/authorize/{{ .callbackId }}" method="post">
+    <form action="{{ .host }}/authorize/{{ .callbackId }}" method="post">
         <label for="username">Username:</label>
         <input type="text" id="username" name="username"><br><br>
         <input type="submit" value="Submit">

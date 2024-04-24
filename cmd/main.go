@@ -77,7 +77,8 @@ func main() {
 	jwtGrantModelId := "jwt_token_model"
 	userPassword := "password"
 	privateKeyId := "rsa_key"
-	issuer := "https://example.com"
+	port := 83
+	issuer := fmt.Sprintf("https://host.docker.internal:%v", port)
 	jwks := loadJwks()
 
 	// Create the manager.
@@ -143,6 +144,7 @@ func main() {
 
 			if passwordForm.Password == "" {
 				ctx.RequestContext.HTML(http.StatusOK, "password.html", gin.H{
+					"host":       fmt.Sprintf("https://host.docker.internal:%v", port),
 					"callbackId": session.CallbackId,
 				})
 				return constants.InProgress
@@ -176,6 +178,7 @@ func main() {
 
 			if identityForm.Username == "" {
 				ctx.RequestContext.HTML(http.StatusOK, "identity.html", gin.H{
+					"host":       fmt.Sprintf("https://host.docker.internal:%v", port),
 					"callbackId": session.CallbackId,
 				})
 				return constants.InProgress
@@ -200,5 +203,5 @@ func main() {
 
 	// Run
 	oauthManager.AddPolicy(policy)
-	oauthManager.RunTLS(443)
+	oauthManager.RunTLS(port)
 }

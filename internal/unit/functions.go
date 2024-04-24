@@ -115,7 +115,9 @@ func GetPublicKeys() jose.JSONWebKeySet {
 func GetSigningAlgorithms() []jose.SignatureAlgorithm {
 	algorithms := []jose.SignatureAlgorithm{}
 	for _, privateKey := range constants.PrivateJWKS.Keys {
-		algorithms = append(algorithms, jose.SignatureAlgorithm(privateKey.Algorithm))
+		if privateKey.Use == "sig" {
+			algorithms = append(algorithms, jose.SignatureAlgorithm(privateKey.Algorithm))
+		}
 	}
 	return algorithms
 }
@@ -135,12 +137,12 @@ func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod 
 	return false
 }
 
-func AreResponseTypesValid(responseTypeString string) bool {
-	responseTypes := SplitResponseTypes(responseTypeString)
-	return Contains(
-		constants.ResponseTypes,
-		responseTypes,
-	)
+func ResponseContainsCode(responseType constants.ResponseType) bool {
+	return strings.Contains(string(responseType), string(constants.Code))
+}
+
+func ResponseContainsIdToken(responseType constants.ResponseType) bool {
+	return strings.Contains(string(responseType), string(constants.IdToken))
 }
 
 func GetBearerToken(requestCtx *gin.Context) (string, bool) {

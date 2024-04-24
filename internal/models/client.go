@@ -99,17 +99,7 @@ func (client Client) AreScopesAllowed(requestedScopes []string) bool {
 	return unit.Contains(client.Scopes, requestedScopes)
 }
 
-func (client Client) AreResponseTypesAllowed(responseTypes []string) bool {
-	for _, responseType := range responseTypes {
-		if !client.isResponseTypeAllowed(constants.ResponseType(responseType)) {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (client Client) isResponseTypeAllowed(responseType constants.ResponseType) bool {
+func (client Client) IsResponseTypeAllowed(responseType constants.ResponseType) bool {
 	return slices.Contains(client.ResponseTypes, responseType)
 }
 

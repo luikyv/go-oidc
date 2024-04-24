@@ -12,27 +12,30 @@ const (
 	ClientCredentials GrantType = "client_credentials"
 	AuthorizationCode GrantType = "authorization_code"
 	RefreshToken      GrantType = "refresh_token"
+	Implict           GrantType = "implict"
 )
 
 var GrantTypes []GrantType = []GrantType{
 	ClientCredentials,
 	AuthorizationCode,
 	RefreshToken,
+	Implict,
 }
 
 type ResponseType string
 
 const (
-	Code    ResponseType = "code"
-	IdToken ResponseType = "id_token"
+	Code           ResponseType = "code"
+	IdToken        ResponseType = "id_token"
+	CodeAndIdToken ResponseType = "code id_token"
 )
 
 var ResponseTypes []ResponseType = []ResponseType{
 	Code,
 	IdToken,
+	CodeAndIdToken,
 }
 
-// TODO: Implement the response modes.
 type ResponseMode string
 
 const (
@@ -98,6 +101,18 @@ const (
 var CodeChallengeMethods []CodeChallengeMethod = []CodeChallengeMethod{
 	SHA256,
 	Plain,
+}
+
+// For more information, see: https://openid.net/specs/openid-connect-core-1_0.html#SubjectIDTypes
+type SubjectIdentifierType string
+
+const (
+	// The OP provides the same sub (subject) value to all Clients.
+	PublicSubjectIdentifier SubjectIdentifierType = "public"
+)
+
+var SubjectIdentifierTypes []SubjectIdentifierType = []SubjectIdentifierType{
+	PublicSubjectIdentifier,
 }
 
 type ErrorCode string
