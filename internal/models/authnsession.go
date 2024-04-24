@@ -25,6 +25,7 @@ type AuthnSession struct {
 	CodeChallengeMethod     constants.CodeChallengeMethod
 	AuthorizationCode       string
 	AuthorizedAtTimestamp   int
+	PushedParameters        map[string]string // Parameters sent using the PAR endpoint.
 	Store                   map[string]string // Allow the developer to store information in memory and, hence, between steps.
 	AdditionalTokenClaims   map[string]string // Allow the developer to map new (or override the default) claims to the access token.
 	AdditionalIdTokenClaims map[string]string // Allow the developer to map new (or override the default) claims to the ID token.
@@ -48,6 +49,7 @@ func newSessionForBaseAuthorizeRequest(req BaseAuthorizeRequest, client Client) 
 		CodeChallenge:           req.CodeChallenge,
 		CodeChallengeMethod:     req.CodeChallengeMethod,
 		CreatedAtTimestamp:      unit.GetTimestampNow(),
+		PushedParameters:        make(map[string]string),
 		Store:                   make(map[string]string),
 		AdditionalTokenClaims:   make(map[string]string),
 		AdditionalIdTokenClaims: make(map[string]string),
@@ -61,9 +63,10 @@ func NewSessionForAuthorizeRequest(req AuthorizeRequest, client Client) AuthnSes
 	return session
 }
 
-func NewSessionForPARRequest(req PARRequest, client Client) AuthnSession {
+func NewSessionForPARRequest(req PARRequest, client Client, pushedParams map[string]string) AuthnSession {
 	session := newSessionForBaseAuthorizeRequest(req.BaseAuthorizeRequest, client)
 	session.RequestUri = unit.GenerateRequestUri()
+	session.PushedParameters = pushedParams
 	return session
 }
 
@@ -82,11 +85,11 @@ func (session *AuthnSession) SaveParameter(key string, value string) {
 	session.Store[key] = value
 }
 
-func (session *AuthnSession) GetParameter(key string, value string) string {
+func (session *AuthnSession) GetParameter(key string) string {
 	return session.Store[key]
 }
 
-func (session *AuthnSession) GetClientAttribute(key string, value string) string {
+func (session *AuthnSession) GetClientAttribute(key string) string {
 	return session.ClientAttributes[key]
 }
 

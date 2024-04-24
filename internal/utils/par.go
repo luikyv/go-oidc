@@ -22,7 +22,18 @@ func PushAuthorization(ctx Context, req models.PARRequest) (requestUri string, e
 		return "", err
 	}
 
-	authnSession := models.NewSessionForPARRequest(req, client)
+	// Load the parameters sent using PAR.
+	err = ctx.RequestContext.Request.ParseForm()
+	if err != nil {
+		ctx.Logger.Info("could not parse the post form", slog.String("error", err.Error()))
+		return "", errors.New("could not parse the post form")
+	}
+	pushedParams := make(map[string]string)
+	for param, values := range ctx.RequestContext.Request.PostForm {
+		pushedParams[param] = values[0]
+	}
+
+	authnSession := models.NewSessionForPARRequest(req, client, pushedParams)
 	err = ctx.AuthnSessionManager.CreateOrUpdate(authnSession)
 	if err != nil {
 		ctx.Logger.Debug("could not authenticate the client", slog.String("client_id", req.ClientIdPost))

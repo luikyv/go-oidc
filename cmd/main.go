@@ -182,7 +182,7 @@ func main() {
 
 			session.SetUserId(identityForm.Username)
 			session.SetCustomTokenClaim("custom_claim", "random_value")
-			session.SetCustomTokenClaim("client_attribute", session.ClientAttributes["custom_attribute"])
+			session.SetCustomTokenClaim("client_attribute", session.GetClientAttribute("custom_attribute"))
 			if slices.Contains(session.Scopes, "email") {
 				session.SetCustomIdTokenClaim("email", "random@email.com")
 			}
