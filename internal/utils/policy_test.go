@@ -1,4 +1,4 @@
-package utils
+package utils_test
 
 import (
 	"fmt"
@@ -8,19 +8,22 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
+	"github.com/luikymagno/auth-server/internal/utils"
 )
 
 func setUp() (tearDown func()) {
 	// Set up.
+	utils.StepMap[utils.FinishFlowSuccessfullyStep.Id] = utils.FinishFlowSuccessfullyStep
+	utils.StepMap[utils.FinishFlowWithFailureStep.Id] = utils.FinishFlowWithFailureStep
 
 	// Tear down.
 	return func() {
-		// Restore global variables.
-		stepMap = map[string]*AuthnStep{
-			FinishFlowSuccessfullyStep.Id: FinishFlowSuccessfullyStep,
-			FinishFlowWithFailureStep.Id:  FinishFlowWithFailureStep,
+		for k := range utils.StepMap {
+			delete(utils.StepMap, k)
 		}
-		policyMap = make(map[string]AuthnPolicy)
+		for k := range utils.PolicyMap {
+			delete(utils.PolicyMap, k)
+		}
 	}
 }
 
@@ -31,29 +34,11 @@ func TestNewStepShouldRegisterStep(t *testing.T) {
 	stepId := "step_id"
 
 	// Then
-	NewStep(stepId, nil, nil, nil)
+	utils.NewStep(stepId, nil)
 
 	// Assert
-	if _, stepWasRegistered := stepMap[stepId]; !stepWasRegistered {
+	if _, stepWasRegistered := utils.StepMap[stepId]; !stepWasRegistered {
 		t.Error("NewStep is not registering the step")
-	}
-}
-
-func TestNewStepShouldReplaceNilNextSteps(t *testing.T) {
-	tearDown := setUp()
-	defer tearDown()
-	// When
-	stepId := "step_id"
-
-	// Then
-	step := NewStep(stepId, nil, nil, nil)
-
-	// Assert
-	if step.NextStepIfFailure != FinishFlowWithFailureStep {
-		t.Error("failure step was not replaced")
-	}
-	if step.NextStepIfSuccess != FinishFlowSuccessfullyStep {
-		t.Error("failure step was not replaced")
 	}
 }
 
@@ -62,39 +47,35 @@ func TestGetStep(t *testing.T) {
 	defer tearDown()
 
 	// When
-	step := &AuthnStep{
-		Id:                "step_id",
-		NextStepIfSuccess: nil,
-		NextStepIfFailure: nil,
-		AuthnFunc:         nil,
+	step := utils.AuthnStep{
+		Id:        "step_id",
+		AuthnFunc: nil,
 	}
-	stepMap[step.Id] = step
+	utils.StepMap[step.Id] = step
 
 	// Then
-	selectedStep := GetStep(step.Id)
+	selectedStep := utils.GetStep(step.Id)
 
 	// Assert
-	if selectedStep != step {
+	if selectedStep.Id != step.Id {
 		t.Error("GetStep is not fetching the right step")
 	}
 }
 
 func TestAddPolicyRegistersStep(t *testing.T) {
+	// When
 	tearDown := setUp()
 	defer tearDown()
 
-	// When
-	availablePolicy := AuthnPolicy{
-		Id:              "policy_id",
-		FirstStep:       nil,
-		IsAvailableFunc: nil,
-	}
-
 	// Then
-	AddPolicy(availablePolicy)
+	availablePolicy := utils.NewPolicy(
+		"policy_id",
+		[]utils.AuthnStep{},
+		nil,
+	)
 
 	// Assert
-	if _, policyWasRegistered := policyMap[availablePolicy.Id]; !policyWasRegistered {
+	if _, policyWasRegistered := utils.PolicyMap[availablePolicy.Id]; !policyWasRegistered {
 		t.Error("NewPolicy is not registering the policy")
 	}
 }
@@ -104,26 +85,26 @@ func TestGetPolicy(t *testing.T) {
 	defer tearDown()
 
 	// When
-	unavailablePolicy := AuthnPolicy{
-		Id:        "unavailable_policy",
-		FirstStep: nil,
-		IsAvailableFunc: func(c models.Client, ctx *gin.Context) bool {
+	unavailablePolicy := utils.NewPolicy(
+		"unavailable_policy",
+		[]utils.AuthnStep{},
+		func(c models.Client, ctx *gin.Context) bool {
 			return false
 		},
-	}
-	policyMap[unavailablePolicy.Id] = unavailablePolicy
+	)
+	utils.PolicyMap[unavailablePolicy.Id] = unavailablePolicy
 
-	availablePolicy := AuthnPolicy{
-		Id:        "available_policy",
-		FirstStep: nil,
-		IsAvailableFunc: func(c models.Client, ctx *gin.Context) bool {
+	availablePolicy := utils.NewPolicy(
+		"available_policy",
+		[]utils.AuthnStep{},
+		func(c models.Client, ctx *gin.Context) bool {
 			return true
 		},
-	}
-	policyMap[availablePolicy.Id] = availablePolicy
+	)
+	utils.PolicyMap[availablePolicy.Id] = availablePolicy
 
 	// Then
-	policy, policyIsAvailable := GetPolicy(models.Client{}, nil)
+	policy, policyIsAvailable := utils.GetPolicy(models.Client{}, nil)
 
 	// Assert
 	if !policyIsAvailable {
@@ -140,29 +121,23 @@ func TestGetPolicyNoPolicyAvailable(t *testing.T) {
 	defer tearDown()
 
 	// When
-	unavailablePolicy := AuthnPolicy{
-		Id:        "unavailable_policy",
-		FirstStep: nil,
-		IsAvailableFunc: func(c models.Client, ctx *gin.Context) bool {
+	unavailablePolicy := utils.NewPolicy(
+		"unavailable_policy",
+		[]utils.AuthnStep{},
+		func(c models.Client, ctx *gin.Context) bool {
 			return false
 		},
-	}
-	policyMap[unavailablePolicy.Id] = unavailablePolicy
+	)
+	utils.PolicyMap[unavailablePolicy.Id] = unavailablePolicy
 
 	// Then
-	_, policyIsAvailable := GetPolicy(models.Client{}, nil)
+	_, policyIsAvailable := utils.GetPolicy(models.Client{}, nil)
 
 	// Assert
 	if policyIsAvailable {
 		t.Error("GetPolicy should not find any policy")
 	}
 
-}
-
-func TestFinishFlowSuccessfullyStepShouldHaveNoNextSteps(t *testing.T) {
-	if FinishFlowSuccessfullyStep.NextStepIfSuccess != nil || FinishFlowSuccessfullyStep.NextStepIfFailure != nil {
-		t.Errorf("the step: %s should not have next steps", FinishFlowSuccessfullyStep.Id)
-	}
 }
 
 func TestFinishFlowSuccessfullyStep(t *testing.T) {
@@ -172,10 +147,10 @@ func TestFinishFlowSuccessfullyStep(t *testing.T) {
 		State:        "random_state",
 		ResponseType: constants.Code,
 	}
-	ctx := GetMockedContext()
+	ctx := utils.GetMockedContext()
 
 	// Then
-	FinishFlowSuccessfullyStep.AuthnFunc(ctx, session)
+	utils.FinishFlowSuccessfullyStep.AuthnFunc(ctx, session)
 
 	// Assert
 	if session.AuthorizationCode == "" {
@@ -190,22 +165,16 @@ func TestFinishFlowSuccessfullyStep(t *testing.T) {
 	}
 }
 
-func TestFinishFlowWithFailureStepShouldHaveNoNextSteps(t *testing.T) {
-	if FinishFlowWithFailureStep.NextStepIfSuccess != nil || FinishFlowWithFailureStep.NextStepIfFailure != nil {
-		t.Errorf("the step: %s should not have next steps", FinishFlowWithFailureStep.Id)
-	}
-}
-
 func TestFinishFlowWithFailureStep(t *testing.T) {
 	// When
 	session := &models.AuthnSession{
 		RedirectUri: "https://example.com",
 		State:       "random_state",
 	}
-	ctx := GetMockedContext()
+	ctx := utils.GetMockedContext()
 
 	// Then
-	FinishFlowWithFailureStep.AuthnFunc(ctx, session)
+	utils.FinishFlowWithFailureStep.AuthnFunc(ctx, session)
 
 	// Assert
 	if http.StatusFound != ctx.RequestContext.Writer.Status() {

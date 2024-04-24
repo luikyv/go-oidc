@@ -10,7 +10,7 @@ type AuthnSession struct {
 	Id                      string
 	CallbackId              string
 	GrantModelId            string
-	StepId                  string
+	StepIdsLeft             []string
 	CreatedAtTimestamp      int
 	Subject                 string
 	ClientId                string

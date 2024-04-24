@@ -35,7 +35,7 @@ func InitAuthentication(ctx Context, req models.AuthorizeRequest) error {
 		return errors.New("no policy available")
 	}
 	ctx.Logger.Info("policy available", slog.String("policy_id", policy.Id))
-	session.StepId = policy.FirstStep.Id
+	session.StepIdsLeft = policy.StepIdSequence
 
 	return authenticate(ctx, session)
 
@@ -166,46 +166,49 @@ func validateAuthorizeWithPARParams(session models.AuthnSession, req models.Auth
 // Execute the authentication steps.
 func authenticate(ctx Context, session models.AuthnSession) error {
 
-	currentStep := GetStep(session.StepId)
-	status := constants.InProgress
-	for {
+	status := constants.Success
+	for status == constants.Success && len(session.StepIdsLeft) > 0 {
+		currentStep := GetStep(session.StepIdsLeft[0])
 		status = currentStep.AuthnFunc(ctx, &session)
-		nextStep := getNextStep(status, currentStep)
-		if nextStep == nil {
-			break
+
+		if status == constants.Success {
+			// If the step finished with success, it can be removed from the remaining ones.
+			session.StepIdsLeft = session.StepIdsLeft[1:]
 		}
 
-		currentStep = nextStep
 	}
 
-	return updateOrDeleteSession(ctx, session, currentStep)
-}
-
-// Find the next step depending on the status informed by the current step.
-func getNextStep(currentStepStatus constants.AuthnStatus, step *AuthnStep) *AuthnStep {
-	switch currentStepStatus {
-	case constants.Failure:
-		return step.NextStepIfFailure
-	case constants.Success:
-		return step.NextStepIfSuccess
-	default:
-		return nil
-	}
-}
-
-func updateOrDeleteSession(ctx Context, session models.AuthnSession, currentStep *AuthnStep) error {
-
-	if currentStep == FinishFlowWithFailureStep {
-		// The flow finished with failure, so we don't keep the session anymore.
+	if status == constants.Failure {
+		finishFlowWithFailureStep.AuthnFunc(ctx, &session)
 		return ctx.AuthnSessionManager.Delete(session.Id)
 	}
 
-	if currentStep == FinishFlowSuccessfullyStep && !unit.ResponseContainsCode(session.ResponseType) {
+	if status == constants.InProgress {
+		return ctx.AuthnSessionManager.CreateOrUpdate(session)
+	}
+
+	// At this point, the status can only be success and there are no more steps left.
+	if !unit.ResponseTypeContainsCode(session.ResponseType) {
 		// The client didn't request an authorization code to later exchange it for an access token,
 		// so we don't keep the session anymore.
 		return ctx.AuthnSessionManager.Delete(session.Id)
 	}
-
-	session.StepId = currentStep.Id
 	return ctx.AuthnSessionManager.CreateOrUpdate(session)
 }
+
+// func updateOrDeleteSession(ctx Context, session models.AuthnSession, currentStep *AuthnStep) error {
+
+// 	if currentStep == FinishFlowWithFailureStep {
+// 		// The flow finished with failure, so we don't keep the session anymore.
+// 		return ctx.AuthnSessionManager.Delete(session.Id)
+// 	}
+
+// 	if currentStep == FinishFlowSuccessfullyStep && !unit.ResponseTypeContainsCode(session.ResponseType) {
+// 		// The client didn't request an authorization code to later exchange it for an access token,
+// 		// so we don't keep the session anymore.
+// 		return ctx.AuthnSessionManager.Delete(session.Id)
+// 	}
+
+// 	session.StepId = currentStep.Id
+// 	return ctx.AuthnSessionManager.CreateOrUpdate(session)
+// }

@@ -133,8 +133,6 @@ func main() {
 	// Create Steps
 	passwordStep := utils.NewStep(
 		"password",
-		utils.FinishFlowSuccessfullyStep,
-		utils.FinishFlowWithFailureStep,
 		func(ctx utils.Context, session *models.AuthnSession) constants.AuthnStatus {
 
 			var passwordForm struct {
@@ -164,8 +162,6 @@ func main() {
 
 	identityStep := utils.NewStep(
 		"identity",
-		passwordStep,
-		utils.FinishFlowWithFailureStep,
 		func(ctx utils.Context, session *models.AuthnSession) constants.AuthnStatus {
 
 			var identityForm struct {
@@ -195,13 +191,12 @@ func main() {
 	)
 
 	// Create Policy
-	policy := utils.NewPolicy(
+	utils.NewPolicy(
 		"policy",
-		identityStep,
+		[]utils.AuthnStep{identityStep, passwordStep},
 		func(c models.Client, ctx *gin.Context) bool { return true },
 	)
 
 	// Run
-	oauthManager.AddPolicy(policy)
 	oauthManager.RunTLS(port)
 }

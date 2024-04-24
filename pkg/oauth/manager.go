@@ -66,10 +66,6 @@ func (manager *OpenIDManager) AddClient(client models.Client) error {
 	return manager.clientManager.Create(client)
 }
 
-func (manager *OpenIDManager) AddPolicy(policy utils.AuthnPolicy) {
-	utils.AddPolicy(policy)
-}
-
 func (manager OpenIDManager) getContext(requestContext *gin.Context) utils.Context {
 	return utils.NewContext(
 		manager.scopeManager,

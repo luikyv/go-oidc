@@ -149,17 +149,15 @@ func TestInitAuthenticationShouldEndWithError(t *testing.T) {
 	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 	firstStep := utils.NewStep(
 		"init_step",
-		utils.FinishFlowSuccessfullyStep,
-		utils.FinishFlowWithFailureStep,
 		func(ctx utils.Context, as *models.AuthnSession) constants.AuthnStatus {
 			return constants.Failure
 		},
 	)
-	utils.AddPolicy(utils.AuthnPolicy{
-		Id:              "policy_id",
-		FirstStep:       firstStep,
-		IsAvailableFunc: func(c models.Client, ctx *gin.Context) bool { return true },
-	})
+	utils.NewPolicy(
+		"policy_id",
+		[]utils.AuthnStep{firstStep},
+		func(c models.Client, ctx *gin.Context) bool { return true },
+	)
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
@@ -199,17 +197,15 @@ func TestInitAuthenticationShouldEndInProgress(t *testing.T) {
 	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 	firstStep := utils.NewStep(
 		"init_step",
-		utils.FinishFlowSuccessfullyStep,
-		utils.FinishFlowWithFailureStep,
 		func(ctx utils.Context, as *models.AuthnSession) constants.AuthnStatus {
 			return constants.InProgress
 		},
 	)
-	utils.AddPolicy(utils.AuthnPolicy{
-		Id:              "policy_id",
-		FirstStep:       firstStep,
-		IsAvailableFunc: func(c models.Client, ctx *gin.Context) bool { return true },
-	})
+	utils.NewPolicy(
+		"policy_id",
+		[]utils.AuthnStep{firstStep},
+		func(c models.Client, ctx *gin.Context) bool { return true },
+	)
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
@@ -249,8 +245,8 @@ func TestInitAuthenticationShouldEndInProgress(t *testing.T) {
 		t.Error("the authorization code cannot be generated if the flow is still in progress")
 		return
 	}
-	if session.StepId != firstStep.Id {
-		t.Errorf("the current step ID: %s is not as expected", session.StepId)
+	if session.StepIdsLeft[0] != firstStep.Id {
+		t.Errorf("the step IDs: %s are not as expected", session.StepIdsLeft)
 		return
 	}
 
@@ -263,17 +259,15 @@ func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 	firstStep := utils.NewStep(
 		"init_step",
-		utils.FinishFlowSuccessfullyStep,
-		utils.FinishFlowWithFailureStep,
 		func(ctx utils.Context, as *models.AuthnSession) constants.AuthnStatus {
 			return constants.Success
 		},
 	)
-	utils.AddPolicy(utils.AuthnPolicy{
-		Id:              "policy_id",
-		FirstStep:       firstStep,
-		IsAvailableFunc: func(c models.Client, ctx *gin.Context) bool { return true },
-	})
+	utils.NewPolicy(
+		"policy_id",
+		[]utils.AuthnStep{firstStep},
+		func(c models.Client, ctx *gin.Context) bool { return true },
+	)
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
@@ -332,11 +326,11 @@ func TestInitAuthenticationWithPAR(t *testing.T) {
 			CreatedAtTimestamp: unit.GetTimestampNow(),
 		},
 	)
-	utils.AddPolicy(utils.AuthnPolicy{
-		Id:              "policy_id",
-		FirstStep:       utils.FinishFlowSuccessfullyStep,
-		IsAvailableFunc: func(c models.Client, ctx *gin.Context) bool { return true },
-	})
+	utils.NewPolicy(
+		"policy_id",
+		[]utils.AuthnStep{},
+		func(c models.Client, ctx *gin.Context) bool { return true },
+	)
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
@@ -378,8 +372,6 @@ func TestContinueAuthentication(t *testing.T) {
 	defer tearDown()
 	firstStep := utils.NewStep(
 		"init_step",
-		utils.FinishFlowSuccessfullyStep,
-		utils.FinishFlowWithFailureStep,
 		func(ctx utils.Context, as *models.AuthnSession) constants.AuthnStatus {
 			return constants.InProgress
 		},
@@ -387,8 +379,8 @@ func TestContinueAuthentication(t *testing.T) {
 
 	callbackId := "random_callback_id"
 	ctx.AuthnSessionManager.CreateOrUpdate(models.AuthnSession{
-		StepId:     firstStep.Id,
-		CallbackId: callbackId,
+		StepIdsLeft: []string{firstStep.Id},
+		CallbackId:  callbackId,
 	})
 
 	// Then

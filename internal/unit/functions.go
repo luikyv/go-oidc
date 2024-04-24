@@ -137,11 +137,11 @@ func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod 
 	return false
 }
 
-func ResponseContainsCode(responseType constants.ResponseType) bool {
+func ResponseTypeContainsCode(responseType constants.ResponseType) bool {
 	return strings.Contains(string(responseType), string(constants.Code))
 }
 
-func ResponseContainsIdToken(responseType constants.ResponseType) bool {
+func ResponseTypeContainsIdToken(responseType constants.ResponseType) bool {
 	return strings.Contains(string(responseType), string(constants.IdToken))
 }
 
