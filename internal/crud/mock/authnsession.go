@@ -35,7 +35,7 @@ func (manager *MockedAuthnSessionManager) GetByCallbackId(callbackId string) (mo
 		return s.CallbackId == callbackId
 	})
 	if !exists {
-		return models.AuthnSession{}, issues.EntityNotFoundError{Id: callbackId}
+		return models.AuthnSession{}, issues.ErrorEntityNotFound
 	}
 
 	return session, nil
@@ -46,7 +46,7 @@ func (manager *MockedAuthnSessionManager) GetByAuthorizationCode(authorizationCo
 		return s.AuthorizationCode == authorizationCode
 	})
 	if !exists {
-		return models.AuthnSession{}, issues.EntityNotFoundError{Id: authorizationCode}
+		return models.AuthnSession{}, issues.ErrorEntityNotFound
 	}
 
 	return session, nil
@@ -57,7 +57,7 @@ func (manager *MockedAuthnSessionManager) GetByRequestUri(requestUri string) (mo
 		return s.RequestUri == requestUri
 	})
 	if !exists {
-		return models.AuthnSession{}, issues.EntityNotFoundError{Id: requestUri}
+		return models.AuthnSession{}, issues.ErrorEntityNotFound
 	}
 
 	return session, nil

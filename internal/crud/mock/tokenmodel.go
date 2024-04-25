@@ -19,7 +19,7 @@ func (manager *MockedGrantModelManager) Create(grantModel models.GrantModel) err
 
 	_, exists := manager.models[grantModel.Meta.Id]
 	if exists {
-		return issues.EntityAlreadyExistsError{Id: grantModel.Meta.Id}
+		return issues.ErrorEntityAlreadyExists
 	}
 
 	manager.models[grantModel.Meta.Id] = grantModel
@@ -29,7 +29,7 @@ func (manager *MockedGrantModelManager) Create(grantModel models.GrantModel) err
 func (manager *MockedGrantModelManager) Update(id string, model models.GrantModel) error {
 	_, exists := manager.models[id]
 	if !exists {
-		return issues.EntityNotFoundError{Id: id}
+		return issues.ErrorEntityNotFound
 	}
 
 	manager.models[id] = model
@@ -39,7 +39,7 @@ func (manager *MockedGrantModelManager) Update(id string, model models.GrantMode
 func (manager *MockedGrantModelManager) Get(id string) (models.GrantModel, error) {
 	model, exists := manager.models[id]
 	if !exists {
-		return models.GrantModel{}, issues.EntityNotFoundError{Id: id}
+		return models.GrantModel{}, issues.ErrorEntityNotFound
 	}
 
 	return model, nil

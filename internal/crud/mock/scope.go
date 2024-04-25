@@ -18,7 +18,7 @@ func NewMockedScopeManager() *MockedScopeManager {
 func (manager *MockedScopeManager) Create(scope models.Scope) error {
 	_, exists := manager.scopes[scope.Id]
 	if exists {
-		return issues.EntityAlreadyExistsError{Id: scope.Id}
+		return issues.ErrorEntityAlreadyExists
 	}
 
 	manager.scopes[scope.Id] = scope
@@ -28,7 +28,7 @@ func (manager *MockedScopeManager) Create(scope models.Scope) error {
 func (manager *MockedScopeManager) Update(id string, scope models.Scope) error {
 	_, exists := manager.scopes[id]
 	if !exists {
-		return issues.EntityNotFoundError{Id: id}
+		return issues.ErrorEntityNotFound
 	}
 
 	manager.scopes[id] = scope
@@ -38,7 +38,7 @@ func (manager *MockedScopeManager) Update(id string, scope models.Scope) error {
 func (manager *MockedScopeManager) Get(id string) (models.Scope, error) {
 	scope, exists := manager.scopes[id]
 	if !exists {
-		return models.Scope{}, issues.EntityNotFoundError{Id: id}
+		return models.Scope{}, issues.ErrorEntityNotFound
 	}
 
 	return scope, nil

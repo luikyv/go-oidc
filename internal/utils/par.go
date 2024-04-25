@@ -49,9 +49,9 @@ func validatePushedAuthorizationParams(client models.Client, req models.PARReque
 	err := validateAuthorizeParams(client, req.BaseAuthorizeRequest)
 
 	// Convert redirection errors to json.
-	var redirectErr issues.RedirectError
+	var redirectErr issues.OAuthRedirectError
 	if errors.As(err, &redirectErr) {
-		return issues.JsonError{
+		return issues.OAuthBaseError{
 			ErrorCode:        redirectErr.ErrorCode,
 			ErrorDescription: redirectErr.ErrorDescription,
 		}

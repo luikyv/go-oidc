@@ -18,7 +18,7 @@ func NewMockedClientManager() *MockedClientManager {
 func (manager *MockedClientManager) Create(client models.Client) error {
 	_, exists := manager.clients[client.Id]
 	if exists {
-		return issues.EntityAlreadyExistsError{Id: client.Id}
+		return issues.ErrorEntityAlreadyExists
 	}
 
 	manager.clients[client.Id] = client
@@ -28,7 +28,7 @@ func (manager *MockedClientManager) Create(client models.Client) error {
 func (manager *MockedClientManager) Update(id string, client models.Client) error {
 	_, exists := manager.clients[id]
 	if !exists {
-		return issues.EntityNotFoundError{Id: id}
+		return issues.ErrorEntityNotFound
 	}
 
 	manager.clients[id] = client
@@ -38,7 +38,7 @@ func (manager *MockedClientManager) Update(id string, client models.Client) erro
 func (manager *MockedClientManager) Get(id string) (models.Client, error) {
 	client, exists := manager.clients[id]
 	if !exists {
-		return models.Client{}, issues.EntityNotFoundError{Id: id}
+		return models.Client{}, issues.ErrorEntityNotFound
 	}
 
 	return client, nil

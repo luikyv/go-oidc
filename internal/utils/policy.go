@@ -91,11 +91,13 @@ var finishFlowWithFailureStep AuthnStep = AuthnStep{
 			errorCode = session.ErrorCode
 			errorDescription = session.ErrorDescription
 		}
-		redirectError := issues.RedirectError{
-			ErrorCode:        errorCode,
-			ErrorDescription: errorDescription,
-			RedirectUri:      session.RedirectUri,
-			State:            session.State,
+		redirectError := issues.OAuthRedirectError{
+			OAuthBaseError: issues.OAuthBaseError{
+				ErrorCode:        errorCode,
+				ErrorDescription: errorDescription,
+			},
+			RedirectUri: session.RedirectUri,
+			State:       session.State,
 		}
 
 		redirectError.BindErrorToResponse(ctx.RequestContext)

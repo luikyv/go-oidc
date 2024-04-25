@@ -1,6 +1,7 @@
 package issues
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -9,57 +10,46 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
-type EntityNotFoundError struct {
-	Id string
-}
-
-func (err EntityNotFoundError) Error() string {
-	return "Could not find entity with id: " + err.Id
-}
-
-type EntityAlreadyExistsError struct {
-	Id string
-}
-
-func (err EntityAlreadyExistsError) Error() string {
-	return "entity with id: " + err.Id + " already exists"
-}
+var ErrorEntityNotFound error = errors.New("entity not found")
+var ErrorEntityAlreadyExists error = errors.New("entity already exists")
 
 type OAuthError interface {
+	error
 	BindErrorToResponse(*gin.Context)
 }
 
-type JsonError struct {
+type OAuthBaseError struct {
+	Inner            error               // It can be used to wrap errors.
 	ErrorCode        constants.ErrorCode `json:"error"`
 	ErrorDescription string              `json:"error_description"`
 }
 
-func (err JsonError) Error() string {
+func (err OAuthBaseError) Error() string {
 	return fmt.Sprintf("%s: %s", err.ErrorCode, err.ErrorDescription)
 }
 
-func (err JsonError) BindErrorToResponse(requestContext *gin.Context) {
+func (e OAuthBaseError) Unwrap() error {
+	return e.Inner
+}
+
+func (err OAuthBaseError) BindErrorToResponse(requestContext *gin.Context) {
 	requestContext.JSON(constants.ErrorCodeToStatusCode[err.ErrorCode], gin.H{
 		"error":             err.ErrorCode,
 		"error_description": err.ErrorDescription,
 	})
 }
 
-type RedirectError struct {
-	ErrorCode        constants.ErrorCode
-	ErrorDescription string
-	RedirectUri      string
-	State            string
+type OAuthRedirectError struct {
+	OAuthBaseError
+	RedirectUri string
+	State       string
 }
 
-func (err RedirectError) Error() string {
-	return fmt.Sprintf("%s: %s", err.ErrorCode, err.ErrorDescription)
-}
-
-func (err RedirectError) BindErrorToResponse(requestContext *gin.Context) {
-	errorParams := make(map[string]string, 3)
-	errorParams["error"] = "access_denied"
-	errorParams["error_description"] = "access denied"
+func (err OAuthRedirectError) BindErrorToResponse(requestContext *gin.Context) {
+	errorParams := map[string]string{
+		"error":             string(err.ErrorCode),
+		"error_description": err.ErrorDescription,
+	}
 	if err.State != "" {
 		errorParams["state"] = err.State
 	}

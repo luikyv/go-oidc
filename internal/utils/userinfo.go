@@ -44,7 +44,7 @@ func getTokenId(token string) (string, error) {
 	keyId := parsedToken.Headers[0].KeyID
 	publicKey, ok := unit.GetPublicKey(keyId)
 	if !ok {
-		return "", issues.JsonError{
+		return "", issues.OAuthBaseError{
 			ErrorCode:        constants.AccessDenied,
 			ErrorDescription: "invalid token",
 		}
@@ -52,7 +52,7 @@ func getTokenId(token string) (string, error) {
 
 	claims := jwt.Claims{}
 	if err := parsedToken.Claims(publicKey, &claims); err != nil {
-		return "", issues.JsonError{
+		return "", issues.OAuthBaseError{
 			ErrorCode:        constants.AccessDenied,
 			ErrorDescription: "invalid token",
 		}
@@ -61,7 +61,7 @@ func getTokenId(token string) (string, error) {
 	if err := claims.ValidateWithLeeway(jwt.Expected{
 		Issuer: constants.Host,
 	}, time.Duration(0)); err != nil {
-		return "", issues.JsonError{
+		return "", issues.OAuthBaseError{
 			ErrorCode:        constants.AccessDenied,
 			ErrorDescription: "invalid token",
 		}

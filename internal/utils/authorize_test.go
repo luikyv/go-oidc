@@ -26,8 +26,7 @@ func TestInitAuthenticationShouldNotFindClient(t *testing.T) {
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{ClientId: "invalid_client_id"})
 
 	// Assert
-	var notFoundErr issues.EntityNotFoundError
-	if err == nil || !errors.As(err, &notFoundErr) {
+	if err == nil || !errors.Is(err, issues.ErrorEntityNotFound) {
 		t.Error("InitAuthentication should not find any client")
 		return
 	}
@@ -47,7 +46,7 @@ func TestInitAuthenticationWhenInvalidRedirectUri(t *testing.T) {
 	})
 
 	// Assert
-	var jsonErr issues.JsonError
+	var jsonErr issues.OAuthBaseError
 	if err == nil || !errors.As(err, &jsonErr) {
 		t.Error("the redirect URI should not be valid")
 		return
@@ -76,7 +75,7 @@ func TestInitAuthenticationWhenInvalidScope(t *testing.T) {
 	})
 
 	// Assert
-	var redirectErr issues.RedirectError
+	var redirectErr issues.OAuthRedirectError
 	if err == nil || !errors.As(err, &redirectErr) {
 		t.Error("the scope should not be valid")
 		return
@@ -107,7 +106,7 @@ func TestInitAuthenticationWhenInvalidResponseType(t *testing.T) {
 	})
 
 	// Assert
-	var redirectErr issues.RedirectError
+	var redirectErr issues.OAuthRedirectError
 	if err == nil || !errors.As(err, &redirectErr) {
 		t.Error("the response type should not be allowed")
 		return

@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"errors"
 	"log/slog"
 
 	"github.com/luikymagno/auth-server/internal/issues"
@@ -14,7 +13,11 @@ func InitAuthentication(ctx Context, req models.AuthorizeRequest) error {
 	// Fetch the client.
 	client, err := ctx.ClientManager.Get(req.ClientId)
 	if err != nil {
-		return err
+		return issues.OAuthBaseError{
+			Inner:            err,
+			ErrorCode:        constants.InvalidRequest,
+			ErrorDescription: "invalid client ID",
+		}
 	}
 
 	// Init the session and make sure it is valid.
@@ -32,7 +35,14 @@ func InitAuthentication(ctx Context, req models.AuthorizeRequest) error {
 	policy, policyIsAvailable := GetPolicy(ctx, session)
 	if !policyIsAvailable {
 		ctx.Logger.Info("no policy available")
-		return errors.New("no policy available")
+		return issues.OAuthRedirectError{
+			OAuthBaseError: issues.OAuthBaseError{
+				ErrorCode:        constants.InvalidRequest,
+				ErrorDescription: "no policy available",
+			},
+			RedirectUri: session.RedirectUri,
+			State:       session.State,
+		}
 	}
 	ctx.Logger.Info("policy available", slog.String("policy_id", policy.Id))
 	session.StepIdsLeft = policy.StepIdSequence
@@ -56,7 +66,10 @@ func initValidAuthenticationSessionWithPAR(ctx Context, req models.AuthorizeRequ
 	// Fetch it using the request URI.
 	session, err := ctx.AuthnSessionManager.GetByRequestUri(req.RequestUri)
 	if err != nil {
-		return models.AuthnSession{}, err
+		return models.AuthnSession{}, issues.OAuthBaseError{
+			ErrorCode:        constants.InvalidRequest,
+			ErrorDescription: "invalid request_uri",
+		}
 	}
 
 	if err := validateAuthorizeWithPARParams(session, req); err != nil {
@@ -85,46 +98,47 @@ func ContinueAuthentication(ctx Context, callbackId string) error {
 func validateAuthorizeParams(client models.Client, req models.BaseAuthorizeRequest) error {
 	// We must validate the redirect URI first, since the other errors will be redirected.
 	if !client.IsRedirectUriAllowed(req.RedirectUri) {
-		return issues.JsonError{
+		return issues.OAuthBaseError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "invalid redirect uri",
 		}
 	}
 
+	redirectErr := issues.OAuthRedirectError{
+		RedirectUri: req.RedirectUri,
+		State:       req.State,
+	}
+
 	if client.PkceIsRequired && req.CodeChallenge == "" {
-		return issues.RedirectError{
+		redirectErr.OAuthBaseError = issues.OAuthBaseError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "PKCE is required",
-			RedirectUri:      req.RedirectUri,
-			State:            req.State,
 		}
+		return redirectErr
 	}
 
 	if !client.AreScopesAllowed(unit.SplitStringWithSpaces(req.Scope)) {
-		return issues.RedirectError{
+		redirectErr.OAuthBaseError = issues.OAuthBaseError{
 			ErrorCode:        constants.InvalidScope,
 			ErrorDescription: "invalid scope",
-			RedirectUri:      req.RedirectUri,
-			State:            req.State,
 		}
+		return redirectErr
 	}
 
 	if !client.IsResponseTypeAllowed(req.ResponseType) {
-		return issues.RedirectError{
+		redirectErr.OAuthBaseError = issues.OAuthBaseError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "response type not allowed",
-			RedirectUri:      req.RedirectUri,
-			State:            req.State,
 		}
+		return redirectErr
 	}
 
 	if !client.IsResponseModeAllowed(req.ResponseMode) {
-		return issues.RedirectError{
+		redirectErr.OAuthBaseError = issues.OAuthBaseError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "response mode not allowed",
-			RedirectUri:      req.RedirectUri,
-			State:            req.State,
 		}
+		return redirectErr
 	}
 
 	return nil
@@ -133,7 +147,7 @@ func validateAuthorizeParams(client models.Client, req models.BaseAuthorizeReque
 func validateAuthorizeWithPARParams(session models.AuthnSession, req models.AuthorizeRequest) error {
 
 	if unit.GetTimestampNow() > session.CreatedAtTimestamp+constants.PARLifetimeSecs {
-		return issues.JsonError{
+		return issues.OAuthBaseError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "the request uri expired",
 		}
@@ -141,7 +155,7 @@ func validateAuthorizeWithPARParams(session models.AuthnSession, req models.Auth
 
 	// Make sure the client who created the PAR request is the same one trying to authorize.
 	if session.ClientId != req.ClientId {
-		return issues.JsonError{
+		return issues.OAuthBaseError{
 			ErrorCode:        constants.AccessDenied,
 			ErrorDescription: "invalid client",
 		}
@@ -154,7 +168,7 @@ func validateAuthorizeWithPARParams(session models.AuthnSession, req models.Auth
 		},
 	)
 	if !allParamsAreEmpty {
-		return issues.JsonError{
+		return issues.OAuthBaseError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "invalid parameter when using PAR",
 		}

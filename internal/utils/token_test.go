@@ -30,8 +30,7 @@ func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 	})
 
 	// Assert
-	var jsonError issues.EntityNotFoundError
-	if err == nil || !errors.As(err, &jsonError) {
+	if err == nil || !errors.Is(err, issues.ErrorEntityNotFound) {
 		t.Error("the should not be found")
 		return
 	}
@@ -54,7 +53,7 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	})
 
 	// Assert
-	var jsonError issues.JsonError
+	var jsonError issues.OAuthBaseError
 	if err == nil || !errors.As(err, &jsonError) {
 		t.Error("the client should not be authenticated")
 		return

@@ -72,7 +72,7 @@ func validateClientCredentialsGrantRequest(ctx Context, client models.Client, re
 
 	if !client.IsGrantTypeAllowed(constants.ClientCredentials) {
 		ctx.Logger.Info("grant type not allowed")
-		return issues.JsonError{
+		return issues.OAuthBaseError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "invalid grant type",
 		}
@@ -80,7 +80,7 @@ func validateClientCredentialsGrantRequest(ctx Context, client models.Client, re
 
 	if !client.AreScopesAllowed(unit.SplitStringWithSpaces(req.Scope)) {
 		ctx.Logger.Info("scope not allowed")
-		return issues.JsonError{
+		return issues.OAuthBaseError{
 			ErrorCode:        constants.InvalidScope,
 			ErrorDescription: "invalid scope",
 		}
@@ -136,21 +136,21 @@ func handleAuthorizationCodeGrantTokenCreation(ctx Context, req models.TokenRequ
 func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client models.Client, session models.AuthnSession) error {
 
 	if !client.IsGrantTypeAllowed(constants.AuthorizationCode) {
-		return issues.JsonError{
+		return issues.OAuthBaseError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "invalid grant type",
 		}
 	}
 
 	if unit.GetTimestampNow() > session.AuthorizedAtTimestamp+constants.AuthorizationCodeLifetimeSecs {
-		return issues.JsonError{
+		return issues.OAuthBaseError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "the authorization code is expired",
 		}
 	}
 
 	if session.ClientId != client.Id {
-		return issues.JsonError{
+		return issues.OAuthBaseError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "the authorization code was not issued to the client",
 		}
@@ -158,7 +158,7 @@ func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client model
 
 	// If the session was created with a code challenge, the token request must contain the right code verifier.
 	if session.CodeChallenge != "" && (req.CodeVerifier == "" || !unit.IsPkceValid(req.CodeVerifier, session.CodeChallenge, session.CodeChallengeMethod)) {
-		return issues.JsonError{
+		return issues.OAuthBaseError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "invalid pkce",
 		}
@@ -198,7 +198,7 @@ func getSessionByAuthorizationCode(ctx Context, authorizationCode string, ch cha
 	if err != nil {
 		ch <- ResultChannel{
 			result: models.AuthnSession{},
-			err: issues.JsonError{
+			err: issues.OAuthBaseError{
 				ErrorCode:        constants.InvalidGrant,
 				ErrorDescription: "invalid authorization code",
 			},
@@ -300,14 +300,14 @@ func getGrantSessionByRefreshToken(ctx Context, refreshToken string, ch chan<- R
 func validateRefreshTokenGrantRequest(client models.Client, grantSession models.GrantSession) error {
 
 	if !client.IsGrantTypeAllowed(constants.RefreshToken) {
-		return issues.JsonError{
+		return issues.OAuthBaseError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "invalid grant type",
 		}
 	}
 
 	if client.Id != grantSession.ClientId {
-		return issues.JsonError{
+		return issues.OAuthBaseError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "the refresh token was not issued to the client",
 		}
@@ -316,7 +316,7 @@ func validateRefreshTokenGrantRequest(client models.Client, grantSession models.
 	expirationTimestamp := grantSession.CreatedAtTimestamp + grantSession.RefreshTokenExpiresIn
 	if unit.GetTimestampNow() > expirationTimestamp {
 		//TODO: How to handle the expired sessions? There are just hanging for now.
-		return issues.JsonError{
+		return issues.OAuthBaseError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "the refresh token is expired",
 		}
@@ -366,7 +366,7 @@ func getAuthenticatedClient(ctx Context, req models.ClientAuthnRequest) (models.
 
 	if !client.Authenticator.IsAuthenticated(req) {
 		ctx.Logger.Info("client not authenticated", slog.String("client_id", req.ClientIdPost))
-		return models.Client{}, issues.JsonError{
+		return models.Client{}, issues.OAuthBaseError{
 			ErrorCode:        constants.AccessDenied,
 			ErrorDescription: "client not authenticated",
 		}

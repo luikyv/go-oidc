@@ -24,7 +24,7 @@ func (manager *MockedGrantSessionManager) CreateOrUpdate(grantSession models.Gra
 func (manager *MockedGrantSessionManager) Get(id string) (models.GrantSession, error) {
 	grantSession, exists := manager.GrantSessions[id]
 	if !exists {
-		return models.GrantSession{}, issues.EntityNotFoundError{Id: id}
+		return models.GrantSession{}, issues.ErrorEntityNotFound
 	}
 
 	return grantSession, nil
@@ -44,7 +44,7 @@ func (manager *MockedGrantSessionManager) GetByTokenId(tokenId string) (models.G
 		return t.TokenId == tokenId
 	})
 	if !exists {
-		return models.GrantSession{}, issues.EntityNotFoundError{Id: tokenId}
+		return models.GrantSession{}, issues.ErrorEntityNotFound
 	}
 
 	return grantSession, nil
@@ -55,7 +55,7 @@ func (manager *MockedGrantSessionManager) GetByRefreshToken(refreshToken string)
 		return t.RefreshToken == refreshToken
 	})
 	if !exists {
-		return models.GrantSession{}, issues.EntityNotFoundError{Id: refreshToken}
+		return models.GrantSession{}, issues.ErrorEntityNotFound
 	}
 
 	return grantSession, nil

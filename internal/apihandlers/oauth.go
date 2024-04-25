@@ -115,7 +115,7 @@ func HandleTokenRequest(ctx utils.Context) {
 func HandleUserInfoRequest(ctx utils.Context) {
 	token, ok := unit.GetBearerToken(ctx.RequestContext)
 	if !ok {
-		bindErrorToResponse(issues.JsonError{
+		bindErrorToResponse(issues.OAuthBaseError{
 			ErrorCode:        constants.AccessDenied,
 			ErrorDescription: "no token found",
 		}, ctx.RequestContext)

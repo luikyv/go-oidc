@@ -25,7 +25,7 @@ func TestPushAuthorizationShouldRejectUnauthenticatedClient(t *testing.T) {
 	})
 
 	// Assert
-	var jsonError issues.JsonError
+	var jsonError issues.OAuthBaseError
 	if err == nil || !errors.As(err, &jsonError) {
 		t.Error("the client should not be authenticated")
 		return
