@@ -70,7 +70,6 @@ func TestNewPolicyRegistersStep(t *testing.T) {
 	// Then
 	availablePolicy := utils.NewPolicy(
 		"policy_id",
-		[]utils.AuthnStep{},
 		nil,
 	)
 
@@ -87,14 +86,12 @@ func TestGetPolicy(t *testing.T) {
 	// When
 	unavailablePolicy := utils.NewPolicy(
 		"unavailable_policy",
-		[]utils.AuthnStep{},
 		func(c models.AuthnSession, ctx *gin.Context) bool {
 			return false
 		},
 	)
 	availablePolicy := utils.NewPolicy(
 		"available_policy",
-		[]utils.AuthnStep{},
 		func(c models.AuthnSession, ctx *gin.Context) bool {
 			return true
 		},
@@ -122,7 +119,6 @@ func TestGetPolicyNoPolicyAvailable(t *testing.T) {
 	// When
 	unavailablePolicy := utils.NewPolicy(
 		"unavailable_policy",
-		[]utils.AuthnStep{},
 		func(c models.AuthnSession, ctx *gin.Context) bool {
 			return false
 		},

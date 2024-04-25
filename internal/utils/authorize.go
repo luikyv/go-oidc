@@ -44,6 +44,7 @@ func InitAuthentication(ctx Context, req models.AuthorizeRequest) error {
 			State:       session.State,
 		}
 	}
+
 	ctx.Logger.Info("policy available", slog.String("policy_id", policy.Id))
 	session.StepIdsLeft = policy.StepIdSequence
 

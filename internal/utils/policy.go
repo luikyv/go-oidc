@@ -129,8 +129,8 @@ type AuthnPolicy struct {
 
 func NewPolicy(
 	id string,
-	stepSequence []AuthnStep,
 	isAvailableFunc CheckPolicyAvailabilityFunc,
+	stepSequence ...AuthnStep,
 ) AuthnPolicy {
 	stepIdSequence := make([]string, len(stepSequence))
 	for i, step := range stepSequence {
