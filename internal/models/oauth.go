@@ -120,7 +120,7 @@ func (req TokenRequest) IsValid() error {
 			return errors.New("invalid parameter for authorization code grant")
 		}
 	case constants.RefreshToken:
-		if req.RefreshToken == "" || req.AuthorizationCode != "" || req.RedirectUri != "" {
+		if req.RefreshToken == "" || req.AuthorizationCode != "" || req.RedirectUri != "" || req.Scope != "" {
 			return errors.New("invalid parameter for refresh token grant")
 		}
 	default:
@@ -153,13 +153,19 @@ type BaseAuthorizeRequest struct {
 
 func (req BaseAuthorizeRequest) IsValid() error {
 
-	// If the request URI is not passed, all the other parameters must be provided.
-	if req.RequestUri == "" && (req.RedirectUri == "" || req.Scope == "" || req.ResponseType == "") {
+	// If the request URI is not passed, all the other mandatory parameters must be provided.
+	if req.RequestUri == "" && unit.Any(
+		[]string{req.RedirectUri, req.Scope, string(req.ResponseType)},
+		func(s string) bool { return s == "" },
+	) {
 		return errors.New("invalid parameter")
 	}
 
 	// If the request URI is passed, all the other parameters must be empty.
-	if req.RequestUri != "" && (req.RedirectUri != "" || req.Scope != "" || req.ResponseType != "") {
+	if req.RequestUri != "" && unit.Any(
+		[]string{req.RedirectUri, req.Scope, string(req.ResponseType), string(req.ResponseMode), req.CodeChallenge, string(req.CodeChallengeMethod)},
+		func(s string) bool { return s != "" },
+	) {
 		return errors.New("invalid parameter")
 	}
 
@@ -192,14 +198,13 @@ type PARRequest struct {
 
 func (req PARRequest) IsValid() error {
 
-	if req.RequestUri != "" {
-		return errors.New("invalid parameter")
-	}
-
 	if err := req.ClientAuthnRequest.IsValid(); err != nil {
 		return err
 	}
 
+	if req.RequestUri != "" {
+		return errors.New("invalid parameter")
+	}
 	return req.BaseAuthorizeRequest.IsValid()
 }
 

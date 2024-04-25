@@ -192,6 +192,17 @@ func All[T interface{}](slice []T, condition func(T) bool) bool {
 	return true
 }
 
+// Return true if any element in the slice respects the condition.
+func Any[T interface{}](slice []T, condition func(T) bool) bool {
+	for _, element := range slice {
+		if condition(element) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func GetTimestampNow() int {
 	return int(time.Now().Unix())
 }
