@@ -118,18 +118,25 @@ var SubjectIdentifierTypes []SubjectIdentifierType = []SubjectIdentifierType{
 type ErrorCode string
 
 const (
-	AccessDenied   ErrorCode = "access_denied"
-	InvalidGrant   ErrorCode = "invalid_grant"
-	InvalidRequest ErrorCode = "invalid_request"
-	InvalidScope   ErrorCode = "invalid_scope"
-	InternalError  ErrorCode = "internal_error"
+	AccessDenied         ErrorCode = "access_denied"
+	InvalidClient        ErrorCode = "invalid_client"
+	InvalidGrant         ErrorCode = "invalid_grant"
+	InvalidRequest       ErrorCode = "invalid_request"
+	UnauthorizedClient   ErrorCode = "unauthorized_client"
+	InvalidScope         ErrorCode = "invalid_scope"
+	UnsupportedGrantType ErrorCode = "unsupported_grant_type"
+	InternalError        ErrorCode = "internal_error"
 )
 
 var ErrorCodeToStatusCode map[ErrorCode]int = map[ErrorCode]int{
-	AccessDenied:   http.StatusForbidden,
-	InvalidGrant:   http.StatusBadRequest,
-	InvalidRequest: http.StatusBadRequest,
-	InvalidScope:   http.StatusBadRequest,
+	AccessDenied:         http.StatusForbidden,
+	InvalidClient:        http.StatusUnauthorized,
+	InvalidGrant:         http.StatusBadRequest,
+	InvalidRequest:       http.StatusBadRequest,
+	UnauthorizedClient:   http.StatusBadRequest,
+	InvalidScope:         http.StatusBadRequest,
+	UnsupportedGrantType: http.StatusBadRequest,
+	InternalError:        http.StatusInternalServerError,
 }
 
 type Header string

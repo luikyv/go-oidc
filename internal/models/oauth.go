@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
@@ -66,22 +67,34 @@ func (req ClientAuthnRequest) IsValid() error {
 
 	// Either the client ID or the client assertion must be present to identity the client.
 	if req.ClientIdBasicAuthn == "" && req.ClientIdPost == "" && req.ClientAssertion == "" {
-		return errors.New("invalid authentication parameter")
+		return issues.OAuthBaseError{
+			ErrorCode:        constants.InvalidClient,
+			ErrorDescription: "invalid client authentication",
+		}
 	}
 
 	// Validate parameters for client secret basic authentication.
 	if req.ClientIdBasicAuthn != "" && (req.ClientSecretBasicAuthn == "" || req.ClientIdPost != "" || req.ClientSecretPost != "" || req.ClientAssertionType != "" || req.ClientAssertion != "") {
-		return errors.New("invalid authentication parameter")
+		return issues.OAuthBaseError{
+			ErrorCode:        constants.InvalidClient,
+			ErrorDescription: "invalid client authentication",
+		}
 	}
 
 	// Validate parameters for client secret post authentication.
 	if req.ClientIdPost != "" && (req.ClientSecretPost == "" || req.ClientIdBasicAuthn != "" || req.ClientSecretBasicAuthn != "" || req.ClientAssertionType != "" || req.ClientAssertion != "") {
-		return errors.New("invalid authentication parameter")
+		return issues.OAuthBaseError{
+			ErrorCode:        constants.InvalidClient,
+			ErrorDescription: "invalid client authentication",
+		}
 	}
 
 	// Validate parameters for private key jwt authentication.
 	if req.ClientAssertion != "" && (req.ClientAssertionType != constants.JWTBearerAssertion || req.ClientIdBasicAuthn != "" || req.ClientSecretBasicAuthn != "" || req.ClientIdPost != "" || req.ClientSecretPost != "") {
-		return errors.New("invalid authentication parameter")
+		return issues.OAuthBaseError{
+			ErrorCode:        constants.InvalidClient,
+			ErrorDescription: "invalid client authentication",
+		}
 	}
 
 	return nil
@@ -124,7 +137,10 @@ func (req TokenRequest) IsValid() error {
 			return errors.New("invalid parameter for refresh token grant")
 		}
 	default:
-		return errors.New("invalid grant type")
+		return issues.OAuthBaseError{
+			ErrorCode:        constants.UnsupportedGrantType,
+			ErrorDescription: "unsupported grant type",
+		}
 	}
 
 	return nil
