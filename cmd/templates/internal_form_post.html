@@ -4,8 +4,10 @@
 <body onload="javascript:document.forms[0].submit()">
     <form id="form" method="post" action="{{ .redirect_uri }}">
         <input type="hidden" name="code" value="{{ .code }}"/>
-        <input type="hidden" name="id_token" value="{{ .id_token }}"/>
         <input type="hidden" name="state" value="{{ .state }}"/>
+        <input type="hidden" name="access_token" value="{{ .access_token }}"/>
+        <input type="hidden" name="token_type" value="{{ .token_type }}"/>
+        <input type="hidden" name="id_token" value="{{ .id_token }}"/>
     </form>
 </body>
 

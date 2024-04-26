@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"maps"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -34,53 +35,6 @@ func GetStep(id string) AuthnStep {
 	return stepMap[id]
 }
 
-var finishFlowSuccessfullyStep AuthnStep = AuthnStep{
-	Id: "finish_flow_successfully",
-	AuthnFunc: func(ctx Context, session *models.AuthnSession) constants.AuthnStatus {
-
-		params := make(map[string]string)
-
-		// Generate the authorization code if the client requested it.
-		if unit.ResponseTypeContainsCode(session.ResponseType) {
-			session.AuthorizationCode = unit.GenerateAuthorizationCode()
-			session.AuthorizedAtTimestamp = unit.GetTimestampNow()
-			params[string(constants.Code)] = session.AuthorizationCode
-		}
-
-		// Generate an ID token if the client requested it.
-		if unit.ResponseTypeContainsIdToken(session.ResponseType) {
-			grantModel, err := ctx.GrantModelManager.Get(session.GrantModelId)
-			if err != nil {
-				session.SetError(constants.InternalError, "error generating id token")
-				return finishFlowWithFailureStep.AuthnFunc(ctx, session)
-			}
-			params[string(constants.IdToken)] = grantModel.GenerateIdToken(
-				models.NewAuthorizationCodeGrantGrantContextFromAuthnSession(*session),
-			)
-		}
-
-		// Echo the state parameter.
-		if session.State != "" {
-			params["state"] = session.State
-		}
-
-		// Build the response to the client.
-		switch session.ResponseMode {
-		case constants.Fragment:
-			redirectUrl := unit.GetUrlWithFragmentParams(session.RedirectUri, params)
-			ctx.RequestContext.Redirect(http.StatusFound, redirectUrl)
-		case constants.FormPost:
-			params["redirect_uri"] = session.RedirectUri
-			ctx.RequestContext.HTML(http.StatusOK, "internal_form_post.html", params)
-		default:
-			redirectUrl := unit.GetUrlWithQueryParams(session.RedirectUri, params)
-			ctx.RequestContext.Redirect(http.StatusFound, redirectUrl)
-		}
-
-		return constants.Success
-	},
-}
-
 var finishFlowWithFailureStep AuthnStep = AuthnStep{
 	Id: "finish_flow_with_failure",
 	AuthnFunc: func(ctx Context, session *models.AuthnSession) constants.AuthnStatus {
@@ -104,6 +58,81 @@ var finishFlowWithFailureStep AuthnStep = AuthnStep{
 
 		return constants.Failure
 	},
+}
+
+var finishFlowSuccessfullyStep AuthnStep = AuthnStep{
+	Id: "finish_flow_successfully",
+	AuthnFunc: func(ctx Context, session *models.AuthnSession) constants.AuthnStatus {
+
+		params := make(map[string]string)
+
+		// Generate the authorization code if the client requested it.
+		if session.ResponseType.Contains(constants.CodeResponse) {
+			session.AuthorizationCode = unit.GenerateAuthorizationCode()
+			session.AuthorizedAtTimestamp = unit.GetTimestampNow()
+			params[string(constants.CodeResponse)] = session.AuthorizationCode
+		}
+
+		// Echo the state parameter.
+		if session.State != "" {
+			params["state"] = session.State
+		}
+
+		// Add implict parameters.
+		if session.ResponseType.Contains(constants.TokenResponse) || session.ResponseType.Contains(constants.IdTokenResponse) {
+			implictParams, _ := generateImplictParams(ctx, *session)
+			maps.Copy(params, implictParams)
+		}
+
+		handleAuthorizeResponse(ctx, *session, params)
+		return constants.Success
+	},
+}
+
+func generateImplictParams(ctx Context, session models.AuthnSession) (map[string]string, error) {
+	grantModel, _ := ctx.GrantModelManager.Get(session.GrantModelId)
+	implictParams := make(map[string]string)
+
+	// Generate a token if the client requested it.
+	if session.ResponseType.Contains(constants.TokenResponse) {
+		grantSession := grantModel.GenerateGrantSession(models.NewImplictGrantContext(session))
+		err := ctx.GrantSessionManager.CreateOrUpdate(grantSession)
+		if err != nil {
+			return map[string]string{}, err
+		}
+		implictParams["access_token"] = grantSession.Token
+		implictParams["token_type"] = string(constants.Bearer)
+	}
+
+	// Generate an ID token if the client requested it.
+	if session.ResponseType.Contains(constants.IdTokenResponse) {
+		implictParams["id_token"] = grantModel.GenerateIdToken(
+			models.NewImplictGrantContextForIdToken(session, models.IdTokenContext{
+				AccessToken:             implictParams["access_token"],
+				AuthorizationCode:       session.AuthorizationCode,
+				State:                   session.State,
+				Nonce:                   session.Nonce,
+				AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
+			}),
+		)
+	}
+
+	return implictParams, nil
+}
+
+func handleAuthorizeResponse(ctx Context, session models.AuthnSession, params map[string]string) {
+	switch session.ResponseMode {
+	case constants.FragmentResponseMode:
+		redirectUrl := unit.GetUrlWithFragmentParams(session.RedirectUri, params)
+		ctx.RequestContext.Redirect(http.StatusFound, redirectUrl)
+	case constants.FormPostResponseMode:
+		params["redirect_uri"] = session.RedirectUri
+		ctx.RequestContext.HTML(http.StatusOK, "internal_form_post.html", params)
+	default:
+		// The default response mode is "query".
+		redirectUrl := unit.GetUrlWithQueryParams(session.RedirectUri, params)
+		ctx.RequestContext.Redirect(http.StatusFound, redirectUrl)
+	}
 }
 
 // Create a new step and register it internally.

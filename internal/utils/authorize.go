@@ -203,7 +203,7 @@ func authenticate(ctx Context, session models.AuthnSession) error {
 	}
 
 	// At this point, the status can only be success and there are no more steps left.
-	if !unit.ResponseTypeContainsCode(session.ResponseType) {
+	if !session.ResponseType.Contains(constants.CodeResponse) {
 		// The client didn't request an authorization code to later exchange it for an access token,
 		// so we don't keep the session anymore.
 		return ctx.AuthnSessionManager.Delete(session.Id)

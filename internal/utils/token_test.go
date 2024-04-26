@@ -25,7 +25,7 @@ func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 			ClientIdPost:     "invalid_client_id",
 			ClientSecretPost: utils.ValidClientSecret,
 		},
-		GrantType: constants.ClientCredentials,
+		GrantType: constants.ClientCredentialsGrant,
 		Scope:     strings.Join(client.Scopes, " "),
 	})
 
@@ -48,7 +48,7 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 			ClientIdPost:     utils.ValidClientId,
 			ClientSecretPost: "invalid_password",
 		},
-		GrantType: constants.ClientCredentials,
+		GrantType: constants.ClientCredentialsGrant,
 		Scope:     strings.Join(client.Scopes, " "),
 	})
 
@@ -58,7 +58,7 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 		t.Error("the client should not be authenticated")
 		return
 	}
-	if jsonError.ErrorCode != constants.AccessDenied {
+	if jsonError.ErrorCode != constants.InvalidClient {
 		t.Errorf("invalid error code: %s", jsonError.ErrorCode)
 		return
 	}
@@ -74,7 +74,7 @@ func TestClientCredentialsHandleGrantCreation(t *testing.T) {
 			ClientIdPost:     utils.ValidClientId,
 			ClientSecretPost: utils.ValidClientSecret,
 		},
-		GrantType: constants.ClientCredentials,
+		GrantType: constants.ClientCredentialsGrant,
 		Scope:     strings.Join(client.Scopes, " "),
 	}
 
@@ -134,7 +134,7 @@ func TestAuthorizationCodeHandleGrantCreation(t *testing.T) {
 			ClientIdPost:     utils.ValidClientId,
 			ClientSecretPost: utils.ValidClientSecret,
 		},
-		GrantType:         constants.AuthorizationCode,
+		GrantType:         constants.AuthorizationCodeGrant,
 		RedirectUri:       client.RedirectUris[0],
 		AuthorizationCode: authorizationCode,
 	}
@@ -193,7 +193,7 @@ func TestRefreshTokenHandleGrantCreation(t *testing.T) {
 			ClientIdPost:     utils.ValidClientId,
 			ClientSecretPost: utils.ValidClientSecret,
 		},
-		GrantType:    constants.RefreshToken,
+		GrantType:    constants.RefreshTokenGrant,
 		RefreshToken: refreshToken,
 	}
 
@@ -256,7 +256,7 @@ func TestRefreshTokenHandleGrantCreationShouldDenyExpiredRefreshToken(t *testing
 			ClientIdPost:     utils.ValidClientId,
 			ClientSecretPost: utils.ValidClientSecret,
 		},
-		GrantType:    constants.RefreshToken,
+		GrantType:    constants.RefreshTokenGrant,
 		RefreshToken: refreshToken,
 	}
 

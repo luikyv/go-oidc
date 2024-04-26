@@ -14,7 +14,7 @@ func getValidTokenRequestForClientCredentials() models.TokenRequest {
 			ClientIdPost:     "client_id",
 			ClientSecretPost: "random_secret",
 		},
-		GrantType: constants.ClientCredentials,
+		GrantType: constants.ClientCredentialsGrant,
 		Scope:     "scope1 scope2",
 	}
 }
@@ -79,7 +79,7 @@ func getValidTokenRequestForAuthorizationCodeGrant() models.TokenRequest {
 			ClientIdPost:     "random_client",
 			ClientSecretPost: "random_secret",
 		},
-		GrantType:         constants.AuthorizationCode,
+		GrantType:         constants.AuthorizationCodeGrant,
 		AuthorizationCode: "random_authorization_code",
 		RedirectUri:       "random_redirect_uri",
 	}
@@ -153,7 +153,7 @@ func getValidTokenRequestForRefreshTokenGrant() models.TokenRequest {
 			ClientIdPost:     "client_id",
 			ClientSecretPost: "random_secret",
 		},
-		GrantType:    constants.RefreshToken,
+		GrantType:    constants.RefreshTokenGrant,
 		RefreshToken: "random_refresh_token",
 	}
 }

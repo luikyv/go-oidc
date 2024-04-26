@@ -142,7 +142,7 @@ func TestFinishFlowSuccessfullyStep(t *testing.T) {
 	session := &models.AuthnSession{
 		RedirectUri:  "https://example.com",
 		State:        "random_state",
-		ResponseType: constants.Code,
+		ResponseType: constants.CodeResponse,
 	}
 	ctx := utils.GetMockedContext()
 

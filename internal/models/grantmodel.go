@@ -1,6 +1,10 @@
 package models
 
 import (
+	"crypto/sha256"
+	"crypto/sha512"
+	"encoding/base64"
+	"hash"
 	"strings"
 
 	"github.com/go-jose/go-jose/v4"
@@ -51,12 +55,12 @@ func (maker JWTTokenMaker) MakeToken(grantMeta GrantMetaInfo, grantCtx GrantCont
 	jwtId := uuid.NewString()
 	timestampNow := unit.GetTimestampNow()
 	claims := map[string]any{
-		string(constants.TokenId):  jwtId,
-		string(constants.Issuer):   unit.GetHost(),
-		string(constants.Subject):  grantCtx.Subject,
-		string(constants.Scope):    strings.Join(grantCtx.Scopes, " "),
-		string(constants.IssuedAt): timestampNow,
-		string(constants.Expiry):   timestampNow + grantMeta.ExpiresInSecs,
+		string(constants.TokenIdClaim):  jwtId,
+		string(constants.IssuerClaim):   unit.GetHost(),
+		string(constants.SubjectClaim):  grantCtx.Subject,
+		string(constants.ScopeClaim):    strings.Join(grantCtx.Scopes, " "),
+		string(constants.IssuedAtClaim): timestampNow,
+		string(constants.ExpiryClaim):   timestampNow + grantMeta.ExpiresInSecs,
 	}
 	for k, v := range grantCtx.AdditionalTokenClaims {
 		claims[k] = v
@@ -85,29 +89,65 @@ type GrantModel struct {
 	TokenMaker AccessTokenMaker
 }
 
+func (grantModel GrantModel) generateHalfHashClaim(claimValue string) string {
+	jwk, _ := unit.GetPrivateKey(grantModel.Meta.OpenIdKeyId)
+	var hash hash.Hash
+	switch jose.SignatureAlgorithm(jwk.Algorithm) {
+	case jose.RS256, jose.ES256, jose.PS256, jose.HS256:
+		hash = sha256.New()
+	case jose.RS384, jose.ES384, jose.PS384, jose.HS384:
+		hash = sha512.New384()
+	case jose.RS512, jose.ES512, jose.PS512, jose.HS512:
+		hash = sha512.New()
+	default:
+		hash = nil
+	}
+
+	hash.Write([]byte(claimValue))
+	halfHashedClaim := hash.Sum(nil)[:hash.Size()/2]
+	return base64.RawURLEncoding.EncodeToString(halfHashedClaim)
+}
+
 func (grantModel GrantModel) GenerateIdToken(grantCtx GrantContext) string {
+	jwk, _ := unit.GetPrivateKey(grantModel.Meta.OpenIdKeyId)
 	timestampNow := unit.GetTimestampNow()
+
+	// Set the token claims.
 	claims := map[string]any{
-		string(constants.Issuer):   unit.GetHost(),
-		string(constants.Subject):  grantCtx.Subject,
-		string(constants.Audience): grantCtx.ClientId,
-		string(constants.IssuedAt): timestampNow,
-		string(constants.Expiry):   timestampNow + grantModel.Meta.ExpiresInSecs,
+		string(constants.IssuerClaim):   unit.GetHost(),
+		string(constants.SubjectClaim):  grantCtx.Subject,
+		string(constants.AudienceClaim): grantCtx.ClientId,
+		string(constants.IssuedAtClaim): timestampNow,
+		string(constants.ExpiryClaim):   timestampNow + grantModel.Meta.ExpiresInSecs,
 	}
+
 	if grantCtx.Nonce != "" {
-		claims[string(constants.Nonce)] = grantCtx.Nonce
+		claims[string(constants.NonceClaim)] = grantCtx.Nonce
 	}
+
+	if grantCtx.AccessToken != "" {
+		claims[string(constants.AccessTokenHashClaim)] = grantModel.generateHalfHashClaim(grantCtx.AccessToken)
+	}
+
+	if grantCtx.AuthorizationCode != "" {
+		claims[string(constants.AuthorizationCodeHashClaim)] = grantModel.generateHalfHashClaim(grantCtx.AuthorizationCode)
+	}
+
+	if grantCtx.State != "" {
+		claims[string(constants.StateHashClaim)] = grantModel.generateHalfHashClaim(grantCtx.State)
+	}
+
 	for k, v := range grantCtx.AdditionalIdTokenClaims {
 		claims[k] = v
 	}
 
-	jwk, _ := unit.GetPrivateKey(grantModel.Meta.OpenIdKeyId)
+	// Sign the ID token.
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", grantModel.Meta.OpenIdKeyId),
 	)
-
 	idToken, _ := jwt.Signed(signer).Claims(claims).Serialize()
+
 	return idToken
 }
 
@@ -143,7 +183,7 @@ func (grantModel GrantModel) GenerateGrantSession(grantCtx GrantContext) GrantSe
 
 func (grantModel GrantModel) shouldGenerateRefreshToken(grantCtx GrantContext) bool {
 	// There is no need to create a refresh token for the client credentials grant since no user consent is needed.
-	return grantCtx.GrantType != constants.ClientCredentials && grantModel.Meta.IsRefreshable
+	return grantCtx.GrantType != constants.ClientCredentialsGrant && grantModel.Meta.IsRefreshable
 }
 
 func (grantModel GrantModel) shouldGenerateIdToken(grantCtx GrantContext) bool {

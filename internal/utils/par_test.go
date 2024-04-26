@@ -30,7 +30,7 @@ func TestPushAuthorizationShouldRejectUnauthenticatedClient(t *testing.T) {
 		t.Error("the client should not be authenticated")
 		return
 	}
-	if jsonError.ErrorCode != constants.AccessDenied {
+	if jsonError.ErrorCode != constants.InvalidClient {
 		t.Errorf("invalid error code: %s", jsonError.ErrorCode)
 		return
 	}
@@ -51,8 +51,8 @@ func TestPushAuthorizationShouldGenerateRequestUri(t *testing.T) {
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
-			ResponseType: constants.Code,
-			ResponseMode: constants.Query,
+			ResponseType: constants.CodeResponse,
+			ResponseMode: constants.QueryResponseMode,
 		},
 	})
 

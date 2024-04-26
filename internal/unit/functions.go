@@ -2,8 +2,10 @@ package unit
 
 import (
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
 	"fmt"
+	"hash"
 	"math/rand"
 	"net/url"
 	"slices"
@@ -124,25 +126,37 @@ func GetSigningAlgorithms() []jose.SignatureAlgorithm {
 
 func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod constants.CodeChallengeMethod) bool {
 	switch codeChallengeMethod {
-	case constants.Plain:
+	case constants.PlainCodeChallengeMethod:
 		return codeChallenge == codeVerifier
-	case constants.SHA256:
+	case constants.SHA256CodeChallengeMethod:
 		h := sha256.New()
 		h.Write([]byte(codeVerifier))
 		hashedCodeVerifier := h.Sum(nil)
-		encodedHashedCodeVerifier := base64.URLEncoding.EncodeToString([]byte(hashedCodeVerifier))
-		return codeChallenge == strings.Replace(string(encodedHashedCodeVerifier), "=", "", -1)
+		encodedHashedCodeVerifier := base64.RawURLEncoding.EncodeToString([]byte(hashedCodeVerifier))
+		return codeChallenge == encodedHashedCodeVerifier
 	}
 
 	return false
 }
 
-func ResponseTypeContainsCode(responseType constants.ResponseType) bool {
-	return strings.Contains(string(responseType), string(constants.Code))
+func getHashFromSigningAlgorithm(signingAlg jose.SignatureAlgorithm) hash.Hash {
+	switch signingAlg {
+	case jose.RS256, jose.ES256, jose.PS256:
+		return sha256.New()
+	case jose.RS384, jose.ES384, jose.PS384:
+		return sha512.New384()
+	case jose.RS512, jose.ES512, jose.PS512:
+		return sha512.New()
+	default:
+		return nil
+	}
 }
 
-func ResponseTypeContainsIdToken(responseType constants.ResponseType) bool {
-	return strings.Contains(string(responseType), string(constants.IdToken))
+func GenerateHalfHash(claimValue string, key jose.JSONWebKey) string {
+	hash := getHashFromSigningAlgorithm(jose.SignatureAlgorithm(key.Algorithm))
+	hash.Write([]byte(claimValue))
+	halfHashedClaim := hash.Sum(nil)[:hash.Size()/2]
+	return base64.RawURLEncoding.EncodeToString(halfHashedClaim)
 }
 
 func GetBearerToken(requestCtx *gin.Context) (string, bool) {

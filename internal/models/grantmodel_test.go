@@ -28,7 +28,9 @@ func TestOpaqueGrantModelGenerateToken(t *testing.T) {
 	grantContext := models.GrantContext{
 		Subject:  "user_id",
 		ClientId: "client_id",
-		Scopes:   []string{"scope1", "scope2"},
+		TokenContext: models.TokenContext{
+			Scopes: []string{"scope1", "scope2"},
+		},
 	}
 
 	// Then.
@@ -84,10 +86,12 @@ func TestJWTGrantModelGenerateToken(t *testing.T) {
 	}
 
 	grantContext := models.GrantContext{
-		Subject:               "user_id",
-		ClientId:              "client_id",
-		Scopes:                []string{"scope1", "scope2"},
-		AdditionalTokenClaims: map[string]string{"custom_claim": "custom_value"},
+		Subject:  "user_id",
+		ClientId: "client_id",
+		TokenContext: models.TokenContext{
+			Scopes:                []string{"scope1", "scope2"},
+			AdditionalTokenClaims: map[string]string{"custom_claim": "custom_value"},
+		},
 	}
 
 	// Then
@@ -104,7 +108,7 @@ func TestJWTGrantModelGenerateToken(t *testing.T) {
 		t.Errorf("error verifying signature: %s", err.Error())
 	}
 
-	if subject, ok := claims[string(constants.Subject)]; !ok || subject != grantContext.Subject {
+	if subject, ok := claims[string(constants.SubjectClaim)]; !ok || subject != grantContext.Subject {
 		t.Errorf("invalid subject: %s", subject)
 	}
 

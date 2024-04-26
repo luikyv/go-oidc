@@ -128,7 +128,7 @@ func HandleUserInfoRequest(ctx utils.Context) {
 		return
 	}
 
-	response := gin.H{string(constants.Subject): grantSession.Subject}
+	response := gin.H{string(constants.SubjectClaim): grantSession.Subject}
 	for k, v := range grantSession.AdditionalIdTokenClaims {
 		response[k] = v
 	}

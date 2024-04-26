@@ -20,11 +20,11 @@ func HandleGrantCreation(
 	var token models.GrantSession
 	var err error = nil
 	switch req.GrantType {
-	case constants.ClientCredentials:
+	case constants.ClientCredentialsGrant:
 		token, err = handleClientCredentialsGrantTokenCreation(ctx, req)
-	case constants.AuthorizationCode:
+	case constants.AuthorizationCodeGrant:
 		token, err = handleAuthorizationCodeGrantTokenCreation(ctx, req)
-	case constants.RefreshToken:
+	case constants.RefreshTokenGrant:
 		token, err = handleRefreshTokenGrantTokenCreation(ctx, req)
 	}
 	if err != nil {
@@ -55,7 +55,7 @@ func handleClientCredentialsGrantTokenCreation(ctx Context, req models.TokenRequ
 	}
 
 	grantSession := grantModel.GenerateGrantSession(
-		models.NewClientCredentialsGrantGrantContextFromAuthnSession(authenticatedClient, req),
+		models.NewClientCredentialsGrantContext(authenticatedClient, req),
 	)
 
 	if shouldCreateGrantSessionForClientCredentialsGrant(grantSession) {
@@ -73,7 +73,7 @@ func handleClientCredentialsGrantTokenCreation(ctx Context, req models.TokenRequ
 
 func validateClientCredentialsGrantRequest(ctx Context, client models.Client, req models.TokenRequest) error {
 
-	if !client.IsGrantTypeAllowed(constants.ClientCredentials) {
+	if !client.IsGrantTypeAllowed(constants.ClientCredentialsGrant) {
 		ctx.Logger.Info("grant type not allowed")
 		return issues.OAuthBaseError{
 			ErrorCode:        constants.UnauthorizedClient,
@@ -122,7 +122,7 @@ func handleAuthorizationCodeGrantTokenCreation(ctx Context, req models.TokenRequ
 	ctx.Logger.Debug("the token model was loaded successfully")
 
 	grantSession := grantModel.GenerateGrantSession(
-		models.NewAuthorizationCodeGrantGrantContextFromAuthnSession(session),
+		models.NewAuthorizationCodeGrantContext(session),
 	)
 	err = nil
 	if shouldCreateGrantSessionForAuthorizationCodeGrant(grantSession) {
@@ -138,7 +138,7 @@ func handleAuthorizationCodeGrantTokenCreation(ctx Context, req models.TokenRequ
 
 func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client models.Client, session models.AuthnSession) error {
 
-	if !client.IsGrantTypeAllowed(constants.AuthorizationCode) {
+	if !client.IsGrantTypeAllowed(constants.AuthorizationCodeGrant) {
 		return issues.OAuthBaseError{
 			ErrorCode:        constants.UnauthorizedClient,
 			ErrorDescription: "invalid grant type",
@@ -313,7 +313,7 @@ func getGrantSessionByRefreshToken(ctx Context, refreshToken string, ch chan<- R
 
 func validateRefreshTokenGrantRequest(client models.Client, grantSession models.GrantSession) error {
 
-	if !client.IsGrantTypeAllowed(constants.RefreshToken) {
+	if !client.IsGrantTypeAllowed(constants.RefreshTokenGrant) {
 		return issues.OAuthBaseError{
 			ErrorCode:        constants.UnauthorizedClient,
 			ErrorDescription: "invalid grant type",
@@ -349,7 +349,7 @@ func generateUpdatedGrantSession(ctx Context, grantSession models.GrantSession) 
 	ctx.Logger.Debug("the token model was loaded successfully")
 
 	updatedGrantSession := grantModel.GenerateGrantSession(
-		models.NewRefreshTokenGrantGrantContextFromAuthnSession(grantSession),
+		models.NewRefreshTokenGrantContext(grantSession),
 	)
 	// Keep the same creation time to make sure the session will expire.
 	updatedGrantSession.CreatedAtTimestamp = grantSession.CreatedAtTimestamp
@@ -415,7 +415,7 @@ func getClientId(req models.ClientAuthnRequest) (string, error) {
 	var claims map[constants.Claim]any
 	assertion.UnsafeClaimsWithoutVerification(&claims)
 
-	clientId, ok := claims[constants.Issuer]
+	clientId, ok := claims[constants.IssuerClaim]
 	if !ok {
 		return "", errors.New("invalid assertion")
 	}

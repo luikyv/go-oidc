@@ -10,47 +10,102 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
-type GrantContext struct {
-	Subject                 string
-	ClientId                string
-	Scopes                  []string
-	GrantType               constants.GrantType
+type IdTokenContext struct {
 	Nonce                   string
-	AdditionalTokenClaims   map[string]string
 	AdditionalIdTokenClaims map[string]string
+	// These values here below are intended to be hashed and placed in the ID token.
+	// Then, the ID token can be used as a detached signature for the implict grant.
+	AccessToken       string
+	AuthorizationCode string
+	State             string
 }
 
-func NewClientCredentialsGrantGrantContextFromAuthnSession(client Client, req TokenRequest) GrantContext {
+type TokenContext struct {
+	Scopes                []string
+	GrantType             constants.GrantType
+	AdditionalTokenClaims map[string]string
+}
+
+type GrantContext struct {
+	Subject  string
+	ClientId string
+	TokenContext
+	IdTokenContext
+}
+
+func NewClientCredentialsGrantContext(client Client, req TokenRequest) GrantContext {
 	return GrantContext{
-		Subject:                 client.Id,
-		ClientId:                client.Id,
-		Scopes:                  unit.SplitStringWithSpaces(req.Scope),
-		GrantType:               constants.ClientCredentials,
-		AdditionalTokenClaims:   make(map[string]string),
-		AdditionalIdTokenClaims: make(map[string]string),
+		Subject:  client.Id,
+		ClientId: client.Id,
+		TokenContext: TokenContext{
+			Scopes:                unit.SplitStringWithSpaces(req.Scope),
+			GrantType:             constants.ClientCredentialsGrant,
+			AdditionalTokenClaims: make(map[string]string),
+		},
+		IdTokenContext: IdTokenContext{
+			AdditionalIdTokenClaims: make(map[string]string),
+		},
 	}
 }
 
-func NewAuthorizationCodeGrantGrantContextFromAuthnSession(session AuthnSession) GrantContext {
+func NewAuthorizationCodeGrantContext(session AuthnSession) GrantContext {
 	return GrantContext{
-		Subject:                 session.Subject,
-		ClientId:                session.ClientId,
-		Scopes:                  session.Scopes,
-		GrantType:               constants.AuthorizationCode,
-		Nonce:                   session.Nonce,
-		AdditionalTokenClaims:   session.AdditionalTokenClaims,
-		AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
+		Subject:  session.Subject,
+		ClientId: session.ClientId,
+		TokenContext: TokenContext{
+			Scopes:                session.Scopes,
+			GrantType:             constants.AuthorizationCodeGrant,
+			AdditionalTokenClaims: session.AdditionalTokenClaims,
+		},
+		IdTokenContext: IdTokenContext{
+			Nonce:                   session.Nonce,
+			AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
+		},
 	}
 }
 
-func NewRefreshTokenGrantGrantContextFromAuthnSession(session GrantSession) GrantContext {
+func NewImplictGrantContext(session AuthnSession) GrantContext {
 	return GrantContext{
-		Subject:               session.Subject,
-		ClientId:              session.ClientId,
-		Scopes:                session.Scopes,
-		GrantType:             constants.RefreshToken,
-		Nonce:                 session.Nonce,
-		AdditionalTokenClaims: session.AdditionalTokenClaims,
+		Subject:  session.Subject,
+		ClientId: session.ClientId,
+		TokenContext: TokenContext{
+			Scopes:                session.Scopes,
+			GrantType:             constants.ImplictGrant,
+			AdditionalTokenClaims: session.AdditionalTokenClaims,
+		},
+		IdTokenContext: IdTokenContext{
+			Nonce:                   session.Nonce,
+			AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
+		},
+	}
+}
+
+func NewImplictGrantContextForIdToken(session AuthnSession, idToken IdTokenContext) GrantContext {
+	return GrantContext{
+		Subject:  session.Subject,
+		ClientId: session.ClientId,
+		TokenContext: TokenContext{
+			Scopes:                session.Scopes,
+			GrantType:             constants.ImplictGrant,
+			AdditionalTokenClaims: session.AdditionalTokenClaims,
+		},
+		IdTokenContext: idToken,
+	}
+}
+
+func NewRefreshTokenGrantContext(session GrantSession) GrantContext {
+	return GrantContext{
+		Subject:  session.Subject,
+		ClientId: session.ClientId,
+		TokenContext: TokenContext{
+			Scopes:                session.Scopes,
+			GrantType:             constants.RefreshTokenGrant,
+			AdditionalTokenClaims: session.AdditionalTokenClaims,
+		},
+		IdTokenContext: IdTokenContext{
+			Nonce:                   session.Nonce,
+			AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
+		},
 	}
 }
 
@@ -124,15 +179,15 @@ func (req TokenRequest) IsValid() error {
 
 	// Validate parameters specific to each grant type.
 	switch req.GrantType {
-	case constants.ClientCredentials:
+	case constants.ClientCredentialsGrant:
 		if req.AuthorizationCode != "" || req.RedirectUri != "" || req.RefreshToken != "" {
 			return errors.New("invalid parameter for client credentials grant")
 		}
-	case constants.AuthorizationCode:
+	case constants.AuthorizationCodeGrant:
 		if req.AuthorizationCode == "" || req.RedirectUri == "" || req.RefreshToken != "" || req.Scope != "" {
 			return errors.New("invalid parameter for authorization code grant")
 		}
-	case constants.RefreshToken:
+	case constants.RefreshTokenGrant:
 		if req.RefreshToken == "" || req.AuthorizationCode != "" || req.RedirectUri != "" || req.Scope != "" {
 			return errors.New("invalid parameter for refresh token grant")
 		}

@@ -85,11 +85,11 @@ func TestPrivateKeyJWTClientAuthenticatorValidInfo(t *testing.T) {
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", keyId),
 	)
 	claims := map[string]any{
-		string(constants.Issuer):   clientId,
-		string(constants.Subject):  clientId,
-		string(constants.Audience): unit.GetHost(),
-		string(constants.IssuedAt): createdAtTimestamp,
-		string(constants.Expiry):   createdAtTimestamp + 60,
+		string(constants.IssuerClaim):   clientId,
+		string(constants.SubjectClaim):  clientId,
+		string(constants.AudienceClaim): unit.GetHost(),
+		string(constants.IssuedAtClaim): createdAtTimestamp,
+		string(constants.ExpiryClaim):   createdAtTimestamp + 60,
 	}
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
 
@@ -134,14 +134,14 @@ func TestAreScopesAllowed(t *testing.T) {
 
 func TestAreResponseTypesAllowed(t *testing.T) {
 	client := Client{
-		ResponseTypes: []constants.ResponseType{constants.Code},
+		ResponseTypes: []constants.ResponseType{constants.CodeResponse},
 	}
 	testCases := []struct {
 		requestedResponseType constants.ResponseType
 		expectedResult        bool
 	}{
-		{constants.Code, true},
-		{constants.CodeAndIdToken, false},
+		{constants.CodeResponse, true},
+		{constants.CodeAndIdTokenResponse, false},
 	}
 
 	for i, testCase := range testCases {
@@ -158,14 +158,14 @@ func TestAreResponseTypesAllowed(t *testing.T) {
 
 func TestIsGrantTypeAllowed(t *testing.T) {
 	client := Client{
-		GrantTypes: []constants.GrantType{constants.ClientCredentials},
+		GrantTypes: []constants.GrantType{constants.ClientCredentialsGrant},
 	}
 	testCases := []struct {
 		requestedGrantType constants.GrantType
 		expectedResult     bool
 	}{
-		{constants.ClientCredentials, true},
-		{constants.AuthorizationCode, false},
+		{constants.ClientCredentialsGrant, true},
+		{constants.AuthorizationCodeGrant, false},
 	}
 
 	for _, testCase := range testCases {
