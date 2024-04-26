@@ -159,7 +159,7 @@ type BaseAuthorizeRequest struct {
 	RedirectUri         string                        `form:"redirect_uri"`
 	Scope               string                        `form:"scope"`
 	ResponseType        constants.ResponseType        `form:"response_type"`
-	ResponseMode        constants.ResponseMode        `form:"response_mode,default=query"`
+	ResponseMode        constants.ResponseMode        `form:"response_mode"`
 	State               string                        `form:"state"`
 	CodeChallenge       string                        `form:"code_challenge"`
 	CodeChallengeMethod constants.CodeChallengeMethod `form:"code_challenge_method"`
@@ -242,4 +242,5 @@ type OpenIdConfiguration struct {
 	SubjectIdentifierTypes   []constants.SubjectIdentifierType `json:"subject_types_supported"`
 	IdTokenSigningAlgorithms []jose.SignatureAlgorithm         `json:"id_token_signing_alg_values_supported"`
 	ClientAuthnMethods       []constants.ClientAuthnType       `json:"token_endpoint_auth_methods_supported"`
+	ScopesSupported          []string                          `json:"scopes_supported"`
 }

@@ -134,7 +134,7 @@ func validateAuthorizeParams(client models.Client, req models.BaseAuthorizeReque
 		return redirectErr
 	}
 
-	if !client.IsResponseModeAllowed(req.ResponseMode) {
+	if req.ResponseMode != "" && !client.IsResponseModeAllowed(req.ResponseMode) {
 		redirectErr.OAuthBaseError = issues.OAuthBaseError{
 			ErrorCode:        constants.InvalidRequest,
 			ErrorDescription: "response mode not allowed",

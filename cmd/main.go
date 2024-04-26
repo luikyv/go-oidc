@@ -4,10 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
-	"slices"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
@@ -75,7 +73,6 @@ func main() {
 	clientSecretSalt := "random_salt"
 	opaqueGrantModelId := "opaque_token_model"
 	jwtGrantModelId := "jwt_token_model"
-	userPassword := "password"
 	privateKeyId := "rsa_key"
 	port := 83
 	issuer := fmt.Sprintf("https://host.docker.internal:%v", port)
@@ -120,7 +117,7 @@ func main() {
 		ResponseTypes:       constants.ResponseTypes,
 		ResponseModes:       constants.ResponseModes,
 		DefaultGrantModelId: jwtGrantModelId,
-		Authenticator: models.SecretPostClientAuthenticator{
+		Authenticator: models.SecretBasicClientAuthenticator{
 			Salt:         clientSecretSalt,
 			HashedSecret: string(hashedSecret),
 		},
@@ -130,72 +127,11 @@ func main() {
 	}
 	oauthManager.AddClient(client)
 
-	// Create Steps
-	passwordStep := utils.NewStep(
-		"password",
-		func(ctx utils.Context, session *models.AuthnSession) constants.AuthnStatus {
-
-			var passwordForm struct {
-				Password string `form:"password"`
-			}
-			ctx.RequestContext.ShouldBind(&passwordForm)
-
-			if passwordForm.Password == "" {
-				ctx.RequestContext.HTML(http.StatusOK, "password.html", gin.H{
-					"host":       fmt.Sprintf("https://localhost:%v", port),
-					"callbackId": session.CallbackId,
-				})
-				return constants.InProgress
-			}
-
-			if passwordForm.Password != userPassword {
-				ctx.RequestContext.HTML(http.StatusOK, "password.html", gin.H{
-					"callbackId": session.CallbackId,
-					"error":      "invalid password",
-				})
-				return constants.InProgress
-			}
-
-			return constants.Success
-		},
-	)
-
-	identityStep := utils.NewStep(
-		"identity",
-		func(ctx utils.Context, session *models.AuthnSession) constants.AuthnStatus {
-
-			var identityForm struct {
-				Username string `form:"username"`
-			}
-			ctx.RequestContext.ShouldBind(&identityForm)
-
-			a := ctx.RequestContext.PostForm("username")
-			fmt.Println(a)
-
-			if identityForm.Username == "" {
-				ctx.RequestContext.HTML(http.StatusOK, "identity.html", gin.H{
-					"host":       fmt.Sprintf("https://localhost:%v", port),
-					"callbackId": session.CallbackId,
-				})
-				return constants.InProgress
-			}
-
-			session.SetUserId(identityForm.Username)
-			session.SetCustomTokenClaim("custom_claim", "random_value")
-			session.SetCustomTokenClaim("client_attribute", session.GetClientAttribute("custom_attribute"))
-			if slices.Contains(session.Scopes, "email") {
-				session.SetCustomIdTokenClaim("email", "random@email.com")
-			}
-			return constants.Success
-		},
-	)
-
 	// Create Policy
 	policy := utils.NewPolicy(
 		"policy",
 		func(c models.AuthnSession, ctx *gin.Context) bool { return true },
-		identityStep,
-		passwordStep,
+		NoInteractionStep,
 	)
 
 	// Run
