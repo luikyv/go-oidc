@@ -6,7 +6,8 @@ import (
 	"maps"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -38,11 +39,10 @@ func initAuthentication(ctx Context, req models.AuthorizeRequest) error {
 		return err
 	}
 
-	// Fetch the first policy available.
 	policy, policyIsAvailable := ctx.GetAvailablePolicy(session)
 	if !policyIsAvailable {
 		ctx.Logger.Info("no policy available")
-		return NewRedirectErrorFromSession(session, constants.InvalidRequest, "no policy available")
+		return newRedirectOAuthErrorFromSession(session, constants.InvalidRequest, "no policy available")
 	}
 
 	ctx.Logger.Info("policy available", slog.String("policy_id", policy.Id))
@@ -53,7 +53,7 @@ func initAuthentication(ctx Context, req models.AuthorizeRequest) error {
 
 func initValidAuthenticationSession(_ Context, client models.Client, req models.AuthorizeRequest) (models.AuthnSession, error) {
 
-	if err := validateAuthorizeParams(client, req.BaseAuthorizeRequest); err != nil {
+	if err := validateAuthorizeParams(client, req); err != nil {
 		return models.AuthnSession{}, err
 	}
 
@@ -99,26 +99,26 @@ func continueAuthentication(ctx Context, callbackId string) error {
 	return authenticate(ctx, &session)
 }
 
-func validateAuthorizeParams(client models.Client, req models.BaseAuthorizeRequest) error {
+func validateAuthorizeParams(client models.Client, req models.AuthorizeRequest) error {
 	// We must validate the redirect URI first, since the other errors will be redirected.
 	if !client.IsRedirectUriAllowed(req.RedirectUri) {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid redirect uri")
 	}
 
 	if client.PkceIsRequired && req.CodeChallenge == "" {
-		return NewRedirectErrorFromRequest(req, constants.InvalidRequest, "PKCE is required")
+		return newRedirectErrorFromRequest(req, constants.InvalidRequest, "PKCE is required")
 	}
 
 	if !client.AreScopesAllowed(unit.SplitStringWithSpaces(req.Scope)) {
-		return NewRedirectErrorFromRequest(req, constants.InvalidScope, "invalid scope")
+		return newRedirectErrorFromRequest(req, constants.InvalidScope, "invalid scope")
 	}
 
 	if !client.IsResponseTypeAllowed(req.ResponseType) {
-		return NewRedirectErrorFromRequest(req, constants.InvalidRequest, "response type not allowed")
+		return newRedirectErrorFromRequest(req, constants.InvalidRequest, "response type not allowed")
 	}
 
 	if req.ResponseMode != "" && !client.IsResponseModeAllowed(req.ResponseMode) {
-		return NewRedirectErrorFromRequest(req, constants.InvalidRequest, "response mode not allowed")
+		return newRedirectErrorFromRequest(req, constants.InvalidRequest, "response mode not allowed")
 	}
 
 	return nil
@@ -165,7 +165,7 @@ func authenticate(ctx Context, session *models.AuthnSession) error {
 
 	if status == constants.Failure {
 		ctx.AuthnSessionManager.Delete(session.Id)
-		return NewRedirectErrorFromSession(*session, constants.AccessDenied, err.Error())
+		return newRedirectOAuthErrorFromSession(*session, constants.AccessDenied, err.Error())
 	}
 
 	if status == constants.InProgress {
@@ -192,18 +192,18 @@ func finishFlowSuccessfully(ctx Context, session *models.AuthnSession) {
 		params[string(constants.CodeResponse)] = session.AuthorizationCode
 	}
 
+	// Add implict parameters.
+	if session.ResponseType.IsImplict() {
+		implictParams, _ := generateImplictParams(ctx, *session)
+		maps.Copy(params, implictParams)
+	}
+
 	// Echo the state parameter.
 	if session.State != "" {
 		params["state"] = session.State
 	}
 
-	// Add implict parameters.
-	if session.ResponseType.Contains(constants.TokenResponse) || session.ResponseType.Contains(constants.IdTokenResponse) {
-		implictParams, _ := generateImplictParams(ctx, *session)
-		maps.Copy(params, implictParams)
-	}
-
-	buildRedirectResponse(ctx.RequestContext, session.RedirectUri, params, session.ResponseMode)
+	redirectResponse(ctx, models.NewRedirectResponseFromSession(*session, params))
 }
 
 func generateImplictParams(ctx Context, session models.AuthnSession) (map[string]string, error) {
@@ -211,7 +211,7 @@ func generateImplictParams(ctx Context, session models.AuthnSession) (map[string
 	implictParams := make(map[string]string)
 
 	// Generate a token if the client requested it.
-	if session.ResponseType.Contains(constants.TokenResponse) {
+	if session.ResponseType.Contains(constants.TokenResponseResponse) {
 		grantSession := grantModel.GenerateGrantSession(models.NewImplictGrantContext(session))
 		err := ctx.GrantSessionManager.CreateOrUpdate(grantSession)
 		if err != nil {
@@ -238,34 +238,101 @@ func generateImplictParams(ctx Context, session models.AuthnSession) (map[string
 }
 
 func handleAuthorizeError(ctx Context, err error) error {
-	var redirectError issues.OAuthRedirectError
-	if !errors.As(err, &redirectError) {
+	var redirectErr issues.OAuthRedirectError
+	if !errors.As(err, &redirectErr) {
 		return err
 	}
 
-	errorParams := map[string]string{
-		"error":             string(redirectError.ErrorCode),
-		"error_description": redirectError.ErrorDescription,
-	}
-	if redirectError.State != "" {
-		errorParams["state"] = redirectError.State
-	}
-
-	buildRedirectResponse(ctx.RequestContext, redirectError.RedirectUri, errorParams, redirectError.ResponseMode)
+	redirectResponse(ctx, models.NewRedirectResponseFromRedirectError(redirectErr))
 	return nil
 }
 
-func buildRedirectResponse(requestCtx *gin.Context, redirectUri string, params map[string]string, responseMode constants.ResponseMode) {
-	switch responseMode {
-	case constants.FragmentResponseMode:
-		redirectUrl := unit.GetUrlWithFragmentParams(redirectUri, params)
-		requestCtx.Redirect(http.StatusFound, redirectUrl)
-	case constants.FormPostResponseMode:
-		params["redirect_uri"] = redirectUri
-		requestCtx.HTML(http.StatusOK, "internal_form_post.html", params)
+func redirectResponse(ctx Context, redirectResponse models.RedirectResponse) {
+
+	// If either an empty or the "jwt" response modes are passed, we must find the default value based on the response type.
+	if redirectResponse.ResponseMode == "" {
+		redirectResponse.ResponseMode = getDefaultResponseMode(redirectResponse.ResponseType)
+	}
+	if redirectResponse.ResponseMode == constants.JwtResponseMode {
+		redirectResponse.ResponseMode = getDefaultJarmResponseMode(redirectResponse.ResponseType)
+	}
+
+	if redirectResponse.ResponseMode.IsJarm() {
+		redirectResponse.Parameters = map[string]string{
+			"response": createJarmResponse(ctx, redirectResponse.ClientId, redirectResponse.Parameters),
+		}
+	}
+
+	switch redirectResponse.ResponseMode {
+	case constants.FragmentResponseMode, constants.FragmentJwtResponseMode:
+		redirectUrl := unit.GetUrlWithFragmentParams(redirectResponse.RedirectUri, redirectResponse.Parameters)
+		ctx.RequestContext.Redirect(http.StatusFound, redirectUrl)
+	case constants.FormPostResponseMode, constants.FormPostJwtResponseMode:
+		redirectResponse.Parameters["redirect_uri"] = redirectResponse.RedirectUri
+		ctx.RequestContext.HTML(http.StatusOK, "internal_form_post.html", redirectResponse.Parameters)
 	default:
-		// The default response mode is "query".
-		redirectUrl := unit.GetUrlWithQueryParams(redirectUri, params)
-		requestCtx.Redirect(http.StatusFound, redirectUrl)
+		redirectUrl := unit.GetUrlWithQueryParams(redirectResponse.RedirectUri, redirectResponse.Parameters)
+		ctx.RequestContext.Redirect(http.StatusFound, redirectUrl)
+	}
+}
+
+func createJarmResponse(ctx Context, clientId string, params map[string]string) string {
+	jwk := ctx.GetJarmPrivateKey()
+	createdAtTimestamp := unit.GetTimestampNow()
+	signer, _ := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID),
+	)
+
+	claims := map[string]any{
+		string(constants.IssuerClaim):   ctx.Host,
+		string(constants.AudienceClaim): clientId,
+		string(constants.IssuedAtClaim): createdAtTimestamp,
+		string(constants.ExpiryClaim):   createdAtTimestamp + constants.JarmResponseLifetimeSecs,
+	}
+	for k, v := range params {
+		claims[k] = v
+	}
+	response, _ := jwt.Signed(signer).Claims(claims).Serialize()
+
+	return response
+}
+
+func getDefaultResponseMode(responseType constants.ResponseType) constants.ResponseMode {
+	// According to "5. Definitions of Multiple-Valued Response Type Combinations" of https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html.
+	if responseType.IsImplict() {
+		return constants.FragmentResponseMode
+	}
+
+	return constants.QueryResponseMode
+}
+
+func getDefaultJarmResponseMode(responseType constants.ResponseType) constants.ResponseMode {
+	defaultResponseMode := getDefaultResponseMode(responseType)
+	return constants.ResponseMode(string(defaultResponseMode) + "." + string(constants.JwtResponseMode))
+}
+
+func newRedirectOAuthErrorFromSession(session models.AuthnSession, errorCode constants.ErrorCode, errorDescription string) issues.OAuthRedirectError {
+	return issues.OAuthRedirectError{
+		OAuthError:   issues.NewOAuthError(errorCode, errorDescription),
+		ClientId:     session.ClientId,
+		RedirectUri:  session.RedirectUri,
+		ResponseType: session.ResponseType,
+		ResponseMode: session.ResponseMode,
+		State:        session.State,
+	}
+}
+
+func newRedirectErrorFromRequest(req models.AuthorizeRequest, errorCode constants.ErrorCode, errorDescription string) issues.OAuthRedirectError {
+	return issues.OAuthRedirectError{
+		OAuthError: issues.OAuthError{
+			ErrorCode:        errorCode,
+			ErrorDescription: errorDescription,
+		},
+		ClientId:     req.ClientId,
+		RedirectUri:  req.RedirectUri,
+		ResponseType: req.ResponseType,
+		ResponseMode: req.ResponseMode,
+		State:        req.State,
 	}
 }

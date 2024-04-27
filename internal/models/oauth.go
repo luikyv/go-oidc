@@ -224,28 +224,44 @@ type BaseAuthorizeRequest struct {
 
 func (req BaseAuthorizeRequest) IsValid() error {
 
-	// If the request URI is not passed, all the other mandatory parameters must be provided.
-	if req.RequestUri == "" && unit.Any(
-		[]string{req.RedirectUri, req.Scope, string(req.ResponseType)},
-		func(s string) bool { return s == "" },
-	) {
-		return errors.New("invalid parameter")
+	if req.RequestUri != "" {
+		return req.isValidWithPar()
 	}
 
+	return req.isValid()
+}
+
+func (req BaseAuthorizeRequest) isValidWithPar() error {
 	// If the request URI is passed, all the other parameters must be empty.
-	if req.RequestUri != "" && unit.Any(
+	if unit.Any(
 		[]string{req.RedirectUri, req.Scope, string(req.ResponseType), string(req.ResponseMode), req.CodeChallenge, string(req.CodeChallengeMethod)},
 		func(s string) bool { return s != "" },
 	) {
 		return errors.New("invalid parameter")
 	}
 
-	if req.ResponseType != "" && !slices.Contains(constants.ResponseTypes, req.ResponseType) {
+	return nil
+}
+
+func (req BaseAuthorizeRequest) isValid() error {
+	if unit.Any(
+		[]string{req.RedirectUri, req.Scope, string(req.ResponseType)},
+		func(s string) bool { return s == "" },
+	) {
+		return errors.New("invalid parameter")
+	}
+
+	if !slices.Contains(constants.ResponseTypes, req.ResponseType) {
 		return errors.New("invalid response type")
 	}
 
 	if req.ResponseMode != "" && !slices.Contains(constants.ResponseModes, req.ResponseMode) {
 		return errors.New("invalid response mode")
+	}
+
+	// Implict response types cannot be sent via query parameteres.
+	if req.ResponseType.IsImplict() && req.ResponseMode.IsQuery() {
+		return errors.New("invalid response mode for the chosen response type")
 	}
 
 	// Validate PKCE parameters.
@@ -279,6 +295,13 @@ func (req PARRequest) IsValid() error {
 	return req.BaseAuthorizeRequest.IsValid()
 }
 
+func (req PARRequest) ToAuthorizeRequest(client Client) AuthorizeRequest {
+	return AuthorizeRequest{
+		ClientId:             client.Id,
+		BaseAuthorizeRequest: req.BaseAuthorizeRequest,
+	}
+}
+
 type PARResponse struct {
 	RequestUri string `json:"request_uri"`
 	ExpiresIn  int    `json:"expires_in"`
@@ -298,4 +321,39 @@ type OpenIdConfiguration struct {
 	IdTokenSigningAlgorithms []jose.SignatureAlgorithm         `json:"id_token_signing_alg_values_supported"`
 	ClientAuthnMethods       []constants.ClientAuthnType       `json:"token_endpoint_auth_methods_supported"`
 	ScopesSupported          []string                          `json:"scopes_supported"`
+}
+
+type RedirectResponse struct {
+	ClientId     string
+	RedirectUri  string
+	ResponseType constants.ResponseType
+	ResponseMode constants.ResponseMode
+	Parameters   map[string]string
+}
+
+func NewRedirectResponseFromSession(session AuthnSession, params map[string]string) RedirectResponse {
+	return RedirectResponse{
+		ClientId:     session.ClientId,
+		RedirectUri:  session.RedirectUri,
+		Parameters:   params,
+		ResponseType: session.ResponseType,
+		ResponseMode: session.ResponseMode,
+	}
+}
+
+func NewRedirectResponseFromRedirectError(err issues.OAuthRedirectError) RedirectResponse {
+	errorParams := map[string]string{
+		"error":             string(err.ErrorCode),
+		"error_description": err.ErrorDescription,
+	}
+	if err.State != "" {
+		errorParams["state"] = err.State
+	}
+	return RedirectResponse{
+		ClientId:     err.ClientId,
+		RedirectUri:  err.RedirectUri,
+		Parameters:   errorParams,
+		ResponseType: err.ResponseType,
+		ResponseMode: err.ResponseMode,
+	}
 }

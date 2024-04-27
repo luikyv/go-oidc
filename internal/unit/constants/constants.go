@@ -6,7 +6,9 @@ const CallbackIdLength int = 20
 
 const RequestUriLength int = 20
 
-const PARLifetimeSecs int = 60
+const ParLifetimeSecs int = 60
+
+const JarmResponseLifetimeSecs int = 60
 
 const AuthorizationCodeLifetimeSecs int = 60
 

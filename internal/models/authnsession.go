@@ -116,7 +116,7 @@ func (session *AuthnSession) SetAuthnSteps(stepIdSequence []string) {
 }
 
 func (session *AuthnSession) IsPushedRequestExpired() bool {
-	return unit.GetTimestampNow() > session.CreatedAtTimestamp+constants.PARLifetimeSecs
+	return unit.GetTimestampNow() > session.CreatedAtTimestamp+constants.ParLifetimeSecs
 }
 
 func (session *AuthnSession) InitAuthorizationCode() {

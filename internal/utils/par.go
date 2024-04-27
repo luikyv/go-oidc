@@ -46,7 +46,7 @@ func PushAuthorization(ctx Context, req models.PARRequest) (requestUri string, e
 func validatePushedAuthorizationParams(client models.Client, req models.PARRequest) error {
 
 	// The PAR request should accept the same params as the authorize request.
-	err := validateAuthorizeParams(client, req.BaseAuthorizeRequest)
+	err := validateAuthorizeParams(client, req.ToAuthorizeRequest(client))
 
 	// Convert redirection errors to json.
 	var redirectErr issues.OAuthRedirectError

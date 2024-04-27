@@ -12,16 +12,18 @@ import (
 )
 
 type Context struct {
-	Host                string
-	ScopeManager        crud.ScopeManager
-	GrantModelManager   crud.GrantModelManager
-	ClientManager       crud.ClientManager
-	GrantSessionManager crud.GrantSessionManager
-	AuthnSessionManager crud.AuthnSessionManager
-	PrivateJWKS         jose.JSONWebKeySet
-	Policies            []AuthnPolicy
-	RequestContext      *gin.Context
-	Logger              *slog.Logger
+	Host                    string
+	ScopeManager            crud.ScopeManager
+	GrantModelManager       crud.GrantModelManager
+	ClientManager           crud.ClientManager
+	GrantSessionManager     crud.GrantSessionManager
+	AuthnSessionManager     crud.AuthnSessionManager
+	PrivateJwks             jose.JSONWebKeySet
+	PrivateJarmKeyIds       []string // TODO
+	DefaultPrivateJarmKeyId string
+	Policies                []AuthnPolicy
+	RequestContext          *gin.Context
+	Logger                  *slog.Logger
 }
 
 func NewContext(
@@ -31,7 +33,8 @@ func NewContext(
 	clientManager crud.ClientManager,
 	grantSessionManager crud.GrantSessionManager,
 	authnSessionManager crud.AuthnSessionManager,
-	privateJWKS jose.JSONWebKeySet,
+	privateJwks jose.JSONWebKeySet,
+	jarmKeyId string,
 	policies []AuthnPolicy,
 	reqContext *gin.Context,
 ) Context {
@@ -50,16 +53,17 @@ func NewContext(
 	)
 
 	return Context{
-		Host:                host,
-		ScopeManager:        scopeManager,
-		GrantModelManager:   grantModelManager,
-		ClientManager:       clientManager,
-		GrantSessionManager: grantSessionManager,
-		AuthnSessionManager: authnSessionManager,
-		PrivateJWKS:         privateJWKS,
-		Policies:            policies,
-		RequestContext:      reqContext,
-		Logger:              logger,
+		Host:                    host,
+		ScopeManager:            scopeManager,
+		GrantModelManager:       grantModelManager,
+		ClientManager:           clientManager,
+		GrantSessionManager:     grantSessionManager,
+		AuthnSessionManager:     authnSessionManager,
+		PrivateJwks:             privateJwks,
+		DefaultPrivateJarmKeyId: jarmKeyId,
+		Policies:                policies,
+		RequestContext:          reqContext,
+		Logger:                  logger,
 	}
 }
 
@@ -73,7 +77,7 @@ func (ctx Context) GetAvailablePolicy(session models.AuthnSession) (policy Authn
 }
 
 func (ctx Context) GetPrivateKey(keyId string) (jose.JSONWebKey, bool) {
-	keys := ctx.PrivateJWKS.Key(keyId)
+	keys := ctx.PrivateJwks.Key(keyId)
 	if len(keys) != 1 {
 		return jose.JSONWebKey{}, false
 	}
@@ -96,7 +100,7 @@ func (ctx Context) GetPublicKey(keyId string) (jose.JSONWebKey, bool) {
 
 func (ctx Context) GetPublicKeys() jose.JSONWebKeySet {
 	publicKeys := []jose.JSONWebKey{}
-	for _, privateKey := range ctx.PrivateJWKS.Keys {
+	for _, privateKey := range ctx.PrivateJwks.Keys {
 		publicKey := privateKey.Public()
 		// If the key is not of assymetric type, publicKey holds a null value.
 		// To know if it is the case, we'll check if its key ID is not a null value which would mean privateKey is symetric and cannot be public.
@@ -110,10 +114,15 @@ func (ctx Context) GetPublicKeys() jose.JSONWebKeySet {
 
 func (ctx Context) GetSigningAlgorithms() []jose.SignatureAlgorithm {
 	algorithms := []jose.SignatureAlgorithm{}
-	for _, privateKey := range ctx.PrivateJWKS.Keys {
+	for _, privateKey := range ctx.PrivateJwks.Keys {
 		if privateKey.Use == "sig" {
 			algorithms = append(algorithms, jose.SignatureAlgorithm(privateKey.Algorithm))
 		}
 	}
 	return algorithms
+}
+
+func (ctx Context) GetJarmPrivateKey() jose.JSONWebKey {
+	key, _ := ctx.GetPrivateKey(ctx.DefaultPrivateJarmKeyId)
+	return key
 }

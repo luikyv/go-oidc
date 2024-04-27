@@ -41,7 +41,9 @@ func (e OAuthError) Unwrap() error {
 
 type OAuthRedirectError struct {
 	OAuthError
+	ClientId     string
 	RedirectUri  string
+	ResponseType constants.ResponseType
 	ResponseMode constants.ResponseMode
 	State        string
 }

@@ -92,7 +92,7 @@ func GetMockedContext(host string, privateJWKS jose.JSONWebKeySet) Context {
 		GrantSessionManager: mock.NewMockedGrantSessionManager(),
 		AuthnSessionManager: mock.NewMockedAuthnSessionManager(),
 		RequestContext:      GetMockedRequestContext(),
-		PrivateJWKS:         privateJWKS,
+		PrivateJwks:         privateJWKS,
 		Policies:            []AuthnPolicy{},
 		Logger:              slog.Default(),
 	}

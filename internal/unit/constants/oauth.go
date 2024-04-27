@@ -32,23 +32,27 @@ func (rt ResponseType) Contains(responseType ResponseType) bool {
 	return false
 }
 
+func (rt ResponseType) IsImplict() bool {
+	return rt.Contains(IdTokenResponse) || rt.Contains(TokenResponseResponse)
+}
+
 const (
 	CodeResponse                   ResponseType = "code"
 	IdTokenResponse                ResponseType = "id_token"
-	TokenResponse                  ResponseType = "token"
+	TokenResponseResponse          ResponseType = "token"
 	CodeAndIdTokenResponse         ResponseType = "code id_token"
-	CodeAndToken                   ResponseType = "code token"
-	IdTokenAndToken                ResponseType = "id_token token"
+	CodeAndTokenResponse           ResponseType = "code token"
+	IdTokenAndTokenResponse        ResponseType = "id_token token"
 	CodeAndIdTokenAndTokenResponse ResponseType = "code id_token token"
 )
 
 var ResponseTypes []ResponseType = []ResponseType{
 	CodeResponse,
 	IdTokenResponse,
-	TokenResponse,
+	TokenResponseResponse,
 	CodeAndIdTokenResponse,
-	CodeAndToken,
-	IdTokenAndToken,
+	CodeAndTokenResponse,
+	IdTokenAndTokenResponse,
 	CodeAndIdTokenAndTokenResponse,
 }
 
@@ -58,12 +62,29 @@ const (
 	QueryResponseMode    ResponseMode = "query"
 	FragmentResponseMode ResponseMode = "fragment"
 	FormPostResponseMode ResponseMode = "form_post"
+	// JWT Secured Authorization Response Modes.
+	// For more information, see https://openid.net/specs/oauth-v2-jarm.html.
+	QueryJwtResponseMode    ResponseMode = "query.jwt"
+	FragmentJwtResponseMode ResponseMode = "fragment.jwt"
+	FormPostJwtResponseMode ResponseMode = "form_post.jwt"
+	JwtResponseMode         ResponseMode = "jwt"
 )
+
+func (rm ResponseMode) IsJarm() bool {
+	return strings.HasSuffix(string(rm), string(JwtResponseMode))
+}
+
+func (rm ResponseMode) IsQuery() bool {
+	return strings.HasPrefix(string(rm), string(QueryResponseMode))
+}
 
 var ResponseModes []ResponseMode = []ResponseMode{
 	QueryResponseMode,
 	FragmentResponseMode,
 	FormPostResponseMode,
+	QueryJwtResponseMode,
+	FragmentJwtResponseMode,
+	FormPostJwtResponseMode,
 }
 
 type ClientAuthnType string
@@ -72,14 +93,14 @@ const (
 	NoneAuthn              ClientAuthnType = "none"
 	ClientSecretBasicAuthn ClientAuthnType = "client_secret_basic"
 	ClientSecretPostAuthn  ClientAuthnType = "client_secret_post"
-	PrivateKeyJWTAuthn     ClientAuthnType = "private_key_jwt"
+	PrivateKeyJwtAuthn     ClientAuthnType = "private_key_jwt"
 )
 
 var ClientAuthnTypes []ClientAuthnType = []ClientAuthnType{
 	NoneAuthn,
 	ClientSecretBasicAuthn,
 	ClientSecretPostAuthn,
-	PrivateKeyJWTAuthn,
+	PrivateKeyJwtAuthn,
 }
 
 type ClientAssertionType string
