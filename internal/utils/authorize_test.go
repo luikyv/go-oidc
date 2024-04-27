@@ -149,7 +149,7 @@ func TestInitAuthenticationShouldEndWithError(t *testing.T) {
 		func(c models.AuthnSession, ctx *gin.Context) bool { return true },
 		firstStep,
 	)
-	ctx.PolicyIds = append(ctx.PolicyIds, policy.Id)
+	ctx.Policies = append(ctx.Policies, policy)
 
 	// Then
 	utils.InitAuthentication(ctx, models.AuthorizeRequest{
@@ -192,7 +192,7 @@ func TestInitAuthenticationShouldEndInProgress(t *testing.T) {
 		func(c models.AuthnSession, ctx *gin.Context) bool { return true },
 		firstStep,
 	)
-	ctx.PolicyIds = append(ctx.PolicyIds, policy.Id)
+	ctx.Policies = append(ctx.Policies, policy)
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
@@ -255,7 +255,7 @@ func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 		func(c models.AuthnSession, ctx *gin.Context) bool { return true },
 		firstStep,
 	)
-	ctx.PolicyIds = append(ctx.PolicyIds, policy.Id)
+	ctx.Policies = append(ctx.Policies, policy)
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
@@ -318,7 +318,7 @@ func TestInitAuthenticationWithPAR(t *testing.T) {
 		"policy_id",
 		func(s models.AuthnSession, ctx *gin.Context) bool { return true },
 	)
-	ctx.PolicyIds = append(ctx.PolicyIds, policy.Id)
+	ctx.Policies = append(ctx.Policies, policy)
 
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{

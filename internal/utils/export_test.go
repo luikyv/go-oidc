@@ -98,7 +98,7 @@ func GetMockedContext() Context {
 		GrantSessionManager: mock.NewMockedGrantSessionManager(),
 		AuthnSessionManager: mock.NewMockedAuthnSessionManager(),
 		RequestContext:      GetMockedRequestContext(),
-		PolicyIds:           []string{},
+		Policies:            []AuthnPolicy{},
 		Logger:              slog.Default(),
 	}
 }

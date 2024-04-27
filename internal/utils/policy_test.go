@@ -92,10 +92,10 @@ func TestGetPolicy(t *testing.T) {
 		},
 	)
 	ctx := utils.GetMockedContext()
-	ctx.PolicyIds = []string{unavailablePolicy.Id, availablePolicy.Id}
+	ctx.Policies = []utils.AuthnPolicy{unavailablePolicy, availablePolicy}
 
 	// Then
-	policy, policyIsAvailable := utils.GetPolicy(ctx, models.AuthnSession{})
+	policy, policyIsAvailable := ctx.GetAvailablePolicy(models.AuthnSession{})
 
 	// Assert
 	if !policyIsAvailable {
@@ -119,11 +119,10 @@ func TestGetPolicyNoPolicyAvailable(t *testing.T) {
 		},
 	)
 	ctx := utils.GetMockedContext()
-	ctx.PolicyIds = []string{unavailablePolicy.Id}
+	ctx.Policies = []utils.AuthnPolicy{unavailablePolicy}
 
 	// Then
-
-	_, policyIsAvailable := utils.GetPolicy(ctx, models.AuthnSession{})
+	_, policyIsAvailable := ctx.GetAvailablePolicy(models.AuthnSession{})
 
 	// Assert
 	if policyIsAvailable {

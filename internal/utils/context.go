@@ -16,7 +16,7 @@ type Context struct {
 	ClientManager       crud.ClientManager
 	GrantSessionManager crud.GrantSessionManager
 	AuthnSessionManager crud.AuthnSessionManager
-	PolicyIds           []string
+	Policies            []AuthnPolicy
 	RequestContext      *gin.Context
 	Logger              *slog.Logger
 }
@@ -27,7 +27,7 @@ func NewContext(
 	clientManager crud.ClientManager,
 	grantSessionManager crud.GrantSessionManager,
 	authnSessionManager crud.AuthnSessionManager,
-	policyIds []string,
+	policies []AuthnPolicy,
 	reqContext *gin.Context,
 ) Context {
 
@@ -50,15 +50,14 @@ func NewContext(
 		ClientManager:       clientManager,
 		GrantSessionManager: grantSessionManager,
 		AuthnSessionManager: authnSessionManager,
-		PolicyIds:           policyIds,
+		Policies:            policies,
 		RequestContext:      reqContext,
 		Logger:              logger,
 	}
 }
 
 func (ctx Context) GetAvailablePolicy(session models.AuthnSession) (policy AuthnPolicy, policyIsAvailable bool) {
-	for _, policyId := range ctx.PolicyIds {
-		policy = policyMap[policyId]
+	for _, policy = range ctx.Policies {
 		if policyIsAvailable = policy.IsAvailableFunc(session, ctx.RequestContext); policyIsAvailable {
 			break
 		}
