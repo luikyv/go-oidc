@@ -49,6 +49,7 @@ func (authenticator SecretPostClientAuthenticator) IsAuthenticated(req ClientAut
 
 type PrivateKeyJwtClientAuthenticator struct {
 	PublicJwk                jose.JSONWebKey
+	ExpectedAudience         string
 	MaxAssertionLifetimeSecs int
 }
 
@@ -75,7 +76,7 @@ func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(req Client
 	err = claims.ValidateWithLeeway(jwt.Expected{
 		Issuer:      claims.Subject,
 		Subject:     claims.Subject,
-		AnyAudience: []string{unit.GetHost()},
+		AnyAudience: []string{authenticator.ExpectedAudience},
 	}, time.Duration(0))
 	return err == nil
 }

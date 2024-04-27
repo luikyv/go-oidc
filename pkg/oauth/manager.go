@@ -10,12 +10,12 @@ import (
 	"github.com/luikymagno/auth-server/internal/crud"
 	"github.com/luikymagno/auth-server/internal/crud/mock"
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
 type OpenIDManager struct {
+	host                string
 	scopeManager        crud.ScopeManager
 	grantModelManager   crud.GrantModelManager
 	clientManager       crud.ClientManager
@@ -33,9 +33,8 @@ func NewManager(
 	settings ...func(*OpenIDManager),
 ) *OpenIDManager {
 
-	unit.SetHost(host)
-
 	manager := &OpenIDManager{
+		host:        host,
 		privateJWKS: privateJWKS,
 		policies:    make([]utils.AuthnPolicy, 0),
 		server:      gin.Default(),
@@ -77,6 +76,7 @@ func (manager *OpenIDManager) AddPolicy(policy utils.AuthnPolicy) {
 
 func (manager OpenIDManager) getContext(requestContext *gin.Context) utils.Context {
 	return utils.NewContext(
+		manager.host,
 		manager.scopeManager,
 		manager.grantModelManager,
 		manager.clientManager,

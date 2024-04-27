@@ -12,6 +12,7 @@ import (
 )
 
 type Context struct {
+	Host                string
 	ScopeManager        crud.ScopeManager
 	GrantModelManager   crud.GrantModelManager
 	ClientManager       crud.ClientManager
@@ -24,6 +25,7 @@ type Context struct {
 }
 
 func NewContext(
+	host string,
 	scopeManager crud.ScopeManager,
 	grantModelManager crud.GrantModelManager,
 	clientManager crud.ClientManager,
@@ -48,6 +50,7 @@ func NewContext(
 	)
 
 	return Context{
+		Host:                host,
 		ScopeManager:        scopeManager,
 		GrantModelManager:   grantModelManager,
 		ClientManager:       clientManager,

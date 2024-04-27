@@ -2,20 +2,18 @@ package utils
 
 import (
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
 func GetOpenIdConfiguration(ctx Context) models.OpenIdConfiguration {
 
-	host := unit.GetHost()
 	return models.OpenIdConfiguration{
-		Issuer:                   unit.GetHost(),
-		AuthorizationEndpoint:    host + string(constants.AuthorizationEndpoint),
-		TokenEndpoint:            host + string(constants.TokenEndpoint),
-		UserinfoEndpoint:         host + string(constants.UserInfoEndpoint),
-		ParEndpoint:              host + string(constants.PushedAuthorizationRequestEndpoint),
-		JwksUri:                  host + string(constants.JsonWebKeySetEndpoint),
+		Issuer:                   ctx.Host,
+		AuthorizationEndpoint:    ctx.Host + string(constants.AuthorizationEndpoint),
+		TokenEndpoint:            ctx.Host + string(constants.TokenEndpoint),
+		UserinfoEndpoint:         ctx.Host + string(constants.UserInfoEndpoint),
+		ParEndpoint:              ctx.Host + string(constants.PushedAuthorizationRequestEndpoint),
+		JwksUri:                  ctx.Host + string(constants.JsonWebKeySetEndpoint),
 		ResponseTypes:            constants.ResponseTypes,
 		ResponseModes:            constants.ResponseModes,
 		GrantTypes:               constants.GrantTypes,

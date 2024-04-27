@@ -63,7 +63,7 @@ func TestSecretClientAuthenticatorInvalidInfo(t *testing.T) {
 func TestPrivateKeyJWTClientAuthenticatorValidInfo(t *testing.T) {
 
 	// When
-	unit.SetHost("https://example.com")
+	host := "https://example.com"
 
 	keyId := "0afee142-a0af-4410-abcc-9f2d44ff45b5"
 	jwkBytes, _ := json.Marshal(map[string]any{
@@ -76,6 +76,7 @@ func TestPrivateKeyJWTClientAuthenticatorValidInfo(t *testing.T) {
 	jwk.UnmarshalJSON(jwkBytes)
 	authenticator := PrivateKeyJwtClientAuthenticator{
 		PublicJwk:                jwk,
+		ExpectedAudience:         host,
 		MaxAssertionLifetimeSecs: 60,
 	}
 
@@ -88,7 +89,7 @@ func TestPrivateKeyJWTClientAuthenticatorValidInfo(t *testing.T) {
 	claims := map[string]any{
 		string(constants.IssuerClaim):   clientId,
 		string(constants.SubjectClaim):  clientId,
-		string(constants.AudienceClaim): unit.GetHost(),
+		string(constants.AudienceClaim): host,
 		string(constants.IssuedAtClaim): createdAtTimestamp,
 		string(constants.ExpiryClaim):   createdAtTimestamp + 59,
 	}

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
@@ -71,7 +72,7 @@ func TestGetPolicy(t *testing.T) {
 			return true
 		},
 	)
-	ctx := utils.GetMockedContext()
+	ctx := utils.GetMockedContext("", jose.JSONWebKeySet{})
 	ctx.Policies = []utils.AuthnPolicy{unavailablePolicy, availablePolicy}
 
 	// Then
@@ -98,7 +99,7 @@ func TestGetPolicyNoPolicyAvailable(t *testing.T) {
 			return false
 		},
 	)
-	ctx := utils.GetMockedContext()
+	ctx := utils.GetMockedContext("", jose.JSONWebKeySet{})
 	ctx.Policies = []utils.AuthnPolicy{unavailablePolicy}
 
 	// Then

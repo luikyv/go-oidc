@@ -52,7 +52,7 @@ func getTokenId(ctx Context, token string) (string, error) {
 	}
 
 	if err := claims.ValidateWithLeeway(jwt.Expected{
-		Issuer: constants.Host,
+		Issuer: ctx.Host,
 	}, time.Duration(0)); err != nil {
 		return "", issues.NewOAuthError(constants.AccessDenied, "invalid token")
 	}

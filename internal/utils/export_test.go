@@ -10,7 +10,6 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/crud/mock"
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -29,7 +28,6 @@ const ValidGrantModelId string = "random_token_model"
 
 func SetUp() (ctx Context, tearDown func()) {
 	// Create
-	unit.SetHost("https://example.com")
 	keyId := "0afee142-a0af-4410-abcc-9f2d44ff45b5"
 	jwkBytes, _ := json.Marshal(map[string]any{
 		"kty": "oct",
@@ -68,7 +66,7 @@ func SetUp() (ctx Context, tearDown func()) {
 	}
 
 	// Save
-	ctx = GetMockedContext()
+	ctx = GetMockedContext("https://example.com", jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jwk}})
 	ctx.GrantModelManager.Create(grantModel)
 	ctx.ClientManager.Create(client)
 
@@ -85,14 +83,16 @@ func GetMockedRequestContext() *gin.Context {
 	return ctx
 }
 
-func GetMockedContext() Context {
+func GetMockedContext(host string, privateJWKS jose.JSONWebKeySet) Context {
 	return Context{
+		Host:                host,
 		ScopeManager:        mock.NewMockedScopeManager(),
 		GrantModelManager:   mock.NewMockedGrantModelManager(),
 		ClientManager:       mock.NewMockedClientManager(),
 		GrantSessionManager: mock.NewMockedGrantSessionManager(),
 		AuthnSessionManager: mock.NewMockedAuthnSessionManager(),
 		RequestContext:      GetMockedRequestContext(),
+		PrivateJWKS:         privateJWKS,
 		Policies:            []AuthnPolicy{},
 		Logger:              slog.Default(),
 	}

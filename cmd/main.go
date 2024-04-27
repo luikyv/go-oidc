@@ -95,6 +95,7 @@ func main() {
 		},
 		Meta: models.GrantMetaInfo{
 			Id:               opaqueGrantModelId,
+			Issuer:           issuer,
 			ExpiresInSecs:    60,
 			IsRefreshable:    false,
 			OpenIdPrivateJWK: jwks.Key(privateKeyId)[0],
@@ -106,6 +107,7 @@ func main() {
 		},
 		Meta: models.GrantMetaInfo{
 			Id:                  jwtGrantModelId,
+			Issuer:              issuer,
 			ExpiresInSecs:       60,
 			IsRefreshable:       true,
 			RefreshLifetimeSecs: 60,

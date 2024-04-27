@@ -63,14 +63,6 @@ func GetUrlWithFragmentParams(redirectUri string, params map[string]string) stri
 	return parsedUrl.String()
 }
 
-func SetHost(host string) {
-	constants.Host = host
-}
-
-func GetHost() string {
-	return constants.Host
-}
-
 func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod constants.CodeChallengeMethod) bool {
 	switch codeChallengeMethod {
 	case constants.PlainCodeChallengeMethod:

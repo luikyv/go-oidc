@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
@@ -34,7 +33,7 @@ var IdentityStep utils.AuthnStep = utils.NewStep(
 
 		if identityForm.Username == "" {
 			ctx.RequestContext.HTML(http.StatusOK, "identity.html", gin.H{
-				"host":       unit.GetHost(),
+				"host":       ctx.Host,
 				"callbackId": session.CallbackId,
 			})
 			return constants.InProgress, nil
@@ -61,7 +60,7 @@ var PasswordStep utils.AuthnStep = utils.NewStep(
 
 		if passwordForm.Password == "" {
 			ctx.RequestContext.HTML(http.StatusOK, "password.html", gin.H{
-				"host":       unit.GetHost(),
+				"host":       ctx.Host,
 				"callbackId": session.CallbackId,
 			})
 			return constants.InProgress, nil

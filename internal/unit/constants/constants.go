@@ -18,8 +18,6 @@ var ClientSigningAlgorithms []jose.SignatureAlgorithm = []jose.SignatureAlgorith
 	jose.RS256,
 }
 
-var Host string
-
 const Charset string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 type AuthnStatus string
