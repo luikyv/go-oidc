@@ -30,9 +30,6 @@ type AuthnSession struct {
 	AdditionalTokenClaims   map[string]string // Allow the developer to map new (or override the default) claims to the access token.
 	AdditionalIdTokenClaims map[string]string // Allow the developer to map new (or override the default) claims to the ID token.
 	ClientAttributes        map[string]string // Allow the developer to access the client's custom attributes.
-	// In case the authentication flow fails, these values can be used to override the default error information.
-	ErrorCode        constants.ErrorCode
-	ErrorDescription string
 }
 
 func newSessionForBaseAuthorizeRequest(req BaseAuthorizeRequest, client Client) AuthnSession {
@@ -74,12 +71,6 @@ func (session *AuthnSession) SetUserId(userId string) {
 	session.Subject = userId
 }
 
-// Set the error information that will be sent to the client if the flow finishes with failure.
-func (session *AuthnSession) SetError(errorCode constants.ErrorCode, errorDescription string) {
-	session.ErrorCode = errorCode
-	session.ErrorDescription = errorDescription
-}
-
 // Sava a paramater in the session so it can be used across steps.
 func (session *AuthnSession) SaveParameter(key string, value string) {
 	session.Store[key] = value
@@ -109,4 +100,26 @@ func (session *AuthnSession) SetCustomIdTokenClaim(key string, value string) {
 
 func (session *AuthnSession) GetCustomIdTokenClaim(key string, value string) string {
 	return session.AdditionalIdTokenClaims[key]
+}
+
+// Make sure the request URI can't be used again.
+func (session *AuthnSession) EraseRequestUri() {
+	session.RequestUri = ""
+}
+
+func (session *AuthnSession) InitCallbackId() {
+	session.CallbackId = unit.GenerateCallbackId()
+}
+
+func (session *AuthnSession) SetAuthnSteps(stepIdSequence []string) {
+	session.StepIdsLeft = stepIdSequence
+}
+
+func (session *AuthnSession) IsPushedRequestExpired() bool {
+	return unit.GetTimestampNow() > session.CreatedAtTimestamp+constants.PARLifetimeSecs
+}
+
+func (session *AuthnSession) InitAuthorizationCode() {
+	session.AuthorizationCode = unit.GenerateAuthorizationCode()
+	session.AuthorizedAtTimestamp = unit.GetTimestampNow()
 }

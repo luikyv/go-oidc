@@ -79,7 +79,14 @@ func main() {
 	jwks := loadJwks()
 
 	// Create the manager.
-	oauthManager := oauth.NewManager(issuer, jwks, "./templates/*", oauth.SetMockedEntitiesConfig, oauth.SetMockedSessionsConfig)
+	oauthManager := oauth.NewManager(
+		issuer,
+		jwks,
+		"./templates/*",
+		oauth.ConfigureInMemoryClientAndScope,
+		oauth.ConfigureInMemoryGrantModel,
+		oauth.ConfigureInMemorySessions,
+	)
 
 	// Add token model mocks.
 	oauthManager.AddGrantModel(models.GrantModel{

@@ -46,7 +46,7 @@ func TestInitAuthenticationWhenInvalidRedirectUri(t *testing.T) {
 	})
 
 	// Assert
-	var jsonErr issues.OAuthBaseError
+	var jsonErr issues.OAuthError
 	if err == nil || !errors.As(err, &jsonErr) {
 		t.Error("the redirect URI should not be valid")
 		return
@@ -65,7 +65,7 @@ func TestInitAuthenticationWhenInvalidScope(t *testing.T) {
 	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 
 	// Then
-	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
+	utils.InitAuthentication(ctx, models.AuthorizeRequest{
 		ClientId: utils.ValidClientId,
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RedirectUri:  client.RedirectUris[0],
@@ -75,14 +75,9 @@ func TestInitAuthenticationWhenInvalidScope(t *testing.T) {
 	})
 
 	// Assert
-	var redirectErr issues.OAuthRedirectError
-	if err == nil || !errors.As(err, &redirectErr) {
+	redirectUrl := ctx.RequestContext.Writer.Header().Get("Location")
+	if !strings.Contains(redirectUrl, fmt.Sprintf("error=%s", string(constants.InvalidScope))) {
 		t.Error("the scope should not be valid")
-		return
-	}
-
-	if redirectErr.ErrorCode != constants.InvalidScope {
-		t.Errorf("invalid error code: %s", redirectErr.ErrorCode)
 		return
 	}
 }
@@ -96,7 +91,7 @@ func TestInitAuthenticationWhenInvalidResponseType(t *testing.T) {
 	ctx.ClientManager.Update(utils.ValidClientId, client)
 
 	// Then
-	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
+	utils.InitAuthentication(ctx, models.AuthorizeRequest{
 		ClientId: utils.ValidClientId,
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RedirectUri:  client.RedirectUris[0],
@@ -106,14 +101,9 @@ func TestInitAuthenticationWhenInvalidResponseType(t *testing.T) {
 	})
 
 	// Assert
-	var redirectErr issues.OAuthRedirectError
-	if err == nil || !errors.As(err, &redirectErr) {
+	redirectUrl := ctx.RequestContext.Writer.Header().Get("Location")
+	if !strings.Contains(redirectUrl, fmt.Sprintf("error=%s", string(constants.InvalidRequest))) {
 		t.Error("the response type should not be allowed")
-		return
-	}
-
-	if redirectErr.ErrorCode != constants.InvalidRequest {
-		t.Errorf("invalid error code: %s", redirectErr.ErrorCode)
 		return
 	}
 }
@@ -125,7 +115,7 @@ func TestInitAuthenticationWhenNoPolicyIsAvailable(t *testing.T) {
 	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 
 	// Then
-	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
+	utils.InitAuthentication(ctx, models.AuthorizeRequest{
 		ClientId: utils.ValidClientId,
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RedirectUri:  client.RedirectUris[0],
@@ -135,10 +125,12 @@ func TestInitAuthenticationWhenNoPolicyIsAvailable(t *testing.T) {
 	})
 
 	// Assert
-	if err == nil {
+	redirectUrl := ctx.RequestContext.Writer.Header().Get("Location")
+	if !strings.Contains(redirectUrl, fmt.Sprintf("error=%s", string(constants.InvalidRequest))) {
 		t.Error("no policy should be available")
 		return
 	}
+
 }
 
 func TestInitAuthenticationShouldEndWithError(t *testing.T) {
@@ -148,8 +140,8 @@ func TestInitAuthenticationShouldEndWithError(t *testing.T) {
 	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 	firstStep := utils.NewStep(
 		"init_step",
-		func(ctx utils.Context, as *models.AuthnSession) constants.AuthnStatus {
-			return constants.Failure
+		func(ctx utils.Context, as *models.AuthnSession) (constants.AuthnStatus, error) {
+			return constants.Failure, errors.New("error")
 		},
 	)
 	policy := utils.NewPolicy(
@@ -160,7 +152,7 @@ func TestInitAuthenticationShouldEndWithError(t *testing.T) {
 	ctx.PolicyIds = append(ctx.PolicyIds, policy.Id)
 
 	// Then
-	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
+	utils.InitAuthentication(ctx, models.AuthorizeRequest{
 		ClientId: utils.ValidClientId,
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RedirectUri:  client.RedirectUris[0],
@@ -171,14 +163,9 @@ func TestInitAuthenticationShouldEndWithError(t *testing.T) {
 	})
 
 	// Assert
-	if err != nil {
-		t.Errorf("no error should happen: %s", err.Error())
-		return
-	}
-
 	redirectUrl := ctx.RequestContext.Writer.Header().Get("Location")
-	if !strings.Contains(redirectUrl, "error") {
-		t.Errorf("the policy should finish redirecting with error. redirect URL: %s", redirectUrl)
+	if !strings.Contains(redirectUrl, fmt.Sprintf("error=%s", string(constants.AccessDenied))) {
+		t.Error("no error found")
 		return
 	}
 
@@ -187,7 +174,6 @@ func TestInitAuthenticationShouldEndWithError(t *testing.T) {
 		t.Error("no authentication session should remain")
 		return
 	}
-
 }
 
 func TestInitAuthenticationShouldEndInProgress(t *testing.T) {
@@ -197,8 +183,8 @@ func TestInitAuthenticationShouldEndInProgress(t *testing.T) {
 	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 	firstStep := utils.NewStep(
 		"init_step",
-		func(ctx utils.Context, as *models.AuthnSession) constants.AuthnStatus {
-			return constants.InProgress
+		func(ctx utils.Context, as *models.AuthnSession) (constants.AuthnStatus, error) {
+			return constants.InProgress, nil
 		},
 	)
 	policy := utils.NewPolicy(
@@ -260,8 +246,8 @@ func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 	firstStep := utils.NewStep(
 		"init_step",
-		func(ctx utils.Context, as *models.AuthnSession) constants.AuthnStatus {
-			return constants.Success
+		func(ctx utils.Context, as *models.AuthnSession) (constants.AuthnStatus, error) {
+			return constants.Success, nil
 		},
 	)
 	policy := utils.NewPolicy(
@@ -374,8 +360,8 @@ func TestContinueAuthentication(t *testing.T) {
 	defer tearDown()
 	firstStep := utils.NewStep(
 		"init_step",
-		func(ctx utils.Context, as *models.AuthnSession) constants.AuthnStatus {
-			return constants.InProgress
+		func(ctx utils.Context, as *models.AuthnSession) (constants.AuthnStatus, error) {
+			return constants.InProgress, nil
 		},
 	)
 

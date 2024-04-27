@@ -18,14 +18,10 @@ import (
 func init() {
 	StepMap = stepMap
 	PolicyMap = policyMap
-	FinishFlowSuccessfullyStep = finishFlowSuccessfullyStep
-	FinishFlowWithFailureStep = finishFlowWithFailureStep
 }
 
 var StepMap map[string]AuthnStep
 var PolicyMap map[string]AuthnPolicy
-var FinishFlowSuccessfullyStep AuthnStep
-var FinishFlowWithFailureStep AuthnStep
 
 const ValidClientId string = "random_client_id"
 

@@ -1,20 +1,15 @@
 package utils_test
 
 import (
-	"fmt"
-	"net/http"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
 func setUp() (tearDown func()) {
 	// Set up.
-	utils.StepMap[utils.FinishFlowSuccessfullyStep.Id] = utils.FinishFlowSuccessfullyStep
-	utils.StepMap[utils.FinishFlowWithFailureStep.Id] = utils.FinishFlowWithFailureStep
 
 	// Tear down.
 	return func() {
@@ -135,50 +130,4 @@ func TestGetPolicyNoPolicyAvailable(t *testing.T) {
 		t.Error("GetPolicy should not find any policy")
 	}
 
-}
-
-func TestFinishFlowSuccessfullyStep(t *testing.T) {
-	// When
-	session := &models.AuthnSession{
-		RedirectUri:  "https://example.com",
-		State:        "random_state",
-		ResponseType: constants.CodeResponse,
-	}
-	ctx := utils.GetMockedContext()
-
-	// Then
-	utils.FinishFlowSuccessfullyStep.AuthnFunc(ctx, session)
-
-	// Assert
-	if session.AuthorizationCode == "" {
-		t.Error("the authorization code was not filled")
-	}
-	if http.StatusFound != ctx.RequestContext.Writer.Status() {
-		t.Errorf("response status is: %v, but should be 302", ctx.RequestContext.Request.Response.StatusCode)
-	}
-	expectedRedirectUrl := fmt.Sprintf(session.RedirectUri+"?code=%s&state=%s", session.AuthorizationCode, session.State)
-	if redirectUrl := ctx.RequestContext.Writer.Header().Get("Location"); redirectUrl != expectedRedirectUrl {
-		t.Errorf("the redirect url: %s is not as expected", redirectUrl)
-	}
-}
-
-func TestFinishFlowWithFailureStep(t *testing.T) {
-	// When
-	session := &models.AuthnSession{
-		RedirectUri: "https://example.com",
-		State:       "random_state",
-	}
-	ctx := utils.GetMockedContext()
-
-	// Then
-	utils.FinishFlowWithFailureStep.AuthnFunc(ctx, session)
-
-	// Assert
-	if http.StatusFound != ctx.RequestContext.Writer.Status() {
-		t.Errorf("response status is: %v, but should be 302", ctx.RequestContext.Request.Response.StatusCode)
-	}
-	expectedRedirectUrl := fmt.Sprintf(session.RedirectUri+"?error=%s&error_description=%s&state=%s", "access_denied", "access+denied", session.State)
-	if redirectUrl := ctx.RequestContext.Writer.Header().Get("Location"); redirectUrl != expectedRedirectUrl {
-		t.Errorf("the redirect url: %s is not as expected", redirectUrl)
-	}
 }

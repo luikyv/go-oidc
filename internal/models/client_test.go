@@ -75,7 +75,8 @@ func TestPrivateKeyJWTClientAuthenticatorValidInfo(t *testing.T) {
 	var jwk jose.JSONWebKey
 	jwk.UnmarshalJSON(jwkBytes)
 	authenticator := PrivateKeyJwtClientAuthenticator{
-		PublicJwk: jwk,
+		PublicJwk:                jwk,
+		MaxAssertionLifetimeSecs: 60,
 	}
 
 	clientId := "random_client_id"
@@ -89,7 +90,7 @@ func TestPrivateKeyJWTClientAuthenticatorValidInfo(t *testing.T) {
 		string(constants.SubjectClaim):  clientId,
 		string(constants.AudienceClaim): unit.GetHost(),
 		string(constants.IssuedAtClaim): createdAtTimestamp,
-		string(constants.ExpiryClaim):   createdAtTimestamp + 60,
+		string(constants.ExpiryClaim):   createdAtTimestamp + 59,
 	}
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
 

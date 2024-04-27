@@ -1,8 +1,12 @@
 package utils
 
 import (
+	"errors"
 	"log/slog"
+	"maps"
+	"net/http"
 
+	"github.com/gin-gonic/gin"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -10,14 +14,17 @@ import (
 )
 
 func InitAuthentication(ctx Context, req models.AuthorizeRequest) error {
+	if err := initAuthentication(ctx, req); err != nil {
+		return handleAuthorizeError(ctx, err)
+	}
+	return nil
+}
+
+func initAuthentication(ctx Context, req models.AuthorizeRequest) error {
 	// Fetch the client.
 	client, err := ctx.ClientManager.Get(req.ClientId)
 	if err != nil {
-		return issues.OAuthBaseError{
-			Inner:            err,
-			ErrorCode:        constants.InvalidRequest,
-			ErrorDescription: "invalid client ID",
-		}
+		return issues.NewWrappingOAuthError(err, constants.InvalidRequest, "invalid client ID")
 	}
 
 	// Init the session and make sure it is valid.
@@ -32,24 +39,16 @@ func InitAuthentication(ctx Context, req models.AuthorizeRequest) error {
 	}
 
 	// Fetch the first policy available.
-	policy, policyIsAvailable := GetPolicy(ctx, session)
+	policy, policyIsAvailable := ctx.GetAvailablePolicy(session)
 	if !policyIsAvailable {
 		ctx.Logger.Info("no policy available")
-		return issues.OAuthRedirectError{
-			OAuthBaseError: issues.OAuthBaseError{
-				ErrorCode:        constants.InvalidRequest,
-				ErrorDescription: "no policy available",
-			},
-			RedirectUri: session.RedirectUri,
-			State:       session.State,
-		}
+		return NewRedirectErrorFromSession(session, constants.InvalidRequest, "no policy available")
 	}
 
 	ctx.Logger.Info("policy available", slog.String("policy_id", policy.Id))
-	session.StepIdsLeft = policy.StepIdSequence
+	session.SetAuthnSteps(policy.StepIdSequence)
 
-	return authenticate(ctx, session)
-
+	return authenticate(ctx, &session)
 }
 
 func initValidAuthenticationSession(_ Context, client models.Client, req models.AuthorizeRequest) (models.AuthnSession, error) {
@@ -67,10 +66,7 @@ func initValidAuthenticationSessionWithPAR(ctx Context, req models.AuthorizeRequ
 	// Fetch it using the request URI.
 	session, err := ctx.AuthnSessionManager.GetByRequestUri(req.RequestUri)
 	if err != nil {
-		return models.AuthnSession{}, issues.OAuthBaseError{
-			ErrorCode:        constants.InvalidRequest,
-			ErrorDescription: "invalid request_uri",
-		}
+		return models.AuthnSession{}, issues.NewOAuthError(constants.InvalidRequest, "invalid request_uri")
 	}
 
 	if err := validateAuthorizeWithPARParams(session, req); err != nil {
@@ -80,12 +76,19 @@ func initValidAuthenticationSessionWithPAR(ctx Context, req models.AuthorizeRequ
 	}
 
 	// FIXME: Treating the request_uri as one-time use will cause problems when the user refreshes the page.
-	session.RequestUri = "" // Make sure the request URI can't be used again.
-	session.CallbackId = unit.GenerateCallbackId()
+	session.EraseRequestUri()
+	session.InitCallbackId()
 	return session, nil
 }
 
 func ContinueAuthentication(ctx Context, callbackId string) error {
+	if err := continueAuthentication(ctx, callbackId); err != nil {
+		return handleAuthorizeError(ctx, err)
+	}
+	return nil
+}
+
+func continueAuthentication(ctx Context, callbackId string) error {
 
 	// Fetch the session using the callback ID.
 	session, err := ctx.AuthnSessionManager.GetByCallbackId(callbackId)
@@ -93,53 +96,29 @@ func ContinueAuthentication(ctx Context, callbackId string) error {
 		return err
 	}
 
-	return authenticate(ctx, session)
+	return authenticate(ctx, &session)
 }
 
 func validateAuthorizeParams(client models.Client, req models.BaseAuthorizeRequest) error {
 	// We must validate the redirect URI first, since the other errors will be redirected.
 	if !client.IsRedirectUriAllowed(req.RedirectUri) {
-		return issues.OAuthBaseError{
-			ErrorCode:        constants.InvalidRequest,
-			ErrorDescription: "invalid redirect uri",
-		}
-	}
-
-	redirectErr := issues.OAuthRedirectError{
-		RedirectUri: req.RedirectUri,
-		State:       req.State,
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid redirect uri")
 	}
 
 	if client.PkceIsRequired && req.CodeChallenge == "" {
-		redirectErr.OAuthBaseError = issues.OAuthBaseError{
-			ErrorCode:        constants.InvalidRequest,
-			ErrorDescription: "PKCE is required",
-		}
-		return redirectErr
+		return NewRedirectErrorFromRequest(req, constants.InvalidRequest, "PKCE is required")
 	}
 
 	if !client.AreScopesAllowed(unit.SplitStringWithSpaces(req.Scope)) {
-		redirectErr.OAuthBaseError = issues.OAuthBaseError{
-			ErrorCode:        constants.InvalidScope,
-			ErrorDescription: "invalid scope",
-		}
-		return redirectErr
+		return NewRedirectErrorFromRequest(req, constants.InvalidScope, "invalid scope")
 	}
 
 	if !client.IsResponseTypeAllowed(req.ResponseType) {
-		redirectErr.OAuthBaseError = issues.OAuthBaseError{
-			ErrorCode:        constants.InvalidRequest,
-			ErrorDescription: "response type not allowed",
-		}
-		return redirectErr
+		return NewRedirectErrorFromRequest(req, constants.InvalidRequest, "response type not allowed")
 	}
 
 	if req.ResponseMode != "" && !client.IsResponseModeAllowed(req.ResponseMode) {
-		redirectErr.OAuthBaseError = issues.OAuthBaseError{
-			ErrorCode:        constants.InvalidRequest,
-			ErrorDescription: "response mode not allowed",
-		}
-		return redirectErr
+		return NewRedirectErrorFromRequest(req, constants.InvalidRequest, "response mode not allowed")
 	}
 
 	return nil
@@ -147,19 +126,13 @@ func validateAuthorizeParams(client models.Client, req models.BaseAuthorizeReque
 
 func validateAuthorizeWithPARParams(session models.AuthnSession, req models.AuthorizeRequest) error {
 
-	if unit.GetTimestampNow() > session.CreatedAtTimestamp+constants.PARLifetimeSecs {
-		return issues.OAuthBaseError{
-			ErrorCode:        constants.InvalidRequest,
-			ErrorDescription: "the request uri expired",
-		}
+	if session.IsPushedRequestExpired() {
+		return issues.NewOAuthError(constants.InvalidRequest, "the request_uri expired")
 	}
 
 	// Make sure the client who created the PAR request is the same one trying to authorize.
 	if session.ClientId != req.ClientId {
-		return issues.OAuthBaseError{
-			ErrorCode:        constants.AccessDenied,
-			ErrorDescription: "invalid client",
-		}
+		return issues.NewOAuthError(constants.AccessDenied, "invalid client")
 	}
 
 	allParamsAreEmpty := unit.All(
@@ -169,61 +142,130 @@ func validateAuthorizeWithPARParams(session models.AuthnSession, req models.Auth
 		},
 	)
 	if !allParamsAreEmpty {
-		return issues.OAuthBaseError{
-			ErrorCode:        constants.InvalidRequest,
-			ErrorDescription: "invalid parameter when using PAR",
-		}
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid parameter when using PAR")
 	}
 
 	return nil
 }
 
 // Execute the authentication steps.
-func authenticate(ctx Context, session models.AuthnSession) error {
+func authenticate(ctx Context, session *models.AuthnSession) error {
 
 	status := constants.Success
+	var err error
 	for status == constants.Success && len(session.StepIdsLeft) > 0 {
 		currentStep := GetStep(session.StepIdsLeft[0])
-		status = currentStep.AuthnFunc(ctx, &session)
+		status, err = currentStep.AuthnFunc(ctx, session)
 
 		if status == constants.Success {
 			// If the step finished with success, it can be removed from the remaining ones.
-			session.StepIdsLeft = session.StepIdsLeft[1:]
+			session.SetAuthnSteps(session.StepIdsLeft[1:])
 		}
-
 	}
 
 	if status == constants.Failure {
-		finishFlowWithFailureStep.AuthnFunc(ctx, &session)
-		return ctx.AuthnSessionManager.Delete(session.Id)
+		ctx.AuthnSessionManager.Delete(session.Id)
+		return NewRedirectErrorFromSession(*session, constants.AccessDenied, err.Error())
 	}
 
 	if status == constants.InProgress {
-		return ctx.AuthnSessionManager.CreateOrUpdate(session)
+		return ctx.AuthnSessionManager.CreateOrUpdate(*session)
 	}
 
 	// At this point, the status can only be success and there are no more steps left.
+	finishFlowSuccessfully(ctx, session)
 	if !session.ResponseType.Contains(constants.CodeResponse) {
 		// The client didn't request an authorization code to later exchange it for an access token,
 		// so we don't keep the session anymore.
 		return ctx.AuthnSessionManager.Delete(session.Id)
 	}
-	return ctx.AuthnSessionManager.CreateOrUpdate(session)
+	return ctx.AuthnSessionManager.CreateOrUpdate(*session)
 }
 
-// func updateOrDeleteSession(ctx Context, session models.AuthnSession, currentStep *AuthnStep) error {
+func finishFlowSuccessfully(ctx Context, session *models.AuthnSession) {
 
-// 	if currentStep == FinishFlowWithFailureStep {
-// 		// The flow finished with failure, so we don't keep the session anymore.
-// 		return ctx.AuthnSessionManager.Delete(session.Id)
-// 	}
+	params := make(map[string]string)
 
-// 	if currentStep == FinishFlowSuccessfullyStep && !unit.ResponseTypeContainsCode(session.ResponseType) {
-// 		// The client didn't request an authorization code to later exchange it for an access token,
-// 		// so we don't keep the session anymore.
-// 		return ctx.AuthnSessionManager.Delete(session.Id)
-// 	}
+	// Generate the authorization code if the client requested it.
+	if session.ResponseType.Contains(constants.CodeResponse) {
+		session.InitAuthorizationCode()
+		params[string(constants.CodeResponse)] = session.AuthorizationCode
+	}
 
-// 	session.StepId = currentStep.Id
-// 	return ctx.AuthnSessionManager.CreateOrUpdate(session)
-// }
+	// Echo the state parameter.
+	if session.State != "" {
+		params["state"] = session.State
+	}
+
+	// Add implict parameters.
+	if session.ResponseType.Contains(constants.TokenResponse) || session.ResponseType.Contains(constants.IdTokenResponse) {
+		implictParams, _ := generateImplictParams(ctx, *session)
+		maps.Copy(params, implictParams)
+	}
+
+	buildRedirectResponse(ctx.RequestContext, session.RedirectUri, params, session.ResponseMode)
+}
+
+func generateImplictParams(ctx Context, session models.AuthnSession) (map[string]string, error) {
+	grantModel, _ := ctx.GrantModelManager.Get(session.GrantModelId)
+	implictParams := make(map[string]string)
+
+	// Generate a token if the client requested it.
+	if session.ResponseType.Contains(constants.TokenResponse) {
+		grantSession := grantModel.GenerateGrantSession(models.NewImplictGrantContext(session))
+		err := ctx.GrantSessionManager.CreateOrUpdate(grantSession)
+		if err != nil {
+			return map[string]string{}, err
+		}
+		implictParams["access_token"] = grantSession.Token
+		implictParams["token_type"] = string(constants.Bearer)
+	}
+
+	// Generate an ID token if the client requested it.
+	if session.ResponseType.Contains(constants.IdTokenResponse) {
+		implictParams["id_token"] = grantModel.GenerateIdToken(
+			models.NewImplictGrantContextForIdToken(session, models.IdTokenContext{
+				AccessToken:             implictParams["access_token"],
+				AuthorizationCode:       session.AuthorizationCode,
+				State:                   session.State,
+				Nonce:                   session.Nonce,
+				AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
+			}),
+		)
+	}
+
+	return implictParams, nil
+}
+
+func handleAuthorizeError(ctx Context, err error) error {
+	var redirectError issues.OAuthRedirectError
+	if !errors.As(err, &redirectError) {
+		return err
+	}
+
+	errorParams := map[string]string{
+		"error":             string(redirectError.ErrorCode),
+		"error_description": redirectError.ErrorDescription,
+	}
+	if redirectError.State != "" {
+		errorParams["state"] = redirectError.State
+	}
+
+	buildRedirectResponse(ctx.RequestContext, redirectError.RedirectUri, errorParams, redirectError.ResponseMode)
+	return nil
+}
+
+func buildRedirectResponse(requestCtx *gin.Context, redirectUri string, params map[string]string, responseMode constants.ResponseMode) {
+	switch responseMode {
+	case constants.FragmentResponseMode:
+		redirectUrl := unit.GetUrlWithFragmentParams(redirectUri, params)
+		requestCtx.Redirect(http.StatusFound, redirectUrl)
+	case constants.FormPostResponseMode:
+		params["redirect_uri"] = redirectUri
+		requestCtx.HTML(http.StatusOK, "internal_form_post.html", params)
+	default:
+		// The default response mode is "query".
+		redirectUrl := unit.GetUrlWithQueryParams(redirectUri, params)
+		requestCtx.Redirect(http.StatusFound, redirectUrl)
+	}
+}

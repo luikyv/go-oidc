@@ -122,7 +122,7 @@ func (req ClientAuthnRequest) IsValid() error {
 
 	// Either the client ID or the client assertion must be present to identity the client.
 	if req.ClientIdBasicAuthn == "" && req.ClientIdPost == "" && req.ClientAssertion == "" {
-		return issues.OAuthBaseError{
+		return issues.OAuthError{
 			ErrorCode:        constants.InvalidClient,
 			ErrorDescription: "invalid client authentication",
 		}
@@ -130,7 +130,7 @@ func (req ClientAuthnRequest) IsValid() error {
 
 	// Validate parameters for client secret basic authentication.
 	if req.ClientIdBasicAuthn != "" && (req.ClientSecretBasicAuthn == "" || req.ClientIdPost != "" || req.ClientSecretPost != "" || req.ClientAssertionType != "" || req.ClientAssertion != "") {
-		return issues.OAuthBaseError{
+		return issues.OAuthError{
 			ErrorCode:        constants.InvalidClient,
 			ErrorDescription: "invalid client authentication",
 		}
@@ -138,7 +138,7 @@ func (req ClientAuthnRequest) IsValid() error {
 
 	// Validate parameters for client secret post authentication.
 	if req.ClientIdPost != "" && (req.ClientSecretPost == "" || req.ClientIdBasicAuthn != "" || req.ClientSecretBasicAuthn != "" || req.ClientAssertionType != "" || req.ClientAssertion != "") {
-		return issues.OAuthBaseError{
+		return issues.OAuthError{
 			ErrorCode:        constants.InvalidClient,
 			ErrorDescription: "invalid client authentication",
 		}
@@ -146,7 +146,7 @@ func (req ClientAuthnRequest) IsValid() error {
 
 	// Validate parameters for private key jwt authentication.
 	if req.ClientAssertion != "" && (req.ClientAssertionType != constants.JWTBearerAssertion || req.ClientIdBasicAuthn != "" || req.ClientSecretBasicAuthn != "" || req.ClientIdPost != "" || req.ClientSecretPost != "") {
-		return issues.OAuthBaseError{
+		return issues.OAuthError{
 			ErrorCode:        constants.InvalidClient,
 			ErrorDescription: "invalid client authentication",
 		}
@@ -192,7 +192,7 @@ func (req TokenRequest) IsValid() error {
 			return errors.New("invalid parameter for refresh token grant")
 		}
 	default:
-		return issues.OAuthBaseError{
+		return issues.OAuthError{
 			ErrorCode:        constants.UnsupportedGrantType,
 			ErrorDescription: "unsupported grant type",
 		}

@@ -48,10 +48,7 @@ func handleClientCredentialsGrantTokenCreation(ctx Context, req models.TokenRequ
 
 	grantModel, err := ctx.GrantModelManager.Get(authenticatedClient.DefaultGrantModelId)
 	if err != nil {
-		return models.GrantSession{}, issues.OAuthBaseError{
-			ErrorCode:        constants.InternalError,
-			ErrorDescription: "grant model not found",
-		}
+		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, "grant model not found")
 	}
 
 	grantSession := grantModel.GenerateGrantSession(
@@ -75,18 +72,12 @@ func validateClientCredentialsGrantRequest(ctx Context, client models.Client, re
 
 	if !client.IsGrantTypeAllowed(constants.ClientCredentialsGrant) {
 		ctx.Logger.Info("grant type not allowed")
-		return issues.OAuthBaseError{
-			ErrorCode:        constants.UnauthorizedClient,
-			ErrorDescription: "invalid grant type",
-		}
+		return issues.NewOAuthError(constants.UnauthorizedClient, "invalid grant type")
 	}
 
 	if !client.AreScopesAllowed(unit.SplitStringWithSpaces(req.Scope)) {
 		ctx.Logger.Info("scope not allowed")
-		return issues.OAuthBaseError{
-			ErrorCode:        constants.InvalidScope,
-			ErrorDescription: "invalid scope",
-		}
+		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
 	}
 
 	return nil
@@ -139,39 +130,24 @@ func handleAuthorizationCodeGrantTokenCreation(ctx Context, req models.TokenRequ
 func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client models.Client, session models.AuthnSession) error {
 
 	if !client.IsGrantTypeAllowed(constants.AuthorizationCodeGrant) {
-		return issues.OAuthBaseError{
-			ErrorCode:        constants.UnauthorizedClient,
-			ErrorDescription: "invalid grant type",
-		}
+		return issues.NewOAuthError(constants.UnauthorizedClient, "invalid grant type")
 	}
 
 	if unit.GetTimestampNow() > session.AuthorizedAtTimestamp+constants.AuthorizationCodeLifetimeSecs {
-		return issues.OAuthBaseError{
-			ErrorCode:        constants.InvalidGrant,
-			ErrorDescription: "the authorization code is expired",
-		}
+		return issues.NewOAuthError(constants.InvalidGrant, "the authorization code is expired")
 	}
 
 	if session.ClientId != client.Id {
-		return issues.OAuthBaseError{
-			ErrorCode:        constants.InvalidGrant,
-			ErrorDescription: "the authorization code was not issued to the client",
-		}
+		return issues.NewOAuthError(constants.InvalidGrant, "the authorization code was not issued to the client")
 	}
 
 	if session.RedirectUri != req.RedirectUri {
-		return issues.OAuthBaseError{
-			ErrorCode:        constants.InvalidGrant,
-			ErrorDescription: "invalid redirect_uri",
-		}
+		return issues.NewOAuthError(constants.InvalidGrant, "invalid redirect_uri")
 	}
 
 	// If the session was created with a code challenge, the token request must contain the right code verifier.
 	if session.CodeChallenge != "" && (req.CodeVerifier == "" || !unit.IsPkceValid(req.CodeVerifier, session.CodeChallenge, session.CodeChallengeMethod)) {
-		return issues.OAuthBaseError{
-			ErrorCode:        constants.InvalidRequest,
-			ErrorDescription: "invalid pkce",
-		}
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid pkce")
 	}
 
 	return nil
@@ -208,10 +184,7 @@ func getSessionByAuthorizationCode(ctx Context, authorizationCode string, ch cha
 	if err != nil {
 		ch <- ResultChannel{
 			result: models.AuthnSession{},
-			err: issues.OAuthBaseError{
-				ErrorCode:        constants.InvalidGrant,
-				ErrorDescription: "invalid authorization code",
-			},
+			err:    issues.NewWrappingOAuthError(err, constants.InvalidGrant, "invalid authorization code"),
 		}
 	}
 
@@ -221,11 +194,7 @@ func getSessionByAuthorizationCode(ctx Context, authorizationCode string, ch cha
 	if err != nil {
 		ch <- ResultChannel{
 			result: models.AuthnSession{},
-			err: issues.OAuthBaseError{
-				Inner:            err,
-				ErrorCode:        constants.InternalError,
-				ErrorDescription: "could not delete session",
-			},
+			err:    issues.NewWrappingOAuthError(err, constants.InternalError, "could not delete session"),
 		}
 	}
 
@@ -314,26 +283,17 @@ func getGrantSessionByRefreshToken(ctx Context, refreshToken string, ch chan<- R
 func validateRefreshTokenGrantRequest(client models.Client, grantSession models.GrantSession) error {
 
 	if !client.IsGrantTypeAllowed(constants.RefreshTokenGrant) {
-		return issues.OAuthBaseError{
-			ErrorCode:        constants.UnauthorizedClient,
-			ErrorDescription: "invalid grant type",
-		}
+		return issues.NewOAuthError(constants.UnauthorizedClient, "invalid grant type")
 	}
 
 	if client.Id != grantSession.ClientId {
-		return issues.OAuthBaseError{
-			ErrorCode:        constants.InvalidGrant,
-			ErrorDescription: "the refresh token was not issued to the client",
-		}
+		return issues.NewOAuthError(constants.UnauthorizedClient, "the refresh token was not issued to the client")
 	}
 
 	expirationTimestamp := grantSession.CreatedAtTimestamp + grantSession.RefreshTokenExpiresIn
 	if unit.GetTimestampNow() > expirationTimestamp {
 		//TODO: How to handle the expired sessions? There are just hanging for now.
-		return issues.OAuthBaseError{
-			ErrorCode:        constants.InvalidGrant,
-			ErrorDescription: "the refresh token is expired",
-		}
+		return issues.NewOAuthError(constants.UnauthorizedClient, "the refresh token is expired")
 	}
 
 	return nil
@@ -369,29 +329,18 @@ func getAuthenticatedClient(ctx Context, req models.ClientAuthnRequest) (models.
 
 	clientId, err := getClientId(req)
 	if err != nil {
-		return models.Client{}, issues.OAuthBaseError{
-			Inner:            err,
-			ErrorCode:        constants.InvalidClient,
-			ErrorDescription: "invalid client",
-		}
+		return models.Client{}, issues.NewWrappingOAuthError(err, constants.InvalidClient, "invalid client")
 	}
 
 	client, err := ctx.ClientManager.Get(clientId)
 	if err != nil {
 		ctx.Logger.Info("client not found", slog.String("client_id", clientId))
-		return models.Client{}, issues.OAuthBaseError{
-			Inner:            err,
-			ErrorCode:        constants.InvalidClient,
-			ErrorDescription: "invalid client",
-		}
+		return models.Client{}, issues.NewWrappingOAuthError(err, constants.InvalidClient, "invalid client")
 	}
 
 	if !client.Authenticator.IsAuthenticated(req) {
 		ctx.Logger.Info("client not authenticated", slog.String("client_id", req.ClientIdPost))
-		return models.Client{}, issues.OAuthBaseError{
-			ErrorCode:        constants.InvalidClient,
-			ErrorDescription: "client not authenticated",
-		}
+		return models.Client{}, issues.NewOAuthError(constants.InvalidClient, "client not authenticated")
 	}
 
 	return client, nil

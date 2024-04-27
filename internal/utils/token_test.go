@@ -53,7 +53,7 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	})
 
 	// Assert
-	var jsonError issues.OAuthBaseError
+	var jsonError issues.OAuthError
 	if err == nil || !errors.As(err, &jsonError) {
 		t.Error("the client should not be authenticated")
 		return

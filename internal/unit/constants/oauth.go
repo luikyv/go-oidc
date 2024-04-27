@@ -164,6 +164,7 @@ type Header string
 
 const CorrelationIdHeader Header = "X-Correlation-ID"
 
+// TODO It could be in the context.
 var PrivateJWKS jose.JSONWebKeySet
 
 const OpenIdScope string = "openid"

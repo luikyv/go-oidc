@@ -48,7 +48,8 @@ func (authenticator SecretPostClientAuthenticator) IsAuthenticated(req ClientAut
 }
 
 type PrivateKeyJwtClientAuthenticator struct {
-	PublicJwk jose.JSONWebKey
+	PublicJwk                jose.JSONWebKey
+	MaxAssertionLifetimeSecs int
 }
 
 func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
@@ -63,6 +64,11 @@ func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(req Client
 
 	claims := jwt.Claims{}
 	if err := assertion.Claims(authenticator.PublicJwk.Key, &claims); err != nil {
+		return false
+	}
+
+	// Validate that the "iat" and "exp" claims are present and their difference is not too great.
+	if claims.Expiry == nil || claims.IssuedAt == nil || int(claims.Expiry.Time().Sub(claims.IssuedAt.Time()).Seconds()) > authenticator.MaxAssertionLifetimeSecs {
 		return false
 	}
 

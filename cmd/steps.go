@@ -14,15 +14,15 @@ import (
 
 var NoInteractionStep utils.AuthnStep = utils.NewStep(
 	"no_interaction",
-	func(ctx utils.Context, session *models.AuthnSession) constants.AuthnStatus {
+	func(ctx utils.Context, session *models.AuthnSession) (constants.AuthnStatus, error) {
 		session.SetUserId("random_user_id")
-		return constants.Success
+		return constants.Success, nil
 	},
 )
 
 var IdentityStep utils.AuthnStep = utils.NewStep(
 	"identity",
-	func(ctx utils.Context, session *models.AuthnSession) constants.AuthnStatus {
+	func(ctx utils.Context, session *models.AuthnSession) (constants.AuthnStatus, error) {
 
 		var identityForm struct {
 			Username string `form:"username"`
@@ -37,7 +37,7 @@ var IdentityStep utils.AuthnStep = utils.NewStep(
 				"host":       unit.GetHost(),
 				"callbackId": session.CallbackId,
 			})
-			return constants.InProgress
+			return constants.InProgress, nil
 		}
 
 		session.SetUserId(identityForm.Username)
@@ -46,13 +46,13 @@ var IdentityStep utils.AuthnStep = utils.NewStep(
 		if slices.Contains(session.Scopes, "email") {
 			session.SetCustomIdTokenClaim("email", "random@email.com")
 		}
-		return constants.Success
+		return constants.Success, nil
 	},
 )
 
 var PasswordStep utils.AuthnStep = utils.NewStep(
 	"password",
-	func(ctx utils.Context, session *models.AuthnSession) constants.AuthnStatus {
+	func(ctx utils.Context, session *models.AuthnSession) (constants.AuthnStatus, error) {
 
 		var passwordForm struct {
 			Password string `form:"password"`
@@ -64,7 +64,7 @@ var PasswordStep utils.AuthnStep = utils.NewStep(
 				"host":       unit.GetHost(),
 				"callbackId": session.CallbackId,
 			})
-			return constants.InProgress
+			return constants.InProgress, nil
 		}
 
 		if passwordForm.Password != "password" {
@@ -72,9 +72,9 @@ var PasswordStep utils.AuthnStep = utils.NewStep(
 				"callbackId": session.CallbackId,
 				"error":      "invalid password",
 			})
-			return constants.InProgress
+			return constants.InProgress, nil
 		}
 
-		return constants.Success
+		return constants.Success, nil
 	},
 )

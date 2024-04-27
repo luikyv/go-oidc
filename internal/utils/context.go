@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/luikymagno/auth-server/internal/crud"
+	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
@@ -53,4 +54,14 @@ func NewContext(
 		RequestContext:      reqContext,
 		Logger:              logger,
 	}
+}
+
+func (ctx Context) GetAvailablePolicy(session models.AuthnSession) (policy AuthnPolicy, policyIsAvailable bool) {
+	for _, policyId := range ctx.PolicyIds {
+		policy = policyMap[policyId]
+		if policyIsAvailable = policy.IsAvailableFunc(session, ctx.RequestContext); policyIsAvailable {
+			break
+		}
+	}
+	return policy, policyIsAvailable
 }

@@ -49,13 +49,16 @@ func NewManager(
 	return manager
 }
 
-func SetMockedEntitiesConfig(manager *OpenIDManager) {
-	manager.scopeManager = mock.NewMockedScopeManager()
-	manager.grantModelManager = mock.NewMockedGrantModelManager()
+func ConfigureInMemoryClientAndScope(manager *OpenIDManager) {
 	manager.clientManager = mock.NewMockedClientManager()
+	manager.scopeManager = mock.NewMockedScopeManager()
 }
 
-func SetMockedSessionsConfig(manager *OpenIDManager) {
+func ConfigureInMemoryGrantModel(manager *OpenIDManager) {
+	manager.grantModelManager = mock.NewMockedGrantModelManager()
+}
+
+func ConfigureInMemorySessions(manager *OpenIDManager) {
 	manager.grantSessionManager = mock.NewMockedGrantSessionManager()
 	manager.authnSessionManager = mock.NewMockedAuthnSessionManager()
 }

@@ -2,10 +2,8 @@ package unit
 
 import (
 	"crypto/sha256"
-	"crypto/sha512"
 	"encoding/base64"
 	"fmt"
-	"hash"
 	"math/rand"
 	"net/url"
 	"slices"
@@ -137,26 +135,6 @@ func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod 
 	}
 
 	return false
-}
-
-func getHashFromSigningAlgorithm(signingAlg jose.SignatureAlgorithm) hash.Hash {
-	switch signingAlg {
-	case jose.RS256, jose.ES256, jose.PS256:
-		return sha256.New()
-	case jose.RS384, jose.ES384, jose.PS384:
-		return sha512.New384()
-	case jose.RS512, jose.ES512, jose.PS512:
-		return sha512.New()
-	default:
-		return nil
-	}
-}
-
-func GenerateHalfHash(claimValue string, key jose.JSONWebKey) string {
-	hash := getHashFromSigningAlgorithm(jose.SignatureAlgorithm(key.Algorithm))
-	hash.Write([]byte(claimValue))
-	halfHashedClaim := hash.Sum(nil)[:hash.Size()/2]
-	return base64.RawURLEncoding.EncodeToString(halfHashedClaim)
 }
 
 func GetBearerToken(requestCtx *gin.Context) (string, bool) {
