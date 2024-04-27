@@ -16,9 +16,6 @@ func setUp() (tearDown func()) {
 		for k := range utils.StepMap {
 			delete(utils.StepMap, k)
 		}
-		for k := range utils.PolicyMap {
-			delete(utils.PolicyMap, k)
-		}
 	}
 }
 
@@ -54,23 +51,6 @@ func TestGetStep(t *testing.T) {
 	// Assert
 	if selectedStep.Id != step.Id {
 		t.Error("GetStep is not fetching the right step")
-	}
-}
-
-func TestNewPolicyRegistersStep(t *testing.T) {
-	// When
-	tearDown := setUp()
-	defer tearDown()
-
-	// Then
-	availablePolicy := utils.NewPolicy(
-		"policy_id",
-		nil,
-	)
-
-	// Assert
-	if _, policyWasRegistered := utils.PolicyMap[availablePolicy.Id]; !policyWasRegistered {
-		t.Error("NewPolicy is not registering the policy")
 	}
 }
 

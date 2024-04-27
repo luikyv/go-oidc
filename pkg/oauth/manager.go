@@ -21,6 +21,7 @@ type OpenIDManager struct {
 	clientManager       crud.ClientManager
 	grantSessionManager crud.GrantSessionManager
 	authnSessionManager crud.AuthnSessionManager
+	privateJWKS         jose.JSONWebKeySet
 	policies            []utils.AuthnPolicy
 	server              *gin.Engine
 }
@@ -35,16 +36,15 @@ func NewManager(
 	unit.SetHost(host)
 
 	manager := &OpenIDManager{
-		policies: make([]utils.AuthnPolicy, 0),
-		server:   gin.Default(),
+		privateJWKS: privateJWKS,
+		policies:    make([]utils.AuthnPolicy, 0),
+		server:      gin.Default(),
 	}
 	manager.server.LoadHTMLGlob(templates)
 
 	for _, setting := range settings {
 		setting(manager)
 	}
-
-	unit.SetPrivateJWKS(privateJWKS)
 
 	return manager
 }
@@ -82,6 +82,7 @@ func (manager OpenIDManager) getContext(requestContext *gin.Context) utils.Conte
 		manager.clientManager,
 		manager.grantSessionManager,
 		manager.authnSessionManager,
+		manager.privateJWKS,
 		manager.policies,
 		requestContext,
 	)

@@ -19,7 +19,7 @@ type GrantMetaInfo struct {
 	ExpiresInSecs       int
 	IsRefreshable       bool
 	RefreshLifetimeSecs int
-	OpenIdKeyId         string
+	OpenIdPrivateJWK    jose.JSONWebKey
 }
 
 //---------------------------------------- Token Makers ----------------------------------------//
@@ -48,7 +48,7 @@ func (maker OpaqueTokenMaker) MakeToken(grantMeta GrantMetaInfo, grantCtx GrantC
 }
 
 type JWTTokenMaker struct {
-	SigningKeyId string
+	PrivateJWK jose.JSONWebKey
 }
 
 func (maker JWTTokenMaker) MakeToken(grantMeta GrantMetaInfo, grantCtx GrantContext) Token {
@@ -65,13 +65,11 @@ func (maker JWTTokenMaker) MakeToken(grantMeta GrantMetaInfo, grantCtx GrantCont
 	for k, v := range grantCtx.AdditionalTokenClaims {
 		claims[k] = v
 	}
-
-	jwk, _ := unit.GetPrivateKey(maker.SigningKeyId)
 	signer, _ := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(maker.PrivateJWK.Algorithm), Key: maker.PrivateJWK.Key},
 		// RFC9068. "...This specification registers the "application/at+jwt" media type,
 		// which can be used to indicate that the content is a JWT access token."
-		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", maker.SigningKeyId),
+		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", maker.PrivateJWK.KeyID),
 	)
 
 	accessToken, _ := jwt.Signed(signer).Claims(claims).Serialize()
@@ -90,9 +88,8 @@ type GrantModel struct {
 }
 
 func (grantModel GrantModel) generateHalfHashClaim(claimValue string) string {
-	jwk, _ := unit.GetPrivateKey(grantModel.Meta.OpenIdKeyId)
 	var hash hash.Hash
-	switch jose.SignatureAlgorithm(jwk.Algorithm) {
+	switch jose.SignatureAlgorithm(grantModel.Meta.OpenIdPrivateJWK.Algorithm) {
 	case jose.RS256, jose.ES256, jose.PS256, jose.HS256:
 		hash = sha256.New()
 	case jose.RS384, jose.ES384, jose.PS384, jose.HS384:
@@ -109,7 +106,6 @@ func (grantModel GrantModel) generateHalfHashClaim(claimValue string) string {
 }
 
 func (grantModel GrantModel) GenerateIdToken(grantCtx GrantContext) string {
-	jwk, _ := unit.GetPrivateKey(grantModel.Meta.OpenIdKeyId)
 	timestampNow := unit.GetTimestampNow()
 
 	// Set the token claims.
@@ -143,8 +139,8 @@ func (grantModel GrantModel) GenerateIdToken(grantCtx GrantContext) string {
 
 	// Sign the ID token.
 	signer, _ := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", grantModel.Meta.OpenIdKeyId),
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(grantModel.Meta.OpenIdPrivateJWK.Algorithm), Key: grantModel.Meta.OpenIdPrivateJWK.Key},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", grantModel.Meta.OpenIdPrivateJWK.KeyID),
 	)
 	idToken, _ := jwt.Signed(signer).Claims(claims).Serialize()
 

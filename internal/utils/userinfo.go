@@ -8,13 +8,12 @@ import (
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
 func HandleUserInfoRequest(ctx Context, token string) (models.GrantSession, error) {
 
-	tokenId, err := getTokenId(token)
+	tokenId, err := getTokenId(ctx, token)
 	if err != nil {
 		return models.GrantSession{}, err
 	}
@@ -31,8 +30,8 @@ func HandleUserInfoRequest(ctx Context, token string) (models.GrantSession, erro
 	return grantSession, nil
 }
 
-func getTokenId(token string) (string, error) {
-	parsedToken, err := jwt.ParseSigned(token, unit.GetSigningAlgorithms())
+func getTokenId(ctx Context, token string) (string, error) {
+	parsedToken, err := jwt.ParseSigned(token, ctx.GetSigningAlgorithms())
 	if err != nil {
 		return token, nil
 	}
@@ -42,7 +41,7 @@ func getTokenId(token string) (string, error) {
 	}
 
 	keyId := parsedToken.Headers[0].KeyID
-	publicKey, ok := unit.GetPublicKey(keyId)
+	publicKey, ok := ctx.GetPublicKey(keyId)
 	if !ok {
 		return "", issues.NewOAuthError(constants.AccessDenied, "invalid token")
 	}

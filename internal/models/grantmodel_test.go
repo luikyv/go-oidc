@@ -72,12 +72,9 @@ func TestJWTGrantModelGenerateToken(t *testing.T) {
 	})
 	var jwk jose.JSONWebKey
 	jwk.UnmarshalJSON(jwkBytes)
-	unit.SetPrivateJWKS(jose.JSONWebKeySet{
-		Keys: []jose.JSONWebKey{jwk},
-	})
 	grantModel := models.GrantModel{
 		TokenMaker: models.JWTTokenMaker{
-			SigningKeyId: keyId,
+			PrivateJWK: jwk,
 		},
 		Meta: models.GrantMetaInfo{
 			Id:            "jwt_token_model",

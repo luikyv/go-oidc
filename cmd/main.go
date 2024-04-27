@@ -94,22 +94,22 @@ func main() {
 			TokenLength: 20,
 		},
 		Meta: models.GrantMetaInfo{
-			Id:            opaqueGrantModelId,
-			ExpiresInSecs: 60,
-			IsRefreshable: false,
-			OpenIdKeyId:   privateKeyId,
+			Id:               opaqueGrantModelId,
+			ExpiresInSecs:    60,
+			IsRefreshable:    false,
+			OpenIdPrivateJWK: jwks.Key(privateKeyId)[0],
 		},
 	})
 	oauthManager.AddGrantModel(models.GrantModel{
 		TokenMaker: models.JWTTokenMaker{
-			SigningKeyId: privateKeyId,
+			PrivateJWK: jwks.Key(privateKeyId)[0],
 		},
 		Meta: models.GrantMetaInfo{
 			Id:                  jwtGrantModelId,
 			ExpiresInSecs:       60,
 			IsRefreshable:       true,
 			RefreshLifetimeSecs: 60,
-			OpenIdKeyId:         privateKeyId,
+			OpenIdPrivateJWK:    jwks.Key(privateKeyId)[0],
 		},
 	})
 

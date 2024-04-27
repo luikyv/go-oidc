@@ -17,11 +17,9 @@ import (
 
 func init() {
 	StepMap = stepMap
-	PolicyMap = policyMap
 }
 
 var StepMap map[string]AuthnStep
-var PolicyMap map[string]AuthnPolicy
 
 const ValidClientId string = "random_client_id"
 
@@ -41,18 +39,15 @@ func SetUp() (ctx Context, tearDown func()) {
 	})
 	var jwk jose.JSONWebKey
 	jwk.UnmarshalJSON(jwkBytes)
-	unit.SetPrivateJWKS(jose.JSONWebKeySet{
-		Keys: []jose.JSONWebKey{jwk},
-	})
 	grantModel := models.GrantModel{
 		TokenMaker: models.OpaqueTokenMaker{
 			TokenLength: 20,
 		},
 		Meta: models.GrantMetaInfo{
-			Id:            ValidGrantModelId,
-			OpenIdKeyId:   keyId,
-			ExpiresInSecs: 60,
-			IsRefreshable: true,
+			Id:               ValidGrantModelId,
+			OpenIdPrivateJWK: jwk,
+			ExpiresInSecs:    60,
+			IsRefreshable:    true,
 		},
 	}
 

@@ -8,11 +8,9 @@ import (
 
 func init() {
 	stepMap = make(map[string]AuthnStep)
-	policyMap = make(map[string]AuthnPolicy)
 }
 
 var stepMap map[string]AuthnStep
-var policyMap map[string]AuthnPolicy
 
 //---------------------------------------- Step ----------------------------------------//
 
@@ -58,12 +56,9 @@ func NewPolicy(
 		stepIdSequence[i] = step.Id
 	}
 
-	policy := AuthnPolicy{
+	return AuthnPolicy{
 		Id:              id,
 		StepIdSequence:  stepIdSequence,
 		IsAvailableFunc: isAvailableFunc,
 	}
-	policyMap[policy.Id] = policy
-
-	return policy
 }

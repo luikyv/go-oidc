@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
@@ -70,56 +69,6 @@ func SetHost(host string) {
 
 func GetHost() string {
 	return constants.Host
-}
-
-func SetPrivateJWKS(privateJWKS jose.JSONWebKeySet) {
-	constants.PrivateJWKS = privateJWKS
-}
-
-func GetPrivateKey(keyId string) (jose.JSONWebKey, bool) {
-	keys := constants.PrivateJWKS.Key(keyId)
-	if len(keys) != 1 {
-		return jose.JSONWebKey{}, false
-	}
-	return keys[0], true
-}
-
-func GetPublicKey(keyId string) (jose.JSONWebKey, bool) {
-	privateKey, ok := GetPrivateKey(keyId)
-	if !ok {
-		return jose.JSONWebKey{}, false
-	}
-
-	publicKey := privateKey.Public()
-	if publicKey.KeyID == "" {
-		return jose.JSONWebKey{}, false
-	}
-
-	return publicKey, true
-}
-
-func GetPublicKeys() jose.JSONWebKeySet {
-	publicKeys := []jose.JSONWebKey{}
-	for _, privateKey := range constants.PrivateJWKS.Keys {
-		publicKey := privateKey.Public()
-		// If the key is not of assymetric type, publicKey holds a null value.
-		// To know if it is the case, we'll check if its key ID is not a null value which would mean privateKey is symetric and cannot be public.
-		if publicKey.KeyID != "" {
-			publicKeys = append(publicKeys, privateKey.Public())
-		}
-	}
-
-	return jose.JSONWebKeySet{Keys: publicKeys}
-}
-
-func GetSigningAlgorithms() []jose.SignatureAlgorithm {
-	algorithms := []jose.SignatureAlgorithm{}
-	for _, privateKey := range constants.PrivateJWKS.Keys {
-		if privateKey.Use == "sig" {
-			algorithms = append(algorithms, jose.SignatureAlgorithm(privateKey.Algorithm))
-		}
-	}
-	return algorithms
 }
 
 func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod constants.CodeChallengeMethod) bool {

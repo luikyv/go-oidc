@@ -3,8 +3,6 @@ package constants
 import (
 	"net/http"
 	"strings"
-
-	"github.com/go-jose/go-jose/v4"
 )
 
 type GrantType string
@@ -163,8 +161,5 @@ var ErrorCodeToStatusCode map[ErrorCode]int = map[ErrorCode]int{
 type Header string
 
 const CorrelationIdHeader Header = "X-Correlation-ID"
-
-// TODO It could be in the context.
-var PrivateJWKS jose.JSONWebKeySet
 
 const OpenIdScope string = "openid"

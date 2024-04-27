@@ -21,7 +21,7 @@ func HandleWellKnownRequest(ctx utils.Context) {
 //---------------------------------------- JWKS ----------------------------------------//
 
 func HandleJWKSRequest(ctx utils.Context) {
-	ctx.RequestContext.JSON(http.StatusOK, unit.GetPublicKeys())
+	ctx.RequestContext.JSON(http.StatusOK, ctx.GetPublicKeys())
 }
 
 //---------------------------------------- Pushed Authorization Request - PAR ----------------------------------------//
