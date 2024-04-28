@@ -85,6 +85,7 @@ var ResponseModes []ResponseMode = []ResponseMode{
 	QueryJwtResponseMode,
 	FragmentJwtResponseMode,
 	FormPostJwtResponseMode,
+	JwtResponseMode,
 }
 
 type ClientAuthnType string

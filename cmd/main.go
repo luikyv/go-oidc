@@ -33,22 +33,22 @@ func loadJwks() jose.JSONWebKeySet {
 	return jwks
 }
 
-// func getClientJwk() jose.JSONWebKey {
-// 	absPath, _ := filepath.Abs("./client_jwk.json")
-// 	clientJwkFile, err := os.Open(absPath)
-// 	if err != nil {
-// 		panic(err.Error())
-// 	}
-// 	defer clientJwkFile.Close()
-// 	clientJwkBytes, err := io.ReadAll(clientJwkFile)
-// 	if err != nil {
-// 		panic(err.Error())
-// 	}
-// 	var clientJwk jose.JSONWebKey
-// 	clientJwk.UnmarshalJSON(clientJwkBytes)
+func getClientJwk() jose.JSONWebKey {
+	absPath, _ := filepath.Abs("./client_jwk.json")
+	clientJwkFile, err := os.Open(absPath)
+	if err != nil {
+		panic(err.Error())
+	}
+	defer clientJwkFile.Close()
+	clientJwkBytes, err := io.ReadAll(clientJwkFile)
+	if err != nil {
+		panic(err.Error())
+	}
+	var clientJwk jose.JSONWebKey
+	clientJwk.UnmarshalJSON(clientJwkBytes)
 
-// 	return clientJwk
-// }
+	return clientJwk
+}
 
 // func createClientAssertion(client models.Client, jwk jose.JSONWebKey) string {
 // 	createdAtTimestamp := unit.GetTimestampNow()
@@ -73,7 +73,7 @@ func main() {
 	clientSecretSalt := "random_salt"
 	opaqueGrantModelId := "opaque_token_model"
 	jwtGrantModelId := "jwt_token_model"
-	privateKeyId := "rsa_key"
+	privateKeyId := "ps256_key"
 	port := 83
 	issuer := fmt.Sprintf("https://host.docker.internal:%v", port)
 	jwks := loadJwks()
@@ -82,6 +82,7 @@ func main() {
 	oauthManager := oauth.NewManager(
 		issuer,
 		jwks,
+		privateKeyId,
 		"./templates/*",
 		oauth.ConfigureInMemoryClientAndScope,
 		oauth.ConfigureInMemoryGrantModel,
@@ -126,10 +127,15 @@ func main() {
 		ResponseTypes:       constants.ResponseTypes,
 		ResponseModes:       constants.ResponseModes,
 		DefaultGrantModelId: jwtGrantModelId,
-		Authenticator: models.SecretBasicClientAuthenticator{
+		Authenticator: models.SecretPostClientAuthenticator{
 			Salt:         clientSecretSalt,
 			HashedSecret: string(hashedSecret),
 		},
+		// Authenticator: models.PrivateKeyJwtClientAuthenticator{
+		// 	PublicJwk:                getClientJwk(),
+		// 	ExpectedAudience:         issuer,
+		// 	MaxAssertionLifetimeSecs: 600,
+		// },
 		Attributes: map[string]string{
 			"custom_attribute": "random_attribute",
 		},

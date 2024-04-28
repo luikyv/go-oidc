@@ -12,18 +12,17 @@ import (
 )
 
 type Context struct {
-	Host                    string
-	ScopeManager            crud.ScopeManager
-	GrantModelManager       crud.GrantModelManager
-	ClientManager           crud.ClientManager
-	GrantSessionManager     crud.GrantSessionManager
-	AuthnSessionManager     crud.AuthnSessionManager
-	PrivateJwks             jose.JSONWebKeySet
-	PrivateJarmKeyIds       []string // TODO
-	DefaultPrivateJarmKeyId string
-	Policies                []AuthnPolicy
-	RequestContext          *gin.Context
-	Logger                  *slog.Logger
+	Host                string
+	ScopeManager        crud.ScopeManager
+	GrantModelManager   crud.GrantModelManager
+	ClientManager       crud.ClientManager
+	GrantSessionManager crud.GrantSessionManager
+	AuthnSessionManager crud.AuthnSessionManager
+	PrivateJwks         jose.JSONWebKeySet
+	PrivateJarmKeyId    string
+	Policies            []AuthnPolicy
+	RequestContext      *gin.Context
+	Logger              *slog.Logger
 }
 
 func NewContext(
@@ -34,7 +33,7 @@ func NewContext(
 	grantSessionManager crud.GrantSessionManager,
 	authnSessionManager crud.AuthnSessionManager,
 	privateJwks jose.JSONWebKeySet,
-	jarmKeyId string,
+	privateJarmKeyId string,
 	policies []AuthnPolicy,
 	reqContext *gin.Context,
 ) Context {
@@ -53,17 +52,17 @@ func NewContext(
 	)
 
 	return Context{
-		Host:                    host,
-		ScopeManager:            scopeManager,
-		GrantModelManager:       grantModelManager,
-		ClientManager:           clientManager,
-		GrantSessionManager:     grantSessionManager,
-		AuthnSessionManager:     authnSessionManager,
-		PrivateJwks:             privateJwks,
-		DefaultPrivateJarmKeyId: jarmKeyId,
-		Policies:                policies,
-		RequestContext:          reqContext,
-		Logger:                  logger,
+		Host:                host,
+		ScopeManager:        scopeManager,
+		GrantModelManager:   grantModelManager,
+		ClientManager:       clientManager,
+		GrantSessionManager: grantSessionManager,
+		AuthnSessionManager: authnSessionManager,
+		PrivateJwks:         privateJwks,
+		PrivateJarmKeyId:    privateJarmKeyId,
+		Policies:            policies,
+		RequestContext:      reqContext,
+		Logger:              logger,
 	}
 }
 
@@ -123,6 +122,6 @@ func (ctx Context) GetSigningAlgorithms() []jose.SignatureAlgorithm {
 }
 
 func (ctx Context) GetJarmPrivateKey() jose.JSONWebKey {
-	key, _ := ctx.GetPrivateKey(ctx.DefaultPrivateJarmKeyId)
+	key, _ := ctx.GetPrivateKey(ctx.PrivateJarmKeyId)
 	return key
 }

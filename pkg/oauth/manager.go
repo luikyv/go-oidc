@@ -22,23 +22,30 @@ type OpenIDManager struct {
 	grantSessionManager crud.GrantSessionManager
 	authnSessionManager crud.AuthnSessionManager
 	privateJwks         jose.JSONWebKeySet
-	jarmKeyId           string
+	privateJarmKeyIds   []string
+	privateJarmKeyId    string
 	policies            []utils.AuthnPolicy
 	server              *gin.Engine
 }
 
 func NewManager(
 	host string,
-	privateJWKS jose.JSONWebKeySet,
+	privateJwks jose.JSONWebKeySet,
+	privateJarmKeyId string,
 	templates string,
 	settings ...func(*OpenIDManager),
 ) *OpenIDManager {
 
+	if len(privateJwks.Key(privateJarmKeyId)) == 0 {
+		panic("the JARM key must be in the JWKS")
+	}
+
 	manager := &OpenIDManager{
-		host:        host,
-		privateJwks: privateJWKS,
-		policies:    make([]utils.AuthnPolicy, 0),
-		server:      gin.Default(),
+		host:             host,
+		privateJwks:      privateJwks,
+		privateJarmKeyId: privateJarmKeyId,
+		policies:         make([]utils.AuthnPolicy, 0),
+		server:           gin.Default(),
 	}
 	manager.server.LoadHTMLGlob(templates)
 
@@ -84,7 +91,7 @@ func (manager OpenIDManager) getContext(requestContext *gin.Context) utils.Conte
 		manager.grantSessionManager,
 		manager.authnSessionManager,
 		manager.privateJwks,
-		manager.jarmKeyId,
+		manager.privateJarmKeyId,
 		manager.policies,
 		requestContext,
 	)

@@ -325,10 +325,7 @@ func newRedirectOAuthErrorFromSession(session models.AuthnSession, errorCode con
 
 func newRedirectErrorFromRequest(req models.AuthorizeRequest, errorCode constants.ErrorCode, errorDescription string) issues.OAuthRedirectError {
 	return issues.OAuthRedirectError{
-		OAuthError: issues.OAuthError{
-			ErrorCode:        errorCode,
-			ErrorDescription: errorDescription,
-		},
+		OAuthError:   issues.NewOAuthError(errorCode, errorDescription),
 		ClientId:     req.ClientId,
 		RedirectUri:  req.RedirectUri,
 		ResponseType: req.ResponseType,
