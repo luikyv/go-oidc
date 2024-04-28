@@ -48,23 +48,32 @@ func (authenticator SecretPostClientAuthenticator) IsAuthenticated(req ClientAut
 }
 
 type PrivateKeyJwtClientAuthenticator struct {
-	PublicJwk                jose.JSONWebKey
+	PublicJwks               jose.JSONWebKeySet
 	ExpectedAudience         string
 	MaxAssertionLifetimeSecs int
 }
 
 func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
 
-	assertion, err := jwt.ParseSigned(req.ClientAssertion, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(authenticator.PublicJwk.Algorithm)})
+	assertion, err := jwt.ParseSigned(req.ClientAssertion, authenticator.GetSigningAlgorithms())
 	if err != nil {
 		return false
 	}
-	if len(assertion.Headers) != 0 && assertion.Headers[0].KeyID != authenticator.PublicJwk.KeyID {
+
+	// Verify that the assertion indicates the key ID.
+	if len(assertion.Headers) != 0 && assertion.Headers[0].KeyID == "" {
 		return false
 	}
 
+	// Verify that the key ID belongs to the client.
+	keys := authenticator.PublicJwks.Key(assertion.Headers[0].KeyID)
+	if len(keys) == 0 {
+		return false
+	}
+
+	jwk := keys[0]
 	claims := jwt.Claims{}
-	if err := assertion.Claims(authenticator.PublicJwk.Key, &claims); err != nil {
+	if err := assertion.Claims(jwk.Key, &claims); err != nil {
 		return false
 	}
 
@@ -79,6 +88,15 @@ func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(req Client
 		AnyAudience: []string{authenticator.ExpectedAudience},
 	}, time.Duration(0))
 	return err == nil
+}
+
+func (authenticator PrivateKeyJwtClientAuthenticator) GetSigningAlgorithms() []jose.SignatureAlgorithm {
+
+	signingAlgorithms := []jose.SignatureAlgorithm{}
+	for _, jwk := range authenticator.PublicJwks.Keys {
+		signingAlgorithms = append(signingAlgorithms, jose.SignatureAlgorithm(jwk.Algorithm))
+	}
+	return signingAlgorithms
 }
 
 //---------------------------------------- Client ----------------------------------------//

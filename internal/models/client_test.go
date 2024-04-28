@@ -66,16 +66,22 @@ func TestPrivateKeyJWTClientAuthenticatorValidInfo(t *testing.T) {
 	host := "https://example.com"
 
 	keyId := "0afee142-a0af-4410-abcc-9f2d44ff45b5"
-	jwkBytes, _ := json.Marshal(map[string]any{
-		"kty": "oct",
-		"kid": keyId,
-		"alg": "HS256",
-		"k":   "FdFYFzERwC2uCBB46pZQi4GG85LujR8obt-KWRBICVQ",
-	})
-	var jwk jose.JSONWebKey
-	jwk.UnmarshalJSON(jwkBytes)
+	jwksBytes, _ := json.Marshal(
+		map[string]any{
+			"keys": []any{
+				map[string]any{
+					"kty": "oct",
+					"kid": keyId,
+					"alg": "HS256",
+					"k":   "FdFYFzERwC2uCBB46pZQi4GG85LujR8obt-KWRBICVQ",
+				},
+			},
+		},
+	)
+	var jwks jose.JSONWebKeySet
+	json.Unmarshal(jwksBytes, &jwks)
 	authenticator := PrivateKeyJwtClientAuthenticator{
-		PublicJwk:                jwk,
+		PublicJwks:               jwks,
 		ExpectedAudience:         host,
 		MaxAssertionLifetimeSecs: 60,
 	}
@@ -83,7 +89,7 @@ func TestPrivateKeyJWTClientAuthenticatorValidInfo(t *testing.T) {
 	clientId := "random_client_id"
 	createdAtTimestamp := unit.GetTimestampNow()
 	signer, _ := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwks.Keys[0].Algorithm), Key: jwks.Keys[0].Key},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", keyId),
 	)
 	claims := map[string]any{

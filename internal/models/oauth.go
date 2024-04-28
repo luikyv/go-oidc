@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -121,7 +122,7 @@ type ClientAuthnRequest struct {
 func (req ClientAuthnRequest) IsValid() error {
 
 	// Either the client ID or the client assertion must be present to identity the client.
-	if req.ClientIdBasicAuthn == "" && req.ClientIdPost == "" && req.ClientAssertion == "" {
+	if _, ok := req.getValidClientId(); !ok {
 		return issues.OAuthError{
 			ErrorCode:        constants.InvalidClient,
 			ErrorDescription: "invalid client authentication",
@@ -129,7 +130,7 @@ func (req ClientAuthnRequest) IsValid() error {
 	}
 
 	// Validate parameters for client secret basic authentication.
-	if req.ClientIdBasicAuthn != "" && (req.ClientSecretBasicAuthn == "" || req.ClientIdPost != "" || req.ClientSecretPost != "" || req.ClientAssertionType != "" || req.ClientAssertion != "") {
+	if req.ClientSecretBasicAuthn != "" && (req.ClientIdBasicAuthn == "" || req.ClientSecretPost != "" || req.ClientAssertionType != "" || req.ClientAssertion != "") {
 		return issues.OAuthError{
 			ErrorCode:        constants.InvalidClient,
 			ErrorDescription: "invalid client authentication",
@@ -137,7 +138,7 @@ func (req ClientAuthnRequest) IsValid() error {
 	}
 
 	// Validate parameters for client secret post authentication.
-	if req.ClientIdPost != "" && (req.ClientSecretPost == "" || req.ClientIdBasicAuthn != "" || req.ClientSecretBasicAuthn != "" || req.ClientAssertionType != "" || req.ClientAssertion != "") {
+	if req.ClientSecretPost != "" && (req.ClientIdPost == "" || req.ClientIdBasicAuthn != "" || req.ClientSecretBasicAuthn != "" || req.ClientAssertionType != "" || req.ClientAssertion != "") {
 		return issues.OAuthError{
 			ErrorCode:        constants.InvalidClient,
 			ErrorDescription: "invalid client authentication",
@@ -145,7 +146,7 @@ func (req ClientAuthnRequest) IsValid() error {
 	}
 
 	// Validate parameters for private key jwt authentication.
-	if req.ClientAssertion != "" && (req.ClientAssertionType != constants.JWTBearerAssertion || req.ClientIdBasicAuthn != "" || req.ClientSecretBasicAuthn != "" || req.ClientIdPost != "" || req.ClientSecretPost != "") {
+	if req.ClientAssertion != "" && (req.ClientAssertionType != constants.JWTBearerAssertion || req.ClientIdBasicAuthn != "" || req.ClientSecretBasicAuthn != "" || req.ClientSecretPost != "") {
 		return issues.OAuthError{
 			ErrorCode:        constants.InvalidClient,
 			ErrorDescription: "invalid client authentication",
@@ -153,6 +154,64 @@ func (req ClientAuthnRequest) IsValid() error {
 	}
 
 	return nil
+}
+
+func (req ClientAuthnRequest) getValidClientId() (string, bool) {
+	clientIds := []string{}
+
+	if req.ClientIdPost != "" {
+		clientIds = append(clientIds, req.ClientIdPost)
+	}
+
+	if req.ClientIdBasicAuthn != "" {
+		clientIds = append(clientIds, req.ClientIdBasicAuthn)
+	}
+
+	if req.ClientAssertion != "" {
+		assertionClientId, ok := req.getClientIdFromAssertion()
+		// If the assertion is passed, it must contain the client ID as its issuer.
+		if !ok {
+			return "", false
+		}
+		clientIds = append(clientIds, assertionClientId)
+	}
+
+	// All the client IDs present must be equal.
+	if len(clientIds) == 0 || unit.Any(clientIds, func(clientId string) bool {
+		return clientId != clientIds[0]
+	}) {
+		return "", false
+	}
+
+	return clientIds[0], true
+}
+
+func (req ClientAuthnRequest) getClientIdFromAssertion() (string, bool) {
+	assertion, err := jwt.ParseSigned(req.ClientAssertion, constants.ClientSigningAlgorithms)
+	if err != nil {
+		return "", false
+	}
+
+	var claims map[constants.Claim]any
+	assertion.UnsafeClaimsWithoutVerification(&claims)
+
+	clientId, ok := claims[constants.IssuerClaim]
+	if !ok {
+		return "", false
+	}
+
+	clientIdAsString, ok := clientId.(string)
+	if !ok {
+		return "", false
+	}
+
+	return clientIdAsString, true
+}
+
+// This method is intended to be called only after the request is validated.
+func (req ClientAuthnRequest) GetClientId() string {
+	clientId, _ := req.getValidClientId()
+	return clientId
 }
 
 type TokenRequest struct {
@@ -212,6 +271,7 @@ type TokenResponse struct {
 
 type BaseAuthorizeRequest struct {
 	RedirectUri         string                        `form:"redirect_uri"`
+	Request             string                        `form:"request"`
 	Scope               string                        `form:"scope"`
 	ResponseType        constants.ResponseType        `form:"response_type"`
 	ResponseMode        constants.ResponseMode        `form:"response_mode"`
@@ -228,13 +288,13 @@ func (req BaseAuthorizeRequest) IsValid() error {
 		return req.isValidWithPar()
 	}
 
-	return req.isValid()
+	return req.isValidWithoutPar()
 }
 
 func (req BaseAuthorizeRequest) isValidWithPar() error {
 	// If the request URI is passed, all the other parameters must be empty.
 	if unit.Any(
-		[]string{req.RedirectUri, req.Scope, string(req.ResponseType), string(req.ResponseMode), req.CodeChallenge, string(req.CodeChallengeMethod)},
+		[]string{req.Request, req.RedirectUri, req.Scope, string(req.ResponseType), string(req.ResponseMode), req.CodeChallenge, string(req.CodeChallengeMethod)},
 		func(s string) bool { return s != "" },
 	) {
 		return errors.New("invalid parameter")
@@ -243,7 +303,16 @@ func (req BaseAuthorizeRequest) isValidWithPar() error {
 	return nil
 }
 
-func (req BaseAuthorizeRequest) isValid() error {
+func (req BaseAuthorizeRequest) isValidWithoutPar() error {
+
+	// If the request object is passed, all the other parameters must be empty.
+	if req.Request != "" && unit.Any(
+		[]string{req.Request, req.RedirectUri, req.Scope, string(req.ResponseType), string(req.ResponseMode), req.CodeChallenge, string(req.CodeChallengeMethod)},
+		func(s string) bool { return s != "" },
+	) {
+		return errors.New("invalid parameter")
+	}
+
 	if unit.Any(
 		[]string{req.RedirectUri, req.Scope, string(req.ResponseType)},
 		func(s string) bool { return s == "" },
@@ -274,8 +343,16 @@ func (req BaseAuthorizeRequest) isValid() error {
 }
 
 type AuthorizeRequest struct {
-	ClientId string `form:"client_id" binding:"required"`
+	ClientId string `form:"client_id"`
 	BaseAuthorizeRequest
+}
+
+func (req AuthorizeRequest) IsValid() error {
+	if req.ClientId == "" {
+		return errors.New("invalid parameter")
+	}
+
+	return req.BaseAuthorizeRequest.IsValid()
 }
 
 type PARRequest struct {
@@ -285,6 +362,14 @@ type PARRequest struct {
 
 func (req PARRequest) IsValid() error {
 
+	// As mentioned in https://datatracker.ietf.org/doc/html/rfc9126,
+	// "...The client_id parameter is defined with the same semantics for both authorization requests
+	// and requests to the token endpoint; as a required authorization request parameter,
+	// it is similarly required in a pushed authorization request...""
+	if req.ClientIdPost == "" {
+		return errors.New("invalid parameter")
+	}
+
 	if err := req.ClientAuthnRequest.IsValid(); err != nil {
 		return err
 	}
@@ -292,6 +377,7 @@ func (req PARRequest) IsValid() error {
 	if req.RequestUri != "" {
 		return errors.New("invalid parameter")
 	}
+
 	return req.BaseAuthorizeRequest.IsValid()
 }
 
@@ -314,6 +400,7 @@ type OpenIdConfiguration struct {
 	UserinfoEndpoint         string                            `json:"userinfo_endpoint"`
 	JwksUri                  string                            `json:"jwks_uri"`
 	ParEndpoint              string                            `json:"pushed_authorization_request_endpoint"`
+	ParIsRequired            bool                              `json:"require_pushed_authorization_requests"`
 	ResponseTypes            []constants.ResponseType          `json:"response_types_supported"`
 	ResponseModes            []constants.ResponseMode          `json:"response_modes_supported"`
 	GrantTypes               []constants.GrantType             `json:"grant_types_supported"`

@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -327,11 +326,7 @@ type ResultChannel struct {
 
 func getAuthenticatedClient(ctx Context, req models.ClientAuthnRequest) (models.Client, error) {
 
-	clientId, err := getClientId(req)
-	if err != nil {
-		return models.Client{}, issues.NewWrappingOAuthError(err, constants.InvalidClient, "invalid client")
-	}
-
+	clientId := req.GetClientId()
 	client, err := ctx.ClientManager.Get(clientId)
 	if err != nil {
 		ctx.Logger.Info("client not found", slog.String("client_id", clientId))
@@ -346,34 +341,34 @@ func getAuthenticatedClient(ctx Context, req models.ClientAuthnRequest) (models.
 	return client, nil
 }
 
-// Get the client ID from either directly in the request or use the value provided in the client assertion.
-func getClientId(req models.ClientAuthnRequest) (string, error) {
-	if req.ClientIdPost != "" {
-		return req.ClientIdPost, nil
-	}
+// // Get the client ID from either directly in the request or use the value provided in the client assertion.
+// func getClientId(req models.ClientAuthnRequest) (string, error) {
+// 	if req.ClientIdPost != "" {
+// 		return req.ClientIdPost, nil
+// 	}
 
-	if req.ClientIdBasicAuthn != "" {
-		return req.ClientIdBasicAuthn, nil
-	}
+// 	if req.ClientIdBasicAuthn != "" {
+// 		return req.ClientIdBasicAuthn, nil
+// 	}
 
-	assertion, err := jwt.ParseSigned(req.ClientAssertion, constants.ClientSigningAlgorithms)
-	if err != nil {
-		return "", errors.New("invalid assertion")
-	}
+// 	assertion, err := jwt.ParseSigned(req.ClientAssertion, constants.ClientSigningAlgorithms)
+// 	if err != nil {
+// 		return "", errors.New("invalid assertion")
+// 	}
 
-	var claims map[constants.Claim]any
-	assertion.UnsafeClaimsWithoutVerification(&claims)
+// 	var claims map[constants.Claim]any
+// 	assertion.UnsafeClaimsWithoutVerification(&claims)
 
-	clientId, ok := claims[constants.IssuerClaim]
-	if !ok {
-		return "", errors.New("invalid assertion")
-	}
+// 	clientId, ok := claims[constants.IssuerClaim]
+// 	if !ok {
+// 		return "", errors.New("invalid assertion")
+// 	}
 
-	clientIdAsString, ok := clientId.(string)
-	if !ok {
-		return "", errors.New("invalid assertion")
-	}
+// 	clientIdAsString, ok := clientId.(string)
+// 	if !ok {
+// 		return "", errors.New("invalid assertion")
+// 	}
 
-	return clientIdAsString, nil
+// 	return clientIdAsString, nil
 
-}
+// }
