@@ -152,7 +152,7 @@ func TestInitAuthenticationShouldEndWithError(t *testing.T) {
 	ctx.Policies = append(ctx.Policies, policy)
 
 	// Then
-	utils.InitAuthentication(ctx, models.AuthorizeRequest{
+	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
 		ClientId: utils.ValidClientId,
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RedirectUri:  client.RedirectUris[0],
@@ -163,6 +163,10 @@ func TestInitAuthenticationShouldEndWithError(t *testing.T) {
 	})
 
 	// Assert
+	if err != nil {
+		t.Error("the error should be redirected")
+	}
+
 	redirectUrl := ctx.RequestContext.Writer.Header().Get("Location")
 	if !strings.Contains(redirectUrl, fmt.Sprintf("error=%s", string(constants.AccessDenied))) {
 		t.Error("no error found")
@@ -264,7 +268,7 @@ func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
 			ResponseType: constants.CodeAndIdTokenResponse,
-			ResponseMode: constants.QueryResponseMode,
+			ResponseMode: constants.FragmentResponseMode,
 		},
 	})
 

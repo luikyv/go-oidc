@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"slices"
 
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -14,44 +15,48 @@ import (
 func HandleGrantCreation(
 	ctx Context,
 	req models.TokenRequest,
-) (models.GrantSession, error) {
+) (grantSession models.GrantSession, err error) {
 
-	var token models.GrantSession
-	var err error = nil
 	switch req.GrantType {
 	case constants.ClientCredentialsGrant:
-		token, err = handleClientCredentialsGrantTokenCreation(ctx, req)
+		grantSession, err = handleClientCredentialsGrantTokenCreation(ctx, req)
 	case constants.AuthorizationCodeGrant:
-		token, err = handleAuthorizationCodeGrantTokenCreation(ctx, req)
+		grantSession, err = handleAuthorizationCodeGrantTokenCreation(ctx, req)
 	case constants.RefreshTokenGrant:
-		token, err = handleRefreshTokenGrantTokenCreation(ctx, req)
-	}
-	if err != nil {
-		return models.GrantSession{}, err
+		grantSession, err = handleRefreshTokenGrantTokenCreation(ctx, req)
+	default:
+		grantSession, err = models.GrantSession{}, issues.OAuthError{
+			ErrorCode:        constants.UnsupportedGrantType,
+			ErrorDescription: "unsupported grant type",
+		}
 	}
 
-	return token, nil
+	return grantSession, err
 }
 
 //---------------------------------------- Client Credentials ----------------------------------------//
 
 func handleClientCredentialsGrantTokenCreation(ctx Context, req models.TokenRequest) (models.GrantSession, error) {
-	authenticatedClient, err := getAuthenticatedClient(ctx, req.ClientAuthnRequest)
+	if err := preValidateClientCredentialsGrantRequest(req); err != nil {
+		return models.GrantSession{}, err
+	}
+
+	client, err := getAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
 		return models.GrantSession{}, err
 	}
 
-	if err := validateClientCredentialsGrantRequest(ctx, authenticatedClient, req); err != nil {
+	if err := validateClientCredentialsGrantRequest(ctx, req, client); err != nil {
 		return models.GrantSession{}, err
 	}
 
-	grantModel, err := ctx.GrantModelManager.Get(authenticatedClient.DefaultGrantModelId)
+	grantModel, err := ctx.GrantModelManager.Get(client.DefaultGrantModelId)
 	if err != nil {
 		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, "grant model not found")
 	}
 
 	grantSession := grantModel.GenerateGrantSession(
-		models.NewClientCredentialsGrantContext(authenticatedClient, req),
+		models.NewClientCredentialsGrantContext(client, req),
 	)
 
 	if shouldCreateGrantSessionForClientCredentialsGrant(grantSession) {
@@ -67,7 +72,15 @@ func handleClientCredentialsGrantTokenCreation(ctx Context, req models.TokenRequ
 	return grantSession, nil
 }
 
-func validateClientCredentialsGrantRequest(ctx Context, client models.Client, req models.TokenRequest) error {
+func preValidateClientCredentialsGrantRequest(req models.TokenRequest) error {
+	if req.AuthorizationCode != "" || req.RedirectUri != "" || req.RefreshToken != "" || req.CodeVerifier != "" {
+		return errors.New("invalid parameter for client credentials grant")
+	}
+
+	return nil
+}
+
+func validateClientCredentialsGrantRequest(ctx Context, req models.TokenRequest, client models.Client) error {
 
 	if !client.IsGrantTypeAllowed(constants.ClientCredentialsGrant) {
 		ctx.Logger.Info("grant type not allowed")
@@ -91,6 +104,10 @@ func shouldCreateGrantSessionForClientCredentialsGrant(grantSession models.Grant
 //---------------------------------------- Authorization Code ----------------------------------------//
 
 func handleAuthorizationCodeGrantTokenCreation(ctx Context, req models.TokenRequest) (models.GrantSession, error) {
+
+	if err := preValidateAuthorizationCodeGrantRequest(req); err != nil {
+		return models.GrantSession{}, err
+	}
 
 	authenticatedClient, session, err := getAuthenticatedClientAndSession(ctx, req)
 	if err != nil {
@@ -124,6 +141,20 @@ func handleAuthorizationCodeGrantTokenCreation(ctx Context, req models.TokenRequ
 	}
 
 	return grantSession, nil
+}
+
+func preValidateAuthorizationCodeGrantRequest(req models.TokenRequest) error {
+	if req.AuthorizationCode == "" || req.RefreshToken != "" || req.Scope != "" {
+		return errors.New("invalid parameter for authorization code grant")
+	}
+
+	// RFC 7636. "...with a minimum length of 43 characters and a maximum length of 128 characters."
+	codeVerifierLengh := len(req.CodeVerifier)
+	if req.CodeVerifier != "" && (codeVerifierLengh < 43 || codeVerifierLengh > 128) {
+		return errors.New("invalid code verifier")
+	}
+
+	return nil
 }
 
 func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client models.Client, session models.AuthnSession) error {
@@ -214,13 +245,17 @@ func shouldCreateGrantSessionForAuthorizationCodeGrant(grantSession models.Grant
 
 func handleRefreshTokenGrantTokenCreation(ctx Context, req models.TokenRequest) (models.GrantSession, error) {
 
+	if err := preValidateRefreshTokenGrantRequest(req); err != nil {
+		return models.GrantSession{}, errors.New("invalid parameter for refresh token grant")
+	}
+
 	authenticatedClient, grantSession, err := getAuthenticatedClientAndGrantSession(ctx, req)
 	if err != nil {
 		ctx.Logger.Debug("error while loading the client or token.", slog.String("error", err.Error()))
 		return models.GrantSession{}, err
 	}
 
-	if err = validateRefreshTokenGrantRequest(authenticatedClient, grantSession); err != nil {
+	if err = validateRefreshTokenGrantRequest(req, authenticatedClient, grantSession); err != nil {
 		return models.GrantSession{}, err
 	}
 
@@ -279,7 +314,19 @@ func getGrantSessionByRefreshToken(ctx Context, refreshToken string, ch chan<- R
 	}
 }
 
-func validateRefreshTokenGrantRequest(client models.Client, grantSession models.GrantSession) error {
+func preValidateRefreshTokenGrantRequest(req models.TokenRequest) error {
+	if req.RefreshToken == "" || req.AuthorizationCode != "" || req.RedirectUri != "" || req.Scope != "" || req.CodeVerifier != "" {
+		return errors.New("invalid parameter for refresh token grant")
+	}
+
+	return nil
+}
+
+func validateRefreshTokenGrantRequest(req models.TokenRequest, client models.Client, grantSession models.GrantSession) error {
+
+	if req.AuthorizationCode != "" || req.RedirectUri != "" || req.Scope != "" || req.CodeVerifier != "" {
+		return errors.New("invalid parameter for refresh token grant")
+	}
 
 	if !client.IsGrantTypeAllowed(constants.RefreshTokenGrant) {
 		return issues.NewOAuthError(constants.UnauthorizedClient, "invalid grant type")
@@ -326,7 +373,11 @@ type ResultChannel struct {
 
 func getAuthenticatedClient(ctx Context, req models.ClientAuthnRequest) (models.Client, error) {
 
-	clientId := req.GetClientId()
+	clientId, err := validateClientAuthnRequest(req)
+	if err != nil {
+		return models.Client{}, err
+	}
+
 	client, err := ctx.ClientManager.Get(clientId)
 	if err != nil {
 		ctx.Logger.Info("client not found", slog.String("client_id", clientId))
@@ -341,34 +392,91 @@ func getAuthenticatedClient(ctx Context, req models.ClientAuthnRequest) (models.
 	return client, nil
 }
 
-// // Get the client ID from either directly in the request or use the value provided in the client assertion.
-// func getClientId(req models.ClientAuthnRequest) (string, error) {
-// 	if req.ClientIdPost != "" {
-// 		return req.ClientIdPost, nil
-// 	}
+func validateClientAuthnRequest(req models.ClientAuthnRequest) (clientId string, err error) {
+	// Either the client ID or the client assertion must be present to identity the client.
+	clientId, ok := getValidClientId(req)
+	if !ok {
+		return "", issues.OAuthError{
+			ErrorCode:        constants.InvalidClient,
+			ErrorDescription: "invalid client authentication",
+		}
+	}
 
-// 	if req.ClientIdBasicAuthn != "" {
-// 		return req.ClientIdBasicAuthn, nil
-// 	}
+	// Validate parameters for client secret basic authentication.
+	if req.ClientSecretBasicAuthn != "" && (req.ClientIdBasicAuthn == "" || req.ClientSecretPost != "" || req.ClientAssertionType != "" || req.ClientAssertion != "") {
+		return "", issues.OAuthError{
+			ErrorCode:        constants.InvalidClient,
+			ErrorDescription: "invalid client authentication",
+		}
+	}
 
-// 	assertion, err := jwt.ParseSigned(req.ClientAssertion, constants.ClientSigningAlgorithms)
-// 	if err != nil {
-// 		return "", errors.New("invalid assertion")
-// 	}
+	// Validate parameters for client secret post authentication.
+	if req.ClientSecretPost != "" && (req.ClientIdPost == "" || req.ClientIdBasicAuthn != "" || req.ClientSecretBasicAuthn != "" || req.ClientAssertionType != "" || req.ClientAssertion != "") {
+		return "", issues.OAuthError{
+			ErrorCode:        constants.InvalidClient,
+			ErrorDescription: "invalid client authentication",
+		}
+	}
 
-// 	var claims map[constants.Claim]any
-// 	assertion.UnsafeClaimsWithoutVerification(&claims)
+	// Validate parameters for private key jwt authentication.
+	if req.ClientAssertion != "" && (req.ClientAssertionType != constants.JWTBearerAssertion || req.ClientIdBasicAuthn != "" || req.ClientSecretBasicAuthn != "" || req.ClientSecretPost != "") {
+		return "", issues.OAuthError{
+			ErrorCode:        constants.InvalidClient,
+			ErrorDescription: "invalid client authentication",
+		}
+	}
 
-// 	clientId, ok := claims[constants.IssuerClaim]
-// 	if !ok {
-// 		return "", errors.New("invalid assertion")
-// 	}
+	return clientId, nil
+}
 
-// 	clientIdAsString, ok := clientId.(string)
-// 	if !ok {
-// 		return "", errors.New("invalid assertion")
-// 	}
+func getValidClientId(req models.ClientAuthnRequest) (clientId string, ok bool) {
+	clientIds := []string{}
 
-// 	return clientIdAsString, nil
+	if req.ClientIdPost != "" {
+		clientIds = append(clientIds, req.ClientIdPost)
+	}
 
-// }
+	if req.ClientIdBasicAuthn != "" {
+		clientIds = append(clientIds, req.ClientIdBasicAuthn)
+	}
+
+	if req.ClientAssertion != "" {
+		assertionClientId, ok := getClientIdFromAssertion(req)
+		// If the assertion is passed, it must contain the client ID as its issuer.
+		if !ok {
+			return "", false
+		}
+		clientIds = append(clientIds, assertionClientId)
+	}
+
+	// All the client IDs present must be equal.
+	if len(clientIds) == 0 || unit.Any(clientIds, func(clientId string) bool {
+		return clientId != clientIds[0]
+	}) {
+		return "", false
+	}
+
+	return clientIds[0], true
+}
+
+func getClientIdFromAssertion(req models.ClientAuthnRequest) (string, bool) {
+	assertion, err := jwt.ParseSigned(req.ClientAssertion, constants.ClientSigningAlgorithms)
+	if err != nil {
+		return "", false
+	}
+
+	var claims map[constants.Claim]any
+	assertion.UnsafeClaimsWithoutVerification(&claims)
+
+	clientId, ok := claims[constants.IssuerClaim]
+	if !ok {
+		return "", false
+	}
+
+	clientIdAsString, ok := clientId.(string)
+	if !ok {
+		return "", false
+	}
+
+	return clientIdAsString, true
+}

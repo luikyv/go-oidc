@@ -10,6 +10,10 @@ import (
 
 func PushAuthorization(ctx Context, req models.PARRequest) (requestUri string, err error) {
 
+	if err := preValidatePushedAuthorizationParams(req); err != nil {
+		return "", err
+	}
+
 	// Authenticate the client as in the token endpoint.
 	client, err := getAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
@@ -43,12 +47,29 @@ func PushAuthorization(ctx Context, req models.PARRequest) (requestUri string, e
 	return authnSession.RequestUri, nil
 }
 
+func preValidatePushedAuthorizationParams(req models.PARRequest) error {
+
+	// As mentioned in https://datatracker.ietf.org/doc/html/rfc9126,
+	// "...The client_id parameter is defined with the same semantics for both authorization requests
+	// and requests to the token endpoint; as a required authorization request parameter,
+	// it is similarly required in a pushed authorization request...""
+	if req.ClientIdPost == "" {
+		return errors.New("invalid parameter")
+	}
+
+	if req.RequestUri != "" {
+		return errors.New("invalid parameter")
+	}
+
+	return nil
+}
+
 func validatePushedAuthorizationParams(client models.Client, req models.PARRequest) error {
 
 	// The PAR request should accept the same params as the authorize request.
-	err := validateAuthorizeParams(client, req.ToAuthorizeRequest(client))
+	err := validateAuthorizationRequest(req.ToAuthorizeRequest(), client)
 
-	// Convert redirection errors to json.
+	// Convert redirection errors to json format.
 	var redirectErr issues.OAuthRedirectError
 	if errors.As(err, &redirectErr) {
 		return redirectErr.OAuthError

@@ -1,11 +1,7 @@
 package models
 
 import (
-	"errors"
-	"slices"
-
 	"github.com/go-jose/go-jose/v4"
-	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -119,101 +115,6 @@ type ClientAuthnRequest struct {
 	ClientAssertion        string                        `form:"client_assertion"`
 }
 
-func (req ClientAuthnRequest) IsValid() error {
-
-	// Either the client ID or the client assertion must be present to identity the client.
-	if _, ok := req.getValidClientId(); !ok {
-		return issues.OAuthError{
-			ErrorCode:        constants.InvalidClient,
-			ErrorDescription: "invalid client authentication",
-		}
-	}
-
-	// Validate parameters for client secret basic authentication.
-	if req.ClientSecretBasicAuthn != "" && (req.ClientIdBasicAuthn == "" || req.ClientSecretPost != "" || req.ClientAssertionType != "" || req.ClientAssertion != "") {
-		return issues.OAuthError{
-			ErrorCode:        constants.InvalidClient,
-			ErrorDescription: "invalid client authentication",
-		}
-	}
-
-	// Validate parameters for client secret post authentication.
-	if req.ClientSecretPost != "" && (req.ClientIdPost == "" || req.ClientIdBasicAuthn != "" || req.ClientSecretBasicAuthn != "" || req.ClientAssertionType != "" || req.ClientAssertion != "") {
-		return issues.OAuthError{
-			ErrorCode:        constants.InvalidClient,
-			ErrorDescription: "invalid client authentication",
-		}
-	}
-
-	// Validate parameters for private key jwt authentication.
-	if req.ClientAssertion != "" && (req.ClientAssertionType != constants.JWTBearerAssertion || req.ClientIdBasicAuthn != "" || req.ClientSecretBasicAuthn != "" || req.ClientSecretPost != "") {
-		return issues.OAuthError{
-			ErrorCode:        constants.InvalidClient,
-			ErrorDescription: "invalid client authentication",
-		}
-	}
-
-	return nil
-}
-
-func (req ClientAuthnRequest) getValidClientId() (string, bool) {
-	clientIds := []string{}
-
-	if req.ClientIdPost != "" {
-		clientIds = append(clientIds, req.ClientIdPost)
-	}
-
-	if req.ClientIdBasicAuthn != "" {
-		clientIds = append(clientIds, req.ClientIdBasicAuthn)
-	}
-
-	if req.ClientAssertion != "" {
-		assertionClientId, ok := req.getClientIdFromAssertion()
-		// If the assertion is passed, it must contain the client ID as its issuer.
-		if !ok {
-			return "", false
-		}
-		clientIds = append(clientIds, assertionClientId)
-	}
-
-	// All the client IDs present must be equal.
-	if len(clientIds) == 0 || unit.Any(clientIds, func(clientId string) bool {
-		return clientId != clientIds[0]
-	}) {
-		return "", false
-	}
-
-	return clientIds[0], true
-}
-
-func (req ClientAuthnRequest) getClientIdFromAssertion() (string, bool) {
-	assertion, err := jwt.ParseSigned(req.ClientAssertion, constants.ClientSigningAlgorithms)
-	if err != nil {
-		return "", false
-	}
-
-	var claims map[constants.Claim]any
-	assertion.UnsafeClaimsWithoutVerification(&claims)
-
-	clientId, ok := claims[constants.IssuerClaim]
-	if !ok {
-		return "", false
-	}
-
-	clientIdAsString, ok := clientId.(string)
-	if !ok {
-		return "", false
-	}
-
-	return clientIdAsString, true
-}
-
-// This method is intended to be called only after the request is validated.
-func (req ClientAuthnRequest) GetClientId() string {
-	clientId, _ := req.getValidClientId()
-	return clientId
-}
-
 type TokenRequest struct {
 	ClientAuthnRequest
 	GrantType         constants.GrantType `form:"grant_type" binding:"required"`
@@ -222,42 +123,6 @@ type TokenRequest struct {
 	RedirectUri       string              `form:"redirect_uri"`
 	RefreshToken      string              `form:"refresh_token"`
 	CodeVerifier      string              `form:"code_verifier"`
-}
-
-func (req TokenRequest) IsValid() error {
-
-	if err := req.ClientAuthnRequest.IsValid(); err != nil {
-		return err
-	}
-
-	// RFC 7636. "...with a minimum length of 43 characters and a maximum length of 128 characters."
-	codeVerifierLengh := len(req.CodeVerifier)
-	if req.CodeVerifier != "" && (codeVerifierLengh < 43 || codeVerifierLengh > 128) {
-		return errors.New("invalid code verifier")
-	}
-
-	// Validate parameters specific to each grant type.
-	switch req.GrantType {
-	case constants.ClientCredentialsGrant:
-		if req.AuthorizationCode != "" || req.RedirectUri != "" || req.RefreshToken != "" {
-			return errors.New("invalid parameter for client credentials grant")
-		}
-	case constants.AuthorizationCodeGrant:
-		if req.AuthorizationCode == "" || req.RedirectUri == "" || req.RefreshToken != "" || req.Scope != "" {
-			return errors.New("invalid parameter for authorization code grant")
-		}
-	case constants.RefreshTokenGrant:
-		if req.RefreshToken == "" || req.AuthorizationCode != "" || req.RedirectUri != "" || req.Scope != "" {
-			return errors.New("invalid parameter for refresh token grant")
-		}
-	default:
-		return issues.OAuthError{
-			ErrorCode:        constants.UnsupportedGrantType,
-			ErrorDescription: "unsupported grant type",
-		}
-	}
-
-	return nil
 }
 
 type TokenResponse struct {
@@ -282,77 +147,9 @@ type BaseAuthorizeRequest struct {
 	Nonce               string                        `form:"nonce"`
 }
 
-func (req BaseAuthorizeRequest) IsValid() error {
-
-	if req.RequestUri != "" {
-		return req.isValidWithPar()
-	}
-
-	return req.isValidWithoutPar()
-}
-
-func (req BaseAuthorizeRequest) isValidWithPar() error {
-	// If the request URI is passed, all the other parameters must be empty.
-	if unit.Any(
-		[]string{req.Request, req.RedirectUri, req.Scope, string(req.ResponseType), string(req.ResponseMode), req.CodeChallenge, string(req.CodeChallengeMethod)},
-		func(s string) bool { return s != "" },
-	) {
-		return errors.New("invalid parameter")
-	}
-
-	return nil
-}
-
-func (req BaseAuthorizeRequest) isValidWithoutPar() error {
-
-	// If the request object is passed, all the other parameters must be empty.
-	if req.Request != "" && unit.Any(
-		[]string{req.Request, req.RedirectUri, req.Scope, string(req.ResponseType), string(req.ResponseMode), req.CodeChallenge, string(req.CodeChallengeMethod)},
-		func(s string) bool { return s != "" },
-	) {
-		return errors.New("invalid parameter")
-	}
-
-	if unit.Any(
-		[]string{req.RedirectUri, req.Scope, string(req.ResponseType)},
-		func(s string) bool { return s == "" },
-	) {
-		return errors.New("invalid parameter")
-	}
-
-	if !slices.Contains(constants.ResponseTypes, req.ResponseType) {
-		return errors.New("invalid response type")
-	}
-
-	if req.ResponseMode != "" && !slices.Contains(constants.ResponseModes, req.ResponseMode) {
-		return errors.New("invalid response mode")
-	}
-
-	// Implict response types cannot be sent via query parameteres.
-	if req.ResponseType.IsImplict() && req.ResponseMode.IsQuery() {
-		return errors.New("invalid response mode for the chosen response type")
-	}
-
-	// Validate PKCE parameters.
-	// The code challenge cannot be informed without the method and vice versa.
-	if (req.CodeChallenge != "" && req.CodeChallengeMethod == "") || (req.CodeChallenge == "" && req.CodeChallengeMethod != "") {
-		return errors.New("invalid parameters for PKCE")
-	}
-
-	return nil
-}
-
 type AuthorizeRequest struct {
 	ClientId string `form:"client_id"`
 	BaseAuthorizeRequest
-}
-
-func (req AuthorizeRequest) IsValid() error {
-	if req.ClientId == "" {
-		return errors.New("invalid parameter")
-	}
-
-	return req.BaseAuthorizeRequest.IsValid()
 }
 
 type PARRequest struct {
@@ -360,30 +157,9 @@ type PARRequest struct {
 	BaseAuthorizeRequest
 }
 
-func (req PARRequest) IsValid() error {
-
-	// As mentioned in https://datatracker.ietf.org/doc/html/rfc9126,
-	// "...The client_id parameter is defined with the same semantics for both authorization requests
-	// and requests to the token endpoint; as a required authorization request parameter,
-	// it is similarly required in a pushed authorization request...""
-	if req.ClientIdPost == "" {
-		return errors.New("invalid parameter")
-	}
-
-	if err := req.ClientAuthnRequest.IsValid(); err != nil {
-		return err
-	}
-
-	if req.RequestUri != "" {
-		return errors.New("invalid parameter")
-	}
-
-	return req.BaseAuthorizeRequest.IsValid()
-}
-
-func (req PARRequest) ToAuthorizeRequest(client Client) AuthorizeRequest {
+func (req PARRequest) ToAuthorizeRequest() AuthorizeRequest {
 	return AuthorizeRequest{
-		ClientId:             client.Id,
+		ClientId:             req.ClientIdPost,
 		BaseAuthorizeRequest: req.BaseAuthorizeRequest,
 	}
 }

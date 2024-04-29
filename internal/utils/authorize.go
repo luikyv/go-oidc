@@ -16,12 +16,16 @@ import (
 
 func InitAuthentication(ctx Context, req models.AuthorizeRequest) error {
 	if err := initAuthentication(ctx, req); err != nil {
-		return handleAuthorizeError(ctx, err)
+		return handleAuthorizationError(ctx, err)
 	}
 	return nil
 }
 
 func initAuthentication(ctx Context, req models.AuthorizeRequest) error {
+	if err := preValidateAuthorizationRequest(req); err != nil {
+		return err
+	}
+
 	// Fetch the client.
 	client, err := ctx.ClientManager.Get(req.ClientId)
 	if err != nil {
@@ -31,7 +35,7 @@ func initAuthentication(ctx Context, req models.AuthorizeRequest) error {
 	// Init the session and make sure it is valid.
 	var session models.AuthnSession
 	if req.RequestUri != "" {
-		session, err = initValidAuthenticationSessionWithPAR(ctx, req)
+		session, err = initValidAuthenticationSessionWithPar(ctx, req)
 	} else {
 		session, err = initValidAuthenticationSession(ctx, client, req)
 	}
@@ -51,9 +55,17 @@ func initAuthentication(ctx Context, req models.AuthorizeRequest) error {
 	return authenticate(ctx, &session)
 }
 
+func preValidateAuthorizationRequest(req models.AuthorizeRequest) error {
+	if req.ClientId == "" {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid client ID")
+	}
+
+	return nil
+}
+
 func initValidAuthenticationSession(_ Context, client models.Client, req models.AuthorizeRequest) (models.AuthnSession, error) {
 
-	if err := validateAuthorizeParams(client, req); err != nil {
+	if err := validateAuthorizationRequest(req, client); err != nil {
 		return models.AuthnSession{}, err
 	}
 
@@ -61,7 +73,51 @@ func initValidAuthenticationSession(_ Context, client models.Client, req models.
 
 }
 
-func initValidAuthenticationSessionWithPAR(ctx Context, req models.AuthorizeRequest) (models.AuthnSession, error) {
+func validateAuthorizationRequest(req models.AuthorizeRequest, client models.Client) error {
+
+	if req.Request != "" && unit.Any(
+		[]string{req.Request, req.RedirectUri, req.Scope, string(req.ResponseType), string(req.ResponseMode), req.CodeChallenge, string(req.CodeChallengeMethod)},
+		func(s string) bool { return s != "" },
+	) {
+		// TODO
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid parameter")
+	}
+
+	// We must validate the redirect URI first, since the other errors will be redirected.
+	if req.RedirectUri == "" || !client.IsRedirectUriAllowed(req.RedirectUri) {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid redirect uri")
+	}
+
+	if req.Scope == "" || !client.AreScopesAllowed(unit.SplitStringWithSpaces(req.Scope)) {
+		return newRedirectErrorFromRequest(req, constants.InvalidScope, "invalid scope")
+	}
+
+	if req.ResponseType == "" || !client.IsResponseTypeAllowed(req.ResponseType) {
+		return newRedirectErrorFromRequest(req, constants.InvalidRequest, "response type not allowed")
+	}
+
+	if req.ResponseMode != "" && !client.IsResponseModeAllowed(req.ResponseMode) {
+		return newRedirectErrorFromRequest(req, constants.InvalidRequest, "response mode not allowed")
+	}
+
+	// Implict response types cannot be sent via query parameteres.
+	if req.ResponseType.IsImplict() && req.ResponseMode.IsQuery() {
+		return errors.New("invalid response mode for the chosen response type")
+	}
+
+	// Validate PKCE parameters.
+	if client.PkceIsRequired && req.CodeChallenge == "" {
+		return newRedirectErrorFromRequest(req, constants.InvalidRequest, "PKCE is required")
+	}
+	// The code challenge cannot be informed without the method and vice versa.
+	if (req.CodeChallenge != "" && req.CodeChallengeMethod == "") || (req.CodeChallenge == "" && req.CodeChallengeMethod != "") {
+		return errors.New("invalid parameters for PKCE")
+	}
+
+	return nil
+}
+
+func initValidAuthenticationSessionWithPar(ctx Context, req models.AuthorizeRequest) (models.AuthnSession, error) {
 	// The session was already created by the client in the PAR endpoint.
 	// Fetch it using the request URI.
 	session, err := ctx.AuthnSessionManager.GetByRequestUri(req.RequestUri)
@@ -69,7 +125,7 @@ func initValidAuthenticationSessionWithPAR(ctx Context, req models.AuthorizeRequ
 		return models.AuthnSession{}, issues.NewOAuthError(constants.InvalidRequest, "invalid request_uri")
 	}
 
-	if err := validateAuthorizeWithPARParams(session, req); err != nil {
+	if err := validateAuthorizationRequestWithPar(req, session); err != nil {
 		// If any of the parameters is invalid, we delete the session right away.
 		ctx.AuthnSessionManager.Delete(session.Id)
 		return models.AuthnSession{}, err
@@ -81,9 +137,30 @@ func initValidAuthenticationSessionWithPAR(ctx Context, req models.AuthorizeRequ
 	return session, nil
 }
 
+func validateAuthorizationRequestWithPar(req models.AuthorizeRequest, session models.AuthnSession) error {
+	// If the request URI is passed, all the other parameters must be empty.
+	if unit.Any(
+		[]string{req.Request, req.RedirectUri, req.State, req.Scope, string(req.ResponseType), string(req.ResponseMode), req.CodeChallenge, string(req.CodeChallengeMethod)},
+		func(s string) bool { return s != "" },
+	) {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid parameter when using PAR")
+	}
+
+	if session.IsPushedRequestExpired() {
+		return issues.NewOAuthError(constants.InvalidRequest, "the request_uri expired")
+	}
+
+	// Make sure the client who created the PAR request is the same one trying to authorize.
+	if session.ClientId != req.ClientId {
+		return issues.NewOAuthError(constants.AccessDenied, "invalid client")
+	}
+
+	return nil
+}
+
 func ContinueAuthentication(ctx Context, callbackId string) error {
 	if err := continueAuthentication(ctx, callbackId); err != nil {
-		return handleAuthorizeError(ctx, err)
+		return handleAuthorizationError(ctx, err)
 	}
 	return nil
 }
@@ -97,55 +174,6 @@ func continueAuthentication(ctx Context, callbackId string) error {
 	}
 
 	return authenticate(ctx, &session)
-}
-
-func validateAuthorizeParams(client models.Client, req models.AuthorizeRequest) error {
-	// We must validate the redirect URI first, since the other errors will be redirected.
-	if !client.IsRedirectUriAllowed(req.RedirectUri) {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid redirect uri")
-	}
-
-	if client.PkceIsRequired && req.CodeChallenge == "" {
-		return newRedirectErrorFromRequest(req, constants.InvalidRequest, "PKCE is required")
-	}
-
-	if !client.AreScopesAllowed(unit.SplitStringWithSpaces(req.Scope)) {
-		return newRedirectErrorFromRequest(req, constants.InvalidScope, "invalid scope")
-	}
-
-	if !client.IsResponseTypeAllowed(req.ResponseType) {
-		return newRedirectErrorFromRequest(req, constants.InvalidRequest, "response type not allowed")
-	}
-
-	if req.ResponseMode != "" && !client.IsResponseModeAllowed(req.ResponseMode) {
-		return newRedirectErrorFromRequest(req, constants.InvalidRequest, "response mode not allowed")
-	}
-
-	return nil
-}
-
-func validateAuthorizeWithPARParams(session models.AuthnSession, req models.AuthorizeRequest) error {
-
-	if session.IsPushedRequestExpired() {
-		return issues.NewOAuthError(constants.InvalidRequest, "the request_uri expired")
-	}
-
-	// Make sure the client who created the PAR request is the same one trying to authorize.
-	if session.ClientId != req.ClientId {
-		return issues.NewOAuthError(constants.AccessDenied, "invalid client")
-	}
-
-	allParamsAreEmpty := unit.All(
-		[]string{req.RedirectUri, req.Scope, string(req.ResponseType), req.State},
-		func(param string) bool {
-			return param == ""
-		},
-	)
-	if !allParamsAreEmpty {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid parameter when using PAR")
-	}
-
-	return nil
 }
 
 // Execute the authentication steps.
@@ -237,7 +265,7 @@ func generateImplictParams(ctx Context, session models.AuthnSession) (map[string
 	return implictParams, nil
 }
 
-func handleAuthorizeError(ctx Context, err error) error {
+func handleAuthorizationError(ctx Context, err error) error {
 	var redirectErr issues.OAuthRedirectError
 	if !errors.As(err, &redirectErr) {
 		return err

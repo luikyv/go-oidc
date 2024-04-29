@@ -34,11 +34,6 @@ func HandlePARRequest(ctx utils.Context) {
 	}
 	addBasicCredentialsToRequest(ctx, &req.ClientAuthnRequest)
 
-	if err := req.IsValid(); err != nil {
-		bindErrorToResponse(err, ctx.RequestContext)
-		return
-	}
-
 	requestUri, err := utils.PushAuthorization(ctx, req)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
@@ -56,11 +51,6 @@ func HandlePARRequest(ctx utils.Context) {
 func HandleAuthorizeRequest(ctx utils.Context) {
 	var req models.AuthorizeRequest
 	if err := ctx.RequestContext.ShouldBindQuery(&req); err != nil {
-		bindErrorToResponse(err, ctx.RequestContext)
-		return
-	}
-
-	if err := req.IsValid(); err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
 	}
@@ -89,11 +79,6 @@ func HandleTokenRequest(ctx utils.Context) {
 		return
 	}
 	addBasicCredentialsToRequest(ctx, &req.ClientAuthnRequest)
-
-	if err := req.IsValid(); err != nil {
-		bindErrorToResponse(err, ctx.RequestContext)
-		return
-	}
 
 	grantSession, err := utils.HandleGrantCreation(ctx, req)
 	if err != nil {
