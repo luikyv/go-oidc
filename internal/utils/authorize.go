@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"maps"
 	"net/http"
+	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
@@ -14,31 +15,24 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
-func InitAuthentication(ctx Context, req models.AuthorizeRequest) error {
+func InitAuthentication(ctx Context, req models.AuthorizationRequest) error {
 	if err := initAuthentication(ctx, req); err != nil {
 		return handleAuthorizationError(ctx, err)
 	}
 	return nil
 }
 
-func initAuthentication(ctx Context, req models.AuthorizeRequest) error {
+func initAuthentication(ctx Context, req models.AuthorizationRequest) error {
 	if err := preValidateAuthorizationRequest(req); err != nil {
 		return err
 	}
 
-	// Fetch the client.
 	client, err := ctx.ClientManager.Get(req.ClientId)
 	if err != nil {
 		return issues.NewWrappingOAuthError(err, constants.InvalidRequest, "invalid client ID")
 	}
 
-	// Init the session and make sure it is valid.
-	var session models.AuthnSession
-	if req.RequestUri != "" {
-		session, err = initValidAuthenticationSessionWithPar(ctx, req)
-	} else {
-		session, err = initValidAuthenticationSession(ctx, client, req)
-	}
+	session, err := initValidAuthenticationSession(ctx, client, req)
 	if err != nil {
 		return err
 	}
@@ -55,7 +49,7 @@ func initAuthentication(ctx Context, req models.AuthorizeRequest) error {
 	return authenticate(ctx, &session)
 }
 
-func preValidateAuthorizationRequest(req models.AuthorizeRequest) error {
+func preValidateAuthorizationRequest(req models.AuthorizationRequest) error {
 	if req.ClientId == "" {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid client ID")
 	}
@@ -63,9 +57,72 @@ func preValidateAuthorizationRequest(req models.AuthorizeRequest) error {
 	return nil
 }
 
-func initValidAuthenticationSession(_ Context, client models.Client, req models.AuthorizeRequest) (models.AuthnSession, error) {
+func initValidAuthenticationSession(ctx Context, client models.Client, req models.AuthorizationRequest) (models.AuthnSession, error) {
 
+	if req.RequestUri != "" {
+		ctx.Logger.Info("initiating authorization request with PAR")
+		return initValidAuthenticationSessionWithPar(ctx, req)
+	}
+
+	if req.Request != "" {
+		ctx.Logger.Info("initiating authorization request with JAR")
+		return initValidAuthenticationSessionWithJar(ctx, client, req)
+	}
+
+	ctx.Logger.Info("initiating authorization request")
 	if err := validateAuthorizationRequest(req, client); err != nil {
+		return models.AuthnSession{}, err
+	}
+	return models.NewSessionForAuthorizeRequest(req, client), nil
+
+}
+
+func initValidAuthenticationSessionWithPar(ctx Context, req models.AuthorizationRequest) (models.AuthnSession, error) {
+	// The session was already created by the client in the PAR endpoint.
+	// Fetch it using the request URI.
+	session, err := ctx.AuthnSessionManager.GetByRequestUri(req.RequestUri)
+	if err != nil {
+		return models.AuthnSession{}, issues.NewOAuthError(constants.InvalidRequest, "invalid request_uri")
+	}
+
+	if err := validateAuthorizationRequestWithPar(req, session); err != nil {
+		// If any of the parameters is invalid, we delete the session right away.
+		ctx.AuthnSessionManager.Delete(session.Id)
+		return models.AuthnSession{}, err
+	}
+
+	// FIXME: Treating the request_uri as one-time use will cause problems when the user refreshes the page.
+	session.EraseRequestUri()
+	session.InitCallbackId()
+	return session, nil
+}
+
+func validateAuthorizationRequestWithPar(req models.AuthorizationRequest, session models.AuthnSession) error {
+	// If the request URI is passed, all the other parameters must be empty.
+	if unit.AnyNonEmpty(req.Request, req.RedirectUri, req.State, req.Scope, string(req.ResponseType), string(req.ResponseMode), req.CodeChallenge, string(req.CodeChallengeMethod)) {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid parameter when using PAR")
+	}
+
+	if session.IsPushedRequestExpired() {
+		return issues.NewOAuthError(constants.InvalidRequest, "the request_uri expired")
+	}
+
+	// Make sure the client who created the PAR request is the same one trying to authorize.
+	if session.ClientId != req.ClientId {
+		return issues.NewOAuthError(constants.AccessDenied, "invalid client")
+	}
+
+	return nil
+}
+
+func initValidAuthenticationSessionWithJar(ctx Context, client models.Client, req models.AuthorizationRequest) (models.AuthnSession, error) {
+
+	jarReq, err := extractJarFromRequestObject(ctx, req, client)
+	if err != nil {
+		return models.AuthnSession{}, err
+	}
+
+	if err := validateAuthorizationRequestWithJar(req, jarReq, client); err != nil {
 		return models.AuthnSession{}, err
 	}
 
@@ -73,22 +130,72 @@ func initValidAuthenticationSession(_ Context, client models.Client, req models.
 
 }
 
-func validateAuthorizationRequest(req models.AuthorizeRequest, client models.Client) error {
-
-	if req.Request != "" && unit.Any(
-		[]string{req.Request, req.RedirectUri, req.Scope, string(req.ResponseType), string(req.ResponseMode), req.CodeChallenge, string(req.CodeChallengeMethod)},
-		func(s string) bool { return s != "" },
-	) {
-		// TODO
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid parameter")
+func extractJarFromRequestObject(ctx Context, req models.AuthorizationRequest, client models.Client) (models.AuthorizationRequest, error) {
+	parsedToken, err := jwt.ParseSigned(req.Request, client.GetSigningAlgorithms())
+	if err != nil {
+		return models.AuthorizationRequest{}, err
 	}
+
+	// Verify that the assertion indicates the key ID.
+	if len(parsedToken.Headers) != 0 && parsedToken.Headers[0].KeyID == "" {
+		return models.AuthorizationRequest{}, errors.New("invalid kid header")
+	}
+
+	// Verify that the key ID belongs to the client.
+	keys := client.PublicJwks.Key(parsedToken.Headers[0].KeyID)
+	if len(keys) == 0 {
+		return models.AuthorizationRequest{}, errors.New("invalid kid header")
+	}
+
+	jwk := keys[0]
+	var claims jwt.Claims
+	var jarReq models.AuthorizationRequest
+	if err := parsedToken.Claims(jwk.Key, &claims, &jarReq); err != nil {
+		return models.AuthorizationRequest{}, errors.New("invalid kid header")
+	}
+
+	err = claims.ValidateWithLeeway(jwt.Expected{
+		Issuer:      req.ClientId,
+		AnyAudience: []string{ctx.Host},
+	}, time.Duration(0))
+	if err != nil {
+		return models.AuthorizationRequest{}, err
+	}
+
+	return jarReq, nil
+}
+
+func validateAuthorizationRequestWithJar(req models.AuthorizationRequest, jarReq models.AuthorizationRequest, client models.Client) error {
+
+	if req.ClientId != jarReq.ClientId {
+		return issues.NewOAuthError(constants.InvalidClient, "invalid client ID")
+	}
+
+	if err := validateAuthorizationRequest(jarReq, client); err != nil {
+		return err
+	}
+
+	// https://datatracker.ietf.org/doc/rfc9101/.
+	// "..."request" and "request_uri" parameters MUST NOT be included in Request Objects...."
+	if unit.AnyNonEmpty(jarReq.Request, jarReq.RequestUri) {
+		return newRedirectErrorFromRequest(jarReq, constants.InvalidScope, "the JAR can neither contain the request nor the request_uri parameters")
+	}
+
+	if unit.AnyNonEmpty(req.RedirectUri, req.State, req.Scope, string(req.ResponseType), string(req.ResponseMode), req.CodeChallenge, string(req.CodeChallengeMethod), req.RequestUri) {
+		return newRedirectErrorFromRequest(jarReq, constants.InvalidRequest, "The request cannot pass parameters outside the JAR")
+	}
+
+	return nil
+}
+
+func validateAuthorizationRequest(req models.AuthorizationRequest, client models.Client) error {
 
 	// We must validate the redirect URI first, since the other errors will be redirected.
 	if req.RedirectUri == "" || !client.IsRedirectUriAllowed(req.RedirectUri) {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid redirect uri")
 	}
 
-	if req.Scope == "" || !client.AreScopesAllowed(unit.SplitStringWithSpaces(req.Scope)) {
+	if unit.IsBlank(req.Scope) || !client.AreScopesAllowed(unit.SplitStringWithSpaces(req.Scope)) {
 		return newRedirectErrorFromRequest(req, constants.InvalidScope, "invalid scope")
 	}
 
@@ -112,47 +219,6 @@ func validateAuthorizationRequest(req models.AuthorizeRequest, client models.Cli
 	// The code challenge cannot be informed without the method and vice versa.
 	if (req.CodeChallenge != "" && req.CodeChallengeMethod == "") || (req.CodeChallenge == "" && req.CodeChallengeMethod != "") {
 		return errors.New("invalid parameters for PKCE")
-	}
-
-	return nil
-}
-
-func initValidAuthenticationSessionWithPar(ctx Context, req models.AuthorizeRequest) (models.AuthnSession, error) {
-	// The session was already created by the client in the PAR endpoint.
-	// Fetch it using the request URI.
-	session, err := ctx.AuthnSessionManager.GetByRequestUri(req.RequestUri)
-	if err != nil {
-		return models.AuthnSession{}, issues.NewOAuthError(constants.InvalidRequest, "invalid request_uri")
-	}
-
-	if err := validateAuthorizationRequestWithPar(req, session); err != nil {
-		// If any of the parameters is invalid, we delete the session right away.
-		ctx.AuthnSessionManager.Delete(session.Id)
-		return models.AuthnSession{}, err
-	}
-
-	// FIXME: Treating the request_uri as one-time use will cause problems when the user refreshes the page.
-	session.EraseRequestUri()
-	session.InitCallbackId()
-	return session, nil
-}
-
-func validateAuthorizationRequestWithPar(req models.AuthorizeRequest, session models.AuthnSession) error {
-	// If the request URI is passed, all the other parameters must be empty.
-	if unit.Any(
-		[]string{req.Request, req.RedirectUri, req.State, req.Scope, string(req.ResponseType), string(req.ResponseMode), req.CodeChallenge, string(req.CodeChallengeMethod)},
-		func(s string) bool { return s != "" },
-	) {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid parameter when using PAR")
-	}
-
-	if session.IsPushedRequestExpired() {
-		return issues.NewOAuthError(constants.InvalidRequest, "the request_uri expired")
-	}
-
-	// Make sure the client who created the PAR request is the same one trying to authorize.
-	if session.ClientId != req.ClientId {
-		return issues.NewOAuthError(constants.AccessDenied, "invalid client")
 	}
 
 	return nil
@@ -291,6 +357,8 @@ func redirectResponse(ctx Context, redirectResponse models.RedirectResponse) {
 		}
 	}
 
+	// TODO https://openid.net/specs/openid-connect-core-1_0.html#AuthError
+	// "...If the Response Mode value is not supported, the Authorization Server returns an HTTP response code of 400 (Bad Request) without Error Response parameters, since understanding the Response Mode is necessary to know how to return those parameters...."
 	switch redirectResponse.ResponseMode {
 	case constants.FragmentResponseMode, constants.FragmentJwtResponseMode:
 		redirectUrl := unit.GetUrlWithFragmentParams(redirectResponse.RedirectUri, redirectResponse.Parameters)
@@ -351,7 +419,7 @@ func newRedirectOAuthErrorFromSession(session models.AuthnSession, errorCode con
 	}
 }
 
-func newRedirectErrorFromRequest(req models.AuthorizeRequest, errorCode constants.ErrorCode, errorDescription string) issues.OAuthRedirectError {
+func newRedirectErrorFromRequest(req models.AuthorizationRequest, errorCode constants.ErrorCode, errorDescription string) issues.OAuthRedirectError {
 	return issues.OAuthRedirectError{
 		OAuthError:   issues.NewOAuthError(errorCode, errorDescription),
 		ClientId:     req.ClientId,

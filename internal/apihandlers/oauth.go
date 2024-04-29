@@ -27,7 +27,7 @@ func HandleJWKSRequest(ctx utils.Context) {
 //---------------------------------------- Pushed Authorization Request - PAR ----------------------------------------//
 
 func HandlePARRequest(ctx utils.Context) {
-	var req models.PARRequest
+	var req models.ParRequest
 	if err := ctx.RequestContext.ShouldBind(&req); err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
@@ -49,7 +49,7 @@ func HandlePARRequest(ctx utils.Context) {
 //---------------------------------------- Authorize ----------------------------------------//
 
 func HandleAuthorizeRequest(ctx utils.Context) {
-	var req models.AuthorizeRequest
+	var req models.AuthorizationRequest
 	if err := ctx.RequestContext.ShouldBindQuery(&req); err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return

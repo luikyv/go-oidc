@@ -23,7 +23,7 @@ func TestInitAuthenticationShouldNotFindClient(t *testing.T) {
 	defer tearDown()
 
 	// Then
-	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{ClientId: "invalid_client_id"})
+	err := utils.InitAuthentication(ctx, models.AuthorizationRequest{ClientId: "invalid_client_id"})
 
 	// Assert
 	if err == nil || !errors.Is(err, issues.ErrorEntityNotFound) {
@@ -38,7 +38,7 @@ func TestInitAuthenticationWhenInvalidRedirectUri(t *testing.T) {
 	defer tearDown()
 
 	// Then
-	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
+	err := utils.InitAuthentication(ctx, models.AuthorizationRequest{
 		ClientId: utils.ValidClientId,
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RedirectUri: "https://invalid.com",
@@ -65,7 +65,7 @@ func TestInitAuthenticationWhenInvalidScope(t *testing.T) {
 	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 
 	// Then
-	utils.InitAuthentication(ctx, models.AuthorizeRequest{
+	utils.InitAuthentication(ctx, models.AuthorizationRequest{
 		ClientId: utils.ValidClientId,
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RedirectUri:  client.RedirectUris[0],
@@ -91,7 +91,7 @@ func TestInitAuthenticationWhenInvalidResponseType(t *testing.T) {
 	ctx.ClientManager.Update(utils.ValidClientId, client)
 
 	// Then
-	utils.InitAuthentication(ctx, models.AuthorizeRequest{
+	utils.InitAuthentication(ctx, models.AuthorizationRequest{
 		ClientId: utils.ValidClientId,
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RedirectUri:  client.RedirectUris[0],
@@ -115,7 +115,7 @@ func TestInitAuthenticationWhenNoPolicyIsAvailable(t *testing.T) {
 	client, _ := ctx.ClientManager.Get(utils.ValidClientId)
 
 	// Then
-	utils.InitAuthentication(ctx, models.AuthorizeRequest{
+	utils.InitAuthentication(ctx, models.AuthorizationRequest{
 		ClientId: utils.ValidClientId,
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RedirectUri:  client.RedirectUris[0],
@@ -152,7 +152,7 @@ func TestInitAuthenticationShouldEndWithError(t *testing.T) {
 	ctx.Policies = append(ctx.Policies, policy)
 
 	// Then
-	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
+	err := utils.InitAuthentication(ctx, models.AuthorizationRequest{
 		ClientId: utils.ValidClientId,
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RedirectUri:  client.RedirectUris[0],
@@ -199,7 +199,7 @@ func TestInitAuthenticationShouldEndInProgress(t *testing.T) {
 	ctx.Policies = append(ctx.Policies, policy)
 
 	// Then
-	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
+	err := utils.InitAuthentication(ctx, models.AuthorizationRequest{
 		ClientId: utils.ValidClientId,
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RedirectUri:  client.RedirectUris[0],
@@ -262,7 +262,7 @@ func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 	ctx.Policies = append(ctx.Policies, policy)
 
 	// Then
-	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
+	err := utils.InitAuthentication(ctx, models.AuthorizationRequest{
 		ClientId: utils.ValidClientId,
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RedirectUri:  client.RedirectUris[0],
@@ -325,7 +325,7 @@ func TestInitAuthenticationWithPAR(t *testing.T) {
 	ctx.Policies = append(ctx.Policies, policy)
 
 	// Then
-	err := utils.InitAuthentication(ctx, models.AuthorizeRequest{
+	err := utils.InitAuthentication(ctx, models.AuthorizationRequest{
 		ClientId: utils.ValidClientId,
 		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
 			RequestUri: requestUri,

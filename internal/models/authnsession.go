@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -54,17 +55,31 @@ func newSessionForBaseAuthorizeRequest(req BaseAuthorizeRequest, client Client) 
 	}
 }
 
-func NewSessionForAuthorizeRequest(req AuthorizeRequest, client Client) AuthnSession {
+func NewSessionForAuthorizeRequest(req AuthorizationRequest, client Client) AuthnSession {
 	session := newSessionForBaseAuthorizeRequest(req.BaseAuthorizeRequest, client)
 	session.CallbackId = unit.GenerateCallbackId()
 	return session
 }
 
-func NewSessionForPARRequest(req PARRequest, client Client, pushedParams map[string]string) AuthnSession {
-	session := newSessionForBaseAuthorizeRequest(req.BaseAuthorizeRequest, client)
+func NewSessionForPARRequest(req BaseAuthorizeRequest, client Client, reqCtx *gin.Context) AuthnSession {
+	session := newSessionForBaseAuthorizeRequest(req, client)
 	session.RequestUri = unit.GenerateRequestUri()
-	session.PushedParameters = pushedParams
+	session.PushedParameters = extractPushedParams(reqCtx)
 	return session
+}
+
+func extractPushedParams(reqCtx *gin.Context) map[string]string {
+	// Load the parameters sent using PAR.
+	if err := reqCtx.Request.ParseForm(); err != nil {
+		return map[string]string{}
+	}
+
+	pushedParams := make(map[string]string)
+	for param, values := range reqCtx.Request.PostForm {
+		pushedParams[param] = values[0]
+	}
+
+	return pushedParams
 }
 
 func (session *AuthnSession) SetUserId(userId string) {

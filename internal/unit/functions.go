@@ -136,6 +136,20 @@ func Any[T interface{}](slice []T, condition func(T) bool) bool {
 	return false
 }
 
+func AnyEmpty(values ...string) bool {
+	return Any(
+		values,
+		func(s string) bool { return s == "" },
+	)
+}
+
+func AnyNonEmpty(values ...string) bool {
+	return Any(
+		values,
+		func(s string) bool { return s != "" },
+	)
+}
+
 func GetTimestampNow() int {
 	return int(time.Now().Unix())
 }
@@ -149,15 +163,6 @@ func SplitStringWithSpaces(s string) []string {
 	return slice
 }
 
-func SplitResponseTypes(s string) []constants.ResponseType {
-	responseTypes := []constants.ResponseType{}
-	if s == "" {
-		return responseTypes
-	}
-
-	for _, responseType := range strings.Split(s, " ") {
-		responseTypes = append(responseTypes, constants.ResponseType(responseType))
-	}
-
-	return responseTypes
+func IsBlank(s string) bool {
+	return strings.ReplaceAll(s, " ", "") == ""
 }

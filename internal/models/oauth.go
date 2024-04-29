@@ -147,19 +147,19 @@ type BaseAuthorizeRequest struct {
 	Nonce               string                        `form:"nonce"`
 }
 
-type AuthorizeRequest struct {
+type AuthorizationRequest struct {
 	ClientId string `form:"client_id"`
 	BaseAuthorizeRequest
 }
 
-type PARRequest struct {
+type ParRequest struct {
 	ClientAuthnRequest
 	BaseAuthorizeRequest
 }
 
-func (req PARRequest) ToAuthorizeRequest() AuthorizeRequest {
-	return AuthorizeRequest{
-		ClientId:             req.ClientIdPost,
+func (req ParRequest) ToAuthorizeRequest() AuthorizationRequest {
+	return AuthorizationRequest{
+		ClientId:             req.ClientIdPost, // The client ID as a form param is required for PAR.
 		BaseAuthorizeRequest: req.BaseAuthorizeRequest,
 	}
 }

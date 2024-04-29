@@ -23,19 +23,6 @@ var GrantTypes []GrantType = []GrantType{
 
 type ResponseType string
 
-func (rt ResponseType) Contains(responseType ResponseType) bool {
-	for _, s := range strings.Split(string(rt), " ") {
-		if s == string(responseType) {
-			return true
-		}
-	}
-	return false
-}
-
-func (rt ResponseType) IsImplict() bool {
-	return rt.Contains(IdTokenResponse) || rt.Contains(TokenResponseResponse)
-}
-
 const (
 	CodeResponse                   ResponseType = "code"
 	IdTokenResponse                ResponseType = "id_token"
@@ -56,6 +43,19 @@ var ResponseTypes []ResponseType = []ResponseType{
 	CodeAndIdTokenAndTokenResponse,
 }
 
+func (rt ResponseType) Contains(responseType ResponseType) bool {
+	for _, s := range strings.Split(string(rt), " ") {
+		if s == string(responseType) {
+			return true
+		}
+	}
+	return false
+}
+
+func (rt ResponseType) IsImplict() bool {
+	return rt.Contains(IdTokenResponse) || rt.Contains(TokenResponseResponse)
+}
+
 type ResponseMode string
 
 const (
@@ -70,14 +70,6 @@ const (
 	JwtResponseMode         ResponseMode = "jwt"
 )
 
-func (rm ResponseMode) IsJarm() bool {
-	return strings.HasSuffix(string(rm), string(JwtResponseMode))
-}
-
-func (rm ResponseMode) IsQuery() bool {
-	return strings.HasPrefix(string(rm), string(QueryResponseMode))
-}
-
 var ResponseModes []ResponseMode = []ResponseMode{
 	QueryResponseMode,
 	FragmentResponseMode,
@@ -86,6 +78,14 @@ var ResponseModes []ResponseMode = []ResponseMode{
 	FragmentJwtResponseMode,
 	FormPostJwtResponseMode,
 	JwtResponseMode,
+}
+
+func (rm ResponseMode) IsJarm() bool {
+	return strings.HasSuffix(string(rm), string(JwtResponseMode))
+}
+
+func (rm ResponseMode) IsQuery() bool {
+	return strings.HasPrefix(string(rm), string(QueryResponseMode))
 }
 
 type ClientAuthnType string

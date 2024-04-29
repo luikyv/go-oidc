@@ -92,11 +92,7 @@ func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(req Client
 
 func (authenticator PrivateKeyJwtClientAuthenticator) GetSigningAlgorithms() []jose.SignatureAlgorithm {
 
-	signingAlgorithms := []jose.SignatureAlgorithm{}
-	for _, jwk := range authenticator.PublicJwks.Keys {
-		signingAlgorithms = append(signingAlgorithms, jose.SignatureAlgorithm(jwk.Algorithm))
-	}
-	return signingAlgorithms
+	return getSigningAlgorithms(authenticator.PublicJwks)
 }
 
 //---------------------------------------- Client ----------------------------------------//
@@ -112,6 +108,7 @@ type Client struct {
 	Scopes              []string
 	PkceIsRequired      bool
 	DefaultGrantModelId string
+	PublicJwks          jose.JSONWebKeySet
 	Attributes          map[string]string
 	Authenticator       ClientAuthenticator
 }
@@ -140,8 +137,20 @@ func (client Client) IsRedirectUriAllowed(redirectUri string) bool {
 	return slices.Contains(client.RedirectUris, redirectUri)
 }
 
+func (client Client) GetSigningAlgorithms() []jose.SignatureAlgorithm {
+	return getSigningAlgorithms(client.PublicJwks)
+}
+
 type ClientIn struct{}
 
 func (client ClientIn) ToInternal() Client {
 	return Client{}
+}
+
+func getSigningAlgorithms(jwks jose.JSONWebKeySet) []jose.SignatureAlgorithm {
+	signingAlgorithms := []jose.SignatureAlgorithm{}
+	for _, jwk := range jwks.Keys {
+		signingAlgorithms = append(signingAlgorithms, jose.SignatureAlgorithm(jwk.Algorithm))
+	}
+	return signingAlgorithms
 }

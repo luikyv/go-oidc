@@ -8,7 +8,16 @@ import (
 	"github.com/luikymagno/auth-server/internal/models"
 )
 
-func PushAuthorization(ctx Context, req models.PARRequest) (requestUri string, err error) {
+func PushAuthorization(ctx Context, req models.ParRequest) (requestUri string, err error) {
+	requestUri, err = pushAuthorization(ctx, req)
+	if err != nil {
+		return "", handleParError(err)
+	}
+
+	return requestUri, nil
+}
+
+func pushAuthorization(ctx Context, req models.ParRequest) (requestUri string, err error) {
 
 	if err := preValidatePushedAuthorizationParams(req); err != nil {
 		return "", err
@@ -21,33 +30,20 @@ func PushAuthorization(ctx Context, req models.PARRequest) (requestUri string, e
 		return "", err
 	}
 
-	if err = validatePushedAuthorizationParams(client, req); err != nil {
-		ctx.Logger.Info("request has invalid params")
+	authnSession, err := initValidParAuthnSession(ctx, req, client)
+	if err != nil {
 		return "", err
 	}
 
-	// Load the parameters sent using PAR.
-	err = ctx.RequestContext.Request.ParseForm()
-	if err != nil {
-		ctx.Logger.Info("could not parse the post form", slog.String("error", err.Error()))
-		return "", errors.New("could not parse the post form")
-	}
-	pushedParams := make(map[string]string)
-	for param, values := range ctx.RequestContext.Request.PostForm {
-		pushedParams[param] = values[0]
-	}
-
-	authnSession := models.NewSessionForPARRequest(req, client, pushedParams)
 	err = ctx.AuthnSessionManager.CreateOrUpdate(authnSession)
 	if err != nil {
-		ctx.Logger.Debug("could not authenticate the client", slog.String("client_id", req.ClientIdPost))
+		ctx.Logger.Debug("could not create a session")
 		return "", err
 	}
-
 	return authnSession.RequestUri, nil
 }
 
-func preValidatePushedAuthorizationParams(req models.PARRequest) error {
+func preValidatePushedAuthorizationParams(req models.ParRequest) error {
 
 	// As mentioned in https://datatracker.ietf.org/doc/html/rfc9126,
 	// "...The client_id parameter is defined with the same semantics for both authorization requests
@@ -64,12 +60,35 @@ func preValidatePushedAuthorizationParams(req models.PARRequest) error {
 	return nil
 }
 
-func validatePushedAuthorizationParams(client models.Client, req models.PARRequest) error {
+func initValidParAuthnSession(ctx Context, req models.ParRequest, client models.Client) (models.AuthnSession, error) {
+	if req.Request != "" {
+		return initValidParAuthnSessionWithJar(ctx, req, client)
+	}
 
-	// The PAR request should accept the same params as the authorize request.
-	err := validateAuthorizationRequest(req.ToAuthorizeRequest(), client)
+	if err := validateAuthorizationRequest(req.ToAuthorizeRequest(), client); err != nil {
+		ctx.Logger.Info("request has invalid params")
+		return models.AuthnSession{}, err
+	}
 
-	// Convert redirection errors to json format.
+	return models.NewSessionForPARRequest(req.BaseAuthorizeRequest, client, ctx.RequestContext), nil
+}
+
+func initValidParAuthnSessionWithJar(ctx Context, req models.ParRequest, client models.Client) (models.AuthnSession, error) {
+	jarReq, err := extractJarFromRequestObject(ctx, req.ToAuthorizeRequest(), client)
+	if err != nil {
+		return models.AuthnSession{}, err
+	}
+
+	if err := validateAuthorizationRequestWithJar(req.ToAuthorizeRequest(), jarReq, client); err != nil {
+		return models.AuthnSession{}, err
+	}
+
+	return models.NewSessionForPARRequest(jarReq.BaseAuthorizeRequest, client, ctx.RequestContext), nil
+}
+
+func handleParError(err error) error {
+
+	// Convert redirection errors to json.
 	var redirectErr issues.OAuthRedirectError
 	if errors.As(err, &redirectErr) {
 		return redirectErr.OAuthError
