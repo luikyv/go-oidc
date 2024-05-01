@@ -8,7 +8,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/models"
 )
 
-func PushAuthorization(ctx Context, req models.ParRequest) (requestUri string, err error) {
+func PushAuthorization(ctx Context, req models.PushedAuthorizationRequest) (requestUri string, err error) {
 	requestUri, err = pushAuthorization(ctx, req)
 	if err != nil {
 		return "", handleParError(err)
@@ -17,7 +17,7 @@ func PushAuthorization(ctx Context, req models.ParRequest) (requestUri string, e
 	return requestUri, nil
 }
 
-func pushAuthorization(ctx Context, req models.ParRequest) (requestUri string, err error) {
+func pushAuthorization(ctx Context, req models.PushedAuthorizationRequest) (requestUri string, err error) {
 
 	if err := preValidatePushedAuthorizationParams(req); err != nil {
 		return "", err
@@ -43,7 +43,7 @@ func pushAuthorization(ctx Context, req models.ParRequest) (requestUri string, e
 	return authnSession.RequestUri, nil
 }
 
-func preValidatePushedAuthorizationParams(req models.ParRequest) error {
+func preValidatePushedAuthorizationParams(req models.PushedAuthorizationRequest) error {
 
 	// As mentioned in https://datatracker.ietf.org/doc/html/rfc9126,
 	// "...The client_id parameter is defined with the same semantics for both authorization requests
@@ -60,7 +60,7 @@ func preValidatePushedAuthorizationParams(req models.ParRequest) error {
 	return nil
 }
 
-func initValidParAuthnSession(ctx Context, req models.ParRequest, client models.Client) (models.AuthnSession, error) {
+func initValidParAuthnSession(ctx Context, req models.PushedAuthorizationRequest, client models.Client) (models.AuthnSession, error) {
 	if req.Request != "" {
 		return initValidParAuthnSessionWithJar(ctx, req, client)
 	}
@@ -73,7 +73,7 @@ func initValidParAuthnSession(ctx Context, req models.ParRequest, client models.
 	return models.NewSessionForPar(req.BaseAuthorizeRequest, client, ctx.RequestContext), nil
 }
 
-func initValidParAuthnSessionWithJar(ctx Context, req models.ParRequest, client models.Client) (models.AuthnSession, error) {
+func initValidParAuthnSessionWithJar(ctx Context, req models.PushedAuthorizationRequest, client models.Client) (models.AuthnSession, error) {
 	jarReq, err := extractJarFromRequestObject(ctx, req.ToAuthorizeRequest(), client)
 	if err != nil {
 		return models.AuthnSession{}, err

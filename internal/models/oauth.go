@@ -152,12 +152,12 @@ type AuthorizationRequest struct {
 	BaseAuthorizeRequest
 }
 
-type ParRequest struct {
+type PushedAuthorizationRequest struct {
 	ClientAuthnRequest
 	BaseAuthorizeRequest
 }
 
-func (req ParRequest) ToAuthorizeRequest() AuthorizationRequest {
+func (req PushedAuthorizationRequest) ToAuthorizeRequest() AuthorizationRequest {
 	return AuthorizationRequest{
 		ClientId:             req.ClientIdPost, // The client ID as a form param is required for PAR.
 		BaseAuthorizeRequest: req.BaseAuthorizeRequest,

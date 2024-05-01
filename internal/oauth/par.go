@@ -6,10 +6,12 @@ import (
 
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/auth-server/internal/unit"
+	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func PushAuthorization(ctx utils.Context, req models.ParRequest) (requestUri string, err error) {
+func PushAuthorization(ctx utils.Context, req models.PushedAuthorizationRequest) (requestUri string, err error) {
 	requestUri, err = pushAuthorization(ctx, req)
 	if err != nil {
 		return "", handleParError(err)
@@ -18,11 +20,7 @@ func PushAuthorization(ctx utils.Context, req models.ParRequest) (requestUri str
 	return requestUri, nil
 }
 
-func pushAuthorization(ctx utils.Context, req models.ParRequest) (requestUri string, err error) {
-
-	if err := preValidatePushedAuthorizationParams(req); err != nil {
-		return "", err
-	}
+func pushAuthorization(ctx utils.Context, req models.PushedAuthorizationRequest) (requestUri string, err error) {
 
 	// Authenticate the client as in the token endpoint.
 	client, err := getAuthenticatedClient(ctx, req.ClientAuthnRequest)
@@ -31,44 +29,65 @@ func pushAuthorization(ctx utils.Context, req models.ParRequest) (requestUri str
 		return "", err
 	}
 
-	authnSession, err := initValidParAuthnSession(ctx, req, client)
+	session, err := initPushedAuthnSession(ctx, req, client)
 	if err != nil {
 		return "", err
 	}
 
-	err = ctx.AuthnSessionManager.CreateOrUpdate(authnSession)
+	err = ctx.AuthnSessionManager.CreateOrUpdate(session)
 	if err != nil {
 		ctx.Logger.Debug("could not create a session")
 		return "", err
 	}
-	return authnSession.RequestUri, nil
+	return session.RequestUri, nil
 }
 
-func preValidatePushedAuthorizationParams(req models.ParRequest) error {
+func initPushedAuthnSession(ctx utils.Context, req models.PushedAuthorizationRequest, client models.Client) (models.AuthnSession, error) {
 
-	// As mentioned in https://datatracker.ietf.org/doc/html/rfc9126,
-	// "...The client_id parameter is defined with the same semantics for both authorization requests
-	// and requests to the token endpoint; as a required authorization request parameter,
-	// it is similarly required in a pushed authorization request...""
-	if req.ClientIdPost == "" {
-		return errors.New("invalid parameter")
-	}
-
-	if req.RequestUri != "" {
-		return errors.New("invalid parameter")
-	}
-
-	return nil
-}
-
-func initValidParAuthnSession(ctx utils.Context, req models.ParRequest, client models.Client) (models.AuthnSession, error) {
-
-	if err := validateSimpleAuthorizationRequest(ctx, req.ToAuthorizeRequest(), client); err != nil {
+	if err := validatePushedAuthorizationRequest(ctx, req, client); err != nil {
 		ctx.Logger.Info("request has invalid params")
 		return models.AuthnSession{}, err
 	}
 
 	return models.NewSessionForPar(req.BaseAuthorizeRequest, client, ctx.RequestContext), nil
+}
+
+func validatePushedAuthorizationRequest(ctx utils.Context, req models.PushedAuthorizationRequest, client models.Client) error {
+	if req.RequestUri != "" {
+		return issues.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
+	}
+
+	// If informed, the redirect_uri must be allowed.
+	if req.RedirectUri != "" && !client.IsRedirectUriAllowed(req.RedirectUri) {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid redirect_uri")
+	}
+
+	// If informed, the scopes must be allowed.
+	if !client.AreScopesAllowed(unit.SplitStringWithSpaces(req.Scope)) {
+		return issues.NewOAuthError(constants.InvalidScope, "invalid scopes")
+	}
+
+	// If informed, the response_type must be allowed.
+	if req.ResponseType != "" && !client.IsResponseTypeAllowed(req.ResponseType) {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
+	}
+
+	// If informed, the response_mode must be allowed.
+	if req.ResponseMode != "" && !client.IsResponseModeAllowed(req.ResponseMode) {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_mode")
+	}
+
+	// Implict response types cannot be sent via query parameteres.
+	if req.ResponseType.IsImplict() && req.ResponseMode.IsQuery() {
+		return errors.New("invalid response mode for the chosen response type")
+	}
+
+	// If informed, the code_challenge_method must be valid.
+	if req.CodeChallengeMethod != "" && !req.CodeChallengeMethod.IsValid() {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid code_challenge_method")
+	}
+
+	return nil
 }
 
 func handleParError(err error) error {

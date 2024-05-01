@@ -18,6 +18,7 @@ type AuthnSession struct {
 	ClientId                string
 	RequestUri              string
 	Scopes                  []string
+	DefaultRedirectUri      string
 	RedirectUri             string
 	ResponseType            constants.ResponseType
 	ResponseMode            constants.ResponseMode
@@ -36,11 +37,16 @@ type AuthnSession struct {
 
 func newSessionForBaseAuthorizeRequest(req BaseAuthorizeRequest, client Client) AuthnSession {
 
+	defaultRedirectUri := req.RedirectUri
+	if defaultRedirectUri == "" {
+		defaultRedirectUri = client.RedirectUris[0]
+	}
 	return AuthnSession{
 		Id:                      uuid.NewString(),
 		ClientId:                client.Id,
 		GrantModelId:            client.DefaultGrantModelId,
 		Scopes:                  unit.SplitStringWithSpaces(req.Scope),
+		DefaultRedirectUri:      defaultRedirectUri,
 		RedirectUri:             req.RedirectUri,
 		ResponseType:            req.ResponseType,
 		ResponseMode:            req.ResponseMode,
@@ -74,39 +80,43 @@ func NewSessionForPar(req BaseAuthorizeRequest, client Client, reqCtx *gin.Conte
 	return session
 }
 
+// Update the session with the parameters sent during authorize, but not sent during par.
+// Also, init the necessary parameters to start authentication.
 func (session *AuthnSession) UpdateAfterPar(req AuthorizationRequest) {
-	if req.RedirectUri != "" {
+
+	if session.RedirectUri == "" {
+		session.DefaultRedirectUri = req.RedirectUri
 		session.RedirectUri = req.RedirectUri
 	}
 
-	if req.Scope != "" {
+	if len(session.Scopes) == 0 {
 		session.Scopes = unit.SplitStringWithSpaces(req.Scope)
 	}
 
-	if req.ResponseType != "" {
+	if session.ResponseType == "" {
 		session.ResponseType = req.ResponseType
 	}
 
-	if req.ResponseMode != "" {
+	if session.ResponseMode == "" {
 		session.ResponseMode = req.ResponseMode
 	}
 
-	if req.State != "" {
+	if session.State == "" {
 		session.State = req.State
 	}
 
-	if req.CodeChallenge != "" {
+	if session.CodeChallenge == "" {
 		session.CodeChallenge = req.CodeChallenge
 	}
 
-	if req.CodeChallengeMethod != "" {
+	if session.CodeChallengeMethod == "" {
 		session.CodeChallengeMethod = req.CodeChallengeMethod
 	}
 	if session.CodeChallengeMethod == "" {
 		session.CodeChallengeMethod = constants.PlainCodeChallengeMethod
 	}
 
-	if req.Nonce != "" {
+	if session.Nonce == "" {
 		session.Nonce = req.Nonce
 	}
 

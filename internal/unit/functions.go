@@ -92,7 +92,7 @@ func GetBearerToken(requestCtx *gin.Context) (string, bool) {
 	return bearerTokenParts[1], true
 }
 
-func Contains[T comparable](superSet []T, subSet []T) bool {
+func ContainsAll[T comparable](superSet []T, subSet []T) bool {
 	for _, e := range subSet {
 		if !slices.Contains(superSet, e) {
 			return false
@@ -156,7 +156,7 @@ func GetTimestampNow() int {
 
 func SplitStringWithSpaces(s string) []string {
 	slice := []string{}
-	if s != "" {
+	if strings.ReplaceAll(s, " ", "") != "" {
 		slice = strings.Split(s, " ")
 	}
 

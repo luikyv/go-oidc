@@ -184,5 +184,5 @@ func (grantModel GrantModel) shouldGenerateRefreshToken(grantCtx GrantContext) b
 }
 
 func (grantModel GrantModel) shouldGenerateIdToken(grantCtx GrantContext) bool {
-	return unit.Contains(grantCtx.Scopes, []string{constants.OpenIdScope})
+	return unit.ContainsAll(grantCtx.Scopes, []string{constants.OpenIdScope})
 }

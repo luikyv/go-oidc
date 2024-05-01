@@ -118,7 +118,7 @@ func (client Client) ToOutput() ClientOut {
 }
 
 func (client Client) AreScopesAllowed(requestedScopes []string) bool {
-	return unit.Contains(client.Scopes, requestedScopes)
+	return unit.ContainsAll(client.Scopes, requestedScopes)
 }
 
 func (client Client) IsResponseTypeAllowed(responseType constants.ResponseType) bool {

@@ -2,6 +2,7 @@ package constants
 
 import (
 	"net/http"
+	"slices"
 	"strings"
 )
 
@@ -142,6 +143,10 @@ const (
 var CodeChallengeMethods []CodeChallengeMethod = []CodeChallengeMethod{
 	SHA256CodeChallengeMethod,
 	PlainCodeChallengeMethod,
+}
+
+func (ccm CodeChallengeMethod) IsValid() bool {
+	return slices.Contains(CodeChallengeMethods, ccm)
 }
 
 // For more information, see: https://openid.net/specs/openid-connect-core-1_0.html#SubjectIDTypes

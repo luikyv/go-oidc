@@ -27,7 +27,7 @@ func HandleJWKSRequest(ctx utils.Context) {
 //---------------------------------------- Pushed Authorization Request - PAR ----------------------------------------//
 
 func HandlePARRequest(ctx utils.Context) {
-	var req models.ParRequest
+	var req models.PushedAuthorizationRequest
 	if err := ctx.RequestContext.ShouldBind(&req); err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return

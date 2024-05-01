@@ -14,6 +14,7 @@ import (
 
 type Context struct {
 	Host                string
+	DefaultProfile      constants.Profile
 	GetProfile          func(client models.Client, requestedScopes []string) constants.Profile
 	ScopeManager        crud.ScopeManager
 	GrantModelManager   crud.GrantModelManager
@@ -54,8 +55,14 @@ func NewContext(
 	)
 
 	return Context{
-		Host:                host,
-		GetProfile:          defaultGetProfile,
+		Host:           host,
+		DefaultProfile: constants.OAuthCoreProfile,
+		GetProfile: func(client models.Client, requestedScopes []string) constants.Profile {
+			if slices.Contains(requestedScopes, constants.OpenIdScope) {
+				return constants.OpenIdCoreProfile
+			}
+			return constants.OAuthCoreProfile
+		},
 		ScopeManager:        scopeManager,
 		GrantModelManager:   grantModelManager,
 		ClientManager:       clientManager,
@@ -67,14 +74,6 @@ func NewContext(
 		RequestContext:      reqContext,
 		Logger:              logger,
 	}
-}
-
-func defaultGetProfile(client models.Client, requestedScopes []string) constants.Profile {
-	if slices.Contains(requestedScopes, constants.OpenIdScope) {
-		return constants.OpenIdCoreProfile
-	}
-
-	return constants.OAuthCoreProfile
 }
 
 func (ctx Context) GetAvailablePolicy(session models.AuthnSession) (policy AuthnPolicy, policyIsAvailable bool) {

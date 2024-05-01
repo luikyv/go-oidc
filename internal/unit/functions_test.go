@@ -128,15 +128,15 @@ func TestIsPkceValid(t *testing.T) {
 }
 
 func TestContains(t *testing.T) {
-	if !unit.Contains([]string{"a", "b", "c"}, []string{"a", "b"}) {
+	if !unit.ContainsAll([]string{"a", "b", "c"}, []string{"a", "b"}) {
 		t.Errorf("%v should contain %v", []string{"a", "b", "c"}, []string{"a", "b"})
 	}
 
-	if !unit.Contains([]int{1, 2}, []int{1, 2}) {
+	if !unit.ContainsAll([]int{1, 2}, []int{1, 2}) {
 		t.Errorf("%v should contain %v", []int{1, 2}, []int{1, 2})
 	}
 
-	if unit.Contains([]int{1}, []int{1, 2}) {
+	if unit.ContainsAll([]int{1}, []int{1, 2}) {
 		t.Errorf("%v should not contain %v", []int{1}, []int{1, 2})
 	}
 }
