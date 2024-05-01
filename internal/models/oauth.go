@@ -135,15 +135,15 @@ type TokenResponse struct {
 }
 
 type BaseAuthorizeRequest struct {
-	RedirectUri         string                        `form:"redirect_uri"`
+	RequestUri          string                        `form:"request_uri"`
 	Request             string                        `form:"request"`
+	RedirectUri         string                        `form:"redirect_uri"`
 	Scope               string                        `form:"scope"`
 	ResponseType        constants.ResponseType        `form:"response_type"`
 	ResponseMode        constants.ResponseMode        `form:"response_mode"`
 	State               string                        `form:"state"`
 	CodeChallenge       string                        `form:"code_challenge"`
 	CodeChallengeMethod constants.CodeChallengeMethod `form:"code_challenge_method"`
-	RequestUri          string                        `form:"request_uri"`
 	Nonce               string                        `form:"nonce"`
 }
 

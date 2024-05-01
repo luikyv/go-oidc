@@ -1,4 +1,4 @@
-package utils
+package oauth
 
 import (
 	"errors"
@@ -6,9 +6,10 @@ import (
 
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func PushAuthorization(ctx Context, req models.ParRequest) (requestUri string, err error) {
+func PushAuthorization(ctx utils.Context, req models.ParRequest) (requestUri string, err error) {
 	requestUri, err = pushAuthorization(ctx, req)
 	if err != nil {
 		return "", handleParError(err)
@@ -17,7 +18,7 @@ func PushAuthorization(ctx Context, req models.ParRequest) (requestUri string, e
 	return requestUri, nil
 }
 
-func pushAuthorization(ctx Context, req models.ParRequest) (requestUri string, err error) {
+func pushAuthorization(ctx utils.Context, req models.ParRequest) (requestUri string, err error) {
 
 	if err := preValidatePushedAuthorizationParams(req); err != nil {
 		return "", err
@@ -60,30 +61,14 @@ func preValidatePushedAuthorizationParams(req models.ParRequest) error {
 	return nil
 }
 
-func initValidParAuthnSession(ctx Context, req models.ParRequest, client models.Client) (models.AuthnSession, error) {
-	if req.Request != "" {
-		return initValidParAuthnSessionWithJar(ctx, req, client)
-	}
+func initValidParAuthnSession(ctx utils.Context, req models.ParRequest, client models.Client) (models.AuthnSession, error) {
 
-	if err := validateAuthorizationRequest(ctx, req.ToAuthorizeRequest(), client); err != nil {
+	if err := validateSimpleAuthorizationRequest(ctx, req.ToAuthorizeRequest(), client); err != nil {
 		ctx.Logger.Info("request has invalid params")
 		return models.AuthnSession{}, err
 	}
 
 	return models.NewSessionForPar(req.BaseAuthorizeRequest, client, ctx.RequestContext), nil
-}
-
-func initValidParAuthnSessionWithJar(ctx Context, req models.ParRequest, client models.Client) (models.AuthnSession, error) {
-	jarReq, err := extractJarFromRequestObject(ctx, req.ToAuthorizeRequest(), client)
-	if err != nil {
-		return models.AuthnSession{}, err
-	}
-
-	if err := validateAuthorizationRequestWithJar(ctx, req.ToAuthorizeRequest(), jarReq, client); err != nil {
-		return models.AuthnSession{}, err
-	}
-
-	return models.NewSessionForPar(jarReq.BaseAuthorizeRequest, client, ctx.RequestContext), nil
 }
 
 func handleParError(err error) error {

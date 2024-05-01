@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"maps"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
@@ -70,10 +71,10 @@ func initValidAuthenticationSession(ctx Context, client models.Client, req model
 	}
 
 	ctx.Logger.Info("initiating authorization request")
-	if err := validateAuthorizationRequest(req, client); err != nil {
+	if err := validateAuthorizationRequest(ctx, req, client); err != nil {
 		return models.AuthnSession{}, err
 	}
-	return models.NewSessionForAuthorizeRequest(req, client), nil
+	return models.NewSessionForAuthorizationRequest(req, client), nil
 
 }
 
@@ -92,9 +93,24 @@ func initValidAuthenticationSessionWithPar(ctx Context, req models.Authorization
 	}
 
 	// FIXME: Treating the request_uri as one-time use will cause problems when the user refreshes the page.
-	session.EraseRequestUri()
+	session.RequestUri = ""
 	session.InitCallbackId()
 	return session, nil
+}
+
+func initValidAuthenticationSessionWithJar(ctx Context, client models.Client, req models.AuthorizationRequest) (models.AuthnSession, error) {
+
+	jarReq, err := extractJarFromRequestObject(ctx, req, client)
+	if err != nil {
+		return models.AuthnSession{}, err
+	}
+
+	if err := validateAuthorizationRequestWithJar(ctx, req, jarReq, client); err != nil {
+		return models.AuthnSession{}, err
+	}
+
+	return models.NewSessionForAuthorizationRequest(req, client), nil
+
 }
 
 func validateAuthorizationRequestWithPar(req models.AuthorizationRequest, session models.AuthnSession) error {
@@ -113,21 +129,6 @@ func validateAuthorizationRequestWithPar(req models.AuthorizationRequest, sessio
 	}
 
 	return nil
-}
-
-func initValidAuthenticationSessionWithJar(ctx Context, client models.Client, req models.AuthorizationRequest) (models.AuthnSession, error) {
-
-	jarReq, err := extractJarFromRequestObject(ctx, req, client)
-	if err != nil {
-		return models.AuthnSession{}, err
-	}
-
-	if err := validateAuthorizationRequestWithJar(req, jarReq, client); err != nil {
-		return models.AuthnSession{}, err
-	}
-
-	return models.NewSessionForAuthorizeRequest(req, client), nil
-
 }
 
 func extractJarFromRequestObject(ctx Context, req models.AuthorizationRequest, client models.Client) (models.AuthorizationRequest, error) {
@@ -165,46 +166,46 @@ func extractJarFromRequestObject(ctx Context, req models.AuthorizationRequest, c
 	return jarReq, nil
 }
 
-func validateAuthorizationRequestWithJar(req models.AuthorizationRequest, jarReq models.AuthorizationRequest, client models.Client) error {
+func validateAuthorizationRequestWithJar(ctx Context, req models.AuthorizationRequest, jarReq models.AuthorizationRequest, client models.Client) error {
 
 	if req.ClientId != jarReq.ClientId {
 		return issues.NewOAuthError(constants.InvalidClient, "invalid client ID")
 	}
 
-	if err := validateAuthorizationRequest(jarReq, client); err != nil {
+	if err := validateAuthorizationRequest(ctx, jarReq, client); err != nil {
 		return err
 	}
 
 	// https://datatracker.ietf.org/doc/rfc9101/.
 	// "..."request" and "request_uri" parameters MUST NOT be included in Request Objects...."
 	if unit.AnyNonEmpty(jarReq.Request, jarReq.RequestUri) {
-		return newRedirectErrorFromRequest(jarReq, constants.InvalidScope, "the JAR can neither contain the request nor the request_uri parameters")
+		return newRedirectErrorFromRequest(jarReq, client, constants.InvalidScope, "the JAR can neither contain the request nor the request_uri parameters")
 	}
 
 	if unit.AnyNonEmpty(req.RedirectUri, req.State, req.Scope, string(req.ResponseType), string(req.ResponseMode), req.CodeChallenge, string(req.CodeChallengeMethod), req.RequestUri) {
-		return newRedirectErrorFromRequest(jarReq, constants.InvalidRequest, "The request cannot pass parameters outside the JAR")
+		return newRedirectErrorFromRequest(jarReq, client, constants.InvalidRequest, "The request cannot pass parameters outside the JAR")
 	}
 
 	return nil
 }
 
-func validateAuthorizationRequest(req models.AuthorizationRequest, client models.Client) error {
+func validateAuthorizationRequest(ctx Context, req models.AuthorizationRequest, client models.Client) error {
 
-	// We must validate the redirect URI first, since the other errors will be redirected.
-	if req.RedirectUri == "" || !client.IsRedirectUriAllowed(req.RedirectUri) {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid redirect uri")
+	profile := ctx.GetProfile(client, unit.SplitStringWithSpaces(req.Scope))
+
+	var err error
+	switch profile {
+	case constants.OpenIdCoreProfile:
+		err = validateOpenIdSpecificRulesForAuthorizationRequest(ctx, req, client)
+	default:
+		err = validateOAuthSpecificRulesAuthorizationRequest(ctx, req, client)
+	}
+	if err != nil {
+		return err
 	}
 
-	if unit.IsBlank(req.Scope) || !client.AreScopesAllowed(unit.SplitStringWithSpaces(req.Scope)) {
-		return newRedirectErrorFromRequest(req, constants.InvalidScope, "invalid scope")
-	}
-
-	if req.ResponseType == "" || !client.IsResponseTypeAllowed(req.ResponseType) {
-		return newRedirectErrorFromRequest(req, constants.InvalidRequest, "response type not allowed")
-	}
-
-	if req.ResponseMode != "" && !client.IsResponseModeAllowed(req.ResponseMode) {
-		return newRedirectErrorFromRequest(req, constants.InvalidRequest, "response mode not allowed")
+	if !client.IsResponseModeAllowed(req.ResponseMode) {
+		return errors.New("response mode not allowed")
 	}
 
 	// Implict response types cannot be sent via query parameteres.
@@ -214,11 +215,46 @@ func validateAuthorizationRequest(req models.AuthorizationRequest, client models
 
 	// Validate PKCE parameters.
 	if client.PkceIsRequired && req.CodeChallenge == "" {
-		return newRedirectErrorFromRequest(req, constants.InvalidRequest, "PKCE is required")
+		return newRedirectErrorFromRequest(req, client, constants.InvalidRequest, "PKCE is required")
 	}
 	// The code challenge cannot be informed without the method and vice versa.
 	if (req.CodeChallenge != "" && req.CodeChallengeMethod == "") || (req.CodeChallenge == "" && req.CodeChallengeMethod != "") {
 		return errors.New("invalid parameters for PKCE")
+	}
+
+	return nil
+}
+
+func validateOAuthSpecificRulesAuthorizationRequest(_ Context, req models.AuthorizationRequest, client models.Client) error {
+	// https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.2.3.
+	if req.RedirectUri == "" && len(client.RedirectUris) != 1 {
+		return issues.NewOAuthError(constants.InvalidRequest, "the redirect_uri must be provided")
+	}
+
+	if !client.IsRedirectUriAllowed(req.RedirectUri) {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid redirect uri")
+	}
+
+	if req.ResponseType.Contains(constants.IdTokenResponse) || !client.IsResponseTypeAllowed(req.ResponseType) {
+		return newRedirectErrorFromRequest(req, client, constants.InvalidRequest, "response type not allowed")
+	}
+
+	return nil
+}
+
+func validateOpenIdSpecificRulesForAuthorizationRequest(_ Context, req models.AuthorizationRequest, client models.Client) error {
+
+	if !client.IsRedirectUriAllowed(req.RedirectUri) {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid redirect uri")
+	}
+
+	scopes := unit.SplitStringWithSpaces(req.Scope)
+	if !slices.Contains(scopes, constants.OpenIdScope) || !client.AreScopesAllowed(scopes) {
+		return newRedirectErrorFromRequest(req, client, constants.InvalidScope, "invalid scope")
+	}
+
+	if !client.IsResponseTypeAllowed(req.ResponseType) {
+		return newRedirectErrorFromRequest(req, client, constants.InvalidRequest, "response type not allowed")
 	}
 
 	return nil
@@ -419,11 +455,16 @@ func newRedirectOAuthErrorFromSession(session models.AuthnSession, errorCode con
 	}
 }
 
-func newRedirectErrorFromRequest(req models.AuthorizationRequest, errorCode constants.ErrorCode, errorDescription string) issues.OAuthRedirectError {
+func newRedirectErrorFromRequest(req models.AuthorizationRequest, client models.Client, errorCode constants.ErrorCode, errorDescription string) issues.OAuthRedirectError {
+
+	redirectUri := req.RedirectUri
+	if redirectUri == "" {
+		redirectUri = client.RedirectUris[0]
+	}
 	return issues.OAuthRedirectError{
 		OAuthError:   issues.NewOAuthError(errorCode, errorDescription),
-		ClientId:     req.ClientId,
-		RedirectUri:  req.RedirectUri,
+		ClientId:     client.Id,
+		RedirectUri:  redirectUri,
 		ResponseType: req.ResponseType,
 		ResponseMode: req.ResponseMode,
 		State:        req.State,

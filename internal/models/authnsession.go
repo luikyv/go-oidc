@@ -9,6 +9,7 @@ import (
 
 type AuthnSession struct {
 	Id                      string
+	Profile                 constants.Profile
 	CallbackId              string
 	GrantModelId            string
 	StepIdsLeft             []string
@@ -34,6 +35,7 @@ type AuthnSession struct {
 }
 
 func newSessionForBaseAuthorizeRequest(req BaseAuthorizeRequest, client Client) AuthnSession {
+
 	return AuthnSession{
 		Id:                      uuid.NewString(),
 		ClientId:                client.Id,
@@ -55,17 +57,64 @@ func newSessionForBaseAuthorizeRequest(req BaseAuthorizeRequest, client Client) 
 	}
 }
 
-func NewSessionForAuthorizeRequest(req AuthorizationRequest, client Client) AuthnSession {
+func NewSessionForAuthorizationRequest(req AuthorizationRequest, client Client) AuthnSession {
 	session := newSessionForBaseAuthorizeRequest(req.BaseAuthorizeRequest, client)
 	session.CallbackId = unit.GenerateCallbackId()
+	session.CodeChallengeMethod = constants.PlainCodeChallengeMethod
+	if req.CodeChallengeMethod != "" {
+		session.CodeChallengeMethod = req.CodeChallengeMethod
+	}
 	return session
 }
 
-func NewSessionForPARRequest(req BaseAuthorizeRequest, client Client, reqCtx *gin.Context) AuthnSession {
+func NewSessionForPar(req BaseAuthorizeRequest, client Client, reqCtx *gin.Context) AuthnSession {
 	session := newSessionForBaseAuthorizeRequest(req, client)
 	session.RequestUri = unit.GenerateRequestUri()
 	session.PushedParameters = extractPushedParams(reqCtx)
 	return session
+}
+
+func (session *AuthnSession) UpdateAfterPar(req AuthorizationRequest) {
+	if req.RedirectUri != "" {
+		session.RedirectUri = req.RedirectUri
+	}
+
+	if req.Scope != "" {
+		session.Scopes = unit.SplitStringWithSpaces(req.Scope)
+	}
+
+	if req.ResponseType != "" {
+		session.ResponseType = req.ResponseType
+	}
+
+	if req.ResponseMode != "" {
+		session.ResponseMode = req.ResponseMode
+	}
+
+	if req.State != "" {
+		session.State = req.State
+	}
+
+	if req.CodeChallenge != "" {
+		session.CodeChallenge = req.CodeChallenge
+	}
+
+	if req.CodeChallengeMethod != "" {
+		session.CodeChallengeMethod = req.CodeChallengeMethod
+	}
+	if session.CodeChallengeMethod == "" {
+		session.CodeChallengeMethod = constants.PlainCodeChallengeMethod
+	}
+
+	if req.Nonce != "" {
+		session.Nonce = req.Nonce
+	}
+
+	// Make sure the request URI can't be used again.
+	session.RequestUri = ""
+
+	// FIXME: Treating the request_uri as one-time use will cause problems when the user refreshes the page.
+	session.CallbackId = unit.GenerateCallbackId()
 }
 
 func extractPushedParams(reqCtx *gin.Context) map[string]string {
@@ -115,15 +164,6 @@ func (session *AuthnSession) SetCustomIdTokenClaim(key string, value string) {
 
 func (session *AuthnSession) GetCustomIdTokenClaim(key string, value string) string {
 	return session.AdditionalIdTokenClaims[key]
-}
-
-// Make sure the request URI can't be used again.
-func (session *AuthnSession) EraseRequestUri() {
-	session.RequestUri = ""
-}
-
-func (session *AuthnSession) InitCallbackId() {
-	session.CallbackId = unit.GenerateCallbackId()
 }
 
 func (session *AuthnSession) SetAuthnSteps(stepIdSequence []string) {

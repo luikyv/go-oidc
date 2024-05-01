@@ -16,6 +16,13 @@ const AuthorizationCodeLength int = 30
 
 const RefreshTokenLength int = 30
 
+type Profile string
+
+const (
+	OAuthCoreProfile  Profile = "oauth_core"
+	OpenIdCoreProfile Profile = "oidc_core"
+)
+
 var ClientSigningAlgorithms []jose.SignatureAlgorithm = []jose.SignatureAlgorithm{
 	jose.RS256,
 }
