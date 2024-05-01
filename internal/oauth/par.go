@@ -44,17 +44,69 @@ func pushAuthorization(ctx utils.Context, req models.PushedAuthorizationRequest)
 
 func initPushedAuthnSession(ctx utils.Context, req models.PushedAuthorizationRequest, client models.Client) (models.AuthnSession, error) {
 
+	if req.Request != "" {
+		return initPushedAuthnSessionWithJar(ctx, req, client)
+	}
+
 	if err := validatePushedAuthorizationRequest(ctx, req, client); err != nil {
 		ctx.Logger.Info("request has invalid params")
 		return models.AuthnSession{}, err
 	}
+	return models.NewSessionForPar(req.BaseAuthorizationRequest, client, ctx.RequestContext), nil
+}
 
-	return models.NewSessionForPar(req.BaseAuthorizeRequest, client, ctx.RequestContext), nil
+func initPushedAuthnSessionWithJar(ctx utils.Context, req models.PushedAuthorizationRequest, client models.Client) (models.AuthnSession, error) {
+	jarReq, err := extractJarFromRequestObject(ctx, req.BaseAuthorizationRequest, client)
+	if err != nil {
+		return models.AuthnSession{}, err
+	}
+
+	if err := validatePushedAuthorizationRequestWithJar(ctx, req, jarReq, client); err != nil {
+		return models.AuthnSession{}, err
+	}
+
+	return models.NewSessionForPar(jarReq.BaseAuthorizationRequest, client, ctx.RequestContext), nil
+}
+
+// The PAR RFC (https://datatracker.ietf.org/doc/html/rfc9126#section-3) says:
+// "...The rules for processing, signing, and encryption of the Request Object as defined in JAR [RFC9101] apply..."
+// In turn, the JAR RFC (https://www.rfc-editor.org/rfc/rfc9101.html#name-request-object-2.) says:
+// "...It MUST contain all the parameters (including extension parameters) used to process the OAuth 2.0 [RFC6749] authorization request..."
+func validatePushedAuthorizationRequestWithJar(ctx utils.Context, req models.PushedAuthorizationRequest, jarReq models.AuthorizationRequest, client models.Client) error {
+
+	if req.RequestUri != "" {
+		return issues.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
+	}
+
+	// If informed, the client ID must match the the authenticated client's ID.
+	if req.ClientIdPost != "" && req.ClientIdPost != client.Id {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
+	}
+
+	if jarReq.ClientId == "" || jarReq.ClientId != client.Id {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
+	}
+
+	if jarReq.RequestUri != "" {
+		return issues.NewOAuthError(constants.InvalidRequest, "request_uri not allowed")
+	}
+
+	if jarReq.Request != "" {
+		return issues.NewOAuthError(constants.InvalidRequest, "request not allowed")
+	}
+
+	return validateSimpleAuthorizationRequest(ctx, jarReq, client)
 }
 
 func validatePushedAuthorizationRequest(ctx utils.Context, req models.PushedAuthorizationRequest, client models.Client) error {
+
 	if req.RequestUri != "" {
 		return issues.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
+	}
+
+	// If informed, the client ID must match the the authenticated client's ID.
+	if req.ClientIdPost != "" && req.ClientIdPost != client.Id {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
 	}
 
 	// If informed, the redirect_uri must be allowed.

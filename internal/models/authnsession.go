@@ -35,7 +35,7 @@ type AuthnSession struct {
 	ClientAttributes        map[string]string // Allow the developer to access the client's custom attributes.
 }
 
-func newSessionForBaseAuthorizeRequest(req BaseAuthorizeRequest, client Client) AuthnSession {
+func newSessionForBaseAuthorizeRequest(req BaseAuthorizationRequest, client Client) AuthnSession {
 
 	defaultRedirectUri := req.RedirectUri
 	if defaultRedirectUri == "" {
@@ -64,7 +64,7 @@ func newSessionForBaseAuthorizeRequest(req BaseAuthorizeRequest, client Client) 
 }
 
 func NewSessionForAuthorizationRequest(req AuthorizationRequest, client Client) AuthnSession {
-	session := newSessionForBaseAuthorizeRequest(req.BaseAuthorizeRequest, client)
+	session := newSessionForBaseAuthorizeRequest(req.BaseAuthorizationRequest, client)
 	session.CallbackId = unit.GenerateCallbackId()
 	session.CodeChallengeMethod = constants.PlainCodeChallengeMethod
 	if req.CodeChallengeMethod != "" {
@@ -73,7 +73,7 @@ func NewSessionForAuthorizationRequest(req AuthorizationRequest, client Client) 
 	return session
 }
 
-func NewSessionForPar(req BaseAuthorizeRequest, client Client, reqCtx *gin.Context) AuthnSession {
+func NewSessionForPar(req BaseAuthorizationRequest, client Client, reqCtx *gin.Context) AuthnSession {
 	session := newSessionForBaseAuthorizeRequest(req, client)
 	session.RequestUri = unit.GenerateRequestUri()
 	session.PushedParameters = extractPushedParams(reqCtx)

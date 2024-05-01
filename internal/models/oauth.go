@@ -134,7 +134,7 @@ type TokenResponse struct {
 	Scope        string              `json:"scope,omitempty"`
 }
 
-type BaseAuthorizeRequest struct {
+type BaseAuthorizationRequest struct {
 	RequestUri          string                        `form:"request_uri"`
 	Request             string                        `form:"request"`
 	RedirectUri         string                        `form:"redirect_uri"`
@@ -149,18 +149,18 @@ type BaseAuthorizeRequest struct {
 
 type AuthorizationRequest struct {
 	ClientId string `form:"client_id"`
-	BaseAuthorizeRequest
+	BaseAuthorizationRequest
 }
 
 type PushedAuthorizationRequest struct {
 	ClientAuthnRequest
-	BaseAuthorizeRequest
+	BaseAuthorizationRequest
 }
 
 func (req PushedAuthorizationRequest) ToAuthorizeRequest() AuthorizationRequest {
 	return AuthorizationRequest{
-		ClientId:             req.ClientIdPost, // The client ID as a form param is required for PAR.
-		BaseAuthorizeRequest: req.BaseAuthorizeRequest,
+		ClientId:                 req.ClientIdPost, // The client ID as a form param is required for PAR.
+		BaseAuthorizationRequest: req.BaseAuthorizationRequest,
 	}
 }
 

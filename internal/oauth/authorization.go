@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
@@ -226,6 +227,10 @@ func validateOAuthCoreAuthorizationRequestWithPar(ctx utils.Context, req models.
 
 	if session.IsPushedRequestExpired() {
 		return newRedirectOAuthErrorFromSession(session, constants.InvalidRequest, "the request_uri is expired")
+	}
+
+	if req.Request != "" {
+		return newRedirectOAuthErrorFromSession(session, constants.InvalidRequest, "request is not allowed")
 	}
 
 	return nil
@@ -486,6 +491,7 @@ func getDefaultJarmResponseMode(responseType constants.ResponseType) constants.R
 }
 
 func newRedirectOAuthErrorFromSession(session models.AuthnSession, errorCode constants.ErrorCode, errorDescription string) issues.OAuthRedirectError {
+	// TODO: The redirect uri is optional
 	return issues.OAuthRedirectError{
 		OAuthError:   issues.NewOAuthError(errorCode, errorDescription),
 		ClientId:     session.ClientId,
@@ -497,8 +503,7 @@ func newRedirectOAuthErrorFromSession(session models.AuthnSession, errorCode con
 }
 
 func newRedirectErrorFromRequest(req models.AuthorizationRequest, client models.Client, errorCode constants.ErrorCode, errorDescription string) issues.OAuthRedirectError {
-	// TODO: Improve this, too much info.
-	// The validation order shouldn't matter.
+	// TODO: The redirect uri is optional
 	redirectUri := req.RedirectUri
 	if redirectUri == "" {
 		redirectUri = client.RedirectUris[0]
@@ -511,4 +516,41 @@ func newRedirectErrorFromRequest(req models.AuthorizationRequest, client models.
 		ResponseMode: req.ResponseMode,
 		State:        req.State,
 	}
+}
+
+//---------------------------------------- Helper Functions ----------------------------------------//
+
+func extractJarFromRequestObject(ctx utils.Context, req models.BaseAuthorizationRequest, client models.Client) (models.AuthorizationRequest, error) {
+	parsedToken, err := jwt.ParseSigned(req.Request, client.GetSigningAlgorithms())
+	if err != nil {
+		return models.AuthorizationRequest{}, err
+	}
+
+	// Verify that the assertion indicates the key ID.
+	if len(parsedToken.Headers) != 0 && parsedToken.Headers[0].KeyID == "" {
+		return models.AuthorizationRequest{}, errors.New("invalid kid header")
+	}
+
+	// Verify that the key ID belongs to the client.
+	keys := client.PublicJwks.Key(parsedToken.Headers[0].KeyID)
+	if len(keys) == 0 {
+		return models.AuthorizationRequest{}, errors.New("invalid kid header")
+	}
+
+	jwk := keys[0]
+	var claims jwt.Claims
+	var jarReq models.AuthorizationRequest
+	if err := parsedToken.Claims(jwk.Key, &claims, &jarReq); err != nil {
+		return models.AuthorizationRequest{}, errors.New("invalid kid header")
+	}
+
+	err = claims.ValidateWithLeeway(jwt.Expected{
+		Issuer:      client.Id,
+		AnyAudience: []string{ctx.Host},
+	}, time.Duration(0))
+	if err != nil {
+		return models.AuthorizationRequest{}, err
+	}
+
+	return jarReq, nil
 }

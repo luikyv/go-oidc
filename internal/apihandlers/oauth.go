@@ -134,6 +134,15 @@ func bindErrorToResponse(err error, requestContext *gin.Context) {
 		return
 	}
 
+	var oauthRedirectErr issues.OAuthRedirectError
+	if errors.As(err, &oauthRedirectErr) {
+		requestContext.JSON(http.StatusBadRequest, gin.H{
+			"error":             oauthRedirectErr.ErrorCode,
+			"error_description": oauthRedirectErr.ErrorDescription,
+		})
+		return
+	}
+
 	requestContext.JSON(http.StatusBadRequest, gin.H{
 		"error":             constants.AccessDenied,
 		"error_description": err.Error(),

@@ -40,7 +40,7 @@ func TestInitAuthenticationWhenInvalidRedirectUri(t *testing.T) {
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizationRequest{
 		ClientId: utils.ValidClientId,
-		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
+		BaseAuthorizationRequest: models.BaseAuthorizationRequest{
 			RedirectUri: "https://invalid.com",
 		},
 	})
@@ -67,7 +67,7 @@ func TestInitAuthenticationWhenInvalidScope(t *testing.T) {
 	// Then
 	utils.InitAuthentication(ctx, models.AuthorizationRequest{
 		ClientId: utils.ValidClientId,
-		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
+		BaseAuthorizationRequest: models.BaseAuthorizationRequest{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        "invalid_scope",
 			ResponseType: constants.CodeResponse,
@@ -93,7 +93,7 @@ func TestInitAuthenticationWhenInvalidResponseType(t *testing.T) {
 	// Then
 	utils.InitAuthentication(ctx, models.AuthorizationRequest{
 		ClientId: utils.ValidClientId,
-		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
+		BaseAuthorizationRequest: models.BaseAuthorizationRequest{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
 			ResponseType: constants.IdTokenResponse,
@@ -117,7 +117,7 @@ func TestInitAuthenticationWhenNoPolicyIsAvailable(t *testing.T) {
 	// Then
 	utils.InitAuthentication(ctx, models.AuthorizationRequest{
 		ClientId: utils.ValidClientId,
-		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
+		BaseAuthorizationRequest: models.BaseAuthorizationRequest{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
 			ResponseType: constants.CodeResponse,
@@ -154,7 +154,7 @@ func TestInitAuthenticationShouldEndWithError(t *testing.T) {
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizationRequest{
 		ClientId: utils.ValidClientId,
-		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
+		BaseAuthorizationRequest: models.BaseAuthorizationRequest{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
 			ResponseType: constants.CodeResponse,
@@ -201,7 +201,7 @@ func TestInitAuthenticationShouldEndInProgress(t *testing.T) {
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizationRequest{
 		ClientId: utils.ValidClientId,
-		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
+		BaseAuthorizationRequest: models.BaseAuthorizationRequest{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
 			ResponseType: constants.CodeResponse,
@@ -264,7 +264,7 @@ func TestInitAuthenticationPolicyEndsWithSuccess(t *testing.T) {
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizationRequest{
 		ClientId: utils.ValidClientId,
-		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
+		BaseAuthorizationRequest: models.BaseAuthorizationRequest{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
 			ResponseType: constants.CodeAndIdTokenResponse,
@@ -327,7 +327,7 @@ func TestInitAuthenticationWithPAR(t *testing.T) {
 	// Then
 	err := utils.InitAuthentication(ctx, models.AuthorizationRequest{
 		ClientId: utils.ValidClientId,
-		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
+		BaseAuthorizationRequest: models.BaseAuthorizationRequest{
 			RequestUri: requestUri,
 		},
 	})

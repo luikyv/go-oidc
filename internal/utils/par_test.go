@@ -48,7 +48,7 @@ func TestPushAuthorizationShouldGenerateRequestUri(t *testing.T) {
 			ClientIdPost:     utils.ValidClientId,
 			ClientSecretPost: utils.ValidClientSecret,
 		},
-		BaseAuthorizeRequest: models.BaseAuthorizeRequest{
+		BaseAuthorizationRequest: models.BaseAuthorizationRequest{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
 			ResponseType: constants.CodeResponse,
