@@ -6,7 +6,6 @@ import (
 	"maps"
 	"net/http"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
@@ -36,17 +35,19 @@ func ContinueAuthentication(ctx utils.Context, callbackId string) error {
 
 func initAuthentication(ctx utils.Context, req models.AuthorizationRequest) error {
 	if req.ClientId == "" {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid client ID")
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
 	}
 	client, err := ctx.ClientManager.Get(req.ClientId)
 	if err != nil {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid client ID")
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
 	}
 
-	session, err := initAuthnSession(ctx, client, req)
+	session, err := initAuthnSession(ctx, req, client)
 	if err != nil {
 		return err
 	}
+
+	session.Init()
 
 	policy, policyIsAvailable := ctx.GetAvailablePolicy(session)
 	if !policyIsAvailable {
@@ -60,29 +61,19 @@ func initAuthentication(ctx utils.Context, req models.AuthorizationRequest) erro
 	return authenticate(ctx, &session)
 }
 
-func initAuthnSession(ctx utils.Context, client models.Client, req models.AuthorizationRequest) (models.AuthnSession, error) {
+func initAuthnSession(ctx utils.Context, req models.AuthorizationRequest, client models.Client) (models.AuthnSession, error) {
 
 	if req.RequestUri != "" {
 		ctx.Logger.Info("initiating authorization request with PAR")
 		return initAuthnSessionWithPar(ctx, req, client)
 	}
 
-	ctx.DefaultProfile = getDefaultProfileForAuthorizationRequest(req)
-
-	ctx.Logger.Info("initiating authorization request")
-	if err := validateSimpleAuthorizationRequest(ctx, req, client); err != nil {
-		return models.AuthnSession{}, err
-	}
-	return models.NewSessionForAuthorizationRequest(req, client), nil
-
-}
-
-func getDefaultProfileForAuthorizationRequest(req models.AuthorizationRequest) constants.Profile {
-	if slices.Contains(unit.SplitStringWithSpaces(req.Scope), constants.OpenIdScope) || req.ResponseType.Contains(constants.IdTokenResponse) {
-		return constants.OpenIdCoreProfile
+	if req.Request != "" {
+		ctx.Logger.Info("initiating authorization request with JAR")
+		return initAuthnSessionWithJar(ctx, req, client)
 	}
 
-	return constants.OAuthCoreProfile
+	return initSimpleAuthnSession(ctx, req, client)
 }
 
 func initAuthnSessionWithPar(ctx utils.Context, req models.AuthorizationRequest, client models.Client) (models.AuthnSession, error) {
@@ -92,211 +83,70 @@ func initAuthnSessionWithPar(ctx utils.Context, req models.AuthorizationRequest,
 		return models.AuthnSession{}, issues.NewOAuthError(constants.InvalidRequest, "invalid request_uri")
 	}
 
-	ctx.DefaultProfile = getDefaultProfileForAuthorizationRequestWithPar(req, session)
+	// FIXME: this is setting the profile on a copy.
+	ctx.DefaultProfile = getDefaultProfileForRequestWithSupportingSession(req, session)
 
-	if err := validateAuthorizationRequestWithPar(ctx, req, session, client); err != nil {
+	if err := validateRequestWithSupportingSession(ctx, req, session, client); err != nil {
 		// If any of the parameters is invalid, we delete the session right away.
 		ctx.AuthnSessionManager.Delete(session.Id)
 		return models.AuthnSession{}, err
 	}
 
-	session.UpdateAfterPar(req)
+	session.UpdateWithRequest(req)
 	return session, nil
 }
 
-func getDefaultProfileForAuthorizationRequestWithPar(req models.AuthorizationRequest, session models.AuthnSession) constants.Profile {
-	// We cannot prioritize the scopes passed during par or authorize in order to choose the profile.
-	// Then, we'll choose the profile based on all available scopes.
-	scopes := slices.Concat(session.Scopes, unit.SplitStringWithSpaces(req.Scope))
-	if slices.Contains(scopes, constants.OpenIdScope) || session.ResponseType.Contains(constants.IdTokenResponse) || req.ResponseType.Contains(constants.IdTokenResponse) {
+func initAuthnSessionWithJar(ctx utils.Context, req models.AuthorizationRequest, client models.Client) (models.AuthnSession, error) {
+
+	jar, err := extractJarFromRequestObject(ctx, req.Request, client)
+	if err != nil {
+		return models.AuthnSession{}, err
+	}
+	if err := validateJwtRequest(jar, client); err != nil {
+		return models.AuthnSession{}, err
+	}
+
+	session := models.NewSessionFromRequest(jar.BaseAuthorizationRequest, client)
+	ctx.DefaultProfile = getDefaultProfileForRequestWithSupportingSession(req, session)
+
+	if err := validateRequestWithSupportingSession(ctx, req, session, client); err != nil {
+		// If any of the parameters is invalid, we delete the session right away.
+		ctx.AuthnSessionManager.Delete(session.Id)
+		return models.AuthnSession{}, err
+	}
+
+	session.UpdateWithRequest(req)
+	return session, nil
+}
+
+func initSimpleAuthnSession(ctx utils.Context, req models.AuthorizationRequest, client models.Client) (models.AuthnSession, error) {
+	ctx.DefaultProfile = getDefaultProfileForAuthorizationRequest(req)
+
+	ctx.Logger.Info("initiating simple authorization request")
+	if err := validateSimpleRequest(ctx, req, client); err != nil {
+		return models.AuthnSession{}, err
+	}
+	return models.NewSessionFromRequest(req.BaseAuthorizationRequest, client), nil
+}
+
+//---------------------------------------- Default Profiles ----------------------------------------//
+
+func getDefaultProfileForAuthorizationRequest(req models.AuthorizationRequest) constants.Profile {
+	if slices.Contains(unit.SplitStringWithSpaces(req.Scope), constants.OpenIdScope) {
 		return constants.OpenIdCoreProfile
 	}
 
 	return constants.OAuthCoreProfile
 }
 
-func getProfileForAuthorizationRequest(req models.AuthorizationRequest, session models.AuthnSession) constants.Profile {
-	// We cannot prioritize the scopes passed during par or authorize in order to choose the profile.
-	// Then, we'll choose the profile based on all available scopes.
+func getDefaultProfileForRequestWithSupportingSession(req models.AuthorizationRequest, session models.AuthnSession) constants.Profile {
 	scopes := slices.Concat(session.Scopes, unit.SplitStringWithSpaces(req.Scope))
-	if slices.Contains(scopes, constants.OpenIdScope) || session.ResponseType.Contains(constants.IdTokenResponse) || req.ResponseType.Contains(constants.IdTokenResponse) {
+
+	if slices.Contains(scopes, constants.OpenIdScope) {
 		return constants.OpenIdCoreProfile
 	}
 
 	return constants.OAuthCoreProfile
-}
-
-//---------------------------------------- Validations ----------------------------------------//
-
-func validateAuthorizationRequestWithPar(ctx utils.Context, req models.AuthorizationRequest, session models.AuthnSession, client models.Client) error {
-	switch ctx.DefaultProfile {
-	case constants.OpenIdCoreProfile:
-		return validateOpenIdCoreAuthorizationRequestWithPar(ctx, req, session, client)
-	default:
-		return validateOAuthCoreAuthorizationRequestWithPar(ctx, req, session, client)
-	}
-}
-
-func validateOpenIdCoreAuthorizationRequestWithPar(ctx utils.Context, req models.AuthorizationRequest, session models.AuthnSession, client models.Client) error {
-
-	// redirect_uri is required.
-	if req.RedirectUri != "" {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid redirect_uri")
-	}
-
-	if err := validateOAuthCoreAuthorizationRequestWithPar(ctx, req, session, client); err != nil {
-		return err
-	}
-
-	// response_type is required.
-	if req.ResponseType != "" {
-		return newRedirectErrorForRequest(constants.InvalidRequest, "invalid response_type", req, client)
-	}
-
-	// scope is required and must contain openid.
-	if !strings.Contains(req.Scope, constants.OpenIdScope) {
-		return newRedirectErrorForRequest(constants.InvalidScope, "invalid scope", req, client)
-	}
-
-	return nil
-}
-
-func validateOAuthCoreAuthorizationRequestWithPar(ctx utils.Context, req models.AuthorizationRequest, session models.AuthnSession, client models.Client) error {
-	// Make sure the client which created the PAR request is the same one trying to authorize.
-	if session.ClientId != req.ClientId {
-		return issues.NewOAuthError(constants.AccessDenied, "invalid client")
-	}
-
-	// If informed, redirect_uri must be valid.
-	if req.RedirectUri != "" && !client.IsRedirectUriAllowed(req.RedirectUri) {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid redirect uri")
-	}
-
-	// https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.2.3.
-	// If the client has multiple redirect_uri's, it must inform one during par or authorize.
-	if session.RedirectUri == "" && req.RedirectUri == "" && len(client.RedirectUris) != 1 {
-		return issues.NewOAuthError(constants.InvalidRequest, "redirect_uri must be provided")
-	}
-
-	// If the response mode was informed, it must be valid.
-	if req.ResponseMode != "" && !client.IsResponseModeAllowed(req.ResponseMode) {
-		return issues.NewOAuthError(constants.InvalidRequest, "response_mode not supported")
-	}
-
-	// The client must have access to all the requested response types.
-	if req.ResponseType != "" && !client.IsResponseTypeAllowed(req.ResponseType) {
-		return newRedirectErrorForRequestWithPar(constants.InvalidRequest, "response type not allowed", req, session, client)
-	}
-
-	// response_type is mandatory. It must be passed during par or authorize.
-	if session.ResponseType == "" && req.ResponseType == "" {
-		return newRedirectErrorForRequestWithPar(constants.InvalidRequest, "invalid response_type", req, session, client)
-	}
-
-	// Implict response types cannot be sent via query parameteres.
-	if (session.ResponseType.IsImplict() || req.ResponseType.IsImplict()) && (session.ResponseMode.IsQuery() || req.ResponseMode.IsQuery()) {
-		return newRedirectErrorForRequestWithPar(constants.InvalidRequest, "invalid response_mode for the chosen response_type", req, session, client)
-	}
-
-	scopes := unit.SplitStringWithSpaces(req.Scope)
-	// scope is optional, but if informed, the client must have access to all requested scopes.
-	if !client.AreScopesAllowed(scopes) {
-		return newRedirectErrorForRequestWithPar(constants.InvalidScope, "invalid scopes", req, session, client)
-	}
-
-	// If PKCE is required, the client must inform the code_challenge either during par or authorize.
-	if client.PkceIsRequired && session.CodeChallenge == "" && req.CodeChallenge == "" {
-		return newRedirectErrorForRequestWithPar(constants.InvalidRequest, "PKCE is required", req, session, client)
-	}
-
-	// If informed, the code_challenge_method must be valid.
-	if req.CodeChallengeMethod != "" && !req.CodeChallengeMethod.IsValid() {
-		return newRedirectErrorForRequestWithPar(constants.InvalidRequest, "invalid code_challenge_method", req, session, client)
-	}
-
-	if session.IsPushedRequestExpired() {
-		return newRedirectErrorForRequestWithPar(constants.InvalidRequest, "the request_uri is expired", req, session, client)
-	}
-
-	if req.Request != "" {
-		return newRedirectErrorForRequestWithPar(constants.InvalidRequest, "request is not allowed", req, session, client)
-	}
-
-	return nil
-}
-
-func validateSimpleAuthorizationRequest(ctx utils.Context, req models.AuthorizationRequest, client models.Client) error {
-	switch ctx.DefaultProfile {
-	case constants.OpenIdCoreProfile:
-		return validateOpenIdCoreSimpleAuthorizationRequest(ctx, req, client)
-	default:
-		return validateOAuthCoreSimpleAuthorizationRequest(ctx, req, client)
-	}
-}
-
-func validateOpenIdCoreSimpleAuthorizationRequest(ctx utils.Context, req models.AuthorizationRequest, client models.Client) error {
-
-	// redirect_uri is required.
-	if req.RedirectUri != "" {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid redirect uri")
-	}
-
-	if err := validateOAuthCoreSimpleAuthorizationRequest(ctx, req, client); err != nil {
-		return err
-	}
-
-	// scope is required and must contain openid.
-	if !strings.Contains(req.Scope, constants.OpenIdScope) {
-		return newRedirectErrorForRequest(constants.InvalidScope, "invalid scope", req, client)
-	}
-
-	return nil
-}
-
-func validateOAuthCoreSimpleAuthorizationRequest(ctx utils.Context, req models.AuthorizationRequest, client models.Client) error {
-
-	// If informed, the redirect_uri must be valid.
-	if req.RedirectUri != "" && !client.IsRedirectUriAllowed(req.RedirectUri) {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid redirect uri")
-	}
-
-	// https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.2.3.
-	// If the client has multiple redirect_uri's, it must inform one.
-	if req.RedirectUri == "" && len(client.RedirectUris) != 1 {
-		return issues.NewOAuthError(constants.InvalidRequest, "redirect_uri must be provided")
-	}
-
-	// If the response mode was informed, it must be valid.
-	if req.ResponseMode != "" && !client.IsResponseModeAllowed(req.ResponseMode) {
-		return issues.NewOAuthError(constants.InvalidRequest, "response_mode not supported")
-	}
-
-	// The client must have access to all the requested response types.
-	if !client.IsResponseTypeAllowed(req.ResponseType) {
-		return newRedirectErrorForRequest(constants.InvalidRequest, "response type not allowed", req, client)
-	}
-
-	// Implict response types cannot be sent via query parameteres.
-	if req.ResponseType.IsImplict() && req.ResponseMode.IsQuery() {
-		return errors.New("invalid response mode for the chosen response type")
-	}
-
-	// scope is optional, but if informed, the client must have access to all requested scopes.
-	if !client.AreScopesAllowed(unit.SplitStringWithSpaces(req.Scope)) {
-		return newRedirectErrorForRequest(constants.InvalidScope, "invalid scope", req, client)
-	}
-
-	// The code challenge must be informed when PKCE required.
-	if client.PkceIsRequired && req.CodeChallenge == "" {
-		return newRedirectErrorForRequest(constants.InvalidRequest, "PKCE is required", req, client)
-	}
-
-	// If informed, the code_challenge_method must be valid.
-	if req.CodeChallengeMethod != "" && !req.CodeChallengeMethod.IsValid() {
-		return newRedirectErrorForRequest(constants.InvalidRequest, "invalid code_challenge_method", req, client)
-	}
-
-	return nil
 }
 
 //---------------------------------------- Authentication ----------------------------------------//
@@ -385,7 +235,7 @@ func generateImplictParams(ctx utils.Context, session models.AuthnSession) (map[
 	}
 
 	// Generate an ID token if the client requested it.
-	if session.ResponseType.Contains(constants.IdTokenResponse) {
+	if slices.Contains(session.Scopes, constants.OpenIdScope) && session.ResponseType.Contains(constants.IdTokenResponse) {
 		implictParams["id_token"] = grantModel.GenerateIdToken(
 			models.NewImplictGrantContextForIdToken(session, models.IdTokenContext{
 				AccessToken:             implictParams["access_token"],
@@ -496,8 +346,8 @@ func newRedirectErrorFromSession(ctx utils.Context, errorCode constants.ErrorCod
 
 //---------------------------------------- Helper Functions ----------------------------------------//
 
-func extractJarFromRequestObject(ctx utils.Context, req models.BaseAuthorizationRequest, client models.Client) (models.AuthorizationRequest, error) {
-	parsedToken, err := jwt.ParseSigned(req.Request, client.GetSigningAlgorithms())
+func extractJarFromRequestObject(ctx utils.Context, reqObject string, client models.Client) (models.AuthorizationRequest, error) {
+	parsedToken, err := jwt.ParseSigned(reqObject, client.GetSigningAlgorithms())
 	if err != nil {
 		return models.AuthorizationRequest{}, err
 	}

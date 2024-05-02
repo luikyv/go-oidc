@@ -138,9 +138,9 @@ type BaseAuthorizationRequest struct {
 	RequestUri          string                        `form:"request_uri"`
 	Request             string                        `form:"request"`
 	RedirectUri         string                        `form:"redirect_uri"`
-	Scope               string                        `form:"scope"`
-	ResponseType        constants.ResponseType        `form:"response_type"`
 	ResponseMode        constants.ResponseMode        `form:"response_mode"`
+	ResponseType        constants.ResponseType        `form:"response_type"`
+	Scope               string                        `form:"scope"`
 	State               string                        `form:"state"`
 	CodeChallenge       string                        `form:"code_challenge"`
 	CodeChallengeMethod constants.CodeChallengeMethod `form:"code_challenge_method"`

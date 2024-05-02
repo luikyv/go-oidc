@@ -74,7 +74,7 @@ func initValidAuthenticationSession(ctx Context, client models.Client, req model
 	if err := validateAuthorizationRequest(ctx, req, client); err != nil {
 		return models.AuthnSession{}, err
 	}
-	return models.NewSessionForAuthorizationRequest(req, client), nil
+	return models.NewSessionFromAuthorizationRequest(req, client), nil
 
 }
 
@@ -94,7 +94,7 @@ func initValidAuthenticationSessionWithPar(ctx Context, req models.Authorization
 
 	// FIXME: Treating the request_uri as one-time use will cause problems when the user refreshes the page.
 	session.RequestUri = ""
-	session.InitCallbackId()
+	session.CallbackId = unit.GenerateCallbackId()
 	return session, nil
 }
 
@@ -109,7 +109,7 @@ func initValidAuthenticationSessionWithJar(ctx Context, client models.Client, re
 		return models.AuthnSession{}, err
 	}
 
-	return models.NewSessionForAuthorizationRequest(req, client), nil
+	return models.NewSessionFromAuthorizationRequest(req, client), nil
 
 }
 

@@ -1,11 +1,12 @@
-package utils
+package oauth
 
 import (
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
+	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func GetOpenIdConfiguration(ctx Context) models.OpenIdConfiguration {
+func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 
 	return models.OpenIdConfiguration{
 		Issuer:                   ctx.Host,

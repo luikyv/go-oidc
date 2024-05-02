@@ -1,4 +1,4 @@
-package utils
+package oauth
 
 import (
 	"errors"
@@ -9,9 +9,10 @@ import (
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
+	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func HandleUserInfoRequest(ctx Context, token string) (models.GrantSession, error) {
+func HandleUserInfoRequest(ctx utils.Context, token string) (models.GrantSession, error) {
 
 	tokenId, err := getTokenId(ctx, token)
 	if err != nil {
@@ -30,7 +31,7 @@ func HandleUserInfoRequest(ctx Context, token string) (models.GrantSession, erro
 	return grantSession, nil
 }
 
-func getTokenId(ctx Context, token string) (string, error) {
+func getTokenId(ctx utils.Context, token string) (string, error) {
 	parsedToken, err := jwt.ParseSigned(token, ctx.GetSigningAlgorithms())
 	if err != nil {
 		return token, nil

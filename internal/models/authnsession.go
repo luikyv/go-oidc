@@ -17,6 +17,7 @@ type AuthnSession struct {
 	Subject                 string
 	ClientId                string
 	RequestUri              string
+	RequestObject           string
 	Scopes                  []string
 	RedirectUri             string
 	ResponseType            constants.ResponseType
@@ -34,12 +35,13 @@ type AuthnSession struct {
 	ClientAttributes        map[string]string // Allow the developer to access the client's custom attributes.
 }
 
-func newSessionForBaseAuthorizeRequest(req BaseAuthorizationRequest, client Client) AuthnSession {
+func NewSessionFromRequest(req BaseAuthorizationRequest, client Client) AuthnSession {
 
 	return AuthnSession{
 		Id:                      uuid.NewString(),
 		ClientId:                client.Id,
 		GrantModelId:            client.DefaultGrantModelId,
+		RequestObject:           req.Request,
 		Scopes:                  unit.SplitStringWithSpaces(req.Scope),
 		RedirectUri:             req.RedirectUri,
 		ResponseType:            req.ResponseType,
@@ -57,17 +59,16 @@ func newSessionForBaseAuthorizeRequest(req BaseAuthorizationRequest, client Clie
 	}
 }
 
-func NewSessionForAuthorizationRequest(req AuthorizationRequest, client Client) AuthnSession {
-	session := newSessionForBaseAuthorizeRequest(req.BaseAuthorizationRequest, client)
+func (session *AuthnSession) Push(reqCtx *gin.Context) {
+	session.RequestUri = unit.GenerateRequestUri()
+	session.PushedParameters = extractPushedParams(reqCtx)
+}
 
-	session.CallbackId = unit.GenerateCallbackId()
-
-	session.CodeChallengeMethod = constants.PlainCodeChallengeMethod
-
-	if req.CodeChallengeMethod != "" {
-		session.CodeChallengeMethod = req.CodeChallengeMethod
+func (session *AuthnSession) Init() {
+	if session.CodeChallengeMethod == "" {
+		session.CodeChallengeMethod = constants.PlainCodeChallengeMethod
 	}
-
+	session.CallbackId = unit.GenerateCallbackId()
 	// If either an empty or the "jwt" response modes are passed, we must find the default value based on the response type.
 	if session.ResponseMode == "" {
 		session.ResponseMode = getDefaultResponseMode(session.ResponseType)
@@ -75,20 +76,13 @@ func NewSessionForAuthorizationRequest(req AuthorizationRequest, client Client) 
 	if session.ResponseMode == constants.JwtResponseMode {
 		session.ResponseMode = getDefaultJarmResponseMode(session.ResponseType)
 	}
-
-	return session
+	// FIXME: To think about:Treating the request_uri as one-time use will cause problems when the user refreshes the page.
+	session.RequestUri = ""
 }
 
-func NewSessionForPar(req BaseAuthorizationRequest, client Client, reqCtx *gin.Context) AuthnSession {
-	session := newSessionForBaseAuthorizeRequest(req, client)
-	session.RequestUri = unit.GenerateRequestUri()
-	session.PushedParameters = extractPushedParams(reqCtx)
-	return session
-}
-
-// Update the session with the parameters sent during authorize, but not sent during par.
-// Also, init the necessary parameters to start authentication.
-func (session *AuthnSession) UpdateAfterPar(req AuthorizationRequest) {
+// Update the session with the parameters from an authorization request
+// The parameters already present in the session take prioritybut not sent during par.
+func (session *AuthnSession) UpdateWithRequest(req AuthorizationRequest) {
 
 	if session.RedirectUri == "" {
 		session.RedirectUri = req.RedirectUri
@@ -117,27 +111,10 @@ func (session *AuthnSession) UpdateAfterPar(req AuthorizationRequest) {
 	if session.CodeChallengeMethod == "" {
 		session.CodeChallengeMethod = req.CodeChallengeMethod
 	}
-	if session.CodeChallengeMethod == "" {
-		session.CodeChallengeMethod = constants.PlainCodeChallengeMethod
-	}
 
 	if session.Nonce == "" {
 		session.Nonce = req.Nonce
 	}
-
-	// If either an empty or the "jwt" response modes are passed, we must find the default value based on the response type.
-	if session.ResponseMode == "" {
-		session.ResponseMode = getDefaultResponseMode(session.ResponseType)
-	}
-	if session.ResponseMode == constants.JwtResponseMode {
-		session.ResponseMode = getDefaultJarmResponseMode(session.ResponseType)
-	}
-
-	// Make sure the request URI can't be used again.
-	session.RequestUri = ""
-
-	// FIXME: Treating the request_uri as one-time use will cause problems when the user refreshes the page.
-	session.CallbackId = unit.GenerateCallbackId()
 }
 
 func extractPushedParams(reqCtx *gin.Context) map[string]string {
