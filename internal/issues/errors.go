@@ -43,7 +43,16 @@ type OAuthRedirectError struct {
 	OAuthError
 	ClientId     string
 	RedirectUri  string
-	ResponseType constants.ResponseType
 	ResponseMode constants.ResponseMode
 	State        string
+}
+
+func NewOAuthRedirectErrorFrom(errorCode constants.ErrorCode, errorDescription string, clientId string, redirectUri string, responseMode constants.ResponseMode, state string) OAuthRedirectError {
+	return OAuthRedirectError{
+		OAuthError:   NewOAuthError(errorCode, errorDescription),
+		ClientId:     clientId,
+		RedirectUri:  redirectUri,
+		ResponseMode: responseMode,
+		State:        state,
+	}
 }

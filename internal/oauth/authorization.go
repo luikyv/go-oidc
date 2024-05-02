@@ -40,7 +40,7 @@ func initAuthentication(ctx utils.Context, req models.AuthorizationRequest) erro
 	}
 	client, err := ctx.ClientManager.Get(req.ClientId)
 	if err != nil {
-		return issues.NewWrappingOAuthError(err, constants.InvalidRequest, "invalid client ID")
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid client ID")
 	}
 
 	session, err := initAuthnSession(ctx, client, req)
@@ -51,7 +51,7 @@ func initAuthentication(ctx utils.Context, req models.AuthorizationRequest) erro
 	policy, policyIsAvailable := ctx.GetAvailablePolicy(session)
 	if !policyIsAvailable {
 		ctx.Logger.Info("no policy available")
-		return newRedirectOAuthErrorFromSession(session, constants.InvalidRequest, "no policy available")
+		return newRedirectErrorFromSession(ctx, constants.InvalidRequest, "no policy available", session)
 	}
 
 	ctx.Logger.Info("policy available", slog.String("policy_id", policy.Id))
@@ -144,22 +144,21 @@ func validateOpenIdCoreAuthorizationRequestWithPar(ctx utils.Context, req models
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid redirect_uri")
 	}
 
+	if err := validateOAuthCoreAuthorizationRequestWithPar(ctx, req, session, client); err != nil {
+		return err
+	}
+
 	// response_type is required.
 	if req.ResponseType != "" {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
+		return newRedirectErrorForRequest(constants.InvalidRequest, "invalid response_type", req, client)
 	}
 
 	// scope is required and must contain openid.
 	if !strings.Contains(req.Scope, constants.OpenIdScope) {
-		return newRedirectErrorFromRequest(req, client, constants.InvalidScope, "invalid scope")
+		return newRedirectErrorForRequest(constants.InvalidScope, "invalid scope", req, client)
 	}
 
-	// If nonce was passed during par and authorize, it must have the same value.
-	if session.Nonce != "" && req.Nonce != "" && session.Nonce != req.Nonce {
-		return newRedirectErrorFromRequest(req, client, constants.InvalidRequest, "the nonce does not match the one informed during PAR")
-	}
-
-	return validateOAuthCoreAuthorizationRequestWithPar(ctx, req, session, client)
+	return nil
 }
 
 func validateOAuthCoreAuthorizationRequestWithPar(ctx utils.Context, req models.AuthorizationRequest, session models.AuthnSession, client models.Client) error {
@@ -176,61 +175,51 @@ func validateOAuthCoreAuthorizationRequestWithPar(ctx utils.Context, req models.
 	// https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.2.3.
 	// If the client has multiple redirect_uri's, it must inform one during par or authorize.
 	if session.RedirectUri == "" && req.RedirectUri == "" && len(client.RedirectUris) != 1 {
-		return issues.NewOAuthError(constants.InvalidRequest, "the redirect_uri must be provided")
+		return issues.NewOAuthError(constants.InvalidRequest, "redirect_uri must be provided")
 	}
 
-	// If redirect_uri was passed during par and authorize, it must have the same value.
-	if session.RedirectUri != "" && req.RedirectUri != "" && session.RedirectUri != req.RedirectUri {
-		return issues.NewOAuthError(constants.InvalidRequest, "the redirect_uri does not match the one informed during PAR")
+	// If the response mode was informed, it must be valid.
+	if req.ResponseMode != "" && !client.IsResponseModeAllowed(req.ResponseMode) {
+		return issues.NewOAuthError(constants.InvalidRequest, "response_mode not supported")
+	}
+
+	// The client must have access to all the requested response types.
+	if req.ResponseType != "" && !client.IsResponseTypeAllowed(req.ResponseType) {
+		return newRedirectErrorForRequestWithPar(constants.InvalidRequest, "response type not allowed", req, session, client)
 	}
 
 	// response_type is mandatory. It must be passed during par or authorize.
-	if session.ResponseType == "" && !client.IsResponseTypeAllowed(req.ResponseType) {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
+	if session.ResponseType == "" && req.ResponseType == "" {
+		return newRedirectErrorForRequestWithPar(constants.InvalidRequest, "invalid response_type", req, session, client)
 	}
 
-	// If response_type was passed during par and authorize, it must have the same value.
-	if session.ResponseType != "" && req.ResponseType != "" && session.ResponseType != req.ResponseType {
-		return issues.NewOAuthError(constants.InvalidRequest, "the response_type does not match the one informed during PAR")
+	// Implict response types cannot be sent via query parameteres.
+	if (session.ResponseType.IsImplict() || req.ResponseType.IsImplict()) && (session.ResponseMode.IsQuery() || req.ResponseMode.IsQuery()) {
+		return newRedirectErrorForRequestWithPar(constants.InvalidRequest, "invalid response_mode for the chosen response_type", req, session, client)
 	}
 
 	scopes := unit.SplitStringWithSpaces(req.Scope)
 	// scope is optional, but if informed, the client must have access to all requested scopes.
 	if !client.AreScopesAllowed(scopes) {
-		return newRedirectErrorFromRequest(req, client, constants.InvalidScope, "invalid scopes")
-	}
-
-	// If scope was passed during par and authorize, it must have the same value.
-	if len(session.Scopes) > 0 && (len(session.Scopes) != len(scopes) || !unit.ContainsAll(session.Scopes, scopes)) {
-		return newRedirectErrorFromRequest(req, client, constants.InvalidRequest, "the scopes do not match the ones informed during PAR")
-	}
-
-	// If the response mode was informed, it must be valid.
-	if req.ResponseMode != "" && !client.IsResponseModeAllowed(req.ResponseMode) {
-		return errors.New("response mode not allowed")
-	}
-
-	// Implict response types cannot be sent via query parameteres.
-	if (session.ResponseType.IsImplict() || req.ResponseType.IsImplict()) && (session.ResponseMode.IsQuery() || req.ResponseMode.IsQuery()) {
-		return errors.New("invalid response mode for the chosen response type")
+		return newRedirectErrorForRequestWithPar(constants.InvalidScope, "invalid scopes", req, session, client)
 	}
 
 	// If PKCE is required, the client must inform the code_challenge either during par or authorize.
 	if client.PkceIsRequired && session.CodeChallenge == "" && req.CodeChallenge == "" {
-		return newRedirectErrorFromRequest(req, client, constants.InvalidRequest, "PKCE is required")
+		return newRedirectErrorForRequestWithPar(constants.InvalidRequest, "PKCE is required", req, session, client)
 	}
 
 	// If informed, the code_challenge_method must be valid.
 	if req.CodeChallengeMethod != "" && !req.CodeChallengeMethod.IsValid() {
-		return newRedirectErrorFromRequest(req, client, constants.InvalidRequest, "invalid code_challenge_method")
+		return newRedirectErrorForRequestWithPar(constants.InvalidRequest, "invalid code_challenge_method", req, session, client)
 	}
 
 	if session.IsPushedRequestExpired() {
-		return newRedirectOAuthErrorFromSession(session, constants.InvalidRequest, "the request_uri is expired")
+		return newRedirectErrorForRequestWithPar(constants.InvalidRequest, "the request_uri is expired", req, session, client)
 	}
 
 	if req.Request != "" {
-		return newRedirectOAuthErrorFromSession(session, constants.InvalidRequest, "request is not allowed")
+		return newRedirectErrorForRequestWithPar(constants.InvalidRequest, "request is not allowed", req, session, client)
 	}
 
 	return nil
@@ -252,12 +241,16 @@ func validateOpenIdCoreSimpleAuthorizationRequest(ctx utils.Context, req models.
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid redirect uri")
 	}
 
-	// scope is required and must contain openid.
-	if !strings.Contains(req.Scope, constants.OpenIdScope) {
-		return newRedirectErrorFromRequest(req, client, constants.InvalidScope, "invalid scope")
+	if err := validateOAuthCoreSimpleAuthorizationRequest(ctx, req, client); err != nil {
+		return err
 	}
 
-	return validateOAuthCoreSimpleAuthorizationRequest(ctx, req, client)
+	// scope is required and must contain openid.
+	if !strings.Contains(req.Scope, constants.OpenIdScope) {
+		return newRedirectErrorForRequest(constants.InvalidScope, "invalid scope", req, client)
+	}
+
+	return nil
 }
 
 func validateOAuthCoreSimpleAuthorizationRequest(ctx utils.Context, req models.AuthorizationRequest, client models.Client) error {
@@ -270,22 +263,17 @@ func validateOAuthCoreSimpleAuthorizationRequest(ctx utils.Context, req models.A
 	// https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.2.3.
 	// If the client has multiple redirect_uri's, it must inform one.
 	if req.RedirectUri == "" && len(client.RedirectUris) != 1 {
-		return issues.NewOAuthError(constants.InvalidRequest, "the redirect_uri must be provided")
-	}
-
-	// The client must have access to all the requested response types.
-	if !client.IsResponseTypeAllowed(req.ResponseType) {
-		return newRedirectErrorFromRequest(req, client, constants.InvalidRequest, "response type not allowed")
-	}
-
-	// scope is optional, but if informed, the client must have access to all requested scopes.
-	if !client.AreScopesAllowed(unit.SplitStringWithSpaces(req.Scope)) {
-		return newRedirectErrorFromRequest(req, client, constants.InvalidScope, "invalid scope")
+		return issues.NewOAuthError(constants.InvalidRequest, "redirect_uri must be provided")
 	}
 
 	// If the response mode was informed, it must be valid.
 	if req.ResponseMode != "" && !client.IsResponseModeAllowed(req.ResponseMode) {
-		return errors.New("response mode not allowed")
+		return issues.NewOAuthError(constants.InvalidRequest, "response_mode not supported")
+	}
+
+	// The client must have access to all the requested response types.
+	if !client.IsResponseTypeAllowed(req.ResponseType) {
+		return newRedirectErrorForRequest(constants.InvalidRequest, "response type not allowed", req, client)
 	}
 
 	// Implict response types cannot be sent via query parameteres.
@@ -293,14 +281,19 @@ func validateOAuthCoreSimpleAuthorizationRequest(ctx utils.Context, req models.A
 		return errors.New("invalid response mode for the chosen response type")
 	}
 
+	// scope is optional, but if informed, the client must have access to all requested scopes.
+	if !client.AreScopesAllowed(unit.SplitStringWithSpaces(req.Scope)) {
+		return newRedirectErrorForRequest(constants.InvalidScope, "invalid scope", req, client)
+	}
+
 	// The code challenge must be informed when PKCE required.
 	if client.PkceIsRequired && req.CodeChallenge == "" {
-		return newRedirectErrorFromRequest(req, client, constants.InvalidRequest, "PKCE is required")
+		return newRedirectErrorForRequest(constants.InvalidRequest, "PKCE is required", req, client)
 	}
 
 	// If informed, the code_challenge_method must be valid.
 	if req.CodeChallengeMethod != "" && !req.CodeChallengeMethod.IsValid() {
-		return newRedirectErrorFromRequest(req, client, constants.InvalidRequest, "invalid code_challenge_method")
+		return newRedirectErrorForRequest(constants.InvalidRequest, "invalid code_challenge_method", req, client)
 	}
 
 	return nil
@@ -335,7 +328,7 @@ func authenticate(ctx utils.Context, session *models.AuthnSession) error {
 
 	if status == constants.Failure {
 		ctx.AuthnSessionManager.Delete(session.Id)
-		return newRedirectOAuthErrorFromSession(*session, constants.AccessDenied, err.Error())
+		return newRedirectErrorFromSession(ctx, constants.AccessDenied, err.Error(), *session)
 	}
 
 	if status == constants.InProgress {
@@ -421,22 +414,12 @@ func handleAuthorizationError(ctx utils.Context, err error) error {
 
 func redirectResponse(ctx utils.Context, redirectResponse models.RedirectResponse) {
 
-	// If either an empty or the "jwt" response modes are passed, we must find the default value based on the response type.
-	if redirectResponse.ResponseMode == "" {
-		redirectResponse.ResponseMode = getDefaultResponseMode(redirectResponse.ResponseType)
-	}
-	if redirectResponse.ResponseMode == constants.JwtResponseMode {
-		redirectResponse.ResponseMode = getDefaultJarmResponseMode(redirectResponse.ResponseType)
-	}
-
 	if redirectResponse.ResponseMode.IsJarm() {
 		redirectResponse.Parameters = map[string]string{
 			"response": createJarmResponse(ctx, redirectResponse.ClientId, redirectResponse.Parameters),
 		}
 	}
 
-	// https://openid.net/specs/openid-connect-core-1_0.html#AuthError
-	// TODO "...If the Response Mode value is not supported, the Authorization Server returns an HTTP response code of 400 (Bad Request) without Error Response parameters, since understanding the Response Mode is necessary to know how to return those parameters...."
 	switch redirectResponse.ResponseMode {
 	case constants.FragmentResponseMode, constants.FragmentJwtResponseMode:
 		redirectUrl := unit.GetUrlWithFragmentParams(redirectResponse.RedirectUri, redirectResponse.Parameters)
@@ -472,50 +455,43 @@ func createJarmResponse(ctx utils.Context, clientId string, params map[string]st
 	return response
 }
 
-func getDefaultResponseMode(responseType constants.ResponseType) constants.ResponseMode {
-	// According to "5. Definitions of Multiple-Valued Response Type Combinations" of https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html.
-	if responseType.IsImplict() {
-		return constants.FragmentResponseMode
+func newRedirectErrorForRequestWithPar(errorCode constants.ErrorCode, errorDescription string, req models.AuthorizationRequest, session models.AuthnSession, client models.Client) issues.OAuthRedirectError {
+	redirectUri := session.RedirectUri
+	if redirectUri == "" {
+		redirectUri = req.RedirectUri
+	}
+	if redirectUri == "" {
+		redirectUri = client.RedirectUris[0]
 	}
 
-	return constants.QueryResponseMode
-}
-
-func getDefaultJarmResponseMode(responseType constants.ResponseType) constants.ResponseMode {
-	// According to "5. Definitions of Multiple-Valued Response Type Combinations" of https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html.
-	if responseType.IsImplict() {
-		return constants.FragmentJwtResponseMode
+	responseMode := session.ResponseMode
+	if responseMode != "" {
+		responseMode = req.ResponseMode
 	}
 
-	return constants.QueryJwtResponseMode
-}
-
-func newRedirectOAuthErrorFromSession(session models.AuthnSession, errorCode constants.ErrorCode, errorDescription string) issues.OAuthRedirectError {
-	// TODO: The redirect uri is optional
-	return issues.OAuthRedirectError{
-		OAuthError:   issues.NewOAuthError(errorCode, errorDescription),
-		ClientId:     session.ClientId,
-		RedirectUri:  session.RedirectUri,
-		ResponseType: session.ResponseType,
-		ResponseMode: session.ResponseMode,
-		State:        session.State,
+	state := session.State
+	if state != "" {
+		state = req.State
 	}
+
+	return issues.NewOAuthRedirectErrorFrom(errorCode, errorDescription, session.ClientId, redirectUri, responseMode, state)
 }
 
-func newRedirectErrorFromRequest(req models.AuthorizationRequest, client models.Client, errorCode constants.ErrorCode, errorDescription string) issues.OAuthRedirectError {
-	// TODO: The redirect uri is optional
+func newRedirectErrorForRequest(errorCode constants.ErrorCode, errorDescription string, req models.AuthorizationRequest, client models.Client) issues.OAuthRedirectError {
 	redirectUri := req.RedirectUri
 	if redirectUri == "" {
 		redirectUri = client.RedirectUris[0]
 	}
-	return issues.OAuthRedirectError{
-		OAuthError:   issues.NewOAuthError(errorCode, errorDescription),
-		ClientId:     client.Id,
-		RedirectUri:  redirectUri,
-		ResponseType: req.ResponseType,
-		ResponseMode: req.ResponseMode,
-		State:        req.State,
+	return issues.NewOAuthRedirectErrorFrom(errorCode, errorDescription, client.Id, redirectUri, req.ResponseMode, req.State)
+}
+
+func newRedirectErrorFromSession(ctx utils.Context, errorCode constants.ErrorCode, errorDescription string, session models.AuthnSession) issues.OAuthRedirectError {
+	redirectUri := session.RedirectUri
+	if redirectUri == "" {
+		client, _ := ctx.ClientManager.Get(session.ClientId)
+		redirectUri = client.RedirectUris[0]
 	}
+	return issues.NewOAuthRedirectErrorFrom(errorCode, errorDescription, session.ClientId, redirectUri, session.ResponseMode, session.State)
 }
 
 //---------------------------------------- Helper Functions ----------------------------------------//

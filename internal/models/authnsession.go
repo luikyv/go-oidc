@@ -18,7 +18,6 @@ type AuthnSession struct {
 	ClientId                string
 	RequestUri              string
 	Scopes                  []string
-	DefaultRedirectUri      string
 	RedirectUri             string
 	ResponseType            constants.ResponseType
 	ResponseMode            constants.ResponseMode
@@ -37,16 +36,11 @@ type AuthnSession struct {
 
 func newSessionForBaseAuthorizeRequest(req BaseAuthorizationRequest, client Client) AuthnSession {
 
-	defaultRedirectUri := req.RedirectUri
-	if defaultRedirectUri == "" {
-		defaultRedirectUri = client.RedirectUris[0]
-	}
 	return AuthnSession{
 		Id:                      uuid.NewString(),
 		ClientId:                client.Id,
 		GrantModelId:            client.DefaultGrantModelId,
 		Scopes:                  unit.SplitStringWithSpaces(req.Scope),
-		DefaultRedirectUri:      defaultRedirectUri,
 		RedirectUri:             req.RedirectUri,
 		ResponseType:            req.ResponseType,
 		ResponseMode:            req.ResponseMode,
@@ -65,11 +59,23 @@ func newSessionForBaseAuthorizeRequest(req BaseAuthorizationRequest, client Clie
 
 func NewSessionForAuthorizationRequest(req AuthorizationRequest, client Client) AuthnSession {
 	session := newSessionForBaseAuthorizeRequest(req.BaseAuthorizationRequest, client)
+
 	session.CallbackId = unit.GenerateCallbackId()
+
 	session.CodeChallengeMethod = constants.PlainCodeChallengeMethod
+
 	if req.CodeChallengeMethod != "" {
 		session.CodeChallengeMethod = req.CodeChallengeMethod
 	}
+
+	// If either an empty or the "jwt" response modes are passed, we must find the default value based on the response type.
+	if session.ResponseMode == "" {
+		session.ResponseMode = getDefaultResponseMode(session.ResponseType)
+	}
+	if session.ResponseMode == constants.JwtResponseMode {
+		session.ResponseMode = getDefaultJarmResponseMode(session.ResponseType)
+	}
+
 	return session
 }
 
@@ -85,7 +91,6 @@ func NewSessionForPar(req BaseAuthorizationRequest, client Client, reqCtx *gin.C
 func (session *AuthnSession) UpdateAfterPar(req AuthorizationRequest) {
 
 	if session.RedirectUri == "" {
-		session.DefaultRedirectUri = req.RedirectUri
 		session.RedirectUri = req.RedirectUri
 	}
 
@@ -120,6 +125,14 @@ func (session *AuthnSession) UpdateAfterPar(req AuthorizationRequest) {
 		session.Nonce = req.Nonce
 	}
 
+	// If either an empty or the "jwt" response modes are passed, we must find the default value based on the response type.
+	if session.ResponseMode == "" {
+		session.ResponseMode = getDefaultResponseMode(session.ResponseType)
+	}
+	if session.ResponseMode == constants.JwtResponseMode {
+		session.ResponseMode = getDefaultJarmResponseMode(session.ResponseType)
+	}
+
 	// Make sure the request URI can't be used again.
 	session.RequestUri = ""
 
@@ -139,6 +152,24 @@ func extractPushedParams(reqCtx *gin.Context) map[string]string {
 	}
 
 	return pushedParams
+}
+
+func getDefaultResponseMode(responseType constants.ResponseType) constants.ResponseMode {
+	// According to "5. Definitions of Multiple-Valued Response Type Combinations" of https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#Combinations.
+	if responseType.IsImplict() {
+		return constants.FragmentResponseMode
+	}
+
+	return constants.QueryResponseMode
+}
+
+func getDefaultJarmResponseMode(responseType constants.ResponseType) constants.ResponseMode {
+	// According to "5. Definitions of Multiple-Valued Response Type Combinations" of https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#Combinations.
+	if responseType.IsImplict() {
+		return constants.FragmentJwtResponseMode
+	}
+
+	return constants.QueryJwtResponseMode
 }
 
 func (session *AuthnSession) SetUserId(userId string) {

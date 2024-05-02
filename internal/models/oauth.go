@@ -190,7 +190,6 @@ type OpenIdConfiguration struct {
 type RedirectResponse struct {
 	ClientId     string
 	RedirectUri  string
-	ResponseType constants.ResponseType
 	ResponseMode constants.ResponseMode
 	Parameters   map[string]string
 }
@@ -200,7 +199,6 @@ func NewRedirectResponseFromSession(session AuthnSession, params map[string]stri
 		ClientId:     session.ClientId,
 		RedirectUri:  session.RedirectUri,
 		Parameters:   params,
-		ResponseType: session.ResponseType,
 		ResponseMode: session.ResponseMode,
 	}
 }
@@ -217,7 +215,6 @@ func NewRedirectResponseFromRedirectError(err issues.OAuthRedirectError) Redirec
 		ClientId:     err.ClientId,
 		RedirectUri:  err.RedirectUri,
 		Parameters:   errorParams,
-		ResponseType: err.ResponseType,
 		ResponseMode: err.ResponseMode,
 	}
 }
