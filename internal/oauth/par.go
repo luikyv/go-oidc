@@ -6,6 +6,7 @@ import (
 
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
@@ -31,7 +32,6 @@ func pushAuthorization(ctx utils.Context, req models.PushedAuthorizationRequest)
 	if err != nil {
 		return "", err
 	}
-
 	session.Push(ctx.RequestContext)
 
 	err = ctx.AuthnSessionManager.CreateOrUpdate(session)
@@ -74,6 +74,40 @@ func initPushedAuthnSessionWithJar(ctx utils.Context, req models.PushedAuthoriza
 	session := models.NewSessionFromRequest(jar.BaseAuthorizationRequest, client)
 	return session, nil
 }
+
+//---------------------------------------- Validators ----------------------------------------//
+
+func validateSimplePushedRequest(ctx utils.Context, req models.PushedAuthorizationRequest, client models.Client) error {
+
+	if req.ClientIdPost != "" && req.ClientIdPost != client.Id {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
+	}
+
+	if req.RequestUri != "" {
+		return issues.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
+	}
+
+	return validateBaseRequestNonEmptyFields(req.BaseAuthorizationRequest, client)
+}
+
+func validatePushedRequestWithJar(ctx utils.Context, req models.PushedAuthorizationRequest, jarReq models.AuthorizationRequest, client models.Client) error {
+
+	if req.ClientIdPost != "" && req.ClientIdPost != client.Id {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
+	}
+
+	if req.RequestUri != "" {
+		return issues.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
+	}
+
+	// The PAR RFC (https://datatracker.ietf.org/doc/html/rfc9126#section-3) says:
+	// "...The rules for processing, signing, and encryption of the Request Object as defined in JAR [RFC9101] apply..."
+	// In turn, the JAR RFC (https://www.rfc-editor.org/rfc/rfc9101.html#name-request-object-2.) says about the request object:
+	// "...It MUST contain all the parameters (including extension parameters) used to process the OAuth 2.0 [RFC6749] authorization request..."
+	return validateOAuthCoreSimpleRequest(ctx, jarReq, client)
+}
+
+//---------------------------------------- Helper Functions ----------------------------------------//
 
 func handleParError(err error) error {
 

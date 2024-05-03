@@ -14,7 +14,7 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 		TokenEndpoint:            ctx.Host + string(constants.TokenEndpoint),
 		UserinfoEndpoint:         ctx.Host + string(constants.UserInfoEndpoint),
 		ParEndpoint:              ctx.Host + string(constants.PushedAuthorizationRequestEndpoint),
-		ParIsRequired:            false,
+		ParIsRequired:            ctx.ParIsRequired,
 		JwksUri:                  ctx.Host + string(constants.JsonWebKeySetEndpoint),
 		ResponseTypes:            constants.ResponseTypes,
 		ResponseModes:            constants.ResponseModes,

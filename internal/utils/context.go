@@ -23,6 +23,7 @@ type Context struct {
 	AuthnSessionManager crud.AuthnSessionManager
 	PrivateJwks         jose.JSONWebKeySet
 	PrivateJarmKeyId    string
+	ParIsRequired       bool // TODO
 	Policies            []AuthnPolicy
 	RequestContext      *gin.Context
 	Logger              *slog.Logger

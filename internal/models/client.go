@@ -117,6 +117,10 @@ func (client Client) ToOutput() ClientOut {
 	return ClientOut{}
 }
 
+func (client Client) GetDefaultRedirectUri() string {
+	return client.RedirectUris[0]
+}
+
 func (client Client) AreScopesAllowed(requestedScopes []string) bool {
 	return unit.ContainsAll(client.Scopes, requestedScopes)
 }

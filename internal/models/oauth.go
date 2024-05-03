@@ -157,13 +157,6 @@ type PushedAuthorizationRequest struct {
 	BaseAuthorizationRequest
 }
 
-func (req PushedAuthorizationRequest) ToAuthorizeRequest() AuthorizationRequest {
-	return AuthorizationRequest{
-		ClientId:                 req.ClientIdPost, // The client ID as a form param is required for PAR.
-		BaseAuthorizationRequest: req.BaseAuthorizationRequest,
-	}
-}
-
 type PARResponse struct {
 	RequestUri string `json:"request_uri"`
 	ExpiresIn  int    `json:"expires_in"`

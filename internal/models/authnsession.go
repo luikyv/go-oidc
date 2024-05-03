@@ -16,6 +16,7 @@ type AuthnSession struct {
 	CreatedAtTimestamp      int
 	Subject                 string
 	ClientId                string
+	DefaultRedirectUri      string
 	RequestUri              string
 	RequestObject           string
 	Scopes                  []string
@@ -43,6 +44,7 @@ func NewSessionFromRequest(req BaseAuthorizationRequest, client Client) AuthnSes
 		GrantModelId:            client.DefaultGrantModelId,
 		RequestObject:           req.Request,
 		Scopes:                  unit.SplitStringWithSpaces(req.Scope),
+		DefaultRedirectUri:      client.GetDefaultRedirectUri(),
 		RedirectUri:             req.RedirectUri,
 		ResponseType:            req.ResponseType,
 		ResponseMode:            req.ResponseMode,
