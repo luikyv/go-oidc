@@ -65,7 +65,7 @@ func initValidAuthenticationSession(ctx Context, client models.Client, req model
 		return initValidAuthenticationSessionWithPar(ctx, req)
 	}
 
-	if req.Request != "" {
+	if req.RequestObject != "" {
 		ctx.Logger.Info("initiating authorization request with JAR")
 		return initValidAuthenticationSessionWithJar(ctx, client, req)
 	}
@@ -115,7 +115,7 @@ func initValidAuthenticationSessionWithJar(ctx Context, client models.Client, re
 
 func validateAuthorizationRequestWithPar(req models.AuthorizationRequest, session models.AuthnSession) error {
 	// If the request URI is passed, all the other parameters must be empty.
-	if unit.AnyNonEmpty(req.Request, req.RedirectUri, req.State, req.Scope, string(req.ResponseType), string(req.ResponseMode), req.CodeChallenge, string(req.CodeChallengeMethod)) {
+	if unit.AnyNonEmpty(req.RequestObject, req.RedirectUri, req.State, req.Scope, string(req.ResponseType), string(req.ResponseMode), req.CodeChallenge, string(req.CodeChallengeMethod)) {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid parameter when using PAR")
 	}
 
@@ -132,7 +132,7 @@ func validateAuthorizationRequestWithPar(req models.AuthorizationRequest, sessio
 }
 
 func extractJarFromRequestObject(ctx Context, req models.AuthorizationRequest, client models.Client) (models.AuthorizationRequest, error) {
-	parsedToken, err := jwt.ParseSigned(req.Request, client.GetSigningAlgorithms())
+	parsedToken, err := jwt.ParseSigned(req.RequestObject, client.GetSigningAlgorithms())
 	if err != nil {
 		return models.AuthorizationRequest{}, err
 	}
@@ -178,7 +178,7 @@ func validateAuthorizationRequestWithJar(ctx Context, req models.AuthorizationRe
 
 	// https://datatracker.ietf.org/doc/rfc9101/.
 	// "..."request" and "request_uri" parameters MUST NOT be included in Request Objects...."
-	if unit.AnyNonEmpty(jarReq.Request, jarReq.RequestUri) {
+	if unit.AnyNonEmpty(jarReq.RequestObject, jarReq.RequestUri) {
 		return newRedirectErrorFromRequest(jarReq, client, constants.InvalidScope, "the JAR can neither contain the request nor the request_uri parameters")
 	}
 
@@ -446,12 +446,12 @@ func getDefaultJarmResponseMode(responseType constants.ResponseType) constants.R
 
 func newRedirectOAuthErrorFromSession(session models.AuthnSession, errorCode constants.ErrorCode, errorDescription string) issues.OAuthRedirectError {
 	return issues.OAuthRedirectError{
-		OAuthError:   issues.NewOAuthError(errorCode, errorDescription),
-		ClientId:     session.ClientId,
-		RedirectUri:  session.RedirectUri,
-		ResponseType: session.ResponseType,
-		ResponseMode: session.ResponseMode,
-		State:        session.State,
+		OAuthBaseError: issues.NewOAuthError(errorCode, errorDescription),
+		ClientId:       session.ClientId,
+		RedirectUri:    session.RedirectUri,
+		ResponseType:   session.ResponseType,
+		ResponseMode:   session.ResponseMode,
+		State:          session.State,
 	}
 }
 
@@ -462,11 +462,11 @@ func newRedirectErrorFromRequest(req models.AuthorizationRequest, client models.
 		redirectUri = client.RedirectUris[0]
 	}
 	return issues.OAuthRedirectError{
-		OAuthError:   issues.NewOAuthError(errorCode, errorDescription),
-		ClientId:     client.Id,
-		RedirectUri:  redirectUri,
-		ResponseType: req.ResponseType,
-		ResponseMode: req.ResponseMode,
-		State:        req.State,
+		OAuthBaseError: issues.NewOAuthError(errorCode, errorDescription),
+		ClientId:       client.Id,
+		RedirectUri:    redirectUri,
+		ResponseType:   req.ResponseType,
+		ResponseMode:   req.ResponseMode,
+		State:          req.State,
 	}
 }

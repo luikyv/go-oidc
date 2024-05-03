@@ -25,7 +25,7 @@ func TestPushAuthorizationShouldRejectUnauthenticatedClient(t *testing.T) {
 	})
 
 	// Assert
-	var jsonError issues.OAuthError
+	var jsonError issues.OAuthBaseError
 	if err == nil || !errors.As(err, &jsonError) {
 		t.Error("the client should not be authenticated")
 		return
@@ -48,7 +48,7 @@ func TestPushAuthorizationShouldGenerateRequestUri(t *testing.T) {
 			ClientIdPost:     utils.ValidClientId,
 			ClientSecretPost: utils.ValidClientSecret,
 		},
-		BaseAuthorizationRequest: models.BaseAuthorizationRequest{
+		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
 			ResponseType: constants.CodeResponse,

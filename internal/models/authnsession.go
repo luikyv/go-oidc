@@ -8,25 +8,15 @@ import (
 )
 
 type AuthnSession struct {
-	Id                      string
-	Profile                 constants.Profile
-	CallbackId              string
-	GrantModelId            string
-	StepIdsLeft             []string
-	CreatedAtTimestamp      int
-	Subject                 string
-	ClientId                string
-	DefaultRedirectUri      string
-	RequestUri              string
-	RequestObject           string
-	Scopes                  []string
-	RedirectUri             string
-	ResponseType            constants.ResponseType
-	ResponseMode            constants.ResponseMode
-	State                   string
-	Nonce                   string
-	CodeChallenge           string
-	CodeChallengeMethod     constants.CodeChallengeMethod
+	Id                 string
+	Profile            constants.Profile
+	CallbackId         string
+	GrantModelId       string
+	StepIdsLeft        []string
+	CreatedAtTimestamp int
+	Subject            string
+	ClientId           string
+	AuthorizationParameters
 	AuthorizationCode       string
 	AuthorizedAtTimestamp   int
 	PushedParameters        map[string]string // Parameters sent using the PAR endpoint.
@@ -36,22 +26,13 @@ type AuthnSession struct {
 	ClientAttributes        map[string]string // Allow the developer to access the client's custom attributes.
 }
 
-func NewSessionFromRequest(req BaseAuthorizationRequest, client Client) AuthnSession {
+func NewSession(authParams AuthorizationParameters, client Client) AuthnSession {
 
 	return AuthnSession{
 		Id:                      uuid.NewString(),
 		ClientId:                client.Id,
 		GrantModelId:            client.DefaultGrantModelId,
-		RequestObject:           req.Request,
-		Scopes:                  unit.SplitStringWithSpaces(req.Scope),
-		DefaultRedirectUri:      client.GetDefaultRedirectUri(),
-		RedirectUri:             req.RedirectUri,
-		ResponseType:            req.ResponseType,
-		ResponseMode:            req.ResponseMode,
-		State:                   req.State,
-		Nonce:                   req.Nonce,
-		CodeChallenge:           req.CodeChallenge,
-		CodeChallengeMethod:     req.CodeChallengeMethod,
+		AuthorizationParameters: authParams,
 		CreatedAtTimestamp:      unit.GetTimestampNow(),
 		PushedParameters:        make(map[string]string),
 		Store:                   make(map[string]string),
@@ -90,8 +71,8 @@ func (session *AuthnSession) UpdateWithRequest(req AuthorizationRequest) {
 		session.RedirectUri = req.RedirectUri
 	}
 
-	if len(session.Scopes) == 0 {
-		session.Scopes = unit.SplitStringWithSpaces(req.Scope)
+	if len(session.Scope) == 0 {
+		session.Scope = req.Scope
 	}
 
 	if session.ResponseType == "" {

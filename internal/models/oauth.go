@@ -50,7 +50,7 @@ func NewAuthorizationCodeGrantContext(session AuthnSession) GrantContext {
 		Subject:  session.Subject,
 		ClientId: session.ClientId,
 		TokenContext: TokenContext{
-			Scopes:                session.Scopes,
+			Scopes:                unit.SplitStringWithSpaces(session.Scope),
 			GrantType:             constants.AuthorizationCodeGrant,
 			AdditionalTokenClaims: session.AdditionalTokenClaims,
 		},
@@ -66,7 +66,7 @@ func NewImplictGrantContext(session AuthnSession) GrantContext {
 		Subject:  session.Subject,
 		ClientId: session.ClientId,
 		TokenContext: TokenContext{
-			Scopes:                session.Scopes,
+			Scopes:                unit.SplitStringWithSpaces(session.Scope),
 			GrantType:             constants.ImplictGrant,
 			AdditionalTokenClaims: session.AdditionalTokenClaims,
 		},
@@ -82,7 +82,7 @@ func NewImplictGrantContextForIdToken(session AuthnSession, idToken IdTokenConte
 		Subject:  session.Subject,
 		ClientId: session.ClientId,
 		TokenContext: TokenContext{
-			Scopes:                session.Scopes,
+			Scopes:                unit.SplitStringWithSpaces(session.Scope),
 			GrantType:             constants.ImplictGrant,
 			AdditionalTokenClaims: session.AdditionalTokenClaims,
 		},
@@ -134,27 +134,27 @@ type TokenResponse struct {
 	Scope        string              `json:"scope,omitempty"`
 }
 
-type BaseAuthorizationRequest struct {
+type AuthorizationParameters struct {
 	RequestUri          string                        `form:"request_uri"`
-	Request             string                        `form:"request"`
+	RequestObject       string                        `form:"request"`
 	RedirectUri         string                        `form:"redirect_uri"`
 	ResponseMode        constants.ResponseMode        `form:"response_mode"`
 	ResponseType        constants.ResponseType        `form:"response_type"`
 	Scope               string                        `form:"scope"`
 	State               string                        `form:"state"`
+	Nonce               string                        `form:"nonce"`
 	CodeChallenge       string                        `form:"code_challenge"`
 	CodeChallengeMethod constants.CodeChallengeMethod `form:"code_challenge_method"`
-	Nonce               string                        `form:"nonce"`
 }
 
 type AuthorizationRequest struct {
 	ClientId string `form:"client_id"`
-	BaseAuthorizationRequest
+	AuthorizationParameters
 }
 
 type PushedAuthorizationRequest struct {
 	ClientAuthnRequest
-	BaseAuthorizationRequest
+	AuthorizationParameters
 }
 
 type PARResponse struct {

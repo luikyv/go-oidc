@@ -61,7 +61,7 @@ func preValidatePushedAuthorizationParams(req models.PushedAuthorizationRequest)
 }
 
 func initValidParAuthnSession(ctx Context, req models.PushedAuthorizationRequest, client models.Client) (models.AuthnSession, error) {
-	if req.Request != "" {
+	if req.RequestObject != "" {
 		return initValidParAuthnSessionWithJar(ctx, req, client)
 	}
 
@@ -70,7 +70,7 @@ func initValidParAuthnSession(ctx Context, req models.PushedAuthorizationRequest
 		return models.AuthnSession{}, err
 	}
 
-	return models.NewSessionForPar(req.BaseAuthorizationRequest, client, ctx.RequestContext), nil
+	return models.NewSessionForPar(req.AuthorizationParameters, client, ctx.RequestContext), nil
 }
 
 func initValidParAuthnSessionWithJar(ctx Context, req models.PushedAuthorizationRequest, client models.Client) (models.AuthnSession, error) {
@@ -83,7 +83,7 @@ func initValidParAuthnSessionWithJar(ctx Context, req models.PushedAuthorization
 		return models.AuthnSession{}, err
 	}
 
-	return models.NewSessionForPar(jarReq.BaseAuthorizationRequest, client, ctx.RequestContext), nil
+	return models.NewSessionForPar(jarReq.AuthorizationParameters, client, ctx.RequestContext), nil
 }
 
 func handleParError(err error) error {
@@ -91,7 +91,7 @@ func handleParError(err error) error {
 	// Convert redirection errors to json.
 	var redirectErr issues.OAuthRedirectError
 	if errors.As(err, &redirectErr) {
-		return redirectErr.OAuthError
+		return redirectErr.OAuthBaseError
 	}
 
 	return err

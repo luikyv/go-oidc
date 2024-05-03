@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/auth-server/internal/oauth"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
@@ -15,7 +16,7 @@ import (
 //---------------------------------------- Well Known ----------------------------------------//
 
 func HandleWellKnownRequest(ctx utils.Context) {
-	ctx.RequestContext.JSON(http.StatusOK, utils.GetOpenIdConfiguration(ctx))
+	ctx.RequestContext.JSON(http.StatusOK, oauth.GetOpenIdConfiguration(ctx))
 }
 
 //---------------------------------------- JWKS ----------------------------------------//
@@ -100,14 +101,14 @@ func HandleTokenRequest(ctx utils.Context) {
 func HandleUserInfoRequest(ctx utils.Context) {
 	token, ok := unit.GetBearerToken(ctx.RequestContext)
 	if !ok {
-		bindErrorToResponse(issues.OAuthError{
+		bindErrorToResponse(issues.OAuthBaseError{
 			ErrorCode:        constants.AccessDenied,
 			ErrorDescription: "no token found",
 		}, ctx.RequestContext)
 		return
 	}
 
-	grantSession, err := utils.HandleUserInfoRequest(ctx, token)
+	grantSession, err := oauth.HandleUserInfoRequest(ctx, token)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
@@ -125,7 +126,8 @@ func HandleUserInfoRequest(ctx utils.Context) {
 
 func bindErrorToResponse(err error, requestContext *gin.Context) {
 
-	var oauthErr issues.OAuthError
+	// TODO
+	var oauthErr issues.OAuthBaseError
 	if errors.As(err, &oauthErr) {
 		requestContext.JSON(http.StatusBadRequest, gin.H{
 			"error":             oauthErr.ErrorCode,

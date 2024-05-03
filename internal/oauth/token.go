@@ -26,7 +26,7 @@ func HandleGrantCreation(
 	case constants.RefreshTokenGrant:
 		grantSession, err = handleRefreshTokenGrantTokenCreation(ctx, req)
 	default:
-		grantSession, err = models.GrantSession{}, issues.OAuthError{
+		grantSession, err = models.GrantSession{}, issues.OAuthBaseError{
 			ErrorCode:        constants.UnsupportedGrantType,
 			ErrorDescription: "unsupported grant type",
 		}
@@ -397,7 +397,7 @@ func validateClientAuthnRequest(req models.ClientAuthnRequest) (clientId string,
 	// Either the client ID or the client assertion must be present to identity the client.
 	clientId, ok := getValidClientId(req)
 	if !ok {
-		return "", issues.OAuthError{
+		return "", issues.OAuthBaseError{
 			ErrorCode:        constants.InvalidClient,
 			ErrorDescription: "invalid client authentication",
 		}
@@ -405,7 +405,7 @@ func validateClientAuthnRequest(req models.ClientAuthnRequest) (clientId string,
 
 	// Validate parameters for client secret basic authentication.
 	if req.ClientSecretBasicAuthn != "" && (req.ClientIdBasicAuthn == "" || req.ClientSecretPost != "" || req.ClientAssertionType != "" || req.ClientAssertion != "") {
-		return "", issues.OAuthError{
+		return "", issues.OAuthBaseError{
 			ErrorCode:        constants.InvalidClient,
 			ErrorDescription: "invalid client authentication",
 		}
@@ -413,7 +413,7 @@ func validateClientAuthnRequest(req models.ClientAuthnRequest) (clientId string,
 
 	// Validate parameters for client secret post authentication.
 	if req.ClientSecretPost != "" && (req.ClientIdPost == "" || req.ClientIdBasicAuthn != "" || req.ClientSecretBasicAuthn != "" || req.ClientAssertionType != "" || req.ClientAssertion != "") {
-		return "", issues.OAuthError{
+		return "", issues.OAuthBaseError{
 			ErrorCode:        constants.InvalidClient,
 			ErrorDescription: "invalid client authentication",
 		}
@@ -421,7 +421,7 @@ func validateClientAuthnRequest(req models.ClientAuthnRequest) (clientId string,
 
 	// Validate parameters for private key jwt authentication.
 	if req.ClientAssertion != "" && (req.ClientAssertionType != constants.JWTBearerAssertion || req.ClientIdBasicAuthn != "" || req.ClientSecretBasicAuthn != "" || req.ClientSecretPost != "") {
-		return "", issues.OAuthError{
+		return "", issues.OAuthBaseError{
 			ErrorCode:        constants.InvalidClient,
 			ErrorDescription: "invalid client authentication",
 		}
