@@ -19,13 +19,12 @@ func PushAuthorization(ctx utils.Context, req models.PushedAuthorizationRequest)
 	}
 
 	session, oauthErr := initPushedAuthnSession(ctx, req, client)
-	if err != nil {
+	if oauthErr != nil {
 		return "", oauthErr
 	}
 	session.Push(ctx.RequestContext)
 
-	err = ctx.AuthnSessionManager.CreateOrUpdate(session)
-	if err != nil {
+	if err := ctx.AuthnSessionManager.CreateOrUpdate(session); err != nil {
 		ctx.Logger.Debug("could not create a session")
 		return "", issues.NewOAuthError(constants.InternalError, err.Error())
 	}
@@ -63,36 +62,4 @@ func initPushedAuthnSessionWithJar(ctx utils.Context, req models.PushedAuthoriza
 
 	session := models.NewSession(jar.AuthorizationParameters, client)
 	return session, nil
-}
-
-//---------------------------------------------------------- Validators ----------------------------------------------------------//
-
-func validatePushedRequest(ctx utils.Context, req models.PushedAuthorizationRequest, client models.Client) issues.OAuthError {
-
-	if req.ClientIdPost != "" && req.ClientIdPost != client.Id {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
-	}
-
-	if req.RequestUri != "" {
-		return issues.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
-	}
-
-	return validateBaseRequestNonEmptyFields(req.AuthorizationParameters, client)
-}
-
-func validatePushedRequestWithJar(ctx utils.Context, req models.PushedAuthorizationRequest, jar models.AuthorizationRequest, client models.Client) issues.OAuthError {
-
-	if req.ClientIdPost != "" && req.ClientIdPost != client.Id {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
-	}
-
-	if req.RequestUri != "" {
-		return issues.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
-	}
-
-	// The PAR RFC (https://datatracker.ietf.org/doc/html/rfc9126#section-3) says:
-	// "...The rules for processing, signing, and encryption of the Request Object as defined in JAR [RFC9101] apply..."
-	// In turn, the JAR RFC (https://www.rfc-editor.org/rfc/rfc9101.html#name-request-object-2.) says about the request object:
-	// "...It MUST contain all the parameters (including extension parameters) used to process the OAuth 2.0 [RFC6749] authorization request..."
-	return validateOAuthCoreRequest(ctx, jar, client)
 }

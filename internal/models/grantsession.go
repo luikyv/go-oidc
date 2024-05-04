@@ -1,6 +1,9 @@
 package models
 
-import "github.com/luikymagno/auth-server/internal/unit/constants"
+import (
+	"github.com/luikymagno/auth-server/internal/unit"
+	"github.com/luikymagno/auth-server/internal/unit/constants"
+)
 
 type GrantSession struct {
 	Id                      string
@@ -19,4 +22,8 @@ type GrantSession struct {
 	Nonce                   string
 	AdditionalTokenClaims   map[string]string
 	AdditionalIdTokenClaims map[string]string
+}
+
+func (grantSession GrantSession) IsRefreshSessionExpired() bool {
+	return unit.GetTimestampNow() > grantSession.CreatedAtTimestamp+grantSession.RefreshTokenExpiresIn
 }

@@ -150,6 +150,19 @@ func AnyNonEmpty(values ...string) bool {
 	)
 }
 
+func AllEquals[T comparable](values []T) bool {
+	if len(values) == 0 {
+		return true
+	}
+
+	return Any(
+		values,
+		func(value T) bool {
+			return value != values[0]
+		},
+	)
+}
+
 func GetTimestampNow() int {
 	return int(time.Now().Unix())
 }
@@ -165,4 +178,8 @@ func SplitStringWithSpaces(s string) []string {
 
 func IsBlank(s string) bool {
 	return strings.ReplaceAll(s, " ", "") == ""
+}
+
+func ScopeContainsOpenId(scope string) bool {
+	return scope != "" && slices.Contains(SplitStringWithSpaces(scope), constants.OpenIdScope)
 }

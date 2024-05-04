@@ -1,11 +1,9 @@
 package oauth
 
 import (
-	"errors"
 	"log/slog"
 	"slices"
 
-	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -26,10 +24,7 @@ func HandleGrantCreation(
 	case constants.RefreshTokenGrant:
 		grantSession, err = handleRefreshTokenGrantTokenCreation(ctx, req)
 	default:
-		grantSession, err = models.GrantSession{}, issues.OAuthBaseError{
-			ErrorCode:        constants.UnsupportedGrantType,
-			ErrorDescription: "unsupported grant type",
-		}
+		grantSession, err = models.GrantSession{}, issues.NewOAuthError(constants.UnsupportedGrantType, "unsupported grant type")
 	}
 
 	return grantSession, err
@@ -38,17 +33,17 @@ func HandleGrantCreation(
 //---------------------------------------- Client Credentials ----------------------------------------//
 
 func handleClientCredentialsGrantTokenCreation(ctx utils.Context, req models.TokenRequest) (models.GrantSession, error) {
-	if err := preValidateClientCredentialsGrantRequest(req); err != nil {
-		return models.GrantSession{}, err
+	if oauthErr := preValidateClientCredentialsGrantRequest(req); oauthErr != nil {
+		return models.GrantSession{}, oauthErr
 	}
 
-	client, err := getAuthenticatedClient(ctx, req.ClientAuthnRequest)
-	if err != nil {
-		return models.GrantSession{}, err
+	client, oauthErr := getAuthenticatedClient(ctx, req.ClientAuthnRequest)
+	if oauthErr != nil {
+		return models.GrantSession{}, oauthErr
 	}
 
-	if err := validateClientCredentialsGrantRequest(ctx, req, client); err != nil {
-		return models.GrantSession{}, err
+	if oauthErr := validateClientCredentialsGrantRequest(ctx, req, client); oauthErr != nil {
+		return models.GrantSession{}, oauthErr
 	}
 
 	grantModel, err := ctx.GrantModelManager.Get(client.DefaultGrantModelId)
@@ -56,9 +51,7 @@ func handleClientCredentialsGrantTokenCreation(ctx utils.Context, req models.Tok
 		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, "grant model not found")
 	}
 
-	grantSession := grantModel.GenerateGrantSession(
-		models.NewClientCredentialsGrantContext(client, req),
-	)
+	grantSession := grantModel.GenerateGrantSession(models.NewClientCredentialsGrantContext(client, req))
 
 	if shouldCreateGrantSessionForClientCredentialsGrant(grantSession) {
 		// We only need to create a token session for client credentials when the token is not self-contained,
@@ -73,15 +66,15 @@ func handleClientCredentialsGrantTokenCreation(ctx utils.Context, req models.Tok
 	return grantSession, nil
 }
 
-func preValidateClientCredentialsGrantRequest(req models.TokenRequest) error {
-	if req.AuthorizationCode != "" || req.RedirectUri != "" || req.RefreshToken != "" || req.CodeVerifier != "" {
-		return errors.New("invalid parameter for client credentials grant")
+func preValidateClientCredentialsGrantRequest(req models.TokenRequest) issues.OAuthError {
+	if unit.AnyNonEmpty(req.AuthorizationCode, req.RedirectUri, req.RefreshToken, req.CodeVerifier) {
+		issues.NewOAuthError(constants.InvalidRequest, "invalid parameter for client credentials grant")
 	}
 
 	return nil
 }
 
-func validateClientCredentialsGrantRequest(ctx utils.Context, req models.TokenRequest, client models.Client) error {
+func validateClientCredentialsGrantRequest(ctx utils.Context, req models.TokenRequest, client models.Client) issues.OAuthError {
 
 	if !client.IsGrantTypeAllowed(constants.ClientCredentialsGrant) {
 		ctx.Logger.Info("grant type not allowed")
@@ -97,82 +90,79 @@ func validateClientCredentialsGrantRequest(ctx utils.Context, req models.TokenRe
 }
 
 func shouldCreateGrantSessionForClientCredentialsGrant(grantSession models.GrantSession) bool {
-	// We only need to create a token session for the authorization code grant when the token is not self-contained,
-	// i.e. it is a refecence token, when the refresh token is issued or the the openid scope was requested.
+	// We only need to create a token session for the authorization code grant when the token is not self-contained.
 	return grantSession.TokenFormat == constants.Opaque
 }
 
 //---------------------------------------- Authorization Code ----------------------------------------//
 
-func handleAuthorizationCodeGrantTokenCreation(ctx utils.Context, req models.TokenRequest) (models.GrantSession, error) {
+func handleAuthorizationCodeGrantTokenCreation(ctx utils.Context, req models.TokenRequest) (models.GrantSession, issues.OAuthError) {
 
-	if err := preValidateAuthorizationCodeGrantRequest(req); err != nil {
-		return models.GrantSession{}, err
+	if oauthErr := preValidateAuthorizationCodeGrantRequest(req); oauthErr != nil {
+		return models.GrantSession{}, oauthErr
 	}
 
-	authenticatedClient, session, err := getAuthenticatedClientAndSession(ctx, req)
-	if err != nil {
-		ctx.Logger.Debug("error while loading the client or session", slog.String("error", err.Error()))
-		return models.GrantSession{}, err
+	authenticatedClient, session, oauthErr := getAuthenticatedClientAndSession(ctx, req)
+	if oauthErr != nil {
+		ctx.Logger.Debug("error while loading the client or session", slog.String("error", oauthErr.Error()))
+		return models.GrantSession{}, oauthErr
 	}
 
-	if err := validateAuthorizationCodeGrantRequest(req, authenticatedClient, session); err != nil {
-		ctx.Logger.Debug("invalid parameters for the token request", slog.String("error", err.Error()))
-		return models.GrantSession{}, err
+	if oauthErr = validateAuthorizationCodeGrantRequest(req, authenticatedClient, session); oauthErr != nil {
+		ctx.Logger.Debug("invalid parameters for the token request", slog.String("error", oauthErr.Error()))
+		return models.GrantSession{}, oauthErr
 	}
 
 	ctx.Logger.Debug("fetch the token model")
 	grantModel, err := ctx.GrantModelManager.Get(authenticatedClient.DefaultGrantModelId)
 	if err != nil {
 		ctx.Logger.Debug("error while loading the token model", slog.String("error", err.Error()))
-		return models.GrantSession{}, err
+		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, "could not load token model")
 	}
 	ctx.Logger.Debug("the token model was loaded successfully")
 
-	grantSession := grantModel.GenerateGrantSession(
-		models.NewAuthorizationCodeGrantContext(session),
-	)
+	grantSession := grantModel.GenerateGrantSession(models.NewAuthorizationCodeGrantContext(session))
 	err = nil
 	if shouldCreateGrantSessionForAuthorizationCodeGrant(grantSession) {
 		ctx.Logger.Debug("create token session")
 		err = ctx.GrantSessionManager.CreateOrUpdate(grantSession)
 	}
 	if err != nil {
-		return models.GrantSession{}, err
+		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, "could not create session")
 	}
 
 	return grantSession, nil
 }
 
-func preValidateAuthorizationCodeGrantRequest(req models.TokenRequest) error {
-	if req.AuthorizationCode == "" || req.RefreshToken != "" || req.Scope != "" {
-		return errors.New("invalid parameter for authorization code grant")
+func preValidateAuthorizationCodeGrantRequest(req models.TokenRequest) issues.OAuthError {
+	if req.AuthorizationCode == "" || unit.AnyNonEmpty(req.RefreshToken, req.Scope) {
+		issues.NewOAuthError(constants.InvalidRequest, "invalid parameter for authorization code grant")
 	}
 
 	// RFC 7636. "...with a minimum length of 43 characters and a maximum length of 128 characters."
 	codeVerifierLengh := len(req.CodeVerifier)
 	if req.CodeVerifier != "" && (codeVerifierLengh < 43 || codeVerifierLengh > 128) {
-		return errors.New("invalid code verifier")
+		issues.NewOAuthError(constants.InvalidRequest, "invalid code verifier")
 	}
 
 	return nil
 }
 
-func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client models.Client, session models.AuthnSession) error {
+func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client models.Client, session models.AuthnSession) issues.OAuthError {
 
 	if !client.IsGrantTypeAllowed(constants.AuthorizationCodeGrant) {
 		return issues.NewOAuthError(constants.UnauthorizedClient, "invalid grant type")
-	}
-
-	if unit.GetTimestampNow() > session.AuthorizedAtTimestamp+constants.AuthorizationCodeLifetimeSecs {
-		return issues.NewOAuthError(constants.InvalidGrant, "the authorization code is expired")
 	}
 
 	if session.ClientId != client.Id {
 		return issues.NewOAuthError(constants.InvalidGrant, "the authorization code was not issued to the client")
 	}
 
-	if session.RedirectUri != "" && session.RedirectUri != req.RedirectUri {
+	if session.IsAuthorizationCodeExpired() {
+		return issues.NewOAuthError(constants.InvalidGrant, "the authorization code is expired")
+	}
+
+	if session.RedirectUri != req.RedirectUri {
 		return issues.NewOAuthError(constants.InvalidGrant, "invalid redirect_uri")
 	}
 
@@ -184,28 +174,28 @@ func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client model
 	return nil
 }
 
-func getAuthenticatedClientAndSession(ctx utils.Context, req models.TokenRequest) (models.Client, models.AuthnSession, error) {
+func getAuthenticatedClientAndSession(ctx utils.Context, req models.TokenRequest) (models.Client, models.AuthnSession, issues.OAuthError) {
 
-	ctx.Logger.Debug("get the session using the authorization code.")
+	ctx.Logger.Debug("get the session using the authorization code")
 	sessionResultCh := make(chan ResultChannel)
 	go getSessionByAuthorizationCode(ctx, req.AuthorizationCode, sessionResultCh)
 
-	ctx.Logger.Debug("get the client while the session is being loaded.")
+	ctx.Logger.Debug("get the client while the session is being loaded")
 	authenticatedClient, err := getAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
-		ctx.Logger.Debug("error while loading the client.", slog.String("error", err.Error()))
+		ctx.Logger.Debug("error while loading the client", slog.String("error", err.Error()))
 		return models.Client{}, models.AuthnSession{}, err
 	}
-	ctx.Logger.Debug("the client was loaded successfully.")
+	ctx.Logger.Debug("the client was loaded successfully")
 
-	ctx.Logger.Debug("wait for the session.")
+	ctx.Logger.Debug("wait for the session")
 	sessionResult := <-sessionResultCh
 	session, err := sessionResult.result.(models.AuthnSession), sessionResult.err
 	if err != nil {
-		ctx.Logger.Debug("error while loading the session.", slog.String("error", err.Error()))
+		ctx.Logger.Debug("error while loading the session", slog.String("error", err.Error()))
 		return models.Client{}, models.AuthnSession{}, err
 	}
-	ctx.Logger.Debug("the session was loaded successfully.")
+	ctx.Logger.Debug("the session was loaded successfully")
 
 	return authenticatedClient, session, nil
 }
@@ -231,23 +221,23 @@ func getSessionByAuthorizationCode(ctx utils.Context, authorizationCode string, 
 
 	ch <- ResultChannel{
 		result: session,
-		err:    err,
+		err:    nil,
 	}
 }
 
 func shouldCreateGrantSessionForAuthorizationCodeGrant(grantSession models.GrantSession) bool {
-	// We only need to create a token session for the authorization code grant when the token is not self-contained,
-	// i.e. it is a refecence token, when the refresh token is issued or the the openid scope was requested
+	// We only need to create a token session for the authorization code grant when the token is not self-contained
+	// (i.e. it is a refecence token), when the refresh token is issued or the the openid scope was requested
 	// in which case the client can later request information about the user.
 	return grantSession.TokenFormat == constants.Opaque || grantSession.RefreshToken != "" || slices.Contains(grantSession.Scopes, constants.OpenIdScope)
 }
 
 //---------------------------------------- Refresh Token ----------------------------------------//
 
-func handleRefreshTokenGrantTokenCreation(ctx utils.Context, req models.TokenRequest) (models.GrantSession, error) {
+func handleRefreshTokenGrantTokenCreation(ctx utils.Context, req models.TokenRequest) (models.GrantSession, issues.OAuthError) {
 
 	if err := preValidateRefreshTokenGrantRequest(req); err != nil {
-		return models.GrantSession{}, errors.New("invalid parameter for refresh token grant")
+		return models.GrantSession{}, issues.NewOAuthError(constants.InvalidRequest, "invalid parameter for refresh token grant")
 	}
 
 	authenticatedClient, grantSession, err := getAuthenticatedClientAndGrantSession(ctx, req)
@@ -260,9 +250,8 @@ func handleRefreshTokenGrantTokenCreation(ctx utils.Context, req models.TokenReq
 		return models.GrantSession{}, err
 	}
 
-	err = ctx.GrantSessionManager.Delete(grantSession.Id)
-	if err != nil {
-		return models.GrantSession{}, err
+	if err := ctx.GrantSessionManager.Delete(grantSession.Id); err != nil {
+		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, "could not delete session")
 	}
 
 	ctx.Logger.Debug("update the token session")
@@ -274,7 +263,7 @@ func handleRefreshTokenGrantTokenCreation(ctx utils.Context, req models.TokenReq
 	return updatedGrantSession, nil
 }
 
-func getAuthenticatedClientAndGrantSession(ctx utils.Context, req models.TokenRequest) (models.Client, models.GrantSession, error) {
+func getAuthenticatedClientAndGrantSession(ctx utils.Context, req models.TokenRequest) (models.Client, models.GrantSession, issues.OAuthError) {
 
 	ctx.Logger.Debug("get the token session using the refresh token.")
 	grantSessionResultCh := make(chan ResultChannel)
@@ -293,7 +282,7 @@ func getAuthenticatedClientAndGrantSession(ctx utils.Context, req models.TokenRe
 	grantSession, err := grantSessionResult.result.(models.GrantSession), grantSessionResult.err
 	if err != nil {
 		ctx.Logger.Debug("error while loading the token.", slog.String("error", err.Error()))
-		return models.Client{}, models.GrantSession{}, errors.New("invalid refresh token")
+		return models.Client{}, models.GrantSession{}, err
 	}
 	ctx.Logger.Debug("the session was loaded successfully.")
 
@@ -305,28 +294,28 @@ func getGrantSessionByRefreshToken(ctx utils.Context, refreshToken string, ch ch
 	if err != nil {
 		ch <- ResultChannel{
 			result: models.GrantSession{},
-			err:    err,
+			err:    issues.NewOAuthError(constants.InvalidRequest, "invalid refresh_token"),
 		}
 	}
 
 	ch <- ResultChannel{
 		result: grantSession,
-		err:    err,
+		err:    nil,
 	}
 }
 
-func preValidateRefreshTokenGrantRequest(req models.TokenRequest) error {
-	if req.RefreshToken == "" || req.AuthorizationCode != "" || req.RedirectUri != "" || req.Scope != "" || req.CodeVerifier != "" {
-		return errors.New("invalid parameter for refresh token grant")
+func preValidateRefreshTokenGrantRequest(req models.TokenRequest) issues.OAuthError {
+	if req.RefreshToken == "" || unit.AnyNonEmpty(req.AuthorizationCode, req.RedirectUri, req.Scope, req.CodeVerifier) {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid parameter for refresh token grant")
 	}
 
 	return nil
 }
 
-func validateRefreshTokenGrantRequest(req models.TokenRequest, client models.Client, grantSession models.GrantSession) error {
+func validateRefreshTokenGrantRequest(req models.TokenRequest, client models.Client, grantSession models.GrantSession) issues.OAuthError {
 
-	if req.AuthorizationCode != "" || req.RedirectUri != "" || req.Scope != "" || req.CodeVerifier != "" {
-		return errors.New("invalid parameter for refresh token grant")
+	if unit.AnyNonEmpty(req.AuthorizationCode, req.RedirectUri, req.Scope, req.CodeVerifier) {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid parameter for refresh token grant")
 	}
 
 	if !client.IsGrantTypeAllowed(constants.RefreshTokenGrant) {
@@ -337,8 +326,7 @@ func validateRefreshTokenGrantRequest(req models.TokenRequest, client models.Cli
 		return issues.NewOAuthError(constants.UnauthorizedClient, "the refresh token was not issued to the client")
 	}
 
-	expirationTimestamp := grantSession.CreatedAtTimestamp + grantSession.RefreshTokenExpiresIn
-	if unit.GetTimestampNow() > expirationTimestamp {
+	if grantSession.IsRefreshSessionExpired() {
 		//TODO: How to handle the expired sessions? There are just hanging for now.
 		return issues.NewOAuthError(constants.UnauthorizedClient, "the refresh token is expired")
 	}
@@ -346,138 +334,19 @@ func validateRefreshTokenGrantRequest(req models.TokenRequest, client models.Cli
 	return nil
 }
 
-func generateUpdatedGrantSession(ctx utils.Context, grantSession models.GrantSession) (models.GrantSession, error) {
+func generateUpdatedGrantSession(ctx utils.Context, grantSession models.GrantSession) (models.GrantSession, issues.OAuthError) {
 	ctx.Logger.Debug("get the token model")
 	grantModel, err := ctx.GrantModelManager.Get(grantSession.GrantModelId)
 	if err != nil {
 		ctx.Logger.Debug("error while loading the token model", slog.String("error", err.Error()))
-		return models.GrantSession{}, err
+		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, err.Error())
 	}
 	ctx.Logger.Debug("the token model was loaded successfully")
 
-	updatedGrantSession := grantModel.GenerateGrantSession(
-		models.NewRefreshTokenGrantContext(grantSession),
-	)
+	updatedGrantSession := grantModel.GenerateGrantSession(models.NewRefreshTokenGrantContext(grantSession))
 	// Keep the same creation time to make sure the session will expire.
 	updatedGrantSession.CreatedAtTimestamp = grantSession.CreatedAtTimestamp
 	ctx.GrantSessionManager.CreateOrUpdate(updatedGrantSession)
 
 	return updatedGrantSession, nil
-}
-
-//---------------------------------------- Helpers ----------------------------------------//
-
-type ResultChannel struct {
-	result any
-	err    error
-}
-
-func getAuthenticatedClient(ctx utils.Context, req models.ClientAuthnRequest) (models.Client, error) {
-
-	clientId, err := validateClientAuthnRequest(req)
-	if err != nil {
-		return models.Client{}, err
-	}
-
-	client, err := ctx.ClientManager.Get(clientId)
-	if err != nil {
-		ctx.Logger.Info("client not found", slog.String("client_id", clientId))
-		return models.Client{}, issues.NewWrappingOAuthError(err, constants.InvalidClient, "invalid client")
-	}
-
-	if !client.Authenticator.IsAuthenticated(req) {
-		ctx.Logger.Info("client not authenticated", slog.String("client_id", req.ClientIdPost))
-		return models.Client{}, issues.NewOAuthError(constants.InvalidClient, "client not authenticated")
-	}
-
-	return client, nil
-}
-
-func validateClientAuthnRequest(req models.ClientAuthnRequest) (clientId string, err error) {
-	// Either the client ID or the client assertion must be present to identity the client.
-	clientId, ok := getValidClientId(req)
-	if !ok {
-		return "", issues.OAuthBaseError{
-			ErrorCode:        constants.InvalidClient,
-			ErrorDescription: "invalid client authentication",
-		}
-	}
-
-	// Validate parameters for client secret basic authentication.
-	if req.ClientSecretBasicAuthn != "" && (req.ClientIdBasicAuthn == "" || req.ClientSecretPost != "" || req.ClientAssertionType != "" || req.ClientAssertion != "") {
-		return "", issues.OAuthBaseError{
-			ErrorCode:        constants.InvalidClient,
-			ErrorDescription: "invalid client authentication",
-		}
-	}
-
-	// Validate parameters for client secret post authentication.
-	if req.ClientSecretPost != "" && (req.ClientIdPost == "" || req.ClientIdBasicAuthn != "" || req.ClientSecretBasicAuthn != "" || req.ClientAssertionType != "" || req.ClientAssertion != "") {
-		return "", issues.OAuthBaseError{
-			ErrorCode:        constants.InvalidClient,
-			ErrorDescription: "invalid client authentication",
-		}
-	}
-
-	// Validate parameters for private key jwt authentication.
-	if req.ClientAssertion != "" && (req.ClientAssertionType != constants.JWTBearerAssertion || req.ClientIdBasicAuthn != "" || req.ClientSecretBasicAuthn != "" || req.ClientSecretPost != "") {
-		return "", issues.OAuthBaseError{
-			ErrorCode:        constants.InvalidClient,
-			ErrorDescription: "invalid client authentication",
-		}
-	}
-
-	return clientId, nil
-}
-
-func getValidClientId(req models.ClientAuthnRequest) (clientId string, ok bool) {
-	clientIds := []string{}
-
-	if req.ClientIdPost != "" {
-		clientIds = append(clientIds, req.ClientIdPost)
-	}
-
-	if req.ClientIdBasicAuthn != "" {
-		clientIds = append(clientIds, req.ClientIdBasicAuthn)
-	}
-
-	if req.ClientAssertion != "" {
-		assertionClientId, ok := getClientIdFromAssertion(req)
-		// If the assertion is passed, it must contain the client ID as its issuer.
-		if !ok {
-			return "", false
-		}
-		clientIds = append(clientIds, assertionClientId)
-	}
-
-	// All the client IDs present must be equal.
-	if len(clientIds) == 0 || unit.Any(clientIds, func(clientId string) bool {
-		return clientId != clientIds[0]
-	}) {
-		return "", false
-	}
-
-	return clientIds[0], true
-}
-
-func getClientIdFromAssertion(req models.ClientAuthnRequest) (string, bool) {
-	assertion, err := jwt.ParseSigned(req.ClientAssertion, constants.ClientSigningAlgorithms)
-	if err != nil {
-		return "", false
-	}
-
-	var claims map[constants.Claim]any
-	assertion.UnsafeClaimsWithoutVerification(&claims)
-
-	clientId, ok := claims[constants.IssuerClaim]
-	if !ok {
-		return "", false
-	}
-
-	clientIdAsString, ok := clientId.(string)
-	if !ok {
-		return "", false
-	}
-
-	return clientIdAsString, true
 }

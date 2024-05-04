@@ -175,6 +175,10 @@ func (session *AuthnSession) IsPushedRequestExpired() bool {
 	return unit.GetTimestampNow() > session.CreatedAtTimestamp+constants.ParLifetimeSecs
 }
 
+func (session *AuthnSession) IsAuthorizationCodeExpired() bool {
+	return unit.GetTimestampNow() > session.AuthorizedAtTimestamp+constants.AuthorizationCodeLifetimeSecs
+}
+
 func (session *AuthnSession) InitAuthorizationCode() {
 	session.AuthorizationCode = unit.GenerateAuthorizationCode()
 	session.AuthorizedAtTimestamp = unit.GetTimestampNow()
