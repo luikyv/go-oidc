@@ -35,7 +35,7 @@ func HandlePARRequest(ctx utils.Context) {
 	}
 	addBasicCredentialsToRequest(ctx, &req.ClientAuthnRequest)
 
-	requestUri, err := utils.PushAuthorization(ctx, req)
+	requestUri, err := oauth.PushAuthorization(ctx, req)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
@@ -56,7 +56,7 @@ func HandleAuthorizeRequest(ctx utils.Context) {
 		return
 	}
 
-	err := utils.InitAuthentication(ctx, req)
+	err := oauth.InitAuth(ctx, req)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
@@ -64,7 +64,7 @@ func HandleAuthorizeRequest(ctx utils.Context) {
 }
 
 func HandleAuthorizeCallbackRequest(ctx utils.Context) {
-	err := utils.ContinueAuthentication(ctx, ctx.RequestContext.Param("callback"))
+	err := oauth.ContinueAuth(ctx, ctx.RequestContext.Param("callback"))
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return

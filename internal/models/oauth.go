@@ -109,10 +109,11 @@ func NewRefreshTokenGrantContext(session GrantSession) GrantContext {
 type ClientAuthnRequest struct {
 	ClientIdBasicAuthn     string
 	ClientSecretBasicAuthn string
-	ClientIdPost           string                        `form:"client_id"`
-	ClientSecretPost       string                        `form:"client_secret"`
-	ClientAssertionType    constants.ClientAssertionType `form:"client_assertion_type"`
-	ClientAssertion        string                        `form:"client_assertion"`
+	// The client ID sent via form is not specific to authentication. It is also a param for /authorize.
+	ClientIdPost        string                        `form:"client_id"`
+	ClientSecretPost    string                        `form:"client_secret"`
+	ClientAssertionType constants.ClientAssertionType `form:"client_assertion_type"`
+	ClientAssertion     string                        `form:"client_assertion"`
 }
 
 type TokenRequest struct {

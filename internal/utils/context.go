@@ -3,19 +3,17 @@ package utils
 import (
 	"log/slog"
 	"os"
-	"slices"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/crud"
 	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
 type Context struct {
 	Host                string
-	DefaultProfile      constants.Profile
-	GetProfile          func(client models.Client, requestedScopes []string) constants.Profile
 	ScopeManager        crud.ScopeManager
 	GrantModelManager   crud.GrantModelManager
 	ClientManager       crud.ClientManager
@@ -56,14 +54,7 @@ func NewContext(
 	)
 
 	return Context{
-		Host:           host,
-		DefaultProfile: constants.OAuthCoreProfile,
-		GetProfile: func(client models.Client, requestedScopes []string) constants.Profile {
-			if slices.Contains(requestedScopes, constants.OpenIdScope) {
-				return constants.OpenIdCoreProfile
-			}
-			return constants.OAuthCoreProfile
-		},
+		Host:                host,
 		ScopeManager:        scopeManager,
 		GrantModelManager:   grantModelManager,
 		ClientManager:       clientManager,
@@ -75,6 +66,13 @@ func NewContext(
 		RequestContext:      reqContext,
 		Logger:              logger,
 	}
+}
+
+func (ctx Context) GetProfile(requestedScopes string) constants.Profile {
+	if unit.ScopeContainsOpenId(requestedScopes) {
+		return constants.OpenIdCoreProfile
+	}
+	return constants.OAuthCoreProfile
 }
 
 func (ctx Context) GetAvailablePolicy(session models.AuthnSession) (policy AuthnPolicy, policyIsAvailable bool) {

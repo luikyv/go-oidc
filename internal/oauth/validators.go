@@ -1,8 +1,6 @@
 package oauth
 
 import (
-	"slices"
-
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -12,9 +10,10 @@ import (
 
 //-------------------------------------------------------------- Validators --------------------------------------------------------------//
 
-func validateClientAuthnRequest(req models.ClientAuthnRequest) (clientId string, err issues.OAuthError) {
+// Validate a client authentication request and return a valid client ID from it.
+func validateClientAuthnRequest(req models.ClientAuthnRequest) (validClientId string, err issues.OAuthError) {
 
-	clientId, ok := getClientId(req)
+	validClientId, ok := getClientId(req)
 	if !ok {
 		return "", issues.NewOAuthError(constants.InvalidClient, "invalid client authentication")
 	}
@@ -34,37 +33,10 @@ func validateClientAuthnRequest(req models.ClientAuthnRequest) (clientId string,
 		return "", issues.NewOAuthError(constants.InvalidClient, "invalid client authentication")
 	}
 
-	return clientId, nil
+	return validClientId, nil
 }
 
-func getClientId(req models.ClientAuthnRequest) (clientId string, ok bool) {
-	clientIds := []string{}
-
-	if req.ClientIdPost != "" {
-		clientIds = append(clientIds, req.ClientIdPost)
-	}
-
-	if req.ClientIdBasicAuthn != "" {
-		clientIds = append(clientIds, req.ClientIdBasicAuthn)
-	}
-
-	if req.ClientAssertion != "" {
-		assertionClientId, ok := getClientIdFromAssertion(req)
-		if !ok {
-			return "", false
-		}
-		clientIds = append(clientIds, assertionClientId)
-	}
-
-	// All the client IDs present must be equal.
-	if len(clientIds) == 0 || !unit.AllEquals(clientIds) {
-		return "", false
-	}
-
-	return clientIds[0], true
-}
-
-func validatePushedRequest(ctx utils.Context, req models.PushedAuthorizationRequest, client models.Client) issues.OAuthError {
+func validatePushedRequest(_ utils.Context, req models.PushedAuthorizationRequest, client models.Client) issues.OAuthError {
 
 	if req.ClientIdPost != "" && req.ClientIdPost != client.Id {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
@@ -74,7 +46,7 @@ func validatePushedRequest(ctx utils.Context, req models.PushedAuthorizationRequ
 		return issues.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
 	}
 
-	return validateBaseRequestNonEmptyFields(req.AuthorizationParameters, client)
+	return validateNonEmptyParamsNoRedirect(req.AuthorizationParameters, client)
 }
 
 func validatePushedRequestWithJar(ctx utils.Context, req models.PushedAuthorizationRequest, jar models.AuthorizationRequest, client models.Client) issues.OAuthError {
@@ -91,19 +63,29 @@ func validatePushedRequestWithJar(ctx utils.Context, req models.PushedAuthorizat
 	// "...The rules for processing, signing, and encryption of the Request Object as defined in JAR [RFC9101] apply..."
 	// In turn, the JAR RFC (https://www.rfc-editor.org/rfc/rfc9101.html#name-request-object-2.) says about the request object:
 	// "...It MUST contain all the parameters (including extension parameters) used to process the OAuth 2.0 [RFC6749] authorization request..."
-	return validateOAuthCoreRequest(ctx, jar, client)
+	return validateOAuthCoreParamsNoRedirect(ctx, jar.AuthorizationParameters, client)
 }
 
-func validateRequestWithPar(ctx utils.Context, req models.AuthorizationRequest, session models.AuthnSession, client models.Client) issues.OAuthError {
+func validateAuthorizationRequestWithPar(
+	ctx utils.Context,
+	req models.AuthorizationRequest,
+	session models.AuthnSession,
+	client models.Client,
+) issues.OAuthError {
 
-	if err := validateRequestWithParNoRedirect(ctx, req, session, client); err != nil {
-		return convertErrorIfRedirectableWithDefaultValues(err, req, session.AuthorizationParameters, client)
+	if err := validateAuthorizationRequestWithParNoRedirect(ctx, req, session, client); err != nil {
+		return convertErrorIfRedirectableWithPriorities(err, req, session.AuthorizationParameters, client)
 	}
 
 	return nil
 }
 
-func validateRequestWithParNoRedirect(ctx utils.Context, req models.AuthorizationRequest, session models.AuthnSession, client models.Client) issues.OAuthError {
+func validateAuthorizationRequestWithParNoRedirect(
+	ctx utils.Context,
+	req models.AuthorizationRequest,
+	session models.AuthnSession,
+	client models.Client,
+) issues.OAuthError {
 	if session.ClientId != req.ClientId {
 		return issues.NewOAuthError(constants.AccessDenied, "invalid client")
 	}
@@ -112,18 +94,28 @@ func validateRequestWithParNoRedirect(ctx utils.Context, req models.Authorizatio
 		return issues.NewOAuthError(constants.InvalidRequest, "the request_uri is expired")
 	}
 
-	return validateRequestWithDefaultValues(ctx, req, session.AuthorizationParameters, client)
+	return validateParamsWithPriorities(ctx, req.AuthorizationParameters, session.AuthorizationParameters, client)
 }
 
-func validateRequestWithJar(ctx utils.Context, req models.AuthorizationRequest, jar models.AuthorizationRequest, client models.Client) issues.OAuthError {
-	if err := validateRequestWithJarNoRedirect(ctx, req, jar, client); err != nil {
-		return convertErrorIfRedirectableWithDefaultValues(err, req, jar.AuthorizationParameters, client)
+func validateAuthorizationRequestWithJar(
+	ctx utils.Context,
+	req models.AuthorizationRequest,
+	jar models.AuthorizationRequest,
+	client models.Client,
+) issues.OAuthError {
+	if err := validateAuthorizationRequestWithJarNoRedirect(ctx, req, jar, client); err != nil {
+		return convertErrorIfRedirectableWithPriorities(err, req, jar.AuthorizationParameters, client)
 	}
 
 	return nil
 }
 
-func validateRequestWithJarNoRedirect(ctx utils.Context, req models.AuthorizationRequest, jar models.AuthorizationRequest, client models.Client) issues.OAuthError {
+func validateAuthorizationRequestWithJarNoRedirect(
+	ctx utils.Context,
+	req models.AuthorizationRequest,
+	jar models.AuthorizationRequest,
+	client models.Client,
+) issues.OAuthError {
 
 	if jar.ClientId != client.Id {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
@@ -137,139 +129,226 @@ func validateRequestWithJarNoRedirect(ctx utils.Context, req models.Authorizatio
 		return issues.NewOAuthError(constants.InvalidRequest, "request is not allowed inside the request object")
 	}
 
-	if err := validateBaseRequestNonEmptyFields(jar.AuthorizationParameters, client); err != nil {
+	if err := validateNonEmptyParamsNoRedirect(jar.AuthorizationParameters, client); err != nil {
 		return err
 	}
 
-	return validateRequestWithDefaultValues(ctx, req, jar.AuthorizationParameters, client)
+	return validateParamsWithPriorities(ctx, req.AuthorizationParameters, jar.AuthorizationParameters, client)
 }
 
-func validateRequest(ctx utils.Context, req models.AuthorizationRequest, client models.Client) issues.OAuthError {
-	if err := validateRequestNoRedirect(ctx, req, client); err != nil {
-		return convertErrorIfRedirectable(err, req, client)
+func validateRequest(ctx utils.Context, params models.AuthorizationParameters, client models.Client) issues.OAuthError {
+	if err := validateParamsNoRedirect(ctx, params, client); err != nil {
+		return convertErrorIfRedirectable(err, params, client)
 	}
 
 	return nil
 }
 
-func validateRequestNoRedirect(ctx utils.Context, req models.AuthorizationRequest, client models.Client) issues.OAuthError {
-	switch ctx.DefaultProfile {
+func validateParamsNoRedirect(ctx utils.Context, params models.AuthorizationParameters, client models.Client) issues.OAuthError {
+	switch ctx.GetProfile(params.Scope) {
 	case constants.OpenIdCoreProfile:
-		return validateOpenIdCoreRequest(ctx, req, client)
+		return validateOpenIdCoreParamsNoRedirect(ctx, params, client)
 	default:
-		return validateOAuthCoreRequest(ctx, req, client)
+		return validateOAuthCoreParamsNoRedirect(ctx, params, client)
 	}
 }
 
-func validateRequestWithDefaultValues(ctx utils.Context, req models.AuthorizationRequest, defaultValues models.AuthorizationParameters, client models.Client) issues.OAuthError {
-	switch ctx.DefaultProfile {
+func validateParamsWithPriorities(ctx utils.Context, params models.AuthorizationParameters, prioritaryParams models.AuthorizationParameters, client models.Client) issues.OAuthError {
+	if err := validateParamsWithPrioritiesNoRedirect(ctx, params, prioritaryParams, client); err != nil {
+		return convertErrorIfRedirectable(err, params, client)
+	}
+
+	return nil
+}
+
+func validateParamsWithPrioritiesNoRedirect(ctx utils.Context, params models.AuthorizationParameters, prioritaryParams models.AuthorizationParameters, client models.Client) issues.OAuthError {
+	// FIXME
+	switch ctx.GetProfile(params.Scope) {
 	case constants.OpenIdCoreProfile:
-		return validateOpenIdCoreRequestWithDefaultValues(ctx, req, defaultValues, client)
+		return validateOpenIdCoreParamsWithPrioritiesNoRedirect(ctx, params, prioritaryParams, client)
 	default:
-		return validateOAuthCoreRequestWithDefaultValues(ctx, req, defaultValues, client)
+		return validateOAuthCoreParamsWithPrioritiesNoRedirect(ctx, params, prioritaryParams, client)
 	}
 }
 
-func validateOpenIdCoreRequest(ctx utils.Context, req models.AuthorizationRequest, client models.Client) issues.OAuthError {
+// func validateOpenIdCoreRequestWithDefaultValuesNoRedirect(ctx utils.Context, req models.AuthorizationRequest, defaultValues models.AuthorizationParameters, client models.Client) issues.OAuthError {
 
-	if req.Scope == "" || !slices.Contains(unit.SplitStringWithSpaces(req.Scope), constants.OpenIdScope) {
+// 	if req.ResponseType == "" {
+// 		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
+// 	}
+
+// 	if !unit.ScopeContainsOpenId(req.Scope) {
+// 		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
+// 	}
+
+// 	return validateOAuthCoreRequestWithDefaultValuesNoRedirect(ctx, req, defaultValues, client)
+// }
+
+// func validateOAuthCoreRequestWithDefaultValuesNoRedirect(_ utils.Context, req models.AuthorizationRequest, defaultValues models.AuthorizationParameters, client models.Client) issues.OAuthError {
+
+// 	if defaultValues.RedirectUri == "" && req.RedirectUri == "" {
+// 		return issues.NewOAuthError(constants.InvalidRequest, "invalid redirect_uri")
+// 	}
+
+// 	if req.RequestUri != "" && req.RequestObject != "" {
+// 		return issues.NewOAuthError(constants.InvalidRequest, "request_uri and request cannot be informed at the same time")
+// 	}
+
+// 	responseType := defaultValues.ResponseType
+// 	if responseType == "" {
+// 		responseType = req.ResponseType
+// 	}
+// 	if defaultValues.ResponseType != "" && req.ResponseType != "" && defaultValues.ResponseType != req.ResponseType {
+// 		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
+// 	}
+
+// 	responseMode := defaultValues.ResponseMode
+// 	if responseMode == "" {
+// 		responseMode = req.ResponseMode
+// 	}
+// 	if responseType.IsImplict() && responseMode.IsQuery() {
+// 		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_mode for the chosen response_type")
+// 	}
+
+// 	if client.PkceIsRequired && defaultValues.CodeChallenge == "" && req.CodeChallenge == "" {
+// 		return issues.NewOAuthError(constants.InvalidRequest, "PKCE is required")
+// 	}
+
+// 	return validateBaseRequestNonEmptyFieldsNoRedirect(req.AuthorizationParameters, client)
+// }
+
+func validateOpenIdCoreParamsWithPrioritiesNoRedirect(
+	ctx utils.Context,
+	params models.AuthorizationParameters,
+	prioritaryParams models.AuthorizationParameters,
+	client models.Client,
+) issues.OAuthError {
+
+	if params.ResponseType == "" {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
+	}
+
+	if !unit.ScopeContainsOpenId(params.Scope) || !unit.ScopeContainsOpenId(prioritaryParams.Scope) {
 		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
 	}
 
-	return validateOAuthCoreRequest(ctx, req, client)
+	return validateParamsWithPrioritiesCommonRulesNoRedirect(ctx, params, prioritaryParams, client)
 }
 
-func validateOAuthCoreRequest(ctx utils.Context, req models.AuthorizationRequest, client models.Client) issues.OAuthError {
+func validateOAuthCoreParamsWithPrioritiesNoRedirect(
+	ctx utils.Context,
+	params models.AuthorizationParameters,
+	prioritaryParams models.AuthorizationParameters,
+	client models.Client,
+) issues.OAuthError {
 
-	if req.RedirectUri != "" {
+	responseType := unit.GetNonEmptyOrDefault(prioritaryParams.ResponseType, params.ResponseType)
+	if !responseType.IsOAuthCoreValid() {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
+	}
+
+	return validateParamsWithPrioritiesCommonRulesNoRedirect(ctx, params, prioritaryParams, client)
+}
+
+func validateParamsWithPrioritiesCommonRulesNoRedirect(
+	ctx utils.Context,
+	params models.AuthorizationParameters,
+	prioritaryParams models.AuthorizationParameters,
+	client models.Client,
+) issues.OAuthError {
+
+	if prioritaryParams.ResponseType != "" && params.ResponseType != "" && prioritaryParams.ResponseType != params.ResponseType {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
+	}
+
+	combinedParams := models.AuthorizationParameters{
+		RedirectUri:         unit.GetNonEmptyOrDefault(prioritaryParams.RedirectUri, params.RedirectUri),
+		ResponseMode:        unit.GetNonEmptyOrDefault(prioritaryParams.ResponseMode, params.ResponseMode),
+		ResponseType:        unit.GetNonEmptyOrDefault(prioritaryParams.ResponseType, params.ResponseType),
+		Scope:               unit.GetNonEmptyOrDefault(prioritaryParams.Scope, params.Scope),
+		State:               unit.GetNonEmptyOrDefault(prioritaryParams.State, params.State),
+		Nonce:               unit.GetNonEmptyOrDefault(prioritaryParams.Nonce, params.Nonce),
+		CodeChallenge:       unit.GetNonEmptyOrDefault(prioritaryParams.CodeChallenge, params.CodeChallenge),
+		CodeChallengeMethod: unit.GetNonEmptyOrDefault(prioritaryParams.CodeChallengeMethod, params.CodeChallengeMethod),
+	}
+
+	return validateParamsCommonRulesNoRedirect(ctx, combinedParams, client)
+}
+
+func validateOpenIdCoreParamsNoRedirect(
+	ctx utils.Context,
+	params models.AuthorizationParameters,
+	client models.Client,
+) issues.OAuthError {
+
+	if params.Scope == "" || !unit.ScopeContainsOpenId(params.Scope) {
+		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
+	}
+
+	return validateParamsCommonRulesNoRedirect(ctx, params, client)
+}
+
+func validateOAuthCoreParamsNoRedirect(
+	ctx utils.Context,
+	params models.AuthorizationParameters,
+	client models.Client,
+) issues.OAuthError {
+
+	if !params.ResponseType.IsOAuthCoreValid() {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
+	}
+
+	return validateParamsCommonRulesNoRedirect(ctx, params, client)
+}
+
+func validateParamsCommonRulesNoRedirect(
+	_ utils.Context,
+	params models.AuthorizationParameters,
+	client models.Client,
+) issues.OAuthError {
+
+	if params.RedirectUri != "" {
 		return issues.NewOAuthError(constants.InvalidRequest, "redirect_uri is required")
 	}
 
-	if req.ResponseType == "" {
-		return issues.NewOAuthError(constants.InvalidRequest, "response_type is required")
+	if params.ResponseType.IsImplict() && params.ResponseMode.IsQuery() {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_mode for the chosen response_type")
 	}
 
-	if client.PkceIsRequired && req.CodeChallenge == "" {
+	if client.PkceIsRequired && params.CodeChallenge == "" {
 		return issues.NewOAuthError(constants.InvalidRequest, "code_challenge is required")
 	}
 
-	if req.RequestUri != "" && req.RequestObject != "" {
-		return issues.NewOAuthError(constants.InvalidRequest, "request_uri and request cannot be informed at the same time")
-	}
-
-	return validateBaseRequestNonEmptyFields(req.AuthorizationParameters, client)
+	return validateNonEmptyParamsNoRedirect(params, client)
 }
 
-func validateOpenIdCoreRequestWithDefaultValues(ctx utils.Context, req models.AuthorizationRequest, defaultValues models.AuthorizationParameters, client models.Client) issues.OAuthError {
+func validateNonEmptyParamsNoRedirect(
+	params models.AuthorizationParameters,
+	client models.Client,
+) issues.OAuthError {
 
-	if req.ResponseType == "" {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
-	}
-
-	if !unit.ScopeContainsOpenId(req.Scope) {
-		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
-	}
-
-	return validateOAuthCoreRequestWithDefaultValues(ctx, req, defaultValues, client)
-}
-
-func validateOAuthCoreRequestWithDefaultValues(ctx utils.Context, req models.AuthorizationRequest, defaultValues models.AuthorizationParameters, client models.Client) issues.OAuthError {
-
-	if defaultValues.RedirectUri == "" && req.RedirectUri == "" {
+	if params.RedirectUri != "" && !client.IsRedirectUriAllowed(params.RedirectUri) {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid redirect_uri")
 	}
 
-	if req.RequestUri != "" && req.RequestObject != "" {
-		return issues.NewOAuthError(constants.InvalidRequest, "request_uri and request cannot be informed at the same time")
-	}
-
-	if defaultValues.ResponseType != "" && req.ResponseType != "" && defaultValues.ResponseType != req.ResponseType {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
-	}
-
-	responseType := defaultValues.ResponseType
-	if responseType == "" {
-		responseType = req.ResponseType
-	}
-	responseMode := defaultValues.ResponseMode
-	if responseMode == "" {
-		responseMode = req.ResponseMode
-	}
-	if responseType.IsImplict() && responseMode.IsQuery() {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_mode for the chosen response_type")
-	}
-
-	if client.PkceIsRequired && defaultValues.CodeChallenge == "" && req.CodeChallenge == "" {
-		return issues.NewOAuthError(constants.InvalidRequest, "PKCE is required")
-	}
-
-	return validateBaseRequestNonEmptyFields(req.AuthorizationParameters, client)
-}
-
-func validateBaseRequestNonEmptyFields(req models.AuthorizationParameters, client models.Client) issues.OAuthError {
-
-	if req.RedirectUri != "" && !client.IsRedirectUriAllowed(req.RedirectUri) {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid redirect_uri")
-	}
-
-	if req.ResponseMode != "" && !client.IsResponseModeAllowed(req.ResponseMode) {
+	if params.ResponseMode != "" && !client.IsResponseModeAllowed(params.ResponseMode) {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_mode")
 	}
 
-	if req.Scope != "" && !client.AreScopesAllowed(unit.SplitStringWithSpaces(req.Scope)) {
+	if params.Scope != "" && !client.AreScopesAllowed(unit.SplitStringWithSpaces(params.Scope)) {
 		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
 	}
 
-	if req.ResponseType != "" && !client.IsResponseTypeAllowed(req.ResponseType) {
+	if params.ResponseType != "" && (!params.ResponseType.IsValid() || !client.IsResponseTypeAllowed(params.ResponseType)) {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
 	}
 
-	if req.ResponseType.IsImplict() && req.ResponseMode.IsQuery() {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_mode for the chosen response_type")
+	if params.CodeChallengeMethod != "" && !params.CodeChallengeMethod.IsValid() {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid code_challenge_method")
 	}
 
-	if req.CodeChallengeMethod != "" && !req.CodeChallengeMethod.IsValid() {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid code_challenge_method")
+	if params.RequestUri != "" && params.RequestObject != "" {
+		return issues.NewOAuthError(constants.InvalidRequest, "request_uri and request cannot be informed at the same time")
 	}
 
 	return nil

@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"slices"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/luikymagno/auth-server/internal/models"
@@ -42,7 +42,7 @@ var IdentityStep utils.AuthnStep = utils.NewStep(
 		session.SetUserId(identityForm.Username)
 		session.SetCustomTokenClaim("custom_claim", "random_value")
 		session.SetCustomTokenClaim("client_attribute", session.GetClientAttribute("custom_attribute"))
-		if slices.Contains(session.Scopes, "email") {
+		if strings.Contains(session.Scope, "email") {
 			session.SetCustomIdTokenClaim("email", "random@email.com")
 		}
 		return constants.Success, nil

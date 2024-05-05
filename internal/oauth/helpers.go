@@ -52,15 +52,53 @@ func getAuthenticatedClient(ctx utils.Context, req models.ClientAuthnRequest) (m
 	return client, nil
 }
 
-func getClientIdFromAssertion(req models.ClientAuthnRequest) (string, bool) {
-	assertion, err := jwt.ParseSigned(req.ClientAssertion, constants.ClientSigningAlgorithms)
+func getClientId(req models.ClientAuthnRequest) (string, bool) {
+	clientIds := []string{}
+
+	if req.ClientIdPost != "" {
+		clientIds = append(clientIds, req.ClientIdPost)
+	}
+
+	if req.ClientIdBasicAuthn != "" {
+		clientIds = append(clientIds, req.ClientIdBasicAuthn)
+	}
+
+	clientIds, ok := appendClientIdFromAssertion(clientIds, req)
+	if !ok {
+		return "", false
+	}
+
+	// All the client IDs present must be equal.
+	if len(clientIds) == 0 || !unit.AllEquals(clientIds) {
+		return "", false
+	}
+
+	return clientIds[0], true
+}
+
+func appendClientIdFromAssertion(clientIds []string, req models.ClientAuthnRequest) ([]string, bool) {
+	if req.ClientAssertion == "" {
+		return clientIds, true
+	}
+
+	assertionClientId, ok := getClientIdFromAssertion(req.ClientAssertion)
+	if !ok {
+		return []string{}, false
+	}
+
+	return append(clientIds, assertionClientId), true
+}
+
+func getClientIdFromAssertion(assertion string) (string, bool) {
+	parsedAssertion, err := jwt.ParseSigned(assertion, constants.ClientSigningAlgorithms)
 	if err != nil {
 		return "", false
 	}
 
 	var claims map[constants.Claim]any
-	assertion.UnsafeClaimsWithoutVerification(&claims)
+	parsedAssertion.UnsafeClaimsWithoutVerification(&claims)
 
+	// The issuer claim is supposed to have the client ID.
 	clientId, ok := claims[constants.IssuerClaim]
 	if !ok {
 		return "", false
@@ -133,17 +171,17 @@ func createJarmResponse(ctx utils.Context, clientId string, params map[string]st
 
 func convertErrorIfRedirectable(
 	oauthErr issues.OAuthError,
-	req models.AuthorizationRequest,
+	params models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
-	if client.IsRedirectUriAllowed(req.RedirectUri) && (req.ResponseMode == "" || client.IsResponseModeAllowed(req.ResponseMode)) {
-		return issues.NewOAuthRedirectError(oauthErr.GetCode(), oauthErr.Error(), req.ClientId, req.RedirectUri, req.ResponseMode, req.State)
+	if client.IsRedirectUriAllowed(params.RedirectUri) && (params.ResponseMode == "" || client.IsResponseModeAllowed(params.ResponseMode)) {
+		return issues.NewOAuthRedirectError(oauthErr.GetCode(), oauthErr.Error(), client.Id, params.RedirectUri, params.ResponseMode, params.State)
 	}
 
 	return oauthErr
 }
 
-func convertErrorIfRedirectableWithDefaultValues(
+func convertErrorIfRedirectableWithPriorities(
 	oauthErr issues.OAuthError,
 	req models.AuthorizationRequest,
 	defaultValues models.AuthorizationParameters,

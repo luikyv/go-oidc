@@ -155,10 +155,10 @@ func AllEquals[T comparable](values []T) bool {
 		return true
 	}
 
-	return Any(
+	return All(
 		values,
 		func(value T) bool {
-			return value != values[0]
+			return value == values[0]
 		},
 	)
 }
@@ -182,4 +182,12 @@ func IsBlank(s string) bool {
 
 func ScopeContainsOpenId(scope string) bool {
 	return scope != "" && slices.Contains(SplitStringWithSpaces(scope), constants.OpenIdScope)
+}
+
+func GetNonEmptyOrDefault[T any](s1 T, s2 T) T {
+	if any(s1).(string) == "" {
+		return s2
+	}
+
+	return s1
 }

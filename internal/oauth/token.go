@@ -30,9 +30,9 @@ func HandleGrantCreation(
 	return grantSession, err
 }
 
-//---------------------------------------- Client Credentials ----------------------------------------//
+//----------------------------------------------------------- Client Credentials -----------------------------------------------------------//
 
-func handleClientCredentialsGrantTokenCreation(ctx utils.Context, req models.TokenRequest) (models.GrantSession, error) {
+func handleClientCredentialsGrantTokenCreation(ctx utils.Context, req models.TokenRequest) (models.GrantSession, issues.OAuthError) {
 	if oauthErr := preValidateClientCredentialsGrantRequest(req); oauthErr != nil {
 		return models.GrantSession{}, oauthErr
 	}
@@ -60,7 +60,7 @@ func handleClientCredentialsGrantTokenCreation(ctx utils.Context, req models.Tok
 		err = ctx.GrantSessionManager.CreateOrUpdate(grantSession)
 	}
 	if err != nil {
-		return models.GrantSession{}, err
+		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, "grant session not created")
 	}
 
 	return grantSession, nil
@@ -68,7 +68,7 @@ func handleClientCredentialsGrantTokenCreation(ctx utils.Context, req models.Tok
 
 func preValidateClientCredentialsGrantRequest(req models.TokenRequest) issues.OAuthError {
 	if unit.AnyNonEmpty(req.AuthorizationCode, req.RedirectUri, req.RefreshToken, req.CodeVerifier) {
-		issues.NewOAuthError(constants.InvalidRequest, "invalid parameter for client credentials grant")
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid parameter for client credentials grant")
 	}
 
 	return nil
@@ -94,7 +94,7 @@ func shouldCreateGrantSessionForClientCredentialsGrant(grantSession models.Grant
 	return grantSession.TokenFormat == constants.Opaque
 }
 
-//---------------------------------------- Authorization Code ----------------------------------------//
+//----------------------------------------------------------- Authorization Code -----------------------------------------------------------//
 
 func handleAuthorizationCodeGrantTokenCreation(ctx utils.Context, req models.TokenRequest) (models.GrantSession, issues.OAuthError) {
 
@@ -128,7 +128,7 @@ func handleAuthorizationCodeGrantTokenCreation(ctx utils.Context, req models.Tok
 		err = ctx.GrantSessionManager.CreateOrUpdate(grantSession)
 	}
 	if err != nil {
-		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, "could not create session")
+		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, "grant session not created")
 	}
 
 	return grantSession, nil
@@ -136,13 +136,13 @@ func handleAuthorizationCodeGrantTokenCreation(ctx utils.Context, req models.Tok
 
 func preValidateAuthorizationCodeGrantRequest(req models.TokenRequest) issues.OAuthError {
 	if req.AuthorizationCode == "" || unit.AnyNonEmpty(req.RefreshToken, req.Scope) {
-		issues.NewOAuthError(constants.InvalidRequest, "invalid parameter for authorization code grant")
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid parameter for authorization code grant")
 	}
 
 	// RFC 7636. "...with a minimum length of 43 characters and a maximum length of 128 characters."
 	codeVerifierLengh := len(req.CodeVerifier)
 	if req.CodeVerifier != "" && (codeVerifierLengh < 43 || codeVerifierLengh > 128) {
-		issues.NewOAuthError(constants.InvalidRequest, "invalid code verifier")
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid code verifier")
 	}
 
 	return nil
@@ -232,7 +232,7 @@ func shouldCreateGrantSessionForAuthorizationCodeGrant(grantSession models.Grant
 	return grantSession.TokenFormat == constants.Opaque || grantSession.RefreshToken != "" || slices.Contains(grantSession.Scopes, constants.OpenIdScope)
 }
 
-//---------------------------------------- Refresh Token ----------------------------------------//
+//-------------------------------------------------------------- Refresh Token --------------------------------------------------------------//
 
 func handleRefreshTokenGrantTokenCreation(ctx utils.Context, req models.TokenRequest) (models.GrantSession, issues.OAuthError) {
 
@@ -344,6 +344,7 @@ func generateUpdatedGrantSession(ctx utils.Context, grantSession models.GrantSes
 	ctx.Logger.Debug("the token model was loaded successfully")
 
 	updatedGrantSession := grantModel.GenerateGrantSession(models.NewRefreshTokenGrantContext(grantSession))
+	updatedGrantSession.Id = grantSession.Id
 	// Keep the same creation time to make sure the session will expire.
 	updatedGrantSession.CreatedAtTimestamp = grantSession.CreatedAtTimestamp
 	ctx.GrantSessionManager.CreateOrUpdate(updatedGrantSession)

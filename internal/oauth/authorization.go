@@ -2,7 +2,6 @@ package oauth
 
 import (
 	"errors"
-	"fmt"
 	"log/slog"
 	"maps"
 	"net/http"
@@ -126,7 +125,7 @@ func initAuthnSessionWithPar(ctx utils.Context, req models.AuthorizationRequest,
 		return models.AuthnSession{}, issues.NewOAuthError(constants.InvalidRequest, "invalid request_uri")
 	}
 
-	if err := validateRequestWithPar(ctx, req, session, client); err != nil {
+	if err := validateAuthorizationRequestWithPar(ctx, req, session, client); err != nil {
 		// If any of the parameters is invalid, we delete the session right away.
 		ctx.AuthnSessionManager.Delete(session.Id)
 		return models.AuthnSession{}, err
@@ -143,7 +142,7 @@ func initAuthnSessionWithJar(ctx utils.Context, req models.AuthorizationRequest,
 		return models.AuthnSession{}, err
 	}
 
-	if err := validateRequestWithJar(ctx, req, jar, client); err != nil {
+	if err := validateAuthorizationRequestWithJar(ctx, req, jar, client); err != nil {
 		return models.AuthnSession{}, err
 	}
 
@@ -153,10 +152,9 @@ func initAuthnSessionWithJar(ctx utils.Context, req models.AuthorizationRequest,
 }
 
 func initSimpleAuthnSession(ctx utils.Context, req models.AuthorizationRequest, client models.Client) (models.AuthnSession, issues.OAuthError) {
-	ctx.DefaultProfile = getDefaultProfileForAuthorizationRequest(req)
 
 	ctx.Logger.Info("initiating simple authorization request")
-	if err := validateRequest(ctx, req, client); err != nil {
+	if err := validateRequest(ctx, req.AuthorizationParameters, client); err != nil {
 		return models.AuthnSession{}, err
 	}
 	return models.NewSession(req.AuthorizationParameters, client), nil
@@ -188,23 +186,6 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) {
 	redirectResponse(ctx, models.NewRedirectResponseFromSession(*session, params))
 }
 
-func getDefaultProfileForAuthorizationRequest(req models.AuthorizationRequest) constants.Profile {
-	if slices.Contains(unit.SplitStringWithSpaces(req.Scope), constants.OpenIdScope) {
-		return constants.OpenIdCoreProfile
-	}
-
-	return constants.OAuthCoreProfile
-}
-
-func getDefaultProfileForRequestWithSupportingSession(req models.AuthorizationRequest, session models.AuthnSession) constants.Profile {
-	scope := fmt.Sprintf("%s %s", session.Scope, req.Scope)
-	if slices.Contains(unit.SplitStringWithSpaces(scope), constants.OpenIdScope) {
-		return constants.OpenIdCoreProfile
-	}
-
-	return constants.OAuthCoreProfile
-}
-
 func redirectResponse(ctx utils.Context, redirectResponse models.RedirectResponse) {
 
 	if redirectResponse.ResponseMode.IsJarm() {
@@ -231,7 +212,7 @@ func generateImplictParams(ctx utils.Context, session models.AuthnSession) (map[
 	implictParams := make(map[string]string)
 
 	// Generate a token if the client requested it.
-	if session.ResponseType.Contains(constants.TokenResponseResponse) {
+	if session.ResponseType.Contains(constants.TokenResponse) {
 		grantSession := grantModel.GenerateGrantSession(models.NewImplictGrantContext(session))
 		err := ctx.GrantSessionManager.CreateOrUpdate(grantSession)
 		if err != nil {

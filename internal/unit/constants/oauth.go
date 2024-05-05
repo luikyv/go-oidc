@@ -27,7 +27,7 @@ type ResponseType string
 const (
 	CodeResponse                   ResponseType = "code"
 	IdTokenResponse                ResponseType = "id_token"
-	TokenResponseResponse          ResponseType = "token"
+	TokenResponse                  ResponseType = "token"
 	CodeAndIdTokenResponse         ResponseType = "code id_token"
 	CodeAndTokenResponse           ResponseType = "code token"
 	IdTokenAndTokenResponse        ResponseType = "id_token token"
@@ -37,11 +37,17 @@ const (
 var ResponseTypes []ResponseType = []ResponseType{
 	CodeResponse,
 	IdTokenResponse,
-	TokenResponseResponse,
+	TokenResponse,
 	CodeAndIdTokenResponse,
 	CodeAndTokenResponse,
 	IdTokenAndTokenResponse,
 	CodeAndIdTokenAndTokenResponse,
+}
+
+var OAuthCoreResponseTypes []ResponseType = []ResponseType{
+	CodeResponse,
+	TokenResponse,
+	CodeAndTokenResponse,
 }
 
 func (rt ResponseType) Contains(responseType ResponseType) bool {
@@ -53,8 +59,16 @@ func (rt ResponseType) Contains(responseType ResponseType) bool {
 	return false
 }
 
+func (rt ResponseType) IsValid() bool {
+	return slices.Contains(ResponseTypes, rt)
+}
+
+func (rt ResponseType) IsOAuthCoreValid() bool {
+	return slices.Contains(OAuthCoreResponseTypes, rt)
+}
+
 func (rt ResponseType) IsImplict() bool {
-	return rt.Contains(IdTokenResponse) || rt.Contains(TokenResponseResponse)
+	return rt.Contains(IdTokenResponse) || rt.Contains(TokenResponse)
 }
 
 type ResponseMode string
