@@ -17,6 +17,8 @@ import (
 
 var ValidateClientAuthnRequest = validateClientAuthnRequest
 var ValidateAuthorizationRequest = validateAuthorizationRequest
+var ValidateAuthorizationRequestWithPar = validateAuthorizationRequestWithPar
+var ValidateAuthorizationRequestWithJar = validateAuthorizationRequestWithJar
 
 const ValidClientId string = "random_client_id"
 
@@ -53,10 +55,24 @@ func SetUp() (ctx utils.Context, tearDown func()) {
 		},
 	}
 
+	client := GetValidClient()
+
+	// Save
+	ctx = GetMockedContext("https://example.com", jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jwk}})
+	ctx.GrantModelManager.Create(grantModel)
+	ctx.ClientManager.Create(client)
+
+	return ctx, func() {
+		ctx.GrantModelManager.Delete(ValidGrantModelId)
+		ctx.ClientManager.Delete(ValidClientId)
+	}
+}
+
+func GetValidClient() models.Client {
 	clientSecretSalt := "random_salt"
 	clientHashedSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecretSalt+ValidClientSecret), 0)
-	client := models.Client{
-		Id:                  "random_client_id",
+	return models.Client{
+		Id:                  ValidClientId,
 		RedirectUris:        []string{"https://example.com"},
 		Scopes:              []string{"scope1", "scope2", constants.OpenIdScope},
 		GrantTypes:          constants.GrantTypes,
@@ -67,16 +83,6 @@ func SetUp() (ctx utils.Context, tearDown func()) {
 			Salt:         clientSecretSalt,
 			HashedSecret: string(clientHashedSecret),
 		},
-	}
-
-	// Save
-	ctx = GetMockedContext("https://example.com", jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jwk}})
-	ctx.GrantModelManager.Create(grantModel)
-	ctx.ClientManager.Create(client)
-
-	return ctx, func() {
-		ctx.GrantModelManager.Delete(ValidGrantModelId)
-		ctx.ClientManager.Delete(ValidClientId)
 	}
 }
 

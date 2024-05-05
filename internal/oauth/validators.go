@@ -1,8 +1,6 @@
 package oauth
 
 import (
-	"slices"
-
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -13,7 +11,9 @@ import (
 //-------------------------------------------------------------- Validators --------------------------------------------------------------//
 
 // Validate a client authentication request and return a valid client ID from it.
-func validateClientAuthnRequest(req models.ClientAuthnRequest) (validClientId string, err issues.OAuthError) {
+func validateClientAuthnRequest(
+	req models.ClientAuthnRequest,
+) (validClientId string, err issues.OAuthError) {
 
 	validClientId, ok := getClientId(req)
 	if !ok {
@@ -172,7 +172,12 @@ func validateParamsNoRedirect(
 	}
 }
 
-func validateParamsWithPriorities(ctx utils.Context, params models.AuthorizationParameters, prioritaryParams models.AuthorizationParameters, client models.Client) issues.OAuthError {
+func validateParamsWithPriorities(
+	ctx utils.Context,
+	params models.AuthorizationParameters,
+	prioritaryParams models.AuthorizationParameters,
+	client models.Client,
+) issues.OAuthError {
 	if err := validateParamsWithPrioritiesNoRedirect(ctx, params, prioritaryParams, client); err != nil {
 		return convertErrorIfRedirectable(err, params, client)
 	}
@@ -180,8 +185,13 @@ func validateParamsWithPriorities(ctx utils.Context, params models.Authorization
 	return nil
 }
 
-func validateParamsWithPrioritiesNoRedirect(ctx utils.Context, params models.AuthorizationParameters, prioritaryParams models.AuthorizationParameters, client models.Client) issues.OAuthError {
-	scopes := slices.Concat(unit.SplitStringWithSpaces(params.Scope), unit.SplitStringWithSpaces(prioritaryParams.Scope))
+func validateParamsWithPrioritiesNoRedirect(
+	ctx utils.Context,
+	params models.AuthorizationParameters,
+	prioritaryParams models.AuthorizationParameters,
+	client models.Client,
+) issues.OAuthError {
+	scopes := unit.SplitStringWithSpaces(unit.GetNonEmptyOrDefault(prioritaryParams.Scope, params.Scope))
 	switch ctx.GetProfile(scopes) {
 	case constants.OpenIdCoreProfile:
 		return validateOpenIdCoreParamsWithPrioritiesNoRedirect(ctx, params, prioritaryParams, client)
@@ -201,12 +211,7 @@ func validateOpenIdCoreParamsWithPrioritiesNoRedirect(
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
 	}
 
-	scope := unit.GetNonEmptyOrDefault(prioritaryParams.Scope, params.Scope)
-	if !unit.ScopeContainsOpenId(scope) {
-		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
-	}
-
-	if !unit.ScopeContainsOpenId(prioritaryParams.Scope) {
+	if !unit.ScopeContainsOpenId(params.Scope) {
 		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
 	}
 

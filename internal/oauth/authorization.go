@@ -106,7 +106,7 @@ func authenticate(ctx utils.Context, session *models.AuthnSession) issues.OAuthE
 
 func initAuthnSession(ctx utils.Context, req models.AuthorizationRequest, client models.Client) (models.AuthnSession, issues.OAuthError) {
 
-	if req.RequestUri != "" {
+	if ctx.ParIsRequired || req.RequestUri != "" {
 		ctx.Logger.Info("initiating authorization request with PAR")
 		return initAuthnSessionWithPar(ctx, req, client)
 	}
@@ -120,8 +120,8 @@ func initAuthnSession(ctx utils.Context, req models.AuthorizationRequest, client
 }
 
 func initAuthnSessionWithPar(ctx utils.Context, req models.AuthorizationRequest, client models.Client) (models.AuthnSession, issues.OAuthError) {
-	// The session was already created by the client in the PAR endpoint.
-	session, err := ctx.AuthnSessionManager.GetByRequestUri(req.RequestUri)
+
+	session, err := getSessionCreatedWithPar(ctx, req)
 	if err != nil {
 		return models.AuthnSession{}, issues.NewOAuthError(constants.InvalidRequest, "invalid request_uri")
 	}

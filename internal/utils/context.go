@@ -36,6 +36,7 @@ func NewContext(
 	authnSessionManager crud.AuthnSessionManager,
 	privateJwks jose.JSONWebKeySet,
 	privateJarmKeyId string,
+	parIsRequired bool,
 	policies []AuthnPolicy,
 	reqContext *gin.Context,
 ) Context {
@@ -62,6 +63,7 @@ func NewContext(
 		AuthnSessionManager: authnSessionManager,
 		PrivateJwks:         privateJwks,
 		PrivateJarmKeyId:    privateJarmKeyId,
+		ParIsRequired:       parIsRequired,
 		Policies:            policies,
 		RequestContext:      reqContext,
 		Logger:              logger,

@@ -3,8 +3,10 @@ package oauth_test
 import (
 	"testing"
 
+	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/oauth"
+	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
@@ -100,20 +102,14 @@ func TestValidateClientAuthnRequest(t *testing.T) {
 }
 
 func TestValidateAuthorizationRequest(t *testing.T) {
-	validClient := models.Client{
-		Id:            "random_client_id",
-		RedirectUris:  []string{"https://example.com"},
-		Scopes:        []string{"scope1", "scope2", constants.OpenIdScope},
-		GrantTypes:    constants.GrantTypes,
-		ResponseTypes: constants.ResponseTypes,
-		ResponseModes: constants.ResponseModes,
-	}
+	validClient := oauth.GetValidClient()
 
 	var cases = []struct {
-		Name             string
-		Req              models.AuthorizationRequest
-		ClientModifyFunc func(client models.Client) models.Client
-		ShouldBeValid    bool
+		Name                string
+		Req                 models.AuthorizationRequest
+		ClientModifyFunc    func(client models.Client) models.Client
+		ShouldBeValid       bool
+		ShouldRedirectError bool
 	}{
 		{
 			"valid_oauth_request",
@@ -129,6 +125,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 				return client
 			},
 			true,
+			false,
 		},
 		{
 			"valid_openid_request",
@@ -143,6 +140,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 				return client
 			},
 			true,
+			false,
 		},
 		{
 			"oauth_request_invalid_response_type",
@@ -158,6 +156,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 				return client
 			},
 			false,
+			true,
 		},
 		{
 			"oauth_request_missing_response_type",
@@ -171,6 +170,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 				return client
 			},
 			false,
+			true,
 		},
 		{
 			"oauth_request_invalid_scope",
@@ -185,6 +185,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 				return client
 			},
 			false,
+			true,
 		},
 		{
 			"oauth_request_invalid_redirect_uri",
@@ -198,6 +199,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 			func(client models.Client) models.Client {
 				return client
 			},
+			false,
 			false,
 		},
 	}
@@ -220,8 +222,197 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 					return
 				}
 
+				_, ok := err.(issues.OAuthRedirectError)
+				if c.ShouldRedirectError && !ok {
+					t.Errorf("error is not of type redirect. Error: %v", err)
+				}
 			},
 		)
 	}
 
+}
+
+func TestValidateAuthorizationRequestWithPar(t *testing.T) {
+	validClient := oauth.GetValidClient()
+
+	var cases = []struct {
+		Name                string
+		Req                 models.AuthorizationRequest
+		Session             models.AuthnSession
+		ClientModifyFunc    func(client models.Client) models.Client
+		ShouldBeValid       bool
+		ShouldRedirectError bool
+	}{
+		{
+			"valid_oauth_request",
+			models.AuthorizationRequest{
+				ClientId: validClient.Id,
+				AuthorizationParameters: models.AuthorizationParameters{
+					RedirectUri:  validClient.RedirectUris[0],
+					ResponseType: constants.CodeResponse,
+					ResponseMode: constants.QueryResponseMode,
+					Scope:        validClient.Scopes[0],
+				},
+			},
+			models.AuthnSession{
+				ClientId:           validClient.Id,
+				CreatedAtTimestamp: unit.GetTimestampNow(),
+			},
+			func(client models.Client) models.Client {
+				return client
+			},
+			true,
+			false,
+		},
+		{
+			"valid_openid_request",
+			models.AuthorizationRequest{
+				ClientId: validClient.Id,
+				AuthorizationParameters: models.AuthorizationParameters{
+					RedirectUri:  validClient.RedirectUris[0],
+					ResponseType: constants.CodeAndIdTokenResponse,
+					ResponseMode: constants.FragmentResponseMode,
+					Scope:        constants.OpenIdScope,
+				},
+			},
+			models.AuthnSession{
+				ClientId:           validClient.Id,
+				CreatedAtTimestamp: unit.GetTimestampNow(),
+				AuthorizationParameters: models.AuthorizationParameters{
+					RedirectUri: validClient.RedirectUris[0],
+				},
+			},
+			func(client models.Client) models.Client {
+				return client
+			},
+			true,
+			false,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(
+			c.Name,
+			func(t *testing.T) {
+				// Then.
+				err := oauth.ValidateAuthorizationRequestWithPar(
+					oauth.GetDummyContext(),
+					c.Req,
+					c.Session,
+					c.ClientModifyFunc(validClient),
+				)
+
+				// Assert.
+				isValid := err == nil
+				if isValid != c.ShouldBeValid {
+					t.Errorf("expected: %v - actual: %v - error: %s", c.ShouldBeValid, isValid, err)
+					return
+				}
+
+				_, ok := err.(issues.OAuthRedirectError)
+				if c.ShouldRedirectError && !ok {
+					t.Errorf("error is not of type redirect. Error: %v", err)
+				}
+			},
+		)
+	}
+}
+
+func TestValidateAuthorizationRequestWithJar(t *testing.T) {
+	validClient := oauth.GetValidClient()
+
+	var cases = []struct {
+		Name                string
+		Req                 models.AuthorizationRequest
+		Jar                 models.AuthorizationRequest
+		ClientModifyFunc    func(client models.Client) models.Client
+		ShouldBeValid       bool
+		ShouldRedirectError bool
+	}{
+		{
+			"valid_oauth_request",
+			models.AuthorizationRequest{
+				ClientId: validClient.Id,
+				AuthorizationParameters: models.AuthorizationParameters{
+					RedirectUri:  validClient.RedirectUris[0],
+					ResponseType: constants.CodeResponse,
+					ResponseMode: constants.QueryResponseMode,
+					Scope:        validClient.Scopes[0],
+				},
+			},
+			models.AuthorizationRequest{
+				ClientId:                validClient.Id,
+				AuthorizationParameters: models.AuthorizationParameters{},
+			},
+			func(client models.Client) models.Client {
+				return client
+			},
+			true,
+			false,
+		},
+		{
+			"valid_openid_request",
+			models.AuthorizationRequest{
+				ClientId: validClient.Id,
+				AuthorizationParameters: models.AuthorizationParameters{
+					RedirectUri:  validClient.RedirectUris[0],
+					ResponseType: constants.CodeAndIdTokenResponse,
+					ResponseMode: constants.FragmentResponseMode,
+					Scope:        constants.OpenIdScope,
+				},
+			},
+			models.AuthorizationRequest{
+				ClientId: validClient.Id,
+				AuthorizationParameters: models.AuthorizationParameters{
+					RedirectUri: validClient.RedirectUris[0],
+				},
+			},
+			func(client models.Client) models.Client {
+				return client
+			},
+			true,
+			false,
+		},
+		{
+			"client_id_does_not_match",
+			models.AuthorizationRequest{
+				ClientId: validClient.Id,
+			},
+			models.AuthorizationRequest{
+				ClientId: "invalid_client_id",
+			},
+			func(client models.Client) models.Client {
+				return client
+			},
+			false,
+			false,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(
+			c.Name,
+			func(t *testing.T) {
+				// Then.
+				err := oauth.ValidateAuthorizationRequestWithJar(
+					oauth.GetDummyContext(),
+					c.Req,
+					c.Jar,
+					c.ClientModifyFunc(validClient),
+				)
+
+				// Assert.
+				isValid := err == nil
+				if isValid != c.ShouldBeValid {
+					t.Errorf("expected: %v - actual: %v - error: %s", c.ShouldBeValid, isValid, err)
+					return
+				}
+
+				_, ok := err.(issues.OAuthRedirectError)
+				if c.ShouldRedirectError && !ok {
+					t.Errorf("error is not of type redirect. Error: %v", err)
+				}
+			},
+		)
+	}
 }

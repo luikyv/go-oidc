@@ -22,8 +22,7 @@ type OpenIDManager struct {
 	grantSessionManager crud.GrantSessionManager
 	authnSessionManager crud.AuthnSessionManager
 	privateJwks         jose.JSONWebKeySet
-	privateJarmKeyIds   []string
-	privateJarmKeyId    string
+	privateJarmKeyId    string // TODO get private jarm key.
 	policies            []utils.AuthnPolicy
 	server              *gin.Engine
 }
@@ -92,6 +91,7 @@ func (manager OpenIDManager) getContext(requestContext *gin.Context) utils.Conte
 		manager.authnSessionManager,
 		manager.privateJwks,
 		manager.privateJarmKeyId,
+		false,
 		manager.policies,
 		requestContext,
 	)

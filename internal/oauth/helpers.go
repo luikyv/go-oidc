@@ -31,6 +31,19 @@ func getClient(ctx utils.Context, req models.AuthorizationRequest) (models.Clien
 	return client, nil
 }
 
+func getSessionCreatedWithPar(ctx utils.Context, req models.AuthorizationRequest) (models.AuthnSession, issues.OAuthError) {
+	if req.RequestUri == "" {
+		return models.AuthnSession{}, issues.NewOAuthError(constants.InvalidRequest, "request_uri is required")
+	}
+
+	session, err := ctx.AuthnSessionManager.GetByRequestUri(req.RequestUri)
+	if err != nil {
+		return models.AuthnSession{}, issues.NewOAuthError(constants.InvalidRequest, "invalid request_uri")
+	}
+
+	return session, nil
+}
+
 func getAuthenticatedClient(ctx utils.Context, req models.ClientAuthnRequest) (models.Client, issues.OAuthError) {
 
 	clientId, oauthErr := validateClientAuthnRequest(req)
