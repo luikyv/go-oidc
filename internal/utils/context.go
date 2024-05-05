@@ -3,12 +3,12 @@ package utils
 import (
 	"log/slog"
 	"os"
+	"slices"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/crud"
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
@@ -68,8 +68,8 @@ func NewContext(
 	}
 }
 
-func (ctx Context) GetProfile(requestedScopes string) constants.Profile {
-	if unit.ScopeContainsOpenId(requestedScopes) {
+func (ctx Context) GetProfile(requestedScopes []string) constants.Profile {
+	if slices.Contains(requestedScopes, constants.OpenIdScope) {
 		return constants.OpenIdCoreProfile
 	}
 	return constants.OAuthCoreProfile

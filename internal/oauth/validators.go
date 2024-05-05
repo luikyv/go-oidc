@@ -1,6 +1,8 @@
 package oauth
 
 import (
+	"slices"
+
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -36,7 +38,11 @@ func validateClientAuthnRequest(req models.ClientAuthnRequest) (validClientId st
 	return validClientId, nil
 }
 
-func validatePushedRequest(_ utils.Context, req models.PushedAuthorizationRequest, client models.Client) issues.OAuthError {
+func validatePar(
+	ctx utils.Context,
+	req models.PushedAuthorizationRequest,
+	client models.Client,
+) issues.OAuthError {
 
 	if req.ClientIdPost != "" && req.ClientIdPost != client.Id {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
@@ -46,10 +52,15 @@ func validatePushedRequest(_ utils.Context, req models.PushedAuthorizationReques
 		return issues.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
 	}
 
-	return validateNonEmptyParamsNoRedirect(req.AuthorizationParameters, client)
+	return validateNonEmptyParamsNoRedirect(ctx, req.AuthorizationParameters, client)
 }
 
-func validatePushedRequestWithJar(ctx utils.Context, req models.PushedAuthorizationRequest, jar models.AuthorizationRequest, client models.Client) issues.OAuthError {
+func validateParWithJar(
+	ctx utils.Context,
+	req models.PushedAuthorizationRequest,
+	jar models.AuthorizationRequest,
+	client models.Client,
+) issues.OAuthError {
 
 	if req.ClientIdPost != "" && req.ClientIdPost != client.Id {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
@@ -94,7 +105,7 @@ func validateAuthorizationRequestWithParNoRedirect(
 		return issues.NewOAuthError(constants.InvalidRequest, "the request_uri is expired")
 	}
 
-	return validateParamsWithPriorities(ctx, req.AuthorizationParameters, session.AuthorizationParameters, client)
+	return validateParamsWithPrioritiesNoRedirect(ctx, req.AuthorizationParameters, session.AuthorizationParameters, client)
 }
 
 func validateAuthorizationRequestWithJar(
@@ -129,23 +140,31 @@ func validateAuthorizationRequestWithJarNoRedirect(
 		return issues.NewOAuthError(constants.InvalidRequest, "request is not allowed inside the request object")
 	}
 
-	if err := validateNonEmptyParamsNoRedirect(jar.AuthorizationParameters, client); err != nil {
+	if err := validateNonEmptyParamsNoRedirect(ctx, jar.AuthorizationParameters, client); err != nil {
 		return err
 	}
 
 	return validateParamsWithPriorities(ctx, req.AuthorizationParameters, jar.AuthorizationParameters, client)
 }
 
-func validateRequest(ctx utils.Context, params models.AuthorizationParameters, client models.Client) issues.OAuthError {
-	if err := validateParamsNoRedirect(ctx, params, client); err != nil {
-		return convertErrorIfRedirectable(err, params, client)
+func validateAuthorizationRequest(
+	ctx utils.Context,
+	req models.AuthorizationRequest,
+	client models.Client,
+) issues.OAuthError {
+	if err := validateParamsNoRedirect(ctx, req.AuthorizationParameters, client); err != nil {
+		return convertErrorIfRedirectable(err, req.AuthorizationParameters, client)
 	}
 
 	return nil
 }
 
-func validateParamsNoRedirect(ctx utils.Context, params models.AuthorizationParameters, client models.Client) issues.OAuthError {
-	switch ctx.GetProfile(params.Scope) {
+func validateParamsNoRedirect(
+	ctx utils.Context,
+	params models.AuthorizationParameters,
+	client models.Client,
+) issues.OAuthError {
+	switch ctx.GetProfile(unit.SplitStringWithSpaces(params.Scope)) {
 	case constants.OpenIdCoreProfile:
 		return validateOpenIdCoreParamsNoRedirect(ctx, params, client)
 	default:
@@ -162,60 +181,14 @@ func validateParamsWithPriorities(ctx utils.Context, params models.Authorization
 }
 
 func validateParamsWithPrioritiesNoRedirect(ctx utils.Context, params models.AuthorizationParameters, prioritaryParams models.AuthorizationParameters, client models.Client) issues.OAuthError {
-	// FIXME
-	switch ctx.GetProfile(params.Scope) {
+	scopes := slices.Concat(unit.SplitStringWithSpaces(params.Scope), unit.SplitStringWithSpaces(prioritaryParams.Scope))
+	switch ctx.GetProfile(scopes) {
 	case constants.OpenIdCoreProfile:
 		return validateOpenIdCoreParamsWithPrioritiesNoRedirect(ctx, params, prioritaryParams, client)
 	default:
 		return validateOAuthCoreParamsWithPrioritiesNoRedirect(ctx, params, prioritaryParams, client)
 	}
 }
-
-// func validateOpenIdCoreRequestWithDefaultValuesNoRedirect(ctx utils.Context, req models.AuthorizationRequest, defaultValues models.AuthorizationParameters, client models.Client) issues.OAuthError {
-
-// 	if req.ResponseType == "" {
-// 		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
-// 	}
-
-// 	if !unit.ScopeContainsOpenId(req.Scope) {
-// 		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
-// 	}
-
-// 	return validateOAuthCoreRequestWithDefaultValuesNoRedirect(ctx, req, defaultValues, client)
-// }
-
-// func validateOAuthCoreRequestWithDefaultValuesNoRedirect(_ utils.Context, req models.AuthorizationRequest, defaultValues models.AuthorizationParameters, client models.Client) issues.OAuthError {
-
-// 	if defaultValues.RedirectUri == "" && req.RedirectUri == "" {
-// 		return issues.NewOAuthError(constants.InvalidRequest, "invalid redirect_uri")
-// 	}
-
-// 	if req.RequestUri != "" && req.RequestObject != "" {
-// 		return issues.NewOAuthError(constants.InvalidRequest, "request_uri and request cannot be informed at the same time")
-// 	}
-
-// 	responseType := defaultValues.ResponseType
-// 	if responseType == "" {
-// 		responseType = req.ResponseType
-// 	}
-// 	if defaultValues.ResponseType != "" && req.ResponseType != "" && defaultValues.ResponseType != req.ResponseType {
-// 		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
-// 	}
-
-// 	responseMode := defaultValues.ResponseMode
-// 	if responseMode == "" {
-// 		responseMode = req.ResponseMode
-// 	}
-// 	if responseType.IsImplict() && responseMode.IsQuery() {
-// 		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_mode for the chosen response_type")
-// 	}
-
-// 	if client.PkceIsRequired && defaultValues.CodeChallenge == "" && req.CodeChallenge == "" {
-// 		return issues.NewOAuthError(constants.InvalidRequest, "PKCE is required")
-// 	}
-
-// 	return validateBaseRequestNonEmptyFieldsNoRedirect(req.AuthorizationParameters, client)
-// }
 
 func validateOpenIdCoreParamsWithPrioritiesNoRedirect(
 	ctx utils.Context,
@@ -228,7 +201,12 @@ func validateOpenIdCoreParamsWithPrioritiesNoRedirect(
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
 	}
 
-	if !unit.ScopeContainsOpenId(params.Scope) || !unit.ScopeContainsOpenId(prioritaryParams.Scope) {
+	scope := unit.GetNonEmptyOrDefault(prioritaryParams.Scope, params.Scope)
+	if !unit.ScopeContainsOpenId(scope) {
+		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
+	}
+
+	if !unit.ScopeContainsOpenId(prioritaryParams.Scope) {
 		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
 	}
 
@@ -281,7 +259,7 @@ func validateOpenIdCoreParamsNoRedirect(
 	client models.Client,
 ) issues.OAuthError {
 
-	if params.Scope == "" || !unit.ScopeContainsOpenId(params.Scope) {
+	if !unit.ScopeContainsOpenId(params.Scope) {
 		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
 	}
 
@@ -302,13 +280,25 @@ func validateOAuthCoreParamsNoRedirect(
 }
 
 func validateParamsCommonRulesNoRedirect(
-	_ utils.Context,
+	ctx utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
 
-	if params.RedirectUri != "" {
+	if params.ResponseType.Contains(constants.CodeResponse) && !client.IsGrantTypeAllowed(constants.AuthorizationCodeGrant) {
+		return issues.NewOAuthError(constants.InvalidGrant, "authorization_code grant not allowed")
+	}
+
+	if params.ResponseType.IsImplict() && !client.IsGrantTypeAllowed(constants.ImplictGrant) {
+		return issues.NewOAuthError(constants.InvalidGrant, "implicit grant not allowed")
+	}
+
+	if params.RedirectUri == "" {
 		return issues.NewOAuthError(constants.InvalidRequest, "redirect_uri is required")
+	}
+
+	if params.ResponseType == "" {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
 	}
 
 	if params.ResponseType.IsImplict() && params.ResponseMode.IsQuery() {
@@ -319,10 +309,11 @@ func validateParamsCommonRulesNoRedirect(
 		return issues.NewOAuthError(constants.InvalidRequest, "code_challenge is required")
 	}
 
-	return validateNonEmptyParamsNoRedirect(params, client)
+	return validateNonEmptyParamsNoRedirect(ctx, params, client)
 }
 
 func validateNonEmptyParamsNoRedirect(
+	_ utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
@@ -339,7 +330,7 @@ func validateNonEmptyParamsNoRedirect(
 		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
 	}
 
-	if params.ResponseType != "" && (!params.ResponseType.IsValid() || !client.IsResponseTypeAllowed(params.ResponseType)) {
+	if params.ResponseType != "" && !client.IsResponseTypeAllowed(params.ResponseType) {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
 	}
 

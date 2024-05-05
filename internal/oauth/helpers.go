@@ -20,12 +20,12 @@ type ResultChannel struct {
 
 func getClient(ctx utils.Context, req models.AuthorizationRequest) (models.Client, issues.OAuthError) {
 	if req.ClientId == "" {
-		return models.Client{}, issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
+		return models.Client{}, issues.NewOAuthError(constants.InvalidClient, "invalid client_id")
 	}
 
 	client, err := ctx.ClientManager.Get(req.ClientId)
 	if err != nil {
-		return models.Client{}, issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
+		return models.Client{}, issues.NewOAuthError(constants.InvalidClient, "invalid client_id")
 	}
 
 	return client, nil
@@ -184,21 +184,21 @@ func convertErrorIfRedirectable(
 func convertErrorIfRedirectableWithPriorities(
 	oauthErr issues.OAuthError,
 	req models.AuthorizationRequest,
-	defaultValues models.AuthorizationParameters,
+	prioritaryParams models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
 
-	redirectUri := defaultValues.RedirectUri
+	redirectUri := prioritaryParams.RedirectUri
 	if redirectUri == "" {
 		redirectUri = req.RedirectUri
 	}
 
-	responseMode := defaultValues.ResponseMode
+	responseMode := prioritaryParams.ResponseMode
 	if responseMode != "" {
 		responseMode = req.ResponseMode
 	}
 
-	state := defaultValues.State
+	state := prioritaryParams.State
 	if state != "" {
 		state = req.State
 	}

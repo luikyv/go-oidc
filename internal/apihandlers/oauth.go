@@ -81,7 +81,7 @@ func HandleTokenRequest(ctx utils.Context) {
 	}
 	addBasicCredentialsToRequest(ctx, &req.ClientAuthnRequest)
 
-	grantSession, err := utils.HandleGrantCreation(ctx, req)
+	grantSession, err := oauth.HandleGrantCreation(ctx, req)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/url"
+	"reflect"
 	"slices"
 	"strings"
 	"time"
@@ -185,7 +186,7 @@ func ScopeContainsOpenId(scope string) bool {
 }
 
 func GetNonEmptyOrDefault[T any](s1 T, s2 T) T {
-	if any(s1).(string) == "" {
+	if reflect.ValueOf(s1).String() == "" {
 		return s2
 	}
 

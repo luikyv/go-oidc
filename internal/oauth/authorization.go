@@ -87,6 +87,7 @@ func authenticate(ctx utils.Context, session *models.AuthnSession) issues.OAuthE
 
 	if status == constants.InProgress {
 		ctx.AuthnSessionManager.CreateOrUpdate(*session)
+		return nil
 	}
 
 	// At this point, the status can only be success and there are no more steps left.
@@ -154,7 +155,7 @@ func initAuthnSessionWithJar(ctx utils.Context, req models.AuthorizationRequest,
 func initSimpleAuthnSession(ctx utils.Context, req models.AuthorizationRequest, client models.Client) (models.AuthnSession, issues.OAuthError) {
 
 	ctx.Logger.Info("initiating simple authorization request")
-	if err := validateRequest(ctx, req.AuthorizationParameters, client); err != nil {
+	if err := validateAuthorizationRequest(ctx, req, client); err != nil {
 		return models.AuthnSession{}, err
 	}
 	return models.NewSession(req.AuthorizationParameters, client), nil

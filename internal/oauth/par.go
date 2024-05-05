@@ -41,7 +41,7 @@ func initPushedAuthnSession(ctx utils.Context, req models.PushedAuthorizationReq
 }
 
 func initSimplePushedAuthnSession(ctx utils.Context, req models.PushedAuthorizationRequest, client models.Client) (models.AuthnSession, issues.OAuthError) {
-	if err := validatePushedRequest(ctx, req, client); err != nil {
+	if err := validatePar(ctx, req, client); err != nil {
 		ctx.Logger.Info("request has invalid params")
 		return models.AuthnSession{}, err
 	}
@@ -56,7 +56,7 @@ func initPushedAuthnSessionWithJar(ctx utils.Context, req models.PushedAuthoriza
 		return models.AuthnSession{}, err
 	}
 
-	if err := validatePushedRequestWithJar(ctx, req, jar, client); err != nil {
+	if err := validateParWithJar(ctx, req, jar, client); err != nil {
 		return models.AuthnSession{}, err
 	}
 
