@@ -136,20 +136,20 @@ type TokenResponse struct {
 }
 
 type AuthorizationParameters struct {
-	RequestUri          string                        `form:"request_uri"`
-	RequestObject       string                        `form:"request"`
-	RedirectUri         string                        `form:"redirect_uri"`
-	ResponseMode        constants.ResponseMode        `form:"response_mode"`
-	ResponseType        constants.ResponseType        `form:"response_type"`
-	Scope               string                        `form:"scope"`
-	State               string                        `form:"state"`
-	Nonce               string                        `form:"nonce"`
-	CodeChallenge       string                        `form:"code_challenge"`
-	CodeChallengeMethod constants.CodeChallengeMethod `form:"code_challenge_method"`
+	RequestUri          string                        `form:"request_uri" json:"request_uri"`
+	RequestObject       string                        `form:"request" json:"request"`
+	RedirectUri         string                        `form:"redirect_uri" json:"redirect_uri"`
+	ResponseMode        constants.ResponseMode        `form:"response_mode" json:"response_mode"`
+	ResponseType        constants.ResponseType        `form:"response_type" json:"response_type"`
+	Scope               string                        `form:"scope" json:"scope"`
+	State               string                        `form:"state" json:"state"`
+	Nonce               string                        `form:"nonce" json:"nonce"`
+	CodeChallenge       string                        `form:"code_challenge" json:"code_challenge"`
+	CodeChallengeMethod constants.CodeChallengeMethod `form:"code_challenge_method" json:"code_challenge_method"`
 }
 
 type AuthorizationRequest struct {
-	ClientId string `form:"client_id"`
+	ClientId string `form:"client_id" json:"client_id"`
 	AuthorizationParameters
 }
 

@@ -114,6 +114,7 @@ func (ctx Context) GetPublicKeys() jose.JSONWebKeySet {
 		publicKey := privateKey.Public()
 		// If the key is not of assymetric type, publicKey holds a null value.
 		// To know if it is the case, we'll check if its key ID is not a null value which would mean privateKey is symetric and cannot be public.
+		// TODO: Can I use .Valid() instead?
 		if publicKey.KeyID != "" {
 			publicKeys = append(publicKeys, privateKey.Public())
 		}
@@ -125,7 +126,7 @@ func (ctx Context) GetPublicKeys() jose.JSONWebKeySet {
 func (ctx Context) GetSigningAlgorithms() []jose.SignatureAlgorithm {
 	algorithms := []jose.SignatureAlgorithm{}
 	for _, privateKey := range ctx.PrivateJwks.Keys {
-		if privateKey.Use == "sig" {
+		if privateKey.Use == string(constants.KeySigningUsage) {
 			algorithms = append(algorithms, jose.SignatureAlgorithm(privateKey.Algorithm))
 		}
 	}

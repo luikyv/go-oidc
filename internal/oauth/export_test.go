@@ -19,6 +19,9 @@ var ValidateClientAuthnRequest = validateClientAuthnRequest
 var ValidateAuthorizationRequest = validateAuthorizationRequest
 var ValidateAuthorizationRequestWithPar = validateAuthorizationRequestWithPar
 var ValidateAuthorizationRequestWithJar = validateAuthorizationRequestWithJar
+var ExtractJarFromRequestObject = extractJarFromRequestObject
+
+const Host = "https://example.com"
 
 const ValidClientId string = "random_client_id"
 
@@ -28,6 +31,7 @@ const ValidGrantModelId string = "random_token_model"
 
 func GetDummyContext() utils.Context {
 	return utils.Context{
+		Host:   Host,
 		Logger: slog.Default(),
 	}
 }
@@ -58,7 +62,7 @@ func SetUp() (ctx utils.Context, tearDown func()) {
 	client := GetValidClient()
 
 	// Save
-	ctx = GetMockedContext("https://example.com", jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jwk}})
+	ctx = GetMockedContext(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jwk}})
 	ctx.GrantModelManager.Create(grantModel)
 	ctx.ClientManager.Create(client)
 
@@ -93,9 +97,9 @@ func GetMockedRequestContext() *gin.Context {
 	return ctx
 }
 
-func GetMockedContext(host string, privateJWKS jose.JSONWebKeySet) utils.Context {
+func GetMockedContext(privateJWKS jose.JSONWebKeySet) utils.Context {
 	return utils.Context{
-		Host:                host,
+		Host:                Host,
 		ScopeManager:        mock.NewMockedScopeManager(),
 		GrantModelManager:   mock.NewMockedGrantModelManager(),
 		ClientManager:       mock.NewMockedClientManager(),

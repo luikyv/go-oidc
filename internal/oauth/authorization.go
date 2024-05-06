@@ -6,6 +6,7 @@ import (
 	"maps"
 	"net/http"
 	"slices"
+	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
@@ -106,7 +107,14 @@ func authenticate(ctx utils.Context, session *models.AuthnSession) issues.OAuthE
 
 //---------------------------------------------------------- Init Session ----------------------------------------------------------//
 
-func initAuthnSession(ctx utils.Context, req models.AuthorizationRequest, client models.Client) (models.AuthnSession, issues.OAuthError) {
+func initAuthnSession(
+	ctx utils.Context,
+	req models.AuthorizationRequest,
+	client models.Client,
+) (
+	models.AuthnSession,
+	issues.OAuthError,
+) {
 
 	if ctx.ParIsRequired || req.RequestUri != "" {
 		ctx.Logger.Info("initiating authorization request with PAR")
@@ -121,7 +129,14 @@ func initAuthnSession(ctx utils.Context, req models.AuthorizationRequest, client
 	return initSimpleAuthnSession(ctx, req, client)
 }
 
-func initAuthnSessionWithPar(ctx utils.Context, req models.AuthorizationRequest, client models.Client) (models.AuthnSession, issues.OAuthError) {
+func initAuthnSessionWithPar(
+	ctx utils.Context,
+	req models.AuthorizationRequest,
+	client models.Client,
+) (
+	models.AuthnSession,
+	issues.OAuthError,
+) {
 
 	session, err := getSessionCreatedWithPar(ctx, req)
 	if err != nil {
@@ -138,7 +153,14 @@ func initAuthnSessionWithPar(ctx utils.Context, req models.AuthorizationRequest,
 	return session, nil
 }
 
-func initAuthnSessionWithJar(ctx utils.Context, req models.AuthorizationRequest, client models.Client) (models.AuthnSession, issues.OAuthError) {
+func initAuthnSessionWithJar(
+	ctx utils.Context,
+	req models.AuthorizationRequest,
+	client models.Client,
+) (
+	models.AuthnSession,
+	issues.OAuthError,
+) {
 
 	jar, err := extractJarFromRequestObject(ctx, req.RequestObject, client)
 	if err != nil {
@@ -154,8 +176,14 @@ func initAuthnSessionWithJar(ctx utils.Context, req models.AuthorizationRequest,
 	return session, nil
 }
 
-func initSimpleAuthnSession(ctx utils.Context, req models.AuthorizationRequest, client models.Client) (models.AuthnSession, issues.OAuthError) {
-
+func initSimpleAuthnSession(
+	ctx utils.Context,
+	req models.AuthorizationRequest,
+	client models.Client,
+) (
+	models.AuthnSession,
+	issues.OAuthError,
+) {
 	ctx.Logger.Info("initiating simple authorization request")
 	if err := validateAuthorizationRequest(ctx, req, client); err != nil {
 		return models.AuthnSession{}, err
@@ -165,7 +193,13 @@ func initSimpleAuthnSession(ctx utils.Context, req models.AuthorizationRequest, 
 
 //--------------------------------------------------------- Helper Functions ---------------------------------------------------------//
 
-func getClient(ctx utils.Context, req models.AuthorizationRequest) (models.Client, issues.OAuthError) {
+func getClient(
+	ctx utils.Context,
+	req models.AuthorizationRequest,
+) (
+	models.Client,
+	issues.OAuthError,
+) {
 	if req.ClientId == "" {
 		return models.Client{}, issues.NewOAuthError(constants.InvalidClient, "invalid client_id")
 	}
@@ -178,7 +212,13 @@ func getClient(ctx utils.Context, req models.AuthorizationRequest) (models.Clien
 	return client, nil
 }
 
-func getSessionCreatedWithPar(ctx utils.Context, req models.AuthorizationRequest) (models.AuthnSession, issues.OAuthError) {
+func getSessionCreatedWithPar(
+	ctx utils.Context,
+	req models.AuthorizationRequest,
+) (
+	models.AuthnSession,
+	issues.OAuthError,
+) {
 	if req.RequestUri == "" {
 		return models.AuthnSession{}, issues.NewOAuthError(constants.InvalidRequest, "request_uri is required")
 	}
@@ -215,7 +255,13 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) {
 	redirectResponse(ctx, models.NewRedirectResponseFromSession(*session, params))
 }
 
-func generateImplictParams(ctx utils.Context, session models.AuthnSession) (map[string]string, error) {
+func generateImplictParams(
+	ctx utils.Context,
+	session models.AuthnSession,
+) (
+	map[string]string,
+	error,
+) {
 	grantModel, _ := ctx.GrantModelManager.Get(session.GrantModelId)
 	implictParams := make(map[string]string)
 
@@ -267,7 +313,11 @@ func redirectResponse(ctx utils.Context, redirectResponse models.RedirectRespons
 	}
 }
 
-func createJarmResponse(ctx utils.Context, clientId string, params map[string]string) string {
+func createJarmResponse(
+	ctx utils.Context,
+	clientId string,
+	params map[string]string,
+) string {
 	jwk := ctx.GetJarmPrivateKey()
 	createdAtTimestamp := unit.GetTimestampNow()
 	signer, _ := jose.NewSigner(
@@ -289,6 +339,48 @@ func createJarmResponse(ctx utils.Context, clientId string, params map[string]st
 	return response
 }
 
+func extractJarFromRequestObject(
+	ctx utils.Context,
+	reqObject string,
+	client models.Client,
+) (
+	models.AuthorizationRequest,
+	issues.OAuthError,
+) {
+	parsedToken, err := jwt.ParseSigned(reqObject, client.GetSigningAlgorithms())
+	if err != nil {
+		return models.AuthorizationRequest{}, issues.NewOAuthError(constants.InternalError, err.Error())
+	}
+
+	// Verify that the assertion indicates the key ID.
+	if len(parsedToken.Headers) != 0 && parsedToken.Headers[0].KeyID == "" {
+		return models.AuthorizationRequest{}, issues.NewOAuthError(constants.InvalidRequest, "invalid kid header")
+	}
+
+	// Verify that the key ID belongs to the client.
+	keys := client.PublicJwks.Key(parsedToken.Headers[0].KeyID)
+	if len(keys) == 0 {
+		return models.AuthorizationRequest{}, issues.NewOAuthError(constants.InvalidRequest, "invalid kid header")
+	}
+
+	jwk := keys[0]
+	var claims jwt.Claims
+	var jarReq models.AuthorizationRequest
+	if err := parsedToken.Claims(jwk.Key, &claims, &jarReq); err != nil {
+		return models.AuthorizationRequest{}, issues.NewOAuthError(constants.InvalidRequest, "invalid request")
+	}
+
+	err = claims.ValidateWithLeeway(jwt.Expected{
+		Issuer:      client.Id,
+		AnyAudience: []string{ctx.Host},
+	}, time.Duration(0))
+	if err != nil {
+		return models.AuthorizationRequest{}, issues.NewOAuthError(constants.InvalidRequest, "invalid request")
+	}
+
+	return jarReq, nil
+}
+
 //--------------------------------------------------------- Error Handling ---------------------------------------------------------//
 
 func handleAuthError(ctx utils.Context, err issues.OAuthError) issues.OAuthError {
@@ -306,7 +398,14 @@ func newRedirectErrorFromSession(
 	errorDescription string,
 	session models.AuthnSession,
 ) issues.OAuthError {
-	return issues.NewOAuthRedirectError(errorCode, errorDescription, session.ClientId, session.RedirectUri, session.ResponseMode, session.State)
+	return issues.NewOAuthRedirectError(
+		errorCode,
+		errorDescription,
+		session.ClientId,
+		session.RedirectUri,
+		session.ResponseMode,
+		session.State,
+	)
 }
 
 func convertErrorIfRedirectable(
@@ -317,7 +416,14 @@ func convertErrorIfRedirectable(
 
 	responseMode := unit.GetDefaultResponseMode(params.ResponseType, params.ResponseMode)
 	if client.IsRedirectUriAllowed(params.RedirectUri) && client.IsResponseModeAllowed(responseMode) {
-		return issues.NewOAuthRedirectError(oauthErr.GetCode(), oauthErr.Error(), client.Id, params.RedirectUri, responseMode, params.State)
+		return issues.NewOAuthRedirectError(
+			oauthErr.GetCode(),
+			oauthErr.Error(),
+			client.Id,
+			params.RedirectUri,
+			responseMode,
+			params.State,
+		)
 	}
 
 	return oauthErr
@@ -333,11 +439,20 @@ func convertErrorIfRedirectableWithPriorities(
 	redirectUri := unit.GetNonEmptyOrDefault(prioritaryParams.RedirectUri, params.RedirectUri)
 	responseType := unit.GetNonEmptyOrDefault(prioritaryParams.ResponseType, params.ResponseType)
 	state := unit.GetNonEmptyOrDefault(prioritaryParams.State, params.State)
-	responseMode := unit.GetNonEmptyOrDefault(prioritaryParams.ResponseMode, params.ResponseMode)
-	responseMode = unit.GetDefaultResponseMode(responseType, responseMode)
+	responseMode := unit.GetDefaultResponseMode(
+		responseType,
+		unit.GetNonEmptyOrDefault(prioritaryParams.ResponseMode, params.ResponseMode),
+	)
 
 	if client.IsRedirectUriAllowed(redirectUri) && client.IsResponseModeAllowed(responseMode) {
-		return issues.NewOAuthRedirectError(oauthErr.GetCode(), oauthErr.Error(), client.Id, redirectUri, responseMode, state)
+		return issues.NewOAuthRedirectError(
+			oauthErr.GetCode(),
+			oauthErr.Error(),
+			client.Id,
+			redirectUri,
+			responseMode,
+			state,
+		)
 	}
 
 	return oauthErr

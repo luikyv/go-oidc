@@ -147,6 +147,12 @@ const (
 	StateHashClaim             Claim = "s_hash"
 )
 
+type KeyUsage string
+
+const (
+	KeySigningUsage KeyUsage = "sig"
+)
+
 type CodeChallengeMethod string
 
 const (

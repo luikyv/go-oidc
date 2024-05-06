@@ -2,7 +2,6 @@ package oauth
 
 import (
 	"log/slog"
-	"time"
 
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/issues"
@@ -96,39 +95,4 @@ func getClientIdFromAssertion(assertion string) (string, bool) {
 	}
 
 	return clientIdAsString, true
-}
-
-func extractJarFromRequestObject(ctx utils.Context, reqObject string, client models.Client) (models.AuthorizationRequest, issues.OAuthError) {
-	parsedToken, err := jwt.ParseSigned(reqObject, client.GetSigningAlgorithms())
-	if err != nil {
-		return models.AuthorizationRequest{}, issues.NewOAuthError(constants.InternalError, err.Error())
-	}
-
-	// Verify that the assertion indicates the key ID.
-	if len(parsedToken.Headers) != 0 && parsedToken.Headers[0].KeyID == "" {
-		return models.AuthorizationRequest{}, issues.NewOAuthError(constants.InvalidRequest, "invalid kid header")
-	}
-
-	// Verify that the key ID belongs to the client.
-	keys := client.PublicJwks.Key(parsedToken.Headers[0].KeyID)
-	if len(keys) == 0 {
-		return models.AuthorizationRequest{}, issues.NewOAuthError(constants.InvalidRequest, "invalid kid header")
-	}
-
-	jwk := keys[0]
-	var claims jwt.Claims
-	var jarReq models.AuthorizationRequest
-	if err := parsedToken.Claims(jwk.Key, &claims, &jarReq); err != nil {
-		return models.AuthorizationRequest{}, issues.NewOAuthError(constants.InvalidRequest, "invalid request")
-	}
-
-	err = claims.ValidateWithLeeway(jwt.Expected{
-		Issuer:      client.Id,
-		AnyAudience: []string{ctx.Host},
-	}, time.Duration(0))
-	if err != nil {
-		return models.AuthorizationRequest{}, issues.NewOAuthError(constants.InvalidRequest, "invalid request")
-	}
-
-	return jarReq, nil
 }
