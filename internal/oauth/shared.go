@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
@@ -16,32 +15,6 @@ import (
 type ResultChannel struct {
 	result any
 	err    issues.OAuthError
-}
-
-func getClient(ctx utils.Context, req models.AuthorizationRequest) (models.Client, issues.OAuthError) {
-	if req.ClientId == "" {
-		return models.Client{}, issues.NewOAuthError(constants.InvalidClient, "invalid client_id")
-	}
-
-	client, err := ctx.ClientManager.Get(req.ClientId)
-	if err != nil {
-		return models.Client{}, issues.NewOAuthError(constants.InvalidClient, "invalid client_id")
-	}
-
-	return client, nil
-}
-
-func getSessionCreatedWithPar(ctx utils.Context, req models.AuthorizationRequest) (models.AuthnSession, issues.OAuthError) {
-	if req.RequestUri == "" {
-		return models.AuthnSession{}, issues.NewOAuthError(constants.InvalidRequest, "request_uri is required")
-	}
-
-	session, err := ctx.AuthnSessionManager.GetByRequestUri(req.RequestUri)
-	if err != nil {
-		return models.AuthnSession{}, issues.NewOAuthError(constants.InvalidRequest, "invalid request_uri")
-	}
-
-	return session, nil
 }
 
 func getAuthenticatedClient(ctx utils.Context, req models.ClientAuthnRequest) (models.Client, issues.OAuthError) {
@@ -158,60 +131,4 @@ func extractJarFromRequestObject(ctx utils.Context, reqObject string, client mod
 	}
 
 	return jarReq, nil
-}
-
-func createJarmResponse(ctx utils.Context, clientId string, params map[string]string) string {
-	jwk := ctx.GetJarmPrivateKey()
-	createdAtTimestamp := unit.GetTimestampNow()
-	signer, _ := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID),
-	)
-
-	claims := map[string]any{
-		string(constants.IssuerClaim):   ctx.Host,
-		string(constants.AudienceClaim): clientId,
-		string(constants.IssuedAtClaim): createdAtTimestamp,
-		string(constants.ExpiryClaim):   createdAtTimestamp + constants.JarmResponseLifetimeSecs,
-	}
-	for k, v := range params {
-		claims[k] = v
-	}
-	response, _ := jwt.Signed(signer).Claims(claims).Serialize()
-
-	return response
-}
-
-func convertErrorIfRedirectable(
-	oauthErr issues.OAuthError,
-	params models.AuthorizationParameters,
-	client models.Client,
-) issues.OAuthError {
-
-	responseMode := unit.GetDefaultResponseMode(params.ResponseType, params.ResponseMode)
-	if client.IsRedirectUriAllowed(params.RedirectUri) && client.IsResponseModeAllowed(responseMode) {
-		return issues.NewOAuthRedirectError(oauthErr.GetCode(), oauthErr.Error(), client.Id, params.RedirectUri, responseMode, params.State)
-	}
-
-	return oauthErr
-}
-
-func convertErrorIfRedirectableWithPriorities(
-	oauthErr issues.OAuthError,
-	params models.AuthorizationParameters,
-	prioritaryParams models.AuthorizationParameters,
-	client models.Client,
-) issues.OAuthError {
-
-	redirectUri := unit.GetNonEmptyOrDefault(prioritaryParams.RedirectUri, params.RedirectUri)
-	responseType := unit.GetNonEmptyOrDefault(prioritaryParams.ResponseType, params.ResponseType)
-	state := unit.GetNonEmptyOrDefault(prioritaryParams.State, params.State)
-	responseMode := unit.GetNonEmptyOrDefault(prioritaryParams.ResponseMode, params.ResponseMode)
-	responseMode = unit.GetDefaultResponseMode(responseType, responseMode)
-
-	if client.IsRedirectUriAllowed(redirectUri) && client.IsResponseModeAllowed(responseMode) {
-		return issues.NewOAuthRedirectError(oauthErr.GetCode(), oauthErr.Error(), client.Id, redirectUri, responseMode, state)
-	}
-
-	return oauthErr
 }
