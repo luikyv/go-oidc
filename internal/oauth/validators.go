@@ -85,7 +85,7 @@ func validateAuthorizationRequestWithPar(
 ) issues.OAuthError {
 
 	if err := validateAuthorizationRequestWithParNoRedirect(ctx, req, session, client); err != nil {
-		return convertErrorIfRedirectableWithPriorities(err, req, session.AuthorizationParameters, client)
+		return convertErrorIfRedirectableWithPriorities(err, req.AuthorizationParameters, session.AuthorizationParameters, client)
 	}
 
 	return nil
@@ -115,7 +115,7 @@ func validateAuthorizationRequestWithJar(
 	client models.Client,
 ) issues.OAuthError {
 	if err := validateAuthorizationRequestWithJarNoRedirect(ctx, req, jar, client); err != nil {
-		return convertErrorIfRedirectableWithPriorities(err, req, jar.AuthorizationParameters, client)
+		return convertErrorIfRedirectableWithPriorities(err, req.AuthorizationParameters, jar.AuthorizationParameters, client)
 	}
 
 	return nil
@@ -215,6 +215,11 @@ func validateOpenIdCoreParamsWithPrioritiesNoRedirect(
 		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
 	}
 
+	nonce := unit.GetNonEmptyOrDefault(prioritaryParams.Nonce, params.Nonce)
+	if params.ResponseType.Contains(constants.IdTokenResponse) && nonce == "" {
+		return issues.NewOAuthError(constants.InvalidRequest, "nonce is required when response_type contains id_token")
+	}
+
 	return validateParamsWithPrioritiesCommonRulesNoRedirect(ctx, params, prioritaryParams, client)
 }
 
@@ -266,6 +271,10 @@ func validateOpenIdCoreParamsNoRedirect(
 
 	if !unit.ScopeContainsOpenId(params.Scope) {
 		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
+	}
+
+	if params.ResponseType.Contains(constants.IdTokenResponse) && params.Nonce == "" {
+		return issues.NewOAuthError(constants.InvalidRequest, "nonce is required when response_type contains id_token")
 	}
 
 	return validateParamsCommonRulesNoRedirect(ctx, params, client)

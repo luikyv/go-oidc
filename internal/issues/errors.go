@@ -2,7 +2,6 @@ package issues
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
@@ -41,7 +40,7 @@ func (err OAuthBaseError) GetCode() constants.ErrorCode {
 }
 
 func (err OAuthBaseError) Error() string {
-	return fmt.Sprintf("%s: %s", err.ErrorCode, err.ErrorDescription)
+	return err.ErrorDescription
 }
 
 func (e OAuthBaseError) Unwrap() error {

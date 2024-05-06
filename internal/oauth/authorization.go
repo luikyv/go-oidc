@@ -132,7 +132,7 @@ func initAuthnSessionWithPar(ctx utils.Context, req models.AuthorizationRequest,
 		return models.AuthnSession{}, err
 	}
 
-	session.UpdateWithRequest(req)
+	session.UpdateParams(req.AuthorizationParameters)
 	return session, nil
 }
 
@@ -148,7 +148,7 @@ func initAuthnSessionWithJar(ctx utils.Context, req models.AuthorizationRequest,
 	}
 
 	session := models.NewSession(jar.AuthorizationParameters, client)
-	session.UpdateWithRequest(req)
+	session.UpdateParams(req.AuthorizationParameters)
 	return session, nil
 }
 

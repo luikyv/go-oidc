@@ -53,50 +53,45 @@ func (session *AuthnSession) Init() {
 	}
 	session.CallbackId = unit.GenerateCallbackId()
 	// If either an empty or the "jwt" response modes are passed, we must find the default value based on the response type.
-	if session.ResponseMode == "" {
-		session.ResponseMode = getDefaultResponseMode(session.ResponseType)
-	}
-	if session.ResponseMode == constants.JwtResponseMode {
-		session.ResponseMode = getDefaultJarmResponseMode(session.ResponseType)
-	}
+	session.ResponseMode = unit.GetDefaultResponseMode(session.ResponseType, session.ResponseMode)
 	// FIXME: To think about:Treating the request_uri as one-time use will cause problems when the user refreshes the page.
 	session.RequestUri = ""
 }
 
 // Update the session with the parameters from an authorization request
 // The parameters already present in the session take prioritybut not sent during par.
-func (session *AuthnSession) UpdateWithRequest(req AuthorizationRequest) {
+func (session *AuthnSession) UpdateParams(params AuthorizationParameters) {
 
 	if session.RedirectUri == "" {
-		session.RedirectUri = req.RedirectUri
+		session.RedirectUri = params.RedirectUri
 	}
 
 	if len(session.Scope) == 0 {
-		session.Scope = req.Scope
+		session.Scope = params.Scope
 	}
 
 	if session.ResponseType == "" {
-		session.ResponseType = req.ResponseType
+		session.ResponseType = params.ResponseType
 	}
 
 	if session.ResponseMode == "" {
-		session.ResponseMode = req.ResponseMode
+		session.ResponseMode = params.ResponseMode
 	}
 
 	if session.State == "" {
-		session.State = req.State
+		session.State = params.State
 	}
 
 	if session.CodeChallenge == "" {
-		session.CodeChallenge = req.CodeChallenge
+		session.CodeChallenge = params.CodeChallenge
 	}
 
 	if session.CodeChallengeMethod == "" {
-		session.CodeChallengeMethod = req.CodeChallengeMethod
+		session.CodeChallengeMethod = params.CodeChallengeMethod
 	}
 
 	if session.Nonce == "" {
-		session.Nonce = req.Nonce
+		session.Nonce = params.Nonce
 	}
 }
 
@@ -112,24 +107,6 @@ func extractPushedParams(reqCtx *gin.Context) map[string]string {
 	}
 
 	return pushedParams
-}
-
-func getDefaultResponseMode(responseType constants.ResponseType) constants.ResponseMode {
-	// According to "5. Definitions of Multiple-Valued Response Type Combinations" of https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#Combinations.
-	if responseType.IsImplict() {
-		return constants.FragmentResponseMode
-	}
-
-	return constants.QueryResponseMode
-}
-
-func getDefaultJarmResponseMode(responseType constants.ResponseType) constants.ResponseMode {
-	// According to "5. Definitions of Multiple-Valued Response Type Combinations" of https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#Combinations.
-	if responseType.IsImplict() {
-		return constants.FragmentJwtResponseMode
-	}
-
-	return constants.QueryJwtResponseMode
 }
 
 func (session *AuthnSession) SetUserId(userId string) {

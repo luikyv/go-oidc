@@ -93,6 +93,36 @@ func GetBearerToken(requestCtx *gin.Context) (string, bool) {
 	return bearerTokenParts[1], true
 }
 
+func GetDefaultResponseMode(responseType constants.ResponseType, responseMode constants.ResponseMode) constants.ResponseMode {
+	if responseMode == "" {
+		return getDefaultResponseMode(responseType)
+	}
+
+	if responseMode == constants.JwtResponseMode {
+		responseMode = getDefaultJarmResponseMode(responseType)
+	}
+
+	return responseMode
+}
+
+func getDefaultResponseMode(responseType constants.ResponseType) constants.ResponseMode {
+	// According to "5. Definitions of Multiple-Valued Response Type Combinations" of https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#Combinations.
+	if responseType.IsImplict() {
+		return constants.FragmentResponseMode
+	}
+
+	return constants.QueryResponseMode
+}
+
+func getDefaultJarmResponseMode(responseType constants.ResponseType) constants.ResponseMode {
+	// According to "5. Definitions of Multiple-Valued Response Type Combinations" of https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#Combinations.
+	if responseType.IsImplict() {
+		return constants.FragmentJwtResponseMode
+	}
+
+	return constants.QueryJwtResponseMode
+}
+
 func ContainsAll[T comparable](superSet []T, subSet []T) bool {
 	for _, e := range subSet {
 		if !slices.Contains(superSet, e) {

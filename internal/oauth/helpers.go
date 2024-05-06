@@ -187,8 +187,10 @@ func convertErrorIfRedirectable(
 	params models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
-	if client.IsRedirectUriAllowed(params.RedirectUri) && (params.ResponseMode == "" || client.IsResponseModeAllowed(params.ResponseMode)) {
-		return issues.NewOAuthRedirectError(oauthErr.GetCode(), oauthErr.Error(), client.Id, params.RedirectUri, params.ResponseMode, params.State)
+
+	responseMode := unit.GetDefaultResponseMode(params.ResponseType, params.ResponseMode)
+	if client.IsRedirectUriAllowed(params.RedirectUri) && client.IsResponseModeAllowed(responseMode) {
+		return issues.NewOAuthRedirectError(oauthErr.GetCode(), oauthErr.Error(), client.Id, params.RedirectUri, responseMode, params.State)
 	}
 
 	return oauthErr
@@ -196,28 +198,19 @@ func convertErrorIfRedirectable(
 
 func convertErrorIfRedirectableWithPriorities(
 	oauthErr issues.OAuthError,
-	req models.AuthorizationRequest,
+	params models.AuthorizationParameters,
 	prioritaryParams models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
 
-	redirectUri := prioritaryParams.RedirectUri
-	if redirectUri == "" {
-		redirectUri = req.RedirectUri
-	}
+	redirectUri := unit.GetNonEmptyOrDefault(prioritaryParams.RedirectUri, params.RedirectUri)
+	responseType := unit.GetNonEmptyOrDefault(prioritaryParams.ResponseType, params.ResponseType)
+	state := unit.GetNonEmptyOrDefault(prioritaryParams.State, params.State)
+	responseMode := unit.GetNonEmptyOrDefault(prioritaryParams.ResponseMode, params.ResponseMode)
+	responseMode = unit.GetDefaultResponseMode(responseType, responseMode)
 
-	responseMode := prioritaryParams.ResponseMode
-	if responseMode != "" {
-		responseMode = req.ResponseMode
-	}
-
-	state := prioritaryParams.State
-	if state != "" {
-		state = req.State
-	}
-
-	if client.IsRedirectUriAllowed(redirectUri) && (req.ResponseMode == "" || client.IsResponseModeAllowed(responseMode)) {
-		return issues.NewOAuthRedirectError(oauthErr.GetCode(), oauthErr.Error(), req.ClientId, redirectUri, responseMode, state)
+	if client.IsRedirectUriAllowed(redirectUri) && client.IsResponseModeAllowed(responseMode) {
+		return issues.NewOAuthRedirectError(oauthErr.GetCode(), oauthErr.Error(), client.Id, redirectUri, responseMode, state)
 	}
 
 	return oauthErr
