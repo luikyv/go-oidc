@@ -270,6 +270,7 @@ func TestInitAuthPolicyEndsWithSuccess(t *testing.T) {
 			Scope:        strings.Join(client.Scopes, " "),
 			ResponseType: constants.CodeAndIdTokenResponse,
 			ResponseMode: constants.FragmentResponseMode,
+			Nonce:        "random_nonce",
 		},
 	})
 

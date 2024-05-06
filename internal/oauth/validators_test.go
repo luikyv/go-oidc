@@ -273,6 +273,7 @@ func TestValidateAuthorizationRequestWithPar(t *testing.T) {
 					ResponseType: constants.CodeAndIdTokenResponse,
 					ResponseMode: constants.FragmentResponseMode,
 					Scope:        constants.OpenIdScope,
+					Nonce:        "random_nonce",
 				},
 			},
 			models.AuthnSession{
@@ -338,6 +339,7 @@ func TestValidateAuthorizationRequestWithJar(t *testing.T) {
 					ResponseType: constants.CodeResponse,
 					ResponseMode: constants.QueryResponseMode,
 					Scope:        validClient.Scopes[0],
+					Nonce:        "random_nonce",
 				},
 			},
 			models.AuthorizationRequest{
@@ -365,6 +367,7 @@ func TestValidateAuthorizationRequestWithJar(t *testing.T) {
 				ClientId: validClient.Id,
 				AuthorizationParameters: models.AuthorizationParameters{
 					RedirectUri: validClient.RedirectUris[0],
+					Nonce:       "random_nonce",
 				},
 			},
 			func(client models.Client) models.Client {
