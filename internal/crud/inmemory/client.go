@@ -1,21 +1,21 @@
-package mock
+package inmemory
 
 import (
 	issues "github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 )
 
-type MockedClientManager struct {
+type InMemoryClientManager struct {
 	clients map[string]models.Client
 }
 
-func NewMockedClientManager() *MockedClientManager {
-	return &MockedClientManager{
+func NewInMemoryClientManager() *InMemoryClientManager {
+	return &InMemoryClientManager{
 		clients: make(map[string]models.Client),
 	}
 }
 
-func (manager *MockedClientManager) Create(client models.Client) error {
+func (manager *InMemoryClientManager) Create(client models.Client) error {
 	_, exists := manager.clients[client.Id]
 	if exists {
 		return issues.ErrorEntityAlreadyExists
@@ -25,7 +25,7 @@ func (manager *MockedClientManager) Create(client models.Client) error {
 	return nil
 }
 
-func (manager *MockedClientManager) Update(id string, client models.Client) error {
+func (manager *InMemoryClientManager) Update(id string, client models.Client) error {
 	_, exists := manager.clients[id]
 	if !exists {
 		return issues.ErrorEntityNotFound
@@ -35,7 +35,7 @@ func (manager *MockedClientManager) Update(id string, client models.Client) erro
 	return nil
 }
 
-func (manager *MockedClientManager) Get(id string) (models.Client, error) {
+func (manager *InMemoryClientManager) Get(id string) (models.Client, error) {
 	client, exists := manager.clients[id]
 	if !exists {
 		return models.Client{}, issues.ErrorEntityNotFound
@@ -44,7 +44,7 @@ func (manager *MockedClientManager) Get(id string) (models.Client, error) {
 	return client, nil
 }
 
-func (manager *MockedClientManager) Delete(id string) error {
+func (manager *InMemoryClientManager) Delete(id string) error {
 	delete(manager.clients, id)
 	return nil
 }

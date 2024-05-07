@@ -1,4 +1,4 @@
-package mock
+package inmemory
 
 import (
 	"github.com/luikymagno/auth-server/internal/issues"
@@ -6,22 +6,22 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit"
 )
 
-type MockedAuthnSessionManager struct {
+type InMemoryAuthnSessionManager struct {
 	Sessions map[string]models.AuthnSession
 }
 
-func NewMockedAuthnSessionManager() *MockedAuthnSessionManager {
-	return &MockedAuthnSessionManager{
+func NewInMemoryAuthnSessionManager() *InMemoryAuthnSessionManager {
+	return &InMemoryAuthnSessionManager{
 		Sessions: make(map[string]models.AuthnSession),
 	}
 }
 
-func (manager *MockedAuthnSessionManager) CreateOrUpdate(session models.AuthnSession) error {
+func (manager *InMemoryAuthnSessionManager) CreateOrUpdate(session models.AuthnSession) error {
 	manager.Sessions[session.Id] = session
 	return nil
 }
 
-func (manager *MockedAuthnSessionManager) getFirstSession(condition func(models.AuthnSession) bool) (models.AuthnSession, bool) {
+func (manager *InMemoryAuthnSessionManager) getFirstSession(condition func(models.AuthnSession) bool) (models.AuthnSession, bool) {
 	sessions := make([]models.AuthnSession, 0, len(manager.Sessions))
 	for _, s := range manager.Sessions {
 		sessions = append(sessions, s)
@@ -30,7 +30,7 @@ func (manager *MockedAuthnSessionManager) getFirstSession(condition func(models.
 	return unit.FindFirst(sessions, condition)
 }
 
-func (manager *MockedAuthnSessionManager) GetByCallbackId(callbackId string) (models.AuthnSession, error) {
+func (manager *InMemoryAuthnSessionManager) GetByCallbackId(callbackId string) (models.AuthnSession, error) {
 	session, exists := manager.getFirstSession(func(s models.AuthnSession) bool {
 		return s.CallbackId == callbackId
 	})
@@ -41,7 +41,7 @@ func (manager *MockedAuthnSessionManager) GetByCallbackId(callbackId string) (mo
 	return session, nil
 }
 
-func (manager *MockedAuthnSessionManager) GetByAuthorizationCode(authorizationCode string) (models.AuthnSession, error) {
+func (manager *InMemoryAuthnSessionManager) GetByAuthorizationCode(authorizationCode string) (models.AuthnSession, error) {
 	session, exists := manager.getFirstSession(func(s models.AuthnSession) bool {
 		return s.AuthorizationCode == authorizationCode
 	})
@@ -52,7 +52,7 @@ func (manager *MockedAuthnSessionManager) GetByAuthorizationCode(authorizationCo
 	return session, nil
 }
 
-func (manager *MockedAuthnSessionManager) GetByRequestUri(requestUri string) (models.AuthnSession, error) {
+func (manager *InMemoryAuthnSessionManager) GetByRequestUri(requestUri string) (models.AuthnSession, error) {
 	session, exists := manager.getFirstSession(func(s models.AuthnSession) bool {
 		return s.RequestUri == requestUri
 	})
@@ -63,7 +63,7 @@ func (manager *MockedAuthnSessionManager) GetByRequestUri(requestUri string) (mo
 	return session, nil
 }
 
-func (manager *MockedAuthnSessionManager) Delete(id string) error {
+func (manager *InMemoryAuthnSessionManager) Delete(id string) error {
 	delete(manager.Sessions, id)
 	return nil
 }

@@ -1,4 +1,4 @@
-package mock
+package inmemory
 
 import (
 	issues "github.com/luikymagno/auth-server/internal/issues"
@@ -6,22 +6,22 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit"
 )
 
-type MockedGrantSessionManager struct {
+type InMemoryGrantSessionManager struct {
 	GrantSessions map[string]models.GrantSession
 }
 
-func NewMockedGrantSessionManager() *MockedGrantSessionManager {
-	return &MockedGrantSessionManager{
+func NewInMemoryGrantSessionManager() *InMemoryGrantSessionManager {
+	return &InMemoryGrantSessionManager{
 		GrantSessions: make(map[string]models.GrantSession),
 	}
 }
 
-func (manager *MockedGrantSessionManager) CreateOrUpdate(grantSession models.GrantSession) error {
+func (manager *InMemoryGrantSessionManager) CreateOrUpdate(grantSession models.GrantSession) error {
 	manager.GrantSessions[grantSession.Id] = grantSession
 	return nil
 }
 
-func (manager *MockedGrantSessionManager) Get(id string) (models.GrantSession, error) {
+func (manager *InMemoryGrantSessionManager) Get(id string) (models.GrantSession, error) {
 	grantSession, exists := manager.GrantSessions[id]
 	if !exists {
 		return models.GrantSession{}, issues.ErrorEntityNotFound
@@ -30,7 +30,7 @@ func (manager *MockedGrantSessionManager) Get(id string) (models.GrantSession, e
 	return grantSession, nil
 }
 
-func (manager *MockedGrantSessionManager) getFirstToken(condition func(models.GrantSession) bool) (models.GrantSession, bool) {
+func (manager *InMemoryGrantSessionManager) getFirstToken(condition func(models.GrantSession) bool) (models.GrantSession, bool) {
 	grantSessions := make([]models.GrantSession, 0, len(manager.GrantSessions))
 	for _, t := range manager.GrantSessions {
 		grantSessions = append(grantSessions, t)
@@ -39,7 +39,7 @@ func (manager *MockedGrantSessionManager) getFirstToken(condition func(models.Gr
 	return unit.FindFirst(grantSessions, condition)
 }
 
-func (manager *MockedGrantSessionManager) GetByTokenId(tokenId string) (models.GrantSession, error) {
+func (manager *InMemoryGrantSessionManager) GetByTokenId(tokenId string) (models.GrantSession, error) {
 	grantSession, exists := manager.getFirstToken(func(t models.GrantSession) bool {
 		return t.TokenId == tokenId
 	})
@@ -50,7 +50,7 @@ func (manager *MockedGrantSessionManager) GetByTokenId(tokenId string) (models.G
 	return grantSession, nil
 }
 
-func (manager *MockedGrantSessionManager) GetByRefreshToken(refreshToken string) (models.GrantSession, error) {
+func (manager *InMemoryGrantSessionManager) GetByRefreshToken(refreshToken string) (models.GrantSession, error) {
 	grantSession, exists := manager.getFirstToken(func(t models.GrantSession) bool {
 		return t.RefreshToken == refreshToken
 	})
@@ -61,7 +61,7 @@ func (manager *MockedGrantSessionManager) GetByRefreshToken(refreshToken string)
 	return grantSession, nil
 }
 
-func (manager *MockedGrantSessionManager) Delete(id string) error {
+func (manager *InMemoryGrantSessionManager) Delete(id string) error {
 	delete(manager.GrantSessions, id)
 	return nil
 }

@@ -178,6 +178,7 @@ type OpenIdConfiguration struct {
 	IdTokenSigningAlgorithms []jose.SignatureAlgorithm         `json:"id_token_signing_alg_values_supported"`
 	ClientAuthnMethods       []constants.ClientAuthnType       `json:"token_endpoint_auth_methods_supported"`
 	ScopesSupported          []string                          `json:"scopes_supported"`
+	JarIsRequired            bool                              `json:"require_signed_request_object"` // TODO: Use this.
 	JarmAlgorithms           []string                          `json:"authorization_signing_alg_values_supported"`
 }
 

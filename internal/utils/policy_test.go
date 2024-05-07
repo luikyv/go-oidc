@@ -72,7 +72,7 @@ func TestGetPolicy(t *testing.T) {
 			return true
 		},
 	)
-	ctx := utils.GetMockedContext("", jose.JSONWebKeySet{})
+	ctx := utils.GetInMemoryContext("", jose.JSONWebKeySet{})
 	ctx.Policies = []utils.AuthnPolicy{unavailablePolicy, availablePolicy}
 
 	// Then
@@ -99,7 +99,7 @@ func TestGetPolicyNoPolicyAvailable(t *testing.T) {
 			return false
 		},
 	)
-	ctx := utils.GetMockedContext("", jose.JSONWebKeySet{})
+	ctx := utils.GetInMemoryContext("", jose.JSONWebKeySet{})
 	ctx.Policies = []utils.AuthnPolicy{unavailablePolicy}
 
 	// Then

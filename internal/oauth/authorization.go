@@ -121,7 +121,7 @@ func initAuthnSession(
 		return initAuthnSessionWithPar(ctx, req, client)
 	}
 
-	if req.RequestObject != "" {
+	if ctx.JarIsRequired || req.RequestObject != "" {
 		ctx.Logger.Info("initiating authorization request with JAR")
 		return initAuthnSessionWithJar(ctx, req, client)
 	}
@@ -162,7 +162,7 @@ func initAuthnSessionWithJar(
 	issues.OAuthError,
 ) {
 
-	jar, err := extractJarFromRequestObject(ctx, req.RequestObject, client)
+	jar, err := getJar(ctx, req, client)
 	if err != nil {
 		return models.AuthnSession{}, err
 	}
@@ -229,6 +229,26 @@ func getSessionCreatedWithPar(
 	}
 
 	return session, nil
+}
+
+func getJar(
+	ctx utils.Context,
+	req models.AuthorizationRequest,
+	client models.Client,
+) (
+	models.AuthorizationRequest,
+	issues.OAuthError,
+) {
+	if req.RequestObject == "" {
+		return models.AuthorizationRequest{}, issues.NewOAuthError(constants.InvalidRequest, "request object is required")
+	}
+
+	jar, err := extractJarFromRequestObject(ctx, req.RequestObject, client)
+	if err != nil {
+		return models.AuthorizationRequest{}, err
+	}
+
+	return jar, nil
 }
 
 func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) {
@@ -414,7 +434,7 @@ func convertErrorIfRedirectable(
 	client models.Client,
 ) issues.OAuthError {
 
-	responseMode := unit.GetDefaultResponseMode(params.ResponseType, params.ResponseMode)
+	responseMode := unit.GetResponseModeOrDefault(params.ResponseMode, params.ResponseType)
 	if client.IsRedirectUriAllowed(params.RedirectUri) && client.IsResponseModeAllowed(responseMode) {
 		return issues.NewOAuthRedirectError(
 			oauthErr.GetCode(),
@@ -439,9 +459,9 @@ func convertErrorIfRedirectableWithPriorities(
 	redirectUri := unit.GetNonEmptyOrDefault(prioritaryParams.RedirectUri, params.RedirectUri)
 	responseType := unit.GetNonEmptyOrDefault(prioritaryParams.ResponseType, params.ResponseType)
 	state := unit.GetNonEmptyOrDefault(prioritaryParams.State, params.State)
-	responseMode := unit.GetDefaultResponseMode(
-		responseType,
+	responseMode := unit.GetResponseModeOrDefault(
 		unit.GetNonEmptyOrDefault(prioritaryParams.ResponseMode, params.ResponseMode),
+		responseType,
 	)
 
 	if client.IsRedirectUriAllowed(redirectUri) && client.IsResponseModeAllowed(responseMode) {

@@ -52,8 +52,7 @@ func (session *AuthnSession) Init() {
 		session.CodeChallengeMethod = constants.PlainCodeChallengeMethod
 	}
 	session.CallbackId = unit.GenerateCallbackId()
-	// If either an empty or the "jwt" response modes are passed, we must find the default value based on the response type.
-	session.ResponseMode = unit.GetDefaultResponseMode(session.ResponseType, session.ResponseMode)
+	session.ResponseMode = unit.GetResponseModeOrDefault(session.ResponseMode, session.ResponseType)
 	// FIXME: To think about:Treating the request_uri as one-time use will cause problems when the user refreshes the page.
 	session.RequestUri = ""
 }

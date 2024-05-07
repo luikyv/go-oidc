@@ -89,7 +89,7 @@ func main() {
 		oauth.ConfigureInMemorySessions,
 	)
 
-	// Add token model mocks.
+	// Add token models.
 	oauthManager.AddGrantModel(models.GrantModel{
 		TokenMaker: models.OpaqueTokenMaker{
 			TokenLength: 20,

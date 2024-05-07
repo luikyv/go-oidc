@@ -20,8 +20,9 @@ type Context struct {
 	GrantSessionManager crud.GrantSessionManager
 	AuthnSessionManager crud.AuthnSessionManager
 	PrivateJwks         jose.JSONWebKeySet
-	PrivateJarmKeyId    string
-	ParIsRequired       bool // TODO
+	PrivateJarmKeyId    string // TODO: Get jarm key based on client.
+	JarIsRequired       bool
+	ParIsRequired       bool
 	Policies            []AuthnPolicy
 	RequestContext      *gin.Context
 	Logger              *slog.Logger
@@ -36,6 +37,7 @@ func NewContext(
 	authnSessionManager crud.AuthnSessionManager,
 	privateJwks jose.JSONWebKeySet,
 	privateJarmKeyId string,
+	JarIsRequired bool,
 	parIsRequired bool,
 	policies []AuthnPolicy,
 	reqContext *gin.Context,
@@ -63,6 +65,7 @@ func NewContext(
 		AuthnSessionManager: authnSessionManager,
 		PrivateJwks:         privateJwks,
 		PrivateJarmKeyId:    privateJarmKeyId,
+		JarIsRequired:       JarIsRequired,
 		ParIsRequired:       parIsRequired,
 		Policies:            policies,
 		RequestContext:      reqContext,

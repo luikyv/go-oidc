@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/apihandlers"
 	"github.com/luikymagno/auth-server/internal/crud"
-	"github.com/luikymagno/auth-server/internal/crud/mock"
+	"github.com/luikymagno/auth-server/internal/crud/inmemory"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
@@ -56,17 +56,17 @@ func NewManager(
 }
 
 func ConfigureInMemoryClientAndScope(manager *OpenIDManager) {
-	manager.clientManager = mock.NewMockedClientManager()
-	manager.scopeManager = mock.NewMockedScopeManager()
+	manager.clientManager = inmemory.NewInMemoryClientManager()
+	manager.scopeManager = inmemory.NewInMemoryScopeManager()
 }
 
 func ConfigureInMemoryGrantModel(manager *OpenIDManager) {
-	manager.grantModelManager = mock.NewMockedGrantModelManager()
+	manager.grantModelManager = inmemory.NewInMemoryGrantModelManager()
 }
 
 func ConfigureInMemorySessions(manager *OpenIDManager) {
-	manager.grantSessionManager = mock.NewMockedGrantSessionManager()
-	manager.authnSessionManager = mock.NewMockedAuthnSessionManager()
+	manager.grantSessionManager = inmemory.NewInMemoryGrantSessionManager()
+	manager.authnSessionManager = inmemory.NewInMemoryAuthnSessionManager()
 }
 
 func (manager *OpenIDManager) AddGrantModel(model models.GrantModel) error {

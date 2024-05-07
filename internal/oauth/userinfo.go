@@ -1,7 +1,6 @@
 package oauth
 
 import (
-	"errors"
 	"slices"
 	"time"
 
@@ -12,33 +11,33 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func HandleUserInfoRequest(ctx utils.Context, token string) (models.GrantSession, error) {
+func HandleUserInfoRequest(ctx utils.Context, token string) (models.GrantSession, issues.OAuthError) {
 
-	tokenId, err := getTokenId(ctx, token)
-	if err != nil {
-		return models.GrantSession{}, err
+	tokenId, oauthErr := getTokenId(ctx, token)
+	if oauthErr != nil {
+		return models.GrantSession{}, oauthErr
 	}
 
 	grantSession, err := ctx.GrantSessionManager.GetByTokenId(tokenId)
 	if err != nil {
-		return models.GrantSession{}, err
+		return models.GrantSession{}, issues.NewOAuthError(constants.InvalidRequest, "invalid invalid token")
 	}
 
 	if !slices.Contains(grantSession.Scopes, constants.OpenIdScope) {
-		return models.GrantSession{}, errors.New("invalid scope")
+		return models.GrantSession{}, issues.NewOAuthError(constants.InvalidRequest, "invalid scope")
 	}
 
 	return grantSession, nil
 }
 
-func getTokenId(ctx utils.Context, token string) (string, error) {
+func getTokenId(ctx utils.Context, token string) (string, issues.OAuthError) {
 	parsedToken, err := jwt.ParseSigned(token, ctx.GetSigningAlgorithms())
 	if err != nil {
 		return token, nil
 	}
 
 	if len(parsedToken.Headers) == 0 || parsedToken.Headers[0].KeyID == "" {
-		return "", errors.New("invalid header kid")
+		return "", issues.NewOAuthError(constants.InvalidRequest, "invalid header kid")
 	}
 
 	keyId := parsedToken.Headers[0].KeyID
@@ -59,7 +58,7 @@ func getTokenId(ctx utils.Context, token string) (string, error) {
 	}
 
 	if claims.ID == "" {
-		return "", errors.New("invalid claim jti")
+		return "", issues.NewOAuthError(constants.AccessDenied, "invalid token")
 	}
 
 	return claims.ID, nil

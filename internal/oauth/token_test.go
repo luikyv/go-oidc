@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/luikymagno/auth-server/internal/crud/mock"
+	"github.com/luikymagno/auth-server/internal/crud/inmemory"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/oauth"
@@ -97,7 +97,7 @@ func TestClientCredentialsHandleGrantCreation(t *testing.T) {
 		return
 	}
 
-	grantSessionManager, _ := ctx.GrantSessionManager.(*mock.MockedGrantSessionManager)
+	grantSessionManager, _ := ctx.GrantSessionManager.(*inmemory.InMemoryGrantSessionManager)
 	tokens := make([]models.GrantSession, 0, len(grantSessionManager.GrantSessions))
 	for _, tk := range grantSessionManager.GrantSessions {
 		tokens = append(tokens, tk)

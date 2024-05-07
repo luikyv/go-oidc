@@ -93,7 +93,8 @@ func GetBearerToken(requestCtx *gin.Context) (string, bool) {
 	return bearerTokenParts[1], true
 }
 
-func GetDefaultResponseMode(responseType constants.ResponseType, responseMode constants.ResponseMode) constants.ResponseMode {
+// If either an empty or the "jwt" response modes are passed, we must find the default value based on the response type.
+func GetResponseModeOrDefault(responseMode constants.ResponseMode, responseType constants.ResponseType) constants.ResponseMode {
 	if responseMode == "" {
 		return getDefaultResponseMode(responseType)
 	}

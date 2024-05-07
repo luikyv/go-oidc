@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/auth-server/internal/crud/mock"
+	"github.com/luikymagno/auth-server/internal/crud/inmemory"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"golang.org/x/crypto/bcrypt"
@@ -66,7 +66,7 @@ func SetUp() (ctx Context, tearDown func()) {
 	}
 
 	// Save
-	ctx = GetMockedContext("https://example.com", jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jwk}})
+	ctx = GetInMemoryContext("https://example.com", jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jwk}})
 	ctx.GrantModelManager.Create(grantModel)
 	ctx.ClientManager.Create(client)
 
@@ -76,22 +76,22 @@ func SetUp() (ctx Context, tearDown func()) {
 	}
 }
 
-func GetMockedRequestContext() *gin.Context {
+func GetInMemoryRequestContext() *gin.Context {
 	gin.SetMode(gin.TestMode)
 	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
 	ctx.Request = &http.Request{}
 	return ctx
 }
 
-func GetMockedContext(host string, privateJWKS jose.JSONWebKeySet) Context {
+func GetInMemoryContext(host string, privateJWKS jose.JSONWebKeySet) Context {
 	return Context{
 		Host:                host,
-		ScopeManager:        mock.NewMockedScopeManager(),
-		GrantModelManager:   mock.NewMockedGrantModelManager(),
-		ClientManager:       mock.NewMockedClientManager(),
-		GrantSessionManager: mock.NewMockedGrantSessionManager(),
-		AuthnSessionManager: mock.NewMockedAuthnSessionManager(),
-		RequestContext:      GetMockedRequestContext(),
+		ScopeManager:        inmemory.NewInMemoryScopeManager(),
+		GrantModelManager:   inmemory.NewInMemoryGrantModelManager(),
+		ClientManager:       inmemory.NewInMemoryClientManager(),
+		GrantSessionManager: inmemory.NewInMemoryGrantSessionManager(),
+		AuthnSessionManager: inmemory.NewInMemoryAuthnSessionManager(),
+		RequestContext:      GetInMemoryRequestContext(),
 		PrivateJwks:         privateJWKS,
 		Policies:            []AuthnPolicy{},
 		Logger:              slog.Default(),
@@ -99,7 +99,7 @@ func GetMockedContext(host string, privateJWKS jose.JSONWebKeySet) Context {
 }
 
 func GetSessionsFromMock(ctx Context) []models.AuthnSession {
-	sessionManager, _ := ctx.AuthnSessionManager.(*mock.MockedAuthnSessionManager)
+	sessionManager, _ := ctx.AuthnSessionManager.(*inmemory.InMemoryAuthnSessionManager)
 	sessions := make([]models.AuthnSession, 0, len(sessionManager.Sessions))
 	for _, s := range sessionManager.Sessions {
 		sessions = append(sessions, s)
@@ -109,7 +109,7 @@ func GetSessionsFromMock(ctx Context) []models.AuthnSession {
 }
 
 func GetTokenFromMock(ctx Context) []models.GrantSession {
-	tokenManager, _ := ctx.GrantSessionManager.(*mock.MockedGrantSessionManager)
+	tokenManager, _ := ctx.GrantSessionManager.(*inmemory.InMemoryGrantSessionManager)
 	tokens := make([]models.GrantSession, 0, len(tokenManager.GrantSessions))
 	for _, t := range tokenManager.GrantSessions {
 		tokens = append(tokens, t)

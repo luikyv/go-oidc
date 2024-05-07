@@ -126,21 +126,11 @@ func HandleUserInfoRequest(ctx utils.Context) {
 
 func bindErrorToResponse(err error, requestContext *gin.Context) {
 
-	// TODO
-	var oauthErr issues.OAuthBaseError
+	var oauthErr issues.OAuthError
 	if errors.As(err, &oauthErr) {
 		requestContext.JSON(http.StatusBadRequest, gin.H{
-			"error":             oauthErr.ErrorCode,
-			"error_description": oauthErr.ErrorDescription,
-		})
-		return
-	}
-
-	var oauthRedirectErr issues.OAuthRedirectError
-	if errors.As(err, &oauthRedirectErr) {
-		requestContext.JSON(http.StatusBadRequest, gin.H{
-			"error":             oauthRedirectErr.ErrorCode,
-			"error_description": oauthRedirectErr.ErrorDescription,
+			"error":             oauthErr.GetCode(),
+			"error_description": oauthErr.Error(),
 		})
 		return
 	}

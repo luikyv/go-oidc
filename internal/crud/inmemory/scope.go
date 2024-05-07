@@ -1,21 +1,21 @@
-package mock
+package inmemory
 
 import (
 	issues "github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 )
 
-type MockedScopeManager struct {
+type InMemoryScopeManager struct {
 	scopes map[string]models.Scope
 }
 
-func NewMockedScopeManager() *MockedScopeManager {
-	return &MockedScopeManager{
+func NewInMemoryScopeManager() *InMemoryScopeManager {
+	return &InMemoryScopeManager{
 		scopes: make(map[string]models.Scope),
 	}
 }
 
-func (manager *MockedScopeManager) Create(scope models.Scope) error {
+func (manager *InMemoryScopeManager) Create(scope models.Scope) error {
 	_, exists := manager.scopes[scope.Id]
 	if exists {
 		return issues.ErrorEntityAlreadyExists
@@ -25,7 +25,7 @@ func (manager *MockedScopeManager) Create(scope models.Scope) error {
 	return nil
 }
 
-func (manager *MockedScopeManager) Update(id string, scope models.Scope) error {
+func (manager *InMemoryScopeManager) Update(id string, scope models.Scope) error {
 	_, exists := manager.scopes[id]
 	if !exists {
 		return issues.ErrorEntityNotFound
@@ -35,7 +35,7 @@ func (manager *MockedScopeManager) Update(id string, scope models.Scope) error {
 	return nil
 }
 
-func (manager *MockedScopeManager) Get(id string) (models.Scope, error) {
+func (manager *InMemoryScopeManager) Get(id string) (models.Scope, error) {
 	scope, exists := manager.scopes[id]
 	if !exists {
 		return models.Scope{}, issues.ErrorEntityNotFound
@@ -44,7 +44,7 @@ func (manager *MockedScopeManager) Get(id string) (models.Scope, error) {
 	return scope, nil
 }
 
-func (manager *MockedScopeManager) Delete(id string) error {
+func (manager *InMemoryScopeManager) Delete(id string) error {
 	delete(manager.scopes, id)
 	return nil
 }

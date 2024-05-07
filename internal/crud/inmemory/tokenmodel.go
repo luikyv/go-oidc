@@ -1,21 +1,21 @@
-package mock
+package inmemory
 
 import (
 	issues "github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 )
 
-type MockedGrantModelManager struct {
+type InMemoryGrantModelManager struct {
 	models map[string]models.GrantModel
 }
 
-func NewMockedGrantModelManager() *MockedGrantModelManager {
-	return &MockedGrantModelManager{
+func NewInMemoryGrantModelManager() *InMemoryGrantModelManager {
+	return &InMemoryGrantModelManager{
 		models: make(map[string]models.GrantModel),
 	}
 }
 
-func (manager *MockedGrantModelManager) Create(grantModel models.GrantModel) error {
+func (manager *InMemoryGrantModelManager) Create(grantModel models.GrantModel) error {
 
 	_, exists := manager.models[grantModel.Meta.Id]
 	if exists {
@@ -26,7 +26,7 @@ func (manager *MockedGrantModelManager) Create(grantModel models.GrantModel) err
 	return nil
 }
 
-func (manager *MockedGrantModelManager) Update(id string, model models.GrantModel) error {
+func (manager *InMemoryGrantModelManager) Update(id string, model models.GrantModel) error {
 	_, exists := manager.models[id]
 	if !exists {
 		return issues.ErrorEntityNotFound
@@ -36,7 +36,7 @@ func (manager *MockedGrantModelManager) Update(id string, model models.GrantMode
 	return nil
 }
 
-func (manager *MockedGrantModelManager) Get(id string) (models.GrantModel, error) {
+func (manager *InMemoryGrantModelManager) Get(id string) (models.GrantModel, error) {
 	model, exists := manager.models[id]
 	if !exists {
 		return models.GrantModel{}, issues.ErrorEntityNotFound
@@ -45,7 +45,7 @@ func (manager *MockedGrantModelManager) Get(id string) (models.GrantModel, error
 	return model, nil
 }
 
-func (manager *MockedGrantModelManager) Delete(id string) error {
+func (manager *InMemoryGrantModelManager) Delete(id string) error {
 	delete(manager.models, id)
 	return nil
 }
