@@ -23,7 +23,7 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 		IdTokenSigningAlgorithms: ctx.GetSigningAlgorithms(),
 		ClientAuthnMethods:       constants.ClientAuthnTypes,
 		ScopesSupported:          []string{constants.OpenIdScope},
-		JarIsRequired:            false,
+		JarIsRequired:            ctx.JarIsRequired,
 		JarmAlgorithms:           []string{ctx.GetJarmPrivateKey().Algorithm},
 	}
 }

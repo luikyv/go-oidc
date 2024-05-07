@@ -215,12 +215,12 @@ func validateOpenIdCoreParamsWithPrioritiesNoRedirect(
 		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
 	}
 
-	nonce := unit.GetNonEmptyOrDefault(prioritaryParams.Nonce, params.Nonce)
-	if params.ResponseType.Contains(constants.IdTokenResponse) && nonce == "" {
-		return issues.NewOAuthError(constants.InvalidRequest, "nonce is required when response_type contains id_token")
+	if prioritaryParams.ResponseType != "" && params.ResponseType != "" && prioritaryParams.ResponseType != params.ResponseType {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
 	}
 
-	return validateParamsWithPrioritiesCommonRulesNoRedirect(ctx, params, prioritaryParams, client)
+	mergedParams := mergeAuthorizationParams(prioritaryParams, params)
+	return validateOpenIdCoreParamsNoRedirect(ctx, mergedParams, client)
 }
 
 func validateOAuthCoreParamsWithPrioritiesNoRedirect(
@@ -229,38 +229,8 @@ func validateOAuthCoreParamsWithPrioritiesNoRedirect(
 	prioritaryParams models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
-
-	responseType := unit.GetNonEmptyOrDefault(prioritaryParams.ResponseType, params.ResponseType)
-	if !responseType.IsOAuthCoreValid() {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
-	}
-
-	return validateParamsWithPrioritiesCommonRulesNoRedirect(ctx, params, prioritaryParams, client)
-}
-
-func validateParamsWithPrioritiesCommonRulesNoRedirect(
-	ctx utils.Context,
-	params models.AuthorizationParameters,
-	prioritaryParams models.AuthorizationParameters,
-	client models.Client,
-) issues.OAuthError {
-
-	if prioritaryParams.ResponseType != "" && params.ResponseType != "" && prioritaryParams.ResponseType != params.ResponseType {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
-	}
-
-	combinedParams := models.AuthorizationParameters{
-		RedirectUri:         unit.GetNonEmptyOrDefault(prioritaryParams.RedirectUri, params.RedirectUri),
-		ResponseMode:        unit.GetNonEmptyOrDefault(prioritaryParams.ResponseMode, params.ResponseMode),
-		ResponseType:        unit.GetNonEmptyOrDefault(prioritaryParams.ResponseType, params.ResponseType),
-		Scope:               unit.GetNonEmptyOrDefault(prioritaryParams.Scope, params.Scope),
-		State:               unit.GetNonEmptyOrDefault(prioritaryParams.State, params.State),
-		Nonce:               unit.GetNonEmptyOrDefault(prioritaryParams.Nonce, params.Nonce),
-		CodeChallenge:       unit.GetNonEmptyOrDefault(prioritaryParams.CodeChallenge, params.CodeChallenge),
-		CodeChallengeMethod: unit.GetNonEmptyOrDefault(prioritaryParams.CodeChallengeMethod, params.CodeChallengeMethod),
-	}
-
-	return validateParamsCommonRulesNoRedirect(ctx, combinedParams, client)
+	mergedParams := mergeAuthorizationParams(prioritaryParams, params)
+	return validateOAuthCoreParamsNoRedirect(ctx, mergedParams, client)
 }
 
 func validateOpenIdCoreParamsNoRedirect(
@@ -277,23 +247,10 @@ func validateOpenIdCoreParamsNoRedirect(
 		return issues.NewOAuthError(constants.InvalidRequest, "nonce is required when response_type contains id_token")
 	}
 
-	return validateParamsCommonRulesNoRedirect(ctx, params, client)
+	return validateOAuthCoreParamsNoRedirect(ctx, params, client)
 }
 
 func validateOAuthCoreParamsNoRedirect(
-	ctx utils.Context,
-	params models.AuthorizationParameters,
-	client models.Client,
-) issues.OAuthError {
-
-	if !params.ResponseType.IsOAuthCoreValid() {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
-	}
-
-	return validateParamsCommonRulesNoRedirect(ctx, params, client)
-}
-
-func validateParamsCommonRulesNoRedirect(
 	ctx utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
@@ -305,6 +262,10 @@ func validateParamsCommonRulesNoRedirect(
 
 	if params.ResponseType.IsImplict() && !client.IsGrantTypeAllowed(constants.ImplictGrant) {
 		return issues.NewOAuthError(constants.InvalidGrant, "implicit grant not allowed")
+	}
+
+	if params.ResponseType.Contains(constants.IdTokenResponse) && !unit.ScopeContainsOpenId(params.Scope) {
+		return issues.NewOAuthError(constants.InvalidRequest, "cannot request id_token without the scope openid")
 	}
 
 	if params.RedirectUri == "" {
@@ -357,4 +318,20 @@ func validateNonEmptyParamsNoRedirect(
 	}
 
 	return nil
+}
+
+func mergeAuthorizationParams(
+	prioritaryParams models.AuthorizationParameters,
+	params models.AuthorizationParameters,
+) models.AuthorizationParameters {
+	return models.AuthorizationParameters{
+		RedirectUri:         unit.GetNonEmptyOrDefault(prioritaryParams.RedirectUri, params.RedirectUri),
+		ResponseMode:        unit.GetNonEmptyOrDefault(prioritaryParams.ResponseMode, params.ResponseMode),
+		ResponseType:        unit.GetNonEmptyOrDefault(prioritaryParams.ResponseType, params.ResponseType),
+		Scope:               unit.GetNonEmptyOrDefault(prioritaryParams.Scope, params.Scope),
+		State:               unit.GetNonEmptyOrDefault(prioritaryParams.State, params.State),
+		Nonce:               unit.GetNonEmptyOrDefault(prioritaryParams.Nonce, params.Nonce),
+		CodeChallenge:       unit.GetNonEmptyOrDefault(prioritaryParams.CodeChallenge, params.CodeChallenge),
+		CodeChallengeMethod: unit.GetNonEmptyOrDefault(prioritaryParams.CodeChallengeMethod, params.CodeChallengeMethod),
+	}
 }

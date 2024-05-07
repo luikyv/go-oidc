@@ -92,6 +92,7 @@ func (manager OpenIDManager) getContext(requestContext *gin.Context) utils.Conte
 		manager.privateJwks,
 		manager.privateJarmKeyId,
 		false,
+		false,
 		manager.policies,
 		requestContext,
 	)
