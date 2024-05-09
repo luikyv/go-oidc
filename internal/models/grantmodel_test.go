@@ -25,12 +25,10 @@ func TestOpaqueGrantModelGenerateToken(t *testing.T) {
 			ExpiresInSecs: 60,
 		},
 	}
-	grantContext := models.GrantContext{
+	grantContext := models.GrantOptions{
 		Subject:  "user_id",
 		ClientId: "client_id",
-		TokenContext: models.TokenContext{
-			Scopes: []string{"scope1", "scope2"},
-		},
+		Scopes:   []string{"scope1", "scope2"},
 	}
 
 	// Then.
@@ -82,11 +80,11 @@ func TestJWTGrantModelGenerateToken(t *testing.T) {
 		},
 	}
 
-	grantContext := models.GrantContext{
+	grantContext := models.GrantOptions{
 		Subject:  "user_id",
 		ClientId: "client_id",
-		TokenContext: models.TokenContext{
-			Scopes:                []string{"scope1", "scope2"},
+		Scopes:   []string{"scope1", "scope2"},
+		TokenOptions: models.TokenOptions{
 			AdditionalTokenClaims: map[string]string{"custom_claim": "custom_value"},
 		},
 	}

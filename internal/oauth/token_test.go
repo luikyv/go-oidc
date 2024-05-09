@@ -108,6 +108,46 @@ func TestClientCredentialsHandleGrantCreation(t *testing.T) {
 	}
 }
 
+func TestHandleGrantCreationWithDpop(t *testing.T) {
+	// When
+	ctx, tearDown := oauth.SetUp()
+	defer tearDown()
+	client, _ := ctx.ClientManager.Get(oauth.ValidClientId)
+	req := models.TokenRequest{
+		DpopJwt: "eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiYVRtMk95eXFmaHFfZk5GOVVuZXlrZG0yX0dCZnpZVldDNEI1Wlo1SzNGUSIsInkiOiI4eFRhUERFTVRtNXM1d1MzYmFvVVNNcU01R0VJWDFINzMwX1hqV2lRaGxRIn19.eyJqdGkiOiItQndDM0VTYzZhY2MybFRjIiwiaHRtIjoiUE9TVCIsImh0dSI6Imh0dHBzOi8vZXhhbXBsZS5jb20vdG9rZW4iLCJpYXQiOjE1NjIyNjUyOTZ9.AzzSCVYIimNZyJQefZq7cF252PukDvRrxMqrrcH6FFlHLvpXyk9j8ybtS36GHlnyH_uuy2djQphfyHGeDfxidQ",
+		ClientAuthnRequest: models.ClientAuthnRequest{
+			ClientIdPost:     oauth.ValidClientId,
+			ClientSecretPost: oauth.ValidClientSecret,
+		},
+		GrantType: constants.ClientCredentialsGrant,
+		Scope:     strings.Join(client.Scopes, " "),
+	}
+
+	// Then
+	_, err := oauth.HandleGrantCreation(ctx, req)
+
+	// Assert
+	if err != nil {
+		t.Errorf("no error should be returned: %s", err.Error())
+		return
+	}
+
+	grantSessionManager, _ := ctx.GrantSessionManager.(*inmemory.InMemoryGrantSessionManager)
+	grantSessions := make([]models.GrantSession, 0, len(grantSessionManager.GrantSessions))
+	for _, gs := range grantSessionManager.GrantSessions {
+		grantSessions = append(grantSessions, gs)
+	}
+	if len(grantSessions) != 1 {
+		t.Error("there should be only one token session")
+		return
+	}
+
+	if grantSessions[0].JwkThumbprint != "BABEGlQNVH1K8KXO7qLKtvUFhAadQ5-dVGBfDfelwhQ" {
+		t.Errorf("invalid jwk thumbprint. actual: %s", grantSessions[0].JwkThumbprint)
+		return
+	}
+}
+
 func TestAuthorizationCodeHandleGrantCreation(t *testing.T) {
 
 	// When

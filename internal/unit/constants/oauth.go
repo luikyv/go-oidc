@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+
+	"github.com/go-jose/go-jose/v4"
 )
 
 type GrantType string
@@ -181,6 +183,10 @@ var SubjectIdentifierTypes []SubjectIdentifierType = []SubjectIdentifierType{
 	PublicSubjectIdentifier,
 }
 
+var DpopSigningAlgorithms = []jose.SignatureAlgorithm{
+	jose.RS256, jose.ES256,
+}
+
 type ErrorCode string
 
 const (
@@ -207,6 +213,9 @@ var ErrorCodeToStatusCode map[ErrorCode]int = map[ErrorCode]int{
 
 type Header string
 
-const CorrelationIdHeader Header = "X-Correlation-ID"
+const (
+	CorrelationIdHeader Header = "X-Correlation-ID"
+	DpopHeader          Header = "DPoP"
+)
 
 const OpenIdScope string = "openid"

@@ -1,6 +1,9 @@
 package oauth
 
 import (
+	"time"
+
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -8,6 +11,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
+// TODO: Don't use a separeted file for this.
 //-------------------------------------------------------------- Validators --------------------------------------------------------------//
 
 // Validate a client authentication request and return a valid client ID from it.
@@ -334,4 +338,57 @@ func mergeAuthorizationParams(
 		CodeChallenge:       unit.GetNonEmptyOrDefault(prioritaryParams.CodeChallenge, params.CodeChallenge),
 		CodeChallengeMethod: unit.GetNonEmptyOrDefault(prioritaryParams.CodeChallengeMethod, params.CodeChallengeMethod),
 	}
+}
+
+func validateDpopJwt(dpopJwt string, expectedDpopClaims models.DpopClaims) issues.OAuthError {
+	parsedDpopJwt, err := jwt.ParseSigned(dpopJwt, constants.DpopSigningAlgorithms)
+	if err != nil {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid dpop")
+	}
+
+	if len(parsedDpopJwt.Headers) != 1 {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid dpop")
+	}
+
+	if parsedDpopJwt.Headers[0].ExtraHeaders["typ"] != "dpop+jwt" {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid typ header")
+	}
+
+	jwk := parsedDpopJwt.Headers[0].JSONWebKey
+	if jwk == nil || !jwk.IsPublic() {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid jwk header")
+	}
+
+	var claims jwt.Claims
+	var dpopClaims models.DpopClaims
+	if err := parsedDpopJwt.Claims(jwk.Key, &claims, &dpopClaims); err != nil {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid dpop")
+	}
+
+	if claims.IssuedAt == nil {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid iat claim")
+	}
+
+	if claims.ID == "" {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid jti claim")
+	}
+
+	if expectedDpopClaims.HttpMethod != "" && dpopClaims.HttpMethod != expectedDpopClaims.HttpMethod {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid htm claim")
+	}
+
+	if expectedDpopClaims.HttpUri != "" && dpopClaims.HttpUri != expectedDpopClaims.HttpUri {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid htu claim")
+	}
+
+	if expectedDpopClaims.AccessToken != "" && dpopClaims.AccessTokenHash != unit.CreateSha256Hash(expectedDpopClaims.AccessToken) {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid ath claim")
+	}
+
+	err = claims.ValidateWithLeeway(jwt.Expected{}, time.Duration(0))
+	if err != nil {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid dpop")
+	}
+
+	return nil
 }

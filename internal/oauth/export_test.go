@@ -1,14 +1,15 @@
 package oauth
 
 import (
-	"encoding/json"
+	"crypto/rand"
+	"crypto/rsa"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
-	inmemory "github.com/luikymagno/auth-server/internal/crud/inmemory"
+	"github.com/luikymagno/auth-server/internal/crud/inmemory"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
@@ -20,6 +21,7 @@ var ValidateAuthorizationRequest = validateAuthorizationRequest
 var ValidateAuthorizationRequestWithPar = validateAuthorizationRequestWithPar
 var ValidateAuthorizationRequestWithJar = validateAuthorizationRequestWithJar
 var ExtractJarFromRequestObject = extractJarFromRequestObject
+var ValidateDpopJwt = validateDpopJwt
 
 const Host = "https://example.com"
 
@@ -38,15 +40,13 @@ func GetDummyContext() utils.Context {
 
 func SetUp() (ctx utils.Context, tearDown func()) {
 	// Create
-	keyId := "0afee142-a0af-4410-abcc-9f2d44ff45b5"
-	jwkBytes, _ := json.Marshal(map[string]any{
-		"kty": "oct",
-		"kid": keyId,
-		"alg": "HS256",
-		"k":   "FdFYFzERwC2uCBB46pZQi4GG85LujR8obt-KWRBICVQ",
-	})
-	var jwk jose.JSONWebKey
-	jwk.UnmarshalJSON(jwkBytes)
+	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+	jwk := jose.JSONWebKey{
+		Key:       privateKey,
+		KeyID:     "rsa_key",
+		Algorithm: string(jose.RS256),
+		Use:       string(constants.KeySigningUsage),
+	}
 	grantModel := models.GrantModel{
 		TokenMaker: models.OpaqueTokenMaker{
 			TokenLength: 20,

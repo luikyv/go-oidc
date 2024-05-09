@@ -402,6 +402,7 @@ func TestContinueAuthentication(t *testing.T) {
 
 func TestExtractJarFromRequestObject(t *testing.T) {
 	// TODO: Add test cases.
+
 	// When
 	ctx := oauth.GetDummyContext()
 	keyId := "0afee142-a0af-4410-abcc-9f2d44ff45b5"
@@ -411,7 +412,7 @@ func TestExtractJarFromRequestObject(t *testing.T) {
 		KeyID:     keyId,
 		Algorithm: string(jose.RS256),
 		Use:       string(constants.KeySigningUsage),
-	} //TODO: build test keys like this.
+	}
 	client := models.Client{
 		Id: "random_client_id",
 		PublicJwks: jose.JSONWebKeySet{

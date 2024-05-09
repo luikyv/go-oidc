@@ -1,6 +1,7 @@
 package unit
 
 import (
+	"crypto"
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
@@ -64,16 +66,19 @@ func GetUrlWithFragmentParams(redirectUri string, params map[string]string) stri
 	return parsedUrl.String()
 }
 
+func CreateSha256Hash(plainValue string) string {
+	h := sha256.New()
+	h.Write([]byte(plainValue))
+	hashedCodeVerifier := h.Sum(nil)
+	return base64.RawURLEncoding.EncodeToString([]byte(hashedCodeVerifier))
+}
+
 func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod constants.CodeChallengeMethod) bool {
 	switch codeChallengeMethod {
 	case constants.PlainCodeChallengeMethod:
 		return codeChallenge == codeVerifier
 	case constants.SHA256CodeChallengeMethod:
-		h := sha256.New()
-		h.Write([]byte(codeVerifier))
-		hashedCodeVerifier := h.Sum(nil)
-		encodedHashedCodeVerifier := base64.RawURLEncoding.EncodeToString([]byte(hashedCodeVerifier))
-		return codeChallenge == encodedHashedCodeVerifier
+		return codeChallenge == CreateSha256Hash(codeVerifier)
 	}
 
 	return false
@@ -222,4 +227,11 @@ func GetNonEmptyOrDefault[T any](s1 T, s2 T) T {
 	}
 
 	return s1
+}
+
+// Generate a JWK thumbprint for a valid DPoP JWT.
+func GenerateJwkThumbprint(dpopJwt string) string {
+	parsedDpopJwt, _ := jwt.ParseSigned(dpopJwt, constants.DpopSigningAlgorithms)
+	jkt, _ := parsedDpopJwt.Headers[0].JSONWebKey.Thumbprint(crypto.SHA256)
+	return base64.RawURLEncoding.EncodeToString(jkt)
 }

@@ -2,6 +2,7 @@ package oauth
 
 import (
 	"log/slog"
+	"net/http"
 	"slices"
 
 	"github.com/luikymagno/auth-server/internal/issues"
@@ -15,6 +16,10 @@ func HandleGrantCreation(
 	ctx utils.Context,
 	req models.TokenRequest,
 ) (grantSession models.GrantSession, err error) {
+
+	if err := validateDpopJwtRequest(ctx, req); err != nil {
+		return models.GrantSession{}, err
+	}
 
 	switch req.GrantType {
 	case constants.ClientCredentialsGrant:
@@ -51,7 +56,7 @@ func handleClientCredentialsGrantTokenCreation(ctx utils.Context, req models.Tok
 		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, "grant model not found")
 	}
 
-	grantSession := grantModel.GenerateGrantSession(models.NewClientCredentialsGrantContext(client, req))
+	grantSession := grantModel.GenerateGrantSession(models.NewClientCredentialsGrantOptions(client, req))
 
 	if shouldCreateGrantSessionForClientCredentialsGrant(grantSession) {
 		// We only need to create a token session for client credentials when the token is not self-contained,
@@ -121,7 +126,7 @@ func handleAuthorizationCodeGrantTokenCreation(ctx utils.Context, req models.Tok
 	}
 	ctx.Logger.Debug("the token model was loaded successfully")
 
-	grantSession := grantModel.GenerateGrantSession(models.NewAuthorizationCodeGrantContext(session))
+	grantSession := grantModel.GenerateGrantSession(models.NewAuthorizationCodeGrantOptions(req, session))
 	err = nil
 	if shouldCreateGrantSessionForAuthorizationCodeGrant(grantSession) {
 		ctx.Logger.Debug("create token session")
@@ -343,11 +348,22 @@ func generateUpdatedGrantSession(ctx utils.Context, grantSession models.GrantSes
 	}
 	ctx.Logger.Debug("the token model was loaded successfully")
 
-	updatedGrantSession := grantModel.GenerateGrantSession(models.NewRefreshTokenGrantContext(grantSession))
+	updatedGrantSession := grantModel.GenerateGrantSession(models.NewRefreshTokenGrantOptions(grantSession))
 	updatedGrantSession.Id = grantSession.Id
 	// Keep the same creation time to make sure the session will expire.
 	updatedGrantSession.CreatedAtTimestamp = grantSession.CreatedAtTimestamp
 	ctx.GrantSessionManager.CreateOrUpdate(updatedGrantSession)
 
 	return updatedGrantSession, nil
+}
+
+func validateDpopJwtRequest(ctx utils.Context, req models.TokenRequest) issues.OAuthError {
+	if req.DpopJwt != "" {
+		return validateDpopJwt(req.DpopJwt, models.DpopClaims{
+			HttpMethod: http.MethodPost,
+			HttpUri:    ctx.Host + string(constants.TokenEndpoint),
+		})
+	}
+
+	return nil
 }

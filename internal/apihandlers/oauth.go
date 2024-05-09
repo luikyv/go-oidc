@@ -80,6 +80,7 @@ func HandleTokenRequest(ctx utils.Context) {
 		return
 	}
 	addBasicCredentialsToRequest(ctx, &req.ClientAuthnRequest)
+	addProofOfPossesionToRequest(ctx, &req)
 
 	grantSession, err := oauth.HandleGrantCreation(ctx, req)
 	if err != nil {
@@ -147,4 +148,8 @@ func addBasicCredentialsToRequest(ctx utils.Context, req *models.ClientAuthnRequ
 		req.ClientIdBasicAuthn = clientIdBasic
 		req.ClientSecretBasicAuthn = clientSecretBasic
 	}
+}
+
+func addProofOfPossesionToRequest(ctx utils.Context, req *models.TokenRequest) {
+	req.DpopJwt = ctx.RequestContext.GetHeader(string(constants.DpopHeader))
 }

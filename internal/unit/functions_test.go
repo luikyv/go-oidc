@@ -127,7 +127,7 @@ func TestIsPkceValid(t *testing.T) {
 	}
 }
 
-func TestContains(t *testing.T) {
+func TestContainsAll(t *testing.T) {
 	if !unit.ContainsAll([]string{"a", "b", "c"}, []string{"a", "b"}) {
 		t.Errorf("%v should contain %v", []string{"a", "b", "c"}, []string{"a", "b"})
 	}
@@ -187,5 +187,26 @@ func TestAll(t *testing.T) {
 	if ok {
 		t.Errorf("not all the elements respect the condition")
 		return
+	}
+}
+
+func TestGenerateJwkThumbprint(t *testing.T) {
+	testCases := []struct {
+		DpopJwt            string
+		ExpectedThumbprint string
+	}{
+		{
+			"eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7Imt0eSI6IkVDIiwieCI6Imw4dEZyaHgtMzR0VjNoUklDUkRZOXpDa0RscEJoRjQyVVFVZldWQVdCRnMiLCJ5IjoiOVZFNGpmX09rX282NHpiVFRsY3VOSmFqSG10NnY5VERWclUwQ2R2R1JEQSIsImNydiI6IlAtMjU2In19.eyJqdGkiOiItQndDM0VTYzZhY2MybFRjIiwiaHRtIjoiUE9TVCIsImh0dSI6Imh0dHBzOi8vc2VydmVyLmV4YW1wbGUuY29tL3Rva2VuIiwiaWF0IjoxNTYyMjY1Mjk2fQ.pAqut2IRDm_De6PR93SYmGBPXpwrAk90e8cP2hjiaG5QsGSuKDYW7_X620BxqhvYC8ynrrvZLTk41mSRroapUA",
+			"0ZcOCORZNYy-DWpqq30jZyJGHTN0d2HglBV3uiguA4I",
+		},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
+			jkt := unit.GenerateJwkThumbprint(testCase.DpopJwt)
+			if jkt != testCase.ExpectedThumbprint {
+				t.Errorf("invalid thumbprint. expected: %s - actual: %s", testCase.ExpectedThumbprint, jkt)
+			}
+		})
 	}
 }

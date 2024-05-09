@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"maps"
 	"net/http"
-	"slices"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
@@ -287,7 +286,7 @@ func generateImplictParams(
 
 	// Generate a token if the client requested it.
 	if session.ResponseType.Contains(constants.TokenResponse) {
-		grantSession := grantModel.GenerateGrantSession(models.NewImplictGrantContext(session))
+		grantSession := grantModel.GenerateGrantSession(models.NewImplictGrantOptions(session))
 		err := ctx.GrantSessionManager.CreateOrUpdate(grantSession)
 		if err != nil {
 			return map[string]string{}, err
@@ -297,9 +296,9 @@ func generateImplictParams(
 	}
 
 	// Generate an ID token if the client requested it.
-	if slices.Contains(unit.SplitStringWithSpaces(session.Scope), constants.OpenIdScope) && session.ResponseType.Contains(constants.IdTokenResponse) {
+	if unit.ScopeContainsOpenId(session.Scope) && session.ResponseType.Contains(constants.IdTokenResponse) {
 		implictParams["id_token"] = grantModel.GenerateIdToken(
-			models.NewImplictGrantContextForIdToken(session, models.IdTokenContext{
+			models.NewImplictGrantOptionsForIdToken(session, models.IdTokenOptions{
 				AccessToken:             implictParams["access_token"],
 				AuthorizationCode:       session.AuthorizationCode,
 				State:                   session.State,
@@ -373,7 +372,7 @@ func extractJarFromRequestObject(
 	}
 
 	// Verify that the assertion indicates the key ID.
-	if len(parsedToken.Headers) != 0 && parsedToken.Headers[0].KeyID == "" {
+	if len(parsedToken.Headers) != 1 && parsedToken.Headers[0].KeyID == "" {
 		return models.AuthorizationRequest{}, issues.NewOAuthError(constants.InvalidRequest, "invalid kid header")
 	}
 

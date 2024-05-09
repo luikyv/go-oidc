@@ -7,6 +7,7 @@ import (
 
 type GrantSession struct {
 	Id                      string
+	JwkThumbprint           string
 	GrantModelId            string
 	TokenId                 string
 	Token                   string

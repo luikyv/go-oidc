@@ -36,7 +36,7 @@ func getTokenId(ctx utils.Context, token string) (string, issues.OAuthError) {
 		return token, nil
 	}
 
-	if len(parsedToken.Headers) == 0 || parsedToken.Headers[0].KeyID == "" {
+	if len(parsedToken.Headers) != 1 || parsedToken.Headers[0].KeyID == "" {
 		return "", issues.NewOAuthError(constants.InvalidRequest, "invalid header kid")
 	}
 

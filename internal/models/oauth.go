@@ -7,7 +7,14 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
-type IdTokenContext struct {
+type DpopClaims struct {
+	HttpMethod      string `json:"htm"`
+	HttpUri         string `json:"htu"`
+	AccessToken     string
+	AccessTokenHash string `json:"ath"`
+}
+
+type IdTokenOptions struct {
 	Nonce                   string
 	AdditionalIdTokenClaims map[string]string
 	// These values here below are intended to be hashed and placed in the ID token.
@@ -17,89 +24,92 @@ type IdTokenContext struct {
 	State             string
 }
 
-type TokenContext struct {
-	Scopes                []string
-	GrantType             constants.GrantType
+type TokenOptions struct {
+	DpopJwt               string
 	AdditionalTokenClaims map[string]string
 }
 
-type GrantContext struct {
-	Subject  string
-	ClientId string
-	TokenContext
-	IdTokenContext
+type GrantOptions struct {
+	GrantType constants.GrantType
+	Subject   string
+	ClientId  string
+	Scopes    []string
+	TokenOptions
+	IdTokenOptions
 }
 
-func NewClientCredentialsGrantContext(client Client, req TokenRequest) GrantContext {
-	return GrantContext{
-		Subject:  client.Id,
-		ClientId: client.Id,
-		TokenContext: TokenContext{
-			Scopes:                unit.SplitStringWithSpaces(req.Scope),
-			GrantType:             constants.ClientCredentialsGrant,
+func NewClientCredentialsGrantOptions(client Client, req TokenRequest) GrantOptions {
+	return GrantOptions{
+		GrantType: constants.ClientCredentialsGrant,
+		Scopes:    unit.SplitStringWithSpaces(req.Scope),
+		Subject:   client.Id,
+		ClientId:  client.Id,
+		TokenOptions: TokenOptions{
+			DpopJwt:               req.DpopJwt,
 			AdditionalTokenClaims: make(map[string]string),
 		},
-		IdTokenContext: IdTokenContext{
+		IdTokenOptions: IdTokenOptions{
 			AdditionalIdTokenClaims: make(map[string]string),
 		},
 	}
 }
 
-func NewAuthorizationCodeGrantContext(session AuthnSession) GrantContext {
-	return GrantContext{
-		Subject:  session.Subject,
-		ClientId: session.ClientId,
-		TokenContext: TokenContext{
-			Scopes:                unit.SplitStringWithSpaces(session.Scope),
-			GrantType:             constants.AuthorizationCodeGrant,
+func NewAuthorizationCodeGrantOptions(req TokenRequest, session AuthnSession) GrantOptions {
+	return GrantOptions{
+		GrantType: constants.AuthorizationCodeGrant,
+		Scopes:    unit.SplitStringWithSpaces(session.Scope),
+		Subject:   session.Subject,
+		ClientId:  session.ClientId,
+		TokenOptions: TokenOptions{
+			DpopJwt:               req.DpopJwt,
 			AdditionalTokenClaims: session.AdditionalTokenClaims,
 		},
-		IdTokenContext: IdTokenContext{
+		IdTokenOptions: IdTokenOptions{
 			Nonce:                   session.Nonce,
 			AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
 		},
 	}
 }
 
-func NewImplictGrantContext(session AuthnSession) GrantContext {
-	return GrantContext{
-		Subject:  session.Subject,
-		ClientId: session.ClientId,
-		TokenContext: TokenContext{
-			Scopes:                unit.SplitStringWithSpaces(session.Scope),
-			GrantType:             constants.ImplictGrant,
+func NewImplictGrantOptions(session AuthnSession) GrantOptions {
+	return GrantOptions{
+		GrantType: constants.ImplictGrant,
+		Scopes:    unit.SplitStringWithSpaces(session.Scope),
+		Subject:   session.Subject,
+		ClientId:  session.ClientId,
+		TokenOptions: TokenOptions{
 			AdditionalTokenClaims: session.AdditionalTokenClaims,
 		},
-		IdTokenContext: IdTokenContext{
+		IdTokenOptions: IdTokenOptions{
 			Nonce:                   session.Nonce,
 			AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
 		},
 	}
 }
 
-func NewImplictGrantContextForIdToken(session AuthnSession, idToken IdTokenContext) GrantContext {
-	return GrantContext{
-		Subject:  session.Subject,
-		ClientId: session.ClientId,
-		TokenContext: TokenContext{
-			Scopes:                unit.SplitStringWithSpaces(session.Scope),
-			GrantType:             constants.ImplictGrant,
+func NewImplictGrantOptionsForIdToken(session AuthnSession, idToken IdTokenOptions) GrantOptions {
+	return GrantOptions{
+		GrantType: constants.ImplictGrant,
+		Scopes:    unit.SplitStringWithSpaces(session.Scope),
+		Subject:   session.Subject,
+		ClientId:  session.ClientId,
+		TokenOptions: TokenOptions{
 			AdditionalTokenClaims: session.AdditionalTokenClaims,
 		},
-		IdTokenContext: idToken,
+		IdTokenOptions: idToken,
 	}
 }
 
-func NewRefreshTokenGrantContext(session GrantSession) GrantContext {
-	return GrantContext{
-		Subject:  session.Subject,
-		ClientId: session.ClientId,
-		TokenContext: TokenContext{
-			Scopes:                session.Scopes,
-			GrantType:             constants.RefreshTokenGrant,
+func NewRefreshTokenGrantOptions(session GrantSession) GrantOptions {
+	return GrantOptions{
+		GrantType: constants.RefreshTokenGrant,
+		Scopes:    session.Scopes,
+		Subject:   session.Subject,
+		ClientId:  session.ClientId,
+		TokenOptions: TokenOptions{
 			AdditionalTokenClaims: session.AdditionalTokenClaims,
 		},
-		IdTokenContext: IdTokenContext{
+		IdTokenOptions: IdTokenOptions{
 			Nonce:                   session.Nonce,
 			AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
 		},
@@ -118,6 +128,7 @@ type ClientAuthnRequest struct {
 
 type TokenRequest struct {
 	ClientAuthnRequest
+	DpopJwt           string
 	GrantType         constants.GrantType `form:"grant_type" binding:"required"`
 	Scope             string              `form:"scope"`
 	AuthorizationCode string              `form:"code"`

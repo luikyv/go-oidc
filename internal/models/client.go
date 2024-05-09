@@ -61,7 +61,7 @@ func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(req Client
 	}
 
 	// Verify that the assertion indicates the key ID.
-	if len(assertion.Headers) != 0 && assertion.Headers[0].KeyID == "" {
+	if len(assertion.Headers) != 1 && assertion.Headers[0].KeyID == "" {
 		return false
 	}
 

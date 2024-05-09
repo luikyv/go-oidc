@@ -5,6 +5,7 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"hash"
+	"slices"
 	"strings"
 
 	"github.com/go-jose/go-jose/v4"
@@ -26,25 +27,31 @@ type GrantMetaInfo struct {
 //---------------------------------------- Token Makers ----------------------------------------//
 
 type Token struct {
-	Id     string
-	Format constants.TokenFormat
-	Value  string
+	Id            string
+	Format        constants.TokenFormat
+	Value         string
+	JwkThumbprint string
 }
 
 type AccessTokenMaker interface {
-	MakeToken(grantMeta GrantMetaInfo, grantCtx GrantContext) Token
+	MakeToken(grantMeta GrantMetaInfo, grantOptions GrantOptions) Token
 }
 
 type OpaqueTokenMaker struct {
 	TokenLength int
 }
 
-func (maker OpaqueTokenMaker) MakeToken(grantMeta GrantMetaInfo, grantCtx GrantContext) Token {
+func (maker OpaqueTokenMaker) MakeToken(grantMeta GrantMetaInfo, grantOptions GrantOptions) Token {
 	accessToken := unit.GenerateRandomString(maker.TokenLength, maker.TokenLength)
+	jkt := ""
+	if grantOptions.DpopJwt != "" {
+		jkt = unit.GenerateJwkThumbprint(grantOptions.DpopJwt)
+	}
 	return Token{
-		Id:     accessToken,
-		Format: constants.Opaque,
-		Value:  accessToken,
+		Id:            accessToken,
+		Format:        constants.Opaque,
+		Value:         accessToken,
+		JwkThumbprint: jkt,
 	}
 }
 
@@ -52,20 +59,30 @@ type JWTTokenMaker struct {
 	PrivateJWK jose.JSONWebKey
 }
 
-func (maker JWTTokenMaker) MakeToken(grantMeta GrantMetaInfo, grantCtx GrantContext) Token {
+func (maker JWTTokenMaker) MakeToken(grantMeta GrantMetaInfo, grantOptions GrantOptions) Token {
 	jwtId := uuid.NewString()
 	timestampNow := unit.GetTimestampNow()
 	claims := map[string]any{
 		string(constants.TokenIdClaim):  jwtId,
 		string(constants.IssuerClaim):   grantMeta.Issuer,
-		string(constants.SubjectClaim):  grantCtx.Subject,
-		string(constants.ScopeClaim):    strings.Join(grantCtx.Scopes, " "),
+		string(constants.SubjectClaim):  grantOptions.Subject,
+		string(constants.ScopeClaim):    strings.Join(grantOptions.Scopes, " "),
 		string(constants.IssuedAtClaim): timestampNow,
 		string(constants.ExpiryClaim):   timestampNow + grantMeta.ExpiresInSecs,
 	}
-	for k, v := range grantCtx.AdditionalTokenClaims {
+
+	jkt := ""
+	if grantOptions.DpopJwt != "" {
+		jkt = unit.GenerateJwkThumbprint(grantOptions.DpopJwt)
+		claims["cnf"] = map[string]string{
+			"jkt": jkt,
+		}
+	}
+
+	for k, v := range grantOptions.AdditionalTokenClaims {
 		claims[k] = v
 	}
+
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(maker.PrivateJWK.Algorithm), Key: maker.PrivateJWK.Key},
 		// RFC9068. "...This specification registers the "application/at+jwt" media type,
@@ -75,9 +92,10 @@ func (maker JWTTokenMaker) MakeToken(grantMeta GrantMetaInfo, grantCtx GrantCont
 
 	accessToken, _ := jwt.Signed(signer).Claims(claims).Serialize()
 	return Token{
-		Id:     jwtId,
-		Format: constants.JWT,
-		Value:  accessToken,
+		Id:            jwtId,
+		Format:        constants.JWT,
+		Value:         accessToken,
+		JwkThumbprint: jkt,
 	}
 }
 
@@ -106,35 +124,35 @@ func (grantModel GrantModel) generateHalfHashClaim(claimValue string) string {
 	return base64.RawURLEncoding.EncodeToString(halfHashedClaim)
 }
 
-func (grantModel GrantModel) GenerateIdToken(grantCtx GrantContext) string {
+func (grantModel GrantModel) GenerateIdToken(grantOptions GrantOptions) string {
 	timestampNow := unit.GetTimestampNow()
 
 	// Set the token claims.
 	claims := map[string]any{
 		string(constants.IssuerClaim):   grantModel.Meta.Issuer,
-		string(constants.SubjectClaim):  grantCtx.Subject,
-		string(constants.AudienceClaim): grantCtx.ClientId,
+		string(constants.SubjectClaim):  grantOptions.Subject,
+		string(constants.AudienceClaim): grantOptions.ClientId,
 		string(constants.IssuedAtClaim): timestampNow,
 		string(constants.ExpiryClaim):   timestampNow + grantModel.Meta.ExpiresInSecs,
 	}
 
-	if grantCtx.Nonce != "" {
-		claims[string(constants.NonceClaim)] = grantCtx.Nonce
+	if grantOptions.Nonce != "" {
+		claims[string(constants.NonceClaim)] = grantOptions.Nonce
 	}
 
-	if grantCtx.AccessToken != "" {
-		claims[string(constants.AccessTokenHashClaim)] = grantModel.generateHalfHashClaim(grantCtx.AccessToken)
+	if grantOptions.AccessToken != "" {
+		claims[string(constants.AccessTokenHashClaim)] = grantModel.generateHalfHashClaim(grantOptions.AccessToken)
 	}
 
-	if grantCtx.AuthorizationCode != "" {
-		claims[string(constants.AuthorizationCodeHashClaim)] = grantModel.generateHalfHashClaim(grantCtx.AuthorizationCode)
+	if grantOptions.AuthorizationCode != "" {
+		claims[string(constants.AuthorizationCodeHashClaim)] = grantModel.generateHalfHashClaim(grantOptions.AuthorizationCode)
 	}
 
-	if grantCtx.State != "" {
-		claims[string(constants.StateHashClaim)] = grantModel.generateHalfHashClaim(grantCtx.State)
+	if grantOptions.State != "" {
+		claims[string(constants.StateHashClaim)] = grantModel.generateHalfHashClaim(grantOptions.State)
 	}
 
-	for k, v := range grantCtx.AdditionalIdTokenClaims {
+	for k, v := range grantOptions.AdditionalIdTokenClaims {
 		claims[k] = v
 	}
 
@@ -148,41 +166,42 @@ func (grantModel GrantModel) GenerateIdToken(grantCtx GrantContext) string {
 	return idToken
 }
 
-func (grantModel GrantModel) GenerateGrantSession(grantCtx GrantContext) GrantSession {
-	token := grantModel.TokenMaker.MakeToken(grantModel.Meta, grantCtx)
+func (grantModel GrantModel) GenerateGrantSession(grantOptions GrantOptions) GrantSession {
+	token := grantModel.TokenMaker.MakeToken(grantModel.Meta, grantOptions)
 	grantSession := GrantSession{
 		Id:                      uuid.NewString(),
+		JwkThumbprint:           token.JwkThumbprint,
 		TokenId:                 token.Id,
 		GrantModelId:            grantModel.Meta.Id,
 		Token:                   token.Value,
 		TokenFormat:             token.Format,
 		ExpiresInSecs:           grantModel.Meta.ExpiresInSecs,
 		CreatedAtTimestamp:      unit.GetTimestampNow(),
-		Subject:                 grantCtx.Subject,
-		ClientId:                grantCtx.ClientId,
-		Scopes:                  grantCtx.Scopes,
-		Nonce:                   grantCtx.Nonce,
-		AdditionalTokenClaims:   grantCtx.AdditionalTokenClaims,
-		AdditionalIdTokenClaims: grantCtx.AdditionalIdTokenClaims,
+		Subject:                 grantOptions.Subject,
+		ClientId:                grantOptions.ClientId,
+		Scopes:                  grantOptions.Scopes,
+		Nonce:                   grantOptions.Nonce,
+		AdditionalTokenClaims:   grantOptions.AdditionalTokenClaims,
+		AdditionalIdTokenClaims: grantOptions.AdditionalIdTokenClaims,
 	}
 
-	if grantModel.shouldGenerateRefreshToken(grantCtx) {
+	if grantModel.shouldGenerateRefreshToken(grantOptions) {
 		grantSession.RefreshToken = unit.GenerateRefreshToken()
 		grantSession.RefreshTokenExpiresIn = grantModel.Meta.RefreshLifetimeSecs
 	}
 
-	if grantModel.shouldGenerateIdToken(grantCtx) {
-		grantSession.IdToken = grantModel.GenerateIdToken(grantCtx)
+	if grantModel.shouldGenerateIdToken(grantOptions) {
+		grantSession.IdToken = grantModel.GenerateIdToken(grantOptions)
 	}
 
 	return grantSession
 }
 
-func (grantModel GrantModel) shouldGenerateRefreshToken(grantCtx GrantContext) bool {
+func (grantModel GrantModel) shouldGenerateRefreshToken(grantOptions GrantOptions) bool {
 	// There is no need to create a refresh token for the client credentials grant since no user consent is needed.
-	return grantCtx.GrantType != constants.ClientCredentialsGrant && grantModel.Meta.IsRefreshable
+	return grantOptions.GrantType != constants.ClientCredentialsGrant && grantModel.Meta.IsRefreshable
 }
 
-func (grantModel GrantModel) shouldGenerateIdToken(grantCtx GrantContext) bool {
-	return unit.ContainsAll(grantCtx.Scopes, []string{constants.OpenIdScope})
+func (grantModel GrantModel) shouldGenerateIdToken(grantOptions GrantOptions) bool {
+	return slices.Contains(grantOptions.Scopes, constants.OpenIdScope)
 }
