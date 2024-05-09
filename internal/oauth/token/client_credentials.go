@@ -53,6 +53,10 @@ func preValidateClientCredentialsGrantRequest(req models.TokenRequest) issues.OA
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid parameter for client credentials grant")
 	}
 
+	if unit.ScopeContainsOpenId(req.Scope) {
+		return issues.NewOAuthError(constants.InvalidScope, "cannot request openid scope for client credentials grant")
+	}
+
 	return nil
 }
 

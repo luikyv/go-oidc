@@ -28,3 +28,5 @@ type GrantSession struct {
 func (grantSession GrantSession) IsRefreshSessionExpired() bool {
 	return unit.GetTimestampNow() > grantSession.CreatedAtTimestamp+grantSession.RefreshTokenExpiresIn
 }
+
+// TODO: The grant session can expire too.

@@ -12,7 +12,8 @@ type DpopClaims struct {
 	HttpUri         string `json:"htu"`
 	AccessTokenHash string `json:"ath"`
 	// AccessToken should be filled when the DPoP ath claim is expected and should be validated.
-	AccessToken string
+	AccessToken   string
+	JwkThumbprint string
 }
 
 type IdTokenOptions struct {

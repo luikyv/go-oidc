@@ -103,7 +103,7 @@ func HandleTokenRequest(ctx utils.Context) {
 //---------------------------------------- User Info ----------------------------------------//
 
 func HandleUserInfoRequest(ctx utils.Context) {
-	token, ok := getToken(ctx)
+	token, tokenType, ok := unit.GetAuthorizationToken(ctx.RequestContext)
 	if !ok {
 		bindErrorToResponse(issues.OAuthBaseError{
 			ErrorCode:        constants.AccessDenied,
@@ -115,6 +115,14 @@ func HandleUserInfoRequest(ctx utils.Context) {
 	grantSession, err := oauth.HandleUserInfoRequest(ctx, token)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
+		return
+	}
+
+	if !isDpopValid(ctx, token, tokenType, grantSession) {
+		bindErrorToResponse(issues.OAuthBaseError{
+			ErrorCode:        constants.AccessDenied,
+			ErrorDescription: "invalid proof of possesion",
+		}, ctx.RequestContext)
 		return
 	}
 
@@ -140,25 +148,22 @@ func addProofOfPossesionToRequest(ctx utils.Context, req *models.TokenRequest) {
 	req.DpopJwt = ctx.RequestContext.GetHeader(string(constants.DpopHeader))
 }
 
-func getToken(ctx utils.Context) (string, bool) {
-	token, tokenType, ok := unit.GetToken(ctx.RequestContext)
-	if !ok {
-		return "", false
+func isDpopValid(ctx utils.Context, token string, tokenType constants.TokenType, grantSession models.GrantSession) bool {
+
+	if grantSession.JwkThumbprint == "" && tokenType != constants.DpopToken {
+		return true
 	}
 
-	if tokenType == constants.DpopToken && !isDpopValid(ctx, token) {
-		return "", false
-	}
-
-	return token, true
-}
-
-func isDpopValid(ctx utils.Context, token string) bool {
 	dpopJwt := ctx.RequestContext.Request.Header.Get("DPoP")
+	if dpopJwt == "" {
+		return false
+	}
+
 	err := utils.ValidateDpopJwt(dpopJwt, models.DpopClaims{
-		HttpMethod:  ctx.RequestContext.Request.Method,
-		HttpUri:     ctx.RequestContext.Request.URL.RequestURI(),
-		AccessToken: token,
+		HttpMethod:    ctx.RequestContext.Request.Method,
+		HttpUri:       ctx.Host + ctx.RequestContext.Request.URL.RequestURI(),
+		AccessToken:   token,
+		JwkThumbprint: grantSession.JwkThumbprint,
 	})
 	return err == nil
 }

@@ -84,7 +84,7 @@ func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod 
 	return false
 }
 
-func GetToken(requestCtx *gin.Context) (token string, tokenType constants.TokenType, ok bool) {
+func GetAuthorizationToken(requestCtx *gin.Context) (token string, tokenType constants.TokenType, ok bool) {
 	tokenHeader := requestCtx.Request.Header.Get("Authorization")
 	if tokenHeader == "" {
 		return "", "", false

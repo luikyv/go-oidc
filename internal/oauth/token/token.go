@@ -36,12 +36,12 @@ func HandleGrantCreation(
 }
 
 func validateDpopJwtRequest(ctx utils.Context, req models.TokenRequest) issues.OAuthError {
-	if req.DpopJwt != "" {
-		return utils.ValidateDpopJwt(req.DpopJwt, models.DpopClaims{
-			HttpMethod: http.MethodPost,
-			HttpUri:    ctx.Host + string(constants.TokenEndpoint),
-		})
+	if req.DpopJwt == "" {
+		return nil
 	}
 
-	return nil
+	return utils.ValidateDpopJwt(req.DpopJwt, models.DpopClaims{
+		HttpMethod: http.MethodPost,
+		HttpUri:    ctx.Host + string(constants.TokenEndpoint),
+	})
 }

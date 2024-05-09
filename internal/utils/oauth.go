@@ -102,6 +102,10 @@ func ValidateDpopJwt(dpopJwt string, expectedDpopClaims models.DpopClaims) issue
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid ath claim")
 	}
 
+	if expectedDpopClaims.JwkThumbprint != "" && unit.GenerateJwkThumbprint(dpopJwt) != expectedDpopClaims.JwkThumbprint {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid jwk thumbprint")
+	}
+
 	err = claims.ValidateWithLeeway(jwt.Expected{}, time.Duration(0))
 	if err != nil {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid dpop")

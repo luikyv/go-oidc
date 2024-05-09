@@ -33,6 +33,7 @@ func HandleUserInfoRequest(ctx utils.Context, token string) (models.GrantSession
 func getTokenId(ctx utils.Context, token string) (string, issues.OAuthError) {
 	parsedToken, err := jwt.ParseSigned(token, ctx.GetSigningAlgorithms())
 	if err != nil {
+		// If the token is not a valid JWT, we'll treat it as an opaque token.
 		return token, nil
 	}
 

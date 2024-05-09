@@ -75,7 +75,8 @@ func main() {
 	jwtGrantModelId := "jwt_token_model"
 	privateKeyId := "ps256_key"
 	port := 83
-	issuer := fmt.Sprintf("https://host.docker.internal:%v", port)
+	// issuer := fmt.Sprintf("https://host.docker.internal:%v", port)
+	issuer := fmt.Sprintf("https://localhost:%v", port)
 	jwks := loadJwks()
 
 	// Create the manager.
@@ -109,7 +110,7 @@ func main() {
 		Meta: models.GrantMetaInfo{
 			Id:                  jwtGrantModelId,
 			Issuer:              issuer,
-			ExpiresInSecs:       60,
+			ExpiresInSecs:       6000,
 			IsRefreshable:       true,
 			RefreshLifetimeSecs: 60,
 			OpenIdPrivateJWK:    jwks.Key(privateKeyId)[0],
