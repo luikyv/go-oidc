@@ -1,4 +1,4 @@
-package oauth
+package utils
 
 import (
 	"crypto/rand"
@@ -12,18 +12,16 @@ import (
 	"github.com/luikymagno/auth-server/internal/crud/inmemory"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
-	"github.com/luikymagno/auth-server/internal/utils"
 	"golang.org/x/crypto/bcrypt"
 )
 
-var ValidateClientAuthnRequest = validateClientAuthnRequest
-var ValidateAuthorizationRequest = validateAuthorizationRequest
-var ValidateAuthorizationRequestWithPar = validateAuthorizationRequestWithPar
-var ValidateAuthorizationRequestWithJar = validateAuthorizationRequestWithJar
-var ExtractJarFromRequestObject = extractJarFromRequestObject
-var ValidateDpopJwt = validateDpopJwt
+func init() {
+	StepMap = stepMap
+}
 
 const Host = "https://example.com"
+
+var StepMap map[string]AuthnStep
 
 const ValidClientId string = "random_client_id"
 
@@ -31,14 +29,7 @@ const ValidClientSecret string = "password"
 
 const ValidGrantModelId string = "random_token_model"
 
-func GetDummyContext() utils.Context {
-	return utils.Context{
-		Host:   Host,
-		Logger: slog.Default(),
-	}
-}
-
-func SetUp() (ctx utils.Context, tearDown func()) {
+func SetUp() (ctx Context, tearDown func()) {
 	// Create
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	jwk := jose.JSONWebKey{
@@ -62,7 +53,7 @@ func SetUp() (ctx utils.Context, tearDown func()) {
 	client := GetValidClient()
 
 	// Save
-	ctx = GetInMemoryContext(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jwk}})
+	ctx = GetInMemoryContext("https://example.com", jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jwk}})
 	ctx.GrantModelManager.Create(grantModel)
 	ctx.ClientManager.Create(client)
 
@@ -70,6 +61,55 @@ func SetUp() (ctx utils.Context, tearDown func()) {
 		ctx.GrantModelManager.Delete(ValidGrantModelId)
 		ctx.ClientManager.Delete(ValidClientId)
 	}
+}
+
+func GetInMemoryRequestContext() *gin.Context {
+	gin.SetMode(gin.TestMode)
+	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+	ctx.Request = &http.Request{}
+	return ctx
+}
+
+func GetInMemoryContext(host string, privateJWKS jose.JSONWebKeySet) Context {
+	return Context{
+		Host:                host,
+		ScopeManager:        inmemory.NewInMemoryScopeManager(),
+		GrantModelManager:   inmemory.NewInMemoryGrantModelManager(),
+		ClientManager:       inmemory.NewInMemoryClientManager(),
+		GrantSessionManager: inmemory.NewInMemoryGrantSessionManager(),
+		AuthnSessionManager: inmemory.NewInMemoryAuthnSessionManager(),
+		RequestContext:      GetInMemoryRequestContext(),
+		PrivateJwks:         privateJWKS,
+		Policies:            []AuthnPolicy{},
+		Logger:              slog.Default(),
+	}
+}
+
+func GetDummyContext() Context {
+	return Context{
+		Host:   Host,
+		Logger: slog.Default(),
+	}
+}
+
+func GetSessionsFromMock(ctx Context) []models.AuthnSession {
+	sessionManager, _ := ctx.AuthnSessionManager.(*inmemory.InMemoryAuthnSessionManager)
+	sessions := make([]models.AuthnSession, 0, len(sessionManager.Sessions))
+	for _, s := range sessionManager.Sessions {
+		sessions = append(sessions, s)
+	}
+
+	return sessions
+}
+
+func GetTokenFromMock(ctx Context) []models.GrantSession {
+	tokenManager, _ := ctx.GrantSessionManager.(*inmemory.InMemoryGrantSessionManager)
+	tokens := make([]models.GrantSession, 0, len(tokenManager.GrantSessions))
+	for _, t := range tokenManager.GrantSessions {
+		tokens = append(tokens, t)
+	}
+
+	return tokens
 }
 
 func GetValidClient() models.Client {
@@ -88,46 +128,4 @@ func GetValidClient() models.Client {
 			HashedSecret: string(clientHashedSecret),
 		},
 	}
-}
-
-func GetInMemoryRequestContext() *gin.Context {
-	gin.SetMode(gin.TestMode)
-	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
-	ctx.Request = &http.Request{}
-	return ctx
-}
-
-func GetInMemoryContext(privateJWKS jose.JSONWebKeySet) utils.Context {
-	return utils.Context{
-		Host:                Host,
-		ScopeManager:        inmemory.NewInMemoryScopeManager(),
-		GrantModelManager:   inmemory.NewInMemoryGrantModelManager(),
-		ClientManager:       inmemory.NewInMemoryClientManager(),
-		GrantSessionManager: inmemory.NewInMemoryGrantSessionManager(),
-		AuthnSessionManager: inmemory.NewInMemoryAuthnSessionManager(),
-		RequestContext:      GetInMemoryRequestContext(),
-		PrivateJwks:         privateJWKS,
-		Policies:            []utils.AuthnPolicy{},
-		Logger:              slog.Default(),
-	}
-}
-
-func GetSessionsFromMock(ctx utils.Context) []models.AuthnSession {
-	sessionManager, _ := ctx.AuthnSessionManager.(*inmemory.InMemoryAuthnSessionManager)
-	sessions := make([]models.AuthnSession, 0, len(sessionManager.Sessions))
-	for _, s := range sessionManager.Sessions {
-		sessions = append(sessions, s)
-	}
-
-	return sessions
-}
-
-func GetTokenFromMock(ctx utils.Context) []models.GrantSession {
-	tokenManager, _ := ctx.GrantSessionManager.(*inmemory.InMemoryGrantSessionManager)
-	tokens := make([]models.GrantSession, 0, len(tokenManager.GrantSessions))
-	for _, t := range tokenManager.GrantSessions {
-		tokens = append(tokens, t)
-	}
-
-	return tokens
 }

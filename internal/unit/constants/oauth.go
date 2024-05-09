@@ -130,7 +130,8 @@ const (
 type TokenType string
 
 const (
-	Bearer TokenType = "Bearer"
+	BearerToken TokenType = "Bearer"
+	DpopToken   TokenType = "DPoP"
 )
 
 type Claim string

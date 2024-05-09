@@ -1,4 +1,4 @@
-package oauth_test
+package par_test
 
 import (
 	"errors"

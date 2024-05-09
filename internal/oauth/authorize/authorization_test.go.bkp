@@ -1,8 +1,6 @@
-package oauth_test
+package authorize_test
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,8 +8,6 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-jose/go-jose/v4"
-	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
@@ -397,56 +393,5 @@ func TestContinueAuthentication(t *testing.T) {
 	if len(sessions) != 1 {
 		t.Error("the should be only one authentication session")
 		return
-	}
-}
-
-func TestExtractJarFromRequestObject(t *testing.T) {
-	// TODO: Add test cases.
-
-	// When
-	ctx := oauth.GetDummyContext()
-	keyId := "0afee142-a0af-4410-abcc-9f2d44ff45b5"
-	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	jwk := jose.JSONWebKey{
-		Key:       privateKey,
-		KeyID:     keyId,
-		Algorithm: string(jose.RS256),
-		Use:       string(constants.KeySigningUsage),
-	}
-	client := models.Client{
-		Id: "random_client_id",
-		PublicJwks: jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{jwk.Public()},
-		},
-	}
-
-	createdAtTimestamp := unit.GetTimestampNow()
-	signer, _ := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", keyId),
-	)
-	claims := map[string]any{
-		string(constants.IssuerClaim):   client.Id,
-		string(constants.AudienceClaim): ctx.Host,
-		string(constants.IssuedAtClaim): createdAtTimestamp,
-		string(constants.ExpiryClaim):   createdAtTimestamp + 60, // TODO: When the jar expires?
-		"client_id":                     client.Id,
-		"response_type":                 constants.CodeResponse,
-	}
-	request, _ := jwt.Signed(signer).Claims(claims).Serialize()
-
-	jar, err := oauth.ExtractJarFromRequestObject(ctx, request, client)
-
-	// Assert.
-	if err != nil {
-		t.Errorf("error extracting JAR. Error: %s", err.Error())
-	}
-
-	if jar.ClientId != client.Id {
-		t.Errorf("Invalid JAR client_id. JAR: %v", jar)
-	}
-
-	if jar.ResponseType != constants.CodeResponse {
-		t.Errorf("Invalid JAR response_type. JAR: %v", jar)
 	}
 }

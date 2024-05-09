@@ -84,18 +84,18 @@ func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod 
 	return false
 }
 
-func GetBearerToken(requestCtx *gin.Context) (string, bool) {
-	bearerToken := requestCtx.Request.Header.Get("Authorization")
-	if bearerToken == "" {
-		return "", false
+func GetToken(requestCtx *gin.Context) (token string, tokenType constants.TokenType, ok bool) {
+	tokenHeader := requestCtx.Request.Header.Get("Authorization")
+	if tokenHeader == "" {
+		return "", "", false
 	}
 
-	bearerTokenParts := strings.Split(bearerToken, " ")
-	if len(bearerTokenParts) != 2 {
-		return "", false
+	tokenParts := strings.Split(tokenHeader, " ")
+	if len(tokenParts) != 2 {
+		return "", "", false
 	}
 
-	return bearerTokenParts[1], true
+	return tokenParts[1], constants.TokenType(tokenParts[0]), true
 }
 
 // If either an empty or the "jwt" response modes are passed, we must find the default value based on the response type.

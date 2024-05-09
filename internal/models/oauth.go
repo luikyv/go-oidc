@@ -10,8 +10,9 @@ import (
 type DpopClaims struct {
 	HttpMethod      string `json:"htm"`
 	HttpUri         string `json:"htu"`
-	AccessToken     string
 	AccessTokenHash string `json:"ath"`
+	// AccessToken should be filled when the DPoP ath claim is expected and should be validated.
+	AccessToken string
 }
 
 type IdTokenOptions struct {

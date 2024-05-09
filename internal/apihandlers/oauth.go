@@ -8,6 +8,9 @@ import (
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/oauth"
+	"github.com/luikymagno/auth-server/internal/oauth/authorize"
+	"github.com/luikymagno/auth-server/internal/oauth/par"
+	"github.com/luikymagno/auth-server/internal/oauth/token"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
@@ -35,7 +38,7 @@ func HandlePARRequest(ctx utils.Context) {
 	}
 	addBasicCredentialsToRequest(ctx, &req.ClientAuthnRequest)
 
-	requestUri, err := oauth.PushAuthorization(ctx, req)
+	requestUri, err := par.PushAuthorization(ctx, req)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
@@ -56,7 +59,7 @@ func HandleAuthorizeRequest(ctx utils.Context) {
 		return
 	}
 
-	err := oauth.InitAuth(ctx, req)
+	err := authorize.InitAuth(ctx, req)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
@@ -64,7 +67,7 @@ func HandleAuthorizeRequest(ctx utils.Context) {
 }
 
 func HandleAuthorizeCallbackRequest(ctx utils.Context) {
-	err := oauth.ContinueAuth(ctx, ctx.RequestContext.Param("callback"))
+	err := authorize.ContinueAuth(ctx, ctx.RequestContext.Param("callback"))
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
@@ -82,7 +85,7 @@ func HandleTokenRequest(ctx utils.Context) {
 	addBasicCredentialsToRequest(ctx, &req.ClientAuthnRequest)
 	addProofOfPossesionToRequest(ctx, &req)
 
-	grantSession, err := oauth.HandleGrantCreation(ctx, req)
+	grantSession, err := token.HandleGrantCreation(ctx, req)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
@@ -93,14 +96,14 @@ func HandleTokenRequest(ctx utils.Context) {
 		IdToken:      grantSession.IdToken,
 		RefreshToken: grantSession.RefreshToken,
 		ExpiresIn:    grantSession.ExpiresInSecs,
-		TokenType:    constants.Bearer,
+		TokenType:    constants.BearerToken,
 	})
 }
 
 //---------------------------------------- User Info ----------------------------------------//
 
 func HandleUserInfoRequest(ctx utils.Context) {
-	token, ok := unit.GetBearerToken(ctx.RequestContext)
+	token, ok := getToken(ctx)
 	if !ok {
 		bindErrorToResponse(issues.OAuthBaseError{
 			ErrorCode:        constants.AccessDenied,
@@ -125,6 +128,41 @@ func HandleUserInfoRequest(ctx utils.Context) {
 
 //---------------------------------------- Helpers ----------------------------------------//
 
+func addBasicCredentialsToRequest(ctx utils.Context, req *models.ClientAuthnRequest) {
+	clientIdBasic, clientSecretBasic, hasBasicAuthn := ctx.RequestContext.Request.BasicAuth()
+	if hasBasicAuthn {
+		req.ClientIdBasicAuthn = clientIdBasic
+		req.ClientSecretBasicAuthn = clientSecretBasic
+	}
+}
+
+func addProofOfPossesionToRequest(ctx utils.Context, req *models.TokenRequest) {
+	req.DpopJwt = ctx.RequestContext.GetHeader(string(constants.DpopHeader))
+}
+
+func getToken(ctx utils.Context) (string, bool) {
+	token, tokenType, ok := unit.GetToken(ctx.RequestContext)
+	if !ok {
+		return "", false
+	}
+
+	if tokenType == constants.DpopToken && !isDpopValid(ctx, token) {
+		return "", false
+	}
+
+	return token, true
+}
+
+func isDpopValid(ctx utils.Context, token string) bool {
+	dpopJwt := ctx.RequestContext.Request.Header.Get("DPoP")
+	err := utils.ValidateDpopJwt(dpopJwt, models.DpopClaims{
+		HttpMethod:  ctx.RequestContext.Request.Method,
+		HttpUri:     ctx.RequestContext.Request.URL.RequestURI(),
+		AccessToken: token,
+	})
+	return err == nil
+}
+
 func bindErrorToResponse(err error, requestContext *gin.Context) {
 
 	var oauthErr issues.OAuthError
@@ -140,16 +178,4 @@ func bindErrorToResponse(err error, requestContext *gin.Context) {
 		"error":             constants.AccessDenied,
 		"error_description": err.Error(),
 	})
-}
-
-func addBasicCredentialsToRequest(ctx utils.Context, req *models.ClientAuthnRequest) {
-	clientIdBasic, clientSecretBasic, hasBasicAuthn := ctx.RequestContext.Request.BasicAuth()
-	if hasBasicAuthn {
-		req.ClientIdBasicAuthn = clientIdBasic
-		req.ClientSecretBasicAuthn = clientSecretBasic
-	}
-}
-
-func addProofOfPossesionToRequest(ctx utils.Context, req *models.TokenRequest) {
-	req.DpopJwt = ctx.RequestContext.GetHeader(string(constants.DpopHeader))
 }

@@ -1,15 +1,70 @@
-package oauth_test
+package utils_test
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"net/http"
 	"testing"
 
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/oauth"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
+	"github.com/luikymagno/auth-server/internal/utils"
 )
+
+func TestExtractJarFromRequestObject(t *testing.T) {
+	// TODO: Add test cases.
+
+	// When
+	ctx := utils.GetDummyContext()
+	keyId := "0afee142-a0af-4410-abcc-9f2d44ff45b5"
+	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+	jwk := jose.JSONWebKey{
+		Key:       privateKey,
+		KeyID:     keyId,
+		Algorithm: string(jose.RS256),
+		Use:       string(constants.KeySigningUsage),
+	}
+	client := models.Client{
+		Id: "random_client_id",
+		PublicJwks: jose.JSONWebKeySet{
+			Keys: []jose.JSONWebKey{jwk.Public()},
+		},
+	}
+
+	createdAtTimestamp := unit.GetTimestampNow()
+	signer, _ := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", keyId),
+	)
+	claims := map[string]any{
+		string(constants.IssuerClaim):   client.Id,
+		string(constants.AudienceClaim): ctx.Host,
+		string(constants.IssuedAtClaim): createdAtTimestamp,
+		string(constants.ExpiryClaim):   createdAtTimestamp + 60, // TODO: When the jar expires?
+		"client_id":                     client.Id,
+		"response_type":                 constants.CodeResponse,
+	}
+	request, _ := jwt.Signed(signer).Claims(claims).Serialize()
+
+	jar, err := utils.ExtractJarFromRequestObject(ctx, request, client)
+
+	// Assert.
+	if err != nil {
+		t.Errorf("error extracting JAR. Error: %s", err.Error())
+	}
+
+	if jar.ClientId != client.Id {
+		t.Errorf("Invalid JAR client_id. JAR: %v", jar)
+	}
+
+	if jar.ResponseType != constants.CodeResponse {
+		t.Errorf("Invalid JAR response_type. JAR: %v", jar)
+	}
+}
 
 func TestValidateClientAuthnRequest(t *testing.T) {
 	// When.
@@ -85,7 +140,7 @@ func TestValidateClientAuthnRequest(t *testing.T) {
 			c.Name,
 			func(t *testing.T) {
 				// Then.
-				clientId, err := oauth.ValidateClientAuthnRequest(c.Req)
+				clientId, err := utils.ValidateClientAuthnRequest(c.Req)
 
 				// Assert.
 				isValid := err == nil
@@ -103,7 +158,7 @@ func TestValidateClientAuthnRequest(t *testing.T) {
 }
 
 func TestValidateAuthorizationRequest(t *testing.T) {
-	validClient := oauth.GetValidClient()
+	validClient := utils.GetValidClient()
 
 	var cases = []struct {
 		Name                string
@@ -210,8 +265,8 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 			c.Name,
 			func(t *testing.T) {
 				// Then.
-				err := oauth.ValidateAuthorizationRequest(
-					oauth.GetDummyContext(),
+				err := utils.ValidateAuthorizationRequest(
+					utils.GetDummyContext(),
 					c.Req,
 					c.ClientModifyFunc(validClient),
 				)
@@ -234,7 +289,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 }
 
 func TestValidateAuthorizationRequestWithPar(t *testing.T) {
-	validClient := oauth.GetValidClient()
+	validClient := utils.GetValidClient()
 
 	var cases = []struct {
 		Name                string
@@ -297,8 +352,8 @@ func TestValidateAuthorizationRequestWithPar(t *testing.T) {
 			c.Name,
 			func(t *testing.T) {
 				// Then.
-				err := oauth.ValidateAuthorizationRequestWithPar(
-					oauth.GetDummyContext(),
+				err := utils.ValidateAuthorizationRequestWithPar(
+					utils.GetDummyContext(),
 					c.Req,
 					c.Session,
 					c.ClientModifyFunc(validClient),
@@ -321,7 +376,7 @@ func TestValidateAuthorizationRequestWithPar(t *testing.T) {
 }
 
 func TestValidateAuthorizationRequestWithJar(t *testing.T) {
-	validClient := oauth.GetValidClient()
+	validClient := utils.GetValidClient()
 
 	var cases = []struct {
 		Name                string
@@ -398,8 +453,8 @@ func TestValidateAuthorizationRequestWithJar(t *testing.T) {
 			c.Name,
 			func(t *testing.T) {
 				// Then.
-				err := oauth.ValidateAuthorizationRequestWithJar(
-					oauth.GetDummyContext(),
+				err := utils.ValidateAuthorizationRequestWithJar(
+					utils.GetDummyContext(),
 					c.Req,
 					c.Jar,
 					c.ClientModifyFunc(validClient),
@@ -454,7 +509,7 @@ func TestValidateDpopJwt(t *testing.T) {
 			testCase.Name,
 			func(t *testing.T) {
 				// Then.
-				err := oauth.ValidateDpopJwt(testCase.DpopJwt, testCase.ExpectedClaims)
+				err := utils.ValidateDpopJwt(testCase.DpopJwt, testCase.ExpectedClaims)
 
 				// Assert.
 				isValid := err == nil

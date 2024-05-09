@@ -1,9 +1,6 @@
-package oauth
+package authorize
 
 import (
-	"time"
-
-	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -11,74 +8,16 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-// TODO: Don't use a separeted file for this.
-//-------------------------------------------------------------- Validators --------------------------------------------------------------//
-
-// Validate a client authentication request and return a valid client ID from it.
-func validateClientAuthnRequest(
-	req models.ClientAuthnRequest,
-) (validClientId string, err issues.OAuthError) {
-
-	validClientId, ok := getClientId(req)
-	if !ok {
-		return "", issues.NewOAuthError(constants.InvalidClient, "invalid client authentication")
-	}
-
-	// Validate parameters for client secret basic authentication.
-	if req.ClientSecretBasicAuthn != "" && (req.ClientIdBasicAuthn == "" || unit.AnyNonEmpty(req.ClientSecretPost, string(req.ClientAssertionType), req.ClientAssertion)) {
-		return "", issues.NewOAuthError(constants.InvalidClient, "invalid client authentication")
-	}
-
-	// Validate parameters for client secret post authentication.
-	if req.ClientSecretPost != "" && (req.ClientIdPost == "" || unit.AnyNonEmpty(req.ClientIdBasicAuthn, req.ClientSecretBasicAuthn, string(req.ClientAssertionType), req.ClientAssertion)) {
-		return "", issues.NewOAuthError(constants.InvalidClient, "invalid client authentication")
-	}
-
-	// Validate parameters for private key jwt authentication.
-	if req.ClientAssertion != "" && (req.ClientAssertionType != constants.JWTBearerAssertion || unit.AnyNonEmpty(req.ClientIdBasicAuthn, req.ClientSecretBasicAuthn, req.ClientSecretPost)) {
-		return "", issues.NewOAuthError(constants.InvalidClient, "invalid client authentication")
-	}
-
-	return validClientId, nil
-}
-
-func validatePar(
+func validateAuthorizationRequest(
 	ctx utils.Context,
-	req models.PushedAuthorizationRequest,
+	req models.AuthorizationRequest,
 	client models.Client,
 ) issues.OAuthError {
-
-	if req.ClientIdPost != "" && req.ClientIdPost != client.Id {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
+	if err := validateParamsNoRedirect(ctx, req.AuthorizationParameters, client); err != nil {
+		return convertErrorIfRedirectable(err, req.AuthorizationParameters, client)
 	}
 
-	if req.RequestUri != "" {
-		return issues.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
-	}
-
-	return validateNonEmptyParamsNoRedirect(ctx, req.AuthorizationParameters, client)
-}
-
-func validateParWithJar(
-	ctx utils.Context,
-	req models.PushedAuthorizationRequest,
-	jar models.AuthorizationRequest,
-	client models.Client,
-) issues.OAuthError {
-
-	if req.ClientIdPost != "" && req.ClientIdPost != client.Id {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
-	}
-
-	if req.RequestUri != "" {
-		return issues.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
-	}
-
-	// The PAR RFC (https://datatracker.ietf.org/doc/html/rfc9126#section-3) says:
-	// "...The rules for processing, signing, and encryption of the Request Object as defined in JAR [RFC9101] apply..."
-	// In turn, the JAR RFC (https://www.rfc-editor.org/rfc/rfc9101.html#name-request-object-2.) says about the request object:
-	// "...It MUST contain all the parameters (including extension parameters) used to process the OAuth 2.0 [RFC6749] authorization request..."
-	return validateOAuthCoreParamsNoRedirect(ctx, jar.AuthorizationParameters, client)
+	return nil
 }
 
 func validateAuthorizationRequestWithPar(
@@ -144,23 +83,11 @@ func validateAuthorizationRequestWithJarNoRedirect(
 		return issues.NewOAuthError(constants.InvalidRequest, "request is not allowed inside the request object")
 	}
 
-	if err := validateNonEmptyParamsNoRedirect(ctx, jar.AuthorizationParameters, client); err != nil {
+	if err := ValidateNonEmptyParamsNoRedirect(ctx, jar.AuthorizationParameters, client); err != nil {
 		return err
 	}
 
 	return validateParamsWithPriorities(ctx, req.AuthorizationParameters, jar.AuthorizationParameters, client)
-}
-
-func validateAuthorizationRequest(
-	ctx utils.Context,
-	req models.AuthorizationRequest,
-	client models.Client,
-) issues.OAuthError {
-	if err := validateParamsNoRedirect(ctx, req.AuthorizationParameters, client); err != nil {
-		return convertErrorIfRedirectable(err, req.AuthorizationParameters, client)
-	}
-
-	return nil
 }
 
 func validateParamsNoRedirect(
@@ -172,7 +99,7 @@ func validateParamsNoRedirect(
 	case constants.OpenIdCoreProfile:
 		return validateOpenIdCoreParamsNoRedirect(ctx, params, client)
 	default:
-		return validateOAuthCoreParamsNoRedirect(ctx, params, client)
+		return ValidateOAuthCoreParamsNoRedirect(ctx, params, client)
 	}
 }
 
@@ -223,6 +150,10 @@ func validateOpenIdCoreParamsWithPrioritiesNoRedirect(
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
 	}
 
+	if err := ValidateNonEmptyParamsNoRedirect(ctx, params, client); err != nil {
+		return err
+	}
+
 	mergedParams := mergeAuthorizationParams(prioritaryParams, params)
 	return validateOpenIdCoreParamsNoRedirect(ctx, mergedParams, client)
 }
@@ -233,8 +164,13 @@ func validateOAuthCoreParamsWithPrioritiesNoRedirect(
 	prioritaryParams models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
+
+	if err := ValidateNonEmptyParamsNoRedirect(ctx, params, client); err != nil {
+		return err
+	}
+
 	mergedParams := mergeAuthorizationParams(prioritaryParams, params)
-	return validateOAuthCoreParamsNoRedirect(ctx, mergedParams, client)
+	return ValidateOAuthCoreParamsNoRedirect(ctx, mergedParams, client)
 }
 
 func validateOpenIdCoreParamsNoRedirect(
@@ -251,10 +187,10 @@ func validateOpenIdCoreParamsNoRedirect(
 		return issues.NewOAuthError(constants.InvalidRequest, "nonce is required when response_type contains id_token")
 	}
 
-	return validateOAuthCoreParamsNoRedirect(ctx, params, client)
+	return ValidateOAuthCoreParamsNoRedirect(ctx, params, client)
 }
 
-func validateOAuthCoreParamsNoRedirect(
+func ValidateOAuthCoreParamsNoRedirect(
 	ctx utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
@@ -288,10 +224,10 @@ func validateOAuthCoreParamsNoRedirect(
 		return issues.NewOAuthError(constants.InvalidRequest, "code_challenge is required")
 	}
 
-	return validateNonEmptyParamsNoRedirect(ctx, params, client)
+	return ValidateNonEmptyParamsNoRedirect(ctx, params, client)
 }
 
-func validateNonEmptyParamsNoRedirect(
+func ValidateNonEmptyParamsNoRedirect(
 	_ utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
@@ -324,6 +260,37 @@ func validateNonEmptyParamsNoRedirect(
 	return nil
 }
 
+func convertErrorIfRedirectableWithPriorities(
+	oauthErr issues.OAuthError,
+	params models.AuthorizationParameters,
+	prioritaryParams models.AuthorizationParameters,
+	client models.Client,
+) issues.OAuthError {
+	mergedParams := mergeAuthorizationParams(prioritaryParams, params)
+	return convertErrorIfRedirectable(oauthErr, mergedParams, client)
+}
+
+func convertErrorIfRedirectable(
+	oauthErr issues.OAuthError,
+	params models.AuthorizationParameters,
+	client models.Client,
+) issues.OAuthError {
+
+	responseMode := unit.GetResponseModeOrDefault(params.ResponseMode, params.ResponseType)
+	if client.IsRedirectUriAllowed(params.RedirectUri) && client.IsResponseModeAllowed(responseMode) {
+		return issues.NewOAuthRedirectError(
+			oauthErr.GetCode(),
+			oauthErr.Error(),
+			client.Id,
+			params.RedirectUri,
+			responseMode,
+			params.State,
+		)
+	}
+
+	return oauthErr
+}
+
 func mergeAuthorizationParams(
 	prioritaryParams models.AuthorizationParameters,
 	params models.AuthorizationParameters,
@@ -338,57 +305,4 @@ func mergeAuthorizationParams(
 		CodeChallenge:       unit.GetNonEmptyOrDefault(prioritaryParams.CodeChallenge, params.CodeChallenge),
 		CodeChallengeMethod: unit.GetNonEmptyOrDefault(prioritaryParams.CodeChallengeMethod, params.CodeChallengeMethod),
 	}
-}
-
-func validateDpopJwt(dpopJwt string, expectedDpopClaims models.DpopClaims) issues.OAuthError {
-	parsedDpopJwt, err := jwt.ParseSigned(dpopJwt, constants.DpopSigningAlgorithms)
-	if err != nil {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid dpop")
-	}
-
-	if len(parsedDpopJwt.Headers) != 1 {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid dpop")
-	}
-
-	if parsedDpopJwt.Headers[0].ExtraHeaders["typ"] != "dpop+jwt" {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid typ header")
-	}
-
-	jwk := parsedDpopJwt.Headers[0].JSONWebKey
-	if jwk == nil || !jwk.IsPublic() {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid jwk header")
-	}
-
-	var claims jwt.Claims
-	var dpopClaims models.DpopClaims
-	if err := parsedDpopJwt.Claims(jwk.Key, &claims, &dpopClaims); err != nil {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid dpop")
-	}
-
-	if claims.IssuedAt == nil {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid iat claim")
-	}
-
-	if claims.ID == "" {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid jti claim")
-	}
-
-	if expectedDpopClaims.HttpMethod != "" && dpopClaims.HttpMethod != expectedDpopClaims.HttpMethod {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid htm claim")
-	}
-
-	if expectedDpopClaims.HttpUri != "" && dpopClaims.HttpUri != expectedDpopClaims.HttpUri {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid htu claim")
-	}
-
-	if expectedDpopClaims.AccessToken != "" && dpopClaims.AccessTokenHash != unit.CreateSha256Hash(expectedDpopClaims.AccessToken) {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid ath claim")
-	}
-
-	err = claims.ValidateWithLeeway(jwt.Expected{}, time.Duration(0))
-	if err != nil {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid dpop")
-	}
-
-	return nil
 }

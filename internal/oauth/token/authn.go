@@ -1,4 +1,4 @@
-package oauth
+package token
 
 import (
 	"log/slog"
@@ -11,12 +11,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-type ResultChannel struct {
-	result any
-	err    issues.OAuthError
-}
-
-func getAuthenticatedClient(ctx utils.Context, req models.ClientAuthnRequest) (models.Client, issues.OAuthError) {
+func GetAuthenticatedClient(ctx utils.Context, req models.ClientAuthnRequest) (models.Client, issues.OAuthError) {
 
 	clientId, oauthErr := validateClientAuthnRequest(req)
 	if oauthErr != nil {
@@ -95,4 +90,32 @@ func getClientIdFromAssertion(assertion string) (string, bool) {
 	}
 
 	return clientIdAsString, true
+}
+
+// Validate a client authentication request and return a valid client ID from it.
+func validateClientAuthnRequest(
+	req models.ClientAuthnRequest,
+) (validClientId string, err issues.OAuthError) {
+
+	validClientId, ok := getClientId(req)
+	if !ok {
+		return "", issues.NewOAuthError(constants.InvalidClient, "invalid client authentication")
+	}
+
+	// Validate parameters for client secret basic authentication.
+	if req.ClientSecretBasicAuthn != "" && (req.ClientIdBasicAuthn == "" || unit.AnyNonEmpty(req.ClientSecretPost, string(req.ClientAssertionType), req.ClientAssertion)) {
+		return "", issues.NewOAuthError(constants.InvalidClient, "invalid client authentication")
+	}
+
+	// Validate parameters for client secret post authentication.
+	if req.ClientSecretPost != "" && (req.ClientIdPost == "" || unit.AnyNonEmpty(req.ClientIdBasicAuthn, req.ClientSecretBasicAuthn, string(req.ClientAssertionType), req.ClientAssertion)) {
+		return "", issues.NewOAuthError(constants.InvalidClient, "invalid client authentication")
+	}
+
+	// Validate parameters for private key jwt authentication.
+	if req.ClientAssertion != "" && (req.ClientAssertionType != constants.JWTBearerAssertion || unit.AnyNonEmpty(req.ClientIdBasicAuthn, req.ClientSecretBasicAuthn, req.ClientSecretPost)) {
+		return "", issues.NewOAuthError(constants.InvalidClient, "invalid client authentication")
+	}
+
+	return validClientId, nil
 }
