@@ -1,54 +1,49 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/unit/constants"
+	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/utils"
 	"github.com/luikymagno/auth-server/pkg/oauth"
-	"golang.org/x/crypto/bcrypt"
 )
 
-func loadJwks() jose.JSONWebKeySet {
-	absPath, _ := filepath.Abs("./jwks.json")
-	jwksFile, err := os.Open(absPath)
-	if err != nil {
-		panic(err.Error())
-	}
-	defer jwksFile.Close()
-	jwksBytes, err := io.ReadAll(jwksFile)
-	if err != nil {
-		panic(err.Error())
-	}
-	var jwks jose.JSONWebKeySet
-	json.Unmarshal(jwksBytes, &jwks)
+// func loadJwks() jose.JSONWebKeySet {
+// 	absPath, _ := filepath.Abs("./jwks.json")
+// 	jwksFile, err := os.Open(absPath)
+// 	if err != nil {
+// 		panic(err.Error())
+// 	}
+// 	defer jwksFile.Close()
+// 	jwksBytes, err := io.ReadAll(jwksFile)
+// 	if err != nil {
+// 		panic(err.Error())
+// 	}
+// 	var jwks jose.JSONWebKeySet
+// 	json.Unmarshal(jwksBytes, &jwks)
 
-	return jwks
-}
+// 	return jwks
+// }
 
-func getClientJwk() jose.JSONWebKey {
-	absPath, _ := filepath.Abs("./client_jwk.json")
-	clientJwkFile, err := os.Open(absPath)
-	if err != nil {
-		panic(err.Error())
-	}
-	defer clientJwkFile.Close()
-	clientJwkBytes, err := io.ReadAll(clientJwkFile)
-	if err != nil {
-		panic(err.Error())
-	}
-	var clientJwk jose.JSONWebKey
-	clientJwk.UnmarshalJSON(clientJwkBytes)
+// func getClientJwk() jose.JSONWebKey {
+// 	absPath, _ := filepath.Abs("./client_jwk.json")
+// 	clientJwkFile, err := os.Open(absPath)
+// 	if err != nil {
+// 		panic(err.Error())
+// 	}
+// 	defer clientJwkFile.Close()
+// 	clientJwkBytes, err := io.ReadAll(clientJwkFile)
+// 	if err != nil {
+// 		panic(err.Error())
+// 	}
+// 	var clientJwk jose.JSONWebKey
+// 	clientJwk.UnmarshalJSON(clientJwkBytes)
 
-	return clientJwk
-}
+// 	return clientJwk
+// }
 
 // func createClientAssertion(client models.Client, jwk jose.JSONWebKey) string {
 // 	createdAtTimestamp := unit.GetTimestampNow()
@@ -68,79 +63,32 @@ func getClientJwk() jose.JSONWebKey {
 // }
 
 func main() {
-	clientId := "random_client"
-	clientSecret := "random_secret"
-	clientSecretSalt := "random_salt"
-	opaqueGrantModelId := "opaque_token_model"
-	jwtGrantModelId := "jwt_token_model"
-	privateKeyId := "ps256_key"
 	port := 83
-	issuer := fmt.Sprintf("https://host.docker.internal:%v", port)
-	// issuer := fmt.Sprintf("https://localhost:%v", port)
-	jwks := loadJwks()
+	// issuer := fmt.Sprintf("https://host.docker.internal:%v", port)
+	issuer := fmt.Sprintf("https://localhost:%v", port)
+	privatePs256Jwk := unit.GetTestPrivatePs256Jwk()
 
 	// Create the manager.
 	oauthManager := oauth.NewManager(
 		issuer,
-		jwks,
-		privateKeyId,
+		jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privatePs256Jwk, privatePs256Jwk}},
+		privatePs256Jwk.KeyID,
 		"./templates/*",
 		oauth.ConfigureInMemoryClientAndScope,
 		oauth.ConfigureInMemoryGrantModel,
 		oauth.ConfigureInMemorySessions,
 	)
 
-	// Add token models.
-	oauthManager.AddGrantModel(models.GrantModel{
-		TokenMaker: models.OpaqueTokenMaker{
-			TokenLength: 20,
-		},
-		Meta: models.GrantMetaInfo{
-			Id:               opaqueGrantModelId,
-			Issuer:           issuer,
-			ExpiresInSecs:    60,
-			IsRefreshable:    false,
-			OpenIdPrivateJwk: jwks.Key(privateKeyId)[0],
-		},
-	})
-	oauthManager.AddGrantModel(models.GrantModel{
-		TokenMaker: models.JWTTokenMaker{
-			PrivateJwk: jwks.Key(privateKeyId)[0],
-		},
-		Meta: models.GrantMetaInfo{
-			Id:                  jwtGrantModelId,
-			Issuer:              issuer,
-			ExpiresInSecs:       6000,
-			IsRefreshable:       true,
-			RefreshLifetimeSecs: 60,
-			OpenIdPrivateJwk:    jwks.Key(privateKeyId)[0],
-		},
-	})
+	// Add mocks.
+	opaqueGrantModel := models.GetTestOpaqueGrantModel(privatePs256Jwk)
+	oauthManager.AddGrantModel(opaqueGrantModel)
 
-	// Add client mock.
-	hashedSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecretSalt+clientSecret), 0)
-	// Create the client
-	client := models.Client{
-		Id:                  clientId,
-		GrantTypes:          constants.GrantTypes,
-		Scopes:              []string{"openid", "email", "profile"},
-		RedirectUris:        []string{"http://localhost:80/callback", "https://localhost.emobix.co.uk:8443/test/a/first_test/callback", "https://localhost:8443/test/a/first_test/callback"},
-		ResponseTypes:       constants.ResponseTypes,
-		ResponseModes:       constants.ResponseModes,
-		DefaultGrantModelId: jwtGrantModelId,
-		Authenticator: models.SecretPostClientAuthenticator{
-			Salt:         clientSecretSalt,
-			HashedSecret: string(hashedSecret),
-		},
-		// Authenticator: models.PrivateKeyJwtClientAuthenticator{
-		// 	PublicJwk:                getClientJwk(),
-		// 	ExpectedAudience:         issuer,
-		// 	MaxAssertionLifetimeSecs: 600,
-		// },
-		Attributes: map[string]string{
-			"custom_attribute": "random_attribute",
-		},
-	}
+	jwtGrantModel := models.GetTestJwtGrantModel(privatePs256Jwk)
+	oauthManager.AddGrantModel(jwtGrantModel)
+
+	client := models.GetSecretPostTestClient()
+	client.RedirectUris = append(client.RedirectUris, issuer+"/callback")
+	client.DefaultGrantModelId = jwtGrantModel.Meta.Id
 	oauthManager.AddClient(client)
 
 	// Create Policy

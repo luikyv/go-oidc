@@ -1,8 +1,6 @@
 package models
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
 	"fmt"
 	"testing"
 
@@ -66,16 +64,10 @@ func TestPrivateKeyJWTClientAuthenticatorValidInfo(t *testing.T) {
 	// When
 	host := "https://example.com"
 
-	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	jwk := jose.JSONWebKey{
-		Key:       privateKey,
-		KeyID:     "0afee142-a0af-4410-abcc-9f2d44ff45b5",
-		Algorithm: string(jose.RS256),
-		Use:       string(constants.KeySigningUsage),
-	}
+	privateJwk := unit.GetTestPrivateRs256Jwk()
 	authenticator := PrivateKeyJwtClientAuthenticator{
 		PublicJwks: jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{jwk.Public()},
+			Keys: []jose.JSONWebKey{privateJwk.Public()},
 		},
 		ExpectedAudience:         host,
 		MaxAssertionLifetimeSecs: 60,
@@ -84,8 +76,8 @@ func TestPrivateKeyJWTClientAuthenticatorValidInfo(t *testing.T) {
 	clientId := "random_client_id"
 	createdAtTimestamp := unit.GetTimestampNow()
 	signer, _ := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID),
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJwk.Algorithm), Key: privateJwk.Key},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.KeyID),
 	)
 	claims := map[string]any{
 		string(constants.IssuerClaim):   clientId,

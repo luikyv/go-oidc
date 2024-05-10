@@ -8,12 +8,22 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
-func GetTestPrivateRsaJwk() jose.JSONWebKey {
+func GetTestPrivateRs256Jwk() jose.JSONWebKey {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	return jose.JSONWebKey{
 		Key:       privateKey,
-		KeyID:     "rsa_key",
+		KeyID:     "ps256_key",
 		Algorithm: string(jose.RS256),
+		Use:       string(constants.KeySigningUsage),
+	}
+}
+
+func GetTestPrivatePs256Jwk() jose.JSONWebKey {
+	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+	return jose.JSONWebKey{
+		Key:       privateKey,
+		KeyID:     "ps256_key",
+		Algorithm: string(jose.PS256),
 		Use:       string(constants.KeySigningUsage),
 	}
 }

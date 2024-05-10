@@ -27,7 +27,7 @@ func GetTestOpaqueGrantModel(privateJwk jose.JSONWebKey) GrantModel {
 	}
 }
 
-func GetTestJwkGrantModel(privateJwk jose.JSONWebKey) GrantModel {
+func GetTestJwtGrantModel(privateJwk jose.JSONWebKey) GrantModel {
 	return GrantModel{
 		TokenMaker: JWTTokenMaker{
 			PrivateJwk: privateJwk,
