@@ -44,7 +44,7 @@ func HandlePARRequest(ctx utils.Context) {
 		return
 	}
 
-	ctx.RequestContext.JSON(http.StatusCreated, models.PARResponse{
+	ctx.RequestContext.JSON(http.StatusCreated, models.PushedAuthorizationResponse{
 		RequestUri: requestUri,
 		ExpiresIn:  constants.ParLifetimeSecs,
 	})
@@ -96,7 +96,7 @@ func HandleTokenRequest(ctx utils.Context) {
 		IdToken:      grantSession.IdToken,
 		RefreshToken: grantSession.RefreshToken,
 		ExpiresIn:    grantSession.ExpiresInSecs,
-		TokenType:    constants.BearerToken,
+		TokenType:    grantSession.TokenType,
 	})
 }
 
@@ -105,10 +105,7 @@ func HandleTokenRequest(ctx utils.Context) {
 func HandleUserInfoRequest(ctx utils.Context) {
 	token, tokenType, ok := unit.GetAuthorizationToken(ctx.RequestContext)
 	if !ok {
-		bindErrorToResponse(issues.OAuthBaseError{
-			ErrorCode:        constants.AccessDenied,
-			ErrorDescription: "no token found",
-		}, ctx.RequestContext)
+		bindErrorToResponse(issues.NewOAuthError(constants.AccessDenied, "no token found"), ctx.RequestContext)
 		return
 	}
 
@@ -118,11 +115,8 @@ func HandleUserInfoRequest(ctx utils.Context) {
 		return
 	}
 
-	if !isDpopValid(ctx, token, tokenType, grantSession) {
-		bindErrorToResponse(issues.OAuthBaseError{
-			ErrorCode:        constants.AccessDenied,
-			ErrorDescription: "invalid proof of possesion",
-		}, ctx.RequestContext)
+	if err := validateProofOfPossesion(ctx, token, tokenType, grantSession); err != nil {
+		bindErrorToResponse(err, ctx.RequestContext)
 		return
 	}
 
@@ -148,24 +142,28 @@ func addProofOfPossesionToRequest(ctx utils.Context, req *models.TokenRequest) {
 	req.DpopJwt = ctx.RequestContext.GetHeader(string(constants.DpopHeader))
 }
 
-func isDpopValid(ctx utils.Context, token string, tokenType constants.TokenType, grantSession models.GrantSession) bool {
+func validateProofOfPossesion(
+	ctx utils.Context,
+	token string,
+	tokenType constants.TokenType,
+	grantSession models.GrantSession,
+) issues.OAuthError {
 
-	if grantSession.JwkThumbprint == "" && tokenType != constants.DpopToken {
-		return true
+	if grantSession.JwkThumbprint == "" && tokenType != constants.DpopTokenType {
+		return nil
 	}
 
-	dpopJwt := ctx.RequestContext.Request.Header.Get("DPoP")
+	dpopJwt := ctx.RequestContext.Request.Header.Get(string(constants.DpopHeader))
 	if dpopJwt == "" {
-		return false
+		return issues.NewOAuthError(constants.AccessDenied, "missing DPoP header")
 	}
 
-	err := utils.ValidateDpopJwt(dpopJwt, models.DpopClaims{
+	return utils.ValidateDpopJwt(dpopJwt, models.DpopClaims{
 		HttpMethod:    ctx.RequestContext.Request.Method,
 		HttpUri:       ctx.Host + ctx.RequestContext.Request.URL.RequestURI(),
 		AccessToken:   token,
 		JwkThumbprint: grantSession.JwkThumbprint,
 	})
-	return err == nil
 }
 
 func bindErrorToResponse(err error, requestContext *gin.Context) {

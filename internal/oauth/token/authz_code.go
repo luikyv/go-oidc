@@ -82,7 +82,11 @@ func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client model
 	}
 
 	// If the session was created with a code challenge, the token request must contain the right code verifier.
-	if session.CodeChallenge != "" && (req.CodeVerifier == "" || !unit.IsPkceValid(req.CodeVerifier, session.CodeChallenge, session.CodeChallengeMethod)) {
+	codeChallengeMethod := session.CodeChallengeMethod
+	if codeChallengeMethod == "" {
+		codeChallengeMethod = constants.PlainCodeChallengeMethod
+	}
+	if session.CodeChallenge != "" && (req.CodeVerifier == "" || !unit.IsPkceValid(req.CodeVerifier, session.CodeChallenge, codeChallengeMethod)) {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid pkce")
 	}
 

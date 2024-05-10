@@ -53,12 +53,7 @@ var OAuthCoreResponseTypes []ResponseType = []ResponseType{
 }
 
 func (rt ResponseType) Contains(responseType ResponseType) bool {
-	for _, s := range strings.Split(string(rt), " ") {
-		if s == string(responseType) {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(strings.Split(string(rt), " "), string(responseType))
 }
 
 func (rt ResponseType) IsValid() bool {
@@ -130,8 +125,8 @@ const (
 type TokenType string
 
 const (
-	BearerToken TokenType = "Bearer"
-	DpopToken   TokenType = "DPoP"
+	BearerTokenType TokenType = "Bearer"
+	DpopTokenType   TokenType = "DPoP"
 )
 
 type Claim string

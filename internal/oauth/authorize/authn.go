@@ -88,7 +88,7 @@ func generateImplictParams(
 			return map[string]string{}, err
 		}
 		implictParams["access_token"] = grantSession.Token
-		implictParams["token_type"] = string(constants.BearerToken)
+		implictParams["token_type"] = string(constants.BearerTokenType)
 	}
 
 	// Generate an ID token if the client requested it.

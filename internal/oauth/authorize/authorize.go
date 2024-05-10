@@ -95,7 +95,7 @@ func newRedirectErrorFromSession(
 }
 
 func handleAuthError(ctx utils.Context, err issues.OAuthError) issues.OAuthError {
-	// TODO: Always return a redirect response?
+	// TODO: what if always return a redirect response?
 	var redirectErr issues.OAuthRedirectError
 	if !errors.As(err, &redirectErr) {
 		return err

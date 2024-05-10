@@ -8,18 +8,6 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func validateAuthorizationRequest(
-	ctx utils.Context,
-	req models.AuthorizationRequest,
-	client models.Client,
-) issues.OAuthError {
-	if err := validateParamsNoRedirect(ctx, req.AuthorizationParameters, client); err != nil {
-		return convertErrorIfRedirectable(err, req.AuthorizationParameters, client)
-	}
-
-	return nil
-}
-
 func validateAuthorizationRequestWithPar(
 	ctx utils.Context,
 	req models.AuthorizationRequest,
@@ -90,19 +78,6 @@ func validateAuthorizationRequestWithJarNoRedirect(
 	return validateParamsWithPriorities(ctx, req.AuthorizationParameters, jar.AuthorizationParameters, client)
 }
 
-func validateParamsNoRedirect(
-	ctx utils.Context,
-	params models.AuthorizationParameters,
-	client models.Client,
-) issues.OAuthError {
-	switch ctx.GetProfile(unit.SplitStringWithSpaces(params.Scope)) {
-	case constants.OpenIdCoreProfile:
-		return validateOpenIdCoreParamsNoRedirect(ctx, params, client)
-	default:
-		return ValidateOAuthCoreParamsNoRedirect(ctx, params, client)
-	}
-}
-
 func validateParamsWithPriorities(
 	ctx utils.Context,
 	params models.AuthorizationParameters,
@@ -154,7 +129,7 @@ func validateOpenIdCoreParamsWithPrioritiesNoRedirect(
 		return err
 	}
 
-	mergedParams := mergeAuthorizationParams(prioritaryParams, params)
+	mergedParams := models.MergeAuthorizationParams(prioritaryParams, params)
 	return validateOpenIdCoreParamsNoRedirect(ctx, mergedParams, client)
 }
 
@@ -169,8 +144,33 @@ func validateOAuthCoreParamsWithPrioritiesNoRedirect(
 		return err
 	}
 
-	mergedParams := mergeAuthorizationParams(prioritaryParams, params)
+	mergedParams := models.MergeAuthorizationParams(prioritaryParams, params)
 	return ValidateOAuthCoreParamsNoRedirect(ctx, mergedParams, client)
+}
+
+func validateAuthorizationRequest(
+	ctx utils.Context,
+	req models.AuthorizationRequest,
+	client models.Client,
+) issues.OAuthError {
+	if err := validateParamsNoRedirect(ctx, req.AuthorizationParameters, client); err != nil {
+		return convertErrorIfRedirectable(err, req.AuthorizationParameters, client)
+	}
+
+	return nil
+}
+
+func validateParamsNoRedirect(
+	ctx utils.Context,
+	params models.AuthorizationParameters,
+	client models.Client,
+) issues.OAuthError {
+	switch ctx.GetProfile(unit.SplitStringWithSpaces(params.Scope)) {
+	case constants.OpenIdCoreProfile:
+		return validateOpenIdCoreParamsNoRedirect(ctx, params, client)
+	default:
+		return ValidateOAuthCoreParamsNoRedirect(ctx, params, client)
+	}
 }
 
 func validateOpenIdCoreParamsNoRedirect(
@@ -195,14 +195,6 @@ func ValidateOAuthCoreParamsNoRedirect(
 	params models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
-
-	if params.ResponseType.Contains(constants.CodeResponse) && !client.IsGrantTypeAllowed(constants.AuthorizationCodeGrant) {
-		return issues.NewOAuthError(constants.InvalidGrant, "authorization_code grant not allowed")
-	}
-
-	if params.ResponseType.IsImplict() && !client.IsGrantTypeAllowed(constants.ImplictGrant) {
-		return issues.NewOAuthError(constants.InvalidGrant, "implicit grant not allowed")
-	}
 
 	if params.ResponseType.Contains(constants.IdTokenResponse) && !unit.ScopeContainsOpenId(params.Scope) {
 		return issues.NewOAuthError(constants.InvalidRequest, "cannot request id_token without the scope openid")
@@ -249,6 +241,14 @@ func ValidateNonEmptyParamsNoRedirect(
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
 	}
 
+	if params.ResponseType.Contains(constants.CodeResponse) && !client.IsGrantTypeAllowed(constants.AuthorizationCodeGrant) {
+		return issues.NewOAuthError(constants.InvalidGrant, "authorization_code grant not allowed")
+	}
+
+	if params.ResponseType.IsImplict() && !client.IsGrantTypeAllowed(constants.ImplictGrant) {
+		return issues.NewOAuthError(constants.InvalidGrant, "implicit grant not allowed")
+	}
+
 	if params.CodeChallengeMethod != "" && !params.CodeChallengeMethod.IsValid() {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid code_challenge_method")
 	}
@@ -266,7 +266,7 @@ func convertErrorIfRedirectableWithPriorities(
 	prioritaryParams models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
-	mergedParams := mergeAuthorizationParams(prioritaryParams, params)
+	mergedParams := models.MergeAuthorizationParams(prioritaryParams, params)
 	return convertErrorIfRedirectable(oauthErr, mergedParams, client)
 }
 
@@ -289,20 +289,4 @@ func convertErrorIfRedirectable(
 	}
 
 	return oauthErr
-}
-
-func mergeAuthorizationParams(
-	prioritaryParams models.AuthorizationParameters,
-	params models.AuthorizationParameters,
-) models.AuthorizationParameters {
-	return models.AuthorizationParameters{
-		RedirectUri:         unit.GetNonEmptyOrDefault(prioritaryParams.RedirectUri, params.RedirectUri),
-		ResponseMode:        unit.GetNonEmptyOrDefault(prioritaryParams.ResponseMode, params.ResponseMode),
-		ResponseType:        unit.GetNonEmptyOrDefault(prioritaryParams.ResponseType, params.ResponseType),
-		Scope:               unit.GetNonEmptyOrDefault(prioritaryParams.Scope, params.Scope),
-		State:               unit.GetNonEmptyOrDefault(prioritaryParams.State, params.State),
-		Nonce:               unit.GetNonEmptyOrDefault(prioritaryParams.Nonce, params.Nonce),
-		CodeChallenge:       unit.GetNonEmptyOrDefault(prioritaryParams.CodeChallenge, params.CodeChallenge),
-		CodeChallengeMethod: unit.GetNonEmptyOrDefault(prioritaryParams.CodeChallengeMethod, params.CodeChallengeMethod),
-	}
 }

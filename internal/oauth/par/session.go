@@ -3,6 +3,7 @@ package par
 import (
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
@@ -15,7 +16,7 @@ func initPushedAuthnSession(
 	issues.OAuthError,
 ) {
 
-	if req.RequestObject != "" {
+	if ctx.JarIsRequired || req.RequestObject != "" {
 		return initPushedAuthnSessionWithJar(ctx, req, client)
 	}
 
@@ -47,7 +48,7 @@ func initPushedAuthnSessionWithJar(
 	models.AuthnSession,
 	issues.OAuthError,
 ) {
-	jar, err := utils.ExtractJarFromRequestObject(ctx, req.RequestObject, client)
+	jar, err := extractJarFromRequest(ctx, req, client)
 	if err != nil {
 		return models.AuthnSession{}, err
 	}
@@ -58,4 +59,19 @@ func initPushedAuthnSessionWithJar(
 
 	session := models.NewSession(jar.AuthorizationParameters, client)
 	return session, nil
+}
+
+func extractJarFromRequest(
+	ctx utils.Context,
+	req models.PushedAuthorizationRequest,
+	client models.Client,
+) (
+	models.AuthorizationRequest,
+	issues.OAuthError,
+) {
+	if req.RequestObject == "" {
+		return models.AuthorizationRequest{}, issues.NewOAuthError(constants.InvalidRequest, "invalid request object")
+	}
+
+	return utils.ExtractJarFromRequestObject(ctx, req.RequestObject, client)
 }

@@ -44,10 +44,10 @@ type OpaqueTokenMaker struct {
 
 func (maker OpaqueTokenMaker) MakeToken(grantMeta GrantMetaInfo, grantOptions GrantOptions) Token {
 	accessToken := unit.GenerateRandomString(maker.TokenLength, maker.TokenLength)
-	tokenType := constants.BearerToken
+	tokenType := constants.BearerTokenType
 	jkt := ""
 	if grantOptions.DpopJwt != "" {
-		tokenType = constants.DpopToken
+		tokenType = constants.DpopTokenType
 		jkt = unit.GenerateJwkThumbprint(grantOptions.DpopJwt)
 	}
 	return Token{
@@ -75,10 +75,10 @@ func (maker JWTTokenMaker) MakeToken(grantMeta GrantMetaInfo, grantOptions Grant
 		string(constants.ExpiryClaim):   timestampNow + grantMeta.ExpiresInSecs,
 	}
 
-	tokenType := constants.BearerToken
+	tokenType := constants.BearerTokenType
 	jkt := ""
 	if grantOptions.DpopJwt != "" {
-		tokenType = constants.DpopToken
+		tokenType = constants.DpopTokenType
 		jkt = unit.GenerateJwkThumbprint(grantOptions.DpopJwt)
 		claims["cnf"] = map[string]string{
 			"jkt": jkt,
@@ -182,6 +182,7 @@ func (grantModel GrantModel) GenerateGrantSession(grantOptions GrantOptions) Gra
 		GrantModelId:            grantModel.Meta.Id,
 		Token:                   token.Value,
 		TokenFormat:             token.Format,
+		TokenType:               token.Type,
 		ExpiresInSecs:           grantModel.Meta.ExpiresInSecs,
 		CreatedAtTimestamp:      unit.GetTimestampNow(),
 		Subject:                 grantOptions.Subject,

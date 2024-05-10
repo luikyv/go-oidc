@@ -48,50 +48,18 @@ func (session *AuthnSession) Push(reqCtx *gin.Context) {
 }
 
 func (session *AuthnSession) Init() {
-	if session.CodeChallengeMethod == "" {
-		session.CodeChallengeMethod = constants.PlainCodeChallengeMethod
-	}
 	session.CallbackId = unit.GenerateCallbackId()
-	session.ResponseMode = unit.GetResponseModeOrDefault(session.ResponseMode, session.ResponseType)
 	// FIXME: To think about:Treating the request_uri as one-time use will cause problems when the user refreshes the page.
 	session.RequestUri = ""
 }
 
 // Update the session with the parameters from an authorization request
-// The parameters already present in the session take prioritybut not sent during par.
+// The parameters already present in the session take priority.
 func (session *AuthnSession) UpdateParams(params AuthorizationParameters) {
-
-	if session.RedirectUri == "" {
-		session.RedirectUri = params.RedirectUri
-	}
-
-	if len(session.Scope) == 0 {
-		session.Scope = params.Scope
-	}
-
-	if session.ResponseType == "" {
-		session.ResponseType = params.ResponseType
-	}
-
-	if session.ResponseMode == "" {
-		session.ResponseMode = params.ResponseMode
-	}
-
-	if session.State == "" {
-		session.State = params.State
-	}
-
-	if session.CodeChallenge == "" {
-		session.CodeChallenge = params.CodeChallenge
-	}
-
-	if session.CodeChallengeMethod == "" {
-		session.CodeChallengeMethod = params.CodeChallengeMethod
-	}
-
-	if session.Nonce == "" {
-		session.Nonce = params.Nonce
-	}
+	session.AuthorizationParameters = MergeAuthorizationParams(
+		session.AuthorizationParameters,
+		params,
+	)
 }
 
 func extractPushedParams(reqCtx *gin.Context) map[string]string {

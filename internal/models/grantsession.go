@@ -12,6 +12,7 @@ type GrantSession struct {
 	TokenId                 string
 	Token                   string
 	TokenFormat             constants.TokenFormat
+	TokenType               constants.TokenType
 	IdToken                 string
 	RefreshToken            string
 	ExpiresInSecs           int

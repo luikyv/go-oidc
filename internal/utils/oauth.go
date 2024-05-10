@@ -113,3 +113,38 @@ func ValidateDpopJwt(dpopJwt string, expectedDpopClaims models.DpopClaims) issue
 
 	return nil
 }
+
+func GetTokenId(ctx Context, token string) (string, issues.OAuthError) {
+	parsedToken, err := jwt.ParseSigned(token, ctx.GetSigningAlgorithms())
+	if err != nil {
+		// If the token is not a valid JWT, we'll treat it as an opaque token.
+		return token, nil
+	}
+
+	if len(parsedToken.Headers) != 1 || parsedToken.Headers[0].KeyID == "" {
+		return "", issues.NewOAuthError(constants.InvalidRequest, "invalid header kid")
+	}
+
+	keyId := parsedToken.Headers[0].KeyID
+	publicKey, ok := ctx.GetPublicKey(keyId)
+	if !ok {
+		return "", issues.NewOAuthError(constants.AccessDenied, "invalid token")
+	}
+
+	claims := jwt.Claims{}
+	if err := parsedToken.Claims(publicKey, &claims); err != nil {
+		return "", issues.NewOAuthError(constants.AccessDenied, "invalid token")
+	}
+
+	if err := claims.ValidateWithLeeway(jwt.Expected{
+		Issuer: ctx.Host,
+	}, time.Duration(0)); err != nil {
+		return "", issues.NewOAuthError(constants.AccessDenied, "invalid token")
+	}
+
+	if claims.ID == "" {
+		return "", issues.NewOAuthError(constants.AccessDenied, "invalid token")
+	}
+
+	return claims.ID, nil
+}

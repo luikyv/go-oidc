@@ -21,6 +21,7 @@ func initAuthnSession(
 		return initAuthnSessionWithPar(ctx, req, client)
 	}
 
+	// the jar requirement comes after the par one, because the client can send the jar during par.
 	if ctx.JarIsRequired || req.RequestObject != "" {
 		ctx.Logger.Info("initiating authorization request with JAR")
 		return initAuthnSessionWithJar(ctx, req, client)

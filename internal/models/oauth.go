@@ -161,6 +161,22 @@ type AuthorizationParameters struct {
 	CodeChallengeMethod constants.CodeChallengeMethod `form:"code_challenge_method" json:"code_challenge_method"`
 }
 
+func MergeAuthorizationParams(
+	prioritaryParams AuthorizationParameters,
+	params AuthorizationParameters,
+) AuthorizationParameters {
+	return AuthorizationParameters{
+		RedirectUri:         unit.GetNonEmptyOrDefault(prioritaryParams.RedirectUri, params.RedirectUri),
+		ResponseMode:        unit.GetNonEmptyOrDefault(prioritaryParams.ResponseMode, params.ResponseMode),
+		ResponseType:        unit.GetNonEmptyOrDefault(prioritaryParams.ResponseType, params.ResponseType),
+		Scope:               unit.GetNonEmptyOrDefault(prioritaryParams.Scope, params.Scope),
+		State:               unit.GetNonEmptyOrDefault(prioritaryParams.State, params.State),
+		Nonce:               unit.GetNonEmptyOrDefault(prioritaryParams.Nonce, params.Nonce),
+		CodeChallenge:       unit.GetNonEmptyOrDefault(prioritaryParams.CodeChallenge, params.CodeChallenge),
+		CodeChallengeMethod: unit.GetNonEmptyOrDefault(prioritaryParams.CodeChallengeMethod, params.CodeChallengeMethod),
+	}
+}
+
 type AuthorizationRequest struct {
 	ClientId string `form:"client_id" json:"client_id"`
 	AuthorizationParameters
@@ -171,7 +187,7 @@ type PushedAuthorizationRequest struct {
 	AuthorizationParameters
 }
 
-type PARResponse struct {
+type PushedAuthorizationResponse struct {
 	RequestUri string `json:"request_uri"`
 	ExpiresIn  int    `json:"expires_in"`
 }
@@ -191,7 +207,7 @@ type OpenIdConfiguration struct {
 	IdTokenSigningAlgorithms []jose.SignatureAlgorithm         `json:"id_token_signing_alg_values_supported"`
 	ClientAuthnMethods       []constants.ClientAuthnType       `json:"token_endpoint_auth_methods_supported"`
 	ScopesSupported          []string                          `json:"scopes_supported"`
-	JarIsRequired            bool                              `json:"require_signed_request_object"` // TODO: Use this.
+	JarIsRequired            bool                              `json:"require_signed_request_object"`
 	JarmAlgorithms           []string                          `json:"authorization_signing_alg_values_supported"`
 }
 
@@ -207,7 +223,7 @@ func NewRedirectResponseFromSession(session AuthnSession, params map[string]stri
 		ClientId:     session.ClientId,
 		RedirectUri:  session.RedirectUri,
 		Parameters:   params,
-		ResponseMode: session.ResponseMode,
+		ResponseMode: unit.GetResponseModeOrDefault(session.ResponseMode, session.ResponseType),
 	}
 }
 
