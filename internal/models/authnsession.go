@@ -56,10 +56,7 @@ func (session *AuthnSession) Init() {
 // Update the session with the parameters from an authorization request
 // The parameters already present in the session take priority.
 func (session *AuthnSession) UpdateParams(params AuthorizationParameters) {
-	session.AuthorizationParameters = MergeAuthorizationParams(
-		session.AuthorizationParameters,
-		params,
-	)
+	session.AuthorizationParameters = session.AuthorizationParameters.Merge(params)
 }
 
 func extractPushedParams(reqCtx *gin.Context) map[string]string {

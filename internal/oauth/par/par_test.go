@@ -7,19 +7,20 @@ import (
 
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/oauth"
+	"github.com/luikymagno/auth-server/internal/oauth/par"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
+	"github.com/luikymagno/auth-server/internal/utils"
 )
 
 func TestPushAuthorizationShouldRejectUnauthenticatedClient(t *testing.T) {
 	// When
-	ctx, tearDown := oauth.SetUp()
+	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
 
 	// Then
-	_, err := oauth.PushAuthorization(ctx, models.PushedAuthorizationRequest{
+	_, err := par.PushAuthorization(ctx, models.PushedAuthorizationRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
-			ClientIdPost:     oauth.ValidClientId,
+			ClientIdPost:     models.TestClientId,
 			ClientSecretPost: "invalid_password",
 		},
 	})
@@ -38,15 +39,15 @@ func TestPushAuthorizationShouldRejectUnauthenticatedClient(t *testing.T) {
 
 func TestPushAuthorizationShouldGenerateRequestUri(t *testing.T) {
 	// When
-	ctx, tearDown := oauth.SetUp()
+	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(oauth.ValidClientId)
+	client, _ := ctx.ClientManager.Get(models.TestClientId)
 
 	// Then
-	requestUri, err := oauth.PushAuthorization(ctx, models.PushedAuthorizationRequest{
+	requestUri, err := par.PushAuthorization(ctx, models.PushedAuthorizationRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
-			ClientIdPost:     oauth.ValidClientId,
-			ClientSecretPost: oauth.ValidClientSecret,
+			ClientIdPost:     models.TestClientId,
+			ClientSecretPost: models.TestClientSecret,
 		},
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
@@ -66,7 +67,7 @@ func TestPushAuthorizationShouldGenerateRequestUri(t *testing.T) {
 		return
 	}
 
-	sessions := oauth.GetSessionsFromMock(ctx)
+	sessions := utils.GetSessionsFromTestContext(ctx)
 	if len(sessions) != 1 {
 		t.Error("the should be only one authentication session")
 		return

@@ -75,8 +75,8 @@ func main() {
 	jwtGrantModelId := "jwt_token_model"
 	privateKeyId := "ps256_key"
 	port := 83
-	// issuer := fmt.Sprintf("https://host.docker.internal:%v", port)
-	issuer := fmt.Sprintf("https://localhost:%v", port)
+	issuer := fmt.Sprintf("https://host.docker.internal:%v", port)
+	// issuer := fmt.Sprintf("https://localhost:%v", port)
 	jwks := loadJwks()
 
 	// Create the manager.
@@ -100,12 +100,12 @@ func main() {
 			Issuer:           issuer,
 			ExpiresInSecs:    60,
 			IsRefreshable:    false,
-			OpenIdPrivateJWK: jwks.Key(privateKeyId)[0],
+			OpenIdPrivateJwk: jwks.Key(privateKeyId)[0],
 		},
 	})
 	oauthManager.AddGrantModel(models.GrantModel{
 		TokenMaker: models.JWTTokenMaker{
-			PrivateJWK: jwks.Key(privateKeyId)[0],
+			PrivateJwk: jwks.Key(privateKeyId)[0],
 		},
 		Meta: models.GrantMetaInfo{
 			Id:                  jwtGrantModelId,
@@ -113,7 +113,7 @@ func main() {
 			ExpiresInSecs:       6000,
 			IsRefreshable:       true,
 			RefreshLifetimeSecs: 60,
-			OpenIdPrivateJWK:    jwks.Key(privateKeyId)[0],
+			OpenIdPrivateJwk:    jwks.Key(privateKeyId)[0],
 		},
 	})
 

@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
@@ -14,8 +13,8 @@ func setUp() (tearDown func()) {
 
 	// Tear down.
 	return func() {
-		for k := range utils.StepMap {
-			delete(utils.StepMap, k)
+		for k := range utils.TestStepMap {
+			delete(utils.TestStepMap, k)
 		}
 	}
 }
@@ -30,7 +29,7 @@ func TestNewStepShouldRegisterStep(t *testing.T) {
 	utils.NewStep(stepId, nil)
 
 	// Assert
-	if _, stepWasRegistered := utils.StepMap[stepId]; !stepWasRegistered {
+	if _, stepWasRegistered := utils.TestStepMap[stepId]; !stepWasRegistered {
 		t.Error("NewStep is not registering the step")
 	}
 }
@@ -44,7 +43,7 @@ func TestGetStep(t *testing.T) {
 		Id:        "step_id",
 		AuthnFunc: nil,
 	}
-	utils.StepMap[step.Id] = step
+	utils.TestStepMap[step.Id] = step
 
 	// Then
 	selectedStep := utils.GetStep(step.Id)
@@ -72,7 +71,7 @@ func TestGetPolicy(t *testing.T) {
 			return true
 		},
 	)
-	ctx := utils.GetInMemoryContext("", jose.JSONWebKeySet{})
+	ctx := utils.GetDummyTestContext()
 	ctx.Policies = []utils.AuthnPolicy{unavailablePolicy, availablePolicy}
 
 	// Then
@@ -99,7 +98,7 @@ func TestGetPolicyNoPolicyAvailable(t *testing.T) {
 			return false
 		},
 	)
-	ctx := utils.GetInMemoryContext("", jose.JSONWebKeySet{})
+	ctx := utils.GetDummyTestContext()
 	ctx.Policies = []utils.AuthnPolicy{unavailablePolicy}
 
 	// Then

@@ -129,7 +129,7 @@ func validateOpenIdCoreParamsWithPrioritiesNoRedirect(
 		return err
 	}
 
-	mergedParams := models.MergeAuthorizationParams(prioritaryParams, params)
+	mergedParams := prioritaryParams.Merge(params)
 	return validateOpenIdCoreParamsNoRedirect(ctx, mergedParams, client)
 }
 
@@ -144,7 +144,7 @@ func validateOAuthCoreParamsWithPrioritiesNoRedirect(
 		return err
 	}
 
-	mergedParams := models.MergeAuthorizationParams(prioritaryParams, params)
+	mergedParams := prioritaryParams.Merge(params)
 	return ValidateOAuthCoreParamsNoRedirect(ctx, mergedParams, client)
 }
 
@@ -266,7 +266,7 @@ func convertErrorIfRedirectableWithPriorities(
 	prioritaryParams models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
-	mergedParams := models.MergeAuthorizationParams(prioritaryParams, params)
+	mergedParams := prioritaryParams.Merge(params)
 	return convertErrorIfRedirectable(oauthErr, mergedParams, client)
 }
 

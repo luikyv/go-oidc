@@ -21,7 +21,7 @@ type GrantMetaInfo struct {
 	ExpiresInSecs       int
 	IsRefreshable       bool
 	RefreshLifetimeSecs int
-	OpenIdPrivateJWK    jose.JSONWebKey
+	OpenIdPrivateJwk    jose.JSONWebKey
 }
 
 //---------------------------------------- Token Makers ----------------------------------------//
@@ -60,7 +60,7 @@ func (maker OpaqueTokenMaker) MakeToken(grantMeta GrantMetaInfo, grantOptions Gr
 }
 
 type JWTTokenMaker struct {
-	PrivateJWK jose.JSONWebKey
+	PrivateJwk jose.JSONWebKey
 }
 
 func (maker JWTTokenMaker) MakeToken(grantMeta GrantMetaInfo, grantOptions GrantOptions) Token {
@@ -90,10 +90,10 @@ func (maker JWTTokenMaker) MakeToken(grantMeta GrantMetaInfo, grantOptions Grant
 	}
 
 	signer, _ := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(maker.PrivateJWK.Algorithm), Key: maker.PrivateJWK.Key},
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(maker.PrivateJwk.Algorithm), Key: maker.PrivateJwk.Key},
 		// RFC9068. "...This specification registers the "application/at+jwt" media type,
 		// which can be used to indicate that the content is a JWT access token."
-		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", maker.PrivateJWK.KeyID),
+		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", maker.PrivateJwk.KeyID),
 	)
 
 	accessToken, _ := jwt.Signed(signer).Claims(claims).Serialize()
@@ -115,7 +115,7 @@ type GrantModel struct {
 
 func (grantModel GrantModel) generateHalfHashClaim(claimValue string) string {
 	var hash hash.Hash
-	switch jose.SignatureAlgorithm(grantModel.Meta.OpenIdPrivateJWK.Algorithm) {
+	switch jose.SignatureAlgorithm(grantModel.Meta.OpenIdPrivateJwk.Algorithm) {
 	case jose.RS256, jose.ES256, jose.PS256, jose.HS256:
 		hash = sha256.New()
 	case jose.RS384, jose.ES384, jose.PS384, jose.HS384:
@@ -165,8 +165,8 @@ func (grantModel GrantModel) GenerateIdToken(grantOptions GrantOptions) string {
 
 	// Sign the ID token.
 	signer, _ := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(grantModel.Meta.OpenIdPrivateJWK.Algorithm), Key: grantModel.Meta.OpenIdPrivateJWK.Key},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", grantModel.Meta.OpenIdPrivateJWK.KeyID),
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(grantModel.Meta.OpenIdPrivateJwk.Algorithm), Key: grantModel.Meta.OpenIdPrivateJwk.Key},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", grantModel.Meta.OpenIdPrivateJwk.KeyID),
 	)
 	idToken, _ := jwt.Signed(signer).Claims(claims).Serialize()
 

@@ -161,19 +161,16 @@ type AuthorizationParameters struct {
 	CodeChallengeMethod constants.CodeChallengeMethod `form:"code_challenge_method" json:"code_challenge_method"`
 }
 
-func MergeAuthorizationParams(
-	prioritaryParams AuthorizationParameters,
-	params AuthorizationParameters,
-) AuthorizationParameters {
+func (priorities AuthorizationParameters) Merge(params AuthorizationParameters) AuthorizationParameters {
 	return AuthorizationParameters{
-		RedirectUri:         unit.GetNonEmptyOrDefault(prioritaryParams.RedirectUri, params.RedirectUri),
-		ResponseMode:        unit.GetNonEmptyOrDefault(prioritaryParams.ResponseMode, params.ResponseMode),
-		ResponseType:        unit.GetNonEmptyOrDefault(prioritaryParams.ResponseType, params.ResponseType),
-		Scope:               unit.GetNonEmptyOrDefault(prioritaryParams.Scope, params.Scope),
-		State:               unit.GetNonEmptyOrDefault(prioritaryParams.State, params.State),
-		Nonce:               unit.GetNonEmptyOrDefault(prioritaryParams.Nonce, params.Nonce),
-		CodeChallenge:       unit.GetNonEmptyOrDefault(prioritaryParams.CodeChallenge, params.CodeChallenge),
-		CodeChallengeMethod: unit.GetNonEmptyOrDefault(prioritaryParams.CodeChallengeMethod, params.CodeChallengeMethod),
+		RedirectUri:         unit.GetNonEmptyOrDefault(priorities.RedirectUri, params.RedirectUri),
+		ResponseMode:        unit.GetNonEmptyOrDefault(priorities.ResponseMode, params.ResponseMode),
+		ResponseType:        unit.GetNonEmptyOrDefault(priorities.ResponseType, params.ResponseType),
+		Scope:               unit.GetNonEmptyOrDefault(priorities.Scope, params.Scope),
+		State:               unit.GetNonEmptyOrDefault(priorities.State, params.State),
+		Nonce:               unit.GetNonEmptyOrDefault(priorities.Nonce, params.Nonce),
+		CodeChallenge:       unit.GetNonEmptyOrDefault(priorities.CodeChallenge, params.CodeChallenge),
+		CodeChallengeMethod: unit.GetNonEmptyOrDefault(priorities.CodeChallengeMethod, params.CodeChallengeMethod),
 	}
 }
 

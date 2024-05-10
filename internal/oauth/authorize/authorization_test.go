@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/oauth"
+	"github.com/luikymagno/auth-server/internal/oauth/authorize"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
@@ -20,11 +20,11 @@ import (
 func TestInitAuthShouldNotFindClient(t *testing.T) {
 
 	// When
-	ctx, tearDown := oauth.SetUp()
+	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
 
 	// Then
-	err := oauth.InitAuth(ctx, models.AuthorizationRequest{ClientId: "invalid_client_id"})
+	err := authorize.InitAuth(ctx, models.AuthorizationRequest{ClientId: "invalid_client_id"})
 
 	// Assert
 	if err == nil || err.GetCode() != constants.InvalidClient {
@@ -35,12 +35,12 @@ func TestInitAuthShouldNotFindClient(t *testing.T) {
 
 func TestInitAuthWhenInvalidRedirectUri(t *testing.T) {
 	// When
-	ctx, tearDown := oauth.SetUp()
+	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
 
 	// Then
-	err := oauth.InitAuth(ctx, models.AuthorizationRequest{
-		ClientId: oauth.ValidClientId,
+	err := authorize.InitAuth(ctx, models.AuthorizationRequest{
+		ClientId: models.TestClientId,
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri: "https://invalid.com",
 		},
@@ -61,13 +61,13 @@ func TestInitAuthWhenInvalidRedirectUri(t *testing.T) {
 
 func TestInitAuthWhenInvalidScope(t *testing.T) {
 	// When
-	ctx, tearDown := oauth.SetUp()
+	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(oauth.ValidClientId)
+	client, _ := ctx.ClientManager.Get(models.TestClientId)
 
 	// Then
-	oauth.InitAuth(ctx, models.AuthorizationRequest{
-		ClientId: oauth.ValidClientId,
+	authorize.InitAuth(ctx, models.AuthorizationRequest{
+		ClientId: models.TestClientId,
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        "invalid_scope",
@@ -85,15 +85,15 @@ func TestInitAuthWhenInvalidScope(t *testing.T) {
 
 func TestInitAuthWhenInvalidResponseType(t *testing.T) {
 	// When
-	ctx, tearDown := oauth.SetUp()
+	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(oauth.ValidClientId)
+	client, _ := ctx.ClientManager.Get(models.TestClientId)
 	client.ResponseTypes = []constants.ResponseType{constants.CodeResponse}
-	ctx.ClientManager.Update(oauth.ValidClientId, client)
+	ctx.ClientManager.Update(models.TestClientId, client)
 
 	// Then
-	oauth.InitAuth(ctx, models.AuthorizationRequest{
-		ClientId: oauth.ValidClientId,
+	authorize.InitAuth(ctx, models.AuthorizationRequest{
+		ClientId: models.TestClientId,
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
@@ -111,13 +111,13 @@ func TestInitAuthWhenInvalidResponseType(t *testing.T) {
 
 func TestInitAuthWhenNoPolicyIsAvailable(t *testing.T) {
 	// When
-	ctx, tearDown := oauth.SetUp()
+	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(oauth.ValidClientId)
+	client, _ := ctx.ClientManager.Get(models.TestClientId)
 
 	// Then
-	oauth.InitAuth(ctx, models.AuthorizationRequest{
-		ClientId: oauth.ValidClientId,
+	authorize.InitAuth(ctx, models.AuthorizationRequest{
+		ClientId: models.TestClientId,
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
@@ -136,9 +136,9 @@ func TestInitAuthWhenNoPolicyIsAvailable(t *testing.T) {
 
 func TestInitAuthShouldEndWithError(t *testing.T) {
 	// When
-	ctx, tearDown := oauth.SetUp()
+	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(oauth.ValidClientId)
+	client, _ := ctx.ClientManager.Get(models.TestClientId)
 	firstStep := utils.NewStep(
 		"init_step",
 		func(ctx utils.Context, as *models.AuthnSession) (constants.AuthnStatus, error) {
@@ -153,8 +153,8 @@ func TestInitAuthShouldEndWithError(t *testing.T) {
 	ctx.Policies = append(ctx.Policies, policy)
 
 	// Then
-	err := oauth.InitAuth(ctx, models.AuthorizationRequest{
-		ClientId: oauth.ValidClientId,
+	err := authorize.InitAuth(ctx, models.AuthorizationRequest{
+		ClientId: models.TestClientId,
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
@@ -174,7 +174,7 @@ func TestInitAuthShouldEndWithError(t *testing.T) {
 		return
 	}
 
-	sessions := oauth.GetSessionsFromMock(ctx)
+	sessions := utils.GetSessionsFromTestContext(ctx)
 	if len(sessions) != 0 {
 		t.Error("no authentication session should remain")
 		return
@@ -183,9 +183,9 @@ func TestInitAuthShouldEndWithError(t *testing.T) {
 
 func TestInitAuthShouldEndInProgress(t *testing.T) {
 	// When
-	ctx, tearDown := oauth.SetUp()
+	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(oauth.ValidClientId)
+	client, _ := ctx.ClientManager.Get(models.TestClientId)
 	firstStep := utils.NewStep(
 		"init_step",
 		func(ctx utils.Context, as *models.AuthnSession) (constants.AuthnStatus, error) {
@@ -200,8 +200,8 @@ func TestInitAuthShouldEndInProgress(t *testing.T) {
 	ctx.Policies = append(ctx.Policies, policy)
 
 	// Then
-	err := oauth.InitAuth(ctx, models.AuthorizationRequest{
-		ClientId: oauth.ValidClientId,
+	err := authorize.InitAuth(ctx, models.AuthorizationRequest{
+		ClientId: models.TestClientId,
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
@@ -222,7 +222,7 @@ func TestInitAuthShouldEndInProgress(t *testing.T) {
 		return
 	}
 
-	sessions := oauth.GetSessionsFromMock(ctx)
+	sessions := utils.GetSessionsFromTestContext(ctx)
 	if len(sessions) != 1 {
 		t.Error("the should be only one authentication session")
 		return
@@ -246,9 +246,9 @@ func TestInitAuthShouldEndInProgress(t *testing.T) {
 
 func TestInitAuthPolicyEndsWithSuccess(t *testing.T) {
 	// When
-	ctx, tearDown := oauth.SetUp()
+	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(oauth.ValidClientId)
+	client, _ := ctx.ClientManager.Get(models.TestClientId)
 	firstStep := utils.NewStep(
 		"init_step",
 		func(ctx utils.Context, as *models.AuthnSession) (constants.AuthnStatus, error) {
@@ -263,8 +263,8 @@ func TestInitAuthPolicyEndsWithSuccess(t *testing.T) {
 	ctx.Policies = append(ctx.Policies, policy)
 
 	// Then
-	err := oauth.InitAuth(ctx, models.AuthorizationRequest{
-		ClientId: oauth.ValidClientId,
+	err := authorize.InitAuth(ctx, models.AuthorizationRequest{
+		ClientId: models.TestClientId,
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
 			Scope:        strings.Join(client.Scopes, " "),
@@ -280,7 +280,7 @@ func TestInitAuthPolicyEndsWithSuccess(t *testing.T) {
 		return
 	}
 
-	sessions := oauth.GetSessionsFromMock(ctx)
+	sessions := utils.GetSessionsFromTestContext(ctx)
 	if len(sessions) != 1 {
 		t.Error("the should be only one authentication session")
 		return
@@ -304,9 +304,9 @@ func TestInitAuthPolicyEndsWithSuccess(t *testing.T) {
 }
 
 func TestInitAuthWithPar(t *testing.T) {
-	ctx, tearDown := oauth.SetUp()
+	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(oauth.ValidClientId)
+	client, _ := ctx.ClientManager.Get(models.TestClientId)
 	requestUri := "urn:goidc:random_value"
 	ctx.AuthnSessionManager.CreateOrUpdate(
 		models.AuthnSession{
@@ -328,8 +328,8 @@ func TestInitAuthWithPar(t *testing.T) {
 	ctx.Policies = append(ctx.Policies, policy)
 
 	// Then
-	err := oauth.InitAuth(ctx, models.AuthorizationRequest{
-		ClientId: oauth.ValidClientId,
+	err := authorize.InitAuth(ctx, models.AuthorizationRequest{
+		ClientId: models.TestClientId,
 		AuthorizationParameters: models.AuthorizationParameters{
 			RequestUri:   requestUri,
 			ResponseType: constants.CodeResponse,
@@ -343,7 +343,7 @@ func TestInitAuthWithPar(t *testing.T) {
 		return
 	}
 
-	sessions := oauth.GetSessionsFromMock(ctx)
+	sessions := utils.GetSessionsFromTestContext(ctx)
 	if len(sessions) != 1 {
 		t.Error("the should be only one authentication session")
 		return
@@ -365,7 +365,7 @@ func TestInitAuthWithPar(t *testing.T) {
 func TestContinueAuthentication(t *testing.T) {
 
 	// When
-	ctx, tearDown := oauth.SetUp()
+	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
 	firstStep := utils.NewStep(
 		"init_step",
@@ -381,7 +381,7 @@ func TestContinueAuthentication(t *testing.T) {
 	})
 
 	// Then
-	err := oauth.ContinueAuth(ctx, callbackId)
+	err := authorize.ContinueAuth(ctx, callbackId)
 
 	// Assert
 	if err != nil {
@@ -389,7 +389,7 @@ func TestContinueAuthentication(t *testing.T) {
 		return
 	}
 
-	sessions := oauth.GetSessionsFromMock(ctx)
+	sessions := utils.GetSessionsFromTestContext(ctx)
 	if len(sessions) != 1 {
 		t.Error("the should be only one authentication session")
 		return
