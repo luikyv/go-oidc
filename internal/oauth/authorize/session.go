@@ -31,6 +31,7 @@ func initValidAuthnSession(
 }
 
 func shouldInitAuthnSessionWithPar(ctx utils.Context, req models.AuthorizationParameters) bool {
+	// Note: if PAR is not enabled, we just disconsider the request_uri.
 	return ctx.ParIsRequired || (ctx.ParIsEnabled && req.RequestUri != "")
 }
 
@@ -78,6 +79,7 @@ func getSessionCreatedWithPar(
 }
 
 func ShouldInitAuthnSessionWithJar(ctx utils.Context, req models.AuthorizationParameters) bool {
+	// Note: if JAR is not enabled, we just disconsider the request object.
 	return ctx.JarIsRequired || (ctx.JarIsEnabled && req.RequestObject != "")
 }
 

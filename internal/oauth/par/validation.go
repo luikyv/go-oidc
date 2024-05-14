@@ -18,7 +18,7 @@ func validatePar(
 		return issues.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
 	}
 
-	return authorize.ValidateNonEmptyParamsNoRedirect(ctx, req.AuthorizationParameters, client)
+	return authorize.ValidateNonEmptyParams(ctx, req.AuthorizationParameters, client)
 }
 
 func validateParWithJar(
@@ -41,5 +41,5 @@ func validateParWithJar(
 	// In turn, the JAR RFC (https://www.rfc-editor.org/rfc/rfc9101.html#name-request-object-2.) says about the request object:
 	// "...It MUST contain all the parameters (including extension parameters) used to process the OAuth 2.0 [RFC6749] authorization request..."
 	// TODO: Review this, don't need ALL inside jar, only validate what is inside jar.
-	return authorize.ValidateNonEmptyParamsNoRedirect(ctx, jar.AuthorizationParameters, client)
+	return authorize.ValidateNonEmptyParams(ctx, jar.AuthorizationParameters, client)
 }
