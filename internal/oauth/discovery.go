@@ -8,12 +8,11 @@ import (
 
 func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 
-	return models.OpenIdConfiguration{
+	config := models.OpenIdConfiguration{
 		Issuer:                   ctx.Host,
 		AuthorizationEndpoint:    ctx.Host + string(constants.AuthorizationEndpoint),
 		TokenEndpoint:            ctx.Host + string(constants.TokenEndpoint),
 		UserinfoEndpoint:         ctx.Host + string(constants.UserInfoEndpoint),
-		ParEndpoint:              ctx.Host + string(constants.PushedAuthorizationRequestEndpoint),
 		ParIsRequired:            ctx.ParIsRequired,
 		JwksUri:                  ctx.Host + string(constants.JsonWebKeySetEndpoint),
 		ResponseTypes:            constants.ResponseTypes,
@@ -24,6 +23,13 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 		ClientAuthnMethods:       constants.ClientAuthnTypes,
 		ScopesSupported:          []string{constants.OpenIdScope},
 		JarIsRequired:            ctx.JarIsRequired,
+		JarIsEnabled:             ctx.JarIsEnabled,
 		JarmAlgorithms:           []string{ctx.GetJarmPrivateKey().Algorithm},
 	}
+	if ctx.ParIsEnabled {
+		config.ParIsRequired = ctx.ParIsRequired
+		config.ParEndpoint = ctx.Host + string(constants.PushedAuthorizationRequestEndpoint)
+	}
+
+	return config
 }

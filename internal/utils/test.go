@@ -24,7 +24,7 @@ const (
 
 func SetUpTest() (testCtx Context, tearDownTest func()) {
 	// Create
-	privateJwk := unit.GetTestPrivateRs256Jwk()
+	privateJwk := unit.GetTestPrivateRs256Jwk("rsa256_key")
 	grantModel := models.GetTestOpaqueGrantModel(privateJwk)
 	client := models.GetSecretPostTestClient()
 
@@ -48,22 +48,28 @@ func GetTestInMemoryRequestContext() *gin.Context {
 
 func GetTestInMemoryContext(privateJWKS jose.JSONWebKeySet) Context {
 	return Context{
-		Host:                TestHost,
-		ScopeManager:        inmemory.NewInMemoryScopeManager(),
-		GrantModelManager:   inmemory.NewInMemoryGrantModelManager(),
-		ClientManager:       inmemory.NewInMemoryClientManager(),
-		GrantSessionManager: inmemory.NewInMemoryGrantSessionManager(),
-		AuthnSessionManager: inmemory.NewInMemoryAuthnSessionManager(),
-		RequestContext:      GetTestInMemoryRequestContext(),
-		PrivateJwks:         privateJWKS,
-		Policies:            []AuthnPolicy{},
-		Logger:              slog.Default(),
+		Configuration: Configuration{
+			Host:                TestHost,
+			ScopeManager:        inmemory.NewInMemoryScopeManager(),
+			GrantModelManager:   inmemory.NewInMemoryGrantModelManager(),
+			ClientManager:       inmemory.NewInMemoryClientManager(),
+			GrantSessionManager: inmemory.NewInMemoryGrantSessionManager(),
+			AuthnSessionManager: inmemory.NewInMemoryAuthnSessionManager(),
+			ParIsEnabled:        true,
+			JarIsEnabled:        true,
+			PrivateJwks:         privateJWKS,
+			Policies:            []AuthnPolicy{},
+		},
+		RequestContext: GetTestInMemoryRequestContext(),
+		Logger:         slog.Default(),
 	}
 }
 
 func GetDummyTestContext() Context {
 	return Context{
-		Host:   TestHost,
+		Configuration: Configuration{
+			Host: TestHost,
+		},
 		Logger: slog.Default(),
 	}
 }

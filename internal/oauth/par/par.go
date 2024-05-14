@@ -18,14 +18,13 @@ func PushAuthorization(
 	oauthErr issues.OAuthError,
 ) {
 
-	// Authenticate the client as in the token endpoint.
 	client, err := token.GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
 		ctx.Logger.Info("could not authenticate the client", slog.String("client_id", req.ClientIdPost))
 		return "", issues.NewOAuthError(constants.InvalidClient, "client not authenticated")
 	}
 
-	session, oauthErr := initPushedAuthnSession(ctx, req, client)
+	session, oauthErr := initValidAuthnSession(ctx, req, client)
 	if oauthErr != nil {
 		return "", oauthErr
 	}

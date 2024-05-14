@@ -1,6 +1,8 @@
 package constants
 
-import "github.com/go-jose/go-jose/v4"
+import (
+	"github.com/go-jose/go-jose/v4"
+)
 
 const CallbackIdLength int = 20
 
@@ -17,6 +19,10 @@ const AuthorizationCodeLength int = 30
 const RefreshTokenLength int = 30
 
 type Profile string
+
+func (p Profile) IsOpenIdVariant() bool {
+	return p == OpenIdCoreProfile
+}
 
 const (
 	OAuthCoreProfile  Profile = "oauth_core"

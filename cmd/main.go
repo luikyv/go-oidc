@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
@@ -11,73 +13,28 @@ import (
 	"github.com/luikymagno/auth-server/pkg/oauth"
 )
 
-// func loadJwks() jose.JSONWebKeySet {
-// 	absPath, _ := filepath.Abs("./jwks.json")
-// 	jwksFile, err := os.Open(absPath)
-// 	if err != nil {
-// 		panic(err.Error())
-// 	}
-// 	defer jwksFile.Close()
-// 	jwksBytes, err := io.ReadAll(jwksFile)
-// 	if err != nil {
-// 		panic(err.Error())
-// 	}
-// 	var jwks jose.JSONWebKeySet
-// 	json.Unmarshal(jwksBytes, &jwks)
-
-// 	return jwks
-// }
-
-// func getClientJwk() jose.JSONWebKey {
-// 	absPath, _ := filepath.Abs("./client_jwk.json")
-// 	clientJwkFile, err := os.Open(absPath)
-// 	if err != nil {
-// 		panic(err.Error())
-// 	}
-// 	defer clientJwkFile.Close()
-// 	clientJwkBytes, err := io.ReadAll(clientJwkFile)
-// 	if err != nil {
-// 		panic(err.Error())
-// 	}
-// 	var clientJwk jose.JSONWebKey
-// 	clientJwk.UnmarshalJSON(clientJwkBytes)
-
-// 	return clientJwk
-// }
-
-// func createClientAssertion(client models.Client, jwk jose.JSONWebKey) string {
-// 	createdAtTimestamp := unit.GetTimestampNow()
-// 	signer, _ := jose.NewSigner(
-// 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
-// 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", "random value"),
-// 	)
-// 	claims := map[string]any{
-// 		string(constants.Issuer):   client.Id,
-// 		string(constants.Subject):  client.Id,
-// 		string(constants.IssuedAt): createdAtTimestamp,
-// 		string(constants.Expiry):   createdAtTimestamp,
-// 	}
-// 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
-
-// 	return assertion
-// }
-
 func main() {
+	opts := &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}
+	jsonHandler := slog.NewJSONHandler(os.Stdout, opts)
+	logger := slog.New(jsonHandler)
 	port := 83
-	// issuer := fmt.Sprintf("https://host.docker.internal:%v", port)
-	issuer := fmt.Sprintf("https://localhost:%v", port)
-	privatePs256Jwk := unit.GetTestPrivatePs256Jwk()
+	issuer := fmt.Sprintf("https://host.docker.internal:%v", port)
+	// issuer := fmt.Sprintf("https://localhost:%v", port)
+	privatePs256Jwk := unit.GetTestPrivatePs256Jwk("server_key")
 
 	// Create the manager.
 	oauthManager := oauth.NewManager(
 		issuer,
 		jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privatePs256Jwk, privatePs256Jwk}},
-		privatePs256Jwk.KeyID,
 		"./templates/*",
 		oauth.ConfigureInMemoryClientAndScope,
 		oauth.ConfigureInMemoryGrantModel,
 		oauth.ConfigureInMemorySessions,
 	)
+	oauthManager.EnablePushedAuthorizationRequests(false)
+	oauthManager.EnableJwtSecuredAuthorizationRequests(privatePs256Jwk.KeyID, false)
 
 	// Add mocks.
 	opaqueGrantModel := models.GetTestOpaqueGrantModel(privatePs256Jwk)
@@ -86,7 +43,10 @@ func main() {
 	jwtGrantModel := models.GetTestJwtGrantModel(privatePs256Jwk)
 	oauthManager.AddGrantModel(jwtGrantModel)
 
-	client := models.GetSecretPostTestClient()
+	privateClientJwk := unit.GetTestPrivatePs256Jwk("client_key")
+	logger.Debug("private client JWK", slog.Any("JWKS", jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privateClientJwk}}))
+	client := models.GetPrivateKeyJwtTestClient(privateClientJwk.Public())
+	// client := models.GetSecretPostTestClient()
 	client.RedirectUris = append(client.RedirectUris, issuer+"/callback")
 	client.DefaultGrantModelId = jwtGrantModel.Meta.Id
 	oauthManager.AddClient(client)

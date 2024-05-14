@@ -50,8 +50,18 @@ func GetTestSecretPostAuthenticator() SecretPostClientAuthenticator {
 	}
 }
 
+func GetTestPrivateKeyJwtAuthenticator(publicJwk jose.JSONWebKey) PrivateKeyJwtClientAuthenticator {
+	return PrivateKeyJwtClientAuthenticator{
+		PublicJwks: jose.JSONWebKeySet{Keys: []jose.JSONWebKey{publicJwk}},
+	}
+}
+
 func GetSecretPostTestClient() Client {
 	return GetTestClient(GetTestSecretPostAuthenticator())
+}
+
+func GetPrivateKeyJwtTestClient(publicJwk jose.JSONWebKey) Client {
+	return GetTestClient(GetTestPrivateKeyJwtAuthenticator(publicJwk))
 }
 
 func GetNoneAuthTestClient() Client {

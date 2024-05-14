@@ -12,7 +12,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
-type Context struct {
+type Configuration struct {
 	Host                string
 	ScopeManager        crud.ScopeManager
 	GrantModelManager   crud.GrantModelManager
@@ -21,25 +21,21 @@ type Context struct {
 	AuthnSessionManager crud.AuthnSessionManager
 	PrivateJwks         jose.JSONWebKeySet
 	PrivateJarmKeyId    string // TODO: Get jarm key based on client.
+	JarIsEnabled        bool
 	JarIsRequired       bool
+	ParIsEnabled        bool
 	ParIsRequired       bool
 	Policies            []AuthnPolicy
-	RequestContext      *gin.Context
-	Logger              *slog.Logger
+}
+
+type Context struct {
+	Configuration
+	RequestContext *gin.Context
+	Logger         *slog.Logger
 }
 
 func NewContext(
-	host string,
-	scopeManager crud.ScopeManager,
-	grantModelManager crud.GrantModelManager,
-	clientManager crud.ClientManager,
-	grantSessionManager crud.GrantSessionManager,
-	authnSessionManager crud.AuthnSessionManager,
-	privateJwks jose.JSONWebKeySet,
-	privateJarmKeyId string,
-	parIsRequired bool,
-	jarIsRequired bool,
-	policies []AuthnPolicy,
+	configuration Configuration,
 	reqContext *gin.Context,
 ) Context {
 
@@ -57,27 +53,21 @@ func NewContext(
 	)
 
 	return Context{
-		Host:                host,
-		ScopeManager:        scopeManager,
-		GrantModelManager:   grantModelManager,
-		ClientManager:       clientManager,
-		GrantSessionManager: grantSessionManager,
-		AuthnSessionManager: authnSessionManager,
-		PrivateJwks:         privateJwks,
-		PrivateJarmKeyId:    privateJarmKeyId,
-		JarIsRequired:       jarIsRequired,
-		ParIsRequired:       parIsRequired,
-		Policies:            policies,
-		RequestContext:      reqContext,
-		Logger:              logger,
+		Configuration:  configuration,
+		RequestContext: reqContext,
+		Logger:         logger,
 	}
 }
 
 func (ctx Context) GetProfile(requestedScopes []string) constants.Profile {
 	if slices.Contains(requestedScopes, constants.OpenIdScope) {
-		return constants.OpenIdCoreProfile
+		return ctx.GetOpenIdProfile(requestedScopes)
 	}
 	return constants.OAuthCoreProfile
+}
+
+func (ctx Context) GetOpenIdProfile(requestedScopes []string) constants.Profile {
+	return constants.OpenIdCoreProfile
 }
 
 func (ctx Context) GetAvailablePolicy(session models.AuthnSession) (policy AuthnPolicy, policyIsAvailable bool) {

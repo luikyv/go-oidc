@@ -7,7 +7,6 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/apihandlers"
-	"github.com/luikymagno/auth-server/internal/crud"
 	"github.com/luikymagno/auth-server/internal/crud/inmemory"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -15,38 +14,26 @@ import (
 )
 
 type OpenIDManager struct {
-	host                string
-	scopeManager        crud.ScopeManager
-	grantModelManager   crud.GrantModelManager
-	clientManager       crud.ClientManager
-	grantSessionManager crud.GrantSessionManager
-	authnSessionManager crud.AuthnSessionManager
-	privateJwks         jose.JSONWebKeySet
-	privateJarmKeyId    string // TODO get private jarm key.
-	policies            []utils.AuthnPolicy
-	server              *gin.Engine
+	utils.Configuration
+	Server *gin.Engine
 }
 
 func NewManager(
 	host string,
 	privateJwks jose.JSONWebKeySet,
-	privateJarmKeyId string,
 	templates string,
 	settings ...func(*OpenIDManager),
 ) *OpenIDManager {
 
-	if len(privateJwks.Key(privateJarmKeyId)) == 0 {
-		panic("the JARM key must be in the JWKS")
-	}
-
 	manager := &OpenIDManager{
-		host:             host,
-		privateJwks:      privateJwks,
-		privateJarmKeyId: privateJarmKeyId,
-		policies:         make([]utils.AuthnPolicy, 0),
-		server:           gin.Default(),
+		Configuration: utils.Configuration{
+			Host:        host,
+			PrivateJwks: privateJwks,
+			Policies:    make([]utils.AuthnPolicy, 0),
+		},
+		Server: gin.Default(),
 	}
-	manager.server.LoadHTMLGlob(templates)
+	manager.Server.LoadHTMLGlob(templates)
 
 	for _, setting := range settings {
 		setting(manager)
@@ -56,52 +43,58 @@ func NewManager(
 }
 
 func ConfigureInMemoryClientAndScope(manager *OpenIDManager) {
-	manager.clientManager = inmemory.NewInMemoryClientManager()
-	manager.scopeManager = inmemory.NewInMemoryScopeManager()
+	manager.ClientManager = inmemory.NewInMemoryClientManager()
+	manager.ScopeManager = inmemory.NewInMemoryScopeManager()
 }
 
 func ConfigureInMemoryGrantModel(manager *OpenIDManager) {
-	manager.grantModelManager = inmemory.NewInMemoryGrantModelManager()
+	manager.GrantModelManager = inmemory.NewInMemoryGrantModelManager()
 }
 
 func ConfigureInMemorySessions(manager *OpenIDManager) {
-	manager.grantSessionManager = inmemory.NewInMemoryGrantSessionManager()
-	manager.authnSessionManager = inmemory.NewInMemoryAuthnSessionManager()
+	manager.GrantSessionManager = inmemory.NewInMemoryGrantSessionManager()
+	manager.AuthnSessionManager = inmemory.NewInMemoryAuthnSessionManager()
+}
+
+func (manager *OpenIDManager) EnablePushedAuthorizationRequests(
+	isRequired bool,
+) {
+	manager.ParIsEnabled = true
+	manager.ParIsRequired = isRequired
+}
+
+func (manager *OpenIDManager) EnableJwtSecuredAuthorizationRequests(
+	privateJarKeyId string,
+	isRequired bool,
+) {
+	manager.JarIsEnabled = true
+	manager.PrivateJarmKeyId = privateJarKeyId
+	manager.JarIsRequired = isRequired
 }
 
 func (manager *OpenIDManager) AddGrantModel(model models.GrantModel) error {
-	return manager.grantModelManager.Create(model)
+	return manager.GrantModelManager.Create(model)
 }
 
 func (manager *OpenIDManager) AddClient(client models.Client) error {
-	return manager.clientManager.Create(client)
+	return manager.ClientManager.Create(client)
 }
 
 func (manager *OpenIDManager) AddPolicy(policy utils.AuthnPolicy) {
-	manager.policies = append(manager.policies, policy)
+	manager.Policies = append(manager.Policies, policy)
 }
 
 func (manager OpenIDManager) getContext(requestContext *gin.Context) utils.Context {
 	return utils.NewContext(
-		manager.host,
-		manager.scopeManager,
-		manager.grantModelManager,
-		manager.clientManager,
-		manager.grantSessionManager,
-		manager.authnSessionManager,
-		manager.privateJwks,
-		manager.privateJarmKeyId,
-		false,
-		false,
-		manager.policies,
+		manager.Configuration,
 		requestContext,
 	)
 }
 
-func (manager *OpenIDManager) run() {
+func (manager *OpenIDManager) setUp() {
 
 	// Configure the server.
-	manager.server.Use(func(ctx *gin.Context) {
+	manager.Server.Use(func(ctx *gin.Context) {
 		// Set the correlation ID to be used in the logs.
 		correlationId := ctx.GetHeader(string(constants.CorrelationIdHeader))
 		if correlationId == "" {
@@ -115,56 +108,64 @@ func (manager *OpenIDManager) run() {
 	})
 
 	// Set endpoints.
-	manager.server.GET(string(constants.WellKnownEndpoint), func(requestCtx *gin.Context) {
-		apihandlers.HandleWellKnownRequest(
-			manager.getContext(requestCtx),
+	manager.Server.GET(
+		string(constants.WellKnownEndpoint),
+		func(requestCtx *gin.Context) {
+			apihandlers.HandleWellKnownRequest(manager.getContext(requestCtx))
+		},
+	)
+	manager.Server.GET(
+		string(constants.JsonWebKeySetEndpoint),
+		func(requestCtx *gin.Context) {
+			apihandlers.HandleJWKSRequest(manager.getContext(requestCtx))
+		},
+	)
+	if manager.ParIsEnabled {
+		manager.Server.POST(
+			string(constants.PushedAuthorizationRequestEndpoint),
+			func(requestCtx *gin.Context) {
+				apihandlers.HandlePARRequest(manager.getContext(requestCtx))
+			},
 		)
-	})
-	manager.server.GET(string(constants.JsonWebKeySetEndpoint), func(requestCtx *gin.Context) {
-		apihandlers.HandleJWKSRequest(
-			manager.getContext(requestCtx),
-		)
-	})
-	manager.server.POST(string(constants.PushedAuthorizationRequestEndpoint), func(requestCtx *gin.Context) {
-		apihandlers.HandlePARRequest(
-			manager.getContext(requestCtx),
-		)
-	})
-	manager.server.GET(string(constants.AuthorizationEndpoint), func(requestCtx *gin.Context) {
-		apihandlers.HandleAuthorizeRequest(
-			manager.getContext(requestCtx),
-		)
-	})
-	manager.server.POST(string(constants.AuthorizationCallbackEndpoint), func(requestCtx *gin.Context) {
-		apihandlers.HandleAuthorizeCallbackRequest(
-			manager.getContext(requestCtx),
-		)
-	})
-	manager.server.POST(string(constants.TokenEndpoint), func(requestCtx *gin.Context) {
-		apihandlers.HandleTokenRequest(
-			manager.getContext(requestCtx),
-		)
-	})
-	manager.server.GET(string(constants.UserInfoEndpoint), func(requestCtx *gin.Context) {
-		apihandlers.HandleUserInfoRequest(
-			manager.getContext(requestCtx),
-		)
-	})
-	manager.server.POST(string(constants.UserInfoEndpoint), func(requestCtx *gin.Context) {
-		apihandlers.HandleUserInfoRequest(
-			manager.getContext(requestCtx),
-		)
-	})
+	}
+	manager.Server.GET(
+		string(constants.AuthorizationEndpoint),
+		func(requestCtx *gin.Context) {
+			apihandlers.HandleAuthorizeRequest(manager.getContext(requestCtx))
+		},
+	)
+	manager.Server.POST(
+		string(constants.AuthorizationCallbackEndpoint),
+		func(requestCtx *gin.Context) {
+			apihandlers.HandleAuthorizeCallbackRequest(manager.getContext(requestCtx))
+		},
+	)
+	manager.Server.POST(
+		string(constants.TokenEndpoint),
+		func(requestCtx *gin.Context) {
+			apihandlers.HandleTokenRequest(manager.getContext(requestCtx))
+		},
+	)
+	manager.Server.GET(
+		string(constants.UserInfoEndpoint),
+		func(requestCtx *gin.Context) {
+			apihandlers.HandleUserInfoRequest(manager.getContext(requestCtx))
+		},
+	)
+	manager.Server.POST(
+		string(constants.UserInfoEndpoint),
+		func(requestCtx *gin.Context) {
+			apihandlers.HandleUserInfoRequest(manager.getContext(requestCtx))
+		},
+	)
 }
 
 func (manager *OpenIDManager) Run(port int) {
-	manager.run()
-	// Start the server.
-	manager.server.Run(":" + fmt.Sprint(port))
+	manager.setUp()
+	manager.Server.Run(":" + fmt.Sprint(port))
 }
 
 func (manager *OpenIDManager) RunTLS(port int) {
-	manager.run()
-	// Start the server.
-	manager.server.RunTLS(":"+fmt.Sprint(port), "cert.pem", "key.pem")
+	manager.setUp()
+	manager.Server.RunTLS(":"+fmt.Sprint(port), "cert.pem", "key.pem")
 }

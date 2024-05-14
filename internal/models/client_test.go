@@ -64,7 +64,7 @@ func TestPrivateKeyJWTClientAuthenticatorValidInfo(t *testing.T) {
 	// When
 	host := "https://example.com"
 
-	privateJwk := unit.GetTestPrivateRs256Jwk()
+	privateJwk := unit.GetTestPrivateRs256Jwk("rsa256_key")
 	authenticator := PrivateKeyJwtClientAuthenticator{
 		PublicJwks: jose.JSONWebKeySet{
 			Keys: []jose.JSONWebKey{privateJwk.Public()},

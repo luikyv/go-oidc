@@ -3,11 +3,12 @@ package par
 import (
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/auth-server/internal/oauth/authorize"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func initPushedAuthnSession(
+func initValidAuthnSession(
 	ctx utils.Context,
 	req models.PushedAuthorizationRequest,
 	client models.Client,
@@ -16,14 +17,14 @@ func initPushedAuthnSession(
 	issues.OAuthError,
 ) {
 
-	if ctx.JarIsRequired || req.RequestObject != "" {
-		return initPushedAuthnSessionWithJar(ctx, req, client)
+	if authorize.ShouldInitAuthnSessionWithJar(ctx, req.AuthorizationParameters) {
+		return initValidAuthnSessionWithJar(ctx, req, client)
 	}
 
-	return initSimplePushedAuthnSession(ctx, req, client)
+	return initValidSimpleAuthnSession(ctx, req, client)
 }
 
-func initSimplePushedAuthnSession(
+func initValidSimpleAuthnSession(
 	ctx utils.Context,
 	req models.PushedAuthorizationRequest,
 	client models.Client,
@@ -40,7 +41,7 @@ func initSimplePushedAuthnSession(
 	return session, nil
 }
 
-func initPushedAuthnSessionWithJar(
+func initValidAuthnSessionWithJar(
 	ctx utils.Context,
 	req models.PushedAuthorizationRequest,
 	client models.Client,

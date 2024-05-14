@@ -14,10 +14,6 @@ func validatePar(
 	client models.Client,
 ) issues.OAuthError {
 
-	if req.ClientIdPost != "" && req.ClientIdPost != client.Id {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
-	}
-
 	if req.RequestUri != "" {
 		return issues.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
 	}
@@ -32,12 +28,12 @@ func validateParWithJar(
 	client models.Client,
 ) issues.OAuthError {
 
-	if req.ClientIdPost != "" && req.ClientIdPost != client.Id {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
-	}
-
 	if req.RequestUri != "" {
 		return issues.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
+	}
+
+	if jar.ClientId != client.Id {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
 	}
 
 	// The PAR RFC (https://datatracker.ietf.org/doc/html/rfc9126#section-3) says:
@@ -45,5 +41,5 @@ func validateParWithJar(
 	// In turn, the JAR RFC (https://www.rfc-editor.org/rfc/rfc9101.html#name-request-object-2.) says about the request object:
 	// "...It MUST contain all the parameters (including extension parameters) used to process the OAuth 2.0 [RFC6749] authorization request..."
 	// TODO: Review this, don't need ALL inside jar, only validate what is inside jar.
-	return authorize.ValidateOAuthCoreParamsNoRedirect(ctx, jar.AuthorizationParameters, client)
+	return authorize.ValidateNonEmptyParamsNoRedirect(ctx, jar.AuthorizationParameters, client)
 }

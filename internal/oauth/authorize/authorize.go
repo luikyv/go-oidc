@@ -31,7 +31,7 @@ func initAuth(ctx utils.Context, req models.AuthorizationRequest) issues.OAuthEr
 		return err
 	}
 
-	session, err := initAuthnSession(ctx, req, client)
+	session, err := initValidAuthnSession(ctx, req, client)
 	if err != nil {
 		return err
 	}

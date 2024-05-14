@@ -7,7 +7,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func initAuthnSession(
+func initValidAuthnSession(
 	ctx utils.Context,
 	req models.AuthorizationRequest,
 	client models.Client,
@@ -16,21 +16,25 @@ func initAuthnSession(
 	issues.OAuthError,
 ) {
 
-	if ctx.ParIsRequired || req.RequestUri != "" {
+	if shouldInitAuthnSessionWithPar(ctx, req.AuthorizationParameters) {
 		ctx.Logger.Info("initiating authorization request with PAR")
-		return initAuthnSessionWithPar(ctx, req, client)
+		return initValidAuthnSessionWithPar(ctx, req, client)
 	}
 
 	// the jar requirement comes after the par one, because the client can send the jar during par.
-	if ctx.JarIsRequired || req.RequestObject != "" {
+	if ShouldInitAuthnSessionWithJar(ctx, req.AuthorizationParameters) {
 		ctx.Logger.Info("initiating authorization request with JAR")
-		return initAuthnSessionWithJar(ctx, req, client)
+		return initValidAuthnSessionWithJar(ctx, req, client)
 	}
 
-	return initSimpleAuthnSession(ctx, req, client)
+	return initValidSimpleAuthnSession(ctx, req, client)
 }
 
-func initAuthnSessionWithPar(
+func shouldInitAuthnSessionWithPar(ctx utils.Context, req models.AuthorizationParameters) bool {
+	return ctx.ParIsRequired || (ctx.ParIsEnabled && req.RequestUri != "")
+}
+
+func initValidAuthnSessionWithPar(
 	ctx utils.Context,
 	req models.AuthorizationRequest,
 	client models.Client,
@@ -73,7 +77,11 @@ func getSessionCreatedWithPar(
 	return session, nil
 }
 
-func initAuthnSessionWithJar(
+func ShouldInitAuthnSessionWithJar(ctx utils.Context, req models.AuthorizationParameters) bool {
+	return ctx.JarIsRequired || (ctx.JarIsEnabled && req.RequestObject != "")
+}
+
+func initValidAuthnSessionWithJar(
 	ctx utils.Context,
 	req models.AuthorizationRequest,
 	client models.Client,
@@ -116,7 +124,7 @@ func getJar(
 	return jar, nil
 }
 
-func initSimpleAuthnSession(
+func initValidSimpleAuthnSession(
 	ctx utils.Context,
 	req models.AuthorizationRequest,
 	client models.Client,
