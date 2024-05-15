@@ -125,8 +125,8 @@ func validateAuthorizationParams(
 	return runValidations(
 		ctx, params, client,
 		validateOpenIdScopeIfRequired,
+		validateCannotRequestCodetResponseTypeWhenAuthorizationCodeGrantIsNotAllowed,
 		validateCannotRequestImplictResponseTypeWhenImplictGrantIsNotAllowed,
-		validateCodeChallengeMethodIfPresent,
 		validateCannotRequestIdTokenResponseTypeIfOpenIdScopeIsNotRequested,
 		validateRedirectUriIsRequired,
 		validateResponseTypeIsRequired,
@@ -135,6 +135,7 @@ func validateAuthorizationParams(
 		validateCannotRequestQueryResponseModeWhenImplictResponseTypeIsRequested,
 		validateNonceIsRequiredWhenIdTokenResponseTypeIsRequested,
 		validatePkceIfRequired,
+		validateCodeChallengeMethodIfPresent,
 	)
 }
 
@@ -145,12 +146,12 @@ func ValidateNonEmptyParams(
 ) issues.OAuthError {
 	return runValidations(
 		ctx, params, client,
+		validateCannotRequestCodetResponseTypeWhenAuthorizationCodeGrantIsNotAllowed,
+		validateCannotRequestImplictResponseTypeWhenImplictGrantIsNotAllowed,
 		validateRedirectUriIfPresent,
 		validateResponseModeIfPresent,
 		validateScopesIfPresent,
 		validateResponseTypeIfPresent,
-		validateCannotRequestCodetResponseTypeWhenAuthorizationCodeGrantIsNotAllowed,
-		validateCannotRequestImplictResponseTypeWhenImplictGrantIsNotAllowed,
 		validateCodeChallengeMethodIfPresent,
 		validateCannotInformRequestUriAndRequestObject,
 	)
@@ -418,16 +419,16 @@ func convertErrorIfRedirectable(
 ) issues.OAuthError {
 
 	responseMode := unit.GetResponseModeOrDefault(params.ResponseMode, params.ResponseType)
-	if client.IsRedirectUriAllowed(params.RedirectUri) && client.IsResponseModeAllowed(responseMode) {
-		return issues.NewOAuthRedirectError(
-			oauthErr.GetCode(),
-			oauthErr.Error(),
-			client.Id,
-			params.RedirectUri,
-			responseMode,
-			params.State,
-		)
+	if !client.IsRedirectUriAllowed(params.RedirectUri) || !client.IsResponseModeAllowed(responseMode) {
+		return oauthErr
 	}
 
-	return oauthErr
+	return issues.NewOAuthRedirectError(
+		oauthErr.GetCode(),
+		oauthErr.Error(),
+		client.Id,
+		params.RedirectUri,
+		responseMode,
+		params.State,
+	)
 }
