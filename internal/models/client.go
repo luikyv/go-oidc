@@ -61,6 +61,31 @@ func (authenticator SecretPostClientAuthenticator) IsAuthenticated(req ClientAut
 	return err == nil
 }
 
+type SecretJwtClientAuthentication struct {
+	Secret                   string
+	Host                     string
+	MaxAssertionLifetimeSecs int
+}
+
+func (authenticator SecretJwtClientAuthentication) GetAuthnType() constants.ClientAuthnType {
+	return constants.ClientSecretJwt
+}
+
+func (authenticator SecretJwtClientAuthentication) IsAuthenticated(req ClientAuthnRequest) bool {
+
+	assertion, err := jwt.ParseSigned(req.ClientAssertion, []jose.SignatureAlgorithm{jose.HS256})
+	if err != nil {
+		return false
+	}
+
+	claims := jwt.Claims{}
+	if err := assertion.Claims([]byte(authenticator.Secret), &claims); err != nil {
+		return false
+	}
+
+	return areAssertionClaimsValid(claims, authenticator.Host, authenticator.MaxAssertionLifetimeSecs)
+}
+
 type PrivateKeyJwtClientAuthenticator struct {
 	PublicJwks               jose.JSONWebKeySet
 	Host                     string
@@ -95,22 +120,26 @@ func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(req Client
 		return false
 	}
 
-	// Validate that the "iat" and "exp" claims are present and their difference is not too great.
-	if claims.Expiry == nil || claims.IssuedAt == nil || int(claims.Expiry.Time().Sub(claims.IssuedAt.Time()).Seconds()) > authenticator.MaxAssertionLifetimeSecs {
-		return false
-	}
-
-	err = claims.ValidateWithLeeway(jwt.Expected{
-		Issuer:      claims.Subject,
-		Subject:     claims.Subject,
-		AnyAudience: []string{authenticator.Host, authenticator.Host + string(constants.TokenEndpoint), authenticator.Host + string(constants.PushedAuthorizationRequestEndpoint)},
-	}, time.Duration(0))
-	return err == nil
+	return areAssertionClaimsValid(claims, authenticator.Host, authenticator.MaxAssertionLifetimeSecs)
 }
 
 func (authenticator PrivateKeyJwtClientAuthenticator) GetSigningAlgorithms() []jose.SignatureAlgorithm {
 
 	return getSigningAlgorithms(authenticator.PublicJwks)
+}
+
+func areAssertionClaimsValid(claims jwt.Claims, host string, maxLifetimeSecs int) bool {
+	// Validate that the "iat" and "exp" claims are present and their difference is not too great.
+	if claims.Expiry == nil || claims.IssuedAt == nil || int(claims.Expiry.Time().Sub(claims.IssuedAt.Time()).Seconds()) > maxLifetimeSecs {
+		return false
+	}
+
+	err := claims.ValidateWithLeeway(jwt.Expected{
+		Issuer:      claims.Subject,
+		Subject:     claims.Subject,
+		AnyAudience: []string{host, host + string(constants.TokenEndpoint), host + string(constants.PushedAuthorizationRequestEndpoint)},
+	}, time.Duration(0))
+	return err == nil
 }
 
 //---------------------------------------- Client ----------------------------------------//

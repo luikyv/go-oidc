@@ -32,10 +32,6 @@ func handleRefreshTokenGrantTokenCreation(
 		return models.GrantSession{}, err
 	}
 
-	if err := ctx.GrantSessionManager.Delete(grantSession.Id); err != nil {
-		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, "could not delete session")
-	}
-
 	ctx.Logger.Debug("update the token session")
 	updatedGrantSession, err := generateUpdatedGrantSession(ctx, grantSession)
 	if err != nil {

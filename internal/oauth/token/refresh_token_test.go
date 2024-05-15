@@ -21,7 +21,7 @@ func TestRefreshTokenHandleGrantCreation(t *testing.T) {
 	username := "user_id"
 	grantSession := models.GrantSession{
 		Id:                    "random_id",
-		GrantModelId:          models.TestClientId,
+		GrantModelId:          models.TestOpaqueGrantModelId,
 		Token:                 "token",
 		ExpiresInSecs:         60,
 		RefreshToken:          refreshToken,
