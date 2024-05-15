@@ -190,23 +190,26 @@ type PushedAuthorizationResponse struct {
 }
 
 type OpenIdConfiguration struct {
-	Issuer                   string                            `json:"issuer"`
-	AuthorizationEndpoint    string                            `json:"authorization_endpoint"`
-	TokenEndpoint            string                            `json:"token_endpoint"`
-	UserinfoEndpoint         string                            `json:"userinfo_endpoint"`
-	JwksUri                  string                            `json:"jwks_uri"`
-	ParEndpoint              string                            `json:"pushed_authorization_request_endpoint,omitempty"`
-	ParIsRequired            bool                              `json:"require_pushed_authorization_requests"`
-	ResponseTypes            []constants.ResponseType          `json:"response_types_supported"`
-	ResponseModes            []constants.ResponseMode          `json:"response_modes_supported"`
-	GrantTypes               []constants.GrantType             `json:"grant_types_supported"`
-	SubjectIdentifierTypes   []constants.SubjectIdentifierType `json:"subject_types_supported"`
-	IdTokenSigningAlgorithms []jose.SignatureAlgorithm         `json:"id_token_signing_alg_values_supported"`
-	ClientAuthnMethods       []constants.ClientAuthnType       `json:"token_endpoint_auth_methods_supported"`
-	ScopesSupported          []string                          `json:"scopes_supported"`
-	JarIsRequired            bool                              `json:"require_signed_request_object"`
-	JarIsEnabled             bool                              `json:"request_parameter_supported"`
-	JarmAlgorithms           []string                          `json:"authorization_signing_alg_values_supported"`
+	Issuer                               string                            `json:"issuer"`
+	AuthorizationEndpoint                string                            `json:"authorization_endpoint"`
+	TokenEndpoint                        string                            `json:"token_endpoint"`
+	UserinfoEndpoint                     string                            `json:"userinfo_endpoint"`
+	JwksUri                              string                            `json:"jwks_uri"`
+	ParEndpoint                          string                            `json:"pushed_authorization_request_endpoint,omitempty"`
+	ParIsRequired                        bool                              `json:"require_pushed_authorization_requests,omitempty"`
+	ResponseTypes                        []constants.ResponseType          `json:"response_types_supported"`
+	ResponseModes                        []constants.ResponseMode          `json:"response_modes_supported"`
+	GrantTypes                           []constants.GrantType             `json:"grant_types_supported"`
+	SubjectIdentifierTypes               []constants.SubjectIdentifierType `json:"subject_types_supported"`
+	IdTokenSigningAlgorithms             []jose.SignatureAlgorithm         `json:"id_token_signing_alg_values_supported"`
+	ClientAuthnMethods                   []constants.ClientAuthnType       `json:"token_endpoint_auth_methods_supported"`
+	ScopesSupported                      []string                          `json:"scopes_supported"`
+	JarIsRequired                        bool                              `json:"require_signed_request_object,omitempty"`
+	JarIsEnabled                         bool                              `json:"request_parameter_supported"`
+	JarAlgorithms                        []jose.SignatureAlgorithm         `json:"request_object_signing_alg_values_supported,omitempty"`
+	JarmAlgorithms                       []string                          `json:"authorization_signing_alg_values_supported,omitempty"`
+	TokenEndpointClientSigningAlgorithms []jose.SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg_values_supported"`
+	IssuerResponseParameterIsEnabled     bool                              `json:"authorization_response_iss_parameter_supported"`
 }
 
 type RedirectResponse struct {

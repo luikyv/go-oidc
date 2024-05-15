@@ -1,4 +1,4 @@
-package authorize
+package authorize2
 
 import (
 	"github.com/luikymagno/auth-server/internal/issues"
@@ -84,8 +84,15 @@ func validateParamsWithPriorities(
 	prioritaryParams models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
+
+	if err := ValidateNonEmptyParams(ctx, params, client); err != nil {
+		return err
+	}
+
 	scopes := unit.SplitStringWithSpaces(unit.GetNonEmptyOrDefault(prioritaryParams.Scope, params.Scope))
-	switch ctx.GetProfile(scopes) {
+	profile := ctx.GetProfile(scopes)
+
+	switch profile {
 	case constants.OpenIdCoreProfile:
 		return validateOpenIdParamsWithPriorities(ctx, params, prioritaryParams, client)
 	default:

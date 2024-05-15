@@ -23,7 +23,7 @@ func ExtractJarFromRequestObject(
 	models.AuthorizationRequest,
 	issues.OAuthError,
 ) {
-	parsedToken, err := jwt.ParseSigned(reqObject, client.GetSigningAlgorithms())
+	parsedToken, err := jwt.ParseSigned(reqObject, ctx.JarAlgorithms)
 	if err != nil {
 		return models.AuthorizationRequest{}, issues.NewOAuthError(constants.InternalError, err.Error())
 	}

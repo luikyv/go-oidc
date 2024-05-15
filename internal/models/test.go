@@ -13,13 +13,14 @@ const (
 	TestJwtGrantModelId    string = "jwt_grant_model_id"
 )
 
-func GetTestOpaqueGrantModel(privateJwk jose.JSONWebKey) GrantModel {
+func GetTestOpaqueGrantModel(issuer string, privateJwk jose.JSONWebKey) GrantModel {
 	return GrantModel{
 		TokenMaker: OpaqueTokenMaker{
 			TokenLength: 20,
 		},
 		Meta: GrantMetaInfo{
 			Id:               TestOpaqueGrantModelId,
+			Issuer:           issuer,
 			OpenIdPrivateJwk: privateJwk,
 			ExpiresInSecs:    60,
 			IsRefreshable:    true,
@@ -27,13 +28,14 @@ func GetTestOpaqueGrantModel(privateJwk jose.JSONWebKey) GrantModel {
 	}
 }
 
-func GetTestJwtGrantModel(privateJwk jose.JSONWebKey) GrantModel {
+func GetTestJwtGrantModel(issuer string, privateJwk jose.JSONWebKey) GrantModel {
 	return GrantModel{
 		TokenMaker: JWTTokenMaker{
 			PrivateJwk: privateJwk,
 		},
 		Meta: GrantMetaInfo{
 			Id:               TestJwtGrantModelId,
+			Issuer:           issuer,
 			OpenIdPrivateJwk: privateJwk,
 			ExpiresInSecs:    60,
 			IsRefreshable:    true,
@@ -50,18 +52,19 @@ func GetTestSecretPostAuthenticator() SecretPostClientAuthenticator {
 	}
 }
 
-func GetTestPrivateKeyJwtAuthenticator(publicJwk jose.JSONWebKey) PrivateKeyJwtClientAuthenticator {
-	return PrivateKeyJwtClientAuthenticator{
-		PublicJwks: jose.JSONWebKeySet{Keys: []jose.JSONWebKey{publicJwk}},
-	}
-}
-
 func GetSecretPostTestClient() Client {
 	return GetTestClient(GetTestSecretPostAuthenticator())
 }
 
-func GetPrivateKeyJwtTestClient(publicJwk jose.JSONWebKey) Client {
-	return GetTestClient(GetTestPrivateKeyJwtAuthenticator(publicJwk))
+func GetPrivateKeyJwtTestClient(host string, publicJwk jose.JSONWebKey) Client {
+	authenticator := PrivateKeyJwtClientAuthenticator{
+		PublicJwks:               jose.JSONWebKeySet{Keys: []jose.JSONWebKey{publicJwk}},
+		MaxAssertionLifetimeSecs: 6000,
+		Host:                     host,
+	}
+	client := GetTestClient(authenticator)
+	client.PublicJwks = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{publicJwk}}
+	return client
 }
 
 func GetNoneAuthTestClient() Client {

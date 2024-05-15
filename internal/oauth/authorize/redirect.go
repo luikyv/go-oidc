@@ -13,6 +13,10 @@ import (
 
 func redirectResponse(ctx utils.Context, redirectResponse models.RedirectResponse) {
 
+	if ctx.IssuerResponseParameterIsEnabled {
+		redirectResponse.Parameters[string(constants.IssuerClaim)] = ctx.Host
+	}
+
 	if redirectResponse.ResponseMode.IsJarm() {
 		redirectResponse.Parameters = map[string]string{
 			"response": createJarmResponse(ctx, redirectResponse.ClientId, redirectResponse.Parameters),

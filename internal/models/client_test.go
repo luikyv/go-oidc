@@ -69,7 +69,7 @@ func TestPrivateKeyJWTClientAuthenticatorValidInfo(t *testing.T) {
 		PublicJwks: jose.JSONWebKeySet{
 			Keys: []jose.JSONWebKey{privateJwk.Public()},
 		},
-		ExpectedAudience:         host,
+		Host:                     host,
 		MaxAssertionLifetimeSecs: 60,
 	}
 

@@ -13,19 +13,24 @@ import (
 )
 
 type Configuration struct {
-	Host                string
-	ScopeManager        crud.ScopeManager
-	GrantModelManager   crud.GrantModelManager
-	ClientManager       crud.ClientManager
-	GrantSessionManager crud.GrantSessionManager
-	AuthnSessionManager crud.AuthnSessionManager
-	PrivateJwks         jose.JSONWebKeySet
-	PrivateJarmKeyId    string // TODO: Get jarm key based on client.
-	JarIsEnabled        bool
-	JarIsRequired       bool
-	ParIsEnabled        bool
-	ParIsRequired       bool
-	Policies            []AuthnPolicy
+	Host                             string
+	ScopeManager                     crud.ScopeManager
+	GrantModelManager                crud.GrantModelManager
+	ClientManager                    crud.ClientManager
+	GrantSessionManager              crud.GrantSessionManager
+	AuthnSessionManager              crud.AuthnSessionManager
+	PrivateJwks                      jose.JSONWebKeySet
+	JarmIsEnabled                    bool   // TODO: use this
+	PrivateJarmKeyId                 string // TODO: Get jarm key based on client.
+	JarIsEnabled                     bool
+	JarIsRequired                    bool
+	JarAlgorithms                    []jose.SignatureAlgorithm
+	ParIsEnabled                     bool
+	ParIsRequired                    bool
+	Policies                         []AuthnPolicy
+	ClientAuthnMethods               []constants.ClientAuthnType // TODO: use this
+	ClientSigningAlgorithms          []jose.SignatureAlgorithm
+	IssuerResponseParameterIsEnabled bool
 }
 
 type Context struct {
@@ -61,13 +66,9 @@ func NewContext(
 
 func (ctx Context) GetProfile(requestedScopes []string) constants.Profile {
 	if slices.Contains(requestedScopes, constants.OpenIdScope) {
-		return ctx.GetOpenIdProfile(requestedScopes)
+		return constants.OpenIdCoreProfile
 	}
 	return constants.OAuthCoreProfile
-}
-
-func (ctx Context) GetOpenIdProfile(requestedScopes []string) constants.Profile {
-	return constants.OpenIdCoreProfile
 }
 
 func (ctx Context) GetAvailablePolicy(session models.AuthnSession) (policy AuthnPolicy, policyIsAvailable bool) {

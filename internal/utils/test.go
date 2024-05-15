@@ -25,7 +25,7 @@ const (
 func SetUpTest() (testCtx Context, tearDownTest func()) {
 	// Create
 	privateJwk := unit.GetTestPrivateRs256Jwk("rsa256_key")
-	grantModel := models.GetTestOpaqueGrantModel(privateJwk)
+	grantModel := models.GetTestOpaqueGrantModel(TestHost, privateJwk)
 	client := models.GetSecretPostTestClient()
 
 	// Save

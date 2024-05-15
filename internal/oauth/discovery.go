@@ -7,28 +7,38 @@ import (
 )
 
 func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
-
 	config := models.OpenIdConfiguration{
-		Issuer:                   ctx.Host,
-		AuthorizationEndpoint:    ctx.Host + string(constants.AuthorizationEndpoint),
-		TokenEndpoint:            ctx.Host + string(constants.TokenEndpoint),
-		UserinfoEndpoint:         ctx.Host + string(constants.UserInfoEndpoint),
-		ParIsRequired:            ctx.ParIsRequired,
-		JwksUri:                  ctx.Host + string(constants.JsonWebKeySetEndpoint),
-		ResponseTypes:            constants.ResponseTypes,
-		ResponseModes:            constants.ResponseModes,
-		GrantTypes:               constants.GrantTypes,
-		SubjectIdentifierTypes:   constants.SubjectIdentifierTypes,
-		IdTokenSigningAlgorithms: ctx.GetSigningAlgorithms(),
-		ClientAuthnMethods:       constants.ClientAuthnTypes,
-		ScopesSupported:          []string{constants.OpenIdScope},
-		JarIsRequired:            ctx.JarIsRequired,
-		JarIsEnabled:             ctx.JarIsEnabled,
-		JarmAlgorithms:           []string{ctx.GetJarmPrivateKey().Algorithm},
+		Issuer:                               ctx.Host,
+		AuthorizationEndpoint:                ctx.Host + string(constants.AuthorizationEndpoint),
+		TokenEndpoint:                        ctx.Host + string(constants.TokenEndpoint),
+		UserinfoEndpoint:                     ctx.Host + string(constants.UserInfoEndpoint),
+		ParIsRequired:                        ctx.ParIsRequired,
+		JwksUri:                              ctx.Host + string(constants.JsonWebKeySetEndpoint),
+		ResponseTypes:                        constants.ResponseTypes,
+		ResponseModes:                        constants.BasicResponseModes,
+		GrantTypes:                           constants.GrantTypes,
+		SubjectIdentifierTypes:               constants.SubjectIdentifierTypes,
+		IdTokenSigningAlgorithms:             ctx.GetSigningAlgorithms(),
+		ClientAuthnMethods:                   ctx.ClientAuthnMethods,
+		ScopesSupported:                      []string{constants.OpenIdScope},
+		TokenEndpointClientSigningAlgorithms: ctx.ClientSigningAlgorithms,
+		IssuerResponseParameterIsEnabled:     ctx.IssuerResponseParameterIsEnabled,
 	}
+
 	if ctx.ParIsEnabled {
 		config.ParIsRequired = ctx.ParIsRequired
 		config.ParEndpoint = ctx.Host + string(constants.PushedAuthorizationRequestEndpoint)
+	}
+
+	if ctx.JarIsEnabled {
+		config.JarIsEnabled = ctx.JarIsEnabled
+		config.JarIsRequired = ctx.JarIsRequired
+		config.JarAlgorithms = ctx.JarAlgorithms
+	}
+
+	if ctx.JarmIsEnabled {
+		config.ResponseModes = constants.ResponseModes
+		config.JarmAlgorithms = []string{ctx.GetJarmPrivateKey().Algorithm}
 	}
 
 	return config

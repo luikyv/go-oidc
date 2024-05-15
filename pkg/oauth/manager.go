@@ -2,6 +2,7 @@ package oauth
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
@@ -13,7 +14,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-type OpenIDManager struct {
+type OpenIdManager struct {
 	utils.Configuration
 	Server *gin.Engine
 }
@@ -22,14 +23,16 @@ func NewManager(
 	host string,
 	privateJwks jose.JSONWebKeySet,
 	templates string,
-	settings ...func(*OpenIDManager),
-) *OpenIDManager {
+	settings ...func(*OpenIdManager),
+) *OpenIdManager {
 
-	manager := &OpenIDManager{
+	manager := &OpenIdManager{
 		Configuration: utils.Configuration{
-			Host:        host,
-			PrivateJwks: privateJwks,
-			Policies:    make([]utils.AuthnPolicy, 0),
+			Host:                    host,
+			PrivateJwks:             privateJwks,
+			Policies:                make([]utils.AuthnPolicy, 0),
+			ClientAuthnMethods:      []constants.ClientAuthnType{constants.NoneAuthn, constants.ClientSecretBasicAuthn, constants.ClientSecretPostAuthn},
+			ClientSigningAlgorithms: []jose.SignatureAlgorithm{},
 		},
 		Server: gin.Default(),
 	}
@@ -42,56 +45,89 @@ func NewManager(
 	return manager
 }
 
-func ConfigureInMemoryClientAndScope(manager *OpenIDManager) {
+func ConfigureInMemoryClientAndScope(manager *OpenIdManager) {
 	manager.ClientManager = inmemory.NewInMemoryClientManager()
 	manager.ScopeManager = inmemory.NewInMemoryScopeManager()
 }
 
-func ConfigureInMemoryGrantModel(manager *OpenIDManager) {
+func ConfigureInMemoryGrantModel(manager *OpenIdManager) {
 	manager.GrantModelManager = inmemory.NewInMemoryGrantModelManager()
 }
 
-func ConfigureInMemorySessions(manager *OpenIDManager) {
+func ConfigureInMemorySessions(manager *OpenIdManager) {
 	manager.GrantSessionManager = inmemory.NewInMemoryGrantSessionManager()
 	manager.AuthnSessionManager = inmemory.NewInMemoryAuthnSessionManager()
 }
 
-func (manager *OpenIDManager) EnablePushedAuthorizationRequests(
-	isRequired bool,
-) {
+func (manager *OpenIdManager) RequirePushedAuthorizationRequests() {
 	manager.ParIsEnabled = true
-	manager.ParIsRequired = isRequired
+	manager.ParIsRequired = true
 }
 
-func (manager *OpenIDManager) EnableJwtSecuredAuthorizationRequests(
-	privateJarKeyId string,
-	isRequired bool,
+func (manager *OpenIdManager) EnablePushedAuthorizationRequests() {
+	manager.ParIsEnabled = true
+	manager.ParIsRequired = false
+}
+
+func (manager *OpenIdManager) RequireJwtSecuredAuthorizationRequests(
+	jarAlgorithms []jose.SignatureAlgorithm,
 ) {
 	manager.JarIsEnabled = true
-	manager.PrivateJarmKeyId = privateJarKeyId
-	manager.JarIsRequired = isRequired
+	manager.JarIsRequired = true
+	manager.JarAlgorithms = jarAlgorithms
 }
 
-func (manager *OpenIDManager) AddGrantModel(model models.GrantModel) error {
+func (manager *OpenIdManager) EnableJwtSecuredAuthorizationRequests(
+	jarAlgorithms []jose.SignatureAlgorithm,
+) {
+	manager.JarIsEnabled = true
+	manager.JarIsRequired = false
+	manager.JarAlgorithms = jarAlgorithms
+}
+
+func (manager *OpenIdManager) EnableJwtSecuredAuthorizationResponseMode(
+	privateJarmKeyId string,
+) {
+	manager.PrivateJarmKeyId = privateJarmKeyId
+}
+
+func (manager *OpenIdManager) SetClientAuthnMethods(methods ...constants.ClientAuthnType) {
+	signingAlgorithms := []jose.SignatureAlgorithm{}
+	if slices.Contains(methods, constants.PrivateKeyJwtAuthn) {
+		signingAlgorithms = append(signingAlgorithms, jose.RS256, jose.PS256)
+	}
+	if slices.Contains(methods, constants.ClientSecretJwt) {
+		signingAlgorithms = append(signingAlgorithms, jose.HS256)
+	}
+
+	manager.ClientAuthnMethods = methods
+	manager.ClientSigningAlgorithms = signingAlgorithms
+}
+
+func (manager *OpenIdManager) EnableIssuerResponseParameter() {
+	manager.IssuerResponseParameterIsEnabled = true
+}
+
+func (manager *OpenIdManager) AddGrantModel(model models.GrantModel) error {
 	return manager.GrantModelManager.Create(model)
 }
 
-func (manager *OpenIDManager) AddClient(client models.Client) error {
+func (manager *OpenIdManager) AddClient(client models.Client) error {
 	return manager.ClientManager.Create(client)
 }
 
-func (manager *OpenIDManager) AddPolicy(policy utils.AuthnPolicy) {
+func (manager *OpenIdManager) AddPolicy(policy utils.AuthnPolicy) {
 	manager.Policies = append(manager.Policies, policy)
 }
 
-func (manager OpenIDManager) getContext(requestContext *gin.Context) utils.Context {
+func (manager OpenIdManager) getContext(requestContext *gin.Context) utils.Context {
 	return utils.NewContext(
 		manager.Configuration,
 		requestContext,
 	)
 }
 
-func (manager *OpenIDManager) setUp() {
+func (manager *OpenIdManager) setUp() {
 
 	// Configure the server.
 	manager.Server.Use(func(ctx *gin.Context) {
@@ -160,12 +196,12 @@ func (manager *OpenIDManager) setUp() {
 	)
 }
 
-func (manager *OpenIDManager) Run(port int) {
+func (manager *OpenIdManager) Run(port int) {
 	manager.setUp()
 	manager.Server.Run(":" + fmt.Sprint(port))
 }
 
-func (manager *OpenIDManager) RunTLS(port int) {
+func (manager *OpenIdManager) RunTLS(port int) {
 	manager.setUp()
 	manager.Server.RunTLS(":"+fmt.Sprint(port), "cert.pem", "key.pem")
 }

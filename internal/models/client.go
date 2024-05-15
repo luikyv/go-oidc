@@ -2,6 +2,7 @@ package models
 
 import (
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
@@ -15,9 +16,14 @@ import (
 
 type ClientAuthenticator interface {
 	IsAuthenticated(req ClientAuthnRequest) bool
+	GetAuthnType() constants.ClientAuthnType
 }
 
 type NoneClientAuthenticator struct{}
+
+func (authenticator NoneClientAuthenticator) GetAuthnType() constants.ClientAuthnType {
+	return constants.NoneAuthn
+}
 
 func (authenticator NoneClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
 	return true
@@ -26,6 +32,10 @@ func (authenticator NoneClientAuthenticator) IsAuthenticated(req ClientAuthnRequ
 type SecretBasicClientAuthenticator struct {
 	Salt         string
 	HashedSecret string
+}
+
+func (authenticator SecretBasicClientAuthenticator) GetAuthnType() constants.ClientAuthnType {
+	return constants.ClientSecretBasicAuthn
 }
 
 func (authenticator SecretBasicClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
@@ -40,6 +50,10 @@ type SecretPostClientAuthenticator struct {
 	HashedSecret string
 }
 
+func (authenticator SecretPostClientAuthenticator) GetAuthnType() constants.ClientAuthnType {
+	return constants.ClientSecretPostAuthn
+}
+
 func (authenticator SecretPostClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
 
 	saltedSecret := authenticator.Salt + req.ClientSecretPost
@@ -49,8 +63,12 @@ func (authenticator SecretPostClientAuthenticator) IsAuthenticated(req ClientAut
 
 type PrivateKeyJwtClientAuthenticator struct {
 	PublicJwks               jose.JSONWebKeySet
-	ExpectedAudience         string
+	Host                     string
 	MaxAssertionLifetimeSecs int
+}
+
+func (authenticator PrivateKeyJwtClientAuthenticator) GetAuthnType() constants.ClientAuthnType {
+	return constants.PrivateKeyJwtAuthn
 }
 
 func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(req ClientAuthnRequest) bool {
@@ -85,7 +103,7 @@ func (authenticator PrivateKeyJwtClientAuthenticator) IsAuthenticated(req Client
 	err = claims.ValidateWithLeeway(jwt.Expected{
 		Issuer:      claims.Subject,
 		Subject:     claims.Subject,
-		AnyAudience: []string{authenticator.ExpectedAudience},
+		AnyAudience: []string{authenticator.Host, authenticator.Host + string(constants.TokenEndpoint), authenticator.Host + string(constants.PushedAuthorizationRequestEndpoint)},
 	}, time.Duration(0))
 	return err == nil
 }
@@ -134,7 +152,12 @@ func (client Client) IsGrantTypeAllowed(grantType constants.GrantType) bool {
 }
 
 func (client Client) IsRedirectUriAllowed(redirectUri string) bool {
-	return slices.Contains(client.RedirectUris, redirectUri)
+	for _, ru := range client.RedirectUris {
+		if strings.HasPrefix(redirectUri, ru) {
+			return true
+		}
+	}
+	return false
 }
 
 func (client Client) GetSigningAlgorithms() []jose.SignatureAlgorithm {

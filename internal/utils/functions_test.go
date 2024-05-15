@@ -14,8 +14,9 @@ import (
 
 func TestExtractJarFromRequestObject(t *testing.T) {
 	// When
-	ctx := utils.GetDummyTestContext()
 	privateJwk := unit.GetTestPrivateRs256Jwk("rsa256_key")
+	ctx := utils.GetDummyTestContext()
+	ctx.JarAlgorithms = []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJwk.Algorithm)}
 	client := models.GetNoneAuthTestClient()
 	client.PublicJwks = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privateJwk.Public()}}
 

@@ -1,7 +1,6 @@
 package token_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/luikymagno/auth-server/internal/crud/inmemory"
@@ -22,7 +21,7 @@ func TestClientCredentialsHandleGrantCreation(t *testing.T) {
 			ClientSecretPost: models.TestClientSecret,
 		},
 		GrantType: constants.ClientCredentialsGrant,
-		Scope:     strings.Join(client.Scopes, " "),
+		Scope:     client.Scopes[0],
 	}
 
 	// Then

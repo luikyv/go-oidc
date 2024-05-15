@@ -12,7 +12,7 @@ func GetTestPrivateRs256Jwk(keyId string) jose.JSONWebKey {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	return jose.JSONWebKey{
 		Key:       privateKey,
-		KeyID:     "ps256_key",
+		KeyID:     keyId,
 		Algorithm: string(jose.RS256),
 		Use:       string(constants.KeySigningUsage),
 	}
@@ -22,7 +22,7 @@ func GetTestPrivatePs256Jwk(keyId string) jose.JSONWebKey {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	return jose.JSONWebKey{
 		Key:       privateKey,
-		KeyID:     "ps256_key",
+		KeyID:     keyId,
 		Algorithm: string(jose.PS256),
 		Use:       string(constants.KeySigningUsage),
 	}

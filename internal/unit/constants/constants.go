@@ -31,6 +31,7 @@ const (
 
 var ClientSigningAlgorithms []jose.SignatureAlgorithm = []jose.SignatureAlgorithm{
 	jose.RS256,
+	jose.PS256,
 }
 
 const Charset string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

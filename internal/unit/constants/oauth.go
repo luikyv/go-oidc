@@ -82,6 +82,12 @@ const (
 	JwtResponseMode         ResponseMode = "jwt"
 )
 
+var BasicResponseModes []ResponseMode = []ResponseMode{
+	QueryResponseMode,
+	FragmentResponseMode,
+	FormPostResponseMode,
+}
+
 var ResponseModes []ResponseMode = []ResponseMode{
 	QueryResponseMode,
 	FragmentResponseMode,
@@ -106,6 +112,7 @@ const (
 	NoneAuthn              ClientAuthnType = "none"
 	ClientSecretBasicAuthn ClientAuthnType = "client_secret_basic"
 	ClientSecretPostAuthn  ClientAuthnType = "client_secret_post"
+	ClientSecretJwt        ClientAuthnType = "client_secret_jwt"
 	PrivateKeyJwtAuthn     ClientAuthnType = "private_key_jwt"
 )
 
@@ -113,6 +120,7 @@ var ClientAuthnTypes []ClientAuthnType = []ClientAuthnType{
 	NoneAuthn,
 	ClientSecretBasicAuthn,
 	ClientSecretPostAuthn,
+	ClientSecretJwt,
 	PrivateKeyJwtAuthn,
 }
 
@@ -180,7 +188,7 @@ var SubjectIdentifierTypes []SubjectIdentifierType = []SubjectIdentifierType{
 }
 
 var DpopSigningAlgorithms = []jose.SignatureAlgorithm{
-	jose.RS256, jose.ES256,
+	jose.RS256, jose.PS256, jose.ES256,
 }
 
 type ErrorCode string
