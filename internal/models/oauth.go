@@ -210,6 +210,7 @@ type OpenIdConfiguration struct {
 	JarmAlgorithms                       []string                          `json:"authorization_signing_alg_values_supported,omitempty"`
 	TokenEndpointClientSigningAlgorithms []jose.SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg_values_supported"`
 	IssuerResponseParameterIsEnabled     bool                              `json:"authorization_response_iss_parameter_supported"`
+	DpopSigningAlgorithms                []jose.SignatureAlgorithm         `json:"dpop_signing_alg_values_supported,omitempty"`
 }
 
 type RedirectResponse struct {

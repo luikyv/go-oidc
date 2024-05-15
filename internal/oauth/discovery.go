@@ -23,6 +23,7 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 		ScopesSupported:                      []string{constants.OpenIdScope},
 		TokenEndpointClientSigningAlgorithms: ctx.ClientSigningAlgorithms,
 		IssuerResponseParameterIsEnabled:     ctx.IssuerResponseParameterIsEnabled,
+		DpopSigningAlgorithms:                constants.DpopSigningAlgorithms,
 	}
 
 	if ctx.ParIsEnabled {
