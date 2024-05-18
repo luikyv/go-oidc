@@ -18,6 +18,7 @@ type GrantSession struct {
 	ExpiresInSecs           int
 	RefreshTokenExpiresIn   int
 	CreatedAtTimestamp      int
+	RenewedAtTimestamp      int
 	Subject                 string
 	ClientId                string
 	Scopes                  []string
@@ -30,4 +31,6 @@ func (grantSession GrantSession) IsRefreshSessionExpired() bool {
 	return unit.GetTimestampNow() > grantSession.CreatedAtTimestamp+grantSession.RefreshTokenExpiresIn
 }
 
-// TODO: The grant session can expire too.
+func (grantSession GrantSession) IsExpired() bool {
+	return unit.GetTimestampNow() > grantSession.RenewedAtTimestamp+grantSession.ExpiresInSecs
+}

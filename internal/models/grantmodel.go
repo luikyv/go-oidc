@@ -174,6 +174,7 @@ func (grantModel GrantModel) GenerateIdToken(grantOptions GrantOptions) string {
 }
 
 func (grantModel GrantModel) GenerateGrantSession(grantOptions GrantOptions) GrantSession {
+	nowTimestamp := unit.GetTimestampNow()
 	token := grantModel.TokenMaker.MakeToken(grantModel.Meta, grantOptions)
 	grantSession := GrantSession{
 		Id:                      uuid.NewString(),
@@ -184,7 +185,8 @@ func (grantModel GrantModel) GenerateGrantSession(grantOptions GrantOptions) Gra
 		TokenFormat:             token.Format,
 		TokenType:               token.Type,
 		ExpiresInSecs:           grantModel.Meta.ExpiresInSecs,
-		CreatedAtTimestamp:      unit.GetTimestampNow(),
+		CreatedAtTimestamp:      nowTimestamp,
+		RenewedAtTimestamp:      nowTimestamp,
 		Subject:                 grantOptions.Subject,
 		ClientId:                grantOptions.ClientId,
 		Scopes:                  grantOptions.Scopes,

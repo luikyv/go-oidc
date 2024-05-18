@@ -21,6 +21,10 @@ func HandleUserInfoRequest(ctx utils.Context, token string) (models.GrantSession
 		return models.GrantSession{}, issues.NewOAuthError(constants.InvalidRequest, "invalid invalid token")
 	}
 
+	if grantSession.IsExpired() {
+		return models.GrantSession{}, issues.NewOAuthError(constants.InvalidRequest, "token expired")
+	}
+
 	if !slices.Contains(grantSession.Scopes, constants.OpenIdScope) {
 		return models.GrantSession{}, issues.NewOAuthError(constants.InvalidRequest, "invalid scope")
 	}
