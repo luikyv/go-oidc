@@ -73,11 +73,24 @@ func GetNoneAuthTestClient() Client {
 
 func GetTestClient(authenticator ClientAuthenticator) Client {
 	return Client{
-		Id:            TestClientId,
-		RedirectUris:  []string{"https://example.com"},
-		Scopes:        []string{"scope1", "scope2", constants.OpenIdScope},
-		GrantTypes:    constants.GrantTypes,
-		ResponseTypes: constants.ResponseTypes,
+		Id:           TestClientId,
+		RedirectUris: []string{"https://example.com"},
+		Scopes:       []string{"scope1", "scope2", constants.OpenIdScope},
+		GrantTypes: []constants.GrantType{
+			constants.AuthorizationCodeGrant,
+			constants.ClientCredentialsGrant,
+			constants.ImplictGrant,
+			constants.RefreshTokenGrant,
+		},
+		ResponseTypes: []constants.ResponseType{
+			constants.CodeResponse,
+			constants.IdTokenResponse,
+			constants.TokenResponse,
+			constants.CodeAndIdTokenResponse,
+			constants.CodeAndTokenResponse,
+			constants.IdTokenAndTokenResponse,
+			constants.CodeAndIdTokenAndTokenResponse,
+		},
 		ResponseModes: []constants.ResponseMode{
 			constants.QueryResponseMode,
 			constants.FragmentResponseMode,

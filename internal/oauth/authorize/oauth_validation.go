@@ -1,6 +1,8 @@
 package authorize
 
 import (
+	"slices"
+
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -148,11 +150,11 @@ func validateResponseTypeIfPresent(
 }
 
 func validateCodeChallengeMethodIfPresent(
-	_ utils.Context,
+	ctx utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
-	if params.CodeChallengeMethod != "" && !params.CodeChallengeMethod.IsValid() {
+	if params.CodeChallengeMethod != "" && !slices.Contains(ctx.CodeChallengeMethods, params.CodeChallengeMethod) {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid code_challenge_method")
 	}
 	return nil
@@ -214,11 +216,11 @@ func validateCannotRequestQueryResponseModeWhenImplictResponseTypeIsRequested(
 }
 
 func validatePkceIfRequired(
-	_ utils.Context,
+	ctx utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
-	if client.PkceIsRequired && params.CodeChallenge == "" {
+	if (ctx.PkceIsRequired || client.PkceIsRequired) && params.CodeChallenge == "" {
 		return issues.NewOAuthError(constants.InvalidRequest, "code_challenge is required")
 	}
 	return nil

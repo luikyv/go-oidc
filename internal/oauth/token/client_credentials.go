@@ -33,7 +33,7 @@ func handleClientCredentialsGrantTokenCreation(
 		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, "grant model not found")
 	}
 
-	grantSession := grantModel.GenerateGrantSession(models.NewClientCredentialsGrantOptions(client, req))
+	grantSession := grantModel.GenerateGrantSession(NewClientCredentialsGrantOptions(ctx, client, req))
 
 	if shouldCreateGrantSessionForClientCredentialsGrant(grantSession) {
 		// We only need to create a token session for client credentials when the token is not self-contained,
@@ -82,4 +82,21 @@ func validateClientCredentialsGrantRequest(
 func shouldCreateGrantSessionForClientCredentialsGrant(grantSession models.GrantSession) bool {
 	// We only need to create a token session for the authorization code grant when the token is not self-contained.
 	return grantSession.TokenFormat == constants.Opaque
+}
+
+func NewClientCredentialsGrantOptions(ctx utils.Context, client models.Client, req models.TokenRequest) models.GrantOptions {
+	return models.GrantOptions{
+		GrantType: constants.ClientCredentialsGrant,
+		Scopes:    unit.SplitStringWithSpaces(req.Scope),
+		Subject:   client.Id,
+		ClientId:  client.Id,
+		TokenOptions: models.TokenOptions{
+			DpopJwt:               req.DpopJwt,
+			DpopSigningAlgorithms: ctx.DpopSigningAlgorithms,
+			AdditionalTokenClaims: make(map[string]string),
+		},
+		IdTokenOptions: models.IdTokenOptions{
+			AdditionalIdTokenClaims: make(map[string]string),
+		},
+	}
 }

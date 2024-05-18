@@ -149,16 +149,23 @@ func validateProofOfPossesion(
 	grantSession models.GrantSession,
 ) issues.OAuthError {
 
-	if grantSession.JwkThumbprint == "" && tokenType != constants.DpopTokenType {
-		return nil
+	if grantSession.JwkThumbprint == "" {
+		if tokenType == constants.DpopTokenType {
+			// The token type cannot be DPoP if the session was not created with DPoP.
+			return issues.NewOAuthError(constants.InvalidRequest, "invalid token type")
+		} else {
+			// If the session was not created with DPoP and the token is not a DPoP token, there is nothing to validate.
+			return nil
+		}
 	}
 
 	dpopJwt := ctx.RequestContext.Request.Header.Get(string(constants.DpopHeader))
 	if dpopJwt == "" {
+		// The session was created with DPoP, then the DPoP header must be passed.
 		return issues.NewOAuthError(constants.AccessDenied, "missing DPoP header")
 	}
 
-	return utils.ValidateDpopJwt(dpopJwt, models.DpopClaims{
+	return utils.ValidateDpopJwt(ctx, dpopJwt, models.DpopClaims{
 		HttpMethod:    ctx.RequestContext.Request.Method,
 		HttpUri:       ctx.Host + ctx.RequestContext.Request.URL.RequestURI(),
 		AccessToken:   token,

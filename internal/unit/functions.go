@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
@@ -230,8 +231,8 @@ func GetNonEmptyOrDefault[T any](s1 T, s2 T) T {
 }
 
 // Generate a JWK thumbprint for a valid DPoP JWT.
-func GenerateJwkThumbprint(dpopJwt string) string {
-	parsedDpopJwt, _ := jwt.ParseSigned(dpopJwt, constants.DpopSigningAlgorithms)
+func GenerateJwkThumbprint(dpopJwt string, dpopSigningAlgorithms []jose.SignatureAlgorithm) string {
+	parsedDpopJwt, _ := jwt.ParseSigned(dpopJwt, dpopSigningAlgorithms)
 	jkt, _ := parsedDpopJwt.Headers[0].JSONWebKey.Thumbprint(crypto.SHA256)
 	return base64.RawURLEncoding.EncodeToString(jkt)
 }

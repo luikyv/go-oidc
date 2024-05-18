@@ -14,7 +14,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-type OpenIdManager struct {
+type OAuthManager struct {
 	utils.Configuration
 	Server *gin.Engine
 }
@@ -23,21 +23,45 @@ func NewManager(
 	host string,
 	privateJwks jose.JSONWebKeySet,
 	templates string,
-	settings ...func(*OpenIdManager),
-) *OpenIdManager {
+	settings ...func(*OAuthManager),
+) *OAuthManager {
 
-	manager := &OpenIdManager{
+	manager := &OAuthManager{
 		Configuration: utils.Configuration{
 			Host:        host,
 			PrivateJwks: privateJwks,
-			Policies:    make([]utils.AuthnPolicy, 0),
+			GrantTypes: []constants.GrantType{
+				constants.ClientCredentialsGrant,
+				constants.AuthorizationCodeGrant,
+				constants.RefreshTokenGrant,
+				constants.ImplictGrant,
+			},
+			ResponseTypes: []constants.ResponseType{
+				constants.CodeResponse,
+				constants.IdTokenResponse,
+				constants.TokenResponse,
+				constants.CodeAndIdTokenResponse,
+				constants.CodeAndTokenResponse,
+				constants.IdTokenAndTokenResponse,
+				constants.CodeAndIdTokenAndTokenResponse,
+			},
 			ResponseModes: []constants.ResponseMode{
 				constants.QueryResponseMode,
 				constants.FragmentResponseMode,
 				constants.FormPostResponseMode,
 			},
-			ClientAuthnMethods:      []constants.ClientAuthnType{constants.NoneAuthn, constants.ClientSecretBasicAuthn, constants.ClientSecretPostAuthn},
+			ClientAuthnMethods: []constants.ClientAuthnType{
+				constants.NoneAuthn,
+				constants.ClientSecretBasicAuthn,
+				constants.ClientSecretPostAuthn,
+			},
 			ClientSigningAlgorithms: []jose.SignatureAlgorithm{},
+			CodeChallengeMethods: []constants.CodeChallengeMethod{
+				constants.SHA256CodeChallengeMethod,
+				constants.PlainCodeChallengeMethod,
+			},
+			DpopSigningAlgorithms: []jose.SignatureAlgorithm{},
+			Policies:              make([]utils.AuthnPolicy, 0),
 		},
 		Server: gin.Default(),
 	}
@@ -50,31 +74,31 @@ func NewManager(
 	return manager
 }
 
-func ConfigureInMemoryClientAndScope(manager *OpenIdManager) {
+func ConfigureInMemoryClientAndScope(manager *OAuthManager) {
 	manager.ClientManager = inmemory.NewInMemoryClientManager()
 	manager.ScopeManager = inmemory.NewInMemoryScopeManager()
 }
 
-func ConfigureInMemoryGrantModel(manager *OpenIdManager) {
+func ConfigureInMemoryGrantModel(manager *OAuthManager) {
 	manager.GrantModelManager = inmemory.NewInMemoryGrantModelManager()
 }
 
-func ConfigureInMemorySessions(manager *OpenIdManager) {
+func ConfigureInMemorySessions(manager *OAuthManager) {
 	manager.GrantSessionManager = inmemory.NewInMemoryGrantSessionManager()
 	manager.AuthnSessionManager = inmemory.NewInMemoryAuthnSessionManager()
 }
 
-func (manager *OpenIdManager) RequirePushedAuthorizationRequests() {
+func (manager *OAuthManager) RequirePushedAuthorizationRequests() {
 	manager.ParIsEnabled = true
 	manager.ParIsRequired = true
 }
 
-func (manager *OpenIdManager) EnablePushedAuthorizationRequests() {
+func (manager *OAuthManager) EnablePushedAuthorizationRequests() {
 	manager.ParIsEnabled = true
 	manager.ParIsRequired = false
 }
 
-func (manager *OpenIdManager) RequireJwtSecuredAuthorizationRequests(
+func (manager *OAuthManager) RequireJwtSecuredAuthorizationRequests(
 	jarAlgorithms []jose.SignatureAlgorithm,
 ) {
 	manager.JarIsEnabled = true
@@ -82,7 +106,7 @@ func (manager *OpenIdManager) RequireJwtSecuredAuthorizationRequests(
 	manager.JarAlgorithms = jarAlgorithms
 }
 
-func (manager *OpenIdManager) EnableJwtSecuredAuthorizationRequests(
+func (manager *OAuthManager) EnableJwtSecuredAuthorizationRequests(
 	jarAlgorithms []jose.SignatureAlgorithm,
 ) {
 	manager.JarIsEnabled = true
@@ -90,7 +114,7 @@ func (manager *OpenIdManager) EnableJwtSecuredAuthorizationRequests(
 	manager.JarAlgorithms = jarAlgorithms
 }
 
-func (manager *OpenIdManager) EnableJwtSecuredAuthorizationResponseMode(
+func (manager *OAuthManager) EnableJwtSecuredAuthorizationResponseMode(
 	privateJarmKeyId string,
 ) {
 	manager.JarmIsEnabled = true
@@ -105,7 +129,7 @@ func (manager *OpenIdManager) EnableJwtSecuredAuthorizationResponseMode(
 	manager.PrivateJarmKeyId = privateJarmKeyId
 }
 
-func (manager *OpenIdManager) SetClientAuthnMethods(methods ...constants.ClientAuthnType) {
+func (manager *OAuthManager) SetClientAuthnMethods(methods ...constants.ClientAuthnType) {
 	signingAlgorithms := []jose.SignatureAlgorithm{}
 	if slices.Contains(methods, constants.PrivateKeyJwtAuthn) {
 		signingAlgorithms = append(signingAlgorithms, jose.RS256, jose.PS256)
@@ -118,30 +142,50 @@ func (manager *OpenIdManager) SetClientAuthnMethods(methods ...constants.ClientA
 	manager.ClientSigningAlgorithms = signingAlgorithms
 }
 
-func (manager *OpenIdManager) EnableIssuerResponseParameter() {
+func (manager *OAuthManager) EnableIssuerResponseParameter() {
 	manager.IssuerResponseParameterIsEnabled = true
 }
 
-func (manager *OpenIdManager) AddGrantModel(model models.GrantModel) error {
+func (manager *OAuthManager) EnableDpop(
+	dpopSigningAlgorithms []jose.SignatureAlgorithm,
+) {
+	manager.DpopIsEnabled = true
+	manager.DpopIsRequired = false
+	manager.DpopSigningAlgorithms = dpopSigningAlgorithms
+}
+
+func (manager *OAuthManager) RequireDpop(
+	dpopSigningAlgorithms []jose.SignatureAlgorithm,
+) {
+	manager.DpopIsEnabled = true
+	manager.DpopIsRequired = true
+	manager.DpopSigningAlgorithms = dpopSigningAlgorithms
+}
+
+func (manager *OAuthManager) RequirePkce() {
+	manager.PkceIsRequired = true
+}
+
+func (manager *OAuthManager) AddGrantModel(model models.GrantModel) error {
 	return manager.GrantModelManager.Create(model)
 }
 
-func (manager *OpenIdManager) AddClient(client models.Client) error {
+func (manager *OAuthManager) AddClient(client models.Client) error {
 	return manager.ClientManager.Create(client)
 }
 
-func (manager *OpenIdManager) AddPolicy(policy utils.AuthnPolicy) {
+func (manager *OAuthManager) AddPolicy(policy utils.AuthnPolicy) {
 	manager.Policies = append(manager.Policies, policy)
 }
 
-func (manager OpenIdManager) getContext(requestContext *gin.Context) utils.Context {
+func (manager OAuthManager) getContext(requestContext *gin.Context) utils.Context {
 	return utils.NewContext(
 		manager.Configuration,
 		requestContext,
 	)
 }
 
-func (manager *OpenIdManager) setUp() {
+func (manager *OAuthManager) setUp() {
 
 	// Configure the server.
 	manager.Server.Use(func(ctx *gin.Context) {
@@ -210,12 +254,12 @@ func (manager *OpenIdManager) setUp() {
 	)
 }
 
-func (manager *OpenIdManager) Run(port int) {
+func (manager *OAuthManager) Run(port int) {
 	manager.setUp()
 	manager.Server.Run(":" + fmt.Sprint(port))
 }
 
-func (manager *OpenIdManager) RunTLS(port int) {
+func (manager *OAuthManager) RunTLS(port int) {
 	manager.setUp()
 	manager.Server.RunTLS(":"+fmt.Sprint(port), "cert.pem", "key.pem")
 }

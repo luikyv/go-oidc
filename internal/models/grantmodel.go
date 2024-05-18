@@ -48,7 +48,7 @@ func (maker OpaqueTokenMaker) MakeToken(grantMeta GrantMetaInfo, grantOptions Gr
 	jkt := ""
 	if grantOptions.DpopJwt != "" {
 		tokenType = constants.DpopTokenType
-		jkt = unit.GenerateJwkThumbprint(grantOptions.DpopJwt)
+		jkt = unit.GenerateJwkThumbprint(grantOptions.DpopJwt, grantOptions.DpopSigningAlgorithms)
 	}
 	return Token{
 		Id:            accessToken,
@@ -79,7 +79,7 @@ func (maker JWTTokenMaker) MakeToken(grantMeta GrantMetaInfo, grantOptions Grant
 	jkt := ""
 	if grantOptions.DpopJwt != "" {
 		tokenType = constants.DpopTokenType
-		jkt = unit.GenerateJwkThumbprint(grantOptions.DpopJwt)
+		jkt = unit.GenerateJwkThumbprint(grantOptions.DpopJwt, grantOptions.DpopSigningAlgorithms)
 		claims["cnf"] = map[string]string{
 			"jkt": jkt,
 		}

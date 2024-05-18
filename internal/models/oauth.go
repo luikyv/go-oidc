@@ -28,6 +28,7 @@ type IdTokenOptions struct {
 
 type TokenOptions struct {
 	DpopJwt               string
+	DpopSigningAlgorithms []jose.SignatureAlgorithm
 	AdditionalTokenClaims map[string]string
 }
 
@@ -38,39 +39,6 @@ type GrantOptions struct {
 	Scopes    []string
 	TokenOptions
 	IdTokenOptions
-}
-
-func NewClientCredentialsGrantOptions(client Client, req TokenRequest) GrantOptions {
-	return GrantOptions{
-		GrantType: constants.ClientCredentialsGrant,
-		Scopes:    unit.SplitStringWithSpaces(req.Scope),
-		Subject:   client.Id,
-		ClientId:  client.Id,
-		TokenOptions: TokenOptions{
-			DpopJwt:               req.DpopJwt,
-			AdditionalTokenClaims: make(map[string]string),
-		},
-		IdTokenOptions: IdTokenOptions{
-			AdditionalIdTokenClaims: make(map[string]string),
-		},
-	}
-}
-
-func NewAuthorizationCodeGrantOptions(req TokenRequest, session AuthnSession) GrantOptions {
-	return GrantOptions{
-		GrantType: constants.AuthorizationCodeGrant,
-		Scopes:    unit.SplitStringWithSpaces(session.Scope),
-		Subject:   session.Subject,
-		ClientId:  session.ClientId,
-		TokenOptions: TokenOptions{
-			DpopJwt:               req.DpopJwt,
-			AdditionalTokenClaims: session.AdditionalTokenClaims,
-		},
-		IdTokenOptions: IdTokenOptions{
-			Nonce:                   session.Nonce,
-			AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
-		},
-	}
 }
 
 func NewImplictGrantOptions(session AuthnSession) GrantOptions {
@@ -99,22 +67,6 @@ func NewImplictGrantOptionsForIdToken(session AuthnSession, idToken IdTokenOptio
 			AdditionalTokenClaims: session.AdditionalTokenClaims,
 		},
 		IdTokenOptions: idToken,
-	}
-}
-
-func NewRefreshTokenGrantOptions(session GrantSession) GrantOptions {
-	return GrantOptions{
-		GrantType: constants.RefreshTokenGrant,
-		Scopes:    session.Scopes,
-		Subject:   session.Subject,
-		ClientId:  session.ClientId,
-		TokenOptions: TokenOptions{
-			AdditionalTokenClaims: session.AdditionalTokenClaims,
-		},
-		IdTokenOptions: IdTokenOptions{
-			Nonce:                   session.Nonce,
-			AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
-		},
 	}
 }
 

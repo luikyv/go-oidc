@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
@@ -191,6 +192,7 @@ func TestAll(t *testing.T) {
 }
 
 func TestGenerateJwkThumbprint(t *testing.T) {
+	dpopSigningAlgorithms := []jose.SignatureAlgorithm{jose.ES256}
 	testCases := []struct {
 		DpopJwt            string
 		ExpectedThumbprint string
@@ -203,7 +205,7 @@ func TestGenerateJwkThumbprint(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
-			jkt := unit.GenerateJwkThumbprint(testCase.DpopJwt)
+			jkt := unit.GenerateJwkThumbprint(testCase.DpopJwt, dpopSigningAlgorithms)
 			if jkt != testCase.ExpectedThumbprint {
 				t.Errorf("invalid thumbprint. expected: %s - actual: %s", testCase.ExpectedThumbprint, jkt)
 			}

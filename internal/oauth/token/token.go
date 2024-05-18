@@ -36,11 +36,17 @@ func HandleGrantCreation(
 }
 
 func validateDpopJwtRequest(ctx utils.Context, req models.TokenRequest) issues.OAuthError {
-	if req.DpopJwt == "" {
+
+	if req.DpopJwt == "" && ctx.DpopIsRequired {
+		return issues.NewOAuthError(constants.InvalidRequest, "missing dpop header")
+	}
+
+	if req.DpopJwt == "" || !ctx.DpopIsEnabled {
+		// If DPoP is not enabled, we just ignore the DPoP header.
 		return nil
 	}
 
-	return utils.ValidateDpopJwt(req.DpopJwt, models.DpopClaims{
+	return utils.ValidateDpopJwt(ctx, req.DpopJwt, models.DpopClaims{
 		HttpMethod: http.MethodPost,
 		HttpUri:    ctx.Host + string(constants.TokenEndpoint),
 	})

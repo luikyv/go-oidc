@@ -32,6 +32,7 @@ func main() {
 	oauthManager.EnableJwtSecuredAuthorizationResponseMode(privatePs256Jwk.KeyID)
 	oauthManager.SetClientAuthnMethods(constants.ClientSecretBasicAuthn, constants.ClientSecretPostAuthn, constants.PrivateKeyJwtAuthn)
 	oauthManager.EnableIssuerResponseParameter()
+	oauthManager.EnableDpop([]jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256})
 
 	// Add mocks.
 	jwtGrantModel := models.GetTestJwtGrantModel(issuer, privatePs256Jwk)

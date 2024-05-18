@@ -56,6 +56,9 @@ func TestExtractJarFromRequestObject(t *testing.T) {
 }
 
 func TestValidateDpopJwt(t *testing.T) {
+	ctx := utils.GetDummyTestContext()
+	ctx.DpopSigningAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256}
+
 	var testCases = []struct {
 		Name           string
 		DpopJwt        string
@@ -88,7 +91,7 @@ func TestValidateDpopJwt(t *testing.T) {
 			testCase.Name,
 			func(t *testing.T) {
 				// Then.
-				err := utils.ValidateDpopJwt(testCase.DpopJwt, testCase.ExpectedClaims)
+				err := utils.ValidateDpopJwt(ctx, testCase.DpopJwt, testCase.ExpectedClaims)
 
 				// Assert.
 				isValid := err == nil

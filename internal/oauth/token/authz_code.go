@@ -36,7 +36,7 @@ func handleAuthorizationCodeGrantTokenCreation(ctx utils.Context, req models.Tok
 	}
 	ctx.Logger.Debug("the token model was loaded successfully")
 
-	grantSession := grantModel.GenerateGrantSession(models.NewAuthorizationCodeGrantOptions(req, session))
+	grantSession := grantModel.GenerateGrantSession(NewAuthorizationCodeGrantOptions(ctx, req, session))
 	err = nil
 	if shouldCreateGrantSessionForAuthorizationCodeGrant(grantSession) {
 		ctx.Logger.Debug("create token session")
@@ -149,4 +149,22 @@ func shouldCreateGrantSessionForAuthorizationCodeGrant(grantSession models.Grant
 	// (i.e. it is a refecence token), when the refresh token is issued or the the openid scope was requested
 	// in which case the client can later request information about the user.
 	return grantSession.TokenFormat == constants.Opaque || grantSession.RefreshToken != "" || slices.Contains(grantSession.Scopes, constants.OpenIdScope)
+}
+
+func NewAuthorizationCodeGrantOptions(ctx utils.Context, req models.TokenRequest, session models.AuthnSession) models.GrantOptions {
+	return models.GrantOptions{
+		GrantType: constants.AuthorizationCodeGrant,
+		Scopes:    unit.SplitStringWithSpaces(session.Scope),
+		Subject:   session.Subject,
+		ClientId:  session.ClientId,
+		TokenOptions: models.TokenOptions{
+			DpopJwt:               req.DpopJwt,
+			DpopSigningAlgorithms: ctx.DpopSigningAlgorithms,
+			AdditionalTokenClaims: session.AdditionalTokenClaims,
+		},
+		IdTokenOptions: models.IdTokenOptions{
+			Nonce:                   session.Nonce,
+			AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
+		},
+	}
 }

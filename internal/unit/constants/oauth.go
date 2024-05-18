@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"slices"
 	"strings"
-
-	"github.com/go-jose/go-jose/v4"
 )
 
 type GrantType string
@@ -17,12 +15,12 @@ const (
 	ImplictGrant           GrantType = "implict"
 )
 
-var GrantTypes []GrantType = []GrantType{
-	ClientCredentialsGrant,
-	AuthorizationCodeGrant,
-	RefreshTokenGrant,
-	ImplictGrant,
-}
+// var GrantTypes []GrantType = []GrantType{
+// 	ClientCredentialsGrant,
+// 	AuthorizationCodeGrant,
+// 	RefreshTokenGrant,
+// 	ImplictGrant,
+// }
 
 type ResponseType string
 
@@ -36,30 +34,8 @@ const (
 	CodeAndIdTokenAndTokenResponse ResponseType = "code id_token token"
 )
 
-var ResponseTypes []ResponseType = []ResponseType{
-	CodeResponse,
-	IdTokenResponse,
-	TokenResponse,
-	CodeAndIdTokenResponse,
-	CodeAndTokenResponse,
-	IdTokenAndTokenResponse,
-	CodeAndIdTokenAndTokenResponse,
-}
-
 func (rt ResponseType) Contains(responseType ResponseType) bool {
 	return slices.Contains(strings.Split(string(rt), " "), string(responseType))
-}
-
-func (rt ResponseType) IsValid() bool {
-	return slices.Contains(ResponseTypes, rt)
-}
-
-func (rt ResponseType) IsOAuthCoreValid() bool {
-	return slices.Contains([]ResponseType{
-		CodeResponse,
-		TokenResponse,
-		CodeAndTokenResponse,
-	}, rt)
 }
 
 func (rt ResponseType) IsImplict() bool {
@@ -153,10 +129,6 @@ var CodeChallengeMethods []CodeChallengeMethod = []CodeChallengeMethod{
 	PlainCodeChallengeMethod,
 }
 
-func (ccm CodeChallengeMethod) IsValid() bool {
-	return slices.Contains(CodeChallengeMethods, ccm)
-}
-
 // For more information, see: https://openid.net/specs/openid-connect-core-1_0.html#SubjectIDTypes
 type SubjectIdentifierType string
 
@@ -167,10 +139,6 @@ const (
 
 var SubjectIdentifierTypes []SubjectIdentifierType = []SubjectIdentifierType{
 	PublicSubjectIdentifier,
-}
-
-var DpopSigningAlgorithms = []jose.SignatureAlgorithm{
-	jose.RS256, jose.PS256, jose.ES256,
 }
 
 type ErrorCode string

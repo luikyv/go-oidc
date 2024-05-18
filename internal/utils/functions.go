@@ -57,8 +57,8 @@ func ExtractJarFromRequestObject(
 	return jarReq, nil
 }
 
-func ValidateDpopJwt(dpopJwt string, expectedDpopClaims models.DpopClaims) issues.OAuthError {
-	parsedDpopJwt, err := jwt.ParseSigned(dpopJwt, constants.DpopSigningAlgorithms)
+func ValidateDpopJwt(ctx Context, dpopJwt string, expectedDpopClaims models.DpopClaims) issues.OAuthError {
+	parsedDpopJwt, err := jwt.ParseSigned(dpopJwt, ctx.DpopSigningAlgorithms)
 	if err != nil {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid dpop")
 	}
@@ -102,7 +102,7 @@ func ValidateDpopJwt(dpopJwt string, expectedDpopClaims models.DpopClaims) issue
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid ath claim")
 	}
 
-	if expectedDpopClaims.JwkThumbprint != "" && unit.GenerateJwkThumbprint(dpopJwt) != expectedDpopClaims.JwkThumbprint {
+	if expectedDpopClaims.JwkThumbprint != "" && unit.GenerateJwkThumbprint(dpopJwt, ctx.DpopSigningAlgorithms) != expectedDpopClaims.JwkThumbprint {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid jwk thumbprint")
 	}
 

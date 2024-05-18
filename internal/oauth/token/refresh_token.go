@@ -144,11 +144,27 @@ func generateUpdatedGrantSession(
 	}
 	ctx.Logger.Debug("the token model was loaded successfully")
 
-	updatedGrantSession := grantModel.GenerateGrantSession(models.NewRefreshTokenGrantOptions(grantSession))
+	updatedGrantSession := grantModel.GenerateGrantSession(NewRefreshTokenGrantOptions(grantSession))
 	updatedGrantSession.Id = grantSession.Id
 	// Keep the same creation time to make sure the session will expire.
 	updatedGrantSession.CreatedAtTimestamp = grantSession.CreatedAtTimestamp
 	ctx.GrantSessionManager.CreateOrUpdate(updatedGrantSession)
 
 	return updatedGrantSession, nil
+}
+
+func NewRefreshTokenGrantOptions(session models.GrantSession) models.GrantOptions {
+	return models.GrantOptions{
+		GrantType: constants.RefreshTokenGrant,
+		Scopes:    session.Scopes,
+		Subject:   session.Subject,
+		ClientId:  session.ClientId,
+		TokenOptions: models.TokenOptions{
+			AdditionalTokenClaims: session.AdditionalTokenClaims,
+		},
+		IdTokenOptions: models.IdTokenOptions{
+			Nonce:                   session.Nonce,
+			AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
+		},
+	}
 }

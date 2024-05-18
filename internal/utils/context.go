@@ -20,18 +20,25 @@ type Configuration struct {
 	GrantSessionManager              crud.GrantSessionManager
 	AuthnSessionManager              crud.AuthnSessionManager
 	PrivateJwks                      jose.JSONWebKeySet
-	JarmIsEnabled                    bool   // TODO: use this
-	PrivateJarmKeyId                 string // TODO: Get jarm key based on client.
+	GrantTypes                       []constants.GrantType
+	ResponseTypes                    []constants.ResponseType
 	ResponseModes                    []constants.ResponseMode
+	ClientAuthnMethods               []constants.ClientAuthnType
+	ClientSigningAlgorithms          []jose.SignatureAlgorithm
+	CodeChallengeMethods             []constants.CodeChallengeMethod
+	IssuerResponseParameterIsEnabled bool
+	JarmIsEnabled                    bool
+	PrivateJarmKeyId                 string // TODO: Get jarm key based on client.
 	JarIsEnabled                     bool
 	JarIsRequired                    bool
 	JarAlgorithms                    []jose.SignatureAlgorithm
 	ParIsEnabled                     bool
 	ParIsRequired                    bool
+	DpopIsEnabled                    bool
+	DpopIsRequired                   bool
+	DpopSigningAlgorithms            []jose.SignatureAlgorithm
+	PkceIsRequired                   bool
 	Policies                         []AuthnPolicy
-	ClientAuthnMethods               []constants.ClientAuthnType // TODO: use this
-	ClientSigningAlgorithms          []jose.SignatureAlgorithm
-	IssuerResponseParameterIsEnabled bool
 }
 
 type Context struct {
