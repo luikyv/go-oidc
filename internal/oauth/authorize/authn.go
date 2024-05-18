@@ -12,15 +12,17 @@ import (
 
 func authenticate(ctx utils.Context, session *models.AuthnSession) issues.OAuthError {
 
+	policy := ctx.GetPolicyById(session.PolicyId)
+
 	status := constants.Success
 	var err error
-	for status == constants.Success && len(session.StepIdsLeft) > 0 {
-		currentStep := utils.GetStep(session.StepIdsLeft[0])
-		status, err = currentStep.AuthnFunc(ctx, session)
+	for status == constants.Success && session.AuthnSequenceIndex < len(policy.AuthnSequence) {
+		currentAuthnFunc := policy.AuthnSequence[session.AuthnSequenceIndex]
+		status, err = currentAuthnFunc(ctx, session)
 
 		if status == constants.Success {
-			// If the step finished with success, it can be removed from the remaining ones.
-			session.SetAuthnSteps(session.StepIdsLeft[1:])
+			// If the step finished with success, we can move to the next one.
+			session.AuthnSequenceIndex++
 		}
 	}
 
@@ -92,6 +94,7 @@ func generateImplictParams(
 	}
 
 	// Generate an ID token if the client requested it.
+	// TODO: We shouldn't need to validate the scope here.
 	if unit.ScopeContainsOpenId(session.Scope) && session.ResponseType.Contains(constants.IdTokenResponse) {
 		implictParams["id_token"] = grantModel.GenerateIdToken(
 			models.NewImplictGrantOptionsForIdToken(session, models.IdTokenOptions{

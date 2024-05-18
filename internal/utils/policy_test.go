@@ -8,55 +8,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func setUp() (tearDown func()) {
-	// Set up.
-
-	// Tear down.
-	return func() {
-		for k := range utils.TestStepMap {
-			delete(utils.TestStepMap, k)
-		}
-	}
-}
-
-func TestNewStepShouldRegisterStep(t *testing.T) {
-	tearDown := setUp()
-	defer tearDown()
-	// When
-	stepId := "step_id"
-
-	// Then
-	utils.NewStep(stepId, nil)
-
-	// Assert
-	if _, stepWasRegistered := utils.TestStepMap[stepId]; !stepWasRegistered {
-		t.Error("NewStep is not registering the step")
-	}
-}
-
-func TestGetStep(t *testing.T) {
-	tearDown := setUp()
-	defer tearDown()
-
-	// When
-	step := utils.AuthnStep{
-		Id:        "step_id",
-		AuthnFunc: nil,
-	}
-	utils.TestStepMap[step.Id] = step
-
-	// Then
-	selectedStep := utils.GetStep(step.Id)
-
-	// Assert
-	if selectedStep.Id != step.Id {
-		t.Error("GetStep is not fetching the right step")
-	}
-}
-
 func TestGetPolicy(t *testing.T) {
-	tearDown := setUp()
-	defer tearDown()
 
 	// When
 	unavailablePolicy := utils.NewPolicy(
@@ -88,9 +40,6 @@ func TestGetPolicy(t *testing.T) {
 }
 
 func TestGetPolicyNoPolicyAvailable(t *testing.T) {
-	tearDown := setUp()
-	defer tearDown()
-
 	// When
 	unavailablePolicy := utils.NewPolicy(
 		"unavailable_policy",

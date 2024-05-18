@@ -12,12 +12,6 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit"
 )
 
-func init() {
-	TestStepMap = stepMap
-}
-
-var TestStepMap map[string]AuthnStep
-
 const (
 	TestHost string = "https://example.com"
 )

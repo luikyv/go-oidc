@@ -57,7 +57,7 @@ func main() {
 	policy := utils.NewPolicy(
 		"policy",
 		func(c models.AuthnSession, ctx *gin.Context) bool { return true },
-		NoInteractionStep,
+		NoInteractionAuthnFunc,
 	)
 
 	// Run

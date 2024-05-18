@@ -88,6 +88,15 @@ func (ctx Context) GetAvailablePolicy(session models.AuthnSession) (policy Authn
 	return policy, policyIsAvailable
 }
 
+func (ctx Context) GetPolicyById(policyId string) AuthnPolicy {
+	for _, policy := range ctx.Policies {
+		if policy.Id == policyId {
+			return policy
+		}
+	}
+	return AuthnPolicy{}
+}
+
 func (ctx Context) GetPrivateKey(keyId string) (jose.JSONWebKey, bool) {
 	keys := ctx.PrivateJwks.Key(keyId)
 	if len(keys) != 1 {

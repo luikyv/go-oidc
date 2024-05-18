@@ -12,7 +12,8 @@ type AuthnSession struct {
 	Profile            constants.Profile
 	CallbackId         string
 	GrantModelId       string
-	StepIdsLeft        []string
+	PolicyId           string
+	AuthnSequenceIndex int
 	CreatedAtTimestamp int
 	Subject            string
 	ClientId           string
@@ -108,8 +109,9 @@ func (session *AuthnSession) GetCustomIdTokenClaim(key string, value string) str
 	return session.AdditionalIdTokenClaims[key]
 }
 
-func (session *AuthnSession) SetAuthnSteps(stepIdSequence []string) {
-	session.StepIdsLeft = stepIdSequence
+func (session *AuthnSession) SetPolicy(policyId string) {
+	session.PolicyId = policyId
+	session.AuthnSequenceIndex = 0
 }
 
 func (session *AuthnSession) IsPushedRequestExpired() bool {
