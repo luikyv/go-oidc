@@ -15,7 +15,7 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 		ParIsRequired:                        ctx.ParIsRequired,
 		JwksUri:                              ctx.Host + string(constants.JsonWebKeySetEndpoint),
 		ResponseTypes:                        constants.ResponseTypes,
-		ResponseModes:                        constants.BasicResponseModes,
+		ResponseModes:                        ctx.ResponseModes,
 		GrantTypes:                           constants.GrantTypes,
 		SubjectIdentifierTypes:               constants.SubjectIdentifierTypes,
 		IdTokenSigningAlgorithms:             ctx.GetSigningAlgorithms(),
@@ -38,7 +38,6 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 	}
 
 	if ctx.JarmIsEnabled {
-		config.ResponseModes = constants.ResponseModes
 		config.JarmAlgorithms = []string{ctx.GetJarmPrivateKey().Algorithm}
 	}
 

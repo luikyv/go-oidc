@@ -22,6 +22,7 @@ type Configuration struct {
 	PrivateJwks                      jose.JSONWebKeySet
 	JarmIsEnabled                    bool   // TODO: use this
 	PrivateJarmKeyId                 string // TODO: Get jarm key based on client.
+	ResponseModes                    []constants.ResponseMode
 	JarIsEnabled                     bool
 	JarIsRequired                    bool
 	JarAlgorithms                    []jose.SignatureAlgorithm

@@ -46,12 +46,6 @@ var ResponseTypes []ResponseType = []ResponseType{
 	CodeAndIdTokenAndTokenResponse,
 }
 
-var OAuthCoreResponseTypes []ResponseType = []ResponseType{
-	CodeResponse,
-	TokenResponse,
-	CodeAndTokenResponse,
-}
-
 func (rt ResponseType) Contains(responseType ResponseType) bool {
 	return slices.Contains(strings.Split(string(rt), " "), string(responseType))
 }
@@ -61,7 +55,11 @@ func (rt ResponseType) IsValid() bool {
 }
 
 func (rt ResponseType) IsOAuthCoreValid() bool {
-	return slices.Contains(OAuthCoreResponseTypes, rt)
+	return slices.Contains([]ResponseType{
+		CodeResponse,
+		TokenResponse,
+		CodeAndTokenResponse,
+	}, rt)
 }
 
 func (rt ResponseType) IsImplict() bool {
@@ -81,22 +79,6 @@ const (
 	FormPostJwtResponseMode ResponseMode = "form_post.jwt"
 	JwtResponseMode         ResponseMode = "jwt"
 )
-
-var BasicResponseModes []ResponseMode = []ResponseMode{
-	QueryResponseMode,
-	FragmentResponseMode,
-	FormPostResponseMode,
-}
-
-var ResponseModes []ResponseMode = []ResponseMode{
-	QueryResponseMode,
-	FragmentResponseMode,
-	FormPostResponseMode,
-	QueryJwtResponseMode,
-	FragmentJwtResponseMode,
-	FormPostJwtResponseMode,
-	JwtResponseMode,
-}
 
 func (rm ResponseMode) IsJarm() bool {
 	return strings.HasSuffix(string(rm), string(JwtResponseMode))

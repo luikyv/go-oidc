@@ -28,9 +28,14 @@ func NewManager(
 
 	manager := &OpenIdManager{
 		Configuration: utils.Configuration{
-			Host:                    host,
-			PrivateJwks:             privateJwks,
-			Policies:                make([]utils.AuthnPolicy, 0),
+			Host:        host,
+			PrivateJwks: privateJwks,
+			Policies:    make([]utils.AuthnPolicy, 0),
+			ResponseModes: []constants.ResponseMode{
+				constants.QueryResponseMode,
+				constants.FragmentResponseMode,
+				constants.FormPostResponseMode,
+			},
 			ClientAuthnMethods:      []constants.ClientAuthnType{constants.NoneAuthn, constants.ClientSecretBasicAuthn, constants.ClientSecretPostAuthn},
 			ClientSigningAlgorithms: []jose.SignatureAlgorithm{},
 		},
@@ -88,6 +93,15 @@ func (manager *OpenIdManager) EnableJwtSecuredAuthorizationRequests(
 func (manager *OpenIdManager) EnableJwtSecuredAuthorizationResponseMode(
 	privateJarmKeyId string,
 ) {
+	manager.JarmIsEnabled = true
+	manager.ResponseModes = []constants.ResponseMode{
+		constants.QueryResponseMode,
+		constants.QueryJwtResponseMode,
+		constants.FragmentResponseMode,
+		constants.FragmentJwtResponseMode,
+		constants.FormPostResponseMode,
+		constants.FormPostJwtResponseMode,
+	}
 	manager.PrivateJarmKeyId = privateJarmKeyId
 }
 
