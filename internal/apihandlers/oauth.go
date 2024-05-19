@@ -115,7 +115,7 @@ func HandleUserInfoRequest(ctx utils.Context) {
 		return
 	}
 
-	if err := validateProofOfPossesion(ctx, token, tokenType, grantSession); err != nil {
+	if err := utils.ValidateProofOfPossesion(ctx, token, tokenType, grantSession); err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
 	}
@@ -139,38 +139,10 @@ func addBasicCredentialsToRequest(ctx utils.Context, req *models.ClientAuthnRequ
 }
 
 func addProofOfPossesionToRequest(ctx utils.Context, req *models.TokenRequest) {
+	if !ctx.DpopIsEnabled {
+		return
+	}
 	req.DpopJwt = ctx.RequestContext.GetHeader(string(constants.DpopHeader))
-}
-
-func validateProofOfPossesion(
-	ctx utils.Context,
-	token string,
-	tokenType constants.TokenType,
-	grantSession models.GrantSession,
-) issues.OAuthError {
-
-	if grantSession.JwkThumbprint == "" {
-		if tokenType == constants.DpopTokenType {
-			// The token type cannot be DPoP if the session was not created with DPoP.
-			return issues.NewOAuthError(constants.InvalidRequest, "invalid token type")
-		} else {
-			// If the session was not created with DPoP and the token is not a DPoP token, there is nothing to validate.
-			return nil
-		}
-	}
-
-	dpopJwt := ctx.RequestContext.Request.Header.Get(string(constants.DpopHeader))
-	if dpopJwt == "" {
-		// The session was created with DPoP, then the DPoP header must be passed.
-		return issues.NewOAuthError(constants.AccessDenied, "missing DPoP header")
-	}
-
-	return utils.ValidateDpopJwt(ctx, dpopJwt, models.DpopClaims{
-		HttpMethod:    ctx.RequestContext.Request.Method,
-		HttpUri:       ctx.Host + ctx.RequestContext.Request.URL.RequestURI(),
-		AccessToken:   token,
-		JwkThumbprint: grantSession.JwkThumbprint,
-	})
 }
 
 func bindErrorToResponse(err error, requestContext *gin.Context) {

@@ -25,10 +25,9 @@ type Configuration struct {
 	ResponseModes                    []constants.ResponseMode
 	ClientAuthnMethods               []constants.ClientAuthnType
 	ClientSigningAlgorithms          []jose.SignatureAlgorithm
-	CodeChallengeMethods             []constants.CodeChallengeMethod
 	IssuerResponseParameterIsEnabled bool
 	JarmIsEnabled                    bool
-	PrivateJarmKeyId                 string // TODO: Get jarm key based on client.
+	PrivateJarmKeyId                 string // TODO: Get jarm key based on client?
 	JarIsEnabled                     bool
 	JarIsRequired                    bool
 	JarAlgorithms                    []jose.SignatureAlgorithm
@@ -37,7 +36,9 @@ type Configuration struct {
 	DpopIsEnabled                    bool
 	DpopIsRequired                   bool
 	DpopSigningAlgorithms            []jose.SignatureAlgorithm
+	PkceIsEnabled                    bool
 	PkceIsRequired                   bool
+	CodeChallengeMethods             []constants.CodeChallengeMethod
 	Policies                         []AuthnPolicy
 }
 

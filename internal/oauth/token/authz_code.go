@@ -23,7 +23,7 @@ func handleAuthorizationCodeGrantTokenCreation(ctx utils.Context, req models.Tok
 		return models.GrantSession{}, oauthErr
 	}
 
-	if oauthErr = validateAuthorizationCodeGrantRequest(req, authenticatedClient, session); oauthErr != nil {
+	if oauthErr = validateAuthorizationCodeGrantRequest(ctx, req, authenticatedClient, session); oauthErr != nil {
 		ctx.Logger.Debug("invalid parameters for the token request", slog.String("error", oauthErr.Error()))
 		return models.GrantSession{}, oauthErr
 	}
@@ -50,20 +50,19 @@ func handleAuthorizationCodeGrantTokenCreation(ctx utils.Context, req models.Tok
 }
 
 func preValidateAuthorizationCodeGrantRequest(req models.TokenRequest) issues.OAuthError {
-	if req.AuthorizationCode == "" || unit.AnyNonEmpty(req.RefreshToken, req.Scope) {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid parameter for authorization code grant")
-	}
-
-	// RFC 7636. "...with a minimum length of 43 characters and a maximum length of 128 characters."
-	codeVerifierLengh := len(req.CodeVerifier)
-	if req.CodeVerifier != "" && (codeVerifierLengh < 43 || codeVerifierLengh > 128) {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid code verifier")
+	if req.AuthorizationCode == "" {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid authorization code")
 	}
 
 	return nil
 }
 
-func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client models.Client, session models.AuthnSession) issues.OAuthError {
+func validateAuthorizationCodeGrantRequest(
+	ctx utils.Context,
+	req models.TokenRequest,
+	client models.Client,
+	session models.AuthnSession,
+) issues.OAuthError {
 
 	if !client.IsGrantTypeAllowed(constants.AuthorizationCodeGrant) {
 		return issues.NewOAuthError(constants.UnauthorizedClient, "invalid grant type")
@@ -81,12 +80,18 @@ func validateAuthorizationCodeGrantRequest(req models.TokenRequest, client model
 		return issues.NewOAuthError(constants.InvalidGrant, "invalid redirect_uri")
 	}
 
-	// If the session was created with a code challenge, the token request must contain the right code verifier.
+	// RFC 7636. "...with a minimum length of 43 characters and a maximum length of 128 characters."
+	codeVerifierLengh := len(req.CodeVerifier)
+	if req.CodeVerifier != "" && (codeVerifierLengh < 43 || codeVerifierLengh > 128) {
+		return issues.NewOAuthError(constants.InvalidRequest, "invalid code verifier")
+	}
+
 	codeChallengeMethod := session.CodeChallengeMethod
 	if codeChallengeMethod == "" {
 		codeChallengeMethod = constants.PlainCodeChallengeMethod
 	}
-	if session.CodeChallenge != "" && (req.CodeVerifier == "" || !unit.IsPkceValid(req.CodeVerifier, session.CodeChallenge, codeChallengeMethod)) {
+	// In the case PKCE is enalbed, if the session was created with a code challenge, the token request must contain the right code verifier.
+	if ctx.PkceIsEnabled && session.CodeChallenge != "" && (req.CodeVerifier == "" || !unit.IsPkceValid(req.CodeVerifier, session.CodeChallenge, codeChallengeMethod)) {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid pkce")
 	}
 

@@ -37,6 +37,7 @@ func validateOAuthParams(
 		validateCannotRequestIdTokenResponseTypeIfOpenIdScopeIsNotRequested,
 		validateRedirectUriIsRequired,
 		validateResponseTypeIsRequired,
+		validateScopeOpenIdIsRequiredWhenResponseTypeIsIdToken,
 		validateResponseModeIfPresent,
 		validateScopesIfPresent,
 		validateCannotRequestQueryResponseModeWhenImplictResponseTypeIsRequested,
@@ -138,6 +139,17 @@ func validateResponseTypeIsRequired(
 	return nil
 }
 
+func validateScopeOpenIdIsRequiredWhenResponseTypeIsIdToken(
+	_ utils.Context,
+	params models.AuthorizationParameters,
+	_ models.Client,
+) issues.OAuthError {
+	if params.ResponseType.Contains(constants.IdTokenResponse) && !unit.ScopeContainsOpenId(params.Scope) {
+		return issues.NewOAuthError(constants.InvalidRequest, "cannot request id_token without the scope openid")
+	}
+	return nil
+}
+
 func validateResponseTypeIfPresent(
 	_ utils.Context,
 	params models.AuthorizationParameters,
@@ -220,6 +232,10 @@ func validatePkceIfRequired(
 	params models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
+	if !ctx.PkceIsEnabled {
+		return nil
+	}
+
 	if (ctx.PkceIsRequired || client.PkceIsRequired) && params.CodeChallenge == "" {
 		return issues.NewOAuthError(constants.InvalidRequest, "code_challenge is required")
 	}

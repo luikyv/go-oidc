@@ -109,12 +109,12 @@ func TestIsPkceValid(t *testing.T) {
 		codeChallengeMethod constants.CodeChallengeMethod
 		isValid             bool
 	}{
-		{"4ea55634198fb6a0c120d46b26359cf50ccea86fd03302b9bca9fa98", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", constants.SHA256CodeChallengeMethod, true},
-		{"42d92ec716da149b8c0a553d5cbbdc5fd474625cdffe7335d643105b", "yQ0Wg2MXS83nBOaS3yit-n-xEaEw5LQ8TlhtX_2NkLw", constants.SHA256CodeChallengeMethod, true},
-		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", constants.SHA256CodeChallengeMethod, false},
-		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", constants.SHA256CodeChallengeMethod, false},
-		{"", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", constants.SHA256CodeChallengeMethod, false},
-		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "", constants.SHA256CodeChallengeMethod, false},
+		{"4ea55634198fb6a0c120d46b26359cf50ccea86fd03302b9bca9fa98", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", constants.Sha256CodeChallengeMethod, true},
+		{"42d92ec716da149b8c0a553d5cbbdc5fd474625cdffe7335d643105b", "yQ0Wg2MXS83nBOaS3yit-n-xEaEw5LQ8TlhtX_2NkLw", constants.Sha256CodeChallengeMethod, true},
+		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", constants.Sha256CodeChallengeMethod, false},
+		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", constants.Sha256CodeChallengeMethod, false},
+		{"", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", constants.Sha256CodeChallengeMethod, false},
+		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "", constants.Sha256CodeChallengeMethod, false},
 		{"random_string", "random_string", constants.PlainCodeChallengeMethod, true},
 	}
 
@@ -129,15 +129,15 @@ func TestIsPkceValid(t *testing.T) {
 }
 
 func TestContainsAll(t *testing.T) {
-	if !unit.ContainsAll([]string{"a", "b", "c"}, []string{"a", "b"}) {
+	if !unit.ContainsAll([]string{"a", "b", "c"}, "a", "b") {
 		t.Errorf("%v should contain %v", []string{"a", "b", "c"}, []string{"a", "b"})
 	}
 
-	if !unit.ContainsAll([]int{1, 2}, []int{1, 2}) {
+	if !unit.ContainsAll([]int{1, 2}, 1, 2) {
 		t.Errorf("%v should contain %v", []int{1, 2}, []int{1, 2})
 	}
 
-	if unit.ContainsAll([]int{1}, []int{1, 2}) {
+	if unit.ContainsAll([]int{1}, 1, 2) {
 		t.Errorf("%v should not contain %v", []int{1}, []int{1, 2})
 	}
 }

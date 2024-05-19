@@ -112,6 +112,9 @@ type PushedAuthorizationResponse struct {
 	ExpiresIn  int    `json:"expires_in"`
 }
 
+type DynamicClientRequest struct {
+}
+
 type OpenIdConfiguration struct {
 	Issuer                               string                            `json:"issuer"`
 	AuthorizationEndpoint                string                            `json:"authorization_endpoint"`

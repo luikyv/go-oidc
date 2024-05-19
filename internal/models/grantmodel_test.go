@@ -50,7 +50,7 @@ func TestOpaqueGrantModelGenerateToken(t *testing.T) {
 	if grantSession.ClientId != grantContext.ClientId {
 		t.Error("the client id is invalid")
 	}
-	if len(grantContext.Scopes) != len(grantSession.Scopes) || !unit.ContainsAll(grantContext.Scopes, grantSession.Scopes) {
+	if len(grantContext.Scopes) != len(grantSession.Scopes) || !unit.ContainsAll(grantContext.Scopes, grantSession.Scopes...) {
 		t.Error("the scopes are invalid")
 	}
 	if grantSession.CreatedAtTimestamp != int(time.Now().Unix()) {
@@ -116,7 +116,7 @@ func TestJWTGrantModelGenerateToken(t *testing.T) {
 	if grantSession.ClientId != grantContext.ClientId {
 		t.Error("the client id is invalid")
 	}
-	if len(grantContext.Scopes) != len(grantSession.Scopes) || !unit.ContainsAll(grantContext.Scopes, grantSession.Scopes) {
+	if len(grantContext.Scopes) != len(grantSession.Scopes) || !unit.ContainsAll(grantContext.Scopes, grantSession.Scopes...) {
 		t.Error("the scopes are invalid")
 	}
 	if grantSession.CreatedAtTimestamp != int(time.Now().Unix()) {

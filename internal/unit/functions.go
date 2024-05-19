@@ -78,7 +78,7 @@ func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod 
 	switch codeChallengeMethod {
 	case constants.PlainCodeChallengeMethod:
 		return codeChallenge == codeVerifier
-	case constants.SHA256CodeChallengeMethod:
+	case constants.Sha256CodeChallengeMethod:
 		return codeChallenge == CreateSha256Hash(codeVerifier)
 	}
 
@@ -130,7 +130,7 @@ func getDefaultJarmResponseMode(responseType constants.ResponseType) constants.R
 	return constants.QueryJwtResponseMode
 }
 
-func ContainsAll[T comparable](superSet []T, subSet []T) bool {
+func ContainsAll[T comparable](superSet []T, subSet ...T) bool {
 	for _, e := range subSet {
 		if !slices.Contains(superSet, e) {
 			return false

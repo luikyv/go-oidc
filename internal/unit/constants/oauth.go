@@ -15,13 +15,6 @@ const (
 	ImplictGrant           GrantType = "implict"
 )
 
-// var GrantTypes []GrantType = []GrantType{
-// 	ClientCredentialsGrant,
-// 	AuthorizationCodeGrant,
-// 	RefreshTokenGrant,
-// 	ImplictGrant,
-// }
-
 type ResponseType string
 
 const (
@@ -74,14 +67,6 @@ const (
 	PrivateKeyJwtAuthn     ClientAuthnType = "private_key_jwt"
 )
 
-var ClientAuthnTypes []ClientAuthnType = []ClientAuthnType{
-	NoneAuthn,
-	ClientSecretBasicAuthn,
-	ClientSecretPostAuthn,
-	ClientSecretJwt,
-	PrivateKeyJwtAuthn,
-}
-
 type ClientAssertionType string
 
 const (
@@ -120,14 +105,9 @@ const (
 type CodeChallengeMethod string
 
 const (
-	SHA256CodeChallengeMethod CodeChallengeMethod = "S256"
+	Sha256CodeChallengeMethod CodeChallengeMethod = "S256"
 	PlainCodeChallengeMethod  CodeChallengeMethod = "plain"
 )
-
-var CodeChallengeMethods []CodeChallengeMethod = []CodeChallengeMethod{
-	SHA256CodeChallengeMethod,
-	PlainCodeChallengeMethod,
-}
 
 // For more information, see: https://openid.net/specs/openid-connect-core-1_0.html#SubjectIDTypes
 type SubjectIdentifierType string

@@ -10,6 +10,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/apihandlers"
 	"github.com/luikymagno/auth-server/internal/crud/inmemory"
 	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
@@ -56,12 +57,9 @@ func NewManager(
 				constants.ClientSecretPostAuthn,
 			},
 			ClientSigningAlgorithms: []jose.SignatureAlgorithm{},
-			CodeChallengeMethods: []constants.CodeChallengeMethod{
-				constants.SHA256CodeChallengeMethod,
-				constants.PlainCodeChallengeMethod,
-			},
-			DpopSigningAlgorithms: []jose.SignatureAlgorithm{},
-			Policies:              make([]utils.AuthnPolicy, 0),
+			CodeChallengeMethods:    []constants.CodeChallengeMethod{},
+			DpopSigningAlgorithms:   []jose.SignatureAlgorithm{},
+			Policies:                make([]utils.AuthnPolicy, 0),
 		},
 		Server: gin.Default(),
 	}
@@ -89,7 +87,26 @@ func ConfigureInMemorySessions(manager *OAuthManager) {
 }
 
 func (manager *OAuthManager) SetGrantTypes(grantTypes ...constants.GrantType) {
-	//TODO
+	responseTypes := []constants.ResponseType{}
+	if slices.Contains(grantTypes, constants.AuthorizationCodeGrant) {
+		responseTypes = append(responseTypes, constants.CodeResponse)
+	}
+
+	if slices.Contains(grantTypes, constants.ImplictGrant) {
+		responseTypes = append(responseTypes, constants.TokenResponse, constants.IdTokenResponse, constants.IdTokenAndTokenResponse)
+	}
+
+	if unit.ContainsAll(grantTypes, constants.AuthorizationCodeGrant, constants.ImplictGrant) {
+		responseTypes = append(
+			responseTypes,
+			constants.CodeAndIdTokenResponse,
+			constants.CodeAndTokenResponse,
+			constants.CodeAndIdTokenAndTokenResponse,
+		)
+	}
+
+	manager.GrantTypes = grantTypes
+	manager.ResponseTypes = responseTypes
 }
 
 func (manager *OAuthManager) RequirePushedAuthorizationRequests() {
@@ -111,7 +128,7 @@ func (manager *OAuthManager) RequireJwtSecuredAuthorizationRequests(
 }
 
 func (manager *OAuthManager) EnableJwtSecuredAuthorizationRequests(
-	jarAlgorithms []jose.SignatureAlgorithm,
+	jarAlgorithms ...jose.SignatureAlgorithm,
 ) {
 	manager.JarIsEnabled = true
 	manager.JarIsRequired = false
@@ -151,22 +168,26 @@ func (manager *OAuthManager) EnableIssuerResponseParameter() {
 }
 
 func (manager *OAuthManager) EnableDpop(
-	dpopSigningAlgorithms []jose.SignatureAlgorithm,
+	dpopSigningAlgorithms ...jose.SignatureAlgorithm,
 ) {
 	manager.DpopIsEnabled = true
-	manager.DpopIsRequired = false
 	manager.DpopSigningAlgorithms = dpopSigningAlgorithms
 }
 
 func (manager *OAuthManager) RequireDpop(
-	dpopSigningAlgorithms []jose.SignatureAlgorithm,
+	dpopSigningAlgorithms ...jose.SignatureAlgorithm,
 ) {
-	manager.DpopIsEnabled = true
+	manager.EnableDpop(dpopSigningAlgorithms...)
 	manager.DpopIsRequired = true
-	manager.DpopSigningAlgorithms = dpopSigningAlgorithms
 }
 
-func (manager *OAuthManager) RequirePkce() {
+func (manager *OAuthManager) EnablePkce(codeChallengeMethods ...constants.CodeChallengeMethod) {
+	manager.CodeChallengeMethods = codeChallengeMethods
+	manager.PkceIsEnabled = true
+}
+
+func (manager *OAuthManager) RequirePkce(codeChallengeMethods ...constants.CodeChallengeMethod) {
+	manager.EnablePkce(codeChallengeMethods...)
 	manager.PkceIsRequired = true
 }
 
