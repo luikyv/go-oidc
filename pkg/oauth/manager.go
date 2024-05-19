@@ -88,6 +88,10 @@ func ConfigureInMemorySessions(manager *OAuthManager) {
 	manager.AuthnSessionManager = inmemory.NewInMemoryAuthnSessionManager()
 }
 
+func (manager *OAuthManager) SetGrantTypes(grantTypes ...constants.GrantType) {
+	//TODO
+}
+
 func (manager *OAuthManager) RequirePushedAuthorizationRequests() {
 	manager.ParIsEnabled = true
 	manager.ParIsRequired = true

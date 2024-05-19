@@ -1,8 +1,6 @@
 package authorize
 
 import (
-	"maps"
-
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -13,7 +11,6 @@ import (
 func authenticate(ctx utils.Context, session *models.AuthnSession) issues.OAuthError {
 
 	policy := ctx.GetPolicyById(session.PolicyId)
-
 	status := constants.Success
 	var err error
 	for status == constants.Success && session.AuthnSequenceIndex < len(policy.AuthnSequence) {
@@ -37,7 +34,10 @@ func authenticate(ctx utils.Context, session *models.AuthnSession) issues.OAuthE
 	}
 
 	// At this point, the status can only be success and there are no more steps left.
-	finishFlowSuccessfully(ctx, session)
+	if err := finishFlowSuccessfully(ctx, session); err != nil {
+		return err
+	}
+
 	if !session.ResponseType.Contains(constants.CodeResponse) {
 		// The client didn't request an authorization code to later exchange it for an access token,
 		// so we don't keep the session anymore.
@@ -48,20 +48,39 @@ func authenticate(ctx utils.Context, session *models.AuthnSession) issues.OAuthE
 	return nil
 }
 
-func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) {
+func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) issues.OAuthError {
 
 	params := make(map[string]string)
 
-	// Generate the authorization code if the client requested it.
 	if session.ResponseType.Contains(constants.CodeResponse) {
-		session.InitAuthorizationCode()
-		params[string(constants.CodeResponse)] = session.AuthorizationCode
+		params["code"] = session.InitAuthorizationCode()
 	}
 
-	// Add implict parameters.
-	if session.ResponseType.IsImplict() {
-		implictParams, _ := generateImplictParams(ctx, *session)
-		maps.Copy(params, implictParams)
+	if session.ResponseType.Contains(constants.TokenResponse) {
+		grantSession, err := generateImplictGrantSession(ctx, *session)
+		if err != nil {
+			return err
+		}
+		params["access_token"] = grantSession.Token
+		params["token_type"] = string(constants.BearerTokenType)
+	}
+
+	if session.ResponseType.Contains(constants.IdTokenResponse) {
+		idToken, err := generateImplictIdToken(
+			ctx,
+			*session,
+			models.IdTokenOptions{
+				AccessToken:             params["access_token"],
+				AuthorizationCode:       session.AuthorizationCode,
+				State:                   session.State,
+				Nonce:                   session.Nonce,
+				AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
+			},
+		)
+		if err != nil {
+			return err
+		}
+		params["id_token"] = idToken
 	}
 
 	// Echo the state parameter.
@@ -70,42 +89,64 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) {
 	}
 
 	redirectResponse(ctx, models.NewRedirectResponseFromSession(*session, params))
+	return nil
 }
 
-func generateImplictParams(
+func generateImplictGrantSession(
 	ctx utils.Context,
 	session models.AuthnSession,
 ) (
-	map[string]string,
-	error,
+	models.GrantSession,
+	issues.OAuthError,
 ) {
-	grantModel, _ := ctx.GrantModelManager.Get(session.GrantModelId)
-	implictParams := make(map[string]string)
 
-	// Generate a token if the client requested it.
-	if session.ResponseType.Contains(constants.TokenResponse) {
-		grantSession := grantModel.GenerateGrantSession(models.NewImplictGrantOptions(session))
-		err := ctx.GrantSessionManager.CreateOrUpdate(grantSession)
-		if err != nil {
-			return map[string]string{}, err
-		}
-		implictParams["access_token"] = grantSession.Token
-		implictParams["token_type"] = string(constants.BearerTokenType)
+	grantModel, err := ctx.GrantModelManager.Get(session.GrantModelId)
+	if err != nil {
+		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, err.Error())
 	}
 
-	// Generate an ID token if the client requested it.
-	// TODO: We shouldn't need to validate the scope here.
-	if unit.ScopeContainsOpenId(session.Scope) && session.ResponseType.Contains(constants.IdTokenResponse) {
-		implictParams["id_token"] = grantModel.GenerateIdToken(
-			models.NewImplictGrantOptionsForIdToken(session, models.IdTokenOptions{
-				AccessToken:             implictParams["access_token"],
-				AuthorizationCode:       session.AuthorizationCode,
-				State:                   session.State,
-				Nonce:                   session.Nonce,
-				AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
-			}),
-		)
+	grantSession := grantModel.GenerateGrantSession(NewImplictGrantOptions(session))
+
+	if err := ctx.GrantSessionManager.CreateOrUpdate(grantSession); err != nil {
+		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, err.Error())
 	}
 
-	return implictParams, nil
+	return grantSession, nil
+}
+
+func NewImplictGrantOptions(session models.AuthnSession) models.GrantOptions {
+	return models.GrantOptions{
+		GrantType: constants.ImplictGrant,
+		Scopes:    unit.SplitStringWithSpaces(session.Scope),
+		Subject:   session.Subject,
+		ClientId:  session.ClientId,
+		TokenOptions: models.TokenOptions{
+			AdditionalTokenClaims: session.AdditionalTokenClaims,
+		},
+		IdTokenOptions: models.IdTokenOptions{
+			Nonce:                   session.Nonce,
+			AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
+		},
+	}
+}
+
+func generateImplictIdToken(
+	ctx utils.Context,
+	session models.AuthnSession,
+	idTokenOptions models.IdTokenOptions,
+) (
+	string,
+	issues.OAuthError,
+) {
+	grantModel, err := ctx.GrantModelManager.Get(session.GrantModelId)
+	if err != nil {
+		return "", issues.NewOAuthError(constants.InternalError, err.Error())
+	}
+
+	return grantModel.GenerateIdToken(models.GrantOptions{
+		GrantType:      constants.ImplictGrant,
+		Subject:        session.Subject,
+		ClientId:       session.ClientId,
+		IdTokenOptions: idTokenOptions,
+	}), nil
 }

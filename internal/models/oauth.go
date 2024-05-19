@@ -41,35 +41,6 @@ type GrantOptions struct {
 	IdTokenOptions
 }
 
-func NewImplictGrantOptions(session AuthnSession) GrantOptions {
-	return GrantOptions{
-		GrantType: constants.ImplictGrant,
-		Scopes:    unit.SplitStringWithSpaces(session.Scope),
-		Subject:   session.Subject,
-		ClientId:  session.ClientId,
-		TokenOptions: TokenOptions{
-			AdditionalTokenClaims: session.AdditionalTokenClaims,
-		},
-		IdTokenOptions: IdTokenOptions{
-			Nonce:                   session.Nonce,
-			AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
-		},
-	}
-}
-
-func NewImplictGrantOptionsForIdToken(session AuthnSession, idToken IdTokenOptions) GrantOptions {
-	return GrantOptions{
-		GrantType: constants.ImplictGrant,
-		Scopes:    unit.SplitStringWithSpaces(session.Scope),
-		Subject:   session.Subject,
-		ClientId:  session.ClientId,
-		TokenOptions: TokenOptions{
-			AdditionalTokenClaims: session.AdditionalTokenClaims,
-		},
-		IdTokenOptions: idToken,
-	}
-}
-
 type ClientAuthnRequest struct {
 	ClientIdBasicAuthn     string
 	ClientSecretBasicAuthn string

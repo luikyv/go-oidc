@@ -122,7 +122,8 @@ func (session *AuthnSession) IsAuthorizationCodeExpired() bool {
 	return unit.GetTimestampNow() > session.AuthorizedAtTimestamp+constants.AuthorizationCodeLifetimeSecs
 }
 
-func (session *AuthnSession) InitAuthorizationCode() {
+func (session *AuthnSession) InitAuthorizationCode() string {
 	session.AuthorizationCode = unit.GenerateAuthorizationCode()
 	session.AuthorizedAtTimestamp = unit.GetTimestampNow()
+	return session.AuthorizationCode
 }
