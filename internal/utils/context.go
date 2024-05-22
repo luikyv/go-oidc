@@ -27,18 +27,21 @@ type Configuration struct {
 	ClientSigningAlgorithms          []jose.SignatureAlgorithm
 	IssuerResponseParameterIsEnabled bool
 	JarmIsEnabled                    bool
+	JarmLifetimeSecs                 int
 	PrivateJarmKeyId                 string // TODO: Get jarm key based on client?
 	JarIsEnabled                     bool
 	JarIsRequired                    bool
 	JarAlgorithms                    []jose.SignatureAlgorithm
 	ParIsEnabled                     bool
 	ParIsRequired                    bool
+	ParLifetimeSecs                  int
 	DpopIsEnabled                    bool
 	DpopIsRequired                   bool
 	DpopSigningAlgorithms            []jose.SignatureAlgorithm
 	PkceIsEnabled                    bool
 	PkceIsRequired                   bool
 	CodeChallengeMethods             []constants.CodeChallengeMethod
+	SubjectIdentifierTypes           []constants.SubjectIdentifierType
 	Policies                         []AuthnPolicy
 }
 
@@ -143,6 +146,11 @@ func (ctx Context) GetSigningAlgorithms() []jose.SignatureAlgorithm {
 		}
 	}
 	return algorithms
+}
+
+func (ctx Context) GetIdTokenSignatureAlgorithms() []jose.SignatureAlgorithm {
+	// TODO: Get it from the grant models.
+	return []jose.SignatureAlgorithm{}
 }
 
 func (ctx Context) GetJarmPrivateKey() jose.JSONWebKey {

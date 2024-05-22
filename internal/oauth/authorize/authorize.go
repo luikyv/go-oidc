@@ -43,8 +43,7 @@ func initAuth(ctx utils.Context, req models.AuthorizationRequest) issues.OAuthEr
 	}
 
 	ctx.Logger.Info("policy available", slog.String("policy_id", policy.Id))
-	session.SetPolicy(policy.Id)
-	session.Init()
+	session.Init(policy.Id)
 
 	return authenticate(ctx, &session)
 }

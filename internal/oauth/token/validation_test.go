@@ -3,12 +3,16 @@ package token_test
 import (
 	"testing"
 
+	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/oauth/token"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
+	"github.com/luikymagno/auth-server/internal/utils"
 )
 
 func TestValidateClientAuthnRequest(t *testing.T) {
+	ctx := utils.GetDummyTestContext()
+	ctx.ClientSigningAlgorithms = append(ctx.ClientSigningAlgorithms, jose.RS256, jose.PS256)
 	// When.
 	expectedClientId := "random_client_id"
 	var cases = []struct {
@@ -82,7 +86,7 @@ func TestValidateClientAuthnRequest(t *testing.T) {
 			c.Name,
 			func(t *testing.T) {
 				// Then.
-				clientId, err := token.ValidateClientAuthnRequest(c.Req)
+				clientId, err := token.ValidateClientAuthnRequest(ctx, c.Req)
 
 				// Assert.
 				isValid := err == nil

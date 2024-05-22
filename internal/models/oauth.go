@@ -113,6 +113,12 @@ type PushedAuthorizationResponse struct {
 }
 
 type DynamicClientRequest struct {
+	RedirectUris          []string                        `json:"redirect_uris"`
+	ResponseTypes         []constants.ResponseType        `json:"response_types"`
+	GrantTypes            []constants.GrantType           `json:"grant_type"`
+	JwksUri               string                          `json:"jwks_uri"`
+	Jwks                  jose.JSONWebKeySet              `json:"jwks"`
+	SubjectIdentifierType constants.SubjectIdentifierType `json:"subject_type"`
 }
 
 type OpenIdConfiguration struct {
@@ -169,4 +175,9 @@ func NewRedirectResponseFromRedirectError(err issues.OAuthRedirectError) Redirec
 		Parameters:   errorParams,
 		ResponseMode: err.ResponseMode,
 	}
+}
+
+type ClientAuthnOptions struct {
+	Methods                   []constants.ClientAuthnType
+	ClientSignatureAlgorithms []jose.SignatureAlgorithm
 }

@@ -46,7 +46,7 @@ func HandlePARRequest(ctx utils.Context) {
 
 	ctx.RequestContext.JSON(http.StatusCreated, models.PushedAuthorizationResponse{
 		RequestUri: requestUri,
-		ExpiresIn:  constants.ParLifetimeSecs,
+		ExpiresIn:  ctx.ParLifetimeSecs,
 	})
 }
 

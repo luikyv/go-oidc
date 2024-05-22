@@ -52,7 +52,7 @@ func createJarmResponse(
 		string(constants.IssuerClaim):   ctx.Host,
 		string(constants.AudienceClaim): clientId,
 		string(constants.IssuedAtClaim): createdAtTimestamp,
-		string(constants.ExpiryClaim):   createdAtTimestamp + constants.JarmResponseLifetimeSecs,
+		string(constants.ExpiryClaim):   createdAtTimestamp + ctx.JarmLifetimeSecs,
 	}
 	for k, v := range params {
 		claims[k] = v

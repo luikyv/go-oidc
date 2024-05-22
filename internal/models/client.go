@@ -144,6 +144,9 @@ func areAssertionClaimsValid(claims jwt.Claims, host string, maxLifetimeSecs int
 
 //---------------------------------------- Client ----------------------------------------//
 
+type ClientMeta struct {
+}
+
 type ClientOut struct{}
 
 type Client struct {

@@ -51,14 +51,11 @@ func NewManager(
 				constants.FragmentResponseMode,
 				constants.FormPostResponseMode,
 			},
-			ClientAuthnMethods: []constants.ClientAuthnType{
-				constants.NoneAuthn,
-				constants.ClientSecretBasicAuthn,
-				constants.ClientSecretPostAuthn,
-			},
+			ClientAuthnMethods:      []constants.ClientAuthnType{},
 			ClientSigningAlgorithms: []jose.SignatureAlgorithm{},
 			CodeChallengeMethods:    []constants.CodeChallengeMethod{},
 			DpopSigningAlgorithms:   []jose.SignatureAlgorithm{},
+			SubjectIdentifierTypes:  []constants.SubjectIdentifierType{constants.PublicSubjectIdentifier},
 			Policies:                make([]utils.AuthnPolicy, 0),
 		},
 		Server: gin.Default(),
@@ -109,33 +106,32 @@ func (manager *OAuthManager) SetGrantTypes(grantTypes ...constants.GrantType) {
 	manager.ResponseTypes = responseTypes
 }
 
-func (manager *OAuthManager) RequirePushedAuthorizationRequests() {
+func (manager *OAuthManager) EnablePushedAuthorizationRequests(parLifetimeSecs int) {
+	manager.ParLifetimeSecs = parLifetimeSecs
 	manager.ParIsEnabled = true
+}
+
+func (manager *OAuthManager) RequirePushedAuthorizationRequests(parLifetimeSecs int) {
+	manager.EnablePushedAuthorizationRequests(parLifetimeSecs)
 	manager.ParIsRequired = true
-}
-
-func (manager *OAuthManager) EnablePushedAuthorizationRequests() {
-	manager.ParIsEnabled = true
-	manager.ParIsRequired = false
-}
-
-func (manager *OAuthManager) RequireJwtSecuredAuthorizationRequests(
-	jarAlgorithms []jose.SignatureAlgorithm,
-) {
-	manager.JarIsEnabled = true
-	manager.JarIsRequired = true
-	manager.JarAlgorithms = jarAlgorithms
 }
 
 func (manager *OAuthManager) EnableJwtSecuredAuthorizationRequests(
 	jarAlgorithms ...jose.SignatureAlgorithm,
 ) {
 	manager.JarIsEnabled = true
-	manager.JarIsRequired = false
 	manager.JarAlgorithms = jarAlgorithms
 }
 
+func (manager *OAuthManager) RequireJwtSecuredAuthorizationRequests(
+	jarAlgorithms ...jose.SignatureAlgorithm,
+) {
+	manager.EnableJwtSecuredAuthorizationRequests(jarAlgorithms...)
+	manager.JarIsRequired = true
+}
+
 func (manager *OAuthManager) EnableJwtSecuredAuthorizationResponseMode(
+	jarmLifetimeSecs int,
 	privateJarmKeyId string,
 ) {
 	manager.JarmIsEnabled = true
@@ -147,47 +143,45 @@ func (manager *OAuthManager) EnableJwtSecuredAuthorizationResponseMode(
 		constants.FormPostResponseMode,
 		constants.FormPostJwtResponseMode,
 	}
+	manager.JarmLifetimeSecs = jarmLifetimeSecs
 	manager.PrivateJarmKeyId = privateJarmKeyId
 }
 
-func (manager *OAuthManager) SetClientAuthnMethods(methods ...constants.ClientAuthnType) {
-	signingAlgorithms := []jose.SignatureAlgorithm{}
-	if slices.Contains(methods, constants.PrivateKeyJwtAuthn) {
-		signingAlgorithms = append(signingAlgorithms, jose.RS256, jose.PS256)
-	}
-	if slices.Contains(methods, constants.ClientSecretJwt) {
-		signingAlgorithms = append(signingAlgorithms, jose.HS256)
-	}
+func (manager *OAuthManager) EnableSecretPostClientAuthn() {
+	manager.ClientAuthnMethods = append(manager.ClientAuthnMethods, constants.ClientSecretPostAuthn)
+}
 
-	manager.ClientAuthnMethods = methods
-	manager.ClientSigningAlgorithms = signingAlgorithms
+func (manager *OAuthManager) EnablePrivateKeyJwtClientAuthn(signatureAlgorithms ...jose.SignatureAlgorithm) {
+	// TODO: Make sure signatureAlgorithms don't contain symetric algorithms.
+	manager.ClientAuthnMethods = append(manager.ClientAuthnMethods, constants.PrivateKeyJwtAuthn)
+	manager.ClientSigningAlgorithms = append(manager.ClientSigningAlgorithms, signatureAlgorithms...)
 }
 
 func (manager *OAuthManager) EnableIssuerResponseParameter() {
 	manager.IssuerResponseParameterIsEnabled = true
 }
 
-func (manager *OAuthManager) EnableDpop(
+func (manager *OAuthManager) EnableDemonstrationProofOfPossesion(
 	dpopSigningAlgorithms ...jose.SignatureAlgorithm,
 ) {
 	manager.DpopIsEnabled = true
 	manager.DpopSigningAlgorithms = dpopSigningAlgorithms
 }
 
-func (manager *OAuthManager) RequireDpop(
+func (manager *OAuthManager) RequireDemonstrationProofOfPossesion(
 	dpopSigningAlgorithms ...jose.SignatureAlgorithm,
 ) {
-	manager.EnableDpop(dpopSigningAlgorithms...)
+	manager.EnableDemonstrationProofOfPossesion(dpopSigningAlgorithms...)
 	manager.DpopIsRequired = true
 }
 
-func (manager *OAuthManager) EnablePkce(codeChallengeMethods ...constants.CodeChallengeMethod) {
+func (manager *OAuthManager) EnableProofKeyForCodeExchange(codeChallengeMethods ...constants.CodeChallengeMethod) {
 	manager.CodeChallengeMethods = codeChallengeMethods
 	manager.PkceIsEnabled = true
 }
 
-func (manager *OAuthManager) RequirePkce(codeChallengeMethods ...constants.CodeChallengeMethod) {
-	manager.EnablePkce(codeChallengeMethods...)
+func (manager *OAuthManager) RequireProofKeyForCodeExchange(codeChallengeMethods ...constants.CodeChallengeMethod) {
+	manager.EnableProofKeyForCodeExchange(codeChallengeMethods...)
 	manager.PkceIsRequired = true
 }
 

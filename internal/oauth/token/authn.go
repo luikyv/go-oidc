@@ -13,7 +13,7 @@ import (
 
 func GetAuthenticatedClient(ctx utils.Context, req models.ClientAuthnRequest) (models.Client, issues.OAuthError) {
 
-	clientId, oauthErr := validateClientAuthnRequest(req)
+	clientId, oauthErr := validateClientAuthnRequest(ctx, req)
 	if oauthErr != nil {
 		return models.Client{}, oauthErr
 	}
@@ -32,7 +32,7 @@ func GetAuthenticatedClient(ctx utils.Context, req models.ClientAuthnRequest) (m
 	return client, nil
 }
 
-func getClientId(req models.ClientAuthnRequest) (string, bool) {
+func getClientId(ctx utils.Context, req models.ClientAuthnRequest) (string, bool) {
 	clientIds := []string{}
 
 	if req.ClientIdPost != "" {
@@ -43,7 +43,7 @@ func getClientId(req models.ClientAuthnRequest) (string, bool) {
 		clientIds = append(clientIds, req.ClientIdBasicAuthn)
 	}
 
-	clientIds, ok := appendClientIdFromAssertion(clientIds, req)
+	clientIds, ok := appendClientIdFromAssertion(ctx, clientIds, req)
 	if !ok {
 		return "", false
 	}
@@ -56,12 +56,19 @@ func getClientId(req models.ClientAuthnRequest) (string, bool) {
 	return clientIds[0], true
 }
 
-func appendClientIdFromAssertion(clientIds []string, req models.ClientAuthnRequest) ([]string, bool) {
+func appendClientIdFromAssertion(
+	ctx utils.Context,
+	clientIds []string,
+	req models.ClientAuthnRequest,
+) (
+	[]string,
+	bool,
+) {
 	if req.ClientAssertion == "" {
 		return clientIds, true
 	}
 
-	assertionClientId, ok := getClientIdFromAssertion(req.ClientAssertion)
+	assertionClientId, ok := getClientIdFromAssertion(ctx, req.ClientAssertion)
 	if !ok {
 		return []string{}, false
 	}
@@ -69,8 +76,8 @@ func appendClientIdFromAssertion(clientIds []string, req models.ClientAuthnReque
 	return append(clientIds, assertionClientId), true
 }
 
-func getClientIdFromAssertion(assertion string) (string, bool) {
-	parsedAssertion, err := jwt.ParseSigned(assertion, constants.ClientSigningAlgorithms)
+func getClientIdFromAssertion(ctx utils.Context, assertion string) (string, bool) {
+	parsedAssertion, err := jwt.ParseSigned(assertion, ctx.ClientSigningAlgorithms)
 	if err != nil {
 		return "", false
 	}
@@ -94,10 +101,13 @@ func getClientIdFromAssertion(assertion string) (string, bool) {
 
 // Validate a client authentication request and return a valid client ID from it.
 func validateClientAuthnRequest(
+	ctx utils.Context,
 	req models.ClientAuthnRequest,
-) (validClientId string, err issues.OAuthError) {
-
-	validClientId, ok := getClientId(req)
+) (
+	validClientId string,
+	err issues.OAuthError,
+) {
+	validClientId, ok := getClientId(ctx, req)
 	if !ok {
 		return "", issues.NewOAuthError(constants.InvalidClient, "invalid client authentication")
 	}

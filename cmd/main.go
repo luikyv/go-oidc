@@ -27,13 +27,14 @@ func main() {
 		oauth.ConfigureInMemoryGrantModel,
 		oauth.ConfigureInMemorySessions,
 	)
-	oauthManager.EnablePushedAuthorizationRequests()
+	oauthManager.EnablePushedAuthorizationRequests(60)
 	oauthManager.EnableJwtSecuredAuthorizationRequests(jose.PS256)
-	oauthManager.EnableJwtSecuredAuthorizationResponseMode(privatePs256Jwk.KeyID)
-	oauthManager.SetClientAuthnMethods(constants.ClientSecretBasicAuthn, constants.ClientSecretPostAuthn, constants.PrivateKeyJwtAuthn)
+	oauthManager.EnableJwtSecuredAuthorizationResponseMode(600, privatePs256Jwk.KeyID)
+	oauthManager.EnableSecretPostClientAuthn()
+	oauthManager.EnablePrivateKeyJwtClientAuthn(jose.RS256, jose.PS256)
 	oauthManager.EnableIssuerResponseParameter()
-	oauthManager.EnableDpop(jose.RS256, jose.PS256, jose.ES256)
-	oauthManager.EnablePkce(constants.Sha256CodeChallengeMethod)
+	oauthManager.EnableDemonstrationProofOfPossesion(jose.RS256, jose.PS256, jose.ES256)
+	oauthManager.EnableProofKeyForCodeExchange(constants.Sha256CodeChallengeMethod)
 
 	// Add mocks.
 	jwtGrantModel := models.GetTestJwtGrantModel(issuer, privatePs256Jwk)

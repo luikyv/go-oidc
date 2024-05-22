@@ -32,7 +32,7 @@ func validateAuthorizationRequestWithParNoRedirect(
 		return issues.NewOAuthError(constants.AccessDenied, "invalid client")
 	}
 
-	if session.IsPushedRequestExpired() {
+	if session.IsPushedRequestExpired(ctx.ParLifetimeSecs) {
 		return issues.NewOAuthError(constants.InvalidRequest, "the request_uri is expired")
 	}
 

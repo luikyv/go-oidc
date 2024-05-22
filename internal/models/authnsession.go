@@ -48,7 +48,9 @@ func (session *AuthnSession) Push(reqCtx *gin.Context) {
 	session.PushedParameters = extractPushedParams(reqCtx)
 }
 
-func (session *AuthnSession) Init() {
+func (session *AuthnSession) Init(policyId string) {
+	session.PolicyId = policyId
+	session.AuthnSequenceIndex = 0
 	session.CallbackId = unit.GenerateCallbackId()
 	// FIXME: To think about:Treating the request_uri as one-time use will cause problems when the user refreshes the page.
 	session.RequestUri = ""
@@ -109,13 +111,8 @@ func (session *AuthnSession) GetCustomIdTokenClaim(key string, value string) str
 	return session.AdditionalIdTokenClaims[key]
 }
 
-func (session *AuthnSession) SetPolicy(policyId string) {
-	session.PolicyId = policyId
-	session.AuthnSequenceIndex = 0
-}
-
-func (session *AuthnSession) IsPushedRequestExpired() bool {
-	return unit.GetTimestampNow() > session.CreatedAtTimestamp+constants.ParLifetimeSecs
+func (session *AuthnSession) IsPushedRequestExpired(parLifetimeSecs int) bool {
+	return unit.GetTimestampNow() > session.CreatedAtTimestamp+parLifetimeSecs
 }
 
 func (session *AuthnSession) IsAuthorizationCodeExpired() bool {
