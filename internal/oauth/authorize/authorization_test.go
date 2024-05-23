@@ -70,7 +70,7 @@ func TestInitAuthWhenInvalidScope(t *testing.T) {
 		ClientId: models.TestClientId,
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
-			Scope:        "invalid_scope",
+			Scopes:       "invalid_scope",
 			ResponseType: constants.CodeResponse,
 		},
 	})
@@ -96,7 +96,7 @@ func TestInitAuthWhenInvalidResponseType(t *testing.T) {
 		ClientId: models.TestClientId,
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
-			Scope:        strings.Join(client.Scopes, " "),
+			Scopes:       strings.Join(client.Scopes, " "),
 			ResponseType: constants.IdTokenResponse,
 		},
 	})
@@ -120,7 +120,7 @@ func TestInitAuthWhenNoPolicyIsAvailable(t *testing.T) {
 		ClientId: models.TestClientId,
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
-			Scope:        strings.Join(client.Scopes, " "),
+			Scopes:       strings.Join(client.Scopes, " "),
 			ResponseType: constants.CodeResponse,
 		},
 	})
@@ -153,7 +153,7 @@ func TestInitAuthShouldEndWithError(t *testing.T) {
 		ClientId: models.TestClientId,
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
-			Scope:        strings.Join(client.Scopes, " "),
+			Scopes:       strings.Join(client.Scopes, " "),
 			ResponseType: constants.CodeResponse,
 			ResponseMode: constants.QueryResponseMode,
 		},
@@ -196,7 +196,7 @@ func TestInitAuthShouldEndInProgress(t *testing.T) {
 		ClientId: models.TestClientId,
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
-			Scope:        strings.Join(client.Scopes, " "),
+			Scopes:       strings.Join(client.Scopes, " "),
 			ResponseType: constants.CodeResponse,
 			ResponseMode: constants.QueryResponseMode,
 		},
@@ -255,7 +255,7 @@ func TestInitAuthPolicyEndsWithSuccess(t *testing.T) {
 		ClientId: models.TestClientId,
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
-			Scope:        strings.Join(client.Scopes, " "),
+			Scopes:       strings.Join(client.Scopes, " "),
 			ResponseType: constants.CodeAndIdTokenResponse,
 			ResponseMode: constants.FragmentResponseMode,
 			Nonce:        "random_nonce",
@@ -301,7 +301,7 @@ func TestInitAuthWithPar(t *testing.T) {
 			Id: uuid.NewString(),
 			AuthorizationParameters: models.AuthorizationParameters{
 				RequestUri:   requestUri,
-				Scope:        strings.Join(client.Scopes, " "),
+				Scopes:       strings.Join(client.Scopes, " "),
 				RedirectUri:  client.RedirectUris[0],
 				ResponseType: constants.CodeResponse,
 			},
@@ -321,7 +321,7 @@ func TestInitAuthWithPar(t *testing.T) {
 		AuthorizationParameters: models.AuthorizationParameters{
 			RequestUri:   requestUri,
 			ResponseType: constants.CodeResponse,
-			Scope:        strings.Join(client.Scopes, " "),
+			Scopes:       strings.Join(client.Scopes, " "),
 		},
 	})
 

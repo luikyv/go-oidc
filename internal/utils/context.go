@@ -15,20 +15,23 @@ import (
 type Configuration struct {
 	Host                             string
 	ScopeManager                     crud.ScopeManager
-	GrantModelManager                crud.GrantModelManager
 	ClientManager                    crud.ClientManager
 	GrantSessionManager              crud.GrantSessionManager
 	AuthnSessionManager              crud.AuthnSessionManager
 	PrivateJwks                      jose.JSONWebKeySet
+	DefaultTokenSignatureKeyId       string
 	GrantTypes                       []constants.GrantType
 	ResponseTypes                    []constants.ResponseType
 	ResponseModes                    []constants.ResponseMode
 	ClientAuthnMethods               []constants.ClientAuthnType
 	ClientSigningAlgorithms          []jose.SignatureAlgorithm
+	IsOpenIdEnabled                  bool // TODO: Use this.
+	DefaultIdTokenSignatureKeyId     string
+	IdTokenSignatureKeyIds           []string
 	IssuerResponseParameterIsEnabled bool
 	JarmIsEnabled                    bool
 	JarmLifetimeSecs                 int
-	PrivateJarmKeyId                 string // TODO: Get jarm key based on client?
+	JarmSignatureKeyId               string // TODO: Get jarm key based on client?
 	JarIsEnabled                     bool
 	JarIsRequired                    bool
 	JarAlgorithms                    []jose.SignatureAlgorithm
@@ -154,6 +157,34 @@ func (ctx Context) GetIdTokenSignatureAlgorithms() []jose.SignatureAlgorithm {
 }
 
 func (ctx Context) GetJarmPrivateKey() jose.JSONWebKey {
-	key, _ := ctx.GetPrivateKey(ctx.PrivateJarmKeyId)
+	key, _ := ctx.GetPrivateKey(ctx.JarmSignatureKeyId)
+	return key
+}
+
+func (ctx Context) GetTokenOptions(clientCustomAttributes map[string]string, scopes string) models.TokenOptions {
+	// TODO
+	return models.TokenOptions{}
+}
+
+func (ctx Context) GetTokenPrivateKey(tokenOptions models.TokenOptions) jose.JSONWebKey {
+	keyId := tokenOptions.SignatureKeyId
+	if keyId == "" {
+		keyId = ctx.DefaultTokenSignatureKeyId
+	}
+	key, _ := ctx.GetPrivateKey(keyId)
+	return key
+}
+
+func (ctx Context) GetIdTokenPrivateKey(idTokenOptions models.IdTokenOptions) jose.JSONWebKey {
+	if idTokenOptions.SignatureAlgorithm != "" {
+		for _, keyId := range ctx.IdTokenSignatureKeyIds {
+			key, _ := ctx.GetPrivateKey(keyId)
+			if key.Algorithm == string(idTokenOptions.SignatureAlgorithm) {
+				return key
+			}
+		}
+	}
+
+	key, _ := ctx.GetPrivateKey(ctx.DefaultIdTokenSignatureKeyId)
 	return key
 }

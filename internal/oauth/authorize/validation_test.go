@@ -28,7 +28,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 					RedirectUri:  client.RedirectUris[0],
 					ResponseType: constants.CodeResponse,
 					ResponseMode: constants.QueryResponseMode,
-					Scope:        client.Scopes[0],
+					Scopes:       client.Scopes[0],
 				},
 			},
 			func(client models.Client) models.Client {
@@ -43,7 +43,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 				AuthorizationParameters: models.AuthorizationParameters{
 					RedirectUri:  client.RedirectUris[0],
 					ResponseType: constants.CodeResponse,
-					Scope:        constants.OpenIdScope,
+					Scopes:       constants.OpenIdScope,
 				},
 			},
 			func(client models.Client) models.Client {
@@ -58,7 +58,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 				AuthorizationParameters: models.AuthorizationParameters{
 					RedirectUri:  client.RedirectUris[0],
 					ResponseType: constants.CodeResponse,
-					Scope:        constants.OpenIdScope,
+					Scopes:       constants.OpenIdScope,
 				},
 			},
 			func(client models.Client) models.Client {
@@ -73,7 +73,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 			models.AuthorizationRequest{
 				AuthorizationParameters: models.AuthorizationParameters{
 					RedirectUri: client.RedirectUris[0],
-					Scope:       constants.OpenIdScope,
+					Scopes:      constants.OpenIdScope,
 				},
 			},
 			func(client models.Client) models.Client {
@@ -88,7 +88,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 				AuthorizationParameters: models.AuthorizationParameters{
 					RedirectUri:  client.RedirectUris[0],
 					ResponseType: constants.CodeResponse,
-					Scope:        "invalid_scope",
+					Scopes:       "invalid_scope",
 				},
 			},
 			func(client models.Client) models.Client {
@@ -103,7 +103,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 				AuthorizationParameters: models.AuthorizationParameters{
 					RedirectUri:  "https://invalid.com",
 					ResponseType: constants.CodeResponse,
-					Scope:        client.Scopes[0],
+					Scopes:       client.Scopes[0],
 				},
 			},
 			func(client models.Client) models.Client {
@@ -161,7 +161,7 @@ func TestValidateAuthorizationRequestWithPar(t *testing.T) {
 					RedirectUri:  client.RedirectUris[0],
 					ResponseType: constants.CodeResponse,
 					ResponseMode: constants.QueryResponseMode,
-					Scope:        client.Scopes[0],
+					Scopes:       client.Scopes[0],
 				},
 			},
 			models.AuthnSession{
@@ -182,7 +182,7 @@ func TestValidateAuthorizationRequestWithPar(t *testing.T) {
 					RedirectUri:  client.RedirectUris[0],
 					ResponseType: constants.CodeAndIdTokenResponse,
 					ResponseMode: constants.FragmentResponseMode,
-					Scope:        constants.OpenIdScope,
+					Scopes:       constants.OpenIdScope,
 					Nonce:        "random_nonce",
 				},
 			},
@@ -248,7 +248,7 @@ func TestValidateAuthorizationRequestWithJar(t *testing.T) {
 					RedirectUri:  client.RedirectUris[0],
 					ResponseType: constants.CodeResponse,
 					ResponseMode: constants.QueryResponseMode,
-					Scope:        client.Scopes[0],
+					Scopes:       client.Scopes[0],
 					Nonce:        "random_nonce",
 				},
 			},
@@ -270,7 +270,7 @@ func TestValidateAuthorizationRequestWithJar(t *testing.T) {
 					RedirectUri:  client.RedirectUris[0],
 					ResponseType: constants.CodeAndIdTokenResponse,
 					ResponseMode: constants.FragmentResponseMode,
-					Scope:        constants.OpenIdScope,
+					Scopes:       constants.OpenIdScope,
 				},
 			},
 			models.AuthorizationRequest{

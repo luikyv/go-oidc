@@ -21,7 +21,7 @@ func TestClientCredentialsHandleGrantCreation(t *testing.T) {
 			ClientSecretPost: models.TestClientSecret,
 		},
 		GrantType: constants.ClientCredentialsGrant,
-		Scope:     client.Scopes[0],
+		Scopes:    client.Scopes[0],
 	}
 
 	// Then

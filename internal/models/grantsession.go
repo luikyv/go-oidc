@@ -8,7 +8,6 @@ import (
 type GrantSession struct {
 	Id                      string
 	JwkThumbprint           string
-	GrantModelId            string
 	TokenId                 string
 	Token                   string
 	TokenFormat             constants.TokenFormat
@@ -21,7 +20,7 @@ type GrantSession struct {
 	RenewedAtTimestamp      int
 	Subject                 string
 	ClientId                string
-	Scopes                  []string
+	Scopes                  string
 	Nonce                   string
 	AdditionalTokenClaims   map[string]string
 	AdditionalIdTokenClaims map[string]string
@@ -33,4 +32,9 @@ func (grantSession GrantSession) IsRefreshSessionExpired() bool {
 
 func (grantSession GrantSession) IsExpired() bool {
 	return unit.GetTimestampNow() > grantSession.RenewedAtTimestamp+grantSession.ExpiresInSecs
+}
+
+func (grantSession GrantSession) ShouldSave() bool {
+	// TODO: implement this.
+	return true
 }

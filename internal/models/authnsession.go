@@ -2,6 +2,7 @@ package models
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/go-jose/go-jose/v4"
 	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -18,28 +19,29 @@ type AuthnSession struct {
 	Subject            string
 	ClientId           string
 	AuthorizationParameters
-	AuthorizationCode       string
-	AuthorizedAtTimestamp   int
-	PushedParameters        map[string]string // Parameters sent using the PAR endpoint.
-	Store                   map[string]string // Allow the developer to store information in memory and, hence, between steps.
-	AdditionalTokenClaims   map[string]string // Allow the developer to map new (or override the default) claims to the access token.
-	AdditionalIdTokenClaims map[string]string // Allow the developer to map new (or override the default) claims to the ID token.
-	ClientAttributes        map[string]string // Allow the developer to access the client's custom attributes.
+	AuthorizationCode         string
+	AuthorizedAtTimestamp     int
+	PushedParameters          map[string]string // Parameters sent using the PAR endpoint.
+	Store                     map[string]string // Allow the developer to store information in memory and, hence, between steps.
+	AdditionalTokenClaims     map[string]string // Allow the developer to map new (or override the default) claims to the access token.
+	IdTokenSignatureAlgorithm jose.SignatureAlgorithm
+	AdditionalIdTokenClaims   map[string]string // Allow the developer to map new (or override the default) claims to the ID token.
+	ClientAttributes          map[string]string // Allow the developer to access the client's custom attributes.
 }
 
 func NewSession(authParams AuthorizationParameters, client Client) AuthnSession {
 
 	return AuthnSession{
-		Id:                      uuid.NewString(),
-		ClientId:                client.Id,
-		GrantModelId:            client.DefaultGrantModelId,
-		AuthorizationParameters: authParams,
-		CreatedAtTimestamp:      unit.GetTimestampNow(),
-		PushedParameters:        make(map[string]string),
-		Store:                   make(map[string]string),
-		AdditionalTokenClaims:   make(map[string]string),
-		AdditionalIdTokenClaims: make(map[string]string),
-		ClientAttributes:        client.Attributes,
+		Id:                        uuid.NewString(),
+		ClientId:                  client.Id,
+		AuthorizationParameters:   authParams,
+		CreatedAtTimestamp:        unit.GetTimestampNow(),
+		PushedParameters:          make(map[string]string),
+		Store:                     make(map[string]string),
+		AdditionalTokenClaims:     make(map[string]string),
+		IdTokenSignatureAlgorithm: client.IdTokenSignatureAlgorithm,
+		AdditionalIdTokenClaims:   make(map[string]string),
+		ClientAttributes:          client.Attributes,
 	}
 }
 

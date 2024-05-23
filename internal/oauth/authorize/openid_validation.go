@@ -53,7 +53,7 @@ func validateOpenIdScopeIsRequired(
 	params models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
-	if !unit.ScopeContainsOpenId(params.Scope) {
+	if !unit.ScopesContainsOpenId(params.Scopes) {
 		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
 	}
 	return nil

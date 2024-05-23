@@ -96,7 +96,7 @@ func getGrantSessionByRefreshToken(
 func preValidateRefreshTokenGrantRequest(
 	req models.TokenRequest,
 ) issues.OAuthError {
-	if req.RefreshToken == "" || unit.AnyNonEmpty(req.AuthorizationCode, req.RedirectUri, req.Scope, req.CodeVerifier) {
+	if req.RefreshToken == "" || unit.AnyNonEmpty(req.AuthorizationCode, req.RedirectUri, req.Scopes, req.CodeVerifier) {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid parameter for refresh token grant")
 	}
 
@@ -109,7 +109,7 @@ func validateRefreshTokenGrantRequest(
 	grantSession models.GrantSession,
 ) issues.OAuthError {
 
-	if unit.AnyNonEmpty(req.AuthorizationCode, req.RedirectUri, req.Scope, req.CodeVerifier) {
+	if unit.AnyNonEmpty(req.AuthorizationCode, req.RedirectUri, req.Scopes, req.CodeVerifier) {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid parameter for refresh token grant")
 	}
 
@@ -136,29 +136,18 @@ func generateUpdatedGrantSession(
 	models.GrantSession,
 	issues.OAuthError,
 ) {
-	ctx.Logger.Debug("get the token model")
-	grantModel, err := ctx.GrantModelManager.Get(grantSession.GrantModelId)
-	if err != nil {
-		ctx.Logger.Debug("error while loading the token model", slog.String("error", err.Error()))
-		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, err.Error())
-	}
-	ctx.Logger.Debug("the token model was loaded successfully")
-
-	updatedGrantSession := grantModel.GenerateGrantSession(NewRefreshTokenGrantOptions(grantSession))
-	updatedGrantSession.Id = grantSession.Id
-	// Keep the same creation time to make sure the session will expire.
-	updatedGrantSession.CreatedAtTimestamp = grantSession.CreatedAtTimestamp
-	ctx.GrantSessionManager.CreateOrUpdate(updatedGrantSession)
-
+	updatedGrantSession := utils.GenerateGrantSession(ctx, NewRefreshTokenGrantOptions(grantSession))
 	return updatedGrantSession, nil
 }
 
 func NewRefreshTokenGrantOptions(session models.GrantSession) models.GrantOptions {
 	return models.GrantOptions{
-		GrantType: constants.RefreshTokenGrant,
-		Scopes:    session.Scopes,
-		Subject:   session.Subject,
-		ClientId:  session.ClientId,
+		SessionId:          session.Id,
+		GrantType:          constants.RefreshTokenGrant,
+		Scopes:             session.Scopes,
+		Subject:            session.Subject,
+		ClientId:           session.ClientId,
+		CreatedAtTimestamp: session.CreatedAtTimestamp,
 		TokenOptions: models.TokenOptions{
 			AdditionalTokenClaims: session.AdditionalTokenClaims,
 		},

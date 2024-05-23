@@ -3,7 +3,6 @@ package authorize
 import (
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
@@ -74,6 +73,7 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) iss
 				AuthorizationCode:       session.AuthorizationCode,
 				State:                   session.State,
 				Nonce:                   session.Nonce,
+				SignatureAlgorithm:      session.IdTokenSignatureAlgorithm,
 				AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
 			},
 		)
@@ -99,13 +99,7 @@ func generateImplictGrantSession(
 	models.GrantSession,
 	issues.OAuthError,
 ) {
-
-	grantModel, err := ctx.GrantModelManager.Get(session.GrantModelId)
-	if err != nil {
-		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, err.Error())
-	}
-
-	grantSession := grantModel.GenerateGrantSession(NewImplictGrantOptions(session))
+	grantSession := utils.GenerateGrantSession(ctx, NewImplictGrantOptions(session))
 
 	if err := ctx.GrantSessionManager.CreateOrUpdate(grantSession); err != nil {
 		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, err.Error())
@@ -115,9 +109,10 @@ func generateImplictGrantSession(
 }
 
 func NewImplictGrantOptions(session models.AuthnSession) models.GrantOptions {
+	// TODO: get token options
 	return models.GrantOptions{
 		GrantType: constants.ImplictGrant,
-		Scopes:    unit.SplitStringWithSpaces(session.Scope),
+		Scopes:    session.Scopes,
 		Subject:   session.Subject,
 		ClientId:  session.ClientId,
 		TokenOptions: models.TokenOptions{
@@ -138,12 +133,8 @@ func generateImplictIdToken(
 	string,
 	issues.OAuthError,
 ) {
-	grantModel, err := ctx.GrantModelManager.Get(session.GrantModelId)
-	if err != nil {
-		return "", issues.NewOAuthError(constants.InternalError, err.Error())
-	}
 
-	return grantModel.GenerateIdToken(models.GrantOptions{
+	return utils.MakeIdToken(ctx, models.GrantOptions{
 		GrantType:      constants.ImplictGrant,
 		Subject:        session.Subject,
 		ClientId:       session.ClientId,

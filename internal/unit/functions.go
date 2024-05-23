@@ -3,8 +3,10 @@ package unit
 import (
 	"crypto"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
 	"fmt"
+	"hash"
 	"math/rand"
 	"net/url"
 	"reflect"
@@ -218,7 +220,7 @@ func IsBlank(s string) bool {
 	return strings.ReplaceAll(s, " ", "") == ""
 }
 
-func ScopeContainsOpenId(scope string) bool {
+func ScopesContainsOpenId(scope string) bool {
 	return scope != "" && slices.Contains(SplitStringWithSpaces(scope), constants.OpenIdScope)
 }
 
@@ -235,4 +237,22 @@ func GenerateJwkThumbprint(dpopJwt string, dpopSigningAlgorithms []jose.Signatur
 	parsedDpopJwt, _ := jwt.ParseSigned(dpopJwt, dpopSigningAlgorithms)
 	jkt, _ := parsedDpopJwt.Headers[0].JSONWebKey.Thumbprint(crypto.SHA256)
 	return base64.RawURLEncoding.EncodeToString(jkt)
+}
+
+func GenerateHalfHashClaim(claimValue string, idTokenAlgorithm jose.SignatureAlgorithm) string {
+	var hash hash.Hash
+	switch jose.SignatureAlgorithm(idTokenAlgorithm) {
+	case jose.RS256, jose.ES256, jose.PS256, jose.HS256:
+		hash = sha256.New()
+	case jose.RS384, jose.ES384, jose.PS384, jose.HS384:
+		hash = sha512.New384()
+	case jose.RS512, jose.ES512, jose.PS512, jose.HS512:
+		hash = sha512.New()
+	default:
+		hash = nil
+	}
+
+	hash.Write([]byte(claimValue))
+	halfHashedClaim := hash.Sum(nil)[:hash.Size()/2]
+	return base64.RawURLEncoding.EncodeToString(halfHashedClaim)
 }

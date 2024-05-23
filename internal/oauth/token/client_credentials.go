@@ -28,23 +28,7 @@ func handleClientCredentialsGrantTokenCreation(
 		return models.GrantSession{}, oauthErr
 	}
 
-	grantModel, err := ctx.GrantModelManager.Get(client.DefaultGrantModelId)
-	if err != nil {
-		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, "grant model not found")
-	}
-
-	grantSession := grantModel.GenerateGrantSession(NewClientCredentialsGrantOptions(ctx, client, req))
-
-	if shouldCreateGrantSessionForClientCredentialsGrant(grantSession) {
-		// We only need to create a token session for client credentials when the token is not self-contained,
-		// i.e. it is a refecence token.
-		ctx.Logger.Debug("create token session")
-		err = ctx.GrantSessionManager.CreateOrUpdate(grantSession)
-	}
-	if err != nil {
-		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, "grant session not created")
-	}
-
+	grantSession := utils.GenerateGrantSession(ctx, NewClientCredentialsGrantOptions(ctx, client, req))
 	return grantSession, nil
 }
 
@@ -53,7 +37,7 @@ func preValidateClientCredentialsGrantRequest(req models.TokenRequest) issues.OA
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid parameter for client credentials grant")
 	}
 
-	if unit.ScopeContainsOpenId(req.Scope) {
+	if unit.ScopesContainsOpenId(req.Scopes) {
 		return issues.NewOAuthError(constants.InvalidScope, "cannot request openid scope for client credentials grant")
 	}
 
@@ -71,7 +55,7 @@ func validateClientCredentialsGrantRequest(
 		return issues.NewOAuthError(constants.UnauthorizedClient, "invalid grant type")
 	}
 
-	if !client.AreScopesAllowed(unit.SplitStringWithSpaces(req.Scope)) {
+	if !client.AreScopesAllowed(unit.SplitStringWithSpaces(req.Scopes)) {
 		ctx.Logger.Info("scope not allowed")
 		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
 	}
@@ -81,20 +65,18 @@ func validateClientCredentialsGrantRequest(
 
 func shouldCreateGrantSessionForClientCredentialsGrant(grantSession models.GrantSession) bool {
 	// We only need to create a token session for the authorization code grant when the token is not self-contained.
-	return grantSession.TokenFormat == constants.Opaque
+	return grantSession.TokenFormat == constants.OpaqueTokenFormat
 }
 
 func NewClientCredentialsGrantOptions(ctx utils.Context, client models.Client, req models.TokenRequest) models.GrantOptions {
+	tokenOptions := ctx.GetTokenOptions(client.Attributes, req.Scopes)
 	return models.GrantOptions{
-		GrantType: constants.ClientCredentialsGrant,
-		Scopes:    unit.SplitStringWithSpaces(req.Scope),
-		Subject:   client.Id,
-		ClientId:  client.Id,
-		TokenOptions: models.TokenOptions{
-			DpopJwt:               req.DpopJwt,
-			DpopSigningAlgorithms: ctx.DpopSigningAlgorithms,
-			AdditionalTokenClaims: make(map[string]string),
-		},
+		GrantType:    constants.ClientCredentialsGrant,
+		Scopes:       req.Scopes,
+		Subject:      client.Id,
+		ClientId:     client.Id,
+		DpopJwt:      req.DpopJwt,
+		TokenOptions: tokenOptions,
 		IdTokenOptions: models.IdTokenOptions{
 			AdditionalIdTokenClaims: make(map[string]string),
 		},

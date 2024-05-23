@@ -18,6 +18,7 @@ type DpopClaims struct {
 
 type IdTokenOptions struct {
 	Nonce                   string
+	SignatureAlgorithm      jose.SignatureAlgorithm
 	AdditionalIdTokenClaims map[string]string
 	// These values here below are intended to be hashed and placed in the ID token.
 	// Then, the ID token can be used as a detached signature for the implict grant.
@@ -27,18 +28,42 @@ type IdTokenOptions struct {
 }
 
 type TokenOptions struct {
-	DpopJwt               string
-	DpopSigningAlgorithms []jose.SignatureAlgorithm
+	TokenFormat           constants.TokenFormat
+	ExpiresInSecs         int
+	IsRefreshable         bool
+	RefreshLifetimeSecs   int
+	SignatureKeyId        string
+	OpaqueTokenLength     int
 	AdditionalTokenClaims map[string]string
 }
 
 type GrantOptions struct {
-	GrantType constants.GrantType
-	Subject   string
-	ClientId  string
-	Scopes    []string
+	SessionId          string
+	GrantType          constants.GrantType
+	Subject            string
+	ClientId           string
+	Scopes             string
+	DpopJwt            string
+	CreatedAtTimestamp int
 	TokenOptions
 	IdTokenOptions
+}
+
+func (grantOptions GrantOptions) ShouldGenerateRefreshToken() bool {
+	// There is no need to create a refresh token for the client credentials grant since no user consent is needed.
+	return grantOptions.GrantType != constants.ClientCredentialsGrant && grantOptions.IsRefreshable
+}
+
+func (grantOptions GrantOptions) ShouldGenerateIdToken() bool {
+	return unit.ScopesContainsOpenId(grantOptions.Scopes)
+}
+
+func (grantOptions GrantOptions) ShouldSaveSession() bool {
+	if grantOptions.GrantType == constants.ClientCredentialsGrant && grantOptions.TokenFormat == constants.JwtTokenFormat {
+		return false
+	}
+
+	return grantOptions.TokenFormat == constants.OpaqueTokenFormat || grantOptions.IsRefreshable || unit.ScopesContainsOpenId(grantOptions.Scopes)
 }
 
 type ClientAuthnRequest struct {
@@ -55,7 +80,7 @@ type TokenRequest struct {
 	ClientAuthnRequest
 	DpopJwt           string
 	GrantType         constants.GrantType `form:"grant_type" binding:"required"`
-	Scope             string              `form:"scope"`
+	Scopes            string              `form:"scope"`
 	AuthorizationCode string              `form:"code"`
 	RedirectUri       string              `form:"redirect_uri"`
 	RefreshToken      string              `form:"refresh_token"`
@@ -77,7 +102,7 @@ type AuthorizationParameters struct {
 	RedirectUri         string                        `form:"redirect_uri" json:"redirect_uri"`
 	ResponseMode        constants.ResponseMode        `form:"response_mode" json:"response_mode"`
 	ResponseType        constants.ResponseType        `form:"response_type" json:"response_type"`
-	Scope               string                        `form:"scope" json:"scope"`
+	Scopes              string                        `form:"scope" json:"scope"`
 	State               string                        `form:"state" json:"state"`
 	Nonce               string                        `form:"nonce" json:"nonce"`
 	CodeChallenge       string                        `form:"code_challenge" json:"code_challenge"`
@@ -89,7 +114,7 @@ func (priorities AuthorizationParameters) Merge(params AuthorizationParameters) 
 		RedirectUri:         unit.GetNonEmptyOrDefault(priorities.RedirectUri, params.RedirectUri),
 		ResponseMode:        unit.GetNonEmptyOrDefault(priorities.ResponseMode, params.ResponseMode),
 		ResponseType:        unit.GetNonEmptyOrDefault(priorities.ResponseType, params.ResponseType),
-		Scope:               unit.GetNonEmptyOrDefault(priorities.Scope, params.Scope),
+		Scopes:              unit.GetNonEmptyOrDefault(priorities.Scopes, params.Scopes),
 		State:               unit.GetNonEmptyOrDefault(priorities.State, params.State),
 		Nonce:               unit.GetNonEmptyOrDefault(priorities.Nonce, params.Nonce),
 		CodeChallenge:       unit.GetNonEmptyOrDefault(priorities.CodeChallenge, params.CodeChallenge),
@@ -180,4 +205,12 @@ func NewRedirectResponseFromRedirectError(err issues.OAuthRedirectError) Redirec
 type ClientAuthnOptions struct {
 	Methods                   []constants.ClientAuthnType
 	ClientSignatureAlgorithms []jose.SignatureAlgorithm
+}
+
+type Token struct {
+	Id            string
+	Format        constants.TokenFormat
+	Value         string
+	Type          constants.TokenType
+	JwkThumbprint string
 }

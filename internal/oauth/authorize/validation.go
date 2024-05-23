@@ -84,7 +84,7 @@ func validateParamsWithPriorities(
 	prioritaryParams models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
-	scopes := unit.SplitStringWithSpaces(unit.GetNonEmptyOrDefault(prioritaryParams.Scope, params.Scope))
+	scopes := unit.SplitStringWithSpaces(unit.GetNonEmptyOrDefault(prioritaryParams.Scopes, params.Scopes))
 	switch ctx.GetProfile(scopes) {
 	case constants.OpenIdCoreProfile:
 		return validateOpenIdParamsWithPriorities(ctx, params, prioritaryParams, client)
@@ -110,7 +110,7 @@ func validateAuthorizationParams(
 	params models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
-	profile := ctx.GetProfile(unit.SplitStringWithSpaces(params.Scope))
+	profile := ctx.GetProfile(unit.SplitStringWithSpaces(params.Scopes))
 	switch profile {
 	case constants.OpenIdCoreProfile:
 		return validateOpenIdParams(ctx, params, client)

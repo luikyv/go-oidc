@@ -23,10 +23,11 @@ func main() {
 		issuer,
 		jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privatePs256Jwk}},
 		"./templates/*",
+		privatePs256Jwk.KeyID,
 		oauth.ConfigureInMemoryClientAndScope,
-		oauth.ConfigureInMemoryGrantModel,
 		oauth.ConfigureInMemorySessions,
 	)
+	oauthManager.EnableOpenId(privatePs256Jwk.KeyID)
 	oauthManager.EnablePushedAuthorizationRequests(60)
 	oauthManager.EnableJwtSecuredAuthorizationRequests(jose.PS256)
 	oauthManager.EnableJwtSecuredAuthorizationResponseMode(600, privatePs256Jwk.KeyID)
@@ -36,15 +37,10 @@ func main() {
 	oauthManager.EnableDemonstrationProofOfPossesion(jose.RS256, jose.PS256, jose.ES256)
 	oauthManager.EnableProofKeyForCodeExchange(constants.Sha256CodeChallengeMethod)
 
-	// Add mocks.
-	jwtGrantModel := models.GetTestJwtGrantModel(issuer, privatePs256Jwk)
-	oauthManager.AddGrantModel(jwtGrantModel)
-
 	// Client one.
 	privateClientOneJwks := GetClientPrivateJwks("client_one_jwks.json")
 	clientOne := models.GetPrivateKeyJwtTestClient(issuer, privateClientOneJwks.Keys[0].Public())
 	clientOne.RedirectUris = append(clientOne.RedirectUris, issuer+"/callback", "https://localhost:8443/test/a/first_test/callback")
-	clientOne.DefaultGrantModelId = jwtGrantModel.Meta.Id
 	oauthManager.AddClient(clientOne)
 
 	// Client two.
@@ -52,7 +48,6 @@ func main() {
 	clientTwo := models.GetPrivateKeyJwtTestClient(issuer, privateClientTwoJwks.Keys[0].Public())
 	clientTwo.Id = "random_client_id_two"
 	clientTwo.RedirectUris = append(clientTwo.RedirectUris, issuer+"/callback", "https://localhost:8443/test/a/first_test/callback")
-	clientTwo.DefaultGrantModelId = jwtGrantModel.Meta.Id
 	oauthManager.AddClient(clientTwo)
 
 	// Create Policy

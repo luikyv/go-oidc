@@ -150,17 +150,17 @@ type ClientMeta struct {
 type ClientOut struct{}
 
 type Client struct {
-	Id                  string
-	RedirectUris        []string
-	ResponseTypes       []constants.ResponseType
-	ResponseModes       []constants.ResponseMode
-	GrantTypes          []constants.GrantType
-	Scopes              []string
-	PkceIsRequired      bool
-	DefaultGrantModelId string
-	PublicJwks          jose.JSONWebKeySet
-	Attributes          map[string]string
-	Authenticator       ClientAuthenticator
+	Id                        string
+	RedirectUris              []string
+	ResponseTypes             []constants.ResponseType
+	ResponseModes             []constants.ResponseMode
+	GrantTypes                []constants.GrantType
+	Scopes                    []string
+	PkceIsRequired            bool
+	PublicJwks                jose.JSONWebKeySet
+	IdTokenSignatureAlgorithm jose.SignatureAlgorithm
+	Attributes                map[string]string
+	Authenticator             ClientAuthenticator
 }
 
 func (client Client) ToOutput() ClientOut {

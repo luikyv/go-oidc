@@ -122,7 +122,7 @@ func validateScopesIfPresent(
 	params models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
-	if params.Scope != "" && !client.AreScopesAllowed(unit.SplitStringWithSpaces(params.Scope)) {
+	if params.Scopes != "" && !client.AreScopesAllowed(unit.SplitStringWithSpaces(params.Scopes)) {
 		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
 	}
 	return nil
@@ -144,7 +144,7 @@ func validateScopeOpenIdIsRequiredWhenResponseTypeIsIdToken(
 	params models.AuthorizationParameters,
 	_ models.Client,
 ) issues.OAuthError {
-	if params.ResponseType.Contains(constants.IdTokenResponse) && !unit.ScopeContainsOpenId(params.Scope) {
+	if params.ResponseType.Contains(constants.IdTokenResponse) && !unit.ScopesContainsOpenId(params.Scopes) {
 		return issues.NewOAuthError(constants.InvalidRequest, "cannot request id_token without the scope openid")
 	}
 	return nil
@@ -210,7 +210,7 @@ func validateCannotRequestIdTokenResponseTypeIfOpenIdScopeIsNotRequested(
 	params models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
-	if params.ResponseType.Contains(constants.IdTokenResponse) && !unit.ScopeContainsOpenId(params.Scope) {
+	if params.ResponseType.Contains(constants.IdTokenResponse) && !unit.ScopesContainsOpenId(params.Scopes) {
 		return issues.NewOAuthError(constants.InvalidRequest, "cannot request id_token without the scope openid")
 	}
 	return nil

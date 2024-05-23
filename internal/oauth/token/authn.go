@@ -123,7 +123,7 @@ func validateClientAuthnRequest(
 	}
 
 	// Validate parameters for private key jwt authentication.
-	if req.ClientAssertion != "" && (req.ClientAssertionType != constants.JWTBearerAssertion || unit.AnyNonEmpty(req.ClientIdBasicAuthn, req.ClientSecretBasicAuthn, req.ClientSecretPost)) {
+	if req.ClientAssertion != "" && (req.ClientAssertionType != constants.JwtBearerAssertion || unit.AnyNonEmpty(req.ClientIdBasicAuthn, req.ClientSecretBasicAuthn, req.ClientSecretPost)) {
 		return "", issues.NewOAuthError(constants.InvalidClient, "invalid client authentication")
 	}
 

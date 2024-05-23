@@ -2,7 +2,7 @@ package token
 
 import (
 	"log/slog"
-	"slices"
+	"maps"
 
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
@@ -28,24 +28,7 @@ func handleAuthorizationCodeGrantTokenCreation(ctx utils.Context, req models.Tok
 		return models.GrantSession{}, oauthErr
 	}
 
-	ctx.Logger.Debug("fetch the token model")
-	grantModel, err := ctx.GrantModelManager.Get(authenticatedClient.DefaultGrantModelId)
-	if err != nil {
-		ctx.Logger.Debug("error while loading the token model", slog.String("error", err.Error()))
-		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, "could not load token model")
-	}
-	ctx.Logger.Debug("the token model was loaded successfully")
-
-	grantSession := grantModel.GenerateGrantSession(NewAuthorizationCodeGrantOptions(ctx, req, session))
-	err = nil
-	if shouldCreateGrantSessionForAuthorizationCodeGrant(grantSession) {
-		ctx.Logger.Debug("create token session")
-		err = ctx.GrantSessionManager.CreateOrUpdate(grantSession)
-	}
-	if err != nil {
-		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, "grant session not created")
-	}
-
+	grantSession := utils.GenerateGrantSession(ctx, NewAuthorizationCodeGrantOptions(ctx, req, session))
 	return grantSession, nil
 }
 
@@ -149,26 +132,20 @@ func getSessionByAuthorizationCode(ctx utils.Context, authorizationCode string, 
 	}
 }
 
-func shouldCreateGrantSessionForAuthorizationCodeGrant(grantSession models.GrantSession) bool {
-	// We only need to create a token session for the authorization code grant when the token is not self-contained
-	// (i.e. it is a refecence token), when the refresh token is issued or the the openid scope was requested
-	// in which case the client can later request information about the user.
-	return grantSession.TokenFormat == constants.Opaque || grantSession.RefreshToken != "" || slices.Contains(grantSession.Scopes, constants.OpenIdScope)
-}
-
 func NewAuthorizationCodeGrantOptions(ctx utils.Context, req models.TokenRequest, session models.AuthnSession) models.GrantOptions {
+
+	tokenOptions := ctx.GetTokenOptions(session.ClientAttributes, req.Scopes)
+	maps.Copy(tokenOptions.AdditionalTokenClaims, session.AdditionalTokenClaims) // TODO: evaluate this.
 	return models.GrantOptions{
-		GrantType: constants.AuthorizationCodeGrant,
-		Scopes:    unit.SplitStringWithSpaces(session.Scope),
-		Subject:   session.Subject,
-		ClientId:  session.ClientId,
-		TokenOptions: models.TokenOptions{
-			DpopJwt:               req.DpopJwt,
-			DpopSigningAlgorithms: ctx.DpopSigningAlgorithms,
-			AdditionalTokenClaims: session.AdditionalTokenClaims,
-		},
+		GrantType:    constants.AuthorizationCodeGrant,
+		Scopes:       session.Scopes,
+		Subject:      session.Subject,
+		ClientId:     session.ClientId,
+		DpopJwt:      req.DpopJwt,
+		TokenOptions: tokenOptions,
 		IdTokenOptions: models.IdTokenOptions{
 			Nonce:                   session.Nonce,
+			SignatureAlgorithm:      session.IdTokenSignatureAlgorithm,
 			AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
 		},
 	}

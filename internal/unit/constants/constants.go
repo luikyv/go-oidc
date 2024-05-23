@@ -70,7 +70,7 @@ const (
 type ClientAssertionType string
 
 const (
-	JWTBearerAssertion ClientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+	JwtBearerAssertion ClientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 )
 
 type TokenType string
@@ -182,8 +182,8 @@ const CorrelationIdKey string = "correlation_id"
 type TokenFormat string
 
 const (
-	JWT    TokenFormat = "jwt"
-	Opaque TokenFormat = "opaque"
+	JwtTokenFormat    TokenFormat = "jwt"
+	OpaqueTokenFormat TokenFormat = "opaque"
 )
 
 type EndpointPath string

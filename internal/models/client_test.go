@@ -90,7 +90,7 @@ func TestPrivateKeyJWTClientAuthenticatorValidInfo(t *testing.T) {
 
 	req := ClientAuthnRequest{
 		ClientIdPost:        clientId,
-		ClientAssertionType: constants.JWTBearerAssertion,
+		ClientAssertionType: constants.JwtBearerAssertion,
 		ClientAssertion:     assertion,
 	}
 

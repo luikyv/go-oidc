@@ -23,14 +23,16 @@ type OAuthManager struct {
 func NewManager(
 	host string,
 	privateJwks jose.JSONWebKeySet,
+	defaultTokenKeyId string,
 	templates string,
 	settings ...func(*OAuthManager),
 ) *OAuthManager {
 
 	manager := &OAuthManager{
 		Configuration: utils.Configuration{
-			Host:        host,
-			PrivateJwks: privateJwks,
+			Host:                       host,
+			PrivateJwks:                privateJwks,
+			DefaultTokenSignatureKeyId: defaultTokenKeyId,
 			GrantTypes: []constants.GrantType{
 				constants.ClientCredentialsGrant,
 				constants.AuthorizationCodeGrant,
@@ -74,10 +76,6 @@ func ConfigureInMemoryClientAndScope(manager *OAuthManager) {
 	manager.ScopeManager = inmemory.NewInMemoryScopeManager()
 }
 
-func ConfigureInMemoryGrantModel(manager *OAuthManager) {
-	manager.GrantModelManager = inmemory.NewInMemoryGrantModelManager()
-}
-
 func ConfigureInMemorySessions(manager *OAuthManager) {
 	manager.GrantSessionManager = inmemory.NewInMemoryGrantSessionManager()
 	manager.AuthnSessionManager = inmemory.NewInMemoryAuthnSessionManager()
@@ -104,6 +102,15 @@ func (manager *OAuthManager) SetGrantTypes(grantTypes ...constants.GrantType) {
 
 	manager.GrantTypes = grantTypes
 	manager.ResponseTypes = responseTypes
+}
+
+func (manager *OAuthManager) EnableOpenId(
+	defaultIdTokenSignatureKeyId string,
+	idTokenSignatureKeyIds ...string,
+) {
+	manager.IsOpenIdEnabled = true
+	manager.DefaultIdTokenSignatureKeyId = defaultIdTokenSignatureKeyId
+	manager.IdTokenSignatureKeyIds = idTokenSignatureKeyIds
 }
 
 func (manager *OAuthManager) EnablePushedAuthorizationRequests(parLifetimeSecs int) {
@@ -144,7 +151,7 @@ func (manager *OAuthManager) EnableJwtSecuredAuthorizationResponseMode(
 		constants.FormPostJwtResponseMode,
 	}
 	manager.JarmLifetimeSecs = jarmLifetimeSecs
-	manager.PrivateJarmKeyId = privateJarmKeyId
+	manager.JarmSignatureKeyId = privateJarmKeyId
 }
 
 func (manager *OAuthManager) EnableSecretPostClientAuthn() {
@@ -185,10 +192,6 @@ func (manager *OAuthManager) RequireProofKeyForCodeExchange(codeChallengeMethods
 	manager.PkceIsRequired = true
 }
 
-func (manager *OAuthManager) AddGrantModel(model models.GrantModel) error {
-	return manager.GrantModelManager.Create(model)
-}
-
 func (manager *OAuthManager) AddClient(client models.Client) error {
 	return manager.ClientManager.Create(client)
 }
@@ -222,17 +225,12 @@ func (manager *OAuthManager) setUp() {
 
 	// Set endpoints.
 	manager.Server.GET(
-		string(constants.WellKnownEndpoint),
-		func(requestCtx *gin.Context) {
-			apihandlers.HandleWellKnownRequest(manager.getContext(requestCtx))
-		},
-	)
-	manager.Server.GET(
 		string(constants.JsonWebKeySetEndpoint),
 		func(requestCtx *gin.Context) {
 			apihandlers.HandleJWKSRequest(manager.getContext(requestCtx))
 		},
 	)
+
 	if manager.ParIsEnabled {
 		manager.Server.POST(
 			string(constants.PushedAuthorizationRequestEndpoint),
@@ -241,36 +239,51 @@ func (manager *OAuthManager) setUp() {
 			},
 		)
 	}
+
 	manager.Server.GET(
 		string(constants.AuthorizationEndpoint),
 		func(requestCtx *gin.Context) {
 			apihandlers.HandleAuthorizeRequest(manager.getContext(requestCtx))
 		},
 	)
+
 	manager.Server.POST(
 		string(constants.AuthorizationCallbackEndpoint),
 		func(requestCtx *gin.Context) {
 			apihandlers.HandleAuthorizeCallbackRequest(manager.getContext(requestCtx))
 		},
 	)
+
 	manager.Server.POST(
 		string(constants.TokenEndpoint),
 		func(requestCtx *gin.Context) {
 			apihandlers.HandleTokenRequest(manager.getContext(requestCtx))
 		},
 	)
-	manager.Server.GET(
-		string(constants.UserInfoEndpoint),
-		func(requestCtx *gin.Context) {
-			apihandlers.HandleUserInfoRequest(manager.getContext(requestCtx))
-		},
-	)
-	manager.Server.POST(
-		string(constants.UserInfoEndpoint),
-		func(requestCtx *gin.Context) {
-			apihandlers.HandleUserInfoRequest(manager.getContext(requestCtx))
-		},
-	)
+
+	if manager.IsOpenIdEnabled {
+		manager.Server.GET(
+			string(constants.WellKnownEndpoint),
+			func(requestCtx *gin.Context) {
+				apihandlers.HandleWellKnownRequest(manager.getContext(requestCtx))
+			},
+		)
+
+		manager.Server.GET(
+			string(constants.UserInfoEndpoint),
+			func(requestCtx *gin.Context) {
+				apihandlers.HandleUserInfoRequest(manager.getContext(requestCtx))
+			},
+		)
+
+		manager.Server.POST(
+			string(constants.UserInfoEndpoint),
+			func(requestCtx *gin.Context) {
+				apihandlers.HandleUserInfoRequest(manager.getContext(requestCtx))
+			},
+		)
+	}
+
 }
 
 func (manager *OAuthManager) Run(port int) {

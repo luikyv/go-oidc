@@ -10,14 +10,6 @@ type ScopeManager interface {
 	Get(id string) (models.Scope, error)
 	Delete(id string) error
 }
-
-type GrantModelManager interface {
-	Create(model models.GrantModel) error
-	Update(id string, model models.GrantModel) error
-	Get(id string) (models.GrantModel, error)
-	Delete(id string) error
-}
-
 type ClientManager interface {
 	Create(client models.Client) error
 	Update(id string, client models.Client) error
@@ -26,7 +18,7 @@ type ClientManager interface {
 }
 
 type GrantSessionManager interface {
-	CreateOrUpdate(token models.GrantSession) error
+	CreateOrUpdate(grantSession models.GrantSession) error
 	Get(id string) (models.GrantSession, error)
 	GetByTokenId(tokenId string) (models.GrantSession, error)
 	GetByRefreshToken(refreshToken string) (models.GrantSession, error)

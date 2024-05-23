@@ -22,7 +22,7 @@ func TestAuthorizationCodeHandleGrantCreation(t *testing.T) {
 	session := models.AuthnSession{
 		ClientId: models.TestClientId,
 		AuthorizationParameters: models.AuthorizationParameters{
-			Scope:       strings.Join(client.Scopes, " "),
+			Scopes:      strings.Join(client.Scopes, " "),
 			RedirectUri: client.RedirectUris[0],
 		},
 		AuthorizationCode:     authorizationCode,

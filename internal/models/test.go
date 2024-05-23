@@ -96,7 +96,6 @@ func GetTestClient(authenticator ClientAuthenticator) Client {
 			constants.FragmentResponseMode,
 			constants.FormPostResponseMode,
 		},
-		DefaultGrantModelId: TestOpaqueGrantModelId,
-		Authenticator:       authenticator,
+		Authenticator: authenticator,
 	}
 }
