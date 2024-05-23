@@ -25,6 +25,7 @@ func NewManager(
 	privateJwks jose.JSONWebKeySet,
 	defaultTokenKeyId string,
 	templates string,
+	getTokenOptions utils.GetTokenOptionsFunc,
 	settings ...func(*OAuthManager),
 ) *OAuthManager {
 
@@ -108,6 +109,10 @@ func (manager *OAuthManager) EnableOpenId(
 	defaultIdTokenSignatureKeyId string,
 	idTokenSignatureKeyIds ...string,
 ) {
+	if !slices.Contains(idTokenSignatureKeyIds, defaultIdTokenSignatureKeyId) {
+		idTokenSignatureKeyIds = append(idTokenSignatureKeyIds, defaultIdTokenSignatureKeyId)
+	}
+
 	manager.IsOpenIdEnabled = true
 	manager.DefaultIdTokenSignatureKeyId = defaultIdTokenSignatureKeyId
 	manager.IdTokenSignatureKeyIds = idTokenSignatureKeyIds

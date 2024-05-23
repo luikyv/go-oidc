@@ -12,6 +12,8 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
+type GetTokenOptionsFunc func(clientCustomAttributes map[string]string, scopes string) models.TokenOptions
+
 type Configuration struct {
 	Host                             string
 	ScopeManager                     crud.ScopeManager
@@ -46,6 +48,7 @@ type Configuration struct {
 	CodeChallengeMethods             []constants.CodeChallengeMethod
 	SubjectIdentifierTypes           []constants.SubjectIdentifierType
 	Policies                         []AuthnPolicy
+	GetTokenOptions                  GetTokenOptionsFunc
 }
 
 type Context struct {
@@ -152,18 +155,17 @@ func (ctx Context) GetSigningAlgorithms() []jose.SignatureAlgorithm {
 }
 
 func (ctx Context) GetIdTokenSignatureAlgorithms() []jose.SignatureAlgorithm {
-	// TODO: Get it from the grant models.
-	return []jose.SignatureAlgorithm{}
+	signatureAlgorithms := []jose.SignatureAlgorithm{}
+	for _, keyId := range ctx.IdTokenSignatureKeyIds {
+		key, _ := ctx.GetPrivateKey(keyId)
+		signatureAlgorithms = append(signatureAlgorithms, jose.SignatureAlgorithm(key.Algorithm))
+	}
+	return signatureAlgorithms
 }
 
 func (ctx Context) GetJarmPrivateKey() jose.JSONWebKey {
 	key, _ := ctx.GetPrivateKey(ctx.JarmSignatureKeyId)
 	return key
-}
-
-func (ctx Context) GetTokenOptions(clientCustomAttributes map[string]string, scopes string) models.TokenOptions {
-	// TODO
-	return models.TokenOptions{}
 }
 
 func (ctx Context) GetTokenPrivateKey(tokenOptions models.TokenOptions) jose.JSONWebKey {

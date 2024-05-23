@@ -12,24 +12,35 @@ import (
 	"github.com/luikymagno/auth-server/pkg/oauth"
 )
 
+func GetTokenOptions(clientCustomAttributes map[string]string, scopes string) models.TokenOptions {
+	return models.TokenOptions{
+		TokenFormat:         constants.JwtTokenFormat,
+		ExpiresInSecs:       600,
+		IsRefreshable:       true,
+		RefreshLifetimeSecs: 60000,
+	}
+}
+
 func main() {
 	port := 83
 	issuer := fmt.Sprintf("https://host.docker.internal:%v", port)
 	// issuer := fmt.Sprintf("https://localhost:%v", port)
 	privatePs256Jwk := unit.GetTestPrivatePs256Jwk("server_key")
+	privateRs256Jwk := unit.GetTestPrivateRs256Jwk("rsa256_server_key")
 
 	// Create the manager.
 	oauthManager := oauth.NewManager(
 		issuer,
-		jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privatePs256Jwk}},
-		"./templates/*",
+		jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privatePs256Jwk, privateRs256Jwk}},
 		privatePs256Jwk.KeyID,
+		"./templates/*",
+		GetTokenOptions,
 		oauth.ConfigureInMemoryClientAndScope,
 		oauth.ConfigureInMemorySessions,
 	)
-	oauthManager.EnableOpenId(privatePs256Jwk.KeyID)
+	oauthManager.EnableOpenId(privatePs256Jwk.KeyID, privateRs256Jwk.KeyID)
 	oauthManager.EnablePushedAuthorizationRequests(60)
-	oauthManager.EnableJwtSecuredAuthorizationRequests(jose.PS256)
+	oauthManager.EnableJwtSecuredAuthorizationRequests(jose.PS256, jose.RS256)
 	oauthManager.EnableJwtSecuredAuthorizationResponseMode(600, privatePs256Jwk.KeyID)
 	oauthManager.EnableSecretPostClientAuthn()
 	oauthManager.EnablePrivateKeyJwtClientAuthn(jose.RS256, jose.PS256)

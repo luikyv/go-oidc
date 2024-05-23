@@ -13,36 +13,6 @@ const (
 	TestJwtGrantModelId    string = "jwt_grant_model_id"
 )
 
-func GetTestOpaqueGrantModel(issuer string, privateJwk jose.JSONWebKey) GrantModel {
-	return GrantModel{
-		TokenMaker: OpaqueTokenMaker{
-			TokenLength: 20,
-		},
-		Meta: GrantMetaInfo{
-			Id:               TestOpaqueGrantModelId,
-			Issuer:           issuer,
-			OpenIdPrivateJwk: privateJwk,
-			ExpiresInSecs:    60,
-			IsRefreshable:    true,
-		},
-	}
-}
-
-func GetTestJwtGrantModel(issuer string, privateJwk jose.JSONWebKey) GrantModel {
-	return GrantModel{
-		TokenMaker: JWTTokenMaker{
-			PrivateJwk: privateJwk,
-		},
-		Meta: GrantMetaInfo{
-			Id:               TestJwtGrantModelId,
-			Issuer:           issuer,
-			OpenIdPrivateJwk: privateJwk,
-			ExpiresInSecs:    60,
-			IsRefreshable:    true,
-		},
-	}
-}
-
 func GetTestSecretPostAuthenticator() SecretPostClientAuthenticator {
 	clientSecretSalt := "random_salt"
 	clientHashedSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecretSalt+TestClientSecret), 0)
