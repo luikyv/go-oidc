@@ -6,24 +6,24 @@ import (
 )
 
 type GrantSession struct {
-	Id                      string
+	Id                      string `json:"id"`
 	JwkThumbprint           string
-	TokenId                 string
+	TokenId                 string `json:"token_id"`
 	Token                   string
-	TokenFormat             constants.TokenFormat
 	TokenType               constants.TokenType
+	TokenFormat             constants.TokenFormat `json:"token_format"`
 	IdToken                 string
-	RefreshToken            string
-	ExpiresInSecs           int
-	RefreshTokenExpiresIn   int
-	CreatedAtTimestamp      int
-	RenewedAtTimestamp      int
-	Subject                 string
-	ClientId                string
-	Scopes                  string
-	Nonce                   string
-	AdditionalTokenClaims   map[string]string
-	AdditionalIdTokenClaims map[string]string
+	RefreshToken            string            `json:"refresh_token"`
+	ExpiresInSecs           int               `json:"expires_in_secs"`
+	RefreshTokenExpiresIn   int               `json:"refresh_token_expires_in_secs"`
+	CreatedAtTimestamp      int               `json:"created_at"`
+	RenewedAtTimestamp      int               `json:"updated_at"`
+	Subject                 string            `json:"sub"`
+	ClientId                string            `json:"client_id"`
+	Scopes                  string            `json:"scope"`
+	Nonce                   string            `json:"nonce"`
+	AdditionalTokenClaims   map[string]string `json:"additional_token_claims"`
+	AdditionalIdTokenClaims map[string]string `json:"additional_id_token_claims"`
 }
 
 func (grantSession GrantSession) IsRefreshSessionExpired() bool {

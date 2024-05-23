@@ -99,7 +99,7 @@ const (
 type KeyUsage string
 
 const (
-	KeySigningUsage KeyUsage = "sig"
+	KeySignatureUsage KeyUsage = "sig"
 )
 
 type CodeChallengeMethod string
@@ -159,6 +159,12 @@ const AuthorizationCodeLifetimeSecs int = 60
 const AuthorizationCodeLength int = 30
 
 const RefreshTokenLength int = 30
+
+const DynamicClientIdLength int = 30
+
+const ClientSecretLength int = 50
+
+const RegistrationAccessTokenLength int = 50
 
 type Profile string
 

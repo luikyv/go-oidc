@@ -49,6 +49,18 @@ func GenerateRefreshToken() string {
 	return GenerateRandomString(constants.RefreshTokenLength, constants.RefreshTokenLength)
 }
 
+func GenerateDynamicClientId() string {
+	return "dc-" + GenerateRandomString(constants.DynamicClientIdLength, constants.DynamicClientIdLength)
+}
+
+func GenerateClientSecret() string {
+	return GenerateRandomString(constants.ClientSecretLength, constants.ClientSecretLength)
+}
+
+func GenerateRegistrationAccessToken() string {
+	return GenerateRandomString(constants.RegistrationAccessTokenLength, constants.RegistrationAccessTokenLength)
+}
+
 func GetUrlWithQueryParams(redirectUri string, params map[string]string) string {
 	parsedUrl, _ := url.Parse(redirectUri)
 	query := parsedUrl.Query()

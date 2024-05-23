@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
+	"github.com/luikymagno/auth-server/internal/crud/inmemory"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -31,19 +32,20 @@ func main() {
 	// Create the manager.
 	oauthManager := oauth.NewManager(
 		issuer,
+		inmemory.NewInMemoryClientManager(),
+		inmemory.NewInMemoryAuthnSessionManager(),
+		inmemory.NewInMemoryGrantSessionManager(),
 		jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privatePs256Jwk, privateRs256Jwk}},
 		privatePs256Jwk.KeyID,
 		"./templates/*",
 		GetTokenOptions,
-		oauth.ConfigureInMemoryClientAndScope,
-		oauth.ConfigureInMemorySessions,
 	)
 	oauthManager.EnableOpenId(privatePs256Jwk.KeyID, privateRs256Jwk.KeyID)
 	oauthManager.EnablePushedAuthorizationRequests(60)
 	oauthManager.EnableJwtSecuredAuthorizationRequests(jose.PS256, jose.RS256)
 	oauthManager.EnableJwtSecuredAuthorizationResponseMode(600, privatePs256Jwk.KeyID)
 	oauthManager.EnableSecretPostClientAuthn()
-	oauthManager.EnablePrivateKeyJwtClientAuthn(jose.RS256, jose.PS256)
+	oauthManager.EnablePrivateKeyJwtClientAuthn(600, jose.RS256, jose.PS256)
 	oauthManager.EnableIssuerResponseParameter()
 	oauthManager.EnableDemonstrationProofOfPossesion(jose.RS256, jose.PS256, jose.ES256)
 	oauthManager.EnableProofKeyForCodeExchange(constants.Sha256CodeChallengeMethod)

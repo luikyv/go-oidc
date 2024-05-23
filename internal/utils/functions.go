@@ -25,7 +25,11 @@ func ExtractJarFromRequestObject(
 	models.AuthorizationRequest,
 	issues.OAuthError,
 ) {
-	parsedToken, err := jwt.ParseSigned(reqObject, ctx.JarAlgorithms)
+	jarAlgorithms := ctx.JarSignatureAlgorithms
+	if client.JarSignatureAlgorithm != "" {
+		jarAlgorithms = []jose.SignatureAlgorithm{client.JarSignatureAlgorithm}
+	}
+	parsedToken, err := jwt.ParseSigned(reqObject, jarAlgorithms)
 	if err != nil {
 		return models.AuthorizationRequest{}, issues.NewOAuthError(constants.InternalError, err.Error())
 	}
@@ -91,7 +95,7 @@ func ValidateProofOfPossesion(
 }
 
 func ValidateDpopJwt(ctx Context, dpopJwt string, expectedDpopClaims models.DpopClaims) issues.OAuthError {
-	parsedDpopJwt, err := jwt.ParseSigned(dpopJwt, ctx.DpopSigningAlgorithms)
+	parsedDpopJwt, err := jwt.ParseSigned(dpopJwt, ctx.DpopSignatureAlgorithms)
 	if err != nil {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid dpop")
 	}
@@ -135,7 +139,7 @@ func ValidateDpopJwt(ctx Context, dpopJwt string, expectedDpopClaims models.Dpop
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid ath claim")
 	}
 
-	if expectedDpopClaims.JwkThumbprint != "" && unit.GenerateJwkThumbprint(dpopJwt, ctx.DpopSigningAlgorithms) != expectedDpopClaims.JwkThumbprint {
+	if expectedDpopClaims.JwkThumbprint != "" && unit.GenerateJwkThumbprint(dpopJwt, ctx.DpopSignatureAlgorithms) != expectedDpopClaims.JwkThumbprint {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid jwk thumbprint")
 	}
 
@@ -148,7 +152,7 @@ func ValidateDpopJwt(ctx Context, dpopJwt string, expectedDpopClaims models.Dpop
 }
 
 func GetTokenId(ctx Context, token string) (string, issues.OAuthError) {
-	parsedToken, err := jwt.ParseSigned(token, ctx.GetSigningAlgorithms())
+	parsedToken, err := jwt.ParseSigned(token, ctx.GetSignatureAlgorithms())
 	if err != nil {
 		// If the token is not a valid JWT, we'll treat it as an opaque token.
 		return token, nil
@@ -217,13 +221,11 @@ func MakeIdToken(ctx Context, grantOptions models.GrantOptions) string {
 		claims[k] = v
 	}
 
-	// Sign the ID token.
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: signatureAlgorithm, Key: privateJwk.Key},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.KeyID),
 	)
 	idToken, _ := jwt.Signed(signer).Claims(claims).Serialize()
-
 	return idToken
 }
 
@@ -244,7 +246,7 @@ func makeJwtToken(ctx Context, grantOptions models.GrantOptions) models.Token {
 	jkt := ""
 	if grantOptions.DpopJwt != "" {
 		tokenType = constants.DpopTokenType
-		jkt = unit.GenerateJwkThumbprint(grantOptions.DpopJwt, ctx.DpopSigningAlgorithms)
+		jkt = unit.GenerateJwkThumbprint(grantOptions.DpopJwt, ctx.DpopSignatureAlgorithms)
 		claims["cnf"] = map[string]string{
 			"jkt": jkt,
 		}
@@ -277,7 +279,7 @@ func makeOpaqueToken(ctx Context, grantOptions models.GrantOptions) models.Token
 	jkt := ""
 	if grantOptions.DpopJwt != "" {
 		tokenType = constants.DpopTokenType
-		jkt = unit.GenerateJwkThumbprint(grantOptions.DpopJwt, ctx.DpopSigningAlgorithms)
+		jkt = unit.GenerateJwkThumbprint(grantOptions.DpopJwt, ctx.DpopSignatureAlgorithms)
 	}
 	return models.Token{
 		Id:            accessToken,
@@ -315,8 +317,8 @@ func GenerateGrantSession(ctx Context, grantOptions models.GrantOptions) models.
 		JwkThumbprint:           token.JwkThumbprint,
 		TokenId:                 token.Id,
 		Token:                   token.Value,
-		TokenFormat:             token.Format,
 		TokenType:               token.Type,
+		TokenFormat:             token.Format,
 		ExpiresInSecs:           grantOptions.ExpiresInSecs,
 		CreatedAtTimestamp:      createAtTimestamp,
 		RenewedAtTimestamp:      nowTimestamp,

@@ -105,7 +105,9 @@ func TestPrivateKeyJWTClientAuthenticatorValidInfo(t *testing.T) {
 
 func TestAreScopesAllowed(t *testing.T) {
 	client := Client{
-		Scopes: []string{"scope1", "scope2", "scope3"},
+		ClientMetaInfo: ClientMetaInfo{
+			Scopes: "scope1 scope2 scope3",
+		},
 	}
 	testCases := []struct {
 		requestedScopes []string
@@ -129,7 +131,9 @@ func TestAreScopesAllowed(t *testing.T) {
 
 func TestAreResponseTypesAllowed(t *testing.T) {
 	client := Client{
-		ResponseTypes: []constants.ResponseType{constants.CodeResponse},
+		ClientMetaInfo: ClientMetaInfo{
+			ResponseTypes: []constants.ResponseType{constants.CodeResponse},
+		},
 	}
 	testCases := []struct {
 		requestedResponseType constants.ResponseType
@@ -153,7 +157,9 @@ func TestAreResponseTypesAllowed(t *testing.T) {
 
 func TestIsGrantTypeAllowed(t *testing.T) {
 	client := Client{
-		GrantTypes: []constants.GrantType{constants.ClientCredentialsGrant},
+		ClientMetaInfo: ClientMetaInfo{
+			GrantTypes: []constants.GrantType{constants.ClientCredentialsGrant},
+		},
 	}
 	testCases := []struct {
 		requestedGrantType constants.GrantType
@@ -177,7 +183,9 @@ func TestIsGrantTypeAllowed(t *testing.T) {
 
 func TestIsRedirectUriAllowed(t *testing.T) {
 	client := Client{
-		RedirectUris: []string{"https://example.com/callback", "http://example.com?param=value"},
+		ClientMetaInfo: ClientMetaInfo{
+			RedirectUris: []string{"https://example.com/callback", "http://example.com?param=value"},
+		},
 	}
 	testCases := []struct {
 		redirectUri    string

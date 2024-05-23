@@ -15,40 +15,42 @@ import (
 type GetTokenOptionsFunc func(clientCustomAttributes map[string]string, scopes string) models.TokenOptions
 
 type Configuration struct {
-	Host                             string
-	ScopeManager                     crud.ScopeManager
-	ClientManager                    crud.ClientManager
-	GrantSessionManager              crud.GrantSessionManager
-	AuthnSessionManager              crud.AuthnSessionManager
-	PrivateJwks                      jose.JSONWebKeySet
-	DefaultTokenSignatureKeyId       string
-	GrantTypes                       []constants.GrantType
-	ResponseTypes                    []constants.ResponseType
-	ResponseModes                    []constants.ResponseMode
-	ClientAuthnMethods               []constants.ClientAuthnType
-	ClientSigningAlgorithms          []jose.SignatureAlgorithm
-	IsOpenIdEnabled                  bool // TODO: Use this.
-	DefaultIdTokenSignatureKeyId     string
-	IdTokenSignatureKeyIds           []string
-	IssuerResponseParameterIsEnabled bool
-	JarmIsEnabled                    bool
-	JarmLifetimeSecs                 int
-	JarmSignatureKeyId               string // TODO: Get jarm key based on client?
-	JarIsEnabled                     bool
-	JarIsRequired                    bool
-	JarAlgorithms                    []jose.SignatureAlgorithm
-	ParIsEnabled                     bool
-	ParIsRequired                    bool
-	ParLifetimeSecs                  int
-	DpopIsEnabled                    bool
-	DpopIsRequired                   bool
-	DpopSigningAlgorithms            []jose.SignatureAlgorithm
-	PkceIsEnabled                    bool
-	PkceIsRequired                   bool
-	CodeChallengeMethods             []constants.CodeChallengeMethod
-	SubjectIdentifierTypes           []constants.SubjectIdentifierType
-	Policies                         []AuthnPolicy
-	GetTokenOptions                  GetTokenOptionsFunc
+	Host                                 string
+	Scopes                               []string
+	ClientManager                        crud.ClientManager
+	GrantSessionManager                  crud.GrantSessionManager
+	AuthnSessionManager                  crud.AuthnSessionManager
+	PrivateJwks                          jose.JSONWebKeySet
+	DefaultTokenSignatureKeyId           string
+	GrantTypes                           []constants.GrantType
+	ResponseTypes                        []constants.ResponseType
+	ResponseModes                        []constants.ResponseMode
+	ClientAuthnMethods                   []constants.ClientAuthnType
+	ClientSignatureAlgorithms            []jose.SignatureAlgorithm
+	PrivateKeyJwtAssertionLifetimeSecs   int
+	ClientSecretJwtAssertionLifetimeSecs int
+	IsOpenIdEnabled                      bool // TODO: Use this.
+	DefaultIdTokenSignatureKeyId         string
+	IdTokenSignatureKeyIds               []string
+	IssuerResponseParameterIsEnabled     bool
+	JarmIsEnabled                        bool
+	JarmLifetimeSecs                     int
+	JarmSignatureKeyId                   string // TODO: Get jarm key based on client?
+	JarIsEnabled                         bool
+	JarIsRequired                        bool
+	JarSignatureAlgorithms               []jose.SignatureAlgorithm
+	ParIsEnabled                         bool
+	ParIsRequired                        bool
+	ParLifetimeSecs                      int
+	DpopIsEnabled                        bool
+	DpopIsRequired                       bool
+	DpopSignatureAlgorithms              []jose.SignatureAlgorithm
+	PkceIsEnabled                        bool
+	PkceIsRequired                       bool
+	CodeChallengeMethods                 []constants.CodeChallengeMethod
+	SubjectIdentifierTypes               []constants.SubjectIdentifierType
+	Policies                             []AuthnPolicy
+	GetTokenOptions                      GetTokenOptionsFunc
 }
 
 type Context struct {
@@ -144,10 +146,10 @@ func (ctx Context) GetPublicKeys() jose.JSONWebKeySet {
 	return jose.JSONWebKeySet{Keys: publicKeys}
 }
 
-func (ctx Context) GetSigningAlgorithms() []jose.SignatureAlgorithm {
+func (ctx Context) GetSignatureAlgorithms() []jose.SignatureAlgorithm {
 	algorithms := []jose.SignatureAlgorithm{}
 	for _, privateKey := range ctx.PrivateJwks.Keys {
-		if privateKey.Use == string(constants.KeySigningUsage) {
+		if privateKey.Use == string(constants.KeySignatureUsage) {
 			algorithms = append(algorithms, jose.SignatureAlgorithm(privateKey.Algorithm))
 		}
 	}

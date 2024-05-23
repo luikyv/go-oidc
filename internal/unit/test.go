@@ -14,7 +14,7 @@ func GetTestPrivateRs256Jwk(keyId string) jose.JSONWebKey {
 		Key:       privateKey,
 		KeyID:     keyId,
 		Algorithm: string(jose.RS256),
-		Use:       string(constants.KeySigningUsage),
+		Use:       string(constants.KeySignatureUsage),
 	}
 }
 
@@ -24,6 +24,6 @@ func GetTestPrivatePs256Jwk(keyId string) jose.JSONWebKey {
 		Key:       privateKey,
 		KeyID:     keyId,
 		Algorithm: string(jose.PS256),
-		Use:       string(constants.KeySigningUsage),
+		Use:       string(constants.KeySignatureUsage),
 	}
 }

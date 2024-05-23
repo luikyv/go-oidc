@@ -8,7 +8,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/apihandlers"
-	"github.com/luikymagno/auth-server/internal/crud/inmemory"
+	"github.com/luikymagno/auth-server/internal/crud"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -22,16 +22,22 @@ type OAuthManager struct {
 
 func NewManager(
 	host string,
+	clientManager crud.ClientManager,
+	authnSessionManager crud.AuthnSessionManager,
+	grantSessionManager crud.GrantSessionManager,
 	privateJwks jose.JSONWebKeySet,
 	defaultTokenKeyId string,
 	templates string,
 	getTokenOptions utils.GetTokenOptionsFunc,
-	settings ...func(*OAuthManager),
 ) *OAuthManager {
 
 	manager := &OAuthManager{
 		Configuration: utils.Configuration{
 			Host:                       host,
+			ClientManager:              clientManager,
+			AuthnSessionManager:        authnSessionManager,
+			GrantSessionManager:        grantSessionManager,
+			Scopes:                     []string{}, // TODO
 			PrivateJwks:                privateJwks,
 			DefaultTokenSignatureKeyId: defaultTokenKeyId,
 			GrantTypes: []constants.GrantType{
@@ -54,32 +60,18 @@ func NewManager(
 				constants.FragmentResponseMode,
 				constants.FormPostResponseMode,
 			},
-			ClientAuthnMethods:      []constants.ClientAuthnType{},
-			ClientSigningAlgorithms: []jose.SignatureAlgorithm{},
-			CodeChallengeMethods:    []constants.CodeChallengeMethod{},
-			DpopSigningAlgorithms:   []jose.SignatureAlgorithm{},
-			SubjectIdentifierTypes:  []constants.SubjectIdentifierType{constants.PublicSubjectIdentifier},
-			Policies:                make([]utils.AuthnPolicy, 0),
+			ClientAuthnMethods:        []constants.ClientAuthnType{},
+			ClientSignatureAlgorithms: []jose.SignatureAlgorithm{},
+			CodeChallengeMethods:      []constants.CodeChallengeMethod{},
+			DpopSignatureAlgorithms:   []jose.SignatureAlgorithm{},
+			SubjectIdentifierTypes:    []constants.SubjectIdentifierType{constants.PublicSubjectIdentifier},
+			Policies:                  make([]utils.AuthnPolicy, 0),
 		},
 		Server: gin.Default(),
 	}
 	manager.Server.LoadHTMLGlob(templates)
 
-	for _, setting := range settings {
-		setting(manager)
-	}
-
 	return manager
-}
-
-func ConfigureInMemoryClientAndScope(manager *OAuthManager) {
-	manager.ClientManager = inmemory.NewInMemoryClientManager()
-	manager.ScopeManager = inmemory.NewInMemoryScopeManager()
-}
-
-func ConfigureInMemorySessions(manager *OAuthManager) {
-	manager.GrantSessionManager = inmemory.NewInMemoryGrantSessionManager()
-	manager.AuthnSessionManager = inmemory.NewInMemoryAuthnSessionManager()
 }
 
 func (manager *OAuthManager) SetGrantTypes(grantTypes ...constants.GrantType) {
@@ -132,7 +124,7 @@ func (manager *OAuthManager) EnableJwtSecuredAuthorizationRequests(
 	jarAlgorithms ...jose.SignatureAlgorithm,
 ) {
 	manager.JarIsEnabled = true
-	manager.JarAlgorithms = jarAlgorithms
+	manager.JarSignatureAlgorithms = jarAlgorithms
 }
 
 func (manager *OAuthManager) RequireJwtSecuredAuthorizationRequests(
@@ -163,10 +155,18 @@ func (manager *OAuthManager) EnableSecretPostClientAuthn() {
 	manager.ClientAuthnMethods = append(manager.ClientAuthnMethods, constants.ClientSecretPostAuthn)
 }
 
-func (manager *OAuthManager) EnablePrivateKeyJwtClientAuthn(signatureAlgorithms ...jose.SignatureAlgorithm) {
+func (manager *OAuthManager) EnablePrivateKeyJwtClientAuthn(assertionLifetimeSecs int, signatureAlgorithms ...jose.SignatureAlgorithm) {
 	// TODO: Make sure signatureAlgorithms don't contain symetric algorithms.
 	manager.ClientAuthnMethods = append(manager.ClientAuthnMethods, constants.PrivateKeyJwtAuthn)
-	manager.ClientSigningAlgorithms = append(manager.ClientSigningAlgorithms, signatureAlgorithms...)
+	manager.PrivateKeyJwtAssertionLifetimeSecs = assertionLifetimeSecs
+	manager.ClientSignatureAlgorithms = append(manager.ClientSignatureAlgorithms, signatureAlgorithms...)
+}
+
+func (manager *OAuthManager) EnableClientSecretJwtAuthn(assertionLifetimeSecs int, signatureAlgorithms ...jose.SignatureAlgorithm) {
+	// TODO: Make sure signatureAlgorithms don't contain asymetric algorithms.
+	manager.ClientAuthnMethods = append(manager.ClientAuthnMethods, constants.ClientSecretBasicAuthn)
+	manager.ClientSecretJwtAssertionLifetimeSecs = assertionLifetimeSecs
+	manager.ClientSignatureAlgorithms = append(manager.ClientSignatureAlgorithms, signatureAlgorithms...)
 }
 
 func (manager *OAuthManager) EnableIssuerResponseParameter() {
@@ -177,7 +177,7 @@ func (manager *OAuthManager) EnableDemonstrationProofOfPossesion(
 	dpopSigningAlgorithms ...jose.SignatureAlgorithm,
 ) {
 	manager.DpopIsEnabled = true
-	manager.DpopSigningAlgorithms = dpopSigningAlgorithms
+	manager.DpopSignatureAlgorithms = dpopSigningAlgorithms
 }
 
 func (manager *OAuthManager) RequireDemonstrationProofOfPossesion(

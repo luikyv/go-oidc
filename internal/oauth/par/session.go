@@ -17,7 +17,7 @@ func initValidAuthnSession(
 	issues.OAuthError,
 ) {
 
-	if authorize.ShouldInitAuthnSessionWithJar(ctx, req.AuthorizationParameters) {
+	if authorize.ShouldInitAuthnSessionWithJar(ctx, req.AuthorizationParameters, client) {
 		return initValidAuthnSessionWithJar(ctx, req, client)
 	}
 

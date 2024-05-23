@@ -4,12 +4,6 @@ package crud
 
 import "github.com/luikymagno/auth-server/internal/models"
 
-type ScopeManager interface {
-	Create(scope models.Scope) error
-	Update(id string, scope models.Scope) error
-	Get(id string) (models.Scope, error)
-	Delete(id string) error
-}
 type ClientManager interface {
 	Create(client models.Client) error
 	Update(id string, client models.Client) error

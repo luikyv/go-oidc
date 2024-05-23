@@ -21,7 +21,7 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 		IdTokenSigningAlgorithms:             ctx.GetIdTokenSignatureAlgorithms(),
 		ClientAuthnMethods:                   ctx.ClientAuthnMethods,
 		ScopesSupported:                      []string{constants.OpenIdScope},
-		TokenEndpointClientSigningAlgorithms: ctx.ClientSigningAlgorithms,
+		TokenEndpointClientSigningAlgorithms: ctx.ClientSignatureAlgorithms,
 		IssuerResponseParameterIsEnabled:     ctx.IssuerResponseParameterIsEnabled,
 	}
 
@@ -33,7 +33,7 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 	if ctx.JarIsEnabled {
 		config.JarIsEnabled = ctx.JarIsEnabled
 		config.JarIsRequired = ctx.JarIsRequired
-		config.JarAlgorithms = ctx.JarAlgorithms
+		config.JarAlgorithms = ctx.JarSignatureAlgorithms
 	}
 
 	if ctx.JarmIsEnabled {
@@ -41,7 +41,7 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 	}
 
 	if ctx.DpopIsEnabled {
-		config.DpopSigningAlgorithms = ctx.DpopSigningAlgorithms
+		config.DpopSigningAlgorithms = ctx.DpopSignatureAlgorithms
 	}
 
 	return config

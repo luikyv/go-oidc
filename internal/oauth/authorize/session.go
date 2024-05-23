@@ -22,7 +22,7 @@ func initValidAuthnSession(
 	}
 
 	// the jar requirement comes after the par one, because the client can send the jar during par.
-	if ShouldInitAuthnSessionWithJar(ctx, req.AuthorizationParameters) {
+	if ShouldInitAuthnSessionWithJar(ctx, req.AuthorizationParameters, client) {
 		ctx.Logger.Info("initiating authorization request with JAR")
 		return initValidAuthnSessionWithJar(ctx, req, client)
 	}
@@ -78,9 +78,13 @@ func getSessionCreatedWithPar(
 	return session, nil
 }
 
-func ShouldInitAuthnSessionWithJar(ctx utils.Context, req models.AuthorizationParameters) bool {
+func ShouldInitAuthnSessionWithJar(
+	ctx utils.Context,
+	req models.AuthorizationParameters,
+	client models.Client,
+) bool {
 	// Note: if JAR is not enabled, we just disconsider the request object.
-	return ctx.JarIsRequired || (ctx.JarIsEnabled && req.RequestObject != "")
+	return ctx.JarIsRequired || (ctx.JarIsEnabled && req.RequestObject != "") || client.JarSignatureAlgorithm != ""
 }
 
 func initValidAuthnSessionWithJar(

@@ -138,12 +138,14 @@ type PushedAuthorizationResponse struct {
 }
 
 type DynamicClientRequest struct {
-	RedirectUris          []string                        `json:"redirect_uris"`
-	ResponseTypes         []constants.ResponseType        `json:"response_types"`
-	GrantTypes            []constants.GrantType           `json:"grant_type"`
-	JwksUri               string                          `json:"jwks_uri"`
-	Jwks                  jose.JSONWebKeySet              `json:"jwks"`
-	SubjectIdentifierType constants.SubjectIdentifierType `json:"subject_type"`
+	ClientMetaInfo
+}
+
+type DynamicClientResponse struct {
+	Id                      string `json:"client_id"`
+	Secret                  string `json:"client_secret,omitempty"`
+	RegistrationAccessToken string `json:"registration_access_token,omitempty"`
+	ClientMetaInfo
 }
 
 type OpenIdConfiguration struct {

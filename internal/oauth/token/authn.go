@@ -24,9 +24,9 @@ func GetAuthenticatedClient(ctx utils.Context, req models.ClientAuthnRequest) (m
 		return models.Client{}, issues.NewWrappingOAuthError(err, constants.InvalidClient, "invalid client")
 	}
 
-	if !client.Authenticator.IsAuthenticated(req) {
+	if err := utils.AuthenticateClient(ctx, client, req); err != nil {
 		ctx.Logger.Info("client not authenticated", slog.String("client_id", req.ClientIdPost))
-		return models.Client{}, issues.NewOAuthError(constants.InvalidClient, "client not authenticated")
+		return models.Client{}, err
 	}
 
 	return client, nil
@@ -77,7 +77,7 @@ func appendClientIdFromAssertion(
 }
 
 func getClientIdFromAssertion(ctx utils.Context, assertion string) (string, bool) {
-	parsedAssertion, err := jwt.ParseSigned(assertion, ctx.ClientSigningAlgorithms)
+	parsedAssertion, err := jwt.ParseSigned(assertion, ctx.ClientSignatureAlgorithms)
 	if err != nil {
 		return "", false
 	}
