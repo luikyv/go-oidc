@@ -30,6 +30,7 @@ type Configuration struct {
 	PrivateKeyJwtAssertionLifetimeSecs   int
 	ClientSecretJwtAssertionLifetimeSecs int
 	IsOpenIdEnabled                      bool // TODO: Use this.
+	IdTokenExpiresInSecs                 int
 	DefaultIdTokenSignatureKeyId         string
 	IdTokenSignatureKeyIds               []string
 	IssuerResponseParameterIsEnabled     bool
@@ -38,6 +39,7 @@ type Configuration struct {
 	JarmSignatureKeyId                   string // TODO: Get jarm key based on client?
 	JarIsEnabled                         bool
 	JarIsRequired                        bool
+	JarLifetimeSecs                      int
 	JarSignatureAlgorithms               []jose.SignatureAlgorithm
 	ParIsEnabled                         bool
 	ParIsRequired                        bool

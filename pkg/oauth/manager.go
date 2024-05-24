@@ -99,6 +99,7 @@ func (manager *OAuthManager) SetGrantTypes(grantTypes ...constants.GrantType) {
 }
 
 func (manager *OAuthManager) EnableOpenId(
+	idTokenLifetimeSecs int,
 	defaultIdTokenSignatureKeyId string,
 	idTokenSignatureKeyIds ...string,
 ) {
@@ -111,6 +112,7 @@ func (manager *OAuthManager) EnableOpenId(
 	}
 
 	manager.IsOpenIdEnabled = true
+	manager.IdTokenExpiresInSecs = idTokenLifetimeSecs
 	manager.DefaultIdTokenSignatureKeyId = defaultIdTokenSignatureKeyId
 	manager.IdTokenSignatureKeyIds = idTokenSignatureKeyIds
 }
@@ -126,6 +128,7 @@ func (manager *OAuthManager) RequirePushedAuthorizationRequests(parLifetimeSecs 
 }
 
 func (manager *OAuthManager) EnableJwtSecuredAuthorizationRequests(
+	requestObjectLifetimeSecs int,
 	jarAlgorithms ...jose.SignatureAlgorithm,
 ) {
 	manager.JarIsEnabled = true
@@ -133,9 +136,10 @@ func (manager *OAuthManager) EnableJwtSecuredAuthorizationRequests(
 }
 
 func (manager *OAuthManager) RequireJwtSecuredAuthorizationRequests(
+	requestObjectLifetimeSecs int,
 	jarAlgorithms ...jose.SignatureAlgorithm,
 ) {
-	manager.EnableJwtSecuredAuthorizationRequests(jarAlgorithms...)
+	manager.EnableJwtSecuredAuthorizationRequests(requestObjectLifetimeSecs, jarAlgorithms...)
 	manager.JarIsRequired = true
 }
 

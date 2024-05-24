@@ -1,6 +1,8 @@
 package models
 
 import (
+	"maps"
+
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -21,7 +23,7 @@ type IdTokenOptions struct {
 	SignatureAlgorithm      jose.SignatureAlgorithm
 	AdditionalIdTokenClaims map[string]string
 	// These values here below are intended to be hashed and placed in the ID token.
-	// Then, the ID token can be used as a detached signature for the implict grant.
+	// Then, the ID token can be used as a detached signature for the implicit grant.
 	AccessToken       string
 	AuthorizationCode string
 	State             string
@@ -35,6 +37,10 @@ type TokenOptions struct {
 	SignatureKeyId        string
 	OpaqueTokenLength     int
 	AdditionalTokenClaims map[string]string
+}
+
+func (opts *TokenOptions) AddTokenClaims(claims map[string]string) {
+	maps.Copy(opts.AdditionalTokenClaims, claims)
 }
 
 type GrantOptions struct {

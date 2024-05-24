@@ -2,7 +2,6 @@ package token
 
 import (
 	"log/slog"
-	"maps"
 
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
@@ -135,7 +134,7 @@ func getSessionByAuthorizationCode(ctx utils.Context, authorizationCode string, 
 func NewAuthorizationCodeGrantOptions(ctx utils.Context, req models.TokenRequest, session models.AuthnSession) models.GrantOptions {
 
 	tokenOptions := ctx.GetTokenOptions(session.ClientAttributes, req.Scopes)
-	maps.Copy(tokenOptions.AdditionalTokenClaims, session.AdditionalTokenClaims) // TODO: evaluate this.
+	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
 	return models.GrantOptions{
 		GrantType:    constants.AuthorizationCodeGrant,
 		Scopes:       session.Scopes,

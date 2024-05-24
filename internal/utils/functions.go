@@ -52,6 +52,7 @@ func ExtractJarFromRequestObject(
 		return models.AuthorizationRequest{}, issues.NewOAuthError(constants.InvalidRequest, "invalid request")
 	}
 
+	// TODO: Validate the jar expiration time.
 	err = claims.ValidateWithLeeway(jwt.Expected{
 		Issuer:      client.Id,
 		AnyAudience: []string{ctx.Host},
@@ -198,7 +199,7 @@ func MakeIdToken(ctx Context, grantOptions models.GrantOptions) string {
 		string(constants.SubjectClaim):  grantOptions.Subject,
 		string(constants.AudienceClaim): grantOptions.ClientId,
 		string(constants.IssuedAtClaim): timestampNow,
-		string(constants.ExpiryClaim):   timestampNow + grantOptions.ExpiresInSecs, // TODO: When the id token expires?
+		string(constants.ExpiryClaim):   timestampNow + ctx.IdTokenExpiresInSecs,
 	}
 
 	if grantOptions.Nonce != "" {

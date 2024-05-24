@@ -141,7 +141,7 @@ func GetResponseModeOrDefault(responseMode constants.ResponseMode, responseType 
 
 func getDefaultResponseMode(responseType constants.ResponseType) constants.ResponseMode {
 	// According to "5. Definitions of Multiple-Valued Response Type Combinations" of https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#Combinations.
-	if responseType.IsImplict() {
+	if responseType.IsImplicit() {
 		return constants.FragmentResponseMode
 	}
 
@@ -150,7 +150,7 @@ func getDefaultResponseMode(responseType constants.ResponseType) constants.Respo
 
 func getDefaultJarmResponseMode(responseType constants.ResponseType) constants.ResponseMode {
 	// According to "5. Definitions of Multiple-Valued Response Type Combinations" of https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#Combinations.
-	if responseType.IsImplict() {
+	if responseType.IsImplicit() {
 		return constants.FragmentJwtResponseMode
 	}
 

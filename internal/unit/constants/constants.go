@@ -31,7 +31,7 @@ func (rt ResponseType) Contains(responseType ResponseType) bool {
 	return slices.Contains(strings.Split(string(rt), " "), string(responseType))
 }
 
-func (rt ResponseType) IsImplict() bool {
+func (rt ResponseType) IsImplicit() bool {
 	return rt.Contains(IdTokenResponse) || rt.Contains(TokenResponse)
 }
 

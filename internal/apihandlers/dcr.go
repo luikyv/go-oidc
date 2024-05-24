@@ -5,7 +5,7 @@ import (
 
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/oauth"
+	"github.com/luikymagno/auth-server/internal/oauth/dcr"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
@@ -18,7 +18,7 @@ func HandleDynamicClientCreation(ctx utils.Context) {
 		return
 	}
 
-	resp, err := oauth.RegisterClient(ctx, req)
+	resp, err := dcr.RegisterClient(ctx, req)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
@@ -40,7 +40,7 @@ func HandleDynamicClientUpdate(ctx utils.Context) {
 		return
 	}
 
-	resp, err := oauth.UpdateClient(ctx, ctx.RequestContext.Param("client_id"), token, req)
+	resp, err := dcr.UpdateClient(ctx, ctx.RequestContext.Param("client_id"), token, req)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
@@ -56,7 +56,7 @@ func HandleDynamicClientRetrieve(ctx utils.Context) {
 		return
 	}
 
-	resp, err := oauth.GetClient(ctx, ctx.RequestContext.Param("client_id"), token)
+	resp, err := dcr.GetClient(ctx, ctx.RequestContext.Param("client_id"), token)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
@@ -72,7 +72,7 @@ func HandleDynamicClientDelete(ctx utils.Context) {
 		return
 	}
 
-	if err := oauth.DeleteClient(ctx, ctx.RequestContext.Param("client_id"), token); err != nil {
+	if err := dcr.DeleteClient(ctx, ctx.RequestContext.Param("client_id"), token); err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
 	}

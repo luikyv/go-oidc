@@ -1,4 +1,4 @@
-package oauth
+package dcr
 
 import (
 	"slices"
@@ -162,7 +162,7 @@ func validateDynamicClientRequest(
 		validateGrantTypes,
 		validateRedirectUris,
 		validateResponseTypes,
-		validateCannotRequestImplictResponseTypeWithoutImplictGrant,
+		validateCannotRequestImplicitResponseTypeWithoutImplicitGrant,
 	)
 }
 
@@ -212,19 +212,19 @@ func validateResponseTypes(
 	return nil
 }
 
-func validateCannotRequestImplictResponseTypeWithoutImplictGrant(
+func validateCannotRequestImplicitResponseTypeWithoutImplicitGrant(
 	ctx utils.Context,
 	dynamicClient models.DynamicClientRequest,
 ) issues.OAuthError {
-	containsImplictResponseType := false
+	containsImplicitResponseType := false
 	for _, rt := range dynamicClient.ResponseTypes {
-		if rt.IsImplict() {
-			containsImplictResponseType = true
+		if rt.IsImplicit() {
+			containsImplicitResponseType = true
 		}
 	}
 
-	if containsImplictResponseType && !slices.Contains(ctx.GrantTypes, constants.ImplicitGrant) {
-		return issues.NewOAuthError(constants.InvalidRequest, "implict grant type is required for implict response types")
+	if containsImplicitResponseType && !slices.Contains(ctx.GrantTypes, constants.ImplicitGrant) {
+		return issues.NewOAuthError(constants.InvalidRequest, "implicit grant type is required for implicit response types")
 	}
 	return nil
 }

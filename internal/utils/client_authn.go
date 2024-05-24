@@ -36,7 +36,7 @@ func authenticateWithClientSecretBasic(ctx Context, client models.Client, req mo
 	return validateSecret(ctx, client, req.ClientSecretBasicAuthn)
 }
 
-func validateSecret(ctx Context, client models.Client, clientSecret string) issues.OAuthError {
+func validateSecret(_ Context, client models.Client, clientSecret string) issues.OAuthError {
 	err := bcrypt.CompareHashAndPassword([]byte(client.HashedSecret), []byte(clientSecret))
 	if err != nil {
 		return issues.NewOAuthError(constants.AccessDenied, "invalid secret")
@@ -71,7 +71,7 @@ func authenticateWithPrivateKeyJwt(ctx Context, client models.Client, req models
 		return issues.NewOAuthError(constants.AccessDenied, "invalid assertion")
 	}
 
-	return areAssertionClaimsValid(claims, ctx.Host, ctx.PrivateKeyJwtAssertionLifetimeSecs)
+	return areAssertionClaimsValid(ctx, claims, ctx.PrivateKeyJwtAssertionLifetimeSecs)
 }
 
 func authenticateWithClientSecretJwt(ctx Context, client models.Client, req models.ClientAuthnRequest) issues.OAuthError {
@@ -89,20 +89,20 @@ func authenticateWithClientSecretJwt(ctx Context, client models.Client, req mode
 		return issues.NewOAuthError(constants.AccessDenied, "invalid assertion")
 	}
 
-	return areAssertionClaimsValid(claims, ctx.Host, ctx.ClientSecretJwtAssertionLifetimeSecs)
+	return areAssertionClaimsValid(ctx, claims, ctx.ClientSecretJwtAssertionLifetimeSecs)
 }
 
-func areAssertionClaimsValid(claims jwt.Claims, host string, maxLifetimeSecs int) issues.OAuthError {
+func areAssertionClaimsValid(ctx Context, claims jwt.Claims, maxLifetimeSecs int) issues.OAuthError {
 	// Validate that the "iat" and "exp" claims are present and their difference is not too great.
 	if claims.Expiry == nil || claims.IssuedAt == nil || int(claims.Expiry.Time().Sub(claims.IssuedAt.Time()).Seconds()) > maxLifetimeSecs {
 		return issues.NewOAuthError(constants.AccessDenied, "invalid assertion")
 	}
 
+	ctx.RequestContext.Request.URL.RequestURI()
 	err := claims.ValidateWithLeeway(jwt.Expected{
-		Issuer:  claims.Subject,
-		Subject: claims.Subject,
-		// TODO: Choose the right audience
-		AnyAudience: []string{host, host + string(constants.TokenEndpoint), host + string(constants.PushedAuthorizationRequestEndpoint)},
+		Issuer:      claims.Subject,
+		Subject:     claims.Subject,
+		AnyAudience: []string{ctx.Host, ctx.Host + ctx.RequestContext.Request.URL.RequestURI()},
 	}, time.Duration(0))
 	if err != nil {
 		return issues.NewOAuthError(constants.AccessDenied, "invalid assertion")

@@ -56,7 +56,7 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) iss
 	}
 
 	if session.ResponseType.Contains(constants.TokenResponse) {
-		grantSession, err := generateImplictGrantSession(ctx, *session)
+		grantSession, err := generateImplicitGrantSession(ctx, *session)
 		if err != nil {
 			return err
 		}
@@ -65,7 +65,7 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) iss
 	}
 
 	if session.ResponseType.Contains(constants.IdTokenResponse) {
-		idToken, err := generateImplictIdToken(
+		idToken, err := generateImplicitIdToken(
 			ctx,
 			*session,
 			models.IdTokenOptions{
@@ -92,14 +92,14 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) iss
 	return nil
 }
 
-func generateImplictGrantSession(
+func generateImplicitGrantSession(
 	ctx utils.Context,
 	session models.AuthnSession,
 ) (
 	models.GrantSession,
 	issues.OAuthError,
 ) {
-	grantSession := utils.GenerateGrantSession(ctx, NewImplictGrantOptions(session))
+	grantSession := utils.GenerateGrantSession(ctx, NewImplicitGrantOptions(ctx, session))
 
 	if err := ctx.GrantSessionManager.CreateOrUpdate(grantSession); err != nil {
 		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, err.Error())
@@ -108,16 +108,15 @@ func generateImplictGrantSession(
 	return grantSession, nil
 }
 
-func NewImplictGrantOptions(session models.AuthnSession) models.GrantOptions {
-	// TODO: get token options
+func NewImplicitGrantOptions(ctx utils.Context, session models.AuthnSession) models.GrantOptions {
+	tokenOptions := ctx.GetTokenOptions(session.ClientAttributes, session.Scopes)
+	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
 	return models.GrantOptions{
-		GrantType: constants.ImplicitGrant,
-		Scopes:    session.Scopes,
-		Subject:   session.Subject,
-		ClientId:  session.ClientId,
-		TokenOptions: models.TokenOptions{
-			AdditionalTokenClaims: session.AdditionalTokenClaims,
-		},
+		GrantType:    constants.ImplicitGrant,
+		Scopes:       session.Scopes,
+		Subject:      session.Subject,
+		ClientId:     session.ClientId,
+		TokenOptions: tokenOptions,
 		IdTokenOptions: models.IdTokenOptions{
 			Nonce:                   session.Nonce,
 			AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
@@ -125,7 +124,7 @@ func NewImplictGrantOptions(session models.AuthnSession) models.GrantOptions {
 	}
 }
 
-func generateImplictIdToken(
+func generateImplicitIdToken(
 	ctx utils.Context,
 	session models.AuthnSession,
 	idTokenOptions models.IdTokenOptions,

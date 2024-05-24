@@ -40,9 +40,9 @@ func main() {
 		"./templates/*",
 		GetTokenOptions,
 	)
-	oauthManager.EnableOpenId(privatePs256Jwk.KeyID, privateRs256Jwk.KeyID)
+	oauthManager.EnableOpenId(600, privatePs256Jwk.KeyID, privateRs256Jwk.KeyID)
 	oauthManager.EnablePushedAuthorizationRequests(60)
-	oauthManager.EnableJwtSecuredAuthorizationRequests(jose.PS256, jose.RS256)
+	oauthManager.EnableJwtSecuredAuthorizationRequests(600, jose.PS256, jose.RS256)
 	oauthManager.EnableJwtSecuredAuthorizationResponseMode(600, privatePs256Jwk.KeyID)
 	oauthManager.EnableSecretPostClientAuthn()
 	oauthManager.EnablePrivateKeyJwtClientAuthn(600, jose.RS256, jose.PS256)

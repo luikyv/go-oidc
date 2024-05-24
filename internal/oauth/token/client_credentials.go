@@ -28,7 +28,7 @@ func handleClientCredentialsGrantTokenCreation(
 		return models.GrantSession{}, oauthErr
 	}
 
-	grantSession := utils.GenerateGrantSession(ctx, NewClientCredentialsGrantOptions(ctx, client, req))
+	grantSession := utils.GenerateGrantSession(ctx, newClientCredentialsGrantOptions(ctx, client, req))
 	return grantSession, nil
 }
 
@@ -63,12 +63,7 @@ func validateClientCredentialsGrantRequest(
 	return nil
 }
 
-func shouldCreateGrantSessionForClientCredentialsGrant(grantSession models.GrantSession) bool {
-	// We only need to create a token session for the authorization code grant when the token is not self-contained.
-	return grantSession.TokenFormat == constants.OpaqueTokenFormat
-}
-
-func NewClientCredentialsGrantOptions(ctx utils.Context, client models.Client, req models.TokenRequest) models.GrantOptions {
+func newClientCredentialsGrantOptions(ctx utils.Context, client models.Client, req models.TokenRequest) models.GrantOptions {
 	tokenOptions := ctx.GetTokenOptions(client.Attributes, req.Scopes)
 	return models.GrantOptions{
 		GrantType:    constants.ClientCredentialsGrant,

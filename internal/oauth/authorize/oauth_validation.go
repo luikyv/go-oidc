@@ -33,14 +33,14 @@ func validateOAuthParams(
 	return runValidations(
 		ctx, params, client,
 		validateCannotRequestCodetResponseTypeWhenAuthorizationCodeGrantIsNotAllowed,
-		validateCannotRequestImplictResponseTypeWhenImplictGrantIsNotAllowed,
+		validateCannotRequestImplicitResponseTypeWhenImplicitGrantIsNotAllowed,
 		validateCannotRequestIdTokenResponseTypeIfOpenIdScopeIsNotRequested,
 		validateRedirectUriIsRequired,
 		validateResponseTypeIsRequired,
 		validateScopeOpenIdIsRequiredWhenResponseTypeIsIdToken,
 		validateResponseModeIfPresent,
 		validateScopesIfPresent,
-		validateCannotRequestQueryResponseModeWhenImplictResponseTypeIsRequested,
+		validateCannotRequestQueryResponseModeWhenImplicitResponseTypeIsRequested,
 		validatePkceIfRequired,
 		validateCodeChallengeMethodIfPresent,
 		validateCannotInformRequestUriAndRequestObject,
@@ -55,7 +55,7 @@ func ValidateNonEmptyParams(
 	return runValidations(
 		ctx, params, client,
 		validateCannotRequestCodetResponseTypeWhenAuthorizationCodeGrantIsNotAllowed,
-		validateCannotRequestImplictResponseTypeWhenImplictGrantIsNotAllowed,
+		validateCannotRequestImplicitResponseTypeWhenImplicitGrantIsNotAllowed,
 		validateRedirectUriIfPresent,
 		validateResponseModeIfPresent,
 		validateScopesIfPresent,
@@ -194,12 +194,12 @@ func validateCannotRequestCodetResponseTypeWhenAuthorizationCodeGrantIsNotAllowe
 	return nil
 }
 
-func validateCannotRequestImplictResponseTypeWhenImplictGrantIsNotAllowed(
+func validateCannotRequestImplicitResponseTypeWhenImplicitGrantIsNotAllowed(
 	_ utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
-	if params.ResponseType.IsImplict() && !client.IsGrantTypeAllowed(constants.ImplicitGrant) {
+	if params.ResponseType.IsImplicit() && !client.IsGrantTypeAllowed(constants.ImplicitGrant) {
 		return issues.NewOAuthError(constants.InvalidGrant, "implicit grant not allowed")
 	}
 	return nil
@@ -216,12 +216,12 @@ func validateCannotRequestIdTokenResponseTypeIfOpenIdScopeIsNotRequested(
 	return nil
 }
 
-func validateCannotRequestQueryResponseModeWhenImplictResponseTypeIsRequested(
+func validateCannotRequestQueryResponseModeWhenImplicitResponseTypeIsRequested(
 	_ utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
-	if params.ResponseType.IsImplict() && params.ResponseMode.IsQuery() {
+	if params.ResponseType.IsImplicit() && params.ResponseMode.IsQuery() {
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_mode for the chosen response_type")
 	}
 	return nil
