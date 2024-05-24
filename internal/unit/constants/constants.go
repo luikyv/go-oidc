@@ -199,7 +199,7 @@ const (
 	JsonWebKeySetEndpoint              EndpointPath = "/jwks"
 	PushedAuthorizationRequestEndpoint EndpointPath = "/par"
 	AuthorizationEndpoint              EndpointPath = "/authorize"
-	AuthorizationCallbackEndpoint      EndpointPath = "/authorize/:callback"
 	TokenEndpoint                      EndpointPath = "/token"
 	UserInfoEndpoint                   EndpointPath = "/userinfo"
+	DynamicClientEndpoint              EndpointPath = "/register"
 )

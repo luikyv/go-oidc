@@ -99,6 +99,19 @@ func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod 
 	return false
 }
 
+func GetBearerToken(requestCtx *gin.Context) (token string, ok bool) {
+	token, tokenType, ok := GetAuthorizationToken(requestCtx)
+	if !ok {
+		return "", false
+	}
+
+	if tokenType != constants.BearerTokenType {
+		return "", false
+	}
+
+	return token, true
+}
+
 func GetAuthorizationToken(requestCtx *gin.Context) (token string, tokenType constants.TokenType, ok bool) {
 	tokenHeader := requestCtx.Request.Header.Get("Authorization")
 	if tokenHeader == "" {

@@ -253,7 +253,7 @@ func (manager *OAuthManager) setUp() {
 	)
 
 	manager.Server.POST(
-		string(constants.AuthorizationCallbackEndpoint),
+		string(constants.AuthorizationEndpoint)+"/:callback",
 		func(requestCtx *gin.Context) {
 			apihandlers.HandleAuthorizeCallbackRequest(manager.getContext(requestCtx))
 		},
@@ -288,6 +288,34 @@ func (manager *OAuthManager) setUp() {
 			},
 		)
 	}
+
+	manager.Server.POST(
+		string(constants.DynamicClientEndpoint),
+		func(requestCtx *gin.Context) {
+			apihandlers.HandleDynamicClientCreation(manager.getContext(requestCtx))
+		},
+	)
+
+	manager.Server.PUT(
+		string(constants.DynamicClientEndpoint)+"/:client_id",
+		func(requestCtx *gin.Context) {
+			apihandlers.HandleDynamicClientUpdate(manager.getContext(requestCtx))
+		},
+	)
+
+	manager.Server.GET(
+		string(constants.DynamicClientEndpoint)+"/:client_id",
+		func(requestCtx *gin.Context) {
+			apihandlers.HandleDynamicClientRetrieve(manager.getContext(requestCtx))
+		},
+	)
+
+	manager.Server.DELETE(
+		string(constants.DynamicClientEndpoint)+"/:client_id",
+		func(requestCtx *gin.Context) {
+			apihandlers.HandleDynamicClientDelete(manager.getContext(requestCtx))
+		},
+	)
 
 }
 
