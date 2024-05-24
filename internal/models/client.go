@@ -7,6 +7,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
+	"golang.org/x/crypto/bcrypt"
 )
 
 //---------------------------------------- Client ----------------------------------------//
@@ -30,9 +31,8 @@ type ClientMetaInfo struct {
 
 type Client struct {
 	Id                            string `json:"client_id"`
-	SecretSalt                    string `json:"secret_salt,omitempty"`
+	Secret                        string `json:"client_secret,omitempty"` // When the client uses client_secret_jwt.
 	HashedSecret                  string `json:"hashed_secret,omitempty"`
-	Secret                        string `json:"client_secret,omitempty"`
 	HashedRegistrationAccessToken string `json:"hashed_registration_access_token"`
 	ClientMetaInfo
 }
@@ -77,4 +77,9 @@ func getSigningAlgorithms(jwks jose.JSONWebKeySet) []jose.SignatureAlgorithm {
 		signingAlgorithms = append(signingAlgorithms, jose.SignatureAlgorithm(jwk.Algorithm))
 	}
 	return signingAlgorithms
+}
+
+func (client Client) IsRegistrationAccessTokenValid(registrationAccessToken string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(client.HashedRegistrationAccessToken), []byte(registrationAccessToken))
+	return err == nil
 }

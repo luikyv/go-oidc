@@ -18,52 +18,127 @@ func RegisterClient(
 	models.DynamicClientResponse,
 	issues.OAuthError,
 ) {
+	setCreationDefaults(ctx, &dynamicClient)
 	if err := validateDynamicClientRequest(ctx, dynamicClient); err != nil {
 		return models.DynamicClientResponse{}, err
 	}
 
-	setDynamicClientDefaults(ctx, &dynamicClient)
-
-	client, resp := NewClient(dynamicClient.ClientMetaInfo)
+	client := newClient(dynamicClient)
 	if err := ctx.ClientManager.Create(client); err != nil {
 		return models.DynamicClientResponse{}, issues.NewOAuthError(constants.InternalError, err.Error())
 	}
 
-	return resp, nil
+	return models.DynamicClientResponse{
+		Id:                      dynamicClient.Id,
+		RegistrationAccessToken: dynamicClient.RegistrationAccessToken,
+		Secret:                  dynamicClient.Secret,
+		ClientMetaInfo:          dynamicClient.ClientMetaInfo,
+	}, nil
 }
 
-func setDynamicClientDefaults(ctx utils.Context, dynamicClient *models.DynamicClientRequest) {
-	dynamicClient.PkceIsRequired = ctx.PkceIsRequired
+func UpdateClient(
+	ctx utils.Context,
+	clientId string,
+	registrationAccessToken string,
+	dynamicClient models.DynamicClientRequest,
+) (
+	models.DynamicClientResponse,
+	issues.OAuthError,
+) {
+	setUpdateDefaults(ctx, clientId, &dynamicClient)
+	if err := validateDynamicClientRequest(ctx, dynamicClient); err != nil {
+		return models.DynamicClientResponse{}, err
+	}
+
+	client := newClient(dynamicClient)
+	if err := ctx.ClientManager.Update(clientId, client); err != nil {
+		return models.DynamicClientResponse{}, issues.NewOAuthError(constants.InternalError, err.Error())
+	}
+
+	return models.DynamicClientResponse{
+		Id:                      dynamicClient.Id,
+		RegistrationAccessToken: dynamicClient.RegistrationAccessToken,
+		Secret:                  dynamicClient.Secret,
+		ClientMetaInfo:          dynamicClient.ClientMetaInfo,
+	}, nil
 }
 
-func NewClient(meta models.ClientMetaInfo) (models.Client, models.DynamicClientResponse) {
-	registrationAccessToken := unit.GenerateRegistrationAccessToken()
-	hashedRegistrationAccessToken, _ := bcrypt.GenerateFromPassword([]byte(registrationAccessToken), 0)
+func GetClient(
+	ctx utils.Context,
+	clientId string,
+	registrationAccessToken string,
+) (
+	models.DynamicClientResponse,
+	issues.OAuthError,
+) {
+
+	client, err := ctx.ClientManager.Get(clientId)
+	if err != nil {
+		return models.DynamicClientResponse{}, issues.NewOAuthError(constants.InvalidRequest, err.Error())
+	}
+
+	if !client.IsRegistrationAccessTokenValid(registrationAccessToken) {
+		return models.DynamicClientResponse{}, issues.NewOAuthError(constants.AccessDenied, "invalid token")
+	}
+
+	return models.DynamicClientResponse{
+		Id:             client.Id,
+		ClientMetaInfo: client.ClientMetaInfo,
+	}, nil
+}
+
+func DeleteClient(
+	ctx utils.Context,
+	clientId string,
+	registrationAccessToken string,
+) issues.OAuthError {
+	client, err := ctx.ClientManager.Get(clientId)
+	if err != nil {
+		return issues.NewOAuthError(constants.InvalidRequest, err.Error())
+	}
+
+	if !client.IsRegistrationAccessTokenValid(registrationAccessToken) {
+		return issues.NewOAuthError(constants.AccessDenied, "invalid token")
+	}
+
+	if err := ctx.ClientManager.Delete(clientId); err != nil {
+		return issues.NewOAuthError(constants.InternalError, err.Error())
+	}
+	return nil
+}
+
+func setCreationDefaults(_ utils.Context, dynamicClient *models.DynamicClientRequest) {
+	dynamicClient.Id = unit.GenerateClientId()
+	dynamicClient.RegistrationAccessToken = unit.GenerateRegistrationAccessToken()
+	if dynamicClient.AuthnMethod == constants.ClientSecretPostAuthn || dynamicClient.AuthnMethod == constants.ClientSecretBasicAuthn {
+		dynamicClient.Secret = unit.GenerateClientSecret()
+	}
+}
+
+func setUpdateDefaults(ctx utils.Context, clientId string, dynamicClient *models.DynamicClientRequest) {
+	setCreationDefaults(ctx, dynamicClient)
+	dynamicClient.Id = clientId
+}
+
+func newClient(dynamicClient models.DynamicClientRequest) models.Client {
+	hashedRegistrationAccessToken, _ := bcrypt.GenerateFromPassword([]byte(dynamicClient.RegistrationAccessToken), bcrypt.DefaultCost)
 	client := models.Client{
-		Id:                            unit.GenerateDynamicClientId(),
+		Id:                            dynamicClient.Id,
 		HashedRegistrationAccessToken: string(hashedRegistrationAccessToken),
-		ClientMetaInfo:                meta,
-	}
-	resp := models.DynamicClientResponse{
-		Id:                      client.Id,
-		RegistrationAccessToken: registrationAccessToken,
-		ClientMetaInfo:          meta,
+		ClientMetaInfo:                dynamicClient.ClientMetaInfo,
 	}
 
-	if meta.AuthnMethod == constants.ClientSecretPostAuthn || meta.AuthnMethod == constants.ClientSecretBasicAuthn {
-		secret := unit.GenerateClientSecret()
-		resp.Secret = secret
-		client.SecretSalt = "random_salt" // TODO
-		clientHashedSecret, _ := bcrypt.GenerateFromPassword([]byte(client.SecretSalt+secret), 0)
+	if dynamicClient.AuthnMethod == constants.ClientSecretPostAuthn || dynamicClient.AuthnMethod == constants.ClientSecretBasicAuthn {
+		clientHashedSecret, _ := bcrypt.GenerateFromPassword([]byte(dynamicClient.Secret), bcrypt.DefaultCost)
 		client.HashedSecret = string(clientHashedSecret)
 
 	}
 
-	if meta.AuthnMethod == constants.ClientSecretJwt {
-		client.Secret = unit.GenerateClientSecret()
+	if dynamicClient.AuthnMethod == constants.ClientSecretJwt {
+		client.Secret = dynamicClient.Secret
 	}
 
-	return client, resp
+	return client
 }
 
 func validateDynamicClientRequest(

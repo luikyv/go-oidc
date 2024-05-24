@@ -49,7 +49,7 @@ func GenerateRefreshToken() string {
 	return GenerateRandomString(constants.RefreshTokenLength, constants.RefreshTokenLength)
 }
 
-func GenerateDynamicClientId() string {
+func GenerateClientId() string {
 	return "dc-" + GenerateRandomString(constants.DynamicClientIdLength, constants.DynamicClientIdLength)
 }
 

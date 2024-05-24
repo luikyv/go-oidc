@@ -138,6 +138,9 @@ type PushedAuthorizationResponse struct {
 }
 
 type DynamicClientRequest struct {
+	Id                      string
+	Secret                  string
+	RegistrationAccessToken string
 	ClientMetaInfo
 }
 

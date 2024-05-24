@@ -29,17 +29,15 @@ func AuthenticateClient(ctx Context, client models.Client, req models.ClientAuth
 }
 
 func authenticateWithClientSecretPost(ctx Context, client models.Client, req models.ClientAuthnRequest) issues.OAuthError {
-	saltedSecret := client.SecretSalt + req.ClientSecretPost
-	err := bcrypt.CompareHashAndPassword([]byte(client.HashedSecret), []byte(saltedSecret))
-	if err != nil {
-		return issues.NewOAuthError(constants.AccessDenied, "invalid secret")
-	}
-	return nil
+	return validateSecret(ctx, client, req.ClientSecretPost)
 }
 
 func authenticateWithClientSecretBasic(ctx Context, client models.Client, req models.ClientAuthnRequest) issues.OAuthError {
-	saltedSecret := client.SecretSalt + req.ClientSecretBasicAuthn
-	err := bcrypt.CompareHashAndPassword([]byte(client.HashedSecret), []byte(saltedSecret))
+	return validateSecret(ctx, client, req.ClientSecretBasicAuthn)
+}
+
+func validateSecret(ctx Context, client models.Client, clientSecret string) issues.OAuthError {
+	err := bcrypt.CompareHashAndPassword([]byte(client.HashedSecret), []byte(clientSecret))
 	if err != nil {
 		return issues.NewOAuthError(constants.AccessDenied, "invalid secret")
 	}
