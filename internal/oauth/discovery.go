@@ -9,6 +9,7 @@ import (
 func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 	config := models.OpenIdConfiguration{
 		Issuer:                               ctx.Host,
+		ClientRegistrationEndpoint:           ctx.Host + string(constants.DynamicClientEndpoint),
 		AuthorizationEndpoint:                ctx.Host + string(constants.AuthorizationEndpoint),
 		TokenEndpoint:                        ctx.Host + string(constants.TokenEndpoint),
 		UserinfoEndpoint:                     ctx.Host + string(constants.UserInfoEndpoint),
@@ -20,7 +21,7 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 		SubjectIdentifierTypes:               ctx.SubjectIdentifierTypes,
 		IdTokenSigningAlgorithms:             ctx.GetIdTokenSignatureAlgorithms(),
 		ClientAuthnMethods:                   ctx.ClientAuthnMethods,
-		ScopesSupported:                      []string{constants.OpenIdScope},
+		Scopes:                               ctx.Scopes,
 		TokenEndpointClientSigningAlgorithms: ctx.ClientSignatureAlgorithms,
 		IssuerResponseParameterIsEnabled:     ctx.IssuerResponseParameterIsEnabled,
 	}

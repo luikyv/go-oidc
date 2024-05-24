@@ -37,14 +37,15 @@ func NewManager(
 			ClientManager:              clientManager,
 			AuthnSessionManager:        authnSessionManager,
 			GrantSessionManager:        grantSessionManager,
-			Scopes:                     []string{}, // TODO
+			Scopes:                     []string{},
+			GetTokenOptions:            getTokenOptions,
 			PrivateJwks:                privateJwks,
 			DefaultTokenSignatureKeyId: defaultTokenKeyId,
 			GrantTypes: []constants.GrantType{
 				constants.ClientCredentialsGrant,
 				constants.AuthorizationCodeGrant,
 				constants.RefreshTokenGrant,
-				constants.ImplictGrant,
+				constants.ImplicitGrant,
 			},
 			ResponseTypes: []constants.ResponseType{
 				constants.CodeResponse,
@@ -80,11 +81,11 @@ func (manager *OAuthManager) SetGrantTypes(grantTypes ...constants.GrantType) {
 		responseTypes = append(responseTypes, constants.CodeResponse)
 	}
 
-	if slices.Contains(grantTypes, constants.ImplictGrant) {
+	if slices.Contains(grantTypes, constants.ImplicitGrant) {
 		responseTypes = append(responseTypes, constants.TokenResponse, constants.IdTokenResponse, constants.IdTokenAndTokenResponse)
 	}
 
-	if unit.ContainsAll(grantTypes, constants.AuthorizationCodeGrant, constants.ImplictGrant) {
+	if unit.ContainsAll(grantTypes, constants.AuthorizationCodeGrant, constants.ImplicitGrant) {
 		responseTypes = append(
 			responseTypes,
 			constants.CodeAndIdTokenResponse,
@@ -103,6 +104,10 @@ func (manager *OAuthManager) EnableOpenId(
 ) {
 	if !slices.Contains(idTokenSignatureKeyIds, defaultIdTokenSignatureKeyId) {
 		idTokenSignatureKeyIds = append(idTokenSignatureKeyIds, defaultIdTokenSignatureKeyId)
+	}
+
+	if !slices.Contains(manager.Scopes, constants.OpenIdScope) {
+		manager.Scopes = append(manager.Scopes, constants.OpenIdScope)
 	}
 
 	manager.IsOpenIdEnabled = true

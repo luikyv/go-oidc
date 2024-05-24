@@ -12,7 +12,7 @@ const (
 	ClientCredentialsGrant GrantType = "client_credentials"
 	AuthorizationCodeGrant GrantType = "authorization_code"
 	RefreshTokenGrant      GrantType = "refresh_token"
-	ImplictGrant           GrantType = "implict"
+	ImplicitGrant          GrantType = "implicit"
 )
 
 type ResponseType string

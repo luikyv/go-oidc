@@ -13,59 +13,56 @@ const (
 	TestJwtGrantModelId    string = "jwt_grant_model_id"
 )
 
-func GetTestSecretPostAuthenticator() SecretPostClientAuthenticator {
-	clientSecretSalt := "random_salt"
-	clientHashedSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecretSalt+TestClientSecret), 0)
-	return SecretPostClientAuthenticator{
-		Salt:         clientSecretSalt,
-		HashedSecret: string(clientHashedSecret),
-	}
+func GetTestClientWithBasicAuthn() Client {
+	clientHashedSecret, _ := bcrypt.GenerateFromPassword([]byte(TestClientSecret), 0)
+	client := GetTestClientWithNoneAuthn()
+	client.AuthnMethod = constants.ClientSecretPostAuthn
+	client.HashedSecret = string(clientHashedSecret)
+	return client
 }
 
-func GetSecretPostTestClient() Client {
-	return GetTestClient(GetTestSecretPostAuthenticator())
+func GetTestClientWithSecretPostAuthn() Client {
+	clientHashedSecret, _ := bcrypt.GenerateFromPassword([]byte(TestClientSecret), 0)
+	client := GetTestClientWithNoneAuthn()
+	client.AuthnMethod = constants.ClientSecretPostAuthn
+	client.HashedSecret = string(clientHashedSecret)
+	return client
 }
 
-func GetPrivateKeyJwtTestClient(host string, publicJwk jose.JSONWebKey) Client {
-	authenticator := PrivateKeyJwtClientAuthenticator{
-		PublicJwks:               jose.JSONWebKeySet{Keys: []jose.JSONWebKey{publicJwk}},
-		MaxAssertionLifetimeSecs: 6000,
-		Host:                     host,
-	}
-	client := GetTestClient(authenticator)
+func GetTestClientWithPrivateKeyJwtAuthn(host string, publicJwk jose.JSONWebKey) Client {
+	client := GetTestClientWithNoneAuthn()
+	client.AuthnMethod = constants.PrivateKeyJwtAuthn
 	client.PublicJwks = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{publicJwk}}
 	return client
 }
 
-func GetNoneAuthTestClient() Client {
-	return GetTestClient(NoneClientAuthenticator{})
-}
-
-func GetTestClient(authenticator ClientAuthenticator) Client {
+func GetTestClientWithNoneAuthn() Client {
 	return Client{
-		Id:           TestClientId,
-		RedirectUris: []string{"https://example.com"},
-		Scopes:       []string{"scope1", "scope2", constants.OpenIdScope},
-		GrantTypes: []constants.GrantType{
-			constants.AuthorizationCodeGrant,
-			constants.ClientCredentialsGrant,
-			constants.ImplictGrant,
-			constants.RefreshTokenGrant,
+		Id: TestClientId,
+		ClientMetaInfo: ClientMetaInfo{
+			AuthnMethod:  constants.NoneAuthn,
+			RedirectUris: []string{"https://example.com"},
+			Scopes:       "scope1 scope2 " + constants.OpenIdScope,
+			GrantTypes: []constants.GrantType{
+				constants.AuthorizationCodeGrant,
+				constants.ClientCredentialsGrant,
+				constants.ImplicitGrant,
+				constants.RefreshTokenGrant,
+			},
+			ResponseTypes: []constants.ResponseType{
+				constants.CodeResponse,
+				constants.IdTokenResponse,
+				constants.TokenResponse,
+				constants.CodeAndIdTokenResponse,
+				constants.CodeAndTokenResponse,
+				constants.IdTokenAndTokenResponse,
+				constants.CodeAndIdTokenAndTokenResponse,
+			},
+			ResponseModes: []constants.ResponseMode{
+				constants.QueryResponseMode,
+				constants.FragmentResponseMode,
+				constants.FormPostResponseMode,
+			},
 		},
-		ResponseTypes: []constants.ResponseType{
-			constants.CodeResponse,
-			constants.IdTokenResponse,
-			constants.TokenResponse,
-			constants.CodeAndIdTokenResponse,
-			constants.CodeAndTokenResponse,
-			constants.IdTokenAndTokenResponse,
-			constants.CodeAndIdTokenAndTokenResponse,
-		},
-		ResponseModes: []constants.ResponseMode{
-			constants.QueryResponseMode,
-			constants.FragmentResponseMode,
-			constants.FormPostResponseMode,
-		},
-		Authenticator: authenticator,
 	}
 }

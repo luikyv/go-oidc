@@ -52,13 +52,13 @@ func main() {
 
 	// Client one.
 	privateClientOneJwks := GetClientPrivateJwks("client_one_jwks.json")
-	clientOne := models.GetPrivateKeyJwtTestClient(issuer, privateClientOneJwks.Keys[0].Public())
+	clientOne := models.GetTestClientWithPrivateKeyJwtAuthn(issuer, privateClientOneJwks.Keys[0].Public())
 	clientOne.RedirectUris = append(clientOne.RedirectUris, issuer+"/callback", "https://localhost:8443/test/a/first_test/callback")
 	oauthManager.AddClient(clientOne)
 
 	// Client two.
 	privateClientTwoJwks := GetClientPrivateJwks("client_two_jwks.json")
-	clientTwo := models.GetPrivateKeyJwtTestClient(issuer, privateClientTwoJwks.Keys[0].Public())
+	clientTwo := models.GetTestClientWithPrivateKeyJwtAuthn(issuer, privateClientTwoJwks.Keys[0].Public())
 	clientTwo.Id = "random_client_id_two"
 	clientTwo.RedirectUris = append(clientTwo.RedirectUris, issuer+"/callback", "https://localhost:8443/test/a/first_test/callback")
 	oauthManager.AddClient(clientTwo)

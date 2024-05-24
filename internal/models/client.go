@@ -14,7 +14,7 @@ import (
 
 type ClientMetaInfo struct {
 	RedirectUris              []string                        `json:"redirect_uris"`
-	GrantTypes                []constants.GrantType           `json:"grant_type"`
+	GrantTypes                []constants.GrantType           `json:"grant_types"`
 	ResponseTypes             []constants.ResponseType        `json:"response_types"`
 	ResponseModes             []constants.ResponseMode        `json:"response_modes"`
 	PublicJwksUri             string                          `json:"jwks_uri"`

@@ -148,11 +148,13 @@ type DynamicClientResponse struct {
 	Id                      string `json:"client_id"`
 	Secret                  string `json:"client_secret,omitempty"`
 	RegistrationAccessToken string `json:"registration_access_token,omitempty"`
+	RegistrationUri         string `json:"registration_client_uri"`
 	ClientMetaInfo
 }
 
 type OpenIdConfiguration struct {
 	Issuer                               string                            `json:"issuer"`
+	ClientRegistrationEndpoint           string                            `json:"registration_endpoint"`
 	AuthorizationEndpoint                string                            `json:"authorization_endpoint"`
 	TokenEndpoint                        string                            `json:"token_endpoint"`
 	UserinfoEndpoint                     string                            `json:"userinfo_endpoint"`
@@ -162,10 +164,10 @@ type OpenIdConfiguration struct {
 	ResponseTypes                        []constants.ResponseType          `json:"response_types_supported"`
 	ResponseModes                        []constants.ResponseMode          `json:"response_modes_supported"`
 	GrantTypes                           []constants.GrantType             `json:"grant_types_supported"`
+	Scopes                               []string                          `json:"scopes_supported"`
 	SubjectIdentifierTypes               []constants.SubjectIdentifierType `json:"subject_types_supported"`
 	IdTokenSigningAlgorithms             []jose.SignatureAlgorithm         `json:"id_token_signing_alg_values_supported"`
 	ClientAuthnMethods                   []constants.ClientAuthnType       `json:"token_endpoint_auth_methods_supported"`
-	ScopesSupported                      []string                          `json:"scopes_supported"`
 	JarIsRequired                        bool                              `json:"require_signed_request_object,omitempty"`
 	JarIsEnabled                         bool                              `json:"request_parameter_supported"`
 	JarAlgorithms                        []jose.SignatureAlgorithm         `json:"request_object_signing_alg_values_supported,omitempty"`

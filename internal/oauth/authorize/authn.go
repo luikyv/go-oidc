@@ -111,7 +111,7 @@ func generateImplictGrantSession(
 func NewImplictGrantOptions(session models.AuthnSession) models.GrantOptions {
 	// TODO: get token options
 	return models.GrantOptions{
-		GrantType: constants.ImplictGrant,
+		GrantType: constants.ImplicitGrant,
 		Scopes:    session.Scopes,
 		Subject:   session.Subject,
 		ClientId:  session.ClientId,
@@ -135,7 +135,7 @@ func generateImplictIdToken(
 ) {
 
 	return utils.MakeIdToken(ctx, models.GrantOptions{
-		GrantType:      constants.ImplictGrant,
+		GrantType:      constants.ImplicitGrant,
 		Subject:        session.Subject,
 		ClientId:       session.ClientId,
 		IdTokenOptions: idTokenOptions,

@@ -2,6 +2,7 @@ package oauth
 
 import (
 	"slices"
+	"strings"
 
 	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
@@ -30,6 +31,7 @@ func RegisterClient(
 
 	return models.DynamicClientResponse{
 		Id:                      dynamicClient.Id,
+		RegistrationUri:         getClientRegistrationUri(ctx, dynamicClient.Id),
 		RegistrationAccessToken: dynamicClient.RegistrationAccessToken,
 		Secret:                  dynamicClient.Secret,
 		ClientMetaInfo:          dynamicClient.ClientMetaInfo,
@@ -57,6 +59,7 @@ func UpdateClient(
 
 	return models.DynamicClientResponse{
 		Id:                      dynamicClient.Id,
+		RegistrationUri:         getClientRegistrationUri(ctx, dynamicClient.Id),
 		RegistrationAccessToken: dynamicClient.RegistrationAccessToken,
 		Secret:                  dynamicClient.Secret,
 		ClientMetaInfo:          dynamicClient.ClientMetaInfo,
@@ -82,8 +85,9 @@ func GetClient(
 	}
 
 	return models.DynamicClientResponse{
-		Id:             client.Id,
-		ClientMetaInfo: client.ClientMetaInfo,
+		Id:              client.Id,
+		RegistrationUri: getClientRegistrationUri(ctx, client.Id),
+		ClientMetaInfo:  client.ClientMetaInfo,
 	}, nil
 }
 
@@ -107,11 +111,15 @@ func DeleteClient(
 	return nil
 }
 
-func setCreationDefaults(_ utils.Context, dynamicClient *models.DynamicClientRequest) {
+func setCreationDefaults(ctx utils.Context, dynamicClient *models.DynamicClientRequest) {
 	dynamicClient.Id = unit.GenerateClientId()
 	dynamicClient.RegistrationAccessToken = unit.GenerateRegistrationAccessToken()
 	if dynamicClient.AuthnMethod == constants.ClientSecretPostAuthn || dynamicClient.AuthnMethod == constants.ClientSecretBasicAuthn {
 		dynamicClient.Secret = unit.GenerateClientSecret()
+	}
+
+	if dynamicClient.Scopes == "" {
+		dynamicClient.Scopes = strings.Join(ctx.Scopes, " ")
 	}
 }
 
@@ -139,6 +147,10 @@ func newClient(dynamicClient models.DynamicClientRequest) models.Client {
 	}
 
 	return client
+}
+
+func getClientRegistrationUri(ctx utils.Context, clientId string) string {
+	return ctx.Host + string(constants.DynamicClientEndpoint) + "/" + clientId
 }
 
 func validateDynamicClientRequest(
@@ -211,7 +223,7 @@ func validateCannotRequestImplictResponseTypeWithoutImplictGrant(
 		}
 	}
 
-	if containsImplictResponseType && !slices.Contains(ctx.GrantTypes, constants.ImplictGrant) {
+	if containsImplictResponseType && !slices.Contains(ctx.GrantTypes, constants.ImplicitGrant) {
 		return issues.NewOAuthError(constants.InvalidRequest, "implict grant type is required for implict response types")
 	}
 	return nil

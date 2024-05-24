@@ -199,7 +199,7 @@ func validateCannotRequestImplictResponseTypeWhenImplictGrantIsNotAllowed(
 	params models.AuthorizationParameters,
 	client models.Client,
 ) issues.OAuthError {
-	if params.ResponseType.IsImplict() && !client.IsGrantTypeAllowed(constants.ImplictGrant) {
+	if params.ResponseType.IsImplict() && !client.IsGrantTypeAllowed(constants.ImplicitGrant) {
 		return issues.NewOAuthError(constants.InvalidGrant, "implicit grant not allowed")
 	}
 	return nil
