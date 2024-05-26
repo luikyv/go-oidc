@@ -27,20 +27,35 @@ func NewManager(
 	grantSessionManager crud.GrantSessionManager,
 	privateJwks jose.JSONWebKeySet,
 	defaultTokenKeyId string,
+	defaultIdTokenSignatureKeyId string,
+	idTokenSignatureKeyIds []string,
+	idTokenLifetimeSecs int,
 	templates string,
-	getTokenOptions utils.GetTokenOptionsFunc,
 ) *OAuthManager {
+
+	if !slices.Contains(idTokenSignatureKeyIds, defaultIdTokenSignatureKeyId) {
+		idTokenSignatureKeyIds = append(idTokenSignatureKeyIds, defaultIdTokenSignatureKeyId)
+	}
 
 	manager := &OAuthManager{
 		Configuration: utils.Configuration{
-			Host:                       host,
-			ClientManager:              clientManager,
-			AuthnSessionManager:        authnSessionManager,
-			GrantSessionManager:        grantSessionManager,
-			Scopes:                     []string{},
-			GetTokenOptions:            getTokenOptions,
-			PrivateJwks:                privateJwks,
-			DefaultTokenSignatureKeyId: defaultTokenKeyId,
+			Host:                host,
+			Profile:             constants.OpenIdProfile,
+			ClientManager:       clientManager,
+			AuthnSessionManager: authnSessionManager,
+			GrantSessionManager: grantSessionManager,
+			Scopes:              []string{},
+			GetTokenOptions: func(clientCustomAttributes map[string]string, scopes string) models.TokenOptions {
+				return models.TokenOptions{
+					ExpiresInSecs: constants.DefaultTokenLifetimeSecs,
+					TokenFormat:   constants.JwtTokenFormat,
+				}
+			},
+			PrivateJwks:                  privateJwks,
+			DefaultTokenSignatureKeyId:   defaultTokenKeyId,
+			DefaultIdTokenSignatureKeyId: defaultIdTokenSignatureKeyId,
+			IdTokenSignatureKeyIds:       idTokenSignatureKeyIds,
+			IdTokenExpiresInSecs:         idTokenLifetimeSecs,
 			GrantTypes: []constants.GrantType{
 				constants.ClientCredentialsGrant,
 				constants.AuthorizationCodeGrant,
@@ -75,6 +90,14 @@ func NewManager(
 	return manager
 }
 
+func (manager *OAuthManager) RequireOpenIdScope() {
+	manager.OpenIdScopeIsRequired = true
+}
+
+func (manager *OAuthManager) SetTokenOptions(getTokenOpts utils.GetTokenOptionsFunc) {
+	manager.GetTokenOptions = getTokenOpts
+}
+
 func (manager *OAuthManager) SetGrantTypes(grantTypes ...constants.GrantType) {
 	responseTypes := []constants.ResponseType{}
 	if slices.Contains(grantTypes, constants.AuthorizationCodeGrant) {
@@ -98,23 +121,12 @@ func (manager *OAuthManager) SetGrantTypes(grantTypes ...constants.GrantType) {
 	manager.ResponseTypes = responseTypes
 }
 
-func (manager *OAuthManager) EnableOpenId(
-	idTokenLifetimeSecs int,
-	defaultIdTokenSignatureKeyId string,
-	idTokenSignatureKeyIds ...string,
-) {
-	if !slices.Contains(idTokenSignatureKeyIds, defaultIdTokenSignatureKeyId) {
-		idTokenSignatureKeyIds = append(idTokenSignatureKeyIds, defaultIdTokenSignatureKeyId)
+func (manager *OAuthManager) AddScopes(scopes ...string) {
+	if slices.Contains(scopes, constants.OpenIdScope) {
+		manager.Scopes = scopes
+	} else {
+		manager.Scopes = append(scopes, constants.OpenIdScope)
 	}
-
-	if !slices.Contains(manager.Scopes, constants.OpenIdScope) {
-		manager.Scopes = append(manager.Scopes, constants.OpenIdScope)
-	}
-
-	manager.IsOpenIdEnabled = true
-	manager.IdTokenExpiresInSecs = idTokenLifetimeSecs
-	manager.DefaultIdTokenSignatureKeyId = defaultIdTokenSignatureKeyId
-	manager.IdTokenSignatureKeyIds = idTokenSignatureKeyIds
 }
 
 func (manager *OAuthManager) EnablePushedAuthorizationRequests(parLifetimeSecs int) {
@@ -145,8 +157,14 @@ func (manager *OAuthManager) RequireJwtSecuredAuthorizationRequests(
 
 func (manager *OAuthManager) EnableJwtSecuredAuthorizationResponseMode(
 	jarmLifetimeSecs int,
-	privateJarmKeyId string,
+	defaultJarmSignatureKeyId string,
+	jarmSignatureKeyIds ...string,
+
 ) {
+
+	if !slices.Contains(jarmSignatureKeyIds, defaultJarmSignatureKeyId) {
+		jarmSignatureKeyIds = append(jarmSignatureKeyIds, defaultJarmSignatureKeyId)
+	}
 	manager.JarmIsEnabled = true
 	manager.ResponseModes = []constants.ResponseMode{
 		constants.QueryResponseMode,
@@ -157,7 +175,9 @@ func (manager *OAuthManager) EnableJwtSecuredAuthorizationResponseMode(
 		constants.FormPostJwtResponseMode,
 	}
 	manager.JarmLifetimeSecs = jarmLifetimeSecs
-	manager.JarmSignatureKeyId = privateJarmKeyId
+	manager.DefaultJarmSignatureKeyId = defaultJarmSignatureKeyId
+	manager.JarmSignatureKeyIds = jarmSignatureKeyIds
+
 }
 
 func (manager *OAuthManager) EnableSecretPostClientAuthn() {
@@ -183,16 +203,19 @@ func (manager *OAuthManager) EnableIssuerResponseParameter() {
 }
 
 func (manager *OAuthManager) EnableDemonstrationProofOfPossesion(
+	dpopLifetimeSecs int,
 	dpopSigningAlgorithms ...jose.SignatureAlgorithm,
 ) {
 	manager.DpopIsEnabled = true
+	manager.DpopLifetimeSecs = dpopLifetimeSecs
 	manager.DpopSignatureAlgorithms = dpopSigningAlgorithms
 }
 
 func (manager *OAuthManager) RequireDemonstrationProofOfPossesion(
+	dpopLifetimeSecs int,
 	dpopSigningAlgorithms ...jose.SignatureAlgorithm,
 ) {
-	manager.EnableDemonstrationProofOfPossesion(dpopSigningAlgorithms...)
+	manager.EnableDemonstrationProofOfPossesion(dpopLifetimeSecs, dpopSigningAlgorithms...)
 	manager.DpopIsRequired = true
 }
 
@@ -275,28 +298,26 @@ func (manager *OAuthManager) setUp() {
 		},
 	)
 
-	if manager.IsOpenIdEnabled {
-		manager.Server.GET(
-			string(constants.WellKnownEndpoint),
-			func(requestCtx *gin.Context) {
-				apihandlers.HandleWellKnownRequest(manager.getContext(requestCtx))
-			},
-		)
+	manager.Server.GET(
+		string(constants.WellKnownEndpoint),
+		func(requestCtx *gin.Context) {
+			apihandlers.HandleWellKnownRequest(manager.getContext(requestCtx))
+		},
+	)
 
-		manager.Server.GET(
-			string(constants.UserInfoEndpoint),
-			func(requestCtx *gin.Context) {
-				apihandlers.HandleUserInfoRequest(manager.getContext(requestCtx))
-			},
-		)
+	manager.Server.GET(
+		string(constants.UserInfoEndpoint),
+		func(requestCtx *gin.Context) {
+			apihandlers.HandleUserInfoRequest(manager.getContext(requestCtx))
+		},
+	)
 
-		manager.Server.POST(
-			string(constants.UserInfoEndpoint),
-			func(requestCtx *gin.Context) {
-				apihandlers.HandleUserInfoRequest(manager.getContext(requestCtx))
-			},
-		)
-	}
+	manager.Server.POST(
+		string(constants.UserInfoEndpoint),
+		func(requestCtx *gin.Context) {
+			apihandlers.HandleUserInfoRequest(manager.getContext(requestCtx))
+		},
+	)
 
 	manager.Server.POST(
 		string(constants.DynamicClientEndpoint),

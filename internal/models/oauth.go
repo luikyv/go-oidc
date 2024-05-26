@@ -34,7 +34,7 @@ type TokenOptions struct {
 	ExpiresInSecs         int
 	IsRefreshable         bool
 	RefreshLifetimeSecs   int
-	SignatureKeyId        string
+	JwtSignatureKeyId     string
 	OpaqueTokenLength     int
 	AdditionalTokenClaims map[string]string
 }
@@ -115,6 +115,13 @@ type AuthorizationParameters struct {
 	CodeChallengeMethod constants.CodeChallengeMethod `form:"code_challenge_method" json:"code_challenge_method"`
 }
 
+func (params AuthorizationParameters) NewRedirectError(
+	errorCode constants.ErrorCode,
+	errorDescription string,
+) issues.OAuthRedirectError {
+	return issues.NewOAuthRedirectError(errorCode, errorDescription, params.RedirectUri, params.ResponseMode, params.State)
+}
+
 func (priorities AuthorizationParameters) Merge(params AuthorizationParameters) AuthorizationParameters {
 	return AuthorizationParameters{
 		RedirectUri:         unit.GetNonEmptyOrDefault(priorities.RedirectUri, params.RedirectUri),
@@ -177,42 +184,21 @@ type OpenIdConfiguration struct {
 	JarIsRequired                        bool                              `json:"require_signed_request_object,omitempty"`
 	JarIsEnabled                         bool                              `json:"request_parameter_supported"`
 	JarAlgorithms                        []jose.SignatureAlgorithm         `json:"request_object_signing_alg_values_supported,omitempty"`
-	JarmAlgorithms                       []string                          `json:"authorization_signing_alg_values_supported,omitempty"`
+	JarmAlgorithms                       []jose.SignatureAlgorithm         `json:"authorization_signing_alg_values_supported,omitempty"`
 	TokenEndpointClientSigningAlgorithms []jose.SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg_values_supported"`
 	IssuerResponseParameterIsEnabled     bool                              `json:"authorization_response_iss_parameter_supported"`
 	DpopSigningAlgorithms                []jose.SignatureAlgorithm         `json:"dpop_signing_alg_values_supported,omitempty"`
 }
 
 type RedirectResponse struct {
-	ClientId     string
 	RedirectUri  string
 	ResponseMode constants.ResponseMode
-	Parameters   map[string]string
-}
-
-func NewRedirectResponseFromSession(session AuthnSession, params map[string]string) RedirectResponse {
-	return RedirectResponse{
-		ClientId:     session.ClientId,
-		RedirectUri:  session.RedirectUri,
-		Parameters:   params,
-		ResponseMode: unit.GetResponseModeOrDefault(session.ResponseMode, session.ResponseType),
-	}
-}
-
-func NewRedirectResponseFromRedirectError(err issues.OAuthRedirectError) RedirectResponse {
-	errorParams := map[string]string{
-		"error":             string(err.ErrorCode),
-		"error_description": err.ErrorDescription,
-	}
-	if err.State != "" {
-		errorParams["state"] = err.State
-	}
-	return RedirectResponse{
-		ClientId:     err.ClientId,
-		RedirectUri:  err.RedirectUri,
-		Parameters:   errorParams,
-		ResponseMode: err.ResponseMode,
-	}
+	Code         string
+	AccessToken  string
+	TokenType    constants.TokenType
+	IdToken      string
+	State        string
+	// TODO
 }
 
 type ClientAuthnOptions struct {

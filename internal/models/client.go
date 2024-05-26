@@ -16,13 +16,13 @@ type ClientMetaInfo struct {
 	RedirectUris              []string                        `json:"redirect_uris"`
 	GrantTypes                []constants.GrantType           `json:"grant_types"`
 	ResponseTypes             []constants.ResponseType        `json:"response_types"`
-	ResponseModes             []constants.ResponseMode        `json:"response_modes"`
 	PublicJwksUri             string                          `json:"jwks_uri"`
 	PublicJwks                jose.JSONWebKeySet              `json:"jwks"`
 	Scopes                    string                          `json:"scope"`
 	SubjectIdentifierType     constants.SubjectIdentifierType `json:"subject_type"`
-	IdTokenSignatureAlgorithm jose.SignatureAlgorithm         `json:"id_token_signed_response_alg"`
-	JarSignatureAlgorithm     jose.SignatureAlgorithm         `json:"request_object_signing_alg"`
+	IdTokenSignatureAlgorithm jose.SignatureAlgorithm         `json:"id_token_signed_response_alg,omitempty"`
+	JarSignatureAlgorithm     jose.SignatureAlgorithm         `json:"request_object_signing_alg,omitempty"`
+	JarmSignatureAlgorithm    jose.SignatureAlgorithm         `json:"authorization_signed_response_alg,omitempty"`
 	PkceIsRequired            bool                            `json:"pkce_is_required"`
 	AuthnMethod               constants.ClientAuthnType       `json:"token_endpoint_auth_method"`
 	AuthnSignatureAlgorithm   jose.SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg"`
@@ -42,16 +42,12 @@ func (c Client) GetPublicJwks() jose.JSONWebKeySet {
 	return c.PublicJwks
 }
 
-func (client Client) AreScopesAllowed(requestedScopes []string) bool {
-	return unit.ContainsAll(unit.SplitStringWithSpaces(client.Scopes), requestedScopes...)
+func (client Client) AreScopesAllowed(requestedScopes string) bool {
+	return unit.ContainsAll(unit.SplitStringWithSpaces(client.Scopes), unit.SplitStringWithSpaces(requestedScopes)...)
 }
 
 func (client Client) IsResponseTypeAllowed(responseType constants.ResponseType) bool {
 	return slices.Contains(client.ResponseTypes, responseType)
-}
-
-func (client Client) IsResponseModeAllowed(responseMode constants.ResponseMode) bool {
-	return slices.Contains(client.ResponseModes, responseMode)
 }
 
 func (client Client) IsGrantTypeAllowed(grantType constants.GrantType) bool {

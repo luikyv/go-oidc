@@ -24,7 +24,7 @@ func authenticate(ctx utils.Context, session *models.AuthnSession) issues.OAuthE
 
 	if status == constants.Failure {
 		ctx.AuthnSessionManager.Delete(session.Id)
-		return newRedirectErrorFromSession(constants.AccessDenied, err.Error(), *session)
+		return session.NewRedirectError(constants.AccessDenied, err.Error())
 	}
 
 	if status == constants.InProgress {
@@ -48,7 +48,6 @@ func authenticate(ctx utils.Context, session *models.AuthnSession) issues.OAuthE
 }
 
 func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) issues.OAuthError {
-
 	params := make(map[string]string)
 
 	if session.ResponseType.Contains(constants.CodeResponse) {
@@ -56,19 +55,18 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) iss
 	}
 
 	if session.ResponseType.Contains(constants.TokenResponse) {
-		grantSession, err := generateImplicitGrantSession(ctx, *session)
-		if err != nil {
-			return err
-		}
+		grantSession := utils.GenerateGrantSession(ctx, NewImplicitGrantOptions(ctx, *session))
 		params["access_token"] = grantSession.Token
-		params["token_type"] = string(constants.BearerTokenType)
+		params["token_type"] = string(grantSession.TokenType)
 	}
 
 	if session.ResponseType.Contains(constants.IdTokenResponse) {
-		idToken, err := generateImplicitIdToken(
-			ctx,
-			*session,
-			models.IdTokenOptions{
+		// TODO: Do I need to create the id token again?
+		params["id_token"] = utils.MakeIdToken(ctx, models.GrantOptions{
+			GrantType: constants.ImplicitGrant,
+			Subject:   session.Subject,
+			ClientId:  session.ClientId,
+			IdTokenOptions: models.IdTokenOptions{
 				AccessToken:             params["access_token"],
 				AuthorizationCode:       session.AuthorizationCode,
 				State:                   session.State,
@@ -76,11 +74,8 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) iss
 				SignatureAlgorithm:      session.IdTokenSignatureAlgorithm,
 				AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
 			},
-		)
-		if err != nil {
-			return err
-		}
-		params["id_token"] = idToken
+		})
+
 	}
 
 	// Echo the state parameter.
@@ -88,24 +83,12 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) iss
 		params["state"] = session.State
 	}
 
-	redirectResponse(ctx, models.NewRedirectResponseFromSession(*session, params))
-	return nil
-}
-
-func generateImplicitGrantSession(
-	ctx utils.Context,
-	session models.AuthnSession,
-) (
-	models.GrantSession,
-	issues.OAuthError,
-) {
-	grantSession := utils.GenerateGrantSession(ctx, NewImplicitGrantOptions(ctx, session))
-
-	if err := ctx.GrantSessionManager.CreateOrUpdate(grantSession); err != nil {
-		return models.GrantSession{}, issues.NewOAuthError(constants.InternalError, err.Error())
+	client, err := ctx.ClientManager.Get(session.ClientId)
+	if err != nil {
+		return session.NewRedirectError(constants.InternalError, "could not load the client")
 	}
-
-	return grantSession, nil
+	redirectResponse(ctx, client, session.RedirectUri, session.ResponseMode, params)
+	return nil
 }
 
 func NewImplicitGrantOptions(ctx utils.Context, session models.AuthnSession) models.GrantOptions {
@@ -122,21 +105,4 @@ func NewImplicitGrantOptions(ctx utils.Context, session models.AuthnSession) mod
 			AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
 		},
 	}
-}
-
-func generateImplicitIdToken(
-	ctx utils.Context,
-	session models.AuthnSession,
-	idTokenOptions models.IdTokenOptions,
-) (
-	string,
-	issues.OAuthError,
-) {
-
-	return utils.MakeIdToken(ctx, models.GrantOptions{
-		GrantType:      constants.ImplicitGrant,
-		Subject:        session.Subject,
-		ClientId:       session.ClientId,
-		IdTokenOptions: idTokenOptions,
-	}), nil
 }

@@ -37,17 +37,19 @@ func main() {
 		inmemory.NewInMemoryGrantSessionManager(),
 		jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privatePs256Jwk, privateRs256Jwk}},
 		privatePs256Jwk.KeyID,
+		privateRs256Jwk.KeyID,
+		[]string{privateRs256Jwk.KeyID},
+		600,
 		"./templates/*",
-		GetTokenOptions,
 	)
-	oauthManager.EnableOpenId(600, privatePs256Jwk.KeyID, privateRs256Jwk.KeyID)
+	oauthManager.SetTokenOptions(GetTokenOptions)
 	oauthManager.EnablePushedAuthorizationRequests(60)
 	oauthManager.EnableJwtSecuredAuthorizationRequests(600, jose.PS256, jose.RS256)
 	oauthManager.EnableJwtSecuredAuthorizationResponseMode(600, privatePs256Jwk.KeyID)
 	oauthManager.EnableSecretPostClientAuthn()
 	oauthManager.EnablePrivateKeyJwtClientAuthn(600, jose.RS256, jose.PS256)
 	oauthManager.EnableIssuerResponseParameter()
-	oauthManager.EnableDemonstrationProofOfPossesion(jose.RS256, jose.PS256, jose.ES256)
+	oauthManager.EnableDemonstrationProofOfPossesion(600, jose.RS256, jose.PS256, jose.ES256)
 	oauthManager.EnableProofKeyForCodeExchange(constants.Sha256CodeChallengeMethod)
 
 	// Client one.

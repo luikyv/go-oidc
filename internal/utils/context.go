@@ -3,7 +3,6 @@ package utils
 import (
 	"log/slog"
 	"os"
-	"slices"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
@@ -15,8 +14,10 @@ import (
 type GetTokenOptionsFunc func(clientCustomAttributes map[string]string, scopes string) models.TokenOptions
 
 type Configuration struct {
-	Host                                 string
-	Scopes                               []string
+	Profile constants.Profile
+	Host    string
+	Scopes  []string
+
 	ClientManager                        crud.ClientManager
 	GrantSessionManager                  crud.GrantSessionManager
 	AuthnSessionManager                  crud.AuthnSessionManager
@@ -29,14 +30,15 @@ type Configuration struct {
 	ClientSignatureAlgorithms            []jose.SignatureAlgorithm
 	PrivateKeyJwtAssertionLifetimeSecs   int
 	ClientSecretJwtAssertionLifetimeSecs int
-	IsOpenIdEnabled                      bool // TODO: Use this.
+	OpenIdScopeIsRequired                bool // TODO: use this.
 	IdTokenExpiresInSecs                 int
 	DefaultIdTokenSignatureKeyId         string
 	IdTokenSignatureKeyIds               []string
 	IssuerResponseParameterIsEnabled     bool
 	JarmIsEnabled                        bool
 	JarmLifetimeSecs                     int
-	JarmSignatureKeyId                   string // TODO: Get jarm key based on client?
+	DefaultJarmSignatureKeyId            string   //TODO: It must be rs256
+	JarmSignatureKeyIds                  []string //TODO: Use this.
 	JarIsEnabled                         bool
 	JarIsRequired                        bool
 	JarLifetimeSecs                      int
@@ -46,6 +48,7 @@ type Configuration struct {
 	ParLifetimeSecs                      int
 	DpopIsEnabled                        bool
 	DpopIsRequired                       bool
+	DpopLifetimeSecs                     int
 	DpopSignatureAlgorithms              []jose.SignatureAlgorithm
 	PkceIsEnabled                        bool
 	PkceIsRequired                       bool
@@ -84,22 +87,6 @@ func NewContext(
 		RequestContext: reqContext,
 		Logger:         logger,
 	}
-}
-
-func (ctx Context) GetProfile(requestedScopes []string) constants.Profile {
-	if slices.Contains(requestedScopes, constants.OpenIdScope) {
-		return constants.OpenIdCoreProfile
-	}
-	return constants.OAuthCoreProfile
-}
-
-func (ctx Context) GetAvailablePolicy(session models.AuthnSession) (policy AuthnPolicy, policyIsAvailable bool) {
-	for _, policy = range ctx.Policies {
-		if policyIsAvailable = policy.IsAvailableFunc(session, ctx.RequestContext); policyIsAvailable {
-			break
-		}
-	}
-	return policy, policyIsAvailable
 }
 
 func (ctx Context) GetPolicyById(policyId string) AuthnPolicy {
@@ -158,22 +145,8 @@ func (ctx Context) GetSignatureAlgorithms() []jose.SignatureAlgorithm {
 	return algorithms
 }
 
-func (ctx Context) GetIdTokenSignatureAlgorithms() []jose.SignatureAlgorithm {
-	signatureAlgorithms := []jose.SignatureAlgorithm{}
-	for _, keyId := range ctx.IdTokenSignatureKeyIds {
-		key, _ := ctx.GetPrivateKey(keyId)
-		signatureAlgorithms = append(signatureAlgorithms, jose.SignatureAlgorithm(key.Algorithm))
-	}
-	return signatureAlgorithms
-}
-
-func (ctx Context) GetJarmPrivateKey() jose.JSONWebKey {
-	key, _ := ctx.GetPrivateKey(ctx.JarmSignatureKeyId)
-	return key
-}
-
-func (ctx Context) GetTokenPrivateKey(tokenOptions models.TokenOptions) jose.JSONWebKey {
-	keyId := tokenOptions.SignatureKeyId
+func (ctx Context) GetTokenSignatureKey(tokenOptions models.TokenOptions) jose.JSONWebKey {
+	keyId := tokenOptions.JwtSignatureKeyId
 	if keyId == "" {
 		keyId = ctx.DefaultTokenSignatureKeyId
 	}
@@ -181,8 +154,10 @@ func (ctx Context) GetTokenPrivateKey(tokenOptions models.TokenOptions) jose.JSO
 	return key
 }
 
-func (ctx Context) GetIdTokenPrivateKey(idTokenOptions models.IdTokenOptions) jose.JSONWebKey {
+func (ctx Context) GetIdTokenSignatureKey(idTokenOptions models.IdTokenOptions) jose.JSONWebKey {
+
 	if idTokenOptions.SignatureAlgorithm != "" {
+		// Get the ID token signature key by algorithm.
 		for _, keyId := range ctx.IdTokenSignatureKeyIds {
 			key, _ := ctx.GetPrivateKey(keyId)
 			if key.Algorithm == string(idTokenOptions.SignatureAlgorithm) {
@@ -193,4 +168,36 @@ func (ctx Context) GetIdTokenPrivateKey(idTokenOptions models.IdTokenOptions) jo
 
 	key, _ := ctx.GetPrivateKey(ctx.DefaultIdTokenSignatureKeyId)
 	return key
+}
+
+func (ctx Context) GetIdTokenSignatureAlgorithms() []jose.SignatureAlgorithm {
+	signatureAlgorithms := []jose.SignatureAlgorithm{}
+	for _, keyId := range ctx.IdTokenSignatureKeyIds {
+		key, _ := ctx.GetPrivateKey(keyId)
+		signatureAlgorithms = append(signatureAlgorithms, jose.SignatureAlgorithm(key.Algorithm))
+	}
+	return signatureAlgorithms
+}
+
+func (ctx Context) GetJarmSignatureKey(client models.Client) jose.JSONWebKey {
+	if client.JarmSignatureAlgorithm != "" {
+		for _, keyId := range ctx.JarmSignatureKeyIds {
+			key, _ := ctx.GetPrivateKey(keyId)
+			if key.Algorithm == string(client.JarSignatureAlgorithm) {
+				return key
+			}
+		}
+	}
+
+	key, _ := ctx.GetPrivateKey(ctx.DefaultJarmSignatureKeyId)
+	return key
+}
+
+func (ctx Context) GetJarmSignatureAlgorithms() []jose.SignatureAlgorithm {
+	signatureAlgorithms := []jose.SignatureAlgorithm{}
+	for _, keyId := range ctx.JarmSignatureKeyIds {
+		key, _ := ctx.GetPrivateKey(keyId)
+		signatureAlgorithms = append(signatureAlgorithms, jose.SignatureAlgorithm(key.Algorithm))
+	}
+	return signatureAlgorithms
 }

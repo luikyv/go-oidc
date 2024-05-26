@@ -55,7 +55,7 @@ func validateClientCredentialsGrantRequest(
 		return issues.NewOAuthError(constants.UnauthorizedClient, "invalid grant type")
 	}
 
-	if !client.AreScopesAllowed(unit.SplitStringWithSpaces(req.Scopes)) {
+	if !client.AreScopesAllowed(req.Scopes) {
 		ctx.Logger.Info("scope not allowed")
 		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
 	}

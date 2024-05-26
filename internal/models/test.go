@@ -58,11 +58,6 @@ func GetTestClientWithNoneAuthn() Client {
 				constants.IdTokenAndTokenResponse,
 				constants.CodeAndIdTokenAndTokenResponse,
 			},
-			ResponseModes: []constants.ResponseMode{
-				constants.QueryResponseMode,
-				constants.FragmentResponseMode,
-				constants.FormPostResponseMode,
-			},
 		},
 	}
 }

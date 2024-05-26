@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"log/slog"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
@@ -52,7 +53,11 @@ func ExtractJarFromRequestObject(
 		return models.AuthorizationRequest{}, issues.NewOAuthError(constants.InvalidRequest, "invalid request")
 	}
 
-	// TODO: Validate the jar expiration time.
+	// Validate that the "iat" claim is present and it is not too far in the past.
+	if claims.IssuedAt == nil || int(time.Since(claims.IssuedAt.Time()).Seconds()) > ctx.JarLifetimeSecs {
+		return models.AuthorizationRequest{}, issues.NewOAuthError(constants.InvalidRequest, "invalid request")
+	}
+
 	err = claims.ValidateWithLeeway(jwt.Expected{
 		Issuer:      client.Id,
 		AnyAudience: []string{ctx.Host},
@@ -120,8 +125,9 @@ func ValidateDpopJwt(ctx Context, dpopJwt string, expectedDpopClaims models.Dpop
 		return issues.NewOAuthError(constants.InvalidRequest, "invalid dpop")
 	}
 
-	if claims.IssuedAt == nil {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid iat claim")
+	// Validate that the "iat" claim is present and it is not too far in the past.
+	if claims.IssuedAt == nil || int(time.Since(claims.IssuedAt.Time()).Seconds()) > ctx.DpopLifetimeSecs {
+		return issues.NewOAuthError(constants.AccessDenied, "invalid assertion")
 	}
 
 	if claims.ID == "" {
@@ -189,7 +195,7 @@ func GetTokenId(ctx Context, token string) (string, issues.OAuthError) {
 
 func MakeIdToken(ctx Context, grantOptions models.GrantOptions) string {
 
-	privateJwk := ctx.GetIdTokenPrivateKey(grantOptions.IdTokenOptions)
+	privateJwk := ctx.GetIdTokenSignatureKey(grantOptions.IdTokenOptions)
 	signatureAlgorithm := jose.SignatureAlgorithm(privateJwk.Algorithm)
 	timestampNow := unit.GetTimestampNow()
 
@@ -231,7 +237,7 @@ func MakeIdToken(ctx Context, grantOptions models.GrantOptions) string {
 }
 
 func makeJwtToken(ctx Context, grantOptions models.GrantOptions) models.Token {
-	privateJwk := ctx.GetTokenPrivateKey(grantOptions.TokenOptions)
+	privateJwk := ctx.GetTokenSignatureKey(grantOptions.TokenOptions)
 	jwtId := uuid.NewString()
 	timestampNow := unit.GetTimestampNow()
 	claims := map[string]any{
@@ -313,6 +319,11 @@ func GenerateGrantSession(ctx Context, grantOptions models.GrantOptions) models.
 		createAtTimestamp = nowTimestamp
 	}
 
+	tokenLifetimeSecs := grantOptions.ExpiresInSecs
+	if tokenLifetimeSecs == 0 {
+		tokenLifetimeSecs = constants.DefaultTokenLifetimeSecs
+	}
+
 	grantSession := models.GrantSession{
 		Id:                      sessionId,
 		JwkThumbprint:           token.JwkThumbprint,
@@ -320,7 +331,7 @@ func GenerateGrantSession(ctx Context, grantOptions models.GrantOptions) models.
 		Token:                   token.Value,
 		TokenType:               token.Type,
 		TokenFormat:             token.Format,
-		ExpiresInSecs:           grantOptions.ExpiresInSecs,
+		ExpiresInSecs:           tokenLifetimeSecs,
 		CreatedAtTimestamp:      createAtTimestamp,
 		RenewedAtTimestamp:      nowTimestamp,
 		Subject:                 grantOptions.Subject,
@@ -332,8 +343,12 @@ func GenerateGrantSession(ctx Context, grantOptions models.GrantOptions) models.
 	}
 
 	if grantOptions.ShouldGenerateRefreshToken() {
+		refreshTokenLifetimeSecs := grantOptions.RefreshLifetimeSecs
+		if tokenLifetimeSecs == 0 {
+			refreshTokenLifetimeSecs = constants.DefaultRefreshTokenLifetimeSecs
+		}
 		grantSession.RefreshToken = unit.GenerateRefreshToken()
-		grantSession.RefreshTokenExpiresIn = grantOptions.RefreshLifetimeSecs
+		grantSession.RefreshTokenExpiresIn = refreshTokenLifetimeSecs
 	}
 
 	if grantOptions.ShouldGenerateIdToken() {
@@ -344,4 +359,42 @@ func GenerateGrantSession(ctx Context, grantOptions models.GrantOptions) models.
 		ctx.GrantSessionManager.CreateOrUpdate(grantSession)
 	}
 	return grantSession
+}
+
+func InitAuthnSessionWithPolicy(ctx Context, session *models.AuthnSession) issues.OAuthError {
+	var policy AuthnPolicy
+	var policyIsAvailable bool = false
+	for _, policy = range ctx.Policies {
+		if policyIsAvailable = policy.IsAvailableFunc(*session, ctx.RequestContext); policyIsAvailable {
+			break
+		}
+	}
+
+	if !policyIsAvailable {
+		ctx.Logger.Info("no policy available")
+		return session.NewRedirectError(constants.InvalidRequest, "no policy available")
+	}
+
+	ctx.Logger.Info("policy available", slog.String("policy_id", policy.Id))
+	session.Init(policy.Id)
+	return nil
+}
+
+func RunValidations(
+	ctx Context,
+	params models.AuthorizationParameters,
+	client models.Client,
+	validators ...func(
+		ctx Context,
+		params models.AuthorizationParameters,
+		client models.Client,
+	) issues.OAuthError,
+) issues.OAuthError {
+	for _, validator := range validators {
+		if err := validator(ctx, params, client); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

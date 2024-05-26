@@ -166,11 +166,14 @@ const ClientSecretLength int = 50
 
 const RegistrationAccessTokenLength int = 50
 
+const DefaultTokenLifetimeSecs int = 300
+
+const DefaultRefreshTokenLifetimeSecs int = 6000
+
 type Profile string
 
 const (
-	OAuthCoreProfile  Profile = "oauth_core"
-	OpenIdCoreProfile Profile = "oidc_core"
+	OpenIdProfile Profile = "oidc_profile"
 )
 
 const Charset string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

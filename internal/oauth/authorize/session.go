@@ -7,6 +7,20 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
+func initAuthnSession(
+	ctx utils.Context,
+	req models.AuthorizationRequest,
+	client models.Client,
+) (models.AuthnSession, issues.OAuthError) {
+	session, err := initValidAuthnSession(ctx, req, client)
+	if err != nil {
+		return models.AuthnSession{}, err
+	}
+
+	utils.InitAuthnSessionWithPolicy(ctx, &session)
+	return session, nil
+}
+
 func initValidAuthnSession(
 	ctx utils.Context,
 	req models.AuthorizationRequest,
@@ -84,6 +98,7 @@ func ShouldInitAuthnSessionWithJar(
 	client models.Client,
 ) bool {
 	// Note: if JAR is not enabled, we just disconsider the request object.
+	// Note: If the client defined a signature algorithm for jar, then jar is required.
 	return ctx.JarIsRequired || (ctx.JarIsEnabled && req.RequestObject != "") || client.JarSignatureAlgorithm != ""
 }
 

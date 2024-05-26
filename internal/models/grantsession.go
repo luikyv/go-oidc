@@ -33,8 +33,3 @@ func (grantSession GrantSession) IsRefreshSessionExpired() bool {
 func (grantSession GrantSession) IsExpired() bool {
 	return unit.GetTimestampNow() > grantSession.RenewedAtTimestamp+grantSession.ExpiresInSecs
 }
-
-func (grantSession GrantSession) ShouldSave() bool {
-	// TODO: implement this.
-	return true
-}
