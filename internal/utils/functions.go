@@ -192,9 +192,9 @@ func GetTokenId(ctx Context, token string) (string, models.OAuthError) {
 	return claims.ID, nil
 }
 
-func MakeIdToken(ctx Context, grantOptions models.GrantOptions) string {
+func MakeIdToken(ctx Context, client models.Client, grantOptions models.GrantOptions) string {
 
-	privateJwk := ctx.GetIdTokenSignatureKey(grantOptions.IdTokenOptions)
+	privateJwk := ctx.GetIdTokenSignatureKey(client)
 	signatureAlgorithm := jose.SignatureAlgorithm(privateJwk.Algorithm)
 	timestampNow := unit.GetTimestampNow()
 
@@ -235,7 +235,7 @@ func MakeIdToken(ctx Context, grantOptions models.GrantOptions) string {
 	return idToken
 }
 
-func makeJwtToken(ctx Context, grantOptions models.GrantOptions) models.Token {
+func makeJwtToken(ctx Context, client models.Client, grantOptions models.GrantOptions) models.Token {
 	privateJwk := ctx.GetTokenSignatureKey(grantOptions.TokenOptions)
 	jwtId := uuid.NewString()
 	timestampNow := unit.GetTimestampNow()
@@ -279,7 +279,7 @@ func makeJwtToken(ctx Context, grantOptions models.GrantOptions) models.Token {
 	}
 }
 
-func makeOpaqueToken(ctx Context, grantOptions models.GrantOptions) models.Token {
+func makeOpaqueToken(ctx Context, client models.Client, grantOptions models.GrantOptions) models.Token {
 	accessToken := unit.GenerateRandomString(grantOptions.OpaqueTokenLength, grantOptions.OpaqueTokenLength)
 	tokenType := constants.BearerTokenType
 	jkt := ""
@@ -296,62 +296,48 @@ func makeOpaqueToken(ctx Context, grantOptions models.GrantOptions) models.Token
 	}
 }
 
-func MakeToken(ctx Context, grantOptions models.GrantOptions) models.Token {
+func MakeToken(ctx Context, client models.Client, grantOptions models.GrantOptions) models.Token {
 	if grantOptions.TokenFormat == constants.JwtTokenFormat {
-		return makeJwtToken(ctx, grantOptions)
+		return makeJwtToken(ctx, client, grantOptions)
 	} else {
-		return makeOpaqueToken(ctx, grantOptions)
+		return makeOpaqueToken(ctx, client, grantOptions)
 	}
 }
 
-func GenerateGrantSession(ctx Context, grantOptions models.GrantOptions) models.GrantSession {
+func GenerateGrantSession(ctx Context, client models.Client, grantOptions models.GrantOptions) models.GrantSession {
 	nowTimestamp := unit.GetTimestampNow()
-	token := MakeToken(ctx, grantOptions)
+	token := MakeToken(ctx, client, grantOptions)
 
-	sessionId := grantOptions.SessionId
-	if sessionId == "" {
-		sessionId = uuid.NewString()
+	if grantOptions.SessionId == "" {
+		grantOptions.SessionId = uuid.NewString()
 	}
 
-	createAtTimestamp := grantOptions.CreatedAtTimestamp
-	if createAtTimestamp == 0 {
-		createAtTimestamp = nowTimestamp
+	if grantOptions.CreatedAtTimestamp == 0 {
+		grantOptions.CreatedAtTimestamp = nowTimestamp
 	}
 
-	tokenLifetimeSecs := grantOptions.ExpiresInSecs
-	if tokenLifetimeSecs == 0 {
-		tokenLifetimeSecs = constants.DefaultTokenLifetimeSecs
+	if grantOptions.ExpiresInSecs == 0 {
+		grantOptions.ExpiresInSecs = constants.DefaultTokenLifetimeSecs
 	}
 
 	grantSession := models.GrantSession{
-		Id:                      sessionId,
-		JwkThumbprint:           token.JwkThumbprint,
-		TokenId:                 token.Id,
-		Token:                   token.Value,
-		TokenType:               token.Type,
-		TokenFormat:             token.Format,
-		ExpiresInSecs:           tokenLifetimeSecs,
-		CreatedAtTimestamp:      createAtTimestamp,
-		RenewedAtTimestamp:      nowTimestamp,
-		Subject:                 grantOptions.Subject,
-		ClientId:                grantOptions.ClientId,
-		Scopes:                  grantOptions.Scopes,
-		Nonce:                   grantOptions.Nonce,
-		AdditionalTokenClaims:   grantOptions.AdditionalTokenClaims,
-		AdditionalIdTokenClaims: grantOptions.AdditionalIdTokenClaims,
+		JwkThumbprint:      token.JwkThumbprint,
+		TokenId:            token.Id,
+		Token:              token.Value,
+		TokenType:          token.Type,
+		RenewedAtTimestamp: nowTimestamp,
+		GrantOptions:       grantOptions,
 	}
 
 	if grantOptions.ShouldGenerateRefreshToken() {
-		refreshTokenLifetimeSecs := grantOptions.RefreshLifetimeSecs
-		if tokenLifetimeSecs == 0 {
-			refreshTokenLifetimeSecs = constants.DefaultRefreshTokenLifetimeSecs
+		if grantOptions.RefreshTokenExpiresInSecs == 0 {
+			grantOptions.RefreshTokenExpiresInSecs = constants.DefaultRefreshTokenLifetimeSecs
 		}
 		grantSession.RefreshToken = unit.GenerateRefreshToken()
-		grantSession.RefreshTokenExpiresIn = refreshTokenLifetimeSecs
 	}
 
 	if grantOptions.ShouldGenerateIdToken() {
-		grantSession.IdToken = MakeIdToken(ctx, grantOptions)
+		grantSession.IdToken = MakeIdToken(ctx, client, grantOptions)
 	}
 
 	if grantOptions.ShouldSaveSession() {

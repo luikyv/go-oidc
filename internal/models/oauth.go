@@ -18,9 +18,8 @@ type DpopClaims struct {
 }
 
 type IdTokenOptions struct {
-	Nonce                   string
-	SignatureAlgorithm      jose.SignatureAlgorithm
-	AdditionalIdTokenClaims map[string]string
+	Nonce                   string            `json:"nonce"`
+	AdditionalIdTokenClaims map[string]string `json:"additional_id_token_claims"`
 	// These values here below are intended to be hashed and placed in the ID token.
 	// Then, the ID token can be used as a detached signature for the implicit grant.
 	AccessToken       string
@@ -29,13 +28,13 @@ type IdTokenOptions struct {
 }
 
 type TokenOptions struct {
-	TokenFormat           constants.TokenFormat
-	ExpiresInSecs         int
-	IsRefreshable         bool
-	RefreshLifetimeSecs   int
-	JwtSignatureKeyId     string
-	OpaqueTokenLength     int
-	AdditionalTokenClaims map[string]string
+	TokenFormat               constants.TokenFormat `json:"token_format"`
+	ExpiresInSecs             int                   `json:"expires_in_secs"`
+	IsRefreshable             bool                  `json:"is_refreshable"`
+	RefreshTokenExpiresInSecs int                   `json:"refresh_token_expires_in_secs"`
+	JwtSignatureKeyId         string                `json:"token_signature_key_id"`
+	OpaqueTokenLength         int                   `json:"opaque_token_length"`
+	AdditionalTokenClaims     map[string]string     `json:"additional_token_claims"`
 }
 
 func (opts *TokenOptions) AddTokenClaims(claims map[string]string) {
@@ -43,13 +42,13 @@ func (opts *TokenOptions) AddTokenClaims(claims map[string]string) {
 }
 
 type GrantOptions struct {
-	SessionId          string
-	GrantType          constants.GrantType
-	Subject            string
-	ClientId           string
-	Scopes             string
+	SessionId          string              `json:"id"`
+	GrantType          constants.GrantType `json:"grant_type"`
+	Subject            string              `json:"sub"`
+	ClientId           string              `json:"client_id"`
+	Scopes             string              `json:"scopes"`
 	DpopJwt            string
-	CreatedAtTimestamp int
+	CreatedAtTimestamp int `json:"created_at"`
 	TokenOptions
 	IdTokenOptions
 }

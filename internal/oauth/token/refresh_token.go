@@ -32,11 +32,7 @@ func handleRefreshTokenGrantTokenCreation(
 	}
 
 	ctx.Logger.Debug("update the token session")
-	updatedGrantSession, err := generateUpdatedGrantSession(ctx, grantSession)
-	if err != nil {
-		return models.GrantSession{}, err
-	}
-
+	updatedGrantSession := utils.GenerateGrantSession(ctx, authenticatedClient, newRefreshTokenGrantOptions(ctx, grantSession))
 	return updatedGrantSession, nil
 }
 
@@ -128,36 +124,7 @@ func validateRefreshTokenGrantRequest(
 	return nil
 }
 
-func generateUpdatedGrantSession(
-	ctx utils.Context,
-	grantSession models.GrantSession,
-) (
-	models.GrantSession,
-	models.OAuthError,
-) {
-	updatedGrantSession := utils.GenerateGrantSession(ctx, NewRefreshTokenGrantOptions(grantSession))
-	return updatedGrantSession, nil
-}
-
-func NewRefreshTokenGrantOptions(session models.GrantSession) models.GrantOptions {
-	//TODO: embed the token options in the grant session.
-	return models.GrantOptions{
-		SessionId:          session.Id,
-		GrantType:          constants.RefreshTokenGrant,
-		Scopes:             session.Scopes,
-		Subject:            session.Subject,
-		ClientId:           session.ClientId,
-		CreatedAtTimestamp: session.CreatedAtTimestamp,
-		TokenOptions: models.TokenOptions{
-			TokenFormat:           session.TokenFormat,
-			ExpiresInSecs:         session.ExpiresInSecs,
-			IsRefreshable:         true,
-			RefreshLifetimeSecs:   session.RefreshTokenExpiresIn,
-			AdditionalTokenClaims: session.AdditionalTokenClaims,
-		},
-		IdTokenOptions: models.IdTokenOptions{
-			Nonce:                   session.Nonce,
-			AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
-		},
-	}
+func newRefreshTokenGrantOptions(_ utils.Context, session models.GrantSession) models.GrantOptions {
+	session.GrantType = constants.RefreshTokenGrant
+	return session.GrantOptions
 }

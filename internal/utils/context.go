@@ -11,6 +11,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
+// TODO: pass the client
 type GetTokenOptionsFunc func(clientCustomAttributes map[string]string, scopes string) models.TokenOptions
 
 type Configuration struct {
@@ -30,7 +31,7 @@ type Configuration struct {
 	ClientSignatureAlgorithms            []jose.SignatureAlgorithm
 	PrivateKeyJwtAssertionLifetimeSecs   int
 	ClientSecretJwtAssertionLifetimeSecs int
-	OpenIdScopeIsRequired                bool // TODO: use this.
+	OpenIdScopeIsRequired                bool
 	IdTokenExpiresInSecs                 int
 	DefaultIdTokenSignatureKeyId         string
 	IdTokenSignatureKeyIds               []string
@@ -154,13 +155,13 @@ func (ctx Context) GetTokenSignatureKey(tokenOptions models.TokenOptions) jose.J
 	return key
 }
 
-func (ctx Context) GetIdTokenSignatureKey(idTokenOptions models.IdTokenOptions) jose.JSONWebKey {
+func (ctx Context) GetIdTokenSignatureKey(client models.Client) jose.JSONWebKey {
 
-	if idTokenOptions.SignatureAlgorithm != "" {
+	if client.IdTokenSignatureAlgorithm != "" {
 		// Get the ID token signature key by algorithm.
 		for _, keyId := range ctx.IdTokenSignatureKeyIds {
 			key, _ := ctx.GetPrivateKey(keyId)
-			if key.Algorithm == string(idTokenOptions.SignatureAlgorithm) {
+			if key.Algorithm == string(client.IdTokenSignatureAlgorithm) {
 				return key
 			}
 		}

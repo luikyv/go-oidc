@@ -47,6 +47,11 @@ func authenticate(ctx utils.Context, session *models.AuthnSession) models.OAuthE
 }
 
 func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) models.OAuthError {
+	client, err := ctx.ClientManager.Get(session.ClientId)
+	if err != nil {
+		return session.NewRedirectError(constants.InternalError, "could not load the client")
+	}
+
 	params := make(map[string]string)
 
 	if session.ResponseType.Contains(constants.CodeResponse) {
@@ -54,14 +59,14 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) mod
 	}
 
 	if session.ResponseType.Contains(constants.TokenResponse) {
-		grantSession := utils.GenerateGrantSession(ctx, NewImplicitGrantOptions(ctx, *session))
+		grantSession := utils.GenerateGrantSession(ctx, client, NewImplicitGrantOptions(ctx, *session))
 		params["access_token"] = grantSession.Token
 		params["token_type"] = string(grantSession.TokenType)
 	}
 
 	if session.ResponseType.Contains(constants.IdTokenResponse) {
 		// TODO: Do I need to create the id token again?
-		params["id_token"] = utils.MakeIdToken(ctx, models.GrantOptions{
+		params["id_token"] = utils.MakeIdToken(ctx, client, models.GrantOptions{
 			GrantType: constants.ImplicitGrant,
 			Subject:   session.Subject,
 			ClientId:  session.ClientId,
@@ -70,7 +75,6 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) mod
 				AuthorizationCode:       session.AuthorizationCode,
 				State:                   session.State,
 				Nonce:                   session.Nonce,
-				SignatureAlgorithm:      session.IdTokenSignatureAlgorithm,
 				AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
 			},
 		})
@@ -82,10 +86,6 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) mod
 		params["state"] = session.State
 	}
 
-	client, err := ctx.ClientManager.Get(session.ClientId)
-	if err != nil {
-		return session.NewRedirectError(constants.InternalError, "could not load the client")
-	}
 	redirectResponse(ctx, client, session.AuthorizationParameters, params)
 	return nil
 }

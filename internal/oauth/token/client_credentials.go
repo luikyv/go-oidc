@@ -27,7 +27,7 @@ func handleClientCredentialsGrantTokenCreation(
 		return models.GrantSession{}, oauthErr
 	}
 
-	grantSession := utils.GenerateGrantSession(ctx, newClientCredentialsGrantOptions(ctx, client, req))
+	grantSession := utils.GenerateGrantSession(ctx, client, newClientCredentialsGrantOptions(ctx, client, req))
 	return grantSession, nil
 }
 

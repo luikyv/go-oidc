@@ -15,10 +15,10 @@ import (
 
 func GetTokenOptions(clientCustomAttributes map[string]string, scopes string) models.TokenOptions {
 	return models.TokenOptions{
-		TokenFormat:         constants.JwtTokenFormat,
-		ExpiresInSecs:       600,
-		IsRefreshable:       true,
-		RefreshLifetimeSecs: 60000,
+		TokenFormat:               constants.JwtTokenFormat,
+		ExpiresInSecs:             600,
+		IsRefreshable:             true,
+		RefreshTokenExpiresInSecs: 60000,
 	}
 }
 

@@ -20,15 +20,19 @@ func TestRefreshTokenHandleGrantCreation(t *testing.T) {
 	refreshToken := "random_refresh_token"
 	username := "user_id"
 	grantSession := models.GrantSession{
-		Id:                    "random_id",
-		Token:                 "token",
-		ExpiresInSecs:         60,
-		RefreshToken:          refreshToken,
-		RefreshTokenExpiresIn: 30,
-		CreatedAtTimestamp:    unit.GetTimestampNow(),
-		Subject:               username,
-		ClientId:              models.TestClientId,
-		Scopes:                client.Scopes,
+		Token:        "token",
+		RefreshToken: refreshToken,
+		GrantOptions: models.GrantOptions{
+			SessionId:          "random_id",
+			CreatedAtTimestamp: unit.GetTimestampNow(),
+			Subject:            username,
+			ClientId:           models.TestClientId,
+			Scopes:             client.Scopes,
+			TokenOptions: models.TokenOptions{
+				ExpiresInSecs:             60,
+				RefreshTokenExpiresInSecs: 30,
+			},
+		},
 	}
 	ctx.GrantSessionManager.CreateOrUpdate(grantSession)
 
@@ -82,15 +86,19 @@ func TestRefreshTokenHandleGrantCreationShouldDenyExpiredRefreshToken(t *testing
 	refreshToken := "random_refresh_token"
 	username := "user_id"
 	grantSession := models.GrantSession{
-		Id:                    "random_id",
-		Token:                 "token",
-		RefreshToken:          refreshToken,
-		ExpiresInSecs:         60,
-		RefreshTokenExpiresIn: 0,
-		CreatedAtTimestamp:    unit.GetTimestampNow() - 10,
-		Subject:               username,
-		ClientId:              models.TestClientId,
-		Scopes:                client.Scopes,
+		Token:        "token",
+		RefreshToken: refreshToken,
+		GrantOptions: models.GrantOptions{
+			SessionId:          "random_id",
+			CreatedAtTimestamp: unit.GetTimestampNow() - 10,
+			Subject:            username,
+			ClientId:           models.TestClientId,
+			Scopes:             client.Scopes,
+			TokenOptions: models.TokenOptions{
+				ExpiresInSecs:             60,
+				RefreshTokenExpiresInSecs: 0,
+			},
+		},
 	}
 	ctx.GrantSessionManager.CreateOrUpdate(grantSession)
 
