@@ -1,7 +1,6 @@
 package token_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/luikymagno/auth-server/internal/models"
@@ -22,7 +21,7 @@ func TestAuthorizationCodeHandleGrantCreation(t *testing.T) {
 	session := models.AuthnSession{
 		ClientId: models.TestClientId,
 		AuthorizationParameters: models.AuthorizationParameters{
-			Scopes:      strings.Join(client.Scopes, " "),
+			Scopes:      client.Scopes,
 			RedirectUri: client.RedirectUris[0],
 		},
 		AuthorizationCode:     authorizationCode,

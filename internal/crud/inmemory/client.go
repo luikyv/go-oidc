@@ -1,7 +1,6 @@
 package inmemory
 
 import (
-	issues "github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 )
 
@@ -18,7 +17,7 @@ func NewInMemoryClientManager() *InMemoryClientManager {
 func (manager *InMemoryClientManager) Create(client models.Client) error {
 	_, exists := manager.clients[client.Id]
 	if exists {
-		return issues.ErrorEntityAlreadyExists
+		return models.ErrorEntityAlreadyExists
 	}
 
 	manager.clients[client.Id] = client
@@ -28,7 +27,7 @@ func (manager *InMemoryClientManager) Create(client models.Client) error {
 func (manager *InMemoryClientManager) Update(id string, client models.Client) error {
 	_, exists := manager.clients[id]
 	if !exists {
-		return issues.ErrorEntityNotFound
+		return models.ErrorEntityNotFound
 	}
 
 	manager.clients[id] = client
@@ -38,7 +37,7 @@ func (manager *InMemoryClientManager) Update(id string, client models.Client) er
 func (manager *InMemoryClientManager) Get(id string) (models.Client, error) {
 	client, exists := manager.clients[id]
 	if !exists {
-		return models.Client{}, issues.ErrorEntityNotFound
+		return models.Client{}, models.ErrorEntityNotFound
 	}
 
 	return client, nil

@@ -1,7 +1,6 @@
 package token
 
 import (
-	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -13,7 +12,7 @@ func handleClientCredentialsGrantTokenCreation(
 	req models.TokenRequest,
 ) (
 	models.GrantSession,
-	issues.OAuthError,
+	models.OAuthError,
 ) {
 	if oauthErr := preValidateClientCredentialsGrantRequest(req); oauthErr != nil {
 		return models.GrantSession{}, oauthErr
@@ -32,13 +31,13 @@ func handleClientCredentialsGrantTokenCreation(
 	return grantSession, nil
 }
 
-func preValidateClientCredentialsGrantRequest(req models.TokenRequest) issues.OAuthError {
+func preValidateClientCredentialsGrantRequest(req models.TokenRequest) models.OAuthError {
 	if unit.AnyNonEmpty(req.AuthorizationCode, req.RedirectUri, req.RefreshToken, req.CodeVerifier) {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid parameter for client credentials grant")
+		return models.NewOAuthError(constants.InvalidRequest, "invalid parameter for client credentials grant")
 	}
 
 	if unit.ScopesContainsOpenId(req.Scopes) {
-		return issues.NewOAuthError(constants.InvalidScope, "cannot request openid scope for client credentials grant")
+		return models.NewOAuthError(constants.InvalidScope, "cannot request openid scope for client credentials grant")
 	}
 
 	return nil
@@ -48,16 +47,16 @@ func validateClientCredentialsGrantRequest(
 	ctx utils.Context,
 	req models.TokenRequest,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 
 	if !client.IsGrantTypeAllowed(constants.ClientCredentialsGrant) {
 		ctx.Logger.Info("grant type not allowed")
-		return issues.NewOAuthError(constants.UnauthorizedClient, "invalid grant type")
+		return models.NewOAuthError(constants.UnauthorizedClient, "invalid grant type")
 	}
 
 	if !client.AreScopesAllowed(req.Scopes) {
 		ctx.Logger.Info("scope not allowed")
-		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
+		return models.NewOAuthError(constants.InvalidScope, "invalid scope")
 	}
 
 	return nil

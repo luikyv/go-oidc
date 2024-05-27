@@ -3,7 +3,6 @@ package token
 import (
 	"net/http"
 
-	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
@@ -29,16 +28,16 @@ func HandleGrantCreation(
 	case constants.RefreshTokenGrant:
 		grantSession, err = handleRefreshTokenGrantTokenCreation(ctx, req)
 	default:
-		grantSession, err = models.GrantSession{}, issues.NewOAuthError(constants.UnsupportedGrantType, "unsupported grant type")
+		grantSession, err = models.GrantSession{}, models.NewOAuthError(constants.UnsupportedGrantType, "unsupported grant type")
 	}
 
 	return grantSession, err
 }
 
-func validateDpopJwtRequest(ctx utils.Context, req models.TokenRequest) issues.OAuthError {
+func validateDpopJwtRequest(ctx utils.Context, req models.TokenRequest) models.OAuthError {
 
 	if req.DpopJwt == "" && ctx.DpopIsRequired {
-		return issues.NewOAuthError(constants.InvalidRequest, "missing dpop header")
+		return models.NewOAuthError(constants.InvalidRequest, "missing dpop header")
 	}
 
 	if req.DpopJwt == "" || !ctx.DpopIsEnabled {

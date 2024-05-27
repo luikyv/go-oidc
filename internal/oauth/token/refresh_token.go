@@ -3,7 +3,6 @@ package token
 import (
 	"log/slog"
 
-	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -15,11 +14,11 @@ func handleRefreshTokenGrantTokenCreation(
 	req models.TokenRequest,
 ) (
 	models.GrantSession,
-	issues.OAuthError,
+	models.OAuthError,
 ) {
 
 	if err := preValidateRefreshTokenGrantRequest(req); err != nil {
-		return models.GrantSession{}, issues.NewOAuthError(constants.InvalidRequest, "invalid parameter for refresh token grant")
+		return models.GrantSession{}, models.NewOAuthError(constants.InvalidRequest, "invalid parameter for refresh token grant")
 	}
 
 	authenticatedClient, grantSession, err := getAuthenticatedClientAndGrantSession(ctx, req)
@@ -47,7 +46,7 @@ func getAuthenticatedClientAndGrantSession(
 ) (
 	models.Client,
 	models.GrantSession,
-	issues.OAuthError,
+	models.OAuthError,
 ) {
 
 	ctx.Logger.Debug("get the token session using the refresh token.")
@@ -83,7 +82,7 @@ func getGrantSessionByRefreshToken(
 	if err != nil {
 		ch <- utils.ResultChannel{
 			Result: models.GrantSession{},
-			Err:    issues.NewOAuthError(constants.InvalidRequest, "invalid refresh_token"),
+			Err:    models.NewOAuthError(constants.InvalidRequest, "invalid refresh_token"),
 		}
 	}
 
@@ -95,9 +94,9 @@ func getGrantSessionByRefreshToken(
 
 func preValidateRefreshTokenGrantRequest(
 	req models.TokenRequest,
-) issues.OAuthError {
+) models.OAuthError {
 	if req.RefreshToken == "" || unit.AnyNonEmpty(req.AuthorizationCode, req.RedirectUri, req.Scopes, req.CodeVerifier) {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid parameter for refresh token grant")
+		return models.NewOAuthError(constants.InvalidRequest, "invalid parameter for refresh token grant")
 	}
 
 	return nil
@@ -107,23 +106,23 @@ func validateRefreshTokenGrantRequest(
 	req models.TokenRequest,
 	client models.Client,
 	grantSession models.GrantSession,
-) issues.OAuthError {
+) models.OAuthError {
 
 	if unit.AnyNonEmpty(req.AuthorizationCode, req.RedirectUri, req.Scopes, req.CodeVerifier) {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid parameter for refresh token grant")
+		return models.NewOAuthError(constants.InvalidRequest, "invalid parameter for refresh token grant")
 	}
 
 	if !client.IsGrantTypeAllowed(constants.RefreshTokenGrant) {
-		return issues.NewOAuthError(constants.UnauthorizedClient, "invalid grant type")
+		return models.NewOAuthError(constants.UnauthorizedClient, "invalid grant type")
 	}
 
 	if client.Id != grantSession.ClientId {
-		return issues.NewOAuthError(constants.UnauthorizedClient, "the refresh token was not issued to the client")
+		return models.NewOAuthError(constants.UnauthorizedClient, "the refresh token was not issued to the client")
 	}
 
 	if grantSession.IsRefreshSessionExpired() {
 		//TODO: How to handle the expired sessions? There are just hanging for now.
-		return issues.NewOAuthError(constants.UnauthorizedClient, "the refresh token is expired")
+		return models.NewOAuthError(constants.UnauthorizedClient, "the refresh token is expired")
 	}
 
 	return nil
@@ -134,13 +133,14 @@ func generateUpdatedGrantSession(
 	grantSession models.GrantSession,
 ) (
 	models.GrantSession,
-	issues.OAuthError,
+	models.OAuthError,
 ) {
 	updatedGrantSession := utils.GenerateGrantSession(ctx, NewRefreshTokenGrantOptions(grantSession))
 	return updatedGrantSession, nil
 }
 
 func NewRefreshTokenGrantOptions(session models.GrantSession) models.GrantOptions {
+	//TODO: embed the token options in the grant session.
 	return models.GrantOptions{
 		SessionId:          session.Id,
 		GrantType:          constants.RefreshTokenGrant,
@@ -149,6 +149,10 @@ func NewRefreshTokenGrantOptions(session models.GrantSession) models.GrantOption
 		ClientId:           session.ClientId,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
 		TokenOptions: models.TokenOptions{
+			TokenFormat:           session.TokenFormat,
+			ExpiresInSecs:         session.ExpiresInSecs,
+			IsRefreshable:         true,
+			RefreshLifetimeSecs:   session.RefreshTokenExpiresIn,
 			AdditionalTokenClaims: session.AdditionalTokenClaims,
 		},
 		IdTokenOptions: models.IdTokenOptions{

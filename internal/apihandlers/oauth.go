@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/oauth"
 	"github.com/luikymagno/auth-server/internal/oauth/authorize"
@@ -105,7 +104,7 @@ func HandleTokenRequest(ctx utils.Context) {
 func HandleUserInfoRequest(ctx utils.Context) {
 	token, tokenType, ok := unit.GetAuthorizationToken(ctx.RequestContext)
 	if !ok {
-		bindErrorToResponse(issues.NewOAuthError(constants.AccessDenied, "no token found"), ctx.RequestContext)
+		bindErrorToResponse(models.NewOAuthError(constants.AccessDenied, "no token found"), ctx.RequestContext)
 		return
 	}
 
@@ -147,7 +146,7 @@ func addProofOfPossesionToRequest(ctx utils.Context, req *models.TokenRequest) {
 
 func bindErrorToResponse(err error, requestContext *gin.Context) {
 
-	var oauthErr issues.OAuthError
+	var oauthErr models.OAuthError
 	if errors.As(err, &oauthErr) {
 		requestContext.JSON(http.StatusBadRequest, gin.H{
 			"error":             oauthErr.GetCode(),

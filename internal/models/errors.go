@@ -1,4 +1,4 @@
-package issues
+package models
 
 import (
 	"errors"
@@ -12,21 +12,6 @@ var ErrorEntityAlreadyExists error = errors.New("entity already exists")
 type OAuthError interface {
 	GetCode() constants.ErrorCode
 	Error() string
-}
-
-func NewOAuthError(code constants.ErrorCode, description string) OAuthError {
-	return OAuthBaseError{
-		ErrorCode:        code,
-		ErrorDescription: description,
-	}
-}
-
-func NewWrappingOAuthError(err error, code constants.ErrorCode, description string) OAuthError {
-	return OAuthBaseError{
-		Inner:            err,
-		ErrorCode:        code,
-		ErrorDescription: description,
-	}
 }
 
 type OAuthBaseError struct {
@@ -47,27 +32,36 @@ func (e OAuthBaseError) Unwrap() error {
 	return e.Inner
 }
 
+func NewOAuthError(code constants.ErrorCode, description string) OAuthError {
+	return OAuthBaseError{
+		ErrorCode:        code,
+		ErrorDescription: description,
+	}
+}
+
+func NewWrappingOAuthError(err error, code constants.ErrorCode, description string) OAuthError {
+	return OAuthBaseError{
+		Inner:            err,
+		ErrorCode:        code,
+		ErrorDescription: description,
+	}
+}
+
 type OAuthRedirectError struct {
 	OAuthBaseError
-	RedirectUri  string
-	ResponseMode constants.ResponseMode
-	State        string
+	AuthorizationParameters
 }
 
 func NewOAuthRedirectError(
 	errorCode constants.ErrorCode,
 	errorDescription string,
-	redirectUri string,
-	responseMode constants.ResponseMode,
-	state string,
+	params AuthorizationParameters,
 ) OAuthRedirectError {
 	return OAuthRedirectError{
 		OAuthBaseError: OAuthBaseError{
 			ErrorCode:        errorCode,
 			ErrorDescription: errorDescription,
 		},
-		RedirectUri:  redirectUri,
-		ResponseMode: responseMode,
-		State:        state,
+		AuthorizationParameters: params,
 	}
 }

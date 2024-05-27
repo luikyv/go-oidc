@@ -9,7 +9,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/oauth/authorize"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -47,7 +46,7 @@ func TestInitAuthWhenInvalidRedirectUri(t *testing.T) {
 	})
 
 	// Assert
-	var jsonErr issues.OAuthBaseError
+	var jsonErr models.OAuthBaseError
 	if err == nil || !errors.As(err, &jsonErr) {
 		t.Error("the redirect URI should not be valid")
 		return
@@ -96,7 +95,7 @@ func TestInitAuthWhenInvalidResponseType(t *testing.T) {
 		ClientId: models.TestClientId,
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
-			Scopes:       strings.Join(client.Scopes, " "),
+			Scopes:       client.Scopes,
 			ResponseType: constants.IdTokenResponse,
 		},
 	})
@@ -120,7 +119,7 @@ func TestInitAuthWhenNoPolicyIsAvailable(t *testing.T) {
 		ClientId: models.TestClientId,
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
-			Scopes:       strings.Join(client.Scopes, " "),
+			Scopes:       client.Scopes,
 			ResponseType: constants.CodeResponse,
 		},
 	})
@@ -153,7 +152,7 @@ func TestInitAuthShouldEndWithError(t *testing.T) {
 		ClientId: models.TestClientId,
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
-			Scopes:       strings.Join(client.Scopes, " "),
+			Scopes:       client.Scopes,
 			ResponseType: constants.CodeResponse,
 			ResponseMode: constants.QueryResponseMode,
 		},
@@ -196,7 +195,7 @@ func TestInitAuthShouldEndInProgress(t *testing.T) {
 		ClientId: models.TestClientId,
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
-			Scopes:       strings.Join(client.Scopes, " "),
+			Scopes:       client.Scopes,
 			ResponseType: constants.CodeResponse,
 			ResponseMode: constants.QueryResponseMode,
 		},
@@ -255,7 +254,7 @@ func TestInitAuthPolicyEndsWithSuccess(t *testing.T) {
 		ClientId: models.TestClientId,
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
-			Scopes:       strings.Join(client.Scopes, " "),
+			Scopes:       client.Scopes,
 			ResponseType: constants.CodeAndIdTokenResponse,
 			ResponseMode: constants.FragmentResponseMode,
 			Nonce:        "random_nonce",
@@ -301,7 +300,7 @@ func TestInitAuthWithPar(t *testing.T) {
 			Id: uuid.NewString(),
 			AuthorizationParameters: models.AuthorizationParameters{
 				RequestUri:   requestUri,
-				Scopes:       strings.Join(client.Scopes, " "),
+				Scopes:       client.Scopes,
 				RedirectUri:  client.RedirectUris[0],
 				ResponseType: constants.CodeResponse,
 			},
@@ -321,7 +320,7 @@ func TestInitAuthWithPar(t *testing.T) {
 		AuthorizationParameters: models.AuthorizationParameters{
 			RequestUri:   requestUri,
 			ResponseType: constants.CodeResponse,
-			Scopes:       strings.Join(client.Scopes, " "),
+			Scopes:       client.Scopes,
 		},
 	})
 

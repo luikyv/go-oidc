@@ -1,7 +1,6 @@
 package par
 
 import (
-	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/oauth/authorize"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -14,7 +13,7 @@ func initValidAuthnSession(
 	client models.Client,
 ) (
 	models.AuthnSession,
-	issues.OAuthError,
+	models.OAuthError,
 ) {
 
 	if authorize.ShouldInitAuthnSessionWithJar(ctx, req.AuthorizationParameters, client) {
@@ -30,7 +29,7 @@ func initValidSimpleAuthnSession(
 	client models.Client,
 ) (
 	models.AuthnSession,
-	issues.OAuthError,
+	models.OAuthError,
 ) {
 	if err := validatePar(ctx, req, client); err != nil {
 		ctx.Logger.Info("request has invalid params")
@@ -47,7 +46,7 @@ func initValidAuthnSessionWithJar(
 	client models.Client,
 ) (
 	models.AuthnSession,
-	issues.OAuthError,
+	models.OAuthError,
 ) {
 	jar, err := extractJarFromRequest(ctx, req, client)
 	if err != nil {
@@ -68,10 +67,10 @@ func extractJarFromRequest(
 	client models.Client,
 ) (
 	models.AuthorizationRequest,
-	issues.OAuthError,
+	models.OAuthError,
 ) {
 	if req.RequestObject == "" {
-		return models.AuthorizationRequest{}, issues.NewOAuthError(constants.InvalidRequest, "invalid request object")
+		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidRequest, "invalid request object")
 	}
 
 	return utils.ExtractJarFromRequestObject(ctx, req.RequestObject, client)

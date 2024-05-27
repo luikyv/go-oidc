@@ -4,14 +4,13 @@ import (
 	"log/slog"
 
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func GetAuthenticatedClient(ctx utils.Context, req models.ClientAuthnRequest) (models.Client, issues.OAuthError) {
+func GetAuthenticatedClient(ctx utils.Context, req models.ClientAuthnRequest) (models.Client, models.OAuthError) {
 
 	clientId, oauthErr := validateClientAuthnRequest(ctx, req)
 	if oauthErr != nil {
@@ -21,7 +20,7 @@ func GetAuthenticatedClient(ctx utils.Context, req models.ClientAuthnRequest) (m
 	client, err := ctx.ClientManager.Get(clientId)
 	if err != nil {
 		ctx.Logger.Info("client not found", slog.String("client_id", clientId))
-		return models.Client{}, issues.NewWrappingOAuthError(err, constants.InvalidClient, "invalid client")
+		return models.Client{}, models.NewWrappingOAuthError(err, constants.InvalidClient, "invalid client")
 	}
 
 	if err := utils.AuthenticateClient(ctx, client, req); err != nil {
@@ -105,26 +104,26 @@ func validateClientAuthnRequest(
 	req models.ClientAuthnRequest,
 ) (
 	validClientId string,
-	err issues.OAuthError,
+	err models.OAuthError,
 ) {
 	validClientId, ok := getClientId(ctx, req)
 	if !ok {
-		return "", issues.NewOAuthError(constants.InvalidClient, "invalid client authentication")
+		return "", models.NewOAuthError(constants.InvalidClient, "invalid client authentication")
 	}
 
 	// Validate parameters for client secret basic authentication.
 	if req.ClientSecretBasicAuthn != "" && (req.ClientIdBasicAuthn == "" || unit.AnyNonEmpty(req.ClientSecretPost, string(req.ClientAssertionType), req.ClientAssertion)) {
-		return "", issues.NewOAuthError(constants.InvalidClient, "invalid client authentication")
+		return "", models.NewOAuthError(constants.InvalidClient, "invalid client authentication")
 	}
 
 	// Validate parameters for client secret post authentication.
 	if req.ClientSecretPost != "" && (req.ClientIdPost == "" || unit.AnyNonEmpty(req.ClientIdBasicAuthn, req.ClientSecretBasicAuthn, string(req.ClientAssertionType), req.ClientAssertion)) {
-		return "", issues.NewOAuthError(constants.InvalidClient, "invalid client authentication")
+		return "", models.NewOAuthError(constants.InvalidClient, "invalid client authentication")
 	}
 
 	// Validate parameters for private key jwt authentication.
 	if req.ClientAssertion != "" && (req.ClientAssertionType != constants.JwtBearerAssertion || unit.AnyNonEmpty(req.ClientIdBasicAuthn, req.ClientSecretBasicAuthn, req.ClientSecretPost)) {
-		return "", issues.NewOAuthError(constants.InvalidClient, "invalid client authentication")
+		return "", models.NewOAuthError(constants.InvalidClient, "invalid client authentication")
 	}
 
 	return validClientId, nil

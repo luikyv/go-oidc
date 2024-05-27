@@ -234,7 +234,7 @@ func GetTimestampNow() int {
 
 func SplitStringWithSpaces(s string) []string {
 	slice := []string{}
-	if strings.ReplaceAll(s, " ", "") != "" {
+	if strings.ReplaceAll(strings.Trim(s, " "), " ", "") != "" {
 		slice = strings.Split(s, " ")
 	}
 

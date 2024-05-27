@@ -10,6 +10,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/crud/inmemory"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
+	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
 const (
@@ -19,16 +20,13 @@ const (
 func SetUpTest() (testCtx Context, tearDownTest func()) {
 	// Create
 	privateJwk := unit.GetTestPrivateRs256Jwk("rsa256_key")
-	grantModel := models.GetTestOpaqueGrantModel(TestHost, privateJwk)
-	client := models.GetSecretPostTestClient()
+	client := models.GetTestClientWithSecretPostAuthn()
 
 	// Save
-	testCtx = GetTestInMemoryContext(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privateJwk}})
-	testCtx.GrantModelManager.Create(grantModel)
+	testCtx = GetTestInMemoryContext(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privateJwk}}, privateJwk.KeyID)
 	testCtx.ClientManager.Create(client)
 
 	return testCtx, func() {
-		testCtx.GrantModelManager.Delete(grantModel.Meta.Id)
 		testCtx.ClientManager.Delete(client.Id)
 	}
 }
@@ -40,21 +38,28 @@ func GetTestInMemoryRequestContext() *gin.Context {
 	return ctx
 }
 
-func GetTestInMemoryContext(privateJWKS jose.JSONWebKeySet) Context {
+func GetTestInMemoryContext(privateJWKS jose.JSONWebKeySet, tokenSignatureKeyId string) Context {
 	return Context{
 		Configuration: Configuration{
-			Host:                  TestHost,
-			ScopeManager:          inmemory.NewInMemoryScopeManager(),
-			GrantModelManager:     inmemory.NewInMemoryGrantModelManager(),
-			ClientManager:         inmemory.NewInMemoryClientManager(),
-			GrantSessionManager:   inmemory.NewInMemoryGrantSessionManager(),
-			AuthnSessionManager:   inmemory.NewInMemoryAuthnSessionManager(),
-			ParIsEnabled:          true,
-			JarIsEnabled:          true,
-			PrivateJwks:           privateJWKS,
-			DpopIsEnabled:         true,
-			DpopSigningAlgorithms: []jose.SignatureAlgorithm{jose.ES256, jose.RS256},
-			Policies:              []AuthnPolicy{},
+			Host:                         TestHost,
+			ClientManager:                inmemory.NewInMemoryClientManager(),
+			GrantSessionManager:          inmemory.NewInMemoryGrantSessionManager(),
+			AuthnSessionManager:          inmemory.NewInMemoryAuthnSessionManager(),
+			ParIsEnabled:                 true,
+			JarIsEnabled:                 true,
+			PrivateJwks:                  privateJWKS,
+			DefaultIdTokenSignatureKeyId: tokenSignatureKeyId,
+			DpopIsEnabled:                true,
+			DpopSignatureAlgorithms:      []jose.SignatureAlgorithm{jose.ES256, jose.RS256},
+			DpopLifetimeSecs:             99999999999,
+			Policies:                     []AuthnPolicy{},
+			GetTokenOptions: func(clientCustomAttributes map[string]string, scopes string) models.TokenOptions {
+				return models.TokenOptions{
+					ExpiresInSecs:     60,
+					TokenFormat:       constants.JwtTokenFormat,
+					JwtSignatureKeyId: tokenSignatureKeyId,
+				}
+			},
 		},
 		RequestContext: GetTestInMemoryRequestContext(),
 		Logger:         slog.Default(),

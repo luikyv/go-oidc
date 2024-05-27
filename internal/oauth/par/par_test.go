@@ -2,10 +2,8 @@ package par_test
 
 import (
 	"errors"
-	"strings"
 	"testing"
 
-	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/oauth/par"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -26,7 +24,7 @@ func TestPushAuthorizationShouldRejectUnauthenticatedClient(t *testing.T) {
 	})
 
 	// Assert
-	var jsonError issues.OAuthBaseError
+	var jsonError models.OAuthBaseError
 	if err == nil || !errors.As(err, &jsonError) {
 		t.Error("the client should not be authenticated")
 		return
@@ -51,7 +49,7 @@ func TestPushAuthorizationShouldGenerateRequestUri(t *testing.T) {
 		},
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
-			Scopes:       strings.Join(client.Scopes, " "),
+			Scopes:       client.Scopes,
 			ResponseType: constants.CodeResponse,
 			ResponseMode: constants.QueryResponseMode,
 		},

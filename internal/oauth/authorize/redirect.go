@@ -6,7 +6,6 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -15,10 +14,10 @@ import (
 
 func redirectError(
 	ctx utils.Context,
-	err issues.OAuthError,
+	err models.OAuthError,
 	client models.Client,
-) issues.OAuthError {
-	var oauthErr issues.OAuthRedirectError
+) models.OAuthError {
+	var oauthErr models.OAuthRedirectError //TODO pass params
 	if !errors.As(err, &oauthErr) {
 		return err
 	}
@@ -31,37 +30,37 @@ func redirectError(
 		params["state"] = oauthErr.State
 	}
 
-	redirectResponse(ctx, client, oauthErr.RedirectUri, oauthErr.ResponseMode, params)
+	redirectResponse(ctx, client, oauthErr.AuthorizationParameters, params)
 	return nil
 }
 
 func redirectResponse(
 	ctx utils.Context,
 	client models.Client,
-	redirectUri string,
-	responseMode constants.ResponseMode,
-	params map[string]string,
+	params models.AuthorizationParameters,
+	redirectParams map[string]string,
 ) {
 
 	if ctx.IssuerResponseParameterIsEnabled {
-		params[string(constants.IssuerClaim)] = ctx.Host
+		redirectParams[string(constants.IssuerClaim)] = ctx.Host
 	}
 
+	responseMode := unit.GetResponseModeOrDefault(params.ResponseMode, params.ResponseType)
 	if responseMode.IsJarm() {
-		params = map[string]string{
-			"response": createJarmResponse(ctx, client, params),
+		redirectParams = map[string]string{
+			"response": createJarmResponse(ctx, client, redirectParams),
 		}
 	}
 
 	switch responseMode {
 	case constants.FragmentResponseMode, constants.FragmentJwtResponseMode:
-		redirectUrl := unit.GetUrlWithFragmentParams(redirectUri, params)
+		redirectUrl := unit.GetUrlWithFragmentParams(params.RedirectUri, redirectParams)
 		ctx.RequestContext.Redirect(http.StatusFound, redirectUrl)
 	case constants.FormPostResponseMode, constants.FormPostJwtResponseMode:
-		params["redirect_uri"] = redirectUri
+		redirectParams["redirect_uri"] = params.RedirectUri
 		ctx.RequestContext.HTML(http.StatusOK, "internal_form_post.html", params)
 	default:
-		redirectUrl := unit.GetUrlWithQueryParams(redirectUri, params)
+		redirectUrl := unit.GetUrlWithQueryParams(params.RedirectUri, redirectParams)
 		ctx.RequestContext.Redirect(http.StatusFound, redirectUrl)
 	}
 }

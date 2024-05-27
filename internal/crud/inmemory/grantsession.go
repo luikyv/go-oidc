@@ -1,7 +1,6 @@
 package inmemory
 
 import (
-	issues "github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
 )
@@ -24,7 +23,7 @@ func (manager *InMemoryGrantSessionManager) CreateOrUpdate(grantSession models.G
 func (manager *InMemoryGrantSessionManager) Get(id string) (models.GrantSession, error) {
 	grantSession, exists := manager.GrantSessions[id]
 	if !exists {
-		return models.GrantSession{}, issues.ErrorEntityNotFound
+		return models.GrantSession{}, models.ErrorEntityNotFound
 	}
 
 	return grantSession, nil
@@ -44,7 +43,7 @@ func (manager *InMemoryGrantSessionManager) GetByTokenId(tokenId string) (models
 		return t.TokenId == tokenId
 	})
 	if !exists {
-		return models.GrantSession{}, issues.ErrorEntityNotFound
+		return models.GrantSession{}, models.ErrorEntityNotFound
 	}
 
 	return grantSession, nil
@@ -55,7 +54,7 @@ func (manager *InMemoryGrantSessionManager) GetByRefreshToken(refreshToken strin
 		return t.RefreshToken == refreshToken
 	})
 	if !exists {
-		return models.GrantSession{}, issues.ErrorEntityNotFound
+		return models.GrantSession{}, models.ErrorEntityNotFound
 	}
 
 	return grantSession, nil

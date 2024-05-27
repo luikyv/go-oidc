@@ -2,11 +2,8 @@ package token_test
 
 import (
 	"errors"
-	"strings"
 	"testing"
 
-	"github.com/luikymagno/auth-server/internal/crud/inmemory"
-	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/oauth/token"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -17,7 +14,6 @@ func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(models.TestClientId)
 
 	// Then
 	_, err := token.HandleGrantCreation(ctx, models.TokenRequest{
@@ -26,7 +22,7 @@ func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 			ClientSecretPost: models.TestClientSecret,
 		},
 		GrantType: constants.ClientCredentialsGrant,
-		Scopes:    strings.Join(client.Scopes, " "),
+		Scopes:    "scope1",
 	})
 
 	// Assert
@@ -40,7 +36,6 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(models.TestClientId)
 
 	// Then
 	_, err := token.HandleGrantCreation(ctx, models.TokenRequest{
@@ -49,11 +44,11 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 			ClientSecretPost: "invalid_password",
 		},
 		GrantType: constants.ClientCredentialsGrant,
-		Scopes:    client.Scopes[0],
+		Scopes:    "scope1",
 	})
 
 	// Assert
-	var oauthErr issues.OAuthBaseError
+	var oauthErr models.OAuthBaseError
 	if err == nil || !errors.As(err, &oauthErr) {
 		t.Error("the client should not be authenticated")
 		return
@@ -68,7 +63,6 @@ func TestHandleGrantCreationWithDpop(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(models.TestClientId)
 	req := models.TokenRequest{
 		DpopJwt: "eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiYVRtMk95eXFmaHFfZk5GOVVuZXlrZG0yX0dCZnpZVldDNEI1Wlo1SzNGUSIsInkiOiI4eFRhUERFTVRtNXM1d1MzYmFvVVNNcU01R0VJWDFINzMwX1hqV2lRaGxRIn19.eyJqdGkiOiItQndDM0VTYzZhY2MybFRjIiwiaHRtIjoiUE9TVCIsImh0dSI6Imh0dHBzOi8vZXhhbXBsZS5jb20vdG9rZW4iLCJpYXQiOjE1NjIyNjUyOTZ9.AzzSCVYIimNZyJQefZq7cF252PukDvRrxMqrrcH6FFlHLvpXyk9j8ybtS36GHlnyH_uuy2djQphfyHGeDfxidQ",
 		ClientAuthnRequest: models.ClientAuthnRequest{
@@ -76,11 +70,11 @@ func TestHandleGrantCreationWithDpop(t *testing.T) {
 			ClientSecretPost: models.TestClientSecret,
 		},
 		GrantType: constants.ClientCredentialsGrant,
-		Scopes:    client.Scopes[0],
+		Scopes:    "scope1",
 	}
 
 	// Then
-	_, err := token.HandleGrantCreation(ctx, req)
+	grantSession, err := token.HandleGrantCreation(ctx, req)
 
 	// Assert
 	if err != nil {
@@ -88,18 +82,8 @@ func TestHandleGrantCreationWithDpop(t *testing.T) {
 		return
 	}
 
-	grantSessionManager, _ := ctx.GrantSessionManager.(*inmemory.InMemoryGrantSessionManager)
-	grantSessions := make([]models.GrantSession, 0, len(grantSessionManager.GrantSessions))
-	for _, gs := range grantSessionManager.GrantSessions {
-		grantSessions = append(grantSessions, gs)
-	}
-	if len(grantSessions) != 1 {
-		t.Error("there should be only one token session")
-		return
-	}
-
-	if grantSessions[0].JwkThumbprint != "BABEGlQNVH1K8KXO7qLKtvUFhAadQ5-dVGBfDfelwhQ" {
-		t.Errorf("invalid jwk thumbprint. actual: %s", grantSessions[0].JwkThumbprint)
+	if grantSession.JwkThumbprint != "BABEGlQNVH1K8KXO7qLKtvUFhAadQ5-dVGBfDfelwhQ" {
+		t.Errorf("invalid jwk thumbprint. actual: %s", grantSession.JwkThumbprint)
 		return
 	}
 }

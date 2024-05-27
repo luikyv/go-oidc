@@ -3,7 +3,6 @@ package authorize_test
 import (
 	"testing"
 
-	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/oauth/authorize"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -12,7 +11,7 @@ import (
 )
 
 func TestValidateAuthorizationRequest(t *testing.T) {
-	client := models.GetNoneAuthTestClient()
+	client := models.GetTestClientWithNoneAuthn()
 
 	var cases = []struct {
 		Name                string
@@ -28,7 +27,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 					RedirectUri:  client.RedirectUris[0],
 					ResponseType: constants.CodeResponse,
 					ResponseMode: constants.QueryResponseMode,
-					Scopes:       client.Scopes[0],
+					Scopes:       client.Scopes,
 				},
 			},
 			func(client models.Client) models.Client {
@@ -103,7 +102,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 				AuthorizationParameters: models.AuthorizationParameters{
 					RedirectUri:  "https://invalid.com",
 					ResponseType: constants.CodeResponse,
-					Scopes:       client.Scopes[0],
+					Scopes:       client.Scopes,
 				},
 			},
 			func(client models.Client) models.Client {
@@ -132,7 +131,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 					return
 				}
 
-				_, ok := err.(issues.OAuthRedirectError)
+				_, ok := err.(models.OAuthRedirectError)
 				if c.ShouldRedirectError && !ok {
 					t.Errorf("error is not of type redirect. Error: %v", err)
 				}
@@ -143,7 +142,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 }
 
 func TestValidateAuthorizationRequestWithPar(t *testing.T) {
-	client := models.GetNoneAuthTestClient()
+	client := models.GetTestClientWithNoneAuthn()
 
 	var cases = []struct {
 		Name                string
@@ -161,7 +160,7 @@ func TestValidateAuthorizationRequestWithPar(t *testing.T) {
 					RedirectUri:  client.RedirectUris[0],
 					ResponseType: constants.CodeResponse,
 					ResponseMode: constants.QueryResponseMode,
-					Scopes:       client.Scopes[0],
+					Scopes:       client.Scopes,
 				},
 			},
 			models.AuthnSession{
@@ -220,7 +219,7 @@ func TestValidateAuthorizationRequestWithPar(t *testing.T) {
 					return
 				}
 
-				_, ok := err.(issues.OAuthRedirectError)
+				_, ok := err.(models.OAuthRedirectError)
 				if c.ShouldRedirectError && !ok {
 					t.Errorf("error is not of type redirect. Error: %v", err)
 				}
@@ -230,7 +229,7 @@ func TestValidateAuthorizationRequestWithPar(t *testing.T) {
 }
 
 func TestValidateAuthorizationRequestWithJar(t *testing.T) {
-	client := models.GetNoneAuthTestClient()
+	client := models.GetTestClientWithNoneAuthn()
 
 	var cases = []struct {
 		Name                string
@@ -248,7 +247,7 @@ func TestValidateAuthorizationRequestWithJar(t *testing.T) {
 					RedirectUri:  client.RedirectUris[0],
 					ResponseType: constants.CodeResponse,
 					ResponseMode: constants.QueryResponseMode,
-					Scopes:       client.Scopes[0],
+					Scopes:       client.Scopes,
 					Nonce:        "random_nonce",
 				},
 			},
@@ -321,7 +320,7 @@ func TestValidateAuthorizationRequestWithJar(t *testing.T) {
 					return
 				}
 
-				_, ok := err.(issues.OAuthRedirectError)
+				_, ok := err.(models.OAuthRedirectError)
 				if c.ShouldRedirectError && !ok {
 					t.Errorf("error is not of type redirect. Error: %v", err)
 				}

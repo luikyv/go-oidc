@@ -3,7 +3,6 @@ package apihandlers
 import (
 	"net/http"
 
-	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/oauth/dcr"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -36,7 +35,7 @@ func HandleDynamicClientUpdate(ctx utils.Context) {
 
 	token, ok := unit.GetBearerToken(ctx.RequestContext)
 	if !ok {
-		bindErrorToResponse(issues.NewOAuthError(constants.AccessDenied, "no token found"), ctx.RequestContext)
+		bindErrorToResponse(models.NewOAuthError(constants.AccessDenied, "no token found"), ctx.RequestContext)
 		return
 	}
 
@@ -52,7 +51,7 @@ func HandleDynamicClientUpdate(ctx utils.Context) {
 func HandleDynamicClientRetrieve(ctx utils.Context) {
 	token, ok := unit.GetBearerToken(ctx.RequestContext)
 	if !ok {
-		bindErrorToResponse(issues.NewOAuthError(constants.AccessDenied, "no token found"), ctx.RequestContext)
+		bindErrorToResponse(models.NewOAuthError(constants.AccessDenied, "no token found"), ctx.RequestContext)
 		return
 	}
 
@@ -68,7 +67,7 @@ func HandleDynamicClientRetrieve(ctx utils.Context) {
 func HandleDynamicClientDelete(ctx utils.Context) {
 	token, ok := unit.GetBearerToken(ctx.RequestContext)
 	if !ok {
-		bindErrorToResponse(issues.NewOAuthError(constants.AccessDenied, "no token found"), ctx.RequestContext)
+		bindErrorToResponse(models.NewOAuthError(constants.AccessDenied, "no token found"), ctx.RequestContext)
 		return
 	}
 

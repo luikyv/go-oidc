@@ -1,7 +1,6 @@
 package par
 
 import (
-	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/oauth/authorize"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -13,10 +12,10 @@ func validatePar(
 	ctx utils.Context,
 	req models.PushedAuthorizationRequest,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 
 	if req.RequestUri != "" {
-		return issues.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
+		return models.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
 	}
 
 	return validatePushedAuthorizationParams(ctx, req.AuthorizationParameters, client)
@@ -27,14 +26,14 @@ func validateParWithJar(
 	req models.PushedAuthorizationRequest,
 	jar models.AuthorizationRequest,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 
 	if req.RequestUri != "" {
-		return issues.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
+		return models.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
 	}
 
 	if jar.ClientId != client.Id {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
+		return models.NewOAuthError(constants.InvalidRequest, "invalid client_id")
 	}
 
 	// The PAR RFC (https://datatracker.ietf.org/doc/html/rfc9126#section-3) says:
@@ -48,7 +47,7 @@ func validatePushedAuthorizationParams(
 	ctx utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 	return utils.RunValidations(
 		ctx, params, client,
 		authorize.ValidateCannotRequestCodetResponseTypeWhenAuthorizationCodeGrantIsNotAllowed,
@@ -66,9 +65,9 @@ func validateRedirectUri(
 	_ utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 	if params.RedirectUri != "" && !client.IsRedirectUriAllowed(params.RedirectUri) {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid redirect_uri")
+		return models.NewOAuthError(constants.InvalidRequest, "invalid redirect_uri")
 	}
 	return nil
 }
@@ -77,9 +76,9 @@ func validateResponseType(
 	_ utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 	if params.ResponseType != "" && !client.IsResponseTypeAllowed(params.ResponseType) {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
+		return models.NewOAuthError(constants.InvalidRequest, "invalid response_type")
 	}
 	return nil
 }
@@ -88,13 +87,13 @@ func validateScopes(
 	ctx utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 	if params.Scopes != "" && ctx.OpenIdScopeIsRequired && !unit.ScopesContainsOpenId(params.Scopes) {
-		return issues.NewOAuthError(constants.InvalidScope, "scope openid is required")
+		return models.NewOAuthError(constants.InvalidScope, "scope openid is required")
 	}
 
 	if params.Scopes != "" && !client.AreScopesAllowed(params.Scopes) {
-		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
+		return models.NewOAuthError(constants.InvalidScope, "invalid scope")
 	}
 	return nil
 }
@@ -103,9 +102,9 @@ func validateCannotInformRequestUri(
 	ctx utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 	if params.RequestUri != "" {
-		return issues.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
+		return models.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
 	}
 
 	return nil

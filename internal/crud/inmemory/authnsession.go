@@ -1,7 +1,6 @@
 package inmemory
 
 import (
-	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
 )
@@ -35,7 +34,7 @@ func (manager *InMemoryAuthnSessionManager) GetByCallbackId(callbackId string) (
 		return s.CallbackId == callbackId
 	})
 	if !exists {
-		return models.AuthnSession{}, issues.ErrorEntityNotFound
+		return models.AuthnSession{}, models.ErrorEntityNotFound
 	}
 
 	return session, nil
@@ -46,7 +45,7 @@ func (manager *InMemoryAuthnSessionManager) GetByAuthorizationCode(authorization
 		return s.AuthorizationCode == authorizationCode
 	})
 	if !exists {
-		return models.AuthnSession{}, issues.ErrorEntityNotFound
+		return models.AuthnSession{}, models.ErrorEntityNotFound
 	}
 
 	return session, nil
@@ -57,7 +56,7 @@ func (manager *InMemoryAuthnSessionManager) GetByRequestUri(requestUri string) (
 		return s.RequestUri == requestUri
 	})
 	if !exists {
-		return models.AuthnSession{}, issues.ErrorEntityNotFound
+		return models.AuthnSession{}, models.ErrorEntityNotFound
 	}
 
 	return session, nil

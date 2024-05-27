@@ -1,7 +1,6 @@
 package authorize
 
 import (
-	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
@@ -11,14 +10,13 @@ func initAuthnSession(
 	ctx utils.Context,
 	req models.AuthorizationRequest,
 	client models.Client,
-) (models.AuthnSession, issues.OAuthError) {
+) (models.AuthnSession, models.OAuthError) {
 	session, err := initValidAuthnSession(ctx, req, client)
 	if err != nil {
 		return models.AuthnSession{}, err
 	}
 
-	utils.InitAuthnSessionWithPolicy(ctx, &session)
-	return session, nil
+	return session, utils.InitAuthnSessionWithPolicy(ctx, &session)
 }
 
 func initValidAuthnSession(
@@ -27,7 +25,7 @@ func initValidAuthnSession(
 	client models.Client,
 ) (
 	models.AuthnSession,
-	issues.OAuthError,
+	models.OAuthError,
 ) {
 
 	if shouldInitAuthnSessionWithPar(ctx, req.AuthorizationParameters) {
@@ -55,12 +53,12 @@ func initValidAuthnSessionWithPar(
 	client models.Client,
 ) (
 	models.AuthnSession,
-	issues.OAuthError,
+	models.OAuthError,
 ) {
 
 	session, err := getSessionCreatedWithPar(ctx, req)
 	if err != nil {
-		return models.AuthnSession{}, issues.NewOAuthError(constants.InvalidRequest, "invalid request_uri")
+		return models.AuthnSession{}, models.NewOAuthError(constants.InvalidRequest, "invalid request_uri")
 	}
 
 	if err := validateAuthorizationRequestWithPar(ctx, req, session, client); err != nil {
@@ -78,15 +76,15 @@ func getSessionCreatedWithPar(
 	req models.AuthorizationRequest,
 ) (
 	models.AuthnSession,
-	issues.OAuthError,
+	models.OAuthError,
 ) {
 	if req.RequestUri == "" {
-		return models.AuthnSession{}, issues.NewOAuthError(constants.InvalidRequest, "request_uri is required")
+		return models.AuthnSession{}, models.NewOAuthError(constants.InvalidRequest, "request_uri is required")
 	}
 
 	session, err := ctx.AuthnSessionManager.GetByRequestUri(req.RequestUri)
 	if err != nil {
-		return models.AuthnSession{}, issues.NewOAuthError(constants.InvalidRequest, "invalid request_uri")
+		return models.AuthnSession{}, models.NewOAuthError(constants.InvalidRequest, "invalid request_uri")
 	}
 
 	return session, nil
@@ -108,7 +106,7 @@ func initValidAuthnSessionWithJar(
 	client models.Client,
 ) (
 	models.AuthnSession,
-	issues.OAuthError,
+	models.OAuthError,
 ) {
 
 	jar, err := getJar(ctx, req, client)
@@ -131,10 +129,10 @@ func getJar(
 	client models.Client,
 ) (
 	models.AuthorizationRequest,
-	issues.OAuthError,
+	models.OAuthError,
 ) {
 	if req.RequestObject == "" {
-		return models.AuthorizationRequest{}, issues.NewOAuthError(constants.InvalidRequest, "request object is required")
+		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidRequest, "request object is required")
 	}
 
 	jar, err := utils.ExtractJarFromRequestObject(ctx, req.RequestObject, client)
@@ -151,7 +149,7 @@ func initValidSimpleAuthnSession(
 	client models.Client,
 ) (
 	models.AuthnSession,
-	issues.OAuthError,
+	models.OAuthError,
 ) {
 	ctx.Logger.Info("initiating simple authorization request")
 	if err := validateAuthorizationRequest(ctx, req, client); err != nil {

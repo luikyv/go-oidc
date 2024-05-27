@@ -4,7 +4,6 @@ import (
 	"maps"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
@@ -118,8 +117,8 @@ type AuthorizationParameters struct {
 func (params AuthorizationParameters) NewRedirectError(
 	errorCode constants.ErrorCode,
 	errorDescription string,
-) issues.OAuthRedirectError {
-	return issues.NewOAuthRedirectError(errorCode, errorDescription, params.RedirectUri, params.ResponseMode, params.State)
+) OAuthRedirectError {
+	return NewOAuthRedirectError(errorCode, errorDescription, params)
 }
 
 func (priorities AuthorizationParameters) Merge(params AuthorizationParameters) AuthorizationParameters {

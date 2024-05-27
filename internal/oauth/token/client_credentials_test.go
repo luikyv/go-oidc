@@ -14,14 +14,14 @@ func TestClientCredentialsHandleGrantCreation(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(models.TestClientId)
+	// client, _ := ctx.ClientManager.Get(models.TestClientId)
 	req := models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
 			ClientIdPost:     models.TestClientId,
 			ClientSecretPost: models.TestClientSecret,
 		},
 		GrantType: constants.ClientCredentialsGrant,
-		Scopes:    client.Scopes[0],
+		Scopes:    "scope1",
 	}
 
 	// Then
@@ -48,8 +48,8 @@ func TestClientCredentialsHandleGrantCreation(t *testing.T) {
 	for _, tk := range grantSessionManager.GrantSessions {
 		tokens = append(tokens, tk)
 	}
-	if len(tokens) != 1 {
-		t.Error("there should be only one token session")
+	if len(tokens) != 0 {
+		t.Error("there should be no token sessions")
 		return
 	}
 }

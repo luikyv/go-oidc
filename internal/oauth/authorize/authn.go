@@ -1,13 +1,12 @@
 package authorize
 
 import (
-	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func authenticate(ctx utils.Context, session *models.AuthnSession) issues.OAuthError {
+func authenticate(ctx utils.Context, session *models.AuthnSession) models.OAuthError {
 
 	policy := ctx.GetPolicyById(session.PolicyId)
 	status := constants.Success
@@ -47,7 +46,7 @@ func authenticate(ctx utils.Context, session *models.AuthnSession) issues.OAuthE
 	return nil
 }
 
-func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) issues.OAuthError {
+func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) models.OAuthError {
 	params := make(map[string]string)
 
 	if session.ResponseType.Contains(constants.CodeResponse) {
@@ -87,7 +86,7 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) iss
 	if err != nil {
 		return session.NewRedirectError(constants.InternalError, "could not load the client")
 	}
-	redirectResponse(ctx, client, session.RedirectUri, session.ResponseMode, params)
+	redirectResponse(ctx, client, session.AuthorizationParameters, params)
 	return nil
 }
 

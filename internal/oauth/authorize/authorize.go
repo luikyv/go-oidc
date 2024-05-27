@@ -1,13 +1,12 @@
 package authorize
 
 import (
-	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func InitAuth(ctx utils.Context, req models.AuthorizationRequest) issues.OAuthError {
+func InitAuth(ctx utils.Context, req models.AuthorizationRequest) models.OAuthError {
 	client, err := getClient(ctx, req)
 	if err != nil {
 		return err
@@ -20,7 +19,7 @@ func InitAuth(ctx utils.Context, req models.AuthorizationRequest) issues.OAuthEr
 	return nil
 }
 
-func initAuth(ctx utils.Context, client models.Client, req models.AuthorizationRequest) issues.OAuthError {
+func initAuth(ctx utils.Context, client models.Client, req models.AuthorizationRequest) models.OAuthError {
 	session, err := initAuthnSession(ctx, req, client)
 	if err != nil {
 		return err
@@ -28,12 +27,12 @@ func initAuth(ctx utils.Context, client models.Client, req models.AuthorizationR
 	return authenticate(ctx, &session)
 }
 
-func ContinueAuth(ctx utils.Context, callbackId string) issues.OAuthError {
+func ContinueAuth(ctx utils.Context, callbackId string) models.OAuthError {
 
 	// Fetch the session using the callback ID.
 	session, err := ctx.AuthnSessionManager.GetByCallbackId(callbackId)
 	if err != nil {
-		return issues.NewOAuthError(constants.InvalidRequest, err.Error())
+		return models.NewOAuthError(constants.InvalidRequest, err.Error())
 	}
 
 	if oauthErr := authenticate(ctx, &session); oauthErr != nil {
@@ -49,15 +48,15 @@ func getClient(
 	req models.AuthorizationRequest,
 ) (
 	models.Client,
-	issues.OAuthError,
+	models.OAuthError,
 ) {
 	if req.ClientId == "" {
-		return models.Client{}, issues.NewOAuthError(constants.InvalidClient, "invalid client_id")
+		return models.Client{}, models.NewOAuthError(constants.InvalidClient, "invalid client_id")
 	}
 
 	client, err := ctx.ClientManager.Get(req.ClientId)
 	if err != nil {
-		return models.Client{}, issues.NewOAuthError(constants.InvalidClient, "invalid client_id")
+		return models.Client{}, models.NewOAuthError(constants.InvalidClient, "invalid client_id")
 	}
 
 	return client, nil

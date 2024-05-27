@@ -3,7 +3,6 @@ package authorize
 import (
 	"slices"
 
-	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -15,9 +14,9 @@ func validateAuthorizationRequestWithPar(
 	req models.AuthorizationRequest,
 	session models.AuthnSession,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 	if session.ClientId != req.ClientId {
-		return issues.NewOAuthError(constants.AccessDenied, "invalid client")
+		return models.NewOAuthError(constants.AccessDenied, "invalid client")
 	}
 
 	if err := validateInsideWithOutsideParams(ctx, session.AuthorizationParameters, req.AuthorizationParameters, client); err != nil {
@@ -37,10 +36,10 @@ func validateAuthorizationRequestWithJar(
 	req models.AuthorizationRequest,
 	jar models.AuthorizationRequest,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 
 	if jar.ClientId != client.Id {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid client_id")
+		return models.NewOAuthError(constants.InvalidRequest, "invalid client_id")
 	}
 
 	if err := validateInsideWithOutsideParams(ctx, jar.AuthorizationParameters, req.AuthorizationParameters, client); err != nil {
@@ -63,7 +62,7 @@ func validateAuthorizationRequest(
 	ctx utils.Context,
 	req models.AuthorizationRequest,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 	return validateAuthorizationParams(ctx, req.AuthorizationParameters, client)
 }
 
@@ -72,14 +71,24 @@ func validateInsideWithOutsideParams(
 	insideParams models.AuthorizationParameters,
 	outsideParams models.AuthorizationParameters,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 	mergedParams := insideParams.Merge(outsideParams)
 	if err := validateAuthorizationParams(ctx, mergedParams, client); err != nil {
 		return err
 	}
 
-	if ctx.Profile == constants.OpenIdProfile && insideParams.ResponseType != "" && outsideParams.ResponseType != "" && insideParams.ResponseType != outsideParams.ResponseType {
-		return mergedParams.NewRedirectError(constants.InvalidRequest, "invalid response_type")
+	if ctx.Profile == constants.OpenIdProfile {
+		if outsideParams.ResponseType != "" {
+			return mergedParams.NewRedirectError(constants.InvalidRequest, "invalid response_type")
+		}
+
+		if insideParams.ResponseType != "" && insideParams.ResponseType != outsideParams.ResponseType {
+			return mergedParams.NewRedirectError(constants.InvalidRequest, "invalid response_type")
+		}
+
+		if ctx.OpenIdScopeIsRequired && !unit.ScopesContainsOpenId(outsideParams.Scopes) {
+			return mergedParams.NewRedirectError(constants.InvalidScope, "scope openid is required")
+		}
 	}
 
 	return nil
@@ -89,7 +98,7 @@ func validateAuthorizationParams(
 	ctx utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 	return utils.RunValidations(
 		ctx, params, client,
 		validateRedirectUri,
@@ -111,9 +120,9 @@ func validateRedirectUri(
 	ctx utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 	if params.RedirectUri == "" || !client.IsRedirectUriAllowed(params.RedirectUri) {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid redirect_uri")
+		return models.NewOAuthError(constants.InvalidRequest, "invalid redirect_uri")
 	}
 	return nil
 }
@@ -122,7 +131,7 @@ func ValidateResponseMode(
 	ctx utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 	if params.ResponseMode != "" && (!ctx.JarmIsEnabled && params.ResponseMode.IsJarm()) {
 		return params.NewRedirectError(constants.InvalidRequest, "invalid response_mode")
 	}
@@ -133,9 +142,9 @@ func validateResponseType(
 	_ utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
-) issues.OAuthError {
-	if params.ResponseType != "" || !client.IsResponseTypeAllowed(params.ResponseType) {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid response_type")
+) models.OAuthError {
+	if params.ResponseType == "" || !client.IsResponseTypeAllowed(params.ResponseType) {
+		return params.NewRedirectError(constants.InvalidRequest, "invalid response_type")
 	}
 	return nil
 }
@@ -144,9 +153,9 @@ func validateScopeOpenIdIsRequiredWhenResponseTypeIsIdToken(
 	_ utils.Context,
 	params models.AuthorizationParameters,
 	_ models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 	if params.ResponseType.Contains(constants.IdTokenResponse) && !unit.ScopesContainsOpenId(params.Scopes) {
-		return issues.NewOAuthError(constants.InvalidRequest, "cannot request id_token without the scope openid")
+		return params.NewRedirectError(constants.InvalidRequest, "cannot request id_token without the scope openid")
 	}
 	return nil
 }
@@ -155,13 +164,13 @@ func validateScopes(
 	ctx utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 	if ctx.OpenIdScopeIsRequired && !unit.ScopesContainsOpenId(params.Scopes) {
 		return params.NewRedirectError(constants.InvalidScope, "scope openid is required")
 	}
 
 	if params.Scopes != "" && !client.AreScopesAllowed(params.Scopes) {
-		return issues.NewOAuthError(constants.InvalidScope, "invalid scope")
+		return params.NewRedirectError(constants.InvalidScope, "invalid scope")
 	}
 	return nil
 }
@@ -170,9 +179,9 @@ func validateCannotInformRequestUriAndRequestObject(
 	_ utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 	if params.RequestUri != "" && params.RequestObject != "" {
-		return issues.NewOAuthError(constants.InvalidRequest, "request_uri and request cannot be informed at the same time")
+		return params.NewRedirectError(constants.InvalidRequest, "request_uri and request cannot be informed at the same time")
 	}
 	return nil
 }
@@ -181,7 +190,7 @@ func validatePkce(
 	ctx utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 	if !ctx.PkceIsEnabled {
 		return nil
 	}
@@ -196,9 +205,9 @@ func ValidateCodeChallengeMethod(
 	ctx utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 	if params.CodeChallengeMethod != "" && !slices.Contains(ctx.CodeChallengeMethods, params.CodeChallengeMethod) {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid code_challenge_method")
+		return params.NewRedirectError(constants.InvalidRequest, "invalid code_challenge_method")
 	}
 	return nil
 }
@@ -207,7 +216,7 @@ func ValidateCannotRequestCodetResponseTypeWhenAuthorizationCodeGrantIsNotAllowe
 	_ utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 	if params.ResponseType.Contains(constants.CodeResponse) && !client.IsGrantTypeAllowed(constants.AuthorizationCodeGrant) {
 		return params.NewRedirectError(constants.InvalidGrant, "authorization_code grant not allowed")
 	}
@@ -218,7 +227,7 @@ func ValidateCannotRequestImplicitResponseTypeWhenImplicitGrantIsNotAllowed(
 	_ utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 	if params.ResponseType.IsImplicit() && !client.IsGrantTypeAllowed(constants.ImplicitGrant) {
 		return params.NewRedirectError(constants.InvalidGrant, "implicit grant not allowed")
 	}
@@ -229,7 +238,7 @@ func validateCannotRequestIdTokenResponseTypeIfOpenIdScopeIsNotRequested(
 	_ utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 	if params.ResponseType.Contains(constants.IdTokenResponse) && !unit.ScopesContainsOpenId(params.Scopes) {
 		return params.NewRedirectError(constants.InvalidRequest, "cannot request id_token without the scope openid")
 	}
@@ -240,7 +249,7 @@ func validateCannotRequestQueryResponseModeWhenImplicitResponseTypeIsRequested(
 	_ utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
-) issues.OAuthError {
+) models.OAuthError {
 	if params.ResponseType.IsImplicit() && params.ResponseMode.IsQuery() {
 		return params.NewRedirectError(constants.InvalidRequest, "invalid response_mode for the chosen response_type")
 	}

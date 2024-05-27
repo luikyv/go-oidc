@@ -44,7 +44,7 @@ func NewManager(
 			ClientManager:       clientManager,
 			AuthnSessionManager: authnSessionManager,
 			GrantSessionManager: grantSessionManager,
-			Scopes:              []string{},
+			Scopes:              []string{constants.OpenIdScope},
 			GetTokenOptions: func(clientCustomAttributes map[string]string, scopes string) models.TokenOptions {
 				return models.TokenOptions{
 					ExpiresInSecs: constants.DefaultTokenLifetimeSecs,

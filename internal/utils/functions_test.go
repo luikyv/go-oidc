@@ -16,8 +16,9 @@ func TestExtractJarFromRequestObject(t *testing.T) {
 	// When
 	privateJwk := unit.GetTestPrivateRs256Jwk("rsa256_key")
 	ctx := utils.GetDummyTestContext()
-	ctx.JarAlgorithms = []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJwk.Algorithm)}
-	client := models.GetNoneAuthTestClient()
+	ctx.JarIsEnabled = true
+	ctx.JarSignatureAlgorithms = []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJwk.Algorithm)}
+	client := models.GetTestClientWithNoneAuthn()
 	client.PublicJwks = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privateJwk.Public()}}
 
 	createdAtTimestamp := unit.GetTimestampNow()
@@ -57,7 +58,9 @@ func TestExtractJarFromRequestObject(t *testing.T) {
 
 func TestValidateDpopJwt(t *testing.T) {
 	ctx := utils.GetDummyTestContext()
-	ctx.DpopSigningAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256}
+	ctx.DpopIsEnabled = true
+	ctx.DpopSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256}
+	ctx.DpopLifetimeSecs = 99999999999
 
 	var testCases = []struct {
 		Name           string

@@ -3,14 +3,13 @@ package token
 import (
 	"log/slog"
 
-	"github.com/luikymagno/auth-server/internal/issues"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func handleAuthorizationCodeGrantTokenCreation(ctx utils.Context, req models.TokenRequest) (models.GrantSession, issues.OAuthError) {
+func handleAuthorizationCodeGrantTokenCreation(ctx utils.Context, req models.TokenRequest) (models.GrantSession, models.OAuthError) {
 
 	if oauthErr := preValidateAuthorizationCodeGrantRequest(req); oauthErr != nil {
 		return models.GrantSession{}, oauthErr
@@ -31,9 +30,9 @@ func handleAuthorizationCodeGrantTokenCreation(ctx utils.Context, req models.Tok
 	return grantSession, nil
 }
 
-func preValidateAuthorizationCodeGrantRequest(req models.TokenRequest) issues.OAuthError {
+func preValidateAuthorizationCodeGrantRequest(req models.TokenRequest) models.OAuthError {
 	if req.AuthorizationCode == "" {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid authorization code")
+		return models.NewOAuthError(constants.InvalidRequest, "invalid authorization code")
 	}
 
 	return nil
@@ -44,28 +43,28 @@ func validateAuthorizationCodeGrantRequest(
 	req models.TokenRequest,
 	client models.Client,
 	session models.AuthnSession,
-) issues.OAuthError {
+) models.OAuthError {
 
 	if !client.IsGrantTypeAllowed(constants.AuthorizationCodeGrant) {
-		return issues.NewOAuthError(constants.UnauthorizedClient, "invalid grant type")
+		return models.NewOAuthError(constants.UnauthorizedClient, "invalid grant type")
 	}
 
 	if session.ClientId != client.Id {
-		return issues.NewOAuthError(constants.InvalidGrant, "the authorization code was not issued to the client")
+		return models.NewOAuthError(constants.InvalidGrant, "the authorization code was not issued to the client")
 	}
 
 	if session.IsAuthorizationCodeExpired() {
-		return issues.NewOAuthError(constants.InvalidGrant, "the authorization code is expired")
+		return models.NewOAuthError(constants.InvalidGrant, "the authorization code is expired")
 	}
 
 	if session.RedirectUri != req.RedirectUri {
-		return issues.NewOAuthError(constants.InvalidGrant, "invalid redirect_uri")
+		return models.NewOAuthError(constants.InvalidGrant, "invalid redirect_uri")
 	}
 
 	// RFC 7636. "...with a minimum length of 43 characters and a maximum length of 128 characters."
 	codeVerifierLengh := len(req.CodeVerifier)
 	if req.CodeVerifier != "" && (codeVerifierLengh < 43 || codeVerifierLengh > 128) {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid code verifier")
+		return models.NewOAuthError(constants.InvalidRequest, "invalid code verifier")
 	}
 
 	codeChallengeMethod := session.CodeChallengeMethod
@@ -74,13 +73,13 @@ func validateAuthorizationCodeGrantRequest(
 	}
 	// In the case PKCE is enalbed, if the session was created with a code challenge, the token request must contain the right code verifier.
 	if ctx.PkceIsEnabled && session.CodeChallenge != "" && (req.CodeVerifier == "" || !unit.IsPkceValid(req.CodeVerifier, session.CodeChallenge, codeChallengeMethod)) {
-		return issues.NewOAuthError(constants.InvalidRequest, "invalid pkce")
+		return models.NewOAuthError(constants.InvalidRequest, "invalid pkce")
 	}
 
 	return nil
 }
 
-func getAuthenticatedClientAndSession(ctx utils.Context, req models.TokenRequest) (models.Client, models.AuthnSession, issues.OAuthError) {
+func getAuthenticatedClientAndSession(ctx utils.Context, req models.TokenRequest) (models.Client, models.AuthnSession, models.OAuthError) {
 
 	ctx.Logger.Debug("get the session using the authorization code")
 	sessionResultCh := make(chan utils.ResultChannel)
@@ -111,7 +110,7 @@ func getSessionByAuthorizationCode(ctx utils.Context, authorizationCode string, 
 	if err != nil {
 		ch <- utils.ResultChannel{
 			Result: models.AuthnSession{},
-			Err:    issues.NewWrappingOAuthError(err, constants.InvalidGrant, "invalid authorization code"),
+			Err:    models.NewWrappingOAuthError(err, constants.InvalidGrant, "invalid authorization code"),
 		}
 	}
 
@@ -121,7 +120,7 @@ func getSessionByAuthorizationCode(ctx utils.Context, authorizationCode string, 
 	if err != nil {
 		ch <- utils.ResultChannel{
 			Result: models.AuthnSession{},
-			Err:    issues.NewWrappingOAuthError(err, constants.InternalError, "could not delete session"),
+			Err:    models.NewWrappingOAuthError(err, constants.InternalError, "could not delete session"),
 		}
 	}
 
