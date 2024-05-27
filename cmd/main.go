@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
@@ -23,6 +25,9 @@ func GetTokenOptions(clientCustomAttributes map[string]string, scopes string) mo
 }
 
 func main() {
+	//TODO: remove this.
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
 	port := 83
 	issuer := fmt.Sprintf("https://host.docker.internal:%v", port)
 	// issuer := fmt.Sprintf("https://localhost:%v", port)
@@ -45,12 +50,13 @@ func main() {
 	oauthManager.SetTokenOptions(GetTokenOptions)
 	oauthManager.EnablePushedAuthorizationRequests(60)
 	oauthManager.EnableJwtSecuredAuthorizationRequests(600, jose.PS256, jose.RS256)
-	oauthManager.EnableJwtSecuredAuthorizationResponseMode(600, privatePs256Jwk.KeyID)
+	oauthManager.EnableJwtSecuredAuthorizationResponseMode(600, privateRs256Jwk.KeyID)
 	oauthManager.EnableSecretPostClientAuthn()
 	oauthManager.EnablePrivateKeyJwtClientAuthn(600, jose.RS256, jose.PS256)
 	oauthManager.EnableIssuerResponseParameter()
 	oauthManager.EnableDemonstrationProofOfPossesion(600, jose.RS256, jose.PS256, jose.ES256)
 	oauthManager.EnableProofKeyForCodeExchange(constants.Sha256CodeChallengeMethod)
+	oauthManager.EnableImplicitGrantType()
 
 	// Client one.
 	privateClientOneJwks := GetClientPrivateJwks("client_one_jwks.json")

@@ -148,7 +148,8 @@ func bindErrorToResponse(err error, requestContext *gin.Context) {
 
 	var oauthErr models.OAuthError
 	if errors.As(err, &oauthErr) {
-		requestContext.JSON(http.StatusBadRequest, gin.H{
+		statusCode := unit.GetStatusCode(oauthErr.GetCode())
+		requestContext.JSON(statusCode, gin.H{
 			"error":             oauthErr.GetCode(),
 			"error_description": oauthErr.Error(),
 		})

@@ -18,6 +18,7 @@ func TestExtractJarFromRequestObject(t *testing.T) {
 	ctx := utils.GetDummyTestContext()
 	ctx.JarIsEnabled = true
 	ctx.JarSignatureAlgorithms = []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJwk.Algorithm)}
+	ctx.JarLifetimeSecs = 600
 	client := models.GetTestClientWithNoneAuthn()
 	client.PublicJwks = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privateJwk.Public()}}
 
@@ -30,7 +31,7 @@ func TestExtractJarFromRequestObject(t *testing.T) {
 		string(constants.IssuerClaim):   client.Id,
 		string(constants.AudienceClaim): ctx.Host,
 		string(constants.IssuedAtClaim): createdAtTimestamp,
-		string(constants.ExpiryClaim):   createdAtTimestamp + 60, // TODO: When the jar expires?
+		string(constants.ExpiryClaim):   createdAtTimestamp + 60,
 		"client_id":                     client.Id,
 		"response_type":                 constants.CodeResponse,
 	}

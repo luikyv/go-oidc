@@ -41,18 +41,18 @@ func GetTestInMemoryRequestContext() *gin.Context {
 func GetTestInMemoryContext(privateJWKS jose.JSONWebKeySet, tokenSignatureKeyId string) Context {
 	return Context{
 		Configuration: Configuration{
-			Host:                         TestHost,
-			ClientManager:                inmemory.NewInMemoryClientManager(),
-			GrantSessionManager:          inmemory.NewInMemoryGrantSessionManager(),
-			AuthnSessionManager:          inmemory.NewInMemoryAuthnSessionManager(),
-			ParIsEnabled:                 true,
-			JarIsEnabled:                 true,
-			PrivateJwks:                  privateJWKS,
-			DefaultIdTokenSignatureKeyId: tokenSignatureKeyId,
-			DpopIsEnabled:                true,
-			DpopSignatureAlgorithms:      []jose.SignatureAlgorithm{jose.ES256, jose.RS256},
-			DpopLifetimeSecs:             99999999999,
-			Policies:                     []AuthnPolicy{},
+			Host:                    TestHost,
+			ClientManager:           inmemory.NewInMemoryClientManager(),
+			GrantSessionManager:     inmemory.NewInMemoryGrantSessionManager(),
+			AuthnSessionManager:     inmemory.NewInMemoryAuthnSessionManager(),
+			ParIsEnabled:            true,
+			JarIsEnabled:            true,
+			PrivateJwks:             privateJWKS,
+			IdTokenSignatureKeyIds:  []string{tokenSignatureKeyId},
+			DpopIsEnabled:           true,
+			DpopSignatureAlgorithms: []jose.SignatureAlgorithm{jose.ES256, jose.RS256},
+			DpopLifetimeSecs:        99999999999,
+			Policies:                []AuthnPolicy{},
 			GetTokenOptions: func(clientCustomAttributes map[string]string, scopes string) models.TokenOptions {
 				return models.TokenOptions{
 					ExpiresInSecs:     60,

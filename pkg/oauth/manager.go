@@ -27,14 +27,13 @@ func NewManager(
 	grantSessionManager crud.GrantSessionManager,
 	privateJwks jose.JSONWebKeySet,
 	defaultTokenKeyId string,
-	defaultIdTokenSignatureKeyId string,
-	idTokenSignatureKeyIds []string,
+	defaultIdTokenKeyId string,
+	idTokenSignatureKeyIds []string, // TODO: It's better to have a default key. Validate the alg depending on the profile.
 	idTokenLifetimeSecs int,
 	templates string,
 ) *OAuthManager {
-
-	if !slices.Contains(idTokenSignatureKeyIds, defaultIdTokenSignatureKeyId) {
-		idTokenSignatureKeyIds = append(idTokenSignatureKeyIds, defaultIdTokenSignatureKeyId)
+	if !unit.ContainsAll(idTokenSignatureKeyIds, defaultIdTokenKeyId) {
+		idTokenSignatureKeyIds = append(idTokenSignatureKeyIds, defaultIdTokenKeyId)
 	}
 
 	manager := &OAuthManager{
@@ -53,24 +52,15 @@ func NewManager(
 			},
 			PrivateJwks:                  privateJwks,
 			DefaultTokenSignatureKeyId:   defaultTokenKeyId,
-			DefaultIdTokenSignatureKeyId: defaultIdTokenSignatureKeyId,
+			DefaultIdTokenSignatureKeyId: defaultIdTokenKeyId,
 			IdTokenSignatureKeyIds:       idTokenSignatureKeyIds,
 			IdTokenExpiresInSecs:         idTokenLifetimeSecs,
 			GrantTypes: []constants.GrantType{
 				constants.ClientCredentialsGrant,
 				constants.AuthorizationCodeGrant,
 				constants.RefreshTokenGrant,
-				constants.ImplicitGrant,
 			},
-			ResponseTypes: []constants.ResponseType{
-				constants.CodeResponse,
-				constants.IdTokenResponse,
-				constants.TokenResponse,
-				constants.CodeAndIdTokenResponse,
-				constants.CodeAndTokenResponse,
-				constants.IdTokenAndTokenResponse,
-				constants.CodeAndIdTokenAndTokenResponse,
-			},
+			ResponseTypes: []constants.ResponseType{constants.CodeResponse},
 			ResponseModes: []constants.ResponseMode{
 				constants.QueryResponseMode,
 				constants.FragmentResponseMode,
@@ -90,6 +80,11 @@ func NewManager(
 	return manager
 }
 
+func (manager *OAuthManager) validateConfiguration() {
+	//TODO: Validate the the default id token key id is RS256 when openid profile.
+	// The same for the jarm key id.
+}
+
 func (manager *OAuthManager) RequireOpenIdScope() {
 	manager.OpenIdScopeIsRequired = true
 }
@@ -98,27 +93,17 @@ func (manager *OAuthManager) SetTokenOptions(getTokenOpts utils.GetTokenOptionsF
 	manager.GetTokenOptions = getTokenOpts
 }
 
-func (manager *OAuthManager) SetGrantTypes(grantTypes ...constants.GrantType) {
-	responseTypes := []constants.ResponseType{}
-	if slices.Contains(grantTypes, constants.AuthorizationCodeGrant) {
-		responseTypes = append(responseTypes, constants.CodeResponse)
-	}
-
-	if slices.Contains(grantTypes, constants.ImplicitGrant) {
-		responseTypes = append(responseTypes, constants.TokenResponse, constants.IdTokenResponse, constants.IdTokenAndTokenResponse)
-	}
-
-	if unit.ContainsAll(grantTypes, constants.AuthorizationCodeGrant, constants.ImplicitGrant) {
-		responseTypes = append(
-			responseTypes,
-			constants.CodeAndIdTokenResponse,
-			constants.CodeAndTokenResponse,
-			constants.CodeAndIdTokenAndTokenResponse,
-		)
-	}
-
-	manager.GrantTypes = grantTypes
-	manager.ResponseTypes = responseTypes
+func (manager *OAuthManager) EnableImplicitGrantType() {
+	manager.GrantTypes = append(manager.GrantTypes, constants.ImplicitGrant)
+	manager.ResponseTypes = append(
+		manager.ResponseTypes,
+		constants.TokenResponse,
+		constants.IdTokenResponse,
+		constants.IdTokenAndTokenResponse,
+		constants.CodeAndIdTokenResponse,
+		constants.CodeAndTokenResponse,
+		constants.CodeAndIdTokenAndTokenResponse,
+	)
 }
 
 func (manager *OAuthManager) AddScopes(scopes ...string) {
@@ -145,6 +130,7 @@ func (manager *OAuthManager) EnableJwtSecuredAuthorizationRequests(
 ) {
 	manager.JarIsEnabled = true
 	manager.JarSignatureAlgorithms = jarAlgorithms
+	manager.JarLifetimeSecs = requestObjectLifetimeSecs
 }
 
 func (manager *OAuthManager) RequireJwtSecuredAuthorizationRequests(
@@ -159,23 +145,20 @@ func (manager *OAuthManager) EnableJwtSecuredAuthorizationResponseMode(
 	jarmLifetimeSecs int,
 	defaultJarmSignatureKeyId string,
 	jarmSignatureKeyIds ...string,
-
 ) {
-
-	if !slices.Contains(jarmSignatureKeyIds, defaultJarmSignatureKeyId) {
+	if !unit.ContainsAll(jarmSignatureKeyIds, defaultJarmSignatureKeyId) {
 		jarmSignatureKeyIds = append(jarmSignatureKeyIds, defaultJarmSignatureKeyId)
 	}
+
 	manager.JarmIsEnabled = true
-	manager.ResponseModes = []constants.ResponseMode{
-		constants.QueryResponseMode,
+	manager.ResponseModes = append(
+		manager.ResponseModes,
+		constants.JwtResponseMode,
 		constants.QueryJwtResponseMode,
-		constants.FragmentResponseMode,
 		constants.FragmentJwtResponseMode,
-		constants.FormPostResponseMode,
 		constants.FormPostJwtResponseMode,
-	}
+	)
 	manager.JarmLifetimeSecs = jarmLifetimeSecs
-	manager.DefaultJarmSignatureKeyId = defaultJarmSignatureKeyId
 	manager.JarmSignatureKeyIds = jarmSignatureKeyIds
 
 }
@@ -350,11 +333,13 @@ func (manager *OAuthManager) setUp() {
 }
 
 func (manager *OAuthManager) Run(port int) {
+	manager.validateConfiguration()
 	manager.setUp()
 	manager.Server.Run(":" + fmt.Sprint(port))
 }
 
 func (manager *OAuthManager) RunTLS(port int) {
+	manager.validateConfiguration()
 	manager.setUp()
 	manager.Server.RunTLS(":"+fmt.Sprint(port), "cert.pem", "key.pem")
 }

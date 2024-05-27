@@ -17,7 +17,7 @@ func redirectError(
 	err models.OAuthError,
 	client models.Client,
 ) models.OAuthError {
-	var oauthErr models.OAuthRedirectError //TODO pass params
+	var oauthErr models.OAuthRedirectError
 	if !errors.As(err, &oauthErr) {
 		return err
 	}
@@ -46,7 +46,7 @@ func redirectResponse(
 	}
 
 	responseMode := unit.GetResponseModeOrDefault(params.ResponseMode, params.ResponseType)
-	if responseMode.IsJarm() {
+	if responseMode.IsJarm() || client.JarmSignatureAlgorithm != "" {
 		redirectParams = map[string]string{
 			"response": createJarmResponse(ctx, client, redirectParams),
 		}

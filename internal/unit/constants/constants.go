@@ -1,7 +1,6 @@
 package constants
 
 import (
-	"net/http"
 	"slices"
 	"strings"
 )
@@ -129,17 +128,6 @@ const (
 	UnsupportedGrantType ErrorCode = "unsupported_grant_type"
 	InternalError        ErrorCode = "internal_error"
 )
-
-var ErrorCodeToStatusCode map[ErrorCode]int = map[ErrorCode]int{
-	AccessDenied:         http.StatusForbidden,
-	InvalidClient:        http.StatusUnauthorized,
-	InvalidGrant:         http.StatusBadRequest,
-	InvalidRequest:       http.StatusBadRequest,
-	UnauthorizedClient:   http.StatusBadRequest,
-	InvalidScope:         http.StatusBadRequest,
-	UnsupportedGrantType: http.StatusBadRequest,
-	InternalError:        http.StatusInternalServerError,
-}
 
 type Header string
 

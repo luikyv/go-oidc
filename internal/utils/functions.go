@@ -40,7 +40,8 @@ func ExtractJarFromRequestObject(
 	}
 
 	// Verify that the key ID belongs to the client.
-	keys := client.PublicJwks.Key(parsedToken.Headers[0].KeyID)
+	jwks := client.GetPublicJwks()
+	keys := jwks.Key(parsedToken.Headers[0].KeyID)
 	if len(keys) == 0 {
 		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidRequest, "invalid kid header")
 	}
@@ -52,10 +53,14 @@ func ExtractJarFromRequestObject(
 		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidRequest, "invalid request")
 	}
 
-	// Validate that the "iat" claim is present and it is not too far in the past.
-	if claims.IssuedAt == nil || int(time.Since(claims.IssuedAt.Time()).Seconds()) > ctx.JarLifetimeSecs {
-		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidRequest, "invalid request")
+	if claims.Expiry == nil {
+		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidRequest, "invalid expiration claim")
 	}
+
+	// TODO: the iat claim is not required?
+	// if claims.IssuedAt == nil || int(time.Since(claims.IssuedAt.Time()).Seconds()) > ctx.JarLifetimeSecs {
+	// 	return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidRequest, "invalid request")
+	// }
 
 	err = claims.ValidateWithLeeway(jwt.Expected{
 		Issuer:      client.Id,
@@ -235,7 +240,7 @@ func MakeIdToken(ctx Context, client models.Client, grantOptions models.GrantOpt
 	return idToken
 }
 
-func makeJwtToken(ctx Context, client models.Client, grantOptions models.GrantOptions) models.Token {
+func makeJwtToken(ctx Context, _ models.Client, grantOptions models.GrantOptions) models.Token {
 	privateJwk := ctx.GetTokenSignatureKey(grantOptions.TokenOptions)
 	jwtId := uuid.NewString()
 	timestampNow := unit.GetTimestampNow()
@@ -279,7 +284,7 @@ func makeJwtToken(ctx Context, client models.Client, grantOptions models.GrantOp
 	}
 }
 
-func makeOpaqueToken(ctx Context, client models.Client, grantOptions models.GrantOptions) models.Token {
+func makeOpaqueToken(ctx Context, _ models.Client, grantOptions models.GrantOptions) models.Token {
 	accessToken := unit.GenerateRandomString(grantOptions.OpaqueTokenLength, grantOptions.OpaqueTokenLength)
 	tokenType := constants.BearerTokenType
 	jkt := ""
@@ -361,7 +366,7 @@ func InitAuthnSessionWithPolicy(ctx Context, session *models.AuthnSession) model
 	}
 
 	ctx.Logger.Info("policy available", slog.String("policy_id", policy.Id))
-	session.Init(policy.Id)
+	session.Init(policy.Id) // TODO: Improve this.
 	return nil
 }
 

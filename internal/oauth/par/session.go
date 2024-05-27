@@ -70,7 +70,7 @@ func extractJarFromRequest(
 	models.OAuthError,
 ) {
 	if req.RequestObject == "" {
-		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidRequest, "invalid request object")
+		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidRequest, "request object is required")
 	}
 
 	return utils.ExtractJarFromRequestObject(ctx, req.RequestObject, client)

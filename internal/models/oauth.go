@@ -120,16 +120,16 @@ func (params AuthorizationParameters) NewRedirectError(
 	return NewOAuthRedirectError(errorCode, errorDescription, params)
 }
 
-func (priorities AuthorizationParameters) Merge(params AuthorizationParameters) AuthorizationParameters {
+func (insideParams AuthorizationParameters) Merge(outsideParams AuthorizationParameters) AuthorizationParameters {
 	return AuthorizationParameters{
-		RedirectUri:         unit.GetNonEmptyOrDefault(priorities.RedirectUri, params.RedirectUri),
-		ResponseMode:        unit.GetNonEmptyOrDefault(priorities.ResponseMode, params.ResponseMode),
-		ResponseType:        unit.GetNonEmptyOrDefault(priorities.ResponseType, params.ResponseType),
-		Scopes:              unit.GetNonEmptyOrDefault(priorities.Scopes, params.Scopes),
-		State:               unit.GetNonEmptyOrDefault(priorities.State, params.State),
-		Nonce:               unit.GetNonEmptyOrDefault(priorities.Nonce, params.Nonce),
-		CodeChallenge:       unit.GetNonEmptyOrDefault(priorities.CodeChallenge, params.CodeChallenge),
-		CodeChallengeMethod: unit.GetNonEmptyOrDefault(priorities.CodeChallengeMethod, params.CodeChallengeMethod),
+		RedirectUri:         unit.GetNonEmptyOrDefault(insideParams.RedirectUri, outsideParams.RedirectUri),
+		ResponseMode:        unit.GetNonEmptyOrDefault(insideParams.ResponseMode, outsideParams.ResponseMode),
+		ResponseType:        unit.GetNonEmptyOrDefault(insideParams.ResponseType, outsideParams.ResponseType),
+		Scopes:              unit.GetNonEmptyOrDefault(insideParams.Scopes, outsideParams.Scopes),
+		State:               unit.GetNonEmptyOrDefault(insideParams.State, outsideParams.State),
+		Nonce:               unit.GetNonEmptyOrDefault(insideParams.Nonce, outsideParams.Nonce),
+		CodeChallenge:       unit.GetNonEmptyOrDefault(insideParams.CodeChallenge, outsideParams.CodeChallenge),
+		CodeChallengeMethod: unit.GetNonEmptyOrDefault(insideParams.CodeChallengeMethod, outsideParams.CodeChallengeMethod),
 	}
 }
 
@@ -186,22 +186,6 @@ type OpenIdConfiguration struct {
 	TokenEndpointClientSigningAlgorithms []jose.SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg_values_supported"`
 	IssuerResponseParameterIsEnabled     bool                              `json:"authorization_response_iss_parameter_supported"`
 	DpopSigningAlgorithms                []jose.SignatureAlgorithm         `json:"dpop_signing_alg_values_supported,omitempty"`
-}
-
-type RedirectResponse struct {
-	RedirectUri  string
-	ResponseMode constants.ResponseMode
-	Code         string
-	AccessToken  string
-	TokenType    constants.TokenType
-	IdToken      string
-	State        string
-	// TODO
-}
-
-type ClientAuthnOptions struct {
-	Methods                   []constants.ClientAuthnType
-	ClientSignatureAlgorithms []jose.SignatureAlgorithm
 }
 
 type Token struct {

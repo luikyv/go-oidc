@@ -1,17 +1,12 @@
 package dcr
 
 import (
-	"slices"
-	"strings"
-
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
-	"golang.org/x/crypto/bcrypt"
 )
 
-func RegisterClient(
+func CreateClient(
 	ctx utils.Context,
 	dynamicClient models.DynamicClientRequest,
 ) (
@@ -23,8 +18,12 @@ func RegisterClient(
 		return models.DynamicClientResponse{}, err
 	}
 
-	client := newClient(dynamicClient)
-	if err := ctx.ClientManager.Create(client); err != nil {
+	if ctx.DcrPlugin != nil {
+		ctx.DcrPlugin(ctx.RequestContext, &dynamicClient)
+	}
+
+	newClient := newClient(dynamicClient)
+	if err := ctx.ClientManager.Create(newClient); err != nil {
 		return models.DynamicClientResponse{}, models.NewOAuthError(constants.InternalError, err.Error())
 	}
 
@@ -46,13 +45,22 @@ func UpdateClient(
 	models.DynamicClientResponse,
 	models.OAuthError,
 ) {
-	setUpdateDefaults(ctx, clientId, &dynamicClient)
+	client, err := getProtectedClient(ctx, clientId, registrationAccessToken)
+	if err != nil {
+		return models.DynamicClientResponse{}, err
+	}
+
+	setUpdateDefaults(ctx, client, &dynamicClient)
 	if err := validateDynamicClientRequest(ctx, dynamicClient); err != nil {
 		return models.DynamicClientResponse{}, err
 	}
 
-	client := newClient(dynamicClient)
-	if err := ctx.ClientManager.Update(clientId, client); err != nil {
+	if ctx.DcrPlugin != nil {
+		ctx.DcrPlugin(ctx.RequestContext, &dynamicClient)
+	}
+
+	updatedClient := newClient(dynamicClient)
+	if err := ctx.ClientManager.Update(clientId, updatedClient); err != nil {
 		return models.DynamicClientResponse{}, models.NewOAuthError(constants.InternalError, err.Error())
 	}
 
@@ -74,13 +82,9 @@ func GetClient(
 	models.OAuthError,
 ) {
 
-	client, err := ctx.ClientManager.Get(clientId)
+	client, err := getProtectedClient(ctx, clientId, registrationAccessToken)
 	if err != nil {
-		return models.DynamicClientResponse{}, models.NewOAuthError(constants.InvalidRequest, err.Error())
-	}
-
-	if !client.IsRegistrationAccessTokenValid(registrationAccessToken) {
-		return models.DynamicClientResponse{}, models.NewOAuthError(constants.AccessDenied, "invalid token")
+		return models.DynamicClientResponse{}, err
 	}
 
 	return models.DynamicClientResponse{
@@ -95,135 +99,13 @@ func DeleteClient(
 	clientId string,
 	registrationAccessToken string,
 ) models.OAuthError {
-	client, err := ctx.ClientManager.Get(clientId)
+	_, err := getProtectedClient(ctx, clientId, registrationAccessToken)
 	if err != nil {
-		return models.NewOAuthError(constants.InvalidRequest, err.Error())
-	}
-
-	if !client.IsRegistrationAccessTokenValid(registrationAccessToken) {
-		return models.NewOAuthError(constants.AccessDenied, "invalid token")
+		return err
 	}
 
 	if err := ctx.ClientManager.Delete(clientId); err != nil {
 		return models.NewOAuthError(constants.InternalError, err.Error())
-	}
-	return nil
-}
-
-func setCreationDefaults(ctx utils.Context, dynamicClient *models.DynamicClientRequest) {
-	dynamicClient.Id = unit.GenerateClientId()
-	dynamicClient.RegistrationAccessToken = unit.GenerateRegistrationAccessToken()
-	if dynamicClient.AuthnMethod == constants.ClientSecretPostAuthn || dynamicClient.AuthnMethod == constants.ClientSecretBasicAuthn {
-		dynamicClient.Secret = unit.GenerateClientSecret()
-	}
-
-	if dynamicClient.Scopes == "" {
-		dynamicClient.Scopes = strings.Join(ctx.Scopes, " ")
-	}
-}
-
-func setUpdateDefaults(ctx utils.Context, clientId string, dynamicClient *models.DynamicClientRequest) {
-	setCreationDefaults(ctx, dynamicClient)
-	dynamicClient.Id = clientId
-}
-
-func newClient(dynamicClient models.DynamicClientRequest) models.Client {
-	hashedRegistrationAccessToken, _ := bcrypt.GenerateFromPassword([]byte(dynamicClient.RegistrationAccessToken), bcrypt.DefaultCost)
-	client := models.Client{
-		Id:                            dynamicClient.Id,
-		HashedRegistrationAccessToken: string(hashedRegistrationAccessToken),
-		ClientMetaInfo:                dynamicClient.ClientMetaInfo,
-	}
-
-	if dynamicClient.AuthnMethod == constants.ClientSecretPostAuthn || dynamicClient.AuthnMethod == constants.ClientSecretBasicAuthn {
-		clientHashedSecret, _ := bcrypt.GenerateFromPassword([]byte(dynamicClient.Secret), bcrypt.DefaultCost)
-		client.HashedSecret = string(clientHashedSecret)
-
-	}
-
-	if dynamicClient.AuthnMethod == constants.ClientSecretJwt {
-		client.Secret = dynamicClient.Secret
-	}
-
-	return client
-}
-
-func getClientRegistrationUri(ctx utils.Context, clientId string) string {
-	return ctx.Host + string(constants.DynamicClientEndpoint) + "/" + clientId
-}
-
-func validateDynamicClientRequest(
-	ctx utils.Context,
-	dynamicClient models.DynamicClientRequest,
-) models.OAuthError {
-	return runValidations(
-		ctx, dynamicClient,
-		validateGrantTypes,
-		validateRedirectUris,
-		validateResponseTypes,
-		validateCannotRequestImplicitResponseTypeWithoutImplicitGrant,
-	)
-}
-
-func runValidations(
-	ctx utils.Context,
-	dynamicClient models.DynamicClientRequest,
-	validations ...func(
-		ctx utils.Context,
-		dynamicClient models.DynamicClientRequest,
-	) models.OAuthError,
-) models.OAuthError {
-	for _, validation := range validations {
-		if err := validation(ctx, dynamicClient); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func validateGrantTypes(
-	ctx utils.Context,
-	dynamicClient models.DynamicClientRequest,
-) models.OAuthError {
-	if !unit.ContainsAll(ctx.GrantTypes, dynamicClient.GrantTypes...) {
-		return models.NewOAuthError(constants.InvalidRequest, "grant type not allowed")
-	}
-	return nil
-}
-
-func validateRedirectUris(
-	ctx utils.Context,
-	dynamicClient models.DynamicClientRequest,
-) models.OAuthError {
-	if len(dynamicClient.RedirectUris) == 0 {
-		return models.NewOAuthError(constants.InvalidRequest, "at least one redirect uri must be informed")
-	}
-	return nil
-}
-
-func validateResponseTypes(
-	ctx utils.Context,
-	dynamicClient models.DynamicClientRequest,
-) models.OAuthError {
-	if !unit.ContainsAll(ctx.ResponseTypes, dynamicClient.ResponseTypes...) {
-		return models.NewOAuthError(constants.InvalidRequest, "response type not allowed")
-	}
-	return nil
-}
-
-func validateCannotRequestImplicitResponseTypeWithoutImplicitGrant(
-	ctx utils.Context,
-	dynamicClient models.DynamicClientRequest,
-) models.OAuthError {
-	containsImplicitResponseType := false
-	for _, rt := range dynamicClient.ResponseTypes {
-		if rt.IsImplicit() {
-			containsImplicitResponseType = true
-		}
-	}
-
-	if containsImplicitResponseType && !slices.Contains(ctx.GrantTypes, constants.ImplicitGrant) {
-		return models.NewOAuthError(constants.InvalidRequest, "implicit grant type is required for implicit response types")
 	}
 	return nil
 }

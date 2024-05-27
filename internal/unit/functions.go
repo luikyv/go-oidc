@@ -5,9 +5,13 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"hash"
+	"io"
 	"math/rand"
+	"net/http"
 	"net/url"
 	"reflect"
 	"slices"
@@ -280,4 +284,34 @@ func GenerateHalfHashClaim(claimValue string, idTokenAlgorithm jose.SignatureAlg
 	hash.Write([]byte(claimValue))
 	halfHashedClaim := hash.Sum(nil)[:hash.Size()/2]
 	return base64.RawURLEncoding.EncodeToString(halfHashedClaim)
+}
+
+func GetJwks(jwksUri string) (jose.JSONWebKeySet, error) {
+	resp, err := http.Get(jwksUri)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		return jose.JSONWebKeySet{}, errors.New("could not fetch client jwks")
+	}
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return jose.JSONWebKeySet{}, errors.New("could not fetch client jwks")
+	}
+
+	var jwks jose.JSONWebKeySet
+	if err := json.Unmarshal(respBody, &jwks); err != nil {
+		return jose.JSONWebKeySet{}, errors.New("could not parse client jwks")
+	}
+
+	return jwks, nil
+}
+
+func GetStatusCode(errorCode constants.ErrorCode) int {
+	switch errorCode {
+	case constants.AccessDenied:
+		return http.StatusForbidden
+	case constants.InvalidClient:
+		return http.StatusUnauthorized
+	default:
+		return http.StatusBadRequest
+	}
 }

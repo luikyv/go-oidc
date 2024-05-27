@@ -13,13 +13,14 @@ import (
 //---------------------------------------- Client ----------------------------------------//
 
 type ClientMetaInfo struct {
+	Name                      string                          `json:"client_name"`
 	RedirectUris              []string                        `json:"redirect_uris"`
 	GrantTypes                []constants.GrantType           `json:"grant_types"`
 	ResponseTypes             []constants.ResponseType        `json:"response_types"`
 	PublicJwksUri             string                          `json:"jwks_uri"`
 	PublicJwks                jose.JSONWebKeySet              `json:"jwks"`
 	Scopes                    string                          `json:"scope"`
-	SubjectIdentifierType     constants.SubjectIdentifierType `json:"subject_type"`
+	SubjectIdentifierType     constants.SubjectIdentifierType `json:"subject_type,omitempty"`
 	IdTokenSignatureAlgorithm jose.SignatureAlgorithm         `json:"id_token_signed_response_alg,omitempty"`
 	JarSignatureAlgorithm     jose.SignatureAlgorithm         `json:"request_object_signing_alg,omitempty"`
 	JarmSignatureAlgorithm    jose.SignatureAlgorithm         `json:"authorization_signed_response_alg,omitempty"`
@@ -38,8 +39,11 @@ type Client struct {
 }
 
 func (c Client) GetPublicJwks() jose.JSONWebKeySet {
-	// TODO: use the uri
-	return c.PublicJwks
+	if c.PublicJwks.Keys != nil {
+		return c.PublicJwks
+	}
+	jwks, _ := unit.GetJwks(c.PublicJwksUri) // TODO: handle error
+	return jwks
 }
 
 func (client Client) AreScopesAllowed(requestedScopes string) bool {

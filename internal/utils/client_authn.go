@@ -59,7 +59,8 @@ func authenticateWithPrivateKeyJwt(ctx Context, client models.Client, req models
 	}
 
 	// Verify that the key ID belongs to the client.
-	keys := client.PublicJwks.Key(assertion.Headers[0].KeyID)
+	jwks := client.GetPublicJwks()
+	keys := jwks.Key(assertion.Headers[0].KeyID)
 	if len(keys) == 0 {
 		return models.NewOAuthError(constants.InvalidClient, "invalid assertion")
 	}

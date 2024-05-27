@@ -17,7 +17,7 @@ func HandleDynamicClientCreation(ctx utils.Context) {
 		return
 	}
 
-	resp, err := dcr.RegisterClient(ctx, req)
+	resp, err := dcr.CreateClient(ctx, req)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return

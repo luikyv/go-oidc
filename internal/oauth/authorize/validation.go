@@ -103,6 +103,7 @@ func validateAuthorizationParams(
 		ctx, params, client,
 		validateRedirectUri,
 		ValidateResponseMode,
+		ValidateJwtResponseModeIsRequired,
 		validateResponseType,
 		validateScopes,
 		validateScopeOpenIdIsRequiredWhenResponseTypeIsIdToken,
@@ -135,6 +136,20 @@ func ValidateResponseMode(
 	if params.ResponseMode != "" && (!ctx.JarmIsEnabled && params.ResponseMode.IsJarm()) {
 		return params.NewRedirectError(constants.InvalidRequest, "invalid response_mode")
 	}
+
+	return nil
+}
+
+func ValidateJwtResponseModeIsRequired(
+	ctx utils.Context,
+	params models.AuthorizationParameters,
+	client models.Client,
+) models.OAuthError {
+	// If the client has defined a signature algorithm for JARM, then JARM is required.
+	if params.ResponseMode != "" && client.JarmSignatureAlgorithm != "" && !params.ResponseMode.IsJarm() {
+		return params.NewRedirectError(constants.InvalidRequest, "invalid response_mode")
+	}
+
 	return nil
 }
 

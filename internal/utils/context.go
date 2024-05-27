@@ -38,8 +38,8 @@ type Configuration struct {
 	IssuerResponseParameterIsEnabled     bool
 	JarmIsEnabled                        bool
 	JarmLifetimeSecs                     int
-	DefaultJarmSignatureKeyId            string   //TODO: It must be rs256
-	JarmSignatureKeyIds                  []string //TODO: Use this.
+	DefaultJarmSignatureKeyId            string
+	JarmSignatureKeyIds                  []string
 	JarIsEnabled                         bool
 	JarIsRequired                        bool
 	JarLifetimeSecs                      int
@@ -57,6 +57,7 @@ type Configuration struct {
 	SubjectIdentifierTypes               []constants.SubjectIdentifierType
 	Policies                             []AuthnPolicy
 	GetTokenOptions                      GetTokenOptionsFunc
+	DcrPlugin                            func(reqCtx *gin.Context, dynamicClient *models.DynamicClientRequest)
 }
 
 type Context struct {
@@ -156,9 +157,7 @@ func (ctx Context) GetTokenSignatureKey(tokenOptions models.TokenOptions) jose.J
 }
 
 func (ctx Context) GetIdTokenSignatureKey(client models.Client) jose.JSONWebKey {
-
 	if client.IdTokenSignatureAlgorithm != "" {
-		// Get the ID token signature key by algorithm.
 		for _, keyId := range ctx.IdTokenSignatureKeyIds {
 			key, _ := ctx.GetPrivateKey(keyId)
 			if key.Algorithm == string(client.IdTokenSignatureAlgorithm) {
@@ -184,7 +183,7 @@ func (ctx Context) GetJarmSignatureKey(client models.Client) jose.JSONWebKey {
 	if client.JarmSignatureAlgorithm != "" {
 		for _, keyId := range ctx.JarmSignatureKeyIds {
 			key, _ := ctx.GetPrivateKey(keyId)
-			if key.Algorithm == string(client.JarSignatureAlgorithm) {
+			if key.Algorithm == string(client.JarmSignatureAlgorithm) {
 				return key
 			}
 		}

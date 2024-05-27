@@ -54,6 +54,7 @@ func validatePushedAuthorizationParams(
 		authorize.ValidateCannotRequestImplicitResponseTypeWhenImplicitGrantIsNotAllowed,
 		validateRedirectUri,
 		authorize.ValidateResponseMode,
+		authorize.ValidateJwtResponseModeIsRequired,
 		validateScopes,
 		validateResponseType,
 		authorize.ValidateCodeChallengeMethod,
