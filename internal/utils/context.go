@@ -35,6 +35,8 @@ type Configuration struct {
 	IdTokenExpiresInSecs                 int
 	DefaultIdTokenSignatureKeyId         string
 	IdTokenSignatureKeyIds               []string
+	ShouldRotateRefreshToken             bool
+	RefreshTokenLifetimeSecs             int
 	IssuerResponseParameterIsEnabled     bool
 	JarmIsEnabled                        bool
 	JarmLifetimeSecs                     int

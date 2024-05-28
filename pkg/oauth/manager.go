@@ -58,7 +58,6 @@ func NewProvider(
 			GrantTypes: []constants.GrantType{
 				constants.ClientCredentialsGrant,
 				constants.AuthorizationCodeGrant,
-				constants.RefreshTokenGrant, //TODO: Implement flag to rotate access tokens.
 			},
 			ResponseTypes: []constants.ResponseType{constants.CodeResponse},
 			ResponseModes: []constants.ResponseMode{
@@ -90,6 +89,13 @@ func (provider *OpenIdProvider) validateConfiguration() {
 	if provider.Profile == constants.OpenIdProfile && defaultJarmSignatureKey.Algorithm != string(jose.RS256) {
 		panic("the default signature algorithm for JARM must be RS256")
 	}
+}
+
+func (provider *OpenIdProvider) EnableRefreshTokenGrant(refreshTokenLifetimeSecs int, shouldRotateTokens bool) {
+	//TODO: make sure it's working
+	provider.GrantTypes = append(provider.GrantTypes, constants.RefreshTokenGrant)
+	provider.RefreshTokenLifetimeSecs = refreshTokenLifetimeSecs
+	provider.ShouldRotateRefreshToken = shouldRotateTokens
 }
 
 func (provider *OpenIdProvider) RequireOpenIdScope() {

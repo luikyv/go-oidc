@@ -334,11 +334,9 @@ func GenerateGrantSession(ctx Context, client models.Client, grantOptions models
 		GrantOptions:       grantOptions,
 	}
 
-	if grantOptions.ShouldGenerateRefreshToken() {
-		if grantOptions.RefreshTokenExpiresInSecs == 0 {
-			grantOptions.RefreshTokenExpiresInSecs = constants.DefaultRefreshTokenLifetimeSecs
-		}
+	if grantOptions.ShouldGenerateRefreshToken(client) {
 		grantSession.RefreshToken = unit.GenerateRefreshToken()
+		grantSession.RefreshTokenExpiresInSecs = ctx.RefreshTokenLifetimeSecs
 	}
 
 	if grantOptions.ShouldGenerateIdToken() {

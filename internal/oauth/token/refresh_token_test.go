@@ -20,8 +20,9 @@ func TestRefreshTokenHandleGrantCreation(t *testing.T) {
 	refreshToken := "random_refresh_token"
 	username := "user_id"
 	grantSession := models.GrantSession{
-		Token:        "token",
-		RefreshToken: refreshToken,
+		Token:                     "token",
+		RefreshToken:              refreshToken,
+		RefreshTokenExpiresInSecs: 30,
 		GrantOptions: models.GrantOptions{
 			SessionId:          "random_id",
 			CreatedAtTimestamp: unit.GetTimestampNow(),
@@ -29,8 +30,7 @@ func TestRefreshTokenHandleGrantCreation(t *testing.T) {
 			ClientId:           models.TestClientId,
 			Scopes:             client.Scopes,
 			TokenOptions: models.TokenOptions{
-				ExpiresInSecs:             60,
-				RefreshTokenExpiresInSecs: 30,
+				ExpiresInSecs: 60,
 			},
 		},
 	}
@@ -86,8 +86,9 @@ func TestRefreshTokenHandleGrantCreationShouldDenyExpiredRefreshToken(t *testing
 	refreshToken := "random_refresh_token"
 	username := "user_id"
 	grantSession := models.GrantSession{
-		Token:        "token",
-		RefreshToken: refreshToken,
+		Token:                     "token",
+		RefreshToken:              refreshToken,
+		RefreshTokenExpiresInSecs: 0,
 		GrantOptions: models.GrantOptions{
 			SessionId:          "random_id",
 			CreatedAtTimestamp: unit.GetTimestampNow() - 10,
@@ -95,8 +96,7 @@ func TestRefreshTokenHandleGrantCreationShouldDenyExpiredRefreshToken(t *testing
 			ClientId:           models.TestClientId,
 			Scopes:             client.Scopes,
 			TokenOptions: models.TokenOptions{
-				ExpiresInSecs:             60,
-				RefreshTokenExpiresInSecs: 0,
+				ExpiresInSecs: 60,
 			},
 		},
 	}

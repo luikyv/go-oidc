@@ -17,10 +17,9 @@ import (
 
 func GetTokenOptions(client models.Client, scopes string) models.TokenOptions {
 	return models.TokenOptions{
-		TokenFormat:               constants.JwtTokenFormat,
-		ExpiresInSecs:             600,
-		IsRefreshable:             true,
-		RefreshTokenExpiresInSecs: 60000,
+		TokenFormat:   constants.JwtTokenFormat,
+		ExpiresInSecs: 600,
+		ShouldRefresh: true,
 	}
 }
 
@@ -57,6 +56,7 @@ func main() {
 	oauthManager.EnableDemonstrationProofOfPossesion(600, jose.RS256, jose.PS256, jose.ES256)
 	oauthManager.EnableProofKeyForCodeExchange(constants.Sha256CodeChallengeMethod)
 	oauthManager.EnableImplicitGrantType()
+	oauthManager.EnableRefreshTokenGrant(6000, true)
 
 	// Client one.
 	privateClientOneJwks := GetClientPrivateJwks("client_one_jwks.json")

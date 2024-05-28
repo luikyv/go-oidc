@@ -6,13 +6,14 @@ import (
 )
 
 type GrantSession struct {
-	JwkThumbprint      string `json:"jwk_thumbprint"`
-	TokenId            string `json:"token_id"`
-	Token              string
-	TokenType          constants.TokenType
-	IdToken            string
-	RefreshToken       string `json:"refresh_token"`
-	RenewedAtTimestamp int    `json:"updated_at"`
+	JwkThumbprint             string `json:"jwk_thumbprint"`
+	TokenId                   string `json:"token_id"`
+	Token                     string
+	TokenType                 constants.TokenType
+	IdToken                   string
+	RefreshToken              string `json:"refresh_token"`
+	RefreshTokenExpiresInSecs int    `json:"refresh_token_expires_in_secs"`
+	RenewedAtTimestamp        int    `json:"updated_at"`
 	GrantOptions
 }
 

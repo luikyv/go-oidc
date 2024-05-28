@@ -28,13 +28,12 @@ type IdTokenOptions struct {
 }
 
 type TokenOptions struct {
-	TokenFormat               constants.TokenFormat `json:"token_format"`
-	ExpiresInSecs             int                   `json:"expires_in_secs"`
-	IsRefreshable             bool                  `json:"is_refreshable"`
-	RefreshTokenExpiresInSecs int                   `json:"refresh_token_expires_in_secs"`
-	JwtSignatureKeyId         string                `json:"token_signature_key_id"`
-	OpaqueTokenLength         int                   `json:"opaque_token_length"`
-	AdditionalTokenClaims     map[string]string     `json:"additional_token_claims"`
+	TokenFormat           constants.TokenFormat `json:"token_format"`
+	ExpiresInSecs         int                   `json:"expires_in_secs"`
+	ShouldRefresh         bool                  `json:"is_refreshable"`
+	JwtSignatureKeyId     string                `json:"token_signature_key_id"`
+	OpaqueTokenLength     int                   `json:"opaque_token_length"`
+	AdditionalTokenClaims map[string]string     `json:"additional_token_claims"`
 }
 
 func (opts *TokenOptions) AddTokenClaims(claims map[string]string) {
@@ -53,9 +52,9 @@ type GrantOptions struct {
 	IdTokenOptions
 }
 
-func (grantOptions GrantOptions) ShouldGenerateRefreshToken() bool {
-	// There is no need to create a refresh token for the client credentials grant since no user consent is needed.
-	return grantOptions.GrantType != constants.ClientCredentialsGrant && grantOptions.IsRefreshable
+func (grantOptions GrantOptions) ShouldGenerateRefreshToken(client Client) bool {
+	// TODO: review this.
+	return (grantOptions.GrantType == constants.AuthorizationCodeGrant || grantOptions.GrantType == constants.RefreshTokenGrant) && client.IsGrantTypeAllowed(constants.RefreshTokenGrant) && grantOptions.GrantType != constants.ClientCredentialsGrant && grantOptions.ShouldRefresh
 }
 
 func (grantOptions GrantOptions) ShouldGenerateIdToken() bool {
@@ -67,7 +66,7 @@ func (grantOptions GrantOptions) ShouldSaveSession() bool {
 		return false
 	}
 
-	return grantOptions.TokenFormat == constants.OpaqueTokenFormat || grantOptions.IsRefreshable || unit.ScopesContainsOpenId(grantOptions.Scopes)
+	return grantOptions.TokenFormat == constants.OpaqueTokenFormat || grantOptions.ShouldRefresh || unit.ScopesContainsOpenId(grantOptions.Scopes)
 }
 
 type ClientAuthnRequest struct {
