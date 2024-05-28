@@ -36,7 +36,6 @@ func IdentityAuthnFunc(ctx utils.Context, session *models.AuthnSession) (constan
 
 	session.SetUserId(identityForm.Username)
 	session.SetCustomTokenClaim("custom_claim", "random_value")
-	session.SetCustomTokenClaim("client_attribute", session.GetClientAttribute("custom_attribute"))
 	if strings.Contains(session.Scopes, "email") {
 		session.SetCustomIdTokenClaim("email", "random@email.com")
 	}

@@ -83,3 +83,7 @@ func (client Client) IsRegistrationAccessTokenValid(registrationAccessToken stri
 	err := bcrypt.CompareHashAndPassword([]byte(client.HashedRegistrationAccessToken), []byte(registrationAccessToken))
 	return err == nil
 }
+
+func (client Client) GetCustomAttribute(key string) string {
+	return client.Attributes[key]
+}

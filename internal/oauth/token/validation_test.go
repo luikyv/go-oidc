@@ -12,7 +12,7 @@ import (
 
 func TestValidateClientAuthnRequest(t *testing.T) {
 	ctx := utils.GetDummyTestContext()
-	ctx.ClientSignatureAlgorithms = append(ctx.ClientSignatureAlgorithms, jose.RS256, jose.PS256)
+	ctx.PrivateKeyJwtSignatureAlgorithms = append(ctx.PrivateKeyJwtSignatureAlgorithms, jose.RS256, jose.PS256)
 	// When.
 	expectedClientId := "random_client_id"
 	var cases = []struct {

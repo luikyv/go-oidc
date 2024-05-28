@@ -53,7 +53,7 @@ func GetTestInMemoryContext(privateJWKS jose.JSONWebKeySet, tokenSignatureKeyId 
 			DpopSignatureAlgorithms: []jose.SignatureAlgorithm{jose.ES256, jose.RS256},
 			DpopLifetimeSecs:        99999999999,
 			Policies:                []AuthnPolicy{},
-			GetTokenOptions: func(clientCustomAttributes map[string]string, scopes string) models.TokenOptions {
+			GetTokenOptions: func(client models.Client, scopes string) models.TokenOptions {
 				return models.TokenOptions{
 					ExpiresInSecs:     60,
 					TokenFormat:       constants.JwtTokenFormat,

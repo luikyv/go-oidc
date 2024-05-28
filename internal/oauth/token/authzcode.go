@@ -26,7 +26,7 @@ func handleAuthorizationCodeGrantTokenCreation(ctx utils.Context, req models.Tok
 		return models.GrantSession{}, oauthErr
 	}
 
-	grantSession := utils.GenerateGrantSession(ctx, authenticatedClient, newAuthorizationCodeGrantOptions(ctx, req, session))
+	grantSession := utils.GenerateGrantSession(ctx, authenticatedClient, newAuthorizationCodeGrantOptions(ctx, req, authenticatedClient, session))
 	return grantSession, nil
 }
 
@@ -130,9 +130,14 @@ func getSessionByAuthorizationCode(ctx utils.Context, authorizationCode string, 
 	}
 }
 
-func newAuthorizationCodeGrantOptions(ctx utils.Context, req models.TokenRequest, session models.AuthnSession) models.GrantOptions {
+func newAuthorizationCodeGrantOptions(
+	ctx utils.Context,
+	req models.TokenRequest,
+	client models.Client,
+	session models.AuthnSession,
+) models.GrantOptions {
 
-	tokenOptions := ctx.GetTokenOptions(session.ClientAttributes, req.Scopes)
+	tokenOptions := ctx.GetTokenOptions(client, req.Scopes)
 	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
 	return models.GrantOptions{
 		GrantType:    constants.AuthorizationCodeGrant,

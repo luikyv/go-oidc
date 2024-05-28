@@ -22,7 +22,7 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 		IdTokenSigningAlgorithms:             ctx.GetIdTokenSignatureAlgorithms(),
 		ClientAuthnMethods:                   ctx.ClientAuthnMethods,
 		Scopes:                               ctx.Scopes,
-		TokenEndpointClientSigningAlgorithms: ctx.ClientSignatureAlgorithms,
+		TokenEndpointClientSigningAlgorithms: ctx.GetClientSignatureAlgorithms(),
 		IssuerResponseParameterIsEnabled:     ctx.IssuerResponseParameterIsEnabled,
 	}
 

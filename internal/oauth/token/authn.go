@@ -76,7 +76,7 @@ func appendClientIdFromAssertion(
 }
 
 func getClientIdFromAssertion(ctx utils.Context, assertion string) (string, bool) {
-	parsedAssertion, err := jwt.ParseSigned(assertion, ctx.ClientSignatureAlgorithms)
+	parsedAssertion, err := jwt.ParseSigned(assertion, ctx.GetClientSignatureAlgorithms())
 	if err != nil {
 		return "", false
 	}

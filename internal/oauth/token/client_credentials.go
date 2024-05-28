@@ -63,7 +63,7 @@ func validateClientCredentialsGrantRequest(
 }
 
 func newClientCredentialsGrantOptions(ctx utils.Context, client models.Client, req models.TokenRequest) models.GrantOptions {
-	tokenOptions := ctx.GetTokenOptions(client.Attributes, req.Scopes)
+	tokenOptions := ctx.GetTokenOptions(client, req.Scopes)
 	return models.GrantOptions{
 		GrantType:    constants.ClientCredentialsGrant,
 		Scopes:       req.Scopes,

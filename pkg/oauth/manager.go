@@ -15,12 +15,12 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-type OAuthManager struct {
+type OpenIdProvider struct {
 	utils.Configuration
 	Server *gin.Engine
 }
 
-func NewManager(
+func NewProvider(
 	host string,
 	clientManager crud.ClientManager,
 	authnSessionManager crud.AuthnSessionManager,
@@ -28,15 +28,15 @@ func NewManager(
 	privateJwks jose.JSONWebKeySet,
 	defaultTokenKeyId string,
 	defaultIdTokenKeyId string,
-	idTokenSignatureKeyIds []string, // TODO: It's better to have a default key. Validate the alg depending on the profile.
+	idTokenSignatureKeyIds []string,
 	idTokenLifetimeSecs int,
 	templates string,
-) *OAuthManager {
+) *OpenIdProvider {
 	if !unit.ContainsAll(idTokenSignatureKeyIds, defaultIdTokenKeyId) {
 		idTokenSignatureKeyIds = append(idTokenSignatureKeyIds, defaultIdTokenKeyId)
 	}
 
-	manager := &OAuthManager{
+	provider := &OpenIdProvider{
 		Configuration: utils.Configuration{
 			Host:                host,
 			Profile:             constants.OpenIdProfile,
@@ -44,7 +44,7 @@ func NewManager(
 			AuthnSessionManager: authnSessionManager,
 			GrantSessionManager: grantSessionManager,
 			Scopes:              []string{constants.OpenIdScope},
-			GetTokenOptions: func(clientCustomAttributes map[string]string, scopes string) models.TokenOptions {
+			GetTokenOptions: func(client models.Client, scopes string) models.TokenOptions {
 				return models.TokenOptions{
 					ExpiresInSecs: constants.DefaultTokenLifetimeSecs,
 					TokenFormat:   constants.JwtTokenFormat,
@@ -58,7 +58,7 @@ func NewManager(
 			GrantTypes: []constants.GrantType{
 				constants.ClientCredentialsGrant,
 				constants.AuthorizationCodeGrant,
-				constants.RefreshTokenGrant,
+				constants.RefreshTokenGrant, //TODO: Implement flag to rotate access tokens.
 			},
 			ResponseTypes: []constants.ResponseType{constants.CodeResponse},
 			ResponseModes: []constants.ResponseMode{
@@ -66,37 +66,44 @@ func NewManager(
 				constants.FragmentResponseMode,
 				constants.FormPostResponseMode,
 			},
-			ClientAuthnMethods:        []constants.ClientAuthnType{},
-			ClientSignatureAlgorithms: []jose.SignatureAlgorithm{},
-			CodeChallengeMethods:      []constants.CodeChallengeMethod{},
-			DpopSignatureAlgorithms:   []jose.SignatureAlgorithm{},
-			SubjectIdentifierTypes:    []constants.SubjectIdentifierType{constants.PublicSubjectIdentifier},
-			Policies:                  make([]utils.AuthnPolicy, 0),
+			ClientAuthnMethods:      []constants.ClientAuthnType{},
+			CodeChallengeMethods:    []constants.CodeChallengeMethod{},
+			DpopSignatureAlgorithms: []jose.SignatureAlgorithm{},
+			SubjectIdentifierTypes:  []constants.SubjectIdentifierType{constants.PublicSubjectIdentifier},
+			Policies:                make([]utils.AuthnPolicy, 0),
 		},
 		Server: gin.Default(),
 	}
-	manager.Server.LoadHTMLGlob(templates)
+	provider.Server.LoadHTMLGlob(templates)
 
-	return manager
+	return provider
 }
 
-func (manager *OAuthManager) validateConfiguration() {
-	//TODO: Validate the the default id token key id is RS256 when openid profile.
-	// The same for the jarm key id.
+func (provider *OpenIdProvider) validateConfiguration() {
+
+	defaultIdTokenSignatureKey := provider.PrivateJwks.Key(provider.DefaultIdTokenSignatureKeyId)[0]
+	if provider.Profile == constants.OpenIdProfile && defaultIdTokenSignatureKey.Algorithm != string(jose.RS256) {
+		panic("the default signature algorithm for ID tokens must be RS256")
+	}
+
+	defaultJarmSignatureKey := provider.PrivateJwks.Key(provider.DefaultJarmSignatureKeyId)[0]
+	if provider.Profile == constants.OpenIdProfile && defaultJarmSignatureKey.Algorithm != string(jose.RS256) {
+		panic("the default signature algorithm for JARM must be RS256")
+	}
 }
 
-func (manager *OAuthManager) RequireOpenIdScope() {
-	manager.OpenIdScopeIsRequired = true
+func (provider *OpenIdProvider) RequireOpenIdScope() {
+	provider.OpenIdScopeIsRequired = true
 }
 
-func (manager *OAuthManager) SetTokenOptions(getTokenOpts utils.GetTokenOptionsFunc) {
-	manager.GetTokenOptions = getTokenOpts
+func (provider *OpenIdProvider) SetTokenOptions(getTokenOpts utils.GetTokenOptionsFunc) {
+	provider.GetTokenOptions = getTokenOpts
 }
 
-func (manager *OAuthManager) EnableImplicitGrantType() {
-	manager.GrantTypes = append(manager.GrantTypes, constants.ImplicitGrant)
-	manager.ResponseTypes = append(
-		manager.ResponseTypes,
+func (provider *OpenIdProvider) EnableImplicitGrantType() {
+	provider.GrantTypes = append(provider.GrantTypes, constants.ImplicitGrant)
+	provider.ResponseTypes = append(
+		provider.ResponseTypes,
 		constants.TokenResponse,
 		constants.IdTokenResponse,
 		constants.IdTokenAndTokenResponse,
@@ -106,42 +113,42 @@ func (manager *OAuthManager) EnableImplicitGrantType() {
 	)
 }
 
-func (manager *OAuthManager) AddScopes(scopes ...string) {
+func (provider *OpenIdProvider) AddScopes(scopes ...string) {
 	if slices.Contains(scopes, constants.OpenIdScope) {
-		manager.Scopes = scopes
+		provider.Scopes = scopes
 	} else {
-		manager.Scopes = append(scopes, constants.OpenIdScope)
+		provider.Scopes = append(scopes, constants.OpenIdScope)
 	}
 }
 
-func (manager *OAuthManager) EnablePushedAuthorizationRequests(parLifetimeSecs int) {
-	manager.ParLifetimeSecs = parLifetimeSecs
-	manager.ParIsEnabled = true
+func (provider *OpenIdProvider) EnablePushedAuthorizationRequests(parLifetimeSecs int) {
+	provider.ParLifetimeSecs = parLifetimeSecs
+	provider.ParIsEnabled = true
 }
 
-func (manager *OAuthManager) RequirePushedAuthorizationRequests(parLifetimeSecs int) {
-	manager.EnablePushedAuthorizationRequests(parLifetimeSecs)
-	manager.ParIsRequired = true
+func (provider *OpenIdProvider) RequirePushedAuthorizationRequests(parLifetimeSecs int) {
+	provider.EnablePushedAuthorizationRequests(parLifetimeSecs)
+	provider.ParIsRequired = true
 }
 
-func (manager *OAuthManager) EnableJwtSecuredAuthorizationRequests(
+func (provider *OpenIdProvider) EnableJwtSecuredAuthorizationRequests(
 	requestObjectLifetimeSecs int,
 	jarAlgorithms ...jose.SignatureAlgorithm,
 ) {
-	manager.JarIsEnabled = true
-	manager.JarSignatureAlgorithms = jarAlgorithms
-	manager.JarLifetimeSecs = requestObjectLifetimeSecs
+	provider.JarIsEnabled = true
+	provider.JarSignatureAlgorithms = jarAlgorithms
+	provider.JarLifetimeSecs = requestObjectLifetimeSecs
 }
 
-func (manager *OAuthManager) RequireJwtSecuredAuthorizationRequests(
+func (provider *OpenIdProvider) RequireJwtSecuredAuthorizationRequests(
 	requestObjectLifetimeSecs int,
 	jarAlgorithms ...jose.SignatureAlgorithm,
 ) {
-	manager.EnableJwtSecuredAuthorizationRequests(requestObjectLifetimeSecs, jarAlgorithms...)
-	manager.JarIsRequired = true
+	provider.EnableJwtSecuredAuthorizationRequests(requestObjectLifetimeSecs, jarAlgorithms...)
+	provider.JarIsRequired = true
 }
 
-func (manager *OAuthManager) EnableJwtSecuredAuthorizationResponseMode(
+func (provider *OpenIdProvider) EnableJwtSecuredAuthorizationResponseMode(
 	jarmLifetimeSecs int,
 	defaultJarmSignatureKeyId string,
 	jarmSignatureKeyIds ...string,
@@ -150,87 +157,87 @@ func (manager *OAuthManager) EnableJwtSecuredAuthorizationResponseMode(
 		jarmSignatureKeyIds = append(jarmSignatureKeyIds, defaultJarmSignatureKeyId)
 	}
 
-	manager.JarmIsEnabled = true
-	manager.ResponseModes = append(
-		manager.ResponseModes,
+	provider.JarmIsEnabled = true
+	provider.ResponseModes = append(
+		provider.ResponseModes,
 		constants.JwtResponseMode,
 		constants.QueryJwtResponseMode,
 		constants.FragmentJwtResponseMode,
 		constants.FormPostJwtResponseMode,
 	)
-	manager.JarmLifetimeSecs = jarmLifetimeSecs
-	manager.JarmSignatureKeyIds = jarmSignatureKeyIds
+	provider.JarmLifetimeSecs = jarmLifetimeSecs
+	provider.JarmSignatureKeyIds = jarmSignatureKeyIds
 
 }
 
-func (manager *OAuthManager) EnableSecretPostClientAuthn() {
-	manager.ClientAuthnMethods = append(manager.ClientAuthnMethods, constants.ClientSecretPostAuthn)
+func (provider *OpenIdProvider) EnableSecretPostClientAuthn() {
+	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.ClientSecretPostAuthn)
 }
 
-func (manager *OAuthManager) EnablePrivateKeyJwtClientAuthn(assertionLifetimeSecs int, signatureAlgorithms ...jose.SignatureAlgorithm) {
+func (provider *OpenIdProvider) EnablePrivateKeyJwtClientAuthn(assertionLifetimeSecs int, signatureAlgorithms ...jose.SignatureAlgorithm) {
 	// TODO: Make sure signatureAlgorithms don't contain symetric algorithms.
-	manager.ClientAuthnMethods = append(manager.ClientAuthnMethods, constants.PrivateKeyJwtAuthn)
-	manager.PrivateKeyJwtAssertionLifetimeSecs = assertionLifetimeSecs
-	manager.ClientSignatureAlgorithms = append(manager.ClientSignatureAlgorithms, signatureAlgorithms...)
+	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.PrivateKeyJwtAuthn)
+	provider.PrivateKeyJwtAssertionLifetimeSecs = assertionLifetimeSecs
+	provider.PrivateKeyJwtSignatureAlgorithms = signatureAlgorithms
 }
 
-func (manager *OAuthManager) EnableClientSecretJwtAuthn(assertionLifetimeSecs int, signatureAlgorithms ...jose.SignatureAlgorithm) {
+func (provider *OpenIdProvider) EnableClientSecretJwtAuthn(assertionLifetimeSecs int, signatureAlgorithms ...jose.SignatureAlgorithm) {
 	// TODO: Make sure signatureAlgorithms don't contain asymetric algorithms.
-	manager.ClientAuthnMethods = append(manager.ClientAuthnMethods, constants.ClientSecretBasicAuthn)
-	manager.ClientSecretJwtAssertionLifetimeSecs = assertionLifetimeSecs
-	manager.ClientSignatureAlgorithms = append(manager.ClientSignatureAlgorithms, signatureAlgorithms...)
+	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.ClientSecretBasicAuthn)
+	provider.ClientSecretJwtAssertionLifetimeSecs = assertionLifetimeSecs
+	provider.ClientSecretJwtSignatureAlgorithms = signatureAlgorithms
 }
 
-func (manager *OAuthManager) EnableIssuerResponseParameter() {
-	manager.IssuerResponseParameterIsEnabled = true
+func (provider *OpenIdProvider) EnableIssuerResponseParameter() {
+	provider.IssuerResponseParameterIsEnabled = true
 }
 
-func (manager *OAuthManager) EnableDemonstrationProofOfPossesion(
+func (provider *OpenIdProvider) EnableDemonstrationProofOfPossesion(
 	dpopLifetimeSecs int,
 	dpopSigningAlgorithms ...jose.SignatureAlgorithm,
 ) {
-	manager.DpopIsEnabled = true
-	manager.DpopLifetimeSecs = dpopLifetimeSecs
-	manager.DpopSignatureAlgorithms = dpopSigningAlgorithms
+	provider.DpopIsEnabled = true
+	provider.DpopLifetimeSecs = dpopLifetimeSecs
+	provider.DpopSignatureAlgorithms = dpopSigningAlgorithms
 }
 
-func (manager *OAuthManager) RequireDemonstrationProofOfPossesion(
+func (provider *OpenIdProvider) RequireDemonstrationProofOfPossesion(
 	dpopLifetimeSecs int,
 	dpopSigningAlgorithms ...jose.SignatureAlgorithm,
 ) {
-	manager.EnableDemonstrationProofOfPossesion(dpopLifetimeSecs, dpopSigningAlgorithms...)
-	manager.DpopIsRequired = true
+	provider.EnableDemonstrationProofOfPossesion(dpopLifetimeSecs, dpopSigningAlgorithms...)
+	provider.DpopIsRequired = true
 }
 
-func (manager *OAuthManager) EnableProofKeyForCodeExchange(codeChallengeMethods ...constants.CodeChallengeMethod) {
-	manager.CodeChallengeMethods = codeChallengeMethods
-	manager.PkceIsEnabled = true
+func (provider *OpenIdProvider) EnableProofKeyForCodeExchange(codeChallengeMethods ...constants.CodeChallengeMethod) {
+	provider.CodeChallengeMethods = codeChallengeMethods
+	provider.PkceIsEnabled = true
 }
 
-func (manager *OAuthManager) RequireProofKeyForCodeExchange(codeChallengeMethods ...constants.CodeChallengeMethod) {
-	manager.EnableProofKeyForCodeExchange(codeChallengeMethods...)
-	manager.PkceIsRequired = true
+func (provider *OpenIdProvider) RequireProofKeyForCodeExchange(codeChallengeMethods ...constants.CodeChallengeMethod) {
+	provider.EnableProofKeyForCodeExchange(codeChallengeMethods...)
+	provider.PkceIsRequired = true
 }
 
-func (manager *OAuthManager) AddClient(client models.Client) error {
-	return manager.ClientManager.Create(client)
+func (provider *OpenIdProvider) AddClient(client models.Client) error {
+	return provider.ClientManager.Create(client)
 }
 
-func (manager *OAuthManager) AddPolicy(policy utils.AuthnPolicy) {
-	manager.Policies = append(manager.Policies, policy)
+func (provider *OpenIdProvider) AddPolicy(policy utils.AuthnPolicy) {
+	provider.Policies = append(provider.Policies, policy)
 }
 
-func (manager OAuthManager) getContext(requestContext *gin.Context) utils.Context {
+func (provider OpenIdProvider) getContext(requestContext *gin.Context) utils.Context {
 	return utils.NewContext(
-		manager.Configuration,
+		provider.Configuration,
 		requestContext,
 	)
 }
 
-func (manager *OAuthManager) setUp() {
+func (provider *OpenIdProvider) setUp() {
 
 	// Configure the server.
-	manager.Server.Use(func(ctx *gin.Context) {
+	provider.Server.Use(func(ctx *gin.Context) {
 		// Set the correlation ID to be used in the logs.
 		correlationId := ctx.GetHeader(string(constants.CorrelationIdHeader))
 		if correlationId == "" {
@@ -244,102 +251,102 @@ func (manager *OAuthManager) setUp() {
 	})
 
 	// Set endpoints.
-	manager.Server.GET(
+	provider.Server.GET(
 		string(constants.JsonWebKeySetEndpoint),
 		func(requestCtx *gin.Context) {
-			apihandlers.HandleJWKSRequest(manager.getContext(requestCtx))
+			apihandlers.HandleJWKSRequest(provider.getContext(requestCtx))
 		},
 	)
 
-	if manager.ParIsEnabled {
-		manager.Server.POST(
+	if provider.ParIsEnabled {
+		provider.Server.POST(
 			string(constants.PushedAuthorizationRequestEndpoint),
 			func(requestCtx *gin.Context) {
-				apihandlers.HandlePARRequest(manager.getContext(requestCtx))
+				apihandlers.HandlePARRequest(provider.getContext(requestCtx))
 			},
 		)
 	}
 
-	manager.Server.GET(
+	provider.Server.GET(
 		string(constants.AuthorizationEndpoint),
 		func(requestCtx *gin.Context) {
-			apihandlers.HandleAuthorizeRequest(manager.getContext(requestCtx))
+			apihandlers.HandleAuthorizeRequest(provider.getContext(requestCtx))
 		},
 	)
 
-	manager.Server.POST(
+	provider.Server.POST(
 		string(constants.AuthorizationEndpoint)+"/:callback",
 		func(requestCtx *gin.Context) {
-			apihandlers.HandleAuthorizeCallbackRequest(manager.getContext(requestCtx))
+			apihandlers.HandleAuthorizeCallbackRequest(provider.getContext(requestCtx))
 		},
 	)
 
-	manager.Server.POST(
+	provider.Server.POST(
 		string(constants.TokenEndpoint),
 		func(requestCtx *gin.Context) {
-			apihandlers.HandleTokenRequest(manager.getContext(requestCtx))
+			apihandlers.HandleTokenRequest(provider.getContext(requestCtx))
 		},
 	)
 
-	manager.Server.GET(
+	provider.Server.GET(
 		string(constants.WellKnownEndpoint),
 		func(requestCtx *gin.Context) {
-			apihandlers.HandleWellKnownRequest(manager.getContext(requestCtx))
+			apihandlers.HandleWellKnownRequest(provider.getContext(requestCtx))
 		},
 	)
 
-	manager.Server.GET(
+	provider.Server.GET(
 		string(constants.UserInfoEndpoint),
 		func(requestCtx *gin.Context) {
-			apihandlers.HandleUserInfoRequest(manager.getContext(requestCtx))
+			apihandlers.HandleUserInfoRequest(provider.getContext(requestCtx))
 		},
 	)
 
-	manager.Server.POST(
+	provider.Server.POST(
 		string(constants.UserInfoEndpoint),
 		func(requestCtx *gin.Context) {
-			apihandlers.HandleUserInfoRequest(manager.getContext(requestCtx))
+			apihandlers.HandleUserInfoRequest(provider.getContext(requestCtx))
 		},
 	)
 
-	manager.Server.POST(
+	provider.Server.POST(
 		string(constants.DynamicClientEndpoint),
 		func(requestCtx *gin.Context) {
-			apihandlers.HandleDynamicClientCreation(manager.getContext(requestCtx))
+			apihandlers.HandleDynamicClientCreation(provider.getContext(requestCtx))
 		},
 	)
 
-	manager.Server.PUT(
+	provider.Server.PUT(
 		string(constants.DynamicClientEndpoint)+"/:client_id",
 		func(requestCtx *gin.Context) {
-			apihandlers.HandleDynamicClientUpdate(manager.getContext(requestCtx))
+			apihandlers.HandleDynamicClientUpdate(provider.getContext(requestCtx))
 		},
 	)
 
-	manager.Server.GET(
+	provider.Server.GET(
 		string(constants.DynamicClientEndpoint)+"/:client_id",
 		func(requestCtx *gin.Context) {
-			apihandlers.HandleDynamicClientRetrieve(manager.getContext(requestCtx))
+			apihandlers.HandleDynamicClientRetrieve(provider.getContext(requestCtx))
 		},
 	)
 
-	manager.Server.DELETE(
+	provider.Server.DELETE(
 		string(constants.DynamicClientEndpoint)+"/:client_id",
 		func(requestCtx *gin.Context) {
-			apihandlers.HandleDynamicClientDelete(manager.getContext(requestCtx))
+			apihandlers.HandleDynamicClientDelete(provider.getContext(requestCtx))
 		},
 	)
 
 }
 
-func (manager *OAuthManager) Run(port int) {
-	manager.validateConfiguration()
-	manager.setUp()
-	manager.Server.Run(":" + fmt.Sprint(port))
+func (provider *OpenIdProvider) Run(port int) {
+	provider.validateConfiguration()
+	provider.setUp()
+	provider.Server.Run(":" + fmt.Sprint(port))
 }
 
-func (manager *OAuthManager) RunTLS(port int) {
-	manager.validateConfiguration()
-	manager.setUp()
-	manager.Server.RunTLS(":"+fmt.Sprint(port), "cert.pem", "key.pem")
+func (provider *OpenIdProvider) RunTLS(port int) {
+	provider.validateConfiguration()
+	provider.setUp()
+	provider.Server.RunTLS(":"+fmt.Sprint(port), "cert.pem", "key.pem")
 }

@@ -27,3 +27,19 @@ func NewPolicy(
 		IsAvailableFunc: isAvailableFunc,
 	}
 }
+
+func getAvailablePolicy(
+	ctx Context,
+	session models.AuthnSession,
+) (
+	policy AuthnPolicy,
+	ok bool,
+) {
+	for _, policy = range ctx.Policies {
+		if ok = policy.IsAvailableFunc(session, ctx.RequestContext); ok {
+			return policy, true
+		}
+	}
+
+	return AuthnPolicy{}, false
+}

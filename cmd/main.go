@@ -15,7 +15,7 @@ import (
 	"github.com/luikymagno/auth-server/pkg/oauth"
 )
 
-func GetTokenOptions(clientCustomAttributes map[string]string, scopes string) models.TokenOptions {
+func GetTokenOptions(client models.Client, scopes string) models.TokenOptions {
 	return models.TokenOptions{
 		TokenFormat:               constants.JwtTokenFormat,
 		ExpiresInSecs:             600,
@@ -35,7 +35,7 @@ func main() {
 	privateRs256Jwk := unit.GetTestPrivateRs256Jwk("rsa256_server_key")
 
 	// Create the manager.
-	oauthManager := oauth.NewManager(
+	oauthManager := oauth.NewProvider(
 		issuer,
 		inmemory.NewInMemoryClientManager(),
 		inmemory.NewInMemoryAuthnSessionManager(),

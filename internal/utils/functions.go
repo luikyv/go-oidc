@@ -31,30 +31,30 @@ func ExtractJarFromRequestObject(
 	}
 	parsedToken, err := jwt.ParseSigned(reqObject, jarAlgorithms)
 	if err != nil {
-		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InternalError, err.Error())
+		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidResquestObject, err.Error())
 	}
 
 	// Verify that the assertion indicates the key ID.
 	if len(parsedToken.Headers) != 1 && parsedToken.Headers[0].KeyID == "" {
-		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidRequest, "invalid kid header")
+		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidResquestObject, "invalid kid header")
 	}
 
 	// Verify that the key ID belongs to the client.
 	jwks := client.GetPublicJwks()
 	keys := jwks.Key(parsedToken.Headers[0].KeyID)
 	if len(keys) == 0 {
-		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidRequest, "invalid kid header")
+		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidResquestObject, "invalid kid header")
 	}
 
 	jwk := keys[0]
 	var claims jwt.Claims
 	var jarReq models.AuthorizationRequest
 	if err := parsedToken.Claims(jwk.Key, &claims, &jarReq); err != nil {
-		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidRequest, "invalid request")
+		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidResquestObject, "could not extract claims")
 	}
 
 	if claims.Expiry == nil {
-		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidRequest, "invalid expiration claim")
+		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidResquestObject, "invalid expiration claim")
 	}
 
 	// TODO: the iat claim is not required?
@@ -67,7 +67,7 @@ func ExtractJarFromRequestObject(
 		AnyAudience: []string{ctx.Host},
 	}, time.Duration(0))
 	if err != nil {
-		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidRequest, "invalid request")
+		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidResquestObject, "invalid claims")
 	}
 
 	return jarReq, nil
@@ -352,21 +352,14 @@ func GenerateGrantSession(ctx Context, client models.Client, grantOptions models
 }
 
 func InitAuthnSessionWithPolicy(ctx Context, session *models.AuthnSession) models.OAuthError {
-	var policy AuthnPolicy
-	var policyIsAvailable bool
-	for _, policy = range ctx.Policies {
-		if policyIsAvailable = policy.IsAvailableFunc(*session, ctx.RequestContext); policyIsAvailable {
-			break
-		}
-	}
-
-	if !policyIsAvailable {
+	policy, ok := getAvailablePolicy(ctx, *session)
+	if !ok {
 		ctx.Logger.Info("no policy available")
-		return models.NewOAuthRedirectError(constants.InvalidRequest, "no policy available", session.AuthorizationParameters)
+		return session.NewRedirectError(constants.InvalidRequest, "no policy available")
 	}
 
 	ctx.Logger.Info("policy available", slog.String("policy_id", policy.Id))
-	session.Init(policy.Id) // TODO: Improve this.
+	session.Start(policy.Id)
 	return nil
 }
 

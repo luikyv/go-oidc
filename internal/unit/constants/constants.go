@@ -119,14 +119,15 @@ const (
 type ErrorCode string
 
 const (
-	AccessDenied         ErrorCode = "access_denied"
-	InvalidClient        ErrorCode = "invalid_client"
-	InvalidGrant         ErrorCode = "invalid_grant"
-	InvalidRequest       ErrorCode = "invalid_request"
-	UnauthorizedClient   ErrorCode = "unauthorized_client"
-	InvalidScope         ErrorCode = "invalid_scope"
-	UnsupportedGrantType ErrorCode = "unsupported_grant_type"
-	InternalError        ErrorCode = "internal_error"
+	AccessDenied          ErrorCode = "access_denied"
+	InvalidClient         ErrorCode = "invalid_client"
+	InvalidGrant          ErrorCode = "invalid_grant"
+	InvalidRequest        ErrorCode = "invalid_request"
+	UnauthorizedClient    ErrorCode = "unauthorized_client"
+	InvalidScope          ErrorCode = "invalid_scope"
+	UnsupportedGrantType  ErrorCode = "unsupported_grant_type"
+	InvalidResquestObject ErrorCode = "invalid_request_object"
+	InternalError         ErrorCode = "internal_error"
 )
 
 type Header string

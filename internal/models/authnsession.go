@@ -26,7 +26,6 @@ type AuthnSession struct {
 	AdditionalTokenClaims     map[string]string // Allow the developer to map new (or override the default) claims to the access token.
 	IdTokenSignatureAlgorithm jose.SignatureAlgorithm
 	AdditionalIdTokenClaims   map[string]string // Allow the developer to map new (or override the default) claims to the ID token.
-	ClientAttributes          map[string]string // Allow the developer to access the client's custom attributes.
 }
 
 func NewSession(authParams AuthorizationParameters, client Client) AuthnSession {
@@ -41,7 +40,6 @@ func NewSession(authParams AuthorizationParameters, client Client) AuthnSession 
 		AdditionalTokenClaims:     make(map[string]string),
 		IdTokenSignatureAlgorithm: client.IdTokenSignatureAlgorithm,
 		AdditionalIdTokenClaims:   make(map[string]string),
-		ClientAttributes:          client.Attributes,
 	}
 }
 
@@ -50,7 +48,7 @@ func (session *AuthnSession) Push(reqCtx *gin.Context) {
 	session.PushedParameters = extractPushedParams(reqCtx)
 }
 
-func (session *AuthnSession) Init(policyId string) {
+func (session *AuthnSession) Start(policyId string) {
 	session.PolicyId = policyId
 	session.AuthnSequenceIndex = 0
 	session.CallbackId = unit.GenerateCallbackId()
@@ -89,10 +87,6 @@ func (session *AuthnSession) SaveParameter(key string, value string) {
 
 func (session *AuthnSession) GetParameter(key string) string {
 	return session.Store[key]
-}
-
-func (session *AuthnSession) GetClientAttribute(key string) string {
-	return session.ClientAttributes[key]
 }
 
 // Set a new claim that will be mapped in the access token when issued.

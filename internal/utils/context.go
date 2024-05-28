@@ -11,8 +11,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
-// TODO: pass the client
-type GetTokenOptionsFunc func(clientCustomAttributes map[string]string, scopes string) models.TokenOptions
+type GetTokenOptionsFunc func(client models.Client, scopes string) models.TokenOptions
 
 type Configuration struct {
 	Profile constants.Profile
@@ -28,8 +27,9 @@ type Configuration struct {
 	ResponseTypes                        []constants.ResponseType
 	ResponseModes                        []constants.ResponseMode
 	ClientAuthnMethods                   []constants.ClientAuthnType
-	ClientSignatureAlgorithms            []jose.SignatureAlgorithm
+	PrivateKeyJwtSignatureAlgorithms     []jose.SignatureAlgorithm
 	PrivateKeyJwtAssertionLifetimeSecs   int
+	ClientSecretJwtSignatureAlgorithms   []jose.SignatureAlgorithm
 	ClientSecretJwtAssertionLifetimeSecs int
 	OpenIdScopeIsRequired                bool
 	IdTokenExpiresInSecs                 int
@@ -126,11 +126,8 @@ func (ctx Context) GetPublicKeys() jose.JSONWebKeySet {
 	publicKeys := []jose.JSONWebKey{}
 	for _, privateKey := range ctx.PrivateJwks.Keys {
 		publicKey := privateKey.Public()
-		// If the key is not of assymetric type, publicKey holds a null value.
-		// To know if it is the case, we'll check if its key ID is not a null value which would mean privateKey is symetric and cannot be public.
-		// TODO: Can I use .Valid() instead?
-		if publicKey.KeyID != "" {
-			publicKeys = append(publicKeys, privateKey.Public())
+		if publicKey.Valid() {
+			publicKeys = append(publicKeys, publicKey)
 		}
 	}
 
@@ -200,4 +197,8 @@ func (ctx Context) GetJarmSignatureAlgorithms() []jose.SignatureAlgorithm {
 		signatureAlgorithms = append(signatureAlgorithms, jose.SignatureAlgorithm(key.Algorithm))
 	}
 	return signatureAlgorithms
+}
+
+func (ctx Context) GetClientSignatureAlgorithms() []jose.SignatureAlgorithm {
+	return append(ctx.PrivateKeyJwtSignatureAlgorithms, ctx.ClientSecretJwtSignatureAlgorithms...)
 }

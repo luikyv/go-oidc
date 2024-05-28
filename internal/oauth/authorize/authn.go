@@ -59,7 +59,7 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) mod
 	}
 
 	if session.ResponseType.Contains(constants.TokenResponse) {
-		grantSession := utils.GenerateGrantSession(ctx, client, NewImplicitGrantOptions(ctx, *session))
+		grantSession := utils.GenerateGrantSession(ctx, client, NewImplicitGrantOptions(ctx, client, *session))
 		params["access_token"] = grantSession.Token
 		params["token_type"] = string(grantSession.TokenType)
 	}
@@ -90,8 +90,8 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) mod
 	return nil
 }
 
-func NewImplicitGrantOptions(ctx utils.Context, session models.AuthnSession) models.GrantOptions {
-	tokenOptions := ctx.GetTokenOptions(session.ClientAttributes, session.Scopes)
+func NewImplicitGrantOptions(ctx utils.Context, client models.Client, session models.AuthnSession) models.GrantOptions {
+	tokenOptions := ctx.GetTokenOptions(client, session.Scopes)
 	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
 	return models.GrantOptions{
 		GrantType:    constants.ImplicitGrant,

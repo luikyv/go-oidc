@@ -44,7 +44,7 @@ func validateSecret(_ Context, client models.Client, clientSecret string) models
 }
 
 func authenticateWithPrivateKeyJwt(ctx Context, client models.Client, req models.ClientAuthnRequest) models.OAuthError {
-	signatureAlgorithms := ctx.ClientSignatureAlgorithms
+	signatureAlgorithms := ctx.PrivateKeyJwtSignatureAlgorithms
 	if client.AuthnSignatureAlgorithm != "" {
 		signatureAlgorithms = []jose.SignatureAlgorithm{client.AuthnSignatureAlgorithm}
 	}
@@ -75,7 +75,7 @@ func authenticateWithPrivateKeyJwt(ctx Context, client models.Client, req models
 }
 
 func authenticateWithClientSecretJwt(ctx Context, client models.Client, req models.ClientAuthnRequest) models.OAuthError {
-	signatureAlgorithms := ctx.ClientSignatureAlgorithms
+	signatureAlgorithms := ctx.ClientSecretJwtSignatureAlgorithms
 	if client.AuthnSignatureAlgorithm != "" {
 		signatureAlgorithms = []jose.SignatureAlgorithm{client.AuthnSignatureAlgorithm}
 	}

@@ -16,7 +16,8 @@ func validateDynamicClientRequest(
 	return runValidations(
 		ctx, dynamicClient,
 		validateAuthnMethod,
-		validateClientSignatureAlgorithms,
+		validateClientSignatureAlgorithmForPrivateKeyJwt,
+		validateClientSignatureAlgorithmForClientSecretJwt,
 		validateGrantTypes,
 		validateRedirectUris,
 		validateResponseTypes,
@@ -163,12 +164,29 @@ func validateJarmSignatureAlgorithm(
 	return nil
 }
 
-func validateClientSignatureAlgorithms(
+func validateClientSignatureAlgorithmForPrivateKeyJwt(
 	ctx utils.Context,
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
-	//TODO: It depends if it is private_key_jwt or client_secret_jwt.
-	if dynamicClient.AuthnSignatureAlgorithm != "" && !unit.ContainsAll(ctx.ClientSignatureAlgorithms, dynamicClient.AuthnSignatureAlgorithm) {
+	if dynamicClient.AuthnMethod != constants.PrivateKeyJwtAuthn {
+		return nil
+	}
+
+	if dynamicClient.AuthnSignatureAlgorithm != "" && !unit.ContainsAll(ctx.PrivateKeyJwtSignatureAlgorithms, dynamicClient.AuthnSignatureAlgorithm) {
+		return models.NewOAuthError(constants.InvalidRequest, "token_endpoint_auth_signing_alg not supported")
+	}
+	return nil
+}
+
+func validateClientSignatureAlgorithmForClientSecretJwt(
+	ctx utils.Context,
+	dynamicClient models.DynamicClientRequest,
+) models.OAuthError {
+	if dynamicClient.AuthnMethod != constants.ClientSecretJwt {
+		return nil
+	}
+
+	if dynamicClient.AuthnSignatureAlgorithm != "" && !unit.ContainsAll(ctx.ClientSecretJwtSignatureAlgorithms, dynamicClient.AuthnSignatureAlgorithm) {
 		return models.NewOAuthError(constants.InvalidRequest, "token_endpoint_auth_signing_alg not supported")
 	}
 	return nil
