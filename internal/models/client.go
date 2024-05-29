@@ -38,12 +38,17 @@ type Client struct {
 	ClientMetaInfo
 }
 
-func (c Client) GetPublicJwks() jose.JSONWebKeySet {
+func (c Client) GetPublicJwks() (jose.JSONWebKeySet, OAuthError) {
 	if c.PublicJwks.Keys != nil {
-		return c.PublicJwks
+		return c.PublicJwks, nil
 	}
-	jwks, _ := unit.GetJwks(c.PublicJwksUri) // TODO: handle error
-	return jwks
+
+	jwks, err := unit.GetJwks(c.PublicJwksUri)
+	if err != nil {
+		return jose.JSONWebKeySet{}, NewOAuthError(constants.InvalidRequest, err.Error())
+	}
+
+	return jwks, nil
 }
 
 func (client Client) AreScopesAllowed(requestedScopes string) bool {

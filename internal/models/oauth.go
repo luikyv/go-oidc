@@ -78,7 +78,7 @@ type TokenResponse struct {
 	RefreshToken string              `json:"refresh_token,omitempty"`
 	ExpiresIn    int                 `json:"expires_in"`
 	TokenType    constants.TokenType `json:"token_type"`
-	Scope        string              `json:"scope,omitempty"`
+	Scopes       string              `json:"scope,omitempty"`
 }
 
 type AuthorizationParameters struct {

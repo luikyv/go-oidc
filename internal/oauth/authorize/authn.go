@@ -135,7 +135,7 @@ func newImplicitGrantOptions(ctx utils.Context, client models.Client, session mo
 	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
 	return models.GrantOptions{
 		GrantType:    constants.ImplicitGrant,
-		Scopes:       session.Scopes,
+		Scopes:       session.GrantedScopes,
 		Subject:      session.Subject,
 		ClientId:     session.ClientId,
 		TokenOptions: tokenOptions,

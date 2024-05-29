@@ -50,7 +50,7 @@ func validatePushedAuthorizationParams(
 ) models.OAuthError {
 	return utils.RunValidations(
 		ctx, params, client,
-		authorize.ValidateCannotRequestCodetResponseTypeWhenAuthorizationCodeGrantIsNotAllowed,
+		authorize.ValidateCannotRequestCodeResponseTypeWhenAuthorizationCodeGrantIsNotAllowed,
 		authorize.ValidateCannotRequestImplicitResponseTypeWhenImplicitGrantIsNotAllowed,
 		validateRedirectUri,
 		authorize.ValidateResponseMode,

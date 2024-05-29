@@ -13,6 +13,7 @@ import (
 
 func NoInteractionAuthnFunc(ctx utils.Context, session *models.AuthnSession) (constants.AuthnStatus, error) {
 	session.SetUserId("random_user_id")
+	session.GrantScopes(session.Scopes)
 	return constants.Success, nil
 }
 
@@ -35,6 +36,7 @@ func IdentityAuthnFunc(ctx utils.Context, session *models.AuthnSession) (constan
 	}
 
 	session.SetUserId(identityForm.Username)
+	session.GrantScopes(session.Scopes)
 	session.SetCustomTokenClaim("custom_claim", "random_value")
 	if strings.Contains(session.Scopes, "email") {
 		session.SetCustomIdTokenClaim("email", "random@email.com")

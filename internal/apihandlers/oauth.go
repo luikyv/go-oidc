@@ -90,7 +90,6 @@ func HandleTokenRequest(ctx utils.Context) {
 		return
 	}
 
-	// TODO: status ok?
 	ctx.RequestContext.JSON(http.StatusOK, tokenResp)
 }
 

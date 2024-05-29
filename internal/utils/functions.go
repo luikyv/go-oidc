@@ -40,7 +40,11 @@ func ExtractJarFromRequestObject(
 	}
 
 	// Verify that the key ID belongs to the client.
-	jwks := client.GetPublicJwks()
+	jwks, oauthErr := client.GetPublicJwks()
+	if oauthErr != nil {
+		return models.AuthorizationRequest{}, oauthErr
+	}
+
 	keys := jwks.Key(parsedToken.Headers[0].KeyID)
 	if len(keys) == 0 {
 		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidResquestObject, "invalid kid header")

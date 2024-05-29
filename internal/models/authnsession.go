@@ -19,7 +19,7 @@ type AuthnSession struct {
 	Subject            string
 	ClientId           string
 	AuthorizationParameters
-	GrantedScopes             string // TODO: Use this.
+	GrantedScopes             string
 	AuthorizationCode         string
 	AuthorizedAtTimestamp     int
 	PushedParameters          map[string]string // Parameters sent using the PAR endpoint.
@@ -120,4 +120,8 @@ func (session *AuthnSession) InitAuthorizationCode() string {
 	session.AuthorizationCode = unit.GenerateAuthorizationCode()
 	session.AuthorizedAtTimestamp = unit.GetTimestampNow()
 	return session.AuthorizationCode
+}
+
+func (session *AuthnSession) GrantScopes(scopes string) {
+	session.GrantedScopes = scopes
 }

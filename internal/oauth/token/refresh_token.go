@@ -16,7 +16,7 @@ func handleRefreshTokenGrantTokenCreation(
 	models.TokenResponse,
 	models.OAuthError,
 ) {
-
+	// TODO: What if the scope param is filled?
 	if err := preValidateRefreshTokenGrantRequest(req); err != nil {
 		return models.TokenResponse{}, models.NewOAuthError(constants.InvalidRequest, "invalid parameter for refresh token grant")
 	}
@@ -115,8 +115,8 @@ func getGrantSessionByRefreshToken(
 func preValidateRefreshTokenGrantRequest(
 	req models.TokenRequest,
 ) models.OAuthError {
-	if req.RefreshToken == "" || unit.AnyNonEmpty(req.AuthorizationCode, req.RedirectUri, req.Scopes, req.CodeVerifier) {
-		return models.NewOAuthError(constants.InvalidRequest, "invalid parameter for refresh token grant")
+	if req.RefreshToken == "" {
+		return models.NewOAuthError(constants.InvalidRequest, "invalid refresh token")
 	}
 
 	return nil

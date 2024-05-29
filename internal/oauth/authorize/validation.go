@@ -78,7 +78,7 @@ func validateInsideWithOutsideParams(
 	}
 
 	if ctx.Profile == constants.OpenIdProfile {
-		if outsideParams.ResponseType != "" {
+		if outsideParams.ResponseType == "" {
 			return mergedParams.NewRedirectError(constants.InvalidRequest, "invalid response_type")
 		}
 
@@ -111,7 +111,7 @@ func validateAuthorizationParams(
 		validatePkce,
 		ValidateCodeChallengeMethod,
 		validateCannotRequestIdTokenResponseTypeIfOpenIdScopeIsNotRequested,
-		ValidateCannotRequestCodetResponseTypeWhenAuthorizationCodeGrantIsNotAllowed,
+		ValidateCannotRequestCodeResponseTypeWhenAuthorizationCodeGrantIsNotAllowed,
 		ValidateCannotRequestImplicitResponseTypeWhenImplicitGrantIsNotAllowed,
 		validateCannotRequestQueryResponseModeWhenImplicitResponseTypeIsRequested,
 	)
@@ -227,7 +227,7 @@ func ValidateCodeChallengeMethod(
 	return nil
 }
 
-func ValidateCannotRequestCodetResponseTypeWhenAuthorizationCodeGrantIsNotAllowed(
+func ValidateCannotRequestCodeResponseTypeWhenAuthorizationCodeGrantIsNotAllowed(
 	_ utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,

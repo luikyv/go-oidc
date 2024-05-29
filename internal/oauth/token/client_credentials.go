@@ -36,6 +36,10 @@ func handleClientCredentialsGrantTokenCreation(
 		TokenType:   token.Type,
 	}
 
+	if req.Scopes != grantOptions.Scopes {
+		tokenResp.Scopes = grantOptions.Scopes
+	}
+
 	if !shouldGenerateClientCredentialsGrantSession(ctx, grantOptions) {
 		return tokenResp, nil
 	}
@@ -48,10 +52,6 @@ func handleClientCredentialsGrantTokenCreation(
 }
 
 func preValidateClientCredentialsGrantRequest(req models.TokenRequest) models.OAuthError {
-	if unit.AnyNonEmpty(req.AuthorizationCode, req.RedirectUri, req.RefreshToken, req.CodeVerifier) {
-		return models.NewOAuthError(constants.InvalidRequest, "invalid parameter for client credentials grant")
-	}
-
 	if unit.ScopesContainsOpenId(req.Scopes) {
 		return models.NewOAuthError(constants.InvalidScope, "cannot request openid scope for client credentials grant")
 	}
@@ -105,9 +105,13 @@ func validateClientCredentialsGrantRequest(
 
 func newClientCredentialsGrantOptions(ctx utils.Context, client models.Client, req models.TokenRequest) models.GrantOptions {
 	tokenOptions := ctx.GetTokenOptions(client, req.Scopes)
+	scopes := req.Scopes
+	if scopes == "" {
+		scopes = client.Scopes
+	}
 	return models.GrantOptions{
 		GrantType:    constants.ClientCredentialsGrant,
-		Scopes:       req.Scopes,
+		Scopes:       scopes,
 		Subject:      client.Id,
 		ClientId:     client.Id,
 		DpopJwt:      req.DpopJwt,

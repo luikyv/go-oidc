@@ -35,6 +35,10 @@ func handleAuthorizationCodeGrantTokenCreation(ctx utils.Context, req models.Tok
 		TokenType:   token.Type,
 	}
 
+	if session.Scopes != grantOptions.Scopes {
+		tokenResp.Scopes = grantOptions.Scopes
+	}
+
 	if unit.ScopesContainsOpenId(session.Scopes) {
 		tokenResp.IdToken = utils.MakeIdToken(ctx, client, grantOptions)
 	}
@@ -130,7 +134,14 @@ func validateAuthorizationCodeGrantRequest(
 	return nil
 }
 
-func getAuthenticatedClientAndSession(ctx utils.Context, req models.TokenRequest) (models.Client, models.AuthnSession, models.OAuthError) {
+func getAuthenticatedClientAndSession(
+	ctx utils.Context,
+	req models.TokenRequest,
+) (
+	models.Client,
+	models.AuthnSession,
+	models.OAuthError,
+) {
 
 	ctx.Logger.Debug("get the session using the authorization code")
 	sessionResultCh := make(chan utils.ResultChannel)
@@ -192,7 +203,7 @@ func newAuthorizationCodeGrantOptions(
 	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
 	return models.GrantOptions{
 		GrantType:    constants.AuthorizationCodeGrant,
-		Scopes:       session.Scopes,
+		Scopes:       session.GrantedScopes,
 		Subject:      session.Subject,
 		ClientId:     session.ClientId,
 		DpopJwt:      req.DpopJwt,
