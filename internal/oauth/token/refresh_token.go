@@ -49,12 +49,11 @@ func handleRefreshTokenGrantTokenCreation(
 
 func updateRefreshTokenGrantSession(ctx utils.Context, grantSession models.GrantSession) models.OAuthError {
 	grantSession.RenewedAtTimestamp = unit.GetTimestampNow()
-	if ctx.ShouldRotateRefreshToken {
+	if ctx.ShouldRotateRefreshTokens {
 		grantSession.RefreshToken = unit.GenerateRefreshToken()
 	}
 
-	err := ctx.GrantSessionManager.CreateOrUpdate(grantSession)
-	if err != nil {
+	if err := ctx.GrantSessionManager.CreateOrUpdate(grantSession); err != nil {
 		return models.NewOAuthError(constants.InternalError, err.Error())
 	}
 

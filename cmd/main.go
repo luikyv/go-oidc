@@ -42,8 +42,6 @@ func main() {
 		jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privatePs256Jwk, privateRs256Jwk}},
 		privatePs256Jwk.KeyID,
 		privateRs256Jwk.KeyID,
-		[]string{privateRs256Jwk.KeyID},
-		600,
 		"./templates/*",
 	)
 	oauthManager.SetTokenOptions(GetTokenOptions)
@@ -56,20 +54,8 @@ func main() {
 	oauthManager.EnableDemonstrationProofOfPossesion(600, jose.RS256, jose.PS256, jose.ES256)
 	oauthManager.EnableProofKeyForCodeExchange(constants.Sha256CodeChallengeMethod)
 	oauthManager.EnableImplicitGrantType()
-	oauthManager.EnableRefreshTokenGrant(6000, true)
-
-	// Client one.
-	privateClientOneJwks := GetClientPrivateJwks("client_one_jwks.json")
-	clientOne := models.GetTestClientWithPrivateKeyJwtAuthn(issuer, privateClientOneJwks.Keys[0].Public())
-	clientOne.RedirectUris = append(clientOne.RedirectUris, issuer+"/callback", "https://localhost:8443/test/a/first_test/callback")
-	oauthManager.AddClient(clientOne)
-
-	// Client two.
-	privateClientTwoJwks := GetClientPrivateJwks("client_two_jwks.json")
-	clientTwo := models.GetTestClientWithPrivateKeyJwtAuthn(issuer, privateClientTwoJwks.Keys[0].Public())
-	clientTwo.Id = "random_client_id_two"
-	clientTwo.RedirectUris = append(clientTwo.RedirectUris, issuer+"/callback", "https://localhost:8443/test/a/first_test/callback")
-	oauthManager.AddClient(clientTwo)
+	oauthManager.EnableRefreshTokenGrantType(6000, true)
+	oauthManager.EnableDynamicClientRegistration(nil, true)
 
 	// Create Policy
 	policy := utils.NewPolicy(

@@ -10,6 +10,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+func setDefaults(ctx utils.Context)
+
 func setCreationDefaults(ctx utils.Context, dynamicClient *models.DynamicClientRequest) {
 	dynamicClient.Id = unit.GenerateClientId()
 	dynamicClient.RegistrationAccessToken = unit.GenerateRegistrationAccessToken() // TODO: Implement flag to rotate access token.
@@ -33,6 +35,9 @@ func setCreationDefaults(ctx utils.Context, dynamicClient *models.DynamicClientR
 func setUpdateDefaults(ctx utils.Context, client models.Client, dynamicClient *models.DynamicClientRequest) {
 	setCreationDefaults(ctx, dynamicClient)
 	dynamicClient.Id = client.Id
+	if !ctx.ShouldRotateRegistrationTokens {
+		dynamicClient.RegistrationAccessToken = ""
+	}
 }
 
 func newClient(dynamicClient models.DynamicClientRequest) models.Client {

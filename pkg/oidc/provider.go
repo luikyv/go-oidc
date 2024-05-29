@@ -3,6 +3,7 @@ package oidc
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
@@ -28,14 +29,8 @@ func NewProvider(
 	privateJwks jose.JSONWebKeySet,
 	defaultTokenKeyId string,
 	defaultIdTokenKeyId string,
-	idTokenSignatureKeyIds []string,
-	idTokenLifetimeSecs int,
 	templates string,
 ) *OpenIdProvider {
-	if !unit.ContainsAll(idTokenSignatureKeyIds, defaultIdTokenKeyId) {
-		idTokenSignatureKeyIds = append(idTokenSignatureKeyIds, defaultIdTokenKeyId)
-	}
-
 	provider := &OpenIdProvider{
 		Configuration: utils.Configuration{
 			Host:                host,
@@ -53,8 +48,8 @@ func NewProvider(
 			PrivateJwks:                  privateJwks,
 			DefaultTokenSignatureKeyId:   defaultTokenKeyId,
 			DefaultIdTokenSignatureKeyId: defaultIdTokenKeyId,
-			IdTokenSignatureKeyIds:       idTokenSignatureKeyIds,
-			IdTokenExpiresInSecs:         idTokenLifetimeSecs,
+			IdTokenSignatureKeyIds:       []string{defaultIdTokenKeyId},
+			IdTokenExpiresInSecs:         600,
 			GrantTypes: []constants.GrantType{
 				constants.ClientCredentialsGrant,
 				constants.AuthorizationCodeGrant,
@@ -89,13 +84,42 @@ func (provider *OpenIdProvider) validateConfiguration() {
 	if provider.Profile == constants.OpenIdProfile && defaultJarmSignatureKey.Algorithm != string(jose.RS256) {
 		panic("the default signature algorithm for JARM must be RS256")
 	}
+
+	for _, signatureAlgorithm := range provider.PrivateKeyJwtSignatureAlgorithms {
+		if strings.HasPrefix(string(signatureAlgorithm), "HS") {
+			panic("symetric algorithms are not allowed for private_key_jwt authentication")
+		}
+	}
+
+	for _, signatureAlgorithm := range provider.ClientSecretJwtSignatureAlgorithms {
+		if !strings.HasPrefix(string(signatureAlgorithm), "HS") {
+			panic("assymetric algorithms are not allowed for client_secret_jwt authentication")
+		}
+	}
 }
 
-func (provider *OpenIdProvider) EnableRefreshTokenGrant(refreshTokenLifetimeSecs int, shouldRotateTokens bool) {
-	//TODO: make sure it's working
+func (provider *OpenIdProvider) AddIdTokenSignatureKeyIds(idTokenSignatureKeyIds ...string) {
+	if !unit.ContainsAll(idTokenSignatureKeyIds, provider.DefaultIdTokenSignatureKeyId) {
+		idTokenSignatureKeyIds = append(idTokenSignatureKeyIds, provider.DefaultIdTokenSignatureKeyId)
+	}
+	provider.IdTokenSignatureKeyIds = idTokenSignatureKeyIds
+}
+
+func (provider *OpenIdProvider) SetIdTokenLifetime(idTokenLifetimeSecs int) {
+	provider.IdTokenExpiresInSecs = idTokenLifetimeSecs
+}
+
+func (provider *OpenIdProvider) EnableDynamicClientRegistration(dcrPlugin utils.DcrPluginFunc, shouldRotateTokens bool) {
+	provider.DcrIsEnabled = true
+	provider.DcrPlugin = dcrPlugin
+	provider.ShouldRotateRegistrationTokens = shouldRotateTokens
+
+}
+
+func (provider *OpenIdProvider) EnableRefreshTokenGrantType(refreshTokenLifetimeSecs int, shouldRotateTokens bool) {
 	provider.GrantTypes = append(provider.GrantTypes, constants.RefreshTokenGrant)
 	provider.RefreshTokenLifetimeSecs = refreshTokenLifetimeSecs
-	provider.ShouldRotateRefreshToken = shouldRotateTokens
+	provider.ShouldRotateRefreshTokens = shouldRotateTokens
 }
 
 func (provider *OpenIdProvider) RequireOpenIdScope() {
@@ -182,14 +206,12 @@ func (provider *OpenIdProvider) EnableSecretPostClientAuthn() {
 }
 
 func (provider *OpenIdProvider) EnablePrivateKeyJwtClientAuthn(assertionLifetimeSecs int, signatureAlgorithms ...jose.SignatureAlgorithm) {
-	// TODO: Make sure signatureAlgorithms don't contain symetric algorithms.
 	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.PrivateKeyJwtAuthn)
 	provider.PrivateKeyJwtAssertionLifetimeSecs = assertionLifetimeSecs
 	provider.PrivateKeyJwtSignatureAlgorithms = signatureAlgorithms
 }
 
 func (provider *OpenIdProvider) EnableClientSecretJwtAuthn(assertionLifetimeSecs int, signatureAlgorithms ...jose.SignatureAlgorithm) {
-	// TODO: Make sure signatureAlgorithms don't contain asymetric algorithms.
 	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.ClientSecretBasicAuthn)
 	provider.ClientSecretJwtAssertionLifetimeSecs = assertionLifetimeSecs
 	provider.ClientSecretJwtSignatureAlgorithms = signatureAlgorithms
@@ -316,34 +338,35 @@ func (provider *OpenIdProvider) setUp() {
 		},
 	)
 
-	provider.Server.POST(
-		string(constants.DynamicClientEndpoint),
-		func(requestCtx *gin.Context) {
-			apihandlers.HandleDynamicClientCreation(provider.getContext(requestCtx))
-		},
-	)
+	if provider.DcrIsEnabled {
+		provider.Server.POST(
+			string(constants.DynamicClientEndpoint),
+			func(requestCtx *gin.Context) {
+				apihandlers.HandleDynamicClientCreation(provider.getContext(requestCtx))
+			},
+		)
 
-	provider.Server.PUT(
-		string(constants.DynamicClientEndpoint)+"/:client_id",
-		func(requestCtx *gin.Context) {
-			apihandlers.HandleDynamicClientUpdate(provider.getContext(requestCtx))
-		},
-	)
+		provider.Server.PUT(
+			string(constants.DynamicClientEndpoint)+"/:client_id",
+			func(requestCtx *gin.Context) {
+				apihandlers.HandleDynamicClientUpdate(provider.getContext(requestCtx))
+			},
+		)
 
-	provider.Server.GET(
-		string(constants.DynamicClientEndpoint)+"/:client_id",
-		func(requestCtx *gin.Context) {
-			apihandlers.HandleDynamicClientRetrieve(provider.getContext(requestCtx))
-		},
-	)
+		provider.Server.GET(
+			string(constants.DynamicClientEndpoint)+"/:client_id",
+			func(requestCtx *gin.Context) {
+				apihandlers.HandleDynamicClientRetrieve(provider.getContext(requestCtx))
+			},
+		)
 
-	provider.Server.DELETE(
-		string(constants.DynamicClientEndpoint)+"/:client_id",
-		func(requestCtx *gin.Context) {
-			apihandlers.HandleDynamicClientDelete(provider.getContext(requestCtx))
-		},
-	)
-
+		provider.Server.DELETE(
+			string(constants.DynamicClientEndpoint)+"/:client_id",
+			func(requestCtx *gin.Context) {
+				apihandlers.HandleDynamicClientDelete(provider.getContext(requestCtx))
+			},
+		)
+	}
 }
 
 func (provider *OpenIdProvider) Run(port int) {

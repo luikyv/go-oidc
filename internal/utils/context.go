@@ -13,6 +13,8 @@ import (
 
 type GetTokenOptionsFunc func(client models.Client, scopes string) models.TokenOptions
 
+type DcrPluginFunc func(reqCtx *gin.Context, dynamicClient *models.DynamicClientRequest)
+
 type Configuration struct {
 	Profile constants.Profile
 	Host    string
@@ -35,7 +37,7 @@ type Configuration struct {
 	IdTokenExpiresInSecs                 int
 	DefaultIdTokenSignatureKeyId         string
 	IdTokenSignatureKeyIds               []string
-	ShouldRotateRefreshToken             bool
+	ShouldRotateRefreshTokens            bool
 	RefreshTokenLifetimeSecs             int
 	IssuerResponseParameterIsEnabled     bool
 	JarmIsEnabled                        bool
@@ -59,7 +61,9 @@ type Configuration struct {
 	SubjectIdentifierTypes               []constants.SubjectIdentifierType
 	Policies                             []AuthnPolicy
 	GetTokenOptions                      GetTokenOptionsFunc
-	DcrPlugin                            func(reqCtx *gin.Context, dynamicClient *models.DynamicClientRequest)
+	DcrIsEnabled                         bool
+	ShouldRotateRegistrationTokens       bool
+	DcrPlugin                            DcrPluginFunc
 }
 
 type Context struct {

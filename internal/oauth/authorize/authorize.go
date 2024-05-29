@@ -36,7 +36,10 @@ func ContinueAuth(ctx utils.Context, callbackId string) models.OAuthError {
 	}
 
 	if oauthErr := authenticate(ctx, &session); oauthErr != nil {
-		client, _ := ctx.ClientManager.Get(session.ClientId) // TODO: handle the error
+		client, err := ctx.ClientManager.Get(session.ClientId)
+		if err != nil {
+			return models.NewOAuthError(constants.InternalError, err.Error())
+		}
 		return redirectError(ctx, oauthErr, client)
 	}
 

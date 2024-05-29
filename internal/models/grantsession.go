@@ -29,6 +29,7 @@ func NewGrantSession(grantOptions GrantOptions, token Token) GrantSession {
 }
 
 func (grantSession GrantSession) IsRefreshSessionExpired() bool {
+	//TODO: think of a better way to expire sessions.
 	return unit.GetTimestampNow() > grantSession.CreatedAtTimestamp+grantSession.RefreshTokenExpiresInSecs
 }
 
