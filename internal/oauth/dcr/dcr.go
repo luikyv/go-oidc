@@ -38,14 +38,12 @@ func CreateClient(
 
 func UpdateClient(
 	ctx utils.Context,
-	clientId string,
-	registrationAccessToken string,
 	dynamicClient models.DynamicClientRequest,
 ) (
 	models.DynamicClientResponse,
 	models.OAuthError,
 ) {
-	client, err := getProtectedClient(ctx, clientId, registrationAccessToken)
+	client, err := getProtectedClient(ctx, dynamicClient)
 	if err != nil {
 		return models.DynamicClientResponse{}, err
 	}
@@ -60,7 +58,7 @@ func UpdateClient(
 	}
 
 	updatedClient := newClient(dynamicClient)
-	if err := ctx.ClientManager.Update(clientId, updatedClient); err != nil {
+	if err := ctx.ClientManager.Update(client.Id, updatedClient); err != nil {
 		return models.DynamicClientResponse{}, models.NewOAuthError(constants.InternalError, err.Error())
 	}
 
@@ -75,14 +73,13 @@ func UpdateClient(
 
 func GetClient(
 	ctx utils.Context,
-	clientId string,
-	registrationAccessToken string,
+	dynamicClientRequest models.DynamicClientRequest,
 ) (
 	models.DynamicClientResponse,
 	models.OAuthError,
 ) {
 
-	client, err := getProtectedClient(ctx, clientId, registrationAccessToken)
+	client, err := getProtectedClient(ctx, dynamicClientRequest)
 	if err != nil {
 		return models.DynamicClientResponse{}, err
 	}
@@ -96,15 +93,14 @@ func GetClient(
 
 func DeleteClient(
 	ctx utils.Context,
-	clientId string,
-	registrationAccessToken string,
+	dynamicClientRequest models.DynamicClientRequest,
 ) models.OAuthError {
-	_, err := getProtectedClient(ctx, clientId, registrationAccessToken)
+	_, err := getProtectedClient(ctx, dynamicClientRequest)
 	if err != nil {
 		return err
 	}
 
-	if err := ctx.ClientManager.Delete(clientId); err != nil {
+	if err := ctx.ClientManager.Delete(dynamicClientRequest.Id); err != nil {
 		return models.NewOAuthError(constants.InternalError, err.Error())
 	}
 	return nil

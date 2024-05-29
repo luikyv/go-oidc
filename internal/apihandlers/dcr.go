@@ -17,6 +17,9 @@ func HandleDynamicClientCreation(ctx utils.Context) {
 		return
 	}
 
+	initialAccessToken, _ := unit.GetBearerToken(ctx.RequestContext)
+	req.InitialAccessToken = initialAccessToken
+
 	resp, err := dcr.CreateClient(ctx, req)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
@@ -39,7 +42,9 @@ func HandleDynamicClientUpdate(ctx utils.Context) {
 		return
 	}
 
-	resp, err := dcr.UpdateClient(ctx, ctx.RequestContext.Param("client_id"), token, req)
+	req.Id = ctx.RequestContext.Param("client_id")
+	req.RegistrationAccessToken = token
+	resp, err := dcr.UpdateClient(ctx, req)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
@@ -55,7 +60,12 @@ func HandleDynamicClientRetrieve(ctx utils.Context) {
 		return
 	}
 
-	resp, err := dcr.GetClient(ctx, ctx.RequestContext.Param("client_id"), token)
+	req := models.DynamicClientRequest{
+		Id:                      ctx.RequestContext.Param("client_id"),
+		RegistrationAccessToken: token,
+	}
+
+	resp, err := dcr.GetClient(ctx, req)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
@@ -71,7 +81,12 @@ func HandleDynamicClientDelete(ctx utils.Context) {
 		return
 	}
 
-	if err := dcr.DeleteClient(ctx, ctx.RequestContext.Param("client_id"), token); err != nil {
+	req := models.DynamicClientRequest{
+		Id:                      ctx.RequestContext.Param("client_id"),
+		RegistrationAccessToken: token,
+	}
+
+	if err := dcr.DeleteClient(ctx, req); err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
 	}
