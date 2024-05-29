@@ -30,10 +30,10 @@ type IdTokenOptions struct {
 type TokenOptions struct {
 	TokenFormat           constants.TokenFormat `json:"token_format"`
 	ExpiresInSecs         int                   `json:"expires_in_secs"`
-	ShouldRefresh         bool                  `json:"is_refreshable"`
-	JwtSignatureKeyId     string                `json:"token_signature_key_id"`
-	OpaqueTokenLength     int                   `json:"opaque_token_length"`
-	AdditionalTokenClaims map[string]string     `json:"additional_token_claims"`
+	ShouldRefresh         bool
+	JwtSignatureKeyId     string            `json:"token_signature_key_id"`
+	OpaqueTokenLength     int               `json:"opaque_token_length"`
+	AdditionalTokenClaims map[string]string `json:"additional_token_claims"`
 }
 
 func (opts *TokenOptions) AddTokenClaims(claims map[string]string) {
@@ -41,7 +41,6 @@ func (opts *TokenOptions) AddTokenClaims(claims map[string]string) {
 }
 
 type GrantOptions struct {
-	SessionId          string              `json:"id"`
 	GrantType          constants.GrantType `json:"grant_type"`
 	Subject            string              `json:"sub"`
 	ClientId           string              `json:"client_id"`
@@ -50,23 +49,6 @@ type GrantOptions struct {
 	CreatedAtTimestamp int `json:"created_at"`
 	TokenOptions
 	IdTokenOptions
-}
-
-func (grantOptions GrantOptions) ShouldGenerateRefreshToken(client Client) bool {
-	// TODO: review this.
-	return (grantOptions.GrantType == constants.AuthorizationCodeGrant || grantOptions.GrantType == constants.RefreshTokenGrant) && client.IsGrantTypeAllowed(constants.RefreshTokenGrant) && grantOptions.GrantType != constants.ClientCredentialsGrant && grantOptions.ShouldRefresh
-}
-
-func (grantOptions GrantOptions) ShouldGenerateIdToken() bool {
-	return unit.ScopesContainsOpenId(grantOptions.Scopes)
-}
-
-func (grantOptions GrantOptions) ShouldSaveSession() bool {
-	if grantOptions.GrantType == constants.ClientCredentialsGrant && grantOptions.TokenFormat == constants.JwtTokenFormat {
-		return false
-	}
-
-	return grantOptions.TokenFormat == constants.OpaqueTokenFormat || grantOptions.ShouldRefresh || unit.ScopesContainsOpenId(grantOptions.Scopes)
 }
 
 type ClientAuthnRequest struct {
@@ -193,4 +175,52 @@ type Token struct {
 	Value         string
 	Type          constants.TokenType
 	JwkThumbprint string
+}
+
+type RedirectParameters struct {
+	Response          string
+	Issuer            string
+	AccessToken       string
+	TokenType         constants.TokenType
+	IdToken           string
+	AuthorizationCode string
+	State             string
+	Error             constants.ErrorCode
+	ErrorDescription  string
+}
+
+func (rp RedirectParameters) GetParams() map[string]string {
+	params := make(map[string]string)
+
+	if rp.Response != "" {
+		params["response"] = rp.Response
+		return params
+	}
+
+	if rp.Issuer != "" {
+		params["iss"] = rp.Issuer
+	}
+	if rp.AccessToken != "" {
+		params["access_token"] = rp.AccessToken
+	}
+	if rp.TokenType != "" {
+		params["token_type"] = string(rp.TokenType)
+	}
+	if rp.IdToken != "" {
+		params["id_token"] = rp.IdToken
+	}
+	if rp.AuthorizationCode != "" {
+		params["code"] = rp.AuthorizationCode
+	}
+	if rp.State != "" {
+		params["state"] = rp.State
+	}
+	if rp.Error != "" {
+		params["error"] = string(rp.Error)
+	}
+	if rp.ErrorDescription != "" {
+		params["error_description"] = rp.ErrorDescription
+	}
+
+	return params
 }

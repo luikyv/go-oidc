@@ -22,15 +22,12 @@ func redirectError(
 		return err
 	}
 
-	params := map[string]string{
-		"error":             string(oauthErr.GetCode()),
-		"error_description": oauthErr.Error(),
+	redirectParams := models.RedirectParameters{
+		Error:            oauthErr.ErrorCode,
+		ErrorDescription: oauthErr.ErrorDescription,
+		State:            oauthErr.State,
 	}
-	if oauthErr.State != "" {
-		params["state"] = oauthErr.State
-	}
-
-	redirectResponse(ctx, client, oauthErr.AuthorizationParameters, params)
+	redirectResponse(ctx, client, oauthErr.AuthorizationParameters, redirectParams)
 	return nil
 }
 
@@ -38,29 +35,28 @@ func redirectResponse(
 	ctx utils.Context,
 	client models.Client,
 	params models.AuthorizationParameters,
-	redirectParams map[string]string,
+	redirectParams models.RedirectParameters,
 ) {
 
 	if ctx.IssuerResponseParameterIsEnabled {
-		redirectParams[string(constants.IssuerClaim)] = ctx.Host
+		redirectParams.Issuer = ctx.Host
 	}
 
 	responseMode := unit.GetResponseModeOrDefault(params.ResponseMode, params.ResponseType)
 	if responseMode.IsJarm() || client.JarmSignatureAlgorithm != "" {
-		redirectParams = map[string]string{
-			"response": createJarmResponse(ctx, client, redirectParams),
-		}
+		redirectParams.Response = createJarmResponse(ctx, client, redirectParams)
 	}
 
+	redirectParamsMap := redirectParams.GetParams()
 	switch responseMode {
 	case constants.FragmentResponseMode, constants.FragmentJwtResponseMode:
-		redirectUrl := unit.GetUrlWithFragmentParams(params.RedirectUri, redirectParams)
+		redirectUrl := unit.GetUrlWithFragmentParams(params.RedirectUri, redirectParamsMap)
 		ctx.RequestContext.Redirect(http.StatusFound, redirectUrl)
 	case constants.FormPostResponseMode, constants.FormPostJwtResponseMode:
-		redirectParams["redirect_uri"] = params.RedirectUri
-		ctx.RequestContext.HTML(http.StatusOK, "internal_form_post.html", params)
+		redirectParamsMap["redirect_uri"] = params.RedirectUri
+		ctx.RequestContext.HTML(http.StatusOK, "internal_form_post.html", redirectParamsMap)
 	default:
-		redirectUrl := unit.GetUrlWithQueryParams(params.RedirectUri, redirectParams)
+		redirectUrl := unit.GetUrlWithQueryParams(params.RedirectUri, redirectParamsMap)
 		ctx.RequestContext.Redirect(http.StatusFound, redirectUrl)
 	}
 }
@@ -68,7 +64,7 @@ func redirectResponse(
 func createJarmResponse(
 	ctx utils.Context,
 	client models.Client,
-	params map[string]string,
+	redirectParams models.RedirectParameters,
 ) string {
 	jwk := ctx.GetJarmSignatureKey(client)
 	createdAtTimestamp := unit.GetTimestampNow()
@@ -83,7 +79,7 @@ func createJarmResponse(
 		string(constants.IssuedAtClaim): createdAtTimestamp,
 		string(constants.ExpiryClaim):   createdAtTimestamp + ctx.JarmLifetimeSecs,
 	}
-	for k, v := range params {
+	for k, v := range redirectParams.GetParams() {
 		claims[k] = v
 	}
 	response, _ := jwt.Signed(signer).Claims(claims).Serialize()

@@ -84,19 +84,14 @@ func HandleTokenRequest(ctx utils.Context) {
 	addBasicCredentialsToRequest(ctx, &req.ClientAuthnRequest)
 	addProofOfPossesionToRequest(ctx, &req)
 
-	grantSession, err := token.HandleGrantCreation(ctx, req)
+	tokenResp, err := token.HandleTokenCreation(ctx, req)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
 	}
 
-	ctx.RequestContext.JSON(http.StatusOK, models.TokenResponse{
-		AccessToken:  grantSession.Token,
-		IdToken:      grantSession.IdToken,
-		RefreshToken: grantSession.RefreshToken,
-		ExpiresIn:    grantSession.ExpiresInSecs,
-		TokenType:    grantSession.TokenType,
-	})
+	// TODO: status ok?
+	ctx.RequestContext.JSON(http.StatusOK, tokenResp)
 }
 
 //---------------------------------------- User Info ----------------------------------------//

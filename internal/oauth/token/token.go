@@ -8,30 +8,29 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func HandleGrantCreation(
+func HandleTokenCreation(
 	ctx utils.Context,
 	req models.TokenRequest,
 ) (
-	grantSession models.GrantSession,
+	tokenResp models.TokenResponse,
 	err error,
 ) {
-
 	if err := validateDpopJwtRequest(ctx, req); err != nil {
-		return models.GrantSession{}, err
+		return models.TokenResponse{}, err
 	}
 
 	switch req.GrantType {
 	case constants.ClientCredentialsGrant:
-		grantSession, err = handleClientCredentialsGrantTokenCreation(ctx, req)
+		tokenResp, err = handleClientCredentialsGrantTokenCreation(ctx, req)
 	case constants.AuthorizationCodeGrant:
-		grantSession, err = handleAuthorizationCodeGrantTokenCreation(ctx, req)
+		tokenResp, err = handleAuthorizationCodeGrantTokenCreation(ctx, req)
 	case constants.RefreshTokenGrant:
-		grantSession, err = handleRefreshTokenGrantTokenCreation(ctx, req)
+		tokenResp, err = handleRefreshTokenGrantTokenCreation(ctx, req)
 	default:
-		grantSession, err = models.GrantSession{}, models.NewOAuthError(constants.UnsupportedGrantType, "unsupported grant type")
+		tokenResp, err = models.TokenResponse{}, models.NewOAuthError(constants.UnsupportedGrantType, "unsupported grant type")
 	}
 
-	return grantSession, err
+	return tokenResp, err
 }
 
 func validateDpopJwtRequest(ctx utils.Context, req models.TokenRequest) models.OAuthError {

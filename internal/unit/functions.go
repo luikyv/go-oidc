@@ -311,6 +311,8 @@ func GetStatusCode(errorCode constants.ErrorCode) int {
 		return http.StatusForbidden
 	case constants.InvalidClient:
 		return http.StatusUnauthorized
+	case constants.InternalError:
+		return http.StatusInternalServerError
 	default:
 		return http.StatusBadRequest
 	}

@@ -12,7 +12,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
-	"github.com/luikymagno/auth-server/pkg/oauth"
+	"github.com/luikymagno/auth-server/pkg/oidc"
 )
 
 func GetTokenOptions(client models.Client, scopes string) models.TokenOptions {
@@ -34,7 +34,7 @@ func main() {
 	privateRs256Jwk := unit.GetTestPrivateRs256Jwk("rsa256_server_key")
 
 	// Create the manager.
-	oauthManager := oauth.NewProvider(
+	oauthManager := oidc.NewProvider(
 		issuer,
 		inmemory.NewInMemoryClientManager(),
 		inmemory.NewInMemoryAuthnSessionManager(),

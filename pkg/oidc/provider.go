@@ -1,4 +1,4 @@
-package oauth
+package oidc
 
 import (
 	"fmt"
@@ -172,6 +172,7 @@ func (provider *OpenIdProvider) EnableJwtSecuredAuthorizationResponseMode(
 		constants.FormPostJwtResponseMode,
 	)
 	provider.JarmLifetimeSecs = jarmLifetimeSecs
+	provider.DefaultJarmSignatureKeyId = defaultJarmSignatureKeyId
 	provider.JarmSignatureKeyIds = jarmSignatureKeyIds
 
 }

@@ -16,7 +16,7 @@ func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 	defer tearDown()
 
 	// Then
-	_, err := token.HandleGrantCreation(ctx, models.TokenRequest{
+	_, err := token.HandleTokenCreation(ctx, models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
 			ClientIdPost:     "invalid_client_id",
 			ClientSecretPost: models.TestClientSecret,
@@ -38,7 +38,7 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	defer tearDown()
 
 	// Then
-	_, err := token.HandleGrantCreation(ctx, models.TokenRequest{
+	_, err := token.HandleTokenCreation(ctx, models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
 			ClientIdPost:     models.TestClientId,
 			ClientSecretPost: "invalid_password",
@@ -74,7 +74,7 @@ func TestHandleGrantCreationWithDpop(t *testing.T) {
 	}
 
 	// Then
-	grantSession, err := token.HandleGrantCreation(ctx, req)
+	grantSession, err := token.HandleTokenCreation(ctx, req)
 
 	// Assert
 	if err != nil {

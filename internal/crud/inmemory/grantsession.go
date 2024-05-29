@@ -16,7 +16,7 @@ func NewInMemoryGrantSessionManager() *InMemoryGrantSessionManager {
 }
 
 func (manager *InMemoryGrantSessionManager) CreateOrUpdate(grantSession models.GrantSession) error {
-	manager.GrantSessions[grantSession.SessionId] = grantSession
+	manager.GrantSessions[grantSession.Id] = grantSession
 	return nil
 }
 

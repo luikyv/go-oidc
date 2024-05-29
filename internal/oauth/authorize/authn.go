@@ -2,6 +2,7 @@ package authorize
 
 import (
 	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
@@ -42,55 +43,94 @@ func authenticate(ctx utils.Context, session *models.AuthnSession) models.OAuthE
 		ctx.AuthnSessionManager.Delete(session.Id)
 	}
 
-	ctx.AuthnSessionManager.CreateOrUpdate(*session)
+	if err := ctx.AuthnSessionManager.CreateOrUpdate(*session); err != nil {
+		return models.NewOAuthError(constants.InternalError, err.Error())
+	}
 	return nil
 }
 
 func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) models.OAuthError {
+	redirectParams := models.RedirectParameters{
+		State: session.State,
+	}
 	client, err := ctx.ClientManager.Get(session.ClientId)
 	if err != nil {
-		return session.NewRedirectError(constants.InternalError, "could not load the client")
+		return session.NewRedirectError(constants.InternalError, err.Error())
 	}
 
-	params := make(map[string]string)
-
 	if session.ResponseType.Contains(constants.CodeResponse) {
-		params["code"] = session.InitAuthorizationCode()
+		redirectParams.AuthorizationCode = session.InitAuthorizationCode()
 	}
 
 	if session.ResponseType.Contains(constants.TokenResponse) {
-		grantSession := utils.GenerateGrantSession(ctx, client, NewImplicitGrantOptions(ctx, client, *session))
-		params["access_token"] = grantSession.Token
-		params["token_type"] = string(grantSession.TokenType)
+		addImplicitToken(ctx, client, *session, &redirectParams)
 	}
 
 	if session.ResponseType.Contains(constants.IdTokenResponse) {
-		// TODO: Do I need to create the id token again?
-		params["id_token"] = utils.MakeIdToken(ctx, client, models.GrantOptions{
-			GrantType: constants.ImplicitGrant,
-			Subject:   session.Subject,
-			ClientId:  session.ClientId,
-			IdTokenOptions: models.IdTokenOptions{
-				AccessToken:             params["access_token"],
-				AuthorizationCode:       session.AuthorizationCode,
-				State:                   session.State,
-				Nonce:                   session.Nonce,
-				AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
-			},
-		})
-
+		addImplicitIdToken(ctx, client, *session, &redirectParams)
 	}
 
-	// Echo the state parameter.
-	if session.State != "" {
-		params["state"] = session.State
-	}
-
-	redirectResponse(ctx, client, session.AuthorizationParameters, params)
+	redirectResponse(ctx, client, session.AuthorizationParameters, redirectParams)
 	return nil
 }
 
-func NewImplicitGrantOptions(ctx utils.Context, client models.Client, session models.AuthnSession) models.GrantOptions {
+func addImplicitIdToken(
+	ctx utils.Context,
+	client models.Client,
+	session models.AuthnSession,
+	redirectParams *models.RedirectParameters,
+) {
+	redirectParams.IdToken = utils.MakeIdToken(ctx, client, models.GrantOptions{
+		GrantType: constants.ImplicitGrant,
+		Subject:   session.Subject,
+		ClientId:  session.ClientId,
+		IdTokenOptions: models.IdTokenOptions{
+			AccessToken:             redirectParams.AccessToken,
+			AuthorizationCode:       session.AuthorizationCode,
+			State:                   session.State,
+			Nonce:                   session.Nonce,
+			AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
+		},
+	})
+}
+
+func addImplicitToken(
+	ctx utils.Context,
+	client models.Client,
+	session models.AuthnSession,
+	redirectParams *models.RedirectParameters,
+) models.OAuthError {
+	grantOptions := newImplicitGrantOptions(ctx, client, session)
+	token := utils.MakeToken(ctx, client, grantOptions)
+	redirectParams.AccessToken = token.Value
+	redirectParams.TokenType = token.Type
+
+	if !shouldGenerateImplicitGrantSession(ctx, grantOptions) {
+		return nil
+	}
+
+	_, err := generateImplicitGrantSession(ctx, token, grantOptions)
+	return err
+}
+
+func shouldGenerateImplicitGrantSession(_ utils.Context, grantOptions models.GrantOptions) bool {
+	return grantOptions.TokenFormat == constants.OpaqueTokenFormat || unit.ScopesContainsOpenId(grantOptions.Scopes)
+}
+
+func generateImplicitGrantSession(
+	ctx utils.Context,
+	token models.Token,
+	grantOptions models.GrantOptions,
+) (models.GrantSession, models.OAuthError) {
+	grantSession := models.NewGrantSession(grantOptions, token)
+	if err := ctx.GrantSessionManager.CreateOrUpdate(grantSession); err != nil {
+		return models.GrantSession{}, models.NewOAuthError(constants.InternalError, err.Error())
+	}
+
+	return grantSession, nil
+}
+
+func newImplicitGrantOptions(ctx utils.Context, client models.Client, session models.AuthnSession) models.GrantOptions {
 	tokenOptions := ctx.GetTokenOptions(client, session.Scopes)
 	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
 	return models.GrantOptions{

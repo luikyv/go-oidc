@@ -13,27 +13,52 @@ func handleRefreshTokenGrantTokenCreation(
 	ctx utils.Context,
 	req models.TokenRequest,
 ) (
-	models.GrantSession,
+	models.TokenResponse,
 	models.OAuthError,
 ) {
 
 	if err := preValidateRefreshTokenGrantRequest(req); err != nil {
-		return models.GrantSession{}, models.NewOAuthError(constants.InvalidRequest, "invalid parameter for refresh token grant")
+		return models.TokenResponse{}, models.NewOAuthError(constants.InvalidRequest, "invalid parameter for refresh token grant")
 	}
 
-	authenticatedClient, grantSession, err := getAuthenticatedClientAndGrantSession(ctx, req)
+	client, grantSession, err := getAuthenticatedClientAndGrantSession(ctx, req)
 	if err != nil {
 		ctx.Logger.Debug("error while loading the client or token.", slog.String("error", err.Error()))
-		return models.GrantSession{}, err
+		return models.TokenResponse{}, err
 	}
 
-	if err = validateRefreshTokenGrantRequest(req, authenticatedClient, grantSession); err != nil {
-		return models.GrantSession{}, err
+	if err = validateRefreshTokenGrantRequest(req, client, grantSession); err != nil {
+		return models.TokenResponse{}, err
 	}
 
-	ctx.Logger.Debug("update the token session")
-	updatedGrantSession := utils.GenerateGrantSession(ctx, authenticatedClient, newRefreshTokenGrantOptions(ctx, grantSession))
-	return updatedGrantSession, nil
+	token := utils.MakeToken(ctx, client, grantSession.GrantOptions)
+	tokenResp := models.TokenResponse{
+		AccessToken: token.Value,
+		ExpiresIn:   grantSession.ExpiresInSecs,
+		TokenType:   token.Type,
+	}
+
+	if unit.ScopesContainsOpenId(grantSession.Scopes) {
+		tokenResp.IdToken = utils.MakeIdToken(ctx, client, grantSession.GrantOptions)
+	}
+
+	updateRefreshTokenGrantSession(ctx, grantSession)
+	tokenResp.RefreshToken = grantSession.RefreshToken
+	return tokenResp, nil
+}
+
+func updateRefreshTokenGrantSession(ctx utils.Context, grantSession models.GrantSession) models.OAuthError {
+	grantSession.RenewedAtTimestamp = unit.GetTimestampNow()
+	if ctx.ShouldRotateRefreshToken {
+		grantSession.RefreshToken = unit.GenerateRefreshToken()
+	}
+
+	err := ctx.GrantSessionManager.CreateOrUpdate(grantSession)
+	if err != nil {
+		return models.NewOAuthError(constants.InternalError, err.Error())
+	}
+
+	return nil
 }
 
 func getAuthenticatedClientAndGrantSession(
@@ -122,9 +147,4 @@ func validateRefreshTokenGrantRequest(
 	}
 
 	return nil
-}
-
-func newRefreshTokenGrantOptions(_ utils.Context, session models.GrantSession) models.GrantOptions {
-	session.GrantType = constants.RefreshTokenGrant
-	return session.GrantOptions
 }

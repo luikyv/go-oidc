@@ -19,6 +19,7 @@ type AuthnSession struct {
 	Subject            string
 	ClientId           string
 	AuthorizationParameters
+	GrantedScopes             string // TODO: Use this.
 	AuthorizationCode         string
 	AuthorizedAtTimestamp     int
 	PushedParameters          map[string]string // Parameters sent using the PAR endpoint.

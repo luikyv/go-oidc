@@ -44,7 +44,7 @@ func TestAuthorizationCodeHandleGrantCreation(t *testing.T) {
 	}
 
 	// Then
-	token, err := token.HandleGrantCreation(ctx, req)
+	token, err := token.HandleTokenCreation(ctx, req)
 
 	// Assert
 	if err != nil {

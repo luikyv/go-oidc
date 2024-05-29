@@ -46,7 +46,7 @@ func TestRefreshTokenHandleGrantCreation(t *testing.T) {
 	}
 
 	// Then
-	newToken, err := token.HandleGrantCreation(ctx, req)
+	newToken, err := token.HandleTokenCreation(ctx, req)
 
 	// Assert
 	if err != nil {
@@ -112,7 +112,7 @@ func TestRefreshTokenHandleGrantCreationShouldDenyExpiredRefreshToken(t *testing
 	}
 
 	// Then
-	_, err := token.HandleGrantCreation(ctx, req)
+	_, err := token.HandleTokenCreation(ctx, req)
 
 	// Assert
 	if err == nil {

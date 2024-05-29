@@ -3,31 +3,52 @@ package token
 import (
 	"log/slog"
 
+	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func handleAuthorizationCodeGrantTokenCreation(ctx utils.Context, req models.TokenRequest) (models.GrantSession, models.OAuthError) {
+func handleAuthorizationCodeGrantTokenCreation(ctx utils.Context, req models.TokenRequest) (models.TokenResponse, models.OAuthError) {
 
 	if oauthErr := preValidateAuthorizationCodeGrantRequest(req); oauthErr != nil {
-		return models.GrantSession{}, oauthErr
+		return models.TokenResponse{}, oauthErr
 	}
 
-	authenticatedClient, session, oauthErr := getAuthenticatedClientAndSession(ctx, req)
+	client, session, oauthErr := getAuthenticatedClientAndSession(ctx, req)
 	if oauthErr != nil {
 		ctx.Logger.Debug("error while loading the client or session", slog.String("error", oauthErr.Error()))
-		return models.GrantSession{}, oauthErr
+		return models.TokenResponse{}, oauthErr
 	}
 
-	if oauthErr = validateAuthorizationCodeGrantRequest(ctx, req, authenticatedClient, session); oauthErr != nil {
+	if oauthErr = validateAuthorizationCodeGrantRequest(ctx, req, client, session); oauthErr != nil {
 		ctx.Logger.Debug("invalid parameters for the token request", slog.String("error", oauthErr.Error()))
-		return models.GrantSession{}, oauthErr
+		return models.TokenResponse{}, oauthErr
 	}
 
-	grantSession := utils.GenerateGrantSession(ctx, authenticatedClient, newAuthorizationCodeGrantOptions(ctx, req, authenticatedClient, session))
-	return grantSession, nil
+	grantOptions := newAuthorizationCodeGrantOptions(ctx, req, client, session)
+	token := utils.MakeToken(ctx, client, grantOptions)
+	tokenResp := models.TokenResponse{
+		AccessToken: token.Value,
+		ExpiresIn:   grantOptions.ExpiresInSecs,
+		TokenType:   token.Type,
+	}
+
+	if unit.ScopesContainsOpenId(session.Scopes) {
+		tokenResp.IdToken = utils.MakeIdToken(ctx, client, grantOptions)
+	}
+
+	if !shouldGenerateAuthorizationCodeGrantSession(ctx, grantOptions) {
+		return tokenResp, nil
+	}
+
+	grantSession, err := generateAuthorizationCodeGrantSession(ctx, client, token, grantOptions)
+	if err != nil {
+		return models.TokenResponse{}, nil
+	}
+	tokenResp.RefreshToken = grantSession.RefreshToken
+	return tokenResp, nil
 }
 
 func preValidateAuthorizationCodeGrantRequest(req models.TokenRequest) models.OAuthError {
@@ -36,6 +57,36 @@ func preValidateAuthorizationCodeGrantRequest(req models.TokenRequest) models.OA
 	}
 
 	return nil
+}
+
+func shouldGenerateAuthorizationCodeGrantSession(_ utils.Context, grantOptions models.GrantOptions) bool {
+	return grantOptions.TokenFormat == constants.OpaqueTokenFormat || unit.ScopesContainsOpenId(grantOptions.Scopes) || grantOptions.ShouldRefresh
+}
+
+func generateAuthorizationCodeGrantSession(
+	ctx utils.Context,
+	client models.Client,
+	token models.Token,
+	grantOptions models.GrantOptions,
+) (models.GrantSession, models.OAuthError) {
+	grantSession := models.GrantSession{
+		Id:                 uuid.New().String(),
+		JwkThumbprint:      token.JwkThumbprint,
+		TokenId:            token.Id,
+		RenewedAtTimestamp: unit.GetTimestampNow(),
+		GrantOptions:       grantOptions,
+	}
+
+	if client.IsGrantTypeAllowed(constants.RefreshTokenGrant) && grantOptions.ShouldRefresh {
+		grantSession.RefreshToken = unit.GenerateRefreshToken()
+		grantSession.RefreshTokenExpiresInSecs = ctx.RefreshTokenLifetimeSecs
+	}
+
+	if err := ctx.GrantSessionManager.CreateOrUpdate(grantSession); err != nil {
+		return models.GrantSession{}, models.NewOAuthError(constants.InternalError, err.Error())
+	}
+
+	return grantSession, nil
 }
 
 func validateAuthorizationCodeGrantRequest(

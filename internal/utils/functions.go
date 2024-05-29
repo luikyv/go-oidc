@@ -309,46 +309,6 @@ func MakeToken(ctx Context, client models.Client, grantOptions models.GrantOptio
 	}
 }
 
-func GenerateGrantSession(ctx Context, client models.Client, grantOptions models.GrantOptions) models.GrantSession {
-	nowTimestamp := unit.GetTimestampNow()
-	token := MakeToken(ctx, client, grantOptions)
-
-	if grantOptions.SessionId == "" {
-		grantOptions.SessionId = uuid.NewString()
-	}
-
-	if grantOptions.CreatedAtTimestamp == 0 {
-		grantOptions.CreatedAtTimestamp = nowTimestamp
-	}
-
-	if grantOptions.ExpiresInSecs == 0 {
-		grantOptions.ExpiresInSecs = constants.DefaultTokenLifetimeSecs
-	}
-
-	grantSession := models.GrantSession{
-		JwkThumbprint:      token.JwkThumbprint,
-		TokenId:            token.Id,
-		Token:              token.Value,
-		TokenType:          token.Type,
-		RenewedAtTimestamp: nowTimestamp,
-		GrantOptions:       grantOptions,
-	}
-
-	if grantOptions.ShouldGenerateRefreshToken(client) {
-		grantSession.RefreshToken = unit.GenerateRefreshToken()
-		grantSession.RefreshTokenExpiresInSecs = ctx.RefreshTokenLifetimeSecs
-	}
-
-	if grantOptions.ShouldGenerateIdToken() {
-		grantSession.IdToken = MakeIdToken(ctx, client, grantOptions)
-	}
-
-	if grantOptions.ShouldSaveSession() {
-		ctx.GrantSessionManager.CreateOrUpdate(grantSession)
-	}
-	return grantSession
-}
-
 func InitAuthnSessionWithPolicy(ctx Context, session *models.AuthnSession) models.OAuthError {
 	policy, ok := getAvailablePolicy(ctx, *session)
 	if !ok {
