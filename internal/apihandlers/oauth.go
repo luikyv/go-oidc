@@ -10,7 +10,6 @@ import (
 	"github.com/luikymagno/auth-server/internal/oauth/authorize"
 	"github.com/luikymagno/auth-server/internal/oauth/par"
 	"github.com/luikymagno/auth-server/internal/oauth/token"
-	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
@@ -96,29 +95,18 @@ func HandleTokenRequest(ctx utils.Context) {
 //---------------------------------------- User Info ----------------------------------------//
 
 func HandleUserInfoRequest(ctx utils.Context) {
-	token, tokenType, ok := unit.GetAuthorizationToken(ctx.RequestContext)
-	if !ok {
-		bindErrorToResponse(models.NewOAuthError(constants.AccessDenied, "no token found"), ctx.RequestContext)
-		return
-	}
 
-	grantSession, err := oauth.HandleUserInfoRequest(ctx, token)
+	userInfoResponse, err := oauth.HandleUserInfoRequest(ctx)
 	if err != nil {
 		bindErrorToResponse(err, ctx.RequestContext)
 		return
 	}
 
-	if err := utils.ValidateProofOfPossesion(ctx, token, tokenType, grantSession); err != nil {
-		bindErrorToResponse(err, ctx.RequestContext)
-		return
+	if userInfoResponse.SignedClaims != "" {
+		ctx.RequestContext.Data(http.StatusOK, "application/jwt", []byte(userInfoResponse.SignedClaims))
+	} else {
+		ctx.RequestContext.JSON(http.StatusOK, userInfoResponse.Claims)
 	}
-
-	response := gin.H{string(constants.SubjectClaim): grantSession.Subject}
-	for k, v := range grantSession.AdditionalIdTokenClaims {
-		response[k] = v
-	}
-
-	ctx.RequestContext.JSON(http.StatusOK, response)
 }
 
 //---------------------------------------- Helpers ----------------------------------------//

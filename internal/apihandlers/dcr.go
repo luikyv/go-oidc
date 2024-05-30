@@ -5,7 +5,6 @@ import (
 
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/oauth/dcr"
-	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
@@ -17,7 +16,7 @@ func HandleDynamicClientCreation(ctx utils.Context) {
 		return
 	}
 
-	initialAccessToken, _ := unit.GetBearerToken(ctx.RequestContext)
+	initialAccessToken, _ := ctx.GetBearerToken()
 	req.InitialAccessToken = initialAccessToken
 
 	resp, err := dcr.CreateClient(ctx, req)
@@ -36,7 +35,7 @@ func HandleDynamicClientUpdate(ctx utils.Context) {
 		return
 	}
 
-	token, ok := unit.GetBearerToken(ctx.RequestContext)
+	token, ok := ctx.GetBearerToken()
 	if !ok {
 		bindErrorToResponse(models.NewOAuthError(constants.AccessDenied, "no token found"), ctx.RequestContext)
 		return
@@ -54,7 +53,7 @@ func HandleDynamicClientUpdate(ctx utils.Context) {
 }
 
 func HandleDynamicClientRetrieve(ctx utils.Context) {
-	token, ok := unit.GetBearerToken(ctx.RequestContext)
+	token, ok := ctx.GetBearerToken()
 	if !ok {
 		bindErrorToResponse(models.NewOAuthError(constants.AccessDenied, "no token found"), ctx.RequestContext)
 		return
@@ -75,7 +74,7 @@ func HandleDynamicClientRetrieve(ctx utils.Context) {
 }
 
 func HandleDynamicClientDelete(ctx utils.Context) {
-	token, ok := unit.GetBearerToken(ctx.RequestContext)
+	token, ok := ctx.GetBearerToken()
 	if !ok {
 		bindErrorToResponse(models.NewOAuthError(constants.AccessDenied, "no token found"), ctx.RequestContext)
 		return

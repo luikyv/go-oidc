@@ -3,6 +3,7 @@ package utils
 import (
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
@@ -161,50 +162,55 @@ func (ctx Context) GetTokenSignatureKey(tokenOptions models.TokenOptions) jose.J
 	return key
 }
 
-func (ctx Context) GetIdTokenSignatureKey(client models.Client) jose.JSONWebKey {
-	if client.IdTokenSignatureAlgorithm != "" {
-		for _, keyId := range ctx.IdTokenSignatureKeyIds {
-			key, _ := ctx.GetPrivateKey(keyId)
-			if key.Algorithm == string(client.IdTokenSignatureAlgorithm) {
-				return key
-			}
-		}
-	}
+func (ctx Context) GetUserInfoSignatureKey(client models.Client) jose.JSONWebKey {
+	return ctx.getSignatureKey(client.UserInfoSignatureAlgorithm, ctx.DefaultIdTokenSignatureKeyId, ctx.IdTokenSignatureKeyIds)
+}
 
-	key, _ := ctx.GetPrivateKey(ctx.DefaultIdTokenSignatureKeyId)
-	return key
+func (ctx Context) GetUserInfoSignatureAlgorithms() []jose.SignatureAlgorithm {
+	return ctx.getSignatureAlgorithms(ctx.IdTokenSignatureKeyIds)
+}
+
+func (ctx Context) GetIdTokenSignatureKey(client models.Client) jose.JSONWebKey {
+	return ctx.getSignatureKey(client.IdTokenSignatureAlgorithm, ctx.DefaultIdTokenSignatureKeyId, ctx.IdTokenSignatureKeyIds)
 }
 
 func (ctx Context) GetIdTokenSignatureAlgorithms() []jose.SignatureAlgorithm {
+	return ctx.getSignatureAlgorithms(ctx.IdTokenSignatureKeyIds)
+}
+
+func (ctx Context) GetJarmSignatureKey(client models.Client) jose.JSONWebKey {
+	return ctx.getSignatureKey(client.JarmSignatureAlgorithm, ctx.DefaultJarmSignatureKeyId, ctx.JarmSignatureKeyIds)
+}
+
+func (ctx Context) GetJarmSignatureAlgorithms() []jose.SignatureAlgorithm {
+	return ctx.getSignatureAlgorithms(ctx.JarmSignatureKeyIds)
+}
+
+func (ctx Context) getSignatureAlgorithms(keyIds []string) []jose.SignatureAlgorithm {
 	signatureAlgorithms := []jose.SignatureAlgorithm{}
-	for _, keyId := range ctx.IdTokenSignatureKeyIds {
+	for _, keyId := range keyIds {
 		key, _ := ctx.GetPrivateKey(keyId)
 		signatureAlgorithms = append(signatureAlgorithms, jose.SignatureAlgorithm(key.Algorithm))
 	}
 	return signatureAlgorithms
 }
 
-func (ctx Context) GetJarmSignatureKey(client models.Client) jose.JSONWebKey {
-	if client.JarmSignatureAlgorithm != "" {
-		for _, keyId := range ctx.JarmSignatureKeyIds {
+func (ctx Context) getSignatureKey(
+	signatureAlgorithm jose.SignatureAlgorithm,
+	defaultKeyId string,
+	keyIds []string,
+) jose.JSONWebKey {
+	if signatureAlgorithm != "" {
+		for _, keyId := range keyIds {
 			key, _ := ctx.GetPrivateKey(keyId)
-			if key.Algorithm == string(client.JarmSignatureAlgorithm) {
+			if key.Algorithm == string(signatureAlgorithm) {
 				return key
 			}
 		}
 	}
 
-	key, _ := ctx.GetPrivateKey(ctx.DefaultJarmSignatureKeyId)
+	key, _ := ctx.GetPrivateKey(defaultKeyId)
 	return key
-}
-
-func (ctx Context) GetJarmSignatureAlgorithms() []jose.SignatureAlgorithm {
-	signatureAlgorithms := []jose.SignatureAlgorithm{}
-	for _, keyId := range ctx.JarmSignatureKeyIds {
-		key, _ := ctx.GetPrivateKey(keyId)
-		signatureAlgorithms = append(signatureAlgorithms, jose.SignatureAlgorithm(key.Algorithm))
-	}
-	return signatureAlgorithms
 }
 
 func (ctx Context) GetClientSignatureAlgorithms() []jose.SignatureAlgorithm {
@@ -214,4 +220,31 @@ func (ctx Context) GetClientSignatureAlgorithms() []jose.SignatureAlgorithm {
 func (ctx Context) SetCookie(cookie string, value string) {
 	// TODO
 	ctx.RequestContext.SetCookie(cookie, value, 3600, "/", ctx.Host, true, true)
+}
+
+func (ctx Context) GetBearerToken() (token string, ok bool) {
+	token, tokenType, ok := ctx.GetAuthorizationToken()
+	if !ok {
+		return "", false
+	}
+
+	if tokenType != constants.BearerTokenType {
+		return "", false
+	}
+
+	return token, true
+}
+
+func (ctx Context) GetAuthorizationToken() (token string, tokenType constants.TokenType, ok bool) {
+	tokenHeader := ctx.RequestContext.Request.Header.Get("Authorization")
+	if tokenHeader == "" {
+		return "", "", false
+	}
+
+	tokenParts := strings.Split(tokenHeader, " ")
+	if len(tokenParts) != 2 {
+		return "", "", false
+	}
+
+	return tokenParts[1], constants.TokenType(tokenParts[0]), true
 }

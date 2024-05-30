@@ -50,6 +50,7 @@ func NewProvider(
 			DefaultIdTokenSignatureKeyId: defaultIdTokenKeyId,
 			IdTokenSignatureKeyIds:       []string{defaultIdTokenKeyId},
 			IdTokenExpiresInSecs:         600,
+			CustomIdTokenClaims:          []constants.Claim{},
 			GrantTypes: []constants.GrantType{
 				constants.ClientCredentialsGrant,
 				constants.AuthorizationCodeGrant,

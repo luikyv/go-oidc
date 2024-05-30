@@ -20,7 +20,8 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 		GrantTypes:                           ctx.GrantTypes,
 		IdTokenClaimsSupported:               ctx.CustomIdTokenClaims,
 		SubjectIdentifierTypes:               ctx.SubjectIdentifierTypes,
-		IdTokenSigningAlgorithms:             ctx.GetIdTokenSignatureAlgorithms(),
+		IdTokenSignatureAlgorithms:           ctx.GetIdTokenSignatureAlgorithms(),
+		UserInfoSignatureAlgorithms:          ctx.GetIdTokenSignatureAlgorithms(),
 		ClientAuthnMethods:                   ctx.ClientAuthnMethods,
 		Scopes:                               ctx.Scopes,
 		TokenEndpointClientSigningAlgorithms: ctx.GetClientSignatureAlgorithms(),
@@ -43,7 +44,7 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 	}
 
 	if ctx.DpopIsEnabled {
-		config.DpopSigningAlgorithms = ctx.DpopSignatureAlgorithms
+		config.DpopSignatureAlgorithms = ctx.DpopSignatureAlgorithms
 	}
 
 	return config

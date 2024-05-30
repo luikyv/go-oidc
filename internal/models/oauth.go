@@ -92,6 +92,7 @@ type AuthorizationParameters struct {
 	Scopes              string                        `form:"scope" json:"scope"`
 	State               string                        `form:"state" json:"state"`
 	Nonce               string                        `form:"nonce" json:"nonce"`
+	Prompt              constants.PromptType          `form:"prompt" json:"prompt"`
 	CodeChallenge       string                        `form:"code_challenge" json:"code_challenge"`
 	CodeChallengeMethod constants.CodeChallengeMethod `form:"code_challenge_method" json:"code_challenge_method"`
 }
@@ -162,7 +163,8 @@ type OpenIdConfiguration struct {
 	Scopes                               []string                          `json:"scopes_supported"`
 	IdTokenClaimsSupported               []constants.Claim                 `json:"claims_supported"`
 	SubjectIdentifierTypes               []constants.SubjectIdentifierType `json:"subject_types_supported"`
-	IdTokenSigningAlgorithms             []jose.SignatureAlgorithm         `json:"id_token_signing_alg_values_supported"`
+	IdTokenSignatureAlgorithms           []jose.SignatureAlgorithm         `json:"id_token_signing_alg_values_supported"`
+	UserInfoSignatureAlgorithms          []jose.SignatureAlgorithm         `json:"userinfo_signing_alg_values_supported"`
 	ClientAuthnMethods                   []constants.ClientAuthnType       `json:"token_endpoint_auth_methods_supported"`
 	JarIsRequired                        bool                              `json:"require_signed_request_object,omitempty"`
 	JarIsEnabled                         bool                              `json:"request_parameter_supported"`
@@ -170,7 +172,7 @@ type OpenIdConfiguration struct {
 	JarmAlgorithms                       []jose.SignatureAlgorithm         `json:"authorization_signing_alg_values_supported,omitempty"`
 	TokenEndpointClientSigningAlgorithms []jose.SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg_values_supported"`
 	IssuerResponseParameterIsEnabled     bool                              `json:"authorization_response_iss_parameter_supported"`
-	DpopSigningAlgorithms                []jose.SignatureAlgorithm         `json:"dpop_signing_alg_values_supported,omitempty"`
+	DpopSignatureAlgorithms              []jose.SignatureAlgorithm         `json:"dpop_signing_alg_values_supported,omitempty"`
 }
 
 type Token struct {
@@ -227,4 +229,9 @@ func (rp RedirectParameters) GetParams() map[string]string {
 	}
 
 	return params
+}
+
+type UserInfoResponse struct {
+	SignedClaims string
+	Claims       map[string]any
 }

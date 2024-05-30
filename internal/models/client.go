@@ -13,23 +13,24 @@ import (
 //---------------------------------------- Client ----------------------------------------//
 
 type ClientMetaInfo struct {
-	Name                      string                          `json:"client_name"`
-	LogoUri                   string                          `json:"logo_uri"` // TODO: I should pass the client to the steps?
-	RedirectUris              []string                        `json:"redirect_uris"`
-	GrantTypes                []constants.GrantType           `json:"grant_types"`
-	ResponseTypes             []constants.ResponseType        `json:"response_types"`
-	PublicJwksUri             string                          `json:"jwks_uri"`
-	PublicJwks                jose.JSONWebKeySet              `json:"jwks"`
-	Scopes                    string                          `json:"scope"`
-	SubjectIdentifierType     constants.SubjectIdentifierType `json:"subject_type,omitempty"`
-	IdTokenSignatureAlgorithm jose.SignatureAlgorithm         `json:"id_token_signed_response_alg,omitempty"`
-	JarSignatureAlgorithm     jose.SignatureAlgorithm         `json:"request_object_signing_alg,omitempty"`
-	JarmSignatureAlgorithm    jose.SignatureAlgorithm         `json:"authorization_signed_response_alg,omitempty"`
-	PkceIsRequired            bool                            `json:"pkce_is_required"`
-	AuthnMethod               constants.ClientAuthnType       `json:"token_endpoint_auth_method"`
-	AuthnSignatureAlgorithm   jose.SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg"`
-	DpopIsRequired            bool                            `json:"dpop_bound_access_tokens"` //TODO: Use this
-	Attributes                map[string]string               `json:"custom_attributes"`
+	Name                       string                          `json:"client_name"`
+	LogoUri                    string                          `json:"logo_uri"` // TODO: I should pass the client to the steps?
+	RedirectUris               []string                        `json:"redirect_uris"`
+	GrantTypes                 []constants.GrantType           `json:"grant_types"`
+	ResponseTypes              []constants.ResponseType        `json:"response_types"`
+	PublicJwksUri              string                          `json:"jwks_uri"`
+	PublicJwks                 jose.JSONWebKeySet              `json:"jwks"`
+	Scopes                     string                          `json:"scope"`
+	SubjectIdentifierType      constants.SubjectIdentifierType `json:"subject_type,omitempty"`
+	IdTokenSignatureAlgorithm  jose.SignatureAlgorithm         `json:"id_token_signed_response_alg,omitempty"`
+	JarSignatureAlgorithm      jose.SignatureAlgorithm         `json:"request_object_signing_alg,omitempty"`
+	JarmSignatureAlgorithm     jose.SignatureAlgorithm         `json:"authorization_signed_response_alg,omitempty"`
+	PkceIsRequired             bool                            `json:"pkce_is_required"`
+	AuthnMethod                constants.ClientAuthnType       `json:"token_endpoint_auth_method"`
+	AuthnSignatureAlgorithm    jose.SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg"`
+	DpopIsRequired             bool                            `json:"dpop_bound_access_tokens"` //TODO: Use this
+	UserInfoSignatureAlgorithm jose.SignatureAlgorithm         `json:"userinfo_signed_response_alg"`
+	Attributes                 map[string]string               `json:"custom_attributes"`
 }
 
 type Client struct {

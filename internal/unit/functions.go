@@ -18,7 +18,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -101,33 +100,6 @@ func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod 
 	}
 
 	return false
-}
-
-func GetBearerToken(requestCtx *gin.Context) (token string, ok bool) {
-	token, tokenType, ok := GetAuthorizationToken(requestCtx)
-	if !ok {
-		return "", false
-	}
-
-	if tokenType != constants.BearerTokenType {
-		return "", false
-	}
-
-	return token, true
-}
-
-func GetAuthorizationToken(requestCtx *gin.Context) (token string, tokenType constants.TokenType, ok bool) {
-	tokenHeader := requestCtx.Request.Header.Get("Authorization")
-	if tokenHeader == "" {
-		return "", "", false
-	}
-
-	tokenParts := strings.Split(tokenHeader, " ")
-	if len(tokenParts) != 2 {
-		return "", "", false
-	}
-
-	return tokenParts[1], constants.TokenType(tokenParts[0]), true
 }
 
 // If either an empty or the "jwt" response modes are passed, we must find the default value based on the response type.

@@ -222,3 +222,12 @@ const (
 	OneTimePassowordAuthentication AuthenticationMethodReference = "otp"
 	PasswordAuthentication         AuthenticationMethodReference = "pwd"
 )
+
+type PromptType string
+
+const (
+	NonePromptType          PromptType = "none"
+	LoginPromptType         PromptType = "login"
+	ConsentPromptType       PromptType = "consent"
+	SelectAccountPromptType PromptType = "select_account"
+)
