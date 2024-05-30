@@ -28,7 +28,7 @@ func IntrospectToken(
 		return models.TokenIntrospectionInfo{}, err
 	}
 
-	resp, _ := getTokenIntrospectionInfo(ctx, req.Token)
+	resp := getTokenIntrospectionInfo(ctx, req.Token)
 	if resp.IsActive && resp.ClientId != client.Id {
 		return models.TokenIntrospectionInfo{}, models.NewOAuthError(constants.InvalidClient, "invalid token")
 	}
@@ -50,19 +50,44 @@ func validateTokenIntrospectionRequest(
 func getTokenIntrospectionInfo(
 	ctx utils.Context,
 	token string,
-) (
-	models.TokenIntrospectionInfo,
-	models.OAuthError,
-) {
-	// TODO: should also introspect refresh tokens.
-	var tokenInfo models.TokenIntrospectionInfo
-	if unit.IsJwt(token) {
-		tokenInfo = getJwtTokenIntrospectionInfo(ctx, token)
-	} else {
-		tokenInfo = getOpaqueTokenIntrospectionInfo(ctx, token)
+) models.TokenIntrospectionInfo {
+
+	if len(token) == constants.RefreshTokenLength {
+		return getRefreshTokenIntrospectionInfo(ctx, token)
 	}
 
-	return tokenInfo, nil
+	if unit.IsJwt(token) {
+		return getJwtTokenIntrospectionInfo(ctx, token)
+	}
+
+	return getOpaqueTokenIntrospectionInfo(ctx, token)
+}
+
+func getRefreshTokenIntrospectionInfo(
+	ctx utils.Context,
+	token string,
+) models.TokenIntrospectionInfo {
+	grantSession, err := ctx.GrantSessionManager.GetByRefreshToken(token)
+	if err != nil {
+		return models.TokenIntrospectionInfo{
+			IsActive: false,
+		}
+	}
+
+	if grantSession.IsRefreshSessionExpired() {
+		return models.TokenIntrospectionInfo{
+			IsActive: false,
+		}
+	}
+
+	return models.TokenIntrospectionInfo{
+		IsActive:           true,
+		Scopes:             grantSession.GrantedScopes,
+		ClientId:           grantSession.ClientId,
+		Username:           grantSession.Subject,
+		ExpiresAtTimestamp: grantSession.ExpiresAtTimestamp,
+		AdditionalClaims:   grantSession.AdditionalTokenClaims,
+	}
 }
 
 func getJwtTokenIntrospectionInfo(

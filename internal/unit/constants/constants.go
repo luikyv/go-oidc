@@ -183,7 +183,10 @@ const AuthorizationCodeLifetimeSecs int = 60
 
 const AuthorizationCodeLength int = 30
 
-const RefreshTokenLength int = 30
+// During introspection, refresh tokens are identified by its length.
+// Then, setting the length to an unusual value will avoid refresh tokens
+// and opaque access token to be confused.
+const RefreshTokenLength int = 137
 
 const DynamicClientIdLength int = 30
 
