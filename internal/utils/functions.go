@@ -165,39 +165,60 @@ func ValidateDpopJwt(ctx Context, dpopJwt string, expectedDpopClaims models.Dpop
 	return nil
 }
 
-func GetTokenId(ctx Context, token string) (string, models.OAuthError) {
+func GetValidTokenClaims(
+	ctx Context,
+	token string,
+) (
+	map[string]any,
+	models.OAuthError,
+) {
 	parsedToken, err := jwt.ParseSigned(token, ctx.GetSignatureAlgorithms())
 	if err != nil {
 		// If the token is not a valid JWT, we'll treat it as an opaque token.
-		return token, nil
+		return nil, models.NewOAuthError(constants.InvalidRequest, "could not parse the token")
 	}
 
 	if len(parsedToken.Headers) != 1 || parsedToken.Headers[0].KeyID == "" {
-		return "", models.NewOAuthError(constants.InvalidRequest, "invalid header kid")
+		return nil, models.NewOAuthError(constants.InvalidRequest, "invalid header kid")
 	}
 
 	keyId := parsedToken.Headers[0].KeyID
 	publicKey, ok := ctx.GetPublicKey(keyId)
 	if !ok {
-		return "", models.NewOAuthError(constants.AccessDenied, "invalid token")
+		return nil, models.NewOAuthError(constants.AccessDenied, "invalid token")
 	}
 
-	claims := jwt.Claims{}
-	if err := parsedToken.Claims(publicKey, &claims); err != nil {
-		return "", models.NewOAuthError(constants.AccessDenied, "invalid token")
+	var claims jwt.Claims
+	var rawClaims map[string]any
+	if err := parsedToken.Claims(publicKey, &claims, &rawClaims); err != nil {
+		return nil, models.NewOAuthError(constants.AccessDenied, "invalid token")
 	}
 
 	if err := claims.ValidateWithLeeway(jwt.Expected{
 		Issuer: ctx.Host,
 	}, time.Duration(0)); err != nil {
+		return nil, models.NewOAuthError(constants.AccessDenied, "invalid token")
+	}
+
+	return rawClaims, nil
+}
+
+func GetTokenId(ctx Context, token string) (string, models.OAuthError) {
+	if !unit.IsJwt(token) {
+		return token, nil
+	}
+
+	claims, err := GetValidTokenClaims(ctx, token)
+	if err != nil {
+		return "", err
+	}
+
+	tokenId := claims[string(constants.TokenIdClaim)]
+	if tokenId == nil {
 		return "", models.NewOAuthError(constants.AccessDenied, "invalid token")
 	}
 
-	if claims.ID == "" {
-		return "", models.NewOAuthError(constants.AccessDenied, "invalid token")
-	}
-
-	return claims.ID, nil
+	return tokenId.(string), nil
 }
 
 func InitAuthnSessionWithPolicy(ctx Context, session *models.AuthnSession) models.OAuthError {

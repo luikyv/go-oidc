@@ -372,6 +372,13 @@ func (provider *OpenIdProvider) setUp() {
 			},
 		)
 	}
+
+	provider.Server.POST(
+		string(constants.TokenIntrospectionEndpoint),
+		func(requestCtx *gin.Context) {
+			apihandlers.HandleIntrospectionRequest(provider.getContext(requestCtx))
+		},
+	)
 }
 
 func (provider *OpenIdProvider) Run(port int) {

@@ -89,6 +89,7 @@ const (
 	IssuerClaim                         Claim = "iss"
 	SubjectClaim                        Claim = "sub"
 	AudienceClaim                       Claim = "aud"
+	ClientIdClaim                       Claim = "client_id"
 	ExpiryClaim                         Claim = "exp"
 	IssuedAtClaim                       Claim = "iat"
 	ScopeClaim                          Claim = "scope"
@@ -99,6 +100,23 @@ const (
 	AuthorizationCodeHashClaim          Claim = "c_hash"
 	StateHashClaim                      Claim = "s_hash"
 )
+
+var Claims = []Claim{
+	TokenIdClaim,
+	IssuerClaim,
+	SubjectClaim,
+	AudienceClaim,
+	ClientIdClaim,
+	ExpiryClaim,
+	IssuedAtClaim,
+	ScopeClaim,
+	NonceClaim,
+	AuthenticationTimeClaim,
+	AuthenticationMethodReferencesClaim,
+	AccessTokenHashClaim,
+	AuthorizationCodeHashClaim,
+	StateHashClaim,
+}
 
 type KeyUsage string
 
@@ -212,6 +230,7 @@ const (
 	TokenEndpoint                      EndpointPath = "/token"
 	UserInfoEndpoint                   EndpointPath = "/userinfo"
 	DynamicClientEndpoint              EndpointPath = "/register"
+	TokenIntrospectionEndpoint         EndpointPath = "/introspect"
 )
 
 // RFC8176.
@@ -230,4 +249,11 @@ const (
 	LoginPromptType         PromptType = "login"
 	ConsentPromptType       PromptType = "consent"
 	SelectAccountPromptType PromptType = "select_account"
+)
+
+type TokenTypeHint string
+
+const (
+	AccessTokenHint  TokenTypeHint = "access_token"
+	RefreshTokenHint TokenTypeHint = "refresh_token"
 )

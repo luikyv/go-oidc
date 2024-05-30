@@ -10,7 +10,13 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func GetAuthenticatedClient(ctx utils.Context, req models.ClientAuthnRequest) (models.Client, models.OAuthError) {
+func GetAuthenticatedClient(
+	ctx utils.Context,
+	req models.ClientAuthnRequest,
+) (
+	models.Client,
+	models.OAuthError,
+) {
 
 	clientId, oauthErr := validateClientAuthnRequest(ctx, req)
 	if oauthErr != nil {
@@ -31,7 +37,13 @@ func GetAuthenticatedClient(ctx utils.Context, req models.ClientAuthnRequest) (m
 	return client, nil
 }
 
-func getClientId(ctx utils.Context, req models.ClientAuthnRequest) (string, bool) {
+func getClientId(
+	ctx utils.Context,
+	req models.ClientAuthnRequest,
+) (
+	string,
+	bool,
+) {
 	clientIds := []string{}
 
 	if req.ClientIdPost != "" {
@@ -75,7 +87,13 @@ func appendClientIdFromAssertion(
 	return append(clientIds, assertionClientId), true
 }
 
-func getClientIdFromAssertion(ctx utils.Context, assertion string) (string, bool) {
+func getClientIdFromAssertion(
+	ctx utils.Context,
+	assertion string,
+) (
+	string,
+	bool,
+) {
 	parsedAssertion, err := jwt.ParseSigned(assertion, ctx.GetClientSignatureAlgorithms())
 	if err != nil {
 		return "", false

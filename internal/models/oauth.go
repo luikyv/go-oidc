@@ -19,7 +19,7 @@ type DpopClaims struct {
 
 type IdTokenOptions struct {
 	Nonce                              string                                    `json:"nonce"`
-	AdditionalIdTokenClaims            map[string]string                         `json:"additional_id_token_claims"`
+	AdditionalIdTokenClaims            map[string]any                            `json:"additional_id_token_claims"`
 	UserAuthenticatedAtTimestamp       int                                       `json:"auth_time"`
 	UserAuthenticationMethodReferences []constants.AuthenticationMethodReference `json:"amr"`
 	// These values here below are intended to be hashed and placed in the ID token.
@@ -33,12 +33,12 @@ type TokenOptions struct {
 	TokenFormat           constants.TokenFormat `json:"token_format"`
 	TokenExpiresInSecs    int                   `json:"token_expires_in_secs"`
 	ShouldRefresh         bool
-	JwtSignatureKeyId     string            `json:"token_signature_key_id"`
-	OpaqueTokenLength     int               `json:"opaque_token_length"`
-	AdditionalTokenClaims map[string]string `json:"additional_token_claims"`
+	JwtSignatureKeyId     string         `json:"token_signature_key_id"`
+	OpaqueTokenLength     int            `json:"opaque_token_length"`
+	AdditionalTokenClaims map[string]any `json:"additional_token_claims"`
 }
 
-func (opts *TokenOptions) AddTokenClaims(claims map[string]string) {
+func (opts *TokenOptions) AddTokenClaims(claims map[string]any) {
 	maps.Copy(opts.AdditionalTokenClaims, claims)
 }
 
@@ -148,13 +148,15 @@ type DynamicClientResponse struct {
 	ClientMetaInfo
 }
 
+// TODO: introspect metadata https://www.rfc-editor.org/rfc/rfc8414.html
 type OpenIdConfiguration struct {
 	Issuer                               string                            `json:"issuer"`
 	ClientRegistrationEndpoint           string                            `json:"registration_endpoint"`
 	AuthorizationEndpoint                string                            `json:"authorization_endpoint"`
 	TokenEndpoint                        string                            `json:"token_endpoint"`
 	UserinfoEndpoint                     string                            `json:"userinfo_endpoint"`
-	JwksUri                              string                            `json:"jwks_uri"`
+	IntrospectionEndpoint                string                            `json:"introspection_endpoint"`
+	JwksEndpoint                         string                            `json:"jwks_uri"`
 	ParEndpoint                          string                            `json:"pushed_authorization_request_endpoint,omitempty"`
 	ParIsRequired                        bool                              `json:"require_pushed_authorization_requests,omitempty"`
 	ResponseTypes                        []constants.ResponseType          `json:"response_types_supported"`
@@ -234,4 +236,40 @@ func (rp RedirectParameters) GetParams() map[string]string {
 type UserInfoResponse struct {
 	SignedClaims string
 	Claims       map[string]any
+}
+
+type TokenIntrospectionRequest struct {
+	ClientAuthnRequest
+	Token         string                  `json:"token"`
+	TokenTypeHint constants.TokenTypeHint `json:"token_type_hint"`
+}
+
+type TokenIntrospectionInfo struct {
+	IsActive           bool
+	Scopes             string
+	ClientId           string
+	Username           string
+	ExpiresAtTimestamp int
+	AdditionalClaims   map[string]any
+}
+
+func (resp TokenIntrospectionInfo) GetParameters() map[string]any {
+	if !resp.IsActive {
+		return map[string]any{
+			"active": false,
+		}
+	}
+
+	params := map[string]any{
+		"active":                        true,
+		string(constants.ScopeClaim):    resp.Scopes,
+		string(constants.ClientIdClaim): resp.ClientId,
+		"username":                      resp.Username,
+		string(constants.ExpiryClaim):   resp.ExpiresAtTimestamp,
+	}
+	for k, v := range resp.AdditionalClaims {
+		params[k] = v
+	}
+
+	return params
 }

@@ -280,3 +280,7 @@ func GetJwks(jwksUri string) (jose.JSONWebKeySet, error) {
 func ContainsAllScopes(scopesSuperSet string, scopesSubSet string) bool {
 	return ContainsAll(SplitStringWithSpaces(scopesSuperSet), SplitStringWithSpaces(scopesSubSet)...)
 }
+
+func IsJwt(token string) bool {
+	return strings.Contains(token, ".")
+}

@@ -23,10 +23,10 @@ type AuthnSession struct {
 	AuthorizationCodeIssuedAt          int                                       `json:"authorization_code_issued_at"`
 	UserAuthenticatedAtTimestamp       int                                       `json:"auth_time"`
 	UserAuthenticationMethodReferences []constants.AuthenticationMethodReference `json:"amr"`
-	ProtectedParameters                map[string]string                         `json:"protected_params"` // Custom parameters sent by PAR or JAR.
-	Store                              map[string]string                         `json:"store"`            // Allow the developer to store information in memory and, hence, between steps.
-	AdditionalTokenClaims              map[string]string                         `json:"token_claims"`     // Allow the developer to map new (or override the default) claims to the access token.
-	AdditionalIdTokenClaims            map[string]string                         `json:"id_token_claims"`  // Allow the developer to map new (or override the default) claims to the ID token.
+	ProtectedParameters                map[string]any                            `json:"protected_params"` // Custom parameters sent by PAR or JAR.
+	Store                              map[string]any                            `json:"store"`            // Allow the developer to store information in memory and, hence, between steps.
+	AdditionalTokenClaims              map[string]any                            `json:"token_claims"`     // Allow the developer to map new (or override the default) claims to the access token.
+	AdditionalIdTokenClaims            map[string]any                            `json:"id_token_claims"`  // Allow the developer to map new (or override the default) claims to the ID token.
 }
 
 func NewSession(authParams AuthorizationParameters, client Client) AuthnSession {
@@ -36,10 +36,6 @@ func NewSession(authParams AuthorizationParameters, client Client) AuthnSession 
 		ClientId:                client.Id,
 		AuthorizationParameters: authParams,
 		CreatedAtTimestamp:      unit.GetTimestampNow(),
-		ProtectedParameters:     make(map[string]string),
-		Store:                   make(map[string]string),
-		AdditionalTokenClaims:   make(map[string]string),
-		AdditionalIdTokenClaims: make(map[string]string),
 	}
 }
 
@@ -61,13 +57,13 @@ func (session *AuthnSession) UpdateParams(params AuthorizationParameters) {
 	session.AuthorizationParameters = session.AuthorizationParameters.Merge(params)
 }
 
-func extractProtectedParamsFromForm(reqCtx *gin.Context) map[string]string {
+func extractProtectedParamsFromForm(reqCtx *gin.Context) map[string]any {
 	//TODO: Finish this.
 	if err := reqCtx.Request.ParseForm(); err != nil {
-		return map[string]string{}
+		return map[string]any{}
 	}
 
-	pushedParams := make(map[string]string)
+	pushedParams := make(map[string]any)
 	for param, values := range reqCtx.Request.PostForm {
 		if strings.HasPrefix(param, constants.ProtectedParamPrefix) {
 			pushedParams[param] = values[0]
@@ -86,7 +82,7 @@ func (session *AuthnSession) SaveParameter(key string, value string) {
 	session.Store[key] = value
 }
 
-func (session *AuthnSession) GetParameter(key string) string {
+func (session *AuthnSession) GetParameter(key string) any {
 	return session.Store[key]
 }
 
@@ -95,7 +91,7 @@ func (session *AuthnSession) SetCustomTokenClaim(key string, value string) {
 	session.AdditionalTokenClaims[key] = value
 }
 
-func (session *AuthnSession) GetCustomTokenClaim(key string, value string) string {
+func (session *AuthnSession) GetCustomTokenClaim(key string, value string) any {
 	return session.AdditionalTokenClaims[key]
 }
 
@@ -104,7 +100,7 @@ func (session *AuthnSession) SetCustomIdTokenClaim(key string, value string) {
 	session.AdditionalIdTokenClaims[key] = value
 }
 
-func (session *AuthnSession) GetCustomIdTokenClaim(key string, value string) string {
+func (session *AuthnSession) GetCustomIdTokenClaim(key string, value string) any {
 	return session.AdditionalIdTokenClaims[key]
 }
 

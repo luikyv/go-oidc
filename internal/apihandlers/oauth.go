@@ -109,6 +109,25 @@ func HandleUserInfoRequest(ctx utils.Context) {
 	}
 }
 
+//---------------------------------------- Introspection ----------------------------------------//
+
+func HandleIntrospectionRequest(ctx utils.Context) {
+	var req models.TokenIntrospectionRequest
+	if err := ctx.RequestContext.ShouldBind(&req); err != nil {
+		bindErrorToResponse(err, ctx.RequestContext)
+		return
+	}
+	addBasicCredentialsToRequest(ctx, &req.ClientAuthnRequest)
+
+	tokenInfo, err := oauth.IntrospectToken(ctx, req)
+	if err != nil {
+		bindErrorToResponse(err, ctx.RequestContext)
+		return
+	}
+
+	ctx.RequestContext.JSON(http.StatusOK, tokenInfo.GetParameters())
+}
+
 //---------------------------------------- Helpers ----------------------------------------//
 
 func addBasicCredentialsToRequest(ctx utils.Context, req *models.ClientAuthnRequest) {
