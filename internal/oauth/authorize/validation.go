@@ -111,6 +111,7 @@ func validateAuthorizationParams(
 		validatePkce,
 		ValidateCodeChallengeMethod,
 		validateCannotRequestIdTokenResponseTypeIfOpenIdScopeIsNotRequested,
+		validateNonceIsRequiredWhenResponseTypeContainsIdToken,
 		ValidateCannotRequestCodeResponseTypeWhenAuthorizationCodeGrantIsNotAllowed,
 		ValidateCannotRequestImplicitResponseTypeWhenImplicitGrantIsNotAllowed,
 		validateCannotRequestQueryResponseModeWhenImplicitResponseTypeIsRequested,
@@ -256,6 +257,17 @@ func validateCannotRequestIdTokenResponseTypeIfOpenIdScopeIsNotRequested(
 ) models.OAuthError {
 	if params.ResponseType.Contains(constants.IdTokenResponse) && !unit.ScopesContainsOpenId(params.Scopes) {
 		return params.NewRedirectError(constants.InvalidRequest, "cannot request id_token without the scope openid")
+	}
+	return nil
+}
+
+func validateNonceIsRequiredWhenResponseTypeContainsIdToken(
+	_ utils.Context,
+	params models.AuthorizationParameters,
+	_ models.Client,
+) models.OAuthError {
+	if params.ResponseType.Contains(constants.IdTokenResponse) && params.Nonce == "" {
+		return params.NewRedirectError(constants.InvalidRequest, "nonce is required when response type id_token is requested")
 	}
 	return nil
 }

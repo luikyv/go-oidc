@@ -18,6 +18,7 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 		ResponseTypes:                        ctx.ResponseTypes,
 		ResponseModes:                        ctx.ResponseModes,
 		GrantTypes:                           ctx.GrantTypes,
+		IdTokenClaimsSupported:               ctx.CustomIdTokenClaims,
 		SubjectIdentifierTypes:               ctx.SubjectIdentifierTypes,
 		IdTokenSigningAlgorithms:             ctx.GetIdTokenSignatureAlgorithms(),
 		ClientAuthnMethods:                   ctx.ClientAuthnMethods,

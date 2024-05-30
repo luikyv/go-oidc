@@ -6,7 +6,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
-type AuthnFunc func(Context, *models.AuthnSession) (constants.AuthnStatus, error)
+type AuthnFunc func(Context, *models.AuthnSession) constants.AuthnStatus
 
 type CheckPolicyAvailabilityFunc func(models.AuthnSession, *gin.Context) bool
 

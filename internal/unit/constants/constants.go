@@ -1,9 +1,12 @@
 package constants
 
 import (
+	"net/http"
 	"slices"
 	"strings"
 )
+
+const ProtectedParamPrefix string = "p_"
 
 type GrantType string
 
@@ -82,17 +85,19 @@ const (
 type Claim string
 
 const (
-	TokenIdClaim               Claim = "jti"
-	IssuerClaim                Claim = "iss"
-	SubjectClaim               Claim = "sub"
-	AudienceClaim              Claim = "aud"
-	ExpiryClaim                Claim = "exp"
-	IssuedAtClaim              Claim = "iat"
-	ScopeClaim                 Claim = "scope"
-	NonceClaim                 Claim = "nonce"
-	AccessTokenHashClaim       Claim = "at_hash"
-	AuthorizationCodeHashClaim Claim = "c_hash"
-	StateHashClaim             Claim = "s_hash"
+	TokenIdClaim                        Claim = "jti"
+	IssuerClaim                         Claim = "iss"
+	SubjectClaim                        Claim = "sub"
+	AudienceClaim                       Claim = "aud"
+	ExpiryClaim                         Claim = "exp"
+	IssuedAtClaim                       Claim = "iat"
+	ScopeClaim                          Claim = "scope"
+	NonceClaim                          Claim = "nonce"
+	AuthenticationTimeClaim             Claim = "auth_time"
+	AuthenticationMethodReferencesClaim Claim = "amr"
+	AccessTokenHashClaim                Claim = "at_hash"
+	AuthorizationCodeHashClaim          Claim = "c_hash"
+	StateHashClaim                      Claim = "s_hash"
 )
 
 type KeyUsage string
@@ -129,6 +134,19 @@ const (
 	InvalidResquestObject ErrorCode = "invalid_request_object"
 	InternalError         ErrorCode = "internal_error"
 )
+
+func (ec ErrorCode) GetStatusCode() int {
+	switch ec {
+	case AccessDenied:
+		return http.StatusForbidden
+	case InvalidClient:
+		return http.StatusUnauthorized
+	case InternalError:
+		return http.StatusInternalServerError
+	default:
+		return http.StatusBadRequest
+	}
+}
 
 type Header string
 
@@ -194,4 +212,13 @@ const (
 	TokenEndpoint                      EndpointPath = "/token"
 	UserInfoEndpoint                   EndpointPath = "/userinfo"
 	DynamicClientEndpoint              EndpointPath = "/register"
+)
+
+// RFC8176.
+type AuthenticationMethodReference string
+
+const (
+	MultipleFactorAuthentication   AuthenticationMethodReference = "mfa"
+	OneTimePassowordAuthentication AuthenticationMethodReference = "otp"
+	PasswordAuthentication         AuthenticationMethodReference = "pwd"
 )

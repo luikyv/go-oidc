@@ -3,7 +3,6 @@ package token
 import (
 	"log/slog"
 
-	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -31,12 +30,12 @@ func handleAuthorizationCodeGrantTokenCreation(ctx utils.Context, req models.Tok
 	token := utils.MakeToken(ctx, client, grantOptions)
 	tokenResp := models.TokenResponse{
 		AccessToken: token.Value,
-		ExpiresIn:   grantOptions.ExpiresInSecs,
+		ExpiresIn:   grantOptions.TokenExpiresInSecs,
 		TokenType:   token.Type,
 	}
 
-	if session.Scopes != grantOptions.Scopes {
-		tokenResp.Scopes = grantOptions.Scopes
+	if session.Scopes != grantOptions.GrantedScopes {
+		tokenResp.Scopes = grantOptions.GrantedScopes
 	}
 
 	if unit.ScopesContainsOpenId(session.Scopes) {
@@ -64,7 +63,7 @@ func preValidateAuthorizationCodeGrantRequest(req models.TokenRequest) models.OA
 }
 
 func shouldGenerateAuthorizationCodeGrantSession(_ utils.Context, grantOptions models.GrantOptions) bool {
-	return grantOptions.TokenFormat == constants.OpaqueTokenFormat || unit.ScopesContainsOpenId(grantOptions.Scopes) || grantOptions.ShouldRefresh
+	return grantOptions.TokenFormat == constants.OpaqueTokenFormat || unit.ScopesContainsOpenId(grantOptions.GrantedScopes) || grantOptions.ShouldRefresh
 }
 
 func generateAuthorizationCodeGrantSession(
@@ -73,17 +72,10 @@ func generateAuthorizationCodeGrantSession(
 	token models.Token,
 	grantOptions models.GrantOptions,
 ) (models.GrantSession, models.OAuthError) {
-	grantSession := models.GrantSession{
-		Id:                 uuid.New().String(),
-		JwkThumbprint:      token.JwkThumbprint,
-		TokenId:            token.Id,
-		RenewedAtTimestamp: unit.GetTimestampNow(),
-		GrantOptions:       grantOptions,
-	}
-
+	grantSession := models.NewGrantSession(grantOptions, token)
 	if client.IsGrantTypeAllowed(constants.RefreshTokenGrant) && grantOptions.ShouldRefresh {
 		grantSession.RefreshToken = unit.GenerateRefreshToken()
-		grantSession.RefreshTokenExpiresInSecs = ctx.RefreshTokenLifetimeSecs
+		grantSession.ExpiresAtTimestamp = unit.GetTimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
 
 	if err := ctx.GrantSessionManager.CreateOrUpdate(grantSession); err != nil {
@@ -202,15 +194,12 @@ func newAuthorizationCodeGrantOptions(
 	tokenOptions := ctx.GetTokenOptions(client, req.Scopes)
 	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
 	return models.GrantOptions{
-		GrantType:    constants.AuthorizationCodeGrant,
-		Scopes:       session.GrantedScopes,
-		Subject:      session.Subject,
-		ClientId:     session.ClientId,
-		DpopJwt:      req.DpopJwt,
-		TokenOptions: tokenOptions,
-		IdTokenOptions: models.IdTokenOptions{
-			Nonce:                   session.Nonce,
-			AdditionalIdTokenClaims: session.AdditionalIdTokenClaims,
-		},
+		GrantType:      constants.AuthorizationCodeGrant,
+		GrantedScopes:  session.GrantedScopes,
+		Subject:        session.Subject,
+		ClientId:       session.ClientId,
+		DpopJwt:        req.DpopJwt,
+		TokenOptions:   tokenOptions,
+		IdTokenOptions: session.GetIdTokenOptions(),
 	}
 }

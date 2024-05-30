@@ -16,7 +16,6 @@ func handleRefreshTokenGrantTokenCreation(
 	models.TokenResponse,
 	models.OAuthError,
 ) {
-	// TODO: What if the scope param is filled?
 	if err := preValidateRefreshTokenGrantRequest(req); err != nil {
 		return models.TokenResponse{}, models.NewOAuthError(constants.InvalidRequest, "invalid parameter for refresh token grant")
 	}
@@ -32,28 +31,40 @@ func handleRefreshTokenGrantTokenCreation(
 	}
 
 	token := utils.MakeToken(ctx, client, grantSession.GrantOptions)
+	updateRefreshTokenGrantSession(ctx, &grantSession, req, token)
+
 	tokenResp := models.TokenResponse{
-		AccessToken: token.Value,
-		ExpiresIn:   grantSession.ExpiresInSecs,
-		TokenType:   token.Type,
+		AccessToken:  token.Value,
+		ExpiresIn:    grantSession.TokenExpiresInSecs,
+		TokenType:    token.Type,
+		RefreshToken: grantSession.RefreshToken,
 	}
 
-	if unit.ScopesContainsOpenId(grantSession.Scopes) {
+	if unit.ScopesContainsOpenId(grantSession.ActiveScopes) {
 		tokenResp.IdToken = utils.MakeIdToken(ctx, client, grantSession.GrantOptions)
 	}
 
-	updateRefreshTokenGrantSession(ctx, grantSession)
-	tokenResp.RefreshToken = grantSession.RefreshToken
 	return tokenResp, nil
 }
 
-func updateRefreshTokenGrantSession(ctx utils.Context, grantSession models.GrantSession) models.OAuthError {
-	grantSession.RenewedAtTimestamp = unit.GetTimestampNow()
+func updateRefreshTokenGrantSession(
+	ctx utils.Context,
+	grantSession *models.GrantSession,
+	req models.TokenRequest,
+	token models.Token,
+) models.OAuthError {
+	grantSession.LastTokenIssuedAtTimestamp = unit.GetTimestampNow()
+	grantSession.TokenId = token.Id
+
 	if ctx.ShouldRotateRefreshTokens {
 		grantSession.RefreshToken = unit.GenerateRefreshToken()
 	}
 
-	if err := ctx.GrantSessionManager.CreateOrUpdate(grantSession); err != nil {
+	if req.Scopes != "" {
+		grantSession.ActiveScopes = req.Scopes
+	}
+
+	if err := ctx.GrantSessionManager.CreateOrUpdate(*grantSession); err != nil {
 		return models.NewOAuthError(constants.InternalError, err.Error())
 	}
 
@@ -128,21 +139,21 @@ func validateRefreshTokenGrantRequest(
 	grantSession models.GrantSession,
 ) models.OAuthError {
 
-	if unit.AnyNonEmpty(req.AuthorizationCode, req.RedirectUri, req.Scopes, req.CodeVerifier) {
-		return models.NewOAuthError(constants.InvalidRequest, "invalid parameter for refresh token grant")
-	}
-
 	if !client.IsGrantTypeAllowed(constants.RefreshTokenGrant) {
 		return models.NewOAuthError(constants.UnauthorizedClient, "invalid grant type")
 	}
 
 	if client.Id != grantSession.ClientId {
-		return models.NewOAuthError(constants.UnauthorizedClient, "the refresh token was not issued to the client")
+		return models.NewOAuthError(constants.InvalidGrant, "the refresh token was not issued to the client")
 	}
 
 	if grantSession.IsRefreshSessionExpired() {
 		//TODO: How to handle the expired sessions? There are just hanging for now.
 		return models.NewOAuthError(constants.UnauthorizedClient, "the refresh token is expired")
+	}
+
+	if req.Scopes != "" && !unit.ContainsAllScopes(grantSession.GrantedScopes, req.Scopes) {
+		return models.NewOAuthError(constants.InvalidScope, "invalid scope")
 	}
 
 	return nil

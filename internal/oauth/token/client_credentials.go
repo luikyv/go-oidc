@@ -1,7 +1,6 @@
 package token
 
 import (
-	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -32,12 +31,12 @@ func handleClientCredentialsGrantTokenCreation(
 	token := utils.MakeToken(ctx, client, grantOptions)
 	tokenResp := models.TokenResponse{
 		AccessToken: token.Value,
-		ExpiresIn:   grantOptions.ExpiresInSecs,
+		ExpiresIn:   grantOptions.TokenExpiresInSecs,
 		TokenType:   token.Type,
 	}
 
-	if req.Scopes != grantOptions.Scopes {
-		tokenResp.Scopes = grantOptions.Scopes
+	if req.Scopes != grantOptions.GrantedScopes {
+		tokenResp.Scopes = grantOptions.GrantedScopes
 	}
 
 	if !shouldGenerateClientCredentialsGrantSession(ctx, grantOptions) {
@@ -69,14 +68,7 @@ func generateClientCredentialsGrantSession(
 	token models.Token,
 	grantOptions models.GrantOptions,
 ) (models.GrantSession, models.OAuthError) {
-	grantSession := models.GrantSession{
-		Id:                 uuid.New().String(),
-		JwkThumbprint:      token.JwkThumbprint,
-		TokenId:            token.Id,
-		RenewedAtTimestamp: unit.GetTimestampNow(),
-		GrantOptions:       grantOptions,
-	}
-
+	grantSession := models.NewGrantSession(grantOptions, token)
 	if err := ctx.GrantSessionManager.CreateOrUpdate(grantSession); err != nil {
 		return models.GrantSession{}, models.NewOAuthError(constants.InternalError, err.Error())
 	}
@@ -110,11 +102,11 @@ func newClientCredentialsGrantOptions(ctx utils.Context, client models.Client, r
 		scopes = client.Scopes
 	}
 	return models.GrantOptions{
-		GrantType:    constants.ClientCredentialsGrant,
-		Scopes:       scopes,
-		Subject:      client.Id,
-		ClientId:     client.Id,
-		DpopJwt:      req.DpopJwt,
-		TokenOptions: tokenOptions,
+		GrantType:     constants.ClientCredentialsGrant,
+		GrantedScopes: scopes,
+		Subject:       client.Id,
+		ClientId:      client.Id,
+		DpopJwt:       req.DpopJwt,
+		TokenOptions:  tokenOptions,
 	}
 }

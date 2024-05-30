@@ -55,9 +55,9 @@ func GetTestInMemoryContext(privateJWKS jose.JSONWebKeySet, tokenSignatureKeyId 
 			Policies:                []AuthnPolicy{},
 			GetTokenOptions: func(client models.Client, scopes string) models.TokenOptions {
 				return models.TokenOptions{
-					ExpiresInSecs:     60,
-					TokenFormat:       constants.JwtTokenFormat,
-					JwtSignatureKeyId: tokenSignatureKeyId,
+					TokenExpiresInSecs: 60,
+					TokenFormat:        constants.JwtTokenFormat,
+					JwtSignatureKeyId:  tokenSignatureKeyId,
 				}
 			},
 		},

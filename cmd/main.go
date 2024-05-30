@@ -17,9 +17,9 @@ import (
 
 func GetTokenOptions(client models.Client, scopes string) models.TokenOptions {
 	return models.TokenOptions{
-		TokenFormat:   constants.JwtTokenFormat,
-		ExpiresInSecs: 600,
-		ShouldRefresh: true,
+		TokenFormat:        constants.JwtTokenFormat,
+		TokenExpiresInSecs: 600,
+		ShouldRefresh:      true,
 	}
 }
 
@@ -30,7 +30,7 @@ func main() {
 	port := 83
 	issuer := fmt.Sprintf("https://host.docker.internal:%v", port)
 	// issuer := fmt.Sprintf("https://localhost:%v", port)
-	privatePs256Jwk := unit.GetTestPrivatePs256Jwk("server_key")
+	privatePs256Jwk := unit.GetTestPrivatePs256Jwk("ps256_server_key")
 	privateRs256Jwk := unit.GetTestPrivateRs256Jwk("rsa256_server_key")
 
 	// Create the manager.
@@ -56,6 +56,7 @@ func main() {
 	oauthManager.EnableImplicitGrantType()
 	oauthManager.EnableRefreshTokenGrantType(6000, true)
 	oauthManager.EnableDynamicClientRegistration(nil, true)
+	oauthManager.SetScopes("offline_access")
 
 	// Client one.
 	privateClientOneJwks := GetClientPrivateJwks("client_one_jwks.json")

@@ -41,8 +41,8 @@ func NewProvider(
 			Scopes:              []string{constants.OpenIdScope},
 			GetTokenOptions: func(client models.Client, scopes string) models.TokenOptions {
 				return models.TokenOptions{
-					ExpiresInSecs: constants.DefaultTokenLifetimeSecs,
-					TokenFormat:   constants.JwtTokenFormat,
+					TokenExpiresInSecs: constants.DefaultTokenLifetimeSecs,
+					TokenFormat:        constants.JwtTokenFormat,
 				}
 			},
 			PrivateJwks:                  privateJwks,
@@ -98,6 +98,10 @@ func (provider *OpenIdProvider) validateConfiguration() {
 	}
 }
 
+func (provider *OpenIdProvider) SetCustomIdTokenClaims(claims ...constants.Claim) {
+	provider.CustomIdTokenClaims = claims
+}
+
 func (provider *OpenIdProvider) AddIdTokenSignatureKeyIds(idTokenSignatureKeyIds ...string) {
 	if !unit.ContainsAll(idTokenSignatureKeyIds, provider.DefaultIdTokenSignatureKeyId) {
 		idTokenSignatureKeyIds = append(idTokenSignatureKeyIds, provider.DefaultIdTokenSignatureKeyId)
@@ -143,7 +147,7 @@ func (provider *OpenIdProvider) EnableImplicitGrantType() {
 	)
 }
 
-func (provider *OpenIdProvider) AddScopes(scopes ...string) {
+func (provider *OpenIdProvider) SetScopes(scopes ...string) {
 	if slices.Contains(scopes, constants.OpenIdScope) {
 		provider.Scopes = scopes
 	} else {

@@ -18,8 +18,10 @@ type DpopClaims struct {
 }
 
 type IdTokenOptions struct {
-	Nonce                   string            `json:"nonce"`
-	AdditionalIdTokenClaims map[string]string `json:"additional_id_token_claims"`
+	Nonce                              string                                    `json:"nonce"`
+	AdditionalIdTokenClaims            map[string]string                         `json:"additional_id_token_claims"`
+	UserAuthenticatedAtTimestamp       int                                       `json:"auth_time"`
+	UserAuthenticationMethodReferences []constants.AuthenticationMethodReference `json:"amr"`
 	// These values here below are intended to be hashed and placed in the ID token.
 	// Then, the ID token can be used as a detached signature for the implicit grant.
 	AccessToken       string
@@ -29,7 +31,7 @@ type IdTokenOptions struct {
 
 type TokenOptions struct {
 	TokenFormat           constants.TokenFormat `json:"token_format"`
-	ExpiresInSecs         int                   `json:"expires_in_secs"`
+	TokenExpiresInSecs    int                   `json:"token_expires_in_secs"`
 	ShouldRefresh         bool
 	JwtSignatureKeyId     string            `json:"token_signature_key_id"`
 	OpaqueTokenLength     int               `json:"opaque_token_length"`
@@ -44,7 +46,7 @@ type GrantOptions struct {
 	GrantType          constants.GrantType `json:"grant_type"`
 	Subject            string              `json:"sub"`
 	ClientId           string              `json:"client_id"`
-	Scopes             string              `json:"scopes"`
+	GrantedScopes      string              `json:"scopes"`
 	DpopJwt            string
 	CreatedAtTimestamp int `json:"created_at"`
 	TokenOptions
@@ -158,6 +160,7 @@ type OpenIdConfiguration struct {
 	ResponseModes                        []constants.ResponseMode          `json:"response_modes_supported"`
 	GrantTypes                           []constants.GrantType             `json:"grant_types_supported"`
 	Scopes                               []string                          `json:"scopes_supported"`
+	IdTokenClaimsSupported               []constants.Claim                 `json:"claims_supported"`
 	SubjectIdentifierTypes               []constants.SubjectIdentifierType `json:"subject_types_supported"`
 	IdTokenSigningAlgorithms             []jose.SignatureAlgorithm         `json:"id_token_signing_alg_values_supported"`
 	ClientAuthnMethods                   []constants.ClientAuthnType       `json:"token_endpoint_auth_methods_supported"`

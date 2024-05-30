@@ -16,14 +16,14 @@ func HandleUserInfoRequest(ctx utils.Context, token string) (models.GrantSession
 
 	grantSession, err := ctx.GrantSessionManager.GetByTokenId(tokenId)
 	if err != nil {
-		return models.GrantSession{}, models.NewOAuthError(constants.InvalidRequest, "invalid invalid token")
+		return models.GrantSession{}, models.NewOAuthError(constants.InvalidRequest, "invalid token")
 	}
 
-	if grantSession.IsExpired() {
+	if grantSession.HasLastTokenExpired() {
 		return models.GrantSession{}, models.NewOAuthError(constants.InvalidRequest, "token expired")
 	}
 
-	if !unit.ScopesContainsOpenId(grantSession.Scopes) {
+	if !unit.ScopesContainsOpenId(grantSession.GrantedScopes) {
 		return models.GrantSession{}, models.NewOAuthError(constants.InvalidRequest, "invalid scope")
 	}
 

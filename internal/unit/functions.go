@@ -305,15 +305,6 @@ func GetJwks(jwksUri string) (jose.JSONWebKeySet, error) {
 	return jwks, nil
 }
 
-func GetStatusCode(errorCode constants.ErrorCode) int {
-	switch errorCode {
-	case constants.AccessDenied:
-		return http.StatusForbidden
-	case constants.InvalidClient:
-		return http.StatusUnauthorized
-	case constants.InternalError:
-		return http.StatusInternalServerError
-	default:
-		return http.StatusBadRequest
-	}
+func ContainsAllScopes(scopesSuperSet string, scopesSubSet string) bool {
+	return ContainsAll(SplitStringWithSpaces(scopesSuperSet), SplitStringWithSpaces(scopesSubSet)...)
 }

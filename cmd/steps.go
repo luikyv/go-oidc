@@ -7,14 +7,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func NoInteractionAuthnFunc(ctx utils.Context, session *models.AuthnSession) (constants.AuthnStatus, error) {
+func NoInteractionAuthnFunc(ctx utils.Context, session *models.AuthnSession) constants.AuthnStatus {
 	session.SetUserId("random_user_id")
 	session.GrantScopes(session.Scopes)
-	return constants.Success, nil
+	session.SetUserAuthentication(unit.GetTimestampNow(), constants.PasswordAuthentication)
+	return constants.Success
 }
 
 func IdentityAuthnFunc(ctx utils.Context, session *models.AuthnSession) (constants.AuthnStatus, error) {

@@ -20,9 +20,10 @@ type Configuration struct {
 	Host    string
 	Scopes  []string
 
-	ClientManager                        crud.ClientManager
-	GrantSessionManager                  crud.GrantSessionManager
-	AuthnSessionManager                  crud.AuthnSessionManager
+	ClientManager       crud.ClientManager
+	GrantSessionManager crud.GrantSessionManager
+	AuthnSessionManager crud.AuthnSessionManager
+
 	PrivateJwks                          jose.JSONWebKeySet
 	DefaultTokenSignatureKeyId           string
 	GrantTypes                           []constants.GrantType
@@ -39,6 +40,7 @@ type Configuration struct {
 	IdTokenSignatureKeyIds               []string
 	ShouldRotateRefreshTokens            bool
 	RefreshTokenLifetimeSecs             int
+	CustomIdTokenClaims                  []constants.Claim
 	IssuerResponseParameterIsEnabled     bool
 	JarmIsEnabled                        bool
 	JarmLifetimeSecs                     int
@@ -207,4 +209,9 @@ func (ctx Context) GetJarmSignatureAlgorithms() []jose.SignatureAlgorithm {
 
 func (ctx Context) GetClientSignatureAlgorithms() []jose.SignatureAlgorithm {
 	return append(ctx.PrivateKeyJwtSignatureAlgorithms, ctx.ClientSecretJwtSignatureAlgorithms...)
+}
+
+func (ctx Context) SetCookie(cookie string, value string) {
+	// TODO
+	ctx.RequestContext.SetCookie(cookie, value, 3600, "/", ctx.Host, true, true)
 }
