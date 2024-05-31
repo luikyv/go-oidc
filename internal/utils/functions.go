@@ -89,15 +89,15 @@ func ValidateProofOfPossesion(
 		}
 	}
 
-	dpopJwt := ctx.RequestContext.Request.Header.Get(string(constants.DpopHeader))
+	dpopJwt := ctx.GetDpopJwt()
 	if dpopJwt == "" {
 		// The session was created with DPoP, then the DPoP header must be passed.
 		return models.NewOAuthError(constants.AccessDenied, "missing DPoP header")
 	}
 
-	return ValidateDpopJwt(ctx, dpopJwt, models.DpopClaims{
-		HttpMethod:    ctx.RequestContext.Request.Method,
-		HttpUri:       ctx.Host + ctx.RequestContext.Request.URL.RequestURI(),
+	return ValidateDpopJwt(ctx, dpopJwt, models.DpopValidationOptions{
+		HttpMethod:    ctx.GetRequestMethod(),
+		HttpUri:       ctx.GetRequestUri(),
 		AccessToken:   token,
 		JwkThumbprint: grantSession.JwkThumbprint,
 	})
@@ -118,13 +118,13 @@ func ValidateTokenBindingRequestWithDpop(
 		return nil
 	}
 
-	return ValidateDpopJwt(ctx, req.DpopJwt, models.DpopClaims{
+	return ValidateDpopJwt(ctx, req.DpopJwt, models.DpopValidationOptions{
 		HttpMethod: http.MethodPost,
 		HttpUri:    ctx.Host + string(constants.TokenEndpoint),
 	})
 }
 
-func ValidateDpopJwt(ctx Context, dpopJwt string, expectedDpopClaims models.DpopClaims) models.OAuthError {
+func ValidateDpopJwt(ctx Context, dpopJwt string, expectedDpopClaims models.DpopValidationOptions) models.OAuthError {
 	parsedDpopJwt, err := jwt.ParseSigned(dpopJwt, ctx.DpopSignatureAlgorithms)
 	if err != nil {
 		return models.NewOAuthError(constants.InvalidRequest, "invalid dpop")
@@ -258,14 +258,10 @@ func RunValidations(
 }
 
 func ExtractProtectedParamsFromForm(ctx Context) map[string]any {
-	if err := ctx.RequestContext.Request.ParseForm(); err != nil {
-		return map[string]any{}
-	}
-
 	protectedParams := make(map[string]any)
-	for param, values := range ctx.RequestContext.Request.PostForm {
+	for param, value := range ctx.GetFormData() {
 		if strings.HasPrefix(param, constants.ProtectedParamPrefix) {
-			protectedParams[param] = values[0]
+			protectedParams[param] = value
 		}
 	}
 

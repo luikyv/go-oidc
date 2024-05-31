@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/crud/inmemory"
 	"github.com/luikymagno/auth-server/internal/models"
@@ -73,7 +72,7 @@ func main() {
 	// Create Policy
 	policy := utils.NewPolicy(
 		"policy",
-		func(c models.AuthnSession, ctx *gin.Context) bool { return true },
+		func(ctx utils.Context, session models.AuthnSession) bool { return true },
 		NoInteractionAuthnFunc,
 	)
 

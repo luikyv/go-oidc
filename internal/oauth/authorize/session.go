@@ -165,7 +165,7 @@ func initAuthnSessionWithPolicy(
 	ctx utils.Context,
 	session *models.AuthnSession,
 ) models.OAuthError {
-	policy, ok := utils.GetAvailablePolicy(ctx, *session)
+	policy, ok := ctx.GetAvailablePolicy(*session)
 	if !ok {
 		ctx.Logger.Info("no policy available")
 		return session.NewRedirectError(constants.InvalidRequest, "no policy available")

@@ -2,6 +2,7 @@ package token
 
 import (
 	"log/slog"
+	"net/http"
 
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -26,7 +27,7 @@ func handleRefreshTokenGrantTokenCreation(
 		return models.TokenResponse{}, err
 	}
 
-	if err = validateRefreshTokenGrantRequest(req, client, grantSession); err != nil {
+	if err = validateRefreshTokenGrantRequest(ctx, req, client, grantSession); err != nil {
 		return models.TokenResponse{}, err
 	}
 
@@ -134,6 +135,7 @@ func preValidateRefreshTokenGrantRequest(
 }
 
 func validateRefreshTokenGrantRequest(
+	ctx utils.Context,
 	req models.TokenRequest,
 	client models.Client,
 	grantSession models.GrantSession,
@@ -156,6 +158,30 @@ func validateRefreshTokenGrantRequest(
 		return models.NewOAuthError(constants.InvalidScope, "invalid scope")
 	}
 
-	// TODO: When client authn is none, we need dpop is the token was issued with it.
-	return nil
+	return validateRefreshTokenProofOfPossesionForPublicClients(ctx, client, grantSession)
+}
+
+func validateRefreshTokenProofOfPossesionForPublicClients(
+	ctx utils.Context,
+	client models.Client,
+	grantSession models.GrantSession,
+) models.OAuthError {
+
+	// Refresh tokens are bound to the client. If the client is authenticated,
+	// then there's no need to validate proof of possesion.
+	if client.AuthnMethod != constants.NoneAuthn || grantSession.JwkThumbprint == "" {
+		return nil
+	}
+
+	dpopJwt := ctx.GetDpopJwt()
+	if dpopJwt == "" {
+		// The session was created with DPoP for a public client, then the DPoP header must be passed.
+		return models.NewOAuthError(constants.AccessDenied, "missing DPoP header")
+	}
+
+	return utils.ValidateDpopJwt(ctx, dpopJwt, models.DpopValidationOptions{
+		HttpMethod:    http.MethodPost,
+		HttpUri:       ctx.Host + string(constants.TokenEndpoint),
+		JwkThumbprint: grantSession.JwkThumbprint,
+	})
 }

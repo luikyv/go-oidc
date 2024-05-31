@@ -102,11 +102,10 @@ func areAssertionClaimsValid(ctx Context, claims jwt.Claims, maxLifetimeSecs int
 		return models.NewOAuthError(constants.InvalidClient, "invalid assertion")
 	}
 
-	ctx.RequestContext.Request.URL.RequestURI()
 	err := claims.ValidateWithLeeway(jwt.Expected{
 		Issuer:      claims.Subject,
 		Subject:     claims.Subject,
-		AnyAudience: []string{ctx.Host, ctx.Host + ctx.RequestContext.Request.URL.RequestURI()},
+		AnyAudience: []string{ctx.Host, ctx.GetRequestUri()},
 	}, time.Duration(0))
 	if err != nil {
 		return models.NewOAuthError(constants.InvalidClient, "invalid assertion")

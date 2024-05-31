@@ -2,7 +2,6 @@ package authorize
 
 import (
 	"errors"
-	"net/http"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
@@ -51,13 +50,13 @@ func redirectResponse(
 	switch responseMode {
 	case constants.FragmentResponseMode, constants.FragmentJwtResponseMode:
 		redirectUrl := unit.GetUrlWithFragmentParams(params.RedirectUri, redirectParamsMap)
-		ctx.RequestContext.Redirect(http.StatusFound, redirectUrl)
+		ctx.Redirect(redirectUrl)
 	case constants.FormPostResponseMode, constants.FormPostJwtResponseMode:
 		redirectParamsMap["redirect_uri"] = params.RedirectUri
-		ctx.RequestContext.HTML(http.StatusOK, "internal_form_post.html", redirectParamsMap)
+		ctx.RenderHtml("internal_form_post.html", redirectParamsMap)
 	default:
 		redirectUrl := unit.GetUrlWithQueryParams(params.RedirectUri, redirectParamsMap)
-		ctx.RequestContext.Redirect(http.StatusFound, redirectUrl)
+		ctx.Redirect(redirectUrl)
 	}
 }
 

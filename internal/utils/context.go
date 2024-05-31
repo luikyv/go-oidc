@@ -2,6 +2,7 @@ package utils
 
 import (
 	"log/slog"
+	"net/http"
 	"os"
 	"strings"
 
@@ -14,7 +15,7 @@ import (
 
 type GetTokenOptionsFunc func(client models.Client, scopes string) models.TokenOptions
 
-type DcrPluginFunc func(reqCtx *gin.Context, dynamicClient *models.DynamicClientRequest)
+type DcrPluginFunc func(ctx Context, dynamicClient *models.DynamicClientRequest)
 
 type Configuration struct {
 	Profile constants.Profile
@@ -98,15 +99,6 @@ func NewContext(
 		RequestContext: reqContext,
 		Logger:         logger,
 	}
-}
-
-func (ctx Context) GetPolicyById(policyId string) AuthnPolicy {
-	for _, policy := range ctx.Policies {
-		if policy.Id == policyId {
-			return policy
-		}
-	}
-	return AuthnPolicy{}
 }
 
 func (ctx Context) GetPrivateKey(keyId string) (jose.JSONWebKey, bool) {
@@ -244,6 +236,66 @@ func (ctx Context) GetAuthorizationToken() (token string, tokenType constants.To
 	return tokenParts[1], constants.TokenType(tokenParts[0]), true
 }
 
+func (ctx Context) GetDpopJwt() string {
+	return ctx.RequestContext.Request.Header.Get(string(constants.DpopHeader))
+}
+
 func (ctx Context) GetClient(clientId string) (models.Client, error) {
 	return ctx.ClientManager.Get(clientId)
+}
+
+func (ctx Context) ExecureDcrPlugin(dynamicClient *models.DynamicClientRequest) {
+	if ctx.DcrPlugin != nil {
+		ctx.DcrPlugin(ctx, dynamicClient)
+	}
+}
+
+func (ctx Context) Redirect(redirectUrl string) {
+	ctx.RequestContext.Redirect(http.StatusFound, redirectUrl)
+}
+
+func (ctx Context) RenderHtml(pathToHtml string, params any) {
+	ctx.RequestContext.HTML(http.StatusOK, pathToHtml, params)
+}
+
+func (ctx Context) GetRequestMethod() string {
+	return ctx.RequestContext.Request.Method
+}
+
+func (ctx Context) GetRequestUri() string {
+	return ctx.Host + ctx.RequestContext.Request.URL.RequestURI()
+}
+
+func (ctx Context) GetFormData() map[string]any {
+	if err := ctx.RequestContext.Request.ParseForm(); err != nil {
+		return map[string]any{}
+	}
+
+	formData := make(map[string]any)
+	for param, values := range ctx.RequestContext.Request.PostForm {
+		formData[param] = values[0]
+	}
+	return formData
+}
+
+func (ctx Context) GetPolicyById(policyId string) AuthnPolicy {
+	for _, policy := range ctx.Policies {
+		if policy.Id == policyId {
+			return policy
+		}
+	}
+	return AuthnPolicy{}
+}
+
+func (ctx Context) GetAvailablePolicy(session models.AuthnSession) (
+	policy AuthnPolicy,
+	ok bool,
+) {
+	for _, policy = range ctx.Policies {
+		if ok = policy.IsAvailableFunc(ctx, session); ok {
+			return policy, true
+		}
+	}
+
+	return AuthnPolicy{}, false
 }
