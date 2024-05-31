@@ -175,6 +175,8 @@ const (
 
 const OpenIdScope string = "openid"
 
+const DefaultAuthenticationSessionTimeoutSecs = 30 * 60
+
 const CallbackIdLength int = 20
 
 const RequestUriLength int = 20
@@ -188,6 +190,8 @@ const AuthorizationCodeLength int = 30
 // and opaque access token to be confused.
 const RefreshTokenLength int = 99
 
+const DefaultRefreshTokenLifetimeSecs int = 6000
+
 const DynamicClientIdLength int = 30
 
 const ClientSecretLength int = 50
@@ -196,12 +200,11 @@ const RegistrationAccessTokenLength int = 50
 
 const DefaultTokenLifetimeSecs int = 300
 
-const DefaultRefreshTokenLifetimeSecs int = 6000
-
 type Profile string
 
 const (
 	OpenIdProfile Profile = "oidc_profile"
+	Fapi2Profile  Profile = "fapi2_profile"
 )
 
 const Charset string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -240,10 +243,18 @@ const (
 type AuthenticationMethodReference string
 
 const (
-	MultipleFactorAuthentication   AuthenticationMethodReference = "mfa"
-	OneTimePassowordAuthentication AuthenticationMethodReference = "otp"
-	PasswordAuthentication         AuthenticationMethodReference = "pwd"
-	//TODO: Add the other values.
+	FacialRecognitionAuthentication            AuthenticationMethodReference = "face"
+	FingerPrintAuthentication                  AuthenticationMethodReference = "fpt"
+	GeolocationAuthentication                  AuthenticationMethodReference = "geo"
+	HardwareSecuredKeyAuthentication           AuthenticationMethodReference = "hwk"
+	IrisScanAuthentication                     AuthenticationMethodReference = "iris"
+	MultipleFactorAuthentication               AuthenticationMethodReference = "mfa"
+	OneTimePassowordAuthentication             AuthenticationMethodReference = "otp"
+	PasswordAuthentication                     AuthenticationMethodReference = "pwd"
+	PersonalIdentificationNumberAuthentication AuthenticationMethodReference = "pin"
+	RiskBasedAuthentication                    AuthenticationMethodReference = "rba"
+	SmsAuthentication                          AuthenticationMethodReference = "sms"
+	SoftwareSecuredKeyAuthentication           AuthenticationMethodReference = "swk"
 )
 
 type PromptType string

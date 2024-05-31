@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"log/slog"
+	"net/http"
 	"strings"
 	"time"
 
@@ -61,11 +61,6 @@ func ExtractJarFromRequestObject(
 		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidResquestObject, "invalid expiration claim")
 	}
 
-	// TODO: the iat claim is not required?
-	// if claims.IssuedAt == nil || int(time.Since(claims.IssuedAt.Time()).Seconds()) > ctx.JarLifetimeSecs {
-	// 	return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidRequest, "invalid request")
-	// }
-
 	err = claims.ValidateWithLeeway(jwt.Expected{
 		Issuer:      client.Id,
 		AnyAudience: []string{ctx.Host},
@@ -105,6 +100,27 @@ func ValidateProofOfPossesion(
 		HttpUri:       ctx.Host + ctx.RequestContext.Request.URL.RequestURI(),
 		AccessToken:   token,
 		JwkThumbprint: grantSession.JwkThumbprint,
+	})
+}
+
+func ValidateTokenBindingRequestWithDpop(
+	ctx Context,
+	req models.TokenRequest,
+	client models.Client,
+) models.OAuthError {
+
+	if req.DpopJwt == "" && (ctx.DpopIsRequired || client.DpopIsRequired) {
+		return models.NewOAuthError(constants.InvalidRequest, "missing dpop header")
+	}
+
+	if req.DpopJwt == "" || !ctx.DpopIsEnabled {
+		// If DPoP is not enabled, we just ignore the DPoP header.
+		return nil
+	}
+
+	return ValidateDpopJwt(ctx, req.DpopJwt, models.DpopClaims{
+		HttpMethod: http.MethodPost,
+		HttpUri:    ctx.Host + string(constants.TokenEndpoint),
 	})
 }
 
@@ -220,18 +236,6 @@ func GetTokenId(ctx Context, token string) (string, models.OAuthError) {
 	}
 
 	return tokenId.(string), nil
-}
-
-func InitAuthnSessionWithPolicy(ctx Context, session *models.AuthnSession) models.OAuthError {
-	policy, ok := getAvailablePolicy(ctx, *session)
-	if !ok {
-		ctx.Logger.Info("no policy available")
-		return session.NewRedirectError(constants.InvalidRequest, "no policy available")
-	}
-
-	ctx.Logger.Info("policy available", slog.String("policy_id", policy.Id))
-	session.Start(policy.Id)
-	return nil
 }
 
 func RunValidations(

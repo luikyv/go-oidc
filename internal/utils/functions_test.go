@@ -18,7 +18,6 @@ func TestExtractJarFromRequestObject(t *testing.T) {
 	ctx := utils.GetDummyTestContext()
 	ctx.JarIsEnabled = true
 	ctx.JarSignatureAlgorithms = []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJwk.Algorithm)}
-	ctx.JarLifetimeSecs = 600
 	client := models.GetTestClientWithNoneAuthn()
 	client.PublicJwks = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privateJwk.Public()}}
 

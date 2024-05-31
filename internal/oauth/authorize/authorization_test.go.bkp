@@ -62,7 +62,7 @@ func TestInitAuthWhenInvalidScope(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(models.TestClientId)
+	client, _ := ctx.GetClient(models.TestClientId)
 
 	// Then
 	authorize.InitAuth(ctx, models.AuthorizationRequest{
@@ -86,7 +86,7 @@ func TestInitAuthWhenInvalidResponseType(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(models.TestClientId)
+	client, _ := ctx.GetClient(models.TestClientId)
 	client.ResponseTypes = []constants.ResponseType{constants.CodeResponse}
 	ctx.ClientManager.Update(models.TestClientId, client)
 
@@ -112,7 +112,7 @@ func TestInitAuthWhenNoPolicyIsAvailable(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(models.TestClientId)
+	client, _ := ctx.GetClient(models.TestClientId)
 
 	// Then
 	authorize.InitAuth(ctx, models.AuthorizationRequest{
@@ -137,7 +137,7 @@ func TestInitAuthShouldEndWithError(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(models.TestClientId)
+	client, _ := ctx.GetClient(models.TestClientId)
 	policy := utils.NewPolicy(
 		"policy_id",
 		func(c models.AuthnSession, ctx *gin.Context) bool { return true },
@@ -180,7 +180,7 @@ func TestInitAuthShouldEndInProgress(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(models.TestClientId)
+	client, _ := ctx.GetClient(models.TestClientId)
 	policy := utils.NewPolicy(
 		"policy_id",
 		func(c models.AuthnSession, ctx *gin.Context) bool { return true },
@@ -239,7 +239,7 @@ func TestInitAuthPolicyEndsWithSuccess(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(models.TestClientId)
+	client, _ := ctx.GetClient(models.TestClientId)
 	policy := utils.NewPolicy(
 		"policy_id",
 		func(c models.AuthnSession, ctx *gin.Context) bool { return true },
@@ -293,7 +293,7 @@ func TestInitAuthPolicyEndsWithSuccess(t *testing.T) {
 func TestInitAuthWithPar(t *testing.T) {
 	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(models.TestClientId)
+	client, _ := ctx.GetClient(models.TestClientId)
 	requestUri := "urn:goidc:random_value"
 	ctx.AuthnSessionManager.CreateOrUpdate(
 		models.AuthnSession{

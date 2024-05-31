@@ -94,7 +94,7 @@ type AuthorizationParameters struct {
 	Nonce                    string                        `form:"nonce" json:"nonce"`
 	CodeChallenge            string                        `form:"code_challenge" json:"code_challenge"`
 	CodeChallengeMethod      constants.CodeChallengeMethod `form:"code_challenge_method" json:"code_challenge_method"`
-	Prompt                   constants.PromptType          `form:"prompt" json:"prompt"` // TODO: implement mustAuthenticated(authTime int) bool method
+	Prompt                   constants.PromptType          `form:"prompt" json:"prompt"`
 	MaxAuthenticationAgeSecs int                           `form:"max_age" json:"max_age"`
 }
 

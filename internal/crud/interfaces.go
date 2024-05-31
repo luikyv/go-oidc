@@ -1,7 +1,5 @@
 package crud
 
-// TODO: Get All Endpoint.
-
 import "github.com/luikymagno/auth-server/internal/models"
 
 type ClientManager interface {

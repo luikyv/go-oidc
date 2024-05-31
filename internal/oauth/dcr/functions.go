@@ -83,7 +83,7 @@ func getProtectedClient(
 		return models.Client{}, models.NewOAuthError(constants.InvalidRequest, "invalid client_id")
 	}
 
-	client, err := ctx.ClientManager.Get(dynamicClient.Id)
+	client, err := ctx.GetClient(dynamicClient.Id)
 	if err != nil {
 		return models.Client{}, models.NewOAuthError(constants.InvalidRequest, err.Error())
 	}

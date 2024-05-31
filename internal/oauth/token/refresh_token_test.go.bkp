@@ -15,7 +15,7 @@ func TestRefreshTokenHandleGrantCreation(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(models.TestClientId)
+	client, _ := ctx.GetClient(models.TestClientId)
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
@@ -81,7 +81,7 @@ func TestRefreshTokenHandleGrantCreationShouldDenyExpiredRefreshToken(t *testing
 	// When
 	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(models.TestClientId)
+	client, _ := ctx.GetClient(models.TestClientId)
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"

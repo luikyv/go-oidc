@@ -80,7 +80,9 @@ func validateInsideWithOutsideParams(
 		return err
 	}
 
-	if ctx.Profile == constants.OpenIdProfile { // TODO: What if I add the conditon "scope contains openid"
+	// When the openid scope is not requested, the authorization request becomes a standard OAuth one,
+	// so there's no need to validate these rules below.
+	if ctx.Profile == constants.OpenIdProfile && unit.ScopesContainsOpenId(mergedParams.Scopes) {
 		if outsideParams.ResponseType == "" {
 			return mergedParams.NewRedirectError(constants.InvalidRequest, "invalid response_type")
 		}
@@ -89,7 +91,7 @@ func validateInsideWithOutsideParams(
 			return mergedParams.NewRedirectError(constants.InvalidRequest, "invalid response_type")
 		}
 
-		if ctx.OpenIdScopeIsRequired && !unit.ScopesContainsOpenId(outsideParams.Scopes) {
+		if !unit.ScopesContainsOpenId(outsideParams.Scopes) {
 			return mergedParams.NewRedirectError(constants.InvalidScope, "scope openid is required")
 		}
 	}

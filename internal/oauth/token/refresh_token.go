@@ -156,5 +156,6 @@ func validateRefreshTokenGrantRequest(
 		return models.NewOAuthError(constants.InvalidScope, "invalid scope")
 	}
 
+	// TODO: When client authn is none, we need dpop is the token was issued with it.
 	return nil
 }

@@ -28,7 +28,7 @@ func NewPolicy(
 	}
 }
 
-func getAvailablePolicy(
+func GetAvailablePolicy(
 	ctx Context,
 	session models.AuthnSession,
 ) (

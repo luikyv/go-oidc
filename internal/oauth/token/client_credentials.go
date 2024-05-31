@@ -92,7 +92,7 @@ func validateClientCredentialsGrantRequest(
 		return models.NewOAuthError(constants.InvalidScope, "invalid scope")
 	}
 
-	return nil
+	return utils.ValidateTokenBindingRequestWithDpop(ctx, req, client)
 }
 
 func newClientCredentialsGrantOptions(ctx utils.Context, client models.Client, req models.TokenRequest) models.GrantOptions {

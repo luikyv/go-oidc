@@ -1,6 +1,8 @@
 package authorize
 
 import (
+	"log/slog"
+
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
@@ -16,7 +18,7 @@ func initAuthnSession(
 		return models.AuthnSession{}, err
 	}
 
-	return session, utils.InitAuthnSessionWithPolicy(ctx, &session)
+	return session, initAuthnSessionWithPolicy(ctx, &session)
 }
 
 func initValidAuthnSession(
@@ -157,4 +159,19 @@ func initValidSimpleAuthnSession(
 		return models.AuthnSession{}, err
 	}
 	return models.NewSession(req.AuthorizationParameters, client), nil
+}
+
+func initAuthnSessionWithPolicy(
+	ctx utils.Context,
+	session *models.AuthnSession,
+) models.OAuthError {
+	policy, ok := utils.GetAvailablePolicy(ctx, *session)
+	if !ok {
+		ctx.Logger.Info("no policy available")
+		return session.NewRedirectError(constants.InvalidRequest, "no policy available")
+	}
+
+	ctx.Logger.Info("policy available", slog.String("policy_id", policy.Id))
+	session.Start(policy.Id, ctx.AuthenticationSessionTimeoutSecs)
+	return nil
 }

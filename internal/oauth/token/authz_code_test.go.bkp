@@ -15,7 +15,7 @@ func TestAuthorizationCodeHandleGrantCreation(t *testing.T) {
 	// When
 	ctx, tearDown := utils.SetUpTest()
 	defer tearDown()
-	client, _ := ctx.ClientManager.Get(models.TestClientId)
+	client, _ := ctx.GetClient(models.TestClientId)
 
 	authorizationCode := "random_authz_code"
 	session := models.AuthnSession{

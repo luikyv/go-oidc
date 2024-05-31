@@ -46,7 +46,7 @@ func main() {
 	)
 	oauthManager.SetTokenOptions(GetTokenOptions)
 	oauthManager.EnablePushedAuthorizationRequests(60)
-	oauthManager.EnableJwtSecuredAuthorizationRequests(600, jose.PS256, jose.RS256)
+	oauthManager.EnableJwtSecuredAuthorizationRequests(jose.PS256, jose.RS256)
 	oauthManager.EnableJwtSecuredAuthorizationResponseMode(600, privateRs256Jwk.KeyID)
 	oauthManager.EnableSecretPostClientAuthn()
 	oauthManager.EnablePrivateKeyJwtClientAuthn(600, jose.RS256, jose.PS256)

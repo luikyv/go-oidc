@@ -49,7 +49,6 @@ type Configuration struct {
 	JarmSignatureKeyIds                  []string
 	JarIsEnabled                         bool
 	JarIsRequired                        bool
-	JarLifetimeSecs                      int
 	JarSignatureAlgorithms               []jose.SignatureAlgorithm
 	ParIsEnabled                         bool
 	ParIsRequired                        bool
@@ -67,6 +66,7 @@ type Configuration struct {
 	DcrIsEnabled                         bool
 	ShouldRotateRegistrationTokens       bool
 	DcrPlugin                            DcrPluginFunc
+	AuthenticationSessionTimeoutSecs     int
 }
 
 type Context struct {
@@ -217,11 +217,6 @@ func (ctx Context) GetClientSignatureAlgorithms() []jose.SignatureAlgorithm {
 	return append(ctx.PrivateKeyJwtSignatureAlgorithms, ctx.ClientSecretJwtSignatureAlgorithms...)
 }
 
-func (ctx Context) SetCookie(cookie string, value string) {
-	// TODO
-	ctx.RequestContext.SetCookie(cookie, value, 3600, "/", ctx.Host, true, true)
-}
-
 func (ctx Context) GetBearerToken() (token string, ok bool) {
 	token, tokenType, ok := ctx.GetAuthorizationToken()
 	if !ok {
@@ -247,4 +242,8 @@ func (ctx Context) GetAuthorizationToken() (token string, tokenType constants.To
 	}
 
 	return tokenParts[1], constants.TokenType(tokenParts[0]), true
+}
+
+func (ctx Context) GetClient(clientId string) (models.Client, error) {
+	return ctx.ClientManager.Get(clientId)
 }

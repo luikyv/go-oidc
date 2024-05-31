@@ -61,11 +61,10 @@ func NewProvider(
 				constants.FragmentResponseMode,
 				constants.FormPostResponseMode,
 			},
-			ClientAuthnMethods:      []constants.ClientAuthnType{},
-			CodeChallengeMethods:    []constants.CodeChallengeMethod{},
-			DpopSignatureAlgorithms: []jose.SignatureAlgorithm{},
-			SubjectIdentifierTypes:  []constants.SubjectIdentifierType{constants.PublicSubjectIdentifier},
-			Policies:                make([]utils.AuthnPolicy, 0),
+			ClientAuthnMethods:               []constants.ClientAuthnType{},
+			DpopSignatureAlgorithms:          []jose.SignatureAlgorithm{},
+			SubjectIdentifierTypes:           []constants.SubjectIdentifierType{constants.PublicSubjectIdentifier},
+			AuthenticationSessionTimeoutSecs: constants.DefaultAuthenticationSessionTimeoutSecs,
 		},
 		Server: gin.Default(),
 	}
@@ -167,19 +166,16 @@ func (provider *OpenIdProvider) RequirePushedAuthorizationRequests(parLifetimeSe
 }
 
 func (provider *OpenIdProvider) EnableJwtSecuredAuthorizationRequests(
-	requestObjectLifetimeSecs int,
 	jarAlgorithms ...jose.SignatureAlgorithm,
 ) {
 	provider.JarIsEnabled = true
 	provider.JarSignatureAlgorithms = jarAlgorithms
-	provider.JarLifetimeSecs = requestObjectLifetimeSecs
 }
 
 func (provider *OpenIdProvider) RequireJwtSecuredAuthorizationRequests(
-	requestObjectLifetimeSecs int,
 	jarAlgorithms ...jose.SignatureAlgorithm,
 ) {
-	provider.EnableJwtSecuredAuthorizationRequests(requestObjectLifetimeSecs, jarAlgorithms...)
+	provider.EnableJwtSecuredAuthorizationRequests(jarAlgorithms...)
 	provider.JarIsRequired = true
 }
 
@@ -251,6 +247,10 @@ func (provider *OpenIdProvider) EnableProofKeyForCodeExchange(codeChallengeMetho
 func (provider *OpenIdProvider) RequireProofKeyForCodeExchange(codeChallengeMethods ...constants.CodeChallengeMethod) {
 	provider.EnableProofKeyForCodeExchange(codeChallengeMethods...)
 	provider.PkceIsRequired = true
+}
+
+func (provider *OpenIdProvider) SetAuthenticationSessionTimeout(timeoutSecs int) {
+	provider.AuthenticationSessionTimeoutSecs = timeoutSecs
 }
 
 func (provider *OpenIdProvider) AddClient(client models.Client) error {

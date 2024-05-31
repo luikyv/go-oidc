@@ -30,7 +30,7 @@ func HandleUserInfoRequest(ctx utils.Context) (models.UserInfoResponse, models.O
 		return models.UserInfoResponse{}, err
 	}
 
-	client, err := ctx.ClientManager.Get(grantSession.ClientId)
+	client, err := ctx.GetClient(grantSession.ClientId)
 	if err != nil {
 		return models.UserInfoResponse{}, models.NewOAuthError(constants.InternalError, err.Error())
 	}

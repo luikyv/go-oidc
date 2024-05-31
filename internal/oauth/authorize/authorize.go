@@ -37,7 +37,7 @@ func ContinueAuth(ctx utils.Context, callbackId string) models.OAuthError {
 	}
 
 	if oauthErr := authenticate(ctx, &session); oauthErr != nil {
-		client, err := ctx.ClientManager.Get(session.ClientId)
+		client, err := ctx.GetClient(session.ClientId)
 		if err != nil {
 			return models.NewOAuthError(constants.InternalError, err.Error())
 		}
@@ -58,7 +58,7 @@ func getClient(
 		return models.Client{}, models.NewOAuthError(constants.InvalidClient, "invalid client_id")
 	}
 
-	client, err := ctx.ClientManager.Get(req.ClientId)
+	client, err := ctx.GetClient(req.ClientId)
 	if err != nil {
 		return models.Client{}, models.NewOAuthError(constants.InvalidClient, "invalid client_id")
 	}
@@ -116,7 +116,7 @@ func stopFlowInProgress(
 
 func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) models.OAuthError {
 
-	client, err := ctx.ClientManager.Get(session.ClientId)
+	client, err := ctx.GetClient(session.ClientId)
 	if err != nil {
 		return session.NewRedirectError(constants.InternalError, err.Error())
 	}
@@ -150,6 +150,10 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) mod
 			ClientId:       session.ClientId,
 			IdTokenOptions: idTokenOptions,
 		})
+	}
+
+	if session.UserAuthenticatedAtTimestamp == 0 {
+		ctx.Logger.Warn("the user authentication time property was not set in the session which means the user was not authenticated during the flow")
 	}
 
 	redirectResponse(ctx, client, session.AuthorizationParameters, redirectParams)

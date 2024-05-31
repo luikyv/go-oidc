@@ -23,7 +23,7 @@ func GetAuthenticatedClient(
 		return models.Client{}, oauthErr
 	}
 
-	client, err := ctx.ClientManager.Get(clientId)
+	client, err := ctx.GetClient(clientId)
 	if err != nil {
 		ctx.Logger.Info("client not found", slog.String("client_id", clientId))
 		return models.Client{}, models.NewWrappingOAuthError(err, constants.InvalidClient, "invalid client")

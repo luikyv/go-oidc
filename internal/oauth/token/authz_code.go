@@ -123,7 +123,7 @@ func validateAuthorizationCodeGrantRequest(
 		return models.NewOAuthError(constants.InvalidRequest, "invalid pkce")
 	}
 
-	return nil
+	return utils.ValidateTokenBindingRequestWithDpop(ctx, req, client)
 }
 
 func getAuthenticatedClientAndSession(
