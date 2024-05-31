@@ -1,14 +1,12 @@
 package models
 
 import (
-	"strings"
-
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
+// TODO: Expires at
 type AuthnSession struct {
 	Id                 string `json:"id"`
 	CallbackId         string `json:"callback_id"`
@@ -39,8 +37,9 @@ func NewSession(authParams AuthorizationParameters, client Client) AuthnSession 
 	}
 }
 
-func (session *AuthnSession) Push() {
+func (session *AuthnSession) Push() (requestUri string) {
 	session.RequestUri = unit.GenerateRequestUri()
+	return session.RequestUri
 }
 
 func (session *AuthnSession) Start(policyId string) {
@@ -55,22 +54,6 @@ func (session *AuthnSession) Start(policyId string) {
 // The parameters already present in the session have priority.
 func (session *AuthnSession) UpdateParams(params AuthorizationParameters) {
 	session.AuthorizationParameters = session.AuthorizationParameters.Merge(params)
-}
-
-func extractProtectedParamsFromForm(reqCtx *gin.Context) map[string]any {
-	//TODO: Finish this.
-	if err := reqCtx.Request.ParseForm(); err != nil {
-		return map[string]any{}
-	}
-
-	pushedParams := make(map[string]any)
-	for param, values := range reqCtx.Request.PostForm {
-		if strings.HasPrefix(param, constants.ProtectedParamPrefix) {
-			pushedParams[param] = values[0]
-		}
-	}
-
-	return pushedParams
 }
 
 func (session *AuthnSession) SetUserId(userId string) {
@@ -137,4 +120,12 @@ func (session *AuthnSession) GetIdTokenOptions() IdTokenOptions {
 		UserAuthenticationMethodReferences: session.UserAuthenticationMethodReferences,
 		AdditionalIdTokenClaims:            session.AdditionalIdTokenClaims,
 	}
+}
+
+func (session *AuthnSession) MustAuthenticateUser(authTime int) bool {
+	if session.Prompt == constants.LoginPromptType {
+		return true
+	}
+
+	return unit.GetTimestampNow() > authTime+session.MaxAuthenticationAgeSecs
 }

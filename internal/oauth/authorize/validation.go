@@ -1,5 +1,8 @@
 package authorize
 
+// As a general rule, the validations that indicate whether the request is redirectable or not, must come first
+// as the other errors should be redirected.
+
 import (
 	"slices"
 
@@ -77,7 +80,7 @@ func validateInsideWithOutsideParams(
 		return err
 	}
 
-	if ctx.Profile == constants.OpenIdProfile {
+	if ctx.Profile == constants.OpenIdProfile { // TODO: What if I add the conditon "scope contains openid"
 		if outsideParams.ResponseType == "" {
 			return mergedParams.NewRedirectError(constants.InvalidRequest, "invalid response_type")
 		}

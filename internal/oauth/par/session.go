@@ -37,6 +37,7 @@ func initValidSimpleAuthnSession(
 	}
 
 	session := models.NewSession(req.AuthorizationParameters, client)
+	session.ProtectedParameters = utils.ExtractProtectedParamsFromForm(ctx)
 	return session, nil
 }
 
@@ -58,6 +59,7 @@ func initValidAuthnSessionWithJar(
 	}
 
 	session := models.NewSession(jar.AuthorizationParameters, client)
+	session.ProtectedParameters = utils.ExtractProtectedParamsFromRequestObject(ctx, req.RequestObject)
 	return session, nil
 }
 

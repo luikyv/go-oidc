@@ -84,17 +84,18 @@ type TokenResponse struct {
 }
 
 type AuthorizationParameters struct {
-	RequestUri          string                        `form:"request_uri" json:"request_uri"`
-	RequestObject       string                        `form:"request" json:"request"`
-	RedirectUri         string                        `form:"redirect_uri" json:"redirect_uri"`
-	ResponseMode        constants.ResponseMode        `form:"response_mode" json:"response_mode"`
-	ResponseType        constants.ResponseType        `form:"response_type" json:"response_type"`
-	Scopes              string                        `form:"scope" json:"scope"`
-	State               string                        `form:"state" json:"state"`
-	Nonce               string                        `form:"nonce" json:"nonce"`
-	Prompt              constants.PromptType          `form:"prompt" json:"prompt"`
-	CodeChallenge       string                        `form:"code_challenge" json:"code_challenge"`
-	CodeChallengeMethod constants.CodeChallengeMethod `form:"code_challenge_method" json:"code_challenge_method"`
+	RequestUri               string                        `form:"request_uri" json:"request_uri"`
+	RequestObject            string                        `form:"request" json:"request"`
+	RedirectUri              string                        `form:"redirect_uri" json:"redirect_uri"`
+	ResponseMode             constants.ResponseMode        `form:"response_mode" json:"response_mode"`
+	ResponseType             constants.ResponseType        `form:"response_type" json:"response_type"`
+	Scopes                   string                        `form:"scope" json:"scope"`
+	State                    string                        `form:"state" json:"state"`
+	Nonce                    string                        `form:"nonce" json:"nonce"`
+	CodeChallenge            string                        `form:"code_challenge" json:"code_challenge"`
+	CodeChallengeMethod      constants.CodeChallengeMethod `form:"code_challenge_method" json:"code_challenge_method"`
+	Prompt                   constants.PromptType          `form:"prompt" json:"prompt"` // TODO: implement mustAuthenticated(authTime int) bool method
+	MaxAuthenticationAgeSecs int                           `form:"max_age" json:"max_age"`
 }
 
 func (params AuthorizationParameters) NewRedirectError(
@@ -114,6 +115,9 @@ func (insideParams AuthorizationParameters) Merge(outsideParams AuthorizationPar
 		Nonce:               unit.GetNonEmptyOrDefault(insideParams.Nonce, outsideParams.Nonce),
 		CodeChallenge:       unit.GetNonEmptyOrDefault(insideParams.CodeChallenge, outsideParams.CodeChallenge),
 		CodeChallengeMethod: unit.GetNonEmptyOrDefault(insideParams.CodeChallengeMethod, outsideParams.CodeChallengeMethod),
+		Prompt:              unit.GetNonEmptyOrDefault(insideParams.Prompt, outsideParams.Prompt),
+		// MaxAge:              unit.GetNonEmptyOrDefault(insideParams.MaxAge, outsideParams.MaxAge),
+		// TODO
 	}
 }
 

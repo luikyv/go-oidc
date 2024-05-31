@@ -95,8 +95,8 @@ func ShouldInitAuthnSessionWithJar(
 	req models.AuthorizationParameters,
 	client models.Client,
 ) bool {
-	// Note: if JAR is not enabled, we just disconsider the request object.
-	// Note: If the client defined a signature algorithm for jar, then jar is required.
+	// If JAR is not enabled, we just disconsider the request object.
+	// Also, if the client defined a signature algorithm for jar, then jar is required.
 	return ctx.JarIsRequired || (ctx.JarIsEnabled && req.RequestObject != "") || client.JarSignatureAlgorithm != ""
 }
 
@@ -120,6 +120,7 @@ func initValidAuthnSessionWithJar(
 
 	session := models.NewSession(jar.AuthorizationParameters, client)
 	session.UpdateParams(req.AuthorizationParameters)
+	session.ProtectedParameters = utils.ExtractProtectedParamsFromRequestObject(ctx, req.RequestObject)
 	return session, nil
 }
 

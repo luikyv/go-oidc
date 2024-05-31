@@ -2,6 +2,7 @@ package utils
 
 import (
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
@@ -250,4 +251,41 @@ func RunValidations(
 	}
 
 	return nil
+}
+
+func ExtractProtectedParamsFromForm(ctx Context) map[string]any {
+	if err := ctx.RequestContext.Request.ParseForm(); err != nil {
+		return map[string]any{}
+	}
+
+	protectedParams := make(map[string]any)
+	for param, values := range ctx.RequestContext.Request.PostForm {
+		if strings.HasPrefix(param, constants.ProtectedParamPrefix) {
+			protectedParams[param] = values[0]
+		}
+	}
+
+	return protectedParams
+}
+
+func ExtractProtectedParamsFromRequestObject(ctx Context, request string) map[string]any {
+	parsedRequest, err := jwt.ParseSigned(request, ctx.JarSignatureAlgorithms)
+	if err != nil {
+		return map[string]any{}
+	}
+
+	var claims map[string]any
+	err = parsedRequest.UnsafeClaimsWithoutVerification(&claims)
+	if err != nil {
+		return map[string]any{}
+	}
+
+	protectedParams := make(map[string]any)
+	for param, value := range claims {
+		if strings.HasPrefix(param, constants.ProtectedParamPrefix) {
+			protectedParams[param] = value
+		}
+	}
+
+	return protectedParams
 }

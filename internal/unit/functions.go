@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -282,5 +283,6 @@ func ContainsAllScopes(scopesSuperSet string, scopesSubSet string) bool {
 }
 
 func IsJwt(token string) bool {
-	return strings.Contains(token, ".")
+	isJwt, _ := regexp.MatchString("(^[\\w-]*\\.[\\w-]*\\.[\\w-]*$)", token)
+	return isJwt
 }

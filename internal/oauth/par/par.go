@@ -27,11 +27,11 @@ func PushAuthorization(
 	if oauthErr != nil {
 		return "", oauthErr
 	}
-	session.Push()
 
+	requestUri = session.Push()
 	if err := ctx.AuthnSessionManager.CreateOrUpdate(session); err != nil {
 		ctx.Logger.Debug("could not create a session")
 		return "", models.NewOAuthError(constants.InternalError, err.Error())
 	}
-	return session.RequestUri, nil
+	return requestUri, nil
 }
