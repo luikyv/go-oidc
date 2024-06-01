@@ -13,7 +13,6 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 		AuthorizationEndpoint:                ctx.Host + string(constants.AuthorizationEndpoint),
 		TokenEndpoint:                        ctx.Host + string(constants.TokenEndpoint),
 		UserinfoEndpoint:                     ctx.Host + string(constants.UserInfoEndpoint),
-		IntrospectionEndpoint:                ctx.Host + string(constants.TokenIntrospectionEndpoint),
 		ParIsRequired:                        ctx.ParIsRequired,
 		JwksEndpoint:                         ctx.Host + string(constants.JsonWebKeySetEndpoint),
 		ResponseTypes:                        ctx.ResponseTypes,
@@ -46,6 +45,12 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 
 	if ctx.DpopIsEnabled {
 		config.DpopSignatureAlgorithms = ctx.DpopSignatureAlgorithms
+	}
+
+	if ctx.IntrospectionIsEnabled {
+		config.IntrospectionEndpoint = ctx.Host + string(constants.TokenIntrospectionEndpoint)
+		config.IntrospectionEndpointClientAuthnMethods = ctx.IntrospectionClientAuthnMethods
+		config.IntrospectionEndpointClientSignatureAlgorithms = ctx.GetIntrospectionClientSignatureAlgorithms()
 	}
 
 	return config

@@ -100,7 +100,7 @@ type AuthorizationParameters struct {
 	CodeChallenge            string                        `form:"code_challenge" json:"code_challenge"`
 	CodeChallengeMethod      constants.CodeChallengeMethod `form:"code_challenge_method" json:"code_challenge_method"`
 	Prompt                   constants.PromptType          `form:"prompt" json:"prompt"`
-	MaxAuthenticationAgeSecs int                           `form:"max_age" json:"max_age"`
+	MaxAuthenticationAgeSecs string                        `form:"max_age" json:"max_age"`
 }
 
 func (params AuthorizationParameters) NewRedirectError(
@@ -112,17 +112,16 @@ func (params AuthorizationParameters) NewRedirectError(
 
 func (insideParams AuthorizationParameters) Merge(outsideParams AuthorizationParameters) AuthorizationParameters {
 	return AuthorizationParameters{
-		RedirectUri:         unit.GetNonEmptyOrDefault(insideParams.RedirectUri, outsideParams.RedirectUri),
-		ResponseMode:        unit.GetNonEmptyOrDefault(insideParams.ResponseMode, outsideParams.ResponseMode),
-		ResponseType:        unit.GetNonEmptyOrDefault(insideParams.ResponseType, outsideParams.ResponseType),
-		Scopes:              unit.GetNonEmptyOrDefault(insideParams.Scopes, outsideParams.Scopes),
-		State:               unit.GetNonEmptyOrDefault(insideParams.State, outsideParams.State),
-		Nonce:               unit.GetNonEmptyOrDefault(insideParams.Nonce, outsideParams.Nonce),
-		CodeChallenge:       unit.GetNonEmptyOrDefault(insideParams.CodeChallenge, outsideParams.CodeChallenge),
-		CodeChallengeMethod: unit.GetNonEmptyOrDefault(insideParams.CodeChallengeMethod, outsideParams.CodeChallengeMethod),
-		Prompt:              unit.GetNonEmptyOrDefault(insideParams.Prompt, outsideParams.Prompt),
-		// MaxAge:              unit.GetNonEmptyOrDefault(insideParams.MaxAge, outsideParams.MaxAge),
-		// TODO
+		RedirectUri:              unit.GetNonEmptyOrDefault(insideParams.RedirectUri, outsideParams.RedirectUri),
+		ResponseMode:             unit.GetNonEmptyOrDefault(insideParams.ResponseMode, outsideParams.ResponseMode),
+		ResponseType:             unit.GetNonEmptyOrDefault(insideParams.ResponseType, outsideParams.ResponseType),
+		Scopes:                   unit.GetNonEmptyOrDefault(insideParams.Scopes, outsideParams.Scopes),
+		State:                    unit.GetNonEmptyOrDefault(insideParams.State, outsideParams.State),
+		Nonce:                    unit.GetNonEmptyOrDefault(insideParams.Nonce, outsideParams.Nonce),
+		CodeChallenge:            unit.GetNonEmptyOrDefault(insideParams.CodeChallenge, outsideParams.CodeChallenge),
+		CodeChallengeMethod:      unit.GetNonEmptyOrDefault(insideParams.CodeChallengeMethod, outsideParams.CodeChallengeMethod),
+		Prompt:                   unit.GetNonEmptyOrDefault(insideParams.Prompt, outsideParams.Prompt),
+		MaxAuthenticationAgeSecs: unit.GetNonEmptyOrDefault(insideParams.MaxAuthenticationAgeSecs, outsideParams.MaxAuthenticationAgeSecs),
 	}
 }
 
@@ -157,33 +156,34 @@ type DynamicClientResponse struct {
 	ClientMetaInfo
 }
 
-// TODO: introspect metadata https://www.rfc-editor.org/rfc/rfc8414.html
 type OpenIdConfiguration struct {
-	Issuer                               string                            `json:"issuer"`
-	ClientRegistrationEndpoint           string                            `json:"registration_endpoint"`
-	AuthorizationEndpoint                string                            `json:"authorization_endpoint"`
-	TokenEndpoint                        string                            `json:"token_endpoint"`
-	UserinfoEndpoint                     string                            `json:"userinfo_endpoint"`
-	IntrospectionEndpoint                string                            `json:"introspection_endpoint"`
-	JwksEndpoint                         string                            `json:"jwks_uri"`
-	ParEndpoint                          string                            `json:"pushed_authorization_request_endpoint,omitempty"`
-	ParIsRequired                        bool                              `json:"require_pushed_authorization_requests,omitempty"`
-	ResponseTypes                        []constants.ResponseType          `json:"response_types_supported"`
-	ResponseModes                        []constants.ResponseMode          `json:"response_modes_supported"`
-	GrantTypes                           []constants.GrantType             `json:"grant_types_supported"`
-	Scopes                               []string                          `json:"scopes_supported"`
-	IdTokenClaimsSupported               []constants.Claim                 `json:"claims_supported"`
-	SubjectIdentifierTypes               []constants.SubjectIdentifierType `json:"subject_types_supported"`
-	IdTokenSignatureAlgorithms           []jose.SignatureAlgorithm         `json:"id_token_signing_alg_values_supported"`
-	UserInfoSignatureAlgorithms          []jose.SignatureAlgorithm         `json:"userinfo_signing_alg_values_supported"`
-	ClientAuthnMethods                   []constants.ClientAuthnType       `json:"token_endpoint_auth_methods_supported"`
-	JarIsRequired                        bool                              `json:"require_signed_request_object,omitempty"`
-	JarIsEnabled                         bool                              `json:"request_parameter_supported"`
-	JarAlgorithms                        []jose.SignatureAlgorithm         `json:"request_object_signing_alg_values_supported,omitempty"`
-	JarmAlgorithms                       []jose.SignatureAlgorithm         `json:"authorization_signing_alg_values_supported,omitempty"`
-	TokenEndpointClientSigningAlgorithms []jose.SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg_values_supported"`
-	IssuerResponseParameterIsEnabled     bool                              `json:"authorization_response_iss_parameter_supported"`
-	DpopSignatureAlgorithms              []jose.SignatureAlgorithm         `json:"dpop_signing_alg_values_supported,omitempty"`
+	Issuer                                         string                            `json:"issuer"`
+	ClientRegistrationEndpoint                     string                            `json:"registration_endpoint"`
+	AuthorizationEndpoint                          string                            `json:"authorization_endpoint"`
+	TokenEndpoint                                  string                            `json:"token_endpoint"`
+	UserinfoEndpoint                               string                            `json:"userinfo_endpoint"`
+	JwksEndpoint                                   string                            `json:"jwks_uri"`
+	ParEndpoint                                    string                            `json:"pushed_authorization_request_endpoint,omitempty"`
+	ParIsRequired                                  bool                              `json:"require_pushed_authorization_requests,omitempty"`
+	ResponseTypes                                  []constants.ResponseType          `json:"response_types_supported"`
+	ResponseModes                                  []constants.ResponseMode          `json:"response_modes_supported"`
+	GrantTypes                                     []constants.GrantType             `json:"grant_types_supported"`
+	Scopes                                         []string                          `json:"scopes_supported"`
+	IdTokenClaimsSupported                         []constants.Claim                 `json:"claims_supported"`
+	SubjectIdentifierTypes                         []constants.SubjectIdentifierType `json:"subject_types_supported"`
+	IdTokenSignatureAlgorithms                     []jose.SignatureAlgorithm         `json:"id_token_signing_alg_values_supported"`
+	UserInfoSignatureAlgorithms                    []jose.SignatureAlgorithm         `json:"userinfo_signing_alg_values_supported"`
+	ClientAuthnMethods                             []constants.ClientAuthnType       `json:"token_endpoint_auth_methods_supported"`
+	JarIsRequired                                  bool                              `json:"require_signed_request_object,omitempty"`
+	JarIsEnabled                                   bool                              `json:"request_parameter_supported"`
+	JarAlgorithms                                  []jose.SignatureAlgorithm         `json:"request_object_signing_alg_values_supported,omitempty"`
+	JarmAlgorithms                                 []jose.SignatureAlgorithm         `json:"authorization_signing_alg_values_supported,omitempty"`
+	TokenEndpointClientSigningAlgorithms           []jose.SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg_values_supported"`
+	IssuerResponseParameterIsEnabled               bool                              `json:"authorization_response_iss_parameter_supported"`
+	DpopSignatureAlgorithms                        []jose.SignatureAlgorithm         `json:"dpop_signing_alg_values_supported,omitempty"`
+	IntrospectionEndpoint                          string                            `json:"introspection_endpoint,omitempty"`
+	IntrospectionEndpointClientAuthnMethods        []constants.ClientAuthnType       `json:"introspection_endpoint_auth_methods_supported,omitempty"`
+	IntrospectionEndpointClientSignatureAlgorithms []jose.SignatureAlgorithm         `json:"introspection_endpoint_auth_signing_alg_values_supported,omitempty"`
 }
 
 type Token struct {

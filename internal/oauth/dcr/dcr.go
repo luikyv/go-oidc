@@ -19,6 +19,9 @@ func CreateClient(
 	}
 
 	ctx.ExecureDcrPlugin(&dynamicClient)
+	if err := validateDynamicClientRequest(ctx, dynamicClient); err != nil {
+		return models.DynamicClientResponse{}, err
+	}
 
 	newClient := newClient(dynamicClient)
 	if err := ctx.ClientManager.Create(newClient); err != nil {
@@ -52,6 +55,9 @@ func UpdateClient(
 	}
 
 	ctx.ExecureDcrPlugin(&dynamicClient)
+	if err := validateDynamicClientRequest(ctx, dynamicClient); err != nil {
+		return models.DynamicClientResponse{}, err
+	}
 
 	updatedClient := newClient(dynamicClient)
 	if err := ctx.ClientManager.Update(client.Id, updatedClient); err != nil {

@@ -1,6 +1,8 @@
 package models
 
 import (
+	"strconv"
+
 	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -121,21 +123,25 @@ func (session *AuthnSession) MustAuthenticateUser(authTime int) bool {
 		return true
 	}
 
-	return unit.GetTimestampNow() > authTime+session.MaxAuthenticationAgeSecs
+	if session.MaxAuthenticationAgeSecs == "" {
+		return false
+	}
+
+	maxAge, err := strconv.Atoi(session.MaxAuthenticationAgeSecs)
+	if err != nil {
+		return false
+	}
+	return unit.GetTimestampNow() > authTime+maxAge
 }
 
-func (session *AuthnSession) SetUserAuthentication(
-	authTime int,
-	authMethods ...constants.AuthenticationMethodReference,
-) {
-	session.UserAuthenticatedAtTimestamp = authTime
+// This method must be called after the user is authenticated.
+// This will set the authentication methods used and the time the authentication occurred.
+func (session *AuthnSession) SetUserAuthentication(authMethods ...constants.AuthenticationMethodReference) {
+	session.UserAuthenticatedAtTimestamp = unit.GetTimestampNow()
 	session.UserAuthenticationMethodReferences = authMethods
 }
 
+// Get custome protected parameters sent during PAR or JAR.
 func (session *AuthnSession) GetProtectedParameter(key string) any {
 	return session.ProtectedParameters[key]
-}
-
-func (session *AuthnSession) GetCallbackId() string {
-	return session.CallbackId
 }

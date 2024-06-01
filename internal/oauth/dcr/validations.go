@@ -19,6 +19,8 @@ func validateDynamicClientRequest(
 		validateClientSignatureAlgorithmForPrivateKeyJwt,
 		validateClientSignatureAlgorithmForClientSecretJwt,
 		validateGrantTypes,
+		validateClientCredentialsGrantNotAllowedForNoneClientAuthn,
+		validateClientAuthnMethodForIntrospectionGrant,
 		validateRedirectUris,
 		validateResponseTypes,
 		validateCannotRequestImplicitResponseTypeWithoutImplicitGrant,
@@ -54,6 +56,33 @@ func validateGrantTypes(
 	if !unit.ContainsAll(ctx.GrantTypes, dynamicClient.GrantTypes...) {
 		return models.NewOAuthError(constants.InvalidRequest, "grant type not allowed")
 	}
+	return nil
+}
+
+func validateClientCredentialsGrantNotAllowedForNoneClientAuthn(
+	_ utils.Context,
+	dynamicClient models.DynamicClientRequest,
+) models.OAuthError {
+	if dynamicClient.AuthnMethod != constants.NoneAuthn {
+		return nil
+	}
+
+	if slices.Contains(dynamicClient.GrantTypes, constants.ClientCredentialsGrant) {
+		return models.NewOAuthError(constants.InvalidRequest, "client_credentials grant type not allowed")
+	}
+
+	return nil
+}
+
+func validateClientAuthnMethodForIntrospectionGrant(
+	ctx utils.Context,
+	dynamicClient models.DynamicClientRequest,
+) models.OAuthError {
+	if slices.Contains(dynamicClient.GrantTypes, constants.IntrospectionGrant) &&
+		!slices.Contains(ctx.IntrospectionClientAuthnMethods, dynamicClient.AuthnMethod) {
+		return models.NewOAuthError(constants.InvalidRequest, "client_credentials grant type not allowed")
+	}
+
 	return nil
 }
 

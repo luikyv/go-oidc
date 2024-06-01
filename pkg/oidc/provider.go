@@ -96,6 +96,11 @@ func (provider *OpenIdProvider) validateConfiguration() {
 			panic("assymetric algorithms are not allowed for client_secret_jwt authentication")
 		}
 	}
+
+	if !unit.ContainsAll(provider.ClientAuthnMethods, provider.IntrospectionClientAuthnMethods...) ||
+		slices.Contains(provider.IntrospectionClientAuthnMethods, constants.NoneAuthn) {
+		panic("invalid client authentication method for token introspection")
+	}
 }
 
 func (provider *OpenIdProvider) SetCustomIdTokenClaims(claims ...constants.Claim) {
@@ -218,6 +223,10 @@ func (provider *OpenIdProvider) EnableClientSecretJwtAuthn(assertionLifetimeSecs
 	provider.ClientSecretJwtSignatureAlgorithms = signatureAlgorithms
 }
 
+func (provider *OpenIdProvider) SupportPublicClients() {
+	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.NoneAuthn)
+}
+
 func (provider *OpenIdProvider) EnableIssuerResponseParameter() {
 	provider.IssuerResponseParameterIsEnabled = true
 }
@@ -237,6 +246,12 @@ func (provider *OpenIdProvider) RequireDemonstrationProofOfPossesion(
 ) {
 	provider.EnableDemonstrationProofOfPossesion(dpopLifetimeSecs, dpopSigningAlgorithms...)
 	provider.DpopIsRequired = true
+}
+
+func (provider *OpenIdProvider) EnableTokenIntrospection(clientAuthnMethods ...constants.ClientAuthnType) {
+	provider.IntrospectionIsEnabled = true
+	provider.IntrospectionClientAuthnMethods = clientAuthnMethods
+	provider.GrantTypes = append(provider.GrantTypes, constants.IntrospectionGrant)
 }
 
 func (provider *OpenIdProvider) EnableProofKeyForCodeExchange(codeChallengeMethods ...constants.CodeChallengeMethod) {
@@ -282,6 +297,8 @@ func (provider *OpenIdProvider) setUp() {
 		// Avoiding caching.
 		ctx.Writer.Header().Set("Cache-Control", "no-cache, no-store")
 		ctx.Writer.Header().Set("Pragma", "no-cache")
+		// Return the correlation ID.
+		ctx.Writer.Header().Set(string(constants.CorrelationIdHeader), correlationId)
 	})
 
 	// Set endpoints.
@@ -373,12 +390,14 @@ func (provider *OpenIdProvider) setUp() {
 		)
 	}
 
-	provider.Server.POST(
-		string(constants.TokenIntrospectionEndpoint),
-		func(requestCtx *gin.Context) {
-			apihandlers.HandleIntrospectionRequest(provider.getContext(requestCtx))
-		},
-	)
+	if provider.IntrospectionIsEnabled {
+		provider.Server.POST(
+			string(constants.TokenIntrospectionEndpoint),
+			func(requestCtx *gin.Context) {
+				apihandlers.HandleIntrospectionRequest(provider.getContext(requestCtx))
+			},
+		)
+	}
 }
 
 func (provider *OpenIdProvider) Run(port int) {

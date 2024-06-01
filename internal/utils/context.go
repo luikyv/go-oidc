@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -32,6 +33,8 @@ type Configuration struct {
 	ResponseTypes                        []constants.ResponseType
 	ResponseModes                        []constants.ResponseMode
 	ClientAuthnMethods                   []constants.ClientAuthnType
+	IntrospectionIsEnabled               bool
+	IntrospectionClientAuthnMethods      []constants.ClientAuthnType
 	PrivateKeyJwtSignatureAlgorithms     []jose.SignatureAlgorithm
 	PrivateKeyJwtAssertionLifetimeSecs   int
 	ClientSecretJwtSignatureAlgorithms   []jose.SignatureAlgorithm
@@ -209,6 +212,20 @@ func (ctx Context) GetClientSignatureAlgorithms() []jose.SignatureAlgorithm {
 	return append(ctx.PrivateKeyJwtSignatureAlgorithms, ctx.ClientSecretJwtSignatureAlgorithms...)
 }
 
+func (ctx Context) GetIntrospectionClientSignatureAlgorithms() []jose.SignatureAlgorithm {
+	var signatureAlgorithms []jose.SignatureAlgorithm
+
+	if slices.Contains(ctx.IntrospectionClientAuthnMethods, constants.PrivateKeyJwtAuthn) {
+		signatureAlgorithms = append(signatureAlgorithms, ctx.PrivateKeyJwtSignatureAlgorithms...)
+	}
+
+	if slices.Contains(ctx.IntrospectionClientAuthnMethods, constants.ClientSecretJwt) {
+		signatureAlgorithms = append(signatureAlgorithms, ctx.ClientSecretJwtSignatureAlgorithms...)
+	}
+
+	return signatureAlgorithms
+}
+
 func (ctx Context) GetBearerToken() (token string, ok bool) {
 	token, tokenType, ok := ctx.GetAuthorizationToken()
 	if !ok {
@@ -223,7 +240,7 @@ func (ctx Context) GetBearerToken() (token string, ok bool) {
 }
 
 func (ctx Context) GetAuthorizationToken() (token string, tokenType constants.TokenType, ok bool) {
-	tokenHeader := ctx.RequestContext.Request.Header.Get("Authorization")
+	tokenHeader := ctx.GetHeader("Authorization")
 	if tokenHeader == "" {
 		return "", "", false
 	}
@@ -237,7 +254,11 @@ func (ctx Context) GetAuthorizationToken() (token string, tokenType constants.To
 }
 
 func (ctx Context) GetDpopJwt() string {
-	return ctx.RequestContext.Request.Header.Get(string(constants.DpopHeader))
+	return ctx.GetHeader(string(constants.DpopHeader))
+}
+
+func (ctx Context) GetHeader(header string) string {
+	return ctx.RequestContext.Request.Header.Get(header)
 }
 
 func (ctx Context) GetClient(clientId string) (models.Client, error) {

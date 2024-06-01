@@ -15,6 +15,7 @@ const (
 	AuthorizationCodeGrant GrantType = "authorization_code"
 	RefreshTokenGrant      GrantType = "refresh_token"
 	ImplicitGrant          GrantType = "implicit"
+	IntrospectionGrant     GrantType = "urn:goidc:oauth2:grant_type:token_intropection"
 )
 
 type ResponseType string

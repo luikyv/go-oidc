@@ -286,3 +286,14 @@ func IsJwt(token string) bool {
 	isJwt, _ := regexp.MatchString("(^[\\w-]*\\.[\\w-]*\\.[\\w-]*$)", token)
 	return isJwt
 }
+
+func Remove[T comparable](slice []T, value T) []T {
+	newSlice := []T{}
+	for _, v := range slice {
+		if v != value {
+			newSlice = append(newSlice, v)
+		}
+	}
+
+	return newSlice
+}

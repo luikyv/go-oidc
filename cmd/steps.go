@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
@@ -15,7 +14,7 @@ import (
 func NoInteractionAuthnFunc(ctx utils.Context, session *models.AuthnSession) constants.AuthnStatus {
 	session.SetUserId("random_user_id")
 	session.GrantScopes(session.Scopes)
-	session.SetUserAuthentication(unit.GetTimestampNow(), constants.PasswordAuthentication)
+	session.SetUserAuthentication(constants.PasswordAuthentication)
 	return constants.Success
 }
 
