@@ -48,6 +48,7 @@ func main() {
 	openidProvider.EnableJwtSecuredAuthorizationRequests(jose.PS256, jose.RS256)
 	openidProvider.EnableJwtSecuredAuthorizationResponseMode(600, privateRs256Jwk.KeyID)
 	openidProvider.EnableSecretPostClientAuthn()
+	openidProvider.EnableBasicSecretClientAuthn()
 	openidProvider.EnablePrivateKeyJwtClientAuthn(600, jose.RS256, jose.PS256)
 	openidProvider.EnableIssuerResponseParameter()
 	openidProvider.EnableDemonstrationProofOfPossesion(600, jose.RS256, jose.PS256, jose.ES256)

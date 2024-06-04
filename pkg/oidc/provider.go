@@ -207,6 +207,10 @@ func (provider *OpenIdProvider) EnableJwtSecuredAuthorizationResponseMode(
 
 }
 
+func (provider *OpenIdProvider) EnableBasicSecretClientAuthn() {
+	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.ClientSecretBasicAuthn)
+}
+
 func (provider *OpenIdProvider) EnableSecretPostClientAuthn() {
 	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.ClientSecretPostAuthn)
 }
