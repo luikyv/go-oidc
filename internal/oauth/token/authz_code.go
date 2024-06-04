@@ -198,7 +198,6 @@ func newAuthorizationCodeGrantOptions(
 		GrantedScopes:  session.GrantedScopes,
 		Subject:        session.Subject,
 		ClientId:       session.ClientId,
-		DpopJwt:        req.DpopJwt,
 		TokenOptions:   tokenOptions,
 		IdTokenOptions: session.GetIdTokenOptions(),
 	}

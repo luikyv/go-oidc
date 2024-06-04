@@ -2,10 +2,12 @@ package oidc
 
 import (
 	"fmt"
+	"log/slog"
+	"net/http"
+	"os"
 	"slices"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
 	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/apihandlers"
@@ -18,7 +20,7 @@ import (
 
 type OpenIdProvider struct {
 	utils.Configuration
-	Server *gin.Engine
+	Server *http.ServeMux
 }
 
 func NewProvider(
@@ -66,9 +68,8 @@ func NewProvider(
 			SubjectIdentifierTypes:           []constants.SubjectIdentifierType{constants.PublicSubjectIdentifier},
 			AuthenticationSessionTimeoutSecs: constants.DefaultAuthenticationSessionTimeoutSecs,
 		},
-		Server: gin.Default(),
+		Server: http.NewServeMux(),
 	}
-	provider.Server.LoadHTMLGlob(templates)
 
 	return provider
 }
@@ -280,125 +281,130 @@ func (provider *OpenIdProvider) AddPolicy(policy utils.AuthnPolicy) {
 	provider.Policies = append(provider.Policies, policy)
 }
 
-func (provider OpenIdProvider) getContext(requestContext *gin.Context) utils.Context {
-	return utils.NewContext(
-		provider.Configuration,
-		requestContext,
+func (provider OpenIdProvider) prepareAndGetContext(req *http.Request, resp http.ResponseWriter) utils.Context {
+	correlationId := uuid.NewString()
+	correlationIdHeader, ok := req.Header[string(constants.CorrelationIdHeader)]
+	if ok && len(correlationIdHeader) > 0 {
+		correlationId = correlationIdHeader[0]
+	}
+
+	// Avoiding caching.
+	resp.Header().Set("Cache-Control", "no-cache, no-store")
+	resp.Header().Set("Pragma", "no-cache")
+	// Return the correlation ID.
+	resp.Header().Set(string(constants.CorrelationIdHeader), correlationId)
+
+	// Create the logger.
+	opts := &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}
+	jsonHandler := slog.NewJSONHandler(os.Stdout, opts)
+	logger := slog.New(jsonHandler)
+	// Set shared information.
+	logger = logger.With(
+		// Always log the correlation ID.
+		slog.String(constants.CorrelationIdKey, correlationId),
 	)
+
+	return utils.NewContext(provider.Configuration, req, resp, logger)
 }
 
 func (provider *OpenIdProvider) setUp() {
 
-	// Configure the server.
-	provider.Server.Use(func(ctx *gin.Context) {
-		// Set the correlation ID to be used in the logs.
-		correlationId := ctx.GetHeader(string(constants.CorrelationIdHeader))
-		if correlationId == "" {
-			correlationId = uuid.NewString()
-		}
-		ctx.Set(constants.CorrelationIdKey, correlationId)
-
-		// Avoiding caching.
-		ctx.Writer.Header().Set("Cache-Control", "no-cache, no-store")
-		ctx.Writer.Header().Set("Pragma", "no-cache")
-		// Return the correlation ID.
-		ctx.Writer.Header().Set(string(constants.CorrelationIdHeader), correlationId)
-	})
-
 	// Set endpoints.
-	provider.Server.GET(
-		string(constants.JsonWebKeySetEndpoint),
-		func(requestCtx *gin.Context) {
-			apihandlers.HandleJWKSRequest(provider.getContext(requestCtx))
+	provider.Server.HandleFunc(
+		"GET "+string(constants.JsonWebKeySetEndpoint),
+		func(w http.ResponseWriter, r *http.Request) {
+			apihandlers.HandleJWKSRequest(provider.prepareAndGetContext(r, w))
 		},
 	)
 
 	if provider.ParIsEnabled {
-		provider.Server.POST(
-			string(constants.PushedAuthorizationRequestEndpoint),
-			func(requestCtx *gin.Context) {
-				apihandlers.HandlePARRequest(provider.getContext(requestCtx))
+		provider.Server.HandleFunc(
+			"POST "+string(constants.PushedAuthorizationRequestEndpoint),
+			func(w http.ResponseWriter, r *http.Request) {
+				apihandlers.HandleParRequest(provider.prepareAndGetContext(r, w))
 			},
 		)
 	}
 
-	provider.Server.GET(
-		string(constants.AuthorizationEndpoint),
-		func(requestCtx *gin.Context) {
-			apihandlers.HandleAuthorizeRequest(provider.getContext(requestCtx))
+	provider.Server.HandleFunc(
+		"GET "+string(constants.AuthorizationEndpoint),
+		func(w http.ResponseWriter, r *http.Request) {
+			apihandlers.HandleAuthorizeRequest(provider.prepareAndGetContext(r, w))
 		},
 	)
 
-	provider.Server.POST(
-		string(constants.AuthorizationEndpoint)+"/:callback",
-		func(requestCtx *gin.Context) {
-			apihandlers.HandleAuthorizeCallbackRequest(provider.getContext(requestCtx))
+	provider.Server.HandleFunc(
+		"GET "+string(constants.AuthorizationEndpoint)+"/{callback}",
+		func(w http.ResponseWriter, r *http.Request) {
+			apihandlers.HandleAuthorizeCallbackRequest(provider.prepareAndGetContext(r, w))
 		},
 	)
 
-	provider.Server.POST(
-		string(constants.TokenEndpoint),
-		func(requestCtx *gin.Context) {
-			apihandlers.HandleTokenRequest(provider.getContext(requestCtx))
+	provider.Server.HandleFunc(
+		"POST "+string(constants.TokenEndpoint),
+		func(w http.ResponseWriter, r *http.Request) {
+			apihandlers.HandleTokenRequest(provider.prepareAndGetContext(r, w))
 		},
 	)
 
-	provider.Server.GET(
-		string(constants.WellKnownEndpoint),
-		func(requestCtx *gin.Context) {
-			apihandlers.HandleWellKnownRequest(provider.getContext(requestCtx))
+	provider.Server.HandleFunc(
+		"GET "+string(constants.WellKnownEndpoint),
+		func(w http.ResponseWriter, r *http.Request) {
+			apihandlers.HandleWellKnownRequest(provider.prepareAndGetContext(r, w))
 		},
 	)
 
-	provider.Server.GET(
-		string(constants.UserInfoEndpoint),
-		func(requestCtx *gin.Context) {
-			apihandlers.HandleUserInfoRequest(provider.getContext(requestCtx))
+	provider.Server.HandleFunc(
+		"GET "+string(constants.UserInfoEndpoint),
+		func(w http.ResponseWriter, r *http.Request) {
+			apihandlers.HandleUserInfoRequest(provider.prepareAndGetContext(r, w))
 		},
 	)
 
-	provider.Server.POST(
-		string(constants.UserInfoEndpoint),
-		func(requestCtx *gin.Context) {
-			apihandlers.HandleUserInfoRequest(provider.getContext(requestCtx))
+	provider.Server.HandleFunc(
+		"POST "+string(constants.UserInfoEndpoint),
+		func(w http.ResponseWriter, r *http.Request) {
+			apihandlers.HandleUserInfoRequest(provider.prepareAndGetContext(r, w))
 		},
 	)
 
 	if provider.DcrIsEnabled {
-		provider.Server.POST(
-			string(constants.DynamicClientEndpoint),
-			func(requestCtx *gin.Context) {
-				apihandlers.HandleDynamicClientCreation(provider.getContext(requestCtx))
+		provider.Server.HandleFunc(
+			"POST "+string(constants.DynamicClientEndpoint),
+			func(w http.ResponseWriter, r *http.Request) {
+				apihandlers.HandleDynamicClientCreation(provider.prepareAndGetContext(r, w))
 			},
 		)
 
-		provider.Server.PUT(
-			string(constants.DynamicClientEndpoint)+"/:client_id",
-			func(requestCtx *gin.Context) {
-				apihandlers.HandleDynamicClientUpdate(provider.getContext(requestCtx))
+		provider.Server.HandleFunc(
+			"PUT "+string(constants.DynamicClientEndpoint)+"/{client_id}",
+			func(w http.ResponseWriter, r *http.Request) {
+				apihandlers.HandleDynamicClientUpdate(provider.prepareAndGetContext(r, w))
 			},
 		)
 
-		provider.Server.GET(
-			string(constants.DynamicClientEndpoint)+"/:client_id",
-			func(requestCtx *gin.Context) {
-				apihandlers.HandleDynamicClientRetrieve(provider.getContext(requestCtx))
+		provider.Server.HandleFunc(
+			"GET "+string(constants.DynamicClientEndpoint)+"/{client_id}",
+			func(w http.ResponseWriter, r *http.Request) {
+				apihandlers.HandleDynamicClientRetrieve(provider.prepareAndGetContext(r, w))
 			},
 		)
 
-		provider.Server.DELETE(
-			string(constants.DynamicClientEndpoint)+"/:client_id",
-			func(requestCtx *gin.Context) {
-				apihandlers.HandleDynamicClientDelete(provider.getContext(requestCtx))
+		provider.Server.HandleFunc(
+			"DELETE "+string(constants.DynamicClientEndpoint)+"/{client_id}",
+			func(w http.ResponseWriter, r *http.Request) {
+				apihandlers.HandleDynamicClientDelete(provider.prepareAndGetContext(r, w))
 			},
 		)
 	}
 
 	if provider.IntrospectionIsEnabled {
-		provider.Server.POST(
-			string(constants.TokenIntrospectionEndpoint),
-			func(requestCtx *gin.Context) {
-				apihandlers.HandleIntrospectionRequest(provider.getContext(requestCtx))
+		provider.Server.HandleFunc(
+			"POST "+string(constants.TokenIntrospectionEndpoint),
+			func(w http.ResponseWriter, r *http.Request) {
+				apihandlers.HandleIntrospectionRequest(provider.prepareAndGetContext(r, w))
 			},
 		)
 	}
@@ -407,11 +413,11 @@ func (provider *OpenIdProvider) setUp() {
 func (provider *OpenIdProvider) Run(port int) {
 	provider.validateConfiguration()
 	provider.setUp()
-	provider.Server.Run(":" + fmt.Sprint(port))
+	http.ListenAndServe(":"+fmt.Sprint(port), provider.Server)
 }
 
 func (provider *OpenIdProvider) RunTLS(port int) {
 	provider.validateConfiguration()
 	provider.setUp()
-	provider.Server.RunTLS(":"+fmt.Sprint(port), "cert.pem", "key.pem")
+	http.ListenAndServeTLS(":"+fmt.Sprint(port), "cert.pem", "key.pem", provider.Server)
 }

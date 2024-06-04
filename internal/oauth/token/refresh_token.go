@@ -173,8 +173,8 @@ func validateRefreshTokenProofOfPossesionForPublicClients(
 		return nil
 	}
 
-	dpopJwt := ctx.GetDpopJwt()
-	if dpopJwt == "" {
+	dpopJwt, ok := ctx.GetDpopJwt()
+	if !ok {
 		// The session was created with DPoP for a public client, then the DPoP header must be passed.
 		return models.NewOAuthError(constants.AccessDenied, "missing DPoP header")
 	}

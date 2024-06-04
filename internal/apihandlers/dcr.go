@@ -1,6 +1,7 @@
 package apihandlers
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/luikymagno/auth-server/internal/models"
@@ -11,8 +12,8 @@ import (
 
 func HandleDynamicClientCreation(ctx utils.Context) {
 	var req models.DynamicClientRequest
-	if err := ctx.RequestContext.ShouldBind(&req); err != nil {
-		bindErrorToResponse(err, ctx.RequestContext)
+	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
+		bindErrorToResponse(ctx, err)
 		return
 	}
 
@@ -21,74 +22,80 @@ func HandleDynamicClientCreation(ctx utils.Context) {
 
 	resp, err := dcr.CreateClient(ctx, req)
 	if err != nil {
-		bindErrorToResponse(err, ctx.RequestContext)
+		bindErrorToResponse(ctx, err)
 		return
 	}
 
-	ctx.RequestContext.JSON(http.StatusCreated, resp)
+	if err := ctx.WriteJson(resp, http.StatusCreated); err != nil {
+		bindErrorToResponse(ctx, err)
+	}
 }
 
 func HandleDynamicClientUpdate(ctx utils.Context) {
 	var req models.DynamicClientRequest
-	if err := ctx.RequestContext.ShouldBind(&req); err != nil {
-		bindErrorToResponse(err, ctx.RequestContext)
+	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
+		bindErrorToResponse(ctx, err)
 		return
 	}
 
 	token, ok := ctx.GetBearerToken()
 	if !ok {
-		bindErrorToResponse(models.NewOAuthError(constants.AccessDenied, "no token found"), ctx.RequestContext)
+		bindErrorToResponse(ctx, models.NewOAuthError(constants.AccessDenied, "no token found"))
 		return
 	}
 
-	req.Id = ctx.RequestContext.Param("client_id")
+	req.Id = ctx.Request.PathValue("client_id")
 	req.RegistrationAccessToken = token
 	resp, err := dcr.UpdateClient(ctx, req)
 	if err != nil {
-		bindErrorToResponse(err, ctx.RequestContext)
+		bindErrorToResponse(ctx, err)
 		return
 	}
 
-	ctx.RequestContext.JSON(http.StatusOK, resp)
+	if err := ctx.WriteJson(resp, http.StatusOK); err != nil {
+		bindErrorToResponse(ctx, err)
+	}
 }
 
 func HandleDynamicClientRetrieve(ctx utils.Context) {
 	token, ok := ctx.GetBearerToken()
 	if !ok {
-		bindErrorToResponse(models.NewOAuthError(constants.AccessDenied, "no token found"), ctx.RequestContext)
+		bindErrorToResponse(ctx, models.NewOAuthError(constants.AccessDenied, "no token found"))
 		return
 	}
 
 	req := models.DynamicClientRequest{
-		Id:                      ctx.RequestContext.Param("client_id"),
+		Id:                      ctx.Request.PathValue("client_id"),
 		RegistrationAccessToken: token,
 	}
 
 	resp, err := dcr.GetClient(ctx, req)
 	if err != nil {
-		bindErrorToResponse(err, ctx.RequestContext)
+		bindErrorToResponse(ctx, err)
 		return
 	}
 
-	ctx.RequestContext.JSON(http.StatusOK, resp)
+	if err := ctx.WriteJson(resp, http.StatusOK); err != nil {
+		bindErrorToResponse(ctx, err)
+	}
 }
 
 func HandleDynamicClientDelete(ctx utils.Context) {
 	token, ok := ctx.GetBearerToken()
 	if !ok {
-		bindErrorToResponse(models.NewOAuthError(constants.AccessDenied, "no token found"), ctx.RequestContext)
+		bindErrorToResponse(ctx, models.NewOAuthError(constants.AccessDenied, "no token found"))
 		return
 	}
 
 	req := models.DynamicClientRequest{
-		Id:                      ctx.RequestContext.Param("client_id"),
+		Id:                      ctx.Request.PathValue("client_id"),
 		RegistrationAccessToken: token,
 	}
 
 	if err := dcr.DeleteClient(ctx, req); err != nil {
-		bindErrorToResponse(err, ctx.RequestContext)
+		bindErrorToResponse(ctx, err)
 		return
 	}
 
-	ctx.RequestContext.Status(http.StatusNoContent)
+	ctx.Response.WriteHeader(http.StatusNoContent)
 }

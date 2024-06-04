@@ -74,10 +74,11 @@ func makeJwtToken(ctx Context, _ models.Client, grantOptions models.GrantOptions
 	}
 
 	tokenType := constants.BearerTokenType
+	dpopJwt, ok := ctx.GetDpopJwt()
 	jkt := ""
-	if grantOptions.DpopJwt != "" {
+	if ctx.DpopIsEnabled && ok {
 		tokenType = constants.DpopTokenType
-		jkt = unit.GenerateJwkThumbprint(grantOptions.DpopJwt, ctx.DpopSignatureAlgorithms)
+		jkt = unit.GenerateJwkThumbprint(dpopJwt, ctx.DpopSignatureAlgorithms)
 		claims["cnf"] = map[string]string{
 			"jkt": jkt,
 		}
@@ -107,10 +108,11 @@ func makeJwtToken(ctx Context, _ models.Client, grantOptions models.GrantOptions
 func makeOpaqueToken(ctx Context, _ models.Client, grantOptions models.GrantOptions) models.Token {
 	accessToken := unit.GenerateRandomString(grantOptions.OpaqueTokenLength, grantOptions.OpaqueTokenLength)
 	tokenType := constants.BearerTokenType
+	dpopJwt, ok := ctx.GetDpopJwt()
 	jkt := ""
-	if grantOptions.DpopJwt != "" {
+	if ctx.DpopIsEnabled && ok {
 		tokenType = constants.DpopTokenType
-		jkt = unit.GenerateJwkThumbprint(grantOptions.DpopJwt, ctx.DpopSignatureAlgorithms)
+		jkt = unit.GenerateJwkThumbprint(dpopJwt, ctx.DpopSignatureAlgorithms)
 	}
 	return models.Token{
 		Id:            accessToken,

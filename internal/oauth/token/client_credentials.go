@@ -106,7 +106,6 @@ func newClientCredentialsGrantOptions(ctx utils.Context, client models.Client, r
 		GrantedScopes: scopes,
 		Subject:       client.Id,
 		ClientId:      client.Id,
-		DpopJwt:       req.DpopJwt,
 		TokenOptions:  tokenOptions,
 	}
 }

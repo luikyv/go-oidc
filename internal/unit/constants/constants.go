@@ -170,7 +170,7 @@ func (ec ErrorCode) GetStatusCode() int {
 type Header string
 
 const (
-	CorrelationIdHeader Header = "X-Correlation-ID"
+	CorrelationIdHeader Header = "X-Correlation-Id"
 	DpopHeader          Header = "DPoP"
 )
 

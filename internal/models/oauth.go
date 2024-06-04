@@ -2,6 +2,7 @@ package models
 
 import (
 	"maps"
+	"net/http"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -52,31 +53,49 @@ type GrantOptions struct {
 	Subject            string              `json:"sub"`
 	ClientId           string              `json:"client_id"`
 	GrantedScopes      string              `json:"scopes"`
-	DpopJwt            string
-	CreatedAtTimestamp int `json:"created_at"`
+	CreatedAtTimestamp int                 `json:"created_at"`
 	TokenOptions
 	IdTokenOptions
 }
 
 type ClientAuthnRequest struct {
-	ClientIdBasicAuthn     string
-	ClientSecretBasicAuthn string
 	// The client ID sent via form is not specific to authentication. It is also a param for /authorize.
-	ClientIdPost        string                        `form:"client_id"`
-	ClientSecretPost    string                        `form:"client_secret"`
-	ClientAssertionType constants.ClientAssertionType `form:"client_assertion_type"`
-	ClientAssertion     string                        `form:"client_assertion"`
+	ClientId            string
+	ClientSecret        string
+	ClientAssertionType constants.ClientAssertionType
+	ClientAssertion     string
+}
+
+func NewClientAuthnRequest(req *http.Request) ClientAuthnRequest {
+	return ClientAuthnRequest{
+		ClientId:            req.PostFormValue("client_id"),
+		ClientSecret:        req.PostFormValue("client_secret"),
+		ClientAssertionType: constants.ClientAssertionType(req.PostFormValue("client_assertion_type")),
+		ClientAssertion:     req.PostFormValue("client_assertion"),
+	}
 }
 
 type TokenRequest struct {
 	ClientAuthnRequest
-	DpopJwt           string
-	GrantType         constants.GrantType `form:"grant_type" binding:"required"`
-	Scopes            string              `form:"scope"`
-	AuthorizationCode string              `form:"code"`
-	RedirectUri       string              `form:"redirect_uri"`
-	RefreshToken      string              `form:"refresh_token"`
-	CodeVerifier      string              `form:"code_verifier"`
+	// DpopJwt           string
+	GrantType         constants.GrantType
+	Scopes            string
+	AuthorizationCode string
+	RedirectUri       string
+	RefreshToken      string
+	CodeVerifier      string
+}
+
+func NewTokenRequest(req *http.Request) TokenRequest {
+	return TokenRequest{
+		ClientAuthnRequest: NewClientAuthnRequest(req),
+		GrantType:          constants.GrantType(req.PostFormValue("grant_type")),
+		Scopes:             req.PostFormValue("scope"),
+		AuthorizationCode:  req.PostFormValue("code"),
+		RedirectUri:        req.PostFormValue("redirect_uri"),
+		RefreshToken:       req.PostFormValue("refresh_token"),
+		CodeVerifier:       req.PostFormValue("code_verifier"),
+	}
 }
 
 type TokenResponse struct {
@@ -89,18 +108,18 @@ type TokenResponse struct {
 }
 
 type AuthorizationParameters struct {
-	RequestUri               string                        `form:"request_uri" json:"request_uri"`
-	RequestObject            string                        `form:"request" json:"request"`
-	RedirectUri              string                        `form:"redirect_uri" json:"redirect_uri"`
-	ResponseMode             constants.ResponseMode        `form:"response_mode" json:"response_mode"`
-	ResponseType             constants.ResponseType        `form:"response_type" json:"response_type"`
-	Scopes                   string                        `form:"scope" json:"scope"`
-	State                    string                        `form:"state" json:"state"`
-	Nonce                    string                        `form:"nonce" json:"nonce"`
-	CodeChallenge            string                        `form:"code_challenge" json:"code_challenge"`
-	CodeChallengeMethod      constants.CodeChallengeMethod `form:"code_challenge_method" json:"code_challenge_method"`
-	Prompt                   constants.PromptType          `form:"prompt" json:"prompt"`
-	MaxAuthenticationAgeSecs string                        `form:"max_age" json:"max_age"`
+	RequestUri               string                        `json:"request_uri"`
+	RequestObject            string                        `json:"request"`
+	RedirectUri              string                        `json:"redirect_uri"`
+	ResponseMode             constants.ResponseMode        `json:"response_mode"`
+	ResponseType             constants.ResponseType        `json:"response_type"`
+	Scopes                   string                        `json:"scope"`
+	State                    string                        `json:"state"`
+	Nonce                    string                        `json:"nonce"`
+	CodeChallenge            string                        `json:"code_challenge"`
+	CodeChallengeMethod      constants.CodeChallengeMethod `json:"code_challenge_method"`
+	Prompt                   constants.PromptType          `json:"prompt"`
+	MaxAuthenticationAgeSecs string                        `json:"max_age"`
 }
 
 func (params AuthorizationParameters) NewRedirectError(
@@ -126,13 +145,53 @@ func (insideParams AuthorizationParameters) Merge(outsideParams AuthorizationPar
 }
 
 type AuthorizationRequest struct {
-	ClientId string `form:"client_id" json:"client_id"`
+	ClientId string `json:"client_id"`
 	AuthorizationParameters
+}
+
+func NewAuthorizationRequest(req *http.Request) AuthorizationRequest {
+	return AuthorizationRequest{
+		ClientId: req.URL.Query().Get("client_id"),
+		AuthorizationParameters: AuthorizationParameters{
+			RequestUri:               req.URL.Query().Get("request_uri"),
+			RequestObject:            req.URL.Query().Get("request"),
+			RedirectUri:              req.URL.Query().Get("redirect_uri"),
+			ResponseMode:             constants.ResponseMode(req.URL.Query().Get("response_mode")),
+			ResponseType:             constants.ResponseType(req.URL.Query().Get("response_type")),
+			Scopes:                   req.URL.Query().Get("scope"),
+			State:                    req.URL.Query().Get("state"),
+			Nonce:                    req.URL.Query().Get("nonce"),
+			CodeChallenge:            req.URL.Query().Get("code_challenge"),
+			CodeChallengeMethod:      constants.CodeChallengeMethod(req.URL.Query().Get("code_challenge_method")),
+			Prompt:                   constants.PromptType(req.URL.Query().Get("prompt")),
+			MaxAuthenticationAgeSecs: req.URL.Query().Get("max_age"),
+		},
+	}
 }
 
 type PushedAuthorizationRequest struct {
 	ClientAuthnRequest
 	AuthorizationParameters
+}
+
+func NewPushedAuthorizationRequest(req *http.Request) PushedAuthorizationRequest {
+	return PushedAuthorizationRequest{
+		ClientAuthnRequest: NewClientAuthnRequest(req),
+		AuthorizationParameters: AuthorizationParameters{
+			RequestUri:               req.PostFormValue("request_uri"),
+			RequestObject:            req.PostFormValue("request"),
+			RedirectUri:              req.PostFormValue("redirect_uri"),
+			ResponseMode:             constants.ResponseMode(req.PostFormValue("response_mode")),
+			ResponseType:             constants.ResponseType(req.PostFormValue("response_type")),
+			Scopes:                   req.PostFormValue("scope"),
+			State:                    req.PostFormValue("state"),
+			Nonce:                    req.PostFormValue("nonce"),
+			CodeChallenge:            req.PostFormValue("code_challenge"),
+			CodeChallengeMethod:      constants.CodeChallengeMethod(req.PostFormValue("code_challenge_method")),
+			Prompt:                   constants.PromptType(req.PostFormValue("prompt")),
+			MaxAuthenticationAgeSecs: req.PostFormValue("max_age"),
+		},
+	}
 }
 
 type PushedAuthorizationResponse struct {
@@ -249,8 +308,16 @@ type UserInfoResponse struct {
 
 type TokenIntrospectionRequest struct {
 	ClientAuthnRequest
-	Token         string                  `json:"token"`
-	TokenTypeHint constants.TokenTypeHint `json:"token_type_hint"`
+	Token         string
+	TokenTypeHint constants.TokenTypeHint
+}
+
+func NewTokenIntrospectionRequest(req *http.Request) TokenIntrospectionRequest {
+	return TokenIntrospectionRequest{
+		ClientAuthnRequest: NewClientAuthnRequest(req),
+		Token:              req.PostFormValue("token"),
+		TokenTypeHint:      constants.TokenTypeHint(req.PostFormValue("token_type_hint")),
+	}
 }
 
 type TokenIntrospectionInfo struct {

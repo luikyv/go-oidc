@@ -25,21 +25,51 @@ func AuthenticateClient(
 	case constants.ClientSecretJwt:
 		return authenticateWithClientSecretJwt(ctx, client, req)
 	case constants.NoneAuthn:
-		return nil
+		return authenticateWithNoneAuthn(ctx, client, req)
 	default:
 		return models.NewOAuthError(constants.InvalidClient, "invalid authentication method")
 	}
 }
 
-func authenticateWithClientSecretPost(ctx Context, client models.Client, req models.ClientAuthnRequest) models.OAuthError {
-	return validateSecret(ctx, client, req.ClientSecretPost)
+func authenticateWithNoneAuthn(
+	_ Context,
+	client models.Client,
+	req models.ClientAuthnRequest,
+) models.OAuthError {
+	if client.Id != req.ClientId {
+		return models.NewOAuthError(constants.InvalidClient, "invalid client")
+	}
+	return nil
 }
 
-func authenticateWithClientSecretBasic(ctx Context, client models.Client, req models.ClientAuthnRequest) models.OAuthError {
-	return validateSecret(ctx, client, req.ClientSecretBasicAuthn)
+func authenticateWithClientSecretPost(
+	ctx Context,
+	client models.Client,
+	req models.ClientAuthnRequest,
+) models.OAuthError {
+	if client.Id != req.ClientId || req.ClientSecret == "" {
+		return models.NewOAuthError(constants.InvalidClient, "invalid client")
+	}
+	return validateSecret(ctx, client, req.ClientSecret)
 }
 
-func validateSecret(_ Context, client models.Client, clientSecret string) models.OAuthError {
+func authenticateWithClientSecretBasic(
+	ctx Context,
+	client models.Client,
+	_ models.ClientAuthnRequest,
+) models.OAuthError {
+	clientId, clientSecret, ok := ctx.Request.BasicAuth()
+	if !ok || client.Id != clientId {
+		return models.NewOAuthError(constants.InvalidClient, "invalid client")
+	}
+	return validateSecret(ctx, client, clientSecret)
+}
+
+func validateSecret(
+	_ Context,
+	client models.Client,
+	clientSecret string,
+) models.OAuthError {
 	err := bcrypt.CompareHashAndPassword([]byte(client.HashedSecret), []byte(clientSecret))
 	if err != nil {
 		return models.NewOAuthError(constants.InvalidClient, "invalid secret")
@@ -47,7 +77,16 @@ func validateSecret(_ Context, client models.Client, clientSecret string) models
 	return nil
 }
 
-func authenticateWithPrivateKeyJwt(ctx Context, client models.Client, req models.ClientAuthnRequest) models.OAuthError {
+func authenticateWithPrivateKeyJwt(
+	ctx Context,
+	client models.Client,
+	req models.ClientAuthnRequest,
+) models.OAuthError {
+
+	if req.ClientAssertionType != constants.JwtBearerAssertion {
+		return models.NewOAuthError(constants.InvalidRequest, "invalid assertion_type")
+	}
+
 	signatureAlgorithms := ctx.PrivateKeyJwtSignatureAlgorithms
 	if client.AuthnSignatureAlgorithm != "" {
 		signatureAlgorithms = []jose.SignatureAlgorithm{client.AuthnSignatureAlgorithm}
@@ -82,7 +121,15 @@ func authenticateWithPrivateKeyJwt(ctx Context, client models.Client, req models
 	return areAssertionClaimsValid(ctx, claims, ctx.PrivateKeyJwtAssertionLifetimeSecs)
 }
 
-func authenticateWithClientSecretJwt(ctx Context, client models.Client, req models.ClientAuthnRequest) models.OAuthError {
+func authenticateWithClientSecretJwt(
+	ctx Context,
+	client models.Client,
+	req models.ClientAuthnRequest,
+) models.OAuthError {
+	if req.ClientAssertionType != constants.JwtBearerAssertion {
+		return models.NewOAuthError(constants.InvalidRequest, "invalid assertion_type")
+	}
+
 	signatureAlgorithms := ctx.ClientSecretJwtSignatureAlgorithms
 	if client.AuthnSignatureAlgorithm != "" {
 		signatureAlgorithms = []jose.SignatureAlgorithm{client.AuthnSignatureAlgorithm}
@@ -100,7 +147,11 @@ func authenticateWithClientSecretJwt(ctx Context, client models.Client, req mode
 	return areAssertionClaimsValid(ctx, claims, ctx.ClientSecretJwtAssertionLifetimeSecs)
 }
 
-func areAssertionClaimsValid(ctx Context, claims jwt.Claims, maxLifetimeSecs int) models.OAuthError {
+func areAssertionClaimsValid(
+	ctx Context,
+	claims jwt.Claims,
+	maxLifetimeSecs int,
+) models.OAuthError {
 	// Validate that the "iat" and "exp" claims are present and their difference is not too great.
 	if claims.Expiry == nil || claims.IssuedAt == nil || int(claims.Expiry.Time().Sub(claims.IssuedAt.Time()).Seconds()) > maxLifetimeSecs {
 		return models.NewOAuthError(constants.InvalidClient, "invalid assertion")
@@ -109,7 +160,7 @@ func areAssertionClaimsValid(ctx Context, claims jwt.Claims, maxLifetimeSecs int
 	err := claims.ValidateWithLeeway(jwt.Expected{
 		Issuer:      claims.Subject,
 		Subject:     claims.Subject,
-		AnyAudience: []string{ctx.Host, ctx.GetRequestUri()},
+		AnyAudience: []string{ctx.Host, ctx.GetRequestUrl()},
 	}, time.Duration(0))
 	if err != nil {
 		return models.NewOAuthError(constants.InvalidClient, "invalid assertion")

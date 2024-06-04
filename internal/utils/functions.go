@@ -89,15 +89,15 @@ func ValidateProofOfPossesion(
 		}
 	}
 
-	dpopJwt := ctx.GetDpopJwt()
-	if dpopJwt == "" {
+	dpopJwt, ok := ctx.GetDpopJwt()
+	if !ok {
 		// The session was created with DPoP, then the DPoP header must be passed.
 		return models.NewOAuthError(constants.AccessDenied, "missing DPoP header")
 	}
 
 	return ValidateDpopJwt(ctx, dpopJwt, models.DpopValidationOptions{
 		HttpMethod:    ctx.GetRequestMethod(),
-		HttpUri:       ctx.GetRequestUri(),
+		HttpUri:       ctx.GetRequestUrl(),
 		AccessToken:   token,
 		JwkThumbprint: grantSession.JwkThumbprint,
 	})
@@ -109,16 +109,17 @@ func ValidateTokenBindingRequestWithDpop(
 	client models.Client,
 ) models.OAuthError {
 
-	if req.DpopJwt == "" && (ctx.DpopIsRequired || client.DpopIsRequired) {
+	dpopJwt, ok := ctx.GetDpopJwt()
+	if !ok && (ctx.DpopIsRequired || client.DpopIsRequired) {
 		return models.NewOAuthError(constants.InvalidRequest, "missing dpop header")
 	}
 
-	if req.DpopJwt == "" || !ctx.DpopIsEnabled {
+	if !ok || !ctx.DpopIsEnabled {
 		// If DPoP is not enabled, we just ignore the DPoP header.
 		return nil
 	}
 
-	return ValidateDpopJwt(ctx, req.DpopJwt, models.DpopValidationOptions{
+	return ValidateDpopJwt(ctx, dpopJwt, models.DpopValidationOptions{
 		HttpMethod: http.MethodPost,
 		HttpUri:    ctx.Host + string(constants.TokenEndpoint),
 	})

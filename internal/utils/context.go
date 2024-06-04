@@ -1,13 +1,13 @@
 package utils
 
 import (
+	"encoding/json"
+	"html/template"
 	"log/slog"
 	"net/http"
-	"os"
 	"slices"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/crud"
 	"github.com/luikymagno/auth-server/internal/models"
@@ -75,32 +75,22 @@ type Configuration struct {
 
 type Context struct {
 	Configuration
-	RequestContext *gin.Context
-	Logger         *slog.Logger
+	Request  *http.Request
+	Response http.ResponseWriter
+	Logger   *slog.Logger
 }
 
 func NewContext(
 	configuration Configuration,
-	reqContext *gin.Context,
+	req *http.Request,
+	resp http.ResponseWriter,
+	logger *slog.Logger,
 ) Context {
-
-	// Create logger.
-	opts := &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}
-	jsonHandler := slog.NewJSONHandler(os.Stdout, opts)
-	logger := slog.New(jsonHandler)
-	// Set shared information.
-	correlationId, _ := reqContext.MustGet(constants.CorrelationIdKey).(string)
-	logger = logger.With(
-		// Always log the correlation ID.
-		slog.String(constants.CorrelationIdKey, correlationId),
-	)
-
 	return Context{
-		Configuration:  configuration,
-		RequestContext: reqContext,
-		Logger:         logger,
+		Configuration: configuration,
+		Request:       req,
+		Response:      resp,
+		Logger:        logger,
 	}
 }
 
@@ -239,9 +229,13 @@ func (ctx Context) GetBearerToken() (token string, ok bool) {
 	return token, true
 }
 
-func (ctx Context) GetAuthorizationToken() (token string, tokenType constants.TokenType, ok bool) {
-	tokenHeader := ctx.GetHeader("Authorization")
-	if tokenHeader == "" {
+func (ctx Context) GetAuthorizationToken() (
+	token string,
+	tokenType constants.TokenType,
+	ok bool,
+) {
+	tokenHeader, ok := ctx.GetHeader("Authorization")
+	if !ok {
 		return "", "", false
 	}
 
@@ -253,12 +247,17 @@ func (ctx Context) GetAuthorizationToken() (token string, tokenType constants.To
 	return tokenParts[1], constants.TokenType(tokenParts[0]), true
 }
 
-func (ctx Context) GetDpopJwt() string {
+func (ctx Context) GetDpopJwt() (string, bool) {
 	return ctx.GetHeader(string(constants.DpopHeader))
 }
 
-func (ctx Context) GetHeader(header string) string {
-	return ctx.RequestContext.Request.Header.Get(header)
+func (ctx Context) GetHeader(header string) (string, bool) {
+	values, ok := ctx.Request.Header[header]
+	if !ok || len(values) == 0 {
+		return "", false
+	}
+
+	return values[0], true
 }
 
 func (ctx Context) GetClient(clientId string) (models.Client, error) {
@@ -272,28 +271,34 @@ func (ctx Context) ExecureDcrPlugin(dynamicClient *models.DynamicClientRequest) 
 }
 
 func (ctx Context) Redirect(redirectUrl string) {
-	ctx.RequestContext.Redirect(http.StatusFound, redirectUrl)
+	http.Redirect(ctx.Response, ctx.Request, redirectUrl, http.StatusFound)
 }
 
-func (ctx Context) RenderHtml(pathToHtml string, params any) {
-	ctx.RequestContext.HTML(http.StatusOK, pathToHtml, params)
+func (ctx Context) RenderHtml(html string, params any) {
+	tmpl, _ := template.New("name").Parse(html)
+	tmpl.Execute(ctx.Response, params)
+}
+
+func (ctx Context) RenderHtmlTemplate(tmpl *template.Template, params any) {
+	tmpl.Execute(ctx.Response, params)
 }
 
 func (ctx Context) GetRequestMethod() string {
-	return ctx.RequestContext.Request.Method
+	return ctx.Request.Method
 }
 
-func (ctx Context) GetRequestUri() string {
-	return ctx.Host + ctx.RequestContext.Request.URL.RequestURI()
+func (ctx Context) GetRequestUrl() string {
+	return ctx.Host + ctx.Request.URL.RequestURI()
 }
 
 func (ctx Context) GetFormData() map[string]any {
-	if err := ctx.RequestContext.Request.ParseForm(); err != nil {
+
+	if err := ctx.Request.ParseForm(); err != nil {
 		return map[string]any{}
 	}
 
 	formData := make(map[string]any)
-	for param, values := range ctx.RequestContext.Request.PostForm {
+	for param, values := range ctx.Request.PostForm {
 		formData[param] = values[0]
 	}
 	return formData
@@ -319,4 +324,24 @@ func (ctx Context) GetAvailablePolicy(session models.AuthnSession) (
 	}
 
 	return AuthnPolicy{}, false
+}
+
+func (ctx Context) WriteJson(obj any, status int) error {
+	ctx.Response.Header().Set("Content-Type", "application/json")
+	ctx.Response.WriteHeader(status)
+	if err := json.NewEncoder(ctx.Response).Encode(obj); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ctx Context) WriteJwt(token string, status int) error {
+	ctx.Response.Header().Set("Content-Type", "application/jwt")
+	ctx.Response.WriteHeader(status)
+	if err := json.NewEncoder(ctx.Response).Encode(token); err != nil {
+		return err
+	}
+
+	return nil
 }

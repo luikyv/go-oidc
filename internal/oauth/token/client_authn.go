@@ -18,19 +18,19 @@ func GetAuthenticatedClient(
 	models.OAuthError,
 ) {
 
-	clientId, oauthErr := validateClientAuthnRequest(ctx, req)
-	if oauthErr != nil {
-		return models.Client{}, oauthErr
+	clientId, ok := getClientId(ctx, req)
+	if !ok {
+		return models.Client{}, models.NewOAuthError(constants.InvalidClient, "invalid client")
 	}
 
 	client, err := ctx.GetClient(clientId)
 	if err != nil {
 		ctx.Logger.Info("client not found", slog.String("client_id", clientId))
-		return models.Client{}, models.NewWrappingOAuthError(err, constants.InvalidClient, "invalid client")
+		return models.Client{}, models.NewOAuthError(constants.InvalidClient, "invalid client")
 	}
 
 	if err := utils.AuthenticateClient(ctx, client, req); err != nil {
-		ctx.Logger.Info("client not authenticated", slog.String("client_id", req.ClientIdPost))
+		ctx.Logger.Info("client not authenticated", slog.String("client_id", req.ClientId))
 		return models.Client{}, err
 	}
 
@@ -46,12 +46,13 @@ func getClientId(
 ) {
 	clientIds := []string{}
 
-	if req.ClientIdPost != "" {
-		clientIds = append(clientIds, req.ClientIdPost)
+	if req.ClientId != "" {
+		clientIds = append(clientIds, req.ClientId)
 	}
 
-	if req.ClientIdBasicAuthn != "" {
-		clientIds = append(clientIds, req.ClientIdBasicAuthn)
+	basicClientId, _, _ := ctx.Request.BasicAuth()
+	if basicClientId != "" {
+		clientIds = append(clientIds, basicClientId)
 	}
 
 	clientIds, ok := appendClientIdFromAssertion(ctx, clientIds, req)
@@ -117,32 +118,33 @@ func getClientIdFromAssertion(
 }
 
 // Validate a client authentication request and return a valid client ID from it.
-func validateClientAuthnRequest(
-	ctx utils.Context,
-	req models.ClientAuthnRequest,
-) (
-	validClientId string,
-	err models.OAuthError,
-) {
-	validClientId, ok := getClientId(ctx, req)
-	if !ok {
-		return "", models.NewOAuthError(constants.InvalidClient, "invalid client authentication")
-	}
+// func validateClientAuthnRequest(
+// 	ctx utils.Context,
+// 	req models.ClientAuthnRequest,
+// ) (
+// 	validClientId string,
+// 	err models.OAuthError,
+// ) {
+// 	validClientId, ok := getClientId(ctx, req)
+// 	if !ok {
+// 		return "", models.NewOAuthError(constants.InvalidClient, "invalid client authentication")
+// 	}
 
-	// Validate parameters for client secret basic authentication.
-	if req.ClientSecretBasicAuthn != "" && (req.ClientIdBasicAuthn == "" || unit.AnyNonEmpty(req.ClientSecretPost, string(req.ClientAssertionType), req.ClientAssertion)) {
-		return "", models.NewOAuthError(constants.InvalidClient, "invalid client authentication")
-	}
+// 	basicClientId, basicClientSecret, _ := ctx.Request.BasicAuth()
+// 	// Validate parameters for client secret basic authentication.
+// 	if basicClientSecret != "" && (basicClientId == "" || unit.AnyNonEmpty(req.ClientSecret, string(req.ClientAssertionType), req.ClientAssertion)) {
+// 		return "", models.NewOAuthError(constants.InvalidClient, "invalid client authentication")
+// 	}
 
-	// Validate parameters for client secret post authentication.
-	if req.ClientSecretPost != "" && (req.ClientIdPost == "" || unit.AnyNonEmpty(req.ClientIdBasicAuthn, req.ClientSecretBasicAuthn, string(req.ClientAssertionType), req.ClientAssertion)) {
-		return "", models.NewOAuthError(constants.InvalidClient, "invalid client authentication")
-	}
+// 	// Validate parameters for client secret post authentication.
+// 	if req.ClientSecret != "" && (req.ClientId == "" || unit.AnyNonEmpty(req.ClientIdBasicAuthn, req.ClientSecretBasicAuthn, string(req.ClientAssertionType), req.ClientAssertion)) {
+// 		return "", models.NewOAuthError(constants.InvalidClient, "invalid client authentication")
+// 	}
 
-	// Validate parameters for private key jwt authentication.
-	if req.ClientAssertion != "" && (req.ClientAssertionType != constants.JwtBearerAssertion || unit.AnyNonEmpty(req.ClientIdBasicAuthn, req.ClientSecretBasicAuthn, req.ClientSecretPost)) {
-		return "", models.NewOAuthError(constants.InvalidClient, "invalid client authentication")
-	}
+// 	// Validate parameters for private key jwt authentication.
+// 	if req.ClientAssertion != "" && (req.ClientAssertionType != constants.JwtBearerAssertion || unit.AnyNonEmpty(req.ClientIdBasicAuthn, req.ClientSecretBasicAuthn, req.ClientSecret)) {
+// 		return "", models.NewOAuthError(constants.InvalidClient, "invalid client authentication")
+// 	}
 
-	return validClientId, nil
-}
+// 	return validClientId, nil
+// }

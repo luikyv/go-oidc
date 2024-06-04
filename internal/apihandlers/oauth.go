@@ -1,10 +1,10 @@
 package apihandlers
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/oauth"
 	"github.com/luikymagno/auth-server/internal/oauth/authorize"
@@ -17,57 +17,52 @@ import (
 //---------------------------------------- Well Known ----------------------------------------//
 
 func HandleWellKnownRequest(ctx utils.Context) {
-	ctx.RequestContext.JSON(http.StatusOK, oauth.GetOpenIdConfiguration(ctx))
+	if err := ctx.WriteJson(oauth.GetOpenIdConfiguration(ctx), http.StatusOK); err != nil {
+		bindErrorToResponse(ctx, err)
+	}
 }
 
 //---------------------------------------- JWKS ----------------------------------------//
 
 func HandleJWKSRequest(ctx utils.Context) {
-	ctx.RequestContext.JSON(http.StatusOK, ctx.GetPublicKeys())
+	if err := ctx.WriteJson(ctx.GetPublicKeys(), http.StatusOK); err != nil {
+		bindErrorToResponse(ctx, err)
+	}
 }
 
 //---------------------------------------- Pushed Authorization Request - PAR ----------------------------------------//
 
-func HandlePARRequest(ctx utils.Context) {
-	var req models.PushedAuthorizationRequest
-	if err := ctx.RequestContext.ShouldBind(&req); err != nil {
-		bindErrorToResponse(err, ctx.RequestContext)
-		return
-	}
-	addBasicCredentialsToRequest(ctx, &req.ClientAuthnRequest)
-
+func HandleParRequest(ctx utils.Context) {
+	req := models.NewPushedAuthorizationRequest(ctx.Request)
 	requestUri, err := par.PushAuthorization(ctx, req)
 	if err != nil {
-		bindErrorToResponse(err, ctx.RequestContext)
+		bindErrorToResponse(ctx, err)
 		return
 	}
 
-	ctx.RequestContext.JSON(http.StatusCreated, models.PushedAuthorizationResponse{
+	resp := models.PushedAuthorizationResponse{
 		RequestUri: requestUri,
 		ExpiresIn:  ctx.ParLifetimeSecs,
-	})
+	}
+	if err := ctx.WriteJson(resp, http.StatusOK); err != nil {
+		bindErrorToResponse(ctx, err)
+	}
 }
 
 //---------------------------------------- Authorize ----------------------------------------//
 
 func HandleAuthorizeRequest(ctx utils.Context) {
-	var req models.AuthorizationRequest
-	if err := ctx.RequestContext.ShouldBindQuery(&req); err != nil {
-		bindErrorToResponse(err, ctx.RequestContext)
-		return
-	}
-
-	err := authorize.InitAuth(ctx, req)
-	if err != nil {
-		bindErrorToResponse(err, ctx.RequestContext)
+	req := models.NewAuthorizationRequest(ctx.Request)
+	if err := authorize.InitAuth(ctx, req); err != nil {
+		bindErrorToResponse(ctx, err)
 		return
 	}
 }
 
 func HandleAuthorizeCallbackRequest(ctx utils.Context) {
-	err := authorize.ContinueAuth(ctx, ctx.RequestContext.Param("callback"))
+	err := authorize.ContinueAuth(ctx, ctx.Request.PathValue("callback"))
 	if err != nil {
-		bindErrorToResponse(err, ctx.RequestContext)
+		bindErrorToResponse(ctx, err)
 		return
 	}
 }
@@ -75,90 +70,73 @@ func HandleAuthorizeCallbackRequest(ctx utils.Context) {
 //---------------------------------------- Token ----------------------------------------//
 
 func HandleTokenRequest(ctx utils.Context) {
-	var req models.TokenRequest
-	if err := ctx.RequestContext.ShouldBind(&req); err != nil {
-		bindErrorToResponse(err, ctx.RequestContext)
-		return
-	}
-	addBasicCredentialsToRequest(ctx, &req.ClientAuthnRequest)
-	addProofOfPossesionToRequest(ctx, &req)
-
+	req := models.NewTokenRequest(ctx.Request)
 	tokenResp, err := token.HandleTokenCreation(ctx, req)
 	if err != nil {
-		bindErrorToResponse(err, ctx.RequestContext)
+		bindErrorToResponse(ctx, err)
 		return
 	}
 
-	ctx.RequestContext.JSON(http.StatusOK, tokenResp)
+	if err := ctx.WriteJson(tokenResp, http.StatusOK); err != nil {
+		bindErrorToResponse(ctx, err)
+	}
 }
 
 //---------------------------------------- User Info ----------------------------------------//
 
 func HandleUserInfoRequest(ctx utils.Context) {
 
+	var err error
 	userInfoResponse, err := oauth.HandleUserInfoRequest(ctx)
 	if err != nil {
-		bindErrorToResponse(err, ctx.RequestContext)
+		bindErrorToResponse(ctx, err)
 		return
 	}
 
 	if userInfoResponse.SignedClaims != "" {
-		ctx.RequestContext.Data(http.StatusOK, "application/jwt", []byte(userInfoResponse.SignedClaims))
+		err = ctx.WriteJwt(userInfoResponse.SignedClaims, http.StatusOK)
 	} else {
-		ctx.RequestContext.JSON(http.StatusOK, userInfoResponse.Claims)
+		err = ctx.WriteJson(userInfoResponse.Claims, http.StatusOK)
+	}
+	if err != nil {
+		bindErrorToResponse(ctx, err)
 	}
 }
 
 //---------------------------------------- Introspection ----------------------------------------//
 
 func HandleIntrospectionRequest(ctx utils.Context) {
-	var req models.TokenIntrospectionRequest
-	if err := ctx.RequestContext.ShouldBind(&req); err != nil {
-		bindErrorToResponse(err, ctx.RequestContext)
-		return
-	}
-	addBasicCredentialsToRequest(ctx, &req.ClientAuthnRequest)
-
+	req := models.NewTokenIntrospectionRequest(ctx.Request)
 	tokenInfo, err := oauth.IntrospectToken(ctx, req)
 	if err != nil {
-		bindErrorToResponse(err, ctx.RequestContext)
+		bindErrorToResponse(ctx, err)
 		return
 	}
 
-	ctx.RequestContext.JSON(http.StatusOK, tokenInfo.GetParameters())
+	if err := ctx.WriteJson(tokenInfo.GetParameters(), http.StatusOK); err != nil {
+		bindErrorToResponse(ctx, err)
+	}
 }
 
 //---------------------------------------- Helpers ----------------------------------------//
 
-func addBasicCredentialsToRequest(ctx utils.Context, req *models.ClientAuthnRequest) {
-	clientIdBasic, clientSecretBasic, hasBasicAuthn := ctx.RequestContext.Request.BasicAuth()
-	if hasBasicAuthn {
-		req.ClientIdBasicAuthn = clientIdBasic
-		req.ClientSecretBasicAuthn = clientSecretBasic
-	}
-}
-
-func addProofOfPossesionToRequest(ctx utils.Context, req *models.TokenRequest) {
-	if !ctx.DpopIsEnabled {
-		return
-	}
-	req.DpopJwt = ctx.RequestContext.GetHeader(string(constants.DpopHeader))
-}
-
-func bindErrorToResponse(err error, requestContext *gin.Context) {
+func bindErrorToResponse(ctx utils.Context, err error) {
 
 	var oauthErr models.OAuthError
 	if errors.As(err, &oauthErr) {
+		ctx.Response.Header().Set("Content-Type", "application/json")
 		errorCode := oauthErr.GetCode()
-		requestContext.JSON(errorCode.GetStatusCode(), gin.H{
+		ctx.Response.WriteHeader(errorCode.GetStatusCode())
+		json.NewEncoder(ctx.Response).Encode(map[string]any{
 			"error":             errorCode,
 			"error_description": oauthErr.Error(),
 		})
 		return
 	}
 
-	requestContext.JSON(http.StatusBadRequest, gin.H{
-		"error":             constants.AccessDenied,
+	ctx.Response.WriteHeader(http.StatusInternalServerError)
+	json.NewEncoder(ctx.Response).Encode(map[string]any{
+		"error":             constants.InternalError,
 		"error_description": err.Error(),
 	})
 }

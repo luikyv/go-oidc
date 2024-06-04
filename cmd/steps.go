@@ -1,11 +1,8 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
@@ -19,24 +16,16 @@ func NoInteractionAuthnFunc(ctx utils.Context, session *models.AuthnSession) con
 }
 
 func IdentityAuthnFunc(ctx utils.Context, session *models.AuthnSession) (constants.AuthnStatus, error) {
-
-	var identityForm struct {
-		Username string `form:"username"`
-	}
-	ctx.RequestContext.ShouldBind(&identityForm)
-
-	a := ctx.RequestContext.PostForm("username")
-	fmt.Println(a)
-
-	if identityForm.Username == "" {
-		ctx.RequestContext.HTML(http.StatusOK, "identity.html", gin.H{
+	username := ctx.Request.PostFormValue("username")
+	if username == "" {
+		ctx.RenderHtml(identityForm, map[string]any{
 			"host":       ctx.Host,
 			"callbackId": session.CallbackId,
 		})
 		return constants.InProgress, nil
 	}
 
-	session.SetUserId(identityForm.Username)
+	session.SetUserId(username)
 	session.GrantScopes(session.Scopes)
 	session.SetCustomTokenClaim("custom_claim", "random_value")
 	if strings.Contains(session.Scopes, "email") {
@@ -46,22 +35,17 @@ func IdentityAuthnFunc(ctx utils.Context, session *models.AuthnSession) (constan
 }
 
 func PasswordAuthnFunc(ctx utils.Context, session *models.AuthnSession) (constants.AuthnStatus, error) {
-
-	var passwordForm struct {
-		Password string `form:"password"`
-	}
-	ctx.RequestContext.ShouldBind(&passwordForm)
-
-	if passwordForm.Password == "" {
-		ctx.RequestContext.HTML(http.StatusOK, "password.html", gin.H{
+	password := ctx.Request.PostFormValue("password")
+	if password == "" {
+		ctx.RenderHtml(passwordForm, map[string]any{
 			"host":       ctx.Host,
 			"callbackId": session.CallbackId,
 		})
 		return constants.InProgress, nil
 	}
 
-	if passwordForm.Password != "password" {
-		ctx.RequestContext.HTML(http.StatusOK, "password.html", gin.H{
+	if password != "password" {
+		ctx.RenderHtml(passwordForm, map[string]any{
 			"callbackId": session.CallbackId,
 			"error":      "invalid password",
 		})
@@ -70,3 +54,43 @@ func PasswordAuthnFunc(ctx utils.Context, session *models.AuthnSession) (constan
 
 	return constants.Success, nil
 }
+
+var identityForm string = `
+	<html>
+	<head>
+		<title>identity</title>
+	</head>
+	<body>
+		<h1>Username Form</h1>
+		<form action="{{ .host }}/authorize/{{ .callbackId }}" method="post">
+			<label for="username">Username:</label>
+			<input type="text" id="username" name="username"><br><br>
+			<input type="submit" value="Submit">
+		</form>
+	</body>
+	</html>
+`
+
+var passwordForm string = `
+	<html>
+	<head>
+		<title>password</title>
+	</head>
+	<body>
+		<h1>Password Form</h1>
+		<form action="{{ .host }}/authorize/{{ .callbackId }}" method="post">
+			<label for="password">Password:</label>
+			<input type="text" id="password" name="password"><br><br>
+			<input type="submit" value="Submit">
+		</form>
+	</body>
+
+	<script>
+		var error = "{{ .error}}";
+		if(error) {
+			alert(error);
+		}
+	</script>
+
+	</html>
+`
