@@ -18,6 +18,7 @@ func validateDynamicClientRequest(
 		validateAuthnMethod,
 		validateClientSignatureAlgorithmForPrivateKeyJwt,
 		validateClientSignatureAlgorithmForClientSecretJwt,
+		validateJwksAreRequiredForPrivateKeyJwtAuthn,
 		validateGrantTypes,
 		validateClientCredentialsGrantNotAllowedForNoneClientAuthn,
 		validateClientAuthnMethodForIntrospectionGrant,
@@ -30,6 +31,7 @@ func validateDynamicClientRequest(
 		validateIdTokenSignatureAlgorithm,
 		validateJarSignatureAlgorithm,
 		validateJarmSignatureAlgorithm,
+		validatePkceIsRequiredForPublicClients,
 	)
 }
 
@@ -217,6 +219,31 @@ func validateClientSignatureAlgorithmForClientSecretJwt(
 
 	if dynamicClient.AuthnSignatureAlgorithm != "" && !unit.ContainsAll(ctx.ClientSecretJwtSignatureAlgorithms, dynamicClient.AuthnSignatureAlgorithm) {
 		return models.NewOAuthError(constants.InvalidRequest, "token_endpoint_auth_signing_alg not supported")
+	}
+	return nil
+}
+
+func validateJwksAreRequiredForPrivateKeyJwtAuthn(
+	_ utils.Context,
+	dynamicClient models.DynamicClientRequest,
+) models.OAuthError {
+	if dynamicClient.AuthnMethod != constants.PrivateKeyJwtAuthn {
+		return nil
+	}
+
+	if len(dynamicClient.PublicJwks.Keys) == 0 && dynamicClient.PublicJwksUri == "" {
+		return models.NewOAuthError(constants.InvalidRequest, "the jwks is required for private_key_jwt")
+	}
+
+	return nil
+}
+
+func validatePkceIsRequiredForPublicClients(
+	ctx utils.Context,
+	dynamicClient models.DynamicClientRequest,
+) models.OAuthError {
+	if ctx.PkceIsEnabled && dynamicClient.AuthnMethod == constants.NoneAuthn && !dynamicClient.PkceIsRequired {
+		return models.NewOAuthError(constants.InvalidRequest, "pkce is required for public clients")
 	}
 	return nil
 }

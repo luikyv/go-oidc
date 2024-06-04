@@ -28,6 +28,10 @@ func setDefaults(ctx utils.Context, dynamicClient *models.DynamicClientRequest) 
 	if dynamicClient.ResponseTypes == nil {
 		dynamicClient.ResponseTypes = []constants.ResponseType{constants.CodeResponse}
 	}
+
+	if ctx.PkceIsEnabled && dynamicClient.AuthnMethod == constants.NoneAuthn {
+		dynamicClient.PkceIsRequired = true
+	}
 }
 
 func setCreationDefaults(ctx utils.Context, dynamicClient *models.DynamicClientRequest) {

@@ -10,7 +10,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func AuthenticateClient(ctx Context, client models.Client, req models.ClientAuthnRequest) models.OAuthError {
+func AuthenticateClient(
+	ctx Context,
+	client models.Client,
+	req models.ClientAuthnRequest,
+) models.OAuthError {
 	switch client.AuthnMethod {
 	case constants.ClientSecretPostAuthn:
 		return authenticateWithClientSecretPost(ctx, client, req)

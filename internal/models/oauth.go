@@ -257,13 +257,14 @@ type TokenIntrospectionInfo struct {
 	IsActive           bool
 	Scopes             string
 	ClientId           string
-	Username           string
+	Subject            string
 	ExpiresAtTimestamp int
-	AdditionalClaims   map[string]any
+	JwkThumbprint      string
+	RawClaims          map[string]any
 }
 
-func (resp TokenIntrospectionInfo) GetParameters() map[string]any {
-	if !resp.IsActive {
+func (info TokenIntrospectionInfo) GetParameters() map[string]any {
+	if !info.IsActive {
 		return map[string]any{
 			"active": false,
 		}
@@ -271,12 +272,19 @@ func (resp TokenIntrospectionInfo) GetParameters() map[string]any {
 
 	params := map[string]any{
 		"active":                        true,
-		string(constants.ScopeClaim):    resp.Scopes,
-		string(constants.ClientIdClaim): resp.ClientId,
-		"username":                      resp.Username,
-		string(constants.ExpiryClaim):   resp.ExpiresAtTimestamp,
+		string(constants.SubjectClaim):  info.Subject,
+		string(constants.ScopeClaim):    info.Scopes,
+		string(constants.ClientIdClaim): info.ClientId,
+		string(constants.ExpiryClaim):   info.ExpiresAtTimestamp,
 	}
-	for k, v := range resp.AdditionalClaims {
+
+	if info.JwkThumbprint != "" {
+		params["cnf"] = map[string]string{
+			"jkt": info.JwkThumbprint,
+		}
+	}
+
+	for k, v := range info.RawClaims {
 		params[k] = v
 	}
 

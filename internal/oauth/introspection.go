@@ -2,7 +2,6 @@ package oauth
 
 import (
 	"log/slog"
-	"slices"
 
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/oauth/token"
@@ -89,9 +88,10 @@ func getRefreshTokenIntrospectionInfo(
 		IsActive:           true,
 		Scopes:             grantSession.GrantedScopes,
 		ClientId:           grantSession.ClientId,
-		Username:           grantSession.Subject,
+		Subject:            grantSession.Subject,
 		ExpiresAtTimestamp: grantSession.ExpiresAtTimestamp,
-		AdditionalClaims:   grantSession.AdditionalTokenClaims,
+		JwkThumbprint:      grantSession.JwkThumbprint,
+		RawClaims:          grantSession.AdditionalTokenClaims,
 	}
 }
 
@@ -106,19 +106,10 @@ func getJwtTokenIntrospectionInfo(
 		}
 	}
 
-	additionalClaims := map[string]any{}
-	for k, v := range claims {
-		if !slices.Contains(constants.Claims, constants.Claim(k)) {
-			additionalClaims[k] = v
-		}
-	}
 	return models.TokenIntrospectionInfo{
-		IsActive:           true,
-		Scopes:             claims[string(constants.ScopeClaim)].(string),
-		ClientId:           claims[string(constants.AudienceClaim)].(string),
-		Username:           claims[string(constants.AudienceClaim)].(string),
-		ExpiresAtTimestamp: claims[string(constants.AudienceClaim)].(int),
-		AdditionalClaims:   additionalClaims,
+		IsActive:  true,
+		Subject:   claims[string(constants.AudienceClaim)].(string),
+		RawClaims: claims,
 	}
 }
 
@@ -143,8 +134,9 @@ func getOpaqueTokenIntrospectionInfo(
 		IsActive:           true,
 		Scopes:             grantSession.ActiveScopes,
 		ClientId:           grantSession.ClientId,
-		Username:           grantSession.Subject,
+		Subject:            grantSession.Subject,
 		ExpiresAtTimestamp: grantSession.LastTokenIssuedAtTimestamp + grantSession.TokenExpiresInSecs,
-		AdditionalClaims:   grantSession.AdditionalTokenClaims,
+		JwkThumbprint:      grantSession.JwkThumbprint,
+		RawClaims:          grantSession.AdditionalTokenClaims,
 	}
 }
