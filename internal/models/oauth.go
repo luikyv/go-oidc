@@ -216,8 +216,9 @@ type DynamicClientResponse struct {
 }
 
 type OpenIdMtlsConfiguration struct {
-	TokenEndpoint string `json:"token_endpoint"`
-	ParEndpoint   string `json:"pushed_authorization_request_endpoint,omitempty"`
+	TokenEndpoint    string `json:"token_endpoint"`
+	ParEndpoint      string `json:"pushed_authorization_request_endpoint,omitempty"`
+	UserinfoEndpoint string `json:"userinfo_endpoint"`
 	//TODO: Add the other endpoints.
 }
 
@@ -250,14 +251,16 @@ type OpenIdConfiguration struct {
 	IntrospectionEndpointClientAuthnMethods        []constants.ClientAuthnType       `json:"introspection_endpoint_auth_methods_supported,omitempty"`
 	IntrospectionEndpointClientSignatureAlgorithms []jose.SignatureAlgorithm         `json:"introspection_endpoint_auth_signing_alg_values_supported,omitempty"`
 	MtlsConfiguration                              OpenIdMtlsConfiguration           `json:"mtls_endpoint_aliases"`
+	TlsBoundTokensIsEnabled                        bool                              `json:"tls_client_certificate_bound_access_tokens,omitempty"`
 }
 
 type Token struct {
-	Id            string
-	Format        constants.TokenFormat
-	Value         string
-	Type          constants.TokenType
-	JwkThumbprint string
+	Id                    string
+	Format                constants.TokenFormat
+	Value                 string
+	Type                  constants.TokenType
+	JwkThumbprint         string
+	CertificateThumbprint string
 }
 
 type RedirectParameters struct {
@@ -328,13 +331,14 @@ func NewTokenIntrospectionRequest(req *http.Request) TokenIntrospectionRequest {
 }
 
 type TokenIntrospectionInfo struct {
-	IsActive           bool
-	Scopes             string
-	ClientId           string
-	Subject            string
-	ExpiresAtTimestamp int
-	JwkThumbprint      string
-	RawClaims          map[string]any
+	IsActive                    bool
+	Scopes                      string
+	ClientId                    string
+	Subject                     string
+	ExpiresAtTimestamp          int
+	JwkThumbprint               string
+	ClientCertificateThumbprint string
+	RawClaims                   map[string]any
 }
 
 func (info TokenIntrospectionInfo) GetParameters() map[string]any {
@@ -355,6 +359,13 @@ func (info TokenIntrospectionInfo) GetParameters() map[string]any {
 	if info.JwkThumbprint != "" {
 		params["cnf"] = map[string]string{
 			"jkt": info.JwkThumbprint,
+		}
+	}
+
+	if info.ClientCertificateThumbprint != "" {
+		params["cnf"] = map[string]string{
+			// TODO: don't override it.
+			"x5t#S256": info.ClientCertificateThumbprint,
 		}
 	}
 

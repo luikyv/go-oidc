@@ -245,6 +245,12 @@ func GenerateJwkThumbprint(dpopJwt string, dpopSigningAlgorithms []jose.Signatur
 	return base64.RawURLEncoding.EncodeToString(jkt)
 }
 
+func GenerateSha256Thumbprint(s string) string {
+	hash := sha256.New()
+	hash.Write([]byte(s))
+	return base64.RawURLEncoding.EncodeToString(hash.Sum(nil))
+}
+
 func GenerateSha256Hash(s []byte) string {
 	hash := sha256.New()
 	hash.Write([]byte(s))

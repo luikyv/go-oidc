@@ -74,6 +74,7 @@ type Configuration struct {
 	ShouldRotateRegistrationTokens       bool
 	DcrPlugin                            DcrPluginFunc
 	AuthenticationSessionTimeoutSecs     int
+	TlsBoundTokensIsEnabled              bool
 }
 
 func (config *Configuration) IsTlsClientAuthnEnabled() bool {

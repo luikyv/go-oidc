@@ -222,8 +222,10 @@ func (provider *OpenIdProvider) EnableClientSecretJwtAuthn(assertionLifetimeSecs
 	provider.ClientSecretJwtSignatureAlgorithms = signatureAlgorithms
 }
 
-func (provider *OpenIdProvider) EnableTlsClientAuthn(mtlsHost string, selfSignedCertificatesAreAllowed bool) {
+// TODO: separate this
+func (provider *OpenIdProvider) EnableTlsClientAuthn(mtlsHost string, selfSignedCertificatesAreAllowed bool, shouldBindTokens bool) {
 	provider.MtlsHost = mtlsHost
+	provider.TlsBoundTokensIsEnabled = shouldBindTokens
 	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.TlsAuthn)
 	if selfSignedCertificatesAreAllowed {
 		provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.SelfSignedTlsAuthn)
@@ -408,6 +410,13 @@ func (provider *OpenIdProvider) getMtlsServerHandler() http.Handler {
 			},
 		)
 	}
+
+	serverHandler.HandleFunc(
+		"GET "+string(constants.UserInfoEndpoint),
+		func(w http.ResponseWriter, r *http.Request) {
+			apihandlers.HandleUserInfoRequest(utils.NewContext(provider.Configuration, r, w))
+		},
+	)
 
 	//TODO: Add other endpoints.
 

@@ -49,7 +49,7 @@ func main() {
 	openidProvider.EnableSecretPostClientAuthn()
 	openidProvider.EnableBasicSecretClientAuthn()
 	openidProvider.EnablePrivateKeyJwtClientAuthn(600, jose.RS256, jose.PS256)
-	openidProvider.EnableTlsClientAuthn(mtlsIssuer, true)
+	openidProvider.EnableTlsClientAuthn(mtlsIssuer, true, true)
 	openidProvider.EnableIssuerResponseParameter()
 	openidProvider.EnableDemonstrationProofOfPossesion(600, jose.RS256, jose.PS256, jose.ES256)
 	openidProvider.EnableProofKeyForCodeExchange(constants.Sha256CodeChallengeMethod)

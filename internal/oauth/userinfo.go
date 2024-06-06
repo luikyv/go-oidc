@@ -52,11 +52,11 @@ func validateUserInfoRequest(
 		return models.NewOAuthError(constants.InvalidRequest, "invalid scope")
 	}
 
-	if err := utils.ValidateProofOfPossesion(ctx, token, tokenType, grantSession); err != nil {
+	if err := utils.ValidateDpop(ctx, token, tokenType, grantSession); err != nil {
 		return err
 	}
 
-	return nil
+	return utils.ValidateTlsProofOfPossesion(ctx, grantSession)
 }
 
 func getUserInfoResponse(

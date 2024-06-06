@@ -85,13 +85,14 @@ func getRefreshTokenIntrospectionInfo(
 	}
 
 	return models.TokenIntrospectionInfo{
-		IsActive:           true,
-		Scopes:             grantSession.GrantedScopes,
-		ClientId:           grantSession.ClientId,
-		Subject:            grantSession.Subject,
-		ExpiresAtTimestamp: grantSession.ExpiresAtTimestamp,
-		JwkThumbprint:      grantSession.JwkThumbprint,
-		RawClaims:          grantSession.AdditionalTokenClaims,
+		IsActive:                    true,
+		Scopes:                      grantSession.GrantedScopes,
+		ClientId:                    grantSession.ClientId,
+		Subject:                     grantSession.Subject,
+		ExpiresAtTimestamp:          grantSession.ExpiresAtTimestamp,
+		JwkThumbprint:               grantSession.JwkThumbprint,
+		ClientCertificateThumbprint: grantSession.ClientCertificateThumbprint,
+		RawClaims:                   grantSession.AdditionalTokenClaims,
 	}
 }
 
@@ -131,12 +132,13 @@ func getOpaqueTokenIntrospectionInfo(
 	}
 
 	return models.TokenIntrospectionInfo{
-		IsActive:           true,
-		Scopes:             grantSession.ActiveScopes,
-		ClientId:           grantSession.ClientId,
-		Subject:            grantSession.Subject,
-		ExpiresAtTimestamp: grantSession.LastTokenIssuedAtTimestamp + grantSession.TokenExpiresInSecs,
-		JwkThumbprint:      grantSession.JwkThumbprint,
-		RawClaims:          grantSession.AdditionalTokenClaims,
+		IsActive:                    true,
+		Scopes:                      grantSession.ActiveScopes,
+		ClientId:                    grantSession.ClientId,
+		Subject:                     grantSession.Subject,
+		ExpiresAtTimestamp:          grantSession.LastTokenIssuedAtTimestamp + grantSession.TokenExpiresInSecs,
+		JwkThumbprint:               grantSession.JwkThumbprint,
+		ClientCertificateThumbprint: grantSession.ClientCertificateThumbprint,
+		RawClaims:                   grantSession.AdditionalTokenClaims,
 	}
 }

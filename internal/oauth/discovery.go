@@ -54,15 +54,13 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 	}
 
 	if ctx.IsTlsClientAuthnEnabled() {
-		mtlsConfig := models.OpenIdMtlsConfiguration{
-			TokenEndpoint: ctx.MtlsHost + string(constants.TokenEndpoint),
-		}
+		config.TlsBoundTokensIsEnabled = ctx.TlsBoundTokensIsEnabled
+		config.MtlsConfiguration.TokenEndpoint = ctx.MtlsHost + string(constants.TokenEndpoint)
+		config.MtlsConfiguration.UserinfoEndpoint = ctx.MtlsHost + string(constants.UserInfoEndpoint)
 
 		if ctx.ParIsEnabled {
-			mtlsConfig.ParEndpoint = ctx.MtlsHost + string(constants.PushedAuthorizationRequestEndpoint)
+			config.MtlsConfiguration.ParEndpoint = ctx.MtlsHost + string(constants.PushedAuthorizationRequestEndpoint)
 		}
-
-		config.MtlsConfiguration = mtlsConfig
 	}
 
 	return config

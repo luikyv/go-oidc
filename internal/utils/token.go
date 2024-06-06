@@ -84,6 +84,16 @@ func makeJwtToken(ctx Context, _ models.Client, grantOptions models.GrantOptions
 		}
 	}
 
+	clientCert, ok := ctx.GetHeader(string(constants.ClientCertificateHeader))
+	certThumbprint := ""
+	if ctx.TlsBoundTokensIsEnabled && ok {
+		// TODO: don't override it.
+		certThumbprint = unit.GenerateSha256Thumbprint(clientCert)
+		claims["cnf"] = map[string]string{
+			"x5t#S256": certThumbprint,
+		}
+	}
+
 	for k, v := range grantOptions.AdditionalTokenClaims {
 		claims[k] = v
 	}
@@ -97,29 +107,40 @@ func makeJwtToken(ctx Context, _ models.Client, grantOptions models.GrantOptions
 
 	accessToken, _ := jwt.Signed(signer).Claims(claims).Serialize()
 	return models.Token{
-		Id:            jwtId,
-		Format:        constants.JwtTokenFormat,
-		Value:         accessToken,
-		Type:          tokenType,
-		JwkThumbprint: jkt,
+		Id:                    jwtId,
+		Format:                constants.JwtTokenFormat,
+		Value:                 accessToken,
+		Type:                  tokenType,
+		JwkThumbprint:         jkt,
+		CertificateThumbprint: certThumbprint,
 	}
 }
 
 func makeOpaqueToken(ctx Context, _ models.Client, grantOptions models.GrantOptions) models.Token {
 	accessToken := unit.GenerateRandomString(grantOptions.OpaqueTokenLength, grantOptions.OpaqueTokenLength)
 	tokenType := constants.BearerTokenType
+
 	dpopJwt, ok := ctx.GetDpopJwt()
 	jkt := ""
 	if ctx.DpopIsEnabled && ok {
 		tokenType = constants.DpopTokenType
 		jkt = unit.GenerateJwkThumbprint(dpopJwt, ctx.DpopSignatureAlgorithms)
 	}
+
+	clientCert, ok := ctx.GetHeader(string(constants.ClientCertificateHeader))
+	certThumbprint := ""
+	if ctx.TlsBoundTokensIsEnabled && ok {
+		// TODO: don't override it.
+		certThumbprint = unit.GenerateSha256Thumbprint(clientCert)
+	}
+
 	return models.Token{
-		Id:            accessToken,
-		Format:        constants.OpaqueTokenFormat,
-		Value:         accessToken,
-		Type:          tokenType,
-		JwkThumbprint: jkt,
+		Id:                    accessToken,
+		Format:                constants.OpaqueTokenFormat,
+		Value:                 accessToken,
+		Type:                  tokenType,
+		JwkThumbprint:         jkt,
+		CertificateThumbprint: certThumbprint,
 	}
 }
 

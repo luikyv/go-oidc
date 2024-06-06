@@ -72,7 +72,27 @@ func ExtractJarFromRequestObject(
 	return jarReq, nil
 }
 
-func ValidateProofOfPossesion(
+func ValidateTlsProofOfPossesion(
+	ctx Context,
+	grantSession models.GrantSession,
+) models.OAuthError {
+	if grantSession.ClientCertificateThumbprint == "" {
+		return nil
+	}
+
+	clientCert, ok := ctx.GetHeader(string(constants.ClientCertificateHeader))
+	if !ok {
+		return models.NewOAuthError(constants.InvalidToken, "the client certificate is required")
+	}
+
+	if grantSession.ClientCertificateThumbprint != unit.GenerateSha256Thumbprint(clientCert) {
+		return models.NewOAuthError(constants.InvalidToken, "invalid client certificate")
+	}
+
+	return nil
+}
+
+func ValidateDpop(
 	ctx Context,
 	token string,
 	tokenType constants.TokenType,

@@ -153,6 +153,7 @@ const (
 	InvalidScope          ErrorCode = "invalid_scope"
 	UnsupportedGrantType  ErrorCode = "unsupported_grant_type"
 	InvalidResquestObject ErrorCode = "invalid_request_object"
+	InvalidToken          ErrorCode = "invalid_token"
 	InternalError         ErrorCode = "internal_error"
 )
 
@@ -160,7 +161,7 @@ func (ec ErrorCode) GetStatusCode() int {
 	switch ec {
 	case AccessDenied:
 		return http.StatusForbidden
-	case InvalidClient:
+	case InvalidClient, InvalidToken:
 		return http.StatusUnauthorized
 	case InternalError:
 		return http.StatusInternalServerError
