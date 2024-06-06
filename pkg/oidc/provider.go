@@ -2,14 +2,11 @@ package oidc
 
 import (
 	"crypto/tls"
-	"log/slog"
 	"net/http"
-	"os"
 	"slices"
 	"strings"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/apihandlers"
 	"github.com/luikymagno/auth-server/internal/crud"
 	"github.com/luikymagno/auth-server/internal/models"
@@ -287,35 +284,6 @@ func (provider *OpenIdProvider) AddPolicy(policy utils.AuthnPolicy) {
 	provider.Policies = append(provider.Policies, policy)
 }
 
-func (provider OpenIdProvider) prepareAndGetContext(req *http.Request, resp http.ResponseWriter) utils.Context {
-	// TODO Middleware?
-	correlationId := uuid.NewString()
-	correlationIdHeader, ok := req.Header[string(constants.CorrelationIdHeader)]
-	if ok && len(correlationIdHeader) > 0 {
-		correlationId = correlationIdHeader[0]
-	}
-
-	// Avoiding caching.
-	resp.Header().Set("Cache-Control", "no-cache, no-store")
-	resp.Header().Set("Pragma", "no-cache")
-	// Return the correlation ID.
-	resp.Header().Set(string(constants.CorrelationIdHeader), correlationId)
-
-	// Create the logger.
-	opts := &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}
-	jsonHandler := slog.NewJSONHandler(os.Stdout, opts)
-	logger := slog.New(jsonHandler)
-	// Set shared information.
-	logger = logger.With(
-		// Always log the correlation ID.
-		slog.String(constants.CorrelationIdKey, correlationId),
-	)
-
-	return utils.NewContext(provider.Configuration, req, resp, logger)
-}
-
 func (provider *OpenIdProvider) getServerHandler() http.Handler {
 
 	serverHandler := http.NewServeMux()
@@ -324,7 +292,7 @@ func (provider *OpenIdProvider) getServerHandler() http.Handler {
 	serverHandler.HandleFunc(
 		"GET "+string(constants.JsonWebKeySetEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleJWKSRequest(provider.prepareAndGetContext(r, w))
+			apihandlers.HandleJWKSRequest(utils.NewContext(provider.Configuration, r, w))
 		},
 	)
 
@@ -332,7 +300,7 @@ func (provider *OpenIdProvider) getServerHandler() http.Handler {
 		serverHandler.HandleFunc(
 			"POST "+string(constants.PushedAuthorizationRequestEndpoint),
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleParRequest(provider.prepareAndGetContext(r, w))
+				apihandlers.HandleParRequest(utils.NewContext(provider.Configuration, r, w))
 			},
 		)
 	}
@@ -340,42 +308,42 @@ func (provider *OpenIdProvider) getServerHandler() http.Handler {
 	serverHandler.HandleFunc(
 		"GET "+string(constants.AuthorizationEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleAuthorizeRequest(provider.prepareAndGetContext(r, w))
+			apihandlers.HandleAuthorizeRequest(utils.NewContext(provider.Configuration, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
 		"GET "+string(constants.AuthorizationEndpoint)+"/{callback}",
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleAuthorizeCallbackRequest(provider.prepareAndGetContext(r, w))
+			apihandlers.HandleAuthorizeCallbackRequest(utils.NewContext(provider.Configuration, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
 		"POST "+string(constants.TokenEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleTokenRequest(provider.prepareAndGetContext(r, w))
+			apihandlers.HandleTokenRequest(utils.NewContext(provider.Configuration, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
 		"GET "+string(constants.WellKnownEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleWellKnownRequest(provider.prepareAndGetContext(r, w))
+			apihandlers.HandleWellKnownRequest(utils.NewContext(provider.Configuration, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
 		"GET "+string(constants.UserInfoEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleUserInfoRequest(provider.prepareAndGetContext(r, w))
+			apihandlers.HandleUserInfoRequest(utils.NewContext(provider.Configuration, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
 		"POST "+string(constants.UserInfoEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleUserInfoRequest(provider.prepareAndGetContext(r, w))
+			apihandlers.HandleUserInfoRequest(utils.NewContext(provider.Configuration, r, w))
 		},
 	)
 
@@ -383,28 +351,28 @@ func (provider *OpenIdProvider) getServerHandler() http.Handler {
 		serverHandler.HandleFunc(
 			"POST "+string(constants.DynamicClientEndpoint),
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleDynamicClientCreation(provider.prepareAndGetContext(r, w))
+				apihandlers.HandleDynamicClientCreation(utils.NewContext(provider.Configuration, r, w))
 			},
 		)
 
 		serverHandler.HandleFunc(
 			"PUT "+string(constants.DynamicClientEndpoint)+"/{client_id}",
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleDynamicClientUpdate(provider.prepareAndGetContext(r, w))
+				apihandlers.HandleDynamicClientUpdate(utils.NewContext(provider.Configuration, r, w))
 			},
 		)
 
 		serverHandler.HandleFunc(
 			"GET "+string(constants.DynamicClientEndpoint)+"/{client_id}",
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleDynamicClientRetrieve(provider.prepareAndGetContext(r, w))
+				apihandlers.HandleDynamicClientRetrieve(utils.NewContext(provider.Configuration, r, w))
 			},
 		)
 
 		serverHandler.HandleFunc(
 			"DELETE "+string(constants.DynamicClientEndpoint)+"/{client_id}",
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleDynamicClientDelete(provider.prepareAndGetContext(r, w))
+				apihandlers.HandleDynamicClientDelete(utils.NewContext(provider.Configuration, r, w))
 			},
 		)
 	}
@@ -413,12 +381,14 @@ func (provider *OpenIdProvider) getServerHandler() http.Handler {
 		serverHandler.HandleFunc(
 			"POST "+string(constants.TokenIntrospectionEndpoint),
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleIntrospectionRequest(provider.prepareAndGetContext(r, w))
+				apihandlers.HandleIntrospectionRequest(utils.NewContext(provider.Configuration, r, w))
 			},
 		)
 	}
 
-	return serverHandler
+	return apihandlers.NewAddCacheControlHeadersMiddlewareHandler(
+		apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(serverHandler),
+	)
 }
 
 func (provider *OpenIdProvider) getMtlsServerHandler() http.Handler {
@@ -427,7 +397,7 @@ func (provider *OpenIdProvider) getMtlsServerHandler() http.Handler {
 	serverHandler.HandleFunc(
 		"POST "+string(constants.TokenEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleTokenRequest(provider.prepareAndGetContext(r, w))
+			apihandlers.HandleTokenRequest(utils.NewContext(provider.Configuration, r, w))
 		},
 	)
 
@@ -435,14 +405,18 @@ func (provider *OpenIdProvider) getMtlsServerHandler() http.Handler {
 		serverHandler.HandleFunc(
 			"POST "+string(constants.PushedAuthorizationRequestEndpoint),
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleParRequest(provider.prepareAndGetContext(r, w))
+				apihandlers.HandleParRequest(utils.NewContext(provider.Configuration, r, w))
 			},
 		)
 	}
 
 	//TODO: Add other endpoints.
 
-	return apihandlers.NewAddCertificateHeaderMiddlewareHandler(serverHandler)
+	return apihandlers.NewAddCacheControlHeadersMiddlewareHandler(
+		apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(
+			apihandlers.NewAddCertificateHeaderMiddlewareHandler(serverHandler),
+		),
+	)
 }
 
 func (provider *OpenIdProvider) Run(address string) error {

@@ -5,10 +5,12 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"os"
 	"slices"
 	"strings"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/crud"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -89,8 +91,26 @@ func NewContext(
 	configuration Configuration,
 	req *http.Request,
 	resp http.ResponseWriter,
-	logger *slog.Logger,
 ) Context {
+
+	correlationId := uuid.NewString()
+	correlationIdHeader, ok := req.Header[string(constants.CorrelationIdHeader)]
+	if ok && len(correlationIdHeader) > 0 {
+		correlationId = correlationIdHeader[0]
+	}
+
+	// Create the logger.
+	opts := &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}
+	jsonHandler := slog.NewJSONHandler(os.Stdout, opts)
+	logger := slog.New(jsonHandler)
+	// Set shared information.
+	logger = logger.With(
+		// Always log the correlation ID.
+		slog.String(constants.CorrelationIdKey, correlationId),
+	)
+
 	return Context{
 		Configuration: configuration,
 		Request:       req,
