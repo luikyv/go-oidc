@@ -216,10 +216,10 @@ type DynamicClientResponse struct {
 }
 
 type OpenIdMtlsConfiguration struct {
-	TokenEndpoint    string `json:"token_endpoint"`
-	ParEndpoint      string `json:"pushed_authorization_request_endpoint,omitempty"`
-	UserinfoEndpoint string `json:"userinfo_endpoint"`
-	//TODO: Add the other endpoints.
+	TokenEndpoint         string `json:"token_endpoint"`
+	ParEndpoint           string `json:"pushed_authorization_request_endpoint,omitempty"`
+	UserinfoEndpoint      string `json:"userinfo_endpoint"`
+	IntrospectionEndpoint string `json:"introspection_endpoint,omitempty"`
 }
 
 type OpenIdConfiguration struct {

@@ -19,6 +19,7 @@ func validateDynamicClientRequest(
 		validateClientSignatureAlgorithmForPrivateKeyJwt,
 		validateClientSignatureAlgorithmForClientSecretJwt,
 		validateJwksAreRequiredForPrivateKeyJwtAuthn,
+		validateJwksIsRequiredWhenSelfSignedTlsAuthn,
 		validateGrantTypes,
 		validateClientCredentialsGrantNotAllowedForNoneClientAuthn,
 		validateClientAuthnMethodForIntrospectionGrant,
@@ -245,5 +246,20 @@ func validatePkceIsRequiredForPublicClients(
 	if ctx.PkceIsEnabled && dynamicClient.AuthnMethod == constants.NoneAuthn && !dynamicClient.PkceIsRequired {
 		return models.NewOAuthError(constants.InvalidRequest, "pkce is required for public clients")
 	}
+	return nil
+}
+
+func validateJwksIsRequiredWhenSelfSignedTlsAuthn(
+	_ utils.Context,
+	dynamicClient models.DynamicClientRequest,
+) models.OAuthError {
+	if dynamicClient.AuthnMethod != constants.SelfSignedTlsAuthn {
+		return nil
+	}
+
+	if dynamicClient.PublicJwksUri == "" && len(dynamicClient.PublicJwks.Keys) == 0 {
+		return models.NewOAuthError(constants.InvalidRequest, "jwks is required when authenticating with self signed certificates")
+	}
+
 	return nil
 }

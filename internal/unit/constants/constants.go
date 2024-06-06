@@ -6,6 +6,10 @@ import (
 	"strings"
 )
 
+type ContextKey string
+
+const CorrelationId ContextKey = "correlation_id"
+
 const ProtectedParamPrefix string = "p_"
 
 type GrantType string
@@ -174,6 +178,7 @@ type Header string
 
 const (
 	CorrelationIdHeader     Header = "X-Correlation-Id"
+	FapiInteractionIdHeader Header = "X-Fapi-Interaction-Id"
 	DpopHeader              Header = "DPoP"
 	ClientCertificateHeader Header = "X-Client-Certificate"
 )
@@ -221,8 +226,6 @@ const (
 	InProgress AuthnStatus = "in_progress"
 	Failure    AuthnStatus = "failure"
 )
-
-const CorrelationIdKey string = "correlation_id"
 
 type TokenFormat string
 

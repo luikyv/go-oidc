@@ -49,7 +49,8 @@ func main() {
 	openidProvider.EnableSecretPostClientAuthn()
 	openidProvider.EnableBasicSecretClientAuthn()
 	openidProvider.EnablePrivateKeyJwtClientAuthn(600, jose.RS256, jose.PS256)
-	openidProvider.EnableTlsClientAuthn(mtlsIssuer, true, true)
+	openidProvider.EnableTlsClientAuthn(mtlsIssuer, true)
+	openidProvider.EnableTlsBoundTokens()
 	openidProvider.EnableIssuerResponseParameter()
 	openidProvider.EnableDemonstrationProofOfPossesion(600, jose.RS256, jose.PS256, jose.ES256)
 	openidProvider.EnableProofKeyForCodeExchange(constants.Sha256CodeChallengeMethod)
@@ -57,6 +58,7 @@ func main() {
 	openidProvider.EnableRefreshTokenGrantType(6000, true)
 	openidProvider.EnableDynamicClientRegistration(nil, true)
 	openidProvider.SetScopes("offline_access")
+	openidProvider.SetCorrelationIdHeader(constants.FapiInteractionIdHeader)
 
 	// Client one.
 	privateClientOneJwks := GetClientPrivateJwks("client_keys/client_one_jwks.json")

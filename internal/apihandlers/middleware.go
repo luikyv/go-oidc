@@ -1,6 +1,7 @@
 package apihandlers
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -39,23 +40,29 @@ func (handler AddCacheControlHeadersMiddlewareHandler) ServeHTTP(w http.Response
 }
 
 type AddCorrelationIdHeaderMiddlewareHandler struct {
-	NextHandler http.Handler
+	NextHandler         http.Handler
+	CorrelationIdHeader constants.Header
 }
 
-func NewAddCorrelationIdHeaderMiddlewareHandler(next http.Handler) AddCorrelationIdHeaderMiddlewareHandler {
+func NewAddCorrelationIdHeaderMiddlewareHandler(
+	next http.Handler,
+	correlationIdHeader constants.Header,
+) AddCorrelationIdHeaderMiddlewareHandler {
 	return AddCorrelationIdHeaderMiddlewareHandler{
-		NextHandler: next,
+		NextHandler:         next,
+		CorrelationIdHeader: correlationIdHeader,
 	}
 }
 
 func (handler AddCorrelationIdHeaderMiddlewareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	correlationId := uuid.NewString()
-	correlationIdHeader, ok := r.Header[string(constants.CorrelationIdHeader)]
+	correlationIdHeader, ok := r.Header[string(handler.CorrelationIdHeader)]
 	if ok && len(correlationIdHeader) > 0 {
 		correlationId = correlationIdHeader[0]
 	}
 
-	handler.NextHandler.ServeHTTP(w, r)
+	w.Header().Set(string(handler.CorrelationIdHeader), correlationId)
 
-	w.Header().Set(string(constants.CorrelationIdHeader), correlationId)
+	ctx := context.WithValue(r.Context(), constants.CorrelationId, correlationId)
+	handler.NextHandler.ServeHTTP(w, r.WithContext(ctx))
 }

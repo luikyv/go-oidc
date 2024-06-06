@@ -62,6 +62,7 @@ func NewProvider(
 			DpopSignatureAlgorithms:          []jose.SignatureAlgorithm{},
 			SubjectIdentifierTypes:           []constants.SubjectIdentifierType{constants.PublicSubjectIdentifier},
 			AuthenticationSessionTimeoutSecs: constants.DefaultAuthenticationSessionTimeoutSecs,
+			CorrelationIdHeader:              constants.CorrelationIdHeader,
 		},
 	}
 
@@ -222,17 +223,19 @@ func (provider *OpenIdProvider) EnableClientSecretJwtAuthn(assertionLifetimeSecs
 	provider.ClientSecretJwtSignatureAlgorithms = signatureAlgorithms
 }
 
-// TODO: separate this
-func (provider *OpenIdProvider) EnableTlsClientAuthn(mtlsHost string, selfSignedCertificatesAreAllowed bool, shouldBindTokens bool) {
+func (provider *OpenIdProvider) EnableTlsClientAuthn(mtlsHost string, selfSignedCertificatesAreAllowed bool) {
 	provider.MtlsHost = mtlsHost
-	provider.TlsBoundTokensIsEnabled = shouldBindTokens
 	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.TlsAuthn)
 	if selfSignedCertificatesAreAllowed {
 		provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.SelfSignedTlsAuthn)
 	}
 }
 
-func (provider *OpenIdProvider) SupportPublicClients() {
+func (provider *OpenIdProvider) EnableTlsBoundTokens() {
+	provider.TlsBoundTokensIsEnabled = true
+}
+
+func (provider *OpenIdProvider) EnableNoneClientAuthn() {
 	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.NoneAuthn)
 }
 
@@ -275,6 +278,10 @@ func (provider *OpenIdProvider) RequireProofKeyForCodeExchange(codeChallengeMeth
 
 func (provider *OpenIdProvider) SetAuthenticationSessionTimeout(timeoutSecs int) {
 	provider.AuthenticationSessionTimeoutSecs = timeoutSecs
+}
+
+func (provider *OpenIdProvider) SetCorrelationIdHeader(header constants.Header) {
+	provider.CorrelationIdHeader = header
 }
 
 func (provider *OpenIdProvider) AddClient(client models.Client) error {
@@ -388,7 +395,7 @@ func (provider *OpenIdProvider) getServerHandler() http.Handler {
 	}
 
 	return apihandlers.NewAddCacheControlHeadersMiddlewareHandler(
-		apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(serverHandler),
+		apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(serverHandler, provider.CorrelationIdHeader),
 	)
 }
 
@@ -402,6 +409,13 @@ func (provider *OpenIdProvider) getMtlsServerHandler() http.Handler {
 		},
 	)
 
+	serverHandler.HandleFunc(
+		"GET "+string(constants.UserInfoEndpoint),
+		func(w http.ResponseWriter, r *http.Request) {
+			apihandlers.HandleUserInfoRequest(utils.NewContext(provider.Configuration, r, w))
+		},
+	)
+
 	if provider.ParIsEnabled {
 		serverHandler.HandleFunc(
 			"POST "+string(constants.PushedAuthorizationRequestEndpoint),
@@ -411,18 +425,19 @@ func (provider *OpenIdProvider) getMtlsServerHandler() http.Handler {
 		)
 	}
 
-	serverHandler.HandleFunc(
-		"GET "+string(constants.UserInfoEndpoint),
-		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleUserInfoRequest(utils.NewContext(provider.Configuration, r, w))
-		},
-	)
-
-	//TODO: Add other endpoints.
+	if provider.IntrospectionIsEnabled {
+		serverHandler.HandleFunc(
+			"POST "+string(constants.TokenIntrospectionEndpoint),
+			func(w http.ResponseWriter, r *http.Request) {
+				apihandlers.HandleIntrospectionRequest(utils.NewContext(provider.Configuration, r, w))
+			},
+		)
+	}
 
 	return apihandlers.NewAddCacheControlHeadersMiddlewareHandler(
 		apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(
 			apihandlers.NewAddCertificateHeaderMiddlewareHandler(serverHandler),
+			provider.CorrelationIdHeader,
 		),
 	)
 }

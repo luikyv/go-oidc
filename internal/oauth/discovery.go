@@ -61,6 +61,10 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 		if ctx.ParIsEnabled {
 			config.MtlsConfiguration.ParEndpoint = ctx.MtlsHost + string(constants.PushedAuthorizationRequestEndpoint)
 		}
+
+		if ctx.IntrospectionIsEnabled {
+			config.IntrospectionEndpoint = ctx.MtlsHost + string(constants.TokenIntrospectionEndpoint)
+		}
 	}
 
 	return config
