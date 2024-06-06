@@ -27,7 +27,6 @@ func NewProvider(
 	privateJwks jose.JSONWebKeySet,
 	defaultTokenKeyId string,
 	defaultIdTokenKeyId string,
-	templates string,
 ) *OpenIdProvider {
 	provider := &OpenIdProvider{
 		Configuration: utils.Configuration{
@@ -425,22 +424,29 @@ func (provider *OpenIdProvider) Run(address string) error {
 	return http.ListenAndServe(address, serverHandler)
 }
 
+type TlsConfig struct {
+	Address           string
+	MtlsAddress       string
+	ServerCertificate string
+	ServerKey         string
+}
+
 // This is not recommended to use in production.
-func (provider *OpenIdProvider) RunTLS(address string, mtlsAddress string) error {
+func (provider *OpenIdProvider) RunTLS(config TlsConfig) error {
 
 	provider.validateConfiguration()
 
 	if provider.IsTlsClientAuthnEnabled() {
 		server := &http.Server{
-			Addr:    mtlsAddress,
+			Addr:    config.MtlsAddress,
 			Handler: provider.getMtlsServerHandler(),
 			TLSConfig: &tls.Config{
 				ClientAuth: tls.RequireAnyClientCert,
 			},
 		}
-		go server.ListenAndServeTLS("cert.pem", "key.pem")
+		go server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)
 	}
 
 	serverHandler := provider.getServerHandler()
-	return http.ListenAndServeTLS(address, "cert.pem", "key.pem", serverHandler)
+	return http.ListenAndServeTLS(config.Address, config.ServerCertificate, config.ServerKey, serverHandler)
 }

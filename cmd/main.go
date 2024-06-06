@@ -41,7 +41,6 @@ func main() {
 		jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privatePs256Jwk, privateRs256Jwk}},
 		privatePs256Jwk.KeyID,
 		privateRs256Jwk.KeyID,
-		"./templates/*",
 	)
 	openidProvider.SetTokenOptions(GetTokenOptions)
 	openidProvider.EnablePushedAuthorizationRequests(60)
@@ -60,13 +59,13 @@ func main() {
 	openidProvider.SetScopes("offline_access")
 
 	// Client one.
-	privateClientOneJwks := GetClientPrivateJwks("client_one_jwks.json")
+	privateClientOneJwks := GetClientPrivateJwks("client_keys/client_one_jwks.json")
 	clientOne := models.GetTestClientWithPrivateKeyJwtAuthn(issuer, privateClientOneJwks.Keys[0].Public())
 	clientOne.AuthnMethod = constants.SelfSignedTlsAuthn
 	clientOne.RedirectUris = append(clientOne.RedirectUris, issuer+"/callback", "https://localhost:8443/test/a/first_test/callback")
 	openidProvider.AddClient(clientOne)
 	// Client two.
-	privateClientTwoJwks := GetClientPrivateJwks("client_two_jwks.json")
+	privateClientTwoJwks := GetClientPrivateJwks("client_keys/client_two_jwks.json")
 	clientTwo := models.GetTestClientWithPrivateKeyJwtAuthn(issuer, privateClientTwoJwks.Keys[0].Public())
 	clientTwo.AuthnMethod = constants.SelfSignedTlsAuthn
 	clientTwo.Id = "random_client_id_two"
@@ -76,11 +75,16 @@ func main() {
 	// Create Policy
 	policy := utils.NewPolicy(
 		"policy",
-		func(ctx utils.Context, session models.AuthnSession) bool { return true },
+		func(ctx utils.Context, client models.Client, session models.AuthnSession) bool { return true },
 		NoInteractionAuthnFunc,
 	)
+	openidProvider.AddPolicy(policy)
 
 	// Run
-	openidProvider.AddPolicy(policy)
-	openidProvider.RunTLS(port, mtlsPort)
+	openidProvider.RunTLS(oidc.TlsConfig{
+		Address:           port,
+		MtlsAddress:       mtlsPort,
+		ServerCertificate: "server_keys/cert.pem",
+		ServerKey:         "server_keys/key.pem",
+	})
 }

@@ -7,7 +7,7 @@ import (
 
 type AuthnFunc func(Context, *models.AuthnSession) constants.AuthnStatus
 
-type CheckPolicyAvailabilityFunc func(Context, models.AuthnSession) bool
+type CheckPolicyAvailabilityFunc func(Context, models.Client, models.AuthnSession) bool // TODO: pass the client
 
 type AuthnPolicy struct {
 	Id              string

@@ -338,12 +338,12 @@ func (ctx Context) GetPolicyById(policyId string) AuthnPolicy {
 	return AuthnPolicy{}
 }
 
-func (ctx Context) GetAvailablePolicy(session models.AuthnSession) (
+func (ctx Context) GetAvailablePolicy(client models.Client, session models.AuthnSession) (
 	policy AuthnPolicy,
 	ok bool,
 ) {
 	for _, policy = range ctx.Policies {
-		if ok = policy.IsAvailableFunc(ctx, session); ok {
+		if ok = policy.IsAvailableFunc(ctx, client, session); ok {
 			return policy, true
 		}
 	}

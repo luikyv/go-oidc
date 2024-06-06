@@ -18,7 +18,7 @@ func initAuthnSession(
 		return models.AuthnSession{}, err
 	}
 
-	return session, initAuthnSessionWithPolicy(ctx, &session)
+	return session, initAuthnSessionWithPolicy(ctx, client, &session)
 }
 
 func initValidAuthnSession(
@@ -163,9 +163,10 @@ func initValidSimpleAuthnSession(
 
 func initAuthnSessionWithPolicy(
 	ctx utils.Context,
+	client models.Client,
 	session *models.AuthnSession,
 ) models.OAuthError {
-	policy, ok := ctx.GetAvailablePolicy(*session)
+	policy, ok := ctx.GetAvailablePolicy(client, *session)
 	if !ok {
 		ctx.Logger.Info("no policy available")
 		return session.NewRedirectError(constants.InvalidRequest, "no policy available")
