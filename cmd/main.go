@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/tls"
-	"fmt"
 	"net/http"
 
 	"github.com/go-jose/go-jose/v4"
@@ -26,9 +25,10 @@ func main() {
 	//TODO: remove this.
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
-	port := 83
-	issuer := fmt.Sprintf("https://host.docker.internal:%v", port)
-	// issuer := fmt.Sprintf("https://localhost:%v", port)
+	port := ":83"
+	mtlsPort := ":84"
+	issuer := "https://host.docker.internal" + port
+	mtlsIssuer := "https://host.docker.internal" + mtlsPort
 	privatePs256Jwk := unit.GetTestPrivatePs256Jwk("ps256_server_key")
 	privateRs256Jwk := unit.GetTestPrivateRs256Jwk("rsa256_server_key")
 
@@ -50,6 +50,7 @@ func main() {
 	openidProvider.EnableSecretPostClientAuthn()
 	openidProvider.EnableBasicSecretClientAuthn()
 	openidProvider.EnablePrivateKeyJwtClientAuthn(600, jose.RS256, jose.PS256)
+	openidProvider.EnableTlsClientAuthn(mtlsIssuer, true)
 	openidProvider.EnableIssuerResponseParameter()
 	openidProvider.EnableDemonstrationProofOfPossesion(600, jose.RS256, jose.PS256, jose.ES256)
 	openidProvider.EnableProofKeyForCodeExchange(constants.Sha256CodeChallengeMethod)
@@ -61,11 +62,13 @@ func main() {
 	// Client one.
 	privateClientOneJwks := GetClientPrivateJwks("client_one_jwks.json")
 	clientOne := models.GetTestClientWithPrivateKeyJwtAuthn(issuer, privateClientOneJwks.Keys[0].Public())
+	clientOne.AuthnMethod = constants.SelfSignedTlsAuthn
 	clientOne.RedirectUris = append(clientOne.RedirectUris, issuer+"/callback", "https://localhost:8443/test/a/first_test/callback")
 	openidProvider.AddClient(clientOne)
 	// Client two.
 	privateClientTwoJwks := GetClientPrivateJwks("client_two_jwks.json")
 	clientTwo := models.GetTestClientWithPrivateKeyJwtAuthn(issuer, privateClientTwoJwks.Keys[0].Public())
+	clientTwo.AuthnMethod = constants.SelfSignedTlsAuthn
 	clientTwo.Id = "random_client_id_two"
 	clientTwo.RedirectUris = append(clientTwo.RedirectUris, issuer+"/callback", "https://localhost:8443/test/a/first_test/callback")
 	openidProvider.AddClient(clientTwo)
@@ -79,5 +82,5 @@ func main() {
 
 	// Run
 	openidProvider.AddPolicy(policy)
-	openidProvider.RunTLS(port)
+	openidProvider.RunTLS(port, mtlsPort)
 }

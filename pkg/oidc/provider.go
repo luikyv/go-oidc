@@ -1,7 +1,7 @@
 package oidc
 
 import (
-	"fmt"
+	"crypto/tls"
 	"log/slog"
 	"net/http"
 	"os"
@@ -20,7 +20,6 @@ import (
 
 type OpenIdProvider struct {
 	utils.Configuration
-	Server *http.ServeMux
 }
 
 func NewProvider(
@@ -68,7 +67,6 @@ func NewProvider(
 			SubjectIdentifierTypes:           []constants.SubjectIdentifierType{constants.PublicSubjectIdentifier},
 			AuthenticationSessionTimeoutSecs: constants.DefaultAuthenticationSessionTimeoutSecs,
 		},
-		Server: http.NewServeMux(),
 	}
 
 	return provider
@@ -228,6 +226,14 @@ func (provider *OpenIdProvider) EnableClientSecretJwtAuthn(assertionLifetimeSecs
 	provider.ClientSecretJwtSignatureAlgorithms = signatureAlgorithms
 }
 
+func (provider *OpenIdProvider) EnableTlsClientAuthn(mtlsHost string, selfSignedCertificatesAreAllowed bool) {
+	provider.MtlsHost = mtlsHost
+	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.TlsAuthn)
+	if selfSignedCertificatesAreAllowed {
+		provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.SelfSignedTlsAuthn)
+	}
+}
+
 func (provider *OpenIdProvider) SupportPublicClients() {
 	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.NoneAuthn)
 }
@@ -282,6 +288,7 @@ func (provider *OpenIdProvider) AddPolicy(policy utils.AuthnPolicy) {
 }
 
 func (provider OpenIdProvider) prepareAndGetContext(req *http.Request, resp http.ResponseWriter) utils.Context {
+	// TODO Middleware?
 	correlationId := uuid.NewString()
 	correlationIdHeader, ok := req.Header[string(constants.CorrelationIdHeader)]
 	if ok && len(correlationIdHeader) > 0 {
@@ -309,10 +316,12 @@ func (provider OpenIdProvider) prepareAndGetContext(req *http.Request, resp http
 	return utils.NewContext(provider.Configuration, req, resp, logger)
 }
 
-func (provider *OpenIdProvider) setUp() {
+func (provider *OpenIdProvider) getServerHandler() http.Handler {
+
+	serverHandler := http.NewServeMux()
 
 	// Set endpoints.
-	provider.Server.HandleFunc(
+	serverHandler.HandleFunc(
 		"GET "+string(constants.JsonWebKeySetEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
 			apihandlers.HandleJWKSRequest(provider.prepareAndGetContext(r, w))
@@ -320,7 +329,7 @@ func (provider *OpenIdProvider) setUp() {
 	)
 
 	if provider.ParIsEnabled {
-		provider.Server.HandleFunc(
+		serverHandler.HandleFunc(
 			"POST "+string(constants.PushedAuthorizationRequestEndpoint),
 			func(w http.ResponseWriter, r *http.Request) {
 				apihandlers.HandleParRequest(provider.prepareAndGetContext(r, w))
@@ -328,42 +337,42 @@ func (provider *OpenIdProvider) setUp() {
 		)
 	}
 
-	provider.Server.HandleFunc(
+	serverHandler.HandleFunc(
 		"GET "+string(constants.AuthorizationEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
 			apihandlers.HandleAuthorizeRequest(provider.prepareAndGetContext(r, w))
 		},
 	)
 
-	provider.Server.HandleFunc(
+	serverHandler.HandleFunc(
 		"GET "+string(constants.AuthorizationEndpoint)+"/{callback}",
 		func(w http.ResponseWriter, r *http.Request) {
 			apihandlers.HandleAuthorizeCallbackRequest(provider.prepareAndGetContext(r, w))
 		},
 	)
 
-	provider.Server.HandleFunc(
+	serverHandler.HandleFunc(
 		"POST "+string(constants.TokenEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
 			apihandlers.HandleTokenRequest(provider.prepareAndGetContext(r, w))
 		},
 	)
 
-	provider.Server.HandleFunc(
+	serverHandler.HandleFunc(
 		"GET "+string(constants.WellKnownEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
 			apihandlers.HandleWellKnownRequest(provider.prepareAndGetContext(r, w))
 		},
 	)
 
-	provider.Server.HandleFunc(
+	serverHandler.HandleFunc(
 		"GET "+string(constants.UserInfoEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
 			apihandlers.HandleUserInfoRequest(provider.prepareAndGetContext(r, w))
 		},
 	)
 
-	provider.Server.HandleFunc(
+	serverHandler.HandleFunc(
 		"POST "+string(constants.UserInfoEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
 			apihandlers.HandleUserInfoRequest(provider.prepareAndGetContext(r, w))
@@ -371,28 +380,28 @@ func (provider *OpenIdProvider) setUp() {
 	)
 
 	if provider.DcrIsEnabled {
-		provider.Server.HandleFunc(
+		serverHandler.HandleFunc(
 			"POST "+string(constants.DynamicClientEndpoint),
 			func(w http.ResponseWriter, r *http.Request) {
 				apihandlers.HandleDynamicClientCreation(provider.prepareAndGetContext(r, w))
 			},
 		)
 
-		provider.Server.HandleFunc(
+		serverHandler.HandleFunc(
 			"PUT "+string(constants.DynamicClientEndpoint)+"/{client_id}",
 			func(w http.ResponseWriter, r *http.Request) {
 				apihandlers.HandleDynamicClientUpdate(provider.prepareAndGetContext(r, w))
 			},
 		)
 
-		provider.Server.HandleFunc(
+		serverHandler.HandleFunc(
 			"GET "+string(constants.DynamicClientEndpoint)+"/{client_id}",
 			func(w http.ResponseWriter, r *http.Request) {
 				apihandlers.HandleDynamicClientRetrieve(provider.prepareAndGetContext(r, w))
 			},
 		)
 
-		provider.Server.HandleFunc(
+		serverHandler.HandleFunc(
 			"DELETE "+string(constants.DynamicClientEndpoint)+"/{client_id}",
 			func(w http.ResponseWriter, r *http.Request) {
 				apihandlers.HandleDynamicClientDelete(provider.prepareAndGetContext(r, w))
@@ -401,23 +410,63 @@ func (provider *OpenIdProvider) setUp() {
 	}
 
 	if provider.IntrospectionIsEnabled {
-		provider.Server.HandleFunc(
+		serverHandler.HandleFunc(
 			"POST "+string(constants.TokenIntrospectionEndpoint),
 			func(w http.ResponseWriter, r *http.Request) {
 				apihandlers.HandleIntrospectionRequest(provider.prepareAndGetContext(r, w))
 			},
 		)
 	}
+
+	return serverHandler
 }
 
-func (provider *OpenIdProvider) Run(port int) {
-	provider.validateConfiguration()
-	provider.setUp()
-	http.ListenAndServe(":"+fmt.Sprint(port), provider.Server)
+func (provider *OpenIdProvider) getMtlsServerHandler() http.Handler {
+	serverHandler := http.NewServeMux()
+
+	serverHandler.HandleFunc(
+		"POST "+string(constants.TokenEndpoint),
+		func(w http.ResponseWriter, r *http.Request) {
+			apihandlers.HandleTokenRequest(provider.prepareAndGetContext(r, w))
+		},
+	)
+
+	if provider.ParIsEnabled {
+		serverHandler.HandleFunc(
+			"POST "+string(constants.PushedAuthorizationRequestEndpoint),
+			func(w http.ResponseWriter, r *http.Request) {
+				apihandlers.HandleParRequest(provider.prepareAndGetContext(r, w))
+			},
+		)
+	}
+
+	//TODO: Add other endpoints.
+
+	return apihandlers.NewAddCertificateHeaderMiddlewareHandler(serverHandler)
 }
 
-func (provider *OpenIdProvider) RunTLS(port int) {
+func (provider *OpenIdProvider) Run(address string) error {
 	provider.validateConfiguration()
-	provider.setUp()
-	http.ListenAndServeTLS(":"+fmt.Sprint(port), "cert.pem", "key.pem", provider.Server)
+	serverHandler := provider.getServerHandler()
+	return http.ListenAndServe(address, serverHandler)
+}
+
+// This is not recommended to use in production.
+func (provider *OpenIdProvider) RunTLS(address string, mtlsAddress string) error {
+
+	provider.validateConfiguration()
+
+	if provider.IsTlsClientAuthnEnabled() {
+		server := &http.Server{
+			Addr:    mtlsAddress,
+			Handler: provider.getMtlsServerHandler(),
+			TLSConfig: &tls.Config{
+				ClientAuth: tls.RequireAnyClientCert,
+			},
+		}
+		go server.ListenAndServeTLS("cert.pem", "key.pem")
+	}
+
+	serverHandler := provider.getServerHandler()
+	return http.ListenAndServeTLS(address, "cert.pem", "key.pem", serverHandler)
 }

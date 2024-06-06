@@ -215,6 +215,12 @@ type DynamicClientResponse struct {
 	ClientMetaInfo
 }
 
+type OpenIdMtlsConfiguration struct {
+	TokenEndpoint string `json:"token_endpoint"`
+	ParEndpoint   string `json:"pushed_authorization_request_endpoint,omitempty"`
+	//TODO: Add the other endpoints.
+}
+
 type OpenIdConfiguration struct {
 	Issuer                                         string                            `json:"issuer"`
 	ClientRegistrationEndpoint                     string                            `json:"registration_endpoint"`
@@ -243,6 +249,7 @@ type OpenIdConfiguration struct {
 	IntrospectionEndpoint                          string                            `json:"introspection_endpoint,omitempty"`
 	IntrospectionEndpointClientAuthnMethods        []constants.ClientAuthnType       `json:"introspection_endpoint_auth_methods_supported,omitempty"`
 	IntrospectionEndpointClientSignatureAlgorithms []jose.SignatureAlgorithm         `json:"introspection_endpoint_auth_signing_alg_values_supported,omitempty"`
+	MtlsConfiguration                              OpenIdMtlsConfiguration           `json:"mtls_endpoint_aliases"`
 }
 
 type Token struct {

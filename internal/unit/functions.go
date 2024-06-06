@@ -2,6 +2,10 @@ package unit
 
 import (
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/rsa"
+	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/base64"
@@ -241,6 +245,18 @@ func GenerateJwkThumbprint(dpopJwt string, dpopSigningAlgorithms []jose.Signatur
 	return base64.RawURLEncoding.EncodeToString(jkt)
 }
 
+func GenerateSha256Hash(s []byte) string {
+	hash := sha256.New()
+	hash.Write([]byte(s))
+	return string(hash.Sum(nil))
+}
+
+func GenerateSha1Hash(s []byte) string {
+	hash := sha1.New()
+	hash.Write([]byte(s))
+	return string(hash.Sum(nil))
+}
+
 func GenerateHalfHashClaim(claimValue string, idTokenAlgorithm jose.SignatureAlgorithm) string {
 	var hash hash.Hash
 	switch jose.SignatureAlgorithm(idTokenAlgorithm) {
@@ -296,4 +312,22 @@ func Remove[T comparable](slice []T, value T) []T {
 	}
 
 	return newSlice
+}
+
+func ComparePublicKeys(k1 any, k2 any) bool {
+	key2, ok := k2.(crypto.PublicKey)
+	if !ok {
+		return false
+	}
+
+	switch key1 := k1.(type) {
+	case ed25519.PublicKey:
+		return key1.Equal(key2)
+	case *ecdsa.PublicKey:
+		return key1.Equal(key2)
+	case *rsa.PublicKey:
+		return key1.Equal(key2)
+	default:
+		return false
+	}
 }

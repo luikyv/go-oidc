@@ -19,7 +19,7 @@ func PushAuthorization(
 
 	client, err := token.GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
-		ctx.Logger.Info("could not authenticate the client", slog.String("client_id", req.ClientId))
+		ctx.Logger.Info("could not authenticate the client", slog.String("client_id", req.ClientId), slog.String("error", err.Error()))
 		return "", models.NewOAuthError(constants.InvalidClient, "client not authenticated")
 	}
 

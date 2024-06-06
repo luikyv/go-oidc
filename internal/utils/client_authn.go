@@ -1,11 +1,13 @@
 package utils
 
 import (
+	"crypto/x509"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -16,16 +18,24 @@ func AuthenticateClient(
 	req models.ClientAuthnRequest,
 ) models.OAuthError {
 	switch client.AuthnMethod {
+	case constants.NoneAuthn:
+		ctx.Logger.Debug("authenticating the client with none authn")
+		return authenticateWithNoneAuthn(ctx, client, req)
 	case constants.ClientSecretPostAuthn:
+		ctx.Logger.Debug("authenticating the client with secret post")
 		return authenticateWithClientSecretPost(ctx, client, req)
 	case constants.ClientSecretBasicAuthn:
+		ctx.Logger.Debug("authenticating the client with basic secret")
 		return authenticateWithClientSecretBasic(ctx, client, req)
 	case constants.PrivateKeyJwtAuthn:
+		ctx.Logger.Debug("authenticating the client with private key jwt")
 		return authenticateWithPrivateKeyJwt(ctx, client, req)
 	case constants.ClientSecretJwt:
+		ctx.Logger.Debug("authenticating the client with client secret jwt")
 		return authenticateWithClientSecretJwt(ctx, client, req)
-	case constants.NoneAuthn:
-		return authenticateWithNoneAuthn(ctx, client, req)
+	case constants.SelfSignedTlsAuthn:
+		ctx.Logger.Debug("authenticating the client with self signed tls certificate")
+		return authenticateWithSelfSignedTlsCertificate(ctx, client, req)
 	default:
 		return models.NewOAuthError(constants.InvalidClient, "invalid authentication method")
 	}
@@ -165,5 +175,50 @@ func areAssertionClaimsValid(
 	if err != nil {
 		return models.NewOAuthError(constants.InvalidClient, "invalid assertion")
 	}
+	return nil
+}
+
+func authenticateWithSelfSignedTlsCertificate(
+	ctx Context,
+	client models.Client,
+	req models.ClientAuthnRequest,
+) models.OAuthError {
+	if client.Id != req.ClientId {
+		return models.NewOAuthError(constants.InvalidClient, "invalid client")
+	}
+
+	rawClientCert, ok := ctx.GetHeader(string(constants.ClientCertificateHeader))
+	if !ok {
+		return models.NewOAuthError(constants.InvalidClient, "client certificate not informed")
+	}
+
+	clientCert, err := x509.ParseCertificate([]byte(rawClientCert))
+	if err != nil {
+		return models.NewOAuthError(constants.InvalidClient, "could not parse the client certificate")
+	}
+
+	jwks, err := client.GetPublicJwks()
+	if err != nil {
+		return models.NewOAuthError(constants.InternalError, "could not load the client JWKS")
+	}
+
+	var jwk jose.JSONWebKey
+	foundMatchingJwk := false
+	for _, key := range jwks.Keys {
+		if string(key.CertificateThumbprintSHA256) == unit.GenerateSha256Hash(clientCert.Raw) ||
+			string(key.CertificateThumbprintSHA1) == unit.GenerateSha1Hash(clientCert.Raw) {
+			foundMatchingJwk = true
+			jwk = key
+		}
+	}
+
+	if !foundMatchingJwk {
+		return models.NewOAuthError(constants.InvalidClient, "could not find a JWK matching the client certificate")
+	}
+
+	if !unit.ComparePublicKeys(jwk.Key, clientCert.PublicKey) {
+		return models.NewOAuthError(constants.InvalidClient, "the public key in the client certificate and ")
+	}
+
 	return nil
 }

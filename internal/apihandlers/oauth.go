@@ -44,7 +44,7 @@ func HandleParRequest(ctx utils.Context) {
 		RequestUri: requestUri,
 		ExpiresIn:  ctx.ParLifetimeSecs,
 	}
-	if err := ctx.WriteJson(resp, http.StatusOK); err != nil {
+	if err := ctx.WriteJson(resp, http.StatusCreated); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
 }

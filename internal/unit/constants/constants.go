@@ -68,6 +68,8 @@ const (
 	ClientSecretPostAuthn  ClientAuthnType = "client_secret_post"
 	ClientSecretJwt        ClientAuthnType = "client_secret_jwt"
 	PrivateKeyJwtAuthn     ClientAuthnType = "private_key_jwt"
+	TlsAuthn               ClientAuthnType = "tls_client_auth"
+	SelfSignedTlsAuthn     ClientAuthnType = "self_signed_tls_client_auth"
 )
 
 type ClientAssertionType string
@@ -170,8 +172,9 @@ func (ec ErrorCode) GetStatusCode() int {
 type Header string
 
 const (
-	CorrelationIdHeader Header = "X-Correlation-Id"
-	DpopHeader          Header = "DPoP"
+	CorrelationIdHeader     Header = "X-Correlation-Id"
+	DpopHeader              Header = "DPoP"
+	ClientCertificateHeader Header = "X-Client-Certificate"
 )
 
 const OpenIdScope string = "openid"

@@ -19,9 +19,10 @@ type GetTokenOptionsFunc func(client models.Client, scopes string) models.TokenO
 type DcrPluginFunc func(ctx Context, dynamicClient *models.DynamicClientRequest)
 
 type Configuration struct {
-	Profile constants.Profile
-	Host    string
-	Scopes  []string
+	Profile  constants.Profile
+	Host     string
+	MtlsHost string
+	Scopes   []string
 
 	ClientManager       crud.ClientManager
 	GrantSessionManager crud.GrantSessionManager
@@ -71,6 +72,10 @@ type Configuration struct {
 	ShouldRotateRegistrationTokens       bool
 	DcrPlugin                            DcrPluginFunc
 	AuthenticationSessionTimeoutSecs     int
+}
+
+func (config *Configuration) IsTlsClientAuthnEnabled() bool {
+	return slices.Contains(config.ClientAuthnMethods, constants.TlsAuthn) || slices.Contains(config.ClientAuthnMethods, constants.SelfSignedTlsAuthn)
 }
 
 type Context struct {
