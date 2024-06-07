@@ -403,9 +403,7 @@ func (provider *OpenIdProvider) getServerHandler() http.Handler {
 		)
 	}
 
-	return apihandlers.NewAddCacheControlHeadersMiddlewareHandler(
-		apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(serverHandler, provider.CorrelationIdHeader),
-	)
+	return serverHandler
 }
 
 func (provider *OpenIdProvider) getMtlsServerHandler() http.Handler {
@@ -450,17 +448,14 @@ func (provider *OpenIdProvider) getMtlsServerHandler() http.Handler {
 		)
 	}
 
-	return apihandlers.NewAddCacheControlHeadersMiddlewareHandler(
-		apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(
-			apihandlers.NewAddCertificateHeaderMiddlewareHandler(serverHandler),
-			provider.CorrelationIdHeader,
-		),
-	)
+	return serverHandler
 }
 
 func (provider *OpenIdProvider) Run(address string) error {
 	provider.validateConfiguration()
-	serverHandler := provider.getServerHandler()
+	serverHandler := apihandlers.NewAddCacheControlHeadersMiddlewareHandler(
+		apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(provider.getServerHandler(), provider.CorrelationIdHeader),
+	)
 	return http.ListenAndServe(address, serverHandler)
 }
 
@@ -471,21 +466,60 @@ type TlsConfig struct {
 	ServerKey         string
 }
 
-func (provider *OpenIdProvider) RunTLS(config TlsConfig) error {
+func (provider *OpenIdProvider) runMtls(config TlsConfig) error {
+	handler := apihandlers.AddCertificateHeaderMiddlewareHandler(
+		apihandlers.NewAddCacheControlHeadersMiddlewareHandler(
+			apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(
+				provider.getMtlsServerHandler(),
+				provider.CorrelationIdHeader,
+			),
+		),
+	)
+
+	var cipherSuites []uint16 = nil
+	if provider.Profile.IsFapi() {
+		cipherSuites = constants.FapiAllowedCipherSuites
+	}
+
+	server := &http.Server{
+		Addr:    config.MtlsAddress,
+		Handler: handler,
+		TLSConfig: &tls.Config{
+			// A client certificate is required, but its validation depends on the authentication method,
+			// e.g. self signed certificate, ...
+			ClientAuth:   tls.RequireAnyClientCert,
+			CipherSuites: cipherSuites,
+		},
+	}
+	return server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)
+}
+
+func (provider *OpenIdProvider) RunTls(config TlsConfig) error {
 
 	provider.validateConfiguration()
 
 	if provider.MtlsIsEnabled {
-		server := &http.Server{
-			Addr:    config.MtlsAddress,
-			Handler: provider.getMtlsServerHandler(),
-			TLSConfig: &tls.Config{
-				ClientAuth: tls.RequireAnyClientCert, // TODO: Is the private key validated? switch private keys to see.
-			},
-		}
-		go server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)
+		go provider.runMtls(config)
 	}
 
-	serverHandler := provider.getServerHandler()
-	return http.ListenAndServeTLS(config.Address, config.ServerCertificate, config.ServerKey, serverHandler)
+	handler := apihandlers.NewAddCacheControlHeadersMiddlewareHandler(
+		apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(
+			provider.getServerHandler(),
+			provider.CorrelationIdHeader,
+		),
+	)
+
+	var cipherSuites []uint16 = nil
+	if provider.Profile.IsFapi() {
+		cipherSuites = constants.FapiAllowedCipherSuites
+	}
+
+	server := &http.Server{
+		Addr:    config.Address,
+		Handler: handler,
+		TLSConfig: &tls.Config{
+			CipherSuites: cipherSuites,
+		},
+	}
+	return server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)
 }

@@ -40,13 +40,13 @@ func main() {
 		inmemory.NewInMemoryGrantSessionManager(),
 		jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privatePs256Jwk, privateRs256Jwk}},
 		privatePs256Jwk.KeyID,
-		privateRs256Jwk.KeyID,
+		privatePs256Jwk.KeyID,
 	)
 	openidProvider.EnableMtls(mtlsIssuer)
 	openidProvider.SetTokenOptions(GetTokenOptions)
 	openidProvider.EnablePushedAuthorizationRequests(60)
 	openidProvider.EnableJwtSecuredAuthorizationRequests(jose.PS256, jose.RS256)
-	openidProvider.EnableJwtSecuredAuthorizationResponseMode(600, privateRs256Jwk.KeyID)
+	openidProvider.EnableJwtSecuredAuthorizationResponseMode(600, privatePs256Jwk.KeyID)
 	openidProvider.EnableSecretPostClientAuthn()
 	openidProvider.EnableBasicSecretClientAuthn()
 	openidProvider.EnablePrivateKeyJwtClientAuthn(600, jose.RS256, jose.PS256)
@@ -85,7 +85,7 @@ func main() {
 	openidProvider.AddPolicy(policy)
 
 	// Run
-	openidProvider.RunTLS(oidc.TlsConfig{
+	openidProvider.RunTls(oidc.TlsConfig{
 		Address:           port,
 		MtlsAddress:       mtlsPort,
 		ServerCertificate: "server_keys/cert.pem",

@@ -1,6 +1,7 @@
 package constants
 
 import (
+	"crypto/tls"
 	"net/http"
 	"slices"
 	"strings"
@@ -218,6 +219,10 @@ const (
 	Fapi2Profile  Profile = "fapi2_profile"
 )
 
+func (p Profile) IsFapi() bool {
+	return p == Fapi1Profile || p == Fapi2Profile
+}
+
 const Charset string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 type AuthnStatus string
@@ -281,3 +286,10 @@ const (
 	AccessTokenHint  TokenTypeHint = "access_token"
 	RefreshTokenHint TokenTypeHint = "refresh_token"
 )
+
+var FapiAllowedCipherSuites []uint16 = []uint16{
+	tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+	tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+	tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+	tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+}

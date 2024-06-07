@@ -13,7 +13,7 @@ func HandleUserInfoRequest(ctx utils.Context) (models.UserInfoResponse, models.O
 
 	token, tokenType, ok := ctx.GetAuthorizationToken()
 	if !ok {
-		return models.UserInfoResponse{}, models.NewOAuthError(constants.AccessDenied, "no token found")
+		return models.UserInfoResponse{}, models.NewOAuthError(constants.InvalidToken, "no token found")
 	}
 
 	tokenId, oauthErr := utils.GetTokenId(ctx, token)
