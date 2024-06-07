@@ -42,6 +42,7 @@ func main() {
 		privatePs256Jwk.KeyID,
 		privateRs256Jwk.KeyID,
 	)
+	openidProvider.EnableMtls(mtlsIssuer)
 	openidProvider.SetTokenOptions(GetTokenOptions)
 	openidProvider.EnablePushedAuthorizationRequests(60)
 	openidProvider.EnableJwtSecuredAuthorizationRequests(jose.PS256, jose.RS256)
@@ -49,7 +50,7 @@ func main() {
 	openidProvider.EnableSecretPostClientAuthn()
 	openidProvider.EnableBasicSecretClientAuthn()
 	openidProvider.EnablePrivateKeyJwtClientAuthn(600, jose.RS256, jose.PS256)
-	openidProvider.EnableTlsClientAuthn(mtlsIssuer, true)
+	openidProvider.EnableSelfSignedTlsClientAuthn()
 	openidProvider.EnableTlsBoundTokens()
 	openidProvider.EnableIssuerResponseParameter()
 	openidProvider.EnableDemonstrationProofOfPossesion(600, jose.RS256, jose.PS256, jose.ES256)
@@ -59,6 +60,7 @@ func main() {
 	openidProvider.EnableDynamicClientRegistration(nil, true)
 	openidProvider.SetScopes("offline_access")
 	openidProvider.SetCorrelationIdHeader(constants.FapiInteractionIdHeader)
+	openidProvider.Profile = constants.Fapi1Profile // TODO: remove this.
 
 	// Client one.
 	privateClientOneJwks := GetClientPrivateJwks("client_keys/client_one_jwks.json")

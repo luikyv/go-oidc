@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"crypto/x509"
 	"encoding/json"
 	"html/template"
 	"log/slog"
@@ -20,10 +21,11 @@ type GetTokenOptionsFunc func(client models.Client, scopes string) models.TokenO
 type DcrPluginFunc func(ctx Context, dynamicClient *models.DynamicClientRequest)
 
 type Configuration struct {
-	Profile  constants.Profile
-	Host     string
-	MtlsHost string
-	Scopes   []string
+	Profile       constants.Profile
+	Host          string
+	MtlsIsEnabled bool
+	MtlsHost      string
+	Scopes        []string
 
 	ClientManager       crud.ClientManager
 	GrantSessionManager crud.GrantSessionManager
@@ -75,10 +77,7 @@ type Configuration struct {
 	AuthenticationSessionTimeoutSecs     int
 	TlsBoundTokensIsEnabled              bool
 	CorrelationIdHeader                  constants.Header
-}
-
-func (config *Configuration) IsTlsClientAuthnEnabled() bool {
-	return slices.Contains(config.ClientAuthnMethods, constants.TlsAuthn) || slices.Contains(config.ClientAuthnMethods, constants.SelfSignedTlsAuthn)
+	CaCertificatePool                    *x509.CertPool
 }
 
 type Context struct {

@@ -140,7 +140,7 @@ func getAuthenticatedClientAndSession(
 	go getSessionByAuthorizationCode(ctx, req.AuthorizationCode, sessionResultCh)
 
 	ctx.Logger.Debug("get the client while the session is being loaded")
-	authenticatedClient, err := GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
+	authenticatedClient, err := utils.GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
 		ctx.Logger.Debug("error while loading the client", slog.String("error", err.Error()))
 		return models.Client{}, models.AuthnSession{}, err

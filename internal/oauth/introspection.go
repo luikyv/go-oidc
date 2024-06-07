@@ -4,7 +4,6 @@ import (
 	"log/slog"
 
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/oauth/token"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
@@ -17,7 +16,7 @@ func IntrospectToken(
 	models.TokenIntrospectionInfo,
 	models.OAuthError,
 ) {
-	client, err := token.GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
+	client, err := utils.GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
 		ctx.Logger.Info("could not authenticate the client", slog.String("client_id", req.ClientId))
 		return models.TokenIntrospectionInfo{}, err

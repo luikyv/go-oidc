@@ -86,7 +86,7 @@ func getAuthenticatedClientAndGrantSession(
 	go getGrantSessionByRefreshToken(ctx, req.RefreshToken, grantSessionResultCh)
 
 	ctx.Logger.Debug("get the client while the token is being loaded.")
-	authenticatedClient, err := GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
+	authenticatedClient, err := utils.GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
 		ctx.Logger.Debug("error while loading the client.", slog.String("error", err.Error()))
 		return models.Client{}, models.GrantSession{}, err

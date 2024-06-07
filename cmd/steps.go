@@ -11,7 +11,7 @@ import (
 func NoInteractionAuthnFunc(ctx utils.Context, session *models.AuthnSession) constants.AuthnStatus {
 	session.SetUserId("random_user_id")
 	session.GrantScopes(session.Scopes)
-	session.SetUserAuthentication(constants.PasswordAuthentication)
+	session.SetUserAuthenticationMethods(constants.PasswordAuthentication)
 	return constants.Success
 }
 

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"crypto/x509"
+	"log/slog"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
@@ -11,6 +12,33 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"golang.org/x/crypto/bcrypt"
 )
+
+func GetAuthenticatedClient(
+	ctx Context,
+	req models.ClientAuthnRequest,
+) (
+	models.Client,
+	models.OAuthError,
+) {
+
+	clientId, ok := getClientId(ctx, req)
+	if !ok {
+		return models.Client{}, models.NewOAuthError(constants.InvalidClient, "invalid client")
+	}
+
+	client, err := ctx.GetClient(clientId)
+	if err != nil {
+		ctx.Logger.Info("client not found", slog.String("client_id", clientId))
+		return models.Client{}, models.NewOAuthError(constants.InvalidClient, "invalid client")
+	}
+
+	if err := AuthenticateClient(ctx, client, req); err != nil {
+		ctx.Logger.Info("client not authenticated", slog.String("client_id", req.ClientId))
+		return models.Client{}, err
+	}
+
+	return client, nil
+}
 
 func AuthenticateClient(
 	ctx Context,
@@ -36,6 +64,9 @@ func AuthenticateClient(
 	case constants.SelfSignedTlsAuthn:
 		ctx.Logger.Debug("authenticating the client with self signed tls certificate")
 		return authenticateWithSelfSignedTlsCertificate(ctx, client, req)
+	case constants.TlsAuthn:
+		ctx.Logger.Debug("authenticating the client with tls certificate")
+		return authenticateWithTlsCertificate(ctx, client, req)
 	default:
 		return models.NewOAuthError(constants.InvalidClient, "invalid authentication method")
 	}
@@ -221,4 +252,126 @@ func authenticateWithSelfSignedTlsCertificate(
 	}
 
 	return nil
+}
+
+func authenticateWithTlsCertificate(
+	ctx Context,
+	client models.Client,
+	req models.ClientAuthnRequest,
+) models.OAuthError {
+	if client.Id != req.ClientId {
+		return models.NewOAuthError(constants.InvalidClient, "invalid client")
+	}
+
+	rawClientCert, ok := ctx.GetHeader(string(constants.ClientCertificateHeader))
+	if !ok {
+		return models.NewOAuthError(constants.InvalidClient, "client certificate not informed")
+	}
+
+	clientCert, err := x509.ParseCertificate([]byte(rawClientCert))
+	if err != nil {
+		return models.NewOAuthError(constants.InvalidClient, "could not parse the client certificate")
+	}
+
+	opts := x509.VerifyOptions{
+		Roots: ctx.CaCertificatePool,
+	}
+	if client.TlsSubjectAlternativeName != "" {
+		opts.DNSName = client.TlsSubjectAlternativeName
+	}
+	if client.TlsSubjectAlternativeNameIp != "" {
+		opts.DNSName = "[" + client.TlsSubjectAlternativeNameIp + "]"
+	}
+
+	_, err = clientCert.Verify(opts)
+	if err != nil {
+		ctx.Logger.Debug("could not verify the client certificate", slog.String("error", err.Error()))
+		return models.NewOAuthError(constants.InvalidClient, "could not verify the client certificate")
+	}
+
+	if client.TlsSubjectDistinguishedName != "" && clientCert.Subject.String() != client.TlsSubjectDistinguishedName {
+		return models.NewOAuthError(constants.InvalidClient, "invalid distinguished name")
+	}
+
+	return nil
+}
+
+func getClientId(
+	ctx Context,
+	req models.ClientAuthnRequest,
+) (
+	string,
+	bool,
+) {
+	clientIds := []string{}
+
+	if req.ClientId != "" {
+		clientIds = append(clientIds, req.ClientId)
+	}
+
+	basicClientId, _, _ := ctx.Request.BasicAuth()
+	if basicClientId != "" {
+		clientIds = append(clientIds, basicClientId)
+	}
+
+	clientIds, ok := appendClientIdFromAssertion(ctx, clientIds, req)
+	if !ok {
+		return "", false
+	}
+
+	// All the client IDs present must be equal.
+	if len(clientIds) == 0 || !unit.AllEquals(clientIds) {
+		return "", false
+	}
+
+	return clientIds[0], true
+}
+
+func appendClientIdFromAssertion(
+	ctx Context,
+	clientIds []string,
+	req models.ClientAuthnRequest,
+) (
+	[]string,
+	bool,
+) {
+	if req.ClientAssertion == "" {
+		return clientIds, true
+	}
+
+	assertionClientId, ok := getClientIdFromAssertion(ctx, req.ClientAssertion)
+	if !ok {
+		return []string{}, false
+	}
+
+	return append(clientIds, assertionClientId), true
+}
+
+func getClientIdFromAssertion(
+	ctx Context,
+	assertion string,
+) (
+	string,
+	bool,
+) {
+	parsedAssertion, err := jwt.ParseSigned(assertion, ctx.GetClientSignatureAlgorithms())
+	if err != nil {
+		return "", false
+	}
+
+	var claims map[constants.Claim]any
+	parsedAssertion.UnsafeClaimsWithoutVerification(&claims)
+
+	// The issuer claim is supposed to have the client ID.
+	clientId, ok := claims[constants.IssuerClaim]
+	if !ok {
+		return "", false
+	}
+
+	clientIdAsString, ok := clientId.(string)
+	if !ok {
+		return "", false
+	}
+
+	return clientIdAsString, true
 }

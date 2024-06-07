@@ -20,6 +20,7 @@ func validateDynamicClientRequest(
 		validateClientSignatureAlgorithmForClientSecretJwt,
 		validateJwksAreRequiredForPrivateKeyJwtAuthn,
 		validateJwksIsRequiredWhenSelfSignedTlsAuthn,
+		validateTlsSubjectInfoWhenTlsAuthn,
 		validateGrantTypes,
 		validateClientCredentialsGrantNotAllowedForNoneClientAuthn,
 		validateClientAuthnMethodForIntrospectionGrant,
@@ -259,6 +260,35 @@ func validateJwksIsRequiredWhenSelfSignedTlsAuthn(
 
 	if dynamicClient.PublicJwksUri == "" && len(dynamicClient.PublicJwks.Keys) == 0 {
 		return models.NewOAuthError(constants.InvalidRequest, "jwks is required when authenticating with self signed certificates")
+	}
+
+	return nil
+}
+
+func validateTlsSubjectInfoWhenTlsAuthn(
+	_ utils.Context,
+	dynamicClient models.DynamicClientRequest,
+) models.OAuthError {
+	if dynamicClient.AuthnMethod != constants.TlsAuthn {
+		return nil
+	}
+
+	numberOfIdentifiers := 0
+
+	if dynamicClient.TlsSubjectDistinguishedName != "" {
+		numberOfIdentifiers++
+	}
+
+	if dynamicClient.TlsSubjectAlternativeName != "" {
+		numberOfIdentifiers++
+	}
+
+	if dynamicClient.TlsSubjectAlternativeNameIp != "" {
+		numberOfIdentifiers++
+	}
+
+	if numberOfIdentifiers != 1 {
+		return models.NewOAuthError(constants.InvalidRequest, "only one of: tls_client_auth_subject_dn, tls_client_auth_san_dns, tls_client_auth_san_ip must be informed")
 	}
 
 	return nil

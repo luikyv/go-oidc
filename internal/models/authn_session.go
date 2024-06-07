@@ -134,11 +134,12 @@ func (session *AuthnSession) MustAuthenticateUser(authTime int) bool {
 	return unit.GetTimestampNow() > authTime+maxAge
 }
 
-// This method must be called after the user is authenticated.
-// This will set the authentication methods used and the time the authentication occurred.
-func (session *AuthnSession) SetUserAuthentication(authMethods ...constants.AuthenticationMethodReference) {
-	session.UserAuthenticatedAtTimestamp = unit.GetTimestampNow()
+func (session *AuthnSession) SetUserAuthenticationMethods(authMethods ...constants.AuthenticationMethodReference) {
 	session.UserAuthenticationMethodReferences = authMethods
+}
+
+func (session *AuthnSession) SetUserAuthenticationTime(authTime int) {
+	session.UserAuthenticatedAtTimestamp = authTime
 }
 
 // Get custome protected parameters sent during PAR or JAR.

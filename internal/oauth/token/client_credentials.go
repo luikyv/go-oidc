@@ -18,7 +18,7 @@ func handleClientCredentialsGrantTokenCreation(
 		return models.TokenResponse{}, oauthErr
 	}
 
-	client, oauthErr := GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
+	client, oauthErr := utils.GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if oauthErr != nil {
 		return models.TokenResponse{}, oauthErr
 	}

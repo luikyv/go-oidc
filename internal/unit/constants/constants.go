@@ -214,6 +214,7 @@ type Profile string
 
 const (
 	OpenIdProfile Profile = "oidc_profile"
+	Fapi1Profile  Profile = "fapi1_profile"
 	Fapi2Profile  Profile = "fapi2_profile"
 )
 

@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"net/http"
 	"slices"
 	"strings"
@@ -223,12 +224,20 @@ func (provider *OpenIdProvider) EnableClientSecretJwtAuthn(assertionLifetimeSecs
 	provider.ClientSecretJwtSignatureAlgorithms = signatureAlgorithms
 }
 
-func (provider *OpenIdProvider) EnableTlsClientAuthn(mtlsHost string, selfSignedCertificatesAreAllowed bool) {
-	provider.MtlsHost = mtlsHost
+// caCertPool is a reference to the certificate authorities' certificates that will be used to validate
+// TLS client certificates during tls_client_auth.
+func (provider *OpenIdProvider) EnableTlsClientAuthn(caCertPool *x509.CertPool) {
 	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.TlsAuthn)
-	if selfSignedCertificatesAreAllowed {
-		provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.SelfSignedTlsAuthn)
-	}
+	provider.CaCertificatePool = caCertPool
+}
+
+func (provider *OpenIdProvider) EnableSelfSignedTlsClientAuthn() {
+	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.SelfSignedTlsAuthn)
+}
+
+func (provider *OpenIdProvider) EnableMtls(mtlsHost string) {
+	provider.MtlsIsEnabled = true
+	provider.MtlsHost = mtlsHost
 }
 
 func (provider *OpenIdProvider) EnableTlsBoundTokens() {
@@ -416,6 +425,13 @@ func (provider *OpenIdProvider) getMtlsServerHandler() http.Handler {
 		},
 	)
 
+	serverHandler.HandleFunc(
+		"POST "+string(constants.UserInfoEndpoint),
+		func(w http.ResponseWriter, r *http.Request) {
+			apihandlers.HandleUserInfoRequest(utils.NewContext(provider.Configuration, r, w))
+		},
+	)
+
 	if provider.ParIsEnabled {
 		serverHandler.HandleFunc(
 			"POST "+string(constants.PushedAuthorizationRequestEndpoint),
@@ -455,17 +471,16 @@ type TlsConfig struct {
 	ServerKey         string
 }
 
-// This is not recommended to use in production.
 func (provider *OpenIdProvider) RunTLS(config TlsConfig) error {
 
 	provider.validateConfiguration()
 
-	if provider.IsTlsClientAuthnEnabled() {
+	if provider.MtlsIsEnabled {
 		server := &http.Server{
 			Addr:    config.MtlsAddress,
 			Handler: provider.getMtlsServerHandler(),
 			TLSConfig: &tls.Config{
-				ClientAuth: tls.RequireAnyClientCert,
+				ClientAuth: tls.RequireAnyClientCert, // TODO: Is the private key validated? switch private keys to see.
 			},
 		}
 		go server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)

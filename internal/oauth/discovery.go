@@ -53,7 +53,7 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 		config.IntrospectionEndpointClientSignatureAlgorithms = ctx.GetIntrospectionClientSignatureAlgorithms()
 	}
 
-	if ctx.IsTlsClientAuthnEnabled() {
+	if ctx.MtlsIsEnabled {
 		config.TlsBoundTokensIsEnabled = ctx.TlsBoundTokensIsEnabled
 		config.MtlsConfiguration.TokenEndpoint = ctx.MtlsHost + string(constants.TokenEndpoint)
 		config.MtlsConfiguration.UserinfoEndpoint = ctx.MtlsHost + string(constants.UserInfoEndpoint)
