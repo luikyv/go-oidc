@@ -48,7 +48,7 @@ func NewProvider(
 			DefaultIdTokenSignatureKeyId: defaultIdTokenKeyId,
 			IdTokenSignatureKeyIds:       []string{defaultIdTokenKeyId},
 			IdTokenExpiresInSecs:         600,
-			CustomIdTokenClaims:          []constants.Claim{},
+			CustomClaims:                 []constants.Claim{},
 			GrantTypes: []constants.GrantType{
 				constants.ClientCredentialsGrant,
 				constants.AuthorizationCodeGrant,
@@ -62,6 +62,7 @@ func NewProvider(
 			ClientAuthnMethods:               []constants.ClientAuthnType{},
 			DpopSignatureAlgorithms:          []jose.SignatureAlgorithm{},
 			SubjectIdentifierTypes:           []constants.SubjectIdentifierType{constants.PublicSubjectIdentifier},
+			ClaimTypes:                       []constants.ClaimType{constants.NormalClaimType},
 			AuthenticationSessionTimeoutSecs: constants.DefaultAuthenticationSessionTimeoutSecs,
 			CorrelationIdHeader:              constants.CorrelationIdHeader,
 		},
@@ -101,7 +102,7 @@ func (provider *OpenIdProvider) validateConfiguration() {
 }
 
 func (provider *OpenIdProvider) SetCustomIdTokenClaims(claims ...constants.Claim) {
-	provider.CustomIdTokenClaims = claims
+	provider.CustomClaims = claims
 }
 
 func (provider *OpenIdProvider) AddIdTokenSignatureKeyIds(idTokenSignatureKeyIds ...string) {
@@ -283,6 +284,18 @@ func (provider *OpenIdProvider) EnableProofKeyForCodeExchange(codeChallengeMetho
 func (provider *OpenIdProvider) RequireProofKeyForCodeExchange(codeChallengeMethods ...constants.CodeChallengeMethod) {
 	provider.EnableProofKeyForCodeExchange(codeChallengeMethods...)
 	provider.PkceIsRequired = true
+}
+
+func (provider *OpenIdProvider) SetAuthenticationContextReferencesSupported(acrValues ...constants.AuthenticationContextReference) {
+	provider.AuthenticationContextReferences = acrValues
+}
+
+func (provider *OpenIdProvider) SetDisplayValuesSupported(values ...constants.DisplayType) {
+	provider.DisplayValues = values
+}
+
+func (provider *OpenIdProvider) SetClaimTypesSupported(types ...constants.ClaimType) {
+	provider.ClaimTypes = types
 }
 
 func (provider *OpenIdProvider) SetAuthenticationSessionTimeout(timeoutSecs int) {

@@ -192,7 +192,7 @@ func newAuthorizationCodeGrantOptions(
 ) models.GrantOptions {
 
 	tokenOptions := ctx.GetTokenOptions(client, req.Scopes)
-	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
+	tokenOptions.AddTokenClaims(session.TokenClaims)
 	return models.GrantOptions{
 		GrantType:      constants.AuthorizationCodeGrant,
 		GrantedScopes:  session.GrantedScopes,

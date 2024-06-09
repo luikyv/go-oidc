@@ -68,6 +68,15 @@ func getUserInfoResponse(
 	userInfoClaims := map[string]any{
 		string(constants.SubjectClaim): grantSession.Subject,
 	}
+
+	if grantSession.UserAuthenticatedAtTimestamp != 0 {
+		userInfoClaims[string(constants.AuthenticationTimeClaim)] = grantSession.UserAuthenticatedAtTimestamp
+	}
+
+	if len(grantSession.UserAuthenticationMethodReferences) != 0 {
+		userInfoClaims[string(constants.AuthenticationMethodReferencesClaim)] = grantSession.UserAuthenticationMethodReferences
+	}
+
 	for k, v := range grantSession.AdditionalIdTokenClaims {
 		userInfoClaims[k] = v
 	}

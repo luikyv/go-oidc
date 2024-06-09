@@ -49,8 +49,10 @@ type Configuration struct {
 	IdTokenSignatureKeyIds               []string
 	ShouldRotateRefreshTokens            bool
 	RefreshTokenLifetimeSecs             int
-	CustomIdTokenClaims                  []constants.Claim
+	CustomClaims                         []constants.Claim
+	ClaimTypes                           []constants.ClaimType
 	IssuerResponseParameterIsEnabled     bool
+	ClaimsParameterIsEnabled             bool
 	JarmIsEnabled                        bool
 	JarmLifetimeSecs                     int
 	DefaultJarmSignatureKeyId            string
@@ -78,6 +80,8 @@ type Configuration struct {
 	TlsBoundTokensIsEnabled              bool
 	CorrelationIdHeader                  constants.Header
 	CaCertificatePool                    *x509.CertPool
+	AuthenticationContextReferences      []constants.AuthenticationContextReference
+	DisplayValues                        []constants.DisplayType
 }
 
 type Context struct {

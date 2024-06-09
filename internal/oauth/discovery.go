@@ -18,7 +18,8 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 		ResponseTypes:                        ctx.ResponseTypes,
 		ResponseModes:                        ctx.ResponseModes,
 		GrantTypes:                           ctx.GrantTypes,
-		IdTokenClaimsSupported:               ctx.CustomIdTokenClaims,
+		UserClaimsSupported:                  ctx.CustomClaims,
+		UserClaimTypesSupported:              ctx.ClaimTypes,
 		SubjectIdentifierTypes:               ctx.SubjectIdentifierTypes,
 		IdTokenSignatureAlgorithms:           ctx.GetIdTokenSignatureAlgorithms(),
 		UserInfoSignatureAlgorithms:          ctx.GetIdTokenSignatureAlgorithms(),
@@ -26,6 +27,8 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 		Scopes:                               ctx.Scopes,
 		TokenEndpointClientSigningAlgorithms: ctx.GetClientSignatureAlgorithms(),
 		IssuerResponseParameterIsEnabled:     ctx.IssuerResponseParameterIsEnabled,
+		AuthenticationContextReferences:      ctx.AuthenticationContextReferences,
+		DisplayValuesSupported:               ctx.DisplayValues,
 	}
 
 	if ctx.ParIsEnabled {

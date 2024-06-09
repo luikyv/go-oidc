@@ -9,13 +9,13 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
-type DpopClaims struct {
+type DpopJwtClaims struct {
 	HttpMethod      string `json:"htm"`
 	HttpUri         string `json:"htu"`
 	AccessTokenHash string `json:"ath"`
 }
 
-type DpopValidationOptions struct {
+type DpopJwtValidationOptions struct {
 	HttpMethod string
 	HttpUri    string
 	// AccessToken should be filled when the DPoP "ath" claim is expected and should be validated.
@@ -120,6 +120,7 @@ type AuthorizationParameters struct {
 	CodeChallengeMethod      constants.CodeChallengeMethod `json:"code_challenge_method"`
 	Prompt                   constants.PromptType          `json:"prompt"`
 	MaxAuthenticationAgeSecs string                        `json:"max_age"`
+	Display                  constants.DisplayType         `json:"display"`
 }
 
 func (params AuthorizationParameters) NewRedirectError(
@@ -141,6 +142,7 @@ func (insideParams AuthorizationParameters) Merge(outsideParams AuthorizationPar
 		CodeChallengeMethod:      unit.GetNonEmptyOrDefault(insideParams.CodeChallengeMethod, outsideParams.CodeChallengeMethod),
 		Prompt:                   unit.GetNonEmptyOrDefault(insideParams.Prompt, outsideParams.Prompt),
 		MaxAuthenticationAgeSecs: unit.GetNonEmptyOrDefault(insideParams.MaxAuthenticationAgeSecs, outsideParams.MaxAuthenticationAgeSecs),
+		Display:                  unit.GetNonEmptyOrDefault(insideParams.Display, outsideParams.Display),
 	}
 }
 
@@ -165,6 +167,7 @@ func NewAuthorizationRequest(req *http.Request) AuthorizationRequest {
 			CodeChallengeMethod:      constants.CodeChallengeMethod(req.URL.Query().Get("code_challenge_method")),
 			Prompt:                   constants.PromptType(req.URL.Query().Get("prompt")),
 			MaxAuthenticationAgeSecs: req.URL.Query().Get("max_age"),
+			Display:                  constants.DisplayType(req.URL.Query().Get("display")),
 		},
 	}
 }
@@ -223,35 +226,38 @@ type OpenIdMtlsConfiguration struct {
 }
 
 type OpenIdConfiguration struct {
-	Issuer                                         string                            `json:"issuer"`
-	ClientRegistrationEndpoint                     string                            `json:"registration_endpoint"`
-	AuthorizationEndpoint                          string                            `json:"authorization_endpoint"`
-	TokenEndpoint                                  string                            `json:"token_endpoint"`
-	UserinfoEndpoint                               string                            `json:"userinfo_endpoint"`
-	JwksEndpoint                                   string                            `json:"jwks_uri"`
-	ParEndpoint                                    string                            `json:"pushed_authorization_request_endpoint,omitempty"`
-	ParIsRequired                                  bool                              `json:"require_pushed_authorization_requests,omitempty"`
-	ResponseTypes                                  []constants.ResponseType          `json:"response_types_supported"`
-	ResponseModes                                  []constants.ResponseMode          `json:"response_modes_supported"`
-	GrantTypes                                     []constants.GrantType             `json:"grant_types_supported"`
-	Scopes                                         []string                          `json:"scopes_supported"`
-	IdTokenClaimsSupported                         []constants.Claim                 `json:"claims_supported"`
-	SubjectIdentifierTypes                         []constants.SubjectIdentifierType `json:"subject_types_supported"`
-	IdTokenSignatureAlgorithms                     []jose.SignatureAlgorithm         `json:"id_token_signing_alg_values_supported"`
-	UserInfoSignatureAlgorithms                    []jose.SignatureAlgorithm         `json:"userinfo_signing_alg_values_supported"`
-	ClientAuthnMethods                             []constants.ClientAuthnType       `json:"token_endpoint_auth_methods_supported"`
-	JarIsRequired                                  bool                              `json:"require_signed_request_object,omitempty"`
-	JarIsEnabled                                   bool                              `json:"request_parameter_supported"`
-	JarAlgorithms                                  []jose.SignatureAlgorithm         `json:"request_object_signing_alg_values_supported,omitempty"`
-	JarmAlgorithms                                 []jose.SignatureAlgorithm         `json:"authorization_signing_alg_values_supported,omitempty"`
-	TokenEndpointClientSigningAlgorithms           []jose.SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg_values_supported"`
-	IssuerResponseParameterIsEnabled               bool                              `json:"authorization_response_iss_parameter_supported"`
-	DpopSignatureAlgorithms                        []jose.SignatureAlgorithm         `json:"dpop_signing_alg_values_supported,omitempty"`
-	IntrospectionEndpoint                          string                            `json:"introspection_endpoint,omitempty"`
-	IntrospectionEndpointClientAuthnMethods        []constants.ClientAuthnType       `json:"introspection_endpoint_auth_methods_supported,omitempty"`
-	IntrospectionEndpointClientSignatureAlgorithms []jose.SignatureAlgorithm         `json:"introspection_endpoint_auth_signing_alg_values_supported,omitempty"`
-	MtlsConfiguration                              OpenIdMtlsConfiguration           `json:"mtls_endpoint_aliases"`
-	TlsBoundTokensIsEnabled                        bool                              `json:"tls_client_certificate_bound_access_tokens,omitempty"`
+	Issuer                                         string                                     `json:"issuer"`
+	ClientRegistrationEndpoint                     string                                     `json:"registration_endpoint"`
+	AuthorizationEndpoint                          string                                     `json:"authorization_endpoint"`
+	TokenEndpoint                                  string                                     `json:"token_endpoint"`
+	UserinfoEndpoint                               string                                     `json:"userinfo_endpoint"`
+	JwksEndpoint                                   string                                     `json:"jwks_uri"`
+	ParEndpoint                                    string                                     `json:"pushed_authorization_request_endpoint,omitempty"`
+	ParIsRequired                                  bool                                       `json:"require_pushed_authorization_requests,omitempty"`
+	ResponseTypes                                  []constants.ResponseType                   `json:"response_types_supported"`
+	ResponseModes                                  []constants.ResponseMode                   `json:"response_modes_supported"`
+	GrantTypes                                     []constants.GrantType                      `json:"grant_types_supported"`
+	Scopes                                         []string                                   `json:"scopes_supported"`
+	UserClaimsSupported                            []constants.Claim                          `json:"claims_supported"`
+	UserClaimTypesSupported                        []constants.ClaimType                      `json:"claim_types_supported,omitempty"`
+	SubjectIdentifierTypes                         []constants.SubjectIdentifierType          `json:"subject_types_supported"`
+	IdTokenSignatureAlgorithms                     []jose.SignatureAlgorithm                  `json:"id_token_signing_alg_values_supported"`
+	UserInfoSignatureAlgorithms                    []jose.SignatureAlgorithm                  `json:"userinfo_signing_alg_values_supported"`
+	ClientAuthnMethods                             []constants.ClientAuthnType                `json:"token_endpoint_auth_methods_supported"`
+	JarIsRequired                                  bool                                       `json:"require_signed_request_object,omitempty"`
+	JarIsEnabled                                   bool                                       `json:"request_parameter_supported"`
+	JarAlgorithms                                  []jose.SignatureAlgorithm                  `json:"request_object_signing_alg_values_supported,omitempty"`
+	JarmAlgorithms                                 []jose.SignatureAlgorithm                  `json:"authorization_signing_alg_values_supported,omitempty"`
+	TokenEndpointClientSigningAlgorithms           []jose.SignatureAlgorithm                  `json:"token_endpoint_auth_signing_alg_values_supported"`
+	IssuerResponseParameterIsEnabled               bool                                       `json:"authorization_response_iss_parameter_supported"`
+	DpopSignatureAlgorithms                        []jose.SignatureAlgorithm                  `json:"dpop_signing_alg_values_supported,omitempty"`
+	IntrospectionEndpoint                          string                                     `json:"introspection_endpoint,omitempty"`
+	IntrospectionEndpointClientAuthnMethods        []constants.ClientAuthnType                `json:"introspection_endpoint_auth_methods_supported,omitempty"`
+	IntrospectionEndpointClientSignatureAlgorithms []jose.SignatureAlgorithm                  `json:"introspection_endpoint_auth_signing_alg_values_supported,omitempty"`
+	MtlsConfiguration                              OpenIdMtlsConfiguration                    `json:"mtls_endpoint_aliases"`
+	TlsBoundTokensIsEnabled                        bool                                       `json:"tls_client_certificate_bound_access_tokens,omitempty"`
+	AuthenticationContextReferences                []constants.AuthenticationContextReference `json:"acr_values_supported,omitempty"`
+	DisplayValuesSupported                         []constants.DisplayType                    `json:"display_values_supported,omitempty"`
 }
 
 type Token struct {

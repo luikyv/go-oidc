@@ -179,7 +179,7 @@ func validateRefreshTokenProofOfPossesionForPublicClients(
 		return models.NewOAuthError(constants.AccessDenied, "missing DPoP header")
 	}
 
-	return utils.ValidateDpopJwt(ctx, dpopJwt, models.DpopValidationOptions{
+	return utils.ValidateDpopJwt(ctx, dpopJwt, models.DpopJwtValidationOptions{
 		HttpMethod:    http.MethodPost,
 		HttpUri:       ctx.Host + string(constants.TokenEndpoint),
 		JwkThumbprint: grantSession.JwkThumbprint,

@@ -204,7 +204,7 @@ func generateImplicitGrantSession(
 
 func newImplicitGrantOptions(ctx utils.Context, client models.Client, session models.AuthnSession) models.GrantOptions {
 	tokenOptions := ctx.GetTokenOptions(client, session.Scopes)
-	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
+	tokenOptions.AddTokenClaims(session.TokenClaims)
 	return models.GrantOptions{
 		GrantType:      constants.ImplicitGrant,
 		GrantedScopes:  session.GrantedScopes,

@@ -115,7 +115,7 @@ func ValidateDpop(
 		return models.NewOAuthError(constants.AccessDenied, "missing DPoP header")
 	}
 
-	return ValidateDpopJwt(ctx, dpopJwt, models.DpopValidationOptions{
+	return ValidateDpopJwt(ctx, dpopJwt, models.DpopJwtValidationOptions{
 		HttpMethod:    ctx.GetRequestMethod(),
 		HttpUri:       ctx.GetRequestUrl(),
 		AccessToken:   token,
@@ -139,13 +139,13 @@ func ValidateTokenBindingRequestWithDpop(
 		return nil
 	}
 
-	return ValidateDpopJwt(ctx, dpopJwt, models.DpopValidationOptions{
+	return ValidateDpopJwt(ctx, dpopJwt, models.DpopJwtValidationOptions{
 		HttpMethod: http.MethodPost,
 		HttpUri:    ctx.Host + string(constants.TokenEndpoint),
 	})
 }
 
-func ValidateDpopJwt(ctx Context, dpopJwt string, expectedDpopClaims models.DpopValidationOptions) models.OAuthError {
+func ValidateDpopJwt(ctx Context, dpopJwt string, expectedDpopClaims models.DpopJwtValidationOptions) models.OAuthError {
 	parsedDpopJwt, err := jwt.ParseSigned(dpopJwt, ctx.DpopSignatureAlgorithms)
 	if err != nil {
 		return models.NewOAuthError(constants.InvalidRequest, "invalid dpop")
@@ -165,7 +165,7 @@ func ValidateDpopJwt(ctx Context, dpopJwt string, expectedDpopClaims models.Dpop
 	}
 
 	var claims jwt.Claims
-	var dpopClaims models.DpopClaims
+	var dpopClaims models.DpopJwtClaims
 	if err := parsedDpopJwt.Claims(jwk.Key, &claims, &dpopClaims); err != nil {
 		return models.NewOAuthError(constants.InvalidRequest, "invalid dpop")
 	}

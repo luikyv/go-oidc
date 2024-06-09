@@ -25,8 +25,9 @@ type AuthnSession struct {
 	UserAuthenticationMethodReferences []constants.AuthenticationMethodReference `json:"amr"`
 	ProtectedParameters                map[string]any                            `json:"protected_params"` // Custom parameters sent by PAR or JAR.
 	Store                              map[string]any                            `json:"store"`            // Allow the developer to store information in memory and, hence, between steps.
-	AdditionalTokenClaims              map[string]any                            `json:"token_claims"`     // Allow the developer to map new (or override the default) claims to the access token.
-	AdditionalIdTokenClaims            map[string]any                            `json:"id_token_claims"`  // Allow the developer to map new (or override the default) claims to the ID token.
+	TokenClaims                        map[string]any                            `json:"token_claims"`
+	IdTokenClaims                      map[string]any                            `json:"id_token_claims"`
+	UserInfoClaims                     map[string]any                            `json:"user_info_claims"`
 }
 
 func NewSession(authParams AuthorizationParameters, client Client) AuthnSession {
@@ -58,21 +59,13 @@ func (session *AuthnSession) GetParameter(key string) any {
 }
 
 // Set a new claim that will be mapped in the access token when issued.
-func (session *AuthnSession) SetCustomTokenClaim(key string, value string) {
-	session.AdditionalTokenClaims[key] = value
-}
-
-func (session *AuthnSession) GetCustomTokenClaim(key string, value string) any {
-	return session.AdditionalTokenClaims[key]
+func (session *AuthnSession) SetTokenClaim(key string, value string) {
+	session.TokenClaims[key] = value
 }
 
 // Set a new claim that will be mapped in the ID token when issued.
-func (session *AuthnSession) SetCustomIdTokenClaim(key string, value string) {
-	session.AdditionalIdTokenClaims[key] = value
-}
-
-func (session *AuthnSession) GetCustomIdTokenClaim(key string, value string) any {
-	return session.AdditionalIdTokenClaims[key]
+func (session *AuthnSession) SetIdTokenClaim(key string, value string) {
+	session.IdTokenClaims[key] = value
 }
 
 func (session *AuthnSession) IsPushedRequestExpired(parLifetimeSecs int) bool {
@@ -114,7 +107,7 @@ func (session *AuthnSession) GetIdTokenOptions() IdTokenOptions {
 		Nonce:                              session.Nonce,
 		UserAuthenticatedAtTimestamp:       session.UserAuthenticatedAtTimestamp,
 		UserAuthenticationMethodReferences: session.UserAuthenticationMethodReferences,
-		AdditionalIdTokenClaims:            session.AdditionalIdTokenClaims,
+		AdditionalIdTokenClaims:            session.IdTokenClaims,
 	}
 }
 

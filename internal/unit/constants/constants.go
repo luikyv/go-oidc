@@ -271,6 +271,15 @@ const (
 	SoftwareSecuredKeyAuthentication           AuthenticationMethodReference = "swk"
 )
 
+type DisplayType string
+
+const (
+	PageDisplay  DisplayType = "page"
+	PopUpDisplay DisplayType = "popup"
+	TouchDisplay DisplayType = "touch"
+	WatDisplay   DisplayType = "wap"
+)
+
 type PromptType string
 
 const (
@@ -280,12 +289,24 @@ const (
 	SelectAccountPromptType PromptType = "select_account"
 )
 
+type ClaimType string
+
+const (
+	NormalClaimType      ClaimType = "normal"
+	AggregatedClaimType  ClaimType = "aggregated"
+	DistributedClaimType ClaimType = "distributed"
+)
+
 type TokenTypeHint string
 
 const (
 	AccessTokenHint  TokenTypeHint = "access_token"
 	RefreshTokenHint TokenTypeHint = "refresh_token"
 )
+
+type AuthenticationContextReference string
+
+const NoAssuranceLevelAcr AuthenticationContextReference = "0"
 
 var FapiAllowedCipherSuites []uint16 = []uint16{
 	tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
