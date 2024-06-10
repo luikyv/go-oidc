@@ -65,25 +65,26 @@ func makeJwtToken(ctx Context, _ models.Client, grantOptions models.GrantOptions
 		string(constants.ExpiryClaim):   timestampNow + grantOptions.TokenExpiresInSecs,
 	}
 
+	confirmation := make(map[string]string)
+
 	tokenType := constants.BearerTokenType
 	dpopJwt, ok := ctx.GetDpopJwt()
 	jkt := ""
 	if ctx.DpopIsEnabled && ok {
 		tokenType = constants.DpopTokenType
 		jkt = unit.GenerateJwkThumbprint(dpopJwt, ctx.DpopSignatureAlgorithms)
-		claims["cnf"] = map[string]string{
-			"jkt": jkt,
-		}
+		confirmation["jkt"] = jkt
 	}
 
 	clientCert, ok := ctx.GetHeader(string(constants.ClientCertificateHeader))
 	certThumbprint := ""
 	if ctx.TlsBoundTokensIsEnabled && ok {
-		// TODO: don't override it.
 		certThumbprint = unit.GenerateSha256Thumbprint(clientCert)
-		claims["cnf"] = map[string]string{
-			"x5t#S256": certThumbprint,
-		}
+		confirmation["x5t#S256"] = certThumbprint
+	}
+
+	if len(confirmation) != 0 {
+		claims["cnf"] = confirmation
 	}
 
 	for k, v := range grantOptions.AdditionalTokenClaims {
@@ -122,7 +123,6 @@ func makeOpaqueToken(ctx Context, _ models.Client, grantOptions models.GrantOpti
 	clientCert, ok := ctx.GetHeader(string(constants.ClientCertificateHeader))
 	certThumbprint := ""
 	if ctx.TlsBoundTokensIsEnabled && ok {
-		// TODO: don't override it.
 		certThumbprint = unit.GenerateSha256Thumbprint(clientCert)
 	}
 

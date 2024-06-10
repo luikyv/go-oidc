@@ -115,6 +115,8 @@ func validateAuthorizationParams(
 		validateCannotInformRequestUriAndRequestObject,
 		validatePkce,
 		ValidateCodeChallengeMethod,
+		ValidateDisplayValue,
+		ValidateAcrValues,
 		validateCannotRequestIdTokenResponseTypeIfOpenIdScopeIsNotRequested,
 		validateNonceIsRequiredWhenResponseTypeContainsIdToken,
 		ValidateCannotRequestCodeResponseTypeWhenAuthorizationCodeGrantIsNotAllowed,
@@ -285,5 +287,26 @@ func validateCannotRequestQueryResponseModeWhenImplicitResponseTypeIsRequested(
 	if params.ResponseType.IsImplicit() && params.ResponseMode.IsQuery() {
 		return params.NewRedirectError(constants.InvalidRequest, "invalid response_mode for the chosen response_type")
 	}
+	return nil
+}
+
+func ValidateDisplayValue(
+	ctx utils.Context,
+	params models.AuthorizationParameters,
+	_ models.Client,
+) models.OAuthError {
+	if params.Display != "" && !slices.Contains(ctx.DisplayValues, params.Display) {
+		return params.NewRedirectError(constants.InvalidRequest, "invalid display value")
+	}
+	return nil
+}
+
+func ValidateAcrValues(
+	ctx utils.Context,
+	params models.AuthorizationParameters,
+	_ models.Client,
+) models.OAuthError {
+
+	//TODO
 	return nil
 }

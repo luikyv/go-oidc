@@ -91,7 +91,7 @@ func getRefreshTokenIntrospectionInfo(
 		ExpiresAtTimestamp:          grantSession.ExpiresAtTimestamp,
 		JwkThumbprint:               grantSession.JwkThumbprint,
 		ClientCertificateThumbprint: grantSession.ClientCertificateThumbprint,
-		RawClaims:                   grantSession.AdditionalTokenClaims,
+		AdditionalTokenClaims:       grantSession.AdditionalTokenClaims,
 	}
 }
 
@@ -107,9 +107,8 @@ func getJwtTokenIntrospectionInfo(
 	}
 
 	return models.TokenIntrospectionInfo{
-		IsActive:  true,
-		Subject:   claims[string(constants.AudienceClaim)].(string),
-		RawClaims: claims,
+		IsActive:              true,
+		AdditionalTokenClaims: claims,
 	}
 }
 
@@ -138,6 +137,6 @@ func getOpaqueTokenIntrospectionInfo(
 		ExpiresAtTimestamp:          grantSession.LastTokenIssuedAtTimestamp + grantSession.TokenExpiresInSecs,
 		JwkThumbprint:               grantSession.JwkThumbprint,
 		ClientCertificateThumbprint: grantSession.ClientCertificateThumbprint,
-		RawClaims:                   grantSession.AdditionalTokenClaims,
+		AdditionalTokenClaims:       grantSession.AdditionalTokenClaims,
 	}
 }

@@ -373,10 +373,9 @@ type TokenIntrospectionInfo struct {
 	ExpiresAtTimestamp          int
 	JwkThumbprint               string
 	ClientCertificateThumbprint string
-	RawClaims                   map[string]any
+	AdditionalTokenClaims       map[string]any
 }
 
-// TODO: refactor this. Use json tags.
 func (info TokenIntrospectionInfo) GetParameters() map[string]any {
 	if !info.IsActive {
 		return map[string]any{
@@ -392,20 +391,18 @@ func (info TokenIntrospectionInfo) GetParameters() map[string]any {
 		string(constants.ExpiryClaim):   info.ExpiresAtTimestamp,
 	}
 
+	confirmation := make(map[string]string)
 	if info.JwkThumbprint != "" {
-		params["cnf"] = map[string]string{
-			"jkt": info.JwkThumbprint,
-		}
+		confirmation["jkt"] = info.JwkThumbprint
 	}
-
 	if info.ClientCertificateThumbprint != "" {
-		params["cnf"] = map[string]string{
-			// TODO: don't override it.
-			"x5t#S256": info.ClientCertificateThumbprint,
-		}
+		confirmation["x5t#S256"] = info.ClientCertificateThumbprint
+	}
+	if len(confirmation) != 0 {
+		params["cnf"] = confirmation
 	}
 
-	for k, v := range info.RawClaims {
+	for k, v := range info.AdditionalTokenClaims {
 		params[k] = v
 	}
 
