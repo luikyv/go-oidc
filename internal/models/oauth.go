@@ -130,6 +130,7 @@ type AuthorizationParameters struct {
 	MaxAuthenticationAgeSecs string                        `json:"max_age"`
 	Display                  constants.DisplayValue        `json:"display"`
 	Claims                   *ClaimsObject                 `json:"claims"` // Claims is a pointer to help differentiate when it's null or not.
+	AcrValues                string                        `json:"acr_values"`
 }
 
 func (params AuthorizationParameters) NewRedirectError(
@@ -152,6 +153,7 @@ func (insideParams AuthorizationParameters) Merge(outsideParams AuthorizationPar
 		Prompt:                   unit.GetNonEmptyOrDefault(insideParams.Prompt, outsideParams.Prompt),
 		MaxAuthenticationAgeSecs: unit.GetNonEmptyOrDefault(insideParams.MaxAuthenticationAgeSecs, outsideParams.MaxAuthenticationAgeSecs),
 		Display:                  unit.GetNonEmptyOrDefault(insideParams.Display, outsideParams.Display),
+		AcrValues:                unit.GetNonEmptyOrDefault(insideParams.AcrValues, outsideParams.AcrValues),
 	}
 
 	params.Claims = insideParams.Claims
@@ -184,6 +186,7 @@ func NewAuthorizationRequest(req *http.Request) AuthorizationRequest {
 			Prompt:                   constants.PromptType(req.URL.Query().Get("prompt")),
 			MaxAuthenticationAgeSecs: req.URL.Query().Get("max_age"),
 			Display:                  constants.DisplayValue(req.URL.Query().Get("display")),
+			AcrValues:                req.URL.Query().Get("acr_values"),
 		},
 	}
 

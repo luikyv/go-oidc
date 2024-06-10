@@ -40,13 +40,13 @@ func main() {
 		inmemory.NewInMemoryGrantSessionManager(),
 		jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privatePs256Jwk, privateRs256Jwk}},
 		privatePs256Jwk.KeyID,
-		privatePs256Jwk.KeyID,
+		privateRs256Jwk.KeyID,
 	)
 	openidProvider.EnableMtls(mtlsIssuer)
 	openidProvider.SetTokenOptions(GetTokenOptions)
 	openidProvider.EnablePushedAuthorizationRequests(60)
 	openidProvider.EnableJwtSecuredAuthorizationRequests(jose.PS256, jose.RS256)
-	openidProvider.EnableJwtSecuredAuthorizationResponseMode(600, privatePs256Jwk.KeyID)
+	openidProvider.EnableJwtSecuredAuthorizationResponseMode(600, privateRs256Jwk.KeyID)
 	openidProvider.EnableSecretPostClientAuthn()
 	openidProvider.EnableBasicSecretClientAuthn()
 	openidProvider.EnablePrivateKeyJwtClientAuthn(600, jose.RS256, jose.PS256)
@@ -65,7 +65,6 @@ func main() {
 		constants.AuthenticationContextReference("urn:mace:incommon:iap:silver"),
 		constants.AuthenticationContextReference("urn:mace:incommon:iap:bronze"),
 	)
-	openidProvider.Profile = constants.Fapi1Profile // TODO: remove this.
 
 	// Client one.
 	privateClientOneJwks := GetClientPrivateJwks("client_keys/client_one_jwks.json")
