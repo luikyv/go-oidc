@@ -11,7 +11,11 @@ import (
 func NoInteractionAuthnFunc(ctx utils.Context, session *models.AuthnSession) constants.AuthnStatus {
 	session.SetUserId("random_user_id")
 	session.GrantScopes(session.Scopes)
-	session.SetUserAuthenticationMethods(constants.PasswordAuthentication)
+	session.AddIdTokenClaim(string(constants.AuthenticationMethodReferencesClaim), []constants.AuthenticationMethodReference{constants.PasswordAuthentication})
+	acrClaim, ok := session.Claims.IdToken["acr"]
+	if ok {
+		session.AddIdTokenClaim("acr", acrClaim.Value)
+	}
 	return constants.Success
 }
 
@@ -27,9 +31,9 @@ func IdentityAuthnFunc(ctx utils.Context, session *models.AuthnSession) (constan
 
 	session.SetUserId(username)
 	session.GrantScopes(session.Scopes)
-	session.SetTokenClaim("custom_claim", "random_value")
+	session.AddTokenClaim("custom_claim", "random_value")
 	if strings.Contains(session.Scopes, "email") {
-		session.SetIdTokenClaim("email", "random@email.com")
+		session.AddIdTokenClaim("email", "random@email.com")
 	}
 	return constants.Success, nil
 }

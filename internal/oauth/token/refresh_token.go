@@ -42,7 +42,7 @@ func handleRefreshTokenGrantTokenCreation(
 	}
 
 	if unit.ScopesContainsOpenId(grantSession.ActiveScopes) {
-		tokenResp.IdToken = utils.MakeIdToken(ctx, client, grantSession.GrantOptions)
+		tokenResp.IdToken = utils.MakeIdToken(ctx, client, grantSession.GrantOptions.GetIdTokenOptions())
 	}
 
 	return tokenResp, nil

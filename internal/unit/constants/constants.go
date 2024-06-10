@@ -271,13 +271,13 @@ const (
 	SoftwareSecuredKeyAuthentication           AuthenticationMethodReference = "swk"
 )
 
-type DisplayType string
+type DisplayValue string
 
 const (
-	PageDisplay  DisplayType = "page"
-	PopUpDisplay DisplayType = "popup"
-	TouchDisplay DisplayType = "touch"
-	WatDisplay   DisplayType = "wap"
+	PageDisplay  DisplayValue = "page"
+	PopUpDisplay DisplayValue = "popup"
+	TouchDisplay DisplayValue = "touch"
+	WatDisplay   DisplayValue = "wap"
 )
 
 type PromptType string

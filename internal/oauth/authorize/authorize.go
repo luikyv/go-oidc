@@ -140,20 +140,15 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) mod
 	}
 
 	if session.ResponseType.Contains(constants.IdTokenResponse) {
-		idTokenOptions := session.GetIdTokenOptions()
-		idTokenOptions.AccessToken = redirectParams.AccessToken
-		idTokenOptions.AuthorizationCode = session.AuthorizationCode
-		idTokenOptions.State = session.State
-		redirectParams.IdToken = utils.MakeIdToken(ctx, client, models.GrantOptions{
-			GrantType:      constants.ImplicitGrant,
-			Subject:        session.Subject,
-			ClientId:       session.ClientId,
-			IdTokenOptions: idTokenOptions,
-		})
-	}
-
-	if session.UserAuthenticatedAtTimestamp == 0 {
-		ctx.Logger.Warn("the user authentication time property was not set in the session which means the user was not authenticated during the flow")
+		idTokenOptions := models.IdTokenOptions{
+			Subject:                 session.Subject,
+			ClientId:                session.ClientId,
+			AdditionalIdTokenClaims: session.GetAdditionalIdTokenClaims(),
+			AccessToken:             redirectParams.AccessToken,
+			AuthorizationCode:       session.AuthorizationCode,
+			State:                   session.State,
+		}
+		redirectParams.IdToken = utils.MakeIdToken(ctx, client, idTokenOptions)
 	}
 
 	redirectResponse(ctx, client, session.AuthorizationParameters, redirectParams)
@@ -204,13 +199,14 @@ func generateImplicitGrantSession(
 
 func newImplicitGrantOptions(ctx utils.Context, client models.Client, session models.AuthnSession) models.GrantOptions {
 	tokenOptions := ctx.GetTokenOptions(client, session.Scopes)
-	tokenOptions.AddTokenClaims(session.TokenClaims)
+	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
 	return models.GrantOptions{
-		GrantType:      constants.ImplicitGrant,
-		GrantedScopes:  session.GrantedScopes,
-		Subject:        session.Subject,
-		ClientId:       session.ClientId,
-		TokenOptions:   tokenOptions,
-		IdTokenOptions: session.GetIdTokenOptions(),
+		GrantType:                constants.ImplicitGrant,
+		GrantedScopes:            session.GrantedScopes,
+		Subject:                  session.Subject,
+		ClientId:                 session.ClientId,
+		TokenOptions:             tokenOptions,
+		AdditionalIdTokenClaims:  session.GetAdditionalIdTokenClaims(),
+		AdditionalUserInfoClaims: session.GetAdditionalUserInfoClaims(),
 	}
 }

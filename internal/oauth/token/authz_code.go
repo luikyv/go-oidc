@@ -39,7 +39,7 @@ func handleAuthorizationCodeGrantTokenCreation(ctx utils.Context, req models.Tok
 	}
 
 	if unit.ScopesContainsOpenId(session.Scopes) {
-		tokenResp.IdToken = utils.MakeIdToken(ctx, client, grantOptions)
+		tokenResp.IdToken = utils.MakeIdToken(ctx, client, grantOptions.GetIdTokenOptions())
 	}
 
 	if !shouldGenerateAuthorizationCodeGrantSession(ctx, grantOptions) {
@@ -192,13 +192,14 @@ func newAuthorizationCodeGrantOptions(
 ) models.GrantOptions {
 
 	tokenOptions := ctx.GetTokenOptions(client, req.Scopes)
-	tokenOptions.AddTokenClaims(session.TokenClaims)
+	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
 	return models.GrantOptions{
-		GrantType:      constants.AuthorizationCodeGrant,
-		GrantedScopes:  session.GrantedScopes,
-		Subject:        session.Subject,
-		ClientId:       session.ClientId,
-		TokenOptions:   tokenOptions,
-		IdTokenOptions: session.GetIdTokenOptions(),
+		GrantType:                constants.AuthorizationCodeGrant,
+		GrantedScopes:            session.GrantedScopes,
+		Subject:                  session.Subject,
+		ClientId:                 session.ClientId,
+		TokenOptions:             tokenOptions,
+		AdditionalIdTokenClaims:  session.GetAdditionalIdTokenClaims(),
+		AdditionalUserInfoClaims: session.GetAdditionalUserInfoClaims(),
 	}
 }

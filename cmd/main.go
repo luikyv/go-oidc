@@ -53,6 +53,7 @@ func main() {
 	openidProvider.EnableSelfSignedTlsClientAuthn()
 	openidProvider.EnableTlsBoundTokens()
 	openidProvider.EnableIssuerResponseParameter()
+	openidProvider.EnableClaimsParameter()
 	openidProvider.EnableDemonstrationProofOfPossesion(600, jose.RS256, jose.PS256, jose.ES256)
 	openidProvider.EnableProofKeyForCodeExchange(constants.Sha256CodeChallengeMethod)
 	openidProvider.EnableImplicitGrantType()
@@ -60,6 +61,10 @@ func main() {
 	openidProvider.EnableDynamicClientRegistration(nil, true)
 	openidProvider.SetScopes("offline_access")
 	openidProvider.SetCorrelationIdHeader(constants.FapiInteractionIdHeader)
+	openidProvider.SetSupportedAuthenticationContextReferences(
+		constants.AuthenticationContextReference("urn:mace:incommon:iap:silver"),
+		constants.AuthenticationContextReference("urn:mace:incommon:iap:bronze"),
+	)
 	openidProvider.Profile = constants.Fapi1Profile // TODO: remove this.
 
 	// Client one.

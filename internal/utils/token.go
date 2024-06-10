@@ -9,7 +9,11 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
-func MakeIdToken(ctx Context, client models.Client, grantOptions models.GrantOptions) string {
+func MakeIdToken(
+	ctx Context,
+	client models.Client,
+	idTokenOpts models.IdTokenOptions,
+) string {
 
 	privateJwk := ctx.GetIdTokenSignatureKey(client)
 	signatureAlgorithm := jose.SignatureAlgorithm(privateJwk.Algorithm)
@@ -18,37 +22,25 @@ func MakeIdToken(ctx Context, client models.Client, grantOptions models.GrantOpt
 	// Set the token claims.
 	claims := map[string]any{
 		string(constants.IssuerClaim):   ctx.Host,
-		string(constants.SubjectClaim):  grantOptions.Subject,
-		string(constants.AudienceClaim): grantOptions.ClientId,
+		string(constants.SubjectClaim):  idTokenOpts.Subject,
+		string(constants.AudienceClaim): idTokenOpts.ClientId,
 		string(constants.IssuedAtClaim): timestampNow,
 		string(constants.ExpiryClaim):   timestampNow + ctx.IdTokenExpiresInSecs,
 	}
 
-	if grantOptions.Nonce != "" {
-		claims[string(constants.NonceClaim)] = grantOptions.Nonce
+	if idTokenOpts.AccessToken != "" {
+		claims[string(constants.AccessTokenHashClaim)] = unit.GenerateHalfHashClaim(idTokenOpts.AccessToken, signatureAlgorithm)
 	}
 
-	if grantOptions.UserAuthenticatedAtTimestamp != 0 {
-		claims[string(constants.AuthenticationTimeClaim)] = grantOptions.UserAuthenticatedAtTimestamp
+	if idTokenOpts.AuthorizationCode != "" {
+		claims[string(constants.AuthorizationCodeHashClaim)] = unit.GenerateHalfHashClaim(idTokenOpts.AuthorizationCode, signatureAlgorithm)
 	}
 
-	if len(grantOptions.UserAuthenticationMethodReferences) != 0 {
-		claims[string(constants.AuthenticationMethodReferencesClaim)] = grantOptions.UserAuthenticationMethodReferences
+	if idTokenOpts.State != "" {
+		claims[string(constants.StateHashClaim)] = unit.GenerateHalfHashClaim(idTokenOpts.State, signatureAlgorithm)
 	}
 
-	if grantOptions.AccessToken != "" {
-		claims[string(constants.AccessTokenHashClaim)] = unit.GenerateHalfHashClaim(grantOptions.AccessToken, signatureAlgorithm)
-	}
-
-	if grantOptions.AuthorizationCode != "" {
-		claims[string(constants.AuthorizationCodeHashClaim)] = unit.GenerateHalfHashClaim(grantOptions.AuthorizationCode, signatureAlgorithm)
-	}
-
-	if grantOptions.State != "" {
-		claims[string(constants.StateHashClaim)] = unit.GenerateHalfHashClaim(grantOptions.State, signatureAlgorithm)
-	}
-
-	for k, v := range grantOptions.AdditionalIdTokenClaims {
+	for k, v := range idTokenOpts.AdditionalIdTokenClaims {
 		claims[k] = v
 	}
 

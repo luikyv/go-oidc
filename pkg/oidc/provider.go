@@ -253,6 +253,10 @@ func (provider *OpenIdProvider) EnableIssuerResponseParameter() {
 	provider.IssuerResponseParameterIsEnabled = true
 }
 
+func (provider *OpenIdProvider) EnableClaimsParameter() {
+	provider.ClaimsParameterIsEnabled = true
+}
+
 func (provider *OpenIdProvider) EnableDemonstrationProofOfPossesion(
 	dpopLifetimeSecs int,
 	dpopSigningAlgorithms ...jose.SignatureAlgorithm,
@@ -286,11 +290,13 @@ func (provider *OpenIdProvider) RequireProofKeyForCodeExchange(codeChallengeMeth
 	provider.PkceIsRequired = true
 }
 
-func (provider *OpenIdProvider) SetAuthenticationContextReferencesSupported(acrValues ...constants.AuthenticationContextReference) {
+func (provider *OpenIdProvider) SetSupportedAuthenticationContextReferences(
+	acrValues ...constants.AuthenticationContextReference,
+) {
 	provider.AuthenticationContextReferences = acrValues
 }
 
-func (provider *OpenIdProvider) SetDisplayValuesSupported(values ...constants.DisplayType) {
+func (provider *OpenIdProvider) SetDisplayValuesSupported(values ...constants.DisplayValue) {
 	provider.DisplayValues = values
 }
 

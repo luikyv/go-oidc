@@ -81,7 +81,7 @@ type Configuration struct {
 	CorrelationIdHeader                  constants.Header
 	CaCertificatePool                    *x509.CertPool
 	AuthenticationContextReferences      []constants.AuthenticationContextReference
-	DisplayValues                        []constants.DisplayType
+	DisplayValues                        []constants.DisplayValue
 }
 
 type Context struct {

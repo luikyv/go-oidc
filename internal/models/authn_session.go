@@ -9,33 +9,35 @@ import (
 )
 
 type AuthnSession struct {
-	Id                 string `json:"id"`
-	CallbackId         string `json:"callback_id"`
-	PolicyId           string `json:"policy_d"`
-	AuthnSequenceIndex int    `json:"policy_step_index"`
-	ExpiresAtTimestamp int    `json:"expires_at"`
-	CreatedAtTimestamp int    `json:"created_at"`
-	Subject            string `json:"sub"`
-	ClientId           string `json:"client_id"`
+	Id                        string         `json:"id"`
+	CallbackId                string         `json:"callback_id"`
+	PolicyId                  string         `json:"policy_d"`
+	AuthnSequenceIndex        int            `json:"policy_step_index"`
+	ExpiresAtTimestamp        int            `json:"expires_at"`
+	CreatedAtTimestamp        int            `json:"created_at"`
+	Subject                   string         `json:"sub"`
+	ClientId                  string         `json:"client_id"`
+	GrantedScopes             string         `json:"granted_scopes"`
+	AuthorizationCode         string         `json:"authorization_code"`
+	AuthorizationCodeIssuedAt int            `json:"authorization_code_issued_at"`
+	ProtectedParameters       map[string]any `json:"protected_params"` // Custom parameters sent by PAR or JAR.
+	Store                     map[string]any `json:"store"`            // Allow the developer to store information in memory and, hence, between steps.
+	AdditionalTokenClaims     map[string]any `json:"additional_token_claims"`
+	AdditionalIdTokenClaims   map[string]any `json:"additional_id_token_claims"`
+	AdditionalUserInfoClaims  map[string]any `json:"additional_user_info_claims"`
 	AuthorizationParameters
-	GrantedScopes                      string                                    `json:"granted_scopes"`
-	AuthorizationCode                  string                                    `json:"authorization_code"`
-	AuthorizationCodeIssuedAt          int                                       `json:"authorization_code_issued_at"`
-	UserAuthenticatedAtTimestamp       int                                       `json:"auth_time"`
-	UserAuthenticationMethodReferences []constants.AuthenticationMethodReference `json:"amr"`
-	ProtectedParameters                map[string]any                            `json:"protected_params"` // Custom parameters sent by PAR or JAR.
-	Store                              map[string]any                            `json:"store"`            // Allow the developer to store information in memory and, hence, between steps.
-	TokenClaims                        map[string]any                            `json:"token_claims"`
-	IdTokenClaims                      map[string]any                            `json:"id_token_claims"`
-	UserInfoClaims                     map[string]any                            `json:"user_info_claims"`
 }
 
 func NewSession(authParams AuthorizationParameters, client Client) AuthnSession {
 	return AuthnSession{
-		Id:                      uuid.NewString(),
-		ClientId:                client.Id,
-		AuthorizationParameters: authParams,
-		CreatedAtTimestamp:      unit.GetTimestampNow(),
+		Id:                       uuid.NewString(),
+		ClientId:                 client.Id,
+		AuthorizationParameters:  authParams,
+		CreatedAtTimestamp:       unit.GetTimestampNow(),
+		Store:                    make(map[string]any),
+		AdditionalTokenClaims:    make(map[string]any),
+		AdditionalIdTokenClaims:  map[string]any{},
+		AdditionalUserInfoClaims: map[string]any{},
 	}
 }
 
@@ -59,13 +61,13 @@ func (session *AuthnSession) GetParameter(key string) any {
 }
 
 // Set a new claim that will be mapped in the access token when issued.
-func (session *AuthnSession) SetTokenClaim(key string, value string) {
-	session.TokenClaims[key] = value
+func (session *AuthnSession) AddTokenClaim(key string, value any) {
+	session.AdditionalTokenClaims[key] = value
 }
 
 // Set a new claim that will be mapped in the ID token when issued.
-func (session *AuthnSession) SetIdTokenClaim(key string, value string) {
-	session.IdTokenClaims[key] = value
+func (session *AuthnSession) AddIdTokenClaim(key string, value any) {
+	session.AdditionalIdTokenClaims[key] = value
 }
 
 func (session *AuthnSession) IsPushedRequestExpired(parLifetimeSecs int) bool {
@@ -83,6 +85,9 @@ func (session *AuthnSession) Push(parLifetimeSecs int) (requestUri string) {
 }
 
 func (session *AuthnSession) Start(policyId string, sessionLifetimeSecs int) {
+	if session.Nonce != "" {
+		session.AdditionalIdTokenClaims[string(constants.NonceClaim)] = session.Nonce
+	}
 	session.PolicyId = policyId
 	session.AuthnSequenceIndex = 0
 	session.CallbackId = unit.GenerateCallbackId()
@@ -102,13 +107,12 @@ func (session *AuthnSession) GrantScopes(scopes string) {
 	session.GrantedScopes = scopes
 }
 
-func (session *AuthnSession) GetIdTokenOptions() IdTokenOptions {
-	return IdTokenOptions{
-		Nonce:                              session.Nonce,
-		UserAuthenticatedAtTimestamp:       session.UserAuthenticatedAtTimestamp,
-		UserAuthenticationMethodReferences: session.UserAuthenticationMethodReferences,
-		AdditionalIdTokenClaims:            session.IdTokenClaims,
-	}
+func (session AuthnSession) GetAdditionalIdTokenClaims() map[string]any {
+	return session.AdditionalIdTokenClaims
+}
+
+func (session AuthnSession) GetAdditionalUserInfoClaims() map[string]any {
+	return session.AdditionalUserInfoClaims
 }
 
 func (session *AuthnSession) MustAuthenticateUser(authTime int) bool {
@@ -125,14 +129,6 @@ func (session *AuthnSession) MustAuthenticateUser(authTime int) bool {
 		return false
 	}
 	return unit.GetTimestampNow() > authTime+maxAge
-}
-
-func (session *AuthnSession) SetUserAuthenticationMethods(authMethods ...constants.AuthenticationMethodReference) {
-	session.UserAuthenticationMethodReferences = authMethods
-}
-
-func (session *AuthnSession) SetUserAuthenticationTime(authTime int) {
-	session.UserAuthenticatedAtTimestamp = authTime
 }
 
 // Get custome protected parameters sent during PAR or JAR.

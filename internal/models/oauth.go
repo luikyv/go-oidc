@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"maps"
 	"net/http"
 
@@ -24,10 +25,9 @@ type DpopJwtValidationOptions struct {
 }
 
 type IdTokenOptions struct {
-	Nonce                              string                                    `json:"nonce"`
-	AdditionalIdTokenClaims            map[string]any                            `json:"additional_id_token_claims"`
-	UserAuthenticatedAtTimestamp       int                                       `json:"auth_time"`
-	UserAuthenticationMethodReferences []constants.AuthenticationMethodReference `json:"amr"`
+	Subject                 string
+	ClientId                string
+	AdditionalIdTokenClaims map[string]any
 	// These values here below are intended to be hashed and placed in the ID token.
 	// Then, the ID token can be used as a detached signature for the implicit grant.
 	AccessToken       string
@@ -38,10 +38,10 @@ type IdTokenOptions struct {
 type TokenOptions struct {
 	TokenFormat           constants.TokenFormat `json:"token_format"`
 	TokenExpiresInSecs    int                   `json:"token_expires_in_secs"`
-	ShouldRefresh         bool
-	JwtSignatureKeyId     string         `json:"token_signature_key_id"`
-	OpaqueTokenLength     int            `json:"opaque_token_length"`
-	AdditionalTokenClaims map[string]any `json:"additional_token_claims"`
+	ShouldRefresh         bool                  `json:"is_refreshable"`
+	JwtSignatureKeyId     string                `json:"token_signature_key_id"`
+	OpaqueTokenLength     int                   `json:"opaque_token_length"`
+	AdditionalTokenClaims map[string]any        `json:"additional_token_claims"`
 }
 
 func (opts *TokenOptions) AddTokenClaims(claims map[string]any) {
@@ -49,13 +49,22 @@ func (opts *TokenOptions) AddTokenClaims(claims map[string]any) {
 }
 
 type GrantOptions struct {
-	GrantType          constants.GrantType `json:"grant_type"`
-	Subject            string              `json:"sub"`
-	ClientId           string              `json:"client_id"`
-	GrantedScopes      string              `json:"scopes"`
-	CreatedAtTimestamp int                 `json:"created_at"`
+	GrantType                constants.GrantType `json:"grant_type"`
+	Subject                  string              `json:"sub"`
+	ClientId                 string              `json:"client_id"`
+	GrantedScopes            string              `json:"scopes"`
+	CreatedAtTimestamp       int                 `json:"created_at"`
+	AdditionalIdTokenClaims  map[string]any      `json:"additional_id_token_claims"`
+	AdditionalUserInfoClaims map[string]any      `json:"additional_user_info_claims"`
 	TokenOptions
-	IdTokenOptions
+}
+
+func (grantOpts GrantOptions) GetIdTokenOptions() IdTokenOptions {
+	return IdTokenOptions{
+		Subject:                 grantOpts.Subject,
+		ClientId:                grantOpts.ClientId,
+		AdditionalIdTokenClaims: grantOpts.AdditionalIdTokenClaims,
+	}
 }
 
 type ClientAuthnRequest struct {
@@ -77,7 +86,6 @@ func NewClientAuthnRequest(req *http.Request) ClientAuthnRequest {
 
 type TokenRequest struct {
 	ClientAuthnRequest
-	// DpopJwt           string
 	GrantType         constants.GrantType
 	Scopes            string
 	AuthorizationCode string
@@ -120,7 +128,8 @@ type AuthorizationParameters struct {
 	CodeChallengeMethod      constants.CodeChallengeMethod `json:"code_challenge_method"`
 	Prompt                   constants.PromptType          `json:"prompt"`
 	MaxAuthenticationAgeSecs string                        `json:"max_age"`
-	Display                  constants.DisplayType         `json:"display"`
+	Display                  constants.DisplayValue        `json:"display"`
+	Claims                   *ClaimsObject                 `json:"claims"` // Claims is a pointer to help differentiate when it's null or not.
 }
 
 func (params AuthorizationParameters) NewRedirectError(
@@ -131,7 +140,7 @@ func (params AuthorizationParameters) NewRedirectError(
 }
 
 func (insideParams AuthorizationParameters) Merge(outsideParams AuthorizationParameters) AuthorizationParameters {
-	return AuthorizationParameters{
+	params := AuthorizationParameters{
 		RedirectUri:              unit.GetNonEmptyOrDefault(insideParams.RedirectUri, outsideParams.RedirectUri),
 		ResponseMode:             unit.GetNonEmptyOrDefault(insideParams.ResponseMode, outsideParams.ResponseMode),
 		ResponseType:             unit.GetNonEmptyOrDefault(insideParams.ResponseType, outsideParams.ResponseType),
@@ -144,6 +153,13 @@ func (insideParams AuthorizationParameters) Merge(outsideParams AuthorizationPar
 		MaxAuthenticationAgeSecs: unit.GetNonEmptyOrDefault(insideParams.MaxAuthenticationAgeSecs, outsideParams.MaxAuthenticationAgeSecs),
 		Display:                  unit.GetNonEmptyOrDefault(insideParams.Display, outsideParams.Display),
 	}
+
+	params.Claims = insideParams.Claims
+	if outsideParams.Claims != nil {
+		params.Claims = outsideParams.Claims
+	}
+
+	return params
 }
 
 type AuthorizationRequest struct {
@@ -152,7 +168,7 @@ type AuthorizationRequest struct {
 }
 
 func NewAuthorizationRequest(req *http.Request) AuthorizationRequest {
-	return AuthorizationRequest{
+	params := AuthorizationRequest{
 		ClientId: req.URL.Query().Get("client_id"),
 		AuthorizationParameters: AuthorizationParameters{
 			RequestUri:               req.URL.Query().Get("request_uri"),
@@ -167,9 +183,18 @@ func NewAuthorizationRequest(req *http.Request) AuthorizationRequest {
 			CodeChallengeMethod:      constants.CodeChallengeMethod(req.URL.Query().Get("code_challenge_method")),
 			Prompt:                   constants.PromptType(req.URL.Query().Get("prompt")),
 			MaxAuthenticationAgeSecs: req.URL.Query().Get("max_age"),
-			Display:                  constants.DisplayType(req.URL.Query().Get("display")),
+			Display:                  constants.DisplayValue(req.URL.Query().Get("display")),
 		},
 	}
+
+	claims := req.URL.Query().Get("claims")
+	if claims != "" {
+		var claimsObject ClaimsObject
+		json.Unmarshal([]byte(req.URL.Query().Get("claims")), &claimsObject)
+		params.Claims = &claimsObject
+	}
+
+	return params
 }
 
 type PushedAuthorizationRequest struct {
@@ -250,6 +275,7 @@ type OpenIdConfiguration struct {
 	JarmAlgorithms                                 []jose.SignatureAlgorithm                  `json:"authorization_signing_alg_values_supported,omitempty"`
 	TokenEndpointClientSigningAlgorithms           []jose.SignatureAlgorithm                  `json:"token_endpoint_auth_signing_alg_values_supported"`
 	IssuerResponseParameterIsEnabled               bool                                       `json:"authorization_response_iss_parameter_supported"`
+	ClaimsParameterIsEnabled                       bool                                       `json:"claims_parameter_supported"`
 	DpopSignatureAlgorithms                        []jose.SignatureAlgorithm                  `json:"dpop_signing_alg_values_supported,omitempty"`
 	IntrospectionEndpoint                          string                                     `json:"introspection_endpoint,omitempty"`
 	IntrospectionEndpointClientAuthnMethods        []constants.ClientAuthnType                `json:"introspection_endpoint_auth_methods_supported,omitempty"`
@@ -257,7 +283,7 @@ type OpenIdConfiguration struct {
 	MtlsConfiguration                              OpenIdMtlsConfiguration                    `json:"mtls_endpoint_aliases"`
 	TlsBoundTokensIsEnabled                        bool                                       `json:"tls_client_certificate_bound_access_tokens,omitempty"`
 	AuthenticationContextReferences                []constants.AuthenticationContextReference `json:"acr_values_supported,omitempty"`
-	DisplayValuesSupported                         []constants.DisplayType                    `json:"display_values_supported,omitempty"`
+	DisplayValuesSupported                         []constants.DisplayValue                   `json:"display_values_supported,omitempty"`
 }
 
 type Token struct {
@@ -380,4 +406,15 @@ func (info TokenIntrospectionInfo) GetParameters() map[string]any {
 	}
 
 	return params
+}
+
+type ClaimsObject struct {
+	Userinfo map[string]ClaimObjectInfo `json:"userinfo"`
+	IdToken  map[string]ClaimObjectInfo `json:"id_token"`
+}
+
+type ClaimObjectInfo struct {
+	IsEssential bool     `json:"essential"`
+	Value       string   `json:"value"`
+	Values      []string `json:"values"`
 }
