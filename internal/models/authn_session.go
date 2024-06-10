@@ -12,7 +12,6 @@ type AuthnSession struct {
 	Id                        string         `json:"id"`
 	CallbackId                string         `json:"callback_id"`
 	PolicyId                  string         `json:"policy_d"`
-	AuthnSequenceIndex        int            `json:"policy_step_index"`
 	ExpiresAtTimestamp        int            `json:"expires_at"`
 	CreatedAtTimestamp        int            `json:"created_at"`
 	Subject                   string         `json:"sub"`
@@ -89,7 +88,6 @@ func (session *AuthnSession) Start(policyId string, sessionLifetimeSecs int) {
 		session.AdditionalIdTokenClaims[string(constants.NonceClaim)] = session.Nonce
 	}
 	session.PolicyId = policyId
-	session.AuthnSequenceIndex = 0
 	session.CallbackId = unit.GenerateCallbackId()
 	// FIXME: To think about:Treating the request_uri as one-time use will cause problems when the user refreshes the page.
 	session.RequestUri = ""

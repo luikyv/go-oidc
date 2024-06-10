@@ -68,28 +68,14 @@ func getClient(
 
 func authenticate(ctx utils.Context, session *models.AuthnSession) models.OAuthError {
 	policy := ctx.GetPolicyById(session.PolicyId)
-	status := constants.Success
-	// The loop breaks when the status is no longer sucess OR there are no more steps left.
-	for status == constants.Success && session.AuthnSequenceIndex < len(policy.AuthnSequence) {
-		currentAuthnFunc := policy.AuthnSequence[session.AuthnSequenceIndex]
-		status = currentAuthnFunc(ctx, session)
-
-		if status == constants.Success {
-			// If the step finished with success, we can move to the next one.
-			session.AuthnSequenceIndex++
-		}
-	}
-
-	if status == constants.Failure {
+	switch policy.AuthnFunc(ctx, session) {
+	case constants.Success:
+		return finishFlowSuccessfully(ctx, session)
+	case constants.InProgress:
+		return stopFlowInProgress(ctx, session)
+	default:
 		return finishFlowWithFailure(ctx, session)
 	}
-
-	if status == constants.InProgress {
-		return stopFlowInProgress(ctx, session)
-	}
-
-	// At this point, the status can only be success and there are no more steps left.
-	return finishFlowSuccessfully(ctx, session)
 }
 
 func finishFlowWithFailure(

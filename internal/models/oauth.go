@@ -376,6 +376,7 @@ type TokenIntrospectionInfo struct {
 	RawClaims                   map[string]any
 }
 
+// TODO: refactor this. Use json tags.
 func (info TokenIntrospectionInfo) GetParameters() map[string]any {
 	if !info.IsActive {
 		return map[string]any{

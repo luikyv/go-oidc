@@ -7,22 +7,22 @@ import (
 
 type AuthnFunc func(Context, *models.AuthnSession) constants.AuthnStatus
 
-type CheckPolicyAvailabilityFunc func(Context, models.Client, models.AuthnSession) bool // TODO: pass the client
+type CheckPolicyAvailabilityFunc func(Context, models.Client, models.AuthnSession) bool
 
 type AuthnPolicy struct {
 	Id              string
-	AuthnSequence   []AuthnFunc
+	AuthnFunc       AuthnFunc
 	IsAvailableFunc CheckPolicyAvailabilityFunc
 }
 
 func NewPolicy(
 	id string,
 	isAvailableFunc CheckPolicyAvailabilityFunc,
-	authnSequence ...AuthnFunc,
+	authnFunc AuthnFunc,
 ) AuthnPolicy {
 	return AuthnPolicy{
 		Id:              id,
-		AuthnSequence:   authnSequence,
+		AuthnFunc:       authnFunc,
 		IsAvailableFunc: isAvailableFunc,
 	}
 }
