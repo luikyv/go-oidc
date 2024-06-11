@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
@@ -11,13 +12,23 @@ import (
 func NoInteractionAuthnFunc(ctx utils.Context, session *models.AuthnSession) constants.AuthnStatus {
 	session.SetUserId("random_user_id")
 	session.GrantScopes(session.Scopes)
+	session.AddIdTokenClaim(string(constants.AuthenticationTimeClaim), unit.GetTimestampNow())
 	session.AddIdTokenClaim(string(constants.AuthenticationMethodReferencesClaim), []constants.AuthenticationMethodReference{constants.PasswordAuthentication})
+	session.AddUserInfoClaim(string(constants.AuthenticationTimeClaim), unit.GetTimestampNow())
+	session.AddUserInfoClaim(string(constants.AuthenticationMethodReferencesClaim), []constants.AuthenticationMethodReference{constants.PasswordAuthentication})
+
 	if session.Claims != nil {
 		acrClaim, ok := session.Claims.IdToken["acr"]
 		if ok {
 			session.AddIdTokenClaim("acr", acrClaim.Value)
 		}
 	}
+
+	if strings.Contains(session.Scopes, "email") {
+		session.AddUserInfoClaim("email", "random@gmail.com")
+		session.AddUserInfoClaim("email_verified", true)
+	}
+
 	return constants.Success
 }
 

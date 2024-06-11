@@ -59,7 +59,8 @@ func main() {
 	openidProvider.EnableImplicitGrantType()
 	openidProvider.EnableRefreshTokenGrantType(6000, true)
 	openidProvider.EnableDynamicClientRegistration(nil, true)
-	openidProvider.SetScopes("offline_access")
+	openidProvider.SetScopes("offline_access", "email")
+	openidProvider.SetSupportedUserClaims("email", "email_verified")
 	openidProvider.SetCorrelationIdHeader(constants.FapiInteractionIdHeader)
 	openidProvider.SetSupportedAuthenticationContextReferences(
 		constants.AuthenticationContextReference("urn:mace:incommon:iap:silver"),

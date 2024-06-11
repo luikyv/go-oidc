@@ -48,7 +48,7 @@ func NewProvider(
 			DefaultIdTokenSignatureKeyId: defaultIdTokenKeyId,
 			IdTokenSignatureKeyIds:       []string{defaultIdTokenKeyId},
 			IdTokenExpiresInSecs:         600,
-			CustomClaims:                 []constants.Claim{},
+			UserClaims:                   []constants.Claim{},
 			GrantTypes: []constants.GrantType{
 				constants.ClientCredentialsGrant,
 				constants.AuthorizationCodeGrant,
@@ -101,8 +101,8 @@ func (provider *OpenIdProvider) validateConfiguration() {
 	}
 }
 
-func (provider *OpenIdProvider) SetCustomIdTokenClaims(claims ...constants.Claim) {
-	provider.CustomClaims = claims
+func (provider *OpenIdProvider) SetSupportedUserClaims(claims ...constants.Claim) {
+	provider.UserClaims = claims
 }
 
 func (provider *OpenIdProvider) AddIdTokenSignatureKeyIds(idTokenSignatureKeyIds ...string) {

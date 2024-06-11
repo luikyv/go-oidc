@@ -69,6 +69,11 @@ func (session *AuthnSession) AddIdTokenClaim(key string, value any) {
 	session.AdditionalIdTokenClaims[key] = value
 }
 
+// Set a new claim that will be mapped in the user info endpoint.
+func (session *AuthnSession) AddUserInfoClaim(key string, value any) {
+	session.AdditionalUserInfoClaims[key] = value
+}
+
 func (session *AuthnSession) IsPushedRequestExpired(parLifetimeSecs int) bool {
 	return unit.GetTimestampNow() > session.ExpiresAtTimestamp
 }

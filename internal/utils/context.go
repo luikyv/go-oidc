@@ -49,7 +49,7 @@ type Configuration struct {
 	IdTokenSignatureKeyIds               []string
 	ShouldRotateRefreshTokens            bool
 	RefreshTokenLifetimeSecs             int
-	CustomClaims                         []constants.Claim
+	UserClaims                           []constants.Claim
 	ClaimTypes                           []constants.ClaimType
 	IssuerResponseParameterIsEnabled     bool
 	ClaimsParameterIsEnabled             bool
@@ -364,7 +364,8 @@ func (ctx Context) WriteJson(obj any, status int) error {
 func (ctx Context) WriteJwt(token string, status int) error {
 	ctx.Response.Header().Set("Content-Type", "application/jwt")
 	ctx.Response.WriteHeader(status)
-	if err := json.NewEncoder(ctx.Response).Encode(token); err != nil {
+
+	if _, err := ctx.Response.Write([]byte(token)); err != nil {
 		return err
 	}
 

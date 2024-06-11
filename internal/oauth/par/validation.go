@@ -50,6 +50,7 @@ func validatePushedAuthorizationParams(
 ) models.OAuthError {
 	return utils.RunValidations(
 		ctx, params, client,
+		validateNoneAuthnNotAllowed,
 		authorize.ValidateCannotRequestCodeResponseTypeWhenAuthorizationCodeGrantIsNotAllowed,
 		authorize.ValidateCannotRequestImplicitResponseTypeWhenImplicitGrantIsNotAllowed,
 		validateRedirectUri,
@@ -62,6 +63,17 @@ func validatePushedAuthorizationParams(
 		authorize.ValidateAcrValues,
 		validateCannotInformRequestUri,
 	)
+}
+
+func validateNoneAuthnNotAllowed(
+	_ utils.Context,
+	_ models.AuthorizationParameters,
+	client models.Client,
+) models.OAuthError {
+	if client.AuthnMethod == constants.NoneAuthn {
+		return models.NewOAuthError(constants.InvalidRequest, "invalid client authentication method")
+	}
+	return nil
 }
 
 func validateRedirectUri(
