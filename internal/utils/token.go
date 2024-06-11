@@ -52,19 +52,19 @@ func MakeIdToken(
 	return idToken
 }
 
-func makeJwtToken(ctx Context, _ models.Client, grantOptions models.GrantOptions) models.Token {
+func makeJwtToken(ctx Context, client models.Client, grantOptions models.GrantOptions) models.Token {
 	privateJwk := ctx.GetTokenSignatureKey(grantOptions.TokenOptions)
 	jwtId := uuid.NewString()
 	timestampNow := unit.GetTimestampNow()
 	claims := map[string]any{
-		string(constants.TokenIdClaim):  jwtId,
-		string(constants.IssuerClaim):   ctx.Host,
-		string(constants.SubjectClaim):  grantOptions.Subject,
-		string(constants.ScopeClaim):    grantOptions.GrantedScopes,
-		string(constants.IssuedAtClaim): timestampNow,
-		string(constants.ExpiryClaim):   timestampNow + grantOptions.TokenExpiresInSecs,
+		constants.TokenIdClaim:  jwtId,
+		constants.IssuerClaim:   ctx.Host,
+		constants.SubjectClaim:  grantOptions.Subject,
+		constants.ClientIdClaim: client.Id,
+		constants.ScopeClaim:    grantOptions.GrantedScopes,
+		constants.IssuedAtClaim: timestampNow,
+		constants.ExpiryClaim:   timestampNow + grantOptions.TokenExpiresInSecs,
 	}
-	// TODO: missing the client_id claim
 
 	confirmation := make(map[string]string)
 

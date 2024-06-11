@@ -321,6 +321,10 @@ func (provider *OpenIdProvider) SetTlsCipherSuites(cipherSuites ...uint16) {
 func (provider *OpenIdProvider) ConfigureFapi2Profile() {
 	provider.Profile = constants.Fapi2Profile
 	provider.TlsCipherSuites = constants.FapiAllowedCipherSuites
+	provider.EnableIssuerResponseParameter()
+	provider.RequirePushedAuthorizationRequests(60)
+	provider.SetCorrelationIdHeader(constants.FapiInteractionIdHeader)
+	provider.RequireProofKeyForCodeExchange(constants.Sha256CodeChallengeMethod)
 	//TODO
 }
 
@@ -361,7 +365,7 @@ func (provider *OpenIdProvider) getServerHandler() http.Handler {
 	)
 
 	serverHandler.HandleFunc(
-		"GET "+string(constants.AuthorizationEndpoint)+"/{callback}",
+		"POST "+string(constants.AuthorizationEndpoint)+"/{callback}",
 		func(w http.ResponseWriter, r *http.Request) {
 			apihandlers.HandleAuthorizeCallbackRequest(utils.NewContext(provider.Configuration, r, w))
 		},

@@ -57,7 +57,19 @@ func (c Client) GetPublicJwks() (jose.JSONWebKeySet, OAuthError) {
 	return jwks, nil
 }
 
-// TODO: Implement GetJwk(keyId string)
+func (client Client) GetJwk(keyId string) (jose.JSONWebKey, OAuthError) {
+	jwks, oauthErr := client.GetPublicJwks()
+	if oauthErr != nil {
+		return jose.JSONWebKey{}, oauthErr
+	}
+
+	keys := jwks.Key(keyId)
+	if len(keys) == 0 {
+		return jose.JSONWebKey{}, NewOAuthError(constants.InvalidClient, "invalid key ID")
+	}
+
+	return keys[0], nil
+}
 
 func (client Client) AreScopesAllowed(requestedScopes string) bool {
 	return unit.ContainsAll(unit.SplitStringWithSpaces(client.Scopes), unit.SplitStringWithSpaces(requestedScopes)...)

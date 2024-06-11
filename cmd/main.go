@@ -32,7 +32,7 @@ func main() {
 		inmemory.NewInMemoryGrantSessionManager(),
 		jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privatePs256Jwk, privateRs256Jwk}},
 		privatePs256Jwk.KeyID,
-		privateRs256Jwk.KeyID,
+		privatePs256Jwk.KeyID,
 	)
 	openidProvider.EnableMtls(mtlsIssuer)
 	openidProvider.SetTokenOptions(func(c models.Client, s string) models.TokenOptions {
@@ -44,7 +44,7 @@ func main() {
 	})
 	openidProvider.EnablePushedAuthorizationRequests(60)
 	openidProvider.EnableJwtSecuredAuthorizationRequests(jose.PS256, jose.RS256)
-	openidProvider.EnableJwtSecuredAuthorizationResponseMode(600, privateRs256Jwk.KeyID)
+	openidProvider.EnableJwtSecuredAuthorizationResponseMode(600, privatePs256Jwk.KeyID)
 	openidProvider.EnableSecretPostClientAuthn()
 	openidProvider.EnableBasicSecretClientAuthn()
 	openidProvider.EnablePrivateKeyJwtClientAuthn(600, jose.RS256, jose.PS256)
@@ -59,19 +59,19 @@ func main() {
 	openidProvider.EnableDynamicClientRegistration(nil, true)
 	openidProvider.SetScopes(constants.OffilineAccessScope, constants.EmailScope)
 	openidProvider.SetSupportedUserClaims(constants.EmailClaim, constants.EmailVerifiedClaim)
-	openidProvider.SetCorrelationIdHeader(constants.FapiInteractionIdHeader)
 	openidProvider.SetSupportedAuthenticationContextReferences("urn:mace:incommon:iap:silver", "urn:mace:incommon:iap:bronze")
+	openidProvider.ConfigureFapi2Profile()
 
 	// Client one.
 	privateClientOneJwks := GetClientPrivateJwks("client_keys/client_one_jwks.json")
 	clientOne := models.GetTestClientWithPrivateKeyJwtAuthn(issuer, privateClientOneJwks.Keys[0].Public())
-	clientOne.AuthnMethod = constants.SelfSignedTlsAuthn
+	clientOne.AuthnMethod = constants.PrivateKeyJwtAuthn
 	clientOne.RedirectUris = append(clientOne.RedirectUris, issuer+"/callback", "https://localhost:8443/test/a/first_test/callback")
 	openidProvider.AddClient(clientOne)
 	// Client two.
 	privateClientTwoJwks := GetClientPrivateJwks("client_keys/client_two_jwks.json")
 	clientTwo := models.GetTestClientWithPrivateKeyJwtAuthn(issuer, privateClientTwoJwks.Keys[0].Public())
-	clientTwo.AuthnMethod = constants.SelfSignedTlsAuthn
+	clientTwo.AuthnMethod = constants.PrivateKeyJwtAuthn
 	clientTwo.Id = "random_client_id_two"
 	clientTwo.RedirectUris = append(clientTwo.RedirectUris, issuer+"/callback", "https://localhost:8443/test/a/first_test/callback")
 	openidProvider.AddClient(clientTwo)
@@ -80,7 +80,7 @@ func main() {
 	policy := utils.NewPolicy(
 		"policy",
 		func(ctx utils.Context, client models.Client, session models.AuthnSession) bool { return true },
-		NoInteractionAuthnFunc,
+		InteractiveAuthnFunc,
 	)
 	openidProvider.AddPolicy(policy)
 

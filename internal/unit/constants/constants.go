@@ -7,8 +7,6 @@ import (
 	"strings"
 )
 
-// TODO: I don't need a type for everything. some type can vary, scopes are dynamic.
-
 type ContextKey string
 
 const CorrelationId ContextKey = "correlation_id"

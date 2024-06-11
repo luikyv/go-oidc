@@ -45,6 +45,9 @@ type TokenOptions struct {
 }
 
 func (opts *TokenOptions) AddTokenClaims(claims map[string]any) {
+	if opts.AdditionalTokenClaims == nil {
+		opts.AdditionalTokenClaims = map[string]any{}
+	}
 	maps.Copy(opts.AdditionalTokenClaims, claims)
 }
 

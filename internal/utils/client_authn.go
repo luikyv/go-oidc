@@ -143,17 +143,11 @@ func authenticateWithPrivateKeyJwt(
 	}
 
 	// Verify that the key ID belongs to the client.
-	jwks, oauthErr := client.GetPublicJwks()
+	jwk, oauthErr := client.GetJwk(assertion.Headers[0].KeyID)
 	if oauthErr != nil {
 		return oauthErr
 	}
 
-	keys := jwks.Key(assertion.Headers[0].KeyID)
-	if len(keys) == 0 {
-		return models.NewOAuthError(constants.InvalidClient, "invalid assertion")
-	}
-
-	jwk := keys[0]
 	claims := jwt.Claims{}
 	if err := assertion.Claims(jwk.Key, &claims); err != nil {
 		return models.NewOAuthError(constants.InvalidClient, "invalid assertion")

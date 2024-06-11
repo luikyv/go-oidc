@@ -9,7 +9,10 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func NoInteractionAuthnFunc(ctx utils.Context, session *models.AuthnSession) constants.AuthnStatus {
+func NoInteractionAuthnFunc(
+	ctx utils.Context,
+	session *models.AuthnSession,
+) constants.AuthnStatus {
 	//TODO: pass op tests.
 	session.SetUserId("random_user_id")
 	session.GrantScopes(session.Scopes)
@@ -39,14 +42,41 @@ func NoInteractionAuthnFunc(ctx utils.Context, session *models.AuthnSession) con
 	return constants.Success
 }
 
-func IdentityAuthnFunc(ctx utils.Context, session *models.AuthnSession) (constants.AuthnStatus, error) {
+func InteractiveAuthnFunc(
+	ctx utils.Context,
+	session *models.AuthnSession,
+) constants.AuthnStatus {
+
+	// Init the step if empty.
+	if session.GetParameter("step") == nil {
+		session.SaveParameter("step", "identity")
+	}
+
+	if session.GetParameter("step") == "identity" {
+		status := identifyUser(ctx, session)
+		if status != constants.Success {
+			return status
+		}
+		// The status is success so we can move to the next step.
+		session.SaveParameter("step", "password")
+	}
+
+	return authenticateWithPassword(ctx, session)
+}
+
+func identifyUser(
+	ctx utils.Context,
+	session *models.AuthnSession,
+) constants.AuthnStatus {
+
+	ctx.Request.ParseForm()
 	username := ctx.Request.PostFormValue("username")
 	if username == "" {
 		ctx.RenderHtml(identityForm, map[string]any{
-			"host":       ctx.Host,
+			"host":       strings.Replace(ctx.Host, "host.docker.internal", "localhost", -1),
 			"callbackId": session.CallbackId,
 		})
-		return constants.InProgress, nil
+		return constants.InProgress
 	}
 
 	session.SetUserId(username)
@@ -55,28 +85,33 @@ func IdentityAuthnFunc(ctx utils.Context, session *models.AuthnSession) (constan
 	if strings.Contains(session.Scopes, "email") {
 		session.AddIdTokenClaim("email", "random@email.com")
 	}
-	return constants.Success, nil
+	return constants.Success
 }
 
-func PasswordAuthnFunc(ctx utils.Context, session *models.AuthnSession) (constants.AuthnStatus, error) {
+func authenticateWithPassword(
+	ctx utils.Context,
+	session *models.AuthnSession,
+) constants.AuthnStatus {
+	ctx.Request.ParseForm()
 	password := ctx.Request.PostFormValue("password")
 	if password == "" {
 		ctx.RenderHtml(passwordForm, map[string]any{
-			"host":       ctx.Host,
+			"host":       strings.Replace(ctx.Host, "host.docker.internal", "localhost", -1),
 			"callbackId": session.CallbackId,
 		})
-		return constants.InProgress, nil
+		return constants.InProgress
 	}
 
 	if password != "password" {
 		ctx.RenderHtml(passwordForm, map[string]any{
+			"host":       strings.Replace(ctx.Host, "host.docker.internal", "localhost", -1),
 			"callbackId": session.CallbackId,
 			"error":      "invalid password",
 		})
-		return constants.InProgress, nil
+		return constants.InProgress
 	}
 
-	return constants.Success, nil
+	return constants.Success
 }
 
 var identityForm string = `

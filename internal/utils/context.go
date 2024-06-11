@@ -274,16 +274,16 @@ func (ctx Context) GetAuthorizationToken() (
 }
 
 func (ctx Context) GetDpopJwt() (string, bool) {
-	return ctx.GetHeader(string(constants.DpopHeader))
+	return ctx.GetHeader(constants.DpopHeader)
 }
 
 func (ctx Context) GetHeader(header string) (string, bool) {
-	values, ok := ctx.Request.Header[header]
-	if !ok || len(values) == 0 {
+	value := ctx.Request.Header.Get(header)
+	if value == "" {
 		return "", false
 	}
 
-	return values[0], true
+	return value, true
 }
 
 func (ctx Context) GetClient(clientId string) (models.Client, error) {

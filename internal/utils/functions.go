@@ -40,17 +40,11 @@ func ExtractJarFromRequestObject(
 	}
 
 	// Verify that the key ID belongs to the client.
-	jwks, oauthErr := client.GetPublicJwks()
+	jwk, oauthErr := client.GetJwk(parsedToken.Headers[0].KeyID)
 	if oauthErr != nil {
-		return models.AuthorizationRequest{}, oauthErr
+		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidResquestObject, oauthErr.Error())
 	}
 
-	keys := jwks.Key(parsedToken.Headers[0].KeyID)
-	if len(keys) == 0 {
-		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidResquestObject, "invalid kid header")
-	}
-
-	jwk := keys[0]
 	var claims jwt.Claims
 	var jarReq models.AuthorizationRequest
 	if err := parsedToken.Claims(jwk.Key, &claims, &jarReq); err != nil {
