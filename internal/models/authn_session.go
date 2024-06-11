@@ -60,18 +60,18 @@ func (session *AuthnSession) GetParameter(key string) any {
 }
 
 // Set a new claim that will be mapped in the access token when issued.
-func (session *AuthnSession) AddTokenClaim(key string, value any) {
-	session.AdditionalTokenClaims[key] = value
+func (session *AuthnSession) AddTokenClaim(claim string, value any) {
+	session.AdditionalTokenClaims[claim] = value
 }
 
 // Set a new claim that will be mapped in the ID token when issued.
-func (session *AuthnSession) AddIdTokenClaim(key string, value any) {
-	session.AdditionalIdTokenClaims[key] = value
+func (session *AuthnSession) AddIdTokenClaim(claim string, value any) {
+	session.AdditionalIdTokenClaims[claim] = value
 }
 
 // Set a new claim that will be mapped in the user info endpoint.
-func (session *AuthnSession) AddUserInfoClaim(key string, value any) {
-	session.AdditionalUserInfoClaims[key] = value
+func (session *AuthnSession) AddUserInfoClaim(claim string, value any) {
+	session.AdditionalUserInfoClaims[claim] = value
 }
 
 func (session *AuthnSession) IsPushedRequestExpired(parLifetimeSecs int) bool {

@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+// TODO: I don't need a type for everything. some type can vary, scopes are dynamic.
+
 type ContextKey string
 
 const CorrelationId ContextKey = "correlation_id"
@@ -49,7 +51,7 @@ const (
 	QueryResponseMode    ResponseMode = "query"
 	FragmentResponseMode ResponseMode = "fragment"
 	FormPostResponseMode ResponseMode = "form_post"
-	// JWT Secured Authorization Response Modes.
+	// JARM - JWT Secured Authorization Response Mode.
 	// For more information, see https://openid.net/specs/oauth-v2-jarm.html.
 	QueryJwtResponseMode    ResponseMode = "query.jwt"
 	FragmentJwtResponseMode ResponseMode = "fragment.jwt"
@@ -80,7 +82,7 @@ const (
 type ClientAssertionType string
 
 const (
-	JwtBearerAssertion ClientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+	JwtBearerAssertionType ClientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 )
 
 type TokenType string
@@ -90,41 +92,27 @@ const (
 	DpopTokenType   TokenType = "DPoP"
 )
 
-type Claim string
-
 const (
-	TokenIdClaim                        Claim = "jti"
-	IssuerClaim                         Claim = "iss"
-	SubjectClaim                        Claim = "sub"
-	AudienceClaim                       Claim = "aud"
-	ClientIdClaim                       Claim = "client_id"
-	ExpiryClaim                         Claim = "exp"
-	IssuedAtClaim                       Claim = "iat"
-	ScopeClaim                          Claim = "scope"
-	NonceClaim                          Claim = "nonce"
-	AuthenticationTimeClaim             Claim = "auth_time"
-	AuthenticationMethodReferencesClaim Claim = "amr"
-	AccessTokenHashClaim                Claim = "at_hash"
-	AuthorizationCodeHashClaim          Claim = "c_hash"
-	StateHashClaim                      Claim = "s_hash"
+	TokenIdClaim                        string = "jti"
+	IssuerClaim                         string = "iss"
+	SubjectClaim                        string = "sub"
+	AudienceClaim                       string = "aud"
+	ClientIdClaim                       string = "client_id"
+	ExpiryClaim                         string = "exp"
+	IssuedAtClaim                       string = "iat"
+	ScopeClaim                          string = "scope"
+	NonceClaim                          string = "nonce"
+	AuthenticationTimeClaim             string = "auth_time"
+	AuthenticationMethodReferencesClaim string = "amr"
+	AuthenticationContextReferenceClaim string = "acr"
+	ProfileClaim                        string = "profile"
+	EmailClaim                          string = "email"
+	EmailVerifiedClaim                  string = "email_verified"
+	AddressClaim                        string = "address"
+	AccessTokenHashClaim                string = "at_hash"
+	AuthorizationCodeHashClaim          string = "c_hash"
+	StateHashClaim                      string = "s_hash"
 )
-
-var Claims = []Claim{
-	TokenIdClaim,
-	IssuerClaim,
-	SubjectClaim,
-	AudienceClaim,
-	ClientIdClaim,
-	ExpiryClaim,
-	IssuedAtClaim,
-	ScopeClaim,
-	NonceClaim,
-	AuthenticationTimeClaim,
-	AuthenticationMethodReferencesClaim,
-	AccessTokenHashClaim,
-	AuthorizationCodeHashClaim,
-	StateHashClaim,
-}
 
 type KeyUsage string
 
@@ -175,16 +163,20 @@ func (ec ErrorCode) GetStatusCode() int {
 	}
 }
 
-type Header string
-
 const (
-	CorrelationIdHeader     Header = "X-Correlation-Id"
-	FapiInteractionIdHeader Header = "X-Fapi-Interaction-Id"
-	DpopHeader              Header = "DPoP"
-	ClientCertificateHeader Header = "X-Client-Certificate"
+	CorrelationIdHeader     string = "X-Correlation-Id"
+	FapiInteractionIdHeader string = "X-Fapi-Interaction-Id"
+	DpopHeader              string = "DPoP"
+	ClientCertificateHeader string = "X-Client-Certificate"
 )
 
-const OpenIdScope string = "openid"
+const (
+	OpenIdScope         string = "openid"
+	ProfileScope        string = "profile"
+	EmailScope          string = "email"
+	AddressScope        string = "address"
+	OffilineAccessScope string = "offline_access"
+)
 
 const DefaultAuthenticationSessionTimeoutSecs = 30 * 60
 
@@ -218,10 +210,6 @@ const (
 	Fapi1Profile  Profile = "fapi1_profile"
 	Fapi2Profile  Profile = "fapi2_profile"
 )
-
-func (p Profile) IsFapi() bool {
-	return p == Fapi1Profile || p == Fapi2Profile
-}
 
 const Charset string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
@@ -306,7 +294,9 @@ const (
 
 type AuthenticationContextReference string
 
-const NoAssuranceLevelAcr AuthenticationContextReference = "0"
+const (
+	NoAssuranceLevelAcr AuthenticationContextReference = "0"
+)
 
 var FapiAllowedCipherSuites []uint16 = []uint16{
 	tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,

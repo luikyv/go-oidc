@@ -10,23 +10,30 @@ import (
 )
 
 func NoInteractionAuthnFunc(ctx utils.Context, session *models.AuthnSession) constants.AuthnStatus {
+	//TODO: pass op tests.
 	session.SetUserId("random_user_id")
 	session.GrantScopes(session.Scopes)
 	session.AddIdTokenClaim(string(constants.AuthenticationTimeClaim), unit.GetTimestampNow())
-	session.AddIdTokenClaim(string(constants.AuthenticationMethodReferencesClaim), []constants.AuthenticationMethodReference{constants.PasswordAuthentication})
 	session.AddUserInfoClaim(string(constants.AuthenticationTimeClaim), unit.GetTimestampNow())
-	session.AddUserInfoClaim(string(constants.AuthenticationMethodReferencesClaim), []constants.AuthenticationMethodReference{constants.PasswordAuthentication})
+	session.AddIdTokenClaim(
+		string(constants.AuthenticationMethodReferencesClaim),
+		[]constants.AuthenticationMethodReference{constants.PasswordAuthentication},
+	)
+	session.AddUserInfoClaim(
+		string(constants.AuthenticationMethodReferencesClaim),
+		[]constants.AuthenticationMethodReference{constants.PasswordAuthentication},
+	)
 
 	if session.Claims != nil {
-		acrClaim, ok := session.Claims.IdToken["acr"]
+		acrClaim, ok := session.Claims.IdToken[string(constants.AuthenticationContextReferenceClaim)]
 		if ok {
-			session.AddIdTokenClaim("acr", acrClaim.Value)
+			session.AddIdTokenClaim(string(constants.AuthenticationContextReferenceClaim), acrClaim.Value)
 		}
 	}
 
-	if strings.Contains(session.Scopes, "email") {
-		session.AddUserInfoClaim("email", "random@gmail.com")
-		session.AddUserInfoClaim("email_verified", true)
+	if strings.Contains(session.Scopes, string(constants.EmailScope)) {
+		session.AddUserInfoClaim(string(constants.EmailClaim), "random@gmail.com")
+		session.AddUserInfoClaim(string(constants.EmailVerifiedClaim), true)
 	}
 
 	return constants.Success

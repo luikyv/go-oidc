@@ -13,14 +13,6 @@ import (
 	"github.com/luikymagno/auth-server/pkg/oidc"
 )
 
-func GetTokenOptions(client models.Client, scopes string) models.TokenOptions {
-	return models.TokenOptions{
-		TokenFormat:        constants.JwtTokenFormat,
-		TokenExpiresInSecs: 600,
-		ShouldRefresh:      true,
-	}
-}
-
 func main() {
 	//TODO: remove this.
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
@@ -43,7 +35,13 @@ func main() {
 		privateRs256Jwk.KeyID,
 	)
 	openidProvider.EnableMtls(mtlsIssuer)
-	openidProvider.SetTokenOptions(GetTokenOptions)
+	openidProvider.SetTokenOptions(func(c models.Client, s string) models.TokenOptions {
+		return models.TokenOptions{
+			TokenFormat:        constants.JwtTokenFormat,
+			TokenExpiresInSecs: 600,
+			ShouldRefresh:      true,
+		}
+	})
 	openidProvider.EnablePushedAuthorizationRequests(60)
 	openidProvider.EnableJwtSecuredAuthorizationRequests(jose.PS256, jose.RS256)
 	openidProvider.EnableJwtSecuredAuthorizationResponseMode(600, privateRs256Jwk.KeyID)
@@ -59,13 +57,10 @@ func main() {
 	openidProvider.EnableImplicitGrantType()
 	openidProvider.EnableRefreshTokenGrantType(6000, true)
 	openidProvider.EnableDynamicClientRegistration(nil, true)
-	openidProvider.SetScopes("offline_access", "email")
-	openidProvider.SetSupportedUserClaims("email", "email_verified")
+	openidProvider.SetScopes(constants.OffilineAccessScope, constants.EmailScope)
+	openidProvider.SetSupportedUserClaims(constants.EmailClaim, constants.EmailVerifiedClaim)
 	openidProvider.SetCorrelationIdHeader(constants.FapiInteractionIdHeader)
-	openidProvider.SetSupportedAuthenticationContextReferences(
-		constants.AuthenticationContextReference("urn:mace:incommon:iap:silver"),
-		constants.AuthenticationContextReference("urn:mace:incommon:iap:bronze"),
-	)
+	openidProvider.SetSupportedAuthenticationContextReferences("urn:mace:incommon:iap:silver", "urn:mace:incommon:iap:bronze")
 
 	// Client one.
 	privateClientOneJwks := GetClientPrivateJwks("client_keys/client_one_jwks.json")

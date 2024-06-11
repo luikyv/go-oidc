@@ -266,7 +266,7 @@ type OpenIdConfiguration struct {
 	ResponseModes                                  []constants.ResponseMode                   `json:"response_modes_supported"`
 	GrantTypes                                     []constants.GrantType                      `json:"grant_types_supported"`
 	Scopes                                         []string                                   `json:"scopes_supported"`
-	UserClaimsSupported                            []constants.Claim                          `json:"claims_supported"`
+	UserClaimsSupported                            []string                                   `json:"claims_supported"`
 	UserClaimTypesSupported                        []constants.ClaimType                      `json:"claim_types_supported,omitempty"`
 	SubjectIdentifierTypes                         []constants.SubjectIdentifierType          `json:"subject_types_supported"`
 	IdTokenSignatureAlgorithms                     []jose.SignatureAlgorithm                  `json:"id_token_signing_alg_values_supported"`

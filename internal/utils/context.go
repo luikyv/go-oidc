@@ -49,7 +49,7 @@ type Configuration struct {
 	IdTokenSignatureKeyIds               []string
 	ShouldRotateRefreshTokens            bool
 	RefreshTokenLifetimeSecs             int
-	UserClaims                           []constants.Claim
+	UserClaims                           []string
 	ClaimTypes                           []constants.ClaimType
 	IssuerResponseParameterIsEnabled     bool
 	ClaimsParameterIsEnabled             bool
@@ -78,10 +78,11 @@ type Configuration struct {
 	DcrPlugin                            DcrPluginFunc
 	AuthenticationSessionTimeoutSecs     int
 	TlsBoundTokensIsEnabled              bool
-	CorrelationIdHeader                  constants.Header
+	CorrelationIdHeader                  string
 	CaCertificatePool                    *x509.CertPool
 	AuthenticationContextReferences      []constants.AuthenticationContextReference
 	DisplayValues                        []constants.DisplayValue
+	TlsCipherSuites                      []uint16
 }
 
 type Context struct {

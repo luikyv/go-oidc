@@ -36,7 +36,7 @@ func NewProvider(
 			ClientManager:       clientManager,
 			AuthnSessionManager: authnSessionManager,
 			GrantSessionManager: grantSessionManager,
-			Scopes:              []string{constants.OpenIdScope},
+			Scopes:              []string{string(constants.OpenIdScope)},
 			GetTokenOptions: func(client models.Client, scopes string) models.TokenOptions {
 				return models.TokenOptions{
 					TokenExpiresInSecs: constants.DefaultTokenLifetimeSecs,
@@ -48,7 +48,7 @@ func NewProvider(
 			DefaultIdTokenSignatureKeyId: defaultIdTokenKeyId,
 			IdTokenSignatureKeyIds:       []string{defaultIdTokenKeyId},
 			IdTokenExpiresInSecs:         600,
-			UserClaims:                   []constants.Claim{},
+			UserClaims:                   []string{},
 			GrantTypes: []constants.GrantType{
 				constants.ClientCredentialsGrant,
 				constants.AuthorizationCodeGrant,
@@ -101,7 +101,7 @@ func (provider *OpenIdProvider) validateConfiguration() {
 	}
 }
 
-func (provider *OpenIdProvider) SetSupportedUserClaims(claims ...constants.Claim) {
+func (provider *OpenIdProvider) SetSupportedUserClaims(claims ...string) {
 	provider.UserClaims = claims
 }
 
@@ -151,10 +151,10 @@ func (provider *OpenIdProvider) EnableImplicitGrantType() {
 }
 
 func (provider *OpenIdProvider) SetScopes(scopes ...string) {
-	if slices.Contains(scopes, constants.OpenIdScope) {
+	if slices.Contains(scopes, string(constants.OpenIdScope)) {
 		provider.Scopes = scopes
 	} else {
-		provider.Scopes = append(scopes, constants.OpenIdScope)
+		provider.Scopes = append(scopes, string(constants.OpenIdScope))
 	}
 }
 
@@ -308,8 +308,20 @@ func (provider *OpenIdProvider) SetAuthenticationSessionTimeout(timeoutSecs int)
 	provider.AuthenticationSessionTimeoutSecs = timeoutSecs
 }
 
-func (provider *OpenIdProvider) SetCorrelationIdHeader(header constants.Header) {
+func (provider *OpenIdProvider) SetCorrelationIdHeader(header string) {
 	provider.CorrelationIdHeader = header
+}
+
+// Set the cipher suites allowed when running the server with TLS.
+func (provider *OpenIdProvider) SetTlsCipherSuites(cipherSuites ...uint16) {
+	provider.TlsCipherSuites = cipherSuites
+}
+
+// Set the default configurations so the server is compliant with FAPI 2.0.
+func (provider *OpenIdProvider) ConfigureFapi2Profile() {
+	provider.Profile = constants.Fapi2Profile
+	provider.TlsCipherSuites = constants.FapiAllowedCipherSuites
+	//TODO
 }
 
 func (provider *OpenIdProvider) AddClient(client models.Client) error {
@@ -495,11 +507,6 @@ func (provider *OpenIdProvider) runMtls(config TlsConfig) error {
 		),
 	)
 
-	var cipherSuites []uint16 = nil
-	if provider.Profile.IsFapi() {
-		cipherSuites = constants.FapiAllowedCipherSuites
-	}
-
 	server := &http.Server{
 		Addr:    config.MtlsAddress,
 		Handler: handler,
@@ -507,7 +514,7 @@ func (provider *OpenIdProvider) runMtls(config TlsConfig) error {
 			// A client certificate is required, but its validation depends on the authentication method,
 			// e.g. self signed certificate, ...
 			ClientAuth:   tls.RequireAnyClientCert,
-			CipherSuites: cipherSuites,
+			CipherSuites: provider.TlsCipherSuites,
 		},
 	}
 	return server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)
@@ -528,16 +535,11 @@ func (provider *OpenIdProvider) RunTls(config TlsConfig) error {
 		),
 	)
 
-	var cipherSuites []uint16 = nil
-	if provider.Profile.IsFapi() {
-		cipherSuites = constants.FapiAllowedCipherSuites
-	}
-
 	server := &http.Server{
 		Addr:    config.Address,
 		Handler: handler,
 		TLSConfig: &tls.Config{
-			CipherSuites: cipherSuites,
+			CipherSuites: provider.TlsCipherSuites,
 		},
 	}
 	return server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)

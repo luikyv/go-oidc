@@ -41,12 +41,12 @@ func (handler AddCacheControlHeadersMiddlewareHandler) ServeHTTP(w http.Response
 
 type AddCorrelationIdHeaderMiddlewareHandler struct {
 	NextHandler         http.Handler
-	CorrelationIdHeader constants.Header
+	CorrelationIdHeader string
 }
 
 func NewAddCorrelationIdHeaderMiddlewareHandler(
 	next http.Handler,
-	correlationIdHeader constants.Header,
+	correlationIdHeader string,
 ) AddCorrelationIdHeaderMiddlewareHandler {
 	return AddCorrelationIdHeaderMiddlewareHandler{
 		NextHandler:         next,

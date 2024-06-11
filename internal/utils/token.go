@@ -64,6 +64,7 @@ func makeJwtToken(ctx Context, _ models.Client, grantOptions models.GrantOptions
 		string(constants.IssuedAtClaim): timestampNow,
 		string(constants.ExpiryClaim):   timestampNow + grantOptions.TokenExpiresInSecs,
 	}
+	// TODO: missing the client_id claim
 
 	confirmation := make(map[string]string)
 

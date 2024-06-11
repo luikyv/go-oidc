@@ -227,7 +227,7 @@ func IsBlank(s string) bool {
 }
 
 func ScopesContainsOpenId(scope string) bool {
-	return scope != "" && slices.Contains(SplitStringWithSpaces(scope), constants.OpenIdScope)
+	return scope != "" && slices.Contains(SplitStringWithSpaces(scope), string(constants.OpenIdScope))
 }
 
 func GetNonEmptyOrDefault[T any](s1 T, s2 T) T {

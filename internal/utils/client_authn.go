@@ -124,7 +124,7 @@ func authenticateWithPrivateKeyJwt(
 	req models.ClientAuthnRequest,
 ) models.OAuthError {
 
-	if req.ClientAssertionType != constants.JwtBearerAssertion {
+	if req.ClientAssertionType != constants.JwtBearerAssertionType {
 		return models.NewOAuthError(constants.InvalidRequest, "invalid assertion_type")
 	}
 
@@ -167,7 +167,7 @@ func authenticateWithClientSecretJwt(
 	client models.Client,
 	req models.ClientAuthnRequest,
 ) models.OAuthError {
-	if req.ClientAssertionType != constants.JwtBearerAssertion {
+	if req.ClientAssertionType != constants.JwtBearerAssertionType {
 		return models.NewOAuthError(constants.InvalidRequest, "invalid assertion_type")
 	}
 
@@ -359,7 +359,7 @@ func getClientIdFromAssertion(
 		return "", false
 	}
 
-	var claims map[constants.Claim]any
+	var claims map[string]any
 	parsedAssertion.UnsafeClaimsWithoutVerification(&claims)
 
 	// The issuer claim is supposed to have the client ID.

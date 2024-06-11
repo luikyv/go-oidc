@@ -42,7 +42,7 @@ func GetTestClientWithNoneAuthn() Client {
 		ClientMetaInfo: ClientMetaInfo{
 			AuthnMethod:  constants.NoneAuthn,
 			RedirectUris: []string{"https://example.com"},
-			Scopes:       "scope1 scope2 " + constants.OpenIdScope,
+			Scopes:       "scope1 scope2 " + string(constants.OpenIdScope),
 			GrantTypes: []constants.GrantType{
 				constants.AuthorizationCodeGrant,
 				constants.ClientCredentialsGrant,
