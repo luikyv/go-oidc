@@ -43,7 +43,7 @@ func main() {
 		}
 	})
 	openidProvider.EnablePushedAuthorizationRequests(60)
-	openidProvider.EnableJwtSecuredAuthorizationRequests(jose.PS256, jose.RS256)
+	openidProvider.EnableJwtSecuredAuthorizationRequests(600, jose.PS256, jose.RS256)
 	openidProvider.EnableJwtSecuredAuthorizationResponseMode(600, privatePs256Jwk.KeyID)
 	openidProvider.EnableSecretPostClientAuthn()
 	openidProvider.EnableBasicSecretClientAuthn()
@@ -65,13 +65,11 @@ func main() {
 	// Client one.
 	privateClientOneJwks := GetClientPrivateJwks("client_keys/client_one_jwks.json")
 	clientOne := models.GetTestClientWithPrivateKeyJwtAuthn(issuer, privateClientOneJwks.Keys[0].Public())
-	clientOne.AuthnMethod = constants.PrivateKeyJwtAuthn
 	clientOne.RedirectUris = append(clientOne.RedirectUris, issuer+"/callback", "https://localhost:8443/test/a/first_test/callback")
 	openidProvider.AddClient(clientOne)
 	// Client two.
 	privateClientTwoJwks := GetClientPrivateJwks("client_keys/client_two_jwks.json")
 	clientTwo := models.GetTestClientWithPrivateKeyJwtAuthn(issuer, privateClientTwoJwks.Keys[0].Public())
-	clientTwo.AuthnMethod = constants.PrivateKeyJwtAuthn
 	clientTwo.Id = "random_client_id_two"
 	clientTwo.RedirectUris = append(clientTwo.RedirectUris, issuer+"/callback", "https://localhost:8443/test/a/first_test/callback")
 	openidProvider.AddClient(clientTwo)
@@ -80,13 +78,13 @@ func main() {
 	policy := utils.NewPolicy(
 		"policy",
 		func(ctx utils.Context, client models.Client, session models.AuthnSession) bool { return true },
-		InteractiveAuthnFunc,
+		NoInteractionAuthnFunc,
 	)
 	openidProvider.AddPolicy(policy)
 
 	// Run
-	openidProvider.RunTls(oidc.TlsConfig{
-		Address:           port,
+	openidProvider.RunTls(oidc.TlsOptions{
+		TlsAddress:        port,
 		MtlsAddress:       mtlsPort,
 		ServerCertificate: "server_keys/cert.pem",
 		ServerKey:         "server_keys/key.pem",

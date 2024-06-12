@@ -60,6 +60,7 @@ type Configuration struct {
 	JarIsEnabled                         bool
 	JarIsRequired                        bool
 	JarSignatureAlgorithms               []jose.SignatureAlgorithm
+	JarLifetimeSecs                      int // TODO: Use this
 	ParIsEnabled                         bool
 	ParIsRequired                        bool
 	ParLifetimeSecs                      int
@@ -82,7 +83,7 @@ type Configuration struct {
 	CaCertificatePool                    *x509.CertPool
 	AuthenticationContextReferences      []constants.AuthenticationContextReference
 	DisplayValues                        []constants.DisplayValue
-	TlsCipherSuites                      []uint16
+	SenderConstrainedTokenIsRequired     bool // TODO: use this
 }
 
 type Context struct {
@@ -206,6 +207,8 @@ func (ctx Context) getSignatureAlgorithms(keyIds []string) []jose.SignatureAlgor
 	return signatureAlgorithms
 }
 
+// From the subset of keys defined by keyIds, try to find a key that matches signatureAlgorithm.
+// If no key is found, return the key associated to defaultKeyId.
 func (ctx Context) getSignatureKey(
 	signatureAlgorithm jose.SignatureAlgorithm,
 	defaultKeyId string,

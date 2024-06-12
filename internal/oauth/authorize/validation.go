@@ -307,6 +307,15 @@ func ValidateAcrValues(
 	_ models.Client,
 ) models.OAuthError {
 
-	//TODO
+	if params.AcrValues == "" {
+		return nil
+	}
+
+	for _, acr := range unit.SplitStringWithSpaces(params.AcrValues) {
+		if !slices.Contains(ctx.AuthenticationContextReferences, constants.AuthenticationContextReference(acr)) {
+			return params.NewRedirectError(constants.InvalidRequest, "invalid acr value")
+		}
+	}
+
 	return nil
 }

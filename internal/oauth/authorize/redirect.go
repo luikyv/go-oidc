@@ -16,7 +16,6 @@ func redirectError(
 	err models.OAuthError,
 	client models.Client,
 ) models.OAuthError {
-	// TODO: Improve this. Verify if redirectable.
 	var oauthErr models.OAuthRedirectError
 	if !errors.As(err, &oauthErr) {
 		return err

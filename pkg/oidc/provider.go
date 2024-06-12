@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"net/http"
 	"slices"
-	"strings"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/apihandlers"
@@ -50,7 +49,6 @@ func NewProvider(
 			IdTokenExpiresInSecs:         600,
 			UserClaims:                   []string{},
 			GrantTypes: []constants.GrantType{
-				constants.ClientCredentialsGrant,
 				constants.AuthorizationCodeGrant,
 			},
 			ResponseTypes: []constants.ResponseType{constants.CodeResponse},
@@ -71,35 +69,55 @@ func NewProvider(
 	return provider
 }
 
-func (provider *OpenIdProvider) validateConfiguration() {
+// func (provider *OpenIdProvider) validateConfiguration() {
+// 	if provider.Profile == constants.OpenIdProfile {
+// 		defaultIdTokenSignatureKey := provider.PrivateJwks.Key(provider.DefaultIdTokenSignatureKeyId)[0]
+// 		if defaultIdTokenSignatureKey.Algorithm != string(jose.RS256) {
+// 			panic("the default signature algorithm for ID tokens must be RS256")
+// 		}
 
-	defaultIdTokenSignatureKey := provider.PrivateJwks.Key(provider.DefaultIdTokenSignatureKeyId)[0]
-	if provider.Profile == constants.OpenIdProfile && defaultIdTokenSignatureKey.Algorithm != string(jose.RS256) {
-		panic("the default signature algorithm for ID tokens must be RS256")
-	}
+// 		defaultJarmSignatureKey := provider.PrivateJwks.Key(provider.DefaultJarmSignatureKeyId)[0]
+// 		if defaultJarmSignatureKey.Algorithm != string(jose.RS256) {
+// 			panic("the default signature algorithm for JARM must be RS256")
+// 		}
+// 	}
 
-	defaultJarmSignatureKey := provider.PrivateJwks.Key(provider.DefaultJarmSignatureKeyId)[0]
-	if provider.Profile == constants.OpenIdProfile && defaultJarmSignatureKey.Algorithm != string(jose.RS256) {
-		panic("the default signature algorithm for JARM must be RS256")
-	}
+// 	if provider.Profile == constants.Fapi2Profile {
 
-	for _, signatureAlgorithm := range provider.PrivateKeyJwtSignatureAlgorithms {
-		if strings.HasPrefix(string(signatureAlgorithm), "HS") {
-			panic("symetric algorithms are not allowed for private_key_jwt authentication")
-		}
-	}
+// 		if slices.Contains(provider.GrantTypes, constants.ImplicitGrant) {
+// 			panic("the implict grant is not allowed for FAPI 2.0")
+// 		}
 
-	for _, signatureAlgorithm := range provider.ClientSecretJwtSignatureAlgorithms {
-		if !strings.HasPrefix(string(signatureAlgorithm), "HS") {
-			panic("assymetric algorithms are not allowed for client_secret_jwt authentication")
-		}
-	}
+// 		if !provider.ParIsEnabled || !provider.ParIsRequired {
+// 			panic("pushed authorization requests is required for FAPI 2.0")
+// 		}
 
-	if !unit.ContainsAll(provider.ClientAuthnMethods, provider.IntrospectionClientAuthnMethods...) ||
-		slices.Contains(provider.IntrospectionClientAuthnMethods, constants.NoneAuthn) {
-		panic("invalid client authentication method for token introspection")
-	}
-}
+// 		if !provider.PkceIsEnabled || !provider.PkceIsRequired {
+// 			panic("proof key for code exchange is required for FAPI 2.0")
+// 		}
+
+// 		if !provider.IssuerResponseParameterIsEnabled {
+// 			panic("the issuer response parameter is required for FAPI 2.0")
+// 		}
+// 	}
+
+// 	for _, signatureAlgorithm := range provider.PrivateKeyJwtSignatureAlgorithms {
+// 		if strings.HasPrefix(string(signatureAlgorithm), "HS") {
+// 			panic("symetric algorithms are not allowed for private_key_jwt authentication")
+// 		}
+// 	}
+
+// 	for _, signatureAlgorithm := range provider.ClientSecretJwtSignatureAlgorithms {
+// 		if !strings.HasPrefix(string(signatureAlgorithm), "HS") {
+// 			panic("assymetric algorithms are not allowed for client_secret_jwt authentication")
+// 		}
+// 	}
+
+// 	if !unit.ContainsAll(provider.ClientAuthnMethods, provider.IntrospectionClientAuthnMethods...) ||
+// 		slices.Contains(provider.IntrospectionClientAuthnMethods, constants.NoneAuthn) {
+// 		panic("invalid client authentication method for token introspection")
+// 	}
+// }
 
 func (provider *OpenIdProvider) SetSupportedUserClaims(claims ...string) {
 	provider.UserClaims = claims
@@ -169,16 +187,19 @@ func (provider *OpenIdProvider) RequirePushedAuthorizationRequests(parLifetimeSe
 }
 
 func (provider *OpenIdProvider) EnableJwtSecuredAuthorizationRequests(
+	jarLifetimeSecs int,
 	jarAlgorithms ...jose.SignatureAlgorithm,
 ) {
 	provider.JarIsEnabled = true
+	provider.JarLifetimeSecs = jarLifetimeSecs
 	provider.JarSignatureAlgorithms = jarAlgorithms
 }
 
 func (provider *OpenIdProvider) RequireJwtSecuredAuthorizationRequests(
+	jarLifetimeSecs int,
 	jarAlgorithms ...jose.SignatureAlgorithm,
 ) {
-	provider.EnableJwtSecuredAuthorizationRequests(jarAlgorithms...)
+	provider.EnableJwtSecuredAuthorizationRequests(jarLifetimeSecs, jarAlgorithms...)
 	provider.JarIsRequired = true
 }
 
@@ -312,18 +333,11 @@ func (provider *OpenIdProvider) SetCorrelationIdHeader(header string) {
 	provider.CorrelationIdHeader = header
 }
 
-// Set the cipher suites allowed when running the server with TLS.
-func (provider *OpenIdProvider) SetTlsCipherSuites(cipherSuites ...uint16) {
-	provider.TlsCipherSuites = cipherSuites
-}
-
 // Set the default configurations so the server is compliant with FAPI 2.0.
 func (provider *OpenIdProvider) ConfigureFapi2Profile() {
 	provider.Profile = constants.Fapi2Profile
-	provider.TlsCipherSuites = constants.FapiAllowedCipherSuites
 	provider.EnableIssuerResponseParameter()
 	provider.RequirePushedAuthorizationRequests(60)
-	provider.SetCorrelationIdHeader(constants.FapiInteractionIdHeader)
 	provider.RequireProofKeyForCodeExchange(constants.Sha256CodeChallengeMethod)
 	//TODO
 }
@@ -487,21 +501,20 @@ func (provider *OpenIdProvider) getMtlsServerHandler() http.Handler {
 }
 
 func (provider *OpenIdProvider) Run(address string) error {
-	provider.validateConfiguration()
 	serverHandler := apihandlers.NewAddCacheControlHeadersMiddlewareHandler(
 		apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(provider.getServerHandler(), provider.CorrelationIdHeader),
 	)
 	return http.ListenAndServe(address, serverHandler)
 }
 
-type TlsConfig struct {
-	Address           string
+type TlsOptions struct {
+	TlsAddress        string
 	MtlsAddress       string
 	ServerCertificate string
 	ServerKey         string
 }
 
-func (provider *OpenIdProvider) runMtls(config TlsConfig) error {
+func (provider *OpenIdProvider) runMtls(config TlsOptions) error {
 	handler := apihandlers.AddCertificateHeaderMiddlewareHandler(
 		apihandlers.NewAddCacheControlHeadersMiddlewareHandler(
 			apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(
@@ -511,6 +524,10 @@ func (provider *OpenIdProvider) runMtls(config TlsConfig) error {
 		),
 	)
 
+	var cipherSuites []uint16
+	if provider.Profile == constants.Fapi2Profile {
+		cipherSuites = constants.FapiAllowedCipherSuites
+	}
 	server := &http.Server{
 		Addr:    config.MtlsAddress,
 		Handler: handler,
@@ -518,15 +535,13 @@ func (provider *OpenIdProvider) runMtls(config TlsConfig) error {
 			// A client certificate is required, but its validation depends on the authentication method,
 			// e.g. self signed certificate, ...
 			ClientAuth:   tls.RequireAnyClientCert,
-			CipherSuites: provider.TlsCipherSuites,
+			CipherSuites: cipherSuites,
 		},
 	}
 	return server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)
 }
 
-func (provider *OpenIdProvider) RunTls(config TlsConfig) error {
-
-	provider.validateConfiguration()
+func (provider *OpenIdProvider) RunTls(config TlsOptions) error {
 
 	if provider.MtlsIsEnabled {
 		go provider.runMtls(config)
@@ -539,11 +554,15 @@ func (provider *OpenIdProvider) RunTls(config TlsConfig) error {
 		),
 	)
 
+	var cipherSuites []uint16
+	if provider.Profile == constants.Fapi2Profile {
+		cipherSuites = constants.FapiAllowedCipherSuites
+	}
 	server := &http.Server{
-		Addr:    config.Address,
+		Addr:    config.TlsAddress,
 		Handler: handler,
 		TLSConfig: &tls.Config{
-			CipherSuites: provider.TlsCipherSuites,
+			CipherSuites: cipherSuites,
 		},
 	}
 	return server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)
