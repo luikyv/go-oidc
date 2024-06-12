@@ -69,6 +69,7 @@ func NewProvider(
 	return provider
 }
 
+// TODO: log warnings instead.
 // func (provider *OpenIdProvider) validateConfiguration() {
 // 	if provider.Profile == constants.OpenIdProfile {
 // 		defaultIdTokenSignatureKey := provider.PrivateJwks.Key(provider.DefaultIdTokenSignatureKeyId)[0]
@@ -333,13 +334,8 @@ func (provider *OpenIdProvider) SetCorrelationIdHeader(header string) {
 	provider.CorrelationIdHeader = header
 }
 
-// Set the default configurations so the server is compliant with FAPI 2.0.
-func (provider *OpenIdProvider) ConfigureFapi2Profile() {
+func (provider *OpenIdProvider) SetFapi2Profile() {
 	provider.Profile = constants.Fapi2Profile
-	provider.EnableIssuerResponseParameter()
-	provider.RequirePushedAuthorizationRequests(60)
-	provider.RequireProofKeyForCodeExchange(constants.Sha256CodeChallengeMethod)
-	//TODO
 }
 
 func (provider *OpenIdProvider) AddClient(client models.Client) error {

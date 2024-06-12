@@ -9,31 +9,50 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func NoInteractionAuthnFunc(
+func AuthenticateUserWithNoInteraction(
 	ctx utils.Context,
 	session *models.AuthnSession,
 ) constants.AuthnStatus {
-	//TODO: pass op tests.
 	session.SetUserId("random_user_id")
 	session.GrantScopes(session.Scopes)
-	session.AddIdTokenClaim(string(constants.AuthenticationTimeClaim), unit.GetTimestampNow())
-	session.AddUserInfoClaim(string(constants.AuthenticationTimeClaim), unit.GetTimestampNow())
-	session.AddIdTokenClaim(
-		string(constants.AuthenticationMethodReferencesClaim),
-		[]constants.AuthenticationMethodReference{constants.PasswordAuthentication},
-	)
-	session.AddUserInfoClaim(
-		string(constants.AuthenticationMethodReferencesClaim),
-		[]constants.AuthenticationMethodReference{constants.PasswordAuthentication},
-	)
+	session.AddIdTokenClaim(constants.AuthenticationTimeClaim, unit.GetTimestampNow())
 
+	// Add claims based on the claims parameter.
 	if session.Claims != nil {
-		acrClaim, ok := session.Claims.IdToken[string(constants.AuthenticationContextReferenceClaim)]
+
+		// acr claim.
+		acrClaim, ok := session.Claims.IdToken[constants.AuthenticationContextReferenceClaim]
 		if ok {
-			session.AddIdTokenClaim(string(constants.AuthenticationContextReferenceClaim), acrClaim.Value)
+			session.AddIdTokenClaim(constants.AuthenticationContextReferenceClaim, acrClaim.Value)
 		}
+		acrClaim, ok = session.Claims.Userinfo[constants.AuthenticationContextReferenceClaim]
+		if ok {
+			session.AddUserInfoClaim(constants.AuthenticationContextReferenceClaim, acrClaim.Value)
+		}
+
+		// email claim.
+		_, ok = session.Claims.IdToken[constants.EmailClaim]
+		if ok {
+			session.AddIdTokenClaim(constants.EmailClaim, "random@gmail.com")
+		}
+		_, ok = session.Claims.Userinfo[constants.EmailClaim]
+		if ok {
+			session.AddUserInfoClaim(constants.EmailClaim, "random@gmail.com")
+		}
+
+		// email_verified claim.
+		_, ok = session.Claims.IdToken[constants.EmailVerifiedClaim]
+		if ok {
+			session.AddIdTokenClaim(constants.EmailVerifiedClaim, true)
+		}
+		_, ok = session.Claims.Userinfo[constants.EmailVerifiedClaim]
+		if ok {
+			session.AddUserInfoClaim(constants.EmailVerifiedClaim, true)
+		}
+
 	}
 
+	// Add claims based on scope.
 	if strings.Contains(session.Scopes, string(constants.EmailScope)) {
 		session.AddUserInfoClaim(string(constants.EmailClaim), "random@gmail.com")
 		session.AddUserInfoClaim(string(constants.EmailVerifiedClaim), true)
@@ -42,7 +61,7 @@ func NoInteractionAuthnFunc(
 	return constants.Success
 }
 
-func InteractiveAuthnFunc(
+func AuthenticateUser(
 	ctx utils.Context,
 	session *models.AuthnSession,
 ) constants.AuthnStatus {

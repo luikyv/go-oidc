@@ -51,8 +51,9 @@ func ExtractJarFromRequestObject(
 		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidResquestObject, "could not extract claims")
 	}
 
-	if claims.Expiry == nil {
-		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidResquestObject, "invalid expiration claim")
+	// Validate that the "iat" and "exp" claims are present and their difference is not too great.
+	if claims.Expiry == nil || claims.IssuedAt == nil || int(claims.Expiry.Time().Sub(claims.IssuedAt.Time()).Seconds()) > ctx.JarLifetimeSecs {
+		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidResquestObject, "invalid time claims")
 	}
 
 	err = claims.ValidateWithLeeway(jwt.Expected{
@@ -106,7 +107,7 @@ func ValidateDpop(
 	dpopJwt, ok := ctx.GetDpopJwt()
 	if !ok {
 		// The session was created with DPoP, then the DPoP header must be passed.
-		return models.NewOAuthError(constants.AccessDenied, "missing DPoP header")
+		return models.NewOAuthError(constants.UnauthorizedClient, "invalid DPoP header")
 	}
 
 	return ValidateDpopJwt(ctx, dpopJwt, models.DpopJwtValidationOptions{
@@ -125,7 +126,7 @@ func ValidateTokenBindingRequestWithDpop(
 
 	dpopJwt, ok := ctx.GetDpopJwt()
 	if !ok && (ctx.DpopIsRequired || client.DpopIsRequired) {
-		return models.NewOAuthError(constants.InvalidRequest, "missing dpop header")
+		return models.NewOAuthError(constants.InvalidRequest, "invalid dpop header")
 	}
 
 	if !ok || !ctx.DpopIsEnabled {
@@ -166,7 +167,7 @@ func ValidateDpopJwt(ctx Context, dpopJwt string, expectedDpopClaims models.Dpop
 
 	// Validate that the "iat" claim is present and it is not too far in the past.
 	if claims.IssuedAt == nil || int(time.Since(claims.IssuedAt.Time()).Seconds()) > ctx.DpopLifetimeSecs {
-		return models.NewOAuthError(constants.AccessDenied, "invalid assertion")
+		return models.NewOAuthError(constants.UnauthorizedClient, "invalid dpop")
 	}
 
 	if claims.ID == "" {

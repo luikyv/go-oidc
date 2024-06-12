@@ -152,7 +152,7 @@ func (ec ErrorCode) GetStatusCode() int {
 	switch ec {
 	case AccessDenied:
 		return http.StatusForbidden
-	case InvalidClient, InvalidToken:
+	case InvalidClient, InvalidToken, UnauthorizedClient:
 		return http.StatusUnauthorized
 	case InternalError:
 		return http.StatusInternalServerError

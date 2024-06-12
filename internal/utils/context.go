@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"net/textproto"
 	"os"
 	"slices"
 	"strings"
@@ -21,16 +22,14 @@ type GetTokenOptionsFunc func(client models.Client, scopes string) models.TokenO
 type DcrPluginFunc func(ctx Context, dynamicClient *models.DynamicClientRequest)
 
 type Configuration struct {
-	Profile       constants.Profile
-	Host          string
-	MtlsIsEnabled bool
-	MtlsHost      string
-	Scopes        []string
-
-	ClientManager       crud.ClientManager
-	GrantSessionManager crud.GrantSessionManager
-	AuthnSessionManager crud.AuthnSessionManager
-
+	Profile                              constants.Profile
+	Host                                 string
+	MtlsIsEnabled                        bool
+	MtlsHost                             string
+	Scopes                               []string
+	ClientManager                        crud.ClientManager
+	GrantSessionManager                  crud.GrantSessionManager
+	AuthnSessionManager                  crud.AuthnSessionManager
 	PrivateJwks                          jose.JSONWebKeySet
 	DefaultTokenSignatureKeyId           string
 	GrantTypes                           []constants.GrantType
@@ -60,7 +59,7 @@ type Configuration struct {
 	JarIsEnabled                         bool
 	JarIsRequired                        bool
 	JarSignatureAlgorithms               []jose.SignatureAlgorithm
-	JarLifetimeSecs                      int // TODO: Use this
+	JarLifetimeSecs                      int
 	ParIsEnabled                         bool
 	ParIsRequired                        bool
 	ParLifetimeSecs                      int
@@ -277,7 +276,15 @@ func (ctx Context) GetAuthorizationToken() (
 }
 
 func (ctx Context) GetDpopJwt() (string, bool) {
-	return ctx.GetHeader(constants.DpopHeader)
+	// Consider case insensitive header by Canonicalizing them .
+	canonicalizedDpopHeader := textproto.CanonicalMIMEHeaderKey(constants.DpopHeader)
+	canonicalizedHeaders := textproto.MIMEHeader(ctx.Request.Header)
+
+	values := canonicalizedHeaders[canonicalizedDpopHeader]
+	if values == nil || len(values) != 1 {
+		return "", false
+	}
+	return values[0], true
 }
 
 func (ctx Context) GetHeader(header string) (string, bool) {

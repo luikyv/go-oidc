@@ -42,6 +42,7 @@ type TokenOptions struct {
 	JwtSignatureKeyId     string                `json:"token_signature_key_id"`
 	OpaqueTokenLength     int                   `json:"opaque_token_length"`
 	AdditionalTokenClaims map[string]any        `json:"additional_token_claims"`
+	// TODO: Validation function.
 }
 
 func (opts *TokenOptions) AddTokenClaims(claims map[string]any) {
@@ -196,7 +197,7 @@ func NewAuthorizationRequest(req *http.Request) AuthorizationRequest {
 	claims := req.URL.Query().Get("claims")
 	if claims != "" {
 		var claimsObject ClaimsObject
-		json.Unmarshal([]byte(req.URL.Query().Get("claims")), &claimsObject)
+		json.Unmarshal([]byte(claims), &claimsObject)
 		params.Claims = &claimsObject
 	}
 
@@ -209,22 +210,33 @@ type PushedAuthorizationRequest struct {
 }
 
 func NewPushedAuthorizationRequest(req *http.Request) PushedAuthorizationRequest {
+	params := AuthorizationParameters{
+		RequestUri:               req.PostFormValue("request_uri"),
+		RequestObject:            req.PostFormValue("request"),
+		RedirectUri:              req.PostFormValue("redirect_uri"),
+		ResponseMode:             constants.ResponseMode(req.PostFormValue("response_mode")),
+		ResponseType:             constants.ResponseType(req.PostFormValue("response_type")),
+		Scopes:                   req.PostFormValue("scope"),
+		State:                    req.PostFormValue("state"),
+		Nonce:                    req.PostFormValue("nonce"),
+		CodeChallenge:            req.PostFormValue("code_challenge"),
+		CodeChallengeMethod:      constants.CodeChallengeMethod(req.PostFormValue("code_challenge_method")),
+		Prompt:                   constants.PromptType(req.PostFormValue("prompt")),
+		MaxAuthenticationAgeSecs: req.PostFormValue("max_age"),
+		Display:                  constants.DisplayValue(req.PostFormValue("display")),
+		AcrValues:                req.PostFormValue("acr_values"),
+	}
+
+	claims := req.PostFormValue("claims")
+	if claims != "" {
+		var claimsObject ClaimsObject
+		json.Unmarshal([]byte(claims), &claimsObject)
+		params.Claims = &claimsObject
+	}
+
 	return PushedAuthorizationRequest{
-		ClientAuthnRequest: NewClientAuthnRequest(req),
-		AuthorizationParameters: AuthorizationParameters{
-			RequestUri:               req.PostFormValue("request_uri"),
-			RequestObject:            req.PostFormValue("request"),
-			RedirectUri:              req.PostFormValue("redirect_uri"),
-			ResponseMode:             constants.ResponseMode(req.PostFormValue("response_mode")),
-			ResponseType:             constants.ResponseType(req.PostFormValue("response_type")),
-			Scopes:                   req.PostFormValue("scope"),
-			State:                    req.PostFormValue("state"),
-			Nonce:                    req.PostFormValue("nonce"),
-			CodeChallenge:            req.PostFormValue("code_challenge"),
-			CodeChallengeMethod:      constants.CodeChallengeMethod(req.PostFormValue("code_challenge_method")),
-			Prompt:                   constants.PromptType(req.PostFormValue("prompt")),
-			MaxAuthenticationAgeSecs: req.PostFormValue("max_age"),
-		},
+		ClientAuthnRequest:      NewClientAuthnRequest(req),
+		AuthorizationParameters: params,
 	}
 }
 

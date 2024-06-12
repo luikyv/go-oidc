@@ -14,8 +14,7 @@ import (
 )
 
 func main() {
-	//TODO: remove this.
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //TODO: remove this.
 
 	port := ":83"
 	mtlsPort := ":84"
@@ -34,6 +33,7 @@ func main() {
 		privatePs256Jwk.KeyID,
 		privatePs256Jwk.KeyID,
 	)
+	openidProvider.SetFapi2Profile()
 	openidProvider.EnableMtls(mtlsIssuer)
 	openidProvider.SetTokenOptions(func(c models.Client, s string) models.TokenOptions {
 		return models.TokenOptions{
@@ -53,15 +53,15 @@ func main() {
 	openidProvider.EnableIssuerResponseParameter()
 	openidProvider.EnableClaimsParameter()
 	openidProvider.EnableDemonstrationProofOfPossesion(600, jose.RS256, jose.PS256, jose.ES256)
-	openidProvider.EnableProofKeyForCodeExchange(constants.Sha256CodeChallengeMethod)
+	openidProvider.RequireProofKeyForCodeExchange(constants.Sha256CodeChallengeMethod)
 	openidProvider.EnableImplicitGrantType()
 	openidProvider.EnableRefreshTokenGrantType(6000, true)
 	openidProvider.EnableDynamicClientRegistration(nil, true)
 	openidProvider.SetScopes(constants.OffilineAccessScope, constants.EmailScope)
 	openidProvider.SetSupportedUserClaims(constants.EmailClaim, constants.EmailVerifiedClaim)
 	openidProvider.SetSupportedAuthenticationContextReferences("urn:mace:incommon:iap:silver", "urn:mace:incommon:iap:bronze")
-	openidProvider.ConfigureFapi2Profile()
 
+	// Create Client Mocks.
 	// Client one.
 	privateClientOneJwks := GetClientPrivateJwks("client_keys/client_one_jwks.json")
 	clientOne := models.GetTestClientWithPrivateKeyJwtAuthn(issuer, privateClientOneJwks.Keys[0].Public())
@@ -75,12 +75,11 @@ func main() {
 	openidProvider.AddClient(clientTwo)
 
 	// Create Policy
-	policy := utils.NewPolicy(
+	openidProvider.AddPolicy(utils.NewPolicy(
 		"policy",
 		func(ctx utils.Context, client models.Client, session models.AuthnSession) bool { return true },
-		NoInteractionAuthnFunc,
-	)
-	openidProvider.AddPolicy(policy)
+		AuthenticateUser,
+	))
 
 	// Run
 	openidProvider.RunTls(oidc.TlsOptions{
