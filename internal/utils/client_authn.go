@@ -153,7 +153,7 @@ func authenticateWithPrivateKeyJwt(
 		return models.NewOAuthError(constants.InvalidClient, "invalid assertion")
 	}
 
-	return areAssertionClaimsValid(ctx, claims, ctx.PrivateKeyJwtAssertionLifetimeSecs)
+	return areAssertionClaimsValid(ctx, client, claims, ctx.PrivateKeyJwtAssertionLifetimeSecs)
 }
 
 func authenticateWithClientSecretJwt(
@@ -179,11 +179,12 @@ func authenticateWithClientSecretJwt(
 		return models.NewOAuthError(constants.InvalidClient, "invalid assertion")
 	}
 
-	return areAssertionClaimsValid(ctx, claims, ctx.ClientSecretJwtAssertionLifetimeSecs)
+	return areAssertionClaimsValid(ctx, client, claims, ctx.ClientSecretJwtAssertionLifetimeSecs)
 }
 
 func areAssertionClaimsValid(
 	ctx Context,
+	client models.Client,
 	claims jwt.Claims,
 	maxLifetimeSecs int,
 ) models.OAuthError {
@@ -193,9 +194,9 @@ func areAssertionClaimsValid(
 	}
 
 	err := claims.ValidateWithLeeway(jwt.Expected{
-		Issuer:      claims.Subject,
-		Subject:     claims.Subject,
-		AnyAudience: []string{ctx.Host, ctx.GetRequestUrl()},
+		Issuer:      client.Id,
+		Subject:     client.Id,
+		AnyAudience: ctx.GetClientAssertionAudiences(),
 	}, time.Duration(0))
 	if err != nil {
 		return models.NewOAuthError(constants.InvalidClient, "invalid assertion")

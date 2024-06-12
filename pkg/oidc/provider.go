@@ -43,7 +43,7 @@ func NewProvider(
 				}
 			},
 			PrivateJwks:                  privateJwks,
-			DefaultTokenSignatureKeyId:   defaultTokenKeyId,
+			DefaultTokenSignatureKeyId:   defaultTokenKeyId, // TODO: make sure is valid
 			DefaultIdTokenSignatureKeyId: defaultIdTokenKeyId,
 			IdTokenSignatureKeyIds:       []string{defaultIdTokenKeyId},
 			IdTokenExpiresInSecs:         600,
@@ -550,6 +550,7 @@ func (provider *OpenIdProvider) RunTls(config TlsOptions) error {
 		),
 	)
 
+	//TODO: move this from here.
 	var cipherSuites []uint16
 	if provider.Profile == constants.Fapi2Profile {
 		cipherSuites = constants.FapiAllowedCipherSuites

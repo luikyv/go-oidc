@@ -120,7 +120,7 @@ func validateAuthorizationCodeGrantRequest(
 	}
 	// In the case PKCE is enalbed, if the session was created with a code challenge, the token request must contain the right code verifier.
 	if ctx.PkceIsEnabled && session.CodeChallenge != "" && (req.CodeVerifier == "" || !unit.IsPkceValid(req.CodeVerifier, session.CodeChallenge, codeChallengeMethod)) {
-		return models.NewOAuthError(constants.InvalidRequest, "invalid pkce")
+		return models.NewOAuthError(constants.InvalidGrant, "invalid pkce")
 	}
 
 	return utils.ValidateTokenBindingRequestWithDpop(ctx, req, client)

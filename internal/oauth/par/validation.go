@@ -13,11 +13,6 @@ func validatePar(
 	req models.PushedAuthorizationRequest,
 	client models.Client,
 ) models.OAuthError {
-
-	if req.RequestUri != "" {
-		return models.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
-	}
-
 	return validatePushedAuthorizationParams(ctx, req.AuthorizationParameters, client)
 }
 
@@ -33,7 +28,11 @@ func validateParWithJar(
 	}
 
 	if jar.ClientId != client.Id {
-		return models.NewOAuthError(constants.InvalidRequest, "invalid client_id")
+		return models.NewOAuthError(constants.InvalidResquestObject, "invalid client_id")
+	}
+
+	if jar.RequestUri != "" {
+		return models.NewOAuthError(constants.InvalidResquestObject, "request_uri is not allowed inside JAR")
 	}
 
 	// The PAR RFC (https://datatracker.ietf.org/doc/html/rfc9126#section-3) says:
@@ -51,6 +50,7 @@ func validatePushedAuthorizationParams(
 	return utils.RunValidations(
 		ctx, params, client,
 		validateNoneAuthnNotAllowed,
+		validateCannotInformRequestUri,
 		authorize.ValidateCannotRequestCodeResponseTypeWhenAuthorizationCodeGrantIsNotAllowed,
 		authorize.ValidateCannotRequestImplicitResponseTypeWhenImplicitGrantIsNotAllowed,
 		validateRedirectUri,
@@ -61,7 +61,6 @@ func validatePushedAuthorizationParams(
 		authorize.ValidateCodeChallengeMethod,
 		authorize.ValidateDisplayValue,
 		authorize.ValidateAcrValues,
-		validateCannotInformRequestUri,
 	)
 }
 

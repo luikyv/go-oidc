@@ -1,13 +1,35 @@
 package main
 
 import (
+	"encoding/json"
+	"io"
+	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
+
+func GetPrivateJwks(filename string) jose.JSONWebKeySet {
+	absPath, _ := filepath.Abs("./" + filename)
+	clientJwksFile, err := os.Open(absPath)
+	if err != nil {
+		panic(err.Error())
+	}
+	defer clientJwksFile.Close()
+	clientJwksBytes, err := io.ReadAll(clientJwksFile)
+	if err != nil {
+		panic(err.Error())
+	}
+	var clientJwks jose.JSONWebKeySet
+	json.Unmarshal(clientJwksBytes, &clientJwks)
+
+	return clientJwks
+}
 
 func AuthenticateUserWithNoInteraction(
 	ctx utils.Context,

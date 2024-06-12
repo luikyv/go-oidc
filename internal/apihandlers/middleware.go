@@ -34,9 +34,9 @@ func NewAddCacheControlHeadersMiddlewareHandler(next http.Handler) AddCacheContr
 }
 
 func (handler AddCacheControlHeadersMiddlewareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	handler.NextHandler.ServeHTTP(w, r)
 	w.Header().Set("Cache-Control", "no-cache, no-store")
 	w.Header().Set("Pragma", "no-cache")
+	handler.NextHandler.ServeHTTP(w, r)
 }
 
 type AddCorrelationIdHeaderMiddlewareHandler struct {

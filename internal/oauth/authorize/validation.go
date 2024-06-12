@@ -252,7 +252,7 @@ func ValidateCannotRequestImplicitResponseTypeWhenImplicitGrantIsNotAllowed(
 	client models.Client,
 ) models.OAuthError {
 	if params.ResponseType.IsImplicit() && !client.IsGrantTypeAllowed(constants.ImplicitGrant) {
-		return params.NewRedirectError(constants.InvalidGrant, "implicit grant not allowed")
+		return params.NewRedirectError(constants.InvalidRequest, "implicit grant not allowed")
 	}
 	return nil
 }

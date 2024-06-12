@@ -18,7 +18,7 @@ type DpopJwtClaims struct {
 
 type DpopJwtValidationOptions struct {
 	HttpMethod string
-	HttpUri    string
+	HttpUri    string // TODO Try DPoP proof where 'htu' has a query/fragment (which must be ignored in match as per 4.3-9 in DPoP spec): EnsureHttpStatusCodeIs200or201: resourceendpoint returned a different http status than expected
 	// AccessToken should be filled when the DPoP "ath" claim is expected and should be validated.
 	AccessToken   string
 	JwkThumbprint string

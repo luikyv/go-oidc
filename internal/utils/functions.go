@@ -51,9 +51,9 @@ func ExtractJarFromRequestObject(
 		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidResquestObject, "could not extract claims")
 	}
 
-	// Validate that the "iat" and "exp" claims are present and their difference is not too great.
-	if claims.Expiry == nil || claims.IssuedAt == nil || int(claims.Expiry.Time().Sub(claims.IssuedAt.Time()).Seconds()) > ctx.JarLifetimeSecs {
-		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidResquestObject, "invalid time claims")
+	// Validate that the "exp" claims is present and it's not too far in the future.
+	if claims.Expiry == nil || int(time.Until(claims.Expiry.Time()).Seconds()) > ctx.JarLifetimeSecs {
+		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidResquestObject, "invalid exp claim")
 	}
 
 	err = claims.ValidateWithLeeway(jwt.Expected{
