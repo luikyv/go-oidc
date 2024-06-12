@@ -36,11 +36,11 @@ func NewProvider(
 			AuthnSessionManager: authnSessionManager,
 			GrantSessionManager: grantSessionManager,
 			Scopes:              []string{string(constants.OpenIdScope)},
-			GetTokenOptions: func(client models.Client, scopes string) models.TokenOptions {
+			GetTokenOptions: func(client models.Client, scopes string) (models.TokenOptions, error) {
 				return models.TokenOptions{
 					TokenExpiresInSecs: constants.DefaultTokenLifetimeSecs,
 					TokenFormat:        constants.JwtTokenFormat,
-				}
+				}, nil
 			},
 			PrivateJwks:                  privateJwks,
 			DefaultTokenSignatureKeyId:   defaultTokenKeyId, // TODO: make sure is valid

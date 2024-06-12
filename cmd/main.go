@@ -50,13 +50,12 @@ func runFapi2OpenIdProvider() {
 	openidProvider.SetScopes(scopes...)
 	openidProvider.SetSupportedUserClaims(constants.EmailClaim, constants.EmailVerifiedClaim)
 	openidProvider.SetSupportedAuthenticationContextReferences("urn:mace:incommon:iap:silver", "urn:mace:incommon:iap:bronze")
-	openidProvider.SetTokenOptions(func(c models.Client, s string) models.TokenOptions {
+	openidProvider.SetTokenOptions(func(c models.Client, s string) (models.TokenOptions, error) {
 		return models.TokenOptions{
 			TokenFormat:        constants.JwtTokenFormat,
 			TokenExpiresInSecs: 600,
 			ShouldRefresh:      true,
-			// TODO: validation plugin
-		}
+		}, nil
 	})
 
 	// Create Client Mocks.

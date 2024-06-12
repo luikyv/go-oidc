@@ -116,7 +116,10 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) mod
 		State:             session.State,
 	}
 	if session.ResponseType.Contains(constants.TokenResponse) {
-		grantOptions := newImplicitGrantOptions(ctx, client, *session)
+		grantOptions, err := newImplicitGrantOptions(ctx, client, *session)
+		if err != nil {
+			return session.NewRedirectError(constants.AccessDenied, err.Error())
+		}
 		token := utils.MakeToken(ctx, client, grantOptions)
 		redirectParams.AccessToken = token.Value
 		redirectParams.TokenType = token.Type
@@ -183,8 +186,19 @@ func generateImplicitGrantSession(
 	return nil
 }
 
-func newImplicitGrantOptions(ctx utils.Context, client models.Client, session models.AuthnSession) models.GrantOptions {
-	tokenOptions := ctx.GetTokenOptions(client, session.Scopes)
+func newImplicitGrantOptions(
+	ctx utils.Context,
+	client models.Client,
+	session models.AuthnSession,
+) (
+	models.GrantOptions,
+	error,
+) {
+	tokenOptions, err := ctx.GetTokenOptions(client, session.Scopes)
+	if err != nil {
+		return models.GrantOptions{}, err
+	}
+
 	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
 	return models.GrantOptions{
 		GrantType:                constants.ImplicitGrant,
@@ -194,5 +208,5 @@ func newImplicitGrantOptions(ctx utils.Context, client models.Client, session mo
 		TokenOptions:             tokenOptions,
 		AdditionalIdTokenClaims:  session.GetAdditionalIdTokenClaims(),
 		AdditionalUserInfoClaims: session.GetAdditionalUserInfoClaims(),
-	}
+	}, nil
 }

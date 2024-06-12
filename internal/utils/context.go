@@ -17,7 +17,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
-type GetTokenOptionsFunc func(client models.Client, scopes string) models.TokenOptions
+type GetTokenOptionsFunc func(client models.Client, scopes string) (models.TokenOptions, error)
 
 type DcrPluginFunc func(ctx Context, dynamicClient *models.DynamicClientRequest)
 

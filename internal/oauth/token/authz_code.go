@@ -9,7 +9,13 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func handleAuthorizationCodeGrantTokenCreation(ctx utils.Context, req models.TokenRequest) (models.TokenResponse, models.OAuthError) {
+func handleAuthorizationCodeGrantTokenCreation(
+	ctx utils.Context,
+	req models.TokenRequest,
+) (
+	models.TokenResponse,
+	models.OAuthError,
+) {
 
 	if oauthErr := preValidateAuthorizationCodeGrantRequest(req); oauthErr != nil {
 		return models.TokenResponse{}, oauthErr
@@ -26,7 +32,10 @@ func handleAuthorizationCodeGrantTokenCreation(ctx utils.Context, req models.Tok
 		return models.TokenResponse{}, oauthErr
 	}
 
-	grantOptions := newAuthorizationCodeGrantOptions(ctx, req, client, session)
+	grantOptions, err := newAuthorizationCodeGrantOptions(ctx, req, client, session)
+	if err != nil {
+		return models.TokenResponse{}, models.NewOAuthError(constants.AccessDenied, err.Error())
+	}
 	token := utils.MakeToken(ctx, client, grantOptions)
 	tokenResp := models.TokenResponse{
 		AccessToken: token.Value,
@@ -189,9 +198,15 @@ func newAuthorizationCodeGrantOptions(
 	req models.TokenRequest,
 	client models.Client,
 	session models.AuthnSession,
-) models.GrantOptions {
+) (
+	models.GrantOptions,
+	error,
+) {
 
-	tokenOptions := ctx.GetTokenOptions(client, req.Scopes)
+	tokenOptions, err := ctx.GetTokenOptions(client, req.Scopes)
+	if err != nil {
+		return models.GrantOptions{}, err
+	}
 	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
 	return models.GrantOptions{
 		GrantType:                constants.AuthorizationCodeGrant,
@@ -201,5 +216,5 @@ func newAuthorizationCodeGrantOptions(
 		TokenOptions:             tokenOptions,
 		AdditionalIdTokenClaims:  session.GetAdditionalIdTokenClaims(),
 		AdditionalUserInfoClaims: session.GetAdditionalUserInfoClaims(),
-	}
+	}, nil
 }
