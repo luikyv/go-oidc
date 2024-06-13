@@ -9,7 +9,7 @@ import (
 
 type ContextKey string
 
-const CorrelationId ContextKey = "correlation_id"
+const CorrelationIdKey ContextKey = "correlation_id"
 
 const ProtectedParamPrefix string = "p_"
 
@@ -162,10 +162,12 @@ func (ec ErrorCode) GetStatusCode() int {
 }
 
 const (
-	CorrelationIdHeader     string = "X-Correlation-Id"
-	FapiInteractionIdHeader string = "X-Fapi-Interaction-Id"
-	DpopHeader              string = "DPoP"
-	ClientCertificateHeader string = "X-Client-Certificate"
+	CorrelationIdHeader             string = "X-Correlation-Id"
+	FapiInteractionIdHeader         string = "X-Fapi-Interaction-Id"
+	DpopHeader                      string = "DPoP"
+	ClientCertificateHeader         string = "X-Client-Certificate"
+	SecureClientCertificateHeader   string = "X-Secure-Client-Certificate"
+	InsecureClientCertificateHeader string = "X-Insecure-Client-Certificate"
 )
 
 const (

@@ -19,7 +19,7 @@ func NewAddCertificateHeaderMiddlewareHandler(next http.Handler) AddCertificateH
 }
 
 func (handler AddCertificateHeaderMiddlewareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	r.Header.Set(string(constants.ClientCertificateHeader), string(r.TLS.PeerCertificates[0].Raw)) // TODO: should I encode it?
+	r.Header.Set(constants.ClientCertificateHeader, string(r.TLS.PeerCertificates[0].Raw)) // TODO: should I encode it?
 	handler.NextHandler.ServeHTTP(w, r)
 }
 
@@ -34,6 +34,7 @@ func NewAddCacheControlHeadersMiddlewareHandler(next http.Handler) AddCacheContr
 }
 
 func (handler AddCacheControlHeadersMiddlewareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Avoid caching.
 	w.Header().Set("Cache-Control", "no-cache, no-store")
 	w.Header().Set("Pragma", "no-cache")
 	handler.NextHandler.ServeHTTP(w, r)
@@ -56,13 +57,13 @@ func NewAddCorrelationIdHeaderMiddlewareHandler(
 
 func (handler AddCorrelationIdHeaderMiddlewareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	correlationId := uuid.NewString()
-	correlationIdHeader, ok := r.Header[string(handler.CorrelationIdHeader)]
+	correlationIdHeader, ok := r.Header[handler.CorrelationIdHeader]
 	if ok && len(correlationIdHeader) > 0 {
 		correlationId = correlationIdHeader[0]
 	}
 
-	w.Header().Set(string(handler.CorrelationIdHeader), correlationId)
+	w.Header().Set(handler.CorrelationIdHeader, correlationId)
 
-	ctx := context.WithValue(r.Context(), constants.CorrelationId, correlationId)
+	ctx := context.WithValue(r.Context(), constants.CorrelationIdKey, correlationId)
 	handler.NextHandler.ServeHTTP(w, r.WithContext(ctx))
 }

@@ -73,10 +73,10 @@ func createJarmResponse(
 	)
 
 	claims := map[string]any{
-		string(constants.IssuerClaim):   ctx.Host,
-		string(constants.AudienceClaim): client.Id,
-		string(constants.IssuedAtClaim): createdAtTimestamp,
-		string(constants.ExpiryClaim):   createdAtTimestamp + ctx.JarmLifetimeSecs,
+		constants.IssuerClaim:   ctx.Host,
+		constants.AudienceClaim: client.Id,
+		constants.IssuedAtClaim: createdAtTimestamp,
+		constants.ExpiryClaim:   createdAtTimestamp + ctx.JarmLifetimeSecs,
 	}
 	for k, v := range redirectParams.GetParams() {
 		claims[k] = v

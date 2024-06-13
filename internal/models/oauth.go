@@ -398,11 +398,11 @@ func (info TokenIntrospectionInfo) GetParameters() map[string]any {
 	}
 
 	params := map[string]any{
-		"active":                        true,
-		string(constants.SubjectClaim):  info.Subject,
-		string(constants.ScopeClaim):    info.Scopes,
-		string(constants.ClientIdClaim): info.ClientId,
-		string(constants.ExpiryClaim):   info.ExpiresAtTimestamp,
+		"active":                true,
+		constants.SubjectClaim:  info.Subject,
+		constants.ScopeClaim:    info.Scopes,
+		constants.ClientIdClaim: info.ClientId,
+		constants.ExpiryClaim:   info.ExpiresAtTimestamp,
 	}
 
 	confirmation := make(map[string]string)

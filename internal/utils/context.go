@@ -107,10 +107,10 @@ func NewContext(
 	logger := slog.New(jsonHandler)
 
 	// Set shared information.
-	correlationId := req.Context().Value(constants.CorrelationId).(string)
+	correlationId := req.Context().Value(constants.CorrelationIdKey).(string)
 	logger = logger.With(
 		// Always log the correlation ID.
-		slog.String(string(constants.CorrelationId), correlationId),
+		slog.String(string(constants.CorrelationIdKey), correlationId),
 	)
 
 	return Context{
@@ -277,7 +277,7 @@ func (ctx Context) GetAuthorizationToken() (
 }
 
 func (ctx Context) GetDpopJwt() (string, bool) {
-	// Consider case insensitive header by Canonicalizing them .
+	// Consider case insensitive headers by canonicalizing them.
 	canonicalizedDpopHeader := textproto.CanonicalMIMEHeaderKey(constants.DpopHeader)
 	canonicalizedHeaders := textproto.MIMEHeader(ctx.Request.Header)
 
@@ -288,7 +288,7 @@ func (ctx Context) GetDpopJwt() (string, bool) {
 	return values[0], true
 }
 
-func (ctx Context) GetClientCertificate() (*x509.Certificate, bool) { // TODO: Could I just return nil instead?
+func (ctx Context) GetClientCertificate() (*x509.Certificate, bool) {
 	rawClientCert, ok := ctx.GetHeader(constants.ClientCertificateHeader)
 	if !ok {
 		ctx.Logger.Debug("the client certificate was not informed")
@@ -324,7 +324,7 @@ func (ctx Context) ExecureDcrPlugin(dynamicClient *models.DynamicClientRequest) 
 }
 
 func (ctx Context) Redirect(redirectUrl string) {
-	http.Redirect(ctx.Response, ctx.Request, redirectUrl, http.StatusFound)
+	http.Redirect(ctx.Response, ctx.Request, redirectUrl, http.StatusFound) // TODO: 303 for fapi 2?
 }
 
 func (ctx Context) RenderHtml(html string, params any) {

@@ -66,7 +66,7 @@ func getUserInfoResponse(
 ) models.UserInfoResponse {
 
 	userInfoClaims := map[string]any{
-		string(constants.SubjectClaim): grantSession.Subject,
+		constants.SubjectClaim: grantSession.Subject,
 	}
 
 	for k, v := range grantSession.AdditionalUserInfoClaims {
@@ -75,8 +75,8 @@ func getUserInfoResponse(
 
 	userInfoResponse := models.UserInfoResponse{}
 	if client.UserInfoSignatureAlgorithm != "" {
-		userInfoClaims[string(constants.IssuerClaim)] = ctx.Host
-		userInfoClaims[string(constants.AudienceClaim)] = grantSession.ClientId
+		userInfoClaims[constants.IssuerClaim] = ctx.Host
+		userInfoClaims[constants.AudienceClaim] = grantSession.ClientId
 		userInfoResponse.SignedClaims = signUserInfoClaims(ctx, client, userInfoClaims)
 	} else {
 		userInfoResponse.Claims = userInfoClaims

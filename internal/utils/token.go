@@ -21,23 +21,23 @@ func MakeIdToken(
 
 	// Set the token claims.
 	claims := map[string]any{
-		string(constants.IssuerClaim):   ctx.Host,
-		string(constants.SubjectClaim):  idTokenOpts.Subject,
-		string(constants.AudienceClaim): idTokenOpts.ClientId,
-		string(constants.IssuedAtClaim): timestampNow,
-		string(constants.ExpiryClaim):   timestampNow + ctx.IdTokenExpiresInSecs,
+		constants.IssuerClaim:   ctx.Host,
+		constants.SubjectClaim:  idTokenOpts.Subject,
+		constants.AudienceClaim: idTokenOpts.ClientId,
+		constants.IssuedAtClaim: timestampNow,
+		constants.ExpiryClaim:   timestampNow + ctx.IdTokenExpiresInSecs,
 	}
 
 	if idTokenOpts.AccessToken != "" {
-		claims[string(constants.AccessTokenHashClaim)] = unit.GenerateHalfHashClaim(idTokenOpts.AccessToken, signatureAlgorithm)
+		claims[constants.AccessTokenHashClaim] = unit.GenerateHalfHashClaim(idTokenOpts.AccessToken, signatureAlgorithm)
 	}
 
 	if idTokenOpts.AuthorizationCode != "" {
-		claims[string(constants.AuthorizationCodeHashClaim)] = unit.GenerateHalfHashClaim(idTokenOpts.AuthorizationCode, signatureAlgorithm)
+		claims[constants.AuthorizationCodeHashClaim] = unit.GenerateHalfHashClaim(idTokenOpts.AuthorizationCode, signatureAlgorithm)
 	}
 
 	if idTokenOpts.State != "" {
-		claims[string(constants.StateHashClaim)] = unit.GenerateHalfHashClaim(idTokenOpts.State, signatureAlgorithm)
+		claims[constants.StateHashClaim] = unit.GenerateHalfHashClaim(idTokenOpts.State, signatureAlgorithm)
 	}
 
 	for k, v := range idTokenOpts.AdditionalIdTokenClaims {

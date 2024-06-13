@@ -75,9 +75,9 @@ func AuthenticateUserWithNoInteraction(
 	}
 
 	// Add claims based on scope.
-	if strings.Contains(session.Scopes, string(constants.EmailScope)) {
-		session.AddUserInfoClaim(string(constants.EmailClaim), "random@gmail.com")
-		session.AddUserInfoClaim(string(constants.EmailVerifiedClaim), true)
+	if strings.Contains(session.Scopes, constants.EmailScope) {
+		session.AddUserInfoClaim(constants.EmailClaim, "random@gmail.com")
+		session.AddUserInfoClaim(constants.EmailVerifiedClaim, true)
 	}
 
 	return constants.Success
