@@ -35,9 +35,9 @@ func validateParWithJar(
 		return models.NewOAuthError(constants.InvalidResquestObject, "request_uri is not allowed inside JAR")
 	}
 
-	// The PAR RFC (https://datatracker.ietf.org/doc/html/rfc9126#section-3) says:
+	// The PAR RFC says:
 	// "...The rules for processing, signing, and encryption of the Request Object as defined in JAR [RFC9101] apply..."
-	// In turn, the JAR RFC (https://www.rfc-editor.org/rfc/rfc9101.html#name-request-object-2.) says about the request object:
+	// In turn, the JAR RFC says about the request object:
 	// "...It MUST contain all the parameters (including extension parameters) used to process the OAuth 2.0 [RFC6749] authorization request..."
 	return validatePushedAuthorizationParams(ctx, jar.AuthorizationParameters, client)
 }

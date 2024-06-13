@@ -35,6 +35,7 @@ func runFapi2OpenIdProvider() {
 		ps256ServerKeyId,
 	)
 	openidProvider.SetFapi2Profile()
+	openidProvider.SetFapi2TlsCipherSuites()
 	openidProvider.EnableMtls(mtlsIssuer)
 	openidProvider.RequirePushedAuthorizationRequests(60)
 	openidProvider.EnableJwtSecuredAuthorizationRequests(600, jose.PS256)

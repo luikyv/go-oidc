@@ -342,6 +342,16 @@ func (provider *OpenIdProvider) SetFapi2Profile() {
 	provider.Profile = constants.Fapi2Profile
 }
 
+// Define the TLS cipher suites accepted when running the server with TLS.
+func (provider *OpenIdProvider) SetFapi2TlsCipherSuites() {
+	provider.SetTlsCipherSuites(constants.FapiAllowedCipherSuites...)
+}
+
+// Define the TLS cipher suites accepted when running the server with TLS.
+func (provider *OpenIdProvider) SetTlsCipherSuites(cipherSuites ...uint16) {
+	provider.AllowedTlsCipherSuites = cipherSuites
+}
+
 func (provider *OpenIdProvider) AddClient(client models.Client) error {
 	return provider.ClientManager.Create(client)
 }
@@ -508,7 +518,8 @@ func (provider *OpenIdProvider) Run(address string) error {
 }
 
 type TlsOptions struct {
-	TlsAddress        string
+	TlsAddress string
+	// This will be used if mtls is enalbed.
 	MtlsAddress       string
 	ServerCertificate string
 	ServerKey         string
@@ -524,10 +535,6 @@ func (provider *OpenIdProvider) runMtls(config TlsOptions) error {
 		),
 	)
 
-	var cipherSuites []uint16
-	if provider.Profile == constants.Fapi2Profile {
-		cipherSuites = constants.FapiAllowedCipherSuites
-	}
 	server := &http.Server{
 		Addr:    config.MtlsAddress,
 		Handler: handler,
@@ -535,7 +542,7 @@ func (provider *OpenIdProvider) runMtls(config TlsOptions) error {
 			// A client certificate is required, but its validation depends on the authentication method,
 			// e.g. self signed certificate, ...
 			ClientAuth:   tls.RequireAnyClientCert,
-			CipherSuites: cipherSuites,
+			CipherSuites: provider.AllowedTlsCipherSuites,
 		},
 	}
 	return server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)
@@ -553,17 +560,11 @@ func (provider *OpenIdProvider) RunTls(config TlsOptions) error {
 			provider.CorrelationIdHeader,
 		),
 	)
-
-	//TODO: move this from here.
-	var cipherSuites []uint16
-	if provider.Profile == constants.Fapi2Profile {
-		cipherSuites = constants.FapiAllowedCipherSuites
-	}
 	server := &http.Server{
 		Addr:    config.TlsAddress,
 		Handler: handler,
 		TLSConfig: &tls.Config{
-			CipherSuites: cipherSuites,
+			CipherSuites: provider.AllowedTlsCipherSuites,
 		},
 	}
 	return server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)

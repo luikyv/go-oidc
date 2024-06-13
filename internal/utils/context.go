@@ -83,6 +83,7 @@ type Configuration struct {
 	AuthenticationContextReferences      []constants.AuthenticationContextReference
 	DisplayValues                        []constants.DisplayValue
 	SenderConstrainedTokenIsRequired     bool // TODO: At least dpop or tls bound must be enabled.
+	AllowedTlsCipherSuites               []uint16
 }
 
 type Context struct {

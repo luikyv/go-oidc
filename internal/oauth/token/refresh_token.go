@@ -2,7 +2,6 @@ package token
 
 import (
 	"log/slog"
-	"net/http"
 
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -180,8 +179,6 @@ func validateRefreshTokenProofOfPossesionForPublicClients(
 	}
 
 	return utils.ValidateDpopJwt(ctx, dpopJwt, models.DpopJwtValidationOptions{
-		HttpMethod:    http.MethodPost,
-		HttpUri:       ctx.Host + string(constants.TokenEndpoint),
 		JwkThumbprint: grantSession.JwkThumbprint,
 	})
 }

@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -111,8 +111,6 @@ func ValidateDpop(
 	}
 
 	return ValidateDpopJwt(ctx, dpopJwt, models.DpopJwtValidationOptions{
-		HttpMethod:    ctx.GetRequestMethod(),
-		HttpUri:       ctx.GetRequestUrl(),
 		AccessToken:   token,
 		JwkThumbprint: grantSession.JwkThumbprint,
 	})
@@ -135,13 +133,14 @@ func ValidateTokenBindingRequestWithDpop(
 		return nil
 	}
 
-	return ValidateDpopJwt(ctx, dpopJwt, models.DpopJwtValidationOptions{
-		HttpMethod: http.MethodPost,
-		HttpUri:    ctx.Host + string(constants.TokenEndpoint),
-	})
+	return ValidateDpopJwt(ctx, dpopJwt, models.DpopJwtValidationOptions{})
 }
 
-func ValidateDpopJwt(ctx Context, dpopJwt string, expectedDpopClaims models.DpopJwtValidationOptions) models.OAuthError {
+func ValidateDpopJwt(
+	ctx Context,
+	dpopJwt string,
+	expectedDpopClaims models.DpopJwtValidationOptions,
+) models.OAuthError {
 	parsedDpopJwt, err := jwt.ParseSigned(dpopJwt, ctx.DpopSignatureAlgorithms)
 	if err != nil {
 		return models.NewOAuthError(constants.InvalidRequest, "invalid dpop")
@@ -175,11 +174,13 @@ func ValidateDpopJwt(ctx Context, dpopJwt string, expectedDpopClaims models.Dpop
 		return models.NewOAuthError(constants.InvalidRequest, "invalid jti claim")
 	}
 
-	if expectedDpopClaims.HttpMethod != "" && dpopClaims.HttpMethod != expectedDpopClaims.HttpMethod {
+	if dpopClaims.HttpMethod != ctx.GetRequestMethod() {
 		return models.NewOAuthError(constants.InvalidRequest, "invalid htm claim")
 	}
 
-	if expectedDpopClaims.HttpUri != "" && dpopClaims.HttpUri != expectedDpopClaims.HttpUri {
+	httpUri, _ := url.Parse(dpopClaims.HttpUri)
+	// The query and fragment components of the "htu" must be ignored.
+	if httpUri.Host+httpUri.Path != ctx.GetRequestUrl() {
 		return models.NewOAuthError(constants.InvalidRequest, "invalid htu claim")
 	}
 
