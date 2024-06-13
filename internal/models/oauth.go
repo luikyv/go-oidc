@@ -243,8 +243,10 @@ type PushedAuthorizationResponse struct {
 }
 
 type DynamicClientRequest struct {
-	Id                      string
-	InitialAccessToken      string // TODO: Remove this. It can be fetched from the context.
+	Id string
+	// This value is filled with the authorization header when creating a client with DCR.
+	InitialAccessToken string
+	// This value is filled with the authorization header for all DCM requests.
 	RegistrationAccessToken string
 	Secret                  string
 	ClientMetaInfo

@@ -117,6 +117,19 @@ func validateAuthorizationCodeGrantRequest(
 		return models.NewOAuthError(constants.InvalidGrant, "invalid redirect_uri")
 	}
 
+	if err := validatePkce(ctx, req, client, session); err != nil {
+		return err
+	}
+
+	return utils.ValidateTokenBindingRequestWithDpop(ctx, req, client)
+}
+
+func validatePkce(
+	ctx utils.Context,
+	req models.TokenRequest,
+	_ models.Client,
+	session models.AuthnSession,
+) models.OAuthError {
 	// RFC 7636. "...with a minimum length of 43 characters and a maximum length of 128 characters."
 	codeVerifierLengh := len(req.CodeVerifier)
 	if req.CodeVerifier != "" && (codeVerifierLengh < 43 || codeVerifierLengh > 128) {
@@ -124,17 +137,19 @@ func validateAuthorizationCodeGrantRequest(
 	}
 
 	codeChallengeMethod := session.CodeChallengeMethod
-	// TODO: set it as s256 for fapi.
 	if codeChallengeMethod == "" {
 		codeChallengeMethod = constants.PlainCodeChallengeMethod
 	}
-	// In the case PKCE is enalbed, if the session was created with a code challenge, the token request must contain the right code verifier.
+	if ctx.Profile == constants.Fapi2Profile {
+		codeChallengeMethod = constants.Sha256CodeChallengeMethod
+	}
+	// In the case PKCE is enabled, if the session was created with a code challenge, the token request must contain the right code verifier.
 	if ctx.PkceIsEnabled && session.CodeChallenge != "" &&
 		(req.CodeVerifier == "" || !unit.IsPkceValid(req.CodeVerifier, session.CodeChallenge, codeChallengeMethod)) {
 		return models.NewOAuthError(constants.InvalidGrant, "invalid pkce")
 	}
 
-	return utils.ValidateTokenBindingRequestWithDpop(ctx, req, client)
+	return nil
 }
 
 func getAuthenticatedClientAndSession(
