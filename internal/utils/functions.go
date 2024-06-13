@@ -75,12 +75,12 @@ func ValidateTlsProofOfPossesion(
 		return nil
 	}
 
-	clientCert, ok := ctx.GetHeader(string(constants.ClientCertificateHeader))
+	clientCert, ok := ctx.GetClientCertificate()
 	if !ok {
 		return models.NewOAuthError(constants.InvalidToken, "the client certificate is required")
 	}
 
-	if grantSession.ClientCertificateThumbprint != unit.GenerateSha256Thumbprint(clientCert) {
+	if grantSession.ClientCertificateThumbprint != unit.GenerateSha256Thumbprint(string(clientCert.Raw)) {
 		return models.NewOAuthError(constants.InvalidToken, "invalid client certificate")
 	}
 
@@ -126,11 +126,12 @@ func ValidateTokenBindingRequestWithDpop(
 
 	dpopJwt, ok := ctx.GetDpopJwt()
 	if !ok && (ctx.DpopIsRequired || client.DpopIsRequired) {
+		ctx.Logger.Debug("The DPoP header is required, but wasn't provided")
 		return models.NewOAuthError(constants.InvalidRequest, "invalid dpop header")
 	}
 
-	if !ok || !ctx.DpopIsEnabled {
-		// If DPoP is not enabled, we just ignore the DPoP header.
+	// If DPoP is not enabled or, if it is, but the DPoP header was not informed, we just ignore it.
+	if !ctx.DpopIsEnabled || !ok {
 		return nil
 	}
 

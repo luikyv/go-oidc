@@ -296,6 +296,10 @@ func (provider *OpenIdProvider) RequireDemonstrationProofOfPossesion(
 	provider.DpopIsRequired = true
 }
 
+func (provider *OpenIdProvider) RequireSenderConstrainedTokens() {
+	provider.SenderConstrainedTokenIsRequired = true
+}
+
 func (provider *OpenIdProvider) EnableTokenIntrospection(clientAuthnMethods ...constants.ClientAuthnType) {
 	provider.IntrospectionIsEnabled = true
 	provider.IntrospectionClientAuthnMethods = clientAuthnMethods

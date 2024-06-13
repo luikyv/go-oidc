@@ -42,7 +42,6 @@ type TokenOptions struct {
 	JwtSignatureKeyId     string                `json:"token_signature_key_id"`
 	OpaqueTokenLength     int                   `json:"opaque_token_length"`
 	AdditionalTokenClaims map[string]any        `json:"additional_token_claims"`
-	// TODO: Validation function.
 }
 
 func (opts *TokenOptions) AddTokenClaims(claims map[string]any) {
@@ -60,7 +59,7 @@ type GrantOptions struct {
 	CreatedAtTimestamp       int                 `json:"created_at"`
 	AdditionalIdTokenClaims  map[string]any      `json:"additional_id_token_claims"`
 	AdditionalUserInfoClaims map[string]any      `json:"additional_user_info_claims"`
-	TokenOptions
+	TokenOptions                                 //TODO: make it simpler.
 }
 
 func (grantOpts GrantOptions) GetIdTokenOptions() IdTokenOptions {

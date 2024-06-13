@@ -80,6 +80,21 @@ func validateInsideWithOutsideParams(
 		return err
 	}
 
+	if err := validateOpenIdInsideWithOutsideParams(ctx, insideParams, outsideParams, client); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateOpenIdInsideWithOutsideParams(
+	ctx utils.Context,
+	insideParams models.AuthorizationParameters,
+	outsideParams models.AuthorizationParameters,
+	_ models.Client,
+) models.OAuthError {
+
+	mergedParams := insideParams.Merge(outsideParams)
 	// When the openid scope is not requested, the authorization request becomes a standard OAuth one,
 	// so there's no need to validate these rules below.
 	if ctx.Profile == constants.OpenIdProfile && unit.ScopesContainsOpenId(mergedParams.Scopes) {
@@ -106,7 +121,7 @@ func validateAuthorizationParams(
 ) models.OAuthError {
 	return utils.RunValidations(
 		ctx, params, client,
-		validateRedirectUri,
+		validateOpenIdRedirectUri,
 		ValidateResponseMode,
 		ValidateJwtResponseModeIsRequired,
 		validateResponseType,
@@ -125,11 +140,16 @@ func validateAuthorizationParams(
 	)
 }
 
-func validateRedirectUri(
+func validateOpenIdRedirectUri(
 	ctx utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
 ) models.OAuthError {
+
+	if ctx.Profile != constants.OpenIdProfile {
+		return nil
+	}
+
 	if params.RedirectUri == "" || !client.IsRedirectUriAllowed(params.RedirectUri) {
 		return models.NewOAuthError(constants.InvalidRequest, "invalid redirect_uri")
 	}

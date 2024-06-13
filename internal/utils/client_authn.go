@@ -213,14 +213,9 @@ func authenticateWithSelfSignedTlsCertificate(
 		return models.NewOAuthError(constants.InvalidClient, "invalid client")
 	}
 
-	rawClientCert, ok := ctx.GetHeader(string(constants.ClientCertificateHeader))
+	clientCert, ok := ctx.GetClientCertificate()
 	if !ok {
 		return models.NewOAuthError(constants.InvalidClient, "client certificate not informed")
-	}
-
-	clientCert, err := x509.ParseCertificate([]byte(rawClientCert))
-	if err != nil {
-		return models.NewOAuthError(constants.InvalidClient, "could not parse the client certificate")
 	}
 
 	jwks, err := client.GetPublicJwks()
@@ -258,14 +253,9 @@ func authenticateWithTlsCertificate(
 		return models.NewOAuthError(constants.InvalidClient, "invalid client")
 	}
 
-	rawClientCert, ok := ctx.GetHeader(string(constants.ClientCertificateHeader))
+	clientCert, ok := ctx.GetClientCertificate()
 	if !ok {
 		return models.NewOAuthError(constants.InvalidClient, "client certificate not informed")
-	}
-
-	clientCert, err := x509.ParseCertificate([]byte(rawClientCert))
-	if err != nil {
-		return models.NewOAuthError(constants.InvalidClient, "could not parse the client certificate")
 	}
 
 	opts := x509.VerifyOptions{
@@ -278,7 +268,7 @@ func authenticateWithTlsCertificate(
 		opts.DNSName = "[" + client.TlsSubjectAlternativeNameIp + "]"
 	}
 
-	_, err = clientCert.Verify(opts)
+	_, err := clientCert.Verify(opts)
 	if err != nil {
 		ctx.Logger.Debug("could not verify the client certificate", slog.String("error", err.Error()))
 		return models.NewOAuthError(constants.InvalidClient, "could not verify the client certificate")

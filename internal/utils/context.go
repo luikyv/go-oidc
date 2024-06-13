@@ -82,7 +82,7 @@ type Configuration struct {
 	CaCertificatePool                    *x509.CertPool
 	AuthenticationContextReferences      []constants.AuthenticationContextReference
 	DisplayValues                        []constants.DisplayValue
-	SenderConstrainedTokenIsRequired     bool // TODO: use this
+	SenderConstrainedTokenIsRequired     bool // TODO: At least dpop or tls bound must be enabled.
 }
 
 type Context struct {
@@ -285,6 +285,22 @@ func (ctx Context) GetDpopJwt() (string, bool) {
 		return "", false
 	}
 	return values[0], true
+}
+
+func (ctx Context) GetClientCertificate() (*x509.Certificate, bool) { // TODO: Could I just return nil instead?
+	rawClientCert, ok := ctx.GetHeader(constants.ClientCertificateHeader)
+	if !ok {
+		ctx.Logger.Debug("the client certificate was not informed")
+		return nil, false
+	}
+
+	clientCert, err := x509.ParseCertificate([]byte(rawClientCert))
+	if err != nil {
+		ctx.Logger.Debug("could not parse the client certificate")
+		return nil, false
+	}
+
+	return clientCert, true
 }
 
 func (ctx Context) GetHeader(header string) (string, bool) {

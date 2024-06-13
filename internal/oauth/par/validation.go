@@ -53,7 +53,8 @@ func validatePushedAuthorizationParams(
 		validateCannotInformRequestUri,
 		authorize.ValidateCannotRequestCodeResponseTypeWhenAuthorizationCodeGrantIsNotAllowed,
 		authorize.ValidateCannotRequestImplicitResponseTypeWhenImplicitGrantIsNotAllowed,
-		validateRedirectUri,
+		validateOpenIdRedirectUri,
+		validateFapi2RedirectUri,
 		authorize.ValidateResponseMode,
 		authorize.ValidateJwtResponseModeIsRequired,
 		validateScopes,
@@ -75,13 +76,35 @@ func validateNoneAuthnNotAllowed(
 	return nil
 }
 
-func validateRedirectUri(
-	_ utils.Context,
+func validateOpenIdRedirectUri(
+	ctx utils.Context,
 	params models.AuthorizationParameters,
 	client models.Client,
 ) models.OAuthError {
+
+	if ctx.Profile != constants.OpenIdProfile {
+		return nil
+	}
+
 	if params.RedirectUri != "" && !client.IsRedirectUriAllowed(params.RedirectUri) {
 		return models.NewOAuthError(constants.InvalidRequest, "invalid redirect_uri")
+	}
+	return nil
+}
+
+func validateFapi2RedirectUri(
+	ctx utils.Context,
+	params models.AuthorizationParameters,
+	_ models.Client,
+) models.OAuthError {
+
+	if ctx.Profile != constants.Fapi2Profile {
+		return nil
+	}
+
+	// According to FAPI 2.0 "pre-registration is not required with client authentication and PAR".
+	if params.RedirectUri == "" {
+		return models.NewOAuthError(constants.InvalidRequest, "redirect_uri is required")
 	}
 	return nil
 }

@@ -52,7 +52,11 @@ func MakeIdToken(
 	return idToken
 }
 
-func makeJwtToken(ctx Context, client models.Client, grantOptions models.GrantOptions) models.Token {
+func makeJwtToken(
+	ctx Context,
+	client models.Client,
+	grantOptions models.GrantOptions,
+) models.Token {
 	privateJwk := ctx.GetTokenSignatureKey(grantOptions.TokenOptions)
 	jwtId := uuid.NewString()
 	timestampNow := unit.GetTimestampNow()
@@ -77,10 +81,10 @@ func makeJwtToken(ctx Context, client models.Client, grantOptions models.GrantOp
 		confirmation["jkt"] = jkt
 	}
 
-	clientCert, ok := ctx.GetHeader(string(constants.ClientCertificateHeader))
+	clientCert, ok := ctx.GetClientCertificate()
 	certThumbprint := ""
 	if ctx.TlsBoundTokensIsEnabled && ok {
-		certThumbprint = unit.GenerateSha256Thumbprint(clientCert)
+		certThumbprint = unit.GenerateSha256Thumbprint(string(clientCert.Raw))
 		confirmation["x5t#S256"] = certThumbprint
 	}
 
@@ -110,7 +114,11 @@ func makeJwtToken(ctx Context, client models.Client, grantOptions models.GrantOp
 	}
 }
 
-func makeOpaqueToken(ctx Context, _ models.Client, grantOptions models.GrantOptions) models.Token {
+func makeOpaqueToken(
+	ctx Context,
+	_ models.Client,
+	grantOptions models.GrantOptions,
+) models.Token {
 	accessToken := unit.GenerateRandomString(grantOptions.OpaqueTokenLength, grantOptions.OpaqueTokenLength)
 	tokenType := constants.BearerTokenType
 
@@ -121,10 +129,10 @@ func makeOpaqueToken(ctx Context, _ models.Client, grantOptions models.GrantOpti
 		jkt = unit.GenerateJwkThumbprint(dpopJwt, ctx.DpopSignatureAlgorithms)
 	}
 
-	clientCert, ok := ctx.GetHeader(string(constants.ClientCertificateHeader))
+	clientCert, ok := ctx.GetClientCertificate()
 	certThumbprint := ""
 	if ctx.TlsBoundTokensIsEnabled && ok {
-		certThumbprint = unit.GenerateSha256Thumbprint(clientCert)
+		certThumbprint = unit.GenerateSha256Thumbprint(string(clientCert.Raw))
 	}
 
 	return models.Token{
@@ -137,7 +145,11 @@ func makeOpaqueToken(ctx Context, _ models.Client, grantOptions models.GrantOpti
 	}
 }
 
-func MakeToken(ctx Context, client models.Client, grantOptions models.GrantOptions) models.Token {
+func MakeToken(
+	ctx Context,
+	client models.Client,
+	grantOptions models.GrantOptions,
+) models.Token {
 	if grantOptions.TokenFormat == constants.JwtTokenFormat {
 		return makeJwtToken(ctx, client, grantOptions)
 	} else {

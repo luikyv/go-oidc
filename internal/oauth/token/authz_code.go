@@ -124,11 +124,13 @@ func validateAuthorizationCodeGrantRequest(
 	}
 
 	codeChallengeMethod := session.CodeChallengeMethod
+	// TODO: set it as s256 for fapi.
 	if codeChallengeMethod == "" {
 		codeChallengeMethod = constants.PlainCodeChallengeMethod
 	}
 	// In the case PKCE is enalbed, if the session was created with a code challenge, the token request must contain the right code verifier.
-	if ctx.PkceIsEnabled && session.CodeChallenge != "" && (req.CodeVerifier == "" || !unit.IsPkceValid(req.CodeVerifier, session.CodeChallenge, codeChallengeMethod)) {
+	if ctx.PkceIsEnabled && session.CodeChallenge != "" &&
+		(req.CodeVerifier == "" || !unit.IsPkceValid(req.CodeVerifier, session.CodeChallenge, codeChallengeMethod)) {
 		return models.NewOAuthError(constants.InvalidGrant, "invalid pkce")
 	}
 
