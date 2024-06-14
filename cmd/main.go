@@ -64,7 +64,7 @@ func runFapi2OpenIdProvider() {
 	openidProvider.AddClient(models.Client{
 		Id: "client_one",
 		ClientMetaInfo: models.ClientMetaInfo{
-			AuthnMethod:  constants.SelfSignedTlsAuthn,
+			AuthnMethod:  constants.PrivateKeyJwtAuthn,
 			RedirectUris: []string{redirectUri},
 			Scopes:       strings.Join(scopes, " "),
 			GrantTypes: []constants.GrantType{
@@ -81,7 +81,7 @@ func runFapi2OpenIdProvider() {
 	openidProvider.AddClient(models.Client{
 		Id: "client_two",
 		ClientMetaInfo: models.ClientMetaInfo{
-			AuthnMethod:  constants.SelfSignedTlsAuthn,
+			AuthnMethod:  constants.PrivateKeyJwtAuthn,
 			RedirectUris: []string{redirectUri},
 			Scopes:       strings.Join(scopes, " "),
 			GrantTypes: []constants.GrantType{

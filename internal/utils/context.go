@@ -369,7 +369,7 @@ func (ctx Context) ExecureDcrPlugin(dynamicClient *models.DynamicClientRequest) 
 }
 
 func (ctx Context) Redirect(redirectUrl string) {
-	http.Redirect(ctx.Response, ctx.Request, redirectUrl, http.StatusFound) // TODO: 303 for fapi 2?
+	http.Redirect(ctx.Response, ctx.Request, redirectUrl, http.StatusSeeOther)
 }
 
 func (ctx Context) RenderHtml(html string, params any) {
@@ -386,12 +386,16 @@ func (ctx Context) GetRequestMethod() string {
 }
 
 func (ctx Context) GetRequestUrl() string {
+	// TODO: Improve this.
 	return "https://" + ctx.Request.Host + ctx.Request.URL.RequestURI()
 }
 
 // Get the audiences that will be accepted when validating client assertions.
 func (ctx Context) GetClientAssertionAudiences() []string {
-	audiences := []string{ctx.Host, ctx.Request.Host + string(constants.TokenEndpoint), ctx.Request.Host + ctx.Request.URL.RequestURI()}
+	audiences := []string{ctx.Host, ctx.Host + string(constants.TokenEndpoint), ctx.Host + ctx.Request.URL.RequestURI()}
+	if ctx.MtlsIsEnabled {
+		audiences = append(audiences, ctx.MtlsHost, ctx.MtlsHost+string(constants.TokenEndpoint), ctx.MtlsHost+ctx.Request.URL.RequestURI())
+	}
 	return audiences
 }
 
