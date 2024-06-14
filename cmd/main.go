@@ -41,10 +41,11 @@ func runFapi2OpenIdProvider() {
 	openidProvider.EnableJwtSecuredAuthorizationResponseMode(600, ps256ServerKeyId)
 	openidProvider.EnablePrivateKeyJwtClientAuthn(600, jose.PS256)
 	openidProvider.EnableSelfSignedTlsClientAuthn()
-	openidProvider.EnableTlsBoundTokens()
 	openidProvider.EnableIssuerResponseParameter()
 	openidProvider.EnableClaimsParameter()
 	openidProvider.EnableDemonstrationProofOfPossesion(600, jose.PS256, jose.ES256)
+	openidProvider.EnableTlsBoundTokens()
+	openidProvider.RequireSenderConstrainedTokens()
 	openidProvider.RequireProofKeyForCodeExchange(constants.Sha256CodeChallengeMethod)
 	openidProvider.EnableRefreshTokenGrantType(6000, false)
 	openidProvider.SetScopes(scopes...)
@@ -63,7 +64,7 @@ func runFapi2OpenIdProvider() {
 	openidProvider.AddClient(models.Client{
 		Id: "client_one",
 		ClientMetaInfo: models.ClientMetaInfo{
-			AuthnMethod:  constants.TlsAuthn,
+			AuthnMethod:  constants.SelfSignedTlsAuthn,
 			RedirectUris: []string{redirectUri},
 			Scopes:       strings.Join(scopes, " "),
 			GrantTypes: []constants.GrantType{
@@ -80,7 +81,7 @@ func runFapi2OpenIdProvider() {
 	openidProvider.AddClient(models.Client{
 		Id: "client_two",
 		ClientMetaInfo: models.ClientMetaInfo{
-			AuthnMethod:  constants.TlsAuthn,
+			AuthnMethod:  constants.SelfSignedTlsAuthn,
 			RedirectUris: []string{redirectUri},
 			Scopes:       strings.Join(scopes, " "),
 			GrantTypes: []constants.GrantType{

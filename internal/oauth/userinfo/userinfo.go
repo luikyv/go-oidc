@@ -1,10 +1,9 @@
-package oauth
+package userinfo
 
 import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
@@ -36,27 +35,6 @@ func HandleUserInfoRequest(ctx utils.Context) (models.UserInfoResponse, models.O
 	}
 
 	return getUserInfoResponse(ctx, client, grantSession), nil
-}
-
-func validateUserInfoRequest(
-	ctx utils.Context,
-	grantSession models.GrantSession,
-	token string,
-	tokenType constants.TokenType,
-) models.OAuthError {
-	if grantSession.HasLastTokenExpired() {
-		return models.NewOAuthError(constants.InvalidRequest, "token expired")
-	}
-
-	if !unit.ScopesContainsOpenId(grantSession.GrantedScopes) {
-		return models.NewOAuthError(constants.InvalidRequest, "invalid scope")
-	}
-
-	if err := utils.ValidateDpop(ctx, token, tokenType, grantSession); err != nil {
-		return err
-	}
-
-	return utils.ValidateTlsProofOfPossesion(ctx, grantSession)
 }
 
 func getUserInfoResponse(

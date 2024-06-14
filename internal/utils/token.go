@@ -52,6 +52,7 @@ func MakeIdToken(
 	return idToken
 }
 
+// TODO: Make it simpler. Create a confirmation object.
 func makeJwtToken(
 	ctx Context,
 	client models.Client,
@@ -69,10 +70,10 @@ func makeJwtToken(
 		constants.IssuedAtClaim: timestampNow,
 		constants.ExpiryClaim:   timestampNow + grantOptions.TokenExpiresInSecs,
 	}
+	tokenType := constants.BearerTokenType
 
 	confirmation := make(map[string]string)
-
-	tokenType := constants.BearerTokenType
+	// DPoP token binding.
 	dpopJwt, ok := ctx.GetDpopJwt()
 	jkt := ""
 	if ctx.DpopIsEnabled && ok {
@@ -80,14 +81,13 @@ func makeJwtToken(
 		jkt = unit.GenerateJwkThumbprint(dpopJwt, ctx.DpopSignatureAlgorithms)
 		confirmation["jkt"] = jkt
 	}
-
-	clientCert, ok := ctx.GetClientCertificate()
+	// TLS token binding.
+	clientCert, ok := ctx.GetClientCertificate() //TODO: should always bind?
 	certThumbprint := ""
 	if ctx.TlsBoundTokensIsEnabled && ok {
 		certThumbprint = unit.GenerateSha256Thumbprint(string(clientCert.Raw))
 		confirmation["x5t#S256"] = certThumbprint
 	}
-
 	if len(confirmation) != 0 {
 		claims["cnf"] = confirmation
 	}
@@ -122,6 +122,7 @@ func makeOpaqueToken(
 	accessToken := unit.GenerateRandomString(grantOptions.OpaqueTokenLength, grantOptions.OpaqueTokenLength)
 	tokenType := constants.BearerTokenType
 
+	// DPoP token binding.
 	dpopJwt, ok := ctx.GetDpopJwt()
 	jkt := ""
 	if ctx.DpopIsEnabled && ok {
@@ -129,6 +130,7 @@ func makeOpaqueToken(
 		jkt = unit.GenerateJwkThumbprint(dpopJwt, ctx.DpopSignatureAlgorithms)
 	}
 
+	// TLS token binding.
 	clientCert, ok := ctx.GetClientCertificate()
 	certThumbprint := ""
 	if ctx.TlsBoundTokensIsEnabled && ok {

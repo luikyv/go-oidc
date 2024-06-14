@@ -14,10 +14,6 @@ func handleClientCredentialsGrantTokenCreation(
 	models.TokenResponse,
 	models.OAuthError,
 ) {
-	if oauthErr := preValidateClientCredentialsGrantRequest(req); oauthErr != nil {
-		return models.TokenResponse{}, oauthErr
-	}
-
 	client, oauthErr := utils.GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if oauthErr != nil {
 		return models.TokenResponse{}, oauthErr
@@ -53,14 +49,6 @@ func handleClientCredentialsGrantTokenCreation(
 	return tokenResp, nil
 }
 
-func preValidateClientCredentialsGrantRequest(req models.TokenRequest) models.OAuthError {
-	if unit.ScopesContainsOpenId(req.Scopes) {
-		return models.NewOAuthError(constants.InvalidScope, "cannot request openid scope for client credentials grant")
-	}
-
-	return nil
-}
-
 func shouldGenerateClientCredentialsGrantSession(_ utils.Context, grantOptions models.GrantOptions) bool {
 	return grantOptions.TokenFormat == constants.OpaqueTokenFormat
 }
@@ -90,12 +78,24 @@ func validateClientCredentialsGrantRequest(
 		return models.NewOAuthError(constants.UnauthorizedClient, "invalid grant type")
 	}
 
+	if unit.ScopesContainsOpenId(req.Scopes) {
+		return models.NewOAuthError(constants.InvalidScope, "cannot request openid scope for client credentials grant")
+	}
+
 	if !client.AreScopesAllowed(req.Scopes) {
 		ctx.Logger.Info("scope not allowed")
 		return models.NewOAuthError(constants.InvalidScope, "invalid scope")
 	}
 
-	return utils.ValidateTokenBindingRequestWithDpop(ctx, req, client)
+	if err := validateTokenBindingRequestWithDpop(ctx, req, client); err != nil {
+		return err
+	}
+
+	if err := validateTokenBindingIsRequired(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func newClientCredentialsGrantOptions(

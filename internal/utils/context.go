@@ -22,66 +22,86 @@ type GetTokenOptionsFunc func(client models.Client, scopes string) (models.Token
 type DcrPluginFunc func(ctx Context, dynamicClient *models.DynamicClientRequest)
 
 type Configuration struct {
-	Profile                              constants.Profile
-	Host                                 string // TODO: How to make validations for both hosts?
-	MtlsIsEnabled                        bool
-	MtlsHost                             string
-	Scopes                               []string
-	ClientManager                        crud.ClientManager
-	GrantSessionManager                  crud.GrantSessionManager
-	AuthnSessionManager                  crud.AuthnSessionManager
-	PrivateJwks                          jose.JSONWebKeySet
-	DefaultTokenSignatureKeyId           string
-	GrantTypes                           []constants.GrantType
-	ResponseTypes                        []constants.ResponseType
-	ResponseModes                        []constants.ResponseMode
-	ClientAuthnMethods                   []constants.ClientAuthnType
-	IntrospectionIsEnabled               bool
-	IntrospectionClientAuthnMethods      []constants.ClientAuthnType
-	PrivateKeyJwtSignatureAlgorithms     []jose.SignatureAlgorithm
-	PrivateKeyJwtAssertionLifetimeSecs   int
-	ClientSecretJwtSignatureAlgorithms   []jose.SignatureAlgorithm
+	Profile             constants.Profile
+	Host                string
+	MtlsIsEnabled       bool
+	MtlsHost            string
+	Scopes              []string
+	ClientManager       crud.ClientManager
+	GrantSessionManager crud.GrantSessionManager
+	AuthnSessionManager crud.AuthnSessionManager
+	// The server JWKS containing private and public information.
+	PrivateJwks jose.JSONWebKeySet
+	// The default key used to sign access tokens. The key can be overridden with the TokenOptions.
+	DefaultTokenSignatureKeyId      string
+	GrantTypes                      []constants.GrantType
+	ResponseTypes                   []constants.ResponseType
+	ResponseModes                   []constants.ResponseMode
+	ClientAuthnMethods              []constants.ClientAuthnType
+	IntrospectionIsEnabled          bool
+	IntrospectionClientAuthnMethods []constants.ClientAuthnType
+	// The algorithms accepted for signing client assertions during private_key_jwt.
+	PrivateKeyJwtSignatureAlgorithms []jose.SignatureAlgorithm
+	// It is used to validate that the assertion will expire in the near future during private_key_jwt.
+	PrivateKeyJwtAssertionLifetimeSecs int
+	// The algorithms accepted for signing client assertions during client_secret_jwt.
+	ClientSecretJwtSignatureAlgorithms []jose.SignatureAlgorithm
+	// It is used to validate that the assertion will expire in the near future during client_secret_jwt.
 	ClientSecretJwtAssertionLifetimeSecs int
 	OpenIdScopeIsRequired                bool
-	IdTokenExpiresInSecs                 int
-	DefaultIdTokenSignatureKeyId         string
-	IdTokenSignatureKeyIds               []string
-	ShouldRotateRefreshTokens            bool
-	RefreshTokenLifetimeSecs             int
-	UserClaims                           []string
-	ClaimTypes                           []constants.ClaimType
-	IssuerResponseParameterIsEnabled     bool
-	ClaimsParameterIsEnabled             bool
-	JarmIsEnabled                        bool
-	JarmLifetimeSecs                     int
-	DefaultJarmSignatureKeyId            string
-	JarmSignatureKeyIds                  []string
-	JarIsEnabled                         bool
-	JarIsRequired                        bool
-	JarSignatureAlgorithms               []jose.SignatureAlgorithm
-	JarLifetimeSecs                      int
-	ParIsEnabled                         bool
-	ParIsRequired                        bool
-	ParLifetimeSecs                      int
-	DpopIsEnabled                        bool
-	DpopIsRequired                       bool
-	DpopLifetimeSecs                     int
-	DpopSignatureAlgorithms              []jose.SignatureAlgorithm
-	PkceIsEnabled                        bool
-	PkceIsRequired                       bool
-	CodeChallengeMethods                 []constants.CodeChallengeMethod
-	SubjectIdentifierTypes               []constants.SubjectIdentifierType
-	Policies                             []AuthnPolicy
-	GetTokenOptions                      GetTokenOptionsFunc
-	DcrIsEnabled                         bool
-	ShouldRotateRegistrationTokens       bool
-	DcrPlugin                            DcrPluginFunc
-	AuthenticationSessionTimeoutSecs     int
-	TlsBoundTokensIsEnabled              bool
-	CorrelationIdHeader                  string
-	AuthenticationContextReferences      []constants.AuthenticationContextReference
-	DisplayValues                        []constants.DisplayValue
-	SenderConstrainedTokenIsRequired     bool // TODO: At least dpop or tls bound must be enabled.
+	// The default key used to sign ID tokens.
+	// The key can be overridden depending on the client property "id_token_signed_response_alg".
+	DefaultIdTokenSignatureKeyId string
+	// It defines the expiry time of ID tokens.
+	IdTokenExpiresInSecs int
+	// The IDs of the keys used to sign ID tokens. There should be at most one per algorithm.
+	// In other words, there shouldn't be two key IDs that point to two keys that have the same algorithm.
+	IdTokenSignatureKeyIds    []string
+	ShouldRotateRefreshTokens bool
+	RefreshTokenLifetimeSecs  int
+	// The user claims that can be returned in the userinfo endpoint or in the ID token.
+	// This will be transmitted in the /.well-known/openid-configuration endpoint.
+	UserClaims []string
+	// The claim types supported by the server.
+	ClaimTypes []constants.ClaimType
+	// If true, the "iss" parameter will be returned when redirecting the user back to the client application.
+	IssuerResponseParameterIsEnabled bool
+	// It informs the clients whether the server accepts the "claims" parameter.
+	// This will be transmitted in the /.well-known/openid-configuration endpoint.
+	ClaimsParameterIsEnabled  bool
+	JarmIsEnabled             bool
+	JarmLifetimeSecs          int
+	DefaultJarmSignatureKeyId string
+	JarmSignatureKeyIds       []string
+	JarIsEnabled              bool
+	JarIsRequired             bool
+	JarSignatureAlgorithms    []jose.SignatureAlgorithm
+	JarLifetimeSecs           int
+	// It allows client to push authorization requests.
+	ParIsEnabled bool
+	// If true, authorization requests can only be made if they were pushed.
+	ParIsRequired                    bool
+	ParLifetimeSecs                  int
+	DpopIsEnabled                    bool
+	DpopIsRequired                   bool
+	DpopLifetimeSecs                 int
+	DpopSignatureAlgorithms          []jose.SignatureAlgorithm
+	PkceIsEnabled                    bool
+	PkceIsRequired                   bool
+	CodeChallengeMethods             []constants.CodeChallengeMethod
+	SubjectIdentifierTypes           []constants.SubjectIdentifierType
+	Policies                         []AuthnPolicy
+	GetTokenOptions                  GetTokenOptionsFunc
+	DcrIsEnabled                     bool
+	ShouldRotateRegistrationTokens   bool
+	DcrPlugin                        DcrPluginFunc
+	AuthenticationSessionTimeoutSecs int
+	TlsBoundTokensIsEnabled          bool
+	CorrelationIdHeader              string
+	AuthenticationContextReferences  []constants.AuthenticationContextReference
+	DisplayValues                    []constants.DisplayValue
+	// If true, at least one mechanism of sender contraining tokens is required, either DPoP or client TLS.
+	SenderConstrainedTokenIsRequired bool
 }
 
 type Context struct {
@@ -274,6 +294,9 @@ func (ctx Context) GetAuthorizationToken() (
 	return tokenParts[1], constants.TokenType(tokenParts[0]), true
 }
 
+// Get the DPoP JWT sent in the DPoP header.
+// According to RFC 9449: "There is not more than one DPoP HTTP request header field."
+// Therefore, an empty string and false will be returned if more than one value is found in the DPoP header.
 func (ctx Context) GetDpopJwt() (string, bool) {
 	// Consider case insensitive headers by canonicalizing them.
 	canonicalizedDpopHeader := textproto.CanonicalMIMEHeaderKey(constants.DpopHeader)
@@ -368,10 +391,7 @@ func (ctx Context) GetRequestUrl() string {
 
 // Get the audiences that will be accepted when validating client assertions.
 func (ctx Context) GetClientAssertionAudiences() []string {
-	audiences := []string{ctx.Host, ctx.Host + string(constants.TokenEndpoint), ctx.Host + ctx.Request.URL.RequestURI()}
-	if ctx.MtlsIsEnabled {
-		audiences = append(audiences, ctx.MtlsHost, ctx.MtlsHost+string(constants.TokenEndpoint), ctx.MtlsHost+ctx.Request.URL.RequestURI())
-	}
+	audiences := []string{ctx.Host, ctx.Request.Host + string(constants.TokenEndpoint), ctx.Request.Host + ctx.Request.URL.RequestURI()}
 	return audiences
 }
 

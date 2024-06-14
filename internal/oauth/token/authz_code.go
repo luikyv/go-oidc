@@ -9,6 +9,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
+// TODO: Simplify this.
 func handleAuthorizationCodeGrantTokenCreation(
 	ctx utils.Context,
 	req models.TokenRequest,
@@ -17,8 +18,8 @@ func handleAuthorizationCodeGrantTokenCreation(
 	models.OAuthError,
 ) {
 
-	if oauthErr := preValidateAuthorizationCodeGrantRequest(req); oauthErr != nil {
-		return models.TokenResponse{}, oauthErr
+	if req.AuthorizationCode == "" {
+		return models.TokenResponse{}, models.NewOAuthError(constants.InvalidRequest, "invalid authorization code")
 	}
 
 	client, session, oauthErr := getAuthenticatedClientAndSession(ctx, req)
@@ -63,16 +64,17 @@ func handleAuthorizationCodeGrantTokenCreation(
 	return tokenResp, nil
 }
 
-func preValidateAuthorizationCodeGrantRequest(req models.TokenRequest) models.OAuthError {
-	if req.AuthorizationCode == "" {
-		return models.NewOAuthError(constants.InvalidRequest, "invalid authorization code")
-	}
-
-	return nil
-}
-
-func shouldGenerateAuthorizationCodeGrantSession(_ utils.Context, grantOptions models.GrantOptions) bool {
-	return grantOptions.TokenFormat == constants.OpaqueTokenFormat || unit.ScopesContainsOpenId(grantOptions.GrantedScopes) || grantOptions.ShouldRefresh
+func shouldGenerateAuthorizationCodeGrantSession(
+	_ utils.Context,
+	grantOptions models.GrantOptions,
+) bool {
+	// A grant session should be generated when:
+	// 1. The token is opaque, so we must keep its information.
+	// 2. The openid scope was requested, so we must keep the user information for the userinfo endpoint.
+	// 3. A refresh token will be issued, so we must keep the information about the token to refresh it.
+	return grantOptions.TokenFormat == constants.OpaqueTokenFormat ||
+		unit.ScopesContainsOpenId(grantOptions.GrantedScopes) ||
+		grantOptions.ShouldRefresh
 }
 
 func generateAuthorizationCodeGrantSession(
@@ -121,7 +123,15 @@ func validateAuthorizationCodeGrantRequest(
 		return err
 	}
 
-	return utils.ValidateTokenBindingRequestWithDpop(ctx, req, client)
+	if err := validateTokenBindingIsRequired(ctx); err != nil {
+		return err
+	}
+
+	if err := validateTokenBindingRequestWithDpop(ctx, req, client); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func validatePkce(

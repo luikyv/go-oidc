@@ -10,6 +10,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/oauth/authorize"
 	"github.com/luikymagno/auth-server/internal/oauth/par"
 	"github.com/luikymagno/auth-server/internal/oauth/token"
+	"github.com/luikymagno/auth-server/internal/oauth/userinfo"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
@@ -87,7 +88,7 @@ func HandleTokenRequest(ctx utils.Context) {
 func HandleUserInfoRequest(ctx utils.Context) {
 
 	var err error
-	userInfoResponse, err := oauth.HandleUserInfoRequest(ctx)
+	userInfoResponse, err := userinfo.HandleUserInfoRequest(ctx)
 	if err != nil {
 		bindErrorToResponse(ctx, err)
 		return

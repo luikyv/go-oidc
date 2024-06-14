@@ -65,8 +65,7 @@ func NewAddCertificateHeaderMiddlewareHandler(next http.Handler) AddCertificateH
 
 func (handler AddCertificateHeaderMiddlewareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	certHeader := constants.InsecureClientCertificateHeader
-	// TODO: Make sure this works.
-	if len(r.TLS.VerifiedChains) >= 0 {
+	if len(r.TLS.VerifiedChains) > 0 {
 		certHeader = constants.SecureClientCertificateHeader
 	}
 	r.Header.Set(certHeader, string(r.TLS.PeerCertificates[0].Raw)) // TODO: should I encode it?
