@@ -35,7 +35,6 @@ func runFapi2OpenIdProvider() {
 		ps256ServerKeyId,
 	)
 	openidProvider.SetFapi2Profile()
-	openidProvider.SetFapi2TlsCipherSuites()
 	openidProvider.EnableMtls(mtlsIssuer)
 	openidProvider.RequirePushedAuthorizationRequests(60)
 	openidProvider.EnableJwtSecuredAuthorizationRequests(600, jose.PS256)
@@ -64,7 +63,7 @@ func runFapi2OpenIdProvider() {
 	openidProvider.AddClient(models.Client{
 		Id: "client_one",
 		ClientMetaInfo: models.ClientMetaInfo{
-			AuthnMethod:  constants.PrivateKeyJwtAuthn,
+			AuthnMethod:  constants.TlsAuthn,
 			RedirectUris: []string{redirectUri},
 			Scopes:       strings.Join(scopes, " "),
 			GrantTypes: []constants.GrantType{
@@ -81,7 +80,7 @@ func runFapi2OpenIdProvider() {
 	openidProvider.AddClient(models.Client{
 		Id: "client_two",
 		ClientMetaInfo: models.ClientMetaInfo{
-			AuthnMethod:  constants.PrivateKeyJwtAuthn,
+			AuthnMethod:  constants.TlsAuthn,
 			RedirectUris: []string{redirectUri},
 			Scopes:       strings.Join(scopes, " "),
 			GrantTypes: []constants.GrantType{
@@ -104,10 +103,12 @@ func runFapi2OpenIdProvider() {
 
 	// Run
 	openidProvider.RunTls(oidc.TlsOptions{
-		TlsAddress:        port,
-		MtlsAddress:       mtlsPort,
-		ServerCertificate: "server_keys/cert.pem",
-		ServerKey:         "server_keys/key.pem",
+		TlsAddress:                     port,
+		ServerCertificate:              "server_keys/cert.pem",
+		ServerKey:                      "server_keys/key.pem",
+		CipherSuites:                   constants.FapiAllowedCipherSuites,
+		MtlsAddress:                    mtlsPort,
+		UnsecureCertificatesAreAllowed: true,
 	})
 }
 

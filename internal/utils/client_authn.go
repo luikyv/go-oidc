@@ -1,8 +1,8 @@
 package utils
 
 import (
-	"crypto/x509"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
@@ -253,29 +253,16 @@ func authenticateWithTlsCertificate(
 		return models.NewOAuthError(constants.InvalidClient, "invalid client")
 	}
 
-	clientCert, ok := ctx.GetClientCertificate()
+	clientCert, ok := ctx.GetSecureClientCertificate()
 	if !ok {
 		return models.NewOAuthError(constants.InvalidClient, "client certificate not informed")
 	}
 
-	opts := x509.VerifyOptions{
-		Roots: ctx.CaCertificatePool,
-	}
-	if client.TlsSubjectAlternativeName != "" {
-		opts.DNSName = client.TlsSubjectAlternativeName
-	}
-	if client.TlsSubjectAlternativeNameIp != "" {
-		opts.DNSName = "[" + client.TlsSubjectAlternativeNameIp + "]"
-	}
-
-	_, err := clientCert.Verify(opts)
-	if err != nil {
-		ctx.Logger.Debug("could not verify the client certificate", slog.String("error", err.Error()))
-		return models.NewOAuthError(constants.InvalidClient, "could not verify the client certificate")
-	}
-
 	if client.TlsSubjectDistinguishedName != "" && clientCert.Subject.String() != client.TlsSubjectDistinguishedName {
 		return models.NewOAuthError(constants.InvalidClient, "invalid distinguished name")
+	}
+	if client.TlsSubjectAlternativeName != "" && !slices.Contains(clientCert.DNSNames, client.TlsSubjectAlternativeName) {
+		return models.NewOAuthError(constants.InvalidClient, "invalid alternative name")
 	}
 
 	return nil

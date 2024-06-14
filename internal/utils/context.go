@@ -23,7 +23,7 @@ type DcrPluginFunc func(ctx Context, dynamicClient *models.DynamicClientRequest)
 
 type Configuration struct {
 	Profile                              constants.Profile
-	Host                                 string
+	Host                                 string // TODO: How to make validations for both hosts?
 	MtlsIsEnabled                        bool
 	MtlsHost                             string
 	Scopes                               []string
@@ -79,11 +79,9 @@ type Configuration struct {
 	AuthenticationSessionTimeoutSecs     int
 	TlsBoundTokensIsEnabled              bool
 	CorrelationIdHeader                  string
-	CaCertificatePool                    *x509.CertPool
 	AuthenticationContextReferences      []constants.AuthenticationContextReference
 	DisplayValues                        []constants.DisplayValue
 	SenderConstrainedTokenIsRequired     bool // TODO: At least dpop or tls bound must be enabled.
-	AllowedTlsCipherSuites               []uint16
 }
 
 type Context struct {
@@ -288,10 +286,10 @@ func (ctx Context) GetDpopJwt() (string, bool) {
 	return values[0], true
 }
 
-func (ctx Context) GetClientCertificate() (*x509.Certificate, bool) {
-	rawClientCert, ok := ctx.GetHeader(constants.ClientCertificateHeader)
+func (ctx Context) GetSecureClientCertificate() (*x509.Certificate, bool) {
+	rawClientCert, ok := ctx.GetHeader(constants.SecureClientCertificateHeader)
 	if !ok {
-		ctx.Logger.Debug("the client certificate was not informed")
+		ctx.Logger.Debug("the secure client certificate was not informed")
 		return nil, false
 	}
 
@@ -301,6 +299,30 @@ func (ctx Context) GetClientCertificate() (*x509.Certificate, bool) {
 		return nil, false
 	}
 
+	ctx.Logger.Debug("secure client certificate was found")
+	return clientCert, true
+}
+
+// Try to get the secure client certificate first, if it's not informed,
+// fallback to the insecure one.
+func (ctx Context) GetClientCertificate() (*x509.Certificate, bool) {
+	rawClientCert, ok := ctx.GetHeader(constants.SecureClientCertificateHeader)
+	if !ok {
+		ctx.Logger.Debug("the secure client certificate was not informed, trying the insecure one")
+		rawClientCert, ok = ctx.GetHeader(constants.InsecureClientCertificateHeader)
+		if !ok {
+			ctx.Logger.Debug("the insecure client certificate was not informed")
+			return nil, false
+		}
+	}
+
+	clientCert, err := x509.ParseCertificate([]byte(rawClientCert))
+	if err != nil {
+		ctx.Logger.Debug("could not parse the client certificate")
+		return nil, false
+	}
+
+	ctx.Logger.Debug("client certificate was found")
 	return clientCert, true
 }
 
@@ -341,7 +363,7 @@ func (ctx Context) GetRequestMethod() string {
 }
 
 func (ctx Context) GetRequestUrl() string {
-	return ctx.Host + ctx.Request.URL.RequestURI()
+	return "https://" + ctx.Request.Host + ctx.Request.URL.RequestURI()
 }
 
 // Get the audiences that will be accepted when validating client assertions.

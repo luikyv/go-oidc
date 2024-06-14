@@ -89,6 +89,16 @@ func GetUrlWithFragmentParams(redirectUri string, params map[string]string) stri
 	return parsedUrl.String()
 }
 
+func GetUrlWithoutParams(u string) (string, error) {
+	parsedUrl, err := url.Parse(u)
+	if err != nil {
+		return "", err
+	}
+	parsedUrl.RawQuery = ""
+	parsedUrl.Fragment = ""
+	return parsedUrl.String(), nil
+}
+
 func CreateSha256Hash(plainValue string) string {
 	h := sha256.New()
 	h.Write([]byte(plainValue))

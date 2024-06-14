@@ -15,6 +15,17 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
+type TlsOptions struct {
+	TlsAddress        string
+	ServerCertificate string
+	ServerKey         string
+	CipherSuites      []uint16
+	// The fields below will be used only if mtls is enalbed.
+	MtlsAddress                    string
+	CaCertificatePool              *x509.CertPool
+	UnsecureCertificatesAreAllowed bool
+}
+
 type OpenIdProvider struct {
 	utils.Configuration
 }
@@ -247,11 +258,8 @@ func (provider *OpenIdProvider) EnableClientSecretJwtAuthn(assertionLifetimeSecs
 	provider.ClientSecretJwtSignatureAlgorithms = signatureAlgorithms
 }
 
-// caCertPool is a reference to the certificate authorities' certificates that will be used to validate
-// TLS client certificates during tls_client_auth.
-func (provider *OpenIdProvider) EnableTlsClientAuthn(caCertPool *x509.CertPool) {
+func (provider *OpenIdProvider) EnableTlsClientAuthn() {
 	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.TlsAuthn)
-	provider.CaCertificatePool = caCertPool
 }
 
 func (provider *OpenIdProvider) EnableSelfSignedTlsClientAuthn() {
@@ -340,16 +348,6 @@ func (provider *OpenIdProvider) SetCorrelationIdHeader(header string) {
 
 func (provider *OpenIdProvider) SetFapi2Profile() {
 	provider.Profile = constants.Fapi2Profile
-}
-
-// Define the TLS cipher suites accepted when running the server with TLS.
-func (provider *OpenIdProvider) SetFapi2TlsCipherSuites() {
-	provider.SetTlsCipherSuites(constants.FapiAllowedCipherSuites...)
-}
-
-// Define the TLS cipher suites accepted when running the server with TLS.
-func (provider *OpenIdProvider) SetTlsCipherSuites(cipherSuites ...uint16) {
-	provider.AllowedTlsCipherSuites = cipherSuites
 }
 
 func (provider *OpenIdProvider) AddClient(client models.Client) error {
@@ -511,41 +509,10 @@ func (provider *OpenIdProvider) getMtlsServerHandler() http.Handler {
 }
 
 func (provider *OpenIdProvider) Run(address string) error {
-	serverHandler := apihandlers.NewAddCacheControlHeadersMiddlewareHandler(
-		apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(provider.getServerHandler(), provider.CorrelationIdHeader),
-	)
-	return http.ListenAndServe(address, serverHandler)
-}
-
-type TlsOptions struct {
-	TlsAddress string
-	// This will be used if mtls is enalbed.
-	MtlsAddress       string
-	ServerCertificate string
-	ServerKey         string
-}
-
-func (provider *OpenIdProvider) runMtls(config TlsOptions) error {
-	handler := apihandlers.AddCertificateHeaderMiddlewareHandler(
-		apihandlers.NewAddCacheControlHeadersMiddlewareHandler(
-			apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(
-				provider.getMtlsServerHandler(),
-				provider.CorrelationIdHeader,
-			),
-		),
-	)
-
-	server := &http.Server{
-		Addr:    config.MtlsAddress,
-		Handler: handler,
-		TLSConfig: &tls.Config{
-			// A client certificate is required, but its validation depends on the authentication method,
-			// e.g. self signed certificate, ...
-			ClientAuth:   tls.RequireAnyClientCert,
-			CipherSuites: provider.AllowedTlsCipherSuites,
-		},
-	}
-	return server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)
+	handler := provider.getServerHandler()
+	handler = apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(handler, provider.CorrelationIdHeader)
+	handler = apihandlers.NewAddCacheControlHeadersMiddlewareHandler(handler)
+	return http.ListenAndServe(address, handler)
 }
 
 func (provider *OpenIdProvider) RunTls(config TlsOptions) error {
@@ -554,17 +521,39 @@ func (provider *OpenIdProvider) RunTls(config TlsOptions) error {
 		go provider.runMtls(config)
 	}
 
-	handler := apihandlers.NewAddCacheControlHeadersMiddlewareHandler(
-		apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(
-			provider.getServerHandler(),
-			provider.CorrelationIdHeader,
-		),
-	)
+	handler := provider.getServerHandler()
+	handler = apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(handler, provider.CorrelationIdHeader)
+	handler = apihandlers.NewAddCacheControlHeadersMiddlewareHandler(handler)
+
 	server := &http.Server{
 		Addr:    config.TlsAddress,
 		Handler: handler,
 		TLSConfig: &tls.Config{
-			CipherSuites: provider.AllowedTlsCipherSuites,
+			CipherSuites: config.CipherSuites,
+		},
+	}
+	return server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)
+}
+
+func (provider *OpenIdProvider) runMtls(config TlsOptions) error {
+
+	handler := provider.getMtlsServerHandler()
+	handler = apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(handler, provider.CorrelationIdHeader)
+	handler = apihandlers.NewAddCacheControlHeadersMiddlewareHandler(handler)
+	handler = apihandlers.NewAddCertificateHeaderMiddlewareHandler(handler)
+
+	tlsClientAuthnType := tls.RequireAndVerifyClientCert
+	if config.CaCertificatePool == nil || config.UnsecureCertificatesAreAllowed {
+		tlsClientAuthnType = tls.RequireAnyClientCert
+	}
+
+	server := &http.Server{
+		Addr:    config.MtlsAddress,
+		Handler: handler,
+		TLSConfig: &tls.Config{
+			ClientCAs:    config.CaCertificatePool,
+			ClientAuth:   tlsClientAuthnType,
+			CipherSuites: config.CipherSuites,
 		},
 	}
 	return server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)

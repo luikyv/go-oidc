@@ -8,21 +8,6 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
-type AddCertificateHeaderMiddlewareHandler struct {
-	NextHandler http.Handler
-}
-
-func NewAddCertificateHeaderMiddlewareHandler(next http.Handler) AddCertificateHeaderMiddlewareHandler {
-	return AddCertificateHeaderMiddlewareHandler{
-		NextHandler: next,
-	}
-}
-
-func (handler AddCertificateHeaderMiddlewareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	r.Header.Set(constants.ClientCertificateHeader, string(r.TLS.PeerCertificates[0].Raw)) // TODO: should I encode it?
-	handler.NextHandler.ServeHTTP(w, r)
-}
-
 type AddCacheControlHeadersMiddlewareHandler struct {
 	NextHandler http.Handler
 }
@@ -66,4 +51,24 @@ func (handler AddCorrelationIdHeaderMiddlewareHandler) ServeHTTP(w http.Response
 
 	ctx := context.WithValue(r.Context(), constants.CorrelationIdKey, correlationId)
 	handler.NextHandler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+type AddCertificateHeaderMiddlewareHandler struct {
+	NextHandler http.Handler
+}
+
+func NewAddCertificateHeaderMiddlewareHandler(next http.Handler) AddCertificateHeaderMiddlewareHandler {
+	return AddCertificateHeaderMiddlewareHandler{
+		NextHandler: next,
+	}
+}
+
+func (handler AddCertificateHeaderMiddlewareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	certHeader := constants.InsecureClientCertificateHeader
+	// TODO: Make sure this works.
+	if len(r.TLS.VerifiedChains) >= 0 {
+		certHeader = constants.SecureClientCertificateHeader
+	}
+	r.Header.Set(certHeader, string(r.TLS.PeerCertificates[0].Raw)) // TODO: should I encode it?
+	handler.NextHandler.ServeHTTP(w, r)
 }

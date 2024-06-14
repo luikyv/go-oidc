@@ -162,11 +162,13 @@ func (ec ErrorCode) GetStatusCode() int {
 }
 
 const (
-	CorrelationIdHeader             string = "X-Correlation-Id"
-	FapiInteractionIdHeader         string = "X-Fapi-Interaction-Id"
-	DpopHeader                      string = "DPoP"
-	ClientCertificateHeader         string = "X-Client-Certificate"
-	SecureClientCertificateHeader   string = "X-Secure-Client-Certificate"
+	CorrelationIdHeader     string = "X-Correlation-Id"
+	FapiInteractionIdHeader string = "X-Fapi-Interaction-Id"
+	DpopHeader              string = "DPoP"
+	// Header used to transmit a client certificate that was validated by a trusted source.
+	SecureClientCertificateHeader string = "X-Secure-Client-Certificate"
+	// Header used to trasmit a client certificate that cannot be trusted.
+	// This is useful for clients authenticating with self signed certificates.
 	InsecureClientCertificateHeader string = "X-Insecure-Client-Certificate"
 )
 

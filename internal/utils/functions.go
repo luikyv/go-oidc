@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"net/url"
 	"strings"
 	"time"
 
@@ -178,9 +177,9 @@ func ValidateDpopJwt(
 		return models.NewOAuthError(constants.InvalidRequest, "invalid htm claim")
 	}
 
-	httpUri, _ := url.Parse(dpopClaims.HttpUri)
+	httpUri, err := unit.GetUrlWithoutParams(dpopClaims.HttpUri)
 	// The query and fragment components of the "htu" must be ignored.
-	if httpUri.Host+httpUri.Path != ctx.GetRequestUrl() {
+	if err != nil || httpUri != ctx.GetRequestUrl() {
 		return models.NewOAuthError(constants.InvalidRequest, "invalid htu claim")
 	}
 
