@@ -49,7 +49,10 @@ func handleAuthorizationCodeGrantTokenCreation(
 	}
 
 	if unit.ScopesContainsOpenId(session.Scopes) {
-		tokenResp.IdToken = utils.MakeIdToken(ctx, client, grantOptions.GetIdTokenOptions())
+		tokenResp.IdToken, err = utils.MakeIdToken(ctx, client, grantOptions.GetIdTokenOptions())
+		if err != nil {
+			return models.TokenResponse{}, oauthErr
+		}
 	}
 
 	if !shouldGenerateAuthorizationCodeGrantSession(ctx, grantOptions) {

@@ -284,6 +284,8 @@ type OpenIdConfiguration struct {
 	UserClaimTypesSupported                        []constants.ClaimType                      `json:"claim_types_supported,omitempty"`
 	SubjectIdentifierTypes                         []constants.SubjectIdentifierType          `json:"subject_types_supported"`
 	IdTokenSignatureAlgorithms                     []jose.SignatureAlgorithm                  `json:"id_token_signing_alg_values_supported"`
+	IdTokenKeyEncryptionAlgorithms                 []jose.KeyAlgorithm                        `json:"id_token_encryption_alg_values_supported,omitempty"`
+	IdTokenContentEncryptionAlgorithms             []jose.ContentEncryption                   `json:"id_token_encryption_enc_values_supported,omitempty"`
 	UserInfoSignatureAlgorithms                    []jose.SignatureAlgorithm                  `json:"userinfo_signing_alg_values_supported"`
 	ClientAuthnMethods                             []constants.ClientAuthnType                `json:"token_endpoint_auth_methods_supported"`
 	JarIsRequired                                  bool                                       `json:"require_signed_request_object,omitempty"`

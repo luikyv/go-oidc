@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 
@@ -13,27 +14,29 @@ import (
 //---------------------------------------- Client ----------------------------------------//
 
 type ClientMetaInfo struct {
-	Name                        string                          `json:"client_name"`
-	LogoUri                     string                          `json:"logo_uri"`
-	RedirectUris                []string                        `json:"redirect_uris"`
-	GrantTypes                  []constants.GrantType           `json:"grant_types"`
-	ResponseTypes               []constants.ResponseType        `json:"response_types"`
-	PublicJwksUri               string                          `json:"jwks_uri,omitempty"`
-	PublicJwks                  jose.JSONWebKeySet              `json:"jwks"`
-	Scopes                      string                          `json:"scope"`
-	SubjectIdentifierType       constants.SubjectIdentifierType `json:"subject_type,omitempty"`
-	IdTokenSignatureAlgorithm   jose.SignatureAlgorithm         `json:"id_token_signed_response_alg,omitempty"`
-	JarSignatureAlgorithm       jose.SignatureAlgorithm         `json:"request_object_signing_alg,omitempty"`
-	JarmSignatureAlgorithm      jose.SignatureAlgorithm         `json:"authorization_signed_response_alg,omitempty"`
-	PkceIsRequired              bool                            `json:"pkce_is_required"`
-	AuthnMethod                 constants.ClientAuthnType       `json:"token_endpoint_auth_method"`
-	AuthnSignatureAlgorithm     jose.SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg"`
-	DpopIsRequired              bool                            `json:"dpop_bound_access_tokens,omitempty"`
-	UserInfoSignatureAlgorithm  jose.SignatureAlgorithm         `json:"userinfo_signed_response_alg,omitempty"`
-	TlsSubjectDistinguishedName string                          `json:"tls_client_auth_subject_dn,omitempty"`
-	TlsSubjectAlternativeName   string                          `json:"tls_client_auth_san_dns,omitempty"` // DNS name.
-	TlsSubjectAlternativeNameIp string                          `json:"tls_client_auth_san_ip,omitempty"`
-	Attributes                  map[string]string               `json:"custom_attributes"`
+	Name                              string                          `json:"client_name"`
+	LogoUri                           string                          `json:"logo_uri"`
+	RedirectUris                      []string                        `json:"redirect_uris"`
+	GrantTypes                        []constants.GrantType           `json:"grant_types"`
+	ResponseTypes                     []constants.ResponseType        `json:"response_types"`
+	PublicJwksUri                     string                          `json:"jwks_uri,omitempty"`
+	PublicJwks                        jose.JSONWebKeySet              `json:"jwks"`
+	Scopes                            string                          `json:"scope"`
+	SubjectIdentifierType             constants.SubjectIdentifierType `json:"subject_type,omitempty"`
+	IdTokenSignatureAlgorithm         jose.SignatureAlgorithm         `json:"id_token_signed_response_alg,omitempty"`
+	IdTokenKeyEncryptionAlgorithm     jose.KeyAlgorithm               `json:"id_token_encrypted_response_alg,omitempty"`
+	IdTokenContentEncryptionAlgorithm jose.ContentEncryption          `json:"id_token_encrypted_response_enc,omitempty"`
+	JarSignatureAlgorithm             jose.SignatureAlgorithm         `json:"request_object_signing_alg,omitempty"`
+	JarmSignatureAlgorithm            jose.SignatureAlgorithm         `json:"authorization_signed_response_alg,omitempty"`
+	PkceIsRequired                    bool                            `json:"pkce_is_required"`
+	AuthnMethod                       constants.ClientAuthnType       `json:"token_endpoint_auth_method"`
+	AuthnSignatureAlgorithm           jose.SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg"`
+	DpopIsRequired                    bool                            `json:"dpop_bound_access_tokens,omitempty"`
+	UserInfoSignatureAlgorithm        jose.SignatureAlgorithm         `json:"userinfo_signed_response_alg,omitempty"`
+	TlsSubjectDistinguishedName       string                          `json:"tls_client_auth_subject_dn,omitempty"`
+	TlsSubjectAlternativeName         string                          `json:"tls_client_auth_san_dns,omitempty"` // DNS name.
+	TlsSubjectAlternativeNameIp       string                          `json:"tls_client_auth_san_ip,omitempty"`
+	Attributes                        map[string]string               `json:"custom_attributes"`
 }
 
 type Client struct {
@@ -69,6 +72,25 @@ func (client Client) GetJwk(keyId string) (jose.JSONWebKey, OAuthError) {
 	}
 
 	return keys[0], nil
+}
+
+func (client Client) GetIdTokenEncryptionJwk() (jose.JSONWebKey, OAuthError) {
+	return client.getEncryptionJwk(client.IdTokenKeyEncryptionAlgorithm)
+}
+
+func (client Client) getEncryptionJwk(algorithm jose.KeyAlgorithm) (jose.JSONWebKey, OAuthError) {
+	jwks, err := client.GetPublicJwks()
+	if err != nil {
+		return jose.JSONWebKey{}, err
+	}
+
+	for _, jwk := range jwks.Keys {
+		if jwk.Use == string(constants.KeyEncryptionUsage) && jwk.Algorithm == string(algorithm) {
+			return jwk, nil
+		}
+	}
+
+	return jose.JSONWebKey{}, NewOAuthError(constants.InvalidClient, fmt.Sprintf("invalid key algorithm: %s", algorithm))
 }
 
 func (client Client) AreScopesAllowed(requestedScopes string) bool {

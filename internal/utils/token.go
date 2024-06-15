@@ -13,8 +13,48 @@ func MakeIdToken(
 	ctx Context,
 	client models.Client,
 	idTokenOpts models.IdTokenOptions,
-) string {
+) (
+	string,
+	models.OAuthError,
+) {
+	idToken, err := makeIdToken(ctx, client, idTokenOpts)
+	if err != nil {
+		return "", err
+	}
 
+	// If encryption is disabled, just return the signed ID token.
+	if client.IdTokenKeyEncryptionAlgorithm == "" {
+		return idToken, nil
+	}
+
+	idToken, err = encryptIdToken(ctx, client, idToken)
+	if err != nil {
+		return "", err
+	}
+
+	return idToken, nil
+}
+
+func MakeToken(
+	ctx Context,
+	client models.Client,
+	grantOptions models.GrantOptions,
+) models.Token {
+	if grantOptions.TokenFormat == constants.JwtTokenFormat {
+		return makeJwtToken(ctx, client, grantOptions)
+	} else {
+		return makeOpaqueToken(ctx, client, grantOptions)
+	}
+}
+
+func makeIdToken(
+	ctx Context,
+	client models.Client,
+	idTokenOpts models.IdTokenOptions,
+) (
+	string,
+	models.OAuthError,
+) {
 	privateJwk := ctx.GetIdTokenSignatureKey(client)
 	signatureAlgorithm := jose.SignatureAlgorithm(privateJwk.Algorithm)
 	timestampNow := unit.GetTimestampNow()
@@ -44,12 +84,55 @@ func MakeIdToken(
 		claims[k] = v
 	}
 
-	signer, _ := jose.NewSigner(
+	signer, err := jose.NewSigner(
 		jose.SigningKey{Algorithm: signatureAlgorithm, Key: privateJwk.Key},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.KeyID),
 	)
-	idToken, _ := jwt.Signed(signer).Claims(claims).Serialize()
-	return idToken
+	if err != nil {
+		return "", models.NewOAuthError(constants.InternalError, err.Error())
+	}
+
+	idToken, err := jwt.Signed(signer).Claims(claims).Serialize()
+	if err != nil {
+		return "", models.NewOAuthError(constants.InternalError, err.Error())
+	}
+
+	return idToken, nil
+}
+
+func encryptIdToken(
+	_ Context,
+	client models.Client,
+	idToken string,
+) (
+	string,
+	models.OAuthError,
+) {
+	jwk, oauthErr := client.GetIdTokenEncryptionJwk()
+	if oauthErr != nil {
+		return "", oauthErr
+	}
+
+	encrypter, err := jose.NewEncrypter(
+		client.IdTokenContentEncryptionAlgorithm,
+		jose.Recipient{Algorithm: client.IdTokenKeyEncryptionAlgorithm, Key: jwk.Key, KeyID: jwk.KeyID},
+		(&jose.EncrypterOptions{}).WithType("jwt").WithContentType("jwt"),
+	)
+	if err != nil {
+		return "", models.NewOAuthError(constants.InternalError, err.Error())
+	}
+
+	encryptedIdTokenJwe, err := encrypter.Encrypt([]byte(idToken))
+	if err != nil {
+		return "", models.NewOAuthError(constants.InternalError, err.Error())
+	}
+
+	encryptedIdTokenString, err := encryptedIdTokenJwe.CompactSerialize()
+	if err != nil {
+		return "", models.NewOAuthError(constants.InternalError, err.Error())
+	}
+
+	return encryptedIdTokenString, nil
 }
 
 // TODO: Make it simpler. Create a confirmation object.
@@ -144,17 +227,5 @@ func makeOpaqueToken(
 		Type:                  tokenType,
 		JwkThumbprint:         jkt,
 		CertificateThumbprint: certThumbprint,
-	}
-}
-
-func MakeToken(
-	ctx Context,
-	client models.Client,
-	grantOptions models.GrantOptions,
-) models.Token {
-	if grantOptions.TokenFormat == constants.JwtTokenFormat {
-		return makeJwtToken(ctx, client, grantOptions)
-	} else {
-		return makeOpaqueToken(ctx, client, grantOptions)
 	}
 }

@@ -3,6 +3,7 @@ package dcr
 import (
 	"strings"
 
+	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/unit/constants"
@@ -31,6 +32,10 @@ func setDefaults(ctx utils.Context, dynamicClient *models.DynamicClientRequest) 
 
 	if ctx.PkceIsEnabled && dynamicClient.AuthnMethod == constants.NoneAuthn {
 		dynamicClient.PkceIsRequired = true
+	}
+
+	if dynamicClient.IdTokenKeyEncryptionAlgorithm != "" && dynamicClient.IdTokenContentEncryptionAlgorithm == "" {
+		dynamicClient.IdTokenContentEncryptionAlgorithm = jose.A128CBC_HS256
 	}
 }
 

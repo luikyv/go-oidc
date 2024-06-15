@@ -31,6 +31,7 @@ func validateDynamicClientRequest(
 		validateOpenIdScopeIfRequired,
 		validateSubjectIdentifierType,
 		validateIdTokenSignatureAlgorithm,
+		validateIdTokenEncryption,
 		validateJarSignatureAlgorithm,
 		validateJarmSignatureAlgorithm,
 		validatePkceIsRequiredForPublicClients,
@@ -291,5 +292,13 @@ func validateTlsSubjectInfoWhenTlsAuthn(
 		return models.NewOAuthError(constants.InvalidRequest, "only one of: tls_client_auth_subject_dn, tls_client_auth_san_dns, tls_client_auth_san_ip must be informed")
 	}
 
+	return nil
+}
+
+func validateIdTokenEncryption(
+	ctx utils.Context,
+	dynamicClient models.DynamicClientRequest,
+) models.OAuthError {
+	//TODO: Validate encryption settings.
 	return nil
 }

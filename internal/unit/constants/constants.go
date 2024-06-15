@@ -115,7 +115,8 @@ const (
 type KeyUsage string
 
 const (
-	KeySignatureUsage KeyUsage = "sig"
+	KeySignatureUsage  KeyUsage = "sig"
+	KeyEncryptionUsage KeyUsage = "enc"
 )
 
 type CodeChallengeMethod string

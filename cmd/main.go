@@ -51,6 +51,7 @@ func runFapi2OpenIdProvider() {
 	openidProvider.SetScopes(scopes...)
 	openidProvider.SetSupportedUserClaims(constants.EmailClaim, constants.EmailVerifiedClaim)
 	openidProvider.SetSupportedAuthenticationContextReferences("urn:mace:incommon:iap:silver", "urn:mace:incommon:iap:bronze")
+	openidProvider.EnableDynamicClientRegistration(nil, true)
 	openidProvider.SetTokenOptions(func(c models.Client, s string) (models.TokenOptions, error) {
 		return models.TokenOptions{
 			TokenFormat:        constants.JwtTokenFormat,
@@ -60,7 +61,11 @@ func runFapi2OpenIdProvider() {
 	})
 
 	// Create Client Mocks.
-	clientOneJwk := GetPrivateJwks("client_keys/client_one_jwks.json").Keys[0]
+	clientOnePrivateJwks := GetPrivateJwks("client_keys/client_one_jwks.json")
+	clientOnePublicJwks := jose.JSONWebKeySet{Keys: []jose.JSONWebKey{}}
+	for _, jwk := range clientOnePrivateJwks.Keys {
+		clientOnePublicJwks.Keys = append(clientOnePublicJwks.Keys, jwk.Public())
+	}
 	openidProvider.AddClient(models.Client{
 		Id: "client_one",
 		ClientMetaInfo: models.ClientMetaInfo{
@@ -74,7 +79,9 @@ func runFapi2OpenIdProvider() {
 			ResponseTypes: []constants.ResponseType{
 				constants.CodeResponse,
 			},
-			PublicJwks: jose.JSONWebKeySet{Keys: []jose.JSONWebKey{clientOneJwk.Public()}},
+			PublicJwks:                        clientOnePublicJwks,
+			IdTokenKeyEncryptionAlgorithm:     jose.RSA_OAEP,
+			IdTokenContentEncryptionAlgorithm: jose.A128CBC_HS256,
 		},
 	})
 	clientTwoJwk := GetPrivateJwks("client_keys/client_two_jwks.json").Keys[0]

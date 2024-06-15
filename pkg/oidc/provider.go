@@ -3,8 +3,10 @@ package oidc
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"net/http"
 	"slices"
+	"strings"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/apihandlers"
@@ -27,6 +29,7 @@ type TlsOptions struct {
 }
 
 type OpenIdProvider struct {
+	// TODO: Hide this.
 	utils.Configuration
 }
 
@@ -80,56 +83,69 @@ func NewProvider(
 	return provider
 }
 
-// TODO: log warnings instead.
-// func (provider *OpenIdProvider) validateConfiguration() {
-// 	if provider.Profile == constants.OpenIdProfile {
-// 		defaultIdTokenSignatureKey := provider.PrivateJwks.Key(provider.DefaultIdTokenSignatureKeyId)[0]
-// 		if defaultIdTokenSignatureKey.Algorithm != string(jose.RS256) {
-// 			panic("the default signature algorithm for ID tokens must be RS256")
-// 		}
+// TODO: Add more validations.
+func (provider *OpenIdProvider) validateConfiguration() error {
+	if provider.Profile == constants.OpenIdProfile {
+		defaultIdTokenSignatureKey := provider.PrivateJwks.Key(provider.DefaultIdTokenSignatureKeyId)[0]
+		if defaultIdTokenSignatureKey.Algorithm != string(jose.RS256) {
+			return errors.New("the default signature algorithm for ID tokens must be RS256")
+		}
 
-// 		defaultJarmSignatureKey := provider.PrivateJwks.Key(provider.DefaultJarmSignatureKeyId)[0]
-// 		if defaultJarmSignatureKey.Algorithm != string(jose.RS256) {
-// 			panic("the default signature algorithm for JARM must be RS256")
-// 		}
-// 	}
+		defaultJarmSignatureKey := provider.PrivateJwks.Key(provider.DefaultJarmSignatureKeyId)[0]
+		if defaultJarmSignatureKey.Algorithm != string(jose.RS256) {
+			return errors.New("the default signature algorithm for JARM must be RS256")
+		}
+	}
 
-// 	if provider.Profile == constants.Fapi2Profile {
+	if provider.Profile == constants.Fapi2Profile {
 
-// 		if slices.Contains(provider.GrantTypes, constants.ImplicitGrant) {
-// 			panic("the implict grant is not allowed for FAPI 2.0")
-// 		}
+		if slices.ContainsFunc(provider.ClientAuthnMethods, func(authnMethod constants.ClientAuthnType) bool {
+			// TODO: remove self signed, only for tests.
+			return authnMethod != constants.PrivateKeyJwtAuthn && authnMethod != constants.TlsAuthn && authnMethod != constants.SelfSignedTlsAuthn
+		}) {
+			return errors.New("only private_key_jwt and tls_client_auth are allowed for FAPI 2.0")
+		}
 
-// 		if !provider.ParIsEnabled || !provider.ParIsRequired {
-// 			panic("pushed authorization requests is required for FAPI 2.0")
-// 		}
+		if slices.Contains(provider.GrantTypes, constants.ImplicitGrant) {
+			return errors.New("the implict grant is not allowed for FAPI 2.0")
+		}
 
-// 		if !provider.PkceIsEnabled || !provider.PkceIsRequired {
-// 			panic("proof key for code exchange is required for FAPI 2.0")
-// 		}
+		if !provider.ParIsEnabled || !provider.ParIsRequired {
+			return errors.New("pushed authorization requests is required for FAPI 2.0")
+		}
 
-// 		if !provider.IssuerResponseParameterIsEnabled {
-// 			panic("the issuer response parameter is required for FAPI 2.0")
-// 		}
-// 	}
+		if !provider.PkceIsEnabled || !provider.PkceIsRequired {
+			return errors.New("proof key for code exchange is required for FAPI 2.0")
+		}
 
-// 	for _, signatureAlgorithm := range provider.PrivateKeyJwtSignatureAlgorithms {
-// 		if strings.HasPrefix(string(signatureAlgorithm), "HS") {
-// 			panic("symetric algorithms are not allowed for private_key_jwt authentication")
-// 		}
-// 	}
+		if !provider.IssuerResponseParameterIsEnabled {
+			return errors.New("the issuer response parameter is required for FAPI 2.0")
+		}
+	}
 
-// 	for _, signatureAlgorithm := range provider.ClientSecretJwtSignatureAlgorithms {
-// 		if !strings.HasPrefix(string(signatureAlgorithm), "HS") {
-// 			panic("assymetric algorithms are not allowed for client_secret_jwt authentication")
-// 		}
-// 	}
+	for _, signatureAlgorithm := range provider.PrivateKeyJwtSignatureAlgorithms {
+		if strings.HasPrefix(string(signatureAlgorithm), "HS") {
+			return errors.New("symetric algorithms are not allowed for private_key_jwt authentication")
+		}
+	}
 
-// 	if !unit.ContainsAll(provider.ClientAuthnMethods, provider.IntrospectionClientAuthnMethods...) ||
-// 		slices.Contains(provider.IntrospectionClientAuthnMethods, constants.NoneAuthn) {
-// 		panic("invalid client authentication method for token introspection")
-// 	}
-// }
+	for _, signatureAlgorithm := range provider.ClientSecretJwtSignatureAlgorithms {
+		if !strings.HasPrefix(string(signatureAlgorithm), "HS") {
+			return errors.New("assymetric algorithms are not allowed for client_secret_jwt authentication")
+		}
+	}
+
+	if !unit.ContainsAll(provider.ClientAuthnMethods, provider.IntrospectionClientAuthnMethods...) ||
+		slices.Contains(provider.IntrospectionClientAuthnMethods, constants.NoneAuthn) {
+		return errors.New("invalid client authentication method for token introspection")
+	}
+
+	if provider.IdTokenEncryptionIsEnabled && !slices.Contains(provider.IdTokenContentEncryptionAlgorithms, jose.A128CBC_HS256) {
+		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm") // todo
+	}
+
+	return nil
+}
 
 func (provider *OpenIdProvider) SetSupportedUserClaims(claims ...string) {
 	provider.UserClaims = claims
@@ -144,6 +160,23 @@ func (provider *OpenIdProvider) AddIdTokenSignatureKeyIds(idTokenSignatureKeyIds
 
 func (provider *OpenIdProvider) SetIdTokenLifetime(idTokenLifetimeSecs int) {
 	provider.IdTokenExpiresInSecs = idTokenLifetimeSecs
+}
+
+func (provider *OpenIdProvider) EnableIdTokenEncryption(
+	keyEncryptionAlgorithms []jose.KeyAlgorithm,
+	contentEncryptionAlgorithms []jose.ContentEncryption,
+) {
+	provider.IdTokenEncryptionIsEnabled = true
+	provider.IdTokenKeyEncryptionAlgorithms = keyEncryptionAlgorithms
+	provider.IdTokenContentEncryptionAlgorithms = contentEncryptionAlgorithms
+}
+
+func (provider *OpenIdProvider) RequireddTokenEncryption(
+	keyEncryptionAlgorithms []jose.KeyAlgorithm,
+	contentEncryptionAlgorithms []jose.ContentEncryption,
+) {
+	provider.EnableIdTokenEncryption(keyEncryptionAlgorithms, contentEncryptionAlgorithms)
+	provider.IdTokenEncryptionIsRequired = true
 }
 
 func (provider *OpenIdProvider) EnableDynamicClientRegistration(dcrPlugin utils.DcrPluginFunc, shouldRotateTokens bool) {
@@ -358,11 +391,68 @@ func (provider *OpenIdProvider) AddPolicy(policy utils.AuthnPolicy) {
 	provider.Policies = append(provider.Policies, policy)
 }
 
+func (provider *OpenIdProvider) Run(address string) error {
+	if err := provider.validateConfiguration(); err != nil {
+		return err
+	}
+
+	handler := provider.getServerHandler()
+	handler = apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(handler, provider.CorrelationIdHeader)
+	handler = apihandlers.NewAddCacheControlHeadersMiddlewareHandler(handler)
+	return http.ListenAndServe(address, handler)
+}
+
+func (provider *OpenIdProvider) RunTls(config TlsOptions) error {
+
+	if err := provider.validateConfiguration(); err != nil {
+		return err
+	}
+
+	if provider.MtlsIsEnabled {
+		go provider.runMtls(config)
+	}
+
+	handler := provider.getServerHandler()
+	handler = apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(handler, provider.CorrelationIdHeader)
+	handler = apihandlers.NewAddCacheControlHeadersMiddlewareHandler(handler)
+	server := &http.Server{
+		Addr:    config.TlsAddress,
+		Handler: handler,
+		TLSConfig: &tls.Config{
+			CipherSuites: config.CipherSuites,
+		},
+	}
+	return server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)
+}
+
+func (provider *OpenIdProvider) runMtls(config TlsOptions) error {
+
+	handler := provider.getMtlsServerHandler()
+	handler = apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(handler, provider.CorrelationIdHeader)
+	handler = apihandlers.NewAddCacheControlHeadersMiddlewareHandler(handler)
+	handler = apihandlers.NewAddCertificateHeaderMiddlewareHandler(handler)
+
+	tlsClientAuthnType := tls.RequireAndVerifyClientCert
+	if config.CaCertificatePool == nil || config.UnsecureCertificatesAreAllowed {
+		tlsClientAuthnType = tls.RequireAnyClientCert
+	}
+
+	server := &http.Server{
+		Addr:    config.MtlsAddress,
+		Handler: handler,
+		TLSConfig: &tls.Config{
+			ClientCAs:    config.CaCertificatePool,
+			ClientAuth:   tlsClientAuthnType,
+			CipherSuites: config.CipherSuites,
+		},
+	}
+	return server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)
+}
+
 func (provider *OpenIdProvider) getServerHandler() http.Handler {
 
 	serverHandler := http.NewServeMux()
 
-	// Set endpoints.
 	serverHandler.HandleFunc(
 		"GET "+string(constants.JsonWebKeySetEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
@@ -506,55 +596,4 @@ func (provider *OpenIdProvider) getMtlsServerHandler() http.Handler {
 	}
 
 	return serverHandler
-}
-
-func (provider *OpenIdProvider) Run(address string) error {
-	handler := provider.getServerHandler()
-	handler = apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(handler, provider.CorrelationIdHeader)
-	handler = apihandlers.NewAddCacheControlHeadersMiddlewareHandler(handler)
-	return http.ListenAndServe(address, handler)
-}
-
-func (provider *OpenIdProvider) RunTls(config TlsOptions) error {
-
-	if provider.MtlsIsEnabled {
-		go provider.runMtls(config)
-	}
-
-	handler := provider.getServerHandler()
-	handler = apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(handler, provider.CorrelationIdHeader)
-	handler = apihandlers.NewAddCacheControlHeadersMiddlewareHandler(handler)
-
-	server := &http.Server{
-		Addr:    config.TlsAddress,
-		Handler: handler,
-		TLSConfig: &tls.Config{
-			CipherSuites: config.CipherSuites,
-		},
-	}
-	return server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)
-}
-
-func (provider *OpenIdProvider) runMtls(config TlsOptions) error {
-
-	handler := provider.getMtlsServerHandler()
-	handler = apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(handler, provider.CorrelationIdHeader)
-	handler = apihandlers.NewAddCacheControlHeadersMiddlewareHandler(handler)
-	handler = apihandlers.NewAddCertificateHeaderMiddlewareHandler(handler)
-
-	tlsClientAuthnType := tls.RequireAndVerifyClientCert
-	if config.CaCertificatePool == nil || config.UnsecureCertificatesAreAllowed {
-		tlsClientAuthnType = tls.RequireAnyClientCert
-	}
-
-	server := &http.Server{
-		Addr:    config.MtlsAddress,
-		Handler: handler,
-		TLSConfig: &tls.Config{
-			ClientCAs:    config.CaCertificatePool,
-			ClientAuth:   tlsClientAuthnType,
-			CipherSuites: config.CipherSuites,
-		},
-	}
-	return server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)
 }

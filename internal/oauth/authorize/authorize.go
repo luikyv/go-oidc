@@ -137,7 +137,10 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) mod
 			AuthorizationCode:       session.AuthorizationCode,
 			State:                   session.State,
 		}
-		redirectParams.IdToken = utils.MakeIdToken(ctx, client, idTokenOptions)
+		redirectParams.IdToken, err = utils.MakeIdToken(ctx, client, idTokenOptions)
+		if err != nil {
+			return session.NewRedirectError(constants.InternalError, err.Error())
+		}
 	}
 
 	redirectResponse(ctx, client, session.AuthorizationParameters, redirectParams)

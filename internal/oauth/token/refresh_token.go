@@ -41,7 +41,10 @@ func handleRefreshTokenGrantTokenCreation(
 	}
 
 	if unit.ScopesContainsOpenId(grantSession.ActiveScopes) {
-		tokenResp.IdToken = utils.MakeIdToken(ctx, client, grantSession.GrantOptions.GetIdTokenOptions())
+		tokenResp.IdToken, err = utils.MakeIdToken(ctx, client, grantSession.GrantOptions.GetIdTokenOptions())
+		if err != nil {
+			return models.TokenResponse{}, err
+		}
 	}
 
 	return tokenResp, nil

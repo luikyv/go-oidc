@@ -22,7 +22,8 @@ type GetTokenOptionsFunc func(client models.Client, scopes string) (models.Token
 type DcrPluginFunc func(ctx Context, dynamicClient *models.DynamicClientRequest)
 
 type Configuration struct {
-	Profile             constants.Profile
+	Profile constants.Profile
+	// Host where the server runs. This value will be used the auth server issuer.
 	Host                string
 	MtlsIsEnabled       bool
 	MtlsHost            string
@@ -31,6 +32,7 @@ type Configuration struct {
 	GrantSessionManager crud.GrantSessionManager
 	AuthnSessionManager crud.AuthnSessionManager
 	// The server JWKS containing private and public information.
+	// When exposing it, the private information is removed.
 	PrivateJwks jose.JSONWebKeySet
 	// The default key used to sign access tokens. The key can be overridden with the TokenOptions.
 	DefaultTokenSignatureKeyId      string
@@ -56,9 +58,13 @@ type Configuration struct {
 	IdTokenExpiresInSecs int
 	// The IDs of the keys used to sign ID tokens. There should be at most one per algorithm.
 	// In other words, there shouldn't be two key IDs that point to two keys that have the same algorithm.
-	IdTokenSignatureKeyIds    []string
-	ShouldRotateRefreshTokens bool
-	RefreshTokenLifetimeSecs  int
+	IdTokenSignatureKeyIds             []string
+	IdTokenEncryptionIsEnabled         bool
+	IdTokenEncryptionIsRequired        bool
+	IdTokenKeyEncryptionAlgorithms     []jose.KeyAlgorithm
+	IdTokenContentEncryptionAlgorithms []jose.ContentEncryption // TODO: Validate that A128CBC-HS256 is supported for openid.
+	ShouldRotateRefreshTokens          bool
+	RefreshTokenLifetimeSecs           int
 	// The user claims that can be returned in the userinfo endpoint or in the ID token.
 	// This will be transmitted in the /.well-known/openid-configuration endpoint.
 	UserClaims []string

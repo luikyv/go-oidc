@@ -32,6 +32,11 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 		DisplayValuesSupported:               ctx.DisplayValues,
 	}
 
+	if ctx.IdTokenEncryptionIsEnabled {
+		config.IdTokenKeyEncryptionAlgorithms = ctx.IdTokenKeyEncryptionAlgorithms
+		config.IdTokenContentEncryptionAlgorithms = ctx.IdTokenContentEncryptionAlgorithms
+	}
+
 	if ctx.ParIsEnabled {
 		config.ParIsRequired = ctx.ParIsRequired
 		config.ParEndpoint = ctx.Host + string(constants.PushedAuthorizationRequestEndpoint)
