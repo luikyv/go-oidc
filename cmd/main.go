@@ -84,7 +84,11 @@ func runFapi2OpenIdProvider() {
 			IdTokenContentEncryptionAlgorithm: jose.A128CBC_HS256,
 		},
 	})
-	clientTwoJwk := GetPrivateJwks("client_keys/client_two_jwks.json").Keys[0]
+	clientTwoPrivateJwks := GetPrivateJwks("client_keys/client_two_jwks.json")
+	clientTwoPublicJwks := jose.JSONWebKeySet{Keys: []jose.JSONWebKey{}}
+	for _, jwk := range clientTwoPrivateJwks.Keys {
+		clientTwoPublicJwks.Keys = append(clientTwoPublicJwks.Keys, jwk.Public())
+	}
 	openidProvider.AddClient(models.Client{
 		Id: "client_two",
 		ClientMetaInfo: models.ClientMetaInfo{
@@ -98,7 +102,7 @@ func runFapi2OpenIdProvider() {
 			ResponseTypes: []constants.ResponseType{
 				constants.CodeResponse,
 			},
-			PublicJwks: jose.JSONWebKeySet{Keys: []jose.JSONWebKey{clientTwoJwk.Public()}},
+			PublicJwks: clientTwoPrivateJwks,
 		},
 	})
 

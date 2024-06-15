@@ -40,8 +40,11 @@ type ClientMetaInfo struct {
 }
 
 type Client struct {
-	Id                            string `json:"client_id"`
-	Secret                        string `json:"client_secret,omitempty"` // When the client uses client_secret_jwt.
+	Id string `json:"client_id"`
+	// This is used when the client authenticates with client_secret_jwt,
+	// since the key used to sign the assertion is the same used to verify it.
+	Secret string `json:"client_secret,omitempty"`
+	// For client_secret_basic and client_secret_post, we only store the hash of the client secret.
 	HashedSecret                  string `json:"hashed_secret,omitempty"`
 	HashedRegistrationAccessToken string `json:"hashed_registration_access_token"`
 	ClientMetaInfo
@@ -56,6 +59,8 @@ func (c Client) GetPublicJwks() (jose.JSONWebKeySet, OAuthError) {
 	if err != nil {
 		return jose.JSONWebKeySet{}, NewOAuthError(constants.InvalidRequest, err.Error())
 	}
+	// Cache the client JWKS.
+	c.PublicJwks = jwks
 
 	return jwks, nil
 }
@@ -78,6 +83,7 @@ func (client Client) GetIdTokenEncryptionJwk() (jose.JSONWebKey, OAuthError) {
 	return client.getEncryptionJwk(client.IdTokenKeyEncryptionAlgorithm)
 }
 
+// Get the encryption JWK based on the "alg" claim.
 func (client Client) getEncryptionJwk(algorithm jose.KeyAlgorithm) (jose.JSONWebKey, OAuthError) {
 	jwks, err := client.GetPublicJwks()
 	if err != nil {
@@ -112,18 +118,6 @@ func (client Client) IsRedirectUriAllowed(redirectUri string) bool {
 		}
 	}
 	return false
-}
-
-func (client Client) GetSigningAlgorithms() []jose.SignatureAlgorithm {
-	return getSigningAlgorithms(client.PublicJwks)
-}
-
-func getSigningAlgorithms(jwks jose.JSONWebKeySet) []jose.SignatureAlgorithm {
-	signingAlgorithms := []jose.SignatureAlgorithm{}
-	for _, jwk := range jwks.Keys {
-		signingAlgorithms = append(signingAlgorithms, jose.SignatureAlgorithm(jwk.Algorithm))
-	}
-	return signingAlgorithms
 }
 
 func (client Client) IsRegistrationAccessTokenValid(registrationAccessToken string) bool {

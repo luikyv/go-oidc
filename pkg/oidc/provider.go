@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -85,6 +86,37 @@ func NewProvider(
 
 // TODO: Add more validations.
 func (provider *OpenIdProvider) validateConfiguration() error {
+	for _, keyId := range slices.Concat(
+		[]string{provider.DefaultIdTokenSignatureKeyId},
+		provider.IdTokenSignatureKeyIds,
+		provider.JarmSignatureKeyIds,
+	) {
+		if len(provider.PrivateJwks.Key(keyId)) == 0 {
+			return fmt.Errorf("the key ID: %s is not present in the server JWKS", keyId)
+		}
+	}
+
+	for _, signatureAlgorithm := range provider.PrivateKeyJwtSignatureAlgorithms {
+		if strings.HasPrefix(string(signatureAlgorithm), "HS") {
+			return errors.New("symetric algorithms are not allowed for private_key_jwt authentication")
+		}
+	}
+
+	for _, signatureAlgorithm := range provider.ClientSecretJwtSignatureAlgorithms {
+		if !strings.HasPrefix(string(signatureAlgorithm), "HS") {
+			return errors.New("assymetric algorithms are not allowed for client_secret_jwt authentication")
+		}
+	}
+
+	if provider.IntrospectionIsEnabled && (!unit.ContainsAll(provider.ClientAuthnMethods, provider.IntrospectionClientAuthnMethods...) ||
+		slices.Contains(provider.IntrospectionClientAuthnMethods, constants.NoneAuthn)) {
+		return errors.New("invalid client authentication method for token introspection")
+	}
+
+	if provider.IdTokenEncryptionIsEnabled && !slices.Contains(provider.IdTokenContentEncryptionAlgorithms, jose.A128CBC_HS256) {
+		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm") // todo
+	}
+
 	if provider.Profile == constants.OpenIdProfile {
 		defaultIdTokenSignatureKey := provider.PrivateJwks.Key(provider.DefaultIdTokenSignatureKeyId)[0]
 		if defaultIdTokenSignatureKey.Algorithm != string(jose.RS256) {
@@ -121,27 +153,6 @@ func (provider *OpenIdProvider) validateConfiguration() error {
 		if !provider.IssuerResponseParameterIsEnabled {
 			return errors.New("the issuer response parameter is required for FAPI 2.0")
 		}
-	}
-
-	for _, signatureAlgorithm := range provider.PrivateKeyJwtSignatureAlgorithms {
-		if strings.HasPrefix(string(signatureAlgorithm), "HS") {
-			return errors.New("symetric algorithms are not allowed for private_key_jwt authentication")
-		}
-	}
-
-	for _, signatureAlgorithm := range provider.ClientSecretJwtSignatureAlgorithms {
-		if !strings.HasPrefix(string(signatureAlgorithm), "HS") {
-			return errors.New("assymetric algorithms are not allowed for client_secret_jwt authentication")
-		}
-	}
-
-	if !unit.ContainsAll(provider.ClientAuthnMethods, provider.IntrospectionClientAuthnMethods...) ||
-		slices.Contains(provider.IntrospectionClientAuthnMethods, constants.NoneAuthn) {
-		return errors.New("invalid client authentication method for token introspection")
-	}
-
-	if provider.IdTokenEncryptionIsEnabled && !slices.Contains(provider.IdTokenContentEncryptionAlgorithms, jose.A128CBC_HS256) {
-		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm") // todo
 	}
 
 	return nil

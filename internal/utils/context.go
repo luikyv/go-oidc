@@ -241,7 +241,7 @@ func (ctx Context) getSignatureKey(
 	if signatureAlgorithm != "" {
 		for _, keyId := range keyIds {
 			key, _ := ctx.GetPrivateKey(keyId)
-			if key.Algorithm == string(signatureAlgorithm) {
+			if key.Algorithm == string(signatureAlgorithm) && key.Use == string(constants.KeySignatureUsage) {
 				return key
 			}
 		}
