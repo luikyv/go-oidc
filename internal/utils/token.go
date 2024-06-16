@@ -103,7 +103,7 @@ func makeIdToken(
 func encryptIdToken(
 	_ Context,
 	client models.Client,
-	idToken string,
+	userInfoJwt string,
 ) (
 	string,
 	models.OAuthError,
@@ -122,17 +122,17 @@ func encryptIdToken(
 		return "", models.NewOAuthError(constants.InternalError, err.Error())
 	}
 
-	encryptedIdTokenJwe, err := encrypter.Encrypt([]byte(idToken))
+	encryptedUserInfoJwtJwe, err := encrypter.Encrypt([]byte(userInfoJwt))
 	if err != nil {
 		return "", models.NewOAuthError(constants.InternalError, err.Error())
 	}
 
-	encryptedIdTokenString, err := encryptedIdTokenJwe.CompactSerialize()
+	encryptedUserInfoString, err := encryptedUserInfoJwtJwe.CompactSerialize()
 	if err != nil {
 		return "", models.NewOAuthError(constants.InternalError, err.Error())
 	}
 
-	return encryptedIdTokenString, nil
+	return encryptedUserInfoString, nil
 }
 
 // TODO: Make it simpler. Create a confirmation object.

@@ -51,20 +51,19 @@ type Configuration struct {
 	// It is used to validate that the assertion will expire in the near future during client_secret_jwt.
 	ClientSecretJwtAssertionLifetimeSecs int
 	OpenIdScopeIsRequired                bool
-	// The default key used to sign ID tokens.
-	// The key can be overridden depending on the client property "id_token_signed_response_alg".
-	DefaultIdTokenSignatureKeyId string
-	// It defines the expiry time of ID tokens.
-	IdTokenExpiresInSecs int
-	// The IDs of the keys used to sign ID tokens. There should be at most one per algorithm.
+	// The default key used to sign ID tokens and the user info endpoint response.
+	// The key can be overridden depending on the client properties "id_token_signed_response_alg" and "userinfo_signed_response_alg".
+	DefaultUserInfoSignatureKeyId string
+	// The IDs of the keys used to sign ID tokens and the user info endpoint response. There should be at most one per algorithm.
 	// In other words, there shouldn't be two key IDs that point to two keys that have the same algorithm.
-	IdTokenSignatureKeyIds             []string
-	IdTokenEncryptionIsEnabled         bool
-	IdTokenEncryptionIsRequired        bool
-	IdTokenKeyEncryptionAlgorithms     []jose.KeyAlgorithm
-	IdTokenContentEncryptionAlgorithms []jose.ContentEncryption // TODO: Validate that A128CBC-HS256 is supported for openid.
-	ShouldRotateRefreshTokens          bool
-	RefreshTokenLifetimeSecs           int
+	UserInfoSignatureKeyIds             []string
+	UserInfoEncryptionIsEnabled         bool
+	UserInfoKeyEncryptionAlgorithms     []jose.KeyAlgorithm
+	UserInfoContentEncryptionAlgorithms []jose.ContentEncryption
+	// It defines the expiry time of ID tokens.
+	IdTokenExpiresInSecs      int
+	ShouldRotateRefreshTokens bool
+	RefreshTokenLifetimeSecs  int
 	// The user claims that can be returned in the userinfo endpoint or in the ID token.
 	// This will be transmitted in the /.well-known/openid-configuration endpoint.
 	UserClaims []string
@@ -199,19 +198,15 @@ func (ctx Context) GetTokenSignatureKey(tokenOptions models.TokenOptions) jose.J
 }
 
 func (ctx Context) GetUserInfoSignatureKey(client models.Client) jose.JSONWebKey {
-	return ctx.getSignatureKey(client.UserInfoSignatureAlgorithm, ctx.DefaultIdTokenSignatureKeyId, ctx.IdTokenSignatureKeyIds)
+	return ctx.getSignatureKey(client.UserInfoSignatureAlgorithm, ctx.DefaultUserInfoSignatureKeyId, ctx.UserInfoSignatureKeyIds)
 }
 
 func (ctx Context) GetUserInfoSignatureAlgorithms() []jose.SignatureAlgorithm {
-	return ctx.getSignatureAlgorithms(ctx.IdTokenSignatureKeyIds)
+	return ctx.getSignatureAlgorithms(ctx.UserInfoSignatureKeyIds)
 }
 
 func (ctx Context) GetIdTokenSignatureKey(client models.Client) jose.JSONWebKey {
-	return ctx.getSignatureKey(client.IdTokenSignatureAlgorithm, ctx.DefaultIdTokenSignatureKeyId, ctx.IdTokenSignatureKeyIds)
-}
-
-func (ctx Context) GetIdTokenSignatureAlgorithms() []jose.SignatureAlgorithm {
-	return ctx.getSignatureAlgorithms(ctx.IdTokenSignatureKeyIds)
+	return ctx.getSignatureKey(client.IdTokenSignatureAlgorithm, ctx.DefaultUserInfoSignatureKeyId, ctx.UserInfoSignatureKeyIds)
 }
 
 func (ctx Context) GetJarmSignatureKey(client models.Client) jose.JSONWebKey {
@@ -401,7 +396,7 @@ func (ctx Context) GetRequestMethod() string {
 }
 
 func (ctx Context) GetRequestUrl() string {
-	// TODO: Improve this.
+	// TODO: Improve this. Should I trust the Host header?
 	return "https://" + ctx.Request.Host + ctx.Request.URL.RequestURI()
 }
 

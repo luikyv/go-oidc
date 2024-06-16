@@ -21,8 +21,8 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 		UserClaimsSupported:                  ctx.UserClaims,
 		UserClaimTypesSupported:              ctx.ClaimTypes,
 		SubjectIdentifierTypes:               ctx.SubjectIdentifierTypes,
-		IdTokenSignatureAlgorithms:           ctx.GetIdTokenSignatureAlgorithms(),
-		UserInfoSignatureAlgorithms:          ctx.GetIdTokenSignatureAlgorithms(),
+		IdTokenSignatureAlgorithms:           ctx.GetUserInfoSignatureAlgorithms(),
+		UserInfoSignatureAlgorithms:          ctx.GetUserInfoSignatureAlgorithms(),
 		ClientAuthnMethods:                   ctx.ClientAuthnMethods,
 		Scopes:                               ctx.Scopes,
 		TokenEndpointClientSigningAlgorithms: ctx.GetClientSignatureAlgorithms(),
@@ -32,9 +32,11 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 		DisplayValuesSupported:               ctx.DisplayValues,
 	}
 
-	if ctx.IdTokenEncryptionIsEnabled {
-		config.IdTokenKeyEncryptionAlgorithms = ctx.IdTokenKeyEncryptionAlgorithms
-		config.IdTokenContentEncryptionAlgorithms = ctx.IdTokenContentEncryptionAlgorithms
+	if ctx.UserInfoEncryptionIsEnabled {
+		config.IdTokenKeyEncryptionAlgorithms = ctx.UserInfoKeyEncryptionAlgorithms
+		config.IdTokenContentEncryptionAlgorithms = ctx.UserInfoContentEncryptionAlgorithms
+		config.UserInfoKeyEncryptionAlgorithms = ctx.UserInfoKeyEncryptionAlgorithms
+		config.UserInfoContentEncryptionAlgorithms = ctx.UserInfoContentEncryptionAlgorithms
 	}
 
 	if ctx.ParIsEnabled {

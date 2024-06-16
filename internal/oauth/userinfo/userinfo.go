@@ -34,42 +34,117 @@ func HandleUserInfoRequest(ctx utils.Context) (models.UserInfoResponse, models.O
 		return models.UserInfoResponse{}, models.NewOAuthError(constants.InternalError, err.Error())
 	}
 
-	return getUserInfoResponse(ctx, client, grantSession), nil
+	userInfoResponse, oauthErr := getUserInfoResponse(ctx, client, grantSession)
+	if oauthErr != nil {
+		return models.UserInfoResponse{}, oauthErr
+	}
+
+	return userInfoResponse, nil
 }
 
 func getUserInfoResponse(
 	ctx utils.Context,
 	client models.Client,
 	grantSession models.GrantSession,
-) models.UserInfoResponse {
+) (
+	models.UserInfoResponse,
+	models.OAuthError,
+) {
 
 	userInfoClaims := map[string]any{
 		constants.SubjectClaim: grantSession.Subject,
 	}
-
 	for k, v := range grantSession.AdditionalUserInfoClaims {
 		userInfoClaims[k] = v
 	}
 
 	userInfoResponse := models.UserInfoResponse{}
-	if client.UserInfoSignatureAlgorithm != "" {
-		userInfoClaims[constants.IssuerClaim] = ctx.Host
-		userInfoClaims[constants.AudienceClaim] = grantSession.ClientId
-		userInfoResponse.SignedClaims = signUserInfoClaims(ctx, client, userInfoClaims)
-	} else {
+	// If the client doesn't require the user info to be signed,
+	// we'll just return the claims as a JSON object.
+	if client.UserInfoSignatureAlgorithm == "" {
 		userInfoResponse.Claims = userInfoClaims
+		return userInfoResponse, nil
 	}
 
-	return userInfoResponse
+	userInfoClaims[constants.IssuerClaim] = ctx.Host
+	userInfoClaims[constants.AudienceClaim] = client.Id
+	jwtUserInfoClaims, err := signUserInfoClaims(ctx, client, userInfoClaims)
+	if err != nil {
+		return models.UserInfoResponse{}, models.NewOAuthError(constants.InternalError, err.Error())
+	}
+
+	// If the client doesn't require the user info to be encrypted,
+	// we'll just return the claims as a signed JWT.
+	if client.UserInfoKeyEncryptionAlgorithm == "" {
+		userInfoResponse.JwtClaims = jwtUserInfoClaims
+		return userInfoResponse, nil
+	}
+
+	jwtUserInfoClaims, err = encryptUserInfoJwt(ctx, client, jwtUserInfoClaims)
+	if err != nil {
+		return models.UserInfoResponse{}, models.NewOAuthError(constants.InternalError, err.Error())
+	}
+	userInfoResponse.JwtClaims = jwtUserInfoClaims
+	return userInfoResponse, nil
 }
 
-func signUserInfoClaims(ctx utils.Context, client models.Client, claims map[string]any) string {
+func signUserInfoClaims(
+	ctx utils.Context,
+	client models.Client,
+	claims map[string]any,
+) (
+	string,
+	models.OAuthError,
+) {
 	privateJwk := ctx.GetUserInfoSignatureKey(client)
 	signatureAlgorithm := jose.SignatureAlgorithm(privateJwk.Algorithm)
-	signer, _ := jose.NewSigner(
+	signer, err := jose.NewSigner(
 		jose.SigningKey{Algorithm: signatureAlgorithm, Key: privateJwk.Key},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.KeyID),
 	)
-	idToken, _ := jwt.Signed(signer).Claims(claims).Serialize()
-	return idToken
+	if err != nil {
+		return "", models.NewOAuthError(constants.InternalError, err.Error())
+	}
+
+	idToken, err := jwt.Signed(signer).Claims(claims).Serialize()
+	if err != nil {
+		return "", models.NewOAuthError(constants.InternalError, err.Error())
+	}
+
+	return idToken, nil
+}
+
+func encryptUserInfoJwt(
+	_ utils.Context,
+	client models.Client,
+	userInfoJwt string,
+) (
+	string,
+	models.OAuthError,
+) {
+	jwk, oauthErr := client.GetUserInfoEncryptionJwk()
+	if oauthErr != nil {
+		return "", oauthErr
+	}
+
+	encrypter, err := jose.NewEncrypter(
+		client.UserInfoContentEncryptionAlgorithm,
+		jose.Recipient{Algorithm: client.UserInfoKeyEncryptionAlgorithm, Key: jwk.Key, KeyID: jwk.KeyID},
+		(&jose.EncrypterOptions{}).WithType("jwt").WithContentType("jwt"),
+	)
+	if err != nil {
+		return "", models.NewOAuthError(constants.InternalError, err.Error())
+	}
+
+	encryptedUserInfoJwtJwe, err := encrypter.Encrypt([]byte(userInfoJwt))
+	if err != nil {
+		return "", models.NewOAuthError(constants.InternalError, err.Error())
+	}
+
+	encryptedUserInfoString, err := encryptedUserInfoJwtJwe.CompactSerialize()
+	if err != nil {
+		return "", models.NewOAuthError(constants.InternalError, err.Error())
+	}
+
+	return encryptedUserInfoString, nil
 }

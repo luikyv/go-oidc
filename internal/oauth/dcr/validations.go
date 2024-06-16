@@ -31,7 +31,9 @@ func validateDynamicClientRequest(
 		validateOpenIdScopeIfRequired,
 		validateSubjectIdentifierType,
 		validateIdTokenSignatureAlgorithm,
-		validateIdTokenEncryption,
+		validateIdTokenEncryptionAlgorithms,
+		validateUserInfoSignatureAlgorithm,
+		validateUserInfoEncryptionAlgorithms,
 		validateJarSignatureAlgorithm,
 		validateJarmSignatureAlgorithm,
 		validatePkceIsRequiredForPublicClients,
@@ -172,7 +174,17 @@ func validateIdTokenSignatureAlgorithm(
 	ctx utils.Context,
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
-	if dynamicClient.IdTokenSignatureAlgorithm != "" && !unit.ContainsAll(ctx.GetIdTokenSignatureAlgorithms(), dynamicClient.IdTokenSignatureAlgorithm) {
+	if dynamicClient.IdTokenSignatureAlgorithm != "" && !unit.ContainsAll(ctx.GetUserInfoSignatureAlgorithms(), dynamicClient.IdTokenSignatureAlgorithm) {
+		return models.NewOAuthError(constants.InvalidRequest, "id_token_signed_response_alg not supported")
+	}
+	return nil
+}
+
+func validateUserInfoSignatureAlgorithm(
+	ctx utils.Context,
+	dynamicClient models.DynamicClientRequest,
+) models.OAuthError {
+	if dynamicClient.UserInfoSignatureAlgorithm != "" && !unit.ContainsAll(ctx.GetUserInfoSignatureAlgorithms(), dynamicClient.UserInfoSignatureAlgorithm) {
 		return models.NewOAuthError(constants.InvalidRequest, "id_token_signed_response_alg not supported")
 	}
 	return nil
@@ -295,10 +307,50 @@ func validateTlsSubjectInfoWhenTlsAuthn(
 	return nil
 }
 
-func validateIdTokenEncryption(
+func validateIdTokenEncryptionAlgorithms(
 	ctx utils.Context,
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
-	//TODO: Validate encryption settings.
+	// Return an error if id token encryption is not enabled, but the client requested it.
+	if !ctx.UserInfoEncryptionIsEnabled && (dynamicClient.IdTokenKeyEncryptionAlgorithm != "" || dynamicClient.IdTokenContentEncryptionAlgorithm != "") {
+		return models.NewOAuthError(constants.InvalidRequest, "id token encryption is not supported")
+	}
+
+	if !ctx.UserInfoEncryptionIsEnabled {
+		return nil
+	}
+
+	if !slices.Contains(ctx.UserInfoKeyEncryptionAlgorithms, dynamicClient.IdTokenKeyEncryptionAlgorithm) {
+		return models.NewOAuthError(constants.InvalidRequest, "id_token_encrypted_response_alg not supported")
+	}
+
+	if !slices.Contains(ctx.UserInfoContentEncryptionAlgorithms, dynamicClient.IdTokenContentEncryptionAlgorithm) {
+		return models.NewOAuthError(constants.InvalidRequest, "id_token_encrypted_response_enc not supported")
+	}
+
+	return nil
+}
+
+func validateUserInfoEncryptionAlgorithms(
+	ctx utils.Context,
+	dynamicClient models.DynamicClientRequest,
+) models.OAuthError {
+	// Return an error if user info encryption is not enabled, but the client requested it.
+	if !ctx.UserInfoEncryptionIsEnabled && (dynamicClient.UserInfoKeyEncryptionAlgorithm != "" || dynamicClient.UserInfoContentEncryptionAlgorithm != "") {
+		return models.NewOAuthError(constants.InvalidRequest, "user info encryption is not supported")
+	}
+
+	if !ctx.UserInfoEncryptionIsEnabled {
+		return nil
+	}
+
+	if !slices.Contains(ctx.UserInfoKeyEncryptionAlgorithms, dynamicClient.UserInfoKeyEncryptionAlgorithm) {
+		return models.NewOAuthError(constants.InvalidRequest, "userinfo_encrypted_response_alg not supported")
+	}
+
+	if !slices.Contains(ctx.UserInfoContentEncryptionAlgorithms, dynamicClient.UserInfoContentEncryptionAlgorithm) {
+		return models.NewOAuthError(constants.InvalidRequest, "userinfo_encrypted_response_enc not supported")
+	}
+
 	return nil
 }

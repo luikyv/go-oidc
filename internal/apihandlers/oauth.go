@@ -94,8 +94,8 @@ func HandleUserInfoRequest(ctx utils.Context) {
 		return
 	}
 
-	if userInfoResponse.SignedClaims != "" {
-		err = ctx.WriteJwt(userInfoResponse.SignedClaims, http.StatusOK)
+	if userInfoResponse.JwtClaims != "" {
+		err = ctx.WriteJwt(userInfoResponse.JwtClaims, http.StatusOK)
 	} else {
 		err = ctx.WriteJson(userInfoResponse.Claims, http.StatusOK)
 	}

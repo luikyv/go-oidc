@@ -30,8 +30,7 @@ type TlsOptions struct {
 }
 
 type OpenIdProvider struct {
-	// TODO: Hide this.
-	utils.Configuration
+	config utils.Configuration
 }
 
 func NewProvider(
@@ -44,7 +43,7 @@ func NewProvider(
 	defaultIdTokenKeyId string,
 ) *OpenIdProvider {
 	provider := &OpenIdProvider{
-		Configuration: utils.Configuration{
+		config: utils.Configuration{
 			Host:                host,
 			Profile:             constants.OpenIdProfile,
 			ClientManager:       clientManager,
@@ -57,12 +56,12 @@ func NewProvider(
 					TokenFormat:        constants.JwtTokenFormat,
 				}, nil
 			},
-			PrivateJwks:                  privateJwks,
-			DefaultTokenSignatureKeyId:   defaultTokenKeyId, // TODO: make sure is valid
-			DefaultIdTokenSignatureKeyId: defaultIdTokenKeyId,
-			IdTokenSignatureKeyIds:       []string{defaultIdTokenKeyId},
-			IdTokenExpiresInSecs:         600,
-			UserClaims:                   []string{},
+			PrivateJwks:                   privateJwks,
+			DefaultTokenSignatureKeyId:    defaultTokenKeyId,
+			DefaultUserInfoSignatureKeyId: defaultIdTokenKeyId,
+			UserInfoSignatureKeyIds:       []string{defaultIdTokenKeyId},
+			IdTokenExpiresInSecs:          600,
+			UserClaims:                    []string{},
 			GrantTypes: []constants.GrantType{
 				constants.AuthorizationCodeGrant,
 			},
@@ -87,70 +86,70 @@ func NewProvider(
 // TODO: Add more validations.
 func (provider *OpenIdProvider) validateConfiguration() error {
 	for _, keyId := range slices.Concat(
-		[]string{provider.DefaultIdTokenSignatureKeyId},
-		provider.IdTokenSignatureKeyIds,
-		provider.JarmSignatureKeyIds,
+		[]string{provider.config.DefaultUserInfoSignatureKeyId},
+		provider.config.UserInfoSignatureKeyIds,
+		provider.config.JarmSignatureKeyIds,
 	) {
-		if len(provider.PrivateJwks.Key(keyId)) == 0 {
+		if len(provider.config.PrivateJwks.Key(keyId)) == 0 {
 			return fmt.Errorf("the key ID: %s is not present in the server JWKS", keyId)
 		}
 	}
 
-	for _, signatureAlgorithm := range provider.PrivateKeyJwtSignatureAlgorithms {
+	for _, signatureAlgorithm := range provider.config.PrivateKeyJwtSignatureAlgorithms {
 		if strings.HasPrefix(string(signatureAlgorithm), "HS") {
 			return errors.New("symetric algorithms are not allowed for private_key_jwt authentication")
 		}
 	}
 
-	for _, signatureAlgorithm := range provider.ClientSecretJwtSignatureAlgorithms {
+	for _, signatureAlgorithm := range provider.config.ClientSecretJwtSignatureAlgorithms {
 		if !strings.HasPrefix(string(signatureAlgorithm), "HS") {
 			return errors.New("assymetric algorithms are not allowed for client_secret_jwt authentication")
 		}
 	}
 
-	if provider.IntrospectionIsEnabled && (!unit.ContainsAll(provider.ClientAuthnMethods, provider.IntrospectionClientAuthnMethods...) ||
-		slices.Contains(provider.IntrospectionClientAuthnMethods, constants.NoneAuthn)) {
+	if provider.config.IntrospectionIsEnabled && (!unit.ContainsAll(provider.config.ClientAuthnMethods, provider.config.IntrospectionClientAuthnMethods...) ||
+		slices.Contains(provider.config.IntrospectionClientAuthnMethods, constants.NoneAuthn)) {
 		return errors.New("invalid client authentication method for token introspection")
 	}
 
-	if provider.IdTokenEncryptionIsEnabled && !slices.Contains(provider.IdTokenContentEncryptionAlgorithms, jose.A128CBC_HS256) {
+	if provider.config.UserInfoEncryptionIsEnabled && !slices.Contains(provider.config.UserInfoContentEncryptionAlgorithms, jose.A128CBC_HS256) {
 		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm") // todo
 	}
 
-	if provider.Profile == constants.OpenIdProfile {
-		defaultIdTokenSignatureKey := provider.PrivateJwks.Key(provider.DefaultIdTokenSignatureKeyId)[0]
+	if provider.config.Profile == constants.OpenIdProfile {
+		defaultIdTokenSignatureKey := provider.config.PrivateJwks.Key(provider.config.DefaultUserInfoSignatureKeyId)[0]
 		if defaultIdTokenSignatureKey.Algorithm != string(jose.RS256) {
 			return errors.New("the default signature algorithm for ID tokens must be RS256")
 		}
 
-		defaultJarmSignatureKey := provider.PrivateJwks.Key(provider.DefaultJarmSignatureKeyId)[0]
+		defaultJarmSignatureKey := provider.config.PrivateJwks.Key(provider.config.DefaultJarmSignatureKeyId)[0]
 		if defaultJarmSignatureKey.Algorithm != string(jose.RS256) {
 			return errors.New("the default signature algorithm for JARM must be RS256")
 		}
 	}
 
-	if provider.Profile == constants.Fapi2Profile {
+	if provider.config.Profile == constants.Fapi2Profile {
 
-		if slices.ContainsFunc(provider.ClientAuthnMethods, func(authnMethod constants.ClientAuthnType) bool {
+		if slices.ContainsFunc(provider.config.ClientAuthnMethods, func(authnMethod constants.ClientAuthnType) bool {
 			// TODO: remove self signed, only for tests.
 			return authnMethod != constants.PrivateKeyJwtAuthn && authnMethod != constants.TlsAuthn && authnMethod != constants.SelfSignedTlsAuthn
 		}) {
 			return errors.New("only private_key_jwt and tls_client_auth are allowed for FAPI 2.0")
 		}
 
-		if slices.Contains(provider.GrantTypes, constants.ImplicitGrant) {
+		if slices.Contains(provider.config.GrantTypes, constants.ImplicitGrant) {
 			return errors.New("the implict grant is not allowed for FAPI 2.0")
 		}
 
-		if !provider.ParIsEnabled || !provider.ParIsRequired {
+		if !provider.config.ParIsEnabled || !provider.config.ParIsRequired {
 			return errors.New("pushed authorization requests is required for FAPI 2.0")
 		}
 
-		if !provider.PkceIsEnabled || !provider.PkceIsRequired {
+		if !provider.config.PkceIsEnabled || !provider.config.PkceIsRequired {
 			return errors.New("proof key for code exchange is required for FAPI 2.0")
 		}
 
-		if !provider.IssuerResponseParameterIsEnabled {
+		if !provider.config.IssuerResponseParameterIsEnabled {
 			return errors.New("the issuer response parameter is required for FAPI 2.0")
 		}
 	}
@@ -159,62 +158,54 @@ func (provider *OpenIdProvider) validateConfiguration() error {
 }
 
 func (provider *OpenIdProvider) SetSupportedUserClaims(claims ...string) {
-	provider.UserClaims = claims
+	provider.config.UserClaims = claims
 }
 
 func (provider *OpenIdProvider) AddIdTokenSignatureKeyIds(idTokenSignatureKeyIds ...string) {
-	if !unit.ContainsAll(idTokenSignatureKeyIds, provider.DefaultIdTokenSignatureKeyId) {
-		idTokenSignatureKeyIds = append(idTokenSignatureKeyIds, provider.DefaultIdTokenSignatureKeyId)
+	if !unit.ContainsAll(idTokenSignatureKeyIds, provider.config.DefaultUserInfoSignatureKeyId) {
+		idTokenSignatureKeyIds = append(idTokenSignatureKeyIds, provider.config.DefaultUserInfoSignatureKeyId)
 	}
-	provider.IdTokenSignatureKeyIds = idTokenSignatureKeyIds
+	provider.config.UserInfoSignatureKeyIds = idTokenSignatureKeyIds
 }
 
 func (provider *OpenIdProvider) SetIdTokenLifetime(idTokenLifetimeSecs int) {
-	provider.IdTokenExpiresInSecs = idTokenLifetimeSecs
+	provider.config.IdTokenExpiresInSecs = idTokenLifetimeSecs
 }
 
 func (provider *OpenIdProvider) EnableIdTokenEncryption(
 	keyEncryptionAlgorithms []jose.KeyAlgorithm,
 	contentEncryptionAlgorithms []jose.ContentEncryption,
 ) {
-	provider.IdTokenEncryptionIsEnabled = true
-	provider.IdTokenKeyEncryptionAlgorithms = keyEncryptionAlgorithms
-	provider.IdTokenContentEncryptionAlgorithms = contentEncryptionAlgorithms
-}
-
-func (provider *OpenIdProvider) RequireddTokenEncryption(
-	keyEncryptionAlgorithms []jose.KeyAlgorithm,
-	contentEncryptionAlgorithms []jose.ContentEncryption,
-) {
-	provider.EnableIdTokenEncryption(keyEncryptionAlgorithms, contentEncryptionAlgorithms)
-	provider.IdTokenEncryptionIsRequired = true
+	provider.config.UserInfoEncryptionIsEnabled = true
+	provider.config.UserInfoKeyEncryptionAlgorithms = keyEncryptionAlgorithms
+	provider.config.UserInfoContentEncryptionAlgorithms = contentEncryptionAlgorithms
 }
 
 func (provider *OpenIdProvider) EnableDynamicClientRegistration(dcrPlugin utils.DcrPluginFunc, shouldRotateTokens bool) {
-	provider.DcrIsEnabled = true
-	provider.DcrPlugin = dcrPlugin
-	provider.ShouldRotateRegistrationTokens = shouldRotateTokens
+	provider.config.DcrIsEnabled = true
+	provider.config.DcrPlugin = dcrPlugin
+	provider.config.ShouldRotateRegistrationTokens = shouldRotateTokens
 
 }
 
 func (provider *OpenIdProvider) EnableRefreshTokenGrantType(refreshTokenLifetimeSecs int, shouldRotateTokens bool) {
-	provider.GrantTypes = append(provider.GrantTypes, constants.RefreshTokenGrant)
-	provider.RefreshTokenLifetimeSecs = refreshTokenLifetimeSecs
-	provider.ShouldRotateRefreshTokens = shouldRotateTokens
+	provider.config.GrantTypes = append(provider.config.GrantTypes, constants.RefreshTokenGrant)
+	provider.config.RefreshTokenLifetimeSecs = refreshTokenLifetimeSecs
+	provider.config.ShouldRotateRefreshTokens = shouldRotateTokens
 }
 
 func (provider *OpenIdProvider) RequireOpenIdScope() {
-	provider.OpenIdScopeIsRequired = true
+	provider.config.OpenIdScopeIsRequired = true
 }
 
 func (provider *OpenIdProvider) SetTokenOptions(getTokenOpts utils.GetTokenOptionsFunc) {
-	provider.GetTokenOptions = getTokenOpts
+	provider.config.GetTokenOptions = getTokenOpts
 }
 
 func (provider *OpenIdProvider) EnableImplicitGrantType() {
-	provider.GrantTypes = append(provider.GrantTypes, constants.ImplicitGrant)
-	provider.ResponseTypes = append(
-		provider.ResponseTypes,
+	provider.config.GrantTypes = append(provider.config.GrantTypes, constants.ImplicitGrant)
+	provider.config.ResponseTypes = append(
+		provider.config.ResponseTypes,
 		constants.TokenResponse,
 		constants.IdTokenResponse,
 		constants.IdTokenAndTokenResponse,
@@ -226,29 +217,29 @@ func (provider *OpenIdProvider) EnableImplicitGrantType() {
 
 func (provider *OpenIdProvider) SetScopes(scopes ...string) {
 	if slices.Contains(scopes, string(constants.OpenIdScope)) {
-		provider.Scopes = scopes
+		provider.config.Scopes = scopes
 	} else {
-		provider.Scopes = append(scopes, string(constants.OpenIdScope))
+		provider.config.Scopes = append(scopes, string(constants.OpenIdScope))
 	}
 }
 
 func (provider *OpenIdProvider) EnablePushedAuthorizationRequests(parLifetimeSecs int) {
-	provider.ParLifetimeSecs = parLifetimeSecs
-	provider.ParIsEnabled = true
+	provider.config.ParLifetimeSecs = parLifetimeSecs
+	provider.config.ParIsEnabled = true
 }
 
 func (provider *OpenIdProvider) RequirePushedAuthorizationRequests(parLifetimeSecs int) {
 	provider.EnablePushedAuthorizationRequests(parLifetimeSecs)
-	provider.ParIsRequired = true
+	provider.config.ParIsRequired = true
 }
 
 func (provider *OpenIdProvider) EnableJwtSecuredAuthorizationRequests(
 	jarLifetimeSecs int,
 	jarAlgorithms ...jose.SignatureAlgorithm,
 ) {
-	provider.JarIsEnabled = true
-	provider.JarLifetimeSecs = jarLifetimeSecs
-	provider.JarSignatureAlgorithms = jarAlgorithms
+	provider.config.JarIsEnabled = true
+	provider.config.JarLifetimeSecs = jarLifetimeSecs
+	provider.config.JarSignatureAlgorithms = jarAlgorithms
 }
 
 func (provider *OpenIdProvider) RequireJwtSecuredAuthorizationRequests(
@@ -256,7 +247,7 @@ func (provider *OpenIdProvider) RequireJwtSecuredAuthorizationRequests(
 	jarAlgorithms ...jose.SignatureAlgorithm,
 ) {
 	provider.EnableJwtSecuredAuthorizationRequests(jarLifetimeSecs, jarAlgorithms...)
-	provider.JarIsRequired = true
+	provider.config.JarIsRequired = true
 }
 
 func (provider *OpenIdProvider) EnableJwtSecuredAuthorizationResponseMode(
@@ -268,76 +259,76 @@ func (provider *OpenIdProvider) EnableJwtSecuredAuthorizationResponseMode(
 		jarmSignatureKeyIds = append(jarmSignatureKeyIds, defaultJarmSignatureKeyId)
 	}
 
-	provider.JarmIsEnabled = true
-	provider.ResponseModes = append(
-		provider.ResponseModes,
+	provider.config.JarmIsEnabled = true
+	provider.config.ResponseModes = append(
+		provider.config.ResponseModes,
 		constants.JwtResponseMode,
 		constants.QueryJwtResponseMode,
 		constants.FragmentJwtResponseMode,
 		constants.FormPostJwtResponseMode,
 	)
-	provider.JarmLifetimeSecs = jarmLifetimeSecs
-	provider.DefaultJarmSignatureKeyId = defaultJarmSignatureKeyId
-	provider.JarmSignatureKeyIds = jarmSignatureKeyIds
+	provider.config.JarmLifetimeSecs = jarmLifetimeSecs
+	provider.config.DefaultJarmSignatureKeyId = defaultJarmSignatureKeyId
+	provider.config.JarmSignatureKeyIds = jarmSignatureKeyIds
 
 }
 
 func (provider *OpenIdProvider) EnableBasicSecretClientAuthn() {
-	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.ClientSecretBasicAuthn)
+	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, constants.ClientSecretBasicAuthn)
 }
 
 func (provider *OpenIdProvider) EnableSecretPostClientAuthn() {
-	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.ClientSecretPostAuthn)
+	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, constants.ClientSecretPostAuthn)
 }
 
 func (provider *OpenIdProvider) EnablePrivateKeyJwtClientAuthn(assertionLifetimeSecs int, signatureAlgorithms ...jose.SignatureAlgorithm) {
-	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.PrivateKeyJwtAuthn)
-	provider.PrivateKeyJwtAssertionLifetimeSecs = assertionLifetimeSecs
-	provider.PrivateKeyJwtSignatureAlgorithms = signatureAlgorithms
+	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, constants.PrivateKeyJwtAuthn)
+	provider.config.PrivateKeyJwtAssertionLifetimeSecs = assertionLifetimeSecs
+	provider.config.PrivateKeyJwtSignatureAlgorithms = signatureAlgorithms
 }
 
 func (provider *OpenIdProvider) EnableClientSecretJwtAuthn(assertionLifetimeSecs int, signatureAlgorithms ...jose.SignatureAlgorithm) {
-	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.ClientSecretBasicAuthn)
-	provider.ClientSecretJwtAssertionLifetimeSecs = assertionLifetimeSecs
-	provider.ClientSecretJwtSignatureAlgorithms = signatureAlgorithms
+	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, constants.ClientSecretBasicAuthn)
+	provider.config.ClientSecretJwtAssertionLifetimeSecs = assertionLifetimeSecs
+	provider.config.ClientSecretJwtSignatureAlgorithms = signatureAlgorithms
 }
 
 func (provider *OpenIdProvider) EnableTlsClientAuthn() {
-	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.TlsAuthn)
+	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, constants.TlsAuthn)
 }
 
 func (provider *OpenIdProvider) EnableSelfSignedTlsClientAuthn() {
-	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.SelfSignedTlsAuthn)
+	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, constants.SelfSignedTlsAuthn)
 }
 
 func (provider *OpenIdProvider) EnableMtls(mtlsHost string) {
-	provider.MtlsIsEnabled = true
-	provider.MtlsHost = mtlsHost
+	provider.config.MtlsIsEnabled = true
+	provider.config.MtlsHost = mtlsHost
 }
 
 func (provider *OpenIdProvider) EnableTlsBoundTokens() {
-	provider.TlsBoundTokensIsEnabled = true
+	provider.config.TlsBoundTokensIsEnabled = true
 }
 
 func (provider *OpenIdProvider) EnableNoneClientAuthn() {
-	provider.ClientAuthnMethods = append(provider.ClientAuthnMethods, constants.NoneAuthn)
+	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, constants.NoneAuthn)
 }
 
 func (provider *OpenIdProvider) EnableIssuerResponseParameter() {
-	provider.IssuerResponseParameterIsEnabled = true
+	provider.config.IssuerResponseParameterIsEnabled = true
 }
 
 func (provider *OpenIdProvider) EnableClaimsParameter() {
-	provider.ClaimsParameterIsEnabled = true
+	provider.config.ClaimsParameterIsEnabled = true
 }
 
 func (provider *OpenIdProvider) EnableDemonstrationProofOfPossesion(
 	dpopLifetimeSecs int,
 	dpopSigningAlgorithms ...jose.SignatureAlgorithm,
 ) {
-	provider.DpopIsEnabled = true
-	provider.DpopLifetimeSecs = dpopLifetimeSecs
-	provider.DpopSignatureAlgorithms = dpopSigningAlgorithms
+	provider.config.DpopIsEnabled = true
+	provider.config.DpopLifetimeSecs = dpopLifetimeSecs
+	provider.config.DpopSignatureAlgorithms = dpopSigningAlgorithms
 }
 
 func (provider *OpenIdProvider) RequireDemonstrationProofOfPossesion(
@@ -345,61 +336,61 @@ func (provider *OpenIdProvider) RequireDemonstrationProofOfPossesion(
 	dpopSigningAlgorithms ...jose.SignatureAlgorithm,
 ) {
 	provider.EnableDemonstrationProofOfPossesion(dpopLifetimeSecs, dpopSigningAlgorithms...)
-	provider.DpopIsRequired = true
+	provider.config.DpopIsRequired = true
 }
 
 func (provider *OpenIdProvider) RequireSenderConstrainedTokens() {
-	provider.SenderConstrainedTokenIsRequired = true
+	provider.config.SenderConstrainedTokenIsRequired = true
 }
 
 func (provider *OpenIdProvider) EnableTokenIntrospection(clientAuthnMethods ...constants.ClientAuthnType) {
-	provider.IntrospectionIsEnabled = true
-	provider.IntrospectionClientAuthnMethods = clientAuthnMethods
-	provider.GrantTypes = append(provider.GrantTypes, constants.IntrospectionGrant)
+	provider.config.IntrospectionIsEnabled = true
+	provider.config.IntrospectionClientAuthnMethods = clientAuthnMethods
+	provider.config.GrantTypes = append(provider.config.GrantTypes, constants.IntrospectionGrant)
 }
 
 func (provider *OpenIdProvider) EnableProofKeyForCodeExchange(codeChallengeMethods ...constants.CodeChallengeMethod) {
-	provider.CodeChallengeMethods = codeChallengeMethods
-	provider.PkceIsEnabled = true
+	provider.config.CodeChallengeMethods = codeChallengeMethods
+	provider.config.PkceIsEnabled = true
 }
 
 func (provider *OpenIdProvider) RequireProofKeyForCodeExchange(codeChallengeMethods ...constants.CodeChallengeMethod) {
 	provider.EnableProofKeyForCodeExchange(codeChallengeMethods...)
-	provider.PkceIsRequired = true
+	provider.config.PkceIsRequired = true
 }
 
 func (provider *OpenIdProvider) SetSupportedAuthenticationContextReferences(
 	acrValues ...constants.AuthenticationContextReference,
 ) {
-	provider.AuthenticationContextReferences = acrValues
+	provider.config.AuthenticationContextReferences = acrValues
 }
 
 func (provider *OpenIdProvider) SetDisplayValuesSupported(values ...constants.DisplayValue) {
-	provider.DisplayValues = values
+	provider.config.DisplayValues = values
 }
 
 func (provider *OpenIdProvider) SetClaimTypesSupported(types ...constants.ClaimType) {
-	provider.ClaimTypes = types
+	provider.config.ClaimTypes = types
 }
 
 func (provider *OpenIdProvider) SetAuthenticationSessionTimeout(timeoutSecs int) {
-	provider.AuthenticationSessionTimeoutSecs = timeoutSecs
+	provider.config.AuthenticationSessionTimeoutSecs = timeoutSecs
 }
 
 func (provider *OpenIdProvider) SetCorrelationIdHeader(header string) {
-	provider.CorrelationIdHeader = header
+	provider.config.CorrelationIdHeader = header
 }
 
 func (provider *OpenIdProvider) SetFapi2Profile() {
-	provider.Profile = constants.Fapi2Profile
+	provider.config.Profile = constants.Fapi2Profile
 }
 
 func (provider *OpenIdProvider) AddClient(client models.Client) error {
-	return provider.ClientManager.Create(client)
+	return provider.config.ClientManager.Create(client)
 }
 
 func (provider *OpenIdProvider) AddPolicy(policy utils.AuthnPolicy) {
-	provider.Policies = append(provider.Policies, policy)
+	provider.config.Policies = append(provider.config.Policies, policy)
 }
 
 func (provider *OpenIdProvider) Run(address string) error {
@@ -408,7 +399,7 @@ func (provider *OpenIdProvider) Run(address string) error {
 	}
 
 	handler := provider.getServerHandler()
-	handler = apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(handler, provider.CorrelationIdHeader)
+	handler = apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(handler, provider.config.CorrelationIdHeader)
 	handler = apihandlers.NewAddCacheControlHeadersMiddlewareHandler(handler)
 	return http.ListenAndServe(address, handler)
 }
@@ -419,12 +410,12 @@ func (provider *OpenIdProvider) RunTls(config TlsOptions) error {
 		return err
 	}
 
-	if provider.MtlsIsEnabled {
+	if provider.config.MtlsIsEnabled {
 		go provider.runMtls(config)
 	}
 
 	handler := provider.getServerHandler()
-	handler = apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(handler, provider.CorrelationIdHeader)
+	handler = apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(handler, provider.config.CorrelationIdHeader)
 	handler = apihandlers.NewAddCacheControlHeadersMiddlewareHandler(handler)
 	server := &http.Server{
 		Addr:    config.TlsAddress,
@@ -439,7 +430,7 @@ func (provider *OpenIdProvider) RunTls(config TlsOptions) error {
 func (provider *OpenIdProvider) runMtls(config TlsOptions) error {
 
 	handler := provider.getMtlsServerHandler()
-	handler = apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(handler, provider.CorrelationIdHeader)
+	handler = apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(handler, provider.config.CorrelationIdHeader)
 	handler = apihandlers.NewAddCacheControlHeadersMiddlewareHandler(handler)
 	handler = apihandlers.NewAddCertificateHeaderMiddlewareHandler(handler)
 
@@ -467,15 +458,15 @@ func (provider *OpenIdProvider) getServerHandler() http.Handler {
 	serverHandler.HandleFunc(
 		"GET "+string(constants.JsonWebKeySetEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleJWKSRequest(utils.NewContext(provider.Configuration, r, w))
+			apihandlers.HandleJWKSRequest(utils.NewContext(provider.config, r, w))
 		},
 	)
 
-	if provider.ParIsEnabled {
+	if provider.config.ParIsEnabled {
 		serverHandler.HandleFunc(
 			"POST "+string(constants.PushedAuthorizationRequestEndpoint),
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleParRequest(utils.NewContext(provider.Configuration, r, w))
+				apihandlers.HandleParRequest(utils.NewContext(provider.config, r, w))
 			},
 		)
 	}
@@ -483,80 +474,80 @@ func (provider *OpenIdProvider) getServerHandler() http.Handler {
 	serverHandler.HandleFunc(
 		"GET "+string(constants.AuthorizationEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleAuthorizeRequest(utils.NewContext(provider.Configuration, r, w))
+			apihandlers.HandleAuthorizeRequest(utils.NewContext(provider.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
 		"POST "+string(constants.AuthorizationEndpoint)+"/{callback}",
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleAuthorizeCallbackRequest(utils.NewContext(provider.Configuration, r, w))
+			apihandlers.HandleAuthorizeCallbackRequest(utils.NewContext(provider.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
 		"POST "+string(constants.TokenEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleTokenRequest(utils.NewContext(provider.Configuration, r, w))
+			apihandlers.HandleTokenRequest(utils.NewContext(provider.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
 		"GET "+string(constants.WellKnownEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleWellKnownRequest(utils.NewContext(provider.Configuration, r, w))
+			apihandlers.HandleWellKnownRequest(utils.NewContext(provider.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
 		"GET "+string(constants.UserInfoEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleUserInfoRequest(utils.NewContext(provider.Configuration, r, w))
+			apihandlers.HandleUserInfoRequest(utils.NewContext(provider.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
 		"POST "+string(constants.UserInfoEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleUserInfoRequest(utils.NewContext(provider.Configuration, r, w))
+			apihandlers.HandleUserInfoRequest(utils.NewContext(provider.config, r, w))
 		},
 	)
 
-	if provider.DcrIsEnabled {
+	if provider.config.DcrIsEnabled {
 		serverHandler.HandleFunc(
 			"POST "+string(constants.DynamicClientEndpoint),
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleDynamicClientCreation(utils.NewContext(provider.Configuration, r, w))
+				apihandlers.HandleDynamicClientCreation(utils.NewContext(provider.config, r, w))
 			},
 		)
 
 		serverHandler.HandleFunc(
 			"PUT "+string(constants.DynamicClientEndpoint)+"/{client_id}",
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleDynamicClientUpdate(utils.NewContext(provider.Configuration, r, w))
+				apihandlers.HandleDynamicClientUpdate(utils.NewContext(provider.config, r, w))
 			},
 		)
 
 		serverHandler.HandleFunc(
 			"GET "+string(constants.DynamicClientEndpoint)+"/{client_id}",
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleDynamicClientRetrieve(utils.NewContext(provider.Configuration, r, w))
+				apihandlers.HandleDynamicClientRetrieve(utils.NewContext(provider.config, r, w))
 			},
 		)
 
 		serverHandler.HandleFunc(
 			"DELETE "+string(constants.DynamicClientEndpoint)+"/{client_id}",
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleDynamicClientDelete(utils.NewContext(provider.Configuration, r, w))
+				apihandlers.HandleDynamicClientDelete(utils.NewContext(provider.config, r, w))
 			},
 		)
 	}
 
-	if provider.IntrospectionIsEnabled {
+	if provider.config.IntrospectionIsEnabled {
 		serverHandler.HandleFunc(
 			"POST "+string(constants.TokenIntrospectionEndpoint),
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleIntrospectionRequest(utils.NewContext(provider.Configuration, r, w))
+				apihandlers.HandleIntrospectionRequest(utils.NewContext(provider.config, r, w))
 			},
 		)
 	}
@@ -570,38 +561,38 @@ func (provider *OpenIdProvider) getMtlsServerHandler() http.Handler {
 	serverHandler.HandleFunc(
 		"POST "+string(constants.TokenEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleTokenRequest(utils.NewContext(provider.Configuration, r, w))
+			apihandlers.HandleTokenRequest(utils.NewContext(provider.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
 		"GET "+string(constants.UserInfoEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleUserInfoRequest(utils.NewContext(provider.Configuration, r, w))
+			apihandlers.HandleUserInfoRequest(utils.NewContext(provider.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
 		"POST "+string(constants.UserInfoEndpoint),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleUserInfoRequest(utils.NewContext(provider.Configuration, r, w))
+			apihandlers.HandleUserInfoRequest(utils.NewContext(provider.config, r, w))
 		},
 	)
 
-	if provider.ParIsEnabled {
+	if provider.config.ParIsEnabled {
 		serverHandler.HandleFunc(
 			"POST "+string(constants.PushedAuthorizationRequestEndpoint),
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleParRequest(utils.NewContext(provider.Configuration, r, w))
+				apihandlers.HandleParRequest(utils.NewContext(provider.config, r, w))
 			},
 		)
 	}
 
-	if provider.IntrospectionIsEnabled {
+	if provider.config.IntrospectionIsEnabled {
 		serverHandler.HandleFunc(
 			"POST "+string(constants.TokenIntrospectionEndpoint),
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleIntrospectionRequest(utils.NewContext(provider.Configuration, r, w))
+				apihandlers.HandleIntrospectionRequest(utils.NewContext(provider.config, r, w))
 			},
 		)
 	}

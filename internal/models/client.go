@@ -23,20 +23,23 @@ type ClientMetaInfo struct {
 	// PublicJwks is pointer, because, if it is nil and PublicJwksUri is present,
 	// we can fetch the content of PublicJwksUri and access the reference PublicJwks to cache the keys.
 	// By doing so, we make sure to request PublicJwksUri at most once.
-	PublicJwks                        *jose.JSONWebKeySet             `json:"jwks"`
-	Scopes                            string                          `json:"scope"`
-	SubjectIdentifierType             constants.SubjectIdentifierType `json:"subject_type,omitempty"`
-	IdTokenSignatureAlgorithm         jose.SignatureAlgorithm         `json:"id_token_signed_response_alg,omitempty"`
-	IdTokenKeyEncryptionAlgorithm     jose.KeyAlgorithm               `json:"id_token_encrypted_response_alg,omitempty"`
-	IdTokenContentEncryptionAlgorithm jose.ContentEncryption          `json:"id_token_encrypted_response_enc,omitempty"`
-	JarSignatureAlgorithm             jose.SignatureAlgorithm         `json:"request_object_signing_alg,omitempty"`
-	JarmSignatureAlgorithm            jose.SignatureAlgorithm         `json:"authorization_signed_response_alg,omitempty"`
-	PkceIsRequired                    bool                            `json:"pkce_is_required"`
-	AuthnMethod                       constants.ClientAuthnType       `json:"token_endpoint_auth_method"`
-	AuthnSignatureAlgorithm           jose.SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg"`
-	DpopIsRequired                    bool                            `json:"dpop_bound_access_tokens,omitempty"`
-	UserInfoSignatureAlgorithm        jose.SignatureAlgorithm         `json:"userinfo_signed_response_alg,omitempty"`
-	TlsSubjectDistinguishedName       string                          `json:"tls_client_auth_subject_dn,omitempty"`
+	PublicJwks                         *jose.JSONWebKeySet             `json:"jwks,omitempty"`
+	Scopes                             string                          `json:"scope"`
+	SubjectIdentifierType              constants.SubjectIdentifierType `json:"subject_type,omitempty"`
+	IdTokenSignatureAlgorithm          jose.SignatureAlgorithm         `json:"id_token_signed_response_alg,omitempty"`
+	IdTokenKeyEncryptionAlgorithm      jose.KeyAlgorithm               `json:"id_token_encrypted_response_alg,omitempty"`
+	IdTokenContentEncryptionAlgorithm  jose.ContentEncryption          `json:"id_token_encrypted_response_enc,omitempty"`
+	UserInfoSignatureAlgorithm         jose.SignatureAlgorithm         `json:"userinfo_signed_response_alg,omitempty"`
+	UserInfoKeyEncryptionAlgorithm     jose.KeyAlgorithm               `json:"userinfo_encrypted_response_alg,omitempty"`
+	UserInfoContentEncryptionAlgorithm jose.ContentEncryption          `json:"userinfo_encrypted_response_enc,omitempty"`
+	JarSignatureAlgorithm              jose.SignatureAlgorithm         `json:"request_object_signing_alg,omitempty"`
+	JarmSignatureAlgorithm             jose.SignatureAlgorithm         `json:"authorization_signed_response_alg,omitempty"`
+	PkceIsRequired                     bool                            `json:"pkce_is_required"`
+	AuthnMethod                        constants.ClientAuthnType       `json:"token_endpoint_auth_method"`
+	AuthnSignatureAlgorithm            jose.SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg"`
+	DpopIsRequired                     bool                            `json:"dpop_bound_access_tokens,omitempty"`
+
+	TlsSubjectDistinguishedName string `json:"tls_client_auth_subject_dn,omitempty"`
 	// The DNS name.
 	TlsSubjectAlternativeName   string            `json:"tls_client_auth_san_dns,omitempty"`
 	TlsSubjectAlternativeNameIp string            `json:"tls_client_auth_san_ip,omitempty"`
@@ -86,6 +89,10 @@ func (client Client) GetJwk(keyId string) (jose.JSONWebKey, OAuthError) {
 	}
 
 	return keys[0], nil
+}
+
+func (client Client) GetUserInfoEncryptionJwk() (jose.JSONWebKey, OAuthError) {
+	return client.getEncryptionJwk(client.UserInfoKeyEncryptionAlgorithm)
 }
 
 func (client Client) GetIdTokenEncryptionJwk() (jose.JSONWebKey, OAuthError) {

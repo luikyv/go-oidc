@@ -286,6 +286,8 @@ type OpenIdConfiguration struct {
 	IdTokenSignatureAlgorithms                     []jose.SignatureAlgorithm                  `json:"id_token_signing_alg_values_supported"`
 	IdTokenKeyEncryptionAlgorithms                 []jose.KeyAlgorithm                        `json:"id_token_encryption_alg_values_supported,omitempty"`
 	IdTokenContentEncryptionAlgorithms             []jose.ContentEncryption                   `json:"id_token_encryption_enc_values_supported,omitempty"`
+	UserInfoKeyEncryptionAlgorithms                []jose.KeyAlgorithm                        `json:"userinfo_encryption_alg_values_supported,omitempty"`
+	UserInfoContentEncryptionAlgorithms            []jose.ContentEncryption                   `json:"userinfo_encryption_enc_values_supported,omitempty"`
 	UserInfoSignatureAlgorithms                    []jose.SignatureAlgorithm                  `json:"userinfo_signing_alg_values_supported"`
 	ClientAuthnMethods                             []constants.ClientAuthnType                `json:"token_endpoint_auth_methods_supported"`
 	JarIsRequired                                  bool                                       `json:"require_signed_request_object,omitempty"`
@@ -363,8 +365,8 @@ func (rp RedirectParameters) GetParams() map[string]string {
 }
 
 type UserInfoResponse struct {
-	SignedClaims string
-	Claims       map[string]any
+	JwtClaims string
+	Claims    map[string]any
 }
 
 type TokenIntrospectionRequest struct {
