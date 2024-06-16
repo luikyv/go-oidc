@@ -371,11 +371,13 @@ func (ctx Context) GetClient(clientId string) (models.Client, error) {
 	}
 
 	// This will allow the method client.GetPublicJwks to cache the client keys if they fetched from the JWKS URI.
-	client.PublicJwks = &jose.JSONWebKeySet{}
+	if client.PublicJwks == nil {
+		client.PublicJwks = &jose.JSONWebKeySet{}
+	}
 	return client, nil
 }
 
-func (ctx Context) ExecureDcrPlugin(dynamicClient *models.DynamicClientRequest) {
+func (ctx Context) ExecuteDcrPlugin(dynamicClient *models.DynamicClientRequest) {
 	if ctx.DcrPlugin != nil {
 		ctx.DcrPlugin(ctx, dynamicClient)
 	}

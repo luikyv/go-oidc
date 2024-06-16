@@ -18,7 +18,7 @@ func CreateClient(
 		return models.DynamicClientResponse{}, err
 	}
 
-	ctx.ExecureDcrPlugin(&dynamicClient)
+	ctx.ExecuteDcrPlugin(&dynamicClient)
 	if err := validateDynamicClientRequest(ctx, dynamicClient); err != nil {
 		return models.DynamicClientResponse{}, err
 	}
@@ -54,7 +54,7 @@ func UpdateClient(
 		return models.DynamicClientResponse{}, err
 	}
 
-	ctx.ExecureDcrPlugin(&dynamicClient)
+	ctx.ExecuteDcrPlugin(&dynamicClient)
 	if err := validateDynamicClientRequest(ctx, dynamicClient); err != nil {
 		return models.DynamicClientResponse{}, err
 	}
