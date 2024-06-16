@@ -32,7 +32,7 @@ func GetTestClientWithSecretPostAuthn() Client {
 func GetTestClientWithPrivateKeyJwtAuthn(host string, publicJwk jose.JSONWebKey) Client {
 	client := GetTestClientWithNoneAuthn()
 	client.AuthnMethod = constants.PrivateKeyJwtAuthn
-	client.PublicJwks = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{publicJwk}}
+	client.PublicJwks = &jose.JSONWebKeySet{Keys: []jose.JSONWebKey{publicJwk}}
 	return client
 }
 

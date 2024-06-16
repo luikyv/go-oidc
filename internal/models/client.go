@@ -14,13 +14,16 @@ import (
 //---------------------------------------- Client ----------------------------------------//
 
 type ClientMetaInfo struct {
-	Name                              string                          `json:"client_name"`
-	LogoUri                           string                          `json:"logo_uri"`
-	RedirectUris                      []string                        `json:"redirect_uris"`
-	GrantTypes                        []constants.GrantType           `json:"grant_types"`
-	ResponseTypes                     []constants.ResponseType        `json:"response_types"`
-	PublicJwksUri                     string                          `json:"jwks_uri,omitempty"`
-	PublicJwks                        jose.JSONWebKeySet              `json:"jwks"`
+	Name          string                   `json:"client_name,omitempty"`
+	LogoUri       string                   `json:"logo_uri,omitempty"`
+	RedirectUris  []string                 `json:"redirect_uris"`
+	GrantTypes    []constants.GrantType    `json:"grant_types"`
+	ResponseTypes []constants.ResponseType `json:"response_types"`
+	PublicJwksUri string                   `json:"jwks_uri,omitempty"`
+	// PublicJwks is pointer, because, if it is nil and PublicJwksUri is present,
+	// we can fetch the content of PublicJwksUri and access the reference PublicJwks to cache the keys.
+	// By doing so, we make sure to request PublicJwksUri at most once.
+	PublicJwks                        *jose.JSONWebKeySet             `json:"jwks"`
 	Scopes                            string                          `json:"scope"`
 	SubjectIdentifierType             constants.SubjectIdentifierType `json:"subject_type,omitempty"`
 	IdTokenSignatureAlgorithm         jose.SignatureAlgorithm         `json:"id_token_signed_response_alg,omitempty"`
@@ -34,9 +37,10 @@ type ClientMetaInfo struct {
 	DpopIsRequired                    bool                            `json:"dpop_bound_access_tokens,omitempty"`
 	UserInfoSignatureAlgorithm        jose.SignatureAlgorithm         `json:"userinfo_signed_response_alg,omitempty"`
 	TlsSubjectDistinguishedName       string                          `json:"tls_client_auth_subject_dn,omitempty"`
-	TlsSubjectAlternativeName         string                          `json:"tls_client_auth_san_dns,omitempty"` // DNS name.
-	TlsSubjectAlternativeNameIp       string                          `json:"tls_client_auth_san_ip,omitempty"`
-	Attributes                        map[string]string               `json:"custom_attributes"`
+	// The DNS name.
+	TlsSubjectAlternativeName   string            `json:"tls_client_auth_san_dns,omitempty"`
+	TlsSubjectAlternativeNameIp string            `json:"tls_client_auth_san_ip,omitempty"`
+	Attributes                  map[string]string `json:"custom_attributes"`
 }
 
 type Client struct {
@@ -50,17 +54,22 @@ type Client struct {
 	ClientMetaInfo
 }
 
-func (c Client) GetPublicJwks() (jose.JSONWebKeySet, OAuthError) {
-	if c.PublicJwks.Keys != nil {
-		return c.PublicJwks, nil
+// Get the client public JWKS either directly from the jwks attribute or using jwks_uri.
+// This method also caches the keys if they are fetched from jwks_uri.
+func (client Client) GetPublicJwks() (jose.JSONWebKeySet, OAuthError) {
+	if client.PublicJwks != nil && len(client.PublicJwks.Keys) != 0 {
+		return *client.PublicJwks, nil
 	}
 
-	jwks, err := unit.GetJwks(c.PublicJwksUri)
+	jwks, err := unit.GetJwks(client.PublicJwksUri)
 	if err != nil {
 		return jose.JSONWebKeySet{}, NewOAuthError(constants.InvalidRequest, err.Error())
 	}
+
 	// Cache the client JWKS.
-	c.PublicJwks = jwks
+	if client.PublicJwks != nil {
+		client.PublicJwks.Keys = jwks.Keys
+	}
 
 	return jwks, nil
 }

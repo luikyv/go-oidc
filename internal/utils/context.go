@@ -365,7 +365,14 @@ func (ctx Context) GetHeader(header string) (string, bool) {
 }
 
 func (ctx Context) GetClient(clientId string) (models.Client, error) {
-	return ctx.ClientManager.Get(clientId)
+	client, err := ctx.ClientManager.Get(clientId)
+	if err != nil {
+		return models.Client{}, err
+	}
+
+	// This will allow the method client.GetPublicJwks to cache the client keys if they fetched from the JWKS URI.
+	client.PublicJwks = &jose.JSONWebKeySet{}
+	return client, nil
 }
 
 func (ctx Context) ExecureDcrPlugin(dynamicClient *models.DynamicClientRequest) {

@@ -79,7 +79,7 @@ func runFapi2OpenIdProvider() {
 			ResponseTypes: []constants.ResponseType{
 				constants.CodeResponse,
 			},
-			PublicJwks:                        clientOnePublicJwks,
+			PublicJwks:                        &clientOnePublicJwks,
 			IdTokenKeyEncryptionAlgorithm:     jose.RSA_OAEP,
 			IdTokenContentEncryptionAlgorithm: jose.A128CBC_HS256,
 		},
@@ -102,7 +102,7 @@ func runFapi2OpenIdProvider() {
 			ResponseTypes: []constants.ResponseType{
 				constants.CodeResponse,
 			},
-			PublicJwks: clientTwoPrivateJwks,
+			PublicJwks: &clientTwoPrivateJwks,
 		},
 	})
 

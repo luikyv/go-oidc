@@ -165,7 +165,7 @@ func makeJwtToken(
 		confirmation["jkt"] = jkt
 	}
 	// TLS token binding.
-	clientCert, ok := ctx.GetClientCertificate() //TODO: should always bind?
+	clientCert, ok := ctx.GetClientCertificate()
 	certThumbprint := ""
 	if ctx.TlsBoundTokensIsEnabled && ok {
 		certThumbprint = unit.GenerateSha256Thumbprint(string(clientCert.Raw))
