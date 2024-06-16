@@ -293,6 +293,8 @@ type OpenIdConfiguration struct {
 	JarIsRequired                                  bool                                       `json:"require_signed_request_object,omitempty"`
 	JarIsEnabled                                   bool                                       `json:"request_parameter_supported"`
 	JarAlgorithms                                  []jose.SignatureAlgorithm                  `json:"request_object_signing_alg_values_supported,omitempty"`
+	JarKeyEncrytionAlgorithms                      []jose.KeyAlgorithm                        `json:"request_object_encryption_alg_values_supported,omitempty"`
+	JarContentEncryptionAlgorithms                 []jose.ContentEncryption                   `json:"request_object_encryption_enc_values_supported,omitempty"`
 	JarmAlgorithms                                 []jose.SignatureAlgorithm                  `json:"authorization_signing_alg_values_supported,omitempty"`
 	JarmKeyEncryptionAlgorithms                    []jose.KeyAlgorithm                        `json:"authorization_encryption_alg_values_supported,omitempty"`
 	JarmContentEncryptionAlgorithms                []jose.ContentEncryption                   `json:"authorization_encryption_enc_values_supported,omitempty"`

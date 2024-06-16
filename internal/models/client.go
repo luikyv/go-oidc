@@ -33,6 +33,8 @@ type ClientMetaInfo struct {
 	UserInfoKeyEncryptionAlgorithm     jose.KeyAlgorithm               `json:"userinfo_encrypted_response_alg,omitempty"`
 	UserInfoContentEncryptionAlgorithm jose.ContentEncryption          `json:"userinfo_encrypted_response_enc,omitempty"`
 	JarSignatureAlgorithm              jose.SignatureAlgorithm         `json:"request_object_signing_alg,omitempty"`
+	JarKeyEncryptionAlgorithm          jose.KeyAlgorithm               `json:"request_object_encryption_alg,omitempty"`
+	JarContentEncryptionAlgorithm      jose.ContentEncryption          `json:"request_object_encryption_enc,omitempty"`
 	JarmSignatureAlgorithm             jose.SignatureAlgorithm         `json:"authorization_signed_response_alg,omitempty"`
 	JarmKeyEncryptionAlgorithm         jose.KeyAlgorithm               `json:"authorization_encrypted_response_alg,omitempty"`
 	JarmContentEncryptionAlgorithm     jose.ContentEncryption          `json:"authorization_encrypted_response_enc,omitempty"`

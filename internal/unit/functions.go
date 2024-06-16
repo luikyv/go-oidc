@@ -314,9 +314,14 @@ func ContainsAllScopes(scopesSuperSet string, scopesSubSet string) bool {
 	return ContainsAll(SplitStringWithSpaces(scopesSuperSet), SplitStringWithSpaces(scopesSubSet)...)
 }
 
-func IsJwt(token string) bool {
-	isJwt, _ := regexp.MatchString("(^[\\w-]*\\.[\\w-]*\\.[\\w-]*$)", token)
-	return isJwt
+func IsJws(token string) bool {
+	isJws, _ := regexp.MatchString("(^[\\w-]*\\.[\\w-]*\\.[\\w-]*$)", token)
+	return isJws
+}
+
+func IsJwe(token string) bool {
+	isJws, _ := regexp.MatchString("(^[\\w-]*\\.[\\w-]*\\.[\\w-]*\\.[\\w-]*\\.[\\w-]*$)", token)
+	return isJws
 }
 
 func Remove[T comparable](slice []T, value T) []T {

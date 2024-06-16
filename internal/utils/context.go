@@ -85,6 +85,9 @@ type Configuration struct {
 	JarIsRequired                   bool
 	JarSignatureAlgorithms          []jose.SignatureAlgorithm
 	JarLifetimeSecs                 int
+	JarEncryptionIsEnabled          bool
+	JarKeyEncrytionIds              []string
+	JarContentEncryptionAlgorithms  []jose.ContentEncryption
 	// It allows client to push authorization requests.
 	ParIsEnabled bool
 	// If true, authorization requests can only be made if they were pushed.
@@ -147,6 +150,16 @@ func NewContext(
 	}
 }
 
+func (ctx Context) GetPrivateEncryptionKey(keyId string) (jose.JSONWebKey, bool) {
+	jwk, ok := ctx.GetPrivateKey(keyId)
+	if !ok || jwk.Use != string(constants.KeyEncryptionUsage) {
+		return jose.JSONWebKey{}, false
+	}
+
+	return jwk, true
+}
+
+// TODO: implement signature version.
 func (ctx Context) GetPrivateKey(keyId string) (jose.JSONWebKey, bool) {
 	keys := ctx.PrivateJwks.Key(keyId)
 	if len(keys) != 1 {
@@ -220,13 +233,35 @@ func (ctx Context) GetJarmSignatureAlgorithms() []jose.SignatureAlgorithm {
 	return ctx.getSignatureAlgorithms(ctx.JarmSignatureKeyIds)
 }
 
+func (ctx Context) GetJarKeyEncryptionAlgorithms() []jose.KeyAlgorithm {
+	return ctx.getEncryptionAlgorithms(ctx.JarKeyEncrytionIds)
+}
+
+func (ctx Context) getEncryptionAlgorithms(keyIds []string) []jose.KeyAlgorithm {
+	encryptionAlgorithms := []jose.KeyAlgorithm{}
+	algorithms := ctx.getAlgorithms(keyIds)
+	for _, alg := range algorithms {
+		encryptionAlgorithms = append(encryptionAlgorithms, jose.KeyAlgorithm(alg))
+	}
+	return encryptionAlgorithms
+}
+
 func (ctx Context) getSignatureAlgorithms(keyIds []string) []jose.SignatureAlgorithm {
 	signatureAlgorithms := []jose.SignatureAlgorithm{}
-	for _, keyId := range keyIds {
-		key, _ := ctx.GetPrivateKey(keyId)
-		signatureAlgorithms = append(signatureAlgorithms, jose.SignatureAlgorithm(key.Algorithm))
+	algorithms := ctx.getAlgorithms(keyIds)
+	for _, alg := range algorithms {
+		signatureAlgorithms = append(signatureAlgorithms, jose.SignatureAlgorithm(alg))
 	}
 	return signatureAlgorithms
+}
+
+func (ctx Context) getAlgorithms(keyIds []string) []string {
+	algorithms := []string{}
+	for _, keyId := range keyIds {
+		key, _ := ctx.GetPrivateKey(keyId)
+		algorithms = append(algorithms, key.Algorithm)
+	}
+	return algorithms
 }
 
 // From the subset of keys defined by keyIds, try to find a key that matches signatureAlgorithm.

@@ -35,7 +35,9 @@ func validateDynamicClientRequest(
 		validateUserInfoSignatureAlgorithm,
 		validateUserInfoEncryptionAlgorithms,
 		validateJarSignatureAlgorithm,
+		validateJarEncryptionAlgorithms,
 		validateJarmSignatureAlgorithm,
+		validateJarmEncryptionAlgorithms,
 		validatePkceIsRequiredForPublicClients,
 	)
 }
@@ -311,20 +313,23 @@ func validateIdTokenEncryptionAlgorithms(
 	ctx utils.Context,
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
-	// Return an error if id token encryption is not enabled, but the client requested it.
-	if !ctx.UserInfoEncryptionIsEnabled && (dynamicClient.IdTokenKeyEncryptionAlgorithm != "" || dynamicClient.IdTokenContentEncryptionAlgorithm != "") {
-		return models.NewOAuthError(constants.InvalidRequest, "id token encryption is not supported")
-	}
-
+	// Return an error if ID token encryption is not enabled, but the client requested it.
 	if !ctx.UserInfoEncryptionIsEnabled {
+		if dynamicClient.IdTokenKeyEncryptionAlgorithm != "" || dynamicClient.IdTokenContentEncryptionAlgorithm != "" {
+			return models.NewOAuthError(constants.InvalidRequest, "ID token encryption is not supported")
+		}
 		return nil
 	}
 
-	if !slices.Contains(ctx.UserInfoKeyEncryptionAlgorithms, dynamicClient.IdTokenKeyEncryptionAlgorithm) {
+	if dynamicClient.IdTokenKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.UserInfoKeyEncryptionAlgorithms, dynamicClient.IdTokenKeyEncryptionAlgorithm) {
 		return models.NewOAuthError(constants.InvalidRequest, "id_token_encrypted_response_alg not supported")
 	}
 
-	if !slices.Contains(ctx.UserInfoContentEncryptionAlgorithms, dynamicClient.IdTokenContentEncryptionAlgorithm) {
+	if dynamicClient.IdTokenContentEncryptionAlgorithm != "" && dynamicClient.IdTokenKeyEncryptionAlgorithm == "" {
+		return models.NewOAuthError(constants.InvalidRequest, "id_token_encrypted_response_alg is required if id_token_encrypted_response_enc is informed")
+	}
+
+	if dynamicClient.IdTokenContentEncryptionAlgorithm != "" && !slices.Contains(ctx.UserInfoContentEncryptionAlgorithms, dynamicClient.IdTokenContentEncryptionAlgorithm) {
 		return models.NewOAuthError(constants.InvalidRequest, "id_token_encrypted_response_enc not supported")
 	}
 
@@ -336,20 +341,77 @@ func validateUserInfoEncryptionAlgorithms(
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
 	// Return an error if user info encryption is not enabled, but the client requested it.
-	if !ctx.UserInfoEncryptionIsEnabled && (dynamicClient.UserInfoKeyEncryptionAlgorithm != "" || dynamicClient.UserInfoContentEncryptionAlgorithm != "") {
-		return models.NewOAuthError(constants.InvalidRequest, "user info encryption is not supported")
-	}
-
 	if !ctx.UserInfoEncryptionIsEnabled {
+		if dynamicClient.UserInfoKeyEncryptionAlgorithm != "" || dynamicClient.UserInfoContentEncryptionAlgorithm != "" {
+			return models.NewOAuthError(constants.InvalidRequest, "user info encryption is not supported")
+		}
 		return nil
 	}
 
-	if !slices.Contains(ctx.UserInfoKeyEncryptionAlgorithms, dynamicClient.UserInfoKeyEncryptionAlgorithm) {
+	if dynamicClient.UserInfoKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.UserInfoKeyEncryptionAlgorithms, dynamicClient.UserInfoKeyEncryptionAlgorithm) {
 		return models.NewOAuthError(constants.InvalidRequest, "userinfo_encrypted_response_alg not supported")
 	}
 
-	if !slices.Contains(ctx.UserInfoContentEncryptionAlgorithms, dynamicClient.UserInfoContentEncryptionAlgorithm) {
+	if dynamicClient.UserInfoContentEncryptionAlgorithm != "" && dynamicClient.UserInfoKeyEncryptionAlgorithm == "" {
+		return models.NewOAuthError(constants.InvalidRequest, "userinfo_encrypted_response_alg is required if userinfo_encrypted_response_enc is informed")
+	}
+
+	if dynamicClient.UserInfoContentEncryptionAlgorithm != "" && !slices.Contains(ctx.UserInfoContentEncryptionAlgorithms, dynamicClient.UserInfoContentEncryptionAlgorithm) {
 		return models.NewOAuthError(constants.InvalidRequest, "userinfo_encrypted_response_enc not supported")
+	}
+
+	return nil
+}
+
+func validateJarmEncryptionAlgorithms(
+	ctx utils.Context,
+	dynamicClient models.DynamicClientRequest,
+) models.OAuthError {
+	// Return an error if jarm encryption is not enabled, but the client requested it.
+	if !ctx.JarmIsEnabled {
+		if dynamicClient.JarmKeyEncryptionAlgorithm != "" || dynamicClient.JarmContentEncryptionAlgorithm != "" {
+			return models.NewOAuthError(constants.InvalidRequest, "jarm encryption is not supported")
+		}
+		return nil
+	}
+
+	if dynamicClient.JarmKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.JarmKeyEncrytionAlgorithms, dynamicClient.JarmKeyEncryptionAlgorithm) {
+		return models.NewOAuthError(constants.InvalidRequest, "authorization_encrypted_response_alg not supported")
+	}
+
+	if dynamicClient.JarmContentEncryptionAlgorithm != "" && dynamicClient.JarmKeyEncryptionAlgorithm == "" {
+		return models.NewOAuthError(constants.InvalidRequest, "authorization_encrypted_response_alg is required if authorization_encrypted_response_enc is informed")
+	}
+
+	if dynamicClient.JarmContentEncryptionAlgorithm != "" && !slices.Contains(ctx.JarmContentEncryptionAlgorithms, dynamicClient.JarmContentEncryptionAlgorithm) {
+		return models.NewOAuthError(constants.InvalidRequest, "authorization_encrypted_response_enc not supported")
+	}
+
+	return nil
+}
+
+func validateJarEncryptionAlgorithms(
+	ctx utils.Context,
+	dynamicClient models.DynamicClientRequest,
+) models.OAuthError {
+	// Return an error if jar encryption is not enabled, but the client requested it.
+	if !ctx.JarEncryptionIsEnabled {
+		if dynamicClient.JarKeyEncryptionAlgorithm != "" || dynamicClient.JarContentEncryptionAlgorithm != "" {
+			return models.NewOAuthError(constants.InvalidRequest, "jar encryption is not supported")
+		}
+		return nil
+	}
+
+	if dynamicClient.JarKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.GetJarKeyEncryptionAlgorithms(), dynamicClient.JarKeyEncryptionAlgorithm) {
+		return models.NewOAuthError(constants.InvalidRequest, "request_object_encryption_alg not supported")
+	}
+
+	if dynamicClient.JarContentEncryptionAlgorithm != "" && dynamicClient.JarKeyEncryptionAlgorithm == "" {
+		return models.NewOAuthError(constants.InvalidRequest, "request_object_encryption_alg is required if request_object_encryption_enc is informed")
+	}
+
+	if dynamicClient.JarContentEncryptionAlgorithm != "" && !slices.Contains(ctx.JarContentEncryptionAlgorithms, dynamicClient.JarContentEncryptionAlgorithm) {
+		return models.NewOAuthError(constants.InvalidRequest, "request_object_encryption_enc not supported")
 	}
 
 	return nil

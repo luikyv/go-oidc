@@ -124,6 +124,18 @@ func (provider *OpenIdProvider) validateConfiguration() error {
 		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm for JARM")
 	}
 
+	if provider.config.JarEncryptionIsEnabled && !provider.config.JarIsEnabled {
+		return errors.New("JAR must be enabled if JAR encryption is enabled")
+	}
+
+	if provider.config.JarEncryptionIsEnabled && !slices.Contains(provider.config.JarContentEncryptionAlgorithms, jose.A128CBC_HS256) {
+		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm for JAR")
+	}
+
+	if provider.config.SenderConstrainedTokenIsRequired && !provider.config.DpopIsEnabled && !provider.config.TlsBoundTokensIsEnabled {
+		return errors.New("if sender constraining tokens is required, at least one mechanism must be enabled, either DPoP or TLS")
+	}
+
 	if provider.config.Profile == constants.OpenIdProfile {
 		defaultIdTokenSignatureKey := provider.config.PrivateJwks.Key(provider.config.DefaultUserInfoSignatureKeyId)[0]
 		if defaultIdTokenSignatureKey.Algorithm != string(jose.RS256) {
@@ -180,7 +192,8 @@ func (provider *OpenIdProvider) SetIdTokenLifetime(idTokenLifetimeSecs int) {
 	provider.config.IdTokenExpiresInSecs = idTokenLifetimeSecs
 }
 
-func (provider *OpenIdProvider) EnableIdTokenEncryption(
+// Enable encryption of ID tokens and of the userinfo endpoint response.
+func (provider *OpenIdProvider) EnableUserInfoEncryption(
 	keyEncryptionAlgorithms []jose.KeyAlgorithm,
 	contentEncryptionAlgorithms []jose.ContentEncryption,
 ) {
@@ -256,6 +269,15 @@ func (provider *OpenIdProvider) RequireJwtSecuredAuthorizationRequests(
 ) {
 	provider.EnableJwtSecuredAuthorizationRequests(jarLifetimeSecs, jarAlgorithms...)
 	provider.config.JarIsRequired = true
+}
+
+func (provider *OpenIdProvider) EnableJwtSecuredAuthorizationRequestEncryption(
+	keyEncryptionIds []string,
+	contentEncryptionAlgorithms []jose.ContentEncryption,
+) {
+	provider.config.JarEncryptionIsEnabled = true
+	provider.config.JarKeyEncrytionIds = keyEncryptionIds
+	provider.config.JarContentEncryptionAlgorithms = contentEncryptionAlgorithms
 }
 
 func (provider *OpenIdProvider) EnableJwtSecuredAuthorizationResponseMode(
@@ -355,6 +377,7 @@ func (provider *OpenIdProvider) RequireDemonstrationProofOfPossesion(
 	provider.config.DpopIsRequired = true
 }
 
+// At least one sender constraining mechanism (TLS or DPoP) will be required, in order to issue an access token to a client.
 func (provider *OpenIdProvider) RequireSenderConstrainedTokens() {
 	provider.config.SenderConstrainedTokenIsRequired = true
 }

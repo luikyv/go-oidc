@@ -24,6 +24,60 @@ func ExtractJarFromRequestObject(
 	models.AuthorizationRequest,
 	models.OAuthError,
 ) {
+	if ctx.JarEncryptionIsEnabled && unit.IsJwe(reqObject) {
+		signedReqObject, err := extractSignedRequestObjectFromEncryptedRequestObject(ctx, reqObject, client)
+		if err != nil {
+			return models.AuthorizationRequest{}, err
+		}
+		reqObject = signedReqObject
+	}
+
+	if !unit.IsJws(reqObject) {
+		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidRequest, "the request object is not a JWS")
+	}
+
+	return extractJarFromSignedRequestObject(ctx, reqObject, client)
+}
+
+func extractSignedRequestObjectFromEncryptedRequestObject(
+	ctx Context,
+	reqObject string,
+	_ models.Client,
+) (
+	string,
+	models.OAuthError,
+) {
+	encryptedReqObject, err := jose.ParseEncrypted(reqObject, ctx.GetJarKeyEncryptionAlgorithms(), ctx.JarContentEncryptionAlgorithms)
+	if err != nil {
+		return "", models.NewOAuthError(constants.InvalidResquestObject, "could not parse the encrypted request object")
+	}
+
+	keyId := encryptedReqObject.Header.KeyID
+	if keyId == "" {
+		return "", models.NewOAuthError(constants.InvalidResquestObject, "invalid JWE key ID")
+	}
+
+	jwk, ok := ctx.GetPrivateEncryptionKey(keyId)
+	if !ok {
+		return "", models.NewOAuthError(constants.InvalidResquestObject, "invalid JWK used for encryption")
+	}
+
+	decryptedReqObject, err := encryptedReqObject.Decrypt(jwk.Key)
+	if err != nil {
+		return "", models.NewOAuthError(constants.InvalidResquestObject, err.Error())
+	}
+
+	return string(decryptedReqObject), nil
+}
+
+func extractJarFromSignedRequestObject(
+	ctx Context,
+	reqObject string,
+	client models.Client,
+) (
+	models.AuthorizationRequest,
+	models.OAuthError,
+) {
 	jarAlgorithms := ctx.JarSignatureAlgorithms
 	if client.JarSignatureAlgorithm != "" {
 		jarAlgorithms = []jose.SignatureAlgorithm{client.JarSignatureAlgorithm}
@@ -169,7 +223,7 @@ func GetValidTokenClaims(
 }
 
 func GetTokenId(ctx Context, token string) (string, models.OAuthError) {
-	if !unit.IsJwt(token) {
+	if !unit.IsJws(token) {
 		return token, nil
 	}
 

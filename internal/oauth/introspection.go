@@ -59,7 +59,7 @@ func getTokenIntrospectionInfo(
 		return getRefreshTokenIntrospectionInfo(ctx, token)
 	}
 
-	if unit.IsJwt(token) {
+	if unit.IsJws(token) {
 		return getJwtTokenIntrospectionInfo(ctx, token)
 	}
 

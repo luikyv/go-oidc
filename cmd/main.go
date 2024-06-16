@@ -59,6 +59,8 @@ func runFapi2OpenIdProvider() {
 			ShouldRefresh:      true,
 		}, nil
 	})
+	openidProvider.EnableUserInfoEncryption([]jose.KeyAlgorithm{jose.RSA_OAEP}, []jose.ContentEncryption{jose.A128CBC_HS256})
+	openidProvider.EnableJwtSecuredAuthorizationResponseModeEncryption([]jose.KeyAlgorithm{jose.RSA_OAEP}, []jose.ContentEncryption{jose.A128CBC_HS256})
 
 	// Create Client Mocks.
 	clientOnePrivateJwks := GetPrivateJwks("client_keys/client_one_jwks.json")
@@ -82,9 +84,11 @@ func runFapi2OpenIdProvider() {
 			PublicJwks: &clientOnePublicJwks,
 			// IdTokenKeyEncryptionAlgorithm:      jose.RSA_OAEP,
 			// IdTokenContentEncryptionAlgorithm:  jose.A128CBC_HS256,
-			UserInfoSignatureAlgorithm:         jose.PS256,
-			UserInfoKeyEncryptionAlgorithm:     jose.RSA_OAEP,
-			UserInfoContentEncryptionAlgorithm: jose.A128CBC_HS256,
+			// UserInfoSignatureAlgorithm:         jose.PS256,
+			// UserInfoKeyEncryptionAlgorithm:     jose.RSA_OAEP,
+			// UserInfoContentEncryptionAlgorithm: jose.A128CBC_HS256,
+			// JarmKeyEncryptionAlgorithm:     jose.RSA_OAEP,
+			// JarmContentEncryptionAlgorithm: jose.A128CBC_HS256,
 		},
 	})
 	clientTwoPrivateJwks := GetPrivateJwks("client_keys/client_two_jwks.json")

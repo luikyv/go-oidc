@@ -48,6 +48,10 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 		config.JarIsEnabled = ctx.JarIsEnabled
 		config.JarIsRequired = ctx.JarIsRequired
 		config.JarAlgorithms = ctx.JarSignatureAlgorithms
+		if ctx.JarEncryptionIsEnabled {
+			config.JarKeyEncrytionAlgorithms = ctx.GetJarKeyEncryptionAlgorithms()
+			config.JarContentEncryptionAlgorithms = ctx.JarContentEncryptionAlgorithms
+		}
 	}
 
 	if ctx.JarmIsEnabled {
