@@ -13,7 +13,7 @@ import (
 	"github.com/luikymagno/auth-server/pkg/oidc"
 )
 
-func runFapi2OpenIdProvider() {
+func runFapi2OpenIdProvider() error {
 	// Allow insecure requests to clients' jwks uri during local tests.
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	port := ":83"
@@ -121,7 +121,7 @@ func runFapi2OpenIdProvider() {
 	))
 
 	// Run
-	openidProvider.RunTls(oidc.TlsOptions{
+	return openidProvider.RunTls(oidc.TlsOptions{
 		TlsAddress:                     port,
 		ServerCertificate:              "server_keys/cert.pem",
 		ServerKey:                      "server_keys/key.pem",
@@ -132,5 +132,8 @@ func runFapi2OpenIdProvider() {
 }
 
 func main() {
-	runFapi2OpenIdProvider()
+	err := runFapi2OpenIdProvider()
+	if err != nil {
+		panic(err.Error())
+	}
 }

@@ -86,7 +86,7 @@ type Configuration struct {
 	JarSignatureAlgorithms          []jose.SignatureAlgorithm
 	JarLifetimeSecs                 int
 	JarEncryptionIsEnabled          bool
-	JarKeyEncrytionIds              []string
+	JarKeyEncryptionIds             []string
 	JarContentEncryptionAlgorithms  []jose.ContentEncryption
 	// It allows client to push authorization requests.
 	ParIsEnabled bool
@@ -234,7 +234,7 @@ func (ctx Context) GetJarmSignatureAlgorithms() []jose.SignatureAlgorithm {
 }
 
 func (ctx Context) GetJarKeyEncryptionAlgorithms() []jose.KeyAlgorithm {
-	return ctx.getEncryptionAlgorithms(ctx.JarKeyEncrytionIds)
+	return ctx.getEncryptionAlgorithms(ctx.JarKeyEncryptionIds)
 }
 
 func (ctx Context) getEncryptionAlgorithms(keyIds []string) []jose.KeyAlgorithm {

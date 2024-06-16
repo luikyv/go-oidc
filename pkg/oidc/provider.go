@@ -85,13 +85,31 @@ func NewProvider(
 
 // TODO: Add more validations.
 func (provider *OpenIdProvider) validateConfiguration() error {
+	// Validate the signature keys.
 	for _, keyId := range slices.Concat(
 		[]string{provider.config.DefaultUserInfoSignatureKeyId},
 		provider.config.UserInfoSignatureKeyIds,
 		provider.config.JarmSignatureKeyIds,
 	) {
-		if len(provider.config.PrivateJwks.Key(keyId)) == 0 {
+		jwkSlice := provider.config.PrivateJwks.Key(keyId)
+		if len(jwkSlice) != 1 {
 			return fmt.Errorf("the key ID: %s is not present in the server JWKS", keyId)
+		}
+		if jwkSlice[0].Use != string(constants.KeySignatureUsage) {
+			return fmt.Errorf("the key ID: %s is not meant for signing", keyId)
+		}
+	}
+
+	// Validate the encryption keys.
+	for _, keyId := range slices.Concat(
+		provider.config.JarKeyEncryptionIds,
+	) {
+		jwkSlice := provider.config.PrivateJwks.Key(keyId)
+		if len(jwkSlice) != 1 {
+			return fmt.Errorf("the key ID: %s is not present in the server JWKS", keyId)
+		}
+		if jwkSlice[0].Use != string(constants.KeyEncryptionUsage) {
+			return fmt.Errorf("the key ID: %s is not meant for encryption", keyId)
 		}
 	}
 
@@ -276,7 +294,7 @@ func (provider *OpenIdProvider) EnableJwtSecuredAuthorizationRequestEncryption(
 	contentEncryptionAlgorithms []jose.ContentEncryption,
 ) {
 	provider.config.JarEncryptionIsEnabled = true
-	provider.config.JarKeyEncrytionIds = keyEncryptionIds
+	provider.config.JarKeyEncryptionIds = keyEncryptionIds
 	provider.config.JarContentEncryptionAlgorithms = contentEncryptionAlgorithms
 }
 
