@@ -113,7 +113,15 @@ func (provider *OpenIdProvider) validateConfiguration() error {
 	}
 
 	if provider.config.UserInfoEncryptionIsEnabled && !slices.Contains(provider.config.UserInfoContentEncryptionAlgorithms, jose.A128CBC_HS256) {
-		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm") // todo
+		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm for user information")
+	}
+
+	if provider.config.JarmEncryptionIsEnabled && !provider.config.JarmIsEnabled {
+		return errors.New("JARM must be enabled if JARM encryption is enabled")
+	}
+
+	if provider.config.JarmEncryptionIsEnabled && !slices.Contains(provider.config.JarmContentEncryptionAlgorithms, jose.A128CBC_HS256) {
+		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm for JARM")
 	}
 
 	if provider.config.Profile == constants.OpenIdProfile {
@@ -270,7 +278,15 @@ func (provider *OpenIdProvider) EnableJwtSecuredAuthorizationResponseMode(
 	provider.config.JarmLifetimeSecs = jarmLifetimeSecs
 	provider.config.DefaultJarmSignatureKeyId = defaultJarmSignatureKeyId
 	provider.config.JarmSignatureKeyIds = jarmSignatureKeyIds
+}
 
+func (provider *OpenIdProvider) EnableJwtSecuredAuthorizationResponseModeEncryption(
+	keyEncryptionAlgorithms []jose.KeyAlgorithm,
+	contentEncryptionAlgorithms []jose.ContentEncryption,
+) {
+	provider.config.JarmEncryptionIsEnabled = true
+	provider.config.JarmKeyEncrytionAlgorithms = keyEncryptionAlgorithms
+	provider.config.JarmContentEncryptionAlgorithms = contentEncryptionAlgorithms
 }
 
 func (provider *OpenIdProvider) EnableBasicSecretClientAuthn() {

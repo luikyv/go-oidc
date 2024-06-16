@@ -34,6 +34,8 @@ type ClientMetaInfo struct {
 	UserInfoContentEncryptionAlgorithm jose.ContentEncryption          `json:"userinfo_encrypted_response_enc,omitempty"`
 	JarSignatureAlgorithm              jose.SignatureAlgorithm         `json:"request_object_signing_alg,omitempty"`
 	JarmSignatureAlgorithm             jose.SignatureAlgorithm         `json:"authorization_signed_response_alg,omitempty"`
+	JarmKeyEncryptionAlgorithm         jose.KeyAlgorithm               `json:"authorization_encrypted_response_alg,omitempty"`
+	JarmContentEncryptionAlgorithm     jose.ContentEncryption          `json:"authorization_encrypted_response_enc,omitempty"`
 	PkceIsRequired                     bool                            `json:"pkce_is_required"`
 	AuthnMethod                        constants.ClientAuthnType       `json:"token_endpoint_auth_method"`
 	AuthnSignatureAlgorithm            jose.SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg"`
@@ -89,6 +91,10 @@ func (client Client) GetJwk(keyId string) (jose.JSONWebKey, OAuthError) {
 	}
 
 	return keys[0], nil
+}
+
+func (client Client) GetJarmEncryptionJwk() (jose.JSONWebKey, OAuthError) {
+	return client.getEncryptionJwk(client.JarmKeyEncryptionAlgorithm)
 }
 
 func (client Client) GetUserInfoEncryptionJwk() (jose.JSONWebKey, OAuthError) {

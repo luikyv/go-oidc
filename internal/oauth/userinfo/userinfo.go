@@ -115,7 +115,7 @@ func signUserInfoClaims(
 }
 
 func encryptUserInfoJwt(
-	_ utils.Context,
+	ctx utils.Context,
 	client models.Client,
 	userInfoJwt string,
 ) (
@@ -127,24 +127,10 @@ func encryptUserInfoJwt(
 		return "", oauthErr
 	}
 
-	encrypter, err := jose.NewEncrypter(
-		client.UserInfoContentEncryptionAlgorithm,
-		jose.Recipient{Algorithm: client.UserInfoKeyEncryptionAlgorithm, Key: jwk.Key, KeyID: jwk.KeyID},
-		(&jose.EncrypterOptions{}).WithType("jwt").WithContentType("jwt"),
-	)
-	if err != nil {
-		return "", models.NewOAuthError(constants.InternalError, err.Error())
+	encryptedUserInfoJwt, oauthErr := utils.EncryptJwt(ctx, userInfoJwt, jwk, client.UserInfoContentEncryptionAlgorithm)
+	if oauthErr != nil {
+		return "", oauthErr
 	}
 
-	encryptedUserInfoJwtJwe, err := encrypter.Encrypt([]byte(userInfoJwt))
-	if err != nil {
-		return "", models.NewOAuthError(constants.InternalError, err.Error())
-	}
-
-	encryptedUserInfoString, err := encryptedUserInfoJwtJwe.CompactSerialize()
-	if err != nil {
-		return "", models.NewOAuthError(constants.InternalError, err.Error())
-	}
-
-	return encryptedUserInfoString, nil
+	return encryptedUserInfoJwt, nil
 }

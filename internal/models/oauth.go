@@ -294,6 +294,8 @@ type OpenIdConfiguration struct {
 	JarIsEnabled                                   bool                                       `json:"request_parameter_supported"`
 	JarAlgorithms                                  []jose.SignatureAlgorithm                  `json:"request_object_signing_alg_values_supported,omitempty"`
 	JarmAlgorithms                                 []jose.SignatureAlgorithm                  `json:"authorization_signing_alg_values_supported,omitempty"`
+	JarmKeyEncryptionAlgorithms                    []jose.KeyAlgorithm                        `json:"authorization_encryption_alg_values_supported,omitempty"`
+	JarmContentEncryptionAlgorithms                []jose.ContentEncryption                   `json:"authorization_encryption_enc_values_supported,omitempty"`
 	TokenEndpointClientSigningAlgorithms           []jose.SignatureAlgorithm                  `json:"token_endpoint_auth_signing_alg_values_supported"`
 	IssuerResponseParameterIsEnabled               bool                                       `json:"authorization_response_iss_parameter_supported"`
 	ClaimsParameterIsEnabled                       bool                                       `json:"claims_parameter_supported"`

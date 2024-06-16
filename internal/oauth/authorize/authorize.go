@@ -143,8 +143,7 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) mod
 		}
 	}
 
-	redirectResponse(ctx, client, session.AuthorizationParameters, redirectParams)
-	return nil
+	return redirectResponse(ctx, client, session.AuthorizationParameters, redirectParams)
 }
 
 func authorizeAuthnSession(

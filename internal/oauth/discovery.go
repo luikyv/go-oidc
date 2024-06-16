@@ -52,6 +52,10 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 
 	if ctx.JarmIsEnabled {
 		config.JarmAlgorithms = ctx.GetJarmSignatureAlgorithms()
+		if ctx.JarmEncryptionIsEnabled {
+			config.JarmKeyEncryptionAlgorithms = ctx.JarmKeyEncrytionAlgorithms
+			config.JarmContentEncryptionAlgorithms = ctx.JarmContentEncryptionAlgorithms
+		}
 	}
 
 	if ctx.DpopIsEnabled {

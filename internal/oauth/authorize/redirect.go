@@ -26,8 +26,7 @@ func redirectError(
 		ErrorDescription: oauthErr.ErrorDescription,
 		State:            oauthErr.State,
 	}
-	redirectResponse(ctx, client, oauthErr.AuthorizationParameters, redirectParams)
-	return nil
+	return redirectResponse(ctx, client, oauthErr.AuthorizationParameters, redirectParams)
 }
 
 func redirectResponse(
@@ -35,7 +34,7 @@ func redirectResponse(
 	client models.Client,
 	params models.AuthorizationParameters,
 	redirectParams models.RedirectParameters,
-) {
+) models.OAuthError {
 
 	if ctx.IssuerResponseParameterIsEnabled {
 		redirectParams.Issuer = ctx.Host
@@ -43,7 +42,11 @@ func redirectResponse(
 
 	responseMode := unit.GetResponseModeOrDefault(params.ResponseMode, params.ResponseType)
 	if responseMode.IsJarm() || client.JarmSignatureAlgorithm != "" {
-		redirectParams.Response = createJarmResponse(ctx, client, redirectParams)
+		responseJwt, err := createJarmResponse(ctx, client, redirectParams)
+		if err != nil {
+			return err
+		}
+		redirectParams.Response = responseJwt
 	}
 
 	redirectParamsMap := redirectParams.GetParams()
@@ -58,20 +61,51 @@ func redirectResponse(
 		redirectUrl := unit.GetUrlWithQueryParams(params.RedirectUri, redirectParamsMap)
 		ctx.Redirect(redirectUrl)
 	}
+
+	return nil
 }
 
 func createJarmResponse(
 	ctx utils.Context,
 	client models.Client,
 	redirectParams models.RedirectParameters,
-) string {
+) (
+	string,
+	models.OAuthError,
+) {
+	responseJwt, err := signJarmResponse(ctx, client, redirectParams)
+	if err != nil {
+		return "", err
+	}
+
+	if client.JarmKeyEncryptionAlgorithm != "" {
+		responseJwt, err = encryptJarmResponse(ctx, responseJwt, client)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return responseJwt, nil
+}
+
+func signJarmResponse(
+	ctx utils.Context,
+	client models.Client,
+	redirectParams models.RedirectParameters,
+) (
+	string,
+	models.OAuthError,
+) {
 	jwk := ctx.GetJarmSignatureKey(client)
-	createdAtTimestamp := unit.GetTimestampNow()
-	signer, _ := jose.NewSigner(
+	signer, err := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID),
 	)
+	if err != nil {
+		return "", models.NewOAuthError(constants.InternalError, err.Error())
+	}
 
+	createdAtTimestamp := unit.GetTimestampNow()
 	claims := map[string]any{
 		constants.IssuerClaim:   ctx.Host,
 		constants.AudienceClaim: client.Id,
@@ -81,9 +115,34 @@ func createJarmResponse(
 	for k, v := range redirectParams.GetParams() {
 		claims[k] = v
 	}
-	response, _ := jwt.Signed(signer).Claims(claims).Serialize()
 
-	return response
+	response, err := jwt.Signed(signer).Claims(claims).Serialize()
+	if err != nil {
+		return "", models.NewOAuthError(constants.InternalError, err.Error())
+	}
+
+	return response, nil
+}
+
+func encryptJarmResponse(
+	ctx utils.Context,
+	responseJwt string,
+	client models.Client,
+) (
+	string,
+	models.OAuthError,
+) {
+	jwk, err := client.GetJarmEncryptionJwk()
+	if err != nil {
+		return "", err
+	}
+
+	encryptedResponseJwt, err := utils.EncryptJwt(ctx, responseJwt, jwk, client.JarmContentEncryptionAlgorithm)
+	if err != nil {
+		return "", err
+	}
+
+	return encryptedResponseJwt, nil
 }
 
 var formPostResponseTemplate string = `

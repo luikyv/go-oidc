@@ -101,7 +101,7 @@ func makeIdToken(
 }
 
 func encryptIdToken(
-	_ Context,
+	ctx Context,
 	client models.Client,
 	userInfoJwt string,
 ) (
@@ -113,26 +113,12 @@ func encryptIdToken(
 		return "", oauthErr
 	}
 
-	encrypter, err := jose.NewEncrypter(
-		client.IdTokenContentEncryptionAlgorithm,
-		jose.Recipient{Algorithm: client.IdTokenKeyEncryptionAlgorithm, Key: jwk.Key, KeyID: jwk.KeyID},
-		(&jose.EncrypterOptions{}).WithType("jwt").WithContentType("jwt"),
-	)
-	if err != nil {
-		return "", models.NewOAuthError(constants.InternalError, err.Error())
+	encryptedIdToken, oauthErr := EncryptJwt(ctx, userInfoJwt, jwk, client.IdTokenContentEncryptionAlgorithm)
+	if oauthErr != nil {
+		return "", oauthErr
 	}
 
-	encryptedUserInfoJwtJwe, err := encrypter.Encrypt([]byte(userInfoJwt))
-	if err != nil {
-		return "", models.NewOAuthError(constants.InternalError, err.Error())
-	}
-
-	encryptedUserInfoString, err := encryptedUserInfoJwtJwe.CompactSerialize()
-	if err != nil {
-		return "", models.NewOAuthError(constants.InternalError, err.Error())
-	}
-
-	return encryptedUserInfoString, nil
+	return encryptedIdToken, nil
 }
 
 // TODO: Make it simpler. Create a confirmation object.

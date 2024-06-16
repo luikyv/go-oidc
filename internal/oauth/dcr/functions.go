@@ -41,6 +41,10 @@ func setDefaults(ctx utils.Context, dynamicClient *models.DynamicClientRequest) 
 	if dynamicClient.UserInfoKeyEncryptionAlgorithm != "" && dynamicClient.UserInfoContentEncryptionAlgorithm == "" {
 		dynamicClient.UserInfoContentEncryptionAlgorithm = jose.A128CBC_HS256
 	}
+
+	if dynamicClient.JarmKeyEncryptionAlgorithm != "" && dynamicClient.JarmContentEncryptionAlgorithm == "" {
+		dynamicClient.JarmContentEncryptionAlgorithm = jose.A128CBC_HS256
+	}
 }
 
 func setCreationDefaults(ctx utils.Context, dynamicClient *models.DynamicClientRequest) {

@@ -237,3 +237,34 @@ func ExtractProtectedParamsFromRequestObject(ctx Context, request string) map[st
 
 	return protectedParams
 }
+
+func EncryptJwt(
+	_ Context,
+	jwtString string,
+	encryptionJwk jose.JSONWebKey,
+	contentKeyEncryptionAlgorithm jose.ContentEncryption,
+) (
+	string,
+	models.OAuthError,
+) {
+	encrypter, err := jose.NewEncrypter(
+		contentKeyEncryptionAlgorithm,
+		jose.Recipient{Algorithm: jose.KeyAlgorithm(encryptionJwk.Algorithm), Key: encryptionJwk.Key, KeyID: encryptionJwk.KeyID},
+		(&jose.EncrypterOptions{}).WithType("jwt").WithContentType("jwt"),
+	)
+	if err != nil {
+		return "", models.NewOAuthError(constants.InternalError, err.Error())
+	}
+
+	encryptedUserInfoJwtJwe, err := encrypter.Encrypt([]byte(jwtString))
+	if err != nil {
+		return "", models.NewOAuthError(constants.InternalError, err.Error())
+	}
+
+	encryptedUserInfoString, err := encryptedUserInfoJwtJwe.CompactSerialize()
+	if err != nil {
+		return "", models.NewOAuthError(constants.InternalError, err.Error())
+	}
+
+	return encryptedUserInfoString, nil
+}
