@@ -220,6 +220,26 @@ func TestAll(t *testing.T) {
 	}
 }
 
+func TestAllEquals(t *testing.T) {
+	testCases := []struct {
+		values           []string
+		allShouldBeEqual bool
+	}{
+		{[]string{"id1", "id1", "id1"}, true},
+		{[]string{"id1"}, true},
+		{[]string{}, true},
+		{[]string{"id1", "id1", "id2"}, false},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(fmt.Sprintf("case %v", i+1), func(t *testing.T) {
+			if unit.AllEquals(testCase.values) != testCase.allShouldBeEqual {
+				t.Error(testCase)
+			}
+		})
+	}
+}
+
 func TestGenerateJwkThumbprint(t *testing.T) {
 	dpopSigningAlgorithms := []jose.SignatureAlgorithm{jose.ES256}
 	testCases := []struct {
@@ -237,6 +257,68 @@ func TestGenerateJwkThumbprint(t *testing.T) {
 			jkt := unit.GenerateJwkThumbprint(testCase.DpopJwt, dpopSigningAlgorithms)
 			if jkt != testCase.ExpectedThumbprint {
 				t.Errorf("invalid thumbprint. expected: %s - actual: %s", testCase.ExpectedThumbprint, jkt)
+			}
+		})
+	}
+}
+
+func TestContainsAllScopes(t *testing.T) {
+	testCases := []struct {
+		scopeSuperSet    string
+		scopeSubSet      string
+		shouldContainAll bool
+	}{
+		{"scope1 scope2 scope3", "scope1", true},
+		{"scope1 scope2 scope3", "scope2", true},
+		{"scope1 scope2 scope3", "scope3", true},
+		{"scope1", "scope1", true},
+		{"scope1 scope2 scope3", "scope1 scope3", true},
+		{"scope1 scope2 scope3", "scope1 scope2 scope3", true},
+		{"scope1 scope2 scope3", "scope1 ", false},
+		{"scope1 scope2 scope3", "scope4", false},
+		{"scope1 scope2 scope3", "scope1 scope34 scope2", false},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(fmt.Sprintf("case %v", i+1), func(t *testing.T) {
+			if unit.ContainsAllScopes(testCase.scopeSuperSet, testCase.scopeSubSet) != testCase.shouldContainAll {
+				t.Error(testCase)
+			}
+		})
+	}
+}
+
+func TestIsJws(t *testing.T) {
+	testCases := []struct {
+		jws         string
+		shouldBeJws bool
+	}{
+		{"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", true},
+		{"not a jwt", false},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(fmt.Sprintf("case %v", i+1), func(t *testing.T) {
+			if unit.IsJws(testCase.jws) != testCase.shouldBeJws {
+				t.Error(testCase)
+			}
+		})
+	}
+}
+
+func TestIsJwe(t *testing.T) {
+	testCases := []struct {
+		jwe         string
+		shouldBeJwe bool
+	}{
+		{"eyJhbGciOiJSU0EtT0FFUCIsImVuYyI6IkEyNTZHQ00ifQ.OKOawDo13gRp2ojaHV7LFpZcgV7T6DVZKTyKOMTYUmKoTCVJRgckCL9kiMT03JGeipsEdY3mx_etLbbWSrFr05kLzcSr4qKAq7YN7e9jwQRb23nfa6c9d-StnImGyFDbSv04uVuxIp5Zms1gNxKKK2Da14B8S4rzVRltdYwam_lDp5XnZAYpQdb76FdIKLaVmqgfwX7XWRxv2322i-vDxRfqNzo_tETKzpVLzfiwQyeyPGLBIO56YJ7eObdv0je81860ppamavo35UgoRdbYaBcoh9QcfylQr66oc6vFWXRcZ_ZT2LawVCWTIy3brGPi6UklfCpIMfIjf7iGdXKHzg.48V1_ALb6US04U3b.5eym8TW_c8SuK0ltJ3rpYIzOeDQz7TALvtu6UG9oMo4vpzs9tX_EFShS8iB7j6jiSdiwkIr3ajwQzaBtQD_.XFBoMYUZodetZdvTiFvSkQ", true},
+		{"not a jwt", false},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(fmt.Sprintf("case %v", i+1), func(t *testing.T) {
+			if unit.IsJwe(testCase.jwe) != testCase.shouldBeJwe {
+				t.Error(testCase)
 			}
 		})
 	}

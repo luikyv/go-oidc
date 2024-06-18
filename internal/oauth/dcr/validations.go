@@ -1,6 +1,7 @@
 package dcr
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/luikymagno/auth-server/internal/constants"
@@ -39,6 +40,8 @@ func validateDynamicClientRequest(
 		validateJarmSignatureAlgorithm,
 		validateJarmEncryptionAlgorithms,
 		validatePkceIsRequiredForPublicClients,
+		validatePublicJwks,
+		validatePublicJwksUri,
 	)
 }
 
@@ -414,5 +417,29 @@ func validateJarEncryptionAlgorithms(
 		return models.NewOAuthError(constants.InvalidRequest, "request_object_encryption_enc not supported")
 	}
 
+	return nil
+}
+
+func validatePublicJwks(
+	ctx utils.Context,
+	dynamicClient models.DynamicClientRequest,
+) models.OAuthError {
+	if dynamicClient.PublicJwks == nil {
+		return nil
+	}
+
+	for _, jwk := range dynamicClient.PublicJwks.Keys {
+		if !jwk.IsPublic() || !jwk.Valid() {
+			return models.NewOAuthError(constants.InvalidRequest, fmt.Sprintf("the key with ID: %s jwks is invalid", jwk.KeyID))
+		}
+	}
+	return nil
+}
+
+func validatePublicJwksUri(
+	ctx utils.Context,
+	dynamicClient models.DynamicClientRequest,
+) models.OAuthError {
+	// TODO: validate the client jwks uri
 	return nil
 }

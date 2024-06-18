@@ -143,31 +143,7 @@ func All[T interface{}](slice []T, condition func(T) bool) bool {
 	return true
 }
 
-// Return true if any element in the slice respects the condition.
-func Any[T interface{}](slice []T, condition func(T) bool) bool {
-	for _, element := range slice {
-		if condition(element) {
-			return true
-		}
-	}
-
-	return false
-}
-
-func AnyEmpty(values ...string) bool {
-	return Any(
-		values,
-		func(s string) bool { return s == "" },
-	)
-}
-
-func AnyNonEmpty(values ...string) bool {
-	return Any(
-		values,
-		func(s string) bool { return s != "" },
-	)
-}
-
+// Return true only if all the elements in values are equal.
 func AllEquals[T comparable](values []T) bool {
 	if len(values) == 0 {
 		return true
@@ -192,10 +168,6 @@ func SplitStringWithSpaces(s string) []string {
 	}
 
 	return slice
-}
-
-func IsBlank(s string) bool {
-	return strings.ReplaceAll(s, " ", "") == ""
 }
 
 func ScopesContainsOpenId(scopes string) bool {

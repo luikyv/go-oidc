@@ -11,8 +11,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-//---------------------------------------- Client ----------------------------------------//
-
 type ClientMetaInfo struct {
 	Name          string                   `json:"client_name,omitempty"`
 	LogoUri       string                   `json:"logo_uri,omitempty"`
@@ -42,8 +40,7 @@ type ClientMetaInfo struct {
 	AuthnMethod                        constants.ClientAuthnType       `json:"token_endpoint_auth_method"`
 	AuthnSignatureAlgorithm            jose.SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg"`
 	DpopIsRequired                     bool                            `json:"dpop_bound_access_tokens,omitempty"`
-
-	TlsSubjectDistinguishedName string `json:"tls_client_auth_subject_dn,omitempty"`
+	TlsSubjectDistinguishedName        string                          `json:"tls_client_auth_subject_dn,omitempty"`
 	// The DNS name.
 	TlsSubjectAlternativeName   string            `json:"tls_client_auth_san_dns,omitempty"`
 	TlsSubjectAlternativeNameIp string            `json:"tls_client_auth_san_ip,omitempty"`
@@ -107,7 +104,7 @@ func (client Client) GetIdTokenEncryptionJwk() (jose.JSONWebKey, OAuthError) {
 	return client.getEncryptionJwk(client.IdTokenKeyEncryptionAlgorithm)
 }
 
-// Get the encryption JWK based on the "alg" claim.
+// Get the encryption JWK based match the algorithm.
 func (client Client) getEncryptionJwk(algorithm jose.KeyAlgorithm) (jose.JSONWebKey, OAuthError) {
 	jwks, err := client.GetPublicJwks()
 	if err != nil {
@@ -124,7 +121,7 @@ func (client Client) getEncryptionJwk(algorithm jose.KeyAlgorithm) (jose.JSONWeb
 }
 
 func (client Client) AreScopesAllowed(requestedScopes string) bool {
-	return unit.ContainsAll(unit.SplitStringWithSpaces(client.Scopes), unit.SplitStringWithSpaces(requestedScopes)...)
+	return unit.ContainsAllScopes(client.Scopes, requestedScopes)
 }
 
 func (client Client) IsResponseTypeAllowed(responseType constants.ResponseType) bool {

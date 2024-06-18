@@ -86,6 +86,13 @@ func NewProvider(
 // TODO: Add more validations.
 func (provider *OpenIdProvider) validateConfiguration() error {
 
+	// Validate the server jwks.
+	for _, key := range provider.config.PrivateJwks.Keys {
+		if !key.Valid() {
+			return fmt.Errorf("the key with ID: %s is not valid", key.KeyID)
+		}
+	}
+
 	// Validate the signature keys.
 	for _, keyId := range slices.Concat(
 		[]string{provider.config.DefaultUserInfoSignatureKeyId},
@@ -116,7 +123,8 @@ func (provider *OpenIdProvider) validateConfiguration() error {
 			return fmt.Errorf("the key ID: %s is not present in the server JWKS or is duplicated", keyId)
 		}
 
-		if jwkSlice[0].Use != string(constants.KeyEncryptionUsage) {
+		key := jwkSlice[0]
+		if key.Use != string(constants.KeyEncryptionUsage) {
 			return fmt.Errorf("the key ID: %s is not meant for encryption", keyId)
 		}
 	}
