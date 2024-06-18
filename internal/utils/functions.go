@@ -57,8 +57,8 @@ func extractSignedRequestObjectFromEncryptedRequestObject(
 		return "", models.NewOAuthError(constants.InvalidResquestObject, "invalid JWE key ID")
 	}
 
-	jwk, ok := ctx.GetPrivateEncryptionKey(keyId)
-	if !ok {
+	jwk, ok := ctx.GetPrivateKey(keyId)
+	if !ok || jwk.Use != string(constants.KeyEncryptionUsage) {
 		return "", models.NewOAuthError(constants.InvalidResquestObject, "invalid JWK used for encryption")
 	}
 
@@ -203,7 +203,7 @@ func GetValidTokenClaims(
 
 	keyId := parsedToken.Headers[0].KeyID
 	publicKey, ok := ctx.GetPublicKey(keyId)
-	if !ok {
+	if !ok || publicKey.Use != string(constants.KeySignatureUsage) {
 		return nil, models.NewOAuthError(constants.AccessDenied, "invalid token")
 	}
 

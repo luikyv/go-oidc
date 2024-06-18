@@ -136,6 +136,7 @@ func NewContext(
 	logger := slog.New(jsonHandler)
 
 	// Set shared information.
+	// The correlation ID key must be set previously in the middleware.
 	correlationId := req.Context().Value(constants.CorrelationIdKey).(string)
 	logger = logger.With(
 		// Always log the correlation ID.
@@ -148,140 +149,6 @@ func NewContext(
 		Response:      resp,
 		Logger:        logger,
 	}
-}
-
-func (ctx Context) GetPrivateEncryptionKey(keyId string) (jose.JSONWebKey, bool) {
-	jwk, ok := ctx.GetPrivateKey(keyId)
-	if !ok || jwk.Use != string(constants.KeyEncryptionUsage) {
-		return jose.JSONWebKey{}, false
-	}
-
-	return jwk, true
-}
-
-// TODO: implement signature version.
-func (ctx Context) GetPrivateKey(keyId string) (jose.JSONWebKey, bool) {
-	keys := ctx.PrivateJwks.Key(keyId)
-	if len(keys) != 1 {
-		return jose.JSONWebKey{}, false
-	}
-	return keys[0], true
-}
-
-func (ctx Context) GetPublicKey(keyId string) (jose.JSONWebKey, bool) {
-	privateKey, ok := ctx.GetPrivateKey(keyId)
-	if !ok {
-		return jose.JSONWebKey{}, false
-	}
-
-	publicKey := privateKey.Public()
-	if publicKey.KeyID == "" {
-		return jose.JSONWebKey{}, false
-	}
-
-	return publicKey, true
-}
-
-func (ctx Context) GetPublicKeys() jose.JSONWebKeySet {
-	publicKeys := []jose.JSONWebKey{}
-	for _, privateKey := range ctx.PrivateJwks.Keys {
-		publicKey := privateKey.Public()
-		if publicKey.Valid() {
-			publicKeys = append(publicKeys, publicKey)
-		}
-	}
-
-	return jose.JSONWebKeySet{Keys: publicKeys}
-}
-
-func (ctx Context) GetSignatureAlgorithms() []jose.SignatureAlgorithm {
-	algorithms := []jose.SignatureAlgorithm{}
-	for _, privateKey := range ctx.PrivateJwks.Keys {
-		if privateKey.Use == string(constants.KeySignatureUsage) {
-			algorithms = append(algorithms, jose.SignatureAlgorithm(privateKey.Algorithm))
-		}
-	}
-	return algorithms
-}
-
-func (ctx Context) GetTokenSignatureKey(tokenOptions models.TokenOptions) jose.JSONWebKey {
-	keyId := tokenOptions.JwtSignatureKeyId
-	if keyId == "" {
-		keyId = ctx.DefaultTokenSignatureKeyId
-	}
-	key, _ := ctx.GetPrivateKey(keyId)
-	return key
-}
-
-func (ctx Context) GetUserInfoSignatureKey(client models.Client) jose.JSONWebKey {
-	return ctx.getSignatureKey(client.UserInfoSignatureAlgorithm, ctx.DefaultUserInfoSignatureKeyId, ctx.UserInfoSignatureKeyIds)
-}
-
-func (ctx Context) GetUserInfoSignatureAlgorithms() []jose.SignatureAlgorithm {
-	return ctx.getSignatureAlgorithms(ctx.UserInfoSignatureKeyIds)
-}
-
-func (ctx Context) GetIdTokenSignatureKey(client models.Client) jose.JSONWebKey {
-	return ctx.getSignatureKey(client.IdTokenSignatureAlgorithm, ctx.DefaultUserInfoSignatureKeyId, ctx.UserInfoSignatureKeyIds)
-}
-
-func (ctx Context) GetJarmSignatureKey(client models.Client) jose.JSONWebKey {
-	return ctx.getSignatureKey(client.JarmSignatureAlgorithm, ctx.DefaultJarmSignatureKeyId, ctx.JarmSignatureKeyIds)
-}
-
-func (ctx Context) GetJarmSignatureAlgorithms() []jose.SignatureAlgorithm {
-	return ctx.getSignatureAlgorithms(ctx.JarmSignatureKeyIds)
-}
-
-func (ctx Context) GetJarKeyEncryptionAlgorithms() []jose.KeyAlgorithm {
-	return ctx.getEncryptionAlgorithms(ctx.JarKeyEncryptionIds)
-}
-
-func (ctx Context) getEncryptionAlgorithms(keyIds []string) []jose.KeyAlgorithm {
-	encryptionAlgorithms := []jose.KeyAlgorithm{}
-	algorithms := ctx.getAlgorithms(keyIds)
-	for _, alg := range algorithms {
-		encryptionAlgorithms = append(encryptionAlgorithms, jose.KeyAlgorithm(alg))
-	}
-	return encryptionAlgorithms
-}
-
-func (ctx Context) getSignatureAlgorithms(keyIds []string) []jose.SignatureAlgorithm {
-	signatureAlgorithms := []jose.SignatureAlgorithm{}
-	algorithms := ctx.getAlgorithms(keyIds)
-	for _, alg := range algorithms {
-		signatureAlgorithms = append(signatureAlgorithms, jose.SignatureAlgorithm(alg))
-	}
-	return signatureAlgorithms
-}
-
-func (ctx Context) getAlgorithms(keyIds []string) []string {
-	algorithms := []string{}
-	for _, keyId := range keyIds {
-		key, _ := ctx.GetPrivateKey(keyId)
-		algorithms = append(algorithms, key.Algorithm)
-	}
-	return algorithms
-}
-
-// From the subset of keys defined by keyIds, try to find a key that matches signatureAlgorithm.
-// If no key is found, return the key associated to defaultKeyId.
-func (ctx Context) getSignatureKey(
-	signatureAlgorithm jose.SignatureAlgorithm,
-	defaultKeyId string,
-	keyIds []string,
-) jose.JSONWebKey {
-	if signatureAlgorithm != "" {
-		for _, keyId := range keyIds {
-			key, _ := ctx.GetPrivateKey(keyId)
-			if key.Algorithm == string(signatureAlgorithm) && key.Use == string(constants.KeySignatureUsage) {
-				return key
-			}
-		}
-	}
-
-	key, _ := ctx.GetPrivateKey(defaultKeyId)
-	return key
 }
 
 func (ctx Context) GetClientSignatureAlgorithms() []jose.SignatureAlgorithm {
@@ -403,6 +270,7 @@ func (ctx Context) GetClient(clientId string) (models.Client, error) {
 		return models.Client{}, err
 	}
 
+	// TODO: Is there a better way?
 	// This will allow the method client.GetPublicJwks to cache the client keys if they fetched from the JWKS URI.
 	if client.PublicJwks == nil {
 		client.PublicJwks = &jose.JSONWebKeySet{}
@@ -501,4 +369,123 @@ func (ctx Context) WriteJwt(token string, status int) error {
 	}
 
 	return nil
+}
+
+//---------------------------------------- Key Management ----------------------------------------//
+
+func (ctx Context) GetSignatureAlgorithms() []jose.SignatureAlgorithm {
+	algorithms := []jose.SignatureAlgorithm{}
+	for _, privateKey := range ctx.PrivateJwks.Keys {
+		if privateKey.Use == string(constants.KeySignatureUsage) {
+			algorithms = append(algorithms, jose.SignatureAlgorithm(privateKey.Algorithm))
+		}
+	}
+	return algorithms
+}
+
+func (ctx Context) GetPublicKeys() jose.JSONWebKeySet {
+	publicKeys := []jose.JSONWebKey{}
+	for _, privateKey := range ctx.PrivateJwks.Keys {
+		publicKeys = append(publicKeys, privateKey.Public())
+	}
+
+	return jose.JSONWebKeySet{Keys: publicKeys}
+}
+
+func (ctx Context) GetPublicKey(keyId string) (jose.JSONWebKey, bool) {
+	key, ok := ctx.GetPrivateKey(keyId)
+	if !ok {
+		return jose.JSONWebKey{}, false
+	}
+
+	return key.Public(), true
+}
+
+func (ctx Context) GetPrivateKey(keyId string) (jose.JSONWebKey, bool) {
+	keys := ctx.PrivateJwks.Key(keyId)
+	if len(keys) == 0 {
+		return jose.JSONWebKey{}, false
+	}
+	return keys[0], true
+}
+
+func (ctx Context) GetTokenSignatureKey(tokenOptions models.TokenOptions) jose.JSONWebKey {
+	keyId := tokenOptions.JwtSignatureKeyId
+	if keyId == "" {
+		return ctx.getPrivateKey(ctx.DefaultTokenSignatureKeyId)
+	}
+
+	keys := ctx.PrivateJwks.Key(keyId)
+	// If the key informed is not present in the JWKS or if its usage is not signing,
+	// return the default key.
+	if len(keys) == 0 || keys[0].Use != string(constants.KeySignatureUsage) {
+		return ctx.getPrivateKey(ctx.DefaultTokenSignatureKeyId)
+	}
+
+	return keys[0]
+}
+
+func (ctx Context) GetUserInfoSignatureKey(client models.Client) jose.JSONWebKey {
+	return ctx.getPrivateKeyBasedOnAlgorithmOrDefault(client.UserInfoSignatureAlgorithm, ctx.DefaultUserInfoSignatureKeyId, ctx.UserInfoSignatureKeyIds)
+}
+
+func (ctx Context) GetIdTokenSignatureKey(client models.Client) jose.JSONWebKey {
+	return ctx.getPrivateKeyBasedOnAlgorithmOrDefault(client.IdTokenSignatureAlgorithm, ctx.DefaultUserInfoSignatureKeyId, ctx.UserInfoSignatureKeyIds)
+}
+
+func (ctx Context) GetJarmSignatureKey(client models.Client) jose.JSONWebKey {
+	return ctx.getPrivateKeyBasedOnAlgorithmOrDefault(client.JarmSignatureAlgorithm, ctx.DefaultJarmSignatureKeyId, ctx.JarmSignatureKeyIds)
+}
+
+func (ctx Context) GetUserInfoSignatureAlgorithms() []jose.SignatureAlgorithm {
+	return ctx.getSignatureAlgorithms(ctx.UserInfoSignatureKeyIds)
+}
+
+func (ctx Context) GetJarmSignatureAlgorithms() []jose.SignatureAlgorithm {
+	return ctx.getSignatureAlgorithms(ctx.JarmSignatureKeyIds)
+}
+
+func (ctx Context) GetJarKeyEncryptionAlgorithms() []jose.KeyAlgorithm {
+	return ctx.getKeyEncryptionAlgorithms(ctx.JarKeyEncryptionIds)
+}
+
+func (ctx Context) getKeyEncryptionAlgorithms(keyIds []string) []jose.KeyAlgorithm {
+	algorithms := []jose.KeyAlgorithm{}
+	for _, keyId := range keyIds {
+		key := ctx.getPrivateKey(keyId)
+		algorithms = append(algorithms, jose.KeyAlgorithm(key.Algorithm))
+	}
+	return algorithms
+}
+
+func (ctx Context) getSignatureAlgorithms(keyIds []string) []jose.SignatureAlgorithm {
+	algorithms := []jose.SignatureAlgorithm{}
+	for _, keyId := range keyIds {
+		key := ctx.getPrivateKey(keyId)
+		algorithms = append(algorithms, jose.SignatureAlgorithm(key.Algorithm))
+	}
+	return algorithms
+}
+
+// From the subset of keys defined by keyIds, try to find a key that matches signatureAlgorithm.
+// If no key is found, return the key associated to defaultKeyId.
+func (ctx Context) getPrivateKeyBasedOnAlgorithmOrDefault(
+	signatureAlgorithm jose.SignatureAlgorithm,
+	defaultKeyId string,
+	keyIds []string,
+) jose.JSONWebKey {
+	if signatureAlgorithm != "" {
+		for _, keyId := range keyIds {
+			return ctx.getPrivateKey(keyId)
+		}
+	}
+
+	return ctx.getPrivateKey(defaultKeyId)
+}
+
+// Get a private JWK based on the key ID.
+// This is intended to be used with key IDs we're sure are present in the server JWKS.
+func (ctx Context) getPrivateKey(keyId string) jose.JSONWebKey {
+	keys := ctx.PrivateJwks.Key(keyId)
+	return keys[0]
 }
