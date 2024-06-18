@@ -4,8 +4,8 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+	"github.com/luikymagno/auth-server/internal/constants"
 	"github.com/luikymagno/auth-server/internal/unit"
-	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
 type AuthnSession struct {

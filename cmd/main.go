@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/luikymagno/auth-server/internal/constants"
 	"github.com/luikymagno/auth-server/internal/crud/inmemory"
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 	"github.com/luikymagno/auth-server/pkg/oidc"
 )
@@ -116,7 +116,7 @@ func runFapi2OpenIdProvider() error {
 	// Create Policy
 	openidProvider.AddPolicy(utils.NewPolicy(
 		"policy",
-		func(ctx utils.Context, client models.Client, session models.AuthnSession) bool { return true },
+		func(ctx utils.Context, client models.Client, session *models.AuthnSession) bool { return true },
 		AuthenticateUserWithNoInteraction,
 	))
 

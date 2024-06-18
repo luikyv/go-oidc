@@ -12,9 +12,9 @@ import (
 	"strings"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/luikymagno/auth-server/internal/constants"
 	"github.com/luikymagno/auth-server/internal/crud"
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
 type GetTokenOptionsFunc func(client models.Client, scopes string) (models.TokenOptions, error)
@@ -262,12 +262,12 @@ func (ctx Context) GetPolicyById(policyId string) AuthnPolicy {
 	return AuthnPolicy{}
 }
 
-func (ctx Context) GetAvailablePolicy(client models.Client, session models.AuthnSession) (
+func (ctx Context) GetAvailablePolicy(client models.Client, session *models.AuthnSession) (
 	policy AuthnPolicy,
 	ok bool,
 ) {
 	for _, policy = range ctx.Policies {
-		if ok = policy.IsAvailableFunc(ctx, client, session); ok {
+		if ok = policy.SetUpFunc(ctx, client, session); ok {
 			return policy, true
 		}
 	}

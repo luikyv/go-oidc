@@ -5,7 +5,7 @@ import (
 	"crypto/rsa"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/auth-server/internal/unit/constants"
+	"github.com/luikymagno/auth-server/internal/constants"
 )
 
 func GetTestPrivateRs256Jwk(keyId string) jose.JSONWebKey {

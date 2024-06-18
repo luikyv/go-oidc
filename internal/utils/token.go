@@ -4,9 +4,9 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
+	"github.com/luikymagno/auth-server/internal/constants"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
-	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
 func MakeIdToken(
@@ -154,7 +154,7 @@ func makeJwtToken(
 	clientCert, ok := ctx.GetClientCertificate()
 	certThumbprint := ""
 	if ctx.TlsBoundTokensIsEnabled && ok {
-		certThumbprint = unit.GenerateSha256Thumbprint(string(clientCert.Raw))
+		certThumbprint = unit.GenerateBase64UrlSha256Hash(string(clientCert.Raw))
 		confirmation["x5t#S256"] = certThumbprint
 	}
 	if len(confirmation) != 0 {
@@ -203,7 +203,7 @@ func makeOpaqueToken(
 	clientCert, ok := ctx.GetClientCertificate()
 	certThumbprint := ""
 	if ctx.TlsBoundTokensIsEnabled && ok {
-		certThumbprint = unit.GenerateSha256Thumbprint(string(clientCert.Raw))
+		certThumbprint = unit.GenerateBase64UrlSha256Hash(string(clientCert.Raw))
 	}
 
 	return models.Token{

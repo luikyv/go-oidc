@@ -1,9 +1,9 @@
 package userinfo
 
 import (
+	"github.com/luikymagno/auth-server/internal/constants"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
-	"github.com/luikymagno/auth-server/internal/unit/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
@@ -70,7 +70,7 @@ func validateTlsProofOfPossesion(
 		return models.NewOAuthError(constants.InvalidToken, "the client certificate is required")
 	}
 
-	if grantSession.ClientCertificateThumbprint != unit.GenerateSha256Thumbprint(string(clientCert.Raw)) {
+	if grantSession.ClientCertificateThumbprint != unit.GenerateBase64UrlSha256Hash(string(clientCert.Raw)) {
 		return models.NewOAuthError(constants.InvalidToken, "invalid client certificate")
 	}
 

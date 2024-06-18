@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/luikymagno/auth-server/internal/constants"
 	"github.com/luikymagno/auth-server/internal/unit"
-	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
 type DpopJwtClaims struct {
@@ -163,6 +163,19 @@ func (insideParams AuthorizationParameters) Merge(outsideParams AuthorizationPar
 	}
 
 	return params
+}
+
+// Get the response mode based on the response type.
+func (params AuthorizationParameters) GetResponseMode() constants.ResponseMode {
+	if params.ResponseMode == "" {
+		return params.ResponseType.GetDefaultResponseMode(false)
+	}
+
+	if params.ResponseMode == constants.JwtResponseMode {
+		return params.ResponseType.GetDefaultResponseMode(true)
+	}
+
+	return params.ResponseMode
 }
 
 type AuthorizationRequest struct {

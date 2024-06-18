@@ -1,29 +1,29 @@
 package utils
 
 import (
+	"github.com/luikymagno/auth-server/internal/constants"
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
 type AuthnFunc func(Context, *models.AuthnSession) constants.AuthnStatus
 
-// TODO: inform the dev that he can used it to set up the session with client info.
-type CheckPolicyAvailabilityFunc func(Context, models.Client, models.AuthnSession) bool
+type SetUpPolicyFunc func(ctx Context, client models.Client, session *models.AuthnSession) (selected bool)
 
 type AuthnPolicy struct {
-	Id              string
-	AuthnFunc       AuthnFunc
-	IsAvailableFunc CheckPolicyAvailabilityFunc
+	Id        string
+	AuthnFunc AuthnFunc
+	SetUpFunc SetUpPolicyFunc
 }
 
+// Create a policy that will be selected based on setUpFunc and that authenticates users with authnFunc.
 func NewPolicy(
 	id string,
-	isAvailableFunc CheckPolicyAvailabilityFunc,
+	setUpFunc SetUpPolicyFunc,
 	authnFunc AuthnFunc,
 ) AuthnPolicy {
 	return AuthnPolicy{
-		Id:              id,
-		AuthnFunc:       authnFunc,
-		IsAvailableFunc: isAvailableFunc,
+		Id:        id,
+		AuthnFunc: authnFunc,
+		SetUpFunc: setUpFunc,
 	}
 }

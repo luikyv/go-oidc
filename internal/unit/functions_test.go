@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/luikymagno/auth-server/internal/constants"
 	"github.com/luikymagno/auth-server/internal/unit"
-	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
 func TestGenerateRandomStringGeneratesRandomStrings(t *testing.T) {
@@ -34,7 +34,7 @@ func TestGenerateRandomStringWithDifferentLengths(t *testing.T) {
 
 				randString := unit.GenerateRandomString(lengthRange.minLength, lengthRange.maxLength)
 				if len(randString) < lengthRange.minLength || len(randString) > lengthRange.maxLength {
-					t.Errorf("Random string %s has length %v", randString, len(randString))
+					t.Errorf("random string %s has length %v", randString, len(randString))
 				}
 
 			},
@@ -42,17 +42,24 @@ func TestGenerateRandomStringWithDifferentLengths(t *testing.T) {
 	}
 }
 
-func TestGenerateCallbackIdRightLength(t *testing.T) {
+func TestGenerateCallbackId(t *testing.T) {
 	callbackId := unit.GenerateCallbackId()
 	if len(callbackId) != constants.CallbackIdLength {
-		t.Errorf("Callback ID: %s has not %v characters", callbackId, constants.CallbackIdLength)
+		t.Errorf("callback ID: %s has not %v characters", callbackId, constants.CallbackIdLength)
 	}
 }
 
-func TestGenerateAuthorizationCodeRightLength(t *testing.T) {
+func TestGenerateAuthorizationCode(t *testing.T) {
 	authzCode := unit.GenerateAuthorizationCode()
 	if len(authzCode) != constants.AuthorizationCodeLength {
-		t.Errorf("Authorization code: %s has not %v characters", authzCode, constants.AuthorizationCodeLength)
+		t.Errorf("authorization code: %s has not %d characters", authzCode, constants.AuthorizationCodeLength)
+	}
+}
+
+func TestGenerateRefresh(t *testing.T) {
+	refreshToken := unit.GenerateRefreshToken()
+	if len(refreshToken) != constants.RefreshTokenLength {
+		t.Errorf("refresh token: %s has not %d characters", refreshToken, constants.RefreshTokenLength)
 	}
 }
 
@@ -96,6 +103,28 @@ func TestGetUrlWithFragmentParams(t *testing.T) {
 
 			if parameterizedUrl != testCase.ExpectedParameterizedUrl {
 				t.Errorf("%s is different from %s", parameterizedUrl, testCase.ExpectedParameterizedUrl)
+			}
+		})
+	}
+
+}
+
+func TestGetUrlWithoutParams(t *testing.T) {
+	testCases := []struct {
+		url         string
+		expectedUrl string
+	}{
+		{"http://example#param1=value1", "http://example"},
+		{"http://example#param=value&param1=value1", "http://example"},
+		{"http://example#param1=value1&param2=value2", "http://example"},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
+			urlWithoutParams, err := unit.GetUrlWithoutParams(testCase.url)
+
+			if err != nil || urlWithoutParams != testCase.expectedUrl {
+				t.Errorf("%s is different from %s", urlWithoutParams, testCase.expectedUrl)
 			}
 		})
 	}

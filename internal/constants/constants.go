@@ -7,11 +7,43 @@ import (
 	"strings"
 )
 
+const DefaultAuthenticationSessionTimeoutSecs = 30 * 60
+
+const CallbackIdLength int = 20
+
+const RequestUriLength int = 20
+
+const AuthorizationCodeLifetimeSecs int = 60
+
+const AuthorizationCodeLength int = 30
+
+// During introspection, a refresh token is identified by its length.
+// Then, setting the length to an unusual value will avoid refresh tokens
+// and opaque access token to be confused.
+const RefreshTokenLength int = 99
+
+const DefaultRefreshTokenLifetimeSecs int = 6000
+
+const DynamicClientIdLength int = 30
+
+const ClientSecretLength int = 50
+
+const RegistrationAccessTokenLength int = 50
+
+const DefaultTokenLifetimeSecs int = 300
+
+const ProtectedParamPrefix string = "p_"
+
+var FapiAllowedCipherSuites []uint16 = []uint16{
+	tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+	tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+	tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+	tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+}
+
 type ContextKey string
 
 const CorrelationIdKey ContextKey = "correlation_id"
-
-const ProtectedParamPrefix string = "p_"
 
 type GrantType string
 
@@ -41,6 +73,22 @@ func (rt ResponseType) Contains(responseType ResponseType) bool {
 
 func (rt ResponseType) IsImplicit() bool {
 	return rt.Contains(IdTokenResponse) || rt.Contains(TokenResponse)
+}
+
+// Get the response mode based on the response type.
+// According to "5. Definitions of Multiple-Valued Response Type Combinations" of https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#Combinations.
+func (rt ResponseType) GetDefaultResponseMode(jarm bool) ResponseMode {
+	if rt.IsImplicit() {
+		if jarm {
+			return FragmentJwtResponseMode
+		}
+		return FragmentResponseMode
+	}
+
+	if jarm {
+		return QueryJwtResponseMode
+	}
+	return QueryResponseMode
 }
 
 type ResponseMode string
@@ -130,8 +178,9 @@ const (
 type SubjectIdentifierType string
 
 const (
-	// The OP provides the same sub (subject) value to all Clients.
+	// The server provides the same sub (subject) value to all Clients.
 	PublicSubjectIdentifier SubjectIdentifierType = "public"
+	// TODO: Implement pairwise.
 )
 
 type ErrorCode string
@@ -180,31 +229,6 @@ const (
 	AddressScope        string = "address"
 	OffilineAccessScope string = "offline_access"
 )
-
-const DefaultAuthenticationSessionTimeoutSecs = 30 * 60
-
-const CallbackIdLength int = 20
-
-const RequestUriLength int = 20
-
-const AuthorizationCodeLifetimeSecs int = 60
-
-const AuthorizationCodeLength int = 30
-
-// During introspection, a refresh token is identified by its length.
-// Then, setting the length to an unusual value will avoid refresh tokens
-// and opaque access token to be confused.
-const RefreshTokenLength int = 99
-
-const DefaultRefreshTokenLifetimeSecs int = 6000
-
-const DynamicClientIdLength int = 30
-
-const ClientSecretLength int = 50
-
-const RegistrationAccessTokenLength int = 50
-
-const DefaultTokenLifetimeSecs int = 300
 
 type Profile string
 
@@ -297,12 +321,7 @@ const (
 type AuthenticationContextReference string
 
 const (
-	NoAssuranceLevelAcr AuthenticationContextReference = "0"
+	NoAssuranceLevelAcr   AuthenticationContextReference = "0"
+	MaceIncommonIapSilver AuthenticationContextReference = "urn:mace:incommon:iap:silver"
+	MaceIncommonIapBronze AuthenticationContextReference = "urn:mace:incommon:iap:bronze"
 )
-
-var FapiAllowedCipherSuites []uint16 = []uint16{
-	tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-	tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-	tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-	tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-}

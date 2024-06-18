@@ -3,7 +3,7 @@ package models
 import (
 	"errors"
 
-	"github.com/luikymagno/auth-server/internal/unit/constants"
+	"github.com/luikymagno/auth-server/internal/constants"
 )
 
 var ErrorEntityNotFound error = errors.New("entity not found")

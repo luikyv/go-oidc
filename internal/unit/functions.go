@@ -25,7 +25,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikymagno/auth-server/internal/unit/constants"
+	"github.com/luikymagno/auth-server/internal/constants"
 )
 
 func GenerateRandomString(minLength int, maxLength int) string {
@@ -45,12 +45,12 @@ func GenerateCallbackId() string {
 	return GenerateRandomString(constants.CallbackIdLength, constants.CallbackIdLength)
 }
 
-func GenerateRequestUri() string {
-	return fmt.Sprintf("urn:ietf:params:oauth:request_uri:%s", GenerateRandomString(constants.RequestUriLength, constants.RequestUriLength))
-}
-
 func GenerateAuthorizationCode() string {
 	return GenerateRandomString(constants.AuthorizationCodeLength, constants.AuthorizationCodeLength)
+}
+
+func GenerateRequestUri() string {
+	return fmt.Sprintf("urn:ietf:params:oauth:request_uri:%s", GenerateRandomString(constants.RequestUriLength, constants.RequestUriLength))
 }
 
 func GenerateRefreshToken() string {
@@ -99,53 +99,15 @@ func GetUrlWithoutParams(u string) (string, error) {
 	return parsedUrl.String(), nil
 }
 
-func CreateSha256Hash(plainValue string) string {
-	h := sha256.New()
-	h.Write([]byte(plainValue))
-	hashedCodeVerifier := h.Sum(nil)
-	return base64.RawURLEncoding.EncodeToString([]byte(hashedCodeVerifier))
-}
-
 func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod constants.CodeChallengeMethod) bool {
 	switch codeChallengeMethod {
 	case constants.PlainCodeChallengeMethod:
 		return codeChallenge == codeVerifier
 	case constants.Sha256CodeChallengeMethod:
-		return codeChallenge == CreateSha256Hash(codeVerifier)
+		return codeChallenge == GenerateBase64UrlSha256Hash(codeVerifier)
 	}
 
 	return false
-}
-
-// If either an empty or the "jwt" response modes are passed, we must find the default value based on the response type.
-func GetResponseModeOrDefault(responseMode constants.ResponseMode, responseType constants.ResponseType) constants.ResponseMode {
-	if responseMode == "" {
-		return getDefaultResponseMode(responseType)
-	}
-
-	if responseMode == constants.JwtResponseMode {
-		responseMode = getDefaultJarmResponseMode(responseType)
-	}
-
-	return responseMode
-}
-
-func getDefaultResponseMode(responseType constants.ResponseType) constants.ResponseMode {
-	// According to "5. Definitions of Multiple-Valued Response Type Combinations" of https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#Combinations.
-	if responseType.IsImplicit() {
-		return constants.FragmentResponseMode
-	}
-
-	return constants.QueryResponseMode
-}
-
-func getDefaultJarmResponseMode(responseType constants.ResponseType) constants.ResponseMode {
-	// According to "5. Definitions of Multiple-Valued Response Type Combinations" of https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#Combinations.
-	if responseType.IsImplicit() {
-		return constants.FragmentJwtResponseMode
-	}
-
-	return constants.QueryJwtResponseMode
 }
 
 func ContainsAll[T comparable](superSet []T, subSet ...T) bool {
@@ -236,8 +198,8 @@ func IsBlank(s string) bool {
 	return strings.ReplaceAll(s, " ", "") == ""
 }
 
-func ScopesContainsOpenId(scope string) bool {
-	return scope != "" && slices.Contains(SplitStringWithSpaces(scope), string(constants.OpenIdScope))
+func ScopesContainsOpenId(scopes string) bool {
+	return slices.Contains(SplitStringWithSpaces(scopes), constants.OpenIdScope)
 }
 
 func GetNonEmptyOrDefault[T any](s1 T, s2 T) T {
@@ -255,7 +217,7 @@ func GenerateJwkThumbprint(dpopJwt string, dpopSigningAlgorithms []jose.Signatur
 	return base64.RawURLEncoding.EncodeToString(jkt)
 }
 
-func GenerateSha256Thumbprint(s string) string {
+func GenerateBase64UrlSha256Hash(s string) string {
 	hash := sha256.New()
 	hash.Write([]byte(s))
 	return base64.RawURLEncoding.EncodeToString(hash.Sum(nil))
@@ -322,17 +284,6 @@ func IsJws(token string) bool {
 func IsJwe(token string) bool {
 	isJws, _ := regexp.MatchString("(^[\\w-]*\\.[\\w-]*\\.[\\w-]*\\.[\\w-]*\\.[\\w-]*$)", token)
 	return isJws
-}
-
-func Remove[T comparable](slice []T, value T) []T {
-	newSlice := []T{}
-	for _, v := range slice {
-		if v != value {
-			newSlice = append(newSlice, v)
-		}
-	}
-
-	return newSlice
 }
 
 func ComparePublicKeys(k1 any, k2 any) bool {

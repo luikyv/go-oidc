@@ -7,9 +7,9 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/luikymagno/auth-server/internal/constants"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
-	"github.com/luikymagno/auth-server/internal/unit/constants"
 )
 
 type ResultChannel struct {
@@ -170,7 +170,7 @@ func ValidateDpopJwt(
 		return models.NewOAuthError(constants.InvalidRequest, "invalid htu claim")
 	}
 
-	if expectedDpopClaims.AccessToken != "" && dpopClaims.AccessTokenHash != unit.CreateSha256Hash(expectedDpopClaims.AccessToken) {
+	if expectedDpopClaims.AccessToken != "" && dpopClaims.AccessTokenHash != unit.GenerateBase64UrlSha256Hash(expectedDpopClaims.AccessToken) {
 		return models.NewOAuthError(constants.InvalidRequest, "invalid ath claim")
 	}
 

@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/luikymagno/auth-server/internal/unit/constants"
+	"github.com/luikymagno/auth-server/internal/constants"
 )
 
 type WrapHandlerFunc func(nextHandler http.Handler) http.Handler
