@@ -169,37 +169,6 @@ func (ctx Context) GetIntrospectionClientSignatureAlgorithms() []jose.SignatureA
 	return signatureAlgorithms
 }
 
-func (ctx Context) GetBearerToken() (token string, ok bool) {
-	token, tokenType, ok := ctx.GetAuthorizationToken()
-	if !ok {
-		return "", false
-	}
-
-	if tokenType != constants.BearerTokenType {
-		return "", false
-	}
-
-	return token, true
-}
-
-func (ctx Context) GetAuthorizationToken() (
-	token string,
-	tokenType constants.TokenType,
-	ok bool,
-) {
-	tokenHeader, ok := ctx.GetHeader("Authorization")
-	if !ok {
-		return "", "", false
-	}
-
-	tokenParts := strings.Split(tokenHeader, " ")
-	if len(tokenParts) != 2 {
-		return "", "", false
-	}
-
-	return tokenParts[1], constants.TokenType(tokenParts[0]), true
-}
-
 // Get the DPoP JWT sent in the DPoP header.
 // According to RFC 9449: "There is not more than one DPoP HTTP request header field."
 // Therefore, an empty string and false will be returned if more than one value is found in the DPoP header.
@@ -255,15 +224,6 @@ func (ctx Context) GetClientCertificate() (*x509.Certificate, bool) {
 	return clientCert, true
 }
 
-func (ctx Context) GetHeader(header string) (string, bool) {
-	value := ctx.Request.Header.Get(header)
-	if value == "" {
-		return "", false
-	}
-
-	return value, true
-}
-
 func (ctx Context) GetClient(clientId string) (models.Client, error) {
 	client, err := ctx.ClientManager.Get(clientId)
 	if err != nil {
@@ -284,48 +244,13 @@ func (ctx Context) ExecuteDcrPlugin(dynamicClient *models.DynamicClientRequest) 
 	}
 }
 
-func (ctx Context) Redirect(redirectUrl string) {
-	http.Redirect(ctx.Response, ctx.Request, redirectUrl, http.StatusSeeOther)
-}
-
-func (ctx Context) RenderHtml(html string, params any) {
-	tmpl, _ := template.New("name").Parse(html)
-	tmpl.Execute(ctx.Response, params)
-}
-
-func (ctx Context) RenderHtmlTemplate(tmpl *template.Template, params any) {
-	tmpl.Execute(ctx.Response, params)
-}
-
-func (ctx Context) GetRequestMethod() string {
-	return ctx.Request.Method
-}
-
-func (ctx Context) GetRequestUrl() string {
-	// TODO: Improve this. Should I trust the Host header?
-	return "https://" + ctx.Request.Host + ctx.Request.URL.RequestURI()
-}
-
-// Get the audiences that will be accepted when validating client assertions.
-func (ctx Context) GetClientAssertionAudiences() []string {
+// Get the host names trusted by the server to validate assertions.
+func (ctx Context) GetAudiences() []string {
 	audiences := []string{ctx.Host, ctx.Host + string(constants.TokenEndpoint), ctx.Host + ctx.Request.URL.RequestURI()}
 	if ctx.MtlsIsEnabled {
 		audiences = append(audiences, ctx.MtlsHost, ctx.MtlsHost+string(constants.TokenEndpoint), ctx.MtlsHost+ctx.Request.URL.RequestURI())
 	}
 	return audiences
-}
-
-func (ctx Context) GetFormData() map[string]any {
-
-	if err := ctx.Request.ParseForm(); err != nil {
-		return map[string]any{}
-	}
-
-	formData := make(map[string]any)
-	for param, values := range ctx.Request.PostForm {
-		formData[param] = values[0]
-	}
-	return formData
 }
 
 func (ctx Context) GetPolicyById(policyId string) AuthnPolicy {
@@ -350,6 +275,65 @@ func (ctx Context) GetAvailablePolicy(client models.Client, session models.Authn
 	return AuthnPolicy{}, false
 }
 
+//---------------------------------------- HTTP Utils ----------------------------------------//
+
+func (ctx Context) GetBearerToken() (token string, ok bool) {
+	token, tokenType, ok := ctx.GetAuthorizationToken()
+	if !ok {
+		return "", false
+	}
+
+	if tokenType != constants.BearerTokenType {
+		return "", false
+	}
+
+	return token, true
+}
+
+func (ctx Context) GetAuthorizationToken() (
+	token string,
+	tokenType constants.TokenType,
+	ok bool,
+) {
+	tokenHeader, ok := ctx.GetHeader("Authorization")
+	if !ok {
+		return "", "", false
+	}
+
+	tokenParts := strings.Split(tokenHeader, " ")
+	if len(tokenParts) != 2 {
+		return "", "", false
+	}
+
+	return tokenParts[1], constants.TokenType(tokenParts[0]), true
+}
+
+func (ctx Context) GetHeader(header string) (string, bool) {
+	value := ctx.Request.Header.Get(header)
+	if value == "" {
+		return "", false
+	}
+
+	return value, true
+}
+
+func (ctx Context) GetRequestMethod() string {
+	return ctx.Request.Method
+}
+
+func (ctx Context) GetFormData() map[string]any {
+
+	if err := ctx.Request.ParseForm(); err != nil {
+		return map[string]any{}
+	}
+
+	formData := make(map[string]any)
+	for param, values := range ctx.Request.PostForm {
+		formData[param] = values[0]
+	}
+	return formData
+}
+
 func (ctx Context) WriteJson(obj any, status int) error {
 	ctx.Response.Header().Set("Content-Type", "application/json")
 	ctx.Response.WriteHeader(status)
@@ -369,6 +353,19 @@ func (ctx Context) WriteJwt(token string, status int) error {
 	}
 
 	return nil
+}
+
+func (ctx Context) Redirect(redirectUrl string) {
+	http.Redirect(ctx.Response, ctx.Request, redirectUrl, http.StatusSeeOther)
+}
+
+func (ctx Context) RenderHtml(html string, params any) {
+	tmpl, _ := template.New("name").Parse(html)
+	tmpl.Execute(ctx.Response, params)
+}
+
+func (ctx Context) RenderHtmlTemplate(tmpl *template.Template, params any) {
+	tmpl.Execute(ctx.Response, params)
 }
 
 //---------------------------------------- Key Management ----------------------------------------//

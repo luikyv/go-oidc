@@ -85,6 +85,7 @@ func NewProvider(
 
 // TODO: Add more validations.
 func (provider *OpenIdProvider) validateConfiguration() error {
+
 	// Validate the signature keys.
 	for _, keyId := range slices.Concat(
 		[]string{provider.config.DefaultUserInfoSignatureKeyId},
@@ -93,10 +94,16 @@ func (provider *OpenIdProvider) validateConfiguration() error {
 	) {
 		jwkSlice := provider.config.PrivateJwks.Key(keyId)
 		if len(jwkSlice) != 1 {
-			return fmt.Errorf("the key ID: %s is not present in the server JWKS", keyId)
+			return fmt.Errorf("the key ID: %s is not present in the server JWKS or is duplicated", keyId)
 		}
-		if jwkSlice[0].Use != string(constants.KeySignatureUsage) {
+
+		key := jwkSlice[0]
+		if key.Use != string(constants.KeySignatureUsage) {
 			return fmt.Errorf("the key ID: %s is not meant for signing", keyId)
+		}
+
+		if strings.HasPrefix(key.Algorithm, "HS") {
+			return errors.New("symetric algorithms are not allowed for signing")
 		}
 	}
 
@@ -106,8 +113,9 @@ func (provider *OpenIdProvider) validateConfiguration() error {
 	) {
 		jwkSlice := provider.config.PrivateJwks.Key(keyId)
 		if len(jwkSlice) != 1 {
-			return fmt.Errorf("the key ID: %s is not present in the server JWKS", keyId)
+			return fmt.Errorf("the key ID: %s is not present in the server JWKS or is duplicated", keyId)
 		}
+
 		if jwkSlice[0].Use != string(constants.KeyEncryptionUsage) {
 			return fmt.Errorf("the key ID: %s is not meant for encryption", keyId)
 		}
@@ -154,6 +162,7 @@ func (provider *OpenIdProvider) validateConfiguration() error {
 		return errors.New("if sender constraining tokens is required, at least one mechanism must be enabled, either DPoP or TLS")
 	}
 
+	// Validations specific to Open ID.
 	if provider.config.Profile == constants.OpenIdProfile {
 		defaultIdTokenSignatureKey := provider.config.PrivateJwks.Key(provider.config.DefaultUserInfoSignatureKeyId)[0]
 		if defaultIdTokenSignatureKey.Algorithm != string(jose.RS256) {
@@ -166,6 +175,7 @@ func (provider *OpenIdProvider) validateConfiguration() error {
 		}
 	}
 
+	// Validations specific to FAPI 2.0.
 	if provider.config.Profile == constants.Fapi2Profile {
 
 		if slices.ContainsFunc(provider.config.ClientAuthnMethods, func(authnMethod constants.ClientAuthnType) bool {
@@ -190,6 +200,11 @@ func (provider *OpenIdProvider) validateConfiguration() error {
 		if !provider.config.IssuerResponseParameterIsEnabled {
 			return errors.New("the issuer response parameter is required for FAPI 2.0")
 		}
+
+		if slices.Contains(provider.config.GrantTypes, constants.RefreshTokenGrant) && provider.config.ShouldRotateRefreshTokens {
+			// FAPI 2.0 says that, when rotation is enabled, the old refresh tokens must still be valid. Here, we just forget the old refresh tokens.
+			return errors.New("refresh token rotation is not implemented according to FAPI 2.0, so it shouldn't be enabled when using this profile")
+		}
 	}
 
 	return nil
@@ -199,18 +214,21 @@ func (provider *OpenIdProvider) SetSupportedUserClaims(claims ...string) {
 	provider.config.UserClaims = claims
 }
 
-func (provider *OpenIdProvider) AddIdTokenSignatureKeyIds(idTokenSignatureKeyIds ...string) {
-	if !unit.ContainsAll(idTokenSignatureKeyIds, provider.config.DefaultUserInfoSignatureKeyId) {
-		idTokenSignatureKeyIds = append(idTokenSignatureKeyIds, provider.config.DefaultUserInfoSignatureKeyId)
+// Make more keys available to sign the user info endpoint response and ID tokens.
+// There should be at most one per algorithm, in other words, there shouldn't be two key IDs that point to two keys that have the same algorithm.
+// This is because clients can choose signing keys per algorithm, e.g. a client can choose the key to sign its ID tokens with the attribute "id_token_signed_response_alg".
+func (provider *OpenIdProvider) AddUserInfoSignatureKeyIds(userInfoSignatureKeyIds ...string) {
+	if !unit.ContainsAll(userInfoSignatureKeyIds, provider.config.DefaultUserInfoSignatureKeyId) {
+		userInfoSignatureKeyIds = append(userInfoSignatureKeyIds, provider.config.DefaultUserInfoSignatureKeyId)
 	}
-	provider.config.UserInfoSignatureKeyIds = idTokenSignatureKeyIds
+	provider.config.UserInfoSignatureKeyIds = userInfoSignatureKeyIds
 }
 
 func (provider *OpenIdProvider) SetIdTokenLifetime(idTokenLifetimeSecs int) {
 	provider.config.IdTokenExpiresInSecs = idTokenLifetimeSecs
 }
 
-// Enable encryption of ID tokens and of the userinfo endpoint response.
+// Enable encryption of ID tokens and of the user info endpoint response.
 func (provider *OpenIdProvider) EnableUserInfoEncryption(
 	keyEncryptionAlgorithms []jose.KeyAlgorithm,
 	contentEncryptionAlgorithms []jose.ContentEncryption,
@@ -220,6 +238,7 @@ func (provider *OpenIdProvider) EnableUserInfoEncryption(
 	provider.config.UserInfoContentEncryptionAlgorithms = contentEncryptionAlgorithms
 }
 
+// Allow clients to be registered dynamically.
 func (provider *OpenIdProvider) EnableDynamicClientRegistration(dcrPlugin utils.DcrPluginFunc, shouldRotateTokens bool) {
 	provider.config.DcrIsEnabled = true
 	provider.config.DcrPlugin = dcrPlugin
@@ -450,18 +469,21 @@ func (provider *OpenIdProvider) AddPolicy(policy utils.AuthnPolicy) {
 	provider.config.Policies = append(provider.config.Policies, policy)
 }
 
-func (provider *OpenIdProvider) Run(address string) error {
+func (provider *OpenIdProvider) Run(address string, middlewares ...apihandlers.WrapHandlerFunc) error {
 	if err := provider.validateConfiguration(); err != nil {
 		return err
 	}
 
 	handler := provider.getServerHandler()
+	for _, wrapHandler := range middlewares {
+		handler = wrapHandler(handler)
+	}
 	handler = apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(handler, provider.config.CorrelationIdHeader)
 	handler = apihandlers.NewAddCacheControlHeadersMiddlewareHandler(handler)
 	return http.ListenAndServe(address, handler)
 }
 
-func (provider *OpenIdProvider) RunTls(config TlsOptions) error {
+func (provider *OpenIdProvider) RunTls(config TlsOptions, middlewares ...apihandlers.WrapHandlerFunc) error {
 
 	if err := provider.validateConfiguration(); err != nil {
 		return err
@@ -472,6 +494,9 @@ func (provider *OpenIdProvider) RunTls(config TlsOptions) error {
 	}
 
 	handler := provider.getServerHandler()
+	for _, wrapHandler := range middlewares {
+		handler = wrapHandler(handler)
+	}
 	handler = apihandlers.NewAddCorrelationIdHeaderMiddlewareHandler(handler, provider.config.CorrelationIdHeader)
 	handler = apihandlers.NewAddCacheControlHeadersMiddlewareHandler(handler)
 	server := &http.Server{

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"slices"
 	"strings"
 	"time"
 
@@ -162,9 +163,10 @@ func ValidateDpopJwt(
 		return models.NewOAuthError(constants.InvalidRequest, "invalid htm claim")
 	}
 
-	httpUri, err := unit.GetUrlWithoutParams(dpopClaims.HttpUri)
 	// The query and fragment components of the "htu" must be ignored.
-	if err != nil || httpUri != ctx.GetRequestUrl() {
+	// Also, htu should be case-insensitive.
+	httpUri, err := unit.GetUrlWithoutParams(strings.ToLower(dpopClaims.HttpUri))
+	if err != nil || !slices.Contains(ctx.GetAudiences(), httpUri) {
 		return models.NewOAuthError(constants.InvalidRequest, "invalid htu claim")
 	}
 

@@ -196,7 +196,7 @@ func areAssertionClaimsValid(
 	err := claims.ValidateWithLeeway(jwt.Expected{
 		Issuer:      client.Id,
 		Subject:     client.Id,
-		AnyAudience: ctx.GetClientAssertionAudiences(),
+		AnyAudience: ctx.GetAudiences(),
 	}, time.Duration(0))
 	if err != nil {
 		return models.NewOAuthError(constants.InvalidClient, "invalid assertion")
