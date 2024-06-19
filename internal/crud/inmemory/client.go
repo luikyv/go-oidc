@@ -5,37 +5,37 @@ import (
 )
 
 type InMemoryClientManager struct {
-	clients map[string]models.Client
+	Clients map[string]models.Client
 }
 
 func NewInMemoryClientManager() *InMemoryClientManager {
 	return &InMemoryClientManager{
-		clients: make(map[string]models.Client),
+		Clients: make(map[string]models.Client),
 	}
 }
 
 func (manager *InMemoryClientManager) Create(client models.Client) error {
-	_, exists := manager.clients[client.Id]
+	_, exists := manager.Clients[client.Id]
 	if exists {
 		return models.ErrorEntityAlreadyExists
 	}
 
-	manager.clients[client.Id] = client
+	manager.Clients[client.Id] = client
 	return nil
 }
 
 func (manager *InMemoryClientManager) Update(id string, client models.Client) error {
-	_, exists := manager.clients[id]
+	_, exists := manager.Clients[id]
 	if !exists {
 		return models.ErrorEntityNotFound
 	}
 
-	manager.clients[id] = client
+	manager.Clients[id] = client
 	return nil
 }
 
 func (manager *InMemoryClientManager) Get(id string) (models.Client, error) {
-	client, exists := manager.clients[id]
+	client, exists := manager.Clients[id]
 	if !exists {
 		return models.Client{}, models.ErrorEntityNotFound
 	}
@@ -44,6 +44,6 @@ func (manager *InMemoryClientManager) Get(id string) (models.Client, error) {
 }
 
 func (manager *InMemoryClientManager) Delete(id string) error {
-	delete(manager.clients, id)
+	delete(manager.Clients, id)
 	return nil
 }

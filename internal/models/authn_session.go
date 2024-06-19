@@ -1,8 +1,6 @@
 package models
 
 import (
-	"strconv"
-
 	"github.com/google/uuid"
 	"github.com/luikymagno/auth-server/internal/constants"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -26,6 +24,7 @@ type AuthnSession struct {
 	AdditionalIdTokenClaims     map[string]any        `json:"additional_id_token_claims"`
 	AdditionalUserInfoClaims    map[string]any        `json:"additional_user_info_claims"`
 	AuthorizationParameters
+	Error OAuthError
 }
 
 func NewSession(authParams AuthorizationParameters, client Client) AuthnSession {
@@ -83,6 +82,10 @@ func (session *AuthnSession) IsAuthorizationCodeExpired() bool {
 	return unit.GetTimestampNow() > session.ExpiresAtTimestamp
 }
 
+func (session *AuthnSession) IsExpired() bool {
+	return unit.GetTimestampNow() > session.ExpiresAtTimestamp
+}
+
 func (session *AuthnSession) Push(parLifetimeSecs int) (requestUri string) {
 	session.RequestUri = unit.GenerateRequestUri()
 	session.ExpiresAtTimestamp = unit.GetTimestampNow() + parLifetimeSecs
@@ -126,23 +129,24 @@ func (session AuthnSession) GetAdditionalUserInfoClaims() map[string]any {
 	return session.AdditionalUserInfoClaims
 }
 
-func (session *AuthnSession) MustAuthenticateUser(authTime int) bool {
+func (session *AuthnSession) MustAuthenticateUser(userAuthenticatedLastTimeAT int) bool {
 	if session.Prompt == constants.LoginPromptType {
 		return true
 	}
 
-	if session.MaxAuthenticationAgeSecs == "" {
+	if session.MaxAuthenticationAgeSecs == nil {
 		return false
 	}
-
-	maxAge, err := strconv.Atoi(session.MaxAuthenticationAgeSecs)
-	if err != nil {
-		return false
-	}
-	return unit.GetTimestampNow() > authTime+maxAge
+	return unit.GetTimestampNow() > *session.MaxAuthenticationAgeSecs+userAuthenticatedLastTimeAT
 }
 
 // Get custom protected parameters sent during PAR or JAR.
 func (session *AuthnSession) GetProtectedParameter(key string) any {
 	return session.ProtectedParameters[key]
+}
+
+// Define the error that will be redirected to the client.
+// This only has effect when a failure status is returned by the authentication policy.
+func (session *AuthnSession) SetRedirectError(errorCode constants.ErrorCode, errorDescription string) {
+	session.Error = session.NewRedirectError(errorCode, errorDescription)
 }

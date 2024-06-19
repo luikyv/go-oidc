@@ -120,6 +120,38 @@ func TestIsRedirectUriAllowed(t *testing.T) {
 	}
 }
 
+func TestIsAuthorizationDetailTypeAllowed(t *testing.T) {
+	// Given.
+	client := models.Client{}
+
+	// Then.
+	isValid := client.IsAuthorizationDetailTypeAllowed("random_type")
+
+	// Assert.
+	if !isValid {
+		t.Error("when the client doesn't specify the detail types, any type should be accepted")
+	}
+
+	// Given.
+	client.AuthorizationDetailTypes = []string{"valid_type"}
+
+	// Then.
+	isValid = client.IsAuthorizationDetailTypeAllowed("valid_type")
+
+	// Assert.
+	if !isValid {
+		t.Error("the client specified the detail types, so an allowed type should be valid")
+	}
+
+	// Then.
+	isValid = client.IsAuthorizationDetailTypeAllowed("random_type")
+
+	// Assert.
+	if isValid {
+		t.Error("the client specified the detail types, so a not allowed type shouldn't be valid")
+	}
+}
+
 func TestIsRegistrationAccessTokenValid(t *testing.T) {
 	registrationAccessToken := "random_token"
 	hashedRegistrationAccessToken, _ := bcrypt.GenerateFromPassword([]byte(registrationAccessToken), bcrypt.DefaultCost)

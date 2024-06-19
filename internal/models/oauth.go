@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"maps"
 	"net/http"
+	"strconv"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/constants"
@@ -115,7 +116,7 @@ type TokenResponse struct {
 	ExpiresIn            int                   `json:"expires_in"`
 	TokenType            constants.TokenType   `json:"token_type"`
 	Scopes               string                `json:"scope,omitempty"`
-	AuthorizationDetails []AuthorizationDetail `json:"authorization_details,omitempty"` // TODO: Implement this.
+	AuthorizationDetails []AuthorizationDetail `json:"authorization_details,omitempty"`
 }
 
 type AuthorizationParameters struct {
@@ -130,7 +131,7 @@ type AuthorizationParameters struct {
 	CodeChallenge            string                        `json:"code_challenge,omitempty"`
 	CodeChallengeMethod      constants.CodeChallengeMethod `json:"code_challenge_method,omitempty"`
 	Prompt                   constants.PromptType          `json:"prompt,omitempty"`
-	MaxAuthenticationAgeSecs string                        `json:"max_age,omitempty"`
+	MaxAuthenticationAgeSecs *int                          `json:"max_age,omitempty"`
 	Display                  constants.DisplayValue        `json:"display,omitempty"`
 	AcrValues                string                        `json:"acr_values,omitempty"`
 	Claims                   *ClaimsObject                 `json:"claims,omitempty"` // Claims is a pointer to help differentiate when it's null or not.
@@ -187,21 +188,25 @@ func NewAuthorizationRequest(req *http.Request) AuthorizationRequest {
 	params := AuthorizationRequest{
 		ClientId: req.URL.Query().Get("client_id"),
 		AuthorizationParameters: AuthorizationParameters{
-			RequestUri:               req.URL.Query().Get("request_uri"),
-			RequestObject:            req.URL.Query().Get("request"),
-			RedirectUri:              req.URL.Query().Get("redirect_uri"),
-			ResponseMode:             constants.ResponseMode(req.URL.Query().Get("response_mode")),
-			ResponseType:             constants.ResponseType(req.URL.Query().Get("response_type")),
-			Scopes:                   req.URL.Query().Get("scope"),
-			State:                    req.URL.Query().Get("state"),
-			Nonce:                    req.URL.Query().Get("nonce"),
-			CodeChallenge:            req.URL.Query().Get("code_challenge"),
-			CodeChallengeMethod:      constants.CodeChallengeMethod(req.URL.Query().Get("code_challenge_method")),
-			Prompt:                   constants.PromptType(req.URL.Query().Get("prompt")),
-			MaxAuthenticationAgeSecs: req.URL.Query().Get("max_age"),
-			Display:                  constants.DisplayValue(req.URL.Query().Get("display")),
-			AcrValues:                req.URL.Query().Get("acr_values"),
+			RequestUri:          req.URL.Query().Get("request_uri"),
+			RequestObject:       req.URL.Query().Get("request"),
+			RedirectUri:         req.URL.Query().Get("redirect_uri"),
+			ResponseMode:        constants.ResponseMode(req.URL.Query().Get("response_mode")),
+			ResponseType:        constants.ResponseType(req.URL.Query().Get("response_type")),
+			Scopes:              req.URL.Query().Get("scope"),
+			State:               req.URL.Query().Get("state"),
+			Nonce:               req.URL.Query().Get("nonce"),
+			CodeChallenge:       req.URL.Query().Get("code_challenge"),
+			CodeChallengeMethod: constants.CodeChallengeMethod(req.URL.Query().Get("code_challenge_method")),
+			Prompt:              constants.PromptType(req.URL.Query().Get("prompt")),
+			Display:             constants.DisplayValue(req.URL.Query().Get("display")),
+			AcrValues:           req.URL.Query().Get("acr_values"),
 		},
+	}
+
+	maxAge, err := strconv.Atoi(req.URL.Query().Get("max_age"))
+	if err == nil {
+		params.MaxAuthenticationAgeSecs = &maxAge
 	}
 
 	claims := req.URL.Query().Get("claims")
@@ -230,20 +235,24 @@ type PushedAuthorizationRequest struct {
 
 func NewPushedAuthorizationRequest(req *http.Request) PushedAuthorizationRequest {
 	params := AuthorizationParameters{
-		RequestUri:               req.PostFormValue("request_uri"),
-		RequestObject:            req.PostFormValue("request"),
-		RedirectUri:              req.PostFormValue("redirect_uri"),
-		ResponseMode:             constants.ResponseMode(req.PostFormValue("response_mode")),
-		ResponseType:             constants.ResponseType(req.PostFormValue("response_type")),
-		Scopes:                   req.PostFormValue("scope"),
-		State:                    req.PostFormValue("state"),
-		Nonce:                    req.PostFormValue("nonce"),
-		CodeChallenge:            req.PostFormValue("code_challenge"),
-		CodeChallengeMethod:      constants.CodeChallengeMethod(req.PostFormValue("code_challenge_method")),
-		Prompt:                   constants.PromptType(req.PostFormValue("prompt")),
-		MaxAuthenticationAgeSecs: req.PostFormValue("max_age"),
-		Display:                  constants.DisplayValue(req.PostFormValue("display")),
-		AcrValues:                req.PostFormValue("acr_values"),
+		RequestUri:          req.PostFormValue("request_uri"),
+		RequestObject:       req.PostFormValue("request"),
+		RedirectUri:         req.PostFormValue("redirect_uri"),
+		ResponseMode:        constants.ResponseMode(req.PostFormValue("response_mode")),
+		ResponseType:        constants.ResponseType(req.PostFormValue("response_type")),
+		Scopes:              req.PostFormValue("scope"),
+		State:               req.PostFormValue("state"),
+		Nonce:               req.PostFormValue("nonce"),
+		CodeChallenge:       req.PostFormValue("code_challenge"),
+		CodeChallengeMethod: constants.CodeChallengeMethod(req.PostFormValue("code_challenge_method")),
+		Prompt:              constants.PromptType(req.PostFormValue("prompt")),
+		Display:             constants.DisplayValue(req.PostFormValue("display")),
+		AcrValues:           req.PostFormValue("acr_values"),
+	}
+
+	maxAge, err := strconv.Atoi(req.PostFormValue("max_age"))
+	if err == nil {
+		params.MaxAuthenticationAgeSecs = &maxAge
 	}
 
 	claims := req.PostFormValue("claims")
@@ -482,20 +491,53 @@ type ClaimObjectInfo struct {
 }
 
 // Authorization details is a map instead of a struct, because its fields vary a lot depending on the use case.
-// Some fields which are well known can be accessed with its receiver functions though.
-// TODO: Implement the other getters.
+// Some fields are well know so they are accessible as methods.
 type AuthorizationDetail map[string]any
 
 func (detail AuthorizationDetail) GetType() string {
-	typeAny, ok := detail["type"]
+	return detail.getString("type")
+}
+
+func (detail AuthorizationDetail) GetIdentifier() string {
+	return detail.getString("identifier")
+}
+
+func (detail AuthorizationDetail) GetLocations() []string {
+	return detail.getStringSlice("locations")
+}
+
+func (detail AuthorizationDetail) GetActions() []string {
+	return detail.getStringSlice("actions")
+}
+
+func (detail AuthorizationDetail) GetDataTypes() []string {
+	return detail.getStringSlice("datatypes")
+}
+
+func (detail AuthorizationDetail) getStringSlice(key string) []string {
+	value, ok := detail[key]
+	if !ok {
+		return nil
+	}
+
+	slice, ok := value.([]string)
+	if !ok {
+		return nil
+	}
+
+	return slice
+}
+
+func (detail AuthorizationDetail) getString(key string) string {
+	value, ok := detail[key]
 	if !ok {
 		return ""
 	}
 
-	typeString, ok := typeAny.(string)
+	s, ok := value.(string)
 	if !ok {
 		return ""
 	}
 
-	return typeString
+	return s
 }

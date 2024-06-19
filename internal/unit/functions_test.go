@@ -9,7 +9,7 @@ import (
 	"github.com/luikymagno/auth-server/internal/unit"
 )
 
-func TestGenerateRandomStringGeneratesRandomStrings(t *testing.T) {
+func TestGenerateRandomString_ShouldGenerateRandomStrings(t *testing.T) {
 	randString1 := unit.GenerateRandomString(10, 10)
 	randString2 := unit.GenerateRandomString(10, 10)
 	if randString1 == randString2 {
@@ -17,7 +17,7 @@ func TestGenerateRandomStringGeneratesRandomStrings(t *testing.T) {
 	}
 }
 
-func TestGenerateRandomStringWithDifferentLengths(t *testing.T) {
+func TestGenerateRandomString_WithDifferentLengths(t *testing.T) {
 	var lengthRanges = []struct {
 		minLength int
 		maxLength int

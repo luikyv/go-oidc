@@ -36,6 +36,10 @@ func ContinueAuth(ctx utils.Context, callbackId string) models.OAuthError {
 		return models.NewOAuthError(constants.InvalidRequest, err.Error())
 	}
 
+	if session.IsExpired() {
+		return models.NewOAuthError(constants.InvalidRequest, "session timeout")
+	}
+
 	if oauthErr := authenticate(ctx, &session); oauthErr != nil {
 		client, err := ctx.GetClient(session.ClientId)
 		if err != nil {
@@ -83,10 +87,14 @@ func finishFlowWithFailure(
 	session *models.AuthnSession,
 ) models.OAuthError {
 	if err := ctx.AuthnSessionManager.Delete(session.Id); err != nil {
-		return models.NewOAuthError(constants.InternalError, err.Error())
+		return session.NewRedirectError(constants.InternalError, err.Error())
 	}
 
-	return session.NewRedirectError(constants.AccessDenied, "access_denied")
+	if session.Error != nil {
+		return session.Error
+	}
+
+	return session.NewRedirectError(constants.AccessDenied, "access denied")
 }
 
 func stopFlowInProgress(

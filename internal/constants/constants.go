@@ -187,16 +187,17 @@ const (
 type ErrorCode string
 
 const (
-	AccessDenied          ErrorCode = "access_denied"
-	InvalidClient         ErrorCode = "invalid_client"
-	InvalidGrant          ErrorCode = "invalid_grant"
-	InvalidRequest        ErrorCode = "invalid_request"
-	UnauthorizedClient    ErrorCode = "unauthorized_client"
-	InvalidScope          ErrorCode = "invalid_scope"
-	UnsupportedGrantType  ErrorCode = "unsupported_grant_type"
-	InvalidResquestObject ErrorCode = "invalid_request_object"
-	InvalidToken          ErrorCode = "invalid_token"
-	InternalError         ErrorCode = "internal_error"
+	AccessDenied                ErrorCode = "access_denied"
+	InvalidClient               ErrorCode = "invalid_client"
+	InvalidGrant                ErrorCode = "invalid_grant"
+	InvalidRequest              ErrorCode = "invalid_request"
+	UnauthorizedClient          ErrorCode = "unauthorized_client"
+	InvalidScope                ErrorCode = "invalid_scope"
+	InvalidAuthorizationDetails ErrorCode = "invalid_authorization_details"
+	UnsupportedGrantType        ErrorCode = "unsupported_grant_type"
+	InvalidResquestObject       ErrorCode = "invalid_request_object"
+	InvalidToken                ErrorCode = "invalid_token"
+	InternalError               ErrorCode = "internal_error"
 )
 
 func (ec ErrorCode) GetStatusCode() int {

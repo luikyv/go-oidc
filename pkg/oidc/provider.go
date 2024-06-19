@@ -3,11 +3,8 @@ package oidc
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
-	"fmt"
 	"net/http"
 	"slices"
-	"strings"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/apihandlers"
@@ -81,141 +78,6 @@ func NewProvider(
 	}
 
 	return provider
-}
-
-// TODO: Add more validations.
-func (provider *OpenIdProvider) validateConfiguration() error {
-
-	// Validate the server jwks.
-	for _, key := range provider.config.PrivateJwks.Keys {
-		if !key.Valid() {
-			return fmt.Errorf("the key with ID: %s is not valid", key.KeyID)
-		}
-	}
-
-	// Validate the signature keys.
-	for _, keyId := range slices.Concat(
-		[]string{provider.config.DefaultUserInfoSignatureKeyId},
-		provider.config.UserInfoSignatureKeyIds,
-		provider.config.JarmSignatureKeyIds,
-	) {
-		jwkSlice := provider.config.PrivateJwks.Key(keyId)
-		if len(jwkSlice) != 1 {
-			return fmt.Errorf("the key ID: %s is not present in the server JWKS or is duplicated", keyId)
-		}
-
-		key := jwkSlice[0]
-		if key.Use != string(constants.KeySignatureUsage) {
-			return fmt.Errorf("the key ID: %s is not meant for signing", keyId)
-		}
-
-		if strings.HasPrefix(key.Algorithm, "HS") {
-			return errors.New("symetric algorithms are not allowed for signing")
-		}
-	}
-
-	// Validate the encryption keys.
-	for _, keyId := range slices.Concat(
-		provider.config.JarKeyEncryptionIds,
-	) {
-		jwkSlice := provider.config.PrivateJwks.Key(keyId)
-		if len(jwkSlice) != 1 {
-			return fmt.Errorf("the key ID: %s is not present in the server JWKS or is duplicated", keyId)
-		}
-
-		key := jwkSlice[0]
-		if key.Use != string(constants.KeyEncryptionUsage) {
-			return fmt.Errorf("the key ID: %s is not meant for encryption", keyId)
-		}
-	}
-
-	for _, signatureAlgorithm := range provider.config.PrivateKeyJwtSignatureAlgorithms {
-		if strings.HasPrefix(string(signatureAlgorithm), "HS") {
-			return errors.New("symetric algorithms are not allowed for private_key_jwt authentication")
-		}
-	}
-
-	for _, signatureAlgorithm := range provider.config.ClientSecretJwtSignatureAlgorithms {
-		if !strings.HasPrefix(string(signatureAlgorithm), "HS") {
-			return errors.New("assymetric algorithms are not allowed for client_secret_jwt authentication")
-		}
-	}
-
-	if provider.config.IntrospectionIsEnabled && (!unit.ContainsAll(provider.config.ClientAuthnMethods, provider.config.IntrospectionClientAuthnMethods...) ||
-		slices.Contains(provider.config.IntrospectionClientAuthnMethods, constants.NoneAuthn)) {
-		return errors.New("invalid client authentication method for token introspection")
-	}
-
-	if provider.config.UserInfoEncryptionIsEnabled && !slices.Contains(provider.config.UserInfoContentEncryptionAlgorithms, jose.A128CBC_HS256) {
-		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm for user information")
-	}
-
-	if provider.config.JarmEncryptionIsEnabled && !provider.config.JarmIsEnabled {
-		return errors.New("JARM must be enabled if JARM encryption is enabled")
-	}
-
-	if provider.config.JarmEncryptionIsEnabled && !slices.Contains(provider.config.JarmContentEncryptionAlgorithms, jose.A128CBC_HS256) {
-		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm for JARM")
-	}
-
-	if provider.config.JarEncryptionIsEnabled && !provider.config.JarIsEnabled {
-		return errors.New("JAR must be enabled if JAR encryption is enabled")
-	}
-
-	if provider.config.JarEncryptionIsEnabled && !slices.Contains(provider.config.JarContentEncryptionAlgorithms, jose.A128CBC_HS256) {
-		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm for JAR")
-	}
-
-	if provider.config.SenderConstrainedTokenIsRequired && !provider.config.DpopIsEnabled && !provider.config.TlsBoundTokensIsEnabled {
-		return errors.New("if sender constraining tokens is required, at least one mechanism must be enabled, either DPoP or TLS")
-	}
-
-	// Validations specific to Open ID.
-	if provider.config.Profile == constants.OpenIdProfile {
-		defaultIdTokenSignatureKey := provider.config.PrivateJwks.Key(provider.config.DefaultUserInfoSignatureKeyId)[0]
-		if defaultIdTokenSignatureKey.Algorithm != string(jose.RS256) {
-			return errors.New("the default signature algorithm for ID tokens must be RS256")
-		}
-
-		defaultJarmSignatureKey := provider.config.PrivateJwks.Key(provider.config.DefaultJarmSignatureKeyId)[0]
-		if defaultJarmSignatureKey.Algorithm != string(jose.RS256) {
-			return errors.New("the default signature algorithm for JARM must be RS256")
-		}
-	}
-
-	// Validations specific to FAPI 2.0.
-	if provider.config.Profile == constants.Fapi2Profile {
-
-		if slices.ContainsFunc(provider.config.ClientAuthnMethods, func(authnMethod constants.ClientAuthnType) bool {
-			// TODO: remove self signed, only for tests.
-			return authnMethod != constants.PrivateKeyJwtAuthn && authnMethod != constants.TlsAuthn && authnMethod != constants.SelfSignedTlsAuthn
-		}) {
-			return errors.New("only private_key_jwt and tls_client_auth are allowed for FAPI 2.0")
-		}
-
-		if slices.Contains(provider.config.GrantTypes, constants.ImplicitGrant) {
-			return errors.New("the implict grant is not allowed for FAPI 2.0")
-		}
-
-		if !provider.config.ParIsEnabled || !provider.config.ParIsRequired {
-			return errors.New("pushed authorization requests is required for FAPI 2.0")
-		}
-
-		if !provider.config.PkceIsEnabled || !provider.config.PkceIsRequired {
-			return errors.New("proof key for code exchange is required for FAPI 2.0")
-		}
-
-		if !provider.config.IssuerResponseParameterIsEnabled {
-			return errors.New("the issuer response parameter is required for FAPI 2.0")
-		}
-
-		if slices.Contains(provider.config.GrantTypes, constants.RefreshTokenGrant) && provider.config.ShouldRotateRefreshTokens {
-			// FAPI 2.0 says that, when rotation is enabled, the old refresh tokens must still be valid. Here, we just forget the old refresh tokens.
-			return errors.New("refresh token rotation is not implemented according to FAPI 2.0, so it shouldn't be enabled when using this profile")
-		}
-	}
-
-	return nil
 }
 
 func (provider *OpenIdProvider) SetSupportedUserClaims(claims ...string) {
@@ -462,6 +324,7 @@ func (provider *OpenIdProvider) SetClaimTypesSupported(types ...constants.ClaimT
 	provider.config.ClaimTypes = types
 }
 
+// Set the session lifetime while the user is authenticating.
 func (provider *OpenIdProvider) SetAuthenticationSessionTimeout(timeoutSecs int) {
 	provider.config.AuthenticationSessionTimeoutSecs = timeoutSecs
 }
@@ -471,6 +334,7 @@ func (provider *OpenIdProvider) SetCorrelationIdHeader(header string) {
 }
 
 func (provider *OpenIdProvider) SetFapi2Profile() {
+	// TODO: Add the possible defaults.
 	provider.config.Profile = constants.Fapi2Profile
 }
 
@@ -693,4 +557,30 @@ func (provider *OpenIdProvider) getMtlsServerHandler() http.Handler {
 	}
 
 	return serverHandler
+}
+
+// TODO: Add more validations.
+func (provider *OpenIdProvider) validateConfiguration() error {
+
+	return runValidations(
+		*provider,
+		validateJwks,
+		validateSignatureKeys,
+		validateEncryptionKeys,
+		validatePrivateKeyJwtSignatureAlgorithms,
+		validateClientSecretJwtSignatureAlgorithms,
+		validateIntrospectionClientAuthnMethods,
+		validateUserInfoEncryption,
+		validateJarEncryption,
+		validateJarmEncryption,
+		validateTokenBinding,
+		validateOpenIdDefaultIdTokenSignatureAlgorithm,
+		validateOpenIdDefaultJarmSignatureAlgorithm,
+		validateFapi2ClientAuthnMethods,
+		validateFapi2ImplicitGrantIsNotAllowed,
+		validateFapi2ParIsRequired,
+		validateFapi2PkceIsRequired,
+		validateFapi2IssuerResponseParamIsRequired,
+		validateFapi2RefreshTokenRotation,
+	)
 }

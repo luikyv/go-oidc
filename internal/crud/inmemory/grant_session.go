@@ -6,22 +6,22 @@ import (
 )
 
 type InMemoryGrantSessionManager struct {
-	GrantSessions map[string]models.GrantSession
+	Sessions map[string]models.GrantSession
 }
 
 func NewInMemoryGrantSessionManager() *InMemoryGrantSessionManager {
 	return &InMemoryGrantSessionManager{
-		GrantSessions: make(map[string]models.GrantSession),
+		Sessions: make(map[string]models.GrantSession),
 	}
 }
 
 func (manager *InMemoryGrantSessionManager) CreateOrUpdate(grantSession models.GrantSession) error {
-	manager.GrantSessions[grantSession.Id] = grantSession
+	manager.Sessions[grantSession.Id] = grantSession
 	return nil
 }
 
 func (manager *InMemoryGrantSessionManager) Get(id string) (models.GrantSession, error) {
-	grantSession, exists := manager.GrantSessions[id]
+	grantSession, exists := manager.Sessions[id]
 	if !exists {
 		return models.GrantSession{}, models.ErrorEntityNotFound
 	}
@@ -30,8 +30,8 @@ func (manager *InMemoryGrantSessionManager) Get(id string) (models.GrantSession,
 }
 
 func (manager *InMemoryGrantSessionManager) getFirstToken(condition func(models.GrantSession) bool) (models.GrantSession, bool) {
-	grantSessions := make([]models.GrantSession, 0, len(manager.GrantSessions))
-	for _, t := range manager.GrantSessions {
+	grantSessions := make([]models.GrantSession, 0, len(manager.Sessions))
+	for _, t := range manager.Sessions {
 		grantSessions = append(grantSessions, t)
 	}
 
@@ -61,6 +61,6 @@ func (manager *InMemoryGrantSessionManager) GetByRefreshToken(refreshToken strin
 }
 
 func (manager *InMemoryGrantSessionManager) Delete(id string) error {
-	delete(manager.GrantSessions, id)
+	delete(manager.Sessions, id)
 	return nil
 }

@@ -162,6 +162,7 @@ func TestGetStatusCodeFromErrorCode(t *testing.T) {
 		{constants.InvalidRequest, http.StatusBadRequest},
 		{constants.UnauthorizedClient, http.StatusUnauthorized},
 		{constants.InvalidScope, http.StatusBadRequest},
+		{constants.InvalidAuthorizationDetails, http.StatusBadRequest},
 		{constants.UnsupportedGrantType, http.StatusBadRequest},
 		{constants.InvalidResquestObject, http.StatusBadRequest},
 		{constants.InvalidToken, http.StatusUnauthorized},
