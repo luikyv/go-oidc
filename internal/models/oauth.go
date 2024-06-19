@@ -50,14 +50,15 @@ func (opts *TokenOptions) AddTokenClaims(claims map[string]any) {
 }
 
 type GrantOptions struct {
-	GrantType                constants.GrantType `json:"grant_type"`
-	Subject                  string              `json:"sub"`
-	ClientId                 string              `json:"client_id"`
-	GrantedScopes            string              `json:"scopes"`
-	CreatedAtTimestamp       int                 `json:"created_at"`
-	AdditionalIdTokenClaims  map[string]any      `json:"additional_id_token_claims"`
-	AdditionalUserInfoClaims map[string]any      `json:"additional_user_info_claims"`
-	TokenOptions                                 //TODO: make it simpler.
+	GrantType                   constants.GrantType   `json:"grant_type"`
+	Subject                     string                `json:"sub"`
+	ClientId                    string                `json:"client_id"`
+	GrantedScopes               string                `json:"scopes"`
+	GrantedAuthorizationDetails []AuthorizationDetail `json:"authorization_details"`
+	CreatedAtTimestamp          int                   `json:"created_at"`
+	AdditionalIdTokenClaims     map[string]any        `json:"additional_id_token_claims"`
+	AdditionalUserInfoClaims    map[string]any        `json:"additional_user_info_claims"`
+	TokenOptions                                      //TODO: make it simpler.
 }
 
 func (grantOpts GrantOptions) GetIdTokenOptions() IdTokenOptions {
@@ -108,30 +109,32 @@ func NewTokenRequest(req *http.Request) TokenRequest {
 }
 
 type TokenResponse struct {
-	AccessToken  string              `json:"access_token"`
-	IdToken      string              `json:"id_token,omitempty"`
-	RefreshToken string              `json:"refresh_token,omitempty"`
-	ExpiresIn    int                 `json:"expires_in"`
-	TokenType    constants.TokenType `json:"token_type"`
-	Scopes       string              `json:"scope,omitempty"`
+	AccessToken          string                `json:"access_token"`
+	IdToken              string                `json:"id_token,omitempty"`
+	RefreshToken         string                `json:"refresh_token,omitempty"`
+	ExpiresIn            int                   `json:"expires_in"`
+	TokenType            constants.TokenType   `json:"token_type"`
+	Scopes               string                `json:"scope,omitempty"`
+	AuthorizationDetails []AuthorizationDetail `json:"authorization_details,omitempty"` // TODO: Implement this.
 }
 
 type AuthorizationParameters struct {
-	RequestUri               string                        `json:"request_uri"`
-	RequestObject            string                        `json:"request"`
-	RedirectUri              string                        `json:"redirect_uri"`
-	ResponseMode             constants.ResponseMode        `json:"response_mode"`
-	ResponseType             constants.ResponseType        `json:"response_type"`
-	Scopes                   string                        `json:"scope"`
-	State                    string                        `json:"state"`
-	Nonce                    string                        `json:"nonce"`
-	CodeChallenge            string                        `json:"code_challenge"`
-	CodeChallengeMethod      constants.CodeChallengeMethod `json:"code_challenge_method"`
-	Prompt                   constants.PromptType          `json:"prompt"`
-	MaxAuthenticationAgeSecs string                        `json:"max_age"`
-	Display                  constants.DisplayValue        `json:"display"`
-	Claims                   *ClaimsObject                 `json:"claims"` // Claims is a pointer to help differentiate when it's null or not.
-	AcrValues                string                        `json:"acr_values"`
+	RequestUri               string                        `json:"request_uri,omitempty"`
+	RequestObject            string                        `json:"request,omitempty"`
+	RedirectUri              string                        `json:"redirect_uri,omitempty"`
+	ResponseMode             constants.ResponseMode        `json:"response_mode,omitempty"`
+	ResponseType             constants.ResponseType        `json:"response_type,omitempty"`
+	Scopes                   string                        `json:"scope,omitempty"`
+	State                    string                        `json:"state,omitempty"`
+	Nonce                    string                        `json:"nonce,omitempty"`
+	CodeChallenge            string                        `json:"code_challenge,omitempty"`
+	CodeChallengeMethod      constants.CodeChallengeMethod `json:"code_challenge_method,omitempty"`
+	Prompt                   constants.PromptType          `json:"prompt,omitempty"`
+	MaxAuthenticationAgeSecs string                        `json:"max_age,omitempty"`
+	Display                  constants.DisplayValue        `json:"display,omitempty"`
+	AcrValues                string                        `json:"acr_values,omitempty"`
+	Claims                   *ClaimsObject                 `json:"claims,omitempty"` // Claims is a pointer to help differentiate when it's null or not.
+	AuthorizationDetails     []AuthorizationDetail         `json:"authorization_details,omitempty"`
 }
 
 func (params AuthorizationParameters) NewRedirectError(
@@ -155,11 +158,8 @@ func (insideParams AuthorizationParameters) Merge(outsideParams AuthorizationPar
 		MaxAuthenticationAgeSecs: unit.GetNonEmptyOrDefault(insideParams.MaxAuthenticationAgeSecs, outsideParams.MaxAuthenticationAgeSecs),
 		Display:                  unit.GetNonEmptyOrDefault(insideParams.Display, outsideParams.Display),
 		AcrValues:                unit.GetNonEmptyOrDefault(insideParams.AcrValues, outsideParams.AcrValues),
-	}
-
-	params.Claims = insideParams.Claims
-	if outsideParams.Claims != nil {
-		params.Claims = outsideParams.Claims
+		Claims:                   unit.GetNonNilOrDefault(insideParams.Claims, outsideParams.Claims),
+		AuthorizationDetails:     unit.GetNonNilOrDefault(insideParams.AuthorizationDetails, outsideParams.AuthorizationDetails),
 	}
 
 	return params
@@ -207,8 +207,17 @@ func NewAuthorizationRequest(req *http.Request) AuthorizationRequest {
 	claims := req.URL.Query().Get("claims")
 	if claims != "" {
 		var claimsObject ClaimsObject
-		json.Unmarshal([]byte(claims), &claimsObject)
-		params.Claims = &claimsObject
+		if err := json.Unmarshal([]byte(claims), &claimsObject); err == nil {
+			params.Claims = &claimsObject
+		}
+	}
+
+	authorizationDetails := req.URL.Query().Get("authorization_details")
+	if authorizationDetails != "" {
+		var authorizationDetailsObject []AuthorizationDetail
+		if err := json.Unmarshal([]byte(authorizationDetails), &authorizationDetailsObject); err == nil {
+			params.AuthorizationDetails = authorizationDetailsObject
+		}
 	}
 
 	return params
@@ -240,8 +249,17 @@ func NewPushedAuthorizationRequest(req *http.Request) PushedAuthorizationRequest
 	claims := req.PostFormValue("claims")
 	if claims != "" {
 		var claimsObject ClaimsObject
-		json.Unmarshal([]byte(claims), &claimsObject)
-		params.Claims = &claimsObject
+		if err := json.Unmarshal([]byte(claims), &claimsObject); err == nil {
+			params.Claims = &claimsObject
+		}
+	}
+
+	authorizationDetails := req.PostFormValue("authorization_details")
+	if authorizationDetails != "" {
+		var authorizationDetailsObject []AuthorizationDetail
+		if err := json.Unmarshal([]byte(authorizationDetails), &authorizationDetailsObject); err == nil {
+			params.AuthorizationDetails = authorizationDetailsObject
+		}
 	}
 
 	return PushedAuthorizationRequest{
@@ -314,6 +332,8 @@ type OpenIdConfiguration struct {
 	TokenEndpointClientSigningAlgorithms           []jose.SignatureAlgorithm                  `json:"token_endpoint_auth_signing_alg_values_supported"`
 	IssuerResponseParameterIsEnabled               bool                                       `json:"authorization_response_iss_parameter_supported"`
 	ClaimsParameterIsEnabled                       bool                                       `json:"claims_parameter_supported"`
+	AuthorizationDetailsIsSupported                bool                                       `json:"authorization_details_supported"`
+	AuthorizationDetailTypesSupported              []string                                   `json:"authorization_data_types_supported,omitempty"`
 	DpopSignatureAlgorithms                        []jose.SignatureAlgorithm                  `json:"dpop_signing_alg_values_supported,omitempty"`
 	IntrospectionEndpoint                          string                                     `json:"introspection_endpoint,omitempty"`
 	IntrospectionEndpointClientAuthnMethods        []constants.ClientAuthnType                `json:"introspection_endpoint_auth_methods_supported,omitempty"`
@@ -403,6 +423,7 @@ func NewTokenIntrospectionRequest(req *http.Request) TokenIntrospectionRequest {
 type TokenIntrospectionInfo struct {
 	IsActive                    bool
 	Scopes                      string
+	AuthorizationDetails        []AuthorizationDetail
 	ClientId                    string
 	Subject                     string
 	ExpiresAtTimestamp          int
@@ -411,6 +432,7 @@ type TokenIntrospectionInfo struct {
 	AdditionalTokenClaims       map[string]any
 }
 
+// TODO: Implement the unmarshal func instead.
 func (info TokenIntrospectionInfo) GetParameters() map[string]any {
 	if !info.IsActive {
 		return map[string]any{
@@ -424,6 +446,10 @@ func (info TokenIntrospectionInfo) GetParameters() map[string]any {
 		constants.ScopeClaim:    info.Scopes,
 		constants.ClientIdClaim: info.ClientId,
 		constants.ExpiryClaim:   info.ExpiresAtTimestamp,
+	}
+
+	if info.AuthorizationDetails != nil {
+		params[constants.AuthorizationDetailsClaim] = info.AuthorizationDetails
 	}
 
 	confirmation := make(map[string]string)
@@ -453,4 +479,23 @@ type ClaimObjectInfo struct {
 	IsEssential bool     `json:"essential"`
 	Value       string   `json:"value"`
 	Values      []string `json:"values"`
+}
+
+// Authorization details is a map instead of a struct, because its fields vary a lot depending on the use case.
+// Some fields which are well known can be accessed with its receiver functions though.
+// TODO: Implement the other getters.
+type AuthorizationDetail map[string]any
+
+func (detail AuthorizationDetail) GetType() string {
+	typeAny, ok := detail["type"]
+	if !ok {
+		return ""
+	}
+
+	typeString, ok := typeAny.(string)
+	if !ok {
+		return ""
+	}
+
+	return typeString
 }

@@ -44,6 +44,7 @@ type ClientMetaInfo struct {
 	// The DNS name.
 	TlsSubjectAlternativeName   string            `json:"tls_client_auth_san_dns,omitempty"`
 	TlsSubjectAlternativeNameIp string            `json:"tls_client_auth_san_ip,omitempty"`
+	AuthorizationDetailTypes    []string          `json:"authorization_data_types,omitempty"`
 	Attributes                  map[string]string `json:"custom_attributes"`
 }
 
@@ -139,6 +140,15 @@ func (client Client) IsRedirectUriAllowed(redirectUri string) bool {
 		}
 	}
 	return false
+}
+
+func (client Client) IsAuthorizationDetailTypeAllowed(authDetailType string) bool {
+	// If the client didn't announce the authorization types it will use, consider any value valid.
+	if client.AuthorizationDetailTypes == nil {
+		return true
+	}
+
+	return slices.Contains(client.AuthorizationDetailTypes, authDetailType)
 }
 
 func (client Client) IsRegistrationAccessTokenValid(registrationAccessToken string) bool {

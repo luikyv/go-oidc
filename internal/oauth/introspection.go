@@ -86,6 +86,7 @@ func getRefreshTokenIntrospectionInfo(
 	return models.TokenIntrospectionInfo{
 		IsActive:                    true,
 		Scopes:                      grantSession.GrantedScopes,
+		AuthorizationDetails:        grantSession.GrantedAuthorizationDetails,
 		ClientId:                    grantSession.ClientId,
 		Subject:                     grantSession.Subject,
 		ExpiresAtTimestamp:          grantSession.ExpiresAtTimestamp,
@@ -132,6 +133,7 @@ func getOpaqueTokenIntrospectionInfo(
 	return models.TokenIntrospectionInfo{
 		IsActive:                    true,
 		Scopes:                      grantSession.ActiveScopes,
+		AuthorizationDetails:        grantSession.GrantedAuthorizationDetails,
 		ClientId:                    grantSession.ClientId,
 		Subject:                     grantSession.Subject,
 		ExpiresAtTimestamp:          grantSession.LastTokenIssuedAtTimestamp + grantSession.TokenExpiresInSecs,

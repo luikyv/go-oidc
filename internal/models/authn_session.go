@@ -9,21 +9,22 @@ import (
 )
 
 type AuthnSession struct {
-	Id                        string         `json:"id"`
-	CallbackId                string         `json:"callback_id"`
-	PolicyId                  string         `json:"policy_d"`
-	ExpiresAtTimestamp        int            `json:"expires_at"`
-	CreatedAtTimestamp        int            `json:"created_at"`
-	Subject                   string         `json:"sub"`
-	ClientId                  string         `json:"client_id"`
-	GrantedScopes             string         `json:"granted_scopes"`
-	AuthorizationCode         string         `json:"authorization_code"`
-	AuthorizationCodeIssuedAt int            `json:"authorization_code_issued_at"`
-	ProtectedParameters       map[string]any `json:"protected_params"` // Custom parameters sent by PAR or JAR.
-	Store                     map[string]any `json:"store"`            // Allow the developer to store information in memory and, hence, between steps.
-	AdditionalTokenClaims     map[string]any `json:"additional_token_claims"`
-	AdditionalIdTokenClaims   map[string]any `json:"additional_id_token_claims"`
-	AdditionalUserInfoClaims  map[string]any `json:"additional_user_info_claims"`
+	Id                          string                `json:"id"`
+	CallbackId                  string                `json:"callback_id"`
+	PolicyId                    string                `json:"policy_d"`
+	ExpiresAtTimestamp          int                   `json:"expires_at"`
+	CreatedAtTimestamp          int                   `json:"created_at"`
+	Subject                     string                `json:"sub"`
+	ClientId                    string                `json:"client_id"`
+	GrantedScopes               string                `json:"granted_scopes"`
+	GrantedAuthorizationDetails []AuthorizationDetail `json:"granted_authorization_details"`
+	AuthorizationCode           string                `json:"authorization_code"`
+	AuthorizationCodeIssuedAt   int                   `json:"authorization_code_issued_at"`
+	ProtectedParameters         map[string]any        `json:"protected_params"` // Custom parameters sent by PAR or JAR.
+	Store                       map[string]any        `json:"store"`            // Allow the developer to store information in memory and, hence, between steps.
+	AdditionalTokenClaims       map[string]any        `json:"additional_token_claims"`
+	AdditionalIdTokenClaims     map[string]any        `json:"additional_id_token_claims"`
+	AdditionalUserInfoClaims    map[string]any        `json:"additional_user_info_claims"`
 	AuthorizationParameters
 }
 
@@ -106,8 +107,15 @@ func (session *AuthnSession) InitAuthorizationCode() string {
 	return session.AuthorizationCode
 }
 
+// Set the scopes the client will have access to use.
 func (session *AuthnSession) GrantScopes(scopes string) {
 	session.GrantedScopes = scopes
+}
+
+// Set the authorization details the client will have permissions to use.
+// This will only have effect if support for authorization details was enabled.
+func (session *AuthnSession) GrantAuthorizationDetails(authDetails []AuthorizationDetail) {
+	session.GrantedAuthorizationDetails = authDetails
 }
 
 func (session AuthnSession) GetAdditionalIdTokenClaims() map[string]any {
@@ -134,7 +142,7 @@ func (session *AuthnSession) MustAuthenticateUser(authTime int) bool {
 	return unit.GetTimestampNow() > authTime+maxAge
 }
 
-// Get custome protected parameters sent during PAR or JAR.
+// Get custom protected parameters sent during PAR or JAR.
 func (session *AuthnSession) GetProtectedParameter(key string) any {
 	return session.ProtectedParameters[key]
 }

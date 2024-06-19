@@ -139,8 +139,12 @@ func makeJwtToken(
 		constants.IssuedAtClaim: timestampNow,
 		constants.ExpiryClaim:   timestampNow + grantOptions.TokenExpiresInSecs,
 	}
-	tokenType := constants.BearerTokenType
 
+	if grantOptions.GrantedAuthorizationDetails != nil {
+		claims[constants.AuthorizationDetailsClaim] = grantOptions.GrantedAuthorizationDetails
+	}
+
+	tokenType := constants.BearerTokenType
 	confirmation := make(map[string]string)
 	// DPoP token binding.
 	dpopJwt, ok := ctx.GetDpopJwt()

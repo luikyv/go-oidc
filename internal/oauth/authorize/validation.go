@@ -131,6 +131,7 @@ func validateAuthorizationParams(
 		validatePkce,
 		ValidateCodeChallengeMethod,
 		ValidateDisplayValue,
+		ValidateAuthorizationDetails,
 		ValidateAcrValues,
 		validateCannotRequestIdTokenResponseTypeIfOpenIdScopeIsNotRequested,
 		validateNonceIsRequiredWhenResponseTypeContainsIdToken,
@@ -318,6 +319,25 @@ func ValidateDisplayValue(
 	if params.Display != "" && !slices.Contains(ctx.DisplayValues, params.Display) {
 		return params.NewRedirectError(constants.InvalidRequest, "invalid display value")
 	}
+	return nil
+}
+
+func ValidateAuthorizationDetails(
+	ctx utils.Context,
+	params models.AuthorizationParameters,
+	client models.Client,
+) models.OAuthError {
+	if !ctx.AuthorizationDetailsParameterIsEnabled || params.AuthorizationDetails == nil {
+		return nil
+	}
+
+	for _, authDetail := range params.AuthorizationDetails {
+		authDetailType := authDetail.GetType()
+		if !slices.Contains(ctx.AuthorizationDetailTypes, authDetailType) || !client.IsAuthorizationDetailTypeAllowed(authDetailType) {
+			return params.NewRedirectError(constants.InvalidRequest, "invalid authorization detail type")
+		}
+	}
+
 	return nil
 }
 

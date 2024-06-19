@@ -182,6 +182,14 @@ func GetNonEmptyOrDefault[T any](s1 T, s2 T) T {
 	return s1
 }
 
+func GetNonNilOrDefault[T any](s1 T, s2 T) T {
+	if reflect.ValueOf(s1).IsNil() {
+		return s2
+	}
+
+	return s1
+}
+
 // Generate a JWK thumbprint for a valid DPoP JWT.
 func GenerateJwkThumbprint(dpopJwt string, dpopSigningAlgorithms []jose.SignatureAlgorithm) string {
 	parsedDpopJwt, _ := jwt.ParseSigned(dpopJwt, dpopSigningAlgorithms)

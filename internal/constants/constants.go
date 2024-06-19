@@ -155,6 +155,7 @@ const (
 	EmailClaim                          string = "email"
 	EmailVerifiedClaim                  string = "email_verified"
 	AddressClaim                        string = "address"
+	AuthorizationDetailsClaim           string = "authorization_details"
 	AccessTokenHashClaim                string = "at_hash"
 	AuthorizationCodeHashClaim          string = "c_hash"
 	StateHashClaim                      string = "s_hash"

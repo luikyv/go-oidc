@@ -61,6 +61,7 @@ func validatePushedAuthorizationParams(
 		validateResponseType,
 		authorize.ValidateCodeChallengeMethod,
 		authorize.ValidateDisplayValue,
+		authorize.ValidateAuthorizationDetails,
 		authorize.ValidateAcrValues,
 	)
 }

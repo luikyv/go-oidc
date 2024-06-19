@@ -405,6 +405,11 @@ func (provider *OpenIdProvider) EnableClaimsParameter() {
 	provider.config.ClaimsParameterIsEnabled = true
 }
 
+func (provider *OpenIdProvider) EnableAuthorizationDetailsParameter(types ...string) {
+	provider.config.AuthorizationDetailsParameterIsEnabled = true
+	provider.config.AuthorizationDetailTypes = types
+}
+
 func (provider *OpenIdProvider) EnableDemonstrationProofOfPossesion(
 	dpopLifetimeSecs int,
 	dpopSigningAlgorithms ...jose.SignatureAlgorithm,

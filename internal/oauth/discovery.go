@@ -28,6 +28,8 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 		TokenEndpointClientSigningAlgorithms: ctx.GetClientSignatureAlgorithms(),
 		IssuerResponseParameterIsEnabled:     ctx.IssuerResponseParameterIsEnabled,
 		ClaimsParameterIsEnabled:             ctx.ClaimsParameterIsEnabled,
+		AuthorizationDetailsIsSupported:      ctx.AuthorizationDetailsParameterIsEnabled,
+		AuthorizationDetailTypesSupported:    ctx.AuthorizationDetailTypes,
 		AuthenticationContextReferences:      ctx.AuthenticationContextReferences,
 		DisplayValuesSupported:               ctx.DisplayValues,
 	}

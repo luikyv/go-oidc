@@ -73,21 +73,23 @@ type Configuration struct {
 	IssuerResponseParameterIsEnabled bool
 	// It informs the clients whether the server accepts the "claims" parameter.
 	// This will be transmitted in the /.well-known/openid-configuration endpoint.
-	ClaimsParameterIsEnabled        bool
-	JarmIsEnabled                   bool
-	DefaultJarmSignatureKeyId       string
-	JarmSignatureKeyIds             []string
-	JarmLifetimeSecs                int
-	JarmEncryptionIsEnabled         bool
-	JarmKeyEncrytionAlgorithms      []jose.KeyAlgorithm
-	JarmContentEncryptionAlgorithms []jose.ContentEncryption
-	JarIsEnabled                    bool
-	JarIsRequired                   bool
-	JarSignatureAlgorithms          []jose.SignatureAlgorithm
-	JarLifetimeSecs                 int
-	JarEncryptionIsEnabled          bool
-	JarKeyEncryptionIds             []string
-	JarContentEncryptionAlgorithms  []jose.ContentEncryption
+	ClaimsParameterIsEnabled               bool
+	AuthorizationDetailsParameterIsEnabled bool
+	AuthorizationDetailTypes               []string
+	JarmIsEnabled                          bool
+	DefaultJarmSignatureKeyId              string
+	JarmSignatureKeyIds                    []string
+	JarmLifetimeSecs                       int
+	JarmEncryptionIsEnabled                bool
+	JarmKeyEncrytionAlgorithms             []jose.KeyAlgorithm
+	JarmContentEncryptionAlgorithms        []jose.ContentEncryption
+	JarIsEnabled                           bool
+	JarIsRequired                          bool
+	JarSignatureAlgorithms                 []jose.SignatureAlgorithm
+	JarLifetimeSecs                        int
+	JarEncryptionIsEnabled                 bool
+	JarKeyEncryptionIds                    []string
+	JarContentEncryptionAlgorithms         []jose.ContentEncryption
 	// It allows client to push authorization requests.
 	ParIsEnabled bool
 	// If true, authorization requests can only be made if they were pushed.

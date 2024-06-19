@@ -2,6 +2,7 @@ package token
 
 import (
 	"log/slog"
+	"reflect"
 
 	"github.com/luikymagno/auth-server/internal/constants"
 	"github.com/luikymagno/auth-server/internal/models"
@@ -46,6 +47,11 @@ func handleAuthorizationCodeGrantTokenCreation(
 
 	if session.Scopes != grantOptions.GrantedScopes {
 		tokenResp.Scopes = grantOptions.GrantedScopes
+	}
+
+	// TODO: Could this be a problem?
+	if !reflect.DeepEqual(session.AuthorizationDetails, grantOptions.GrantedAuthorizationDetails) {
+		tokenResp.AuthorizationDetails = grantOptions.GrantedAuthorizationDetails
 	}
 
 	if unit.ScopesContainsOpenId(session.Scopes) {
@@ -238,7 +244,8 @@ func newAuthorizationCodeGrantOptions(
 		return models.GrantOptions{}, err
 	}
 	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
-	return models.GrantOptions{
+
+	grantOptions := models.GrantOptions{
 		GrantType:                constants.AuthorizationCodeGrant,
 		GrantedScopes:            session.GrantedScopes,
 		Subject:                  session.Subject,
@@ -246,5 +253,10 @@ func newAuthorizationCodeGrantOptions(
 		TokenOptions:             tokenOptions,
 		AdditionalIdTokenClaims:  session.GetAdditionalIdTokenClaims(),
 		AdditionalUserInfoClaims: session.GetAdditionalUserInfoClaims(),
-	}, nil
+	}
+	if ctx.AuthorizationDetailsParameterIsEnabled {
+		grantOptions.GrantedAuthorizationDetails = session.GrantedAuthorizationDetails
+	}
+
+	return grantOptions, nil
 }

@@ -42,6 +42,7 @@ func validateDynamicClientRequest(
 		validatePkceIsRequiredForPublicClients,
 		validatePublicJwks,
 		validatePublicJwksUri,
+		validateAuthorizationDetailTypes,
 	)
 }
 
@@ -440,6 +441,21 @@ func validatePublicJwksUri(
 	ctx utils.Context,
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
-	// TODO: validate the client jwks uri
+	// TODO: validate the client jwks uri.
+	return nil
+}
+
+func validateAuthorizationDetailTypes(
+	ctx utils.Context,
+	dynamicClient models.DynamicClientRequest,
+) models.OAuthError {
+	if !ctx.AuthorizationDetailsParameterIsEnabled || dynamicClient.AuthorizationDetailTypes == nil {
+		return nil
+	}
+
+	if unit.ContainsAll(ctx.AuthorizationDetailTypes, dynamicClient.AuthorizationDetailTypes...) {
+		return models.NewOAuthError(constants.InvalidRequest, "authorization detail type not supported")
+	}
+
 	return nil
 }
