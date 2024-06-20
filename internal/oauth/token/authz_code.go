@@ -36,9 +36,14 @@ func handleAuthorizationCodeGrantTokenCreation(
 
 	grantOptions, err := newAuthorizationCodeGrantOptions(ctx, req, client, session)
 	if err != nil {
-		return models.TokenResponse{}, models.NewOAuthError(constants.AccessDenied, err.Error())
+		return models.TokenResponse{}, err
 	}
-	token := utils.MakeToken(ctx, client, grantOptions)
+
+	token, err := utils.MakeToken(ctx, client, grantOptions)
+	if err != nil {
+		return models.TokenResponse{}, err
+	}
+
 	tokenResp := models.TokenResponse{
 		AccessToken: token.Value,
 		ExpiresIn:   grantOptions.TokenExpiresInSecs,
@@ -50,6 +55,8 @@ func handleAuthorizationCodeGrantTokenCreation(
 	}
 
 	// TODO: Could this be a problem?
+	// If the granted auth details is different from the requested one, we must inform it to the client
+	// by sending the granted auth details back in the token response.
 	if !reflect.DeepEqual(session.AuthorizationDetails, grantOptions.GrantedAuthorizationDetails) {
 		tokenResp.AuthorizationDetails = grantOptions.GrantedAuthorizationDetails
 	}
@@ -236,12 +243,12 @@ func newAuthorizationCodeGrantOptions(
 	session models.AuthnSession,
 ) (
 	models.GrantOptions,
-	error,
+	models.OAuthError,
 ) {
 
 	tokenOptions, err := ctx.GetTokenOptions(client, req.Scopes)
 	if err != nil {
-		return models.GrantOptions{}, err
+		return models.GrantOptions{}, models.NewOAuthError(constants.AccessDenied, err.Error())
 	}
 	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
 

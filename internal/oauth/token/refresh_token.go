@@ -30,7 +30,11 @@ func handleRefreshTokenGrantTokenCreation(
 		return models.TokenResponse{}, err
 	}
 
-	token := utils.MakeToken(ctx, client, grantSession.GrantOptions)
+	token, err := utils.MakeToken(ctx, client, grantSession.GrantOptions)
+	if err != nil {
+		return models.TokenResponse{}, err
+	}
+
 	updateRefreshTokenGrantSession(ctx, &grantSession, req, token)
 
 	tokenResp := models.TokenResponse{

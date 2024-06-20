@@ -25,9 +25,14 @@ func handleClientCredentialsGrantTokenCreation(
 
 	grantOptions, err := newClientCredentialsGrantOptions(ctx, client, req)
 	if err != nil {
-		return models.TokenResponse{}, models.NewOAuthError(constants.AccessDenied, err.Error())
+		return models.TokenResponse{}, err
 	}
-	token := utils.MakeToken(ctx, client, grantOptions)
+
+	token, err := utils.MakeToken(ctx, client, grantOptions)
+	if err != nil {
+		return models.TokenResponse{}, err
+	}
+
 	tokenResp := models.TokenResponse{
 		AccessToken: token.Value,
 		ExpiresIn:   grantOptions.TokenExpiresInSecs,
@@ -46,6 +51,7 @@ func handleClientCredentialsGrantTokenCreation(
 	if oauthErr != nil {
 		return models.TokenResponse{}, nil
 	}
+
 	return tokenResp, nil
 }
 
@@ -104,11 +110,11 @@ func newClientCredentialsGrantOptions(
 	req models.TokenRequest,
 ) (
 	models.GrantOptions,
-	error,
+	models.OAuthError,
 ) {
 	tokenOptions, err := ctx.GetTokenOptions(client, req.Scopes)
 	if err != nil {
-		return models.GrantOptions{}, err
+		return models.GrantOptions{}, models.NewOAuthError(constants.AccessDenied, err.Error())
 	}
 
 	scopes := req.Scopes

@@ -114,7 +114,7 @@ func HandleIntrospectionRequest(ctx utils.Context) {
 		return
 	}
 
-	if err := ctx.WriteJson(tokenInfo.GetParameters(), http.StatusOK); err != nil {
+	if err := ctx.WriteJson(tokenInfo, http.StatusOK); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
 }

@@ -441,12 +441,11 @@ type TokenIntrospectionInfo struct {
 	AdditionalTokenClaims       map[string]any
 }
 
-// TODO: Implement the unmarshal func instead.
-func (info TokenIntrospectionInfo) GetParameters() map[string]any {
+func (info TokenIntrospectionInfo) MarshalJSON() ([]byte, error) {
 	if !info.IsActive {
-		return map[string]any{
+		return json.Marshal(map[string]any{
 			"active": false,
-		}
+		})
 	}
 
 	params := map[string]any{
@@ -476,7 +475,7 @@ func (info TokenIntrospectionInfo) GetParameters() map[string]any {
 		params[k] = v
 	}
 
-	return params
+	return json.Marshal(params)
 }
 
 type ClaimsObject struct {

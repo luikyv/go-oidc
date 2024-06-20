@@ -39,7 +39,10 @@ func MakeToken(
 	ctx Context,
 	client models.Client,
 	grantOptions models.GrantOptions,
-) models.Token {
+) (
+	models.Token,
+	models.OAuthError,
+) {
 	if grantOptions.TokenFormat == constants.JwtTokenFormat {
 		return makeJwtToken(ctx, client, grantOptions)
 	} else {
@@ -126,7 +129,10 @@ func makeJwtToken(
 	ctx Context,
 	client models.Client,
 	grantOptions models.GrantOptions,
-) models.Token {
+) (
+	models.Token,
+	models.OAuthError,
+) {
 	privateJwk := ctx.GetTokenSignatureKey(grantOptions.TokenOptions)
 	jwtId := uuid.NewString()
 	timestampNow := unit.GetTimestampNow()
@@ -169,14 +175,21 @@ func makeJwtToken(
 		claims[k] = v
 	}
 
-	signer, _ := jose.NewSigner(
+	signer, err := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJwk.Algorithm), Key: privateJwk.Key},
 		// RFC9068. "...This specification registers the "application/at+jwt" media type,
 		// which can be used to indicate that the content is a JWT access token."
 		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", privateJwk.KeyID),
 	)
+	if err != nil {
+		return models.Token{}, models.NewOAuthError(constants.InternalError, err.Error())
+	}
 
-	accessToken, _ := jwt.Signed(signer).Claims(claims).Serialize()
+	accessToken, err := jwt.Signed(signer).Claims(claims).Serialize()
+	if err != nil {
+		return models.Token{}, models.NewOAuthError(constants.InternalError, err.Error())
+	}
+
 	return models.Token{
 		Id:                    jwtId,
 		Format:                constants.JwtTokenFormat,
@@ -184,14 +197,17 @@ func makeJwtToken(
 		Type:                  tokenType,
 		JwkThumbprint:         jkt,
 		CertificateThumbprint: certThumbprint,
-	}
+	}, nil
 }
 
 func makeOpaqueToken(
 	ctx Context,
 	_ models.Client,
 	grantOptions models.GrantOptions,
-) models.Token {
+) (
+	models.Token,
+	models.OAuthError,
+) {
 	accessToken := unit.GenerateRandomString(grantOptions.OpaqueTokenLength, grantOptions.OpaqueTokenLength)
 	tokenType := constants.BearerTokenType
 
@@ -217,5 +233,5 @@ func makeOpaqueToken(
 		Type:                  tokenType,
 		JwkThumbprint:         jkt,
 		CertificateThumbprint: certThumbprint,
-	}
+	}, nil
 }
