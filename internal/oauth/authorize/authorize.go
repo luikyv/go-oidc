@@ -1,9 +1,10 @@
 package authorize
 
 import (
+	"log/slog"
+
 	"github.com/luikymagno/auth-server/internal/constants"
 	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/unit"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
@@ -116,7 +117,7 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) mod
 	}
 
 	if err := authorizeAuthnSession(ctx, session); err != nil {
-		return err
+		return session.NewRedirectError(constants.InternalError, err.Error())
 	}
 
 	redirectParams := models.RedirectParameters{
@@ -126,18 +127,18 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) mod
 	if session.ResponseType.Contains(constants.TokenResponse) {
 		grantOptions, err := newImplicitGrantOptions(ctx, client, *session)
 		if err != nil {
-			return err
+			return session.NewRedirectError(constants.InternalError, err.Error())
 		}
 
 		token, err := utils.MakeToken(ctx, client, grantOptions)
 		if err != nil {
-			return err
+			return session.NewRedirectError(constants.InternalError, err.Error())
 		}
 
 		redirectParams.AccessToken = token.Value
 		redirectParams.TokenType = token.Type
 		if err := generateImplicitGrantSession(ctx, token, grantOptions); err != nil {
-			return err
+			return session.NewRedirectError(constants.InternalError, err.Error())
 		}
 	}
 
@@ -180,24 +181,21 @@ func authorizeAuthnSession(
 	return nil
 }
 
-func shouldGenerateImplicitGrantSession(_ utils.Context, grantOptions models.GrantOptions) bool {
-	return grantOptions.TokenFormat == constants.OpaqueTokenFormat ||
-		unit.ScopesContainsOpenId(grantOptions.GrantedScopes)
-}
-
 func generateImplicitGrantSession(
 	ctx utils.Context,
 	token models.Token,
 	grantOptions models.GrantOptions,
 ) models.OAuthError {
-	if !shouldGenerateImplicitGrantSession(ctx, grantOptions) {
-		return nil
-	}
 
 	grantSession := models.NewGrantSession(grantOptions, token)
-	if err := ctx.GrantSessionManager.CreateOrUpdate(grantSession); err != nil {
-		return models.NewOAuthError(constants.InternalError, err.Error())
-	}
+	// WARNING: This will cause problems if something goes wrong.
+	go func() {
+		ctx.Logger.Debug("creating grant session for implicit grant")
+		if err := ctx.GrantSessionManager.CreateOrUpdate(grantSession); err != nil {
+			ctx.Logger.Error("error creating a grant session during implicit grant",
+				slog.String("error", err.Error()))
+		}
+	}()
 
 	return nil
 }

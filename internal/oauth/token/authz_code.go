@@ -10,7 +10,6 @@ import (
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-// TODO: Simplify this.
 func handleAuthorizationCodeGrantTokenCreation(
 	ctx utils.Context,
 	req models.TokenRequest,
@@ -44,53 +43,39 @@ func handleAuthorizationCodeGrantTokenCreation(
 		return models.TokenResponse{}, err
 	}
 
+	grantSession, err := generateAuthorizationCodeGrantSession(ctx, client, token, grantOptions)
+	if err != nil {
+		return models.TokenResponse{}, nil
+	}
+
 	tokenResp := models.TokenResponse{
-		AccessToken: token.Value,
-		ExpiresIn:   grantOptions.TokenExpiresInSecs,
-		TokenType:   token.Type,
-	}
-
-	if session.Scopes != grantOptions.GrantedScopes {
-		tokenResp.Scopes = grantOptions.GrantedScopes
-	}
-
-	// TODO: Could this be a problem?
-	// If the granted auth details is different from the requested one, we must inform it to the client
-	// by sending the granted auth details back in the token response.
-	if !reflect.DeepEqual(session.AuthorizationDetails, grantOptions.GrantedAuthorizationDetails) {
-		tokenResp.AuthorizationDetails = grantOptions.GrantedAuthorizationDetails
+		AccessToken:  token.Value,
+		ExpiresIn:    grantOptions.TokenExpiresInSecs,
+		TokenType:    token.Type,
+		RefreshToken: grantSession.RefreshToken,
 	}
 
 	if unit.ScopesContainsOpenId(session.Scopes) {
 		tokenResp.IdToken, err = utils.MakeIdToken(ctx, client, grantOptions.GetIdTokenOptions())
 		if err != nil {
-			return models.TokenResponse{}, oauthErr
+			ctx.Logger.Error("could not generate an ID token", slog.String("error", err.Error()))
 		}
 	}
 
-	if !shouldGenerateAuthorizationCodeGrantSession(ctx, grantOptions) {
-		return tokenResp, nil
+	if session.Scopes != grantOptions.GrantedScopes {
+		ctx.Logger.Debug("granted scopes are different from the requested by the client")
+		tokenResp.Scopes = grantOptions.GrantedScopes
 	}
 
-	grantSession, err := generateAuthorizationCodeGrantSession(ctx, client, token, grantOptions)
-	if err != nil {
-		return models.TokenResponse{}, nil
+	// WARNING: The deep equal operation can be time consuming.
+	// If the granted auth details is different from the requested one, we must inform it to the client
+	// by sending the granted auth details back in the token response.
+	if !reflect.DeepEqual(session.AuthorizationDetails, grantOptions.GrantedAuthorizationDetails) {
+		ctx.Logger.Debug("granted auth details is different from the requested by the client")
+		tokenResp.AuthorizationDetails = grantOptions.GrantedAuthorizationDetails
 	}
-	tokenResp.RefreshToken = grantSession.RefreshToken
+
 	return tokenResp, nil
-}
-
-func shouldGenerateAuthorizationCodeGrantSession(
-	_ utils.Context,
-	grantOptions models.GrantOptions,
-) bool {
-	// A grant session should be generated when:
-	// 1. The token is opaque, so we must keep its information.
-	// 2. The openid scope was requested, so we must keep the user information for the userinfo endpoint.
-	// 3. A refresh token will be issued, so we must keep the information about the token to refresh it.
-	return grantOptions.TokenFormat == constants.OpaqueTokenFormat ||
-		unit.ScopesContainsOpenId(grantOptions.GrantedScopes) ||
-		grantOptions.ShouldRefresh
 }
 
 func generateAuthorizationCodeGrantSession(
@@ -98,16 +83,25 @@ func generateAuthorizationCodeGrantSession(
 	client models.Client,
 	token models.Token,
 	grantOptions models.GrantOptions,
-) (models.GrantSession, models.OAuthError) {
+) (
+	models.GrantSession,
+	models.OAuthError,
+) {
 	grantSession := models.NewGrantSession(grantOptions, token)
 	if client.IsGrantTypeAllowed(constants.RefreshTokenGrant) && grantOptions.ShouldRefresh {
+		ctx.Logger.Debug("generating refresh token for authorization code grant")
 		grantSession.RefreshToken = unit.GenerateRefreshToken()
 		grantSession.ExpiresAtTimestamp = unit.GetTimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
 
-	if err := ctx.GrantSessionManager.CreateOrUpdate(grantSession); err != nil {
-		return models.GrantSession{}, models.NewOAuthError(constants.InternalError, err.Error())
-	}
+	// WARNING: This will cause problems if something goes wrong.
+	go func() {
+		ctx.Logger.Debug("creating grant session for authorization_code grant")
+		if err := ctx.GrantSessionManager.CreateOrUpdate(grantSession); err != nil {
+			ctx.Logger.Error("error creating grant session during authorization_code grant",
+				slog.String("error", err.Error()))
+		}
+	}()
 
 	return grantSession, nil
 }

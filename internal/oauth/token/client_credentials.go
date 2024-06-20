@@ -1,6 +1,8 @@
 package token
 
 import (
+	"log/slog"
+
 	"github.com/luikymagno/auth-server/internal/constants"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/unit"
@@ -33,6 +35,11 @@ func handleClientCredentialsGrantTokenCreation(
 		return models.TokenResponse{}, err
 	}
 
+	_, oauthErr = generateClientCredentialsGrantSession(ctx, client, token, grantOptions)
+	if oauthErr != nil {
+		return models.TokenResponse{}, nil
+	}
+
 	tokenResp := models.TokenResponse{
 		AccessToken: token.Value,
 		ExpiresIn:   grantOptions.TokenExpiresInSecs,
@@ -43,20 +50,7 @@ func handleClientCredentialsGrantTokenCreation(
 		tokenResp.Scopes = grantOptions.GrantedScopes
 	}
 
-	if !shouldGenerateClientCredentialsGrantSession(ctx, grantOptions) {
-		return tokenResp, nil
-	}
-
-	_, oauthErr = generateClientCredentialsGrantSession(ctx, client, token, grantOptions)
-	if oauthErr != nil {
-		return models.TokenResponse{}, nil
-	}
-
 	return tokenResp, nil
-}
-
-func shouldGenerateClientCredentialsGrantSession(_ utils.Context, grantOptions models.GrantOptions) bool {
-	return grantOptions.TokenFormat == constants.OpaqueTokenFormat
 }
 
 func generateClientCredentialsGrantSession(
@@ -65,10 +59,16 @@ func generateClientCredentialsGrantSession(
 	token models.Token,
 	grantOptions models.GrantOptions,
 ) (models.GrantSession, models.OAuthError) {
+
 	grantSession := models.NewGrantSession(grantOptions, token)
-	if err := ctx.GrantSessionManager.CreateOrUpdate(grantSession); err != nil {
-		return models.GrantSession{}, models.NewOAuthError(constants.InternalError, err.Error())
-	}
+	// WARNING: This will cause problems if something goes wrong.
+	go func() {
+		ctx.Logger.Debug("creating grant session for client_credentials grant")
+		if err := ctx.GrantSessionManager.CreateOrUpdate(grantSession); err != nil {
+			ctx.Logger.Error("error creating a grant session during client_credentials grant",
+				slog.String("error", err.Error()))
+		}
+	}()
 
 	return grantSession, nil
 }

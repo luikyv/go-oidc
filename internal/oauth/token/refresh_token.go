@@ -45,9 +45,9 @@ func handleRefreshTokenGrantTokenCreation(
 	}
 
 	if unit.ScopesContainsOpenId(grantSession.ActiveScopes) {
-		tokenResp.IdToken, err = utils.MakeIdToken(ctx, client, grantSession.GrantOptions.GetIdTokenOptions())
+		tokenResp.IdToken, err = utils.MakeIdToken(ctx, client, grantSession.GetIdTokenOptions())
 		if err != nil {
-			return models.TokenResponse{}, err
+			ctx.Logger.Error("could not generate an ID token", slog.String("error", err.Error()))
 		}
 	}
 
@@ -71,9 +71,14 @@ func updateRefreshTokenGrantSession(
 		grantSession.ActiveScopes = req.Scopes
 	}
 
-	if err := ctx.GrantSessionManager.CreateOrUpdate(*grantSession); err != nil {
-		return models.NewOAuthError(constants.InternalError, err.Error())
-	}
+	// WARNING: This will cause problems if something goes wrong.
+	go func() {
+		ctx.Logger.Debug("updating grant session for refresh_token grant")
+		if err := ctx.GrantSessionManager.CreateOrUpdate(*grantSession); err != nil {
+			ctx.Logger.Error("error updating grant session during refresh_token grant",
+				slog.String("error", err.Error()), slog.String("session_id", grantSession.Id))
+		}
+	}()
 
 	return nil
 }
