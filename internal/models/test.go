@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/luikymagno/auth-server/internal/constants"
+	"github.com/luikymagno/goidc/internal/constants"
 )
 
 const (

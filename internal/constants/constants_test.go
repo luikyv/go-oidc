@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/luikymagno/auth-server/internal/constants"
+	"github.com/luikymagno/goidc/internal/constants"
 )
 
 func TestResponseTypeContains(t *testing.T) {

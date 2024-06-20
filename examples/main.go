@@ -6,11 +6,11 @@ import (
 	"strings"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/auth-server/internal/constants"
-	"github.com/luikymagno/auth-server/internal/crud/inmemory"
-	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/utils"
-	"github.com/luikymagno/auth-server/pkg/oidc"
+	"github.com/luikymagno/goidc/internal/constants"
+	"github.com/luikymagno/goidc/internal/crud/inmemory"
+	"github.com/luikymagno/goidc/internal/models"
+	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/oidc"
 )
 
 func runFapi2OpenIdProvider() error {

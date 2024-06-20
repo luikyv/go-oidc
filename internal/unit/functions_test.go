@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/auth-server/internal/constants"
-	"github.com/luikymagno/auth-server/internal/unit"
+	"github.com/luikymagno/goidc/internal/constants"
+	"github.com/luikymagno/goidc/internal/unit"
 )
 
 func TestGenerateRandomString_ShouldGenerateRandomStrings(t *testing.T) {

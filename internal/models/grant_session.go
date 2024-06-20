@@ -2,7 +2,7 @@ package models
 
 import (
 	"github.com/google/uuid"
-	"github.com/luikymagno/auth-server/internal/unit"
+	"github.com/luikymagno/goidc/internal/unit"
 )
 
 type GrantSession struct {

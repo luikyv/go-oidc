@@ -5,14 +5,14 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/luikymagno/auth-server/internal/constants"
-	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/oauth"
-	"github.com/luikymagno/auth-server/internal/oauth/authorize"
-	"github.com/luikymagno/auth-server/internal/oauth/par"
-	"github.com/luikymagno/auth-server/internal/oauth/token"
-	"github.com/luikymagno/auth-server/internal/oauth/userinfo"
-	"github.com/luikymagno/auth-server/internal/utils"
+	"github.com/luikymagno/goidc/internal/constants"
+	"github.com/luikymagno/goidc/internal/models"
+	"github.com/luikymagno/goidc/internal/oauth"
+	"github.com/luikymagno/goidc/internal/oauth/authorize"
+	"github.com/luikymagno/goidc/internal/oauth/par"
+	"github.com/luikymagno/goidc/internal/oauth/token"
+	"github.com/luikymagno/goidc/internal/oauth/userinfo"
+	"github.com/luikymagno/goidc/internal/utils"
 )
 
 //---------------------------------------- Well Known ----------------------------------------//

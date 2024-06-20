@@ -3,8 +3,8 @@ package inmemory_test
 import (
 	"testing"
 
-	"github.com/luikymagno/auth-server/internal/crud/inmemory"
-	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/goidc/internal/crud/inmemory"
+	"github.com/luikymagno/goidc/internal/models"
 )
 
 func TestCreateClient_HappyPath(t *testing.T) {

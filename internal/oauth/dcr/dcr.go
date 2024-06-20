@@ -1,9 +1,9 @@
 package dcr
 
 import (
-	"github.com/luikymagno/auth-server/internal/constants"
-	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/utils"
+	"github.com/luikymagno/goidc/internal/constants"
+	"github.com/luikymagno/goidc/internal/models"
+	"github.com/luikymagno/goidc/internal/utils"
 )
 
 func CreateClient(

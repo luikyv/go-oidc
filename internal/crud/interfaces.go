@@ -1,6 +1,6 @@
 package crud
 
-import "github.com/luikymagno/auth-server/internal/models"
+import "github.com/luikymagno/goidc/internal/models"
 
 type ClientManager interface {
 	Create(client models.Client) error

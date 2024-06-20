@@ -1,7 +1,7 @@
 package inmemory
 
 import (
-	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/goidc/internal/models"
 )
 
 type InMemoryClientManager struct {

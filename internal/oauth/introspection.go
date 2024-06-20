@@ -3,10 +3,10 @@ package oauth
 import (
 	"log/slog"
 
-	"github.com/luikymagno/auth-server/internal/constants"
-	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/unit"
-	"github.com/luikymagno/auth-server/internal/utils"
+	"github.com/luikymagno/goidc/internal/constants"
+	"github.com/luikymagno/goidc/internal/models"
+	"github.com/luikymagno/goidc/internal/unit"
+	"github.com/luikymagno/goidc/internal/utils"
 )
 
 func IntrospectToken(
@@ -100,6 +100,7 @@ func getJwtTokenIntrospectionInfo(
 	ctx utils.Context,
 	token string,
 ) models.TokenIntrospectionInfo {
+	// TODO: Get the grant session instead.
 	claims, err := utils.GetValidTokenClaims(ctx, token)
 	if err != nil {
 		return models.TokenIntrospectionInfo{

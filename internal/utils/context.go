@@ -12,9 +12,9 @@ import (
 	"strings"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/auth-server/internal/constants"
-	"github.com/luikymagno/auth-server/internal/crud"
-	"github.com/luikymagno/auth-server/internal/models"
+	"github.com/luikymagno/goidc/internal/constants"
+	"github.com/luikymagno/goidc/internal/crud"
+	"github.com/luikymagno/goidc/internal/models"
 )
 
 type GetTokenOptionsFunc func(client models.Client, scopes string) (models.TokenOptions, error)

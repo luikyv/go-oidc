@@ -25,7 +25,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikymagno/auth-server/internal/constants"
+	"github.com/luikymagno/goidc/internal/constants"
 )
 
 func GenerateRandomString(minLength int, maxLength int) string {

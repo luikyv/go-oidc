@@ -3,8 +3,8 @@ package utils_test
 import (
 	"testing"
 
-	"github.com/luikymagno/auth-server/internal/models"
-	"github.com/luikymagno/auth-server/internal/utils"
+	"github.com/luikymagno/goidc/internal/models"
+	"github.com/luikymagno/goidc/internal/utils"
 )
 
 func TestGetPolicy_HappyPath(t *testing.T) {
