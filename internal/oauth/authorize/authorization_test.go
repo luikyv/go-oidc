@@ -4,23 +4,22 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/luikymagno/auth-server/internal/constants"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/oauth/authorize"
 	"github.com/luikymagno/auth-server/internal/unit"
-	"github.com/luikymagno/auth-server/internal/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func TestInitAuthShouldNotFindClient(t *testing.T) {
+func TestInitAuth_ShouldNotFindClient(t *testing.T) {
 
 	// When
-	ctx, tearDown := utils.SetUpTest()
-	defer tearDown()
+	ctx := utils.GetTestInMemoryContext()
 
 	// Then
 	err := authorize.InitAuth(ctx, models.AuthorizationRequest{ClientId: "invalid_client_id"})
@@ -32,14 +31,15 @@ func TestInitAuthShouldNotFindClient(t *testing.T) {
 	}
 }
 
-func TestInitAuthWhenInvalidRedirectUri(t *testing.T) {
+func TestInitAuth_InvalidRedirectUri(t *testing.T) {
 	// When
-	ctx, tearDown := utils.SetUpTest()
-	defer tearDown()
+	client := models.GetTestClient()
+	ctx := utils.GetTestInMemoryContext()
+	ctx.ClientManager.Create(client)
 
 	// Then
 	err := authorize.InitAuth(ctx, models.AuthorizationRequest{
-		ClientId: models.TestClientId,
+		ClientId: client.Id,
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri: "https://invalid.com",
 		},
@@ -58,11 +58,11 @@ func TestInitAuthWhenInvalidRedirectUri(t *testing.T) {
 	}
 }
 
-func TestInitAuthWhenInvalidScope(t *testing.T) {
+func TestInitAuth_InvalidScope(t *testing.T) {
 	// When
-	ctx, tearDown := utils.SetUpTest()
-	defer tearDown()
-	client, _ := ctx.GetClient(models.TestClientId)
+	client := models.GetTestClient()
+	ctx := utils.GetTestInMemoryContext()
+	ctx.ClientManager.Create(client)
 
 	// Then
 	authorize.InitAuth(ctx, models.AuthorizationRequest{
@@ -75,20 +75,19 @@ func TestInitAuthWhenInvalidScope(t *testing.T) {
 	})
 
 	// Assert
-	redirectUrl := ctx.RequestContext.Writer.Header().Get("Location")
+	redirectUrl := ctx.Response.Header().Get("Location")
 	if !strings.Contains(redirectUrl, fmt.Sprintf("error=%s", string(constants.InvalidScope))) {
 		t.Error("the scope should not be valid")
 		return
 	}
 }
 
-func TestInitAuthWhenInvalidResponseType(t *testing.T) {
+func TestInitAuth_InvalidResponseType(t *testing.T) {
 	// When
-	ctx, tearDown := utils.SetUpTest()
-	defer tearDown()
-	client, _ := ctx.GetClient(models.TestClientId)
+	client := models.GetTestClient()
+	ctx := utils.GetTestInMemoryContext()
 	client.ResponseTypes = []constants.ResponseType{constants.CodeResponse}
-	ctx.ClientManager.Update(models.TestClientId, client)
+	ctx.ClientManager.Create(client)
 
 	// Then
 	authorize.InitAuth(ctx, models.AuthorizationRequest{
@@ -101,18 +100,18 @@ func TestInitAuthWhenInvalidResponseType(t *testing.T) {
 	})
 
 	// Assert
-	redirectUrl := ctx.RequestContext.Writer.Header().Get("Location")
+	redirectUrl := ctx.Response.Header().Get("Location")
 	if !strings.Contains(redirectUrl, fmt.Sprintf("error=%s", string(constants.InvalidRequest))) {
 		t.Error("the response type should not be allowed")
 		return
 	}
 }
 
-func TestInitAuthWhenNoPolicyIsAvailable(t *testing.T) {
+func TestInitAuth_WhenNoPolicyIsAvailable(t *testing.T) {
 	// When
-	ctx, tearDown := utils.SetUpTest()
-	defer tearDown()
-	client, _ := ctx.GetClient(models.TestClientId)
+	client := models.GetTestClient()
+	ctx := utils.GetTestInMemoryContext()
+	ctx.ClientManager.Create(client)
 
 	// Then
 	authorize.InitAuth(ctx, models.AuthorizationRequest{
@@ -125,7 +124,7 @@ func TestInitAuthWhenNoPolicyIsAvailable(t *testing.T) {
 	})
 
 	// Assert
-	redirectUrl := ctx.RequestContext.Writer.Header().Get("Location")
+	redirectUrl := ctx.Response.Header().Get("Location")
 	if !strings.Contains(redirectUrl, fmt.Sprintf("error=%s", string(constants.InvalidRequest))) {
 		t.Error("no policy should be available")
 		return
@@ -133,16 +132,16 @@ func TestInitAuthWhenNoPolicyIsAvailable(t *testing.T) {
 
 }
 
-func TestInitAuthShouldEndWithError(t *testing.T) {
+func TestInitAuth_ShouldEndWithError(t *testing.T) {
 	// When
-	ctx, tearDown := utils.SetUpTest()
-	defer tearDown()
-	client, _ := ctx.GetClient(models.TestClientId)
+	client := models.GetTestClient()
+	ctx := utils.GetTestInMemoryContext()
+	ctx.ClientManager.Create(client)
 	policy := utils.NewPolicy(
 		"policy_id",
-		func(c models.AuthnSession, ctx *gin.Context) bool { return true },
-		func(ctx utils.Context, as *models.AuthnSession) (constants.AuthnStatus, error) {
-			return constants.Failure, errors.New("error")
+		func(ctx utils.Context, c models.Client, s *models.AuthnSession) bool { return true },
+		func(ctx utils.Context, as *models.AuthnSession) constants.AuthnStatus {
+			return constants.Failure
 		},
 	)
 	ctx.Policies = append(ctx.Policies, policy)
@@ -163,29 +162,29 @@ func TestInitAuthShouldEndWithError(t *testing.T) {
 		t.Error("the error should be redirected")
 	}
 
-	redirectUrl := ctx.RequestContext.Writer.Header().Get("Location")
+	redirectUrl := ctx.Response.Header().Get("Location")
 	if !strings.Contains(redirectUrl, fmt.Sprintf("error=%s", string(constants.AccessDenied))) {
 		t.Error("no error found")
 		return
 	}
 
-	sessions := utils.GetSessionsFromTestContext(ctx)
+	sessions := utils.GetAuthnSessionsFromTestContext(ctx)
 	if len(sessions) != 0 {
 		t.Error("no authentication session should remain")
 		return
 	}
 }
 
-func TestInitAuthShouldEndInProgress(t *testing.T) {
+func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 	// When
-	ctx, tearDown := utils.SetUpTest()
-	defer tearDown()
-	client, _ := ctx.GetClient(models.TestClientId)
+	client := models.GetTestClient()
+	ctx := utils.GetTestInMemoryContext()
+	ctx.ClientManager.Create(client)
 	policy := utils.NewPolicy(
 		"policy_id",
-		func(c models.AuthnSession, ctx *gin.Context) bool { return true },
-		func(ctx utils.Context, as *models.AuthnSession) (constants.AuthnStatus, error) {
-			return constants.InProgress, nil
+		func(ctx utils.Context, c models.Client, s *models.AuthnSession) bool { return true },
+		func(ctx utils.Context, as *models.AuthnSession) constants.AuthnStatus {
+			return constants.InProgress
 		},
 	)
 	ctx.Policies = append(ctx.Policies, policy)
@@ -207,13 +206,13 @@ func TestInitAuthShouldEndInProgress(t *testing.T) {
 		return
 	}
 
-	responseStatus := ctx.RequestContext.Writer.Status()
+	responseStatus := ctx.Response.(*httptest.ResponseRecorder).Result().StatusCode
 	if responseStatus != http.StatusOK {
-		t.Errorf("invalid status code for in progress status: %v. redirectUrl: %s", responseStatus, ctx.RequestContext.Writer.Header().Get("Location"))
+		t.Errorf("invalid status code for in progress status: %v. redirectUrl: %s", responseStatus, ctx.Response.Header().Get("Location"))
 		return
 	}
 
-	sessions := utils.GetSessionsFromTestContext(ctx)
+	sessions := utils.GetAuthnSessionsFromTestContext(ctx)
 	if len(sessions) != 1 {
 		t.Error("the should be only one authentication session")
 		return
@@ -228,30 +227,26 @@ func TestInitAuthShouldEndInProgress(t *testing.T) {
 		t.Error("the authorization code cannot be generated if the flow is still in progress")
 		return
 	}
-	if session.AuthnSequenceIndex != 0 {
-		t.Errorf("the step IDs: %v are not as expected", session.AuthnSequenceIndex)
-		return
-	}
 
 }
 
-func TestInitAuthPolicyEndsWithSuccess(t *testing.T) {
+func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 	// When
-	ctx, tearDown := utils.SetUpTest()
-	defer tearDown()
-	client, _ := ctx.GetClient(models.TestClientId)
+	client := models.GetTestClient()
+	ctx := utils.GetTestInMemoryContext()
+	ctx.ClientManager.Create(client)
 	policy := utils.NewPolicy(
 		"policy_id",
-		func(c models.AuthnSession, ctx *gin.Context) bool { return true },
-		func(ctx utils.Context, as *models.AuthnSession) (constants.AuthnStatus, error) {
-			return constants.Success, nil
+		func(ctx utils.Context, c models.Client, s *models.AuthnSession) bool { return true },
+		func(ctx utils.Context, as *models.AuthnSession) constants.AuthnStatus {
+			return constants.Success
 		},
 	)
 	ctx.Policies = append(ctx.Policies, policy)
 
 	// Then
 	err := authorize.InitAuth(ctx, models.AuthorizationRequest{
-		ClientId: models.TestClientId,
+		ClientId: client.Id,
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
 			Scopes:       client.Scopes,
@@ -267,7 +262,7 @@ func TestInitAuthPolicyEndsWithSuccess(t *testing.T) {
 		return
 	}
 
-	sessions := utils.GetSessionsFromTestContext(ctx)
+	sessions := utils.GetAuthnSessionsFromTestContext(ctx)
 	if len(sessions) != 1 {
 		t.Error("the should be only one authentication session")
 		return
@@ -279,7 +274,7 @@ func TestInitAuthPolicyEndsWithSuccess(t *testing.T) {
 		return
 	}
 
-	redirectUrl := ctx.RequestContext.Writer.Header().Get("Location")
+	redirectUrl := ctx.Response.Header().Get("Location")
 	if !strings.Contains(redirectUrl, fmt.Sprintf("code=%s", session.AuthorizationCode)) {
 		t.Errorf("the policy should finish redirecting with error. redirect URL: %s", redirectUrl)
 		return
@@ -290,10 +285,11 @@ func TestInitAuthPolicyEndsWithSuccess(t *testing.T) {
 	}
 }
 
-func TestInitAuthWithPar(t *testing.T) {
-	ctx, tearDown := utils.SetUpTest()
-	defer tearDown()
-	client, _ := ctx.GetClient(models.TestClientId)
+func TestInitAuth_WithPar(t *testing.T) {
+	client := models.GetTestClient()
+	ctx := utils.GetTestInMemoryContext()
+	ctx.ParIsEnabled = true
+	ctx.ClientManager.Create(client)
 	requestUri := "urn:goidc:random_value"
 	ctx.AuthnSessionManager.CreateOrUpdate(
 		models.AuthnSession{
@@ -305,12 +301,15 @@ func TestInitAuthWithPar(t *testing.T) {
 				ResponseType: constants.CodeResponse,
 			},
 			ClientId:           client.Id,
-			CreatedAtTimestamp: unit.GetTimestampNow(),
+			ExpiresAtTimestamp: unit.GetTimestampNow() + 60,
 		},
 	)
 	policy := utils.NewPolicy(
 		"policy_id",
-		func(s models.AuthnSession, ctx *gin.Context) bool { return true },
+		func(ctx utils.Context, c models.Client, s *models.AuthnSession) bool { return true },
+		func(ctx utils.Context, as *models.AuthnSession) constants.AuthnStatus {
+			return constants.Success
+		},
 	)
 	ctx.Policies = append(ctx.Policies, policy)
 
@@ -330,7 +329,7 @@ func TestInitAuthWithPar(t *testing.T) {
 		return
 	}
 
-	sessions := utils.GetSessionsFromTestContext(ctx)
+	sessions := utils.GetAuthnSessionsFromTestContext(ctx)
 	if len(sessions) != 1 {
 		t.Error("the should be only one authentication session")
 		return
@@ -342,7 +341,7 @@ func TestInitAuthWithPar(t *testing.T) {
 		return
 	}
 
-	redirectUrl := ctx.RequestContext.Writer.Header().Get("Location")
+	redirectUrl := ctx.Response.Header().Get("Location")
 	if !strings.Contains(redirectUrl, fmt.Sprintf("code=%s", session.AuthorizationCode)) {
 		t.Errorf("the policy should finish redirecting with error. redirect URL: %s", redirectUrl)
 		return
@@ -352,23 +351,21 @@ func TestInitAuthWithPar(t *testing.T) {
 func TestContinueAuthentication(t *testing.T) {
 
 	// When
-	ctx, tearDown := utils.SetUpTest()
-	defer tearDown()
-	ctx.Policies = []utils.AuthnPolicy{
-		{
-			Id: "random_policy_id",
-			AuthnSequence: []utils.AuthnFunc{func(ctx utils.Context, as *models.AuthnSession) (constants.AuthnStatus, error) {
-				return constants.InProgress, nil
-			}},
-			IsAvailableFunc: func(as models.AuthnSession, ctx *gin.Context) bool { return true },
+	ctx := utils.GetTestInMemoryContext()
+	policy := utils.NewPolicy(
+		"policy_id",
+		func(ctx utils.Context, c models.Client, s *models.AuthnSession) bool { return true },
+		func(ctx utils.Context, as *models.AuthnSession) constants.AuthnStatus {
+			return constants.InProgress
 		},
-	}
+	)
+	ctx.Policies = []utils.AuthnPolicy{policy}
 
 	callbackId := "random_callback_id"
 	ctx.AuthnSessionManager.CreateOrUpdate(models.AuthnSession{
-		PolicyId:           "random_policy_id",
-		AuthnSequenceIndex: 0,
+		PolicyId:           policy.Id,
 		CallbackId:         callbackId,
+		ExpiresAtTimestamp: unit.GetTimestampNow() + 60,
 	})
 
 	// Then
@@ -380,7 +377,7 @@ func TestContinueAuthentication(t *testing.T) {
 		return
 	}
 
-	sessions := utils.GetSessionsFromTestContext(ctx)
+	sessions := utils.GetAuthnSessionsFromTestContext(ctx)
 	if len(sessions) != 1 {
 		t.Error("the should be only one authentication session")
 		return

@@ -140,7 +140,7 @@ func ValidateDpopJwt(
 	}
 
 	jwk := parsedDpopJwt.Headers[0].JSONWebKey
-	if jwk == nil || !jwk.IsPublic() {
+	if jwk == nil || !jwk.Valid() || !jwk.IsPublic() {
 		return models.NewOAuthError(constants.InvalidRequest, "invalid jwk header")
 	}
 

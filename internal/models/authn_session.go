@@ -129,17 +129,6 @@ func (session AuthnSession) GetAdditionalUserInfoClaims() map[string]any {
 	return session.AdditionalUserInfoClaims
 }
 
-func (session *AuthnSession) MustAuthenticateUser(userAuthenticatedLastTimeAT int) bool {
-	if session.Prompt == constants.LoginPromptType {
-		return true
-	}
-
-	if session.MaxAuthenticationAgeSecs == nil {
-		return false
-	}
-	return unit.GetTimestampNow() > *session.MaxAuthenticationAgeSecs+userAuthenticatedLastTimeAT
-}
-
 // Get custom protected parameters sent during PAR or JAR.
 func (session *AuthnSession) GetProtectedParameter(key string) any {
 	return session.ProtectedParameters[key]

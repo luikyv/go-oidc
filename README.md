@@ -16,3 +16,4 @@ A customizable OpenID Provider made in Go.
 * Add logs and log warnings.
 * Create a package.
 * Allow the dev to set an error template for /authorize.
+* Client jwks is required for JAR.

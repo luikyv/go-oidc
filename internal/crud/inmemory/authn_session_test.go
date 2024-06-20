@@ -8,7 +8,7 @@ import (
 )
 
 func TestCreateOrUpdateAuthnSession_HappyPath(t *testing.T) {
-	// Given.
+	// When.
 	manager := inmemory.NewInMemoryAuthnSessionManager()
 	session := models.AuthnSession{
 		Id: "random_session_id",
@@ -40,7 +40,7 @@ func TestCreateOrUpdateAuthnSession_HappyPath(t *testing.T) {
 }
 
 func TestGetAuthnSessionByCallbackId_HappyPath(t *testing.T) {
-	// Given.
+	// When.
 	manager := inmemory.NewInMemoryAuthnSessionManager()
 	sessionId := "random_session_id"
 	callbackId := "random_callback_id"
@@ -63,7 +63,7 @@ func TestGetAuthnSessionByCallbackId_HappyPath(t *testing.T) {
 }
 
 func TestGetAuthnSessionByAuthorizationCode_HappyPath(t *testing.T) {
-	// Given.
+	// When.
 	manager := inmemory.NewInMemoryAuthnSessionManager()
 	sessionId := "random_session_id"
 	authorizationCode := "random_authorization_code"
@@ -86,7 +86,7 @@ func TestGetAuthnSessionByAuthorizationCode_HappyPath(t *testing.T) {
 }
 
 func TestGetAuthnSessionByRequestUri_HappyPath(t *testing.T) {
-	// Given.
+	// When.
 	manager := inmemory.NewInMemoryAuthnSessionManager()
 	sessionId := "random_session_id"
 	requestUri := "random_request_uri"
@@ -111,7 +111,7 @@ func TestGetAuthnSessionByRequestUri_HappyPath(t *testing.T) {
 }
 
 func TestDeleteAuthnSession_HappyPath(t *testing.T) {
-	// Given.
+	// When.
 	manager := inmemory.NewInMemoryAuthnSessionManager()
 	sessionId := "random_session_id"
 	manager.Sessions[sessionId] = models.AuthnSession{
@@ -132,7 +132,7 @@ func TestDeleteAuthnSession_HappyPath(t *testing.T) {
 }
 
 func TestDeleteAuthnSession_SessionDoesNotExist(t *testing.T) {
-	// Given.
+	// When.
 	manager := inmemory.NewInMemoryAuthnSessionManager()
 	sessionId := "random_session_id"
 

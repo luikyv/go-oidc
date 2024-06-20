@@ -1,9 +1,7 @@
 package models
 
 import (
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/auth-server/internal/constants"
-	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -13,30 +11,7 @@ const (
 	TestJwtGrantModelId    string = "jwt_grant_model_id"
 )
 
-func GetTestClientWithBasicAuthn() Client {
-	clientHashedSecret, _ := bcrypt.GenerateFromPassword([]byte(TestClientSecret), 0)
-	client := GetTestClientWithNoneAuthn()
-	client.AuthnMethod = constants.ClientSecretPostAuthn
-	client.HashedSecret = string(clientHashedSecret)
-	return client
-}
-
-func GetTestClientWithSecretPostAuthn() Client {
-	clientHashedSecret, _ := bcrypt.GenerateFromPassword([]byte(TestClientSecret), 0)
-	client := GetTestClientWithNoneAuthn()
-	client.AuthnMethod = constants.ClientSecretPostAuthn
-	client.HashedSecret = string(clientHashedSecret)
-	return client
-}
-
-func GetTestClientWithPrivateKeyJwtAuthn(host string, publicJwk jose.JSONWebKey) Client {
-	client := GetTestClientWithNoneAuthn()
-	client.AuthnMethod = constants.PrivateKeyJwtAuthn
-	client.PublicJwks = &jose.JSONWebKeySet{Keys: []jose.JSONWebKey{publicJwk}}
-	return client
-}
-
-func GetTestClientWithNoneAuthn() Client {
+func GetTestClient() Client {
 	return Client{
 		Id: TestClientId,
 		ClientMetaInfo: ClientMetaInfo{

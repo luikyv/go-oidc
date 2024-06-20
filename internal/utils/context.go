@@ -248,9 +248,9 @@ func (ctx Context) ExecuteDcrPlugin(dynamicClient *models.DynamicClientRequest) 
 
 // Get the host names trusted by the server to validate assertions.
 func (ctx Context) GetAudiences() []string {
-	audiences := []string{ctx.Host, ctx.Host + string(constants.TokenEndpoint), ctx.Host + ctx.Request.URL.RequestURI()}
+	audiences := []string{ctx.Host, ctx.Host + string(constants.TokenEndpoint), ctx.Host + string(constants.PushedAuthorizationRequestEndpoint)}
 	if ctx.MtlsIsEnabled {
-		audiences = append(audiences, ctx.MtlsHost, ctx.MtlsHost+string(constants.TokenEndpoint), ctx.MtlsHost+ctx.Request.URL.RequestURI())
+		audiences = append(audiences, ctx.MtlsHost, ctx.MtlsHost+string(constants.TokenEndpoint), ctx.MtlsHost+string(constants.PushedAuthorizationRequestEndpoint))
 	}
 	return audiences
 }
@@ -362,7 +362,10 @@ func (ctx Context) Redirect(redirectUrl string) {
 }
 
 func (ctx Context) RenderHtml(html string, params any) {
-	tmpl, _ := template.New("name").Parse(html)
+	// TODO: review this.
+	ctx.Response.WriteHeader(http.StatusOK)
+
+	tmpl, _ := template.New("default").Parse(html)
 	tmpl.Execute(ctx.Response, params)
 }
 

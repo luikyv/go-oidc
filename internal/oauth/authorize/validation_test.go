@@ -3,15 +3,15 @@ package authorize_test
 import (
 	"testing"
 
+	"github.com/luikymagno/auth-server/internal/constants"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/oauth/authorize"
 	"github.com/luikymagno/auth-server/internal/unit"
-	"github.com/luikymagno/auth-server/internal/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
 func TestValidateAuthorizationRequest(t *testing.T) {
-	client := models.GetTestClientWithNoneAuthn()
+	client := models.GetTestClient()
 
 	var cases = []struct {
 		Name                string
@@ -142,7 +142,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 }
 
 func TestValidateAuthorizationRequestWithPar(t *testing.T) {
-	client := models.GetTestClientWithNoneAuthn()
+	client := models.GetTestClient()
 
 	var cases = []struct {
 		Name                string
@@ -165,7 +165,7 @@ func TestValidateAuthorizationRequestWithPar(t *testing.T) {
 			},
 			models.AuthnSession{
 				ClientId:           client.Id,
-				CreatedAtTimestamp: unit.GetTimestampNow(),
+				ExpiresAtTimestamp: unit.GetTimestampNow() + 1,
 			},
 			func(client models.Client) models.Client {
 				return client
@@ -187,7 +187,7 @@ func TestValidateAuthorizationRequestWithPar(t *testing.T) {
 			},
 			models.AuthnSession{
 				ClientId:           client.Id,
-				CreatedAtTimestamp: unit.GetTimestampNow(),
+				ExpiresAtTimestamp: unit.GetTimestampNow() + 1,
 				AuthorizationParameters: models.AuthorizationParameters{
 					RedirectUri: client.RedirectUris[0],
 				},
@@ -229,7 +229,7 @@ func TestValidateAuthorizationRequestWithPar(t *testing.T) {
 }
 
 func TestValidateAuthorizationRequestWithJar(t *testing.T) {
-	client := models.GetTestClientWithNoneAuthn()
+	client := models.GetTestClient()
 
 	var cases = []struct {
 		Name                string

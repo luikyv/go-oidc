@@ -3,31 +3,32 @@ package utils_test
 import (
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func TestGetPolicy(t *testing.T) {
+func TestGetPolicy_HappyPath(t *testing.T) {
 
 	// When
 	unavailablePolicy := utils.NewPolicy(
 		"unavailable_policy",
-		func(c models.AuthnSession, ctx *gin.Context) bool {
+		func(ctx utils.Context, c models.Client, s *models.AuthnSession) bool {
 			return false
 		},
+		nil,
 	)
 	availablePolicy := utils.NewPolicy(
 		"available_policy",
-		func(c models.AuthnSession, ctx *gin.Context) bool {
+		func(ctx utils.Context, c models.Client, s *models.AuthnSession) bool {
 			return true
 		},
+		nil,
 	)
 	ctx := utils.GetDummyTestContext()
 	ctx.Policies = []utils.AuthnPolicy{unavailablePolicy, availablePolicy}
 
 	// Then
-	policy, policyIsAvailable := ctx.GetAvailablePolicy(models.AuthnSession{})
+	policy, policyIsAvailable := ctx.GetAvailablePolicy(models.Client{}, &models.AuthnSession{})
 
 	// Assert
 	if !policyIsAvailable {
@@ -39,19 +40,20 @@ func TestGetPolicy(t *testing.T) {
 
 }
 
-func TestGetPolicyNoPolicyAvailable(t *testing.T) {
+func TestGetPolicy_NoPolicyAvailable(t *testing.T) {
 	// When
 	unavailablePolicy := utils.NewPolicy(
 		"unavailable_policy",
-		func(c models.AuthnSession, ctx *gin.Context) bool {
+		func(ctx utils.Context, c models.Client, s *models.AuthnSession) bool {
 			return false
 		},
+		nil,
 	)
 	ctx := utils.GetDummyTestContext()
 	ctx.Policies = []utils.AuthnPolicy{unavailablePolicy}
 
 	// Then
-	_, policyIsAvailable := ctx.GetAvailablePolicy(models.AuthnSession{})
+	_, policyIsAvailable := ctx.GetAvailablePolicy(models.Client{}, &models.AuthnSession{})
 
 	// Assert
 	if policyIsAvailable {

@@ -121,7 +121,7 @@ func TestIsRedirectUriAllowed(t *testing.T) {
 }
 
 func TestIsAuthorizationDetailTypeAllowed(t *testing.T) {
-	// Given.
+	// When.
 	client := models.Client{}
 
 	// Then.
@@ -132,7 +132,7 @@ func TestIsAuthorizationDetailTypeAllowed(t *testing.T) {
 		t.Error("when the client doesn't specify the detail types, any type should be accepted")
 	}
 
-	// Given.
+	// When.
 	client.AuthorizationDetailTypes = []string{"valid_type"}
 
 	// Then.

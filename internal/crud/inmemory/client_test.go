@@ -8,7 +8,7 @@ import (
 )
 
 func TestCreateClient_HappyPath(t *testing.T) {
-	// Given.
+	// When.
 	manager := inmemory.NewInMemoryClientManager()
 	client := models.Client{
 		Id: "random_client_id",
@@ -28,7 +28,7 @@ func TestCreateClient_HappyPath(t *testing.T) {
 }
 
 func TestCreateClient_ClientAlreadyExists(t *testing.T) {
-	// Given.
+	// When.
 	manager := inmemory.NewInMemoryClientManager()
 	client := models.Client{
 		Id: "random_client_id",
@@ -49,7 +49,7 @@ func TestCreateClient_ClientAlreadyExists(t *testing.T) {
 }
 
 func TestUpdateClient_HappyPath(t *testing.T) {
-	// Given.
+	// When.
 	manager := inmemory.NewInMemoryClientManager()
 	client := models.Client{
 		Id: "random_client_id",
@@ -70,7 +70,7 @@ func TestUpdateClient_HappyPath(t *testing.T) {
 }
 
 func TestUpdateClient_ClientDoesNotExist(t *testing.T) {
-	// Given.
+	// When.
 	manager := inmemory.NewInMemoryClientManager()
 
 	// Then.
@@ -83,7 +83,7 @@ func TestUpdateClient_ClientDoesNotExist(t *testing.T) {
 }
 
 func TestGetClient_HappyPath(t *testing.T) {
-	// Given.
+	// When.
 	manager := inmemory.NewInMemoryClientManager()
 	clientId := "random_client_id"
 	manager.Clients[clientId] = models.Client{
@@ -104,7 +104,7 @@ func TestGetClient_HappyPath(t *testing.T) {
 }
 
 func TestGetClient_ClientDoesNotExist(t *testing.T) {
-	// Given.
+	// When.
 	manager := inmemory.NewInMemoryClientManager()
 	clientId := "random_client_id"
 
@@ -118,7 +118,7 @@ func TestGetClient_ClientDoesNotExist(t *testing.T) {
 }
 
 func TestDeleteClient_HappyPath(t *testing.T) {
-	// Given.
+	// When.
 	manager := inmemory.NewInMemoryClientManager()
 	clientId := "random_client_id"
 	manager.Clients[clientId] = models.Client{
@@ -139,7 +139,7 @@ func TestDeleteClient_HappyPath(t *testing.T) {
 }
 
 func TestDeleteClient_ClientDoesNotExist(t *testing.T) {
-	// Given.
+	// When.
 	manager := inmemory.NewInMemoryClientManager()
 	clientId := "random_client_id"
 

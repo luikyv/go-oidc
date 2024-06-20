@@ -3,34 +3,35 @@ package token_test
 import (
 	"testing"
 
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/luikymagno/auth-server/internal/constants"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/oauth/token"
 	"github.com/luikymagno/auth-server/internal/unit"
-	"github.com/luikymagno/auth-server/internal/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
 )
 
-func TestRefreshTokenHandleGrantCreation(t *testing.T) {
+func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 
 	// When
-	ctx, tearDown := utils.SetUpTest()
-	defer tearDown()
-	client, _ := ctx.GetClient(models.TestClientId)
+	client := models.GetTestClient()
+	ctx := utils.GetTestInMemoryContext()
+	ctx.ClientManager.Create(client)
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
 	grantSession := models.GrantSession{
-		Token:                     "token",
-		RefreshToken:              refreshToken,
-		RefreshTokenExpiresInSecs: 30,
+		RefreshToken:       refreshToken,
+		ExpiresAtTimestamp: unit.GetTimestampNow() + 60,
 		GrantOptions: models.GrantOptions{
-			SessionId:          "random_id",
 			CreatedAtTimestamp: unit.GetTimestampNow(),
 			Subject:            username,
 			ClientId:           models.TestClientId,
-			Scopes:             client.Scopes,
+			GrantedScopes:      client.Scopes,
 			TokenOptions: models.TokenOptions{
-				ExpiresInSecs: 60,
+				TokenFormat:        constants.JwtTokenFormat,
+				TokenExpiresInSecs: 60,
 			},
 		},
 	}
@@ -38,15 +39,14 @@ func TestRefreshTokenHandleGrantCreation(t *testing.T) {
 
 	req := models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
-			ClientIdPost:     models.TestClientId,
-			ClientSecretPost: models.TestClientSecret,
+			ClientId: client.Id,
 		},
 		GrantType:    constants.RefreshTokenGrant,
 		RefreshToken: refreshToken,
 	}
 
 	// Then
-	newToken, err := token.HandleTokenCreation(ctx, req)
+	tokenResp, err := token.HandleTokenCreation(ctx, req)
 
 	// Assert
 	if err != nil {
@@ -54,17 +54,30 @@ func TestRefreshTokenHandleGrantCreation(t *testing.T) {
 		return
 	}
 
-	if newToken.ClientId != models.TestClientId {
+	parsedToken, err := jwt.ParseSigned(tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
+	if err != nil {
+		t.Error("invalid token")
+		return
+	}
+
+	var claims map[string]any
+	err = parsedToken.UnsafeClaimsWithoutVerification(&claims)
+	if err != nil {
+		t.Error("could not read claims")
+		return
+	}
+
+	if claims["client_id"].(string) != client.Id {
 		t.Error("the token was assigned to a different client")
 		return
 	}
 
-	if newToken.Subject != username {
+	if claims["sub"].(string) != username {
 		t.Error("the token subject should be the client")
 		return
 	}
 
-	if newToken.RefreshToken == "" || newToken.RefreshToken == refreshToken {
+	if tokenResp.RefreshToken == "" {
 		t.Error("the new refresh token is not valid")
 		return
 	}
@@ -76,27 +89,25 @@ func TestRefreshTokenHandleGrantCreation(t *testing.T) {
 	}
 }
 
-func TestRefreshTokenHandleGrantCreationShouldDenyExpiredRefreshToken(t *testing.T) {
+func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 
 	// When
-	ctx, tearDown := utils.SetUpTest()
-	defer tearDown()
-	client, _ := ctx.GetClient(models.TestClientId)
+	client := models.GetTestClient()
+	ctx := utils.GetTestInMemoryContext()
+	ctx.ClientManager.Create(client)
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
 	grantSession := models.GrantSession{
-		Token:                     "token",
-		RefreshToken:              refreshToken,
-		RefreshTokenExpiresInSecs: 0,
+		RefreshToken:       refreshToken,
+		ActiveScopes:       client.Scopes,
+		ExpiresAtTimestamp: unit.GetTimestampNow() - 10,
 		GrantOptions: models.GrantOptions{
-			SessionId:          "random_id",
-			CreatedAtTimestamp: unit.GetTimestampNow() - 10,
-			Subject:            username,
-			ClientId:           models.TestClientId,
-			Scopes:             client.Scopes,
+			Subject:       username,
+			ClientId:      models.TestClientId,
+			GrantedScopes: client.Scopes,
 			TokenOptions: models.TokenOptions{
-				ExpiresInSecs: 60,
+				TokenExpiresInSecs: 60,
 			},
 		},
 	}
@@ -104,8 +115,7 @@ func TestRefreshTokenHandleGrantCreationShouldDenyExpiredRefreshToken(t *testing
 
 	req := models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
-			ClientIdPost:     models.TestClientId,
-			ClientSecretPost: models.TestClientSecret,
+			ClientId: client.Id,
 		},
 		GrantType:    constants.RefreshTokenGrant,
 		RefreshToken: refreshToken,

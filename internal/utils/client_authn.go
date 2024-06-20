@@ -32,7 +32,7 @@ func GetAuthenticatedClient(
 		return models.Client{}, models.NewOAuthError(constants.InvalidClient, "invalid client")
 	}
 
-	if err := AuthenticateClient(ctx, client, req); err != nil {
+	if err := authenticateClient(ctx, client, req); err != nil {
 		ctx.Logger.Info("client not authenticated", slog.String("client_id", req.ClientId))
 		return models.Client{}, err
 	}
@@ -40,7 +40,7 @@ func GetAuthenticatedClient(
 	return client, nil
 }
 
-func AuthenticateClient(
+func authenticateClient(
 	ctx Context,
 	client models.Client,
 	req models.ClientAuthnRequest,
@@ -332,7 +332,9 @@ func getClientIdFromAssertion(
 	}
 
 	var claims map[string]any
-	parsedAssertion.UnsafeClaimsWithoutVerification(&claims)
+	if err := parsedAssertion.UnsafeClaimsWithoutVerification(&claims); err != nil {
+		return "", false
+	}
 
 	// The issuer claim is supposed to have the client ID.
 	clientId, ok := claims[constants.IssuerClaim]

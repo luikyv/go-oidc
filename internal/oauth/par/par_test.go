@@ -4,22 +4,26 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/luikymagno/auth-server/internal/constants"
 	"github.com/luikymagno/auth-server/internal/models"
 	"github.com/luikymagno/auth-server/internal/oauth/par"
-	"github.com/luikymagno/auth-server/internal/constants"
 	"github.com/luikymagno/auth-server/internal/utils"
+	"golang.org/x/crypto/bcrypt"
 )
 
-func TestPushAuthorizationShouldRejectUnauthenticatedClient(t *testing.T) {
+func TestPushAuthorization_ShouldRejectUnauthenticatedClient(t *testing.T) {
 	// When
-	ctx, tearDown := utils.SetUpTest()
-	defer tearDown()
+	client := models.GetTestClient()
+	client.AuthnMethod = constants.ClientSecretPostAuthn
+
+	ctx := utils.GetTestInMemoryContext()
+	ctx.ClientManager.Create(client)
 
 	// Then
 	_, err := par.PushAuthorization(ctx, models.PushedAuthorizationRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
-			ClientIdPost:     models.TestClientId,
-			ClientSecretPost: "invalid_password",
+			ClientId:     client.Id,
+			ClientSecret: "invalid_password",
 		},
 	})
 
@@ -35,17 +39,23 @@ func TestPushAuthorizationShouldRejectUnauthenticatedClient(t *testing.T) {
 	}
 }
 
-func TestPushAuthorizationShouldGenerateRequestUri(t *testing.T) {
+func TestPushAuthorization_ShouldGenerateRequestUri(t *testing.T) {
 	// When
-	ctx, tearDown := utils.SetUpTest()
-	defer tearDown()
-	client, _ := ctx.GetClient(models.TestClientId)
+	clientSecret := "password"
+	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 0)
+
+	client := models.GetTestClient()
+	client.AuthnMethod = constants.ClientSecretPostAuthn
+	client.HashedSecret = string(hashedClientSecret)
+
+	ctx := utils.GetTestInMemoryContext()
+	ctx.ClientManager.Create(client)
 
 	// Then
 	requestUri, err := par.PushAuthorization(ctx, models.PushedAuthorizationRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
-			ClientIdPost:     models.TestClientId,
-			ClientSecretPost: models.TestClientSecret,
+			ClientId:     models.TestClientId,
+			ClientSecret: clientSecret,
 		},
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
@@ -65,7 +75,7 @@ func TestPushAuthorizationShouldGenerateRequestUri(t *testing.T) {
 		return
 	}
 
-	sessions := utils.GetSessionsFromTestContext(ctx)
+	sessions := utils.GetAuthnSessionsFromTestContext(ctx)
 	if len(sessions) != 1 {
 		t.Error("the should be only one authentication session")
 		return
