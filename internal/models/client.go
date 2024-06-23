@@ -55,6 +55,49 @@ func (client ClientMetaInfo) GetName() (string, bool) {
 	return client.Name, true
 }
 
+func (client ClientMetaInfo) GetLogoUri() (string, bool) {
+	if client.LogoUri == "" {
+		return "", false
+	}
+	return client.LogoUri, true
+}
+
+func (client ClientMetaInfo) GetScopes() (string, bool) {
+	if client.Scopes == "" {
+		return "", false
+	}
+
+	return client.Scopes, true
+}
+
+func (client *ClientMetaInfo) SetScopes(scopes string) {
+	client.Scopes = scopes
+}
+
+// Get the client public JWKS either directly from the jwks attribute or using jwks_uri.
+// This method also caches the keys if they are fetched from jwks_uri.
+func (client ClientMetaInfo) GetPublicJwks() (jose.JSONWebKeySet, error) {
+	if client.PublicJwks != nil && len(client.PublicJwks.Keys) != 0 {
+		return *client.PublicJwks, nil
+	}
+
+	if client.PublicJwksUri == "" {
+		return jose.JSONWebKeySet{}, NewOAuthError(goidc.InvalidRequest, "The client JWKS was informed neither by value or by reference")
+	}
+
+	jwks, err := unit.GetJwks(client.PublicJwksUri)
+	if err != nil {
+		return jose.JSONWebKeySet{}, NewOAuthError(goidc.InvalidRequest, err.Error())
+	}
+
+	// Cache the client JWKS.
+	if client.PublicJwks != nil {
+		client.PublicJwks.Keys = jwks.Keys
+	}
+
+	return jwks, nil
+}
+
 func (client *ClientMetaInfo) SetAttribute(key string, value any) {
 	if client.Attributes == nil {
 		client.Attributes = make(map[string]any)
@@ -65,6 +108,14 @@ func (client *ClientMetaInfo) SetAttribute(key string, value any) {
 func (client ClientMetaInfo) GetAttribute(key string) (any, bool) {
 	value, ok := client.Attributes[key]
 	return value, ok
+}
+
+func (client *ClientMetaInfo) RequirePkce() {
+	client.PkceIsRequired = true
+}
+
+func (client *ClientMetaInfo) RequireDpop() {
+	client.DpopIsRequired = true
 }
 
 type Client struct {
@@ -82,30 +133,10 @@ func (client Client) GetId() string {
 	return client.Id
 }
 
-// Get the client public JWKS either directly from the jwks attribute or using jwks_uri.
-// This method also caches the keys if they are fetched from jwks_uri.
-func (client Client) GetPublicJwks() (jose.JSONWebKeySet, OAuthError) {
-	if client.PublicJwks != nil && len(client.PublicJwks.Keys) != 0 {
-		return *client.PublicJwks, nil
-	}
-
-	jwks, err := unit.GetJwks(client.PublicJwksUri)
-	if err != nil {
-		return jose.JSONWebKeySet{}, NewOAuthError(goidc.InvalidRequest, err.Error())
-	}
-
-	// Cache the client JWKS.
-	if client.PublicJwks != nil {
-		client.PublicJwks.Keys = jwks.Keys
-	}
-
-	return jwks, nil
-}
-
 func (client Client) GetJwk(keyId string) (jose.JSONWebKey, OAuthError) {
 	jwks, oauthErr := client.GetPublicJwks()
 	if oauthErr != nil {
-		return jose.JSONWebKey{}, oauthErr
+		return jose.JSONWebKey{}, NewOAuthError(goidc.InvalidRequest, oauthErr.Error())
 	}
 
 	keys := jwks.Key(keyId)
@@ -132,7 +163,7 @@ func (client Client) GetIdTokenEncryptionJwk() (jose.JSONWebKey, OAuthError) {
 func (client Client) getEncryptionJwk(algorithm jose.KeyAlgorithm) (jose.JSONWebKey, OAuthError) {
 	jwks, err := client.GetPublicJwks()
 	if err != nil {
-		return jose.JSONWebKey{}, err
+		return jose.JSONWebKey{}, NewOAuthError(goidc.InvalidRequest, err.Error())
 	}
 
 	for _, jwk := range jwks.Keys {

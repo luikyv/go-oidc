@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/internal/crud/inmemory"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/pkg/goidc"
 	"github.com/luikymagno/goidc/pkg/goidcp"
@@ -26,9 +25,9 @@ func runFapi2OpenIdProvider() error {
 	// Create the manager.
 	openidProvider := goidcp.NewProvider(
 		issuer,
-		inmemory.NewInMemoryClientManager(),
-		inmemory.NewInMemoryAuthnSessionManager(),
-		inmemory.NewInMemoryGrantSessionManager(),
+		goidcp.NewInMemoryClientManager(),
+		goidcp.NewInMemoryAuthnSessionManager(),
+		goidcp.NewInMemoryGrantSessionManager(),
 		GetPrivateJwks("server_keys/jwks.json"),
 		ps256ServerKeyId,
 		ps256ServerKeyId,

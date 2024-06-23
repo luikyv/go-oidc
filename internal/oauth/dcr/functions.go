@@ -1,8 +1,6 @@
 package dcr
 
 import (
-	"strings"
-
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
@@ -22,9 +20,7 @@ func setDefaults(ctx utils.Context, dynamicClient *models.DynamicClientRequest) 
 		dynamicClient.Secret = unit.GenerateClientSecret()
 	}
 
-	if dynamicClient.Scopes == "" {
-		dynamicClient.Scopes = strings.Join(ctx.Scopes, " ")
-	}
+	// TODO: set openid scope.
 
 	if dynamicClient.ResponseTypes == nil {
 		dynamicClient.ResponseTypes = []goidc.ResponseType{goidc.CodeResponse}

@@ -4,68 +4,90 @@ import (
 	"crypto/x509"
 	"html/template"
 	"maps"
+
+	"github.com/go-jose/go-jose/v4"
 )
 
 type Context interface {
 	GetHost() string
-	GetHeader(header string) (string, bool)
-	GetFormParam(param string) string
-	GetSecureClientCertificate() (*x509.Certificate, bool)
-	GetClientCertificate() (*x509.Certificate, bool)
+	GetHeader(header string) (headerValue string, ok bool)
+	GetFormParam(param string) (formValue string)
+	GetSecureClientCertificate() (secureClientCert *x509.Certificate, ok bool)
+	GetClientCertificate() (clientCert *x509.Certificate, ok bool)
 	RenderHtml(html string, params any)
 	RenderHtmlTemplate(tmpl *template.Template, params any)
 }
 
+type Client interface {
+	GetId() (clientId string)
+	GetName() (name string, ok bool)
+	GetLogoUri() (logoUri string, ok bool)
+	GetScopes() (scopes string, ok bool)
+	GetPublicJwks() (clientJwks jose.JSONWebKeySet, err error)
+	// Get the value of a custom attribute.
+	GetAttribute(key string) (any, bool)
+}
+
+type DynamicClient interface {
+	GetScopes() (scopes string, ok bool)
+	SetScopes(scopes string)
+	RequirePkce()
+	RequireDpop()
+	GetPublicJwks() (clientJwks jose.JSONWebKeySet, err error)
+	// Set a custom attribute.
+	SetAttribute(key string, value any)
+	// Get the value of a custom attribute.
+	GetAttribute(key string) (value any, ok bool)
+}
+
 type AuthnSession interface {
+	// Set the user identifier. This value will be mapped to "sub" claim when issuing access and ID tokens,
+	// as well as in the user info endpoint response.
 	SetUserId(userId string)
 	// Get the ID associate to the current user interaction.
 	GetCallbackId() string
 	// Get the scopes requested by the client.
 	GetScopes() string
-	GetPromptType() (PromptType, bool)
-	GetMaxAuthenticationAgeSecs() (int, bool)
-	GetDisplayValue() (DisplayValue, bool)
+	// Get the prompt type requested by the client using the paramter "prompt".
+	GetPromptType() (prompt PromptType, ok bool)
+	GetMaxAuthenticationAgeSecs() (maxAge int, ok bool)
+	// Get the display value requested by the client using the paramter "display".
+	GetDisplayValue() (display DisplayValue, ok bool)
+	// Get the ACR values requested by the client using the paramter "acr_values".
 	GetAcrValues() ([]AuthenticationContextReference, bool)
 	GetAuthorizationDetails() (details []AuthorizationDetail, ok bool)
-	// Get the claims requested by the client using the claims parameter.
+	// Get the claims requested by the client using the parameter "claims".
 	GetClaims() (claims ClaimsObject, ok bool)
 	// Save a paramater in the session so it can be used across steps.
 	SaveParameter(key string, value any)
 	// Get a parameter saved in the session.
 	GetParameter(key string) (value any, ok bool)
-	// Set a new claim that will be mapped in the access token when issued.
+	// Set a new claim that will be mapped in the access token.
 	AddTokenClaim(claim string, value any)
-	// Set a new claim that will be mapped in the ID token when issued.
+	// Set a new claim that will be mapped in the ID token.
 	AddIdTokenClaim(claim string, value any)
 	// Set a new claim that will be mapped in the user info endpoint.
 	AddUserInfoClaim(claim string, value any)
 	// Set the scopes the client will have access to use.
 	GrantScopes(scopes string)
 	GrantAuthorizationDetails(authDetails []AuthorizationDetail)
-	// Get custom protected parameters sent during PAR or JAR.
-	// TODO: Explain this.
+	// Get custom protected parameters sent during PAR (as form parameters) or JAR (as JSON keys).
+	// The custom protect parameters are identified by the leading sequence "p_" in their name.
 	GetProtectedParameter(key string) (value any, ok bool)
 	// Define the error that will be redirected to the client.
 	// This only has effect when a failure status is returned by the authentication policy.
 	SetRedirectError(errorCode ErrorCode, errorDescription string)
 }
 
-type Client interface {
-	GetId() string
-	// Get the value of a custom attribute.
-	GetAttribute(key string) (any, bool)
-	GetName() (string, bool)
-}
-
-type DynamicClient interface {
-	// Set a custom attribute.
-	SetAttribute(key string, value any)
-}
-
+// Function that will be executed during DCR and DCM.
+// It can be used to modify the client and perform custom validations.
 type DcrPluginFunc func(ctx Context, dynamicClient DynamicClient)
 
+// Function responsible for executing the user authentication logic.
 type AuthnFunc func(Context, AuthnSession) AuthnStatus
 
+// Function responsible for deciding if the corresponding policy will be executed.
+// It can be used to initialize the session as well.
 type SetUpPolicyFunc func(ctx Context, client Client, session AuthnSession) (selected bool)
 
 type AuthnPolicy struct {
@@ -107,6 +129,7 @@ func (opts *TokenOptions) AddTokenClaims(claims map[string]any) {
 
 func NewJwtTokenOptions(
 	tokenLifetimeSecs int,
+	// The ID of a signing key present in the server JWKS.
 	signatureKeyId string,
 	shouldRefresh bool,
 ) TokenOptions {
