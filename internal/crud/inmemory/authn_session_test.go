@@ -1,6 +1,7 @@
 package inmemory_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/luikymagno/goidc/internal/crud/inmemory"
@@ -15,7 +16,7 @@ func TestCreateOrUpdateAuthnSession_HappyPath(t *testing.T) {
 	}
 
 	// Then.
-	err := manager.CreateOrUpdate(session)
+	err := manager.CreateOrUpdate(context.Background(), session)
 
 	// Assert.
 	if err != nil {
@@ -27,7 +28,7 @@ func TestCreateOrUpdateAuthnSession_HappyPath(t *testing.T) {
 	}
 
 	// Then.
-	err = manager.CreateOrUpdate(session)
+	err = manager.CreateOrUpdate(context.Background(), session)
 
 	// Assert.
 	if err != nil {
@@ -50,7 +51,7 @@ func TestGetAuthnSessionByCallbackId_HappyPath(t *testing.T) {
 	}
 
 	// Then.
-	session, err := manager.GetByCallbackId(callbackId)
+	session, err := manager.GetByCallbackId(context.Background(), callbackId)
 
 	// Assert.
 	if err != nil {
@@ -73,7 +74,7 @@ func TestGetAuthnSessionByAuthorizationCode_HappyPath(t *testing.T) {
 	}
 
 	// Then.
-	session, err := manager.GetByAuthorizationCode(authorizationCode)
+	session, err := manager.GetByAuthorizationCode(context.Background(), authorizationCode)
 
 	// Assert.
 	if err != nil {
@@ -98,7 +99,7 @@ func TestGetAuthnSessionByRequestUri_HappyPath(t *testing.T) {
 	}
 
 	// Then.
-	session, err := manager.GetByRequestUri(requestUri)
+	session, err := manager.GetByRequestUri(context.Background(), requestUri)
 
 	// Assert.
 	if err != nil {
@@ -119,7 +120,7 @@ func TestDeleteAuthnSession_HappyPath(t *testing.T) {
 	}
 
 	// Then.
-	err := manager.Delete(sessionId)
+	err := manager.Delete(context.Background(), sessionId)
 
 	// Assert.
 	if err != nil {
@@ -137,7 +138,7 @@ func TestDeleteAuthnSession_SessionDoesNotExist(t *testing.T) {
 	sessionId := "random_session_id"
 
 	// Then.
-	err := manager.Delete(sessionId)
+	err := manager.Delete(context.Background(), sessionId)
 
 	// Assert.
 	if err != nil {

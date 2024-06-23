@@ -15,7 +15,7 @@ func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 	// When
 	client := models.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.ClientManager.Create(client)
+	ctx.CreateClient(client)
 
 	req := models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{

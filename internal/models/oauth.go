@@ -42,7 +42,7 @@ type GrantOptions struct {
 	CreatedAtTimestamp          int                         `json:"created_at"`
 	AdditionalIdTokenClaims     map[string]any              `json:"additional_id_token_claims"`
 	AdditionalUserInfoClaims    map[string]any              `json:"additional_user_info_claims"`
-	goidc.TokenOptions                                      //TODO: make it simpler.
+	goidc.TokenOptions
 }
 
 func (grantOpts GrantOptions) GetIdTokenOptions() IdTokenOptions {

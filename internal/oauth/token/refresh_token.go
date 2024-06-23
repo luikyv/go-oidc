@@ -60,6 +60,7 @@ func updateRefreshTokenGrantSession(
 	req models.TokenRequest,
 	token models.Token,
 ) models.OAuthError {
+
 	grantSession.LastTokenIssuedAtTimestamp = unit.GetTimestampNow()
 	grantSession.TokenId = token.Id
 
@@ -72,7 +73,7 @@ func updateRefreshTokenGrantSession(
 	}
 
 	ctx.Logger.Debug("updating grant session for refresh_token grant")
-	if err := ctx.GrantSessionManager.CreateOrUpdate(*grantSession); err != nil {
+	if err := ctx.CreateOrUpdateGrantSession(*grantSession); err != nil {
 		ctx.Logger.Error("error updating grant session during refresh_token grant",
 			slog.String("error", err.Error()), slog.String("session_id", grantSession.Id))
 		return models.NewOAuthError(goidc.InternalError, err.Error())
@@ -119,7 +120,7 @@ func getGrantSessionByRefreshToken(
 	refreshToken string,
 	ch chan<- utils.ResultChannel,
 ) {
-	grantSession, err := ctx.GrantSessionManager.GetByRefreshToken(refreshToken)
+	grantSession, err := ctx.GetGrantSessionByRefreshToken(refreshToken)
 	if err != nil {
 		ch <- utils.ResultChannel{
 			Result: models.GrantSession{},

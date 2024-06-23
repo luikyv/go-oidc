@@ -15,7 +15,7 @@ type GrantSession struct {
 	CreatedAtTimestamp          int    `json:"created_at"`
 	ExpiresAtTimestamp          int    `json:"expires_at"`
 	ActiveScopes                string `json:"active_scopes"`
-	GrantOptions                       // TODO: Could I simplify this?
+	GrantOptions
 }
 
 func NewGrantSession(grantOptions GrantOptions, token Token) GrantSession {

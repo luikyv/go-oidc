@@ -1,7 +1,6 @@
 package apihandlers
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -124,20 +123,17 @@ func HandleIntrospectionRequest(ctx utils.Context) {
 func bindErrorToResponse(ctx utils.Context, err error) {
 
 	var oauthErr models.OAuthError
-	if errors.As(err, &oauthErr) {
-		ctx.Response.Header().Set("Content-Type", "application/json")
-		errorCode := oauthErr.GetCode()
-		ctx.Response.WriteHeader(errorCode.GetStatusCode())
-		json.NewEncoder(ctx.Response).Encode(map[string]any{
-			"error":             errorCode,
-			"error_description": oauthErr.Error(),
-		})
+	if !errors.As(err, &oauthErr) {
+		ctx.WriteJson(map[string]any{
+			"error":             goidc.InternalError,
+			"error_description": err.Error(),
+		}, http.StatusInternalServerError)
 		return
 	}
 
-	ctx.Response.WriteHeader(http.StatusInternalServerError)
-	json.NewEncoder(ctx.Response).Encode(map[string]any{
-		"error":             goidc.InternalError,
-		"error_description": err.Error(),
-	})
+	errorCode := oauthErr.GetCode()
+	ctx.WriteJson(map[string]any{
+		"error":             errorCode,
+		"error_description": oauthErr.Error(),
+	}, errorCode.GetStatusCode())
 }

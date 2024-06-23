@@ -62,7 +62,7 @@ func generateClientCredentialsGrantSession(
 
 	grantSession := models.NewGrantSession(grantOptions, token)
 	ctx.Logger.Debug("creating grant session for client_credentials grant")
-	if err := ctx.GrantSessionManager.CreateOrUpdate(grantSession); err != nil {
+	if err := ctx.CreateOrUpdateGrantSession(grantSession); err != nil {
 		ctx.Logger.Error("error creating a grant session during client_credentials grant",
 			slog.String("error", err.Error()))
 		return models.GrantSession{}, models.NewOAuthError(goidc.InternalError, err.Error())

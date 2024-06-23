@@ -32,7 +32,7 @@ func initAuth(ctx utils.Context, client models.Client, req models.AuthorizationR
 func ContinueAuth(ctx utils.Context, callbackId string) models.OAuthError {
 
 	// Fetch the session using the callback ID.
-	session, err := ctx.AuthnSessionManager.GetByCallbackId(callbackId)
+	session, err := ctx.GetAuthnSessionByCallbackId(callbackId)
 	if err != nil {
 		return models.NewOAuthError(goidc.InvalidRequest, err.Error())
 	}
@@ -87,7 +87,7 @@ func finishFlowWithFailure(
 	ctx utils.Context,
 	session *models.AuthnSession,
 ) models.OAuthError {
-	if err := ctx.AuthnSessionManager.Delete(session.Id); err != nil {
+	if err := ctx.DeleteAuthnSession(session.Id); err != nil {
 		return session.NewRedirectError(goidc.InternalError, err.Error())
 	}
 
@@ -102,7 +102,7 @@ func stopFlowInProgress(
 	ctx utils.Context,
 	session *models.AuthnSession,
 ) models.OAuthError {
-	if err := ctx.AuthnSessionManager.CreateOrUpdate(*session); err != nil {
+	if err := ctx.CreateOrUpdateAuthnSession(*session); err != nil {
 		return models.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
@@ -165,16 +165,17 @@ func authorizeAuthnSession(
 	ctx utils.Context,
 	session *models.AuthnSession,
 ) models.OAuthError {
+
 	if !session.ResponseType.Contains(goidc.CodeResponse) {
 		// The client didn't request an authorization code to later exchange it for an access token,
 		// so we don't keep the session anymore.
-		if err := ctx.AuthnSessionManager.Delete(session.Id); err != nil {
+		if err := ctx.DeleteAuthnSession(session.Id); err != nil {
 			return models.NewOAuthError(goidc.InternalError, err.Error())
 		}
 	}
 
 	session.InitAuthorizationCode()
-	if err := ctx.AuthnSessionManager.CreateOrUpdate(*session); err != nil {
+	if err := ctx.CreateOrUpdateAuthnSession(*session); err != nil {
 		return models.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
@@ -189,7 +190,7 @@ func generateImplicitGrantSession(
 
 	grantSession := models.NewGrantSession(grantOptions, token)
 	ctx.Logger.Debug("creating grant session for implicit grant")
-	if err := ctx.GrantSessionManager.CreateOrUpdate(grantSession); err != nil {
+	if err := ctx.CreateOrUpdateGrantSession(grantSession); err != nil {
 		ctx.Logger.Error("error creating a grant session during implicit grant",
 			slog.String("error", err.Error()))
 		return models.NewOAuthError(goidc.InternalError, err.Error())

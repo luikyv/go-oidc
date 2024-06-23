@@ -35,7 +35,7 @@ func TestInitAuth_InvalidRedirectUri(t *testing.T) {
 	// When
 	client := models.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.ClientManager.Create(client)
+	ctx.CreateClient(client)
 
 	// Then
 	err := authorize.InitAuth(ctx, models.AuthorizationRequest{
@@ -62,7 +62,7 @@ func TestInitAuth_InvalidScope(t *testing.T) {
 	// When
 	client := models.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.ClientManager.Create(client)
+	ctx.CreateClient(client)
 
 	// Then
 	authorize.InitAuth(ctx, models.AuthorizationRequest{
@@ -87,7 +87,7 @@ func TestInitAuth_InvalidResponseType(t *testing.T) {
 	client := models.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
 	client.ResponseTypes = []goidc.ResponseType{goidc.CodeResponse}
-	ctx.ClientManager.Create(client)
+	ctx.CreateClient(client)
 
 	// Then
 	authorize.InitAuth(ctx, models.AuthorizationRequest{
@@ -111,7 +111,7 @@ func TestInitAuth_WhenNoPolicyIsAvailable(t *testing.T) {
 	// When
 	client := models.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.ClientManager.Create(client)
+	ctx.CreateClient(client)
 
 	// Then
 	authorize.InitAuth(ctx, models.AuthorizationRequest{
@@ -136,7 +136,7 @@ func TestInitAuth_ShouldEndWithError(t *testing.T) {
 	// When
 	client := models.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.ClientManager.Create(client)
+	ctx.CreateClient(client)
 	policy := goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.Context, c goidc.Client, s goidc.AuthnSession) bool { return true },
@@ -179,7 +179,7 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 	// When
 	client := models.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.ClientManager.Create(client)
+	ctx.CreateClient(client)
 	policy := goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.Context, c goidc.Client, s goidc.AuthnSession) bool { return true },
@@ -234,7 +234,7 @@ func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 	// When
 	client := models.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.ClientManager.Create(client)
+	ctx.CreateClient(client)
 	policy := goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.Context, c goidc.Client, s goidc.AuthnSession) bool { return true },
@@ -289,9 +289,9 @@ func TestInitAuth_WithPar(t *testing.T) {
 	client := models.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
 	ctx.ParIsEnabled = true
-	ctx.ClientManager.Create(client)
+	ctx.CreateClient(client)
 	requestUri := "urn:goidc:random_value"
-	ctx.AuthnSessionManager.CreateOrUpdate(
+	ctx.CreateOrUpdateAuthnSession(
 		models.AuthnSession{
 			Id: uuid.NewString(),
 			AuthorizationParameters: models.AuthorizationParameters{
@@ -362,7 +362,7 @@ func TestContinueAuthentication(t *testing.T) {
 	ctx.Policies = []goidc.AuthnPolicy{policy}
 
 	callbackId := "random_callback_id"
-	ctx.AuthnSessionManager.CreateOrUpdate(models.AuthnSession{
+	ctx.CreateOrUpdateAuthnSession(models.AuthnSession{
 		PolicyId:           policy.Id,
 		CallbackId:         callbackId,
 		ExpiresAtTimestamp: unit.GetTimestampNow() + 60,

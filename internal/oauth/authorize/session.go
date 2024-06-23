@@ -65,7 +65,7 @@ func initValidAuthnSessionWithPar(
 
 	if err := validateAuthorizationRequestWithPar(ctx, req, session, client); err != nil {
 		// If any of the parameters is invalid, we delete the session right away.
-		ctx.AuthnSessionManager.Delete(session.Id)
+		ctx.DeleteAuthnSession(session.Id)
 		return models.AuthnSession{}, err
 	}
 
@@ -84,7 +84,7 @@ func getSessionCreatedWithPar(
 		return models.AuthnSession{}, models.NewOAuthError(goidc.InvalidRequest, "request_uri is required")
 	}
 
-	session, err := ctx.AuthnSessionManager.GetByRequestUri(req.RequestUri)
+	session, err := ctx.GetAuthnSessionByRequestUri(req.RequestUri)
 	if err != nil {
 		return models.AuthnSession{}, models.NewOAuthError(goidc.InvalidRequest, "invalid request_uri")
 	}

@@ -20,7 +20,7 @@ func HandleUserInfoRequest(ctx utils.Context) (models.UserInfoResponse, models.O
 		return models.UserInfoResponse{}, oauthErr
 	}
 
-	grantSession, err := ctx.GrantSessionManager.GetByTokenId(tokenId)
+	grantSession, err := ctx.GetGrantSessionByTokenId(tokenId)
 	if err != nil {
 		return models.UserInfoResponse{}, models.NewOAuthError(goidc.InvalidRequest, "invalid token")
 	}

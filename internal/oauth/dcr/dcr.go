@@ -24,7 +24,7 @@ func CreateClient(
 	}
 
 	newClient := newClient(dynamicClient)
-	if err := ctx.ClientManager.Create(newClient); err != nil {
+	if err := ctx.CreateClient(newClient); err != nil {
 		return models.DynamicClientResponse{}, models.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
@@ -60,7 +60,7 @@ func UpdateClient(
 	}
 
 	updatedClient := newClient(dynamicClient)
-	if err := ctx.ClientManager.Update(client.Id, updatedClient); err != nil {
+	if err := ctx.UpdateClient(client.Id, updatedClient); err != nil {
 		return models.DynamicClientResponse{}, models.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
@@ -102,7 +102,7 @@ func DeleteClient(
 		return err
 	}
 
-	if err := ctx.ClientManager.Delete(dynamicClientRequest.Id); err != nil {
+	if err := ctx.DeleteClient(dynamicClientRequest.Id); err != nil {
 		return models.NewOAuthError(goidc.InternalError, err.Error())
 	}
 	return nil

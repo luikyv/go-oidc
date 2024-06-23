@@ -1,6 +1,7 @@
 package inmemory_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/luikymagno/goidc/internal/crud/inmemory"
@@ -15,7 +16,7 @@ func TestCreateClient_HappyPath(t *testing.T) {
 	}
 
 	// Then.
-	err := manager.Create(client)
+	err := manager.Create(context.Background(), client)
 
 	// Assert.
 	if err != nil {
@@ -36,7 +37,7 @@ func TestCreateClient_ClientAlreadyExists(t *testing.T) {
 	manager.Clients[client.Id] = client
 
 	// Then.
-	err := manager.Create(client)
+	err := manager.Create(context.Background(), client)
 
 	// Assert.
 	if err == nil {
@@ -57,7 +58,7 @@ func TestUpdateClient_HappyPath(t *testing.T) {
 	manager.Clients[client.Id] = client
 
 	// Then.
-	err := manager.Update(client.Id, client)
+	err := manager.Update(context.Background(), client.Id, client)
 
 	// Assert.
 	if err != nil {
@@ -74,7 +75,7 @@ func TestUpdateClient_ClientDoesNotExist(t *testing.T) {
 	manager := inmemory.NewInMemoryClientManager()
 
 	// Then.
-	err := manager.Update("invalid_client_id", models.Client{})
+	err := manager.Update(context.Background(), "invalid_client_id", models.Client{})
 
 	// Assert.
 	if err == nil {
@@ -91,7 +92,7 @@ func TestGetClient_HappyPath(t *testing.T) {
 	}
 
 	// Then.
-	client, err := manager.Get(clientId)
+	client, err := manager.Get(context.Background(), clientId)
 
 	// Assert.
 	if err != nil {
@@ -109,7 +110,7 @@ func TestGetClient_ClientDoesNotExist(t *testing.T) {
 	clientId := "random_client_id"
 
 	// Then.
-	_, err := manager.Get(clientId)
+	_, err := manager.Get(context.Background(), clientId)
 
 	// Assert.
 	if err == nil {
@@ -126,7 +127,7 @@ func TestDeleteClient_HappyPath(t *testing.T) {
 	}
 
 	// Then.
-	err := manager.Delete(clientId)
+	err := manager.Delete(context.Background(), clientId)
 
 	// Assert.
 	if err != nil {
@@ -144,7 +145,7 @@ func TestDeleteClient_ClientDoesNotExist(t *testing.T) {
 	clientId := "random_client_id"
 
 	// Then.
-	err := manager.Delete(clientId)
+	err := manager.Delete(context.Background(), clientId)
 
 	// Assert.
 	if err != nil {

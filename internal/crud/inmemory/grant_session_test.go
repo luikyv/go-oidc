@@ -1,6 +1,7 @@
 package inmemory_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/luikymagno/goidc/internal/crud/inmemory"
@@ -15,7 +16,7 @@ func TestCreateOrUpdateGrantSessionSession_HappyPath(t *testing.T) {
 	}
 
 	// Then.
-	err := manager.CreateOrUpdate(session)
+	err := manager.CreateOrUpdate(context.Background(), session)
 
 	// Assert.
 	if err != nil {
@@ -27,7 +28,7 @@ func TestCreateOrUpdateGrantSessionSession_HappyPath(t *testing.T) {
 	}
 
 	// Then.
-	err = manager.CreateOrUpdate(session)
+	err = manager.CreateOrUpdate(context.Background(), session)
 
 	// Assert.
 	if err != nil {
@@ -48,7 +49,7 @@ func TestGetGrantSession_HappyPath(t *testing.T) {
 	}
 
 	// Then.
-	session, err := manager.Get(sessionId)
+	session, err := manager.Get(context.Background(), sessionId)
 
 	// Assert.
 	if err != nil {
@@ -71,7 +72,7 @@ func TestGetGrantSessionByTokenId_HappyPath(t *testing.T) {
 	}
 
 	// Then.
-	session, err := manager.GetByTokenId(tokenId)
+	session, err := manager.GetByTokenId(context.Background(), tokenId)
 
 	// Assert.
 	if err != nil {
@@ -94,7 +95,7 @@ func TestGetGrantSessionByRefreshToken_HappyPath(t *testing.T) {
 	}
 
 	// Then.
-	session, err := manager.GetByRefreshToken(refreshToken)
+	session, err := manager.GetByRefreshToken(context.Background(), refreshToken)
 
 	// Assert.
 	if err != nil {
@@ -115,7 +116,7 @@ func TestDeleteGrantSession_HappyPath(t *testing.T) {
 	}
 
 	// Then.
-	err := manager.Delete(sessionId)
+	err := manager.Delete(context.Background(), sessionId)
 
 	// Assert.
 	if err != nil {
@@ -133,7 +134,7 @@ func TestDeleteAuthnGrantSession_SessionDoesNotExist(t *testing.T) {
 	sessionId := "random_session_id"
 
 	// Then.
-	err := manager.Delete(sessionId)
+	err := manager.Delete(context.Background(), sessionId)
 
 	// Assert.
 	if err != nil {

@@ -1,6 +1,8 @@
 package inmemory
 
 import (
+	"context"
+
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
 )
@@ -15,12 +17,12 @@ func NewInMemoryGrantSessionManager() *InMemoryGrantSessionManager {
 	}
 }
 
-func (manager *InMemoryGrantSessionManager) CreateOrUpdate(grantSession models.GrantSession) error {
+func (manager *InMemoryGrantSessionManager) CreateOrUpdate(_ context.Context, grantSession models.GrantSession) error {
 	manager.Sessions[grantSession.Id] = grantSession
 	return nil
 }
 
-func (manager *InMemoryGrantSessionManager) Get(id string) (models.GrantSession, error) {
+func (manager *InMemoryGrantSessionManager) Get(_ context.Context, id string) (models.GrantSession, error) {
 	grantSession, exists := manager.Sessions[id]
 	if !exists {
 		return models.GrantSession{}, models.ErrorEntityNotFound
@@ -38,7 +40,7 @@ func (manager *InMemoryGrantSessionManager) getFirstToken(condition func(models.
 	return unit.FindFirst(grantSessions, condition)
 }
 
-func (manager *InMemoryGrantSessionManager) GetByTokenId(tokenId string) (models.GrantSession, error) {
+func (manager *InMemoryGrantSessionManager) GetByTokenId(_ context.Context, tokenId string) (models.GrantSession, error) {
 	grantSession, exists := manager.getFirstToken(func(t models.GrantSession) bool {
 		return t.TokenId == tokenId
 	})
@@ -49,7 +51,7 @@ func (manager *InMemoryGrantSessionManager) GetByTokenId(tokenId string) (models
 	return grantSession, nil
 }
 
-func (manager *InMemoryGrantSessionManager) GetByRefreshToken(refreshToken string) (models.GrantSession, error) {
+func (manager *InMemoryGrantSessionManager) GetByRefreshToken(_ context.Context, refreshToken string) (models.GrantSession, error) {
 	grantSession, exists := manager.getFirstToken(func(t models.GrantSession) bool {
 		return t.RefreshToken == refreshToken
 	})
@@ -60,7 +62,7 @@ func (manager *InMemoryGrantSessionManager) GetByRefreshToken(refreshToken strin
 	return grantSession, nil
 }
 
-func (manager *InMemoryGrantSessionManager) Delete(id string) error {
+func (manager *InMemoryGrantSessionManager) Delete(_ context.Context, id string) error {
 	delete(manager.Sessions, id)
 	return nil
 }

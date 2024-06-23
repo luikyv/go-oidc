@@ -87,6 +87,7 @@ func generateAuthorizationCodeGrantSession(
 	models.GrantSession,
 	models.OAuthError,
 ) {
+
 	grantSession := models.NewGrantSession(grantOptions, token)
 	if client.IsGrantTypeAllowed(goidc.RefreshTokenGrant) && grantOptions.ShouldRefresh {
 		ctx.Logger.Debug("generating refresh token for authorization code grant")
@@ -95,7 +96,7 @@ func generateAuthorizationCodeGrantSession(
 	}
 
 	ctx.Logger.Debug("creating grant session for authorization_code grant")
-	if err := ctx.GrantSessionManager.CreateOrUpdate(grantSession); err != nil {
+	if err := ctx.CreateOrUpdateGrantSession(grantSession); err != nil {
 		ctx.Logger.Error("error creating grant session during authorization_code grant",
 			slog.String("error", err.Error()))
 		return models.GrantSession{}, models.NewOAuthError(goidc.InternalError, err.Error())
@@ -204,7 +205,7 @@ func getAuthenticatedClientAndSession(
 }
 
 func getSessionByAuthorizationCode(ctx utils.Context, authorizationCode string, ch chan<- utils.ResultChannel) {
-	session, err := ctx.AuthnSessionManager.GetByAuthorizationCode(authorizationCode)
+	session, err := ctx.GetAuthnSessionByAuthorizationCode(authorizationCode)
 	if err != nil {
 		ch <- utils.ResultChannel{
 			Result: models.AuthnSession{},
@@ -214,7 +215,7 @@ func getSessionByAuthorizationCode(ctx utils.Context, authorizationCode string, 
 
 	// The session must be used only once when requesting a token.
 	// By deleting it, we prevent replay attacks.
-	err = ctx.AuthnSessionManager.Delete(session.Id)
+	err = ctx.DeleteAuthnSession(session.Id)
 	if err != nil {
 		ch <- utils.ResultChannel{
 			Result: models.AuthnSession{},

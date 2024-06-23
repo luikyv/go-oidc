@@ -10,6 +10,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/goidc/internal/crud"
@@ -226,20 +227,6 @@ func (ctx Context) GetClientCertificate() (*x509.Certificate, bool) {
 	return clientCert, true
 }
 
-func (ctx Context) GetClient(clientId string) (models.Client, error) {
-	client, err := ctx.ClientManager.Get(clientId)
-	if err != nil {
-		return models.Client{}, err
-	}
-
-	// TODO: Is there a better way?
-	// This will allow the method client.GetPublicJwks to cache the client keys if they fetched from the JWKS URI.
-	if client.PublicJwks == nil {
-		client.PublicJwks = &jose.JSONWebKeySet{}
-	}
-	return client, nil
-}
-
 func (ctx Context) ExecuteDcrPlugin(dynamicClient *models.DynamicClientRequest) {
 	if ctx.DcrPlugin != nil {
 		ctx.DcrPlugin(ctx, dynamicClient)
@@ -284,6 +271,92 @@ func (ctx Context) GetAvailablePolicy(client models.Client, session *models.Auth
 	}
 
 	return goidc.AuthnPolicy{}, false
+}
+
+//---------------------------------------- context.Context ----------------------------------------//
+
+func (ctx Context) Deadline() (time.Time, bool) {
+	return ctx.Request.Context().Deadline()
+}
+
+func (ctx Context) Done() <-chan struct{} {
+	return ctx.Request.Context().Done()
+}
+
+func (ctx Context) Err() error {
+	return ctx.Request.Context().Err()
+}
+
+func (ctx Context) Value(key any) any {
+	return ctx.Request.Context().Value(key)
+}
+
+//---------------------------------------- CRUD ----------------------------------------//
+
+func (ctx Context) CreateClient(client models.Client) error {
+	return ctx.ClientManager.Create(ctx, client)
+}
+
+func (ctx Context) UpdateClient(id string, client models.Client) error {
+	return ctx.ClientManager.Update(ctx, id, client)
+}
+
+func (ctx Context) GetClient(clientId string) (models.Client, error) {
+	client, err := ctx.ClientManager.Get(ctx, clientId)
+	if err != nil {
+		return models.Client{}, err
+	}
+
+	// TODO: Is there a better way?
+	// This will allow the method client.GetPublicJwks to cache the client keys if they fetched from the JWKS URI.
+	if client.PublicJwks == nil {
+		client.PublicJwks = &jose.JSONWebKeySet{}
+	}
+	return client, nil
+}
+
+func (ctx Context) DeleteClient(id string) error {
+	return ctx.ClientManager.Delete(ctx, id)
+}
+
+func (ctx Context) CreateOrUpdateGrantSession(session models.GrantSession) error {
+	return ctx.GrantSessionManager.CreateOrUpdate(ctx, session)
+}
+
+func (ctx Context) GetGrantSession(id string) (models.GrantSession, error) {
+	return ctx.GrantSessionManager.Get(ctx, id)
+}
+
+func (ctx Context) GetGrantSessionByTokenId(tokenId string) (models.GrantSession, error) {
+	return ctx.GrantSessionManager.GetByTokenId(ctx, tokenId)
+}
+
+func (ctx Context) GetGrantSessionByRefreshToken(refreshToken string) (models.GrantSession, error) {
+	return ctx.GrantSessionManager.GetByRefreshToken(ctx, refreshToken)
+}
+
+func (ctx Context) DeleteGrantSession(id string) error {
+	return ctx.GrantSessionManager.Delete(ctx, id)
+}
+
+func (ctx Context) CreateOrUpdateAuthnSession(session models.AuthnSession) error {
+	return ctx.AuthnSessionManager.CreateOrUpdate(ctx, session)
+}
+
+func (ctx Context) GetAuthnSessionByCallbackId(callbackId string) (models.AuthnSession, error) {
+	return ctx.AuthnSessionManager.GetByCallbackId(ctx, callbackId)
+}
+
+func (ctx Context) GetAuthnSessionByAuthorizationCode(authorizationCode string) (models.AuthnSession, error) {
+	return ctx.AuthnSessionManager.GetByAuthorizationCode(ctx, authorizationCode)
+}
+
+func (ctx Context) GetAuthnSessionByRequestUri(requestUri string) (models.AuthnSession, error) {
+	return ctx.AuthnSessionManager.GetByRequestUri(ctx, requestUri)
+}
+
+func (ctx Context) DeleteAuthnSession(id string) error {
+	return ctx.AuthnSessionManager.Delete(ctx, id)
 }
 
 //---------------------------------------- HTTP Utils ----------------------------------------//
@@ -355,6 +428,14 @@ func (ctx Context) GetFormData() map[string]any {
 }
 
 func (ctx Context) WriteJson(obj any, status int) error {
+	// Check if the request was terminated before writing anything.
+	select {
+	case <-ctx.Done():
+		ctx.Logger.Error(ctx.Err().Error())
+		return nil
+	default:
+	}
+
 	ctx.Response.Header().Set("Content-Type", "application/json")
 	ctx.Response.WriteHeader(status)
 	if err := json.NewEncoder(ctx.Response).Encode(obj); err != nil {
@@ -365,6 +446,14 @@ func (ctx Context) WriteJson(obj any, status int) error {
 }
 
 func (ctx Context) WriteJwt(token string, status int) error {
+	// Check if the request was terminated before writing anything.
+	select {
+	case <-ctx.Done():
+		ctx.Logger.Error(ctx.Err().Error())
+		return nil
+	default:
+	}
+
 	ctx.Response.Header().Set("Content-Type", "application/jwt")
 	ctx.Response.WriteHeader(status)
 
@@ -380,14 +469,27 @@ func (ctx Context) Redirect(redirectUrl string) {
 }
 
 func (ctx Context) RenderHtml(html string, params any) {
-	// TODO: review this.
-	ctx.Response.WriteHeader(http.StatusOK)
+	// Check if the request was terminated before writing anything.
+	select {
+	case <-ctx.Done():
+		ctx.Logger.Error(ctx.Err().Error())
+	default:
+	}
 
+	// TODO: review this. Add headers?
+	ctx.Response.WriteHeader(http.StatusOK)
 	tmpl, _ := template.New("default").Parse(html)
 	tmpl.Execute(ctx.Response, params)
 }
 
 func (ctx Context) RenderHtmlTemplate(tmpl *template.Template, params any) {
+	// Check if the request was terminated before writing anything.
+	select {
+	case <-ctx.Done():
+		ctx.Logger.Error(ctx.Err().Error())
+	default:
+	}
+
 	tmpl.Execute(ctx.Response, params)
 }
 

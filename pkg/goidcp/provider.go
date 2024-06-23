@@ -1,6 +1,7 @@
 package goidcp
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"net/http"
@@ -333,13 +334,15 @@ func (provider *OpenIdProvider) SetCorrelationIdHeader(header string) {
 	provider.config.CorrelationIdHeader = header
 }
 
+// Set the OpenId Provider profile to FAPI 2.0.
+// The server will only be able to run if it is configured respecting the FAPI 2.0 profile.
+// This will also change some of the behavior of the server during runtime to be compliant with the FAPI 2.0.
 func (provider *OpenIdProvider) SetFapi2Profile() {
-	// TODO: Add the possible defaults.
 	provider.config.Profile = goidc.Fapi2Profile
 }
 
 func (provider *OpenIdProvider) AddClient(client models.Client) error {
-	return provider.config.ClientManager.Create(client)
+	return provider.config.ClientManager.Create(context.Background(), client)
 }
 
 func (provider *OpenIdProvider) AddPolicy(policy goidc.AuthnPolicy) {

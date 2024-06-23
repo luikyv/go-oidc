@@ -17,7 +17,7 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 	// When
 	client := models.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.ClientManager.Create(client)
+	ctx.CreateClient(client)
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
@@ -35,7 +35,7 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 			},
 		},
 	}
-	ctx.GrantSessionManager.CreateOrUpdate(grantSession)
+	ctx.CreateOrUpdateGrantSession(grantSession)
 
 	req := models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{
@@ -94,7 +94,7 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 	// When
 	client := models.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.ClientManager.Create(client)
+	ctx.CreateClient(client)
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
@@ -111,7 +111,7 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 			},
 		},
 	}
-	ctx.GrantSessionManager.CreateOrUpdate(grantSession)
+	ctx.CreateOrUpdateGrantSession(grantSession)
 
 	req := models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{

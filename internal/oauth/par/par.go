@@ -28,7 +28,7 @@ func PushAuthorization(
 	}
 
 	requestUri = session.Push(ctx.ParLifetimeSecs)
-	if err := ctx.AuthnSessionManager.CreateOrUpdate(session); err != nil {
+	if err := ctx.AuthnSessionManager.CreateOrUpdate(ctx, session); err != nil {
 		ctx.Logger.Debug("could not create a session")
 		return "", models.NewOAuthError(goidc.InternalError, err.Error())
 	}

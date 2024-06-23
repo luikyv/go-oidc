@@ -70,7 +70,7 @@ func getRefreshTokenIntrospectionInfo(
 	ctx utils.Context,
 	token string,
 ) models.TokenIntrospectionInfo {
-	grantSession, err := ctx.GrantSessionManager.GetByRefreshToken(token)
+	grantSession, err := ctx.GetGrantSessionByRefreshToken(token)
 	if err != nil {
 		return models.TokenIntrospectionInfo{
 			IsActive: false,
@@ -118,7 +118,7 @@ func getOpaqueTokenIntrospectionInfo(
 	ctx utils.Context,
 	token string,
 ) models.TokenIntrospectionInfo {
-	grantSession, err := ctx.GrantSessionManager.GetByTokenId(token)
+	grantSession, err := ctx.GetGrantSessionByTokenId(token)
 	if err != nil {
 		return models.TokenIntrospectionInfo{
 			IsActive: false,

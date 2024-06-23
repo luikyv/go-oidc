@@ -1,6 +1,8 @@
 package inmemory
 
 import (
+	"context"
+
 	"github.com/luikymagno/goidc/internal/models"
 )
 
@@ -14,7 +16,7 @@ func NewInMemoryClientManager() *InMemoryClientManager {
 	}
 }
 
-func (manager *InMemoryClientManager) Create(client models.Client) error {
+func (manager *InMemoryClientManager) Create(_ context.Context, client models.Client) error {
 	_, exists := manager.Clients[client.Id]
 	if exists {
 		return models.ErrorEntityAlreadyExists
@@ -24,7 +26,7 @@ func (manager *InMemoryClientManager) Create(client models.Client) error {
 	return nil
 }
 
-func (manager *InMemoryClientManager) Update(id string, client models.Client) error {
+func (manager *InMemoryClientManager) Update(_ context.Context, id string, client models.Client) error {
 	_, exists := manager.Clients[id]
 	if !exists {
 		return models.ErrorEntityNotFound
@@ -34,7 +36,7 @@ func (manager *InMemoryClientManager) Update(id string, client models.Client) er
 	return nil
 }
 
-func (manager *InMemoryClientManager) Get(id string) (models.Client, error) {
+func (manager *InMemoryClientManager) Get(_ context.Context, id string) (models.Client, error) {
 	client, exists := manager.Clients[id]
 	if !exists {
 		return models.Client{}, models.ErrorEntityNotFound
@@ -43,7 +45,7 @@ func (manager *InMemoryClientManager) Get(id string) (models.Client, error) {
 	return client, nil
 }
 
-func (manager *InMemoryClientManager) Delete(id string) error {
+func (manager *InMemoryClientManager) Delete(_ context.Context, id string) error {
 	delete(manager.Clients, id)
 	return nil
 }

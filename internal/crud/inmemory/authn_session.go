@@ -1,6 +1,8 @@
 package inmemory
 
 import (
+	"context"
+
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
 )
@@ -15,7 +17,7 @@ func NewInMemoryAuthnSessionManager() *InMemoryAuthnSessionManager {
 	}
 }
 
-func (manager *InMemoryAuthnSessionManager) CreateOrUpdate(session models.AuthnSession) error {
+func (manager *InMemoryAuthnSessionManager) CreateOrUpdate(_ context.Context, session models.AuthnSession) error {
 	manager.Sessions[session.Id] = session
 	return nil
 }
@@ -29,7 +31,7 @@ func (manager *InMemoryAuthnSessionManager) getFirstSession(condition func(model
 	return unit.FindFirst(sessions, condition)
 }
 
-func (manager *InMemoryAuthnSessionManager) GetByCallbackId(callbackId string) (models.AuthnSession, error) {
+func (manager *InMemoryAuthnSessionManager) GetByCallbackId(_ context.Context, callbackId string) (models.AuthnSession, error) {
 	session, exists := manager.getFirstSession(func(s models.AuthnSession) bool {
 		return s.CallbackId == callbackId
 	})
@@ -40,7 +42,7 @@ func (manager *InMemoryAuthnSessionManager) GetByCallbackId(callbackId string) (
 	return session, nil
 }
 
-func (manager *InMemoryAuthnSessionManager) GetByAuthorizationCode(authorizationCode string) (models.AuthnSession, error) {
+func (manager *InMemoryAuthnSessionManager) GetByAuthorizationCode(_ context.Context, authorizationCode string) (models.AuthnSession, error) {
 	session, exists := manager.getFirstSession(func(s models.AuthnSession) bool {
 		return s.AuthorizationCode == authorizationCode
 	})
@@ -51,7 +53,7 @@ func (manager *InMemoryAuthnSessionManager) GetByAuthorizationCode(authorization
 	return session, nil
 }
 
-func (manager *InMemoryAuthnSessionManager) GetByRequestUri(requestUri string) (models.AuthnSession, error) {
+func (manager *InMemoryAuthnSessionManager) GetByRequestUri(_ context.Context, requestUri string) (models.AuthnSession, error) {
 	session, exists := manager.getFirstSession(func(s models.AuthnSession) bool {
 		return s.RequestUri == requestUri
 	})
@@ -62,7 +64,7 @@ func (manager *InMemoryAuthnSessionManager) GetByRequestUri(requestUri string) (
 	return session, nil
 }
 
-func (manager *InMemoryAuthnSessionManager) Delete(id string) error {
+func (manager *InMemoryAuthnSessionManager) Delete(_ context.Context, id string) error {
 	delete(manager.Sessions, id)
 	return nil
 }

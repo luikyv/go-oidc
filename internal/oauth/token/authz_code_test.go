@@ -17,7 +17,7 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 	// When
 	client := models.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.ClientManager.Create(client)
+	ctx.CreateClient(client)
 
 	authorizationCode := "random_authz_code"
 	session := models.AuthnSession{
@@ -35,7 +35,7 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 		Store:                     make(map[string]any),
 		AdditionalTokenClaims:     make(map[string]any),
 	}
-	ctx.AuthnSessionManager.CreateOrUpdate(session)
+	ctx.CreateOrUpdateAuthnSession(session)
 
 	req := models.TokenRequest{
 		ClientAuthnRequest: models.ClientAuthnRequest{

@@ -1,6 +1,7 @@
 package goidc
 
 import (
+	"context"
 	"crypto/x509"
 	"html/template"
 	"maps"
@@ -16,6 +17,7 @@ type Context interface {
 	GetClientCertificate() (clientCert *x509.Certificate, ok bool)
 	RenderHtml(html string, params any)
 	RenderHtmlTemplate(tmpl *template.Template, params any)
+	context.Context
 }
 
 type Client interface {
