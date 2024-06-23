@@ -36,7 +36,6 @@ type ClientMetaInfo struct {
 	JarmSignatureAlgorithm             jose.SignatureAlgorithm     `json:"authorization_signed_response_alg,omitempty"`
 	JarmKeyEncryptionAlgorithm         jose.KeyAlgorithm           `json:"authorization_encrypted_response_alg,omitempty"`
 	JarmContentEncryptionAlgorithm     jose.ContentEncryption      `json:"authorization_encrypted_response_enc,omitempty"`
-	PkceIsRequired                     bool                        `json:"pkce_is_required"`
 	AuthnMethod                        goidc.ClientAuthnType       `json:"token_endpoint_auth_method"`
 	AuthnSignatureAlgorithm            jose.SignatureAlgorithm     `json:"token_endpoint_auth_signing_alg"`
 	DpopIsRequired                     bool                        `json:"dpop_bound_access_tokens,omitempty"`
@@ -108,10 +107,6 @@ func (client *ClientMetaInfo) SetAttribute(key string, value any) {
 func (client ClientMetaInfo) GetAttribute(key string) (any, bool) {
 	value, ok := client.Attributes[key]
 	return value, ok
-}
-
-func (client *ClientMetaInfo) RequirePkce() {
-	client.PkceIsRequired = true
 }
 
 func (client *ClientMetaInfo) RequireDpop() {

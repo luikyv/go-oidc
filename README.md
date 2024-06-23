@@ -2,7 +2,7 @@
 A customizable OpenID Provider made in Go.
 
 ## To Evaluate
-* NewTokenOptions.
+* Simplify pkce, only required for public clients.
 * Add more tests.
 * Implement storage with MongoDB.
 * Add coverage report and quality checks.
@@ -18,3 +18,4 @@ A customizable OpenID Provider made in Go.
 * Create a package.
 * Allow the dev to set an error template for /authorize.
 * Client jwks is required for JAR.
+* Handle expired sessions.

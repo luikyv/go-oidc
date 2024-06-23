@@ -33,7 +33,6 @@ type Client interface {
 type DynamicClient interface {
 	GetScopes() (scopes string, ok bool)
 	SetScopes(scopes string)
-	RequirePkce()
 	RequireDpop()
 	GetPublicJwks() (clientJwks jose.JSONWebKeySet, err error)
 	// Set a custom attribute.

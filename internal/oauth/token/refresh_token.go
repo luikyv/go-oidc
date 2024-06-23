@@ -160,7 +160,9 @@ func validateRefreshTokenGrantRequest(
 	}
 
 	if grantSession.IsRefreshSessionExpired() {
-		//TODO: How to handle the expired sessions? There are just hanging for now.
+		if err := ctx.DeleteGrantSession(grantSession.Id); err != nil {
+			return models.NewOAuthError(goidc.InternalError, err.Error())
+		}
 		return models.NewOAuthError(goidc.UnauthorizedClient, "the refresh token is expired")
 	}
 

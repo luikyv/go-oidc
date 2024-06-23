@@ -235,11 +235,11 @@ func validatePkce(
 	params models.AuthorizationParameters,
 	client models.Client,
 ) models.OAuthError {
-	if !ctx.PkceIsEnabled {
-		return nil
+	if ctx.PkceIsEnabled && client.AuthnMethod == goidc.NoneAuthn && params.CodeChallenge == "" {
+		return params.NewRedirectError(goidc.InvalidRequest, "pkce is required for public clients")
 	}
 
-	if (ctx.PkceIsRequired || client.PkceIsRequired) && params.CodeChallenge == "" {
+	if ctx.PkceIsRequired && params.CodeChallenge == "" {
 		return params.NewRedirectError(goidc.InvalidRequest, "code_challenge is required")
 	}
 	return nil

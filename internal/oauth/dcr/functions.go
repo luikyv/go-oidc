@@ -9,7 +9,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func setDefaults(ctx utils.Context, dynamicClient *models.DynamicClientRequest) {
+func setDefaults(_ utils.Context, dynamicClient *models.DynamicClientRequest) {
 	if dynamicClient.AuthnMethod == "" {
 		dynamicClient.AuthnMethod = goidc.ClientSecretBasicAuthn
 	}
@@ -24,10 +24,6 @@ func setDefaults(ctx utils.Context, dynamicClient *models.DynamicClientRequest) 
 
 	if dynamicClient.ResponseTypes == nil {
 		dynamicClient.ResponseTypes = []goidc.ResponseType{goidc.CodeResponse}
-	}
-
-	if ctx.PkceIsEnabled && dynamicClient.AuthnMethod == goidc.NoneAuthn {
-		dynamicClient.PkceIsRequired = true
 	}
 
 	if dynamicClient.IdTokenKeyEncryptionAlgorithm != "" && dynamicClient.IdTokenContentEncryptionAlgorithm == "" {

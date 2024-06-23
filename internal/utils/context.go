@@ -308,7 +308,7 @@ func (ctx Context) GetClient(clientId string) (models.Client, error) {
 	}
 
 	// TODO: Is there a better way?
-	// This will allow the method client.GetPublicJwks to cache the client keys if they fetched from the JWKS URI.
+	// This will allow the method client.GetPublicJwks to cache the client keys if they are fetched from the JWKS URI.
 	if client.PublicJwks == nil {
 		client.PublicJwks = &jose.JSONWebKeySet{}
 	}

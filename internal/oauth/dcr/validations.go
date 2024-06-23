@@ -39,7 +39,6 @@ func validateDynamicClientRequest(
 		validateJarEncryptionAlgorithms,
 		validateJarmSignatureAlgorithm,
 		validateJarmEncryptionAlgorithms,
-		validatePkceIsRequiredForPublicClients,
 		validatePublicJwks,
 		validatePublicJwksUri,
 		validateAuthorizationDetailTypes,
@@ -256,16 +255,6 @@ func validateJwksAreRequiredForPrivateKeyJwtAuthn(
 		return models.NewOAuthError(goidc.InvalidRequest, "the jwks is required for private_key_jwt")
 	}
 
-	return nil
-}
-
-func validatePkceIsRequiredForPublicClients(
-	ctx utils.Context,
-	dynamicClient models.DynamicClientRequest,
-) models.OAuthError {
-	if ctx.PkceIsEnabled && dynamicClient.AuthnMethod == goidc.NoneAuthn && !dynamicClient.PkceIsRequired {
-		return models.NewOAuthError(goidc.InvalidRequest, "pkce is required for public clients")
-	}
 	return nil
 }
 
