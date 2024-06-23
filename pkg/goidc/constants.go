@@ -325,7 +325,7 @@ const (
 type AuthenticationContextReference string
 
 const (
-	NoAssuranceLevelAcr   AuthenticationContextReference = "0"
-	MaceIncommonIapSilver AuthenticationContextReference = "urn:mace:incommon:iap:silver"
-	MaceIncommonIapBronze AuthenticationContextReference = "urn:mace:incommon:iap:bronze"
+	NoAssuranceLevelAcr      AuthenticationContextReference = "0"
+	MaceIncommonIapSilverAcr AuthenticationContextReference = "urn:mace:incommon:iap:silver"
+	MaceIncommonIapBronzeAcr AuthenticationContextReference = "urn:mace:incommon:iap:bronze"
 )
