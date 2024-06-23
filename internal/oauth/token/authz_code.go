@@ -94,14 +94,12 @@ func generateAuthorizationCodeGrantSession(
 		grantSession.ExpiresAtTimestamp = unit.GetTimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
 
-	// WARNING: This will cause problems if something goes wrong.
-	go func() {
-		ctx.Logger.Debug("creating grant session for authorization_code grant")
-		if err := ctx.GrantSessionManager.CreateOrUpdate(grantSession); err != nil {
-			ctx.Logger.Error("error creating grant session during authorization_code grant",
-				slog.String("error", err.Error()))
-		}
-	}()
+	ctx.Logger.Debug("creating grant session for authorization_code grant")
+	if err := ctx.GrantSessionManager.CreateOrUpdate(grantSession); err != nil {
+		ctx.Logger.Error("error creating grant session during authorization_code grant",
+			slog.String("error", err.Error()))
+		return models.GrantSession{}, models.NewOAuthError(goidc.InternalError, err.Error())
+	}
 
 	return grantSession, nil
 }

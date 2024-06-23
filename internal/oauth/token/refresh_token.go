@@ -71,14 +71,12 @@ func updateRefreshTokenGrantSession(
 		grantSession.ActiveScopes = req.Scopes
 	}
 
-	// WARNING: This will cause problems if something goes wrong.
-	go func() {
-		ctx.Logger.Debug("updating grant session for refresh_token grant")
-		if err := ctx.GrantSessionManager.CreateOrUpdate(*grantSession); err != nil {
-			ctx.Logger.Error("error updating grant session during refresh_token grant",
-				slog.String("error", err.Error()), slog.String("session_id", grantSession.Id))
-		}
-	}()
+	ctx.Logger.Debug("updating grant session for refresh_token grant")
+	if err := ctx.GrantSessionManager.CreateOrUpdate(*grantSession); err != nil {
+		ctx.Logger.Error("error updating grant session during refresh_token grant",
+			slog.String("error", err.Error()), slog.String("session_id", grantSession.Id))
+		return models.NewOAuthError(goidc.InternalError, err.Error())
+	}
 
 	return nil
 }
