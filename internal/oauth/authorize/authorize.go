@@ -3,9 +3,9 @@ package authorize
 import (
 	"log/slog"
 
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func InitAuth(ctx utils.Context, req models.AuthorizationRequest) models.OAuthError {
@@ -34,17 +34,17 @@ func ContinueAuth(ctx utils.Context, callbackId string) models.OAuthError {
 	// Fetch the session using the callback ID.
 	session, err := ctx.AuthnSessionManager.GetByCallbackId(callbackId)
 	if err != nil {
-		return models.NewOAuthError(constants.InvalidRequest, err.Error())
+		return models.NewOAuthError(goidc.InvalidRequest, err.Error())
 	}
 
 	if session.IsExpired() {
-		return models.NewOAuthError(constants.InvalidRequest, "session timeout")
+		return models.NewOAuthError(goidc.InvalidRequest, "session timeout")
 	}
 
 	if oauthErr := authenticate(ctx, &session); oauthErr != nil {
 		client, err := ctx.GetClient(session.ClientId)
 		if err != nil {
-			return models.NewOAuthError(constants.InternalError, err.Error())
+			return models.NewOAuthError(goidc.InternalError, err.Error())
 		}
 		return redirectError(ctx, oauthErr, client)
 	}
@@ -60,12 +60,12 @@ func getClient(
 	models.OAuthError,
 ) {
 	if req.ClientId == "" {
-		return models.Client{}, models.NewOAuthError(constants.InvalidClient, "invalid client_id")
+		return models.Client{}, models.NewOAuthError(goidc.InvalidClient, "invalid client_id")
 	}
 
 	client, err := ctx.GetClient(req.ClientId)
 	if err != nil {
-		return models.Client{}, models.NewOAuthError(constants.InvalidClient, "invalid client_id")
+		return models.Client{}, models.NewOAuthError(goidc.InvalidClient, "invalid client_id")
 	}
 
 	return client, nil
@@ -74,9 +74,9 @@ func getClient(
 func authenticate(ctx utils.Context, session *models.AuthnSession) models.OAuthError {
 	policy := ctx.GetPolicyById(session.PolicyId)
 	switch policy.AuthnFunc(ctx, session) {
-	case constants.Success:
+	case goidc.Success:
 		return finishFlowSuccessfully(ctx, session)
-	case constants.InProgress:
+	case goidc.InProgress:
 		return stopFlowInProgress(ctx, session)
 	default:
 		return finishFlowWithFailure(ctx, session)
@@ -88,14 +88,14 @@ func finishFlowWithFailure(
 	session *models.AuthnSession,
 ) models.OAuthError {
 	if err := ctx.AuthnSessionManager.Delete(session.Id); err != nil {
-		return session.NewRedirectError(constants.InternalError, err.Error())
+		return session.NewRedirectError(goidc.InternalError, err.Error())
 	}
 
 	if session.Error != nil {
 		return session.Error
 	}
 
-	return session.NewRedirectError(constants.AccessDenied, "access denied")
+	return session.NewRedirectError(goidc.AccessDenied, "access denied")
 }
 
 func stopFlowInProgress(
@@ -103,7 +103,7 @@ func stopFlowInProgress(
 	session *models.AuthnSession,
 ) models.OAuthError {
 	if err := ctx.AuthnSessionManager.CreateOrUpdate(*session); err != nil {
-		return models.NewOAuthError(constants.InternalError, err.Error())
+		return models.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	return nil
@@ -113,36 +113,36 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) mod
 
 	client, err := ctx.GetClient(session.ClientId)
 	if err != nil {
-		return session.NewRedirectError(constants.InternalError, err.Error())
+		return session.NewRedirectError(goidc.InternalError, err.Error())
 	}
 
 	if err := authorizeAuthnSession(ctx, session); err != nil {
-		return session.NewRedirectError(constants.InternalError, err.Error())
+		return session.NewRedirectError(goidc.InternalError, err.Error())
 	}
 
 	redirectParams := models.RedirectParameters{
 		AuthorizationCode: session.AuthorizationCode,
 		State:             session.State,
 	}
-	if session.ResponseType.Contains(constants.TokenResponse) {
+	if session.ResponseType.Contains(goidc.TokenResponse) {
 		grantOptions, err := newImplicitGrantOptions(ctx, client, *session)
 		if err != nil {
-			return session.NewRedirectError(constants.InternalError, err.Error())
+			return session.NewRedirectError(goidc.InternalError, err.Error())
 		}
 
 		token, err := utils.MakeToken(ctx, client, grantOptions)
 		if err != nil {
-			return session.NewRedirectError(constants.InternalError, err.Error())
+			return session.NewRedirectError(goidc.InternalError, err.Error())
 		}
 
 		redirectParams.AccessToken = token.Value
 		redirectParams.TokenType = token.Type
 		if err := generateImplicitGrantSession(ctx, token, grantOptions); err != nil {
-			return session.NewRedirectError(constants.InternalError, err.Error())
+			return session.NewRedirectError(goidc.InternalError, err.Error())
 		}
 	}
 
-	if session.ResponseType.Contains(constants.IdTokenResponse) {
+	if session.ResponseType.Contains(goidc.IdTokenResponse) {
 		idTokenOptions := models.IdTokenOptions{
 			Subject:                 session.Subject,
 			ClientId:                session.ClientId,
@@ -154,7 +154,7 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) mod
 
 		redirectParams.IdToken, err = utils.MakeIdToken(ctx, client, idTokenOptions)
 		if err != nil {
-			return session.NewRedirectError(constants.InternalError, err.Error())
+			return session.NewRedirectError(goidc.InternalError, err.Error())
 		}
 	}
 
@@ -165,17 +165,17 @@ func authorizeAuthnSession(
 	ctx utils.Context,
 	session *models.AuthnSession,
 ) models.OAuthError {
-	if !session.ResponseType.Contains(constants.CodeResponse) {
+	if !session.ResponseType.Contains(goidc.CodeResponse) {
 		// The client didn't request an authorization code to later exchange it for an access token,
 		// so we don't keep the session anymore.
 		if err := ctx.AuthnSessionManager.Delete(session.Id); err != nil {
-			return models.NewOAuthError(constants.InternalError, err.Error())
+			return models.NewOAuthError(goidc.InternalError, err.Error())
 		}
 	}
 
 	session.InitAuthorizationCode()
 	if err := ctx.AuthnSessionManager.CreateOrUpdate(*session); err != nil {
-		return models.NewOAuthError(constants.InternalError, err.Error())
+		return models.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	return nil
@@ -210,12 +210,12 @@ func newImplicitGrantOptions(
 ) {
 	tokenOptions, err := ctx.GetTokenOptions(client, session.Scopes)
 	if err != nil {
-		return models.GrantOptions{}, session.NewRedirectError(constants.AccessDenied, err.Error())
+		return models.GrantOptions{}, session.NewRedirectError(goidc.AccessDenied, err.Error())
 	}
 
 	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
 	return models.GrantOptions{
-		GrantType:                constants.ImplicitGrant,
+		GrantType:                goidc.ImplicitGrant,
 		GrantedScopes:            session.GrantedScopes,
 		Subject:                  session.Subject,
 		ClientId:                 session.ClientId,

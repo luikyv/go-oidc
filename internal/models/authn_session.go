@@ -2,27 +2,27 @@ package models
 
 import (
 	"github.com/google/uuid"
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/unit"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 type AuthnSession struct {
-	Id                          string                `json:"id"`
-	CallbackId                  string                `json:"callback_id"`
-	PolicyId                    string                `json:"policy_d"`
-	ExpiresAtTimestamp          int                   `json:"expires_at"`
-	CreatedAtTimestamp          int                   `json:"created_at"`
-	Subject                     string                `json:"sub"`
-	ClientId                    string                `json:"client_id"`
-	GrantedScopes               string                `json:"granted_scopes"`
-	GrantedAuthorizationDetails []AuthorizationDetail `json:"granted_authorization_details"`
-	AuthorizationCode           string                `json:"authorization_code"`
-	AuthorizationCodeIssuedAt   int                   `json:"authorization_code_issued_at"`
-	ProtectedParameters         map[string]any        `json:"protected_params"` // Custom parameters sent by PAR or JAR.
-	Store                       map[string]any        `json:"store"`            // Allow the developer to store information in memory and, hence, between steps.
-	AdditionalTokenClaims       map[string]any        `json:"additional_token_claims"`
-	AdditionalIdTokenClaims     map[string]any        `json:"additional_id_token_claims"`
-	AdditionalUserInfoClaims    map[string]any        `json:"additional_user_info_claims"`
+	Id                          string                      `json:"id"`
+	CallbackId                  string                      `json:"callback_id"`
+	PolicyId                    string                      `json:"policy_d"`
+	ExpiresAtTimestamp          int                         `json:"expires_at"`
+	CreatedAtTimestamp          int                         `json:"created_at"`
+	Subject                     string                      `json:"sub"`
+	ClientId                    string                      `json:"client_id"`
+	GrantedScopes               string                      `json:"granted_scopes"`
+	GrantedAuthorizationDetails []goidc.AuthorizationDetail `json:"granted_authorization_details"`
+	AuthorizationCode           string                      `json:"authorization_code"`
+	AuthorizationCodeIssuedAt   int                         `json:"authorization_code_issued_at"`
+	ProtectedParameters         map[string]any              `json:"protected_params"` // Custom parameters sent by PAR or JAR.
+	Store                       map[string]any              `json:"store"`            // Allow the developer to store information in memory and, hence, between steps.
+	AdditionalTokenClaims       map[string]any              `json:"additional_token_claims"`
+	AdditionalIdTokenClaims     map[string]any              `json:"additional_id_token_claims"`
+	AdditionalUserInfoClaims    map[string]any              `json:"additional_user_info_claims"`
 	AuthorizationParameters
 	Error OAuthError
 }
@@ -40,6 +40,63 @@ func NewSession(authParams AuthorizationParameters, client Client) AuthnSession 
 	}
 }
 
+func (session AuthnSession) GetCallbackId() string {
+	return session.CallbackId
+}
+
+func (session AuthnSession) GetClaims() (goidc.ClaimsObject, bool) {
+	if session.Claims == nil {
+		return goidc.ClaimsObject{}, false
+	}
+	return *session.Claims, true
+}
+
+func (session AuthnSession) GetAuthorizationDetails() ([]goidc.AuthorizationDetail, bool) {
+	if session.AuthorizationDetails == nil {
+		return nil, false
+	}
+	return session.AuthorizationDetails, true
+}
+
+func (session AuthnSession) GetScopes() string {
+	return session.Scopes
+}
+
+func (session AuthnSession) GetPromptType() (goidc.PromptType, bool) {
+	if session.Prompt == "" {
+		return "", false
+	}
+
+	return session.Prompt, true
+}
+
+func (session AuthnSession) GetMaxAuthenticationAgeSecs() (int, bool) {
+	if session.MaxAuthenticationAgeSecs == nil {
+		return 0, false
+	}
+
+	return *session.MaxAuthenticationAgeSecs, true
+}
+
+func (session AuthnSession) GetDisplayValue() (goidc.DisplayValue, bool) {
+	if session.Display == "" {
+		return "", false
+	}
+
+	return session.Display, true
+}
+
+func (session AuthnSession) GetAcrValues() ([]goidc.AuthenticationContextReference, bool) {
+	if session.AcrValues == "" {
+		return nil, false
+	}
+	acrValues := []goidc.AuthenticationContextReference{}
+	for _, acrValue := range unit.SplitStringWithSpaces(session.AcrValues) {
+		acrValues = append(acrValues, goidc.AuthenticationContextReference(acrValue))
+	}
+	return acrValues, true
+}
+
 // Update the session with the parameters from an authorization request
 // The parameters already present in the session have priority.
 func (session *AuthnSession) UpdateParams(params AuthorizationParameters) {
@@ -50,39 +107,36 @@ func (session *AuthnSession) SetUserId(userId string) {
 	session.Subject = userId
 }
 
-// Sava a paramater in the session so it can be used across steps.
-func (session *AuthnSession) SaveParameter(key string, value string) {
+func (session *AuthnSession) SaveParameter(key string, value any) {
 	session.Store[key] = value
 }
 
-func (session *AuthnSession) GetParameter(key string) any {
-	return session.Store[key]
+func (session AuthnSession) GetParameter(key string) (any, bool) {
+	value, ok := session.Store[key]
+	return value, ok
 }
 
-// Set a new claim that will be mapped in the access token when issued.
 func (session *AuthnSession) AddTokenClaim(claim string, value any) {
 	session.AdditionalTokenClaims[claim] = value
 }
 
-// Set a new claim that will be mapped in the ID token when issued.
 func (session *AuthnSession) AddIdTokenClaim(claim string, value any) {
 	session.AdditionalIdTokenClaims[claim] = value
 }
 
-// Set a new claim that will be mapped in the user info endpoint.
 func (session *AuthnSession) AddUserInfoClaim(claim string, value any) {
 	session.AdditionalUserInfoClaims[claim] = value
 }
 
-func (session *AuthnSession) IsPushedRequestExpired(parLifetimeSecs int) bool {
+func (session AuthnSession) IsPushedRequestExpired(parLifetimeSecs int) bool {
 	return unit.GetTimestampNow() > session.ExpiresAtTimestamp
 }
 
-func (session *AuthnSession) IsAuthorizationCodeExpired() bool {
+func (session AuthnSession) IsAuthorizationCodeExpired() bool {
 	return unit.GetTimestampNow() > session.ExpiresAtTimestamp
 }
 
-func (session *AuthnSession) IsExpired() bool {
+func (session AuthnSession) IsExpired() bool {
 	return unit.GetTimestampNow() > session.ExpiresAtTimestamp
 }
 
@@ -94,7 +148,7 @@ func (session *AuthnSession) Push(parLifetimeSecs int) (requestUri string) {
 
 func (session *AuthnSession) Start(policyId string, sessionLifetimeSecs int) {
 	if session.Nonce != "" {
-		session.AdditionalIdTokenClaims[string(constants.NonceClaim)] = session.Nonce
+		session.AdditionalIdTokenClaims[string(goidc.NonceClaim)] = session.Nonce
 	}
 	session.PolicyId = policyId
 	session.CallbackId = unit.GenerateCallbackId()
@@ -106,18 +160,17 @@ func (session *AuthnSession) Start(policyId string, sessionLifetimeSecs int) {
 func (session *AuthnSession) InitAuthorizationCode() string {
 	session.AuthorizationCode = unit.GenerateAuthorizationCode()
 	session.AuthorizationCodeIssuedAt = unit.GetTimestampNow()
-	session.ExpiresAtTimestamp = session.AuthorizationCodeIssuedAt + constants.AuthorizationCodeLifetimeSecs
+	session.ExpiresAtTimestamp = session.AuthorizationCodeIssuedAt + goidc.AuthorizationCodeLifetimeSecs
 	return session.AuthorizationCode
 }
 
-// Set the scopes the client will have access to use.
 func (session *AuthnSession) GrantScopes(scopes string) {
 	session.GrantedScopes = scopes
 }
 
 // Set the authorization details the client will have permissions to use.
 // This will only have effect if support for authorization details was enabled.
-func (session *AuthnSession) GrantAuthorizationDetails(authDetails []AuthorizationDetail) {
+func (session *AuthnSession) GrantAuthorizationDetails(authDetails []goidc.AuthorizationDetail) {
 	session.GrantedAuthorizationDetails = authDetails
 }
 
@@ -130,12 +183,11 @@ func (session AuthnSession) GetAdditionalUserInfoClaims() map[string]any {
 }
 
 // Get custom protected parameters sent during PAR or JAR.
-func (session *AuthnSession) GetProtectedParameter(key string) any {
-	return session.ProtectedParameters[key]
+func (session AuthnSession) GetProtectedParameter(key string) (any, bool) {
+	value, ok := session.ProtectedParameters[key]
+	return value, ok
 }
 
-// Define the error that will be redirected to the client.
-// This only has effect when a failure status is returned by the authentication policy.
-func (session *AuthnSession) SetRedirectError(errorCode constants.ErrorCode, errorDescription string) {
+func (session *AuthnSession) SetRedirectError(errorCode goidc.ErrorCode, errorDescription string) {
 	session.Error = session.NewRedirectError(errorCode, errorDescription)
 }

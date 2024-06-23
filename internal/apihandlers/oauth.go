@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/oauth"
 	"github.com/luikymagno/goidc/internal/oauth/authorize"
@@ -13,6 +12,7 @@ import (
 	"github.com/luikymagno/goidc/internal/oauth/token"
 	"github.com/luikymagno/goidc/internal/oauth/userinfo"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 //---------------------------------------- Well Known ----------------------------------------//
@@ -137,7 +137,7 @@ func bindErrorToResponse(ctx utils.Context, err error) {
 
 	ctx.Response.WriteHeader(http.StatusInternalServerError)
 	json.NewEncoder(ctx.Response).Encode(map[string]any{
-		"error":             constants.InternalError,
+		"error":             goidc.InternalError,
 		"error_description": err.Error(),
 	})
 }

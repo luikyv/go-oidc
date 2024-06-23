@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/unit"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func TestGenerateRandomString_ShouldGenerateRandomStrings(t *testing.T) {
@@ -44,22 +44,22 @@ func TestGenerateRandomString_WithDifferentLengths(t *testing.T) {
 
 func TestGenerateCallbackId(t *testing.T) {
 	callbackId := unit.GenerateCallbackId()
-	if len(callbackId) != constants.CallbackIdLength {
-		t.Errorf("callback ID: %s has not %v characters", callbackId, constants.CallbackIdLength)
+	if len(callbackId) != goidc.CallbackIdLength {
+		t.Errorf("callback ID: %s has not %v characters", callbackId, goidc.CallbackIdLength)
 	}
 }
 
 func TestGenerateAuthorizationCode(t *testing.T) {
 	authzCode := unit.GenerateAuthorizationCode()
-	if len(authzCode) != constants.AuthorizationCodeLength {
-		t.Errorf("authorization code: %s has not %d characters", authzCode, constants.AuthorizationCodeLength)
+	if len(authzCode) != goidc.AuthorizationCodeLength {
+		t.Errorf("authorization code: %s has not %d characters", authzCode, goidc.AuthorizationCodeLength)
 	}
 }
 
 func TestGenerateRefresh(t *testing.T) {
 	refreshToken := unit.GenerateRefreshToken()
-	if len(refreshToken) != constants.RefreshTokenLength {
-		t.Errorf("refresh token: %s has not %d characters", refreshToken, constants.RefreshTokenLength)
+	if len(refreshToken) != goidc.RefreshTokenLength {
+		t.Errorf("refresh token: %s has not %d characters", refreshToken, goidc.RefreshTokenLength)
 	}
 }
 
@@ -135,16 +135,16 @@ func TestIsPkceValid(t *testing.T) {
 	testCases := []struct {
 		codeVerifier        string
 		codeChallenge       string
-		codeChallengeMethod constants.CodeChallengeMethod
+		codeChallengeMethod goidc.CodeChallengeMethod
 		isValid             bool
 	}{
-		{"4ea55634198fb6a0c120d46b26359cf50ccea86fd03302b9bca9fa98", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", constants.Sha256CodeChallengeMethod, true},
-		{"42d92ec716da149b8c0a553d5cbbdc5fd474625cdffe7335d643105b", "yQ0Wg2MXS83nBOaS3yit-n-xEaEw5LQ8TlhtX_2NkLw", constants.Sha256CodeChallengeMethod, true},
-		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", constants.Sha256CodeChallengeMethod, false},
-		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", constants.Sha256CodeChallengeMethod, false},
-		{"", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", constants.Sha256CodeChallengeMethod, false},
-		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "", constants.Sha256CodeChallengeMethod, false},
-		{"random_string", "random_string", constants.PlainCodeChallengeMethod, true},
+		{"4ea55634198fb6a0c120d46b26359cf50ccea86fd03302b9bca9fa98", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", goidc.Sha256CodeChallengeMethod, true},
+		{"42d92ec716da149b8c0a553d5cbbdc5fd474625cdffe7335d643105b", "yQ0Wg2MXS83nBOaS3yit-n-xEaEw5LQ8TlhtX_2NkLw", goidc.Sha256CodeChallengeMethod, true},
+		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", goidc.Sha256CodeChallengeMethod, false},
+		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", goidc.Sha256CodeChallengeMethod, false},
+		{"", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", goidc.Sha256CodeChallengeMethod, false},
+		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "", goidc.Sha256CodeChallengeMethod, false},
+		{"random_string", "random_string", goidc.PlainCodeChallengeMethod, true},
 	}
 
 	for i, testCase := range testCases {

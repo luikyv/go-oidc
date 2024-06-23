@@ -1,4 +1,4 @@
-package constants
+package goidc
 
 import (
 	"crypto/tls"
@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strings"
 )
+
+// TODO: Should I remove what's not used?
 
 const DefaultAuthenticationSessionTimeoutSecs = 30 * 60
 
@@ -40,6 +42,13 @@ var FapiAllowedCipherSuites []uint16 = []uint16{
 	tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 	tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 }
+
+type Profile string
+
+const (
+	OpenIdProfile Profile = "oidc_profile"
+	Fapi2Profile  Profile = "fapi2_profile"
+)
 
 type ContextKey string
 
@@ -230,13 +239,6 @@ const (
 	EmailScope          string = "email"
 	AddressScope        string = "address"
 	OffilineAccessScope string = "offline_access"
-)
-
-type Profile string
-
-const (
-	OpenIdProfile Profile = "oidc_profile"
-	Fapi2Profile  Profile = "fapi2_profile"
 )
 
 const Charset string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

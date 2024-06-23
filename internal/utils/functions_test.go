@@ -7,10 +7,10 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func TestExtractJarFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) {
@@ -32,16 +32,16 @@ func TestExtractJarFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.KeyID),
 	)
 	claims := map[string]any{
-		string(constants.IssuerClaim):   client.Id,
-		string(constants.AudienceClaim): ctx.Host,
-		string(constants.IssuedAtClaim): createdAtTimestamp,
-		string(constants.ExpiryClaim):   createdAtTimestamp + ctx.JarLifetimeSecs - 1,
-		"client_id":                     client.Id,
-		"redirect_uri":                  "https://example.com",
-		"response_type":                 constants.CodeResponse,
-		"scope":                         "scope scope2",
-		"max_age":                       600,
-		"acr_values":                    "0 1",
+		string(goidc.IssuerClaim):   client.Id,
+		string(goidc.AudienceClaim): ctx.Host,
+		string(goidc.IssuedAtClaim): createdAtTimestamp,
+		string(goidc.ExpiryClaim):   createdAtTimestamp + ctx.JarLifetimeSecs - 1,
+		"client_id":                 client.Id,
+		"redirect_uri":              "https://example.com",
+		"response_type":             goidc.CodeResponse,
+		"scope":                     "scope scope2",
+		"max_age":                   600,
+		"acr_values":                "0 1",
 		"claims": map[string]any{
 			"userinfo": map[string]any{
 				"acr": map[string]any{
@@ -66,7 +66,7 @@ func TestExtractJarFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 		return
 	}
 
-	if jar.ResponseType != constants.CodeResponse {
+	if jar.ResponseType != goidc.CodeResponse {
 		t.Errorf("Invalid JAR response_type. JAR: %v", jar)
 		return
 	}

@@ -6,10 +6,10 @@ package authorize
 import (
 	"slices"
 
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func validateAuthorizationRequestWithPar(
@@ -19,7 +19,7 @@ func validateAuthorizationRequestWithPar(
 	client models.Client,
 ) models.OAuthError {
 	if session.ClientId != req.ClientId {
-		return models.NewOAuthError(constants.AccessDenied, "invalid client")
+		return models.NewOAuthError(goidc.AccessDenied, "invalid client")
 	}
 
 	if err := validateInsideWithOutsideParams(ctx, session.AuthorizationParameters, req.AuthorizationParameters, client); err != nil {
@@ -28,7 +28,7 @@ func validateAuthorizationRequestWithPar(
 
 	mergedParams := session.AuthorizationParameters.Merge(req.AuthorizationParameters)
 	if session.IsPushedRequestExpired(ctx.ParLifetimeSecs) {
-		return mergedParams.NewRedirectError(constants.InvalidRequest, "the request_uri is expired")
+		return mergedParams.NewRedirectError(goidc.InvalidRequest, "the request_uri is expired")
 	}
 
 	return nil
@@ -42,7 +42,7 @@ func validateAuthorizationRequestWithJar(
 ) models.OAuthError {
 
 	if jar.ClientId != client.Id {
-		return models.NewOAuthError(constants.InvalidRequest, "invalid client_id")
+		return models.NewOAuthError(goidc.InvalidRequest, "invalid client_id")
 	}
 
 	if err := validateInsideWithOutsideParams(ctx, jar.AuthorizationParameters, req.AuthorizationParameters, client); err != nil {
@@ -51,11 +51,11 @@ func validateAuthorizationRequestWithJar(
 
 	mergedParams := jar.AuthorizationParameters.Merge(req.AuthorizationParameters)
 	if jar.RequestUri != "" {
-		return mergedParams.NewRedirectError(constants.InvalidRequest, "request_uri is not allowed inside the request object")
+		return mergedParams.NewRedirectError(goidc.InvalidRequest, "request_uri is not allowed inside the request object")
 	}
 
 	if jar.RequestObject != "" {
-		return mergedParams.NewRedirectError(constants.InvalidRequest, "request is not allowed inside the request object")
+		return mergedParams.NewRedirectError(goidc.InvalidRequest, "request is not allowed inside the request object")
 	}
 
 	return nil
@@ -97,17 +97,17 @@ func validateOpenIdInsideWithOutsideParams(
 	mergedParams := insideParams.Merge(outsideParams)
 	// When the openid scope is not requested, the authorization request becomes a standard OAuth one,
 	// so there's no need to validate these rules below.
-	if ctx.Profile == constants.OpenIdProfile && unit.ScopesContainsOpenId(mergedParams.Scopes) {
+	if ctx.Profile == goidc.OpenIdProfile && unit.ScopesContainsOpenId(mergedParams.Scopes) {
 		if outsideParams.ResponseType == "" {
-			return mergedParams.NewRedirectError(constants.InvalidRequest, "invalid response_type")
+			return mergedParams.NewRedirectError(goidc.InvalidRequest, "invalid response_type")
 		}
 
 		if insideParams.ResponseType != "" && insideParams.ResponseType != outsideParams.ResponseType {
-			return mergedParams.NewRedirectError(constants.InvalidRequest, "invalid response_type")
+			return mergedParams.NewRedirectError(goidc.InvalidRequest, "invalid response_type")
 		}
 
 		if !unit.ScopesContainsOpenId(outsideParams.Scopes) {
-			return mergedParams.NewRedirectError(constants.InvalidScope, "scope openid is required")
+			return mergedParams.NewRedirectError(goidc.InvalidScope, "scope openid is required")
 		}
 	}
 
@@ -147,12 +147,12 @@ func validateOpenIdRedirectUri(
 	client models.Client,
 ) models.OAuthError {
 
-	if ctx.Profile != constants.OpenIdProfile {
+	if ctx.Profile != goidc.OpenIdProfile {
 		return nil
 	}
 
 	if params.RedirectUri == "" || !client.IsRedirectUriAllowed(params.RedirectUri) {
-		return models.NewOAuthError(constants.InvalidRequest, "invalid redirect_uri")
+		return models.NewOAuthError(goidc.InvalidRequest, "invalid redirect_uri")
 	}
 	return nil
 }
@@ -163,7 +163,7 @@ func ValidateResponseMode(
 	client models.Client,
 ) models.OAuthError {
 	if params.ResponseMode != "" && (!ctx.JarmIsEnabled && params.ResponseMode.IsJarm()) {
-		return params.NewRedirectError(constants.InvalidRequest, "invalid response_mode")
+		return params.NewRedirectError(goidc.InvalidRequest, "invalid response_mode")
 	}
 
 	return nil
@@ -176,7 +176,7 @@ func ValidateJwtResponseModeIsRequired(
 ) models.OAuthError {
 	// If the client has defined a signature algorithm for JARM, then JARM is required.
 	if params.ResponseMode != "" && client.JarmSignatureAlgorithm != "" && !params.ResponseMode.IsJarm() {
-		return params.NewRedirectError(constants.InvalidRequest, "invalid response_mode")
+		return params.NewRedirectError(goidc.InvalidRequest, "invalid response_mode")
 	}
 
 	return nil
@@ -188,7 +188,7 @@ func validateResponseType(
 	client models.Client,
 ) models.OAuthError {
 	if params.ResponseType == "" || !client.IsResponseTypeAllowed(params.ResponseType) {
-		return params.NewRedirectError(constants.InvalidRequest, "invalid response_type")
+		return params.NewRedirectError(goidc.InvalidRequest, "invalid response_type")
 	}
 	return nil
 }
@@ -198,8 +198,8 @@ func validateScopeOpenIdIsRequiredWhenResponseTypeIsIdToken(
 	params models.AuthorizationParameters,
 	_ models.Client,
 ) models.OAuthError {
-	if params.ResponseType.Contains(constants.IdTokenResponse) && !unit.ScopesContainsOpenId(params.Scopes) {
-		return params.NewRedirectError(constants.InvalidRequest, "cannot request id_token without the scope openid")
+	if params.ResponseType.Contains(goidc.IdTokenResponse) && !unit.ScopesContainsOpenId(params.Scopes) {
+		return params.NewRedirectError(goidc.InvalidRequest, "cannot request id_token without the scope openid")
 	}
 	return nil
 }
@@ -210,11 +210,11 @@ func validateScopes(
 	client models.Client,
 ) models.OAuthError {
 	if ctx.OpenIdScopeIsRequired && !unit.ScopesContainsOpenId(params.Scopes) {
-		return params.NewRedirectError(constants.InvalidScope, "scope openid is required")
+		return params.NewRedirectError(goidc.InvalidScope, "scope openid is required")
 	}
 
 	if params.Scopes != "" && !client.AreScopesAllowed(params.Scopes) {
-		return params.NewRedirectError(constants.InvalidScope, "invalid scope")
+		return params.NewRedirectError(goidc.InvalidScope, "invalid scope")
 	}
 	return nil
 }
@@ -225,7 +225,7 @@ func validateCannotInformRequestUriAndRequestObject(
 	client models.Client,
 ) models.OAuthError {
 	if params.RequestUri != "" && params.RequestObject != "" {
-		return params.NewRedirectError(constants.InvalidRequest, "request_uri and request cannot be informed at the same time")
+		return params.NewRedirectError(goidc.InvalidRequest, "request_uri and request cannot be informed at the same time")
 	}
 	return nil
 }
@@ -240,7 +240,7 @@ func validatePkce(
 	}
 
 	if (ctx.PkceIsRequired || client.PkceIsRequired) && params.CodeChallenge == "" {
-		return params.NewRedirectError(constants.InvalidRequest, "code_challenge is required")
+		return params.NewRedirectError(goidc.InvalidRequest, "code_challenge is required")
 	}
 	return nil
 }
@@ -251,7 +251,7 @@ func ValidateCodeChallengeMethod(
 	client models.Client,
 ) models.OAuthError {
 	if params.CodeChallengeMethod != "" && !slices.Contains(ctx.CodeChallengeMethods, params.CodeChallengeMethod) {
-		return params.NewRedirectError(constants.InvalidRequest, "invalid code_challenge_method")
+		return params.NewRedirectError(goidc.InvalidRequest, "invalid code_challenge_method")
 	}
 	return nil
 }
@@ -261,8 +261,8 @@ func ValidateCannotRequestCodeResponseTypeWhenAuthorizationCodeGrantIsNotAllowed
 	params models.AuthorizationParameters,
 	client models.Client,
 ) models.OAuthError {
-	if params.ResponseType.Contains(constants.CodeResponse) && !client.IsGrantTypeAllowed(constants.AuthorizationCodeGrant) {
-		return params.NewRedirectError(constants.InvalidGrant, "authorization_code grant not allowed")
+	if params.ResponseType.Contains(goidc.CodeResponse) && !client.IsGrantTypeAllowed(goidc.AuthorizationCodeGrant) {
+		return params.NewRedirectError(goidc.InvalidGrant, "authorization_code grant not allowed")
 	}
 	return nil
 }
@@ -272,8 +272,8 @@ func ValidateCannotRequestImplicitResponseTypeWhenImplicitGrantIsNotAllowed(
 	params models.AuthorizationParameters,
 	client models.Client,
 ) models.OAuthError {
-	if params.ResponseType.IsImplicit() && !client.IsGrantTypeAllowed(constants.ImplicitGrant) {
-		return params.NewRedirectError(constants.InvalidRequest, "implicit grant not allowed")
+	if params.ResponseType.IsImplicit() && !client.IsGrantTypeAllowed(goidc.ImplicitGrant) {
+		return params.NewRedirectError(goidc.InvalidRequest, "implicit grant not allowed")
 	}
 	return nil
 }
@@ -283,8 +283,8 @@ func validateCannotRequestIdTokenResponseTypeIfOpenIdScopeIsNotRequested(
 	params models.AuthorizationParameters,
 	client models.Client,
 ) models.OAuthError {
-	if params.ResponseType.Contains(constants.IdTokenResponse) && !unit.ScopesContainsOpenId(params.Scopes) {
-		return params.NewRedirectError(constants.InvalidRequest, "cannot request id_token without the scope openid")
+	if params.ResponseType.Contains(goidc.IdTokenResponse) && !unit.ScopesContainsOpenId(params.Scopes) {
+		return params.NewRedirectError(goidc.InvalidRequest, "cannot request id_token without the scope openid")
 	}
 	return nil
 }
@@ -294,8 +294,8 @@ func validateNonceIsRequiredWhenResponseTypeContainsIdToken(
 	params models.AuthorizationParameters,
 	_ models.Client,
 ) models.OAuthError {
-	if params.ResponseType.Contains(constants.IdTokenResponse) && params.Nonce == "" {
-		return params.NewRedirectError(constants.InvalidRequest, "nonce is required when response type id_token is requested")
+	if params.ResponseType.Contains(goidc.IdTokenResponse) && params.Nonce == "" {
+		return params.NewRedirectError(goidc.InvalidRequest, "nonce is required when response type id_token is requested")
 	}
 	return nil
 }
@@ -306,7 +306,7 @@ func validateCannotRequestQueryResponseModeWhenImplicitResponseTypeIsRequested(
 	client models.Client,
 ) models.OAuthError {
 	if params.ResponseType.IsImplicit() && params.ResponseMode.IsQuery() {
-		return params.NewRedirectError(constants.InvalidRequest, "invalid response_mode for the chosen response_type")
+		return params.NewRedirectError(goidc.InvalidRequest, "invalid response_mode for the chosen response_type")
 	}
 	return nil
 }
@@ -317,7 +317,7 @@ func ValidateDisplayValue(
 	_ models.Client,
 ) models.OAuthError {
 	if params.Display != "" && !slices.Contains(ctx.DisplayValues, params.Display) {
-		return params.NewRedirectError(constants.InvalidRequest, "invalid display value")
+		return params.NewRedirectError(goidc.InvalidRequest, "invalid display value")
 	}
 	return nil
 }
@@ -334,7 +334,7 @@ func ValidateAuthorizationDetails(
 	for _, authDetail := range params.AuthorizationDetails {
 		authDetailType := authDetail.GetType()
 		if !slices.Contains(ctx.AuthorizationDetailTypes, authDetailType) || !client.IsAuthorizationDetailTypeAllowed(authDetailType) {
-			return params.NewRedirectError(constants.InvalidRequest, "invalid authorization detail type")
+			return params.NewRedirectError(goidc.InvalidRequest, "invalid authorization detail type")
 		}
 	}
 
@@ -352,8 +352,8 @@ func ValidateAcrValues(
 	}
 
 	for _, acr := range unit.SplitStringWithSpaces(params.AcrValues) {
-		if !slices.Contains(ctx.AuthenticationContextReferences, constants.AuthenticationContextReference(acr)) {
-			return params.NewRedirectError(constants.InvalidRequest, "invalid acr value")
+		if !slices.Contains(ctx.AuthenticationContextReferences, goidc.AuthenticationContextReference(acr)) {
+			return params.NewRedirectError(goidc.InvalidRequest, "invalid acr value")
 		}
 	}
 

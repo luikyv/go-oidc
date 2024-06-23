@@ -6,11 +6,10 @@ import (
 	"strings"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/crud/inmemory"
 	"github.com/luikymagno/goidc/internal/models"
-	"github.com/luikymagno/goidc/internal/utils"
-	"github.com/luikymagno/goidc/pkg/oidc"
+	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/luikymagno/goidc/pkg/goidcp"
 )
 
 func runFapi2OpenIdProvider() error {
@@ -22,10 +21,10 @@ func runFapi2OpenIdProvider() error {
 	mtlsIssuer := "https://host.docker.internal" + mtlsPort
 	ps256ServerKeyId := "ps256_key"
 	redirectUri := "https://localhost:8443/test/a/first_test/callback"
-	scopes := []string{constants.OpenIdScope, constants.OffilineAccessScope, constants.EmailScope}
+	scopes := []string{goidc.OpenIdScope, goidc.OffilineAccessScope, goidc.EmailScope}
 
 	// Create the manager.
-	openidProvider := oidc.NewProvider(
+	openidProvider := goidcp.NewProvider(
 		issuer,
 		inmemory.NewInMemoryClientManager(),
 		inmemory.NewInMemoryAuthnSessionManager(),
@@ -46,15 +45,15 @@ func runFapi2OpenIdProvider() error {
 	openidProvider.EnableDemonstrationProofOfPossesion(600, jose.PS256, jose.ES256)
 	openidProvider.EnableTlsBoundTokens()
 	openidProvider.RequireSenderConstrainedTokens()
-	openidProvider.RequireProofKeyForCodeExchange(constants.Sha256CodeChallengeMethod)
+	openidProvider.RequireProofKeyForCodeExchange(goidc.Sha256CodeChallengeMethod)
 	openidProvider.EnableRefreshTokenGrantType(6000, false)
 	openidProvider.SetScopes(scopes...)
-	openidProvider.SetSupportedUserClaims(constants.EmailClaim, constants.EmailVerifiedClaim)
+	openidProvider.SetSupportedUserClaims(goidc.EmailClaim, goidc.EmailVerifiedClaim)
 	openidProvider.SetSupportedAuthenticationContextReferences("urn:mace:incommon:iap:silver", "urn:mace:incommon:iap:bronze")
 	openidProvider.EnableDynamicClientRegistration(nil, true)
-	openidProvider.SetTokenOptions(func(c models.Client, s string) (models.TokenOptions, error) {
-		return models.TokenOptions{
-			TokenFormat:        constants.JwtTokenFormat,
+	openidProvider.SetTokenOptions(func(c goidc.Client, s string) (goidc.TokenOptions, error) {
+		return goidc.TokenOptions{
+			TokenFormat:        goidc.JwtTokenFormat,
 			TokenExpiresInSecs: 600,
 			ShouldRefresh:      true,
 		}, nil
@@ -71,15 +70,15 @@ func runFapi2OpenIdProvider() error {
 	openidProvider.AddClient(models.Client{
 		Id: "client_one",
 		ClientMetaInfo: models.ClientMetaInfo{
-			AuthnMethod:  constants.PrivateKeyJwtAuthn,
+			AuthnMethod:  goidc.PrivateKeyJwtAuthn,
 			RedirectUris: []string{redirectUri},
 			Scopes:       strings.Join(scopes, " "),
-			GrantTypes: []constants.GrantType{
-				constants.AuthorizationCodeGrant,
-				constants.RefreshTokenGrant,
+			GrantTypes: []goidc.GrantType{
+				goidc.AuthorizationCodeGrant,
+				goidc.RefreshTokenGrant,
 			},
-			ResponseTypes: []constants.ResponseType{
-				constants.CodeResponse,
+			ResponseTypes: []goidc.ResponseType{
+				goidc.CodeResponse,
 			},
 			PublicJwks: &clientOnePublicJwks,
 			// IdTokenKeyEncryptionAlgorithm:      jose.RSA_OAEP,
@@ -99,33 +98,33 @@ func runFapi2OpenIdProvider() error {
 	openidProvider.AddClient(models.Client{
 		Id: "client_two",
 		ClientMetaInfo: models.ClientMetaInfo{
-			AuthnMethod:  constants.PrivateKeyJwtAuthn,
+			AuthnMethod:  goidc.PrivateKeyJwtAuthn,
 			RedirectUris: []string{redirectUri},
 			Scopes:       strings.Join(scopes, " "),
-			GrantTypes: []constants.GrantType{
-				constants.AuthorizationCodeGrant,
-				constants.RefreshTokenGrant,
+			GrantTypes: []goidc.GrantType{
+				goidc.AuthorizationCodeGrant,
+				goidc.RefreshTokenGrant,
 			},
-			ResponseTypes: []constants.ResponseType{
-				constants.CodeResponse,
+			ResponseTypes: []goidc.ResponseType{
+				goidc.CodeResponse,
 			},
 			PublicJwks: &clientTwoPublicJwks,
 		},
 	})
 
 	// Create Policy
-	openidProvider.AddPolicy(utils.NewPolicy(
+	openidProvider.AddPolicy(goidc.NewPolicy(
 		"policy",
-		func(ctx utils.Context, client models.Client, session *models.AuthnSession) bool { return true },
+		func(ctx goidc.Context, client goidc.Client, session goidc.AuthnSession) bool { return true },
 		AuthenticateUserWithNoInteraction,
 	))
 
 	// Run
-	return openidProvider.RunTls(oidc.TlsOptions{
+	return openidProvider.RunTls(goidcp.TlsOptions{
 		TlsAddress:                     port,
 		ServerCertificate:              "server_keys/cert.pem",
 		ServerKey:                      "server_keys/key.pem",
-		CipherSuites:                   constants.FapiAllowedCipherSuites,
+		CipherSuites:                   goidc.FapiAllowedCipherSuites,
 		MtlsAddress:                    mtlsPort,
 		UnsecureCertificatesAreAllowed: true,
 	})

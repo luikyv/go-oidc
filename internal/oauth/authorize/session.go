@@ -3,9 +3,9 @@ package authorize
 import (
 	"log/slog"
 
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func initAuthnSession(
@@ -60,7 +60,7 @@ func initValidAuthnSessionWithPar(
 
 	session, err := getSessionCreatedWithPar(ctx, req)
 	if err != nil {
-		return models.AuthnSession{}, models.NewOAuthError(constants.InvalidRequest, "invalid request_uri")
+		return models.AuthnSession{}, models.NewOAuthError(goidc.InvalidRequest, "invalid request_uri")
 	}
 
 	if err := validateAuthorizationRequestWithPar(ctx, req, session, client); err != nil {
@@ -81,12 +81,12 @@ func getSessionCreatedWithPar(
 	models.OAuthError,
 ) {
 	if req.RequestUri == "" {
-		return models.AuthnSession{}, models.NewOAuthError(constants.InvalidRequest, "request_uri is required")
+		return models.AuthnSession{}, models.NewOAuthError(goidc.InvalidRequest, "request_uri is required")
 	}
 
 	session, err := ctx.AuthnSessionManager.GetByRequestUri(req.RequestUri)
 	if err != nil {
-		return models.AuthnSession{}, models.NewOAuthError(constants.InvalidRequest, "invalid request_uri")
+		return models.AuthnSession{}, models.NewOAuthError(goidc.InvalidRequest, "invalid request_uri")
 	}
 
 	return session, nil
@@ -135,7 +135,7 @@ func getJar(
 	models.OAuthError,
 ) {
 	if req.RequestObject == "" {
-		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidRequest, "request object is required")
+		return models.AuthorizationRequest{}, models.NewOAuthError(goidc.InvalidRequest, "request object is required")
 	}
 
 	jar, err := utils.ExtractJarFromRequestObject(ctx, req.RequestObject, client)
@@ -169,7 +169,7 @@ func initAuthnSessionWithPolicy(
 	policy, ok := ctx.GetAvailablePolicy(client, session)
 	if !ok {
 		ctx.Logger.Info("no policy available")
-		return session.NewRedirectError(constants.InvalidRequest, "no policy available")
+		return session.NewRedirectError(goidc.InvalidRequest, "no policy available")
 	}
 
 	ctx.Logger.Info("policy available", slog.String("policy_id", policy.Id))

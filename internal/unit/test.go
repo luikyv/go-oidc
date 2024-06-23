@@ -5,7 +5,7 @@ import (
 	"crypto/rsa"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/internal/constants"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func GetTestPrivateRs256Jwk(keyId string) jose.JSONWebKey {
@@ -14,7 +14,7 @@ func GetTestPrivateRs256Jwk(keyId string) jose.JSONWebKey {
 		Key:       privateKey,
 		KeyID:     keyId,
 		Algorithm: string(jose.RS256),
-		Use:       string(constants.KeySignatureUsage),
+		Use:       string(goidc.KeySignatureUsage),
 	}
 }
 
@@ -24,6 +24,6 @@ func GetTestPrivatePs256Jwk(keyId string) jose.JSONWebKey {
 		Key:       privateKey,
 		KeyID:     keyId,
 		Algorithm: string(jose.PS256),
-		Use:       string(constants.KeySignatureUsage),
+		Use:       string(goidc.KeySignatureUsage),
 	}
 }

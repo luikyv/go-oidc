@@ -1,11 +1,11 @@
 package par
 
 import (
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/oauth/authorize"
 	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func validatePar(
@@ -24,15 +24,15 @@ func validateParWithJar(
 ) models.OAuthError {
 
 	if req.RequestUri != "" {
-		return models.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
+		return models.NewOAuthError(goidc.InvalidRequest, "request_uri is not allowed during PAR")
 	}
 
 	if jar.ClientId != client.Id {
-		return models.NewOAuthError(constants.InvalidResquestObject, "invalid client_id")
+		return models.NewOAuthError(goidc.InvalidResquestObject, "invalid client_id")
 	}
 
 	if jar.RequestUri != "" {
-		return models.NewOAuthError(constants.InvalidResquestObject, "request_uri is not allowed inside JAR")
+		return models.NewOAuthError(goidc.InvalidResquestObject, "request_uri is not allowed inside JAR")
 	}
 
 	// The PAR RFC says:
@@ -71,8 +71,8 @@ func validateNoneAuthnNotAllowed(
 	_ models.AuthorizationParameters,
 	client models.Client,
 ) models.OAuthError {
-	if client.AuthnMethod == constants.NoneAuthn {
-		return models.NewOAuthError(constants.InvalidRequest, "invalid client authentication method")
+	if client.AuthnMethod == goidc.NoneAuthn {
+		return models.NewOAuthError(goidc.InvalidRequest, "invalid client authentication method")
 	}
 	return nil
 }
@@ -83,12 +83,12 @@ func validateOpenIdRedirectUri(
 	client models.Client,
 ) models.OAuthError {
 
-	if ctx.Profile != constants.OpenIdProfile {
+	if ctx.Profile != goidc.OpenIdProfile {
 		return nil
 	}
 
 	if params.RedirectUri != "" && !client.IsRedirectUriAllowed(params.RedirectUri) {
-		return models.NewOAuthError(constants.InvalidRequest, "invalid redirect_uri")
+		return models.NewOAuthError(goidc.InvalidRequest, "invalid redirect_uri")
 	}
 	return nil
 }
@@ -99,13 +99,13 @@ func validateFapi2RedirectUri(
 	_ models.Client,
 ) models.OAuthError {
 
-	if ctx.Profile != constants.Fapi2Profile {
+	if ctx.Profile != goidc.Fapi2Profile {
 		return nil
 	}
 
 	// According to FAPI 2.0 "pre-registration is not required with client authentication and PAR".
 	if params.RedirectUri == "" {
-		return models.NewOAuthError(constants.InvalidRequest, "redirect_uri is required")
+		return models.NewOAuthError(goidc.InvalidRequest, "redirect_uri is required")
 	}
 	return nil
 }
@@ -116,7 +116,7 @@ func validateResponseType(
 	client models.Client,
 ) models.OAuthError {
 	if params.ResponseType != "" && !client.IsResponseTypeAllowed(params.ResponseType) {
-		return models.NewOAuthError(constants.InvalidRequest, "invalid response_type")
+		return models.NewOAuthError(goidc.InvalidRequest, "invalid response_type")
 	}
 	return nil
 }
@@ -127,11 +127,11 @@ func validateScopes(
 	client models.Client,
 ) models.OAuthError {
 	if params.Scopes != "" && ctx.OpenIdScopeIsRequired && !unit.ScopesContainsOpenId(params.Scopes) {
-		return models.NewOAuthError(constants.InvalidScope, "scope openid is required")
+		return models.NewOAuthError(goidc.InvalidScope, "scope openid is required")
 	}
 
 	if params.Scopes != "" && !client.AreScopesAllowed(params.Scopes) {
-		return models.NewOAuthError(constants.InvalidScope, "invalid scope")
+		return models.NewOAuthError(goidc.InvalidScope, "invalid scope")
 	}
 	return nil
 }
@@ -142,7 +142,7 @@ func validateCannotInformRequestUri(
 	client models.Client,
 ) models.OAuthError {
 	if params.RequestUri != "" {
-		return models.NewOAuthError(constants.InvalidRequest, "request_uri is not allowed during PAR")
+		return models.NewOAuthError(goidc.InvalidRequest, "request_uri is not allowed during PAR")
 	}
 
 	return nil

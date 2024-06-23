@@ -3,10 +3,10 @@ package token
 import (
 	"log/slog"
 
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func handleClientCredentialsGrantTokenCreation(
@@ -79,18 +79,18 @@ func validateClientCredentialsGrantRequest(
 	client models.Client,
 ) models.OAuthError {
 
-	if !client.IsGrantTypeAllowed(constants.ClientCredentialsGrant) {
+	if !client.IsGrantTypeAllowed(goidc.ClientCredentialsGrant) {
 		ctx.Logger.Info("grant type not allowed")
-		return models.NewOAuthError(constants.UnauthorizedClient, "invalid grant type")
+		return models.NewOAuthError(goidc.UnauthorizedClient, "invalid grant type")
 	}
 
 	if unit.ScopesContainsOpenId(req.Scopes) {
-		return models.NewOAuthError(constants.InvalidScope, "cannot request openid scope for client credentials grant")
+		return models.NewOAuthError(goidc.InvalidScope, "cannot request openid scope for client credentials grant")
 	}
 
 	if !client.AreScopesAllowed(req.Scopes) {
 		ctx.Logger.Info("scope not allowed")
-		return models.NewOAuthError(constants.InvalidScope, "invalid scope")
+		return models.NewOAuthError(goidc.InvalidScope, "invalid scope")
 	}
 
 	if err := validateTokenBindingRequestWithDpop(ctx, req, client); err != nil {
@@ -114,7 +114,7 @@ func newClientCredentialsGrantOptions(
 ) {
 	tokenOptions, err := ctx.GetTokenOptions(client, req.Scopes)
 	if err != nil {
-		return models.GrantOptions{}, models.NewOAuthError(constants.AccessDenied, err.Error())
+		return models.GrantOptions{}, models.NewOAuthError(goidc.AccessDenied, err.Error())
 	}
 
 	scopes := req.Scopes
@@ -122,7 +122,7 @@ func newClientCredentialsGrantOptions(
 		scopes = client.Scopes
 	}
 	return models.GrantOptions{
-		GrantType:     constants.ClientCredentialsGrant,
+		GrantType:     goidc.ClientCredentialsGrant,
 		GrantedScopes: scopes,
 		Subject:       client.Id,
 		ClientId:      client.Id,

@@ -1,10 +1,10 @@
 package par
 
 import (
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/oauth/authorize"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func initValidAuthnSession(
@@ -72,7 +72,7 @@ func extractJarFromRequest(
 	models.OAuthError,
 ) {
 	if req.RequestObject == "" {
-		return models.AuthorizationRequest{}, models.NewOAuthError(constants.InvalidRequest, "request object is required")
+		return models.AuthorizationRequest{}, models.NewOAuthError(goidc.InvalidRequest, "request object is required")
 	}
 
 	return utils.ExtractJarFromRequestObject(ctx, req.RequestObject, client)

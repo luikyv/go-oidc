@@ -6,46 +6,65 @@ import (
 	"strings"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/unit"
+	"github.com/luikymagno/goidc/pkg/goidc"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type ClientMetaInfo struct {
-	Name          string                   `json:"client_name,omitempty"`
-	LogoUri       string                   `json:"logo_uri,omitempty"`
-	RedirectUris  []string                 `json:"redirect_uris"`
-	GrantTypes    []constants.GrantType    `json:"grant_types"`
-	ResponseTypes []constants.ResponseType `json:"response_types"`
-	PublicJwksUri string                   `json:"jwks_uri,omitempty"`
+	Name          string               `json:"client_name,omitempty"`
+	LogoUri       string               `json:"logo_uri,omitempty"`
+	RedirectUris  []string             `json:"redirect_uris"`
+	GrantTypes    []goidc.GrantType    `json:"grant_types"`
+	ResponseTypes []goidc.ResponseType `json:"response_types"`
+	PublicJwksUri string               `json:"jwks_uri,omitempty"`
 	// PublicJwks is pointer, because, if it is nil and PublicJwksUri is present,
 	// we can fetch the content of PublicJwksUri and access the reference PublicJwks to cache the keys.
 	// By doing so, we make sure to request PublicJwksUri at most once.
-	PublicJwks                         *jose.JSONWebKeySet             `json:"jwks,omitempty"`
-	Scopes                             string                          `json:"scope"`
-	SubjectIdentifierType              constants.SubjectIdentifierType `json:"subject_type,omitempty"`
-	IdTokenSignatureAlgorithm          jose.SignatureAlgorithm         `json:"id_token_signed_response_alg,omitempty"`
-	IdTokenKeyEncryptionAlgorithm      jose.KeyAlgorithm               `json:"id_token_encrypted_response_alg,omitempty"`
-	IdTokenContentEncryptionAlgorithm  jose.ContentEncryption          `json:"id_token_encrypted_response_enc,omitempty"`
-	UserInfoSignatureAlgorithm         jose.SignatureAlgorithm         `json:"userinfo_signed_response_alg,omitempty"`
-	UserInfoKeyEncryptionAlgorithm     jose.KeyAlgorithm               `json:"userinfo_encrypted_response_alg,omitempty"`
-	UserInfoContentEncryptionAlgorithm jose.ContentEncryption          `json:"userinfo_encrypted_response_enc,omitempty"`
-	JarSignatureAlgorithm              jose.SignatureAlgorithm         `json:"request_object_signing_alg,omitempty"`
-	JarKeyEncryptionAlgorithm          jose.KeyAlgorithm               `json:"request_object_encryption_alg,omitempty"`
-	JarContentEncryptionAlgorithm      jose.ContentEncryption          `json:"request_object_encryption_enc,omitempty"`
-	JarmSignatureAlgorithm             jose.SignatureAlgorithm         `json:"authorization_signed_response_alg,omitempty"`
-	JarmKeyEncryptionAlgorithm         jose.KeyAlgorithm               `json:"authorization_encrypted_response_alg,omitempty"`
-	JarmContentEncryptionAlgorithm     jose.ContentEncryption          `json:"authorization_encrypted_response_enc,omitempty"`
-	PkceIsRequired                     bool                            `json:"pkce_is_required"`
-	AuthnMethod                        constants.ClientAuthnType       `json:"token_endpoint_auth_method"`
-	AuthnSignatureAlgorithm            jose.SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg"`
-	DpopIsRequired                     bool                            `json:"dpop_bound_access_tokens,omitempty"`
-	TlsSubjectDistinguishedName        string                          `json:"tls_client_auth_subject_dn,omitempty"`
+	PublicJwks                         *jose.JSONWebKeySet         `json:"jwks,omitempty"`
+	Scopes                             string                      `json:"scope"`
+	SubjectIdentifierType              goidc.SubjectIdentifierType `json:"subject_type,omitempty"`
+	IdTokenSignatureAlgorithm          jose.SignatureAlgorithm     `json:"id_token_signed_response_alg,omitempty"`
+	IdTokenKeyEncryptionAlgorithm      jose.KeyAlgorithm           `json:"id_token_encrypted_response_alg,omitempty"`
+	IdTokenContentEncryptionAlgorithm  jose.ContentEncryption      `json:"id_token_encrypted_response_enc,omitempty"`
+	UserInfoSignatureAlgorithm         jose.SignatureAlgorithm     `json:"userinfo_signed_response_alg,omitempty"`
+	UserInfoKeyEncryptionAlgorithm     jose.KeyAlgorithm           `json:"userinfo_encrypted_response_alg,omitempty"`
+	UserInfoContentEncryptionAlgorithm jose.ContentEncryption      `json:"userinfo_encrypted_response_enc,omitempty"`
+	JarSignatureAlgorithm              jose.SignatureAlgorithm     `json:"request_object_signing_alg,omitempty"`
+	JarKeyEncryptionAlgorithm          jose.KeyAlgorithm           `json:"request_object_encryption_alg,omitempty"`
+	JarContentEncryptionAlgorithm      jose.ContentEncryption      `json:"request_object_encryption_enc,omitempty"`
+	JarmSignatureAlgorithm             jose.SignatureAlgorithm     `json:"authorization_signed_response_alg,omitempty"`
+	JarmKeyEncryptionAlgorithm         jose.KeyAlgorithm           `json:"authorization_encrypted_response_alg,omitempty"`
+	JarmContentEncryptionAlgorithm     jose.ContentEncryption      `json:"authorization_encrypted_response_enc,omitempty"`
+	PkceIsRequired                     bool                        `json:"pkce_is_required"`
+	AuthnMethod                        goidc.ClientAuthnType       `json:"token_endpoint_auth_method"`
+	AuthnSignatureAlgorithm            jose.SignatureAlgorithm     `json:"token_endpoint_auth_signing_alg"`
+	DpopIsRequired                     bool                        `json:"dpop_bound_access_tokens,omitempty"`
+	TlsSubjectDistinguishedName        string                      `json:"tls_client_auth_subject_dn,omitempty"`
 	// The DNS name.
-	TlsSubjectAlternativeName   string            `json:"tls_client_auth_san_dns,omitempty"`
-	TlsSubjectAlternativeNameIp string            `json:"tls_client_auth_san_ip,omitempty"`
-	AuthorizationDetailTypes    []string          `json:"authorization_data_types,omitempty"`
-	Attributes                  map[string]string `json:"custom_attributes"`
+	TlsSubjectAlternativeName   string         `json:"tls_client_auth_san_dns,omitempty"`
+	TlsSubjectAlternativeNameIp string         `json:"tls_client_auth_san_ip,omitempty"`
+	AuthorizationDetailTypes    []string       `json:"authorization_data_types,omitempty"`
+	Attributes                  map[string]any `json:"custom_attributes"`
+}
+
+func (client ClientMetaInfo) GetName() (string, bool) {
+	if client.Name == "" {
+		return "", false
+	}
+	return client.Name, true
+}
+
+func (client *ClientMetaInfo) SetAttribute(key string, value any) {
+	if client.Attributes == nil {
+		client.Attributes = make(map[string]any)
+	}
+	client.Attributes[key] = value
+}
+
+func (client ClientMetaInfo) GetAttribute(key string) (any, bool) {
+	value, ok := client.Attributes[key]
+	return value, ok
 }
 
 type Client struct {
@@ -59,6 +78,10 @@ type Client struct {
 	ClientMetaInfo
 }
 
+func (client Client) GetId() string {
+	return client.Id
+}
+
 // Get the client public JWKS either directly from the jwks attribute or using jwks_uri.
 // This method also caches the keys if they are fetched from jwks_uri.
 func (client Client) GetPublicJwks() (jose.JSONWebKeySet, OAuthError) {
@@ -68,7 +91,7 @@ func (client Client) GetPublicJwks() (jose.JSONWebKeySet, OAuthError) {
 
 	jwks, err := unit.GetJwks(client.PublicJwksUri)
 	if err != nil {
-		return jose.JSONWebKeySet{}, NewOAuthError(constants.InvalidRequest, err.Error())
+		return jose.JSONWebKeySet{}, NewOAuthError(goidc.InvalidRequest, err.Error())
 	}
 
 	// Cache the client JWKS.
@@ -87,7 +110,7 @@ func (client Client) GetJwk(keyId string) (jose.JSONWebKey, OAuthError) {
 
 	keys := jwks.Key(keyId)
 	if len(keys) == 0 {
-		return jose.JSONWebKey{}, NewOAuthError(constants.InvalidClient, "invalid key ID")
+		return jose.JSONWebKey{}, NewOAuthError(goidc.InvalidClient, "invalid key ID")
 	}
 
 	return keys[0], nil
@@ -113,23 +136,23 @@ func (client Client) getEncryptionJwk(algorithm jose.KeyAlgorithm) (jose.JSONWeb
 	}
 
 	for _, jwk := range jwks.Keys {
-		if jwk.Use == string(constants.KeyEncryptionUsage) && jwk.Algorithm == string(algorithm) {
+		if jwk.Use == string(goidc.KeyEncryptionUsage) && jwk.Algorithm == string(algorithm) {
 			return jwk, nil
 		}
 	}
 
-	return jose.JSONWebKey{}, NewOAuthError(constants.InvalidClient, fmt.Sprintf("invalid key algorithm: %s", algorithm))
+	return jose.JSONWebKey{}, NewOAuthError(goidc.InvalidClient, fmt.Sprintf("invalid key algorithm: %s", algorithm))
 }
 
 func (client Client) AreScopesAllowed(requestedScopes string) bool {
 	return unit.ContainsAllScopes(client.Scopes, requestedScopes)
 }
 
-func (client Client) IsResponseTypeAllowed(responseType constants.ResponseType) bool {
+func (client Client) IsResponseTypeAllowed(responseType goidc.ResponseType) bool {
 	return slices.Contains(client.ResponseTypes, responseType)
 }
 
-func (client Client) IsGrantTypeAllowed(grantType constants.GrantType) bool {
+func (client Client) IsGrantTypeAllowed(grantType goidc.GrantType) bool {
 	return slices.Contains(client.GrantTypes, grantType)
 }
 
@@ -154,8 +177,4 @@ func (client Client) IsAuthorizationDetailTypeAllowed(authDetailType string) boo
 func (client Client) IsRegistrationAccessTokenValid(registrationAccessToken string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(client.HashedRegistrationAccessToken), []byte(registrationAccessToken))
 	return err == nil
-}
-
-func (client Client) GetCustomAttribute(key string) string {
-	return client.Attributes[key]
 }

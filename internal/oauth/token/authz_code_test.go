@@ -5,11 +5,11 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/oauth/token"
 	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
@@ -22,9 +22,9 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 	authorizationCode := "random_authz_code"
 	session := models.AuthnSession{
 		ClientId:      models.TestClientId,
-		GrantedScopes: constants.OpenIdScope,
+		GrantedScopes: goidc.OpenIdScope,
 		AuthorizationParameters: models.AuthorizationParameters{
-			Scopes:      constants.OpenIdScope,
+			Scopes:      goidc.OpenIdScope,
 			RedirectUri: client.RedirectUris[0],
 		},
 		AuthorizationCode:         authorizationCode,
@@ -41,7 +41,7 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 		ClientAuthnRequest: models.ClientAuthnRequest{
 			ClientId: client.Id,
 		},
-		GrantType:         constants.AuthorizationCodeGrant,
+		GrantType:         goidc.AuthorizationCodeGrant,
 		RedirectUri:       client.RedirectUris[0],
 		AuthorizationCode: authorizationCode,
 	}

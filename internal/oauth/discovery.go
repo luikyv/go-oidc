@@ -1,20 +1,20 @@
 package oauth
 
 import (
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 	config := models.OpenIdConfiguration{
 		Issuer:                               ctx.Host,
-		ClientRegistrationEndpoint:           ctx.Host + string(constants.DynamicClientEndpoint),
-		AuthorizationEndpoint:                ctx.Host + string(constants.AuthorizationEndpoint),
-		TokenEndpoint:                        ctx.Host + string(constants.TokenEndpoint),
-		UserinfoEndpoint:                     ctx.Host + string(constants.UserInfoEndpoint),
+		ClientRegistrationEndpoint:           ctx.Host + string(goidc.DynamicClientEndpoint),
+		AuthorizationEndpoint:                ctx.Host + string(goidc.AuthorizationEndpoint),
+		TokenEndpoint:                        ctx.Host + string(goidc.TokenEndpoint),
+		UserinfoEndpoint:                     ctx.Host + string(goidc.UserInfoEndpoint),
 		ParIsRequired:                        ctx.ParIsRequired,
-		JwksEndpoint:                         ctx.Host + string(constants.JsonWebKeySetEndpoint),
+		JwksEndpoint:                         ctx.Host + string(goidc.JsonWebKeySetEndpoint),
 		ResponseTypes:                        ctx.ResponseTypes,
 		ResponseModes:                        ctx.ResponseModes,
 		GrantTypes:                           ctx.GrantTypes,
@@ -43,7 +43,7 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 
 	if ctx.ParIsEnabled {
 		config.ParIsRequired = ctx.ParIsRequired
-		config.ParEndpoint = ctx.Host + string(constants.PushedAuthorizationRequestEndpoint)
+		config.ParEndpoint = ctx.Host + string(goidc.PushedAuthorizationRequestEndpoint)
 	}
 
 	if ctx.JarIsEnabled {
@@ -69,22 +69,22 @@ func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
 	}
 
 	if ctx.IntrospectionIsEnabled {
-		config.IntrospectionEndpoint = ctx.Host + string(constants.TokenIntrospectionEndpoint)
+		config.IntrospectionEndpoint = ctx.Host + string(goidc.TokenIntrospectionEndpoint)
 		config.IntrospectionEndpointClientAuthnMethods = ctx.IntrospectionClientAuthnMethods
 		config.IntrospectionEndpointClientSignatureAlgorithms = ctx.GetIntrospectionClientSignatureAlgorithms()
 	}
 
 	if ctx.MtlsIsEnabled {
 		config.TlsBoundTokensIsEnabled = ctx.TlsBoundTokensIsEnabled
-		config.MtlsConfiguration.TokenEndpoint = ctx.MtlsHost + string(constants.TokenEndpoint)
-		config.MtlsConfiguration.UserinfoEndpoint = ctx.MtlsHost + string(constants.UserInfoEndpoint)
+		config.MtlsConfiguration.TokenEndpoint = ctx.MtlsHost + string(goidc.TokenEndpoint)
+		config.MtlsConfiguration.UserinfoEndpoint = ctx.MtlsHost + string(goidc.UserInfoEndpoint)
 
 		if ctx.ParIsEnabled {
-			config.MtlsConfiguration.ParEndpoint = ctx.MtlsHost + string(constants.PushedAuthorizationRequestEndpoint)
+			config.MtlsConfiguration.ParEndpoint = ctx.MtlsHost + string(goidc.PushedAuthorizationRequestEndpoint)
 		}
 
 		if ctx.IntrospectionIsEnabled {
-			config.IntrospectionEndpoint = ctx.MtlsHost + string(constants.TokenIntrospectionEndpoint)
+			config.IntrospectionEndpoint = ctx.MtlsHost + string(goidc.TokenIntrospectionEndpoint)
 		}
 	}
 

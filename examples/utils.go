@@ -8,10 +8,8 @@ import (
 	"strings"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/internal/constants"
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
-	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func GetPrivateJwks(filename string) jose.JSONWebKeySet {
@@ -32,70 +30,73 @@ func GetPrivateJwks(filename string) jose.JSONWebKeySet {
 }
 
 func AuthenticateUserWithNoInteraction(
-	ctx utils.Context,
-	session *models.AuthnSession,
-) constants.AuthnStatus {
+	ctx goidc.Context,
+	session goidc.AuthnSession,
+) goidc.AuthnStatus {
 	session.SetUserId("random_user_id")
-	session.GrantScopes(session.Scopes)
-	session.AddIdTokenClaim(constants.AuthenticationTimeClaim, unit.GetTimestampNow())
+	session.GrantScopes(session.GetScopes())
+	session.AddIdTokenClaim(goidc.AuthenticationTimeClaim, unit.GetTimestampNow())
 
 	// Add claims based on the claims parameter.
-	if session.Claims != nil {
+	claims, ok := session.GetClaims()
+	if ok {
 
 		// acr claim.
-		acrClaim, ok := session.Claims.IdToken[constants.AuthenticationContextReferenceClaim]
+		acrClaim, ok := claims.IdToken[goidc.AuthenticationContextReferenceClaim]
 		if ok {
-			session.AddIdTokenClaim(constants.AuthenticationContextReferenceClaim, acrClaim.Value)
+			session.AddIdTokenClaim(goidc.AuthenticationContextReferenceClaim, acrClaim.Value)
 		}
-		acrClaim, ok = session.Claims.Userinfo[constants.AuthenticationContextReferenceClaim]
+		acrClaim, ok = claims.Userinfo[goidc.AuthenticationContextReferenceClaim]
 		if ok {
-			session.AddUserInfoClaim(constants.AuthenticationContextReferenceClaim, acrClaim.Value)
+			session.AddUserInfoClaim(goidc.AuthenticationContextReferenceClaim, acrClaim.Value)
 		}
 
 		// email claim.
-		_, ok = session.Claims.IdToken[constants.EmailClaim]
+		_, ok = claims.IdToken[goidc.EmailClaim]
 		if ok {
-			session.AddIdTokenClaim(constants.EmailClaim, "random@gmail.com")
+			session.AddIdTokenClaim(goidc.EmailClaim, "random@gmail.com")
 		}
-		_, ok = session.Claims.Userinfo[constants.EmailClaim]
+		_, ok = claims.Userinfo[goidc.EmailClaim]
 		if ok {
-			session.AddUserInfoClaim(constants.EmailClaim, "random@gmail.com")
+			session.AddUserInfoClaim(goidc.EmailClaim, "random@gmail.com")
 		}
 
 		// email_verified claim.
-		_, ok = session.Claims.IdToken[constants.EmailVerifiedClaim]
+		_, ok = claims.IdToken[goidc.EmailVerifiedClaim]
 		if ok {
-			session.AddIdTokenClaim(constants.EmailVerifiedClaim, true)
+			session.AddIdTokenClaim(goidc.EmailVerifiedClaim, true)
 		}
-		_, ok = session.Claims.Userinfo[constants.EmailVerifiedClaim]
+		_, ok = claims.Userinfo[goidc.EmailVerifiedClaim]
 		if ok {
-			session.AddUserInfoClaim(constants.EmailVerifiedClaim, true)
+			session.AddUserInfoClaim(goidc.EmailVerifiedClaim, true)
 		}
 
 	}
 
 	// Add claims based on scope.
-	if strings.Contains(session.Scopes, constants.EmailScope) {
-		session.AddUserInfoClaim(constants.EmailClaim, "random@gmail.com")
-		session.AddUserInfoClaim(constants.EmailVerifiedClaim, true)
+	if strings.Contains(session.GetScopes(), goidc.EmailScope) {
+		session.AddUserInfoClaim(goidc.EmailClaim, "random@gmail.com")
+		session.AddUserInfoClaim(goidc.EmailVerifiedClaim, true)
 	}
 
-	return constants.Success
+	return goidc.Success
 }
 
 func AuthenticateUser(
-	ctx utils.Context,
-	session *models.AuthnSession,
-) constants.AuthnStatus {
+	ctx goidc.Context,
+	session goidc.AuthnSession,
+) goidc.AuthnStatus {
 
 	// Init the step if empty.
-	if session.GetParameter("step") == nil {
+	_, ok := session.GetParameter("step")
+	if !ok {
 		session.SaveParameter("step", "identity")
 	}
 
-	if session.GetParameter("step") == "identity" {
+	stepId, ok := session.GetParameter("step")
+	if ok && stepId == "identity" {
 		status := identifyUser(ctx, session)
-		if status != constants.Success {
+		if status != goidc.Success {
 			return status
 		}
 		// The status is success so we can move to the next step.
@@ -106,53 +107,51 @@ func AuthenticateUser(
 }
 
 func identifyUser(
-	ctx utils.Context,
-	session *models.AuthnSession,
-) constants.AuthnStatus {
+	ctx goidc.Context,
+	session goidc.AuthnSession,
+) goidc.AuthnStatus {
 
-	ctx.Request.ParseForm()
-	username := ctx.Request.PostFormValue("username")
+	username := ctx.GetFormParam("username")
 	if username == "" {
 		ctx.RenderHtml(identityForm, map[string]any{
-			"host":       strings.Replace(ctx.Host, "host.docker.internal", "localhost", -1),
-			"callbackId": session.CallbackId,
+			"host":       strings.Replace(ctx.GetHost(), "host.docker.internal", "localhost", -1),
+			"callbackId": session.GetCallbackId(),
 		})
-		return constants.InProgress
+		return goidc.InProgress
 	}
 
 	session.SetUserId(username)
-	session.GrantScopes(session.Scopes)
+	session.GrantScopes(session.GetScopes())
 	session.AddTokenClaim("custom_claim", "random_value")
-	if strings.Contains(session.Scopes, "email") {
+	if strings.Contains(session.GetScopes(), "email") {
 		session.AddIdTokenClaim("email", "random@email.com")
 	}
-	return constants.Success
+	return goidc.Success
 }
 
 func authenticateWithPassword(
-	ctx utils.Context,
-	session *models.AuthnSession,
-) constants.AuthnStatus {
-	ctx.Request.ParseForm()
-	password := ctx.Request.PostFormValue("password")
+	ctx goidc.Context,
+	session goidc.AuthnSession,
+) goidc.AuthnStatus {
+	password := ctx.GetFormParam("password")
 	if password == "" {
 		ctx.RenderHtml(passwordForm, map[string]any{
-			"host":       strings.Replace(ctx.Host, "host.docker.internal", "localhost", -1),
-			"callbackId": session.CallbackId,
+			"host":       strings.Replace(ctx.GetHost(), "host.docker.internal", "localhost", -1),
+			"callbackId": session.GetCallbackId(),
 		})
-		return constants.InProgress
+		return goidc.InProgress
 	}
 
 	if password != "password" {
 		ctx.RenderHtml(passwordForm, map[string]any{
-			"host":       strings.Replace(ctx.Host, "host.docker.internal", "localhost", -1),
-			"callbackId": session.CallbackId,
+			"host":       strings.Replace(ctx.GetHost(), "host.docker.internal", "localhost", -1),
+			"callbackId": session.GetCallbackId(),
 			"error":      "invalid password",
 		})
-		return constants.InProgress
+		return goidc.InProgress
 	}
 
-	return constants.Success
+	return goidc.Success
 }
 
 var identityForm string = `

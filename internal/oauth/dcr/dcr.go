@@ -1,9 +1,9 @@
 package dcr
 
 import (
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func CreateClient(
@@ -25,7 +25,7 @@ func CreateClient(
 
 	newClient := newClient(dynamicClient)
 	if err := ctx.ClientManager.Create(newClient); err != nil {
-		return models.DynamicClientResponse{}, models.NewOAuthError(constants.InternalError, err.Error())
+		return models.DynamicClientResponse{}, models.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	return models.DynamicClientResponse{
@@ -61,7 +61,7 @@ func UpdateClient(
 
 	updatedClient := newClient(dynamicClient)
 	if err := ctx.ClientManager.Update(client.Id, updatedClient); err != nil {
-		return models.DynamicClientResponse{}, models.NewOAuthError(constants.InternalError, err.Error())
+		return models.DynamicClientResponse{}, models.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	return models.DynamicClientResponse{
@@ -103,7 +103,7 @@ func DeleteClient(
 	}
 
 	if err := ctx.ClientManager.Delete(dynamicClientRequest.Id); err != nil {
-		return models.NewOAuthError(constants.InternalError, err.Error())
+		return models.NewOAuthError(goidc.InternalError, err.Error())
 	}
 	return nil
 }

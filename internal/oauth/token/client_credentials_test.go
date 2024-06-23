@@ -5,10 +5,10 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/oauth/token"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
@@ -21,7 +21,7 @@ func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 		ClientAuthnRequest: models.ClientAuthnRequest{
 			ClientId: client.Id,
 		},
-		GrantType: constants.ClientCredentialsGrant,
+		GrantType: goidc.ClientCredentialsGrant,
 		Scopes:    "scope1",
 	}
 
@@ -58,8 +58,8 @@ func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 	}
 
 	sessions := utils.GetGrantSessionsFromTestContext(ctx)
-	if len(sessions) != 0 {
-		t.Error("there should be no token sessions")
+	if len(sessions) != 1 {
+		t.Error("there should be one token session")
 		return
 	}
 }

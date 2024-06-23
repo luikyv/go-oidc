@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func validateDynamicClientRequest(
@@ -67,7 +67,7 @@ func validateGrantTypes(
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
 	if !unit.ContainsAll(ctx.GrantTypes, dynamicClient.GrantTypes...) {
-		return models.NewOAuthError(constants.InvalidRequest, "grant type not allowed")
+		return models.NewOAuthError(goidc.InvalidRequest, "grant type not allowed")
 	}
 	return nil
 }
@@ -76,12 +76,12 @@ func validateClientCredentialsGrantNotAllowedForNoneClientAuthn(
 	_ utils.Context,
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
-	if dynamicClient.AuthnMethod != constants.NoneAuthn {
+	if dynamicClient.AuthnMethod != goidc.NoneAuthn {
 		return nil
 	}
 
-	if slices.Contains(dynamicClient.GrantTypes, constants.ClientCredentialsGrant) {
-		return models.NewOAuthError(constants.InvalidRequest, "client_credentials grant type not allowed")
+	if slices.Contains(dynamicClient.GrantTypes, goidc.ClientCredentialsGrant) {
+		return models.NewOAuthError(goidc.InvalidRequest, "client_credentials grant type not allowed")
 	}
 
 	return nil
@@ -91,9 +91,9 @@ func validateClientAuthnMethodForIntrospectionGrant(
 	ctx utils.Context,
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
-	if slices.Contains(dynamicClient.GrantTypes, constants.IntrospectionGrant) &&
+	if slices.Contains(dynamicClient.GrantTypes, goidc.IntrospectionGrant) &&
 		!slices.Contains(ctx.IntrospectionClientAuthnMethods, dynamicClient.AuthnMethod) {
-		return models.NewOAuthError(constants.InvalidRequest, "client_credentials grant type not allowed")
+		return models.NewOAuthError(goidc.InvalidRequest, "client_credentials grant type not allowed")
 	}
 
 	return nil
@@ -104,7 +104,7 @@ func validateRedirectUris(
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
 	if len(dynamicClient.RedirectUris) == 0 {
-		return models.NewOAuthError(constants.InvalidRequest, "at least one redirect uri must be informed")
+		return models.NewOAuthError(goidc.InvalidRequest, "at least one redirect uri must be informed")
 	}
 	return nil
 }
@@ -114,7 +114,7 @@ func validateResponseTypes(
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
 	if !unit.ContainsAll(ctx.ResponseTypes, dynamicClient.ResponseTypes...) {
-		return models.NewOAuthError(constants.InvalidRequest, "response type not allowed")
+		return models.NewOAuthError(goidc.InvalidRequest, "response type not allowed")
 	}
 	return nil
 }
@@ -130,8 +130,8 @@ func validateCannotRequestImplicitResponseTypeWithoutImplicitGrant(
 		}
 	}
 
-	if containsImplicitResponseType && !slices.Contains(ctx.GrantTypes, constants.ImplicitGrant) {
-		return models.NewOAuthError(constants.InvalidRequest, "implicit grant type is required for implicit response types")
+	if containsImplicitResponseType && !slices.Contains(ctx.GrantTypes, goidc.ImplicitGrant) {
+		return models.NewOAuthError(goidc.InvalidRequest, "implicit grant type is required for implicit response types")
 	}
 	return nil
 }
@@ -141,7 +141,7 @@ func validateAuthnMethod(
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
 	if !unit.ContainsAll(ctx.ClientAuthnMethods, dynamicClient.AuthnMethod) {
-		return models.NewOAuthError(constants.InvalidRequest, "authn method not allowed")
+		return models.NewOAuthError(goidc.InvalidRequest, "authn method not allowed")
 	}
 	return nil
 }
@@ -151,7 +151,7 @@ func validateScopes(
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
 	if dynamicClient.Scopes != "" && !unit.ContainsAll(ctx.Scopes, unit.SplitStringWithSpaces(dynamicClient.Scopes)...) {
-		return models.NewOAuthError(constants.InvalidRequest, "scope not allowed")
+		return models.NewOAuthError(goidc.InvalidRequest, "scope not allowed")
 	}
 	return nil
 }
@@ -161,7 +161,7 @@ func validateOpenIdScopeIfRequired(
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
 	if dynamicClient.Scopes != "" && ctx.OpenIdScopeIsRequired && unit.ScopesContainsOpenId(dynamicClient.Scopes) {
-		return models.NewOAuthError(constants.InvalidRequest, "scope openid is required")
+		return models.NewOAuthError(goidc.InvalidRequest, "scope openid is required")
 	}
 	return nil
 }
@@ -171,7 +171,7 @@ func validateSubjectIdentifierType(
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
 	if dynamicClient.SubjectIdentifierType != "" && !unit.ContainsAll(ctx.SubjectIdentifierTypes, dynamicClient.SubjectIdentifierType) {
-		return models.NewOAuthError(constants.InvalidRequest, "subject_type not supported")
+		return models.NewOAuthError(goidc.InvalidRequest, "subject_type not supported")
 	}
 	return nil
 }
@@ -181,7 +181,7 @@ func validateIdTokenSignatureAlgorithm(
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
 	if dynamicClient.IdTokenSignatureAlgorithm != "" && !unit.ContainsAll(ctx.GetUserInfoSignatureAlgorithms(), dynamicClient.IdTokenSignatureAlgorithm) {
-		return models.NewOAuthError(constants.InvalidRequest, "id_token_signed_response_alg not supported")
+		return models.NewOAuthError(goidc.InvalidRequest, "id_token_signed_response_alg not supported")
 	}
 	return nil
 }
@@ -191,7 +191,7 @@ func validateUserInfoSignatureAlgorithm(
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
 	if dynamicClient.UserInfoSignatureAlgorithm != "" && !unit.ContainsAll(ctx.GetUserInfoSignatureAlgorithms(), dynamicClient.UserInfoSignatureAlgorithm) {
-		return models.NewOAuthError(constants.InvalidRequest, "id_token_signed_response_alg not supported")
+		return models.NewOAuthError(goidc.InvalidRequest, "id_token_signed_response_alg not supported")
 	}
 	return nil
 }
@@ -201,7 +201,7 @@ func validateJarSignatureAlgorithm(
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
 	if dynamicClient.JarSignatureAlgorithm != "" && !unit.ContainsAll(ctx.JarSignatureAlgorithms, dynamicClient.JarSignatureAlgorithm) {
-		return models.NewOAuthError(constants.InvalidRequest, "request_object_signing_alg not supported")
+		return models.NewOAuthError(goidc.InvalidRequest, "request_object_signing_alg not supported")
 	}
 	return nil
 }
@@ -211,7 +211,7 @@ func validateJarmSignatureAlgorithm(
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
 	if dynamicClient.JarmSignatureAlgorithm != "" && !unit.ContainsAll(ctx.GetJarmSignatureAlgorithms(), dynamicClient.JarmSignatureAlgorithm) {
-		return models.NewOAuthError(constants.InvalidRequest, "authorization_signed_response_alg not supported")
+		return models.NewOAuthError(goidc.InvalidRequest, "authorization_signed_response_alg not supported")
 	}
 	return nil
 }
@@ -220,12 +220,12 @@ func validateClientSignatureAlgorithmForPrivateKeyJwt(
 	ctx utils.Context,
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
-	if dynamicClient.AuthnMethod != constants.PrivateKeyJwtAuthn {
+	if dynamicClient.AuthnMethod != goidc.PrivateKeyJwtAuthn {
 		return nil
 	}
 
 	if dynamicClient.AuthnSignatureAlgorithm != "" && !unit.ContainsAll(ctx.PrivateKeyJwtSignatureAlgorithms, dynamicClient.AuthnSignatureAlgorithm) {
-		return models.NewOAuthError(constants.InvalidRequest, "token_endpoint_auth_signing_alg not supported")
+		return models.NewOAuthError(goidc.InvalidRequest, "token_endpoint_auth_signing_alg not supported")
 	}
 	return nil
 }
@@ -234,12 +234,12 @@ func validateClientSignatureAlgorithmForClientSecretJwt(
 	ctx utils.Context,
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
-	if dynamicClient.AuthnMethod != constants.ClientSecretJwt {
+	if dynamicClient.AuthnMethod != goidc.ClientSecretJwt {
 		return nil
 	}
 
 	if dynamicClient.AuthnSignatureAlgorithm != "" && !unit.ContainsAll(ctx.ClientSecretJwtSignatureAlgorithms, dynamicClient.AuthnSignatureAlgorithm) {
-		return models.NewOAuthError(constants.InvalidRequest, "token_endpoint_auth_signing_alg not supported")
+		return models.NewOAuthError(goidc.InvalidRequest, "token_endpoint_auth_signing_alg not supported")
 	}
 	return nil
 }
@@ -248,12 +248,12 @@ func validateJwksAreRequiredForPrivateKeyJwtAuthn(
 	_ utils.Context,
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
-	if dynamicClient.AuthnMethod != constants.PrivateKeyJwtAuthn {
+	if dynamicClient.AuthnMethod != goidc.PrivateKeyJwtAuthn {
 		return nil
 	}
 
 	if len(dynamicClient.PublicJwks.Keys) == 0 && dynamicClient.PublicJwksUri == "" {
-		return models.NewOAuthError(constants.InvalidRequest, "the jwks is required for private_key_jwt")
+		return models.NewOAuthError(goidc.InvalidRequest, "the jwks is required for private_key_jwt")
 	}
 
 	return nil
@@ -263,8 +263,8 @@ func validatePkceIsRequiredForPublicClients(
 	ctx utils.Context,
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
-	if ctx.PkceIsEnabled && dynamicClient.AuthnMethod == constants.NoneAuthn && !dynamicClient.PkceIsRequired {
-		return models.NewOAuthError(constants.InvalidRequest, "pkce is required for public clients")
+	if ctx.PkceIsEnabled && dynamicClient.AuthnMethod == goidc.NoneAuthn && !dynamicClient.PkceIsRequired {
+		return models.NewOAuthError(goidc.InvalidRequest, "pkce is required for public clients")
 	}
 	return nil
 }
@@ -273,12 +273,12 @@ func validateJwksIsRequiredWhenSelfSignedTlsAuthn(
 	_ utils.Context,
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
-	if dynamicClient.AuthnMethod != constants.SelfSignedTlsAuthn {
+	if dynamicClient.AuthnMethod != goidc.SelfSignedTlsAuthn {
 		return nil
 	}
 
 	if dynamicClient.PublicJwksUri == "" && len(dynamicClient.PublicJwks.Keys) == 0 {
-		return models.NewOAuthError(constants.InvalidRequest, "jwks is required when authenticating with self signed certificates")
+		return models.NewOAuthError(goidc.InvalidRequest, "jwks is required when authenticating with self signed certificates")
 	}
 
 	return nil
@@ -288,7 +288,7 @@ func validateTlsSubjectInfoWhenTlsAuthn(
 	_ utils.Context,
 	dynamicClient models.DynamicClientRequest,
 ) models.OAuthError {
-	if dynamicClient.AuthnMethod != constants.TlsAuthn {
+	if dynamicClient.AuthnMethod != goidc.TlsAuthn {
 		return nil
 	}
 
@@ -307,7 +307,7 @@ func validateTlsSubjectInfoWhenTlsAuthn(
 	}
 
 	if numberOfIdentifiers != 1 {
-		return models.NewOAuthError(constants.InvalidRequest, "only one of: tls_client_auth_subject_dn, tls_client_auth_san_dns, tls_client_auth_san_ip must be informed")
+		return models.NewOAuthError(goidc.InvalidRequest, "only one of: tls_client_auth_subject_dn, tls_client_auth_san_dns, tls_client_auth_san_ip must be informed")
 	}
 
 	return nil
@@ -320,21 +320,21 @@ func validateIdTokenEncryptionAlgorithms(
 	// Return an error if ID token encryption is not enabled, but the client requested it.
 	if !ctx.UserInfoEncryptionIsEnabled {
 		if dynamicClient.IdTokenKeyEncryptionAlgorithm != "" || dynamicClient.IdTokenContentEncryptionAlgorithm != "" {
-			return models.NewOAuthError(constants.InvalidRequest, "ID token encryption is not supported")
+			return models.NewOAuthError(goidc.InvalidRequest, "ID token encryption is not supported")
 		}
 		return nil
 	}
 
 	if dynamicClient.IdTokenKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.UserInfoKeyEncryptionAlgorithms, dynamicClient.IdTokenKeyEncryptionAlgorithm) {
-		return models.NewOAuthError(constants.InvalidRequest, "id_token_encrypted_response_alg not supported")
+		return models.NewOAuthError(goidc.InvalidRequest, "id_token_encrypted_response_alg not supported")
 	}
 
 	if dynamicClient.IdTokenContentEncryptionAlgorithm != "" && dynamicClient.IdTokenKeyEncryptionAlgorithm == "" {
-		return models.NewOAuthError(constants.InvalidRequest, "id_token_encrypted_response_alg is required if id_token_encrypted_response_enc is informed")
+		return models.NewOAuthError(goidc.InvalidRequest, "id_token_encrypted_response_alg is required if id_token_encrypted_response_enc is informed")
 	}
 
 	if dynamicClient.IdTokenContentEncryptionAlgorithm != "" && !slices.Contains(ctx.UserInfoContentEncryptionAlgorithms, dynamicClient.IdTokenContentEncryptionAlgorithm) {
-		return models.NewOAuthError(constants.InvalidRequest, "id_token_encrypted_response_enc not supported")
+		return models.NewOAuthError(goidc.InvalidRequest, "id_token_encrypted_response_enc not supported")
 	}
 
 	return nil
@@ -347,21 +347,21 @@ func validateUserInfoEncryptionAlgorithms(
 	// Return an error if user info encryption is not enabled, but the client requested it.
 	if !ctx.UserInfoEncryptionIsEnabled {
 		if dynamicClient.UserInfoKeyEncryptionAlgorithm != "" || dynamicClient.UserInfoContentEncryptionAlgorithm != "" {
-			return models.NewOAuthError(constants.InvalidRequest, "user info encryption is not supported")
+			return models.NewOAuthError(goidc.InvalidRequest, "user info encryption is not supported")
 		}
 		return nil
 	}
 
 	if dynamicClient.UserInfoKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.UserInfoKeyEncryptionAlgorithms, dynamicClient.UserInfoKeyEncryptionAlgorithm) {
-		return models.NewOAuthError(constants.InvalidRequest, "userinfo_encrypted_response_alg not supported")
+		return models.NewOAuthError(goidc.InvalidRequest, "userinfo_encrypted_response_alg not supported")
 	}
 
 	if dynamicClient.UserInfoContentEncryptionAlgorithm != "" && dynamicClient.UserInfoKeyEncryptionAlgorithm == "" {
-		return models.NewOAuthError(constants.InvalidRequest, "userinfo_encrypted_response_alg is required if userinfo_encrypted_response_enc is informed")
+		return models.NewOAuthError(goidc.InvalidRequest, "userinfo_encrypted_response_alg is required if userinfo_encrypted_response_enc is informed")
 	}
 
 	if dynamicClient.UserInfoContentEncryptionAlgorithm != "" && !slices.Contains(ctx.UserInfoContentEncryptionAlgorithms, dynamicClient.UserInfoContentEncryptionAlgorithm) {
-		return models.NewOAuthError(constants.InvalidRequest, "userinfo_encrypted_response_enc not supported")
+		return models.NewOAuthError(goidc.InvalidRequest, "userinfo_encrypted_response_enc not supported")
 	}
 
 	return nil
@@ -374,21 +374,21 @@ func validateJarmEncryptionAlgorithms(
 	// Return an error if jarm encryption is not enabled, but the client requested it.
 	if !ctx.JarmIsEnabled {
 		if dynamicClient.JarmKeyEncryptionAlgorithm != "" || dynamicClient.JarmContentEncryptionAlgorithm != "" {
-			return models.NewOAuthError(constants.InvalidRequest, "jarm encryption is not supported")
+			return models.NewOAuthError(goidc.InvalidRequest, "jarm encryption is not supported")
 		}
 		return nil
 	}
 
 	if dynamicClient.JarmKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.JarmKeyEncrytionAlgorithms, dynamicClient.JarmKeyEncryptionAlgorithm) {
-		return models.NewOAuthError(constants.InvalidRequest, "authorization_encrypted_response_alg not supported")
+		return models.NewOAuthError(goidc.InvalidRequest, "authorization_encrypted_response_alg not supported")
 	}
 
 	if dynamicClient.JarmContentEncryptionAlgorithm != "" && dynamicClient.JarmKeyEncryptionAlgorithm == "" {
-		return models.NewOAuthError(constants.InvalidRequest, "authorization_encrypted_response_alg is required if authorization_encrypted_response_enc is informed")
+		return models.NewOAuthError(goidc.InvalidRequest, "authorization_encrypted_response_alg is required if authorization_encrypted_response_enc is informed")
 	}
 
 	if dynamicClient.JarmContentEncryptionAlgorithm != "" && !slices.Contains(ctx.JarmContentEncryptionAlgorithms, dynamicClient.JarmContentEncryptionAlgorithm) {
-		return models.NewOAuthError(constants.InvalidRequest, "authorization_encrypted_response_enc not supported")
+		return models.NewOAuthError(goidc.InvalidRequest, "authorization_encrypted_response_enc not supported")
 	}
 
 	return nil
@@ -401,21 +401,21 @@ func validateJarEncryptionAlgorithms(
 	// Return an error if jar encryption is not enabled, but the client requested it.
 	if !ctx.JarEncryptionIsEnabled {
 		if dynamicClient.JarKeyEncryptionAlgorithm != "" || dynamicClient.JarContentEncryptionAlgorithm != "" {
-			return models.NewOAuthError(constants.InvalidRequest, "jar encryption is not supported")
+			return models.NewOAuthError(goidc.InvalidRequest, "jar encryption is not supported")
 		}
 		return nil
 	}
 
 	if dynamicClient.JarKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.GetJarKeyEncryptionAlgorithms(), dynamicClient.JarKeyEncryptionAlgorithm) {
-		return models.NewOAuthError(constants.InvalidRequest, "request_object_encryption_alg not supported")
+		return models.NewOAuthError(goidc.InvalidRequest, "request_object_encryption_alg not supported")
 	}
 
 	if dynamicClient.JarContentEncryptionAlgorithm != "" && dynamicClient.JarKeyEncryptionAlgorithm == "" {
-		return models.NewOAuthError(constants.InvalidRequest, "request_object_encryption_alg is required if request_object_encryption_enc is informed")
+		return models.NewOAuthError(goidc.InvalidRequest, "request_object_encryption_alg is required if request_object_encryption_enc is informed")
 	}
 
 	if dynamicClient.JarContentEncryptionAlgorithm != "" && !slices.Contains(ctx.JarContentEncryptionAlgorithms, dynamicClient.JarContentEncryptionAlgorithm) {
-		return models.NewOAuthError(constants.InvalidRequest, "request_object_encryption_enc not supported")
+		return models.NewOAuthError(goidc.InvalidRequest, "request_object_encryption_enc not supported")
 	}
 
 	return nil
@@ -431,7 +431,7 @@ func validatePublicJwks(
 
 	for _, jwk := range dynamicClient.PublicJwks.Keys {
 		if !jwk.IsPublic() || !jwk.Valid() {
-			return models.NewOAuthError(constants.InvalidRequest, fmt.Sprintf("the key with ID: %s jwks is invalid", jwk.KeyID))
+			return models.NewOAuthError(goidc.InvalidRequest, fmt.Sprintf("the key with ID: %s jwks is invalid", jwk.KeyID))
 		}
 	}
 	return nil
@@ -454,7 +454,7 @@ func validateAuthorizationDetailTypes(
 	}
 
 	if unit.ContainsAll(ctx.AuthorizationDetailTypes, dynamicClient.AuthorizationDetailTypes...) {
-		return models.NewOAuthError(constants.InvalidRequest, "authorization detail type not supported")
+		return models.NewOAuthError(goidc.InvalidRequest, "authorization detail type not supported")
 	}
 
 	return nil

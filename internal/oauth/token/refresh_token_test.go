@@ -5,11 +5,11 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/oauth/token"
 	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
@@ -29,8 +29,8 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 			Subject:            username,
 			ClientId:           models.TestClientId,
 			GrantedScopes:      client.Scopes,
-			TokenOptions: models.TokenOptions{
-				TokenFormat:        constants.JwtTokenFormat,
+			TokenOptions: goidc.TokenOptions{
+				TokenFormat:        goidc.JwtTokenFormat,
 				TokenExpiresInSecs: 60,
 			},
 		},
@@ -41,7 +41,7 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 		ClientAuthnRequest: models.ClientAuthnRequest{
 			ClientId: client.Id,
 		},
-		GrantType:    constants.RefreshTokenGrant,
+		GrantType:    goidc.RefreshTokenGrant,
 		RefreshToken: refreshToken,
 	}
 
@@ -106,7 +106,7 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 			Subject:       username,
 			ClientId:      models.TestClientId,
 			GrantedScopes: client.Scopes,
-			TokenOptions: models.TokenOptions{
+			TokenOptions: goidc.TokenOptions{
 				TokenExpiresInSecs: 60,
 			},
 		},
@@ -117,7 +117,7 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 		ClientAuthnRequest: models.ClientAuthnRequest{
 			ClientId: client.Id,
 		},
-		GrantType:    constants.RefreshTokenGrant,
+		GrantType:    goidc.RefreshTokenGrant,
 		RefreshToken: refreshToken,
 	}
 

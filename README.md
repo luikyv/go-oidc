@@ -2,7 +2,7 @@
 A customizable OpenID Provider made in Go.
 
 ## To Evaluate
-* Remove complexity and store all tokens? Most of them will be already stored.
+* NewTokenOptions.
 * Add more tests.
 * Implement storage with MongoDB.
 * Add coverage report and quality checks.

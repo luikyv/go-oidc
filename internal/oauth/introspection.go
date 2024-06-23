@@ -3,10 +3,10 @@ package oauth
 import (
 	"log/slog"
 
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func IntrospectToken(
@@ -28,7 +28,7 @@ func IntrospectToken(
 
 	resp := getTokenIntrospectionInfo(ctx, req.Token)
 	if !resp.IsActive && resp.ClientId != client.Id {
-		return models.TokenIntrospectionInfo{}, models.NewOAuthError(constants.InvalidClient, "invalid token")
+		return models.TokenIntrospectionInfo{}, models.NewOAuthError(goidc.InvalidClient, "invalid token")
 	}
 
 	return models.TokenIntrospectionInfo{}, nil
@@ -39,12 +39,12 @@ func validateTokenIntrospectionRequest(
 	req models.TokenIntrospectionRequest,
 	client models.Client,
 ) models.OAuthError {
-	if !client.IsGrantTypeAllowed(constants.IntrospectionGrant) {
-		return models.NewOAuthError(constants.InvalidGrant, "client not allowed to introspect tokens")
+	if !client.IsGrantTypeAllowed(goidc.IntrospectionGrant) {
+		return models.NewOAuthError(goidc.InvalidGrant, "client not allowed to introspect tokens")
 	}
 
 	if req.Token == "" {
-		return models.NewOAuthError(constants.InvalidRequest, "token is required")
+		return models.NewOAuthError(goidc.InvalidRequest, "token is required")
 	}
 
 	return nil
@@ -55,7 +55,7 @@ func getTokenIntrospectionInfo(
 	token string,
 ) models.TokenIntrospectionInfo {
 
-	if len(token) == constants.RefreshTokenLength {
+	if len(token) == goidc.RefreshTokenLength {
 		return getRefreshTokenIntrospectionInfo(ctx, token)
 	}
 

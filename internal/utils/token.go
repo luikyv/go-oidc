@@ -4,9 +4,9 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func MakeIdToken(
@@ -43,7 +43,7 @@ func MakeToken(
 	models.Token,
 	models.OAuthError,
 ) {
-	if grantOptions.TokenFormat == constants.JwtTokenFormat {
+	if grantOptions.TokenFormat == goidc.JwtTokenFormat {
 		return makeJwtToken(ctx, client, grantOptions)
 	} else {
 		return makeOpaqueToken(ctx, client, grantOptions)
@@ -64,23 +64,23 @@ func makeIdToken(
 
 	// Set the token claims.
 	claims := map[string]any{
-		constants.IssuerClaim:   ctx.Host,
-		constants.SubjectClaim:  idTokenOpts.Subject,
-		constants.AudienceClaim: idTokenOpts.ClientId,
-		constants.IssuedAtClaim: timestampNow,
-		constants.ExpiryClaim:   timestampNow + ctx.IdTokenExpiresInSecs,
+		goidc.IssuerClaim:   ctx.Host,
+		goidc.SubjectClaim:  idTokenOpts.Subject,
+		goidc.AudienceClaim: idTokenOpts.ClientId,
+		goidc.IssuedAtClaim: timestampNow,
+		goidc.ExpiryClaim:   timestampNow + ctx.IdTokenExpiresInSecs,
 	}
 
 	if idTokenOpts.AccessToken != "" {
-		claims[constants.AccessTokenHashClaim] = unit.GenerateHalfHashClaim(idTokenOpts.AccessToken, signatureAlgorithm)
+		claims[goidc.AccessTokenHashClaim] = unit.GenerateHalfHashClaim(idTokenOpts.AccessToken, signatureAlgorithm)
 	}
 
 	if idTokenOpts.AuthorizationCode != "" {
-		claims[constants.AuthorizationCodeHashClaim] = unit.GenerateHalfHashClaim(idTokenOpts.AuthorizationCode, signatureAlgorithm)
+		claims[goidc.AuthorizationCodeHashClaim] = unit.GenerateHalfHashClaim(idTokenOpts.AuthorizationCode, signatureAlgorithm)
 	}
 
 	if idTokenOpts.State != "" {
-		claims[constants.StateHashClaim] = unit.GenerateHalfHashClaim(idTokenOpts.State, signatureAlgorithm)
+		claims[goidc.StateHashClaim] = unit.GenerateHalfHashClaim(idTokenOpts.State, signatureAlgorithm)
 	}
 
 	for k, v := range idTokenOpts.AdditionalIdTokenClaims {
@@ -92,12 +92,12 @@ func makeIdToken(
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.KeyID),
 	)
 	if err != nil {
-		return "", models.NewOAuthError(constants.InternalError, err.Error())
+		return "", models.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	idToken, err := jwt.Signed(signer).Claims(claims).Serialize()
 	if err != nil {
-		return "", models.NewOAuthError(constants.InternalError, err.Error())
+		return "", models.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	return idToken, nil
@@ -137,26 +137,26 @@ func makeJwtToken(
 	jwtId := uuid.NewString()
 	timestampNow := unit.GetTimestampNow()
 	claims := map[string]any{
-		constants.TokenIdClaim:  jwtId,
-		constants.IssuerClaim:   ctx.Host,
-		constants.SubjectClaim:  grantOptions.Subject,
-		constants.ClientIdClaim: client.Id,
-		constants.ScopeClaim:    grantOptions.GrantedScopes,
-		constants.IssuedAtClaim: timestampNow,
-		constants.ExpiryClaim:   timestampNow + grantOptions.TokenExpiresInSecs,
+		goidc.TokenIdClaim:  jwtId,
+		goidc.IssuerClaim:   ctx.Host,
+		goidc.SubjectClaim:  grantOptions.Subject,
+		goidc.ClientIdClaim: client.Id,
+		goidc.ScopeClaim:    grantOptions.GrantedScopes,
+		goidc.IssuedAtClaim: timestampNow,
+		goidc.ExpiryClaim:   timestampNow + grantOptions.TokenExpiresInSecs,
 	}
 
 	if grantOptions.GrantedAuthorizationDetails != nil {
-		claims[constants.AuthorizationDetailsClaim] = grantOptions.GrantedAuthorizationDetails
+		claims[goidc.AuthorizationDetailsClaim] = grantOptions.GrantedAuthorizationDetails
 	}
 
-	tokenType := constants.BearerTokenType
+	tokenType := goidc.BearerTokenType
 	confirmation := make(map[string]string)
 	// DPoP token binding.
 	dpopJwt, ok := ctx.GetDpopJwt()
 	jkt := ""
 	if ctx.DpopIsEnabled && ok {
-		tokenType = constants.DpopTokenType
+		tokenType = goidc.DpopTokenType
 		jkt = unit.GenerateJwkThumbprint(dpopJwt, ctx.DpopSignatureAlgorithms)
 		confirmation["jkt"] = jkt
 	}
@@ -182,17 +182,17 @@ func makeJwtToken(
 		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", privateJwk.KeyID),
 	)
 	if err != nil {
-		return models.Token{}, models.NewOAuthError(constants.InternalError, err.Error())
+		return models.Token{}, models.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	accessToken, err := jwt.Signed(signer).Claims(claims).Serialize()
 	if err != nil {
-		return models.Token{}, models.NewOAuthError(constants.InternalError, err.Error())
+		return models.Token{}, models.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	return models.Token{
 		Id:                    jwtId,
-		Format:                constants.JwtTokenFormat,
+		Format:                goidc.JwtTokenFormat,
 		Value:                 accessToken,
 		Type:                  tokenType,
 		JwkThumbprint:         jkt,
@@ -209,13 +209,13 @@ func makeOpaqueToken(
 	models.OAuthError,
 ) {
 	accessToken := unit.GenerateRandomString(grantOptions.OpaqueTokenLength, grantOptions.OpaqueTokenLength)
-	tokenType := constants.BearerTokenType
+	tokenType := goidc.BearerTokenType
 
 	// DPoP token binding.
 	dpopJwt, ok := ctx.GetDpopJwt()
 	jkt := ""
 	if ctx.DpopIsEnabled && ok {
-		tokenType = constants.DpopTokenType
+		tokenType = goidc.DpopTokenType
 		jkt = unit.GenerateJwkThumbprint(dpopJwt, ctx.DpopSignatureAlgorithms)
 	}
 
@@ -228,7 +228,7 @@ func makeOpaqueToken(
 
 	return models.Token{
 		Id:                    accessToken,
-		Format:                constants.OpaqueTokenFormat,
+		Format:                goidc.OpaqueTokenFormat,
 		Value:                 accessToken,
 		Type:                  tokenType,
 		JwkThumbprint:         jkt,

@@ -1,24 +1,24 @@
 package userinfo
 
 import (
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func validateUserInfoRequest(
 	ctx utils.Context,
 	grantSession models.GrantSession,
 	token string,
-	tokenType constants.TokenType,
+	tokenType goidc.TokenType,
 ) models.OAuthError {
 	if grantSession.HasLastTokenExpired() {
-		return models.NewOAuthError(constants.InvalidRequest, "token expired")
+		return models.NewOAuthError(goidc.InvalidRequest, "token expired")
 	}
 
 	if !unit.ScopesContainsOpenId(grantSession.GrantedScopes) {
-		return models.NewOAuthError(constants.InvalidRequest, "invalid scope")
+		return models.NewOAuthError(goidc.InvalidRequest, "invalid scope")
 	}
 
 	if err := validateDpop(ctx, token, tokenType, grantSession); err != nil {
@@ -31,14 +31,14 @@ func validateUserInfoRequest(
 func validateDpop(
 	ctx utils.Context,
 	token string,
-	tokenType constants.TokenType,
+	tokenType goidc.TokenType,
 	grantSession models.GrantSession,
 ) models.OAuthError {
 
 	if grantSession.JwkThumbprint == "" {
-		if tokenType == constants.DpopTokenType {
+		if tokenType == goidc.DpopTokenType {
 			// The token type cannot be DPoP if the session was not created with DPoP.
-			return models.NewOAuthError(constants.InvalidRequest, "invalid token type")
+			return models.NewOAuthError(goidc.InvalidRequest, "invalid token type")
 		} else {
 			// If the session was not created with DPoP and the token is not a DPoP token, there is nothing to validate.
 			return nil
@@ -48,7 +48,7 @@ func validateDpop(
 	dpopJwt, ok := ctx.GetDpopJwt()
 	if !ok {
 		// The session was created with DPoP, then the DPoP header must be passed.
-		return models.NewOAuthError(constants.UnauthorizedClient, "invalid DPoP header")
+		return models.NewOAuthError(goidc.UnauthorizedClient, "invalid DPoP header")
 	}
 
 	return utils.ValidateDpopJwt(ctx, dpopJwt, models.DpopJwtValidationOptions{
@@ -67,11 +67,11 @@ func validateTlsProofOfPossesion(
 
 	clientCert, ok := ctx.GetClientCertificate()
 	if !ok {
-		return models.NewOAuthError(constants.InvalidToken, "the client certificate is required")
+		return models.NewOAuthError(goidc.InvalidToken, "the client certificate is required")
 	}
 
 	if grantSession.ClientCertificateThumbprint != unit.GenerateBase64UrlSha256Hash(string(clientCert.Raw)) {
-		return models.NewOAuthError(constants.InvalidToken, "invalid client certificate")
+		return models.NewOAuthError(goidc.InvalidToken, "invalid client certificate")
 	}
 
 	return nil

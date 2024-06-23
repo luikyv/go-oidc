@@ -4,17 +4,17 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/oauth/par"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 	"golang.org/x/crypto/bcrypt"
 )
 
 func TestPushAuthorization_ShouldRejectUnauthenticatedClient(t *testing.T) {
 	// When
 	client := models.GetTestClient()
-	client.AuthnMethod = constants.ClientSecretPostAuthn
+	client.AuthnMethod = goidc.ClientSecretPostAuthn
 
 	ctx := utils.GetTestInMemoryContext()
 	ctx.ClientManager.Create(client)
@@ -33,7 +33,7 @@ func TestPushAuthorization_ShouldRejectUnauthenticatedClient(t *testing.T) {
 		t.Error("the client should not be authenticated")
 		return
 	}
-	if jsonError.ErrorCode != constants.InvalidClient {
+	if jsonError.ErrorCode != goidc.InvalidClient {
 		t.Errorf("invalid error code: %s", jsonError.ErrorCode)
 		return
 	}
@@ -45,7 +45,7 @@ func TestPushAuthorization_ShouldGenerateRequestUri(t *testing.T) {
 	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 0)
 
 	client := models.GetTestClient()
-	client.AuthnMethod = constants.ClientSecretPostAuthn
+	client.AuthnMethod = goidc.ClientSecretPostAuthn
 	client.HashedSecret = string(hashedClientSecret)
 
 	ctx := utils.GetTestInMemoryContext()
@@ -60,8 +60,8 @@ func TestPushAuthorization_ShouldGenerateRequestUri(t *testing.T) {
 		AuthorizationParameters: models.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
 			Scopes:       client.Scopes,
-			ResponseType: constants.CodeResponse,
-			ResponseMode: constants.QueryResponseMode,
+			ResponseType: goidc.CodeResponse,
+			ResponseMode: goidc.QueryResponseMode,
 		},
 	})
 

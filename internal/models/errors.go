@@ -3,24 +3,24 @@ package models
 import (
 	"errors"
 
-	"github.com/luikymagno/goidc/internal/constants"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 var ErrorEntityNotFound error = errors.New("entity not found")
 var ErrorEntityAlreadyExists error = errors.New("entity already exists")
 
 type OAuthError interface {
-	GetCode() constants.ErrorCode
+	GetCode() goidc.ErrorCode
 	Error() string
 }
 
 type OAuthBaseError struct {
-	Inner            error               // It can be used to wrap errors.
-	ErrorCode        constants.ErrorCode `json:"error"`
-	ErrorDescription string              `json:"error_description"`
+	Inner            error           // It can be used to wrap errors.
+	ErrorCode        goidc.ErrorCode `json:"error"`
+	ErrorDescription string          `json:"error_description"`
 }
 
-func (err OAuthBaseError) GetCode() constants.ErrorCode {
+func (err OAuthBaseError) GetCode() goidc.ErrorCode {
 	return err.ErrorCode
 }
 
@@ -32,14 +32,14 @@ func (e OAuthBaseError) Unwrap() error {
 	return e.Inner
 }
 
-func NewOAuthError(code constants.ErrorCode, description string) OAuthError {
+func NewOAuthError(code goidc.ErrorCode, description string) OAuthError {
 	return OAuthBaseError{
 		ErrorCode:        code,
 		ErrorDescription: description,
 	}
 }
 
-func NewWrappingOAuthError(err error, code constants.ErrorCode, description string) OAuthError {
+func NewWrappingOAuthError(err error, code goidc.ErrorCode, description string) OAuthError {
 	return OAuthBaseError{
 		Inner:            err,
 		ErrorCode:        code,
@@ -53,7 +53,7 @@ type OAuthRedirectError struct {
 }
 
 func NewOAuthRedirectError(
-	errorCode constants.ErrorCode,
+	errorCode goidc.ErrorCode,
 	errorDescription string,
 	params AuthorizationParameters,
 ) OAuthRedirectError {

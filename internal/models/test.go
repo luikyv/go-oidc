@@ -1,8 +1,6 @@
 package models
 
-import (
-	"github.com/luikymagno/goidc/internal/constants"
-)
+import "github.com/luikymagno/goidc/pkg/goidc"
 
 const (
 	TestClientId           string = "random_client_id"
@@ -15,23 +13,23 @@ func GetTestClient() Client {
 	return Client{
 		Id: TestClientId,
 		ClientMetaInfo: ClientMetaInfo{
-			AuthnMethod:  constants.NoneAuthn,
+			AuthnMethod:  goidc.NoneAuthn,
 			RedirectUris: []string{"https://example.com"},
-			Scopes:       "scope1 scope2 " + constants.OpenIdScope,
-			GrantTypes: []constants.GrantType{
-				constants.AuthorizationCodeGrant,
-				constants.ClientCredentialsGrant,
-				constants.ImplicitGrant,
-				constants.RefreshTokenGrant,
+			Scopes:       "scope1 scope2 " + goidc.OpenIdScope,
+			GrantTypes: []goidc.GrantType{
+				goidc.AuthorizationCodeGrant,
+				goidc.ClientCredentialsGrant,
+				goidc.ImplicitGrant,
+				goidc.RefreshTokenGrant,
 			},
-			ResponseTypes: []constants.ResponseType{
-				constants.CodeResponse,
-				constants.IdTokenResponse,
-				constants.TokenResponse,
-				constants.CodeAndIdTokenResponse,
-				constants.CodeAndTokenResponse,
-				constants.IdTokenAndTokenResponse,
-				constants.CodeAndIdTokenAndTokenResponse,
+			ResponseTypes: []goidc.ResponseType{
+				goidc.CodeResponse,
+				goidc.IdTokenResponse,
+				goidc.TokenResponse,
+				goidc.CodeAndIdTokenResponse,
+				goidc.CodeAndTokenResponse,
+				goidc.IdTokenAndTokenResponse,
+				goidc.CodeAndIdTokenAndTokenResponse,
 			},
 		},
 	}

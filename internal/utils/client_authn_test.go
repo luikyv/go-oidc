@@ -5,10 +5,10 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -18,7 +18,7 @@ func TestGetAuthenticatedClient_WithNoneAuthn_HappyPath(t *testing.T) {
 	client := models.Client{
 		Id: "random_client_id",
 		ClientMetaInfo: models.ClientMetaInfo{
-			AuthnMethod: constants.NoneAuthn,
+			AuthnMethod: goidc.NoneAuthn,
 		},
 	}
 
@@ -45,7 +45,7 @@ func TestGetAuthenticatedClient_WithSecretPostAuthn_HappyPath(t *testing.T) {
 	client := models.Client{
 		Id: "random_client_id",
 		ClientMetaInfo: models.ClientMetaInfo{
-			AuthnMethod: constants.ClientSecretPostAuthn,
+			AuthnMethod: goidc.ClientSecretPostAuthn,
 		},
 		HashedSecret: string(hashedClientSecret),
 	}
@@ -84,7 +84,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJwt_HappyPath(t *testing.T) {
 	client := models.Client{
 		Id: "random_client_id",
 		ClientMetaInfo: models.ClientMetaInfo{
-			AuthnMethod: constants.PrivateKeyJwtAuthn,
+			AuthnMethod: goidc.PrivateKeyJwtAuthn,
 			PublicJwks:  &jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privateJwk.Public()}},
 		},
 	}
@@ -100,15 +100,15 @@ func TestGetAuthenticatedClient_WithPrivateKeyJwt_HappyPath(t *testing.T) {
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.KeyID),
 	)
 	claims := map[string]any{
-		string(constants.IssuerClaim):   client.Id,
-		string(constants.SubjectClaim):  client.Id,
-		string(constants.AudienceClaim): ctx.Host,
-		string(constants.IssuedAtClaim): createdAtTimestamp,
-		string(constants.ExpiryClaim):   createdAtTimestamp + ctx.PrivateKeyJwtAssertionLifetimeSecs - 1,
+		string(goidc.IssuerClaim):   client.Id,
+		string(goidc.SubjectClaim):  client.Id,
+		string(goidc.AudienceClaim): ctx.Host,
+		string(goidc.IssuedAtClaim): createdAtTimestamp,
+		string(goidc.ExpiryClaim):   createdAtTimestamp + ctx.PrivateKeyJwtAssertionLifetimeSecs - 1,
 	}
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
 	req := models.ClientAuthnRequest{
-		ClientAssertionType: constants.JwtBearerAssertionType,
+		ClientAssertionType: goidc.JwtBearerAssertionType,
 		ClientAssertion:     assertion,
 	}
 
@@ -127,7 +127,7 @@ func TestGetAuthenticatedClient_WithDifferentClientIds(t *testing.T) {
 	client := models.Client{
 		Id: "random_client_id",
 		ClientMetaInfo: models.ClientMetaInfo{
-			AuthnMethod: constants.NoneAuthn,
+			AuthnMethod: goidc.NoneAuthn,
 		},
 	}
 

@@ -2,13 +2,12 @@ package models
 
 import (
 	"encoding/json"
-	"maps"
 	"net/http"
 	"strconv"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/unit"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 type DpopJwtClaims struct {
@@ -34,32 +33,16 @@ type IdTokenOptions struct {
 	State             string
 }
 
-type TokenOptions struct {
-	TokenFormat           constants.TokenFormat `json:"token_format"`
-	TokenExpiresInSecs    int                   `json:"token_expires_in_secs"`
-	ShouldRefresh         bool                  `json:"is_refreshable"`
-	JwtSignatureKeyId     string                `json:"token_signature_key_id"`
-	OpaqueTokenLength     int                   `json:"opaque_token_length"`
-	AdditionalTokenClaims map[string]any        `json:"additional_token_claims"`
-}
-
-func (opts *TokenOptions) AddTokenClaims(claims map[string]any) {
-	if opts.AdditionalTokenClaims == nil {
-		opts.AdditionalTokenClaims = map[string]any{}
-	}
-	maps.Copy(opts.AdditionalTokenClaims, claims)
-}
-
 type GrantOptions struct {
-	GrantType                   constants.GrantType   `json:"grant_type"`
-	Subject                     string                `json:"sub"`
-	ClientId                    string                `json:"client_id"`
-	GrantedScopes               string                `json:"scopes"`
-	GrantedAuthorizationDetails []AuthorizationDetail `json:"authorization_details"`
-	CreatedAtTimestamp          int                   `json:"created_at"`
-	AdditionalIdTokenClaims     map[string]any        `json:"additional_id_token_claims"`
-	AdditionalUserInfoClaims    map[string]any        `json:"additional_user_info_claims"`
-	TokenOptions                                      //TODO: make it simpler.
+	GrantType                   goidc.GrantType             `json:"grant_type"`
+	Subject                     string                      `json:"sub"`
+	ClientId                    string                      `json:"client_id"`
+	GrantedScopes               string                      `json:"scopes"`
+	GrantedAuthorizationDetails []goidc.AuthorizationDetail `json:"authorization_details"`
+	CreatedAtTimestamp          int                         `json:"created_at"`
+	AdditionalIdTokenClaims     map[string]any              `json:"additional_id_token_claims"`
+	AdditionalUserInfoClaims    map[string]any              `json:"additional_user_info_claims"`
+	goidc.TokenOptions                                      //TODO: make it simpler.
 }
 
 func (grantOpts GrantOptions) GetIdTokenOptions() IdTokenOptions {
@@ -74,7 +57,7 @@ type ClientAuthnRequest struct {
 	// The client ID sent via form is not specific to authentication. It is also a param for /authorize.
 	ClientId            string
 	ClientSecret        string
-	ClientAssertionType constants.ClientAssertionType
+	ClientAssertionType goidc.ClientAssertionType
 	ClientAssertion     string
 }
 
@@ -82,14 +65,14 @@ func NewClientAuthnRequest(req *http.Request) ClientAuthnRequest {
 	return ClientAuthnRequest{
 		ClientId:            req.PostFormValue("client_id"),
 		ClientSecret:        req.PostFormValue("client_secret"),
-		ClientAssertionType: constants.ClientAssertionType(req.PostFormValue("client_assertion_type")),
+		ClientAssertionType: goidc.ClientAssertionType(req.PostFormValue("client_assertion_type")),
 		ClientAssertion:     req.PostFormValue("client_assertion"),
 	}
 }
 
 type TokenRequest struct {
 	ClientAuthnRequest
-	GrantType         constants.GrantType
+	GrantType         goidc.GrantType
 	Scopes            string
 	AuthorizationCode string
 	RedirectUri       string
@@ -100,7 +83,7 @@ type TokenRequest struct {
 func NewTokenRequest(req *http.Request) TokenRequest {
 	return TokenRequest{
 		ClientAuthnRequest: NewClientAuthnRequest(req),
-		GrantType:          constants.GrantType(req.PostFormValue("grant_type")),
+		GrantType:          goidc.GrantType(req.PostFormValue("grant_type")),
 		Scopes:             req.PostFormValue("scope"),
 		AuthorizationCode:  req.PostFormValue("code"),
 		RedirectUri:        req.PostFormValue("redirect_uri"),
@@ -110,36 +93,36 @@ func NewTokenRequest(req *http.Request) TokenRequest {
 }
 
 type TokenResponse struct {
-	AccessToken          string                `json:"access_token"`
-	IdToken              string                `json:"id_token,omitempty"`
-	RefreshToken         string                `json:"refresh_token,omitempty"`
-	ExpiresIn            int                   `json:"expires_in"`
-	TokenType            constants.TokenType   `json:"token_type"`
-	Scopes               string                `json:"scope,omitempty"`
-	AuthorizationDetails []AuthorizationDetail `json:"authorization_details,omitempty"`
+	AccessToken          string                      `json:"access_token"`
+	IdToken              string                      `json:"id_token,omitempty"`
+	RefreshToken         string                      `json:"refresh_token,omitempty"`
+	ExpiresIn            int                         `json:"expires_in"`
+	TokenType            goidc.TokenType             `json:"token_type"`
+	Scopes               string                      `json:"scope,omitempty"`
+	AuthorizationDetails []goidc.AuthorizationDetail `json:"authorization_details,omitempty"`
 }
 
 type AuthorizationParameters struct {
-	RequestUri               string                        `json:"request_uri,omitempty"`
-	RequestObject            string                        `json:"request,omitempty"`
-	RedirectUri              string                        `json:"redirect_uri,omitempty"`
-	ResponseMode             constants.ResponseMode        `json:"response_mode,omitempty"`
-	ResponseType             constants.ResponseType        `json:"response_type,omitempty"`
-	Scopes                   string                        `json:"scope,omitempty"`
-	State                    string                        `json:"state,omitempty"`
-	Nonce                    string                        `json:"nonce,omitempty"`
-	CodeChallenge            string                        `json:"code_challenge,omitempty"`
-	CodeChallengeMethod      constants.CodeChallengeMethod `json:"code_challenge_method,omitempty"`
-	Prompt                   constants.PromptType          `json:"prompt,omitempty"`
-	MaxAuthenticationAgeSecs *int                          `json:"max_age,omitempty"`
-	Display                  constants.DisplayValue        `json:"display,omitempty"`
-	AcrValues                string                        `json:"acr_values,omitempty"`
-	Claims                   *ClaimsObject                 `json:"claims,omitempty"` // Claims is a pointer to help differentiate when it's null or not.
-	AuthorizationDetails     []AuthorizationDetail         `json:"authorization_details,omitempty"`
+	RequestUri               string                      `json:"request_uri,omitempty"`
+	RequestObject            string                      `json:"request,omitempty"`
+	RedirectUri              string                      `json:"redirect_uri,omitempty"`
+	ResponseMode             goidc.ResponseMode          `json:"response_mode,omitempty"`
+	ResponseType             goidc.ResponseType          `json:"response_type,omitempty"`
+	Scopes                   string                      `json:"scope,omitempty"`
+	State                    string                      `json:"state,omitempty"`
+	Nonce                    string                      `json:"nonce,omitempty"`
+	CodeChallenge            string                      `json:"code_challenge,omitempty"`
+	CodeChallengeMethod      goidc.CodeChallengeMethod   `json:"code_challenge_method,omitempty"`
+	Prompt                   goidc.PromptType            `json:"prompt,omitempty"`
+	MaxAuthenticationAgeSecs *int                        `json:"max_age,omitempty"`
+	Display                  goidc.DisplayValue          `json:"display,omitempty"`
+	AcrValues                string                      `json:"acr_values,omitempty"`
+	Claims                   *goidc.ClaimsObject         `json:"claims,omitempty"` // Claims is a pointer to help differentiate when it's null or not.
+	AuthorizationDetails     []goidc.AuthorizationDetail `json:"authorization_details,omitempty"`
 }
 
 func (params AuthorizationParameters) NewRedirectError(
-	errorCode constants.ErrorCode,
+	errorCode goidc.ErrorCode,
 	errorDescription string,
 ) OAuthRedirectError {
 	return NewOAuthRedirectError(errorCode, errorDescription, params)
@@ -167,12 +150,12 @@ func (insideParams AuthorizationParameters) Merge(outsideParams AuthorizationPar
 }
 
 // Get the response mode based on the response type.
-func (params AuthorizationParameters) GetResponseMode() constants.ResponseMode {
+func (params AuthorizationParameters) GetResponseMode() goidc.ResponseMode {
 	if params.ResponseMode == "" {
 		return params.ResponseType.GetDefaultResponseMode(false)
 	}
 
-	if params.ResponseMode == constants.JwtResponseMode {
+	if params.ResponseMode == goidc.JwtResponseMode {
 		return params.ResponseType.GetDefaultResponseMode(true)
 	}
 
@@ -191,15 +174,15 @@ func NewAuthorizationRequest(req *http.Request) AuthorizationRequest {
 			RequestUri:          req.URL.Query().Get("request_uri"),
 			RequestObject:       req.URL.Query().Get("request"),
 			RedirectUri:         req.URL.Query().Get("redirect_uri"),
-			ResponseMode:        constants.ResponseMode(req.URL.Query().Get("response_mode")),
-			ResponseType:        constants.ResponseType(req.URL.Query().Get("response_type")),
+			ResponseMode:        goidc.ResponseMode(req.URL.Query().Get("response_mode")),
+			ResponseType:        goidc.ResponseType(req.URL.Query().Get("response_type")),
 			Scopes:              req.URL.Query().Get("scope"),
 			State:               req.URL.Query().Get("state"),
 			Nonce:               req.URL.Query().Get("nonce"),
 			CodeChallenge:       req.URL.Query().Get("code_challenge"),
-			CodeChallengeMethod: constants.CodeChallengeMethod(req.URL.Query().Get("code_challenge_method")),
-			Prompt:              constants.PromptType(req.URL.Query().Get("prompt")),
-			Display:             constants.DisplayValue(req.URL.Query().Get("display")),
+			CodeChallengeMethod: goidc.CodeChallengeMethod(req.URL.Query().Get("code_challenge_method")),
+			Prompt:              goidc.PromptType(req.URL.Query().Get("prompt")),
+			Display:             goidc.DisplayValue(req.URL.Query().Get("display")),
 			AcrValues:           req.URL.Query().Get("acr_values"),
 		},
 	}
@@ -211,7 +194,7 @@ func NewAuthorizationRequest(req *http.Request) AuthorizationRequest {
 
 	claims := req.URL.Query().Get("claims")
 	if claims != "" {
-		var claimsObject ClaimsObject
+		var claimsObject goidc.ClaimsObject
 		if err := json.Unmarshal([]byte(claims), &claimsObject); err == nil {
 			params.Claims = &claimsObject
 		}
@@ -219,7 +202,7 @@ func NewAuthorizationRequest(req *http.Request) AuthorizationRequest {
 
 	authorizationDetails := req.URL.Query().Get("authorization_details")
 	if authorizationDetails != "" {
-		var authorizationDetailsObject []AuthorizationDetail
+		var authorizationDetailsObject []goidc.AuthorizationDetail
 		if err := json.Unmarshal([]byte(authorizationDetails), &authorizationDetailsObject); err == nil {
 			params.AuthorizationDetails = authorizationDetailsObject
 		}
@@ -238,15 +221,15 @@ func NewPushedAuthorizationRequest(req *http.Request) PushedAuthorizationRequest
 		RequestUri:          req.PostFormValue("request_uri"),
 		RequestObject:       req.PostFormValue("request"),
 		RedirectUri:         req.PostFormValue("redirect_uri"),
-		ResponseMode:        constants.ResponseMode(req.PostFormValue("response_mode")),
-		ResponseType:        constants.ResponseType(req.PostFormValue("response_type")),
+		ResponseMode:        goidc.ResponseMode(req.PostFormValue("response_mode")),
+		ResponseType:        goidc.ResponseType(req.PostFormValue("response_type")),
 		Scopes:              req.PostFormValue("scope"),
 		State:               req.PostFormValue("state"),
 		Nonce:               req.PostFormValue("nonce"),
 		CodeChallenge:       req.PostFormValue("code_challenge"),
-		CodeChallengeMethod: constants.CodeChallengeMethod(req.PostFormValue("code_challenge_method")),
-		Prompt:              constants.PromptType(req.PostFormValue("prompt")),
-		Display:             constants.DisplayValue(req.PostFormValue("display")),
+		CodeChallengeMethod: goidc.CodeChallengeMethod(req.PostFormValue("code_challenge_method")),
+		Prompt:              goidc.PromptType(req.PostFormValue("prompt")),
+		Display:             goidc.DisplayValue(req.PostFormValue("display")),
 		AcrValues:           req.PostFormValue("acr_values"),
 	}
 
@@ -257,7 +240,7 @@ func NewPushedAuthorizationRequest(req *http.Request) PushedAuthorizationRequest
 
 	claims := req.PostFormValue("claims")
 	if claims != "" {
-		var claimsObject ClaimsObject
+		var claimsObject goidc.ClaimsObject
 		if err := json.Unmarshal([]byte(claims), &claimsObject); err == nil {
 			params.Claims = &claimsObject
 		}
@@ -265,7 +248,7 @@ func NewPushedAuthorizationRequest(req *http.Request) PushedAuthorizationRequest
 
 	authorizationDetails := req.PostFormValue("authorization_details")
 	if authorizationDetails != "" {
-		var authorizationDetailsObject []AuthorizationDetail
+		var authorizationDetailsObject []goidc.AuthorizationDetail
 		if err := json.Unmarshal([]byte(authorizationDetails), &authorizationDetailsObject); err == nil {
 			params.AuthorizationDetails = authorizationDetailsObject
 		}
@@ -308,56 +291,56 @@ type OpenIdMtlsConfiguration struct {
 }
 
 type OpenIdConfiguration struct {
-	Issuer                                         string                                     `json:"issuer"`
-	ClientRegistrationEndpoint                     string                                     `json:"registration_endpoint"`
-	AuthorizationEndpoint                          string                                     `json:"authorization_endpoint"`
-	TokenEndpoint                                  string                                     `json:"token_endpoint"`
-	UserinfoEndpoint                               string                                     `json:"userinfo_endpoint"`
-	JwksEndpoint                                   string                                     `json:"jwks_uri"`
-	ParEndpoint                                    string                                     `json:"pushed_authorization_request_endpoint,omitempty"`
-	ParIsRequired                                  bool                                       `json:"require_pushed_authorization_requests,omitempty"`
-	ResponseTypes                                  []constants.ResponseType                   `json:"response_types_supported"`
-	ResponseModes                                  []constants.ResponseMode                   `json:"response_modes_supported"`
-	GrantTypes                                     []constants.GrantType                      `json:"grant_types_supported"`
-	Scopes                                         []string                                   `json:"scopes_supported"`
-	UserClaimsSupported                            []string                                   `json:"claims_supported"`
-	UserClaimTypesSupported                        []constants.ClaimType                      `json:"claim_types_supported,omitempty"`
-	SubjectIdentifierTypes                         []constants.SubjectIdentifierType          `json:"subject_types_supported"`
-	IdTokenSignatureAlgorithms                     []jose.SignatureAlgorithm                  `json:"id_token_signing_alg_values_supported"`
-	IdTokenKeyEncryptionAlgorithms                 []jose.KeyAlgorithm                        `json:"id_token_encryption_alg_values_supported,omitempty"`
-	IdTokenContentEncryptionAlgorithms             []jose.ContentEncryption                   `json:"id_token_encryption_enc_values_supported,omitempty"`
-	UserInfoKeyEncryptionAlgorithms                []jose.KeyAlgorithm                        `json:"userinfo_encryption_alg_values_supported,omitempty"`
-	UserInfoContentEncryptionAlgorithms            []jose.ContentEncryption                   `json:"userinfo_encryption_enc_values_supported,omitempty"`
-	UserInfoSignatureAlgorithms                    []jose.SignatureAlgorithm                  `json:"userinfo_signing_alg_values_supported"`
-	ClientAuthnMethods                             []constants.ClientAuthnType                `json:"token_endpoint_auth_methods_supported"`
-	JarIsRequired                                  bool                                       `json:"require_signed_request_object,omitempty"`
-	JarIsEnabled                                   bool                                       `json:"request_parameter_supported"`
-	JarAlgorithms                                  []jose.SignatureAlgorithm                  `json:"request_object_signing_alg_values_supported,omitempty"`
-	JarKeyEncrytionAlgorithms                      []jose.KeyAlgorithm                        `json:"request_object_encryption_alg_values_supported,omitempty"`
-	JarContentEncryptionAlgorithms                 []jose.ContentEncryption                   `json:"request_object_encryption_enc_values_supported,omitempty"`
-	JarmAlgorithms                                 []jose.SignatureAlgorithm                  `json:"authorization_signing_alg_values_supported,omitempty"`
-	JarmKeyEncryptionAlgorithms                    []jose.KeyAlgorithm                        `json:"authorization_encryption_alg_values_supported,omitempty"`
-	JarmContentEncryptionAlgorithms                []jose.ContentEncryption                   `json:"authorization_encryption_enc_values_supported,omitempty"`
-	TokenEndpointClientSigningAlgorithms           []jose.SignatureAlgorithm                  `json:"token_endpoint_auth_signing_alg_values_supported"`
-	IssuerResponseParameterIsEnabled               bool                                       `json:"authorization_response_iss_parameter_supported"`
-	ClaimsParameterIsEnabled                       bool                                       `json:"claims_parameter_supported"`
-	AuthorizationDetailsIsSupported                bool                                       `json:"authorization_details_supported"`
-	AuthorizationDetailTypesSupported              []string                                   `json:"authorization_data_types_supported,omitempty"`
-	DpopSignatureAlgorithms                        []jose.SignatureAlgorithm                  `json:"dpop_signing_alg_values_supported,omitempty"`
-	IntrospectionEndpoint                          string                                     `json:"introspection_endpoint,omitempty"`
-	IntrospectionEndpointClientAuthnMethods        []constants.ClientAuthnType                `json:"introspection_endpoint_auth_methods_supported,omitempty"`
-	IntrospectionEndpointClientSignatureAlgorithms []jose.SignatureAlgorithm                  `json:"introspection_endpoint_auth_signing_alg_values_supported,omitempty"`
-	MtlsConfiguration                              OpenIdMtlsConfiguration                    `json:"mtls_endpoint_aliases"`
-	TlsBoundTokensIsEnabled                        bool                                       `json:"tls_client_certificate_bound_access_tokens,omitempty"`
-	AuthenticationContextReferences                []constants.AuthenticationContextReference `json:"acr_values_supported,omitempty"`
-	DisplayValuesSupported                         []constants.DisplayValue                   `json:"display_values_supported,omitempty"`
+	Issuer                                         string                                 `json:"issuer"`
+	ClientRegistrationEndpoint                     string                                 `json:"registration_endpoint"`
+	AuthorizationEndpoint                          string                                 `json:"authorization_endpoint"`
+	TokenEndpoint                                  string                                 `json:"token_endpoint"`
+	UserinfoEndpoint                               string                                 `json:"userinfo_endpoint"`
+	JwksEndpoint                                   string                                 `json:"jwks_uri"`
+	ParEndpoint                                    string                                 `json:"pushed_authorization_request_endpoint,omitempty"`
+	ParIsRequired                                  bool                                   `json:"require_pushed_authorization_requests,omitempty"`
+	ResponseTypes                                  []goidc.ResponseType                   `json:"response_types_supported"`
+	ResponseModes                                  []goidc.ResponseMode                   `json:"response_modes_supported"`
+	GrantTypes                                     []goidc.GrantType                      `json:"grant_types_supported"`
+	Scopes                                         []string                               `json:"scopes_supported"`
+	UserClaimsSupported                            []string                               `json:"claims_supported"`
+	UserClaimTypesSupported                        []goidc.ClaimType                      `json:"claim_types_supported,omitempty"`
+	SubjectIdentifierTypes                         []goidc.SubjectIdentifierType          `json:"subject_types_supported"`
+	IdTokenSignatureAlgorithms                     []jose.SignatureAlgorithm              `json:"id_token_signing_alg_values_supported"`
+	IdTokenKeyEncryptionAlgorithms                 []jose.KeyAlgorithm                    `json:"id_token_encryption_alg_values_supported,omitempty"`
+	IdTokenContentEncryptionAlgorithms             []jose.ContentEncryption               `json:"id_token_encryption_enc_values_supported,omitempty"`
+	UserInfoKeyEncryptionAlgorithms                []jose.KeyAlgorithm                    `json:"userinfo_encryption_alg_values_supported,omitempty"`
+	UserInfoContentEncryptionAlgorithms            []jose.ContentEncryption               `json:"userinfo_encryption_enc_values_supported,omitempty"`
+	UserInfoSignatureAlgorithms                    []jose.SignatureAlgorithm              `json:"userinfo_signing_alg_values_supported"`
+	ClientAuthnMethods                             []goidc.ClientAuthnType                `json:"token_endpoint_auth_methods_supported"`
+	JarIsRequired                                  bool                                   `json:"require_signed_request_object,omitempty"`
+	JarIsEnabled                                   bool                                   `json:"request_parameter_supported"`
+	JarAlgorithms                                  []jose.SignatureAlgorithm              `json:"request_object_signing_alg_values_supported,omitempty"`
+	JarKeyEncrytionAlgorithms                      []jose.KeyAlgorithm                    `json:"request_object_encryption_alg_values_supported,omitempty"`
+	JarContentEncryptionAlgorithms                 []jose.ContentEncryption               `json:"request_object_encryption_enc_values_supported,omitempty"`
+	JarmAlgorithms                                 []jose.SignatureAlgorithm              `json:"authorization_signing_alg_values_supported,omitempty"`
+	JarmKeyEncryptionAlgorithms                    []jose.KeyAlgorithm                    `json:"authorization_encryption_alg_values_supported,omitempty"`
+	JarmContentEncryptionAlgorithms                []jose.ContentEncryption               `json:"authorization_encryption_enc_values_supported,omitempty"`
+	TokenEndpointClientSigningAlgorithms           []jose.SignatureAlgorithm              `json:"token_endpoint_auth_signing_alg_values_supported"`
+	IssuerResponseParameterIsEnabled               bool                                   `json:"authorization_response_iss_parameter_supported"`
+	ClaimsParameterIsEnabled                       bool                                   `json:"claims_parameter_supported"`
+	AuthorizationDetailsIsSupported                bool                                   `json:"authorization_details_supported"`
+	AuthorizationDetailTypesSupported              []string                               `json:"authorization_data_types_supported,omitempty"`
+	DpopSignatureAlgorithms                        []jose.SignatureAlgorithm              `json:"dpop_signing_alg_values_supported,omitempty"`
+	IntrospectionEndpoint                          string                                 `json:"introspection_endpoint,omitempty"`
+	IntrospectionEndpointClientAuthnMethods        []goidc.ClientAuthnType                `json:"introspection_endpoint_auth_methods_supported,omitempty"`
+	IntrospectionEndpointClientSignatureAlgorithms []jose.SignatureAlgorithm              `json:"introspection_endpoint_auth_signing_alg_values_supported,omitempty"`
+	MtlsConfiguration                              OpenIdMtlsConfiguration                `json:"mtls_endpoint_aliases"`
+	TlsBoundTokensIsEnabled                        bool                                   `json:"tls_client_certificate_bound_access_tokens,omitempty"`
+	AuthenticationContextReferences                []goidc.AuthenticationContextReference `json:"acr_values_supported,omitempty"`
+	DisplayValuesSupported                         []goidc.DisplayValue                   `json:"display_values_supported,omitempty"`
 }
 
 type Token struct {
 	Id                    string
-	Format                constants.TokenFormat
+	Format                goidc.TokenFormat
 	Value                 string
-	Type                  constants.TokenType
+	Type                  goidc.TokenType
 	JwkThumbprint         string
 	CertificateThumbprint string
 }
@@ -366,11 +349,11 @@ type RedirectParameters struct {
 	Response          string
 	Issuer            string
 	AccessToken       string
-	TokenType         constants.TokenType
+	TokenType         goidc.TokenType
 	IdToken           string
 	AuthorizationCode string
 	State             string
-	Error             constants.ErrorCode
+	Error             goidc.ErrorCode
 	ErrorDescription  string
 }
 
@@ -418,21 +401,21 @@ type UserInfoResponse struct {
 type TokenIntrospectionRequest struct {
 	ClientAuthnRequest
 	Token         string
-	TokenTypeHint constants.TokenTypeHint
+	TokenTypeHint goidc.TokenTypeHint
 }
 
 func NewTokenIntrospectionRequest(req *http.Request) TokenIntrospectionRequest {
 	return TokenIntrospectionRequest{
 		ClientAuthnRequest: NewClientAuthnRequest(req),
 		Token:              req.PostFormValue("token"),
-		TokenTypeHint:      constants.TokenTypeHint(req.PostFormValue("token_type_hint")),
+		TokenTypeHint:      goidc.TokenTypeHint(req.PostFormValue("token_type_hint")),
 	}
 }
 
 type TokenIntrospectionInfo struct {
 	IsActive                    bool
 	Scopes                      string
-	AuthorizationDetails        []AuthorizationDetail
+	AuthorizationDetails        []goidc.AuthorizationDetail
 	ClientId                    string
 	Subject                     string
 	ExpiresAtTimestamp          int
@@ -449,15 +432,15 @@ func (info TokenIntrospectionInfo) MarshalJSON() ([]byte, error) {
 	}
 
 	params := map[string]any{
-		"active":                true,
-		constants.SubjectClaim:  info.Subject,
-		constants.ScopeClaim:    info.Scopes,
-		constants.ClientIdClaim: info.ClientId,
-		constants.ExpiryClaim:   info.ExpiresAtTimestamp,
+		"active":            true,
+		goidc.SubjectClaim:  info.Subject,
+		goidc.ScopeClaim:    info.Scopes,
+		goidc.ClientIdClaim: info.ClientId,
+		goidc.ExpiryClaim:   info.ExpiresAtTimestamp,
 	}
 
 	if info.AuthorizationDetails != nil {
-		params[constants.AuthorizationDetailsClaim] = info.AuthorizationDetails
+		params[goidc.AuthorizationDetailsClaim] = info.AuthorizationDetails
 	}
 
 	confirmation := make(map[string]string)
@@ -476,67 +459,4 @@ func (info TokenIntrospectionInfo) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(params)
-}
-
-type ClaimsObject struct {
-	Userinfo map[string]ClaimObjectInfo `json:"userinfo"`
-	IdToken  map[string]ClaimObjectInfo `json:"id_token"`
-}
-
-type ClaimObjectInfo struct {
-	IsEssential bool     `json:"essential"`
-	Value       string   `json:"value"`
-	Values      []string `json:"values"`
-}
-
-// Authorization details is a map instead of a struct, because its fields vary a lot depending on the use case.
-// Some fields are well know so they are accessible as methods.
-type AuthorizationDetail map[string]any
-
-func (detail AuthorizationDetail) GetType() string {
-	return detail.getString("type")
-}
-
-func (detail AuthorizationDetail) GetIdentifier() string {
-	return detail.getString("identifier")
-}
-
-func (detail AuthorizationDetail) GetLocations() []string {
-	return detail.getStringSlice("locations")
-}
-
-func (detail AuthorizationDetail) GetActions() []string {
-	return detail.getStringSlice("actions")
-}
-
-func (detail AuthorizationDetail) GetDataTypes() []string {
-	return detail.getStringSlice("datatypes")
-}
-
-func (detail AuthorizationDetail) getStringSlice(key string) []string {
-	value, ok := detail[key]
-	if !ok {
-		return nil
-	}
-
-	slice, ok := value.([]string)
-	if !ok {
-		return nil
-	}
-
-	return slice
-}
-
-func (detail AuthorizationDetail) getString(key string) string {
-	value, ok := detail[key]
-	if !ok {
-		return ""
-	}
-
-	s, ok := value.(string)
-	if !ok {
-		return ""
-	}
-
-	return s
 }

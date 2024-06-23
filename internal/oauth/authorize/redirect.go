@@ -5,10 +5,10 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func redirectError(
@@ -51,10 +51,10 @@ func redirectResponse(
 
 	redirectParamsMap := redirectParams.GetParams()
 	switch responseMode {
-	case constants.FragmentResponseMode, constants.FragmentJwtResponseMode:
+	case goidc.FragmentResponseMode, goidc.FragmentJwtResponseMode:
 		redirectUrl := unit.GetUrlWithFragmentParams(params.RedirectUri, redirectParamsMap)
 		ctx.Redirect(redirectUrl)
-	case constants.FormPostResponseMode, constants.FormPostJwtResponseMode:
+	case goidc.FormPostResponseMode, goidc.FormPostJwtResponseMode:
 		redirectParamsMap["redirect_uri"] = params.RedirectUri
 		ctx.RenderHtml(formPostResponseTemplate, redirectParamsMap)
 	default:
@@ -102,15 +102,15 @@ func signJarmResponse(
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID),
 	)
 	if err != nil {
-		return "", models.NewOAuthError(constants.InternalError, err.Error())
+		return "", models.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	createdAtTimestamp := unit.GetTimestampNow()
 	claims := map[string]any{
-		constants.IssuerClaim:   ctx.Host,
-		constants.AudienceClaim: client.Id,
-		constants.IssuedAtClaim: createdAtTimestamp,
-		constants.ExpiryClaim:   createdAtTimestamp + ctx.JarmLifetimeSecs,
+		goidc.IssuerClaim:   ctx.Host,
+		goidc.AudienceClaim: client.Id,
+		goidc.IssuedAtClaim: createdAtTimestamp,
+		goidc.ExpiryClaim:   createdAtTimestamp + ctx.JarmLifetimeSecs,
 	}
 	for k, v := range redirectParams.GetParams() {
 		claims[k] = v
@@ -118,7 +118,7 @@ func signJarmResponse(
 
 	response, err := jwt.Signed(signer).Claims(claims).Serialize()
 	if err != nil {
-		return "", models.NewOAuthError(constants.InternalError, err.Error())
+		return "", models.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	return response, nil

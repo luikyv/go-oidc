@@ -25,48 +25,48 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikymagno/goidc/internal/constants"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func GenerateRandomString(minLength int, maxLength int) string {
 
 	length := minLength + rand.Intn(maxLength-minLength+1) // minLength >= length <= maxLength
 	randomStringInBytes := make([]byte, length)
-	charSetSize := len(constants.Charset)
+	charSetSize := len(goidc.Charset)
 	for i := range randomStringInBytes {
 		// Set a random character to randomStringInBytes[i]
-		randomStringInBytes[i] = constants.Charset[rand.Intn(charSetSize)]
+		randomStringInBytes[i] = goidc.Charset[rand.Intn(charSetSize)]
 	}
 
 	return string(randomStringInBytes)
 }
 
 func GenerateCallbackId() string {
-	return GenerateRandomString(constants.CallbackIdLength, constants.CallbackIdLength)
+	return GenerateRandomString(goidc.CallbackIdLength, goidc.CallbackIdLength)
 }
 
 func GenerateAuthorizationCode() string {
-	return GenerateRandomString(constants.AuthorizationCodeLength, constants.AuthorizationCodeLength)
+	return GenerateRandomString(goidc.AuthorizationCodeLength, goidc.AuthorizationCodeLength)
 }
 
 func GenerateRequestUri() string {
-	return fmt.Sprintf("urn:ietf:params:oauth:request_uri:%s", GenerateRandomString(constants.RequestUriLength, constants.RequestUriLength))
+	return fmt.Sprintf("urn:ietf:params:oauth:request_uri:%s", GenerateRandomString(goidc.RequestUriLength, goidc.RequestUriLength))
 }
 
 func GenerateRefreshToken() string {
-	return GenerateRandomString(constants.RefreshTokenLength, constants.RefreshTokenLength)
+	return GenerateRandomString(goidc.RefreshTokenLength, goidc.RefreshTokenLength)
 }
 
 func GenerateClientId() string {
-	return "dc-" + GenerateRandomString(constants.DynamicClientIdLength, constants.DynamicClientIdLength)
+	return "dc-" + GenerateRandomString(goidc.DynamicClientIdLength, goidc.DynamicClientIdLength)
 }
 
 func GenerateClientSecret() string {
-	return GenerateRandomString(constants.ClientSecretLength, constants.ClientSecretLength)
+	return GenerateRandomString(goidc.ClientSecretLength, goidc.ClientSecretLength)
 }
 
 func GenerateRegistrationAccessToken() string {
-	return GenerateRandomString(constants.RegistrationAccessTokenLength, constants.RegistrationAccessTokenLength)
+	return GenerateRandomString(goidc.RegistrationAccessTokenLength, goidc.RegistrationAccessTokenLength)
 }
 
 func GetUrlWithQueryParams(redirectUri string, params map[string]string) string {
@@ -99,11 +99,11 @@ func GetUrlWithoutParams(u string) (string, error) {
 	return parsedUrl.String(), nil
 }
 
-func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod constants.CodeChallengeMethod) bool {
+func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod goidc.CodeChallengeMethod) bool {
 	switch codeChallengeMethod {
-	case constants.PlainCodeChallengeMethod:
+	case goidc.PlainCodeChallengeMethod:
 		return codeChallenge == codeVerifier
-	case constants.Sha256CodeChallengeMethod:
+	case goidc.Sha256CodeChallengeMethod:
 		return codeChallenge == GenerateBase64UrlSha256Hash(codeVerifier)
 	}
 
@@ -171,7 +171,7 @@ func SplitStringWithSpaces(s string) []string {
 }
 
 func ScopesContainsOpenId(scopes string) bool {
-	return slices.Contains(SplitStringWithSpaces(scopes), constants.OpenIdScope)
+	return slices.Contains(SplitStringWithSpaces(scopes), goidc.OpenIdScope)
 }
 
 func GetNonEmptyOrDefault[T any](s1 T, s2 T) T {

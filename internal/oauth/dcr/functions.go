@@ -4,21 +4,21 @@ import (
 	"strings"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 	"golang.org/x/crypto/bcrypt"
 )
 
 func setDefaults(ctx utils.Context, dynamicClient *models.DynamicClientRequest) {
 	if dynamicClient.AuthnMethod == "" {
-		dynamicClient.AuthnMethod = constants.ClientSecretBasicAuthn
+		dynamicClient.AuthnMethod = goidc.ClientSecretBasicAuthn
 	}
 
-	if dynamicClient.AuthnMethod == constants.ClientSecretPostAuthn ||
-		dynamicClient.AuthnMethod == constants.ClientSecretBasicAuthn ||
-		dynamicClient.AuthnMethod == constants.ClientSecretJwt {
+	if dynamicClient.AuthnMethod == goidc.ClientSecretPostAuthn ||
+		dynamicClient.AuthnMethod == goidc.ClientSecretBasicAuthn ||
+		dynamicClient.AuthnMethod == goidc.ClientSecretJwt {
 		dynamicClient.Secret = unit.GenerateClientSecret()
 	}
 
@@ -27,10 +27,10 @@ func setDefaults(ctx utils.Context, dynamicClient *models.DynamicClientRequest) 
 	}
 
 	if dynamicClient.ResponseTypes == nil {
-		dynamicClient.ResponseTypes = []constants.ResponseType{constants.CodeResponse}
+		dynamicClient.ResponseTypes = []goidc.ResponseType{goidc.CodeResponse}
 	}
 
-	if ctx.PkceIsEnabled && dynamicClient.AuthnMethod == constants.NoneAuthn {
+	if ctx.PkceIsEnabled && dynamicClient.AuthnMethod == goidc.NoneAuthn {
 		dynamicClient.PkceIsRequired = true
 	}
 
@@ -77,12 +77,12 @@ func newClient(dynamicClient models.DynamicClientRequest) models.Client {
 		ClientMetaInfo:                dynamicClient.ClientMetaInfo,
 	}
 
-	if dynamicClient.AuthnMethod == constants.ClientSecretPostAuthn || dynamicClient.AuthnMethod == constants.ClientSecretBasicAuthn {
+	if dynamicClient.AuthnMethod == goidc.ClientSecretPostAuthn || dynamicClient.AuthnMethod == goidc.ClientSecretBasicAuthn {
 		clientHashedSecret, _ := bcrypt.GenerateFromPassword([]byte(dynamicClient.Secret), bcrypt.DefaultCost)
 		client.HashedSecret = string(clientHashedSecret)
 	}
 
-	if dynamicClient.AuthnMethod == constants.ClientSecretJwt {
+	if dynamicClient.AuthnMethod == goidc.ClientSecretJwt {
 		client.Secret = dynamicClient.Secret
 	}
 
@@ -90,7 +90,7 @@ func newClient(dynamicClient models.DynamicClientRequest) models.Client {
 }
 
 func getClientRegistrationUri(ctx utils.Context, clientId string) string {
-	return ctx.Host + string(constants.DynamicClientEndpoint) + "/" + clientId
+	return ctx.Host + string(goidc.DynamicClientEndpoint) + "/" + clientId
 }
 
 func getProtectedClient(
@@ -101,17 +101,17 @@ func getProtectedClient(
 	models.OAuthError,
 ) {
 	if dynamicClient.Id == "" {
-		return models.Client{}, models.NewOAuthError(constants.InvalidRequest, "invalid client_id")
+		return models.Client{}, models.NewOAuthError(goidc.InvalidRequest, "invalid client_id")
 	}
 
 	client, err := ctx.ClientManager.Get(dynamicClient.Id)
 	if err != nil {
-		return models.Client{}, models.NewOAuthError(constants.InvalidRequest, err.Error())
+		return models.Client{}, models.NewOAuthError(goidc.InvalidRequest, err.Error())
 	}
 
 	if dynamicClient.RegistrationAccessToken == "" ||
 		!client.IsRegistrationAccessTokenValid(dynamicClient.RegistrationAccessToken) {
-		return models.Client{}, models.NewOAuthError(constants.AccessDenied, "invalid token")
+		return models.Client{}, models.NewOAuthError(goidc.AccessDenied, "invalid token")
 	}
 
 	return client, nil

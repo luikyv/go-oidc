@@ -1,9 +1,9 @@
 package token
 
 import (
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func validateTokenBindingIsRequired(
@@ -26,7 +26,7 @@ func validateTokenBindingIsRequired(
 	}
 
 	if !tokenWillBeBound {
-		return models.NewOAuthError(constants.InvalidRequest, "token binding is required either with dpop or tls")
+		return models.NewOAuthError(goidc.InvalidRequest, "token binding is required either with dpop or tls")
 	}
 
 	return nil
@@ -42,7 +42,7 @@ func validateTokenBindingRequestWithDpop(
 	// Return an error if the DPoP header was not informed, but it's required either in the context or by the client.
 	if !ok && (ctx.DpopIsRequired || client.DpopIsRequired) {
 		ctx.Logger.Debug("The DPoP header is required, but wasn't provided")
-		return models.NewOAuthError(constants.InvalidRequest, "invalid dpop header")
+		return models.NewOAuthError(goidc.InvalidRequest, "invalid dpop header")
 	}
 
 	// If DPoP is not enabled or, if it is, but the DPoP header was not informed, we just ignore it.

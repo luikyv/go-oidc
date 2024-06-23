@@ -1,9 +1,9 @@
 package token
 
 import (
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func HandleTokenCreation(
@@ -14,17 +14,17 @@ func HandleTokenCreation(
 	err error,
 ) {
 	switch req.GrantType {
-	case constants.ClientCredentialsGrant:
+	case goidc.ClientCredentialsGrant:
 		ctx.Logger.Info("handling client_credentials grant type")
 		tokenResp, err = handleClientCredentialsGrantTokenCreation(ctx, req)
-	case constants.AuthorizationCodeGrant:
+	case goidc.AuthorizationCodeGrant:
 		ctx.Logger.Info("handling authorization_code grant type")
 		tokenResp, err = handleAuthorizationCodeGrantTokenCreation(ctx, req)
-	case constants.RefreshTokenGrant:
+	case goidc.RefreshTokenGrant:
 		ctx.Logger.Info("handling refresh_token grant type")
 		tokenResp, err = handleRefreshTokenGrantTokenCreation(ctx, req)
 	default:
-		tokenResp, err = models.TokenResponse{}, models.NewOAuthError(constants.UnsupportedGrantType, "unsupported grant type")
+		tokenResp, err = models.TokenResponse{}, models.NewOAuthError(goidc.UnsupportedGrantType, "unsupported grant type")
 	}
 
 	return tokenResp, err

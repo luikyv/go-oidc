@@ -7,10 +7,10 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/oauth/token"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
@@ -22,7 +22,7 @@ func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 		ClientAuthnRequest: models.ClientAuthnRequest{
 			ClientId: "invalid_client_id",
 		},
-		GrantType: constants.ClientCredentialsGrant,
+		GrantType: goidc.ClientCredentialsGrant,
 		Scopes:    "scope1",
 	})
 
@@ -36,7 +36,7 @@ func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	// When
 	client := models.GetTestClient()
-	client.AuthnMethod = constants.ClientSecretPostAuthn
+	client.AuthnMethod = goidc.ClientSecretPostAuthn
 
 	ctx := utils.GetTestInMemoryContext()
 	ctx.ClientManager.Create(client)
@@ -47,7 +47,7 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 			ClientId:     client.Id,
 			ClientSecret: "invalid_password",
 		},
-		GrantType: constants.ClientCredentialsGrant,
+		GrantType: goidc.ClientCredentialsGrant,
 		Scopes:    "scope1",
 	})
 
@@ -57,7 +57,7 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 		t.Error("the client should not be authenticated")
 		return
 	}
-	if oauthErr.ErrorCode != constants.InvalidClient {
+	if oauthErr.ErrorCode != goidc.InvalidClient {
 		t.Errorf("invalid error code: %s", oauthErr.ErrorCode)
 		return
 	}
@@ -72,7 +72,7 @@ func TestHandleGrantCreationWithDpop(t *testing.T) {
 	ctx.DpopIsEnabled = true
 	ctx.DpopLifetimeSecs = 9999999999999
 	ctx.DpopSignatureAlgorithms = []jose.SignatureAlgorithm{jose.ES256}
-	ctx.Request.Header.Set(constants.DpopHeader, "eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiYVRtMk95eXFmaHFfZk5GOVVuZXlrZG0yX0dCZnpZVldDNEI1Wlo1SzNGUSIsInkiOiI4eFRhUERFTVRtNXM1d1MzYmFvVVNNcU01R0VJWDFINzMwX1hqV2lRaGxRIn19.eyJqdGkiOiItQndDM0VTYzZhY2MybFRjIiwiaHRtIjoiUE9TVCIsImh0dSI6Imh0dHBzOi8vZXhhbXBsZS5jb20vdG9rZW4iLCJpYXQiOjE1NjIyNjUyOTZ9.AzzSCVYIimNZyJQefZq7cF252PukDvRrxMqrrcH6FFlHLvpXyk9j8ybtS36GHlnyH_uuy2djQphfyHGeDfxidQ")
+	ctx.Request.Header.Set(goidc.DpopHeader, "eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiYVRtMk95eXFmaHFfZk5GOVVuZXlrZG0yX0dCZnpZVldDNEI1Wlo1SzNGUSIsInkiOiI4eFRhUERFTVRtNXM1d1MzYmFvVVNNcU01R0VJWDFINzMwX1hqV2lRaGxRIn19.eyJqdGkiOiItQndDM0VTYzZhY2MybFRjIiwiaHRtIjoiUE9TVCIsImh0dSI6Imh0dHBzOi8vZXhhbXBsZS5jb20vdG9rZW4iLCJpYXQiOjE1NjIyNjUyOTZ9.AzzSCVYIimNZyJQefZq7cF252PukDvRrxMqrrcH6FFlHLvpXyk9j8ybtS36GHlnyH_uuy2djQphfyHGeDfxidQ")
 	ctx.ClientManager.Create(client)
 	ctx.Request.Method = http.MethodPost
 
@@ -80,7 +80,7 @@ func TestHandleGrantCreationWithDpop(t *testing.T) {
 		ClientAuthnRequest: models.ClientAuthnRequest{
 			ClientId: client.Id,
 		},
-		GrantType: constants.ClientCredentialsGrant,
+		GrantType: goidc.ClientCredentialsGrant,
 		Scopes:    "scope1",
 	}
 

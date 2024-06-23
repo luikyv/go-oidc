@@ -6,10 +6,10 @@ import (
 	"net/http/httptest"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/crud/inmemory"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 const (
@@ -21,7 +21,7 @@ func GetTestInMemoryContext() Context {
 	privateJwk := unit.GetTestPrivateRs256Jwk(TestKeyId)
 	return Context{
 		Configuration: Configuration{
-			Profile:                       constants.OpenIdProfile,
+			Profile:                       goidc.OpenIdProfile,
 			Host:                          TestHost,
 			ClientManager:                 inmemory.NewInMemoryClientManager(),
 			GrantSessionManager:           inmemory.NewInMemoryGrantSessionManager(),
@@ -30,10 +30,10 @@ func GetTestInMemoryContext() Context {
 			DefaultTokenSignatureKeyId:    privateJwk.KeyID,
 			DefaultUserInfoSignatureKeyId: privateJwk.KeyID,
 			UserInfoSignatureKeyIds:       []string{privateJwk.KeyID},
-			GetTokenOptions: func(client models.Client, scopes string) (models.TokenOptions, error) {
-				return models.TokenOptions{
+			GetTokenOptions: func(client goidc.Client, scopes string) (goidc.TokenOptions, error) {
+				return goidc.TokenOptions{
 					TokenExpiresInSecs: 60,
-					TokenFormat:        constants.JwtTokenFormat,
+					TokenFormat:        goidc.JwtTokenFormat,
 				}, nil
 			},
 			AuthenticationSessionTimeoutSecs: 60,
@@ -47,7 +47,7 @@ func GetTestInMemoryContext() Context {
 func GetDummyTestContext() Context {
 	return Context{
 		Configuration: Configuration{
-			Profile: constants.OpenIdProfile,
+			Profile: goidc.OpenIdProfile,
 			Host:    TestHost,
 		},
 		Request: &http.Request{},

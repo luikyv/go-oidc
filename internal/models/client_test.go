@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
+	"github.com/luikymagno/goidc/pkg/goidc"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -44,15 +44,15 @@ func TestAreScopesAllowed(t *testing.T) {
 func TestIsResponseTypeAllowed(t *testing.T) {
 	client := models.Client{
 		ClientMetaInfo: models.ClientMetaInfo{
-			ResponseTypes: []constants.ResponseType{constants.CodeResponse},
+			ResponseTypes: []goidc.ResponseType{goidc.CodeResponse},
 		},
 	}
 	testCases := []struct {
-		requestedResponseType constants.ResponseType
+		requestedResponseType goidc.ResponseType
 		expectedResult        bool
 	}{
-		{constants.CodeResponse, true},
-		{constants.CodeAndIdTokenResponse, false},
+		{goidc.CodeResponse, true},
+		{goidc.CodeAndIdTokenResponse, false},
 	}
 
 	for i, testCase := range testCases {
@@ -70,15 +70,15 @@ func TestIsResponseTypeAllowed(t *testing.T) {
 func TestIsGrantTypeAllowed(t *testing.T) {
 	client := models.Client{
 		ClientMetaInfo: models.ClientMetaInfo{
-			GrantTypes: []constants.GrantType{constants.ClientCredentialsGrant},
+			GrantTypes: []goidc.GrantType{goidc.ClientCredentialsGrant},
 		},
 	}
 	testCases := []struct {
-		requestedGrantType constants.GrantType
+		requestedGrantType goidc.GrantType
 		expectedResult     bool
 	}{
-		{constants.ClientCredentialsGrant, true},
-		{constants.AuthorizationCodeGrant, false},
+		{goidc.ClientCredentialsGrant, true},
+		{goidc.AuthorizationCodeGrant, false},
 	}
 
 	for i, testCase := range testCases {

@@ -4,10 +4,10 @@ import (
 	"log/slog"
 	"reflect"
 
-	"github.com/luikymagno/goidc/internal/constants"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func handleAuthorizationCodeGrantTokenCreation(
@@ -19,7 +19,7 @@ func handleAuthorizationCodeGrantTokenCreation(
 ) {
 
 	if req.AuthorizationCode == "" {
-		return models.TokenResponse{}, models.NewOAuthError(constants.InvalidRequest, "invalid authorization code")
+		return models.TokenResponse{}, models.NewOAuthError(goidc.InvalidRequest, "invalid authorization code")
 	}
 
 	client, session, oauthErr := getAuthenticatedClientAndSession(ctx, req)
@@ -88,7 +88,7 @@ func generateAuthorizationCodeGrantSession(
 	models.OAuthError,
 ) {
 	grantSession := models.NewGrantSession(grantOptions, token)
-	if client.IsGrantTypeAllowed(constants.RefreshTokenGrant) && grantOptions.ShouldRefresh {
+	if client.IsGrantTypeAllowed(goidc.RefreshTokenGrant) && grantOptions.ShouldRefresh {
 		ctx.Logger.Debug("generating refresh token for authorization code grant")
 		grantSession.RefreshToken = unit.GenerateRefreshToken()
 		grantSession.ExpiresAtTimestamp = unit.GetTimestampNow() + ctx.RefreshTokenLifetimeSecs
@@ -113,20 +113,20 @@ func validateAuthorizationCodeGrantRequest(
 	session models.AuthnSession,
 ) models.OAuthError {
 
-	if !client.IsGrantTypeAllowed(constants.AuthorizationCodeGrant) {
-		return models.NewOAuthError(constants.UnauthorizedClient, "invalid grant type")
+	if !client.IsGrantTypeAllowed(goidc.AuthorizationCodeGrant) {
+		return models.NewOAuthError(goidc.UnauthorizedClient, "invalid grant type")
 	}
 
 	if session.ClientId != client.Id {
-		return models.NewOAuthError(constants.InvalidGrant, "the authorization code was not issued to the client")
+		return models.NewOAuthError(goidc.InvalidGrant, "the authorization code was not issued to the client")
 	}
 
 	if session.IsAuthorizationCodeExpired() {
-		return models.NewOAuthError(constants.InvalidGrant, "the authorization code is expired")
+		return models.NewOAuthError(goidc.InvalidGrant, "the authorization code is expired")
 	}
 
 	if session.RedirectUri != req.RedirectUri {
-		return models.NewOAuthError(constants.InvalidGrant, "invalid redirect_uri")
+		return models.NewOAuthError(goidc.InvalidGrant, "invalid redirect_uri")
 	}
 
 	if err := validatePkce(ctx, req, client, session); err != nil {
@@ -153,20 +153,20 @@ func validatePkce(
 	// RFC 7636. "...with a minimum length of 43 characters and a maximum length of 128 characters."
 	codeVerifierLengh := len(req.CodeVerifier)
 	if req.CodeVerifier != "" && (codeVerifierLengh < 43 || codeVerifierLengh > 128) {
-		return models.NewOAuthError(constants.InvalidRequest, "invalid code verifier")
+		return models.NewOAuthError(goidc.InvalidRequest, "invalid code verifier")
 	}
 
 	codeChallengeMethod := session.CodeChallengeMethod
 	if codeChallengeMethod == "" {
-		codeChallengeMethod = constants.PlainCodeChallengeMethod
+		codeChallengeMethod = goidc.PlainCodeChallengeMethod
 	}
-	if ctx.Profile == constants.Fapi2Profile {
-		codeChallengeMethod = constants.Sha256CodeChallengeMethod
+	if ctx.Profile == goidc.Fapi2Profile {
+		codeChallengeMethod = goidc.Sha256CodeChallengeMethod
 	}
 	// In the case PKCE is enabled, if the session was created with a code challenge, the token request must contain the right code verifier.
 	if ctx.PkceIsEnabled && session.CodeChallenge != "" &&
 		(req.CodeVerifier == "" || !unit.IsPkceValid(req.CodeVerifier, session.CodeChallenge, codeChallengeMethod)) {
-		return models.NewOAuthError(constants.InvalidGrant, "invalid pkce")
+		return models.NewOAuthError(goidc.InvalidGrant, "invalid pkce")
 	}
 
 	return nil
@@ -210,7 +210,7 @@ func getSessionByAuthorizationCode(ctx utils.Context, authorizationCode string, 
 	if err != nil {
 		ch <- utils.ResultChannel{
 			Result: models.AuthnSession{},
-			Err:    models.NewWrappingOAuthError(err, constants.InvalidGrant, "invalid authorization code"),
+			Err:    models.NewWrappingOAuthError(err, goidc.InvalidGrant, "invalid authorization code"),
 		}
 	}
 
@@ -220,7 +220,7 @@ func getSessionByAuthorizationCode(ctx utils.Context, authorizationCode string, 
 	if err != nil {
 		ch <- utils.ResultChannel{
 			Result: models.AuthnSession{},
-			Err:    models.NewWrappingOAuthError(err, constants.InternalError, "could not delete session"),
+			Err:    models.NewWrappingOAuthError(err, goidc.InternalError, "could not delete session"),
 		}
 	}
 
@@ -242,12 +242,12 @@ func newAuthorizationCodeGrantOptions(
 
 	tokenOptions, err := ctx.GetTokenOptions(client, req.Scopes)
 	if err != nil {
-		return models.GrantOptions{}, models.NewOAuthError(constants.AccessDenied, err.Error())
+		return models.GrantOptions{}, models.NewOAuthError(goidc.AccessDenied, err.Error())
 	}
 	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
 
 	grantOptions := models.GrantOptions{
-		GrantType:                constants.AuthorizationCodeGrant,
+		GrantType:                goidc.AuthorizationCodeGrant,
 		GrantedScopes:            session.GrantedScopes,
 		Subject:                  session.Subject,
 		ClientId:                 session.ClientId,
