@@ -59,11 +59,11 @@ func extractSignedRequestObjectFromEncryptedRequestObject(
 	}
 
 	jwk, ok := ctx.GetPrivateKey(keyId)
-	if !ok || jwk.Use != string(goidc.KeyEncryptionUsage) {
+	if !ok || jwk.GetUsage() != string(goidc.KeyEncryptionUsage) {
 		return "", models.NewOAuthError(goidc.InvalidResquestObject, "invalid JWK used for encryption")
 	}
 
-	decryptedReqObject, err := encryptedReqObject.Decrypt(jwk.Key)
+	decryptedReqObject, err := encryptedReqObject.Decrypt(jwk.GetKey())
 	if err != nil {
 		return "", models.NewOAuthError(goidc.InvalidResquestObject, err.Error())
 	}
@@ -101,7 +101,7 @@ func extractJarFromSignedRequestObject(
 
 	var claims jwt.Claims
 	var jarReq models.AuthorizationRequest
-	if err := parsedToken.Claims(jwk.Key, &claims, &jarReq); err != nil {
+	if err := parsedToken.Claims(jwk.GetKey(), &claims, &jarReq); err != nil {
 		return models.AuthorizationRequest{}, models.NewOAuthError(goidc.InvalidResquestObject, "could not extract claims")
 	}
 
@@ -205,7 +205,7 @@ func GetValidTokenClaims(
 
 	keyId := parsedToken.Headers[0].KeyID
 	publicKey, ok := ctx.GetPublicKey(keyId)
-	if !ok || publicKey.Use != string(goidc.KeySignatureUsage) {
+	if !ok || publicKey.GetUsage() != string(goidc.KeySignatureUsage) {
 		return nil, models.NewOAuthError(goidc.AccessDenied, "invalid token")
 	}
 
@@ -297,7 +297,7 @@ func ExtractProtectedParamsFromRequestObject(ctx Context, request string) map[st
 func EncryptJwt(
 	_ Context,
 	jwtString string,
-	encryptionJwk jose.JSONWebKey,
+	encryptionJwk goidc.JsonWebKey,
 	contentKeyEncryptionAlgorithm jose.ContentEncryption,
 ) (
 	string,
@@ -305,7 +305,7 @@ func EncryptJwt(
 ) {
 	encrypter, err := jose.NewEncrypter(
 		contentKeyEncryptionAlgorithm,
-		jose.Recipient{Algorithm: jose.KeyAlgorithm(encryptionJwk.Algorithm), Key: encryptionJwk.Key, KeyID: encryptionJwk.KeyID},
+		jose.Recipient{Algorithm: jose.KeyAlgorithm(encryptionJwk.GetAlgorithm()), Key: encryptionJwk.GetKey(), KeyID: encryptionJwk.GetId()},
 		(&jose.EncrypterOptions{}).WithType("jwt").WithContentType("jwt"),
 	)
 	if err != nil {

@@ -21,7 +21,7 @@ type ClientMetaInfo struct {
 	// PublicJwks is pointer, because, if it is nil and PublicJwksUri is present,
 	// we can fetch the content of PublicJwksUri and access the reference PublicJwks to cache the keys.
 	// By doing so, we make sure to request PublicJwksUri at most once.
-	PublicJwks                         *jose.JSONWebKeySet         `json:"jwks,omitempty"`
+	PublicJwks                         *goidc.JsonWebKeySet        `json:"jwks,omitempty" bson:"jwks,inline"`
 	Scopes                             string                      `json:"scope"`
 	SubjectIdentifierType              goidc.SubjectIdentifierType `json:"subject_type,omitempty"`
 	IdTokenSignatureAlgorithm          jose.SignatureAlgorithm     `json:"id_token_signed_response_alg,omitempty"`
@@ -75,18 +75,18 @@ func (client *ClientMetaInfo) SetScopes(scopes string) {
 
 // Get the client public JWKS either directly from the jwks attribute or using jwks_uri.
 // This method also caches the keys if they are fetched from jwks_uri.
-func (client ClientMetaInfo) GetPublicJwks() (jose.JSONWebKeySet, error) {
+func (client ClientMetaInfo) GetPublicJwks() (goidc.JsonWebKeySet, error) {
 	if client.PublicJwks != nil && len(client.PublicJwks.Keys) != 0 {
 		return *client.PublicJwks, nil
 	}
 
 	if client.PublicJwksUri == "" {
-		return jose.JSONWebKeySet{}, NewOAuthError(goidc.InvalidRequest, "The client JWKS was informed neither by value or by reference")
+		return goidc.JsonWebKeySet{}, NewOAuthError(goidc.InvalidRequest, "The client JWKS was informed neither by value or by reference")
 	}
 
 	jwks, err := unit.GetJwks(client.PublicJwksUri)
 	if err != nil {
-		return jose.JSONWebKeySet{}, NewOAuthError(goidc.InvalidRequest, err.Error())
+		return goidc.JsonWebKeySet{}, NewOAuthError(goidc.InvalidRequest, err.Error())
 	}
 
 	// Cache the client JWKS.
@@ -114,7 +114,7 @@ func (client *ClientMetaInfo) RequireDpop() {
 }
 
 type Client struct {
-	Id string `json:"client_id"`
+	Id string `json:"client_id" bson:"_id"`
 	// This is used when the client authenticates with client_secret_jwt,
 	// since the key used to sign the assertion is the same used to verify it.
 	Secret string `json:"client_secret,omitempty"`
@@ -128,46 +128,46 @@ func (client Client) GetId() string {
 	return client.Id
 }
 
-func (client Client) GetJwk(keyId string) (jose.JSONWebKey, OAuthError) {
+func (client Client) GetJwk(keyId string) (goidc.JsonWebKey, OAuthError) {
 	jwks, oauthErr := client.GetPublicJwks()
 	if oauthErr != nil {
-		return jose.JSONWebKey{}, NewOAuthError(goidc.InvalidRequest, oauthErr.Error())
+		return goidc.JsonWebKey{}, NewOAuthError(goidc.InvalidRequest, oauthErr.Error())
 	}
 
 	keys := jwks.Key(keyId)
 	if len(keys) == 0 {
-		return jose.JSONWebKey{}, NewOAuthError(goidc.InvalidClient, "invalid key ID")
+		return goidc.JsonWebKey{}, NewOAuthError(goidc.InvalidClient, "invalid key ID")
 	}
 
 	return keys[0], nil
 }
 
-func (client Client) GetJarmEncryptionJwk() (jose.JSONWebKey, OAuthError) {
+func (client Client) GetJarmEncryptionJwk() (goidc.JsonWebKey, OAuthError) {
 	return client.getEncryptionJwk(client.JarmKeyEncryptionAlgorithm)
 }
 
-func (client Client) GetUserInfoEncryptionJwk() (jose.JSONWebKey, OAuthError) {
+func (client Client) GetUserInfoEncryptionJwk() (goidc.JsonWebKey, OAuthError) {
 	return client.getEncryptionJwk(client.UserInfoKeyEncryptionAlgorithm)
 }
 
-func (client Client) GetIdTokenEncryptionJwk() (jose.JSONWebKey, OAuthError) {
+func (client Client) GetIdTokenEncryptionJwk() (goidc.JsonWebKey, OAuthError) {
 	return client.getEncryptionJwk(client.IdTokenKeyEncryptionAlgorithm)
 }
 
 // Get the encryption JWK based match the algorithm.
-func (client Client) getEncryptionJwk(algorithm jose.KeyAlgorithm) (jose.JSONWebKey, OAuthError) {
+func (client Client) getEncryptionJwk(algorithm jose.KeyAlgorithm) (goidc.JsonWebKey, OAuthError) {
 	jwks, err := client.GetPublicJwks()
 	if err != nil {
-		return jose.JSONWebKey{}, NewOAuthError(goidc.InvalidRequest, err.Error())
+		return goidc.JsonWebKey{}, NewOAuthError(goidc.InvalidRequest, err.Error())
 	}
 
 	for _, jwk := range jwks.Keys {
-		if jwk.Use == string(goidc.KeyEncryptionUsage) && jwk.Algorithm == string(algorithm) {
+		if jwk.GetUsage() == string(goidc.KeyEncryptionUsage) && jwk.GetAlgorithm() == string(algorithm) {
 			return jwk, nil
 		}
 	}
 
-	return jose.JSONWebKey{}, NewOAuthError(goidc.InvalidClient, fmt.Sprintf("invalid key algorithm: %s", algorithm))
+	return goidc.JsonWebKey{}, NewOAuthError(goidc.InvalidClient, fmt.Sprintf("invalid key algorithm: %s", algorithm))
 }
 
 func (client Client) AreScopesAllowed(requestedScopes string) bool {

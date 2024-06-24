@@ -3,6 +3,7 @@ package goidcp
 import (
 	"github.com/luikymagno/goidc/internal/crud"
 	"github.com/luikymagno/goidc/internal/crud/inmemory"
+	"github.com/luikymagno/goidc/internal/crud/mongodb"
 )
 
 //---------------------------------------- In Memory ----------------------------------------//
@@ -17,4 +18,10 @@ func NewInMemoryAuthnSessionManager() crud.AuthnSessionManager {
 
 func NewInMemoryGrantSessionManager() crud.GrantSessionManager {
 	return inmemory.NewInMemoryGrantSessionManager()
+}
+
+//---------------------------------------- MongoDB ----------------------------------------//
+
+func NewMongoDbClientManager(connectionUri string) crud.ClientManager {
+	return mongodb.NewMongoDbClientManager(connectionUri)
 }

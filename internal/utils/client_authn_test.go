@@ -85,7 +85,9 @@ func TestGetAuthenticatedClient_WithPrivateKeyJwt_HappyPath(t *testing.T) {
 		Id: "random_client_id",
 		ClientMetaInfo: models.ClientMetaInfo{
 			AuthnMethod: goidc.PrivateKeyJwtAuthn,
-			PublicJwks:  &jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privateJwk.Public()}},
+			PublicJwks: &goidc.JsonWebKeySet{
+				Keys: []goidc.JsonWebKey{privateJwk.GetPublic()},
+			},
 		},
 	}
 
@@ -96,8 +98,8 @@ func TestGetAuthenticatedClient_WithPrivateKeyJwt_HappyPath(t *testing.T) {
 
 	createdAtTimestamp := unit.GetTimestampNow()
 	signer, _ := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJwk.Algorithm), Key: privateJwk.Key},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.KeyID),
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJwk.GetAlgorithm()), Key: privateJwk.GetKey()},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.GetId()),
 	)
 	claims := map[string]any{
 		string(goidc.IssuerClaim):   client.Id,

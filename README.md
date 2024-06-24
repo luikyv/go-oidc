@@ -2,7 +2,8 @@
 A customizable OpenID Provider made in Go.
 
 ## To Evaluate
-* Simplify pkce, only required for public clients.
+* Use uppercase convention.
+* Don't expose jose.
 * Add more tests.
 * Implement storage with MongoDB.
 * Add coverage report and quality checks.

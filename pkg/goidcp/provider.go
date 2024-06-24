@@ -36,7 +36,7 @@ func NewProvider(
 	clientManager crud.ClientManager,
 	authnSessionManager crud.AuthnSessionManager,
 	grantSessionManager crud.GrantSessionManager,
-	privateJwks jose.JSONWebKeySet,
+	privateJwks goidc.JsonWebKeySet,
 	defaultTokenKeyId string,
 	defaultIdTokenKeyId string,
 ) *OpenIdProvider {

@@ -18,18 +18,20 @@ func TestExtractJarFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 	privateJwk := unit.GetTestPrivateRs256Jwk("client_key_id")
 	ctx := utils.GetTestInMemoryContext()
 	ctx.JarIsEnabled = true
-	ctx.JarSignatureAlgorithms = []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJwk.Algorithm)}
+	ctx.JarSignatureAlgorithms = []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJwk.GetAlgorithm())}
 	ctx.JarLifetimeSecs = 60
 	client := models.Client{
 		ClientMetaInfo: models.ClientMetaInfo{
-			PublicJwks: &jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privateJwk.Public()}},
+			PublicJwks: &goidc.JsonWebKeySet{
+				Keys: []goidc.JsonWebKey{privateJwk.GetPublic()},
+			},
 		},
 	}
 
 	createdAtTimestamp := unit.GetTimestampNow()
 	signer, _ := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJwk.Algorithm), Key: privateJwk.Key},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.KeyID),
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJwk.GetAlgorithm()), Key: privateJwk.GetKey()},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.GetId()),
 	)
 	claims := map[string]any{
 		string(goidc.IssuerClaim):   client.Id,

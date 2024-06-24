@@ -7,12 +7,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-func GetPrivateJwks(filename string) jose.JSONWebKeySet {
+func GetPrivateJwks(filename string) goidc.JsonWebKeySet {
 	absPath, _ := filepath.Abs("./" + filename)
 	clientJwksFile, err := os.Open(absPath)
 	if err != nil {
@@ -23,7 +22,7 @@ func GetPrivateJwks(filename string) jose.JSONWebKeySet {
 	if err != nil {
 		panic(err.Error())
 	}
-	var clientJwks jose.JSONWebKeySet
+	var clientJwks goidc.JsonWebKeySet
 	json.Unmarshal(clientJwksBytes, &clientJwks)
 
 	return clientJwks

@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/goidc/internal/crud/inmemory"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
@@ -26,10 +25,10 @@ func GetTestInMemoryContext() Context {
 			ClientManager:                 inmemory.NewInMemoryClientManager(),
 			GrantSessionManager:           inmemory.NewInMemoryGrantSessionManager(),
 			AuthnSessionManager:           inmemory.NewInMemoryAuthnSessionManager(),
-			PrivateJwks:                   jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privateJwk}},
-			DefaultTokenSignatureKeyId:    privateJwk.KeyID,
-			DefaultUserInfoSignatureKeyId: privateJwk.KeyID,
-			UserInfoSignatureKeyIds:       []string{privateJwk.KeyID},
+			PrivateJwks:                   goidc.JsonWebKeySet{Keys: []goidc.JsonWebKey{privateJwk}},
+			DefaultTokenSignatureKeyId:    privateJwk.GetId(),
+			DefaultUserInfoSignatureKeyId: privateJwk.GetId(),
+			UserInfoSignatureKeyIds:       []string{privateJwk.GetId()},
 			GetTokenOptions: func(client goidc.Client, scopes string) (goidc.TokenOptions, error) {
 				return goidc.TokenOptions{
 					TokenExpiresInSecs: 60,

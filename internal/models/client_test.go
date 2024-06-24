@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/pkg/goidc"
@@ -175,15 +174,15 @@ func TestGetPublicJwks(t *testing.T) {
 	numberOfRequestsToJwksUri := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		numberOfRequestsToJwksUri++
-		json.NewEncoder(w).Encode(jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{jwk},
+		json.NewEncoder(w).Encode(goidc.JsonWebKeySet{
+			Keys: []goidc.JsonWebKey{jwk},
 		})
 	}))
 
 	client := models.Client{
 		ClientMetaInfo: models.ClientMetaInfo{
 			PublicJwksUri: server.URL,
-			PublicJwks:    &jose.JSONWebKeySet{},
+			PublicJwks:    &goidc.JsonWebKeySet{},
 		},
 	}
 

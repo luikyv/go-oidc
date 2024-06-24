@@ -5,8 +5,6 @@ import (
 	"crypto/x509"
 	"html/template"
 	"maps"
-
-	"github.com/go-jose/go-jose/v4"
 )
 
 type Context interface {
@@ -25,7 +23,7 @@ type Client interface {
 	GetName() (name string, ok bool)
 	GetLogoUri() (logoUri string, ok bool)
 	GetScopes() (scopes string, ok bool)
-	GetPublicJwks() (clientJwks jose.JSONWebKeySet, err error)
+	GetPublicJwks() (clientJwks JsonWebKeySet, err error)
 	// Get the value of a custom attribute.
 	GetAttribute(key string) (any, bool)
 }
@@ -34,7 +32,7 @@ type DynamicClient interface {
 	GetScopes() (scopes string, ok bool)
 	SetScopes(scopes string)
 	RequireDpop()
-	GetPublicJwks() (clientJwks jose.JSONWebKeySet, err error)
+	GetPublicJwks() (clientJwks JsonWebKeySet, err error)
 	// Set a custom attribute.
 	SetAttribute(key string, value any)
 	// Get the value of a custom attribute.

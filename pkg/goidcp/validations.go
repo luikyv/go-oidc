@@ -25,8 +25,8 @@ func runValidations(
 
 func validateJwks(provider OpenIdProvider) error {
 	for _, key := range provider.config.PrivateJwks.Keys {
-		if !key.Valid() {
-			return fmt.Errorf("the key with ID: %s is not valid", key.KeyID)
+		if !key.IsValid() {
+			return fmt.Errorf("the key with ID: %s is not valid", key.GetId())
 		}
 	}
 
@@ -46,11 +46,11 @@ func validateSignatureKeys(provider OpenIdProvider) error {
 		}
 
 		key := jwkSlice[0]
-		if key.Use != string(goidc.KeySignatureUsage) {
+		if key.GetUsage() != string(goidc.KeySignatureUsage) {
 			return fmt.Errorf("the key ID: %s is not meant for signing", keyId)
 		}
 
-		if strings.HasPrefix(key.Algorithm, "HS") {
+		if strings.HasPrefix(key.GetAlgorithm(), "HS") {
 			return errors.New("symetric algorithms are not allowed for signing")
 		}
 	}
@@ -68,7 +68,7 @@ func validateEncryptionKeys(provider OpenIdProvider) error {
 		}
 
 		key := jwkSlice[0]
-		if key.Use != string(goidc.KeyEncryptionUsage) {
+		if key.GetUsage() != string(goidc.KeyEncryptionUsage) {
 			return fmt.Errorf("the key ID: %s is not meant for encryption", keyId)
 		}
 	}
@@ -151,7 +151,7 @@ func validateOpenIdDefaultIdTokenSignatureAlgorithm(provider OpenIdProvider) err
 	}
 
 	defaultIdTokenSignatureKey := provider.config.PrivateJwks.Key(provider.config.DefaultUserInfoSignatureKeyId)[0]
-	if defaultIdTokenSignatureKey.Algorithm != string(jose.RS256) {
+	if defaultIdTokenSignatureKey.GetAlgorithm() != string(jose.RS256) {
 		return errors.New("the default signature algorithm for ID tokens must be RS256")
 	}
 
@@ -164,7 +164,7 @@ func validateOpenIdDefaultJarmSignatureAlgorithm(provider OpenIdProvider) error 
 	}
 
 	defaultJarmSignatureKey := provider.config.PrivateJwks.Key(provider.config.DefaultJarmSignatureKeyId)[0]
-	if defaultJarmSignatureKey.Algorithm != string(jose.RS256) {
+	if defaultJarmSignatureKey.GetAlgorithm() != string(jose.RS256) {
 		return errors.New("the default signature algorithm for JARM must be RS256")
 	}
 

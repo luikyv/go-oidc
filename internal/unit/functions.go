@@ -233,20 +233,20 @@ func GenerateHalfHashClaim(claimValue string, idTokenAlgorithm jose.SignatureAlg
 	return base64.RawURLEncoding.EncodeToString(halfHashedClaim)
 }
 
-func GetJwks(jwksUri string) (jose.JSONWebKeySet, error) {
+func GetJwks(jwksUri string) (goidc.JsonWebKeySet, error) {
 	resp, err := http.Get(jwksUri)
 	if err != nil || resp.StatusCode != http.StatusOK {
-		return jose.JSONWebKeySet{}, errors.New("could not fetch client jwks")
+		return goidc.JsonWebKeySet{}, errors.New("could not fetch client jwks")
 	}
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return jose.JSONWebKeySet{}, errors.New("could not fetch client jwks")
+		return goidc.JsonWebKeySet{}, errors.New("could not fetch client jwks")
 	}
 
-	var jwks jose.JSONWebKeySet
+	var jwks goidc.JsonWebKeySet
 	if err := json.Unmarshal(respBody, &jwks); err != nil {
-		return jose.JSONWebKeySet{}, errors.New("could not parse client jwks")
+		return goidc.JsonWebKeySet{}, errors.New("could not parse client jwks")
 	}
 
 	return jwks, nil

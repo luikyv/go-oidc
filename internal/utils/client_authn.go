@@ -149,7 +149,7 @@ func authenticateWithPrivateKeyJwt(
 	}
 
 	claims := jwt.Claims{}
-	if err := assertion.Claims(jwk.Key, &claims); err != nil {
+	if err := assertion.Claims(jwk.GetKey(), &claims); err != nil {
 		return models.NewOAuthError(goidc.InvalidClient, "invalid assertion")
 	}
 
@@ -223,11 +223,11 @@ func authenticateWithSelfSignedTlsCertificate(
 		return models.NewOAuthError(goidc.InternalError, "could not load the client JWKS")
 	}
 
-	var jwk jose.JSONWebKey
+	var jwk goidc.JsonWebKey
 	foundMatchingJwk := false
 	for _, key := range jwks.Keys {
-		if string(key.CertificateThumbprintSHA256) == unit.GenerateSha256Hash(clientCert.Raw) ||
-			string(key.CertificateThumbprintSHA1) == unit.GenerateSha1Hash(clientCert.Raw) {
+		if string(key.GetCertificateThumbprintSha256()) == unit.GenerateSha256Hash(clientCert.Raw) ||
+			string(key.GetCertificateThumbprintSha1()) == unit.GenerateSha1Hash(clientCert.Raw) {
 			foundMatchingJwk = true
 			jwk = key
 		}
@@ -237,7 +237,7 @@ func authenticateWithSelfSignedTlsCertificate(
 		return models.NewOAuthError(goidc.InvalidClient, "could not find a JWK matching the client certificate")
 	}
 
-	if !unit.ComparePublicKeys(jwk.Key, clientCert.PublicKey) {
+	if !unit.ComparePublicKeys(jwk.GetKey(), clientCert.PublicKey) {
 		return models.NewOAuthError(goidc.InvalidClient, "the public key in the client certificate and ")
 	}
 
