@@ -11,7 +11,7 @@ import (
 )
 
 type MongoDbClientManager struct {
-	ConnectionClient *mongo.Client
+	Collection *mongo.Collection
 }
 
 func NewMongoDbClientManager(connectionUri string) MongoDbClientManager {
@@ -25,13 +25,12 @@ func NewMongoDbClientManager(connectionUri string) MongoDbClientManager {
 		panic(err)
 	}
 	return MongoDbClientManager{
-		ConnectionClient: client,
+		Collection: client.Database("goidc").Collection("clients"),
 	}
 }
 
 func (manager MongoDbClientManager) Create(ctx context.Context, client models.Client) error {
-	collection := manager.ConnectionClient.Database("goidc").Collection("clients")
-	if _, err := collection.InsertOne(ctx, client); err != nil {
+	if _, err := manager.Collection.InsertOne(ctx, client); err != nil {
 		return models.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
@@ -40,8 +39,7 @@ func (manager MongoDbClientManager) Create(ctx context.Context, client models.Cl
 
 func (manager MongoDbClientManager) Update(ctx context.Context, id string, client models.Client) error {
 	filter := bson.D{{Key: "_id", Value: id}}
-	collection := manager.ConnectionClient.Database("goidc").Collection("clients")
-	if _, err := collection.ReplaceOne(ctx, filter, client); err != nil {
+	if _, err := manager.Collection.ReplaceOne(ctx, filter, client); err != nil {
 		return models.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
@@ -50,9 +48,8 @@ func (manager MongoDbClientManager) Update(ctx context.Context, id string, clien
 
 func (manager MongoDbClientManager) Get(ctx context.Context, id string) (models.Client, error) {
 	filter := bson.D{{Key: "_id", Value: id}}
-	collection := manager.ConnectionClient.Database("goidc").Collection("clients")
 	var client models.Client
-	if err := collection.FindOne(ctx, filter).Decode(&client); err != nil {
+	if err := manager.Collection.FindOne(ctx, filter).Decode(&client); err != nil {
 		return models.Client{}, models.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
@@ -61,8 +58,7 @@ func (manager MongoDbClientManager) Get(ctx context.Context, id string) (models.
 
 func (manager MongoDbClientManager) Delete(ctx context.Context, id string) error {
 	filter := bson.D{{Key: "_id", Value: id}}
-	collection := manager.ConnectionClient.Database("goidc").Collection("clients")
-	if _, err := collection.DeleteOne(ctx, filter); err != nil {
+	if _, err := manager.Collection.DeleteOne(ctx, filter); err != nil {
 		return models.NewOAuthError(goidc.InternalError, err.Error())
 	}
 

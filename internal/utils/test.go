@@ -26,9 +26,9 @@ func GetTestInMemoryContext() Context {
 			GrantSessionManager:           inmemory.NewInMemoryGrantSessionManager(),
 			AuthnSessionManager:           inmemory.NewInMemoryAuthnSessionManager(),
 			PrivateJwks:                   goidc.JsonWebKeySet{Keys: []goidc.JsonWebKey{privateJwk}},
-			DefaultTokenSignatureKeyId:    privateJwk.GetId(),
-			DefaultUserInfoSignatureKeyId: privateJwk.GetId(),
-			UserInfoSignatureKeyIds:       []string{privateJwk.GetId()},
+			DefaultTokenSignatureKeyId:    privateJwk.GetKeyId(),
+			DefaultUserInfoSignatureKeyId: privateJwk.GetKeyId(),
+			UserInfoSignatureKeyIds:       []string{privateJwk.GetKeyId()},
 			GetTokenOptions: func(client goidc.Client, scopes string) (goidc.TokenOptions, error) {
 				return goidc.TokenOptions{
 					TokenExpiresInSecs: 60,

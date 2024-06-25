@@ -101,23 +101,41 @@ func (provider *OpenIdProvider) SetIdTokenLifetime(idTokenLifetimeSecs int) {
 
 // Enable encryption of ID tokens and of the user info endpoint response.
 func (provider *OpenIdProvider) EnableUserInfoEncryption(
-	keyEncryptionAlgorithms []jose.KeyAlgorithm,
-	contentEncryptionAlgorithms []jose.ContentEncryption,
+	keyEncryptionAlgorithms []goidc.KeyEncryptionAlgorithm,
+	contentEncryptionAlgorithms []goidc.ContentEncryptionAlgorithm,
 ) {
 	provider.config.UserInfoEncryptionIsEnabled = true
-	provider.config.UserInfoKeyEncryptionAlgorithms = keyEncryptionAlgorithms
-	provider.config.UserInfoContentEncryptionAlgorithms = contentEncryptionAlgorithms
+
+	for _, keyAlg := range keyEncryptionAlgorithms {
+		provider.config.UserInfoKeyEncryptionAlgorithms = append(
+			provider.config.UserInfoKeyEncryptionAlgorithms,
+			jose.KeyAlgorithm(keyAlg),
+		)
+	}
+
+	for _, contentAlg := range contentEncryptionAlgorithms {
+		provider.config.UserInfoContentEncryptionAlgorithms = append(
+			provider.config.UserInfoContentEncryptionAlgorithms,
+			jose.ContentEncryption(contentAlg),
+		)
+	}
 }
 
 // Allow clients to be registered dynamically.
-func (provider *OpenIdProvider) EnableDynamicClientRegistration(dcrPlugin goidc.DcrPluginFunc, shouldRotateTokens bool) {
+func (provider *OpenIdProvider) EnableDynamicClientRegistration(
+	dcrPlugin goidc.DcrPluginFunc,
+	shouldRotateTokens bool,
+) {
 	provider.config.DcrIsEnabled = true
 	provider.config.DcrPlugin = dcrPlugin
 	provider.config.ShouldRotateRegistrationTokens = shouldRotateTokens
 
 }
 
-func (provider *OpenIdProvider) EnableRefreshTokenGrantType(refreshTokenLifetimeSecs int, shouldRotateTokens bool) {
+func (provider *OpenIdProvider) EnableRefreshTokenGrantType(
+	refreshTokenLifetimeSecs int,
+	shouldRotateTokens bool,
+) {
 	provider.config.GrantTypes = append(provider.config.GrantTypes, goidc.RefreshTokenGrant)
 	provider.config.RefreshTokenLifetimeSecs = refreshTokenLifetimeSecs
 	provider.config.ShouldRotateRefreshTokens = shouldRotateTokens
@@ -164,16 +182,21 @@ func (provider *OpenIdProvider) RequirePushedAuthorizationRequests(parLifetimeSe
 
 func (provider *OpenIdProvider) EnableJwtSecuredAuthorizationRequests(
 	jarLifetimeSecs int,
-	jarAlgorithms ...jose.SignatureAlgorithm,
+	jarAlgorithms ...goidc.SignatureAlgorithm,
 ) {
 	provider.config.JarIsEnabled = true
 	provider.config.JarLifetimeSecs = jarLifetimeSecs
-	provider.config.JarSignatureAlgorithms = jarAlgorithms
+	for _, jarAlgorithm := range jarAlgorithms {
+		provider.config.JarSignatureAlgorithms = append(
+			provider.config.JarSignatureAlgorithms,
+			jose.SignatureAlgorithm(jarAlgorithm),
+		)
+	}
 }
 
 func (provider *OpenIdProvider) RequireJwtSecuredAuthorizationRequests(
 	jarLifetimeSecs int,
-	jarAlgorithms ...jose.SignatureAlgorithm,
+	jarAlgorithms ...goidc.SignatureAlgorithm,
 ) {
 	provider.EnableJwtSecuredAuthorizationRequests(jarLifetimeSecs, jarAlgorithms...)
 	provider.config.JarIsRequired = true
@@ -211,32 +234,63 @@ func (provider *OpenIdProvider) EnableJwtSecuredAuthorizationResponseMode(
 }
 
 func (provider *OpenIdProvider) EnableJwtSecuredAuthorizationResponseModeEncryption(
-	keyEncryptionAlgorithms []jose.KeyAlgorithm,
-	contentEncryptionAlgorithms []jose.ContentEncryption,
+	keyEncryptionAlgorithms []goidc.KeyEncryptionAlgorithm,
+	contentEncryptionAlgorithms []goidc.ContentEncryptionAlgorithm,
 ) {
 	provider.config.JarmEncryptionIsEnabled = true
-	provider.config.JarmKeyEncrytionAlgorithms = keyEncryptionAlgorithms
-	provider.config.JarmContentEncryptionAlgorithms = contentEncryptionAlgorithms
+
+	for _, keyAlg := range keyEncryptionAlgorithms {
+		provider.config.JarmKeyEncrytionAlgorithms = append(
+			provider.config.JarmKeyEncrytionAlgorithms,
+			jose.KeyAlgorithm(keyAlg),
+		)
+	}
+
+	for _, contentAlg := range contentEncryptionAlgorithms {
+		provider.config.JarmContentEncryptionAlgorithms = append(
+			provider.config.JarmContentEncryptionAlgorithms,
+			jose.ContentEncryption(contentAlg),
+		)
+	}
 }
 
 func (provider *OpenIdProvider) EnableBasicSecretClientAuthn() {
-	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, goidc.ClientSecretBasicAuthn)
+	provider.config.ClientAuthnMethods = append(
+		provider.config.ClientAuthnMethods,
+		goidc.ClientSecretBasicAuthn,
+	)
 }
 
 func (provider *OpenIdProvider) EnableSecretPostClientAuthn() {
-	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, goidc.ClientSecretPostAuthn)
+	provider.config.ClientAuthnMethods = append(
+		provider.config.ClientAuthnMethods,
+		goidc.ClientSecretPostAuthn,
+	)
 }
 
-func (provider *OpenIdProvider) EnablePrivateKeyJwtClientAuthn(assertionLifetimeSecs int, signatureAlgorithms ...jose.SignatureAlgorithm) {
+func (provider *OpenIdProvider) EnablePrivateKeyJwtClientAuthn(
+	assertionLifetimeSecs int,
+	signatureAlgorithms ...goidc.SignatureAlgorithm,
+) {
 	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, goidc.PrivateKeyJwtAuthn)
 	provider.config.PrivateKeyJwtAssertionLifetimeSecs = assertionLifetimeSecs
-	provider.config.PrivateKeyJwtSignatureAlgorithms = signatureAlgorithms
+	for _, signatureAlgorithm := range signatureAlgorithms {
+		provider.config.PrivateKeyJwtSignatureAlgorithms = append(
+			provider.config.PrivateKeyJwtSignatureAlgorithms,
+			jose.SignatureAlgorithm(signatureAlgorithm),
+		)
+	}
 }
 
-func (provider *OpenIdProvider) EnableClientSecretJwtAuthn(assertionLifetimeSecs int, signatureAlgorithms ...jose.SignatureAlgorithm) {
+func (provider *OpenIdProvider) EnableClientSecretJwtAuthn(assertionLifetimeSecs int, signatureAlgorithms ...goidc.SignatureAlgorithm) {
 	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, goidc.ClientSecretBasicAuthn)
 	provider.config.ClientSecretJwtAssertionLifetimeSecs = assertionLifetimeSecs
-	provider.config.ClientSecretJwtSignatureAlgorithms = signatureAlgorithms
+	for _, signatureAlgorithm := range signatureAlgorithms {
+		provider.config.ClientSecretJwtSignatureAlgorithms = append(
+			provider.config.ClientSecretJwtSignatureAlgorithms,
+			jose.SignatureAlgorithm(signatureAlgorithm),
+		)
+	}
 }
 
 func (provider *OpenIdProvider) EnableTlsClientAuthn() {
@@ -275,16 +329,22 @@ func (provider *OpenIdProvider) EnableAuthorizationDetailsParameter(types ...str
 
 func (provider *OpenIdProvider) EnableDemonstrationProofOfPossesion(
 	dpopLifetimeSecs int,
-	dpopSigningAlgorithms ...jose.SignatureAlgorithm,
+	dpopSigningAlgorithms ...goidc.SignatureAlgorithm,
 ) {
 	provider.config.DpopIsEnabled = true
 	provider.config.DpopLifetimeSecs = dpopLifetimeSecs
-	provider.config.DpopSignatureAlgorithms = dpopSigningAlgorithms
+	for _, signatureAlgorithm := range dpopSigningAlgorithms {
+		provider.config.DpopSignatureAlgorithms = append(
+			provider.config.DpopSignatureAlgorithms,
+			jose.SignatureAlgorithm(signatureAlgorithm),
+		)
+	}
+
 }
 
 func (provider *OpenIdProvider) RequireDemonstrationProofOfPossesion(
 	dpopLifetimeSecs int,
-	dpopSigningAlgorithms ...jose.SignatureAlgorithm,
+	dpopSigningAlgorithms ...goidc.SignatureAlgorithm,
 ) {
 	provider.EnableDemonstrationProofOfPossesion(dpopLifetimeSecs, dpopSigningAlgorithms...)
 	provider.config.DpopIsRequired = true

@@ -239,6 +239,7 @@ func (ctx Context) GetAudiences() []string {
 		ctx.Host,
 		ctx.Host + string(goidc.TokenEndpoint),
 		ctx.Host + string(goidc.PushedAuthorizationRequestEndpoint),
+		ctx.Host + string(goidc.UserInfoEndpoint),
 	}
 	if ctx.MtlsIsEnabled {
 		audiences = append(
@@ -246,6 +247,7 @@ func (ctx Context) GetAudiences() []string {
 			ctx.MtlsHost,
 			ctx.MtlsHost+string(goidc.TokenEndpoint),
 			ctx.MtlsHost+string(goidc.PushedAuthorizationRequestEndpoint),
+			ctx.MtlsHost+string(goidc.UserInfoEndpoint),
 		)
 	}
 	return audiences

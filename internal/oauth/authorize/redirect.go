@@ -99,7 +99,7 @@ func signJarmResponse(
 	jwk := ctx.GetJarmSignatureKey(client)
 	signer, err := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.GetAlgorithm()), Key: jwk.GetKey()},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.GetId()),
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.GetKeyId()),
 	)
 	if err != nil {
 		return "", models.NewOAuthError(goidc.InternalError, err.Error())

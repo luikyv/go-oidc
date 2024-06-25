@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/pkg/goidc"
 	"github.com/luikymagno/goidc/pkg/goidcp"
@@ -36,30 +35,35 @@ func runFapi2OpenIdProvider() error {
 	openidProvider.SetFapi2Profile()
 	openidProvider.EnableMtls(mtlsIssuer)
 	openidProvider.RequirePushedAuthorizationRequests(60)
-	openidProvider.EnableJwtSecuredAuthorizationRequests(600, jose.PS256)
+	openidProvider.EnableJwtSecuredAuthorizationRequests(600, goidc.PS256)
 	openidProvider.EnableJwtSecuredAuthorizationResponseMode(600, ps256ServerKeyId)
-	openidProvider.EnablePrivateKeyJwtClientAuthn(600, jose.PS256)
+	openidProvider.EnablePrivateKeyJwtClientAuthn(600, goidc.PS256)
 	openidProvider.EnableSelfSignedTlsClientAuthn()
 	openidProvider.EnableIssuerResponseParameter()
 	openidProvider.EnableClaimsParameter()
-	openidProvider.EnableDemonstrationProofOfPossesion(600, jose.PS256, jose.ES256)
+	openidProvider.EnableDemonstrationProofOfPossesion(600, goidc.PS256, goidc.ES256)
 	openidProvider.EnableTlsBoundTokens()
 	openidProvider.RequireSenderConstrainedTokens()
 	openidProvider.RequireProofKeyForCodeExchange(goidc.Sha256CodeChallengeMethod)
 	openidProvider.EnableRefreshTokenGrantType(6000, false)
 	openidProvider.SetScopes(scopes...)
 	openidProvider.SetSupportedUserClaims(goidc.EmailClaim, goidc.EmailVerifiedClaim)
-	openidProvider.SetSupportedAuthenticationContextReferences("urn:mace:incommon:iap:silver", "urn:mace:incommon:iap:bronze")
+	openidProvider.SetSupportedAuthenticationContextReferences(
+		goidc.MaceIncommonIapBronzeAcr,
+		goidc.MaceIncommonIapSilverAcr,
+	)
 	openidProvider.EnableDynamicClientRegistration(nil, true)
 	openidProvider.SetTokenOptions(func(c goidc.Client, s string) (goidc.TokenOptions, error) {
-		return goidc.TokenOptions{
-			TokenFormat:        goidc.JwtTokenFormat,
-			TokenExpiresInSecs: 600,
-			ShouldRefresh:      true,
-		}, nil
+		return goidc.NewJwtTokenOptions(600, ps256ServerKeyId, true), nil
 	})
-	openidProvider.EnableUserInfoEncryption([]jose.KeyAlgorithm{jose.RSA_OAEP}, []jose.ContentEncryption{jose.A128CBC_HS256})
-	openidProvider.EnableJwtSecuredAuthorizationResponseModeEncryption([]jose.KeyAlgorithm{jose.RSA_OAEP}, []jose.ContentEncryption{jose.A128CBC_HS256})
+	openidProvider.EnableUserInfoEncryption(
+		[]goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+		[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256},
+	)
+	openidProvider.EnableJwtSecuredAuthorizationResponseModeEncryption(
+		[]goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+		[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256},
+	)
 
 	// Create Client Mocks.
 	clientOnePrivateJwks := GetPrivateJwks("client_keys/client_one_jwks.json")

@@ -100,7 +100,7 @@ func signUserInfoClaims(
 	signatureAlgorithm := jose.SignatureAlgorithm(privateJwk.GetAlgorithm())
 	signer, err := jose.NewSigner(
 		jose.SigningKey{Algorithm: signatureAlgorithm, Key: privateJwk.GetKey()},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.GetId()),
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.GetKeyId()),
 	)
 	if err != nil {
 		return "", models.NewOAuthError(goidc.InternalError, err.Error())

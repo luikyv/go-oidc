@@ -420,7 +420,7 @@ func validatePublicJwks(
 
 	for _, jwk := range dynamicClient.PublicJwks.Keys {
 		if !jwk.IsPublic() || !jwk.IsValid() {
-			return models.NewOAuthError(goidc.InvalidRequest, fmt.Sprintf("the key with ID: %s jwks is invalid", jwk.GetId()))
+			return models.NewOAuthError(goidc.InvalidRequest, fmt.Sprintf("the key with ID: %s jwks is invalid", jwk.GetKeyId()))
 		}
 	}
 	return nil

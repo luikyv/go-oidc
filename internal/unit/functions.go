@@ -217,7 +217,7 @@ func GenerateSha1Hash(s []byte) string {
 
 func GenerateHalfHashClaim(claimValue string, idTokenAlgorithm jose.SignatureAlgorithm) string {
 	var hash hash.Hash
-	switch jose.SignatureAlgorithm(idTokenAlgorithm) {
+	switch idTokenAlgorithm {
 	case jose.RS256, jose.ES256, jose.PS256, jose.HS256:
 		hash = sha256.New()
 	case jose.RS384, jose.ES384, jose.PS384, jose.HS384:

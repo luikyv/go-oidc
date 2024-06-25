@@ -31,7 +31,7 @@ func TestExtractJarFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 	createdAtTimestamp := unit.GetTimestampNow()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJwk.GetAlgorithm()), Key: privateJwk.GetKey()},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.GetId()),
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.GetKeyId()),
 	)
 	claims := map[string]any{
 		string(goidc.IssuerClaim):   client.Id,

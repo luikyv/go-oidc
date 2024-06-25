@@ -211,7 +211,7 @@ func GetValidTokenClaims(
 
 	var claims jwt.Claims
 	var rawClaims map[string]any
-	if err := parsedToken.Claims(publicKey, &claims, &rawClaims); err != nil {
+	if err := parsedToken.Claims(publicKey.GetKey(), &claims, &rawClaims); err != nil {
 		return nil, models.NewOAuthError(goidc.AccessDenied, "invalid token")
 	}
 
@@ -305,7 +305,7 @@ func EncryptJwt(
 ) {
 	encrypter, err := jose.NewEncrypter(
 		contentKeyEncryptionAlgorithm,
-		jose.Recipient{Algorithm: jose.KeyAlgorithm(encryptionJwk.GetAlgorithm()), Key: encryptionJwk.GetKey(), KeyID: encryptionJwk.GetId()},
+		jose.Recipient{Algorithm: jose.KeyAlgorithm(encryptionJwk.GetAlgorithm()), Key: encryptionJwk.GetKey(), KeyID: encryptionJwk.GetKeyId()},
 		(&jose.EncrypterOptions{}).WithType("jwt").WithContentType("jwt"),
 	)
 	if err != nil {

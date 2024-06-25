@@ -89,7 +89,7 @@ func makeIdToken(
 
 	signer, err := jose.NewSigner(
 		jose.SigningKey{Algorithm: signatureAlgorithm, Key: privateJwk.GetKey()},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.GetId()),
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.GetKeyId()),
 	)
 	if err != nil {
 		return "", models.NewOAuthError(goidc.InternalError, err.Error())
@@ -179,7 +179,7 @@ func makeJwtToken(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJwk.GetAlgorithm()), Key: privateJwk.GetKey()},
 		// RFC9068. "...This specification registers the "application/at+jwt" media type,
 		// which can be used to indicate that the content is a JWT access token."
-		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", privateJwk.GetId()),
+		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", privateJwk.GetKeyId()),
 	)
 	if err != nil {
 		return models.Token{}, models.NewOAuthError(goidc.InternalError, err.Error())

@@ -26,7 +26,7 @@ func runValidations(
 func validateJwks(provider OpenIdProvider) error {
 	for _, key := range provider.config.PrivateJwks.Keys {
 		if !key.IsValid() {
-			return fmt.Errorf("the key with ID: %s is not valid", key.GetId())
+			return fmt.Errorf("the key with ID: %s is not valid", key.GetKeyId())
 		}
 	}
 
