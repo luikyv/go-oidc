@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"net/http"
 	"strings"
@@ -8,6 +9,8 @@ import (
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/pkg/goidc"
 	"github.com/luikymagno/goidc/pkg/goidcp"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func runFapi2OpenIdProvider() error {
@@ -21,12 +24,18 @@ func runFapi2OpenIdProvider() error {
 	redirectUri := "https://localhost:8443/test/a/first_test/callback"
 	scopes := []string{goidc.OpenIdScope, goidc.OffilineAccessScope, goidc.EmailScope}
 
+	// MongoDB
+	options := options.Client().ApplyURI("mongodb://admin:password@localhost:27017")
+	conn, err := mongo.Connect(context.Background(), options)
+	if err != nil {
+		panic(err)
+	}
+
 	// Create the manager.
 	openidProvider := goidcp.NewProvider(
 		issuer,
-		goidcp.NewMongoDbClientManager("mongodb://admin:password@localhost:27017"),
-		// goidcp.NewInMemoryClientManager(),
-		goidcp.NewInMemoryAuthnSessionManager(),
+		goidcp.NewMongoDbClientManager(conn),
+		goidcp.NewMongoDbAuthnSessionManager(conn),
 		goidcp.NewInMemoryGrantSessionManager(),
 		GetPrivateJwks("server_keys/jwks.json"),
 		ps256ServerKeyId,
@@ -54,7 +63,7 @@ func runFapi2OpenIdProvider() error {
 	)
 	openidProvider.EnableDynamicClientRegistration(nil, true)
 	openidProvider.SetTokenOptions(func(c goidc.Client, s string) (goidc.TokenOptions, error) {
-		return goidc.NewJwtTokenOptions(600, ps256ServerKeyId, true), nil
+		return goidc.NewJwtTokenOptions(ps256ServerKeyId, 600, true), nil
 	})
 	openidProvider.EnableUserInfoEncryption(
 		[]goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},

@@ -127,13 +127,13 @@ func (opts *TokenOptions) AddTokenClaims(claims map[string]any) {
 }
 
 func NewJwtTokenOptions(
-	tokenLifetimeSecs int,
 	// The ID of a signing key present in the server JWKS.
 	signatureKeyId string,
+	tokenLifetimeSecs int,
 	shouldRefresh bool,
 ) TokenOptions {
 	return TokenOptions{
-		TokenFormat:        OpaqueTokenFormat,
+		TokenFormat:        JwtTokenFormat,
 		TokenExpiresInSecs: tokenLifetimeSecs,
 		JwtSignatureKeyId:  signatureKeyId,
 		ShouldRefresh:      shouldRefresh,
@@ -141,13 +141,15 @@ func NewJwtTokenOptions(
 }
 
 func NewOpaqueTokenOptions(
-	tokenLifetimeSecs int,
 	tokenLength int,
+	tokenLifetimeSecs int,
+	shouldRefresh bool,
 ) TokenOptions {
 	return TokenOptions{
-		TokenFormat:        JwtTokenFormat,
+		TokenFormat:        OpaqueTokenFormat,
 		TokenExpiresInSecs: tokenLifetimeSecs,
 		OpaqueTokenLength:  tokenLength,
+		ShouldRefresh:      shouldRefresh,
 	}
 }
 

@@ -103,22 +103,24 @@ type TokenResponse struct {
 }
 
 type AuthorizationParameters struct {
-	RequestUri               string                      `json:"request_uri,omitempty"`
-	RequestObject            string                      `json:"request,omitempty"`
-	RedirectUri              string                      `json:"redirect_uri,omitempty"`
-	ResponseMode             goidc.ResponseMode          `json:"response_mode,omitempty"`
-	ResponseType             goidc.ResponseType          `json:"response_type,omitempty"`
-	Scopes                   string                      `json:"scope,omitempty"`
-	State                    string                      `json:"state,omitempty"`
-	Nonce                    string                      `json:"nonce,omitempty"`
-	CodeChallenge            string                      `json:"code_challenge,omitempty"`
-	CodeChallengeMethod      goidc.CodeChallengeMethod   `json:"code_challenge_method,omitempty"`
-	Prompt                   goidc.PromptType            `json:"prompt,omitempty"`
-	MaxAuthenticationAgeSecs *int                        `json:"max_age,omitempty"`
-	Display                  goidc.DisplayValue          `json:"display,omitempty"`
-	AcrValues                string                      `json:"acr_values,omitempty"`
-	Claims                   *goidc.ClaimsObject         `json:"claims,omitempty"` // Claims is a pointer to help differentiate when it's null or not.
-	AuthorizationDetails     []goidc.AuthorizationDetail `json:"authorization_details,omitempty"`
+	RequestUri          string                    `json:"request_uri,omitempty" bson:"request_uri,omitempty"`
+	RequestObject       string                    `json:"request,omitempty" bson:"request,omitempty"`
+	RedirectUri         string                    `json:"redirect_uri,omitempty" bson:"redirect_uri,omitempty"`
+	ResponseMode        goidc.ResponseMode        `json:"response_mode,omitempty" bson:"response_mode,omitempty"`
+	ResponseType        goidc.ResponseType        `json:"response_type,omitempty" bson:"response_type,omitempty"`
+	Scopes              string                    `json:"scope,omitempty" bson:"scope,omitempty"`
+	State               string                    `json:"state,omitempty" bson:"state,omitempty"`
+	Nonce               string                    `json:"nonce,omitempty" bson:"nonce,omitempty"`
+	CodeChallenge       string                    `json:"code_challenge,omitempty" bson:"code_challenge,omitempty"`
+	CodeChallengeMethod goidc.CodeChallengeMethod `json:"code_challenge_method,omitempty" bson:"code_challenge_method,omitempty"`
+	Prompt              goidc.PromptType          `json:"prompt,omitempty" bson:"prompt,omitempty"`
+	// MaxAuthenticationAgeSecs is a pointer to help differentiate when it's null or not.
+	MaxAuthenticationAgeSecs *int               `json:"max_age,omitempty" bson:"max_age,omitempty"`
+	Display                  goidc.DisplayValue `json:"display,omitempty" bson:"display,omitempty"`
+	AcrValues                string             `json:"acr_values,omitempty" bson:"acr_values,omitempty"`
+	// Claims is a pointer to help differentiate when it's null or not.
+	Claims               *goidc.ClaimsObject         `json:"claims,omitempty" bson:"claims,omitempty"`
+	AuthorizationDetails []goidc.AuthorizationDetail `json:"authorization_details,omitempty" bson:"authorization_details,omitempty"`
 }
 
 func (params AuthorizationParameters) NewRedirectError(

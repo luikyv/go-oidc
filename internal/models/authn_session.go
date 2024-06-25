@@ -7,24 +7,26 @@ import (
 )
 
 type AuthnSession struct {
-	Id                          string                      `json:"id"`
-	CallbackId                  string                      `json:"callback_id"`
-	PolicyId                    string                      `json:"policy_d"`
-	ExpiresAtTimestamp          int                         `json:"expires_at"`
-	CreatedAtTimestamp          int                         `json:"created_at"`
-	Subject                     string                      `json:"sub"`
-	ClientId                    string                      `json:"client_id"`
-	GrantedScopes               string                      `json:"granted_scopes"`
-	GrantedAuthorizationDetails []goidc.AuthorizationDetail `json:"granted_authorization_details"`
-	AuthorizationCode           string                      `json:"authorization_code"`
-	AuthorizationCodeIssuedAt   int                         `json:"authorization_code_issued_at"`
-	ProtectedParameters         map[string]any              `json:"protected_params"` // Custom parameters sent by PAR or JAR.
-	Store                       map[string]any              `json:"store"`            // Allow the developer to store information in memory and, hence, between steps.
-	AdditionalTokenClaims       map[string]any              `json:"additional_token_claims"`
-	AdditionalIdTokenClaims     map[string]any              `json:"additional_id_token_claims"`
-	AdditionalUserInfoClaims    map[string]any              `json:"additional_user_info_claims"`
-	AuthorizationParameters
-	Error OAuthError
+	Id                          string                      `json:"id" bson:"_id"`
+	CallbackId                  string                      `json:"callback_id" bson:"callback_id"`
+	PolicyId                    string                      `json:"policy_id" bson:"policy_id"`
+	ExpiresAtTimestamp          int                         `json:"expires_at" bson:"expires_at"`
+	CreatedAtTimestamp          int                         `json:"created_at" bson:"created_at"`
+	Subject                     string                      `json:"sub" bson:"sub"`
+	ClientId                    string                      `json:"client_id" bson:"client_id"`
+	GrantedScopes               string                      `json:"granted_scopes" bson:"granted_scopes"`
+	GrantedAuthorizationDetails []goidc.AuthorizationDetail `json:"granted_authorization_details,omitempty" bson:"granted_authorization_details,omitempty"`
+	AuthorizationCode           string                      `json:"authorization_code,omitempty" bson:"authorization_code,omitempty"`
+	AuthorizationCodeIssuedAt   int                         `json:"authorization_code_issued_at,omitempty" bson:"authorization_code_issued_at,omitempty"`
+	// Custom parameters sent by PAR or JAR.
+	ProtectedParameters map[string]any `json:"protected_params,omitempty" bson:"protected_params,omitempty"`
+	// Allow the developer to store information in memory and, hence, between steps.
+	Store                    map[string]any `json:"store" bson:"store"`
+	AdditionalTokenClaims    map[string]any `json:"additional_token_claims" bson:"additional_token_claims"`
+	AdditionalIdTokenClaims  map[string]any `json:"additional_id_token_claims" bson:"additional_id_token_claims"`
+	AdditionalUserInfoClaims map[string]any `json:"additional_user_info_claims" bson:"additional_user_info_claims"`
+	AuthorizationParameters  `bson:"inline"`
+	Error                    OAuthError `bson:"-"`
 }
 
 func NewSession(authParams AuthorizationParameters, client Client) AuthnSession {
