@@ -21,12 +21,12 @@ type AuthnSession struct {
 	// Custom parameters sent by PAR or JAR.
 	ProtectedParameters map[string]any `json:"protected_params,omitempty" bson:"protected_params,omitempty"`
 	// Allow the developer to store information in memory and, hence, between steps.
-	Store                    map[string]any `json:"store" bson:"store"`
-	AdditionalTokenClaims    map[string]any `json:"additional_token_claims" bson:"additional_token_claims"`
-	AdditionalIdTokenClaims  map[string]any `json:"additional_id_token_claims" bson:"additional_id_token_claims"`
-	AdditionalUserInfoClaims map[string]any `json:"additional_user_info_claims" bson:"additional_user_info_claims"`
+	Store                    map[string]any `json:"store,omitempty" bson:"store,omitempty"`
+	AdditionalTokenClaims    map[string]any `json:"additional_token_claims,omitempty" bson:"additional_token_claims,omitempty"`
+	AdditionalIdTokenClaims  map[string]any `json:"additional_id_token_claims,omitempty" bson:"additional_id_token_claims,omitempty"`
+	AdditionalUserInfoClaims map[string]any `json:"additional_user_info_claims,omitempty" bson:"additional_user_info_claims,omitempty"`
 	AuthorizationParameters  `bson:"inline"`
-	Error                    OAuthError `bson:"-"`
+	Error                    OAuthError `json:"-" bson:"-"`
 }
 
 func NewSession(authParams AuthorizationParameters, client Client) AuthnSession {

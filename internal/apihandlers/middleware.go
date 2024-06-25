@@ -21,6 +21,8 @@ func NewAddCacheControlHeadersMiddlewareHandler(next http.Handler) AddCacheContr
 }
 
 func (handler AddCacheControlHeadersMiddlewareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// TODO: Check if /authorize.
+
 	// Avoid caching.
 	w.Header().Set("Cache-Control", "no-cache, no-store")
 	w.Header().Set("Pragma", "no-cache")
