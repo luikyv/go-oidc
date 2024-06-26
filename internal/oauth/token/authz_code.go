@@ -158,7 +158,7 @@ func validatePkce(
 		codeChallengeMethod = goidc.PlainCodeChallengeMethod
 	}
 	if ctx.Profile == goidc.FAPI2Profile {
-		codeChallengeMethod = goidc.Sha256CodeChallengeMethod
+		codeChallengeMethod = goidc.SHA256CodeChallengeMethod
 	}
 	// In the case PKCE is enabled, if the session was created with a code challenge, the token request must contain the right code verifier.
 	if ctx.PkceIsEnabled && session.CodeChallenge != "" &&

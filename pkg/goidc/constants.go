@@ -180,7 +180,7 @@ const (
 type CodeChallengeMethod string
 
 const (
-	Sha256CodeChallengeMethod CodeChallengeMethod = "S256"
+	SHA256CodeChallengeMethod CodeChallengeMethod = "S256"
 	PlainCodeChallengeMethod  CodeChallengeMethod = "plain"
 )
 

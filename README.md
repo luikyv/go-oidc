@@ -10,7 +10,6 @@ A customizable OpenID Provider made in Go.
 * Add index to mongo db.
 * Implement a bson decoder?
 * Fix: given, when, then.
-* Use uppercase convention.
 * Don't expose jose.
 * Add more tests.
 * Implement storage with MongoDB.

@@ -468,7 +468,7 @@ func (ctx Context) Redirect(redirectURL string) {
 	http.Redirect(ctx.Response, ctx.Request, redirectURL, http.StatusSeeOther)
 }
 
-func (ctx Context) RenderHtml(html string, params any) {
+func (ctx Context) RenderHTML(html string, params any) {
 	// Check if the request was terminated before writing anything.
 	select {
 	case <-ctx.Done():
@@ -482,7 +482,7 @@ func (ctx Context) RenderHtml(html string, params any) {
 	tmpl.Execute(ctx.Response, params)
 }
 
-func (ctx Context) RenderHtmlTemplate(tmpl *template.Template, params any) {
+func (ctx Context) RenderHTMLTemplate(tmpl *template.Template, params any) {
 	// Check if the request was terminated before writing anything.
 	select {
 	case <-ctx.Done():

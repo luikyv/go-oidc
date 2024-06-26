@@ -225,12 +225,12 @@ func TestIsPkceValid(t *testing.T) {
 		codeChallengeMethod goidc.CodeChallengeMethod
 		isValid             bool
 	}{
-		{"4ea55634198fb6a0c120d46b26359cf50ccea86fd03302b9bca9fa98", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", goidc.Sha256CodeChallengeMethod, true},
-		{"42d92ec716da149b8c0a553d5cbbdc5fd474625cdffe7335d643105b", "yQ0Wg2MXS83nBOaS3yit-n-xEaEw5LQ8TlhtX_2NkLw", goidc.Sha256CodeChallengeMethod, true},
-		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", goidc.Sha256CodeChallengeMethod, false},
-		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", goidc.Sha256CodeChallengeMethod, false},
-		{"", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", goidc.Sha256CodeChallengeMethod, false},
-		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "", goidc.Sha256CodeChallengeMethod, false},
+		{"4ea55634198fb6a0c120d46b26359cf50ccea86fd03302b9bca9fa98", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", goidc.SHA256CodeChallengeMethod, true},
+		{"42d92ec716da149b8c0a553d5cbbdc5fd474625cdffe7335d643105b", "yQ0Wg2MXS83nBOaS3yit-n-xEaEw5LQ8TlhtX_2NkLw", goidc.SHA256CodeChallengeMethod, true},
+		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", goidc.SHA256CodeChallengeMethod, false},
+		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", goidc.SHA256CodeChallengeMethod, false},
+		{"", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", goidc.SHA256CodeChallengeMethod, false},
+		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "", goidc.SHA256CodeChallengeMethod, false},
 		{"random_string", "random_string", goidc.PlainCodeChallengeMethod, true},
 	}
 

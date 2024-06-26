@@ -54,7 +54,7 @@ func redirectResponse(
 		ctx.Redirect(redirectURL)
 	case goidc.FormPostResponseMode, goidc.FormPostJWTResponseMode:
 		redirectParamsMap["redirect_uri"] = params.RedirectURI
-		ctx.RenderHtml(formPostResponseTemplate, redirectParamsMap)
+		ctx.RenderHTML(formPostResponseTemplate, redirectParamsMap)
 	default:
 		redirectURL := utils.GetURLWithQueryParams(params.RedirectURI, redirectParamsMap)
 		ctx.Redirect(redirectURL)

@@ -180,7 +180,7 @@ func ValidateDPOPJWT(
 		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid htu claim")
 	}
 
-	if expectedDPOPClaims.AccessToken != "" && dpopClaims.AccessTokenHash != GenerateBase64URLSha256Hash(expectedDPOPClaims.AccessToken) {
+	if expectedDPOPClaims.AccessToken != "" && dpopClaims.AccessTokenHash != GenerateBase64URLSHA256Hash(expectedDPOPClaims.AccessToken) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid ath claim")
 	}
 
@@ -413,8 +413,8 @@ func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod 
 	switch codeChallengeMethod {
 	case goidc.PlainCodeChallengeMethod:
 		return codeChallenge == codeVerifier
-	case goidc.Sha256CodeChallengeMethod:
-		return codeChallenge == GenerateBase64URLSha256Hash(codeVerifier)
+	case goidc.SHA256CodeChallengeMethod:
+		return codeChallenge == GenerateBase64URLSHA256Hash(codeVerifier)
 	}
 
 	return false
@@ -456,19 +456,19 @@ func GenerateJWKThumbprint(dpopJWT string, dpopSigningAlgorithms []jose.Signatur
 	return base64.RawURLEncoding.EncodeToString(jkt)
 }
 
-func GenerateBase64URLSha256Hash(s string) string {
+func GenerateBase64URLSHA256Hash(s string) string {
 	hash := sha256.New()
 	hash.Write([]byte(s))
 	return base64.RawURLEncoding.EncodeToString(hash.Sum(nil))
 }
 
-func GenerateSha256Hash(s []byte) string {
+func GenerateSHA256Hash(s []byte) string {
 	hash := sha256.New()
 	hash.Write([]byte(s))
 	return string(hash.Sum(nil))
 }
 
-func GenerateSha1Hash(s []byte) string {
+func GenerateSHA1Hash(s []byte) string {
 	hash := sha1.New()
 	hash.Write([]byte(s))
 	return string(hash.Sum(nil))

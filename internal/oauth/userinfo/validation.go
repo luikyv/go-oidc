@@ -68,7 +68,7 @@ func validateTLSProofOfPossesion(
 		return goidc.NewOAuthError(goidc.InvalidToken, "the client certificate is required")
 	}
 
-	if grantSession.ClientCertificateThumbprint != utils.GenerateBase64URLSha256Hash(string(clientCert.Raw)) {
+	if grantSession.ClientCertificateThumbprint != utils.GenerateBase64URLSHA256Hash(string(clientCert.Raw)) {
 		return goidc.NewOAuthError(goidc.InvalidToken, "invalid client certificate")
 	}
 

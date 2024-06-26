@@ -224,8 +224,8 @@ func authenticateWithSelfSignedTLSCertificate(
 	var jwk goidc.JSONWebKey
 	foundMatchingJWK := false
 	for _, key := range jwks.Keys {
-		if string(key.GetCertificateThumbprintSHA256()) == GenerateSha256Hash(clientCert.Raw) ||
-			string(key.GetCertificateThumbprintSHA1()) == GenerateSha1Hash(clientCert.Raw) {
+		if string(key.GetCertificateThumbprintSHA256()) == GenerateSHA256Hash(clientCert.Raw) ||
+			string(key.GetCertificateThumbprintSHA1()) == GenerateSHA1Hash(clientCert.Raw) {
 			foundMatchingJWK = true
 			jwk = key
 		}

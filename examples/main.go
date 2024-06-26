@@ -53,7 +53,7 @@ func runFAPI2OpenIDProvider() error {
 	openidProvider.EnableDemonstrationProofOfPossesion(600, goidc.PS256, goidc.ES256)
 	openidProvider.EnableTLSBoundTokens()
 	openidProvider.RequireSenderConstrainedTokens()
-	openidProvider.RequireProofKeyForCodeExchange(goidc.Sha256CodeChallengeMethod)
+	openidProvider.RequireProofKeyForCodeExchange(goidc.SHA256CodeChallengeMethod)
 	openidProvider.EnableRefreshTokenGrantType(6000, false)
 	openidProvider.SetScopes(scopes...)
 	openidProvider.SetSupportedUserClaims(

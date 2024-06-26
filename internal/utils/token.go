@@ -162,7 +162,7 @@ func makeJWTToken(
 	clientCert, ok := ctx.GetClientCertificate()
 	certThumbprint := ""
 	if ctx.TLSBoundTokensIsEnabled && ok {
-		certThumbprint = GenerateBase64URLSha256Hash(string(clientCert.Raw))
+		certThumbprint = GenerateBase64URLSHA256Hash(string(clientCert.Raw))
 		confirmation["x5t#S256"] = certThumbprint
 	}
 	if len(confirmation) != 0 {
@@ -221,7 +221,7 @@ func makeOpaqueToken(
 	clientCert, ok := ctx.GetClientCertificate()
 	certThumbprint := ""
 	if ctx.TLSBoundTokensIsEnabled && ok {
-		certThumbprint = GenerateBase64URLSha256Hash(string(clientCert.Raw))
+		certThumbprint = GenerateBase64URLSHA256Hash(string(clientCert.Raw))
 	}
 
 	return Token{
