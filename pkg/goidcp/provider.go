@@ -9,9 +9,6 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/goidc/internal/apihandlers"
-	"github.com/luikymagno/goidc/internal/crud"
-	"github.com/luikymagno/goidc/internal/models"
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
@@ -33,9 +30,9 @@ type OpenIdProvider struct {
 
 func NewProvider(
 	host string,
-	clientManager crud.ClientManager,
-	authnSessionManager crud.AuthnSessionManager,
-	grantSessionManager crud.GrantSessionManager,
+	clientManager goidc.ClientManager,
+	authnSessionManager goidc.AuthnSessionManager,
+	grantSessionManager goidc.GrantSessionManager,
 	privateJwks goidc.JsonWebKeySet,
 	defaultTokenKeyId string,
 	defaultIdTokenKeyId string,
@@ -89,7 +86,7 @@ func (provider *OpenIdProvider) SetSupportedUserClaims(claims ...string) {
 // There should be at most one per algorithm, in other words, there shouldn't be two key IDs that point to two keys that have the same algorithm.
 // This is because clients can choose signing keys per algorithm, e.g. a client can choose the key to sign its ID tokens with the attribute "id_token_signed_response_alg".
 func (provider *OpenIdProvider) AddUserInfoSignatureKeyIds(userInfoSignatureKeyIds ...string) {
-	if !unit.ContainsAll(userInfoSignatureKeyIds, provider.config.DefaultUserInfoSignatureKeyId) {
+	if !goidc.ContainsAll(userInfoSignatureKeyIds, provider.config.DefaultUserInfoSignatureKeyId) {
 		userInfoSignatureKeyIds = append(userInfoSignatureKeyIds, provider.config.DefaultUserInfoSignatureKeyId)
 	}
 	provider.config.UserInfoSignatureKeyIds = userInfoSignatureKeyIds
@@ -216,7 +213,7 @@ func (provider *OpenIdProvider) EnableJwtSecuredAuthorizationResponseMode(
 	defaultJarmSignatureKeyId string,
 	jarmSignatureKeyIds ...string,
 ) {
-	if !unit.ContainsAll(jarmSignatureKeyIds, defaultJarmSignatureKeyId) {
+	if !goidc.ContainsAll(jarmSignatureKeyIds, defaultJarmSignatureKeyId) {
 		jarmSignatureKeyIds = append(jarmSignatureKeyIds, defaultJarmSignatureKeyId)
 	}
 
@@ -401,7 +398,7 @@ func (provider *OpenIdProvider) SetFapi2Profile() {
 	provider.config.Profile = goidc.Fapi2Profile
 }
 
-func (provider *OpenIdProvider) AddClient(client models.Client) error {
+func (provider *OpenIdProvider) AddClient(client goidc.Client) error {
 	return provider.config.ClientManager.Create(context.Background(), client)
 }
 

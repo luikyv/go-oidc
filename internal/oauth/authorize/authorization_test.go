@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/oauth/authorize"
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
@@ -40,13 +39,13 @@ func TestInitAuth_InvalidRedirectUri(t *testing.T) {
 	// Then
 	err := authorize.InitAuth(ctx, models.AuthorizationRequest{
 		ClientId: client.Id,
-		AuthorizationParameters: models.AuthorizationParameters{
+		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectUri: "https://invalid.com",
 		},
 	})
 
 	// Assert
-	var jsonErr models.OAuthBaseError
+	var jsonErr goidc.OAuthBaseError
 	if err == nil || !errors.As(err, &jsonErr) {
 		t.Error("the redirect URI should not be valid")
 		return
@@ -67,7 +66,7 @@ func TestInitAuth_InvalidScope(t *testing.T) {
 	// Then
 	authorize.InitAuth(ctx, models.AuthorizationRequest{
 		ClientId: models.TestClientId,
-		AuthorizationParameters: models.AuthorizationParameters{
+		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
 			Scopes:       "invalid_scope",
 			ResponseType: goidc.CodeResponse,
@@ -92,7 +91,7 @@ func TestInitAuth_InvalidResponseType(t *testing.T) {
 	// Then
 	authorize.InitAuth(ctx, models.AuthorizationRequest{
 		ClientId: models.TestClientId,
-		AuthorizationParameters: models.AuthorizationParameters{
+		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
 			Scopes:       client.Scopes,
 			ResponseType: goidc.IdTokenResponse,
@@ -116,7 +115,7 @@ func TestInitAuth_WhenNoPolicyIsAvailable(t *testing.T) {
 	// Then
 	authorize.InitAuth(ctx, models.AuthorizationRequest{
 		ClientId: models.TestClientId,
-		AuthorizationParameters: models.AuthorizationParameters{
+		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
 			Scopes:       client.Scopes,
 			ResponseType: goidc.CodeResponse,
@@ -139,8 +138,8 @@ func TestInitAuth_ShouldEndWithError(t *testing.T) {
 	ctx.CreateClient(client)
 	policy := goidc.NewPolicy(
 		"policy_id",
-		func(ctx goidc.Context, c goidc.Client, s goidc.AuthnSession) bool { return true },
-		func(ctx goidc.Context, as goidc.AuthnSession) goidc.AuthnStatus {
+		func(ctx goidc.Context, c goidc.Client, s *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.Context, as *goidc.AuthnSession) goidc.AuthnStatus {
 			return goidc.Failure
 		},
 	)
@@ -149,7 +148,7 @@ func TestInitAuth_ShouldEndWithError(t *testing.T) {
 	// Then
 	err := authorize.InitAuth(ctx, models.AuthorizationRequest{
 		ClientId: models.TestClientId,
-		AuthorizationParameters: models.AuthorizationParameters{
+		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
 			Scopes:       client.Scopes,
 			ResponseType: goidc.CodeResponse,
@@ -182,8 +181,8 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 	ctx.CreateClient(client)
 	policy := goidc.NewPolicy(
 		"policy_id",
-		func(ctx goidc.Context, c goidc.Client, s goidc.AuthnSession) bool { return true },
-		func(ctx goidc.Context, as goidc.AuthnSession) goidc.AuthnStatus {
+		func(ctx goidc.Context, c goidc.Client, s *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.Context, as *goidc.AuthnSession) goidc.AuthnStatus {
 			return goidc.InProgress
 		},
 	)
@@ -192,7 +191,7 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 	// Then
 	err := authorize.InitAuth(ctx, models.AuthorizationRequest{
 		ClientId: models.TestClientId,
-		AuthorizationParameters: models.AuthorizationParameters{
+		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
 			Scopes:       client.Scopes,
 			ResponseType: goidc.CodeResponse,
@@ -237,8 +236,8 @@ func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 	ctx.CreateClient(client)
 	policy := goidc.NewPolicy(
 		"policy_id",
-		func(ctx goidc.Context, c goidc.Client, s goidc.AuthnSession) bool { return true },
-		func(ctx goidc.Context, as goidc.AuthnSession) goidc.AuthnStatus {
+		func(ctx goidc.Context, c goidc.Client, s *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.Context, as *goidc.AuthnSession) goidc.AuthnStatus {
 			return goidc.Success
 		},
 	)
@@ -247,7 +246,7 @@ func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 	// Then
 	err := authorize.InitAuth(ctx, models.AuthorizationRequest{
 		ClientId: client.Id,
-		AuthorizationParameters: models.AuthorizationParameters{
+		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
 			Scopes:       client.Scopes,
 			ResponseType: goidc.CodeAndIdTokenResponse,
@@ -292,22 +291,22 @@ func TestInitAuth_WithPar(t *testing.T) {
 	ctx.CreateClient(client)
 	requestUri := "urn:goidc:random_value"
 	ctx.CreateOrUpdateAuthnSession(
-		models.AuthnSession{
+		goidc.AuthnSession{
 			Id: uuid.NewString(),
-			AuthorizationParameters: models.AuthorizationParameters{
+			AuthorizationParameters: goidc.AuthorizationParameters{
 				RequestUri:   requestUri,
 				Scopes:       client.Scopes,
 				RedirectUri:  client.RedirectUris[0],
 				ResponseType: goidc.CodeResponse,
 			},
 			ClientId:           client.Id,
-			ExpiresAtTimestamp: unit.GetTimestampNow() + 60,
+			ExpiresAtTimestamp: goidc.GetTimestampNow() + 60,
 		},
 	)
 	policy := goidc.NewPolicy(
 		"policy_id",
-		func(ctx goidc.Context, c goidc.Client, s goidc.AuthnSession) bool { return true },
-		func(ctx goidc.Context, as goidc.AuthnSession) goidc.AuthnStatus {
+		func(ctx goidc.Context, c goidc.Client, s *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.Context, as *goidc.AuthnSession) goidc.AuthnStatus {
 			return goidc.Success
 		},
 	)
@@ -316,7 +315,7 @@ func TestInitAuth_WithPar(t *testing.T) {
 	// Then
 	err := authorize.InitAuth(ctx, models.AuthorizationRequest{
 		ClientId: models.TestClientId,
-		AuthorizationParameters: models.AuthorizationParameters{
+		AuthorizationParameters: goidc.AuthorizationParameters{
 			RequestUri:   requestUri,
 			ResponseType: goidc.CodeResponse,
 			Scopes:       client.Scopes,
@@ -354,18 +353,18 @@ func TestContinueAuthentication(t *testing.T) {
 	ctx := utils.GetTestInMemoryContext()
 	policy := goidc.NewPolicy(
 		"policy_id",
-		func(ctx goidc.Context, c goidc.Client, s goidc.AuthnSession) bool { return true },
-		func(ctx goidc.Context, as goidc.AuthnSession) goidc.AuthnStatus {
+		func(ctx goidc.Context, c goidc.Client, s *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.Context, as *goidc.AuthnSession) goidc.AuthnStatus {
 			return goidc.InProgress
 		},
 	)
 	ctx.Policies = []goidc.AuthnPolicy{policy}
 
 	callbackId := "random_callback_id"
-	ctx.CreateOrUpdateAuthnSession(models.AuthnSession{
+	ctx.CreateOrUpdateAuthnSession(goidc.AuthnSession{
 		PolicyId:           policy.Id,
 		CallbackId:         callbackId,
-		ExpiresAtTimestamp: unit.GetTimestampNow() + 60,
+		ExpiresAtTimestamp: goidc.GetTimestampNow() + 60,
 	})
 
 	// Then

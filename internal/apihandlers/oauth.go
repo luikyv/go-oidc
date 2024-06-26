@@ -122,7 +122,7 @@ func HandleIntrospectionRequest(ctx utils.Context) {
 
 func bindErrorToResponse(ctx utils.Context, err error) {
 
-	var oauthErr models.OAuthError
+	var oauthErr goidc.OAuthError
 	if !errors.As(err, &oauthErr) {
 		ctx.WriteJson(map[string]any{
 			"error":             goidc.InternalError,

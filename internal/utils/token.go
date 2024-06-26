@@ -11,11 +11,11 @@ import (
 
 func MakeIdToken(
 	ctx Context,
-	client models.Client,
+	client goidc.Client,
 	idTokenOpts models.IdTokenOptions,
 ) (
 	string,
-	models.OAuthError,
+	goidc.OAuthError,
 ) {
 	idToken, err := makeIdToken(ctx, client, idTokenOpts)
 	if err != nil {
@@ -37,11 +37,11 @@ func MakeIdToken(
 
 func MakeToken(
 	ctx Context,
-	client models.Client,
-	grantOptions models.GrantOptions,
+	client goidc.Client,
+	grantOptions goidc.GrantOptions,
 ) (
 	models.Token,
-	models.OAuthError,
+	goidc.OAuthError,
 ) {
 	if grantOptions.TokenFormat == goidc.JwtTokenFormat {
 		return makeJwtToken(ctx, client, grantOptions)
@@ -52,15 +52,15 @@ func MakeToken(
 
 func makeIdToken(
 	ctx Context,
-	client models.Client,
+	client goidc.Client,
 	idTokenOpts models.IdTokenOptions,
 ) (
 	string,
-	models.OAuthError,
+	goidc.OAuthError,
 ) {
 	privateJwk := ctx.GetIdTokenSignatureKey(client)
 	signatureAlgorithm := jose.SignatureAlgorithm(privateJwk.GetAlgorithm())
-	timestampNow := unit.GetTimestampNow()
+	timestampNow := goidc.GetTimestampNow()
 
 	// Set the token claims.
 	claims := map[string]any{
@@ -92,12 +92,12 @@ func makeIdToken(
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.GetKeyId()),
 	)
 	if err != nil {
-		return "", models.NewOAuthError(goidc.InternalError, err.Error())
+		return "", goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	idToken, err := jwt.Signed(signer).Claims(claims).Serialize()
 	if err != nil {
-		return "", models.NewOAuthError(goidc.InternalError, err.Error())
+		return "", goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	return idToken, nil
@@ -105,11 +105,11 @@ func makeIdToken(
 
 func encryptIdToken(
 	ctx Context,
-	client models.Client,
+	client goidc.Client,
 	userInfoJwt string,
 ) (
 	string,
-	models.OAuthError,
+	goidc.OAuthError,
 ) {
 	jwk, oauthErr := client.GetIdTokenEncryptionJwk()
 	if oauthErr != nil {
@@ -127,15 +127,15 @@ func encryptIdToken(
 // TODO: Make it simpler. Create a confirmation object.
 func makeJwtToken(
 	ctx Context,
-	client models.Client,
-	grantOptions models.GrantOptions,
+	client goidc.Client,
+	grantOptions goidc.GrantOptions,
 ) (
 	models.Token,
-	models.OAuthError,
+	goidc.OAuthError,
 ) {
 	privateJwk := ctx.GetTokenSignatureKey(grantOptions.TokenOptions)
 	jwtId := uuid.NewString()
-	timestampNow := unit.GetTimestampNow()
+	timestampNow := goidc.GetTimestampNow()
 	claims := map[string]any{
 		goidc.TokenIdClaim:  jwtId,
 		goidc.IssuerClaim:   ctx.Host,
@@ -182,12 +182,12 @@ func makeJwtToken(
 		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", privateJwk.GetKeyId()),
 	)
 	if err != nil {
-		return models.Token{}, models.NewOAuthError(goidc.InternalError, err.Error())
+		return models.Token{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	accessToken, err := jwt.Signed(signer).Claims(claims).Serialize()
 	if err != nil {
-		return models.Token{}, models.NewOAuthError(goidc.InternalError, err.Error())
+		return models.Token{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	return models.Token{
@@ -202,13 +202,13 @@ func makeJwtToken(
 
 func makeOpaqueToken(
 	ctx Context,
-	_ models.Client,
-	grantOptions models.GrantOptions,
+	_ goidc.Client,
+	grantOptions goidc.GrantOptions,
 ) (
 	models.Token,
-	models.OAuthError,
+	goidc.OAuthError,
 ) {
-	accessToken := unit.GenerateRandomString(grantOptions.OpaqueTokenLength, grantOptions.OpaqueTokenLength)
+	accessToken := goidc.GenerateRandomString(grantOptions.OpaqueTokenLength, grantOptions.OpaqueTokenLength)
 	tokenType := goidc.BearerTokenType
 
 	// DPoP token binding.

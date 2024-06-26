@@ -1,4 +1,4 @@
-package models_test
+package goidc_test
 
 import (
 	"encoding/json"
@@ -7,15 +7,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/pkg/goidc"
 	"golang.org/x/crypto/bcrypt"
 )
 
 func TestAreScopesAllowed(t *testing.T) {
-	client := models.Client{
-		ClientMetaInfo: models.ClientMetaInfo{
+	client := goidc.Client{
+		ClientMetaInfo: goidc.ClientMetaInfo{
 			Scopes: "scope1 scope2 scope3",
 		},
 	}
@@ -41,8 +40,8 @@ func TestAreScopesAllowed(t *testing.T) {
 }
 
 func TestIsResponseTypeAllowed(t *testing.T) {
-	client := models.Client{
-		ClientMetaInfo: models.ClientMetaInfo{
+	client := goidc.Client{
+		ClientMetaInfo: goidc.ClientMetaInfo{
 			ResponseTypes: []goidc.ResponseType{goidc.CodeResponse},
 		},
 	}
@@ -67,8 +66,8 @@ func TestIsResponseTypeAllowed(t *testing.T) {
 }
 
 func TestIsGrantTypeAllowed(t *testing.T) {
-	client := models.Client{
-		ClientMetaInfo: models.ClientMetaInfo{
+	client := goidc.Client{
+		ClientMetaInfo: goidc.ClientMetaInfo{
 			GrantTypes: []goidc.GrantType{goidc.ClientCredentialsGrant},
 		},
 	}
@@ -93,8 +92,8 @@ func TestIsGrantTypeAllowed(t *testing.T) {
 }
 
 func TestIsRedirectUriAllowed(t *testing.T) {
-	client := models.Client{
-		ClientMetaInfo: models.ClientMetaInfo{
+	client := goidc.Client{
+		ClientMetaInfo: goidc.ClientMetaInfo{
 			RedirectUris: []string{"https://example.com/callback", "http://example.com?param=value"},
 		},
 	}
@@ -121,7 +120,7 @@ func TestIsRedirectUriAllowed(t *testing.T) {
 
 func TestIsAuthorizationDetailTypeAllowed(t *testing.T) {
 	// When.
-	client := models.Client{}
+	client := goidc.Client{}
 
 	// Then.
 	isValid := client.IsAuthorizationDetailTypeAllowed("random_type")
@@ -154,7 +153,7 @@ func TestIsAuthorizationDetailTypeAllowed(t *testing.T) {
 func TestIsRegistrationAccessTokenValid(t *testing.T) {
 	registrationAccessToken := "random_token"
 	hashedRegistrationAccessToken, _ := bcrypt.GenerateFromPassword([]byte(registrationAccessToken), bcrypt.DefaultCost)
-	client := models.Client{
+	client := goidc.Client{
 		HashedRegistrationAccessToken: string(hashedRegistrationAccessToken),
 	}
 
@@ -179,8 +178,8 @@ func TestGetPublicJwks(t *testing.T) {
 		})
 	}))
 
-	client := models.Client{
-		ClientMetaInfo: models.ClientMetaInfo{
+	client := goidc.Client{
+		ClientMetaInfo: goidc.ClientMetaInfo{
 			PublicJwksUri: server.URL,
 			PublicJwks:    &goidc.JsonWebKeySet{},
 		},

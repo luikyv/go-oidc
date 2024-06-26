@@ -20,15 +20,15 @@ func TestExtractJarFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 	ctx.JarIsEnabled = true
 	ctx.JarSignatureAlgorithms = []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJwk.GetAlgorithm())}
 	ctx.JarLifetimeSecs = 60
-	client := models.Client{
-		ClientMetaInfo: models.ClientMetaInfo{
+	client := goidc.Client{
+		ClientMetaInfo: goidc.ClientMetaInfo{
 			PublicJwks: &goidc.JsonWebKeySet{
 				Keys: []goidc.JsonWebKey{privateJwk.GetPublic()},
 			},
 		},
 	}
 
-	createdAtTimestamp := unit.GetTimestampNow()
+	createdAtTimestamp := goidc.GetTimestampNow()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJwk.GetAlgorithm()), Key: privateJwk.GetKey()},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.GetKeyId()),

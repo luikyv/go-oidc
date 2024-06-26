@@ -3,7 +3,7 @@ package mongodb
 import (
 	"context"
 
-	"github.com/luikymagno/goidc/internal/models"
+	"github.com/luikymagno/goidc/pkg/goidc"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -13,15 +13,15 @@ type MongoDbAuthnSessionManager struct {
 	Collection *mongo.Collection
 }
 
-func NewMongoDbAuthnSessionManager(connection *mongo.Client) MongoDbAuthnSessionManager {
+func NewMongoDbAuthnSessionManager(database *mongo.Database) MongoDbAuthnSessionManager {
 	return MongoDbAuthnSessionManager{
-		Collection: connection.Database("goidc").Collection("authentication_sessions"),
+		Collection: database.Collection("authentication_sessions"),
 	}
 }
 
 func (manager MongoDbAuthnSessionManager) CreateOrUpdate(
 	ctx context.Context,
-	session models.AuthnSession,
+	session goidc.AuthnSession,
 ) error {
 	shouldUpsert := true
 	filter := bson.D{{Key: "_id", Value: session.Id}}
@@ -36,7 +36,7 @@ func (manager MongoDbAuthnSessionManager) GetByCallbackId(
 	ctx context.Context,
 	callbackId string,
 ) (
-	models.AuthnSession,
+	goidc.AuthnSession,
 	error,
 ) {
 	return manager.getWithFilter(ctx, bson.D{{Key: "callback_id", Value: callbackId}})
@@ -46,7 +46,7 @@ func (manager MongoDbAuthnSessionManager) GetByAuthorizationCode(
 	ctx context.Context,
 	authorizationCode string,
 ) (
-	models.AuthnSession,
+	goidc.AuthnSession,
 	error,
 ) {
 	return manager.getWithFilter(ctx, bson.D{{Key: "authorization_code", Value: authorizationCode}})
@@ -56,7 +56,7 @@ func (manager MongoDbAuthnSessionManager) GetByRequestUri(
 	ctx context.Context,
 	requestUri string,
 ) (
-	models.AuthnSession,
+	goidc.AuthnSession,
 	error,
 ) {
 	return manager.getWithFilter(ctx, bson.D{{Key: "request_uri", Value: requestUri}})
@@ -78,18 +78,18 @@ func (manager MongoDbAuthnSessionManager) getWithFilter(
 	ctx context.Context,
 	filter any,
 ) (
-	models.AuthnSession,
+	goidc.AuthnSession,
 	error,
 ) {
 
 	result := manager.Collection.FindOne(ctx, filter)
 	if result.Err() != nil {
-		return models.AuthnSession{}, result.Err()
+		return goidc.AuthnSession{}, result.Err()
 	}
 
-	var authnSession models.AuthnSession
+	var authnSession goidc.AuthnSession
 	if err := result.Decode(&authnSession); err != nil {
-		return models.AuthnSession{}, err
+		return goidc.AuthnSession{}, err
 	}
 
 	return authnSession, nil

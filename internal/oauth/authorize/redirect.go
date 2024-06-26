@@ -13,10 +13,10 @@ import (
 
 func redirectError(
 	ctx utils.Context,
-	err models.OAuthError,
-	client models.Client,
-) models.OAuthError {
-	var oauthErr models.OAuthRedirectError
+	err goidc.OAuthError,
+	client goidc.Client,
+) goidc.OAuthError {
+	var oauthErr goidc.OAuthRedirectError
 	if !errors.As(err, &oauthErr) {
 		return err
 	}
@@ -31,10 +31,10 @@ func redirectError(
 
 func redirectResponse(
 	ctx utils.Context,
-	client models.Client,
-	params models.AuthorizationParameters,
+	client goidc.Client,
+	params goidc.AuthorizationParameters,
 	redirectParams models.RedirectParameters,
-) models.OAuthError {
+) goidc.OAuthError {
 
 	if ctx.IssuerResponseParameterIsEnabled {
 		redirectParams.Issuer = ctx.Host
@@ -67,11 +67,11 @@ func redirectResponse(
 
 func createJarmResponse(
 	ctx utils.Context,
-	client models.Client,
+	client goidc.Client,
 	redirectParams models.RedirectParameters,
 ) (
 	string,
-	models.OAuthError,
+	goidc.OAuthError,
 ) {
 	responseJwt, err := signJarmResponse(ctx, client, redirectParams)
 	if err != nil {
@@ -90,11 +90,11 @@ func createJarmResponse(
 
 func signJarmResponse(
 	ctx utils.Context,
-	client models.Client,
+	client goidc.Client,
 	redirectParams models.RedirectParameters,
 ) (
 	string,
-	models.OAuthError,
+	goidc.OAuthError,
 ) {
 	jwk := ctx.GetJarmSignatureKey(client)
 	signer, err := jose.NewSigner(
@@ -102,10 +102,10 @@ func signJarmResponse(
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.GetKeyId()),
 	)
 	if err != nil {
-		return "", models.NewOAuthError(goidc.InternalError, err.Error())
+		return "", goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
-	createdAtTimestamp := unit.GetTimestampNow()
+	createdAtTimestamp := goidc.GetTimestampNow()
 	claims := map[string]any{
 		goidc.IssuerClaim:   ctx.Host,
 		goidc.AudienceClaim: client.Id,
@@ -118,7 +118,7 @@ func signJarmResponse(
 
 	response, err := jwt.Signed(signer).Claims(claims).Serialize()
 	if err != nil {
-		return "", models.NewOAuthError(goidc.InternalError, err.Error())
+		return "", goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	return response, nil
@@ -127,10 +127,10 @@ func signJarmResponse(
 func encryptJarmResponse(
 	ctx utils.Context,
 	responseJwt string,
-	client models.Client,
+	client goidc.Client,
 ) (
 	string,
-	models.OAuthError,
+	goidc.OAuthError,
 ) {
 	jwk, err := client.GetJarmEncryptionJwk()
 	if err != nil {

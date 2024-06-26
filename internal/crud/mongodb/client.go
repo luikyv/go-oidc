@@ -3,7 +3,7 @@ package mongodb
 import (
 	"context"
 
-	"github.com/luikymagno/goidc/internal/models"
+	"github.com/luikymagno/goidc/pkg/goidc"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -12,13 +12,13 @@ type MongoDbClientManager struct {
 	Collection *mongo.Collection
 }
 
-func NewMongoDbClientManager(connection *mongo.Client) MongoDbClientManager {
+func NewMongoDbClientManager(database *mongo.Database) MongoDbClientManager {
 	return MongoDbClientManager{
-		Collection: connection.Database("goidc").Collection("clients"),
+		Collection: database.Collection("clients"),
 	}
 }
 
-func (manager MongoDbClientManager) Create(ctx context.Context, client models.Client) error {
+func (manager MongoDbClientManager) Create(ctx context.Context, client goidc.Client) error {
 	if _, err := manager.Collection.InsertOne(ctx, client); err != nil {
 		return err
 	}
@@ -26,7 +26,7 @@ func (manager MongoDbClientManager) Create(ctx context.Context, client models.Cl
 	return nil
 }
 
-func (manager MongoDbClientManager) Update(ctx context.Context, id string, client models.Client) error {
+func (manager MongoDbClientManager) Update(ctx context.Context, id string, client goidc.Client) error {
 	filter := bson.D{{Key: "_id", Value: id}}
 	if _, err := manager.Collection.ReplaceOne(ctx, filter, client); err != nil {
 		return err
@@ -35,17 +35,17 @@ func (manager MongoDbClientManager) Update(ctx context.Context, id string, clien
 	return nil
 }
 
-func (manager MongoDbClientManager) Get(ctx context.Context, id string) (models.Client, error) {
+func (manager MongoDbClientManager) Get(ctx context.Context, id string) (goidc.Client, error) {
 	filter := bson.D{{Key: "_id", Value: id}}
 
 	result := manager.Collection.FindOne(ctx, filter)
 	if result.Err() != nil {
-		return models.Client{}, result.Err()
+		return goidc.Client{}, result.Err()
 	}
 
-	var client models.Client
+	var client goidc.Client
 	if err := result.Decode(&client); err != nil {
-		return models.Client{}, err
+		return goidc.Client{}, err
 	}
 
 	return client, nil

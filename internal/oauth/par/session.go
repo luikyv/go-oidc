@@ -10,10 +10,10 @@ import (
 func initValidAuthnSession(
 	ctx utils.Context,
 	req models.PushedAuthorizationRequest,
-	client models.Client,
+	client goidc.Client,
 ) (
-	models.AuthnSession,
-	models.OAuthError,
+	goidc.AuthnSession,
+	goidc.OAuthError,
 ) {
 
 	if authorize.ShouldInitAuthnSessionWithJar(ctx, req.AuthorizationParameters, client) {
@@ -26,17 +26,17 @@ func initValidAuthnSession(
 func initValidSimpleAuthnSession(
 	ctx utils.Context,
 	req models.PushedAuthorizationRequest,
-	client models.Client,
+	client goidc.Client,
 ) (
-	models.AuthnSession,
-	models.OAuthError,
+	goidc.AuthnSession,
+	goidc.OAuthError,
 ) {
 	if err := validatePar(ctx, req, client); err != nil {
 		ctx.Logger.Info("request has invalid params")
-		return models.AuthnSession{}, err
+		return goidc.AuthnSession{}, err
 	}
 
-	session := models.NewSession(req.AuthorizationParameters, client)
+	session := utils.NewAuthnSession(req.AuthorizationParameters, client)
 	session.ProtectedParameters = utils.ExtractProtectedParamsFromForm(ctx)
 	return session, nil
 }
@@ -44,21 +44,21 @@ func initValidSimpleAuthnSession(
 func initValidAuthnSessionWithJar(
 	ctx utils.Context,
 	req models.PushedAuthorizationRequest,
-	client models.Client,
+	client goidc.Client,
 ) (
-	models.AuthnSession,
-	models.OAuthError,
+	goidc.AuthnSession,
+	goidc.OAuthError,
 ) {
 	jar, err := extractJarFromRequest(ctx, req, client)
 	if err != nil {
-		return models.AuthnSession{}, err
+		return goidc.AuthnSession{}, err
 	}
 
 	if err := validateParWithJar(ctx, req, jar, client); err != nil {
-		return models.AuthnSession{}, err
+		return goidc.AuthnSession{}, err
 	}
 
-	session := models.NewSession(jar.AuthorizationParameters, client)
+	session := utils.NewAuthnSession(jar.AuthorizationParameters, client)
 	session.ProtectedParameters = utils.ExtractProtectedParamsFromRequestObject(ctx, req.RequestObject)
 	return session, nil
 }
@@ -66,13 +66,13 @@ func initValidAuthnSessionWithJar(
 func extractJarFromRequest(
 	ctx utils.Context,
 	req models.PushedAuthorizationRequest,
-	client models.Client,
+	client goidc.Client,
 ) (
 	models.AuthorizationRequest,
-	models.OAuthError,
+	goidc.OAuthError,
 ) {
 	if req.RequestObject == "" {
-		return models.AuthorizationRequest{}, models.NewOAuthError(goidc.InvalidRequest, "request object is required")
+		return models.AuthorizationRequest{}, goidc.NewOAuthError(goidc.InvalidRequest, "request object is required")
 	}
 
 	return utils.ExtractJarFromRequestObject(ctx, req.RequestObject, client)

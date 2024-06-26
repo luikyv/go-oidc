@@ -4,14 +4,13 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/oauth/dcr"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func HandleDynamicClientCreation(ctx utils.Context) {
-	var req models.DynamicClientRequest
+	var req goidc.DynamicClient
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
 		bindErrorToResponse(ctx, err)
 		return
@@ -32,7 +31,7 @@ func HandleDynamicClientCreation(ctx utils.Context) {
 }
 
 func HandleDynamicClientUpdate(ctx utils.Context) {
-	var req models.DynamicClientRequest
+	var req goidc.DynamicClient
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
 		bindErrorToResponse(ctx, err)
 		return
@@ -40,7 +39,7 @@ func HandleDynamicClientUpdate(ctx utils.Context) {
 
 	token, ok := ctx.GetBearerToken()
 	if !ok {
-		bindErrorToResponse(ctx, models.NewOAuthError(goidc.AccessDenied, "no token found"))
+		bindErrorToResponse(ctx, goidc.NewOAuthError(goidc.AccessDenied, "no token found"))
 		return
 	}
 
@@ -60,11 +59,11 @@ func HandleDynamicClientUpdate(ctx utils.Context) {
 func HandleDynamicClientRetrieve(ctx utils.Context) {
 	token, ok := ctx.GetBearerToken()
 	if !ok {
-		bindErrorToResponse(ctx, models.NewOAuthError(goidc.AccessDenied, "no token found"))
+		bindErrorToResponse(ctx, goidc.NewOAuthError(goidc.AccessDenied, "no token found"))
 		return
 	}
 
-	req := models.DynamicClientRequest{
+	req := goidc.DynamicClient{
 		Id:                      ctx.Request.PathValue("client_id"),
 		RegistrationAccessToken: token,
 	}
@@ -83,11 +82,11 @@ func HandleDynamicClientRetrieve(ctx utils.Context) {
 func HandleDynamicClientDelete(ctx utils.Context) {
 	token, ok := ctx.GetBearerToken()
 	if !ok {
-		bindErrorToResponse(ctx, models.NewOAuthError(goidc.AccessDenied, "no token found"))
+		bindErrorToResponse(ctx, goidc.NewOAuthError(goidc.AccessDenied, "no token found"))
 		return
 	}
 
-	req := models.DynamicClientRequest{
+	req := goidc.DynamicClient{
 		Id:                      ctx.Request.PathValue("client_id"),
 		RegistrationAccessToken: token,
 	}

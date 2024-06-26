@@ -5,13 +5,13 @@ import (
 	"testing"
 
 	"github.com/luikymagno/goidc/internal/crud/inmemory"
-	"github.com/luikymagno/goidc/internal/models"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func TestCreateClient_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryClientManager()
-	client := models.Client{
+	client := goidc.Client{
 		Id: "random_client_id",
 	}
 
@@ -31,7 +31,7 @@ func TestCreateClient_HappyPath(t *testing.T) {
 func TestCreateClient_ClientAlreadyExists(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryClientManager()
-	client := models.Client{
+	client := goidc.Client{
 		Id: "random_client_id",
 	}
 	manager.Clients[client.Id] = client
@@ -52,7 +52,7 @@ func TestCreateClient_ClientAlreadyExists(t *testing.T) {
 func TestUpdateClient_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryClientManager()
-	client := models.Client{
+	client := goidc.Client{
 		Id: "random_client_id",
 	}
 	manager.Clients[client.Id] = client
@@ -75,7 +75,7 @@ func TestUpdateClient_ClientDoesNotExist(t *testing.T) {
 	manager := inmemory.NewInMemoryClientManager()
 
 	// Then.
-	err := manager.Update(context.Background(), "invalid_client_id", models.Client{})
+	err := manager.Update(context.Background(), "invalid_client_id", goidc.Client{})
 
 	// Assert.
 	if err == nil {
@@ -87,7 +87,7 @@ func TestGetClient_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryClientManager()
 	clientId := "random_client_id"
-	manager.Clients[clientId] = models.Client{
+	manager.Clients[clientId] = goidc.Client{
 		Id: clientId,
 	}
 
@@ -122,7 +122,7 @@ func TestDeleteClient_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryClientManager()
 	clientId := "random_client_id"
-	manager.Clients[clientId] = models.Client{
+	manager.Clients[clientId] = goidc.Client{
 		Id: clientId,
 	}
 

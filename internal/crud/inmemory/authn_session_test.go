@@ -5,13 +5,13 @@ import (
 	"testing"
 
 	"github.com/luikymagno/goidc/internal/crud/inmemory"
-	"github.com/luikymagno/goidc/internal/models"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func TestCreateOrUpdateAuthnSession_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryAuthnSessionManager()
-	session := models.AuthnSession{
+	session := goidc.AuthnSession{
 		Id: "random_session_id",
 	}
 
@@ -45,7 +45,7 @@ func TestGetAuthnSessionByCallbackId_HappyPath(t *testing.T) {
 	manager := inmemory.NewInMemoryAuthnSessionManager()
 	sessionId := "random_session_id"
 	callbackId := "random_callback_id"
-	manager.Sessions[sessionId] = models.AuthnSession{
+	manager.Sessions[sessionId] = goidc.AuthnSession{
 		Id:         sessionId,
 		CallbackId: callbackId,
 	}
@@ -68,7 +68,7 @@ func TestGetAuthnSessionByAuthorizationCode_HappyPath(t *testing.T) {
 	manager := inmemory.NewInMemoryAuthnSessionManager()
 	sessionId := "random_session_id"
 	authorizationCode := "random_authorization_code"
-	manager.Sessions[sessionId] = models.AuthnSession{
+	manager.Sessions[sessionId] = goidc.AuthnSession{
 		Id:                sessionId,
 		AuthorizationCode: authorizationCode,
 	}
@@ -91,9 +91,9 @@ func TestGetAuthnSessionByRequestUri_HappyPath(t *testing.T) {
 	manager := inmemory.NewInMemoryAuthnSessionManager()
 	sessionId := "random_session_id"
 	requestUri := "random_request_uri"
-	manager.Sessions[sessionId] = models.AuthnSession{
+	manager.Sessions[sessionId] = goidc.AuthnSession{
 		Id: sessionId,
-		AuthorizationParameters: models.AuthorizationParameters{
+		AuthorizationParameters: goidc.AuthorizationParameters{
 			RequestUri: requestUri,
 		},
 	}
@@ -115,7 +115,7 @@ func TestDeleteAuthnSession_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryAuthnSessionManager()
 	sessionId := "random_session_id"
-	manager.Sessions[sessionId] = models.AuthnSession{
+	manager.Sessions[sessionId] = goidc.AuthnSession{
 		Id: sessionId,
 	}
 

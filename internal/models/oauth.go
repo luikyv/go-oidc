@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
@@ -20,37 +19,6 @@ type DpopJwtValidationOptions struct {
 	// AccessToken should be filled when the DPoP "ath" claim is expected and should be validated.
 	AccessToken   string
 	JwkThumbprint string
-}
-
-type IdTokenOptions struct {
-	Subject                 string
-	ClientId                string
-	AdditionalIdTokenClaims map[string]any
-	// These values here below are intended to be hashed and placed in the ID token.
-	// Then, the ID token can be used as a detached signature for the implicit grant.
-	AccessToken       string
-	AuthorizationCode string
-	State             string
-}
-
-type GrantOptions struct {
-	GrantType                   goidc.GrantType             `json:"grant_type"`
-	Subject                     string                      `json:"sub"`
-	ClientId                    string                      `json:"client_id"`
-	GrantedScopes               string                      `json:"scopes"`
-	GrantedAuthorizationDetails []goidc.AuthorizationDetail `json:"authorization_details"`
-	CreatedAtTimestamp          int                         `json:"created_at"`
-	AdditionalIdTokenClaims     map[string]any              `json:"additional_id_token_claims"`
-	AdditionalUserInfoClaims    map[string]any              `json:"additional_user_info_claims"`
-	goidc.TokenOptions
-}
-
-func (grantOpts GrantOptions) GetIdTokenOptions() IdTokenOptions {
-	return IdTokenOptions{
-		Subject:                 grantOpts.Subject,
-		ClientId:                grantOpts.ClientId,
-		AdditionalIdTokenClaims: grantOpts.AdditionalIdTokenClaims,
-	}
 }
 
 type ClientAuthnRequest struct {
@@ -102,77 +70,15 @@ type TokenResponse struct {
 	AuthorizationDetails []goidc.AuthorizationDetail `json:"authorization_details,omitempty"`
 }
 
-type AuthorizationParameters struct {
-	RequestUri          string                    `json:"request_uri,omitempty" bson:"request_uri,omitempty"`
-	RequestObject       string                    `json:"request,omitempty" bson:"request,omitempty"`
-	RedirectUri         string                    `json:"redirect_uri,omitempty" bson:"redirect_uri,omitempty"`
-	ResponseMode        goidc.ResponseMode        `json:"response_mode,omitempty" bson:"response_mode,omitempty"`
-	ResponseType        goidc.ResponseType        `json:"response_type,omitempty" bson:"response_type,omitempty"`
-	Scopes              string                    `json:"scope,omitempty" bson:"scope,omitempty"`
-	State               string                    `json:"state,omitempty" bson:"state,omitempty"`
-	Nonce               string                    `json:"nonce,omitempty" bson:"nonce,omitempty"`
-	CodeChallenge       string                    `json:"code_challenge,omitempty" bson:"code_challenge,omitempty"`
-	CodeChallengeMethod goidc.CodeChallengeMethod `json:"code_challenge_method,omitempty" bson:"code_challenge_method,omitempty"`
-	Prompt              goidc.PromptType          `json:"prompt,omitempty" bson:"prompt,omitempty"`
-	// MaxAuthenticationAgeSecs is a pointer to help differentiate when it's null or not.
-	MaxAuthenticationAgeSecs *int               `json:"max_age,omitempty" bson:"max_age,omitempty"`
-	Display                  goidc.DisplayValue `json:"display,omitempty" bson:"display,omitempty"`
-	AcrValues                string             `json:"acr_values,omitempty" bson:"acr_values,omitempty"`
-	// Claims is a pointer to help differentiate when it's null or not.
-	Claims               *goidc.ClaimsObject         `json:"claims,omitempty" bson:"claims,omitempty"`
-	AuthorizationDetails []goidc.AuthorizationDetail `json:"authorization_details,omitempty" bson:"authorization_details,omitempty"`
-}
-
-func (params AuthorizationParameters) NewRedirectError(
-	errorCode goidc.ErrorCode,
-	errorDescription string,
-) OAuthRedirectError {
-	return NewOAuthRedirectError(errorCode, errorDescription, params)
-}
-
-func (insideParams AuthorizationParameters) Merge(outsideParams AuthorizationParameters) AuthorizationParameters {
-	params := AuthorizationParameters{
-		RedirectUri:              unit.GetNonEmptyOrDefault(insideParams.RedirectUri, outsideParams.RedirectUri),
-		ResponseMode:             unit.GetNonEmptyOrDefault(insideParams.ResponseMode, outsideParams.ResponseMode),
-		ResponseType:             unit.GetNonEmptyOrDefault(insideParams.ResponseType, outsideParams.ResponseType),
-		Scopes:                   unit.GetNonEmptyOrDefault(insideParams.Scopes, outsideParams.Scopes),
-		State:                    unit.GetNonEmptyOrDefault(insideParams.State, outsideParams.State),
-		Nonce:                    unit.GetNonEmptyOrDefault(insideParams.Nonce, outsideParams.Nonce),
-		CodeChallenge:            unit.GetNonEmptyOrDefault(insideParams.CodeChallenge, outsideParams.CodeChallenge),
-		CodeChallengeMethod:      unit.GetNonEmptyOrDefault(insideParams.CodeChallengeMethod, outsideParams.CodeChallengeMethod),
-		Prompt:                   unit.GetNonEmptyOrDefault(insideParams.Prompt, outsideParams.Prompt),
-		MaxAuthenticationAgeSecs: unit.GetNonEmptyOrDefault(insideParams.MaxAuthenticationAgeSecs, outsideParams.MaxAuthenticationAgeSecs),
-		Display:                  unit.GetNonEmptyOrDefault(insideParams.Display, outsideParams.Display),
-		AcrValues:                unit.GetNonEmptyOrDefault(insideParams.AcrValues, outsideParams.AcrValues),
-		Claims:                   unit.GetNonNilOrDefault(insideParams.Claims, outsideParams.Claims),
-		AuthorizationDetails:     unit.GetNonNilOrDefault(insideParams.AuthorizationDetails, outsideParams.AuthorizationDetails),
-	}
-
-	return params
-}
-
-// Get the response mode based on the response type.
-func (params AuthorizationParameters) GetResponseMode() goidc.ResponseMode {
-	if params.ResponseMode == "" {
-		return params.ResponseType.GetDefaultResponseMode(false)
-	}
-
-	if params.ResponseMode == goidc.JwtResponseMode {
-		return params.ResponseType.GetDefaultResponseMode(true)
-	}
-
-	return params.ResponseMode
-}
-
 type AuthorizationRequest struct {
 	ClientId string `json:"client_id"`
-	AuthorizationParameters
+	goidc.AuthorizationParameters
 }
 
 func NewAuthorizationRequest(req *http.Request) AuthorizationRequest {
 	params := AuthorizationRequest{
 		ClientId: req.URL.Query().Get("client_id"),
-		AuthorizationParameters: AuthorizationParameters{
+		AuthorizationParameters: goidc.AuthorizationParameters{
 			RequestUri:          req.URL.Query().Get("request_uri"),
 			RequestObject:       req.URL.Query().Get("request"),
 			RedirectUri:         req.URL.Query().Get("redirect_uri"),
@@ -215,11 +121,11 @@ func NewAuthorizationRequest(req *http.Request) AuthorizationRequest {
 
 type PushedAuthorizationRequest struct {
 	ClientAuthnRequest
-	AuthorizationParameters
+	goidc.AuthorizationParameters
 }
 
 func NewPushedAuthorizationRequest(req *http.Request) PushedAuthorizationRequest {
-	params := AuthorizationParameters{
+	params := goidc.AuthorizationParameters{
 		RequestUri:          req.PostFormValue("request_uri"),
 		RequestObject:       req.PostFormValue("request"),
 		RedirectUri:         req.PostFormValue("redirect_uri"),
@@ -267,22 +173,12 @@ type PushedAuthorizationResponse struct {
 	ExpiresIn  int    `json:"expires_in"`
 }
 
-type DynamicClientRequest struct {
-	Id string
-	// This value is filled with the authorization header when creating a client with DCR.
-	InitialAccessToken string
-	// This value is filled with the authorization header for all DCM requests.
-	RegistrationAccessToken string
-	Secret                  string
-	ClientMetaInfo
-}
-
 type DynamicClientResponse struct {
 	Id                      string `json:"client_id"`
 	Secret                  string `json:"client_secret,omitempty"`
 	RegistrationAccessToken string `json:"registration_access_token,omitempty"`
 	RegistrationUri         string `json:"registration_client_uri"`
-	ClientMetaInfo
+	goidc.ClientMetaInfo
 }
 
 type OpenIdMtlsConfiguration struct {
@@ -461,4 +357,23 @@ func (info TokenIntrospectionInfo) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(params)
+}
+
+type IdTokenOptions struct {
+	Subject                 string
+	ClientId                string
+	AdditionalIdTokenClaims map[string]any
+	// These values here below are intended to be hashed and placed in the ID token.
+	// Then, the ID token can be used as a detached signature for the implicit grant.
+	AccessToken       string
+	AuthorizationCode string
+	State             string
+}
+
+func NewIdTokenOptions(grantOpts goidc.GrantOptions) IdTokenOptions {
+	return IdTokenOptions{
+		Subject:                 grantOpts.Subject,
+		ClientId:                grantOpts.ClientId,
+		AdditionalIdTokenClaims: grantOpts.AdditionalIdTokenClaims,
+	}
 }

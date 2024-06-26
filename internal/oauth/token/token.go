@@ -24,7 +24,7 @@ func HandleTokenCreation(
 		ctx.Logger.Info("handling refresh_token grant type")
 		tokenResp, err = handleRefreshTokenGrantTokenCreation(ctx, req)
 	default:
-		tokenResp, err = models.TokenResponse{}, models.NewOAuthError(goidc.UnsupportedGrantType, "unsupported grant type")
+		tokenResp, err = models.TokenResponse{}, goidc.NewOAuthError(goidc.UnsupportedGrantType, "unsupported grant type")
 	}
 
 	return tokenResp, err

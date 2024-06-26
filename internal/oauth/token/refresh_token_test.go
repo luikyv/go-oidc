@@ -7,7 +7,6 @@ import (
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/oauth/token"
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
@@ -21,11 +20,11 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
-	grantSession := models.GrantSession{
+	grantSession := goidc.GrantSession{
 		RefreshToken:       refreshToken,
-		ExpiresAtTimestamp: unit.GetTimestampNow() + 60,
-		GrantOptions: models.GrantOptions{
-			CreatedAtTimestamp: unit.GetTimestampNow(),
+		ExpiresAtTimestamp: goidc.GetTimestampNow() + 60,
+		GrantOptions: goidc.GrantOptions{
+			CreatedAtTimestamp: goidc.GetTimestampNow(),
 			Subject:            username,
 			ClientId:           models.TestClientId,
 			GrantedScopes:      client.Scopes,
@@ -98,11 +97,11 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
-	grantSession := models.GrantSession{
+	grantSession := goidc.GrantSession{
 		RefreshToken:       refreshToken,
 		ActiveScopes:       client.Scopes,
-		ExpiresAtTimestamp: unit.GetTimestampNow() - 10,
-		GrantOptions: models.GrantOptions{
+		ExpiresAtTimestamp: goidc.GetTimestampNow() - 10,
+		GrantOptions: goidc.GrantOptions{
 			Subject:       username,
 			ClientId:      models.TestClientId,
 			GrantedScopes: client.Scopes,

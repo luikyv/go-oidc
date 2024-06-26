@@ -15,9 +15,9 @@ import (
 func TestGetAuthenticatedClient_WithNoneAuthn_HappyPath(t *testing.T) {
 
 	// When.
-	client := models.Client{
+	client := goidc.Client{
 		Id: "random_client_id",
-		ClientMetaInfo: models.ClientMetaInfo{
+		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.NoneAuthn,
 		},
 	}
@@ -42,9 +42,9 @@ func TestGetAuthenticatedClient_WithSecretPostAuthn_HappyPath(t *testing.T) {
 	// When.
 	clientSecret := "password"
 	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 0)
-	client := models.Client{
+	client := goidc.Client{
 		Id: "random_client_id",
-		ClientMetaInfo: models.ClientMetaInfo{
+		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientSecretPostAuthn,
 		},
 		HashedSecret: string(hashedClientSecret),
@@ -81,9 +81,9 @@ func TestGetAuthenticatedClient_WithPrivateKeyJwt_HappyPath(t *testing.T) {
 
 	// When.
 	privateJwk := unit.GetTestPrivateRs256Jwk("rsa256_key")
-	client := models.Client{
+	client := goidc.Client{
 		Id: "random_client_id",
-		ClientMetaInfo: models.ClientMetaInfo{
+		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.PrivateKeyJwtAuthn,
 			PublicJwks: &goidc.JsonWebKeySet{
 				Keys: []goidc.JsonWebKey{privateJwk.GetPublic()},
@@ -96,7 +96,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJwt_HappyPath(t *testing.T) {
 	ctx.PrivateKeyJwtAssertionLifetimeSecs = 60
 	ctx.CreateClient(client)
 
-	createdAtTimestamp := unit.GetTimestampNow()
+	createdAtTimestamp := goidc.GetTimestampNow()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJwk.GetAlgorithm()), Key: privateJwk.GetKey()},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.GetKeyId()),
@@ -126,9 +126,9 @@ func TestGetAuthenticatedClient_WithPrivateKeyJwt_HappyPath(t *testing.T) {
 func TestGetAuthenticatedClient_WithDifferentClientIds(t *testing.T) {
 
 	// When.
-	client := models.Client{
+	client := goidc.Client{
 		Id: "random_client_id",
-		ClientMetaInfo: models.ClientMetaInfo{
+		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.NoneAuthn,
 		},
 	}

@@ -11,8 +11,8 @@ import (
 func validatePar(
 	ctx utils.Context,
 	req models.PushedAuthorizationRequest,
-	client models.Client,
-) models.OAuthError {
+	client goidc.Client,
+) goidc.OAuthError {
 	return validatePushedAuthorizationParams(ctx, req.AuthorizationParameters, client)
 }
 
@@ -20,19 +20,19 @@ func validateParWithJar(
 	ctx utils.Context,
 	req models.PushedAuthorizationRequest,
 	jar models.AuthorizationRequest,
-	client models.Client,
-) models.OAuthError {
+	client goidc.Client,
+) goidc.OAuthError {
 
 	if req.RequestUri != "" {
-		return models.NewOAuthError(goidc.InvalidRequest, "request_uri is not allowed during PAR")
+		return goidc.NewOAuthError(goidc.InvalidRequest, "request_uri is not allowed during PAR")
 	}
 
 	if jar.ClientId != client.Id {
-		return models.NewOAuthError(goidc.InvalidResquestObject, "invalid client_id")
+		return goidc.NewOAuthError(goidc.InvalidResquestObject, "invalid client_id")
 	}
 
 	if jar.RequestUri != "" {
-		return models.NewOAuthError(goidc.InvalidResquestObject, "request_uri is not allowed inside JAR")
+		return goidc.NewOAuthError(goidc.InvalidResquestObject, "request_uri is not allowed inside JAR")
 	}
 
 	// The PAR RFC says:
@@ -44,9 +44,9 @@ func validateParWithJar(
 
 func validatePushedAuthorizationParams(
 	ctx utils.Context,
-	params models.AuthorizationParameters,
-	client models.Client,
-) models.OAuthError {
+	params goidc.AuthorizationParameters,
+	client goidc.Client,
+) goidc.OAuthError {
 	return utils.RunValidations(
 		ctx, params, client,
 		validateNoneAuthnNotAllowed,
@@ -68,36 +68,36 @@ func validatePushedAuthorizationParams(
 
 func validateNoneAuthnNotAllowed(
 	_ utils.Context,
-	_ models.AuthorizationParameters,
-	client models.Client,
-) models.OAuthError {
+	_ goidc.AuthorizationParameters,
+	client goidc.Client,
+) goidc.OAuthError {
 	if client.AuthnMethod == goidc.NoneAuthn {
-		return models.NewOAuthError(goidc.InvalidRequest, "invalid client authentication method")
+		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid client authentication method")
 	}
 	return nil
 }
 
 func validateOpenIdRedirectUri(
 	ctx utils.Context,
-	params models.AuthorizationParameters,
-	client models.Client,
-) models.OAuthError {
+	params goidc.AuthorizationParameters,
+	client goidc.Client,
+) goidc.OAuthError {
 
 	if ctx.Profile != goidc.OpenIdProfile {
 		return nil
 	}
 
 	if params.RedirectUri != "" && !client.IsRedirectUriAllowed(params.RedirectUri) {
-		return models.NewOAuthError(goidc.InvalidRequest, "invalid redirect_uri")
+		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid redirect_uri")
 	}
 	return nil
 }
 
 func validateFapi2RedirectUri(
 	ctx utils.Context,
-	params models.AuthorizationParameters,
-	_ models.Client,
-) models.OAuthError {
+	params goidc.AuthorizationParameters,
+	_ goidc.Client,
+) goidc.OAuthError {
 
 	if ctx.Profile != goidc.Fapi2Profile {
 		return nil
@@ -105,44 +105,44 @@ func validateFapi2RedirectUri(
 
 	// According to FAPI 2.0 "pre-registration is not required with client authentication and PAR".
 	if params.RedirectUri == "" {
-		return models.NewOAuthError(goidc.InvalidRequest, "redirect_uri is required")
+		return goidc.NewOAuthError(goidc.InvalidRequest, "redirect_uri is required")
 	}
 	return nil
 }
 
 func validateResponseType(
 	_ utils.Context,
-	params models.AuthorizationParameters,
-	client models.Client,
-) models.OAuthError {
+	params goidc.AuthorizationParameters,
+	client goidc.Client,
+) goidc.OAuthError {
 	if params.ResponseType != "" && !client.IsResponseTypeAllowed(params.ResponseType) {
-		return models.NewOAuthError(goidc.InvalidRequest, "invalid response_type")
+		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid response_type")
 	}
 	return nil
 }
 
 func validateScopes(
 	ctx utils.Context,
-	params models.AuthorizationParameters,
-	client models.Client,
-) models.OAuthError {
+	params goidc.AuthorizationParameters,
+	client goidc.Client,
+) goidc.OAuthError {
 	if params.Scopes != "" && ctx.OpenIdScopeIsRequired && !unit.ScopesContainsOpenId(params.Scopes) {
-		return models.NewOAuthError(goidc.InvalidScope, "scope openid is required")
+		return goidc.NewOAuthError(goidc.InvalidScope, "scope openid is required")
 	}
 
 	if params.Scopes != "" && !client.AreScopesAllowed(params.Scopes) {
-		return models.NewOAuthError(goidc.InvalidScope, "invalid scope")
+		return goidc.NewOAuthError(goidc.InvalidScope, "invalid scope")
 	}
 	return nil
 }
 
 func validateCannotInformRequestUri(
 	ctx utils.Context,
-	params models.AuthorizationParameters,
-	client models.Client,
-) models.OAuthError {
+	params goidc.AuthorizationParameters,
+	client goidc.Client,
+) goidc.OAuthError {
 	if params.RequestUri != "" {
-		return models.NewOAuthError(goidc.InvalidRequest, "request_uri is not allowed during PAR")
+		return goidc.NewOAuthError(goidc.InvalidRequest, "request_uri is not allowed during PAR")
 	}
 
 	return nil

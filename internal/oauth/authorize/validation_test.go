@@ -5,7 +5,6 @@ import (
 
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/oauth/authorize"
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
@@ -16,21 +15,21 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 	var cases = []struct {
 		Name                string
 		Req                 models.AuthorizationRequest
-		ClientModifyFunc    func(client models.Client) models.Client
+		ClientModifyFunc    func(client goidc.Client) goidc.Client
 		ShouldBeValid       bool
 		ShouldRedirectError bool
 	}{
 		{
 			"valid_oauth_request",
 			models.AuthorizationRequest{
-				AuthorizationParameters: models.AuthorizationParameters{
+				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectUri:  client.RedirectUris[0],
 					ResponseType: goidc.CodeResponse,
 					ResponseMode: goidc.QueryResponseMode,
 					Scopes:       client.Scopes,
 				},
 			},
-			func(client models.Client) models.Client {
+			func(client goidc.Client) goidc.Client {
 				return client
 			},
 			true,
@@ -39,13 +38,13 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 		{
 			"valid_openid_request",
 			models.AuthorizationRequest{
-				AuthorizationParameters: models.AuthorizationParameters{
+				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectUri:  client.RedirectUris[0],
 					ResponseType: goidc.CodeResponse,
 					Scopes:       goidc.OpenIdScope,
 				},
 			},
-			func(client models.Client) models.Client {
+			func(client goidc.Client) goidc.Client {
 				return client
 			},
 			true,
@@ -54,13 +53,13 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 		{
 			"oauth_request_invalid_response_type",
 			models.AuthorizationRequest{
-				AuthorizationParameters: models.AuthorizationParameters{
+				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectUri:  client.RedirectUris[0],
 					ResponseType: goidc.CodeResponse,
 					Scopes:       goidc.OpenIdScope,
 				},
 			},
-			func(client models.Client) models.Client {
+			func(client goidc.Client) goidc.Client {
 				client.ResponseTypes = []goidc.ResponseType{}
 				return client
 			},
@@ -70,12 +69,12 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 		{
 			"oauth_request_missing_response_type",
 			models.AuthorizationRequest{
-				AuthorizationParameters: models.AuthorizationParameters{
+				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectUri: client.RedirectUris[0],
 					Scopes:      goidc.OpenIdScope,
 				},
 			},
-			func(client models.Client) models.Client {
+			func(client goidc.Client) goidc.Client {
 				return client
 			},
 			false,
@@ -84,13 +83,13 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 		{
 			"oauth_request_invalid_scope",
 			models.AuthorizationRequest{
-				AuthorizationParameters: models.AuthorizationParameters{
+				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectUri:  client.RedirectUris[0],
 					ResponseType: goidc.CodeResponse,
 					Scopes:       "invalid_scope",
 				},
 			},
-			func(client models.Client) models.Client {
+			func(client goidc.Client) goidc.Client {
 				return client
 			},
 			false,
@@ -99,13 +98,13 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 		{
 			"oauth_request_invalid_redirect_uri",
 			models.AuthorizationRequest{
-				AuthorizationParameters: models.AuthorizationParameters{
+				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectUri:  "https://invalid.com",
 					ResponseType: goidc.CodeResponse,
 					Scopes:       client.Scopes,
 				},
 			},
-			func(client models.Client) models.Client {
+			func(client goidc.Client) goidc.Client {
 				return client
 			},
 			false,
@@ -131,7 +130,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 					return
 				}
 
-				_, ok := err.(models.OAuthRedirectError)
+				_, ok := err.(goidc.OAuthRedirectError)
 				if c.ShouldRedirectError && !ok {
 					t.Errorf("error is not of type redirect. Error: %v", err)
 				}
@@ -147,8 +146,8 @@ func TestValidateAuthorizationRequestWithPar(t *testing.T) {
 	var cases = []struct {
 		Name                string
 		Req                 models.AuthorizationRequest
-		Session             models.AuthnSession
-		ClientModifyFunc    func(client models.Client) models.Client
+		Session             goidc.AuthnSession
+		ClientModifyFunc    func(client goidc.Client) goidc.Client
 		ShouldBeValid       bool
 		ShouldRedirectError bool
 	}{
@@ -156,18 +155,18 @@ func TestValidateAuthorizationRequestWithPar(t *testing.T) {
 			"valid_oauth_request",
 			models.AuthorizationRequest{
 				ClientId: client.Id,
-				AuthorizationParameters: models.AuthorizationParameters{
+				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectUri:  client.RedirectUris[0],
 					ResponseType: goidc.CodeResponse,
 					ResponseMode: goidc.QueryResponseMode,
 					Scopes:       client.Scopes,
 				},
 			},
-			models.AuthnSession{
+			goidc.AuthnSession{
 				ClientId:           client.Id,
-				ExpiresAtTimestamp: unit.GetTimestampNow() + 1,
+				ExpiresAtTimestamp: goidc.GetTimestampNow() + 1,
 			},
-			func(client models.Client) models.Client {
+			func(client goidc.Client) goidc.Client {
 				return client
 			},
 			true,
@@ -177,7 +176,7 @@ func TestValidateAuthorizationRequestWithPar(t *testing.T) {
 			"valid_openid_request",
 			models.AuthorizationRequest{
 				ClientId: client.Id,
-				AuthorizationParameters: models.AuthorizationParameters{
+				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectUri:  client.RedirectUris[0],
 					ResponseType: goidc.CodeAndIdTokenResponse,
 					ResponseMode: goidc.FragmentResponseMode,
@@ -185,14 +184,14 @@ func TestValidateAuthorizationRequestWithPar(t *testing.T) {
 					Nonce:        "random_nonce",
 				},
 			},
-			models.AuthnSession{
+			goidc.AuthnSession{
 				ClientId:           client.Id,
-				ExpiresAtTimestamp: unit.GetTimestampNow() + 1,
-				AuthorizationParameters: models.AuthorizationParameters{
+				ExpiresAtTimestamp: goidc.GetTimestampNow() + 1,
+				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectUri: client.RedirectUris[0],
 				},
 			},
-			func(client models.Client) models.Client {
+			func(client goidc.Client) goidc.Client {
 				return client
 			},
 			true,
@@ -219,7 +218,7 @@ func TestValidateAuthorizationRequestWithPar(t *testing.T) {
 					return
 				}
 
-				_, ok := err.(models.OAuthRedirectError)
+				_, ok := err.(goidc.OAuthRedirectError)
 				if c.ShouldRedirectError && !ok {
 					t.Errorf("error is not of type redirect. Error: %v", err)
 				}
@@ -235,7 +234,7 @@ func TestValidateAuthorizationRequestWithJar(t *testing.T) {
 		Name                string
 		Req                 models.AuthorizationRequest
 		Jar                 models.AuthorizationRequest
-		ClientModifyFunc    func(client models.Client) models.Client
+		ClientModifyFunc    func(client goidc.Client) goidc.Client
 		ShouldBeValid       bool
 		ShouldRedirectError bool
 	}{
@@ -243,7 +242,7 @@ func TestValidateAuthorizationRequestWithJar(t *testing.T) {
 			"valid_oauth_request",
 			models.AuthorizationRequest{
 				ClientId: client.Id,
-				AuthorizationParameters: models.AuthorizationParameters{
+				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectUri:  client.RedirectUris[0],
 					ResponseType: goidc.CodeResponse,
 					ResponseMode: goidc.QueryResponseMode,
@@ -253,9 +252,9 @@ func TestValidateAuthorizationRequestWithJar(t *testing.T) {
 			},
 			models.AuthorizationRequest{
 				ClientId:                client.Id,
-				AuthorizationParameters: models.AuthorizationParameters{},
+				AuthorizationParameters: goidc.AuthorizationParameters{},
 			},
-			func(client models.Client) models.Client {
+			func(client goidc.Client) goidc.Client {
 				return client
 			},
 			true,
@@ -265,7 +264,7 @@ func TestValidateAuthorizationRequestWithJar(t *testing.T) {
 			"valid_openid_request",
 			models.AuthorizationRequest{
 				ClientId: client.Id,
-				AuthorizationParameters: models.AuthorizationParameters{
+				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectUri:  client.RedirectUris[0],
 					ResponseType: goidc.CodeAndIdTokenResponse,
 					ResponseMode: goidc.FragmentResponseMode,
@@ -274,12 +273,12 @@ func TestValidateAuthorizationRequestWithJar(t *testing.T) {
 			},
 			models.AuthorizationRequest{
 				ClientId: client.Id,
-				AuthorizationParameters: models.AuthorizationParameters{
+				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectUri: client.RedirectUris[0],
 					Nonce:       "random_nonce",
 				},
 			},
-			func(client models.Client) models.Client {
+			func(client goidc.Client) goidc.Client {
 				return client
 			},
 			true,
@@ -293,7 +292,7 @@ func TestValidateAuthorizationRequestWithJar(t *testing.T) {
 			models.AuthorizationRequest{
 				ClientId: "invalid_client_id",
 			},
-			func(client models.Client) models.Client {
+			func(client goidc.Client) goidc.Client {
 				return client
 			},
 			false,
@@ -320,7 +319,7 @@ func TestValidateAuthorizationRequestWithJar(t *testing.T) {
 					return
 				}
 
-				_, ok := err.(models.OAuthRedirectError)
+				_, ok := err.(goidc.OAuthRedirectError)
 				if c.ShouldRedirectError && !ok {
 					t.Errorf("error is not of type redirect. Error: %v", err)
 				}

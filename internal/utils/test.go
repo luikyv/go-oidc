@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 
 	"github.com/luikymagno/goidc/internal/crud/inmemory"
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
@@ -54,9 +53,9 @@ func GetDummyTestContext() Context {
 	}
 }
 
-func GetAuthnSessionsFromTestContext(ctx Context) []models.AuthnSession {
+func GetAuthnSessionsFromTestContext(ctx Context) []goidc.AuthnSession {
 	sessionManager, _ := ctx.AuthnSessionManager.(*inmemory.InMemoryAuthnSessionManager)
-	sessions := make([]models.AuthnSession, 0, len(sessionManager.Sessions))
+	sessions := make([]goidc.AuthnSession, 0, len(sessionManager.Sessions))
 	for _, s := range sessionManager.Sessions {
 		sessions = append(sessions, s)
 	}
@@ -64,9 +63,9 @@ func GetAuthnSessionsFromTestContext(ctx Context) []models.AuthnSession {
 	return sessions
 }
 
-func GetGrantSessionsFromTestContext(ctx Context) []models.GrantSession {
+func GetGrantSessionsFromTestContext(ctx Context) []goidc.GrantSession {
 	manager, _ := ctx.GrantSessionManager.(*inmemory.InMemoryGrantSessionManager)
-	tokens := make([]models.GrantSession, 0, len(manager.Sessions))
+	tokens := make([]goidc.GrantSession, 0, len(manager.Sessions))
 	for _, t := range manager.Sessions {
 		tokens = append(tokens, t)
 	}

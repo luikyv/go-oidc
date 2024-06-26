@@ -8,10 +8,10 @@ import (
 
 func CreateClient(
 	ctx utils.Context,
-	dynamicClient models.DynamicClientRequest,
+	dynamicClient goidc.DynamicClient,
 ) (
 	models.DynamicClientResponse,
-	models.OAuthError,
+	goidc.OAuthError,
 ) {
 	setCreationDefaults(ctx, &dynamicClient)
 	if err := validateDynamicClientRequest(ctx, dynamicClient); err != nil {
@@ -25,7 +25,7 @@ func CreateClient(
 
 	newClient := newClient(dynamicClient)
 	if err := ctx.CreateClient(newClient); err != nil {
-		return models.DynamicClientResponse{}, models.NewOAuthError(goidc.InternalError, err.Error())
+		return models.DynamicClientResponse{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	return models.DynamicClientResponse{
@@ -39,10 +39,10 @@ func CreateClient(
 
 func UpdateClient(
 	ctx utils.Context,
-	dynamicClient models.DynamicClientRequest,
+	dynamicClient goidc.DynamicClient,
 ) (
 	models.DynamicClientResponse,
-	models.OAuthError,
+	goidc.OAuthError,
 ) {
 	client, err := getProtectedClient(ctx, dynamicClient)
 	if err != nil {
@@ -61,7 +61,7 @@ func UpdateClient(
 
 	updatedClient := newClient(dynamicClient)
 	if err := ctx.UpdateClient(client.Id, updatedClient); err != nil {
-		return models.DynamicClientResponse{}, models.NewOAuthError(goidc.InternalError, err.Error())
+		return models.DynamicClientResponse{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	return models.DynamicClientResponse{
@@ -75,10 +75,10 @@ func UpdateClient(
 
 func GetClient(
 	ctx utils.Context,
-	dynamicClientRequest models.DynamicClientRequest,
+	dynamicClientRequest goidc.DynamicClient,
 ) (
 	models.DynamicClientResponse,
-	models.OAuthError,
+	goidc.OAuthError,
 ) {
 
 	client, err := getProtectedClient(ctx, dynamicClientRequest)
@@ -95,15 +95,15 @@ func GetClient(
 
 func DeleteClient(
 	ctx utils.Context,
-	dynamicClientRequest models.DynamicClientRequest,
-) models.OAuthError {
+	dynamicClientRequest goidc.DynamicClient,
+) goidc.OAuthError {
 	_, err := getProtectedClient(ctx, dynamicClientRequest)
 	if err != nil {
 		return err
 	}
 
 	if err := ctx.DeleteClient(dynamicClientRequest.Id); err != nil {
-		return models.NewOAuthError(goidc.InternalError, err.Error())
+		return goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 	return nil
 }

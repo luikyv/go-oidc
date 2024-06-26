@@ -8,11 +8,11 @@ import (
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-func HandleUserInfoRequest(ctx utils.Context) (models.UserInfoResponse, models.OAuthError) {
+func HandleUserInfoRequest(ctx utils.Context) (models.UserInfoResponse, goidc.OAuthError) {
 
 	token, tokenType, ok := ctx.GetAuthorizationToken()
 	if !ok {
-		return models.UserInfoResponse{}, models.NewOAuthError(goidc.InvalidToken, "no token found")
+		return models.UserInfoResponse{}, goidc.NewOAuthError(goidc.InvalidToken, "no token found")
 	}
 
 	tokenId, oauthErr := utils.GetTokenId(ctx, token)
@@ -22,7 +22,7 @@ func HandleUserInfoRequest(ctx utils.Context) (models.UserInfoResponse, models.O
 
 	grantSession, err := ctx.GetGrantSessionByTokenId(tokenId)
 	if err != nil {
-		return models.UserInfoResponse{}, models.NewOAuthError(goidc.InvalidRequest, "invalid token")
+		return models.UserInfoResponse{}, goidc.NewOAuthError(goidc.InvalidRequest, "invalid token")
 	}
 
 	if err := validateUserInfoRequest(ctx, grantSession, token, tokenType); err != nil {
@@ -31,7 +31,7 @@ func HandleUserInfoRequest(ctx utils.Context) (models.UserInfoResponse, models.O
 
 	client, err := ctx.GetClient(grantSession.ClientId)
 	if err != nil {
-		return models.UserInfoResponse{}, models.NewOAuthError(goidc.InternalError, err.Error())
+		return models.UserInfoResponse{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	userInfoResponse, oauthErr := getUserInfoResponse(ctx, client, grantSession)
@@ -44,11 +44,11 @@ func HandleUserInfoRequest(ctx utils.Context) (models.UserInfoResponse, models.O
 
 func getUserInfoResponse(
 	ctx utils.Context,
-	client models.Client,
-	grantSession models.GrantSession,
+	client goidc.Client,
+	grantSession goidc.GrantSession,
 ) (
 	models.UserInfoResponse,
-	models.OAuthError,
+	goidc.OAuthError,
 ) {
 
 	userInfoClaims := map[string]any{
@@ -70,7 +70,7 @@ func getUserInfoResponse(
 	userInfoClaims[goidc.AudienceClaim] = client.Id
 	jwtUserInfoClaims, err := signUserInfoClaims(ctx, client, userInfoClaims)
 	if err != nil {
-		return models.UserInfoResponse{}, models.NewOAuthError(goidc.InternalError, err.Error())
+		return models.UserInfoResponse{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	// If the client doesn't require the user info to be encrypted,
@@ -82,7 +82,7 @@ func getUserInfoResponse(
 
 	jwtUserInfoClaims, err = encryptUserInfoJwt(ctx, client, jwtUserInfoClaims)
 	if err != nil {
-		return models.UserInfoResponse{}, models.NewOAuthError(goidc.InternalError, err.Error())
+		return models.UserInfoResponse{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 	userInfoResponse.JwtClaims = jwtUserInfoClaims
 	return userInfoResponse, nil
@@ -90,11 +90,11 @@ func getUserInfoResponse(
 
 func signUserInfoClaims(
 	ctx utils.Context,
-	client models.Client,
+	client goidc.Client,
 	claims map[string]any,
 ) (
 	string,
-	models.OAuthError,
+	goidc.OAuthError,
 ) {
 	privateJwk := ctx.GetUserInfoSignatureKey(client)
 	signatureAlgorithm := jose.SignatureAlgorithm(privateJwk.GetAlgorithm())
@@ -103,12 +103,12 @@ func signUserInfoClaims(
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.GetKeyId()),
 	)
 	if err != nil {
-		return "", models.NewOAuthError(goidc.InternalError, err.Error())
+		return "", goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	idToken, err := jwt.Signed(signer).Claims(claims).Serialize()
 	if err != nil {
-		return "", models.NewOAuthError(goidc.InternalError, err.Error())
+		return "", goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	return idToken, nil
@@ -116,11 +116,11 @@ func signUserInfoClaims(
 
 func encryptUserInfoJwt(
 	ctx utils.Context,
-	client models.Client,
+	client goidc.Client,
 	userInfoJwt string,
 ) (
 	string,
-	models.OAuthError,
+	goidc.OAuthError,
 ) {
 	jwk, oauthErr := client.GetUserInfoEncryptionJwk()
 	if oauthErr != nil {

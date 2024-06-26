@@ -14,7 +14,7 @@ func IntrospectToken(
 	req models.TokenIntrospectionRequest,
 ) (
 	models.TokenIntrospectionInfo,
-	models.OAuthError,
+	goidc.OAuthError,
 ) {
 	client, err := utils.GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
@@ -28,7 +28,7 @@ func IntrospectToken(
 
 	resp := getTokenIntrospectionInfo(ctx, req.Token)
 	if !resp.IsActive && resp.ClientId != client.Id {
-		return models.TokenIntrospectionInfo{}, models.NewOAuthError(goidc.InvalidClient, "invalid token")
+		return models.TokenIntrospectionInfo{}, goidc.NewOAuthError(goidc.InvalidClient, "invalid token")
 	}
 
 	return models.TokenIntrospectionInfo{}, nil
@@ -37,14 +37,14 @@ func IntrospectToken(
 func validateTokenIntrospectionRequest(
 	_ utils.Context,
 	req models.TokenIntrospectionRequest,
-	client models.Client,
-) models.OAuthError {
+	client goidc.Client,
+) goidc.OAuthError {
 	if !client.IsGrantTypeAllowed(goidc.IntrospectionGrant) {
-		return models.NewOAuthError(goidc.InvalidGrant, "client not allowed to introspect tokens")
+		return goidc.NewOAuthError(goidc.InvalidGrant, "client not allowed to introspect tokens")
 	}
 
 	if req.Token == "" {
-		return models.NewOAuthError(goidc.InvalidRequest, "token is required")
+		return goidc.NewOAuthError(goidc.InvalidRequest, "token is required")
 	}
 
 	return nil

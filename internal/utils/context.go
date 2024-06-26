@@ -13,8 +13,6 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/internal/crud"
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
@@ -25,9 +23,9 @@ type Configuration struct {
 	MtlsIsEnabled       bool
 	MtlsHost            string
 	Scopes              []string
-	ClientManager       crud.ClientManager
-	GrantSessionManager crud.GrantSessionManager
-	AuthnSessionManager crud.AuthnSessionManager
+	ClientManager       goidc.ClientManager
+	GrantSessionManager goidc.GrantSessionManager
+	AuthnSessionManager goidc.AuthnSessionManager
 	// The server JWKS containing private and public information.
 	// When exposing it, the private information is removed.
 	PrivateJwks goidc.JsonWebKeySet
@@ -227,7 +225,7 @@ func (ctx Context) GetClientCertificate() (*x509.Certificate, bool) {
 	return clientCert, true
 }
 
-func (ctx Context) ExecuteDcrPlugin(dynamicClient *models.DynamicClientRequest) {
+func (ctx Context) ExecuteDcrPlugin(dynamicClient *goidc.DynamicClient) {
 	if ctx.DcrPlugin != nil {
 		ctx.DcrPlugin(ctx, dynamicClient)
 	}
@@ -262,7 +260,7 @@ func (ctx Context) GetPolicyById(policyId string) goidc.AuthnPolicy {
 	return goidc.AuthnPolicy{}
 }
 
-func (ctx Context) GetAvailablePolicy(client models.Client, session *models.AuthnSession) (
+func (ctx Context) GetAvailablePolicy(client goidc.Client, session *goidc.AuthnSession) (
 	policy goidc.AuthnPolicy,
 	ok bool,
 ) {
@@ -295,18 +293,18 @@ func (ctx Context) Value(key any) any {
 
 //---------------------------------------- CRUD ----------------------------------------//
 
-func (ctx Context) CreateClient(client models.Client) error {
+func (ctx Context) CreateClient(client goidc.Client) error {
 	return ctx.ClientManager.Create(ctx, client)
 }
 
-func (ctx Context) UpdateClient(id string, client models.Client) error {
+func (ctx Context) UpdateClient(id string, client goidc.Client) error {
 	return ctx.ClientManager.Update(ctx, id, client)
 }
 
-func (ctx Context) GetClient(clientId string) (models.Client, error) {
+func (ctx Context) GetClient(clientId string) (goidc.Client, error) {
 	client, err := ctx.ClientManager.Get(ctx, clientId)
 	if err != nil {
-		return models.Client{}, err
+		return goidc.Client{}, err
 	}
 
 	// TODO: Is there a better way?
@@ -321,19 +319,19 @@ func (ctx Context) DeleteClient(id string) error {
 	return ctx.ClientManager.Delete(ctx, id)
 }
 
-func (ctx Context) CreateOrUpdateGrantSession(session models.GrantSession) error {
+func (ctx Context) CreateOrUpdateGrantSession(session goidc.GrantSession) error {
 	return ctx.GrantSessionManager.CreateOrUpdate(ctx, session)
 }
 
-func (ctx Context) GetGrantSession(id string) (models.GrantSession, error) {
+func (ctx Context) GetGrantSession(id string) (goidc.GrantSession, error) {
 	return ctx.GrantSessionManager.Get(ctx, id)
 }
 
-func (ctx Context) GetGrantSessionByTokenId(tokenId string) (models.GrantSession, error) {
+func (ctx Context) GetGrantSessionByTokenId(tokenId string) (goidc.GrantSession, error) {
 	return ctx.GrantSessionManager.GetByTokenId(ctx, tokenId)
 }
 
-func (ctx Context) GetGrantSessionByRefreshToken(refreshToken string) (models.GrantSession, error) {
+func (ctx Context) GetGrantSessionByRefreshToken(refreshToken string) (goidc.GrantSession, error) {
 	return ctx.GrantSessionManager.GetByRefreshToken(ctx, refreshToken)
 }
 
@@ -341,19 +339,19 @@ func (ctx Context) DeleteGrantSession(id string) error {
 	return ctx.GrantSessionManager.Delete(ctx, id)
 }
 
-func (ctx Context) CreateOrUpdateAuthnSession(session models.AuthnSession) error {
+func (ctx Context) CreateOrUpdateAuthnSession(session goidc.AuthnSession) error {
 	return ctx.AuthnSessionManager.CreateOrUpdate(ctx, session)
 }
 
-func (ctx Context) GetAuthnSessionByCallbackId(callbackId string) (models.AuthnSession, error) {
+func (ctx Context) GetAuthnSessionByCallbackId(callbackId string) (goidc.AuthnSession, error) {
 	return ctx.AuthnSessionManager.GetByCallbackId(ctx, callbackId)
 }
 
-func (ctx Context) GetAuthnSessionByAuthorizationCode(authorizationCode string) (models.AuthnSession, error) {
+func (ctx Context) GetAuthnSessionByAuthorizationCode(authorizationCode string) (goidc.AuthnSession, error) {
 	return ctx.AuthnSessionManager.GetByAuthorizationCode(ctx, authorizationCode)
 }
 
-func (ctx Context) GetAuthnSessionByRequestUri(requestUri string) (models.AuthnSession, error) {
+func (ctx Context) GetAuthnSessionByRequestUri(requestUri string) (goidc.AuthnSession, error) {
 	return ctx.AuthnSessionManager.GetByRequestUri(ctx, requestUri)
 }
 
@@ -549,15 +547,15 @@ func (ctx Context) GetTokenSignatureKey(tokenOptions goidc.TokenOptions) goidc.J
 	return keys[0]
 }
 
-func (ctx Context) GetUserInfoSignatureKey(client models.Client) goidc.JsonWebKey {
+func (ctx Context) GetUserInfoSignatureKey(client goidc.Client) goidc.JsonWebKey {
 	return ctx.getPrivateKeyBasedOnAlgorithmOrDefault(client.UserInfoSignatureAlgorithm, ctx.DefaultUserInfoSignatureKeyId, ctx.UserInfoSignatureKeyIds)
 }
 
-func (ctx Context) GetIdTokenSignatureKey(client models.Client) goidc.JsonWebKey {
+func (ctx Context) GetIdTokenSignatureKey(client goidc.Client) goidc.JsonWebKey {
 	return ctx.getPrivateKeyBasedOnAlgorithmOrDefault(client.IdTokenSignatureAlgorithm, ctx.DefaultUserInfoSignatureKeyId, ctx.UserInfoSignatureKeyIds)
 }
 
-func (ctx Context) GetJarmSignatureKey(client models.Client) goidc.JsonWebKey {
+func (ctx Context) GetJarmSignatureKey(client goidc.Client) goidc.JsonWebKey {
 	return ctx.getPrivateKeyBasedOnAlgorithmOrDefault(client.JarmSignatureAlgorithm, ctx.DefaultJarmSignatureKeyId, ctx.JarmSignatureKeyIds)
 }
 

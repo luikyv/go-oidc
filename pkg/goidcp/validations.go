@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
@@ -97,7 +96,7 @@ func validateClientSecretJwtSignatureAlgorithms(provider OpenIdProvider) error {
 }
 
 func validateIntrospectionClientAuthnMethods(provider OpenIdProvider) error {
-	if provider.config.IntrospectionIsEnabled && (!unit.ContainsAll(provider.config.ClientAuthnMethods, provider.config.IntrospectionClientAuthnMethods...) ||
+	if provider.config.IntrospectionIsEnabled && (!goidc.ContainsAll(provider.config.ClientAuthnMethods, provider.config.IntrospectionClientAuthnMethods...) ||
 		slices.Contains(provider.config.IntrospectionClientAuthnMethods, goidc.NoneAuthn)) {
 		return errors.New("invalid client authentication method for token introspection")
 	}

@@ -3,43 +3,43 @@ package inmemory
 import (
 	"context"
 
-	"github.com/luikymagno/goidc/internal/models"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 type InMemoryClientManager struct {
-	Clients map[string]models.Client
+	Clients map[string]goidc.Client
 }
 
 func NewInMemoryClientManager() *InMemoryClientManager {
 	return &InMemoryClientManager{
-		Clients: make(map[string]models.Client),
+		Clients: make(map[string]goidc.Client),
 	}
 }
 
-func (manager *InMemoryClientManager) Create(_ context.Context, client models.Client) error {
+func (manager *InMemoryClientManager) Create(_ context.Context, client goidc.Client) error {
 	_, exists := manager.Clients[client.Id]
 	if exists {
-		return models.ErrorEntityAlreadyExists
+		return goidc.ErrorEntityAlreadyExists
 	}
 
 	manager.Clients[client.Id] = client
 	return nil
 }
 
-func (manager *InMemoryClientManager) Update(_ context.Context, id string, client models.Client) error {
+func (manager *InMemoryClientManager) Update(_ context.Context, id string, client goidc.Client) error {
 	_, exists := manager.Clients[id]
 	if !exists {
-		return models.ErrorEntityNotFound
+		return goidc.ErrorEntityNotFound
 	}
 
 	manager.Clients[id] = client
 	return nil
 }
 
-func (manager *InMemoryClientManager) Get(_ context.Context, id string) (models.Client, error) {
+func (manager *InMemoryClientManager) Get(_ context.Context, id string) (goidc.Client, error) {
 	client, exists := manager.Clients[id]
 	if !exists {
-		return models.Client{}, models.ErrorEntityNotFound
+		return goidc.Client{}, goidc.ErrorEntityNotFound
 	}
 
 	return client, nil

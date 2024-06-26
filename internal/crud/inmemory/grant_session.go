@@ -3,36 +3,36 @@ package inmemory
 import (
 	"context"
 
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 type InMemoryGrantSessionManager struct {
-	Sessions map[string]models.GrantSession
+	Sessions map[string]goidc.GrantSession
 }
 
 func NewInMemoryGrantSessionManager() *InMemoryGrantSessionManager {
 	return &InMemoryGrantSessionManager{
-		Sessions: make(map[string]models.GrantSession),
+		Sessions: make(map[string]goidc.GrantSession),
 	}
 }
 
-func (manager *InMemoryGrantSessionManager) CreateOrUpdate(_ context.Context, grantSession models.GrantSession) error {
+func (manager *InMemoryGrantSessionManager) CreateOrUpdate(_ context.Context, grantSession goidc.GrantSession) error {
 	manager.Sessions[grantSession.Id] = grantSession
 	return nil
 }
 
-func (manager *InMemoryGrantSessionManager) Get(_ context.Context, id string) (models.GrantSession, error) {
+func (manager *InMemoryGrantSessionManager) Get(_ context.Context, id string) (goidc.GrantSession, error) {
 	grantSession, exists := manager.Sessions[id]
 	if !exists {
-		return models.GrantSession{}, models.ErrorEntityNotFound
+		return goidc.GrantSession{}, goidc.ErrorEntityNotFound
 	}
 
 	return grantSession, nil
 }
 
-func (manager *InMemoryGrantSessionManager) getFirstToken(condition func(models.GrantSession) bool) (models.GrantSession, bool) {
-	grantSessions := make([]models.GrantSession, 0, len(manager.Sessions))
+func (manager *InMemoryGrantSessionManager) getFirstToken(condition func(goidc.GrantSession) bool) (goidc.GrantSession, bool) {
+	grantSessions := make([]goidc.GrantSession, 0, len(manager.Sessions))
 	for _, t := range manager.Sessions {
 		grantSessions = append(grantSessions, t)
 	}
@@ -40,23 +40,23 @@ func (manager *InMemoryGrantSessionManager) getFirstToken(condition func(models.
 	return unit.FindFirst(grantSessions, condition)
 }
 
-func (manager *InMemoryGrantSessionManager) GetByTokenId(_ context.Context, tokenId string) (models.GrantSession, error) {
-	grantSession, exists := manager.getFirstToken(func(t models.GrantSession) bool {
+func (manager *InMemoryGrantSessionManager) GetByTokenId(_ context.Context, tokenId string) (goidc.GrantSession, error) {
+	grantSession, exists := manager.getFirstToken(func(t goidc.GrantSession) bool {
 		return t.TokenId == tokenId
 	})
 	if !exists {
-		return models.GrantSession{}, models.ErrorEntityNotFound
+		return goidc.GrantSession{}, goidc.ErrorEntityNotFound
 	}
 
 	return grantSession, nil
 }
 
-func (manager *InMemoryGrantSessionManager) GetByRefreshToken(_ context.Context, refreshToken string) (models.GrantSession, error) {
-	grantSession, exists := manager.getFirstToken(func(t models.GrantSession) bool {
+func (manager *InMemoryGrantSessionManager) GetByRefreshToken(_ context.Context, refreshToken string) (goidc.GrantSession, error) {
+	grantSession, exists := manager.getFirstToken(func(t goidc.GrantSession) bool {
 		return t.RefreshToken == refreshToken
 	})
 	if !exists {
-		return models.GrantSession{}, models.ErrorEntityNotFound
+		return goidc.GrantSession{}, goidc.ErrorEntityNotFound
 	}
 
 	return grantSession, nil

@@ -14,7 +14,7 @@ func handleClientCredentialsGrantTokenCreation(
 	req models.TokenRequest,
 ) (
 	models.TokenResponse,
-	models.OAuthError,
+	goidc.OAuthError,
 ) {
 	client, oauthErr := utils.GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if oauthErr != nil {
@@ -55,17 +55,17 @@ func handleClientCredentialsGrantTokenCreation(
 
 func generateClientCredentialsGrantSession(
 	ctx utils.Context,
-	_ models.Client,
+	_ goidc.Client,
 	token models.Token,
-	grantOptions models.GrantOptions,
-) (models.GrantSession, models.OAuthError) {
+	grantOptions goidc.GrantOptions,
+) (goidc.GrantSession, goidc.OAuthError) {
 
-	grantSession := models.NewGrantSession(grantOptions, token)
+	grantSession := utils.NewGrantSession(grantOptions, token)
 	ctx.Logger.Debug("creating grant session for client_credentials grant")
 	if err := ctx.CreateOrUpdateGrantSession(grantSession); err != nil {
 		ctx.Logger.Error("error creating a grant session during client_credentials grant",
 			slog.String("error", err.Error()))
-		return models.GrantSession{}, models.NewOAuthError(goidc.InternalError, err.Error())
+		return goidc.GrantSession{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	return grantSession, nil
@@ -74,21 +74,21 @@ func generateClientCredentialsGrantSession(
 func validateClientCredentialsGrantRequest(
 	ctx utils.Context,
 	req models.TokenRequest,
-	client models.Client,
-) models.OAuthError {
+	client goidc.Client,
+) goidc.OAuthError {
 
 	if !client.IsGrantTypeAllowed(goidc.ClientCredentialsGrant) {
 		ctx.Logger.Info("grant type not allowed")
-		return models.NewOAuthError(goidc.UnauthorizedClient, "invalid grant type")
+		return goidc.NewOAuthError(goidc.UnauthorizedClient, "invalid grant type")
 	}
 
 	if unit.ScopesContainsOpenId(req.Scopes) {
-		return models.NewOAuthError(goidc.InvalidScope, "cannot request openid scope for client credentials grant")
+		return goidc.NewOAuthError(goidc.InvalidScope, "cannot request openid scope for client credentials grant")
 	}
 
 	if !client.AreScopesAllowed(req.Scopes) {
 		ctx.Logger.Info("scope not allowed")
-		return models.NewOAuthError(goidc.InvalidScope, "invalid scope")
+		return goidc.NewOAuthError(goidc.InvalidScope, "invalid scope")
 	}
 
 	if err := validateTokenBindingRequestWithDpop(ctx, req, client); err != nil {
@@ -104,22 +104,22 @@ func validateClientCredentialsGrantRequest(
 
 func newClientCredentialsGrantOptions(
 	ctx utils.Context,
-	client models.Client,
+	client goidc.Client,
 	req models.TokenRequest,
 ) (
-	models.GrantOptions,
-	models.OAuthError,
+	goidc.GrantOptions,
+	goidc.OAuthError,
 ) {
 	tokenOptions, err := ctx.GetTokenOptions(client, req.Scopes)
 	if err != nil {
-		return models.GrantOptions{}, models.NewOAuthError(goidc.AccessDenied, err.Error())
+		return goidc.GrantOptions{}, goidc.NewOAuthError(goidc.AccessDenied, err.Error())
 	}
 
 	scopes := req.Scopes
 	if scopes == "" {
 		scopes = client.Scopes
 	}
-	return models.GrantOptions{
+	return goidc.GrantOptions{
 		GrantType:     goidc.ClientCredentialsGrant,
 		GrantedScopes: scopes,
 		Subject:       client.Id,

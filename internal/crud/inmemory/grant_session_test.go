@@ -5,13 +5,13 @@ import (
 	"testing"
 
 	"github.com/luikymagno/goidc/internal/crud/inmemory"
-	"github.com/luikymagno/goidc/internal/models"
+	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func TestCreateOrUpdateGrantSessionSession_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryGrantSessionManager()
-	session := models.GrantSession{
+	session := goidc.GrantSession{
 		Id: "random_session_id",
 	}
 
@@ -44,7 +44,7 @@ func TestGetGrantSession_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryGrantSessionManager()
 	sessionId := "random_session_id"
-	manager.Sessions[sessionId] = models.GrantSession{
+	manager.Sessions[sessionId] = goidc.GrantSession{
 		Id: sessionId,
 	}
 
@@ -66,7 +66,7 @@ func TestGetGrantSessionByTokenId_HappyPath(t *testing.T) {
 	manager := inmemory.NewInMemoryGrantSessionManager()
 	sessionId := "random_session_id"
 	tokenId := "random_token_id"
-	manager.Sessions[sessionId] = models.GrantSession{
+	manager.Sessions[sessionId] = goidc.GrantSession{
 		Id:      sessionId,
 		TokenId: tokenId,
 	}
@@ -89,7 +89,7 @@ func TestGetGrantSessionByRefreshToken_HappyPath(t *testing.T) {
 	manager := inmemory.NewInMemoryGrantSessionManager()
 	sessionId := "random_session_id"
 	refreshToken := "random_refresh_token"
-	manager.Sessions[sessionId] = models.GrantSession{
+	manager.Sessions[sessionId] = goidc.GrantSession{
 		Id:           sessionId,
 		RefreshToken: refreshToken,
 	}
@@ -111,7 +111,7 @@ func TestDeleteGrantSession_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryGrantSessionManager()
 	sessionId := "random_session_id"
-	manager.Sessions[sessionId] = models.GrantSession{
+	manager.Sessions[sessionId] = goidc.GrantSession{
 		Id: sessionId,
 	}
 

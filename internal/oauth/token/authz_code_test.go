@@ -7,7 +7,6 @@ import (
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/oauth/token"
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
@@ -20,18 +19,18 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 	ctx.CreateClient(client)
 
 	authorizationCode := "random_authz_code"
-	session := models.AuthnSession{
+	session := goidc.AuthnSession{
 		ClientId:      models.TestClientId,
 		GrantedScopes: goidc.OpenIdScope,
-		AuthorizationParameters: models.AuthorizationParameters{
+		AuthorizationParameters: goidc.AuthorizationParameters{
 			Scopes:      goidc.OpenIdScope,
 			RedirectUri: client.RedirectUris[0],
 		},
 		AuthorizationCode:         authorizationCode,
 		Subject:                   "user_id",
-		CreatedAtTimestamp:        unit.GetTimestampNow(),
-		AuthorizationCodeIssuedAt: unit.GetTimestampNow(),
-		ExpiresAtTimestamp:        unit.GetTimestampNow() + 60,
+		CreatedAtTimestamp:        goidc.GetTimestampNow(),
+		AuthorizationCodeIssuedAt: goidc.GetTimestampNow(),
+		ExpiresAtTimestamp:        goidc.GetTimestampNow() + 60,
 		Store:                     make(map[string]any),
 		AdditionalTokenClaims:     make(map[string]any),
 	}

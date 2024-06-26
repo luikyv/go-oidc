@@ -8,7 +8,7 @@ import (
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-func InitAuth(ctx utils.Context, req models.AuthorizationRequest) models.OAuthError {
+func InitAuth(ctx utils.Context, req models.AuthorizationRequest) goidc.OAuthError {
 	client, err := getClient(ctx, req)
 	if err != nil {
 		return err
@@ -21,7 +21,7 @@ func InitAuth(ctx utils.Context, req models.AuthorizationRequest) models.OAuthEr
 	return nil
 }
 
-func initAuth(ctx utils.Context, client models.Client, req models.AuthorizationRequest) models.OAuthError {
+func initAuth(ctx utils.Context, client goidc.Client, req models.AuthorizationRequest) goidc.OAuthError {
 	session, err := initAuthnSession(ctx, req, client)
 	if err != nil {
 		return err
@@ -29,22 +29,22 @@ func initAuth(ctx utils.Context, client models.Client, req models.AuthorizationR
 	return authenticate(ctx, &session)
 }
 
-func ContinueAuth(ctx utils.Context, callbackId string) models.OAuthError {
+func ContinueAuth(ctx utils.Context, callbackId string) goidc.OAuthError {
 
 	// Fetch the session using the callback ID.
 	session, err := ctx.GetAuthnSessionByCallbackId(callbackId)
 	if err != nil {
-		return models.NewOAuthError(goidc.InvalidRequest, err.Error())
+		return goidc.NewOAuthError(goidc.InvalidRequest, err.Error())
 	}
 
 	if session.IsExpired() {
-		return models.NewOAuthError(goidc.InvalidRequest, "session timeout")
+		return goidc.NewOAuthError(goidc.InvalidRequest, "session timeout")
 	}
 
 	if oauthErr := authenticate(ctx, &session); oauthErr != nil {
 		client, err := ctx.GetClient(session.ClientId)
 		if err != nil {
-			return models.NewOAuthError(goidc.InternalError, err.Error())
+			return goidc.NewOAuthError(goidc.InternalError, err.Error())
 		}
 		return redirectError(ctx, oauthErr, client)
 	}
@@ -56,22 +56,22 @@ func getClient(
 	ctx utils.Context,
 	req models.AuthorizationRequest,
 ) (
-	models.Client,
-	models.OAuthError,
+	goidc.Client,
+	goidc.OAuthError,
 ) {
 	if req.ClientId == "" {
-		return models.Client{}, models.NewOAuthError(goidc.InvalidClient, "invalid client_id")
+		return goidc.Client{}, goidc.NewOAuthError(goidc.InvalidClient, "invalid client_id")
 	}
 
 	client, err := ctx.GetClient(req.ClientId)
 	if err != nil {
-		return models.Client{}, models.NewOAuthError(goidc.InvalidClient, "invalid client_id")
+		return goidc.Client{}, goidc.NewOAuthError(goidc.InvalidClient, "invalid client_id")
 	}
 
 	return client, nil
 }
 
-func authenticate(ctx utils.Context, session *models.AuthnSession) models.OAuthError {
+func authenticate(ctx utils.Context, session *goidc.AuthnSession) goidc.OAuthError {
 	policy := ctx.GetPolicyById(session.PolicyId)
 	switch policy.AuthnFunc(ctx, session) {
 	case goidc.Success:
@@ -85,8 +85,8 @@ func authenticate(ctx utils.Context, session *models.AuthnSession) models.OAuthE
 
 func finishFlowWithFailure(
 	ctx utils.Context,
-	session *models.AuthnSession,
-) models.OAuthError {
+	session *goidc.AuthnSession,
+) goidc.OAuthError {
 	if err := ctx.DeleteAuthnSession(session.Id); err != nil {
 		return session.NewRedirectError(goidc.InternalError, err.Error())
 	}
@@ -100,16 +100,16 @@ func finishFlowWithFailure(
 
 func stopFlowInProgress(
 	ctx utils.Context,
-	session *models.AuthnSession,
-) models.OAuthError {
+	session *goidc.AuthnSession,
+) goidc.OAuthError {
 	if err := ctx.CreateOrUpdateAuthnSession(*session); err != nil {
-		return models.NewOAuthError(goidc.InternalError, err.Error())
+		return goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	return nil
 }
 
-func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) models.OAuthError {
+func finishFlowSuccessfully(ctx utils.Context, session *goidc.AuthnSession) goidc.OAuthError {
 
 	client, err := ctx.GetClient(session.ClientId)
 	if err != nil {
@@ -163,20 +163,20 @@ func finishFlowSuccessfully(ctx utils.Context, session *models.AuthnSession) mod
 
 func authorizeAuthnSession(
 	ctx utils.Context,
-	session *models.AuthnSession,
-) models.OAuthError {
+	session *goidc.AuthnSession,
+) goidc.OAuthError {
 
 	if !session.ResponseType.Contains(goidc.CodeResponse) {
 		// The client didn't request an authorization code to later exchange it for an access token,
 		// so we don't keep the session anymore.
 		if err := ctx.DeleteAuthnSession(session.Id); err != nil {
-			return models.NewOAuthError(goidc.InternalError, err.Error())
+			return goidc.NewOAuthError(goidc.InternalError, err.Error())
 		}
 	}
 
 	session.InitAuthorizationCode()
 	if err := ctx.CreateOrUpdateAuthnSession(*session); err != nil {
-		return models.NewOAuthError(goidc.InternalError, err.Error())
+		return goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	return nil
@@ -185,15 +185,15 @@ func authorizeAuthnSession(
 func generateImplicitGrantSession(
 	ctx utils.Context,
 	token models.Token,
-	grantOptions models.GrantOptions,
-) models.OAuthError {
+	grantOptions goidc.GrantOptions,
+) goidc.OAuthError {
 
-	grantSession := models.NewGrantSession(grantOptions, token)
+	grantSession := utils.NewGrantSession(grantOptions, token)
 	ctx.Logger.Debug("creating grant session for implicit grant")
 	if err := ctx.CreateOrUpdateGrantSession(grantSession); err != nil {
 		ctx.Logger.Error("error creating a grant session during implicit grant",
 			slog.String("error", err.Error()))
-		return models.NewOAuthError(goidc.InternalError, err.Error())
+		return goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	return nil
@@ -201,19 +201,19 @@ func generateImplicitGrantSession(
 
 func newImplicitGrantOptions(
 	ctx utils.Context,
-	client models.Client,
-	session models.AuthnSession,
+	client goidc.Client,
+	session goidc.AuthnSession,
 ) (
-	models.GrantOptions,
-	models.OAuthError,
+	goidc.GrantOptions,
+	goidc.OAuthError,
 ) {
 	tokenOptions, err := ctx.GetTokenOptions(client, session.Scopes)
 	if err != nil {
-		return models.GrantOptions{}, session.NewRedirectError(goidc.AccessDenied, err.Error())
+		return goidc.GrantOptions{}, session.NewRedirectError(goidc.AccessDenied, err.Error())
 	}
 
 	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
-	return models.GrantOptions{
+	return goidc.GrantOptions{
 		GrantType:                goidc.ImplicitGrant,
 		GrantedScopes:            session.GrantedScopes,
 		Subject:                  session.Subject,

@@ -2,14 +2,13 @@ package dcr
 
 import (
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 	"golang.org/x/crypto/bcrypt"
 )
 
-func setDefaults(_ utils.Context, dynamicClient *models.DynamicClientRequest) {
+func setDefaults(_ utils.Context, dynamicClient *goidc.DynamicClient) {
 	if dynamicClient.AuthnMethod == "" {
 		dynamicClient.AuthnMethod = goidc.ClientSecretBasicAuthn
 	}
@@ -41,9 +40,13 @@ func setDefaults(_ utils.Context, dynamicClient *models.DynamicClientRequest) {
 	if dynamicClient.JarKeyEncryptionAlgorithm != "" && dynamicClient.JarContentEncryptionAlgorithm == "" {
 		dynamicClient.JarContentEncryptionAlgorithm = jose.A128CBC_HS256
 	}
+
+	if dynamicClient.Attributes == nil {
+		dynamicClient.Attributes = make(map[string]any)
+	}
 }
 
-func setCreationDefaults(ctx utils.Context, dynamicClient *models.DynamicClientRequest) {
+func setCreationDefaults(ctx utils.Context, dynamicClient *goidc.DynamicClient) {
 	dynamicClient.Id = unit.GenerateClientId()
 	dynamicClient.RegistrationAccessToken = unit.GenerateRegistrationAccessToken()
 	setDefaults(ctx, dynamicClient)
@@ -51,8 +54,8 @@ func setCreationDefaults(ctx utils.Context, dynamicClient *models.DynamicClientR
 
 func setUpdateDefaults(
 	ctx utils.Context,
-	client models.Client,
-	dynamicClient *models.DynamicClientRequest,
+	client goidc.Client,
+	dynamicClient *goidc.DynamicClient,
 ) {
 	dynamicClient.Id = client.Id
 	if ctx.ShouldRotateRegistrationTokens {
@@ -61,9 +64,9 @@ func setUpdateDefaults(
 	setDefaults(ctx, dynamicClient)
 }
 
-func newClient(dynamicClient models.DynamicClientRequest) models.Client {
+func newClient(dynamicClient goidc.DynamicClient) goidc.Client {
 	hashedRegistrationAccessToken, _ := bcrypt.GenerateFromPassword([]byte(dynamicClient.RegistrationAccessToken), bcrypt.DefaultCost)
-	client := models.Client{
+	client := goidc.Client{
 		Id:                            dynamicClient.Id,
 		HashedRegistrationAccessToken: string(hashedRegistrationAccessToken),
 		ClientMetaInfo:                dynamicClient.ClientMetaInfo,
@@ -87,23 +90,23 @@ func getClientRegistrationUri(ctx utils.Context, clientId string) string {
 
 func getProtectedClient(
 	ctx utils.Context,
-	dynamicClient models.DynamicClientRequest,
+	dynamicClient goidc.DynamicClient,
 ) (
-	models.Client,
-	models.OAuthError,
+	goidc.Client,
+	goidc.OAuthError,
 ) {
 	if dynamicClient.Id == "" {
-		return models.Client{}, models.NewOAuthError(goidc.InvalidRequest, "invalid client_id")
+		return goidc.Client{}, goidc.NewOAuthError(goidc.InvalidRequest, "invalid client_id")
 	}
 
 	client, err := ctx.GetClient(dynamicClient.Id)
 	if err != nil {
-		return models.Client{}, models.NewOAuthError(goidc.InvalidRequest, err.Error())
+		return goidc.Client{}, goidc.NewOAuthError(goidc.InvalidRequest, err.Error())
 	}
 
 	if dynamicClient.RegistrationAccessToken == "" ||
 		!client.IsRegistrationAccessTokenValid(dynamicClient.RegistrationAccessToken) {
-		return models.Client{}, models.NewOAuthError(goidc.AccessDenied, "invalid token")
+		return goidc.Client{}, goidc.NewOAuthError(goidc.AccessDenied, "invalid token")
 	}
 
 	return client, nil

@@ -13,13 +13,13 @@ func PushAuthorization(
 	req models.PushedAuthorizationRequest,
 ) (
 	requestUri string,
-	oauthErr models.OAuthError,
+	oauthErr goidc.OAuthError,
 ) {
 
 	client, err := utils.GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
 		ctx.Logger.Info("could not authenticate the client", slog.String("client_id", req.ClientId), slog.String("error", err.Error()))
-		return "", models.NewOAuthError(goidc.InvalidClient, "client not authenticated")
+		return "", goidc.NewOAuthError(goidc.InvalidClient, "client not authenticated")
 	}
 
 	session, oauthErr := initValidAuthnSession(ctx, req, client)
@@ -30,7 +30,7 @@ func PushAuthorization(
 	requestUri = session.Push(ctx.ParLifetimeSecs)
 	if err := ctx.AuthnSessionManager.CreateOrUpdate(ctx, session); err != nil {
 		ctx.Logger.Debug("could not create a session")
-		return "", models.NewOAuthError(goidc.InternalError, err.Error())
+		return "", goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 	return requestUri, nil
 }

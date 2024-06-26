@@ -11,11 +11,11 @@ import (
 func initAuthnSession(
 	ctx utils.Context,
 	req models.AuthorizationRequest,
-	client models.Client,
-) (models.AuthnSession, models.OAuthError) {
+	client goidc.Client,
+) (goidc.AuthnSession, goidc.OAuthError) {
 	session, err := initValidAuthnSession(ctx, req, client)
 	if err != nil {
-		return models.AuthnSession{}, err
+		return goidc.AuthnSession{}, err
 	}
 
 	return session, initAuthnSessionWithPolicy(ctx, client, &session)
@@ -24,10 +24,10 @@ func initAuthnSession(
 func initValidAuthnSession(
 	ctx utils.Context,
 	req models.AuthorizationRequest,
-	client models.Client,
+	client goidc.Client,
 ) (
-	models.AuthnSession,
-	models.OAuthError,
+	goidc.AuthnSession,
+	goidc.OAuthError,
 ) {
 
 	if shouldInitAuthnSessionWithPar(ctx, req.AuthorizationParameters) {
@@ -44,7 +44,7 @@ func initValidAuthnSession(
 	return initValidSimpleAuthnSession(ctx, req, client)
 }
 
-func shouldInitAuthnSessionWithPar(ctx utils.Context, req models.AuthorizationParameters) bool {
+func shouldInitAuthnSessionWithPar(ctx utils.Context, req goidc.AuthorizationParameters) bool {
 	// Note: if PAR is not enabled, we just disconsider the request_uri.
 	return ctx.ParIsRequired || (ctx.ParIsEnabled && req.RequestUri != "")
 }
@@ -52,21 +52,21 @@ func shouldInitAuthnSessionWithPar(ctx utils.Context, req models.AuthorizationPa
 func initValidAuthnSessionWithPar(
 	ctx utils.Context,
 	req models.AuthorizationRequest,
-	client models.Client,
+	client goidc.Client,
 ) (
-	models.AuthnSession,
-	models.OAuthError,
+	goidc.AuthnSession,
+	goidc.OAuthError,
 ) {
 
 	session, err := getSessionCreatedWithPar(ctx, req)
 	if err != nil {
-		return models.AuthnSession{}, models.NewOAuthError(goidc.InvalidRequest, "invalid request_uri")
+		return goidc.AuthnSession{}, goidc.NewOAuthError(goidc.InvalidRequest, "invalid request_uri")
 	}
 
 	if err := validateAuthorizationRequestWithPar(ctx, req, session, client); err != nil {
 		// If any of the parameters is invalid, we delete the session right away.
 		ctx.DeleteAuthnSession(session.Id)
-		return models.AuthnSession{}, err
+		return goidc.AuthnSession{}, err
 	}
 
 	session.UpdateParams(req.AuthorizationParameters)
@@ -77,16 +77,16 @@ func getSessionCreatedWithPar(
 	ctx utils.Context,
 	req models.AuthorizationRequest,
 ) (
-	models.AuthnSession,
-	models.OAuthError,
+	goidc.AuthnSession,
+	goidc.OAuthError,
 ) {
 	if req.RequestUri == "" {
-		return models.AuthnSession{}, models.NewOAuthError(goidc.InvalidRequest, "request_uri is required")
+		return goidc.AuthnSession{}, goidc.NewOAuthError(goidc.InvalidRequest, "request_uri is required")
 	}
 
 	session, err := ctx.GetAuthnSessionByRequestUri(req.RequestUri)
 	if err != nil {
-		return models.AuthnSession{}, models.NewOAuthError(goidc.InvalidRequest, "invalid request_uri")
+		return goidc.AuthnSession{}, goidc.NewOAuthError(goidc.InvalidRequest, "invalid request_uri")
 	}
 
 	return session, nil
@@ -94,8 +94,8 @@ func getSessionCreatedWithPar(
 
 func ShouldInitAuthnSessionWithJar(
 	ctx utils.Context,
-	req models.AuthorizationParameters,
-	client models.Client,
+	req goidc.AuthorizationParameters,
+	client goidc.Client,
 ) bool {
 	// If JAR is not enabled, we just disconsider the request object.
 	// Also, if the client defined a signature algorithm for jar, then jar is required.
@@ -105,22 +105,22 @@ func ShouldInitAuthnSessionWithJar(
 func initValidAuthnSessionWithJar(
 	ctx utils.Context,
 	req models.AuthorizationRequest,
-	client models.Client,
+	client goidc.Client,
 ) (
-	models.AuthnSession,
-	models.OAuthError,
+	goidc.AuthnSession,
+	goidc.OAuthError,
 ) {
 
 	jar, err := getJar(ctx, req, client)
 	if err != nil {
-		return models.AuthnSession{}, err
+		return goidc.AuthnSession{}, err
 	}
 
 	if err := validateAuthorizationRequestWithJar(ctx, req, jar, client); err != nil {
-		return models.AuthnSession{}, err
+		return goidc.AuthnSession{}, err
 	}
 
-	session := models.NewSession(jar.AuthorizationParameters, client)
+	session := utils.NewAuthnSession(jar.AuthorizationParameters, client)
 	session.UpdateParams(req.AuthorizationParameters)
 	session.ProtectedParameters = utils.ExtractProtectedParamsFromRequestObject(ctx, req.RequestObject)
 	return session, nil
@@ -129,13 +129,13 @@ func initValidAuthnSessionWithJar(
 func getJar(
 	ctx utils.Context,
 	req models.AuthorizationRequest,
-	client models.Client,
+	client goidc.Client,
 ) (
 	models.AuthorizationRequest,
-	models.OAuthError,
+	goidc.OAuthError,
 ) {
 	if req.RequestObject == "" {
-		return models.AuthorizationRequest{}, models.NewOAuthError(goidc.InvalidRequest, "request object is required")
+		return models.AuthorizationRequest{}, goidc.NewOAuthError(goidc.InvalidRequest, "request object is required")
 	}
 
 	jar, err := utils.ExtractJarFromRequestObject(ctx, req.RequestObject, client)
@@ -149,23 +149,23 @@ func getJar(
 func initValidSimpleAuthnSession(
 	ctx utils.Context,
 	req models.AuthorizationRequest,
-	client models.Client,
+	client goidc.Client,
 ) (
-	models.AuthnSession,
-	models.OAuthError,
+	goidc.AuthnSession,
+	goidc.OAuthError,
 ) {
 	ctx.Logger.Info("initiating simple authorization request")
 	if err := validateAuthorizationRequest(ctx, req, client); err != nil {
-		return models.AuthnSession{}, err
+		return goidc.AuthnSession{}, err
 	}
-	return models.NewSession(req.AuthorizationParameters, client), nil
+	return utils.NewAuthnSession(req.AuthorizationParameters, client), nil
 }
 
 func initAuthnSessionWithPolicy(
 	ctx utils.Context,
-	client models.Client,
-	session *models.AuthnSession,
-) models.OAuthError {
+	client goidc.Client,
+	session *goidc.AuthnSession,
+) goidc.OAuthError {
 	policy, ok := ctx.GetAvailablePolicy(client, session)
 	if !ok {
 		ctx.Logger.Info("no policy available")

@@ -3,7 +3,6 @@ package goidc_test
 import (
 	"testing"
 
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
@@ -13,14 +12,14 @@ func TestGetPolicy_HappyPath(t *testing.T) {
 	// When
 	unavailablePolicy := goidc.NewPolicy(
 		"unavailable_policy",
-		func(ctx goidc.Context, c goidc.Client, s goidc.AuthnSession) bool {
+		func(ctx goidc.Context, c goidc.Client, s *goidc.AuthnSession) bool {
 			return false
 		},
 		nil,
 	)
 	availablePolicy := goidc.NewPolicy(
 		"available_policy",
-		func(ctx goidc.Context, c goidc.Client, s goidc.AuthnSession) bool {
+		func(ctx goidc.Context, c goidc.Client, s *goidc.AuthnSession) bool {
 			return true
 		},
 		nil,
@@ -29,7 +28,7 @@ func TestGetPolicy_HappyPath(t *testing.T) {
 	ctx.Policies = []goidc.AuthnPolicy{unavailablePolicy, availablePolicy}
 
 	// Then
-	policy, policyIsAvailable := ctx.GetAvailablePolicy(models.Client{}, &models.AuthnSession{})
+	policy, policyIsAvailable := ctx.GetAvailablePolicy(goidc.Client{}, &goidc.AuthnSession{})
 
 	// Assert
 	if !policyIsAvailable {
@@ -45,7 +44,7 @@ func TestGetPolicy_NoPolicyAvailable(t *testing.T) {
 	// When
 	unavailablePolicy := goidc.NewPolicy(
 		"unavailable_policy",
-		func(ctx goidc.Context, c goidc.Client, s goidc.AuthnSession) bool {
+		func(ctx goidc.Context, c goidc.Client, s *goidc.AuthnSession) bool {
 			return false
 		},
 		nil,
@@ -54,7 +53,7 @@ func TestGetPolicy_NoPolicyAvailable(t *testing.T) {
 	ctx.Policies = []goidc.AuthnPolicy{unavailablePolicy}
 
 	// Then
-	_, policyIsAvailable := ctx.GetAvailablePolicy(models.Client{}, &models.AuthnSession{})
+	_, policyIsAvailable := ctx.GetAvailablePolicy(goidc.Client{}, &goidc.AuthnSession{})
 
 	// Assert
 	if policyIsAvailable {

@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
@@ -30,11 +29,11 @@ func GetPrivateJwks(filename string) goidc.JsonWebKeySet {
 
 func AuthenticateUserWithNoInteraction(
 	ctx goidc.Context,
-	session goidc.AuthnSession,
+	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 	session.SetUserId("random_user_id")
 	session.GrantScopes(session.GetScopes())
-	session.AddIdTokenClaim(goidc.AuthenticationTimeClaim, unit.GetTimestampNow())
+	session.AddIdTokenClaim(goidc.AuthenticationTimeClaim, goidc.GetTimestampNow())
 
 	// Add claims based on the claims parameter.
 	claims, ok := session.GetClaims()

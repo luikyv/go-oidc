@@ -17,24 +17,24 @@ func GetAuthenticatedClient(
 	ctx Context,
 	req models.ClientAuthnRequest,
 ) (
-	models.Client,
-	models.OAuthError,
+	goidc.Client,
+	goidc.OAuthError,
 ) {
 
 	clientId, ok := getClientId(ctx, req)
 	if !ok {
-		return models.Client{}, models.NewOAuthError(goidc.InvalidClient, "invalid client")
+		return goidc.Client{}, goidc.NewOAuthError(goidc.InvalidClient, "invalid client")
 	}
 
 	client, err := ctx.GetClient(clientId)
 	if err != nil {
 		ctx.Logger.Info("client not found", slog.String("client_id", clientId))
-		return models.Client{}, models.NewOAuthError(goidc.InvalidClient, "invalid client")
+		return goidc.Client{}, goidc.NewOAuthError(goidc.InvalidClient, "invalid client")
 	}
 
 	if err := authenticateClient(ctx, client, req); err != nil {
 		ctx.Logger.Info("client not authenticated", slog.String("client_id", req.ClientId))
-		return models.Client{}, err
+		return goidc.Client{}, err
 	}
 
 	return client, nil
@@ -42,9 +42,9 @@ func GetAuthenticatedClient(
 
 func authenticateClient(
 	ctx Context,
-	client models.Client,
+	client goidc.Client,
 	req models.ClientAuthnRequest,
-) models.OAuthError {
+) goidc.OAuthError {
 	switch client.AuthnMethod {
 	case goidc.NoneAuthn:
 		ctx.Logger.Debug("authenticating the client with none authn")
@@ -68,64 +68,64 @@ func authenticateClient(
 		ctx.Logger.Debug("authenticating the client with tls certificate")
 		return authenticateWithTlsCertificate(ctx, client, req)
 	default:
-		return models.NewOAuthError(goidc.InvalidClient, "invalid authentication method")
+		return goidc.NewOAuthError(goidc.InvalidClient, "invalid authentication method")
 	}
 }
 
 func authenticateWithNoneAuthn(
 	_ Context,
-	client models.Client,
+	client goidc.Client,
 	req models.ClientAuthnRequest,
-) models.OAuthError {
+) goidc.OAuthError {
 	if client.Id != req.ClientId {
-		return models.NewOAuthError(goidc.InvalidClient, "invalid client")
+		return goidc.NewOAuthError(goidc.InvalidClient, "invalid client")
 	}
 	return nil
 }
 
 func authenticateWithClientSecretPost(
 	ctx Context,
-	client models.Client,
+	client goidc.Client,
 	req models.ClientAuthnRequest,
-) models.OAuthError {
+) goidc.OAuthError {
 	if client.Id != req.ClientId || req.ClientSecret == "" {
-		return models.NewOAuthError(goidc.InvalidClient, "invalid client")
+		return goidc.NewOAuthError(goidc.InvalidClient, "invalid client")
 	}
 	return validateSecret(ctx, client, req.ClientSecret)
 }
 
 func authenticateWithClientSecretBasic(
 	ctx Context,
-	client models.Client,
+	client goidc.Client,
 	_ models.ClientAuthnRequest,
-) models.OAuthError {
+) goidc.OAuthError {
 	clientId, clientSecret, ok := ctx.Request.BasicAuth()
 	if !ok || client.Id != clientId {
-		return models.NewOAuthError(goidc.InvalidClient, "invalid client")
+		return goidc.NewOAuthError(goidc.InvalidClient, "invalid client")
 	}
 	return validateSecret(ctx, client, clientSecret)
 }
 
 func validateSecret(
 	_ Context,
-	client models.Client,
+	client goidc.Client,
 	clientSecret string,
-) models.OAuthError {
+) goidc.OAuthError {
 	err := bcrypt.CompareHashAndPassword([]byte(client.HashedSecret), []byte(clientSecret))
 	if err != nil {
-		return models.NewOAuthError(goidc.InvalidClient, "invalid secret")
+		return goidc.NewOAuthError(goidc.InvalidClient, "invalid secret")
 	}
 	return nil
 }
 
 func authenticateWithPrivateKeyJwt(
 	ctx Context,
-	client models.Client,
+	client goidc.Client,
 	req models.ClientAuthnRequest,
-) models.OAuthError {
+) goidc.OAuthError {
 
 	if req.ClientAssertionType != goidc.JwtBearerAssertionType {
-		return models.NewOAuthError(goidc.InvalidRequest, "invalid assertion_type")
+		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid assertion_type")
 	}
 
 	signatureAlgorithms := ctx.PrivateKeyJwtSignatureAlgorithms
@@ -134,12 +134,12 @@ func authenticateWithPrivateKeyJwt(
 	}
 	assertion, err := jwt.ParseSigned(req.ClientAssertion, signatureAlgorithms)
 	if err != nil {
-		return models.NewOAuthError(goidc.InvalidClient, "invalid assertion")
+		return goidc.NewOAuthError(goidc.InvalidClient, "invalid assertion")
 	}
 
 	// Verify that the assertion indicates the key ID.
 	if len(assertion.Headers) != 1 && assertion.Headers[0].KeyID == "" {
-		return models.NewOAuthError(goidc.InvalidClient, "invalid assertion")
+		return goidc.NewOAuthError(goidc.InvalidClient, "invalid assertion")
 	}
 
 	// Verify that the key ID belongs to the client.
@@ -150,7 +150,7 @@ func authenticateWithPrivateKeyJwt(
 
 	claims := jwt.Claims{}
 	if err := assertion.Claims(jwk.GetKey(), &claims); err != nil {
-		return models.NewOAuthError(goidc.InvalidClient, "invalid assertion")
+		return goidc.NewOAuthError(goidc.InvalidClient, "invalid assertion")
 	}
 
 	return areAssertionClaimsValid(ctx, client, claims, ctx.PrivateKeyJwtAssertionLifetimeSecs)
@@ -158,11 +158,11 @@ func authenticateWithPrivateKeyJwt(
 
 func authenticateWithClientSecretJwt(
 	ctx Context,
-	client models.Client,
+	client goidc.Client,
 	req models.ClientAuthnRequest,
-) models.OAuthError {
+) goidc.OAuthError {
 	if req.ClientAssertionType != goidc.JwtBearerAssertionType {
-		return models.NewOAuthError(goidc.InvalidRequest, "invalid assertion_type")
+		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid assertion_type")
 	}
 
 	signatureAlgorithms := ctx.ClientSecretJwtSignatureAlgorithms
@@ -171,12 +171,12 @@ func authenticateWithClientSecretJwt(
 	}
 	assertion, err := jwt.ParseSigned(req.ClientAssertion, signatureAlgorithms)
 	if err != nil {
-		return models.NewOAuthError(goidc.InvalidClient, "invalid assertion")
+		return goidc.NewOAuthError(goidc.InvalidClient, "invalid assertion")
 	}
 
 	claims := jwt.Claims{}
 	if err := assertion.Claims([]byte(client.Secret), &claims); err != nil {
-		return models.NewOAuthError(goidc.InvalidClient, "invalid assertion")
+		return goidc.NewOAuthError(goidc.InvalidClient, "invalid assertion")
 	}
 
 	return areAssertionClaimsValid(ctx, client, claims, ctx.ClientSecretJwtAssertionLifetimeSecs)
@@ -184,13 +184,13 @@ func authenticateWithClientSecretJwt(
 
 func areAssertionClaimsValid(
 	ctx Context,
-	client models.Client,
+	client goidc.Client,
 	claims jwt.Claims,
 	maxLifetimeSecs int,
-) models.OAuthError {
+) goidc.OAuthError {
 	// Validate that the "iat" and "exp" claims are present and their difference is not too great.
 	if claims.Expiry == nil || claims.IssuedAt == nil || int(claims.Expiry.Time().Sub(claims.IssuedAt.Time()).Seconds()) > maxLifetimeSecs {
-		return models.NewOAuthError(goidc.InvalidClient, "invalid assertion")
+		return goidc.NewOAuthError(goidc.InvalidClient, "invalid assertion")
 	}
 
 	err := claims.ValidateWithLeeway(jwt.Expected{
@@ -199,28 +199,28 @@ func areAssertionClaimsValid(
 		AnyAudience: ctx.GetAudiences(),
 	}, time.Duration(0))
 	if err != nil {
-		return models.NewOAuthError(goidc.InvalidClient, "invalid assertion")
+		return goidc.NewOAuthError(goidc.InvalidClient, "invalid assertion")
 	}
 	return nil
 }
 
 func authenticateWithSelfSignedTlsCertificate(
 	ctx Context,
-	client models.Client,
+	client goidc.Client,
 	req models.ClientAuthnRequest,
-) models.OAuthError {
+) goidc.OAuthError {
 	if client.Id != req.ClientId {
-		return models.NewOAuthError(goidc.InvalidClient, "invalid client")
+		return goidc.NewOAuthError(goidc.InvalidClient, "invalid client")
 	}
 
 	clientCert, ok := ctx.GetClientCertificate()
 	if !ok {
-		return models.NewOAuthError(goidc.InvalidClient, "client certificate not informed")
+		return goidc.NewOAuthError(goidc.InvalidClient, "client certificate not informed")
 	}
 
 	jwks, err := client.GetPublicJwks()
 	if err != nil {
-		return models.NewOAuthError(goidc.InternalError, "could not load the client JWKS")
+		return goidc.NewOAuthError(goidc.InternalError, "could not load the client JWKS")
 	}
 
 	var jwk goidc.JsonWebKey
@@ -234,11 +234,11 @@ func authenticateWithSelfSignedTlsCertificate(
 	}
 
 	if !foundMatchingJwk {
-		return models.NewOAuthError(goidc.InvalidClient, "could not find a JWK matching the client certificate")
+		return goidc.NewOAuthError(goidc.InvalidClient, "could not find a JWK matching the client certificate")
 	}
 
 	if !unit.ComparePublicKeys(jwk.GetKey(), clientCert.PublicKey) {
-		return models.NewOAuthError(goidc.InvalidClient, "the public key in the client certificate and ")
+		return goidc.NewOAuthError(goidc.InvalidClient, "the public key in the client certificate and ")
 	}
 
 	return nil
@@ -246,23 +246,23 @@ func authenticateWithSelfSignedTlsCertificate(
 
 func authenticateWithTlsCertificate(
 	ctx Context,
-	client models.Client,
+	client goidc.Client,
 	req models.ClientAuthnRequest,
-) models.OAuthError {
+) goidc.OAuthError {
 	if client.Id != req.ClientId {
-		return models.NewOAuthError(goidc.InvalidClient, "invalid client")
+		return goidc.NewOAuthError(goidc.InvalidClient, "invalid client")
 	}
 
 	clientCert, ok := ctx.GetSecureClientCertificate()
 	if !ok {
-		return models.NewOAuthError(goidc.InvalidClient, "client certificate not informed")
+		return goidc.NewOAuthError(goidc.InvalidClient, "client certificate not informed")
 	}
 
 	if client.TlsSubjectDistinguishedName != "" && clientCert.Subject.String() != client.TlsSubjectDistinguishedName {
-		return models.NewOAuthError(goidc.InvalidClient, "invalid distinguished name")
+		return goidc.NewOAuthError(goidc.InvalidClient, "invalid distinguished name")
 	}
 	if client.TlsSubjectAlternativeName != "" && !slices.Contains(clientCert.DNSNames, client.TlsSubjectAlternativeName) {
-		return models.NewOAuthError(goidc.InvalidClient, "invalid alternative name")
+		return goidc.NewOAuthError(goidc.InvalidClient, "invalid alternative name")
 	}
 
 	return nil

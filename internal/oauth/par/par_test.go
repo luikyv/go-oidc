@@ -28,7 +28,7 @@ func TestPushAuthorization_ShouldRejectUnauthenticatedClient(t *testing.T) {
 	})
 
 	// Assert
-	var jsonError models.OAuthBaseError
+	var jsonError goidc.OAuthBaseError
 	if err == nil || !errors.As(err, &jsonError) {
 		t.Error("the client should not be authenticated")
 		return
@@ -57,7 +57,7 @@ func TestPushAuthorization_ShouldGenerateRequestUri(t *testing.T) {
 			ClientId:     models.TestClientId,
 			ClientSecret: clientSecret,
 		},
-		AuthorizationParameters: models.AuthorizationParameters{
+		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
 			Scopes:       client.Scopes,
 			ResponseType: goidc.CodeResponse,

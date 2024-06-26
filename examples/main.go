@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/pkg/goidc"
 	"github.com/luikymagno/goidc/pkg/goidcp"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -30,12 +29,13 @@ func runFapi2OpenIdProvider() error {
 	if err != nil {
 		panic(err)
 	}
+	database := conn.Database("goidc")
 
 	// Create the manager.
 	openidProvider := goidcp.NewProvider(
 		issuer,
-		goidcp.NewMongoDbClientManager(conn),
-		goidcp.NewMongoDbAuthnSessionManager(conn),
+		goidcp.NewMongoDbClientManager(database),
+		goidcp.NewMongoDbAuthnSessionManager(database),
 		goidcp.NewInMemoryGrantSessionManager(),
 		GetPrivateJwks("server_keys/jwks.json"),
 		ps256ServerKeyId,
@@ -80,9 +80,9 @@ func runFapi2OpenIdProvider() error {
 	for _, jwk := range clientOnePrivateJwks.Keys {
 		clientOnePublicJwks.Keys = append(clientOnePublicJwks.Keys, jwk.GetPublic())
 	}
-	openidProvider.AddClient(models.Client{
+	openidProvider.AddClient(goidc.Client{
 		Id: "client_one",
-		ClientMetaInfo: models.ClientMetaInfo{
+		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod:  goidc.PrivateKeyJwtAuthn,
 			RedirectUris: []string{redirectUri},
 			Scopes:       strings.Join(scopes, " "),
@@ -108,9 +108,9 @@ func runFapi2OpenIdProvider() error {
 	for _, jwk := range clientTwoPrivateJwks.Keys {
 		clientTwoPublicJwks.Keys = append(clientTwoPublicJwks.Keys, jwk.GetPublic())
 	}
-	openidProvider.AddClient(models.Client{
+	openidProvider.AddClient(goidc.Client{
 		Id: "client_two",
-		ClientMetaInfo: models.ClientMetaInfo{
+		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod:  goidc.PrivateKeyJwtAuthn,
 			RedirectUris: []string{redirectUri},
 			Scopes:       strings.Join(scopes, " "),
@@ -128,7 +128,7 @@ func runFapi2OpenIdProvider() error {
 	// Create Policy
 	openidProvider.AddPolicy(goidc.NewPolicy(
 		"policy",
-		func(ctx goidc.Context, client goidc.Client, session goidc.AuthnSession) bool { return true },
+		func(ctx goidc.Context, client goidc.Client, session *goidc.AuthnSession) bool { return true },
 		AuthenticateUserWithNoInteraction,
 	))
 

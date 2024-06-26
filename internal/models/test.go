@@ -9,10 +9,10 @@ const (
 	TestJwtGrantModelId    string = "jwt_grant_model_id"
 )
 
-func GetTestClient() Client {
-	return Client{
+func GetTestClient() goidc.Client {
+	return goidc.Client{
 		Id: TestClientId,
-		ClientMetaInfo: ClientMetaInfo{
+		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod:  goidc.NoneAuthn,
 			RedirectUris: []string{"https://example.com"},
 			Scopes:       "scope1 scope2 " + goidc.OpenIdScope,
