@@ -22,11 +22,11 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 	grantSession := goidc.GrantSession{
 		RefreshToken:       refreshToken,
 		ExpiresAtTimestamp: goidc.GetTimestampNow() + 60,
+		CreatedAtTimestamp: goidc.GetTimestampNow(),
 		GrantOptions: goidc.GrantOptions{
-			CreatedAtTimestamp: goidc.GetTimestampNow(),
-			Subject:            username,
-			ClientId:           utils.TestClientId,
-			GrantedScopes:      client.Scopes,
+			Subject:       username,
+			ClientId:      utils.TestClientId,
+			GrantedScopes: client.Scopes,
 			TokenOptions: goidc.TokenOptions{
 				TokenFormat:       goidc.JwtTokenFormat,
 				TokenLifetimeSecs: 60,

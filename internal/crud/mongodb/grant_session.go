@@ -15,7 +15,7 @@ type MongoDBGrantSessionManager struct {
 
 func NewMongoDBGrantSessionManager(database *mongo.Database) MongoDBGrantSessionManager {
 	return MongoDBGrantSessionManager{
-		Collection: database.Collection("authentication_sessions"),
+		Collection: database.Collection("grant_sessions"),
 	}
 }
 

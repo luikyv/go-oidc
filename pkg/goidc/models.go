@@ -37,7 +37,6 @@ type GrantOptions struct {
 	ClientId                    string                `json:"client_id" bson:"client_id"`
 	GrantedScopes               string                `json:"scopes" bson:"scopes"`
 	GrantedAuthorizationDetails []AuthorizationDetail `json:"authorization_details,omitempty" bson:"authorization_details,omitempty"`
-	CreatedAtTimestamp          int                   `json:"created_at" bson:"created_at"`
 	AdditionalIdTokenClaims     map[string]any        `json:"additional_id_token_claims,omitempty" bson:"additional_id_token_claims,omitempty"`
 	AdditionalUserInfoClaims    map[string]any        `json:"additional_user_info_claims,omitempty" bson:"additional_user_info_claims,omitempty"`
 	TokenOptions                `bson:"inline"`

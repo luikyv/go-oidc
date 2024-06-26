@@ -119,7 +119,7 @@ func (session *AuthnSession) Push(parLifetimeSecs int) (requestUri string) {
 
 func (session *AuthnSession) Start(policyId string, sessionLifetimeSecs int) {
 	if session.Nonce != "" {
-		session.AdditionalIdTokenClaims[string(NonceClaim)] = session.Nonce
+		session.AddIdTokenClaim(NonceClaim, session.Nonce)
 	}
 	session.PolicyId = policyId
 	session.CallbackId = GenerateCallbackId()
