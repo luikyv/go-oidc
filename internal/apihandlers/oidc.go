@@ -17,7 +17,7 @@ import (
 //---------------------------------------- Well Known ----------------------------------------//
 
 func HandleWellKnownRequest(ctx utils.Context) {
-	if err := ctx.WriteJson(discovery.GetOpenIdConfiguration(ctx), http.StatusOK); err != nil {
+	if err := ctx.WriteJSON(discovery.GetOpenIDConfiguration(ctx), http.StatusOK); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
 }
@@ -25,7 +25,7 @@ func HandleWellKnownRequest(ctx utils.Context) {
 //---------------------------------------- JWKS ----------------------------------------//
 
 func HandleJWKSRequest(ctx utils.Context) {
-	if err := ctx.WriteJson(ctx.GetPublicKeys(), http.StatusOK); err != nil {
+	if err := ctx.WriteJSON(ctx.GetPublicKeys(), http.StatusOK); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
 }
@@ -34,17 +34,17 @@ func HandleJWKSRequest(ctx utils.Context) {
 
 func HandleParRequest(ctx utils.Context) {
 	req := utils.NewPushedAuthorizationRequest(ctx.Request)
-	requestUri, err := par.PushAuthorization(ctx, req)
+	requestURI, err := par.PushAuthorization(ctx, req)
 	if err != nil {
 		bindErrorToResponse(ctx, err)
 		return
 	}
 
 	resp := utils.PushedAuthorizationResponse{
-		RequestUri: requestUri,
+		RequestURI: requestURI,
 		ExpiresIn:  ctx.ParLifetimeSecs,
 	}
-	if err := ctx.WriteJson(resp, http.StatusCreated); err != nil {
+	if err := ctx.WriteJSON(resp, http.StatusCreated); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
 }
@@ -77,7 +77,7 @@ func HandleTokenRequest(ctx utils.Context) {
 		return
 	}
 
-	if err := ctx.WriteJson(tokenResp, http.StatusOK); err != nil {
+	if err := ctx.WriteJSON(tokenResp, http.StatusOK); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
 }
@@ -93,10 +93,10 @@ func HandleUserInfoRequest(ctx utils.Context) {
 		return
 	}
 
-	if userInfoResponse.JwtClaims != "" {
-		err = ctx.WriteJwt(userInfoResponse.JwtClaims, http.StatusOK)
+	if userInfoResponse.JWTClaims != "" {
+		err = ctx.WriteJWT(userInfoResponse.JWTClaims, http.StatusOK)
 	} else {
-		err = ctx.WriteJson(userInfoResponse.Claims, http.StatusOK)
+		err = ctx.WriteJSON(userInfoResponse.Claims, http.StatusOK)
 	}
 	if err != nil {
 		bindErrorToResponse(ctx, err)
@@ -113,7 +113,7 @@ func HandleIntrospectionRequest(ctx utils.Context) {
 		return
 	}
 
-	if err := ctx.WriteJson(tokenInfo, http.StatusOK); err != nil {
+	if err := ctx.WriteJSON(tokenInfo, http.StatusOK); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
 }
@@ -124,7 +124,7 @@ func bindErrorToResponse(ctx utils.Context, err error) {
 
 	var oauthErr goidc.OAuthError
 	if !errors.As(err, &oauthErr) {
-		ctx.WriteJson(map[string]any{
+		ctx.WriteJSON(map[string]any{
 			"error":             goidc.InternalError,
 			"error_description": err.Error(),
 		}, http.StatusInternalServerError)
@@ -132,7 +132,7 @@ func bindErrorToResponse(ctx utils.Context, err error) {
 	}
 
 	errorCode := oauthErr.GetCode()
-	ctx.WriteJson(map[string]any{
+	ctx.WriteJSON(map[string]any{
 		"error":             errorCode,
 		"error_description": oauthErr.Error(),
 	}, errorCode.GetStatusCode())

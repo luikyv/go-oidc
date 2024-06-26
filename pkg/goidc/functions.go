@@ -26,16 +26,16 @@ func SplitStringWithSpaces(s string) []string {
 	return slice
 }
 
-func GenerateCallbackId() string {
-	return GenerateRandomString(CallbackIdLength, CallbackIdLength)
+func GenerateCallbackID() string {
+	return GenerateRandomString(CallbackIDLength, CallbackIDLength)
 }
 
 func GenerateAuthorizationCode() string {
 	return GenerateRandomString(AuthorizationCodeLength, AuthorizationCodeLength)
 }
 
-func GenerateRequestUri() string {
-	return fmt.Sprintf("urn:ietf:params:oauth:request_uri:%s", GenerateRandomString(RequestUriLength, RequestUriLength))
+func GenerateRequestURI() string {
+	return fmt.Sprintf("urn:ietf:params:oauth:request_uri:%s", GenerateRandomString(RequestURILength, RequestURILength))
 }
 
 func GenerateRandomString(minLength int, maxLength int) string {
@@ -51,20 +51,20 @@ func GenerateRandomString(minLength int, maxLength int) string {
 	return string(randomStringInBytes)
 }
 
-func GetJwks(jwksUri string) (JsonWebKeySet, error) {
-	resp, err := http.Get(jwksUri)
+func GetJWKS(jwksURI string) (JSONWebKeySet, error) {
+	resp, err := http.Get(jwksURI)
 	if err != nil || resp.StatusCode != http.StatusOK {
-		return JsonWebKeySet{}, errors.New("could not fetch client jwks")
+		return JSONWebKeySet{}, errors.New("could not fetch client jwks")
 	}
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return JsonWebKeySet{}, errors.New("could not fetch client jwks")
+		return JSONWebKeySet{}, errors.New("could not fetch client jwks")
 	}
 
-	var jwks JsonWebKeySet
+	var jwks JSONWebKeySet
 	if err := json.Unmarshal(respBody, &jwks); err != nil {
-		return JsonWebKeySet{}, errors.New("could not parse client jwks")
+		return JSONWebKeySet{}, errors.New("could not parse client jwks")
 	}
 
 	return jwks, nil

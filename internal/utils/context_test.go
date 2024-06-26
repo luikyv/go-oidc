@@ -34,7 +34,7 @@ func TestGetPolicy_HappyPath(t *testing.T) {
 	if !policyIsAvailable {
 		t.Error("GetPolicy is not fetching any policy")
 	}
-	if policy.Id != availablePolicy.Id {
+	if policy.ID != availablePolicy.ID {
 		t.Error("GetPolicy is not fetching the right policy")
 	}
 

@@ -61,55 +61,55 @@ const (
 	A256GCM       ContentEncryptionAlgorithm = "A256GCM"       // AES-GCM (256)
 )
 
-type JsonWebKey struct {
-	innerJwk jose.JSONWebKey
+type JSONWebKey struct {
+	innerJWK jose.JSONWebKey
 }
 
-func (jwk JsonWebKey) GetKeyId() string {
-	return jwk.innerJwk.KeyID
+func (jwk JSONWebKey) GetKeyID() string {
+	return jwk.innerJWK.KeyID
 }
 
-func (jwk JsonWebKey) GetAlgorithm() string {
-	return jwk.innerJwk.Algorithm
+func (jwk JSONWebKey) GetAlgorithm() string {
+	return jwk.innerJWK.Algorithm
 }
 
-func (jwk JsonWebKey) GetUsage() string {
-	return jwk.innerJwk.Use
+func (jwk JSONWebKey) GetUsage() string {
+	return jwk.innerJWK.Use
 }
 
-func (jwk JsonWebKey) GetKey() any {
-	return jwk.innerJwk.Key
+func (jwk JSONWebKey) GetKey() any {
+	return jwk.innerJWK.Key
 }
 
-func (jwk JsonWebKey) GetCertificateThumbprintSha256() []byte {
-	return jwk.innerJwk.CertificateThumbprintSHA256
+func (jwk JSONWebKey) GetCertificateThumbprintSHA256() []byte {
+	return jwk.innerJWK.CertificateThumbprintSHA256
 }
 
-func (jwk JsonWebKey) GetCertificateThumbprintSha1() []byte {
-	return jwk.innerJwk.CertificateThumbprintSHA1
+func (jwk JSONWebKey) GetCertificateThumbprintSHA1() []byte {
+	return jwk.innerJWK.CertificateThumbprintSHA1
 }
 
-func (jwk JsonWebKey) IsPublic() bool {
-	return jwk.innerJwk.IsPublic()
+func (jwk JSONWebKey) IsPublic() bool {
+	return jwk.innerJWK.IsPublic()
 }
 
-func (jwk JsonWebKey) IsValid() bool {
-	return jwk.innerJwk.Valid()
+func (jwk JSONWebKey) IsValid() bool {
+	return jwk.innerJWK.Valid()
 }
 
-func (jwk JsonWebKey) GetPublic() JsonWebKey {
-	return NewJsonWebKey(jwk.innerJwk.Public())
+func (jwk JSONWebKey) GetPublic() JSONWebKey {
+	return NewJSONWebKey(jwk.innerJWK.Public())
 }
 
-func (jwk JsonWebKey) MarshalJSON() ([]byte, error) {
-	return jwk.innerJwk.MarshalJSON()
+func (jwk JSONWebKey) MarshalJSON() ([]byte, error) {
+	return jwk.innerJWK.MarshalJSON()
 }
 
-func (jwk *JsonWebKey) UnmarshalJSON(data []byte) (err error) {
-	return jwk.innerJwk.UnmarshalJSON(data)
+func (jwk *JSONWebKey) UnmarshalJSON(data []byte) (err error) {
+	return jwk.innerJWK.UnmarshalJSON(data)
 }
 
-func (jwk JsonWebKey) MarshalBSONValue() (bsontype.Type, []byte, error) {
+func (jwk JSONWebKey) MarshalBSONValue() (bsontype.Type, []byte, error) {
 	data, err := json.Marshal(jwk)
 	if err != nil {
 		return 0, nil, err
@@ -117,7 +117,7 @@ func (jwk JsonWebKey) MarshalBSONValue() (bsontype.Type, []byte, error) {
 	return bson.MarshalValue(string(data))
 }
 
-func (jwk *JsonWebKey) UnmarshalBSONValue(t bsontype.Type, data []byte) error {
+func (jwk *JSONWebKey) UnmarshalBSONValue(t bsontype.Type, data []byte) error {
 	if t != bson.TypeString {
 		return errors.New("type is not string")
 	}
@@ -129,21 +129,21 @@ func (jwk *JsonWebKey) UnmarshalBSONValue(t bsontype.Type, data []byte) error {
 	return json.Unmarshal(data, jwk)
 }
 
-func NewJsonWebKey(jwk jose.JSONWebKey) JsonWebKey {
-	return JsonWebKey{
-		innerJwk: jwk,
+func NewJSONWebKey(jwk jose.JSONWebKey) JSONWebKey {
+	return JSONWebKey{
+		innerJWK: jwk,
 	}
 }
 
-type JsonWebKeySet struct {
-	Keys []JsonWebKey `json:"keys"`
+type JSONWebKeySet struct {
+	Keys []JSONWebKey `json:"keys"`
 }
 
-func (jwks *JsonWebKeySet) Key(keyId string) []JsonWebKey {
+func (jwks *JSONWebKeySet) Key(keyID string) []JSONWebKey {
 
-	var keys []JsonWebKey
+	var keys []JSONWebKey
 	for _, key := range jwks.Keys {
-		if key.GetKeyId() == keyId {
+		if key.GetKeyID() == keyID {
 			keys = append(keys, key)
 		}
 	}

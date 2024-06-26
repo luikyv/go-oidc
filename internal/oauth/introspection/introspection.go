@@ -16,7 +16,7 @@ func IntrospectToken(
 ) {
 	client, err := utils.GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
-		ctx.Logger.Info("could not authenticate the client", slog.String("client_id", req.ClientId))
+		ctx.Logger.Info("could not authenticate the client", slog.String("client_id", req.ClientID))
 		return utils.TokenIntrospectionInfo{}, err
 	}
 
@@ -25,7 +25,7 @@ func IntrospectToken(
 	}
 
 	resp := getTokenIntrospectionInfo(ctx, req.Token)
-	if !resp.IsActive && resp.ClientId != client.Id {
+	if !resp.IsActive && resp.ClientID != client.ID {
 		return utils.TokenIntrospectionInfo{}, goidc.NewOAuthError(goidc.InvalidClient, "invalid token")
 	}
 

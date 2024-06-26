@@ -53,8 +53,8 @@ func handleAuthorizationCodeGrantTokenCreation(
 		RefreshToken: grantSession.RefreshToken,
 	}
 
-	if utils.ScopesContainsOpenId(session.Scopes) {
-		tokenResp.IdToken, err = utils.MakeIdToken(ctx, client, utils.NewIdTokenOptions(grantOptions))
+	if utils.ScopesContainsOpenID(session.Scopes) {
+		tokenResp.IDToken, err = utils.MakeIDToken(ctx, client, utils.NewIDTokenOptions(grantOptions))
 		if err != nil {
 			ctx.Logger.Error("could not generate an ID token", slog.String("error", err.Error()))
 		}
@@ -114,7 +114,7 @@ func validateAuthorizationCodeGrantRequest(
 		return goidc.NewOAuthError(goidc.UnauthorizedClient, "invalid grant type")
 	}
 
-	if session.ClientId != client.Id {
+	if session.ClientID != client.ID {
 		return goidc.NewOAuthError(goidc.InvalidGrant, "the authorization code was not issued to the client")
 	}
 
@@ -122,7 +122,7 @@ func validateAuthorizationCodeGrantRequest(
 		return goidc.NewOAuthError(goidc.InvalidGrant, "the authorization code is expired")
 	}
 
-	if session.RedirectUri != req.RedirectUri {
+	if session.RedirectURI != req.RedirectURI {
 		return goidc.NewOAuthError(goidc.InvalidGrant, "invalid redirect_uri")
 	}
 
@@ -134,7 +134,7 @@ func validateAuthorizationCodeGrantRequest(
 		return err
 	}
 
-	if err := validateTokenBindingRequestWithDpop(ctx, req, client); err != nil {
+	if err := validateTokenBindingRequestWithDPOP(ctx, req, client); err != nil {
 		return err
 	}
 
@@ -157,7 +157,7 @@ func validatePkce(
 	if codeChallengeMethod == "" {
 		codeChallengeMethod = goidc.PlainCodeChallengeMethod
 	}
-	if ctx.Profile == goidc.Fapi2Profile {
+	if ctx.Profile == goidc.FAPI2Profile {
 		codeChallengeMethod = goidc.Sha256CodeChallengeMethod
 	}
 	// In the case PKCE is enabled, if the session was created with a code challenge, the token request must contain the right code verifier.
@@ -213,7 +213,7 @@ func getSessionByAuthorizationCode(ctx utils.Context, authorizationCode string, 
 
 	// The session must be used only once when requesting a token.
 	// By deleting it, we prevent replay attacks.
-	err = ctx.DeleteAuthnSession(session.Id)
+	err = ctx.DeleteAuthnSession(session.ID)
 	if err != nil {
 		ch <- utils.ResultChannel{
 			Result: goidc.AuthnSession{},
@@ -247,9 +247,9 @@ func newAuthorizationCodeGrantOptions(
 		GrantType:                goidc.AuthorizationCodeGrant,
 		GrantedScopes:            session.GrantedScopes,
 		Subject:                  session.Subject,
-		ClientId:                 session.ClientId,
+		ClientID:                 session.ClientID,
 		TokenOptions:             tokenOptions,
-		AdditionalIdTokenClaims:  session.GetAdditionalIdTokenClaims(),
+		AdditionalIDTokenClaims:  session.GetAdditionalIDTokenClaims(),
 		AdditionalUserInfoClaims: session.GetAdditionalUserInfoClaims(),
 	}
 	if ctx.AuthorizationDetailsParameterIsEnabled {

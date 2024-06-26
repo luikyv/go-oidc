@@ -28,10 +28,10 @@ func initAuth(ctx utils.Context, client goidc.Client, req utils.AuthorizationReq
 	return authenticate(ctx, &session)
 }
 
-func ContinueAuth(ctx utils.Context, callbackId string) goidc.OAuthError {
+func ContinueAuth(ctx utils.Context, callbackID string) goidc.OAuthError {
 
 	// Fetch the session using the callback ID.
-	session, err := ctx.GetAuthnSessionByCallbackId(callbackId)
+	session, err := ctx.GetAuthnSessionByCallbackID(callbackID)
 	if err != nil {
 		return goidc.NewOAuthError(goidc.InvalidRequest, err.Error())
 	}
@@ -41,7 +41,7 @@ func ContinueAuth(ctx utils.Context, callbackId string) goidc.OAuthError {
 	}
 
 	if oauthErr := authenticate(ctx, &session); oauthErr != nil {
-		client, err := ctx.GetClient(session.ClientId)
+		client, err := ctx.GetClient(session.ClientID)
 		if err != nil {
 			return goidc.NewOAuthError(goidc.InternalError, err.Error())
 		}
@@ -58,11 +58,11 @@ func getClient(
 	goidc.Client,
 	goidc.OAuthError,
 ) {
-	if req.ClientId == "" {
+	if req.ClientID == "" {
 		return goidc.Client{}, goidc.NewOAuthError(goidc.InvalidClient, "invalid client_id")
 	}
 
-	client, err := ctx.GetClient(req.ClientId)
+	client, err := ctx.GetClient(req.ClientID)
 	if err != nil {
 		return goidc.Client{}, goidc.NewOAuthError(goidc.InvalidClient, "invalid client_id")
 	}
@@ -71,7 +71,7 @@ func getClient(
 }
 
 func authenticate(ctx utils.Context, session *goidc.AuthnSession) goidc.OAuthError {
-	policy := ctx.GetPolicyById(session.PolicyId)
+	policy := ctx.GetPolicyByID(session.PolicyID)
 	switch policy.AuthnFunc(ctx, session) {
 	case goidc.Success:
 		return finishFlowSuccessfully(ctx, session)
@@ -86,7 +86,7 @@ func finishFlowWithFailure(
 	ctx utils.Context,
 	session *goidc.AuthnSession,
 ) goidc.OAuthError {
-	if err := ctx.DeleteAuthnSession(session.Id); err != nil {
+	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
 		return session.NewRedirectError(goidc.InternalError, err.Error())
 	}
 
@@ -110,7 +110,7 @@ func stopFlowInProgress(
 
 func finishFlowSuccessfully(ctx utils.Context, session *goidc.AuthnSession) goidc.OAuthError {
 
-	client, err := ctx.GetClient(session.ClientId)
+	client, err := ctx.GetClient(session.ClientID)
 	if err != nil {
 		return session.NewRedirectError(goidc.InternalError, err.Error())
 	}
@@ -141,17 +141,17 @@ func finishFlowSuccessfully(ctx utils.Context, session *goidc.AuthnSession) goid
 		}
 	}
 
-	if session.ResponseType.Contains(goidc.IdTokenResponse) {
-		idTokenOptions := utils.IdTokenOptions{
+	if session.ResponseType.Contains(goidc.IDTokenResponse) {
+		idTokenOptions := utils.IDTokenOptions{
 			Subject:                 session.Subject,
-			ClientId:                session.ClientId,
-			AdditionalIdTokenClaims: session.GetAdditionalIdTokenClaims(),
+			ClientID:                session.ClientID,
+			AdditionalIDTokenClaims: session.GetAdditionalIDTokenClaims(),
 			AccessToken:             redirectParams.AccessToken,
 			AuthorizationCode:       session.AuthorizationCode,
 			State:                   session.State,
 		}
 
-		redirectParams.IdToken, err = utils.MakeIdToken(ctx, client, idTokenOptions)
+		redirectParams.IDToken, err = utils.MakeIDToken(ctx, client, idTokenOptions)
 		if err != nil {
 			return session.NewRedirectError(goidc.InternalError, err.Error())
 		}
@@ -168,7 +168,7 @@ func authorizeAuthnSession(
 	if !session.ResponseType.Contains(goidc.CodeResponse) {
 		// The client didn't request an authorization code to later exchange it for an access token,
 		// so we don't keep the session anymore.
-		if err := ctx.DeleteAuthnSession(session.Id); err != nil {
+		if err := ctx.DeleteAuthnSession(session.ID); err != nil {
 			return goidc.NewOAuthError(goidc.InternalError, err.Error())
 		}
 	}
@@ -216,9 +216,9 @@ func newImplicitGrantOptions(
 		GrantType:                goidc.ImplicitGrant,
 		GrantedScopes:            session.GrantedScopes,
 		Subject:                  session.Subject,
-		ClientId:                 session.ClientId,
+		ClientID:                 session.ClientID,
 		TokenOptions:             tokenOptions,
-		AdditionalIdTokenClaims:  session.GetAdditionalIdTokenClaims(),
+		AdditionalIDTokenClaims:  session.GetAdditionalIDTokenClaims(),
 		AdditionalUserInfoClaims: session.GetAdditionalUserInfoClaims(),
 	}, nil
 }

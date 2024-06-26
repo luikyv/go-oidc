@@ -17,12 +17,12 @@ func NewInMemoryClientManager() *InMemoryClientManager {
 }
 
 func (manager *InMemoryClientManager) Create(_ context.Context, client goidc.Client) error {
-	_, exists := manager.Clients[client.Id]
+	_, exists := manager.Clients[client.ID]
 	if exists {
 		return goidc.ErrorEntityAlreadyExists
 	}
 
-	manager.Clients[client.Id] = client
+	manager.Clients[client.ID] = client
 	return nil
 }
 

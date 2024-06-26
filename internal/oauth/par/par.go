@@ -11,13 +11,13 @@ func PushAuthorization(
 	ctx utils.Context,
 	req utils.PushedAuthorizationRequest,
 ) (
-	requestUri string,
+	requestURI string,
 	oauthErr goidc.OAuthError,
 ) {
 
 	client, err := utils.GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
-		ctx.Logger.Info("could not authenticate the client", slog.String("client_id", req.ClientId), slog.String("error", err.Error()))
+		ctx.Logger.Info("could not authenticate the client", slog.String("client_id", req.ClientID), slog.String("error", err.Error()))
 		return "", goidc.NewOAuthError(goidc.InvalidClient, "client not authenticated")
 	}
 
@@ -26,10 +26,10 @@ func PushAuthorization(
 		return "", oauthErr
 	}
 
-	requestUri = session.Push(ctx.ParLifetimeSecs)
+	requestURI = session.Push(ctx.ParLifetimeSecs)
 	if err := ctx.AuthnSessionManager.CreateOrUpdate(ctx, session); err != nil {
 		ctx.Logger.Debug("could not create a session")
 		return "", goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
-	return requestUri, nil
+	return requestURI, nil
 }

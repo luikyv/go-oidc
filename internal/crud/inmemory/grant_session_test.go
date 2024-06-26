@@ -12,7 +12,7 @@ func TestCreateOrUpdateGrantSessionSession_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryGrantSessionManager()
 	session := goidc.GrantSession{
-		Id: "random_session_id",
+		ID: "random_session_id",
 	}
 
 	// Then.
@@ -40,25 +40,25 @@ func TestCreateOrUpdateGrantSessionSession_HappyPath(t *testing.T) {
 	}
 }
 
-func TestGetGrantSessionByTokenId_HappyPath(t *testing.T) {
+func TestGetGrantSessionByTokenID_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryGrantSessionManager()
-	sessionId := "random_session_id"
-	tokenId := "random_token_id"
-	manager.Sessions[sessionId] = goidc.GrantSession{
-		Id:      sessionId,
-		TokenId: tokenId,
+	sessionID := "random_session_id"
+	tokenID := "random_token_id"
+	manager.Sessions[sessionID] = goidc.GrantSession{
+		ID:      sessionID,
+		TokenID: tokenID,
 	}
 
 	// Then.
-	session, err := manager.GetByTokenId(context.Background(), tokenId)
+	session, err := manager.GetByTokenID(context.Background(), tokenID)
 
 	// Assert.
 	if err != nil {
 		t.Error("error when getting the session", err)
 	}
 
-	if session.Id != sessionId {
+	if session.ID != sessionID {
 		t.Error("invalid session ID")
 	}
 }
@@ -66,10 +66,10 @@ func TestGetGrantSessionByTokenId_HappyPath(t *testing.T) {
 func TestGetGrantSessionByRefreshToken_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryGrantSessionManager()
-	sessionId := "random_session_id"
+	sessionID := "random_session_id"
 	refreshToken := "random_refresh_token"
-	manager.Sessions[sessionId] = goidc.GrantSession{
-		Id:           sessionId,
+	manager.Sessions[sessionID] = goidc.GrantSession{
+		ID:           sessionID,
 		RefreshToken: refreshToken,
 	}
 
@@ -81,7 +81,7 @@ func TestGetGrantSessionByRefreshToken_HappyPath(t *testing.T) {
 		t.Error("error when getting the session", err)
 	}
 
-	if session.Id != sessionId {
+	if session.ID != sessionID {
 		t.Error("invalid session ID")
 	}
 }
@@ -89,13 +89,13 @@ func TestGetGrantSessionByRefreshToken_HappyPath(t *testing.T) {
 func TestDeleteGrantSession_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryGrantSessionManager()
-	sessionId := "random_session_id"
-	manager.Sessions[sessionId] = goidc.GrantSession{
-		Id: sessionId,
+	sessionID := "random_session_id"
+	manager.Sessions[sessionID] = goidc.GrantSession{
+		ID: sessionID,
 	}
 
 	// Then.
-	err := manager.Delete(context.Background(), sessionId)
+	err := manager.Delete(context.Background(), sessionID)
 
 	// Assert.
 	if err != nil {
@@ -110,10 +110,10 @@ func TestDeleteGrantSession_HappyPath(t *testing.T) {
 func TestDeleteAuthnGrantSession_SessionDoesNotExist(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryGrantSessionManager()
-	sessionId := "random_session_id"
+	sessionID := "random_session_id"
 
 	// Then.
-	err := manager.Delete(context.Background(), sessionId)
+	err := manager.Delete(context.Background(), sessionID)
 
 	// Assert.
 	if err != nil {

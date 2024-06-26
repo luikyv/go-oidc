@@ -25,7 +25,7 @@ func HandleDynamicClientCreation(ctx utils.Context) {
 		return
 	}
 
-	if err := ctx.WriteJson(resp, http.StatusCreated); err != nil {
+	if err := ctx.WriteJSON(resp, http.StatusCreated); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
 }
@@ -43,7 +43,7 @@ func HandleDynamicClientUpdate(ctx utils.Context) {
 		return
 	}
 
-	req.Id = ctx.Request.PathValue("client_id")
+	req.ID = ctx.Request.PathValue("client_id")
 	req.RegistrationAccessToken = token
 	resp, err := dcr.UpdateClient(ctx, req)
 	if err != nil {
@@ -51,7 +51,7 @@ func HandleDynamicClientUpdate(ctx utils.Context) {
 		return
 	}
 
-	if err := ctx.WriteJson(resp, http.StatusOK); err != nil {
+	if err := ctx.WriteJSON(resp, http.StatusOK); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
 }
@@ -64,7 +64,7 @@ func HandleDynamicClientRetrieve(ctx utils.Context) {
 	}
 
 	req := goidc.DynamicClient{
-		Id:                      ctx.Request.PathValue("client_id"),
+		ID:                      ctx.Request.PathValue("client_id"),
 		RegistrationAccessToken: token,
 	}
 
@@ -74,7 +74,7 @@ func HandleDynamicClientRetrieve(ctx utils.Context) {
 		return
 	}
 
-	if err := ctx.WriteJson(resp, http.StatusOK); err != nil {
+	if err := ctx.WriteJSON(resp, http.StatusOK); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
 }
@@ -87,7 +87,7 @@ func HandleDynamicClientDelete(ctx utils.Context) {
 	}
 
 	req := goidc.DynamicClient{
-		Id:                      ctx.Request.PathValue("client_id"),
+		ID:                      ctx.Request.PathValue("client_id"),
 		RegistrationAccessToken: token,
 	}
 

@@ -9,22 +9,22 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type MongoDbAuthnSessionManager struct {
+type MongoDBAuthnSessionManager struct {
 	Collection *mongo.Collection
 }
 
-func NewMongoDbAuthnSessionManager(database *mongo.Database) MongoDbAuthnSessionManager {
-	return MongoDbAuthnSessionManager{
+func NewMongoDBAuthnSessionManager(database *mongo.Database) MongoDBAuthnSessionManager {
+	return MongoDBAuthnSessionManager{
 		Collection: database.Collection("authentication_sessions"),
 	}
 }
 
-func (manager MongoDbAuthnSessionManager) CreateOrUpdate(
+func (manager MongoDBAuthnSessionManager) CreateOrUpdate(
 	ctx context.Context,
 	session goidc.AuthnSession,
 ) error {
 	shouldUpsert := true
-	filter := bson.D{{Key: "_id", Value: session.Id}}
+	filter := bson.D{{Key: "_id", Value: session.ID}}
 	if _, err := manager.Collection.ReplaceOne(ctx, filter, session, &options.ReplaceOptions{Upsert: &shouldUpsert}); err != nil {
 		return err
 	}
@@ -32,17 +32,17 @@ func (manager MongoDbAuthnSessionManager) CreateOrUpdate(
 	return nil
 }
 
-func (manager MongoDbAuthnSessionManager) GetByCallbackId(
+func (manager MongoDBAuthnSessionManager) GetByCallbackID(
 	ctx context.Context,
-	callbackId string,
+	callbackID string,
 ) (
 	goidc.AuthnSession,
 	error,
 ) {
-	return manager.getWithFilter(ctx, bson.D{{Key: "callback_id", Value: callbackId}})
+	return manager.getWithFilter(ctx, bson.D{{Key: "callback_id", Value: callbackID}})
 }
 
-func (manager MongoDbAuthnSessionManager) GetByAuthorizationCode(
+func (manager MongoDBAuthnSessionManager) GetByAuthorizationCode(
 	ctx context.Context,
 	authorizationCode string,
 ) (
@@ -52,17 +52,17 @@ func (manager MongoDbAuthnSessionManager) GetByAuthorizationCode(
 	return manager.getWithFilter(ctx, bson.D{{Key: "authorization_code", Value: authorizationCode}})
 }
 
-func (manager MongoDbAuthnSessionManager) GetByRequestUri(
+func (manager MongoDBAuthnSessionManager) GetByRequestURI(
 	ctx context.Context,
-	requestUri string,
+	requestURI string,
 ) (
 	goidc.AuthnSession,
 	error,
 ) {
-	return manager.getWithFilter(ctx, bson.D{{Key: "request_uri", Value: requestUri}})
+	return manager.getWithFilter(ctx, bson.D{{Key: "request_uri", Value: requestURI}})
 }
 
-func (manager MongoDbAuthnSessionManager) Delete(
+func (manager MongoDBAuthnSessionManager) Delete(
 	ctx context.Context,
 	id string,
 ) error {
@@ -74,7 +74,7 @@ func (manager MongoDbAuthnSessionManager) Delete(
 	return nil
 }
 
-func (manager MongoDbAuthnSessionManager) getWithFilter(
+func (manager MongoDBAuthnSessionManager) getWithFilter(
 	ctx context.Context,
 	filter any,
 ) (

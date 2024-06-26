@@ -9,21 +9,21 @@ import (
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-type DpopJwtClaims struct {
-	HttpMethod      string `json:"htm"`
-	HttpUri         string `json:"htu"`
+type DPOPJWTClaims struct {
+	HTTPMethod      string `json:"htm"`
+	HTTPURI         string `json:"htu"`
 	AccessTokenHash string `json:"ath"`
 }
 
-type DpopJwtValidationOptions struct {
+type DPOPJWTValidationOptions struct {
 	// AccessToken should be filled when the DPoP "ath" claim is expected and should be validated.
 	AccessToken   string
-	JwkThumbprint string
+	JWKThumbprint string
 }
 
 type ClientAuthnRequest struct {
 	// The client ID sent via form is not specific to authentication. It is also a param for /authorize.
-	ClientId            string
+	ClientID            string
 	ClientSecret        string
 	ClientAssertionType goidc.ClientAssertionType
 	ClientAssertion     string
@@ -31,7 +31,7 @@ type ClientAuthnRequest struct {
 
 func NewClientAuthnRequest(req *http.Request) ClientAuthnRequest {
 	return ClientAuthnRequest{
-		ClientId:            req.PostFormValue("client_id"),
+		ClientID:            req.PostFormValue("client_id"),
 		ClientSecret:        req.PostFormValue("client_secret"),
 		ClientAssertionType: goidc.ClientAssertionType(req.PostFormValue("client_assertion_type")),
 		ClientAssertion:     req.PostFormValue("client_assertion"),
@@ -43,7 +43,7 @@ type TokenRequest struct {
 	GrantType         goidc.GrantType
 	Scopes            string
 	AuthorizationCode string
-	RedirectUri       string
+	RedirectURI       string
 	RefreshToken      string
 	CodeVerifier      string
 }
@@ -54,7 +54,7 @@ func NewTokenRequest(req *http.Request) TokenRequest {
 		GrantType:          goidc.GrantType(req.PostFormValue("grant_type")),
 		Scopes:             req.PostFormValue("scope"),
 		AuthorizationCode:  req.PostFormValue("code"),
-		RedirectUri:        req.PostFormValue("redirect_uri"),
+		RedirectURI:        req.PostFormValue("redirect_uri"),
 		RefreshToken:       req.PostFormValue("refresh_token"),
 		CodeVerifier:       req.PostFormValue("code_verifier"),
 	}
@@ -62,7 +62,7 @@ func NewTokenRequest(req *http.Request) TokenRequest {
 
 type TokenResponse struct {
 	AccessToken          string                      `json:"access_token"`
-	IdToken              string                      `json:"id_token,omitempty"`
+	IDToken              string                      `json:"id_token,omitempty"`
 	RefreshToken         string                      `json:"refresh_token,omitempty"`
 	ExpiresIn            int                         `json:"expires_in"`
 	TokenType            goidc.TokenType             `json:"token_type"`
@@ -71,17 +71,17 @@ type TokenResponse struct {
 }
 
 type AuthorizationRequest struct {
-	ClientId string `json:"client_id"`
+	ClientID string `json:"client_id"`
 	goidc.AuthorizationParameters
 }
 
 func NewAuthorizationRequest(req *http.Request) AuthorizationRequest {
 	params := AuthorizationRequest{
-		ClientId: req.URL.Query().Get("client_id"),
+		ClientID: req.URL.Query().Get("client_id"),
 		AuthorizationParameters: goidc.AuthorizationParameters{
-			RequestUri:          req.URL.Query().Get("request_uri"),
+			RequestURI:          req.URL.Query().Get("request_uri"),
 			RequestObject:       req.URL.Query().Get("request"),
-			RedirectUri:         req.URL.Query().Get("redirect_uri"),
+			RedirectURI:         req.URL.Query().Get("redirect_uri"),
 			ResponseMode:        goidc.ResponseMode(req.URL.Query().Get("response_mode")),
 			ResponseType:        goidc.ResponseType(req.URL.Query().Get("response_type")),
 			Scopes:              req.URL.Query().Get("scope"),
@@ -91,7 +91,7 @@ func NewAuthorizationRequest(req *http.Request) AuthorizationRequest {
 			CodeChallengeMethod: goidc.CodeChallengeMethod(req.URL.Query().Get("code_challenge_method")),
 			Prompt:              goidc.PromptType(req.URL.Query().Get("prompt")),
 			Display:             goidc.DisplayValue(req.URL.Query().Get("display")),
-			AcrValues:           req.URL.Query().Get("acr_values"),
+			ACRValues:           req.URL.Query().Get("acr_values"),
 		},
 	}
 
@@ -124,7 +124,7 @@ type AuthorizationResponse struct {
 	Issuer            string
 	AccessToken       string
 	TokenType         goidc.TokenType
-	IdToken           string
+	IDToken           string
 	AuthorizationCode string
 	State             string
 	Error             goidc.ErrorCode
@@ -148,8 +148,8 @@ func (rp AuthorizationResponse) GetParameters() map[string]string {
 	if rp.TokenType != "" {
 		params["token_type"] = string(rp.TokenType)
 	}
-	if rp.IdToken != "" {
-		params["id_token"] = rp.IdToken
+	if rp.IDToken != "" {
+		params["id_token"] = rp.IDToken
 	}
 	if rp.AuthorizationCode != "" {
 		params["code"] = rp.AuthorizationCode
@@ -174,9 +174,9 @@ type PushedAuthorizationRequest struct {
 
 func NewPushedAuthorizationRequest(req *http.Request) PushedAuthorizationRequest {
 	params := goidc.AuthorizationParameters{
-		RequestUri:          req.PostFormValue("request_uri"),
+		RequestURI:          req.PostFormValue("request_uri"),
 		RequestObject:       req.PostFormValue("request"),
-		RedirectUri:         req.PostFormValue("redirect_uri"),
+		RedirectURI:         req.PostFormValue("redirect_uri"),
 		ResponseMode:        goidc.ResponseMode(req.PostFormValue("response_mode")),
 		ResponseType:        goidc.ResponseType(req.PostFormValue("response_type")),
 		Scopes:              req.PostFormValue("scope"),
@@ -186,7 +186,7 @@ func NewPushedAuthorizationRequest(req *http.Request) PushedAuthorizationRequest
 		CodeChallengeMethod: goidc.CodeChallengeMethod(req.PostFormValue("code_challenge_method")),
 		Prompt:              goidc.PromptType(req.PostFormValue("prompt")),
 		Display:             goidc.DisplayValue(req.PostFormValue("display")),
-		AcrValues:           req.PostFormValue("acr_values"),
+		ACRValues:           req.PostFormValue("acr_values"),
 	}
 
 	maxAge, err := strconv.Atoi(req.PostFormValue("max_age"))
@@ -217,82 +217,82 @@ func NewPushedAuthorizationRequest(req *http.Request) PushedAuthorizationRequest
 }
 
 type PushedAuthorizationResponse struct {
-	RequestUri string `json:"request_uri"`
+	RequestURI string `json:"request_uri"`
 	ExpiresIn  int    `json:"expires_in"`
 }
 
 type DynamicClientResponse struct {
-	Id                      string `json:"client_id"`
+	ID                      string `json:"client_id"`
 	Secret                  string `json:"client_secret,omitempty"`
 	RegistrationAccessToken string `json:"registration_access_token,omitempty"`
-	RegistrationUri         string `json:"registration_client_uri"`
+	RegistrationURI         string `json:"registration_client_uri"`
 	goidc.ClientMetaInfo
 }
 
-type OpenIdMtlsConfiguration struct {
+type OpenIDMTLSConfiguration struct {
 	TokenEndpoint         string `json:"token_endpoint"`
 	ParEndpoint           string `json:"pushed_authorization_request_endpoint,omitempty"`
 	UserinfoEndpoint      string `json:"userinfo_endpoint"`
 	IntrospectionEndpoint string `json:"introspection_endpoint,omitempty"`
 }
 
-type OpenIdConfiguration struct {
+type OpenIDConfiguration struct {
 	Issuer                                         string                                 `json:"issuer"`
 	ClientRegistrationEndpoint                     string                                 `json:"registration_endpoint"`
 	AuthorizationEndpoint                          string                                 `json:"authorization_endpoint"`
 	TokenEndpoint                                  string                                 `json:"token_endpoint"`
 	UserinfoEndpoint                               string                                 `json:"userinfo_endpoint"`
-	JwksEndpoint                                   string                                 `json:"jwks_uri"`
+	JWKSEndpoint                                   string                                 `json:"jwks_uri"`
 	ParEndpoint                                    string                                 `json:"pushed_authorization_request_endpoint,omitempty"`
-	ParIsRequired                                  bool                                   `json:"require_pushed_authorization_requests,omitempty"`
+	PARIsRequired                                  bool                                   `json:"require_pushed_authorization_requests,omitempty"`
 	ResponseTypes                                  []goidc.ResponseType                   `json:"response_types_supported"`
 	ResponseModes                                  []goidc.ResponseMode                   `json:"response_modes_supported"`
 	GrantTypes                                     []goidc.GrantType                      `json:"grant_types_supported"`
 	Scopes                                         []string                               `json:"scopes_supported"`
 	UserClaimsSupported                            []string                               `json:"claims_supported"`
 	UserClaimTypesSupported                        []goidc.ClaimType                      `json:"claim_types_supported,omitempty"`
-	SubjectIdentifierTypes                         []goidc.SubjectIdentifierType          `json:"subject_types_supported"`
-	IdTokenSignatureAlgorithms                     []jose.SignatureAlgorithm              `json:"id_token_signing_alg_values_supported"`
-	IdTokenKeyEncryptionAlgorithms                 []jose.KeyAlgorithm                    `json:"id_token_encryption_alg_values_supported,omitempty"`
-	IdTokenContentEncryptionAlgorithms             []jose.ContentEncryption               `json:"id_token_encryption_enc_values_supported,omitempty"`
+	SubjectIDentifierTypes                         []goidc.SubjectIDentifierType          `json:"subject_types_supported"`
+	IDTokenSignatureAlgorithms                     []jose.SignatureAlgorithm              `json:"id_token_signing_alg_values_supported"`
+	IDTokenKeyEncryptionAlgorithms                 []jose.KeyAlgorithm                    `json:"id_token_encryption_alg_values_supported,omitempty"`
+	IDTokenContentEncryptionAlgorithms             []jose.ContentEncryption               `json:"id_token_encryption_enc_values_supported,omitempty"`
 	UserInfoKeyEncryptionAlgorithms                []jose.KeyAlgorithm                    `json:"userinfo_encryption_alg_values_supported,omitempty"`
 	UserInfoContentEncryptionAlgorithms            []jose.ContentEncryption               `json:"userinfo_encryption_enc_values_supported,omitempty"`
 	UserInfoSignatureAlgorithms                    []jose.SignatureAlgorithm              `json:"userinfo_signing_alg_values_supported"`
 	ClientAuthnMethods                             []goidc.ClientAuthnType                `json:"token_endpoint_auth_methods_supported"`
-	JarIsRequired                                  bool                                   `json:"require_signed_request_object,omitempty"`
-	JarIsEnabled                                   bool                                   `json:"request_parameter_supported"`
-	JarAlgorithms                                  []jose.SignatureAlgorithm              `json:"request_object_signing_alg_values_supported,omitempty"`
-	JarKeyEncrytionAlgorithms                      []jose.KeyAlgorithm                    `json:"request_object_encryption_alg_values_supported,omitempty"`
-	JarContentEncryptionAlgorithms                 []jose.ContentEncryption               `json:"request_object_encryption_enc_values_supported,omitempty"`
-	JarmAlgorithms                                 []jose.SignatureAlgorithm              `json:"authorization_signing_alg_values_supported,omitempty"`
-	JarmKeyEncryptionAlgorithms                    []jose.KeyAlgorithm                    `json:"authorization_encryption_alg_values_supported,omitempty"`
-	JarmContentEncryptionAlgorithms                []jose.ContentEncryption               `json:"authorization_encryption_enc_values_supported,omitempty"`
+	JARIsRequired                                  bool                                   `json:"require_signed_request_object,omitempty"`
+	JARIsEnabled                                   bool                                   `json:"request_parameter_supported"`
+	JARAlgorithms                                  []jose.SignatureAlgorithm              `json:"request_object_signing_alg_values_supported,omitempty"`
+	JARKeyEncrytionAlgorithms                      []jose.KeyAlgorithm                    `json:"request_object_encryption_alg_values_supported,omitempty"`
+	JARContentEncryptionAlgorithms                 []jose.ContentEncryption               `json:"request_object_encryption_enc_values_supported,omitempty"`
+	JARMAlgorithms                                 []jose.SignatureAlgorithm              `json:"authorization_signing_alg_values_supported,omitempty"`
+	JARMKeyEncryptionAlgorithms                    []jose.KeyAlgorithm                    `json:"authorization_encryption_alg_values_supported,omitempty"`
+	JARMContentEncryptionAlgorithms                []jose.ContentEncryption               `json:"authorization_encryption_enc_values_supported,omitempty"`
 	TokenEndpointClientSigningAlgorithms           []jose.SignatureAlgorithm              `json:"token_endpoint_auth_signing_alg_values_supported"`
 	IssuerResponseParameterIsEnabled               bool                                   `json:"authorization_response_iss_parameter_supported"`
 	ClaimsParameterIsEnabled                       bool                                   `json:"claims_parameter_supported"`
 	AuthorizationDetailsIsSupported                bool                                   `json:"authorization_details_supported"`
 	AuthorizationDetailTypesSupported              []string                               `json:"authorization_data_types_supported,omitempty"`
-	DpopSignatureAlgorithms                        []jose.SignatureAlgorithm              `json:"dpop_signing_alg_values_supported,omitempty"`
+	DPOPSignatureAlgorithms                        []jose.SignatureAlgorithm              `json:"dpop_signing_alg_values_supported,omitempty"`
 	IntrospectionEndpoint                          string                                 `json:"introspection_endpoint,omitempty"`
 	IntrospectionEndpointClientAuthnMethods        []goidc.ClientAuthnType                `json:"introspection_endpoint_auth_methods_supported,omitempty"`
 	IntrospectionEndpointClientSignatureAlgorithms []jose.SignatureAlgorithm              `json:"introspection_endpoint_auth_signing_alg_values_supported,omitempty"`
-	MtlsConfiguration                              OpenIdMtlsConfiguration                `json:"mtls_endpoint_aliases"`
-	TlsBoundTokensIsEnabled                        bool                                   `json:"tls_client_certificate_bound_access_tokens,omitempty"`
+	MTLSConfiguration                              OpenIDMTLSConfiguration                `json:"mtls_endpoint_aliases"`
+	TLSBoundTokensIsEnabled                        bool                                   `json:"tls_client_certificate_bound_access_tokens,omitempty"`
 	AuthenticationContextReferences                []goidc.AuthenticationContextReference `json:"acr_values_supported,omitempty"`
 	DisplayValuesSupported                         []goidc.DisplayValue                   `json:"display_values_supported,omitempty"`
 }
 
 type Token struct {
-	Id                    string
+	ID                    string
 	Format                goidc.TokenFormat
 	Value                 string
 	Type                  goidc.TokenType
-	JwkThumbprint         string
+	JWKThumbprint         string
 	CertificateThumbprint string
 }
 
 type UserInfoResponse struct {
-	JwtClaims string
+	JWTClaims string
 	Claims    map[string]any
 }
 
@@ -314,10 +314,10 @@ type TokenIntrospectionInfo struct {
 	IsActive                    bool
 	Scopes                      string
 	AuthorizationDetails        []goidc.AuthorizationDetail
-	ClientId                    string
+	ClientID                    string
 	Subject                     string
 	ExpiresAtTimestamp          int
-	JwkThumbprint               string
+	JWKThumbprint               string
 	ClientCertificateThumbprint string
 	AdditionalTokenClaims       map[string]any
 }
@@ -333,7 +333,7 @@ func (info TokenIntrospectionInfo) MarshalJSON() ([]byte, error) {
 		"active":            true,
 		goidc.SubjectClaim:  info.Subject,
 		goidc.ScopeClaim:    info.Scopes,
-		goidc.ClientIdClaim: info.ClientId,
+		goidc.ClientIDClaim: info.ClientID,
 		goidc.ExpiryClaim:   info.ExpiresAtTimestamp,
 	}
 
@@ -342,8 +342,8 @@ func (info TokenIntrospectionInfo) MarshalJSON() ([]byte, error) {
 	}
 
 	confirmation := make(map[string]string)
-	if info.JwkThumbprint != "" {
-		confirmation["jkt"] = info.JwkThumbprint
+	if info.JWKThumbprint != "" {
+		confirmation["jkt"] = info.JWKThumbprint
 	}
 	if info.ClientCertificateThumbprint != "" {
 		confirmation["x5t#S256"] = info.ClientCertificateThumbprint
@@ -359,10 +359,10 @@ func (info TokenIntrospectionInfo) MarshalJSON() ([]byte, error) {
 	return json.Marshal(params)
 }
 
-type IdTokenOptions struct {
+type IDTokenOptions struct {
 	Subject                 string
-	ClientId                string
-	AdditionalIdTokenClaims map[string]any
+	ClientID                string
+	AdditionalIDTokenClaims map[string]any
 	// These values here below are intended to be hashed and placed in the ID token.
 	// Then, the ID token can be used as a detached signature for the implicit grant.
 	AccessToken       string
@@ -370,10 +370,10 @@ type IdTokenOptions struct {
 	State             string
 }
 
-func NewIdTokenOptions(grantOpts goidc.GrantOptions) IdTokenOptions {
-	return IdTokenOptions{
+func NewIDTokenOptions(grantOpts goidc.GrantOptions) IDTokenOptions {
+	return IDTokenOptions{
 		Subject:                 grantOpts.Subject,
-		ClientId:                grantOpts.ClientId,
-		AdditionalIdTokenClaims: grantOpts.AdditionalIdTokenClaims,
+		ClientID:                grantOpts.ClientID,
+		AdditionalIDTokenClaims: grantOpts.AdditionalIDTokenClaims,
 	}
 }

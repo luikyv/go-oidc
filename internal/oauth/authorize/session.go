@@ -29,26 +29,26 @@ func initValidAuthnSession(
 	goidc.OAuthError,
 ) {
 
-	if shouldInitAuthnSessionWithPar(ctx, req.AuthorizationParameters) {
+	if shouldInitAuthnSessionWithPAR(ctx, req.AuthorizationParameters) {
 		ctx.Logger.Info("initiating authorization request with PAR")
-		return initValidAuthnSessionWithPar(ctx, req, client)
+		return initValidAuthnSessionWithPAR(ctx, req, client)
 	}
 
 	// the jar requirement comes after the par one, because the client can send the jar during par.
-	if ShouldInitAuthnSessionWithJar(ctx, req.AuthorizationParameters, client) {
+	if ShouldInitAuthnSessionWithJAR(ctx, req.AuthorizationParameters, client) {
 		ctx.Logger.Info("initiating authorization request with JAR")
-		return initValidAuthnSessionWithJar(ctx, req, client)
+		return initValidAuthnSessionWithJAR(ctx, req, client)
 	}
 
 	return initValidSimpleAuthnSession(ctx, req, client)
 }
 
-func shouldInitAuthnSessionWithPar(ctx utils.Context, req goidc.AuthorizationParameters) bool {
+func shouldInitAuthnSessionWithPAR(ctx utils.Context, req goidc.AuthorizationParameters) bool {
 	// Note: if PAR is not enabled, we just disconsider the request_uri.
-	return ctx.ParIsRequired || (ctx.ParIsEnabled && req.RequestUri != "")
+	return ctx.PARIsRequired || (ctx.PARIsEnabled && req.RequestURI != "")
 }
 
-func initValidAuthnSessionWithPar(
+func initValidAuthnSessionWithPAR(
 	ctx utils.Context,
 	req utils.AuthorizationRequest,
 	client goidc.Client,
@@ -57,14 +57,14 @@ func initValidAuthnSessionWithPar(
 	goidc.OAuthError,
 ) {
 
-	session, err := getSessionCreatedWithPar(ctx, req)
+	session, err := getSessionCreatedWithPAR(ctx, req)
 	if err != nil {
 		return goidc.AuthnSession{}, goidc.NewOAuthError(goidc.InvalidRequest, "invalid request_uri")
 	}
 
-	if err := validateAuthorizationRequestWithPar(ctx, req, session, client); err != nil {
+	if err := validateAuthorizationRequestWithPAR(ctx, req, session, client); err != nil {
 		// If any of the parameters is invalid, we delete the session right away.
-		ctx.DeleteAuthnSession(session.Id)
+		ctx.DeleteAuthnSession(session.ID)
 		return goidc.AuthnSession{}, err
 	}
 
@@ -72,18 +72,18 @@ func initValidAuthnSessionWithPar(
 	return session, nil
 }
 
-func getSessionCreatedWithPar(
+func getSessionCreatedWithPAR(
 	ctx utils.Context,
 	req utils.AuthorizationRequest,
 ) (
 	goidc.AuthnSession,
 	goidc.OAuthError,
 ) {
-	if req.RequestUri == "" {
+	if req.RequestURI == "" {
 		return goidc.AuthnSession{}, goidc.NewOAuthError(goidc.InvalidRequest, "request_uri is required")
 	}
 
-	session, err := ctx.GetAuthnSessionByRequestUri(req.RequestUri)
+	session, err := ctx.GetAuthnSessionByRequestURI(req.RequestURI)
 	if err != nil {
 		return goidc.AuthnSession{}, goidc.NewOAuthError(goidc.InvalidRequest, "invalid request_uri")
 	}
@@ -91,17 +91,17 @@ func getSessionCreatedWithPar(
 	return session, nil
 }
 
-func ShouldInitAuthnSessionWithJar(
+func ShouldInitAuthnSessionWithJAR(
 	ctx utils.Context,
 	req goidc.AuthorizationParameters,
 	client goidc.Client,
 ) bool {
 	// If JAR is not enabled, we just disconsider the request object.
 	// Also, if the client defined a signature algorithm for jar, then jar is required.
-	return ctx.JarIsRequired || (ctx.JarIsEnabled && req.RequestObject != "") || client.JarSignatureAlgorithm != ""
+	return ctx.JARIsRequired || (ctx.JARIsEnabled && req.RequestObject != "") || client.JARSignatureAlgorithm != ""
 }
 
-func initValidAuthnSessionWithJar(
+func initValidAuthnSessionWithJAR(
 	ctx utils.Context,
 	req utils.AuthorizationRequest,
 	client goidc.Client,
@@ -110,12 +110,12 @@ func initValidAuthnSessionWithJar(
 	goidc.OAuthError,
 ) {
 
-	jar, err := getJar(ctx, req, client)
+	jar, err := getJAR(ctx, req, client)
 	if err != nil {
 		return goidc.AuthnSession{}, err
 	}
 
-	if err := validateAuthorizationRequestWithJar(ctx, req, jar, client); err != nil {
+	if err := validateAuthorizationRequestWithJAR(ctx, req, jar, client); err != nil {
 		return goidc.AuthnSession{}, err
 	}
 
@@ -125,7 +125,7 @@ func initValidAuthnSessionWithJar(
 	return session, nil
 }
 
-func getJar(
+func getJAR(
 	ctx utils.Context,
 	req utils.AuthorizationRequest,
 	client goidc.Client,
@@ -137,7 +137,7 @@ func getJar(
 		return utils.AuthorizationRequest{}, goidc.NewOAuthError(goidc.InvalidRequest, "request object is required")
 	}
 
-	jar, err := utils.ExtractJarFromRequestObject(ctx, req.RequestObject, client)
+	jar, err := utils.ExtractJARFromRequestObject(ctx, req.RequestObject, client)
 	if err != nil {
 		return utils.AuthorizationRequest{}, err
 	}
@@ -171,7 +171,7 @@ func initAuthnSessionWithPolicy(
 		return session.NewRedirectError(goidc.InvalidRequest, "no policy available")
 	}
 
-	ctx.Logger.Info("policy available", slog.String("policy_id", policy.Id))
-	session.Start(policy.Id, ctx.AuthenticationSessionTimeoutSecs)
+	ctx.Logger.Info("policy available", slog.String("policy_id", policy.ID))
+	session.Start(policy.ID, ctx.AuthenticationSessionTimeoutSecs)
 	return nil
 }

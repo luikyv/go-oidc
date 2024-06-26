@@ -22,7 +22,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 			"valid_oauth_request",
 			utils.AuthorizationRequest{
 				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectUri:  client.RedirectUris[0],
+					RedirectURI:  client.RedirectURIS[0],
 					ResponseType: goidc.CodeResponse,
 					ResponseMode: goidc.QueryResponseMode,
 					Scopes:       client.Scopes,
@@ -38,9 +38,9 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 			"valid_openid_request",
 			utils.AuthorizationRequest{
 				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectUri:  client.RedirectUris[0],
+					RedirectURI:  client.RedirectURIS[0],
 					ResponseType: goidc.CodeResponse,
-					Scopes:       goidc.OpenIdScope,
+					Scopes:       goidc.OpenIDScope,
 				},
 			},
 			func(client goidc.Client) goidc.Client {
@@ -53,9 +53,9 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 			"oauth_request_invalid_response_type",
 			utils.AuthorizationRequest{
 				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectUri:  client.RedirectUris[0],
+					RedirectURI:  client.RedirectURIS[0],
 					ResponseType: goidc.CodeResponse,
-					Scopes:       goidc.OpenIdScope,
+					Scopes:       goidc.OpenIDScope,
 				},
 			},
 			func(client goidc.Client) goidc.Client {
@@ -69,8 +69,8 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 			"oauth_request_missing_response_type",
 			utils.AuthorizationRequest{
 				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectUri: client.RedirectUris[0],
-					Scopes:      goidc.OpenIdScope,
+					RedirectURI: client.RedirectURIS[0],
+					Scopes:      goidc.OpenIDScope,
 				},
 			},
 			func(client goidc.Client) goidc.Client {
@@ -83,7 +83,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 			"oauth_request_invalid_scope",
 			utils.AuthorizationRequest{
 				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectUri:  client.RedirectUris[0],
+					RedirectURI:  client.RedirectURIS[0],
 					ResponseType: goidc.CodeResponse,
 					Scopes:       "invalid_scope",
 				},
@@ -98,7 +98,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 			"oauth_request_invalid_redirect_uri",
 			utils.AuthorizationRequest{
 				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectUri:  "https://invalid.com",
+					RedirectURI:  "https://invalid.com",
 					ResponseType: goidc.CodeResponse,
 					Scopes:       client.Scopes,
 				},
@@ -139,7 +139,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 
 }
 
-func TestValidateAuthorizationRequestWithPar(t *testing.T) {
+func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 	client := utils.GetTestClient()
 
 	var cases = []struct {
@@ -153,16 +153,16 @@ func TestValidateAuthorizationRequestWithPar(t *testing.T) {
 		{
 			"valid_oauth_request",
 			utils.AuthorizationRequest{
-				ClientId: client.Id,
+				ClientID: client.ID,
 				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectUri:  client.RedirectUris[0],
+					RedirectURI:  client.RedirectURIS[0],
 					ResponseType: goidc.CodeResponse,
 					ResponseMode: goidc.QueryResponseMode,
 					Scopes:       client.Scopes,
 				},
 			},
 			goidc.AuthnSession{
-				ClientId:           client.Id,
+				ClientID:           client.ID,
 				ExpiresAtTimestamp: goidc.GetTimestampNow() + 1,
 			},
 			func(client goidc.Client) goidc.Client {
@@ -174,20 +174,20 @@ func TestValidateAuthorizationRequestWithPar(t *testing.T) {
 		{
 			"valid_openid_request",
 			utils.AuthorizationRequest{
-				ClientId: client.Id,
+				ClientID: client.ID,
 				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectUri:  client.RedirectUris[0],
-					ResponseType: goidc.CodeAndIdTokenResponse,
+					RedirectURI:  client.RedirectURIS[0],
+					ResponseType: goidc.CodeAndIDTokenResponse,
 					ResponseMode: goidc.FragmentResponseMode,
-					Scopes:       goidc.OpenIdScope,
+					Scopes:       goidc.OpenIDScope,
 					Nonce:        "random_nonce",
 				},
 			},
 			goidc.AuthnSession{
-				ClientId:           client.Id,
+				ClientID:           client.ID,
 				ExpiresAtTimestamp: goidc.GetTimestampNow() + 1,
 				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectUri: client.RedirectUris[0],
+					RedirectURI: client.RedirectURIS[0],
 				},
 			},
 			func(client goidc.Client) goidc.Client {
@@ -203,7 +203,7 @@ func TestValidateAuthorizationRequestWithPar(t *testing.T) {
 			c.Name,
 			func(t *testing.T) {
 				// Then.
-				err := authorize.ValidateAuthorizationRequestWithPar(
+				err := authorize.ValidateAuthorizationRequestWithPAR(
 					utils.GetDummyTestContext(),
 					c.Req,
 					c.Session,
@@ -226,13 +226,13 @@ func TestValidateAuthorizationRequestWithPar(t *testing.T) {
 	}
 }
 
-func TestValidateAuthorizationRequestWithJar(t *testing.T) {
+func TestValidateAuthorizationRequestWithJAR(t *testing.T) {
 	client := utils.GetTestClient()
 
 	var cases = []struct {
 		Name                string
 		Req                 utils.AuthorizationRequest
-		Jar                 utils.AuthorizationRequest
+		JAR                 utils.AuthorizationRequest
 		ClientModifyFunc    func(client goidc.Client) goidc.Client
 		ShouldBeValid       bool
 		ShouldRedirectError bool
@@ -240,9 +240,9 @@ func TestValidateAuthorizationRequestWithJar(t *testing.T) {
 		{
 			"valid_oauth_request",
 			utils.AuthorizationRequest{
-				ClientId: client.Id,
+				ClientID: client.ID,
 				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectUri:  client.RedirectUris[0],
+					RedirectURI:  client.RedirectURIS[0],
 					ResponseType: goidc.CodeResponse,
 					ResponseMode: goidc.QueryResponseMode,
 					Scopes:       client.Scopes,
@@ -250,7 +250,7 @@ func TestValidateAuthorizationRequestWithJar(t *testing.T) {
 				},
 			},
 			utils.AuthorizationRequest{
-				ClientId:                client.Id,
+				ClientID:                client.ID,
 				AuthorizationParameters: goidc.AuthorizationParameters{},
 			},
 			func(client goidc.Client) goidc.Client {
@@ -262,18 +262,18 @@ func TestValidateAuthorizationRequestWithJar(t *testing.T) {
 		{
 			"valid_openid_request",
 			utils.AuthorizationRequest{
-				ClientId: client.Id,
+				ClientID: client.ID,
 				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectUri:  client.RedirectUris[0],
-					ResponseType: goidc.CodeAndIdTokenResponse,
+					RedirectURI:  client.RedirectURIS[0],
+					ResponseType: goidc.CodeAndIDTokenResponse,
 					ResponseMode: goidc.FragmentResponseMode,
-					Scopes:       goidc.OpenIdScope,
+					Scopes:       goidc.OpenIDScope,
 				},
 			},
 			utils.AuthorizationRequest{
-				ClientId: client.Id,
+				ClientID: client.ID,
 				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectUri: client.RedirectUris[0],
+					RedirectURI: client.RedirectURIS[0],
 					Nonce:       "random_nonce",
 				},
 			},
@@ -286,10 +286,10 @@ func TestValidateAuthorizationRequestWithJar(t *testing.T) {
 		{
 			"client_id_does_not_match",
 			utils.AuthorizationRequest{
-				ClientId: client.Id,
+				ClientID: client.ID,
 			},
 			utils.AuthorizationRequest{
-				ClientId: "invalid_client_id",
+				ClientID: "invalid_client_id",
 			},
 			func(client goidc.Client) goidc.Client {
 				return client
@@ -304,10 +304,10 @@ func TestValidateAuthorizationRequestWithJar(t *testing.T) {
 			c.Name,
 			func(t *testing.T) {
 				// Then.
-				err := authorize.ValidateAuthorizationRequestWithJar(
+				err := authorize.ValidateAuthorizationRequestWithJAR(
 					utils.GetDummyTestContext(),
 					c.Req,
-					c.Jar,
+					c.JAR,
 					c.ClientModifyFunc(client),
 				)
 

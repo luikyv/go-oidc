@@ -18,7 +18,7 @@ func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
-			ClientId: client.Id,
+			ClientID: client.ID,
 		},
 		GrantType: goidc.ClientCredentialsGrant,
 		Scopes:    "scope1",
@@ -46,12 +46,12 @@ func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 		return
 	}
 
-	if claims["client_id"].(string) != client.Id {
+	if claims["client_id"].(string) != client.ID {
 		t.Error("the token was assigned to a different client")
 		return
 	}
 
-	if claims["sub"].(string) != utils.TestClientId {
+	if claims["sub"].(string) != utils.TestClientID {
 		t.Error("the token subject should be the client")
 		return
 	}

@@ -19,7 +19,7 @@ func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 	// Then
 	_, err := token.HandleTokenCreation(ctx, utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
-			ClientId: "invalid_client_id",
+			ClientID: "invalid_client_id",
 		},
 		GrantType: goidc.ClientCredentialsGrant,
 		Scopes:    "scope1",
@@ -43,7 +43,7 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	// Then
 	_, err := token.HandleTokenCreation(ctx, utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
-			ClientId:     client.Id,
+			ClientID:     client.ID,
 			ClientSecret: "invalid_password",
 		},
 		GrantType: goidc.ClientCredentialsGrant,
@@ -62,22 +62,22 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	}
 }
 
-func TestHandleGrantCreationWithDpop(t *testing.T) {
+func TestHandleGrantCreationWithDPOP(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
 
 	ctx := utils.GetTestInMemoryContext()
 	ctx.Host = "https://example.com"
-	ctx.DpopIsEnabled = true
-	ctx.DpopLifetimeSecs = 9999999999999
-	ctx.DpopSignatureAlgorithms = []jose.SignatureAlgorithm{jose.ES256}
-	ctx.Request.Header.Set(goidc.DpopHeader, "eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiYVRtMk95eXFmaHFfZk5GOVVuZXlrZG0yX0dCZnpZVldDNEI1Wlo1SzNGUSIsInkiOiI4eFRhUERFTVRtNXM1d1MzYmFvVVNNcU01R0VJWDFINzMwX1hqV2lRaGxRIn19.eyJqdGkiOiItQndDM0VTYzZhY2MybFRjIiwiaHRtIjoiUE9TVCIsImh0dSI6Imh0dHBzOi8vZXhhbXBsZS5jb20vdG9rZW4iLCJpYXQiOjE1NjIyNjUyOTZ9.AzzSCVYIimNZyJQefZq7cF252PukDvRrxMqrrcH6FFlHLvpXyk9j8ybtS36GHlnyH_uuy2djQphfyHGeDfxidQ")
+	ctx.DPOPIsEnabled = true
+	ctx.DPOPLifetimeSecs = 9999999999999
+	ctx.DPOPSignatureAlgorithms = []jose.SignatureAlgorithm{jose.ES256}
+	ctx.Request.Header.Set(goidc.DPOPHeader, "eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiYVRtMk95eXFmaHFfZk5GOVVuZXlrZG0yX0dCZnpZVldDNEI1Wlo1SzNGUSIsInkiOiI4eFRhUERFTVRtNXM1d1MzYmFvVVNNcU01R0VJWDFINzMwX1hqV2lRaGxRIn19.eyJqdGkiOiItQndDM0VTYzZhY2MybFRjIiwiaHRtIjoiUE9TVCIsImh0dSI6Imh0dHBzOi8vZXhhbXBsZS5jb20vdG9rZW4iLCJpYXQiOjE1NjIyNjUyOTZ9.AzzSCVYIimNZyJQefZq7cF252PukDvRrxMqrrcH6FFlHLvpXyk9j8ybtS36GHlnyH_uuy2djQphfyHGeDfxidQ")
 	ctx.CreateClient(client)
 	ctx.Request.Method = http.MethodPost
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
-			ClientId: client.Id,
+			ClientID: client.ID,
 		},
 		GrantType: goidc.ClientCredentialsGrant,
 		Scopes:    "scope1",

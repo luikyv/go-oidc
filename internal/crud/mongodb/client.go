@@ -8,17 +8,17 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type MongoDbClientManager struct {
+type MongoDBClientManager struct {
 	Collection *mongo.Collection
 }
 
-func NewMongoDbClientManager(database *mongo.Database) MongoDbClientManager {
-	return MongoDbClientManager{
+func NewMongoDBClientManager(database *mongo.Database) MongoDBClientManager {
+	return MongoDBClientManager{
 		Collection: database.Collection("clients"),
 	}
 }
 
-func (manager MongoDbClientManager) Create(ctx context.Context, client goidc.Client) error {
+func (manager MongoDBClientManager) Create(ctx context.Context, client goidc.Client) error {
 	if _, err := manager.Collection.InsertOne(ctx, client); err != nil {
 		return err
 	}
@@ -26,7 +26,7 @@ func (manager MongoDbClientManager) Create(ctx context.Context, client goidc.Cli
 	return nil
 }
 
-func (manager MongoDbClientManager) Update(ctx context.Context, id string, client goidc.Client) error {
+func (manager MongoDBClientManager) Update(ctx context.Context, id string, client goidc.Client) error {
 	filter := bson.D{{Key: "_id", Value: id}}
 	if _, err := manager.Collection.ReplaceOne(ctx, filter, client); err != nil {
 		return err
@@ -35,7 +35,7 @@ func (manager MongoDbClientManager) Update(ctx context.Context, id string, clien
 	return nil
 }
 
-func (manager MongoDbClientManager) Get(ctx context.Context, id string) (goidc.Client, error) {
+func (manager MongoDBClientManager) Get(ctx context.Context, id string) (goidc.Client, error) {
 	filter := bson.D{{Key: "_id", Value: id}}
 
 	result := manager.Collection.FindOne(ctx, filter)
@@ -51,7 +51,7 @@ func (manager MongoDbClientManager) Get(ctx context.Context, id string) (goidc.C
 	return client, nil
 }
 
-func (manager MongoDbClientManager) Delete(ctx context.Context, id string) error {
+func (manager MongoDBClientManager) Delete(ctx context.Context, id string) error {
 	filter := bson.D{{Key: "_id", Value: id}}
 	if _, err := manager.Collection.DeleteOne(ctx, filter); err != nil {
 		return err

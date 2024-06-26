@@ -13,7 +13,7 @@ type AuthnFunc func(Context, *AuthnSession) AuthnStatus
 type SetUpPolicyFunc func(ctx Context, client Client, session *AuthnSession) (selected bool)
 
 type AuthnPolicy struct {
-	Id        string
+	ID        string
 	AuthnFunc AuthnFunc
 	SetUpFunc SetUpPolicyFunc
 }
@@ -25,7 +25,7 @@ func NewPolicy(
 	authnFunc AuthnFunc,
 ) AuthnPolicy {
 	return AuthnPolicy{
-		Id:        id,
+		ID:        id,
 		AuthnFunc: authnFunc,
 		SetUpFunc: setUpFunc,
 	}
@@ -34,10 +34,10 @@ func NewPolicy(
 type GrantOptions struct {
 	GrantType                   GrantType             `json:"grant_type" bson:"grant_type"`
 	Subject                     string                `json:"sub" bson:"sub"`
-	ClientId                    string                `json:"client_id" bson:"client_id"`
+	ClientID                    string                `json:"client_id" bson:"client_id"`
 	GrantedScopes               string                `json:"scopes" bson:"scopes"`
 	GrantedAuthorizationDetails []AuthorizationDetail `json:"authorization_details,omitempty" bson:"authorization_details,omitempty"`
-	AdditionalIdTokenClaims     map[string]any        `json:"additional_id_token_claims,omitempty" bson:"additional_id_token_claims,omitempty"`
+	AdditionalIDTokenClaims     map[string]any        `json:"additional_id_token_claims,omitempty" bson:"additional_id_token_claims,omitempty"`
 	AdditionalUserInfoClaims    map[string]any        `json:"additional_user_info_claims,omitempty" bson:"additional_user_info_claims,omitempty"`
 	TokenOptions                `bson:"inline"`
 }
@@ -49,7 +49,7 @@ type TokenOptions struct {
 	TokenFormat           TokenFormat    `json:"token_format" bson:"token_format"`
 	TokenLifetimeSecs     int            `json:"token_lifetime_secs" bson:"token_lifetime_secs"`
 	ShouldRefresh         bool           `json:"is_refreshable" bson:"is_refreshable"`
-	JwtSignatureKeyId     string         `json:"token_signature_key_id,omitempty" bson:"token_signature_key_id,omitempty"`
+	JWTSignatureKeyID     string         `json:"token_signature_key_id,omitempty" bson:"token_signature_key_id,omitempty"`
 	OpaqueTokenLength     int            `json:"opaque_token_length,omitempty" bson:"opaque_token_length,omitempty"`
 	AdditionalTokenClaims map[string]any `json:"additional_token_claims,omitempty" bson:"additional_token_claims,omitempty"`
 }
@@ -61,16 +61,16 @@ func (opts *TokenOptions) AddTokenClaims(claims map[string]any) {
 	maps.Copy(opts.AdditionalTokenClaims, claims)
 }
 
-func NewJwtTokenOptions(
+func NewJWTTokenOptions(
 	// The ID of a signing key present in the server JWKS.
-	signatureKeyId string,
+	signatureKeyID string,
 	tokenLifetimeSecs int,
 	shouldRefresh bool,
 ) TokenOptions {
 	return TokenOptions{
-		TokenFormat:       JwtTokenFormat,
+		TokenFormat:       JWTTokenFormat,
 		TokenLifetimeSecs: tokenLifetimeSecs,
-		JwtSignatureKeyId: signatureKeyId,
+		JWTSignatureKeyID: signatureKeyID,
 		ShouldRefresh:     shouldRefresh,
 	}
 }
@@ -89,9 +89,9 @@ func NewOpaqueTokenOptions(
 }
 
 type AuthorizationParameters struct {
-	RequestUri          string              `json:"request_uri,omitempty" bson:"request_uri,omitempty"`
+	RequestURI          string              `json:"request_uri,omitempty" bson:"request_uri,omitempty"`
 	RequestObject       string              `json:"request,omitempty" bson:"request,omitempty"`
-	RedirectUri         string              `json:"redirect_uri,omitempty" bson:"redirect_uri,omitempty"`
+	RedirectURI         string              `json:"redirect_uri,omitempty" bson:"redirect_uri,omitempty"`
 	ResponseMode        ResponseMode        `json:"response_mode,omitempty" bson:"response_mode,omitempty"`
 	ResponseType        ResponseType        `json:"response_type,omitempty" bson:"response_type,omitempty"`
 	Scopes              string              `json:"scope,omitempty" bson:"scope,omitempty"`
@@ -103,7 +103,7 @@ type AuthorizationParameters struct {
 	// MaxAuthenticationAgeSecs is a pointer to help differentiate when it's null or not.
 	MaxAuthenticationAgeSecs *int         `json:"max_age,omitempty" bson:"max_age,omitempty"`
 	Display                  DisplayValue `json:"display,omitempty" bson:"display,omitempty"`
-	AcrValues                string       `json:"acr_values,omitempty" bson:"acr_values,omitempty"`
+	ACRValues                string       `json:"acr_values,omitempty" bson:"acr_values,omitempty"`
 	// Claims is a pointer to help differentiate when it's null or not.
 	Claims               *ClaimsObject         `json:"claims,omitempty" bson:"claims,omitempty"`
 	AuthorizationDetails []AuthorizationDetail `json:"authorization_details,omitempty" bson:"authorization_details,omitempty"`
@@ -111,7 +111,7 @@ type AuthorizationParameters struct {
 
 func (insideParams AuthorizationParameters) Merge(outsideParams AuthorizationParameters) AuthorizationParameters {
 	params := AuthorizationParameters{
-		RedirectUri:              getNonEmptyOrDefault(insideParams.RedirectUri, outsideParams.RedirectUri),
+		RedirectURI:              getNonEmptyOrDefault(insideParams.RedirectURI, outsideParams.RedirectURI),
 		ResponseMode:             getNonEmptyOrDefault(insideParams.ResponseMode, outsideParams.ResponseMode),
 		ResponseType:             getNonEmptyOrDefault(insideParams.ResponseType, outsideParams.ResponseType),
 		Scopes:                   getNonEmptyOrDefault(insideParams.Scopes, outsideParams.Scopes),
@@ -122,7 +122,7 @@ func (insideParams AuthorizationParameters) Merge(outsideParams AuthorizationPar
 		Prompt:                   getNonEmptyOrDefault(insideParams.Prompt, outsideParams.Prompt),
 		MaxAuthenticationAgeSecs: getNonEmptyOrDefault(insideParams.MaxAuthenticationAgeSecs, outsideParams.MaxAuthenticationAgeSecs),
 		Display:                  getNonEmptyOrDefault(insideParams.Display, outsideParams.Display),
-		AcrValues:                getNonEmptyOrDefault(insideParams.AcrValues, outsideParams.AcrValues),
+		ACRValues:                getNonEmptyOrDefault(insideParams.ACRValues, outsideParams.ACRValues),
 		Claims:                   getNonNilOrDefault(insideParams.Claims, outsideParams.Claims),
 		AuthorizationDetails:     getNonNilOrDefault(insideParams.AuthorizationDetails, outsideParams.AuthorizationDetails),
 	}
@@ -149,7 +149,7 @@ func (params AuthorizationParameters) GetResponseMode() ResponseMode {
 		return params.ResponseType.GetDefaultResponseMode(false)
 	}
 
-	if params.ResponseMode == JwtResponseMode {
+	if params.ResponseMode == JWTResponseMode {
 		return params.ResponseType.GetDefaultResponseMode(true)
 	}
 
@@ -158,7 +158,7 @@ func (params AuthorizationParameters) GetResponseMode() ResponseMode {
 
 type ClaimsObject struct {
 	Userinfo map[string]ClaimObjectInfo `json:"userinfo"`
-	IdToken  map[string]ClaimObjectInfo `json:"id_token"`
+	IDToken  map[string]ClaimObjectInfo `json:"id_token"`
 }
 
 // TODO: add functions to the claims object.
@@ -177,7 +177,7 @@ func (detail AuthorizationDetail) GetType() string {
 	return detail.getString("type")
 }
 
-func (detail AuthorizationDetail) GetIdentifier() string {
+func (detail AuthorizationDetail) GetIDentifier() string {
 	return detail.getString("identifier")
 }
 

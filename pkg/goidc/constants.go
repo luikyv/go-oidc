@@ -11,9 +11,9 @@ import (
 
 const DefaultAuthenticationSessionTimeoutSecs = 30 * 60
 
-const CallbackIdLength int = 20
+const CallbackIDLength int = 20
 
-const RequestUriLength int = 20
+const RequestURILength int = 20
 
 const AuthorizationCodeLifetimeSecs int = 60
 
@@ -26,7 +26,7 @@ const RefreshTokenLength int = 99
 
 const DefaultRefreshTokenLifetimeSecs int = 6000
 
-const DynamicClientIdLength int = 30
+const DynamicClientIDLength int = 30
 
 const ClientSecretLength int = 50
 
@@ -36,7 +36,7 @@ const DefaultTokenLifetimeSecs int = 300
 
 const ProtectedParamPrefix string = "p_"
 
-var FapiAllowedCipherSuites []uint16 = []uint16{
+var FAPIAllowedCipherSuites []uint16 = []uint16{
 	tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 	tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 	tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
@@ -46,13 +46,13 @@ var FapiAllowedCipherSuites []uint16 = []uint16{
 type Profile string
 
 const (
-	OpenIdProfile Profile = "oidc_profile"
-	Fapi2Profile  Profile = "fapi2_profile"
+	OpenIDProfile Profile = "oidc_profile"
+	FAPI2Profile  Profile = "fapi2_profile"
 )
 
 type ContextKey string
 
-const CorrelationIdKey ContextKey = "correlation_id"
+const CorrelationIDKey ContextKey = "correlation_id"
 
 type GrantType string
 
@@ -68,12 +68,12 @@ type ResponseType string
 
 const (
 	CodeResponse                   ResponseType = "code"
-	IdTokenResponse                ResponseType = "id_token"
+	IDTokenResponse                ResponseType = "id_token"
 	TokenResponse                  ResponseType = "token"
-	CodeAndIdTokenResponse         ResponseType = "code id_token"
+	CodeAndIDTokenResponse         ResponseType = "code id_token"
 	CodeAndTokenResponse           ResponseType = "code token"
-	IdTokenAndTokenResponse        ResponseType = "id_token token"
-	CodeAndIdTokenAndTokenResponse ResponseType = "code id_token token"
+	IDTokenAndTokenResponse        ResponseType = "id_token token"
+	CodeAndIDTokenAndTokenResponse ResponseType = "code id_token token"
 )
 
 func (rt ResponseType) Contains(responseType ResponseType) bool {
@@ -81,7 +81,7 @@ func (rt ResponseType) Contains(responseType ResponseType) bool {
 }
 
 func (rt ResponseType) IsImplicit() bool {
-	return rt.Contains(IdTokenResponse) || rt.Contains(TokenResponse)
+	return rt.Contains(IDTokenResponse) || rt.Contains(TokenResponse)
 }
 
 // Get the response mode based on the response type.
@@ -89,13 +89,13 @@ func (rt ResponseType) IsImplicit() bool {
 func (rt ResponseType) GetDefaultResponseMode(jarm bool) ResponseMode {
 	if rt.IsImplicit() {
 		if jarm {
-			return FragmentJwtResponseMode
+			return FragmentJWTResponseMode
 		}
 		return FragmentResponseMode
 	}
 
 	if jarm {
-		return QueryJwtResponseMode
+		return QueryJWTResponseMode
 	}
 	return QueryResponseMode
 }
@@ -108,14 +108,14 @@ const (
 	FormPostResponseMode ResponseMode = "form_post"
 	// JARM - JWT Secured Authorization Response Mode.
 	// For more information, see https://openid.net/specs/oauth-v2-jarm.html.
-	QueryJwtResponseMode    ResponseMode = "query.jwt"
-	FragmentJwtResponseMode ResponseMode = "fragment.jwt"
-	FormPostJwtResponseMode ResponseMode = "form_post.jwt"
-	JwtResponseMode         ResponseMode = "jwt"
+	QueryJWTResponseMode    ResponseMode = "query.jwt"
+	FragmentJWTResponseMode ResponseMode = "fragment.jwt"
+	FormPostJWTResponseMode ResponseMode = "form_post.jwt"
+	JWTResponseMode         ResponseMode = "jwt"
 )
 
-func (rm ResponseMode) IsJarm() bool {
-	return strings.HasSuffix(string(rm), string(JwtResponseMode))
+func (rm ResponseMode) IsJARM() bool {
+	return strings.HasSuffix(string(rm), string(JWTResponseMode))
 }
 
 func (rm ResponseMode) IsQuery() bool {
@@ -128,31 +128,31 @@ const (
 	NoneAuthn              ClientAuthnType = "none"
 	ClientSecretBasicAuthn ClientAuthnType = "client_secret_basic"
 	ClientSecretPostAuthn  ClientAuthnType = "client_secret_post"
-	ClientSecretJwt        ClientAuthnType = "client_secret_jwt"
-	PrivateKeyJwtAuthn     ClientAuthnType = "private_key_jwt"
-	TlsAuthn               ClientAuthnType = "tls_client_auth"
-	SelfSignedTlsAuthn     ClientAuthnType = "self_signed_tls_client_auth"
+	ClientSecretJWT        ClientAuthnType = "client_secret_jwt"
+	PrivateKeyJWTAuthn     ClientAuthnType = "private_key_jwt"
+	TLSAuthn               ClientAuthnType = "tls_client_auth"
+	SelfSignedTLSAuthn     ClientAuthnType = "self_signed_tls_client_auth"
 )
 
 type ClientAssertionType string
 
 const (
-	JwtBearerAssertionType ClientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+	JWTBearerAssertionType ClientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 )
 
 type TokenType string
 
 const (
 	BearerTokenType TokenType = "Bearer"
-	DpopTokenType   TokenType = "DPoP"
+	DPOPTokenType   TokenType = "DPoP"
 )
 
 const (
-	TokenIdClaim                        string = "jti"
+	TokenIDClaim                        string = "jti"
 	IssuerClaim                         string = "iss"
 	SubjectClaim                        string = "sub"
 	AudienceClaim                       string = "aud"
-	ClientIdClaim                       string = "client_id"
+	ClientIDClaim                       string = "client_id"
 	ExpiryClaim                         string = "exp"
 	IssuedAtClaim                       string = "iat"
 	ScopeClaim                          string = "scope"
@@ -185,11 +185,11 @@ const (
 )
 
 // For more information, see: https://openid.net/specs/openid-connect-core-1_0.html#SubjectIDTypes
-type SubjectIdentifierType string
+type SubjectIDentifierType string
 
 const (
 	// The server provides the same sub (subject) value to all Clients.
-	PublicSubjectIdentifier SubjectIdentifierType = "public"
+	PublicSubjectIDentifier SubjectIDentifierType = "public"
 	// TODO: Implement pairwise.
 )
 
@@ -223,9 +223,9 @@ func (ec ErrorCode) GetStatusCode() int {
 }
 
 const (
-	CorrelationIdHeader     string = "X-Correlation-Id"
-	FapiInteractionIdHeader string = "X-Fapi-Interaction-Id"
-	DpopHeader              string = "DPoP"
+	CorrelationIDHeader     string = "X-Correlation-ID"
+	FAPIInteractionIDHeader string = "X-FAPI-Interaction-ID"
+	DPOPHeader              string = "DPoP"
 	// Header used to transmit a client certificate that was validated by a trusted source.
 	SecureClientCertificateHeader string = "X-Secure-Client-Certificate"
 	// Header used to trasmit a client certificate that cannot be trusted.
@@ -234,7 +234,7 @@ const (
 )
 
 const (
-	OpenIdScope         string = "openid"
+	OpenIDScope         string = "openid"
 	ProfileScope        string = "profile"
 	EmailScope          string = "email"
 	AddressScope        string = "address"
@@ -254,7 +254,7 @@ const (
 type TokenFormat string
 
 const (
-	JwtTokenFormat    TokenFormat = "jwt"
+	JWTTokenFormat    TokenFormat = "jwt"
 	OpaqueTokenFormat TokenFormat = "opaque"
 )
 
@@ -262,7 +262,7 @@ type EndpointPath string
 
 const (
 	WellKnownEndpoint                  EndpointPath = "/.well-known/openid-configuration"
-	JsonWebKeySetEndpoint              EndpointPath = "/jwks"
+	JSONWebKeySetEndpoint              EndpointPath = "/jwks"
 	PushedAuthorizationRequestEndpoint EndpointPath = "/par"
 	AuthorizationEndpoint              EndpointPath = "/authorize"
 	TokenEndpoint                      EndpointPath = "/token"
@@ -283,7 +283,7 @@ const (
 	MultipleFactorAuthentication               AuthenticationMethodReference = "mfa"
 	OneTimePassowordAuthentication             AuthenticationMethodReference = "otp"
 	PasswordAuthentication                     AuthenticationMethodReference = "pwd"
-	PersonalIdentificationNumberAuthentication AuthenticationMethodReference = "pin"
+	PersonalIDentificationNumberAuthentication AuthenticationMethodReference = "pin"
 	RiskBasedAuthentication                    AuthenticationMethodReference = "rba"
 	SmsAuthentication                          AuthenticationMethodReference = "sms"
 	SoftwareSecuredKeyAuthentication           AuthenticationMethodReference = "swk"

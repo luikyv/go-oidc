@@ -1,5 +1,5 @@
 package authorize
 
 var ValidateAuthorizationRequest = validateAuthorizationRequest
-var ValidateAuthorizationRequestWithPar = validateAuthorizationRequestWithPar
-var ValidateAuthorizationRequestWithJar = validateAuthorizationRequestWithJar
+var ValidateAuthorizationRequestWithPAR = validateAuthorizationRequestWithPAR
+var ValidateAuthorizationRequestWithJAR = validateAuthorizationRequestWithJAR

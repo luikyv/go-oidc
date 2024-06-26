@@ -12,32 +12,32 @@ import (
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-func TestExtractJarFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) {
+func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) {
 	// When.
-	privateJwk := utils.GetTestPrivateRs256Jwk("client_key_id")
+	privateJWK := utils.GetTestPrivateRs256JWK("client_key_id")
 	ctx := utils.GetTestInMemoryContext()
-	ctx.JarIsEnabled = true
-	ctx.JarSignatureAlgorithms = []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJwk.GetAlgorithm())}
-	ctx.JarLifetimeSecs = 60
+	ctx.JARIsEnabled = true
+	ctx.JARSignatureAlgorithms = []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJWK.GetAlgorithm())}
+	ctx.JARLifetimeSecs = 60
 	client := goidc.Client{
 		ClientMetaInfo: goidc.ClientMetaInfo{
-			PublicJwks: &goidc.JsonWebKeySet{
-				Keys: []goidc.JsonWebKey{privateJwk.GetPublic()},
+			PublicJWKS: &goidc.JSONWebKeySet{
+				Keys: []goidc.JSONWebKey{privateJWK.GetPublic()},
 			},
 		},
 	}
 
 	createdAtTimestamp := goidc.GetTimestampNow()
 	signer, _ := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJwk.GetAlgorithm()), Key: privateJwk.GetKey()},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.GetKeyId()),
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.GetAlgorithm()), Key: privateJWK.GetKey()},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.GetKeyID()),
 	)
 	claims := map[string]any{
-		string(goidc.IssuerClaim):   client.Id,
+		string(goidc.IssuerClaim):   client.ID,
 		string(goidc.AudienceClaim): ctx.Host,
 		string(goidc.IssuedAtClaim): createdAtTimestamp,
-		string(goidc.ExpiryClaim):   createdAtTimestamp + ctx.JarLifetimeSecs - 1,
-		"client_id":                 client.Id,
+		string(goidc.ExpiryClaim):   createdAtTimestamp + ctx.JARLifetimeSecs - 1,
+		"client_id":                 client.ID,
 		"redirect_uri":              "https://example.com",
 		"response_type":             goidc.CodeResponse,
 		"scope":                     "scope scope2",
@@ -54,7 +54,7 @@ func TestExtractJarFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 	request, _ := jwt.Signed(signer).Claims(claims).Serialize()
 
 	// Then.
-	jar, err := utils.ExtractJarFromRequestObject(ctx, request, client)
+	jar, err := utils.ExtractJARFromRequestObject(ctx, request, client)
 
 	// Assert.
 	if err != nil {
@@ -62,7 +62,7 @@ func TestExtractJarFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 		return
 	}
 
-	if jar.ClientId != client.Id {
+	if jar.ClientID != client.ID {
 		t.Errorf("Invalid JAR client_id. JAR: %v", jar)
 		return
 	}
@@ -73,25 +73,25 @@ func TestExtractJarFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 	}
 }
 
-func TestValidateDpopJwt(t *testing.T) {
+func TestValidateDPOPJWT(t *testing.T) {
 
 	var testCases = []struct {
 		Name           string
-		DpopJwt        string
-		ExpectedClaims utils.DpopJwtValidationOptions
+		DPOPJWT        string
+		ExpectedClaims utils.DPOPJWTValidationOptions
 		Context        utils.Context
 		ShouldBeValid  bool
 	}{
 		{
 			"valid_dpop_jwt",
 			"eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7Imt0eSI6IkVDIiwieCI6Imw4dEZyaHgtMzR0VjNoUklDUkRZOXpDa0RscEJoRjQyVVFVZldWQVdCRnMiLCJ5IjoiOVZFNGpmX09rX282NHpiVFRsY3VOSmFqSG10NnY5VERWclUwQ2R2R1JEQSIsImNydiI6IlAtMjU2In19.eyJqdGkiOiItQndDM0VTYzZhY2MybFRjIiwiaHRtIjoiUE9TVCIsImh0dSI6Imh0dHBzOi8vc2VydmVyLmV4YW1wbGUuY29tL3Rva2VuIiwiaWF0IjoxNTYyMjY1Mjk2fQ.pAqut2IRDm_De6PR93SYmGBPXpwrAk90e8cP2hjiaG5QsGSuKDYW7_X620BxqhvYC8ynrrvZLTk41mSRroapUA",
-			utils.DpopJwtValidationOptions{},
+			utils.DPOPJWTValidationOptions{},
 			utils.Context{
 				Configuration: utils.Configuration{
 					Host:                    "https://server.example.com",
-					DpopIsEnabled:           true,
-					DpopSignatureAlgorithms: []jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256},
-					DpopLifetimeSecs:        99999999999,
+					DPOPIsEnabled:           true,
+					DPOPSignatureAlgorithms: []jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256},
+					DPOPLifetimeSecs:        99999999999,
 				},
 				Request: &http.Request{
 					Method: http.MethodPost,
@@ -103,15 +103,15 @@ func TestValidateDpopJwt(t *testing.T) {
 		{
 			"valid_dpop_jwt_with_ath",
 			"eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7Imt0eSI6IkVDIiwieCI6Imw4dEZyaHgtMzR0VjNoUklDUkRZOXpDa0RscEJoRjQyVVFVZldWQVdCRnMiLCJ5IjoiOVZFNGpmX09rX282NHpiVFRsY3VOSmFqSG10NnY5VERWclUwQ2R2R1JEQSIsImNydiI6IlAtMjU2In19.eyJqdGkiOiJlMWozVl9iS2ljOC1MQUVCIiwiaHRtIjoiR0VUIiwiaHR1IjoiaHR0cHM6Ly9yZXNvdXJjZS5leGFtcGxlLm9yZy9wcm90ZWN0ZWRyZXNvdXJjZSIsImlhdCI6MTU2MjI2MjYxOCwiYXRoIjoiZlVIeU8ycjJaM0RaNTNFc05yV0JiMHhXWG9hTnk1OUlpS0NBcWtzbVFFbyJ9.2oW9RP35yRqzhrtNP86L-Ey71EOptxRimPPToA1plemAgR6pxHF8y6-yqyVnmcw6Fy1dqd-jfxSYoMxhAJpLjA",
-			utils.DpopJwtValidationOptions{
+			utils.DPOPJWTValidationOptions{
 				AccessToken: "Kz~8mXK1EalYznwH-LC-1fBAo.4Ljp~zsPE_NeO.gxU",
 			},
 			utils.Context{
 				Configuration: utils.Configuration{
 					Host:                    "https://resource.example.org/protectedresource",
-					DpopIsEnabled:           true,
-					DpopSignatureAlgorithms: []jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256},
-					DpopLifetimeSecs:        99999999999,
+					DPOPIsEnabled:           true,
+					DPOPSignatureAlgorithms: []jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256},
+					DPOPLifetimeSecs:        99999999999,
 				},
 				Request: &http.Request{
 					Method: http.MethodGet,
@@ -130,7 +130,7 @@ func TestValidateDpopJwt(t *testing.T) {
 				// ctx.Request.Method = testCase.ExpectedClaims
 
 				// Then.
-				err := utils.ValidateDpopJwt(testCase.Context, testCase.DpopJwt, testCase.ExpectedClaims)
+				err := utils.ValidateDPOPJWT(testCase.Context, testCase.DPOPJWT, testCase.ExpectedClaims)
 
 				// Assert.
 				isValid := err == nil
@@ -150,11 +150,11 @@ func TestGenerateRefreshToken(t *testing.T) {
 	}
 }
 
-func TestGetUrlWithQueryParams(t *testing.T) {
+func TestGetURLWithQueryParams(t *testing.T) {
 	testCases := []struct {
-		Url                      string
+		URL                      string
 		params                   map[string]string
-		ExpectedParameterizedUrl string
+		ExpectedParameterizedURL string
 	}{
 		{"http://example", map[string]string{"param1": "value1"}, "http://example?param1=value1"},
 		{"http://example?param=value", map[string]string{"param1": "value1"}, "http://example?param=value&param1=value1"},
@@ -163,21 +163,21 @@ func TestGetUrlWithQueryParams(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
-			parameterizedUrl := utils.GetUrlWithQueryParams(testCase.Url, testCase.params)
+			parameterizedURL := utils.GetURLWithQueryParams(testCase.URL, testCase.params)
 
-			if parameterizedUrl != testCase.ExpectedParameterizedUrl {
-				t.Errorf("%s is different from %s", parameterizedUrl, testCase.ExpectedParameterizedUrl)
+			if parameterizedURL != testCase.ExpectedParameterizedURL {
+				t.Errorf("%s is different from %s", parameterizedURL, testCase.ExpectedParameterizedURL)
 			}
 		})
 	}
 
 }
 
-func TestGetUrlWithFragmentParams(t *testing.T) {
+func TestGetURLWithFragmentParams(t *testing.T) {
 	testCases := []struct {
-		Url                      string
+		URL                      string
 		params                   map[string]string
-		ExpectedParameterizedUrl string
+		ExpectedParameterizedURL string
 	}{
 		{"http://example", map[string]string{"param1": "value1"}, "http://example#param1=value1"},
 		{"http://example#param=value", map[string]string{"param1": "value1"}, "http://example#param=value&param1=value1"},
@@ -186,20 +186,20 @@ func TestGetUrlWithFragmentParams(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
-			parameterizedUrl := utils.GetUrlWithFragmentParams(testCase.Url, testCase.params)
+			parameterizedURL := utils.GetURLWithFragmentParams(testCase.URL, testCase.params)
 
-			if parameterizedUrl != testCase.ExpectedParameterizedUrl {
-				t.Errorf("%s is different from %s", parameterizedUrl, testCase.ExpectedParameterizedUrl)
+			if parameterizedURL != testCase.ExpectedParameterizedURL {
+				t.Errorf("%s is different from %s", parameterizedURL, testCase.ExpectedParameterizedURL)
 			}
 		})
 	}
 
 }
 
-func TestGetUrlWithoutParams(t *testing.T) {
+func TestGetURLWithoutParams(t *testing.T) {
 	testCases := []struct {
 		url         string
-		expectedUrl string
+		expectedURL string
 	}{
 		{"http://example#param1=value1", "http://example"},
 		{"http://example#param=value&param1=value1", "http://example"},
@@ -208,10 +208,10 @@ func TestGetUrlWithoutParams(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
-			urlWithoutParams, err := utils.GetUrlWithoutParams(testCase.url)
+			urlWithoutParams, err := utils.GetURLWithoutParams(testCase.url)
 
-			if err != nil || urlWithoutParams != testCase.expectedUrl {
-				t.Errorf("%s is different from %s", urlWithoutParams, testCase.expectedUrl)
+			if err != nil || urlWithoutParams != testCase.expectedURL {
+				t.Errorf("%s is different from %s", urlWithoutParams, testCase.expectedURL)
 			}
 		})
 	}
@@ -290,10 +290,10 @@ func TestAllEquals(t *testing.T) {
 	}
 }
 
-func TestGenerateJwkThumbprint(t *testing.T) {
+func TestGenerateJWKThumbprint(t *testing.T) {
 	dpopSigningAlgorithms := []jose.SignatureAlgorithm{jose.ES256}
 	testCases := []struct {
-		DpopJwt            string
+		DPOPJWT            string
 		ExpectedThumbprint string
 	}{
 		{
@@ -304,7 +304,7 @@ func TestGenerateJwkThumbprint(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
-			jkt := utils.GenerateJwkThumbprint(testCase.DpopJwt, dpopSigningAlgorithms)
+			jkt := utils.GenerateJWKThumbprint(testCase.DPOPJWT, dpopSigningAlgorithms)
 			if jkt != testCase.ExpectedThumbprint {
 				t.Errorf("invalid thumbprint. expected: %s - actual: %s", testCase.ExpectedThumbprint, jkt)
 			}
@@ -312,10 +312,10 @@ func TestGenerateJwkThumbprint(t *testing.T) {
 	}
 }
 
-func TestIsJws(t *testing.T) {
+func TestIsJWS(t *testing.T) {
 	testCases := []struct {
 		jws         string
-		shouldBeJws bool
+		shouldBeJWS bool
 	}{
 		{"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", true},
 		{"not a jwt", false},
@@ -323,17 +323,17 @@ func TestIsJws(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i+1), func(t *testing.T) {
-			if utils.IsJws(testCase.jws) != testCase.shouldBeJws {
+			if utils.IsJWS(testCase.jws) != testCase.shouldBeJWS {
 				t.Error(testCase)
 			}
 		})
 	}
 }
 
-func TestIsJwe(t *testing.T) {
+func TestIsJWE(t *testing.T) {
 	testCases := []struct {
 		jwe         string
-		shouldBeJwe bool
+		shouldBeJWE bool
 	}{
 		{"eyJhbGciOiJSU0EtT0FFUCIsImVuYyI6IkEyNTZHQ00ifQ.OKOawDo13gRp2ojaHV7LFpZcgV7T6DVZKTyKOMTYUmKoTCVJRgckCL9kiMT03JGeipsEdY3mx_etLbbWSrFr05kLzcSr4qKAq7YN7e9jwQRb23nfa6c9d-StnImGyFDbSv04uVuxIp5Zms1gNxKKK2Da14B8S4rzVRltdYwam_lDp5XnZAYpQdb76FdIKLaVmqgfwX7XWRxv2322i-vDxRfqNzo_tETKzpVLzfiwQyeyPGLBIO56YJ7eObdv0je81860ppamavo35UgoRdbYaBcoh9QcfylQr66oc6vFWXRcZ_ZT2LawVCWTIy3brGPi6UklfCpIMfIjf7iGdXKHzg.48V1_ALb6US04U3b.5eym8TW_c8SuK0ltJ3rpYIzOeDQz7TALvtu6UG9oMo4vpzs9tX_EFShS8iB7j6jiSdiwkIr3ajwQzaBtQD_.XFBoMYUZodetZdvTiFvSkQ", true},
 		{"not a jwt", false},
@@ -341,7 +341,7 @@ func TestIsJwe(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i+1), func(t *testing.T) {
-			if utils.IsJwe(testCase.jwe) != testCase.shouldBeJwe {
+			if utils.IsJWE(testCase.jwe) != testCase.shouldBeJWE {
 				t.Error(testCase)
 			}
 		})

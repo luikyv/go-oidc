@@ -40,10 +40,10 @@ func TestGenerateRandomString_WithDifferentLengths(t *testing.T) {
 	}
 }
 
-func TestGenerateCallbackId(t *testing.T) {
-	callbackId := goidc.GenerateCallbackId()
-	if len(callbackId) != goidc.CallbackIdLength {
-		t.Errorf("callback ID: %s has not %v characters", callbackId, goidc.CallbackIdLength)
+func TestGenerateCallbackID(t *testing.T) {
+	callbackID := goidc.GenerateCallbackID()
+	if len(callbackID) != goidc.CallbackIDLength {
+		t.Errorf("callback ID: %s has not %v characters", callbackID, goidc.CallbackIDLength)
 	}
 }
 

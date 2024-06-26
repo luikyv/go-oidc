@@ -7,25 +7,25 @@ import (
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-func MakeIdToken(
+func MakeIDToken(
 	ctx Context,
 	client goidc.Client,
-	idTokenOpts IdTokenOptions,
+	idTokenOpts IDTokenOptions,
 ) (
 	string,
 	goidc.OAuthError,
 ) {
-	idToken, err := makeIdToken(ctx, client, idTokenOpts)
+	idToken, err := makeIDToken(ctx, client, idTokenOpts)
 	if err != nil {
 		return "", err
 	}
 
 	// If encryption is disabled, just return the signed ID token.
-	if client.IdTokenKeyEncryptionAlgorithm == "" {
+	if client.IDTokenKeyEncryptionAlgorithm == "" {
 		return idToken, nil
 	}
 
-	idToken, err = encryptIdToken(ctx, client, idToken)
+	idToken, err = encryptIDToken(ctx, client, idToken)
 	if err != nil {
 		return "", err
 	}
@@ -41,32 +41,32 @@ func MakeToken(
 	Token,
 	goidc.OAuthError,
 ) {
-	if grantOptions.TokenFormat == goidc.JwtTokenFormat {
-		return makeJwtToken(ctx, client, grantOptions)
+	if grantOptions.TokenFormat == goidc.JWTTokenFormat {
+		return makeJWTToken(ctx, client, grantOptions)
 	} else {
 		return makeOpaqueToken(ctx, client, grantOptions)
 	}
 }
 
-func makeIdToken(
+func makeIDToken(
 	ctx Context,
 	client goidc.Client,
-	idTokenOpts IdTokenOptions,
+	idTokenOpts IDTokenOptions,
 ) (
 	string,
 	goidc.OAuthError,
 ) {
-	privateJwk := ctx.GetIdTokenSignatureKey(client)
-	signatureAlgorithm := jose.SignatureAlgorithm(privateJwk.GetAlgorithm())
+	privateJWK := ctx.GetIDTokenSignatureKey(client)
+	signatureAlgorithm := jose.SignatureAlgorithm(privateJWK.GetAlgorithm())
 	timestampNow := goidc.GetTimestampNow()
 
 	// Set the token claims.
 	claims := map[string]any{
 		goidc.IssuerClaim:   ctx.Host,
 		goidc.SubjectClaim:  idTokenOpts.Subject,
-		goidc.AudienceClaim: idTokenOpts.ClientId,
+		goidc.AudienceClaim: idTokenOpts.ClientID,
 		goidc.IssuedAtClaim: timestampNow,
-		goidc.ExpiryClaim:   timestampNow + ctx.IdTokenExpiresInSecs,
+		goidc.ExpiryClaim:   timestampNow + ctx.IDTokenExpiresInSecs,
 	}
 
 	if idTokenOpts.AccessToken != "" {
@@ -81,13 +81,13 @@ func makeIdToken(
 		claims[goidc.StateHashClaim] = GenerateHalfHashClaim(idTokenOpts.State, signatureAlgorithm)
 	}
 
-	for k, v := range idTokenOpts.AdditionalIdTokenClaims {
+	for k, v := range idTokenOpts.AdditionalIDTokenClaims {
 		claims[k] = v
 	}
 
 	signer, err := jose.NewSigner(
-		jose.SigningKey{Algorithm: signatureAlgorithm, Key: privateJwk.GetKey()},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.GetKeyId()),
+		jose.SigningKey{Algorithm: signatureAlgorithm, Key: privateJWK.GetKey()},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.GetKeyID()),
 	)
 	if err != nil {
 		return "", goidc.NewOAuthError(goidc.InternalError, err.Error())
@@ -101,29 +101,29 @@ func makeIdToken(
 	return idToken, nil
 }
 
-func encryptIdToken(
+func encryptIDToken(
 	ctx Context,
 	client goidc.Client,
-	userInfoJwt string,
+	userInfoJWT string,
 ) (
 	string,
 	goidc.OAuthError,
 ) {
-	jwk, oauthErr := client.GetIdTokenEncryptionJwk()
+	jwk, oauthErr := client.GetIDTokenEncryptionJWK()
 	if oauthErr != nil {
 		return "", oauthErr
 	}
 
-	encryptedIdToken, oauthErr := EncryptJwt(ctx, userInfoJwt, jwk, client.IdTokenContentEncryptionAlgorithm)
+	encryptedIDToken, oauthErr := EncryptJWT(ctx, userInfoJWT, jwk, client.IDTokenContentEncryptionAlgorithm)
 	if oauthErr != nil {
 		return "", oauthErr
 	}
 
-	return encryptedIdToken, nil
+	return encryptedIDToken, nil
 }
 
 // TODO: Make it simpler. Create a confirmation object.
-func makeJwtToken(
+func makeJWTToken(
 	ctx Context,
 	client goidc.Client,
 	grantOptions goidc.GrantOptions,
@@ -131,14 +131,14 @@ func makeJwtToken(
 	Token,
 	goidc.OAuthError,
 ) {
-	privateJwk := ctx.GetTokenSignatureKey(grantOptions.TokenOptions)
-	jwtId := uuid.NewString()
+	privateJWK := ctx.GetTokenSignatureKey(grantOptions.TokenOptions)
+	jwtID := uuid.NewString()
 	timestampNow := goidc.GetTimestampNow()
 	claims := map[string]any{
-		goidc.TokenIdClaim:  jwtId,
+		goidc.TokenIDClaim:  jwtID,
 		goidc.IssuerClaim:   ctx.Host,
 		goidc.SubjectClaim:  grantOptions.Subject,
-		goidc.ClientIdClaim: client.Id,
+		goidc.ClientIDClaim: client.ID,
 		goidc.ScopeClaim:    grantOptions.GrantedScopes,
 		goidc.IssuedAtClaim: timestampNow,
 		goidc.ExpiryClaim:   timestampNow + grantOptions.TokenLifetimeSecs,
@@ -151,18 +151,18 @@ func makeJwtToken(
 	tokenType := goidc.BearerTokenType
 	confirmation := make(map[string]string)
 	// DPoP token binding.
-	dpopJwt, ok := ctx.GetDpopJwt()
+	dpopJWT, ok := ctx.GetDPOPJWT()
 	jkt := ""
-	if ctx.DpopIsEnabled && ok {
-		tokenType = goidc.DpopTokenType
-		jkt = GenerateJwkThumbprint(dpopJwt, ctx.DpopSignatureAlgorithms)
+	if ctx.DPOPIsEnabled && ok {
+		tokenType = goidc.DPOPTokenType
+		jkt = GenerateJWKThumbprint(dpopJWT, ctx.DPOPSignatureAlgorithms)
 		confirmation["jkt"] = jkt
 	}
 	// TLS token binding.
 	clientCert, ok := ctx.GetClientCertificate()
 	certThumbprint := ""
-	if ctx.TlsBoundTokensIsEnabled && ok {
-		certThumbprint = GenerateBase64UrlSha256Hash(string(clientCert.Raw))
+	if ctx.TLSBoundTokensIsEnabled && ok {
+		certThumbprint = GenerateBase64URLSha256Hash(string(clientCert.Raw))
 		confirmation["x5t#S256"] = certThumbprint
 	}
 	if len(confirmation) != 0 {
@@ -174,10 +174,10 @@ func makeJwtToken(
 	}
 
 	signer, err := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJwk.GetAlgorithm()), Key: privateJwk.GetKey()},
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.GetAlgorithm()), Key: privateJWK.GetKey()},
 		// RFC9068. "...This specification registers the "application/at+jwt" media type,
 		// which can be used to indicate that the content is a JWT access token."
-		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", privateJwk.GetKeyId()),
+		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", privateJWK.GetKeyID()),
 	)
 	if err != nil {
 		return Token{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
@@ -189,11 +189,11 @@ func makeJwtToken(
 	}
 
 	return Token{
-		Id:                    jwtId,
-		Format:                goidc.JwtTokenFormat,
+		ID:                    jwtID,
+		Format:                goidc.JWTTokenFormat,
 		Value:                 accessToken,
 		Type:                  tokenType,
-		JwkThumbprint:         jkt,
+		JWKThumbprint:         jkt,
 		CertificateThumbprint: certThumbprint,
 	}, nil
 }
@@ -210,26 +210,26 @@ func makeOpaqueToken(
 	tokenType := goidc.BearerTokenType
 
 	// DPoP token binding.
-	dpopJwt, ok := ctx.GetDpopJwt()
+	dpopJWT, ok := ctx.GetDPOPJWT()
 	jkt := ""
-	if ctx.DpopIsEnabled && ok {
-		tokenType = goidc.DpopTokenType
-		jkt = GenerateJwkThumbprint(dpopJwt, ctx.DpopSignatureAlgorithms)
+	if ctx.DPOPIsEnabled && ok {
+		tokenType = goidc.DPOPTokenType
+		jkt = GenerateJWKThumbprint(dpopJWT, ctx.DPOPSignatureAlgorithms)
 	}
 
 	// TLS token binding.
 	clientCert, ok := ctx.GetClientCertificate()
 	certThumbprint := ""
-	if ctx.TlsBoundTokensIsEnabled && ok {
-		certThumbprint = GenerateBase64UrlSha256Hash(string(clientCert.Raw))
+	if ctx.TLSBoundTokensIsEnabled && ok {
+		certThumbprint = GenerateBase64URLSha256Hash(string(clientCert.Raw))
 	}
 
 	return Token{
-		Id:                    accessToken,
+		ID:                    accessToken,
 		Format:                goidc.OpaqueTokenFormat,
 		Value:                 accessToken,
 		Type:                  tokenType,
-		JwkThumbprint:         jkt,
+		JWKThumbprint:         jkt,
 		CertificateThumbprint: certThumbprint,
 	}, nil
 }

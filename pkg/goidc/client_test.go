@@ -52,7 +52,7 @@ func TestIsResponseTypeAllowed(t *testing.T) {
 		expectedResult        bool
 	}{
 		{goidc.CodeResponse, true},
-		{goidc.CodeAndIdTokenResponse, false},
+		{goidc.CodeAndIDTokenResponse, false},
 	}
 
 	for i, testCase := range testCases {
@@ -93,14 +93,14 @@ func TestIsGrantTypeAllowed(t *testing.T) {
 	}
 }
 
-func TestIsRedirectUriAllowed(t *testing.T) {
+func TestIsRedirectURIAllowed(t *testing.T) {
 	client := goidc.Client{
 		ClientMetaInfo: goidc.ClientMetaInfo{
-			RedirectUris: []string{"https://example.com/callback", "http://example.com?param=value"},
+			RedirectURIS: []string{"https://example.com/callback", "http://example.com?param=value"},
 		},
 	}
 	testCases := []struct {
-		redirectUri    string
+		redirectURI    string
 		expectedResult bool
 	}{
 		{"https://example.com/callback", true},
@@ -112,7 +112,7 @@ func TestIsRedirectUriAllowed(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("case %v", i),
 			func(t *testing.T) {
-				if client.IsRedirectUriAllowed(testCase.redirectUri) != testCase.expectedResult {
+				if client.IsRedirectURIAllowed(testCase.redirectURI) != testCase.expectedResult {
 					t.Error(testCase)
 				}
 			},
@@ -168,27 +168,27 @@ func TestIsRegistrationAccessTokenValid(t *testing.T) {
 	}
 }
 
-func TestGetPublicJwks(t *testing.T) {
+func TestGetPublicJWKS(t *testing.T) {
 
 	// When.
-	jwk := GetTestPrivatePs256Jwk("random_key_id")
-	numberOfRequestsToJwksUri := 0
+	jwk := GetTestPrivatePs256JWK("random_key_id")
+	numberOfRequestsToJWKSURI := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		numberOfRequestsToJwksUri++
-		json.NewEncoder(w).Encode(goidc.JsonWebKeySet{
-			Keys: []goidc.JsonWebKey{jwk},
+		numberOfRequestsToJWKSURI++
+		json.NewEncoder(w).Encode(goidc.JSONWebKeySet{
+			Keys: []goidc.JSONWebKey{jwk},
 		})
 	}))
 
 	client := goidc.Client{
 		ClientMetaInfo: goidc.ClientMetaInfo{
-			PublicJwksUri: server.URL,
-			PublicJwks:    &goidc.JsonWebKeySet{},
+			PublicJWKSURI: server.URL,
+			PublicJWKS:    &goidc.JSONWebKeySet{},
 		},
 	}
 
 	// Then.
-	jwks, err := client.GetPublicJwks()
+	jwks, err := client.GetPublicJWKS()
 
 	// Assert.
 	if err != nil {
@@ -196,7 +196,7 @@ func TestGetPublicJwks(t *testing.T) {
 		return
 	}
 
-	if numberOfRequestsToJwksUri != 1 {
+	if numberOfRequestsToJWKSURI != 1 {
 		t.Errorf("the jwks uri should've been requested once")
 	}
 
@@ -205,7 +205,7 @@ func TestGetPublicJwks(t *testing.T) {
 	}
 
 	// Then.
-	jwks, err = client.GetPublicJwks()
+	jwks, err = client.GetPublicJWKS()
 
 	// Assert.
 	if err != nil {
@@ -213,7 +213,7 @@ func TestGetPublicJwks(t *testing.T) {
 		return
 	}
 
-	if numberOfRequestsToJwksUri != 1 {
+	if numberOfRequestsToJWKSURI != 1 {
 		t.Errorf("the jwks uri should've been cached and therefore requested only once")
 	}
 
@@ -222,11 +222,11 @@ func TestGetPublicJwks(t *testing.T) {
 	}
 }
 
-func GetTestPrivatePs256Jwk(keyId string) goidc.JsonWebKey {
+func GetTestPrivatePs256JWK(keyID string) goidc.JSONWebKey {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	return goidc.NewJsonWebKey(jose.JSONWebKey{
+	return goidc.NewJSONWebKey(jose.JSONWebKey{
 		Key:       privateKey,
-		KeyID:     keyId,
+		KeyID:     keyID,
 		Algorithm: string(jose.PS256),
 		Use:       string(goidc.KeySignatureUsage),
 	})

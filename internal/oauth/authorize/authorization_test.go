@@ -20,7 +20,7 @@ func TestInitAuth_ShouldNotFindClient(t *testing.T) {
 	ctx := utils.GetTestInMemoryContext()
 
 	// Then
-	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{ClientId: "invalid_client_id"})
+	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{ClientID: "invalid_client_id"})
 
 	// Assert
 	if err == nil || err.GetCode() != goidc.InvalidClient {
@@ -29,7 +29,7 @@ func TestInitAuth_ShouldNotFindClient(t *testing.T) {
 	}
 }
 
-func TestInitAuth_InvalidRedirectUri(t *testing.T) {
+func TestInitAuth_InvalidRedirectURI(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
@@ -37,9 +37,9 @@ func TestInitAuth_InvalidRedirectUri(t *testing.T) {
 
 	// Then
 	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
-		ClientId: client.Id,
+		ClientID: client.ID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
-			RedirectUri: "https://invalid.com",
+			RedirectURI: "https://invalid.com",
 		},
 	})
 
@@ -64,17 +64,17 @@ func TestInitAuth_InvalidScope(t *testing.T) {
 
 	// Then
 	authorize.InitAuth(ctx, utils.AuthorizationRequest{
-		ClientId: utils.TestClientId,
+		ClientID: utils.TestClientID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
-			RedirectUri:  client.RedirectUris[0],
+			RedirectURI:  client.RedirectURIS[0],
 			Scopes:       "invalid_scope",
 			ResponseType: goidc.CodeResponse,
 		},
 	})
 
 	// Assert
-	redirectUrl := ctx.Response.Header().Get("Location")
-	if !strings.Contains(redirectUrl, fmt.Sprintf("error=%s", string(goidc.InvalidScope))) {
+	redirectURL := ctx.Response.Header().Get("Location")
+	if !strings.Contains(redirectURL, fmt.Sprintf("error=%s", string(goidc.InvalidScope))) {
 		t.Error("the scope should not be valid")
 		return
 	}
@@ -89,17 +89,17 @@ func TestInitAuth_InvalidResponseType(t *testing.T) {
 
 	// Then
 	authorize.InitAuth(ctx, utils.AuthorizationRequest{
-		ClientId: utils.TestClientId,
+		ClientID: utils.TestClientID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
-			RedirectUri:  client.RedirectUris[0],
+			RedirectURI:  client.RedirectURIS[0],
 			Scopes:       client.Scopes,
-			ResponseType: goidc.IdTokenResponse,
+			ResponseType: goidc.IDTokenResponse,
 		},
 	})
 
 	// Assert
-	redirectUrl := ctx.Response.Header().Get("Location")
-	if !strings.Contains(redirectUrl, fmt.Sprintf("error=%s", string(goidc.InvalidRequest))) {
+	redirectURL := ctx.Response.Header().Get("Location")
+	if !strings.Contains(redirectURL, fmt.Sprintf("error=%s", string(goidc.InvalidRequest))) {
 		t.Error("the response type should not be allowed")
 		return
 	}
@@ -113,17 +113,17 @@ func TestInitAuth_WhenNoPolicyIsAvailable(t *testing.T) {
 
 	// Then
 	authorize.InitAuth(ctx, utils.AuthorizationRequest{
-		ClientId: utils.TestClientId,
+		ClientID: utils.TestClientID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
-			RedirectUri:  client.RedirectUris[0],
+			RedirectURI:  client.RedirectURIS[0],
 			Scopes:       client.Scopes,
 			ResponseType: goidc.CodeResponse,
 		},
 	})
 
 	// Assert
-	redirectUrl := ctx.Response.Header().Get("Location")
-	if !strings.Contains(redirectUrl, fmt.Sprintf("error=%s", string(goidc.InvalidRequest))) {
+	redirectURL := ctx.Response.Header().Get("Location")
+	if !strings.Contains(redirectURL, fmt.Sprintf("error=%s", string(goidc.InvalidRequest))) {
 		t.Error("no policy should be available")
 		return
 	}
@@ -146,9 +146,9 @@ func TestInitAuth_ShouldEndWithError(t *testing.T) {
 
 	// Then
 	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
-		ClientId: utils.TestClientId,
+		ClientID: utils.TestClientID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
-			RedirectUri:  client.RedirectUris[0],
+			RedirectURI:  client.RedirectURIS[0],
 			Scopes:       client.Scopes,
 			ResponseType: goidc.CodeResponse,
 			ResponseMode: goidc.QueryResponseMode,
@@ -160,8 +160,8 @@ func TestInitAuth_ShouldEndWithError(t *testing.T) {
 		t.Error("the error should be redirected")
 	}
 
-	redirectUrl := ctx.Response.Header().Get("Location")
-	if !strings.Contains(redirectUrl, fmt.Sprintf("error=%s", string(goidc.AccessDenied))) {
+	redirectURL := ctx.Response.Header().Get("Location")
+	if !strings.Contains(redirectURL, fmt.Sprintf("error=%s", string(goidc.AccessDenied))) {
 		t.Error("no error found")
 		return
 	}
@@ -189,9 +189,9 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 
 	// Then
 	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
-		ClientId: utils.TestClientId,
+		ClientID: utils.TestClientID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
-			RedirectUri:  client.RedirectUris[0],
+			RedirectURI:  client.RedirectURIS[0],
 			Scopes:       client.Scopes,
 			ResponseType: goidc.CodeResponse,
 			ResponseMode: goidc.QueryResponseMode,
@@ -206,7 +206,7 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 
 	responseStatus := ctx.Response.(*httptest.ResponseRecorder).Result().StatusCode
 	if responseStatus != http.StatusOK {
-		t.Errorf("invalid status code for in progress status: %v. redirectUrl: %s", responseStatus, ctx.Response.Header().Get("Location"))
+		t.Errorf("invalid status code for in progress status: %v. redirectURL: %s", responseStatus, ctx.Response.Header().Get("Location"))
 		return
 	}
 
@@ -217,7 +217,7 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 	}
 
 	session := sessions[0]
-	if session.CallbackId == "" {
+	if session.CallbackID == "" {
 		t.Error("the callback ID was not filled")
 		return
 	}
@@ -244,11 +244,11 @@ func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 
 	// Then
 	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
-		ClientId: client.Id,
+		ClientID: client.ID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
-			RedirectUri:  client.RedirectUris[0],
+			RedirectURI:  client.RedirectURIS[0],
 			Scopes:       client.Scopes,
-			ResponseType: goidc.CodeAndIdTokenResponse,
+			ResponseType: goidc.CodeAndIDTokenResponse,
 			ResponseMode: goidc.FragmentResponseMode,
 			Nonce:        "random_nonce",
 		},
@@ -272,33 +272,33 @@ func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 		return
 	}
 
-	redirectUrl := ctx.Response.Header().Get("Location")
-	if !strings.Contains(redirectUrl, fmt.Sprintf("code=%s", session.AuthorizationCode)) {
-		t.Errorf("the policy should finish redirecting with error. redirect URL: %s", redirectUrl)
+	redirectURL := ctx.Response.Header().Get("Location")
+	if !strings.Contains(redirectURL, fmt.Sprintf("code=%s", session.AuthorizationCode)) {
+		t.Errorf("the policy should finish redirecting with error. redirect URL: %s", redirectURL)
 		return
 	}
-	if !strings.Contains(redirectUrl, "id_token=") {
-		t.Errorf("the policy should finish redirecting with error. redirect URL: %s", redirectUrl)
+	if !strings.Contains(redirectURL, "id_token=") {
+		t.Errorf("the policy should finish redirecting with error. redirect URL: %s", redirectURL)
 		return
 	}
 }
 
-func TestInitAuth_WithPar(t *testing.T) {
+func TestInitAuth_WithPAR(t *testing.T) {
 	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.ParIsEnabled = true
+	ctx.PARIsEnabled = true
 	ctx.CreateClient(client)
-	requestUri := "urn:goidc:random_value"
+	requestURI := "urn:goidc:random_value"
 	ctx.CreateOrUpdateAuthnSession(
 		goidc.AuthnSession{
-			Id: uuid.NewString(),
+			ID: uuid.NewString(),
 			AuthorizationParameters: goidc.AuthorizationParameters{
-				RequestUri:   requestUri,
+				RequestURI:   requestURI,
 				Scopes:       client.Scopes,
-				RedirectUri:  client.RedirectUris[0],
+				RedirectURI:  client.RedirectURIS[0],
 				ResponseType: goidc.CodeResponse,
 			},
-			ClientId:           client.Id,
+			ClientID:           client.ID,
 			ExpiresAtTimestamp: goidc.GetTimestampNow() + 60,
 		},
 	)
@@ -313,9 +313,9 @@ func TestInitAuth_WithPar(t *testing.T) {
 
 	// Then
 	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
-		ClientId: utils.TestClientId,
+		ClientID: utils.TestClientID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
-			RequestUri:   requestUri,
+			RequestURI:   requestURI,
 			ResponseType: goidc.CodeResponse,
 			Scopes:       client.Scopes,
 		},
@@ -339,9 +339,9 @@ func TestInitAuth_WithPar(t *testing.T) {
 		return
 	}
 
-	redirectUrl := ctx.Response.Header().Get("Location")
-	if !strings.Contains(redirectUrl, fmt.Sprintf("code=%s", session.AuthorizationCode)) {
-		t.Errorf("the policy should finish redirecting with error. redirect URL: %s", redirectUrl)
+	redirectURL := ctx.Response.Header().Get("Location")
+	if !strings.Contains(redirectURL, fmt.Sprintf("code=%s", session.AuthorizationCode)) {
+		t.Errorf("the policy should finish redirecting with error. redirect URL: %s", redirectURL)
 		return
 	}
 }
@@ -359,15 +359,15 @@ func TestContinueAuthentication(t *testing.T) {
 	)
 	ctx.Policies = []goidc.AuthnPolicy{policy}
 
-	callbackId := "random_callback_id"
+	callbackID := "random_callback_id"
 	ctx.CreateOrUpdateAuthnSession(goidc.AuthnSession{
-		PolicyId:           policy.Id,
-		CallbackId:         callbackId,
+		PolicyID:           policy.ID,
+		CallbackID:         callbackID,
 		ExpiresAtTimestamp: goidc.GetTimestampNow() + 60,
 	})
 
 	// Then
-	err := authorize.ContinueAuth(ctx, callbackId)
+	err := authorize.ContinueAuth(ctx, callbackID)
 
 	// Assert
 	if err != nil {

@@ -30,8 +30,8 @@ func getTokenIntrospectionInfo(
 		return getRefreshTokenIntrospectionInfo(ctx, token)
 	}
 
-	if utils.IsJws(token) {
-		return getJwtTokenIntrospectionInfo(ctx, token)
+	if utils.IsJWS(token) {
+		return getJWTTokenIntrospectionInfo(ctx, token)
 	}
 
 	return getOpaqueTokenIntrospectionInfo(ctx, token)
@@ -58,16 +58,16 @@ func getRefreshTokenIntrospectionInfo(
 		IsActive:                    true,
 		Scopes:                      grantSession.GrantedScopes,
 		AuthorizationDetails:        grantSession.GrantedAuthorizationDetails,
-		ClientId:                    grantSession.ClientId,
+		ClientID:                    grantSession.ClientID,
 		Subject:                     grantSession.Subject,
 		ExpiresAtTimestamp:          grantSession.ExpiresAtTimestamp,
-		JwkThumbprint:               grantSession.JwkThumbprint,
+		JWKThumbprint:               grantSession.JWKThumbprint,
 		ClientCertificateThumbprint: grantSession.ClientCertificateThumbprint,
 		AdditionalTokenClaims:       grantSession.AdditionalTokenClaims,
 	}
 }
 
-func getJwtTokenIntrospectionInfo(
+func getJWTTokenIntrospectionInfo(
 	ctx utils.Context,
 	token string,
 ) utils.TokenIntrospectionInfo {
@@ -89,7 +89,7 @@ func getOpaqueTokenIntrospectionInfo(
 	ctx utils.Context,
 	token string,
 ) utils.TokenIntrospectionInfo {
-	grantSession, err := ctx.GetGrantSessionByTokenId(token)
+	grantSession, err := ctx.GetGrantSessionByTokenID(token)
 	if err != nil {
 		return utils.TokenIntrospectionInfo{
 			IsActive: false,
@@ -106,10 +106,10 @@ func getOpaqueTokenIntrospectionInfo(
 		IsActive:                    true,
 		Scopes:                      grantSession.ActiveScopes,
 		AuthorizationDetails:        grantSession.GrantedAuthorizationDetails,
-		ClientId:                    grantSession.ClientId,
+		ClientID:                    grantSession.ClientID,
 		Subject:                     grantSession.Subject,
 		ExpiresAtTimestamp:          grantSession.LastTokenIssuedAtTimestamp + grantSession.TokenLifetimeSecs,
-		JwkThumbprint:               grantSession.JwkThumbprint,
+		JWKThumbprint:               grantSession.JWKThumbprint,
 		ClientCertificateThumbprint: grantSession.ClientCertificateThumbprint,
 		AdditionalTokenClaims:       grantSession.AdditionalTokenClaims,
 	}

@@ -13,21 +13,21 @@ import (
 )
 
 const (
-	TestClientId           string = "random_client_id"
+	TestClientID           string = "random_client_id"
 	TestClientSecret       string = "random_client_secret"
-	TestOpaqueGrantModelId string = "opaque_grant_model_id"
-	TestJwtGrantModelId    string = "jwt_grant_model_id"
+	TestOpaqueGrantModelID string = "opaque_grant_model_id"
+	TestJWTGrantModelID    string = "jwt_grant_model_id"
 	TestHost               string = "https://example.com"
-	TestKeyId              string = "rsa256_key"
+	TestKeyID              string = "rsa256_key"
 )
 
 func GetTestClient() goidc.Client {
 	return goidc.Client{
-		Id: TestClientId,
+		ID: TestClientID,
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod:  goidc.NoneAuthn,
-			RedirectUris: []string{"https://example.com"},
-			Scopes:       "scope1 scope2 " + goidc.OpenIdScope,
+			RedirectURIS: []string{"https://example.com"},
+			Scopes:       "scope1 scope2 " + goidc.OpenIDScope,
 			GrantTypes: []goidc.GrantType{
 				goidc.AuthorizationCodeGrant,
 				goidc.ClientCredentialsGrant,
@@ -36,34 +36,34 @@ func GetTestClient() goidc.Client {
 			},
 			ResponseTypes: []goidc.ResponseType{
 				goidc.CodeResponse,
-				goidc.IdTokenResponse,
+				goidc.IDTokenResponse,
 				goidc.TokenResponse,
-				goidc.CodeAndIdTokenResponse,
+				goidc.CodeAndIDTokenResponse,
 				goidc.CodeAndTokenResponse,
-				goidc.IdTokenAndTokenResponse,
-				goidc.CodeAndIdTokenAndTokenResponse,
+				goidc.IDTokenAndTokenResponse,
+				goidc.CodeAndIDTokenAndTokenResponse,
 			},
 		},
 	}
 }
 
 func GetTestInMemoryContext() Context {
-	privateJwk := GetTestPrivateRs256Jwk(TestKeyId)
+	privateJWK := GetTestPrivateRs256JWK(TestKeyID)
 	return Context{
 		Configuration: Configuration{
-			Profile:                       goidc.OpenIdProfile,
+			Profile:                       goidc.OpenIDProfile,
 			Host:                          TestHost,
 			ClientManager:                 inmemory.NewInMemoryClientManager(),
 			GrantSessionManager:           inmemory.NewInMemoryGrantSessionManager(),
 			AuthnSessionManager:           inmemory.NewInMemoryAuthnSessionManager(),
-			PrivateJwks:                   goidc.JsonWebKeySet{Keys: []goidc.JsonWebKey{privateJwk}},
-			DefaultTokenSignatureKeyId:    privateJwk.GetKeyId(),
-			DefaultUserInfoSignatureKeyId: privateJwk.GetKeyId(),
-			UserInfoSignatureKeyIds:       []string{privateJwk.GetKeyId()},
+			PrivateJWKS:                   goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{privateJWK}},
+			DefaultTokenSignatureKeyID:    privateJWK.GetKeyID(),
+			DefaultUserInfoSignatureKeyID: privateJWK.GetKeyID(),
+			UserInfoSignatureKeyIDs:       []string{privateJWK.GetKeyID()},
 			GetTokenOptions: func(client goidc.Client, scopes string) (goidc.TokenOptions, error) {
 				return goidc.TokenOptions{
 					TokenLifetimeSecs: 60,
-					TokenFormat:       goidc.JwtTokenFormat,
+					TokenFormat:       goidc.JWTTokenFormat,
 				}, nil
 			},
 			AuthenticationSessionTimeoutSecs: 60,
@@ -77,7 +77,7 @@ func GetTestInMemoryContext() Context {
 func GetDummyTestContext() Context {
 	return Context{
 		Configuration: Configuration{
-			Profile: goidc.OpenIdProfile,
+			Profile: goidc.OpenIDProfile,
 			Host:    TestHost,
 		},
 		Request: &http.Request{},
@@ -105,21 +105,21 @@ func GetGrantSessionsFromTestContext(ctx Context) []goidc.GrantSession {
 	return tokens
 }
 
-func GetTestPrivateRs256Jwk(keyId string) goidc.JsonWebKey {
+func GetTestPrivateRs256JWK(keyID string) goidc.JSONWebKey {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	return goidc.NewJsonWebKey(jose.JSONWebKey{
+	return goidc.NewJSONWebKey(jose.JSONWebKey{
 		Key:       privateKey,
-		KeyID:     keyId,
+		KeyID:     keyID,
 		Algorithm: string(jose.RS256),
 		Use:       string(goidc.KeySignatureUsage),
 	})
 }
 
-func GetTestPrivatePs256Jwk(keyId string) goidc.JsonWebKey {
+func GetTestPrivatePs256JWK(keyID string) goidc.JSONWebKey {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	return goidc.NewJsonWebKey(jose.JSONWebKey{
+	return goidc.NewJSONWebKey(jose.JSONWebKey{
 		Key:       privateKey,
-		KeyID:     keyId,
+		KeyID:     keyID,
 		Algorithm: string(jose.PS256),
 		Use:       string(goidc.KeySignatureUsage),
 	})

@@ -12,7 +12,7 @@ func TestCreateClient_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryClientManager()
 	client := goidc.Client{
-		Id: "random_client_id",
+		ID: "random_client_id",
 	}
 
 	// Then.
@@ -32,9 +32,9 @@ func TestCreateClient_ClientAlreadyExists(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryClientManager()
 	client := goidc.Client{
-		Id: "random_client_id",
+		ID: "random_client_id",
 	}
-	manager.Clients[client.Id] = client
+	manager.Clients[client.ID] = client
 
 	// Then.
 	err := manager.Create(context.Background(), client)
@@ -53,12 +53,12 @@ func TestUpdateClient_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryClientManager()
 	client := goidc.Client{
-		Id: "random_client_id",
+		ID: "random_client_id",
 	}
-	manager.Clients[client.Id] = client
+	manager.Clients[client.ID] = client
 
 	// Then.
-	err := manager.Update(context.Background(), client.Id, client)
+	err := manager.Update(context.Background(), client.ID, client)
 
 	// Assert.
 	if err != nil {
@@ -86,20 +86,20 @@ func TestUpdateClient_ClientDoesNotExist(t *testing.T) {
 func TestGetClient_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryClientManager()
-	clientId := "random_client_id"
-	manager.Clients[clientId] = goidc.Client{
-		Id: clientId,
+	clientID := "random_client_id"
+	manager.Clients[clientID] = goidc.Client{
+		ID: clientID,
 	}
 
 	// Then.
-	client, err := manager.Get(context.Background(), clientId)
+	client, err := manager.Get(context.Background(), clientID)
 
 	// Assert.
 	if err != nil {
 		t.Error("error when getting the client", err)
 	}
 
-	if client.Id != clientId {
+	if client.ID != clientID {
 		t.Error("invalid client ID")
 	}
 }
@@ -107,10 +107,10 @@ func TestGetClient_HappyPath(t *testing.T) {
 func TestGetClient_ClientDoesNotExist(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryClientManager()
-	clientId := "random_client_id"
+	clientID := "random_client_id"
 
 	// Then.
-	_, err := manager.Get(context.Background(), clientId)
+	_, err := manager.Get(context.Background(), clientID)
 
 	// Assert.
 	if err == nil {
@@ -121,13 +121,13 @@ func TestGetClient_ClientDoesNotExist(t *testing.T) {
 func TestDeleteClient_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryClientManager()
-	clientId := "random_client_id"
-	manager.Clients[clientId] = goidc.Client{
-		Id: clientId,
+	clientID := "random_client_id"
+	manager.Clients[clientID] = goidc.Client{
+		ID: clientID,
 	}
 
 	// Then.
-	err := manager.Delete(context.Background(), clientId)
+	err := manager.Delete(context.Background(), clientID)
 
 	// Assert.
 	if err != nil {
@@ -142,10 +142,10 @@ func TestDeleteClient_HappyPath(t *testing.T) {
 func TestDeleteClient_ClientDoesNotExist(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryClientManager()
-	clientId := "random_client_id"
+	clientID := "random_client_id"
 
 	// Then.
-	err := manager.Delete(context.Background(), clientId)
+	err := manager.Delete(context.Background(), clientID)
 
 	// Assert.
 	if err != nil {

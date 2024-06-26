@@ -17,7 +17,7 @@ func CreateClient(
 		return utils.DynamicClientResponse{}, err
 	}
 
-	ctx.ExecuteDcrPlugin(&dynamicClient)
+	ctx.ExecuteDCRPlugin(&dynamicClient)
 	if err := validateDynamicClientRequest(ctx, dynamicClient); err != nil {
 		return utils.DynamicClientResponse{}, err
 	}
@@ -28,8 +28,8 @@ func CreateClient(
 	}
 
 	return utils.DynamicClientResponse{
-		Id:                      dynamicClient.Id,
-		RegistrationUri:         getClientRegistrationUri(ctx, dynamicClient.Id),
+		ID:                      dynamicClient.ID,
+		RegistrationURI:         getClientRegistrationURI(ctx, dynamicClient.ID),
 		RegistrationAccessToken: dynamicClient.RegistrationAccessToken,
 		Secret:                  dynamicClient.Secret,
 		ClientMetaInfo:          dynamicClient.ClientMetaInfo,
@@ -53,19 +53,19 @@ func UpdateClient(
 		return utils.DynamicClientResponse{}, err
 	}
 
-	ctx.ExecuteDcrPlugin(&dynamicClient)
+	ctx.ExecuteDCRPlugin(&dynamicClient)
 	if err := validateDynamicClientRequest(ctx, dynamicClient); err != nil {
 		return utils.DynamicClientResponse{}, err
 	}
 
 	updatedClient := newClient(dynamicClient)
-	if err := ctx.UpdateClient(client.Id, updatedClient); err != nil {
+	if err := ctx.UpdateClient(client.ID, updatedClient); err != nil {
 		return utils.DynamicClientResponse{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	return utils.DynamicClientResponse{
-		Id:                      dynamicClient.Id,
-		RegistrationUri:         getClientRegistrationUri(ctx, dynamicClient.Id),
+		ID:                      dynamicClient.ID,
+		RegistrationURI:         getClientRegistrationURI(ctx, dynamicClient.ID),
 		RegistrationAccessToken: dynamicClient.RegistrationAccessToken,
 		Secret:                  dynamicClient.Secret,
 		ClientMetaInfo:          dynamicClient.ClientMetaInfo,
@@ -86,8 +86,8 @@ func GetClient(
 	}
 
 	return utils.DynamicClientResponse{
-		Id:              client.Id,
-		RegistrationUri: getClientRegistrationUri(ctx, client.Id),
+		ID:              client.ID,
+		RegistrationURI: getClientRegistrationURI(ctx, client.ID),
 		ClientMetaInfo:  client.ClientMetaInfo,
 	}, nil
 }
@@ -101,7 +101,7 @@ func DeleteClient(
 		return err
 	}
 
-	if err := ctx.DeleteClient(dynamicClientRequest.Id); err != nil {
+	if err := ctx.DeleteClient(dynamicClientRequest.ID); err != nil {
 		return goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 	return nil

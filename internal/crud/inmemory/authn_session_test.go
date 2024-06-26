@@ -12,7 +12,7 @@ func TestCreateOrUpdateAuthnSession_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryAuthnSessionManager()
 	session := goidc.AuthnSession{
-		Id: "random_session_id",
+		ID: "random_session_id",
 	}
 
 	// Then.
@@ -40,25 +40,25 @@ func TestCreateOrUpdateAuthnSession_HappyPath(t *testing.T) {
 	}
 }
 
-func TestGetAuthnSessionByCallbackId_HappyPath(t *testing.T) {
+func TestGetAuthnSessionByCallbackID_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryAuthnSessionManager()
-	sessionId := "random_session_id"
-	callbackId := "random_callback_id"
-	manager.Sessions[sessionId] = goidc.AuthnSession{
-		Id:         sessionId,
-		CallbackId: callbackId,
+	sessionID := "random_session_id"
+	callbackID := "random_callback_id"
+	manager.Sessions[sessionID] = goidc.AuthnSession{
+		ID:         sessionID,
+		CallbackID: callbackID,
 	}
 
 	// Then.
-	session, err := manager.GetByCallbackId(context.Background(), callbackId)
+	session, err := manager.GetByCallbackID(context.Background(), callbackID)
 
 	// Assert.
 	if err != nil {
 		t.Error("error when getting the session", err)
 	}
 
-	if session.Id != sessionId {
+	if session.ID != sessionID {
 		t.Error("invalid session ID")
 	}
 }
@@ -66,10 +66,10 @@ func TestGetAuthnSessionByCallbackId_HappyPath(t *testing.T) {
 func TestGetAuthnSessionByAuthorizationCode_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryAuthnSessionManager()
-	sessionId := "random_session_id"
+	sessionID := "random_session_id"
 	authorizationCode := "random_authorization_code"
-	manager.Sessions[sessionId] = goidc.AuthnSession{
-		Id:                sessionId,
+	manager.Sessions[sessionID] = goidc.AuthnSession{
+		ID:                sessionID,
 		AuthorizationCode: authorizationCode,
 	}
 
@@ -81,32 +81,32 @@ func TestGetAuthnSessionByAuthorizationCode_HappyPath(t *testing.T) {
 		t.Error("error when getting the session", err)
 	}
 
-	if session.Id != sessionId {
+	if session.ID != sessionID {
 		t.Error("invalid session ID")
 	}
 }
 
-func TestGetAuthnSessionByRequestUri_HappyPath(t *testing.T) {
+func TestGetAuthnSessionByRequestURI_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryAuthnSessionManager()
-	sessionId := "random_session_id"
-	requestUri := "random_request_uri"
-	manager.Sessions[sessionId] = goidc.AuthnSession{
-		Id: sessionId,
+	sessionID := "random_session_id"
+	requestURI := "random_request_uri"
+	manager.Sessions[sessionID] = goidc.AuthnSession{
+		ID: sessionID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
-			RequestUri: requestUri,
+			RequestURI: requestURI,
 		},
 	}
 
 	// Then.
-	session, err := manager.GetByRequestUri(context.Background(), requestUri)
+	session, err := manager.GetByRequestURI(context.Background(), requestURI)
 
 	// Assert.
 	if err != nil {
 		t.Error("error when getting the session", err)
 	}
 
-	if session.Id != sessionId {
+	if session.ID != sessionID {
 		t.Error("invalid session ID")
 	}
 }
@@ -114,13 +114,13 @@ func TestGetAuthnSessionByRequestUri_HappyPath(t *testing.T) {
 func TestDeleteAuthnSession_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryAuthnSessionManager()
-	sessionId := "random_session_id"
-	manager.Sessions[sessionId] = goidc.AuthnSession{
-		Id: sessionId,
+	sessionID := "random_session_id"
+	manager.Sessions[sessionID] = goidc.AuthnSession{
+		ID: sessionID,
 	}
 
 	// Then.
-	err := manager.Delete(context.Background(), sessionId)
+	err := manager.Delete(context.Background(), sessionID)
 
 	// Assert.
 	if err != nil {
@@ -135,10 +135,10 @@ func TestDeleteAuthnSession_HappyPath(t *testing.T) {
 func TestDeleteAuthnSession_SessionDoesNotExist(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryAuthnSessionManager()
-	sessionId := "random_session_id"
+	sessionID := "random_session_id"
 
 	// Then.
-	err := manager.Delete(context.Background(), sessionId)
+	err := manager.Delete(context.Background(), sessionID)
 
 	// Assert.
 	if err != nil {

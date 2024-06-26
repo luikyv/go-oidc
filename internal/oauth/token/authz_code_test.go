@@ -19,11 +19,11 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 
 	authorizationCode := "random_authz_code"
 	session := goidc.AuthnSession{
-		ClientId:      utils.TestClientId,
-		GrantedScopes: goidc.OpenIdScope,
+		ClientID:      utils.TestClientID,
+		GrantedScopes: goidc.OpenIDScope,
 		AuthorizationParameters: goidc.AuthorizationParameters{
-			Scopes:      goidc.OpenIdScope,
-			RedirectUri: client.RedirectUris[0],
+			Scopes:      goidc.OpenIDScope,
+			RedirectURI: client.RedirectURIS[0],
 		},
 		AuthorizationCode:         authorizationCode,
 		Subject:                   "user_id",
@@ -37,10 +37,10 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
-			ClientId: client.Id,
+			ClientID: client.ID,
 		},
 		GrantType:         goidc.AuthorizationCodeGrant,
-		RedirectUri:       client.RedirectUris[0],
+		RedirectURI:       client.RedirectURIS[0],
 		AuthorizationCode: authorizationCode,
 	}
 
@@ -66,7 +66,7 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 		return
 	}
 
-	if claims["client_id"].(string) != client.Id {
+	if claims["client_id"].(string) != client.ID {
 		t.Error("the token was assigned to a different client")
 		return
 	}

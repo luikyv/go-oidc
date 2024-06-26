@@ -23,12 +23,12 @@ func NewInMemoryGrantSessionManager() goidc.GrantSessionManager {
 
 //---------------------------------------- MongoDB ----------------------------------------//
 
-func NewMongoDbClientManager(database *mongo.Database) goidc.ClientManager {
-	return mongodb.NewMongoDbClientManager(database)
+func NewMongoDBClientManager(database *mongo.Database) goidc.ClientManager {
+	return mongodb.NewMongoDBClientManager(database)
 }
 
-func NewMongoDbAuthnSessionManager(database *mongo.Database) goidc.AuthnSessionManager {
-	return mongodb.NewMongoDbAuthnSessionManager(database)
+func NewMongoDBAuthnSessionManager(database *mongo.Database) goidc.AuthnSessionManager {
+	return mongodb.NewMongoDBAuthnSessionManager(database)
 }
 
 func NewMongoDBGrantSessionManager(database *mongo.Database) goidc.GrantSessionManager {

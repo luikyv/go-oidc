@@ -25,10 +25,10 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 		CreatedAtTimestamp: goidc.GetTimestampNow(),
 		GrantOptions: goidc.GrantOptions{
 			Subject:       username,
-			ClientId:      utils.TestClientId,
+			ClientID:      utils.TestClientID,
 			GrantedScopes: client.Scopes,
 			TokenOptions: goidc.TokenOptions{
-				TokenFormat:       goidc.JwtTokenFormat,
+				TokenFormat:       goidc.JWTTokenFormat,
 				TokenLifetimeSecs: 60,
 			},
 		},
@@ -37,7 +37,7 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
-			ClientId: client.Id,
+			ClientID: client.ID,
 		},
 		GrantType:    goidc.RefreshTokenGrant,
 		RefreshToken: refreshToken,
@@ -65,7 +65,7 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 		return
 	}
 
-	if claims["client_id"].(string) != client.Id {
+	if claims["client_id"].(string) != client.ID {
 		t.Error("the token was assigned to a different client")
 		return
 	}
@@ -102,7 +102,7 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 		ExpiresAtTimestamp: goidc.GetTimestampNow() - 10,
 		GrantOptions: goidc.GrantOptions{
 			Subject:       username,
-			ClientId:      utils.TestClientId,
+			ClientID:      utils.TestClientID,
 			GrantedScopes: client.Scopes,
 			TokenOptions: goidc.TokenOptions{
 				TokenLifetimeSecs: 60,
@@ -113,7 +113,7 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
-			ClientId: client.Id,
+			ClientID: client.ID,
 		},
 		GrantType:    goidc.RefreshTokenGrant,
 		RefreshToken: refreshToken,

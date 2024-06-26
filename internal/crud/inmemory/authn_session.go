@@ -17,7 +17,7 @@ func NewInMemoryAuthnSessionManager() *InMemoryAuthnSessionManager {
 }
 
 func (manager *InMemoryAuthnSessionManager) CreateOrUpdate(_ context.Context, session goidc.AuthnSession) error {
-	manager.Sessions[session.Id] = session
+	manager.Sessions[session.ID] = session
 	return nil
 }
 
@@ -30,9 +30,9 @@ func (manager *InMemoryAuthnSessionManager) getFirstSession(condition func(goidc
 	return findFirst(sessions, condition)
 }
 
-func (manager *InMemoryAuthnSessionManager) GetByCallbackId(_ context.Context, callbackId string) (goidc.AuthnSession, error) {
+func (manager *InMemoryAuthnSessionManager) GetByCallbackID(_ context.Context, callbackID string) (goidc.AuthnSession, error) {
 	session, exists := manager.getFirstSession(func(s goidc.AuthnSession) bool {
-		return s.CallbackId == callbackId
+		return s.CallbackID == callbackID
 	})
 	if !exists {
 		return goidc.AuthnSession{}, goidc.ErrorEntityNotFound
@@ -52,9 +52,9 @@ func (manager *InMemoryAuthnSessionManager) GetByAuthorizationCode(_ context.Con
 	return session, nil
 }
 
-func (manager *InMemoryAuthnSessionManager) GetByRequestUri(_ context.Context, requestUri string) (goidc.AuthnSession, error) {
+func (manager *InMemoryAuthnSessionManager) GetByRequestURI(_ context.Context, requestURI string) (goidc.AuthnSession, error) {
 	session, exists := manager.getFirstSession(func(s goidc.AuthnSession) bool {
-		return s.RequestUri == requestUri
+		return s.RequestURI == requestURI
 	})
 	if !exists {
 		return goidc.AuthnSession{}, goidc.ErrorEntityNotFound

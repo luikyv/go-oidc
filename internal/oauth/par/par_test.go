@@ -21,7 +21,7 @@ func TestPushAuthorization_ShouldRejectUnauthenticatedClient(t *testing.T) {
 	// Then
 	_, err := par.PushAuthorization(ctx, utils.PushedAuthorizationRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
-			ClientId:     client.Id,
+			ClientID:     client.ID,
 			ClientSecret: "invalid_password",
 		},
 	})
@@ -38,7 +38,7 @@ func TestPushAuthorization_ShouldRejectUnauthenticatedClient(t *testing.T) {
 	}
 }
 
-func TestPushAuthorization_ShouldGenerateRequestUri(t *testing.T) {
+func TestPushAuthorization_ShouldGenerateRequestURI(t *testing.T) {
 	// When
 	clientSecret := "password"
 	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 0)
@@ -51,13 +51,13 @@ func TestPushAuthorization_ShouldGenerateRequestUri(t *testing.T) {
 	ctx.CreateClient(client)
 
 	// Then
-	requestUri, err := par.PushAuthorization(ctx, utils.PushedAuthorizationRequest{
+	requestURI, err := par.PushAuthorization(ctx, utils.PushedAuthorizationRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
-			ClientId:     utils.TestClientId,
+			ClientID:     utils.TestClientID,
 			ClientSecret: clientSecret,
 		},
 		AuthorizationParameters: goidc.AuthorizationParameters{
-			RedirectUri:  client.RedirectUris[0],
+			RedirectURI:  client.RedirectURIS[0],
 			Scopes:       client.Scopes,
 			ResponseType: goidc.CodeResponse,
 			ResponseMode: goidc.QueryResponseMode,
@@ -69,7 +69,7 @@ func TestPushAuthorization_ShouldGenerateRequestUri(t *testing.T) {
 		t.Errorf("an error happened: %s", err.Error())
 		return
 	}
-	if requestUri == "" {
+	if requestURI == "" {
 		t.Error("the request_uri cannot be empty")
 		return
 	}
@@ -81,7 +81,7 @@ func TestPushAuthorization_ShouldGenerateRequestUri(t *testing.T) {
 	}
 
 	session := sessions[0]
-	if session.RequestUri != requestUri {
+	if session.RequestURI != requestURI {
 		t.Error("the request URI informed is not the same in the session")
 		return
 	}

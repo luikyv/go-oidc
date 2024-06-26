@@ -12,16 +12,16 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func runFapi2OpenIdProvider() error {
+func runFAPI2OpenIDProvider() error {
 	// Allow insecure requests to clients' jwks uri during local tests.
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	port := ":83"
 	mtlsPort := ":84"
 	issuer := "https://host.docker.internal" + port
 	mtlsIssuer := "https://host.docker.internal" + mtlsPort
-	ps256ServerKeyId := "ps256_key"
-	redirectUri := "https://localhost:8443/test/a/first_test/callback"
-	scopes := []string{goidc.OpenIdScope, goidc.OffilineAccessScope, goidc.EmailScope}
+	ps256ServerKeyID := "ps256_key"
+	redirectURI := "https://localhost:8443/test/a/first_test/callback"
+	scopes := []string{goidc.OpenIDScope, goidc.OffilineAccessScope, goidc.EmailScope}
 
 	// MongoDB
 	options := options.Client().ApplyURI("mongodb://admin:password@localhost:27017")
@@ -34,24 +34,24 @@ func runFapi2OpenIdProvider() error {
 	// Create the manager.
 	openidProvider := goidcp.NewProvider(
 		issuer,
-		goidcp.NewMongoDbClientManager(database),
-		goidcp.NewMongoDbAuthnSessionManager(database),
+		goidcp.NewMongoDBClientManager(database),
+		goidcp.NewMongoDBAuthnSessionManager(database),
 		goidcp.NewMongoDBGrantSessionManager(database),
-		GetPrivateJwks("server_keys/jwks.json"),
-		ps256ServerKeyId,
-		ps256ServerKeyId,
+		GetPrivateJWKS("server_keys/jwks.json"),
+		ps256ServerKeyID,
+		ps256ServerKeyID,
 	)
-	openidProvider.SetFapi2Profile()
-	openidProvider.EnableMtls(mtlsIssuer)
+	openidProvider.SetFAPI2Profile()
+	openidProvider.EnableMTLS(mtlsIssuer)
 	openidProvider.RequirePushedAuthorizationRequests(60)
-	openidProvider.EnableJwtSecuredAuthorizationRequests(600, goidc.PS256)
-	openidProvider.EnableJwtSecuredAuthorizationResponseMode(600, ps256ServerKeyId)
-	openidProvider.EnablePrivateKeyJwtClientAuthn(600, goidc.PS256)
-	openidProvider.EnableSelfSignedTlsClientAuthn()
+	openidProvider.EnableJWTSecuredAuthorizationRequests(600, goidc.PS256)
+	openidProvider.EnableJWTSecuredAuthorizationResponseMode(600, ps256ServerKeyID)
+	openidProvider.EnablePrivateKeyJWTClientAuthn(600, goidc.PS256)
+	openidProvider.EnableSelfSignedTLSClientAuthn()
 	openidProvider.EnableIssuerResponseParameter()
 	openidProvider.EnableClaimsParameter()
 	openidProvider.EnableDemonstrationProofOfPossesion(600, goidc.PS256, goidc.ES256)
-	openidProvider.EnableTlsBoundTokens()
+	openidProvider.EnableTLSBoundTokens()
 	openidProvider.RequireSenderConstrainedTokens()
 	openidProvider.RequireProofKeyForCodeExchange(goidc.Sha256CodeChallengeMethod)
 	openidProvider.EnableRefreshTokenGrantType(6000, false)
@@ -66,28 +66,28 @@ func runFapi2OpenIdProvider() error {
 	)
 	openidProvider.EnableDynamicClientRegistration(nil, true)
 	openidProvider.SetTokenOptions(func(c goidc.Client, s string) (goidc.TokenOptions, error) {
-		return goidc.NewJwtTokenOptions(ps256ServerKeyId, 600, true), nil
+		return goidc.NewJWTTokenOptions(ps256ServerKeyID, 600, true), nil
 	})
 	openidProvider.EnableUserInfoEncryption(
 		[]goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
 		[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256},
 	)
-	openidProvider.EnableJwtSecuredAuthorizationResponseModeEncryption(
+	openidProvider.EnableJWTSecuredAuthorizationResponseModeEncryption(
 		[]goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
 		[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256},
 	)
 
 	// Create Client Mocks.
-	clientOnePrivateJwks := GetPrivateJwks("client_keys/client_one_jwks.json")
-	clientOnePublicJwks := goidc.JsonWebKeySet{Keys: []goidc.JsonWebKey{}}
-	for _, jwk := range clientOnePrivateJwks.Keys {
-		clientOnePublicJwks.Keys = append(clientOnePublicJwks.Keys, jwk.GetPublic())
+	clientOnePrivateJWKS := GetPrivateJWKS("client_keys/client_one_jwks.json")
+	clientOnePublicJWKS := goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{}}
+	for _, jwk := range clientOnePrivateJWKS.Keys {
+		clientOnePublicJWKS.Keys = append(clientOnePublicJWKS.Keys, jwk.GetPublic())
 	}
 	openidProvider.AddClient(goidc.Client{
-		Id: "client_one",
+		ID: "client_one",
 		ClientMetaInfo: goidc.ClientMetaInfo{
-			AuthnMethod:  goidc.PrivateKeyJwtAuthn,
-			RedirectUris: []string{redirectUri},
+			AuthnMethod:  goidc.PrivateKeyJWTAuthn,
+			RedirectURIS: []string{redirectURI},
 			Scopes:       strings.Join(scopes, " "),
 			GrantTypes: []goidc.GrantType{
 				goidc.AuthorizationCodeGrant,
@@ -96,26 +96,26 @@ func runFapi2OpenIdProvider() error {
 			ResponseTypes: []goidc.ResponseType{
 				goidc.CodeResponse,
 			},
-			PublicJwks: &clientOnePublicJwks,
-			// IdTokenKeyEncryptionAlgorithm:      jose.RSA_OAEP,
-			// IdTokenContentEncryptionAlgorithm:  jose.A128CBC_HS256,
+			PublicJWKS: &clientOnePublicJWKS,
+			// IDTokenKeyEncryptionAlgorithm:      jose.RSA_OAEP,
+			// IDTokenContentEncryptionAlgorithm:  jose.A128CBC_HS256,
 			// UserInfoSignatureAlgorithm:         jose.PS256,
 			// UserInfoKeyEncryptionAlgorithm:     jose.RSA_OAEP,
 			// UserInfoContentEncryptionAlgorithm: jose.A128CBC_HS256,
-			// JarmKeyEncryptionAlgorithm:     jose.RSA_OAEP,
-			// JarmContentEncryptionAlgorithm: jose.A128CBC_HS256,
+			// JARMKeyEncryptionAlgorithm:     jose.RSA_OAEP,
+			// JARMContentEncryptionAlgorithm: jose.A128CBC_HS256,
 		},
 	})
-	clientTwoPrivateJwks := GetPrivateJwks("client_keys/client_two_jwks.json")
-	clientTwoPublicJwks := goidc.JsonWebKeySet{Keys: []goidc.JsonWebKey{}}
-	for _, jwk := range clientTwoPrivateJwks.Keys {
-		clientTwoPublicJwks.Keys = append(clientTwoPublicJwks.Keys, jwk.GetPublic())
+	clientTwoPrivateJWKS := GetPrivateJWKS("client_keys/client_two_jwks.json")
+	clientTwoPublicJWKS := goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{}}
+	for _, jwk := range clientTwoPrivateJWKS.Keys {
+		clientTwoPublicJWKS.Keys = append(clientTwoPublicJWKS.Keys, jwk.GetPublic())
 	}
 	openidProvider.AddClient(goidc.Client{
-		Id: "client_two",
+		ID: "client_two",
 		ClientMetaInfo: goidc.ClientMetaInfo{
-			AuthnMethod:  goidc.PrivateKeyJwtAuthn,
-			RedirectUris: []string{redirectUri},
+			AuthnMethod:  goidc.PrivateKeyJWTAuthn,
+			RedirectURIS: []string{redirectURI},
 			Scopes:       strings.Join(scopes, " "),
 			GrantTypes: []goidc.GrantType{
 				goidc.AuthorizationCodeGrant,
@@ -124,7 +124,7 @@ func runFapi2OpenIdProvider() error {
 			ResponseTypes: []goidc.ResponseType{
 				goidc.CodeResponse,
 			},
-			PublicJwks: &clientTwoPublicJwks,
+			PublicJWKS: &clientTwoPublicJWKS,
 		},
 	})
 
@@ -136,18 +136,18 @@ func runFapi2OpenIdProvider() error {
 	))
 
 	// Run
-	return openidProvider.RunTls(goidcp.TlsOptions{
-		TlsAddress:                     port,
+	return openidProvider.RunTLS(goidcp.TLSOptions{
+		TLSAddress:                     port,
 		ServerCertificate:              "server_keys/cert.pem",
 		ServerKey:                      "server_keys/key.pem",
-		CipherSuites:                   goidc.FapiAllowedCipherSuites,
-		MtlsAddress:                    mtlsPort,
+		CipherSuites:                   goidc.FAPIAllowedCipherSuites,
+		MTLSAddress:                    mtlsPort,
 		UnsecureCertificatesAreAllowed: true,
 	})
 }
 
 func main() {
-	err := runFapi2OpenIdProvider()
+	err := runFAPI2OpenIDProvider()
 	if err != nil {
 		panic(err.Error())
 	}

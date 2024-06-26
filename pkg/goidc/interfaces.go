@@ -28,15 +28,15 @@ type ClientManager interface {
 
 type GrantSessionManager interface {
 	CreateOrUpdate(ctx context.Context, grantSession GrantSession) error
-	GetByTokenId(ctx context.Context, tokenId string) (GrantSession, error)
+	GetByTokenID(ctx context.Context, tokenID string) (GrantSession, error)
 	GetByRefreshToken(ctx context.Context, refreshToken string) (GrantSession, error)
 	Delete(ctx context.Context, id string) error
 }
 
 type AuthnSessionManager interface {
 	CreateOrUpdate(ctx context.Context, session AuthnSession) error
-	GetByCallbackId(ctx context.Context, callbackId string) (AuthnSession, error)
+	GetByCallbackID(ctx context.Context, callbackID string) (AuthnSession, error)
 	GetByAuthorizationCode(ctx context.Context, authorizationCode string) (AuthnSession, error)
-	GetByRequestUri(ctx context.Context, requestUri string) (AuthnSession, error)
+	GetByRequestURI(ctx context.Context, requestURI string) (AuthnSession, error)
 	Delete(ctx context.Context, id string) error
 }

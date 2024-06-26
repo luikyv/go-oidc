@@ -80,7 +80,7 @@ func validateClientCredentialsGrantRequest(
 		return goidc.NewOAuthError(goidc.UnauthorizedClient, "invalid grant type")
 	}
 
-	if utils.ScopesContainsOpenId(req.Scopes) {
+	if utils.ScopesContainsOpenID(req.Scopes) {
 		return goidc.NewOAuthError(goidc.InvalidScope, "cannot request openid scope for client credentials grant")
 	}
 
@@ -89,7 +89,7 @@ func validateClientCredentialsGrantRequest(
 		return goidc.NewOAuthError(goidc.InvalidScope, "invalid scope")
 	}
 
-	if err := validateTokenBindingRequestWithDpop(ctx, req, client); err != nil {
+	if err := validateTokenBindingRequestWithDPOP(ctx, req, client); err != nil {
 		return err
 	}
 
@@ -120,8 +120,8 @@ func newClientCredentialsGrantOptions(
 	return goidc.GrantOptions{
 		GrantType:     goidc.ClientCredentialsGrant,
 		GrantedScopes: scopes,
-		Subject:       client.Id,
-		ClientId:      client.Id,
+		Subject:       client.ID,
+		ClientID:      client.ID,
 		TokenOptions:  tokenOptions,
 	}, nil
 }

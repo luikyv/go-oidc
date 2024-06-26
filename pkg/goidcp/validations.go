@@ -11,8 +11,8 @@ import (
 )
 
 func runValidations(
-	provider OpenIdProvider,
-	validators ...func(OpenIdProvider) error,
+	provider OpenIDProvider,
+	validators ...func(OpenIDProvider) error,
 ) error {
 	for _, validator := range validators {
 		if err := validator(provider); err != nil {
@@ -22,31 +22,31 @@ func runValidations(
 	return nil
 }
 
-func validateJwks(provider OpenIdProvider) error {
-	for _, key := range provider.config.PrivateJwks.Keys {
+func validateJWKS(provider OpenIDProvider) error {
+	for _, key := range provider.config.PrivateJWKS.Keys {
 		if !key.IsValid() {
-			return fmt.Errorf("the key with ID: %s is not valid", key.GetKeyId())
+			return fmt.Errorf("the key with ID: %s is not valid", key.GetKeyID())
 		}
 	}
 
 	return nil
 }
 
-func validateSignatureKeys(provider OpenIdProvider) error {
+func validateSignatureKeys(provider OpenIDProvider) error {
 
-	for _, keyId := range slices.Concat(
-		[]string{provider.config.DefaultUserInfoSignatureKeyId},
-		provider.config.UserInfoSignatureKeyIds,
-		provider.config.JarmSignatureKeyIds,
+	for _, keyID := range slices.Concat(
+		[]string{provider.config.DefaultUserInfoSignatureKeyID},
+		provider.config.UserInfoSignatureKeyIDs,
+		provider.config.JARMSignatureKeyIDs,
 	) {
-		jwkSlice := provider.config.PrivateJwks.Key(keyId)
+		jwkSlice := provider.config.PrivateJWKS.Key(keyID)
 		if len(jwkSlice) != 1 {
-			return fmt.Errorf("the key ID: %s is not present in the server JWKS or is duplicated", keyId)
+			return fmt.Errorf("the key ID: %s is not present in the server JWKS or is duplicated", keyID)
 		}
 
 		key := jwkSlice[0]
 		if key.GetUsage() != string(goidc.KeySignatureUsage) {
-			return fmt.Errorf("the key ID: %s is not meant for signing", keyId)
+			return fmt.Errorf("the key ID: %s is not meant for signing", keyID)
 		}
 
 		if strings.HasPrefix(key.GetAlgorithm(), "HS") {
@@ -57,26 +57,26 @@ func validateSignatureKeys(provider OpenIdProvider) error {
 	return nil
 }
 
-func validateEncryptionKeys(provider OpenIdProvider) error {
-	for _, keyId := range slices.Concat(
-		provider.config.JarKeyEncryptionIds,
+func validateEncryptionKeys(provider OpenIDProvider) error {
+	for _, keyID := range slices.Concat(
+		provider.config.JARKeyEncryptionIDs,
 	) {
-		jwkSlice := provider.config.PrivateJwks.Key(keyId)
+		jwkSlice := provider.config.PrivateJWKS.Key(keyID)
 		if len(jwkSlice) != 1 {
-			return fmt.Errorf("the key ID: %s is not present in the server JWKS or is duplicated", keyId)
+			return fmt.Errorf("the key ID: %s is not present in the server JWKS or is duplicated", keyID)
 		}
 
 		key := jwkSlice[0]
 		if key.GetUsage() != string(goidc.KeyEncryptionUsage) {
-			return fmt.Errorf("the key ID: %s is not meant for encryption", keyId)
+			return fmt.Errorf("the key ID: %s is not meant for encryption", keyID)
 		}
 	}
 
 	return nil
 }
 
-func validatePrivateKeyJwtSignatureAlgorithms(provider OpenIdProvider) error {
-	for _, signatureAlgorithm := range provider.config.PrivateKeyJwtSignatureAlgorithms {
+func validatePrivateKeyJWTSignatureAlgorithms(provider OpenIDProvider) error {
+	for _, signatureAlgorithm := range provider.config.PrivateKeyJWTSignatureAlgorithms {
 		if strings.HasPrefix(string(signatureAlgorithm), "HS") {
 			return errors.New("symetric algorithms are not allowed for private_key_jwt authentication")
 		}
@@ -85,8 +85,8 @@ func validatePrivateKeyJwtSignatureAlgorithms(provider OpenIdProvider) error {
 	return nil
 }
 
-func validateClientSecretJwtSignatureAlgorithms(provider OpenIdProvider) error {
-	for _, signatureAlgorithm := range provider.config.ClientSecretJwtSignatureAlgorithms {
+func validateClientSecretJWTSignatureAlgorithms(provider OpenIDProvider) error {
+	for _, signatureAlgorithm := range provider.config.ClientSecretJWTSignatureAlgorithms {
 		if !strings.HasPrefix(string(signatureAlgorithm), "HS") {
 			return errors.New("assymetric algorithms are not allowed for client_secret_jwt authentication")
 		}
@@ -95,7 +95,7 @@ func validateClientSecretJwtSignatureAlgorithms(provider OpenIdProvider) error {
 	return nil
 }
 
-func validateIntrospectionClientAuthnMethods(provider OpenIdProvider) error {
+func validateIntrospectionClientAuthnMethods(provider OpenIDProvider) error {
 	if provider.config.IntrospectionIsEnabled && (!goidc.ContainsAll(provider.config.ClientAuthnMethods, provider.config.IntrospectionClientAuthnMethods...) ||
 		slices.Contains(provider.config.IntrospectionClientAuthnMethods, goidc.NoneAuthn)) {
 		return errors.New("invalid client authentication method for token introspection")
@@ -104,7 +104,7 @@ func validateIntrospectionClientAuthnMethods(provider OpenIdProvider) error {
 	return nil
 }
 
-func validateUserInfoEncryption(provider OpenIdProvider) error {
+func validateUserInfoEncryption(provider OpenIDProvider) error {
 	if provider.config.UserInfoEncryptionIsEnabled && !slices.Contains(provider.config.UserInfoContentEncryptionAlgorithms, jose.A128CBC_HS256) {
 		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm for user information")
 	}
@@ -112,72 +112,72 @@ func validateUserInfoEncryption(provider OpenIdProvider) error {
 	return nil
 }
 
-func validateJarEncryption(provider OpenIdProvider) error {
-	if provider.config.JarEncryptionIsEnabled && !provider.config.JarIsEnabled {
+func validateJAREncryption(provider OpenIDProvider) error {
+	if provider.config.JAREncryptionIsEnabled && !provider.config.JARIsEnabled {
 		return errors.New("JAR must be enabled if JAR encryption is enabled")
 	}
 
-	if provider.config.JarEncryptionIsEnabled && !slices.Contains(provider.config.JarContentEncryptionAlgorithms, jose.A128CBC_HS256) {
+	if provider.config.JAREncryptionIsEnabled && !slices.Contains(provider.config.JARContentEncryptionAlgorithms, jose.A128CBC_HS256) {
 		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm for JAR")
 	}
 
 	return nil
 }
 
-func validateJarmEncryption(provider OpenIdProvider) error {
-	if provider.config.JarmEncryptionIsEnabled && !provider.config.JarmIsEnabled {
+func validateJARMEncryption(provider OpenIDProvider) error {
+	if provider.config.JARMEncryptionIsEnabled && !provider.config.JARMIsEnabled {
 		return errors.New("JARM must be enabled if JARM encryption is enabled")
 	}
 
-	if provider.config.JarmEncryptionIsEnabled && !slices.Contains(provider.config.JarmContentEncryptionAlgorithms, jose.A128CBC_HS256) {
+	if provider.config.JARMEncryptionIsEnabled && !slices.Contains(provider.config.JARMContentEncryptionAlgorithms, jose.A128CBC_HS256) {
 		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm for JARM")
 	}
 
 	return nil
 }
 
-func validateTokenBinding(provider OpenIdProvider) error {
-	if provider.config.SenderConstrainedTokenIsRequired && !provider.config.DpopIsEnabled && !provider.config.TlsBoundTokensIsEnabled {
+func validateTokenBinding(provider OpenIDProvider) error {
+	if provider.config.SenderConstrainedTokenIsRequired && !provider.config.DPOPIsEnabled && !provider.config.TLSBoundTokensIsEnabled {
 		return errors.New("if sender constraining tokens is required, at least one mechanism must be enabled, either DPoP or TLS")
 	}
 
 	return nil
 }
 
-func validateOpenIdDefaultIdTokenSignatureAlgorithm(provider OpenIdProvider) error {
-	if provider.config.Profile != goidc.OpenIdProfile {
+func validateOpenIDDefaultIDTokenSignatureAlgorithm(provider OpenIDProvider) error {
+	if provider.config.Profile != goidc.OpenIDProfile {
 		return nil
 	}
 
-	defaultIdTokenSignatureKey := provider.config.PrivateJwks.Key(provider.config.DefaultUserInfoSignatureKeyId)[0]
-	if defaultIdTokenSignatureKey.GetAlgorithm() != string(jose.RS256) {
+	defaultIDTokenSignatureKey := provider.config.PrivateJWKS.Key(provider.config.DefaultUserInfoSignatureKeyID)[0]
+	if defaultIDTokenSignatureKey.GetAlgorithm() != string(jose.RS256) {
 		return errors.New("the default signature algorithm for ID tokens must be RS256")
 	}
 
 	return nil
 }
 
-func validateOpenIdDefaultJarmSignatureAlgorithm(provider OpenIdProvider) error {
-	if provider.config.Profile != goidc.OpenIdProfile || !provider.config.JarmIsEnabled {
+func validateOpenIDDefaultJARMSignatureAlgorithm(provider OpenIDProvider) error {
+	if provider.config.Profile != goidc.OpenIDProfile || !provider.config.JARMIsEnabled {
 		return nil
 	}
 
-	defaultJarmSignatureKey := provider.config.PrivateJwks.Key(provider.config.DefaultJarmSignatureKeyId)[0]
-	if defaultJarmSignatureKey.GetAlgorithm() != string(jose.RS256) {
+	defaultJARMSignatureKey := provider.config.PrivateJWKS.Key(provider.config.DefaultJARMSignatureKeyID)[0]
+	if defaultJARMSignatureKey.GetAlgorithm() != string(jose.RS256) {
 		return errors.New("the default signature algorithm for JARM must be RS256")
 	}
 
 	return nil
 }
 
-func validateFapi2ClientAuthnMethods(provider OpenIdProvider) error {
-	if provider.config.Profile != goidc.Fapi2Profile {
+func validateFAPI2ClientAuthnMethods(provider OpenIDProvider) error {
+	if provider.config.Profile != goidc.FAPI2Profile {
 		return nil
 	}
 
 	if slices.ContainsFunc(provider.config.ClientAuthnMethods, func(authnMethod goidc.ClientAuthnType) bool {
 		// TODO: remove self signed, only for tests.
-		return authnMethod != goidc.PrivateKeyJwtAuthn && authnMethod != goidc.TlsAuthn && authnMethod != goidc.SelfSignedTlsAuthn
+		return authnMethod != goidc.PrivateKeyJWTAuthn && authnMethod != goidc.TLSAuthn && authnMethod != goidc.SelfSignedTLSAuthn
 	}) {
 		return errors.New("only private_key_jwt and tls_client_auth are allowed for FAPI 2.0")
 	}
@@ -185,8 +185,8 @@ func validateFapi2ClientAuthnMethods(provider OpenIdProvider) error {
 	return nil
 }
 
-func validateFapi2ImplicitGrantIsNotAllowed(provider OpenIdProvider) error {
-	if provider.config.Profile != goidc.Fapi2Profile {
+func validateFAPI2ImplicitGrantIsNotAllowed(provider OpenIDProvider) error {
+	if provider.config.Profile != goidc.FAPI2Profile {
 		return nil
 	}
 
@@ -197,20 +197,20 @@ func validateFapi2ImplicitGrantIsNotAllowed(provider OpenIdProvider) error {
 	return nil
 }
 
-func validateFapi2ParIsRequired(provider OpenIdProvider) error {
-	if provider.config.Profile != goidc.Fapi2Profile {
+func validateFAPI2PARIsRequired(provider OpenIDProvider) error {
+	if provider.config.Profile != goidc.FAPI2Profile {
 		return nil
 	}
 
-	if !provider.config.ParIsEnabled || !provider.config.ParIsRequired {
+	if !provider.config.PARIsEnabled || !provider.config.PARIsRequired {
 		return errors.New("pushed authorization requests is required for FAPI 2.0")
 	}
 
 	return nil
 }
 
-func validateFapi2PkceIsRequired(provider OpenIdProvider) error {
-	if provider.config.Profile != goidc.Fapi2Profile {
+func validateFAPI2PkceIsRequired(provider OpenIDProvider) error {
+	if provider.config.Profile != goidc.FAPI2Profile {
 		return nil
 	}
 
@@ -221,8 +221,8 @@ func validateFapi2PkceIsRequired(provider OpenIdProvider) error {
 	return nil
 }
 
-func validateFapi2IssuerResponseParamIsRequired(provider OpenIdProvider) error {
-	if provider.config.Profile != goidc.Fapi2Profile {
+func validateFAPI2IssuerResponseParamIsRequired(provider OpenIDProvider) error {
+	if provider.config.Profile != goidc.FAPI2Profile {
 		return nil
 	}
 
@@ -233,8 +233,8 @@ func validateFapi2IssuerResponseParamIsRequired(provider OpenIdProvider) error {
 	return nil
 }
 
-func validateFapi2RefreshTokenRotation(provider OpenIdProvider) error {
-	if provider.config.Profile != goidc.Fapi2Profile {
+func validateFAPI2RefreshTokenRotation(provider OpenIDProvider) error {
+	if provider.config.Profile != goidc.FAPI2Profile {
 		return nil
 	}
 

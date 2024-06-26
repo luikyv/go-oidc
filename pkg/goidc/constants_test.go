@@ -15,11 +15,11 @@ func TestResponseTypeContains(t *testing.T) {
 		superShouldContainSub bool
 	}{
 		{goidc.CodeResponse, goidc.CodeResponse, true},
-		{goidc.CodeAndIdTokenResponse, goidc.CodeResponse, true},
-		{goidc.CodeAndIdTokenResponse, goidc.IdTokenResponse, true},
-		{goidc.CodeAndIdTokenAndTokenResponse, goidc.IdTokenResponse, true},
-		{goidc.CodeResponse, goidc.IdTokenResponse, false},
-		{goidc.CodeAndIdTokenResponse, goidc.TokenResponse, false},
+		{goidc.CodeAndIDTokenResponse, goidc.CodeResponse, true},
+		{goidc.CodeAndIDTokenResponse, goidc.IDTokenResponse, true},
+		{goidc.CodeAndIDTokenAndTokenResponse, goidc.IDTokenResponse, true},
+		{goidc.CodeResponse, goidc.IDTokenResponse, false},
+		{goidc.CodeAndIDTokenResponse, goidc.TokenResponse, false},
 		{goidc.CodeResponse, goidc.TokenResponse, false},
 	}
 
@@ -42,12 +42,12 @@ func TestResponseTypeIsImplicit(t *testing.T) {
 		isImplicit   bool
 	}{
 		{goidc.CodeResponse, false},
-		{goidc.IdTokenResponse, true},
+		{goidc.IDTokenResponse, true},
 		{goidc.TokenResponse, true},
-		{goidc.CodeAndIdTokenResponse, true},
+		{goidc.CodeAndIDTokenResponse, true},
 		{goidc.CodeAndTokenResponse, true},
-		{goidc.IdTokenAndTokenResponse, true},
-		{goidc.CodeAndIdTokenAndTokenResponse, true},
+		{goidc.IDTokenAndTokenResponse, true},
+		{goidc.CodeAndIDTokenAndTokenResponse, true},
 	}
 
 	for _, testCase := range testCases {
@@ -66,30 +66,30 @@ func TestResponseTypeIsImplicit(t *testing.T) {
 func TestGetDefaultResponseMode(t *testing.T) {
 	var testCases = []struct {
 		responseType         goidc.ResponseType
-		isJarm               bool
+		isJARM               bool
 		expectedResponseMode goidc.ResponseMode
 	}{
 		{goidc.CodeResponse, false, goidc.QueryResponseMode},
-		{goidc.IdTokenResponse, false, goidc.FragmentResponseMode},
+		{goidc.IDTokenResponse, false, goidc.FragmentResponseMode},
 		{goidc.TokenResponse, false, goidc.FragmentResponseMode},
-		{goidc.CodeAndIdTokenResponse, false, goidc.FragmentResponseMode},
+		{goidc.CodeAndIDTokenResponse, false, goidc.FragmentResponseMode},
 		{goidc.CodeAndTokenResponse, false, goidc.FragmentResponseMode},
-		{goidc.IdTokenAndTokenResponse, false, goidc.FragmentResponseMode},
-		{goidc.CodeAndIdTokenAndTokenResponse, false, goidc.FragmentResponseMode},
-		{goidc.CodeResponse, true, goidc.QueryJwtResponseMode},
-		{goidc.IdTokenResponse, true, goidc.FragmentJwtResponseMode},
-		{goidc.TokenResponse, true, goidc.FragmentJwtResponseMode},
-		{goidc.CodeAndIdTokenResponse, true, goidc.FragmentJwtResponseMode},
-		{goidc.CodeAndTokenResponse, true, goidc.FragmentJwtResponseMode},
-		{goidc.IdTokenAndTokenResponse, true, goidc.FragmentJwtResponseMode},
-		{goidc.CodeAndIdTokenAndTokenResponse, true, goidc.FragmentJwtResponseMode},
+		{goidc.IDTokenAndTokenResponse, false, goidc.FragmentResponseMode},
+		{goidc.CodeAndIDTokenAndTokenResponse, false, goidc.FragmentResponseMode},
+		{goidc.CodeResponse, true, goidc.QueryJWTResponseMode},
+		{goidc.IDTokenResponse, true, goidc.FragmentJWTResponseMode},
+		{goidc.TokenResponse, true, goidc.FragmentJWTResponseMode},
+		{goidc.CodeAndIDTokenResponse, true, goidc.FragmentJWTResponseMode},
+		{goidc.CodeAndTokenResponse, true, goidc.FragmentJWTResponseMode},
+		{goidc.IDTokenAndTokenResponse, true, goidc.FragmentJWTResponseMode},
+		{goidc.CodeAndIDTokenAndTokenResponse, true, goidc.FragmentJWTResponseMode},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(
-			fmt.Sprintf("the default response mode for %s should be %s. jarm? %t", testCase.responseType, testCase.expectedResponseMode, testCase.isJarm),
+			fmt.Sprintf("the default response mode for %s should be %s. jarm? %t", testCase.responseType, testCase.expectedResponseMode, testCase.isJARM),
 			func(t *testing.T) {
-				if testCase.responseType.GetDefaultResponseMode(testCase.isJarm) != testCase.expectedResponseMode {
+				if testCase.responseType.GetDefaultResponseMode(testCase.isJARM) != testCase.expectedResponseMode {
 					t.Error(testCase)
 				}
 			},
@@ -97,25 +97,25 @@ func TestGetDefaultResponseMode(t *testing.T) {
 	}
 }
 
-func TestResponseModeIsJarm(t *testing.T) {
+func TestResponseModeIsJARM(t *testing.T) {
 	var testCases = []struct {
 		responseMode goidc.ResponseMode
-		isJarm       bool
+		isJARM       bool
 	}{
 		{goidc.QueryResponseMode, false},
 		{goidc.FragmentResponseMode, false},
 		{goidc.FormPostResponseMode, false},
-		{goidc.QueryJwtResponseMode, true},
-		{goidc.FragmentJwtResponseMode, true},
-		{goidc.FormPostJwtResponseMode, true},
-		{goidc.JwtResponseMode, true},
+		{goidc.QueryJWTResponseMode, true},
+		{goidc.FragmentJWTResponseMode, true},
+		{goidc.FormPostJWTResponseMode, true},
+		{goidc.JWTResponseMode, true},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(
-			fmt.Sprintf("%s is JARM? %t", testCase.responseMode, testCase.isJarm),
+			fmt.Sprintf("%s is JARM? %t", testCase.responseMode, testCase.isJARM),
 			func(t *testing.T) {
-				if testCase.responseMode.IsJarm() != testCase.isJarm {
+				if testCase.responseMode.IsJARM() != testCase.isJARM {
 					t.Error(testCase)
 					return
 				}
@@ -132,10 +132,10 @@ func TestResponseModeIsQuery(t *testing.T) {
 		{goidc.QueryResponseMode, true},
 		{goidc.FragmentResponseMode, false},
 		{goidc.FormPostResponseMode, false},
-		{goidc.QueryJwtResponseMode, true},
-		{goidc.FragmentJwtResponseMode, false},
-		{goidc.FormPostJwtResponseMode, false},
-		{goidc.JwtResponseMode, false},
+		{goidc.QueryJWTResponseMode, true},
+		{goidc.FragmentJWTResponseMode, false},
+		{goidc.FormPostJWTResponseMode, false},
+		{goidc.JWTResponseMode, false},
 	}
 
 	for _, testCase := range testCases {

@@ -15,30 +15,30 @@ func validateDynamicClientRequest(
 	return runValidations(
 		ctx, dynamicClient,
 		validateAuthnMethod,
-		validateClientSignatureAlgorithmForPrivateKeyJwt,
-		validateClientSignatureAlgorithmForClientSecretJwt,
-		validateJwksAreRequiredForPrivateKeyJwtAuthn,
-		validateJwksIsRequiredWhenSelfSignedTlsAuthn,
-		validateTlsSubjectInfoWhenTlsAuthn,
+		validateClientSignatureAlgorithmForPrivateKeyJWT,
+		validateClientSignatureAlgorithmForClientSecretJWT,
+		validateJWKSAreRequiredForPrivateKeyJWTAuthn,
+		validateJWKSIsRequiredWhenSelfSignedTLSAuthn,
+		validateTLSSubjectInfoWhenTLSAuthn,
 		validateGrantTypes,
 		validateClientCredentialsGrantNotAllowedForNoneClientAuthn,
 		validateClientAuthnMethodForIntrospectionGrant,
-		validateRedirectUris,
+		validateRedirectURIS,
 		validateResponseTypes,
 		validateCannotRequestImplicitResponseTypeWithoutImplicitGrant,
 		validateScopes,
-		validateOpenIdScopeIfRequired,
-		validateSubjectIdentifierType,
-		validateIdTokenSignatureAlgorithm,
-		validateIdTokenEncryptionAlgorithms,
+		validateOpenIDScopeIfRequired,
+		validateSubjectIDentifierType,
+		validateIDTokenSignatureAlgorithm,
+		validateIDTokenEncryptionAlgorithms,
 		validateUserInfoSignatureAlgorithm,
 		validateUserInfoEncryptionAlgorithms,
-		validateJarSignatureAlgorithm,
-		validateJarEncryptionAlgorithms,
-		validateJarmSignatureAlgorithm,
-		validateJarmEncryptionAlgorithms,
-		validatePublicJwks,
-		validatePublicJwksUri,
+		validateJARSignatureAlgorithm,
+		validateJAREncryptionAlgorithms,
+		validateJARMSignatureAlgorithm,
+		validateJARMEncryptionAlgorithms,
+		validatePublicJWKS,
+		validatePublicJWKSURI,
 		validateAuthorizationDetailTypes,
 	)
 }
@@ -96,11 +96,11 @@ func validateClientAuthnMethodForIntrospectionGrant(
 	return nil
 }
 
-func validateRedirectUris(
+func validateRedirectURIS(
 	ctx utils.Context,
 	dynamicClient goidc.DynamicClient,
 ) goidc.OAuthError {
-	if len(dynamicClient.RedirectUris) == 0 {
+	if len(dynamicClient.RedirectURIS) == 0 {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "at least one redirect uri must be informed")
 	}
 	return nil
@@ -153,31 +153,31 @@ func validateScopes(
 	return nil
 }
 
-func validateOpenIdScopeIfRequired(
+func validateOpenIDScopeIfRequired(
 	ctx utils.Context,
 	dynamicClient goidc.DynamicClient,
 ) goidc.OAuthError {
-	if dynamicClient.Scopes != "" && ctx.OpenIdScopeIsRequired && utils.ScopesContainsOpenId(dynamicClient.Scopes) {
+	if dynamicClient.Scopes != "" && ctx.OpenIDScopeIsRequired && utils.ScopesContainsOpenID(dynamicClient.Scopes) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "scope openid is required")
 	}
 	return nil
 }
 
-func validateSubjectIdentifierType(
+func validateSubjectIDentifierType(
 	ctx utils.Context,
 	dynamicClient goidc.DynamicClient,
 ) goidc.OAuthError {
-	if dynamicClient.SubjectIdentifierType != "" && !goidc.ContainsAll(ctx.SubjectIdentifierTypes, dynamicClient.SubjectIdentifierType) {
+	if dynamicClient.SubjectIDentifierType != "" && !goidc.ContainsAll(ctx.SubjectIDentifierTypes, dynamicClient.SubjectIDentifierType) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "subject_type not supported")
 	}
 	return nil
 }
 
-func validateIdTokenSignatureAlgorithm(
+func validateIDTokenSignatureAlgorithm(
 	ctx utils.Context,
 	dynamicClient goidc.DynamicClient,
 ) goidc.OAuthError {
-	if dynamicClient.IdTokenSignatureAlgorithm != "" && !goidc.ContainsAll(ctx.GetUserInfoSignatureAlgorithms(), dynamicClient.IdTokenSignatureAlgorithm) {
+	if dynamicClient.IDTokenSignatureAlgorithm != "" && !goidc.ContainsAll(ctx.GetUserInfoSignatureAlgorithms(), dynamicClient.IDTokenSignatureAlgorithm) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "id_token_signed_response_alg not supported")
 	}
 	return nil
@@ -193,134 +193,134 @@ func validateUserInfoSignatureAlgorithm(
 	return nil
 }
 
-func validateJarSignatureAlgorithm(
+func validateJARSignatureAlgorithm(
 	ctx utils.Context,
 	dynamicClient goidc.DynamicClient,
 ) goidc.OAuthError {
-	if dynamicClient.JarSignatureAlgorithm != "" && !goidc.ContainsAll(ctx.JarSignatureAlgorithms, dynamicClient.JarSignatureAlgorithm) {
+	if dynamicClient.JARSignatureAlgorithm != "" && !goidc.ContainsAll(ctx.JARSignatureAlgorithms, dynamicClient.JARSignatureAlgorithm) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "request_object_signing_alg not supported")
 	}
 	return nil
 }
 
-func validateJarmSignatureAlgorithm(
+func validateJARMSignatureAlgorithm(
 	ctx utils.Context,
 	dynamicClient goidc.DynamicClient,
 ) goidc.OAuthError {
-	if dynamicClient.JarmSignatureAlgorithm != "" && !goidc.ContainsAll(ctx.GetJarmSignatureAlgorithms(), dynamicClient.JarmSignatureAlgorithm) {
+	if dynamicClient.JARMSignatureAlgorithm != "" && !goidc.ContainsAll(ctx.GetJARMSignatureAlgorithms(), dynamicClient.JARMSignatureAlgorithm) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "authorization_signed_response_alg not supported")
 	}
 	return nil
 }
 
-func validateClientSignatureAlgorithmForPrivateKeyJwt(
+func validateClientSignatureAlgorithmForPrivateKeyJWT(
 	ctx utils.Context,
 	dynamicClient goidc.DynamicClient,
 ) goidc.OAuthError {
-	if dynamicClient.AuthnMethod != goidc.PrivateKeyJwtAuthn {
+	if dynamicClient.AuthnMethod != goidc.PrivateKeyJWTAuthn {
 		return nil
 	}
 
-	if dynamicClient.AuthnSignatureAlgorithm != "" && !goidc.ContainsAll(ctx.PrivateKeyJwtSignatureAlgorithms, dynamicClient.AuthnSignatureAlgorithm) {
+	if dynamicClient.AuthnSignatureAlgorithm != "" && !goidc.ContainsAll(ctx.PrivateKeyJWTSignatureAlgorithms, dynamicClient.AuthnSignatureAlgorithm) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "token_endpoint_auth_signing_alg not supported")
 	}
 	return nil
 }
 
-func validateClientSignatureAlgorithmForClientSecretJwt(
+func validateClientSignatureAlgorithmForClientSecretJWT(
 	ctx utils.Context,
 	dynamicClient goidc.DynamicClient,
 ) goidc.OAuthError {
-	if dynamicClient.AuthnMethod != goidc.ClientSecretJwt {
+	if dynamicClient.AuthnMethod != goidc.ClientSecretJWT {
 		return nil
 	}
 
-	if dynamicClient.AuthnSignatureAlgorithm != "" && !goidc.ContainsAll(ctx.ClientSecretJwtSignatureAlgorithms, dynamicClient.AuthnSignatureAlgorithm) {
+	if dynamicClient.AuthnSignatureAlgorithm != "" && !goidc.ContainsAll(ctx.ClientSecretJWTSignatureAlgorithms, dynamicClient.AuthnSignatureAlgorithm) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "token_endpoint_auth_signing_alg not supported")
 	}
 	return nil
 }
 
-func validateJwksAreRequiredForPrivateKeyJwtAuthn(
+func validateJWKSAreRequiredForPrivateKeyJWTAuthn(
 	_ utils.Context,
 	dynamicClient goidc.DynamicClient,
 ) goidc.OAuthError {
-	if dynamicClient.AuthnMethod != goidc.PrivateKeyJwtAuthn {
+	if dynamicClient.AuthnMethod != goidc.PrivateKeyJWTAuthn {
 		return nil
 	}
 
-	if len(dynamicClient.PublicJwks.Keys) == 0 && dynamicClient.PublicJwksUri == "" {
+	if len(dynamicClient.PublicJWKS.Keys) == 0 && dynamicClient.PublicJWKSURI == "" {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "the jwks is required for private_key_jwt")
 	}
 
 	return nil
 }
 
-func validateJwksIsRequiredWhenSelfSignedTlsAuthn(
+func validateJWKSIsRequiredWhenSelfSignedTLSAuthn(
 	_ utils.Context,
 	dynamicClient goidc.DynamicClient,
 ) goidc.OAuthError {
-	if dynamicClient.AuthnMethod != goidc.SelfSignedTlsAuthn {
+	if dynamicClient.AuthnMethod != goidc.SelfSignedTLSAuthn {
 		return nil
 	}
 
-	if dynamicClient.PublicJwksUri == "" && len(dynamicClient.PublicJwks.Keys) == 0 {
+	if dynamicClient.PublicJWKSURI == "" && len(dynamicClient.PublicJWKS.Keys) == 0 {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "jwks is required when authenticating with self signed certificates")
 	}
 
 	return nil
 }
 
-func validateTlsSubjectInfoWhenTlsAuthn(
+func validateTLSSubjectInfoWhenTLSAuthn(
 	_ utils.Context,
 	dynamicClient goidc.DynamicClient,
 ) goidc.OAuthError {
-	if dynamicClient.AuthnMethod != goidc.TlsAuthn {
+	if dynamicClient.AuthnMethod != goidc.TLSAuthn {
 		return nil
 	}
 
-	numberOfIdentifiers := 0
+	numberOfIDentifiers := 0
 
-	if dynamicClient.TlsSubjectDistinguishedName != "" {
-		numberOfIdentifiers++
+	if dynamicClient.TLSSubjectDistinguishedName != "" {
+		numberOfIDentifiers++
 	}
 
-	if dynamicClient.TlsSubjectAlternativeName != "" {
-		numberOfIdentifiers++
+	if dynamicClient.TLSSubjectAlternativeName != "" {
+		numberOfIDentifiers++
 	}
 
-	if dynamicClient.TlsSubjectAlternativeNameIp != "" {
-		numberOfIdentifiers++
+	if dynamicClient.TLSSubjectAlternativeNameIp != "" {
+		numberOfIDentifiers++
 	}
 
-	if numberOfIdentifiers != 1 {
+	if numberOfIDentifiers != 1 {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "only one of: tls_client_auth_subject_dn, tls_client_auth_san_dns, tls_client_auth_san_ip must be informed")
 	}
 
 	return nil
 }
 
-func validateIdTokenEncryptionAlgorithms(
+func validateIDTokenEncryptionAlgorithms(
 	ctx utils.Context,
 	dynamicClient goidc.DynamicClient,
 ) goidc.OAuthError {
 	// Return an error if ID token encryption is not enabled, but the client requested it.
 	if !ctx.UserInfoEncryptionIsEnabled {
-		if dynamicClient.IdTokenKeyEncryptionAlgorithm != "" || dynamicClient.IdTokenContentEncryptionAlgorithm != "" {
+		if dynamicClient.IDTokenKeyEncryptionAlgorithm != "" || dynamicClient.IDTokenContentEncryptionAlgorithm != "" {
 			return goidc.NewOAuthError(goidc.InvalidRequest, "ID token encryption is not supported")
 		}
 		return nil
 	}
 
-	if dynamicClient.IdTokenKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.UserInfoKeyEncryptionAlgorithms, dynamicClient.IdTokenKeyEncryptionAlgorithm) {
+	if dynamicClient.IDTokenKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.UserInfoKeyEncryptionAlgorithms, dynamicClient.IDTokenKeyEncryptionAlgorithm) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "id_token_encrypted_response_alg not supported")
 	}
 
-	if dynamicClient.IdTokenContentEncryptionAlgorithm != "" && dynamicClient.IdTokenKeyEncryptionAlgorithm == "" {
+	if dynamicClient.IDTokenContentEncryptionAlgorithm != "" && dynamicClient.IDTokenKeyEncryptionAlgorithm == "" {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "id_token_encrypted_response_alg is required if id_token_encrypted_response_enc is informed")
 	}
 
-	if dynamicClient.IdTokenContentEncryptionAlgorithm != "" && !slices.Contains(ctx.UserInfoContentEncryptionAlgorithms, dynamicClient.IdTokenContentEncryptionAlgorithm) {
+	if dynamicClient.IDTokenContentEncryptionAlgorithm != "" && !slices.Contains(ctx.UserInfoContentEncryptionAlgorithms, dynamicClient.IDTokenContentEncryptionAlgorithm) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "id_token_encrypted_response_enc not supported")
 	}
 
@@ -354,77 +354,77 @@ func validateUserInfoEncryptionAlgorithms(
 	return nil
 }
 
-func validateJarmEncryptionAlgorithms(
+func validateJARMEncryptionAlgorithms(
 	ctx utils.Context,
 	dynamicClient goidc.DynamicClient,
 ) goidc.OAuthError {
 	// Return an error if jarm encryption is not enabled, but the client requested it.
-	if !ctx.JarmIsEnabled {
-		if dynamicClient.JarmKeyEncryptionAlgorithm != "" || dynamicClient.JarmContentEncryptionAlgorithm != "" {
+	if !ctx.JARMIsEnabled {
+		if dynamicClient.JARMKeyEncryptionAlgorithm != "" || dynamicClient.JARMContentEncryptionAlgorithm != "" {
 			return goidc.NewOAuthError(goidc.InvalidRequest, "jarm encryption is not supported")
 		}
 		return nil
 	}
 
-	if dynamicClient.JarmKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.JarmKeyEncrytionAlgorithms, dynamicClient.JarmKeyEncryptionAlgorithm) {
+	if dynamicClient.JARMKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.JARMKeyEncrytionAlgorithms, dynamicClient.JARMKeyEncryptionAlgorithm) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "authorization_encrypted_response_alg not supported")
 	}
 
-	if dynamicClient.JarmContentEncryptionAlgorithm != "" && dynamicClient.JarmKeyEncryptionAlgorithm == "" {
+	if dynamicClient.JARMContentEncryptionAlgorithm != "" && dynamicClient.JARMKeyEncryptionAlgorithm == "" {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "authorization_encrypted_response_alg is required if authorization_encrypted_response_enc is informed")
 	}
 
-	if dynamicClient.JarmContentEncryptionAlgorithm != "" && !slices.Contains(ctx.JarmContentEncryptionAlgorithms, dynamicClient.JarmContentEncryptionAlgorithm) {
+	if dynamicClient.JARMContentEncryptionAlgorithm != "" && !slices.Contains(ctx.JARMContentEncryptionAlgorithms, dynamicClient.JARMContentEncryptionAlgorithm) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "authorization_encrypted_response_enc not supported")
 	}
 
 	return nil
 }
 
-func validateJarEncryptionAlgorithms(
+func validateJAREncryptionAlgorithms(
 	ctx utils.Context,
 	dynamicClient goidc.DynamicClient,
 ) goidc.OAuthError {
 	// Return an error if jar encryption is not enabled, but the client requested it.
-	if !ctx.JarEncryptionIsEnabled {
-		if dynamicClient.JarKeyEncryptionAlgorithm != "" || dynamicClient.JarContentEncryptionAlgorithm != "" {
+	if !ctx.JAREncryptionIsEnabled {
+		if dynamicClient.JARKeyEncryptionAlgorithm != "" || dynamicClient.JARContentEncryptionAlgorithm != "" {
 			return goidc.NewOAuthError(goidc.InvalidRequest, "jar encryption is not supported")
 		}
 		return nil
 	}
 
-	if dynamicClient.JarKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.GetJarKeyEncryptionAlgorithms(), dynamicClient.JarKeyEncryptionAlgorithm) {
+	if dynamicClient.JARKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.GetJARKeyEncryptionAlgorithms(), dynamicClient.JARKeyEncryptionAlgorithm) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "request_object_encryption_alg not supported")
 	}
 
-	if dynamicClient.JarContentEncryptionAlgorithm != "" && dynamicClient.JarKeyEncryptionAlgorithm == "" {
+	if dynamicClient.JARContentEncryptionAlgorithm != "" && dynamicClient.JARKeyEncryptionAlgorithm == "" {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "request_object_encryption_alg is required if request_object_encryption_enc is informed")
 	}
 
-	if dynamicClient.JarContentEncryptionAlgorithm != "" && !slices.Contains(ctx.JarContentEncryptionAlgorithms, dynamicClient.JarContentEncryptionAlgorithm) {
+	if dynamicClient.JARContentEncryptionAlgorithm != "" && !slices.Contains(ctx.JARContentEncryptionAlgorithms, dynamicClient.JARContentEncryptionAlgorithm) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "request_object_encryption_enc not supported")
 	}
 
 	return nil
 }
 
-func validatePublicJwks(
+func validatePublicJWKS(
 	ctx utils.Context,
 	dynamicClient goidc.DynamicClient,
 ) goidc.OAuthError {
-	if dynamicClient.PublicJwks == nil {
+	if dynamicClient.PublicJWKS == nil {
 		return nil
 	}
 
-	for _, jwk := range dynamicClient.PublicJwks.Keys {
+	for _, jwk := range dynamicClient.PublicJWKS.Keys {
 		if !jwk.IsPublic() || !jwk.IsValid() {
-			return goidc.NewOAuthError(goidc.InvalidRequest, fmt.Sprintf("the key with ID: %s jwks is invalid", jwk.GetKeyId()))
+			return goidc.NewOAuthError(goidc.InvalidRequest, fmt.Sprintf("the key with ID: %s jwks is invalid", jwk.GetKeyID()))
 		}
 	}
 	return nil
 }
 
-func validatePublicJwksUri(
+func validatePublicJWKSURI(
 	ctx utils.Context,
 	dynamicClient goidc.DynamicClient,
 ) goidc.OAuthError {

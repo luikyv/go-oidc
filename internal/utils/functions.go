@@ -27,7 +27,7 @@ type ResultChannel struct {
 	Err    goidc.OAuthError
 }
 
-func ExtractJarFromRequestObject(
+func ExtractJARFromRequestObject(
 	ctx Context,
 	reqObject string,
 	client goidc.Client,
@@ -35,7 +35,7 @@ func ExtractJarFromRequestObject(
 	AuthorizationRequest,
 	goidc.OAuthError,
 ) {
-	if ctx.JarEncryptionIsEnabled && IsJwe(reqObject) {
+	if ctx.JAREncryptionIsEnabled && IsJWE(reqObject) {
 		signedReqObject, err := extractSignedRequestObjectFromEncryptedRequestObject(ctx, reqObject, client)
 		if err != nil {
 			return AuthorizationRequest{}, err
@@ -43,11 +43,11 @@ func ExtractJarFromRequestObject(
 		reqObject = signedReqObject
 	}
 
-	if !IsJws(reqObject) {
+	if !IsJWS(reqObject) {
 		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.InvalidRequest, "the request object is not a JWS")
 	}
 
-	return extractJarFromSignedRequestObject(ctx, reqObject, client)
+	return extractJARFromSignedRequestObject(ctx, reqObject, client)
 }
 
 func extractSignedRequestObjectFromEncryptedRequestObject(
@@ -58,17 +58,17 @@ func extractSignedRequestObjectFromEncryptedRequestObject(
 	string,
 	goidc.OAuthError,
 ) {
-	encryptedReqObject, err := jose.ParseEncrypted(reqObject, ctx.GetJarKeyEncryptionAlgorithms(), ctx.JarContentEncryptionAlgorithms)
+	encryptedReqObject, err := jose.ParseEncrypted(reqObject, ctx.GetJARKeyEncryptionAlgorithms(), ctx.JARContentEncryptionAlgorithms)
 	if err != nil {
 		return "", goidc.NewOAuthError(goidc.InvalidResquestObject, "could not parse the encrypted request object")
 	}
 
-	keyId := encryptedReqObject.Header.KeyID
-	if keyId == "" {
+	keyID := encryptedReqObject.Header.KeyID
+	if keyID == "" {
 		return "", goidc.NewOAuthError(goidc.InvalidResquestObject, "invalid JWE key ID")
 	}
 
-	jwk, ok := ctx.GetPrivateKey(keyId)
+	jwk, ok := ctx.GetPrivateKey(keyID)
 	if !ok || jwk.GetUsage() != string(goidc.KeyEncryptionUsage) {
 		return "", goidc.NewOAuthError(goidc.InvalidResquestObject, "invalid JWK used for encryption")
 	}
@@ -81,7 +81,7 @@ func extractSignedRequestObjectFromEncryptedRequestObject(
 	return string(decryptedReqObject), nil
 }
 
-func extractJarFromSignedRequestObject(
+func extractJARFromSignedRequestObject(
 	ctx Context,
 	reqObject string,
 	client goidc.Client,
@@ -89,9 +89,9 @@ func extractJarFromSignedRequestObject(
 	AuthorizationRequest,
 	goidc.OAuthError,
 ) {
-	jarAlgorithms := ctx.JarSignatureAlgorithms
-	if client.JarSignatureAlgorithm != "" {
-		jarAlgorithms = []jose.SignatureAlgorithm{client.JarSignatureAlgorithm}
+	jarAlgorithms := ctx.JARSignatureAlgorithms
+	if client.JARSignatureAlgorithm != "" {
+		jarAlgorithms = []jose.SignatureAlgorithm{client.JARSignatureAlgorithm}
 	}
 	parsedToken, err := jwt.ParseSigned(reqObject, jarAlgorithms)
 	if err != nil {
@@ -104,7 +104,7 @@ func extractJarFromSignedRequestObject(
 	}
 
 	// Verify that the key ID belongs to the client.
-	jwk, oauthErr := client.GetJwk(parsedToken.Headers[0].KeyID)
+	jwk, oauthErr := client.GetJWK(parsedToken.Headers[0].KeyID)
 	if oauthErr != nil {
 		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.InvalidResquestObject, oauthErr.Error())
 	}
@@ -116,12 +116,12 @@ func extractJarFromSignedRequestObject(
 	}
 
 	// Validate that the "exp" claims is present and it's not too far in the future.
-	if claims.Expiry == nil || int(time.Until(claims.Expiry.Time()).Seconds()) > ctx.JarLifetimeSecs {
+	if claims.Expiry == nil || int(time.Until(claims.Expiry.Time()).Seconds()) > ctx.JARLifetimeSecs {
 		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.InvalidResquestObject, "invalid exp claim")
 	}
 
 	err = claims.ValidateWithLeeway(jwt.Expected{
-		Issuer:      client.Id,
+		Issuer:      client.ID,
 		AnyAudience: []string{ctx.Host},
 	}, time.Duration(0))
 	if err != nil {
@@ -131,37 +131,37 @@ func extractJarFromSignedRequestObject(
 	return jarReq, nil
 }
 
-func ValidateDpopJwt(
+func ValidateDPOPJWT(
 	ctx Context,
-	dpopJwt string,
-	expectedDpopClaims DpopJwtValidationOptions,
+	dpopJWT string,
+	expectedDPOPClaims DPOPJWTValidationOptions,
 ) goidc.OAuthError {
-	parsedDpopJwt, err := jwt.ParseSigned(dpopJwt, ctx.DpopSignatureAlgorithms)
+	parsedDPOPJWT, err := jwt.ParseSigned(dpopJWT, ctx.DPOPSignatureAlgorithms)
 	if err != nil {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid dpop")
 	}
 
-	if len(parsedDpopJwt.Headers) != 1 {
+	if len(parsedDPOPJWT.Headers) != 1 {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid dpop")
 	}
 
-	if parsedDpopJwt.Headers[0].ExtraHeaders["typ"] != "dpop+jwt" {
+	if parsedDPOPJWT.Headers[0].ExtraHeaders["typ"] != "dpop+jwt" {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid typ header. it should be dpop+jwt")
 	}
 
-	jwk := parsedDpopJwt.Headers[0].JSONWebKey
+	jwk := parsedDPOPJWT.Headers[0].JSONWebKey
 	if jwk == nil || !jwk.Valid() || !jwk.IsPublic() {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid jwk header")
 	}
 
 	var claims jwt.Claims
-	var dpopClaims DpopJwtClaims
-	if err := parsedDpopJwt.Claims(jwk.Key, &claims, &dpopClaims); err != nil {
+	var dpopClaims DPOPJWTClaims
+	if err := parsedDPOPJWT.Claims(jwk.Key, &claims, &dpopClaims); err != nil {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid dpop")
 	}
 
 	// Validate that the "iat" claim is present and it is not too far in the past.
-	if claims.IssuedAt == nil || int(time.Since(claims.IssuedAt.Time()).Seconds()) > ctx.DpopLifetimeSecs {
+	if claims.IssuedAt == nil || int(time.Since(claims.IssuedAt.Time()).Seconds()) > ctx.DPOPLifetimeSecs {
 		return goidc.NewOAuthError(goidc.UnauthorizedClient, "invalid dpop")
 	}
 
@@ -169,22 +169,22 @@ func ValidateDpopJwt(
 		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid jti claim")
 	}
 
-	if dpopClaims.HttpMethod != ctx.GetRequestMethod() {
+	if dpopClaims.HTTPMethod != ctx.GetRequestMethod() {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid htm claim")
 	}
 
 	// The query and fragment components of the "htu" must be ignored.
 	// Also, htu should be case-insensitive.
-	httpUri, err := GetUrlWithoutParams(strings.ToLower(dpopClaims.HttpUri))
-	if err != nil || !slices.Contains(ctx.GetAudiences(), httpUri) {
+	httpURI, err := GetURLWithoutParams(strings.ToLower(dpopClaims.HTTPURI))
+	if err != nil || !slices.Contains(ctx.GetAudiences(), httpURI) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid htu claim")
 	}
 
-	if expectedDpopClaims.AccessToken != "" && dpopClaims.AccessTokenHash != GenerateBase64UrlSha256Hash(expectedDpopClaims.AccessToken) {
+	if expectedDPOPClaims.AccessToken != "" && dpopClaims.AccessTokenHash != GenerateBase64URLSha256Hash(expectedDPOPClaims.AccessToken) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid ath claim")
 	}
 
-	if expectedDpopClaims.JwkThumbprint != "" && GenerateJwkThumbprint(dpopJwt, ctx.DpopSignatureAlgorithms) != expectedDpopClaims.JwkThumbprint {
+	if expectedDPOPClaims.JWKThumbprint != "" && GenerateJWKThumbprint(dpopJWT, ctx.DPOPSignatureAlgorithms) != expectedDPOPClaims.JWKThumbprint {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid jwk thumbprint")
 	}
 
@@ -213,8 +213,8 @@ func GetValidTokenClaims(
 		return nil, goidc.NewOAuthError(goidc.InvalidRequest, "invalid header kid")
 	}
 
-	keyId := parsedToken.Headers[0].KeyID
-	publicKey, ok := ctx.GetPublicKey(keyId)
+	keyID := parsedToken.Headers[0].KeyID
+	publicKey, ok := ctx.GetPublicKey(keyID)
 	if !ok || publicKey.GetUsage() != string(goidc.KeySignatureUsage) {
 		return nil, goidc.NewOAuthError(goidc.AccessDenied, "invalid token")
 	}
@@ -234,8 +234,8 @@ func GetValidTokenClaims(
 	return rawClaims, nil
 }
 
-func GetTokenId(ctx Context, token string) (string, goidc.OAuthError) {
-	if !IsJws(token) {
+func GetTokenID(ctx Context, token string) (string, goidc.OAuthError) {
+	if !IsJWS(token) {
 		return token, nil
 	}
 
@@ -244,12 +244,12 @@ func GetTokenId(ctx Context, token string) (string, goidc.OAuthError) {
 		return "", err
 	}
 
-	tokenId := claims[string(goidc.TokenIdClaim)]
-	if tokenId == nil {
+	tokenID := claims[string(goidc.TokenIDClaim)]
+	if tokenID == nil {
 		return "", goidc.NewOAuthError(goidc.AccessDenied, "invalid token")
 	}
 
-	return tokenId.(string), nil
+	return tokenID.(string), nil
 }
 
 func RunValidations(
@@ -283,7 +283,7 @@ func ExtractProtectedParamsFromForm(ctx Context) map[string]any {
 }
 
 func ExtractProtectedParamsFromRequestObject(ctx Context, request string) map[string]any {
-	parsedRequest, err := jwt.ParseSigned(request, ctx.JarSignatureAlgorithms)
+	parsedRequest, err := jwt.ParseSigned(request, ctx.JARSignatureAlgorithms)
 	if err != nil {
 		return map[string]any{}
 	}
@@ -304,10 +304,10 @@ func ExtractProtectedParamsFromRequestObject(ctx Context, request string) map[st
 	return protectedParams
 }
 
-func EncryptJwt(
+func EncryptJWT(
 	_ Context,
 	jwtString string,
-	encryptionJwk goidc.JsonWebKey,
+	encryptionJWK goidc.JSONWebKey,
 	contentKeyEncryptionAlgorithm jose.ContentEncryption,
 ) (
 	string,
@@ -315,19 +315,19 @@ func EncryptJwt(
 ) {
 	encrypter, err := jose.NewEncrypter(
 		contentKeyEncryptionAlgorithm,
-		jose.Recipient{Algorithm: jose.KeyAlgorithm(encryptionJwk.GetAlgorithm()), Key: encryptionJwk.GetKey(), KeyID: encryptionJwk.GetKeyId()},
+		jose.Recipient{Algorithm: jose.KeyAlgorithm(encryptionJWK.GetAlgorithm()), Key: encryptionJWK.GetKey(), KeyID: encryptionJWK.GetKeyID()},
 		(&jose.EncrypterOptions{}).WithType("jwt").WithContentType("jwt"),
 	)
 	if err != nil {
 		return "", goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
-	encryptedUserInfoJwtJwe, err := encrypter.Encrypt([]byte(jwtString))
+	encryptedUserInfoJWTJWE, err := encrypter.Encrypt([]byte(jwtString))
 	if err != nil {
 		return "", goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
-	encryptedUserInfoString, err := encryptedUserInfoJwtJwe.CompactSerialize()
+	encryptedUserInfoString, err := encryptedUserInfoJWTJWE.CompactSerialize()
 	if err != nil {
 		return "", goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
@@ -338,9 +338,9 @@ func EncryptJwt(
 func NewGrantSession(grantOptions goidc.GrantOptions, token Token) goidc.GrantSession {
 	timestampNow := goidc.GetTimestampNow()
 	return goidc.GrantSession{
-		Id:                          uuid.New().String(),
-		TokenId:                     token.Id,
-		JwkThumbprint:               token.JwkThumbprint,
+		ID:                          uuid.New().String(),
+		TokenID:                     token.ID,
+		JWKThumbprint:               token.JWKThumbprint,
 		ClientCertificateThumbprint: token.CertificateThumbprint,
 		CreatedAtTimestamp:          timestampNow,
 		LastTokenIssuedAtTimestamp:  timestampNow,
@@ -352,13 +352,13 @@ func NewGrantSession(grantOptions goidc.GrantOptions, token Token) goidc.GrantSe
 
 func NewAuthnSession(authParams goidc.AuthorizationParameters, client goidc.Client) goidc.AuthnSession {
 	return goidc.AuthnSession{
-		Id:                       uuid.NewString(),
-		ClientId:                 client.Id,
+		ID:                       uuid.NewString(),
+		ClientID:                 client.ID,
 		AuthorizationParameters:  authParams,
 		CreatedAtTimestamp:       goidc.GetTimestampNow(),
 		Store:                    make(map[string]any),
 		AdditionalTokenClaims:    make(map[string]any),
-		AdditionalIdTokenClaims:  map[string]any{},
+		AdditionalIDTokenClaims:  map[string]any{},
 		AdditionalUserInfoClaims: map[string]any{},
 	}
 }
@@ -367,8 +367,8 @@ func GenerateRefreshToken() string {
 	return goidc.GenerateRandomString(goidc.RefreshTokenLength, goidc.RefreshTokenLength)
 }
 
-func GenerateClientId() string {
-	return "dc-" + goidc.GenerateRandomString(goidc.DynamicClientIdLength, goidc.DynamicClientIdLength)
+func GenerateClientID() string {
+	return "dc-" + goidc.GenerateRandomString(goidc.DynamicClientIDLength, goidc.DynamicClientIDLength)
 }
 
 func GenerateClientSecret() string {
@@ -379,34 +379,34 @@ func GenerateRegistrationAccessToken() string {
 	return goidc.GenerateRandomString(goidc.RegistrationAccessTokenLength, goidc.RegistrationAccessTokenLength)
 }
 
-func GetUrlWithQueryParams(redirectUri string, params map[string]string) string {
-	parsedUrl, _ := url.Parse(redirectUri)
-	query := parsedUrl.Query()
+func GetURLWithQueryParams(redirectURI string, params map[string]string) string {
+	parsedURL, _ := url.Parse(redirectURI)
+	query := parsedURL.Query()
 	for param, value := range params {
 		query.Add(param, value)
 	}
-	parsedUrl.RawQuery = query.Encode()
-	return parsedUrl.String()
+	parsedURL.RawQuery = query.Encode()
+	return parsedURL.String()
 }
 
-func GetUrlWithFragmentParams(redirectUri string, params map[string]string) string {
-	parsedUrl, _ := url.Parse(redirectUri)
-	fragments, _ := url.ParseQuery(parsedUrl.Fragment)
+func GetURLWithFragmentParams(redirectURI string, params map[string]string) string {
+	parsedURL, _ := url.Parse(redirectURI)
+	fragments, _ := url.ParseQuery(parsedURL.Fragment)
 	for param, value := range params {
 		fragments.Add(param, value)
 	}
-	parsedUrl.Fragment = fragments.Encode()
-	return parsedUrl.String()
+	parsedURL.Fragment = fragments.Encode()
+	return parsedURL.String()
 }
 
-func GetUrlWithoutParams(u string) (string, error) {
-	parsedUrl, err := url.Parse(u)
+func GetURLWithoutParams(u string) (string, error) {
+	parsedURL, err := url.Parse(u)
 	if err != nil {
 		return "", err
 	}
-	parsedUrl.RawQuery = ""
-	parsedUrl.Fragment = ""
-	return parsedUrl.String(), nil
+	parsedURL.RawQuery = ""
+	parsedURL.Fragment = ""
+	return parsedURL.String(), nil
 }
 
 func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod goidc.CodeChallengeMethod) bool {
@@ -414,7 +414,7 @@ func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod 
 	case goidc.PlainCodeChallengeMethod:
 		return codeChallenge == codeVerifier
 	case goidc.Sha256CodeChallengeMethod:
-		return codeChallenge == GenerateBase64UrlSha256Hash(codeVerifier)
+		return codeChallenge == GenerateBase64URLSha256Hash(codeVerifier)
 	}
 
 	return false
@@ -445,18 +445,18 @@ func AllEquals[T comparable](values []T) bool {
 	)
 }
 
-func ScopesContainsOpenId(scopes string) bool {
-	return slices.Contains(goidc.SplitStringWithSpaces(scopes), goidc.OpenIdScope)
+func ScopesContainsOpenID(scopes string) bool {
+	return slices.Contains(goidc.SplitStringWithSpaces(scopes), goidc.OpenIDScope)
 }
 
 // Generate a JWK thumbprint for a valid DPoP JWT.
-func GenerateJwkThumbprint(dpopJwt string, dpopSigningAlgorithms []jose.SignatureAlgorithm) string {
-	parsedDpopJwt, _ := jwt.ParseSigned(dpopJwt, dpopSigningAlgorithms)
-	jkt, _ := parsedDpopJwt.Headers[0].JSONWebKey.Thumbprint(crypto.SHA256)
+func GenerateJWKThumbprint(dpopJWT string, dpopSigningAlgorithms []jose.SignatureAlgorithm) string {
+	parsedDPOPJWT, _ := jwt.ParseSigned(dpopJWT, dpopSigningAlgorithms)
+	jkt, _ := parsedDPOPJWT.Headers[0].JSONWebKey.Thumbprint(crypto.SHA256)
 	return base64.RawURLEncoding.EncodeToString(jkt)
 }
 
-func GenerateBase64UrlSha256Hash(s string) string {
+func GenerateBase64URLSha256Hash(s string) string {
 	hash := sha256.New()
 	hash.Write([]byte(s))
 	return base64.RawURLEncoding.EncodeToString(hash.Sum(nil))
@@ -492,14 +492,14 @@ func GenerateHalfHashClaim(claimValue string, idTokenAlgorithm jose.SignatureAlg
 	return base64.RawURLEncoding.EncodeToString(halfHashedClaim)
 }
 
-func IsJws(token string) bool {
-	isJws, _ := regexp.MatchString("(^[\\w-]*\\.[\\w-]*\\.[\\w-]*$)", token)
-	return isJws
+func IsJWS(token string) bool {
+	isJWS, _ := regexp.MatchString("(^[\\w-]*\\.[\\w-]*\\.[\\w-]*$)", token)
+	return isJWS
 }
 
-func IsJwe(token string) bool {
-	isJws, _ := regexp.MatchString("(^[\\w-]*\\.[\\w-]*\\.[\\w-]*\\.[\\w-]*\\.[\\w-]*$)", token)
-	return isJws
+func IsJWE(token string) bool {
+	isJWS, _ := regexp.MatchString("(^[\\w-]*\\.[\\w-]*\\.[\\w-]*\\.[\\w-]*\\.[\\w-]*$)", token)
+	return isJWS
 }
 
 func ComparePublicKeys(k1 any, k2 any) bool {

@@ -17,13 +17,13 @@ func NewInMemoryGrantSessionManager() *InMemoryGrantSessionManager {
 }
 
 func (manager *InMemoryGrantSessionManager) CreateOrUpdate(_ context.Context, grantSession goidc.GrantSession) error {
-	manager.Sessions[grantSession.Id] = grantSession
+	manager.Sessions[grantSession.ID] = grantSession
 	return nil
 }
 
-func (manager *InMemoryGrantSessionManager) GetByTokenId(_ context.Context, tokenId string) (goidc.GrantSession, error) {
+func (manager *InMemoryGrantSessionManager) GetByTokenID(_ context.Context, tokenID string) (goidc.GrantSession, error) {
 	grantSession, exists := manager.getFirstToken(func(t goidc.GrantSession) bool {
-		return t.TokenId == tokenId
+		return t.TokenID == tokenID
 	})
 	if !exists {
 		return goidc.GrantSession{}, goidc.ErrorEntityNotFound

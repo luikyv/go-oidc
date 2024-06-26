@@ -1,13 +1,13 @@
 package goidc
 
 type AuthnSession struct {
-	Id                          string                `json:"id" bson:"_id"`
-	CallbackId                  string                `json:"callback_id" bson:"callback_id"`
-	PolicyId                    string                `json:"policy_id" bson:"policy_id"`
+	ID                          string                `json:"id" bson:"_id"`
+	CallbackID                  string                `json:"callback_id" bson:"callback_id"`
+	PolicyID                    string                `json:"policy_id" bson:"policy_id"`
 	ExpiresAtTimestamp          int                   `json:"expires_at" bson:"expires_at"`
 	CreatedAtTimestamp          int                   `json:"created_at" bson:"created_at"`
 	Subject                     string                `json:"sub" bson:"sub"`
-	ClientId                    string                `json:"client_id" bson:"client_id"`
+	ClientID                    string                `json:"client_id" bson:"client_id"`
 	GrantedScopes               string                `json:"granted_scopes" bson:"granted_scopes"`
 	GrantedAuthorizationDetails []AuthorizationDetail `json:"granted_authorization_details,omitempty" bson:"granted_authorization_details,omitempty"`
 	AuthorizationCode           string                `json:"authorization_code,omitempty" bson:"authorization_code,omitempty"`
@@ -17,7 +17,7 @@ type AuthnSession struct {
 	// Allow the developer to store information in memory and, hence, between steps.
 	Store                    map[string]any `json:"store,omitempty" bson:"store,omitempty"`
 	AdditionalTokenClaims    map[string]any `json:"additional_token_claims,omitempty" bson:"additional_token_claims,omitempty"`
-	AdditionalIdTokenClaims  map[string]any `json:"additional_id_token_claims,omitempty" bson:"additional_id_token_claims,omitempty"`
+	AdditionalIDTokenClaims  map[string]any `json:"additional_id_token_claims,omitempty" bson:"additional_id_token_claims,omitempty"`
 	AdditionalUserInfoClaims map[string]any `json:"additional_user_info_claims,omitempty" bson:"additional_user_info_claims,omitempty"`
 	AuthorizationParameters  `bson:"inline"`
 	Error                    OAuthError `json:"-" bson:"-"`
@@ -46,11 +46,11 @@ func (session AuthnSession) GetMaxAuthenticationAgeSecs() (int, bool) {
 }
 
 func (session AuthnSession) GetAcrValues() ([]AuthenticationContextReference, bool) {
-	if session.AcrValues == "" {
+	if session.ACRValues == "" {
 		return nil, false
 	}
 	acrValues := []AuthenticationContextReference{}
-	for _, acrValue := range SplitStringWithSpaces(session.AcrValues) {
+	for _, acrValue := range SplitStringWithSpaces(session.ACRValues) {
 		acrValues = append(acrValues, AuthenticationContextReference(acrValue))
 	}
 	return acrValues, true
@@ -62,8 +62,8 @@ func (session *AuthnSession) UpdateParams(params AuthorizationParameters) {
 	session.AuthorizationParameters = session.AuthorizationParameters.Merge(params)
 }
 
-func (session *AuthnSession) SetUserId(userId string) {
-	session.Subject = userId
+func (session *AuthnSession) SetUserID(userID string) {
+	session.Subject = userID
 }
 
 func (session *AuthnSession) SaveParameter(key string, value any) {
@@ -85,11 +85,11 @@ func (session *AuthnSession) AddTokenClaim(claim string, value any) {
 	session.AdditionalTokenClaims[claim] = value
 }
 
-func (session *AuthnSession) AddIdTokenClaim(claim string, value any) {
-	if session.AdditionalIdTokenClaims == nil {
-		session.AdditionalIdTokenClaims = make(map[string]any)
+func (session *AuthnSession) AddIDTokenClaim(claim string, value any) {
+	if session.AdditionalIDTokenClaims == nil {
+		session.AdditionalIDTokenClaims = make(map[string]any)
 	}
-	session.AdditionalIdTokenClaims[claim] = value
+	session.AdditionalIDTokenClaims[claim] = value
 }
 
 func (session *AuthnSession) AddUserInfoClaim(claim string, value any) {
@@ -111,20 +111,20 @@ func (session AuthnSession) IsExpired() bool {
 	return GetTimestampNow() > session.ExpiresAtTimestamp
 }
 
-func (session *AuthnSession) Push(parLifetimeSecs int) (requestUri string) {
-	session.RequestUri = GenerateRequestUri()
+func (session *AuthnSession) Push(parLifetimeSecs int) (requestURI string) {
+	session.RequestURI = GenerateRequestURI()
 	session.ExpiresAtTimestamp = GetTimestampNow() + parLifetimeSecs
-	return session.RequestUri
+	return session.RequestURI
 }
 
-func (session *AuthnSession) Start(policyId string, sessionLifetimeSecs int) {
+func (session *AuthnSession) Start(policyID string, sessionLifetimeSecs int) {
 	if session.Nonce != "" {
-		session.AddIdTokenClaim(NonceClaim, session.Nonce)
+		session.AddIDTokenClaim(NonceClaim, session.Nonce)
 	}
-	session.PolicyId = policyId
-	session.CallbackId = GenerateCallbackId()
+	session.PolicyID = policyID
+	session.CallbackID = GenerateCallbackID()
 	// FIXME: To think about:Treating the request_uri as one-time use will cause problems when the user refreshes the page.
-	session.RequestUri = ""
+	session.RequestURI = ""
 	session.ExpiresAtTimestamp = GetTimestampNow() + sessionLifetimeSecs
 }
 
@@ -145,8 +145,8 @@ func (session *AuthnSession) GrantAuthorizationDetails(authDetails []Authorizati
 	session.GrantedAuthorizationDetails = authDetails
 }
 
-func (session AuthnSession) GetAdditionalIdTokenClaims() map[string]any {
-	return session.AdditionalIdTokenClaims
+func (session AuthnSession) GetAdditionalIDTokenClaims() map[string]any {
+	return session.AdditionalIDTokenClaims
 }
 
 func (session AuthnSession) GetAdditionalUserInfoClaims() map[string]any {

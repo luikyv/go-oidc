@@ -14,7 +14,7 @@ func setDefaults(_ utils.Context, dynamicClient *goidc.DynamicClient) {
 
 	if dynamicClient.AuthnMethod == goidc.ClientSecretPostAuthn ||
 		dynamicClient.AuthnMethod == goidc.ClientSecretBasicAuthn ||
-		dynamicClient.AuthnMethod == goidc.ClientSecretJwt {
+		dynamicClient.AuthnMethod == goidc.ClientSecretJWT {
 		dynamicClient.Secret = utils.GenerateClientSecret()
 	}
 
@@ -24,20 +24,20 @@ func setDefaults(_ utils.Context, dynamicClient *goidc.DynamicClient) {
 		dynamicClient.ResponseTypes = []goidc.ResponseType{goidc.CodeResponse}
 	}
 
-	if dynamicClient.IdTokenKeyEncryptionAlgorithm != "" && dynamicClient.IdTokenContentEncryptionAlgorithm == "" {
-		dynamicClient.IdTokenContentEncryptionAlgorithm = jose.A128CBC_HS256
+	if dynamicClient.IDTokenKeyEncryptionAlgorithm != "" && dynamicClient.IDTokenContentEncryptionAlgorithm == "" {
+		dynamicClient.IDTokenContentEncryptionAlgorithm = jose.A128CBC_HS256
 	}
 
 	if dynamicClient.UserInfoKeyEncryptionAlgorithm != "" && dynamicClient.UserInfoContentEncryptionAlgorithm == "" {
 		dynamicClient.UserInfoContentEncryptionAlgorithm = jose.A128CBC_HS256
 	}
 
-	if dynamicClient.JarmKeyEncryptionAlgorithm != "" && dynamicClient.JarmContentEncryptionAlgorithm == "" {
-		dynamicClient.JarmContentEncryptionAlgorithm = jose.A128CBC_HS256
+	if dynamicClient.JARMKeyEncryptionAlgorithm != "" && dynamicClient.JARMContentEncryptionAlgorithm == "" {
+		dynamicClient.JARMContentEncryptionAlgorithm = jose.A128CBC_HS256
 	}
 
-	if dynamicClient.JarKeyEncryptionAlgorithm != "" && dynamicClient.JarContentEncryptionAlgorithm == "" {
-		dynamicClient.JarContentEncryptionAlgorithm = jose.A128CBC_HS256
+	if dynamicClient.JARKeyEncryptionAlgorithm != "" && dynamicClient.JARContentEncryptionAlgorithm == "" {
+		dynamicClient.JARContentEncryptionAlgorithm = jose.A128CBC_HS256
 	}
 
 	if dynamicClient.Attributes == nil {
@@ -46,7 +46,7 @@ func setDefaults(_ utils.Context, dynamicClient *goidc.DynamicClient) {
 }
 
 func setCreationDefaults(ctx utils.Context, dynamicClient *goidc.DynamicClient) {
-	dynamicClient.Id = utils.GenerateClientId()
+	dynamicClient.ID = utils.GenerateClientID()
 	dynamicClient.RegistrationAccessToken = utils.GenerateRegistrationAccessToken()
 	setDefaults(ctx, dynamicClient)
 }
@@ -56,7 +56,7 @@ func setUpdateDefaults(
 	client goidc.Client,
 	dynamicClient *goidc.DynamicClient,
 ) {
-	dynamicClient.Id = client.Id
+	dynamicClient.ID = client.ID
 	if ctx.ShouldRotateRegistrationTokens {
 		dynamicClient.RegistrationAccessToken = utils.GenerateRegistrationAccessToken()
 	}
@@ -66,7 +66,7 @@ func setUpdateDefaults(
 func newClient(dynamicClient goidc.DynamicClient) goidc.Client {
 	hashedRegistrationAccessToken, _ := bcrypt.GenerateFromPassword([]byte(dynamicClient.RegistrationAccessToken), bcrypt.DefaultCost)
 	client := goidc.Client{
-		Id:                            dynamicClient.Id,
+		ID:                            dynamicClient.ID,
 		HashedRegistrationAccessToken: string(hashedRegistrationAccessToken),
 		ClientMetaInfo:                dynamicClient.ClientMetaInfo,
 	}
@@ -76,15 +76,15 @@ func newClient(dynamicClient goidc.DynamicClient) goidc.Client {
 		client.HashedSecret = string(clientHashedSecret)
 	}
 
-	if dynamicClient.AuthnMethod == goidc.ClientSecretJwt {
+	if dynamicClient.AuthnMethod == goidc.ClientSecretJWT {
 		client.Secret = dynamicClient.Secret
 	}
 
 	return client
 }
 
-func getClientRegistrationUri(ctx utils.Context, clientId string) string {
-	return ctx.Host + string(goidc.DynamicClientEndpoint) + "/" + clientId
+func getClientRegistrationURI(ctx utils.Context, clientID string) string {
+	return ctx.Host + string(goidc.DynamicClientEndpoint) + "/" + clientID
 }
 
 func getProtectedClient(
@@ -94,11 +94,11 @@ func getProtectedClient(
 	goidc.Client,
 	goidc.OAuthError,
 ) {
-	if dynamicClient.Id == "" {
+	if dynamicClient.ID == "" {
 		return goidc.Client{}, goidc.NewOAuthError(goidc.InvalidRequest, "invalid client_id")
 	}
 
-	client, err := ctx.GetClient(dynamicClient.Id)
+	client, err := ctx.GetClient(dynamicClient.ID)
 	if err != nil {
 		return goidc.Client{}, goidc.NewOAuthError(goidc.InvalidRequest, err.Error())
 	}

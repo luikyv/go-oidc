@@ -39,31 +39,31 @@ func redirectResponse(
 	}
 
 	responseMode := params.GetResponseMode()
-	if responseMode.IsJarm() || client.JarmSignatureAlgorithm != "" {
-		responseJwt, err := createJarmResponse(ctx, client, redirectParams)
+	if responseMode.IsJARM() || client.JARMSignatureAlgorithm != "" {
+		responseJWT, err := createJARMResponse(ctx, client, redirectParams)
 		if err != nil {
 			return err
 		}
-		redirectParams.Response = responseJwt
+		redirectParams.Response = responseJWT
 	}
 
 	redirectParamsMap := redirectParams.GetParameters()
 	switch responseMode {
-	case goidc.FragmentResponseMode, goidc.FragmentJwtResponseMode:
-		redirectUrl := utils.GetUrlWithFragmentParams(params.RedirectUri, redirectParamsMap)
-		ctx.Redirect(redirectUrl)
-	case goidc.FormPostResponseMode, goidc.FormPostJwtResponseMode:
-		redirectParamsMap["redirect_uri"] = params.RedirectUri
+	case goidc.FragmentResponseMode, goidc.FragmentJWTResponseMode:
+		redirectURL := utils.GetURLWithFragmentParams(params.RedirectURI, redirectParamsMap)
+		ctx.Redirect(redirectURL)
+	case goidc.FormPostResponseMode, goidc.FormPostJWTResponseMode:
+		redirectParamsMap["redirect_uri"] = params.RedirectURI
 		ctx.RenderHtml(formPostResponseTemplate, redirectParamsMap)
 	default:
-		redirectUrl := utils.GetUrlWithQueryParams(params.RedirectUri, redirectParamsMap)
-		ctx.Redirect(redirectUrl)
+		redirectURL := utils.GetURLWithQueryParams(params.RedirectURI, redirectParamsMap)
+		ctx.Redirect(redirectURL)
 	}
 
 	return nil
 }
 
-func createJarmResponse(
+func createJARMResponse(
 	ctx utils.Context,
 	client goidc.Client,
 	redirectParams utils.AuthorizationResponse,
@@ -71,22 +71,22 @@ func createJarmResponse(
 	string,
 	goidc.OAuthError,
 ) {
-	responseJwt, err := signJarmResponse(ctx, client, redirectParams)
+	responseJWT, err := signJARMResponse(ctx, client, redirectParams)
 	if err != nil {
 		return "", err
 	}
 
-	if client.JarmKeyEncryptionAlgorithm != "" {
-		responseJwt, err = encryptJarmResponse(ctx, responseJwt, client)
+	if client.JARMKeyEncryptionAlgorithm != "" {
+		responseJWT, err = encryptJARMResponse(ctx, responseJWT, client)
 		if err != nil {
 			return "", err
 		}
 	}
 
-	return responseJwt, nil
+	return responseJWT, nil
 }
 
-func signJarmResponse(
+func signJARMResponse(
 	ctx utils.Context,
 	client goidc.Client,
 	redirectParams utils.AuthorizationResponse,
@@ -94,10 +94,10 @@ func signJarmResponse(
 	string,
 	goidc.OAuthError,
 ) {
-	jwk := ctx.GetJarmSignatureKey(client)
+	jwk := ctx.GetJARMSignatureKey(client)
 	signer, err := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.GetAlgorithm()), Key: jwk.GetKey()},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.GetKeyId()),
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.GetKeyID()),
 	)
 	if err != nil {
 		return "", goidc.NewOAuthError(goidc.InternalError, err.Error())
@@ -106,9 +106,9 @@ func signJarmResponse(
 	createdAtTimestamp := goidc.GetTimestampNow()
 	claims := map[string]any{
 		goidc.IssuerClaim:   ctx.Host,
-		goidc.AudienceClaim: client.Id,
+		goidc.AudienceClaim: client.ID,
 		goidc.IssuedAtClaim: createdAtTimestamp,
-		goidc.ExpiryClaim:   createdAtTimestamp + ctx.JarmLifetimeSecs,
+		goidc.ExpiryClaim:   createdAtTimestamp + ctx.JARMLifetimeSecs,
 	}
 	for k, v := range redirectParams.GetParameters() {
 		claims[k] = v
@@ -122,25 +122,25 @@ func signJarmResponse(
 	return response, nil
 }
 
-func encryptJarmResponse(
+func encryptJARMResponse(
 	ctx utils.Context,
-	responseJwt string,
+	responseJWT string,
 	client goidc.Client,
 ) (
 	string,
 	goidc.OAuthError,
 ) {
-	jwk, err := client.GetJarmEncryptionJwk()
+	jwk, err := client.GetJARMEncryptionJWK()
 	if err != nil {
 		return "", err
 	}
 
-	encryptedResponseJwt, err := utils.EncryptJwt(ctx, responseJwt, jwk, client.JarmContentEncryptionAlgorithm)
+	encryptedResponseJWT, err := utils.EncryptJWT(ctx, responseJWT, jwk, client.JARMContentEncryptionAlgorithm)
 	if err != nil {
 		return "", err
 	}
 
-	return encryptedResponseJwt, nil
+	return encryptedResponseJWT, nil
 }
 
 var formPostResponseTemplate string = `
@@ -161,7 +161,7 @@ var formPostResponseTemplate string = `
 	</body>
 
 	<script>
-		var form = document.getElementById('form');
+		var form = document.getElementByID('form');
 		form.addEventListener('formdata', function(event) {
 			let formData = event.formData;
 			for (let [name, value] of Array.from(formData.entries())) {

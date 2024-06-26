@@ -10,43 +10,43 @@ import (
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-func GetPrivateJwks(filename string) goidc.JsonWebKeySet {
+func GetPrivateJWKS(filename string) goidc.JSONWebKeySet {
 	absPath, _ := filepath.Abs("./" + filename)
-	clientJwksFile, err := os.Open(absPath)
+	clientJWKSFile, err := os.Open(absPath)
 	if err != nil {
 		panic(err.Error())
 	}
-	defer clientJwksFile.Close()
+	defer clientJWKSFile.Close()
 
-	clientJwksBytes, err := io.ReadAll(clientJwksFile)
+	clientJWKSBytes, err := io.ReadAll(clientJWKSFile)
 	if err != nil {
 		panic(err.Error())
 	}
 
-	var clientJwks goidc.JsonWebKeySet
-	if err := json.Unmarshal(clientJwksBytes, &clientJwks); err != nil {
+	var clientJWKS goidc.JSONWebKeySet
+	if err := json.Unmarshal(clientJWKSBytes, &clientJWKS); err != nil {
 		panic(err.Error())
 	}
 
-	return clientJwks
+	return clientJWKS
 }
 
 func AuthenticateUserWithNoInteraction(
 	ctx goidc.Context,
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
-	session.SetUserId("random_user_id")
+	session.SetUserID("random_user_id")
 	session.GrantScopes(session.Scopes)
-	session.AddIdTokenClaim(goidc.AuthenticationTimeClaim, goidc.GetTimestampNow())
+	session.AddIDTokenClaim(goidc.AuthenticationTimeClaim, goidc.GetTimestampNow())
 
 	// Add claims based on the claims parameter.
 	claims, ok := session.GetClaims()
 	if ok {
 
 		// acr claim.
-		acrClaim, ok := claims.IdToken[goidc.AuthenticationContextReferenceClaim]
+		acrClaim, ok := claims.IDToken[goidc.AuthenticationContextReferenceClaim]
 		if ok {
-			session.AddIdTokenClaim(goidc.AuthenticationContextReferenceClaim, acrClaim.Value)
+			session.AddIDTokenClaim(goidc.AuthenticationContextReferenceClaim, acrClaim.Value)
 		}
 		acrClaim, ok = claims.Userinfo[goidc.AuthenticationContextReferenceClaim]
 		if ok {
@@ -54,9 +54,9 @@ func AuthenticateUserWithNoInteraction(
 		}
 
 		// email claim.
-		_, ok = claims.IdToken[goidc.EmailClaim]
+		_, ok = claims.IDToken[goidc.EmailClaim]
 		if ok {
-			session.AddIdTokenClaim(goidc.EmailClaim, "random@gmail.com")
+			session.AddIDTokenClaim(goidc.EmailClaim, "random@gmail.com")
 		}
 		_, ok = claims.Userinfo[goidc.EmailClaim]
 		if ok {
@@ -64,9 +64,9 @@ func AuthenticateUserWithNoInteraction(
 		}
 
 		// email_verified claim.
-		_, ok = claims.IdToken[goidc.EmailVerifiedClaim]
+		_, ok = claims.IDToken[goidc.EmailVerifiedClaim]
 		if ok {
-			session.AddIdTokenClaim(goidc.EmailVerifiedClaim, true)
+			session.AddIDTokenClaim(goidc.EmailVerifiedClaim, true)
 		}
 		_, ok = claims.Userinfo[goidc.EmailVerifiedClaim]
 		if ok {
@@ -95,8 +95,8 @@ func AuthenticateUser(
 		session.SaveParameter("step", "identity")
 	}
 
-	stepId, ok := session.GetParameter("step")
-	if ok && stepId == "identity" {
+	stepID, ok := session.GetParameter("step")
+	if ok && stepID == "identity" {
 		status := identifyUser(ctx, session)
 		if status != goidc.Success {
 			return status
@@ -117,16 +117,16 @@ func identifyUser(
 	if username == "" {
 		ctx.RenderHtml(identityForm, map[string]any{
 			"host":       strings.Replace(ctx.GetHost(), "host.docker.internal", "localhost", -1),
-			"callbackId": session.CallbackId,
+			"callbackID": session.CallbackID,
 		})
 		return goidc.InProgress
 	}
 
-	session.SetUserId(username)
+	session.SetUserID(username)
 	session.GrantScopes(session.Scopes)
 	session.AddTokenClaim("custom_claim", "random_value")
 	if strings.Contains(session.Scopes, "email") {
-		session.AddIdTokenClaim("email", "random@email.com")
+		session.AddIDTokenClaim("email", "random@email.com")
 	}
 	return goidc.Success
 }
@@ -139,7 +139,7 @@ func authenticateWithPassword(
 	if password == "" {
 		ctx.RenderHtml(passwordForm, map[string]any{
 			"host":       strings.Replace(ctx.GetHost(), "host.docker.internal", "localhost", -1),
-			"callbackId": session.CallbackId,
+			"callbackID": session.CallbackID,
 		})
 		return goidc.InProgress
 	}
@@ -147,7 +147,7 @@ func authenticateWithPassword(
 	if password != "password" {
 		ctx.RenderHtml(passwordForm, map[string]any{
 			"host":       strings.Replace(ctx.GetHost(), "host.docker.internal", "localhost", -1),
-			"callbackId": session.CallbackId,
+			"callbackID": session.CallbackID,
 			"error":      "invalid password",
 		})
 		return goidc.InProgress
@@ -163,7 +163,7 @@ var identityForm string = `
 	</head>
 	<body>
 		<h1>Username Form</h1>
-		<form action="{{ .host }}/authorize/{{ .callbackId }}" method="post">
+		<form action="{{ .host }}/authorize/{{ .callbackID }}" method="post">
 			<label for="username">Username:</label>
 			<input type="text" id="username" name="username"><br><br>
 			<input type="submit" value="Submit">
@@ -179,7 +179,7 @@ var passwordForm string = `
 	</head>
 	<body>
 		<h1>Password Form</h1>
-		<form action="{{ .host }}/authorize/{{ .callbackId }}" method="post">
+		<form action="{{ .host }}/authorize/{{ .callbackID }}" method="post">
 			<label for="password">Password:</label>
 			<input type="text" id="password" name="password"><br><br>
 			<input type="submit" value="Submit">

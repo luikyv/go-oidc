@@ -14,12 +14,12 @@ func HandleUserInfoRequest(ctx utils.Context) (utils.UserInfoResponse, goidc.OAu
 		return utils.UserInfoResponse{}, goidc.NewOAuthError(goidc.InvalidToken, "no token found")
 	}
 
-	tokenId, oauthErr := utils.GetTokenId(ctx, token)
+	tokenID, oauthErr := utils.GetTokenID(ctx, token)
 	if oauthErr != nil {
 		return utils.UserInfoResponse{}, oauthErr
 	}
 
-	grantSession, err := ctx.GetGrantSessionByTokenId(tokenId)
+	grantSession, err := ctx.GetGrantSessionByTokenID(tokenID)
 	if err != nil {
 		return utils.UserInfoResponse{}, goidc.NewOAuthError(goidc.InvalidRequest, "invalid token")
 	}
@@ -28,7 +28,7 @@ func HandleUserInfoRequest(ctx utils.Context) (utils.UserInfoResponse, goidc.OAu
 		return utils.UserInfoResponse{}, err
 	}
 
-	client, err := ctx.GetClient(grantSession.ClientId)
+	client, err := ctx.GetClient(grantSession.ClientID)
 	if err != nil {
 		return utils.UserInfoResponse{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
@@ -66,7 +66,7 @@ func getUserInfoResponse(
 	}
 
 	userInfoClaims[goidc.IssuerClaim] = ctx.Host
-	userInfoClaims[goidc.AudienceClaim] = client.Id
+	userInfoClaims[goidc.AudienceClaim] = client.ID
 	jwtUserInfoClaims, err := signUserInfoClaims(ctx, client, userInfoClaims)
 	if err != nil {
 		return utils.UserInfoResponse{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
@@ -75,15 +75,15 @@ func getUserInfoResponse(
 	// If the client doesn't require the user info to be encrypted,
 	// we'll just return the claims as a signed JWT.
 	if client.UserInfoKeyEncryptionAlgorithm == "" {
-		userInfoResponse.JwtClaims = jwtUserInfoClaims
+		userInfoResponse.JWTClaims = jwtUserInfoClaims
 		return userInfoResponse, nil
 	}
 
-	jwtUserInfoClaims, err = encryptUserInfoJwt(ctx, client, jwtUserInfoClaims)
+	jwtUserInfoClaims, err = encryptUserInfoJWT(ctx, client, jwtUserInfoClaims)
 	if err != nil {
 		return utils.UserInfoResponse{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
-	userInfoResponse.JwtClaims = jwtUserInfoClaims
+	userInfoResponse.JWTClaims = jwtUserInfoClaims
 	return userInfoResponse, nil
 }
 
@@ -95,11 +95,11 @@ func signUserInfoClaims(
 	string,
 	goidc.OAuthError,
 ) {
-	privateJwk := ctx.GetUserInfoSignatureKey(client)
-	signatureAlgorithm := jose.SignatureAlgorithm(privateJwk.GetAlgorithm())
+	privateJWK := ctx.GetUserInfoSignatureKey(client)
+	signatureAlgorithm := jose.SignatureAlgorithm(privateJWK.GetAlgorithm())
 	signer, err := jose.NewSigner(
-		jose.SigningKey{Algorithm: signatureAlgorithm, Key: privateJwk.GetKey()},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJwk.GetKeyId()),
+		jose.SigningKey{Algorithm: signatureAlgorithm, Key: privateJWK.GetKey()},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.GetKeyID()),
 	)
 	if err != nil {
 		return "", goidc.NewOAuthError(goidc.InternalError, err.Error())
@@ -113,23 +113,23 @@ func signUserInfoClaims(
 	return idToken, nil
 }
 
-func encryptUserInfoJwt(
+func encryptUserInfoJWT(
 	ctx utils.Context,
 	client goidc.Client,
-	userInfoJwt string,
+	userInfoJWT string,
 ) (
 	string,
 	goidc.OAuthError,
 ) {
-	jwk, oauthErr := client.GetUserInfoEncryptionJwk()
+	jwk, oauthErr := client.GetUserInfoEncryptionJWK()
 	if oauthErr != nil {
 		return "", oauthErr
 	}
 
-	encryptedUserInfoJwt, oauthErr := utils.EncryptJwt(ctx, userInfoJwt, jwk, client.UserInfoContentEncryptionAlgorithm)
+	encryptedUserInfoJWT, oauthErr := utils.EncryptJWT(ctx, userInfoJWT, jwk, client.UserInfoContentEncryptionAlgorithm)
 	if oauthErr != nil {
 		return "", oauthErr
 	}
 
-	return encryptedUserInfoJwt, nil
+	return encryptedUserInfoJWT, nil
 }

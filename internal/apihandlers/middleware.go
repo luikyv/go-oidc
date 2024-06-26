@@ -29,37 +29,37 @@ func (handler AddCacheControlHeadersMiddlewareHandler) ServeHTTP(w http.Response
 	handler.NextHandler.ServeHTTP(w, r)
 }
 
-type AddCorrelationIdHeaderMiddlewareHandler struct {
+type AddCorrelationIDHeaderMiddlewareHandler struct {
 	NextHandler         http.Handler
-	CorrelationIdHeader string
+	CorrelationIDHeader string
 }
 
-func NewAddCorrelationIdHeaderMiddlewareHandler(
+func NewAddCorrelationIDHeaderMiddlewareHandler(
 	next http.Handler,
-	correlationIdHeader string,
-) AddCorrelationIdHeaderMiddlewareHandler {
-	return AddCorrelationIdHeaderMiddlewareHandler{
+	correlationIDHeader string,
+) AddCorrelationIDHeaderMiddlewareHandler {
+	return AddCorrelationIDHeaderMiddlewareHandler{
 		NextHandler:         next,
-		CorrelationIdHeader: correlationIdHeader,
+		CorrelationIDHeader: correlationIDHeader,
 	}
 }
 
-func (handler AddCorrelationIdHeaderMiddlewareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (handler AddCorrelationIDHeaderMiddlewareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// If the correlation ID header is present, use its value.
 	// Otherwise, generate a random uuid.
-	var correlationId string
-	correlationIdHeader, ok := r.Header[handler.CorrelationIdHeader]
-	if ok && len(correlationIdHeader) > 0 {
-		correlationId = correlationIdHeader[0]
+	var correlationID string
+	correlationIDHeader, ok := r.Header[handler.CorrelationIDHeader]
+	if ok && len(correlationIDHeader) > 0 {
+		correlationID = correlationIDHeader[0]
 	} else {
-		correlationId = uuid.NewString()
+		correlationID = uuid.NewString()
 	}
 
 	// Return the correlation ID in the response.
-	w.Header().Set(handler.CorrelationIdHeader, correlationId)
+	w.Header().Set(handler.CorrelationIDHeader, correlationID)
 
 	// Add the correlation ID to the context.
-	ctx := context.WithValue(r.Context(), goidc.CorrelationIdKey, correlationId)
+	ctx := context.WithValue(r.Context(), goidc.CorrelationIDKey, correlationID)
 	handler.NextHandler.ServeHTTP(w, r.WithContext(ctx))
 }
 

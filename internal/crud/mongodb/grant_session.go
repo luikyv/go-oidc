@@ -24,7 +24,7 @@ func (manager MongoDBGrantSessionManager) CreateOrUpdate(
 	grantSession goidc.GrantSession,
 ) error {
 	shouldReplace := true
-	filter := bson.D{{Key: "_id", Value: grantSession.Id}}
+	filter := bson.D{{Key: "_id", Value: grantSession.ID}}
 	if _, err := manager.Collection.ReplaceOne(ctx, filter, grantSession, &options.ReplaceOptions{Upsert: &shouldReplace}); err != nil {
 		return err
 	}
@@ -32,14 +32,14 @@ func (manager MongoDBGrantSessionManager) CreateOrUpdate(
 	return nil
 }
 
-func (manager MongoDBGrantSessionManager) GetByTokenId(
+func (manager MongoDBGrantSessionManager) GetByTokenID(
 	ctx context.Context,
-	tokenId string,
+	tokenID string,
 ) (
 	goidc.GrantSession,
 	error,
 ) {
-	return manager.getWithFilter(ctx, bson.D{{Key: "token_id", Value: tokenId}})
+	return manager.getWithFilter(ctx, bson.D{{Key: "token_id", Value: tokenID}})
 }
 
 func (manager MongoDBGrantSessionManager) GetByRefreshToken(

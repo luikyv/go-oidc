@@ -10,13 +10,13 @@ import (
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-func validateAuthorizationRequestWithPar(
+func validateAuthorizationRequestWithPAR(
 	ctx utils.Context,
 	req utils.AuthorizationRequest,
 	session goidc.AuthnSession,
 	client goidc.Client,
 ) goidc.OAuthError {
-	if session.ClientId != req.ClientId {
+	if session.ClientID != req.ClientID {
 		return goidc.NewOAuthError(goidc.AccessDenied, "invalid client")
 	}
 
@@ -32,14 +32,14 @@ func validateAuthorizationRequestWithPar(
 	return nil
 }
 
-func validateAuthorizationRequestWithJar(
+func validateAuthorizationRequestWithJAR(
 	ctx utils.Context,
 	req utils.AuthorizationRequest,
 	jar utils.AuthorizationRequest,
 	client goidc.Client,
 ) goidc.OAuthError {
 
-	if jar.ClientId != client.Id {
+	if jar.ClientID != client.ID {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid client_id")
 	}
 
@@ -48,7 +48,7 @@ func validateAuthorizationRequestWithJar(
 	}
 
 	mergedParams := jar.AuthorizationParameters.Merge(req.AuthorizationParameters)
-	if jar.RequestUri != "" {
+	if jar.RequestURI != "" {
 		return mergedParams.NewRedirectError(goidc.InvalidRequest, "request_uri is not allowed inside the request object")
 	}
 
@@ -78,14 +78,14 @@ func validateInsideWithOutsideParams(
 		return err
 	}
 
-	if err := validateOpenIdInsideWithOutsideParams(ctx, insideParams, outsideParams, client); err != nil {
+	if err := validateOpenIDInsideWithOutsideParams(ctx, insideParams, outsideParams, client); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func validateOpenIdInsideWithOutsideParams(
+func validateOpenIDInsideWithOutsideParams(
 	ctx utils.Context,
 	insideParams goidc.AuthorizationParameters,
 	outsideParams goidc.AuthorizationParameters,
@@ -95,7 +95,7 @@ func validateOpenIdInsideWithOutsideParams(
 	mergedParams := insideParams.Merge(outsideParams)
 	// When the openid scope is not requested, the authorization request becomes a standard OAuth one,
 	// so there's no need to validate these rules below.
-	if ctx.Profile == goidc.OpenIdProfile && utils.ScopesContainsOpenId(mergedParams.Scopes) {
+	if ctx.Profile == goidc.OpenIDProfile && utils.ScopesContainsOpenID(mergedParams.Scopes) {
 		if outsideParams.ResponseType == "" {
 			return mergedParams.NewRedirectError(goidc.InvalidRequest, "invalid response_type")
 		}
@@ -104,7 +104,7 @@ func validateOpenIdInsideWithOutsideParams(
 			return mergedParams.NewRedirectError(goidc.InvalidRequest, "invalid response_type")
 		}
 
-		if !utils.ScopesContainsOpenId(outsideParams.Scopes) {
+		if !utils.ScopesContainsOpenID(outsideParams.Scopes) {
 			return mergedParams.NewRedirectError(goidc.InvalidScope, "scope openid is required")
 		}
 	}
@@ -119,37 +119,37 @@ func validateAuthorizationParams(
 ) goidc.OAuthError {
 	return utils.RunValidations(
 		ctx, params, client,
-		validateOpenIdRedirectUri,
+		validateOpenIDRedirectURI,
 		ValidateResponseMode,
-		ValidateJwtResponseModeIsRequired,
+		ValidateJWTResponseModeIsRequired,
 		validateResponseType,
 		validateScopes,
-		validateScopeOpenIdIsRequiredWhenResponseTypeIsIdToken,
-		validateCannotInformRequestUriAndRequestObject,
+		validateScopeOpenIDIsRequiredWhenResponseTypeIsIDToken,
+		validateCannotInformRequestURIAndRequestObject,
 		validatePkce,
 		ValidateCodeChallengeMethod,
 		ValidateDisplayValue,
 		ValidateAuthorizationDetails,
 		ValidateAcrValues,
-		validateCannotRequestIdTokenResponseTypeIfOpenIdScopeIsNotRequested,
-		validateNonceIsRequiredWhenResponseTypeContainsIdToken,
+		validateCannotRequestIDTokenResponseTypeIfOpenIDScopeIsNotRequested,
+		validateNonceIsRequiredWhenResponseTypeContainsIDToken,
 		ValidateCannotRequestCodeResponseTypeWhenAuthorizationCodeGrantIsNotAllowed,
 		ValidateCannotRequestImplicitResponseTypeWhenImplicitGrantIsNotAllowed,
 		validateCannotRequestQueryResponseModeWhenImplicitResponseTypeIsRequested,
 	)
 }
 
-func validateOpenIdRedirectUri(
+func validateOpenIDRedirectURI(
 	ctx utils.Context,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
 
-	if ctx.Profile != goidc.OpenIdProfile {
+	if ctx.Profile != goidc.OpenIDProfile {
 		return nil
 	}
 
-	if params.RedirectUri == "" || !client.IsRedirectUriAllowed(params.RedirectUri) {
+	if params.RedirectURI == "" || !client.IsRedirectURIAllowed(params.RedirectURI) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid redirect_uri")
 	}
 	return nil
@@ -160,20 +160,20 @@ func ValidateResponseMode(
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
-	if params.ResponseMode != "" && (!ctx.JarmIsEnabled && params.ResponseMode.IsJarm()) {
+	if params.ResponseMode != "" && (!ctx.JARMIsEnabled && params.ResponseMode.IsJARM()) {
 		return params.NewRedirectError(goidc.InvalidRequest, "invalid response_mode")
 	}
 
 	return nil
 }
 
-func ValidateJwtResponseModeIsRequired(
+func ValidateJWTResponseModeIsRequired(
 	ctx utils.Context,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
 	// If the client has defined a signature algorithm for JARM, then JARM is required.
-	if params.ResponseMode != "" && client.JarmSignatureAlgorithm != "" && !params.ResponseMode.IsJarm() {
+	if params.ResponseMode != "" && client.JARMSignatureAlgorithm != "" && !params.ResponseMode.IsJARM() {
 		return params.NewRedirectError(goidc.InvalidRequest, "invalid response_mode")
 	}
 
@@ -191,12 +191,12 @@ func validateResponseType(
 	return nil
 }
 
-func validateScopeOpenIdIsRequiredWhenResponseTypeIsIdToken(
+func validateScopeOpenIDIsRequiredWhenResponseTypeIsIDToken(
 	_ utils.Context,
 	params goidc.AuthorizationParameters,
 	_ goidc.Client,
 ) goidc.OAuthError {
-	if params.ResponseType.Contains(goidc.IdTokenResponse) && !utils.ScopesContainsOpenId(params.Scopes) {
+	if params.ResponseType.Contains(goidc.IDTokenResponse) && !utils.ScopesContainsOpenID(params.Scopes) {
 		return params.NewRedirectError(goidc.InvalidRequest, "cannot request id_token without the scope openid")
 	}
 	return nil
@@ -207,7 +207,7 @@ func validateScopes(
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
-	if ctx.OpenIdScopeIsRequired && !utils.ScopesContainsOpenId(params.Scopes) {
+	if ctx.OpenIDScopeIsRequired && !utils.ScopesContainsOpenID(params.Scopes) {
 		return params.NewRedirectError(goidc.InvalidScope, "scope openid is required")
 	}
 
@@ -217,12 +217,12 @@ func validateScopes(
 	return nil
 }
 
-func validateCannotInformRequestUriAndRequestObject(
+func validateCannotInformRequestURIAndRequestObject(
 	_ utils.Context,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
-	if params.RequestUri != "" && params.RequestObject != "" {
+	if params.RequestURI != "" && params.RequestObject != "" {
 		return params.NewRedirectError(goidc.InvalidRequest, "request_uri and request cannot be informed at the same time")
 	}
 	return nil
@@ -276,23 +276,23 @@ func ValidateCannotRequestImplicitResponseTypeWhenImplicitGrantIsNotAllowed(
 	return nil
 }
 
-func validateCannotRequestIdTokenResponseTypeIfOpenIdScopeIsNotRequested(
+func validateCannotRequestIDTokenResponseTypeIfOpenIDScopeIsNotRequested(
 	_ utils.Context,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
-	if params.ResponseType.Contains(goidc.IdTokenResponse) && !utils.ScopesContainsOpenId(params.Scopes) {
+	if params.ResponseType.Contains(goidc.IDTokenResponse) && !utils.ScopesContainsOpenID(params.Scopes) {
 		return params.NewRedirectError(goidc.InvalidRequest, "cannot request id_token without the scope openid")
 	}
 	return nil
 }
 
-func validateNonceIsRequiredWhenResponseTypeContainsIdToken(
+func validateNonceIsRequiredWhenResponseTypeContainsIDToken(
 	_ utils.Context,
 	params goidc.AuthorizationParameters,
 	_ goidc.Client,
 ) goidc.OAuthError {
-	if params.ResponseType.Contains(goidc.IdTokenResponse) && params.Nonce == "" {
+	if params.ResponseType.Contains(goidc.IDTokenResponse) && params.Nonce == "" {
 		return params.NewRedirectError(goidc.InvalidRequest, "nonce is required when response type id_token is requested")
 	}
 	return nil
@@ -345,11 +345,11 @@ func ValidateAcrValues(
 	_ goidc.Client,
 ) goidc.OAuthError {
 
-	if params.AcrValues == "" {
+	if params.ACRValues == "" {
 		return nil
 	}
 
-	for _, acr := range goidc.SplitStringWithSpaces(params.AcrValues) {
+	for _, acr := range goidc.SplitStringWithSpaces(params.ACRValues) {
 		if !slices.Contains(ctx.AuthenticationContextReferences, goidc.AuthenticationContextReference(acr)) {
 			return params.NewRedirectError(goidc.InvalidRequest, "invalid acr value")
 		}
