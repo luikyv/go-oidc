@@ -62,8 +62,8 @@ func GetTestInMemoryContext() Context {
 			UserInfoSignatureKeyIds:       []string{privateJwk.GetKeyId()},
 			GetTokenOptions: func(client goidc.Client, scopes string) (goidc.TokenOptions, error) {
 				return goidc.TokenOptions{
-					TokenExpiresInSecs: 60,
-					TokenFormat:        goidc.JwtTokenFormat,
+					TokenLifetimeSecs: 60,
+					TokenFormat:       goidc.JwtTokenFormat,
 				}, nil
 			},
 			AuthenticationSessionTimeoutSecs: 60,

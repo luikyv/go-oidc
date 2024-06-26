@@ -47,8 +47,8 @@ func NewProvider(
 			Scopes:              []string{string(goidc.OpenIdScope)},
 			GetTokenOptions: func(client goidc.Client, scopes string) (goidc.TokenOptions, error) {
 				return goidc.TokenOptions{
-					TokenExpiresInSecs: goidc.DefaultTokenLifetimeSecs,
-					TokenFormat:        goidc.JwtTokenFormat,
+					TokenLifetimeSecs: goidc.DefaultTokenLifetimeSecs,
+					TokenFormat:       goidc.JwtTokenFormat,
 				}, nil
 			},
 			PrivateJwks:                   privateJwks,

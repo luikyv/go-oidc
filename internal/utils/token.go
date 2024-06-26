@@ -141,7 +141,7 @@ func makeJwtToken(
 		goidc.ClientIdClaim: client.Id,
 		goidc.ScopeClaim:    grantOptions.GrantedScopes,
 		goidc.IssuedAtClaim: timestampNow,
-		goidc.ExpiryClaim:   timestampNow + grantOptions.TokenExpiresInSecs,
+		goidc.ExpiryClaim:   timestampNow + grantOptions.TokenLifetimeSecs,
 	}
 
 	if grantOptions.GrantedAuthorizationDetails != nil {

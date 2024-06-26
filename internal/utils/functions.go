@@ -344,7 +344,7 @@ func NewGrantSession(grantOptions goidc.GrantOptions, token Token) goidc.GrantSe
 		ClientCertificateThumbprint: token.CertificateThumbprint,
 		CreatedAtTimestamp:          timestampNow,
 		LastTokenIssuedAtTimestamp:  timestampNow,
-		ExpiresAtTimestamp:          timestampNow + grantOptions.TokenExpiresInSecs,
+		ExpiresAtTimestamp:          timestampNow + grantOptions.TokenLifetimeSecs,
 		ActiveScopes:                grantOptions.GrantedScopes,
 		GrantOptions:                grantOptions,
 	}

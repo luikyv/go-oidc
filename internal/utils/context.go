@@ -327,10 +327,6 @@ func (ctx Context) CreateOrUpdateGrantSession(session goidc.GrantSession) error 
 	return ctx.GrantSessionManager.CreateOrUpdate(ctx, session)
 }
 
-func (ctx Context) GetGrantSession(id string) (goidc.GrantSession, error) {
-	return ctx.GrantSessionManager.Get(ctx, id)
-}
-
 func (ctx Context) GetGrantSessionByTokenId(tokenId string) (goidc.GrantSession, error) {
 	return ctx.GrantSessionManager.GetByTokenId(ctx, tokenId)
 }

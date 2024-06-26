@@ -28,7 +28,6 @@ type ClientManager interface {
 
 type GrantSessionManager interface {
 	CreateOrUpdate(ctx context.Context, grantSession GrantSession) error
-	Get(ctx context.Context, id string) (GrantSession, error)
 	GetByTokenId(ctx context.Context, tokenId string) (GrantSession, error)
 	GetByRefreshToken(ctx context.Context, refreshToken string) (GrantSession, error)
 	Delete(ctx context.Context, id string) error

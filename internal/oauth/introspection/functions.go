@@ -108,7 +108,7 @@ func getOpaqueTokenIntrospectionInfo(
 		AuthorizationDetails:        grantSession.GrantedAuthorizationDetails,
 		ClientId:                    grantSession.ClientId,
 		Subject:                     grantSession.Subject,
-		ExpiresAtTimestamp:          grantSession.LastTokenIssuedAtTimestamp + grantSession.TokenExpiresInSecs,
+		ExpiresAtTimestamp:          grantSession.LastTokenIssuedAtTimestamp + grantSession.TokenLifetimeSecs,
 		JwkThumbprint:               grantSession.JwkThumbprint,
 		ClientCertificateThumbprint: grantSession.ClientCertificateThumbprint,
 		AdditionalTokenClaims:       grantSession.AdditionalTokenClaims,

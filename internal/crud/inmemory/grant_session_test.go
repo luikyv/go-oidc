@@ -40,27 +40,6 @@ func TestCreateOrUpdateGrantSessionSession_HappyPath(t *testing.T) {
 	}
 }
 
-func TestGetGrantSession_HappyPath(t *testing.T) {
-	// When.
-	manager := inmemory.NewInMemoryGrantSessionManager()
-	sessionId := "random_session_id"
-	manager.Sessions[sessionId] = goidc.GrantSession{
-		Id: sessionId,
-	}
-
-	// Then.
-	session, err := manager.Get(context.Background(), sessionId)
-
-	// Assert.
-	if err != nil {
-		t.Error("error when getting the session", err)
-	}
-
-	if session.Id != sessionId {
-		t.Error("invalid session ID")
-	}
-}
-
 func TestGetGrantSessionByTokenId_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryGrantSessionManager()

@@ -12,6 +12,7 @@ import (
 	"time"
 )
 
+// Get the current timestamp. The result is always on UTC time.
 func GetTimestampNow() int {
 	return int(time.Now().Unix())
 }

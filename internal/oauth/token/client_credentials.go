@@ -40,7 +40,7 @@ func handleClientCredentialsGrantTokenCreation(
 
 	tokenResp := utils.TokenResponse{
 		AccessToken: token.Value,
-		ExpiresIn:   grantOptions.TokenExpiresInSecs,
+		ExpiresIn:   grantOptions.TokenLifetimeSecs,
 		TokenType:   token.Type,
 	}
 

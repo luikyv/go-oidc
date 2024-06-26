@@ -48,7 +48,7 @@ func handleAuthorizationCodeGrantTokenCreation(
 
 	tokenResp := utils.TokenResponse{
 		AccessToken:  token.Value,
-		ExpiresIn:    grantOptions.TokenExpiresInSecs,
+		ExpiresIn:    grantOptions.TokenLifetimeSecs,
 		TokenType:    token.Type,
 		RefreshToken: grantSession.RefreshToken,
 	}

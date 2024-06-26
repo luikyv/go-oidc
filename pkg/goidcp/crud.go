@@ -30,3 +30,7 @@ func NewMongoDbClientManager(database *mongo.Database) goidc.ClientManager {
 func NewMongoDbAuthnSessionManager(database *mongo.Database) goidc.AuthnSessionManager {
 	return mongodb.NewMongoDbAuthnSessionManager(database)
 }
+
+func NewMongoDBGrantSessionManager(database *mongo.Database) goidc.GrantSessionManager {
+	return mongodb.NewMongoDBGrantSessionManager(database)
+}

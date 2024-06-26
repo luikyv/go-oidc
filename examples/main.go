@@ -36,7 +36,7 @@ func runFapi2OpenIdProvider() error {
 		issuer,
 		goidcp.NewMongoDbClientManager(database),
 		goidcp.NewMongoDbAuthnSessionManager(database),
-		goidcp.NewInMemoryGrantSessionManager(),
+		goidcp.NewMongoDBGrantSessionManager(database),
 		GetPrivateJwks("server_keys/jwks.json"),
 		ps256ServerKeyId,
 		ps256ServerKeyId,

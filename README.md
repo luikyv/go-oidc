@@ -3,7 +3,6 @@ A customizable OpenID Provider made in Go.
 
 ## To Evaluate
 * Let the client implement what he wants.
-* Get Logger.
 * How golang loads packages?
 * Caching /authorize?
 * Prefix scopes.
