@@ -399,6 +399,7 @@ func (provider *OpenIdProvider) SetFapi2Profile() {
 }
 
 func (provider *OpenIdProvider) AddClient(client goidc.Client) error {
+	// TODO: Create or update.
 	return provider.config.ClientManager.Create(context.Background(), client)
 }
 

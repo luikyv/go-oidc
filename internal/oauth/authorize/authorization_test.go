@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/oauth/authorize"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
@@ -21,7 +20,7 @@ func TestInitAuth_ShouldNotFindClient(t *testing.T) {
 	ctx := utils.GetTestInMemoryContext()
 
 	// Then
-	err := authorize.InitAuth(ctx, models.AuthorizationRequest{ClientId: "invalid_client_id"})
+	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{ClientId: "invalid_client_id"})
 
 	// Assert
 	if err == nil || err.GetCode() != goidc.InvalidClient {
@@ -32,12 +31,12 @@ func TestInitAuth_ShouldNotFindClient(t *testing.T) {
 
 func TestInitAuth_InvalidRedirectUri(t *testing.T) {
 	// When
-	client := models.GetTestClient()
+	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
 	ctx.CreateClient(client)
 
 	// Then
-	err := authorize.InitAuth(ctx, models.AuthorizationRequest{
+	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
 		ClientId: client.Id,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectUri: "https://invalid.com",
@@ -59,13 +58,13 @@ func TestInitAuth_InvalidRedirectUri(t *testing.T) {
 
 func TestInitAuth_InvalidScope(t *testing.T) {
 	// When
-	client := models.GetTestClient()
+	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
 	ctx.CreateClient(client)
 
 	// Then
-	authorize.InitAuth(ctx, models.AuthorizationRequest{
-		ClientId: models.TestClientId,
+	authorize.InitAuth(ctx, utils.AuthorizationRequest{
+		ClientId: utils.TestClientId,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
 			Scopes:       "invalid_scope",
@@ -83,14 +82,14 @@ func TestInitAuth_InvalidScope(t *testing.T) {
 
 func TestInitAuth_InvalidResponseType(t *testing.T) {
 	// When
-	client := models.GetTestClient()
+	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
 	client.ResponseTypes = []goidc.ResponseType{goidc.CodeResponse}
 	ctx.CreateClient(client)
 
 	// Then
-	authorize.InitAuth(ctx, models.AuthorizationRequest{
-		ClientId: models.TestClientId,
+	authorize.InitAuth(ctx, utils.AuthorizationRequest{
+		ClientId: utils.TestClientId,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
 			Scopes:       client.Scopes,
@@ -108,13 +107,13 @@ func TestInitAuth_InvalidResponseType(t *testing.T) {
 
 func TestInitAuth_WhenNoPolicyIsAvailable(t *testing.T) {
 	// When
-	client := models.GetTestClient()
+	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
 	ctx.CreateClient(client)
 
 	// Then
-	authorize.InitAuth(ctx, models.AuthorizationRequest{
-		ClientId: models.TestClientId,
+	authorize.InitAuth(ctx, utils.AuthorizationRequest{
+		ClientId: utils.TestClientId,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
 			Scopes:       client.Scopes,
@@ -133,7 +132,7 @@ func TestInitAuth_WhenNoPolicyIsAvailable(t *testing.T) {
 
 func TestInitAuth_ShouldEndWithError(t *testing.T) {
 	// When
-	client := models.GetTestClient()
+	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
 	ctx.CreateClient(client)
 	policy := goidc.NewPolicy(
@@ -146,8 +145,8 @@ func TestInitAuth_ShouldEndWithError(t *testing.T) {
 	ctx.Policies = append(ctx.Policies, policy)
 
 	// Then
-	err := authorize.InitAuth(ctx, models.AuthorizationRequest{
-		ClientId: models.TestClientId,
+	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
+		ClientId: utils.TestClientId,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
 			Scopes:       client.Scopes,
@@ -176,7 +175,7 @@ func TestInitAuth_ShouldEndWithError(t *testing.T) {
 
 func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 	// When
-	client := models.GetTestClient()
+	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
 	ctx.CreateClient(client)
 	policy := goidc.NewPolicy(
@@ -189,8 +188,8 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 	ctx.Policies = append(ctx.Policies, policy)
 
 	// Then
-	err := authorize.InitAuth(ctx, models.AuthorizationRequest{
-		ClientId: models.TestClientId,
+	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
+		ClientId: utils.TestClientId,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
 			Scopes:       client.Scopes,
@@ -231,7 +230,7 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 
 func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 	// When
-	client := models.GetTestClient()
+	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
 	ctx.CreateClient(client)
 	policy := goidc.NewPolicy(
@@ -244,7 +243,7 @@ func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 	ctx.Policies = append(ctx.Policies, policy)
 
 	// Then
-	err := authorize.InitAuth(ctx, models.AuthorizationRequest{
+	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
 		ClientId: client.Id,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectUri:  client.RedirectUris[0],
@@ -285,7 +284,7 @@ func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 }
 
 func TestInitAuth_WithPar(t *testing.T) {
-	client := models.GetTestClient()
+	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
 	ctx.ParIsEnabled = true
 	ctx.CreateClient(client)
@@ -313,8 +312,8 @@ func TestInitAuth_WithPar(t *testing.T) {
 	ctx.Policies = append(ctx.Policies, policy)
 
 	// Then
-	err := authorize.InitAuth(ctx, models.AuthorizationRequest{
-		ClientId: models.TestClientId,
+	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
+		ClientId: utils.TestClientId,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RequestUri:   requestUri,
 			ResponseType: goidc.CodeResponse,

@@ -5,7 +5,6 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/oauth/token"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
@@ -13,12 +12,12 @@ import (
 
 func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 	// When
-	client := models.GetTestClient()
+	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
 	ctx.CreateClient(client)
 
-	req := models.TokenRequest{
-		ClientAuthnRequest: models.ClientAuthnRequest{
+	req := utils.TokenRequest{
+		ClientAuthnRequest: utils.ClientAuthnRequest{
 			ClientId: client.Id,
 		},
 		GrantType: goidc.ClientCredentialsGrant,
@@ -52,7 +51,7 @@ func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 		return
 	}
 
-	if claims["sub"].(string) != models.TestClientId {
+	if claims["sub"].(string) != utils.TestClientId {
 		t.Error("the token subject should be the client")
 		return
 	}

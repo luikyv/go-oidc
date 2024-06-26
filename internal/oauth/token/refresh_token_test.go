@@ -5,7 +5,6 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/oauth/token"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
@@ -14,7 +13,7 @@ import (
 func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 
 	// When
-	client := models.GetTestClient()
+	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
 	ctx.CreateClient(client)
 
@@ -26,7 +25,7 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 		GrantOptions: goidc.GrantOptions{
 			CreatedAtTimestamp: goidc.GetTimestampNow(),
 			Subject:            username,
-			ClientId:           models.TestClientId,
+			ClientId:           utils.TestClientId,
 			GrantedScopes:      client.Scopes,
 			TokenOptions: goidc.TokenOptions{
 				TokenFormat:        goidc.JwtTokenFormat,
@@ -36,8 +35,8 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 	}
 	ctx.CreateOrUpdateGrantSession(grantSession)
 
-	req := models.TokenRequest{
-		ClientAuthnRequest: models.ClientAuthnRequest{
+	req := utils.TokenRequest{
+		ClientAuthnRequest: utils.ClientAuthnRequest{
 			ClientId: client.Id,
 		},
 		GrantType:    goidc.RefreshTokenGrant,
@@ -91,7 +90,7 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 
 	// When
-	client := models.GetTestClient()
+	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
 	ctx.CreateClient(client)
 
@@ -103,7 +102,7 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 		ExpiresAtTimestamp: goidc.GetTimestampNow() - 10,
 		GrantOptions: goidc.GrantOptions{
 			Subject:       username,
-			ClientId:      models.TestClientId,
+			ClientId:      utils.TestClientId,
 			GrantedScopes: client.Scopes,
 			TokenOptions: goidc.TokenOptions{
 				TokenExpiresInSecs: 60,
@@ -112,8 +111,8 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 	}
 	ctx.CreateOrUpdateGrantSession(grantSession)
 
-	req := models.TokenRequest{
-		ClientAuthnRequest: models.ClientAuthnRequest{
+	req := utils.TokenRequest{
+		ClientAuthnRequest: utils.ClientAuthnRequest{
 			ClientId: client.Id,
 		},
 		GrantType:    goidc.RefreshTokenGrant,

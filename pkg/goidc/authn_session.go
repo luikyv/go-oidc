@@ -23,10 +23,6 @@ type AuthnSession struct {
 	Error                    OAuthError `json:"-" bson:"-"`
 }
 
-func (session AuthnSession) GetCallbackId() string {
-	return session.CallbackId
-}
-
 func (session AuthnSession) GetClaims() (ClaimsObject, bool) {
 	if session.Claims == nil {
 		return ClaimsObject{}, false
@@ -41,32 +37,12 @@ func (session AuthnSession) GetAuthorizationDetails() ([]AuthorizationDetail, bo
 	return session.AuthorizationDetails, true
 }
 
-func (session AuthnSession) GetScopes() string {
-	return session.Scopes
-}
-
-func (session AuthnSession) GetPromptType() (PromptType, bool) {
-	if session.Prompt == "" {
-		return "", false
-	}
-
-	return session.Prompt, true
-}
-
 func (session AuthnSession) GetMaxAuthenticationAgeSecs() (int, bool) {
 	if session.MaxAuthenticationAgeSecs == nil {
 		return 0, false
 	}
 
 	return *session.MaxAuthenticationAgeSecs, true
-}
-
-func (session AuthnSession) GetDisplayValue() (DisplayValue, bool) {
-	if session.Display == "" {
-		return "", false
-	}
-
-	return session.Display, true
 }
 
 func (session AuthnSession) GetAcrValues() ([]AuthenticationContextReference, bool) {
@@ -91,6 +67,9 @@ func (session *AuthnSession) SetUserId(userId string) {
 }
 
 func (session *AuthnSession) SaveParameter(key string, value any) {
+	if session.Store == nil {
+		session.Store = make(map[string]any)
+	}
 	session.Store[key] = value
 }
 
@@ -100,14 +79,23 @@ func (session AuthnSession) GetParameter(key string) (any, bool) {
 }
 
 func (session *AuthnSession) AddTokenClaim(claim string, value any) {
+	if session.AdditionalTokenClaims == nil {
+		session.AdditionalTokenClaims = make(map[string]any)
+	}
 	session.AdditionalTokenClaims[claim] = value
 }
 
 func (session *AuthnSession) AddIdTokenClaim(claim string, value any) {
+	if session.AdditionalIdTokenClaims == nil {
+		session.AdditionalIdTokenClaims = make(map[string]any)
+	}
 	session.AdditionalIdTokenClaims[claim] = value
 }
 
 func (session *AuthnSession) AddUserInfoClaim(claim string, value any) {
+	if session.AdditionalUserInfoClaims == nil {
+		session.AdditionalUserInfoClaims = make(map[string]any)
+	}
 	session.AdditionalUserInfoClaims[claim] = value
 }
 

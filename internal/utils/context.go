@@ -273,6 +273,10 @@ func (ctx Context) GetAvailablePolicy(client goidc.Client, session *goidc.AuthnS
 	return goidc.AuthnPolicy{}, false
 }
 
+func (ctx Context) GetLogger() *slog.Logger {
+	return ctx.Logger
+}
+
 //---------------------------------------- context.Context ----------------------------------------//
 
 func (ctx Context) Deadline() (time.Time, bool) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"html/template"
+	"log/slog"
 )
 
 type Context interface {
@@ -14,6 +15,7 @@ type Context interface {
 	GetClientCertificate() (clientCert *x509.Certificate, ok bool)
 	RenderHtml(html string, params any)
 	RenderHtmlTemplate(tmpl *template.Template, params any)
+	GetLogger() *slog.Logger
 	context.Context
 }
 

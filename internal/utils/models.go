@@ -1,4 +1,4 @@
-package models
+package utils
 
 import (
 	"encoding/json"
@@ -114,6 +114,54 @@ func NewAuthorizationRequest(req *http.Request) AuthorizationRequest {
 		if err := json.Unmarshal([]byte(authorizationDetails), &authorizationDetailsObject); err == nil {
 			params.AuthorizationDetails = authorizationDetailsObject
 		}
+	}
+
+	return params
+}
+
+type AuthorizationResponse struct {
+	Response          string
+	Issuer            string
+	AccessToken       string
+	TokenType         goidc.TokenType
+	IdToken           string
+	AuthorizationCode string
+	State             string
+	Error             goidc.ErrorCode
+	ErrorDescription  string
+}
+
+func (rp AuthorizationResponse) GetParameters() map[string]string {
+	params := make(map[string]string)
+
+	if rp.Response != "" {
+		params["response"] = rp.Response
+		return params
+	}
+
+	if rp.Issuer != "" {
+		params["iss"] = rp.Issuer
+	}
+	if rp.AccessToken != "" {
+		params["access_token"] = rp.AccessToken
+	}
+	if rp.TokenType != "" {
+		params["token_type"] = string(rp.TokenType)
+	}
+	if rp.IdToken != "" {
+		params["id_token"] = rp.IdToken
+	}
+	if rp.AuthorizationCode != "" {
+		params["code"] = rp.AuthorizationCode
+	}
+	if rp.State != "" {
+		params["state"] = rp.State
+	}
+	if rp.Error != "" {
+		params["error"] = string(rp.Error)
+	}
+	if rp.ErrorDescription != "" {
+		params["error_description"] = rp.ErrorDescription
 	}
 
 	return params
@@ -241,54 +289,6 @@ type Token struct {
 	Type                  goidc.TokenType
 	JwkThumbprint         string
 	CertificateThumbprint string
-}
-
-type RedirectParameters struct {
-	Response          string
-	Issuer            string
-	AccessToken       string
-	TokenType         goidc.TokenType
-	IdToken           string
-	AuthorizationCode string
-	State             string
-	Error             goidc.ErrorCode
-	ErrorDescription  string
-}
-
-func (rp RedirectParameters) GetParams() map[string]string {
-	params := make(map[string]string)
-
-	if rp.Response != "" {
-		params["response"] = rp.Response
-		return params
-	}
-
-	if rp.Issuer != "" {
-		params["iss"] = rp.Issuer
-	}
-	if rp.AccessToken != "" {
-		params["access_token"] = rp.AccessToken
-	}
-	if rp.TokenType != "" {
-		params["token_type"] = string(rp.TokenType)
-	}
-	if rp.IdToken != "" {
-		params["id_token"] = rp.IdToken
-	}
-	if rp.AuthorizationCode != "" {
-		params["code"] = rp.AuthorizationCode
-	}
-	if rp.State != "" {
-		params["state"] = rp.State
-	}
-	if rp.Error != "" {
-		params["error"] = string(rp.Error)
-	}
-	if rp.ErrorDescription != "" {
-		params["error_description"] = rp.ErrorDescription
-	}
-
-	return params
 }
 
 type UserInfoResponse struct {

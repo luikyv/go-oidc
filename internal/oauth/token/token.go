@@ -1,16 +1,15 @@
 package token
 
 import (
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func HandleTokenCreation(
 	ctx utils.Context,
-	req models.TokenRequest,
+	req utils.TokenRequest,
 ) (
-	tokenResp models.TokenResponse,
+	tokenResp utils.TokenResponse,
 	err error,
 ) {
 	switch req.GrantType {
@@ -24,7 +23,7 @@ func HandleTokenCreation(
 		ctx.Logger.Info("handling refresh_token grant type")
 		tokenResp, err = handleRefreshTokenGrantTokenCreation(ctx, req)
 	default:
-		tokenResp, err = models.TokenResponse{}, goidc.NewOAuthError(goidc.UnsupportedGrantType, "unsupported grant type")
+		tokenResp, err = utils.TokenResponse{}, goidc.NewOAuthError(goidc.UnsupportedGrantType, "unsupported grant type")
 	}
 
 	return tokenResp, err

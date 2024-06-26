@@ -5,7 +5,6 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/oauth/token"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
@@ -14,13 +13,13 @@ import (
 func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 
 	// When
-	client := models.GetTestClient()
+	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
 	ctx.CreateClient(client)
 
 	authorizationCode := "random_authz_code"
 	session := goidc.AuthnSession{
-		ClientId:      models.TestClientId,
+		ClientId:      utils.TestClientId,
 		GrantedScopes: goidc.OpenIdScope,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			Scopes:      goidc.OpenIdScope,
@@ -36,8 +35,8 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 	}
 	ctx.CreateOrUpdateAuthnSession(session)
 
-	req := models.TokenRequest{
-		ClientAuthnRequest: models.ClientAuthnRequest{
+	req := utils.TokenRequest{
+		ClientAuthnRequest: utils.ClientAuthnRequest{
 			ClientId: client.Id,
 		},
 		GrantType:         goidc.AuthorizationCodeGrant,

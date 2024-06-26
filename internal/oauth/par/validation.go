@@ -1,16 +1,14 @@
 package par
 
 import (
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/oauth/authorize"
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func validatePar(
 	ctx utils.Context,
-	req models.PushedAuthorizationRequest,
+	req utils.PushedAuthorizationRequest,
 	client goidc.Client,
 ) goidc.OAuthError {
 	return validatePushedAuthorizationParams(ctx, req.AuthorizationParameters, client)
@@ -18,8 +16,8 @@ func validatePar(
 
 func validateParWithJar(
 	ctx utils.Context,
-	req models.PushedAuthorizationRequest,
-	jar models.AuthorizationRequest,
+	req utils.PushedAuthorizationRequest,
+	jar utils.AuthorizationRequest,
 	client goidc.Client,
 ) goidc.OAuthError {
 
@@ -126,7 +124,7 @@ func validateScopes(
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
-	if params.Scopes != "" && ctx.OpenIdScopeIsRequired && !unit.ScopesContainsOpenId(params.Scopes) {
+	if params.Scopes != "" && ctx.OpenIdScopeIsRequired && !utils.ScopesContainsOpenId(params.Scopes) {
 		return goidc.NewOAuthError(goidc.InvalidScope, "scope openid is required")
 	}
 

@@ -1,7 +1,6 @@
 package par
 
 import (
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/oauth/authorize"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
@@ -9,7 +8,7 @@ import (
 
 func initValidAuthnSession(
 	ctx utils.Context,
-	req models.PushedAuthorizationRequest,
+	req utils.PushedAuthorizationRequest,
 	client goidc.Client,
 ) (
 	goidc.AuthnSession,
@@ -25,7 +24,7 @@ func initValidAuthnSession(
 
 func initValidSimpleAuthnSession(
 	ctx utils.Context,
-	req models.PushedAuthorizationRequest,
+	req utils.PushedAuthorizationRequest,
 	client goidc.Client,
 ) (
 	goidc.AuthnSession,
@@ -43,7 +42,7 @@ func initValidSimpleAuthnSession(
 
 func initValidAuthnSessionWithJar(
 	ctx utils.Context,
-	req models.PushedAuthorizationRequest,
+	req utils.PushedAuthorizationRequest,
 	client goidc.Client,
 ) (
 	goidc.AuthnSession,
@@ -65,14 +64,14 @@ func initValidAuthnSessionWithJar(
 
 func extractJarFromRequest(
 	ctx utils.Context,
-	req models.PushedAuthorizationRequest,
+	req utils.PushedAuthorizationRequest,
 	client goidc.Client,
 ) (
-	models.AuthorizationRequest,
+	utils.AuthorizationRequest,
 	goidc.OAuthError,
 ) {
 	if req.RequestObject == "" {
-		return models.AuthorizationRequest{}, goidc.NewOAuthError(goidc.InvalidRequest, "request object is required")
+		return utils.AuthorizationRequest{}, goidc.NewOAuthError(goidc.InvalidRequest, "request object is required")
 	}
 
 	return utils.ExtractJarFromRequestObject(ctx, req.RequestObject, client)

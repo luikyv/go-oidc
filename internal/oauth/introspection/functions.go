@@ -1,42 +1,13 @@
-package oauth
+package introspection
 
 import (
-	"log/slog"
-
-	"github.com/luikymagno/goidc/internal/models"
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-func IntrospectToken(
-	ctx utils.Context,
-	req models.TokenIntrospectionRequest,
-) (
-	models.TokenIntrospectionInfo,
-	goidc.OAuthError,
-) {
-	client, err := utils.GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
-	if err != nil {
-		ctx.Logger.Info("could not authenticate the client", slog.String("client_id", req.ClientId))
-		return models.TokenIntrospectionInfo{}, err
-	}
-
-	if err := validateTokenIntrospectionRequest(ctx, req, client); err != nil {
-		return models.TokenIntrospectionInfo{}, err
-	}
-
-	resp := getTokenIntrospectionInfo(ctx, req.Token)
-	if !resp.IsActive && resp.ClientId != client.Id {
-		return models.TokenIntrospectionInfo{}, goidc.NewOAuthError(goidc.InvalidClient, "invalid token")
-	}
-
-	return models.TokenIntrospectionInfo{}, nil
-}
-
 func validateTokenIntrospectionRequest(
 	_ utils.Context,
-	req models.TokenIntrospectionRequest,
+	req utils.TokenIntrospectionRequest,
 	client goidc.Client,
 ) goidc.OAuthError {
 	if !client.IsGrantTypeAllowed(goidc.IntrospectionGrant) {
@@ -53,13 +24,13 @@ func validateTokenIntrospectionRequest(
 func getTokenIntrospectionInfo(
 	ctx utils.Context,
 	token string,
-) models.TokenIntrospectionInfo {
+) utils.TokenIntrospectionInfo {
 
 	if len(token) == goidc.RefreshTokenLength {
 		return getRefreshTokenIntrospectionInfo(ctx, token)
 	}
 
-	if unit.IsJws(token) {
+	if utils.IsJws(token) {
 		return getJwtTokenIntrospectionInfo(ctx, token)
 	}
 
@@ -69,21 +40,21 @@ func getTokenIntrospectionInfo(
 func getRefreshTokenIntrospectionInfo(
 	ctx utils.Context,
 	token string,
-) models.TokenIntrospectionInfo {
+) utils.TokenIntrospectionInfo {
 	grantSession, err := ctx.GetGrantSessionByRefreshToken(token)
 	if err != nil {
-		return models.TokenIntrospectionInfo{
+		return utils.TokenIntrospectionInfo{
 			IsActive: false,
 		}
 	}
 
 	if grantSession.IsRefreshSessionExpired() {
-		return models.TokenIntrospectionInfo{
+		return utils.TokenIntrospectionInfo{
 			IsActive: false,
 		}
 	}
 
-	return models.TokenIntrospectionInfo{
+	return utils.TokenIntrospectionInfo{
 		IsActive:                    true,
 		Scopes:                      grantSession.GrantedScopes,
 		AuthorizationDetails:        grantSession.GrantedAuthorizationDetails,
@@ -99,16 +70,16 @@ func getRefreshTokenIntrospectionInfo(
 func getJwtTokenIntrospectionInfo(
 	ctx utils.Context,
 	token string,
-) models.TokenIntrospectionInfo {
+) utils.TokenIntrospectionInfo {
 	// TODO: Get the grant session instead.
 	claims, err := utils.GetValidTokenClaims(ctx, token)
 	if err != nil {
-		return models.TokenIntrospectionInfo{
+		return utils.TokenIntrospectionInfo{
 			IsActive: false,
 		}
 	}
 
-	return models.TokenIntrospectionInfo{
+	return utils.TokenIntrospectionInfo{
 		IsActive:              true,
 		AdditionalTokenClaims: claims,
 	}
@@ -117,21 +88,21 @@ func getJwtTokenIntrospectionInfo(
 func getOpaqueTokenIntrospectionInfo(
 	ctx utils.Context,
 	token string,
-) models.TokenIntrospectionInfo {
+) utils.TokenIntrospectionInfo {
 	grantSession, err := ctx.GetGrantSessionByTokenId(token)
 	if err != nil {
-		return models.TokenIntrospectionInfo{
+		return utils.TokenIntrospectionInfo{
 			IsActive: false,
 		}
 	}
 
 	if grantSession.HasLastTokenExpired() {
-		return models.TokenIntrospectionInfo{
+		return utils.TokenIntrospectionInfo{
 			IsActive: false,
 		}
 	}
 
-	return models.TokenIntrospectionInfo{
+	return utils.TokenIntrospectionInfo{
 		IsActive:                    true,
 		Scopes:                      grantSession.ActiveScopes,
 		AuthorizationDetails:        grantSession.GrantedAuthorizationDetails,

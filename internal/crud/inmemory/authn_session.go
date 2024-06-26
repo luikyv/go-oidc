@@ -3,7 +3,6 @@ package inmemory
 import (
 	"context"
 
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
@@ -28,7 +27,7 @@ func (manager *InMemoryAuthnSessionManager) getFirstSession(condition func(goidc
 		sessions = append(sessions, s)
 	}
 
-	return unit.FindFirst(sessions, condition)
+	return findFirst(sessions, condition)
 }
 
 func (manager *InMemoryAuthnSessionManager) GetByCallbackId(_ context.Context, callbackId string) (goidc.AuthnSession, error) {

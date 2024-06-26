@@ -1,8 +1,6 @@
 package userinfo
 
 import (
-	"github.com/luikymagno/goidc/internal/models"
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
@@ -17,7 +15,7 @@ func validateUserInfoRequest(
 		return goidc.NewOAuthError(goidc.InvalidRequest, "token expired")
 	}
 
-	if !unit.ScopesContainsOpenId(grantSession.GrantedScopes) {
+	if !utils.ScopesContainsOpenId(grantSession.GrantedScopes) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid scope")
 	}
 
@@ -51,7 +49,7 @@ func validateDpop(
 		return goidc.NewOAuthError(goidc.UnauthorizedClient, "invalid DPoP header")
 	}
 
-	return utils.ValidateDpopJwt(ctx, dpopJwt, models.DpopJwtValidationOptions{
+	return utils.ValidateDpopJwt(ctx, dpopJwt, utils.DpopJwtValidationOptions{
 		AccessToken:   token,
 		JwkThumbprint: grantSession.JwkThumbprint,
 	})
@@ -70,7 +68,7 @@ func validateTlsProofOfPossesion(
 		return goidc.NewOAuthError(goidc.InvalidToken, "the client certificate is required")
 	}
 
-	if grantSession.ClientCertificateThumbprint != unit.GenerateBase64UrlSha256Hash(string(clientCert.Raw)) {
+	if grantSession.ClientCertificateThumbprint != utils.GenerateBase64UrlSha256Hash(string(clientCert.Raw)) {
 		return goidc.NewOAuthError(goidc.InvalidToken, "invalid client certificate")
 	}
 

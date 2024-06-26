@@ -3,44 +3,42 @@ package token
 import (
 	"log/slog"
 
-	"github.com/luikymagno/goidc/internal/models"
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func handleClientCredentialsGrantTokenCreation(
 	ctx utils.Context,
-	req models.TokenRequest,
+	req utils.TokenRequest,
 ) (
-	models.TokenResponse,
+	utils.TokenResponse,
 	goidc.OAuthError,
 ) {
 	client, oauthErr := utils.GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if oauthErr != nil {
-		return models.TokenResponse{}, oauthErr
+		return utils.TokenResponse{}, oauthErr
 	}
 
 	if oauthErr := validateClientCredentialsGrantRequest(ctx, req, client); oauthErr != nil {
-		return models.TokenResponse{}, oauthErr
+		return utils.TokenResponse{}, oauthErr
 	}
 
 	grantOptions, err := newClientCredentialsGrantOptions(ctx, client, req)
 	if err != nil {
-		return models.TokenResponse{}, err
+		return utils.TokenResponse{}, err
 	}
 
 	token, err := utils.MakeToken(ctx, client, grantOptions)
 	if err != nil {
-		return models.TokenResponse{}, err
+		return utils.TokenResponse{}, err
 	}
 
 	_, oauthErr = generateClientCredentialsGrantSession(ctx, client, token, grantOptions)
 	if oauthErr != nil {
-		return models.TokenResponse{}, nil
+		return utils.TokenResponse{}, nil
 	}
 
-	tokenResp := models.TokenResponse{
+	tokenResp := utils.TokenResponse{
 		AccessToken: token.Value,
 		ExpiresIn:   grantOptions.TokenExpiresInSecs,
 		TokenType:   token.Type,
@@ -56,7 +54,7 @@ func handleClientCredentialsGrantTokenCreation(
 func generateClientCredentialsGrantSession(
 	ctx utils.Context,
 	_ goidc.Client,
-	token models.Token,
+	token utils.Token,
 	grantOptions goidc.GrantOptions,
 ) (goidc.GrantSession, goidc.OAuthError) {
 
@@ -73,7 +71,7 @@ func generateClientCredentialsGrantSession(
 
 func validateClientCredentialsGrantRequest(
 	ctx utils.Context,
-	req models.TokenRequest,
+	req utils.TokenRequest,
 	client goidc.Client,
 ) goidc.OAuthError {
 
@@ -82,7 +80,7 @@ func validateClientCredentialsGrantRequest(
 		return goidc.NewOAuthError(goidc.UnauthorizedClient, "invalid grant type")
 	}
 
-	if unit.ScopesContainsOpenId(req.Scopes) {
+	if utils.ScopesContainsOpenId(req.Scopes) {
 		return goidc.NewOAuthError(goidc.InvalidScope, "cannot request openid scope for client credentials grant")
 	}
 
@@ -105,7 +103,7 @@ func validateClientCredentialsGrantRequest(
 func newClientCredentialsGrantOptions(
 	ctx utils.Context,
 	client goidc.Client,
-	req models.TokenRequest,
+	req utils.TokenRequest,
 ) (
 	goidc.GrantOptions,
 	goidc.OAuthError,

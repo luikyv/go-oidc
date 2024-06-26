@@ -1,22 +1,54 @@
 package utils
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/goidc/internal/crud/inmemory"
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 const (
-	TestHost  string = "https://example.com"
-	TestKeyId string = "rsa256_key"
+	TestClientId           string = "random_client_id"
+	TestClientSecret       string = "random_client_secret"
+	TestOpaqueGrantModelId string = "opaque_grant_model_id"
+	TestJwtGrantModelId    string = "jwt_grant_model_id"
+	TestHost               string = "https://example.com"
+	TestKeyId              string = "rsa256_key"
 )
 
+func GetTestClient() goidc.Client {
+	return goidc.Client{
+		Id: TestClientId,
+		ClientMetaInfo: goidc.ClientMetaInfo{
+			AuthnMethod:  goidc.NoneAuthn,
+			RedirectUris: []string{"https://example.com"},
+			Scopes:       "scope1 scope2 " + goidc.OpenIdScope,
+			GrantTypes: []goidc.GrantType{
+				goidc.AuthorizationCodeGrant,
+				goidc.ClientCredentialsGrant,
+				goidc.ImplicitGrant,
+				goidc.RefreshTokenGrant,
+			},
+			ResponseTypes: []goidc.ResponseType{
+				goidc.CodeResponse,
+				goidc.IdTokenResponse,
+				goidc.TokenResponse,
+				goidc.CodeAndIdTokenResponse,
+				goidc.CodeAndTokenResponse,
+				goidc.IdTokenAndTokenResponse,
+				goidc.CodeAndIdTokenAndTokenResponse,
+			},
+		},
+	}
+}
+
 func GetTestInMemoryContext() Context {
-	privateJwk := unit.GetTestPrivateRs256Jwk(TestKeyId)
+	privateJwk := GetTestPrivateRs256Jwk(TestKeyId)
 	return Context{
 		Configuration: Configuration{
 			Profile:                       goidc.OpenIdProfile,
@@ -71,6 +103,26 @@ func GetGrantSessionsFromTestContext(ctx Context) []goidc.GrantSession {
 	}
 
 	return tokens
+}
+
+func GetTestPrivateRs256Jwk(keyId string) goidc.JsonWebKey {
+	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+	return goidc.NewJsonWebKey(jose.JSONWebKey{
+		Key:       privateKey,
+		KeyID:     keyId,
+		Algorithm: string(jose.RS256),
+		Use:       string(goidc.KeySignatureUsage),
+	})
+}
+
+func GetTestPrivatePs256Jwk(keyId string) goidc.JsonWebKey {
+	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+	return goidc.NewJsonWebKey(jose.JSONWebKey{
+		Key:       privateKey,
+		KeyID:     keyId,
+		Algorithm: string(jose.PS256),
+		Use:       string(goidc.KeySignatureUsage),
+	})
 }
 
 // TODO: get unsafe claims from token.

@@ -5,8 +5,6 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikymagno/goidc/internal/models"
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
@@ -21,7 +19,7 @@ func redirectError(
 		return err
 	}
 
-	redirectParams := models.RedirectParameters{
+	redirectParams := utils.AuthorizationResponse{
 		Error:            oauthErr.ErrorCode,
 		ErrorDescription: oauthErr.ErrorDescription,
 		State:            oauthErr.State,
@@ -33,7 +31,7 @@ func redirectResponse(
 	ctx utils.Context,
 	client goidc.Client,
 	params goidc.AuthorizationParameters,
-	redirectParams models.RedirectParameters,
+	redirectParams utils.AuthorizationResponse,
 ) goidc.OAuthError {
 
 	if ctx.IssuerResponseParameterIsEnabled {
@@ -49,16 +47,16 @@ func redirectResponse(
 		redirectParams.Response = responseJwt
 	}
 
-	redirectParamsMap := redirectParams.GetParams()
+	redirectParamsMap := redirectParams.GetParameters()
 	switch responseMode {
 	case goidc.FragmentResponseMode, goidc.FragmentJwtResponseMode:
-		redirectUrl := unit.GetUrlWithFragmentParams(params.RedirectUri, redirectParamsMap)
+		redirectUrl := utils.GetUrlWithFragmentParams(params.RedirectUri, redirectParamsMap)
 		ctx.Redirect(redirectUrl)
 	case goidc.FormPostResponseMode, goidc.FormPostJwtResponseMode:
 		redirectParamsMap["redirect_uri"] = params.RedirectUri
 		ctx.RenderHtml(formPostResponseTemplate, redirectParamsMap)
 	default:
-		redirectUrl := unit.GetUrlWithQueryParams(params.RedirectUri, redirectParamsMap)
+		redirectUrl := utils.GetUrlWithQueryParams(params.RedirectUri, redirectParamsMap)
 		ctx.Redirect(redirectUrl)
 	}
 
@@ -68,7 +66,7 @@ func redirectResponse(
 func createJarmResponse(
 	ctx utils.Context,
 	client goidc.Client,
-	redirectParams models.RedirectParameters,
+	redirectParams utils.AuthorizationResponse,
 ) (
 	string,
 	goidc.OAuthError,
@@ -91,7 +89,7 @@ func createJarmResponse(
 func signJarmResponse(
 	ctx utils.Context,
 	client goidc.Client,
-	redirectParams models.RedirectParameters,
+	redirectParams utils.AuthorizationResponse,
 ) (
 	string,
 	goidc.OAuthError,
@@ -112,7 +110,7 @@ func signJarmResponse(
 		goidc.IssuedAtClaim: createdAtTimestamp,
 		goidc.ExpiryClaim:   createdAtTimestamp + ctx.JarmLifetimeSecs,
 	}
-	for k, v := range redirectParams.GetParams() {
+	for k, v := range redirectParams.GetParameters() {
 		claims[k] = v
 	}
 

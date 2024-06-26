@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
@@ -158,7 +157,7 @@ func validateOpenIdScopeIfRequired(
 	ctx utils.Context,
 	dynamicClient goidc.DynamicClient,
 ) goidc.OAuthError {
-	if dynamicClient.Scopes != "" && ctx.OpenIdScopeIsRequired && unit.ScopesContainsOpenId(dynamicClient.Scopes) {
+	if dynamicClient.Scopes != "" && ctx.OpenIdScopeIsRequired && utils.ScopesContainsOpenId(dynamicClient.Scopes) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "scope openid is required")
 	}
 	return nil

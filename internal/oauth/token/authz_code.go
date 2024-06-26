@@ -4,59 +4,57 @@ import (
 	"log/slog"
 	"reflect"
 
-	"github.com/luikymagno/goidc/internal/models"
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func handleAuthorizationCodeGrantTokenCreation(
 	ctx utils.Context,
-	req models.TokenRequest,
+	req utils.TokenRequest,
 ) (
-	models.TokenResponse,
+	utils.TokenResponse,
 	goidc.OAuthError,
 ) {
 
 	if req.AuthorizationCode == "" {
-		return models.TokenResponse{}, goidc.NewOAuthError(goidc.InvalidRequest, "invalid authorization code")
+		return utils.TokenResponse{}, goidc.NewOAuthError(goidc.InvalidRequest, "invalid authorization code")
 	}
 
 	client, session, oauthErr := getAuthenticatedClientAndSession(ctx, req)
 	if oauthErr != nil {
 		ctx.Logger.Debug("error while loading the client or session", slog.String("error", oauthErr.Error()))
-		return models.TokenResponse{}, oauthErr
+		return utils.TokenResponse{}, oauthErr
 	}
 
 	if oauthErr = validateAuthorizationCodeGrantRequest(ctx, req, client, session); oauthErr != nil {
 		ctx.Logger.Debug("invalid parameters for the token request", slog.String("error", oauthErr.Error()))
-		return models.TokenResponse{}, oauthErr
+		return utils.TokenResponse{}, oauthErr
 	}
 
 	grantOptions, err := newAuthorizationCodeGrantOptions(ctx, req, client, session)
 	if err != nil {
-		return models.TokenResponse{}, err
+		return utils.TokenResponse{}, err
 	}
 
 	token, err := utils.MakeToken(ctx, client, grantOptions)
 	if err != nil {
-		return models.TokenResponse{}, err
+		return utils.TokenResponse{}, err
 	}
 
 	grantSession, err := generateAuthorizationCodeGrantSession(ctx, client, token, grantOptions)
 	if err != nil {
-		return models.TokenResponse{}, nil
+		return utils.TokenResponse{}, nil
 	}
 
-	tokenResp := models.TokenResponse{
+	tokenResp := utils.TokenResponse{
 		AccessToken:  token.Value,
 		ExpiresIn:    grantOptions.TokenExpiresInSecs,
 		TokenType:    token.Type,
 		RefreshToken: grantSession.RefreshToken,
 	}
 
-	if unit.ScopesContainsOpenId(session.Scopes) {
-		tokenResp.IdToken, err = utils.MakeIdToken(ctx, client, models.NewIdTokenOptions(grantOptions))
+	if utils.ScopesContainsOpenId(session.Scopes) {
+		tokenResp.IdToken, err = utils.MakeIdToken(ctx, client, utils.NewIdTokenOptions(grantOptions))
 		if err != nil {
 			ctx.Logger.Error("could not generate an ID token", slog.String("error", err.Error()))
 		}
@@ -81,7 +79,7 @@ func handleAuthorizationCodeGrantTokenCreation(
 func generateAuthorizationCodeGrantSession(
 	ctx utils.Context,
 	client goidc.Client,
-	token models.Token,
+	token utils.Token,
 	grantOptions goidc.GrantOptions,
 ) (
 	goidc.GrantSession,
@@ -91,7 +89,7 @@ func generateAuthorizationCodeGrantSession(
 	grantSession := utils.NewGrantSession(grantOptions, token)
 	if client.IsGrantTypeAllowed(goidc.RefreshTokenGrant) && grantOptions.ShouldRefresh {
 		ctx.Logger.Debug("generating refresh token for authorization code grant")
-		grantSession.RefreshToken = unit.GenerateRefreshToken()
+		grantSession.RefreshToken = utils.GenerateRefreshToken()
 		grantSession.ExpiresAtTimestamp = goidc.GetTimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
 
@@ -107,7 +105,7 @@ func generateAuthorizationCodeGrantSession(
 
 func validateAuthorizationCodeGrantRequest(
 	ctx utils.Context,
-	req models.TokenRequest,
+	req utils.TokenRequest,
 	client goidc.Client,
 	session goidc.AuthnSession,
 ) goidc.OAuthError {
@@ -145,7 +143,7 @@ func validateAuthorizationCodeGrantRequest(
 
 func validatePkce(
 	ctx utils.Context,
-	req models.TokenRequest,
+	req utils.TokenRequest,
 	_ goidc.Client,
 	session goidc.AuthnSession,
 ) goidc.OAuthError {
@@ -164,7 +162,7 @@ func validatePkce(
 	}
 	// In the case PKCE is enabled, if the session was created with a code challenge, the token request must contain the right code verifier.
 	if ctx.PkceIsEnabled && session.CodeChallenge != "" &&
-		(req.CodeVerifier == "" || !unit.IsPkceValid(req.CodeVerifier, session.CodeChallenge, codeChallengeMethod)) {
+		(req.CodeVerifier == "" || !utils.IsPkceValid(req.CodeVerifier, session.CodeChallenge, codeChallengeMethod)) {
 		return goidc.NewOAuthError(goidc.InvalidGrant, "invalid pkce")
 	}
 
@@ -173,7 +171,7 @@ func validatePkce(
 
 func getAuthenticatedClientAndSession(
 	ctx utils.Context,
-	req models.TokenRequest,
+	req utils.TokenRequest,
 ) (
 	goidc.Client,
 	goidc.AuthnSession,
@@ -231,7 +229,7 @@ func getSessionByAuthorizationCode(ctx utils.Context, authorizationCode string, 
 
 func newAuthorizationCodeGrantOptions(
 	ctx utils.Context,
-	req models.TokenRequest,
+	req utils.TokenRequest,
 	client goidc.Client,
 	session goidc.AuthnSession,
 ) (

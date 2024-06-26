@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/oauth/token"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
@@ -18,8 +17,8 @@ func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 	ctx := utils.GetTestInMemoryContext()
 
 	// Then
-	_, err := token.HandleTokenCreation(ctx, models.TokenRequest{
-		ClientAuthnRequest: models.ClientAuthnRequest{
+	_, err := token.HandleTokenCreation(ctx, utils.TokenRequest{
+		ClientAuthnRequest: utils.ClientAuthnRequest{
 			ClientId: "invalid_client_id",
 		},
 		GrantType: goidc.ClientCredentialsGrant,
@@ -35,15 +34,15 @@ func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 
 func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	// When
-	client := models.GetTestClient()
+	client := utils.GetTestClient()
 	client.AuthnMethod = goidc.ClientSecretPostAuthn
 
 	ctx := utils.GetTestInMemoryContext()
 	ctx.CreateClient(client)
 
 	// Then
-	_, err := token.HandleTokenCreation(ctx, models.TokenRequest{
-		ClientAuthnRequest: models.ClientAuthnRequest{
+	_, err := token.HandleTokenCreation(ctx, utils.TokenRequest{
+		ClientAuthnRequest: utils.ClientAuthnRequest{
 			ClientId:     client.Id,
 			ClientSecret: "invalid_password",
 		},
@@ -65,7 +64,7 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 
 func TestHandleGrantCreationWithDpop(t *testing.T) {
 	// When
-	client := models.GetTestClient()
+	client := utils.GetTestClient()
 
 	ctx := utils.GetTestInMemoryContext()
 	ctx.Host = "https://example.com"
@@ -76,8 +75,8 @@ func TestHandleGrantCreationWithDpop(t *testing.T) {
 	ctx.CreateClient(client)
 	ctx.Request.Method = http.MethodPost
 
-	req := models.TokenRequest{
-		ClientAuthnRequest: models.ClientAuthnRequest{
+	req := utils.TokenRequest{
+		ClientAuthnRequest: utils.ClientAuthnRequest{
 			ClientId: client.Id,
 		},
 		GrantType: goidc.ClientCredentialsGrant,

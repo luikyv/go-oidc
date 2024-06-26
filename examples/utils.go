@@ -17,12 +17,16 @@ func GetPrivateJwks(filename string) goidc.JsonWebKeySet {
 		panic(err.Error())
 	}
 	defer clientJwksFile.Close()
+
 	clientJwksBytes, err := io.ReadAll(clientJwksFile)
 	if err != nil {
 		panic(err.Error())
 	}
+
 	var clientJwks goidc.JsonWebKeySet
-	json.Unmarshal(clientJwksBytes, &clientJwks)
+	if err := json.Unmarshal(clientJwksBytes, &clientJwks); err != nil {
+		panic(err.Error())
+	}
 
 	return clientJwks
 }
@@ -32,7 +36,7 @@ func AuthenticateUserWithNoInteraction(
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 	session.SetUserId("random_user_id")
-	session.GrantScopes(session.GetScopes())
+	session.GrantScopes(session.Scopes)
 	session.AddIdTokenClaim(goidc.AuthenticationTimeClaim, goidc.GetTimestampNow())
 
 	// Add claims based on the claims parameter.
@@ -72,7 +76,7 @@ func AuthenticateUserWithNoInteraction(
 	}
 
 	// Add claims based on scope.
-	if strings.Contains(session.GetScopes(), goidc.EmailScope) {
+	if strings.Contains(session.Scopes, goidc.EmailScope) {
 		session.AddUserInfoClaim(goidc.EmailClaim, "random@gmail.com")
 		session.AddUserInfoClaim(goidc.EmailVerifiedClaim, true)
 	}
@@ -113,15 +117,15 @@ func identifyUser(
 	if username == "" {
 		ctx.RenderHtml(identityForm, map[string]any{
 			"host":       strings.Replace(ctx.GetHost(), "host.docker.internal", "localhost", -1),
-			"callbackId": session.GetCallbackId(),
+			"callbackId": session.CallbackId,
 		})
 		return goidc.InProgress
 	}
 
 	session.SetUserId(username)
-	session.GrantScopes(session.GetScopes())
+	session.GrantScopes(session.Scopes)
 	session.AddTokenClaim("custom_claim", "random_value")
-	if strings.Contains(session.GetScopes(), "email") {
+	if strings.Contains(session.Scopes, "email") {
 		session.AddIdTokenClaim("email", "random@email.com")
 	}
 	return goidc.Success
@@ -135,7 +139,7 @@ func authenticateWithPassword(
 	if password == "" {
 		ctx.RenderHtml(passwordForm, map[string]any{
 			"host":       strings.Replace(ctx.GetHost(), "host.docker.internal", "localhost", -1),
-			"callbackId": session.GetCallbackId(),
+			"callbackId": session.CallbackId,
 		})
 		return goidc.InProgress
 	}
@@ -143,7 +147,7 @@ func authenticateWithPassword(
 	if password != "password" {
 		ctx.RenderHtml(passwordForm, map[string]any{
 			"host":       strings.Replace(ctx.GetHost(), "host.docker.internal", "localhost", -1),
-			"callbackId": session.GetCallbackId(),
+			"callbackId": session.CallbackId,
 			"error":      "invalid password",
 		})
 		return goidc.InProgress

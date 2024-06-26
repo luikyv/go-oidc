@@ -2,7 +2,6 @@ package dcr
 
 import (
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 	"golang.org/x/crypto/bcrypt"
@@ -16,7 +15,7 @@ func setDefaults(_ utils.Context, dynamicClient *goidc.DynamicClient) {
 	if dynamicClient.AuthnMethod == goidc.ClientSecretPostAuthn ||
 		dynamicClient.AuthnMethod == goidc.ClientSecretBasicAuthn ||
 		dynamicClient.AuthnMethod == goidc.ClientSecretJwt {
-		dynamicClient.Secret = unit.GenerateClientSecret()
+		dynamicClient.Secret = utils.GenerateClientSecret()
 	}
 
 	// TODO: set openid scope.
@@ -47,8 +46,8 @@ func setDefaults(_ utils.Context, dynamicClient *goidc.DynamicClient) {
 }
 
 func setCreationDefaults(ctx utils.Context, dynamicClient *goidc.DynamicClient) {
-	dynamicClient.Id = unit.GenerateClientId()
-	dynamicClient.RegistrationAccessToken = unit.GenerateRegistrationAccessToken()
+	dynamicClient.Id = utils.GenerateClientId()
+	dynamicClient.RegistrationAccessToken = utils.GenerateRegistrationAccessToken()
 	setDefaults(ctx, dynamicClient)
 }
 
@@ -59,7 +58,7 @@ func setUpdateDefaults(
 ) {
 	dynamicClient.Id = client.Id
 	if ctx.ShouldRotateRegistrationTokens {
-		dynamicClient.RegistrationAccessToken = unit.GenerateRegistrationAccessToken()
+		dynamicClient.RegistrationAccessToken = utils.GenerateRegistrationAccessToken()
 	}
 	setDefaults(ctx, dynamicClient)
 }

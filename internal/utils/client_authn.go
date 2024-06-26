@@ -7,15 +7,13 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikymagno/goidc/internal/models"
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/pkg/goidc"
 	"golang.org/x/crypto/bcrypt"
 )
 
 func GetAuthenticatedClient(
 	ctx Context,
-	req models.ClientAuthnRequest,
+	req ClientAuthnRequest,
 ) (
 	goidc.Client,
 	goidc.OAuthError,
@@ -43,7 +41,7 @@ func GetAuthenticatedClient(
 func authenticateClient(
 	ctx Context,
 	client goidc.Client,
-	req models.ClientAuthnRequest,
+	req ClientAuthnRequest,
 ) goidc.OAuthError {
 	switch client.AuthnMethod {
 	case goidc.NoneAuthn:
@@ -75,7 +73,7 @@ func authenticateClient(
 func authenticateWithNoneAuthn(
 	_ Context,
 	client goidc.Client,
-	req models.ClientAuthnRequest,
+	req ClientAuthnRequest,
 ) goidc.OAuthError {
 	if client.Id != req.ClientId {
 		return goidc.NewOAuthError(goidc.InvalidClient, "invalid client")
@@ -86,7 +84,7 @@ func authenticateWithNoneAuthn(
 func authenticateWithClientSecretPost(
 	ctx Context,
 	client goidc.Client,
-	req models.ClientAuthnRequest,
+	req ClientAuthnRequest,
 ) goidc.OAuthError {
 	if client.Id != req.ClientId || req.ClientSecret == "" {
 		return goidc.NewOAuthError(goidc.InvalidClient, "invalid client")
@@ -97,7 +95,7 @@ func authenticateWithClientSecretPost(
 func authenticateWithClientSecretBasic(
 	ctx Context,
 	client goidc.Client,
-	_ models.ClientAuthnRequest,
+	_ ClientAuthnRequest,
 ) goidc.OAuthError {
 	clientId, clientSecret, ok := ctx.Request.BasicAuth()
 	if !ok || client.Id != clientId {
@@ -121,7 +119,7 @@ func validateSecret(
 func authenticateWithPrivateKeyJwt(
 	ctx Context,
 	client goidc.Client,
-	req models.ClientAuthnRequest,
+	req ClientAuthnRequest,
 ) goidc.OAuthError {
 
 	if req.ClientAssertionType != goidc.JwtBearerAssertionType {
@@ -159,7 +157,7 @@ func authenticateWithPrivateKeyJwt(
 func authenticateWithClientSecretJwt(
 	ctx Context,
 	client goidc.Client,
-	req models.ClientAuthnRequest,
+	req ClientAuthnRequest,
 ) goidc.OAuthError {
 	if req.ClientAssertionType != goidc.JwtBearerAssertionType {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid assertion_type")
@@ -207,7 +205,7 @@ func areAssertionClaimsValid(
 func authenticateWithSelfSignedTlsCertificate(
 	ctx Context,
 	client goidc.Client,
-	req models.ClientAuthnRequest,
+	req ClientAuthnRequest,
 ) goidc.OAuthError {
 	if client.Id != req.ClientId {
 		return goidc.NewOAuthError(goidc.InvalidClient, "invalid client")
@@ -226,8 +224,8 @@ func authenticateWithSelfSignedTlsCertificate(
 	var jwk goidc.JsonWebKey
 	foundMatchingJwk := false
 	for _, key := range jwks.Keys {
-		if string(key.GetCertificateThumbprintSha256()) == unit.GenerateSha256Hash(clientCert.Raw) ||
-			string(key.GetCertificateThumbprintSha1()) == unit.GenerateSha1Hash(clientCert.Raw) {
+		if string(key.GetCertificateThumbprintSha256()) == GenerateSha256Hash(clientCert.Raw) ||
+			string(key.GetCertificateThumbprintSha1()) == GenerateSha1Hash(clientCert.Raw) {
 			foundMatchingJwk = true
 			jwk = key
 		}
@@ -237,7 +235,7 @@ func authenticateWithSelfSignedTlsCertificate(
 		return goidc.NewOAuthError(goidc.InvalidClient, "could not find a JWK matching the client certificate")
 	}
 
-	if !unit.ComparePublicKeys(jwk.GetKey(), clientCert.PublicKey) {
+	if !ComparePublicKeys(jwk.GetKey(), clientCert.PublicKey) {
 		return goidc.NewOAuthError(goidc.InvalidClient, "the public key in the client certificate and ")
 	}
 
@@ -247,7 +245,7 @@ func authenticateWithSelfSignedTlsCertificate(
 func authenticateWithTlsCertificate(
 	ctx Context,
 	client goidc.Client,
-	req models.ClientAuthnRequest,
+	req ClientAuthnRequest,
 ) goidc.OAuthError {
 	if client.Id != req.ClientId {
 		return goidc.NewOAuthError(goidc.InvalidClient, "invalid client")
@@ -270,7 +268,7 @@ func authenticateWithTlsCertificate(
 
 func getClientId(
 	ctx Context,
-	req models.ClientAuthnRequest,
+	req ClientAuthnRequest,
 ) (
 	string,
 	bool,
@@ -292,7 +290,7 @@ func getClientId(
 	}
 
 	// All the client IDs present must be equal.
-	if len(clientIds) == 0 || !unit.AllEquals(clientIds) {
+	if len(clientIds) == 0 || !AllEquals(clientIds) {
 		return "", false
 	}
 
@@ -302,7 +300,7 @@ func getClientId(
 func appendClientIdFromAssertion(
 	ctx Context,
 	clientIds []string,
-	req models.ClientAuthnRequest,
+	req ClientAuthnRequest,
 ) (
 	[]string,
 	bool,

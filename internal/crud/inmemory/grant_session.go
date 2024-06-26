@@ -3,7 +3,6 @@ package inmemory
 import (
 	"context"
 
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
@@ -37,7 +36,7 @@ func (manager *InMemoryGrantSessionManager) getFirstToken(condition func(goidc.G
 		grantSessions = append(grantSessions, t)
 	}
 
-	return unit.FindFirst(grantSessions, condition)
+	return findFirst(grantSessions, condition)
 }
 
 func (manager *InMemoryGrantSessionManager) GetByTokenId(_ context.Context, tokenId string) (goidc.GrantSession, error) {

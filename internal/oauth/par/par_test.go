@@ -4,7 +4,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/oauth/par"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
@@ -13,15 +12,15 @@ import (
 
 func TestPushAuthorization_ShouldRejectUnauthenticatedClient(t *testing.T) {
 	// When
-	client := models.GetTestClient()
+	client := utils.GetTestClient()
 	client.AuthnMethod = goidc.ClientSecretPostAuthn
 
 	ctx := utils.GetTestInMemoryContext()
 	ctx.CreateClient(client)
 
 	// Then
-	_, err := par.PushAuthorization(ctx, models.PushedAuthorizationRequest{
-		ClientAuthnRequest: models.ClientAuthnRequest{
+	_, err := par.PushAuthorization(ctx, utils.PushedAuthorizationRequest{
+		ClientAuthnRequest: utils.ClientAuthnRequest{
 			ClientId:     client.Id,
 			ClientSecret: "invalid_password",
 		},
@@ -44,7 +43,7 @@ func TestPushAuthorization_ShouldGenerateRequestUri(t *testing.T) {
 	clientSecret := "password"
 	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 0)
 
-	client := models.GetTestClient()
+	client := utils.GetTestClient()
 	client.AuthnMethod = goidc.ClientSecretPostAuthn
 	client.HashedSecret = string(hashedClientSecret)
 
@@ -52,9 +51,9 @@ func TestPushAuthorization_ShouldGenerateRequestUri(t *testing.T) {
 	ctx.CreateClient(client)
 
 	// Then
-	requestUri, err := par.PushAuthorization(ctx, models.PushedAuthorizationRequest{
-		ClientAuthnRequest: models.ClientAuthnRequest{
-			ClientId:     models.TestClientId,
+	requestUri, err := par.PushAuthorization(ctx, utils.PushedAuthorizationRequest{
+		ClientAuthnRequest: utils.ClientAuthnRequest{
+			ClientId:     utils.TestClientId,
 			ClientSecret: clientSecret,
 		},
 		AuthorizationParameters: goidc.AuthorizationParameters{

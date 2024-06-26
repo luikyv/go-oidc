@@ -3,12 +3,11 @@ package authorize
 import (
 	"log/slog"
 
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-func InitAuth(ctx utils.Context, req models.AuthorizationRequest) goidc.OAuthError {
+func InitAuth(ctx utils.Context, req utils.AuthorizationRequest) goidc.OAuthError {
 	client, err := getClient(ctx, req)
 	if err != nil {
 		return err
@@ -21,7 +20,7 @@ func InitAuth(ctx utils.Context, req models.AuthorizationRequest) goidc.OAuthErr
 	return nil
 }
 
-func initAuth(ctx utils.Context, client goidc.Client, req models.AuthorizationRequest) goidc.OAuthError {
+func initAuth(ctx utils.Context, client goidc.Client, req utils.AuthorizationRequest) goidc.OAuthError {
 	session, err := initAuthnSession(ctx, req, client)
 	if err != nil {
 		return err
@@ -54,7 +53,7 @@ func ContinueAuth(ctx utils.Context, callbackId string) goidc.OAuthError {
 
 func getClient(
 	ctx utils.Context,
-	req models.AuthorizationRequest,
+	req utils.AuthorizationRequest,
 ) (
 	goidc.Client,
 	goidc.OAuthError,
@@ -120,7 +119,7 @@ func finishFlowSuccessfully(ctx utils.Context, session *goidc.AuthnSession) goid
 		return session.NewRedirectError(goidc.InternalError, err.Error())
 	}
 
-	redirectParams := models.RedirectParameters{
+	redirectParams := utils.AuthorizationResponse{
 		AuthorizationCode: session.AuthorizationCode,
 		State:             session.State,
 	}
@@ -143,7 +142,7 @@ func finishFlowSuccessfully(ctx utils.Context, session *goidc.AuthnSession) goid
 	}
 
 	if session.ResponseType.Contains(goidc.IdTokenResponse) {
-		idTokenOptions := models.IdTokenOptions{
+		idTokenOptions := utils.IdTokenOptions{
 			Subject:                 session.Subject,
 			ClientId:                session.ClientId,
 			AdditionalIdTokenClaims: session.GetAdditionalIdTokenClaims(),
@@ -184,7 +183,7 @@ func authorizeAuthnSession(
 
 func generateImplicitGrantSession(
 	ctx utils.Context,
-	token models.Token,
+	token utils.Token,
 	grantOptions goidc.GrantOptions,
 ) goidc.OAuthError {
 

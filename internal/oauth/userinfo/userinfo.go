@@ -3,40 +3,39 @@ package userinfo
 import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-func HandleUserInfoRequest(ctx utils.Context) (models.UserInfoResponse, goidc.OAuthError) {
+func HandleUserInfoRequest(ctx utils.Context) (utils.UserInfoResponse, goidc.OAuthError) {
 
 	token, tokenType, ok := ctx.GetAuthorizationToken()
 	if !ok {
-		return models.UserInfoResponse{}, goidc.NewOAuthError(goidc.InvalidToken, "no token found")
+		return utils.UserInfoResponse{}, goidc.NewOAuthError(goidc.InvalidToken, "no token found")
 	}
 
 	tokenId, oauthErr := utils.GetTokenId(ctx, token)
 	if oauthErr != nil {
-		return models.UserInfoResponse{}, oauthErr
+		return utils.UserInfoResponse{}, oauthErr
 	}
 
 	grantSession, err := ctx.GetGrantSessionByTokenId(tokenId)
 	if err != nil {
-		return models.UserInfoResponse{}, goidc.NewOAuthError(goidc.InvalidRequest, "invalid token")
+		return utils.UserInfoResponse{}, goidc.NewOAuthError(goidc.InvalidRequest, "invalid token")
 	}
 
 	if err := validateUserInfoRequest(ctx, grantSession, token, tokenType); err != nil {
-		return models.UserInfoResponse{}, err
+		return utils.UserInfoResponse{}, err
 	}
 
 	client, err := ctx.GetClient(grantSession.ClientId)
 	if err != nil {
-		return models.UserInfoResponse{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
+		return utils.UserInfoResponse{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	userInfoResponse, oauthErr := getUserInfoResponse(ctx, client, grantSession)
 	if oauthErr != nil {
-		return models.UserInfoResponse{}, oauthErr
+		return utils.UserInfoResponse{}, oauthErr
 	}
 
 	return userInfoResponse, nil
@@ -47,7 +46,7 @@ func getUserInfoResponse(
 	client goidc.Client,
 	grantSession goidc.GrantSession,
 ) (
-	models.UserInfoResponse,
+	utils.UserInfoResponse,
 	goidc.OAuthError,
 ) {
 
@@ -58,7 +57,7 @@ func getUserInfoResponse(
 		userInfoClaims[k] = v
 	}
 
-	userInfoResponse := models.UserInfoResponse{}
+	userInfoResponse := utils.UserInfoResponse{}
 	// If the client doesn't require the user info to be signed,
 	// we'll just return the claims as a JSON object.
 	if client.UserInfoSignatureAlgorithm == "" {
@@ -70,7 +69,7 @@ func getUserInfoResponse(
 	userInfoClaims[goidc.AudienceClaim] = client.Id
 	jwtUserInfoClaims, err := signUserInfoClaims(ctx, client, userInfoClaims)
 	if err != nil {
-		return models.UserInfoResponse{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
+		return utils.UserInfoResponse{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	// If the client doesn't require the user info to be encrypted,
@@ -82,7 +81,7 @@ func getUserInfoResponse(
 
 	jwtUserInfoClaims, err = encryptUserInfoJwt(ctx, client, jwtUserInfoClaims)
 	if err != nil {
-		return models.UserInfoResponse{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
+		return utils.UserInfoResponse{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 	userInfoResponse.JwtClaims = jwtUserInfoClaims
 	return userInfoResponse, nil

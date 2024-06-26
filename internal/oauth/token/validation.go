@@ -1,7 +1,6 @@
 package token
 
 import (
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
@@ -34,7 +33,7 @@ func validateTokenBindingIsRequired(
 
 func validateTokenBindingRequestWithDpop(
 	ctx utils.Context,
-	_ models.TokenRequest,
+	_ utils.TokenRequest,
 	client goidc.Client,
 ) goidc.OAuthError {
 
@@ -50,5 +49,5 @@ func validateTokenBindingRequestWithDpop(
 		return nil
 	}
 
-	return utils.ValidateDpopJwt(ctx, dpopJwt, models.DpopJwtValidationOptions{})
+	return utils.ValidateDpopJwt(ctx, dpopJwt, utils.DpopJwtValidationOptions{})
 }

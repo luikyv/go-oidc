@@ -56,7 +56,10 @@ func runFapi2OpenIdProvider() error {
 	openidProvider.RequireProofKeyForCodeExchange(goidc.Sha256CodeChallengeMethod)
 	openidProvider.EnableRefreshTokenGrantType(6000, false)
 	openidProvider.SetScopes(scopes...)
-	openidProvider.SetSupportedUserClaims(goidc.EmailClaim, goidc.EmailVerifiedClaim)
+	openidProvider.SetSupportedUserClaims(
+		goidc.EmailClaim,
+		goidc.EmailVerifiedClaim,
+	)
 	openidProvider.SetSupportedAuthenticationContextReferences(
 		goidc.MaceIncommonIapBronzeAcr,
 		goidc.MaceIncommonIapSilverAcr,

@@ -1,4 +1,4 @@
-package goidc_test
+package utils_test
 
 import (
 	"testing"

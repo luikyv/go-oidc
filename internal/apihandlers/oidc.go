@@ -4,9 +4,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/luikymagno/goidc/internal/models"
-	"github.com/luikymagno/goidc/internal/oauth"
 	"github.com/luikymagno/goidc/internal/oauth/authorize"
+	"github.com/luikymagno/goidc/internal/oauth/discovery"
+	"github.com/luikymagno/goidc/internal/oauth/introspection"
 	"github.com/luikymagno/goidc/internal/oauth/par"
 	"github.com/luikymagno/goidc/internal/oauth/token"
 	"github.com/luikymagno/goidc/internal/oauth/userinfo"
@@ -17,7 +17,7 @@ import (
 //---------------------------------------- Well Known ----------------------------------------//
 
 func HandleWellKnownRequest(ctx utils.Context) {
-	if err := ctx.WriteJson(oauth.GetOpenIdConfiguration(ctx), http.StatusOK); err != nil {
+	if err := ctx.WriteJson(discovery.GetOpenIdConfiguration(ctx), http.StatusOK); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
 }
@@ -33,14 +33,14 @@ func HandleJWKSRequest(ctx utils.Context) {
 //---------------------------------------- Pushed Authorization Request - PAR ----------------------------------------//
 
 func HandleParRequest(ctx utils.Context) {
-	req := models.NewPushedAuthorizationRequest(ctx.Request)
+	req := utils.NewPushedAuthorizationRequest(ctx.Request)
 	requestUri, err := par.PushAuthorization(ctx, req)
 	if err != nil {
 		bindErrorToResponse(ctx, err)
 		return
 	}
 
-	resp := models.PushedAuthorizationResponse{
+	resp := utils.PushedAuthorizationResponse{
 		RequestUri: requestUri,
 		ExpiresIn:  ctx.ParLifetimeSecs,
 	}
@@ -52,7 +52,7 @@ func HandleParRequest(ctx utils.Context) {
 //---------------------------------------- Authorize ----------------------------------------//
 
 func HandleAuthorizeRequest(ctx utils.Context) {
-	req := models.NewAuthorizationRequest(ctx.Request)
+	req := utils.NewAuthorizationRequest(ctx.Request)
 	if err := authorize.InitAuth(ctx, req); err != nil {
 		bindErrorToResponse(ctx, err)
 		return
@@ -70,7 +70,7 @@ func HandleAuthorizeCallbackRequest(ctx utils.Context) {
 //---------------------------------------- Token ----------------------------------------//
 
 func HandleTokenRequest(ctx utils.Context) {
-	req := models.NewTokenRequest(ctx.Request)
+	req := utils.NewTokenRequest(ctx.Request)
 	tokenResp, err := token.HandleTokenCreation(ctx, req)
 	if err != nil {
 		bindErrorToResponse(ctx, err)
@@ -106,8 +106,8 @@ func HandleUserInfoRequest(ctx utils.Context) {
 //---------------------------------------- Introspection ----------------------------------------//
 
 func HandleIntrospectionRequest(ctx utils.Context) {
-	req := models.NewTokenIntrospectionRequest(ctx.Request)
-	tokenInfo, err := oauth.IntrospectToken(ctx, req)
+	req := utils.NewTokenIntrospectionRequest(ctx.Request)
+	tokenInfo, err := introspection.IntrospectToken(ctx, req)
 	if err != nil {
 		bindErrorToResponse(ctx, err)
 		return

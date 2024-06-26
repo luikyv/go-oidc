@@ -3,14 +3,13 @@ package authorize
 import (
 	"log/slog"
 
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func initAuthnSession(
 	ctx utils.Context,
-	req models.AuthorizationRequest,
+	req utils.AuthorizationRequest,
 	client goidc.Client,
 ) (goidc.AuthnSession, goidc.OAuthError) {
 	session, err := initValidAuthnSession(ctx, req, client)
@@ -23,7 +22,7 @@ func initAuthnSession(
 
 func initValidAuthnSession(
 	ctx utils.Context,
-	req models.AuthorizationRequest,
+	req utils.AuthorizationRequest,
 	client goidc.Client,
 ) (
 	goidc.AuthnSession,
@@ -51,7 +50,7 @@ func shouldInitAuthnSessionWithPar(ctx utils.Context, req goidc.AuthorizationPar
 
 func initValidAuthnSessionWithPar(
 	ctx utils.Context,
-	req models.AuthorizationRequest,
+	req utils.AuthorizationRequest,
 	client goidc.Client,
 ) (
 	goidc.AuthnSession,
@@ -75,7 +74,7 @@ func initValidAuthnSessionWithPar(
 
 func getSessionCreatedWithPar(
 	ctx utils.Context,
-	req models.AuthorizationRequest,
+	req utils.AuthorizationRequest,
 ) (
 	goidc.AuthnSession,
 	goidc.OAuthError,
@@ -104,7 +103,7 @@ func ShouldInitAuthnSessionWithJar(
 
 func initValidAuthnSessionWithJar(
 	ctx utils.Context,
-	req models.AuthorizationRequest,
+	req utils.AuthorizationRequest,
 	client goidc.Client,
 ) (
 	goidc.AuthnSession,
@@ -128,19 +127,19 @@ func initValidAuthnSessionWithJar(
 
 func getJar(
 	ctx utils.Context,
-	req models.AuthorizationRequest,
+	req utils.AuthorizationRequest,
 	client goidc.Client,
 ) (
-	models.AuthorizationRequest,
+	utils.AuthorizationRequest,
 	goidc.OAuthError,
 ) {
 	if req.RequestObject == "" {
-		return models.AuthorizationRequest{}, goidc.NewOAuthError(goidc.InvalidRequest, "request object is required")
+		return utils.AuthorizationRequest{}, goidc.NewOAuthError(goidc.InvalidRequest, "request object is required")
 	}
 
 	jar, err := utils.ExtractJarFromRequestObject(ctx, req.RequestObject, client)
 	if err != nil {
-		return models.AuthorizationRequest{}, err
+		return utils.AuthorizationRequest{}, err
 	}
 
 	return jar, nil
@@ -148,7 +147,7 @@ func getJar(
 
 func initValidSimpleAuthnSession(
 	ctx utils.Context,
-	req models.AuthorizationRequest,
+	req utils.AuthorizationRequest,
 	client goidc.Client,
 ) (
 	goidc.AuthnSession,

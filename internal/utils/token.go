@@ -4,15 +4,13 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
-	"github.com/luikymagno/goidc/internal/models"
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func MakeIdToken(
 	ctx Context,
 	client goidc.Client,
-	idTokenOpts models.IdTokenOptions,
+	idTokenOpts IdTokenOptions,
 ) (
 	string,
 	goidc.OAuthError,
@@ -40,7 +38,7 @@ func MakeToken(
 	client goidc.Client,
 	grantOptions goidc.GrantOptions,
 ) (
-	models.Token,
+	Token,
 	goidc.OAuthError,
 ) {
 	if grantOptions.TokenFormat == goidc.JwtTokenFormat {
@@ -53,7 +51,7 @@ func MakeToken(
 func makeIdToken(
 	ctx Context,
 	client goidc.Client,
-	idTokenOpts models.IdTokenOptions,
+	idTokenOpts IdTokenOptions,
 ) (
 	string,
 	goidc.OAuthError,
@@ -72,15 +70,15 @@ func makeIdToken(
 	}
 
 	if idTokenOpts.AccessToken != "" {
-		claims[goidc.AccessTokenHashClaim] = unit.GenerateHalfHashClaim(idTokenOpts.AccessToken, signatureAlgorithm)
+		claims[goidc.AccessTokenHashClaim] = GenerateHalfHashClaim(idTokenOpts.AccessToken, signatureAlgorithm)
 	}
 
 	if idTokenOpts.AuthorizationCode != "" {
-		claims[goidc.AuthorizationCodeHashClaim] = unit.GenerateHalfHashClaim(idTokenOpts.AuthorizationCode, signatureAlgorithm)
+		claims[goidc.AuthorizationCodeHashClaim] = GenerateHalfHashClaim(idTokenOpts.AuthorizationCode, signatureAlgorithm)
 	}
 
 	if idTokenOpts.State != "" {
-		claims[goidc.StateHashClaim] = unit.GenerateHalfHashClaim(idTokenOpts.State, signatureAlgorithm)
+		claims[goidc.StateHashClaim] = GenerateHalfHashClaim(idTokenOpts.State, signatureAlgorithm)
 	}
 
 	for k, v := range idTokenOpts.AdditionalIdTokenClaims {
@@ -130,7 +128,7 @@ func makeJwtToken(
 	client goidc.Client,
 	grantOptions goidc.GrantOptions,
 ) (
-	models.Token,
+	Token,
 	goidc.OAuthError,
 ) {
 	privateJwk := ctx.GetTokenSignatureKey(grantOptions.TokenOptions)
@@ -157,14 +155,14 @@ func makeJwtToken(
 	jkt := ""
 	if ctx.DpopIsEnabled && ok {
 		tokenType = goidc.DpopTokenType
-		jkt = unit.GenerateJwkThumbprint(dpopJwt, ctx.DpopSignatureAlgorithms)
+		jkt = GenerateJwkThumbprint(dpopJwt, ctx.DpopSignatureAlgorithms)
 		confirmation["jkt"] = jkt
 	}
 	// TLS token binding.
 	clientCert, ok := ctx.GetClientCertificate()
 	certThumbprint := ""
 	if ctx.TlsBoundTokensIsEnabled && ok {
-		certThumbprint = unit.GenerateBase64UrlSha256Hash(string(clientCert.Raw))
+		certThumbprint = GenerateBase64UrlSha256Hash(string(clientCert.Raw))
 		confirmation["x5t#S256"] = certThumbprint
 	}
 	if len(confirmation) != 0 {
@@ -182,15 +180,15 @@ func makeJwtToken(
 		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", privateJwk.GetKeyId()),
 	)
 	if err != nil {
-		return models.Token{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
+		return Token{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
 	accessToken, err := jwt.Signed(signer).Claims(claims).Serialize()
 	if err != nil {
-		return models.Token{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
+		return Token{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
 	}
 
-	return models.Token{
+	return Token{
 		Id:                    jwtId,
 		Format:                goidc.JwtTokenFormat,
 		Value:                 accessToken,
@@ -205,7 +203,7 @@ func makeOpaqueToken(
 	_ goidc.Client,
 	grantOptions goidc.GrantOptions,
 ) (
-	models.Token,
+	Token,
 	goidc.OAuthError,
 ) {
 	accessToken := goidc.GenerateRandomString(grantOptions.OpaqueTokenLength, grantOptions.OpaqueTokenLength)
@@ -216,17 +214,17 @@ func makeOpaqueToken(
 	jkt := ""
 	if ctx.DpopIsEnabled && ok {
 		tokenType = goidc.DpopTokenType
-		jkt = unit.GenerateJwkThumbprint(dpopJwt, ctx.DpopSignatureAlgorithms)
+		jkt = GenerateJwkThumbprint(dpopJwt, ctx.DpopSignatureAlgorithms)
 	}
 
 	// TLS token binding.
 	clientCert, ok := ctx.GetClientCertificate()
 	certThumbprint := ""
 	if ctx.TlsBoundTokensIsEnabled && ok {
-		certThumbprint = unit.GenerateBase64UrlSha256Hash(string(clientCert.Raw))
+		certThumbprint = GenerateBase64UrlSha256Hash(string(clientCert.Raw))
 	}
 
-	return models.Token{
+	return Token{
 		Id:                    accessToken,
 		Format:                goidc.OpaqueTokenFormat,
 		Value:                 accessToken,

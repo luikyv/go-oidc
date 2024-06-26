@@ -1,13 +1,15 @@
 package goidc_test
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/luikymagno/goidc/internal/unit"
+	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/goidc/pkg/goidc"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -169,7 +171,7 @@ func TestIsRegistrationAccessTokenValid(t *testing.T) {
 func TestGetPublicJwks(t *testing.T) {
 
 	// When.
-	jwk := unit.GetTestPrivatePs256Jwk("random_key_id")
+	jwk := GetTestPrivatePs256Jwk("random_key_id")
 	numberOfRequestsToJwksUri := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		numberOfRequestsToJwksUri++
@@ -218,4 +220,14 @@ func TestGetPublicJwks(t *testing.T) {
 	if len(jwks.Keys) == 0 {
 		t.Errorf("the jwks was not fetched")
 	}
+}
+
+func GetTestPrivatePs256Jwk(keyId string) goidc.JsonWebKey {
+	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+	return goidc.NewJsonWebKey(jose.JSONWebKey{
+		Key:       privateKey,
+		KeyID:     keyId,
+		Algorithm: string(jose.PS256),
+		Use:       string(goidc.KeySignatureUsage),
+	})
 }

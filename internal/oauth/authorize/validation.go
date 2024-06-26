@@ -6,15 +6,13 @@ package authorize
 import (
 	"slices"
 
-	"github.com/luikymagno/goidc/internal/models"
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func validateAuthorizationRequestWithPar(
 	ctx utils.Context,
-	req models.AuthorizationRequest,
+	req utils.AuthorizationRequest,
 	session goidc.AuthnSession,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -36,8 +34,8 @@ func validateAuthorizationRequestWithPar(
 
 func validateAuthorizationRequestWithJar(
 	ctx utils.Context,
-	req models.AuthorizationRequest,
-	jar models.AuthorizationRequest,
+	req utils.AuthorizationRequest,
+	jar utils.AuthorizationRequest,
 	client goidc.Client,
 ) goidc.OAuthError {
 
@@ -63,7 +61,7 @@ func validateAuthorizationRequestWithJar(
 
 func validateAuthorizationRequest(
 	ctx utils.Context,
-	req models.AuthorizationRequest,
+	req utils.AuthorizationRequest,
 	client goidc.Client,
 ) goidc.OAuthError {
 	return validateAuthorizationParams(ctx, req.AuthorizationParameters, client)
@@ -97,7 +95,7 @@ func validateOpenIdInsideWithOutsideParams(
 	mergedParams := insideParams.Merge(outsideParams)
 	// When the openid scope is not requested, the authorization request becomes a standard OAuth one,
 	// so there's no need to validate these rules below.
-	if ctx.Profile == goidc.OpenIdProfile && unit.ScopesContainsOpenId(mergedParams.Scopes) {
+	if ctx.Profile == goidc.OpenIdProfile && utils.ScopesContainsOpenId(mergedParams.Scopes) {
 		if outsideParams.ResponseType == "" {
 			return mergedParams.NewRedirectError(goidc.InvalidRequest, "invalid response_type")
 		}
@@ -106,7 +104,7 @@ func validateOpenIdInsideWithOutsideParams(
 			return mergedParams.NewRedirectError(goidc.InvalidRequest, "invalid response_type")
 		}
 
-		if !unit.ScopesContainsOpenId(outsideParams.Scopes) {
+		if !utils.ScopesContainsOpenId(outsideParams.Scopes) {
 			return mergedParams.NewRedirectError(goidc.InvalidScope, "scope openid is required")
 		}
 	}
@@ -198,7 +196,7 @@ func validateScopeOpenIdIsRequiredWhenResponseTypeIsIdToken(
 	params goidc.AuthorizationParameters,
 	_ goidc.Client,
 ) goidc.OAuthError {
-	if params.ResponseType.Contains(goidc.IdTokenResponse) && !unit.ScopesContainsOpenId(params.Scopes) {
+	if params.ResponseType.Contains(goidc.IdTokenResponse) && !utils.ScopesContainsOpenId(params.Scopes) {
 		return params.NewRedirectError(goidc.InvalidRequest, "cannot request id_token without the scope openid")
 	}
 	return nil
@@ -209,7 +207,7 @@ func validateScopes(
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
-	if ctx.OpenIdScopeIsRequired && !unit.ScopesContainsOpenId(params.Scopes) {
+	if ctx.OpenIdScopeIsRequired && !utils.ScopesContainsOpenId(params.Scopes) {
 		return params.NewRedirectError(goidc.InvalidScope, "scope openid is required")
 	}
 
@@ -283,7 +281,7 @@ func validateCannotRequestIdTokenResponseTypeIfOpenIdScopeIsNotRequested(
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
-	if params.ResponseType.Contains(goidc.IdTokenResponse) && !unit.ScopesContainsOpenId(params.Scopes) {
+	if params.ResponseType.Contains(goidc.IdTokenResponse) && !utils.ScopesContainsOpenId(params.Scopes) {
 		return params.NewRedirectError(goidc.InvalidRequest, "cannot request id_token without the scope openid")
 	}
 	return nil

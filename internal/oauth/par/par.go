@@ -3,14 +3,13 @@ package par
 import (
 	"log/slog"
 
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func PushAuthorization(
 	ctx utils.Context,
-	req models.PushedAuthorizationRequest,
+	req utils.PushedAuthorizationRequest,
 ) (
 	requestUri string,
 	oauthErr goidc.OAuthError,

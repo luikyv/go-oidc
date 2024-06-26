@@ -3,52 +3,50 @@ package token
 import (
 	"log/slog"
 
-	"github.com/luikymagno/goidc/internal/models"
-	"github.com/luikymagno/goidc/internal/unit"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func handleRefreshTokenGrantTokenCreation(
 	ctx utils.Context,
-	req models.TokenRequest,
+	req utils.TokenRequest,
 ) (
-	models.TokenResponse,
+	utils.TokenResponse,
 	goidc.OAuthError,
 ) {
 	if err := preValidateRefreshTokenGrantRequest(req); err != nil {
-		return models.TokenResponse{}, goidc.NewOAuthError(goidc.InvalidRequest, "invalid parameter for refresh token grant")
+		return utils.TokenResponse{}, goidc.NewOAuthError(goidc.InvalidRequest, "invalid parameter for refresh token grant")
 	}
 
 	client, grantSession, err := getAuthenticatedClientAndGrantSession(ctx, req)
 	if err != nil {
 		ctx.Logger.Debug("error while loading the client or token.", slog.String("error", err.Error()))
-		return models.TokenResponse{}, err
+		return utils.TokenResponse{}, err
 	}
 
 	if err = validateRefreshTokenGrantRequest(ctx, req, client, grantSession); err != nil {
-		return models.TokenResponse{}, err
+		return utils.TokenResponse{}, err
 	}
 
 	token, err := utils.MakeToken(ctx, client, grantSession.GrantOptions)
 	if err != nil {
-		return models.TokenResponse{}, err
+		return utils.TokenResponse{}, err
 	}
 
 	updateRefreshTokenGrantSession(ctx, &grantSession, req, token)
 
-	tokenResp := models.TokenResponse{
+	tokenResp := utils.TokenResponse{
 		AccessToken:  token.Value,
 		ExpiresIn:    grantSession.TokenExpiresInSecs,
 		TokenType:    token.Type,
 		RefreshToken: grantSession.RefreshToken,
 	}
 
-	if unit.ScopesContainsOpenId(grantSession.ActiveScopes) {
+	if utils.ScopesContainsOpenId(grantSession.ActiveScopes) {
 		tokenResp.IdToken, err = utils.MakeIdToken(
 			ctx,
 			client,
-			models.NewIdTokenOptions(grantSession.GrantOptions),
+			utils.NewIdTokenOptions(grantSession.GrantOptions),
 		)
 		if err != nil {
 			ctx.Logger.Error("could not generate an ID token", slog.String("error", err.Error()))
@@ -61,15 +59,15 @@ func handleRefreshTokenGrantTokenCreation(
 func updateRefreshTokenGrantSession(
 	ctx utils.Context,
 	grantSession *goidc.GrantSession,
-	req models.TokenRequest,
-	token models.Token,
+	req utils.TokenRequest,
+	token utils.Token,
 ) goidc.OAuthError {
 
 	grantSession.LastTokenIssuedAtTimestamp = goidc.GetTimestampNow()
 	grantSession.TokenId = token.Id
 
 	if ctx.ShouldRotateRefreshTokens {
-		grantSession.RefreshToken = unit.GenerateRefreshToken()
+		grantSession.RefreshToken = utils.GenerateRefreshToken()
 	}
 
 	if req.Scopes != "" {
@@ -88,7 +86,7 @@ func updateRefreshTokenGrantSession(
 
 func getAuthenticatedClientAndGrantSession(
 	ctx utils.Context,
-	req models.TokenRequest,
+	req utils.TokenRequest,
 ) (
 	goidc.Client,
 	goidc.GrantSession,
@@ -139,7 +137,7 @@ func getGrantSessionByRefreshToken(
 }
 
 func preValidateRefreshTokenGrantRequest(
-	req models.TokenRequest,
+	req utils.TokenRequest,
 ) goidc.OAuthError {
 	if req.RefreshToken == "" {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid refresh token")
@@ -150,7 +148,7 @@ func preValidateRefreshTokenGrantRequest(
 
 func validateRefreshTokenGrantRequest(
 	ctx utils.Context,
-	req models.TokenRequest,
+	req utils.TokenRequest,
 	client goidc.Client,
 	grantSession goidc.GrantSession,
 ) goidc.OAuthError {
@@ -195,7 +193,7 @@ func validateRefreshTokenProofOfPossesionForPublicClients(
 		return goidc.NewOAuthError(goidc.UnauthorizedClient, "invalid DPoP header")
 	}
 
-	return utils.ValidateDpopJwt(ctx, dpopJwt, models.DpopJwtValidationOptions{
+	return utils.ValidateDpopJwt(ctx, dpopJwt, utils.DpopJwtValidationOptions{
 		JwkThumbprint: grantSession.JwkThumbprint,
 	})
 }

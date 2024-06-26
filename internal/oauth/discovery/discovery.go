@@ -1,13 +1,12 @@
-package oauth
+package discovery
 
 import (
-	"github.com/luikymagno/goidc/internal/models"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-func GetOpenIdConfiguration(ctx utils.Context) models.OpenIdConfiguration {
-	config := models.OpenIdConfiguration{
+func GetOpenIdConfiguration(ctx utils.Context) utils.OpenIdConfiguration {
+	config := utils.OpenIdConfiguration{
 		Issuer:                               ctx.Host,
 		ClientRegistrationEndpoint:           ctx.Host + string(goidc.DynamicClientEndpoint),
 		AuthorizationEndpoint:                ctx.Host + string(goidc.AuthorizationEndpoint),
