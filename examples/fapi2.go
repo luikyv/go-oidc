@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
-	"net/http"
 	"strings"
 
 	"github.com/luikymagno/goidc/pkg/goidc"
@@ -13,8 +11,6 @@ import (
 )
 
 func RunFAPI2OpenIDProvider() error {
-	// Allow insecure requests to clients' jwks uri during local tests.
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	port := ":83"
 	mtlsPort := ":84"
 	issuer := "https://host.docker.internal" + port
@@ -34,7 +30,7 @@ func RunFAPI2OpenIDProvider() error {
 	// Create the manager.
 	openidProvider := goidcp.NewProvider(
 		issuer,
-		goidcp.NewMongoDBClientManager(database),
+		goidcp.NewInMemoryClientManager(),
 		goidcp.NewMongoDBAuthnSessionManager(database),
 		goidcp.NewMongoDBGrantSessionManager(database),
 		GetPrivateJWKS("server_keys/jwks.json"),
@@ -125,7 +121,7 @@ func RunFAPI2OpenIDProvider() error {
 	openidProvider.AddPolicy(goidc.NewPolicy(
 		"policy",
 		func(ctx goidc.Context, client goidc.Client, session *goidc.AuthnSession) bool { return true },
-		AuthenticateUser,
+		AuthenticateUserWithNoInteraction,
 	))
 
 	// Run

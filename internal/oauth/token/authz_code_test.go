@@ -15,7 +15,7 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.CreateClient(client)
+	ctx.CreateOrUpdateClient(client)
 
 	authorizationCode := "random_authz_code"
 	session := goidc.AuthnSession{

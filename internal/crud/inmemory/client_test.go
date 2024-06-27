@@ -8,7 +8,7 @@ import (
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-func TestCreateClient_HappyPath(t *testing.T) {
+func TestCreateOrUpdateClient_HappyPath(t *testing.T) {
 	// When.
 	manager := inmemory.NewInMemoryClientManager()
 	client := goidc.Client{
@@ -16,7 +16,7 @@ func TestCreateClient_HappyPath(t *testing.T) {
 	}
 
 	// Then.
-	err := manager.Create(context.Background(), client)
+	err := manager.CreateOrUpdate(context.Background(), client)
 
 	// Assert.
 	if err != nil {
@@ -25,61 +25,6 @@ func TestCreateClient_HappyPath(t *testing.T) {
 
 	if len(manager.Clients) != 1 {
 		t.Error("there should be exactly one client")
-	}
-}
-
-func TestCreateClient_ClientAlreadyExists(t *testing.T) {
-	// When.
-	manager := inmemory.NewInMemoryClientManager()
-	client := goidc.Client{
-		ID: "random_client_id",
-	}
-	manager.Clients[client.ID] = client
-
-	// Then.
-	err := manager.Create(context.Background(), client)
-
-	// Assert.
-	if err == nil {
-		t.Error("creating a client that already exists should return error")
-	}
-
-	if len(manager.Clients) != 1 {
-		t.Error("there should be exactly one client")
-	}
-}
-
-func TestUpdateClient_HappyPath(t *testing.T) {
-	// When.
-	manager := inmemory.NewInMemoryClientManager()
-	client := goidc.Client{
-		ID: "random_client_id",
-	}
-	manager.Clients[client.ID] = client
-
-	// Then.
-	err := manager.Update(context.Background(), client.ID, client)
-
-	// Assert.
-	if err != nil {
-		t.Error("error when updating the client", err)
-	}
-
-	if len(manager.Clients) != 1 {
-		t.Error("there should be exactly one client")
-	}
-}
-
-func TestUpdateClient_ClientDoesNotExist(t *testing.T) {
-	// When.
-	manager := inmemory.NewInMemoryClientManager()
-
-	// Then.
-	err := manager.Update(context.Background(), "invalid_client_id", goidc.Client{})
-
-	// Assert.
-	if err == nil {
-		t.Error("updating a client that already exists shoud result in error")
 	}
 }
 

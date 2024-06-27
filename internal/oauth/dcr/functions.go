@@ -18,7 +18,9 @@ func setDefaults(_ utils.Context, dynamicClient *goidc.DynamicClient) {
 		dynamicClient.Secret = utils.GenerateClientSecret()
 	}
 
-	// TODO: set openid scope.
+	if dynamicClient.Scopes == "" {
+		dynamicClient.Scopes = goidc.OpenIDScope
+	}
 
 	if dynamicClient.ResponseTypes == nil {
 		dynamicClient.ResponseTypes = []goidc.ResponseType{goidc.CodeResponse}

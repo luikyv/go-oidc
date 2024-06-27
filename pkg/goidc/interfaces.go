@@ -20,8 +20,7 @@ type Context interface {
 }
 
 type ClientManager interface {
-	Create(ctx context.Context, client Client) error
-	Update(ctx context.Context, id string, client Client) error
+	CreateOrUpdate(ctx context.Context, client Client) error
 	Get(ctx context.Context, id string) (Client, error)
 	Delete(ctx context.Context, id string) error
 }

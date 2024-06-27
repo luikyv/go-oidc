@@ -5,7 +5,6 @@ import (
 )
 
 var ErrorEntityNotFound error = errors.New("entity not found")
-var ErrorEntityAlreadyExists error = errors.New("entity already exists")
 
 type OAuthError interface {
 	GetCode() ErrorCode

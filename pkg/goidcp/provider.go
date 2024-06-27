@@ -119,6 +119,8 @@ func (provider *OpenIDProvider) EnableUserInfoEncryption(
 }
 
 // Allow clients to be registered dynamically.
+// The dcrPlugin is executed during registration and update of the client to perform
+// custom validations (e.g. validate a custom property) or set default values (set the default scopes).
 func (provider *OpenIDProvider) EnableDynamicClientRegistration(
 	dcrPlugin goidc.DCRPluginFunc,
 	shouldRotateTokens bool,
@@ -129,6 +131,9 @@ func (provider *OpenIDProvider) EnableDynamicClientRegistration(
 
 }
 
+// Enable the refresh token grant.
+// If set to true, shouldRotateTokens will cause a new refresh token to be issued each time
+// one is used. The one used during the request then becomes invalid.
 func (provider *OpenIDProvider) EnableRefreshTokenGrantType(
 	refreshTokenLifetimeSecs int,
 	shouldRotateTokens bool,
@@ -138,14 +143,17 @@ func (provider *OpenIDProvider) EnableRefreshTokenGrantType(
 	provider.config.ShouldRotateRefreshTokens = shouldRotateTokens
 }
 
+// Require the openid scope in all requests.
 func (provider *OpenIDProvider) RequireOpenIDScope() {
 	provider.config.OpenIDScopeIsRequired = true
 }
 
+// Define how access tokens are issued.
 func (provider *OpenIDProvider) SetTokenOptions(getTokenOpts goidc.GetTokenOptionsFunc) {
 	provider.config.GetTokenOptions = getTokenOpts
 }
 
+// Enable the implicit grant type and the associated response types.
 func (provider *OpenIDProvider) EnableImplicitGrantType() {
 	provider.config.GrantTypes = append(provider.config.GrantTypes, goidc.ImplicitGrant)
 	provider.config.ResponseTypes = append(
@@ -167,16 +175,19 @@ func (provider *OpenIDProvider) SetScopes(scopes ...string) {
 	}
 }
 
+// Enable authorization flows to start at the /par endpoint.
 func (provider *OpenIDProvider) EnablePushedAuthorizationRequests(parLifetimeSecs int) {
 	provider.config.ParLifetimeSecs = parLifetimeSecs
 	provider.config.PARIsEnabled = true
 }
 
+// Require authorization flows to start at the /par endpoint.
 func (provider *OpenIDProvider) RequirePushedAuthorizationRequests(parLifetimeSecs int) {
 	provider.EnablePushedAuthorizationRequests(parLifetimeSecs)
 	provider.config.PARIsRequired = true
 }
 
+// Enable JAR.
 func (provider *OpenIDProvider) EnableJWTSecuredAuthorizationRequests(
 	jarLifetimeSecs int,
 	jarAlgorithms ...goidc.SignatureAlgorithm,
@@ -191,6 +202,7 @@ func (provider *OpenIDProvider) EnableJWTSecuredAuthorizationRequests(
 	}
 }
 
+// Require JAR.
 func (provider *OpenIDProvider) RequireJWTSecuredAuthorizationRequests(
 	jarLifetimeSecs int,
 	jarAlgorithms ...goidc.SignatureAlgorithm,
@@ -208,6 +220,7 @@ func (provider *OpenIDProvider) EnableJWTSecuredAuthorizationRequestEncryption(
 	provider.config.JARContentEncryptionAlgorithms = contentEncryptionAlgorithms
 }
 
+// Enable JARM and the associated response modes.
 func (provider *OpenIDProvider) EnableJWTSecuredAuthorizationResponseMode(
 	jarmLifetimeSecs int,
 	defaultJARMSignatureKeyID string,
@@ -279,7 +292,10 @@ func (provider *OpenIDProvider) EnablePrivateKeyJWTClientAuthn(
 	}
 }
 
-func (provider *OpenIDProvider) EnableClientSecretJWTAuthn(assertionLifetimeSecs int, signatureAlgorithms ...goidc.SignatureAlgorithm) {
+func (provider *OpenIDProvider) EnableClientSecretJWTAuthn(
+	assertionLifetimeSecs int,
+	signatureAlgorithms ...goidc.SignatureAlgorithm,
+) {
 	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, goidc.ClientSecretBasicAuthn)
 	provider.config.ClientSecretJWTAssertionLifetimeSecs = assertionLifetimeSecs
 	for _, signatureAlgorithm := range signatureAlgorithms {
@@ -352,18 +368,26 @@ func (provider *OpenIDProvider) RequireSenderConstrainedTokens() {
 	provider.config.SenderConstrainedTokenIsRequired = true
 }
 
-func (provider *OpenIDProvider) EnableTokenIntrospection(clientAuthnMethods ...goidc.ClientAuthnType) {
+func (provider *OpenIDProvider) EnableTokenIntrospection(
+	clientAuthnMethods ...goidc.ClientAuthnType,
+) {
 	provider.config.IntrospectionIsEnabled = true
 	provider.config.IntrospectionClientAuthnMethods = clientAuthnMethods
 	provider.config.GrantTypes = append(provider.config.GrantTypes, goidc.IntrospectionGrant)
 }
 
-func (provider *OpenIDProvider) EnableProofKeyForCodeExchange(codeChallengeMethods ...goidc.CodeChallengeMethod) {
+// Enable PKCE.
+func (provider *OpenIDProvider) EnableProofKeyForCodeExchange(
+	codeChallengeMethods ...goidc.CodeChallengeMethod,
+) {
 	provider.config.CodeChallengeMethods = codeChallengeMethods
 	provider.config.PkceIsEnabled = true
 }
 
-func (provider *OpenIDProvider) RequireProofKeyForCodeExchange(codeChallengeMethods ...goidc.CodeChallengeMethod) {
+// Require PCKE.
+func (provider *OpenIDProvider) RequireProofKeyForCodeExchange(
+	codeChallengeMethods ...goidc.CodeChallengeMethod,
+) {
 	provider.EnableProofKeyForCodeExchange(codeChallengeMethods...)
 	provider.config.PkceIsRequired = true
 }
@@ -382,11 +406,12 @@ func (provider *OpenIDProvider) SetClaimTypesSupported(types ...goidc.ClaimType)
 	provider.config.ClaimTypes = types
 }
 
-// Set the session lifetime while the user is authenticating.
+// Set the user authentication session lifetime.
 func (provider *OpenIDProvider) SetAuthenticationSessionTimeout(timeoutSecs int) {
 	provider.config.AuthenticationSessionTimeoutSecs = timeoutSecs
 }
 
+// Set the header expected to have the correlation ID that will be used for all requests to the server.
 func (provider *OpenIDProvider) SetCorrelationIDHeader(header string) {
 	provider.config.CorrelationIDHeader = header
 }
@@ -398,16 +423,21 @@ func (provider *OpenIDProvider) SetFAPI2Profile() {
 	provider.config.Profile = goidc.FAPI2Profile
 }
 
+// Create a static client.
 func (provider *OpenIDProvider) AddClient(client goidc.Client) error {
 	// TODO: Create or update.
-	return provider.config.ClientManager.Create(context.Background(), client)
+	return provider.config.ClientManager.CreateOrUpdate(context.Background(), client)
 }
 
+// Add an authentication that will be evaluated at runtime and then executed if selected.
 func (provider *OpenIDProvider) AddPolicy(policy goidc.AuthnPolicy) {
 	provider.config.Policies = append(provider.config.Policies, policy)
 }
 
-func (provider *OpenIDProvider) Run(address string, middlewares ...apihandlers.WrapHandlerFunc) error {
+func (provider *OpenIDProvider) Run(
+	address string,
+	middlewares ...apihandlers.WrapHandlerFunc,
+) error {
 	if err := provider.validateConfiguration(); err != nil {
 		return err
 	}
@@ -421,7 +451,10 @@ func (provider *OpenIDProvider) Run(address string, middlewares ...apihandlers.W
 	return http.ListenAndServe(address, handler)
 }
 
-func (provider *OpenIDProvider) RunTLS(config TLSOptions, middlewares ...apihandlers.WrapHandlerFunc) error {
+func (provider *OpenIDProvider) RunTLS(
+	config TLSOptions,
+	middlewares ...apihandlers.WrapHandlerFunc,
+) error {
 
 	if err := provider.validateConfiguration(); err != nil {
 		return err

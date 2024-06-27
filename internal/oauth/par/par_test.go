@@ -16,7 +16,7 @@ func TestPushAuthorization_ShouldRejectUnauthenticatedClient(t *testing.T) {
 	client.AuthnMethod = goidc.ClientSecretPostAuthn
 
 	ctx := utils.GetTestInMemoryContext()
-	ctx.CreateClient(client)
+	ctx.CreateOrUpdateClient(client)
 
 	// Then
 	_, err := par.PushAuthorization(ctx, utils.PushedAuthorizationRequest{
@@ -48,7 +48,7 @@ func TestPushAuthorization_ShouldGenerateRequestURI(t *testing.T) {
 	client.HashedSecret = string(hashedClientSecret)
 
 	ctx := utils.GetTestInMemoryContext()
-	ctx.CreateClient(client)
+	ctx.CreateOrUpdateClient(client)
 
 	// Then
 	requestURI, err := par.PushAuthorization(ctx, utils.PushedAuthorizationRequest{

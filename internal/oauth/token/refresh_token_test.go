@@ -15,7 +15,7 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.CreateClient(client)
+	ctx.CreateOrUpdateClient(client)
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
@@ -92,7 +92,7 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.CreateClient(client)
+	ctx.CreateOrUpdateClient(client)
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"

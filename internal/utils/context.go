@@ -297,12 +297,8 @@ func (ctx Context) Value(key any) any {
 
 //---------------------------------------- CRUD ----------------------------------------//
 
-func (ctx Context) CreateClient(client goidc.Client) error {
-	return ctx.ClientManager.Create(ctx, client)
-}
-
-func (ctx Context) UpdateClient(id string, client goidc.Client) error {
-	return ctx.ClientManager.Update(ctx, id, client)
+func (ctx Context) CreateOrUpdateClient(client goidc.Client) error {
+	return ctx.ClientManager.CreateOrUpdate(ctx, client)
 }
 
 func (ctx Context) GetClient(clientID string) (goidc.Client, error) {

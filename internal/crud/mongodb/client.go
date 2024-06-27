@@ -6,6 +6,7 @@ import (
 	"github.com/luikymagno/goidc/pkg/goidc"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type MongoDBClientManager struct {
@@ -18,17 +19,13 @@ func NewMongoDBClientManager(database *mongo.Database) MongoDBClientManager {
 	}
 }
 
-func (manager MongoDBClientManager) Create(ctx context.Context, client goidc.Client) error {
-	if _, err := manager.Collection.InsertOne(ctx, client); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (manager MongoDBClientManager) Update(ctx context.Context, id string, client goidc.Client) error {
-	filter := bson.D{{Key: "_id", Value: id}}
-	if _, err := manager.Collection.ReplaceOne(ctx, filter, client); err != nil {
+func (manager MongoDBClientManager) CreateOrUpdate(
+	ctx context.Context,
+	client goidc.Client,
+) error {
+	shouldUpsert := true
+	filter := bson.D{{Key: "_id", Value: client.ID}}
+	if _, err := manager.Collection.ReplaceOne(ctx, filter, client, &options.ReplaceOptions{Upsert: &shouldUpsert}); err != nil {
 		return err
 	}
 
