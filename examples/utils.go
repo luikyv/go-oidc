@@ -86,7 +86,7 @@ func AuthenticateUserWithNoInteraction(
 
 func AuthenticateUser(
 	ctx goidc.Context,
-	session goidc.AuthnSession,
+	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 
 	// Init the step if empty.
@@ -110,7 +110,7 @@ func AuthenticateUser(
 
 func identifyUser(
 	ctx goidc.Context,
-	session goidc.AuthnSession,
+	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 
 	username := ctx.GetFormParam("username")
@@ -133,7 +133,7 @@ func identifyUser(
 
 func authenticateWithPassword(
 	ctx goidc.Context,
-	session goidc.AuthnSession,
+	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 	password := ctx.GetFormParam("password")
 	if password == "" {

@@ -130,7 +130,7 @@ func validateAuthorizationParams(
 		ValidateCodeChallengeMethod,
 		ValidateDisplayValue,
 		ValidateAuthorizationDetails,
-		ValidateAcrValues,
+		ValidateACRValues,
 		validateCannotRequestIDTokenResponseTypeIfOpenIDScopeIsNotRequested,
 		validateNonceIsRequiredWhenResponseTypeContainsIDToken,
 		ValidateCannotRequestCodeResponseTypeWhenAuthorizationCodeGrantIsNotAllowed,
@@ -339,7 +339,7 @@ func ValidateAuthorizationDetails(
 	return nil
 }
 
-func ValidateAcrValues(
+func ValidateACRValues(
 	ctx utils.Context,
 	params goidc.AuthorizationParameters,
 	_ goidc.Client,

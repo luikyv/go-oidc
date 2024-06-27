@@ -285,7 +285,7 @@ const (
 	PasswordAuthentication                     AuthenticationMethodReference = "pwd"
 	PersonalIDentificationNumberAuthentication AuthenticationMethodReference = "pin"
 	RiskBasedAuthentication                    AuthenticationMethodReference = "rba"
-	SmsAuthentication                          AuthenticationMethodReference = "sms"
+	SMSAuthentication                          AuthenticationMethodReference = "sms"
 	SoftwareSecuredKeyAuthentication           AuthenticationMethodReference = "swk"
 )
 
@@ -295,7 +295,7 @@ const (
 	PageDisplay  DisplayValue = "page"
 	PopUpDisplay DisplayValue = "popup"
 	TouchDisplay DisplayValue = "touch"
-	WatDisplay   DisplayValue = "wap"
+	WAPDisplay   DisplayValue = "wap"
 )
 
 type PromptType string
@@ -325,7 +325,7 @@ const (
 type AuthenticationContextReference string
 
 const (
-	NoAssuranceLevelAcr      AuthenticationContextReference = "0"
-	MaceIncommonIapSilverAcr AuthenticationContextReference = "urn:mace:incommon:iap:silver"
-	MaceIncommonIapBronzeAcr AuthenticationContextReference = "urn:mace:incommon:iap:bronze"
+	NoAssuranceLevelACR      AuthenticationContextReference = "0"
+	MaceIncommonIAPSilverACR AuthenticationContextReference = "urn:mace:incommon:iap:silver"
+	MaceIncommonIAPBronzeACR AuthenticationContextReference = "urn:mace:incommon:iap:bronze"
 )

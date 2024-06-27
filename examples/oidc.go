@@ -1,0 +1,83 @@
+package main
+
+import (
+	"context"
+	"crypto/tls"
+	"net/http"
+	"strings"
+
+	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/luikymagno/goidc/pkg/goidcp"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+)
+
+func RunOpenIDProvider() error {
+	// Allow insecure requests to clients' jwks uri during local tests.
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	port := ":83"
+	issuer := "https://host.docker.internal" + port
+	serverKeyID := "rs256_key"
+	scopes := []string{goidc.OpenIDScope, goidc.OffilineAccessScope, goidc.EmailScope}
+
+	// MongoDB
+	options := options.Client().ApplyURI("mongodb://admin:password@localhost:27017")
+	conn, err := mongo.Connect(context.Background(), options)
+	if err != nil {
+		panic(err)
+	}
+	database := conn.Database("goidc")
+
+	// Create the manager.
+	openidProvider := goidcp.NewProvider(
+		issuer,
+		goidcp.NewMongoDBClientManager(database),
+		goidcp.NewMongoDBAuthnSessionManager(database),
+		goidcp.NewMongoDBGrantSessionManager(database),
+		GetPrivateJWKS("server_keys/jwks.json"),
+		serverKeyID,
+		serverKeyID,
+	)
+	openidProvider.EnablePushedAuthorizationRequests(60)
+	openidProvider.EnableJWTSecuredAuthorizationRequests(600, goidc.RS256)
+	openidProvider.EnableJWTSecuredAuthorizationResponseMode(600, serverKeyID)
+	openidProvider.EnablePrivateKeyJWTClientAuthn(600, goidc.RS256)
+	openidProvider.EnableBasicSecretClientAuthn()
+	openidProvider.EnableSecretPostClientAuthn()
+	openidProvider.EnableSelfSignedTLSClientAuthn()
+	openidProvider.EnableIssuerResponseParameter()
+	openidProvider.EnableClaimsParameter()
+	openidProvider.EnableDemonstrationProofOfPossesion(600, goidc.RS256, goidc.PS256, goidc.ES256)
+	openidProvider.EnableProofKeyForCodeExchange(goidc.SHA256CodeChallengeMethod)
+	openidProvider.EnableRefreshTokenGrantType(6000, false)
+	openidProvider.SetScopes(scopes...)
+	openidProvider.SetSupportedUserClaims(
+		goidc.EmailClaim,
+		goidc.EmailVerifiedClaim,
+	)
+	openidProvider.SetSupportedAuthenticationContextReferences(
+		goidc.MaceIncommonIAPBronzeACR,
+		goidc.MaceIncommonIAPSilverACR,
+	)
+	openidProvider.EnableDynamicClientRegistration(func(ctx goidc.Context, dynamicClient *goidc.DynamicClient) {
+		dynamicClient.Scopes = strings.Join(scopes, " ")
+	}, true)
+	openidProvider.SetTokenOptions(func(c goidc.Client, s string) (goidc.TokenOptions, error) {
+		return goidc.NewJWTTokenOptions(serverKeyID, 600, true), nil
+	})
+
+	// Create Policy
+	openidProvider.AddPolicy(goidc.NewPolicy(
+		"policy",
+		func(ctx goidc.Context, client goidc.Client, session *goidc.AuthnSession) bool { return true },
+		AuthenticateUser,
+	))
+
+	// Run
+	return openidProvider.RunTLS(goidcp.TLSOptions{
+		TLSAddress:        port,
+		ServerCertificate: "server_keys/cert.pem",
+		ServerKey:         "server_keys/key.pem",
+		CipherSuites:      goidc.FAPIAllowedCipherSuites,
+	})
+}

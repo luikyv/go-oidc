@@ -17,7 +17,7 @@ type Client struct {
 	// For client_secret_basic and client_secret_post, we only store the hash of the client secret.
 	HashedSecret                  string `json:"hashed_secret,omitempty" bson:"hashed_secret,omitempty"`
 	HashedRegistrationAccessToken string `json:"hashed_registration_access_token" bson:"hashed_registration_access_token"`
-	ClientMetaInfo
+	ClientMetaInfo                `bson:"inline"`
 }
 
 func (client Client) GetJWK(keyID string) (JSONWebKey, OAuthError) {
@@ -182,3 +182,9 @@ func (client ClientMetaInfo) GetAttribute(key string) (any, bool) {
 	value, ok := client.Attributes[key]
 	return value, ok
 }
+
+// TODO: Implement a custom ()marshaller to deal with custom attributes.
+// func (client Client) MarshalJSON() ([]byte, error) {
+// }
+// func (client *Client) UnmarshalJSON(data []byte) error {
+// }

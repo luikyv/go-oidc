@@ -141,7 +141,7 @@ type JSONWebKeySet struct {
 
 func (jwks *JSONWebKeySet) Key(keyID string) []JSONWebKey {
 
-	var keys []JSONWebKey
+	var keys []JSONWebKey = make([]JSONWebKey, 0)
 	for _, key := range jwks.Keys {
 		if key.GetKeyID() == keyID {
 			keys = append(keys, key)

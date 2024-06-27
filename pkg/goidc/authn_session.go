@@ -45,7 +45,7 @@ func (session AuthnSession) GetMaxAuthenticationAgeSecs() (int, bool) {
 	return *session.MaxAuthenticationAgeSecs, true
 }
 
-func (session AuthnSession) GetAcrValues() ([]AuthenticationContextReference, bool) {
+func (session AuthnSession) GetACRValues() ([]AuthenticationContextReference, bool) {
 	if session.ACRValues == "" {
 		return nil, false
 	}

@@ -2,7 +2,6 @@
 A customizable OpenID Provider made in Go.
 
 ## To Evaluate
-* Let the client implement what he wants.
 * How golang loads packages?
 * Caching /authorize?
 * Prefix scopes.
@@ -12,7 +11,6 @@ A customizable OpenID Provider made in Go.
 * Fix: given, when, then.
 * Don't expose jose.
 * Add more tests.
-* Implement storage with MongoDB.
 * Add coverage report and quality checks.
 * Implement the revocation endpoint.
 * Should I add the default encryption algorithm instead of requiring the dev to pass it?

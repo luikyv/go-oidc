@@ -35,8 +35,8 @@ type GrantOptions struct {
 	GrantType                   GrantType             `json:"grant_type" bson:"grant_type"`
 	Subject                     string                `json:"sub" bson:"sub"`
 	ClientID                    string                `json:"client_id" bson:"client_id"`
-	GrantedScopes               string                `json:"scopes" bson:"scopes"`
-	GrantedAuthorizationDetails []AuthorizationDetail `json:"authorization_details,omitempty" bson:"authorization_details,omitempty"`
+	GrantedScopes               string                `json:"granted_scopes" bson:"granted_scopes"`
+	GrantedAuthorizationDetails []AuthorizationDetail `json:"granted_authorization_details,omitempty" bson:"granted_authorization_details,omitempty"`
 	AdditionalIDTokenClaims     map[string]any        `json:"additional_id_token_claims,omitempty" bson:"additional_id_token_claims,omitempty"`
 	AdditionalUserInfoClaims    map[string]any        `json:"additional_user_info_claims,omitempty" bson:"additional_user_info_claims,omitempty"`
 	TokenOptions                `bson:"inline"`
@@ -44,7 +44,7 @@ type GrantOptions struct {
 
 type GetTokenOptionsFunc func(client Client, scopes string) (TokenOptions, error)
 
-// TODO: Allow passing the token ID?
+// TODO: Allow passing the token ID? Or a prefix?
 type TokenOptions struct {
 	TokenFormat           TokenFormat    `json:"token_format" bson:"token_format"`
 	TokenLifetimeSecs     int            `json:"token_lifetime_secs" bson:"token_lifetime_secs"`

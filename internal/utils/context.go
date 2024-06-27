@@ -411,7 +411,7 @@ func (ctx Context) GetFormParam(param string) string {
 		return ""
 	}
 
-	return ctx.Request.PostFormValue("username")
+	return ctx.Request.PostFormValue(param)
 }
 
 func (ctx Context) GetFormData() map[string]any {
