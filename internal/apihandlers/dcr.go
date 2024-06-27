@@ -10,7 +10,7 @@ import (
 )
 
 func HandleDynamicClientCreation(ctx utils.Context) {
-	var req goidc.DynamicClient
+	var req utils.DynamicClientRequest
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
 		bindErrorToResponse(ctx, err)
 		return
@@ -31,7 +31,7 @@ func HandleDynamicClientCreation(ctx utils.Context) {
 }
 
 func HandleDynamicClientUpdate(ctx utils.Context) {
-	var req goidc.DynamicClient
+	var req utils.DynamicClientRequest
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
 		bindErrorToResponse(ctx, err)
 		return
@@ -63,7 +63,7 @@ func HandleDynamicClientRetrieve(ctx utils.Context) {
 		return
 	}
 
-	req := goidc.DynamicClient{
+	req := utils.DynamicClientRequest{
 		ID:                      ctx.Request.PathValue("client_id"),
 		RegistrationAccessToken: token,
 	}
@@ -86,7 +86,7 @@ func HandleDynamicClientDelete(ctx utils.Context) {
 		return
 	}
 
-	req := goidc.DynamicClient{
+	req := utils.DynamicClientRequest{
 		ID:                      ctx.Request.PathValue("client_id"),
 		RegistrationAccessToken: token,
 	}

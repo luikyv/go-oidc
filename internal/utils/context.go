@@ -225,9 +225,9 @@ func (ctx Context) GetClientCertificate() (*x509.Certificate, bool) {
 	return clientCert, true
 }
 
-func (ctx Context) ExecuteDCRPlugin(dynamicClient *goidc.DynamicClient) {
+func (ctx Context) ExecuteDCRPlugin(clientInfo *goidc.ClientMetaInfo) {
 	if ctx.DCRPlugin != nil {
-		ctx.DCRPlugin(ctx, dynamicClient)
+		ctx.DCRPlugin(ctx, clientInfo)
 	}
 }
 

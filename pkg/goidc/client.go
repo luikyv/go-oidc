@@ -99,17 +99,7 @@ func (client Client) IsRegistrationAccessTokenValid(registrationAccessToken stri
 
 // Function that will be executed during DCR and DCM.
 // It can be used to modify the client and perform custom validations.
-type DCRPluginFunc func(ctx Context, dynamicClient *DynamicClient)
-
-type DynamicClient struct {
-	ID string
-	// This value is filled with the authorization header when creating a client with DCR.
-	InitialAccessToken string
-	// This value is filled with the authorization header for all DCM requests.
-	RegistrationAccessToken string
-	Secret                  string
-	ClientMetaInfo
-}
+type DCRPluginFunc func(ctx Context, clientInfo *ClientMetaInfo)
 
 type ClientMetaInfo struct {
 	Name          string         `json:"client_name,omitempty" bson:"client_name,omitempty"`

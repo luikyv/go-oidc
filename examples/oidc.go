@@ -55,8 +55,8 @@ func RunOpenIDProvider() error {
 		goidc.MaceIncommonIAPBronzeACR,
 		goidc.MaceIncommonIAPSilverACR,
 	)
-	openidProvider.EnableDynamicClientRegistration(func(ctx goidc.Context, dynamicClient *goidc.DynamicClient) {
-		dynamicClient.Scopes = strings.Join(scopes, " ")
+	openidProvider.EnableDynamicClientRegistration(func(ctx goidc.Context, clientInfo *goidc.ClientMetaInfo) {
+		clientInfo.Scopes = strings.Join(scopes, " ")
 	}, true)
 	openidProvider.SetTokenOptions(func(c goidc.Client, s string) (goidc.TokenOptions, error) {
 		return goidc.NewJWTTokenOptions(serverKeyID, 600, true), nil

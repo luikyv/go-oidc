@@ -7,7 +7,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func setDefaults(_ utils.Context, dynamicClient *goidc.DynamicClient) {
+func setDefaults(_ utils.Context, dynamicClient *utils.DynamicClientRequest) {
 	if dynamicClient.AuthnMethod == "" {
 		dynamicClient.AuthnMethod = goidc.ClientSecretBasicAuthn
 	}
@@ -47,7 +47,7 @@ func setDefaults(_ utils.Context, dynamicClient *goidc.DynamicClient) {
 	}
 }
 
-func setCreationDefaults(ctx utils.Context, dynamicClient *goidc.DynamicClient) {
+func setCreationDefaults(ctx utils.Context, dynamicClient *utils.DynamicClientRequest) {
 	dynamicClient.ID = utils.GenerateClientID()
 	dynamicClient.RegistrationAccessToken = utils.GenerateRegistrationAccessToken()
 	setDefaults(ctx, dynamicClient)
@@ -56,7 +56,7 @@ func setCreationDefaults(ctx utils.Context, dynamicClient *goidc.DynamicClient) 
 func setUpdateDefaults(
 	ctx utils.Context,
 	client goidc.Client,
-	dynamicClient *goidc.DynamicClient,
+	dynamicClient *utils.DynamicClientRequest,
 ) {
 	dynamicClient.ID = client.ID
 	if ctx.ShouldRotateRegistrationTokens {
@@ -65,7 +65,7 @@ func setUpdateDefaults(
 	setDefaults(ctx, dynamicClient)
 }
 
-func newClient(dynamicClient goidc.DynamicClient) goidc.Client {
+func newClient(dynamicClient utils.DynamicClientRequest) goidc.Client {
 	hashedRegistrationAccessToken, _ := bcrypt.GenerateFromPassword([]byte(dynamicClient.RegistrationAccessToken), bcrypt.DefaultCost)
 	client := goidc.Client{
 		ID:                            dynamicClient.ID,
@@ -91,7 +91,7 @@ func getClientRegistrationURI(ctx utils.Context, clientID string) string {
 
 func getProtectedClient(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) (
 	goidc.Client,
 	goidc.OAuthError,

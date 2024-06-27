@@ -221,6 +221,16 @@ type PushedAuthorizationResponse struct {
 	ExpiresIn  int    `json:"expires_in"`
 }
 
+type DynamicClientRequest struct {
+	ID string
+	// This value is filled with the authorization header when creating a client with DCR.
+	InitialAccessToken string
+	// This value is filled with the authorization header for all DCM requests.
+	RegistrationAccessToken string
+	Secret                  string
+	goidc.ClientMetaInfo
+}
+
 type DynamicClientResponse struct {
 	ID                      string `json:"client_id"`
 	Secret                  string `json:"client_secret,omitempty"`

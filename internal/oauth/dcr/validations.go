@@ -10,7 +10,7 @@ import (
 
 func validateDynamicClientRequest(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	return runValidations(
 		ctx, dynamicClient,
@@ -45,10 +45,10 @@ func validateDynamicClientRequest(
 
 func runValidations(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 	validations ...func(
 		ctx utils.Context,
-		dynamicClient goidc.DynamicClient,
+		dynamicClient utils.DynamicClientRequest,
 	) goidc.OAuthError,
 ) goidc.OAuthError {
 	for _, validation := range validations {
@@ -61,7 +61,7 @@ func runValidations(
 
 func validateGrantTypes(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	if !goidc.ContainsAll(ctx.GrantTypes, dynamicClient.GrantTypes...) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "grant type not allowed")
@@ -71,7 +71,7 @@ func validateGrantTypes(
 
 func validateClientCredentialsGrantNotAllowedForNoneClientAuthn(
 	_ utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	if dynamicClient.AuthnMethod != goidc.NoneAuthn {
 		return nil
@@ -86,7 +86,7 @@ func validateClientCredentialsGrantNotAllowedForNoneClientAuthn(
 
 func validateClientAuthnMethodForIntrospectionGrant(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	if slices.Contains(dynamicClient.GrantTypes, goidc.IntrospectionGrant) &&
 		!slices.Contains(ctx.IntrospectionClientAuthnMethods, dynamicClient.AuthnMethod) {
@@ -98,7 +98,7 @@ func validateClientAuthnMethodForIntrospectionGrant(
 
 func validateRedirectURIS(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	if len(dynamicClient.RedirectURIS) == 0 {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "at least one redirect uri must be informed")
@@ -108,7 +108,7 @@ func validateRedirectURIS(
 
 func validateResponseTypes(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	if !goidc.ContainsAll(ctx.ResponseTypes, dynamicClient.ResponseTypes...) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "response type not allowed")
@@ -118,7 +118,7 @@ func validateResponseTypes(
 
 func validateCannotRequestImplicitResponseTypeWithoutImplicitGrant(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	containsImplicitResponseType := false
 	for _, rt := range dynamicClient.ResponseTypes {
@@ -135,7 +135,7 @@ func validateCannotRequestImplicitResponseTypeWithoutImplicitGrant(
 
 func validateAuthnMethod(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	if !goidc.ContainsAll(ctx.ClientAuthnMethods, dynamicClient.AuthnMethod) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "authn method not allowed")
@@ -145,7 +145,7 @@ func validateAuthnMethod(
 
 func validateScopes(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	if dynamicClient.Scopes != "" && !goidc.ContainsAll(ctx.Scopes, goidc.SplitStringWithSpaces(dynamicClient.Scopes)...) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "scope not allowed")
@@ -155,7 +155,7 @@ func validateScopes(
 
 func validateOpenIDScopeIfRequired(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	if dynamicClient.Scopes != "" && ctx.OpenIDScopeIsRequired && utils.ScopesContainsOpenID(dynamicClient.Scopes) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "scope openid is required")
@@ -165,7 +165,7 @@ func validateOpenIDScopeIfRequired(
 
 func validateSubjectIDentifierType(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	if dynamicClient.SubjectIDentifierType != "" && !goidc.ContainsAll(ctx.SubjectIDentifierTypes, dynamicClient.SubjectIDentifierType) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "subject_type not supported")
@@ -175,7 +175,7 @@ func validateSubjectIDentifierType(
 
 func validateIDTokenSignatureAlgorithm(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	if dynamicClient.IDTokenSignatureAlgorithm != "" && !goidc.ContainsAll(ctx.GetUserInfoSignatureAlgorithms(), dynamicClient.IDTokenSignatureAlgorithm) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "id_token_signed_response_alg not supported")
@@ -185,7 +185,7 @@ func validateIDTokenSignatureAlgorithm(
 
 func validateUserInfoSignatureAlgorithm(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	if dynamicClient.UserInfoSignatureAlgorithm != "" && !goidc.ContainsAll(ctx.GetUserInfoSignatureAlgorithms(), dynamicClient.UserInfoSignatureAlgorithm) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "id_token_signed_response_alg not supported")
@@ -195,7 +195,7 @@ func validateUserInfoSignatureAlgorithm(
 
 func validateJARSignatureAlgorithm(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	if dynamicClient.JARSignatureAlgorithm != "" && !goidc.ContainsAll(ctx.JARSignatureAlgorithms, dynamicClient.JARSignatureAlgorithm) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "request_object_signing_alg not supported")
@@ -205,7 +205,7 @@ func validateJARSignatureAlgorithm(
 
 func validateJARMSignatureAlgorithm(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	if dynamicClient.JARMSignatureAlgorithm != "" && !goidc.ContainsAll(ctx.GetJARMSignatureAlgorithms(), dynamicClient.JARMSignatureAlgorithm) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "authorization_signed_response_alg not supported")
@@ -215,7 +215,7 @@ func validateJARMSignatureAlgorithm(
 
 func validateClientSignatureAlgorithmForPrivateKeyJWT(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	if dynamicClient.AuthnMethod != goidc.PrivateKeyJWTAuthn {
 		return nil
@@ -229,7 +229,7 @@ func validateClientSignatureAlgorithmForPrivateKeyJWT(
 
 func validateClientSignatureAlgorithmForClientSecretJWT(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	if dynamicClient.AuthnMethod != goidc.ClientSecretJWT {
 		return nil
@@ -243,7 +243,7 @@ func validateClientSignatureAlgorithmForClientSecretJWT(
 
 func validateJWKSAreRequiredForPrivateKeyJWTAuthn(
 	_ utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	if dynamicClient.AuthnMethod != goidc.PrivateKeyJWTAuthn {
 		return nil
@@ -258,7 +258,7 @@ func validateJWKSAreRequiredForPrivateKeyJWTAuthn(
 
 func validateJWKSIsRequiredWhenSelfSignedTLSAuthn(
 	_ utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	if dynamicClient.AuthnMethod != goidc.SelfSignedTLSAuthn {
 		return nil
@@ -273,7 +273,7 @@ func validateJWKSIsRequiredWhenSelfSignedTLSAuthn(
 
 func validateTLSSubjectInfoWhenTLSAuthn(
 	_ utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	if dynamicClient.AuthnMethod != goidc.TLSAuthn {
 		return nil
@@ -302,7 +302,7 @@ func validateTLSSubjectInfoWhenTLSAuthn(
 
 func validateIDTokenEncryptionAlgorithms(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	// Return an error if ID token encryption is not enabled, but the client requested it.
 	if !ctx.UserInfoEncryptionIsEnabled {
@@ -329,7 +329,7 @@ func validateIDTokenEncryptionAlgorithms(
 
 func validateUserInfoEncryptionAlgorithms(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	// Return an error if user info encryption is not enabled, but the client requested it.
 	if !ctx.UserInfoEncryptionIsEnabled {
@@ -356,7 +356,7 @@ func validateUserInfoEncryptionAlgorithms(
 
 func validateJARMEncryptionAlgorithms(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	// Return an error if jarm encryption is not enabled, but the client requested it.
 	if !ctx.JARMIsEnabled {
@@ -383,7 +383,7 @@ func validateJARMEncryptionAlgorithms(
 
 func validateJAREncryptionAlgorithms(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	// Return an error if jar encryption is not enabled, but the client requested it.
 	if !ctx.JAREncryptionIsEnabled {
@@ -410,7 +410,7 @@ func validateJAREncryptionAlgorithms(
 
 func validatePublicJWKS(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	if dynamicClient.PublicJWKS == nil {
 		return nil
@@ -426,7 +426,7 @@ func validatePublicJWKS(
 
 func validatePublicJWKSURI(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	// TODO: validate the client jwks uri.
 	return nil
@@ -434,7 +434,7 @@ func validatePublicJWKSURI(
 
 func validateAuthorizationDetailTypes(
 	ctx utils.Context,
-	dynamicClient goidc.DynamicClient,
+	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	if !ctx.AuthorizationDetailsParameterIsEnabled || dynamicClient.AuthorizationDetailTypes == nil {
 		return nil
