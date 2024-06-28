@@ -307,7 +307,6 @@ func (ctx Context) GetClient(clientID string) (goidc.Client, error) {
 		return goidc.Client{}, err
 	}
 
-	// TODO: Is there a better way?
 	// This will allow the method client.GetPublicJWKS to cache the client keys if they are fetched from the JWKS URI.
 	if client.PublicJWKS == nil {
 		client.PublicJWKS = &goidc.JSONWebKeySet{}

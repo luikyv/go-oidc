@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"net/http"
+	"reflect"
 	"strconv"
 
 	"github.com/go-jose/go-jose/v4"
@@ -231,6 +232,34 @@ type DynamicClientRequest struct {
 	goidc.ClientMetaInfo
 }
 
+type dynamicClientRequest DynamicClientRequest
+
+func (req *DynamicClientRequest) UnmarshalJSON(data []byte) error {
+
+	var reqAux dynamicClientRequest
+	if err := json.Unmarshal(data, &reqAux); err != nil {
+		return err
+	}
+
+	rawParams := make(map[string]any)
+	if err := json.Unmarshal(data, &rawParams); err != nil {
+		return err
+	}
+
+	typ := reflect.TypeOf(reqAux)
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		if key := field.Tag.Get("json"); key != "" {
+			delete(rawParams, key)
+		}
+	}
+
+	*req = DynamicClientRequest(reqAux)
+	req.Attributes = rawParams
+
+	return nil
+}
+
 type DynamicClientResponse struct {
 	ID                      string `json:"client_id"`
 	Secret                  string `json:"client_secret,omitempty"`
@@ -238,6 +267,35 @@ type DynamicClientResponse struct {
 	RegistrationURI         string `json:"registration_client_uri"`
 	goidc.ClientMetaInfo
 }
+
+type dynamicClientResponse DynamicClientResponse
+
+// func (resp DynamicClientResponse) MarshalJSON() ([]byte, error) {
+
+// 	rawValues := make(map[string]any)
+// 	respValueReflect := reflect.ValueOf(resp)
+// 	respTypeReflect := reflect.TypeOf(resp)
+// 	for i := 0; i < respValueReflect.NumField(); i++ {
+// 		if jsonTag := respTypeReflect.Field(i).Tag.Get("json"); jsonTag != "" {
+// 			field := respValueReflect.Field(i)
+// 			rawValues[jsonTag] = field.Interface()
+
+// 		}
+
+// 	}
+
+// 	value := reflect.ValueOf(resp)
+// 	field := value.Field(0)
+// 	field.Inter
+// 	respAux := dynamicClientResponse(resp)
+// 	data, err := json.Marshal(respAux)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	rawParams := make(map[string]any)
+
+// }
 
 type OpenIDMTLSConfiguration struct {
 	TokenEndpoint         string `json:"token_endpoint"`

@@ -139,6 +139,7 @@ type ClientMetaInfo struct {
 
 // Get the client public JWKS either directly from the jwks attribute or using jwks_uri.
 // This method also caches the keys if they are fetched from jwks_uri.
+// This method assumes that the pointer client.PublicJWKS was initialized before when loading the client.
 func (client ClientMetaInfo) GetPublicJWKS() (JSONWebKeySet, error) {
 	if client.PublicJWKS != nil && len(client.PublicJWKS.Keys) != 0 {
 		return *client.PublicJWKS, nil
@@ -155,7 +156,7 @@ func (client ClientMetaInfo) GetPublicJWKS() (JSONWebKeySet, error) {
 
 	// Cache the client JWKS.
 	if client.PublicJWKS != nil {
-		client.PublicJWKS.Keys = jwks.Keys
+		*client.PublicJWKS = jwks
 	}
 
 	return jwks, nil
