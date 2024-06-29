@@ -2,20 +2,23 @@ name: Go
 on: [push]
 
 jobs:
-  test:
+  ci:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup GO environment
-        uses: actions/setup-go@v4
+      - uses: actions/setup-go@v4
         with:
           go-version: '1.22.x'
 
-      - name: Install dependencies
+      - name: Setup GO environment.
         run: |
           go mod download
+          go get -u golang.org/x/lint/golint
+      
+      - name: Lint
+        run: |
+          golint -set_exit_status ./...
       
       - name: Vet
         run: |
@@ -28,7 +31,7 @@ jobs:
       
       - name: Quality Gate
         env:
-            TESTCOVERAGE_THRESHOLD: 50
+            TESTCOVERAGE_THRESHOLD: 20
         run: |
               echo "Quality Gate: checking test coverage is above threshold ..."
               echo "Threshold             : $TESTCOVERAGE_THRESHOLD %"

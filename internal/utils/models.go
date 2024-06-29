@@ -268,7 +268,7 @@ type DynamicClientResponse struct {
 	goidc.ClientMetaInfo
 }
 
-type dynamicClientResponse DynamicClientResponse
+// type dynamicClientResponse DynamicClientResponse
 
 // func (resp DynamicClientResponse) MarshalJSON() ([]byte, error) {
 
