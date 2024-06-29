@@ -14,11 +14,11 @@ jobs:
       - name: Setup GO environment.
         run: |
           go mod download
-          go get -u golang.org/x/lint/golint
       
-      - name: Lint
-        run: |
-          golint -set_exit_status ./...
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.59
       
       - name: Vet
         run: |
