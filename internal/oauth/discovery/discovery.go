@@ -19,7 +19,7 @@ func GetOpenIDConfiguration(ctx utils.Context) utils.OpenIDConfiguration {
 		GrantTypes:                           ctx.GrantTypes,
 		UserClaimsSupported:                  ctx.UserClaims,
 		UserClaimTypesSupported:              ctx.ClaimTypes,
-		SubjectIDentifierTypes:               ctx.SubjectIDentifierTypes,
+		SubjectIdentifierTypes:               ctx.SubjectIdentifierTypes,
 		IDTokenSignatureAlgorithms:           ctx.GetUserInfoSignatureAlgorithms(),
 		UserInfoSignatureAlgorithms:          ctx.GetUserInfoSignatureAlgorithms(),
 		ClientAuthnMethods:                   ctx.ClientAuthnMethods,

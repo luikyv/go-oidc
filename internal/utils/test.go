@@ -48,7 +48,7 @@ func GetTestClient() goidc.Client {
 }
 
 func GetTestInMemoryContext() Context {
-	privateJWK := GetTestPrivateRs256JWK(TestKeyID)
+	privateJWK := GetTestPrivateRS256JWK(TestKeyID)
 	return Context{
 		Configuration: Configuration{
 			Profile:                       goidc.OpenIDProfile,
@@ -105,7 +105,7 @@ func GetGrantSessionsFromTestContext(ctx Context) []goidc.GrantSession {
 	return tokens
 }
 
-func GetTestPrivateRs256JWK(keyID string) goidc.JSONWebKey {
+func GetTestPrivateRS256JWK(keyID string) goidc.JSONWebKey {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	return goidc.NewJSONWebKey(jose.JSONWebKey{
 		Key:       privateKey,
@@ -115,7 +115,7 @@ func GetTestPrivateRs256JWK(keyID string) goidc.JSONWebKey {
 	})
 }
 
-func GetTestPrivatePs256JWK(keyID string) goidc.JSONWebKey {
+func GetTestPrivatePS256JWK(keyID string) goidc.JSONWebKey {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	return goidc.NewJSONWebKey(jose.JSONWebKey{
 		Key:       privateKey,

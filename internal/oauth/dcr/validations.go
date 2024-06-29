@@ -28,7 +28,7 @@ func validateDynamicClientRequest(
 		validateCannotRequestImplicitResponseTypeWithoutImplicitGrant,
 		validateScopes,
 		validateOpenIDScopeIfRequired,
-		validateSubjectIDentifierType,
+		validateSubjectIdentifierType,
 		validateIDTokenSignatureAlgorithm,
 		validateIDTokenEncryptionAlgorithms,
 		validateUserInfoSignatureAlgorithm,
@@ -163,11 +163,11 @@ func validateOpenIDScopeIfRequired(
 	return nil
 }
 
-func validateSubjectIDentifierType(
+func validateSubjectIdentifierType(
 	ctx utils.Context,
 	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
-	if dynamicClient.SubjectIDentifierType != "" && !goidc.ContainsAll(ctx.SubjectIDentifierTypes, dynamicClient.SubjectIDentifierType) {
+	if dynamicClient.SubjectIdentifierType != "" && !goidc.ContainsAll(ctx.SubjectIdentifierTypes, dynamicClient.SubjectIdentifierType) {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "subject_type not supported")
 	}
 	return nil
@@ -279,21 +279,21 @@ func validateTLSSubjectInfoWhenTLSAuthn(
 		return nil
 	}
 
-	numberOfIDentifiers := 0
+	numberOfIdentifiers := 0
 
 	if dynamicClient.TLSSubjectDistinguishedName != "" {
-		numberOfIDentifiers++
+		numberOfIdentifiers++
 	}
 
 	if dynamicClient.TLSSubjectAlternativeName != "" {
-		numberOfIDentifiers++
+		numberOfIdentifiers++
 	}
 
 	if dynamicClient.TLSSubjectAlternativeNameIp != "" {
-		numberOfIDentifiers++
+		numberOfIdentifiers++
 	}
 
-	if numberOfIDentifiers != 1 {
+	if numberOfIdentifiers != 1 {
 		return goidc.NewOAuthError(goidc.InvalidRequest, "only one of: tls_client_auth_subject_dn, tls_client_auth_san_dns, tls_client_auth_san_ip must be informed")
 	}
 

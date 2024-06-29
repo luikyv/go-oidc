@@ -14,7 +14,7 @@ import (
 
 func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) {
 	// When.
-	privateJWK := utils.GetTestPrivateRs256JWK("client_key_id")
+	privateJWK := utils.GetTestPrivateRS256JWK("client_key_id")
 	ctx := utils.GetTestInMemoryContext()
 	ctx.JARIsEnabled = true
 	ctx.JARSignatureAlgorithms = []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJWK.GetAlgorithm())}

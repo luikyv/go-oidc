@@ -2,10 +2,39 @@ package goidc_test
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
+
+func TestSplitStringWithSpaces_HappyPath(t *testing.T) {
+
+	// Given.
+	var cases = []struct {
+		s        string
+		expected []string
+	}{
+		{"scope1 scope2", []string{"scope1", "scope2"}},
+		{"scope1", []string{"scope1"}},
+		{"    ", []string{}},
+	}
+
+	for i, c := range cases {
+		t.Run(
+			fmt.Sprintf("case %d", i),
+			func(t *testing.T) {
+				// When.
+				result := goidc.SplitStringWithSpaces(c.s)
+
+				// Then.
+				if !reflect.DeepEqual(result, c.expected) {
+					t.Error("result is not as expected")
+				}
+			},
+		)
+	}
+}
 
 func TestGenerateRandomString_ShouldGenerateRandomStrings(t *testing.T) {
 	randString1 := goidc.GenerateRandomString(10, 10)
@@ -16,6 +45,8 @@ func TestGenerateRandomString_ShouldGenerateRandomStrings(t *testing.T) {
 }
 
 func TestGenerateRandomString_WithDifferentLengths(t *testing.T) {
+
+	// Given.
 	var lengthRanges = []struct {
 		minLength int
 		maxLength int
@@ -29,8 +60,10 @@ func TestGenerateRandomString_WithDifferentLengths(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("minLength:%v,maxLength:%v", lengthRange.minLength, lengthRange.maxLength),
 			func(t *testing.T) {
-
+				// When.
 				randString := goidc.GenerateRandomString(lengthRange.minLength, lengthRange.maxLength)
+
+				// Then.
 				if len(randString) < lengthRange.minLength || len(randString) > lengthRange.maxLength {
 					t.Errorf("random string %s has length %v", randString, len(randString))
 				}
@@ -69,6 +102,8 @@ func TestContainsAll(t *testing.T) {
 }
 
 func TestContainsAllScopes(t *testing.T) {
+
+	// Given.
 	testCases := []struct {
 		scopeSuperSet    string
 		scopeSubSet      string

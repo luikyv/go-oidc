@@ -111,12 +111,14 @@ func (session AuthnSession) IsExpired() bool {
 	return GetTimestampNow() > session.ExpiresAtTimestamp
 }
 
+// Push the session so it can be referenced by a request URI.
 func (session *AuthnSession) Push(parLifetimeSecs int) (requestURI string) {
 	session.RequestURI = GenerateRequestURI()
 	session.ExpiresAtTimestamp = GetTimestampNow() + parLifetimeSecs
 	return session.RequestURI
 }
 
+// Prepare the session to be used while the authentication flow defined by policyID happens.
 func (session *AuthnSession) Start(policyID string, sessionLifetimeSecs int) {
 	if session.Nonce != "" {
 		session.AddIDTokenClaim(NonceClaim, session.Nonce)

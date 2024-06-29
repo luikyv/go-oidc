@@ -1,6 +1,7 @@
 package utils_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
@@ -37,9 +38,9 @@ func TestGetAuthenticatedClient_WithNoneAuthn_HappyPath(t *testing.T) {
 	}
 }
 
-func TestGetAuthenticatedClient_WithSecretPostAuthn_HappyPath(t *testing.T) {
+func TestGetAuthenticatedClient_WithSecretPostAuthn(t *testing.T) {
 
-	// When.
+	// Given.
 	clientSecret := "password"
 	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 0)
 	client := goidc.Client{
@@ -59,21 +60,73 @@ func TestGetAuthenticatedClient_WithSecretPostAuthn_HappyPath(t *testing.T) {
 		ClientSecret: clientSecret,
 	}
 
-	// Then.
+	// When.
 	_, err := utils.GetAuthenticatedClient(ctx, req)
-
-	// Assert.
+	// Then.
 	if err != nil {
 		t.Error("The client should be authenticated")
 	}
 
-	// When.
+	// Given.
 	req.ClientSecret = "invalid_secret"
-
-	// Then.
+	// When.
 	_, err = utils.GetAuthenticatedClient(ctx, req)
+	// Then.
+	if err == nil {
+		t.Error("The client should not be authenticated")
+	}
 
-	// Assert.
+	// Given.
+	req.ClientSecret = ""
+	// When.
+	_, err = utils.GetAuthenticatedClient(ctx, req)
+	// Then.
+	if err == nil {
+		t.Error("The client should not be authenticated")
+	}
+}
+
+func TestGetAuthenticatedClient_WithBasicSecretAuthn(t *testing.T) {
+
+	// Given.
+	clientSecret := "password"
+	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 0)
+	client := goidc.Client{
+		ID: "random_client_id",
+		ClientMetaInfo: goidc.ClientMetaInfo{
+			AuthnMethod: goidc.ClientSecretBasicAuthn,
+		},
+		HashedSecret: string(hashedClientSecret),
+	}
+
+	ctx := utils.GetTestInMemoryContext()
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
+	ctx.Request.SetBasicAuth(client.ID, clientSecret)
+	req := utils.ClientAuthnRequest{}
+
+	// When.
+	_, err := utils.GetAuthenticatedClient(ctx, req)
+	// Then.
+	if err != nil {
+		t.Error("The client should be authenticated")
+	}
+
+	// Given.
+	ctx.Request.SetBasicAuth(client.ID, "invalid_secret")
+	// When.
+	_, err = utils.GetAuthenticatedClient(ctx, req)
+	// Then.
+	if err == nil {
+		t.Error("The client should not be authenticated")
+	}
+
+	// Given.
+	ctx.Request.Header.Del("Authorization")
+	// When.
+	_, err = utils.GetAuthenticatedClient(ctx, req)
+	// Then.
 	if err == nil {
 		t.Error("The client should not be authenticated")
 	}
@@ -81,8 +134,8 @@ func TestGetAuthenticatedClient_WithSecretPostAuthn_HappyPath(t *testing.T) {
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 
-	// When.
-	privateJWK := utils.GetTestPrivateRs256JWK("rsa256_key")
+	// Given.
+	privateJWK := utils.GetTestPrivateRS256JWK("rsa256_key")
 	client := goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
@@ -94,7 +147,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 	}
 
 	ctx := utils.GetTestInMemoryContext()
-	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256}
+	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
 	if err := ctx.CreateOrUpdateClient(client); err != nil {
 		panic(err)
@@ -106,11 +159,11 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.GetKeyID()),
 	)
 	claims := map[string]any{
-		string(goidc.IssuerClaim):   client.ID,
-		string(goidc.SubjectClaim):  client.ID,
-		string(goidc.AudienceClaim): ctx.Host,
-		string(goidc.IssuedAtClaim): createdAtTimestamp,
-		string(goidc.ExpiryClaim):   createdAtTimestamp + ctx.PrivateKeyJWTAssertionLifetimeSecs - 1,
+		goidc.IssuerClaim:   client.ID,
+		goidc.SubjectClaim:  client.ID,
+		goidc.AudienceClaim: ctx.Host,
+		goidc.IssuedAtClaim: createdAtTimestamp,
+		goidc.ExpiryClaim:   createdAtTimestamp + ctx.PrivateKeyJWTAssertionLifetimeSecs - 10,
 	}
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
 	req := utils.ClientAuthnRequest{
@@ -118,12 +171,305 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 		ClientAssertion:     assertion,
 	}
 
-	// Then.
+	// When.
 	_, err := utils.GetAuthenticatedClient(ctx, req)
-
-	// Assert.
+	// Then.
 	if err != nil {
 		t.Error("The client should be authenticated")
+	}
+
+}
+
+func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAudienceClaim(t *testing.T) {
+	// Given.
+	privateJWK := utils.GetTestPrivateRS256JWK("rsa256_key")
+	client := goidc.Client{
+		ID: "random_client_id",
+		ClientMetaInfo: goidc.ClientMetaInfo{
+			AuthnMethod: goidc.PrivateKeyJWTAuthn,
+			PublicJWKS: &goidc.JSONWebKeySet{
+				Keys: []goidc.JSONWebKey{privateJWK.GetPublic()},
+			},
+		},
+	}
+
+	ctx := utils.GetTestInMemoryContext()
+	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
+	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
+
+	createdAtTimestamp := goidc.GetTimestampNow()
+	signer, _ := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.GetAlgorithm()), Key: privateJWK.GetKey()},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.GetKeyID()),
+	)
+	claims := map[string]any{
+		goidc.IssuerClaim:   client.ID,
+		goidc.SubjectClaim:  client.ID,
+		goidc.IssuedAtClaim: createdAtTimestamp,
+		goidc.ExpiryClaim:   createdAtTimestamp + ctx.PrivateKeyJWTAssertionLifetimeSecs - 10,
+	}
+	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
+	req := utils.ClientAuthnRequest{
+		ClientAssertionType: goidc.JWTBearerAssertionType,
+		ClientAssertion:     assertion,
+	}
+
+	// When.
+	_, err := utils.GetAuthenticatedClient(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Error("The client should not be authenticated")
+		return
+	}
+	if !strings.Contains(err.Error(), "invalid assertion") {
+		t.Errorf("error not as expected: %s", err.Error())
+		return
+	}
+}
+
+func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidExpiryClaim(t *testing.T) {
+	// Given.
+	privateJWK := utils.GetTestPrivateRS256JWK("rsa256_key")
+	client := goidc.Client{
+		ID: "random_client_id",
+		ClientMetaInfo: goidc.ClientMetaInfo{
+			AuthnMethod: goidc.PrivateKeyJWTAuthn,
+			PublicJWKS: &goidc.JSONWebKeySet{
+				Keys: []goidc.JSONWebKey{privateJWK.GetPublic()},
+			},
+		},
+	}
+
+	ctx := utils.GetTestInMemoryContext()
+	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
+	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
+
+	createdAtTimestamp := goidc.GetTimestampNow()
+	signer, _ := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.GetAlgorithm()), Key: privateJWK.GetKey()},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.GetKeyID()),
+	)
+	claims := map[string]any{
+		goidc.IssuerClaim:   client.ID,
+		goidc.SubjectClaim:  client.ID,
+		goidc.AudienceClaim: ctx.Host,
+		goidc.IssuedAtClaim: createdAtTimestamp,
+	}
+	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
+	req := utils.ClientAuthnRequest{
+		ClientAssertionType: goidc.JWTBearerAssertionType,
+		ClientAssertion:     assertion,
+	}
+	// When.
+	_, err := utils.GetAuthenticatedClient(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Error("The client should not be authenticated")
+		return
+	}
+	if !strings.Contains(err.Error(), "invalid time claim") {
+		t.Errorf("error not as expected: %s", err.Error())
+		return
+	}
+}
+
+func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidKeyID(t *testing.T) {
+	// Given.
+	privateJWK := utils.GetTestPrivateRS256JWK("rsa256_key")
+	client := goidc.Client{
+		ID: "random_client_id",
+		ClientMetaInfo: goidc.ClientMetaInfo{
+			AuthnMethod: goidc.PrivateKeyJWTAuthn,
+			PublicJWKS: &goidc.JSONWebKeySet{
+				Keys: []goidc.JSONWebKey{privateJWK.GetPublic()},
+			},
+		},
+	}
+
+	ctx := utils.GetTestInMemoryContext()
+	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
+	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
+
+	createdAtTimestamp := goidc.GetTimestampNow()
+	signer, _ := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.GetAlgorithm()), Key: privateJWK.GetKey()},
+		(&jose.SignerOptions{}).WithType("jwt"),
+	)
+	claims := map[string]any{
+		goidc.IssuerClaim:   client.ID,
+		goidc.SubjectClaim:  client.ID,
+		goidc.AudienceClaim: ctx.Host,
+		goidc.IssuedAtClaim: createdAtTimestamp,
+		goidc.ExpiryClaim:   createdAtTimestamp + ctx.PrivateKeyJWTAssertionLifetimeSecs - 10,
+	}
+	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
+	req := utils.ClientAuthnRequest{
+		ClientAssertionType: goidc.JWTBearerAssertionType,
+		ClientAssertion:     assertion,
+	}
+
+	// When.
+	_, err := utils.GetAuthenticatedClient(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Error("The client should not be authenticated")
+		return
+	}
+	if !strings.Contains(err.Error(), "invalid kid") {
+		t.Errorf("error not as expected: %s", err.Error())
+		return
+	}
+}
+
+func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T) {
+	// Given.
+	client := goidc.Client{
+		ID: "random_client_id",
+		ClientMetaInfo: goidc.ClientMetaInfo{
+			AuthnMethod: goidc.PrivateKeyJWTAuthn,
+			PublicJWKS: &goidc.JSONWebKeySet{
+				Keys: []goidc.JSONWebKey{utils.GetTestPrivateRS256JWK("rsa256_key").GetPublic()},
+			},
+		},
+	}
+
+	ctx := utils.GetTestInMemoryContext()
+	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
+	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
+
+	createdAtTimestamp := goidc.GetTimestampNow()
+	claims := map[string]any{
+		goidc.IssuerClaim:   client.ID,
+		goidc.SubjectClaim:  client.ID,
+		goidc.AudienceClaim: ctx.Host,
+		goidc.IssuedAtClaim: createdAtTimestamp,
+		goidc.ExpiryClaim:   createdAtTimestamp + ctx.PrivateKeyJWTAssertionLifetimeSecs - 10,
+	}
+
+	invalidPrivateJWK := utils.GetTestPrivatePS256JWK("rsa256_key")
+	invalidSigner, _ := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(invalidPrivateJWK.GetAlgorithm()), Key: invalidPrivateJWK.GetKey()},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", invalidPrivateJWK.GetKeyID()),
+	)
+	invalidAssertion, _ := jwt.Signed(invalidSigner).Claims(claims).Serialize()
+	req := utils.ClientAuthnRequest{
+		ClientAssertionType: goidc.JWTBearerAssertionType,
+		ClientAssertion:     invalidAssertion,
+	}
+
+	// When.
+	_, err := utils.GetAuthenticatedClient(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Error("The client should not be authenticated")
+		return
+	}
+	if !strings.Contains(err.Error(), "invalid assertion signature") {
+		t.Errorf("error not as expected: %s", err.Error())
+		return
+	}
+}
+
+func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertion(t *testing.T) {
+	// Given.
+	privateJWK := utils.GetTestPrivateRS256JWK("rsa256_key")
+	client := goidc.Client{
+		ID: "random_client_id",
+		ClientMetaInfo: goidc.ClientMetaInfo{
+			AuthnMethod: goidc.PrivateKeyJWTAuthn,
+			PublicJWKS: &goidc.JSONWebKeySet{
+				Keys: []goidc.JSONWebKey{privateJWK.GetPublic()},
+			},
+		},
+	}
+
+	ctx := utils.GetTestInMemoryContext()
+	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
+	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
+
+	invalidReq := utils.ClientAuthnRequest{
+		ClientAssertionType: goidc.JWTBearerAssertionType,
+		ClientAssertion:     "invalid_assertion",
+	}
+
+	// When.
+	_, err := utils.GetAuthenticatedClient(ctx, invalidReq)
+
+	// Then.
+	if err == nil {
+		t.Error("The client should not be authenticated")
+		return
+	}
+}
+
+func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertionType(t *testing.T) {
+	// Given.
+	privateJWK := utils.GetTestPrivateRS256JWK("rsa256_key")
+	client := goidc.Client{
+		ID: "random_client_id",
+		ClientMetaInfo: goidc.ClientMetaInfo{
+			AuthnMethod: goidc.PrivateKeyJWTAuthn,
+			PublicJWKS: &goidc.JSONWebKeySet{
+				Keys: []goidc.JSONWebKey{privateJWK.GetPublic()},
+			},
+		},
+	}
+
+	ctx := utils.GetTestInMemoryContext()
+	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
+	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
+
+	createdAtTimestamp := goidc.GetTimestampNow()
+	signer, _ := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.GetAlgorithm()), Key: privateJWK.GetKey()},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.GetKeyID()),
+	)
+	claims := map[string]any{
+		goidc.IssuerClaim:   client.ID,
+		goidc.SubjectClaim:  client.ID,
+		goidc.AudienceClaim: ctx.Host,
+		goidc.IssuedAtClaim: createdAtTimestamp,
+		goidc.ExpiryClaim:   createdAtTimestamp + ctx.PrivateKeyJWTAssertionLifetimeSecs - 10,
+	}
+	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
+	invalidReq := utils.ClientAuthnRequest{
+		ClientAssertionType: "invalid_assertion_type",
+		ClientAssertion:     assertion,
+	}
+
+	// When.
+	_, err := utils.GetAuthenticatedClient(ctx, invalidReq)
+
+	// Then.
+	if err == nil {
+		t.Error("The client should not be authenticated")
+		return
+	}
+	if !strings.Contains(err.Error(), "invalid assertion_type") {
+		t.Errorf("error not as expected: %s", err.Error())
+		return
 	}
 }
 

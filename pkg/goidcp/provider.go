@@ -68,7 +68,7 @@ func NewProvider(
 			},
 			ClientAuthnMethods:               []goidc.ClientAuthnType{},
 			DPOPSignatureAlgorithms:          []jose.SignatureAlgorithm{},
-			SubjectIDentifierTypes:           []goidc.SubjectIDentifierType{goidc.PublicSubjectIDentifier},
+			SubjectIdentifierTypes:           []goidc.SubjectIdentifierType{goidc.PublicSubjectIdentifier},
 			ClaimTypes:                       []goidc.ClaimType{goidc.NormalClaimType},
 			AuthenticationSessionTimeoutSecs: goidc.DefaultAuthenticationSessionTimeoutSecs,
 			CorrelationIDHeader:              goidc.CorrelationIDHeader,

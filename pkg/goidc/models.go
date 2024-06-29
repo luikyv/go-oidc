@@ -177,7 +177,7 @@ func (detail AuthorizationDetail) GetType() string {
 	return detail.getString("type")
 }
 
-func (detail AuthorizationDetail) GetIDentifier() string {
+func (detail AuthorizationDetail) GetIdentifier() string {
 	return detail.getString("identifier")
 }
 

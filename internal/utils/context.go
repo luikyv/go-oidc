@@ -97,7 +97,7 @@ type Configuration struct {
 	PkceIsEnabled                    bool
 	PkceIsRequired                   bool
 	CodeChallengeMethods             []goidc.CodeChallengeMethod
-	SubjectIDentifierTypes           []goidc.SubjectIDentifierType
+	SubjectIdentifierTypes           []goidc.SubjectIdentifierType
 	Policies                         []goidc.AuthnPolicy
 	GetTokenOptions                  goidc.GetTokenOptionsFunc
 	DCRIsEnabled                     bool

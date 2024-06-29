@@ -132,12 +132,12 @@ func authenticateWithPrivateKeyJWT(
 	}
 	assertion, err := jwt.ParseSigned(req.ClientAssertion, signatureAlgorithms)
 	if err != nil {
-		return goidc.NewOAuthError(goidc.InvalidClient, "invalid assertion")
+		return goidc.NewOAuthError(goidc.InvalidClient, "invalid assertion signature")
 	}
 
 	// Verify that the assertion indicates the key ID.
-	if len(assertion.Headers) != 1 && assertion.Headers[0].KeyID == "" {
-		return goidc.NewOAuthError(goidc.InvalidClient, "invalid assertion")
+	if len(assertion.Headers) != 1 || assertion.Headers[0].KeyID == "" {
+		return goidc.NewOAuthError(goidc.InvalidClient, "invalid kid header in the assertion")
 	}
 
 	// Verify that the key ID belongs to the client.
@@ -148,7 +148,7 @@ func authenticateWithPrivateKeyJWT(
 
 	claims := jwt.Claims{}
 	if err := assertion.Claims(jwk.GetKey(), &claims); err != nil {
-		return goidc.NewOAuthError(goidc.InvalidClient, "invalid assertion")
+		return goidc.NewOAuthError(goidc.InvalidClient, "invalid assertion signature")
 	}
 
 	return areAssertionClaimsValid(ctx, client, claims, ctx.PrivateKeyJWTAssertionLifetimeSecs)
@@ -188,7 +188,7 @@ func areAssertionClaimsValid(
 ) goidc.OAuthError {
 	// Validate that the "iat" and "exp" claims are present and their difference is not too great.
 	if claims.Expiry == nil || claims.IssuedAt == nil || int(claims.Expiry.Time().Sub(claims.IssuedAt.Time()).Seconds()) > maxLifetimeSecs {
-		return goidc.NewOAuthError(goidc.InvalidClient, "invalid assertion")
+		return goidc.NewOAuthError(goidc.InvalidClient, "invalid time claim in the assertion")
 	}
 
 	err := claims.ValidateWithLeeway(jwt.Expected{

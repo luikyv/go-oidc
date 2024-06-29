@@ -99,7 +99,7 @@ func extractJARFromSignedRequestObject(
 	}
 
 	// Verify that the assertion indicates the key ID.
-	if len(parsedToken.Headers) != 1 && parsedToken.Headers[0].KeyID == "" {
+	if len(parsedToken.Headers) != 1 || parsedToken.Headers[0].KeyID == "" {
 		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.InvalidResquestObject, "invalid kid header")
 	}
 

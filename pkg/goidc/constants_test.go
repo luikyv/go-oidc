@@ -8,7 +8,7 @@ import (
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-func TestResponseTypeContains(t *testing.T) {
+func TestResponseType_Contains_HappyPath(t *testing.T) {
 	var testCases = []struct {
 		superResponseType     goidc.ResponseType
 		subResponseType       goidc.ResponseType
@@ -36,7 +36,7 @@ func TestResponseTypeContains(t *testing.T) {
 	}
 }
 
-func TestResponseTypeIsImplicit(t *testing.T) {
+func TestResponseType_IsImplicit_HappyPath(t *testing.T) {
 	var testCases = []struct {
 		responseType goidc.ResponseType
 		isImplicit   bool
@@ -63,7 +63,7 @@ func TestResponseTypeIsImplicit(t *testing.T) {
 	}
 }
 
-func TestGetDefaultResponseMode(t *testing.T) {
+func TestResponseType_GetDefaultResponseMode_HappyPath(t *testing.T) {
 	var testCases = []struct {
 		responseType         goidc.ResponseType
 		isJARM               bool
@@ -97,7 +97,7 @@ func TestGetDefaultResponseMode(t *testing.T) {
 	}
 }
 
-func TestResponseModeIsJARM(t *testing.T) {
+func TestResponseMode_IsJARM_HappyPath(t *testing.T) {
 	var testCases = []struct {
 		responseMode goidc.ResponseMode
 		isJARM       bool
@@ -124,7 +124,7 @@ func TestResponseModeIsJARM(t *testing.T) {
 	}
 }
 
-func TestResponseModeIsQuery(t *testing.T) {
+func TestResponseMode_IsQuery_HappyPath(t *testing.T) {
 	var testCases = []struct {
 		responseMode goidc.ResponseMode
 		isQuery      bool
@@ -151,7 +151,7 @@ func TestResponseModeIsQuery(t *testing.T) {
 	}
 }
 
-func TestGetStatusCodeFromErrorCode(t *testing.T) {
+func TestErrorCode_GetStatusCode_HappyPath(t *testing.T) {
 	var testCases = []struct {
 		errorCode  goidc.ErrorCode
 		statusCode int

@@ -7,8 +7,6 @@ import (
 	"strings"
 )
 
-// TODO: Should I remove what's not used?
-
 const DefaultAuthenticationSessionTimeoutSecs = 30 * 60
 
 const CallbackIDLength int = 20
@@ -185,11 +183,11 @@ const (
 )
 
 // For more information, see: https://openid.net/specs/openid-connect-core-1_0.html#SubjectIDTypes
-type SubjectIDentifierType string
+type SubjectIdentifierType string
 
 const (
 	// The server provides the same sub (subject) value to all Clients.
-	PublicSubjectIDentifier SubjectIDentifierType = "public"
+	PublicSubjectIdentifier SubjectIdentifierType = "public"
 	// TODO: Implement pairwise.
 )
 

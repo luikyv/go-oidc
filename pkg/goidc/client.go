@@ -113,7 +113,7 @@ type ClientMetaInfo struct {
 	// By doing so, we make sure to request PublicJWKSURI at most once.
 	PublicJWKS                         *JSONWebKeySet          `json:"jwks,omitempty" bson:"jwks,omitempty"`
 	Scopes                             string                  `json:"scope" bson:"scope"`
-	SubjectIDentifierType              SubjectIDentifierType   `json:"subject_type,omitempty" bson:"subject_type,omitempty"`
+	SubjectIdentifierType              SubjectIdentifierType   `json:"subject_type,omitempty" bson:"subject_type,omitempty"`
 	IDTokenSignatureAlgorithm          jose.SignatureAlgorithm `json:"id_token_signed_response_alg,omitempty" bson:"id_token_signed_response_alg,omitempty"`
 	IDTokenKeyEncryptionAlgorithm      jose.KeyAlgorithm       `json:"id_token_encrypted_response_alg,omitempty" bson:"id_token_encrypted_response_alg,omitempty"`
 	IDTokenContentEncryptionAlgorithm  jose.ContentEncryption  `json:"id_token_encrypted_response_enc,omitempty" bson:"id_token_encrypted_response_enc,omitempty"`
