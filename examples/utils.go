@@ -115,10 +115,13 @@ func identifyUser(
 
 	username := ctx.GetFormParam("username")
 	if username == "" {
-		ctx.RenderHTML(identityForm, map[string]any{
+		if err := ctx.RenderHTML(identityForm, map[string]any{
 			"host":       strings.Replace(ctx.GetHost(), "host.docker.internal", "localhost", -1),
 			"callbackID": session.CallbackID,
-		})
+		}); err != nil {
+			ctx.GetLogger().Error(err.Error())
+			return goidc.Failure
+		}
 		return goidc.InProgress
 	}
 
@@ -137,19 +140,25 @@ func authenticateWithPassword(
 ) goidc.AuthnStatus {
 	password := ctx.GetFormParam("password")
 	if password == "" {
-		ctx.RenderHTML(passwordForm, map[string]any{
+		if err := ctx.RenderHTML(passwordForm, map[string]any{
 			"host":       strings.Replace(ctx.GetHost(), "host.docker.internal", "localhost", -1),
 			"callbackID": session.CallbackID,
-		})
+		}); err != nil {
+			ctx.GetLogger().Error(err.Error())
+			return goidc.Failure
+		}
 		return goidc.InProgress
 	}
 
 	if password != "password" {
-		ctx.RenderHTML(passwordForm, map[string]any{
+		if err := ctx.RenderHTML(passwordForm, map[string]any{
 			"host":       strings.Replace(ctx.GetHost(), "host.docker.internal", "localhost", -1),
 			"callbackID": session.CallbackID,
 			"error":      "invalid password",
-		})
+		}); err != nil {
+			ctx.GetLogger().Error(err.Error())
+			return goidc.Failure
+		}
 		return goidc.InProgress
 	}
 

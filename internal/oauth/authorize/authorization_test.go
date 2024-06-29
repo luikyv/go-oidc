@@ -33,7 +33,9 @@ func TestInitAuth_InvalidRedirectURI(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.CreateOrUpdateClient(client)
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
 
 	// Then
 	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
@@ -60,17 +62,22 @@ func TestInitAuth_InvalidScope(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.CreateOrUpdateClient(client)
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
 
 	// Then
-	authorize.InitAuth(ctx, utils.AuthorizationRequest{
+	if err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
 		ClientID: utils.TestClientID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  client.RedirectURIS[0],
 			Scopes:       "invalid_scope",
 			ResponseType: goidc.CodeResponse,
 		},
-	})
+	}); err != nil {
+		t.Error(err.Error())
+		return
+	}
 
 	// Assert
 	redirectURL := ctx.Response.Header().Get("Location")
@@ -85,17 +92,21 @@ func TestInitAuth_InvalidResponseType(t *testing.T) {
 	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
 	client.ResponseTypes = []goidc.ResponseType{goidc.CodeResponse}
-	ctx.CreateOrUpdateClient(client)
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
 
 	// Then
-	authorize.InitAuth(ctx, utils.AuthorizationRequest{
+	if err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
 		ClientID: utils.TestClientID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  client.RedirectURIS[0],
 			Scopes:       client.Scopes,
 			ResponseType: goidc.IDTokenResponse,
 		},
-	})
+	}); err != nil {
+		t.Error(err.Error())
+	}
 
 	// Assert
 	redirectURL := ctx.Response.Header().Get("Location")
@@ -109,17 +120,21 @@ func TestInitAuth_WhenNoPolicyIsAvailable(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.CreateOrUpdateClient(client)
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
 
 	// Then
-	authorize.InitAuth(ctx, utils.AuthorizationRequest{
+	if err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
 		ClientID: utils.TestClientID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  client.RedirectURIS[0],
 			Scopes:       client.Scopes,
 			ResponseType: goidc.CodeResponse,
 		},
-	})
+	}); err != nil {
+		t.Error(err.Error())
+	}
 
 	// Assert
 	redirectURL := ctx.Response.Header().Get("Location")
@@ -134,7 +149,9 @@ func TestInitAuth_ShouldEndWithError(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.CreateOrUpdateClient(client)
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
 	policy := goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.Context, c goidc.Client, s *goidc.AuthnSession) bool { return true },
@@ -177,7 +194,9 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.CreateOrUpdateClient(client)
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
 	policy := goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.Context, c goidc.Client, s *goidc.AuthnSession) bool { return true },
@@ -232,7 +251,9 @@ func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.CreateOrUpdateClient(client)
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
 	policy := goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.Context, c goidc.Client, s *goidc.AuthnSession) bool { return true },
@@ -287,9 +308,11 @@ func TestInitAuth_WithPAR(t *testing.T) {
 	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
 	ctx.PARIsEnabled = true
-	ctx.CreateOrUpdateClient(client)
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
 	requestURI := "urn:goidc:random_value"
-	ctx.CreateOrUpdateAuthnSession(
+	if err := ctx.CreateOrUpdateAuthnSession(
 		goidc.AuthnSession{
 			ID: uuid.NewString(),
 			AuthorizationParameters: goidc.AuthorizationParameters{
@@ -301,7 +324,9 @@ func TestInitAuth_WithPAR(t *testing.T) {
 			ClientID:           client.ID,
 			ExpiresAtTimestamp: goidc.GetTimestampNow() + 60,
 		},
-	)
+	); err != nil {
+		panic(err)
+	}
 	policy := goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.Context, c goidc.Client, s *goidc.AuthnSession) bool { return true },
@@ -360,11 +385,13 @@ func TestContinueAuthentication(t *testing.T) {
 	ctx.Policies = []goidc.AuthnPolicy{policy}
 
 	callbackID := "random_callback_id"
-	ctx.CreateOrUpdateAuthnSession(goidc.AuthnSession{
+	if err := ctx.CreateOrUpdateAuthnSession(goidc.AuthnSession{
 		PolicyID:           policy.ID,
 		CallbackID:         callbackID,
 		ExpiresAtTimestamp: goidc.GetTimestampNow() + 60,
-	})
+	}); err != nil {
+		panic(err)
+	}
 
 	// Then
 	err := authorize.ContinueAuth(ctx, callbackID)

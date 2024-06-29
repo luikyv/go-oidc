@@ -461,7 +461,12 @@ func (provider *OpenIDProvider) RunTLS(
 	}
 
 	if provider.config.MTLSIsEnabled {
-		go provider.runMTLS(config)
+		go func() {
+			if err := provider.runMTLS(config); err != nil {
+				// TODO: Find a way to handle this.
+				panic(err)
+			}
+		}()
 	}
 
 	handler := provider.getServerHandler()

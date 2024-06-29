@@ -171,13 +171,15 @@ func TestIsRegistrationAccessTokenValid(t *testing.T) {
 func TestGetPublicJWKS(t *testing.T) {
 
 	// When.
-	jwk := GetTestPrivatePs256JWK("random_key_id")
 	numberOfRequestsToJWKSURI := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		numberOfRequestsToJWKSURI++
-		json.NewEncoder(w).Encode(goidc.JSONWebKeySet{
+		jwk := GetTestPrivatePs256JWK("random_key_id")
+		if err := json.NewEncoder(w).Encode(goidc.JSONWebKeySet{
 			Keys: []goidc.JSONWebKey{jwk},
-		})
+		}); err != nil {
+			panic(err)
+		}
 	}))
 
 	client := goidc.Client{

@@ -21,7 +21,9 @@ func TestGetAuthenticatedClient_WithNoneAuthn_HappyPath(t *testing.T) {
 	}
 
 	ctx := utils.GetTestInMemoryContext()
-	ctx.CreateOrUpdateClient(client)
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
 	req := utils.ClientAuthnRequest{
 		ClientID: client.ID,
 	}
@@ -49,7 +51,9 @@ func TestGetAuthenticatedClient_WithSecretPostAuthn_HappyPath(t *testing.T) {
 	}
 
 	ctx := utils.GetTestInMemoryContext()
-	ctx.CreateOrUpdateClient(client)
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
 	req := utils.ClientAuthnRequest{
 		ClientID:     client.ID,
 		ClientSecret: clientSecret,
@@ -92,7 +96,9 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 	ctx := utils.GetTestInMemoryContext()
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
-	ctx.CreateOrUpdateClient(client)
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
 
 	createdAtTimestamp := goidc.GetTimestampNow()
 	signer, _ := jose.NewSigner(
@@ -133,7 +139,9 @@ func TestGetAuthenticatedClient_WithDifferentClientIDs(t *testing.T) {
 
 	ctx := utils.GetTestInMemoryContext()
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256}
-	ctx.CreateOrUpdateClient(client)
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
 	req := utils.ClientAuthnRequest{
 		ClientID:        client.ID,
 		ClientAssertion: "eyJhbGciOiJQUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJpbnZhbGlkX2NsaWVudF9pZCIsInN1YiI6ImludmFsaWRfY2xpZW50X2lkIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.Nog3Y_jeWO0dugsTKCxLx_vGcCbE6kRHzo7wAvfnKe7_uCW9UB1f-WhX4fMKXvJ8v-bScuyx2pTgy4C6ie0ZAcOn_XESblpr_0epoUF2ibdR5DGPKcrPs-S8jp8yvBOxbUmq0jyU9V5H33052h5gBsEAcYXnM150S-ch_1ISL1EgDiZrOm9lYhisp7Jp_mqUZx3OXjfWruz4d6oLe5FeCg7NsB5PpT_N26VZ6Qxt9x6OKUvphRHN1niETkf3_1uTr8CltHesfFl4NnaXSP5f7QStg9JKIpjgJnl-LeQe2C4tM8yHCTENxgHX4oTzrfiEfdN3TwoHDFNszcXnnAUQCg",

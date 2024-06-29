@@ -33,7 +33,9 @@ func handleRefreshTokenGrantTokenCreation(
 		return utils.TokenResponse{}, err
 	}
 
-	updateRefreshTokenGrantSession(ctx, &grantSession, req, token)
+	if err := updateRefreshTokenGrantSession(ctx, &grantSession, req, token); err != nil {
+		return utils.TokenResponse{}, err
+	}
 
 	tokenResp := utils.TokenResponse{
 		AccessToken:  token.Value,

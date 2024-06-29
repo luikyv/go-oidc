@@ -15,7 +15,9 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.CreateOrUpdateClient(client)
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
@@ -33,7 +35,9 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 			},
 		},
 	}
-	ctx.CreateOrUpdateGrantSession(grantSession)
+	if err := ctx.CreateOrUpdateGrantSession(grantSession); err != nil {
+		panic(err)
+	}
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
@@ -92,7 +96,9 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.CreateOrUpdateClient(client)
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
@@ -109,7 +115,9 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 			},
 		},
 	}
-	ctx.CreateOrUpdateGrantSession(grantSession)
+	if err := ctx.CreateOrUpdateGrantSession(grantSession); err != nil {
+		panic(err)
+	}
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{

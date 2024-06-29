@@ -14,7 +14,9 @@ func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.CreateOrUpdateClient(client)
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{

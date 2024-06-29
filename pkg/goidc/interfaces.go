@@ -13,8 +13,8 @@ type Context interface {
 	GetFormParam(param string) (formValue string)
 	GetSecureClientCertificate() (secureClientCert *x509.Certificate, ok bool)
 	GetClientCertificate() (clientCert *x509.Certificate, ok bool)
-	RenderHTML(html string, params any)
-	RenderHTMLTemplate(tmpl *template.Template, params any)
+	RenderHTML(html string, params any) error
+	RenderHTMLTemplate(tmpl *template.Template, params any) error
 	GetLogger() *slog.Logger
 	context.Context
 }

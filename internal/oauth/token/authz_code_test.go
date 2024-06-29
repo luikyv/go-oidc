@@ -15,7 +15,9 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
 	ctx := utils.GetTestInMemoryContext()
-	ctx.CreateOrUpdateClient(client)
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
 
 	authorizationCode := "random_authz_code"
 	session := goidc.AuthnSession{
@@ -33,7 +35,9 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 		Store:                     make(map[string]any),
 		AdditionalTokenClaims:     make(map[string]any),
 	}
-	ctx.CreateOrUpdateAuthnSession(session)
+	if err := ctx.CreateOrUpdateAuthnSession(session); err != nil {
+		panic(err)
+	}
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{

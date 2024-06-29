@@ -463,7 +463,10 @@ func (ctx Context) Redirect(redirectURL string) {
 	http.Redirect(ctx.Response, ctx.Request, redirectURL, http.StatusSeeOther)
 }
 
-func (ctx Context) RenderHTML(html string, params any) {
+func (ctx Context) RenderHTML(
+	html string,
+	params any,
+) error {
 	// Check if the request was terminated before writing anything.
 	select {
 	case <-ctx.Done():
@@ -474,10 +477,13 @@ func (ctx Context) RenderHTML(html string, params any) {
 	// TODO: review this. Add headers?
 	ctx.Response.WriteHeader(http.StatusOK)
 	tmpl, _ := template.New("default").Parse(html)
-	tmpl.Execute(ctx.Response, params)
+	return tmpl.Execute(ctx.Response, params)
 }
 
-func (ctx Context) RenderHTMLTemplate(tmpl *template.Template, params any) {
+func (ctx Context) RenderHTMLTemplate(
+	tmpl *template.Template,
+	params any,
+) error {
 	// Check if the request was terminated before writing anything.
 	select {
 	case <-ctx.Done():
@@ -485,7 +491,7 @@ func (ctx Context) RenderHTMLTemplate(tmpl *template.Template, params any) {
 	default:
 	}
 
-	tmpl.Execute(ctx.Response, params)
+	return tmpl.Execute(ctx.Response, params)
 }
 
 //---------------------------------------- Key Management ----------------------------------------//

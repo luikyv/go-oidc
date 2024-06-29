@@ -64,7 +64,9 @@ func initValidAuthnSessionWithPAR(
 
 	if err := validateAuthorizationRequestWithPAR(ctx, req, session, client); err != nil {
 		// If any of the parameters is invalid, we delete the session right away.
-		ctx.DeleteAuthnSession(session.ID)
+		if err := ctx.DeleteAuthnSession(session.ID); err != nil {
+			return goidc.AuthnSession{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
+		}
 		return goidc.AuthnSession{}, err
 	}
 

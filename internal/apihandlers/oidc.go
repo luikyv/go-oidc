@@ -124,16 +124,20 @@ func bindErrorToResponse(ctx utils.Context, err error) {
 
 	var oauthErr goidc.OAuthError
 	if !errors.As(err, &oauthErr) {
-		ctx.WriteJSON(map[string]any{
+		if err := ctx.WriteJSON(map[string]any{
 			"error":             goidc.InternalError,
 			"error_description": err.Error(),
-		}, http.StatusInternalServerError)
+		}, http.StatusInternalServerError); err != nil {
+			ctx.Response.WriteHeader(http.StatusInternalServerError)
+		}
 		return
 	}
 
 	errorCode := oauthErr.GetCode()
-	ctx.WriteJSON(map[string]any{
+	if err := ctx.WriteJSON(map[string]any{
 		"error":             errorCode,
 		"error_description": oauthErr.Error(),
-	}, errorCode.GetStatusCode())
+	}, errorCode.GetStatusCode()); err != nil {
+		ctx.Response.WriteHeader(http.StatusInternalServerError)
+	}
 }
