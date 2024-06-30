@@ -26,7 +26,10 @@ const DefaultRefreshTokenLifetimeSecs int = 6000
 
 const DynamicClientIDLength int = 30
 
-const ClientSecretLength int = 50
+// The client secret length must have at least 64 characters, so that it can be also used for
+// symmetric encryption during, for instance, authentication with client_secret_jwt.
+// For client_secret_jwt, the highest algorithm we accept is HS512 which requires a key of at least 512 bits (64 characters).
+const ClientSecretLength int = 64
 
 const RegistrationAccessTokenLength int = 50
 

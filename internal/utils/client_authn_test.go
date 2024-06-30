@@ -180,6 +180,56 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 
 }
 
+func TestGetAuthenticatedClient_WithPrivateKeyJWT_ClientInformedSigningAlgorithms(t *testing.T) {
+
+	// Given.
+	privateJWK := utils.GetTestPrivatePS256JWK("ps256_key")
+	client := goidc.Client{
+		ID: "random_client_id",
+		ClientMetaInfo: goidc.ClientMetaInfo{
+			AuthnMethod: goidc.PrivateKeyJWTAuthn,
+			PublicJWKS: &goidc.JSONWebKeySet{
+				Keys: []goidc.JSONWebKey{privateJWK.GetPublic()},
+			},
+			AuthnSignatureAlgorithm: jose.PS256,
+		},
+	}
+
+	ctx := utils.GetTestInMemoryContext()
+	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256, jose.RS256}
+	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
+
+	createdAtTimestamp := goidc.GetTimestampNow()
+	signer, _ := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.GetAlgorithm()), Key: privateJWK.GetKey()},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.GetKeyID()),
+	)
+	claims := map[string]any{
+		goidc.IssuerClaim:   client.ID,
+		goidc.SubjectClaim:  client.ID,
+		goidc.AudienceClaim: ctx.Host,
+		goidc.IssuedAtClaim: createdAtTimestamp,
+		goidc.ExpiryClaim:   createdAtTimestamp + ctx.PrivateKeyJWTAssertionLifetimeSecs - 10,
+	}
+	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
+	req := utils.ClientAuthnRequest{
+		ClientAssertionType: goidc.JWTBearerAssertionType,
+		ClientAssertion:     assertion,
+	}
+
+	// When.
+	_, err := utils.GetAuthenticatedClient(ctx, req)
+
+	// Then.
+	if err != nil {
+		t.Errorf("The client should be authenticated. Error: %s", err.Error())
+	}
+
+}
+
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAudienceClaim(t *testing.T) {
 	// Given.
 	privateJWK := utils.GetTestPrivateRS256JWK("rsa256_key")
@@ -471,6 +521,106 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertionType(t *testin
 		t.Errorf("error not as expected: %s", err.Error())
 		return
 	}
+}
+
+func TestGetAuthenticatedClient_WithClientSecretJWT_HappyPath(t *testing.T) {
+
+	// Given.
+	secret := "random_password12345678910111213"
+	client := goidc.Client{
+		ID:     "random_client_id",
+		Secret: secret,
+		ClientMetaInfo: goidc.ClientMetaInfo{
+			AuthnMethod: goidc.ClientSecretJWT,
+		},
+	}
+
+	ctx := utils.GetTestInMemoryContext()
+	ctx.ClientSecretJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.HS256}
+	ctx.ClientSecretJWTAssertionLifetimeSecs = 60
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
+
+	createdAtTimestamp := goidc.GetTimestampNow()
+	signer, _ := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.HS256, Key: []byte(secret)},
+		(&jose.SignerOptions{}).WithType("jwt"),
+	)
+	claims := map[string]any{
+		goidc.IssuerClaim:   client.ID,
+		goidc.SubjectClaim:  client.ID,
+		goidc.AudienceClaim: ctx.Host,
+		goidc.IssuedAtClaim: createdAtTimestamp,
+		goidc.ExpiryClaim:   createdAtTimestamp + ctx.ClientSecretJWTAssertionLifetimeSecs - 10,
+	}
+	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
+	req := utils.ClientAuthnRequest{
+		ClientAssertionType: goidc.JWTBearerAssertionType,
+		ClientAssertion:     assertion,
+	}
+
+	// When.
+	_, err := utils.GetAuthenticatedClient(ctx, req)
+
+	// Then.
+	if err != nil {
+		t.Errorf("The client should be authenticated. Error: %s", err.Error())
+	}
+
+}
+
+func TestGetAuthenticatedClient_WithClientSecretJWT_InvalidAssertionType(t *testing.T) {
+
+	// Given.
+	secret := "random_password12345678910111213"
+	client := goidc.Client{
+		ID:     "random_client_id",
+		Secret: secret,
+		ClientMetaInfo: goidc.ClientMetaInfo{
+			AuthnMethod: goidc.ClientSecretJWT,
+		},
+	}
+
+	ctx := utils.GetTestInMemoryContext()
+	ctx.ClientSecretJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.HS256}
+	ctx.ClientSecretJWTAssertionLifetimeSecs = 60
+	if err := ctx.CreateOrUpdateClient(client); err != nil {
+		panic(err)
+	}
+
+	createdAtTimestamp := goidc.GetTimestampNow()
+	signer, _ := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.HS256, Key: []byte(secret)},
+		(&jose.SignerOptions{}).WithType("jwt"),
+	)
+	claims := map[string]any{
+		goidc.IssuerClaim:   client.ID,
+		goidc.SubjectClaim:  client.ID,
+		goidc.AudienceClaim: ctx.Host,
+		goidc.IssuedAtClaim: createdAtTimestamp,
+		goidc.ExpiryClaim:   createdAtTimestamp + ctx.ClientSecretJWTAssertionLifetimeSecs - 10,
+	}
+	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
+	req := utils.ClientAuthnRequest{
+		ClientAssertionType: "invalid_assertion_type",
+		ClientAssertion:     assertion,
+	}
+
+	// When.
+	_, err := utils.GetAuthenticatedClient(ctx, req)
+
+	// Then.
+	// Then.
+	if err == nil {
+		t.Error("The client should not be authenticated")
+		return
+	}
+	if !strings.Contains(err.Error(), "invalid assertion_type") {
+		t.Errorf("error not as expected: %s", err.Error())
+		return
+	}
+
 }
 
 func TestGetAuthenticatedClient_WithDifferentClientIDs(t *testing.T) {

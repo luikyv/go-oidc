@@ -3,7 +3,6 @@ package utils
 import (
 	"encoding/json"
 	"net/http"
-	"reflect"
 	"strconv"
 
 	"github.com/go-jose/go-jose/v4"
@@ -232,33 +231,34 @@ type DynamicClientRequest struct {
 	goidc.ClientMetaInfo
 }
 
-type dynamicClientRequest DynamicClientRequest
+// TODO: Custom unmarshal.
+// type dynamicClientRequest DynamicClientRequest
 
-func (req *DynamicClientRequest) UnmarshalJSON(data []byte) error {
+// func (req *DynamicClientRequest) UnmarshalJSON(data []byte) error {
 
-	var reqAux dynamicClientRequest
-	if err := json.Unmarshal(data, &reqAux); err != nil {
-		return err
-	}
+// 	var reqAux dynamicClientRequest
+// 	if err := json.Unmarshal(data, &reqAux); err != nil {
+// 		return err
+// 	}
 
-	rawParams := make(map[string]any)
-	if err := json.Unmarshal(data, &rawParams); err != nil {
-		return err
-	}
+// 	rawParams := make(map[string]any)
+// 	if err := json.Unmarshal(data, &rawParams); err != nil {
+// 		return err
+// 	}
 
-	typ := reflect.TypeOf(reqAux)
-	for i := 0; i < typ.NumField(); i++ {
-		field := typ.Field(i)
-		if key := field.Tag.Get("json"); key != "" {
-			delete(rawParams, key)
-		}
-	}
+// 	typ := reflect.TypeOf(reqAux)
+// 	for i := 0; i < typ.NumField(); i++ {
+// 		field := typ.Field(i)
+// 		if key := field.Tag.Get("json"); key != "" {
+// 			delete(rawParams, key)
+// 		}
+// 	}
 
-	*req = DynamicClientRequest(reqAux)
-	req.Attributes = rawParams
+// 	*req = DynamicClientRequest(reqAux)
+// 	req.Attributes = rawParams
 
-	return nil
-}
+// 	return nil
+// }
 
 type DynamicClientResponse struct {
 	ID                      string `json:"client_id"`
@@ -270,6 +270,7 @@ type DynamicClientResponse struct {
 
 // type dynamicClientResponse DynamicClientResponse
 
+// TODO: Custom marshal.
 // func (resp DynamicClientResponse) MarshalJSON() ([]byte, error) {
 
 // 	rawValues := make(map[string]any)
