@@ -10,6 +10,7 @@ import (
 )
 
 func RunOpenIDProvider() error {
+
 	port := ":83"
 	issuer := "https://host.docker.internal" + port
 	serverKeyID := "rs256_key"

@@ -87,7 +87,6 @@ func NewScope(scope string) Scope {
 
 /*
 NewDynamicScope creates a scope with custom logic that will be used to validate the scopes requested by the client.
-code block:
 
 	dynamicScope := NewDynamicScope(
 		"payment",

@@ -336,7 +336,7 @@ type OpenIDConfiguration struct {
 	JARMAlgorithms                                 []jose.SignatureAlgorithm              `json:"authorization_signing_alg_values_supported,omitempty"`
 	JARMKeyEncryptionAlgorithms                    []jose.KeyAlgorithm                    `json:"authorization_encryption_alg_values_supported,omitempty"`
 	JARMContentEncryptionAlgorithms                []jose.ContentEncryption               `json:"authorization_encryption_enc_values_supported,omitempty"`
-	TokenEndpointClientSigningAlgorithms           []jose.SignatureAlgorithm              `json:"token_endpoint_auth_signing_alg_values_supported"`
+	TokenEndpointClientSigningAlgorithms           []jose.SignatureAlgorithm              `json:"token_endpoint_auth_signing_alg_values_supported,omitempty"`
 	IssuerResponseParameterIsEnabled               bool                                   `json:"authorization_response_iss_parameter_supported"`
 	ClaimsParameterIsEnabled                       bool                                   `json:"claims_parameter_supported"`
 	AuthorizationDetailsIsSupported                bool                                   `json:"authorization_details_supported"`
@@ -345,7 +345,7 @@ type OpenIDConfiguration struct {
 	IntrospectionEndpoint                          string                                 `json:"introspection_endpoint,omitempty"`
 	IntrospectionEndpointClientAuthnMethods        []goidc.ClientAuthnType                `json:"introspection_endpoint_auth_methods_supported,omitempty"`
 	IntrospectionEndpointClientSignatureAlgorithms []jose.SignatureAlgorithm              `json:"introspection_endpoint_auth_signing_alg_values_supported,omitempty"`
-	MTLSConfiguration                              OpenIDMTLSConfiguration                `json:"mtls_endpoint_aliases"`
+	MTLSConfiguration                              *OpenIDMTLSConfiguration               `json:"mtls_endpoint_aliases,omitempty"`
 	TLSBoundTokensIsEnabled                        bool                                   `json:"tls_client_certificate_bound_access_tokens,omitempty"`
 	AuthenticationContextReferences                []goidc.AuthenticationContextReference `json:"acr_values_supported,omitempty"`
 	DisplayValuesSupported                         []goidc.DisplayValue                   `json:"display_values_supported,omitempty"`

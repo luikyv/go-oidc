@@ -75,8 +75,11 @@ func GetOpenIDConfiguration(ctx utils.Context) utils.OpenIDConfiguration {
 
 	if ctx.MTLSIsEnabled {
 		config.TLSBoundTokensIsEnabled = ctx.TLSBoundTokensIsEnabled
-		config.MTLSConfiguration.TokenEndpoint = ctx.MTLSHost + string(goidc.EndpointToken)
-		config.MTLSConfiguration.UserinfoEndpoint = ctx.MTLSHost + string(goidc.EndpointUserInfo)
+
+		config.MTLSConfiguration = &utils.OpenIDMTLSConfiguration{
+			TokenEndpoint:    ctx.MTLSHost + string(goidc.EndpointToken),
+			UserinfoEndpoint: ctx.MTLSHost + string(goidc.EndpointUserInfo),
+		}
 
 		if ctx.PARIsEnabled {
 			config.MTLSConfiguration.ParEndpoint = ctx.MTLSHost + string(goidc.EndpointPushedAuthorizationRequest)
