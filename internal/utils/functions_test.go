@@ -33,13 +33,13 @@ func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.GetKeyID()),
 	)
 	claims := map[string]any{
-		string(goidc.IssuerClaim):   client.ID,
-		string(goidc.AudienceClaim): ctx.Host,
-		string(goidc.IssuedAtClaim): createdAtTimestamp,
-		string(goidc.ExpiryClaim):   createdAtTimestamp + ctx.JARLifetimeSecs - 1,
+		string(goidc.ClaimIssuer):   client.ID,
+		string(goidc.ClaimAudience): ctx.Host,
+		string(goidc.ClaimIssuedAt): createdAtTimestamp,
+		string(goidc.ClaimExpiry):   createdAtTimestamp + ctx.JARLifetimeSecs - 1,
 		"client_id":                 client.ID,
 		"redirect_uri":              "https://example.com",
-		"response_type":             goidc.CodeResponse,
+		"response_type":             goidc.ResponseTypeCode,
 		"scope":                     "scope scope2",
 		"max_age":                   600,
 		"acr_values":                "0 1",
@@ -67,7 +67,7 @@ func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 		return
 	}
 
-	if jar.ResponseType != goidc.CodeResponse {
+	if jar.ResponseType != goidc.ResponseTypeCode {
 		t.Errorf("Invalid JAR response_type. JAR: %v", jar)
 		return
 	}
@@ -225,13 +225,13 @@ func TestIsPkceValid(t *testing.T) {
 		codeChallengeMethod goidc.CodeChallengeMethod
 		isValid             bool
 	}{
-		{"4ea55634198fb6a0c120d46b26359cf50ccea86fd03302b9bca9fa98", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", goidc.SHA256CodeChallengeMethod, true},
-		{"42d92ec716da149b8c0a553d5cbbdc5fd474625cdffe7335d643105b", "yQ0Wg2MXS83nBOaS3yit-n-xEaEw5LQ8TlhtX_2NkLw", goidc.SHA256CodeChallengeMethod, true},
-		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", goidc.SHA256CodeChallengeMethod, false},
-		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", goidc.SHA256CodeChallengeMethod, false},
-		{"", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", goidc.SHA256CodeChallengeMethod, false},
-		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "", goidc.SHA256CodeChallengeMethod, false},
-		{"random_string", "random_string", goidc.PlainCodeChallengeMethod, true},
+		{"4ea55634198fb6a0c120d46b26359cf50ccea86fd03302b9bca9fa98", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", goidc.CodeChallengeMethodSHA256, true},
+		{"42d92ec716da149b8c0a553d5cbbdc5fd474625cdffe7335d643105b", "yQ0Wg2MXS83nBOaS3yit-n-xEaEw5LQ8TlhtX_2NkLw", goidc.CodeChallengeMethodSHA256, true},
+		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", goidc.CodeChallengeMethodSHA256, false},
+		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", goidc.CodeChallengeMethodSHA256, false},
+		{"", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", goidc.CodeChallengeMethodSHA256, false},
+		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "", goidc.CodeChallengeMethodSHA256, false},
+		{"random_string", "random_string", goidc.CodeChallengeMethodPlain, true},
 	}
 
 	for i, testCase := range testCases {

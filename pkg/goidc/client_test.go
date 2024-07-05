@@ -15,11 +15,21 @@ import (
 )
 
 func TestAreScopesAllowed(t *testing.T) {
+	// Given.
+	ctx := goidc.GetTestContext(
+		[]goidc.Scope{
+			goidc.NewScope("scope1"),
+			goidc.NewScope("scope2"),
+			goidc.NewScope("scope3"),
+		},
+	)
+
 	client := goidc.Client{
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			Scopes: "scope1 scope2 scope3",
 		},
 	}
+
 	testCases := []struct {
 		requestedScopes string
 		expectedResult  bool
@@ -33,7 +43,7 @@ func TestAreScopesAllowed(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("case %v", i),
 			func(t *testing.T) {
-				if client.AreScopesAllowed(testCase.requestedScopes) != testCase.expectedResult {
+				if client.AreScopesAllowed(ctx, testCase.requestedScopes) != testCase.expectedResult {
 					t.Error(testCase)
 				}
 			},
@@ -44,15 +54,15 @@ func TestAreScopesAllowed(t *testing.T) {
 func TestIsResponseTypeAllowed(t *testing.T) {
 	client := goidc.Client{
 		ClientMetaInfo: goidc.ClientMetaInfo{
-			ResponseTypes: []goidc.ResponseType{goidc.CodeResponse},
+			ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCode},
 		},
 	}
 	testCases := []struct {
 		requestedResponseType goidc.ResponseType
 		expectedResult        bool
 	}{
-		{goidc.CodeResponse, true},
-		{goidc.CodeAndIDTokenResponse, false},
+		{goidc.ResponseTypeCode, true},
+		{goidc.ResponseTypeCodeAndIDToken, false},
 	}
 
 	for i, testCase := range testCases {
@@ -70,15 +80,15 @@ func TestIsResponseTypeAllowed(t *testing.T) {
 func TestIsGrantTypeAllowed(t *testing.T) {
 	client := goidc.Client{
 		ClientMetaInfo: goidc.ClientMetaInfo{
-			GrantTypes: []goidc.GrantType{goidc.ClientCredentialsGrant},
+			GrantTypes: []goidc.GrantType{goidc.GrantClientCredentials},
 		},
 	}
 	testCases := []struct {
 		requestedGrantType goidc.GrantType
 		expectedResult     bool
 	}{
-		{goidc.ClientCredentialsGrant, true},
-		{goidc.AuthorizationCodeGrant, false},
+		{goidc.GrantClientCredentials, true},
+		{goidc.GrantAuthorizationCode, false},
 	}
 
 	for i, testCase := range testCases {
@@ -230,6 +240,6 @@ func GetTestPrivatePs256JWK(keyID string) goidc.JSONWebKey {
 		Key:       privateKey,
 		KeyID:     keyID,
 		Algorithm: string(jose.PS256),
-		Use:       string(goidc.KeySignatureUsage),
+		Use:       string(goidc.KeyUsageSignature),
 	})
 }

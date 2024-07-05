@@ -39,7 +39,7 @@ func HandleDynamicClientUpdate(ctx utils.Context) {
 
 	token, ok := ctx.GetBearerToken()
 	if !ok {
-		bindErrorToResponse(ctx, goidc.NewOAuthError(goidc.AccessDenied, "no token found"))
+		bindErrorToResponse(ctx, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "no token found"))
 		return
 	}
 
@@ -59,7 +59,7 @@ func HandleDynamicClientUpdate(ctx utils.Context) {
 func HandleDynamicClientRetrieve(ctx utils.Context) {
 	token, ok := ctx.GetBearerToken()
 	if !ok {
-		bindErrorToResponse(ctx, goidc.NewOAuthError(goidc.AccessDenied, "no token found"))
+		bindErrorToResponse(ctx, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "no token found"))
 		return
 	}
 
@@ -82,7 +82,7 @@ func HandleDynamicClientRetrieve(ctx utils.Context) {
 func HandleDynamicClientDelete(ctx utils.Context) {
 	token, ok := ctx.GetBearerToken()
 	if !ok {
-		bindErrorToResponse(ctx, goidc.NewOAuthError(goidc.AccessDenied, "no token found"))
+		bindErrorToResponse(ctx, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "no token found"))
 		return
 	}
 

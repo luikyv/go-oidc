@@ -81,28 +81,28 @@ func TestGetResponseMode_HappyPath(t *testing.T) {
 		expectedResponseMode goidc.ResponseMode
 	}{
 		{
-			goidc.AuthorizationParameters{ResponseMode: goidc.QueryResponseMode},
-			goidc.QueryResponseMode,
+			goidc.AuthorizationParameters{ResponseMode: goidc.ResponseModeQuery},
+			goidc.ResponseModeQuery,
 		},
 		{
-			goidc.AuthorizationParameters{ResponseType: goidc.CodeResponse},
-			goidc.QueryResponseMode,
+			goidc.AuthorizationParameters{ResponseType: goidc.ResponseTypeCode},
+			goidc.ResponseModeQuery,
 		},
 		{
-			goidc.AuthorizationParameters{ResponseType: goidc.IDTokenResponse},
-			goidc.FragmentResponseMode,
+			goidc.AuthorizationParameters{ResponseType: goidc.ResponseTypeIDToken},
+			goidc.ResponseModeFragment,
 		},
 		{
-			goidc.AuthorizationParameters{ResponseMode: goidc.JWTResponseMode, ResponseType: goidc.CodeResponse},
-			goidc.QueryJWTResponseMode,
+			goidc.AuthorizationParameters{ResponseMode: goidc.ResponseModeJWT, ResponseType: goidc.ResponseTypeCode},
+			goidc.ResponseModeQueryJWT,
 		},
 		{
-			goidc.AuthorizationParameters{ResponseMode: goidc.JWTResponseMode, ResponseType: goidc.IDTokenResponse},
-			goidc.FragmentJWTResponseMode,
+			goidc.AuthorizationParameters{ResponseMode: goidc.ResponseModeJWT, ResponseType: goidc.ResponseTypeIDToken},
+			goidc.ResponseModeFragmentJWT,
 		},
 		{
-			goidc.AuthorizationParameters{ResponseMode: goidc.QueryJWTResponseMode},
-			goidc.QueryJWTResponseMode,
+			goidc.AuthorizationParameters{ResponseMode: goidc.ResponseModeQueryJWT},
+			goidc.ResponseModeQueryJWT,
 		},
 	}
 

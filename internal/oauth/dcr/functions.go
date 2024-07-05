@@ -7,23 +7,24 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func setDefaults(_ utils.Context, dynamicClient *utils.DynamicClientRequest) {
+func setDefaults(ctx utils.Context, dynamicClient *utils.DynamicClientRequest) {
 	if dynamicClient.AuthnMethod == "" {
-		dynamicClient.AuthnMethod = goidc.ClientSecretBasicAuthn
+		dynamicClient.AuthnMethod = goidc.ClientAuthnSecretBasic
 	}
 
-	if dynamicClient.AuthnMethod == goidc.ClientSecretPostAuthn ||
-		dynamicClient.AuthnMethod == goidc.ClientSecretBasicAuthn ||
-		dynamicClient.AuthnMethod == goidc.ClientSecretJWT {
+	if dynamicClient.AuthnMethod == goidc.ClientAuthnSecretPost ||
+		dynamicClient.AuthnMethod == goidc.ClientAuthnSecretBasic ||
+		dynamicClient.AuthnMethod == goidc.ClientAuthnSecretJWT {
 		dynamicClient.Secret = utils.GenerateClientSecret()
 	}
 
-	if dynamicClient.Scopes == "" {
-		dynamicClient.Scopes = goidc.OpenIDScope
+	if dynamicClient.Scopes != "" {
+		scopeIDs := goidc.SplitStringWithSpaces(dynamicClient.Scopes)
+		dynamicClient.Scopes = ctx.GetScopes().GetSubSet(scopeIDs).String()
 	}
 
 	if dynamicClient.ResponseTypes == nil {
-		dynamicClient.ResponseTypes = []goidc.ResponseType{goidc.CodeResponse}
+		dynamicClient.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeCode}
 	}
 
 	if dynamicClient.IDTokenKeyEncryptionAlgorithm != "" && dynamicClient.IDTokenContentEncryptionAlgorithm == "" {
@@ -73,12 +74,12 @@ func newClient(dynamicClient utils.DynamicClientRequest) goidc.Client {
 		ClientMetaInfo:                dynamicClient.ClientMetaInfo,
 	}
 
-	if dynamicClient.AuthnMethod == goidc.ClientSecretPostAuthn || dynamicClient.AuthnMethod == goidc.ClientSecretBasicAuthn {
+	if dynamicClient.AuthnMethod == goidc.ClientAuthnSecretPost || dynamicClient.AuthnMethod == goidc.ClientAuthnSecretBasic {
 		clientHashedSecret, _ := bcrypt.GenerateFromPassword([]byte(dynamicClient.Secret), bcrypt.DefaultCost)
 		client.HashedSecret = string(clientHashedSecret)
 	}
 
-	if dynamicClient.AuthnMethod == goidc.ClientSecretJWT {
+	if dynamicClient.AuthnMethod == goidc.ClientAuthnSecretJWT {
 		client.Secret = dynamicClient.Secret
 	}
 
@@ -86,7 +87,7 @@ func newClient(dynamicClient utils.DynamicClientRequest) goidc.Client {
 }
 
 func getClientRegistrationURI(ctx utils.Context, clientID string) string {
-	return ctx.Host + string(goidc.DynamicClientEndpoint) + "/" + clientID
+	return ctx.Host + string(goidc.EndpointDynamicClient) + "/" + clientID
 }
 
 func getProtectedClient(
@@ -97,17 +98,17 @@ func getProtectedClient(
 	goidc.OAuthError,
 ) {
 	if dynamicClient.ID == "" {
-		return goidc.Client{}, goidc.NewOAuthError(goidc.InvalidRequest, "invalid client_id")
+		return goidc.Client{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid client_id")
 	}
 
 	client, err := ctx.GetClient(dynamicClient.ID)
 	if err != nil {
-		return goidc.Client{}, goidc.NewOAuthError(goidc.InvalidRequest, err.Error())
+		return goidc.Client{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, err.Error())
 	}
 
 	if dynamicClient.RegistrationAccessToken == "" ||
 		!client.IsRegistrationAccessTokenValid(dynamicClient.RegistrationAccessToken) {
-		return goidc.Client{}, goidc.NewOAuthError(goidc.AccessDenied, "invalid token")
+		return goidc.Client{}, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "invalid token")
 	}
 
 	return client, nil

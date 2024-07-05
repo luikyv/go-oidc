@@ -14,13 +14,13 @@ func TestResponseType_Contains_HappyPath(t *testing.T) {
 		subResponseType       goidc.ResponseType
 		superShouldContainSub bool
 	}{
-		{goidc.CodeResponse, goidc.CodeResponse, true},
-		{goidc.CodeAndIDTokenResponse, goidc.CodeResponse, true},
-		{goidc.CodeAndIDTokenResponse, goidc.IDTokenResponse, true},
-		{goidc.CodeAndIDTokenAndTokenResponse, goidc.IDTokenResponse, true},
-		{goidc.CodeResponse, goidc.IDTokenResponse, false},
-		{goidc.CodeAndIDTokenResponse, goidc.TokenResponse, false},
-		{goidc.CodeResponse, goidc.TokenResponse, false},
+		{goidc.ResponseTypeCode, goidc.ResponseTypeCode, true},
+		{goidc.ResponseTypeCodeAndIDToken, goidc.ResponseTypeCode, true},
+		{goidc.ResponseTypeCodeAndIDToken, goidc.ResponseTypeIDToken, true},
+		{goidc.ResponseTypeCodeAndIDTokenAndToken, goidc.ResponseTypeIDToken, true},
+		{goidc.ResponseTypeCode, goidc.ResponseTypeIDToken, false},
+		{goidc.ResponseTypeCodeAndIDToken, goidc.ResponseTypeToken, false},
+		{goidc.ResponseTypeCode, goidc.ResponseTypeToken, false},
 	}
 
 	for _, testCase := range testCases {
@@ -41,13 +41,13 @@ func TestResponseType_IsImplicit_HappyPath(t *testing.T) {
 		responseType goidc.ResponseType
 		isImplicit   bool
 	}{
-		{goidc.CodeResponse, false},
-		{goidc.IDTokenResponse, true},
-		{goidc.TokenResponse, true},
-		{goidc.CodeAndIDTokenResponse, true},
-		{goidc.CodeAndTokenResponse, true},
-		{goidc.IDTokenAndTokenResponse, true},
-		{goidc.CodeAndIDTokenAndTokenResponse, true},
+		{goidc.ResponseTypeCode, false},
+		{goidc.ResponseTypeIDToken, true},
+		{goidc.ResponseTypeToken, true},
+		{goidc.ResponseTypeCodeAndIDToken, true},
+		{goidc.ResponseTypeCodeAndToken, true},
+		{goidc.ResponseTypeIDTokenAndToken, true},
+		{goidc.ResponseTypeCodeAndIDTokenAndToken, true},
 	}
 
 	for _, testCase := range testCases {
@@ -69,20 +69,20 @@ func TestResponseType_GetDefaultResponseMode_HappyPath(t *testing.T) {
 		isJARM               bool
 		expectedResponseMode goidc.ResponseMode
 	}{
-		{goidc.CodeResponse, false, goidc.QueryResponseMode},
-		{goidc.IDTokenResponse, false, goidc.FragmentResponseMode},
-		{goidc.TokenResponse, false, goidc.FragmentResponseMode},
-		{goidc.CodeAndIDTokenResponse, false, goidc.FragmentResponseMode},
-		{goidc.CodeAndTokenResponse, false, goidc.FragmentResponseMode},
-		{goidc.IDTokenAndTokenResponse, false, goidc.FragmentResponseMode},
-		{goidc.CodeAndIDTokenAndTokenResponse, false, goidc.FragmentResponseMode},
-		{goidc.CodeResponse, true, goidc.QueryJWTResponseMode},
-		{goidc.IDTokenResponse, true, goidc.FragmentJWTResponseMode},
-		{goidc.TokenResponse, true, goidc.FragmentJWTResponseMode},
-		{goidc.CodeAndIDTokenResponse, true, goidc.FragmentJWTResponseMode},
-		{goidc.CodeAndTokenResponse, true, goidc.FragmentJWTResponseMode},
-		{goidc.IDTokenAndTokenResponse, true, goidc.FragmentJWTResponseMode},
-		{goidc.CodeAndIDTokenAndTokenResponse, true, goidc.FragmentJWTResponseMode},
+		{goidc.ResponseTypeCode, false, goidc.ResponseModeQuery},
+		{goidc.ResponseTypeIDToken, false, goidc.ResponseModeFragment},
+		{goidc.ResponseTypeToken, false, goidc.ResponseModeFragment},
+		{goidc.ResponseTypeCodeAndIDToken, false, goidc.ResponseModeFragment},
+		{goidc.ResponseTypeCodeAndToken, false, goidc.ResponseModeFragment},
+		{goidc.ResponseTypeIDTokenAndToken, false, goidc.ResponseModeFragment},
+		{goidc.ResponseTypeCodeAndIDTokenAndToken, false, goidc.ResponseModeFragment},
+		{goidc.ResponseTypeCode, true, goidc.ResponseModeQueryJWT},
+		{goidc.ResponseTypeIDToken, true, goidc.ResponseModeFragmentJWT},
+		{goidc.ResponseTypeToken, true, goidc.ResponseModeFragmentJWT},
+		{goidc.ResponseTypeCodeAndIDToken, true, goidc.ResponseModeFragmentJWT},
+		{goidc.ResponseTypeCodeAndToken, true, goidc.ResponseModeFragmentJWT},
+		{goidc.ResponseTypeIDTokenAndToken, true, goidc.ResponseModeFragmentJWT},
+		{goidc.ResponseTypeCodeAndIDTokenAndToken, true, goidc.ResponseModeFragmentJWT},
 	}
 
 	for _, testCase := range testCases {
@@ -102,13 +102,13 @@ func TestResponseMode_IsJARM_HappyPath(t *testing.T) {
 		responseMode goidc.ResponseMode
 		isJARM       bool
 	}{
-		{goidc.QueryResponseMode, false},
-		{goidc.FragmentResponseMode, false},
-		{goidc.FormPostResponseMode, false},
-		{goidc.QueryJWTResponseMode, true},
-		{goidc.FragmentJWTResponseMode, true},
-		{goidc.FormPostJWTResponseMode, true},
-		{goidc.JWTResponseMode, true},
+		{goidc.ResponseModeQuery, false},
+		{goidc.ResponseModeFragment, false},
+		{goidc.ResponseModeFormPost, false},
+		{goidc.ResponseModeQueryJWT, true},
+		{goidc.ResponseModeFragmentJWT, true},
+		{goidc.ResponseModeFormPostJWT, true},
+		{goidc.ResponseModeJWT, true},
 	}
 
 	for _, testCase := range testCases {
@@ -129,13 +129,13 @@ func TestResponseMode_IsQuery_HappyPath(t *testing.T) {
 		responseMode goidc.ResponseMode
 		isQuery      bool
 	}{
-		{goidc.QueryResponseMode, true},
-		{goidc.FragmentResponseMode, false},
-		{goidc.FormPostResponseMode, false},
-		{goidc.QueryJWTResponseMode, true},
-		{goidc.FragmentJWTResponseMode, false},
-		{goidc.FormPostJWTResponseMode, false},
-		{goidc.JWTResponseMode, false},
+		{goidc.ResponseModeQuery, true},
+		{goidc.ResponseModeFragment, false},
+		{goidc.ResponseModeFormPost, false},
+		{goidc.ResponseModeQueryJWT, true},
+		{goidc.ResponseModeFragmentJWT, false},
+		{goidc.ResponseModeFormPostJWT, false},
+		{goidc.ResponseModeJWT, false},
 	}
 
 	for _, testCase := range testCases {
@@ -156,17 +156,17 @@ func TestErrorCode_GetStatusCode_HappyPath(t *testing.T) {
 		errorCode  goidc.ErrorCode
 		statusCode int
 	}{
-		{goidc.AccessDenied, http.StatusForbidden},
-		{goidc.InvalidClient, http.StatusUnauthorized},
-		{goidc.InvalidGrant, http.StatusBadRequest},
-		{goidc.InvalidRequest, http.StatusBadRequest},
-		{goidc.UnauthorizedClient, http.StatusUnauthorized},
-		{goidc.InvalidScope, http.StatusBadRequest},
-		{goidc.InvalidAuthorizationDetails, http.StatusBadRequest},
-		{goidc.UnsupportedGrantType, http.StatusBadRequest},
-		{goidc.InvalidResquestObject, http.StatusBadRequest},
-		{goidc.InvalidToken, http.StatusUnauthorized},
-		{goidc.InternalError, http.StatusInternalServerError},
+		{goidc.ErrorCodeAccessDenied, http.StatusForbidden},
+		{goidc.ErrorCodeInvalidClient, http.StatusUnauthorized},
+		{goidc.ErrorCodeInvalidGrant, http.StatusBadRequest},
+		{goidc.ErrorCodeInvalidRequest, http.StatusBadRequest},
+		{goidc.ErrorCodeUnauthorizedClient, http.StatusUnauthorized},
+		{goidc.ErrorCodeInvalidScope, http.StatusBadRequest},
+		{goidc.ErrorCodeInvalidAuthorizationDetails, http.StatusBadRequest},
+		{goidc.ErrorCodeUnsupportedGrantType, http.StatusBadRequest},
+		{goidc.ErrorCodeInvalidResquestObject, http.StatusBadRequest},
+		{goidc.ErrorCodeInvalidToken, http.StatusUnauthorized},
+		{goidc.ErrorCodeInternalError, http.StatusInternalServerError},
 	}
 
 	for _, testCase := range testCases {

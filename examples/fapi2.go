@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"strings"
 
 	"github.com/luikymagno/goidc/pkg/goidc"
 	"github.com/luikymagno/goidc/pkg/goidcp"
@@ -17,7 +16,7 @@ func RunFAPI2OpenIDProvider() error {
 	mtlsIssuer := "https://host.docker.internal" + mtlsPort
 	ps256ServerKeyID := "ps256_key"
 	redirectURI := "https://localhost:8443/test/a/first_test/callback"
-	scopes := []string{goidc.OpenIDScope, goidc.OffilineAccessScope, goidc.EmailScope}
+	scopes := []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeOffilineAccess, goidc.ScopeEmail}
 
 	// MongoDB
 	options := options.Client().ApplyURI("mongodb://admin:password@localhost:27017")
@@ -49,16 +48,16 @@ func RunFAPI2OpenIDProvider() error {
 	openidProvider.EnableDemonstrationProofOfPossesion(600, goidc.PS256, goidc.ES256)
 	openidProvider.EnableTLSBoundTokens()
 	openidProvider.RequireSenderConstrainedTokens()
-	openidProvider.RequireProofKeyForCodeExchange(goidc.SHA256CodeChallengeMethod)
+	openidProvider.RequireProofKeyForCodeExchange(goidc.CodeChallengeMethodSHA256)
 	openidProvider.EnableRefreshTokenGrantType(6000, false)
 	openidProvider.SetScopes(scopes...)
 	openidProvider.SetSupportedUserClaims(
-		goidc.EmailClaim,
-		goidc.EmailVerifiedClaim,
+		goidc.ClaimEmail,
+		goidc.ClaimEmailVerified,
 	)
 	openidProvider.SetSupportedAuthenticationContextReferences(
-		goidc.MaceIncommonIAPBronzeACR,
-		goidc.MaceIncommonIAPSilverACR,
+		goidc.ACRMaceIncommonIAPBronze,
+		goidc.ACRMaceIncommonIAPSilver,
 	)
 	openidProvider.EnableDynamicClientRegistration(nil, true)
 	openidProvider.SetTokenOptions(func(c goidc.Client, s string) (goidc.TokenOptions, error) {
@@ -82,15 +81,15 @@ func RunFAPI2OpenIDProvider() error {
 	openidProvider.AddClient(goidc.Client{
 		ID: "client_one",
 		ClientMetaInfo: goidc.ClientMetaInfo{
-			AuthnMethod:  goidc.PrivateKeyJWTAuthn,
+			AuthnMethod:  goidc.ClientAuthnPrivateKeyJWT,
 			RedirectURIS: []string{redirectURI},
-			Scopes:       strings.Join(scopes, " "),
+			Scopes:       goidc.Scopes(scopes).String(),
 			GrantTypes: []goidc.GrantType{
-				goidc.AuthorizationCodeGrant,
-				goidc.RefreshTokenGrant,
+				goidc.GrantAuthorizationCode,
+				goidc.GrantRefreshToken,
 			},
 			ResponseTypes: []goidc.ResponseType{
-				goidc.CodeResponse,
+				goidc.ResponseTypeCode,
 			},
 			PublicJWKS: &clientOnePublicJWKS,
 		},
@@ -103,15 +102,15 @@ func RunFAPI2OpenIDProvider() error {
 	openidProvider.AddClient(goidc.Client{
 		ID: "client_two",
 		ClientMetaInfo: goidc.ClientMetaInfo{
-			AuthnMethod:  goidc.PrivateKeyJWTAuthn,
+			AuthnMethod:  goidc.ClientAuthnPrivateKeyJWT,
 			RedirectURIS: []string{redirectURI},
-			Scopes:       strings.Join(scopes, " "),
+			Scopes:       goidc.Scopes(scopes).String(),
 			GrantTypes: []goidc.GrantType{
-				goidc.AuthorizationCodeGrant,
-				goidc.RefreshTokenGrant,
+				goidc.GrantAuthorizationCode,
+				goidc.GrantRefreshToken,
 			},
 			ResponseTypes: []goidc.ResponseType{
-				goidc.CodeResponse,
+				goidc.ResponseTypeCode,
 			},
 			PublicJWKS: &clientTwoPublicJWKS,
 		},

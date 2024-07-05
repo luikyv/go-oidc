@@ -44,7 +44,7 @@ func ExtractJARFromRequestObject(
 	}
 
 	if !IsJWS(reqObject) {
-		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.InvalidRequest, "the request object is not a JWS")
+		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "the request object is not a JWS")
 	}
 
 	return extractJARFromSignedRequestObject(ctx, reqObject, client)
@@ -60,22 +60,22 @@ func extractSignedRequestObjectFromEncryptedRequestObject(
 ) {
 	encryptedReqObject, err := jose.ParseEncrypted(reqObject, ctx.GetJARKeyEncryptionAlgorithms(), ctx.JARContentEncryptionAlgorithms)
 	if err != nil {
-		return "", goidc.NewOAuthError(goidc.InvalidResquestObject, "could not parse the encrypted request object")
+		return "", goidc.NewOAuthError(goidc.ErrorCodeInvalidResquestObject, "could not parse the encrypted request object")
 	}
 
 	keyID := encryptedReqObject.Header.KeyID
 	if keyID == "" {
-		return "", goidc.NewOAuthError(goidc.InvalidResquestObject, "invalid JWE key ID")
+		return "", goidc.NewOAuthError(goidc.ErrorCodeInvalidResquestObject, "invalid JWE key ID")
 	}
 
 	jwk, ok := ctx.GetPrivateKey(keyID)
-	if !ok || jwk.GetUsage() != string(goidc.KeyEncryptionUsage) {
-		return "", goidc.NewOAuthError(goidc.InvalidResquestObject, "invalid JWK used for encryption")
+	if !ok || jwk.GetUsage() != string(goidc.KeyUsageEncryption) {
+		return "", goidc.NewOAuthError(goidc.ErrorCodeInvalidResquestObject, "invalid JWK used for encryption")
 	}
 
 	decryptedReqObject, err := encryptedReqObject.Decrypt(jwk.GetKey())
 	if err != nil {
-		return "", goidc.NewOAuthError(goidc.InvalidResquestObject, err.Error())
+		return "", goidc.NewOAuthError(goidc.ErrorCodeInvalidResquestObject, err.Error())
 	}
 
 	return string(decryptedReqObject), nil
@@ -95,29 +95,29 @@ func extractJARFromSignedRequestObject(
 	}
 	parsedToken, err := jwt.ParseSigned(reqObject, jarAlgorithms)
 	if err != nil {
-		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.InvalidResquestObject, err.Error())
+		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidResquestObject, err.Error())
 	}
 
 	// Verify that the assertion indicates the key ID.
 	if len(parsedToken.Headers) != 1 || parsedToken.Headers[0].KeyID == "" {
-		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.InvalidResquestObject, "invalid kid header")
+		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidResquestObject, "invalid kid header")
 	}
 
 	// Verify that the key ID belongs to the client.
 	jwk, oauthErr := client.GetJWK(parsedToken.Headers[0].KeyID)
 	if oauthErr != nil {
-		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.InvalidResquestObject, oauthErr.Error())
+		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidResquestObject, oauthErr.Error())
 	}
 
 	var claims jwt.Claims
 	var jarReq AuthorizationRequest
 	if err := parsedToken.Claims(jwk.GetKey(), &claims, &jarReq); err != nil {
-		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.InvalidResquestObject, "could not extract claims")
+		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidResquestObject, "could not extract claims")
 	}
 
 	// Validate that the "exp" claims is present and it's not too far in the future.
 	if claims.Expiry == nil || int(time.Until(claims.Expiry.Time()).Seconds()) > ctx.JARLifetimeSecs {
-		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.InvalidResquestObject, "invalid exp claim")
+		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidResquestObject, "invalid exp claim")
 	}
 
 	err = claims.ValidateWithLeeway(jwt.Expected{
@@ -125,7 +125,7 @@ func extractJARFromSignedRequestObject(
 		AnyAudience: []string{ctx.Host},
 	}, time.Duration(0))
 	if err != nil {
-		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.InvalidResquestObject, "invalid claims")
+		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidResquestObject, "invalid claims")
 	}
 
 	return jarReq, nil
@@ -138,59 +138,59 @@ func ValidateDPOPJWT(
 ) goidc.OAuthError {
 	parsedDPOPJWT, err := jwt.ParseSigned(dpopJWT, ctx.DPOPSignatureAlgorithms)
 	if err != nil {
-		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid dpop")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid dpop")
 	}
 
 	if len(parsedDPOPJWT.Headers) != 1 {
-		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid dpop")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid dpop")
 	}
 
 	if parsedDPOPJWT.Headers[0].ExtraHeaders["typ"] != "dpop+jwt" {
-		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid typ header. it should be dpop+jwt")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid typ header. it should be dpop+jwt")
 	}
 
 	jwk := parsedDPOPJWT.Headers[0].JSONWebKey
 	if jwk == nil || !jwk.Valid() || !jwk.IsPublic() {
-		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid jwk header")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid jwk header")
 	}
 
 	var claims jwt.Claims
 	var dpopClaims DPOPJWTClaims
 	if err := parsedDPOPJWT.Claims(jwk.Key, &claims, &dpopClaims); err != nil {
-		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid dpop")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid dpop")
 	}
 
 	// Validate that the "iat" claim is present and it is not too far in the past.
 	if claims.IssuedAt == nil || int(time.Since(claims.IssuedAt.Time()).Seconds()) > ctx.DPOPLifetimeSecs {
-		return goidc.NewOAuthError(goidc.UnauthorizedClient, "invalid dpop")
+		return goidc.NewOAuthError(goidc.ErrorCodeUnauthorizedClient, "invalid dpop")
 	}
 
 	if claims.ID == "" {
-		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid jti claim")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid jti claim")
 	}
 
 	if dpopClaims.HTTPMethod != ctx.GetRequestMethod() {
-		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid htm claim")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid htm claim")
 	}
 
 	// The query and fragment components of the "htu" must be ignored.
 	// Also, htu should be case-insensitive.
 	httpURI, err := GetURLWithoutParams(strings.ToLower(dpopClaims.HTTPURI))
 	if err != nil || !slices.Contains(ctx.GetAudiences(), httpURI) {
-		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid htu claim")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid htu claim")
 	}
 
 	if expectedDPOPClaims.AccessToken != "" && dpopClaims.AccessTokenHash != GenerateBase64URLSHA256Hash(expectedDPOPClaims.AccessToken) {
-		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid ath claim")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid ath claim")
 	}
 
 	if expectedDPOPClaims.JWKThumbprint != "" && GenerateJWKThumbprint(dpopJWT, ctx.DPOPSignatureAlgorithms) != expectedDPOPClaims.JWKThumbprint {
-		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid jwk thumbprint")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid jwk thumbprint")
 	}
 
 	err = claims.ValidateWithLeeway(jwt.Expected{}, time.Duration(0))
 	if err != nil {
-		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid dpop")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid dpop")
 	}
 
 	return nil
@@ -206,29 +206,29 @@ func GetValidTokenClaims(
 	parsedToken, err := jwt.ParseSigned(token, ctx.GetSignatureAlgorithms())
 	if err != nil {
 		// If the token is not a valid JWT, we'll treat it as an opaque token.
-		return nil, goidc.NewOAuthError(goidc.InvalidRequest, "could not parse the token")
+		return nil, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "could not parse the token")
 	}
 
 	if len(parsedToken.Headers) != 1 || parsedToken.Headers[0].KeyID == "" {
-		return nil, goidc.NewOAuthError(goidc.InvalidRequest, "invalid header kid")
+		return nil, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid header kid")
 	}
 
 	keyID := parsedToken.Headers[0].KeyID
 	publicKey, ok := ctx.GetPublicKey(keyID)
-	if !ok || publicKey.GetUsage() != string(goidc.KeySignatureUsage) {
-		return nil, goidc.NewOAuthError(goidc.AccessDenied, "invalid token")
+	if !ok || publicKey.GetUsage() != string(goidc.KeyUsageSignature) {
+		return nil, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "invalid token")
 	}
 
 	var claims jwt.Claims
 	var rawClaims map[string]any
 	if err := parsedToken.Claims(publicKey.GetKey(), &claims, &rawClaims); err != nil {
-		return nil, goidc.NewOAuthError(goidc.AccessDenied, "invalid token")
+		return nil, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "invalid token")
 	}
 
 	if err := claims.ValidateWithLeeway(jwt.Expected{
 		Issuer: ctx.Host,
 	}, time.Duration(0)); err != nil {
-		return nil, goidc.NewOAuthError(goidc.AccessDenied, "invalid token")
+		return nil, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "invalid token")
 	}
 
 	return rawClaims, nil
@@ -244,9 +244,9 @@ func GetTokenID(ctx Context, token string) (string, goidc.OAuthError) {
 		return "", err
 	}
 
-	tokenID := claims[string(goidc.TokenIDClaim)]
+	tokenID := claims[string(goidc.ClaimTokenID)]
 	if tokenID == nil {
-		return "", goidc.NewOAuthError(goidc.AccessDenied, "invalid token")
+		return "", goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "invalid token")
 	}
 
 	return tokenID.(string), nil
@@ -319,17 +319,17 @@ func EncryptJWT(
 		(&jose.EncrypterOptions{}).WithType("jwt").WithContentType("jwt"),
 	)
 	if err != nil {
-		return "", goidc.NewOAuthError(goidc.InternalError, err.Error())
+		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
 	encryptedUserInfoJWTJWE, err := encrypter.Encrypt([]byte(jwtString))
 	if err != nil {
-		return "", goidc.NewOAuthError(goidc.InternalError, err.Error())
+		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
 	encryptedUserInfoString, err := encryptedUserInfoJWTJWE.CompactSerialize()
 	if err != nil {
-		return "", goidc.NewOAuthError(goidc.InternalError, err.Error())
+		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
 	return encryptedUserInfoString, nil
@@ -411,9 +411,9 @@ func GetURLWithoutParams(u string) (string, error) {
 
 func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod goidc.CodeChallengeMethod) bool {
 	switch codeChallengeMethod {
-	case goidc.PlainCodeChallengeMethod:
+	case goidc.CodeChallengeMethodPlain:
 		return codeChallenge == codeVerifier
-	case goidc.SHA256CodeChallengeMethod:
+	case goidc.CodeChallengeMethodSHA256:
 		return codeChallenge == GenerateBase64URLSHA256Hash(codeVerifier)
 	}
 
@@ -446,7 +446,7 @@ func AllEquals[T comparable](values []T) bool {
 }
 
 func ScopesContainsOpenID(scopes string) bool {
-	return slices.Contains(goidc.SplitStringWithSpaces(scopes), goidc.OpenIDScope)
+	return slices.Contains(goidc.SplitStringWithSpaces(scopes), goidc.ScopeOpenID.ID)
 }
 
 // Generate a JWK thumbprint for a valid DPoP JWT.

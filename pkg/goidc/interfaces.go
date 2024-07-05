@@ -16,6 +16,7 @@ type Context interface {
 	RenderHTML(html string, params any) error
 	RenderHTMLTemplate(tmpl *template.Template, params any) error
 	GetLogger() *slog.Logger
+	GetScopes() Scopes
 	context.Context
 }
 

@@ -22,7 +22,7 @@ func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 		ClientAuthnRequest: utils.ClientAuthnRequest{
 			ClientID: client.ID,
 		},
-		GrantType: goidc.ClientCredentialsGrant,
+		GrantType: goidc.GrantClientCredentials,
 		Scopes:    "scope1",
 	}
 

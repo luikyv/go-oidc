@@ -24,7 +24,7 @@ func CreateClient(
 
 	newClient := newClient(dynamicClient)
 	if err := ctx.CreateOrUpdateClient(newClient); err != nil {
-		return utils.DynamicClientResponse{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
+		return utils.DynamicClientResponse{}, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
 	return utils.DynamicClientResponse{
@@ -60,7 +60,7 @@ func UpdateClient(
 
 	updatedClient := newClient(dynamicClient)
 	if err := ctx.CreateOrUpdateClient(updatedClient); err != nil {
-		return utils.DynamicClientResponse{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
+		return utils.DynamicClientResponse{}, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
 	return utils.DynamicClientResponse{
@@ -102,7 +102,7 @@ func DeleteClient(
 	}
 
 	if err := ctx.DeleteClient(dynamicClientRequest.ID); err != nil {
-		return goidc.NewOAuthError(goidc.InternalError, err.Error())
+		return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 	return nil
 }

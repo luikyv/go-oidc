@@ -3,6 +3,7 @@ package utils
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -21,27 +22,32 @@ const (
 	TestKeyID              string = "rsa256_key"
 )
 
+var (
+	Scope1 = goidc.NewScope("scope1")
+	Scope2 = goidc.NewScope("scope2")
+)
+
 func GetTestClient() goidc.Client {
 	return goidc.Client{
 		ID: TestClientID,
 		ClientMetaInfo: goidc.ClientMetaInfo{
-			AuthnMethod:  goidc.NoneAuthn,
+			AuthnMethod:  goidc.ClientAuthnNone,
 			RedirectURIS: []string{"https://example.com"},
-			Scopes:       "scope1 scope2 " + goidc.OpenIDScope,
+			Scopes:       fmt.Sprintf("%s %s %s", Scope1, Scope2, goidc.ScopeOpenID),
 			GrantTypes: []goidc.GrantType{
-				goidc.AuthorizationCodeGrant,
-				goidc.ClientCredentialsGrant,
-				goidc.ImplicitGrant,
-				goidc.RefreshTokenGrant,
+				goidc.GrantAuthorizationCode,
+				goidc.GrantClientCredentials,
+				goidc.GrantImplicit,
+				goidc.GrantRefreshToken,
 			},
 			ResponseTypes: []goidc.ResponseType{
-				goidc.CodeResponse,
-				goidc.IDTokenResponse,
-				goidc.TokenResponse,
-				goidc.CodeAndIDTokenResponse,
-				goidc.CodeAndTokenResponse,
-				goidc.IDTokenAndTokenResponse,
-				goidc.CodeAndIDTokenAndTokenResponse,
+				goidc.ResponseTypeCode,
+				goidc.ResponseTypeIDToken,
+				goidc.ResponseTypeToken,
+				goidc.ResponseTypeCodeAndIDToken,
+				goidc.ResponseTypeCodeAndToken,
+				goidc.ResponseTypeIDTokenAndToken,
+				goidc.ResponseTypeCodeAndIDTokenAndToken,
 			},
 		},
 	}
@@ -51,11 +57,12 @@ func GetTestInMemoryContext() Context {
 	privateJWK := GetTestPrivateRS256JWK(TestKeyID)
 	return Context{
 		Configuration: Configuration{
-			Profile:                       goidc.OpenIDProfile,
+			Profile:                       goidc.ProfileOpenID,
 			Host:                          TestHost,
 			ClientManager:                 inmemory.NewInMemoryClientManager(),
 			GrantSessionManager:           inmemory.NewInMemoryGrantSessionManager(),
 			AuthnSessionManager:           inmemory.NewInMemoryAuthnSessionManager(),
+			Scopes:                        []goidc.Scope{goidc.ScopeOpenID, Scope1, Scope2},
 			PrivateJWKS:                   goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{privateJWK}},
 			DefaultTokenSignatureKeyID:    privateJWK.GetKeyID(),
 			DefaultUserInfoSignatureKeyID: privateJWK.GetKeyID(),
@@ -63,7 +70,7 @@ func GetTestInMemoryContext() Context {
 			GetTokenOptions: func(client goidc.Client, scopes string) (goidc.TokenOptions, error) {
 				return goidc.TokenOptions{
 					TokenLifetimeSecs: 60,
-					TokenFormat:       goidc.JWTTokenFormat,
+					TokenFormat:       goidc.TokenFormatJWT,
 				}, nil
 			},
 			AuthenticationSessionTimeoutSecs: 60,
@@ -77,8 +84,9 @@ func GetTestInMemoryContext() Context {
 func GetDummyTestContext() Context {
 	return Context{
 		Configuration: Configuration{
-			Profile: goidc.OpenIDProfile,
+			Profile: goidc.ProfileOpenID,
 			Host:    TestHost,
+			Scopes:  []goidc.Scope{goidc.ScopeOpenID, Scope1, Scope2},
 		},
 		Request: &http.Request{},
 		Logger:  slog.Default(),
@@ -111,7 +119,7 @@ func GetTestPrivateRS256JWK(keyID string) goidc.JSONWebKey {
 		Key:       privateKey,
 		KeyID:     keyID,
 		Algorithm: string(jose.RS256),
-		Use:       string(goidc.KeySignatureUsage),
+		Use:       string(goidc.KeyUsageSignature),
 	})
 }
 
@@ -121,7 +129,7 @@ func GetTestPrivatePS256JWK(keyID string) goidc.JSONWebKey {
 		Key:       privateKey,
 		KeyID:     keyID,
 		Algorithm: string(jose.PS256),
-		Use:       string(goidc.KeySignatureUsage),
+		Use:       string(goidc.KeyUsageSignature),
 	})
 }
 

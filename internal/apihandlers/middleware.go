@@ -75,11 +75,11 @@ func NewAddCertificateHeaderMiddlewareHandler(next http.Handler) AddClientCertif
 }
 
 func (handler AddClientCertificateHeaderMiddlewareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	certHeader := goidc.InsecureClientCertificateHeader
+	certHeader := goidc.HeaderInsecureClientCertificate
 	// If a chain was built linking the client certificate and one of the trusted certificate authorities,
 	// consider the certificate secure.
 	if len(r.TLS.VerifiedChains) > 0 {
-		certHeader = goidc.SecureClientCertificateHeader
+		certHeader = goidc.HeaderSecureClientCertificate
 	}
 
 	// Transmit the client certificate in a header.

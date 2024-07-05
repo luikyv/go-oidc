@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"net/http"
-	"slices"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/goidc/internal/apihandlers"
@@ -40,15 +39,15 @@ func NewProvider(
 	provider := &OpenIDProvider{
 		config: utils.Configuration{
 			Host:                host,
-			Profile:             goidc.OpenIDProfile,
+			Profile:             goidc.ProfileOpenID,
 			ClientManager:       clientManager,
 			AuthnSessionManager: authnSessionManager,
 			GrantSessionManager: grantSessionManager,
-			Scopes:              []string{string(goidc.OpenIDScope)},
+			Scopes:              []goidc.Scope{goidc.ScopeOpenID},
 			GetTokenOptions: func(client goidc.Client, scopes string) (goidc.TokenOptions, error) {
 				return goidc.TokenOptions{
 					TokenLifetimeSecs: goidc.DefaultTokenLifetimeSecs,
-					TokenFormat:       goidc.JWTTokenFormat,
+					TokenFormat:       goidc.TokenFormatJWT,
 				}, nil
 			},
 			PrivateJWKS:                   privateJWKS,
@@ -58,20 +57,20 @@ func NewProvider(
 			IDTokenExpiresInSecs:          600,
 			UserClaims:                    []string{},
 			GrantTypes: []goidc.GrantType{
-				goidc.AuthorizationCodeGrant,
+				goidc.GrantAuthorizationCode,
 			},
-			ResponseTypes: []goidc.ResponseType{goidc.CodeResponse},
+			ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCode},
 			ResponseModes: []goidc.ResponseMode{
-				goidc.QueryResponseMode,
-				goidc.FragmentResponseMode,
-				goidc.FormPostResponseMode,
+				goidc.ResponseModeQuery,
+				goidc.ResponseModeFragment,
+				goidc.ResponseModeFormPost,
 			},
 			ClientAuthnMethods:               []goidc.ClientAuthnType{},
 			DPOPSignatureAlgorithms:          []jose.SignatureAlgorithm{},
-			SubjectIdentifierTypes:           []goidc.SubjectIdentifierType{goidc.PublicSubjectIdentifier},
-			ClaimTypes:                       []goidc.ClaimType{goidc.NormalClaimType},
+			SubjectIdentifierTypes:           []goidc.SubjectIdentifierType{goidc.SubjectIdentifierPublic},
+			ClaimTypes:                       []goidc.ClaimType{goidc.ClaimTypeNormal},
 			AuthenticationSessionTimeoutSecs: goidc.DefaultAuthenticationSessionTimeoutSecs,
-			CorrelationIDHeader:              goidc.CorrelationIDHeader,
+			CorrelationIDHeader:              goidc.HeaderCorrelationID,
 		},
 	}
 
@@ -138,7 +137,7 @@ func (provider *OpenIDProvider) EnableRefreshTokenGrantType(
 	refreshTokenLifetimeSecs int,
 	shouldRotateTokens bool,
 ) {
-	provider.config.GrantTypes = append(provider.config.GrantTypes, goidc.RefreshTokenGrant)
+	provider.config.GrantTypes = append(provider.config.GrantTypes, goidc.GrantRefreshToken)
 	provider.config.RefreshTokenLifetimeSecs = refreshTokenLifetimeSecs
 	provider.config.ShouldRotateRefreshTokens = shouldRotateTokens
 }
@@ -155,23 +154,24 @@ func (provider *OpenIDProvider) SetTokenOptions(getTokenOpts goidc.GetTokenOptio
 
 // Enable the implicit grant type and the associated response types.
 func (provider *OpenIDProvider) EnableImplicitGrantType() {
-	provider.config.GrantTypes = append(provider.config.GrantTypes, goidc.ImplicitGrant)
+	provider.config.GrantTypes = append(provider.config.GrantTypes, goidc.GrantImplicit)
 	provider.config.ResponseTypes = append(
 		provider.config.ResponseTypes,
-		goidc.TokenResponse,
-		goidc.IDTokenResponse,
-		goidc.IDTokenAndTokenResponse,
-		goidc.CodeAndIDTokenResponse,
-		goidc.CodeAndTokenResponse,
-		goidc.CodeAndIDTokenAndTokenResponse,
+		goidc.ResponseTypeToken,
+		goidc.ResponseTypeIDToken,
+		goidc.ResponseTypeIDTokenAndToken,
+		goidc.ResponseTypeCodeAndIDToken,
+		goidc.ResponseTypeCodeAndToken,
+		goidc.ResponseTypeCodeAndIDTokenAndToken,
 	)
 }
 
-func (provider *OpenIDProvider) SetScopes(scopes ...string) {
-	if slices.Contains(scopes, string(goidc.OpenIDScope)) {
+func (provider *OpenIDProvider) SetScopes(scopes ...goidc.Scope) {
+	// The scope openid is required to be among the scopes.
+	if goidc.Scopes(scopes).ContainsOpenID() {
 		provider.config.Scopes = scopes
 	} else {
-		provider.config.Scopes = append(scopes, string(goidc.OpenIDScope))
+		provider.config.Scopes = append(scopes, goidc.ScopeOpenID)
 	}
 }
 
@@ -233,10 +233,10 @@ func (provider *OpenIDProvider) EnableJWTSecuredAuthorizationResponseMode(
 	provider.config.JARMIsEnabled = true
 	provider.config.ResponseModes = append(
 		provider.config.ResponseModes,
-		goidc.JWTResponseMode,
-		goidc.QueryJWTResponseMode,
-		goidc.FragmentJWTResponseMode,
-		goidc.FormPostJWTResponseMode,
+		goidc.ResponseModeJWT,
+		goidc.ResponseModeQueryJWT,
+		goidc.ResponseModeFragmentJWT,
+		goidc.ResponseModeFormPostJWT,
 	)
 	provider.config.JARMLifetimeSecs = jarmLifetimeSecs
 	provider.config.DefaultJARMSignatureKeyID = defaultJARMSignatureKeyID
@@ -267,14 +267,14 @@ func (provider *OpenIDProvider) EnableJWTSecuredAuthorizationResponseModeEncrypt
 func (provider *OpenIDProvider) EnableBasicSecretClientAuthn() {
 	provider.config.ClientAuthnMethods = append(
 		provider.config.ClientAuthnMethods,
-		goidc.ClientSecretBasicAuthn,
+		goidc.ClientAuthnSecretBasic,
 	)
 }
 
 func (provider *OpenIDProvider) EnableSecretPostClientAuthn() {
 	provider.config.ClientAuthnMethods = append(
 		provider.config.ClientAuthnMethods,
-		goidc.ClientSecretPostAuthn,
+		goidc.ClientAuthnSecretPost,
 	)
 }
 
@@ -282,7 +282,7 @@ func (provider *OpenIDProvider) EnablePrivateKeyJWTClientAuthn(
 	assertionLifetimeSecs int,
 	signatureAlgorithms ...goidc.SignatureAlgorithm,
 ) {
-	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, goidc.PrivateKeyJWTAuthn)
+	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, goidc.ClientAuthnPrivateKeyJWT)
 	provider.config.PrivateKeyJWTAssertionLifetimeSecs = assertionLifetimeSecs
 	for _, signatureAlgorithm := range signatureAlgorithms {
 		provider.config.PrivateKeyJWTSignatureAlgorithms = append(
@@ -296,7 +296,7 @@ func (provider *OpenIDProvider) EnableClientSecretJWTAuthn(
 	assertionLifetimeSecs int,
 	signatureAlgorithms ...goidc.SignatureAlgorithm,
 ) {
-	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, goidc.ClientSecretBasicAuthn)
+	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, goidc.ClientAuthnSecretBasic)
 	provider.config.ClientSecretJWTAssertionLifetimeSecs = assertionLifetimeSecs
 	for _, signatureAlgorithm := range signatureAlgorithms {
 		provider.config.ClientSecretJWTSignatureAlgorithms = append(
@@ -307,11 +307,11 @@ func (provider *OpenIDProvider) EnableClientSecretJWTAuthn(
 }
 
 func (provider *OpenIDProvider) EnableTLSClientAuthn() {
-	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, goidc.TLSAuthn)
+	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, goidc.ClientAuthnTLS)
 }
 
 func (provider *OpenIDProvider) EnableSelfSignedTLSClientAuthn() {
-	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, goidc.SelfSignedTLSAuthn)
+	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, goidc.ClientAuthnSelfSignedTLS)
 }
 
 func (provider *OpenIDProvider) EnableMTLS(mtlsHost string) {
@@ -324,7 +324,7 @@ func (provider *OpenIDProvider) EnableTLSBoundTokens() {
 }
 
 func (provider *OpenIDProvider) EnableNoneClientAuthn() {
-	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, goidc.NoneAuthn)
+	provider.config.ClientAuthnMethods = append(provider.config.ClientAuthnMethods, goidc.ClientAuthnNone)
 }
 
 func (provider *OpenIDProvider) EnableIssuerResponseParameter() {
@@ -373,7 +373,7 @@ func (provider *OpenIDProvider) EnableTokenIntrospection(
 ) {
 	provider.config.IntrospectionIsEnabled = true
 	provider.config.IntrospectionClientAuthnMethods = clientAuthnMethods
-	provider.config.GrantTypes = append(provider.config.GrantTypes, goidc.IntrospectionGrant)
+	provider.config.GrantTypes = append(provider.config.GrantTypes, goidc.GrantIntrospection)
 }
 
 // Enable PKCE.
@@ -420,7 +420,7 @@ func (provider *OpenIDProvider) SetCorrelationIDHeader(header string) {
 // The server will only be able to run if it is configured respecting the FAPI 2.0 profile.
 // This will also change some of the behavior of the server during runtime to be compliant with the FAPI 2.0.
 func (provider *OpenIDProvider) SetFAPI2Profile() {
-	provider.config.Profile = goidc.FAPI2Profile
+	provider.config.Profile = goidc.ProfileFAPI2
 }
 
 // Create a static client.
@@ -514,7 +514,7 @@ func (provider *OpenIDProvider) getServerHandler() http.Handler {
 	serverHandler := http.NewServeMux()
 
 	serverHandler.HandleFunc(
-		"GET "+string(goidc.JSONWebKeySetEndpoint),
+		"GET "+string(goidc.EndpointJSONWebKeySet),
 		func(w http.ResponseWriter, r *http.Request) {
 			apihandlers.HandleJWKSRequest(utils.NewContext(provider.config, r, w))
 		},
@@ -522,7 +522,7 @@ func (provider *OpenIDProvider) getServerHandler() http.Handler {
 
 	if provider.config.PARIsEnabled {
 		serverHandler.HandleFunc(
-			"POST "+string(goidc.PushedAuthorizationRequestEndpoint),
+			"POST "+string(goidc.EndpointPushedAuthorizationRequest),
 			func(w http.ResponseWriter, r *http.Request) {
 				apihandlers.HandleParRequest(utils.NewContext(provider.config, r, w))
 			},
@@ -530,42 +530,42 @@ func (provider *OpenIDProvider) getServerHandler() http.Handler {
 	}
 
 	serverHandler.HandleFunc(
-		"GET "+string(goidc.AuthorizationEndpoint),
+		"GET "+string(goidc.EndpointAuthorization),
 		func(w http.ResponseWriter, r *http.Request) {
 			apihandlers.HandleAuthorizeRequest(utils.NewContext(provider.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
-		"POST "+string(goidc.AuthorizationEndpoint)+"/{callback}",
+		"POST "+string(goidc.EndpointAuthorization)+"/{callback}",
 		func(w http.ResponseWriter, r *http.Request) {
 			apihandlers.HandleAuthorizeCallbackRequest(utils.NewContext(provider.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
-		"POST "+string(goidc.TokenEndpoint),
+		"POST "+string(goidc.EndpointToken),
 		func(w http.ResponseWriter, r *http.Request) {
 			apihandlers.HandleTokenRequest(utils.NewContext(provider.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
-		"GET "+string(goidc.WellKnownEndpoint),
+		"GET "+string(goidc.EndpointWellKnown),
 		func(w http.ResponseWriter, r *http.Request) {
 			apihandlers.HandleWellKnownRequest(utils.NewContext(provider.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
-		"GET "+string(goidc.UserInfoEndpoint),
+		"GET "+string(goidc.EndpointUserInfo),
 		func(w http.ResponseWriter, r *http.Request) {
 			apihandlers.HandleUserInfoRequest(utils.NewContext(provider.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
-		"POST "+string(goidc.UserInfoEndpoint),
+		"POST "+string(goidc.EndpointUserInfo),
 		func(w http.ResponseWriter, r *http.Request) {
 			apihandlers.HandleUserInfoRequest(utils.NewContext(provider.config, r, w))
 		},
@@ -573,28 +573,28 @@ func (provider *OpenIDProvider) getServerHandler() http.Handler {
 
 	if provider.config.DCRIsEnabled {
 		serverHandler.HandleFunc(
-			"POST "+string(goidc.DynamicClientEndpoint),
+			"POST "+string(goidc.EndpointDynamicClient),
 			func(w http.ResponseWriter, r *http.Request) {
 				apihandlers.HandleDynamicClientCreation(utils.NewContext(provider.config, r, w))
 			},
 		)
 
 		serverHandler.HandleFunc(
-			"PUT "+string(goidc.DynamicClientEndpoint)+"/{client_id}",
+			"PUT "+string(goidc.EndpointDynamicClient)+"/{client_id}",
 			func(w http.ResponseWriter, r *http.Request) {
 				apihandlers.HandleDynamicClientUpdate(utils.NewContext(provider.config, r, w))
 			},
 		)
 
 		serverHandler.HandleFunc(
-			"GET "+string(goidc.DynamicClientEndpoint)+"/{client_id}",
+			"GET "+string(goidc.EndpointDynamicClient)+"/{client_id}",
 			func(w http.ResponseWriter, r *http.Request) {
 				apihandlers.HandleDynamicClientRetrieve(utils.NewContext(provider.config, r, w))
 			},
 		)
 
 		serverHandler.HandleFunc(
-			"DELETE "+string(goidc.DynamicClientEndpoint)+"/{client_id}",
+			"DELETE "+string(goidc.EndpointDynamicClient)+"/{client_id}",
 			func(w http.ResponseWriter, r *http.Request) {
 				apihandlers.HandleDynamicClientDelete(utils.NewContext(provider.config, r, w))
 			},
@@ -603,7 +603,7 @@ func (provider *OpenIDProvider) getServerHandler() http.Handler {
 
 	if provider.config.IntrospectionIsEnabled {
 		serverHandler.HandleFunc(
-			"POST "+string(goidc.TokenIntrospectionEndpoint),
+			"POST "+string(goidc.EndpointTokenIntrospection),
 			func(w http.ResponseWriter, r *http.Request) {
 				apihandlers.HandleIntrospectionRequest(utils.NewContext(provider.config, r, w))
 			},
@@ -617,21 +617,21 @@ func (provider *OpenIDProvider) getMTLSServerHandler() http.Handler {
 	serverHandler := http.NewServeMux()
 
 	serverHandler.HandleFunc(
-		"POST "+string(goidc.TokenEndpoint),
+		"POST "+string(goidc.EndpointToken),
 		func(w http.ResponseWriter, r *http.Request) {
 			apihandlers.HandleTokenRequest(utils.NewContext(provider.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
-		"GET "+string(goidc.UserInfoEndpoint),
+		"GET "+string(goidc.EndpointUserInfo),
 		func(w http.ResponseWriter, r *http.Request) {
 			apihandlers.HandleUserInfoRequest(utils.NewContext(provider.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
-		"POST "+string(goidc.UserInfoEndpoint),
+		"POST "+string(goidc.EndpointUserInfo),
 		func(w http.ResponseWriter, r *http.Request) {
 			apihandlers.HandleUserInfoRequest(utils.NewContext(provider.config, r, w))
 		},
@@ -639,7 +639,7 @@ func (provider *OpenIDProvider) getMTLSServerHandler() http.Handler {
 
 	if provider.config.PARIsEnabled {
 		serverHandler.HandleFunc(
-			"POST "+string(goidc.PushedAuthorizationRequestEndpoint),
+			"POST "+string(goidc.EndpointPushedAuthorizationRequest),
 			func(w http.ResponseWriter, r *http.Request) {
 				apihandlers.HandleParRequest(utils.NewContext(provider.config, r, w))
 			},
@@ -648,7 +648,7 @@ func (provider *OpenIDProvider) getMTLSServerHandler() http.Handler {
 
 	if provider.config.IntrospectionIsEnabled {
 		serverHandler.HandleFunc(
-			"POST "+string(goidc.TokenIntrospectionEndpoint),
+			"POST "+string(goidc.EndpointTokenIntrospection),
 			func(w http.ResponseWriter, r *http.Request) {
 				apihandlers.HandleIntrospectionRequest(utils.NewContext(provider.config, r, w))
 			},

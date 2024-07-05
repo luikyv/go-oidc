@@ -26,7 +26,7 @@ func IntrospectToken(
 
 	resp := getTokenIntrospectionInfo(ctx, req.Token)
 	if !resp.IsActive && resp.ClientID != client.ID {
-		return utils.TokenIntrospectionInfo{}, goidc.NewOAuthError(goidc.InvalidClient, "invalid token")
+		return utils.TokenIntrospectionInfo{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "invalid token")
 	}
 
 	return utils.TokenIntrospectionInfo{}, nil

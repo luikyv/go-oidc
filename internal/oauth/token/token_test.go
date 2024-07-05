@@ -21,7 +21,7 @@ func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 		ClientAuthnRequest: utils.ClientAuthnRequest{
 			ClientID: "invalid_client_id",
 		},
-		GrantType: goidc.ClientCredentialsGrant,
+		GrantType: goidc.GrantClientCredentials,
 		Scopes:    "scope1",
 	})
 
@@ -35,7 +35,7 @@ func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
-	client.AuthnMethod = goidc.ClientSecretPostAuthn
+	client.AuthnMethod = goidc.ClientAuthnSecretPost
 
 	ctx := utils.GetTestInMemoryContext()
 	if err := ctx.CreateOrUpdateClient(client); err != nil {
@@ -48,7 +48,7 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 			ClientID:     client.ID,
 			ClientSecret: "invalid_password",
 		},
-		GrantType: goidc.ClientCredentialsGrant,
+		GrantType: goidc.GrantClientCredentials,
 		Scopes:    "scope1",
 	})
 
@@ -58,7 +58,7 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 		t.Error("the client should not be authenticated")
 		return
 	}
-	if oauthErr.ErrorCode != goidc.InvalidClient {
+	if oauthErr.ErrorCode != goidc.ErrorCodeInvalidClient {
 		t.Errorf("invalid error code: %s", oauthErr.ErrorCode)
 		return
 	}
@@ -73,7 +73,7 @@ func TestHandleGrantCreationWithDPOP(t *testing.T) {
 	ctx.DPOPIsEnabled = true
 	ctx.DPOPLifetimeSecs = 9999999999999
 	ctx.DPOPSignatureAlgorithms = []jose.SignatureAlgorithm{jose.ES256}
-	ctx.Request.Header.Set(goidc.DPOPHeader, "eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiYVRtMk95eXFmaHFfZk5GOVVuZXlrZG0yX0dCZnpZVldDNEI1Wlo1SzNGUSIsInkiOiI4eFRhUERFTVRtNXM1d1MzYmFvVVNNcU01R0VJWDFINzMwX1hqV2lRaGxRIn19.eyJqdGkiOiItQndDM0VTYzZhY2MybFRjIiwiaHRtIjoiUE9TVCIsImh0dSI6Imh0dHBzOi8vZXhhbXBsZS5jb20vdG9rZW4iLCJpYXQiOjE1NjIyNjUyOTZ9.AzzSCVYIimNZyJQefZq7cF252PukDvRrxMqrrcH6FFlHLvpXyk9j8ybtS36GHlnyH_uuy2djQphfyHGeDfxidQ")
+	ctx.Request.Header.Set(goidc.HeaderDPOP, "eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiYVRtMk95eXFmaHFfZk5GOVVuZXlrZG0yX0dCZnpZVldDNEI1Wlo1SzNGUSIsInkiOiI4eFRhUERFTVRtNXM1d1MzYmFvVVNNcU01R0VJWDFINzMwX1hqV2lRaGxRIn19.eyJqdGkiOiItQndDM0VTYzZhY2MybFRjIiwiaHRtIjoiUE9TVCIsImh0dSI6Imh0dHBzOi8vZXhhbXBsZS5jb20vdG9rZW4iLCJpYXQiOjE1NjIyNjUyOTZ9.AzzSCVYIimNZyJQefZq7cF252PukDvRrxMqrrcH6FFlHLvpXyk9j8ybtS36GHlnyH_uuy2djQphfyHGeDfxidQ")
 	if err := ctx.CreateOrUpdateClient(client); err != nil {
 		panic(err)
 	}
@@ -83,7 +83,7 @@ func TestHandleGrantCreationWithDPOP(t *testing.T) {
 		ClientAuthnRequest: utils.ClientAuthnRequest{
 			ClientID: client.ID,
 		},
-		GrantType: goidc.ClientCredentialsGrant,
+		GrantType: goidc.GrantClientCredentials,
 		Scopes:    "scope1",
 	}
 

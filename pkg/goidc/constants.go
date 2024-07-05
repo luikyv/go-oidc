@@ -47,8 +47,8 @@ var FAPIAllowedCipherSuites []uint16 = []uint16{
 type Profile string
 
 const (
-	OpenIDProfile Profile = "oidc_profile"
-	FAPI2Profile  Profile = "fapi2_profile"
+	ProfileOpenID Profile = "oidc_profile"
+	ProfileFAPI2  Profile = "fapi2_profile"
 )
 
 type ContextKey string
@@ -58,23 +58,23 @@ const CorrelationIDKey ContextKey = "correlation_id"
 type GrantType string
 
 const (
-	ClientCredentialsGrant GrantType = "client_credentials"
-	AuthorizationCodeGrant GrantType = "authorization_code"
-	RefreshTokenGrant      GrantType = "refresh_token"
-	ImplicitGrant          GrantType = "implicit"
-	IntrospectionGrant     GrantType = "urn:goidc:oauth2:grant_type:token_intropection"
+	GrantClientCredentials GrantType = "client_credentials"
+	GrantAuthorizationCode GrantType = "authorization_code"
+	GrantRefreshToken      GrantType = "refresh_token"
+	GrantImplicit          GrantType = "implicit"
+	GrantIntrospection     GrantType = "urn:goidc:oauth2:grant_type:token_intropection"
 )
 
 type ResponseType string
 
 const (
-	CodeResponse                   ResponseType = "code"
-	IDTokenResponse                ResponseType = "id_token"
-	TokenResponse                  ResponseType = "token"
-	CodeAndIDTokenResponse         ResponseType = "code id_token"
-	CodeAndTokenResponse           ResponseType = "code token"
-	IDTokenAndTokenResponse        ResponseType = "id_token token"
-	CodeAndIDTokenAndTokenResponse ResponseType = "code id_token token"
+	ResponseTypeCode                   ResponseType = "code"
+	ResponseTypeIDToken                ResponseType = "id_token"
+	ResponseTypeToken                  ResponseType = "token"
+	ResponseTypeCodeAndIDToken         ResponseType = "code id_token"
+	ResponseTypeCodeAndToken           ResponseType = "code token"
+	ResponseTypeIDTokenAndToken        ResponseType = "id_token token"
+	ResponseTypeCodeAndIDTokenAndToken ResponseType = "code id_token token"
 )
 
 func (rt ResponseType) Contains(responseType ResponseType) bool {
@@ -82,7 +82,7 @@ func (rt ResponseType) Contains(responseType ResponseType) bool {
 }
 
 func (rt ResponseType) IsImplicit() bool {
-	return rt.Contains(IDTokenResponse) || rt.Contains(TokenResponse)
+	return rt.Contains(ResponseTypeIDToken) || rt.Contains(ResponseTypeToken)
 }
 
 // Get the response mode based on the response type.
@@ -90,99 +90,99 @@ func (rt ResponseType) IsImplicit() bool {
 func (rt ResponseType) GetDefaultResponseMode(jarm bool) ResponseMode {
 	if rt.IsImplicit() {
 		if jarm {
-			return FragmentJWTResponseMode
+			return ResponseModeFragmentJWT
 		}
-		return FragmentResponseMode
+		return ResponseModeFragment
 	}
 
 	if jarm {
-		return QueryJWTResponseMode
+		return ResponseModeQueryJWT
 	}
-	return QueryResponseMode
+	return ResponseModeQuery
 }
 
 type ResponseMode string
 
 const (
-	QueryResponseMode    ResponseMode = "query"
-	FragmentResponseMode ResponseMode = "fragment"
-	FormPostResponseMode ResponseMode = "form_post"
+	ResponseModeQuery    ResponseMode = "query"
+	ResponseModeFragment ResponseMode = "fragment"
+	ResponseModeFormPost ResponseMode = "form_post"
 	// JARM - JWT Secured Authorization Response Mode.
 	// For more information, see https://openid.net/specs/oauth-v2-jarm.html.
-	QueryJWTResponseMode    ResponseMode = "query.jwt"
-	FragmentJWTResponseMode ResponseMode = "fragment.jwt"
-	FormPostJWTResponseMode ResponseMode = "form_post.jwt"
-	JWTResponseMode         ResponseMode = "jwt"
+	ResponseModeQueryJWT    ResponseMode = "query.jwt"
+	ResponseModeFragmentJWT ResponseMode = "fragment.jwt"
+	ResponseModeFormPostJWT ResponseMode = "form_post.jwt"
+	ResponseModeJWT         ResponseMode = "jwt"
 )
 
 func (rm ResponseMode) IsJARM() bool {
-	return strings.HasSuffix(string(rm), string(JWTResponseMode))
+	return strings.HasSuffix(string(rm), string(ResponseModeJWT))
 }
 
 func (rm ResponseMode) IsQuery() bool {
-	return strings.HasPrefix(string(rm), string(QueryResponseMode))
+	return strings.HasPrefix(string(rm), string(ResponseModeQuery))
 }
 
 type ClientAuthnType string
 
 const (
-	NoneAuthn              ClientAuthnType = "none"
-	ClientSecretBasicAuthn ClientAuthnType = "client_secret_basic"
-	ClientSecretPostAuthn  ClientAuthnType = "client_secret_post"
-	ClientSecretJWT        ClientAuthnType = "client_secret_jwt"
-	PrivateKeyJWTAuthn     ClientAuthnType = "private_key_jwt"
-	TLSAuthn               ClientAuthnType = "tls_client_auth"
-	SelfSignedTLSAuthn     ClientAuthnType = "self_signed_tls_client_auth"
+	ClientAuthnNone          ClientAuthnType = "none"
+	ClientAuthnSecretBasic   ClientAuthnType = "client_secret_basic"
+	ClientAuthnSecretPost    ClientAuthnType = "client_secret_post"
+	ClientAuthnSecretJWT     ClientAuthnType = "client_secret_jwt"
+	ClientAuthnPrivateKeyJWT ClientAuthnType = "private_key_jwt"
+	ClientAuthnTLS           ClientAuthnType = "tls_client_auth"
+	ClientAuthnSelfSignedTLS ClientAuthnType = "self_signed_tls_client_auth"
 )
 
 type ClientAssertionType string
 
 const (
-	JWTBearerAssertionType ClientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+	AssertionTypeJWTBearer ClientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 )
 
 type TokenType string
 
 const (
-	BearerTokenType TokenType = "Bearer"
-	DPOPTokenType   TokenType = "DPoP"
+	TokenTypeBearer TokenType = "Bearer"
+	TokenTypeDPOP   TokenType = "DPoP"
 )
 
 const (
-	TokenIDClaim                        string = "jti"
-	IssuerClaim                         string = "iss"
-	SubjectClaim                        string = "sub"
-	AudienceClaim                       string = "aud"
-	ClientIDClaim                       string = "client_id"
-	ExpiryClaim                         string = "exp"
-	IssuedAtClaim                       string = "iat"
-	ScopeClaim                          string = "scope"
-	NonceClaim                          string = "nonce"
-	AuthenticationTimeClaim             string = "auth_time"
-	AuthenticationMethodReferencesClaim string = "amr"
-	AuthenticationContextReferenceClaim string = "acr"
-	ProfileClaim                        string = "profile"
-	EmailClaim                          string = "email"
-	EmailVerifiedClaim                  string = "email_verified"
-	AddressClaim                        string = "address"
-	AuthorizationDetailsClaim           string = "authorization_details"
-	AccessTokenHashClaim                string = "at_hash"
-	AuthorizationCodeHashClaim          string = "c_hash"
-	StateHashClaim                      string = "s_hash"
+	ClaimTokenID                        string = "jti"
+	ClaimIssuer                         string = "iss"
+	ClaimSubject                        string = "sub"
+	ClaimAudience                       string = "aud"
+	ClaimClientID                       string = "client_id"
+	ClaimExpiry                         string = "exp"
+	ClaimIssuedAt                       string = "iat"
+	ClaimScope                          string = "scope"
+	ClaimNonce                          string = "nonce"
+	ClaimAuthenticationTime             string = "auth_time"
+	ClaimAuthenticationMethodReferences string = "amr"
+	ClaimAuthenticationContextReference string = "acr"
+	ClaimProfile                        string = "profile"
+	ClaimEmail                          string = "email"
+	ClaimEmailVerified                  string = "email_verified"
+	ClaimAddress                        string = "address"
+	ClaimAuthorizationDetails           string = "authorization_details"
+	ClaimAccessTokenHash                string = "at_hash"
+	ClaimAuthorizationCodeHash          string = "c_hash"
+	ClaimStateHash                      string = "s_hash"
 )
 
 type KeyUsage string
 
 const (
-	KeySignatureUsage  KeyUsage = "sig"
-	KeyEncryptionUsage KeyUsage = "enc"
+	KeyUsageSignature  KeyUsage = "sig"
+	KeyUsageEncryption KeyUsage = "enc"
 )
 
 type CodeChallengeMethod string
 
 const (
-	SHA256CodeChallengeMethod CodeChallengeMethod = "S256"
-	PlainCodeChallengeMethod  CodeChallengeMethod = "plain"
+	CodeChallengeMethodSHA256 CodeChallengeMethod = "S256"
+	CodeChallengeMethodPlain  CodeChallengeMethod = "plain"
 )
 
 // For more information, see: https://openid.net/specs/openid-connect-core-1_0.html#SubjectIDTypes
@@ -190,33 +190,33 @@ type SubjectIdentifierType string
 
 const (
 	// The server provides the same sub (subject) value to all Clients.
-	PublicSubjectIdentifier SubjectIdentifierType = "public"
+	SubjectIdentifierPublic SubjectIdentifierType = "public"
 	// TODO: Implement pairwise.
 )
 
 type ErrorCode string
 
 const (
-	AccessDenied                ErrorCode = "access_denied"
-	InvalidClient               ErrorCode = "invalid_client"
-	InvalidGrant                ErrorCode = "invalid_grant"
-	InvalidRequest              ErrorCode = "invalid_request"
-	UnauthorizedClient          ErrorCode = "unauthorized_client"
-	InvalidScope                ErrorCode = "invalid_scope"
-	InvalidAuthorizationDetails ErrorCode = "invalid_authorization_details"
-	UnsupportedGrantType        ErrorCode = "unsupported_grant_type"
-	InvalidResquestObject       ErrorCode = "invalid_request_object"
-	InvalidToken                ErrorCode = "invalid_token"
-	InternalError               ErrorCode = "internal_error"
+	ErrorCodeAccessDenied                ErrorCode = "access_denied"
+	ErrorCodeInvalidClient               ErrorCode = "invalid_client"
+	ErrorCodeInvalidGrant                ErrorCode = "invalid_grant"
+	ErrorCodeInvalidRequest              ErrorCode = "invalid_request"
+	ErrorCodeUnauthorizedClient          ErrorCode = "unauthorized_client"
+	ErrorCodeInvalidScope                ErrorCode = "invalid_scope"
+	ErrorCodeInvalidAuthorizationDetails ErrorCode = "invalid_authorization_details"
+	ErrorCodeUnsupportedGrantType        ErrorCode = "unsupported_grant_type"
+	ErrorCodeInvalidResquestObject       ErrorCode = "invalid_request_object"
+	ErrorCodeInvalidToken                ErrorCode = "invalid_token"
+	ErrorCodeInternalError               ErrorCode = "internal_error"
 )
 
 func (ec ErrorCode) GetStatusCode() int {
 	switch ec {
-	case AccessDenied:
+	case ErrorCodeAccessDenied:
 		return http.StatusForbidden
-	case InvalidClient, InvalidToken, UnauthorizedClient:
+	case ErrorCodeInvalidClient, ErrorCodeInvalidToken, ErrorCodeUnauthorizedClient:
 		return http.StatusUnauthorized
-	case InternalError:
+	case ErrorCodeInternalError:
 		return http.StatusInternalServerError
 	default:
 		return http.StatusBadRequest
@@ -224,22 +224,14 @@ func (ec ErrorCode) GetStatusCode() int {
 }
 
 const (
-	CorrelationIDHeader     string = "X-Correlation-ID"
-	FAPIInteractionIDHeader string = "X-FAPI-Interaction-ID"
-	DPOPHeader              string = "DPoP"
+	HeaderCorrelationID     string = "X-Correlation-ID"
+	HeaderFAPIInteractionID string = "X-FAPI-Interaction-ID"
+	HeaderDPOP              string = "DPoP"
 	// Header used to transmit a client certificate that was validated by a trusted source.
-	SecureClientCertificateHeader string = "X-Secure-Client-Certificate"
+	HeaderSecureClientCertificate string = "X-Secure-Client-Certificate"
 	// Header used to trasmit a client certificate that cannot be trusted.
 	// This is useful for clients authenticating with self signed certificates.
-	InsecureClientCertificateHeader string = "X-Insecure-Client-Certificate"
-)
-
-const (
-	OpenIDScope         string = "openid"
-	ProfileScope        string = "profile"
-	EmailScope          string = "email"
-	AddressScope        string = "address"
-	OffilineAccessScope string = "offline_access"
+	HeaderInsecureClientCertificate string = "X-Insecure-Client-Certificate"
 )
 
 const Charset string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -247,86 +239,86 @@ const Charset string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123
 type AuthnStatus string
 
 const (
-	Success    AuthnStatus = "success"
-	InProgress AuthnStatus = "in_progress"
-	Failure    AuthnStatus = "failure"
+	StatusSuccess    AuthnStatus = "success"
+	StatusInProgress AuthnStatus = "in_progress"
+	StatusFailure    AuthnStatus = "failure"
 )
 
 type TokenFormat string
 
 const (
-	JWTTokenFormat    TokenFormat = "jwt"
-	OpaqueTokenFormat TokenFormat = "opaque"
+	TokenFormatJWT    TokenFormat = "jwt"
+	TokenFormatOpaque TokenFormat = "opaque"
 )
 
 type EndpointPath string
 
 const (
-	WellKnownEndpoint                  EndpointPath = "/.well-known/openid-configuration"
-	JSONWebKeySetEndpoint              EndpointPath = "/jwks"
-	PushedAuthorizationRequestEndpoint EndpointPath = "/par"
-	AuthorizationEndpoint              EndpointPath = "/authorize"
-	TokenEndpoint                      EndpointPath = "/token"
-	UserInfoEndpoint                   EndpointPath = "/userinfo"
-	DynamicClientEndpoint              EndpointPath = "/register"
-	TokenIntrospectionEndpoint         EndpointPath = "/introspect"
+	EndpointWellKnown                  EndpointPath = "/.well-known/openid-configuration"
+	EndpointJSONWebKeySet              EndpointPath = "/jwks"
+	EndpointPushedAuthorizationRequest EndpointPath = "/par"
+	EndpointAuthorization              EndpointPath = "/authorize"
+	EndpointToken                      EndpointPath = "/token"
+	EndpointUserInfo                   EndpointPath = "/userinfo"
+	EndpointDynamicClient              EndpointPath = "/register"
+	EndpointTokenIntrospection         EndpointPath = "/introspect"
 )
 
 // RFC8176.
 type AuthenticationMethodReference string
 
 const (
-	FacialRecognitionAuthentication            AuthenticationMethodReference = "face"
-	FingerPrintAuthentication                  AuthenticationMethodReference = "fpt"
-	GeolocationAuthentication                  AuthenticationMethodReference = "geo"
-	HardwareSecuredKeyAuthentication           AuthenticationMethodReference = "hwk"
-	IrisScanAuthentication                     AuthenticationMethodReference = "iris"
-	MultipleFactorAuthentication               AuthenticationMethodReference = "mfa"
-	OneTimePassowordAuthentication             AuthenticationMethodReference = "otp"
-	PasswordAuthentication                     AuthenticationMethodReference = "pwd"
-	PersonalIDentificationNumberAuthentication AuthenticationMethodReference = "pin"
-	RiskBasedAuthentication                    AuthenticationMethodReference = "rba"
-	SMSAuthentication                          AuthenticationMethodReference = "sms"
-	SoftwareSecuredKeyAuthentication           AuthenticationMethodReference = "swk"
+	AuthenticationMethodFacialRecognition            AuthenticationMethodReference = "face"
+	AuthenticationMethodFingerPrint                  AuthenticationMethodReference = "fpt"
+	AuthenticationMethodGeolocation                  AuthenticationMethodReference = "geo"
+	AuthenticationMethodHardwareSecuredKey           AuthenticationMethodReference = "hwk"
+	AuthenticationMethodIrisScan                     AuthenticationMethodReference = "iris"
+	AuthenticationMethodMultipleFactor               AuthenticationMethodReference = "mfa"
+	AuthenticationMethodOneTimePassoword             AuthenticationMethodReference = "otp"
+	AuthenticationMethodPassword                     AuthenticationMethodReference = "pwd"
+	AuthenticationMethodPersonalIDentificationNumber AuthenticationMethodReference = "pin"
+	AuthenticationMethodRiskBased                    AuthenticationMethodReference = "rba"
+	AuthenticationMethodSMS                          AuthenticationMethodReference = "sms"
+	AuthenticationMethodSoftwareSecuredKey           AuthenticationMethodReference = "swk"
 )
 
 type DisplayValue string
 
 const (
-	PageDisplay  DisplayValue = "page"
-	PopUpDisplay DisplayValue = "popup"
-	TouchDisplay DisplayValue = "touch"
-	WAPDisplay   DisplayValue = "wap"
+	DisplayValuePage  DisplayValue = "page"
+	DisplayValuePopUp DisplayValue = "popup"
+	DisplayValueTouch DisplayValue = "touch"
+	DisplayValueWAP   DisplayValue = "wap"
 )
 
 type PromptType string
 
 const (
-	NonePromptType          PromptType = "none"
-	LoginPromptType         PromptType = "login"
-	ConsentPromptType       PromptType = "consent"
-	SelectAccountPromptType PromptType = "select_account"
+	PromptTypeNone          PromptType = "none"
+	PromptTypeLogin         PromptType = "login"
+	PromptTypeConsent       PromptType = "consent"
+	PromptTypeSelectAccount PromptType = "select_account"
 )
 
 type ClaimType string
 
 const (
-	NormalClaimType      ClaimType = "normal"
-	AggregatedClaimType  ClaimType = "aggregated"
-	DistributedClaimType ClaimType = "distributed"
+	ClaimTypeNormal      ClaimType = "normal"
+	ClaimTypeAggregated  ClaimType = "aggregated"
+	ClaimTypeDistributed ClaimType = "distributed"
 )
 
 type TokenTypeHint string
 
 const (
-	AccessTokenHint  TokenTypeHint = "access_token"
-	RefreshTokenHint TokenTypeHint = "refresh_token"
+	TokenHintAccess  TokenTypeHint = "access_token"
+	TokenHintRefresh TokenTypeHint = "refresh_token"
 )
 
 type AuthenticationContextReference string
 
 const (
-	NoAssuranceLevelACR      AuthenticationContextReference = "0"
-	MaceIncommonIAPSilverACR AuthenticationContextReference = "urn:mace:incommon:iap:silver"
-	MaceIncommonIAPBronzeACR AuthenticationContextReference = "urn:mace:incommon:iap:bronze"
+	ACRNoAssuranceLevel      AuthenticationContextReference = "0"
+	ACRMaceIncommonIAPSilver AuthenticationContextReference = "urn:mace:incommon:iap:silver"
+	ACRMaceIncommonIAPBronze AuthenticationContextReference = "urn:mace:incommon:iap:bronze"
 )

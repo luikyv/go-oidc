@@ -121,7 +121,7 @@ func (session *AuthnSession) Push(parLifetimeSecs int) (requestURI string) {
 // Prepare the session to be used while the authentication flow defined by policyID happens.
 func (session *AuthnSession) Start(policyID string, sessionLifetimeSecs int) {
 	if session.Nonce != "" {
-		session.AddIDTokenClaim(NonceClaim, session.Nonce)
+		session.AddIDTokenClaim(ClaimNonce, session.Nonce)
 	}
 	session.PolicyID = policyID
 	session.CallbackID = GenerateCallbackID()

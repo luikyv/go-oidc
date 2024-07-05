@@ -8,12 +8,12 @@ import (
 func GetOpenIDConfiguration(ctx utils.Context) utils.OpenIDConfiguration {
 	config := utils.OpenIDConfiguration{
 		Issuer:                               ctx.Host,
-		ClientRegistrationEndpoint:           ctx.Host + string(goidc.DynamicClientEndpoint),
-		AuthorizationEndpoint:                ctx.Host + string(goidc.AuthorizationEndpoint),
-		TokenEndpoint:                        ctx.Host + string(goidc.TokenEndpoint),
-		UserinfoEndpoint:                     ctx.Host + string(goidc.UserInfoEndpoint),
+		ClientRegistrationEndpoint:           ctx.Host + string(goidc.EndpointDynamicClient),
+		AuthorizationEndpoint:                ctx.Host + string(goidc.EndpointAuthorization),
+		TokenEndpoint:                        ctx.Host + string(goidc.EndpointToken),
+		UserinfoEndpoint:                     ctx.Host + string(goidc.EndpointUserInfo),
 		PARIsRequired:                        ctx.PARIsRequired,
-		JWKSEndpoint:                         ctx.Host + string(goidc.JSONWebKeySetEndpoint),
+		JWKSEndpoint:                         ctx.Host + string(goidc.EndpointJSONWebKeySet),
 		ResponseTypes:                        ctx.ResponseTypes,
 		ResponseModes:                        ctx.ResponseModes,
 		GrantTypes:                           ctx.GrantTypes,
@@ -23,7 +23,7 @@ func GetOpenIDConfiguration(ctx utils.Context) utils.OpenIDConfiguration {
 		IDTokenSignatureAlgorithms:           ctx.GetUserInfoSignatureAlgorithms(),
 		UserInfoSignatureAlgorithms:          ctx.GetUserInfoSignatureAlgorithms(),
 		ClientAuthnMethods:                   ctx.ClientAuthnMethods,
-		Scopes:                               ctx.Scopes,
+		Scopes:                               ctx.Scopes.GetIDs(),
 		TokenEndpointClientSigningAlgorithms: ctx.GetClientSignatureAlgorithms(),
 		IssuerResponseParameterIsEnabled:     ctx.IssuerResponseParameterIsEnabled,
 		ClaimsParameterIsEnabled:             ctx.ClaimsParameterIsEnabled,
@@ -42,7 +42,7 @@ func GetOpenIDConfiguration(ctx utils.Context) utils.OpenIDConfiguration {
 
 	if ctx.PARIsEnabled {
 		config.PARIsRequired = ctx.PARIsRequired
-		config.ParEndpoint = ctx.Host + string(goidc.PushedAuthorizationRequestEndpoint)
+		config.ParEndpoint = ctx.Host + string(goidc.EndpointPushedAuthorizationRequest)
 	}
 
 	if ctx.JARIsEnabled {
@@ -68,22 +68,22 @@ func GetOpenIDConfiguration(ctx utils.Context) utils.OpenIDConfiguration {
 	}
 
 	if ctx.IntrospectionIsEnabled {
-		config.IntrospectionEndpoint = ctx.Host + string(goidc.TokenIntrospectionEndpoint)
+		config.IntrospectionEndpoint = ctx.Host + string(goidc.EndpointTokenIntrospection)
 		config.IntrospectionEndpointClientAuthnMethods = ctx.IntrospectionClientAuthnMethods
 		config.IntrospectionEndpointClientSignatureAlgorithms = ctx.GetIntrospectionClientSignatureAlgorithms()
 	}
 
 	if ctx.MTLSIsEnabled {
 		config.TLSBoundTokensIsEnabled = ctx.TLSBoundTokensIsEnabled
-		config.MTLSConfiguration.TokenEndpoint = ctx.MTLSHost + string(goidc.TokenEndpoint)
-		config.MTLSConfiguration.UserinfoEndpoint = ctx.MTLSHost + string(goidc.UserInfoEndpoint)
+		config.MTLSConfiguration.TokenEndpoint = ctx.MTLSHost + string(goidc.EndpointToken)
+		config.MTLSConfiguration.UserinfoEndpoint = ctx.MTLSHost + string(goidc.EndpointUserInfo)
 
 		if ctx.PARIsEnabled {
-			config.MTLSConfiguration.ParEndpoint = ctx.MTLSHost + string(goidc.PushedAuthorizationRequestEndpoint)
+			config.MTLSConfiguration.ParEndpoint = ctx.MTLSHost + string(goidc.EndpointPushedAuthorizationRequest)
 		}
 
 		if ctx.IntrospectionIsEnabled {
-			config.IntrospectionEndpoint = ctx.MTLSHost + string(goidc.TokenIntrospectionEndpoint)
+			config.IntrospectionEndpoint = ctx.MTLSHost + string(goidc.EndpointTokenIntrospection)
 		}
 	}
 

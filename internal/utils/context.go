@@ -22,7 +22,7 @@ type Configuration struct {
 	Host                string
 	MTLSIsEnabled       bool
 	MTLSHost            string
-	Scopes              []string
+	Scopes              goidc.Scopes
 	ClientManager       goidc.ClientManager
 	GrantSessionManager goidc.GrantSessionManager
 	AuthnSessionManager goidc.AuthnSessionManager
@@ -159,11 +159,11 @@ func (ctx Context) GetClientSignatureAlgorithms() []jose.SignatureAlgorithm {
 func (ctx Context) GetIntrospectionClientSignatureAlgorithms() []jose.SignatureAlgorithm {
 	var signatureAlgorithms []jose.SignatureAlgorithm
 
-	if slices.Contains(ctx.IntrospectionClientAuthnMethods, goidc.PrivateKeyJWTAuthn) {
+	if slices.Contains(ctx.IntrospectionClientAuthnMethods, goidc.ClientAuthnPrivateKeyJWT) {
 		signatureAlgorithms = append(signatureAlgorithms, ctx.PrivateKeyJWTSignatureAlgorithms...)
 	}
 
-	if slices.Contains(ctx.IntrospectionClientAuthnMethods, goidc.ClientSecretJWT) {
+	if slices.Contains(ctx.IntrospectionClientAuthnMethods, goidc.ClientAuthnSecretJWT) {
 		signatureAlgorithms = append(signatureAlgorithms, ctx.ClientSecretJWTSignatureAlgorithms...)
 	}
 
@@ -175,7 +175,7 @@ func (ctx Context) GetIntrospectionClientSignatureAlgorithms() []jose.SignatureA
 // Therefore, an empty string and false will be returned if more than one value is found in the DPoP header.
 func (ctx Context) GetDPOPJWT() (string, bool) {
 	// Consider case insensitive headers by canonicalizing them.
-	canonicalizedDPOPHeader := textproto.CanonicalMIMEHeaderKey(goidc.DPOPHeader)
+	canonicalizedDPOPHeader := textproto.CanonicalMIMEHeaderKey(goidc.HeaderDPOP)
 	canonicalizedHeaders := textproto.MIMEHeader(ctx.Request.Header)
 
 	values := canonicalizedHeaders[canonicalizedDPOPHeader]
@@ -186,7 +186,7 @@ func (ctx Context) GetDPOPJWT() (string, bool) {
 }
 
 func (ctx Context) GetSecureClientCertificate() (*x509.Certificate, bool) {
-	rawClientCert, ok := ctx.GetHeader(goidc.SecureClientCertificateHeader)
+	rawClientCert, ok := ctx.GetHeader(goidc.HeaderSecureClientCertificate)
 	if !ok {
 		ctx.Logger.Debug("the secure client certificate was not informed")
 		return nil, false
@@ -205,10 +205,10 @@ func (ctx Context) GetSecureClientCertificate() (*x509.Certificate, bool) {
 // Try to get the secure client certificate first, if it's not informed,
 // fallback to the insecure one.
 func (ctx Context) GetClientCertificate() (*x509.Certificate, bool) {
-	rawClientCert, ok := ctx.GetHeader(goidc.SecureClientCertificateHeader)
+	rawClientCert, ok := ctx.GetHeader(goidc.HeaderSecureClientCertificate)
 	if !ok {
 		ctx.Logger.Debug("the secure client certificate was not informed, trying the insecure one")
-		rawClientCert, ok = ctx.GetHeader(goidc.InsecureClientCertificateHeader)
+		rawClientCert, ok = ctx.GetHeader(goidc.HeaderInsecureClientCertificate)
 		if !ok {
 			ctx.Logger.Debug("the insecure client certificate was not informed")
 			return nil, false
@@ -235,17 +235,17 @@ func (ctx Context) ExecuteDCRPlugin(clientInfo *goidc.ClientMetaInfo) {
 func (ctx Context) GetAudiences() []string {
 	audiences := []string{
 		ctx.Host,
-		ctx.Host + string(goidc.TokenEndpoint),
-		ctx.Host + string(goidc.PushedAuthorizationRequestEndpoint),
-		ctx.Host + string(goidc.UserInfoEndpoint),
+		ctx.Host + string(goidc.EndpointToken),
+		ctx.Host + string(goidc.EndpointPushedAuthorizationRequest),
+		ctx.Host + string(goidc.EndpointUserInfo),
 	}
 	if ctx.MTLSIsEnabled {
 		audiences = append(
 			audiences,
 			ctx.MTLSHost,
-			ctx.MTLSHost+string(goidc.TokenEndpoint),
-			ctx.MTLSHost+string(goidc.PushedAuthorizationRequestEndpoint),
-			ctx.MTLSHost+string(goidc.UserInfoEndpoint),
+			ctx.MTLSHost+string(goidc.EndpointToken),
+			ctx.MTLSHost+string(goidc.EndpointPushedAuthorizationRequest),
+			ctx.MTLSHost+string(goidc.EndpointUserInfo),
 		)
 	}
 	return audiences
@@ -275,6 +275,10 @@ func (ctx Context) GetAvailablePolicy(client goidc.Client, session *goidc.AuthnS
 
 func (ctx Context) GetLogger() *slog.Logger {
 	return ctx.Logger
+}
+
+func (ctx Context) GetScopes() goidc.Scopes {
+	return ctx.Scopes
 }
 
 //---------------------------------------- context.Context ----------------------------------------//
@@ -362,7 +366,7 @@ func (ctx Context) GetBearerToken() (token string, ok bool) {
 		return "", false
 	}
 
-	if tokenType != goidc.BearerTokenType {
+	if tokenType != goidc.TokenTypeBearer {
 		return "", false
 	}
 
@@ -499,7 +503,7 @@ func (ctx Context) RenderHTMLTemplate(
 func (ctx Context) GetSignatureAlgorithms() []jose.SignatureAlgorithm {
 	algorithms := []jose.SignatureAlgorithm{}
 	for _, privateKey := range ctx.PrivateJWKS.Keys {
-		if privateKey.GetUsage() == string(goidc.KeySignatureUsage) {
+		if privateKey.GetUsage() == string(goidc.KeyUsageSignature) {
 			algorithms = append(algorithms, jose.SignatureAlgorithm(privateKey.GetAlgorithm()))
 		}
 	}
@@ -541,7 +545,7 @@ func (ctx Context) GetTokenSignatureKey(tokenOptions goidc.TokenOptions) goidc.J
 	keys := ctx.PrivateJWKS.Key(keyID)
 	// If the key informed is not present in the JWKS or if its usage is not signing,
 	// return the default key.
-	if len(keys) == 0 || keys[0].GetUsage() != string(goidc.KeySignatureUsage) {
+	if len(keys) == 0 || keys[0].GetUsage() != string(goidc.KeyUsageSignature) {
 		return ctx.getPrivateKey(ctx.DefaultTokenSignatureKeyID)
 	}
 

@@ -15,7 +15,7 @@ func handleRefreshTokenGrantTokenCreation(
 	goidc.OAuthError,
 ) {
 	if err := preValidateRefreshTokenGrantRequest(req); err != nil {
-		return utils.TokenResponse{}, goidc.NewOAuthError(goidc.InvalidRequest, "invalid parameter for refresh token grant")
+		return utils.TokenResponse{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid parameter for refresh token grant")
 	}
 
 	client, grantSession, err := getAuthenticatedClientAndGrantSession(ctx, req)
@@ -80,7 +80,7 @@ func updateRefreshTokenGrantSession(
 	if err := ctx.CreateOrUpdateGrantSession(*grantSession); err != nil {
 		ctx.Logger.Error("error updating grant session during refresh_token grant",
 			slog.String("error", err.Error()), slog.String("session_id", grantSession.ID))
-		return goidc.NewOAuthError(goidc.InternalError, err.Error())
+		return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
 	return nil
@@ -128,7 +128,7 @@ func getGrantSessionByRefreshToken(
 	if err != nil {
 		ch <- utils.ResultChannel{
 			Result: goidc.GrantSession{},
-			Err:    goidc.NewOAuthError(goidc.InvalidRequest, "invalid refresh_token"),
+			Err:    goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid refresh_token"),
 		}
 	}
 
@@ -142,7 +142,7 @@ func preValidateRefreshTokenGrantRequest(
 	req utils.TokenRequest,
 ) goidc.OAuthError {
 	if req.RefreshToken == "" {
-		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid refresh token")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid refresh token")
 	}
 
 	return nil
@@ -155,23 +155,23 @@ func validateRefreshTokenGrantRequest(
 	grantSession goidc.GrantSession,
 ) goidc.OAuthError {
 
-	if !client.IsGrantTypeAllowed(goidc.RefreshTokenGrant) {
-		return goidc.NewOAuthError(goidc.UnauthorizedClient, "invalid grant type")
+	if !client.IsGrantTypeAllowed(goidc.GrantRefreshToken) {
+		return goidc.NewOAuthError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
 	}
 
 	if client.ID != grantSession.ClientID {
-		return goidc.NewOAuthError(goidc.InvalidGrant, "the refresh token was not issued to the client")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidGrant, "the refresh token was not issued to the client")
 	}
 
 	if grantSession.IsRefreshSessionExpired() {
 		if err := ctx.DeleteGrantSession(grantSession.ID); err != nil {
-			return goidc.NewOAuthError(goidc.InternalError, err.Error())
+			return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 		}
-		return goidc.NewOAuthError(goidc.UnauthorizedClient, "the refresh token is expired")
+		return goidc.NewOAuthError(goidc.ErrorCodeUnauthorizedClient, "the refresh token is expired")
 	}
 
 	if req.Scopes != "" && !goidc.ContainsAllScopes(grantSession.GrantedScopes, req.Scopes) {
-		return goidc.NewOAuthError(goidc.InvalidScope, "invalid scope")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidScope, "invalid scope")
 	}
 
 	return validateRefreshTokenProofOfPossesionForPublicClients(ctx, client, grantSession)
@@ -185,14 +185,14 @@ func validateRefreshTokenProofOfPossesionForPublicClients(
 
 	// Refresh tokens are bound to the client. If the client is authenticated,
 	// then there's no need to validate proof of possesion.
-	if client.AuthnMethod != goidc.NoneAuthn || grantSession.JWKThumbprint == "" {
+	if client.AuthnMethod != goidc.ClientAuthnNone || grantSession.JWKThumbprint == "" {
 		return nil
 	}
 
 	dpopJWT, ok := ctx.GetDPOPJWT()
 	if !ok {
 		// The session was created with DPoP for a public client, then the DPoP header must be passed.
-		return goidc.NewOAuthError(goidc.UnauthorizedClient, "invalid DPoP header")
+		return goidc.NewOAuthError(goidc.ErrorCodeUnauthorizedClient, "invalid DPoP header")
 	}
 
 	return utils.ValidateDPOPJWT(ctx, dpopJWT, utils.DPOPJWTValidationOptions{

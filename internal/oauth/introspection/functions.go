@@ -10,12 +10,12 @@ func validateTokenIntrospectionRequest(
 	req utils.TokenIntrospectionRequest,
 	client goidc.Client,
 ) goidc.OAuthError {
-	if !client.IsGrantTypeAllowed(goidc.IntrospectionGrant) {
-		return goidc.NewOAuthError(goidc.InvalidGrant, "client not allowed to introspect tokens")
+	if !client.IsGrantTypeAllowed(goidc.GrantIntrospection) {
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidGrant, "client not allowed to introspect tokens")
 	}
 
 	if req.Token == "" {
-		return goidc.NewOAuthError(goidc.InvalidRequest, "token is required")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "token is required")
 	}
 
 	return nil

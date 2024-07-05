@@ -71,7 +71,7 @@ func extractJARFromRequest(
 	goidc.OAuthError,
 ) {
 	if req.RequestObject == "" {
-		return utils.AuthorizationRequest{}, goidc.NewOAuthError(goidc.InvalidRequest, "request object is required")
+		return utils.AuthorizationRequest{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "request object is required")
 	}
 
 	return utils.ExtractJARFromRequestObject(ctx, req.RequestObject, client)

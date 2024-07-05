@@ -23,12 +23,12 @@ type Client struct {
 func (client Client) GetJWK(keyID string) (JSONWebKey, OAuthError) {
 	jwks, oauthErr := client.GetPublicJWKS()
 	if oauthErr != nil {
-		return JSONWebKey{}, NewOAuthError(InvalidRequest, oauthErr.Error())
+		return JSONWebKey{}, NewOAuthError(ErrorCodeInvalidRequest, oauthErr.Error())
 	}
 
 	keys := jwks.Key(keyID)
 	if len(keys) == 0 {
-		return JSONWebKey{}, NewOAuthError(InvalidClient, "invalid key ID")
+		return JSONWebKey{}, NewOAuthError(ErrorCodeInvalidClient, "invalid key ID")
 	}
 
 	return keys[0], nil
@@ -50,20 +50,28 @@ func (client Client) GetIDTokenEncryptionJWK() (JSONWebKey, OAuthError) {
 func (client Client) getEncryptionJWK(algorithm jose.KeyAlgorithm) (JSONWebKey, OAuthError) {
 	jwks, err := client.GetPublicJWKS()
 	if err != nil {
-		return JSONWebKey{}, NewOAuthError(InvalidRequest, err.Error())
+		return JSONWebKey{}, NewOAuthError(ErrorCodeInvalidRequest, err.Error())
 	}
 
 	for _, jwk := range jwks.Keys {
-		if jwk.GetUsage() == string(KeyEncryptionUsage) && jwk.GetAlgorithm() == string(algorithm) {
+		if jwk.GetUsage() == string(KeyUsageEncryption) && jwk.GetAlgorithm() == string(algorithm) {
 			return jwk, nil
 		}
 	}
 
-	return JSONWebKey{}, NewOAuthError(InvalidClient, fmt.Sprintf("invalid key algorithm: %s", algorithm))
+	return JSONWebKey{}, NewOAuthError(ErrorCodeInvalidClient, fmt.Sprintf("invalid key algorithm: %s", algorithm))
 }
 
-func (client Client) AreScopesAllowed(requestedScopes string) bool {
-	return ContainsAllScopes(client.Scopes, requestedScopes)
+func (client Client) AreScopesAllowed(ctx Context, requestedScopes string) bool {
+	scopeIDs := SplitStringWithSpaces(client.Scopes)
+	clientScopes := ctx.GetScopes().GetSubSet(scopeIDs)
+	for _, requestedScope := range SplitStringWithSpaces(requestedScopes) {
+		if !clientScopes.Contains(requestedScope) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (client Client) IsResponseTypeAllowed(responseType ResponseType) bool {
@@ -146,12 +154,12 @@ func (client ClientMetaInfo) GetPublicJWKS() (JSONWebKeySet, error) {
 	}
 
 	if client.PublicJWKSURI == "" {
-		return JSONWebKeySet{}, NewOAuthError(InvalidRequest, "The client JWKS was informed neither by value or by reference")
+		return JSONWebKeySet{}, NewOAuthError(ErrorCodeInvalidRequest, "The client JWKS was informed neither by value or by reference")
 	}
 
 	jwks, err := GetJWKS(client.PublicJWKSURI)
 	if err != nil {
-		return JSONWebKeySet{}, NewOAuthError(InvalidRequest, err.Error())
+		return JSONWebKeySet{}, NewOAuthError(ErrorCodeInvalidRequest, err.Error())
 	}
 
 	// Cache the client JWKS.

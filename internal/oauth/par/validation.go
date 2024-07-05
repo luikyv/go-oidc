@@ -22,15 +22,15 @@ func validateParWithJAR(
 ) goidc.OAuthError {
 
 	if req.RequestURI != "" {
-		return goidc.NewOAuthError(goidc.InvalidRequest, "request_uri is not allowed during PAR")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "request_uri is not allowed during PAR")
 	}
 
 	if jar.ClientID != client.ID {
-		return goidc.NewOAuthError(goidc.InvalidResquestObject, "invalid client_id")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidResquestObject, "invalid client_id")
 	}
 
 	if jar.RequestURI != "" {
-		return goidc.NewOAuthError(goidc.InvalidResquestObject, "request_uri is not allowed inside JAR")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidResquestObject, "request_uri is not allowed inside JAR")
 	}
 
 	// The PAR RFC says:
@@ -69,8 +69,8 @@ func validateNoneAuthnNotAllowed(
 	_ goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
-	if client.AuthnMethod == goidc.NoneAuthn {
-		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid client authentication method")
+	if client.AuthnMethod == goidc.ClientAuthnNone {
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid client authentication method")
 	}
 	return nil
 }
@@ -81,12 +81,12 @@ func validateOpenIDRedirectURI(
 	client goidc.Client,
 ) goidc.OAuthError {
 
-	if ctx.Profile != goidc.OpenIDProfile {
+	if ctx.Profile != goidc.ProfileOpenID {
 		return nil
 	}
 
 	if params.RedirectURI != "" && !client.IsRedirectURIAllowed(params.RedirectURI) {
-		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid redirect_uri")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid redirect_uri")
 	}
 	return nil
 }
@@ -97,13 +97,13 @@ func validateFAPI2RedirectURI(
 	_ goidc.Client,
 ) goidc.OAuthError {
 
-	if ctx.Profile != goidc.FAPI2Profile {
+	if ctx.Profile != goidc.ProfileFAPI2 {
 		return nil
 	}
 
 	// According to FAPI 2.0 "pre-registration is not required with client authentication and PAR".
 	if params.RedirectURI == "" {
-		return goidc.NewOAuthError(goidc.InvalidRequest, "redirect_uri is required")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "redirect_uri is required")
 	}
 	return nil
 }
@@ -114,7 +114,7 @@ func validateResponseType(
 	client goidc.Client,
 ) goidc.OAuthError {
 	if params.ResponseType != "" && !client.IsResponseTypeAllowed(params.ResponseType) {
-		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid response_type")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid response_type")
 	}
 	return nil
 }
@@ -125,11 +125,11 @@ func validateScopes(
 	client goidc.Client,
 ) goidc.OAuthError {
 	if params.Scopes != "" && ctx.OpenIDScopeIsRequired && !utils.ScopesContainsOpenID(params.Scopes) {
-		return goidc.NewOAuthError(goidc.InvalidScope, "scope openid is required")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidScope, "scope openid is required")
 	}
 
-	if params.Scopes != "" && !client.AreScopesAllowed(params.Scopes) {
-		return goidc.NewOAuthError(goidc.InvalidScope, "invalid scope")
+	if params.Scopes != "" && !client.AreScopesAllowed(ctx, params.Scopes) {
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidScope, "invalid scope")
 	}
 	return nil
 }
@@ -140,7 +140,7 @@ func validateCannotInformRequestURI(
 	client goidc.Client,
 ) goidc.OAuthError {
 	if params.RequestURI != "" {
-		return goidc.NewOAuthError(goidc.InvalidRequest, "request_uri is not allowed during PAR")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "request_uri is not allowed during PAR")
 	}
 
 	return nil

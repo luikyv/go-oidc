@@ -23,8 +23,8 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 			utils.AuthorizationRequest{
 				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectURI:  client.RedirectURIS[0],
-					ResponseType: goidc.CodeResponse,
-					ResponseMode: goidc.QueryResponseMode,
+					ResponseType: goidc.ResponseTypeCode,
+					ResponseMode: goidc.ResponseModeQuery,
 					Scopes:       client.Scopes,
 				},
 			},
@@ -39,8 +39,8 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 			utils.AuthorizationRequest{
 				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectURI:  client.RedirectURIS[0],
-					ResponseType: goidc.CodeResponse,
-					Scopes:       goidc.OpenIDScope,
+					ResponseType: goidc.ResponseTypeCode,
+					Scopes:       goidc.ScopeOpenID.String(),
 				},
 			},
 			func(client goidc.Client) goidc.Client {
@@ -54,8 +54,8 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 			utils.AuthorizationRequest{
 				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectURI:  client.RedirectURIS[0],
-					ResponseType: goidc.CodeResponse,
-					Scopes:       goidc.OpenIDScope,
+					ResponseType: goidc.ResponseTypeCode,
+					Scopes:       goidc.ScopeOpenID.String(),
 				},
 			},
 			func(client goidc.Client) goidc.Client {
@@ -70,7 +70,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 			utils.AuthorizationRequest{
 				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectURI: client.RedirectURIS[0],
-					Scopes:      goidc.OpenIDScope,
+					Scopes:      goidc.ScopeOpenID.String(),
 				},
 			},
 			func(client goidc.Client) goidc.Client {
@@ -84,7 +84,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 			utils.AuthorizationRequest{
 				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectURI:  client.RedirectURIS[0],
-					ResponseType: goidc.CodeResponse,
+					ResponseType: goidc.ResponseTypeCode,
 					Scopes:       "invalid_scope",
 				},
 			},
@@ -99,7 +99,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 			utils.AuthorizationRequest{
 				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectURI:  "https://invalid.com",
-					ResponseType: goidc.CodeResponse,
+					ResponseType: goidc.ResponseTypeCode,
 					Scopes:       client.Scopes,
 				},
 			},
@@ -156,8 +156,8 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 				ClientID: client.ID,
 				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectURI:  client.RedirectURIS[0],
-					ResponseType: goidc.CodeResponse,
-					ResponseMode: goidc.QueryResponseMode,
+					ResponseType: goidc.ResponseTypeCode,
+					ResponseMode: goidc.ResponseModeQuery,
 					Scopes:       client.Scopes,
 				},
 			},
@@ -177,9 +177,9 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 				ClientID: client.ID,
 				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectURI:  client.RedirectURIS[0],
-					ResponseType: goidc.CodeAndIDTokenResponse,
-					ResponseMode: goidc.FragmentResponseMode,
-					Scopes:       goidc.OpenIDScope,
+					ResponseType: goidc.ResponseTypeCodeAndIDToken,
+					ResponseMode: goidc.ResponseModeFragment,
+					Scopes:       goidc.ScopeOpenID.String(),
 					Nonce:        "random_nonce",
 				},
 			},
@@ -243,8 +243,8 @@ func TestValidateAuthorizationRequestWithJAR(t *testing.T) {
 				ClientID: client.ID,
 				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectURI:  client.RedirectURIS[0],
-					ResponseType: goidc.CodeResponse,
-					ResponseMode: goidc.QueryResponseMode,
+					ResponseType: goidc.ResponseTypeCode,
+					ResponseMode: goidc.ResponseModeQuery,
 					Scopes:       client.Scopes,
 					Nonce:        "random_nonce",
 				},
@@ -265,9 +265,9 @@ func TestValidateAuthorizationRequestWithJAR(t *testing.T) {
 				ClientID: client.ID,
 				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectURI:  client.RedirectURIS[0],
-					ResponseType: goidc.CodeAndIDTokenResponse,
-					ResponseMode: goidc.FragmentResponseMode,
-					Scopes:       goidc.OpenIDScope,
+					ResponseType: goidc.ResponseTypeCodeAndIDToken,
+					ResponseMode: goidc.ResponseModeFragment,
+					Scopes:       goidc.ScopeOpenID.String(),
 				},
 			},
 			utils.AuthorizationRequest{

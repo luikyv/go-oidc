@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"strings"
 
 	"github.com/luikymagno/goidc/pkg/goidc"
 	"github.com/luikymagno/goidc/pkg/goidcp"
@@ -14,7 +13,7 @@ func RunOpenIDProvider() error {
 	port := ":83"
 	issuer := "https://host.docker.internal" + port
 	serverKeyID := "rs256_key"
-	scopes := []string{goidc.OpenIDScope, goidc.OffilineAccessScope, goidc.EmailScope}
+	scopes := []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeOffilineAccess, goidc.ScopeEmail}
 
 	// MongoDB
 	options := options.Client().ApplyURI("mongodb://admin:password@localhost:27017")
@@ -44,19 +43,19 @@ func RunOpenIDProvider() error {
 	openidProvider.EnableIssuerResponseParameter()
 	openidProvider.EnableClaimsParameter()
 	openidProvider.EnableDemonstrationProofOfPossesion(600, goidc.RS256, goidc.PS256, goidc.ES256)
-	openidProvider.EnableProofKeyForCodeExchange(goidc.SHA256CodeChallengeMethod)
+	openidProvider.EnableProofKeyForCodeExchange(goidc.CodeChallengeMethodSHA256)
 	openidProvider.EnableRefreshTokenGrantType(6000, false)
 	openidProvider.SetScopes(scopes...)
 	openidProvider.SetSupportedUserClaims(
-		goidc.EmailClaim,
-		goidc.EmailVerifiedClaim,
+		goidc.ClaimEmail,
+		goidc.ClaimEmailVerified,
 	)
 	openidProvider.SetSupportedAuthenticationContextReferences(
-		goidc.MaceIncommonIAPBronzeACR,
-		goidc.MaceIncommonIAPSilverACR,
+		goidc.ACRMaceIncommonIAPBronze,
+		goidc.ACRMaceIncommonIAPSilver,
 	)
 	openidProvider.EnableDynamicClientRegistration(func(ctx goidc.Context, clientInfo *goidc.ClientMetaInfo) {
-		clientInfo.Scopes = strings.Join(scopes, " ")
+		clientInfo.Scopes = goidc.Scopes(scopes).String()
 	}, true)
 	openidProvider.SetTokenOptions(func(c goidc.Client, s string) (goidc.TokenOptions, error) {
 		return goidc.NewJWTTokenOptions(serverKeyID, 600, true), nil

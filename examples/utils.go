@@ -37,51 +37,51 @@ func AuthenticateUserWithNoInteraction(
 ) goidc.AuthnStatus {
 	session.SetUserID("random_user_id")
 	session.GrantScopes(session.Scopes)
-	session.AddIDTokenClaim(goidc.AuthenticationTimeClaim, goidc.GetTimestampNow())
+	session.AddIDTokenClaim(goidc.ClaimAuthenticationTime, goidc.GetTimestampNow())
 
 	// Add claims based on the claims parameter.
 	claims, ok := session.GetClaims()
 	if ok {
 
 		// acr claim.
-		acrClaim, ok := claims.IDToken[goidc.AuthenticationContextReferenceClaim]
+		acrClaim, ok := claims.IDToken[goidc.ClaimAuthenticationContextReference]
 		if ok {
-			session.AddIDTokenClaim(goidc.AuthenticationContextReferenceClaim, acrClaim.Value)
+			session.AddIDTokenClaim(goidc.ClaimAuthenticationContextReference, acrClaim.Value)
 		}
-		acrClaim, ok = claims.Userinfo[goidc.AuthenticationContextReferenceClaim]
+		acrClaim, ok = claims.Userinfo[goidc.ClaimAuthenticationContextReference]
 		if ok {
-			session.AddUserInfoClaim(goidc.AuthenticationContextReferenceClaim, acrClaim.Value)
+			session.AddUserInfoClaim(goidc.ClaimAuthenticationContextReference, acrClaim.Value)
 		}
 
 		// email claim.
-		_, ok = claims.IDToken[goidc.EmailClaim]
+		_, ok = claims.IDToken[goidc.ClaimEmail]
 		if ok {
-			session.AddIDTokenClaim(goidc.EmailClaim, "random@gmail.com")
+			session.AddIDTokenClaim(goidc.ClaimEmail, "random@gmail.com")
 		}
-		_, ok = claims.Userinfo[goidc.EmailClaim]
+		_, ok = claims.Userinfo[goidc.ClaimEmail]
 		if ok {
-			session.AddUserInfoClaim(goidc.EmailClaim, "random@gmail.com")
+			session.AddUserInfoClaim(goidc.ClaimEmail, "random@gmail.com")
 		}
 
 		// email_verified claim.
-		_, ok = claims.IDToken[goidc.EmailVerifiedClaim]
+		_, ok = claims.IDToken[goidc.ClaimEmailVerified]
 		if ok {
-			session.AddIDTokenClaim(goidc.EmailVerifiedClaim, true)
+			session.AddIDTokenClaim(goidc.ClaimEmailVerified, true)
 		}
-		_, ok = claims.Userinfo[goidc.EmailVerifiedClaim]
+		_, ok = claims.Userinfo[goidc.ClaimEmailVerified]
 		if ok {
-			session.AddUserInfoClaim(goidc.EmailVerifiedClaim, true)
+			session.AddUserInfoClaim(goidc.ClaimEmailVerified, true)
 		}
 
 	}
 
 	// Add claims based on scope.
-	if strings.Contains(session.Scopes, goidc.EmailScope) {
-		session.AddUserInfoClaim(goidc.EmailClaim, "random@gmail.com")
-		session.AddUserInfoClaim(goidc.EmailVerifiedClaim, true)
+	if strings.Contains(session.Scopes, goidc.ScopeEmail.String()) {
+		session.AddUserInfoClaim(goidc.ClaimEmail, "random@gmail.com")
+		session.AddUserInfoClaim(goidc.ClaimEmailVerified, true)
 	}
 
-	return goidc.Success
+	return goidc.StatusSuccess
 }
 
 func AuthenticateUser(
@@ -98,7 +98,7 @@ func AuthenticateUser(
 	stepID, ok := session.GetParameter("step")
 	if ok && stepID == "identity" {
 		status := identifyUser(ctx, session)
-		if status != goidc.Success {
+		if status != goidc.StatusSuccess {
 			return status
 		}
 		// The status is success so we can move to the next step.
@@ -120,9 +120,9 @@ func identifyUser(
 			"callbackID": session.CallbackID,
 		}); err != nil {
 			ctx.GetLogger().Error(err.Error())
-			return goidc.Failure
+			return goidc.StatusFailure
 		}
-		return goidc.InProgress
+		return goidc.StatusInProgress
 	}
 
 	session.SetUserID(username)
@@ -131,7 +131,7 @@ func identifyUser(
 	if strings.Contains(session.Scopes, "email") {
 		session.AddIDTokenClaim("email", "random@email.com")
 	}
-	return goidc.Success
+	return goidc.StatusSuccess
 }
 
 func authenticateWithPassword(
@@ -145,9 +145,9 @@ func authenticateWithPassword(
 			"callbackID": session.CallbackID,
 		}); err != nil {
 			ctx.GetLogger().Error(err.Error())
-			return goidc.Failure
+			return goidc.StatusFailure
 		}
-		return goidc.InProgress
+		return goidc.StatusInProgress
 	}
 
 	if password != "password" {
@@ -157,12 +157,12 @@ func authenticateWithPassword(
 			"error":      "invalid password",
 		}); err != nil {
 			ctx.GetLogger().Error(err.Error())
-			return goidc.Failure
+			return goidc.StatusFailure
 		}
-		return goidc.InProgress
+		return goidc.StatusInProgress
 	}
 
-	return goidc.Success
+	return goidc.StatusSuccess
 }
 
 var identityForm string = `

@@ -17,7 +17,7 @@ func handleAuthorizationCodeGrantTokenCreation(
 ) {
 
 	if req.AuthorizationCode == "" {
-		return utils.TokenResponse{}, goidc.NewOAuthError(goidc.InvalidRequest, "invalid authorization code")
+		return utils.TokenResponse{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid authorization code")
 	}
 
 	client, session, oauthErr := getAuthenticatedClientAndSession(ctx, req)
@@ -87,7 +87,7 @@ func generateAuthorizationCodeGrantSession(
 ) {
 
 	grantSession := utils.NewGrantSession(grantOptions, token)
-	if client.IsGrantTypeAllowed(goidc.RefreshTokenGrant) && grantOptions.ShouldRefresh {
+	if client.IsGrantTypeAllowed(goidc.GrantRefreshToken) && grantOptions.ShouldRefresh {
 		ctx.Logger.Debug("generating refresh token for authorization code grant")
 		grantSession.RefreshToken = utils.GenerateRefreshToken()
 		grantSession.ExpiresAtTimestamp = goidc.GetTimestampNow() + ctx.RefreshTokenLifetimeSecs
@@ -97,7 +97,7 @@ func generateAuthorizationCodeGrantSession(
 	if err := ctx.CreateOrUpdateGrantSession(grantSession); err != nil {
 		ctx.Logger.Error("error creating grant session during authorization_code grant",
 			slog.String("error", err.Error()))
-		return goidc.GrantSession{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
+		return goidc.GrantSession{}, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
 	return grantSession, nil
@@ -110,20 +110,20 @@ func validateAuthorizationCodeGrantRequest(
 	session goidc.AuthnSession,
 ) goidc.OAuthError {
 
-	if !client.IsGrantTypeAllowed(goidc.AuthorizationCodeGrant) {
-		return goidc.NewOAuthError(goidc.UnauthorizedClient, "invalid grant type")
+	if !client.IsGrantTypeAllowed(goidc.GrantAuthorizationCode) {
+		return goidc.NewOAuthError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
 	}
 
 	if session.ClientID != client.ID {
-		return goidc.NewOAuthError(goidc.InvalidGrant, "the authorization code was not issued to the client")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidGrant, "the authorization code was not issued to the client")
 	}
 
 	if session.IsAuthorizationCodeExpired() {
-		return goidc.NewOAuthError(goidc.InvalidGrant, "the authorization code is expired")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidGrant, "the authorization code is expired")
 	}
 
 	if session.RedirectURI != req.RedirectURI {
-		return goidc.NewOAuthError(goidc.InvalidGrant, "invalid redirect_uri")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidGrant, "invalid redirect_uri")
 	}
 
 	if err := validatePkce(ctx, req, client, session); err != nil {
@@ -150,20 +150,20 @@ func validatePkce(
 	// RFC 7636. "...with a minimum length of 43 characters and a maximum length of 128 characters."
 	codeVerifierLengh := len(req.CodeVerifier)
 	if req.CodeVerifier != "" && (codeVerifierLengh < 43 || codeVerifierLengh > 128) {
-		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid code verifier")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid code verifier")
 	}
 
 	codeChallengeMethod := session.CodeChallengeMethod
 	if codeChallengeMethod == "" {
-		codeChallengeMethod = goidc.PlainCodeChallengeMethod
+		codeChallengeMethod = goidc.CodeChallengeMethodPlain
 	}
-	if ctx.Profile == goidc.FAPI2Profile {
-		codeChallengeMethod = goidc.SHA256CodeChallengeMethod
+	if ctx.Profile == goidc.ProfileFAPI2 {
+		codeChallengeMethod = goidc.CodeChallengeMethodSHA256
 	}
 	// In the case PKCE is enabled, if the session was created with a code challenge, the token request must contain the right code verifier.
 	if ctx.PkceIsEnabled && session.CodeChallenge != "" &&
 		(req.CodeVerifier == "" || !utils.IsPkceValid(req.CodeVerifier, session.CodeChallenge, codeChallengeMethod)) {
-		return goidc.NewOAuthError(goidc.InvalidGrant, "invalid pkce")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidGrant, "invalid pkce")
 	}
 
 	return nil
@@ -207,7 +207,7 @@ func getSessionByAuthorizationCode(ctx utils.Context, authorizationCode string, 
 	if err != nil {
 		ch <- utils.ResultChannel{
 			Result: goidc.AuthnSession{},
-			Err:    goidc.NewWrappingOAuthError(err, goidc.InvalidGrant, "invalid authorization code"),
+			Err:    goidc.NewWrappingOAuthError(err, goidc.ErrorCodeInvalidGrant, "invalid authorization code"),
 		}
 	}
 
@@ -217,7 +217,7 @@ func getSessionByAuthorizationCode(ctx utils.Context, authorizationCode string, 
 	if err != nil {
 		ch <- utils.ResultChannel{
 			Result: goidc.AuthnSession{},
-			Err:    goidc.NewWrappingOAuthError(err, goidc.InternalError, "could not delete session"),
+			Err:    goidc.NewWrappingOAuthError(err, goidc.ErrorCodeInternalError, "could not delete session"),
 		}
 	}
 
@@ -239,12 +239,12 @@ func newAuthorizationCodeGrantOptions(
 
 	tokenOptions, err := ctx.GetTokenOptions(client, req.Scopes)
 	if err != nil {
-		return goidc.GrantOptions{}, goidc.NewOAuthError(goidc.AccessDenied, err.Error())
+		return goidc.GrantOptions{}, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, err.Error())
 	}
 	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
 
 	grantOptions := goidc.GrantOptions{
-		GrantType:                goidc.AuthorizationCodeGrant,
+		GrantType:                goidc.GrantAuthorizationCode,
 		GrantedScopes:            session.GrantedScopes,
 		Subject:                  session.Subject,
 		ClientID:                 session.ClientID,

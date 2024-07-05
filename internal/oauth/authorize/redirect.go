@@ -49,13 +49,13 @@ func redirectResponse(
 
 	redirectParamsMap := redirectParams.GetParameters()
 	switch responseMode {
-	case goidc.FragmentResponseMode, goidc.FragmentJWTResponseMode:
+	case goidc.ResponseModeFragment, goidc.ResponseModeFragmentJWT:
 		redirectURL := utils.GetURLWithFragmentParams(params.RedirectURI, redirectParamsMap)
 		ctx.Redirect(redirectURL)
-	case goidc.FormPostResponseMode, goidc.FormPostJWTResponseMode:
+	case goidc.ResponseModeFormPost, goidc.ResponseModeFormPostJWT:
 		redirectParamsMap["redirect_uri"] = params.RedirectURI
 		if err := ctx.RenderHTML(formPostResponseTemplate, redirectParamsMap); err != nil {
-			return goidc.NewOAuthError(goidc.InternalError, err.Error())
+			return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 		}
 	default:
 		redirectURL := utils.GetURLWithQueryParams(params.RedirectURI, redirectParamsMap)
@@ -102,15 +102,15 @@ func signJARMResponse(
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.GetKeyID()),
 	)
 	if err != nil {
-		return "", goidc.NewOAuthError(goidc.InternalError, err.Error())
+		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
 	createdAtTimestamp := goidc.GetTimestampNow()
 	claims := map[string]any{
-		goidc.IssuerClaim:   ctx.Host,
-		goidc.AudienceClaim: client.ID,
-		goidc.IssuedAtClaim: createdAtTimestamp,
-		goidc.ExpiryClaim:   createdAtTimestamp + ctx.JARMLifetimeSecs,
+		goidc.ClaimIssuer:   ctx.Host,
+		goidc.ClaimAudience: client.ID,
+		goidc.ClaimIssuedAt: createdAtTimestamp,
+		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JARMLifetimeSecs,
 	}
 	for k, v := range redirectParams.GetParameters() {
 		claims[k] = v
@@ -118,7 +118,7 @@ func signJARMResponse(
 
 	response, err := jwt.Signed(signer).Claims(claims).Serialize()
 	if err != nil {
-		return "", goidc.NewOAuthError(goidc.InternalError, err.Error())
+		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
 	return response, nil

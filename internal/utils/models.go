@@ -400,14 +400,14 @@ func (info TokenIntrospectionInfo) MarshalJSON() ([]byte, error) {
 
 	params := map[string]any{
 		"active":            true,
-		goidc.SubjectClaim:  info.Subject,
-		goidc.ScopeClaim:    info.Scopes,
-		goidc.ClientIDClaim: info.ClientID,
-		goidc.ExpiryClaim:   info.ExpiresAtTimestamp,
+		goidc.ClaimSubject:  info.Subject,
+		goidc.ClaimScope:    info.Scopes,
+		goidc.ClaimClientID: info.ClientID,
+		goidc.ClaimExpiry:   info.ExpiresAtTimestamp,
 	}
 
 	if info.AuthorizationDetails != nil {
-		params[goidc.AuthorizationDetailsClaim] = info.AuthorizationDetails
+		params[goidc.ClaimAuthorizationDetails] = info.AuthorizationDetails
 	}
 
 	confirmation := make(map[string]string)

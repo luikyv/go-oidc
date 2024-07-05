@@ -45,7 +45,7 @@ func validateSignatureKeys(provider OpenIDProvider) error {
 		}
 
 		key := jwkSlice[0]
-		if key.GetUsage() != string(goidc.KeySignatureUsage) {
+		if key.GetUsage() != string(goidc.KeyUsageSignature) {
 			return fmt.Errorf("the key ID: %s is not meant for signing", keyID)
 		}
 
@@ -67,7 +67,7 @@ func validateEncryptionKeys(provider OpenIDProvider) error {
 		}
 
 		key := jwkSlice[0]
-		if key.GetUsage() != string(goidc.KeyEncryptionUsage) {
+		if key.GetUsage() != string(goidc.KeyUsageEncryption) {
 			return fmt.Errorf("the key ID: %s is not meant for encryption", keyID)
 		}
 	}
@@ -97,7 +97,7 @@ func validateClientSecretJWTSignatureAlgorithms(provider OpenIDProvider) error {
 
 func validateIntrospectionClientAuthnMethods(provider OpenIDProvider) error {
 	if provider.config.IntrospectionIsEnabled && (!goidc.ContainsAll(provider.config.ClientAuthnMethods, provider.config.IntrospectionClientAuthnMethods...) ||
-		slices.Contains(provider.config.IntrospectionClientAuthnMethods, goidc.NoneAuthn)) {
+		slices.Contains(provider.config.IntrospectionClientAuthnMethods, goidc.ClientAuthnNone)) {
 		return errors.New("invalid client authentication method for token introspection")
 	}
 
@@ -145,7 +145,7 @@ func validateTokenBinding(provider OpenIDProvider) error {
 }
 
 func validateOpenIDDefaultIDTokenSignatureAlgorithm(provider OpenIDProvider) error {
-	if provider.config.Profile != goidc.OpenIDProfile {
+	if provider.config.Profile != goidc.ProfileOpenID {
 		return nil
 	}
 
@@ -158,7 +158,7 @@ func validateOpenIDDefaultIDTokenSignatureAlgorithm(provider OpenIDProvider) err
 }
 
 func validateOpenIDDefaultJARMSignatureAlgorithm(provider OpenIDProvider) error {
-	if provider.config.Profile != goidc.OpenIDProfile || !provider.config.JARMIsEnabled {
+	if provider.config.Profile != goidc.ProfileOpenID || !provider.config.JARMIsEnabled {
 		return nil
 	}
 
@@ -171,13 +171,13 @@ func validateOpenIDDefaultJARMSignatureAlgorithm(provider OpenIDProvider) error 
 }
 
 func validateFAPI2ClientAuthnMethods(provider OpenIDProvider) error {
-	if provider.config.Profile != goidc.FAPI2Profile {
+	if provider.config.Profile != goidc.ProfileFAPI2 {
 		return nil
 	}
 
 	if slices.ContainsFunc(provider.config.ClientAuthnMethods, func(authnMethod goidc.ClientAuthnType) bool {
 		// TODO: remove self signed, only for tests.
-		return authnMethod != goidc.PrivateKeyJWTAuthn && authnMethod != goidc.TLSAuthn && authnMethod != goidc.SelfSignedTLSAuthn
+		return authnMethod != goidc.ClientAuthnPrivateKeyJWT && authnMethod != goidc.ClientAuthnTLS && authnMethod != goidc.ClientAuthnSelfSignedTLS
 	}) {
 		return errors.New("only private_key_jwt and tls_client_auth are allowed for FAPI 2.0")
 	}
@@ -186,11 +186,11 @@ func validateFAPI2ClientAuthnMethods(provider OpenIDProvider) error {
 }
 
 func validateFAPI2ImplicitGrantIsNotAllowed(provider OpenIDProvider) error {
-	if provider.config.Profile != goidc.FAPI2Profile {
+	if provider.config.Profile != goidc.ProfileFAPI2 {
 		return nil
 	}
 
-	if slices.Contains(provider.config.GrantTypes, goidc.ImplicitGrant) {
+	if slices.Contains(provider.config.GrantTypes, goidc.GrantImplicit) {
 		return errors.New("the implict grant is not allowed for FAPI 2.0")
 	}
 
@@ -198,7 +198,7 @@ func validateFAPI2ImplicitGrantIsNotAllowed(provider OpenIDProvider) error {
 }
 
 func validateFAPI2PARIsRequired(provider OpenIDProvider) error {
-	if provider.config.Profile != goidc.FAPI2Profile {
+	if provider.config.Profile != goidc.ProfileFAPI2 {
 		return nil
 	}
 
@@ -210,7 +210,7 @@ func validateFAPI2PARIsRequired(provider OpenIDProvider) error {
 }
 
 func validateFAPI2PkceIsRequired(provider OpenIDProvider) error {
-	if provider.config.Profile != goidc.FAPI2Profile {
+	if provider.config.Profile != goidc.ProfileFAPI2 {
 		return nil
 	}
 
@@ -222,7 +222,7 @@ func validateFAPI2PkceIsRequired(provider OpenIDProvider) error {
 }
 
 func validateFAPI2IssuerResponseParamIsRequired(provider OpenIDProvider) error {
-	if provider.config.Profile != goidc.FAPI2Profile {
+	if provider.config.Profile != goidc.ProfileFAPI2 {
 		return nil
 	}
 
@@ -234,11 +234,11 @@ func validateFAPI2IssuerResponseParamIsRequired(provider OpenIDProvider) error {
 }
 
 func validateFAPI2RefreshTokenRotation(provider OpenIDProvider) error {
-	if provider.config.Profile != goidc.FAPI2Profile {
+	if provider.config.Profile != goidc.ProfileFAPI2 {
 		return nil
 	}
 
-	if slices.Contains(provider.config.GrantTypes, goidc.RefreshTokenGrant) && provider.config.ShouldRotateRefreshTokens {
+	if slices.Contains(provider.config.GrantTypes, goidc.GrantRefreshToken) && provider.config.ShouldRotateRefreshTokens {
 		// FAPI 2.0 says that, when rotation is enabled, the old refresh tokens must still be valid. Here, we just forget the old refresh tokens.
 		return errors.New("refresh token rotation is not implemented according to FAPI 2.0, so it shouldn't be enabled when using this profile")
 	}

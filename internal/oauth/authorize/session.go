@@ -59,13 +59,13 @@ func initValidAuthnSessionWithPAR(
 
 	session, err := getSessionCreatedWithPAR(ctx, req)
 	if err != nil {
-		return goidc.AuthnSession{}, goidc.NewOAuthError(goidc.InvalidRequest, "invalid request_uri")
+		return goidc.AuthnSession{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid request_uri")
 	}
 
 	if err := validateAuthorizationRequestWithPAR(ctx, req, session, client); err != nil {
 		// If any of the parameters is invalid, we delete the session right away.
 		if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-			return goidc.AuthnSession{}, goidc.NewOAuthError(goidc.InternalError, err.Error())
+			return goidc.AuthnSession{}, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 		}
 		return goidc.AuthnSession{}, err
 	}
@@ -82,12 +82,12 @@ func getSessionCreatedWithPAR(
 	goidc.OAuthError,
 ) {
 	if req.RequestURI == "" {
-		return goidc.AuthnSession{}, goidc.NewOAuthError(goidc.InvalidRequest, "request_uri is required")
+		return goidc.AuthnSession{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "request_uri is required")
 	}
 
 	session, err := ctx.GetAuthnSessionByRequestURI(req.RequestURI)
 	if err != nil {
-		return goidc.AuthnSession{}, goidc.NewOAuthError(goidc.InvalidRequest, "invalid request_uri")
+		return goidc.AuthnSession{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid request_uri")
 	}
 
 	return session, nil
@@ -136,7 +136,7 @@ func getJAR(
 	goidc.OAuthError,
 ) {
 	if req.RequestObject == "" {
-		return utils.AuthorizationRequest{}, goidc.NewOAuthError(goidc.InvalidRequest, "request object is required")
+		return utils.AuthorizationRequest{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "request object is required")
 	}
 
 	jar, err := utils.ExtractJARFromRequestObject(ctx, req.RequestObject, client)
@@ -170,7 +170,7 @@ func initAuthnSessionWithPolicy(
 	policy, ok := ctx.GetAvailablePolicy(client, session)
 	if !ok {
 		ctx.Logger.Info("no policy available")
-		return session.NewRedirectError(goidc.InvalidRequest, "no policy available")
+		return session.NewRedirectError(goidc.ErrorCodeInvalidRequest, "no policy available")
 	}
 
 	ctx.Logger.Info("policy available", slog.String("policy_id", policy.ID))

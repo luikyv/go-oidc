@@ -22,9 +22,9 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 	authorizationCode := "random_authz_code"
 	session := goidc.AuthnSession{
 		ClientID:      utils.TestClientID,
-		GrantedScopes: goidc.OpenIDScope,
+		GrantedScopes: goidc.ScopeOpenID.String(),
 		AuthorizationParameters: goidc.AuthorizationParameters{
-			Scopes:      goidc.OpenIDScope,
+			Scopes:      goidc.ScopeOpenID.String(),
 			RedirectURI: client.RedirectURIS[0],
 		},
 		AuthorizationCode:         authorizationCode,
@@ -43,7 +43,7 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 		ClientAuthnRequest: utils.ClientAuthnRequest{
 			ClientID: client.ID,
 		},
-		GrantType:         goidc.AuthorizationCodeGrant,
+		GrantType:         goidc.GrantAuthorizationCode,
 		RedirectURI:       client.RedirectURIS[0],
 		AuthorizationCode: authorizationCode,
 	}

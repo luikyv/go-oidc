@@ -30,7 +30,7 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 			ClientID:      utils.TestClientID,
 			GrantedScopes: client.Scopes,
 			TokenOptions: goidc.TokenOptions{
-				TokenFormat:       goidc.JWTTokenFormat,
+				TokenFormat:       goidc.TokenFormatJWT,
 				TokenLifetimeSecs: 60,
 			},
 		},
@@ -43,7 +43,7 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 		ClientAuthnRequest: utils.ClientAuthnRequest{
 			ClientID: client.ID,
 		},
-		GrantType:    goidc.RefreshTokenGrant,
+		GrantType:    goidc.GrantRefreshToken,
 		RefreshToken: refreshToken,
 	}
 
@@ -123,7 +123,7 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 		ClientAuthnRequest: utils.ClientAuthnRequest{
 			ClientID: client.ID,
 		},
-		GrantType:    goidc.RefreshTokenGrant,
+		GrantType:    goidc.GrantRefreshToken,
 		RefreshToken: refreshToken,
 	}
 

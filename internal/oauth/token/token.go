@@ -13,17 +13,17 @@ func HandleTokenCreation(
 	err error,
 ) {
 	switch req.GrantType {
-	case goidc.ClientCredentialsGrant:
+	case goidc.GrantClientCredentials:
 		ctx.Logger.Info("handling client_credentials grant type")
 		tokenResp, err = handleClientCredentialsGrantTokenCreation(ctx, req)
-	case goidc.AuthorizationCodeGrant:
+	case goidc.GrantAuthorizationCode:
 		ctx.Logger.Info("handling authorization_code grant type")
 		tokenResp, err = handleAuthorizationCodeGrantTokenCreation(ctx, req)
-	case goidc.RefreshTokenGrant:
+	case goidc.GrantRefreshToken:
 		ctx.Logger.Info("handling refresh_token grant type")
 		tokenResp, err = handleRefreshTokenGrantTokenCreation(ctx, req)
 	default:
-		tokenResp, err = utils.TokenResponse{}, goidc.NewOAuthError(goidc.UnsupportedGrantType, "unsupported grant type")
+		tokenResp, err = utils.TokenResponse{}, goidc.NewOAuthError(goidc.ErrorCodeUnsupportedGrantType, "unsupported grant type")
 	}
 
 	return tokenResp, err

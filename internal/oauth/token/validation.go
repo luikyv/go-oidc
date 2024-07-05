@@ -25,7 +25,7 @@ func validateTokenBindingIsRequired(
 	}
 
 	if !tokenWillBeBound {
-		return goidc.NewOAuthError(goidc.InvalidRequest, "token binding is required either with dpop or tls")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "token binding is required either with dpop or tls")
 	}
 
 	return nil
@@ -41,7 +41,7 @@ func validateTokenBindingRequestWithDPOP(
 	// Return an error if the DPoP header was not informed, but it's required either in the context or by the client.
 	if !ok && (ctx.DPOPIsRequired || client.DPOPIsRequired) {
 		ctx.Logger.Debug("The DPoP header is required, but wasn't provided")
-		return goidc.NewOAuthError(goidc.InvalidRequest, "invalid dpop header")
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid dpop header")
 	}
 
 	// If DPoP is not enabled or, if it is, but the DPoP header was not informed, we just ignore it.

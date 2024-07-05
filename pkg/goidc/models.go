@@ -68,7 +68,7 @@ func NewJWTTokenOptions(
 	shouldRefresh bool,
 ) TokenOptions {
 	return TokenOptions{
-		TokenFormat:       JWTTokenFormat,
+		TokenFormat:       TokenFormatJWT,
 		TokenLifetimeSecs: tokenLifetimeSecs,
 		JWTSignatureKeyID: signatureKeyID,
 		ShouldRefresh:     shouldRefresh,
@@ -81,7 +81,7 @@ func NewOpaqueTokenOptions(
 	shouldRefresh bool,
 ) TokenOptions {
 	return TokenOptions{
-		TokenFormat:       OpaqueTokenFormat,
+		TokenFormat:       TokenFormatOpaque,
 		TokenLifetimeSecs: tokenLifetimeSecs,
 		OpaqueTokenLength: tokenLength,
 		ShouldRefresh:     shouldRefresh,
@@ -149,7 +149,7 @@ func (params AuthorizationParameters) GetResponseMode() ResponseMode {
 		return params.ResponseType.GetDefaultResponseMode(false)
 	}
 
-	if params.ResponseMode == JWTResponseMode {
+	if params.ResponseMode == ResponseModeJWT {
 		return params.ResponseType.GetDefaultResponseMode(true)
 	}
 
