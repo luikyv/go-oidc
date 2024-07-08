@@ -6,7 +6,7 @@ import (
 )
 
 func validateTokenIntrospectionRequest(
-	_ utils.Context,
+	_ utils.OAuthContext,
 	req utils.TokenIntrospectionRequest,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -22,7 +22,7 @@ func validateTokenIntrospectionRequest(
 }
 
 func getTokenIntrospectionInfo(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	token string,
 ) utils.TokenIntrospectionInfo {
 
@@ -38,7 +38,7 @@ func getTokenIntrospectionInfo(
 }
 
 func getRefreshTokenIntrospectionInfo(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	token string,
 ) utils.TokenIntrospectionInfo {
 	grantSession, err := ctx.GetGrantSessionByRefreshToken(token)
@@ -68,7 +68,7 @@ func getRefreshTokenIntrospectionInfo(
 }
 
 func getJWTTokenIntrospectionInfo(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	token string,
 ) utils.TokenIntrospectionInfo {
 	// TODO: Get the grant session instead.
@@ -86,7 +86,7 @@ func getJWTTokenIntrospectionInfo(
 }
 
 func getOpaqueTokenIntrospectionInfo(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	token string,
 ) utils.TokenIntrospectionInfo {
 	grantSession, err := ctx.GetGrantSessionByTokenID(token)

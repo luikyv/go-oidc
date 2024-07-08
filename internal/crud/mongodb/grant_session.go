@@ -9,17 +9,17 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type MongoDBGrantSessionManager struct {
+type GrantSessionManager struct {
 	Collection *mongo.Collection
 }
 
-func NewMongoDBGrantSessionManager(database *mongo.Database) MongoDBGrantSessionManager {
-	return MongoDBGrantSessionManager{
+func NewGrantSessionManager(database *mongo.Database) GrantSessionManager {
+	return GrantSessionManager{
 		Collection: database.Collection("grant_sessions"),
 	}
 }
 
-func (manager MongoDBGrantSessionManager) CreateOrUpdate(
+func (manager GrantSessionManager) CreateOrUpdate(
 	ctx context.Context,
 	grantSession goidc.GrantSession,
 ) error {
@@ -32,7 +32,7 @@ func (manager MongoDBGrantSessionManager) CreateOrUpdate(
 	return nil
 }
 
-func (manager MongoDBGrantSessionManager) GetByTokenID(
+func (manager GrantSessionManager) GetByTokenID(
 	ctx context.Context,
 	tokenID string,
 ) (
@@ -42,7 +42,7 @@ func (manager MongoDBGrantSessionManager) GetByTokenID(
 	return manager.getWithFilter(ctx, bson.D{{Key: "token_id", Value: tokenID}})
 }
 
-func (manager MongoDBGrantSessionManager) GetByRefreshToken(
+func (manager GrantSessionManager) GetByRefreshToken(
 	ctx context.Context,
 	refreshToken string,
 ) (
@@ -52,7 +52,7 @@ func (manager MongoDBGrantSessionManager) GetByRefreshToken(
 	return manager.getWithFilter(ctx, bson.D{{Key: "refresh_token", Value: refreshToken}})
 }
 
-func (manager MongoDBGrantSessionManager) Delete(
+func (manager GrantSessionManager) Delete(
 	ctx context.Context,
 	id string,
 ) error {
@@ -64,7 +64,7 @@ func (manager MongoDBGrantSessionManager) Delete(
 	return nil
 }
 
-func (manager MongoDBGrantSessionManager) getWithFilter(
+func (manager GrantSessionManager) getWithFilter(
 	ctx context.Context,
 	filter any,
 ) (

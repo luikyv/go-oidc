@@ -8,7 +8,7 @@ import (
 )
 
 func IntrospectToken(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.TokenIntrospectionRequest,
 ) (
 	utils.TokenIntrospectionInfo,

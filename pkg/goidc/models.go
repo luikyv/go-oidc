@@ -6,11 +6,11 @@ import (
 )
 
 // Function responsible for executing the user authentication logic.
-type AuthnFunc func(Context, *AuthnSession) AuthnStatus
+type AuthnFunc func(OAuthContext, *AuthnSession) AuthnStatus
 
 // Function responsible for deciding if the corresponding policy will be executed.
 // It can be used to initialize the session as well.
-type SetUpPolicyFunc func(ctx Context, client Client, session *AuthnSession) (selected bool)
+type SetUpPolicyFunc func(ctx OAuthContext, client Client, session *AuthnSession) (selected bool)
 
 type AuthnPolicy struct {
 	ID        string

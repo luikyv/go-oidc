@@ -8,7 +8,7 @@ import (
 )
 
 func MakeIDToken(
-	ctx Context,
+	ctx OAuthContext,
 	client goidc.Client,
 	idTokenOpts IDTokenOptions,
 ) (
@@ -34,7 +34,7 @@ func MakeIDToken(
 }
 
 func MakeToken(
-	ctx Context,
+	ctx OAuthContext,
 	client goidc.Client,
 	grantOptions goidc.GrantOptions,
 ) (
@@ -49,7 +49,7 @@ func MakeToken(
 }
 
 func makeIDToken(
-	ctx Context,
+	ctx OAuthContext,
 	client goidc.Client,
 	idTokenOpts IDTokenOptions,
 ) (
@@ -58,7 +58,7 @@ func makeIDToken(
 ) {
 	privateJWK := ctx.GetIDTokenSignatureKey(client)
 	signatureAlgorithm := jose.SignatureAlgorithm(privateJWK.GetAlgorithm())
-	timestampNow := goidc.GetTimestampNow()
+	timestampNow := goidc.TimestampNow()
 
 	// Set the token claims.
 	claims := map[string]any{
@@ -102,7 +102,7 @@ func makeIDToken(
 }
 
 func encryptIDToken(
-	ctx Context,
+	ctx OAuthContext,
 	client goidc.Client,
 	userInfoJWT string,
 ) (
@@ -124,7 +124,7 @@ func encryptIDToken(
 
 // TODO: Make it simpler. Create a confirmation object.
 func makeJWTToken(
-	ctx Context,
+	ctx OAuthContext,
 	client goidc.Client,
 	grantOptions goidc.GrantOptions,
 ) (
@@ -133,7 +133,7 @@ func makeJWTToken(
 ) {
 	privateJWK := ctx.GetTokenSignatureKey(grantOptions.TokenOptions)
 	jwtID := uuid.NewString()
-	timestampNow := goidc.GetTimestampNow()
+	timestampNow := goidc.TimestampNow()
 	claims := map[string]any{
 		goidc.ClaimTokenID:  jwtID,
 		goidc.ClaimIssuer:   ctx.Host,
@@ -199,14 +199,14 @@ func makeJWTToken(
 }
 
 func makeOpaqueToken(
-	ctx Context,
+	ctx OAuthContext,
 	_ goidc.Client,
 	grantOptions goidc.GrantOptions,
 ) (
 	Token,
 	goidc.OAuthError,
 ) {
-	accessToken := goidc.GenerateRandomString(grantOptions.OpaqueTokenLength, grantOptions.OpaqueTokenLength)
+	accessToken := goidc.RandomString(grantOptions.OpaqueTokenLength, grantOptions.OpaqueTokenLength)
 	tokenType := goidc.TokenTypeBearer
 
 	// DPoP token binding.

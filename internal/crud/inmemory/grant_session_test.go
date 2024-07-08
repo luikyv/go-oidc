@@ -10,7 +10,7 @@ import (
 
 func TestCreateOrUpdateGrantSessionSession_HappyPath(t *testing.T) {
 	// When.
-	manager := inmemory.NewInMemoryGrantSessionManager()
+	manager := inmemory.NewGrantSessionManager()
 	session := goidc.GrantSession{
 		ID: "random_session_id",
 	}
@@ -42,7 +42,7 @@ func TestCreateOrUpdateGrantSessionSession_HappyPath(t *testing.T) {
 
 func TestGetGrantSessionByTokenID_HappyPath(t *testing.T) {
 	// When.
-	manager := inmemory.NewInMemoryGrantSessionManager()
+	manager := inmemory.NewGrantSessionManager()
 	sessionID := "random_session_id"
 	tokenID := "random_token_id"
 	manager.Sessions[sessionID] = goidc.GrantSession{
@@ -65,7 +65,7 @@ func TestGetGrantSessionByTokenID_HappyPath(t *testing.T) {
 
 func TestGetGrantSessionByRefreshToken_HappyPath(t *testing.T) {
 	// When.
-	manager := inmemory.NewInMemoryGrantSessionManager()
+	manager := inmemory.NewGrantSessionManager()
 	sessionID := "random_session_id"
 	refreshToken := "random_refresh_token"
 	manager.Sessions[sessionID] = goidc.GrantSession{
@@ -88,7 +88,7 @@ func TestGetGrantSessionByRefreshToken_HappyPath(t *testing.T) {
 
 func TestDeleteGrantSession_HappyPath(t *testing.T) {
 	// When.
-	manager := inmemory.NewInMemoryGrantSessionManager()
+	manager := inmemory.NewGrantSessionManager()
 	sessionID := "random_session_id"
 	manager.Sessions[sessionID] = goidc.GrantSession{
 		ID: sessionID,
@@ -109,7 +109,7 @@ func TestDeleteGrantSession_HappyPath(t *testing.T) {
 
 func TestDeleteAuthnGrantSession_SessionDoesNotExist(t *testing.T) {
 	// When.
-	manager := inmemory.NewInMemoryGrantSessionManager()
+	manager := inmemory.NewGrantSessionManager()
 	sessionID := "random_session_id"
 
 	// Then.

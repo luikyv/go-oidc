@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAddTokenClaims_HappyPath(t *testing.T) {
@@ -16,18 +17,14 @@ func TestAddTokenClaims_HappyPath(t *testing.T) {
 		"claim": "value",
 	})
 	// Then.
-	if tokenOptions.AdditionalTokenClaims["claim"] != "value" {
-		t.Error("the claim was not added")
-	}
+	assert.Equal(t, "value", tokenOptions.AdditionalTokenClaims["claim"], "the claim was not added")
 
 	// When.
 	tokenOptions.AddTokenClaims(map[string]any{
 		"claim": "value",
 	})
 	// Then.
-	if tokenOptions.AdditionalTokenClaims["claim"] != "value" {
-		t.Error("the claim was not added")
-	}
+	assert.Equal(t, "value", tokenOptions.AdditionalTokenClaims["claim"], "the claim was not added")
 }
 
 func TestAuthorizationParameters_Merge_HappyPath(t *testing.T) {
@@ -47,31 +44,11 @@ func TestAuthorizationParameters_Merge_HappyPath(t *testing.T) {
 	mergedParams := insideParams.Merge(outsideParams)
 
 	// Then.
-	if mergedParams.RedirectURI != "https:example1.com" {
-		// The parameter from inside should take priority.
-		t.Error("the redirect URI is not as expected")
-		return
-	}
-
-	if mergedParams.State != "random_state" {
-		t.Error("the state is not as expected")
-		return
-	}
-
-	if mergedParams.Nonce != "random_nonce" {
-		t.Error("the nonce is not as expected")
-		return
-	}
-
-	if mergedParams.AuthorizationDetails == nil {
-		t.Error("the authorization details are not as expected")
-		return
-	}
-
-	if mergedParams.Claims == nil {
-		t.Error("the claims are not as expected")
-		return
-	}
+	assert.Equal(t, "https:example1.com", mergedParams.RedirectURI, "the redirect URI is not as expected")
+	assert.Equal(t, "random_state", mergedParams.State, "the redirect URI is not as expected")
+	assert.Equal(t, "random_nonce", mergedParams.Nonce, "the nonce is not as expected")
+	assert.NotNil(t, mergedParams.AuthorizationDetails, "the authorization details are not as expected")
+	assert.NotNil(t, mergedParams.Claims, "the claims are not as expected")
 }
 
 func TestGetResponseMode_HappyPath(t *testing.T) {
@@ -110,13 +87,7 @@ func TestGetResponseMode_HappyPath(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("case %v", i+1),
 			func(t *testing.T) {
-				// When.
-				responseMode := testCase.params.GetResponseMode()
-
-				// Then.
-				if testCase.expectedResponseMode != responseMode {
-					t.Errorf("response mode not as expected. actual: %s, expected: %s", responseMode, testCase.expectedResponseMode)
-				}
+				assert.Equalf(t, testCase.expectedResponseMode, testCase.params.GetResponseMode(), "response mode not as expected")
 			},
 		)
 	}
@@ -131,18 +102,7 @@ func TestAuthorizationDetail_GetProperties_HappyPath(t *testing.T) {
 	}
 
 	// Then.
-	if authDetails.GetType() != "random_type" {
-		t.Error("type not as expected")
-		return
-	}
-
-	if authDetails.GetIdentifier() != "random_identifier" {
-		t.Error("identifier not as expected")
-		return
-	}
-
-	if authDetails.GetActions()[0] != "random_action" {
-		t.Error("action not as expected")
-		return
-	}
+	assert.Equal(t, "random_type", authDetails.GetType(), "type not as expected")
+	assert.Equal(t, "random_identifier", authDetails.GetIdentifier(), "identifier not as expected")
+	assert.Contains(t, authDetails.GetActions(), "random_action", "action not as expected")
 }

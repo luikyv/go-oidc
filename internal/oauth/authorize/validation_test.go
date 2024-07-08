@@ -163,7 +163,7 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 			},
 			goidc.AuthnSession{
 				ClientID:           client.ID,
-				ExpiresAtTimestamp: goidc.GetTimestampNow() + 1,
+				ExpiresAtTimestamp: goidc.TimestampNow() + 1,
 			},
 			func(client goidc.Client) goidc.Client {
 				return client
@@ -185,7 +185,7 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 			},
 			goidc.AuthnSession{
 				ClientID:           client.ID,
-				ExpiresAtTimestamp: goidc.GetTimestampNow() + 1,
+				ExpiresAtTimestamp: goidc.TimestampNow() + 1,
 				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectURI: client.RedirectURIS[0],
 				},

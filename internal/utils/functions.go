@@ -28,7 +28,7 @@ type ResultChannel struct {
 }
 
 func ExtractJARFromRequestObject(
-	ctx Context,
+	ctx OAuthContext,
 	reqObject string,
 	client goidc.Client,
 ) (
@@ -51,7 +51,7 @@ func ExtractJARFromRequestObject(
 }
 
 func extractSignedRequestObjectFromEncryptedRequestObject(
-	ctx Context,
+	ctx OAuthContext,
 	reqObject string,
 	_ goidc.Client,
 ) (
@@ -82,7 +82,7 @@ func extractSignedRequestObjectFromEncryptedRequestObject(
 }
 
 func extractJARFromSignedRequestObject(
-	ctx Context,
+	ctx OAuthContext,
 	reqObject string,
 	client goidc.Client,
 ) (
@@ -132,7 +132,7 @@ func extractJARFromSignedRequestObject(
 }
 
 func ValidateDPOPJWT(
-	ctx Context,
+	ctx OAuthContext,
 	dpopJWT string,
 	expectedDPOPClaims DPOPJWTValidationOptions,
 ) goidc.OAuthError {
@@ -197,7 +197,7 @@ func ValidateDPOPJWT(
 }
 
 func GetValidTokenClaims(
-	ctx Context,
+	ctx OAuthContext,
 	token string,
 ) (
 	map[string]any,
@@ -234,7 +234,7 @@ func GetValidTokenClaims(
 	return rawClaims, nil
 }
 
-func GetTokenID(ctx Context, token string) (string, goidc.OAuthError) {
+func GetTokenID(ctx OAuthContext, token string) (string, goidc.OAuthError) {
 	if !IsJWS(token) {
 		return token, nil
 	}
@@ -253,11 +253,11 @@ func GetTokenID(ctx Context, token string) (string, goidc.OAuthError) {
 }
 
 func RunValidations(
-	ctx Context,
+	ctx OAuthContext,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 	validators ...func(
-		ctx Context,
+		ctx OAuthContext,
 		params goidc.AuthorizationParameters,
 		client goidc.Client,
 	) goidc.OAuthError,
@@ -271,7 +271,7 @@ func RunValidations(
 	return nil
 }
 
-func ExtractProtectedParamsFromForm(ctx Context) map[string]any {
+func ExtractProtectedParamsFromForm(ctx OAuthContext) map[string]any {
 	protectedParams := make(map[string]any)
 	for param, value := range ctx.GetFormData() {
 		if strings.HasPrefix(param, goidc.ProtectedParamPrefix) {
@@ -282,7 +282,7 @@ func ExtractProtectedParamsFromForm(ctx Context) map[string]any {
 	return protectedParams
 }
 
-func ExtractProtectedParamsFromRequestObject(ctx Context, request string) map[string]any {
+func ExtractProtectedParamsFromRequestObject(ctx OAuthContext, request string) map[string]any {
 	parsedRequest, err := jwt.ParseSigned(request, ctx.JARSignatureAlgorithms)
 	if err != nil {
 		return map[string]any{}
@@ -305,7 +305,7 @@ func ExtractProtectedParamsFromRequestObject(ctx Context, request string) map[st
 }
 
 func EncryptJWT(
-	_ Context,
+	_ OAuthContext,
 	jwtString string,
 	encryptionJWK goidc.JSONWebKey,
 	contentKeyEncryptionAlgorithm jose.ContentEncryption,
@@ -336,7 +336,7 @@ func EncryptJWT(
 }
 
 func NewGrantSession(grantOptions goidc.GrantOptions, token Token) goidc.GrantSession {
-	timestampNow := goidc.GetTimestampNow()
+	timestampNow := goidc.TimestampNow()
 	return goidc.GrantSession{
 		ID:                          uuid.New().String(),
 		TokenID:                     token.ID,
@@ -355,7 +355,7 @@ func NewAuthnSession(authParams goidc.AuthorizationParameters, client goidc.Clie
 		ID:                       uuid.NewString(),
 		ClientID:                 client.ID,
 		AuthorizationParameters:  authParams,
-		CreatedAtTimestamp:       goidc.GetTimestampNow(),
+		CreatedAtTimestamp:       goidc.TimestampNow(),
 		Store:                    make(map[string]any),
 		AdditionalTokenClaims:    make(map[string]any),
 		AdditionalIDTokenClaims:  map[string]any{},
@@ -364,19 +364,19 @@ func NewAuthnSession(authParams goidc.AuthorizationParameters, client goidc.Clie
 }
 
 func GenerateRefreshToken() string {
-	return goidc.GenerateRandomString(goidc.RefreshTokenLength, goidc.RefreshTokenLength)
+	return goidc.RandomString(goidc.RefreshTokenLength, goidc.RefreshTokenLength)
 }
 
 func GenerateClientID() string {
-	return "dc-" + goidc.GenerateRandomString(goidc.DynamicClientIDLength, goidc.DynamicClientIDLength)
+	return "dc-" + goidc.RandomString(goidc.DynamicClientIDLength, goidc.DynamicClientIDLength)
 }
 
 func GenerateClientSecret() string {
-	return goidc.GenerateRandomString(goidc.ClientSecretLength, goidc.ClientSecretLength)
+	return goidc.RandomString(goidc.ClientSecretLength, goidc.ClientSecretLength)
 }
 
 func GenerateRegistrationAccessToken() string {
-	return goidc.GenerateRandomString(goidc.RegistrationAccessTokenLength, goidc.RegistrationAccessTokenLength)
+	return goidc.RandomString(goidc.RegistrationAccessTokenLength, goidc.RegistrationAccessTokenLength)
 }
 
 func GetURLWithQueryParams(redirectURI string, params map[string]string) string {

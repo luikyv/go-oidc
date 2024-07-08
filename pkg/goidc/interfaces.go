@@ -7,7 +7,7 @@ import (
 	"log/slog"
 )
 
-type Context interface {
+type OAuthContext interface {
 	GetHost() string
 	GetHeader(header string) (headerValue string, ok bool)
 	GetFormParam(param string) (formValue string)

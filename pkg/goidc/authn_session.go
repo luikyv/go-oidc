@@ -100,21 +100,21 @@ func (session *AuthnSession) AddUserInfoClaim(claim string, value any) {
 }
 
 func (session AuthnSession) IsPushedRequestExpired(parLifetimeSecs int) bool {
-	return GetTimestampNow() > session.ExpiresAtTimestamp
+	return TimestampNow() > session.ExpiresAtTimestamp
 }
 
 func (session AuthnSession) IsAuthorizationCodeExpired() bool {
-	return GetTimestampNow() > session.ExpiresAtTimestamp
+	return TimestampNow() > session.ExpiresAtTimestamp
 }
 
 func (session AuthnSession) IsExpired() bool {
-	return GetTimestampNow() > session.ExpiresAtTimestamp
+	return TimestampNow() > session.ExpiresAtTimestamp
 }
 
 // Push the session so it can be referenced by a request URI.
 func (session *AuthnSession) Push(parLifetimeSecs int) (requestURI string) {
-	session.RequestURI = GenerateRequestURI()
-	session.ExpiresAtTimestamp = GetTimestampNow() + parLifetimeSecs
+	session.RequestURI = RequestURI()
+	session.ExpiresAtTimestamp = TimestampNow() + parLifetimeSecs
 	return session.RequestURI
 }
 
@@ -124,15 +124,15 @@ func (session *AuthnSession) Start(policyID string, sessionLifetimeSecs int) {
 		session.AddIDTokenClaim(ClaimNonce, session.Nonce)
 	}
 	session.PolicyID = policyID
-	session.CallbackID = GenerateCallbackID()
+	session.CallbackID = CallbackID()
 	// FIXME: To think about:Treating the request_uri as one-time use will cause problems when the user refreshes the page.
 	session.RequestURI = ""
-	session.ExpiresAtTimestamp = GetTimestampNow() + sessionLifetimeSecs
+	session.ExpiresAtTimestamp = TimestampNow() + sessionLifetimeSecs
 }
 
 func (session *AuthnSession) InitAuthorizationCode() string {
-	session.AuthorizationCode = GenerateAuthorizationCode()
-	session.AuthorizationCodeIssuedAt = GetTimestampNow()
+	session.AuthorizationCode = AuthorizationCode()
+	session.AuthorizationCodeIssuedAt = TimestampNow()
 	session.ExpiresAtTimestamp = session.AuthorizationCodeIssuedAt + AuthorizationCodeLifetimeSecs
 	return session.AuthorizationCode
 }

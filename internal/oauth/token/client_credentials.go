@@ -8,7 +8,7 @@ import (
 )
 
 func handleClientCredentialsGrantTokenCreation(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.TokenRequest,
 ) (
 	utils.TokenResponse,
@@ -52,7 +52,7 @@ func handleClientCredentialsGrantTokenCreation(
 }
 
 func generateClientCredentialsGrantSession(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	_ goidc.Client,
 	token utils.Token,
 	grantOptions goidc.GrantOptions,
@@ -70,7 +70,7 @@ func generateClientCredentialsGrantSession(
 }
 
 func validateClientCredentialsGrantRequest(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.TokenRequest,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -101,7 +101,7 @@ func validateClientCredentialsGrantRequest(
 }
 
 func newClientCredentialsGrantOptions(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	client goidc.Client,
 	req utils.TokenRequest,
 ) (

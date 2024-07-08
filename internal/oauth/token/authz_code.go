@@ -9,7 +9,7 @@ import (
 )
 
 func handleAuthorizationCodeGrantTokenCreation(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.TokenRequest,
 ) (
 	utils.TokenResponse,
@@ -77,7 +77,7 @@ func handleAuthorizationCodeGrantTokenCreation(
 }
 
 func generateAuthorizationCodeGrantSession(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	client goidc.Client,
 	token utils.Token,
 	grantOptions goidc.GrantOptions,
@@ -90,7 +90,7 @@ func generateAuthorizationCodeGrantSession(
 	if client.IsGrantTypeAllowed(goidc.GrantRefreshToken) && grantOptions.ShouldRefresh {
 		ctx.Logger.Debug("generating refresh token for authorization code grant")
 		grantSession.RefreshToken = utils.GenerateRefreshToken()
-		grantSession.ExpiresAtTimestamp = goidc.GetTimestampNow() + ctx.RefreshTokenLifetimeSecs
+		grantSession.ExpiresAtTimestamp = goidc.TimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
 
 	ctx.Logger.Debug("creating grant session for authorization_code grant")
@@ -104,7 +104,7 @@ func generateAuthorizationCodeGrantSession(
 }
 
 func validateAuthorizationCodeGrantRequest(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.TokenRequest,
 	client goidc.Client,
 	session goidc.AuthnSession,
@@ -142,7 +142,7 @@ func validateAuthorizationCodeGrantRequest(
 }
 
 func validatePkce(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.TokenRequest,
 	_ goidc.Client,
 	session goidc.AuthnSession,
@@ -170,7 +170,7 @@ func validatePkce(
 }
 
 func getAuthenticatedClientAndSession(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.TokenRequest,
 ) (
 	goidc.Client,
@@ -202,7 +202,7 @@ func getAuthenticatedClientAndSession(
 	return authenticatedClient, session, nil
 }
 
-func getSessionByAuthorizationCode(ctx utils.Context, authorizationCode string, ch chan<- utils.ResultChannel) {
+func getSessionByAuthorizationCode(ctx utils.OAuthContext, authorizationCode string, ch chan<- utils.ResultChannel) {
 	session, err := ctx.GetAuthnSessionByAuthorizationCode(authorizationCode)
 	if err != nil {
 		ch <- utils.ResultChannel{
@@ -228,7 +228,7 @@ func getSessionByAuthorizationCode(ctx utils.Context, authorizationCode string, 
 }
 
 func newAuthorizationCodeGrantOptions(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.TokenRequest,
 	client goidc.Client,
 	session goidc.AuthnSession,

@@ -36,7 +36,7 @@ func RunFAPI2OpenIDProvider() error {
 		ps256ServerKeyID,
 		ps256ServerKeyID,
 	)
-	openidProvider.SetFAPI2Profile()
+	openidProvider.SetProfileFAPI2()
 	openidProvider.EnableMTLS(mtlsIssuer)
 	openidProvider.RequirePushedAuthorizationRequests(60)
 	openidProvider.EnableJWTSecuredAuthorizationRequests(600, goidc.PS256)
@@ -119,7 +119,7 @@ func RunFAPI2OpenIDProvider() error {
 	// Create Policy
 	openidProvider.AddPolicy(goidc.NewPolicy(
 		"policy",
-		func(ctx goidc.Context, client goidc.Client, session *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.OAuthContext, client goidc.Client, session *goidc.AuthnSession) bool { return true },
 		AuthenticateUserWithNoInteraction,
 	))
 

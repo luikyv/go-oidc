@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestResponseType_Contains_HappyPath(t *testing.T) {
@@ -27,10 +28,7 @@ func TestResponseType_Contains_HappyPath(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("%s should contain %s? %t", testCase.superResponseType, testCase.subResponseType, testCase.superShouldContainSub),
 			func(t *testing.T) {
-				if testCase.superResponseType.Contains(testCase.subResponseType) != testCase.superShouldContainSub {
-					t.Error(testCase)
-					return
-				}
+				assert.Equal(t, testCase.superShouldContainSub, testCase.superResponseType.Contains(testCase.subResponseType))
 			},
 		)
 	}
@@ -54,10 +52,7 @@ func TestResponseType_IsImplicit_HappyPath(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("%s is implicit? %t", testCase.responseType, testCase.isImplicit),
 			func(t *testing.T) {
-				if testCase.responseType.IsImplicit() != testCase.isImplicit {
-					t.Error(testCase)
-					return
-				}
+				assert.Equal(t, testCase.isImplicit, testCase.responseType.IsImplicit())
 			},
 		)
 	}
@@ -85,13 +80,11 @@ func TestResponseType_GetDefaultResponseMode_HappyPath(t *testing.T) {
 		{goidc.ResponseTypeCodeAndIDTokenAndToken, true, goidc.ResponseModeFragmentJWT},
 	}
 
-	for _, testCase := range testCases {
+	for i, testCase := range testCases {
 		t.Run(
-			fmt.Sprintf("the default response mode for %s should be %s. jarm? %t", testCase.responseType, testCase.expectedResponseMode, testCase.isJARM),
+			fmt.Sprintf("case %d", i),
 			func(t *testing.T) {
-				if testCase.responseType.GetDefaultResponseMode(testCase.isJARM) != testCase.expectedResponseMode {
-					t.Error(testCase)
-				}
+				assert.Equal(t, testCase.expectedResponseMode, testCase.responseType.GetDefaultResponseMode(testCase.isJARM))
 			},
 		)
 	}
@@ -111,14 +104,11 @@ func TestResponseMode_IsJARM_HappyPath(t *testing.T) {
 		{goidc.ResponseModeJWT, true},
 	}
 
-	for _, testCase := range testCases {
+	for i, testCase := range testCases {
 		t.Run(
-			fmt.Sprintf("%s is JARM? %t", testCase.responseMode, testCase.isJARM),
+			fmt.Sprintf("case %d", i),
 			func(t *testing.T) {
-				if testCase.responseMode.IsJARM() != testCase.isJARM {
-					t.Error(testCase)
-					return
-				}
+				assert.Equal(t, testCase.isJARM, testCase.responseMode.IsJARM())
 			},
 		)
 	}
@@ -138,14 +128,11 @@ func TestResponseMode_IsQuery_HappyPath(t *testing.T) {
 		{goidc.ResponseModeJWT, false},
 	}
 
-	for _, testCase := range testCases {
+	for i, testCase := range testCases {
 		t.Run(
-			fmt.Sprintf("%s is query? %t", testCase.responseMode, testCase.isQuery),
+			fmt.Sprintf("case %d", i),
 			func(t *testing.T) {
-				if testCase.responseMode.IsQuery() != testCase.isQuery {
-					t.Error(testCase)
-					return
-				}
+				assert.Equal(t, testCase.isQuery, testCase.responseMode.IsQuery())
 			},
 		)
 	}
@@ -169,14 +156,11 @@ func TestErrorCode_GetStatusCode_HappyPath(t *testing.T) {
 		{goidc.ErrorCodeInternalError, http.StatusInternalServerError},
 	}
 
-	for _, testCase := range testCases {
+	for i, testCase := range testCases {
 		t.Run(
-			fmt.Sprintf("%s should correspond to %d status code", testCase.errorCode, testCase.statusCode),
+			fmt.Sprintf("case %d", i),
 			func(t *testing.T) {
-				if testCase.errorCode.GetStatusCode() != testCase.statusCode {
-					t.Error(testCase)
-					return
-				}
+				assert.Equal(t, testCase.statusCode, testCase.errorCode.GetStatusCode())
 			},
 		)
 	}

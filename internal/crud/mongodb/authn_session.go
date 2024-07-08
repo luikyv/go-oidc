@@ -9,17 +9,17 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type MongoDBAuthnSessionManager struct {
+type AuthnSessionManager struct {
 	Collection *mongo.Collection
 }
 
-func NewMongoDBAuthnSessionManager(database *mongo.Database) MongoDBAuthnSessionManager {
-	return MongoDBAuthnSessionManager{
+func NewAuthnSessionManager(database *mongo.Database) AuthnSessionManager {
+	return AuthnSessionManager{
 		Collection: database.Collection("authentication_sessions"),
 	}
 }
 
-func (manager MongoDBAuthnSessionManager) CreateOrUpdate(
+func (manager AuthnSessionManager) CreateOrUpdate(
 	ctx context.Context,
 	session goidc.AuthnSession,
 ) error {
@@ -32,7 +32,7 @@ func (manager MongoDBAuthnSessionManager) CreateOrUpdate(
 	return nil
 }
 
-func (manager MongoDBAuthnSessionManager) GetByCallbackID(
+func (manager AuthnSessionManager) GetByCallbackID(
 	ctx context.Context,
 	callbackID string,
 ) (
@@ -42,7 +42,7 @@ func (manager MongoDBAuthnSessionManager) GetByCallbackID(
 	return manager.getWithFilter(ctx, bson.D{{Key: "callback_id", Value: callbackID}})
 }
 
-func (manager MongoDBAuthnSessionManager) GetByAuthorizationCode(
+func (manager AuthnSessionManager) GetByAuthorizationCode(
 	ctx context.Context,
 	authorizationCode string,
 ) (
@@ -52,7 +52,7 @@ func (manager MongoDBAuthnSessionManager) GetByAuthorizationCode(
 	return manager.getWithFilter(ctx, bson.D{{Key: "authorization_code", Value: authorizationCode}})
 }
 
-func (manager MongoDBAuthnSessionManager) GetByRequestURI(
+func (manager AuthnSessionManager) GetByRequestURI(
 	ctx context.Context,
 	requestURI string,
 ) (
@@ -62,7 +62,7 @@ func (manager MongoDBAuthnSessionManager) GetByRequestURI(
 	return manager.getWithFilter(ctx, bson.D{{Key: "request_uri", Value: requestURI}})
 }
 
-func (manager MongoDBAuthnSessionManager) Delete(
+func (manager AuthnSessionManager) Delete(
 	ctx context.Context,
 	id string,
 ) error {
@@ -74,7 +74,7 @@ func (manager MongoDBAuthnSessionManager) Delete(
 	return nil
 }
 
-func (manager MongoDBAuthnSessionManager) getWithFilter(
+func (manager AuthnSessionManager) getWithFilter(
 	ctx context.Context,
 	filter any,
 ) (

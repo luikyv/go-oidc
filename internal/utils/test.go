@@ -53,15 +53,15 @@ func GetTestClient() goidc.Client {
 	}
 }
 
-func GetTestInMemoryContext() Context {
+func GetTestInMemoryContext() OAuthContext {
 	privateJWK := GetTestPrivateRS256JWK(TestKeyID)
-	return Context{
+	return OAuthContext{
 		Configuration: Configuration{
 			Profile:                       goidc.ProfileOpenID,
 			Host:                          TestHost,
-			ClientManager:                 inmemory.NewInMemoryClientManager(),
-			GrantSessionManager:           inmemory.NewInMemoryGrantSessionManager(),
-			AuthnSessionManager:           inmemory.NewInMemoryAuthnSessionManager(),
+			ClientManager:                 inmemory.NewClientManager(),
+			GrantSessionManager:           inmemory.NewGrantSessionManager(),
+			AuthnSessionManager:           inmemory.NewAuthnSessionManager(),
 			Scopes:                        []goidc.Scope{goidc.ScopeOpenID, Scope1, Scope2},
 			PrivateJWKS:                   goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{privateJWK}},
 			DefaultTokenSignatureKeyID:    privateJWK.GetKeyID(),
@@ -81,8 +81,8 @@ func GetTestInMemoryContext() Context {
 	}
 }
 
-func GetDummyTestContext() Context {
-	return Context{
+func GetDummyTestContext() OAuthContext {
+	return OAuthContext{
 		Configuration: Configuration{
 			Profile: goidc.ProfileOpenID,
 			Host:    TestHost,
@@ -93,8 +93,8 @@ func GetDummyTestContext() Context {
 	}
 }
 
-func GetAuthnSessionsFromTestContext(ctx Context) []goidc.AuthnSession {
-	sessionManager, _ := ctx.AuthnSessionManager.(*inmemory.InMemoryAuthnSessionManager)
+func GetAuthnSessionsFromTestContext(ctx OAuthContext) []goidc.AuthnSession {
+	sessionManager, _ := ctx.AuthnSessionManager.(*inmemory.AuthnSessionManager)
 	sessions := make([]goidc.AuthnSession, 0, len(sessionManager.Sessions))
 	for _, s := range sessionManager.Sessions {
 		sessions = append(sessions, s)
@@ -103,8 +103,8 @@ func GetAuthnSessionsFromTestContext(ctx Context) []goidc.AuthnSession {
 	return sessions
 }
 
-func GetGrantSessionsFromTestContext(ctx Context) []goidc.GrantSession {
-	manager, _ := ctx.GrantSessionManager.(*inmemory.InMemoryGrantSessionManager)
+func GetGrantSessionsFromTestContext(ctx OAuthContext) []goidc.GrantSession {
+	manager, _ := ctx.GrantSessionManager.(*inmemory.GrantSessionManager)
 	tokens := make([]goidc.GrantSession, 0, len(manager.Sessions))
 	for _, t := range manager.Sessions {
 		tokens = append(tokens, t)

@@ -8,7 +8,7 @@ import (
 )
 
 func handleRefreshTokenGrantTokenCreation(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.TokenRequest,
 ) (
 	utils.TokenResponse,
@@ -59,13 +59,13 @@ func handleRefreshTokenGrantTokenCreation(
 }
 
 func updateRefreshTokenGrantSession(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	grantSession *goidc.GrantSession,
 	req utils.TokenRequest,
 	token utils.Token,
 ) goidc.OAuthError {
 
-	grantSession.LastTokenIssuedAtTimestamp = goidc.GetTimestampNow()
+	grantSession.LastTokenIssuedAtTimestamp = goidc.TimestampNow()
 	grantSession.TokenID = token.ID
 
 	if ctx.ShouldRotateRefreshTokens {
@@ -87,7 +87,7 @@ func updateRefreshTokenGrantSession(
 }
 
 func getAuthenticatedClientAndGrantSession(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.TokenRequest,
 ) (
 	goidc.Client,
@@ -120,7 +120,7 @@ func getAuthenticatedClientAndGrantSession(
 }
 
 func getGrantSessionByRefreshToken(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	refreshToken string,
 	ch chan<- utils.ResultChannel,
 ) {
@@ -149,7 +149,7 @@ func preValidateRefreshTokenGrantRequest(
 }
 
 func validateRefreshTokenGrantRequest(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.TokenRequest,
 	client goidc.Client,
 	grantSession goidc.GrantSession,
@@ -178,7 +178,7 @@ func validateRefreshTokenGrantRequest(
 }
 
 func validateRefreshTokenProofOfPossesionForPublicClients(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	client goidc.Client,
 	grantSession goidc.GrantSession,
 ) goidc.OAuthError {

@@ -5,7 +5,7 @@ import (
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-func GetOpenIDConfiguration(ctx utils.Context) utils.OpenIDConfiguration {
+func GetOpenIDConfiguration(ctx utils.OAuthContext) utils.OpenIDConfiguration {
 	config := utils.OpenIDConfiguration{
 		Issuer:                               ctx.Host,
 		ClientRegistrationEndpoint:           ctx.Host + string(goidc.EndpointDynamicClient),

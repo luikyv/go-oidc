@@ -32,12 +32,12 @@ func GetPrivateJWKS(filename string) goidc.JSONWebKeySet {
 }
 
 func AuthenticateUserWithNoInteraction(
-	ctx goidc.Context,
+	ctx goidc.OAuthContext,
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 	session.SetUserID("random_user_id")
 	session.GrantScopes(session.Scopes)
-	session.AddIDTokenClaim(goidc.ClaimAuthenticationTime, goidc.GetTimestampNow())
+	session.AddIDTokenClaim(goidc.ClaimAuthenticationTime, goidc.TimestampNow())
 
 	// Add claims based on the claims parameter.
 	claims, ok := session.GetClaims()
@@ -85,7 +85,7 @@ func AuthenticateUserWithNoInteraction(
 }
 
 func AuthenticateUser(
-	ctx goidc.Context,
+	ctx goidc.OAuthContext,
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 
@@ -109,7 +109,7 @@ func AuthenticateUser(
 }
 
 func identifyUser(
-	ctx goidc.Context,
+	ctx goidc.OAuthContext,
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 
@@ -135,7 +135,7 @@ func identifyUser(
 }
 
 func authenticateWithPassword(
-	ctx goidc.Context,
+	ctx goidc.OAuthContext,
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 	password := ctx.GetFormParam("password")

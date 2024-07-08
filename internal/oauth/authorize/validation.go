@@ -11,7 +11,7 @@ import (
 )
 
 func validateAuthorizationRequestWithPAR(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.AuthorizationRequest,
 	session goidc.AuthnSession,
 	client goidc.Client,
@@ -33,7 +33,7 @@ func validateAuthorizationRequestWithPAR(
 }
 
 func validateAuthorizationRequestWithJAR(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.AuthorizationRequest,
 	jar utils.AuthorizationRequest,
 	client goidc.Client,
@@ -60,7 +60,7 @@ func validateAuthorizationRequestWithJAR(
 }
 
 func validateAuthorizationRequest(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.AuthorizationRequest,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -68,7 +68,7 @@ func validateAuthorizationRequest(
 }
 
 func validateInsideWithOutsideParams(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	insideParams goidc.AuthorizationParameters,
 	outsideParams goidc.AuthorizationParameters,
 	client goidc.Client,
@@ -86,7 +86,7 @@ func validateInsideWithOutsideParams(
 }
 
 func validateOpenIDInsideWithOutsideParams(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	insideParams goidc.AuthorizationParameters,
 	outsideParams goidc.AuthorizationParameters,
 	_ goidc.Client,
@@ -113,7 +113,7 @@ func validateOpenIDInsideWithOutsideParams(
 }
 
 func validateAuthorizationParams(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -140,7 +140,7 @@ func validateAuthorizationParams(
 }
 
 func validateOpenIDRedirectURI(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -156,7 +156,7 @@ func validateOpenIDRedirectURI(
 }
 
 func ValidateResponseMode(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -168,7 +168,7 @@ func ValidateResponseMode(
 }
 
 func ValidateJWTResponseModeIsRequired(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -181,7 +181,7 @@ func ValidateJWTResponseModeIsRequired(
 }
 
 func validateResponseType(
-	_ utils.Context,
+	_ utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -192,7 +192,7 @@ func validateResponseType(
 }
 
 func validateScopeOpenIDIsRequiredWhenResponseTypeIsIDToken(
-	_ utils.Context,
+	_ utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	_ goidc.Client,
 ) goidc.OAuthError {
@@ -203,7 +203,7 @@ func validateScopeOpenIDIsRequiredWhenResponseTypeIsIDToken(
 }
 
 func validateScopes(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -218,7 +218,7 @@ func validateScopes(
 }
 
 func validateCannotInformRequestURIAndRequestObject(
-	_ utils.Context,
+	_ utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -229,7 +229,7 @@ func validateCannotInformRequestURIAndRequestObject(
 }
 
 func validatePkce(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -244,7 +244,7 @@ func validatePkce(
 }
 
 func ValidateCodeChallengeMethod(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -255,7 +255,7 @@ func ValidateCodeChallengeMethod(
 }
 
 func ValidateCannotRequestCodeResponseTypeWhenAuthorizationCodeGrantIsNotAllowed(
-	_ utils.Context,
+	_ utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -266,7 +266,7 @@ func ValidateCannotRequestCodeResponseTypeWhenAuthorizationCodeGrantIsNotAllowed
 }
 
 func ValidateCannotRequestImplicitResponseTypeWhenImplicitGrantIsNotAllowed(
-	_ utils.Context,
+	_ utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -277,7 +277,7 @@ func ValidateCannotRequestImplicitResponseTypeWhenImplicitGrantIsNotAllowed(
 }
 
 func validateCannotRequestIDTokenResponseTypeIfOpenIDScopeIsNotRequested(
-	_ utils.Context,
+	_ utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -288,7 +288,7 @@ func validateCannotRequestIDTokenResponseTypeIfOpenIDScopeIsNotRequested(
 }
 
 func validateNonceIsRequiredWhenResponseTypeContainsIDToken(
-	_ utils.Context,
+	_ utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	_ goidc.Client,
 ) goidc.OAuthError {
@@ -299,7 +299,7 @@ func validateNonceIsRequiredWhenResponseTypeContainsIDToken(
 }
 
 func validateCannotRequestQueryResponseModeWhenImplicitResponseTypeIsRequested(
-	_ utils.Context,
+	_ utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -310,7 +310,7 @@ func validateCannotRequestQueryResponseModeWhenImplicitResponseTypeIsRequested(
 }
 
 func ValidateDisplayValue(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	_ goidc.Client,
 ) goidc.OAuthError {
@@ -321,7 +321,7 @@ func ValidateDisplayValue(
 }
 
 func ValidateAuthorizationDetails(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -340,7 +340,7 @@ func ValidateAuthorizationDetails(
 }
 
 func ValidateACRValues(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	_ goidc.Client,
 ) goidc.OAuthError {

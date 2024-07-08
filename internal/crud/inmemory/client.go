@@ -6,17 +6,17 @@ import (
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-type InMemoryClientManager struct {
+type ClientManager struct {
 	Clients map[string]goidc.Client
 }
 
-func NewInMemoryClientManager() *InMemoryClientManager {
-	return &InMemoryClientManager{
+func NewClientManager() *ClientManager {
+	return &ClientManager{
 		Clients: make(map[string]goidc.Client),
 	}
 }
 
-func (manager *InMemoryClientManager) CreateOrUpdate(
+func (manager *ClientManager) CreateOrUpdate(
 	_ context.Context,
 	client goidc.Client,
 ) error {
@@ -24,7 +24,7 @@ func (manager *InMemoryClientManager) CreateOrUpdate(
 	return nil
 }
 
-func (manager *InMemoryClientManager) Get(
+func (manager *ClientManager) Get(
 	_ context.Context,
 	id string,
 ) (
@@ -39,7 +39,7 @@ func (manager *InMemoryClientManager) Get(
 	return client, nil
 }
 
-func (manager *InMemoryClientManager) Delete(
+func (manager *ClientManager) Delete(
 	_ context.Context,
 	id string,
 ) error {

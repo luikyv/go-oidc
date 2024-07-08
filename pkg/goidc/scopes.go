@@ -85,19 +85,17 @@ func NewScope(scope string) Scope {
 	}
 }
 
-/*
-NewDynamicScope creates a scope with custom logic that will be used to validate the scopes requested by the client.
-
-	dynamicScope := NewDynamicScope(
-		"payment",
-		func(requestedScope string) bool {
-			return strings.HasPrefix(requestedScope, "payment")
-		},
-	)
-
-	// This results in true.
-	dynamicScope.Matches("payment:30")
-*/
+// NewDynamicScope creates a scope with custom logic that will be used to validate the scopes requested by the client.
+//
+//	dynamicScope := NewDynamicScope(
+//		"payment",
+//		func(requestedScope string) bool {
+//			return strings.HasPrefix(requestedScope, "payment")
+//		},
+//	)
+//
+//	// This results in true.
+//	dynamicScope.Matches("payment:30")
 func NewDynamicScope(
 	scope string,
 	matchingFunc ScopeMatchingFunc,

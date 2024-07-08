@@ -29,9 +29,9 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 		},
 		AuthorizationCode:         authorizationCode,
 		Subject:                   "user_id",
-		CreatedAtTimestamp:        goidc.GetTimestampNow(),
-		AuthorizationCodeIssuedAt: goidc.GetTimestampNow(),
-		ExpiresAtTimestamp:        goidc.GetTimestampNow() + 60,
+		CreatedAtTimestamp:        goidc.TimestampNow(),
+		AuthorizationCodeIssuedAt: goidc.TimestampNow(),
+		ExpiresAtTimestamp:        goidc.TimestampNow() + 60,
 		Store:                     make(map[string]any),
 		AdditionalTokenClaims:     make(map[string]any),
 	}

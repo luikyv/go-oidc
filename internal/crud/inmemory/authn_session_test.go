@@ -10,7 +10,7 @@ import (
 
 func TestCreateOrUpdateAuthnSession_HappyPath(t *testing.T) {
 	// When.
-	manager := inmemory.NewInMemoryAuthnSessionManager()
+	manager := inmemory.NewAuthnSessionManager()
 	session := goidc.AuthnSession{
 		ID: "random_session_id",
 	}
@@ -42,7 +42,7 @@ func TestCreateOrUpdateAuthnSession_HappyPath(t *testing.T) {
 
 func TestGetAuthnSessionByCallbackID_HappyPath(t *testing.T) {
 	// When.
-	manager := inmemory.NewInMemoryAuthnSessionManager()
+	manager := inmemory.NewAuthnSessionManager()
 	sessionID := "random_session_id"
 	callbackID := "random_callback_id"
 	manager.Sessions[sessionID] = goidc.AuthnSession{
@@ -65,7 +65,7 @@ func TestGetAuthnSessionByCallbackID_HappyPath(t *testing.T) {
 
 func TestGetAuthnSessionByAuthorizationCode_HappyPath(t *testing.T) {
 	// When.
-	manager := inmemory.NewInMemoryAuthnSessionManager()
+	manager := inmemory.NewAuthnSessionManager()
 	sessionID := "random_session_id"
 	authorizationCode := "random_authorization_code"
 	manager.Sessions[sessionID] = goidc.AuthnSession{
@@ -88,7 +88,7 @@ func TestGetAuthnSessionByAuthorizationCode_HappyPath(t *testing.T) {
 
 func TestGetAuthnSessionByRequestURI_HappyPath(t *testing.T) {
 	// When.
-	manager := inmemory.NewInMemoryAuthnSessionManager()
+	manager := inmemory.NewAuthnSessionManager()
 	sessionID := "random_session_id"
 	requestURI := "random_request_uri"
 	manager.Sessions[sessionID] = goidc.AuthnSession{
@@ -113,7 +113,7 @@ func TestGetAuthnSessionByRequestURI_HappyPath(t *testing.T) {
 
 func TestDeleteAuthnSession_HappyPath(t *testing.T) {
 	// When.
-	manager := inmemory.NewInMemoryAuthnSessionManager()
+	manager := inmemory.NewAuthnSessionManager()
 	sessionID := "random_session_id"
 	manager.Sessions[sessionID] = goidc.AuthnSession{
 		ID: sessionID,
@@ -134,7 +134,7 @@ func TestDeleteAuthnSession_HappyPath(t *testing.T) {
 
 func TestDeleteAuthnSession_SessionDoesNotExist(t *testing.T) {
 	// When.
-	manager := inmemory.NewInMemoryAuthnSessionManager()
+	manager := inmemory.NewAuthnSessionManager()
 	sessionID := "random_session_id"
 
 	// Then.

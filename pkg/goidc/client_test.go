@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -41,11 +42,9 @@ func TestAreScopesAllowed(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(
-			fmt.Sprintf("case %v", i),
+			fmt.Sprintf("case %d", i),
 			func(t *testing.T) {
-				if client.AreScopesAllowed(ctx, testCase.requestedScopes) != testCase.expectedResult {
-					t.Error(testCase)
-				}
+				assert.Equal(t, testCase.expectedResult, client.AreScopesAllowed(ctx, testCase.requestedScopes))
 			},
 		)
 	}
@@ -69,9 +68,7 @@ func TestIsResponseTypeAllowed(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("case %v", i),
 			func(t *testing.T) {
-				if client.IsResponseTypeAllowed(testCase.requestedResponseType) != testCase.expectedResult {
-					t.Error(testCase)
-				}
+				assert.Equal(t, testCase.expectedResult, client.IsResponseTypeAllowed(testCase.requestedResponseType))
 			},
 		)
 	}
@@ -95,9 +92,7 @@ func TestIsGrantTypeAllowed(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("case %v", i),
 			func(t *testing.T) {
-				if client.IsGrantTypeAllowed(testCase.requestedGrantType) != testCase.expectedResult {
-					t.Error(testCase)
-				}
+				assert.Equal(t, testCase.expectedResult, client.IsGrantTypeAllowed(testCase.requestedGrantType))
 			},
 		)
 	}
@@ -122,66 +117,51 @@ func TestIsRedirectURIAllowed(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("case %v", i),
 			func(t *testing.T) {
-				if client.IsRedirectURIAllowed(testCase.redirectURI) != testCase.expectedResult {
-					t.Error(testCase)
-				}
+				assert.Equal(t, testCase.expectedResult, client.IsRedirectURIAllowed(testCase.redirectURI))
 			},
 		)
 	}
 }
 
 func TestIsAuthorizationDetailTypeAllowed(t *testing.T) {
-	// When.
+	// Given.
 	client := goidc.Client{}
 
 	// Then.
-	isValid := client.IsAuthorizationDetailTypeAllowed("random_type")
+	assert.True(t, client.IsAuthorizationDetailTypeAllowed("random_type"),
+		"when the client doesn't specify the detail types, any type should be accepted")
 
-	// Assert.
-	if !isValid {
-		t.Error("when the client doesn't specify the detail types, any type should be accepted")
-	}
-
-	// When.
+	// Given.
 	client.AuthorizationDetailTypes = []string{"valid_type"}
 
 	// Then.
-	isValid = client.IsAuthorizationDetailTypeAllowed("valid_type")
-
-	// Assert.
-	if !isValid {
-		t.Error("the client specified the detail types, so an allowed type should be valid")
-	}
+	assert.True(t, client.IsAuthorizationDetailTypeAllowed("valid_type"),
+		"the client specified the detail types, so an allowed type should be valid")
 
 	// Then.
-	isValid = client.IsAuthorizationDetailTypeAllowed("random_type")
-
-	// Assert.
-	if isValid {
-		t.Error("the client specified the detail types, so a not allowed type shouldn't be valid")
-	}
+	assert.False(t, client.IsAuthorizationDetailTypeAllowed("random_type"),
+		"the client specified the detail types, so a not allowed type shouldn't be valid")
 }
 
 func TestIsRegistrationAccessTokenValid(t *testing.T) {
+
+	// Given.
 	registrationAccessToken := "random_token"
 	hashedRegistrationAccessToken, _ := bcrypt.GenerateFromPassword([]byte(registrationAccessToken), bcrypt.DefaultCost)
 	client := goidc.Client{
 		HashedRegistrationAccessToken: string(hashedRegistrationAccessToken),
 	}
 
-	if client.IsRegistrationAccessTokenValid("invalid_token") {
-		t.Errorf("the token should not be valid")
-	}
-
-	if !client.IsRegistrationAccessTokenValid(registrationAccessToken) {
-		t.Errorf("the token should be valid")
-	}
+	// Then.
+	assert.True(t, client.IsRegistrationAccessTokenValid(registrationAccessToken))
+	assert.False(t, client.IsRegistrationAccessTokenValid("invalid_token"))
 }
 
 func TestGetPublicJWKS(t *testing.T) {
 
-	// When.
+	// Given.
 	numberOfRequestsToJWKSURI := 0
+	// Mock the http request to return a JWKS with a random key.
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		numberOfRequestsToJWKSURI++
 		jwk := GetTestPrivatePs256JWK("random_key_id")
@@ -199,39 +179,15 @@ func TestGetPublicJWKS(t *testing.T) {
 		},
 	}
 
-	// Then.
-	jwks, err := client.GetPublicJWKS()
-
-	// Assert.
-	if err != nil {
-		t.Errorf("error fetching the JWKS")
-		return
+	for i := 0; i < 2; i++ {
+		// When.
+		jwks, err := client.GetPublicJWKS()
+		// Then.
+		assert.Nil(t, err)
+		assert.Equal(t, 1, numberOfRequestsToJWKSURI, "the jwks uri should've been requested once")
+		assert.Len(t, jwks.Keys, 1, "the jwks was not fetched")
 	}
 
-	if numberOfRequestsToJWKSURI != 1 {
-		t.Errorf("the jwks uri should've been requested once")
-	}
-
-	if len(jwks.Keys) == 0 {
-		t.Errorf("the jwks was not fetched")
-	}
-
-	// Then.
-	jwks, err = client.GetPublicJWKS()
-
-	// Assert.
-	if err != nil {
-		t.Errorf("error fetching the JWKS the second time")
-		return
-	}
-
-	if numberOfRequestsToJWKSURI != 1 {
-		t.Errorf("the jwks uri should've been cached and therefore requested only once")
-	}
-
-	if len(jwks.Keys) == 0 {
-		t.Errorf("the jwks was not fetched")
-	}
 }
 
 func GetTestPrivatePs256JWK(keyID string) goidc.JSONWebKey {

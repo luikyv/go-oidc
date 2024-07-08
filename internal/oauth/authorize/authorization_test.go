@@ -154,8 +154,8 @@ func TestInitAuth_ShouldEndWithError(t *testing.T) {
 	}
 	policy := goidc.NewPolicy(
 		"policy_id",
-		func(ctx goidc.Context, c goidc.Client, s *goidc.AuthnSession) bool { return true },
-		func(ctx goidc.Context, as *goidc.AuthnSession) goidc.AuthnStatus {
+		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.OAuthContext, as *goidc.AuthnSession) goidc.AuthnStatus {
 			return goidc.StatusFailure
 		},
 	)
@@ -199,8 +199,8 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 	}
 	policy := goidc.NewPolicy(
 		"policy_id",
-		func(ctx goidc.Context, c goidc.Client, s *goidc.AuthnSession) bool { return true },
-		func(ctx goidc.Context, as *goidc.AuthnSession) goidc.AuthnStatus {
+		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.OAuthContext, as *goidc.AuthnSession) goidc.AuthnStatus {
 			return goidc.StatusInProgress
 		},
 	)
@@ -256,8 +256,8 @@ func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 	}
 	policy := goidc.NewPolicy(
 		"policy_id",
-		func(ctx goidc.Context, c goidc.Client, s *goidc.AuthnSession) bool { return true },
-		func(ctx goidc.Context, as *goidc.AuthnSession) goidc.AuthnStatus {
+		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.OAuthContext, as *goidc.AuthnSession) goidc.AuthnStatus {
 			return goidc.StatusSuccess
 		},
 	)
@@ -322,15 +322,15 @@ func TestInitAuth_WithPAR(t *testing.T) {
 				ResponseType: goidc.ResponseTypeCode,
 			},
 			ClientID:           client.ID,
-			ExpiresAtTimestamp: goidc.GetTimestampNow() + 60,
+			ExpiresAtTimestamp: goidc.TimestampNow() + 60,
 		},
 	); err != nil {
 		panic(err)
 	}
 	policy := goidc.NewPolicy(
 		"policy_id",
-		func(ctx goidc.Context, c goidc.Client, s *goidc.AuthnSession) bool { return true },
-		func(ctx goidc.Context, as *goidc.AuthnSession) goidc.AuthnStatus {
+		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.OAuthContext, as *goidc.AuthnSession) goidc.AuthnStatus {
 			return goidc.StatusSuccess
 		},
 	)
@@ -377,8 +377,8 @@ func TestContinueAuthentication(t *testing.T) {
 	ctx := utils.GetTestInMemoryContext()
 	policy := goidc.NewPolicy(
 		"policy_id",
-		func(ctx goidc.Context, c goidc.Client, s *goidc.AuthnSession) bool { return true },
-		func(ctx goidc.Context, as *goidc.AuthnSession) goidc.AuthnStatus {
+		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.OAuthContext, as *goidc.AuthnSession) goidc.AuthnStatus {
 			return goidc.StatusInProgress
 		},
 	)
@@ -388,7 +388,7 @@ func TestContinueAuthentication(t *testing.T) {
 	if err := ctx.CreateOrUpdateAuthnSession(goidc.AuthnSession{
 		PolicyID:           policy.ID,
 		CallbackID:         callbackID,
-		ExpiresAtTimestamp: goidc.GetTimestampNow() + 60,
+		ExpiresAtTimestamp: goidc.TimestampNow() + 60,
 	}); err != nil {
 		panic(err)
 	}

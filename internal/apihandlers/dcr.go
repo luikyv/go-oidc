@@ -9,7 +9,7 @@ import (
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-func HandleDynamicClientCreation(ctx utils.Context) {
+func HandleDynamicClientCreation(ctx utils.OAuthContext) {
 	var req utils.DynamicClientRequest
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
 		bindErrorToResponse(ctx, err)
@@ -30,7 +30,7 @@ func HandleDynamicClientCreation(ctx utils.Context) {
 	}
 }
 
-func HandleDynamicClientUpdate(ctx utils.Context) {
+func HandleDynamicClientUpdate(ctx utils.OAuthContext) {
 	var req utils.DynamicClientRequest
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
 		bindErrorToResponse(ctx, err)
@@ -56,7 +56,7 @@ func HandleDynamicClientUpdate(ctx utils.Context) {
 	}
 }
 
-func HandleDynamicClientRetrieve(ctx utils.Context) {
+func HandleDynamicClientRetrieve(ctx utils.OAuthContext) {
 	token, ok := ctx.GetBearerToken()
 	if !ok {
 		bindErrorToResponse(ctx, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "no token found"))
@@ -79,7 +79,7 @@ func HandleDynamicClientRetrieve(ctx utils.Context) {
 	}
 }
 
-func HandleDynamicClientDelete(ctx utils.Context) {
+func HandleDynamicClientDelete(ctx utils.OAuthContext) {
 	token, ok := ctx.GetBearerToken()
 	if !ok {
 		bindErrorToResponse(ctx, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "no token found"))

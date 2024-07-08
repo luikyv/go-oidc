@@ -81,7 +81,7 @@ func (provider *OpenIDProvider) SetSupportedUserClaims(claims ...string) {
 	provider.config.UserClaims = claims
 }
 
-// Make more keys available to sign the user info endpoint response and ID tokens.
+// AddUserInfoSignatureKeyIDs makes more keys available to sign the user info endpoint response and ID tokens.
 // There should be at most one per algorithm, in other words, there shouldn't be two key IDs that point to two keys that have the same algorithm.
 // This is because clients can choose signing keys per algorithm, e.g. a client can choose the key to sign its ID tokens with the attribute "id_token_signed_response_alg".
 func (provider *OpenIDProvider) AddUserInfoSignatureKeyIDs(userInfoSignatureKeyIDs ...string) {
@@ -95,7 +95,7 @@ func (provider *OpenIDProvider) SetIDTokenLifetime(idTokenLifetimeSecs int) {
 	provider.config.IDTokenExpiresInSecs = idTokenLifetimeSecs
 }
 
-// Enable encryption of ID tokens and of the user info endpoint response.
+// EnableUserInfoEncryption allows encryption of ID tokens and of the user info endpoint response.
 func (provider *OpenIDProvider) EnableUserInfoEncryption(
 	keyEncryptionAlgorithms []goidc.KeyEncryptionAlgorithm,
 	contentEncryptionAlgorithms []goidc.ContentEncryptionAlgorithm,
@@ -117,7 +117,7 @@ func (provider *OpenIDProvider) EnableUserInfoEncryption(
 	}
 }
 
-// Allow clients to be registered dynamically.
+// EnableDynamicClientRegistration allows clients to be registered dynamically.
 // The dcrPlugin is executed during registration and update of the client to perform
 // custom validations (e.g. validate a custom property) or set default values (set the default scopes).
 func (provider *OpenIDProvider) EnableDynamicClientRegistration(
@@ -130,7 +130,7 @@ func (provider *OpenIDProvider) EnableDynamicClientRegistration(
 
 }
 
-// Enable the refresh token grant.
+// EnableRefreshTokenGrantType makes available the refresh token grant.
 // If set to true, shouldRotateTokens will cause a new refresh token to be issued each time
 // one is used. The one used during the request then becomes invalid.
 func (provider *OpenIDProvider) EnableRefreshTokenGrantType(
@@ -142,17 +142,17 @@ func (provider *OpenIDProvider) EnableRefreshTokenGrantType(
 	provider.config.ShouldRotateRefreshTokens = shouldRotateTokens
 }
 
-// Require the openid scope in all requests.
+// RequireOpenIDScope forces the openid scope in all requests.
 func (provider *OpenIDProvider) RequireOpenIDScope() {
 	provider.config.OpenIDScopeIsRequired = true
 }
 
-// Define how access tokens are issued.
+// SetTokenOptions defines how access tokens are issued.
 func (provider *OpenIDProvider) SetTokenOptions(getTokenOpts goidc.GetTokenOptionsFunc) {
 	provider.config.GetTokenOptions = getTokenOpts
 }
 
-// Enable the implicit grant type and the associated response types.
+// EnableImplicitGrantType allows the implicit grant type and the associated response types.
 func (provider *OpenIDProvider) EnableImplicitGrantType() {
 	provider.config.GrantTypes = append(provider.config.GrantTypes, goidc.GrantImplicit)
 	provider.config.ResponseTypes = append(
@@ -175,19 +175,18 @@ func (provider *OpenIDProvider) SetScopes(scopes ...goidc.Scope) {
 	}
 }
 
-// Enable authorization flows to start at the /par endpoint.
+// EnablePushedAuthorizationRequests allows authorization flows to start at the /par endpoint.
 func (provider *OpenIDProvider) EnablePushedAuthorizationRequests(parLifetimeSecs int) {
 	provider.config.ParLifetimeSecs = parLifetimeSecs
 	provider.config.PARIsEnabled = true
 }
 
-// Require authorization flows to start at the /par endpoint.
+// RequirePushedAuthorizationRequests forces authorization flows to start at the /par endpoint.
 func (provider *OpenIDProvider) RequirePushedAuthorizationRequests(parLifetimeSecs int) {
 	provider.EnablePushedAuthorizationRequests(parLifetimeSecs)
 	provider.config.PARIsRequired = true
 }
 
-// Enable JAR.
 func (provider *OpenIDProvider) EnableJWTSecuredAuthorizationRequests(
 	jarLifetimeSecs int,
 	jarAlgorithms ...goidc.SignatureAlgorithm,
@@ -202,7 +201,7 @@ func (provider *OpenIDProvider) EnableJWTSecuredAuthorizationRequests(
 	}
 }
 
-// Require JAR.
+// RequireJWTSecuredAuthorizationRequests makes JAR required.
 func (provider *OpenIDProvider) RequireJWTSecuredAuthorizationRequests(
 	jarLifetimeSecs int,
 	jarAlgorithms ...goidc.SignatureAlgorithm,
@@ -220,7 +219,7 @@ func (provider *OpenIDProvider) EnableJWTSecuredAuthorizationRequestEncryption(
 	provider.config.JARContentEncryptionAlgorithms = contentEncryptionAlgorithms
 }
 
-// Enable JARM and the associated response modes.
+// EnableJWTSecuredAuthorizationResponseMode makes available JARM and the associated response modes.
 func (provider *OpenIDProvider) EnableJWTSecuredAuthorizationResponseMode(
 	jarmLifetimeSecs int,
 	defaultJARMSignatureKeyID string,
@@ -363,7 +362,8 @@ func (provider *OpenIDProvider) RequireDemonstrationProofOfPossesion(
 	provider.config.DPOPIsRequired = true
 }
 
-// At least one sender constraining mechanism (TLS or DPoP) will be required, in order to issue an access token to a client.
+// RequireSenderConstrainedTokens will make at least one sender constraining mechanism (TLS or DPoP) be required,
+// in order to issue an access token to a client.
 func (provider *OpenIDProvider) RequireSenderConstrainedTokens() {
 	provider.config.SenderConstrainedTokenIsRequired = true
 }
@@ -376,7 +376,7 @@ func (provider *OpenIDProvider) EnableTokenIntrospection(
 	provider.config.GrantTypes = append(provider.config.GrantTypes, goidc.GrantIntrospection)
 }
 
-// Enable PKCE.
+// EnableProofKeyForCodeExchange makes PKCE available to clients.
 func (provider *OpenIDProvider) EnableProofKeyForCodeExchange(
 	codeChallengeMethods ...goidc.CodeChallengeMethod,
 ) {
@@ -384,7 +384,7 @@ func (provider *OpenIDProvider) EnableProofKeyForCodeExchange(
 	provider.config.PkceIsEnabled = true
 }
 
-// Require PCKE.
+// RequireProofKeyForCodeExchange makes PCKE required.
 func (provider *OpenIDProvider) RequireProofKeyForCodeExchange(
 	codeChallengeMethods ...goidc.CodeChallengeMethod,
 ) {
@@ -406,30 +406,29 @@ func (provider *OpenIDProvider) SetClaimTypesSupported(types ...goidc.ClaimType)
 	provider.config.ClaimTypes = types
 }
 
-// Set the user authentication session lifetime.
+// SetAuthenticationSessionTimeout sets the user authentication session lifetime.
 func (provider *OpenIDProvider) SetAuthenticationSessionTimeout(timeoutSecs int) {
 	provider.config.AuthenticationSessionTimeoutSecs = timeoutSecs
 }
 
-// Set the header expected to have the correlation ID that will be used for all requests to the server.
-func (provider *OpenIDProvider) SetCorrelationIDHeader(header string) {
+// SetHeaderCorrelationID sets the header expected to have the correlation ID that will be used for all requests to the server.
+func (provider *OpenIDProvider) SetHeaderCorrelationID(header string) {
 	provider.config.CorrelationIDHeader = header
 }
 
-// Set the OpenID Provider profile to FAPI 2.0.
+// SetProfileFAPI2 defines the OpenID Provider profile as FAPI 2.0.
 // The server will only be able to run if it is configured respecting the FAPI 2.0 profile.
 // This will also change some of the behavior of the server during runtime to be compliant with the FAPI 2.0.
-func (provider *OpenIDProvider) SetFAPI2Profile() {
+func (provider *OpenIDProvider) SetProfileFAPI2() {
 	provider.config.Profile = goidc.ProfileFAPI2
 }
 
-// Create a static client.
+// AddClient creates or updates a static client.
 func (provider *OpenIDProvider) AddClient(client goidc.Client) error {
-	// TODO: Create or update.
 	return provider.config.ClientManager.CreateOrUpdate(context.Background(), client)
 }
 
-// Add an authentication that will be evaluated at runtime and then executed if selected.
+// AddPolicy adds an authentication policy that will be evaluated at runtime and then executed if selected.
 func (provider *OpenIDProvider) AddPolicy(policy goidc.AuthnPolicy) {
 	provider.config.Policies = append(provider.config.Policies, policy)
 }

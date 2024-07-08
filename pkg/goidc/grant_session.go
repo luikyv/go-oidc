@@ -14,9 +14,9 @@ type GrantSession struct {
 }
 
 func (grantSession GrantSession) IsRefreshSessionExpired() bool {
-	return GetTimestampNow() > grantSession.ExpiresAtTimestamp
+	return TimestampNow() > grantSession.ExpiresAtTimestamp
 }
 
 func (grantSession GrantSession) HasLastTokenExpired() bool {
-	return GetTimestampNow() > grantSession.LastTokenIssuedAtTimestamp+grantSession.TokenLifetimeSecs
+	return TimestampNow() > grantSession.LastTokenIssuedAtTimestamp+grantSession.TokenLifetimeSecs
 }

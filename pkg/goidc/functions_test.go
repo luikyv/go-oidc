@@ -2,10 +2,10 @@ package goidc_test
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSplitStringWithSpaces_HappyPath(t *testing.T) {
@@ -24,24 +24,14 @@ func TestSplitStringWithSpaces_HappyPath(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("case %d", i),
 			func(t *testing.T) {
-				// When.
-				result := goidc.SplitStringWithSpaces(c.s)
-
-				// Then.
-				if !reflect.DeepEqual(result, c.expected) {
-					t.Error("result is not as expected")
-				}
+				assert.Equal(t, c.expected, goidc.SplitStringWithSpaces(c.s), "result is not as expected")
 			},
 		)
 	}
 }
 
 func TestGenerateRandomString_ShouldGenerateRandomStrings(t *testing.T) {
-	randString1 := goidc.GenerateRandomString(10, 10)
-	randString2 := goidc.GenerateRandomString(10, 10)
-	if randString1 == randString2 {
-		t.Errorf("%s and %s should be different", randString1, randString2)
-	}
+	assert.NotEqual(t, goidc.RandomString(10, 10), goidc.RandomString(10, 10))
 }
 
 func TestGenerateRandomString_WithDifferentLengths(t *testing.T) {
@@ -56,49 +46,33 @@ func TestGenerateRandomString_WithDifferentLengths(t *testing.T) {
 		{10, 10},
 	}
 
-	for _, lengthRange := range lengthRanges {
+	for i, lengthRange := range lengthRanges {
 		t.Run(
-			fmt.Sprintf("minLength:%v,maxLength:%v", lengthRange.minLength, lengthRange.maxLength),
+			fmt.Sprintf("case %d", i),
 			func(t *testing.T) {
 				// When.
-				randString := goidc.GenerateRandomString(lengthRange.minLength, lengthRange.maxLength)
+				randString := goidc.RandomString(lengthRange.minLength, lengthRange.maxLength)
 
 				// Then.
-				if len(randString) < lengthRange.minLength || len(randString) > lengthRange.maxLength {
-					t.Errorf("random string %s has length %v", randString, len(randString))
-				}
-
+				assert.GreaterOrEqual(t, len(randString), lengthRange.minLength, "invalid length")
+				assert.LessOrEqual(t, len(randString), lengthRange.maxLength, "invalid length")
 			},
 		)
 	}
 }
 
 func TestGenerateCallbackID(t *testing.T) {
-	callbackID := goidc.GenerateCallbackID()
-	if len(callbackID) != goidc.CallbackIDLength {
-		t.Errorf("callback ID: %s has not %v characters", callbackID, goidc.CallbackIDLength)
-	}
+	assert.Len(t, goidc.CallbackID(), goidc.CallbackIDLength, "invalid length")
 }
 
 func TestGenerateAuthorizationCode(t *testing.T) {
-	authzCode := goidc.GenerateAuthorizationCode()
-	if len(authzCode) != goidc.AuthorizationCodeLength {
-		t.Errorf("authorization code: %s has not %d characters", authzCode, goidc.AuthorizationCodeLength)
-	}
+	assert.Len(t, goidc.AuthorizationCode(), goidc.AuthorizationCodeLength, "invalid length")
 }
 
 func TestContainsAll(t *testing.T) {
-	if !goidc.ContainsAll([]string{"a", "b", "c"}, "a", "b") {
-		t.Errorf("%v should contain %v", []string{"a", "b", "c"}, []string{"a", "b"})
-	}
-
-	if !goidc.ContainsAll([]int{1, 2}, 1, 2) {
-		t.Errorf("%v should contain %v", []int{1, 2}, []int{1, 2})
-	}
-
-	if goidc.ContainsAll([]int{1}, 1, 2) {
-		t.Errorf("%v should not contain %v", []int{1}, []int{1, 2})
-	}
+	assert.True(t, goidc.ContainsAll([]string{"a", "b", "c"}, "a", "b"), "super set should contain sub set")
+	assert.False(t, goidc.ContainsAll([]int{1}, 1, 2), "super set should not contain sub set")
+	assert.True(t, goidc.ContainsAll([]int{1, 2}, 1, 2), "super set should contain sub set")
 }
 
 func TestContainsAllScopes(t *testing.T) {
@@ -122,9 +96,7 @@ func TestContainsAllScopes(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i+1), func(t *testing.T) {
-			if goidc.ContainsAllScopes(testCase.scopeSuperSet, testCase.scopeSubSet) != testCase.shouldContainAll {
-				t.Error(testCase)
-			}
+			assert.Equal(t, testCase.shouldContainAll, goidc.ContainsAllScopes(testCase.scopeSuperSet, testCase.scopeSubSet))
 		})
 	}
 }

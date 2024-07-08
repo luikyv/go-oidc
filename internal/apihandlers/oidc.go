@@ -16,7 +16,7 @@ import (
 
 //---------------------------------------- Well Known ----------------------------------------//
 
-func HandleWellKnownRequest(ctx utils.Context) {
+func HandleWellKnownRequest(ctx utils.OAuthContext) {
 	if err := ctx.WriteJSON(discovery.GetOpenIDConfiguration(ctx), http.StatusOK); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
@@ -24,7 +24,7 @@ func HandleWellKnownRequest(ctx utils.Context) {
 
 //---------------------------------------- JWKS ----------------------------------------//
 
-func HandleJWKSRequest(ctx utils.Context) {
+func HandleJWKSRequest(ctx utils.OAuthContext) {
 	if err := ctx.WriteJSON(ctx.GetPublicKeys(), http.StatusOK); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
@@ -32,7 +32,7 @@ func HandleJWKSRequest(ctx utils.Context) {
 
 //---------------------------------------- Pushed Authorization Request - PAR ----------------------------------------//
 
-func HandleParRequest(ctx utils.Context) {
+func HandleParRequest(ctx utils.OAuthContext) {
 	req := utils.NewPushedAuthorizationRequest(ctx.Request)
 	requestURI, err := par.PushAuthorization(ctx, req)
 	if err != nil {
@@ -51,7 +51,7 @@ func HandleParRequest(ctx utils.Context) {
 
 //---------------------------------------- Authorize ----------------------------------------//
 
-func HandleAuthorizeRequest(ctx utils.Context) {
+func HandleAuthorizeRequest(ctx utils.OAuthContext) {
 	req := utils.NewAuthorizationRequest(ctx.Request)
 	if err := authorize.InitAuth(ctx, req); err != nil {
 		bindErrorToResponse(ctx, err)
@@ -59,7 +59,7 @@ func HandleAuthorizeRequest(ctx utils.Context) {
 	}
 }
 
-func HandleAuthorizeCallbackRequest(ctx utils.Context) {
+func HandleAuthorizeCallbackRequest(ctx utils.OAuthContext) {
 	err := authorize.ContinueAuth(ctx, ctx.Request.PathValue("callback"))
 	if err != nil {
 		bindErrorToResponse(ctx, err)
@@ -69,7 +69,7 @@ func HandleAuthorizeCallbackRequest(ctx utils.Context) {
 
 //---------------------------------------- Token ----------------------------------------//
 
-func HandleTokenRequest(ctx utils.Context) {
+func HandleTokenRequest(ctx utils.OAuthContext) {
 	req := utils.NewTokenRequest(ctx.Request)
 	tokenResp, err := token.HandleTokenCreation(ctx, req)
 	if err != nil {
@@ -84,7 +84,7 @@ func HandleTokenRequest(ctx utils.Context) {
 
 //---------------------------------------- User Info ----------------------------------------//
 
-func HandleUserInfoRequest(ctx utils.Context) {
+func HandleUserInfoRequest(ctx utils.OAuthContext) {
 
 	var err error
 	userInfoResponse, err := userinfo.HandleUserInfoRequest(ctx)
@@ -105,7 +105,7 @@ func HandleUserInfoRequest(ctx utils.Context) {
 
 //---------------------------------------- Introspection ----------------------------------------//
 
-func HandleIntrospectionRequest(ctx utils.Context) {
+func HandleIntrospectionRequest(ctx utils.OAuthContext) {
 	req := utils.NewTokenIntrospectionRequest(ctx.Request)
 	tokenInfo, err := introspection.IntrospectToken(ctx, req)
 	if err != nil {
@@ -120,7 +120,7 @@ func HandleIntrospectionRequest(ctx utils.Context) {
 
 //---------------------------------------- Helpers ----------------------------------------//
 
-func bindErrorToResponse(ctx utils.Context, err error) {
+func bindErrorToResponse(ctx utils.OAuthContext, err error) {
 
 	var oauthErr goidc.OAuthError
 	if !errors.As(err, &oauthErr) {

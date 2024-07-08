@@ -55,7 +55,7 @@ func RunOpenIDProvider() error {
 		goidc.ACRMaceIncommonIAPBronze,
 		goidc.ACRMaceIncommonIAPSilver,
 	)
-	openidProvider.EnableDynamicClientRegistration(func(ctx goidc.Context, clientInfo *goidc.ClientMetaInfo) {
+	openidProvider.EnableDynamicClientRegistration(func(ctx goidc.OAuthContext, clientInfo *goidc.ClientMetaInfo) {
 		clientInfo.Scopes = goidc.Scopes(scopes).String()
 	}, true)
 	openidProvider.SetTokenOptions(func(c goidc.Client, s string) (goidc.TokenOptions, error) {
@@ -65,7 +65,7 @@ func RunOpenIDProvider() error {
 	// Create Policy
 	openidProvider.AddPolicy(goidc.NewPolicy(
 		"policy",
-		func(ctx goidc.Context, client goidc.Client, session *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.OAuthContext, client goidc.Client, session *goidc.AuthnSession) bool { return true },
 		AuthenticateUserWithNoInteraction,
 	))
 

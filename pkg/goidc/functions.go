@@ -13,7 +13,7 @@ import (
 )
 
 // Get the current timestamp. The result is always on UTC time.
-func GetTimestampNow() int {
+func TimestampNow() int {
 	return int(time.Now().Unix())
 }
 
@@ -26,19 +26,19 @@ func SplitStringWithSpaces(s string) []string {
 	return slice
 }
 
-func GenerateCallbackID() string {
-	return GenerateRandomString(CallbackIDLength, CallbackIDLength)
+func CallbackID() string {
+	return RandomString(CallbackIDLength, CallbackIDLength)
 }
 
-func GenerateAuthorizationCode() string {
-	return GenerateRandomString(AuthorizationCodeLength, AuthorizationCodeLength)
+func AuthorizationCode() string {
+	return RandomString(AuthorizationCodeLength, AuthorizationCodeLength)
 }
 
-func GenerateRequestURI() string {
-	return fmt.Sprintf("urn:ietf:params:oauth:request_uri:%s", GenerateRandomString(RequestURILength, RequestURILength))
+func RequestURI() string {
+	return fmt.Sprintf("urn:ietf:params:oauth:request_uri:%s", RandomString(RequestURILength, RequestURILength))
 }
 
-func GenerateRandomString(minLength int, maxLength int) string {
+func RandomString(minLength int, maxLength int) string {
 
 	length := minLength + rand.Intn(maxLength-minLength+1) // minLength >= length <= maxLength
 	randomStringInBytes := make([]byte, length)
@@ -51,7 +51,7 @@ func GenerateRandomString(minLength int, maxLength int) string {
 	return string(randomStringInBytes)
 }
 
-func GetJWKS(jwksURI string) (JSONWebKeySet, error) {
+func FetchJWKS(jwksURI string) (JSONWebKeySet, error) {
 	resp, err := http.Get(jwksURI)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		return JSONWebKeySet{}, errors.New("could not fetch client jwks")

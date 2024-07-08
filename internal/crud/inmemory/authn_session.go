@@ -6,17 +6,17 @@ import (
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-type InMemoryAuthnSessionManager struct {
+type AuthnSessionManager struct {
 	Sessions map[string]goidc.AuthnSession
 }
 
-func NewInMemoryAuthnSessionManager() *InMemoryAuthnSessionManager {
-	return &InMemoryAuthnSessionManager{
+func NewAuthnSessionManager() *AuthnSessionManager {
+	return &AuthnSessionManager{
 		Sessions: make(map[string]goidc.AuthnSession),
 	}
 }
 
-func (manager *InMemoryAuthnSessionManager) CreateOrUpdate(
+func (manager *AuthnSessionManager) CreateOrUpdate(
 	_ context.Context,
 	session goidc.AuthnSession,
 ) error {
@@ -24,7 +24,7 @@ func (manager *InMemoryAuthnSessionManager) CreateOrUpdate(
 	return nil
 }
 
-func (manager *InMemoryAuthnSessionManager) GetByCallbackID(
+func (manager *AuthnSessionManager) GetByCallbackID(
 	_ context.Context,
 	callbackID string,
 ) (
@@ -41,7 +41,7 @@ func (manager *InMemoryAuthnSessionManager) GetByCallbackID(
 	return session, nil
 }
 
-func (manager *InMemoryAuthnSessionManager) GetByAuthorizationCode(
+func (manager *AuthnSessionManager) GetByAuthorizationCode(
 	_ context.Context,
 	authorizationCode string,
 ) (
@@ -58,7 +58,7 @@ func (manager *InMemoryAuthnSessionManager) GetByAuthorizationCode(
 	return session, nil
 }
 
-func (manager *InMemoryAuthnSessionManager) GetByRequestURI(
+func (manager *AuthnSessionManager) GetByRequestURI(
 	_ context.Context,
 	requestURI string,
 ) (
@@ -75,12 +75,12 @@ func (manager *InMemoryAuthnSessionManager) GetByRequestURI(
 	return session, nil
 }
 
-func (manager *InMemoryAuthnSessionManager) Delete(_ context.Context, id string) error {
+func (manager *AuthnSessionManager) Delete(_ context.Context, id string) error {
 	delete(manager.Sessions, id)
 	return nil
 }
 
-func (manager *InMemoryAuthnSessionManager) getFirstSession(
+func (manager *AuthnSessionManager) getFirstSession(
 	condition func(goidc.AuthnSession) bool,
 ) (
 	goidc.AuthnSession,

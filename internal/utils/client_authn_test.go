@@ -153,7 +153,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 		panic(err)
 	}
 
-	createdAtTimestamp := goidc.GetTimestampNow()
+	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.GetAlgorithm()), Key: privateJWK.GetKey()},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.GetKeyID()),
@@ -202,7 +202,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_ClientInformedSigningAlgorithm
 		panic(err)
 	}
 
-	createdAtTimestamp := goidc.GetTimestampNow()
+	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.GetAlgorithm()), Key: privateJWK.GetKey()},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.GetKeyID()),
@@ -250,7 +250,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAudienceClaim(t *testin
 		panic(err)
 	}
 
-	createdAtTimestamp := goidc.GetTimestampNow()
+	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.GetAlgorithm()), Key: privateJWK.GetKey()},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.GetKeyID()),
@@ -301,7 +301,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidExpiryClaim(t *testing.
 		panic(err)
 	}
 
-	createdAtTimestamp := goidc.GetTimestampNow()
+	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.GetAlgorithm()), Key: privateJWK.GetKey()},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.GetKeyID()),
@@ -351,7 +351,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidKeyID(t *testing.T) {
 		panic(err)
 	}
 
-	createdAtTimestamp := goidc.GetTimestampNow()
+	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.GetAlgorithm()), Key: privateJWK.GetKey()},
 		(&jose.SignerOptions{}).WithType("jwt"),
@@ -402,7 +402,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T)
 		panic(err)
 	}
 
-	createdAtTimestamp := goidc.GetTimestampNow()
+	createdAtTimestamp := goidc.TimestampNow()
 	claims := map[string]any{
 		goidc.ClaimIssuer:   client.ID,
 		goidc.ClaimSubject:  client.ID,
@@ -491,7 +491,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertionType(t *testin
 		panic(err)
 	}
 
-	createdAtTimestamp := goidc.GetTimestampNow()
+	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.GetAlgorithm()), Key: privateJWK.GetKey()},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.GetKeyID()),
@@ -542,7 +542,7 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_HappyPath(t *testing.T) {
 		panic(err)
 	}
 
-	createdAtTimestamp := goidc.GetTimestampNow()
+	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.HS256, Key: []byte(secret)},
 		(&jose.SignerOptions{}).WithType("jwt"),
@@ -589,7 +589,7 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_InvalidAssertionType(t *test
 		panic(err)
 	}
 
-	createdAtTimestamp := goidc.GetTimestampNow()
+	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.HS256, Key: []byte(secret)},
 		(&jose.SignerOptions{}).WithType("jwt"),

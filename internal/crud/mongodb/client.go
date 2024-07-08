@@ -9,17 +9,17 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type MongoDBClientManager struct {
+type ClientManager struct {
 	Collection *mongo.Collection
 }
 
-func NewMongoDBClientManager(database *mongo.Database) MongoDBClientManager {
-	return MongoDBClientManager{
+func NewClientManager(database *mongo.Database) ClientManager {
+	return ClientManager{
 		Collection: database.Collection("clients"),
 	}
 }
 
-func (manager MongoDBClientManager) CreateOrUpdate(
+func (manager ClientManager) CreateOrUpdate(
 	ctx context.Context,
 	client goidc.Client,
 ) error {
@@ -32,7 +32,7 @@ func (manager MongoDBClientManager) CreateOrUpdate(
 	return nil
 }
 
-func (manager MongoDBClientManager) Get(ctx context.Context, id string) (goidc.Client, error) {
+func (manager ClientManager) Get(ctx context.Context, id string) (goidc.Client, error) {
 	filter := bson.D{{Key: "_id", Value: id}}
 
 	result := manager.Collection.FindOne(ctx, filter)
@@ -48,7 +48,7 @@ func (manager MongoDBClientManager) Get(ctx context.Context, id string) (goidc.C
 	return client, nil
 }
 
-func (manager MongoDBClientManager) Delete(ctx context.Context, id string) error {
+func (manager ClientManager) Delete(ctx context.Context, id string) error {
 	filter := bson.D{{Key: "_id", Value: id}}
 	if _, err := manager.Collection.DeleteOne(ctx, filter); err != nil {
 		return err

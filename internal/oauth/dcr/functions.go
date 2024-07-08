@@ -7,7 +7,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func setDefaults(ctx utils.Context, dynamicClient *utils.DynamicClientRequest) {
+func setDefaults(ctx utils.OAuthContext, dynamicClient *utils.DynamicClientRequest) {
 	if dynamicClient.AuthnMethod == "" {
 		dynamicClient.AuthnMethod = goidc.ClientAuthnSecretBasic
 	}
@@ -48,14 +48,14 @@ func setDefaults(ctx utils.Context, dynamicClient *utils.DynamicClientRequest) {
 	}
 }
 
-func setCreationDefaults(ctx utils.Context, dynamicClient *utils.DynamicClientRequest) {
+func setCreationDefaults(ctx utils.OAuthContext, dynamicClient *utils.DynamicClientRequest) {
 	dynamicClient.ID = utils.GenerateClientID()
 	dynamicClient.RegistrationAccessToken = utils.GenerateRegistrationAccessToken()
 	setDefaults(ctx, dynamicClient)
 }
 
 func setUpdateDefaults(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	client goidc.Client,
 	dynamicClient *utils.DynamicClientRequest,
 ) {
@@ -86,12 +86,12 @@ func newClient(dynamicClient utils.DynamicClientRequest) goidc.Client {
 	return client
 }
 
-func getClientRegistrationURI(ctx utils.Context, clientID string) string {
+func getClientRegistrationURI(ctx utils.OAuthContext, clientID string) string {
 	return ctx.Host + string(goidc.EndpointDynamicClient) + "/" + clientID
 }
 
 func getProtectedClient(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	dynamicClient utils.DynamicClientRequest,
 ) (
 	goidc.Client,

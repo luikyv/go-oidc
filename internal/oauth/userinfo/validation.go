@@ -6,7 +6,7 @@ import (
 )
 
 func validateUserInfoRequest(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	grantSession goidc.GrantSession,
 	token string,
 	tokenType goidc.TokenType,
@@ -27,7 +27,7 @@ func validateUserInfoRequest(
 }
 
 func validateDPOP(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	token string,
 	tokenType goidc.TokenType,
 	grantSession goidc.GrantSession,
@@ -56,7 +56,7 @@ func validateDPOP(
 }
 
 func validateTLSProofOfPossesion(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	grantSession goidc.GrantSession,
 ) goidc.OAuthError {
 	if grantSession.ClientCertificateThumbprint == "" {

@@ -62,7 +62,7 @@ func (client Client) getEncryptionJWK(algorithm jose.KeyAlgorithm) (JSONWebKey, 
 	return JSONWebKey{}, NewOAuthError(ErrorCodeInvalidClient, fmt.Sprintf("invalid key algorithm: %s", algorithm))
 }
 
-func (client Client) AreScopesAllowed(ctx Context, requestedScopes string) bool {
+func (client Client) AreScopesAllowed(ctx OAuthContext, requestedScopes string) bool {
 	scopeIDs := SplitStringWithSpaces(client.Scopes)
 	clientScopes := ctx.GetScopes().GetSubSet(scopeIDs)
 	for _, requestedScope := range SplitStringWithSpaces(requestedScopes) {
@@ -107,7 +107,7 @@ func (client Client) IsRegistrationAccessTokenValid(registrationAccessToken stri
 
 // Function that will be executed during DCR and DCM.
 // It can be used to modify the client and perform custom validations.
-type DCRPluginFunc func(ctx Context, clientInfo *ClientMetaInfo)
+type DCRPluginFunc func(ctx OAuthContext, clientInfo *ClientMetaInfo)
 
 type ClientMetaInfo struct {
 	Name          string         `json:"client_name,omitempty" bson:"client_name,omitempty"`
@@ -157,7 +157,7 @@ func (client ClientMetaInfo) GetPublicJWKS() (JSONWebKeySet, error) {
 		return JSONWebKeySet{}, NewOAuthError(ErrorCodeInvalidRequest, "The client JWKS was informed neither by value or by reference")
 	}
 
-	jwks, err := GetJWKS(client.PublicJWKSURI)
+	jwks, err := FetchJWKS(client.PublicJWKSURI)
 	if err != nil {
 		return JSONWebKeySet{}, NewOAuthError(ErrorCodeInvalidRequest, err.Error())
 	}

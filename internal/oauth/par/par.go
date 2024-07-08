@@ -8,7 +8,7 @@ import (
 )
 
 func PushAuthorization(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.PushedAuthorizationRequest,
 ) (
 	requestURI string,

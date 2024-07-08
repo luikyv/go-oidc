@@ -8,7 +8,7 @@ import (
 )
 
 func initAuthnSession(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.AuthorizationRequest,
 	client goidc.Client,
 ) (goidc.AuthnSession, goidc.OAuthError) {
@@ -21,7 +21,7 @@ func initAuthnSession(
 }
 
 func initValidAuthnSession(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.AuthorizationRequest,
 	client goidc.Client,
 ) (
@@ -43,13 +43,13 @@ func initValidAuthnSession(
 	return initValidSimpleAuthnSession(ctx, req, client)
 }
 
-func shouldInitAuthnSessionWithPAR(ctx utils.Context, req goidc.AuthorizationParameters) bool {
+func shouldInitAuthnSessionWithPAR(ctx utils.OAuthContext, req goidc.AuthorizationParameters) bool {
 	// Note: if PAR is not enabled, we just disconsider the request_uri.
 	return ctx.PARIsRequired || (ctx.PARIsEnabled && req.RequestURI != "")
 }
 
 func initValidAuthnSessionWithPAR(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.AuthorizationRequest,
 	client goidc.Client,
 ) (
@@ -75,7 +75,7 @@ func initValidAuthnSessionWithPAR(
 }
 
 func getSessionCreatedWithPAR(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.AuthorizationRequest,
 ) (
 	goidc.AuthnSession,
@@ -94,7 +94,7 @@ func getSessionCreatedWithPAR(
 }
 
 func ShouldInitAuthnSessionWithJAR(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req goidc.AuthorizationParameters,
 	client goidc.Client,
 ) bool {
@@ -104,7 +104,7 @@ func ShouldInitAuthnSessionWithJAR(
 }
 
 func initValidAuthnSessionWithJAR(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.AuthorizationRequest,
 	client goidc.Client,
 ) (
@@ -128,7 +128,7 @@ func initValidAuthnSessionWithJAR(
 }
 
 func getJAR(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.AuthorizationRequest,
 	client goidc.Client,
 ) (
@@ -148,7 +148,7 @@ func getJAR(
 }
 
 func initValidSimpleAuthnSession(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.AuthorizationRequest,
 	client goidc.Client,
 ) (
@@ -163,7 +163,7 @@ func initValidSimpleAuthnSession(
 }
 
 func initAuthnSessionWithPolicy(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	client goidc.Client,
 	session *goidc.AuthnSession,
 ) goidc.OAuthError {

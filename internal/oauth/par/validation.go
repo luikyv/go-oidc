@@ -7,7 +7,7 @@ import (
 )
 
 func validatePAR(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.PushedAuthorizationRequest,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -15,7 +15,7 @@ func validatePAR(
 }
 
 func validateParWithJAR(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.PushedAuthorizationRequest,
 	jar utils.AuthorizationRequest,
 	client goidc.Client,
@@ -41,7 +41,7 @@ func validateParWithJAR(
 }
 
 func validatePushedAuthorizationParams(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -65,7 +65,7 @@ func validatePushedAuthorizationParams(
 }
 
 func validateNoneAuthnNotAllowed(
-	_ utils.Context,
+	_ utils.OAuthContext,
 	_ goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -76,7 +76,7 @@ func validateNoneAuthnNotAllowed(
 }
 
 func validateOpenIDRedirectURI(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -92,7 +92,7 @@ func validateOpenIDRedirectURI(
 }
 
 func validateFAPI2RedirectURI(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	_ goidc.Client,
 ) goidc.OAuthError {
@@ -109,7 +109,7 @@ func validateFAPI2RedirectURI(
 }
 
 func validateResponseType(
-	_ utils.Context,
+	_ utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -120,7 +120,7 @@ func validateResponseType(
 }
 
 func validateScopes(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -135,7 +135,7 @@ func validateScopes(
 }
 
 func validateCannotInformRequestURI(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	params goidc.AuthorizationParameters,
 	client goidc.Client,
 ) goidc.OAuthError {

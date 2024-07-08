@@ -7,7 +7,7 @@ import (
 )
 
 func initValidAuthnSession(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.PushedAuthorizationRequest,
 	client goidc.Client,
 ) (
@@ -23,7 +23,7 @@ func initValidAuthnSession(
 }
 
 func initValidSimpleAuthnSession(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.PushedAuthorizationRequest,
 	client goidc.Client,
 ) (
@@ -41,7 +41,7 @@ func initValidSimpleAuthnSession(
 }
 
 func initValidAuthnSessionWithJAR(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.PushedAuthorizationRequest,
 	client goidc.Client,
 ) (
@@ -63,7 +63,7 @@ func initValidAuthnSessionWithJAR(
 }
 
 func extractJARFromRequest(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	req utils.PushedAuthorizationRequest,
 	client goidc.Client,
 ) (

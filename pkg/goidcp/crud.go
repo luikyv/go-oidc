@@ -10,27 +10,27 @@ import (
 //---------------------------------------- In Memory ----------------------------------------//
 
 func NewInMemoryClientManager() goidc.ClientManager {
-	return inmemory.NewInMemoryClientManager()
+	return inmemory.NewClientManager()
 }
 
 func NewInMemoryAuthnSessionManager() goidc.AuthnSessionManager {
-	return inmemory.NewInMemoryAuthnSessionManager()
+	return inmemory.NewAuthnSessionManager()
 }
 
 func NewInMemoryGrantSessionManager() goidc.GrantSessionManager {
-	return inmemory.NewInMemoryGrantSessionManager()
+	return inmemory.NewGrantSessionManager()
 }
 
 //---------------------------------------- MongoDB ----------------------------------------//
 
 func NewMongoDBClientManager(database *mongo.Database) goidc.ClientManager {
-	return mongodb.NewMongoDBClientManager(database)
+	return mongodb.NewClientManager(database)
 }
 
 func NewMongoDBAuthnSessionManager(database *mongo.Database) goidc.AuthnSessionManager {
-	return mongodb.NewMongoDBAuthnSessionManager(database)
+	return mongodb.NewAuthnSessionManager(database)
 }
 
 func NewMongoDBGrantSessionManager(database *mongo.Database) goidc.GrantSessionManager {
-	return mongodb.NewMongoDBGrantSessionManager(database)
+	return mongodb.NewGrantSessionManager(database)
 }

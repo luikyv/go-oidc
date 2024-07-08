@@ -10,7 +10,7 @@ import (
 )
 
 func redirectError(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	err goidc.OAuthError,
 	client goidc.Client,
 ) goidc.OAuthError {
@@ -28,7 +28,7 @@ func redirectError(
 }
 
 func redirectResponse(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	client goidc.Client,
 	params goidc.AuthorizationParameters,
 	redirectParams utils.AuthorizationResponse,
@@ -66,7 +66,7 @@ func redirectResponse(
 }
 
 func createJARMResponse(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	client goidc.Client,
 	redirectParams utils.AuthorizationResponse,
 ) (
@@ -89,7 +89,7 @@ func createJARMResponse(
 }
 
 func signJARMResponse(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	client goidc.Client,
 	redirectParams utils.AuthorizationResponse,
 ) (
@@ -105,7 +105,7 @@ func signJARMResponse(
 		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
-	createdAtTimestamp := goidc.GetTimestampNow()
+	createdAtTimestamp := goidc.TimestampNow()
 	claims := map[string]any{
 		goidc.ClaimIssuer:   ctx.Host,
 		goidc.ClaimAudience: client.ID,
@@ -125,7 +125,7 @@ func signJARMResponse(
 }
 
 func encryptJARMResponse(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	responseJWT string,
 	client goidc.Client,
 ) (

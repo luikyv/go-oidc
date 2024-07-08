@@ -6,7 +6,7 @@ import (
 )
 
 func CreateClient(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	dynamicClient utils.DynamicClientRequest,
 ) (
 	utils.DynamicClientResponse,
@@ -37,7 +37,7 @@ func CreateClient(
 }
 
 func UpdateClient(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	dynamicClient utils.DynamicClientRequest,
 ) (
 	utils.DynamicClientResponse,
@@ -73,7 +73,7 @@ func UpdateClient(
 }
 
 func GetClient(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	dynamicClientRequest utils.DynamicClientRequest,
 ) (
 	utils.DynamicClientResponse,
@@ -93,7 +93,7 @@ func GetClient(
 }
 
 func DeleteClient(
-	ctx utils.Context,
+	ctx utils.OAuthContext,
 	dynamicClientRequest utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	_, err := getProtectedClient(ctx, dynamicClientRequest)

@@ -63,7 +63,7 @@ func (testCtx TestContext) Value(key any) any {
 	return nil
 }
 
-func GetTestContext(scopes Scopes) Context {
+func GetTestContext(scopes Scopes) OAuthContext {
 	return TestContext{
 		Scopes: scopes,
 	}

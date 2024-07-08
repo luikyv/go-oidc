@@ -27,7 +27,7 @@ func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 		},
 	}
 
-	createdAtTimestamp := goidc.GetTimestampNow()
+	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.GetAlgorithm()), Key: privateJWK.GetKey()},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.GetKeyID()),
@@ -79,14 +79,14 @@ func TestValidateDPOPJWT(t *testing.T) {
 		Name           string
 		DPOPJWT        string
 		ExpectedClaims utils.DPOPJWTValidationOptions
-		Context        utils.Context
+		Context        utils.OAuthContext
 		ShouldBeValid  bool
 	}{
 		{
 			"valid_dpop_jwt",
 			"eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7Imt0eSI6IkVDIiwieCI6Imw4dEZyaHgtMzR0VjNoUklDUkRZOXpDa0RscEJoRjQyVVFVZldWQVdCRnMiLCJ5IjoiOVZFNGpmX09rX282NHpiVFRsY3VOSmFqSG10NnY5VERWclUwQ2R2R1JEQSIsImNydiI6IlAtMjU2In19.eyJqdGkiOiItQndDM0VTYzZhY2MybFRjIiwiaHRtIjoiUE9TVCIsImh0dSI6Imh0dHBzOi8vc2VydmVyLmV4YW1wbGUuY29tL3Rva2VuIiwiaWF0IjoxNTYyMjY1Mjk2fQ.pAqut2IRDm_De6PR93SYmGBPXpwrAk90e8cP2hjiaG5QsGSuKDYW7_X620BxqhvYC8ynrrvZLTk41mSRroapUA",
 			utils.DPOPJWTValidationOptions{},
-			utils.Context{
+			utils.OAuthContext{
 				Configuration: utils.Configuration{
 					Host:                    "https://server.example.com",
 					DPOPIsEnabled:           true,
@@ -106,7 +106,7 @@ func TestValidateDPOPJWT(t *testing.T) {
 			utils.DPOPJWTValidationOptions{
 				AccessToken: "Kz~8mXK1EalYznwH-LC-1fBAo.4Ljp~zsPE_NeO.gxU",
 			},
-			utils.Context{
+			utils.OAuthContext{
 				Configuration: utils.Configuration{
 					Host:                    "https://resource.example.org/protectedresource",
 					DPOPIsEnabled:           true,
