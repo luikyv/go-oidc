@@ -6,6 +6,8 @@ import (
 	"github.com/luikymagno/goidc/internal/oauth/authorize"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateAuthorizationRequest(t *testing.T) {
@@ -115,24 +117,27 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 		t.Run(
 			c.Name,
 			func(t *testing.T) {
-				// Then.
+				// When.
 				err := authorize.ValidateAuthorizationRequest(
 					utils.GetTestContext(t),
 					c.Req,
 					c.ClientModifyFunc(client),
 				)
 
-				// Assert.
-				isValid := err == nil
-				if isValid != c.ShouldBeValid {
-					t.Errorf("expected: %v - actual: %v - error: %s", c.ShouldBeValid, isValid, err)
+				// Then.
+				require.Equal(t, c.ShouldBeValid, err == nil)
+				if err == nil {
 					return
 				}
 
-				_, ok := err.(goidc.OAuthRedirectError)
-				if c.ShouldRedirectError && !ok {
-					t.Errorf("error is not of type redirect. Error: %v", err)
+				if c.ShouldRedirectError {
+					var redirectErr goidc.OAuthRedirectError
+					assert.ErrorAs(t, err, &redirectErr)
+				} else {
+					var oauthErr goidc.OAuthBaseError
+					assert.ErrorAs(t, err, &oauthErr)
 				}
+
 			},
 		)
 	}
@@ -202,7 +207,7 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 		t.Run(
 			c.Name,
 			func(t *testing.T) {
-				// Then.
+				// When.
 				err := authorize.ValidateAuthorizationRequestWithPAR(
 					utils.GetTestContext(t),
 					c.Req,
@@ -210,16 +215,18 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 					c.ClientModifyFunc(client),
 				)
 
-				// Assert.
-				isValid := err == nil
-				if isValid != c.ShouldBeValid {
-					t.Errorf("expected: %v - actual: %v - error: %s", c.ShouldBeValid, isValid, err)
+				// Then.
+				require.Equal(t, c.ShouldBeValid, err == nil)
+				if err == nil {
 					return
 				}
 
-				_, ok := err.(goidc.OAuthRedirectError)
-				if c.ShouldRedirectError && !ok {
-					t.Errorf("error is not of type redirect. Error: %v", err)
+				if c.ShouldRedirectError {
+					var redirectErr goidc.OAuthRedirectError
+					assert.ErrorAs(t, err, &redirectErr)
+				} else {
+					var oauthErr goidc.OAuthBaseError
+					assert.ErrorAs(t, err, &oauthErr)
 				}
 			},
 		)
@@ -303,7 +310,7 @@ func TestValidateAuthorizationRequestWithJAR(t *testing.T) {
 		t.Run(
 			c.Name,
 			func(t *testing.T) {
-				// Then.
+				// When.
 				err := authorize.ValidateAuthorizationRequestWithJAR(
 					utils.GetTestContext(t),
 					c.Req,
@@ -311,16 +318,18 @@ func TestValidateAuthorizationRequestWithJAR(t *testing.T) {
 					c.ClientModifyFunc(client),
 				)
 
-				// Assert.
-				isValid := err == nil
-				if isValid != c.ShouldBeValid {
-					t.Errorf("expected: %v - actual: %v - error: %s", c.ShouldBeValid, isValid, err)
+				// Then.
+				require.Equal(t, c.ShouldBeValid, err == nil)
+				if err == nil {
 					return
 				}
 
-				_, ok := err.(goidc.OAuthRedirectError)
-				if c.ShouldRedirectError && !ok {
-					t.Errorf("error is not of type redirect. Error: %v", err)
+				if c.ShouldRedirectError {
+					var redirectErr goidc.OAuthRedirectError
+					assert.ErrorAs(t, err, &redirectErr)
+				} else {
+					var oauthErr goidc.OAuthBaseError
+					assert.ErrorAs(t, err, &oauthErr)
 				}
 			},
 		)

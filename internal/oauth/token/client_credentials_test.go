@@ -4,14 +4,15 @@ import (
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/goidc/internal/oauth/token"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
-	// When
+	// Given.
 	ctx := utils.GetTestContext(t)
 
 	req := utils.TokenRequest{
@@ -22,41 +23,16 @@ func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 		Scopes:    utils.TestScope1.String(),
 	}
 
-	// Then
+	// When.
 	tokenResp, err := token.HandleTokenCreation(ctx, req)
 
-	// Assert
-	if err != nil {
-		t.Errorf("no error should be returned: %s", err.Error())
-		return
-	}
+	// Then.
+	require.Nil(t, err)
 
-	parsedToken, err := jwt.ParseSigned(tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
-	if err != nil {
-		t.Error("invalid token")
-		return
-	}
-
-	var claims map[string]any
-	err = parsedToken.UnsafeClaimsWithoutVerification(&claims)
-	if err != nil {
-		t.Error("could not read claims")
-		return
-	}
-
-	if claims["client_id"].(string) != utils.TestClientID {
-		t.Error("the token was assigned to a different client")
-		return
-	}
-
-	if claims["sub"].(string) != utils.TestClientID {
-		t.Error("the token subject should be the client")
-		return
-	}
+	claims := utils.GetUnsafeClaimsFromJWT(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
+	assert.Equal(t, utils.TestClientID, claims["client_id"], "the token was assigned to a different client")
+	assert.Equal(t, utils.TestClientID, claims["sub"], "the token subject should be the client")
 
 	sessions := utils.GetGrantSessionsFromTestContext(t, ctx)
-	if len(sessions) != 1 {
-		t.Error("there should be one token session")
-		return
-	}
+	assert.Len(t, sessions, 1, "there should be one session")
 }

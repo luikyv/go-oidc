@@ -1,12 +1,12 @@
 package par_test
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/luikymagno/goidc/internal/oauth/par"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -28,15 +28,11 @@ func TestPushAuthorization_ShouldRejectUnauthenticatedClient(t *testing.T) {
 	})
 
 	// Assert
-	var jsonError goidc.OAuthBaseError
-	if err == nil || !errors.As(err, &jsonError) {
-		t.Error("the client should not be authenticated")
-		return
-	}
-	if jsonError.ErrorCode != goidc.ErrorCodeInvalidClient {
-		t.Errorf("invalid error code: %s", jsonError.ErrorCode)
-		return
-	}
+	require.NotNil(t, err, "the client should not be authenticated")
+
+	var oauthErr goidc.OAuthBaseError
+	require.ErrorAs(t, err, &oauthErr)
+	assert.Equal(t, goidc.ErrorCodeInvalidClient, oauthErr.ErrorCode)
 }
 
 func TestPushAuthorization_ShouldGenerateRequestURI(t *testing.T) {

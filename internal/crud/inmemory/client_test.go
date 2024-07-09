@@ -6,94 +6,77 @@ import (
 
 	"github.com/luikymagno/goidc/internal/crud/inmemory"
 	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateOrUpdateClient_HappyPath(t *testing.T) {
-	// When.
+	// Given.
 	manager := inmemory.NewClientManager()
 	client := goidc.Client{
 		ID: "random_client_id",
 	}
 
-	// Then.
+	// When.
 	err := manager.CreateOrUpdate(context.Background(), client)
 
-	// Assert.
-	if err != nil {
-		t.Error("error when creating the client", err)
-	}
-
-	if len(manager.Clients) != 1 {
-		t.Error("there should be exactly one client")
-	}
+	// Then.
+	require.Nil(t, err)
+	assert.Len(t, manager.Clients, 1, "there should be exactly one client")
 }
 
 func TestGetClient_HappyPath(t *testing.T) {
-	// When.
+	// Given.
 	manager := inmemory.NewClientManager()
 	clientID := "random_client_id"
 	manager.Clients[clientID] = goidc.Client{
 		ID: clientID,
 	}
 
-	// Then.
+	// When.
 	client, err := manager.Get(context.Background(), clientID)
 
-	// Assert.
-	if err != nil {
-		t.Error("error when getting the client", err)
-	}
-
-	if client.ID != clientID {
-		t.Error("invalid client ID")
-	}
+	// Then.
+	require.Nil(t, err)
+	assert.Equal(t, clientID, client.ID, "invalid client ID")
 }
 
 func TestGetClient_ClientDoesNotExist(t *testing.T) {
-	// When.
+	// Given.
 	manager := inmemory.NewClientManager()
 	clientID := "random_client_id"
 
-	// Then.
+	// When.
 	_, err := manager.Get(context.Background(), clientID)
 
-	// Assert.
-	if err == nil {
-		t.Error("getting a client that doesn't exist should result in error")
-	}
+	// Then.
+	assert.NotNil(t, err)
 }
 
 func TestDeleteClient_HappyPath(t *testing.T) {
-	// When.
+	// Given.
 	manager := inmemory.NewClientManager()
 	clientID := "random_client_id"
 	manager.Clients[clientID] = goidc.Client{
 		ID: clientID,
 	}
 
-	// Then.
+	// When.
 	err := manager.Delete(context.Background(), clientID)
 
-	// Assert.
-	if err != nil {
-		t.Error("error when deleting the client", err)
-	}
-
-	if len(manager.Clients) != 0 {
-		t.Error("there shouldn't be any clients")
-	}
+	// Then.
+	require.Nil(t, err)
+	assert.Len(t, manager.Clients, 0, "there shouldn't be any clients")
 }
 
 func TestDeleteClient_ClientDoesNotExist(t *testing.T) {
-	// When.
+	// Given.
 	manager := inmemory.NewClientManager()
 	clientID := "random_client_id"
 
-	// Then.
+	// When.
 	err := manager.Delete(context.Background(), clientID)
 
-	// Assert.
-	if err != nil {
-		t.Error("error when deleting the client", err)
-	}
+	// Then.
+	require.Nil(t, err)
 }

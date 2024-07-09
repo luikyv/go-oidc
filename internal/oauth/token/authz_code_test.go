@@ -4,15 +4,16 @@ import (
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/goidc/internal/oauth/token"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 
-	// When
+	// Given.
 	ctx := utils.GetTestContext(t)
 
 	authorizationCode := "random_authz_code"
@@ -31,9 +32,7 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 		Store:                     make(map[string]any),
 		AdditionalTokenClaims:     make(map[string]any),
 	}
-	if err := ctx.CreateOrUpdateAuthnSession(session); err != nil {
-		panic(err)
-	}
+	require.Nil(t, ctx.CreateOrUpdateAuthnSession(session))
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
@@ -44,41 +43,16 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 		AuthorizationCode: authorizationCode,
 	}
 
-	// Then
+	// When.
 	tokenResp, err := token.HandleTokenCreation(ctx, req)
 
-	// Assert
-	if err != nil {
-		t.Errorf("no error should be returned: %s", err.Error())
-		return
-	}
+	// Then.
+	require.Nil(t, err)
 
-	parsedToken, err := jwt.ParseSigned(tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
-	if err != nil {
-		t.Error("invalid token")
-		return
-	}
-
-	var claims map[string]any
-	err = parsedToken.UnsafeClaimsWithoutVerification(&claims)
-	if err != nil {
-		t.Error("could not read claims")
-		return
-	}
-
-	if claims["client_id"].(string) != utils.TestClientID {
-		t.Error("the token was assigned to a different client")
-		return
-	}
-
-	if claims["sub"].(string) != session.Subject {
-		t.Error("the token subject should be the client")
-		return
-	}
+	claims := utils.GetUnsafeClaimsFromJWT(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
+	assert.Equal(t, utils.TestClientID, claims["client_id"], "the token was assigned to a different client")
+	assert.Equal(t, session.Subject, claims["sub"], "the token subject should be the user")
 
 	grantSessions := utils.GetGrantSessionsFromTestContext(t, ctx)
-	if len(grantSessions) != 1 {
-		t.Error("there should be only one grant session")
-		return
-	}
+	assert.Len(t, grantSessions, 1, "there should be one session")
 }

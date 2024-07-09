@@ -13,7 +13,7 @@ This library implements the following specifications:
 * [`RFC 7662` OAuth 2.0 Token Introspection](https://www.rfc-editor.org/rfc/rfc7662.html)
 
 ## Installation
-To start using the `goidc` package in your project, install it with
+To start using the `goidc` module in your project, install it with
 ```
 go get github.com/luikymagno/goidc
 ```
@@ -66,6 +66,7 @@ make docs
 Make sure the `GOBIN` environment variable is set.
 
 ## To Evaluate
+* revoke by jti.
 * Add docs, docs should start with the name of the thing.
 * How golang loads packages?
 * Caching /authorize?

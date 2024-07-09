@@ -6,42 +6,34 @@ import (
 
 	"github.com/luikymagno/goidc/internal/crud/inmemory"
 	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateOrUpdateGrantSessionSession_HappyPath(t *testing.T) {
-	// When.
+	// Given.
 	manager := inmemory.NewGrantSessionManager()
 	session := goidc.GrantSession{
 		ID: "random_session_id",
 	}
 
-	// Then.
+	// When.
 	err := manager.CreateOrUpdate(context.Background(), session)
 
-	// Assert.
-	if err != nil {
-		t.Error("error when upserting the session", err)
-	}
-
-	if len(manager.Sessions) != 1 {
-		t.Error("there should be exactly one session")
-	}
-
 	// Then.
+	require.Nil(t, err)
+	assert.Len(t, manager.Sessions, 1, "there should be exactly one session")
+
+	// When.
 	err = manager.CreateOrUpdate(context.Background(), session)
 
-	// Assert.
-	if err != nil {
-		t.Error("error when upserting the session", err)
-	}
-
-	if len(manager.Sessions) != 1 {
-		t.Error("there should be exactly one session")
-	}
+	// Then.
+	require.Nil(t, err)
+	assert.Len(t, manager.Sessions, 1, "there should be exactly one session")
 }
 
 func TestGetGrantSessionByTokenID_HappyPath(t *testing.T) {
-	// When.
+	// Given.
 	manager := inmemory.NewGrantSessionManager()
 	sessionID := "random_session_id"
 	tokenID := "random_token_id"
@@ -50,21 +42,16 @@ func TestGetGrantSessionByTokenID_HappyPath(t *testing.T) {
 		TokenID: tokenID,
 	}
 
-	// Then.
+	// When.
 	session, err := manager.GetByTokenID(context.Background(), tokenID)
 
-	// Assert.
-	if err != nil {
-		t.Error("error when getting the session", err)
-	}
-
-	if session.ID != sessionID {
-		t.Error("invalid session ID")
-	}
+	// Then.
+	require.Nil(t, err)
+	assert.Equal(t, sessionID, session.ID, "invalid session ID")
 }
 
 func TestGetGrantSessionByRefreshToken_HappyPath(t *testing.T) {
-	// When.
+	// Given.
 	manager := inmemory.NewGrantSessionManager()
 	sessionID := "random_session_id"
 	refreshToken := "random_refresh_token"
@@ -73,50 +60,38 @@ func TestGetGrantSessionByRefreshToken_HappyPath(t *testing.T) {
 		RefreshToken: refreshToken,
 	}
 
-	// Then.
+	// When.
 	session, err := manager.GetByRefreshToken(context.Background(), refreshToken)
 
-	// Assert.
-	if err != nil {
-		t.Error("error when getting the session", err)
-	}
-
-	if session.ID != sessionID {
-		t.Error("invalid session ID")
-	}
+	// Then.
+	require.Nil(t, err)
+	assert.Equal(t, sessionID, session.ID, "invalid session ID")
 }
 
 func TestDeleteGrantSession_HappyPath(t *testing.T) {
-	// When.
+	// Given.
 	manager := inmemory.NewGrantSessionManager()
 	sessionID := "random_session_id"
 	manager.Sessions[sessionID] = goidc.GrantSession{
 		ID: sessionID,
 	}
 
-	// Then.
+	// When.
 	err := manager.Delete(context.Background(), sessionID)
 
-	// Assert.
-	if err != nil {
-		t.Error("error when deleting the session", err)
-	}
-
-	if len(manager.Sessions) != 0 {
-		t.Error("there shouldn't be any sessions")
-	}
+	// Then.
+	require.Nil(t, err)
+	assert.Len(t, manager.Sessions, 0, "there shouldn't be any sessions")
 }
 
 func TestDeleteAuthnGrantSession_SessionDoesNotExist(t *testing.T) {
-	// When.
+	// Given.
 	manager := inmemory.NewGrantSessionManager()
 	sessionID := "random_session_id"
 
-	// Then.
+	// When.
 	err := manager.Delete(context.Background(), sessionID)
 
-	// Assert.
-	if err != nil {
-		t.Error("error when deleting the session", err)
-	}
+	// Then.
+	require.Nil(t, err)
 }

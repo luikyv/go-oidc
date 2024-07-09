@@ -4,15 +4,16 @@ import (
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/goidc/internal/oauth/token"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 
-	// When
+	// Given.
 	ctx := utils.GetTestContext(t)
 	client, _ := ctx.GetClient(utils.TestClientID)
 
@@ -32,9 +33,7 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 			},
 		},
 	}
-	if err := ctx.CreateOrUpdateGrantSession(grantSession); err != nil {
-		panic(err)
-	}
+	require.Nil(t, ctx.CreateOrUpdateGrantSession(grantSession))
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
@@ -44,48 +43,19 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 		RefreshToken: refreshToken,
 	}
 
-	// Then
+	// When.
 	tokenResp, err := token.HandleTokenCreation(ctx, req)
 
-	// Assert
-	if err != nil {
-		t.Errorf("no error should be returned: %s", err.Error())
-		return
-	}
+	// Then.
+	require.Nil(t, err)
 
-	parsedToken, err := jwt.ParseSigned(tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
-	if err != nil {
-		t.Error("invalid token")
-		return
-	}
-
-	var claims map[string]any
-	err = parsedToken.UnsafeClaimsWithoutVerification(&claims)
-	if err != nil {
-		t.Error("could not read claims")
-		return
-	}
-
-	if claims["client_id"].(string) != client.ID {
-		t.Error("the token was assigned to a different client")
-		return
-	}
-
-	if claims["sub"].(string) != username {
-		t.Error("the token subject should be the client")
-		return
-	}
-
-	if tokenResp.RefreshToken == "" {
-		t.Error("the new refresh token is not valid")
-		return
-	}
+	claims := utils.GetUnsafeClaimsFromJWT(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
+	assert.Equal(t, client.ID, claims["client_id"], "the token was assigned to a different client")
+	assert.Equal(t, username, claims["sub"], "the token subject should be the client")
+	assert.NotEmpty(t, tokenResp.RefreshToken, "the new refresh token is not valid")
 
 	grantSessions := utils.GetGrantSessionsFromTestContext(t, ctx)
-	if len(grantSessions) != 1 {
-		t.Error("there should be only one grant session")
-		return
-	}
+	assert.Len(t, grantSessions, 1, "there should be only one grant session")
 }
 
 func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
@@ -109,9 +79,7 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 			},
 		},
 	}
-	if err := ctx.CreateOrUpdateGrantSession(grantSession); err != nil {
-		panic(err)
-	}
+	require.Nil(t, ctx.CreateOrUpdateGrantSession(grantSession))
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
@@ -125,9 +93,5 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 	_, err := token.HandleTokenCreation(ctx, req)
 
 	// Assert
-	if err == nil {
-		t.Errorf("the refresh token request should be denied")
-		return
-	}
-
+	assert.NotNil(t, err, "the refresh token request should be denied")
 }
