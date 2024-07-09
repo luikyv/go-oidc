@@ -8,21 +8,18 @@ import (
 	"github.com/luikymagno/goidc/internal/oauth/token"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
-	"github.com/stretchr/testify/require"
 )
 
 func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 	// When
-	client := utils.GetTestClient()
-	ctx := utils.GetTestContext()
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	ctx := utils.GetTestContext(t)
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
-			ClientID: client.ID,
+			ClientID: utils.TestClientID,
 		},
 		GrantType: goidc.GrantClientCredentials,
-		Scopes:    "scope1",
+		Scopes:    utils.TestScope1.String(),
 	}
 
 	// Then
@@ -47,7 +44,7 @@ func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 		return
 	}
 
-	if claims["client_id"].(string) != client.ID {
+	if claims["client_id"].(string) != utils.TestClientID {
 		t.Error("the token was assigned to a different client")
 		return
 	}
@@ -57,7 +54,7 @@ func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 		return
 	}
 
-	sessions := utils.GetGrantSessionsFromTestContext(ctx)
+	sessions := utils.GetGrantSessionsFromTestContext(t, ctx)
 	if len(sessions) != 1 {
 		t.Error("there should be one token session")
 		return

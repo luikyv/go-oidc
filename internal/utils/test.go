@@ -7,30 +7,35 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"testing"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/goidc/internal/crud/inmemory"
 	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/stretchr/testify/require"
 )
 
 const (
-	TestClientID string = "random_client_id"
-	TestHost     string = "https://example.com"
-	TestKeyID    string = "rsa256_key"
+	TestHost              string = "https://example.com"
+	TestKeyID             string = "test_rsa256_key"
+	TestClientID          string = "test_client_id"
+	TestClientRedirectURI string = "https://example.com/callback"
 )
 
 var (
-	Scope1 = goidc.NewScope("scope1")
-	Scope2 = goidc.NewScope("scope2")
+	TestScope1           = goidc.NewScope("scope1")
+	TestScope2           = goidc.NewScope("scope2")
+	TestServerPrivateJWK = GetTestPrivateRS256JWK(nil, TestKeyID)
 )
 
-func GetTestClient() goidc.Client {
+func GetTestClient(_ *testing.T) goidc.Client {
 	return goidc.Client{
 		ID: TestClientID,
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod:  goidc.ClientAuthnNone,
-			RedirectURIS: []string{"https://example.com"},
-			Scopes:       fmt.Sprintf("%s %s %s", Scope1, Scope2, goidc.ScopeOpenID),
+			RedirectURIS: []string{TestClientRedirectURI},
+			Scopes:       fmt.Sprintf("%s %s %s", TestScope1, TestScope2, goidc.ScopeOpenID),
 			GrantTypes: []goidc.GrantType{
 				goidc.GrantAuthorizationCode,
 				goidc.GrantClientCredentials,
@@ -50,20 +55,19 @@ func GetTestClient() goidc.Client {
 	}
 }
 
-func GetTestContext() OAuthContext {
-	privateJWK := GetTestPrivateRS256JWK(TestKeyID)
-	return OAuthContext{
+func GetTestContext(t *testing.T) OAuthContext {
+	ctx := OAuthContext{
 		Configuration: Configuration{
 			Profile:                       goidc.ProfileOpenID,
 			Host:                          TestHost,
 			ClientManager:                 inmemory.NewClientManager(),
 			GrantSessionManager:           inmemory.NewGrantSessionManager(),
 			AuthnSessionManager:           inmemory.NewAuthnSessionManager(),
-			Scopes:                        []goidc.Scope{goidc.ScopeOpenID, Scope1, Scope2},
-			PrivateJWKS:                   goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{privateJWK}},
-			DefaultTokenSignatureKeyID:    privateJWK.GetKeyID(),
-			DefaultUserInfoSignatureKeyID: privateJWK.GetKeyID(),
-			UserInfoSignatureKeyIDs:       []string{privateJWK.GetKeyID()},
+			Scopes:                        []goidc.Scope{goidc.ScopeOpenID, TestScope1, TestScope2},
+			PrivateJWKS:                   goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{TestServerPrivateJWK}},
+			DefaultTokenSignatureKeyID:    TestServerPrivateJWK.GetKeyID(),
+			DefaultUserInfoSignatureKeyID: TestServerPrivateJWK.GetKeyID(),
+			UserInfoSignatureKeyIDs:       []string{TestServerPrivateJWK.GetKeyID()},
 			GetTokenOptions: func(client goidc.Client, scopes string) (goidc.TokenOptions, error) {
 				return goidc.TokenOptions{
 					TokenLifetimeSecs: 60,
@@ -76,9 +80,13 @@ func GetTestContext() OAuthContext {
 		Response: httptest.NewRecorder(),
 		Logger:   slog.Default(),
 	}
+
+	require.Nil(t, ctx.CreateOrUpdateClient(GetTestClient(t)), "could not create the test client")
+
+	return ctx
 }
 
-func GetAuthnSessionsFromTestContext(ctx OAuthContext) []goidc.AuthnSession {
+func GetAuthnSessionsFromTestContext(_ *testing.T, ctx OAuthContext) []goidc.AuthnSession {
 	sessionManager, _ := ctx.AuthnSessionManager.(*inmemory.AuthnSessionManager)
 	sessions := make([]goidc.AuthnSession, 0, len(sessionManager.Sessions))
 	for _, s := range sessionManager.Sessions {
@@ -88,7 +96,7 @@ func GetAuthnSessionsFromTestContext(ctx OAuthContext) []goidc.AuthnSession {
 	return sessions
 }
 
-func GetGrantSessionsFromTestContext(ctx OAuthContext) []goidc.GrantSession {
+func GetGrantSessionsFromTestContext(_ *testing.T, ctx OAuthContext) []goidc.GrantSession {
 	manager, _ := ctx.GrantSessionManager.(*inmemory.GrantSessionManager)
 	tokens := make([]goidc.GrantSession, 0, len(manager.Sessions))
 	for _, t := range manager.Sessions {
@@ -98,7 +106,7 @@ func GetGrantSessionsFromTestContext(ctx OAuthContext) []goidc.GrantSession {
 	return tokens
 }
 
-func GetTestPrivateRS256JWK(keyID string) goidc.JSONWebKey {
+func GetTestPrivateRS256JWK(_ *testing.T, keyID string) goidc.JSONWebKey {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	return goidc.NewJSONWebKey(jose.JSONWebKey{
 		Key:       privateKey,
@@ -108,7 +116,7 @@ func GetTestPrivateRS256JWK(keyID string) goidc.JSONWebKey {
 	})
 }
 
-func GetTestPrivatePS256JWK(keyID string) goidc.JSONWebKey {
+func GetTestPrivatePS256JWK(_ *testing.T, keyID string) goidc.JSONWebKey {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	return goidc.NewJSONWebKey(jose.JSONWebKey{
 		Key:       privateKey,
@@ -118,4 +126,13 @@ func GetTestPrivatePS256JWK(keyID string) goidc.JSONWebKey {
 	})
 }
 
-// TODO: get unsafe claims from token.
+func GetUnsafeClaimsFromJWT(t *testing.T, jws string, algorithms []jose.SignatureAlgorithm) map[string]any {
+	parsedToken, err := jwt.ParseSigned(jws, algorithms)
+	require.Nil(t, err, "invalid JWT")
+
+	var claims map[string]any
+	err = parsedToken.UnsafeClaimsWithoutVerification(&claims)
+	require.Nil(t, err, "could not read claims")
+
+	return claims
+}

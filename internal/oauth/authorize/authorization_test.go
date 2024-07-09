@@ -18,7 +18,7 @@ import (
 func TestInitAuth_ShouldNotFindClient(t *testing.T) {
 
 	// When
-	ctx := utils.GetTestContext()
+	ctx := utils.GetTestContext(t)
 
 	// Then
 	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{ClientID: "invalid_client_id"})
@@ -32,9 +32,8 @@ func TestInitAuth_ShouldNotFindClient(t *testing.T) {
 
 func TestInitAuth_InvalidRedirectURI(t *testing.T) {
 	// When
-	client := utils.GetTestClient()
-	ctx := utils.GetTestContext()
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	ctx := utils.GetTestContext(t)
+	client, _ := ctx.GetClient(utils.TestClientID)
 
 	// Then
 	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
@@ -59,9 +58,8 @@ func TestInitAuth_InvalidRedirectURI(t *testing.T) {
 
 func TestInitAuth_InvalidScope(t *testing.T) {
 	// When
-	client := utils.GetTestClient()
-	ctx := utils.GetTestContext()
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	ctx := utils.GetTestContext(t)
+	client, _ := ctx.GetClient(utils.TestClientID)
 
 	// Then
 	if err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
@@ -86,9 +84,9 @@ func TestInitAuth_InvalidScope(t *testing.T) {
 
 func TestInitAuth_InvalidResponseType(t *testing.T) {
 	// When
-	client := utils.GetTestClient()
+	client := utils.GetTestClient(t)
 	client.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeCode}
-	ctx := utils.GetTestContext()
+	ctx := utils.GetTestContext(t)
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
 
 	// Then
@@ -113,9 +111,8 @@ func TestInitAuth_InvalidResponseType(t *testing.T) {
 
 func TestInitAuth_WhenNoPolicyIsAvailable(t *testing.T) {
 	// When
-	client := utils.GetTestClient()
-	ctx := utils.GetTestContext()
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	ctx := utils.GetTestContext(t)
+	client, _ := ctx.GetClient(utils.TestClientID)
 
 	// Then
 	if err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
@@ -140,9 +137,8 @@ func TestInitAuth_WhenNoPolicyIsAvailable(t *testing.T) {
 
 func TestInitAuth_ShouldEndWithError(t *testing.T) {
 	// When
-	client := utils.GetTestClient()
-	ctx := utils.GetTestContext()
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	ctx := utils.GetTestContext(t)
+	client, _ := ctx.GetClient(utils.TestClientID)
 	policy := goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },
@@ -174,7 +170,7 @@ func TestInitAuth_ShouldEndWithError(t *testing.T) {
 		return
 	}
 
-	sessions := utils.GetAuthnSessionsFromTestContext(ctx)
+	sessions := utils.GetAuthnSessionsFromTestContext(t, ctx)
 	if len(sessions) != 0 {
 		t.Error("no authentication session should remain")
 		return
@@ -183,9 +179,8 @@ func TestInitAuth_ShouldEndWithError(t *testing.T) {
 
 func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 	// When
-	client := utils.GetTestClient()
-	ctx := utils.GetTestContext()
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	ctx := utils.GetTestContext(t)
+	client, _ := ctx.GetClient(utils.TestClientID)
 	policy := goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },
@@ -218,7 +213,7 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 		return
 	}
 
-	sessions := utils.GetAuthnSessionsFromTestContext(ctx)
+	sessions := utils.GetAuthnSessionsFromTestContext(t, ctx)
 	if len(sessions) != 1 {
 		t.Error("the should be only one authentication session")
 		return
@@ -238,9 +233,8 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 
 func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 	// When
-	client := utils.GetTestClient()
-	ctx := utils.GetTestContext()
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	ctx := utils.GetTestContext(t)
+	client, _ := ctx.GetClient(utils.TestClientID)
 	policy := goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },
@@ -268,7 +262,7 @@ func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 		return
 	}
 
-	sessions := utils.GetAuthnSessionsFromTestContext(ctx)
+	sessions := utils.GetAuthnSessionsFromTestContext(t, ctx)
 	if len(sessions) != 1 {
 		t.Error("the should be only one authentication session")
 		return
@@ -292,10 +286,8 @@ func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 }
 
 func TestInitAuth_WithPAR(t *testing.T) {
-	client := utils.GetTestClient()
-
-	ctx := utils.GetTestContext()
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	ctx := utils.GetTestContext(t)
+	client, _ := ctx.GetClient(utils.TestClientID)
 	ctx.PARIsEnabled = true
 
 	requestURI := "urn:goidc:random_value"
@@ -339,7 +331,7 @@ func TestInitAuth_WithPAR(t *testing.T) {
 		return
 	}
 
-	sessions := utils.GetAuthnSessionsFromTestContext(ctx)
+	sessions := utils.GetAuthnSessionsFromTestContext(t, ctx)
 	if len(sessions) != 1 {
 		t.Error("the should be only one authentication session")
 		return
@@ -361,7 +353,7 @@ func TestInitAuth_WithPAR(t *testing.T) {
 func TestContinueAuthentication(t *testing.T) {
 
 	// When
-	ctx := utils.GetTestContext()
+	ctx := utils.GetTestContext(t)
 	policy := goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },
@@ -389,7 +381,7 @@ func TestContinueAuthentication(t *testing.T) {
 		return
 	}
 
-	sessions := utils.GetAuthnSessionsFromTestContext(ctx)
+	sessions := utils.GetAuthnSessionsFromTestContext(t, ctx)
 	if len(sessions) != 1 {
 		t.Error("the should be only one authentication session")
 		return

@@ -1,7 +1,6 @@
 package utils_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
@@ -23,7 +22,7 @@ func TestGetAuthenticatedClient_WithNoneAuthn_HappyPath(t *testing.T) {
 		},
 	}
 
-	ctx := utils.GetTestContext()
+	ctx := utils.GetTestContext(t)
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
 
 	req := utils.ClientAuthnRequest{
@@ -50,7 +49,7 @@ func TestGetAuthenticatedClient_WithSecretPostAuthn(t *testing.T) {
 		HashedSecret: string(hashedClientSecret),
 	}
 
-	ctx := utils.GetTestContext()
+	ctx := utils.GetTestContext(t)
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
 
 	req := utils.ClientAuthnRequest{
@@ -91,7 +90,7 @@ func TestGetAuthenticatedClient_WithBasicSecretAuthn(t *testing.T) {
 		HashedSecret: string(hashedClientSecret),
 	}
 
-	ctx := utils.GetTestContext()
+	ctx := utils.GetTestContext(t)
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.Request.SetBasicAuth(client.ID, clientSecret)
 
@@ -100,33 +99,27 @@ func TestGetAuthenticatedClient_WithBasicSecretAuthn(t *testing.T) {
 	// When.
 	_, err := utils.GetAuthenticatedClient(ctx, req)
 	// Then.
-	if err != nil {
-		t.Error("The client should be authenticated")
-	}
+	assert.Nil(t, err, "The client should be authenticated")
 
 	// Given.
 	ctx.Request.SetBasicAuth(client.ID, "invalid_secret")
 	// When.
 	_, err = utils.GetAuthenticatedClient(ctx, req)
 	// Then.
-	if err == nil {
-		t.Error("The client should not be authenticated")
-	}
+	assert.NotNil(t, err, "The client should not be authenticated")
 
 	// Given.
 	ctx.Request.Header.Del("Authorization")
 	// When.
 	_, err = utils.GetAuthenticatedClient(ctx, req)
 	// Then.
-	if err == nil {
-		t.Error("The client should not be authenticated")
-	}
+	assert.NotNil(t, err, "The client should not be authenticated")
 }
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 
 	// Given.
-	privateJWK := utils.GetTestPrivateRS256JWK("rsa256_key")
+	privateJWK := utils.GetTestPrivateRS256JWK(t, "rsa256_key")
 	client := goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
@@ -137,7 +130,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 		},
 	}
 
-	ctx := utils.GetTestContext()
+	ctx := utils.GetTestContext(t)
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
@@ -163,16 +156,14 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 	// When.
 	_, err := utils.GetAuthenticatedClient(ctx, req)
 	// Then.
-	if err != nil {
-		t.Error("The client should be authenticated")
-	}
+	assert.Nil(t, err, "The client should be authenticated")
 
 }
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_ClientInformedSigningAlgorithms(t *testing.T) {
 
 	// Given.
-	privateJWK := utils.GetTestPrivatePS256JWK("ps256_key")
+	privateJWK := utils.GetTestPrivatePS256JWK(t, "ps256_key")
 	client := goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
@@ -184,7 +175,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_ClientInformedSigningAlgorithm
 		},
 	}
 
-	ctx := utils.GetTestContext()
+	ctx := utils.GetTestContext(t)
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256, jose.RS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
@@ -211,15 +202,13 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_ClientInformedSigningAlgorithm
 	_, err := utils.GetAuthenticatedClient(ctx, req)
 
 	// Then.
-	if err != nil {
-		t.Errorf("The client should be authenticated. Error: %s", err.Error())
-	}
+	assert.Nil(t, err, "the client should be authenticated")
 
 }
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAudienceClaim(t *testing.T) {
 	// Given.
-	privateJWK := utils.GetTestPrivateRS256JWK("rsa256_key")
+	privateJWK := utils.GetTestPrivateRS256JWK(t, "rsa256_key")
 	client := goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
@@ -228,7 +217,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAudienceClaim(t *testin
 		},
 	}
 
-	ctx := utils.GetTestContext()
+	ctx := utils.GetTestContext(t)
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
@@ -260,7 +249,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAudienceClaim(t *testin
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidExpiryClaim(t *testing.T) {
 	// Given.
-	privateJWK := utils.GetTestPrivateRS256JWK("rsa256_key")
+	privateJWK := utils.GetTestPrivateRS256JWK(t, "rsa256_key")
 	client := goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
@@ -271,7 +260,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidExpiryClaim(t *testing.
 		},
 	}
 
-	ctx := utils.GetTestContext()
+	ctx := utils.GetTestContext(t)
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
@@ -296,19 +285,13 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidExpiryClaim(t *testing.
 	_, err := utils.GetAuthenticatedClient(ctx, req)
 
 	// Then.
-	if err == nil {
-		t.Error("The client should not be authenticated")
-		return
-	}
-	if !strings.Contains(err.Error(), "invalid time claim") {
-		t.Errorf("error not as expected: %s", err.Error())
-		return
-	}
+	require.NotNil(t, err, "The client should not be authenticated")
+	assert.Contains(t, err.Error(), "invalid time claim")
 }
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidKeyID(t *testing.T) {
 	// Given.
-	privateJWK := utils.GetTestPrivateRS256JWK("rsa256_key")
+	privateJWK := utils.GetTestPrivateRS256JWK(t, "rsa256_key")
 	client := goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
@@ -319,7 +302,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidKeyID(t *testing.T) {
 		},
 	}
 
-	ctx := utils.GetTestContext()
+	ctx := utils.GetTestContext(t)
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
@@ -346,14 +329,8 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidKeyID(t *testing.T) {
 	_, err := utils.GetAuthenticatedClient(ctx, req)
 
 	// Then.
-	if err == nil {
-		t.Error("The client should not be authenticated")
-		return
-	}
-	if !strings.Contains(err.Error(), "invalid kid") {
-		t.Errorf("error not as expected: %s", err.Error())
-		return
-	}
+	require.NotNil(t, err, "The client should not be authenticated")
+	assert.Contains(t, err.Error(), "invalid kid")
 }
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T) {
@@ -363,12 +340,12 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T)
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
 			PublicJWKS: &goidc.JSONWebKeySet{
-				Keys: []goidc.JSONWebKey{utils.GetTestPrivateRS256JWK("rsa256_key").GetPublic()},
+				Keys: []goidc.JSONWebKey{utils.GetTestPrivateRS256JWK(t, "rsa256_key").GetPublic()},
 			},
 		},
 	}
 
-	ctx := utils.GetTestContext()
+	ctx := utils.GetTestContext(t)
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
@@ -382,7 +359,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T)
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.PrivateKeyJWTAssertionLifetimeSecs - 10,
 	}
 
-	invalidPrivateJWK := utils.GetTestPrivatePS256JWK("rsa256_key")
+	invalidPrivateJWK := utils.GetTestPrivatePS256JWK(t, "rsa256_key")
 	invalidSigner, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(invalidPrivateJWK.GetAlgorithm()), Key: invalidPrivateJWK.GetKey()},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", invalidPrivateJWK.GetKeyID()),
@@ -397,19 +374,13 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T)
 	_, err := utils.GetAuthenticatedClient(ctx, req)
 
 	// Then.
-	if err == nil {
-		t.Error("The client should not be authenticated")
-		return
-	}
-	if !strings.Contains(err.Error(), "invalid assertion signature") {
-		t.Errorf("error not as expected: %s", err.Error())
-		return
-	}
+	require.NotNil(t, err, "The client should not be authenticated")
+	assert.Contains(t, err.Error(), "invalid assertion signature")
 }
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertion(t *testing.T) {
 	// Given.
-	privateJWK := utils.GetTestPrivateRS256JWK("rsa256_key")
+	privateJWK := utils.GetTestPrivateRS256JWK(t, "rsa256_key")
 	client := goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
@@ -420,7 +391,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertion(t *testing.T)
 		},
 	}
 
-	ctx := utils.GetTestContext()
+	ctx := utils.GetTestContext(t)
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
@@ -434,15 +405,12 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertion(t *testing.T)
 	_, err := utils.GetAuthenticatedClient(ctx, invalidReq)
 
 	// Then.
-	if err == nil {
-		t.Error("The client should not be authenticated")
-		return
-	}
+	require.NotNil(t, err, "The client should not be authenticated")
 }
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertionType(t *testing.T) {
 	// Given.
-	privateJWK := utils.GetTestPrivateRS256JWK("rsa256_key")
+	privateJWK := utils.GetTestPrivateRS256JWK(t, "rsa256_key")
 	client := goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
@@ -453,7 +421,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertionType(t *testin
 		},
 	}
 
-	ctx := utils.GetTestContext()
+	ctx := utils.GetTestContext(t)
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
@@ -480,14 +448,8 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertionType(t *testin
 	_, err := utils.GetAuthenticatedClient(ctx, invalidReq)
 
 	// Then.
-	if err == nil {
-		t.Error("The client should not be authenticated")
-		return
-	}
-	if !strings.Contains(err.Error(), "invalid assertion_type") {
-		t.Errorf("error not as expected: %s", err.Error())
-		return
-	}
+	require.NotNil(t, err, "The client should not be authenticated")
+	assert.Contains(t, err.Error(), "invalid assertion_type")
 }
 
 func TestGetAuthenticatedClient_WithClientSecretJWT_HappyPath(t *testing.T) {
@@ -502,7 +464,7 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_HappyPath(t *testing.T) {
 		},
 	}
 
-	ctx := utils.GetTestContext()
+	ctx := utils.GetTestContext(t)
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.ClientSecretJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.HS256}
 	ctx.ClientSecretJWTAssertionLifetimeSecs = 60
@@ -529,9 +491,7 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_HappyPath(t *testing.T) {
 	_, err := utils.GetAuthenticatedClient(ctx, req)
 
 	// Then.
-	if err != nil {
-		t.Errorf("The client should be authenticated. Error: %s", err.Error())
-	}
+	require.Nil(t, err, "The client should be authenticated")
 
 }
 
@@ -547,7 +507,7 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_InvalidAssertionType(t *test
 		},
 	}
 
-	ctx := utils.GetTestContext()
+	ctx := utils.GetTestContext(t)
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.ClientSecretJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.HS256}
 	ctx.ClientSecretJWTAssertionLifetimeSecs = 60
@@ -574,15 +534,8 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_InvalidAssertionType(t *test
 	_, err := utils.GetAuthenticatedClient(ctx, req)
 
 	// Then.
-	// Then.
-	if err == nil {
-		t.Error("The client should not be authenticated")
-		return
-	}
-	if !strings.Contains(err.Error(), "invalid assertion_type") {
-		t.Errorf("error not as expected: %s", err.Error())
-		return
-	}
+	require.NotNil(t, err, "The client should not be authenticated")
+	assert.Contains(t, err.Error(), "invalid assertion_type")
 
 }
 
@@ -596,12 +549,14 @@ func TestGetAuthenticatedClient_WithDifferentClientIDs(t *testing.T) {
 		},
 	}
 
-	ctx := utils.GetTestContext()
+	ctx := utils.GetTestContext(t)
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256}
 
 	req := utils.ClientAuthnRequest{
-		ClientID:        client.ID,
+		ClientID: client.ID,
+		// The issuer claim should be the client ID, so this assertion has issuer as "invalid_client_id",
+		// so the unhappy path can be tested.
 		ClientAssertion: "eyJhbGciOiJQUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJpbnZhbGlkX2NsaWVudF9pZCIsInN1YiI6ImludmFsaWRfY2xpZW50X2lkIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.Nog3Y_jeWO0dugsTKCxLx_vGcCbE6kRHzo7wAvfnKe7_uCW9UB1f-WhX4fMKXvJ8v-bScuyx2pTgy4C6ie0ZAcOn_XESblpr_0epoUF2ibdR5DGPKcrPs-S8jp8yvBOxbUmq0jyU9V5H33052h5gBsEAcYXnM150S-ch_1ISL1EgDiZrOm9lYhisp7Jp_mqUZx3OXjfWruz4d6oLe5FeCg7NsB5PpT_N26VZ6Qxt9x6OKUvphRHN1niETkf3_1uTr8CltHesfFl4NnaXSP5f7QStg9JKIpjgJnl-LeQe2C4tM8yHCTENxgHX4oTzrfiEfdN3TwoHDFNszcXnnAUQCg",
 	}
 
@@ -612,4 +567,5 @@ func TestGetAuthenticatedClient_WithDifferentClientIDs(t *testing.T) {
 	if err == nil {
 		t.Error("the request cannot contain different client IDs")
 	}
+	require.NotNil(t, err, "the request cannot contain different client IDs")
 }

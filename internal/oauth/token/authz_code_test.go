@@ -8,15 +8,12 @@ import (
 	"github.com/luikymagno/goidc/internal/oauth/token"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
-	"github.com/stretchr/testify/require"
 )
 
 func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 
 	// When
-	client := utils.GetTestClient()
-	ctx := utils.GetTestContext()
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	ctx := utils.GetTestContext(t)
 
 	authorizationCode := "random_authz_code"
 	session := goidc.AuthnSession{
@@ -24,7 +21,7 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 		GrantedScopes: goidc.ScopeOpenID.String(),
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			Scopes:      goidc.ScopeOpenID.String(),
-			RedirectURI: client.RedirectURIS[0],
+			RedirectURI: utils.TestClientRedirectURI,
 		},
 		AuthorizationCode:         authorizationCode,
 		Subject:                   "user_id",
@@ -40,10 +37,10 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
-			ClientID: client.ID,
+			ClientID: utils.TestClientID,
 		},
 		GrantType:         goidc.GrantAuthorizationCode,
-		RedirectURI:       client.RedirectURIS[0],
+		RedirectURI:       utils.TestClientRedirectURI,
 		AuthorizationCode: authorizationCode,
 	}
 
@@ -69,7 +66,7 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 		return
 	}
 
-	if claims["client_id"].(string) != client.ID {
+	if claims["client_id"].(string) != utils.TestClientID {
 		t.Error("the token was assigned to a different client")
 		return
 	}
@@ -79,7 +76,7 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 		return
 	}
 
-	grantSessions := utils.GetGrantSessionsFromTestContext(ctx)
+	grantSessions := utils.GetGrantSessionsFromTestContext(t, ctx)
 	if len(grantSessions) != 1 {
 		t.Error("there should be only one grant session")
 		return

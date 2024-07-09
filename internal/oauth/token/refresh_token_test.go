@@ -8,15 +8,13 @@ import (
 	"github.com/luikymagno/goidc/internal/oauth/token"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
-	"github.com/stretchr/testify/require"
 )
 
 func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 
 	// When
-	client := utils.GetTestClient()
-	ctx := utils.GetTestContext()
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	ctx := utils.GetTestContext(t)
+	client, _ := ctx.GetClient(utils.TestClientID)
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
@@ -83,7 +81,7 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 		return
 	}
 
-	grantSessions := utils.GetGrantSessionsFromTestContext(ctx)
+	grantSessions := utils.GetGrantSessionsFromTestContext(t, ctx)
 	if len(grantSessions) != 1 {
 		t.Error("there should be only one grant session")
 		return
@@ -93,9 +91,8 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 
 	// When
-	client := utils.GetTestClient()
-	ctx := utils.GetTestContext()
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	ctx := utils.GetTestContext(t)
+	client, _ := ctx.GetClient(utils.TestClientID)
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
@@ -118,7 +115,7 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
-			ClientID: client.ID,
+			ClientID: utils.TestClientID,
 		},
 		GrantType:    goidc.GrantRefreshToken,
 		RefreshToken: refreshToken,

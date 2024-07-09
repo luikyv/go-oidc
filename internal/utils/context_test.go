@@ -26,7 +26,7 @@ func TestGetPolicy_HappyPath(t *testing.T) {
 		},
 		nil,
 	)
-	ctx := utils.GetTestContext()
+	ctx := utils.GetTestContext(t)
 	ctx.Policies = []goidc.AuthnPolicy{unavailablePolicy, availablePolicy}
 
 	// When.
@@ -46,7 +46,7 @@ func TestGetPolicy_NoPolicyAvailable(t *testing.T) {
 		},
 		nil,
 	)
-	ctx := utils.GetTestContext()
+	ctx := utils.GetTestContext(t)
 	ctx.Policies = []goidc.AuthnPolicy{unavailablePolicy}
 
 	// When.

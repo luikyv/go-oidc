@@ -1,23 +1,22 @@
 package token_test
 
 import (
-	"errors"
 	"net/http"
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/goidc/internal/oauth/token"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
-	// When
-	ctx := utils.GetTestContext()
+	// Given.
+	ctx := utils.GetTestContext(t)
 
-	// Then
+	// When.
 	_, err := token.HandleTokenCreation(ctx, utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
 			ClientID: "invalid_client_id",
@@ -26,22 +25,19 @@ func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 		Scopes:    "scope1",
 	})
 
-	// Assert
-	if err == nil {
-		t.Error("the should not be found")
-		return
-	}
+	// Then.
+	assert.NotNil(t, err, "the client should not be found")
 }
 
 func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
-	// When
-	client := utils.GetTestClient()
+	// Given.
+	client := utils.GetTestClient(t)
 	client.AuthnMethod = goidc.ClientAuthnSecretPost
 
-	ctx := utils.GetTestContext()
+	ctx := utils.GetTestContext(t)
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
 
-	// Then
+	// When.
 	_, err := token.HandleTokenCreation(ctx, utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
 			ClientID:     client.ID,
@@ -51,24 +47,17 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 		Scopes:    "scope1",
 	})
 
-	// Assert
+	// Then.
+	require.NotNil(t, err, "the client should not be authenticated")
+
 	var oauthErr goidc.OAuthBaseError
-	if err == nil || !errors.As(err, &oauthErr) {
-		t.Error("the client should not be authenticated")
-		return
-	}
-	if oauthErr.ErrorCode != goidc.ErrorCodeInvalidClient {
-		t.Errorf("invalid error code: %s", oauthErr.ErrorCode)
-		return
-	}
+	require.ErrorAs(t, err, &oauthErr)
+	assert.Equal(t, goidc.ErrorCodeInvalidClient, oauthErr.ErrorCode, "invalid error code")
 }
 
 func TestHandleGrantCreationWithDPOP(t *testing.T) {
-	// When
-	client := utils.GetTestClient()
-
-	ctx := utils.GetTestContext()
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	// Given.
+	ctx := utils.GetTestContext(t)
 	ctx.Host = "https://example.com"
 	ctx.DPOPIsEnabled = true
 	ctx.DPOPLifetimeSecs = 9999999999999
@@ -78,38 +67,21 @@ func TestHandleGrantCreationWithDPOP(t *testing.T) {
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
-			ClientID: client.ID,
+			ClientID: utils.TestClientID,
 		},
 		GrantType: goidc.GrantClientCredentials,
 		Scopes:    "scope1",
 	}
 
-	// Then
+	// When.
 	tokenResp, err := token.HandleTokenCreation(ctx, req)
 
-	// Assert
-	if err != nil {
-		t.Errorf("no error should be returned: %s", err.Error())
-		return
-	}
+	// Then.
+	assert.Nil(t, err)
+	claims := utils.GetUnsafeClaimsFromJWT(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
 
-	parsedToken, err := jwt.ParseSigned(tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
-	if err != nil {
-		t.Error("invalid token")
-		return
-	}
-
-	var claims map[string]any
-	err = parsedToken.UnsafeClaimsWithoutVerification(&claims)
-	if err != nil {
-		t.Error("could not read claims")
-		return
-	}
-
+	require.Contains(t, claims, "cnf")
 	confirmation := claims["cnf"].(map[string]any)
-	jkt := confirmation["jkt"].(string)
-	if jkt != "BABEGlQNVH1K8KXO7qLKtvUFhAadQ5-dVGBfDfelwhQ" {
-		t.Errorf("invalid jwk thumbprint. actual: %s", jkt)
-		return
-	}
+	require.Contains(t, confirmation, "jkt")
+	assert.Equal(t, "BABEGlQNVH1K8KXO7qLKtvUFhAadQ5-dVGBfDfelwhQ", confirmation["jkt"])
 }
