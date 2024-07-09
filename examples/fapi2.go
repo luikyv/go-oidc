@@ -76,7 +76,7 @@ func RunFAPI2OpenIDProvider() error {
 	clientOnePrivateJWKS := GetPrivateJWKS("client_keys/client_one_jwks.json")
 	clientOnePublicJWKS := goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{}}
 	for _, jwk := range clientOnePrivateJWKS.Keys {
-		clientOnePublicJWKS.Keys = append(clientOnePublicJWKS.Keys, jwk.GetPublic())
+		clientOnePublicJWKS.Keys = append(clientOnePublicJWKS.Keys, jwk.Public())
 	}
 	openidProvider.AddClient(goidc.Client{
 		ID: "client_one",
@@ -97,7 +97,7 @@ func RunFAPI2OpenIDProvider() error {
 	clientTwoPrivateJWKS := GetPrivateJWKS("client_keys/client_two_jwks.json")
 	clientTwoPublicJWKS := goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{}}
 	for _, jwk := range clientTwoPrivateJWKS.Keys {
-		clientTwoPublicJWKS.Keys = append(clientTwoPublicJWKS.Keys, jwk.GetPublic())
+		clientTwoPublicJWKS.Keys = append(clientTwoPublicJWKS.Keys, jwk.Public())
 	}
 	openidProvider.AddClient(goidc.Client{
 		ID: "client_two",

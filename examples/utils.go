@@ -113,13 +113,13 @@ func identifyUser(
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 
-	username := ctx.GetFormParam("username")
+	username := ctx.FormParam("username")
 	if username == "" {
 		if err := ctx.RenderHTML(identityForm, map[string]any{
 			"host":       strings.Replace(ctx.GetHost(), "host.docker.internal", "localhost", -1),
 			"callbackID": session.CallbackID,
 		}); err != nil {
-			ctx.GetLogger().Error(err.Error())
+			ctx.Logger().Error(err.Error())
 			return goidc.StatusFailure
 		}
 		return goidc.StatusInProgress
@@ -138,13 +138,13 @@ func authenticateWithPassword(
 	ctx goidc.OAuthContext,
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
-	password := ctx.GetFormParam("password")
+	password := ctx.FormParam("password")
 	if password == "" {
 		if err := ctx.RenderHTML(passwordForm, map[string]any{
 			"host":       strings.Replace(ctx.GetHost(), "host.docker.internal", "localhost", -1),
 			"callbackID": session.CallbackID,
 		}); err != nil {
-			ctx.GetLogger().Error(err.Error())
+			ctx.Logger().Error(err.Error())
 			return goidc.StatusFailure
 		}
 		return goidc.StatusInProgress
@@ -156,7 +156,7 @@ func authenticateWithPassword(
 			"callbackID": session.CallbackID,
 			"error":      "invalid password",
 		}); err != nil {
-			ctx.GetLogger().Error(err.Error())
+			ctx.Logger().Error(err.Error())
 			return goidc.StatusFailure
 		}
 		return goidc.StatusInProgress

@@ -25,7 +25,7 @@ func HandleWellKnownRequest(ctx utils.OAuthContext) {
 //---------------------------------------- JWKS ----------------------------------------//
 
 func HandleJWKSRequest(ctx utils.OAuthContext) {
-	if err := ctx.WriteJSON(ctx.GetPublicKeys(), http.StatusOK); err != nil {
+	if err := ctx.WriteJSON(ctx.PublicKeys(), http.StatusOK); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
 }

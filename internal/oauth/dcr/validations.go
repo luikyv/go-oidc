@@ -171,7 +171,7 @@ func validateIDTokenSignatureAlgorithm(
 	ctx utils.OAuthContext,
 	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
-	if dynamicClient.IDTokenSignatureAlgorithm != "" && !goidc.ContainsAll(ctx.GetUserInfoSignatureAlgorithms(), dynamicClient.IDTokenSignatureAlgorithm) {
+	if dynamicClient.IDTokenSignatureAlgorithm != "" && !goidc.ContainsAll(ctx.UserInfoSignatureAlgorithms(), dynamicClient.IDTokenSignatureAlgorithm) {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "id_token_signed_response_alg not supported")
 	}
 	return nil
@@ -181,7 +181,7 @@ func validateUserInfoSignatureAlgorithm(
 	ctx utils.OAuthContext,
 	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
-	if dynamicClient.UserInfoSignatureAlgorithm != "" && !goidc.ContainsAll(ctx.GetUserInfoSignatureAlgorithms(), dynamicClient.UserInfoSignatureAlgorithm) {
+	if dynamicClient.UserInfoSignatureAlgorithm != "" && !goidc.ContainsAll(ctx.UserInfoSignatureAlgorithms(), dynamicClient.UserInfoSignatureAlgorithm) {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "id_token_signed_response_alg not supported")
 	}
 	return nil
@@ -201,7 +201,7 @@ func validateJARMSignatureAlgorithm(
 	ctx utils.OAuthContext,
 	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
-	if dynamicClient.JARMSignatureAlgorithm != "" && !goidc.ContainsAll(ctx.GetJARMSignatureAlgorithms(), dynamicClient.JARMSignatureAlgorithm) {
+	if dynamicClient.JARMSignatureAlgorithm != "" && !goidc.ContainsAll(ctx.JARMSignatureAlgorithms(), dynamicClient.JARMSignatureAlgorithm) {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "authorization_signed_response_alg not supported")
 	}
 	return nil
@@ -387,7 +387,7 @@ func validateJAREncryptionAlgorithms(
 		return nil
 	}
 
-	if dynamicClient.JARKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.GetJARKeyEncryptionAlgorithms(), dynamicClient.JARKeyEncryptionAlgorithm) {
+	if dynamicClient.JARKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.JARKeyEncryptionAlgorithms(), dynamicClient.JARKeyEncryptionAlgorithm) {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "request_object_encryption_alg not supported")
 	}
 
@@ -412,7 +412,7 @@ func validatePublicJWKS(
 
 	for _, jwk := range dynamicClient.PublicJWKS.Keys {
 		if !jwk.IsPublic() || !jwk.IsValid() {
-			return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("the key with ID: %s jwks is invalid", jwk.GetKeyID()))
+			return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("the key with ID: %s jwks is invalid", jwk.KeyID()))
 		}
 	}
 	return nil

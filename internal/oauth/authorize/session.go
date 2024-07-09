@@ -30,13 +30,13 @@ func initValidAuthnSession(
 ) {
 
 	if shouldInitAuthnSessionWithPAR(ctx, req.AuthorizationParameters) {
-		ctx.Logger.Info("initiating authorization request with PAR")
+		ctx.Logger().Info("initiating authorization request with PAR")
 		return initValidAuthnSessionWithPAR(ctx, req, client)
 	}
 
 	// the jar requirement comes after the par one, because the client can send the jar during par.
 	if ShouldInitAuthnSessionWithJAR(ctx, req.AuthorizationParameters, client) {
-		ctx.Logger.Info("initiating authorization request with JAR")
+		ctx.Logger().Info("initiating authorization request with JAR")
 		return initValidAuthnSessionWithJAR(ctx, req, client)
 	}
 
@@ -155,7 +155,7 @@ func initValidSimpleAuthnSession(
 	goidc.AuthnSession,
 	goidc.OAuthError,
 ) {
-	ctx.Logger.Info("initiating simple authorization request")
+	ctx.Logger().Info("initiating simple authorization request")
 	if err := validateAuthorizationRequest(ctx, req, client); err != nil {
 		return goidc.AuthnSession{}, err
 	}
@@ -167,13 +167,13 @@ func initAuthnSessionWithPolicy(
 	client goidc.Client,
 	session *goidc.AuthnSession,
 ) goidc.OAuthError {
-	policy, ok := ctx.GetAvailablePolicy(client, session)
+	policy, ok := ctx.FindAvailablePolicy(client, session)
 	if !ok {
-		ctx.Logger.Info("no policy available")
+		ctx.Logger().Info("no policy available")
 		return session.NewRedirectError(goidc.ErrorCodeInvalidRequest, "no policy available")
 	}
 
-	ctx.Logger.Info("policy available", slog.String("policy_id", policy.ID))
+	ctx.Logger().Info("policy available", slog.String("policy_id", policy.ID))
 	session.Start(policy.ID, ctx.AuthenticationSessionTimeoutSecs)
 	return nil
 }

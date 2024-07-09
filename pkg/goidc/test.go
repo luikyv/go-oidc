@@ -15,19 +15,19 @@ func (testCtx TestContext) GetHost() string {
 	return ""
 }
 
-func (testCtx TestContext) GetHeader(header string) (headerValue string, ok bool) {
+func (testCtx TestContext) Header(header string) (headerValue string, ok bool) {
 	return "", false
 }
 
-func (testCtx TestContext) GetFormParam(param string) (formValue string) {
+func (testCtx TestContext) FormParam(param string) (formValue string) {
 	return ""
 }
 
-func (testCtx TestContext) GetSecureClientCertificate() (secureClientCert *x509.Certificate, ok bool) {
+func (testCtx TestContext) SecureClientCertificate() (secureClientCert *x509.Certificate, ok bool) {
 	return nil, false
 }
 
-func (testCtx TestContext) GetClientCertificate() (clientCert *x509.Certificate, ok bool) {
+func (testCtx TestContext) ClientCertificate() (clientCert *x509.Certificate, ok bool) {
 	return nil, false
 }
 
@@ -39,7 +39,7 @@ func (testCtx TestContext) RenderHTMLTemplate(tmpl *template.Template, params an
 	return nil
 }
 
-func (testCtx TestContext) GetLogger() *slog.Logger {
+func (testCtx TestContext) Logger() *slog.Logger {
 	return nil
 }
 

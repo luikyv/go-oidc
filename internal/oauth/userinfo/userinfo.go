@@ -9,7 +9,7 @@ import (
 
 func HandleUserInfoRequest(ctx utils.OAuthContext) (utils.UserInfoResponse, goidc.OAuthError) {
 
-	token, tokenType, ok := ctx.GetAuthorizationToken()
+	token, tokenType, ok := ctx.AuthorizationToken()
 	if !ok {
 		return utils.UserInfoResponse{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidToken, "no token found")
 	}
@@ -95,11 +95,11 @@ func signUserInfoClaims(
 	string,
 	goidc.OAuthError,
 ) {
-	privateJWK := ctx.GetUserInfoSignatureKey(client)
-	signatureAlgorithm := jose.SignatureAlgorithm(privateJWK.GetAlgorithm())
+	privateJWK := ctx.UserInfoSignatureKey(client)
+	signatureAlgorithm := jose.SignatureAlgorithm(privateJWK.Algorithm())
 	signer, err := jose.NewSigner(
-		jose.SigningKey{Algorithm: signatureAlgorithm, Key: privateJWK.GetKey()},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.GetKeyID()),
+		jose.SigningKey{Algorithm: signatureAlgorithm, Key: privateJWK.Key()},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID()),
 	)
 	if err != nil {
 		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())

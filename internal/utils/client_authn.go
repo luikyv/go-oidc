@@ -26,12 +26,12 @@ func GetAuthenticatedClient(
 
 	client, err := ctx.GetClient(clientID)
 	if err != nil {
-		ctx.Logger.Info("client not found", slog.String("client_id", clientID))
+		ctx.Logger().Info("client not found", slog.String("client_id", clientID))
 		return goidc.Client{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "invalid client")
 	}
 
 	if err := authenticateClient(ctx, client, req); err != nil {
-		ctx.Logger.Info("client not authenticated", slog.String("client_id", req.ClientID))
+		ctx.Logger().Info("client not authenticated", slog.String("client_id", req.ClientID))
 		return goidc.Client{}, err
 	}
 
@@ -45,25 +45,25 @@ func authenticateClient(
 ) goidc.OAuthError {
 	switch client.AuthnMethod {
 	case goidc.ClientAuthnNone:
-		ctx.Logger.Debug("authenticating the client with none authn")
+		ctx.Logger().Debug("authenticating the client with none authn")
 		return authenticateWithNoneAuthn(ctx, client, req)
 	case goidc.ClientAuthnSecretPost:
-		ctx.Logger.Debug("authenticating the client with secret post")
+		ctx.Logger().Debug("authenticating the client with secret post")
 		return authenticateWithClientSecretPost(ctx, client, req)
 	case goidc.ClientAuthnSecretBasic:
-		ctx.Logger.Debug("authenticating the client with basic secret")
+		ctx.Logger().Debug("authenticating the client with basic secret")
 		return authenticateWithClientSecretBasic(ctx, client, req)
 	case goidc.ClientAuthnPrivateKeyJWT:
-		ctx.Logger.Debug("authenticating the client with private key jwt")
+		ctx.Logger().Debug("authenticating the client with private key jwt")
 		return authenticateWithPrivateKeyJWT(ctx, client, req)
 	case goidc.ClientAuthnSecretJWT:
-		ctx.Logger.Debug("authenticating the client with client secret jwt")
+		ctx.Logger().Debug("authenticating the client with client secret jwt")
 		return authenticateWithClientSecretJWT(ctx, client, req)
 	case goidc.ClientAuthnSelfSignedTLS:
-		ctx.Logger.Debug("authenticating the client with self signed tls certificate")
+		ctx.Logger().Debug("authenticating the client with self signed tls certificate")
 		return authenticateWithSelfSignedTLSCertificate(ctx, client, req)
 	case goidc.ClientAuthnTLS:
-		ctx.Logger.Debug("authenticating the client with tls certificate")
+		ctx.Logger().Debug("authenticating the client with tls certificate")
 		return authenticateWithTLSCertificate(ctx, client, req)
 	default:
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "invalid authentication method")
@@ -147,7 +147,7 @@ func authenticateWithPrivateKeyJWT(
 	}
 
 	claims := jwt.Claims{}
-	if err := assertion.Claims(jwk.GetKey(), &claims); err != nil {
+	if err := assertion.Claims(jwk.Key(), &claims); err != nil {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "invalid assertion signature")
 	}
 
@@ -194,7 +194,7 @@ func areAssertionClaimsValid(
 	err := claims.ValidateWithLeeway(jwt.Expected{
 		Issuer:      client.ID,
 		Subject:     client.ID,
-		AnyAudience: ctx.GetAudiences(),
+		AnyAudience: ctx.Audiences(),
 	}, time.Duration(0))
 	if err != nil {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "invalid assertion")
@@ -211,7 +211,7 @@ func authenticateWithSelfSignedTLSCertificate(
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "invalid client")
 	}
 
-	clientCert, ok := ctx.GetClientCertificate()
+	clientCert, ok := ctx.ClientCertificate()
 	if !ok {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "client certificate not informed")
 	}
@@ -224,8 +224,8 @@ func authenticateWithSelfSignedTLSCertificate(
 	var jwk goidc.JSONWebKey
 	foundMatchingJWK := false
 	for _, key := range jwks.Keys {
-		if string(key.GetCertificateThumbprintSHA256()) == SHA256Hash(clientCert.Raw) ||
-			string(key.GetCertificateThumbprintSHA1()) == SHA1Hash(clientCert.Raw) {
+		if string(key.CertificateThumbprintSHA256()) == SHA256Hash(clientCert.Raw) ||
+			string(key.CertificateThumbprintSHA1()) == SHA1Hash(clientCert.Raw) {
 			foundMatchingJWK = true
 			jwk = key
 		}
@@ -235,7 +235,7 @@ func authenticateWithSelfSignedTLSCertificate(
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "could not find a JWK matching the client certificate")
 	}
 
-	if !ComparePublicKeys(jwk.GetKey(), clientCert.PublicKey) {
+	if !ComparePublicKeys(jwk.Key(), clientCert.PublicKey) {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "the public key in the client certificate and ")
 	}
 
@@ -251,7 +251,7 @@ func authenticateWithTLSCertificate(
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "invalid client")
 	}
 
-	clientCert, ok := ctx.GetSecureClientCertificate()
+	clientCert, ok := ctx.SecureClientCertificate()
 	if !ok {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "client certificate not informed")
 	}
@@ -324,7 +324,7 @@ func getClientIDFromAssertion(
 	string,
 	bool,
 ) {
-	parsedAssertion, err := jwt.ParseSigned(assertion, ctx.GetClientSignatureAlgorithms())
+	parsedAssertion, err := jwt.ParseSigned(assertion, ctx.ClientSignatureAlgorithms())
 	if err != nil {
 		return "", false
 	}

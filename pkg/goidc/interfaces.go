@@ -9,13 +9,13 @@ import (
 
 type OAuthContext interface {
 	GetHost() string
-	GetHeader(header string) (headerValue string, ok bool)
-	GetFormParam(param string) (formValue string)
-	GetSecureClientCertificate() (secureClientCert *x509.Certificate, ok bool)
-	GetClientCertificate() (clientCert *x509.Certificate, ok bool)
+	Header(name string) (headerValue string, ok bool)
+	FormParam(param string) (formValue string)
+	SecureClientCertificate() (secureClientCert *x509.Certificate, ok bool)
+	ClientCertificate() (clientCert *x509.Certificate, ok bool)
 	RenderHTML(html string, params any) error
 	RenderHTMLTemplate(tmpl *template.Template, params any) error
-	GetLogger() *slog.Logger
+	Logger() *slog.Logger
 	GetScopes() Scopes
 	context.Context
 }

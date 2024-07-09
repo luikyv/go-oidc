@@ -18,7 +18,7 @@ import (
 
 type Configuration struct {
 	Profile goidc.Profile
-	// Host where the server runs. This value will be used the auth server issuer.
+	// Host is the domain where the server runs. This value will be used the auth server issuer.
 	Host                string
 	MTLSIsEnabled       bool
 	MTLSHost            string
@@ -26,10 +26,10 @@ type Configuration struct {
 	ClientManager       goidc.ClientManager
 	GrantSessionManager goidc.GrantSessionManager
 	AuthnSessionManager goidc.AuthnSessionManager
-	// The server JWKS containing private and public information.
+	// PrivateJWKS contains the server JWKS with private and public information.
 	// When exposing it, the private information is removed.
 	PrivateJWKS goidc.JSONWebKeySet
-	// The default key used to sign access tokens. The key can be overridden with the TokenOptions.
+	// DefaultTokenSignatureKeyID is the default key used to sign access tokens. The key can be overridden with the TokenOptions.
 	DefaultTokenSignatureKeyID      string
 	GrantTypes                      []goidc.GrantType
 	ResponseTypes                   []goidc.ResponseType
@@ -37,36 +37,36 @@ type Configuration struct {
 	ClientAuthnMethods              []goidc.ClientAuthnType
 	IntrospectionIsEnabled          bool
 	IntrospectionClientAuthnMethods []goidc.ClientAuthnType
-	// The algorithms accepted for signing client assertions during private_key_jwt.
+	// PrivateKeyJWTSignatureAlgorithms contains algorithms accepted for signing client assertions during private_key_jwt.
 	PrivateKeyJWTSignatureAlgorithms []jose.SignatureAlgorithm
-	// It is used to validate that the assertion will expire in the near future during private_key_jwt.
+	// PrivateKeyJWTAssertionLifetimeSecs is used to validate that the assertion will expire in the near future during private_key_jwt.
 	PrivateKeyJWTAssertionLifetimeSecs int
-	// The algorithms accepted for signing client assertions during client_secret_jwt.
+	// ClientSecretJWTSignatureAlgorithms constains algorithms accepted for signing client assertions during client_secret_jwt.
 	ClientSecretJWTSignatureAlgorithms []jose.SignatureAlgorithm
 	// It is used to validate that the assertion will expire in the near future during client_secret_jwt.
 	ClientSecretJWTAssertionLifetimeSecs int
 	OpenIDScopeIsRequired                bool
-	// The default key used to sign ID tokens and the user info endpoint response.
+	// DefaultUserInfoSignatureKeyID defines the default key used to sign ID tokens and the user info endpoint response.
 	// The key can be overridden depending on the client properties "id_token_signed_response_alg" and "userinfo_signed_response_alg".
 	DefaultUserInfoSignatureKeyID string
-	// The IDs of the keys used to sign ID tokens and the user info endpoint response. There should be at most one per algorithm.
+	// UserInfoSignatureKeyIDs contains the IDs of the keys used to sign ID tokens and the user info endpoint response. There should be at most one per algorithm.
 	// In other words, there shouldn't be two key IDs that point to two keys that have the same algorithm.
 	UserInfoSignatureKeyIDs             []string
 	UserInfoEncryptionIsEnabled         bool
 	UserInfoKeyEncryptionAlgorithms     []jose.KeyAlgorithm
 	UserInfoContentEncryptionAlgorithms []jose.ContentEncryption
-	// It defines the expiry time of ID tokens.
+	// IDTokenExpiresInSecs defines the expiry time of ID tokens.
 	IDTokenExpiresInSecs      int
 	ShouldRotateRefreshTokens bool
 	RefreshTokenLifetimeSecs  int
-	// The user claims that can be returned in the userinfo endpoint or in the ID token.
+	// UserClaims defines the user claims that can be returned in the userinfo endpoint or in the ID token.
 	// This will be transmitted in the /.well-known/openid-configuration endpoint.
 	UserClaims []string
-	// The claim types supported by the server.
+	// ClaimTypes are claim types supported by the server.
 	ClaimTypes []goidc.ClaimType
-	// If true, the "iss" parameter will be returned when redirecting the user back to the client application.
+	// If IssuerResponseParameterIsEnabled is true, the "iss" parameter will be returned when redirecting the user back to the client application.
 	IssuerResponseParameterIsEnabled bool
-	// It informs the clients whether the server accepts the "claims" parameter.
+	// ClaimsParameterIsEnabled informs the clients whether the server accepts the "claims" parameter.
 	// This will be transmitted in the /.well-known/openid-configuration endpoint.
 	ClaimsParameterIsEnabled               bool
 	AuthorizationDetailsParameterIsEnabled bool
@@ -85,9 +85,9 @@ type Configuration struct {
 	JAREncryptionIsEnabled                 bool
 	JARKeyEncryptionIDs                    []string
 	JARContentEncryptionAlgorithms         []jose.ContentEncryption
-	// It allows client to push authorization requests.
+	// PARIsEnabled allows client to push authorization requests.
 	PARIsEnabled bool
-	// If true, authorization requests can only be made if they were pushed.
+	// If PARIsRequired is true, authorization requests can only be made if they were pushed.
 	PARIsRequired                    bool
 	ParLifetimeSecs                  int
 	DPOPIsEnabled                    bool
@@ -108,7 +108,8 @@ type Configuration struct {
 	CorrelationIDHeader              string
 	AuthenticationContextReferences  []goidc.AuthenticationContextReference
 	DisplayValues                    []goidc.DisplayValue
-	// If true, at least one mechanism of sender contraining tokens is required, either DPoP or client TLS.
+	// If SenderConstrainedTokenIsRequired is true, at least one mechanism of sender contraining
+	// tokens is required, either DPoP or client TLS.
 	SenderConstrainedTokenIsRequired bool
 }
 
@@ -116,7 +117,7 @@ type OAuthContext struct {
 	Configuration
 	Request  *http.Request
 	Response http.ResponseWriter
-	Logger   *slog.Logger
+	logger   *slog.Logger
 }
 
 func NewContext(
@@ -144,7 +145,7 @@ func NewContext(
 		Configuration: configuration,
 		Request:       req,
 		Response:      resp,
-		Logger:        logger,
+		logger:        logger,
 	}
 }
 
@@ -152,11 +153,11 @@ func (ctx OAuthContext) GetHost() string {
 	return ctx.Host
 }
 
-func (ctx OAuthContext) GetClientSignatureAlgorithms() []jose.SignatureAlgorithm {
+func (ctx OAuthContext) ClientSignatureAlgorithms() []jose.SignatureAlgorithm {
 	return append(ctx.PrivateKeyJWTSignatureAlgorithms, ctx.ClientSecretJWTSignatureAlgorithms...)
 }
 
-func (ctx OAuthContext) GetIntrospectionClientSignatureAlgorithms() []jose.SignatureAlgorithm {
+func (ctx OAuthContext) IntrospectionClientSignatureAlgorithms() []jose.SignatureAlgorithm {
 	var signatureAlgorithms []jose.SignatureAlgorithm
 
 	if slices.Contains(ctx.IntrospectionClientAuthnMethods, goidc.ClientAuthnPrivateKeyJWT) {
@@ -170,10 +171,10 @@ func (ctx OAuthContext) GetIntrospectionClientSignatureAlgorithms() []jose.Signa
 	return signatureAlgorithms
 }
 
-// Get the DPoP JWT sent in the DPoP header.
+// DPOPJWT gets the DPoP JWT sent in the DPoP header.
 // According to RFC 9449: "There is not more than one DPoP HTTP request header field."
 // Therefore, an empty string and false will be returned if more than one value is found in the DPoP header.
-func (ctx OAuthContext) GetDPOPJWT() (string, bool) {
+func (ctx OAuthContext) DPOPJWT() (string, bool) {
 	// Consider case insensitive headers by canonicalizing them.
 	canonicalizedDPOPHeader := textproto.CanonicalMIMEHeaderKey(goidc.HeaderDPOP)
 	canonicalizedHeaders := textproto.MIMEHeader(ctx.Request.Header)
@@ -185,43 +186,43 @@ func (ctx OAuthContext) GetDPOPJWT() (string, bool) {
 	return values[0], true
 }
 
-func (ctx OAuthContext) GetSecureClientCertificate() (*x509.Certificate, bool) {
-	rawClientCert, ok := ctx.GetHeader(goidc.HeaderSecureClientCertificate)
+func (ctx OAuthContext) SecureClientCertificate() (*x509.Certificate, bool) {
+	rawClientCert, ok := ctx.Header(goidc.HeaderSecureClientCertificate)
 	if !ok {
-		ctx.Logger.Debug("the secure client certificate was not informed")
+		ctx.Logger().Debug("the secure client certificate was not informed")
 		return nil, false
 	}
 
 	clientCert, err := x509.ParseCertificate([]byte(rawClientCert))
 	if err != nil {
-		ctx.Logger.Debug("could not parse the client certificate")
+		ctx.Logger().Debug("could not parse the client certificate")
 		return nil, false
 	}
 
-	ctx.Logger.Debug("secure client certificate was found")
+	ctx.Logger().Debug("secure client certificate was found")
 	return clientCert, true
 }
 
-// Try to get the secure client certificate first, if it's not informed,
-// fallback to the insecure one.
-func (ctx OAuthContext) GetClientCertificate() (*x509.Certificate, bool) {
-	rawClientCert, ok := ctx.GetHeader(goidc.HeaderSecureClientCertificate)
+// ClientCertificate tries to get the secure client certificate first, if it's not informed,
+// it fallbacks to the insecure one.
+func (ctx OAuthContext) ClientCertificate() (*x509.Certificate, bool) {
+	rawClientCert, ok := ctx.Header(goidc.HeaderSecureClientCertificate)
 	if !ok {
-		ctx.Logger.Debug("the secure client certificate was not informed, trying the insecure one")
-		rawClientCert, ok = ctx.GetHeader(goidc.HeaderInsecureClientCertificate)
+		ctx.Logger().Debug("the secure client certificate was not informed, trying the insecure one")
+		rawClientCert, ok = ctx.Header(goidc.HeaderInsecureClientCertificate)
 		if !ok {
-			ctx.Logger.Debug("the insecure client certificate was not informed")
+			ctx.Logger().Debug("the insecure client certificate was not informed")
 			return nil, false
 		}
 	}
 
 	clientCert, err := x509.ParseCertificate([]byte(rawClientCert))
 	if err != nil {
-		ctx.Logger.Debug("could not parse the client certificate")
+		ctx.Logger().Debug("could not parse the client certificate")
 		return nil, false
 	}
 
-	ctx.Logger.Debug("client certificate was found")
+	ctx.Logger().Debug("client certificate was found")
 	return clientCert, true
 }
 
@@ -231,8 +232,8 @@ func (ctx OAuthContext) ExecuteDCRPlugin(clientInfo *goidc.ClientMetaInfo) {
 	}
 }
 
-// Get the host names trusted by the server to validate assertions.
-func (ctx OAuthContext) GetAudiences() []string {
+// Audiences returns the host names trusted by the server to validate assertions.
+func (ctx OAuthContext) Audiences() []string {
 	audiences := []string{
 		ctx.Host,
 		ctx.Host + string(goidc.EndpointToken),
@@ -251,7 +252,7 @@ func (ctx OAuthContext) GetAudiences() []string {
 	return audiences
 }
 
-func (ctx OAuthContext) GetPolicyByID(policyID string) goidc.AuthnPolicy {
+func (ctx OAuthContext) Policy(policyID string) goidc.AuthnPolicy {
 	for _, policy := range ctx.Policies {
 		if policy.ID == policyID {
 			return policy
@@ -260,7 +261,7 @@ func (ctx OAuthContext) GetPolicyByID(policyID string) goidc.AuthnPolicy {
 	return goidc.AuthnPolicy{}
 }
 
-func (ctx OAuthContext) GetAvailablePolicy(client goidc.Client, session *goidc.AuthnSession) (
+func (ctx OAuthContext) FindAvailablePolicy(client goidc.Client, session *goidc.AuthnSession) (
 	policy goidc.AuthnPolicy,
 	ok bool,
 ) {
@@ -273,8 +274,11 @@ func (ctx OAuthContext) GetAvailablePolicy(client goidc.Client, session *goidc.A
 	return goidc.AuthnPolicy{}, false
 }
 
-func (ctx OAuthContext) GetLogger() *slog.Logger {
-	return ctx.Logger
+func (ctx OAuthContext) Logger() *slog.Logger {
+	if ctx.logger == nil {
+		return slog.Default()
+	}
+	return ctx.logger
 }
 
 func (ctx OAuthContext) GetScopes() goidc.Scopes {
@@ -360,8 +364,8 @@ func (ctx OAuthContext) DeleteAuthnSession(id string) error {
 
 //---------------------------------------- HTTP Utils ----------------------------------------//
 
-func (ctx OAuthContext) GetBearerToken() (token string, ok bool) {
-	token, tokenType, ok := ctx.GetAuthorizationToken()
+func (ctx OAuthContext) BearerToken() (token string, ok bool) {
+	token, tokenType, ok := ctx.AuthorizationToken()
 	if !ok {
 		return "", false
 	}
@@ -373,12 +377,12 @@ func (ctx OAuthContext) GetBearerToken() (token string, ok bool) {
 	return token, true
 }
 
-func (ctx OAuthContext) GetAuthorizationToken() (
+func (ctx OAuthContext) AuthorizationToken() (
 	token string,
 	tokenType goidc.TokenType,
 	ok bool,
 ) {
-	tokenHeader, ok := ctx.GetHeader("Authorization")
+	tokenHeader, ok := ctx.Header("Authorization")
 	if !ok {
 		return "", "", false
 	}
@@ -391,8 +395,8 @@ func (ctx OAuthContext) GetAuthorizationToken() (
 	return tokenParts[1], goidc.TokenType(tokenParts[0]), true
 }
 
-func (ctx OAuthContext) GetHeader(header string) (string, bool) {
-	value := ctx.Request.Header.Get(header)
+func (ctx OAuthContext) Header(name string) (string, bool) {
+	value := ctx.Request.Header.Get(name)
 	if value == "" {
 		return "", false
 	}
@@ -400,11 +404,11 @@ func (ctx OAuthContext) GetHeader(header string) (string, bool) {
 	return value, true
 }
 
-func (ctx OAuthContext) GetRequestMethod() string {
+func (ctx OAuthContext) RequestMethod() string {
 	return ctx.Request.Method
 }
 
-func (ctx OAuthContext) GetFormParam(param string) string {
+func (ctx OAuthContext) FormParam(param string) string {
 
 	if err := ctx.Request.ParseForm(); err != nil {
 		return ""
@@ -413,7 +417,7 @@ func (ctx OAuthContext) GetFormParam(param string) string {
 	return ctx.Request.PostFormValue(param)
 }
 
-func (ctx OAuthContext) GetFormData() map[string]any {
+func (ctx OAuthContext) FormData() map[string]any {
 
 	if err := ctx.Request.ParseForm(); err != nil {
 		return map[string]any{}
@@ -430,7 +434,7 @@ func (ctx OAuthContext) WriteJSON(obj any, status int) error {
 	// Check if the request was terminated before writing anything.
 	select {
 	case <-ctx.Done():
-		ctx.Logger.Error(ctx.Err().Error())
+		ctx.Logger().Error(ctx.Err().Error())
 		return nil
 	default:
 	}
@@ -448,7 +452,7 @@ func (ctx OAuthContext) WriteJWT(token string, status int) error {
 	// Check if the request was terminated before writing anything.
 	select {
 	case <-ctx.Done():
-		ctx.Logger.Error(ctx.Err().Error())
+		ctx.Logger().Error(ctx.Err().Error())
 		return nil
 	default:
 	}
@@ -474,7 +478,7 @@ func (ctx OAuthContext) RenderHTML(
 	// Check if the request was terminated before writing anything.
 	select {
 	case <-ctx.Done():
-		ctx.Logger.Error(ctx.Err().Error())
+		ctx.Logger().Error(ctx.Err().Error())
 	default:
 	}
 
@@ -491,7 +495,7 @@ func (ctx OAuthContext) RenderHTMLTemplate(
 	// Check if the request was terminated before writing anything.
 	select {
 	case <-ctx.Done():
-		ctx.Logger.Error(ctx.Err().Error())
+		ctx.Logger().Error(ctx.Err().Error())
 	default:
 	}
 
@@ -500,35 +504,35 @@ func (ctx OAuthContext) RenderHTMLTemplate(
 
 //---------------------------------------- Key Management ----------------------------------------//
 
-func (ctx OAuthContext) GetSignatureAlgorithms() []jose.SignatureAlgorithm {
+func (ctx OAuthContext) SignatureAlgorithms() []jose.SignatureAlgorithm {
 	algorithms := []jose.SignatureAlgorithm{}
 	for _, privateKey := range ctx.PrivateJWKS.Keys {
-		if privateKey.GetUsage() == string(goidc.KeyUsageSignature) {
-			algorithms = append(algorithms, jose.SignatureAlgorithm(privateKey.GetAlgorithm()))
+		if privateKey.Usage() == string(goidc.KeyUsageSignature) {
+			algorithms = append(algorithms, jose.SignatureAlgorithm(privateKey.Algorithm()))
 		}
 	}
 	return algorithms
 }
 
-func (ctx OAuthContext) GetPublicKeys() goidc.JSONWebKeySet {
+func (ctx OAuthContext) PublicKeys() goidc.JSONWebKeySet {
 	publicKeys := []goidc.JSONWebKey{}
 	for _, privateKey := range ctx.PrivateJWKS.Keys {
-		publicKeys = append(publicKeys, privateKey.GetPublic())
+		publicKeys = append(publicKeys, privateKey.Public())
 	}
 
 	return goidc.JSONWebKeySet{Keys: publicKeys}
 }
 
-func (ctx OAuthContext) GetPublicKey(keyID string) (goidc.JSONWebKey, bool) {
-	key, ok := ctx.GetPrivateKey(keyID)
+func (ctx OAuthContext) PublicKey(keyID string) (goidc.JSONWebKey, bool) {
+	key, ok := ctx.PrivateKey(keyID)
 	if !ok {
 		return goidc.JSONWebKey{}, false
 	}
 
-	return key.GetPublic(), true
+	return key.Public(), true
 }
 
-func (ctx OAuthContext) GetPrivateKey(keyID string) (goidc.JSONWebKey, bool) {
+func (ctx OAuthContext) PrivateKey(keyID string) (goidc.JSONWebKey, bool) {
 	keys := ctx.PrivateJWKS.Key(keyID)
 	if len(keys) == 0 {
 		return goidc.JSONWebKey{}, false
@@ -536,60 +540,60 @@ func (ctx OAuthContext) GetPrivateKey(keyID string) (goidc.JSONWebKey, bool) {
 	return keys[0], true
 }
 
-func (ctx OAuthContext) GetTokenSignatureKey(tokenOptions goidc.TokenOptions) goidc.JSONWebKey {
+func (ctx OAuthContext) TokenSignatureKey(tokenOptions goidc.TokenOptions) goidc.JSONWebKey {
 	keyID := tokenOptions.JWTSignatureKeyID
 	if keyID == "" {
-		return ctx.getPrivateKey(ctx.DefaultTokenSignatureKeyID)
+		return ctx.privateKey(ctx.DefaultTokenSignatureKeyID)
 	}
 
 	keys := ctx.PrivateJWKS.Key(keyID)
 	// If the key informed is not present in the JWKS or if its usage is not signing,
 	// return the default key.
-	if len(keys) == 0 || keys[0].GetUsage() != string(goidc.KeyUsageSignature) {
-		return ctx.getPrivateKey(ctx.DefaultTokenSignatureKeyID)
+	if len(keys) == 0 || keys[0].Usage() != string(goidc.KeyUsageSignature) {
+		return ctx.privateKey(ctx.DefaultTokenSignatureKeyID)
 	}
 
 	return keys[0]
 }
 
-func (ctx OAuthContext) GetUserInfoSignatureKey(client goidc.Client) goidc.JSONWebKey {
+func (ctx OAuthContext) UserInfoSignatureKey(client goidc.Client) goidc.JSONWebKey {
 	return ctx.getPrivateKeyBasedOnAlgorithmOrDefault(client.UserInfoSignatureAlgorithm, ctx.DefaultUserInfoSignatureKeyID, ctx.UserInfoSignatureKeyIDs)
 }
 
-func (ctx OAuthContext) GetIDTokenSignatureKey(client goidc.Client) goidc.JSONWebKey {
+func (ctx OAuthContext) IDTokenSignatureKey(client goidc.Client) goidc.JSONWebKey {
 	return ctx.getPrivateKeyBasedOnAlgorithmOrDefault(client.IDTokenSignatureAlgorithm, ctx.DefaultUserInfoSignatureKeyID, ctx.UserInfoSignatureKeyIDs)
 }
 
-func (ctx OAuthContext) GetJARMSignatureKey(client goidc.Client) goidc.JSONWebKey {
+func (ctx OAuthContext) JARMSignatureKey(client goidc.Client) goidc.JSONWebKey {
 	return ctx.getPrivateKeyBasedOnAlgorithmOrDefault(client.JARMSignatureAlgorithm, ctx.DefaultJARMSignatureKeyID, ctx.JARMSignatureKeyIDs)
 }
 
-func (ctx OAuthContext) GetUserInfoSignatureAlgorithms() []jose.SignatureAlgorithm {
-	return ctx.getSignatureAlgorithms(ctx.UserInfoSignatureKeyIDs)
+func (ctx OAuthContext) UserInfoSignatureAlgorithms() []jose.SignatureAlgorithm {
+	return ctx.signatureAlgorithms(ctx.UserInfoSignatureKeyIDs)
 }
 
-func (ctx OAuthContext) GetJARMSignatureAlgorithms() []jose.SignatureAlgorithm {
-	return ctx.getSignatureAlgorithms(ctx.JARMSignatureKeyIDs)
+func (ctx OAuthContext) JARMSignatureAlgorithms() []jose.SignatureAlgorithm {
+	return ctx.signatureAlgorithms(ctx.JARMSignatureKeyIDs)
 }
 
-func (ctx OAuthContext) GetJARKeyEncryptionAlgorithms() []jose.KeyAlgorithm {
-	return ctx.getKeyEncryptionAlgorithms(ctx.JARKeyEncryptionIDs)
+func (ctx OAuthContext) JARKeyEncryptionAlgorithms() []jose.KeyAlgorithm {
+	return ctx.keyEncryptionAlgorithms(ctx.JARKeyEncryptionIDs)
 }
 
-func (ctx OAuthContext) getKeyEncryptionAlgorithms(keyIDs []string) []jose.KeyAlgorithm {
+func (ctx OAuthContext) keyEncryptionAlgorithms(keyIDs []string) []jose.KeyAlgorithm {
 	algorithms := []jose.KeyAlgorithm{}
 	for _, keyID := range keyIDs {
-		key := ctx.getPrivateKey(keyID)
-		algorithms = append(algorithms, jose.KeyAlgorithm(key.GetAlgorithm()))
+		key := ctx.privateKey(keyID)
+		algorithms = append(algorithms, jose.KeyAlgorithm(key.Algorithm()))
 	}
 	return algorithms
 }
 
-func (ctx OAuthContext) getSignatureAlgorithms(keyIDs []string) []jose.SignatureAlgorithm {
+func (ctx OAuthContext) signatureAlgorithms(keyIDs []string) []jose.SignatureAlgorithm {
 	algorithms := []jose.SignatureAlgorithm{}
 	for _, keyID := range keyIDs {
-		key := ctx.getPrivateKey(keyID)
-		algorithms = append(algorithms, jose.SignatureAlgorithm(key.GetAlgorithm()))
+		key := ctx.privateKey(keyID)
+		algorithms = append(algorithms, jose.SignatureAlgorithm(key.Algorithm()))
 	}
 	return algorithms
 }
@@ -603,16 +607,16 @@ func (ctx OAuthContext) getPrivateKeyBasedOnAlgorithmOrDefault(
 ) goidc.JSONWebKey {
 	if signatureAlgorithm != "" {
 		for _, keyID := range keyIDs {
-			return ctx.getPrivateKey(keyID)
+			return ctx.privateKey(keyID)
 		}
 	}
 
-	return ctx.getPrivateKey(defaultKeyID)
+	return ctx.privateKey(defaultKeyID)
 }
 
 // Get a private JWK based on the key ID.
 // This is intended to be used with key IDs we're sure are present in the server JWKS.
-func (ctx OAuthContext) getPrivateKey(keyID string) goidc.JSONWebKey {
+func (ctx OAuthContext) privateKey(keyID string) goidc.JSONWebKey {
 	keys := ctx.PrivateJWKS.Key(keyID)
 	return keys[0]
 }

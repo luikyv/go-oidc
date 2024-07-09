@@ -58,7 +58,7 @@ func extractSignedRequestObjectFromEncryptedRequestObject(
 	string,
 	goidc.OAuthError,
 ) {
-	encryptedReqObject, err := jose.ParseEncrypted(reqObject, ctx.GetJARKeyEncryptionAlgorithms(), ctx.JARContentEncryptionAlgorithms)
+	encryptedReqObject, err := jose.ParseEncrypted(reqObject, ctx.JARKeyEncryptionAlgorithms(), ctx.JARContentEncryptionAlgorithms)
 	if err != nil {
 		return "", goidc.NewOAuthError(goidc.ErrorCodeInvalidResquestObject, "could not parse the encrypted request object")
 	}
@@ -68,12 +68,12 @@ func extractSignedRequestObjectFromEncryptedRequestObject(
 		return "", goidc.NewOAuthError(goidc.ErrorCodeInvalidResquestObject, "invalid JWE key ID")
 	}
 
-	jwk, ok := ctx.GetPrivateKey(keyID)
-	if !ok || jwk.GetUsage() != string(goidc.KeyUsageEncryption) {
+	jwk, ok := ctx.PrivateKey(keyID)
+	if !ok || jwk.Usage() != string(goidc.KeyUsageEncryption) {
 		return "", goidc.NewOAuthError(goidc.ErrorCodeInvalidResquestObject, "invalid JWK used for encryption")
 	}
 
-	decryptedReqObject, err := encryptedReqObject.Decrypt(jwk.GetKey())
+	decryptedReqObject, err := encryptedReqObject.Decrypt(jwk.Key())
 	if err != nil {
 		return "", goidc.NewOAuthError(goidc.ErrorCodeInvalidResquestObject, err.Error())
 	}
@@ -111,7 +111,7 @@ func extractJARFromSignedRequestObject(
 
 	var claims jwt.Claims
 	var jarReq AuthorizationRequest
-	if err := parsedToken.Claims(jwk.GetKey(), &claims, &jarReq); err != nil {
+	if err := parsedToken.Claims(jwk.Key(), &claims, &jarReq); err != nil {
 		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidResquestObject, "could not extract claims")
 	}
 
@@ -169,14 +169,14 @@ func ValidateDPOPJWT(
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid jti claim")
 	}
 
-	if dpopClaims.HTTPMethod != ctx.GetRequestMethod() {
+	if dpopClaims.HTTPMethod != ctx.RequestMethod() {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid htm claim")
 	}
 
 	// The query and fragment components of the "htu" must be ignored.
 	// Also, htu should be case-insensitive.
 	httpURI, err := GetURLWithoutParams(strings.ToLower(dpopClaims.HTTPURI))
-	if err != nil || !slices.Contains(ctx.GetAudiences(), httpURI) {
+	if err != nil || !slices.Contains(ctx.Audiences(), httpURI) {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid htu claim")
 	}
 
@@ -203,7 +203,7 @@ func GetValidTokenClaims(
 	map[string]any,
 	goidc.OAuthError,
 ) {
-	parsedToken, err := jwt.ParseSigned(token, ctx.GetSignatureAlgorithms())
+	parsedToken, err := jwt.ParseSigned(token, ctx.SignatureAlgorithms())
 	if err != nil {
 		// If the token is not a valid JWT, we'll treat it as an opaque token.
 		return nil, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "could not parse the token")
@@ -214,14 +214,14 @@ func GetValidTokenClaims(
 	}
 
 	keyID := parsedToken.Headers[0].KeyID
-	publicKey, ok := ctx.GetPublicKey(keyID)
-	if !ok || publicKey.GetUsage() != string(goidc.KeyUsageSignature) {
+	publicKey, ok := ctx.PublicKey(keyID)
+	if !ok || publicKey.Usage() != string(goidc.KeyUsageSignature) {
 		return nil, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "invalid token")
 	}
 
 	var claims jwt.Claims
 	var rawClaims map[string]any
-	if err := parsedToken.Claims(publicKey.GetKey(), &claims, &rawClaims); err != nil {
+	if err := parsedToken.Claims(publicKey.Key(), &claims, &rawClaims); err != nil {
 		return nil, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "invalid token")
 	}
 
@@ -273,7 +273,7 @@ func RunValidations(
 
 func ExtractProtectedParamsFromForm(ctx OAuthContext) map[string]any {
 	protectedParams := make(map[string]any)
-	for param, value := range ctx.GetFormData() {
+	for param, value := range ctx.FormData() {
 		if strings.HasPrefix(param, goidc.ProtectedParamPrefix) {
 			protectedParams[param] = value
 		}
@@ -315,7 +315,7 @@ func EncryptJWT(
 ) {
 	encrypter, err := jose.NewEncrypter(
 		contentKeyEncryptionAlgorithm,
-		jose.Recipient{Algorithm: jose.KeyAlgorithm(encryptionJWK.GetAlgorithm()), Key: encryptionJWK.GetKey(), KeyID: encryptionJWK.GetKeyID()},
+		jose.Recipient{Algorithm: jose.KeyAlgorithm(encryptionJWK.Algorithm()), Key: encryptionJWK.Key(), KeyID: encryptionJWK.KeyID()},
 		(&jose.EncrypterOptions{}).WithType("jwt").WithContentType("jwt"),
 	)
 	if err != nil {

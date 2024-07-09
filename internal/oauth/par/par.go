@@ -17,7 +17,7 @@ func PushAuthorization(
 
 	client, err := utils.GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
-		ctx.Logger.Info("could not authenticate the client", slog.String("client_id", req.ClientID), slog.String("error", err.Error()))
+		ctx.Logger().Info("could not authenticate the client", slog.String("client_id", req.ClientID), slog.String("error", err.Error()))
 		return "", goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "client not authenticated")
 	}
 
@@ -28,7 +28,7 @@ func PushAuthorization(
 
 	requestURI = session.Push(ctx.ParLifetimeSecs)
 	if err := ctx.AuthnSessionManager.CreateOrUpdate(ctx, session); err != nil {
-		ctx.Logger.Debug("could not create a session")
+		ctx.Logger().Debug("could not create a session")
 		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 	return requestURI, nil

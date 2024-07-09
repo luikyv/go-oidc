@@ -31,7 +31,7 @@ func initValidSimpleAuthnSession(
 	goidc.OAuthError,
 ) {
 	if err := validatePAR(ctx, req, client); err != nil {
-		ctx.Logger.Info("request has invalid params")
+		ctx.Logger().Info("request has invalid params")
 		return goidc.AuthnSession{}, err
 	}
 

@@ -71,7 +71,7 @@ func getClient(
 }
 
 func authenticate(ctx utils.OAuthContext, session *goidc.AuthnSession) goidc.OAuthError {
-	policy := ctx.GetPolicyByID(session.PolicyID)
+	policy := ctx.Policy(session.PolicyID)
 	switch policy.AuthnFunc(ctx, session) {
 	case goidc.StatusSuccess:
 		return finishFlowSuccessfully(ctx, session)
@@ -188,9 +188,9 @@ func generateImplicitGrantSession(
 ) goidc.OAuthError {
 
 	grantSession := utils.NewGrantSession(grantOptions, token)
-	ctx.Logger.Debug("creating grant session for implicit grant")
+	ctx.Logger().Debug("creating grant session for implicit grant")
 	if err := ctx.CreateOrUpdateGrantSession(grantSession); err != nil {
-		ctx.Logger.Error("error creating a grant session during implicit grant",
+		ctx.Logger().Error("error creating a grant session during implicit grant",
 			slog.String("error", err.Error()))
 		return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}

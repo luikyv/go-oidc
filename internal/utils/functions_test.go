@@ -2,7 +2,6 @@ package utils_test
 
 import (
 	"fmt"
-	"log/slog"
 	"net/http"
 	"testing"
 
@@ -21,27 +20,26 @@ func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 		Configuration: utils.Configuration{
 			Host:                   "https://server.example.com",
 			JARIsEnabled:           true,
-			JARSignatureAlgorithms: []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJWK.GetAlgorithm())},
+			JARSignatureAlgorithms: []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJWK.Algorithm())},
 			JARLifetimeSecs:        60,
 		},
 		Request: &http.Request{
 			Method: http.MethodPost,
 		},
-		Logger: slog.Default(),
 	}
 
 	client := goidc.Client{
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			PublicJWKS: &goidc.JSONWebKeySet{
-				Keys: []goidc.JSONWebKey{privateJWK.GetPublic()},
+				Keys: []goidc.JSONWebKey{privateJWK.Public()},
 			},
 		},
 	}
 
 	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.GetAlgorithm()), Key: privateJWK.GetKey()},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.GetKeyID()),
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.Algorithm()), Key: privateJWK.Key()},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID()),
 	)
 	claims := map[string]any{
 		string(goidc.ClaimIssuer):   client.ID,
@@ -96,7 +94,6 @@ func TestValidateDPOPJWT(t *testing.T) {
 				Request: &http.Request{
 					Method: http.MethodPost,
 				},
-				Logger: slog.Default(),
 			},
 			true,
 		},
@@ -116,7 +113,6 @@ func TestValidateDPOPJWT(t *testing.T) {
 				Request: &http.Request{
 					Method: http.MethodGet,
 				},
-				Logger: slog.Default(),
 			},
 			true,
 		},

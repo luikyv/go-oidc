@@ -319,7 +319,7 @@ type OpenIDConfiguration struct {
 	GrantTypes                                     []goidc.GrantType                      `json:"grant_types_supported"`
 	Scopes                                         []string                               `json:"scopes_supported"`
 	UserClaimsSupported                            []string                               `json:"claims_supported"`
-	UserClaimTypesSupported                        []goidc.ClaimType                      `json:"claim_types_supported,omitempty"`
+	ClaimTypesSupported                            []goidc.ClaimType                      `json:"claim_types_supported,omitempty"`
 	SubjectIdentifierTypes                         []goidc.SubjectIdentifierType          `json:"subject_types_supported"`
 	IDTokenSignatureAlgorithms                     []jose.SignatureAlgorithm              `json:"id_token_signing_alg_values_supported"`
 	IDTokenKeyEncryptionAlgorithms                 []jose.KeyAlgorithm                    `json:"id_token_encryption_alg_values_supported,omitempty"`

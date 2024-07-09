@@ -54,7 +54,7 @@ func (client Client) getEncryptionJWK(algorithm jose.KeyAlgorithm) (JSONWebKey, 
 	}
 
 	for _, jwk := range jwks.Keys {
-		if jwk.GetUsage() == string(KeyUsageEncryption) && jwk.GetAlgorithm() == string(algorithm) {
+		if jwk.Usage() == string(KeyUsageEncryption) && jwk.Algorithm() == string(algorithm) {
 			return jwk, nil
 		}
 	}

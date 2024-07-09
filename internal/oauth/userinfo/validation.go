@@ -43,7 +43,7 @@ func validateDPOP(
 		}
 	}
 
-	dpopJWT, ok := ctx.GetDPOPJWT()
+	dpopJWT, ok := ctx.DPOPJWT()
 	if !ok {
 		// The session was created with DPoP, then the DPoP header must be passed.
 		return goidc.NewOAuthError(goidc.ErrorCodeUnauthorizedClient, "invalid DPoP header")
@@ -63,7 +63,7 @@ func validateTLSProofOfPossesion(
 		return nil
 	}
 
-	clientCert, ok := ctx.GetClientCertificate()
+	clientCert, ok := ctx.ClientCertificate()
 	if !ok {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidToken, "the client certificate is required")
 	}

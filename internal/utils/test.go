@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -56,29 +55,29 @@ func GetTestClient(_ *testing.T) goidc.Client {
 }
 
 func GetTestContext(t *testing.T) OAuthContext {
-	ctx := OAuthContext{
-		Configuration: Configuration{
-			Profile:                       goidc.ProfileOpenID,
-			Host:                          TestHost,
-			ClientManager:                 inmemory.NewClientManager(),
-			GrantSessionManager:           inmemory.NewGrantSessionManager(),
-			AuthnSessionManager:           inmemory.NewAuthnSessionManager(),
-			Scopes:                        []goidc.Scope{goidc.ScopeOpenID, TestScope1, TestScope2},
-			PrivateJWKS:                   goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{TestServerPrivateJWK}},
-			DefaultTokenSignatureKeyID:    TestServerPrivateJWK.GetKeyID(),
-			DefaultUserInfoSignatureKeyID: TestServerPrivateJWK.GetKeyID(),
-			UserInfoSignatureKeyIDs:       []string{TestServerPrivateJWK.GetKeyID()},
-			GetTokenOptions: func(client goidc.Client, scopes string) (goidc.TokenOptions, error) {
-				return goidc.TokenOptions{
-					TokenLifetimeSecs: 60,
-					TokenFormat:       goidc.TokenFormatJWT,
-				}, nil
-			},
-			AuthenticationSessionTimeoutSecs: 60,
+	config := Configuration{
+		Profile:                       goidc.ProfileOpenID,
+		Host:                          TestHost,
+		ClientManager:                 inmemory.NewClientManager(),
+		GrantSessionManager:           inmemory.NewGrantSessionManager(),
+		AuthnSessionManager:           inmemory.NewAuthnSessionManager(),
+		Scopes:                        []goidc.Scope{goidc.ScopeOpenID, TestScope1, TestScope2},
+		PrivateJWKS:                   goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{TestServerPrivateJWK}},
+		DefaultTokenSignatureKeyID:    TestServerPrivateJWK.KeyID(),
+		DefaultUserInfoSignatureKeyID: TestServerPrivateJWK.KeyID(),
+		UserInfoSignatureKeyIDs:       []string{TestServerPrivateJWK.KeyID()},
+		GetTokenOptions: func(client goidc.Client, scopes string) (goidc.TokenOptions, error) {
+			return goidc.TokenOptions{
+				TokenLifetimeSecs: 60,
+				TokenFormat:       goidc.TokenFormatJWT,
+			}, nil
 		},
-		Request:  httptest.NewRequest(http.MethodGet, TestHost, nil),
-		Response: httptest.NewRecorder(),
-		Logger:   slog.Default(),
+		AuthenticationSessionTimeoutSecs: 60,
+	}
+	ctx := OAuthContext{
+		Configuration: config,
+		Request:       httptest.NewRequest(http.MethodGet, TestHost, nil),
+		Response:      httptest.NewRecorder(),
 	}
 
 	require.Nil(t, ctx.CreateOrUpdateClient(GetTestClient(t)), "could not create the test client")
@@ -106,23 +105,39 @@ func GetGrantSessionsFromTestContext(_ *testing.T, ctx OAuthContext) []goidc.Gra
 	return tokens
 }
 
-func GetTestPrivateRS256JWK(_ *testing.T, keyID string) goidc.JSONWebKey {
+func GetTestPrivateRS256JWK(t *testing.T, keyID string) goidc.JSONWebKey {
+	return GetTestPrivateRS256JWKWithUsage(t, keyID, goidc.KeyUsageSignature)
+}
+
+func GetTestPrivateRS256JWKWithUsage(
+	_ *testing.T,
+	keyID string,
+	usage goidc.KeyUsage,
+) goidc.JSONWebKey {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	return goidc.NewJSONWebKey(jose.JSONWebKey{
 		Key:       privateKey,
 		KeyID:     keyID,
 		Algorithm: string(jose.RS256),
-		Use:       string(goidc.KeyUsageSignature),
+		Use:       string(usage),
 	})
 }
 
-func GetTestPrivatePS256JWK(_ *testing.T, keyID string) goidc.JSONWebKey {
+func GetTestPrivatePS256JWK(t *testing.T, keyID string) goidc.JSONWebKey {
+	return GetTestPrivatePS256JWKWithUsage(t, keyID, goidc.KeyUsageSignature)
+}
+
+func GetTestPrivatePS256JWKWithUsage(
+	_ *testing.T,
+	keyID string,
+	usage goidc.KeyUsage,
+) goidc.JSONWebKey {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	return goidc.NewJSONWebKey(jose.JSONWebKey{
 		Key:       privateKey,
 		KeyID:     keyID,
 		Algorithm: string(jose.PS256),
-		Use:       string(goidc.KeyUsageSignature),
+		Use:       string(usage),
 	})
 }
 

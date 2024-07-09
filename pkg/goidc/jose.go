@@ -65,27 +65,27 @@ type JSONWebKey struct {
 	innerJWK jose.JSONWebKey
 }
 
-func (jwk JSONWebKey) GetKeyID() string {
+func (jwk JSONWebKey) KeyID() string {
 	return jwk.innerJWK.KeyID
 }
 
-func (jwk JSONWebKey) GetAlgorithm() string {
+func (jwk JSONWebKey) Algorithm() string {
 	return jwk.innerJWK.Algorithm
 }
 
-func (jwk JSONWebKey) GetUsage() string {
+func (jwk JSONWebKey) Usage() string {
 	return jwk.innerJWK.Use
 }
 
-func (jwk JSONWebKey) GetKey() any {
+func (jwk JSONWebKey) Key() any {
 	return jwk.innerJWK.Key
 }
 
-func (jwk JSONWebKey) GetCertificateThumbprintSHA256() []byte {
+func (jwk JSONWebKey) CertificateThumbprintSHA256() []byte {
 	return jwk.innerJWK.CertificateThumbprintSHA256
 }
 
-func (jwk JSONWebKey) GetCertificateThumbprintSHA1() []byte {
+func (jwk JSONWebKey) CertificateThumbprintSHA1() []byte {
 	return jwk.innerJWK.CertificateThumbprintSHA1
 }
 
@@ -97,7 +97,7 @@ func (jwk JSONWebKey) IsValid() bool {
 	return jwk.innerJWK.Valid()
 }
 
-func (jwk JSONWebKey) GetPublic() JSONWebKey {
+func (jwk JSONWebKey) Public() JSONWebKey {
 	return NewJSONWebKey(jwk.innerJWK.Public())
 }
 
@@ -143,7 +143,7 @@ func (jwks *JSONWebKeySet) Key(keyID string) []JSONWebKey {
 
 	var keys []JSONWebKey = make([]JSONWebKey, 0)
 	for _, key := range jwks.Keys {
-		if key.GetKeyID() == keyID {
+		if key.KeyID() == keyID {
 			keys = append(keys, key)
 		}
 	}
