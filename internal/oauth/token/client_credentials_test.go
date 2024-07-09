@@ -8,15 +8,14 @@ import (
 	"github.com/luikymagno/goidc/internal/oauth/token"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
-	ctx := utils.GetTestInMemoryContext()
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{

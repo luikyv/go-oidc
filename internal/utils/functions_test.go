@@ -10,15 +10,26 @@ import (
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) {
-	// When.
+	// Given.
 	privateJWK := utils.GetTestPrivateRS256JWK("client_key_id")
-	ctx := utils.GetTestInMemoryContext()
-	ctx.JARIsEnabled = true
-	ctx.JARSignatureAlgorithms = []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJWK.GetAlgorithm())}
-	ctx.JARLifetimeSecs = 60
+	ctx := utils.OAuthContext{
+		Configuration: utils.Configuration{
+			Host:                   "https://server.example.com",
+			JARIsEnabled:           true,
+			JARSignatureAlgorithms: []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJWK.GetAlgorithm())},
+			JARLifetimeSecs:        60,
+		},
+		Request: &http.Request{
+			Method: http.MethodPost,
+		},
+		Logger: slog.Default(),
+	}
+
 	client := goidc.Client{
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			PublicJWKS: &goidc.JSONWebKeySet{
@@ -53,24 +64,13 @@ func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 	}
 	request, _ := jwt.Signed(signer).Claims(claims).Serialize()
 
-	// Then.
+	// When.
 	jar, err := utils.ExtractJARFromRequestObject(ctx, request, client)
 
-	// Assert.
-	if err != nil {
-		t.Errorf("error extracting JAR. Error: %s", err.Error())
-		return
-	}
-
-	if jar.ClientID != client.ID {
-		t.Errorf("Invalid JAR client_id. JAR: %v", jar)
-		return
-	}
-
-	if jar.ResponseType != goidc.ResponseTypeCode {
-		t.Errorf("Invalid JAR response_type. JAR: %v", jar)
-		return
-	}
+	// Then.
+	require.Nil(t, err, "error extracting JAR")
+	assert.Equal(t, client.ID, jar.ClientID, "invalid JAR client_id")
+	assert.Equal(t, goidc.ResponseTypeCode, jar.ResponseType, "invalid JAR response_type")
 }
 
 func TestValidateDPOPJWT(t *testing.T) {
@@ -127,27 +127,17 @@ func TestValidateDPOPJWT(t *testing.T) {
 			testCase.Name,
 			func(t *testing.T) {
 				// When.
-				// ctx.Request.Method = testCase.ExpectedClaims
-
-				// Then.
 				err := utils.ValidateDPOPJWT(testCase.Context, testCase.DPOPJWT, testCase.ExpectedClaims)
 
-				// Assert.
-				isValid := err == nil
-				if isValid != testCase.ShouldBeValid {
-					t.Errorf("expected: %v - actual: %v - error: %s", testCase.ShouldBeValid, isValid, err)
-					return
-				}
+				// Then.
+				assert.Equal(t, testCase.ShouldBeValid, err == nil)
 			},
 		)
 	}
 }
 
 func TestGenerateRefreshToken(t *testing.T) {
-	refreshToken := utils.GenerateRefreshToken()
-	if len(refreshToken) != goidc.RefreshTokenLength {
-		t.Errorf("refresh token: %s has not %d characters", refreshToken, goidc.RefreshTokenLength)
-	}
+	assert.Len(t, utils.RefreshToken(), goidc.RefreshTokenLength)
 }
 
 func TestGetURLWithQueryParams(t *testing.T) {
@@ -163,11 +153,7 @@ func TestGetURLWithQueryParams(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
-			parameterizedURL := utils.GetURLWithQueryParams(testCase.URL, testCase.params)
-
-			if parameterizedURL != testCase.ExpectedParameterizedURL {
-				t.Errorf("%s is different from %s", parameterizedURL, testCase.ExpectedParameterizedURL)
-			}
+			assert.Equal(t, testCase.ExpectedParameterizedURL, utils.GetURLWithQueryParams(testCase.URL, testCase.params))
 		})
 	}
 
@@ -186,11 +172,7 @@ func TestGetURLWithFragmentParams(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
-			parameterizedURL := utils.GetURLWithFragmentParams(testCase.URL, testCase.params)
-
-			if parameterizedURL != testCase.ExpectedParameterizedURL {
-				t.Errorf("%s is different from %s", parameterizedURL, testCase.ExpectedParameterizedURL)
-			}
+			assert.Equal(t, testCase.ExpectedParameterizedURL, utils.GetURLWithFragmentParams(testCase.URL, testCase.params))
 		})
 	}
 
@@ -208,11 +190,11 @@ func TestGetURLWithoutParams(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
+			// When.
 			urlWithoutParams, err := utils.GetURLWithoutParams(testCase.url)
-
-			if err != nil || urlWithoutParams != testCase.expectedURL {
-				t.Errorf("%s is different from %s", urlWithoutParams, testCase.expectedURL)
-			}
+			// Assert.
+			require.Nil(t, err)
+			assert.Equal(t, testCase.expectedURL, urlWithoutParams)
 		})
 	}
 
@@ -236,38 +218,32 @@ func TestIsPkceValid(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
-			isValid := utils.IsPkceValid(testCase.codeVerifier, testCase.codeChallenge, testCase.codeChallengeMethod)
-			if testCase.isValid != isValid {
-				t.Error("error validating PKCE")
-			}
+			assert.Equal(t, testCase.isValid, utils.IsPkceValid(testCase.codeVerifier, testCase.codeChallenge, testCase.codeChallengeMethod))
 		})
 	}
 }
 
 func TestAll(t *testing.T) {
+	// When.
 	ok := utils.All([]string{"a", "b", "c"}, func(s string) bool {
 		return s == "b"
 	})
-	if ok {
-		t.Errorf("not all the elements respect the condition")
-		return
-	}
+	// Then.
+	assert.False(t, ok, "not all the elements respect the condition")
 
+	// When.
 	ok = utils.All([]int{1, 2, 3}, func(i int) bool {
 		return i > 0
 	})
-	if !ok {
-		t.Errorf("all the elements respect the condition")
-		return
-	}
+	// Then.
+	assert.True(t, ok, "all the elements respect the condition")
 
+	// When.
 	ok = utils.All([]int{1, 2, 3}, func(i int) bool {
 		return i == 4
 	})
-	if ok {
-		t.Errorf("not all the elements respect the condition")
-		return
-	}
+	// Then.
+	assert.False(t, ok, "not all the elements respect the condition")
 }
 
 func TestAllEquals(t *testing.T) {
@@ -283,9 +259,7 @@ func TestAllEquals(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i+1), func(t *testing.T) {
-			if utils.AllEquals(testCase.values) != testCase.allShouldBeEqual {
-				t.Error(testCase)
-			}
+			assert.Equal(t, testCase.allShouldBeEqual, utils.AllEquals(testCase.values))
 		})
 	}
 }
@@ -304,10 +278,7 @@ func TestGenerateJWKThumbprint(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
-			jkt := utils.GenerateJWKThumbprint(testCase.DPOPJWT, dpopSigningAlgorithms)
-			if jkt != testCase.ExpectedThumbprint {
-				t.Errorf("invalid thumbprint. expected: %s - actual: %s", testCase.ExpectedThumbprint, jkt)
-			}
+			assert.Equal(t, testCase.ExpectedThumbprint, utils.GenerateJWKThumbprint(testCase.DPOPJWT, dpopSigningAlgorithms))
 		})
 	}
 }
@@ -323,9 +294,7 @@ func TestIsJWS(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i+1), func(t *testing.T) {
-			if utils.IsJWS(testCase.jws) != testCase.shouldBeJWS {
-				t.Error(testCase)
-			}
+			assert.Equal(t, testCase.shouldBeJWS, utils.IsJWS(testCase.jws))
 		})
 	}
 }
@@ -341,9 +310,7 @@ func TestIsJWE(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i+1), func(t *testing.T) {
-			if utils.IsJWE(testCase.jwe) != testCase.shouldBeJWE {
-				t.Error(testCase)
-			}
+			assert.Equal(t, testCase.shouldBeJWE, utils.IsJWE(testCase.jwe))
 		})
 	}
 }

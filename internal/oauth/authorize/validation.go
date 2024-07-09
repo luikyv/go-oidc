@@ -25,7 +25,7 @@ func validateAuthorizationRequestWithPAR(
 	}
 
 	mergedParams := session.AuthorizationParameters.Merge(req.AuthorizationParameters)
-	if session.IsPushedRequestExpired(ctx.ParLifetimeSecs) {
+	if session.IsExpired() {
 		return mergedParams.NewRedirectError(goidc.ErrorCodeInvalidRequest, "the request_uri is expired")
 	}
 

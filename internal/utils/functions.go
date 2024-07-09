@@ -363,19 +363,19 @@ func NewAuthnSession(authParams goidc.AuthorizationParameters, client goidc.Clie
 	}
 }
 
-func GenerateRefreshToken() string {
+func RefreshToken() string {
 	return goidc.RandomString(goidc.RefreshTokenLength, goidc.RefreshTokenLength)
 }
 
-func GenerateClientID() string {
+func ClientID() string {
 	return "dc-" + goidc.RandomString(goidc.DynamicClientIDLength, goidc.DynamicClientIDLength)
 }
 
-func GenerateClientSecret() string {
+func ClientSecret() string {
 	return goidc.RandomString(goidc.ClientSecretLength, goidc.ClientSecretLength)
 }
 
-func GenerateRegistrationAccessToken() string {
+func RegistrationAccessToken() string {
 	return goidc.RandomString(goidc.RegistrationAccessTokenLength, goidc.RegistrationAccessTokenLength)
 }
 
@@ -462,19 +462,19 @@ func GenerateBase64URLSHA256Hash(s string) string {
 	return base64.RawURLEncoding.EncodeToString(hash.Sum(nil))
 }
 
-func GenerateSHA256Hash(s []byte) string {
+func SHA256Hash(s []byte) string {
 	hash := sha256.New()
 	hash.Write([]byte(s))
 	return string(hash.Sum(nil))
 }
 
-func GenerateSHA1Hash(s []byte) string {
+func SHA1Hash(s []byte) string {
 	hash := sha1.New()
 	hash.Write([]byte(s))
 	return string(hash.Sum(nil))
 }
 
-func GenerateHalfHashClaim(claimValue string, idTokenAlgorithm jose.SignatureAlgorithm) string {
+func HalfHashClaim(claimValue string, idTokenAlgorithm jose.SignatureAlgorithm) string {
 	var hash hash.Hash
 	switch idTokenAlgorithm {
 	case jose.RS256, jose.ES256, jose.PS256, jose.HS256:

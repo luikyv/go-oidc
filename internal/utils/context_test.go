@@ -5,11 +5,13 @@ import (
 
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetPolicy_HappyPath(t *testing.T) {
 
-	// When
+	// Given.
 	unavailablePolicy := goidc.NewPolicy(
 		"unavailable_policy",
 		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool {
@@ -24,24 +26,19 @@ func TestGetPolicy_HappyPath(t *testing.T) {
 		},
 		nil,
 	)
-	ctx := utils.GetDummyTestContext()
+	ctx := utils.GetTestContext()
 	ctx.Policies = []goidc.AuthnPolicy{unavailablePolicy, availablePolicy}
 
-	// Then
+	// When.
 	policy, policyIsAvailable := ctx.GetAvailablePolicy(goidc.Client{}, &goidc.AuthnSession{})
 
-	// Assert
-	if !policyIsAvailable {
-		t.Error("GetPolicy is not fetching any policy")
-	}
-	if policy.ID != availablePolicy.ID {
-		t.Error("GetPolicy is not fetching the right policy")
-	}
-
+	// Then.
+	require.True(t, policyIsAvailable, "GetPolicy is not fetching any policy")
+	assert.Equal(t, policy.ID, availablePolicy.ID, "GetPolicy is not fetching the right policy")
 }
 
 func TestGetPolicy_NoPolicyAvailable(t *testing.T) {
-	// When
+	// Given.
 	unavailablePolicy := goidc.NewPolicy(
 		"unavailable_policy",
 		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool {
@@ -49,15 +46,12 @@ func TestGetPolicy_NoPolicyAvailable(t *testing.T) {
 		},
 		nil,
 	)
-	ctx := utils.GetDummyTestContext()
+	ctx := utils.GetTestContext()
 	ctx.Policies = []goidc.AuthnPolicy{unavailablePolicy}
 
-	// Then
+	// When.
 	_, policyIsAvailable := ctx.GetAvailablePolicy(goidc.Client{}, &goidc.AuthnSession{})
 
-	// Assert
-	if policyIsAvailable {
-		t.Error("GetPolicy should not find any policy")
-	}
-
+	// Then.
+	require.False(t, policyIsAvailable, "GetPolicy is not fetching any policy")
 }

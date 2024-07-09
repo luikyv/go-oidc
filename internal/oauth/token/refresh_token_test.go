@@ -8,16 +8,15 @@ import (
 	"github.com/luikymagno/goidc/internal/oauth/token"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 
 	// When
 	client := utils.GetTestClient()
-	ctx := utils.GetTestInMemoryContext()
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
@@ -95,10 +94,8 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 
 	// When
 	client := utils.GetTestClient()
-	ctx := utils.GetTestInMemoryContext()
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"

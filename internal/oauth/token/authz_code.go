@@ -89,7 +89,7 @@ func generateAuthorizationCodeGrantSession(
 	grantSession := utils.NewGrantSession(grantOptions, token)
 	if client.IsGrantTypeAllowed(goidc.GrantRefreshToken) && grantOptions.ShouldRefresh {
 		ctx.Logger.Debug("generating refresh token for authorization code grant")
-		grantSession.RefreshToken = utils.GenerateRefreshToken()
+		grantSession.RefreshToken = utils.RefreshToken()
 		grantSession.ExpiresAtTimestamp = goidc.TimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
 
@@ -118,7 +118,7 @@ func validateAuthorizationCodeGrantRequest(
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidGrant, "the authorization code was not issued to the client")
 	}
 
-	if session.IsAuthorizationCodeExpired() {
+	if session.IsExpired() {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidGrant, "the authorization code is expired")
 	}
 

@@ -14,12 +14,9 @@ import (
 )
 
 const (
-	TestClientID           string = "random_client_id"
-	TestClientSecret       string = "random_client_secret"
-	TestOpaqueGrantModelID string = "opaque_grant_model_id"
-	TestJWTGrantModelID    string = "jwt_grant_model_id"
-	TestHost               string = "https://example.com"
-	TestKeyID              string = "rsa256_key"
+	TestClientID string = "random_client_id"
+	TestHost     string = "https://example.com"
+	TestKeyID    string = "rsa256_key"
 )
 
 var (
@@ -53,7 +50,7 @@ func GetTestClient() goidc.Client {
 	}
 }
 
-func GetTestInMemoryContext() OAuthContext {
+func GetTestContext() OAuthContext {
 	privateJWK := GetTestPrivateRS256JWK(TestKeyID)
 	return OAuthContext{
 		Configuration: Configuration{
@@ -78,18 +75,6 @@ func GetTestInMemoryContext() OAuthContext {
 		Request:  httptest.NewRequest(http.MethodGet, TestHost, nil),
 		Response: httptest.NewRecorder(),
 		Logger:   slog.Default(),
-	}
-}
-
-func GetDummyTestContext() OAuthContext {
-	return OAuthContext{
-		Configuration: Configuration{
-			Profile: goidc.ProfileOpenID,
-			Host:    TestHost,
-			Scopes:  []goidc.Scope{goidc.ScopeOpenID, Scope1, Scope2},
-		},
-		Request: &http.Request{},
-		Logger:  slog.Default(),
 	}
 }
 

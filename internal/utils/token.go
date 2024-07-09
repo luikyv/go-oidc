@@ -70,15 +70,15 @@ func makeIDToken(
 	}
 
 	if idTokenOpts.AccessToken != "" {
-		claims[goidc.ClaimAccessTokenHash] = GenerateHalfHashClaim(idTokenOpts.AccessToken, signatureAlgorithm)
+		claims[goidc.ClaimAccessTokenHash] = HalfHashClaim(idTokenOpts.AccessToken, signatureAlgorithm)
 	}
 
 	if idTokenOpts.AuthorizationCode != "" {
-		claims[goidc.ClaimAuthorizationCodeHash] = GenerateHalfHashClaim(idTokenOpts.AuthorizationCode, signatureAlgorithm)
+		claims[goidc.ClaimAuthorizationCodeHash] = HalfHashClaim(idTokenOpts.AuthorizationCode, signatureAlgorithm)
 	}
 
 	if idTokenOpts.State != "" {
-		claims[goidc.ClaimStateHash] = GenerateHalfHashClaim(idTokenOpts.State, signatureAlgorithm)
+		claims[goidc.ClaimStateHash] = HalfHashClaim(idTokenOpts.State, signatureAlgorithm)
 	}
 
 	for k, v := range idTokenOpts.AdditionalIDTokenClaims {

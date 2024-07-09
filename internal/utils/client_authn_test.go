@@ -8,12 +8,14 @@ import (
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 )
 
 func TestGetAuthenticatedClient_WithNoneAuthn_HappyPath(t *testing.T) {
 
-	// When.
+	// Given.
 	client := goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
@@ -21,21 +23,18 @@ func TestGetAuthenticatedClient_WithNoneAuthn_HappyPath(t *testing.T) {
 		},
 	}
 
-	ctx := utils.GetTestInMemoryContext()
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
+
 	req := utils.ClientAuthnRequest{
 		ClientID: client.ID,
 	}
 
-	// Then.
+	// When.
 	_, err := utils.GetAuthenticatedClient(ctx, req)
 
-	// Assert.
-	if err != nil {
-		t.Error("The client should be authenticated")
-	}
+	// Then.
+	assert.Nil(t, err, "The client should be authenticated")
 }
 
 func TestGetAuthenticatedClient_WithSecretPostAuthn(t *testing.T) {
@@ -51,10 +50,9 @@ func TestGetAuthenticatedClient_WithSecretPostAuthn(t *testing.T) {
 		HashedSecret: string(hashedClientSecret),
 	}
 
-	ctx := utils.GetTestInMemoryContext()
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
+
 	req := utils.ClientAuthnRequest{
 		ClientID:     client.ID,
 		ClientSecret: clientSecret,
@@ -63,27 +61,21 @@ func TestGetAuthenticatedClient_WithSecretPostAuthn(t *testing.T) {
 	// When.
 	_, err := utils.GetAuthenticatedClient(ctx, req)
 	// Then.
-	if err != nil {
-		t.Error("The client should be authenticated")
-	}
+	assert.Nil(t, err, "The client should be authenticated")
 
 	// Given.
 	req.ClientSecret = "invalid_secret"
 	// When.
 	_, err = utils.GetAuthenticatedClient(ctx, req)
 	// Then.
-	if err == nil {
-		t.Error("The client should not be authenticated")
-	}
+	assert.NotNil(t, err, "The client should be authenticated")
 
 	// Given.
 	req.ClientSecret = ""
 	// When.
 	_, err = utils.GetAuthenticatedClient(ctx, req)
 	// Then.
-	if err == nil {
-		t.Error("The client should not be authenticated")
-	}
+	assert.NotNil(t, err, "The client should be authenticated")
 }
 
 func TestGetAuthenticatedClient_WithBasicSecretAuthn(t *testing.T) {
@@ -99,11 +91,10 @@ func TestGetAuthenticatedClient_WithBasicSecretAuthn(t *testing.T) {
 		HashedSecret: string(hashedClientSecret),
 	}
 
-	ctx := utils.GetTestInMemoryContext()
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.Request.SetBasicAuth(client.ID, clientSecret)
+
 	req := utils.ClientAuthnRequest{}
 
 	// When.
@@ -146,12 +137,10 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 		},
 	}
 
-	ctx := utils.GetTestInMemoryContext()
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
 
 	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
@@ -195,12 +184,10 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_ClientInformedSigningAlgorithm
 		},
 	}
 
-	ctx := utils.GetTestInMemoryContext()
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256, jose.RS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
 
 	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
@@ -237,18 +224,14 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAudienceClaim(t *testin
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
-			PublicJWKS: &goidc.JSONWebKeySet{
-				Keys: []goidc.JSONWebKey{privateJWK.GetPublic()},
-			},
+			PublicJWKS:  &goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{privateJWK.GetPublic()}},
 		},
 	}
 
-	ctx := utils.GetTestInMemoryContext()
+	ctx := utils.GetTestContext()
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 
 	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
@@ -271,14 +254,8 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAudienceClaim(t *testin
 	_, err := utils.GetAuthenticatedClient(ctx, req)
 
 	// Then.
-	if err == nil {
-		t.Error("The client should not be authenticated")
-		return
-	}
-	if !strings.Contains(err.Error(), "invalid assertion") {
-		t.Errorf("error not as expected: %s", err.Error())
-		return
-	}
+	require.NotNil(t, err, "The client should not be authenticated")
+	assert.Contains(t, err.Error(), "invalid assertion")
 }
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidExpiryClaim(t *testing.T) {
@@ -294,12 +271,10 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidExpiryClaim(t *testing.
 		},
 	}
 
-	ctx := utils.GetTestInMemoryContext()
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
 
 	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
@@ -344,12 +319,10 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidKeyID(t *testing.T) {
 		},
 	}
 
-	ctx := utils.GetTestInMemoryContext()
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
 
 	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
@@ -395,12 +368,10 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T)
 		},
 	}
 
-	ctx := utils.GetTestInMemoryContext()
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
 
 	createdAtTimestamp := goidc.TimestampNow()
 	claims := map[string]any{
@@ -449,12 +420,10 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertion(t *testing.T)
 		},
 	}
 
-	ctx := utils.GetTestInMemoryContext()
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
 
 	invalidReq := utils.ClientAuthnRequest{
 		ClientAssertionType: goidc.AssertionTypeJWTBearer,
@@ -484,12 +453,10 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertionType(t *testin
 		},
 	}
 
-	ctx := utils.GetTestInMemoryContext()
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
 
 	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
@@ -535,12 +502,10 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_HappyPath(t *testing.T) {
 		},
 	}
 
-	ctx := utils.GetTestInMemoryContext()
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.ClientSecretJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.HS256}
 	ctx.ClientSecretJWTAssertionLifetimeSecs = 60
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
 
 	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
@@ -582,12 +547,10 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_InvalidAssertionType(t *test
 		},
 	}
 
-	ctx := utils.GetTestInMemoryContext()
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.ClientSecretJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.HS256}
 	ctx.ClientSecretJWTAssertionLifetimeSecs = 60
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
 
 	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
@@ -633,11 +596,10 @@ func TestGetAuthenticatedClient_WithDifferentClientIDs(t *testing.T) {
 		},
 	}
 
-	ctx := utils.GetTestInMemoryContext()
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256}
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
+
 	req := utils.ClientAuthnRequest{
 		ClientID:        client.ID,
 		ClientAssertion: "eyJhbGciOiJQUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJpbnZhbGlkX2NsaWVudF9pZCIsInN1YiI6ImludmFsaWRfY2xpZW50X2lkIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.Nog3Y_jeWO0dugsTKCxLx_vGcCbE6kRHzo7wAvfnKe7_uCW9UB1f-WhX4fMKXvJ8v-bScuyx2pTgy4C6ie0ZAcOn_XESblpr_0epoUF2ibdR5DGPKcrPs-S8jp8yvBOxbUmq0jyU9V5H33052h5gBsEAcYXnM150S-ch_1ISL1EgDiZrOm9lYhisp7Jp_mqUZx3OXjfWruz4d6oLe5FeCg7NsB5PpT_N26VZ6Qxt9x6OKUvphRHN1niETkf3_1uTr8CltHesfFl4NnaXSP5f7QStg9JKIpjgJnl-LeQe2C4tM8yHCTENxgHX4oTzrfiEfdN3TwoHDFNszcXnnAUQCg",

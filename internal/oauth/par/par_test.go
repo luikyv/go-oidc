@@ -7,6 +7,7 @@ import (
 	"github.com/luikymagno/goidc/internal/oauth/par"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -15,10 +16,8 @@ func TestPushAuthorization_ShouldRejectUnauthenticatedClient(t *testing.T) {
 	client := utils.GetTestClient()
 	client.AuthnMethod = goidc.ClientAuthnSecretPost
 
-	ctx := utils.GetTestInMemoryContext()
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 
 	// Then
 	_, err := par.PushAuthorization(ctx, utils.PushedAuthorizationRequest{
@@ -49,10 +48,8 @@ func TestPushAuthorization_ShouldGenerateRequestURI(t *testing.T) {
 	client.AuthnMethod = goidc.ClientAuthnSecretPost
 	client.HashedSecret = string(hashedClientSecret)
 
-	ctx := utils.GetTestInMemoryContext()
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 
 	// Then
 	requestURI, err := par.PushAuthorization(ctx, utils.PushedAuthorizationRequest{

@@ -12,9 +12,9 @@ type AuthnSession struct {
 	GrantedAuthorizationDetails []AuthorizationDetail `json:"granted_authorization_details,omitempty" bson:"granted_authorization_details,omitempty"`
 	AuthorizationCode           string                `json:"authorization_code,omitempty" bson:"authorization_code,omitempty"`
 	AuthorizationCodeIssuedAt   int                   `json:"authorization_code_issued_at,omitempty" bson:"authorization_code_issued_at,omitempty"`
-	// Custom parameters sent by PAR or JAR.
+	// ProtectedParameters contains custom parameters sent by PAR or JAR.
 	ProtectedParameters map[string]any `json:"protected_params,omitempty" bson:"protected_params,omitempty"`
-	// Allow the developer to store information in memory and, hence, between steps.
+	// Store allows developers to store information between user interactions.
 	Store                    map[string]any `json:"store,omitempty" bson:"store,omitempty"`
 	AdditionalTokenClaims    map[string]any `json:"additional_token_claims,omitempty" bson:"additional_token_claims,omitempty"`
 	AdditionalIDTokenClaims  map[string]any `json:"additional_id_token_claims,omitempty" bson:"additional_id_token_claims,omitempty"`
@@ -56,7 +56,7 @@ func (session AuthnSession) GetACRValues() ([]AuthenticationContextReference, bo
 	return acrValues, true
 }
 
-// Update the session with the parameters from an authorization request
+// UpdateParams updates the session with the parameters from an authorization request.
 // The parameters already present in the session have priority.
 func (session *AuthnSession) UpdateParams(params AuthorizationParameters) {
 	session.AuthorizationParameters = session.AuthorizationParameters.Merge(params)
@@ -99,26 +99,18 @@ func (session *AuthnSession) AddUserInfoClaim(claim string, value any) {
 	session.AdditionalUserInfoClaims[claim] = value
 }
 
-func (session AuthnSession) IsPushedRequestExpired(parLifetimeSecs int) bool {
-	return TimestampNow() > session.ExpiresAtTimestamp
-}
-
-func (session AuthnSession) IsAuthorizationCodeExpired() bool {
-	return TimestampNow() > session.ExpiresAtTimestamp
-}
-
 func (session AuthnSession) IsExpired() bool {
 	return TimestampNow() > session.ExpiresAtTimestamp
 }
 
-// Push the session so it can be referenced by a request URI.
+// Push creates a session that can be referenced by a request URI.
 func (session *AuthnSession) Push(parLifetimeSecs int) (requestURI string) {
 	session.RequestURI = RequestURI()
 	session.ExpiresAtTimestamp = TimestampNow() + parLifetimeSecs
 	return session.RequestURI
 }
 
-// Prepare the session to be used while the authentication flow defined by policyID happens.
+// Start prepares the session to be used while the authentication flow defined by policyID happens.
 func (session *AuthnSession) Start(policyID string, sessionLifetimeSecs int) {
 	if session.Nonce != "" {
 		session.AddIDTokenClaim(ClaimNonce, session.Nonce)
@@ -141,7 +133,7 @@ func (session *AuthnSession) GrantScopes(scopes string) {
 	session.GrantedScopes = scopes
 }
 
-// Set the authorization details the client will have permissions to use.
+// GrantAuthorizationDetails sets the authorization details the client will have permissions to use.
 // This will only have effect if support for authorization details was enabled.
 func (session *AuthnSession) GrantAuthorizationDetails(authDetails []AuthorizationDetail) {
 	session.GrantedAuthorizationDetails = authDetails
@@ -155,7 +147,7 @@ func (session AuthnSession) GetAdditionalUserInfoClaims() map[string]any {
 	return session.AdditionalUserInfoClaims
 }
 
-// Get custom protected parameters sent during PAR or JAR.
+// GetProtectedParameter gets a custom protected parameters sent during PAR or JAR.
 func (session AuthnSession) GetProtectedParameter(key string) (any, bool) {
 	value, ok := session.ProtectedParameters[key]
 	return value, ok

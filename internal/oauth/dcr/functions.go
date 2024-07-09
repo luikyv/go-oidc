@@ -15,7 +15,7 @@ func setDefaults(ctx utils.OAuthContext, dynamicClient *utils.DynamicClientReque
 	if dynamicClient.AuthnMethod == goidc.ClientAuthnSecretPost ||
 		dynamicClient.AuthnMethod == goidc.ClientAuthnSecretBasic ||
 		dynamicClient.AuthnMethod == goidc.ClientAuthnSecretJWT {
-		dynamicClient.Secret = utils.GenerateClientSecret()
+		dynamicClient.Secret = utils.ClientSecret()
 	}
 
 	if dynamicClient.Scopes != "" {
@@ -49,8 +49,8 @@ func setDefaults(ctx utils.OAuthContext, dynamicClient *utils.DynamicClientReque
 }
 
 func setCreationDefaults(ctx utils.OAuthContext, dynamicClient *utils.DynamicClientRequest) {
-	dynamicClient.ID = utils.GenerateClientID()
-	dynamicClient.RegistrationAccessToken = utils.GenerateRegistrationAccessToken()
+	dynamicClient.ID = utils.ClientID()
+	dynamicClient.RegistrationAccessToken = utils.RegistrationAccessToken()
 	setDefaults(ctx, dynamicClient)
 }
 
@@ -61,7 +61,7 @@ func setUpdateDefaults(
 ) {
 	dynamicClient.ID = client.ID
 	if ctx.ShouldRotateRegistrationTokens {
-		dynamicClient.RegistrationAccessToken = utils.GenerateRegistrationAccessToken()
+		dynamicClient.RegistrationAccessToken = utils.RegistrationAccessToken()
 	}
 	setDefaults(ctx, dynamicClient)
 }

@@ -12,12 +12,13 @@ import (
 	"github.com/luikymagno/goidc/internal/oauth/authorize"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInitAuth_ShouldNotFindClient(t *testing.T) {
 
 	// When
-	ctx := utils.GetTestInMemoryContext()
+	ctx := utils.GetTestContext()
 
 	// Then
 	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{ClientID: "invalid_client_id"})
@@ -32,10 +33,8 @@ func TestInitAuth_ShouldNotFindClient(t *testing.T) {
 func TestInitAuth_InvalidRedirectURI(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
-	ctx := utils.GetTestInMemoryContext()
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 
 	// Then
 	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
@@ -61,10 +60,8 @@ func TestInitAuth_InvalidRedirectURI(t *testing.T) {
 func TestInitAuth_InvalidScope(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
-	ctx := utils.GetTestInMemoryContext()
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 
 	// Then
 	if err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
@@ -90,11 +87,9 @@ func TestInitAuth_InvalidScope(t *testing.T) {
 func TestInitAuth_InvalidResponseType(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
-	ctx := utils.GetTestInMemoryContext()
 	client.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeCode}
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 
 	// Then
 	if err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
@@ -119,10 +114,8 @@ func TestInitAuth_InvalidResponseType(t *testing.T) {
 func TestInitAuth_WhenNoPolicyIsAvailable(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
-	ctx := utils.GetTestInMemoryContext()
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 
 	// Then
 	if err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
@@ -148,10 +141,8 @@ func TestInitAuth_WhenNoPolicyIsAvailable(t *testing.T) {
 func TestInitAuth_ShouldEndWithError(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
-	ctx := utils.GetTestInMemoryContext()
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	policy := goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },
@@ -193,10 +184,8 @@ func TestInitAuth_ShouldEndWithError(t *testing.T) {
 func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
-	ctx := utils.GetTestInMemoryContext()
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	policy := goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },
@@ -250,10 +239,8 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 	// When
 	client := utils.GetTestClient()
-	ctx := utils.GetTestInMemoryContext()
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	policy := goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },
@@ -306,11 +293,11 @@ func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 
 func TestInitAuth_WithPAR(t *testing.T) {
 	client := utils.GetTestClient()
-	ctx := utils.GetTestInMemoryContext()
+
+	ctx := utils.GetTestContext()
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
 	ctx.PARIsEnabled = true
-	if err := ctx.CreateOrUpdateClient(client); err != nil {
-		panic(err)
-	}
+
 	requestURI := "urn:goidc:random_value"
 	if err := ctx.CreateOrUpdateAuthnSession(
 		goidc.AuthnSession{
@@ -374,7 +361,7 @@ func TestInitAuth_WithPAR(t *testing.T) {
 func TestContinueAuthentication(t *testing.T) {
 
 	// When
-	ctx := utils.GetTestInMemoryContext()
+	ctx := utils.GetTestContext()
 	policy := goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },

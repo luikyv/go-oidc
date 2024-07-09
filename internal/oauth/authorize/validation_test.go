@@ -117,7 +117,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 			func(t *testing.T) {
 				// Then.
 				err := authorize.ValidateAuthorizationRequest(
-					utils.GetDummyTestContext(),
+					utils.GetTestContext(),
 					c.Req,
 					c.ClientModifyFunc(client),
 				)
@@ -204,7 +204,7 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 			func(t *testing.T) {
 				// Then.
 				err := authorize.ValidateAuthorizationRequestWithPAR(
-					utils.GetDummyTestContext(),
+					utils.GetTestContext(),
 					c.Req,
 					c.Session,
 					c.ClientModifyFunc(client),
@@ -305,7 +305,7 @@ func TestValidateAuthorizationRequestWithJAR(t *testing.T) {
 			func(t *testing.T) {
 				// Then.
 				err := authorize.ValidateAuthorizationRequestWithJAR(
-					utils.GetDummyTestContext(),
+					utils.GetTestContext(),
 					c.Req,
 					c.JAR,
 					c.ClientModifyFunc(client),

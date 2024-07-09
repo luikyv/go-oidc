@@ -69,7 +69,7 @@ func updateRefreshTokenGrantSession(
 	grantSession.TokenID = token.ID
 
 	if ctx.ShouldRotateRefreshTokens {
-		grantSession.RefreshToken = utils.GenerateRefreshToken()
+		grantSession.RefreshToken = utils.RefreshToken()
 	}
 
 	if req.Scopes != "" {
