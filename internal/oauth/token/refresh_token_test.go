@@ -54,7 +54,7 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 	assert.Equal(t, username, claims["sub"], "the token subject should be the client")
 	assert.NotEmpty(t, tokenResp.RefreshToken, "the new refresh token is not valid")
 
-	grantSessions := utils.TestGrantSessions(t, ctx)
+	grantSessions := utils.GrantSessions(t, ctx)
 	assert.Len(t, grantSessions, 1, "there should be only one grant session")
 }
 

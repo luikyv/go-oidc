@@ -33,6 +33,6 @@ func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 	assert.Equal(t, utils.TestClientID, claims["client_id"], "the token was assigned to a different client")
 	assert.Equal(t, utils.TestClientID, claims["sub"], "the token subject should be the client")
 
-	sessions := utils.TestGrantSessions(t, ctx)
+	sessions := utils.GrantSessions(t, ctx)
 	assert.Len(t, sessions, 1, "there should be one session")
 }

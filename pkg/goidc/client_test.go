@@ -164,7 +164,7 @@ func TestGetPublicJWKS(t *testing.T) {
 	// Mock the http request to return a JWKS with a random key.
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		numberOfRequestsToJWKSURI++
-		jwk := GetTestPrivatePs256JWK("random_key_id")
+		jwk := PrivatePs256JWK("random_key_id")
 		if err := json.NewEncoder(w).Encode(goidc.JSONWebKeySet{
 			Keys: []goidc.JSONWebKey{jwk},
 		}); err != nil {
@@ -190,7 +190,7 @@ func TestGetPublicJWKS(t *testing.T) {
 
 }
 
-func GetTestPrivatePs256JWK(keyID string) goidc.JSONWebKey {
+func PrivatePs256JWK(keyID string) goidc.JSONWebKey {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	return goidc.NewJSONWebKey(jose.JSONWebKey{
 		Key:       privateKey,

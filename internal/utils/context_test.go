@@ -224,7 +224,7 @@ func TestGetAvailablePolicy_NoPolicyAvailable(t *testing.T) {
 
 func TestGetClient_WithPublicJWKS(t *testing.T) {
 	// Given.
-	clientJWK := utils.TestPrivatePS256JWK(t, "client_key")
+	clientJWK := utils.PrivatePS256JWK(t, "client_key")
 	client := utils.NewTestClient(t)
 	client.PublicJWKS = &goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{clientJWK}}
 	ctx := utils.NewTestContext(t)
@@ -349,8 +349,8 @@ func TestHeader_HappyPath(t *testing.T) {
 
 func TestSignatureAlgorithms_HappyPath(t *testing.T) {
 	// Given.
-	signingKey := utils.TestPrivateRS256JWKWithUsage(t, "signing_key", goidc.KeyUsageSignature)
-	encryptionKey := utils.TestPrivatePS256JWKWithUsage(t, "encryption_key", goidc.KeyUsageEncryption)
+	signingKey := utils.PrivateRS256JWKWithUsage(t, "signing_key", goidc.KeyUsageSignature)
+	encryptionKey := utils.PrivatePS256JWKWithUsage(t, "encryption_key", goidc.KeyUsageEncryption)
 
 	ctx := utils.OAuthContext{}
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey, encryptionKey}}
@@ -365,7 +365,7 @@ func TestSignatureAlgorithms_HappyPath(t *testing.T) {
 
 func TestPublicKeys_HappyPath(t *testing.T) {
 	// Given.
-	signingKey := utils.TestPrivatePS256JWK(t, "signing_key")
+	signingKey := utils.PrivatePS256JWK(t, "signing_key")
 
 	ctx := utils.OAuthContext{}
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
@@ -382,7 +382,7 @@ func TestPublicKeys_HappyPath(t *testing.T) {
 
 func TestPublicKey_HappyPath(t *testing.T) {
 	// Given.
-	signingKey := utils.TestPrivatePS256JWK(t, "signing_key")
+	signingKey := utils.PrivatePS256JWK(t, "signing_key")
 
 	ctx := utils.OAuthContext{}
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
@@ -398,7 +398,7 @@ func TestPublicKey_HappyPath(t *testing.T) {
 
 func TestPrivateKey_HappyPath(t *testing.T) {
 	// Given.
-	signingKey := utils.TestPrivatePS256JWK(t, "signing_key")
+	signingKey := utils.PrivatePS256JWK(t, "signing_key")
 
 	ctx := utils.OAuthContext{}
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
@@ -427,7 +427,7 @@ func TestPrivateKey_KeyDoesntExist(t *testing.T) {
 func TestTokenSignatureKey_HappyPath(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := utils.TestPrivatePS256JWK(t, signingKeyID)
+	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
 
 	ctx := utils.OAuthContext{}
 	ctx.DefaultTokenSignatureKeyID = "random_key"
@@ -443,7 +443,7 @@ func TestTokenSignatureKey_HappyPath(t *testing.T) {
 func TestTokenSignatureKey_InvalidKeyIDInformed(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := utils.TestPrivatePS256JWK(t, signingKeyID)
+	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
 
 	ctx := utils.OAuthContext{}
 	ctx.DefaultTokenSignatureKeyID = signingKeyID
@@ -459,7 +459,7 @@ func TestTokenSignatureKey_InvalidKeyIDInformed(t *testing.T) {
 func TestTokenSignatureKey_NoKeyIDInformed(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := utils.TestPrivatePS256JWK(t, signingKeyID)
+	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
 
 	ctx := utils.OAuthContext{}
 	ctx.DefaultTokenSignatureKeyID = signingKeyID
@@ -475,7 +475,7 @@ func TestTokenSignatureKey_NoKeyIDInformed(t *testing.T) {
 func TestUserInfoSignatureKey_HappyPath(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := utils.TestPrivatePS256JWK(t, signingKeyID)
+	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
 
 	ctx := utils.OAuthContext{}
 	ctx.DefaultUserInfoSignatureKeyID = signingKeyID
@@ -493,7 +493,7 @@ func TestUserInfoSignatureKey_HappyPath(t *testing.T) {
 func TestUserInfoSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := utils.TestPrivatePS256JWK(t, signingKeyID)
+	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
 
 	ctx := utils.OAuthContext{}
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
@@ -512,7 +512,7 @@ func TestUserInfoSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 func TestIDTokenSignatureKey_HappyPath(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := utils.TestPrivatePS256JWK(t, signingKeyID)
+	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
 
 	ctx := utils.OAuthContext{}
 	ctx.DefaultUserInfoSignatureKeyID = signingKeyID
@@ -530,7 +530,7 @@ func TestIDTokenSignatureKey_HappyPath(t *testing.T) {
 func TestIDTokenSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := utils.TestPrivatePS256JWK(t, signingKeyID)
+	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
 
 	ctx := utils.OAuthContext{}
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
@@ -549,7 +549,7 @@ func TestIDTokenSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 func TestJARMSignatureKey_HappyPath(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := utils.TestPrivatePS256JWK(t, signingKeyID)
+	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
 
 	ctx := utils.OAuthContext{}
 	ctx.DefaultJARMSignatureKeyID = signingKeyID
@@ -567,7 +567,7 @@ func TestJARMSignatureKey_HappyPath(t *testing.T) {
 func TestJARMSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := utils.TestPrivatePS256JWK(t, signingKeyID)
+	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
 
 	ctx := utils.OAuthContext{}
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}

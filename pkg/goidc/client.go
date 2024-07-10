@@ -46,7 +46,7 @@ func (client Client) IDTokenEncryptionJWK() (JSONWebKey, OAuthError) {
 	return client.encryptionJWK(client.IDTokenKeyEncryptionAlgorithm)
 }
 
-// Get the encryption JWK based match the algorithm.
+// encryptionJWK returns the encryption JWK based on the algorithm.
 func (client Client) encryptionJWK(algorithm jose.KeyAlgorithm) (JSONWebKey, OAuthError) {
 	jwks, err := client.PublicKeys()
 	if err != nil {

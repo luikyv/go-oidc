@@ -71,7 +71,7 @@ func TestPushAuthorization_ShouldGenerateRequestURI(t *testing.T) {
 		return
 	}
 
-	sessions := utils.TestAuthnSessions(t, ctx)
+	sessions := utils.AuthnSessions(t, ctx)
 	if len(sessions) != 1 {
 		t.Error("the should be only one authentication session")
 		return

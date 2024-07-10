@@ -25,7 +25,7 @@ const (
 var (
 	TestScope1           = goidc.NewScope("scope1")
 	TestScope2           = goidc.NewScope("scope2")
-	TestServerPrivateJWK = TestPrivateRS256JWK(nil, TestKeyID)
+	TestServerPrivateJWK = PrivateRS256JWK(nil, TestKeyID)
 )
 
 func NewTestClient(_ *testing.T) goidc.Client {
@@ -85,7 +85,7 @@ func NewTestContext(t *testing.T) OAuthContext {
 	return ctx
 }
 
-func TestAuthnSessions(_ *testing.T, ctx OAuthContext) []goidc.AuthnSession {
+func AuthnSessions(_ *testing.T, ctx OAuthContext) []goidc.AuthnSession {
 	sessionManager, _ := ctx.AuthnSessionManager.(*inmemory.AuthnSessionManager)
 	sessions := make([]goidc.AuthnSession, 0, len(sessionManager.Sessions))
 	for _, s := range sessionManager.Sessions {
@@ -95,7 +95,7 @@ func TestAuthnSessions(_ *testing.T, ctx OAuthContext) []goidc.AuthnSession {
 	return sessions
 }
 
-func TestGrantSessions(_ *testing.T, ctx OAuthContext) []goidc.GrantSession {
+func GrantSessions(_ *testing.T, ctx OAuthContext) []goidc.GrantSession {
 	manager, _ := ctx.GrantSessionManager.(*inmemory.GrantSessionManager)
 	tokens := make([]goidc.GrantSession, 0, len(manager.Sessions))
 	for _, t := range manager.Sessions {
@@ -105,11 +105,11 @@ func TestGrantSessions(_ *testing.T, ctx OAuthContext) []goidc.GrantSession {
 	return tokens
 }
 
-func TestPrivateRS256JWK(t *testing.T, keyID string) goidc.JSONWebKey {
-	return TestPrivateRS256JWKWithUsage(t, keyID, goidc.KeyUsageSignature)
+func PrivateRS256JWK(t *testing.T, keyID string) goidc.JSONWebKey {
+	return PrivateRS256JWKWithUsage(t, keyID, goidc.KeyUsageSignature)
 }
 
-func TestPrivateRS256JWKWithUsage(
+func PrivateRS256JWKWithUsage(
 	_ *testing.T,
 	keyID string,
 	usage goidc.KeyUsage,
@@ -123,11 +123,11 @@ func TestPrivateRS256JWKWithUsage(
 	})
 }
 
-func TestPrivatePS256JWK(t *testing.T, keyID string) goidc.JSONWebKey {
-	return TestPrivatePS256JWKWithUsage(t, keyID, goidc.KeyUsageSignature)
+func PrivatePS256JWK(t *testing.T, keyID string) goidc.JSONWebKey {
+	return PrivatePS256JWKWithUsage(t, keyID, goidc.KeyUsageSignature)
 }
 
-func TestPrivatePS256JWKWithUsage(
+func PrivatePS256JWKWithUsage(
 	_ *testing.T,
 	keyID string,
 	usage goidc.KeyUsage,

@@ -15,7 +15,7 @@ import (
 
 func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) {
 	// Given.
-	privateJWK := utils.TestPrivateRS256JWK(t, "client_key_id")
+	privateJWK := utils.PrivateRS256JWK(t, "client_key_id")
 	ctx := utils.OAuthContext{
 		Configuration: utils.Configuration{
 			Host:                   "https://server.example.com",

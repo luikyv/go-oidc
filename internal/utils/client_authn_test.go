@@ -119,7 +119,7 @@ func TestGetAuthenticatedClient_WithBasicSecretAuthn(t *testing.T) {
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 
 	// Given.
-	privateJWK := utils.TestPrivateRS256JWK(t, "rsa256_key")
+	privateJWK := utils.PrivateRS256JWK(t, "rsa256_key")
 	client := goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
@@ -163,7 +163,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_ClientInformedSigningAlgorithms(t *testing.T) {
 
 	// Given.
-	privateJWK := utils.TestPrivatePS256JWK(t, "ps256_key")
+	privateJWK := utils.PrivatePS256JWK(t, "ps256_key")
 	client := goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
@@ -208,7 +208,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_ClientInformedSigningAlgorithm
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAudienceClaim(t *testing.T) {
 	// Given.
-	privateJWK := utils.TestPrivateRS256JWK(t, "rsa256_key")
+	privateJWK := utils.PrivateRS256JWK(t, "rsa256_key")
 	client := goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
@@ -249,7 +249,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAudienceClaim(t *testin
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidExpiryClaim(t *testing.T) {
 	// Given.
-	privateJWK := utils.TestPrivateRS256JWK(t, "rsa256_key")
+	privateJWK := utils.PrivateRS256JWK(t, "rsa256_key")
 	client := goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
@@ -291,7 +291,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidExpiryClaim(t *testing.
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidKeyID(t *testing.T) {
 	// Given.
-	privateJWK := utils.TestPrivateRS256JWK(t, "rsa256_key")
+	privateJWK := utils.PrivateRS256JWK(t, "rsa256_key")
 	client := goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
@@ -340,7 +340,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T)
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
 			PublicJWKS: &goidc.JSONWebKeySet{
-				Keys: []goidc.JSONWebKey{utils.TestPrivateRS256JWK(t, "rsa256_key").Public()},
+				Keys: []goidc.JSONWebKey{utils.PrivateRS256JWK(t, "rsa256_key").Public()},
 			},
 		},
 	}
@@ -359,7 +359,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T)
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.PrivateKeyJWTAssertionLifetimeSecs - 10,
 	}
 
-	invalidPrivateJWK := utils.TestPrivatePS256JWK(t, "rsa256_key")
+	invalidPrivateJWK := utils.PrivatePS256JWK(t, "rsa256_key")
 	invalidSigner, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(invalidPrivateJWK.Algorithm()), Key: invalidPrivateJWK.Key()},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", invalidPrivateJWK.KeyID()),
@@ -380,7 +380,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T)
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertion(t *testing.T) {
 	// Given.
-	privateJWK := utils.TestPrivateRS256JWK(t, "rsa256_key")
+	privateJWK := utils.PrivateRS256JWK(t, "rsa256_key")
 	client := goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
@@ -410,7 +410,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertion(t *testing.T)
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertionType(t *testing.T) {
 	// Given.
-	privateJWK := utils.TestPrivateRS256JWK(t, "rsa256_key")
+	privateJWK := utils.PrivateRS256JWK(t, "rsa256_key")
 	client := goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{

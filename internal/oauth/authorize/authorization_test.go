@@ -137,7 +137,7 @@ func TestInitAuth_ShouldEndWithError(t *testing.T) {
 	assert.Nil(t, err, "the error should be redirected")
 	assert.Contains(t, ctx.Response.Header().Get("Location"), goidc.ErrorCodeAccessDenied, "no policy should be available")
 
-	sessions := utils.TestAuthnSessions(t, ctx)
+	sessions := utils.AuthnSessions(t, ctx)
 	assert.Len(t, sessions, 0, "no authentication session should remain")
 }
 
@@ -170,7 +170,7 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 	assert.Equal(t, http.StatusOK, ctx.Response.(*httptest.ResponseRecorder).Result().StatusCode,
 		"invalid status code for in progress status")
 
-	sessions := utils.TestAuthnSessions(t, ctx)
+	sessions := utils.AuthnSessions(t, ctx)
 	assert.Len(t, sessions, 1, "there should be only one authentication session")
 
 	session := sessions[0]
@@ -206,7 +206,7 @@ func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 	// Then.
 	require.Nil(t, err)
 
-	sessions := utils.TestAuthnSessions(t, ctx)
+	sessions := utils.AuthnSessions(t, ctx)
 	assert.Len(t, sessions, 1, "the should be only one authentication session")
 
 	session := sessions[0]
@@ -260,7 +260,7 @@ func TestInitAuth_WithPAR(t *testing.T) {
 	// Then.
 	require.Nil(t, err)
 
-	sessions := utils.TestAuthnSessions(t, ctx)
+	sessions := utils.AuthnSessions(t, ctx)
 	assert.Len(t, sessions, 1, "the should be only one authentication session")
 
 	session := sessions[0]
@@ -296,6 +296,6 @@ func TestContinueAuthentication(t *testing.T) {
 	// Then.
 	require.Nil(t, err)
 
-	sessions := utils.TestAuthnSessions(t, ctx)
+	sessions := utils.AuthnSessions(t, ctx)
 	assert.Len(t, sessions, 1, "the should be only one authentication session")
 }
