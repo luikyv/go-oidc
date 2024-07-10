@@ -20,6 +20,7 @@ func TestHandleUserInfoRequest_HappyPath(t *testing.T) {
 		TokenID:                    token,
 		LastTokenIssuedAtTimestamp: goidc.TimestampNow(),
 		CreatedAtTimestamp:         goidc.TimestampNow(),
+		ExpiresAtTimestamp:         goidc.TimestampNow() + 60,
 		ActiveScopes:               goidc.ScopeOpenID.ID,
 		GrantOptions: goidc.GrantOptions{
 			Subject:  "random_subject",

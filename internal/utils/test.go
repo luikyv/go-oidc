@@ -17,11 +17,12 @@ import (
 )
 
 const (
-	TestHost              string = "https://example.com"
-	TestKeyID             string = "test_rsa256_key"
-	TestClientID          string = "test_client_id"
-	TestClientSecret      string = "test_client_secret"
-	TestClientRedirectURI string = "https://example.com/callback"
+	TestHost                          string = "https://example.com"
+	TestKeyID                         string = "test_rsa256_key"
+	TestClientID                      string = "test_client_id"
+	TestClientSecret                  string = "test_client_secret"
+	TestClientRedirectURI             string = "https://example.com/callback"
+	TestClientRegistrationAccessToken string = "random_registration_access_token"
 )
 
 var (
@@ -31,10 +32,12 @@ var (
 )
 
 func NewTestClient(_ *testing.T) goidc.Client {
-	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(TestClientSecret), 0)
+	hashedRegistrationAccessToken, _ := bcrypt.GenerateFromPassword([]byte(TestClientRegistrationAccessToken), bcrypt.DefaultCost)
+	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(TestClientSecret), bcrypt.DefaultCost)
 	return goidc.Client{
-		ID:           TestClientID,
-		HashedSecret: string(hashedClientSecret),
+		ID:                            TestClientID,
+		HashedSecret:                  string(hashedClientSecret),
+		HashedRegistrationAccessToken: string(hashedRegistrationAccessToken),
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod:  goidc.ClientAuthnSecretPost,
 			RedirectURIS: []string{TestClientRedirectURI},

@@ -63,13 +63,18 @@ func UpdateClient(
 		return utils.DynamicClientResponse{}, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
-	return utils.DynamicClientResponse{
-		ID:                      dynamicClient.ID,
-		RegistrationURI:         getClientRegistrationURI(ctx, dynamicClient.ID),
-		RegistrationAccessToken: dynamicClient.RegistrationAccessToken,
-		Secret:                  dynamicClient.Secret,
-		ClientMetaInfo:          dynamicClient.ClientMetaInfo,
-	}, nil
+	resp := utils.DynamicClientResponse{
+		ID:              dynamicClient.ID,
+		RegistrationURI: getClientRegistrationURI(ctx, dynamicClient.ID),
+		Secret:          dynamicClient.Secret,
+		ClientMetaInfo:  dynamicClient.ClientMetaInfo,
+	}
+
+	if ctx.ShouldRotateRegistrationTokens {
+		resp.RegistrationAccessToken = dynamicClient.RegistrationAccessToken
+	}
+
+	return resp, nil
 }
 
 func GetClient(

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/google/uuid"
@@ -13,6 +14,93 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
+	// Given.
+	ctx := utils.NewTestContext(t)
+	client, _ := ctx.Client(utils.TestClientID)
+	policy := goidc.NewPolicy(
+		"policy_id",
+		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.OAuthContext, as *goidc.AuthnSession) goidc.AuthnStatus {
+			return goidc.StatusSuccess
+		},
+	)
+	ctx.Policies = append(ctx.Policies, policy)
+
+	// When.
+	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
+		ClientID: client.ID,
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  client.RedirectURIS[0],
+			Scopes:       client.Scopes,
+			ResponseType: goidc.ResponseTypeCodeAndIDToken,
+			ResponseMode: goidc.ResponseModeFragment,
+			Nonce:        "random_nonce",
+		},
+	})
+
+	// Then.
+	require.Nil(t, err)
+
+	sessions := utils.AuthnSessions(t, ctx)
+	assert.Len(t, sessions, 1, "the should be only one authentication session")
+
+	session := sessions[0]
+	assert.NotEmpty(t, session.AuthorizationCode, "the authorization code should be filled when the policy ends successfully")
+
+	assert.Contains(t, ctx.Response.Header().Get("Location"), fmt.Sprintf("code=%s", session.AuthorizationCode),
+		"missing code in the redirection")
+	assert.Contains(t, ctx.Response.Header().Get("Location"), "id_token=", "missing id_token in the redirection")
+
+}
+
+func TestInitAuth_PolicyEndsWithSuccess_JARM(t *testing.T) {
+	// Given.
+	ctx := utils.NewTestContext(t)
+	ctx.JARMIsEnabled = true
+	ctx.JARMLifetimeSecs = 60
+	ctx.DefaultJARMSignatureKeyID = utils.TestServerPrivateJWK.KeyID()
+
+	client, _ := ctx.Client(utils.TestClientID)
+	policy := goidc.NewPolicy(
+		"policy_id",
+		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.OAuthContext, as *goidc.AuthnSession) goidc.AuthnStatus {
+			return goidc.StatusSuccess
+		},
+	)
+	ctx.Policies = append(ctx.Policies, policy)
+
+	// When.
+	oauthErr := authorize.InitAuth(ctx, utils.AuthorizationRequest{
+		ClientID: client.ID,
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  client.RedirectURIS[0],
+			Scopes:       client.Scopes,
+			ResponseType: goidc.ResponseTypeCode,
+			ResponseMode: goidc.ResponseModeJWT,
+		},
+	})
+
+	// Then.
+	require.Nil(t, oauthErr)
+
+	sessions := utils.AuthnSessions(t, ctx)
+	assert.Len(t, sessions, 1, "the should be only one authentication session")
+
+	session := sessions[0]
+	assert.NotEmpty(t, session.AuthorizationCode, "the authorization code should be filled when the policy ends successfully")
+
+	redirectURL, err := url.Parse(ctx.Response.Header().Get("Location"))
+	require.Nil(t, err)
+
+	responseObject := redirectURL.Query().Get("response")
+	require.NotEmpty(t, responseObject)
+
+	claims := utils.SafeClaims(t, responseObject, utils.TestServerPrivateJWK)
+	assert.Equal(t, session.AuthorizationCode, claims["code"])
+}
 
 func TestInitAuth_ShouldNotFindClient(t *testing.T) {
 	// Given.
@@ -176,46 +264,6 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 	session := sessions[0]
 	assert.NotEmpty(t, session.CallbackID, "the callback ID was not filled")
 	assert.Empty(t, session.AuthorizationCode, "the authorization code cannot be generated if the flow is still in progress")
-}
-
-func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
-	// Given.
-	ctx := utils.NewTestContext(t)
-	client, _ := ctx.Client(utils.TestClientID)
-	policy := goidc.NewPolicy(
-		"policy_id",
-		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },
-		func(ctx goidc.OAuthContext, as *goidc.AuthnSession) goidc.AuthnStatus {
-			return goidc.StatusSuccess
-		},
-	)
-	ctx.Policies = append(ctx.Policies, policy)
-
-	// When.
-	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
-		ClientID: client.ID,
-		AuthorizationParameters: goidc.AuthorizationParameters{
-			RedirectURI:  client.RedirectURIS[0],
-			Scopes:       client.Scopes,
-			ResponseType: goidc.ResponseTypeCodeAndIDToken,
-			ResponseMode: goidc.ResponseModeFragment,
-			Nonce:        "random_nonce",
-		},
-	})
-
-	// Then.
-	require.Nil(t, err)
-
-	sessions := utils.AuthnSessions(t, ctx)
-	assert.Len(t, sessions, 1, "the should be only one authentication session")
-
-	session := sessions[0]
-	assert.NotEmpty(t, session.AuthorizationCode, "the authorization code should be filled when the policy ends successfully")
-
-	assert.Contains(t, ctx.Response.Header().Get("Location"), fmt.Sprintf("code=%s", session.AuthorizationCode),
-		"missing code in the redirection")
-	assert.Contains(t, ctx.Response.Header().Get("Location"), "id_token=", "missing id_token in the redirection")
-
 }
 
 func TestInitAuth_WithPAR(t *testing.T) {
