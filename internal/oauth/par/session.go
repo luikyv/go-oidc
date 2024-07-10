@@ -36,7 +36,7 @@ func initValidSimpleAuthnSession(
 	}
 
 	session := utils.NewAuthnSession(req.AuthorizationParameters, client)
-	session.ProtectedParameters = utils.ExtractProtectedParamsFromForm(ctx)
+	session.ProtectedParameters = utils.ProtectedParamsFromForm(ctx)
 	return session, nil
 }
 
@@ -58,7 +58,7 @@ func initValidAuthnSessionWithJAR(
 	}
 
 	session := utils.NewAuthnSession(jar.AuthorizationParameters, client)
-	session.ProtectedParameters = utils.ExtractProtectedParamsFromRequestObject(ctx, req.RequestObject)
+	session.ProtectedParameters = utils.ProtectedParamsFromRequestObject(ctx, req.RequestObject)
 	return session, nil
 }
 
@@ -74,5 +74,5 @@ func extractJARFromRequest(
 		return utils.AuthorizationRequest{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "request object is required")
 	}
 
-	return utils.ExtractJARFromRequestObject(ctx, req.RequestObject, client)
+	return utils.JARFromRequestObject(ctx, req.RequestObject, client)
 }

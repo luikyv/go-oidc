@@ -14,12 +14,12 @@ func HandleUserInfoRequest(ctx utils.OAuthContext) (utils.UserInfoResponse, goid
 		return utils.UserInfoResponse{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidToken, "no token found")
 	}
 
-	tokenID, oauthErr := utils.GetTokenID(ctx, token)
+	tokenID, oauthErr := utils.TokenID(ctx, token)
 	if oauthErr != nil {
 		return utils.UserInfoResponse{}, oauthErr
 	}
 
-	grantSession, err := ctx.GetGrantSessionByTokenID(tokenID)
+	grantSession, err := ctx.GrantSessionByTokenID(tokenID)
 	if err != nil {
 		return utils.UserInfoResponse{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid token")
 	}
@@ -28,7 +28,7 @@ func HandleUserInfoRequest(ctx utils.OAuthContext) (utils.UserInfoResponse, goid
 		return utils.UserInfoResponse{}, err
 	}
 
-	client, err := ctx.GetClient(grantSession.ClientID)
+	client, err := ctx.Client(grantSession.ClientID)
 	if err != nil {
 		return utils.UserInfoResponse{}, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
@@ -121,7 +121,7 @@ func encryptUserInfoJWT(
 	string,
 	goidc.OAuthError,
 ) {
-	jwk, oauthErr := client.GetUserInfoEncryptionJWK()
+	jwk, oauthErr := client.UserInfoEncryptionJWK()
 	if oauthErr != nil {
 		return "", oauthErr
 	}

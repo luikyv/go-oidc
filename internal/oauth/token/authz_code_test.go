@@ -14,7 +14,7 @@ import (
 func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 
 	// Given.
-	ctx := utils.GetTestContext(t)
+	ctx := utils.NewTestContext(t)
 
 	authorizationCode := "random_authz_code"
 	session := goidc.AuthnSession{
@@ -49,10 +49,10 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 	// Then.
 	require.Nil(t, err)
 
-	claims := utils.GetUnsafeClaimsFromJWT(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
+	claims := utils.UnsafeClaims(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
 	assert.Equal(t, utils.TestClientID, claims["client_id"], "the token was assigned to a different client")
 	assert.Equal(t, session.Subject, claims["sub"], "the token subject should be the user")
 
-	grantSessions := utils.GetGrantSessionsFromTestContext(t, ctx)
+	grantSessions := utils.TestGrantSessions(t, ctx)
 	assert.Len(t, grantSessions, 1, "there should be one session")
 }

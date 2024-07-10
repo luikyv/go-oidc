@@ -84,7 +84,7 @@ func TestResponseType_GetDefaultResponseMode_HappyPath(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("case %d", i),
 			func(t *testing.T) {
-				assert.Equal(t, testCase.expectedResponseMode, testCase.responseType.GetDefaultResponseMode(testCase.isJARM))
+				assert.Equal(t, testCase.expectedResponseMode, testCase.responseType.DefaultResponseMode(testCase.isJARM))
 			},
 		)
 	}
@@ -160,7 +160,7 @@ func TestErrorCode_GetStatusCode_HappyPath(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("case %d", i),
 			func(t *testing.T) {
-				assert.Equal(t, testCase.statusCode, testCase.errorCode.GetStatusCode())
+				assert.Equal(t, testCase.statusCode, testCase.errorCode.StatusCode())
 			},
 		)
 	}

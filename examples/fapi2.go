@@ -32,7 +32,7 @@ func RunFAPI2OpenIDProvider() error {
 		goidcp.NewInMemoryClientManager(),
 		goidcp.NewMongoDBAuthnSessionManager(database),
 		goidcp.NewMongoDBGrantSessionManager(database),
-		GetPrivateJWKS("server_keys/jwks.json"),
+		PrivateJWKS("server_keys/jwks.json"),
 		ps256ServerKeyID,
 		ps256ServerKeyID,
 	)
@@ -73,7 +73,7 @@ func RunFAPI2OpenIDProvider() error {
 	)
 
 	// Create Client Mocks.
-	clientOnePrivateJWKS := GetPrivateJWKS("client_keys/client_one_jwks.json")
+	clientOnePrivateJWKS := PrivateJWKS("client_keys/client_one_jwks.json")
 	clientOnePublicJWKS := goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{}}
 	for _, jwk := range clientOnePrivateJWKS.Keys {
 		clientOnePublicJWKS.Keys = append(clientOnePublicJWKS.Keys, jwk.Public())
@@ -94,7 +94,7 @@ func RunFAPI2OpenIDProvider() error {
 			PublicJWKS: &clientOnePublicJWKS,
 		},
 	})
-	clientTwoPrivateJWKS := GetPrivateJWKS("client_keys/client_two_jwks.json")
+	clientTwoPrivateJWKS := PrivateJWKS("client_keys/client_two_jwks.json")
 	clientTwoPublicJWKS := goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{}}
 	for _, jwk := range clientTwoPrivateJWKS.Keys {
 		clientTwoPublicJWKS.Keys = append(clientTwoPublicJWKS.Keys, jwk.Public())

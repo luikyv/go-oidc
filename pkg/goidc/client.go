@@ -20,8 +20,8 @@ type Client struct {
 	ClientMetaInfo                `bson:"inline"`
 }
 
-func (client Client) GetJWK(keyID string) (JSONWebKey, OAuthError) {
-	jwks, oauthErr := client.GetPublicJWKS()
+func (client Client) PublicKey(keyID string) (JSONWebKey, OAuthError) {
+	jwks, oauthErr := client.PublicKeys()
 	if oauthErr != nil {
 		return JSONWebKey{}, NewOAuthError(ErrorCodeInvalidRequest, oauthErr.Error())
 	}
@@ -34,21 +34,21 @@ func (client Client) GetJWK(keyID string) (JSONWebKey, OAuthError) {
 	return keys[0], nil
 }
 
-func (client Client) GetJARMEncryptionJWK() (JSONWebKey, OAuthError) {
-	return client.getEncryptionJWK(client.JARMKeyEncryptionAlgorithm)
+func (client Client) JARMEncryptionJWK() (JSONWebKey, OAuthError) {
+	return client.encryptionJWK(client.JARMKeyEncryptionAlgorithm)
 }
 
-func (client Client) GetUserInfoEncryptionJWK() (JSONWebKey, OAuthError) {
-	return client.getEncryptionJWK(client.UserInfoKeyEncryptionAlgorithm)
+func (client Client) UserInfoEncryptionJWK() (JSONWebKey, OAuthError) {
+	return client.encryptionJWK(client.UserInfoKeyEncryptionAlgorithm)
 }
 
-func (client Client) GetIDTokenEncryptionJWK() (JSONWebKey, OAuthError) {
-	return client.getEncryptionJWK(client.IDTokenKeyEncryptionAlgorithm)
+func (client Client) IDTokenEncryptionJWK() (JSONWebKey, OAuthError) {
+	return client.encryptionJWK(client.IDTokenKeyEncryptionAlgorithm)
 }
 
 // Get the encryption JWK based match the algorithm.
-func (client Client) getEncryptionJWK(algorithm jose.KeyAlgorithm) (JSONWebKey, OAuthError) {
-	jwks, err := client.GetPublicJWKS()
+func (client Client) encryptionJWK(algorithm jose.KeyAlgorithm) (JSONWebKey, OAuthError) {
+	jwks, err := client.PublicKeys()
 	if err != nil {
 		return JSONWebKey{}, NewOAuthError(ErrorCodeInvalidRequest, err.Error())
 	}
@@ -64,7 +64,7 @@ func (client Client) getEncryptionJWK(algorithm jose.KeyAlgorithm) (JSONWebKey, 
 
 func (client Client) AreScopesAllowed(ctx OAuthContext, requestedScopes string) bool {
 	scopeIDs := SplitStringWithSpaces(client.Scopes)
-	clientScopes := ctx.GetScopes().GetSubSet(scopeIDs)
+	clientScopes := ctx.Scopes().SubSet(scopeIDs)
 	for _, requestedScope := range SplitStringWithSpaces(requestedScopes) {
 		if !clientScopes.Contains(requestedScope) {
 			return false
@@ -148,7 +148,7 @@ type ClientMetaInfo struct {
 // Get the client public JWKS either directly from the jwks attribute or using jwks_uri.
 // This method also caches the keys if they are fetched from jwks_uri.
 // This method assumes that the pointer client.PublicJWKS was initialized before when loading the client.
-func (client ClientMetaInfo) GetPublicJWKS() (JSONWebKeySet, error) {
+func (client ClientMetaInfo) PublicKeys() (JSONWebKeySet, error) {
 	if client.PublicJWKS != nil && len(client.PublicJWKS.Keys) != 0 {
 		return *client.PublicJWKS, nil
 	}
@@ -177,7 +177,7 @@ func (client *ClientMetaInfo) SetAttribute(key string, value any) {
 	client.Attributes[key] = value
 }
 
-func (client ClientMetaInfo) GetAttribute(key string) (any, bool) {
+func (client ClientMetaInfo) Attribute(key string) (any, bool) {
 	value, ok := client.Attributes[key]
 	return value, ok
 }

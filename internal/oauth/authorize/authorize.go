@@ -31,7 +31,7 @@ func initAuth(ctx utils.OAuthContext, client goidc.Client, req utils.Authorizati
 func ContinueAuth(ctx utils.OAuthContext, callbackID string) goidc.OAuthError {
 
 	// Fetch the session using the callback ID.
-	session, err := ctx.GetAuthnSessionByCallbackID(callbackID)
+	session, err := ctx.AuthnSessionByCallbackID(callbackID)
 	if err != nil {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, err.Error())
 	}
@@ -41,7 +41,7 @@ func ContinueAuth(ctx utils.OAuthContext, callbackID string) goidc.OAuthError {
 	}
 
 	if oauthErr := authenticate(ctx, &session); oauthErr != nil {
-		client, err := ctx.GetClient(session.ClientID)
+		client, err := ctx.Client(session.ClientID)
 		if err != nil {
 			return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 		}
@@ -62,7 +62,7 @@ func getClient(
 		return goidc.Client{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "invalid client_id")
 	}
 
-	client, err := ctx.GetClient(req.ClientID)
+	client, err := ctx.Client(req.ClientID)
 	if err != nil {
 		return goidc.Client{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "invalid client_id")
 	}
@@ -110,7 +110,7 @@ func stopFlowInProgress(
 
 func finishFlowSuccessfully(ctx utils.OAuthContext, session *goidc.AuthnSession) goidc.OAuthError {
 
-	client, err := ctx.GetClient(session.ClientID)
+	client, err := ctx.Client(session.ClientID)
 	if err != nil {
 		return session.NewRedirectError(goidc.ErrorCodeInternalError, err.Error())
 	}
@@ -145,7 +145,7 @@ func finishFlowSuccessfully(ctx utils.OAuthContext, session *goidc.AuthnSession)
 		idTokenOptions := utils.IDTokenOptions{
 			Subject:                 session.Subject,
 			ClientID:                session.ClientID,
-			AdditionalIDTokenClaims: session.GetAdditionalIDTokenClaims(),
+			AdditionalIDTokenClaims: session.AdditionalIDTokenClaims,
 			AccessToken:             redirectParams.AccessToken,
 			AuthorizationCode:       session.AuthorizationCode,
 			State:                   session.State,
@@ -206,7 +206,7 @@ func newImplicitGrantOptions(
 	goidc.GrantOptions,
 	goidc.OAuthError,
 ) {
-	tokenOptions, err := ctx.GetTokenOptions(client, session.Scopes)
+	tokenOptions, err := ctx.TokenOptions(client, session.Scopes)
 	if err != nil {
 		return goidc.GrantOptions{}, session.NewRedirectError(goidc.ErrorCodeAccessDenied, err.Error())
 	}
@@ -218,7 +218,7 @@ func newImplicitGrantOptions(
 		Subject:                  session.Subject,
 		ClientID:                 session.ClientID,
 		TokenOptions:             tokenOptions,
-		AdditionalIDTokenClaims:  session.GetAdditionalIDTokenClaims(),
-		AdditionalUserInfoClaims: session.GetAdditionalUserInfoClaims(),
+		AdditionalIDTokenClaims:  session.AdditionalIDTokenClaims,
+		AdditionalUserInfoClaims: session.AdditionalUserInfoClaims,
 	}, nil
 }

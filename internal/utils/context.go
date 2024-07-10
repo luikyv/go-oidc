@@ -22,7 +22,7 @@ type Configuration struct {
 	Host                string
 	MTLSIsEnabled       bool
 	MTLSHost            string
-	Scopes              goidc.Scopes
+	OAuthScopes         goidc.Scopes
 	ClientManager       goidc.ClientManager
 	GrantSessionManager goidc.GrantSessionManager
 	AuthnSessionManager goidc.AuthnSessionManager
@@ -99,7 +99,7 @@ type Configuration struct {
 	CodeChallengeMethods             []goidc.CodeChallengeMethod
 	SubjectIdentifierTypes           []goidc.SubjectIdentifierType
 	Policies                         []goidc.AuthnPolicy
-	GetTokenOptions                  goidc.GetTokenOptionsFunc
+	TokenOptions                     goidc.TokenOptionsFunc
 	DCRIsEnabled                     bool
 	ShouldRotateRegistrationTokens   bool
 	DCRPlugin                        goidc.DCRPluginFunc
@@ -149,7 +149,7 @@ func NewContext(
 	}
 }
 
-func (ctx OAuthContext) GetHost() string {
+func (ctx OAuthContext) Issuer() string {
 	return ctx.Host
 }
 
@@ -281,8 +281,8 @@ func (ctx OAuthContext) Logger() *slog.Logger {
 	return ctx.logger
 }
 
-func (ctx OAuthContext) GetScopes() goidc.Scopes {
-	return ctx.Scopes
+func (ctx OAuthContext) Scopes() goidc.Scopes {
+	return ctx.OAuthScopes
 }
 
 //---------------------------------------- context.Context ----------------------------------------//
@@ -309,7 +309,7 @@ func (ctx OAuthContext) CreateOrUpdateClient(client goidc.Client) error {
 	return ctx.ClientManager.CreateOrUpdate(ctx, client)
 }
 
-func (ctx OAuthContext) GetClient(clientID string) (goidc.Client, error) {
+func (ctx OAuthContext) Client(clientID string) (goidc.Client, error) {
 	client, err := ctx.ClientManager.Get(ctx, clientID)
 	if err != nil {
 		return goidc.Client{}, err
@@ -330,11 +330,11 @@ func (ctx OAuthContext) CreateOrUpdateGrantSession(session goidc.GrantSession) e
 	return ctx.GrantSessionManager.CreateOrUpdate(ctx, session)
 }
 
-func (ctx OAuthContext) GetGrantSessionByTokenID(tokenID string) (goidc.GrantSession, error) {
+func (ctx OAuthContext) GrantSessionByTokenID(tokenID string) (goidc.GrantSession, error) {
 	return ctx.GrantSessionManager.GetByTokenID(ctx, tokenID)
 }
 
-func (ctx OAuthContext) GetGrantSessionByRefreshToken(refreshToken string) (goidc.GrantSession, error) {
+func (ctx OAuthContext) GrantSessionByRefreshToken(refreshToken string) (goidc.GrantSession, error) {
 	return ctx.GrantSessionManager.GetByRefreshToken(ctx, refreshToken)
 }
 
@@ -346,15 +346,15 @@ func (ctx OAuthContext) CreateOrUpdateAuthnSession(session goidc.AuthnSession) e
 	return ctx.AuthnSessionManager.CreateOrUpdate(ctx, session)
 }
 
-func (ctx OAuthContext) GetAuthnSessionByCallbackID(callbackID string) (goidc.AuthnSession, error) {
+func (ctx OAuthContext) AuthnSessionByCallbackID(callbackID string) (goidc.AuthnSession, error) {
 	return ctx.AuthnSessionManager.GetByCallbackID(ctx, callbackID)
 }
 
-func (ctx OAuthContext) GetAuthnSessionByAuthorizationCode(authorizationCode string) (goidc.AuthnSession, error) {
+func (ctx OAuthContext) AuthnSessionByAuthorizationCode(authorizationCode string) (goidc.AuthnSession, error) {
 	return ctx.AuthnSessionManager.GetByAuthorizationCode(ctx, authorizationCode)
 }
 
-func (ctx OAuthContext) GetAuthnSessionByRequestURI(requestURI string) (goidc.AuthnSession, error) {
+func (ctx OAuthContext) AuthnSessionByRequestURI(requestURI string) (goidc.AuthnSession, error) {
 	return ctx.AuthnSessionManager.GetByRequestURI(ctx, requestURI)
 }
 
@@ -430,7 +430,8 @@ func (ctx OAuthContext) FormData() map[string]any {
 	return formData
 }
 
-func (ctx OAuthContext) WriteJSON(obj any, status int) error {
+// Write responds the current request writing obj as JSON.
+func (ctx OAuthContext) Write(obj any, status int) error {
 	// Check if the request was terminated before writing anything.
 	select {
 	case <-ctx.Done():
@@ -557,15 +558,15 @@ func (ctx OAuthContext) TokenSignatureKey(tokenOptions goidc.TokenOptions) goidc
 }
 
 func (ctx OAuthContext) UserInfoSignatureKey(client goidc.Client) goidc.JSONWebKey {
-	return ctx.getPrivateKeyBasedOnAlgorithmOrDefault(client.UserInfoSignatureAlgorithm, ctx.DefaultUserInfoSignatureKeyID, ctx.UserInfoSignatureKeyIDs)
+	return ctx.privateKeyBasedOnAlgorithmOrDefault(client.UserInfoSignatureAlgorithm, ctx.DefaultUserInfoSignatureKeyID, ctx.UserInfoSignatureKeyIDs)
 }
 
 func (ctx OAuthContext) IDTokenSignatureKey(client goidc.Client) goidc.JSONWebKey {
-	return ctx.getPrivateKeyBasedOnAlgorithmOrDefault(client.IDTokenSignatureAlgorithm, ctx.DefaultUserInfoSignatureKeyID, ctx.UserInfoSignatureKeyIDs)
+	return ctx.privateKeyBasedOnAlgorithmOrDefault(client.IDTokenSignatureAlgorithm, ctx.DefaultUserInfoSignatureKeyID, ctx.UserInfoSignatureKeyIDs)
 }
 
 func (ctx OAuthContext) JARMSignatureKey(client goidc.Client) goidc.JSONWebKey {
-	return ctx.getPrivateKeyBasedOnAlgorithmOrDefault(client.JARMSignatureAlgorithm, ctx.DefaultJARMSignatureKeyID, ctx.JARMSignatureKeyIDs)
+	return ctx.privateKeyBasedOnAlgorithmOrDefault(client.JARMSignatureAlgorithm, ctx.DefaultJARMSignatureKeyID, ctx.JARMSignatureKeyIDs)
 }
 
 func (ctx OAuthContext) UserInfoSignatureAlgorithms() []jose.SignatureAlgorithm {
@@ -598,9 +599,10 @@ func (ctx OAuthContext) signatureAlgorithms(keyIDs []string) []jose.SignatureAlg
 	return algorithms
 }
 
-// From the subset of keys defined by keyIDs, try to find a key that matches signatureAlgorithm.
+// privateKeyBasedOnAlgorithmOrDefault tries to find a key that matches signatureAlgorithm
+// from the subset of keys defined by keyIDs.
 // If no key is found, return the key associated to defaultKeyID.
-func (ctx OAuthContext) getPrivateKeyBasedOnAlgorithmOrDefault(
+func (ctx OAuthContext) privateKeyBasedOnAlgorithmOrDefault(
 	signatureAlgorithm jose.SignatureAlgorithm,
 	defaultKeyID string,
 	keyIDs []string,
@@ -614,7 +616,7 @@ func (ctx OAuthContext) getPrivateKeyBasedOnAlgorithmOrDefault(
 	return ctx.privateKey(defaultKeyID)
 }
 
-// Get a private JWK based on the key ID.
+// privateKey returns a private JWK based on the key ID.
 // This is intended to be used with key IDs we're sure are present in the server JWKS.
 func (ctx OAuthContext) privateKey(keyID string) goidc.JSONWebKey {
 	keys := ctx.PrivateJWKS.Key(keyID)

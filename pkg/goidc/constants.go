@@ -85,9 +85,9 @@ func (rt ResponseType) IsImplicit() bool {
 	return rt.Contains(ResponseTypeIDToken) || rt.Contains(ResponseTypeToken)
 }
 
-// Get the response mode based on the response type.
+// DefaultResponseMode returns the response mode based on the response type.
 // According to "5. Definitions of Multiple-Valued Response Type Combinations" of https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#Combinations.
-func (rt ResponseType) GetDefaultResponseMode(jarm bool) ResponseMode {
+func (rt ResponseType) DefaultResponseMode(jarm bool) ResponseMode {
 	if rt.IsImplicit() {
 		if jarm {
 			return ResponseModeFragmentJWT
@@ -210,7 +210,7 @@ const (
 	ErrorCodeInternalError               ErrorCode = "internal_error"
 )
 
-func (ec ErrorCode) GetStatusCode() int {
+func (ec ErrorCode) StatusCode() int {
 	switch ec {
 	case ErrorCodeAccessDenied:
 		return http.StatusForbidden

@@ -8,10 +8,10 @@ import (
 )
 
 type TestContext struct {
-	Scopes Scopes
+	OAuthScopes Scopes
 }
 
-func (testCtx TestContext) GetHost() string {
+func (testCtx TestContext) Issuer() string {
 	return ""
 }
 
@@ -43,8 +43,8 @@ func (testCtx TestContext) Logger() *slog.Logger {
 	return nil
 }
 
-func (testCtx TestContext) GetScopes() Scopes {
-	return testCtx.Scopes
+func (testCtx TestContext) Scopes() Scopes {
+	return testCtx.OAuthScopes
 }
 
 func (testCtx TestContext) Deadline() (deadline time.Time, ok bool) {
@@ -63,8 +63,8 @@ func (testCtx TestContext) Value(key any) any {
 	return nil
 }
 
-func GetTestContext(scopes Scopes) OAuthContext {
+func NewTestContext(scopes Scopes) OAuthContext {
 	return TestContext{
-		Scopes: scopes,
+		OAuthScopes: scopes,
 	}
 }

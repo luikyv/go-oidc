@@ -13,10 +13,10 @@ import (
 
 func TestPushAuthorization_ShouldRejectUnauthenticatedClient(t *testing.T) {
 	// When
-	client := utils.GetTestClient(t)
+	client := utils.NewTestClient(t)
 	client.AuthnMethod = goidc.ClientAuthnSecretPost
 
-	ctx := utils.GetTestContext(t)
+	ctx := utils.NewTestContext(t)
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
 
 	// Then
@@ -40,11 +40,11 @@ func TestPushAuthorization_ShouldGenerateRequestURI(t *testing.T) {
 	clientSecret := "password"
 	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 0)
 
-	client := utils.GetTestClient(t)
+	client := utils.NewTestClient(t)
 	client.AuthnMethod = goidc.ClientAuthnSecretPost
 	client.HashedSecret = string(hashedClientSecret)
 
-	ctx := utils.GetTestContext(t)
+	ctx := utils.NewTestContext(t)
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
 
 	// Then
@@ -71,7 +71,7 @@ func TestPushAuthorization_ShouldGenerateRequestURI(t *testing.T) {
 		return
 	}
 
-	sessions := utils.GetAuthnSessionsFromTestContext(t, ctx)
+	sessions := utils.TestAuthnSessions(t, ctx)
 	if len(sessions) != 1 {
 		t.Error("the should be only one authentication session")
 		return

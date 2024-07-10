@@ -10,7 +10,7 @@ import (
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-func GetPrivateJWKS(filename string) goidc.JSONWebKeySet {
+func PrivateJWKS(filename string) goidc.JSONWebKeySet {
 	absPath, _ := filepath.Abs("./" + filename)
 	clientJWKSFile, err := os.Open(absPath)
 	if err != nil {
@@ -90,12 +90,12 @@ func AuthenticateUser(
 ) goidc.AuthnStatus {
 
 	// Init the step if empty.
-	_, ok := session.GetParameter("step")
+	_, ok := session.Parameter("step")
 	if !ok {
 		session.SaveParameter("step", "identity")
 	}
 
-	stepID, ok := session.GetParameter("step")
+	stepID, ok := session.Parameter("step")
 	if ok && stepID == "identity" {
 		status := identifyUser(ctx, session)
 		if status != goidc.StatusSuccess {
@@ -116,7 +116,7 @@ func identifyUser(
 	username := ctx.FormParam("username")
 	if username == "" {
 		if err := ctx.RenderHTML(identityForm, map[string]any{
-			"host":       strings.Replace(ctx.GetHost(), "host.docker.internal", "localhost", -1),
+			"host":       strings.Replace(ctx.Issuer(), "host.docker.internal", "localhost", -1),
 			"callbackID": session.CallbackID,
 		}); err != nil {
 			ctx.Logger().Error(err.Error())
@@ -141,7 +141,7 @@ func authenticateWithPassword(
 	password := ctx.FormParam("password")
 	if password == "" {
 		if err := ctx.RenderHTML(passwordForm, map[string]any{
-			"host":       strings.Replace(ctx.GetHost(), "host.docker.internal", "localhost", -1),
+			"host":       strings.Replace(ctx.Issuer(), "host.docker.internal", "localhost", -1),
 			"callbackID": session.CallbackID,
 		}); err != nil {
 			ctx.Logger().Error(err.Error())
@@ -152,7 +152,7 @@ func authenticateWithPassword(
 
 	if password != "password" {
 		if err := ctx.RenderHTML(passwordForm, map[string]any{
-			"host":       strings.Replace(ctx.GetHost(), "host.docker.internal", "localhost", -1),
+			"host":       strings.Replace(ctx.Issuer(), "host.docker.internal", "localhost", -1),
 			"callbackID": session.CallbackID,
 			"error":      "invalid password",
 		}); err != nil {

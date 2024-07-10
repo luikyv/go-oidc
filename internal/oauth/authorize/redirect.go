@@ -38,7 +38,7 @@ func redirectResponse(
 		redirectParams.Issuer = ctx.Host
 	}
 
-	responseMode := params.GetResponseMode()
+	responseMode := params.DefaultResponseMode()
 	if responseMode.IsJARM() || client.JARMSignatureAlgorithm != "" {
 		responseJWT, err := createJARMResponse(ctx, client, redirectParams)
 		if err != nil {
@@ -47,10 +47,10 @@ func redirectResponse(
 		redirectParams.Response = responseJWT
 	}
 
-	redirectParamsMap := redirectParams.GetParameters()
+	redirectParamsMap := redirectParams.Parameters()
 	switch responseMode {
 	case goidc.ResponseModeFragment, goidc.ResponseModeFragmentJWT:
-		redirectURL := utils.GetURLWithFragmentParams(params.RedirectURI, redirectParamsMap)
+		redirectURL := utils.URLWithFragmentParams(params.RedirectURI, redirectParamsMap)
 		ctx.Redirect(redirectURL)
 	case goidc.ResponseModeFormPost, goidc.ResponseModeFormPostJWT:
 		redirectParamsMap["redirect_uri"] = params.RedirectURI
@@ -58,7 +58,7 @@ func redirectResponse(
 			return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 		}
 	default:
-		redirectURL := utils.GetURLWithQueryParams(params.RedirectURI, redirectParamsMap)
+		redirectURL := utils.URLWithQueryParams(params.RedirectURI, redirectParamsMap)
 		ctx.Redirect(redirectURL)
 	}
 
@@ -112,7 +112,7 @@ func signJARMResponse(
 		goidc.ClaimIssuedAt: createdAtTimestamp,
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JARMLifetimeSecs,
 	}
-	for k, v := range redirectParams.GetParameters() {
+	for k, v := range redirectParams.Parameters() {
 		claims[k] = v
 	}
 
@@ -132,7 +132,7 @@ func encryptJARMResponse(
 	string,
 	goidc.OAuthError,
 ) {
-	jwk, err := client.GetJARMEncryptionJWK()
+	jwk, err := client.JARMEncryptionJWK()
 	if err != nil {
 		return "", err
 	}

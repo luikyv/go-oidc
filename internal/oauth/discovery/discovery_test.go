@@ -12,12 +12,12 @@ import (
 
 func TestGetOpenIDConfiguration(t *testing.T) {
 	// Given.
-	tokenKey := utils.GetTestPrivateRS256JWK(t, "token_signature_key")
-	userInfoKey := utils.GetTestPrivateRS256JWK(t, "user_info_signature_key")
+	tokenKey := utils.TestPrivateRS256JWK(t, "token_signature_key")
+	userInfoKey := utils.TestPrivateRS256JWK(t, "user_info_signature_key")
 	ctx := utils.OAuthContext{
 		Configuration: utils.Configuration{
 			Host:                                   "https://example.com",
-			Scopes:                                 []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeEmail},
+			OAuthScopes:                            []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeEmail},
 			PrivateJWKS:                            goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{tokenKey, userInfoKey}},
 			DefaultTokenSignatureKeyID:             tokenKey.KeyID(),
 			DefaultUserInfoSignatureKeyID:          userInfoKey.KeyID(),
@@ -111,7 +111,7 @@ func TestGetOpenIDConfiguration_WithJAR(t *testing.T) {
 
 func TestGetOpenIDConfiguration_WithJARM(t *testing.T) {
 	// Given.
-	jarmKey := utils.GetTestPrivateRS256JWK(t, "jarm_signature_key")
+	jarmKey := utils.TestPrivateRS256JWK(t, "jarm_signature_key")
 	ctx := utils.OAuthContext{
 		Configuration: utils.Configuration{
 			JARMIsEnabled:       true,

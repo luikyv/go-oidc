@@ -108,7 +108,7 @@ func newClientCredentialsGrantOptions(
 	goidc.GrantOptions,
 	goidc.OAuthError,
 ) {
-	tokenOptions, err := ctx.GetTokenOptions(client, req.Scopes)
+	tokenOptions, err := ctx.TokenOptions(client, req.Scopes)
 	if err != nil {
 		return goidc.GrantOptions{}, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, err.Error())
 	}

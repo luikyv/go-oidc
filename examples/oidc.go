@@ -30,7 +30,7 @@ func RunOpenIDProvider() error {
 		goidcp.NewInMemoryClientManager(),
 		goidcp.NewMongoDBAuthnSessionManager(database),
 		goidcp.NewMongoDBGrantSessionManager(database),
-		GetPrivateJWKS("server_keys/jwks.json"),
+		PrivateJWKS("server_keys/jwks.json"),
 		serverKeyID,
 		serverKeyID,
 	)

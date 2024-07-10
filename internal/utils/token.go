@@ -70,15 +70,15 @@ func makeIDToken(
 	}
 
 	if idTokenOpts.AccessToken != "" {
-		claims[goidc.ClaimAccessTokenHash] = HalfHashClaim(idTokenOpts.AccessToken, signatureAlgorithm)
+		claims[goidc.ClaimAccessTokenHash] = HalfHashIDTokenClaim(idTokenOpts.AccessToken, signatureAlgorithm)
 	}
 
 	if idTokenOpts.AuthorizationCode != "" {
-		claims[goidc.ClaimAuthorizationCodeHash] = HalfHashClaim(idTokenOpts.AuthorizationCode, signatureAlgorithm)
+		claims[goidc.ClaimAuthorizationCodeHash] = HalfHashIDTokenClaim(idTokenOpts.AuthorizationCode, signatureAlgorithm)
 	}
 
 	if idTokenOpts.State != "" {
-		claims[goidc.ClaimStateHash] = HalfHashClaim(idTokenOpts.State, signatureAlgorithm)
+		claims[goidc.ClaimStateHash] = HalfHashIDTokenClaim(idTokenOpts.State, signatureAlgorithm)
 	}
 
 	for k, v := range idTokenOpts.AdditionalIDTokenClaims {
@@ -109,7 +109,7 @@ func encryptIDToken(
 	string,
 	goidc.OAuthError,
 ) {
-	jwk, oauthErr := client.GetIDTokenEncryptionJWK()
+	jwk, oauthErr := client.IDTokenEncryptionJWK()
 	if oauthErr != nil {
 		return "", oauthErr
 	}
@@ -155,14 +155,14 @@ func makeJWTToken(
 	jkt := ""
 	if ctx.DPOPIsEnabled && ok {
 		tokenType = goidc.TokenTypeDPOP
-		jkt = GenerateJWKThumbprint(dpopJWT, ctx.DPOPSignatureAlgorithms)
+		jkt = JWKThumbprint(dpopJWT, ctx.DPOPSignatureAlgorithms)
 		confirmation["jkt"] = jkt
 	}
 	// TLS token binding.
 	clientCert, ok := ctx.ClientCertificate()
 	certThumbprint := ""
 	if ctx.TLSBoundTokensIsEnabled && ok {
-		certThumbprint = GenerateBase64URLSHA256Hash(string(clientCert.Raw))
+		certThumbprint = HashBase64URLSHA256(string(clientCert.Raw))
 		confirmation["x5t#S256"] = certThumbprint
 	}
 	if len(confirmation) != 0 {
@@ -214,14 +214,14 @@ func makeOpaqueToken(
 	jkt := ""
 	if ctx.DPOPIsEnabled && ok {
 		tokenType = goidc.TokenTypeDPOP
-		jkt = GenerateJWKThumbprint(dpopJWT, ctx.DPOPSignatureAlgorithms)
+		jkt = JWKThumbprint(dpopJWT, ctx.DPOPSignatureAlgorithms)
 	}
 
 	// TLS token binding.
 	clientCert, ok := ctx.ClientCertificate()
 	certThumbprint := ""
 	if ctx.TLSBoundTokensIsEnabled && ok {
-		certThumbprint = GenerateBase64URLSHA256Hash(string(clientCert.Raw))
+		certThumbprint = HashBase64URLSHA256(string(clientCert.Raw))
 	}
 
 	return Token{

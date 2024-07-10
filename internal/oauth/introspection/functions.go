@@ -41,7 +41,7 @@ func getRefreshTokenIntrospectionInfo(
 	ctx utils.OAuthContext,
 	token string,
 ) utils.TokenIntrospectionInfo {
-	grantSession, err := ctx.GetGrantSessionByRefreshToken(token)
+	grantSession, err := ctx.GrantSessionByRefreshToken(token)
 	if err != nil {
 		return utils.TokenIntrospectionInfo{
 			IsActive: false,
@@ -72,7 +72,7 @@ func getJWTTokenIntrospectionInfo(
 	token string,
 ) utils.TokenIntrospectionInfo {
 	// TODO: Get the grant session instead.
-	claims, err := utils.GetValidTokenClaims(ctx, token)
+	claims, err := utils.ValidClaims(ctx, token)
 	if err != nil {
 		return utils.TokenIntrospectionInfo{
 			IsActive: false,
@@ -89,7 +89,7 @@ func getOpaqueTokenIntrospectionInfo(
 	ctx utils.OAuthContext,
 	token string,
 ) utils.TokenIntrospectionInfo {
-	grantSession, err := ctx.GetGrantSessionByTokenID(token)
+	grantSession, err := ctx.GrantSessionByTokenID(token)
 	if err != nil {
 		return utils.TokenIntrospectionInfo{
 			IsActive: false,

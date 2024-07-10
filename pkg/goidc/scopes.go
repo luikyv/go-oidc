@@ -12,7 +12,7 @@ var (
 
 type Scopes []Scope
 
-func (scopes Scopes) GetIDs() []string {
+func (scopes Scopes) IDs() []string {
 	scopesIDs := []string{}
 	for _, scope := range scopes {
 		scopesIDs = append(scopesIDs, scope.String())
@@ -20,10 +20,10 @@ func (scopes Scopes) GetIDs() []string {
 	return scopesIDs
 }
 
-func (scopes Scopes) GetSubSet(ids []string) Scopes {
+func (scopes Scopes) SubSet(ids []string) Scopes {
 	scopesSubSet := []Scope{}
 	for _, id := range ids {
-		scope, ok := scopes.getScope(id)
+		scope, ok := scopes.scope(id)
 		if ok {
 			scopesSubSet = append(scopesSubSet, scope)
 		}
@@ -33,7 +33,7 @@ func (scopes Scopes) GetSubSet(ids []string) Scopes {
 }
 
 func (scopes Scopes) ContainsOpenID() bool {
-	_, ok := scopes.getScope(ScopeOpenID.ID)
+	_, ok := scopes.scope(ScopeOpenID.ID)
 	return ok
 }
 
@@ -55,7 +55,7 @@ func (scopes Scopes) String() string {
 	return strings.Join(scopesAsStrings, " ")
 }
 
-func (scopes Scopes) getScope(id string) (Scope, bool) {
+func (scopes Scopes) scope(id string) (Scope, bool) {
 	for _, s := range scopes {
 		if s.ID == id {
 			return s, true

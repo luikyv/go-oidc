@@ -17,7 +17,7 @@ import (
 //---------------------------------------- Well Known ----------------------------------------//
 
 func HandleWellKnownRequest(ctx utils.OAuthContext) {
-	if err := ctx.WriteJSON(discovery.GetOpenIDConfiguration(ctx), http.StatusOK); err != nil {
+	if err := ctx.Write(discovery.GetOpenIDConfiguration(ctx), http.StatusOK); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
 }
@@ -25,7 +25,7 @@ func HandleWellKnownRequest(ctx utils.OAuthContext) {
 //---------------------------------------- JWKS ----------------------------------------//
 
 func HandleJWKSRequest(ctx utils.OAuthContext) {
-	if err := ctx.WriteJSON(ctx.PublicKeys(), http.StatusOK); err != nil {
+	if err := ctx.Write(ctx.PublicKeys(), http.StatusOK); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
 }
@@ -44,7 +44,7 @@ func HandleParRequest(ctx utils.OAuthContext) {
 		RequestURI: requestURI,
 		ExpiresIn:  ctx.ParLifetimeSecs,
 	}
-	if err := ctx.WriteJSON(resp, http.StatusCreated); err != nil {
+	if err := ctx.Write(resp, http.StatusCreated); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
 }
@@ -77,7 +77,7 @@ func HandleTokenRequest(ctx utils.OAuthContext) {
 		return
 	}
 
-	if err := ctx.WriteJSON(tokenResp, http.StatusOK); err != nil {
+	if err := ctx.Write(tokenResp, http.StatusOK); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
 }
@@ -96,7 +96,7 @@ func HandleUserInfoRequest(ctx utils.OAuthContext) {
 	if userInfoResponse.JWTClaims != "" {
 		err = ctx.WriteJWT(userInfoResponse.JWTClaims, http.StatusOK)
 	} else {
-		err = ctx.WriteJSON(userInfoResponse.Claims, http.StatusOK)
+		err = ctx.Write(userInfoResponse.Claims, http.StatusOK)
 	}
 	if err != nil {
 		bindErrorToResponse(ctx, err)
@@ -113,7 +113,7 @@ func HandleIntrospectionRequest(ctx utils.OAuthContext) {
 		return
 	}
 
-	if err := ctx.WriteJSON(tokenInfo, http.StatusOK); err != nil {
+	if err := ctx.Write(tokenInfo, http.StatusOK); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
 }
@@ -124,7 +124,7 @@ func bindErrorToResponse(ctx utils.OAuthContext, err error) {
 
 	var oauthErr goidc.OAuthError
 	if !errors.As(err, &oauthErr) {
-		if err := ctx.WriteJSON(map[string]any{
+		if err := ctx.Write(map[string]any{
 			"error":             goidc.ErrorCodeInternalError,
 			"error_description": err.Error(),
 		}, http.StatusInternalServerError); err != nil {
@@ -133,11 +133,11 @@ func bindErrorToResponse(ctx utils.OAuthContext, err error) {
 		return
 	}
 
-	errorCode := oauthErr.GetCode()
-	if err := ctx.WriteJSON(map[string]any{
+	errorCode := oauthErr.Code()
+	if err := ctx.Write(map[string]any{
 		"error":             errorCode,
 		"error_description": oauthErr.Error(),
-	}, errorCode.GetStatusCode()); err != nil {
+	}, errorCode.StatusCode()); err != nil {
 		ctx.Response.WriteHeader(http.StatusInternalServerError)
 	}
 }

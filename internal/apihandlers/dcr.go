@@ -25,7 +25,7 @@ func HandleDynamicClientCreation(ctx utils.OAuthContext) {
 		return
 	}
 
-	if err := ctx.WriteJSON(resp, http.StatusCreated); err != nil {
+	if err := ctx.Write(resp, http.StatusCreated); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
 }
@@ -51,7 +51,7 @@ func HandleDynamicClientUpdate(ctx utils.OAuthContext) {
 		return
 	}
 
-	if err := ctx.WriteJSON(resp, http.StatusOK); err != nil {
+	if err := ctx.Write(resp, http.StatusOK); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
 }
@@ -74,7 +74,7 @@ func HandleDynamicClientRetrieve(ctx utils.OAuthContext) {
 		return
 	}
 
-	if err := ctx.WriteJSON(resp, http.StatusOK); err != nil {
+	if err := ctx.Write(resp, http.StatusOK); err != nil {
 		bindErrorToResponse(ctx, err)
 	}
 }

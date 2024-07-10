@@ -15,7 +15,7 @@ import (
 
 func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) {
 	// Given.
-	privateJWK := utils.GetTestPrivateRS256JWK(t, "client_key_id")
+	privateJWK := utils.TestPrivateRS256JWK(t, "client_key_id")
 	ctx := utils.OAuthContext{
 		Configuration: utils.Configuration{
 			Host:                   "https://server.example.com",
@@ -63,7 +63,7 @@ func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 	request, _ := jwt.Signed(signer).Claims(claims).Serialize()
 
 	// When.
-	jar, err := utils.ExtractJARFromRequestObject(ctx, request, client)
+	jar, err := utils.JARFromRequestObject(ctx, request, client)
 
 	// Then.
 	require.Nil(t, err, "error extracting JAR")
@@ -149,7 +149,7 @@ func TestGetURLWithQueryParams(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
-			assert.Equal(t, testCase.ExpectedParameterizedURL, utils.GetURLWithQueryParams(testCase.URL, testCase.params))
+			assert.Equal(t, testCase.ExpectedParameterizedURL, utils.URLWithQueryParams(testCase.URL, testCase.params))
 		})
 	}
 
@@ -168,7 +168,7 @@ func TestGetURLWithFragmentParams(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
-			assert.Equal(t, testCase.ExpectedParameterizedURL, utils.GetURLWithFragmentParams(testCase.URL, testCase.params))
+			assert.Equal(t, testCase.ExpectedParameterizedURL, utils.URLWithFragmentParams(testCase.URL, testCase.params))
 		})
 	}
 
@@ -187,7 +187,7 @@ func TestGetURLWithoutParams(t *testing.T) {
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
 			// When.
-			urlWithoutParams, err := utils.GetURLWithoutParams(testCase.url)
+			urlWithoutParams, err := utils.URLWithoutParams(testCase.url)
 			// Assert.
 			require.Nil(t, err)
 			assert.Equal(t, testCase.expectedURL, urlWithoutParams)
@@ -274,7 +274,7 @@ func TestGenerateJWKThumbprint(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
-			assert.Equal(t, testCase.ExpectedThumbprint, utils.GenerateJWKThumbprint(testCase.DPOPJWT, dpopSigningAlgorithms))
+			assert.Equal(t, testCase.ExpectedThumbprint, utils.JWKThumbprint(testCase.DPOPJWT, dpopSigningAlgorithms))
 		})
 	}
 }

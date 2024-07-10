@@ -131,7 +131,7 @@ type AuthorizationResponse struct {
 	ErrorDescription  string
 }
 
-func (rp AuthorizationResponse) GetParameters() map[string]string {
+func (rp AuthorizationResponse) Parameters() map[string]string {
 	params := make(map[string]string)
 
 	if rp.Response != "" {

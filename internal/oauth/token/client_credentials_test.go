@@ -13,7 +13,7 @@ import (
 
 func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 	// Given.
-	ctx := utils.GetTestContext(t)
+	ctx := utils.NewTestContext(t)
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
@@ -29,10 +29,10 @@ func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 	// Then.
 	require.Nil(t, err)
 
-	claims := utils.GetUnsafeClaimsFromJWT(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
+	claims := utils.UnsafeClaims(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
 	assert.Equal(t, utils.TestClientID, claims["client_id"], "the token was assigned to a different client")
 	assert.Equal(t, utils.TestClientID, claims["sub"], "the token subject should be the client")
 
-	sessions := utils.GetGrantSessionsFromTestContext(t, ctx)
+	sessions := utils.TestGrantSessions(t, ctx)
 	assert.Len(t, sessions, 1, "there should be one session")
 }

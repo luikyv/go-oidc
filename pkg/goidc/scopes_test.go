@@ -15,7 +15,7 @@ func TestScopes_GetIDs_HappyPath(t *testing.T) {
 	})
 
 	// When.
-	scopeIDs := scopes.GetIDs()
+	scopeIDs := scopes.IDs()
 
 	// Then.
 	assert.Len(t, scopeIDs, 2, "there should be two ids")
@@ -32,7 +32,7 @@ func TestScopes_GetSubSet_HappyPath(t *testing.T) {
 	})
 
 	// When.
-	scopeSubSet := scopes.GetSubSet([]string{"scope1", "scope2"})
+	scopeSubSet := scopes.SubSet([]string{"scope1", "scope2"})
 
 	// Then.
 	assert.Len(t, scopeSubSet, 2, "there should be two scopes")

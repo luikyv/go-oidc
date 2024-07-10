@@ -22,7 +22,7 @@ func GetOpenIDConfiguration(ctx utils.OAuthContext) utils.OpenIDConfiguration {
 		IDTokenSignatureAlgorithms:           ctx.UserInfoSignatureAlgorithms(),
 		UserInfoSignatureAlgorithms:          ctx.UserInfoSignatureAlgorithms(),
 		ClientAuthnMethods:                   ctx.ClientAuthnMethods,
-		Scopes:                               ctx.Scopes.GetIDs(),
+		Scopes:                               ctx.OAuthScopes.IDs(),
 		TokenEndpointClientSigningAlgorithms: ctx.ClientSignatureAlgorithms(),
 		IssuerResponseParameterIsEnabled:     ctx.IssuerResponseParameterIsEnabled,
 		ClaimsParameterIsEnabled:             ctx.ClaimsParameterIsEnabled,

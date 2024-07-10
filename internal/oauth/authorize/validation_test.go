@@ -11,7 +11,7 @@ import (
 )
 
 func TestValidateAuthorizationRequest(t *testing.T) {
-	client := utils.GetTestClient(t)
+	client := utils.NewTestClient(t)
 
 	var cases = []struct {
 		Name                string
@@ -119,7 +119,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 			func(t *testing.T) {
 				// When.
 				err := authorize.ValidateAuthorizationRequest(
-					utils.GetTestContext(t),
+					utils.NewTestContext(t),
 					c.Req,
 					c.ClientModifyFunc(client),
 				)
@@ -145,7 +145,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 }
 
 func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
-	client := utils.GetTestClient(t)
+	client := utils.NewTestClient(t)
 
 	var cases = []struct {
 		Name                string
@@ -209,7 +209,7 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 			func(t *testing.T) {
 				// When.
 				err := authorize.ValidateAuthorizationRequestWithPAR(
-					utils.GetTestContext(t),
+					utils.NewTestContext(t),
 					c.Req,
 					c.Session,
 					c.ClientModifyFunc(client),
@@ -234,7 +234,7 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 }
 
 func TestValidateAuthorizationRequestWithJAR(t *testing.T) {
-	client := utils.GetTestClient(t)
+	client := utils.NewTestClient(t)
 
 	var cases = []struct {
 		Name                string
@@ -312,7 +312,7 @@ func TestValidateAuthorizationRequestWithJAR(t *testing.T) {
 			func(t *testing.T) {
 				// When.
 				err := authorize.ValidateAuthorizationRequestWithJAR(
-					utils.GetTestContext(t),
+					utils.NewTestContext(t),
 					c.Req,
 					c.JAR,
 					c.ClientModifyFunc(client),

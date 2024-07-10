@@ -203,7 +203,7 @@ func getAuthenticatedClientAndSession(
 }
 
 func getSessionByAuthorizationCode(ctx utils.OAuthContext, authorizationCode string, ch chan<- utils.ResultChannel) {
-	session, err := ctx.GetAuthnSessionByAuthorizationCode(authorizationCode)
+	session, err := ctx.AuthnSessionByAuthorizationCode(authorizationCode)
 	if err != nil {
 		ch <- utils.ResultChannel{
 			Result: goidc.AuthnSession{},
@@ -237,7 +237,7 @@ func newAuthorizationCodeGrantOptions(
 	goidc.OAuthError,
 ) {
 
-	tokenOptions, err := ctx.GetTokenOptions(client, req.Scopes)
+	tokenOptions, err := ctx.TokenOptions(client, req.Scopes)
 	if err != nil {
 		return goidc.GrantOptions{}, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, err.Error())
 	}
@@ -249,8 +249,8 @@ func newAuthorizationCodeGrantOptions(
 		Subject:                  session.Subject,
 		ClientID:                 session.ClientID,
 		TokenOptions:             tokenOptions,
-		AdditionalIDTokenClaims:  session.GetAdditionalIDTokenClaims(),
-		AdditionalUserInfoClaims: session.GetAdditionalUserInfoClaims(),
+		AdditionalIDTokenClaims:  session.AdditionalIDTokenClaims,
+		AdditionalUserInfoClaims: session.AdditionalUserInfoClaims,
 	}
 	if ctx.AuthorizationDetailsParameterIsEnabled {
 		grantOptions.GrantedAuthorizationDetails = session.GrantedAuthorizationDetails

@@ -73,7 +73,7 @@ func (session *AuthnSession) SaveParameter(key string, value any) {
 	session.Store[key] = value
 }
 
-func (session AuthnSession) GetParameter(key string) (any, bool) {
+func (session AuthnSession) Parameter(key string) (any, bool) {
 	value, ok := session.Store[key]
 	return value, ok
 }
@@ -139,16 +139,8 @@ func (session *AuthnSession) GrantAuthorizationDetails(authDetails []Authorizati
 	session.GrantedAuthorizationDetails = authDetails
 }
 
-func (session AuthnSession) GetAdditionalIDTokenClaims() map[string]any {
-	return session.AdditionalIDTokenClaims
-}
-
-func (session AuthnSession) GetAdditionalUserInfoClaims() map[string]any {
-	return session.AdditionalUserInfoClaims
-}
-
-// GetProtectedParameter gets a custom protected parameters sent during PAR or JAR.
-func (session AuthnSession) GetProtectedParameter(key string) (any, bool) {
+// ProtectedParameter gets a custom protected parameters sent during PAR or JAR.
+func (session AuthnSession) ProtectedParameter(key string) (any, bool) {
 	value, ok := session.ProtectedParameters[key]
 	return value, ok
 }

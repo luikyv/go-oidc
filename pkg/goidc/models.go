@@ -42,7 +42,7 @@ type GrantOptions struct {
 	TokenOptions                `bson:"inline"`
 }
 
-type GetTokenOptionsFunc func(client Client, scopes string) (TokenOptions, error)
+type TokenOptionsFunc func(client Client, scopes string) (TokenOptions, error)
 
 // TODO: Allow passing the token ID? Or a prefix?
 type TokenOptions struct {
@@ -111,20 +111,20 @@ type AuthorizationParameters struct {
 
 func (insideParams AuthorizationParameters) Merge(outsideParams AuthorizationParameters) AuthorizationParameters {
 	params := AuthorizationParameters{
-		RedirectURI:              getNonEmptyOrDefault(insideParams.RedirectURI, outsideParams.RedirectURI),
-		ResponseMode:             getNonEmptyOrDefault(insideParams.ResponseMode, outsideParams.ResponseMode),
-		ResponseType:             getNonEmptyOrDefault(insideParams.ResponseType, outsideParams.ResponseType),
-		Scopes:                   getNonEmptyOrDefault(insideParams.Scopes, outsideParams.Scopes),
-		State:                    getNonEmptyOrDefault(insideParams.State, outsideParams.State),
-		Nonce:                    getNonEmptyOrDefault(insideParams.Nonce, outsideParams.Nonce),
-		CodeChallenge:            getNonEmptyOrDefault(insideParams.CodeChallenge, outsideParams.CodeChallenge),
-		CodeChallengeMethod:      getNonEmptyOrDefault(insideParams.CodeChallengeMethod, outsideParams.CodeChallengeMethod),
-		Prompt:                   getNonEmptyOrDefault(insideParams.Prompt, outsideParams.Prompt),
-		MaxAuthenticationAgeSecs: getNonEmptyOrDefault(insideParams.MaxAuthenticationAgeSecs, outsideParams.MaxAuthenticationAgeSecs),
-		Display:                  getNonEmptyOrDefault(insideParams.Display, outsideParams.Display),
-		ACRValues:                getNonEmptyOrDefault(insideParams.ACRValues, outsideParams.ACRValues),
-		Claims:                   getNonNilOrDefault(insideParams.Claims, outsideParams.Claims),
-		AuthorizationDetails:     getNonNilOrDefault(insideParams.AuthorizationDetails, outsideParams.AuthorizationDetails),
+		RedirectURI:              nonEmptyOrDefault(insideParams.RedirectURI, outsideParams.RedirectURI),
+		ResponseMode:             nonEmptyOrDefault(insideParams.ResponseMode, outsideParams.ResponseMode),
+		ResponseType:             nonEmptyOrDefault(insideParams.ResponseType, outsideParams.ResponseType),
+		Scopes:                   nonEmptyOrDefault(insideParams.Scopes, outsideParams.Scopes),
+		State:                    nonEmptyOrDefault(insideParams.State, outsideParams.State),
+		Nonce:                    nonEmptyOrDefault(insideParams.Nonce, outsideParams.Nonce),
+		CodeChallenge:            nonEmptyOrDefault(insideParams.CodeChallenge, outsideParams.CodeChallenge),
+		CodeChallengeMethod:      nonEmptyOrDefault(insideParams.CodeChallengeMethod, outsideParams.CodeChallengeMethod),
+		Prompt:                   nonEmptyOrDefault(insideParams.Prompt, outsideParams.Prompt),
+		MaxAuthenticationAgeSecs: nonEmptyOrDefault(insideParams.MaxAuthenticationAgeSecs, outsideParams.MaxAuthenticationAgeSecs),
+		Display:                  nonEmptyOrDefault(insideParams.Display, outsideParams.Display),
+		ACRValues:                nonEmptyOrDefault(insideParams.ACRValues, outsideParams.ACRValues),
+		Claims:                   nonNilOrDefault(insideParams.Claims, outsideParams.Claims),
+		AuthorizationDetails:     nonNilOrDefault(insideParams.AuthorizationDetails, outsideParams.AuthorizationDetails),
 	}
 
 	return params
@@ -143,14 +143,14 @@ func (params AuthorizationParameters) NewRedirectError(
 	}
 }
 
-// Get the response mode based on the response type.
-func (params AuthorizationParameters) GetResponseMode() ResponseMode {
+// DefaultResponseMode returns the response mode based on the response type.
+func (params AuthorizationParameters) DefaultResponseMode() ResponseMode {
 	if params.ResponseMode == "" {
-		return params.ResponseType.GetDefaultResponseMode(false)
+		return params.ResponseType.DefaultResponseMode(false)
 	}
 
 	if params.ResponseMode == ResponseModeJWT {
-		return params.ResponseType.GetDefaultResponseMode(true)
+		return params.ResponseType.DefaultResponseMode(true)
 	}
 
 	return params.ResponseMode
@@ -173,27 +173,27 @@ type ClaimObjectInfo struct {
 // Some fields are well know so they are accessible as methods.
 type AuthorizationDetail map[string]any
 
-func (detail AuthorizationDetail) GetType() string {
-	return detail.getString("type")
+func (detail AuthorizationDetail) Type() string {
+	return detail.string("type")
 }
 
-func (detail AuthorizationDetail) GetIdentifier() string {
-	return detail.getString("identifier")
+func (detail AuthorizationDetail) Identifier() string {
+	return detail.string("identifier")
 }
 
-func (detail AuthorizationDetail) GetLocations() []string {
-	return detail.getStringSlice("locations")
+func (detail AuthorizationDetail) Locations() []string {
+	return detail.stringSlice("locations")
 }
 
-func (detail AuthorizationDetail) GetActions() []string {
-	return detail.getStringSlice("actions")
+func (detail AuthorizationDetail) Actions() []string {
+	return detail.stringSlice("actions")
 }
 
-func (detail AuthorizationDetail) GetDataTypes() []string {
-	return detail.getStringSlice("datatypes")
+func (detail AuthorizationDetail) DataTypes() []string {
+	return detail.stringSlice("datatypes")
 }
 
-func (detail AuthorizationDetail) getStringSlice(key string) []string {
+func (detail AuthorizationDetail) stringSlice(key string) []string {
 	value, ok := detail[key]
 	if !ok {
 		return nil
@@ -207,7 +207,7 @@ func (detail AuthorizationDetail) getStringSlice(key string) []string {
 	return slice
 }
 
-func (detail AuthorizationDetail) getString(key string) string {
+func (detail AuthorizationDetail) string(key string) string {
 	value, ok := detail[key]
 	if !ok {
 		return ""
@@ -221,7 +221,7 @@ func (detail AuthorizationDetail) getString(key string) string {
 	return s
 }
 
-func getNonEmptyOrDefault[T any](s1 T, s2 T) T {
+func nonEmptyOrDefault[T any](s1 T, s2 T) T {
 	if reflect.ValueOf(s1).String() == "" {
 		return s2
 	}
@@ -229,7 +229,7 @@ func getNonEmptyOrDefault[T any](s1 T, s2 T) T {
 	return s1
 }
 
-func getNonNilOrDefault[T any](s1 T, s2 T) T {
+func nonNilOrDefault[T any](s1 T, s2 T) T {
 	if reflect.ValueOf(s1).IsNil() {
 		return s2
 	}

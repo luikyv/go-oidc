@@ -87,7 +87,7 @@ func TestGetResponseMode_HappyPath(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("case %v", i+1),
 			func(t *testing.T) {
-				assert.Equalf(t, testCase.expectedResponseMode, testCase.params.GetResponseMode(), "response mode not as expected")
+				assert.Equalf(t, testCase.expectedResponseMode, testCase.params.DefaultResponseMode(), "response mode not as expected")
 			},
 		)
 	}
@@ -102,7 +102,7 @@ func TestAuthorizationDetail_GetProperties_HappyPath(t *testing.T) {
 	}
 
 	// Then.
-	assert.Equal(t, "random_type", authDetails.GetType(), "type not as expected")
-	assert.Equal(t, "random_identifier", authDetails.GetIdentifier(), "identifier not as expected")
-	assert.Contains(t, authDetails.GetActions(), "random_action", "action not as expected")
+	assert.Equal(t, "random_type", authDetails.Type(), "type not as expected")
+	assert.Equal(t, "random_identifier", authDetails.Identifier(), "identifier not as expected")
+	assert.Contains(t, authDetails.Actions(), "random_action", "action not as expected")
 }

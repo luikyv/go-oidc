@@ -124,7 +124,7 @@ func getGrantSessionByRefreshToken(
 	refreshToken string,
 	ch chan<- utils.ResultChannel,
 ) {
-	grantSession, err := ctx.GetGrantSessionByRefreshToken(refreshToken)
+	grantSession, err := ctx.GrantSessionByRefreshToken(refreshToken)
 	if err != nil {
 		ch <- utils.ResultChannel{
 			Result: goidc.GrantSession{},

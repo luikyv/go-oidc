@@ -14,7 +14,7 @@ import (
 
 func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 	// Given.
-	ctx := utils.GetTestContext(t)
+	ctx := utils.NewTestContext(t)
 
 	// When.
 	_, err := token.HandleTokenCreation(ctx, utils.TokenRequest{
@@ -31,10 +31,10 @@ func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 
 func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	// Given.
-	client := utils.GetTestClient(t)
+	client := utils.NewTestClient(t)
 	client.AuthnMethod = goidc.ClientAuthnSecretPost
 
-	ctx := utils.GetTestContext(t)
+	ctx := utils.NewTestContext(t)
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
 
 	// When.
@@ -57,7 +57,7 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 
 func TestHandleGrantCreationWithDPOP(t *testing.T) {
 	// Given.
-	ctx := utils.GetTestContext(t)
+	ctx := utils.NewTestContext(t)
 	ctx.Host = "https://example.com"
 	ctx.DPOPIsEnabled = true
 	ctx.DPOPLifetimeSecs = 9999999999999
@@ -78,7 +78,7 @@ func TestHandleGrantCreationWithDPOP(t *testing.T) {
 
 	// Then.
 	assert.Nil(t, err)
-	claims := utils.GetUnsafeClaimsFromJWT(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
+	claims := utils.UnsafeClaims(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
 
 	require.Contains(t, claims, "cnf")
 	confirmation := claims["cnf"].(map[string]any)

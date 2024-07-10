@@ -20,7 +20,7 @@ func setDefaults(ctx utils.OAuthContext, dynamicClient *utils.DynamicClientReque
 
 	if dynamicClient.Scopes != "" {
 		scopeIDs := goidc.SplitStringWithSpaces(dynamicClient.Scopes)
-		dynamicClient.Scopes = ctx.GetScopes().GetSubSet(scopeIDs).String()
+		dynamicClient.Scopes = ctx.Scopes().SubSet(scopeIDs).String()
 	}
 
 	if dynamicClient.ResponseTypes == nil {
@@ -101,7 +101,7 @@ func getProtectedClient(
 		return goidc.Client{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid client_id")
 	}
 
-	client, err := ctx.GetClient(dynamicClient.ID)
+	client, err := ctx.Client(dynamicClient.ID)
 	if err != nil {
 		return goidc.Client{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, err.Error())
 	}

@@ -14,8 +14,8 @@ import (
 func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 
 	// Given.
-	ctx := utils.GetTestContext(t)
-	client, _ := ctx.GetClient(utils.TestClientID)
+	ctx := utils.NewTestContext(t)
+	client, _ := ctx.Client(utils.TestClientID)
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
@@ -49,20 +49,20 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 	// Then.
 	require.Nil(t, err)
 
-	claims := utils.GetUnsafeClaimsFromJWT(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
+	claims := utils.UnsafeClaims(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
 	assert.Equal(t, client.ID, claims["client_id"], "the token was assigned to a different client")
 	assert.Equal(t, username, claims["sub"], "the token subject should be the client")
 	assert.NotEmpty(t, tokenResp.RefreshToken, "the new refresh token is not valid")
 
-	grantSessions := utils.GetGrantSessionsFromTestContext(t, ctx)
+	grantSessions := utils.TestGrantSessions(t, ctx)
 	assert.Len(t, grantSessions, 1, "there should be only one grant session")
 }
 
 func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 
 	// When
-	ctx := utils.GetTestContext(t)
-	client, _ := ctx.GetClient(utils.TestClientID)
+	ctx := utils.NewTestContext(t)
+	client, _ := ctx.Client(utils.TestClientID)
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"

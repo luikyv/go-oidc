@@ -43,8 +43,8 @@ func NewProvider(
 			ClientManager:       clientManager,
 			AuthnSessionManager: authnSessionManager,
 			GrantSessionManager: grantSessionManager,
-			Scopes:              []goidc.Scope{goidc.ScopeOpenID},
-			GetTokenOptions: func(client goidc.Client, scopes string) (goidc.TokenOptions, error) {
+			OAuthScopes:         []goidc.Scope{goidc.ScopeOpenID},
+			TokenOptions: func(client goidc.Client, scopes string) (goidc.TokenOptions, error) {
 				return goidc.TokenOptions{
 					TokenLifetimeSecs: goidc.DefaultTokenLifetimeSecs,
 					TokenFormat:       goidc.TokenFormatJWT,
@@ -148,8 +148,8 @@ func (provider *OpenIDProvider) RequireOpenIDScope() {
 }
 
 // SetTokenOptions defines how access tokens are issued.
-func (provider *OpenIDProvider) SetTokenOptions(getTokenOpts goidc.GetTokenOptionsFunc) {
-	provider.config.GetTokenOptions = getTokenOpts
+func (provider *OpenIDProvider) SetTokenOptions(getTokenOpts goidc.TokenOptionsFunc) {
+	provider.config.TokenOptions = getTokenOpts
 }
 
 // EnableImplicitGrantType allows the implicit grant type and the associated response types.
@@ -169,9 +169,9 @@ func (provider *OpenIDProvider) EnableImplicitGrantType() {
 func (provider *OpenIDProvider) SetScopes(scopes ...goidc.Scope) {
 	// The scope openid is required to be among the scopes.
 	if goidc.Scopes(scopes).ContainsOpenID() {
-		provider.config.Scopes = scopes
+		provider.config.OAuthScopes = scopes
 	} else {
-		provider.config.Scopes = append(scopes, goidc.ScopeOpenID)
+		provider.config.OAuthScopes = append(scopes, goidc.ScopeOpenID)
 	}
 }
 

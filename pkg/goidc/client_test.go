@@ -17,7 +17,7 @@ import (
 
 func TestAreScopesAllowed(t *testing.T) {
 	// Given.
-	ctx := goidc.GetTestContext(
+	ctx := goidc.NewTestContext(
 		[]goidc.Scope{
 			goidc.NewScope("scope1"),
 			goidc.NewScope("scope2"),
@@ -181,7 +181,7 @@ func TestGetPublicJWKS(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		// When.
-		jwks, err := client.GetPublicJWKS()
+		jwks, err := client.PublicKeys()
 		// Then.
 		assert.Nil(t, err)
 		assert.Equal(t, 1, numberOfRequestsToJWKSURI, "the jwks uri should've been requested once")

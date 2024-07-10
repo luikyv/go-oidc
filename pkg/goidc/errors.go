@@ -7,7 +7,7 @@ import (
 var ErrorEntityNotFound error = errors.New("entity not found")
 
 type OAuthError interface {
-	GetCode() ErrorCode
+	Code() ErrorCode
 	Error() string
 }
 
@@ -17,7 +17,7 @@ type OAuthBaseError struct {
 	ErrorDescription string    `json:"error_description"`
 }
 
-func (err OAuthBaseError) GetCode() ErrorCode {
+func (err OAuthBaseError) Code() ErrorCode {
 	return err.ErrorCode
 }
 

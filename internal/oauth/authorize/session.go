@@ -85,7 +85,7 @@ func getSessionCreatedWithPAR(
 		return goidc.AuthnSession{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "request_uri is required")
 	}
 
-	session, err := ctx.GetAuthnSessionByRequestURI(req.RequestURI)
+	session, err := ctx.AuthnSessionByRequestURI(req.RequestURI)
 	if err != nil {
 		return goidc.AuthnSession{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid request_uri")
 	}
@@ -123,7 +123,7 @@ func initValidAuthnSessionWithJAR(
 
 	session := utils.NewAuthnSession(jar.AuthorizationParameters, client)
 	session.UpdateParams(req.AuthorizationParameters)
-	session.ProtectedParameters = utils.ExtractProtectedParamsFromRequestObject(ctx, req.RequestObject)
+	session.ProtectedParameters = utils.ProtectedParamsFromRequestObject(ctx, req.RequestObject)
 	return session, nil
 }
 
@@ -139,7 +139,7 @@ func getJAR(
 		return utils.AuthorizationRequest{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "request object is required")
 	}
 
-	jar, err := utils.ExtractJARFromRequestObject(ctx, req.RequestObject, client)
+	jar, err := utils.JARFromRequestObject(ctx, req.RequestObject, client)
 	if err != nil {
 		return utils.AuthorizationRequest{}, err
 	}

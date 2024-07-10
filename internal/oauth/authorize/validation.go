@@ -330,7 +330,7 @@ func ValidateAuthorizationDetails(
 	}
 
 	for _, authDetail := range params.AuthorizationDetails {
-		authDetailType := authDetail.GetType()
+		authDetailType := authDetail.Type()
 		if !slices.Contains(ctx.AuthorizationDetailTypes, authDetailType) || !client.IsAuthorizationDetailTypeAllowed(authDetailType) {
 			return params.NewRedirectError(goidc.ErrorCodeInvalidRequest, "invalid authorization detail type")
 		}

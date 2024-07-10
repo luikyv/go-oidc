@@ -27,7 +27,7 @@ type ResultChannel struct {
 	Err    goidc.OAuthError
 }
 
-func ExtractJARFromRequestObject(
+func JARFromRequestObject(
 	ctx OAuthContext,
 	reqObject string,
 	client goidc.Client,
@@ -36,7 +36,7 @@ func ExtractJARFromRequestObject(
 	goidc.OAuthError,
 ) {
 	if ctx.JAREncryptionIsEnabled && IsJWE(reqObject) {
-		signedReqObject, err := extractSignedRequestObjectFromEncryptedRequestObject(ctx, reqObject, client)
+		signedReqObject, err := signedRequestObjectFromEncryptedRequestObject(ctx, reqObject, client)
 		if err != nil {
 			return AuthorizationRequest{}, err
 		}
@@ -47,10 +47,10 @@ func ExtractJARFromRequestObject(
 		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "the request object is not a JWS")
 	}
 
-	return extractJARFromSignedRequestObject(ctx, reqObject, client)
+	return jarFromSignedRequestObject(ctx, reqObject, client)
 }
 
-func extractSignedRequestObjectFromEncryptedRequestObject(
+func signedRequestObjectFromEncryptedRequestObject(
 	ctx OAuthContext,
 	reqObject string,
 	_ goidc.Client,
@@ -81,7 +81,7 @@ func extractSignedRequestObjectFromEncryptedRequestObject(
 	return string(decryptedReqObject), nil
 }
 
-func extractJARFromSignedRequestObject(
+func jarFromSignedRequestObject(
 	ctx OAuthContext,
 	reqObject string,
 	client goidc.Client,
@@ -104,7 +104,7 @@ func extractJARFromSignedRequestObject(
 	}
 
 	// Verify that the key ID belongs to the client.
-	jwk, oauthErr := client.GetJWK(parsedToken.Headers[0].KeyID)
+	jwk, oauthErr := client.PublicKey(parsedToken.Headers[0].KeyID)
 	if oauthErr != nil {
 		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidResquestObject, oauthErr.Error())
 	}
@@ -175,16 +175,16 @@ func ValidateDPOPJWT(
 
 	// The query and fragment components of the "htu" must be ignored.
 	// Also, htu should be case-insensitive.
-	httpURI, err := GetURLWithoutParams(strings.ToLower(dpopClaims.HTTPURI))
+	httpURI, err := URLWithoutParams(strings.ToLower(dpopClaims.HTTPURI))
 	if err != nil || !slices.Contains(ctx.Audiences(), httpURI) {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid htu claim")
 	}
 
-	if expectedDPOPClaims.AccessToken != "" && dpopClaims.AccessTokenHash != GenerateBase64URLSHA256Hash(expectedDPOPClaims.AccessToken) {
+	if expectedDPOPClaims.AccessToken != "" && dpopClaims.AccessTokenHash != HashBase64URLSHA256(expectedDPOPClaims.AccessToken) {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid ath claim")
 	}
 
-	if expectedDPOPClaims.JWKThumbprint != "" && GenerateJWKThumbprint(dpopJWT, ctx.DPOPSignatureAlgorithms) != expectedDPOPClaims.JWKThumbprint {
+	if expectedDPOPClaims.JWKThumbprint != "" && JWKThumbprint(dpopJWT, ctx.DPOPSignatureAlgorithms) != expectedDPOPClaims.JWKThumbprint {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid jwk thumbprint")
 	}
 
@@ -196,7 +196,8 @@ func ValidateDPOPJWT(
 	return nil
 }
 
-func GetValidTokenClaims(
+// ValidClaims verifies a token and returns its claims.
+func ValidClaims(
 	ctx OAuthContext,
 	token string,
 ) (
@@ -234,12 +235,14 @@ func GetValidTokenClaims(
 	return rawClaims, nil
 }
 
-func GetTokenID(ctx OAuthContext, token string) (string, goidc.OAuthError) {
+// TokenID returns the ID of a token.
+// If it's a JWT, the ID is the the "jti" claim. Otherwise, the token is considered opaque and its ID is the token itself.
+func TokenID(ctx OAuthContext, token string) (string, goidc.OAuthError) {
 	if !IsJWS(token) {
 		return token, nil
 	}
 
-	claims, err := GetValidTokenClaims(ctx, token)
+	claims, err := ValidClaims(ctx, token)
 	if err != nil {
 		return "", err
 	}
@@ -271,7 +274,7 @@ func RunValidations(
 	return nil
 }
 
-func ExtractProtectedParamsFromForm(ctx OAuthContext) map[string]any {
+func ProtectedParamsFromForm(ctx OAuthContext) map[string]any {
 	protectedParams := make(map[string]any)
 	for param, value := range ctx.FormData() {
 		if strings.HasPrefix(param, goidc.ProtectedParamPrefix) {
@@ -282,7 +285,7 @@ func ExtractProtectedParamsFromForm(ctx OAuthContext) map[string]any {
 	return protectedParams
 }
 
-func ExtractProtectedParamsFromRequestObject(ctx OAuthContext, request string) map[string]any {
+func ProtectedParamsFromRequestObject(ctx OAuthContext, request string) map[string]any {
 	parsedRequest, err := jwt.ParseSigned(request, ctx.JARSignatureAlgorithms)
 	if err != nil {
 		return map[string]any{}
@@ -379,7 +382,7 @@ func RegistrationAccessToken() string {
 	return goidc.RandomString(goidc.RegistrationAccessTokenLength, goidc.RegistrationAccessTokenLength)
 }
 
-func GetURLWithQueryParams(redirectURI string, params map[string]string) string {
+func URLWithQueryParams(redirectURI string, params map[string]string) string {
 	parsedURL, _ := url.Parse(redirectURI)
 	query := parsedURL.Query()
 	for param, value := range params {
@@ -389,7 +392,7 @@ func GetURLWithQueryParams(redirectURI string, params map[string]string) string 
 	return parsedURL.String()
 }
 
-func GetURLWithFragmentParams(redirectURI string, params map[string]string) string {
+func URLWithFragmentParams(redirectURI string, params map[string]string) string {
 	parsedURL, _ := url.Parse(redirectURI)
 	fragments, _ := url.ParseQuery(parsedURL.Fragment)
 	for param, value := range params {
@@ -399,7 +402,7 @@ func GetURLWithFragmentParams(redirectURI string, params map[string]string) stri
 	return parsedURL.String()
 }
 
-func GetURLWithoutParams(u string) (string, error) {
+func URLWithoutParams(u string) (string, error) {
 	parsedURL, err := url.Parse(u)
 	if err != nil {
 		return "", err
@@ -414,7 +417,7 @@ func IsPkceValid(codeVerifier string, codeChallenge string, codeChallengeMethod 
 	case goidc.CodeChallengeMethodPlain:
 		return codeChallenge == codeVerifier
 	case goidc.CodeChallengeMethodSHA256:
-		return codeChallenge == GenerateBase64URLSHA256Hash(codeVerifier)
+		return codeChallenge == HashBase64URLSHA256(codeVerifier)
 	}
 
 	return false
@@ -449,32 +452,32 @@ func ScopesContainsOpenID(scopes string) bool {
 	return slices.Contains(goidc.SplitStringWithSpaces(scopes), goidc.ScopeOpenID.ID)
 }
 
-// Generate a JWK thumbprint for a valid DPoP JWT.
-func GenerateJWKThumbprint(dpopJWT string, dpopSigningAlgorithms []jose.SignatureAlgorithm) string {
+// JWKThumbprint generates a JWK thumbprint for a valid DPoP JWT.
+func JWKThumbprint(dpopJWT string, dpopSigningAlgorithms []jose.SignatureAlgorithm) string {
 	parsedDPOPJWT, _ := jwt.ParseSigned(dpopJWT, dpopSigningAlgorithms)
 	jkt, _ := parsedDPOPJWT.Headers[0].JSONWebKey.Thumbprint(crypto.SHA256)
 	return base64.RawURLEncoding.EncodeToString(jkt)
 }
 
-func GenerateBase64URLSHA256Hash(s string) string {
+func HashBase64URLSHA256(s string) string {
 	hash := sha256.New()
 	hash.Write([]byte(s))
 	return base64.RawURLEncoding.EncodeToString(hash.Sum(nil))
 }
 
-func SHA256Hash(s []byte) string {
+func HashSHA256(s []byte) string {
 	hash := sha256.New()
 	hash.Write([]byte(s))
 	return string(hash.Sum(nil))
 }
 
-func SHA1Hash(s []byte) string {
+func HashSHA1(s []byte) string {
 	hash := sha1.New()
 	hash.Write([]byte(s))
 	return string(hash.Sum(nil))
 }
 
-func HalfHashClaim(claimValue string, idTokenAlgorithm jose.SignatureAlgorithm) string {
+func HalfHashIDTokenClaim(claimValue string, idTokenAlgorithm jose.SignatureAlgorithm) string {
 	var hash hash.Hash
 	switch idTokenAlgorithm {
 	case jose.RS256, jose.ES256, jose.PS256, jose.HS256:

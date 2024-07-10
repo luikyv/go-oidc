@@ -8,7 +8,7 @@ import (
 )
 
 type OAuthContext interface {
-	GetHost() string
+	Issuer() string
 	Header(name string) (headerValue string, ok bool)
 	FormParam(param string) (formValue string)
 	SecureClientCertificate() (secureClientCert *x509.Certificate, ok bool)
@@ -16,7 +16,7 @@ type OAuthContext interface {
 	RenderHTML(html string, params any) error
 	RenderHTMLTemplate(tmpl *template.Template, params any) error
 	Logger() *slog.Logger
-	GetScopes() Scopes
+	Scopes() Scopes
 	context.Context
 }
 

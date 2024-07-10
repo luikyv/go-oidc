@@ -24,7 +24,7 @@ func GetAuthenticatedClient(
 		return goidc.Client{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "invalid client")
 	}
 
-	client, err := ctx.GetClient(clientID)
+	client, err := ctx.Client(clientID)
 	if err != nil {
 		ctx.Logger().Info("client not found", slog.String("client_id", clientID))
 		return goidc.Client{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "invalid client")
@@ -141,7 +141,7 @@ func authenticateWithPrivateKeyJWT(
 	}
 
 	// Verify that the key ID belongs to the client.
-	jwk, oauthErr := client.GetJWK(assertion.Headers[0].KeyID)
+	jwk, oauthErr := client.PublicKey(assertion.Headers[0].KeyID)
 	if oauthErr != nil {
 		return oauthErr
 	}
@@ -216,7 +216,7 @@ func authenticateWithSelfSignedTLSCertificate(
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "client certificate not informed")
 	}
 
-	jwks, err := client.GetPublicJWKS()
+	jwks, err := client.PublicKeys()
 	if err != nil {
 		return goidc.NewOAuthError(goidc.ErrorCodeInternalError, "could not load the client JWKS")
 	}
@@ -224,8 +224,8 @@ func authenticateWithSelfSignedTLSCertificate(
 	var jwk goidc.JSONWebKey
 	foundMatchingJWK := false
 	for _, key := range jwks.Keys {
-		if string(key.CertificateThumbprintSHA256()) == SHA256Hash(clientCert.Raw) ||
-			string(key.CertificateThumbprintSHA1()) == SHA1Hash(clientCert.Raw) {
+		if string(key.CertificateThumbprintSHA256()) == HashSHA256(clientCert.Raw) ||
+			string(key.CertificateThumbprintSHA1()) == HashSHA1(clientCert.Raw) {
 			foundMatchingJWK = true
 			jwk = key
 		}
