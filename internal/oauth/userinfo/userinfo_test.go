@@ -50,7 +50,8 @@ func TestHandleUserInfoRequest_SignedResponse(t *testing.T) {
 	token := "opaque_token"
 	grantSession := goidc.GrantSession{
 		TokenID:                    token,
-		LastTokenIssuedAtTimestamp: goidc.TimestampNow(),
+		ExpiresAtTimestamp:         goidc.TimestampNow() + 60,
+		LastTokenIssuedAtTimestamp: goidc.TimestampNow() + 60,
 		CreatedAtTimestamp:         goidc.TimestampNow(),
 		ActiveScopes:               goidc.ScopeOpenID.ID,
 		GrantOptions: goidc.GrantOptions{
