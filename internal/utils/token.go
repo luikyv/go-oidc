@@ -64,7 +64,7 @@ func makeIDToken(
 	claims := map[string]any{
 		goidc.ClaimIssuer:   ctx.Host,
 		goidc.ClaimSubject:  idTokenOpts.Subject,
-		goidc.ClaimAudience: idTokenOpts.ClientID,
+		goidc.ClaimAudience: client.ID,
 		goidc.ClaimIssuedAt: timestampNow,
 		goidc.ClaimExpiry:   timestampNow + ctx.IDTokenExpiresInSecs,
 	}

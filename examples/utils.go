@@ -40,35 +40,34 @@ func AuthenticateUserWithNoInteraction(
 	session.AddIDTokenClaim(goidc.ClaimAuthenticationTime, goidc.TimestampNow())
 
 	// Add claims based on the claims parameter.
-	claims, ok := session.GetClaims()
-	if ok {
+	if session.Claims != nil {
 
 		// acr claim.
-		acrClaim, ok := claims.IDToken[goidc.ClaimAuthenticationContextReference]
+		acrClaim, ok := session.Claims.IDToken[goidc.ClaimAuthenticationContextReference]
 		if ok {
 			session.AddIDTokenClaim(goidc.ClaimAuthenticationContextReference, acrClaim.Value)
 		}
-		acrClaim, ok = claims.Userinfo[goidc.ClaimAuthenticationContextReference]
+		acrClaim, ok = session.Claims.Userinfo[goidc.ClaimAuthenticationContextReference]
 		if ok {
 			session.AddUserInfoClaim(goidc.ClaimAuthenticationContextReference, acrClaim.Value)
 		}
 
 		// email claim.
-		_, ok = claims.IDToken[goidc.ClaimEmail]
+		_, ok = session.Claims.IDToken[goidc.ClaimEmail]
 		if ok {
 			session.AddIDTokenClaim(goidc.ClaimEmail, "random@gmail.com")
 		}
-		_, ok = claims.Userinfo[goidc.ClaimEmail]
+		_, ok = session.Claims.Userinfo[goidc.ClaimEmail]
 		if ok {
 			session.AddUserInfoClaim(goidc.ClaimEmail, "random@gmail.com")
 		}
 
 		// email_verified claim.
-		_, ok = claims.IDToken[goidc.ClaimEmailVerified]
+		_, ok = session.Claims.IDToken[goidc.ClaimEmailVerified]
 		if ok {
 			session.AddIDTokenClaim(goidc.ClaimEmailVerified, true)
 		}
-		_, ok = claims.Userinfo[goidc.ClaimEmailVerified]
+		_, ok = session.Claims.Userinfo[goidc.ClaimEmailVerified]
 		if ok {
 			session.AddUserInfoClaim(goidc.ClaimEmailVerified, true)
 		}

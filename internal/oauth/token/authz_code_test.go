@@ -36,7 +36,8 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
-			ClientID: utils.TestClientID,
+			ClientID:     utils.TestClientID,
+			ClientSecret: utils.TestClientSecret,
 		},
 		GrantType:         goidc.GrantAuthorizationCode,
 		RedirectURI:       utils.TestClientRedirectURI,

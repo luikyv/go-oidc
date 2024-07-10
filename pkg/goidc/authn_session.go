@@ -23,39 +23,6 @@ type AuthnSession struct {
 	Error                    OAuthError `json:"-" bson:"-"`
 }
 
-func (session AuthnSession) GetClaims() (ClaimsObject, bool) {
-	if session.Claims == nil {
-		return ClaimsObject{}, false
-	}
-	return *session.Claims, true
-}
-
-func (session AuthnSession) GetAuthorizationDetails() ([]AuthorizationDetail, bool) {
-	if session.AuthorizationDetails == nil {
-		return nil, false
-	}
-	return session.AuthorizationDetails, true
-}
-
-func (session AuthnSession) GetMaxAuthenticationAgeSecs() (int, bool) {
-	if session.MaxAuthenticationAgeSecs == nil {
-		return 0, false
-	}
-
-	return *session.MaxAuthenticationAgeSecs, true
-}
-
-func (session AuthnSession) GetACRValues() ([]AuthenticationContextReference, bool) {
-	if session.ACRValues == "" {
-		return nil, false
-	}
-	acrValues := []AuthenticationContextReference{}
-	for _, acrValue := range SplitStringWithSpaces(session.ACRValues) {
-		acrValues = append(acrValues, AuthenticationContextReference(acrValue))
-	}
-	return acrValues, true
-}
-
 // UpdateParams updates the session with the parameters from an authorization request.
 // The parameters already present in the session have priority.
 func (session *AuthnSession) UpdateParams(params AuthorizationParameters) {

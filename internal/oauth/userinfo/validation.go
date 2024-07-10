@@ -15,7 +15,7 @@ func validateUserInfoRequest(
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "token expired")
 	}
 
-	if !utils.ScopesContainsOpenID(grantSession.GrantedScopes) {
+	if !utils.ScopesContainsOpenID(grantSession.ActiveScopes) {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid scope")
 	}
 

@@ -144,7 +144,6 @@ func finishFlowSuccessfully(ctx utils.OAuthContext, session *goidc.AuthnSession)
 	if session.ResponseType.Contains(goidc.ResponseTypeIDToken) {
 		idTokenOptions := utils.IDTokenOptions{
 			Subject:                 session.Subject,
-			ClientID:                session.ClientID,
 			AdditionalIDTokenClaims: session.AdditionalIDTokenClaims,
 			AccessToken:             redirectParams.AccessToken,
 			AuthorizationCode:       session.AuthorizationCode,

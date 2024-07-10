@@ -430,7 +430,6 @@ func (info TokenIntrospectionInfo) MarshalJSON() ([]byte, error) {
 
 type IDTokenOptions struct {
 	Subject                 string
-	ClientID                string
 	AdditionalIDTokenClaims map[string]any
 	// These values here below are intended to be hashed and placed in the ID token.
 	// Then, the ID token can be used as a detached signature for the implicit grant.
@@ -442,7 +441,6 @@ type IDTokenOptions struct {
 func NewIDTokenOptions(grantOpts goidc.GrantOptions) IDTokenOptions {
 	return IDTokenOptions{
 		Subject:                 grantOpts.Subject,
-		ClientID:                grantOpts.ClientID,
 		AdditionalIDTokenClaims: grantOpts.AdditionalIDTokenClaims,
 	}
 }

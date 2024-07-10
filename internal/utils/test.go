@@ -13,12 +13,14 @@ import (
 	"github.com/luikymagno/goidc/internal/crud/inmemory"
 	"github.com/luikymagno/goidc/pkg/goidc"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
 	TestHost              string = "https://example.com"
 	TestKeyID             string = "test_rsa256_key"
 	TestClientID          string = "test_client_id"
+	TestClientSecret      string = "test_client_secret"
 	TestClientRedirectURI string = "https://example.com/callback"
 )
 
@@ -29,17 +31,19 @@ var (
 )
 
 func NewTestClient(_ *testing.T) goidc.Client {
+	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(TestClientSecret), 0)
 	return goidc.Client{
-		ID: TestClientID,
+		ID:           TestClientID,
+		HashedSecret: string(hashedClientSecret),
 		ClientMetaInfo: goidc.ClientMetaInfo{
-			AuthnMethod:  goidc.ClientAuthnNone,
+			AuthnMethod:  goidc.ClientAuthnSecretPost,
 			RedirectURIS: []string{TestClientRedirectURI},
 			Scopes:       fmt.Sprintf("%s %s %s", TestScope1, TestScope2, goidc.ScopeOpenID),
 			GrantTypes: []goidc.GrantType{
 				goidc.GrantAuthorizationCode,
-				goidc.GrantClientCredentials,
 				goidc.GrantImplicit,
 				goidc.GrantRefreshToken,
+				goidc.GrantClientCredentials,
 			},
 			ResponseTypes: []goidc.ResponseType{
 				goidc.ResponseTypeCode,
@@ -56,13 +60,29 @@ func NewTestClient(_ *testing.T) goidc.Client {
 
 func NewTestContext(t *testing.T) OAuthContext {
 	config := Configuration{
-		Profile:                       goidc.ProfileOpenID,
-		Host:                          TestHost,
-		ClientManager:                 inmemory.NewClientManager(),
-		GrantSessionManager:           inmemory.NewGrantSessionManager(),
-		AuthnSessionManager:           inmemory.NewAuthnSessionManager(),
-		OAuthScopes:                   []goidc.Scope{goidc.ScopeOpenID, TestScope1, TestScope2},
-		PrivateJWKS:                   goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{TestServerPrivateJWK}},
+		Profile:             goidc.ProfileOpenID,
+		Host:                TestHost,
+		ClientManager:       inmemory.NewClientManager(),
+		GrantSessionManager: inmemory.NewGrantSessionManager(),
+		AuthnSessionManager: inmemory.NewAuthnSessionManager(),
+		OAuthScopes:         []goidc.Scope{goidc.ScopeOpenID, TestScope1, TestScope2},
+		PrivateJWKS:         goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{TestServerPrivateJWK}},
+		ClientAuthnMethods:  []goidc.ClientAuthnType{goidc.ClientAuthnNone, goidc.ClientAuthnSecretPost},
+		GrantTypes: []goidc.GrantType{
+			goidc.GrantAuthorizationCode,
+			goidc.GrantClientCredentials,
+			goidc.GrantImplicit,
+			goidc.GrantRefreshToken,
+		},
+		ResponseTypes: []goidc.ResponseType{
+			goidc.ResponseTypeCode,
+			goidc.ResponseTypeIDToken,
+			goidc.ResponseTypeToken,
+			goidc.ResponseTypeCodeAndIDToken,
+			goidc.ResponseTypeCodeAndToken,
+			goidc.ResponseTypeIDTokenAndToken,
+			goidc.ResponseTypeCodeAndIDTokenAndToken,
+		},
 		DefaultTokenSignatureKeyID:    TestServerPrivateJWK.KeyID(),
 		DefaultUserInfoSignatureKeyID: TestServerPrivateJWK.KeyID(),
 		UserInfoSignatureKeyIDs:       []string{TestServerPrivateJWK.KeyID()},
@@ -105,6 +125,16 @@ func GrantSessions(_ *testing.T, ctx OAuthContext) []goidc.GrantSession {
 	return tokens
 }
 
+func Clients(_ *testing.T, ctx OAuthContext) []goidc.Client {
+	manager, _ := ctx.ClientManager.(*inmemory.ClientManager)
+	clients := make([]goidc.Client, 0, len(manager.Clients))
+	for _, c := range manager.Clients {
+		clients = append(clients, c)
+	}
+
+	return clients
+}
+
 func PrivateRS256JWK(t *testing.T, keyID string) goidc.JSONWebKey {
 	return PrivateRS256JWKWithUsage(t, keyID, goidc.KeyUsageSignature)
 }
@@ -139,6 +169,17 @@ func PrivatePS256JWKWithUsage(
 		Algorithm: string(jose.PS256),
 		Use:       string(usage),
 	})
+}
+
+func SafeClaims(t *testing.T, jws string, privateJWK goidc.JSONWebKey) map[string]any {
+	parsedToken, err := jwt.ParseSigned(jws, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJWK.Algorithm())})
+	require.Nil(t, err, "invalid JWT")
+
+	var claims map[string]any
+	err = parsedToken.Claims(privateJWK.Public().Key(), &claims)
+	require.Nil(t, err, "could not read claims")
+
+	return claims
 }
 
 func UnsafeClaims(t *testing.T, jws string, algorithms []jose.SignatureAlgorithm) map[string]any {

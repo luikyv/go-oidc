@@ -67,7 +67,8 @@ func TestHandleGrantCreationWithDPOP(t *testing.T) {
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
-			ClientID: utils.TestClientID,
+			ClientID:     utils.TestClientID,
+			ClientSecret: utils.TestClientSecret,
 		},
 		GrantType: goidc.GrantClientCredentials,
 		Scopes:    "scope1",

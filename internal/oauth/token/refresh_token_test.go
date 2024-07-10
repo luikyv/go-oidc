@@ -37,7 +37,8 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
-			ClientID: client.ID,
+			ClientID:     client.ID,
+			ClientSecret: utils.TestClientSecret,
 		},
 		GrantType:    goidc.GrantRefreshToken,
 		RefreshToken: refreshToken,

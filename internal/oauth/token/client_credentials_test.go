@@ -17,7 +17,8 @@ func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
-			ClientID: utils.TestClientID,
+			ClientID:     utils.TestClientID,
+			ClientSecret: utils.TestClientSecret,
 		},
 		GrantType: goidc.GrantClientCredentials,
 		Scopes:    utils.TestScope1.String(),
