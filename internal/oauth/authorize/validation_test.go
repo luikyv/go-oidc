@@ -190,7 +190,7 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 			},
 			goidc.AuthnSession{
 				ClientID:           client.ID,
-				ExpiresAtTimestamp: goidc.TimestampNow() + 1,
+				ExpiresAtTimestamp: goidc.TimestampNow() + 10,
 				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectURI: client.RedirectURIS[0],
 				},
@@ -208,8 +208,9 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 			c.Name,
 			func(t *testing.T) {
 				// When.
+				ctx := utils.NewTestContext(t)
 				err := authorize.ValidateAuthorizationRequestWithPAR(
-					utils.NewTestContext(t),
+					ctx,
 					c.Req,
 					c.Session,
 					c.ClientModifyFunc(client),
@@ -221,6 +222,7 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 					return
 				}
 
+				ctx.Logger().Debug(err.Error())
 				if c.ShouldRedirectError {
 					var redirectErr goidc.OAuthRedirectError
 					assert.ErrorAs(t, err, &redirectErr)

@@ -14,7 +14,6 @@ import (
 
 func TestHandleUserInfoRequest_HappyPath(t *testing.T) {
 	// Given.
-
 	token := "opaque_token"
 	grantSession := goidc.GrantSession{
 		TokenID:                    token,
@@ -27,6 +26,9 @@ func TestHandleUserInfoRequest_HappyPath(t *testing.T) {
 			ClientID: utils.TestClientID,
 			AdditionalUserInfoClaims: map[string]any{
 				"random_claim": "random_value",
+			},
+			TokenOptions: goidc.TokenOptions{
+				TokenLifetimeSecs: 60,
 			},
 		},
 	}
