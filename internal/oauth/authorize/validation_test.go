@@ -168,7 +168,7 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 			},
 			goidc.AuthnSession{
 				ClientID:           client.ID,
-				ExpiresAtTimestamp: goidc.TimestampNow() + 1,
+				ExpiresAtTimestamp: goidc.TimestampNow() + 10,
 			},
 			func(client goidc.Client) goidc.Client {
 				return client
