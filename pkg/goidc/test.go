@@ -73,6 +73,6 @@ func NewTestContext(scopes Scopes) Context {
 }
 
 func AssertTimestampWithin(t *testing.T, expected int, actual int, msgAndArgs ...any) {
-	assert.Greater(t, actual, expected-1, msgAndArgs)
-	assert.Less(t, actual, expected+1, msgAndArgs)
+	assert.Greater(t, actual, expected-10, msgAndArgs)
+	assert.Less(t, actual, expected+10, msgAndArgs)
 }

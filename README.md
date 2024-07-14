@@ -68,7 +68,6 @@ Make sure the `GOBIN` environment variable is set.
 
 ## To Do's
 * Don't use the default http client.
-* Use pointers for large structs.
 * revoke by jti.
 * Add docs, docs should start with the name of the thing.
 * How golang loads packages?

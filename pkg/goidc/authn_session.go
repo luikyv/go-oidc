@@ -39,7 +39,7 @@ func (session *AuthnSession) SaveParameter(key string, value any) {
 	session.Store[key] = value
 }
 
-func (session AuthnSession) Parameter(key string) (any, bool) {
+func (session *AuthnSession) Parameter(key string) (any, bool) {
 	value, ok := session.Store[key]
 	return value, ok
 }
@@ -65,7 +65,7 @@ func (session *AuthnSession) AddUserInfoClaim(claim string, value any) {
 	session.AdditionalUserInfoClaims[claim] = value
 }
 
-func (session AuthnSession) IsExpired() bool {
+func (session *AuthnSession) IsExpired() bool {
 	return TimestampNow() > session.ExpiresAtTimestamp
 }
 
