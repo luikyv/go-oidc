@@ -11,7 +11,6 @@ type AuthnSession struct {
 	GrantedScopes               string                `json:"granted_scopes" bson:"granted_scopes"`
 	GrantedAuthorizationDetails []AuthorizationDetail `json:"granted_authorization_details,omitempty" bson:"granted_authorization_details,omitempty"`
 	AuthorizationCode           string                `json:"authorization_code,omitempty" bson:"authorization_code,omitempty"`
-	AuthorizationCodeIssuedAt   int                   `json:"authorization_code_issued_at,omitempty" bson:"authorization_code_issued_at,omitempty"`
 	// ProtectedParameters contains custom parameters sent by PAR or JAR.
 	ProtectedParameters map[string]any `json:"protected_params,omitempty" bson:"protected_params,omitempty"`
 	// Store allows developers to store information between user interactions.
@@ -71,29 +70,42 @@ func (session AuthnSession) IsExpired() bool {
 }
 
 // Push creates a session that can be referenced by a request URI.
-func (session *AuthnSession) Push(parLifetimeSecs int) (requestURI string) {
-	session.RequestURI = RequestURI()
+func (session *AuthnSession) Push(parLifetimeSecs int) (requestURI string, err error) {
+	requestURI, err = RequestURI()
+	if err != nil {
+		return "", err
+	}
+
+	session.RequestURI = requestURI
 	session.ExpiresAtTimestamp = TimestampNow() + parLifetimeSecs
-	return session.RequestURI
+	return requestURI, nil
 }
 
 // Start prepares the session to be used while the authentication flow defined by policyID happens.
-func (session *AuthnSession) Start(policyID string, sessionLifetimeSecs int) {
+func (session *AuthnSession) Start(policyID string, sessionLifetimeSecs int) OAuthError {
 	if session.Nonce != "" {
 		session.AddIDTokenClaim(ClaimNonce, session.Nonce)
 	}
 	session.PolicyID = policyID
-	session.CallbackID = CallbackID()
+	callbackID, err := CallbackID()
+	if err != nil {
+		return session.NewRedirectError(ErrorCodeInternalError, err.Error())
+	}
+	session.CallbackID = callbackID
 	// FIXME: To think about:Treating the request_uri as one-time use will cause problems when the user refreshes the page.
 	session.RequestURI = ""
 	session.ExpiresAtTimestamp = TimestampNow() + sessionLifetimeSecs
+	return nil
 }
 
-func (session *AuthnSession) InitAuthorizationCode() string {
-	session.AuthorizationCode = AuthorizationCode()
-	session.AuthorizationCodeIssuedAt = TimestampNow()
-	session.ExpiresAtTimestamp = session.AuthorizationCodeIssuedAt + AuthorizationCodeLifetimeSecs
-	return session.AuthorizationCode
+func (session *AuthnSession) InitAuthorizationCode() OAuthError {
+	code, err := AuthorizationCode()
+	if err != nil {
+		return session.NewRedirectError(ErrorCodeInternalError, err.Error())
+	}
+	session.AuthorizationCode = code
+	session.ExpiresAtTimestamp = TimestampNow() + AuthorizationCodeLifetimeSecs
+	return nil
 }
 
 func (session *AuthnSession) GrantScopes(scopes string) {
@@ -104,12 +116,6 @@ func (session *AuthnSession) GrantScopes(scopes string) {
 // This will only have effect if support for authorization details was enabled.
 func (session *AuthnSession) GrantAuthorizationDetails(authDetails []AuthorizationDetail) {
 	session.GrantedAuthorizationDetails = authDetails
-}
-
-// ProtectedParameter gets a custom protected parameters sent during PAR or JAR.
-func (session AuthnSession) ProtectedParameter(key string) (any, bool) {
-	value, ok := session.ProtectedParameters[key]
-	return value, ok
 }
 
 func (session *AuthnSession) SetRedirectError(errorCode ErrorCode, errorDescription string) {

@@ -21,7 +21,7 @@ func NewGrantSessionManager(database *mongo.Database) GrantSessionManager {
 
 func (manager GrantSessionManager) CreateOrUpdate(
 	ctx context.Context,
-	grantSession goidc.GrantSession,
+	grantSession *goidc.GrantSession,
 ) error {
 	shouldReplace := true
 	filter := bson.D{{Key: "_id", Value: grantSession.ID}}
@@ -36,7 +36,7 @@ func (manager GrantSessionManager) GetByTokenID(
 	ctx context.Context,
 	tokenID string,
 ) (
-	goidc.GrantSession,
+	*goidc.GrantSession,
 	error,
 ) {
 	return manager.getWithFilter(ctx, bson.D{{Key: "token_id", Value: tokenID}})
@@ -46,7 +46,7 @@ func (manager GrantSessionManager) GetByRefreshToken(
 	ctx context.Context,
 	refreshToken string,
 ) (
-	goidc.GrantSession,
+	*goidc.GrantSession,
 	error,
 ) {
 	return manager.getWithFilter(ctx, bson.D{{Key: "refresh_token", Value: refreshToken}})
@@ -68,19 +68,19 @@ func (manager GrantSessionManager) getWithFilter(
 	ctx context.Context,
 	filter any,
 ) (
-	goidc.GrantSession,
+	*goidc.GrantSession,
 	error,
 ) {
 
 	result := manager.Collection.FindOne(ctx, filter)
 	if result.Err() != nil {
-		return goidc.GrantSession{}, result.Err()
+		return nil, result.Err()
 	}
 
 	var grantSession goidc.GrantSession
 	if err := result.Decode(&grantSession); err != nil {
-		return goidc.GrantSession{}, err
+		return nil, err
 	}
 
-	return grantSession, nil
+	return &grantSession, nil
 }

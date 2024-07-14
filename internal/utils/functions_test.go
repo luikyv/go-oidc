@@ -16,7 +16,7 @@ import (
 func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) {
 	// Given.
 	privateJWK := utils.PrivateRS256JWK(t, "client_key_id")
-	ctx := utils.OAuthContext{
+	ctx := &utils.Context{
 		Configuration: utils.Configuration{
 			Host:                   "https://server.example.com",
 			JARIsEnabled:           true,
@@ -28,7 +28,7 @@ func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 		},
 	}
 
-	client := goidc.Client{
+	client := &goidc.Client{
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			PublicJWKS: &goidc.JSONWebKeySet{
 				Keys: []goidc.JSONWebKey{privateJWK.Public()},
@@ -77,14 +77,14 @@ func TestValidateDPOPJWT(t *testing.T) {
 		Name           string
 		DPOPJWT        string
 		ExpectedClaims utils.DPOPJWTValidationOptions
-		Context        utils.OAuthContext
+		Context        *utils.Context
 		ShouldBeValid  bool
 	}{
 		{
 			"valid_dpop_jwt",
 			"eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7Imt0eSI6IkVDIiwieCI6Imw4dEZyaHgtMzR0VjNoUklDUkRZOXpDa0RscEJoRjQyVVFVZldWQVdCRnMiLCJ5IjoiOVZFNGpmX09rX282NHpiVFRsY3VOSmFqSG10NnY5VERWclUwQ2R2R1JEQSIsImNydiI6IlAtMjU2In19.eyJqdGkiOiItQndDM0VTYzZhY2MybFRjIiwiaHRtIjoiUE9TVCIsImh0dSI6Imh0dHBzOi8vc2VydmVyLmV4YW1wbGUuY29tL3Rva2VuIiwiaWF0IjoxNTYyMjY1Mjk2fQ.pAqut2IRDm_De6PR93SYmGBPXpwrAk90e8cP2hjiaG5QsGSuKDYW7_X620BxqhvYC8ynrrvZLTk41mSRroapUA",
 			utils.DPOPJWTValidationOptions{},
-			utils.OAuthContext{
+			&utils.Context{
 				Configuration: utils.Configuration{
 					Host:                    "https://server.example.com",
 					DPOPIsEnabled:           true,
@@ -103,7 +103,7 @@ func TestValidateDPOPJWT(t *testing.T) {
 			utils.DPOPJWTValidationOptions{
 				AccessToken: "Kz~8mXK1EalYznwH-LC-1fBAo.4Ljp~zsPE_NeO.gxU",
 			},
-			utils.OAuthContext{
+			&utils.Context{
 				Configuration: utils.Configuration{
 					Host:                    "https://resource.example.org/protectedresource",
 					DPOPIsEnabled:           true,
@@ -133,7 +133,12 @@ func TestValidateDPOPJWT(t *testing.T) {
 }
 
 func TestGenerateRefreshToken(t *testing.T) {
-	assert.Len(t, utils.RefreshToken(), goidc.RefreshTokenLength)
+	// When.
+	token, err := utils.RefreshToken()
+
+	// Then.
+	assert.Nil(t, err)
+	assert.Len(t, token, goidc.RefreshTokenLength)
 }
 
 func TestGetURLWithQueryParams(t *testing.T) {

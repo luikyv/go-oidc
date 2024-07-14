@@ -8,8 +8,8 @@ import (
 )
 
 func MakeIDToken(
-	ctx OAuthContext,
-	client goidc.Client,
+	ctx *Context,
+	client *goidc.Client,
 	idTokenOpts IDTokenOptions,
 ) (
 	string,
@@ -34,8 +34,8 @@ func MakeIDToken(
 }
 
 func MakeToken(
-	ctx OAuthContext,
-	client goidc.Client,
+	ctx *Context,
+	client *goidc.Client,
 	grantOptions goidc.GrantOptions,
 ) (
 	Token,
@@ -49,8 +49,8 @@ func MakeToken(
 }
 
 func makeIDToken(
-	ctx OAuthContext,
-	client goidc.Client,
+	ctx *Context,
+	client *goidc.Client,
 	idTokenOpts IDTokenOptions,
 ) (
 	string,
@@ -102,8 +102,8 @@ func makeIDToken(
 }
 
 func encryptIDToken(
-	ctx OAuthContext,
-	client goidc.Client,
+	ctx *Context,
+	client *goidc.Client,
 	userInfoJWT string,
 ) (
 	string,
@@ -124,8 +124,8 @@ func encryptIDToken(
 
 // TODO: Make it simpler. Create a confirmation object.
 func makeJWTToken(
-	ctx OAuthContext,
-	client goidc.Client,
+	ctx *Context,
+	client *goidc.Client,
 	grantOptions goidc.GrantOptions,
 ) (
 	Token,
@@ -199,14 +199,17 @@ func makeJWTToken(
 }
 
 func makeOpaqueToken(
-	ctx OAuthContext,
-	_ goidc.Client,
+	ctx *Context,
+	_ *goidc.Client,
 	grantOptions goidc.GrantOptions,
 ) (
 	Token,
 	goidc.OAuthError,
 ) {
-	accessToken := goidc.RandomString(grantOptions.OpaqueTokenLength, grantOptions.OpaqueTokenLength)
+	accessToken, err := goidc.RandomString(grantOptions.OpaqueTokenLength)
+	if err != nil {
+		return Token{}, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+	}
 	tokenType := goidc.TokenTypeBearer
 
 	// DPoP token binding.

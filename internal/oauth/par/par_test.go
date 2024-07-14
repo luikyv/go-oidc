@@ -3,55 +3,25 @@ package par_test
 import (
 	"testing"
 
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikymagno/goidc/internal/oauth/par"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/crypto/bcrypt"
 )
 
-func TestPushAuthorization_ShouldRejectUnauthenticatedClient(t *testing.T) {
-	// When
-	client := utils.NewTestClient(t)
-	client.AuthnMethod = goidc.ClientAuthnSecretPost
-
+func TestPushAuthorization(t *testing.T) {
+	// Given.
 	ctx := utils.NewTestContext(t)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	client, _ := ctx.Client(utils.TestClientID)
 
-	// Then
-	_, err := par.PushAuthorization(ctx, utils.PushedAuthorizationRequest{
-		ClientAuthnRequest: utils.ClientAuthnRequest{
-			ClientID:     client.ID,
-			ClientSecret: "invalid_password",
-		},
-	})
-
-	// Assert
-	require.NotNil(t, err, "the client should not be authenticated")
-
-	var oauthErr goidc.OAuthBaseError
-	require.ErrorAs(t, err, &oauthErr)
-	assert.Equal(t, goidc.ErrorCodeInvalidClient, oauthErr.ErrorCode)
-}
-
-func TestPushAuthorization_ShouldGenerateRequestURI(t *testing.T) {
-	// When
-	clientSecret := "password"
-	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 0)
-
-	client := utils.NewTestClient(t)
-	client.AuthnMethod = goidc.ClientAuthnSecretPost
-	client.HashedSecret = string(hashedClientSecret)
-
-	ctx := utils.NewTestContext(t)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
-
-	// Then
+	// When.
 	requestURI, err := par.PushAuthorization(ctx, utils.PushedAuthorizationRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
 			ClientID:     utils.TestClientID,
-			ClientSecret: clientSecret,
+			ClientSecret: utils.TestClientSecret,
 		},
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  client.RedirectURIS[0],
@@ -61,25 +31,87 @@ func TestPushAuthorization_ShouldGenerateRequestURI(t *testing.T) {
 		},
 	})
 
-	// Assert
-	if err != nil {
-		t.Errorf("an error happened: %s", err.Error())
-		return
-	}
-	if requestURI == "" {
-		t.Error("the request_uri cannot be empty")
-		return
-	}
+	// Then.
+	require.Nil(t, err)
+	assert.NotEmpty(t, requestURI)
 
 	sessions := utils.AuthnSessions(t, ctx)
-	if len(sessions) != 1 {
-		t.Error("the should be only one authentication session")
-		return
-	}
+	require.Len(t, sessions, 1, "the should be only one authentication session")
 
 	session := sessions[0]
-	if session.RequestURI != requestURI {
-		t.Error("the request URI informed is not the same in the session")
-		return
+	assert.Equal(t, requestURI, session.RequestURI, "the request URI informed is not the same in the session")
+}
+
+func TestPushAuthorization_WithJAR(t *testing.T) {
+	// Given.
+	ctx := utils.NewTestContext(t)
+	ctx.JARIsEnabled = true
+	ctx.JARSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256}
+	ctx.JARLifetimeSecs = 60
+
+	privateJWK := utils.PrivateRS256JWK(t, "rsa256_key")
+	client, _ := ctx.Client(utils.TestClientID)
+	client.PublicJWKS = &goidc.JSONWebKeySet{
+		Keys: []goidc.JSONWebKey{privateJWK.Public()},
 	}
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
+
+	createdAtTimestamp := goidc.TimestampNow()
+	signer, _ := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.Algorithm()), Key: privateJWK.Key()},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID()),
+	)
+	claims := map[string]any{
+		goidc.ClaimIssuer:   client.ID,
+		goidc.ClaimAudience: ctx.Host,
+		goidc.ClaimIssuedAt: createdAtTimestamp,
+		goidc.ClaimExpiry:   createdAtTimestamp + 10,
+		"client_id":         client.ID,
+		"redirect_uri":      client.RedirectURIS[0],
+		"scope":             client.Scopes,
+		"response_type":     goidc.ResponseTypeCode,
+	}
+	requestObject, _ := jwt.Signed(signer).Claims(claims).Serialize()
+
+	// When.
+	requestURI, err := par.PushAuthorization(ctx, utils.PushedAuthorizationRequest{
+		ClientAuthnRequest: utils.ClientAuthnRequest{
+			ClientID:     utils.TestClientID,
+			ClientSecret: utils.TestClientSecret,
+		},
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RequestObject: requestObject,
+		},
+	})
+
+	// Then.
+	require.Nil(t, err)
+	assert.NotEmpty(t, requestURI)
+
+	sessions := utils.AuthnSessions(t, ctx)
+	require.Len(t, sessions, 1, "the should be only one authentication session")
+
+	session := sessions[0]
+	assert.Equal(t, requestURI, session.RequestURI, "the request URI informed is not the same in the session")
+}
+
+func TestPushAuthorization_ShouldRejectUnauthenticatedClient(t *testing.T) {
+	// Given.
+	ctx := utils.NewTestContext(t)
+	client, _ := ctx.Client(utils.TestClientID)
+
+	// When.
+	_, err := par.PushAuthorization(ctx, utils.PushedAuthorizationRequest{
+		ClientAuthnRequest: utils.ClientAuthnRequest{
+			ClientID:     client.ID,
+			ClientSecret: "invalid_password",
+		},
+	})
+
+	// Then.
+	require.NotNil(t, err, "the client should not be authenticated")
+
+	var oauthErr goidc.OAuthBaseError
+	require.ErrorAs(t, err, &oauthErr)
+	assert.Equal(t, goidc.ErrorCodeInvalidClient, oauthErr.ErrorCode)
 }

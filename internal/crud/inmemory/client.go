@@ -7,18 +7,18 @@ import (
 )
 
 type ClientManager struct {
-	Clients map[string]goidc.Client
+	Clients map[string]*goidc.Client
 }
 
 func NewClientManager() *ClientManager {
 	return &ClientManager{
-		Clients: make(map[string]goidc.Client),
+		Clients: make(map[string]*goidc.Client),
 	}
 }
 
 func (manager *ClientManager) CreateOrUpdate(
 	_ context.Context,
-	client goidc.Client,
+	client *goidc.Client,
 ) error {
 	manager.Clients[client.ID] = client
 	return nil
@@ -28,12 +28,12 @@ func (manager *ClientManager) Get(
 	_ context.Context,
 	id string,
 ) (
-	goidc.Client,
+	*goidc.Client,
 	error,
 ) {
 	client, exists := manager.Clients[id]
 	if !exists {
-		return goidc.Client{}, goidc.ErrorEntityNotFound
+		return nil, goidc.ErrorEntityNotFound
 	}
 
 	return client, nil

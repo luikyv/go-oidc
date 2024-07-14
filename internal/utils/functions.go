@@ -28,9 +28,9 @@ type ResultChannel struct {
 }
 
 func JARFromRequestObject(
-	ctx OAuthContext,
+	ctx *Context,
 	reqObject string,
-	client goidc.Client,
+	client *goidc.Client,
 ) (
 	AuthorizationRequest,
 	goidc.OAuthError,
@@ -51,9 +51,9 @@ func JARFromRequestObject(
 }
 
 func signedRequestObjectFromEncryptedRequestObject(
-	ctx OAuthContext,
+	ctx *Context,
 	reqObject string,
-	_ goidc.Client,
+	_ *goidc.Client,
 ) (
 	string,
 	goidc.OAuthError,
@@ -82,9 +82,9 @@ func signedRequestObjectFromEncryptedRequestObject(
 }
 
 func jarFromSignedRequestObject(
-	ctx OAuthContext,
+	ctx *Context,
 	reqObject string,
-	client goidc.Client,
+	client *goidc.Client,
 ) (
 	AuthorizationRequest,
 	goidc.OAuthError,
@@ -132,7 +132,7 @@ func jarFromSignedRequestObject(
 }
 
 func ValidateDPOPJWT(
-	ctx OAuthContext,
+	ctx *Context,
 	dpopJWT string,
 	expectedDPOPClaims DPOPJWTValidationOptions,
 ) goidc.OAuthError {
@@ -198,7 +198,7 @@ func ValidateDPOPJWT(
 
 // ValidClaims verifies a token and returns its claims.
 func ValidClaims(
-	ctx OAuthContext,
+	ctx *Context,
 	token string,
 ) (
 	map[string]any,
@@ -237,7 +237,7 @@ func ValidClaims(
 
 // TokenID returns the ID of a token.
 // If it's a JWT, the ID is the the "jti" claim. Otherwise, the token is considered opaque and its ID is the token itself.
-func TokenID(ctx OAuthContext, token string) (string, goidc.OAuthError) {
+func TokenID(ctx *Context, token string) (string, goidc.OAuthError) {
 	if !IsJWS(token) {
 		return token, nil
 	}
@@ -256,13 +256,13 @@ func TokenID(ctx OAuthContext, token string) (string, goidc.OAuthError) {
 }
 
 func RunValidations(
-	ctx OAuthContext,
+	ctx *Context,
 	params goidc.AuthorizationParameters,
-	client goidc.Client,
+	client *goidc.Client,
 	validators ...func(
-		ctx OAuthContext,
+		ctx *Context,
 		params goidc.AuthorizationParameters,
-		client goidc.Client,
+		client *goidc.Client,
 	) goidc.OAuthError,
 ) goidc.OAuthError {
 	for _, validator := range validators {
@@ -274,7 +274,7 @@ func RunValidations(
 	return nil
 }
 
-func ProtectedParamsFromForm(ctx OAuthContext) map[string]any {
+func ProtectedParamsFromForm(ctx *Context) map[string]any {
 	protectedParams := make(map[string]any)
 	for param, value := range ctx.FormData() {
 		if strings.HasPrefix(param, goidc.ProtectedParamPrefix) {
@@ -285,7 +285,7 @@ func ProtectedParamsFromForm(ctx OAuthContext) map[string]any {
 	return protectedParams
 }
 
-func ProtectedParamsFromRequestObject(ctx OAuthContext, request string) map[string]any {
+func ProtectedParamsFromRequestObject(ctx *Context, request string) map[string]any {
 	parsedRequest, err := jwt.ParseSigned(request, ctx.JARSignatureAlgorithms)
 	if err != nil {
 		return map[string]any{}
@@ -308,7 +308,7 @@ func ProtectedParamsFromRequestObject(ctx OAuthContext, request string) map[stri
 }
 
 func EncryptJWT(
-	_ OAuthContext,
+	_ *Context,
 	jwtString string,
 	encryptionJWK goidc.JSONWebKey,
 	contentKeyEncryptionAlgorithm jose.ContentEncryption,
@@ -338,9 +338,9 @@ func EncryptJWT(
 	return encryptedUserInfoString, nil
 }
 
-func NewGrantSession(grantOptions goidc.GrantOptions, token Token) goidc.GrantSession {
+func NewGrantSession(grantOptions goidc.GrantOptions, token Token) *goidc.GrantSession {
 	timestampNow := goidc.TimestampNow()
-	return goidc.GrantSession{
+	return &goidc.GrantSession{
 		ID:                          uuid.New().String(),
 		TokenID:                     token.ID,
 		JWKThumbprint:               token.JWKThumbprint,
@@ -353,8 +353,8 @@ func NewGrantSession(grantOptions goidc.GrantOptions, token Token) goidc.GrantSe
 	}
 }
 
-func NewAuthnSession(authParams goidc.AuthorizationParameters, client goidc.Client) goidc.AuthnSession {
-	return goidc.AuthnSession{
+func NewAuthnSession(authParams goidc.AuthorizationParameters, client *goidc.Client) *goidc.AuthnSession {
+	return &goidc.AuthnSession{
 		ID:                       uuid.NewString(),
 		ClientID:                 client.ID,
 		AuthorizationParameters:  authParams,
@@ -366,20 +366,24 @@ func NewAuthnSession(authParams goidc.AuthorizationParameters, client goidc.Clie
 	}
 }
 
-func RefreshToken() string {
-	return goidc.RandomString(goidc.RefreshTokenLength, goidc.RefreshTokenLength)
+func RefreshToken() (string, error) {
+	return goidc.RandomString(goidc.RefreshTokenLength)
 }
 
-func ClientID() string {
-	return "dc-" + goidc.RandomString(goidc.DynamicClientIDLength, goidc.DynamicClientIDLength)
+func ClientID() (string, error) {
+	clientID, err := goidc.RandomString(goidc.DynamicClientIDLength)
+	if err != nil {
+		return "", err
+	}
+	return "dc-" + clientID, nil
 }
 
-func ClientSecret() string {
-	return goidc.RandomString(goidc.ClientSecretLength, goidc.ClientSecretLength)
+func ClientSecret() (string, error) {
+	return goidc.RandomString(goidc.ClientSecretLength)
 }
 
-func RegistrationAccessToken() string {
-	return goidc.RandomString(goidc.RegistrationAccessTokenLength, goidc.RegistrationAccessTokenLength)
+func RegistrationAccessToken() (string, error) {
+	return goidc.RandomString(goidc.RegistrationAccessTokenLength)
 }
 
 func URLWithQueryParams(redirectURI string, params map[string]string) string {

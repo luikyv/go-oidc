@@ -6,9 +6,9 @@ import (
 )
 
 func validateTokenIntrospectionRequest(
-	_ utils.OAuthContext,
+	_ *utils.Context,
 	req utils.TokenIntrospectionRequest,
-	client goidc.Client,
+	client *goidc.Client,
 ) goidc.OAuthError {
 	if !client.IsGrantTypeAllowed(goidc.GrantIntrospection) {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidGrant, "client not allowed to introspect tokens")
@@ -21,8 +21,8 @@ func validateTokenIntrospectionRequest(
 	return nil
 }
 
-func getTokenIntrospectionInfo(
-	ctx utils.OAuthContext,
+func tokenIntrospectionInfo(
+	ctx *utils.Context,
 	token string,
 ) utils.TokenIntrospectionInfo {
 
@@ -34,11 +34,11 @@ func getTokenIntrospectionInfo(
 		return getJWTTokenIntrospectionInfo(ctx, token)
 	}
 
-	return getOpaqueTokenIntrospectionInfo(ctx, token)
+	return opaqueTokenIntrospectionInfo(ctx, token)
 }
 
 func getRefreshTokenIntrospectionInfo(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	token string,
 ) utils.TokenIntrospectionInfo {
 	grantSession, err := ctx.GrantSessionByRefreshToken(token)
@@ -68,28 +68,31 @@ func getRefreshTokenIntrospectionInfo(
 }
 
 func getJWTTokenIntrospectionInfo(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	token string,
 ) utils.TokenIntrospectionInfo {
-	// TODO: Get the grant session instead.
 	claims, err := utils.ValidClaims(ctx, token)
-	if err != nil {
+	if err != nil || claims[goidc.ClaimTokenID] == nil {
 		return utils.TokenIntrospectionInfo{
 			IsActive: false,
 		}
 	}
 
-	return utils.TokenIntrospectionInfo{
-		IsActive:              true,
-		AdditionalTokenClaims: claims,
-	}
+	return tokenIntrospectionInfoByID(ctx, claims[goidc.ClaimTokenID].(string))
 }
 
-func getOpaqueTokenIntrospectionInfo(
-	ctx utils.OAuthContext,
+func opaqueTokenIntrospectionInfo(
+	ctx *utils.Context,
 	token string,
 ) utils.TokenIntrospectionInfo {
-	grantSession, err := ctx.GrantSessionByTokenID(token)
+	return tokenIntrospectionInfoByID(ctx, token)
+}
+
+func tokenIntrospectionInfoByID(
+	ctx *utils.Context,
+	tokenID string,
+) utils.TokenIntrospectionInfo {
+	grantSession, err := ctx.GrantSessionByTokenID(tokenID)
 	if err != nil {
 		return utils.TokenIntrospectionInfo{
 			IsActive: false,

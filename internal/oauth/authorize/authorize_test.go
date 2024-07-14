@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
 	"github.com/luikymagno/goidc/internal/oauth/authorize"
 	"github.com/luikymagno/goidc/internal/utils"
@@ -21,8 +23,8 @@ func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 	client, _ := ctx.Client(utils.TestClientID)
 	policy := goidc.NewPolicy(
 		"policy_id",
-		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },
-		func(ctx goidc.OAuthContext, as *goidc.AuthnSession) goidc.AuthnStatus {
+		func(ctx goidc.Context, c *goidc.Client, s *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.Context, as *goidc.AuthnSession) goidc.AuthnStatus {
 			return goidc.StatusSuccess
 		},
 	)
@@ -52,10 +54,71 @@ func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 	assert.Contains(t, ctx.Response.Header().Get("Location"), fmt.Sprintf("code=%s", session.AuthorizationCode),
 		"missing code in the redirection")
 	assert.Contains(t, ctx.Response.Header().Get("Location"), "id_token=", "missing id_token in the redirection")
-
 }
 
-func TestInitAuth_PolicyEndsWithSuccess_JARM(t *testing.T) {
+func TestInitAuth_PolicyEndsWithSuccess_WithJAR(t *testing.T) {
+	// Given.
+	ctx := utils.NewTestContext(t)
+	ctx.JARIsEnabled = true
+	ctx.JARSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256}
+	ctx.JARLifetimeSecs = 60
+	ctx.Policies = append(ctx.Policies, goidc.NewPolicy(
+		"policy_id",
+		func(ctx goidc.Context, c *goidc.Client, s *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.Context, as *goidc.AuthnSession) goidc.AuthnStatus {
+			return goidc.StatusSuccess
+		},
+	))
+
+	privateJWK := utils.PrivateRS256JWK(t, "rsa256_key")
+	client, _ := ctx.Client(utils.TestClientID)
+	client.PublicJWKS = &goidc.JSONWebKeySet{
+		Keys: []goidc.JSONWebKey{privateJWK.Public()},
+	}
+	require.Nil(t, ctx.CreateOrUpdateClient(client))
+
+	createdAtTimestamp := goidc.TimestampNow()
+	signer, _ := jose.NewSigner(
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.Algorithm()), Key: privateJWK.Key()},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID()),
+	)
+	claims := map[string]any{
+		goidc.ClaimIssuer:   client.ID,
+		goidc.ClaimAudience: ctx.Host,
+		goidc.ClaimIssuedAt: createdAtTimestamp,
+		goidc.ClaimExpiry:   createdAtTimestamp + 10,
+		"client_id":         client.ID,
+		"redirect_uri":      client.RedirectURIS[0],
+		"scope":             client.Scopes,
+		"response_type":     goidc.ResponseTypeCode,
+	}
+	requestObject, _ := jwt.Signed(signer).Claims(claims).Serialize()
+
+	// When.
+	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
+		ClientID: client.ID,
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RequestObject: requestObject,
+			// These duplicated params are required for openid.
+			ResponseType: goidc.ResponseTypeCode,
+			Scopes:       client.Scopes,
+		},
+	})
+
+	// Then.
+	require.Nil(t, err)
+
+	sessions := utils.AuthnSessions(t, ctx)
+	require.Len(t, sessions, 1, "the should be only one authentication session")
+
+	session := sessions[0]
+	assert.NotEmpty(t, session.AuthorizationCode, "the authorization code should be filled when the policy ends successfully")
+
+	assert.Contains(t, ctx.Response.Header().Get("Location"), fmt.Sprintf("code=%s", session.AuthorizationCode),
+		"missing code in the redirection")
+}
+
+func TestInitAuth_PolicyEndsWithSuccess_WithJARM(t *testing.T) {
 	// Given.
 	ctx := utils.NewTestContext(t)
 	ctx.JARMIsEnabled = true
@@ -65,8 +128,8 @@ func TestInitAuth_PolicyEndsWithSuccess_JARM(t *testing.T) {
 	client, _ := ctx.Client(utils.TestClientID)
 	policy := goidc.NewPolicy(
 		"policy_id",
-		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },
-		func(ctx goidc.OAuthContext, as *goidc.AuthnSession) goidc.AuthnStatus {
+		func(ctx goidc.Context, c *goidc.Client, s *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.Context, as *goidc.AuthnSession) goidc.AuthnStatus {
 			return goidc.StatusSuccess
 		},
 	)
@@ -203,8 +266,8 @@ func TestInitAuth_ShouldEndWithError(t *testing.T) {
 	client, _ := ctx.Client(utils.TestClientID)
 	policy := goidc.NewPolicy(
 		"policy_id",
-		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },
-		func(ctx goidc.OAuthContext, as *goidc.AuthnSession) goidc.AuthnStatus {
+		func(ctx goidc.Context, c *goidc.Client, s *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.Context, as *goidc.AuthnSession) goidc.AuthnStatus {
 			return goidc.StatusFailure
 		},
 	)
@@ -235,8 +298,8 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 	client, _ := ctx.Client(utils.TestClientID)
 	policy := goidc.NewPolicy(
 		"policy_id",
-		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },
-		func(ctx goidc.OAuthContext, as *goidc.AuthnSession) goidc.AuthnStatus {
+		func(ctx goidc.Context, c *goidc.Client, s *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.Context, as *goidc.AuthnSession) goidc.AuthnStatus {
 			return goidc.StatusInProgress
 		},
 	)
@@ -274,7 +337,7 @@ func TestInitAuth_WithPAR(t *testing.T) {
 
 	requestURI := "urn:goidc:random_value"
 	require.Nil(t, ctx.CreateOrUpdateAuthnSession(
-		goidc.AuthnSession{
+		&goidc.AuthnSession{
 			ID: uuid.NewString(),
 			AuthorizationParameters: goidc.AuthorizationParameters{
 				RequestURI:   requestURI,
@@ -288,8 +351,8 @@ func TestInitAuth_WithPAR(t *testing.T) {
 	))
 	policy := goidc.NewPolicy(
 		"policy_id",
-		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },
-		func(ctx goidc.OAuthContext, as *goidc.AuthnSession) goidc.AuthnStatus {
+		func(ctx goidc.Context, c *goidc.Client, s *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.Context, as *goidc.AuthnSession) goidc.AuthnStatus {
 			return goidc.StatusSuccess
 		},
 	)
@@ -324,15 +387,15 @@ func TestContinueAuthentication(t *testing.T) {
 	ctx := utils.NewTestContext(t)
 	policy := goidc.NewPolicy(
 		"policy_id",
-		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool { return true },
-		func(ctx goidc.OAuthContext, as *goidc.AuthnSession) goidc.AuthnStatus {
+		func(ctx goidc.Context, c *goidc.Client, s *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.Context, as *goidc.AuthnSession) goidc.AuthnStatus {
 			return goidc.StatusInProgress
 		},
 	)
 	ctx.Policies = []goidc.AuthnPolicy{policy}
 
 	callbackID := "random_callback_id"
-	require.Nil(t, ctx.CreateOrUpdateAuthnSession(goidc.AuthnSession{
+	require.Nil(t, ctx.CreateOrUpdateAuthnSession(&goidc.AuthnSession{
 		PolicyID:           policy.ID,
 		CallbackID:         callbackID,
 		ExpiresAtTimestamp: goidc.TimestampNow() + 60,

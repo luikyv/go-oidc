@@ -6,6 +6,7 @@ import (
 
 	"github.com/luikymagno/goidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSplitStringWithSpaces_HappyPath(t *testing.T) {
@@ -31,19 +32,25 @@ func TestSplitStringWithSpaces_HappyPath(t *testing.T) {
 }
 
 func TestGenerateRandomString_ShouldGenerateRandomStrings(t *testing.T) {
-	assert.NotEqual(t, goidc.RandomString(10, 10), goidc.RandomString(10, 10))
+	// When
+	s1, err1 := goidc.RandomString(10)
+	s2, err2 := goidc.RandomString(10)
+
+	// Then.
+	require.Nil(t, err1)
+	require.Nil(t, err2)
+	assert.NotEqual(t, s1, s2)
 }
 
 func TestGenerateRandomString_WithDifferentLengths(t *testing.T) {
 
 	// Given.
 	var lengthRanges = []struct {
-		minLength int
-		maxLength int
+		length int
 	}{
-		{10, 15},
-		{20, 30},
-		{10, 10},
+		{10},
+		{20},
+		{10},
 	}
 
 	for i, lengthRange := range lengthRanges {
@@ -51,22 +58,32 @@ func TestGenerateRandomString_WithDifferentLengths(t *testing.T) {
 			fmt.Sprintf("case %d", i),
 			func(t *testing.T) {
 				// When.
-				randString := goidc.RandomString(lengthRange.minLength, lengthRange.maxLength)
+				randString, err := goidc.RandomString(lengthRange.length)
 
 				// Then.
-				assert.GreaterOrEqual(t, len(randString), lengthRange.minLength, "invalid length")
-				assert.LessOrEqual(t, len(randString), lengthRange.maxLength, "invalid length")
+				assert.Nil(t, err)
+				assert.Len(t, randString, lengthRange.length, "invalid length")
 			},
 		)
 	}
 }
 
 func TestGenerateCallbackID(t *testing.T) {
-	assert.Len(t, goidc.CallbackID(), goidc.CallbackIDLength, "invalid length")
+	// When.
+	callbackID, err := goidc.CallbackID()
+
+	// Then.
+	assert.Nil(t, err)
+	assert.Len(t, callbackID, goidc.CallbackIDLength, "invalid length")
 }
 
 func TestGenerateAuthorizationCode(t *testing.T) {
-	assert.Len(t, goidc.AuthorizationCode(), goidc.AuthorizationCodeLength, "invalid length")
+	// When.
+	code, err := goidc.AuthorizationCode()
+
+	// Then.
+	assert.Nil(t, err)
+	assert.Len(t, code, goidc.AuthorizationCodeLength, "invalid length")
 }
 
 func TestContainsAll(t *testing.T) {

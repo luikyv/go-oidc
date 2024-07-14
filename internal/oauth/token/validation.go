@@ -6,7 +6,7 @@ import (
 )
 
 func validateTokenBindingIsRequired(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 ) goidc.OAuthError {
 	if !ctx.SenderConstrainedTokenIsRequired {
 		return nil
@@ -32,9 +32,9 @@ func validateTokenBindingIsRequired(
 }
 
 func validateTokenBindingRequestWithDPOP(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	_ utils.TokenRequest,
-	client goidc.Client,
+	client *goidc.Client,
 ) goidc.OAuthError {
 
 	dpopJWT, ok := ctx.DPOPJWT()

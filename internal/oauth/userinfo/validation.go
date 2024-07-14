@@ -6,8 +6,8 @@ import (
 )
 
 func validateUserInfoRequest(
-	ctx utils.OAuthContext,
-	grantSession goidc.GrantSession,
+	ctx *utils.Context,
+	grantSession *goidc.GrantSession,
 	token string,
 	tokenType goidc.TokenType,
 ) goidc.OAuthError {
@@ -27,10 +27,10 @@ func validateUserInfoRequest(
 }
 
 func validateDPOP(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	token string,
 	tokenType goidc.TokenType,
-	grantSession goidc.GrantSession,
+	grantSession *goidc.GrantSession,
 ) goidc.OAuthError {
 
 	if grantSession.JWKThumbprint == "" {
@@ -56,8 +56,8 @@ func validateDPOP(
 }
 
 func validateTLSProofOfPossesion(
-	ctx utils.OAuthContext,
-	grantSession goidc.GrantSession,
+	ctx *utils.Context,
+	grantSession *goidc.GrantSession,
 ) goidc.OAuthError {
 	if grantSession.ClientCertificateThumbprint == "" {
 		return nil

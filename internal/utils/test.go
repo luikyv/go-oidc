@@ -31,10 +31,10 @@ var (
 	TestServerPrivateJWK = PrivateRS256JWK(nil, TestKeyID)
 )
 
-func NewTestClient(_ *testing.T) goidc.Client {
+func NewTestClient(_ *testing.T) *goidc.Client {
 	hashedRegistrationAccessToken, _ := bcrypt.GenerateFromPassword([]byte(TestClientRegistrationAccessToken), bcrypt.DefaultCost)
 	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(TestClientSecret), bcrypt.DefaultCost)
-	return goidc.Client{
+	return &goidc.Client{
 		ID:                            TestClientID,
 		HashedSecret:                  string(hashedClientSecret),
 		HashedRegistrationAccessToken: string(hashedRegistrationAccessToken),
@@ -61,7 +61,7 @@ func NewTestClient(_ *testing.T) goidc.Client {
 	}
 }
 
-func NewTestContext(t *testing.T) OAuthContext {
+func NewTestContext(t *testing.T) *Context {
 	config := Configuration{
 		Profile:             goidc.ProfileOpenID,
 		Host:                TestHost,
@@ -76,6 +76,7 @@ func NewTestContext(t *testing.T) OAuthContext {
 			goidc.GrantClientCredentials,
 			goidc.GrantImplicit,
 			goidc.GrantRefreshToken,
+			goidc.GrantIntrospection,
 		},
 		ResponseTypes: []goidc.ResponseType{
 			goidc.ResponseTypeCode,
@@ -89,7 +90,7 @@ func NewTestContext(t *testing.T) OAuthContext {
 		DefaultTokenSignatureKeyID:    TestServerPrivateJWK.KeyID(),
 		DefaultUserInfoSignatureKeyID: TestServerPrivateJWK.KeyID(),
 		UserInfoSignatureKeyIDs:       []string{TestServerPrivateJWK.KeyID()},
-		TokenOptions: func(client goidc.Client, scopes string) (goidc.TokenOptions, error) {
+		TokenOptions: func(client *goidc.Client, scopes string) (goidc.TokenOptions, error) {
 			return goidc.TokenOptions{
 				TokenLifetimeSecs: 60,
 				TokenFormat:       goidc.TokenFormatJWT,
@@ -97,7 +98,7 @@ func NewTestContext(t *testing.T) OAuthContext {
 		},
 		AuthenticationSessionTimeoutSecs: 60,
 	}
-	ctx := OAuthContext{
+	ctx := Context{
 		Configuration: config,
 		Request:       httptest.NewRequest(http.MethodGet, TestHost, nil),
 		Response:      httptest.NewRecorder(),
@@ -105,12 +106,12 @@ func NewTestContext(t *testing.T) OAuthContext {
 
 	require.Nil(t, ctx.CreateOrUpdateClient(NewTestClient(t)), "could not create the test client")
 
-	return ctx
+	return &ctx
 }
 
-func AuthnSessions(_ *testing.T, ctx OAuthContext) []goidc.AuthnSession {
+func AuthnSessions(_ *testing.T, ctx *Context) []*goidc.AuthnSession {
 	sessionManager, _ := ctx.AuthnSessionManager.(*inmemory.AuthnSessionManager)
-	sessions := make([]goidc.AuthnSession, 0, len(sessionManager.Sessions))
+	sessions := make([]*goidc.AuthnSession, 0, len(sessionManager.Sessions))
 	for _, s := range sessionManager.Sessions {
 		sessions = append(sessions, s)
 	}
@@ -118,9 +119,9 @@ func AuthnSessions(_ *testing.T, ctx OAuthContext) []goidc.AuthnSession {
 	return sessions
 }
 
-func GrantSessions(_ *testing.T, ctx OAuthContext) []goidc.GrantSession {
+func GrantSessions(_ *testing.T, ctx *Context) []*goidc.GrantSession {
 	manager, _ := ctx.GrantSessionManager.(*inmemory.GrantSessionManager)
-	tokens := make([]goidc.GrantSession, 0, len(manager.Sessions))
+	tokens := make([]*goidc.GrantSession, 0, len(manager.Sessions))
 	for _, t := range manager.Sessions {
 		tokens = append(tokens, t)
 	}
@@ -128,9 +129,9 @@ func GrantSessions(_ *testing.T, ctx OAuthContext) []goidc.GrantSession {
 	return tokens
 }
 
-func Clients(_ *testing.T, ctx OAuthContext) []goidc.Client {
+func Clients(_ *testing.T, ctx *Context) []*goidc.Client {
 	manager, _ := ctx.ClientManager.(*inmemory.ClientManager)
-	clients := make([]goidc.Client, 0, len(manager.Clients))
+	clients := make([]*goidc.Client, 0, len(manager.Clients))
 	for _, c := range manager.Clients {
 		clients = append(clients, c)
 	}

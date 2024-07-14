@@ -4,7 +4,10 @@ import (
 	"crypto/x509"
 	"html/template"
 	"log/slog"
+	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type TestContext struct {
@@ -48,7 +51,7 @@ func (testCtx TestContext) Scopes() Scopes {
 }
 
 func (testCtx TestContext) Deadline() (deadline time.Time, ok bool) {
-	return time.Now(), false
+	return time.Now().Add(24 * time.Hour), false
 }
 
 func (testCtx TestContext) Done() <-chan struct{} {
@@ -63,8 +66,13 @@ func (testCtx TestContext) Value(key any) any {
 	return nil
 }
 
-func NewTestContext(scopes Scopes) OAuthContext {
+func NewTestContext(scopes Scopes) Context {
 	return TestContext{
 		OAuthScopes: scopes,
 	}
+}
+
+func AssertTimestampWithin(t *testing.T, expected int, actual int, msgAndArgs ...any) {
+	assert.Greater(t, actual, expected-1, msgAndArgs)
+	assert.Less(t, actual, expected+1, msgAndArgs)
 }

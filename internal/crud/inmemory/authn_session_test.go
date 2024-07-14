@@ -13,7 +13,7 @@ import (
 func TestCreateOrUpdateAuthnSession_HappyPath(t *testing.T) {
 	// Given.
 	manager := inmemory.NewAuthnSessionManager()
-	session := goidc.AuthnSession{
+	session := &goidc.AuthnSession{
 		ID: "random_session_id",
 	}
 
@@ -37,7 +37,7 @@ func TestGetAuthnSessionByCallbackID_HappyPath(t *testing.T) {
 	manager := inmemory.NewAuthnSessionManager()
 	sessionID := "random_session_id"
 	callbackID := "random_callback_id"
-	manager.Sessions[sessionID] = goidc.AuthnSession{
+	manager.Sessions[sessionID] = &goidc.AuthnSession{
 		ID:         sessionID,
 		CallbackID: callbackID,
 	}
@@ -55,7 +55,7 @@ func TestGetAuthnSessionByAuthorizationCode_HappyPath(t *testing.T) {
 	manager := inmemory.NewAuthnSessionManager()
 	sessionID := "random_session_id"
 	authorizationCode := "random_authorization_code"
-	manager.Sessions[sessionID] = goidc.AuthnSession{
+	manager.Sessions[sessionID] = &goidc.AuthnSession{
 		ID:                sessionID,
 		AuthorizationCode: authorizationCode,
 	}
@@ -73,7 +73,7 @@ func TestGetAuthnSessionByRequestURI_HappyPath(t *testing.T) {
 	manager := inmemory.NewAuthnSessionManager()
 	sessionID := "random_session_id"
 	requestURI := "random_request_uri"
-	manager.Sessions[sessionID] = goidc.AuthnSession{
+	manager.Sessions[sessionID] = &goidc.AuthnSession{
 		ID: sessionID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RequestURI: requestURI,
@@ -92,7 +92,7 @@ func TestDeleteAuthnSession_HappyPath(t *testing.T) {
 	// Given.
 	manager := inmemory.NewAuthnSessionManager()
 	sessionID := "random_session_id"
-	manager.Sessions[sessionID] = goidc.AuthnSession{
+	manager.Sessions[sessionID] = &goidc.AuthnSession{
 		ID: sessionID,
 	}
 

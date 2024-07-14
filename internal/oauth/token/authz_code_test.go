@@ -17,20 +17,19 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 	ctx := utils.NewTestContext(t)
 
 	authorizationCode := "random_authz_code"
-	session := goidc.AuthnSession{
+	session := &goidc.AuthnSession{
 		ClientID:      utils.TestClientID,
 		GrantedScopes: goidc.ScopeOpenID.String(),
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			Scopes:      goidc.ScopeOpenID.String(),
 			RedirectURI: utils.TestClientRedirectURI,
 		},
-		AuthorizationCode:         authorizationCode,
-		Subject:                   "user_id",
-		CreatedAtTimestamp:        goidc.TimestampNow(),
-		AuthorizationCodeIssuedAt: goidc.TimestampNow(),
-		ExpiresAtTimestamp:        goidc.TimestampNow() + 60,
-		Store:                     make(map[string]any),
-		AdditionalTokenClaims:     make(map[string]any),
+		AuthorizationCode:     authorizationCode,
+		Subject:               "user_id",
+		CreatedAtTimestamp:    goidc.TimestampNow(),
+		ExpiresAtTimestamp:    goidc.TimestampNow() + 60,
+		Store:                 make(map[string]any),
+		AdditionalTokenClaims: make(map[string]any),
 	}
 	require.Nil(t, ctx.CreateOrUpdateAuthnSession(session))
 

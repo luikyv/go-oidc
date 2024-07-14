@@ -11,8 +11,8 @@ import (
 )
 
 func runValidations(
-	provider OpenIDProvider,
-	validators ...func(OpenIDProvider) error,
+	provider Provider,
+	validators ...func(Provider) error,
 ) error {
 	for _, validator := range validators {
 		if err := validator(provider); err != nil {
@@ -22,7 +22,7 @@ func runValidations(
 	return nil
 }
 
-func validateJWKS(provider OpenIDProvider) error {
+func validateJWKS(provider Provider) error {
 	for _, key := range provider.config.PrivateJWKS.Keys {
 		if !key.IsValid() {
 			return fmt.Errorf("the key with ID: %s is not valid", key.KeyID())
@@ -32,7 +32,7 @@ func validateJWKS(provider OpenIDProvider) error {
 	return nil
 }
 
-func validateSignatureKeys(provider OpenIDProvider) error {
+func validateSignatureKeys(provider Provider) error {
 
 	for _, keyID := range slices.Concat(
 		[]string{provider.config.DefaultUserInfoSignatureKeyID},
@@ -57,7 +57,7 @@ func validateSignatureKeys(provider OpenIDProvider) error {
 	return nil
 }
 
-func validateEncryptionKeys(provider OpenIDProvider) error {
+func validateEncryptionKeys(provider Provider) error {
 	for _, keyID := range slices.Concat(
 		provider.config.JARKeyEncryptionIDs,
 	) {
@@ -75,7 +75,7 @@ func validateEncryptionKeys(provider OpenIDProvider) error {
 	return nil
 }
 
-func validatePrivateKeyJWTSignatureAlgorithms(provider OpenIDProvider) error {
+func validatePrivateKeyJWTSignatureAlgorithms(provider Provider) error {
 	for _, signatureAlgorithm := range provider.config.PrivateKeyJWTSignatureAlgorithms {
 		if strings.HasPrefix(string(signatureAlgorithm), "HS") {
 			return errors.New("symetric algorithms are not allowed for private_key_jwt authentication")
@@ -85,7 +85,7 @@ func validatePrivateKeyJWTSignatureAlgorithms(provider OpenIDProvider) error {
 	return nil
 }
 
-func validateClientSecretJWTSignatureAlgorithms(provider OpenIDProvider) error {
+func validateClientSecretJWTSignatureAlgorithms(provider Provider) error {
 	for _, signatureAlgorithm := range provider.config.ClientSecretJWTSignatureAlgorithms {
 		if !strings.HasPrefix(string(signatureAlgorithm), "HS") {
 			return errors.New("assymetric algorithms are not allowed for client_secret_jwt authentication")
@@ -95,7 +95,7 @@ func validateClientSecretJWTSignatureAlgorithms(provider OpenIDProvider) error {
 	return nil
 }
 
-func validateIntrospectionClientAuthnMethods(provider OpenIDProvider) error {
+func validateIntrospectionClientAuthnMethods(provider Provider) error {
 	if provider.config.IntrospectionIsEnabled && (!goidc.ContainsAll(provider.config.ClientAuthnMethods, provider.config.IntrospectionClientAuthnMethods...) ||
 		slices.Contains(provider.config.IntrospectionClientAuthnMethods, goidc.ClientAuthnNone)) {
 		return errors.New("invalid client authentication method for token introspection")
@@ -104,7 +104,7 @@ func validateIntrospectionClientAuthnMethods(provider OpenIDProvider) error {
 	return nil
 }
 
-func validateUserInfoEncryption(provider OpenIDProvider) error {
+func validateUserInfoEncryption(provider Provider) error {
 	if provider.config.UserInfoEncryptionIsEnabled && !slices.Contains(provider.config.UserInfoContentEncryptionAlgorithms, jose.A128CBC_HS256) {
 		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm for user information")
 	}
@@ -112,7 +112,7 @@ func validateUserInfoEncryption(provider OpenIDProvider) error {
 	return nil
 }
 
-func validateJAREncryption(provider OpenIDProvider) error {
+func validateJAREncryption(provider Provider) error {
 	if provider.config.JAREncryptionIsEnabled && !provider.config.JARIsEnabled {
 		return errors.New("JAR must be enabled if JAR encryption is enabled")
 	}
@@ -124,7 +124,7 @@ func validateJAREncryption(provider OpenIDProvider) error {
 	return nil
 }
 
-func validateJARMEncryption(provider OpenIDProvider) error {
+func validateJARMEncryption(provider Provider) error {
 	if provider.config.JARMEncryptionIsEnabled && !provider.config.JARMIsEnabled {
 		return errors.New("JARM must be enabled if JARM encryption is enabled")
 	}
@@ -136,7 +136,7 @@ func validateJARMEncryption(provider OpenIDProvider) error {
 	return nil
 }
 
-func validateTokenBinding(provider OpenIDProvider) error {
+func validateTokenBinding(provider Provider) error {
 	if provider.config.SenderConstrainedTokenIsRequired && !provider.config.DPOPIsEnabled && !provider.config.TLSBoundTokensIsEnabled {
 		return errors.New("if sender constraining tokens is required, at least one mechanism must be enabled, either DPoP or TLS")
 	}
@@ -144,7 +144,7 @@ func validateTokenBinding(provider OpenIDProvider) error {
 	return nil
 }
 
-func validateOpenIDDefaultIDTokenSignatureAlgorithm(provider OpenIDProvider) error {
+func validateOpenIDDefaultIDTokenSignatureAlgorithm(provider Provider) error {
 	if provider.config.Profile != goidc.ProfileOpenID {
 		return nil
 	}
@@ -157,7 +157,7 @@ func validateOpenIDDefaultIDTokenSignatureAlgorithm(provider OpenIDProvider) err
 	return nil
 }
 
-func validateOpenIDDefaultJARMSignatureAlgorithm(provider OpenIDProvider) error {
+func validateOpenIDDefaultJARMSignatureAlgorithm(provider Provider) error {
 	if provider.config.Profile != goidc.ProfileOpenID || !provider.config.JARMIsEnabled {
 		return nil
 	}
@@ -170,7 +170,7 @@ func validateOpenIDDefaultJARMSignatureAlgorithm(provider OpenIDProvider) error 
 	return nil
 }
 
-func validateFAPI2ClientAuthnMethods(provider OpenIDProvider) error {
+func validateFAPI2ClientAuthnMethods(provider Provider) error {
 	if provider.config.Profile != goidc.ProfileFAPI2 {
 		return nil
 	}
@@ -185,7 +185,7 @@ func validateFAPI2ClientAuthnMethods(provider OpenIDProvider) error {
 	return nil
 }
 
-func validateFAPI2ImplicitGrantIsNotAllowed(provider OpenIDProvider) error {
+func validateFAPI2ImplicitGrantIsNotAllowed(provider Provider) error {
 	if provider.config.Profile != goidc.ProfileFAPI2 {
 		return nil
 	}
@@ -197,7 +197,7 @@ func validateFAPI2ImplicitGrantIsNotAllowed(provider OpenIDProvider) error {
 	return nil
 }
 
-func validateFAPI2PARIsRequired(provider OpenIDProvider) error {
+func validateFAPI2PARIsRequired(provider Provider) error {
 	if provider.config.Profile != goidc.ProfileFAPI2 {
 		return nil
 	}
@@ -209,7 +209,7 @@ func validateFAPI2PARIsRequired(provider OpenIDProvider) error {
 	return nil
 }
 
-func validateFAPI2PkceIsRequired(provider OpenIDProvider) error {
+func validateFAPI2PkceIsRequired(provider Provider) error {
 	if provider.config.Profile != goidc.ProfileFAPI2 {
 		return nil
 	}
@@ -221,7 +221,7 @@ func validateFAPI2PkceIsRequired(provider OpenIDProvider) error {
 	return nil
 }
 
-func validateFAPI2IssuerResponseParamIsRequired(provider OpenIDProvider) error {
+func validateFAPI2IssuerResponseParamIsRequired(provider Provider) error {
 	if provider.config.Profile != goidc.ProfileFAPI2 {
 		return nil
 	}
@@ -233,7 +233,7 @@ func validateFAPI2IssuerResponseParamIsRequired(provider OpenIDProvider) error {
 	return nil
 }
 
-func validateFAPI2RefreshTokenRotation(provider OpenIDProvider) error {
+func validateFAPI2RefreshTokenRotation(provider Provider) error {
 	if provider.config.Profile != goidc.ProfileFAPI2 {
 		return nil
 	}

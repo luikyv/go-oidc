@@ -8,7 +8,7 @@ import (
 )
 
 func handleRefreshTokenGrantTokenCreation(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	req utils.TokenRequest,
 ) (
 	utils.TokenResponse,
@@ -33,7 +33,7 @@ func handleRefreshTokenGrantTokenCreation(
 		return utils.TokenResponse{}, err
 	}
 
-	if err := updateRefreshTokenGrantSession(ctx, &grantSession, req, token); err != nil {
+	if err := updateRefreshTokenGrantSession(ctx, grantSession, req, token); err != nil {
 		return utils.TokenResponse{}, err
 	}
 
@@ -59,7 +59,7 @@ func handleRefreshTokenGrantTokenCreation(
 }
 
 func updateRefreshTokenGrantSession(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	grantSession *goidc.GrantSession,
 	req utils.TokenRequest,
 	token utils.Token,
@@ -69,7 +69,11 @@ func updateRefreshTokenGrantSession(
 	grantSession.TokenID = token.ID
 
 	if ctx.ShouldRotateRefreshTokens {
-		grantSession.RefreshToken = utils.RefreshToken()
+		token, err := utils.RefreshToken()
+		if err != nil {
+			return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		}
+		grantSession.RefreshToken = token
 	}
 
 	if req.Scopes != "" {
@@ -77,7 +81,7 @@ func updateRefreshTokenGrantSession(
 	}
 
 	ctx.Logger().Debug("updating grant session for refresh_token grant")
-	if err := ctx.CreateOrUpdateGrantSession(*grantSession); err != nil {
+	if err := ctx.CreateOrUpdateGrantSession(grantSession); err != nil {
 		ctx.Logger().Error("error updating grant session during refresh_token grant",
 			slog.String("error", err.Error()), slog.String("session_id", grantSession.ID))
 		return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
@@ -87,11 +91,11 @@ func updateRefreshTokenGrantSession(
 }
 
 func getAuthenticatedClientAndGrantSession(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	req utils.TokenRequest,
 ) (
-	goidc.Client,
-	goidc.GrantSession,
+	*goidc.Client,
+	*goidc.GrantSession,
 	goidc.OAuthError,
 ) {
 
@@ -103,16 +107,16 @@ func getAuthenticatedClientAndGrantSession(
 	authenticatedClient, err := utils.GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
 		ctx.Logger().Debug("error while loading the client.", slog.String("error", err.Error()))
-		return goidc.Client{}, goidc.GrantSession{}, err
+		return nil, nil, err
 	}
 	ctx.Logger().Debug("the client was loaded successfully.")
 
 	ctx.Logger().Debug("wait for the session.")
 	grantSessionResult := <-grantSessionResultCh
-	grantSession, err := grantSessionResult.Result.(goidc.GrantSession), grantSessionResult.Err
+	grantSession, err := grantSessionResult.Result.(*goidc.GrantSession), grantSessionResult.Err
 	if err != nil {
 		ctx.Logger().Debug("error while loading the token.", slog.String("error", err.Error()))
-		return goidc.Client{}, goidc.GrantSession{}, err
+		return nil, nil, err
 	}
 	ctx.Logger().Debug("the session was loaded successfully.")
 
@@ -120,14 +124,14 @@ func getAuthenticatedClientAndGrantSession(
 }
 
 func getGrantSessionByRefreshToken(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	refreshToken string,
 	ch chan<- utils.ResultChannel,
 ) {
 	grantSession, err := ctx.GrantSessionByRefreshToken(refreshToken)
 	if err != nil {
 		ch <- utils.ResultChannel{
-			Result: goidc.GrantSession{},
+			Result: nil,
 			Err:    goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid refresh_token"),
 		}
 	}
@@ -149,10 +153,10 @@ func preValidateRefreshTokenGrantRequest(
 }
 
 func validateRefreshTokenGrantRequest(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	req utils.TokenRequest,
-	client goidc.Client,
-	grantSession goidc.GrantSession,
+	client *goidc.Client,
+	grantSession *goidc.GrantSession,
 ) goidc.OAuthError {
 
 	if !client.IsGrantTypeAllowed(goidc.GrantRefreshToken) {
@@ -178,9 +182,9 @@ func validateRefreshTokenGrantRequest(
 }
 
 func validateRefreshTokenProofOfPossesionForPublicClients(
-	ctx utils.OAuthContext,
-	client goidc.Client,
-	grantSession goidc.GrantSession,
+	ctx *utils.Context,
+	client *goidc.Client,
+	grantSession *goidc.GrantSession,
 ) goidc.OAuthError {
 
 	// Refresh tokens are bound to the client. If the client is authenticated,

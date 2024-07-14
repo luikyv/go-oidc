@@ -8,7 +8,7 @@ import (
 )
 
 func handleClientCredentialsGrantTokenCreation(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	req utils.TokenRequest,
 ) (
 	utils.TokenResponse,
@@ -52,27 +52,30 @@ func handleClientCredentialsGrantTokenCreation(
 }
 
 func generateClientCredentialsGrantSession(
-	ctx utils.OAuthContext,
-	_ goidc.Client,
+	ctx *utils.Context,
+	_ *goidc.Client,
 	token utils.Token,
 	grantOptions goidc.GrantOptions,
-) (goidc.GrantSession, goidc.OAuthError) {
+) (
+	*goidc.GrantSession,
+	goidc.OAuthError,
+) {
 
 	grantSession := utils.NewGrantSession(grantOptions, token)
 	ctx.Logger().Debug("creating grant session for client_credentials grant")
 	if err := ctx.CreateOrUpdateGrantSession(grantSession); err != nil {
 		ctx.Logger().Error("error creating a grant session during client_credentials grant",
 			slog.String("error", err.Error()))
-		return goidc.GrantSession{}, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return nil, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
 	return grantSession, nil
 }
 
 func validateClientCredentialsGrantRequest(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	req utils.TokenRequest,
-	client goidc.Client,
+	client *goidc.Client,
 ) goidc.OAuthError {
 
 	if !client.IsGrantTypeAllowed(goidc.GrantClientCredentials) {
@@ -101,8 +104,8 @@ func validateClientCredentialsGrantRequest(
 }
 
 func newClientCredentialsGrantOptions(
-	ctx utils.OAuthContext,
-	client goidc.Client,
+	ctx *utils.Context,
+	client *goidc.Client,
 	req utils.TokenRequest,
 ) (
 	goidc.GrantOptions,

@@ -27,7 +27,7 @@ func RunFAPI2OpenIDProvider() error {
 	database := conn.Database("goidc")
 
 	// Create the manager.
-	openidProvider := goidcp.NewProvider(
+	openidProvider := goidcp.New(
 		issuer,
 		goidcp.NewInMemoryClientManager(),
 		goidcp.NewMongoDBAuthnSessionManager(database),
@@ -60,7 +60,7 @@ func RunFAPI2OpenIDProvider() error {
 		goidc.ACRMaceIncommonIAPSilver,
 	)
 	openidProvider.EnableDynamicClientRegistration(nil, true)
-	openidProvider.SetTokenOptions(func(c goidc.Client, s string) (goidc.TokenOptions, error) {
+	openidProvider.SetTokenOptions(func(c *goidc.Client, s string) (goidc.TokenOptions, error) {
 		return goidc.NewJWTTokenOptions(ps256ServerKeyID, 600, true), nil
 	})
 	openidProvider.EnableUserInfoEncryption(
@@ -78,7 +78,7 @@ func RunFAPI2OpenIDProvider() error {
 	for _, jwk := range clientOnePrivateJWKS.Keys {
 		clientOnePublicJWKS.Keys = append(clientOnePublicJWKS.Keys, jwk.Public())
 	}
-	openidProvider.AddClient(goidc.Client{
+	openidProvider.AddClient(&goidc.Client{
 		ID: "client_one",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod:  goidc.ClientAuthnPrivateKeyJWT,
@@ -99,7 +99,7 @@ func RunFAPI2OpenIDProvider() error {
 	for _, jwk := range clientTwoPrivateJWKS.Keys {
 		clientTwoPublicJWKS.Keys = append(clientTwoPublicJWKS.Keys, jwk.Public())
 	}
-	openidProvider.AddClient(goidc.Client{
+	openidProvider.AddClient(&goidc.Client{
 		ID: "client_two",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod:  goidc.ClientAuthnPrivateKeyJWT,
@@ -119,7 +119,7 @@ func RunFAPI2OpenIDProvider() error {
 	// Create Policy
 	openidProvider.AddPolicy(goidc.NewPolicy(
 		"policy",
-		func(ctx goidc.OAuthContext, client goidc.Client, session *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.Context, client *goidc.Client, session *goidc.AuthnSession) bool { return true },
 		AuthenticateUserWithNoInteraction,
 	))
 

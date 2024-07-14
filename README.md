@@ -10,7 +10,7 @@ This library implements the following specifications:
 * [`RFC 7636` - Proof Key for Code Exchange by OAuth Public Clients (PKCE)](https://www.rfc-editor.org/rfc/rfc7636.html)
 * [`RFC 9207` - OAuth 2.0 Authorization Server Issuer Identification](https://www.rfc-editor.org/rfc/rfc9207.html)
 * [`RFC 9449` - OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://www.rfc-editor.org/rfc/rfc9449.html)
-* [`RFC 7662` OAuth 2.0 Token Introspection](https://www.rfc-editor.org/rfc/rfc7662.html)
+* [`RFC 7662` - OAuth 2.0 Token Introspection](https://www.rfc-editor.org/rfc/rfc7662.html)
 
 ## Installation
 To start using the `goidc` module in your project, install it with
@@ -58,6 +58,7 @@ To see the documentation, you can install `pkgsite` with
 ```
 go install golang.org/x/pkgsite/cmd/pkgsite@latest
 ```
+
 And the run
 ```
 make docs
@@ -65,7 +66,9 @@ make docs
 
 Make sure the `GOBIN` environment variable is set.
 
-## To Evaluate
+## To Do's
+* Don't use the default http client.
+* Use pointers for large structs.
 * revoke by jti.
 * Add docs, docs should start with the name of the thing.
 * How golang loads packages?

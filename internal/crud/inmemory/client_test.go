@@ -13,7 +13,7 @@ import (
 func TestCreateOrUpdateClient_HappyPath(t *testing.T) {
 	// Given.
 	manager := inmemory.NewClientManager()
-	client := goidc.Client{
+	client := &goidc.Client{
 		ID: "random_client_id",
 	}
 
@@ -29,7 +29,7 @@ func TestGetClient_HappyPath(t *testing.T) {
 	// Given.
 	manager := inmemory.NewClientManager()
 	clientID := "random_client_id"
-	manager.Clients[clientID] = goidc.Client{
+	manager.Clients[clientID] = &goidc.Client{
 		ID: clientID,
 	}
 
@@ -57,7 +57,7 @@ func TestDeleteClient_HappyPath(t *testing.T) {
 	// Given.
 	manager := inmemory.NewClientManager()
 	clientID := "random_client_id"
-	manager.Clients[clientID] = goidc.Client{
+	manager.Clients[clientID] = &goidc.Client{
 		ID: clientID,
 	}
 

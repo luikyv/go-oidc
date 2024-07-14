@@ -7,7 +7,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func setDefaults(ctx utils.OAuthContext, dynamicClient *utils.DynamicClientRequest) {
+func setDefaults(ctx *utils.Context, dynamicClient *utils.DynamicClientRequest) goidc.OAuthError {
 	if dynamicClient.AuthnMethod == "" {
 		dynamicClient.AuthnMethod = goidc.ClientAuthnSecretBasic
 	}
@@ -15,7 +15,11 @@ func setDefaults(ctx utils.OAuthContext, dynamicClient *utils.DynamicClientReque
 	if dynamicClient.AuthnMethod == goidc.ClientAuthnSecretPost ||
 		dynamicClient.AuthnMethod == goidc.ClientAuthnSecretBasic ||
 		dynamicClient.AuthnMethod == goidc.ClientAuthnSecretJWT {
-		dynamicClient.Secret = utils.ClientSecret()
+		secret, err := utils.ClientSecret()
+		if err != nil {
+			return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		}
+		dynamicClient.Secret = secret
 	}
 
 	if dynamicClient.Scopes != "" {
@@ -46,29 +50,49 @@ func setDefaults(ctx utils.OAuthContext, dynamicClient *utils.DynamicClientReque
 	if dynamicClient.Attributes == nil {
 		dynamicClient.Attributes = make(map[string]any)
 	}
+
+	return nil
 }
 
-func setCreationDefaults(ctx utils.OAuthContext, dynamicClient *utils.DynamicClientRequest) {
-	dynamicClient.ID = utils.ClientID()
-	dynamicClient.RegistrationAccessToken = utils.RegistrationAccessToken()
-	setDefaults(ctx, dynamicClient)
+func setCreationDefaults(
+	ctx *utils.Context,
+	dynamicClient *utils.DynamicClientRequest,
+) goidc.OAuthError {
+	id, err := utils.ClientID()
+	if err != nil {
+		return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+	}
+	dynamicClient.ID = id
+
+	token, err := utils.RegistrationAccessToken()
+	if err != nil {
+		return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+	}
+	dynamicClient.RegistrationAccessToken = token
+
+	return setDefaults(ctx, dynamicClient)
 }
 
 func setUpdateDefaults(
-	ctx utils.OAuthContext,
-	client goidc.Client,
+	ctx *utils.Context,
+	client *goidc.Client,
 	dynamicClient *utils.DynamicClientRequest,
-) {
+) goidc.OAuthError {
 	dynamicClient.ID = client.ID
 	if ctx.ShouldRotateRegistrationTokens {
-		dynamicClient.RegistrationAccessToken = utils.RegistrationAccessToken()
+		token, err := utils.RegistrationAccessToken()
+		if err != nil {
+			return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		}
+		dynamicClient.RegistrationAccessToken = token
 	}
-	setDefaults(ctx, dynamicClient)
+
+	return setDefaults(ctx, dynamicClient)
 }
 
-func newClient(dynamicClient utils.DynamicClientRequest) goidc.Client {
+func newClient(dynamicClient utils.DynamicClientRequest) *goidc.Client {
 	hashedRegistrationAccessToken, _ := bcrypt.GenerateFromPassword([]byte(dynamicClient.RegistrationAccessToken), bcrypt.DefaultCost)
-	client := goidc.Client{
+	client := &goidc.Client{
 		ID:                            dynamicClient.ID,
 		HashedRegistrationAccessToken: string(hashedRegistrationAccessToken),
 		ClientMetaInfo:                dynamicClient.ClientMetaInfo,
@@ -86,29 +110,29 @@ func newClient(dynamicClient utils.DynamicClientRequest) goidc.Client {
 	return client
 }
 
-func getClientRegistrationURI(ctx utils.OAuthContext, clientID string) string {
+func getClientRegistrationURI(ctx *utils.Context, clientID string) string {
 	return ctx.Host + string(goidc.EndpointDynamicClient) + "/" + clientID
 }
 
 func getProtectedClient(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	dynamicClient utils.DynamicClientRequest,
 ) (
-	goidc.Client,
+	*goidc.Client,
 	goidc.OAuthError,
 ) {
 	if dynamicClient.ID == "" {
-		return goidc.Client{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid client_id")
+		return nil, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid client_id")
 	}
 
 	client, err := ctx.Client(dynamicClient.ID)
 	if err != nil {
-		return goidc.Client{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, err.Error())
+		return nil, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, err.Error())
 	}
 
 	if dynamicClient.RegistrationAccessToken == "" ||
 		!client.IsRegistrationAccessTokenValid(dynamicClient.RegistrationAccessToken) {
-		return goidc.Client{}, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "invalid token")
+		return nil, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "invalid token")
 	}
 
 	return client, nil

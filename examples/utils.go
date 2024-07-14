@@ -32,7 +32,7 @@ func PrivateJWKS(filename string) goidc.JSONWebKeySet {
 }
 
 func AuthenticateUserWithNoInteraction(
-	ctx goidc.OAuthContext,
+	ctx goidc.Context,
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 	session.SetUserID("random_user_id")
@@ -84,7 +84,7 @@ func AuthenticateUserWithNoInteraction(
 }
 
 func AuthenticateUser(
-	ctx goidc.OAuthContext,
+	ctx goidc.Context,
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 
@@ -108,7 +108,7 @@ func AuthenticateUser(
 }
 
 func identifyUser(
-	ctx goidc.OAuthContext,
+	ctx goidc.Context,
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 
@@ -134,7 +134,7 @@ func identifyUser(
 }
 
 func authenticateWithPassword(
-	ctx goidc.OAuthContext,
+	ctx goidc.Context,
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 	password := ctx.FormParam("password")

@@ -2,14 +2,14 @@ package token
 
 import (
 	"log/slog"
-	"reflect"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 func handleAuthorizationCodeGrantTokenCreation(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	req utils.TokenRequest,
 ) (
 	utils.TokenResponse,
@@ -65,10 +65,9 @@ func handleAuthorizationCodeGrantTokenCreation(
 		tokenResp.Scopes = grantOptions.GrantedScopes
 	}
 
-	// WARNING: The deep equal operation can be time consuming.
 	// If the granted auth details is different from the requested one, we must inform it to the client
 	// by sending the granted auth details back in the token response.
-	if !reflect.DeepEqual(session.AuthorizationDetails, grantOptions.GrantedAuthorizationDetails) {
+	if !cmp.Equal(session.AuthorizationDetails, grantOptions.GrantedAuthorizationDetails) {
 		ctx.Logger().Debug("granted auth details is different from the requested by the client")
 		tokenResp.AuthorizationDetails = grantOptions.GrantedAuthorizationDetails
 	}
@@ -77,19 +76,23 @@ func handleAuthorizationCodeGrantTokenCreation(
 }
 
 func generateAuthorizationCodeGrantSession(
-	ctx utils.OAuthContext,
-	client goidc.Client,
+	ctx *utils.Context,
+	client *goidc.Client,
 	token utils.Token,
 	grantOptions goidc.GrantOptions,
 ) (
-	goidc.GrantSession,
+	*goidc.GrantSession,
 	goidc.OAuthError,
 ) {
 
 	grantSession := utils.NewGrantSession(grantOptions, token)
 	if client.IsGrantTypeAllowed(goidc.GrantRefreshToken) && grantOptions.ShouldRefresh {
 		ctx.Logger().Debug("generating refresh token for authorization code grant")
-		grantSession.RefreshToken = utils.RefreshToken()
+		token, err := utils.RefreshToken()
+		if err != nil {
+			return nil, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		}
+		grantSession.RefreshToken = token
 		grantSession.ExpiresAtTimestamp = goidc.TimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
 
@@ -97,17 +100,17 @@ func generateAuthorizationCodeGrantSession(
 	if err := ctx.CreateOrUpdateGrantSession(grantSession); err != nil {
 		ctx.Logger().Error("error creating grant session during authorization_code grant",
 			slog.String("error", err.Error()))
-		return goidc.GrantSession{}, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return nil, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
 	return grantSession, nil
 }
 
 func validateAuthorizationCodeGrantRequest(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	req utils.TokenRequest,
-	client goidc.Client,
-	session goidc.AuthnSession,
+	client *goidc.Client,
+	session *goidc.AuthnSession,
 ) goidc.OAuthError {
 
 	if !client.IsGrantTypeAllowed(goidc.GrantAuthorizationCode) {
@@ -142,10 +145,10 @@ func validateAuthorizationCodeGrantRequest(
 }
 
 func validatePkce(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	req utils.TokenRequest,
-	_ goidc.Client,
-	session goidc.AuthnSession,
+	_ *goidc.Client,
+	session *goidc.AuthnSession,
 ) goidc.OAuthError {
 	// RFC 7636. "...with a minimum length of 43 characters and a maximum length of 128 characters."
 	codeVerifierLengh := len(req.CodeVerifier)
@@ -170,11 +173,11 @@ func validatePkce(
 }
 
 func getAuthenticatedClientAndSession(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	req utils.TokenRequest,
 ) (
-	goidc.Client,
-	goidc.AuthnSession,
+	*goidc.Client,
+	*goidc.AuthnSession,
 	goidc.OAuthError,
 ) {
 
@@ -186,27 +189,27 @@ func getAuthenticatedClientAndSession(
 	authenticatedClient, err := utils.GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
 		ctx.Logger().Debug("error while loading the client", slog.String("error", err.Error()))
-		return goidc.Client{}, goidc.AuthnSession{}, err
+		return nil, nil, err
 	}
 	ctx.Logger().Debug("the client was loaded successfully")
 
 	ctx.Logger().Debug("wait for the session")
 	sessionResult := <-sessionResultCh
-	session, err := sessionResult.Result.(goidc.AuthnSession), sessionResult.Err
+	session, err := sessionResult.Result.(*goidc.AuthnSession), sessionResult.Err
 	if err != nil {
 		ctx.Logger().Debug("error while loading the session", slog.String("error", err.Error()))
-		return goidc.Client{}, goidc.AuthnSession{}, err
+		return nil, nil, err
 	}
 	ctx.Logger().Debug("the session was loaded successfully")
 
 	return authenticatedClient, session, nil
 }
 
-func getSessionByAuthorizationCode(ctx utils.OAuthContext, authorizationCode string, ch chan<- utils.ResultChannel) {
+func getSessionByAuthorizationCode(ctx *utils.Context, authorizationCode string, ch chan<- utils.ResultChannel) {
 	session, err := ctx.AuthnSessionByAuthorizationCode(authorizationCode)
 	if err != nil {
 		ch <- utils.ResultChannel{
-			Result: goidc.AuthnSession{},
+			Result: nil,
 			Err:    goidc.NewWrappingOAuthError(err, goidc.ErrorCodeInvalidGrant, "invalid authorization code"),
 		}
 	}
@@ -216,7 +219,7 @@ func getSessionByAuthorizationCode(ctx utils.OAuthContext, authorizationCode str
 	err = ctx.DeleteAuthnSession(session.ID)
 	if err != nil {
 		ch <- utils.ResultChannel{
-			Result: goidc.AuthnSession{},
+			Result: nil,
 			Err:    goidc.NewWrappingOAuthError(err, goidc.ErrorCodeInternalError, "could not delete session"),
 		}
 	}
@@ -228,10 +231,10 @@ func getSessionByAuthorizationCode(ctx utils.OAuthContext, authorizationCode str
 }
 
 func newAuthorizationCodeGrantOptions(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	req utils.TokenRequest,
-	client goidc.Client,
-	session goidc.AuthnSession,
+	client *goidc.Client,
+	session *goidc.AuthnSession,
 ) (
 	goidc.GrantOptions,
 	goidc.OAuthError,

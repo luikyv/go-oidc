@@ -4,6 +4,7 @@ go 1.22.0
 
 require (
 	github.com/go-jose/go-jose/v4 v4.0.1
+	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.9.0
 	go.mongodb.org/mongo-driver v1.15.1
@@ -13,7 +14,6 @@ require (
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

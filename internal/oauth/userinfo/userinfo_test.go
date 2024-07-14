@@ -15,7 +15,7 @@ import (
 func TestHandleUserInfoRequest_HappyPath(t *testing.T) {
 	// Given.
 	token := "opaque_token"
-	grantSession := goidc.GrantSession{
+	grantSession := &goidc.GrantSession{
 		TokenID:                    token,
 		LastTokenIssuedAtTimestamp: goidc.TimestampNow(),
 		CreatedAtTimestamp:         goidc.TimestampNow(),
@@ -50,7 +50,7 @@ func TestHandleUserInfoRequest_HappyPath(t *testing.T) {
 func TestHandleUserInfoRequest_SignedResponse(t *testing.T) {
 	// Given.
 	token := "opaque_token"
-	grantSession := goidc.GrantSession{
+	grantSession := &goidc.GrantSession{
 		TokenID:                    token,
 		ExpiresAtTimestamp:         goidc.TimestampNow() + 60,
 		LastTokenIssuedAtTimestamp: goidc.TimestampNow() + 60,

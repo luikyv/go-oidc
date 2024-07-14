@@ -19,7 +19,7 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
-	grantSession := goidc.GrantSession{
+	grantSession := &goidc.GrantSession{
 		RefreshToken:       refreshToken,
 		ExpiresAtTimestamp: goidc.TimestampNow() + 60,
 		CreatedAtTimestamp: goidc.TimestampNow(),
@@ -67,7 +67,7 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
-	grantSession := goidc.GrantSession{
+	grantSession := &goidc.GrantSession{
 		RefreshToken:       refreshToken,
 		ActiveScopes:       client.Scopes,
 		ExpiresAtTimestamp: goidc.TimestampNow() - 10,

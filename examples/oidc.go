@@ -25,7 +25,7 @@ func RunOpenIDProvider() error {
 	database := conn.Database("goidc")
 
 	// Create the manager.
-	openidProvider := goidcp.NewProvider(
+	openidProvider := goidcp.New(
 		issuer,
 		goidcp.NewInMemoryClientManager(),
 		goidcp.NewMongoDBAuthnSessionManager(database),
@@ -55,17 +55,17 @@ func RunOpenIDProvider() error {
 		goidc.ACRMaceIncommonIAPBronze,
 		goidc.ACRMaceIncommonIAPSilver,
 	)
-	openidProvider.EnableDynamicClientRegistration(func(ctx goidc.OAuthContext, clientInfo *goidc.ClientMetaInfo) {
+	openidProvider.EnableDynamicClientRegistration(func(ctx goidc.Context, clientInfo *goidc.ClientMetaInfo) {
 		clientInfo.Scopes = goidc.Scopes(scopes).String()
 	}, true)
-	openidProvider.SetTokenOptions(func(c goidc.Client, s string) (goidc.TokenOptions, error) {
+	openidProvider.SetTokenOptions(func(c *goidc.Client, s string) (goidc.TokenOptions, error) {
 		return goidc.NewJWTTokenOptions(serverKeyID, 600, true), nil
 	})
 
 	// Create Policy
 	openidProvider.AddPolicy(goidc.NewPolicy(
 		"policy",
-		func(ctx goidc.OAuthContext, client goidc.Client, session *goidc.AuthnSession) bool { return true },
+		func(ctx goidc.Context, client *goidc.Client, session *goidc.AuthnSession) bool { return true },
 		AuthenticateUserWithNoInteraction,
 	))
 

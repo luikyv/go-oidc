@@ -6,7 +6,7 @@ import (
 )
 
 func HandleTokenCreation(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	req utils.TokenRequest,
 ) (
 	tokenResp utils.TokenResponse,

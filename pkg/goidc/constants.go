@@ -234,7 +234,7 @@ const (
 	HeaderInsecureClientCertificate string = "X-Insecure-Client-Certificate"
 )
 
-const Charset string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const ClientSecretCharset string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 type AuthnStatus string
 

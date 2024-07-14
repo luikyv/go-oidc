@@ -10,9 +10,9 @@ import (
 )
 
 func redirectError(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	err goidc.OAuthError,
-	client goidc.Client,
+	client *goidc.Client,
 ) goidc.OAuthError {
 	var oauthErr goidc.OAuthRedirectError
 	if !errors.As(err, &oauthErr) {
@@ -28,8 +28,8 @@ func redirectError(
 }
 
 func redirectResponse(
-	ctx utils.OAuthContext,
-	client goidc.Client,
+	ctx *utils.Context,
+	client *goidc.Client,
 	params goidc.AuthorizationParameters,
 	redirectParams utils.AuthorizationResponse,
 ) goidc.OAuthError {
@@ -66,8 +66,8 @@ func redirectResponse(
 }
 
 func createJARMResponse(
-	ctx utils.OAuthContext,
-	client goidc.Client,
+	ctx *utils.Context,
+	client *goidc.Client,
 	redirectParams utils.AuthorizationResponse,
 ) (
 	string,
@@ -89,8 +89,8 @@ func createJARMResponse(
 }
 
 func signJARMResponse(
-	ctx utils.OAuthContext,
-	client goidc.Client,
+	ctx *utils.Context,
+	client *goidc.Client,
 	redirectParams utils.AuthorizationResponse,
 ) (
 	string,
@@ -125,9 +125,9 @@ func signJARMResponse(
 }
 
 func encryptJARMResponse(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	responseJWT string,
-	client goidc.Client,
+	client *goidc.Client,
 ) (
 	string,
 	goidc.OAuthError,

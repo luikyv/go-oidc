@@ -20,8 +20,8 @@ type Client struct {
 	ClientMetaInfo                `bson:"inline"`
 }
 
-func (client Client) PublicKey(keyID string) (JSONWebKey, OAuthError) {
-	jwks, oauthErr := client.PublicKeys()
+func (c *Client) PublicKey(keyID string) (JSONWebKey, OAuthError) {
+	jwks, oauthErr := c.PublicKeys()
 	if oauthErr != nil {
 		return JSONWebKey{}, NewOAuthError(ErrorCodeInvalidRequest, oauthErr.Error())
 	}
@@ -34,21 +34,21 @@ func (client Client) PublicKey(keyID string) (JSONWebKey, OAuthError) {
 	return keys[0], nil
 }
 
-func (client Client) JARMEncryptionJWK() (JSONWebKey, OAuthError) {
-	return client.encryptionJWK(client.JARMKeyEncryptionAlgorithm)
+func (c *Client) JARMEncryptionJWK() (JSONWebKey, OAuthError) {
+	return c.encryptionJWK(c.JARMKeyEncryptionAlgorithm)
 }
 
-func (client Client) UserInfoEncryptionJWK() (JSONWebKey, OAuthError) {
-	return client.encryptionJWK(client.UserInfoKeyEncryptionAlgorithm)
+func (c *Client) UserInfoEncryptionJWK() (JSONWebKey, OAuthError) {
+	return c.encryptionJWK(c.UserInfoKeyEncryptionAlgorithm)
 }
 
-func (client Client) IDTokenEncryptionJWK() (JSONWebKey, OAuthError) {
-	return client.encryptionJWK(client.IDTokenKeyEncryptionAlgorithm)
+func (c *Client) IDTokenEncryptionJWK() (JSONWebKey, OAuthError) {
+	return c.encryptionJWK(c.IDTokenKeyEncryptionAlgorithm)
 }
 
 // encryptionJWK returns the encryption JWK based on the algorithm.
-func (client Client) encryptionJWK(algorithm jose.KeyAlgorithm) (JSONWebKey, OAuthError) {
-	jwks, err := client.PublicKeys()
+func (c *Client) encryptionJWK(algorithm jose.KeyAlgorithm) (JSONWebKey, OAuthError) {
+	jwks, err := c.PublicKeys()
 	if err != nil {
 		return JSONWebKey{}, NewOAuthError(ErrorCodeInvalidRequest, err.Error())
 	}
@@ -62,8 +62,8 @@ func (client Client) encryptionJWK(algorithm jose.KeyAlgorithm) (JSONWebKey, OAu
 	return JSONWebKey{}, NewOAuthError(ErrorCodeInvalidClient, fmt.Sprintf("invalid key algorithm: %s", algorithm))
 }
 
-func (client Client) AreScopesAllowed(ctx OAuthContext, requestedScopes string) bool {
-	scopeIDs := SplitStringWithSpaces(client.Scopes)
+func (c *Client) AreScopesAllowed(ctx Context, requestedScopes string) bool {
+	scopeIDs := SplitStringWithSpaces(c.Scopes)
 	clientScopes := ctx.Scopes().SubSet(scopeIDs)
 	for _, requestedScope := range SplitStringWithSpaces(requestedScopes) {
 		if !clientScopes.Contains(requestedScope) {
@@ -74,16 +74,16 @@ func (client Client) AreScopesAllowed(ctx OAuthContext, requestedScopes string) 
 	return true
 }
 
-func (client Client) IsResponseTypeAllowed(responseType ResponseType) bool {
-	return slices.Contains(client.ResponseTypes, responseType)
+func (c *Client) IsResponseTypeAllowed(responseType ResponseType) bool {
+	return slices.Contains(c.ResponseTypes, responseType)
 }
 
-func (client Client) IsGrantTypeAllowed(grantType GrantType) bool {
-	return slices.Contains(client.GrantTypes, grantType)
+func (c *Client) IsGrantTypeAllowed(grantType GrantType) bool {
+	return slices.Contains(c.GrantTypes, grantType)
 }
 
-func (client Client) IsRedirectURIAllowed(redirectURI string) bool {
-	for _, ru := range client.RedirectURIS {
+func (c *Client) IsRedirectURIAllowed(redirectURI string) bool {
+	for _, ru := range c.RedirectURIS {
 		if strings.HasPrefix(redirectURI, ru) {
 			return true
 		}
@@ -91,23 +91,23 @@ func (client Client) IsRedirectURIAllowed(redirectURI string) bool {
 	return false
 }
 
-func (client Client) IsAuthorizationDetailTypeAllowed(authDetailType string) bool {
+func (c *Client) IsAuthorizationDetailTypeAllowed(authDetailType string) bool {
 	// If the client didn't announce the authorization types it will use, consider any value valid.
-	if client.AuthorizationDetailTypes == nil {
+	if c.AuthorizationDetailTypes == nil {
 		return true
 	}
 
-	return slices.Contains(client.AuthorizationDetailTypes, authDetailType)
+	return slices.Contains(c.AuthorizationDetailTypes, authDetailType)
 }
 
-func (client Client) IsRegistrationAccessTokenValid(registrationAccessToken string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(client.HashedRegistrationAccessToken), []byte(registrationAccessToken))
+func (c *Client) IsRegistrationAccessTokenValid(registrationAccessToken string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(c.HashedRegistrationAccessToken), []byte(registrationAccessToken))
 	return err == nil
 }
 
 // Function that will be executed during DCR and DCM.
 // It can be used to modify the client and perform custom validations.
-type DCRPluginFunc func(ctx OAuthContext, clientInfo *ClientMetaInfo)
+type DCRPluginFunc func(ctx Context, clientInfo *ClientMetaInfo)
 
 type ClientMetaInfo struct {
 	Name          string         `json:"client_name,omitempty" bson:"client_name,omitempty"`
@@ -148,37 +148,37 @@ type ClientMetaInfo struct {
 // Get the client public JWKS either directly from the jwks attribute or using jwks_uri.
 // This method also caches the keys if they are fetched from jwks_uri.
 // This method assumes that the pointer client.PublicJWKS was initialized before when loading the client.
-func (client ClientMetaInfo) PublicKeys() (JSONWebKeySet, error) {
-	if client.PublicJWKS != nil && len(client.PublicJWKS.Keys) != 0 {
-		return *client.PublicJWKS, nil
+func (c *ClientMetaInfo) PublicKeys() (JSONWebKeySet, error) {
+	if c.PublicJWKS != nil && len(c.PublicJWKS.Keys) != 0 {
+		return *c.PublicJWKS, nil
+	}
+	// TODO: Use the pointer.
+	if c.PublicJWKSURI == "" {
+		return JSONWebKeySet{}, NewOAuthError(ErrorCodeInvalidRequest, "The c JWKS was informed neither by value or by reference")
 	}
 
-	if client.PublicJWKSURI == "" {
-		return JSONWebKeySet{}, NewOAuthError(ErrorCodeInvalidRequest, "The client JWKS was informed neither by value or by reference")
-	}
-
-	jwks, err := FetchJWKS(client.PublicJWKSURI)
+	jwks, err := FetchJWKS(c.PublicJWKSURI)
 	if err != nil {
 		return JSONWebKeySet{}, NewOAuthError(ErrorCodeInvalidRequest, err.Error())
 	}
 
 	// Cache the client JWKS.
-	if client.PublicJWKS != nil {
-		*client.PublicJWKS = jwks
+	if c.PublicJWKS != nil {
+		*c.PublicJWKS = jwks
 	}
 
 	return jwks, nil
 }
 
-func (client *ClientMetaInfo) SetAttribute(key string, value any) {
-	if client.Attributes == nil {
-		client.Attributes = make(map[string]any)
+func (c *ClientMetaInfo) SetAttribute(key string, value any) {
+	if c.Attributes == nil {
+		c.Attributes = make(map[string]any)
 	}
-	client.Attributes[key] = value
+	c.Attributes[key] = value
 }
 
-func (client ClientMetaInfo) Attribute(key string) (any, bool) {
-	value, ok := client.Attributes[key]
+func (c *ClientMetaInfo) Attribute(key string) (any, bool) {
+	value, ok := c.Attributes[key]
 	return value, ok
 }
 

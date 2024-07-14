@@ -14,7 +14,7 @@ func TestGetOpenIDConfiguration(t *testing.T) {
 	// Given.
 	tokenKey := utils.PrivateRS256JWK(t, "token_signature_key")
 	userInfoKey := utils.PrivateRS256JWK(t, "user_info_signature_key")
-	ctx := utils.OAuthContext{
+	ctx := &utils.Context{
 		Configuration: utils.Configuration{
 			Host:                                   "https://example.com",
 			OAuthScopes:                            []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeEmail},
@@ -74,7 +74,7 @@ func TestGetOpenIDConfiguration(t *testing.T) {
 
 func TestGetOpenIDConfiguration_WithPAR(t *testing.T) {
 	// Given.
-	ctx := utils.OAuthContext{
+	ctx := &utils.Context{
 		Configuration: utils.Configuration{
 			Host:          "https://example.com",
 			PARIsEnabled:  true,
@@ -92,7 +92,7 @@ func TestGetOpenIDConfiguration_WithPAR(t *testing.T) {
 
 func TestGetOpenIDConfiguration_WithJAR(t *testing.T) {
 	// Given.
-	ctx := utils.OAuthContext{
+	ctx := &utils.Context{
 		Configuration: utils.Configuration{
 			JARIsEnabled:           true,
 			JARIsRequired:          true,
@@ -112,7 +112,7 @@ func TestGetOpenIDConfiguration_WithJAR(t *testing.T) {
 func TestGetOpenIDConfiguration_WithJARM(t *testing.T) {
 	// Given.
 	jarmKey := utils.PrivateRS256JWK(t, "jarm_signature_key")
-	ctx := utils.OAuthContext{
+	ctx := &utils.Context{
 		Configuration: utils.Configuration{
 			JARMIsEnabled:       true,
 			PrivateJWKS:         goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{jarmKey}},
@@ -130,7 +130,7 @@ func TestGetOpenIDConfiguration_WithJARM(t *testing.T) {
 
 func TestGetOpenIDConfiguration_WithDPOP(t *testing.T) {
 	// Given.
-	ctx := utils.OAuthContext{
+	ctx := &utils.Context{
 		Configuration: utils.Configuration{
 			DPOPIsEnabled:           true,
 			DPOPSignatureAlgorithms: []jose.SignatureAlgorithm{jose.PS256},

@@ -16,7 +16,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 	var cases = []struct {
 		Name                string
 		Req                 utils.AuthorizationRequest
-		ClientModifyFunc    func(client goidc.Client) goidc.Client
+		ClientModifyFunc    func(client *goidc.Client) *goidc.Client
 		ShouldBeValid       bool
 		ShouldRedirectError bool
 	}{
@@ -30,7 +30,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 					Scopes:       client.Scopes,
 				},
 			},
-			func(client goidc.Client) goidc.Client {
+			func(client *goidc.Client) *goidc.Client {
 				return client
 			},
 			true,
@@ -45,7 +45,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 					Scopes:       goidc.ScopeOpenID.String(),
 				},
 			},
-			func(client goidc.Client) goidc.Client {
+			func(client *goidc.Client) *goidc.Client {
 				return client
 			},
 			true,
@@ -60,7 +60,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 					Scopes:       goidc.ScopeOpenID.String(),
 				},
 			},
-			func(client goidc.Client) goidc.Client {
+			func(client *goidc.Client) *goidc.Client {
 				client.ResponseTypes = []goidc.ResponseType{}
 				return client
 			},
@@ -75,7 +75,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 					Scopes:      goidc.ScopeOpenID.String(),
 				},
 			},
-			func(client goidc.Client) goidc.Client {
+			func(client *goidc.Client) *goidc.Client {
 				return client
 			},
 			false,
@@ -90,7 +90,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 					Scopes:       "invalid_scope",
 				},
 			},
-			func(client goidc.Client) goidc.Client {
+			func(client *goidc.Client) *goidc.Client {
 				return client
 			},
 			false,
@@ -105,7 +105,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 					Scopes:       client.Scopes,
 				},
 			},
-			func(client goidc.Client) goidc.Client {
+			func(client *goidc.Client) *goidc.Client {
 				return client
 			},
 			false,
@@ -150,8 +150,8 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 	var cases = []struct {
 		Name                string
 		Req                 utils.AuthorizationRequest
-		Session             goidc.AuthnSession
-		ClientModifyFunc    func(client goidc.Client) goidc.Client
+		Session             *goidc.AuthnSession
+		ClientModifyFunc    func(client *goidc.Client) *goidc.Client
 		ShouldBeValid       bool
 		ShouldRedirectError bool
 	}{
@@ -166,11 +166,11 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 					Scopes:       client.Scopes,
 				},
 			},
-			goidc.AuthnSession{
+			&goidc.AuthnSession{
 				ClientID:           client.ID,
 				ExpiresAtTimestamp: goidc.TimestampNow() + 10,
 			},
-			func(client goidc.Client) goidc.Client {
+			func(client *goidc.Client) *goidc.Client {
 				return client
 			},
 			true,
@@ -188,14 +188,14 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 					Nonce:        "random_nonce",
 				},
 			},
-			goidc.AuthnSession{
+			&goidc.AuthnSession{
 				ClientID:           client.ID,
 				ExpiresAtTimestamp: goidc.TimestampNow() + 10,
 				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectURI: client.RedirectURIS[0],
 				},
 			},
-			func(client goidc.Client) goidc.Client {
+			func(client *goidc.Client) *goidc.Client {
 				return client
 			},
 			true,
@@ -217,7 +217,7 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 				)
 
 				// Then.
-				require.Equal(t, c.ShouldBeValid, err == nil)
+				require.Equal(t, c.ShouldBeValid, err == nil, err)
 				if err == nil {
 					return
 				}
@@ -242,7 +242,7 @@ func TestValidateAuthorizationRequestWithJAR(t *testing.T) {
 		Name                string
 		Req                 utils.AuthorizationRequest
 		JAR                 utils.AuthorizationRequest
-		ClientModifyFunc    func(client goidc.Client) goidc.Client
+		ClientModifyFunc    func(client *goidc.Client) *goidc.Client
 		ShouldBeValid       bool
 		ShouldRedirectError bool
 	}{
@@ -262,7 +262,7 @@ func TestValidateAuthorizationRequestWithJAR(t *testing.T) {
 				ClientID:                client.ID,
 				AuthorizationParameters: goidc.AuthorizationParameters{},
 			},
-			func(client goidc.Client) goidc.Client {
+			func(client *goidc.Client) *goidc.Client {
 				return client
 			},
 			true,
@@ -286,7 +286,7 @@ func TestValidateAuthorizationRequestWithJAR(t *testing.T) {
 					Nonce:       "random_nonce",
 				},
 			},
-			func(client goidc.Client) goidc.Client {
+			func(client *goidc.Client) *goidc.Client {
 				return client
 			},
 			true,
@@ -300,7 +300,7 @@ func TestValidateAuthorizationRequestWithJAR(t *testing.T) {
 			utils.AuthorizationRequest{
 				ClientID: "invalid_client_id",
 			},
-			func(client goidc.Client) goidc.Client {
+			func(client *goidc.Client) *goidc.Client {
 				return client
 			},
 			false,

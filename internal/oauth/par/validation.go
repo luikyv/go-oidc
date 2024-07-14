@@ -7,18 +7,18 @@ import (
 )
 
 func validatePAR(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	req utils.PushedAuthorizationRequest,
-	client goidc.Client,
+	client *goidc.Client,
 ) goidc.OAuthError {
 	return validatePushedAuthorizationParams(ctx, req.AuthorizationParameters, client)
 }
 
 func validateParWithJAR(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	req utils.PushedAuthorizationRequest,
 	jar utils.AuthorizationRequest,
-	client goidc.Client,
+	client *goidc.Client,
 ) goidc.OAuthError {
 
 	if req.RequestURI != "" {
@@ -41,9 +41,9 @@ func validateParWithJAR(
 }
 
 func validatePushedAuthorizationParams(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	params goidc.AuthorizationParameters,
-	client goidc.Client,
+	client *goidc.Client,
 ) goidc.OAuthError {
 	return utils.RunValidations(
 		ctx, params, client,
@@ -65,9 +65,9 @@ func validatePushedAuthorizationParams(
 }
 
 func validateNoneAuthnNotAllowed(
-	_ utils.OAuthContext,
+	_ *utils.Context,
 	_ goidc.AuthorizationParameters,
-	client goidc.Client,
+	client *goidc.Client,
 ) goidc.OAuthError {
 	if client.AuthnMethod == goidc.ClientAuthnNone {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid client authentication method")
@@ -76,9 +76,9 @@ func validateNoneAuthnNotAllowed(
 }
 
 func validateOpenIDRedirectURI(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	params goidc.AuthorizationParameters,
-	client goidc.Client,
+	client *goidc.Client,
 ) goidc.OAuthError {
 
 	if ctx.Profile != goidc.ProfileOpenID {
@@ -92,9 +92,9 @@ func validateOpenIDRedirectURI(
 }
 
 func validateFAPI2RedirectURI(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	params goidc.AuthorizationParameters,
-	_ goidc.Client,
+	_ *goidc.Client,
 ) goidc.OAuthError {
 
 	if ctx.Profile != goidc.ProfileFAPI2 {
@@ -109,9 +109,9 @@ func validateFAPI2RedirectURI(
 }
 
 func validateResponseType(
-	_ utils.OAuthContext,
+	_ *utils.Context,
 	params goidc.AuthorizationParameters,
-	client goidc.Client,
+	client *goidc.Client,
 ) goidc.OAuthError {
 	if params.ResponseType != "" && !client.IsResponseTypeAllowed(params.ResponseType) {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid response_type")
@@ -120,9 +120,9 @@ func validateResponseType(
 }
 
 func validateScopes(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	params goidc.AuthorizationParameters,
-	client goidc.Client,
+	client *goidc.Client,
 ) goidc.OAuthError {
 	if params.Scopes != "" && ctx.OpenIDScopeIsRequired && !utils.ScopesContainsOpenID(params.Scopes) {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidScope, "scope openid is required")
@@ -135,9 +135,9 @@ func validateScopes(
 }
 
 func validateCannotInformRequestURI(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	params goidc.AuthorizationParameters,
-	client goidc.Client,
+	client *goidc.Client,
 ) goidc.OAuthError {
 	if params.RequestURI != "" {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "request_uri is not allowed during PAR")

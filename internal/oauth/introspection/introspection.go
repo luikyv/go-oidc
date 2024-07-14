@@ -8,7 +8,7 @@ import (
 )
 
 func IntrospectToken(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	req utils.TokenIntrospectionRequest,
 ) (
 	utils.TokenIntrospectionInfo,
@@ -24,10 +24,5 @@ func IntrospectToken(
 		return utils.TokenIntrospectionInfo{}, err
 	}
 
-	resp := getTokenIntrospectionInfo(ctx, req.Token)
-	if !resp.IsActive && resp.ClientID != client.ID {
-		return utils.TokenIntrospectionInfo{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "invalid token")
-	}
-
-	return utils.TokenIntrospectionInfo{}, nil
+	return tokenIntrospectionInfo(ctx, req.Token), nil
 }

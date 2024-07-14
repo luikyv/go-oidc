@@ -15,7 +15,7 @@ import (
 
 func TestGetClientSignatureAlgorithms(t *testing.T) {
 	// Given.
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	// Then.
 	assert.Nil(t, ctx.ClientSignatureAlgorithms())
 
@@ -32,7 +32,7 @@ func TestGetClientSignatureAlgorithms(t *testing.T) {
 
 func TestGetIntrospectionClientSignatureAlgorithms(t *testing.T) {
 	// Given.
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	// Then.
 	assert.Nil(t, ctx.IntrospectionClientSignatureAlgorithms())
 
@@ -51,7 +51,7 @@ func TestGetIntrospectionClientSignatureAlgorithms(t *testing.T) {
 
 func TestGetDPOPJWT_HappyPath(t *testing.T) {
 	// Given the DPOP header was informed.
-	ctx := utils.OAuthContext{
+	ctx := utils.Context{
 		Request: httptest.NewRequest(http.MethodGet, utils.TestHost, nil),
 	}
 	ctx.Request.Header.Set(goidc.HeaderDPOP, "dpop_jwt")
@@ -66,7 +66,7 @@ func TestGetDPOPJWT_HappyPath(t *testing.T) {
 
 func TestGetDPOPJWT_DPOPHeaderNotInCanonicalFormat(t *testing.T) {
 	// Given.
-	ctx := utils.OAuthContext{
+	ctx := utils.Context{
 		Request: httptest.NewRequest(http.MethodGet, utils.TestHost, nil),
 	}
 	ctx.Request.Header.Set(strings.ToLower(goidc.HeaderDPOP), "dpop_jwt")
@@ -81,7 +81,7 @@ func TestGetDPOPJWT_DPOPHeaderNotInCanonicalFormat(t *testing.T) {
 
 func TestGetDPOPJWT_DPOPHeaderNotInformed(t *testing.T) {
 	// Given.
-	ctx := utils.OAuthContext{
+	ctx := utils.Context{
 		Request: httptest.NewRequest(http.MethodGet, utils.TestHost, nil),
 	}
 	// When.
@@ -93,7 +93,7 @@ func TestGetDPOPJWT_DPOPHeaderNotInformed(t *testing.T) {
 
 func TestGetDPOPJWT_MultipleValuesInTheDPOPHeader(t *testing.T) {
 	// Given.
-	ctx := utils.OAuthContext{
+	ctx := utils.Context{
 		Request: httptest.NewRequest(http.MethodGet, utils.TestHost, nil),
 	}
 	ctx.Request.Header.Add(goidc.HeaderDPOP, "dpop_jwt1")
@@ -108,14 +108,14 @@ func TestGetDPOPJWT_MultipleValuesInTheDPOPHeader(t *testing.T) {
 
 func TestExecuteDCRPlugin_HappyPath(t *testing.T) {
 	// Given.
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	clientInfo := goidc.ClientMetaInfo{}
 
 	// Then.
 	assert.NotPanics(t, func() { ctx.ExecuteDCRPlugin(&clientInfo) })
 
 	// Given.
-	ctx.DCRPlugin = func(ctx goidc.OAuthContext, clientInfo *goidc.ClientMetaInfo) {
+	ctx.DCRPlugin = func(ctx goidc.Context, clientInfo *goidc.ClientMetaInfo) {
 		clientInfo.AuthnMethod = goidc.ClientAuthnNone
 	}
 
@@ -128,7 +128,7 @@ func TestExecuteDCRPlugin_HappyPath(t *testing.T) {
 
 func TestGetAudiences_HappyPath(t *testing.T) {
 	// Given.
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.Host = utils.TestHost
 
 	// When.
@@ -143,7 +143,7 @@ func TestGetAudiences_HappyPath(t *testing.T) {
 
 func TestGetAudiences_MTLSIsEnabled(t *testing.T) {
 	// Given.
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.Host = utils.TestHost
 	ctx.MTLSIsEnabled = true
 	ctx.MTLSHost = "https://matls-example.com"
@@ -165,7 +165,7 @@ func TestGetAudiences_MTLSIsEnabled(t *testing.T) {
 func TestGetPolicyByID_HappyPath(t *testing.T) {
 	// Given.
 	policyID := "random_policy_id"
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.Policies = append(ctx.Policies, goidc.NewPolicy(policyID, nil, nil))
 
 	// When.
@@ -180,14 +180,14 @@ func TestGetAvailablePolicy_HappyPath(t *testing.T) {
 	// Given.
 	unavailablePolicy := goidc.NewPolicy(
 		"unavailable_policy",
-		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool {
+		func(ctx goidc.Context, c *goidc.Client, s *goidc.AuthnSession) bool {
 			return false
 		},
 		nil,
 	)
 	availablePolicy := goidc.NewPolicy(
 		"available_policy",
-		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool {
+		func(ctx goidc.Context, c *goidc.Client, s *goidc.AuthnSession) bool {
 			return true
 		},
 		nil,
@@ -196,7 +196,7 @@ func TestGetAvailablePolicy_HappyPath(t *testing.T) {
 	ctx.Policies = []goidc.AuthnPolicy{unavailablePolicy, availablePolicy}
 
 	// When.
-	policy, policyIsAvailable := ctx.FindAvailablePolicy(goidc.Client{}, &goidc.AuthnSession{})
+	policy, policyIsAvailable := ctx.FindAvailablePolicy(&goidc.Client{}, &goidc.AuthnSession{})
 
 	// Then.
 	require.True(t, policyIsAvailable, "GetPolicy is not fetching any policy")
@@ -207,7 +207,7 @@ func TestGetAvailablePolicy_NoPolicyAvailable(t *testing.T) {
 	// Given.
 	unavailablePolicy := goidc.NewPolicy(
 		"unavailable_policy",
-		func(ctx goidc.OAuthContext, c goidc.Client, s *goidc.AuthnSession) bool {
+		func(ctx goidc.Context, c *goidc.Client, s *goidc.AuthnSession) bool {
 			return false
 		},
 		nil,
@@ -216,7 +216,7 @@ func TestGetAvailablePolicy_NoPolicyAvailable(t *testing.T) {
 	ctx.Policies = []goidc.AuthnPolicy{unavailablePolicy}
 
 	// When.
-	_, policyIsAvailable := ctx.FindAvailablePolicy(goidc.Client{}, &goidc.AuthnSession{})
+	_, policyIsAvailable := ctx.FindAvailablePolicy(&goidc.Client{}, &goidc.AuthnSession{})
 
 	// Then.
 	require.False(t, policyIsAvailable, "GetPolicy is not fetching any policy")
@@ -256,7 +256,7 @@ func TestGetClient_WithoutPublicJWKS(t *testing.T) {
 
 func TestGetBearerToken_HappyPath(t *testing.T) {
 	// Given.
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.Request = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
 	ctx.Request.Header.Set("Authorization", "Bearer token")
 
@@ -270,7 +270,7 @@ func TestGetBearerToken_HappyPath(t *testing.T) {
 
 func TestGetBearerToken_NoToken(t *testing.T) {
 	// Given.
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.Request = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
 
 	// When.
@@ -282,7 +282,7 @@ func TestGetBearerToken_NoToken(t *testing.T) {
 
 func TestGetBearerToken_NotABearerToken(t *testing.T) {
 	// Given.
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.Request = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
 	ctx.Request.Header.Set("Authorization", "DPoP token")
 
@@ -295,7 +295,7 @@ func TestGetBearerToken_NotABearerToken(t *testing.T) {
 
 func TestGetAuthorizationToken_HappyPath(t *testing.T) {
 	// Given.
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.Request = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
 	ctx.Request.Header.Set("Authorization", "Bearer token")
 
@@ -310,7 +310,7 @@ func TestGetAuthorizationToken_HappyPath(t *testing.T) {
 
 func TestGetAuthorizationToken_NoToken(t *testing.T) {
 	// Given.
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.Request = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
 
 	// When.
@@ -322,7 +322,7 @@ func TestGetAuthorizationToken_NoToken(t *testing.T) {
 
 func TestAuthorizationToken_InvalidAuthorizationHeader(t *testing.T) {
 	// Given.
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.Request = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
 	ctx.Request.Header.Set("InvalidAuthorization", "Bearer token")
 
@@ -335,7 +335,7 @@ func TestAuthorizationToken_InvalidAuthorizationHeader(t *testing.T) {
 
 func TestHeader_HappyPath(t *testing.T) {
 	// Given.
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.Request = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
 	ctx.Request.Header.Set("Test-Header", "test_value")
 
@@ -352,7 +352,7 @@ func TestSignatureAlgorithms_HappyPath(t *testing.T) {
 	signingKey := utils.PrivateRS256JWKWithUsage(t, "signing_key", goidc.KeyUsageSignature)
 	encryptionKey := utils.PrivatePS256JWKWithUsage(t, "encryption_key", goidc.KeyUsageEncryption)
 
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey, encryptionKey}}
 
 	// When.
@@ -367,7 +367,7 @@ func TestPublicKeys_HappyPath(t *testing.T) {
 	// Given.
 	signingKey := utils.PrivatePS256JWK(t, "signing_key")
 
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
 
 	// When.
@@ -384,7 +384,7 @@ func TestPublicKey_HappyPath(t *testing.T) {
 	// Given.
 	signingKey := utils.PrivatePS256JWK(t, "signing_key")
 
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
 
 	// When.
@@ -400,7 +400,7 @@ func TestPrivateKey_HappyPath(t *testing.T) {
 	// Given.
 	signingKey := utils.PrivatePS256JWK(t, "signing_key")
 
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
 
 	// When.
@@ -414,7 +414,7 @@ func TestPrivateKey_HappyPath(t *testing.T) {
 
 func TestPrivateKey_KeyDoesntExist(t *testing.T) {
 	// Given.
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{}}
 
 	// When.
@@ -429,7 +429,7 @@ func TestTokenSignatureKey_HappyPath(t *testing.T) {
 	signingKeyID := "signing_key"
 	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
 
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.DefaultTokenSignatureKeyID = "random_key"
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
 
@@ -445,7 +445,7 @@ func TestTokenSignatureKey_InvalidKeyIDInformed(t *testing.T) {
 	signingKeyID := "signing_key"
 	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
 
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.DefaultTokenSignatureKeyID = signingKeyID
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
 
@@ -461,7 +461,7 @@ func TestTokenSignatureKey_NoKeyIDInformed(t *testing.T) {
 	signingKeyID := "signing_key"
 	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
 
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.DefaultTokenSignatureKeyID = signingKeyID
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
 
@@ -477,11 +477,11 @@ func TestUserInfoSignatureKey_HappyPath(t *testing.T) {
 	signingKeyID := "signing_key"
 	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
 
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.DefaultUserInfoSignatureKeyID = signingKeyID
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
 
-	client := goidc.Client{}
+	client := &goidc.Client{}
 
 	// When.
 	jwk := ctx.UserInfoSignatureKey(client)
@@ -495,11 +495,11 @@ func TestUserInfoSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	signingKeyID := "signing_key"
 	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
 
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
 	ctx.UserInfoSignatureKeyIDs = []string{signingKeyID}
 
-	client := goidc.Client{}
+	client := &goidc.Client{}
 	client.UserInfoSignatureAlgorithm = jose.PS256
 
 	// When.
@@ -514,11 +514,11 @@ func TestIDTokenSignatureKey_HappyPath(t *testing.T) {
 	signingKeyID := "signing_key"
 	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
 
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.DefaultUserInfoSignatureKeyID = signingKeyID
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
 
-	client := goidc.Client{}
+	client := &goidc.Client{}
 
 	// When.
 	jwk := ctx.IDTokenSignatureKey(client)
@@ -532,11 +532,11 @@ func TestIDTokenSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	signingKeyID := "signing_key"
 	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
 
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
 	ctx.UserInfoSignatureKeyIDs = []string{signingKeyID}
 
-	client := goidc.Client{}
+	client := &goidc.Client{}
 	client.IDTokenSignatureAlgorithm = jose.PS256
 
 	// When.
@@ -551,11 +551,11 @@ func TestJARMSignatureKey_HappyPath(t *testing.T) {
 	signingKeyID := "signing_key"
 	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
 
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.DefaultJARMSignatureKeyID = signingKeyID
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
 
-	client := goidc.Client{}
+	client := &goidc.Client{}
 
 	// When.
 	jwk := ctx.JARMSignatureKey(client)
@@ -569,11 +569,11 @@ func TestJARMSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	signingKeyID := "signing_key"
 	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
 
-	ctx := utils.OAuthContext{}
+	ctx := utils.Context{}
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
 	ctx.JARMSignatureKeyIDs = []string{signingKeyID}
 
-	client := goidc.Client{}
+	client := &goidc.Client{}
 	client.JARMSignatureAlgorithm = jose.PS256
 
 	// When.

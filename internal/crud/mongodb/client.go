@@ -21,7 +21,7 @@ func NewClientManager(database *mongo.Database) ClientManager {
 
 func (manager ClientManager) CreateOrUpdate(
 	ctx context.Context,
-	client goidc.Client,
+	client *goidc.Client,
 ) error {
 	shouldUpsert := true
 	filter := bson.D{{Key: "_id", Value: client.ID}}
@@ -32,20 +32,20 @@ func (manager ClientManager) CreateOrUpdate(
 	return nil
 }
 
-func (manager ClientManager) Get(ctx context.Context, id string) (goidc.Client, error) {
+func (manager ClientManager) Get(ctx context.Context, id string) (*goidc.Client, error) {
 	filter := bson.D{{Key: "_id", Value: id}}
 
 	result := manager.Collection.FindOne(ctx, filter)
 	if result.Err() != nil {
-		return goidc.Client{}, result.Err()
+		return nil, result.Err()
 	}
 
 	var client goidc.Client
 	if err := result.Decode(&client); err != nil {
-		return goidc.Client{}, err
+		return nil, err
 	}
 
-	return client, nil
+	return &client, nil
 }
 
 func (manager ClientManager) Delete(ctx context.Context, id string) error {

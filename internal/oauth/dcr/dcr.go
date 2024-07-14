@@ -6,13 +6,16 @@ import (
 )
 
 func CreateClient(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	dynamicClient utils.DynamicClientRequest,
 ) (
 	utils.DynamicClientResponse,
 	goidc.OAuthError,
 ) {
-	setCreationDefaults(ctx, &dynamicClient)
+	if err := setCreationDefaults(ctx, &dynamicClient); err != nil {
+		return utils.DynamicClientResponse{}, err
+	}
+
 	if err := validateDynamicClientRequest(ctx, dynamicClient); err != nil {
 		return utils.DynamicClientResponse{}, err
 	}
@@ -37,7 +40,7 @@ func CreateClient(
 }
 
 func UpdateClient(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	dynamicClient utils.DynamicClientRequest,
 ) (
 	utils.DynamicClientResponse,
@@ -48,7 +51,9 @@ func UpdateClient(
 		return utils.DynamicClientResponse{}, err
 	}
 
-	setUpdateDefaults(ctx, client, &dynamicClient)
+	if err := setUpdateDefaults(ctx, client, &dynamicClient); err != nil {
+		return utils.DynamicClientResponse{}, err
+	}
 	if err := validateDynamicClientRequest(ctx, dynamicClient); err != nil {
 		return utils.DynamicClientResponse{}, err
 	}
@@ -78,7 +83,7 @@ func UpdateClient(
 }
 
 func GetClient(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	dynamicClientRequest utils.DynamicClientRequest,
 ) (
 	utils.DynamicClientResponse,
@@ -98,7 +103,7 @@ func GetClient(
 }
 
 func DeleteClient(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	dynamicClientRequest utils.DynamicClientRequest,
 ) goidc.OAuthError {
 	_, err := getProtectedClient(ctx, dynamicClientRequest)

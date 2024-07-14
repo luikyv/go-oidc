@@ -15,7 +15,7 @@ import (
 func TestGetAuthenticatedClient_WithNoneAuthn_HappyPath(t *testing.T) {
 
 	// Given.
-	client := goidc.Client{
+	client := &goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnNone,
@@ -41,7 +41,7 @@ func TestGetAuthenticatedClient_WithSecretPostAuthn(t *testing.T) {
 	// Given.
 	clientSecret := "password"
 	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 0)
-	client := goidc.Client{
+	client := &goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnSecretPost,
@@ -82,7 +82,7 @@ func TestGetAuthenticatedClient_WithBasicSecretAuthn(t *testing.T) {
 	// Given.
 	clientSecret := "password"
 	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(clientSecret), 0)
-	client := goidc.Client{
+	client := &goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnSecretBasic,
@@ -120,7 +120,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 
 	// Given.
 	privateJWK := utils.PrivateRS256JWK(t, "rsa256_key")
-	client := goidc.Client{
+	client := &goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
@@ -164,7 +164,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_ClientInformedSigningAlgorithm
 
 	// Given.
 	privateJWK := utils.PrivatePS256JWK(t, "ps256_key")
-	client := goidc.Client{
+	client := &goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
@@ -209,7 +209,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_ClientInformedSigningAlgorithm
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAudienceClaim(t *testing.T) {
 	// Given.
 	privateJWK := utils.PrivateRS256JWK(t, "rsa256_key")
-	client := goidc.Client{
+	client := &goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
@@ -250,7 +250,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAudienceClaim(t *testin
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidExpiryClaim(t *testing.T) {
 	// Given.
 	privateJWK := utils.PrivateRS256JWK(t, "rsa256_key")
-	client := goidc.Client{
+	client := &goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
@@ -292,7 +292,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidExpiryClaim(t *testing.
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidKeyID(t *testing.T) {
 	// Given.
 	privateJWK := utils.PrivateRS256JWK(t, "rsa256_key")
-	client := goidc.Client{
+	client := &goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
@@ -335,7 +335,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidKeyID(t *testing.T) {
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T) {
 	// Given.
-	client := goidc.Client{
+	client := &goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
@@ -381,7 +381,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T)
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertion(t *testing.T) {
 	// Given.
 	privateJWK := utils.PrivateRS256JWK(t, "rsa256_key")
-	client := goidc.Client{
+	client := &goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
@@ -411,7 +411,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertion(t *testing.T)
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertionType(t *testing.T) {
 	// Given.
 	privateJWK := utils.PrivateRS256JWK(t, "rsa256_key")
-	client := goidc.Client{
+	client := &goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
@@ -456,7 +456,7 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_HappyPath(t *testing.T) {
 
 	// Given.
 	secret := "random_password12345678910111213"
-	client := goidc.Client{
+	client := &goidc.Client{
 		ID:     "random_client_id",
 		Secret: secret,
 		ClientMetaInfo: goidc.ClientMetaInfo{
@@ -499,7 +499,7 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_InvalidAssertionType(t *test
 
 	// Given.
 	secret := "random_password12345678910111213"
-	client := goidc.Client{
+	client := &goidc.Client{
 		ID:     "random_client_id",
 		Secret: secret,
 		ClientMetaInfo: goidc.ClientMetaInfo{
@@ -542,7 +542,7 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_InvalidAssertionType(t *test
 func TestGetAuthenticatedClient_WithDifferentClientIDs(t *testing.T) {
 
 	// When.
-	client := goidc.Client{
+	client := &goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnNone,

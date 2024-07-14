@@ -7,11 +7,11 @@ import (
 )
 
 func initValidAuthnSession(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	req utils.PushedAuthorizationRequest,
-	client goidc.Client,
+	client *goidc.Client,
 ) (
-	goidc.AuthnSession,
+	*goidc.AuthnSession,
 	goidc.OAuthError,
 ) {
 
@@ -23,16 +23,16 @@ func initValidAuthnSession(
 }
 
 func initValidSimpleAuthnSession(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	req utils.PushedAuthorizationRequest,
-	client goidc.Client,
+	client *goidc.Client,
 ) (
-	goidc.AuthnSession,
+	*goidc.AuthnSession,
 	goidc.OAuthError,
 ) {
 	if err := validatePAR(ctx, req, client); err != nil {
 		ctx.Logger().Info("request has invalid params")
-		return goidc.AuthnSession{}, err
+		return nil, err
 	}
 
 	session := utils.NewAuthnSession(req.AuthorizationParameters, client)
@@ -41,20 +41,20 @@ func initValidSimpleAuthnSession(
 }
 
 func initValidAuthnSessionWithJAR(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	req utils.PushedAuthorizationRequest,
-	client goidc.Client,
+	client *goidc.Client,
 ) (
-	goidc.AuthnSession,
+	*goidc.AuthnSession,
 	goidc.OAuthError,
 ) {
 	jar, err := extractJARFromRequest(ctx, req, client)
 	if err != nil {
-		return goidc.AuthnSession{}, err
+		return nil, err
 	}
 
 	if err := validateParWithJAR(ctx, req, jar, client); err != nil {
-		return goidc.AuthnSession{}, err
+		return nil, err
 	}
 
 	session := utils.NewAuthnSession(jar.AuthorizationParameters, client)
@@ -63,9 +63,9 @@ func initValidAuthnSessionWithJAR(
 }
 
 func extractJARFromRequest(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	req utils.PushedAuthorizationRequest,
-	client goidc.Client,
+	client *goidc.Client,
 ) (
 	utils.AuthorizationRequest,
 	goidc.OAuthError,

@@ -7,7 +7,7 @@ import (
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-func InitAuth(ctx utils.OAuthContext, req utils.AuthorizationRequest) goidc.OAuthError {
+func InitAuth(ctx *utils.Context, req utils.AuthorizationRequest) goidc.OAuthError {
 	client, err := getClient(ctx, req)
 	if err != nil {
 		return err
@@ -20,15 +20,15 @@ func InitAuth(ctx utils.OAuthContext, req utils.AuthorizationRequest) goidc.OAut
 	return nil
 }
 
-func initAuth(ctx utils.OAuthContext, client goidc.Client, req utils.AuthorizationRequest) goidc.OAuthError {
+func initAuth(ctx *utils.Context, client *goidc.Client, req utils.AuthorizationRequest) goidc.OAuthError {
 	session, err := initAuthnSession(ctx, req, client)
 	if err != nil {
 		return err
 	}
-	return authenticate(ctx, &session)
+	return authenticate(ctx, session)
 }
 
-func ContinueAuth(ctx utils.OAuthContext, callbackID string) goidc.OAuthError {
+func ContinueAuth(ctx *utils.Context, callbackID string) goidc.OAuthError {
 
 	// Fetch the session using the callback ID.
 	session, err := ctx.AuthnSessionByCallbackID(callbackID)
@@ -40,7 +40,7 @@ func ContinueAuth(ctx utils.OAuthContext, callbackID string) goidc.OAuthError {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "session timeout")
 	}
 
-	if oauthErr := authenticate(ctx, &session); oauthErr != nil {
+	if oauthErr := authenticate(ctx, session); oauthErr != nil {
 		client, err := ctx.Client(session.ClientID)
 		if err != nil {
 			return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
@@ -52,25 +52,25 @@ func ContinueAuth(ctx utils.OAuthContext, callbackID string) goidc.OAuthError {
 }
 
 func getClient(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	req utils.AuthorizationRequest,
 ) (
-	goidc.Client,
+	*goidc.Client,
 	goidc.OAuthError,
 ) {
 	if req.ClientID == "" {
-		return goidc.Client{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "invalid client_id")
+		return nil, goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "invalid client_id")
 	}
 
 	client, err := ctx.Client(req.ClientID)
 	if err != nil {
-		return goidc.Client{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "invalid client_id")
+		return nil, goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "invalid client_id")
 	}
 
 	return client, nil
 }
 
-func authenticate(ctx utils.OAuthContext, session *goidc.AuthnSession) goidc.OAuthError {
+func authenticate(ctx *utils.Context, session *goidc.AuthnSession) goidc.OAuthError {
 	policy := ctx.Policy(session.PolicyID)
 	switch policy.AuthnFunc(ctx, session) {
 	case goidc.StatusSuccess:
@@ -83,7 +83,7 @@ func authenticate(ctx utils.OAuthContext, session *goidc.AuthnSession) goidc.OAu
 }
 
 func finishFlowWithFailure(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	session *goidc.AuthnSession,
 ) goidc.OAuthError {
 	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
@@ -98,17 +98,17 @@ func finishFlowWithFailure(
 }
 
 func stopFlowInProgress(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	session *goidc.AuthnSession,
 ) goidc.OAuthError {
-	if err := ctx.CreateOrUpdateAuthnSession(*session); err != nil {
+	if err := ctx.CreateOrUpdateAuthnSession(session); err != nil {
 		return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
 	return nil
 }
 
-func finishFlowSuccessfully(ctx utils.OAuthContext, session *goidc.AuthnSession) goidc.OAuthError {
+func finishFlowSuccessfully(ctx *utils.Context, session *goidc.AuthnSession) goidc.OAuthError {
 
 	client, err := ctx.Client(session.ClientID)
 	if err != nil {
@@ -124,7 +124,7 @@ func finishFlowSuccessfully(ctx utils.OAuthContext, session *goidc.AuthnSession)
 		State:             session.State,
 	}
 	if session.ResponseType.Contains(goidc.ResponseTypeToken) {
-		grantOptions, err := newImplicitGrantOptions(ctx, client, *session)
+		grantOptions, err := newImplicitGrantOptions(ctx, client, session)
 		if err != nil {
 			return session.NewRedirectError(goidc.ErrorCodeInternalError, err.Error())
 		}
@@ -160,7 +160,7 @@ func finishFlowSuccessfully(ctx utils.OAuthContext, session *goidc.AuthnSession)
 }
 
 func authorizeAuthnSession(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	session *goidc.AuthnSession,
 ) goidc.OAuthError {
 
@@ -172,8 +172,11 @@ func authorizeAuthnSession(
 		}
 	}
 
-	session.InitAuthorizationCode()
-	if err := ctx.CreateOrUpdateAuthnSession(*session); err != nil {
+	if err := session.InitAuthorizationCode(); err != nil {
+		return err
+	}
+
+	if err := ctx.CreateOrUpdateAuthnSession(session); err != nil {
 		return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
@@ -181,7 +184,7 @@ func authorizeAuthnSession(
 }
 
 func generateImplicitGrantSession(
-	ctx utils.OAuthContext,
+	ctx *utils.Context,
 	token utils.Token,
 	grantOptions goidc.GrantOptions,
 ) goidc.OAuthError {
@@ -198,9 +201,9 @@ func generateImplicitGrantSession(
 }
 
 func newImplicitGrantOptions(
-	ctx utils.OAuthContext,
-	client goidc.Client,
-	session goidc.AuthnSession,
+	ctx *utils.Context,
+	client *goidc.Client,
+	session *goidc.AuthnSession,
 ) (
 	goidc.GrantOptions,
 	goidc.OAuthError,

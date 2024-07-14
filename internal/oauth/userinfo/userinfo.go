@@ -7,7 +7,7 @@ import (
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-func HandleUserInfoRequest(ctx utils.OAuthContext) (utils.UserInfoResponse, goidc.OAuthError) {
+func HandleUserInfoRequest(ctx *utils.Context) (utils.UserInfoResponse, goidc.OAuthError) {
 
 	token, tokenType, ok := ctx.AuthorizationToken()
 	if !ok {
@@ -42,9 +42,9 @@ func HandleUserInfoRequest(ctx utils.OAuthContext) (utils.UserInfoResponse, goid
 }
 
 func getUserInfoResponse(
-	ctx utils.OAuthContext,
-	client goidc.Client,
-	grantSession goidc.GrantSession,
+	ctx *utils.Context,
+	client *goidc.Client,
+	grantSession *goidc.GrantSession,
 ) (
 	utils.UserInfoResponse,
 	goidc.OAuthError,
@@ -88,8 +88,8 @@ func getUserInfoResponse(
 }
 
 func signUserInfoClaims(
-	ctx utils.OAuthContext,
-	client goidc.Client,
+	ctx *utils.Context,
+	client *goidc.Client,
 	claims map[string]any,
 ) (
 	string,
@@ -114,8 +114,8 @@ func signUserInfoClaims(
 }
 
 func encryptUserInfoJWT(
-	ctx utils.OAuthContext,
-	client goidc.Client,
+	ctx *utils.Context,
+	client *goidc.Client,
 	userInfoJWT string,
 ) (
 	string,

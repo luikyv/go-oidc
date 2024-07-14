@@ -1,11 +1,12 @@
 package goidc
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
+	"math/big"
 	"net/http"
 	"slices"
 	"strings"
@@ -26,29 +27,33 @@ func SplitStringWithSpaces(s string) []string {
 	return slice
 }
 
-func CallbackID() string {
-	return RandomString(CallbackIDLength, CallbackIDLength)
+func CallbackID() (string, error) {
+	return RandomString(CallbackIDLength)
 }
 
-func AuthorizationCode() string {
-	return RandomString(AuthorizationCodeLength, AuthorizationCodeLength)
+func AuthorizationCode() (string, error) {
+	return RandomString(AuthorizationCodeLength)
 }
 
-func RequestURI() string {
-	return fmt.Sprintf("urn:ietf:params:oauth:request_uri:%s", RandomString(RequestURILength, RequestURILength))
+func RequestURI() (string, error) {
+	s, err := RandomString(RequestURILength)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("urn:ietf:params:oauth:request_uri:%s", s), nil
 }
 
-func RandomString(minLength int, maxLength int) string {
-
-	length := minLength + rand.Intn(maxLength-minLength+1) // minLength >= length <= maxLength
-	randomStringInBytes := make([]byte, length)
-	charSetSize := len(Charset)
-	for i := range randomStringInBytes {
-		// Set a random character to randomStringInBytes[i]
-		randomStringInBytes[i] = Charset[rand.Intn(charSetSize)]
+func RandomString(n int) (string, error) {
+	ret := make([]byte, n)
+	for i := 0; i < n; i++ {
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(ClientSecretCharset))))
+		if err != nil {
+			return "", err
+		}
+		ret[i] = ClientSecretCharset[num.Int64()]
 	}
 
-	return string(randomStringInBytes)
+	return string(ret), nil
 }
 
 func FetchJWKS(jwksURI string) (JSONWebKeySet, error) {
