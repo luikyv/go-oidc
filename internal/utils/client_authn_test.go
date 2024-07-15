@@ -92,7 +92,7 @@ func TestGetAuthenticatedClient_WithBasicSecretAuthn(t *testing.T) {
 
 	ctx := utils.NewTestContext(t)
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
-	ctx.Request.SetBasicAuth(client.ID, clientSecret)
+	ctx.Request().SetBasicAuth(client.ID, clientSecret)
 
 	req := utils.ClientAuthnRequest{}
 
@@ -102,14 +102,14 @@ func TestGetAuthenticatedClient_WithBasicSecretAuthn(t *testing.T) {
 	assert.Nil(t, err, "The client should be authenticated")
 
 	// Given.
-	ctx.Request.SetBasicAuth(client.ID, "invalid_secret")
+	ctx.Request().SetBasicAuth(client.ID, "invalid_secret")
 	// When.
 	_, err = utils.GetAuthenticatedClient(ctx, req)
 	// Then.
 	assert.NotNil(t, err, "The client should not be authenticated")
 
 	// Given.
-	ctx.Request.Header.Del("Authorization")
+	ctx.Request().Header.Del("Authorization")
 	// When.
 	_, err = utils.GetAuthenticatedClient(ctx, req)
 	// Then.

@@ -47,8 +47,8 @@ func setDefaults(ctx *utils.Context, dynamicClient *utils.DynamicClientRequest) 
 		dynamicClient.JARContentEncryptionAlgorithm = jose.A128CBC_HS256
 	}
 
-	if dynamicClient.Attributes == nil {
-		dynamicClient.Attributes = make(map[string]any)
+	if dynamicClient.CustomAttributes == nil {
+		dynamicClient.CustomAttributes = make(map[string]any)
 	}
 
 	return nil

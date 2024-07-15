@@ -92,7 +92,7 @@ func validateClientCredentialsGrantRequest(
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidScope, "invalid scope")
 	}
 
-	if err := validateTokenBindingRequestWithDPOP(ctx, req, client); err != nil {
+	if err := validateTokenBindingRequestWithDPoP(ctx, req, client); err != nil {
 		return err
 	}
 

@@ -97,7 +97,7 @@ func authenticateWithClientSecretBasic(
 	client *goidc.Client,
 	_ ClientAuthnRequest,
 ) goidc.OAuthError {
-	clientID, clientSecret, ok := ctx.Request.BasicAuth()
+	clientID, clientSecret, ok := ctx.Request().BasicAuth()
 	if !ok || client.ID != clientID {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "invalid client")
 	}
@@ -216,7 +216,7 @@ func authenticateWithSelfSignedTLSCertificate(
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "client certificate not informed")
 	}
 
-	jwks, err := client.PublicKeys()
+	jwks, err := client.FetchPublicJWKS()
 	if err != nil {
 		return goidc.NewOAuthError(goidc.ErrorCodeInternalError, "could not load the client JWKS")
 	}
@@ -279,7 +279,7 @@ func getClientID(
 		clientIDs = append(clientIDs, req.ClientID)
 	}
 
-	basicClientID, _, _ := ctx.Request.BasicAuth()
+	basicClientID, _, _ := ctx.Request().BasicAuth()
 	if basicClientID != "" {
 		clientIDs = append(clientIDs, basicClientID)
 	}

@@ -55,8 +55,8 @@ func GetOpenIDConfiguration(ctx *utils.Context) utils.OpenIDConfiguration {
 		}
 	}
 
-	if ctx.DPOPIsEnabled {
-		config.DPOPSignatureAlgorithms = ctx.DPOPSignatureAlgorithms
+	if ctx.DPoPIsEnabled {
+		config.DPoPSignatureAlgorithms = ctx.DPoPSignatureAlgorithms
 	}
 
 	if ctx.IntrospectionIsEnabled {

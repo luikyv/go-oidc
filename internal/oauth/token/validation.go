@@ -14,8 +14,8 @@ func validateTokenBindingIsRequired(
 
 	tokenWillBeBound := false
 
-	_, ok := ctx.DPOPJWT()
-	if ctx.DPOPIsEnabled && ok {
+	_, ok := ctx.DPoPJWT()
+	if ctx.DPoPIsEnabled && ok {
 		tokenWillBeBound = true
 	}
 
@@ -31,23 +31,23 @@ func validateTokenBindingIsRequired(
 	return nil
 }
 
-func validateTokenBindingRequestWithDPOP(
+func validateTokenBindingRequestWithDPoP(
 	ctx *utils.Context,
 	_ utils.TokenRequest,
 	client *goidc.Client,
 ) goidc.OAuthError {
 
-	dpopJWT, ok := ctx.DPOPJWT()
+	dpopJWT, ok := ctx.DPoPJWT()
 	// Return an error if the DPoP header was not informed, but it's required either in the context or by the client.
-	if !ok && (ctx.DPOPIsRequired || client.DPOPIsRequired) {
+	if !ok && (ctx.DPoPIsRequired || client.DPoPIsRequired) {
 		ctx.Logger().Debug("The DPoP header is required, but wasn't provided")
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid dpop header")
 	}
 
 	// If DPoP is not enabled or, if it is, but the DPoP header was not informed, we just ignore it.
-	if !ctx.DPOPIsEnabled || !ok {
+	if !ctx.DPoPIsEnabled || !ok {
 		return nil
 	}
 
-	return utils.ValidateDPOPJWT(ctx, dpopJWT, utils.DPOPJWTValidationOptions{})
+	return utils.ValidateDPoPJWT(ctx, dpopJWT, utils.DPoPJWTValidationOptions{})
 }

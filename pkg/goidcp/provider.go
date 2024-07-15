@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/internal/apihandlers"
+	"github.com/luikymagno/goidc/internal/api"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
@@ -27,6 +27,7 @@ type Provider struct {
 	config utils.Configuration
 }
 
+// TODO: Make it smaller.
 func New(
 	host string,
 	clientManager goidc.ClientManager,
@@ -66,7 +67,7 @@ func New(
 				goidc.ResponseModeFormPost,
 			},
 			ClientAuthnMethods:               []goidc.ClientAuthnType{},
-			DPOPSignatureAlgorithms:          []jose.SignatureAlgorithm{},
+			DPoPSignatureAlgorithms:          []jose.SignatureAlgorithm{},
 			SubjectIdentifierTypes:           []goidc.SubjectIdentifierType{goidc.SubjectIdentifierPublic},
 			ClaimTypes:                       []goidc.ClaimType{goidc.ClaimTypeNormal},
 			AuthenticationSessionTimeoutSecs: goidc.DefaultAuthenticationSessionTimeoutSecs,
@@ -343,11 +344,11 @@ func (p *Provider) EnableDemonstrationProofOfPossesion(
 	dpopLifetimeSecs int,
 	dpopSigningAlgorithms ...goidc.SignatureAlgorithm,
 ) {
-	p.config.DPOPIsEnabled = true
-	p.config.DPOPLifetimeSecs = dpopLifetimeSecs
+	p.config.DPoPIsEnabled = true
+	p.config.DPoPLifetimeSecs = dpopLifetimeSecs
 	for _, signatureAlgorithm := range dpopSigningAlgorithms {
-		p.config.DPOPSignatureAlgorithms = append(
-			p.config.DPOPSignatureAlgorithms,
+		p.config.DPoPSignatureAlgorithms = append(
+			p.config.DPoPSignatureAlgorithms,
 			jose.SignatureAlgorithm(signatureAlgorithm),
 		)
 	}
@@ -359,7 +360,7 @@ func (p *Provider) RequireDemonstrationProofOfPossesion(
 	dpopSigningAlgorithms ...goidc.SignatureAlgorithm,
 ) {
 	p.EnableDemonstrationProofOfPossesion(dpopLifetimeSecs, dpopSigningAlgorithms...)
-	p.config.DPOPIsRequired = true
+	p.config.DPoPIsRequired = true
 }
 
 // RequireSenderConstrainedTokens will make at least one sender constraining mechanism (TLS or DPoP) be required,
@@ -428,6 +429,7 @@ func (p *Provider) SetProfileFAPI2() {
 
 // AddClient creates or updates a static client.
 func (p *Provider) AddClient(client *goidc.Client) error {
+	// TODO: This is creating the client at every reload.
 	return p.config.ClientManager.CreateOrUpdate(context.Background(), client)
 }
 
@@ -439,27 +441,27 @@ func (p *Provider) AddPolicy(policy goidc.AuthnPolicy) {
 
 func (p *Provider) Run(
 	address string,
-	middlewares ...apihandlers.WrapHandlerFunc,
+	middlewares ...api.WrapHandlerFunc,
 ) error {
 	if err := p.validateConfiguration(); err != nil {
 		return err
 	}
 
-	handler := p.getServerHandler()
+	handler := p.Handler()
 	for _, wrapHandler := range middlewares {
 		handler = wrapHandler(handler)
 	}
-	handler = apihandlers.NewAddCorrelationIDHeaderMiddlewareHandler(
+	handler = api.NewCorrelationIDMiddleware(
 		handler,
 		p.config.CorrelationIDHeader,
 	)
-	handler = apihandlers.NewAddCacheControlHeadersMiddlewareHandler(handler)
+	handler = api.NewCacheControlMiddleware(handler)
 	return http.ListenAndServe(address, handler)
 }
 
 func (p *Provider) RunTLS(
 	config TLSOptions,
-	middlewares ...apihandlers.WrapHandlerFunc,
+	middlewares ...api.WrapHandlerFunc,
 ) error {
 
 	if err := p.validateConfiguration(); err != nil {
@@ -475,15 +477,15 @@ func (p *Provider) RunTLS(
 		}()
 	}
 
-	handler := p.getServerHandler()
+	handler := p.Handler()
 	for _, wrapHandler := range middlewares {
 		handler = wrapHandler(handler)
 	}
-	handler = apihandlers.NewAddCorrelationIDHeaderMiddlewareHandler(
+	handler = api.NewCorrelationIDMiddleware(
 		handler,
 		p.config.CorrelationIDHeader,
 	)
-	handler = apihandlers.NewAddCacheControlHeadersMiddlewareHandler(handler)
+	handler = api.NewCacheControlMiddleware(handler)
 	server := &http.Server{
 		Addr:    config.TLSAddress,
 		Handler: handler,
@@ -496,13 +498,13 @@ func (p *Provider) RunTLS(
 
 func (p *Provider) runMTLS(config TLSOptions) error {
 
-	handler := p.getMTLSServerHandler()
-	handler = apihandlers.NewAddCorrelationIDHeaderMiddlewareHandler(
+	handler := p.mtlsHandler()
+	handler = api.NewCorrelationIDMiddleware(
 		handler,
 		p.config.CorrelationIDHeader,
 	)
-	handler = apihandlers.NewAddCacheControlHeadersMiddlewareHandler(handler)
-	handler = apihandlers.NewAddCertificateHeaderMiddlewareHandler(handler)
+	handler = api.NewCacheControlMiddleware(handler)
+	handler = api.NewClientCertificateMiddleware(handler)
 
 	tlsClientAuthnType := tls.RequireAndVerifyClientCert
 	if config.CaCertificatePool == nil || config.UnsecureCertificatesAreAllowed {
@@ -521,14 +523,14 @@ func (p *Provider) runMTLS(config TLSOptions) error {
 	return server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)
 }
 
-func (p *Provider) getServerHandler() http.Handler {
+func (p *Provider) Handler() http.Handler {
 
 	serverHandler := http.NewServeMux()
 
 	serverHandler.HandleFunc(
 		"GET "+string(goidc.EndpointJSONWebKeySet),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleJWKSRequest(utils.NewContext(p.config, r, w))
+			api.HandleJWKSRequest(utils.NewContext(p.config, r, w))
 		},
 	)
 
@@ -536,7 +538,7 @@ func (p *Provider) getServerHandler() http.Handler {
 		serverHandler.HandleFunc(
 			"POST "+string(goidc.EndpointPushedAuthorizationRequest),
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleParRequest(utils.NewContext(p.config, r, w))
+				api.HandleParRequest(utils.NewContext(p.config, r, w))
 			},
 		)
 	}
@@ -544,14 +546,14 @@ func (p *Provider) getServerHandler() http.Handler {
 	serverHandler.HandleFunc(
 		"GET "+string(goidc.EndpointAuthorization),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleAuthorizeRequest(utils.NewContext(p.config, r, w))
+			api.HandleAuthorizeRequest(utils.NewContext(p.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
 		"POST "+string(goidc.EndpointAuthorization)+"/{callback}",
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleAuthorizeCallbackRequest(
+			api.HandleAuthorizeCallbackRequest(
 				utils.NewContext(p.config, r, w),
 			)
 		},
@@ -560,28 +562,28 @@ func (p *Provider) getServerHandler() http.Handler {
 	serverHandler.HandleFunc(
 		"POST "+string(goidc.EndpointToken),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleTokenRequest(utils.NewContext(p.config, r, w))
+			api.HandleTokenRequest(utils.NewContext(p.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
 		"GET "+string(goidc.EndpointWellKnown),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleWellKnownRequest(utils.NewContext(p.config, r, w))
+			api.HandleWellKnownRequest(utils.NewContext(p.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
 		"GET "+string(goidc.EndpointUserInfo),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleUserInfoRequest(utils.NewContext(p.config, r, w))
+			api.HandleUserInfoRequest(utils.NewContext(p.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
 		"POST "+string(goidc.EndpointUserInfo),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleUserInfoRequest(utils.NewContext(p.config, r, w))
+			api.HandleUserInfoRequest(utils.NewContext(p.config, r, w))
 		},
 	)
 
@@ -589,28 +591,28 @@ func (p *Provider) getServerHandler() http.Handler {
 		serverHandler.HandleFunc(
 			"POST "+string(goidc.EndpointDynamicClient),
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleDynamicClientCreation(utils.NewContext(p.config, r, w))
+				api.HandleDynamicClientCreation(utils.NewContext(p.config, r, w))
 			},
 		)
 
 		serverHandler.HandleFunc(
 			"PUT "+string(goidc.EndpointDynamicClient)+"/{client_id}",
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleDynamicClientUpdate(utils.NewContext(p.config, r, w))
+				api.HandleDynamicClientUpdate(utils.NewContext(p.config, r, w))
 			},
 		)
 
 		serverHandler.HandleFunc(
 			"GET "+string(goidc.EndpointDynamicClient)+"/{client_id}",
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleDynamicClientRetrieve(utils.NewContext(p.config, r, w))
+				api.HandleDynamicClientRetrieve(utils.NewContext(p.config, r, w))
 			},
 		)
 
 		serverHandler.HandleFunc(
 			"DELETE "+string(goidc.EndpointDynamicClient)+"/{client_id}",
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleDynamicClientDelete(utils.NewContext(p.config, r, w))
+				api.HandleDynamicClientDelete(utils.NewContext(p.config, r, w))
 			},
 		)
 	}
@@ -619,7 +621,7 @@ func (p *Provider) getServerHandler() http.Handler {
 		serverHandler.HandleFunc(
 			"POST "+string(goidc.EndpointTokenIntrospection),
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleIntrospectionRequest(utils.NewContext(p.config, r, w))
+				api.HandleIntrospectionRequest(utils.NewContext(p.config, r, w))
 			},
 		)
 	}
@@ -627,27 +629,27 @@ func (p *Provider) getServerHandler() http.Handler {
 	return serverHandler
 }
 
-func (p *Provider) getMTLSServerHandler() http.Handler {
+func (p *Provider) mtlsHandler() http.Handler {
 	serverHandler := http.NewServeMux()
 
 	serverHandler.HandleFunc(
 		"POST "+string(goidc.EndpointToken),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleTokenRequest(utils.NewContext(p.config, r, w))
+			api.HandleTokenRequest(utils.NewContext(p.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
 		"GET "+string(goidc.EndpointUserInfo),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleUserInfoRequest(utils.NewContext(p.config, r, w))
+			api.HandleUserInfoRequest(utils.NewContext(p.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
 		"POST "+string(goidc.EndpointUserInfo),
 		func(w http.ResponseWriter, r *http.Request) {
-			apihandlers.HandleUserInfoRequest(utils.NewContext(p.config, r, w))
+			api.HandleUserInfoRequest(utils.NewContext(p.config, r, w))
 		},
 	)
 
@@ -655,7 +657,7 @@ func (p *Provider) getMTLSServerHandler() http.Handler {
 		serverHandler.HandleFunc(
 			"POST "+string(goidc.EndpointPushedAuthorizationRequest),
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleParRequest(utils.NewContext(p.config, r, w))
+				api.HandleParRequest(utils.NewContext(p.config, r, w))
 			},
 		)
 	}
@@ -664,7 +666,7 @@ func (p *Provider) getMTLSServerHandler() http.Handler {
 		serverHandler.HandleFunc(
 			"POST "+string(goidc.EndpointTokenIntrospection),
 			func(w http.ResponseWriter, r *http.Request) {
-				apihandlers.HandleIntrospectionRequest(utils.NewContext(p.config, r, w))
+				api.HandleIntrospectionRequest(utils.NewContext(p.config, r, w))
 			},
 		)
 	}

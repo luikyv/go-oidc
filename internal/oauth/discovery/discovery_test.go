@@ -128,12 +128,12 @@ func TestGetOpenIDConfiguration_WithJARM(t *testing.T) {
 		openidConfig.JARMAlgorithms)
 }
 
-func TestGetOpenIDConfiguration_WithDPOP(t *testing.T) {
+func TestGetOpenIDConfiguration_WithDPoP(t *testing.T) {
 	// Given.
 	ctx := &utils.Context{
 		Configuration: utils.Configuration{
-			DPOPIsEnabled:           true,
-			DPOPSignatureAlgorithms: []jose.SignatureAlgorithm{jose.PS256},
+			DPoPIsEnabled:           true,
+			DPoPSignatureAlgorithms: []jose.SignatureAlgorithm{jose.PS256},
 		},
 	}
 
@@ -141,5 +141,5 @@ func TestGetOpenIDConfiguration_WithDPOP(t *testing.T) {
 	openidConfig := discovery.GetOpenIDConfiguration(ctx)
 
 	// Then.
-	assert.Equal(t, ctx.DPOPSignatureAlgorithms, openidConfig.DPOPSignatureAlgorithms)
+	assert.Equal(t, ctx.DPoPSignatureAlgorithms, openidConfig.DPoPSignatureAlgorithms)
 }

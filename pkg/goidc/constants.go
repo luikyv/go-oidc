@@ -145,7 +145,7 @@ type TokenType string
 
 const (
 	TokenTypeBearer TokenType = "Bearer"
-	TokenTypeDPOP   TokenType = "DPoP"
+	TokenTypeDPoP   TokenType = "DPoP"
 )
 
 const (
@@ -226,10 +226,10 @@ func (ec ErrorCode) StatusCode() int {
 const (
 	HeaderCorrelationID     string = "X-Correlation-ID"
 	HeaderFAPIInteractionID string = "X-FAPI-Interaction-ID"
-	HeaderDPOP              string = "DPoP"
-	// Header used to transmit a client certificate that was validated by a trusted source.
+	HeaderDPoP              string = "DPoP"
+	// HeaderSecureClientCertificate is the header used to transmit a client certificate that was validated by a trusted source.
 	HeaderSecureClientCertificate string = "X-Secure-Client-Certificate"
-	// Header used to trasmit a client certificate that cannot be trusted.
+	// HeaderInsecureClientCertificate is the header used to trasmit a client certificate that cannot be trusted.
 	// This is useful for clients authenticating with self signed certificates.
 	HeaderInsecureClientCertificate string = "X-Insecure-Client-Certificate"
 )
@@ -264,7 +264,6 @@ const (
 	EndpointTokenIntrospection         EndpointPath = "/introspect"
 )
 
-// RFC8176.
 type AuthenticationMethodReference string
 
 const (

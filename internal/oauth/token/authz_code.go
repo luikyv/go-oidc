@@ -53,7 +53,7 @@ func handleAuthorizationCodeGrantTokenCreation(
 		RefreshToken: grantSession.RefreshToken,
 	}
 
-	if utils.ScopesContainsOpenID(session.Scopes) {
+	if utils.ScopesContainsOpenID(session.GrantedScopes) {
 		tokenResp.IDToken, err = utils.MakeIDToken(ctx, client, utils.NewIDTokenOptions(grantOptions))
 		if err != nil {
 			ctx.Logger().Error("could not generate an ID token", slog.String("error", err.Error()))
@@ -65,7 +65,7 @@ func handleAuthorizationCodeGrantTokenCreation(
 		tokenResp.Scopes = grantOptions.GrantedScopes
 	}
 
-	// If the granted auth details is different from the requested one, we must inform it to the client
+	// If the granted auth details are different from the requested ones, we must inform it to the client
 	// by sending the granted auth details back in the token response.
 	if !cmp.Equal(session.AuthorizationDetails, grantOptions.GrantedAuthorizationDetails) {
 		ctx.Logger().Debug("granted auth details is different from the requested by the client")
@@ -137,7 +137,7 @@ func validateAuthorizationCodeGrantRequest(
 		return err
 	}
 
-	if err := validateTokenBindingRequestWithDPOP(ctx, req, client); err != nil {
+	if err := validateTokenBindingRequestWithDPoP(ctx, req, client); err != nil {
 		return err
 	}
 

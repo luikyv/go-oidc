@@ -19,14 +19,14 @@ func validateUserInfoRequest(
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid scope")
 	}
 
-	if err := validateDPOP(ctx, token, tokenType, grantSession); err != nil {
+	if err := validateDPoP(ctx, token, tokenType, grantSession); err != nil {
 		return err
 	}
 
 	return validateTLSProofOfPossesion(ctx, grantSession)
 }
 
-func validateDPOP(
+func validateDPoP(
 	ctx *utils.Context,
 	token string,
 	tokenType goidc.TokenType,
@@ -34,7 +34,7 @@ func validateDPOP(
 ) goidc.OAuthError {
 
 	if grantSession.JWKThumbprint == "" {
-		if tokenType == goidc.TokenTypeDPOP {
+		if tokenType == goidc.TokenTypeDPoP {
 			// The token type cannot be DPoP if the session was not created with DPoP.
 			return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid token type")
 		} else {
@@ -43,13 +43,13 @@ func validateDPOP(
 		}
 	}
 
-	dpopJWT, ok := ctx.DPOPJWT()
+	dpopJWT, ok := ctx.DPoPJWT()
 	if !ok {
 		// The session was created with DPoP, then the DPoP header must be passed.
 		return goidc.NewOAuthError(goidc.ErrorCodeUnauthorizedClient, "invalid DPoP header")
 	}
 
-	return utils.ValidateDPOPJWT(ctx, dpopJWT, utils.DPOPJWTValidationOptions{
+	return utils.ValidateDPoPJWT(ctx, dpopJWT, utils.DPoPJWTValidationOptions{
 		AccessToken:   token,
 		JWKThumbprint: grantSession.JWKThumbprint,
 	})

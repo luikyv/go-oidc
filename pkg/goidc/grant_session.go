@@ -13,10 +13,10 @@ type GrantSession struct {
 	GrantOptions                `bson:"inline"`
 }
 
-func (grantSession *GrantSession) IsRefreshSessionExpired() bool {
-	return TimestampNow() > grantSession.ExpiresAtTimestamp
+func (g *GrantSession) IsRefreshSessionExpired() bool {
+	return TimestampNow() > g.ExpiresAtTimestamp
 }
 
-func (grantSession *GrantSession) HasLastTokenExpired() bool {
-	return TimestampNow() > grantSession.LastTokenIssuedAtTimestamp+grantSession.TokenLifetimeSecs
+func (g *GrantSession) HasLastTokenExpired() bool {
+	return TimestampNow() > g.LastTokenIssuedAtTimestamp+g.TokenLifetimeSecs
 }

@@ -89,24 +89,22 @@ func NewOpaqueTokenOptions(
 }
 
 type AuthorizationParameters struct {
-	RequestURI          string              `json:"request_uri,omitempty" bson:"request_uri,omitempty"`
-	RequestObject       string              `json:"request,omitempty" bson:"request,omitempty"`
-	RedirectURI         string              `json:"redirect_uri,omitempty" bson:"redirect_uri,omitempty"`
-	ResponseMode        ResponseMode        `json:"response_mode,omitempty" bson:"response_mode,omitempty"`
-	ResponseType        ResponseType        `json:"response_type,omitempty" bson:"response_type,omitempty"`
-	Scopes              string              `json:"scope,omitempty" bson:"scope,omitempty"`
-	State               string              `json:"state,omitempty" bson:"state,omitempty"`
-	Nonce               string              `json:"nonce,omitempty" bson:"nonce,omitempty"`
-	CodeChallenge       string              `json:"code_challenge,omitempty" bson:"code_challenge,omitempty"`
-	CodeChallengeMethod CodeChallengeMethod `json:"code_challenge_method,omitempty" bson:"code_challenge_method,omitempty"`
-	Prompt              PromptType          `json:"prompt,omitempty" bson:"prompt,omitempty"`
-	// MaxAuthenticationAgeSecs is a pointer to help differentiate when it's null or not.
-	MaxAuthenticationAgeSecs *int         `json:"max_age,omitempty" bson:"max_age,omitempty"`
-	Display                  DisplayValue `json:"display,omitempty" bson:"display,omitempty"`
-	ACRValues                string       `json:"acr_values,omitempty" bson:"acr_values,omitempty"`
-	// Claims is a pointer to help differentiate when it's null or not.
-	Claims               *ClaimsObject         `json:"claims,omitempty" bson:"claims,omitempty"`
-	AuthorizationDetails []AuthorizationDetail `json:"authorization_details,omitempty" bson:"authorization_details,omitempty"`
+	RequestURI               string                `json:"request_uri,omitempty" bson:"request_uri,omitempty"`
+	RequestObject            string                `json:"request,omitempty" bson:"request,omitempty"`
+	RedirectURI              string                `json:"redirect_uri,omitempty" bson:"redirect_uri,omitempty"`
+	ResponseMode             ResponseMode          `json:"response_mode,omitempty" bson:"response_mode,omitempty"`
+	ResponseType             ResponseType          `json:"response_type,omitempty" bson:"response_type,omitempty"`
+	Scopes                   string                `json:"scope,omitempty" bson:"scope,omitempty"`
+	State                    string                `json:"state,omitempty" bson:"state,omitempty"`
+	Nonce                    string                `json:"nonce,omitempty" bson:"nonce,omitempty"`
+	CodeChallenge            string                `json:"code_challenge,omitempty" bson:"code_challenge,omitempty"`
+	CodeChallengeMethod      CodeChallengeMethod   `json:"code_challenge_method,omitempty" bson:"code_challenge_method,omitempty"`
+	Prompt                   PromptType            `json:"prompt,omitempty" bson:"prompt,omitempty"`
+	MaxAuthenticationAgeSecs *int                  `json:"max_age,omitempty" bson:"max_age,omitempty"`
+	Display                  DisplayValue          `json:"display,omitempty" bson:"display,omitempty"`
+	ACRValues                string                `json:"acr_values,omitempty" bson:"acr_values,omitempty"`
+	Claims                   *ClaimsObject         `json:"claims,omitempty" bson:"claims,omitempty"`
+	AuthorizationDetails     []AuthorizationDetail `json:"authorization_details,omitempty" bson:"authorization_details,omitempty"`
 }
 
 func (insideParams AuthorizationParameters) Merge(outsideParams AuthorizationParameters) AuthorizationParameters {

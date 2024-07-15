@@ -2,19 +2,15 @@ package goidc
 
 import (
 	"context"
-	"crypto/x509"
-	"html/template"
 	"log/slog"
+	"net/http"
 )
 
+// TODO: Remove unused fields.
 type Context interface {
 	Issuer() string
-	Header(name string) (string, bool)
-	FormParam(param string) string
-	SecureClientCertificate() (*x509.Certificate, bool)
-	ClientCertificate() (*x509.Certificate, bool)
-	RenderHTML(html string, params any) error
-	RenderHTMLTemplate(tmpl *template.Template, params any) error
+	Request() *http.Request
+	Response() http.ResponseWriter
 	Logger() *slog.Logger
 	Scopes() Scopes
 	context.Context

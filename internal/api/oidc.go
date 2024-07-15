@@ -1,4 +1,4 @@
-package apihandlers
+package api
 
 import (
 	"errors"
@@ -33,7 +33,7 @@ func HandleJWKSRequest(ctx *utils.Context) {
 //---------------------------------------- Pushed Authorization Request - PAR ----------------------------------------//
 
 func HandleParRequest(ctx *utils.Context) {
-	req := utils.NewPushedAuthorizationRequest(ctx.Request)
+	req := utils.NewPushedAuthorizationRequest(ctx.Request())
 	requestURI, err := par.PushAuthorization(ctx, req)
 	if err != nil {
 		bindErrorToResponse(ctx, err)
@@ -52,7 +52,7 @@ func HandleParRequest(ctx *utils.Context) {
 //---------------------------------------- Authorize ----------------------------------------//
 
 func HandleAuthorizeRequest(ctx *utils.Context) {
-	req := utils.NewAuthorizationRequest(ctx.Request)
+	req := utils.NewAuthorizationRequest(ctx.Request())
 	if err := authorize.InitAuth(ctx, req); err != nil {
 		bindErrorToResponse(ctx, err)
 		return
@@ -60,7 +60,7 @@ func HandleAuthorizeRequest(ctx *utils.Context) {
 }
 
 func HandleAuthorizeCallbackRequest(ctx *utils.Context) {
-	err := authorize.ContinueAuth(ctx, ctx.Request.PathValue("callback"))
+	err := authorize.ContinueAuth(ctx, ctx.Request().PathValue("callback"))
 	if err != nil {
 		bindErrorToResponse(ctx, err)
 		return
@@ -70,7 +70,7 @@ func HandleAuthorizeCallbackRequest(ctx *utils.Context) {
 //---------------------------------------- Token ----------------------------------------//
 
 func HandleTokenRequest(ctx *utils.Context) {
-	req := utils.NewTokenRequest(ctx.Request)
+	req := utils.NewTokenRequest(ctx.Request())
 	tokenResp, err := token.HandleTokenCreation(ctx, req)
 	if err != nil {
 		bindErrorToResponse(ctx, err)
@@ -106,7 +106,7 @@ func HandleUserInfoRequest(ctx *utils.Context) {
 //---------------------------------------- Introspection ----------------------------------------//
 
 func HandleIntrospectionRequest(ctx *utils.Context) {
-	req := utils.NewTokenIntrospectionRequest(ctx.Request)
+	req := utils.NewTokenIntrospectionRequest(ctx.Request())
 	tokenInfo, err := introspection.IntrospectToken(ctx, req)
 	if err != nil {
 		bindErrorToResponse(ctx, err)
@@ -128,7 +128,7 @@ func bindErrorToResponse(ctx *utils.Context, err error) {
 			"error":             goidc.ErrorCodeInternalError,
 			"error_description": err.Error(),
 		}, http.StatusInternalServerError); err != nil {
-			ctx.Response.WriteHeader(http.StatusInternalServerError)
+			ctx.Response().WriteHeader(http.StatusInternalServerError)
 		}
 		return
 	}
@@ -138,6 +138,6 @@ func bindErrorToResponse(ctx *utils.Context, err error) {
 		"error":             errorCode,
 		"error_description": oauthErr.Error(),
 	}, errorCode.StatusCode()); err != nil {
-		ctx.Response.WriteHeader(http.StatusInternalServerError)
+		ctx.Response().WriteHeader(http.StatusInternalServerError)
 	}
 }

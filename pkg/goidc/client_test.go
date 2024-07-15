@@ -175,13 +175,13 @@ func TestGetPublicJWKS(t *testing.T) {
 	client := goidc.Client{
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			PublicJWKSURI: server.URL,
-			PublicJWKS:    &goidc.JSONWebKeySet{},
+			PublicJWKS:    nil,
 		},
 	}
 
 	for i := 0; i < 2; i++ {
 		// When.
-		jwks, err := client.PublicKeys()
+		jwks, err := client.FetchPublicJWKS()
 		// Then.
 		assert.Nil(t, err)
 		assert.Equal(t, 1, numberOfRequestsToJWKSURI, "the jwks uri should've been requested once")

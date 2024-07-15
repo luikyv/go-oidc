@@ -151,11 +151,11 @@ func makeJWTToken(
 	tokenType := goidc.TokenTypeBearer
 	confirmation := make(map[string]string)
 	// DPoP token binding.
-	dpopJWT, ok := ctx.DPOPJWT()
+	dpopJWT, ok := ctx.DPoPJWT()
 	jkt := ""
-	if ctx.DPOPIsEnabled && ok {
-		tokenType = goidc.TokenTypeDPOP
-		jkt = JWKThumbprint(dpopJWT, ctx.DPOPSignatureAlgorithms)
+	if ctx.DPoPIsEnabled && ok {
+		tokenType = goidc.TokenTypeDPoP
+		jkt = JWKThumbprint(dpopJWT, ctx.DPoPSignatureAlgorithms)
 		confirmation["jkt"] = jkt
 	}
 	// TLS token binding.
@@ -213,11 +213,11 @@ func makeOpaqueToken(
 	tokenType := goidc.TokenTypeBearer
 
 	// DPoP token binding.
-	dpopJWT, ok := ctx.DPOPJWT()
+	dpopJWT, ok := ctx.DPoPJWT()
 	jkt := ""
-	if ctx.DPOPIsEnabled && ok {
-		tokenType = goidc.TokenTypeDPOP
-		jkt = JWKThumbprint(dpopJWT, ctx.DPOPSignatureAlgorithms)
+	if ctx.DPoPIsEnabled && ok {
+		tokenType = goidc.TokenTypeDPoP
+		jkt = JWKThumbprint(dpopJWT, ctx.DPoPSignatureAlgorithms)
 	}
 
 	// TLS token binding.

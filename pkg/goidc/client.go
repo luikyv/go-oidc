@@ -11,17 +11,18 @@ import (
 
 type Client struct {
 	ID string `json:"client_id" bson:"_id"`
-	// This is used when the client authenticates with client_secret_jwt,
+	// Secret is used when the client authenticates with client_secret_jwt,
 	// since the key used to sign the assertion is the same used to verify it.
 	Secret string `json:"client_secret,omitempty" bson:"client_secret,omitempty"`
-	// For client_secret_basic and client_secret_post, we only store the hash of the client secret.
+	// HashedSecret is the hash of the client secret for the client_secret_basic
+	// and client_secret_post authentication methods.
 	HashedSecret                  string `json:"hashed_secret,omitempty" bson:"hashed_secret,omitempty"`
 	HashedRegistrationAccessToken string `json:"hashed_registration_access_token" bson:"hashed_registration_access_token"`
 	ClientMetaInfo                `bson:"inline"`
 }
 
 func (c *Client) PublicKey(keyID string) (JSONWebKey, OAuthError) {
-	jwks, oauthErr := c.PublicKeys()
+	jwks, oauthErr := c.FetchPublicJWKS()
 	if oauthErr != nil {
 		return JSONWebKey{}, NewOAuthError(ErrorCodeInvalidRequest, oauthErr.Error())
 	}
@@ -48,7 +49,7 @@ func (c *Client) IDTokenEncryptionJWK() (JSONWebKey, OAuthError) {
 
 // encryptionJWK returns the encryption JWK based on the algorithm.
 func (c *Client) encryptionJWK(algorithm jose.KeyAlgorithm) (JSONWebKey, OAuthError) {
-	jwks, err := c.PublicKeys()
+	jwks, err := c.FetchPublicJWKS()
 	if err != nil {
 		return JSONWebKey{}, NewOAuthError(ErrorCodeInvalidRequest, err.Error())
 	}
@@ -100,9 +101,30 @@ func (c *Client) IsAuthorizationDetailTypeAllowed(authDetailType string) bool {
 	return slices.Contains(c.AuthorizationDetailTypes, authDetailType)
 }
 
-func (c *Client) IsRegistrationAccessTokenValid(registrationAccessToken string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(c.HashedRegistrationAccessToken), []byte(registrationAccessToken))
+func (c *Client) IsRegistrationAccessTokenValid(token string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(c.HashedRegistrationAccessToken), []byte(token))
 	return err == nil
+}
+
+// FetchPublicJWKS fetches the client public JWKS either directly from the jwks attribute or using jwks_uri.
+// This method also caches the keys if they are fetched from jwks_uri.
+func (c *Client) FetchPublicJWKS() (JSONWebKeySet, error) {
+	if c.PublicJWKS != nil {
+		return *c.PublicJWKS, nil
+	}
+
+	if c.PublicJWKSURI == "" {
+		return JSONWebKeySet{}, NewOAuthError(ErrorCodeInvalidRequest, "The client JWKS was informed neither by value or by reference")
+	}
+
+	jwks, err := FetchJWKS(c.PublicJWKSURI)
+	if err != nil {
+		return JSONWebKeySet{}, NewOAuthError(ErrorCodeInvalidRequest, err.Error())
+	}
+	// Cache the client JWKS.
+	c.PublicJWKS = &jwks
+
+	return jwks, nil
 }
 
 // Function that will be executed during DCR and DCM.
@@ -110,15 +132,12 @@ func (c *Client) IsRegistrationAccessTokenValid(registrationAccessToken string) 
 type DCRPluginFunc func(ctx Context, clientInfo *ClientMetaInfo)
 
 type ClientMetaInfo struct {
-	Name          string         `json:"client_name,omitempty" bson:"client_name,omitempty"`
-	LogoURI       string         `json:"logo_uri,omitempty" bson:"logo_uri,omitempty"`
-	RedirectURIS  []string       `json:"redirect_uris" bson:"redirect_uris"`
-	GrantTypes    []GrantType    `json:"grant_types" bson:"grant_types"`
-	ResponseTypes []ResponseType `json:"response_types" bson:"response_types"`
-	PublicJWKSURI string         `json:"jwks_uri,omitempty" bson:"jwks_uri,omitempty"`
-	// PublicJWKS is pointer, because, if it is nil and PublicJWKSURI is present,
-	// we can fetch the content of PublicJWKSURI and access the reference PublicJWKS to cache the keys.
-	// By doing so, we make sure to request PublicJWKSURI at most once.
+	Name                               string                  `json:"client_name,omitempty" bson:"client_name,omitempty"`
+	LogoURI                            string                  `json:"logo_uri,omitempty" bson:"logo_uri,omitempty"`
+	RedirectURIS                       []string                `json:"redirect_uris" bson:"redirect_uris"`
+	GrantTypes                         []GrantType             `json:"grant_types" bson:"grant_types"`
+	ResponseTypes                      []ResponseType          `json:"response_types" bson:"response_types"`
+	PublicJWKSURI                      string                  `json:"jwks_uri,omitempty" bson:"jwks_uri,omitempty"`
 	PublicJWKS                         *JSONWebKeySet          `json:"jwks,omitempty" bson:"jwks,omitempty"`
 	Scopes                             string                  `json:"scope" bson:"scope"`
 	SubjectIdentifierType              SubjectIdentifierType   `json:"subject_type,omitempty" bson:"subject_type,omitempty"`
@@ -136,54 +155,20 @@ type ClientMetaInfo struct {
 	JARMContentEncryptionAlgorithm     jose.ContentEncryption  `json:"authorization_encrypted_response_enc,omitempty" bson:"authorization_encrypted_response_enc,omitempty"`
 	AuthnMethod                        ClientAuthnType         `json:"token_endpoint_auth_method" bson:"token_endpoint_auth_method"`
 	AuthnSignatureAlgorithm            jose.SignatureAlgorithm `json:"token_endpoint_auth_signing_alg,omitempty" bson:"token_endpoint_auth_signing_alg,omitempty"`
-	DPOPIsRequired                     bool                    `json:"dpop_bound_access_tokens,omitempty" bson:"dpop_bound_access_tokens,omitempty"`
+	DPoPIsRequired                     bool                    `json:"dpop_bound_access_tokens,omitempty" bson:"dpop_bound_access_tokens,omitempty"`
 	TLSSubjectDistinguishedName        string                  `json:"tls_client_auth_subject_dn,omitempty" bson:"tls_client_auth_subject_dn,omitempty"`
-	// The DNS name.
+	// TLSSubjectAlternativeName represents a DNS name.
 	TLSSubjectAlternativeName   string         `json:"tls_client_auth_san_dns,omitempty" bson:"tls_client_auth_san_dns,omitempty"`
 	TLSSubjectAlternativeNameIp string         `json:"tls_client_auth_san_ip,omitempty" bson:"tls_client_auth_san_ip,omitempty"`
 	AuthorizationDetailTypes    []string       `json:"authorization_data_types,omitempty" bson:"authorization_data_types,omitempty"`
-	Attributes                  map[string]any `json:"custom_attributes,omitempty" bson:"custom_attributes,omitempty"`
-}
-
-// Get the client public JWKS either directly from the jwks attribute or using jwks_uri.
-// This method also caches the keys if they are fetched from jwks_uri.
-// This method assumes that the pointer client.PublicJWKS was initialized before when loading the client.
-func (c *ClientMetaInfo) PublicKeys() (JSONWebKeySet, error) {
-	if c.PublicJWKS != nil && len(c.PublicJWKS.Keys) != 0 {
-		return *c.PublicJWKS, nil
-	}
-	// TODO: Use the pointer.
-	if c.PublicJWKSURI == "" {
-		return JSONWebKeySet{}, NewOAuthError(ErrorCodeInvalidRequest, "The c JWKS was informed neither by value or by reference")
-	}
-
-	jwks, err := FetchJWKS(c.PublicJWKSURI)
-	if err != nil {
-		return JSONWebKeySet{}, NewOAuthError(ErrorCodeInvalidRequest, err.Error())
-	}
-
-	// Cache the client JWKS.
-	if c.PublicJWKS != nil {
-		*c.PublicJWKS = jwks
-	}
-
-	return jwks, nil
+	DefaultMaxAge               *int           `json:"default_max_age,omitempty" bson:"default_max_age,omitempty"`
+	DefaultACRValues            string         `json:"default_acr_values,omitempty" bson:"default_acr_values,omitempty"`
+	CustomAttributes            map[string]any `json:"custom_attributes,omitempty" bson:"custom_attributes,omitempty"`
 }
 
 func (c *ClientMetaInfo) SetAttribute(key string, value any) {
-	if c.Attributes == nil {
-		c.Attributes = make(map[string]any)
+	if c.CustomAttributes == nil {
+		c.CustomAttributes = make(map[string]any)
 	}
-	c.Attributes[key] = value
+	c.CustomAttributes[key] = value
 }
-
-func (c *ClientMetaInfo) Attribute(key string) (any, bool) {
-	value, ok := c.Attributes[key]
-	return value, ok
-}
-
-// TODO: Implement a custom ()marshaller to deal with custom attributes.
-// func (client Client) MarshalJSON() ([]byte, error) {
-// }
-// func (client *Client) UnmarshalJSON(data []byte) error {
-// }

@@ -131,37 +131,37 @@ func jarFromSignedRequestObject(
 	return jarReq, nil
 }
 
-func ValidateDPOPJWT(
+func ValidateDPoPJWT(
 	ctx *Context,
 	dpopJWT string,
-	expectedDPOPClaims DPOPJWTValidationOptions,
+	expectedDPoPClaims DPoPJWTValidationOptions,
 ) goidc.OAuthError {
-	parsedDPOPJWT, err := jwt.ParseSigned(dpopJWT, ctx.DPOPSignatureAlgorithms)
+	parsedDPoPJWT, err := jwt.ParseSigned(dpopJWT, ctx.DPoPSignatureAlgorithms)
 	if err != nil {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid dpop")
 	}
 
-	if len(parsedDPOPJWT.Headers) != 1 {
+	if len(parsedDPoPJWT.Headers) != 1 {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid dpop")
 	}
 
-	if parsedDPOPJWT.Headers[0].ExtraHeaders["typ"] != "dpop+jwt" {
+	if parsedDPoPJWT.Headers[0].ExtraHeaders["typ"] != "dpop+jwt" {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid typ header. it should be dpop+jwt")
 	}
 
-	jwk := parsedDPOPJWT.Headers[0].JSONWebKey
+	jwk := parsedDPoPJWT.Headers[0].JSONWebKey
 	if jwk == nil || !jwk.Valid() || !jwk.IsPublic() {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid jwk header")
 	}
 
 	var claims jwt.Claims
-	var dpopClaims DPOPJWTClaims
-	if err := parsedDPOPJWT.Claims(jwk.Key, &claims, &dpopClaims); err != nil {
+	var dpopClaims DPoPJWTClaims
+	if err := parsedDPoPJWT.Claims(jwk.Key, &claims, &dpopClaims); err != nil {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid dpop")
 	}
 
 	// Validate that the "iat" claim is present and it is not too far in the past.
-	if claims.IssuedAt == nil || int(time.Since(claims.IssuedAt.Time()).Seconds()) > ctx.DPOPLifetimeSecs {
+	if claims.IssuedAt == nil || int(time.Since(claims.IssuedAt.Time()).Seconds()) > ctx.DPoPLifetimeSecs {
 		return goidc.NewOAuthError(goidc.ErrorCodeUnauthorizedClient, "invalid dpop")
 	}
 
@@ -180,11 +180,11 @@ func ValidateDPOPJWT(
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid htu claim")
 	}
 
-	if expectedDPOPClaims.AccessToken != "" && dpopClaims.AccessTokenHash != HashBase64URLSHA256(expectedDPOPClaims.AccessToken) {
+	if expectedDPoPClaims.AccessToken != "" && dpopClaims.AccessTokenHash != HashBase64URLSHA256(expectedDPoPClaims.AccessToken) {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid ath claim")
 	}
 
-	if expectedDPOPClaims.JWKThumbprint != "" && JWKThumbprint(dpopJWT, ctx.DPOPSignatureAlgorithms) != expectedDPOPClaims.JWKThumbprint {
+	if expectedDPoPClaims.JWKThumbprint != "" && JWKThumbprint(dpopJWT, ctx.DPoPSignatureAlgorithms) != expectedDPoPClaims.JWKThumbprint {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid jwk thumbprint")
 	}
 
@@ -458,8 +458,8 @@ func ScopesContainsOpenID(scopes string) bool {
 
 // JWKThumbprint generates a JWK thumbprint for a valid DPoP JWT.
 func JWKThumbprint(dpopJWT string, dpopSigningAlgorithms []jose.SignatureAlgorithm) string {
-	parsedDPOPJWT, _ := jwt.ParseSigned(dpopJWT, dpopSigningAlgorithms)
-	jkt, _ := parsedDPOPJWT.Headers[0].JSONWebKey.Thumbprint(crypto.SHA256)
+	parsedDPoPJWT, _ := jwt.ParseSigned(dpopJWT, dpopSigningAlgorithms)
+	jkt, _ := parsedDPoPJWT.Headers[0].JSONWebKey.Thumbprint(crypto.SHA256)
 	return base64.RawURLEncoding.EncodeToString(jkt)
 }
 

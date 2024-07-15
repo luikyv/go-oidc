@@ -137,7 +137,7 @@ func validateJARMEncryption(provider Provider) error {
 }
 
 func validateTokenBinding(provider Provider) error {
-	if provider.config.SenderConstrainedTokenIsRequired && !provider.config.DPOPIsEnabled && !provider.config.TLSBoundTokensIsEnabled {
+	if provider.config.SenderConstrainedTokenIsRequired && !provider.config.DPoPIsEnabled && !provider.config.TLSBoundTokensIsEnabled {
 		return errors.New("if sender constraining tokens is required, at least one mechanism must be enabled, either DPoP or TLS")
 	}
 

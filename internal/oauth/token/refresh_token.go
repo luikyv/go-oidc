@@ -193,13 +193,13 @@ func validateRefreshTokenProofOfPossesionForPublicClients(
 		return nil
 	}
 
-	dpopJWT, ok := ctx.DPOPJWT()
+	dpopJWT, ok := ctx.DPoPJWT()
 	if !ok {
 		// The session was created with DPoP for a public client, then the DPoP header must be passed.
 		return goidc.NewOAuthError(goidc.ErrorCodeUnauthorizedClient, "invalid DPoP header")
 	}
 
-	return utils.ValidateDPOPJWT(ctx, dpopJWT, utils.DPOPJWTValidationOptions{
+	return utils.ValidateDPoPJWT(ctx, dpopJWT, utils.DPoPJWTValidationOptions{
 		JWKThumbprint: grantSession.JWKThumbprint,
 	})
 }

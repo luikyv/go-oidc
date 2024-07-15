@@ -1,9 +1,9 @@
 package goidc
 
 import (
-	"crypto/x509"
-	"html/template"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -18,32 +18,16 @@ func (testCtx TestContext) Issuer() string {
 	return ""
 }
 
-func (testCtx TestContext) Header(header string) (headerValue string, ok bool) {
-	return "", false
+func (testCtx TestContext) Request() *http.Request {
+	return httptest.NewRequest(http.MethodGet, "/", nil)
 }
 
-func (testCtx TestContext) FormParam(param string) (formValue string) {
-	return ""
-}
-
-func (testCtx TestContext) SecureClientCertificate() (secureClientCert *x509.Certificate, ok bool) {
-	return nil, false
-}
-
-func (testCtx TestContext) ClientCertificate() (clientCert *x509.Certificate, ok bool) {
-	return nil, false
-}
-
-func (testCtx TestContext) RenderHTML(html string, params any) error {
-	return nil
-}
-
-func (testCtx TestContext) RenderHTMLTemplate(tmpl *template.Template, params any) error {
-	return nil
+func (testCtx TestContext) Response() http.ResponseWriter {
+	return httptest.NewRecorder()
 }
 
 func (testCtx TestContext) Logger() *slog.Logger {
-	return nil
+	return slog.Default()
 }
 
 func (testCtx TestContext) Scopes() Scopes {

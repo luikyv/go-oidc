@@ -100,8 +100,8 @@ func NewTestContext(t *testing.T) *Context {
 	}
 	ctx := Context{
 		Configuration: config,
-		Request:       httptest.NewRequest(http.MethodGet, TestHost, nil),
-		Response:      httptest.NewRecorder(),
+		Req:           httptest.NewRequest(http.MethodGet, TestHost, nil),
+		Resp:          httptest.NewRecorder(),
 	}
 
 	require.Nil(t, ctx.CreateOrUpdateClient(NewTestClient(t)), "could not create the test client")

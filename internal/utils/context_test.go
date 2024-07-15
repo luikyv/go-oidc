@@ -49,58 +49,58 @@ func TestGetIntrospectionClientSignatureAlgorithms(t *testing.T) {
 	assert.Equal(t, []jose.SignatureAlgorithm{jose.PS256, jose.HS256}, ctx.IntrospectionClientSignatureAlgorithms())
 }
 
-func TestGetDPOPJWT_HappyPath(t *testing.T) {
-	// Given the DPOP header was informed.
+func TestGetDPoPJWT_HappyPath(t *testing.T) {
+	// Given the DPoP header was informed.
 	ctx := utils.Context{
-		Request: httptest.NewRequest(http.MethodGet, utils.TestHost, nil),
+		Req: httptest.NewRequest(http.MethodGet, utils.TestHost, nil),
 	}
-	ctx.Request.Header.Set(goidc.HeaderDPOP, "dpop_jwt")
+	ctx.Req.Header.Set(goidc.HeaderDPoP, "dpop_jwt")
 
 	// When.
-	dpopJwt, ok := ctx.DPOPJWT()
+	dpopJwt, ok := ctx.DPoPJWT()
 
 	// Then.
 	require.True(t, ok)
 	assert.Equal(t, "dpop_jwt", dpopJwt)
 }
 
-func TestGetDPOPJWT_DPOPHeaderNotInCanonicalFormat(t *testing.T) {
+func TestGetDPoPJWT_DPoPHeaderNotInCanonicalFormat(t *testing.T) {
 	// Given.
 	ctx := utils.Context{
-		Request: httptest.NewRequest(http.MethodGet, utils.TestHost, nil),
+		Req: httptest.NewRequest(http.MethodGet, utils.TestHost, nil),
 	}
-	ctx.Request.Header.Set(strings.ToLower(goidc.HeaderDPOP), "dpop_jwt")
+	ctx.Req.Header.Set(strings.ToLower(goidc.HeaderDPoP), "dpop_jwt")
 
 	// When.
-	dpopJwt, ok := ctx.DPOPJWT()
+	dpopJwt, ok := ctx.DPoPJWT()
 
 	// Then.
 	require.True(t, ok)
 	assert.Equal(t, "dpop_jwt", dpopJwt)
 }
 
-func TestGetDPOPJWT_DPOPHeaderNotInformed(t *testing.T) {
+func TestGetDPoPJWT_DPoPHeaderNotInformed(t *testing.T) {
 	// Given.
 	ctx := utils.Context{
-		Request: httptest.NewRequest(http.MethodGet, utils.TestHost, nil),
+		Req: httptest.NewRequest(http.MethodGet, utils.TestHost, nil),
 	}
 	// When.
-	_, ok := ctx.DPOPJWT()
+	_, ok := ctx.DPoPJWT()
 
 	// Then.
 	require.False(t, ok)
 }
 
-func TestGetDPOPJWT_MultipleValuesInTheDPOPHeader(t *testing.T) {
+func TestGetDPoPJWT_MultipleValuesInTheDPoPHeader(t *testing.T) {
 	// Given.
 	ctx := utils.Context{
-		Request: httptest.NewRequest(http.MethodGet, utils.TestHost, nil),
+		Req: httptest.NewRequest(http.MethodGet, utils.TestHost, nil),
 	}
-	ctx.Request.Header.Add(goidc.HeaderDPOP, "dpop_jwt1")
-	ctx.Request.Header.Add(goidc.HeaderDPOP, "dpop_jwt2")
+	ctx.Req.Header.Add(goidc.HeaderDPoP, "dpop_jwt1")
+	ctx.Req.Header.Add(goidc.HeaderDPoP, "dpop_jwt2")
 
 	// When.
-	_, ok := ctx.DPOPJWT()
+	_, ok := ctx.DPoPJWT()
 
 	// Then.
 	require.False(t, ok)
@@ -239,26 +239,11 @@ func TestGetClient_WithPublicJWKS(t *testing.T) {
 	assert.Equal(t, clientJWK.KeyID(), client.PublicJWKS.Keys[0].KeyID())
 }
 
-func TestGetClient_WithoutPublicJWKS(t *testing.T) {
-	// Given.
-	client := utils.NewTestClient(t)
-	client.PublicJWKS = nil
-	ctx := utils.NewTestContext(t)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
-
-	// When.
-	client, err := ctx.Client(client.ID)
-
-	// Then.
-	require.Nil(t, err)
-	assert.NotNil(t, client.PublicJWKS)
-}
-
 func TestGetBearerToken_HappyPath(t *testing.T) {
 	// Given.
 	ctx := utils.Context{}
-	ctx.Request = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
-	ctx.Request.Header.Set("Authorization", "Bearer token")
+	ctx.Req = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
+	ctx.Req.Header.Set("Authorization", "Bearer token")
 
 	// When.
 	token, ok := ctx.BearerToken()
@@ -271,7 +256,7 @@ func TestGetBearerToken_HappyPath(t *testing.T) {
 func TestGetBearerToken_NoToken(t *testing.T) {
 	// Given.
 	ctx := utils.Context{}
-	ctx.Request = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
+	ctx.Req = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
 
 	// When.
 	_, ok := ctx.BearerToken()
@@ -283,8 +268,8 @@ func TestGetBearerToken_NoToken(t *testing.T) {
 func TestGetBearerToken_NotABearerToken(t *testing.T) {
 	// Given.
 	ctx := utils.Context{}
-	ctx.Request = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
-	ctx.Request.Header.Set("Authorization", "DPoP token")
+	ctx.Req = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
+	ctx.Req.Header.Set("Authorization", "DPoP token")
 
 	// When.
 	_, ok := ctx.BearerToken()
@@ -296,8 +281,8 @@ func TestGetBearerToken_NotABearerToken(t *testing.T) {
 func TestGetAuthorizationToken_HappyPath(t *testing.T) {
 	// Given.
 	ctx := utils.Context{}
-	ctx.Request = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
-	ctx.Request.Header.Set("Authorization", "Bearer token")
+	ctx.Req = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
+	ctx.Req.Header.Set("Authorization", "Bearer token")
 
 	// When.
 	token, tokenType, ok := ctx.AuthorizationToken()
@@ -311,7 +296,7 @@ func TestGetAuthorizationToken_HappyPath(t *testing.T) {
 func TestGetAuthorizationToken_NoToken(t *testing.T) {
 	// Given.
 	ctx := utils.Context{}
-	ctx.Request = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
+	ctx.Req = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
 
 	// When.
 	_, _, ok := ctx.AuthorizationToken()
@@ -323,8 +308,8 @@ func TestGetAuthorizationToken_NoToken(t *testing.T) {
 func TestAuthorizationToken_InvalidAuthorizationHeader(t *testing.T) {
 	// Given.
 	ctx := utils.Context{}
-	ctx.Request = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
-	ctx.Request.Header.Set("InvalidAuthorization", "Bearer token")
+	ctx.Req = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
+	ctx.Req.Header.Set("InvalidAuthorization", "Bearer token")
 
 	// When.
 	_, _, ok := ctx.AuthorizationToken()
@@ -336,8 +321,8 @@ func TestAuthorizationToken_InvalidAuthorizationHeader(t *testing.T) {
 func TestHeader_HappyPath(t *testing.T) {
 	// Given.
 	ctx := utils.Context{}
-	ctx.Request = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
-	ctx.Request.Header.Set("Test-Header", "test_value")
+	ctx.Req = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
+	ctx.Req.Header.Set("Test-Header", "test_value")
 
 	// When.
 	header, ok := ctx.Header("Test-Header")

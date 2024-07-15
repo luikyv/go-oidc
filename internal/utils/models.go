@@ -3,19 +3,20 @@ package utils
 import (
 	"encoding/json"
 	"net/http"
+	"reflect"
 	"strconv"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-type DPOPJWTClaims struct {
+type DPoPJWTClaims struct {
 	HTTPMethod      string `json:"htm"`
 	HTTPURI         string `json:"htu"`
 	AccessTokenHash string `json:"ath"`
 }
 
-type DPOPJWTValidationOptions struct {
+type DPoPJWTValidationOptions struct {
 	// AccessToken should be filled when the DPoP "ath" claim is expected and should be validated.
 	AccessToken   string
 	JWKThumbprint string
@@ -231,35 +232,6 @@ type DynamicClientRequest struct {
 	goidc.ClientMetaInfo
 }
 
-// TODO: Custom unmarshal.
-// type dynamicClientRequest DynamicClientRequest
-
-// func (req *DynamicClientRequest) UnmarshalJSON(data []byte) error {
-
-// 	var reqAux dynamicClientRequest
-// 	if err := json.Unmarshal(data, &reqAux); err != nil {
-// 		return err
-// 	}
-
-// 	rawParams := make(map[string]any)
-// 	if err := json.Unmarshal(data, &rawParams); err != nil {
-// 		return err
-// 	}
-
-// 	typ := reflect.TypeOf(reqAux)
-// 	for i := 0; i < typ.NumField(); i++ {
-// 		field := typ.Field(i)
-// 		if key := field.Tag.Get("json"); key != "" {
-// 			delete(rawParams, key)
-// 		}
-// 	}
-
-// 	*req = DynamicClientRequest(reqAux)
-// 	req.Attributes = rawParams
-
-// 	return nil
-// }
-
 type DynamicClientResponse struct {
 	ID                      string `json:"client_id"`
 	Secret                  string `json:"client_secret,omitempty"`
@@ -268,35 +240,34 @@ type DynamicClientResponse struct {
 	goidc.ClientMetaInfo
 }
 
-// type dynamicClientResponse DynamicClientResponse
+func (resp DynamicClientResponse) MarshalJSON() ([]byte, error) {
 
-// TODO: Custom marshal.
-// func (resp DynamicClientResponse) MarshalJSON() ([]byte, error) {
+	rawValues := map[string]any{
+		"client_id":                 resp.ID,
+		"registration_access_token": resp.RegistrationAccessToken,
+		"registration_client_uri":   resp.RegistrationURI,
+	}
+	if resp.Secret != "" {
+		rawValues["client_secret"] = resp.Secret
+	}
 
-// 	rawValues := make(map[string]any)
-// 	respValueReflect := reflect.ValueOf(resp)
-// 	respTypeReflect := reflect.TypeOf(resp)
-// 	for i := 0; i < respValueReflect.NumField(); i++ {
-// 		if jsonTag := respTypeReflect.Field(i).Tag.Get("json"); jsonTag != "" {
-// 			field := respValueReflect.Field(i)
-// 			rawValues[jsonTag] = field.Interface()
+	valueReflect := reflect.ValueOf(resp.ClientMetaInfo)
+	typeReflect := reflect.TypeOf(resp.ClientMetaInfo)
+	for i := 0; i < valueReflect.NumField(); i++ {
+		if jsonTag := typeReflect.Field(i).Tag.Get("json"); jsonTag != "" {
+			field := valueReflect.Field(i)
+			rawValues[jsonTag] = field.Interface()
+		}
+	}
 
-// 		}
+	// Inline the custom attributes.
+	delete(rawValues, "custom_attributes")
+	for k, v := range resp.CustomAttributes {
+		rawValues[k] = v
+	}
 
-// 	}
-
-// 	value := reflect.ValueOf(resp)
-// 	field := value.Field(0)
-// 	field.Inter
-// 	respAux := dynamicClientResponse(resp)
-// 	data, err := json.Marshal(respAux)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	rawParams := make(map[string]any)
-
-// }
+	return json.Marshal(rawValues)
+}
 
 type OpenIDMTLSConfiguration struct {
 	TokenEndpoint         string `json:"token_endpoint"`
@@ -341,7 +312,7 @@ type OpenIDConfiguration struct {
 	ClaimsParameterIsEnabled                       bool                                   `json:"claims_parameter_supported"`
 	AuthorizationDetailsIsSupported                bool                                   `json:"authorization_details_supported"`
 	AuthorizationDetailTypesSupported              []string                               `json:"authorization_data_types_supported,omitempty"`
-	DPOPSignatureAlgorithms                        []jose.SignatureAlgorithm              `json:"dpop_signing_alg_values_supported,omitempty"`
+	DPoPSignatureAlgorithms                        []jose.SignatureAlgorithm              `json:"dpop_signing_alg_values_supported,omitempty"`
 	IntrospectionEndpoint                          string                                 `json:"introspection_endpoint,omitempty"`
 	IntrospectionEndpointClientAuthnMethods        []goidc.ClientAuthnType                `json:"introspection_endpoint_auth_methods_supported,omitempty"`
 	IntrospectionEndpointClientSignatureAlgorithms []jose.SignatureAlgorithm              `json:"introspection_endpoint_auth_signing_alg_values_supported,omitempty"`

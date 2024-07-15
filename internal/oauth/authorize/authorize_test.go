@@ -51,9 +51,9 @@ func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 	session := sessions[0]
 	assert.NotEmpty(t, session.AuthorizationCode, "the authorization code should be filled when the policy ends successfully")
 
-	assert.Contains(t, ctx.Response.Header().Get("Location"), fmt.Sprintf("code=%s", session.AuthorizationCode),
+	assert.Contains(t, ctx.Response().Header().Get("Location"), fmt.Sprintf("code=%s", session.AuthorizationCode),
 		"missing code in the redirection")
-	assert.Contains(t, ctx.Response.Header().Get("Location"), "id_token=", "missing id_token in the redirection")
+	assert.Contains(t, ctx.Response().Header().Get("Location"), "id_token=", "missing id_token in the redirection")
 }
 
 func TestInitAuth_PolicyEndsWithSuccess_WithJAR(t *testing.T) {
@@ -114,7 +114,7 @@ func TestInitAuth_PolicyEndsWithSuccess_WithJAR(t *testing.T) {
 	session := sessions[0]
 	assert.NotEmpty(t, session.AuthorizationCode, "the authorization code should be filled when the policy ends successfully")
 
-	assert.Contains(t, ctx.Response.Header().Get("Location"), fmt.Sprintf("code=%s", session.AuthorizationCode),
+	assert.Contains(t, ctx.Response().Header().Get("Location"), fmt.Sprintf("code=%s", session.AuthorizationCode),
 		"missing code in the redirection")
 }
 
@@ -155,7 +155,7 @@ func TestInitAuth_PolicyEndsWithSuccess_WithJARM(t *testing.T) {
 	session := sessions[0]
 	assert.NotEmpty(t, session.AuthorizationCode, "the authorization code should be filled when the policy ends successfully")
 
-	redirectURL, err := url.Parse(ctx.Response.Header().Get("Location"))
+	redirectURL, err := url.Parse(ctx.Response().Header().Get("Location"))
 	require.Nil(t, err)
 
 	responseObject := redirectURL.Query().Get("response")
@@ -215,7 +215,7 @@ func TestInitAuth_InvalidScope(t *testing.T) {
 
 	// Then.
 	assert.Nil(t, err)
-	assert.Contains(t, ctx.Response.Header().Get("Location"), goidc.ErrorCodeInvalidScope)
+	assert.Contains(t, ctx.Response().Header().Get("Location"), goidc.ErrorCodeInvalidScope)
 }
 
 func TestInitAuth_InvalidResponseType(t *testing.T) {
@@ -237,7 +237,7 @@ func TestInitAuth_InvalidResponseType(t *testing.T) {
 
 	// Then.
 	assert.Nil(t, err)
-	assert.Contains(t, ctx.Response.Header().Get("Location"), goidc.ErrorCodeInvalidRequest)
+	assert.Contains(t, ctx.Response().Header().Get("Location"), goidc.ErrorCodeInvalidRequest)
 }
 
 func TestInitAuth_WhenNoPolicyIsAvailable(t *testing.T) {
@@ -257,7 +257,7 @@ func TestInitAuth_WhenNoPolicyIsAvailable(t *testing.T) {
 
 	// Then.
 	assert.Nil(t, err)
-	assert.Contains(t, ctx.Response.Header().Get("Location"), goidc.ErrorCodeInvalidRequest, "no policy should be available")
+	assert.Contains(t, ctx.Response().Header().Get("Location"), goidc.ErrorCodeInvalidRequest, "no policy should be available")
 }
 
 func TestInitAuth_ShouldEndWithError(t *testing.T) {
@@ -286,7 +286,7 @@ func TestInitAuth_ShouldEndWithError(t *testing.T) {
 
 	// Then.
 	assert.Nil(t, err, "the error should be redirected")
-	assert.Contains(t, ctx.Response.Header().Get("Location"), goidc.ErrorCodeAccessDenied, "no policy should be available")
+	assert.Contains(t, ctx.Response().Header().Get("Location"), goidc.ErrorCodeAccessDenied, "no policy should be available")
 
 	sessions := utils.AuthnSessions(t, ctx)
 	assert.Len(t, sessions, 0, "no authentication session should remain")
@@ -318,7 +318,7 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 
 	// Then.
 	require.Nil(t, err)
-	assert.Equal(t, http.StatusOK, ctx.Response.(*httptest.ResponseRecorder).Result().StatusCode,
+	assert.Equal(t, http.StatusOK, ctx.Response().(*httptest.ResponseRecorder).Result().StatusCode,
 		"invalid status code for in progress status")
 
 	sessions := utils.AuthnSessions(t, ctx)
@@ -377,7 +377,7 @@ func TestInitAuth_WithPAR(t *testing.T) {
 	session := sessions[0]
 	assert.NotEmpty(t, session.AuthorizationCode, "the authorization code should be filled when the policy ends successfully")
 
-	assert.Contains(t, ctx.Response.Header().Get("Location"), fmt.Sprintf("code=%s", session.AuthorizationCode),
+	assert.Contains(t, ctx.Response().Header().Get("Location"), fmt.Sprintf("code=%s", session.AuthorizationCode),
 		"missing code in the redirection")
 }
 

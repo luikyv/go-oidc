@@ -1,4 +1,4 @@
-package apihandlers
+package api
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ import (
 
 func HandleDynamicClientCreation(ctx *utils.Context) {
 	var req utils.DynamicClientRequest
-	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
 		bindErrorToResponse(ctx, err)
 		return
 	}
@@ -32,7 +32,7 @@ func HandleDynamicClientCreation(ctx *utils.Context) {
 
 func HandleDynamicClientUpdate(ctx *utils.Context) {
 	var req utils.DynamicClientRequest
-	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
 		bindErrorToResponse(ctx, err)
 		return
 	}
@@ -43,7 +43,7 @@ func HandleDynamicClientUpdate(ctx *utils.Context) {
 		return
 	}
 
-	req.ID = ctx.Request.PathValue("client_id")
+	req.ID = ctx.Request().PathValue("client_id")
 	req.RegistrationAccessToken = token
 	resp, err := dcr.UpdateClient(ctx, req)
 	if err != nil {
@@ -64,7 +64,7 @@ func HandleDynamicClientRetrieve(ctx *utils.Context) {
 	}
 
 	req := utils.DynamicClientRequest{
-		ID:                      ctx.Request.PathValue("client_id"),
+		ID:                      ctx.Request().PathValue("client_id"),
 		RegistrationAccessToken: token,
 	}
 
@@ -87,7 +87,7 @@ func HandleDynamicClientDelete(ctx *utils.Context) {
 	}
 
 	req := utils.DynamicClientRequest{
-		ID:                      ctx.Request.PathValue("client_id"),
+		ID:                      ctx.Request().PathValue("client_id"),
 		RegistrationAccessToken: token,
 	}
 
@@ -96,5 +96,5 @@ func HandleDynamicClientDelete(ctx *utils.Context) {
 		return
 	}
 
-	ctx.Response.WriteHeader(http.StatusNoContent)
+	ctx.Response().WriteHeader(http.StatusNoContent)
 }

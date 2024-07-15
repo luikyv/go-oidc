@@ -33,7 +33,7 @@ if err := json.Unmarshal(
 port := ":80"
 
 // Instantiate the manager with all clients and sessions being saved in memory.
-openidProvider := goidcp.NewProvider(
+openidProvider := goidcp.New(
     "http://localhost" + port,
     goidcp.NewInMemoryClientManager(),
     goidcp.NewInMemoryAuthnSessionManager(),
@@ -67,23 +67,20 @@ make docs
 Make sure the `GOBIN` environment variable is set.
 
 ## To Do's
+* Tell the use what he needs to provide?
+* What if I want to use Gin?
 * Don't use the default http client.
 * revoke by jti.
 * Add docs, docs should start with the name of the thing.
 * How golang loads packages?
-* Caching /authorize?
 * Docker compose with mongo and CS.
 * Add index to mongo db.
-* Implement a bson decoder?
-* Fix: given, when, then.
 * Don't expose jose.
-* Add more tests.
 * Implement the revocation endpoint.
 * Should I add the default encryption algorithm instead of requiring the dev to pass it?
 * Implement the resource parameter.
 * Implement a client credentials policy.
 * Test the authorization details.
-* Should I use "starts with" to validate scopes?
 * Symmetric encryption for JAR?
 * Support pairwise subject type.
 * Add logs and log warnings.
@@ -91,3 +88,5 @@ Make sure the `GOBIN` environment variable is set.
 * Allow the dev to set an error template for /authorize.
 * Client jwks is required for JAR.
 * Handle expired sessions.
+* New grant for token introspection?
+* Handle user session?

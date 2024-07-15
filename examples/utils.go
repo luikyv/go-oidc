@@ -3,9 +3,11 @@ package main
 import (
 	"encoding/json"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
@@ -112,9 +114,12 @@ func identifyUser(
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 
-	username := ctx.FormParam("username")
+	ctx.Request().ParseForm()
+	username := ctx.Request().PostFormValue("username")
 	if username == "" {
-		if err := ctx.RenderHTML(identityForm, map[string]any{
+		ctx.Response().WriteHeader(http.StatusOK)
+		tmpl, _ := template.New("default").Parse(identityForm)
+		if err := tmpl.Execute(ctx.Response(), map[string]any{
 			"host":       strings.Replace(ctx.Issuer(), "host.docker.internal", "localhost", -1),
 			"callbackID": session.CallbackID,
 		}); err != nil {
@@ -137,9 +142,12 @@ func authenticateWithPassword(
 	ctx goidc.Context,
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
-	password := ctx.FormParam("password")
+	ctx.Request().ParseForm()
+	password := ctx.Request().PostFormValue("password")
 	if password == "" {
-		if err := ctx.RenderHTML(passwordForm, map[string]any{
+		ctx.Response().WriteHeader(http.StatusOK)
+		tmpl, _ := template.New("default").Parse(passwordForm)
+		if err := tmpl.Execute(ctx.Response(), map[string]any{
 			"host":       strings.Replace(ctx.Issuer(), "host.docker.internal", "localhost", -1),
 			"callbackID": session.CallbackID,
 		}); err != nil {
@@ -150,7 +158,9 @@ func authenticateWithPassword(
 	}
 
 	if password != "password" {
-		if err := ctx.RenderHTML(passwordForm, map[string]any{
+		ctx.Response().WriteHeader(http.StatusOK)
+		tmpl, _ := template.New("default").Parse(passwordForm)
+		if err := tmpl.Execute(ctx.Response(), map[string]any{
 			"host":       strings.Replace(ctx.Issuer(), "host.docker.internal", "localhost", -1),
 			"callbackID": session.CallbackID,
 			"error":      "invalid password",

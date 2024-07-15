@@ -64,7 +64,7 @@ type Configuration struct {
 	UserClaims []string
 	// ClaimTypes are claim types supported by the server.
 	ClaimTypes []goidc.ClaimType
-	// If IssuerResponseParameterIsEnabled is true, the "iss" parameter will be returned when redirecting the user back to the client application.
+	// IssuerResponseParameterIsEnabled indicates if the "iss" parameter will be returned when redirecting the user back to the client application.
 	IssuerResponseParameterIsEnabled bool
 	// ClaimsParameterIsEnabled informs the clients whether the server accepts the "claims" parameter.
 	// This will be transmitted in the /.well-known/openid-configuration endpoint.
@@ -90,10 +90,10 @@ type Configuration struct {
 	// If PARIsRequired is true, authorization requests can only be made if they were pushed.
 	PARIsRequired                    bool
 	ParLifetimeSecs                  int
-	DPOPIsEnabled                    bool
-	DPOPIsRequired                   bool
-	DPOPLifetimeSecs                 int
-	DPOPSignatureAlgorithms          []jose.SignatureAlgorithm
+	DPoPIsEnabled                    bool
+	DPoPIsRequired                   bool
+	DPoPLifetimeSecs                 int
+	DPoPSignatureAlgorithms          []jose.SignatureAlgorithm
 	PkceIsEnabled                    bool
 	PkceIsRequired                   bool
 	CodeChallengeMethods             []goidc.CodeChallengeMethod
@@ -115,9 +115,9 @@ type Configuration struct {
 
 type Context struct {
 	Configuration
-	Request  *http.Request
-	Response http.ResponseWriter
-	logger   *slog.Logger
+	Req    *http.Request
+	Resp   http.ResponseWriter
+	logger *slog.Logger
 }
 
 func NewContext(
@@ -143,8 +143,8 @@ func NewContext(
 
 	return &Context{
 		Configuration: configuration,
-		Request:       req,
-		Response:      resp,
+		Req:           req,
+		Resp:          resp,
 		logger:        logger,
 	}
 }
@@ -171,15 +171,15 @@ func (ctx *Context) IntrospectionClientSignatureAlgorithms() []jose.SignatureAlg
 	return signatureAlgorithms
 }
 
-// DPOPJWT gets the DPoP JWT sent in the DPoP header.
+// DPoPJWT gets the DPoP JWT sent in the DPoP header.
 // According to RFC 9449: "There is not more than one DPoP HTTP request header field."
 // Therefore, an empty string and false will be returned if more than one value is found in the DPoP header.
-func (ctx *Context) DPOPJWT() (string, bool) {
+func (ctx *Context) DPoPJWT() (string, bool) {
 	// Consider case insensitive headers by canonicalizing them.
-	canonicalizedDPOPHeader := textproto.CanonicalMIMEHeaderKey(goidc.HeaderDPOP)
-	canonicalizedHeaders := textproto.MIMEHeader(ctx.Request.Header)
+	canonicalizedDPoPHeader := textproto.CanonicalMIMEHeaderKey(goidc.HeaderDPoP)
+	canonicalizedHeaders := textproto.MIMEHeader(ctx.Req.Header)
 
-	values := canonicalizedHeaders[canonicalizedDPOPHeader]
+	values := canonicalizedHeaders[canonicalizedDPoPHeader]
 	if values == nil || len(values) != 1 {
 		return "", false
 	}
@@ -288,19 +288,19 @@ func (ctx *Context) Scopes() goidc.Scopes {
 //---------------------------------------- context.Context ----------------------------------------//
 
 func (ctx *Context) Deadline() (time.Time, bool) {
-	return ctx.Request.Context().Deadline()
+	return ctx.Req.Context().Deadline()
 }
 
 func (ctx *Context) Done() <-chan struct{} {
-	return ctx.Request.Context().Done()
+	return ctx.Req.Context().Done()
 }
 
 func (ctx *Context) Err() error {
-	return ctx.Request.Context().Err()
+	return ctx.Req.Context().Err()
 }
 
 func (ctx *Context) Value(key any) any {
-	return ctx.Request.Context().Value(key)
+	return ctx.Req.Context().Value(key)
 }
 
 //---------------------------------------- CRUD ----------------------------------------//
@@ -310,16 +310,7 @@ func (ctx *Context) CreateOrUpdateClient(client *goidc.Client) error {
 }
 
 func (ctx *Context) Client(clientID string) (*goidc.Client, error) {
-	client, err := ctx.ClientManager.Get(ctx, clientID)
-	if err != nil {
-		return nil, err
-	}
-
-	// This will allow the method client.GetPublicJWKS to cache the client keys if they are fetched from the JWKS URI.
-	if client.PublicJWKS == nil {
-		client.PublicJWKS = &goidc.JSONWebKeySet{}
-	}
-	return client, nil
+	return ctx.ClientManager.Get(ctx, clientID)
 }
 
 func (ctx *Context) DeleteClient(id string) error {
@@ -364,6 +355,14 @@ func (ctx *Context) DeleteAuthnSession(id string) error {
 
 //---------------------------------------- HTTP Utils ----------------------------------------//
 
+func (ctx *Context) Request() *http.Request {
+	return ctx.Req
+}
+
+func (ctx *Context) Response() http.ResponseWriter {
+	return ctx.Resp
+}
+
 func (ctx *Context) BearerToken() (token string, ok bool) {
 	token, tokenType, ok := ctx.AuthorizationToken()
 	if !ok {
@@ -396,7 +395,7 @@ func (ctx *Context) AuthorizationToken() (
 }
 
 func (ctx *Context) Header(name string) (string, bool) {
-	value := ctx.Request.Header.Get(name)
+	value := ctx.Req.Header.Get(name)
 	if value == "" {
 		return "", false
 	}
@@ -405,26 +404,26 @@ func (ctx *Context) Header(name string) (string, bool) {
 }
 
 func (ctx *Context) RequestMethod() string {
-	return ctx.Request.Method
+	return ctx.Req.Method
 }
 
 func (ctx *Context) FormParam(param string) string {
 
-	if err := ctx.Request.ParseForm(); err != nil {
+	if err := ctx.Req.ParseForm(); err != nil {
 		return ""
 	}
 
-	return ctx.Request.PostFormValue(param)
+	return ctx.Req.PostFormValue(param)
 }
 
 func (ctx *Context) FormData() map[string]any {
 
-	if err := ctx.Request.ParseForm(); err != nil {
+	if err := ctx.Req.ParseForm(); err != nil {
 		return map[string]any{}
 	}
 
 	formData := make(map[string]any)
-	for param, values := range ctx.Request.PostForm {
+	for param, values := range ctx.Req.PostForm {
 		formData[param] = values[0]
 	}
 	return formData
@@ -440,9 +439,9 @@ func (ctx *Context) Write(obj any, status int) error {
 	default:
 	}
 
-	ctx.Response.Header().Set("Content-Type", "application/json")
-	ctx.Response.WriteHeader(status)
-	if err := json.NewEncoder(ctx.Response).Encode(obj); err != nil {
+	ctx.Resp.Header().Set("Content-Type", "application/json")
+	ctx.Resp.WriteHeader(status)
+	if err := json.NewEncoder(ctx.Resp).Encode(obj); err != nil {
 		return err
 	}
 
@@ -458,10 +457,10 @@ func (ctx *Context) WriteJWT(token string, status int) error {
 	default:
 	}
 
-	ctx.Response.Header().Set("Content-Type", "application/jwt")
-	ctx.Response.WriteHeader(status)
+	ctx.Resp.Header().Set("Content-Type", "application/jwt")
+	ctx.Resp.WriteHeader(status)
 
-	if _, err := ctx.Response.Write([]byte(token)); err != nil {
+	if _, err := ctx.Resp.Write([]byte(token)); err != nil {
 		return err
 	}
 
@@ -469,7 +468,7 @@ func (ctx *Context) WriteJWT(token string, status int) error {
 }
 
 func (ctx *Context) Redirect(redirectURL string) {
-	http.Redirect(ctx.Response, ctx.Request, redirectURL, http.StatusSeeOther)
+	http.Redirect(ctx.Resp, ctx.Req, redirectURL, http.StatusSeeOther)
 }
 
 func (ctx *Context) RenderHTML(
@@ -484,9 +483,9 @@ func (ctx *Context) RenderHTML(
 	}
 
 	// TODO: review this. Add headers?
-	ctx.Response.WriteHeader(http.StatusOK)
+	ctx.Resp.WriteHeader(http.StatusOK)
 	tmpl, _ := template.New("default").Parse(html)
-	return tmpl.Execute(ctx.Response, params)
+	return tmpl.Execute(ctx.Resp, params)
 }
 
 func (ctx *Context) RenderHTMLTemplate(
@@ -500,7 +499,7 @@ func (ctx *Context) RenderHTMLTemplate(
 	default:
 	}
 
-	return tmpl.Execute(ctx.Response, params)
+	return tmpl.Execute(ctx.Resp, params)
 }
 
 //---------------------------------------- Key Management ----------------------------------------//
