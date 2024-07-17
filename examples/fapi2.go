@@ -10,9 +10,7 @@ import (
 )
 
 func RunFAPI2OpenIDProvider() error {
-	port := ":83"
 	mtlsPort := ":84"
-	issuer := "https://host.docker.internal" + port
 	mtlsIssuer := "https://host.docker.internal" + mtlsPort
 	ps256ServerKeyID := "ps256_key"
 	redirectURI := "https://localhost:8443/test/a/first_test/callback"
@@ -28,7 +26,7 @@ func RunFAPI2OpenIDProvider() error {
 
 	// Create the manager.
 	openidProvider := goidcp.New(
-		issuer,
+		Issuer,
 		goidcp.NewInMemoryClientManager(),
 		goidcp.NewMongoDBAuthnSessionManager(database),
 		goidcp.NewMongoDBGrantSessionManager(database),
@@ -61,7 +59,7 @@ func RunFAPI2OpenIDProvider() error {
 	)
 	openidProvider.EnableDynamicClientRegistration(nil, true)
 	openidProvider.SetTokenOptions(func(c *goidc.Client, s string) (goidc.TokenOptions, error) {
-		return goidc.NewJWTTokenOptions(ps256ServerKeyID, 600, true), nil
+		return goidc.NewJWTTokenOptions(ps256ServerKeyID, 600), nil
 	})
 	openidProvider.EnableUserInfoEncryption(
 		[]goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
@@ -125,7 +123,7 @@ func RunFAPI2OpenIDProvider() error {
 
 	// Run
 	return openidProvider.RunTLS(goidcp.TLSOptions{
-		TLSAddress:                     port,
+		TLSAddress:                     Port,
 		ServerCertificate:              "server_keys/cert.pem",
 		ServerKey:                      "server_keys/key.pem",
 		CipherSuites:                   goidc.FAPIAllowedCipherSuites,

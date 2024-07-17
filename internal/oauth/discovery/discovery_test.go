@@ -17,7 +17,7 @@ func TestGetOpenIDConfiguration(t *testing.T) {
 	ctx := &utils.Context{
 		Configuration: utils.Configuration{
 			Host:                                   "https://example.com",
-			OAuthScopes:                            []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeEmail},
+			Scopes:                                 []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeEmail},
 			PrivateJWKS:                            goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{tokenKey, userInfoKey}},
 			DefaultTokenSignatureKeyID:             tokenKey.KeyID(),
 			DefaultUserInfoSignatureKeyID:          userInfoKey.KeyID(),

@@ -1,8 +1,6 @@
 package token
 
 import (
-	"log/slog"
-
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
@@ -62,10 +60,7 @@ func generateClientCredentialsGrantSession(
 ) {
 
 	grantSession := utils.NewGrantSession(grantOptions, token)
-	ctx.Logger().Debug("creating grant session for client_credentials grant")
 	if err := ctx.CreateOrUpdateGrantSession(grantSession); err != nil {
-		ctx.Logger().Error("error creating a grant session during client_credentials grant",
-			slog.String("error", err.Error()))
 		return nil, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
@@ -79,7 +74,6 @@ func validateClientCredentialsGrantRequest(
 ) goidc.OAuthError {
 
 	if !client.IsGrantTypeAllowed(goidc.GrantClientCredentials) {
-		ctx.Logger().Info("grant type not allowed")
 		return goidc.NewOAuthError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
 	}
 
@@ -87,8 +81,7 @@ func validateClientCredentialsGrantRequest(
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidScope, "cannot request openid scope for client credentials grant")
 	}
 
-	if !client.AreScopesAllowed(ctx, req.Scopes) {
-		ctx.Logger().Info("scope not allowed")
+	if !client.AreScopesAllowed(ctx, ctx.Scopes, req.Scopes) {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidScope, "invalid scope")
 	}
 

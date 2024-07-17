@@ -1,8 +1,6 @@
 package token
 
 import (
-	"log/slog"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
@@ -22,12 +20,10 @@ func handleAuthorizationCodeGrantTokenCreation(
 
 	client, session, oauthErr := getAuthenticatedClientAndSession(ctx, req)
 	if oauthErr != nil {
-		ctx.Logger().Debug("error while loading the client or session", slog.String("error", oauthErr.Error()))
 		return utils.TokenResponse{}, oauthErr
 	}
 
 	if oauthErr = validateAuthorizationCodeGrantRequest(ctx, req, client, session); oauthErr != nil {
-		ctx.Logger().Debug("invalid parameters for the token request", slog.String("error", oauthErr.Error()))
 		return utils.TokenResponse{}, oauthErr
 	}
 
@@ -41,9 +37,9 @@ func handleAuthorizationCodeGrantTokenCreation(
 		return utils.TokenResponse{}, err
 	}
 
-	grantSession, err := generateAuthorizationCodeGrantSession(ctx, client, token, grantOptions)
+	grantSession, err := generateAuthorizationCodeGrantSession(ctx, token, grantOptions)
 	if err != nil {
-		return utils.TokenResponse{}, nil
+		return utils.TokenResponse{}, err
 	}
 
 	tokenResp := utils.TokenResponse{
@@ -56,19 +52,17 @@ func handleAuthorizationCodeGrantTokenCreation(
 	if utils.ScopesContainsOpenID(session.GrantedScopes) {
 		tokenResp.IDToken, err = utils.MakeIDToken(ctx, client, utils.NewIDTokenOptions(grantOptions))
 		if err != nil {
-			ctx.Logger().Error("could not generate an ID token", slog.String("error", err.Error()))
+			return utils.TokenResponse{}, err
 		}
 	}
 
 	if session.Scopes != grantOptions.GrantedScopes {
-		ctx.Logger().Debug("granted scopes are different from the requested by the client")
 		tokenResp.Scopes = grantOptions.GrantedScopes
 	}
 
 	// If the granted auth details are different from the requested ones, we must inform it to the client
 	// by sending the granted auth details back in the token response.
 	if !cmp.Equal(session.AuthorizationDetails, grantOptions.GrantedAuthorizationDetails) {
-		ctx.Logger().Debug("granted auth details is different from the requested by the client")
 		tokenResp.AuthorizationDetails = grantOptions.GrantedAuthorizationDetails
 	}
 
@@ -77,7 +71,6 @@ func handleAuthorizationCodeGrantTokenCreation(
 
 func generateAuthorizationCodeGrantSession(
 	ctx *utils.Context,
-	client *goidc.Client,
 	token utils.Token,
 	grantOptions goidc.GrantOptions,
 ) (
@@ -86,8 +79,7 @@ func generateAuthorizationCodeGrantSession(
 ) {
 
 	grantSession := utils.NewGrantSession(grantOptions, token)
-	if client.IsGrantTypeAllowed(goidc.GrantRefreshToken) && grantOptions.ShouldRefresh {
-		ctx.Logger().Debug("generating refresh token for authorization code grant")
+	if utils.ScopesContainsOfflineAccess(grantSession.GrantedScopes) {
 		token, err := utils.RefreshToken()
 		if err != nil {
 			return nil, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
@@ -96,10 +88,7 @@ func generateAuthorizationCodeGrantSession(
 		grantSession.ExpiresAtTimestamp = goidc.TimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
 
-	ctx.Logger().Debug("creating grant session for authorization_code grant")
 	if err := ctx.CreateOrUpdateGrantSession(grantSession); err != nil {
-		ctx.Logger().Error("error creating grant session during authorization_code grant",
-			slog.String("error", err.Error()))
 		return nil, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
@@ -181,26 +170,19 @@ func getAuthenticatedClientAndSession(
 	goidc.OAuthError,
 ) {
 
-	ctx.Logger().Debug("get the session using the authorization code")
 	sessionResultCh := make(chan utils.ResultChannel)
 	go getSessionByAuthorizationCode(ctx, req.AuthorizationCode, sessionResultCh)
 
-	ctx.Logger().Debug("get the client while the session is being loaded")
 	authenticatedClient, err := utils.GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
-		ctx.Logger().Debug("error while loading the client", slog.String("error", err.Error()))
 		return nil, nil, err
 	}
-	ctx.Logger().Debug("the client was loaded successfully")
 
-	ctx.Logger().Debug("wait for the session")
 	sessionResult := <-sessionResultCh
 	session, err := sessionResult.Result.(*goidc.AuthnSession), sessionResult.Err
 	if err != nil {
-		ctx.Logger().Debug("error while loading the session", slog.String("error", err.Error()))
 		return nil, nil, err
 	}
-	ctx.Logger().Debug("the session was loaded successfully")
 
 	return authenticatedClient, session, nil
 }

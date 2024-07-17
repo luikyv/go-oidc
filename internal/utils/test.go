@@ -68,7 +68,7 @@ func NewTestContext(t *testing.T) *Context {
 		ClientManager:       inmemory.NewClientManager(),
 		GrantSessionManager: inmemory.NewGrantSessionManager(),
 		AuthnSessionManager: inmemory.NewAuthnSessionManager(),
-		OAuthScopes:         []goidc.Scope{goidc.ScopeOpenID, TestScope1, TestScope2},
+		Scopes:              []goidc.Scope{goidc.ScopeOpenID, TestScope1, TestScope2},
 		PrivateJWKS:         goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{TestServerPrivateJWK}},
 		ClientAuthnMethods:  []goidc.ClientAuthnType{goidc.ClientAuthnNone, goidc.ClientAuthnSecretPost},
 		GrantTypes: []goidc.GrantType{

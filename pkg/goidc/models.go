@@ -48,7 +48,6 @@ type TokenOptionsFunc func(client *Client, scopes string) (TokenOptions, error)
 type TokenOptions struct {
 	TokenFormat           TokenFormat    `json:"token_format" bson:"token_format"`
 	TokenLifetimeSecs     int            `json:"token_lifetime_secs" bson:"token_lifetime_secs"`
-	ShouldRefresh         bool           `json:"is_refreshable" bson:"is_refreshable"`
 	JWTSignatureKeyID     string         `json:"token_signature_key_id,omitempty" bson:"token_signature_key_id,omitempty"`
 	OpaqueTokenLength     int            `json:"opaque_token_length,omitempty" bson:"opaque_token_length,omitempty"`
 	AdditionalTokenClaims map[string]any `json:"additional_token_claims,omitempty" bson:"additional_token_claims,omitempty"`
@@ -65,26 +64,22 @@ func NewJWTTokenOptions(
 	// The ID of a signing key present in the server JWKS.
 	signatureKeyID string,
 	tokenLifetimeSecs int,
-	shouldRefresh bool,
 ) TokenOptions {
 	return TokenOptions{
 		TokenFormat:       TokenFormatJWT,
 		TokenLifetimeSecs: tokenLifetimeSecs,
 		JWTSignatureKeyID: signatureKeyID,
-		ShouldRefresh:     shouldRefresh,
 	}
 }
 
 func NewOpaqueTokenOptions(
 	tokenLength int,
 	tokenLifetimeSecs int,
-	shouldRefresh bool,
 ) TokenOptions {
 	return TokenOptions{
 		TokenFormat:       TokenFormatOpaque,
 		TokenLifetimeSecs: tokenLifetimeSecs,
 		OpaqueTokenLength: tokenLength,
-		ShouldRefresh:     shouldRefresh,
 	}
 }
 

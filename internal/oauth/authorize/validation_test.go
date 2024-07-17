@@ -222,7 +222,6 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 					return
 				}
 
-				ctx.Logger().Debug(err.Error())
 				if c.ShouldRedirectError {
 					var redirectErr goidc.OAuthRedirectError
 					assert.ErrorAs(t, err, &redirectErr)

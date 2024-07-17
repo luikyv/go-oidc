@@ -16,8 +16,7 @@ func HandleDynamicClientCreation(ctx *utils.Context) {
 		return
 	}
 
-	initialAccessToken, _ := ctx.BearerToken()
-	req.InitialAccessToken = initialAccessToken
+	req.InitialAccessToken = ctx.BearerToken()
 
 	resp, err := dcr.CreateClient(ctx, req)
 	if err != nil {
@@ -37,8 +36,8 @@ func HandleDynamicClientUpdate(ctx *utils.Context) {
 		return
 	}
 
-	token, ok := ctx.BearerToken()
-	if !ok {
+	token := ctx.BearerToken()
+	if token == "" {
 		bindErrorToResponse(ctx, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "no token found"))
 		return
 	}
@@ -57,8 +56,8 @@ func HandleDynamicClientUpdate(ctx *utils.Context) {
 }
 
 func HandleDynamicClientRetrieve(ctx *utils.Context) {
-	token, ok := ctx.BearerToken()
-	if !ok {
+	token := ctx.BearerToken()
+	if token == "" {
 		bindErrorToResponse(ctx, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "no token found"))
 		return
 	}
@@ -80,8 +79,8 @@ func HandleDynamicClientRetrieve(ctx *utils.Context) {
 }
 
 func HandleDynamicClientDelete(ctx *utils.Context) {
-	token, ok := ctx.BearerToken()
-	if !ok {
+	token := ctx.BearerToken()
+	if token == "" {
 		bindErrorToResponse(ctx, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "no token found"))
 		return
 	}

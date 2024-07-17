@@ -12,6 +12,9 @@ import (
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
+const Port = ":83"
+const Issuer = "https://host.docker.internal" + Port
+
 func PrivateJWKS(filename string) goidc.JSONWebKeySet {
 	absPath, _ := filepath.Abs("./" + filename)
 	clientJWKSFile, err := os.Open(absPath)
@@ -91,19 +94,19 @@ func AuthenticateUser(
 ) goidc.AuthnStatus {
 
 	// Init the step if empty.
-	_, ok := session.Parameter("step")
+	stepID, ok := session.Store["step"]
 	if !ok {
-		session.SaveParameter("step", "identity")
+		stepID = "identity"
+		session.StoreParameter("step", stepID)
 	}
 
-	stepID, ok := session.Parameter("step")
-	if ok && stepID == "identity" {
+	if stepID == "identity" {
 		status := identifyUser(ctx, session)
 		if status != goidc.StatusSuccess {
 			return status
 		}
 		// The status is success so we can move to the next step.
-		session.SaveParameter("step", "password")
+		session.StoreParameter("step", "password")
 	}
 
 	return authenticateWithPassword(ctx, session)
@@ -120,10 +123,9 @@ func identifyUser(
 		ctx.Response().WriteHeader(http.StatusOK)
 		tmpl, _ := template.New("default").Parse(identityForm)
 		if err := tmpl.Execute(ctx.Response(), map[string]any{
-			"host":       strings.Replace(ctx.Issuer(), "host.docker.internal", "localhost", -1),
+			"host":       strings.Replace(Issuer, "host.docker.internal", "localhost", -1),
 			"callbackID": session.CallbackID,
 		}); err != nil {
-			ctx.Logger().Error(err.Error())
 			return goidc.StatusFailure
 		}
 		return goidc.StatusInProgress
@@ -148,10 +150,9 @@ func authenticateWithPassword(
 		ctx.Response().WriteHeader(http.StatusOK)
 		tmpl, _ := template.New("default").Parse(passwordForm)
 		if err := tmpl.Execute(ctx.Response(), map[string]any{
-			"host":       strings.Replace(ctx.Issuer(), "host.docker.internal", "localhost", -1),
+			"host":       strings.Replace(Issuer, "host.docker.internal", "localhost", -1),
 			"callbackID": session.CallbackID,
 		}); err != nil {
-			ctx.Logger().Error(err.Error())
 			return goidc.StatusFailure
 		}
 		return goidc.StatusInProgress
@@ -161,11 +162,10 @@ func authenticateWithPassword(
 		ctx.Response().WriteHeader(http.StatusOK)
 		tmpl, _ := template.New("default").Parse(passwordForm)
 		if err := tmpl.Execute(ctx.Response(), map[string]any{
-			"host":       strings.Replace(ctx.Issuer(), "host.docker.internal", "localhost", -1),
+			"host":       strings.Replace(Issuer, "host.docker.internal", "localhost", -1),
 			"callbackID": session.CallbackID,
 			"error":      "invalid password",
 		}); err != nil {
-			ctx.Logger().Error(err.Error())
 			return goidc.StatusFailure
 		}
 		return goidc.StatusInProgress

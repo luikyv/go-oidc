@@ -24,7 +24,7 @@ func TestCreateClient(t *testing.T) {
 	// Then.
 	require.Nil(t, oauthErr)
 	require.NotEmpty(t, resp.ID)
-	assert.Equal(t, ctx.Issuer()+string(goidc.EndpointDynamicClient)+"/"+resp.ID, resp.RegistrationURI)
+	assert.Equal(t, ctx.Host+string(goidc.EndpointDynamicClient)+"/"+resp.ID, resp.RegistrationURI)
 	assert.NotEmpty(t, resp.RegistrationAccessToken)
 
 	_, err := ctx.Client(resp.ID)
@@ -47,7 +47,7 @@ func TestUpdateClient(t *testing.T) {
 	// Then.
 	require.Nil(t, oauthErr)
 	assert.Equal(t, client.ID, resp.ID)
-	assert.Equal(t, ctx.Issuer()+string(goidc.EndpointDynamicClient)+"/"+resp.ID, resp.RegistrationURI)
+	assert.Equal(t, ctx.Host+string(goidc.EndpointDynamicClient)+"/"+resp.ID, resp.RegistrationURI)
 	assert.Empty(t, resp.RegistrationAccessToken)
 }
 
@@ -68,7 +68,7 @@ func TestUpdateClient_WithTokenRotation(t *testing.T) {
 	// Then.
 	require.Nil(t, oauthErr)
 	assert.Equal(t, client.ID, resp.ID)
-	assert.Equal(t, ctx.Issuer()+string(goidc.EndpointDynamicClient)+"/"+resp.ID, resp.RegistrationURI)
+	assert.Equal(t, ctx.Host+string(goidc.EndpointDynamicClient)+"/"+resp.ID, resp.RegistrationURI)
 	assert.NotEmpty(t, resp.RegistrationAccessToken)
 	assert.NotEqual(t, utils.TestClientRegistrationAccessToken, resp.RegistrationAccessToken)
 }
@@ -87,7 +87,7 @@ func TestGetClient(t *testing.T) {
 	// Then.
 	require.Nil(t, oauthErr)
 	assert.Equal(t, utils.TestClientID, resp.ID)
-	assert.Equal(t, ctx.Issuer()+string(goidc.EndpointDynamicClient)+"/"+resp.ID, resp.RegistrationURI)
+	assert.Equal(t, ctx.Host+string(goidc.EndpointDynamicClient)+"/"+resp.ID, resp.RegistrationURI)
 	assert.Empty(t, resp.RegistrationAccessToken)
 }
 

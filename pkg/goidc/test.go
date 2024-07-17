@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -28,26 +27,6 @@ func (testCtx TestContext) Response() http.ResponseWriter {
 
 func (testCtx TestContext) Logger() *slog.Logger {
 	return slog.Default()
-}
-
-func (testCtx TestContext) Scopes() Scopes {
-	return testCtx.OAuthScopes
-}
-
-func (testCtx TestContext) Deadline() (deadline time.Time, ok bool) {
-	return time.Now().Add(24 * time.Hour), false
-}
-
-func (testCtx TestContext) Done() <-chan struct{} {
-	return nil
-}
-
-func (testCtx TestContext) Err() error {
-	return nil
-}
-
-func (testCtx TestContext) Value(key any) any {
-	return nil
 }
 
 func NewTestContext(scopes Scopes) Context {

@@ -2,18 +2,12 @@ package goidc
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 )
 
-// TODO: Remove unused fields.
 type Context interface {
-	Issuer() string
 	Request() *http.Request
 	Response() http.ResponseWriter
-	Logger() *slog.Logger
-	Scopes() Scopes
-	context.Context
 }
 
 type ClientManager interface {

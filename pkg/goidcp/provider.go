@@ -12,17 +12,6 @@ import (
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-type TLSOptions struct {
-	TLSAddress        string
-	ServerCertificate string
-	ServerKey         string
-	CipherSuites      []uint16
-	// The fields below will be used only if mtls is enalbed.
-	MTLSAddress                    string
-	CaCertificatePool              *x509.CertPool
-	UnsecureCertificatesAreAllowed bool
-}
-
 type Provider struct {
 	config utils.Configuration
 }
@@ -44,7 +33,7 @@ func New(
 			ClientManager:       clientManager,
 			AuthnSessionManager: authnSessionManager,
 			GrantSessionManager: grantSessionManager,
-			OAuthScopes:         []goidc.Scope{goidc.ScopeOpenID},
+			Scopes:              []goidc.Scope{goidc.ScopeOpenID},
 			TokenOptions: func(client *goidc.Client, scopes string) (goidc.TokenOptions, error) {
 				return goidc.TokenOptions{
 					TokenLifetimeSecs: goidc.DefaultTokenLifetimeSecs,
@@ -71,7 +60,6 @@ func New(
 			SubjectIdentifierTypes:           []goidc.SubjectIdentifierType{goidc.SubjectIdentifierPublic},
 			ClaimTypes:                       []goidc.ClaimType{goidc.ClaimTypeNormal},
 			AuthenticationSessionTimeoutSecs: goidc.DefaultAuthenticationSessionTimeoutSecs,
-			CorrelationIDHeader:              goidc.HeaderCorrelationID,
 		},
 	}
 
@@ -170,9 +158,9 @@ func (p *Provider) EnableImplicitGrantType() {
 func (p *Provider) SetScopes(scopes ...goidc.Scope) {
 	// The scope openid is required to be among the scopes.
 	if goidc.Scopes(scopes).ContainsOpenID() {
-		p.config.OAuthScopes = scopes
+		p.config.Scopes = scopes
 	} else {
-		p.config.OAuthScopes = append(scopes, goidc.ScopeOpenID)
+		p.config.Scopes = append(scopes, goidc.ScopeOpenID)
 	}
 }
 
@@ -412,17 +400,9 @@ func (p *Provider) SetAuthenticationSessionTimeout(timeoutSecs int) {
 	p.config.AuthenticationSessionTimeoutSecs = timeoutSecs
 }
 
-// SetHeaderCorrelationID sets the header expected to have the correlation ID
-// that will be used for all requests to the server.
-func (p *Provider) SetHeaderCorrelationID(header string) {
-	p.config.CorrelationIDHeader = header
-}
-
 // SetProfileFAPI2 defines the OpenID Provider profile as FAPI 2.0.
-// The server will only be able to run if it is configured respecting the
-// FAPI 2.0 profile.
-// This will also change some of the behavior of the server during runtime to
-// be compliant with the FAPI 2.0.
+// The server will only be able to run if it is configured respecting the FAPI 2.0 profile.
+// This will also change some of the behavior of the server during runtime to be compliant with the FAPI 2.0.
 func (p *Provider) SetProfileFAPI2() {
 	p.config.Profile = goidc.ProfileFAPI2
 }
@@ -433,8 +413,7 @@ func (p *Provider) AddClient(client *goidc.Client) error {
 	return p.config.ClientManager.CreateOrUpdate(context.Background(), client)
 }
 
-// AddPolicy adds an authentication policy that will be evaluated at runtime
-// and then executed if selected.
+// AddPolicy adds an authentication policy that will be evaluated at runtime and then executed if selected.
 func (p *Provider) AddPolicy(policy goidc.AuthnPolicy) {
 	p.config.Policies = append(p.config.Policies, policy)
 }
@@ -451,10 +430,6 @@ func (p *Provider) Run(
 	for _, wrapHandler := range middlewares {
 		handler = wrapHandler(handler)
 	}
-	handler = api.NewCorrelationIDMiddleware(
-		handler,
-		p.config.CorrelationIDHeader,
-	)
 	handler = api.NewCacheControlMiddleware(handler)
 	return http.ListenAndServe(address, handler)
 }
@@ -481,10 +456,6 @@ func (p *Provider) RunTLS(
 	for _, wrapHandler := range middlewares {
 		handler = wrapHandler(handler)
 	}
-	handler = api.NewCorrelationIDMiddleware(
-		handler,
-		p.config.CorrelationIDHeader,
-	)
 	handler = api.NewCacheControlMiddleware(handler)
 	server := &http.Server{
 		Addr:    config.TLSAddress,
@@ -499,10 +470,6 @@ func (p *Provider) RunTLS(
 func (p *Provider) runMTLS(config TLSOptions) error {
 
 	handler := p.mtlsHandler()
-	handler = api.NewCorrelationIDMiddleware(
-		handler,
-		p.config.CorrelationIDHeader,
-	)
 	handler = api.NewCacheControlMiddleware(handler)
 	handler = api.NewClientCertificateMiddleware(handler)
 
@@ -698,4 +665,14 @@ func (p *Provider) validateConfiguration() error {
 		validateFAPI2IssuerResponseParamIsRequired,
 		validateFAPI2RefreshTokenRotation,
 	)
+}
+
+type TLSOptions struct {
+	TLSAddress                     string
+	ServerCertificate              string
+	ServerKey                      string
+	CipherSuites                   []uint16
+	MTLSAddress                    string
+	CaCertificatePool              *x509.CertPool
+	UnsecureCertificatesAreAllowed bool
 }

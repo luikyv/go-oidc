@@ -456,6 +456,10 @@ func ScopesContainsOpenID(scopes string) bool {
 	return slices.Contains(goidc.SplitStringWithSpaces(scopes), goidc.ScopeOpenID.ID)
 }
 
+func ScopesContainsOfflineAccess(scopes string) bool {
+	return slices.Contains(goidc.SplitStringWithSpaces(scopes), goidc.ScopeOffilineAccess.ID)
+}
+
 // JWKThumbprint generates a JWK thumbprint for a valid DPoP JWT.
 func JWKThumbprint(dpopJWT string, dpopSigningAlgorithms []jose.SignatureAlgorithm) string {
 	parsedDPoPJWT, _ := jwt.ParseSigned(dpopJWT, dpopSigningAlgorithms)

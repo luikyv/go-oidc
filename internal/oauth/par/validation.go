@@ -128,7 +128,7 @@ func validateScopes(
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidScope, "scope openid is required")
 	}
 
-	if params.Scopes != "" && !client.AreScopesAllowed(ctx, params.Scopes) {
+	if params.Scopes != "" && !client.AreScopesAllowed(ctx, ctx.Scopes, params.Scopes) {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidScope, "invalid scope")
 	}
 	return nil

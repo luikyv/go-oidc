@@ -40,7 +40,6 @@ func validateTokenBindingRequestWithDPoP(
 	dpopJWT, ok := ctx.DPoPJWT()
 	// Return an error if the DPoP header was not informed, but it's required either in the context or by the client.
 	if !ok && (ctx.DPoPIsRequired || client.DPoPIsRequired) {
-		ctx.Logger().Debug("The DPoP header is required, but wasn't provided")
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid dpop header")
 	}
 

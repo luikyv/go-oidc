@@ -246,10 +246,9 @@ func TestGetBearerToken_HappyPath(t *testing.T) {
 	ctx.Req.Header.Set("Authorization", "Bearer token")
 
 	// When.
-	token, ok := ctx.BearerToken()
+	token := ctx.BearerToken()
 
 	// Then.
-	require.True(t, ok)
 	assert.Equal(t, "token", token)
 }
 
@@ -259,10 +258,10 @@ func TestGetBearerToken_NoToken(t *testing.T) {
 	ctx.Req = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
 
 	// When.
-	_, ok := ctx.BearerToken()
+	token := ctx.BearerToken()
 
 	// Then.
-	require.False(t, ok)
+	require.Empty(t, token)
 }
 
 func TestGetBearerToken_NotABearerToken(t *testing.T) {
@@ -272,10 +271,10 @@ func TestGetBearerToken_NotABearerToken(t *testing.T) {
 	ctx.Req.Header.Set("Authorization", "DPoP token")
 
 	// When.
-	_, ok := ctx.BearerToken()
+	token := ctx.BearerToken()
 
 	// Then.
-	require.False(t, ok)
+	require.Empty(t, token)
 }
 
 func TestGetAuthorizationToken_HappyPath(t *testing.T) {
@@ -419,7 +418,7 @@ func TestTokenSignatureKey_HappyPath(t *testing.T) {
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
 
 	// When.
-	jwk := ctx.TokenSignatureKey(goidc.NewJWTTokenOptions(signingKeyID, 60, false))
+	jwk := ctx.TokenSignatureKey(goidc.NewJWTTokenOptions(signingKeyID, 60))
 
 	// Then.
 	assert.Equal(t, signingKeyID, jwk.KeyID())
@@ -435,7 +434,7 @@ func TestTokenSignatureKey_InvalidKeyIDInformed(t *testing.T) {
 	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
 
 	// When.
-	jwk := ctx.TokenSignatureKey(goidc.NewJWTTokenOptions("random_key", 60, false))
+	jwk := ctx.TokenSignatureKey(goidc.NewJWTTokenOptions("random_key", 60))
 
 	// Then.
 	assert.Equal(t, signingKeyID, jwk.KeyID())

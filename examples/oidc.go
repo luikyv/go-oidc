@@ -11,8 +11,6 @@ import (
 
 func RunOpenIDProvider() error {
 
-	port := ":83"
-	issuer := "https://host.docker.internal" + port
 	serverKeyID := "rs256_key"
 	scopes := []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeOffilineAccess, goidc.ScopeEmail}
 
@@ -26,7 +24,7 @@ func RunOpenIDProvider() error {
 
 	// Create the manager.
 	openidProvider := goidcp.New(
-		issuer,
+		Issuer,
 		goidcp.NewInMemoryClientManager(),
 		goidcp.NewMongoDBAuthnSessionManager(database),
 		goidcp.NewMongoDBGrantSessionManager(database),
@@ -59,7 +57,7 @@ func RunOpenIDProvider() error {
 		clientInfo.Scopes = goidc.Scopes(scopes).String()
 	}, true)
 	openidProvider.SetTokenOptions(func(c *goidc.Client, s string) (goidc.TokenOptions, error) {
-		return goidc.NewJWTTokenOptions(serverKeyID, 600, true), nil
+		return goidc.NewJWTTokenOptions(serverKeyID, 600), nil
 	})
 
 	// Create Policy
@@ -71,7 +69,7 @@ func RunOpenIDProvider() error {
 
 	// Run
 	return openidProvider.RunTLS(goidcp.TLSOptions{
-		TLSAddress:        port,
+		TLSAddress:        Port,
 		ServerCertificate: "server_keys/cert.pem",
 		ServerKey:         "server_keys/key.pem",
 		CipherSuites:      goidc.FAPIAllowedCipherSuites,

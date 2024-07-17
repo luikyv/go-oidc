@@ -1,11 +1,9 @@
 package api
 
 import (
-	"context"
 	"net/http"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
@@ -22,6 +20,7 @@ func NewCacheControlMiddleware(next http.Handler) CacheControlMiddleware {
 }
 
 func (handler CacheControlMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// TODO: Add this middleware per endpoint.
 	if strings.Contains(r.RequestURI, string(goidc.EndpointAuthorization)) {
 		handler.NextHandler.ServeHTTP(w, r)
 		return
@@ -31,40 +30,6 @@ func (handler CacheControlMiddleware) ServeHTTP(w http.ResponseWriter, r *http.R
 	w.Header().Set("Cache-Control", "no-cache, no-store")
 	w.Header().Set("Pragma", "no-cache")
 	handler.NextHandler.ServeHTTP(w, r)
-}
-
-type CorrelationIDMiddleware struct {
-	NextHandler         http.Handler
-	CorrelationIDHeader string
-}
-
-func NewCorrelationIDMiddleware(
-	next http.Handler,
-	correlationIDHeader string,
-) CorrelationIDMiddleware {
-	return CorrelationIDMiddleware{
-		NextHandler:         next,
-		CorrelationIDHeader: correlationIDHeader,
-	}
-}
-
-func (handler CorrelationIDMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// If the correlation ID header is present, use its value.
-	// Otherwise, generate a random uuid.
-	var correlationID string
-	correlationIDHeader, ok := r.Header[handler.CorrelationIDHeader]
-	if ok && len(correlationIDHeader) > 0 {
-		correlationID = correlationIDHeader[0]
-	} else {
-		correlationID = uuid.NewString()
-	}
-
-	// Return the correlation ID in the response.
-	w.Header().Set(handler.CorrelationIDHeader, correlationID)
-
-	// Add the correlation ID to the context.
-	ctx := context.WithValue(r.Context(), goidc.CorrelationIDKey, correlationID)
-	handler.NextHandler.ServeHTTP(w, r.WithContext(ctx))
 }
 
 // This middleware should be used when running the server in TLS mode and mTLS is enabled.

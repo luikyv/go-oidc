@@ -14,11 +14,9 @@ func TestSaveAndGetParameter_HappyPath(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		// When.
-		session.SaveParameter("key", "value")
-		value, ok := session.Parameter("key")
+		session.StoreParameter("key", "value")
 		// Then.
-		assert.True(t, ok, "the claim was not added")
-		assert.Equal(t, "value", value, "the claim was not added")
+		assert.Equal(t, "value", session.Store["key"], "the claim was not added")
 	}
 }
 

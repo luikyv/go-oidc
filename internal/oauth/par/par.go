@@ -1,8 +1,6 @@
 package par
 
 import (
-	"log/slog"
-
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
@@ -17,10 +15,6 @@ func PushAuthorization(
 
 	client, oauthErr := utils.GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if oauthErr != nil {
-		ctx.Logger().Info(
-			"could not authenticate the client",
-			slog.String("client_id", req.ClientID), slog.String("error", oauthErr.Error()),
-		)
 		return "", goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "client not authenticated")
 	}
 
@@ -34,8 +28,7 @@ func PushAuthorization(
 		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
-	if err := ctx.AuthnSessionManager.CreateOrUpdate(ctx, session); err != nil {
-		ctx.Logger().Debug("could not create a session")
+	if err := ctx.CreateOrUpdateAuthnSession(session); err != nil {
 		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 	return requestURI, nil

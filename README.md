@@ -67,7 +67,7 @@ make docs
 Make sure the `GOBIN` environment variable is set.
 
 ## To Do's
-* Tell the use what he needs to provide?
+* Tell the user what he needs to provide?
 * What if I want to use Gin?
 * Don't use the default http client.
 * revoke by jti.
@@ -90,3 +90,7 @@ Make sure the `GOBIN` environment variable is set.
 * Handle expired sessions.
 * New grant for token introspection?
 * Handle user session?
+* Separate grant session and token session? Could reuse the grant session so the client doesn't need to reauthenticate.
+* offline_access for refresh tokens.
+* Return value with flag or just the default value?
+* Events.

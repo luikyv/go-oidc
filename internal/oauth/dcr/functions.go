@@ -24,7 +24,7 @@ func setDefaults(ctx *utils.Context, dynamicClient *utils.DynamicClientRequest) 
 
 	if dynamicClient.Scopes != "" {
 		scopeIDs := goidc.SplitStringWithSpaces(dynamicClient.Scopes)
-		dynamicClient.Scopes = ctx.Scopes().SubSet(scopeIDs).String()
+		dynamicClient.Scopes = ctx.Scopes.SubSet(scopeIDs).String()
 	}
 
 	if dynamicClient.ResponseTypes == nil {

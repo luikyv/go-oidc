@@ -27,7 +27,7 @@ func TestMakeIDToken(t *testing.T) {
 	require.Nil(t, err)
 
 	claims := utils.SafeClaims(t, idToken, utils.TestServerPrivateJWK)
-	assert.Equal(t, ctx.Issuer(), claims[goidc.ClaimIssuer])
+	assert.Equal(t, ctx.Host, claims[goidc.ClaimIssuer])
 	assert.Equal(t, "random_subject", claims[goidc.ClaimSubject])
 	assert.Equal(t, client.ID, claims[goidc.ClaimAudience])
 	assert.Equal(t, "random_value", claims["random_claim"])
@@ -37,7 +37,7 @@ func TestMakeToken_JWTToken(t *testing.T) {
 	// Given.
 	ctx := utils.NewTestContext(t)
 	client, _ := ctx.Client(utils.TestClientID)
-	tokenOptions := goidc.NewJWTTokenOptions(utils.TestServerPrivateJWK.KeyID(), 60, false)
+	tokenOptions := goidc.NewJWTTokenOptions(utils.TestServerPrivateJWK.KeyID(), 60)
 	tokenOptions.AddTokenClaims(map[string]any{"random_claim": "random_value"})
 	grantOptions := goidc.GrantOptions{
 		Subject:      "random_subject",
@@ -52,7 +52,7 @@ func TestMakeToken_JWTToken(t *testing.T) {
 	assert.Equal(t, goidc.TokenFormatJWT, token.Format)
 
 	claims := utils.SafeClaims(t, token.Value, utils.TestServerPrivateJWK)
-	assert.Equal(t, ctx.Issuer(), claims[goidc.ClaimIssuer])
+	assert.Equal(t, ctx.Host, claims[goidc.ClaimIssuer])
 	assert.Equal(t, "random_subject", claims[goidc.ClaimSubject])
 	assert.Equal(t, client.ID, claims[goidc.ClaimClientID])
 	assert.Equal(t, "random_value", claims["random_claim"])
@@ -64,7 +64,7 @@ func TestMakeToken_OpaqueToken(t *testing.T) {
 	client, _ := ctx.Client(utils.TestClientID)
 	grantOptions := goidc.GrantOptions{
 		Subject:      "random_subject",
-		TokenOptions: goidc.NewOpaqueTokenOptions(10, 60, true),
+		TokenOptions: goidc.NewOpaqueTokenOptions(10, 60),
 	}
 
 	// When.

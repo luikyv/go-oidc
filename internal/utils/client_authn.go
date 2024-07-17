@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"log/slog"
 	"slices"
 	"time"
 
@@ -26,12 +25,10 @@ func GetAuthenticatedClient(
 
 	client, err := ctx.Client(clientID)
 	if err != nil {
-		ctx.Logger().Info("client not found", slog.String("client_id", clientID))
 		return nil, goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "invalid client")
 	}
 
 	if err := authenticateClient(ctx, client, req); err != nil {
-		ctx.Logger().Info("client not authenticated", slog.String("client_id", req.ClientID))
 		return nil, err
 	}
 
@@ -45,25 +42,18 @@ func authenticateClient(
 ) goidc.OAuthError {
 	switch client.AuthnMethod {
 	case goidc.ClientAuthnNone:
-		ctx.Logger().Debug("authenticating the client with none authn")
 		return authenticateWithNoneAuthn(ctx, client, req)
 	case goidc.ClientAuthnSecretPost:
-		ctx.Logger().Debug("authenticating the client with secret post")
 		return authenticateWithClientSecretPost(ctx, client, req)
 	case goidc.ClientAuthnSecretBasic:
-		ctx.Logger().Debug("authenticating the client with basic secret")
 		return authenticateWithClientSecretBasic(ctx, client, req)
 	case goidc.ClientAuthnPrivateKeyJWT:
-		ctx.Logger().Debug("authenticating the client with private key jwt")
 		return authenticateWithPrivateKeyJWT(ctx, client, req)
 	case goidc.ClientAuthnSecretJWT:
-		ctx.Logger().Debug("authenticating the client with client secret jwt")
 		return authenticateWithClientSecretJWT(ctx, client, req)
 	case goidc.ClientAuthnSelfSignedTLS:
-		ctx.Logger().Debug("authenticating the client with self signed tls certificate")
 		return authenticateWithSelfSignedTLSCertificate(ctx, client, req)
 	case goidc.ClientAuthnTLS:
-		ctx.Logger().Debug("authenticating the client with tls certificate")
 		return authenticateWithTLSCertificate(ctx, client, req)
 	default:
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "invalid authentication method")

@@ -224,9 +224,7 @@ func (ec ErrorCode) StatusCode() int {
 }
 
 const (
-	HeaderCorrelationID     string = "X-Correlation-ID"
-	HeaderFAPIInteractionID string = "X-FAPI-Interaction-ID"
-	HeaderDPoP              string = "DPoP"
+	HeaderDPoP string = "DPoP"
 	// HeaderSecureClientCertificate is the header used to transmit a client certificate that was validated by a trusted source.
 	HeaderSecureClientCertificate string = "X-Secure-Client-Certificate"
 	// HeaderInsecureClientCertificate is the header used to trasmit a client certificate that cannot be trusted.

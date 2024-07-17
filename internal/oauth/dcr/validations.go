@@ -21,7 +21,8 @@ func validateDynamicClientRequest(
 		validateJWKSIsRequiredWhenSelfSignedTLSAuthn,
 		validateTLSSubjectInfoWhenTLSAuthn,
 		validateGrantTypes,
-		validateClientCredentialsGrantNotAllowedForNoneClientAuthn,
+		validateRefreshTokenGrant,
+		validateClientCredentialsGrant,
 		validateClientAuthnMethodForIntrospectionGrant,
 		validateRedirectURIS,
 		validateResponseTypes,
@@ -68,7 +69,7 @@ func validateGrantTypes(
 	return nil
 }
 
-func validateClientCredentialsGrantNotAllowedForNoneClientAuthn(
+func validateClientCredentialsGrant(
 	_ *utils.Context,
 	dynamicClient utils.DynamicClientRequest,
 ) goidc.OAuthError {
@@ -436,6 +437,17 @@ func validateAuthorizationDetailTypes(
 
 	if goidc.ContainsAll(ctx.AuthorizationDetailTypes, dynamicClient.AuthorizationDetailTypes...) {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "authorization detail type not supported")
+	}
+
+	return nil
+}
+
+func validateRefreshTokenGrant(
+	ctx *utils.Context,
+	dynamicClient utils.DynamicClientRequest,
+) goidc.OAuthError {
+	if utils.ScopesContainsOfflineAccess(dynamicClient.Scopes) && !slices.Contains(dynamicClient.GrantTypes, goidc.GrantRefreshToken) {
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "refresh_token grant is required for using the scope offline_access")
 	}
 
 	return nil

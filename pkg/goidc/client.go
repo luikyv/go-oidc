@@ -63,9 +63,9 @@ func (c *Client) encryptionJWK(algorithm jose.KeyAlgorithm) (JSONWebKey, OAuthEr
 	return JSONWebKey{}, NewOAuthError(ErrorCodeInvalidClient, fmt.Sprintf("invalid key algorithm: %s", algorithm))
 }
 
-func (c *Client) AreScopesAllowed(ctx Context, requestedScopes string) bool {
+func (c *Client) AreScopesAllowed(ctx Context, availableScopes Scopes, requestedScopes string) bool {
 	scopeIDs := SplitStringWithSpaces(c.Scopes)
-	clientScopes := ctx.Scopes().SubSet(scopeIDs)
+	clientScopes := availableScopes.SubSet(scopeIDs)
 	for _, requestedScope := range SplitStringWithSpaces(requestedScopes) {
 		if !clientScopes.Contains(requestedScope) {
 			return false

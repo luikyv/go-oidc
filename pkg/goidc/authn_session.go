@@ -24,100 +24,95 @@ type AuthnSession struct {
 
 // UpdateParams updates the session with the parameters from an authorization request.
 // The parameters already present in the session have priority.
-func (session *AuthnSession) UpdateParams(params AuthorizationParameters) {
-	session.AuthorizationParameters = session.AuthorizationParameters.Merge(params)
+func (s *AuthnSession) UpdateParams(params AuthorizationParameters) {
+	s.AuthorizationParameters = s.AuthorizationParameters.Merge(params)
 }
 
-func (session *AuthnSession) SetUserID(userID string) {
-	session.Subject = userID
+func (s *AuthnSession) SetUserID(userID string) {
+	s.Subject = userID
 }
 
-func (session *AuthnSession) SaveParameter(key string, value any) {
-	if session.Store == nil {
-		session.Store = make(map[string]any)
+func (s *AuthnSession) StoreParameter(key string, value any) {
+	if s.Store == nil {
+		s.Store = make(map[string]any)
 	}
-	session.Store[key] = value
+	s.Store[key] = value
 }
 
-func (session *AuthnSession) Parameter(key string) (any, bool) {
-	value, ok := session.Store[key]
-	return value, ok
-}
-
-func (session *AuthnSession) AddTokenClaim(claim string, value any) {
-	if session.AdditionalTokenClaims == nil {
-		session.AdditionalTokenClaims = make(map[string]any)
+func (s *AuthnSession) AddTokenClaim(claim string, value any) {
+	if s.AdditionalTokenClaims == nil {
+		s.AdditionalTokenClaims = make(map[string]any)
 	}
-	session.AdditionalTokenClaims[claim] = value
+	s.AdditionalTokenClaims[claim] = value
 }
 
-func (session *AuthnSession) AddIDTokenClaim(claim string, value any) {
-	if session.AdditionalIDTokenClaims == nil {
-		session.AdditionalIDTokenClaims = make(map[string]any)
+func (s *AuthnSession) AddIDTokenClaim(claim string, value any) {
+	if s.AdditionalIDTokenClaims == nil {
+		s.AdditionalIDTokenClaims = make(map[string]any)
 	}
-	session.AdditionalIDTokenClaims[claim] = value
+	s.AdditionalIDTokenClaims[claim] = value
 }
 
-func (session *AuthnSession) AddUserInfoClaim(claim string, value any) {
-	if session.AdditionalUserInfoClaims == nil {
-		session.AdditionalUserInfoClaims = make(map[string]any)
+func (s *AuthnSession) AddUserInfoClaim(claim string, value any) {
+	if s.AdditionalUserInfoClaims == nil {
+		s.AdditionalUserInfoClaims = make(map[string]any)
 	}
-	session.AdditionalUserInfoClaims[claim] = value
+	s.AdditionalUserInfoClaims[claim] = value
 }
 
-func (session *AuthnSession) IsExpired() bool {
-	return TimestampNow() > session.ExpiresAtTimestamp
+func (s *AuthnSession) IsExpired() bool {
+	return TimestampNow() > s.ExpiresAtTimestamp
 }
 
 // Push creates a session that can be referenced by a request URI.
-func (session *AuthnSession) Push(parLifetimeSecs int) (requestURI string, err error) {
+func (s *AuthnSession) Push(lifetimeSecs int) (requestURI string, err error) {
 	requestURI, err = RequestURI()
 	if err != nil {
 		return "", err
 	}
 
-	session.RequestURI = requestURI
-	session.ExpiresAtTimestamp = TimestampNow() + parLifetimeSecs
+	s.RequestURI = requestURI
+	s.ExpiresAtTimestamp = TimestampNow() + lifetimeSecs
 	return requestURI, nil
 }
 
 // Start prepares the session to be used while the authentication flow defined by policyID happens.
-func (session *AuthnSession) Start(policyID string, sessionLifetimeSecs int) OAuthError {
-	if session.Nonce != "" {
-		session.AddIDTokenClaim(ClaimNonce, session.Nonce)
+func (s *AuthnSession) Start(policyID string, lifetimeSecs int) OAuthError {
+	if s.Nonce != "" {
+		s.AddIDTokenClaim(ClaimNonce, s.Nonce)
 	}
-	session.PolicyID = policyID
+	s.PolicyID = policyID
 	callbackID, err := CallbackID()
 	if err != nil {
-		return session.NewRedirectError(ErrorCodeInternalError, err.Error())
+		return s.NewRedirectError(ErrorCodeInternalError, err.Error())
 	}
-	session.CallbackID = callbackID
+	s.CallbackID = callbackID
 	// FIXME: To think about:Treating the request_uri as one-time use will cause problems when the user refreshes the page.
-	session.RequestURI = ""
-	session.ExpiresAtTimestamp = TimestampNow() + sessionLifetimeSecs
+	s.RequestURI = ""
+	s.ExpiresAtTimestamp = TimestampNow() + lifetimeSecs
 	return nil
 }
 
-func (session *AuthnSession) InitAuthorizationCode() OAuthError {
+func (s *AuthnSession) InitAuthorizationCode() OAuthError {
 	code, err := AuthorizationCode()
 	if err != nil {
-		return session.NewRedirectError(ErrorCodeInternalError, err.Error())
+		return s.NewRedirectError(ErrorCodeInternalError, err.Error())
 	}
-	session.AuthorizationCode = code
-	session.ExpiresAtTimestamp = TimestampNow() + AuthorizationCodeLifetimeSecs
+	s.AuthorizationCode = code
+	s.ExpiresAtTimestamp = TimestampNow() + AuthorizationCodeLifetimeSecs
 	return nil
 }
 
-func (session *AuthnSession) GrantScopes(scopes string) {
-	session.GrantedScopes = scopes
+func (s *AuthnSession) GrantScopes(scopes string) {
+	s.GrantedScopes = scopes
 }
 
 // GrantAuthorizationDetails sets the authorization details the client will have permissions to use.
 // This will only have effect if support for authorization details was enabled.
-func (session *AuthnSession) GrantAuthorizationDetails(authDetails []AuthorizationDetail) {
-	session.GrantedAuthorizationDetails = authDetails
+func (s *AuthnSession) GrantAuthorizationDetails(authDetails []AuthorizationDetail) {
+	s.GrantedAuthorizationDetails = authDetails
 }
 
-func (session *AuthnSession) SetRedirectError(errorCode ErrorCode, errorDescription string) {
-	session.Error = session.NewRedirectError(errorCode, errorDescription)
+func (s *AuthnSession) SetRedirectError(errorCode ErrorCode, errorDescription string) {
+	s.Error = s.NewRedirectError(errorCode, errorDescription)
 }

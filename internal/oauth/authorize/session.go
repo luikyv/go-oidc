@@ -1,8 +1,6 @@
 package authorize
 
 import (
-	"log/slog"
-
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
@@ -33,13 +31,11 @@ func initValidAuthnSession(
 ) {
 
 	if shouldInitAuthnSessionWithPAR(ctx, req.AuthorizationParameters) {
-		ctx.Logger().Info("initiating authorization request with PAR")
 		return initValidAuthnSessionWithPAR(ctx, req, client)
 	}
 
-	// the jar requirement comes after the par one, because the client can send the jar during par.
+	// The jar requirement comes after the par one, because the client can send the jar during par.
 	if ShouldInitAuthnSessionWithJAR(ctx, req.AuthorizationParameters, client) {
-		ctx.Logger().Info("initiating authorization request with JAR")
 		return initValidAuthnSessionWithJAR(ctx, req, client)
 	}
 
@@ -158,7 +154,6 @@ func initValidSimpleAuthnSession(
 	*goidc.AuthnSession,
 	goidc.OAuthError,
 ) {
-	ctx.Logger().Info("initiating simple authorization request")
 	if err := validateAuthorizationRequest(ctx, req, client); err != nil {
 		return nil, err
 	}
@@ -172,10 +167,8 @@ func initAuthnSessionWithPolicy(
 ) goidc.OAuthError {
 	policy, ok := ctx.FindAvailablePolicy(client, session)
 	if !ok {
-		ctx.Logger().Info("no policy available")
 		return session.NewRedirectError(goidc.ErrorCodeInvalidRequest, "no policy available")
 	}
 
-	ctx.Logger().Info("policy available", slog.String("policy_id", policy.ID))
 	return session.Start(policy.ID, ctx.AuthenticationSessionTimeoutSecs)
 }

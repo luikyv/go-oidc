@@ -1,8 +1,6 @@
 package token
 
 import (
-	"log/slog"
-
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
@@ -20,7 +18,6 @@ func handleRefreshTokenGrantTokenCreation(
 
 	client, grantSession, err := getAuthenticatedClientAndGrantSession(ctx, req)
 	if err != nil {
-		ctx.Logger().Debug("error while loading the client or token.", slog.String("error", err.Error()))
 		return utils.TokenResponse{}, err
 	}
 
@@ -51,7 +48,7 @@ func handleRefreshTokenGrantTokenCreation(
 			utils.NewIDTokenOptions(grantSession.GrantOptions),
 		)
 		if err != nil {
-			ctx.Logger().Error("could not generate an ID token", slog.String("error", err.Error()))
+			return utils.TokenResponse{}, err
 		}
 	}
 
@@ -80,10 +77,7 @@ func updateRefreshTokenGrantSession(
 		grantSession.ActiveScopes = req.Scopes
 	}
 
-	ctx.Logger().Debug("updating grant session for refresh_token grant")
 	if err := ctx.CreateOrUpdateGrantSession(grantSession); err != nil {
-		ctx.Logger().Error("error updating grant session during refresh_token grant",
-			slog.String("error", err.Error()), slog.String("session_id", grantSession.ID))
 		return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
@@ -99,26 +93,19 @@ func getAuthenticatedClientAndGrantSession(
 	goidc.OAuthError,
 ) {
 
-	ctx.Logger().Debug("get the token session using the refresh token.")
 	grantSessionResultCh := make(chan utils.ResultChannel)
 	go getGrantSessionByRefreshToken(ctx, req.RefreshToken, grantSessionResultCh)
 
-	ctx.Logger().Debug("get the client while the token is being loaded.")
 	authenticatedClient, err := utils.GetAuthenticatedClient(ctx, req.ClientAuthnRequest)
 	if err != nil {
-		ctx.Logger().Debug("error while loading the client.", slog.String("error", err.Error()))
 		return nil, nil, err
 	}
-	ctx.Logger().Debug("the client was loaded successfully.")
 
-	ctx.Logger().Debug("wait for the session.")
 	grantSessionResult := <-grantSessionResultCh
 	grantSession, err := grantSessionResult.Result.(*goidc.GrantSession), grantSessionResult.Err
 	if err != nil {
-		ctx.Logger().Debug("error while loading the token.", slog.String("error", err.Error()))
 		return nil, nil, err
 	}
-	ctx.Logger().Debug("the session was loaded successfully.")
 
 	return authenticatedClient, grantSession, nil
 }

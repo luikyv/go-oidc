@@ -1,8 +1,6 @@
 package authorize
 
 import (
-	"log/slog"
-
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
@@ -191,10 +189,7 @@ func generateImplicitGrantSession(
 ) goidc.OAuthError {
 
 	grantSession := utils.NewGrantSession(grantOptions, token)
-	ctx.Logger().Debug("creating grant session for implicit grant")
 	if err := ctx.CreateOrUpdateGrantSession(grantSession); err != nil {
-		ctx.Logger().Error("error creating a grant session during implicit grant",
-			slog.String("error", err.Error()))
 		return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
