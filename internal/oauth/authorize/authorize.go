@@ -70,7 +70,7 @@ func getClient(
 
 func authenticate(ctx *utils.Context, session *goidc.AuthnSession) goidc.OAuthError {
 	policy := ctx.Policy(session.PolicyID)
-	switch policy.AuthnFunc(ctx, session) {
+	switch policy.Authenticate(ctx, session) {
 	case goidc.StatusSuccess:
 		return finishFlowSuccessfully(ctx, session)
 	case goidc.StatusInProgress:

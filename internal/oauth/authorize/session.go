@@ -61,7 +61,7 @@ func initValidAuthnSessionWithPAR(
 		return nil, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid request_uri")
 	}
 
-	if err := validateAuthorizationRequestWithPAR(ctx, req, session, client); err != nil {
+	if err := validateAuthzRequestWithPAR(ctx, req, session, client); err != nil {
 		// If any of the parameters is invalid, we delete the session right away.
 		if err := ctx.DeleteAuthnSession(session.ID); err != nil {
 			return nil, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
@@ -116,7 +116,7 @@ func initValidAuthnSessionWithJAR(
 		return nil, err
 	}
 
-	if err := validateAuthorizationRequestWithJAR(ctx, req, jar, client); err != nil {
+	if err := validateAuthzRequestWithJAR(ctx, req, jar, client); err != nil {
 		return nil, err
 	}
 

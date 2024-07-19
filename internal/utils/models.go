@@ -98,7 +98,7 @@ func NewAuthorizationRequest(req *http.Request) AuthorizationRequest {
 
 	maxAge, err := strconv.Atoi(req.URL.Query().Get("max_age"))
 	if err == nil {
-		params.MaxAuthenticationAgeSecs = &maxAge
+		params.MaxAuthnAgeSecs = &maxAge
 	}
 
 	claims := req.URL.Query().Get("claims")
@@ -192,7 +192,7 @@ func NewPushedAuthorizationRequest(req *http.Request) PushedAuthorizationRequest
 
 	maxAge, err := strconv.Atoi(req.PostFormValue("max_age"))
 	if err == nil {
-		params.MaxAuthenticationAgeSecs = &maxAge
+		params.MaxAuthnAgeSecs = &maxAge
 	}
 
 	claims := req.PostFormValue("claims")

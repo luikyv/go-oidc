@@ -12,7 +12,7 @@ import (
 func HandleDynamicClientCreation(ctx *utils.Context) {
 	var req utils.DynamicClientRequest
 	if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
-		bindErrorToResponse(ctx, err)
+		writeError(ctx, err)
 		return
 	}
 
@@ -20,25 +20,25 @@ func HandleDynamicClientCreation(ctx *utils.Context) {
 
 	resp, err := dcr.CreateClient(ctx, req)
 	if err != nil {
-		bindErrorToResponse(ctx, err)
+		writeError(ctx, err)
 		return
 	}
 
 	if err := ctx.Write(resp, http.StatusCreated); err != nil {
-		bindErrorToResponse(ctx, err)
+		writeError(ctx, err)
 	}
 }
 
 func HandleDynamicClientUpdate(ctx *utils.Context) {
 	var req utils.DynamicClientRequest
 	if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
-		bindErrorToResponse(ctx, err)
+		writeError(ctx, err)
 		return
 	}
 
 	token := ctx.BearerToken()
 	if token == "" {
-		bindErrorToResponse(ctx, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "no token found"))
+		writeError(ctx, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "no token found"))
 		return
 	}
 
@@ -46,19 +46,19 @@ func HandleDynamicClientUpdate(ctx *utils.Context) {
 	req.RegistrationAccessToken = token
 	resp, err := dcr.UpdateClient(ctx, req)
 	if err != nil {
-		bindErrorToResponse(ctx, err)
+		writeError(ctx, err)
 		return
 	}
 
 	if err := ctx.Write(resp, http.StatusOK); err != nil {
-		bindErrorToResponse(ctx, err)
+		writeError(ctx, err)
 	}
 }
 
 func HandleDynamicClientRetrieve(ctx *utils.Context) {
 	token := ctx.BearerToken()
 	if token == "" {
-		bindErrorToResponse(ctx, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "no token found"))
+		writeError(ctx, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "no token found"))
 		return
 	}
 
@@ -69,19 +69,19 @@ func HandleDynamicClientRetrieve(ctx *utils.Context) {
 
 	resp, err := dcr.GetClient(ctx, req)
 	if err != nil {
-		bindErrorToResponse(ctx, err)
+		writeError(ctx, err)
 		return
 	}
 
 	if err := ctx.Write(resp, http.StatusOK); err != nil {
-		bindErrorToResponse(ctx, err)
+		writeError(ctx, err)
 	}
 }
 
 func HandleDynamicClientDelete(ctx *utils.Context) {
 	token := ctx.BearerToken()
 	if token == "" {
-		bindErrorToResponse(ctx, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "no token found"))
+		writeError(ctx, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "no token found"))
 		return
 	}
 
@@ -91,7 +91,7 @@ func HandleDynamicClientDelete(ctx *utils.Context) {
 	}
 
 	if err := dcr.DeleteClient(ctx, req); err != nil {
-		bindErrorToResponse(ctx, err)
+		writeError(ctx, err)
 		return
 	}
 

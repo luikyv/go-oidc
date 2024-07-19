@@ -2,12 +2,8 @@ package goidc
 
 import (
 	"crypto/rand"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"math/big"
-	"net/http"
 	"slices"
 	"strings"
 	"time"
@@ -54,25 +50,6 @@ func RandomString(n int) (string, error) {
 	}
 
 	return string(ret), nil
-}
-
-func FetchJWKS(jwksURI string) (JSONWebKeySet, error) {
-	resp, err := http.Get(jwksURI)
-	if err != nil || resp.StatusCode != http.StatusOK {
-		return JSONWebKeySet{}, errors.New("could not fetch client jwks")
-	}
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return JSONWebKeySet{}, errors.New("could not fetch client jwks")
-	}
-
-	var jwks JSONWebKeySet
-	if err := json.Unmarshal(respBody, &jwks); err != nil {
-		return JSONWebKeySet{}, errors.New("could not parse client jwks")
-	}
-
-	return jwks, nil
 }
 
 func ContainsAllScopes(scopesSuperSet string, scopesSubSet string) bool {

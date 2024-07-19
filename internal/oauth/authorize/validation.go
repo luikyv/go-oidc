@@ -10,7 +10,7 @@ import (
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
-func validateAuthorizationRequestWithPAR(
+func validateAuthzRequestWithPAR(
 	ctx *utils.Context,
 	req utils.AuthorizationRequest,
 	session *goidc.AuthnSession,
@@ -32,7 +32,7 @@ func validateAuthorizationRequestWithPAR(
 	return nil
 }
 
-func validateAuthorizationRequestWithJAR(
+func validateAuthzRequestWithJAR(
 	ctx *utils.Context,
 	req utils.AuthorizationRequest,
 	jar utils.AuthorizationRequest,

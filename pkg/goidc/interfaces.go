@@ -8,6 +8,10 @@ import (
 type Context interface {
 	Request() *http.Request
 	Response() http.ResponseWriter
+	// AuthnHints provides a list of hints to fulfill the authentication flow successfully.
+	// The authentication flow can still finished successfully if the hints are not followed, but it's recommended
+	// to evaluate them and modify the session accordingly.
+	AuthnHints(*UserInfo, *AuthnSession) ([]AuthnHint, error)
 }
 
 type ClientManager interface {

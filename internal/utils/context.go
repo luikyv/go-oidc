@@ -31,6 +31,34 @@ func NewContext(
 	}
 }
 
+func (ctx *Context) AuthnHints(
+	userInfo *goidc.UserInfo,
+	session *goidc.AuthnSession,
+) (
+	[]goidc.AuthnHint,
+	error,
+) {
+	var requirements []goidc.AuthnHint
+	client, err := ctx.Client(session.ClientID)
+	if err != nil {
+		return nil, err
+	}
+
+	if session.Subject == "" {
+		requirements = append(requirements, goidc.MustInformUserID)
+	}
+
+	maxAge := session.MaxAuthnAgeSecs
+	if maxAge == nil {
+		maxAge = client.DefaultMaxAgeSecs
+	}
+	if maxAge != nil && goidc.TimestampNow()-userInfo.AuthnTimestamp > *maxAge {
+		requirements = append(requirements, goidc.MustReauthenticateUser)
+	}
+
+	return requirements, nil
+}
+
 func (ctx *Context) ClientSignatureAlgorithms() []jose.SignatureAlgorithm {
 	return append(ctx.PrivateKeyJWTSignatureAlgorithms, ctx.ClientSecretJWTSignatureAlgorithms...)
 }
@@ -103,6 +131,18 @@ func (ctx *Context) ExecuteDCRPlugin(clientInfo *goidc.ClientMetaInfo) {
 	}
 }
 
+func (ctx *Context) ExecuteAuthorizeErrorPlugin(oauthErr goidc.OAuthError) goidc.OAuthError {
+	if ctx.AuthorizeErrorPlugin == nil {
+		return oauthErr
+	}
+
+	if err := ctx.AuthorizeErrorPlugin(ctx, oauthErr); err != nil {
+		return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+	}
+
+	return nil
+}
+
 // Audiences returns the host names trusted by the server to validate assertions.
 func (ctx *Context) Audiences() []string {
 	audiences := []string{
@@ -137,7 +177,7 @@ func (ctx *Context) FindAvailablePolicy(client *goidc.Client, session *goidc.Aut
 	ok bool,
 ) {
 	for _, policy = range ctx.Policies {
-		if ok = policy.SetUpFunc(ctx, client, session); ok {
+		if ok = policy.SetUp(ctx, client, session); ok {
 			return policy, true
 		}
 	}
@@ -160,6 +200,7 @@ func (ctx *Context) DeleteClient(id string) error {
 }
 
 func (ctx *Context) CreateOrUpdateGrantSession(session *goidc.GrantSession) error {
+	// TODO: Flag to avoid saving jwt tokens.
 	return ctx.GrantSessionManager.CreateOrUpdate(ctx.Request().Context(), session)
 }
 
@@ -555,4 +596,5 @@ type Configuration struct {
 	// If SenderConstrainedTokenIsRequired is true, at least one mechanism of sender contraining
 	// tokens is required, either DPoP or client TLS.
 	SenderConstrainedTokenIsRequired bool
+	AuthorizeErrorPlugin             goidc.AuthorizeErrorPluginFunc
 }

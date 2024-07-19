@@ -1,7 +1,6 @@
 package goidc
 
 import (
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,10 +12,6 @@ type TestContext struct {
 	OAuthScopes Scopes
 }
 
-func (testCtx TestContext) Issuer() string {
-	return ""
-}
-
 func (testCtx TestContext) Request() *http.Request {
 	return httptest.NewRequest(http.MethodGet, "/", nil)
 }
@@ -25,8 +20,8 @@ func (testCtx TestContext) Response() http.ResponseWriter {
 	return httptest.NewRecorder()
 }
 
-func (testCtx TestContext) Logger() *slog.Logger {
-	return slog.Default()
+func (testCtx TestContext) AuthnHints(info *UserInfo, session *AuthnSession) ([]AuthnHint, error) {
+	return nil, nil
 }
 
 func NewTestContext(scopes Scopes) Context {

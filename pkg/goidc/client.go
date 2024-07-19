@@ -1,7 +1,11 @@
 package goidc
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"slices"
 	"strings"
 
@@ -117,12 +121,32 @@ func (c *Client) FetchPublicJWKS() (JSONWebKeySet, error) {
 		return JSONWebKeySet{}, NewOAuthError(ErrorCodeInvalidRequest, "The client JWKS was informed neither by value or by reference")
 	}
 
-	jwks, err := FetchJWKS(c.PublicJWKSURI)
+	jwks, err := c.fetchJWKS()
 	if err != nil {
 		return JSONWebKeySet{}, NewOAuthError(ErrorCodeInvalidRequest, err.Error())
 	}
 	// Cache the client JWKS.
 	c.PublicJWKS = &jwks
+
+	return jwks, nil
+}
+
+func (c *Client) fetchJWKS() (JSONWebKeySet, error) {
+	resp, err := http.Get(c.PublicJWKSURI)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		return JSONWebKeySet{}, errors.New("could not fetch client jwks")
+	}
+
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return JSONWebKeySet{}, errors.New("could not fetch client jwks")
+	}
+
+	var jwks JSONWebKeySet
+	if err := json.Unmarshal(respBody, &jwks); err != nil {
+		return JSONWebKeySet{}, errors.New("could not parse client jwks")
+	}
 
 	return jwks, nil
 }
@@ -161,7 +185,7 @@ type ClientMetaInfo struct {
 	TLSSubjectAlternativeName   string         `json:"tls_client_auth_san_dns,omitempty" bson:"tls_client_auth_san_dns,omitempty"`
 	TLSSubjectAlternativeNameIp string         `json:"tls_client_auth_san_ip,omitempty" bson:"tls_client_auth_san_ip,omitempty"`
 	AuthorizationDetailTypes    []string       `json:"authorization_data_types,omitempty" bson:"authorization_data_types,omitempty"`
-	DefaultMaxAge               *int           `json:"default_max_age,omitempty" bson:"default_max_age,omitempty"`
+	DefaultMaxAgeSecs           *int           `json:"default_max_age,omitempty" bson:"default_max_age,omitempty"`
 	DefaultACRValues            string         `json:"default_acr_values,omitempty" bson:"default_acr_values,omitempty"`
 	CustomAttributes            map[string]any `json:"custom_attributes,omitempty" bson:"custom_attributes,omitempty"`
 }

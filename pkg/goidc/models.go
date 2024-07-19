@@ -5,30 +5,38 @@ import (
 	"reflect"
 )
 
-// Function responsible for executing the user authentication logic.
+type AuthorizeErrorPluginFunc func(ctx Context, err OAuthError) error
+
+// AuthnFunc executes the user authentication logic.
 type AuthnFunc func(Context, *AuthnSession) AuthnStatus
 
-// Function responsible for deciding if the corresponding policy will be executed.
-// It can be used to initialize the session as well.
-type SetUpPolicyFunc func(ctx Context, client *Client, session *AuthnSession) (selected bool)
+// SetUpAuthnFunc is responsible for deciding if the corresponding policy will be executed.
+type SetUpAuthnFunc func(Context, *Client, *AuthnSession) bool
 
 type AuthnPolicy struct {
-	ID        string
-	AuthnFunc AuthnFunc
-	SetUpFunc SetUpPolicyFunc
+	ID           string
+	SetUp        SetUpAuthnFunc
+	Authenticate AuthnFunc
 }
 
-// Create a policy that will be selected based on setUpFunc and that authenticates users with authnFunc.
+// NewPolicy creates a policy that will be selected based on setUpFunc and that authenticates users with authnFunc.
 func NewPolicy(
 	id string,
-	setUpFunc SetUpPolicyFunc,
+	setUpFunc SetUpAuthnFunc,
 	authnFunc AuthnFunc,
 ) AuthnPolicy {
 	return AuthnPolicy{
-		ID:        id,
-		AuthnFunc: authnFunc,
-		SetUpFunc: setUpFunc,
+		ID:           id,
+		Authenticate: authnFunc,
+		SetUp:        setUpFunc,
 	}
+}
+
+type UserInfo struct {
+	UserID         string
+	AuthnTimestamp int
+	AuthnContext   AuthenticationContextReference
+	AuthnMethods   []AuthenticationMethodReference
 }
 
 type GrantOptions struct {
@@ -61,7 +69,7 @@ func (opts *TokenOptions) AddTokenClaims(claims map[string]any) {
 }
 
 func NewJWTTokenOptions(
-	// The ID of a signing key present in the server JWKS.
+	// signatureKeyID is the ID of a signing key present in the server JWKS.
 	signatureKeyID string,
 	tokenLifetimeSecs int,
 ) TokenOptions {
@@ -84,40 +92,40 @@ func NewOpaqueTokenOptions(
 }
 
 type AuthorizationParameters struct {
-	RequestURI               string                `json:"request_uri,omitempty" bson:"request_uri,omitempty"`
-	RequestObject            string                `json:"request,omitempty" bson:"request,omitempty"`
-	RedirectURI              string                `json:"redirect_uri,omitempty" bson:"redirect_uri,omitempty"`
-	ResponseMode             ResponseMode          `json:"response_mode,omitempty" bson:"response_mode,omitempty"`
-	ResponseType             ResponseType          `json:"response_type,omitempty" bson:"response_type,omitempty"`
-	Scopes                   string                `json:"scope,omitempty" bson:"scope,omitempty"`
-	State                    string                `json:"state,omitempty" bson:"state,omitempty"`
-	Nonce                    string                `json:"nonce,omitempty" bson:"nonce,omitempty"`
-	CodeChallenge            string                `json:"code_challenge,omitempty" bson:"code_challenge,omitempty"`
-	CodeChallengeMethod      CodeChallengeMethod   `json:"code_challenge_method,omitempty" bson:"code_challenge_method,omitempty"`
-	Prompt                   PromptType            `json:"prompt,omitempty" bson:"prompt,omitempty"`
-	MaxAuthenticationAgeSecs *int                  `json:"max_age,omitempty" bson:"max_age,omitempty"`
-	Display                  DisplayValue          `json:"display,omitempty" bson:"display,omitempty"`
-	ACRValues                string                `json:"acr_values,omitempty" bson:"acr_values,omitempty"`
-	Claims                   *ClaimsObject         `json:"claims,omitempty" bson:"claims,omitempty"`
-	AuthorizationDetails     []AuthorizationDetail `json:"authorization_details,omitempty" bson:"authorization_details,omitempty"`
+	RequestURI           string                `json:"request_uri,omitempty" bson:"request_uri,omitempty"`
+	RequestObject        string                `json:"request,omitempty" bson:"request,omitempty"`
+	RedirectURI          string                `json:"redirect_uri,omitempty" bson:"redirect_uri,omitempty"`
+	ResponseMode         ResponseMode          `json:"response_mode,omitempty" bson:"response_mode,omitempty"`
+	ResponseType         ResponseType          `json:"response_type,omitempty" bson:"response_type,omitempty"`
+	Scopes               string                `json:"scope,omitempty" bson:"scope,omitempty"`
+	State                string                `json:"state,omitempty" bson:"state,omitempty"`
+	Nonce                string                `json:"nonce,omitempty" bson:"nonce,omitempty"`
+	CodeChallenge        string                `json:"code_challenge,omitempty" bson:"code_challenge,omitempty"`
+	CodeChallengeMethod  CodeChallengeMethod   `json:"code_challenge_method,omitempty" bson:"code_challenge_method,omitempty"`
+	Prompt               PromptType            `json:"prompt,omitempty" bson:"prompt,omitempty"`
+	MaxAuthnAgeSecs      *int                  `json:"max_age,omitempty" bson:"max_age,omitempty"`
+	Display              DisplayValue          `json:"display,omitempty" bson:"display,omitempty"`
+	ACRValues            string                `json:"acr_values,omitempty" bson:"acr_values,omitempty"`
+	Claims               *ClaimsObject         `json:"claims,omitempty" bson:"claims,omitempty"`
+	AuthorizationDetails []AuthorizationDetail `json:"authorization_details,omitempty" bson:"authorization_details,omitempty"`
 }
 
 func (insideParams AuthorizationParameters) Merge(outsideParams AuthorizationParameters) AuthorizationParameters {
 	params := AuthorizationParameters{
-		RedirectURI:              nonEmptyOrDefault(insideParams.RedirectURI, outsideParams.RedirectURI),
-		ResponseMode:             nonEmptyOrDefault(insideParams.ResponseMode, outsideParams.ResponseMode),
-		ResponseType:             nonEmptyOrDefault(insideParams.ResponseType, outsideParams.ResponseType),
-		Scopes:                   nonEmptyOrDefault(insideParams.Scopes, outsideParams.Scopes),
-		State:                    nonEmptyOrDefault(insideParams.State, outsideParams.State),
-		Nonce:                    nonEmptyOrDefault(insideParams.Nonce, outsideParams.Nonce),
-		CodeChallenge:            nonEmptyOrDefault(insideParams.CodeChallenge, outsideParams.CodeChallenge),
-		CodeChallengeMethod:      nonEmptyOrDefault(insideParams.CodeChallengeMethod, outsideParams.CodeChallengeMethod),
-		Prompt:                   nonEmptyOrDefault(insideParams.Prompt, outsideParams.Prompt),
-		MaxAuthenticationAgeSecs: nonEmptyOrDefault(insideParams.MaxAuthenticationAgeSecs, outsideParams.MaxAuthenticationAgeSecs),
-		Display:                  nonEmptyOrDefault(insideParams.Display, outsideParams.Display),
-		ACRValues:                nonEmptyOrDefault(insideParams.ACRValues, outsideParams.ACRValues),
-		Claims:                   nonNilOrDefault(insideParams.Claims, outsideParams.Claims),
-		AuthorizationDetails:     nonNilOrDefault(insideParams.AuthorizationDetails, outsideParams.AuthorizationDetails),
+		RedirectURI:          nonEmptyOrDefault(insideParams.RedirectURI, outsideParams.RedirectURI),
+		ResponseMode:         nonEmptyOrDefault(insideParams.ResponseMode, outsideParams.ResponseMode),
+		ResponseType:         nonEmptyOrDefault(insideParams.ResponseType, outsideParams.ResponseType),
+		Scopes:               nonEmptyOrDefault(insideParams.Scopes, outsideParams.Scopes),
+		State:                nonEmptyOrDefault(insideParams.State, outsideParams.State),
+		Nonce:                nonEmptyOrDefault(insideParams.Nonce, outsideParams.Nonce),
+		CodeChallenge:        nonEmptyOrDefault(insideParams.CodeChallenge, outsideParams.CodeChallenge),
+		CodeChallengeMethod:  nonEmptyOrDefault(insideParams.CodeChallengeMethod, outsideParams.CodeChallengeMethod),
+		Prompt:               nonEmptyOrDefault(insideParams.Prompt, outsideParams.Prompt),
+		MaxAuthnAgeSecs:      nonEmptyOrDefault(insideParams.MaxAuthnAgeSecs, outsideParams.MaxAuthnAgeSecs),
+		Display:              nonEmptyOrDefault(insideParams.Display, outsideParams.Display),
+		ACRValues:            nonEmptyOrDefault(insideParams.ACRValues, outsideParams.ACRValues),
+		Claims:               nonNilOrDefault(insideParams.Claims, outsideParams.Claims),
+		AuthorizationDetails: nonNilOrDefault(insideParams.AuthorizationDetails, outsideParams.AuthorizationDetails),
 	}
 
 	return params

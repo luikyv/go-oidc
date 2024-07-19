@@ -107,8 +107,8 @@ func TestNewAuthorizationRequest(t *testing.T) {
 	assert.Equal(t, goidc.PromptTypeLogin, authorizationReq.Prompt)
 	assert.Equal(t, goidc.DisplayValuePage, authorizationReq.Display)
 	assert.Equal(t, "0 1", authorizationReq.ACRValues)
-	require.NotNil(t, authorizationReq.MaxAuthenticationAgeSecs)
-	assert.Equal(t, 0, *authorizationReq.MaxAuthenticationAgeSecs)
+	require.NotNil(t, authorizationReq.MaxAuthnAgeSecs)
+	assert.Equal(t, 0, *authorizationReq.MaxAuthnAgeSecs)
 	require.NotNil(t, authorizationReq.Claims)
 	require.NotNil(t, authorizationReq.AuthorizationDetails)
 }
@@ -155,8 +155,8 @@ func TestNewPushedAuthorizationRequest(t *testing.T) {
 	assert.Equal(t, goidc.PromptTypeLogin, pushedAuthReq.Prompt)
 	assert.Equal(t, goidc.DisplayValuePage, pushedAuthReq.Display)
 	assert.Equal(t, "0 1", pushedAuthReq.ACRValues)
-	require.NotNil(t, pushedAuthReq.MaxAuthenticationAgeSecs)
-	assert.Equal(t, 0, *pushedAuthReq.MaxAuthenticationAgeSecs)
+	require.NotNil(t, pushedAuthReq.MaxAuthnAgeSecs)
+	assert.Equal(t, 0, *pushedAuthReq.MaxAuthnAgeSecs)
 	require.NotNil(t, pushedAuthReq.Claims)
 	require.NotNil(t, pushedAuthReq.AuthorizationDetails)
 }
