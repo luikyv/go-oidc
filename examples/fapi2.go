@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 
+	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/goidc/pkg/goidc"
 	"github.com/luikymagno/goidc/pkg/goidcp"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -37,13 +39,13 @@ func RunFAPI2OpenIDProvider() error {
 	openidProvider.SetProfileFAPI2()
 	openidProvider.EnableMTLS(mtlsIssuer)
 	openidProvider.RequirePushedAuthorizationRequests(60)
-	openidProvider.EnableJWTSecuredAuthorizationRequests(600, goidc.PS256)
+	openidProvider.EnableJWTSecuredAuthorizationRequests(600, jose.PS256)
 	openidProvider.EnableJWTSecuredAuthorizationResponseMode(600, ps256ServerKeyID)
-	openidProvider.EnablePrivateKeyJWTClientAuthn(600, goidc.PS256)
+	openidProvider.EnablePrivateKeyJWTClientAuthn(600, jose.PS256)
 	openidProvider.EnableSelfSignedTLSClientAuthn()
 	openidProvider.EnableIssuerResponseParameter()
 	openidProvider.EnableClaimsParameter()
-	openidProvider.EnableDemonstrationProofOfPossesion(600, goidc.PS256, goidc.ES256)
+	openidProvider.EnableDemonstrationProofOfPossesion(600, jose.PS256, jose.ES256)
 	openidProvider.EnableTLSBoundTokens()
 	openidProvider.RequireSenderConstrainedTokens()
 	openidProvider.RequireProofKeyForCodeExchange(goidc.CodeChallengeMethodSHA256)
@@ -62,20 +64,21 @@ func RunFAPI2OpenIDProvider() error {
 		return goidc.NewJWTTokenOptions(ps256ServerKeyID, 600), nil
 	})
 	openidProvider.EnableUserInfoEncryption(
-		[]goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
-		[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256},
+		[]jose.KeyAlgorithm{jose.RSA_OAEP},
+		[]jose.ContentEncryption{jose.A128CBC_HS256},
 	)
 	openidProvider.EnableJWTSecuredAuthorizationResponseModeEncryption(
-		[]goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
-		[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256},
+		[]jose.KeyAlgorithm{jose.RSA_OAEP},
+		[]jose.ContentEncryption{jose.A128CBC_HS256},
 	)
 
 	// Create Client Mocks.
 	clientOnePrivateJWKS := PrivateJWKS("client_keys/client_one_jwks.json")
-	clientOnePublicJWKS := goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{}}
+	clientOnePublicJWKS := jose.JSONWebKeySet{Keys: []jose.JSONWebKey{}}
 	for _, jwk := range clientOnePrivateJWKS.Keys {
 		clientOnePublicJWKS.Keys = append(clientOnePublicJWKS.Keys, jwk.Public())
 	}
+	rawClientOnePublicJWKS, _ := json.Marshal(clientOnePublicJWKS)
 	openidProvider.AddClient(&goidc.Client{
 		ID: "client_one",
 		ClientMetaInfo: goidc.ClientMetaInfo{
@@ -89,14 +92,15 @@ func RunFAPI2OpenIDProvider() error {
 			ResponseTypes: []goidc.ResponseType{
 				goidc.ResponseTypeCode,
 			},
-			PublicJWKS: &clientOnePublicJWKS,
+			PublicJWKS: rawClientOnePublicJWKS,
 		},
 	})
 	clientTwoPrivateJWKS := PrivateJWKS("client_keys/client_two_jwks.json")
-	clientTwoPublicJWKS := goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{}}
+	clientTwoPublicJWKS := jose.JSONWebKeySet{Keys: []jose.JSONWebKey{}}
 	for _, jwk := range clientTwoPrivateJWKS.Keys {
 		clientTwoPublicJWKS.Keys = append(clientTwoPublicJWKS.Keys, jwk.Public())
 	}
+	rawClientTwoPublicJWKS, _ := json.Marshal(clientTwoPublicJWKS)
 	openidProvider.AddClient(&goidc.Client{
 		ID: "client_two",
 		ClientMetaInfo: goidc.ClientMetaInfo{
@@ -110,7 +114,7 @@ func RunFAPI2OpenIDProvider() error {
 			ResponseTypes: []goidc.ResponseType{
 				goidc.ResponseTypeCode,
 			},
-			PublicJWKS: &clientTwoPublicJWKS,
+			PublicJWKS: rawClientTwoPublicJWKS,
 		},
 	})
 

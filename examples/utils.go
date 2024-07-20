@@ -9,13 +9,14 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
 
 const Port = ":83"
 const Issuer = "https://host.docker.internal" + Port
 
-func PrivateJWKS(filename string) goidc.JSONWebKeySet {
+func PrivateJWKS(filename string) jose.JSONWebKeySet {
 	absPath, _ := filepath.Abs("./" + filename)
 	clientJWKSFile, err := os.Open(absPath)
 	if err != nil {
@@ -28,7 +29,7 @@ func PrivateJWKS(filename string) goidc.JSONWebKeySet {
 		panic(err.Error())
 	}
 
-	var clientJWKS goidc.JSONWebKeySet
+	var clientJWKS jose.JSONWebKeySet
 	if err := json.Unmarshal(clientJWKSBytes, &clientJWKS); err != nil {
 		panic(err.Error())
 	}

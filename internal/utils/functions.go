@@ -69,11 +69,11 @@ func signedRequestObjectFromEncryptedRequestObject(
 	}
 
 	jwk, ok := ctx.PrivateKey(keyID)
-	if !ok || jwk.Usage() != string(goidc.KeyUsageEncryption) {
+	if !ok || jwk.Use != string(goidc.KeyUsageEncryption) {
 		return "", goidc.NewOAuthError(goidc.ErrorCodeInvalidResquestObject, "invalid JWK used for encryption")
 	}
 
-	decryptedReqObject, err := encryptedReqObject.Decrypt(jwk.Key())
+	decryptedReqObject, err := encryptedReqObject.Decrypt(jwk.Key)
 	if err != nil {
 		return "", goidc.NewOAuthError(goidc.ErrorCodeInvalidResquestObject, err.Error())
 	}
@@ -111,7 +111,7 @@ func jarFromSignedRequestObject(
 
 	var claims jwt.Claims
 	var jarReq AuthorizationRequest
-	if err := parsedToken.Claims(jwk.Key(), &claims, &jarReq); err != nil {
+	if err := parsedToken.Claims(jwk.Key, &claims, &jarReq); err != nil {
 		return AuthorizationRequest{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidResquestObject, "could not extract claims")
 	}
 
@@ -216,13 +216,13 @@ func ValidClaims(
 
 	keyID := parsedToken.Headers[0].KeyID
 	publicKey, ok := ctx.PublicKey(keyID)
-	if !ok || publicKey.Usage() != string(goidc.KeyUsageSignature) {
+	if !ok || publicKey.Use != string(goidc.KeyUsageSignature) {
 		return nil, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "invalid token")
 	}
 
 	var claims jwt.Claims
 	var rawClaims map[string]any
-	if err := parsedToken.Claims(publicKey.Key(), &claims, &rawClaims); err != nil {
+	if err := parsedToken.Claims(publicKey.Key, &claims, &rawClaims); err != nil {
 		return nil, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "invalid token")
 	}
 
@@ -310,7 +310,7 @@ func ProtectedParamsFromRequestObject(ctx *Context, request string) map[string]a
 func EncryptJWT(
 	_ *Context,
 	jwtString string,
-	encryptionJWK goidc.JSONWebKey,
+	encryptionJWK jose.JSONWebKey,
 	contentKeyEncryptionAlgorithm jose.ContentEncryption,
 ) (
 	string,
@@ -318,7 +318,7 @@ func EncryptJWT(
 ) {
 	encrypter, err := jose.NewEncrypter(
 		contentKeyEncryptionAlgorithm,
-		jose.Recipient{Algorithm: jose.KeyAlgorithm(encryptionJWK.Algorithm()), Key: encryptionJWK.Key(), KeyID: encryptionJWK.KeyID()},
+		jose.Recipient{Algorithm: jose.KeyAlgorithm(encryptionJWK.Algorithm), Key: encryptionJWK.Key, KeyID: encryptionJWK.KeyID},
 		(&jose.EncrypterOptions{}).WithType("jwt").WithContentType("jwt"),
 	)
 	if err != nil {

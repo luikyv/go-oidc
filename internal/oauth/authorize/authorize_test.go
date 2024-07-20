@@ -1,6 +1,7 @@
 package authorize_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -24,7 +25,8 @@ func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 	policy := goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.Context, c *goidc.Client, s *goidc.AuthnSession) bool { return true },
-		func(ctx goidc.Context, as *goidc.AuthnSession) goidc.AuthnStatus {
+		func(ctx goidc.Context, s *goidc.AuthnSession) goidc.AuthnStatus {
+			s.GrantScopes(goidc.ScopeOpenID.ID)
 			return goidc.StatusSuccess
 		},
 	)
@@ -72,15 +74,16 @@ func TestInitAuth_PolicyEndsWithSuccess_WithJAR(t *testing.T) {
 
 	privateJWK := utils.PrivateRS256JWK(t, "rsa256_key")
 	client, _ := ctx.Client(utils.TestClientID)
-	client.PublicJWKS = &goidc.JSONWebKeySet{
-		Keys: []goidc.JSONWebKey{privateJWK.Public()},
-	}
+	jwks, _ := json.Marshal(jose.JSONWebKeySet{
+		Keys: []jose.JSONWebKey{privateJWK.Public()},
+	})
+	client.PublicJWKS = jwks
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
 
 	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.Algorithm()), Key: privateJWK.Key()},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID()),
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.Algorithm), Key: privateJWK.Key},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
 	)
 	claims := map[string]any{
 		goidc.ClaimIssuer:   client.ID,
@@ -123,7 +126,7 @@ func TestInitAuth_PolicyEndsWithSuccess_WithJARM(t *testing.T) {
 	ctx := utils.NewTestContext(t)
 	ctx.JARMIsEnabled = true
 	ctx.JARMLifetimeSecs = 60
-	ctx.DefaultJARMSignatureKeyID = utils.TestServerPrivateJWK.KeyID()
+	ctx.DefaultJARMSignatureKeyID = utils.TestServerPrivateJWK.KeyID
 
 	client, _ := ctx.Client(utils.TestClientID)
 	policy := goidc.NewPolicy(

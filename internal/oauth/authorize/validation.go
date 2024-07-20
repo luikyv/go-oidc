@@ -59,7 +59,7 @@ func validateAuthzRequestWithJAR(
 	return nil
 }
 
-func validateAuthorizationRequest(
+func validateAuthzRequest(
 	ctx *utils.Context,
 	req utils.AuthorizationRequest,
 	client *goidc.Client,

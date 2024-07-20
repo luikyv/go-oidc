@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"log"
 	"net/http"
 
 	"github.com/go-jose/go-jose/v4"
@@ -22,7 +23,7 @@ func New(
 	clientManager goidc.ClientManager,
 	authnSessionManager goidc.AuthnSessionManager,
 	grantSessionManager goidc.GrantSessionManager,
-	privateJWKS goidc.JSONWebKeySet,
+	privateJWKS jose.JSONWebKeySet,
 	defaultTokenKeyID string,
 	defaultIDTokenKeyID string,
 ) *Provider {
@@ -86,8 +87,8 @@ func (p *Provider) SetIDTokenLifetime(idTokenLifetimeSecs int) {
 
 // EnableUserInfoEncryption allows encryption of ID tokens and of the user info endpoint response.
 func (p *Provider) EnableUserInfoEncryption(
-	keyEncryptionAlgorithms []goidc.KeyEncryptionAlgorithm,
-	contentEncryptionAlgorithms []goidc.ContentEncryptionAlgorithm,
+	keyEncryptionAlgorithms []jose.KeyAlgorithm,
+	contentEncryptionAlgorithms []jose.ContentEncryption,
 ) {
 	p.config.UserInfoEncryptionIsEnabled = true
 
@@ -178,7 +179,7 @@ func (p *Provider) RequirePushedAuthorizationRequests(parLifetimeSecs int) {
 
 func (p *Provider) EnableJWTSecuredAuthorizationRequests(
 	jarLifetimeSecs int,
-	jarAlgorithms ...goidc.SignatureAlgorithm,
+	jarAlgorithms ...jose.SignatureAlgorithm,
 ) {
 	p.config.JARIsEnabled = true
 	p.config.JARLifetimeSecs = jarLifetimeSecs
@@ -193,7 +194,7 @@ func (p *Provider) EnableJWTSecuredAuthorizationRequests(
 // RequireJWTSecuredAuthorizationRequests makes JAR required.
 func (p *Provider) RequireJWTSecuredAuthorizationRequests(
 	jarLifetimeSecs int,
-	jarAlgorithms ...goidc.SignatureAlgorithm,
+	jarAlgorithms ...jose.SignatureAlgorithm,
 ) {
 	p.EnableJWTSecuredAuthorizationRequests(jarLifetimeSecs, jarAlgorithms...)
 	p.config.JARIsRequired = true
@@ -232,8 +233,8 @@ func (p *Provider) EnableJWTSecuredAuthorizationResponseMode(
 }
 
 func (p *Provider) EnableJWTSecuredAuthorizationResponseModeEncryption(
-	keyEncryptionAlgorithms []goidc.KeyEncryptionAlgorithm,
-	contentEncryptionAlgorithms []goidc.ContentEncryptionAlgorithm,
+	keyEncryptionAlgorithms []jose.KeyAlgorithm,
+	contentEncryptionAlgorithms []jose.ContentEncryption,
 ) {
 	p.config.JARMEncryptionIsEnabled = true
 
@@ -268,7 +269,7 @@ func (p *Provider) EnableSecretPostClientAuthn() {
 
 func (p *Provider) EnablePrivateKeyJWTClientAuthn(
 	assertionLifetimeSecs int,
-	signatureAlgorithms ...goidc.SignatureAlgorithm,
+	signatureAlgorithms ...jose.SignatureAlgorithm,
 ) {
 	p.config.ClientAuthnMethods = append(p.config.ClientAuthnMethods, goidc.ClientAuthnPrivateKeyJWT)
 	p.config.PrivateKeyJWTAssertionLifetimeSecs = assertionLifetimeSecs
@@ -282,7 +283,7 @@ func (p *Provider) EnablePrivateKeyJWTClientAuthn(
 
 func (p *Provider) EnableClientSecretJWTAuthn(
 	assertionLifetimeSecs int,
-	signatureAlgorithms ...goidc.SignatureAlgorithm,
+	signatureAlgorithms ...jose.SignatureAlgorithm,
 ) {
 	p.config.ClientAuthnMethods = append(p.config.ClientAuthnMethods, goidc.ClientAuthnSecretBasic)
 	p.config.ClientSecretJWTAssertionLifetimeSecs = assertionLifetimeSecs
@@ -330,7 +331,7 @@ func (p *Provider) EnableAuthorizationDetailsParameter(types ...string) {
 
 func (p *Provider) EnableDemonstrationProofOfPossesion(
 	dpopLifetimeSecs int,
-	dpopSigningAlgorithms ...goidc.SignatureAlgorithm,
+	dpopSigningAlgorithms ...jose.SignatureAlgorithm,
 ) {
 	p.config.DPoPIsEnabled = true
 	p.config.DPoPLifetimeSecs = dpopLifetimeSecs
@@ -344,7 +345,7 @@ func (p *Provider) EnableDemonstrationProofOfPossesion(
 
 func (p *Provider) RequireDemonstrationProofOfPossesion(
 	dpopLifetimeSecs int,
-	dpopSigningAlgorithms ...goidc.SignatureAlgorithm,
+	dpopSigningAlgorithms ...jose.SignatureAlgorithm,
 ) {
 	p.EnableDemonstrationProofOfPossesion(dpopLifetimeSecs, dpopSigningAlgorithms...)
 	p.config.DPoPIsRequired = true
@@ -407,9 +408,12 @@ func (p *Provider) SetProfileFAPI2() {
 }
 
 // AddClient creates or updates a static client.
-func (p *Provider) AddClient(client *goidc.Client) error {
-	// TODO: This is creating the client at every reload.
-	return p.config.ClientManager.CreateOrUpdate(context.Background(), client)
+func (p *Provider) AddClient(client *goidc.Client) {
+	go func() {
+		if err := p.config.ClientManager.CreateOrUpdate(context.Background(), client); err != nil {
+			log.Printf("error: could not create ou update client - %s", err.Error())
+		}
+	}()
 }
 
 // AddPolicy adds an authentication policy that will be evaluated at runtime and then executed if selected.
@@ -418,7 +422,7 @@ func (p *Provider) AddPolicy(policy goidc.AuthnPolicy) {
 }
 
 // SetAuthorizeErrorPlugin defines a handler to be executed when the authorization request results in error,
-// but the error can't be redirected. This can be used to display page with the error.
+// but the error can't be redirected. This can be used to display a page with the error.
 // The default behavior is to display a JSON with the error information to the user.
 func (p *Provider) SetAuthorizeErrorPlugin(plugin goidc.AuthorizeErrorPluginFunc) {
 	p.config.AuthorizeErrorPlugin = plugin
@@ -662,14 +666,8 @@ func (p *Provider) validateConfiguration() error {
 		validateJAREncryption,
 		validateJARMEncryption,
 		validateTokenBinding,
-		validateOpenIDDefaultIDTokenSignatureAlgorithm,
-		validateOpenIDDefaultJARMSignatureAlgorithm,
-		validateFAPI2ClientAuthnMethods,
-		validateFAPI2ImplicitGrantIsNotAllowed,
-		validateFAPI2PARIsRequired,
-		validateFAPI2PkceIsRequired,
-		validateFAPI2IssuerResponseParamIsRequired,
-		validateFAPI2RefreshTokenRotation,
+		validateOpenIDProfile,
+		validateFAPI2Profile,
 	)
 }
 

@@ -31,6 +31,7 @@ func NewContext(
 	}
 }
 
+// TODO: Implement more hints.
 func (ctx *Context) AuthnHints(
 	userInfo *goidc.UserInfo,
 	session *goidc.AuthnSession,
@@ -38,14 +39,14 @@ func (ctx *Context) AuthnHints(
 	[]goidc.AuthnHint,
 	error,
 ) {
-	var requirements []goidc.AuthnHint
+	var hints []goidc.AuthnHint
 	client, err := ctx.Client(session.ClientID)
 	if err != nil {
 		return nil, err
 	}
 
 	if session.Subject == "" {
-		requirements = append(requirements, goidc.MustInformUserID)
+		hints = append(hints, goidc.HintUserIDNotInformed)
 	}
 
 	maxAge := session.MaxAuthnAgeSecs
@@ -53,10 +54,10 @@ func (ctx *Context) AuthnHints(
 		maxAge = client.DefaultMaxAgeSecs
 	}
 	if maxAge != nil && goidc.TimestampNow()-userInfo.AuthnTimestamp > *maxAge {
-		requirements = append(requirements, goidc.MustReauthenticateUser)
+		hints = append(hints, goidc.HintReauthenticateUser)
 	}
 
-	return requirements, nil
+	return hints, nil
 }
 
 func (ctx *Context) ClientSignatureAlgorithms() []jose.SignatureAlgorithm {
@@ -363,22 +364,9 @@ func (ctx *Context) RenderHTML(
 	default:
 	}
 
-	// TODO: review this. Add headers?
+	ctx.Resp.Header().Set("Content-Type", "text/html")
 	ctx.Resp.WriteHeader(http.StatusOK)
 	tmpl, _ := template.New("default").Parse(html)
-	return tmpl.Execute(ctx.Resp, params)
-}
-
-func (ctx *Context) RenderHTMLTemplate(
-	tmpl *template.Template,
-	params any,
-) error {
-	// Check if the request was terminated before writing anything.
-	select {
-	case <-ctx.Request().Context().Done():
-	default:
-	}
-
 	return tmpl.Execute(ctx.Resp, params)
 }
 
@@ -387,40 +375,40 @@ func (ctx *Context) RenderHTMLTemplate(
 func (ctx *Context) SignatureAlgorithms() []jose.SignatureAlgorithm {
 	var algorithms []jose.SignatureAlgorithm
 	for _, privateKey := range ctx.PrivateJWKS.Keys {
-		if privateKey.Usage() == string(goidc.KeyUsageSignature) {
-			algorithms = append(algorithms, jose.SignatureAlgorithm(privateKey.Algorithm()))
+		if privateKey.Use == string(goidc.KeyUsageSignature) {
+			algorithms = append(algorithms, jose.SignatureAlgorithm(privateKey.Algorithm))
 		}
 	}
 	return algorithms
 }
 
-func (ctx *Context) PublicKeys() goidc.JSONWebKeySet {
-	publicKeys := []goidc.JSONWebKey{}
+func (ctx *Context) PublicKeys() jose.JSONWebKeySet {
+	publicKeys := []jose.JSONWebKey{}
 	for _, privateKey := range ctx.PrivateJWKS.Keys {
 		publicKeys = append(publicKeys, privateKey.Public())
 	}
 
-	return goidc.JSONWebKeySet{Keys: publicKeys}
+	return jose.JSONWebKeySet{Keys: publicKeys}
 }
 
-func (ctx *Context) PublicKey(keyID string) (goidc.JSONWebKey, bool) {
+func (ctx *Context) PublicKey(keyID string) (jose.JSONWebKey, bool) {
 	key, ok := ctx.PrivateKey(keyID)
 	if !ok {
-		return goidc.JSONWebKey{}, false
+		return jose.JSONWebKey{}, false
 	}
 
 	return key.Public(), true
 }
 
-func (ctx *Context) PrivateKey(keyID string) (goidc.JSONWebKey, bool) {
+func (ctx *Context) PrivateKey(keyID string) (jose.JSONWebKey, bool) {
 	keys := ctx.PrivateJWKS.Key(keyID)
 	if len(keys) == 0 {
-		return goidc.JSONWebKey{}, false
+		return jose.JSONWebKey{}, false
 	}
 	return keys[0], true
 }
 
-func (ctx *Context) TokenSignatureKey(tokenOptions goidc.TokenOptions) goidc.JSONWebKey {
+func (ctx *Context) TokenSignatureKey(tokenOptions goidc.TokenOptions) jose.JSONWebKey {
 	keyID := tokenOptions.JWTSignatureKeyID
 	if keyID == "" {
 		return ctx.privateKey(ctx.DefaultTokenSignatureKeyID)
@@ -429,22 +417,22 @@ func (ctx *Context) TokenSignatureKey(tokenOptions goidc.TokenOptions) goidc.JSO
 	keys := ctx.PrivateJWKS.Key(keyID)
 	// If the key informed is not present in the JWKS or if its usage is not signing,
 	// return the default key.
-	if len(keys) == 0 || keys[0].Usage() != string(goidc.KeyUsageSignature) {
+	if len(keys) == 0 || keys[0].Use != string(goidc.KeyUsageSignature) {
 		return ctx.privateKey(ctx.DefaultTokenSignatureKeyID)
 	}
 
 	return keys[0]
 }
 
-func (ctx *Context) UserInfoSignatureKey(client *goidc.Client) goidc.JSONWebKey {
+func (ctx *Context) UserInfoSignatureKey(client *goidc.Client) jose.JSONWebKey {
 	return ctx.privateKeyBasedOnAlgorithmOrDefault(client.UserInfoSignatureAlgorithm, ctx.DefaultUserInfoSignatureKeyID, ctx.UserInfoSignatureKeyIDs)
 }
 
-func (ctx *Context) IDTokenSignatureKey(client *goidc.Client) goidc.JSONWebKey {
+func (ctx *Context) IDTokenSignatureKey(client *goidc.Client) jose.JSONWebKey {
 	return ctx.privateKeyBasedOnAlgorithmOrDefault(client.IDTokenSignatureAlgorithm, ctx.DefaultUserInfoSignatureKeyID, ctx.UserInfoSignatureKeyIDs)
 }
 
-func (ctx *Context) JARMSignatureKey(client *goidc.Client) goidc.JSONWebKey {
+func (ctx *Context) JARMSignatureKey(client *goidc.Client) jose.JSONWebKey {
 	return ctx.privateKeyBasedOnAlgorithmOrDefault(client.JARMSignatureAlgorithm, ctx.DefaultJARMSignatureKeyID, ctx.JARMSignatureKeyIDs)
 }
 
@@ -464,7 +452,7 @@ func (ctx *Context) keyEncryptionAlgorithms(keyIDs []string) []jose.KeyAlgorithm
 	var algorithms []jose.KeyAlgorithm
 	for _, keyID := range keyIDs {
 		key := ctx.privateKey(keyID)
-		algorithms = append(algorithms, jose.KeyAlgorithm(key.Algorithm()))
+		algorithms = append(algorithms, jose.KeyAlgorithm(key.Algorithm))
 	}
 	return algorithms
 }
@@ -473,7 +461,7 @@ func (ctx *Context) signatureAlgorithms(keyIDs []string) []jose.SignatureAlgorit
 	var algorithms []jose.SignatureAlgorithm
 	for _, keyID := range keyIDs {
 		key := ctx.privateKey(keyID)
-		algorithms = append(algorithms, jose.SignatureAlgorithm(key.Algorithm()))
+		algorithms = append(algorithms, jose.SignatureAlgorithm(key.Algorithm))
 	}
 	return algorithms
 }
@@ -485,7 +473,7 @@ func (ctx *Context) privateKeyBasedOnAlgorithmOrDefault(
 	signatureAlgorithm jose.SignatureAlgorithm,
 	defaultKeyID string,
 	keyIDs []string,
-) goidc.JSONWebKey {
+) jose.JSONWebKey {
 	if signatureAlgorithm != "" {
 		for _, keyID := range keyIDs {
 			return ctx.privateKey(keyID)
@@ -497,7 +485,7 @@ func (ctx *Context) privateKeyBasedOnAlgorithmOrDefault(
 
 // privateKey returns a private JWK based on the key ID.
 // This is intended to be used with key IDs we're sure are present in the server JWKS.
-func (ctx *Context) privateKey(keyID string) goidc.JSONWebKey {
+func (ctx *Context) privateKey(keyID string) jose.JSONWebKey {
 	keys := ctx.PrivateJWKS.Key(keyID)
 	return keys[0]
 }
@@ -514,7 +502,7 @@ type Configuration struct {
 	AuthnSessionManager goidc.AuthnSessionManager
 	// PrivateJWKS contains the server JWKS with private and public information.
 	// When exposing it, the private information is removed.
-	PrivateJWKS goidc.JSONWebKeySet
+	PrivateJWKS jose.JSONWebKeySet
 	// DefaultTokenSignatureKeyID is the default key used to sign access tokens. The key can be overridden with the TokenOptions.
 	DefaultTokenSignatureKeyID      string
 	GrantTypes                      []goidc.GrantType

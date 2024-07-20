@@ -37,7 +37,7 @@ func TestMakeToken_JWTToken(t *testing.T) {
 	// Given.
 	ctx := utils.NewTestContext(t)
 	client, _ := ctx.Client(utils.TestClientID)
-	tokenOptions := goidc.NewJWTTokenOptions(utils.TestServerPrivateJWK.KeyID(), 60)
+	tokenOptions := goidc.NewJWTTokenOptions(utils.TestServerPrivateJWK.KeyID, 60)
 	tokenOptions.AddTokenClaims(map[string]any{"random_claim": "random_value"})
 	grantOptions := goidc.GrantOptions{
 		Subject:      "random_subject",

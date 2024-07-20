@@ -1,9 +1,11 @@
 package dcr
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 
+	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/goidc/internal/utils"
 	"github.com/luikymagno/goidc/pkg/goidc"
 )
@@ -244,7 +246,7 @@ func validateJWKSAreRequiredForPrivateKeyJWTAuthn(
 		return nil
 	}
 
-	if len(dynamicClient.PublicJWKS.Keys) == 0 && dynamicClient.PublicJWKSURI == "" {
+	if dynamicClient.PublicJWKS == nil && dynamicClient.PublicJWKSURI == "" {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "the jwks is required for private_key_jwt")
 	}
 
@@ -259,7 +261,7 @@ func validateJWKSIsRequiredWhenSelfSignedTLSAuthn(
 		return nil
 	}
 
-	if dynamicClient.PublicJWKSURI == "" && len(dynamicClient.PublicJWKS.Keys) == 0 {
+	if dynamicClient.PublicJWKSURI == "" && dynamicClient.PublicJWKS == nil {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "jwks is required when authenticating with self signed certificates")
 	}
 
@@ -411,9 +413,14 @@ func validatePublicJWKS(
 		return nil
 	}
 
-	for _, jwk := range dynamicClient.PublicJWKS.Keys {
-		if !jwk.IsPublic() || !jwk.IsValid() {
-			return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("the key with ID: %s jwks is invalid", jwk.KeyID()))
+	var jwks jose.JSONWebKeySet
+	if err := json.Unmarshal(dynamicClient.PublicJWKS, &jwks); err != nil {
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid jwks")
+	}
+
+	for _, jwk := range jwks.Keys {
+		if !jwk.IsPublic() || !jwk.Valid() {
+			return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("the key with ID: %s jwks is invalid", jwk.KeyID))
 		}
 	}
 	return nil

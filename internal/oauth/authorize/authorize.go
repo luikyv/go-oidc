@@ -139,8 +139,7 @@ func finishFlowSuccessfully(ctx *utils.Context, session *goidc.AuthnSession) goi
 		}
 	}
 
-	// TODO: Check if the scope openid was granted.
-	if session.ResponseType.Contains(goidc.ResponseTypeIDToken) {
+	if utils.ScopesContainsOpenID(session.GrantedScopes) && session.ResponseType.Contains(goidc.ResponseTypeIDToken) {
 		idTokenOptions := utils.IDTokenOptions{
 			Subject:                 session.Subject,
 			AdditionalIDTokenClaims: session.AdditionalIDTokenClaims,

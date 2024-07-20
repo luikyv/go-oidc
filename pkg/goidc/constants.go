@@ -323,6 +323,6 @@ const (
 type AuthnHint string
 
 const (
-	MustInformUserID       AuthnHint = "must_inform_user_id"
-	MustReauthenticateUser AuthnHint = "must_reauthenticate_user"
+	HintUserIDNotInformed  AuthnHint = "user_id_not_informed"
+	HintReauthenticateUser AuthnHint = "reauthenticate_user"
 )

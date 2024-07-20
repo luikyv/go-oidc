@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 
+	"github.com/go-jose/go-jose/v4"
 	"github.com/luikymagno/goidc/pkg/goidc"
 	"github.com/luikymagno/goidc/pkg/goidcp"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -33,15 +34,15 @@ func RunOpenIDProvider() error {
 		serverKeyID,
 	)
 	openidProvider.EnablePushedAuthorizationRequests(60)
-	openidProvider.EnableJWTSecuredAuthorizationRequests(600, goidc.RS256)
+	openidProvider.EnableJWTSecuredAuthorizationRequests(600, jose.RS256)
 	openidProvider.EnableJWTSecuredAuthorizationResponseMode(600, serverKeyID)
-	openidProvider.EnablePrivateKeyJWTClientAuthn(600, goidc.RS256)
+	openidProvider.EnablePrivateKeyJWTClientAuthn(600, jose.RS256)
 	openidProvider.EnableBasicSecretClientAuthn()
 	openidProvider.EnableSecretPostClientAuthn()
 	openidProvider.EnableSelfSignedTLSClientAuthn()
 	openidProvider.EnableIssuerResponseParameter()
 	openidProvider.EnableClaimsParameter()
-	openidProvider.EnableDemonstrationProofOfPossesion(600, goidc.RS256, goidc.PS256, goidc.ES256)
+	openidProvider.EnableDemonstrationProofOfPossesion(600, jose.RS256, jose.PS256, jose.ES256)
 	openidProvider.EnableProofKeyForCodeExchange(goidc.CodeChallengeMethodSHA256)
 	openidProvider.EnableRefreshTokenGrantType(6000, false)
 	openidProvider.SetScopes(scopes...)

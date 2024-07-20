@@ -20,7 +20,7 @@ func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 		Configuration: utils.Configuration{
 			Host:                   "https://server.example.com",
 			JARIsEnabled:           true,
-			JARSignatureAlgorithms: []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJWK.Algorithm())},
+			JARSignatureAlgorithms: []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJWK.Algorithm)},
 			JARLifetimeSecs:        60,
 		},
 		Req: &http.Request{
@@ -30,16 +30,14 @@ func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 
 	client := &goidc.Client{
 		ClientMetaInfo: goidc.ClientMetaInfo{
-			PublicJWKS: &goidc.JSONWebKeySet{
-				Keys: []goidc.JSONWebKey{privateJWK.Public()},
-			},
+			PublicJWKS: utils.RawJWKS(privateJWK.Public()),
 		},
 	}
 
 	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.Algorithm()), Key: privateJWK.Key()},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID()),
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.Algorithm), Key: privateJWK.Key},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
 	)
 	claims := map[string]any{
 		string(goidc.ClaimIssuer):   client.ID,

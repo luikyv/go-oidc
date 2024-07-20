@@ -96,10 +96,10 @@ func signUserInfoClaims(
 	goidc.OAuthError,
 ) {
 	privateJWK := ctx.UserInfoSignatureKey(client)
-	signatureAlgorithm := jose.SignatureAlgorithm(privateJWK.Algorithm())
+	signatureAlgorithm := jose.SignatureAlgorithm(privateJWK.Algorithm)
 	signer, err := jose.NewSigner(
-		jose.SigningKey{Algorithm: signatureAlgorithm, Key: privateJWK.Key()},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID()),
+		jose.SigningKey{Algorithm: signatureAlgorithm, Key: privateJWK.Key},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
 	)
 	if err != nil {
 		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())

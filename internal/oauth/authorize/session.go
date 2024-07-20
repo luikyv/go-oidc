@@ -154,7 +154,7 @@ func initValidSimpleAuthnSession(
 	*goidc.AuthnSession,
 	goidc.OAuthError,
 ) {
-	if err := validateAuthorizationRequest(ctx, req, client); err != nil {
+	if err := validateAuthzRequest(ctx, req, client); err != nil {
 		return nil, err
 	}
 	return utils.NewAuthnSession(req.AuthorizationParameters, client), nil

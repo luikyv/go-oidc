@@ -24,8 +24,8 @@ func runValidations(
 
 func validateJWKS(provider Provider) error {
 	for _, key := range provider.config.PrivateJWKS.Keys {
-		if !key.IsValid() {
-			return fmt.Errorf("the key with ID: %s is not valid", key.KeyID())
+		if !key.Valid() {
+			return fmt.Errorf("the key with ID: %s is not valid", key.KeyID)
 		}
 	}
 
@@ -45,11 +45,11 @@ func validateSignatureKeys(provider Provider) error {
 		}
 
 		key := jwkSlice[0]
-		if key.Usage() != string(goidc.KeyUsageSignature) {
+		if key.Use != string(goidc.KeyUsageSignature) {
 			return fmt.Errorf("the key ID: %s is not meant for signing", keyID)
 		}
 
-		if strings.HasPrefix(key.Algorithm(), "HS") {
+		if strings.HasPrefix(key.Algorithm, "HS") {
 			return errors.New("symetric algorithms are not allowed for signing")
 		}
 	}
@@ -67,7 +67,7 @@ func validateEncryptionKeys(provider Provider) error {
 		}
 
 		key := jwkSlice[0]
-		if key.Usage() != string(goidc.KeyUsageEncryption) {
+		if key.Use != string(goidc.KeyUsageEncryption) {
 			return fmt.Errorf("the key ID: %s is not meant for encryption", keyID)
 		}
 	}
@@ -144,37 +144,30 @@ func validateTokenBinding(provider Provider) error {
 	return nil
 }
 
-func validateOpenIDDefaultIDTokenSignatureAlgorithm(provider Provider) error {
+func validateOpenIDProfile(provider Provider) error {
 	if provider.config.Profile != goidc.ProfileOpenID {
 		return nil
 	}
 
 	defaultIDTokenSignatureKey := provider.config.PrivateJWKS.Key(provider.config.DefaultUserInfoSignatureKeyID)[0]
-	if defaultIDTokenSignatureKey.Algorithm() != string(jose.RS256) {
+	if defaultIDTokenSignatureKey.Algorithm != string(jose.RS256) {
 		return errors.New("the default signature algorithm for ID tokens must be RS256")
 	}
 
-	return nil
-}
-
-func validateOpenIDDefaultJARMSignatureAlgorithm(provider Provider) error {
-	if provider.config.Profile != goidc.ProfileOpenID || !provider.config.JARMIsEnabled {
-		return nil
-	}
-
 	defaultJARMSignatureKey := provider.config.PrivateJWKS.Key(provider.config.DefaultJARMSignatureKeyID)[0]
-	if defaultJARMSignatureKey.Algorithm() != string(jose.RS256) {
+	if defaultJARMSignatureKey.Algorithm != string(jose.RS256) {
 		return errors.New("the default signature algorithm for JARM must be RS256")
 	}
 
 	return nil
 }
 
-func validateFAPI2ClientAuthnMethods(provider Provider) error {
+func validateFAPI2Profile(provider Provider) error {
 	if provider.config.Profile != goidc.ProfileFAPI2 {
 		return nil
 	}
 
+	// Validate the authentication methods.
 	if slices.ContainsFunc(provider.config.ClientAuthnMethods, func(authnMethod goidc.ClientAuthnType) bool {
 		// TODO: remove self signed, only for tests.
 		return authnMethod != goidc.ClientAuthnPrivateKeyJWT && authnMethod != goidc.ClientAuthnTLS && authnMethod != goidc.ClientAuthnSelfSignedTLS
@@ -182,60 +175,20 @@ func validateFAPI2ClientAuthnMethods(provider Provider) error {
 		return errors.New("only private_key_jwt and tls_client_auth are allowed for FAPI 2.0")
 	}
 
-	return nil
-}
-
-func validateFAPI2ImplicitGrantIsNotAllowed(provider Provider) error {
-	if provider.config.Profile != goidc.ProfileFAPI2 {
-		return nil
-	}
-
 	if slices.Contains(provider.config.GrantTypes, goidc.GrantImplicit) {
 		return errors.New("the implict grant is not allowed for FAPI 2.0")
-	}
-
-	return nil
-}
-
-func validateFAPI2PARIsRequired(provider Provider) error {
-	if provider.config.Profile != goidc.ProfileFAPI2 {
-		return nil
 	}
 
 	if !provider.config.PARIsEnabled || !provider.config.PARIsRequired {
 		return errors.New("pushed authorization requests is required for FAPI 2.0")
 	}
 
-	return nil
-}
-
-func validateFAPI2PkceIsRequired(provider Provider) error {
-	if provider.config.Profile != goidc.ProfileFAPI2 {
-		return nil
-	}
-
 	if !provider.config.PkceIsEnabled || !provider.config.PkceIsRequired {
 		return errors.New("proof key for code exchange is required for FAPI 2.0")
 	}
 
-	return nil
-}
-
-func validateFAPI2IssuerResponseParamIsRequired(provider Provider) error {
-	if provider.config.Profile != goidc.ProfileFAPI2 {
-		return nil
-	}
-
 	if !provider.config.IssuerResponseParameterIsEnabled {
 		return errors.New("the issuer response parameter is required for FAPI 2.0")
-	}
-
-	return nil
-}
-
-func validateFAPI2RefreshTokenRotation(provider Provider) error {
-	if provider.config.Profile != goidc.ProfileFAPI2 {
-		return nil
 	}
 
 	if slices.Contains(provider.config.GrantTypes, goidc.GrantRefreshToken) && provider.config.ShouldRotateRefreshTokens {

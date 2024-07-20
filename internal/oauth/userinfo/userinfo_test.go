@@ -70,7 +70,7 @@ func TestHandleUserInfoRequest_SignedResponse(t *testing.T) {
 	ctx.Request().Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 
 	client := utils.NewTestClient(t)
-	client.UserInfoSignatureAlgorithm = jose.SignatureAlgorithm(utils.TestServerPrivateJWK.Algorithm())
+	client.UserInfoSignatureAlgorithm = jose.SignatureAlgorithm(utils.TestServerPrivateJWK.Algorithm)
 	require.Nil(t, ctx.CreateOrUpdateClient(client))
 
 	// When.

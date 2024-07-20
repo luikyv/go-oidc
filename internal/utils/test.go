@@ -3,6 +3,7 @@ package utils
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -69,7 +70,7 @@ func NewTestContext(t *testing.T) *Context {
 		GrantSessionManager: inmemory.NewGrantSessionManager(),
 		AuthnSessionManager: inmemory.NewAuthnSessionManager(),
 		Scopes:              []goidc.Scope{goidc.ScopeOpenID, TestScope1, TestScope2},
-		PrivateJWKS:         goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{TestServerPrivateJWK}},
+		PrivateJWKS:         jose.JSONWebKeySet{Keys: []jose.JSONWebKey{TestServerPrivateJWK}},
 		ClientAuthnMethods:  []goidc.ClientAuthnType{goidc.ClientAuthnNone, goidc.ClientAuthnSecretPost},
 		GrantTypes: []goidc.GrantType{
 			goidc.GrantAuthorizationCode,
@@ -87,9 +88,9 @@ func NewTestContext(t *testing.T) *Context {
 			goidc.ResponseTypeIDTokenAndToken,
 			goidc.ResponseTypeCodeAndIDTokenAndToken,
 		},
-		DefaultTokenSignatureKeyID:    TestServerPrivateJWK.KeyID(),
-		DefaultUserInfoSignatureKeyID: TestServerPrivateJWK.KeyID(),
-		UserInfoSignatureKeyIDs:       []string{TestServerPrivateJWK.KeyID()},
+		DefaultTokenSignatureKeyID:    TestServerPrivateJWK.KeyID,
+		DefaultUserInfoSignatureKeyID: TestServerPrivateJWK.KeyID,
+		UserInfoSignatureKeyIDs:       []string{TestServerPrivateJWK.KeyID},
 		TokenOptions: func(client *goidc.Client, scopes string) (goidc.TokenOptions, error) {
 			return goidc.TokenOptions{
 				TokenLifetimeSecs: 60,
@@ -139,7 +140,12 @@ func Clients(_ *testing.T, ctx *Context) []*goidc.Client {
 	return clients
 }
 
-func PrivateRS256JWK(t *testing.T, keyID string) goidc.JSONWebKey {
+func RawJWKS(jwk jose.JSONWebKey) []byte {
+	jwks, _ := json.Marshal(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jwk}})
+	return jwks
+}
+
+func PrivateRS256JWK(t *testing.T, keyID string) jose.JSONWebKey {
 	return PrivateRS256JWKWithUsage(t, keyID, goidc.KeyUsageSignature)
 }
 
@@ -147,17 +153,17 @@ func PrivateRS256JWKWithUsage(
 	_ *testing.T,
 	keyID string,
 	usage goidc.KeyUsage,
-) goidc.JSONWebKey {
+) jose.JSONWebKey {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	return goidc.NewJSONWebKey(jose.JSONWebKey{
+	return jose.JSONWebKey{
 		Key:       privateKey,
 		KeyID:     keyID,
 		Algorithm: string(jose.RS256),
 		Use:       string(usage),
-	})
+	}
 }
 
-func PrivatePS256JWK(t *testing.T, keyID string) goidc.JSONWebKey {
+func PrivatePS256JWK(t *testing.T, keyID string) jose.JSONWebKey {
 	return PrivatePS256JWKWithUsage(t, keyID, goidc.KeyUsageSignature)
 }
 
@@ -165,22 +171,22 @@ func PrivatePS256JWKWithUsage(
 	_ *testing.T,
 	keyID string,
 	usage goidc.KeyUsage,
-) goidc.JSONWebKey {
+) jose.JSONWebKey {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	return goidc.NewJSONWebKey(jose.JSONWebKey{
+	return jose.JSONWebKey{
 		Key:       privateKey,
 		KeyID:     keyID,
 		Algorithm: string(jose.PS256),
 		Use:       string(usage),
-	})
+	}
 }
 
-func SafeClaims(t *testing.T, jws string, privateJWK goidc.JSONWebKey) map[string]any {
-	parsedToken, err := jwt.ParseSigned(jws, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJWK.Algorithm())})
+func SafeClaims(t *testing.T, jws string, privateJWK jose.JSONWebKey) map[string]any {
+	parsedToken, err := jwt.ParseSigned(jws, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJWK.Algorithm)})
 	require.Nil(t, err, "invalid JWT")
 
 	var claims map[string]any
-	err = parsedToken.Claims(privateJWK.Public().Key(), &claims)
+	err = parsedToken.Claims(privateJWK.Public().Key, &claims)
 	require.Nil(t, err, "could not read claims")
 
 	return claims

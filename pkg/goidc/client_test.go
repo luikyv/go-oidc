@@ -164,8 +164,8 @@ func TestGetPublicJWKS(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		numberOfRequestsToJWKSURI++
 		jwk := PrivatePs256JWK("random_key_id")
-		if err := json.NewEncoder(w).Encode(goidc.JSONWebKeySet{
-			Keys: []goidc.JSONWebKey{jwk},
+		if err := json.NewEncoder(w).Encode(jose.JSONWebKeySet{
+			Keys: []jose.JSONWebKey{jwk},
 		}); err != nil {
 			panic(err)
 		}
@@ -189,12 +189,12 @@ func TestGetPublicJWKS(t *testing.T) {
 
 }
 
-func PrivatePs256JWK(keyID string) goidc.JSONWebKey {
+func PrivatePs256JWK(keyID string) jose.JSONWebKey {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	return goidc.NewJSONWebKey(jose.JSONWebKey{
+	return jose.JSONWebKey{
 		Key:       privateKey,
 		KeyID:     keyID,
 		Algorithm: string(jose.PS256),
 		Use:       string(goidc.KeyUsageSignature),
-	})
+	}
 }

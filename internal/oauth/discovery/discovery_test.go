@@ -18,10 +18,10 @@ func TestGetOpenIDConfiguration(t *testing.T) {
 		Configuration: utils.Configuration{
 			Host:                                   "https://example.com",
 			Scopes:                                 []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeEmail},
-			PrivateJWKS:                            goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{tokenKey, userInfoKey}},
-			DefaultTokenSignatureKeyID:             tokenKey.KeyID(),
-			DefaultUserInfoSignatureKeyID:          userInfoKey.KeyID(),
-			UserInfoSignatureKeyIDs:                []string{userInfoKey.KeyID()},
+			PrivateJWKS:                            jose.JSONWebKeySet{Keys: []jose.JSONWebKey{tokenKey, userInfoKey}},
+			DefaultTokenSignatureKeyID:             tokenKey.KeyID,
+			DefaultUserInfoSignatureKeyID:          userInfoKey.KeyID,
+			UserInfoSignatureKeyIDs:                []string{userInfoKey.KeyID},
 			ClientAuthnMethods:                     []goidc.ClientAuthnType{goidc.ClientAuthnNone},
 			PrivateKeyJWTSignatureAlgorithms:       []jose.SignatureAlgorithm{jose.PS256},
 			ClientSecretJWTSignatureAlgorithms:     []jose.SignatureAlgorithm{jose.RS256},
@@ -55,9 +55,9 @@ func TestGetOpenIDConfiguration(t *testing.T) {
 	assert.Equal(t, ctx.ClientAuthnMethods, openidConfig.ClientAuthnMethods)
 	assert.Equal(t, []jose.SignatureAlgorithm{jose.PS256, jose.RS256}, openidConfig.TokenEndpointClientSigningAlgorithms)
 	assert.Equal(t, ctx.GrantTypes, openidConfig.GrantTypes)
-	assert.Equal(t, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(userInfoKey.Algorithm())},
+	assert.Equal(t, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(userInfoKey.Algorithm)},
 		openidConfig.UserInfoSignatureAlgorithms)
-	assert.Equal(t, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(userInfoKey.Algorithm())},
+	assert.Equal(t, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(userInfoKey.Algorithm)},
 		openidConfig.IDTokenSignatureAlgorithms)
 	assert.Equal(t, ctx.ResponseTypes, openidConfig.ResponseTypes)
 	assert.Equal(t, ctx.ResponseModes, openidConfig.ResponseModes)
@@ -115,8 +115,8 @@ func TestGetOpenIDConfiguration_WithJARM(t *testing.T) {
 	ctx := &utils.Context{
 		Configuration: utils.Configuration{
 			JARMIsEnabled:       true,
-			PrivateJWKS:         goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{jarmKey}},
-			JARMSignatureKeyIDs: []string{jarmKey.KeyID()},
+			PrivateJWKS:         jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jarmKey}},
+			JARMSignatureKeyIDs: []string{jarmKey.KeyID},
 		},
 	}
 
@@ -124,7 +124,7 @@ func TestGetOpenIDConfiguration_WithJARM(t *testing.T) {
 	openidConfig := discovery.GetOpenIDConfiguration(ctx)
 
 	// Then.
-	assert.Equal(t, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(jarmKey.Algorithm())},
+	assert.Equal(t, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(jarmKey.Algorithm)},
 		openidConfig.JARMAlgorithms)
 }
 

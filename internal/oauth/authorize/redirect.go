@@ -98,8 +98,8 @@ func signJARMResponse(
 ) {
 	jwk := ctx.JARMSignatureKey(client)
 	signer, err := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm()), Key: jwk.Key()},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID()),
+		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID),
 	)
 	if err != nil {
 		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())

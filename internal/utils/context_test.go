@@ -222,23 +222,6 @@ func TestGetAvailablePolicy_NoPolicyAvailable(t *testing.T) {
 	require.False(t, policyIsAvailable, "GetPolicy is not fetching any policy")
 }
 
-func TestGetClient_WithPublicJWKS(t *testing.T) {
-	// Given.
-	clientJWK := utils.PrivatePS256JWK(t, "client_key")
-	client := utils.NewTestClient(t)
-	client.PublicJWKS = &goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{clientJWK}}
-	ctx := utils.NewTestContext(t)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
-
-	// When.
-	client, err := ctx.Client(client.ID)
-
-	// Then.
-	require.Nil(t, err)
-	require.NotNil(t, client.PublicJWKS)
-	assert.Equal(t, clientJWK.KeyID(), client.PublicJWKS.Keys[0].KeyID())
-}
-
 func TestGetBearerToken_HappyPath(t *testing.T) {
 	// Given.
 	ctx := utils.Context{}
@@ -337,7 +320,7 @@ func TestSignatureAlgorithms_HappyPath(t *testing.T) {
 	encryptionKey := utils.PrivatePS256JWKWithUsage(t, "encryption_key", goidc.KeyUsageEncryption)
 
 	ctx := utils.Context{}
-	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey, encryptionKey}}
+	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey, encryptionKey}}
 
 	// When.
 	algorithms := ctx.SignatureAlgorithms()
@@ -352,7 +335,7 @@ func TestPublicKeys_HappyPath(t *testing.T) {
 	signingKey := utils.PrivatePS256JWK(t, "signing_key")
 
 	ctx := utils.Context{}
-	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
+	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	// When.
 	publicJWKS := ctx.PublicKeys()
@@ -360,7 +343,7 @@ func TestPublicKeys_HappyPath(t *testing.T) {
 	// Then.
 	require.Len(t, publicJWKS.Keys, 1)
 	publicJWK := publicJWKS.Keys[0]
-	assert.Equal(t, "signing_key", publicJWK.KeyID())
+	assert.Equal(t, "signing_key", publicJWK.KeyID)
 	assert.True(t, publicJWK.IsPublic())
 }
 
@@ -369,14 +352,14 @@ func TestPublicKey_HappyPath(t *testing.T) {
 	signingKey := utils.PrivatePS256JWK(t, "signing_key")
 
 	ctx := utils.Context{}
-	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
+	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	// When.
 	publicJWK, ok := ctx.PublicKey("signing_key")
 
 	// Then.
 	require.True(t, ok)
-	assert.Equal(t, "signing_key", publicJWK.KeyID())
+	assert.Equal(t, "signing_key", publicJWK.KeyID)
 	assert.True(t, publicJWK.IsPublic())
 }
 
@@ -385,21 +368,21 @@ func TestPrivateKey_HappyPath(t *testing.T) {
 	signingKey := utils.PrivatePS256JWK(t, "signing_key")
 
 	ctx := utils.Context{}
-	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
+	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	// When.
 	privateJWK, ok := ctx.PrivateKey("signing_key")
 
 	// Then.
 	require.True(t, ok)
-	assert.Equal(t, "signing_key", privateJWK.KeyID())
+	assert.Equal(t, "signing_key", privateJWK.KeyID)
 	assert.False(t, privateJWK.IsPublic())
 }
 
 func TestPrivateKey_KeyDoesntExist(t *testing.T) {
 	// Given.
 	ctx := utils.Context{}
-	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{}}
+	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{}}
 
 	// When.
 	_, ok := ctx.PrivateKey("signing_key")
@@ -415,13 +398,13 @@ func TestTokenSignatureKey_HappyPath(t *testing.T) {
 
 	ctx := utils.Context{}
 	ctx.DefaultTokenSignatureKeyID = "random_key"
-	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
+	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	// When.
 	jwk := ctx.TokenSignatureKey(goidc.NewJWTTokenOptions(signingKeyID, 60))
 
 	// Then.
-	assert.Equal(t, signingKeyID, jwk.KeyID())
+	assert.Equal(t, signingKeyID, jwk.KeyID)
 }
 
 func TestTokenSignatureKey_InvalidKeyIDInformed(t *testing.T) {
@@ -431,13 +414,13 @@ func TestTokenSignatureKey_InvalidKeyIDInformed(t *testing.T) {
 
 	ctx := utils.Context{}
 	ctx.DefaultTokenSignatureKeyID = signingKeyID
-	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
+	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	// When.
 	jwk := ctx.TokenSignatureKey(goidc.NewJWTTokenOptions("random_key", 60))
 
 	// Then.
-	assert.Equal(t, signingKeyID, jwk.KeyID())
+	assert.Equal(t, signingKeyID, jwk.KeyID)
 }
 
 func TestTokenSignatureKey_NoKeyIDInformed(t *testing.T) {
@@ -447,13 +430,13 @@ func TestTokenSignatureKey_NoKeyIDInformed(t *testing.T) {
 
 	ctx := utils.Context{}
 	ctx.DefaultTokenSignatureKeyID = signingKeyID
-	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
+	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	// When.
 	jwk := ctx.TokenSignatureKey(goidc.TokenOptions{})
 
 	// Then.
-	assert.Equal(t, signingKeyID, jwk.KeyID())
+	assert.Equal(t, signingKeyID, jwk.KeyID)
 }
 
 func TestUserInfoSignatureKey_HappyPath(t *testing.T) {
@@ -463,7 +446,7 @@ func TestUserInfoSignatureKey_HappyPath(t *testing.T) {
 
 	ctx := utils.Context{}
 	ctx.DefaultUserInfoSignatureKeyID = signingKeyID
-	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
+	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	client := &goidc.Client{}
 
@@ -471,7 +454,7 @@ func TestUserInfoSignatureKey_HappyPath(t *testing.T) {
 	jwk := ctx.UserInfoSignatureKey(client)
 
 	// Then.
-	assert.Equal(t, signingKeyID, jwk.KeyID())
+	assert.Equal(t, signingKeyID, jwk.KeyID)
 }
 
 func TestUserInfoSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
@@ -480,7 +463,7 @@ func TestUserInfoSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
 
 	ctx := utils.Context{}
-	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
+	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 	ctx.UserInfoSignatureKeyIDs = []string{signingKeyID}
 
 	client := &goidc.Client{}
@@ -490,7 +473,7 @@ func TestUserInfoSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	jwk := ctx.UserInfoSignatureKey(client)
 
 	// Then.
-	assert.Equal(t, signingKeyID, jwk.KeyID())
+	assert.Equal(t, signingKeyID, jwk.KeyID)
 }
 
 func TestIDTokenSignatureKey_HappyPath(t *testing.T) {
@@ -500,7 +483,7 @@ func TestIDTokenSignatureKey_HappyPath(t *testing.T) {
 
 	ctx := utils.Context{}
 	ctx.DefaultUserInfoSignatureKeyID = signingKeyID
-	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
+	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	client := &goidc.Client{}
 
@@ -508,7 +491,7 @@ func TestIDTokenSignatureKey_HappyPath(t *testing.T) {
 	jwk := ctx.IDTokenSignatureKey(client)
 
 	// Then.
-	assert.Equal(t, signingKeyID, jwk.KeyID())
+	assert.Equal(t, signingKeyID, jwk.KeyID)
 }
 
 func TestIDTokenSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
@@ -517,7 +500,7 @@ func TestIDTokenSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
 
 	ctx := utils.Context{}
-	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
+	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 	ctx.UserInfoSignatureKeyIDs = []string{signingKeyID}
 
 	client := &goidc.Client{}
@@ -527,7 +510,7 @@ func TestIDTokenSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	jwk := ctx.IDTokenSignatureKey(client)
 
 	// Then.
-	assert.Equal(t, signingKeyID, jwk.KeyID())
+	assert.Equal(t, signingKeyID, jwk.KeyID)
 }
 
 func TestJARMSignatureKey_HappyPath(t *testing.T) {
@@ -537,7 +520,7 @@ func TestJARMSignatureKey_HappyPath(t *testing.T) {
 
 	ctx := utils.Context{}
 	ctx.DefaultJARMSignatureKeyID = signingKeyID
-	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
+	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	client := &goidc.Client{}
 
@@ -545,7 +528,7 @@ func TestJARMSignatureKey_HappyPath(t *testing.T) {
 	jwk := ctx.JARMSignatureKey(client)
 
 	// Then.
-	assert.Equal(t, signingKeyID, jwk.KeyID())
+	assert.Equal(t, signingKeyID, jwk.KeyID)
 }
 
 func TestJARMSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
@@ -554,7 +537,7 @@ func TestJARMSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
 
 	ctx := utils.Context{}
-	ctx.PrivateJWKS = goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}
+	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 	ctx.JARMSignatureKeyIDs = []string{signingKeyID}
 
 	client := &goidc.Client{}
@@ -564,5 +547,5 @@ func TestJARMSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	jwk := ctx.JARMSignatureKey(client)
 
 	// Then.
-	assert.Equal(t, signingKeyID, jwk.KeyID())
+	assert.Equal(t, signingKeyID, jwk.KeyID)
 }

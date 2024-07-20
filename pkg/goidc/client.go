@@ -25,46 +25,46 @@ type Client struct {
 	ClientMetaInfo                `bson:"inline"`
 }
 
-func (c *Client) PublicKey(keyID string) (JSONWebKey, OAuthError) {
+func (c *Client) PublicKey(keyID string) (jose.JSONWebKey, OAuthError) {
 	jwks, oauthErr := c.FetchPublicJWKS()
 	if oauthErr != nil {
-		return JSONWebKey{}, NewOAuthError(ErrorCodeInvalidRequest, oauthErr.Error())
+		return jose.JSONWebKey{}, NewOAuthError(ErrorCodeInvalidRequest, oauthErr.Error())
 	}
 
 	keys := jwks.Key(keyID)
 	if len(keys) == 0 {
-		return JSONWebKey{}, NewOAuthError(ErrorCodeInvalidClient, "invalid key ID")
+		return jose.JSONWebKey{}, NewOAuthError(ErrorCodeInvalidClient, "invalid key ID")
 	}
 
 	return keys[0], nil
 }
 
-func (c *Client) JARMEncryptionJWK() (JSONWebKey, OAuthError) {
+func (c *Client) JARMEncryptionJWK() (jose.JSONWebKey, OAuthError) {
 	return c.encryptionJWK(c.JARMKeyEncryptionAlgorithm)
 }
 
-func (c *Client) UserInfoEncryptionJWK() (JSONWebKey, OAuthError) {
+func (c *Client) UserInfoEncryptionJWK() (jose.JSONWebKey, OAuthError) {
 	return c.encryptionJWK(c.UserInfoKeyEncryptionAlgorithm)
 }
 
-func (c *Client) IDTokenEncryptionJWK() (JSONWebKey, OAuthError) {
+func (c *Client) IDTokenEncryptionJWK() (jose.JSONWebKey, OAuthError) {
 	return c.encryptionJWK(c.IDTokenKeyEncryptionAlgorithm)
 }
 
 // encryptionJWK returns the encryption JWK based on the algorithm.
-func (c *Client) encryptionJWK(algorithm jose.KeyAlgorithm) (JSONWebKey, OAuthError) {
+func (c *Client) encryptionJWK(algorithm jose.KeyAlgorithm) (jose.JSONWebKey, OAuthError) {
 	jwks, err := c.FetchPublicJWKS()
 	if err != nil {
-		return JSONWebKey{}, NewOAuthError(ErrorCodeInvalidRequest, err.Error())
+		return jose.JSONWebKey{}, NewOAuthError(ErrorCodeInvalidRequest, err.Error())
 	}
 
 	for _, jwk := range jwks.Keys {
-		if jwk.Usage() == string(KeyUsageEncryption) && jwk.Algorithm() == string(algorithm) {
+		if jwk.Use == string(KeyUsageEncryption) && jwk.Algorithm == string(algorithm) {
 			return jwk, nil
 		}
 	}
 
-	return JSONWebKey{}, NewOAuthError(ErrorCodeInvalidClient, fmt.Sprintf("invalid key algorithm: %s", algorithm))
+	return jose.JSONWebKey{}, NewOAuthError(ErrorCodeInvalidClient, fmt.Sprintf("invalid key algorithm: %s", algorithm))
 }
 
 func (c *Client) AreScopesAllowed(ctx Context, availableScopes Scopes, requestedScopes string) bool {
@@ -112,43 +112,37 @@ func (c *Client) IsRegistrationAccessTokenValid(token string) bool {
 
 // FetchPublicJWKS fetches the client public JWKS either directly from the jwks attribute or using jwks_uri.
 // This method also caches the keys if they are fetched from jwks_uri.
-func (c *Client) FetchPublicJWKS() (JSONWebKeySet, error) {
+func (c *Client) FetchPublicJWKS() (jose.JSONWebKeySet, error) {
+	var jwks jose.JSONWebKeySet
+
 	if c.PublicJWKS != nil {
-		return *c.PublicJWKS, nil
+		err := json.Unmarshal(c.PublicJWKS, &jwks)
+		return jwks, err
 	}
 
 	if c.PublicJWKSURI == "" {
-		return JSONWebKeySet{}, NewOAuthError(ErrorCodeInvalidRequest, "The client JWKS was informed neither by value or by reference")
+		return jose.JSONWebKeySet{}, NewOAuthError(ErrorCodeInvalidRequest, "The client JWKS was informed neither by value or by reference")
 	}
 
-	jwks, err := c.fetchJWKS()
+	rawJWKS, err := c.fetchJWKS()
 	if err != nil {
-		return JSONWebKeySet{}, NewOAuthError(ErrorCodeInvalidRequest, err.Error())
+		return jose.JSONWebKeySet{}, NewOAuthError(ErrorCodeInvalidRequest, err.Error())
 	}
 	// Cache the client JWKS.
-	c.PublicJWKS = &jwks
+	c.PublicJWKS = rawJWKS
 
-	return jwks, nil
+	err = json.Unmarshal(c.PublicJWKS, &jwks)
+	return jwks, err
 }
 
-func (c *Client) fetchJWKS() (JSONWebKeySet, error) {
+func (c *Client) fetchJWKS() (json.RawMessage, error) {
 	resp, err := http.Get(c.PublicJWKSURI)
 	if err != nil || resp.StatusCode != http.StatusOK {
-		return JSONWebKeySet{}, errors.New("could not fetch client jwks")
+		return nil, errors.New("could not fetch client jwks")
 	}
 
 	defer resp.Body.Close()
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return JSONWebKeySet{}, errors.New("could not fetch client jwks")
-	}
-
-	var jwks JSONWebKeySet
-	if err := json.Unmarshal(respBody, &jwks); err != nil {
-		return JSONWebKeySet{}, errors.New("could not parse client jwks")
-	}
-
-	return jwks, nil
+	return io.ReadAll(resp.Body)
 }
 
 // Function that will be executed during DCR and DCM.
@@ -162,7 +156,7 @@ type ClientMetaInfo struct {
 	GrantTypes                         []GrantType             `json:"grant_types" bson:"grant_types"`
 	ResponseTypes                      []ResponseType          `json:"response_types" bson:"response_types"`
 	PublicJWKSURI                      string                  `json:"jwks_uri,omitempty" bson:"jwks_uri,omitempty"`
-	PublicJWKS                         *JSONWebKeySet          `json:"jwks,omitempty" bson:"jwks,omitempty"`
+	PublicJWKS                         json.RawMessage         `json:"jwks,omitempty" bson:"jwks,omitempty"`
 	Scopes                             string                  `json:"scope" bson:"scope"`
 	SubjectIdentifierType              SubjectIdentifierType   `json:"subject_type,omitempty" bson:"subject_type,omitempty"`
 	IDTokenSignatureAlgorithm          jose.SignatureAlgorithm `json:"id_token_signed_response_alg,omitempty" bson:"id_token_signed_response_alg,omitempty"`
