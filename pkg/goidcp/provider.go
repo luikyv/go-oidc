@@ -8,9 +8,10 @@ import (
 	"net/http"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/internal/api"
-	"github.com/luikymagno/goidc/internal/utils"
-	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/luikyv/goidc/internal/api"
+	"github.com/luikyv/goidc/internal/oauth/introspection"
+	"github.com/luikyv/goidc/internal/utils"
+	"github.com/luikyv/goidc/pkg/goidc"
 )
 
 type Provider struct {
@@ -65,6 +66,10 @@ func New(
 	}
 
 	return p
+}
+
+func (p *Provider) SetPathPrefix(prefix string) {
+	p.config.PathPrefix = prefix
 }
 
 func (p *Provider) SetSupportedUserClaims(claims ...string) {
@@ -428,6 +433,12 @@ func (p *Provider) SetAuthorizeErrorPlugin(plugin goidc.AuthorizeErrorPluginFunc
 	p.config.AuthorizeErrorPlugin = plugin
 }
 
+// IntrospectToken returns information about the token.
+func (p *Provider) IntrospectToken(token string) goidc.TokenIntrospectionInfo {
+	// The request and response are not needed for this operation.
+	return introspection.TokenIntrospectionInfo(utils.NewContext(p.config, nil, nil), token)
+}
+
 func (p *Provider) Run(
 	address string,
 	middlewares ...api.WrapHandlerFunc,
@@ -505,7 +516,7 @@ func (p *Provider) Handler() http.Handler {
 	handler := http.NewServeMux()
 
 	handler.HandleFunc(
-		"GET "+string(goidc.EndpointJSONWebKeySet),
+		"GET "+p.config.PathPrefix+string(goidc.EndpointJSONWebKeySet),
 		func(w http.ResponseWriter, r *http.Request) {
 			api.HandleJWKSRequest(utils.NewContext(p.config, r, w))
 		},
@@ -513,7 +524,7 @@ func (p *Provider) Handler() http.Handler {
 
 	if p.config.PARIsEnabled {
 		handler.HandleFunc(
-			"POST "+string(goidc.EndpointPushedAuthorizationRequest),
+			"POST "+p.config.PathPrefix+string(goidc.EndpointPushedAuthorizationRequest),
 			func(w http.ResponseWriter, r *http.Request) {
 				api.HandleParRequest(utils.NewContext(p.config, r, w))
 			},
@@ -521,14 +532,14 @@ func (p *Provider) Handler() http.Handler {
 	}
 
 	handler.HandleFunc(
-		"GET "+string(goidc.EndpointAuthorization),
+		"GET "+p.config.PathPrefix+string(goidc.EndpointAuthorization),
 		func(w http.ResponseWriter, r *http.Request) {
 			api.HandleAuthorizeRequest(utils.NewContext(p.config, r, w))
 		},
 	)
 
 	handler.HandleFunc(
-		"POST "+string(goidc.EndpointAuthorization)+"/{callback}",
+		"POST "+p.config.PathPrefix+string(goidc.EndpointAuthorization)+"/{callback}",
 		func(w http.ResponseWriter, r *http.Request) {
 			api.HandleAuthorizeCallbackRequest(
 				utils.NewContext(p.config, r, w),
@@ -537,28 +548,28 @@ func (p *Provider) Handler() http.Handler {
 	)
 
 	handler.HandleFunc(
-		"POST "+string(goidc.EndpointToken),
+		"POST "+p.config.PathPrefix+string(goidc.EndpointToken),
 		func(w http.ResponseWriter, r *http.Request) {
 			api.HandleTokenRequest(utils.NewContext(p.config, r, w))
 		},
 	)
 
 	handler.HandleFunc(
-		"GET "+string(goidc.EndpointWellKnown),
+		"GET "+p.config.PathPrefix+string(goidc.EndpointWellKnown),
 		func(w http.ResponseWriter, r *http.Request) {
 			api.HandleWellKnownRequest(utils.NewContext(p.config, r, w))
 		},
 	)
 
 	handler.HandleFunc(
-		"GET "+string(goidc.EndpointUserInfo),
+		"GET "+p.config.PathPrefix+string(goidc.EndpointUserInfo),
 		func(w http.ResponseWriter, r *http.Request) {
 			api.HandleUserInfoRequest(utils.NewContext(p.config, r, w))
 		},
 	)
 
 	handler.HandleFunc(
-		"POST "+string(goidc.EndpointUserInfo),
+		"POST "+p.config.PathPrefix+string(goidc.EndpointUserInfo),
 		func(w http.ResponseWriter, r *http.Request) {
 			api.HandleUserInfoRequest(utils.NewContext(p.config, r, w))
 		},
@@ -566,28 +577,28 @@ func (p *Provider) Handler() http.Handler {
 
 	if p.config.DCRIsEnabled {
 		handler.HandleFunc(
-			"POST "+string(goidc.EndpointDynamicClient),
+			"POST "+p.config.PathPrefix+string(goidc.EndpointDynamicClient),
 			func(w http.ResponseWriter, r *http.Request) {
 				api.HandleDynamicClientCreation(utils.NewContext(p.config, r, w))
 			},
 		)
 
 		handler.HandleFunc(
-			"PUT "+string(goidc.EndpointDynamicClient)+"/{client_id}",
+			"PUT "+p.config.PathPrefix+string(goidc.EndpointDynamicClient)+"/{client_id}",
 			func(w http.ResponseWriter, r *http.Request) {
 				api.HandleDynamicClientUpdate(utils.NewContext(p.config, r, w))
 			},
 		)
 
 		handler.HandleFunc(
-			"GET "+string(goidc.EndpointDynamicClient)+"/{client_id}",
+			"GET "+p.config.PathPrefix+string(goidc.EndpointDynamicClient)+"/{client_id}",
 			func(w http.ResponseWriter, r *http.Request) {
 				api.HandleDynamicClientRetrieve(utils.NewContext(p.config, r, w))
 			},
 		)
 
 		handler.HandleFunc(
-			"DELETE "+string(goidc.EndpointDynamicClient)+"/{client_id}",
+			"DELETE "+p.config.PathPrefix+string(goidc.EndpointDynamicClient)+"/{client_id}",
 			func(w http.ResponseWriter, r *http.Request) {
 				api.HandleDynamicClientDelete(utils.NewContext(p.config, r, w))
 			},
@@ -596,7 +607,7 @@ func (p *Provider) Handler() http.Handler {
 
 	if p.config.IntrospectionIsEnabled {
 		handler.HandleFunc(
-			"POST "+string(goidc.EndpointTokenIntrospection),
+			"POST "+p.config.PathPrefix+string(goidc.EndpointTokenIntrospection),
 			func(w http.ResponseWriter, r *http.Request) {
 				api.HandleIntrospectionRequest(utils.NewContext(p.config, r, w))
 			},
@@ -610,21 +621,21 @@ func (p *Provider) mtlsHandler() http.Handler {
 	serverHandler := http.NewServeMux()
 
 	serverHandler.HandleFunc(
-		"POST "+string(goidc.EndpointToken),
+		"POST "+p.config.PathPrefix+string(goidc.EndpointToken),
 		func(w http.ResponseWriter, r *http.Request) {
 			api.HandleTokenRequest(utils.NewContext(p.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
-		"GET "+string(goidc.EndpointUserInfo),
+		"GET "+p.config.PathPrefix+string(goidc.EndpointUserInfo),
 		func(w http.ResponseWriter, r *http.Request) {
 			api.HandleUserInfoRequest(utils.NewContext(p.config, r, w))
 		},
 	)
 
 	serverHandler.HandleFunc(
-		"POST "+string(goidc.EndpointUserInfo),
+		"POST "+p.config.PathPrefix+string(goidc.EndpointUserInfo),
 		func(w http.ResponseWriter, r *http.Request) {
 			api.HandleUserInfoRequest(utils.NewContext(p.config, r, w))
 		},
@@ -632,7 +643,7 @@ func (p *Provider) mtlsHandler() http.Handler {
 
 	if p.config.PARIsEnabled {
 		serverHandler.HandleFunc(
-			"POST "+string(goidc.EndpointPushedAuthorizationRequest),
+			"POST "+p.config.PathPrefix+string(goidc.EndpointPushedAuthorizationRequest),
 			func(w http.ResponseWriter, r *http.Request) {
 				api.HandleParRequest(utils.NewContext(p.config, r, w))
 			},
@@ -641,7 +652,7 @@ func (p *Provider) mtlsHandler() http.Handler {
 
 	if p.config.IntrospectionIsEnabled {
 		serverHandler.HandleFunc(
-			"POST "+string(goidc.EndpointTokenIntrospection),
+			"POST "+p.config.PathPrefix+string(goidc.EndpointTokenIntrospection),
 			func(w http.ResponseWriter, r *http.Request) {
 				api.HandleIntrospectionRequest(utils.NewContext(p.config, r, w))
 			},

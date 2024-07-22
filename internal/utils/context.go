@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/luikyv/goidc/pkg/goidc"
 )
 
 type Context struct {
@@ -148,17 +148,17 @@ func (ctx *Context) ExecuteAuthorizeErrorPlugin(oauthErr goidc.OAuthError) goidc
 func (ctx *Context) Audiences() []string {
 	audiences := []string{
 		ctx.Host,
-		ctx.Host + string(goidc.EndpointToken),
-		ctx.Host + string(goidc.EndpointPushedAuthorizationRequest),
-		ctx.Host + string(goidc.EndpointUserInfo),
+		ctx.BaseURL() + string(goidc.EndpointToken),
+		ctx.BaseURL() + string(goidc.EndpointPushedAuthorizationRequest),
+		ctx.BaseURL() + string(goidc.EndpointUserInfo),
 	}
 	if ctx.MTLSIsEnabled {
 		audiences = append(
 			audiences,
 			ctx.MTLSHost,
-			ctx.MTLSHost+string(goidc.EndpointToken),
-			ctx.MTLSHost+string(goidc.EndpointPushedAuthorizationRequest),
-			ctx.MTLSHost+string(goidc.EndpointUserInfo),
+			ctx.MTLSBaseURL()+string(goidc.EndpointToken),
+			ctx.MTLSBaseURL()+string(goidc.EndpointPushedAuthorizationRequest),
+			ctx.MTLSBaseURL()+string(goidc.EndpointUserInfo),
 		)
 	}
 	return audiences
@@ -238,6 +238,14 @@ func (ctx *Context) DeleteAuthnSession(id string) error {
 }
 
 //---------------------------------------- HTTP Utils ----------------------------------------//
+
+func (ctx *Context) BaseURL() string {
+	return ctx.Host + ctx.PathPrefix
+}
+
+func (ctx *Context) MTLSBaseURL() string {
+	return ctx.MTLSHost + ctx.PathPrefix
+}
 
 func (ctx *Context) Request() *http.Request {
 	return ctx.Req
@@ -494,6 +502,7 @@ type Configuration struct {
 	Profile goidc.Profile
 	// Host is the domain where the server runs. This value will be used the auth server issuer.
 	Host                string
+	PathPrefix          string
 	MTLSIsEnabled       bool
 	MTLSHost            string
 	Scopes              goidc.Scopes

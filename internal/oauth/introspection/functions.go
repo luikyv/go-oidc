@@ -1,8 +1,8 @@
 package introspection
 
 import (
-	"github.com/luikymagno/goidc/internal/utils"
-	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/luikyv/goidc/internal/utils"
+	"github.com/luikyv/goidc/pkg/goidc"
 )
 
 func validateTokenIntrospectionRequest(
@@ -21,10 +21,10 @@ func validateTokenIntrospectionRequest(
 	return nil
 }
 
-func tokenIntrospectionInfo(
+func TokenIntrospectionInfo(
 	ctx *utils.Context,
 	token string,
-) utils.TokenIntrospectionInfo {
+) goidc.TokenIntrospectionInfo {
 
 	if len(token) == goidc.RefreshTokenLength {
 		return getRefreshTokenIntrospectionInfo(ctx, token)
@@ -40,22 +40,23 @@ func tokenIntrospectionInfo(
 func getRefreshTokenIntrospectionInfo(
 	ctx *utils.Context,
 	token string,
-) utils.TokenIntrospectionInfo {
+) goidc.TokenIntrospectionInfo {
 	grantSession, err := ctx.GrantSessionByRefreshToken(token)
 	if err != nil {
-		return utils.TokenIntrospectionInfo{
+		return goidc.TokenIntrospectionInfo{
 			IsActive: false,
 		}
 	}
 
 	if grantSession.IsRefreshSessionExpired() {
-		return utils.TokenIntrospectionInfo{
+		return goidc.TokenIntrospectionInfo{
 			IsActive: false,
 		}
 	}
 
-	return utils.TokenIntrospectionInfo{
+	return goidc.TokenIntrospectionInfo{
 		IsActive:                    true,
+		TokenUsage:                  goidc.TokenHintRefresh,
 		Scopes:                      grantSession.GrantedScopes,
 		AuthorizationDetails:        grantSession.GrantedAuthorizationDetails,
 		ClientID:                    grantSession.ClientID,
@@ -70,10 +71,10 @@ func getRefreshTokenIntrospectionInfo(
 func getJWTTokenIntrospectionInfo(
 	ctx *utils.Context,
 	token string,
-) utils.TokenIntrospectionInfo {
+) goidc.TokenIntrospectionInfo {
 	claims, err := utils.ValidClaims(ctx, token)
 	if err != nil || claims[goidc.ClaimTokenID] == nil {
-		return utils.TokenIntrospectionInfo{
+		return goidc.TokenIntrospectionInfo{
 			IsActive: false,
 		}
 	}
@@ -84,29 +85,30 @@ func getJWTTokenIntrospectionInfo(
 func opaqueTokenIntrospectionInfo(
 	ctx *utils.Context,
 	token string,
-) utils.TokenIntrospectionInfo {
+) goidc.TokenIntrospectionInfo {
 	return tokenIntrospectionInfoByID(ctx, token)
 }
 
 func tokenIntrospectionInfoByID(
 	ctx *utils.Context,
 	tokenID string,
-) utils.TokenIntrospectionInfo {
+) goidc.TokenIntrospectionInfo {
 	grantSession, err := ctx.GrantSessionByTokenID(tokenID)
 	if err != nil {
-		return utils.TokenIntrospectionInfo{
+		return goidc.TokenIntrospectionInfo{
 			IsActive: false,
 		}
 	}
 
 	if grantSession.HasLastTokenExpired() {
-		return utils.TokenIntrospectionInfo{
+		return goidc.TokenIntrospectionInfo{
 			IsActive: false,
 		}
 	}
 
-	return utils.TokenIntrospectionInfo{
+	return goidc.TokenIntrospectionInfo{
 		IsActive:                    true,
+		TokenUsage:                  goidc.TokenHintAccess,
 		Scopes:                      grantSession.ActiveScopes,
 		AuthorizationDetails:        grantSession.GrantedAuthorizationDetails,
 		ClientID:                    grantSession.ClientID,

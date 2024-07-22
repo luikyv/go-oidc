@@ -1,18 +1,18 @@
 package discovery
 
 import (
-	"github.com/luikymagno/goidc/internal/utils"
-	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/luikyv/goidc/internal/utils"
+	"github.com/luikyv/goidc/pkg/goidc"
 )
 
 func GetOpenIDConfiguration(ctx *utils.Context) utils.OpenIDConfiguration {
 	config := utils.OpenIDConfiguration{
 		Issuer:                               ctx.Host,
-		ClientRegistrationEndpoint:           ctx.Host + string(goidc.EndpointDynamicClient),
-		AuthorizationEndpoint:                ctx.Host + string(goidc.EndpointAuthorization),
-		TokenEndpoint:                        ctx.Host + string(goidc.EndpointToken),
-		UserinfoEndpoint:                     ctx.Host + string(goidc.EndpointUserInfo),
-		JWKSEndpoint:                         ctx.Host + string(goidc.EndpointJSONWebKeySet),
+		ClientRegistrationEndpoint:           ctx.BaseURL() + string(goidc.EndpointDynamicClient),
+		AuthorizationEndpoint:                ctx.BaseURL() + string(goidc.EndpointAuthorization),
+		TokenEndpoint:                        ctx.BaseURL() + string(goidc.EndpointToken),
+		UserinfoEndpoint:                     ctx.BaseURL() + string(goidc.EndpointUserInfo),
+		JWKSEndpoint:                         ctx.BaseURL() + string(goidc.EndpointJSONWebKeySet),
 		ResponseTypes:                        ctx.ResponseTypes,
 		ResponseModes:                        ctx.ResponseModes,
 		GrantTypes:                           ctx.GrantTypes,
@@ -34,7 +34,7 @@ func GetOpenIDConfiguration(ctx *utils.Context) utils.OpenIDConfiguration {
 
 	if ctx.PARIsEnabled {
 		config.PARIsRequired = ctx.PARIsRequired
-		config.ParEndpoint = ctx.Host + string(goidc.EndpointPushedAuthorizationRequest)
+		config.ParEndpoint = ctx.BaseURL() + string(goidc.EndpointPushedAuthorizationRequest)
 	}
 
 	if ctx.JARIsEnabled {
@@ -60,7 +60,7 @@ func GetOpenIDConfiguration(ctx *utils.Context) utils.OpenIDConfiguration {
 	}
 
 	if ctx.IntrospectionIsEnabled {
-		config.IntrospectionEndpoint = ctx.Host + string(goidc.EndpointTokenIntrospection)
+		config.IntrospectionEndpoint = ctx.BaseURL() + string(goidc.EndpointTokenIntrospection)
 		config.IntrospectionEndpointClientAuthnMethods = ctx.IntrospectionClientAuthnMethods
 		config.IntrospectionEndpointClientSignatureAlgorithms = ctx.IntrospectionClientSignatureAlgorithms()
 	}
@@ -69,16 +69,16 @@ func GetOpenIDConfiguration(ctx *utils.Context) utils.OpenIDConfiguration {
 		config.TLSBoundTokensIsEnabled = ctx.TLSBoundTokensIsEnabled
 
 		config.MTLSConfiguration = &utils.OpenIDMTLSConfiguration{
-			TokenEndpoint:    ctx.MTLSHost + string(goidc.EndpointToken),
-			UserinfoEndpoint: ctx.MTLSHost + string(goidc.EndpointUserInfo),
+			TokenEndpoint:    ctx.MTLSBaseURL() + string(goidc.EndpointToken),
+			UserinfoEndpoint: ctx.MTLSBaseURL() + string(goidc.EndpointUserInfo),
 		}
 
 		if ctx.PARIsEnabled {
-			config.MTLSConfiguration.ParEndpoint = ctx.MTLSHost + string(goidc.EndpointPushedAuthorizationRequest)
+			config.MTLSConfiguration.ParEndpoint = ctx.MTLSBaseURL() + string(goidc.EndpointPushedAuthorizationRequest)
 		}
 
 		if ctx.IntrospectionIsEnabled {
-			config.IntrospectionEndpoint = ctx.MTLSHost + string(goidc.EndpointTokenIntrospection)
+			config.IntrospectionEndpoint = ctx.MTLSBaseURL() + string(goidc.EndpointTokenIntrospection)
 		}
 	}
 

@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/luikyv/goidc/pkg/goidc"
 )
 
 type WrapHandlerFunc func(nextHandler http.Handler) http.Handler

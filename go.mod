@@ -1,4 +1,4 @@
-module github.com/luikymagno/goidc
+module github.com/luikyv/goidc
 
 go 1.22.0
 

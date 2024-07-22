@@ -15,7 +15,7 @@ This library implements the following specifications:
 ## Installation
 To start using the `goidc` module in your project, install it with
 ```
-go get github.com/luikymagno/goidc
+go get github.com/luikyv/goidc
 ```
 
 ## Get Started
@@ -67,6 +67,7 @@ make docs
 Make sure the `GOBIN` environment variable is set.
 
 ## To Do's
+* Endpoint prefix.
 * Don't use the default http client.
 * revoke by jti.
 * Add docs, docs should start with the name of the thing.
@@ -87,3 +88,4 @@ Make sure the `GOBIN` environment variable is set.
 * Separate grant session and token session? Could reuse the grant session so the client doesn't need to reauthenticate.
 * Return value with flag or just the default value?
 * Events.
+* Compare ACR values.

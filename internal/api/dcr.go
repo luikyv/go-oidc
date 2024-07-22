@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/luikymagno/goidc/internal/oauth/dcr"
-	"github.com/luikymagno/goidc/internal/utils"
-	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/luikyv/goidc/internal/oauth/dcr"
+	"github.com/luikyv/goidc/internal/utils"
+	"github.com/luikyv/goidc/pkg/goidc"
 )
 
 func HandleDynamicClientCreation(ctx *utils.Context) {

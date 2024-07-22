@@ -10,7 +10,7 @@ import (
 	"text/template"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/luikyv/goidc/pkg/goidc"
 )
 
 const Port = ":83"

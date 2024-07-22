@@ -2,8 +2,8 @@ package token
 
 import (
 	"github.com/google/go-cmp/cmp"
-	"github.com/luikymagno/goidc/internal/utils"
-	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/luikyv/goidc/internal/utils"
+	"github.com/luikyv/goidc/pkg/goidc"
 )
 
 func handleAuthorizationCodeGrantTokenCreation(

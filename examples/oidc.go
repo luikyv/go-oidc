@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/pkg/goidc"
-	"github.com/luikymagno/goidc/pkg/goidcp"
+	"github.com/luikyv/goidc/pkg/goidc"
+	"github.com/luikyv/goidc/pkg/goidcp"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )

@@ -3,7 +3,7 @@ package inmemory
 import (
 	"context"
 
-	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/luikyv/goidc/pkg/goidc"
 )
 
 type GrantSessionManager struct {

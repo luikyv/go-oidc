@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/luikyv/goidc/pkg/goidc"
 	"golang.org/x/crypto/bcrypt"
 )
 

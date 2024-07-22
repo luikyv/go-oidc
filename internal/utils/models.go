@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/luikyv/goidc/pkg/goidc"
 )
 
 type DPoPJWTClaims struct {
@@ -348,55 +348,6 @@ func NewTokenIntrospectionRequest(req *http.Request) TokenIntrospectionRequest {
 		Token:              req.PostFormValue("token"),
 		TokenTypeHint:      goidc.TokenTypeHint(req.PostFormValue("token_type_hint")),
 	}
-}
-
-type TokenIntrospectionInfo struct {
-	IsActive                    bool
-	Scopes                      string
-	AuthorizationDetails        []goidc.AuthorizationDetail
-	ClientID                    string
-	Subject                     string
-	ExpiresAtTimestamp          int
-	JWKThumbprint               string
-	ClientCertificateThumbprint string
-	AdditionalTokenClaims       map[string]any
-}
-
-func (info TokenIntrospectionInfo) MarshalJSON() ([]byte, error) {
-	if !info.IsActive {
-		return json.Marshal(map[string]any{
-			"active": false,
-		})
-	}
-
-	params := map[string]any{
-		"active":            true,
-		goidc.ClaimSubject:  info.Subject,
-		goidc.ClaimScope:    info.Scopes,
-		goidc.ClaimClientID: info.ClientID,
-		goidc.ClaimExpiry:   info.ExpiresAtTimestamp,
-	}
-
-	if info.AuthorizationDetails != nil {
-		params[goidc.ClaimAuthorizationDetails] = info.AuthorizationDetails
-	}
-
-	confirmation := make(map[string]string)
-	if info.JWKThumbprint != "" {
-		confirmation["jkt"] = info.JWKThumbprint
-	}
-	if info.ClientCertificateThumbprint != "" {
-		confirmation["x5t#S256"] = info.ClientCertificateThumbprint
-	}
-	if len(confirmation) != 0 {
-		params["cnf"] = confirmation
-	}
-
-	for k, v := range info.AdditionalTokenClaims {
-		params[k] = v
-	}
-
-	return json.Marshal(params)
 }
 
 type IDTokenOptions struct {

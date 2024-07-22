@@ -1,9 +1,9 @@
 package par
 
 import (
-	"github.com/luikymagno/goidc/internal/oauth/authorize"
-	"github.com/luikymagno/goidc/internal/utils"
-	"github.com/luikymagno/goidc/pkg/goidc"
+	"github.com/luikyv/goidc/internal/oauth/authorize"
+	"github.com/luikyv/goidc/internal/utils"
+	"github.com/luikyv/goidc/pkg/goidc"
 )
 
 func validatePAR(

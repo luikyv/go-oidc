@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikymagno/goidc/pkg/goidc"
-	"github.com/luikymagno/goidc/pkg/goidcp"
+	"github.com/luikyv/goidc/pkg/goidc"
+	"github.com/luikyv/goidc/pkg/goidcp"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -18,7 +18,7 @@ func RunFAPI2OpenIDProvider() error {
 	redirectURI := "https://localhost:8443/test/a/first_test/callback"
 	scopes := []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeOffilineAccess, goidc.ScopeEmail}
 
-	// MongoDB
+	// MongoDB.
 	options := options.Client().ApplyURI("mongodb://admin:password@localhost:27017")
 	conn, err := mongo.Connect(context.Background(), options)
 	if err != nil {

@@ -1,6 +1,7 @@
 package goidc
 
 import (
+	"encoding/json"
 	"maps"
 	"reflect"
 )
@@ -155,6 +156,57 @@ func (params AuthorizationParameters) DefaultResponseMode() ResponseMode {
 	}
 
 	return params.ResponseMode
+}
+
+type TokenIntrospectionInfo struct {
+	IsActive                    bool
+	TokenUsage                  TokenTypeHint
+	Scopes                      string
+	AuthorizationDetails        []AuthorizationDetail
+	ClientID                    string
+	Subject                     string
+	ExpiresAtTimestamp          int
+	JWKThumbprint               string
+	ClientCertificateThumbprint string
+	AdditionalTokenClaims       map[string]any
+}
+
+func (info TokenIntrospectionInfo) MarshalJSON() ([]byte, error) {
+	if !info.IsActive {
+		return json.Marshal(map[string]any{
+			"active": false,
+		})
+	}
+
+	params := map[string]any{
+		"active":      true,
+		"token_usage": info.TokenUsage,
+		ClaimSubject:  info.Subject,
+		ClaimScope:    info.Scopes,
+		ClaimClientID: info.ClientID,
+		ClaimExpiry:   info.ExpiresAtTimestamp,
+	}
+
+	if info.AuthorizationDetails != nil {
+		params[ClaimAuthorizationDetails] = info.AuthorizationDetails
+	}
+
+	confirmation := make(map[string]string)
+	if info.JWKThumbprint != "" {
+		confirmation["jkt"] = info.JWKThumbprint
+	}
+	if info.ClientCertificateThumbprint != "" {
+		confirmation["x5t#S256"] = info.ClientCertificateThumbprint
+	}
+	if len(confirmation) != 0 {
+		params["cnf"] = confirmation
+	}
+
+	for k, v := range info.AdditionalTokenClaims {
+		params[k] = v
+	}
+
+	return json.Marshal(params)
 }
 
 type ClaimsObject struct {
