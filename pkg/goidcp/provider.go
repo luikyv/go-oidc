@@ -415,7 +415,7 @@ func (p *Provider) SetProfileFAPI2() {
 // AddClient creates or updates a static client.
 func (p *Provider) AddClient(client *goidc.Client) {
 	go func() {
-		if err := p.config.ClientManager.CreateOrUpdate(context.Background(), client); err != nil {
+		if err := p.config.ClientManager.Save(context.Background(), client); err != nil {
 			log.Printf("error: could not create ou update client - %s", err.Error())
 		}
 	}()

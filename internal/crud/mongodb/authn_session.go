@@ -19,7 +19,7 @@ func NewAuthnSessionManager(database *mongo.Database) AuthnSessionManager {
 	}
 }
 
-func (manager AuthnSessionManager) CreateOrUpdate(
+func (manager AuthnSessionManager) Save(
 	ctx context.Context,
 	session *goidc.AuthnSession,
 ) error {

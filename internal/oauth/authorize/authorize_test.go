@@ -78,7 +78,7 @@ func TestInitAuth_PolicyEndsWithSuccess_WithJAR(t *testing.T) {
 		Keys: []jose.JSONWebKey{privateJWK.Public()},
 	})
 	client.PublicJWKS = jwks
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	require.Nil(t, ctx.SaveClient(client))
 
 	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
@@ -226,7 +226,7 @@ func TestInitAuth_InvalidResponseType(t *testing.T) {
 	client := utils.NewTestClient(t)
 	client.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeCode}
 	ctx := utils.NewTestContext(t)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	require.Nil(t, ctx.SaveClient(client))
 
 	// When.
 	err := authorize.InitAuth(ctx, utils.AuthorizationRequest{
@@ -339,7 +339,7 @@ func TestInitAuth_WithPAR(t *testing.T) {
 	ctx.PARIsEnabled = true
 
 	requestURI := "urn:goidc:random_value"
-	require.Nil(t, ctx.CreateOrUpdateAuthnSession(
+	require.Nil(t, ctx.SaveAuthnSession(
 		&goidc.AuthnSession{
 			ID: uuid.NewString(),
 			AuthorizationParameters: goidc.AuthorizationParameters{
@@ -398,7 +398,7 @@ func TestContinueAuthentication(t *testing.T) {
 	ctx.Policies = []goidc.AuthnPolicy{policy}
 
 	callbackID := "random_callback_id"
-	require.Nil(t, ctx.CreateOrUpdateAuthnSession(&goidc.AuthnSession{
+	require.Nil(t, ctx.SaveAuthnSession(&goidc.AuthnSession{
 		PolicyID:           policy.ID,
 		CallbackID:         callbackID,
 		ExpiresAtTimestamp: goidc.TimestampNow() + 60,

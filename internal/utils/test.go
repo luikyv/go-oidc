@@ -105,7 +105,7 @@ func NewTestContext(t *testing.T) *Context {
 		Resp:          httptest.NewRecorder(),
 	}
 
-	require.Nil(t, ctx.CreateOrUpdateClient(NewTestClient(t)), "could not create the test client")
+	require.Nil(t, ctx.SaveClient(NewTestClient(t)), "could not create the test client")
 
 	return &ctx
 }

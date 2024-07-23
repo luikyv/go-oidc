@@ -23,7 +23,7 @@ func TestGetAuthenticatedClient_WithNoneAuthn_HappyPath(t *testing.T) {
 	}
 
 	ctx := utils.NewTestContext(t)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	require.Nil(t, ctx.SaveClient(client))
 
 	req := utils.ClientAuthnRequest{
 		ClientID: client.ID,
@@ -50,7 +50,7 @@ func TestGetAuthenticatedClient_WithSecretPostAuthn(t *testing.T) {
 	}
 
 	ctx := utils.NewTestContext(t)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	require.Nil(t, ctx.SaveClient(client))
 
 	req := utils.ClientAuthnRequest{
 		ClientID:     client.ID,
@@ -91,7 +91,7 @@ func TestGetAuthenticatedClient_WithBasicSecretAuthn(t *testing.T) {
 	}
 
 	ctx := utils.NewTestContext(t)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	require.Nil(t, ctx.SaveClient(client))
 	ctx.Request().SetBasicAuth(client.ID, clientSecret)
 
 	req := utils.ClientAuthnRequest{}
@@ -129,7 +129,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 	}
 
 	ctx := utils.NewTestContext(t)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	require.Nil(t, ctx.SaveClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
 
@@ -172,7 +172,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_ClientInformedSigningAlgorithm
 	}
 
 	ctx := utils.NewTestContext(t)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	require.Nil(t, ctx.SaveClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256, jose.RS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
 
@@ -216,7 +216,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAudienceClaim(t *testin
 	ctx := utils.NewTestContext(t)
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	require.Nil(t, ctx.SaveClient(client))
 
 	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
@@ -255,7 +255,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidExpiryClaim(t *testing.
 	}
 
 	ctx := utils.NewTestContext(t)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	require.Nil(t, ctx.SaveClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
 
@@ -295,7 +295,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidKeyID(t *testing.T) {
 	}
 
 	ctx := utils.NewTestContext(t)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	require.Nil(t, ctx.SaveClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
 
@@ -337,7 +337,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T)
 	}
 
 	ctx := utils.NewTestContext(t)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	require.Nil(t, ctx.SaveClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
 
@@ -381,7 +381,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertion(t *testing.T)
 	}
 
 	ctx := utils.NewTestContext(t)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	require.Nil(t, ctx.SaveClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
 
@@ -409,7 +409,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertionType(t *testin
 	}
 
 	ctx := utils.NewTestContext(t)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	require.Nil(t, ctx.SaveClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
 
@@ -452,7 +452,7 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_HappyPath(t *testing.T) {
 	}
 
 	ctx := utils.NewTestContext(t)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	require.Nil(t, ctx.SaveClient(client))
 	ctx.ClientSecretJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.HS256}
 	ctx.ClientSecretJWTAssertionLifetimeSecs = 60
 
@@ -495,7 +495,7 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_InvalidAssertionType(t *test
 	}
 
 	ctx := utils.NewTestContext(t)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	require.Nil(t, ctx.SaveClient(client))
 	ctx.ClientSecretJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.HS256}
 	ctx.ClientSecretJWTAssertionLifetimeSecs = 60
 
@@ -537,7 +537,7 @@ func TestGetAuthenticatedClient_WithDifferentClientIDs(t *testing.T) {
 	}
 
 	ctx := utils.NewTestContext(t)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	require.Nil(t, ctx.SaveClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256}
 
 	req := utils.ClientAuthnRequest{

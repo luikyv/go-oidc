@@ -31,7 +31,7 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 		Store:                 make(map[string]any),
 		AdditionalTokenClaims: make(map[string]any),
 	}
-	require.Nil(t, ctx.CreateOrUpdateAuthnSession(session))
+	require.Nil(t, ctx.SaveAuthnSession(session))
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{

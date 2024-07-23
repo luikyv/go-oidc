@@ -18,7 +18,7 @@ func TestCreateOrUpdateClient_HappyPath(t *testing.T) {
 	}
 
 	// When.
-	err := manager.CreateOrUpdate(context.Background(), client)
+	err := manager.Save(context.Background(), client)
 
 	// Then.
 	require.Nil(t, err)

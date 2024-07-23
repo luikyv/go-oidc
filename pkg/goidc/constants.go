@@ -319,10 +319,3 @@ const (
 	ACRMaceIncommonIAPSilver AuthenticationContextReference = "urn:mace:incommon:iap:silver"
 	ACRMaceIncommonIAPBronze AuthenticationContextReference = "urn:mace:incommon:iap:bronze"
 )
-
-type AuthnHint string
-
-const (
-	HintUserIDNotInformed  AuthnHint = "user_id_not_informed"
-	HintReauthenticateUser AuthnHint = "reauthenticate_user"
-)

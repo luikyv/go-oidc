@@ -33,7 +33,7 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 			},
 		},
 	}
-	require.Nil(t, ctx.CreateOrUpdateGrantSession(grantSession))
+	require.Nil(t, ctx.SaveGrantSession(grantSession))
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
@@ -80,7 +80,7 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 			},
 		},
 	}
-	require.Nil(t, ctx.CreateOrUpdateGrantSession(grantSession))
+	require.Nil(t, ctx.SaveGrantSession(grantSession))
 
 	req := utils.TokenRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{

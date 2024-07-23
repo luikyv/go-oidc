@@ -16,7 +16,7 @@ func NewClientManager() *ClientManager {
 	}
 }
 
-func (manager *ClientManager) CreateOrUpdate(
+func (manager *ClientManager) Save(
 	_ context.Context,
 	client *goidc.Client,
 ) error {

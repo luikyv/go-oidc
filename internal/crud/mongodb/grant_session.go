@@ -19,7 +19,7 @@ func NewGrantSessionManager(database *mongo.Database) GrantSessionManager {
 	}
 }
 
-func (manager GrantSessionManager) CreateOrUpdate(
+func (manager GrantSessionManager) Save(
 	ctx context.Context,
 	grantSession *goidc.GrantSession,
 ) error {

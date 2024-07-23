@@ -20,7 +20,7 @@ func (testCtx TestContext) Response() http.ResponseWriter {
 	return httptest.NewRecorder()
 }
 
-func (testCtx TestContext) AuthnHints(info *UserInfo, session *AuthnSession) ([]AuthnHint, error) {
+func (testCtx TestContext) Client(clientID string) (*Client, error) {
 	return nil, nil
 }
 

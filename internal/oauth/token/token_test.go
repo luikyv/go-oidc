@@ -35,7 +35,7 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	client.AuthnMethod = goidc.ClientAuthnSecretPost
 
 	ctx := utils.NewTestContext(t)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	require.Nil(t, ctx.SaveClient(client))
 
 	// When.
 	_, err := token.HandleTokenCreation(ctx, utils.TokenRequest{

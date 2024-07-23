@@ -99,7 +99,7 @@ func stopFlowInProgress(
 	ctx *utils.Context,
 	session *goidc.AuthnSession,
 ) goidc.OAuthError {
-	if err := ctx.CreateOrUpdateAuthnSession(session); err != nil {
+	if err := ctx.SaveAuthnSession(session); err != nil {
 		return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
@@ -174,7 +174,7 @@ func authorizeAuthnSession(
 		return err
 	}
 
-	if err := ctx.CreateOrUpdateAuthnSession(session); err != nil {
+	if err := ctx.SaveAuthnSession(session); err != nil {
 		return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
@@ -188,7 +188,7 @@ func generateImplicitGrantSession(
 ) goidc.OAuthError {
 
 	grantSession := utils.NewGrantSession(grantOptions, token)
-	if err := ctx.CreateOrUpdateGrantSession(grantSession); err != nil {
+	if err := ctx.SaveGrantSession(grantSession); err != nil {
 		return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 

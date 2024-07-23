@@ -19,7 +19,7 @@ func NewClientManager(database *mongo.Database) ClientManager {
 	}
 }
 
-func (manager ClientManager) CreateOrUpdate(
+func (manager ClientManager) Save(
 	ctx context.Context,
 	client *goidc.Client,
 ) error {

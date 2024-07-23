@@ -15,7 +15,7 @@ func TestIntrospectToken_OpaqueToken(t *testing.T) {
 	ctx := utils.NewTestContext(t)
 	client := utils.NewTestClient(t)
 	client.GrantTypes = append(client.GrantTypes, goidc.GrantIntrospection)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	require.Nil(t, ctx.SaveClient(client))
 
 	token := "opaque_token"
 	grantSession := &goidc.GrantSession{
@@ -29,7 +29,7 @@ func TestIntrospectToken_OpaqueToken(t *testing.T) {
 			},
 		},
 	}
-	require.Nil(t, ctx.CreateOrUpdateGrantSession(grantSession))
+	require.Nil(t, ctx.SaveGrantSession(grantSession))
 
 	tokenReq := utils.TokenIntrospectionRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{
@@ -55,7 +55,7 @@ func TestIntrospectToken_RefreshToken(t *testing.T) {
 	ctx := utils.NewTestContext(t)
 	client := utils.NewTestClient(t)
 	client.GrantTypes = append(client.GrantTypes, goidc.GrantIntrospection)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	require.Nil(t, ctx.SaveClient(client))
 
 	refreshToken, err := utils.RefreshToken()
 	require.Nil(t, err)
@@ -67,7 +67,7 @@ func TestIntrospectToken_RefreshToken(t *testing.T) {
 			GrantedScopes: goidc.ScopeOpenID.ID,
 		},
 	}
-	require.Nil(t, ctx.CreateOrUpdateGrantSession(grantSession))
+	require.Nil(t, ctx.SaveGrantSession(grantSession))
 
 	tokenReq := utils.TokenIntrospectionRequest{
 		ClientAuthnRequest: utils.ClientAuthnRequest{

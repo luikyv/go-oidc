@@ -26,7 +26,7 @@ func CreateClient(
 	}
 
 	newClient := newClient(dynamicClient)
-	if err := ctx.CreateOrUpdateClient(newClient); err != nil {
+	if err := ctx.SaveClient(newClient); err != nil {
 		return utils.DynamicClientResponse{}, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
@@ -64,7 +64,7 @@ func UpdateClient(
 	}
 
 	updatedClient := newClient(dynamicClient)
-	if err := ctx.CreateOrUpdateClient(updatedClient); err != nil {
+	if err := ctx.SaveClient(updatedClient); err != nil {
 		return utils.DynamicClientResponse{}, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 

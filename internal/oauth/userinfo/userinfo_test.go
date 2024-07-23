@@ -34,7 +34,7 @@ func TestHandleUserInfoRequest_HappyPath(t *testing.T) {
 	}
 
 	ctx := utils.NewTestContext(t)
-	require.Nil(t, ctx.CreateOrUpdateGrantSession(grantSession))
+	require.Nil(t, ctx.SaveGrantSession(grantSession))
 	ctx.Request().Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 
 	// When.
@@ -66,12 +66,12 @@ func TestHandleUserInfoRequest_SignedResponse(t *testing.T) {
 	}
 
 	ctx := utils.NewTestContext(t)
-	require.Nil(t, ctx.CreateOrUpdateGrantSession(grantSession))
+	require.Nil(t, ctx.SaveGrantSession(grantSession))
 	ctx.Request().Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 
 	client := utils.NewTestClient(t)
 	client.UserInfoSignatureAlgorithm = jose.SignatureAlgorithm(utils.TestServerPrivateJWK.Algorithm)
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	require.Nil(t, ctx.SaveClient(client))
 
 	// When.
 	userInfo, err := userinfo.HandleUserInfoRequest(ctx)

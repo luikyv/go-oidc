@@ -16,7 +16,7 @@ func NewGrantSessionManager() *GrantSessionManager {
 	}
 }
 
-func (manager *GrantSessionManager) CreateOrUpdate(_ context.Context, grantSession *goidc.GrantSession) error {
+func (manager *GrantSessionManager) Save(_ context.Context, grantSession *goidc.GrantSession) error {
 	manager.Sessions[grantSession.ID] = grantSession
 	return nil
 }

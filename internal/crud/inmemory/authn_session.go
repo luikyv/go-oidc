@@ -16,7 +16,7 @@ func NewAuthnSessionManager() *AuthnSessionManager {
 	}
 }
 
-func (manager *AuthnSessionManager) CreateOrUpdate(
+func (manager *AuthnSessionManager) Save(
 	_ context.Context,
 	session *goidc.AuthnSession,
 ) error {

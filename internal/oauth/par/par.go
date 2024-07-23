@@ -28,7 +28,7 @@ func PushAuthorization(
 		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 
-	if err := ctx.CreateOrUpdateAuthnSession(session); err != nil {
+	if err := ctx.SaveAuthnSession(session); err != nil {
 		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 	return requestURI, nil

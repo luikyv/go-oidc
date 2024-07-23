@@ -31,35 +31,6 @@ func NewContext(
 	}
 }
 
-// TODO: Implement more hints.
-func (ctx *Context) AuthnHints(
-	userInfo *goidc.UserInfo,
-	session *goidc.AuthnSession,
-) (
-	[]goidc.AuthnHint,
-	error,
-) {
-	var hints []goidc.AuthnHint
-	client, err := ctx.Client(session.ClientID)
-	if err != nil {
-		return nil, err
-	}
-
-	if session.Subject == "" {
-		hints = append(hints, goidc.HintUserIDNotInformed)
-	}
-
-	maxAge := session.MaxAuthnAgeSecs
-	if maxAge == nil {
-		maxAge = client.DefaultMaxAgeSecs
-	}
-	if maxAge != nil && goidc.TimestampNow()-userInfo.AuthnTimestamp > *maxAge {
-		hints = append(hints, goidc.HintReauthenticateUser)
-	}
-
-	return hints, nil
-}
-
 func (ctx *Context) ClientSignatureAlgorithms() []jose.SignatureAlgorithm {
 	return append(ctx.PrivateKeyJWTSignatureAlgorithms, ctx.ClientSecretJWTSignatureAlgorithms...)
 }
@@ -188,8 +159,8 @@ func (ctx *Context) FindAvailablePolicy(client *goidc.Client, session *goidc.Aut
 
 //---------------------------------------- CRUD ----------------------------------------//
 
-func (ctx *Context) CreateOrUpdateClient(client *goidc.Client) error {
-	return ctx.ClientManager.CreateOrUpdate(ctx.Request().Context(), client)
+func (ctx *Context) SaveClient(client *goidc.Client) error {
+	return ctx.ClientManager.Save(ctx.Request().Context(), client)
 }
 
 func (ctx *Context) Client(clientID string) (*goidc.Client, error) {
@@ -200,9 +171,9 @@ func (ctx *Context) DeleteClient(id string) error {
 	return ctx.ClientManager.Delete(ctx.Request().Context(), id)
 }
 
-func (ctx *Context) CreateOrUpdateGrantSession(session *goidc.GrantSession) error {
+func (ctx *Context) SaveGrantSession(session *goidc.GrantSession) error {
 	// TODO: Flag to avoid saving jwt tokens.
-	return ctx.GrantSessionManager.CreateOrUpdate(ctx.Request().Context(), session)
+	return ctx.GrantSessionManager.Save(ctx.Request().Context(), session)
 }
 
 func (ctx *Context) GrantSessionByTokenID(tokenID string) (*goidc.GrantSession, error) {
@@ -217,8 +188,8 @@ func (ctx *Context) DeleteGrantSession(id string) error {
 	return ctx.GrantSessionManager.Delete(ctx.Request().Context(), id)
 }
 
-func (ctx *Context) CreateOrUpdateAuthnSession(session *goidc.AuthnSession) error {
-	return ctx.AuthnSessionManager.CreateOrUpdate(ctx.Request().Context(), session)
+func (ctx *Context) SaveAuthnSession(session *goidc.AuthnSession) error {
+	return ctx.AuthnSessionManager.Save(ctx.Request().Context(), session)
 }
 
 func (ctx *Context) AuthnSessionByCallbackID(callbackID string) (*goidc.AuthnSession, error) {

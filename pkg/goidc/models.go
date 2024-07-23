@@ -210,11 +210,48 @@ func (info TokenIntrospectionInfo) MarshalJSON() ([]byte, error) {
 }
 
 type ClaimsObject struct {
-	Userinfo map[string]ClaimObjectInfo `json:"userinfo"`
+	UserInfo map[string]ClaimObjectInfo `json:"userinfo"`
 	IDToken  map[string]ClaimObjectInfo `json:"id_token"`
 }
 
-// TODO: add functions to the claims object.
+// UserInfoEssentials returns all the essentials claims requested by the client to be returned in the userinfo endpoint.
+func (claims ClaimsObject) UserInfoEssentials() []string {
+	return essentials(claims.UserInfo)
+}
+
+// UserInfoEssentials returns all the essentials claims requested by the client to be returned in the ID token.
+func (claims ClaimsObject) IDTokenEssentials() []string {
+	return essentials(claims.IDToken)
+}
+
+// UserInfoEssentials returns the claim object info if present.
+func (claims ClaimsObject) UserInfoClaim(claimName string) (ClaimObjectInfo, bool) {
+	return claim(claimName, claims.UserInfo)
+}
+
+// IDTokenClaim returns the claim object info if present.
+func (claims ClaimsObject) IDTokenClaim(claimName string) (ClaimObjectInfo, bool) {
+	return claim(claimName, claims.IDToken)
+}
+
+func claim(claim string, claims map[string]ClaimObjectInfo) (ClaimObjectInfo, bool) {
+	for name, claimInfo := range claims {
+		if name == claim {
+			return claimInfo, true
+		}
+	}
+	return ClaimObjectInfo{}, false
+}
+
+func essentials(claims map[string]ClaimObjectInfo) []string {
+	var essentialClaims []string
+	for name, claim := range claims {
+		if claim.IsEssential {
+			essentialClaims = append(essentialClaims, name)
+		}
+	}
+	return essentialClaims
+}
 
 type ClaimObjectInfo struct {
 	IsEssential bool     `json:"essential"`

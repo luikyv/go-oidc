@@ -77,7 +77,7 @@ func updateRefreshTokenGrantSession(
 		grantSession.ActiveScopes = req.Scopes
 	}
 
-	if err := ctx.CreateOrUpdateGrantSession(grantSession); err != nil {
+	if err := ctx.SaveGrantSession(grantSession); err != nil {
 		return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 

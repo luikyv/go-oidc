@@ -53,7 +53,7 @@ func AuthenticateUserWithNoInteraction(
 		if ok {
 			session.AddIDTokenClaim(goidc.ClaimAuthenticationContextReference, acrClaim.Value)
 		}
-		acrClaim, ok = session.Claims.Userinfo[goidc.ClaimAuthenticationContextReference]
+		acrClaim, ok = session.Claims.UserInfo[goidc.ClaimAuthenticationContextReference]
 		if ok {
 			session.AddUserInfoClaim(goidc.ClaimAuthenticationContextReference, acrClaim.Value)
 		}
@@ -63,7 +63,7 @@ func AuthenticateUserWithNoInteraction(
 		if ok {
 			session.AddIDTokenClaim(goidc.ClaimEmail, "random@gmail.com")
 		}
-		_, ok = session.Claims.Userinfo[goidc.ClaimEmail]
+		_, ok = session.Claims.UserInfo[goidc.ClaimEmail]
 		if ok {
 			session.AddUserInfoClaim(goidc.ClaimEmail, "random@gmail.com")
 		}
@@ -73,7 +73,7 @@ func AuthenticateUserWithNoInteraction(
 		if ok {
 			session.AddIDTokenClaim(goidc.ClaimEmailVerified, true)
 		}
-		_, ok = session.Claims.Userinfo[goidc.ClaimEmailVerified]
+		_, ok = session.Claims.UserInfo[goidc.ClaimEmailVerified]
 		if ok {
 			session.AddUserInfoClaim(goidc.ClaimEmailVerified, true)
 		}

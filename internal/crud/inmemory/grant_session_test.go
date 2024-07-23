@@ -18,14 +18,14 @@ func TestCreateOrUpdateGrantSessionSession_HappyPath(t *testing.T) {
 	}
 
 	// When.
-	err := manager.CreateOrUpdate(context.Background(), session)
+	err := manager.Save(context.Background(), session)
 
 	// Then.
 	require.Nil(t, err)
 	assert.Len(t, manager.Sessions, 1, "there should be exactly one session")
 
 	// When.
-	err = manager.CreateOrUpdate(context.Background(), session)
+	err = manager.Save(context.Background(), session)
 
 	// Then.
 	require.Nil(t, err)

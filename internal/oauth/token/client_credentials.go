@@ -60,7 +60,7 @@ func generateClientCredentialsGrantSession(
 ) {
 
 	grantSession := utils.NewGrantSession(grantOptions, token)
-	if err := ctx.CreateOrUpdateGrantSession(grantSession); err != nil {
+	if err := ctx.SaveGrantSession(grantSession); err != nil {
 		return nil, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
 	}
 

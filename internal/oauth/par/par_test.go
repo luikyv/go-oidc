@@ -54,7 +54,7 @@ func TestPushAuthorization_WithJAR(t *testing.T) {
 	client, _ := ctx.Client(utils.TestClientID)
 	jwks, _ := json.Marshal(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privateJWK.Public()}})
 	client.PublicJWKS = jwks
-	require.Nil(t, ctx.CreateOrUpdateClient(client))
+	require.Nil(t, ctx.SaveClient(client))
 
 	createdAtTimestamp := goidc.TimestampNow()
 	signer, _ := jose.NewSigner(
