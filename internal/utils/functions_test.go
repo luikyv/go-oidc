@@ -3,6 +3,7 @@ package utils_test
 import (
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
@@ -89,9 +90,7 @@ func TestValidateDPoPJWT(t *testing.T) {
 					DPoPSignatureAlgorithms: []jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256},
 					DPoPLifetimeSecs:        99999999999,
 				},
-				Req: &http.Request{
-					Method: http.MethodPost,
-				},
+				Req: httptest.NewRequest(http.MethodPost, "/token", nil),
 			},
 			true,
 		},
@@ -103,14 +102,12 @@ func TestValidateDPoPJWT(t *testing.T) {
 			},
 			&utils.Context{
 				Configuration: utils.Configuration{
-					Host:                    "https://resource.example.org/protectedresource",
+					Host:                    "https://resource.example.org",
 					DPoPIsEnabled:           true,
 					DPoPSignatureAlgorithms: []jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256},
 					DPoPLifetimeSecs:        99999999999,
 				},
-				Req: &http.Request{
-					Method: http.MethodGet,
-				},
+				Req: httptest.NewRequest(http.MethodGet, "/protectedresource", nil),
 			},
 			true,
 		},

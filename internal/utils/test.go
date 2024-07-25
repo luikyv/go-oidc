@@ -101,7 +101,7 @@ func NewTestContext(t *testing.T) *Context {
 	}
 	ctx := Context{
 		Configuration: config,
-		Req:           httptest.NewRequest(http.MethodGet, TestHost, nil),
+		Req:           httptest.NewRequest(http.MethodGet, "/auth", nil),
 		Resp:          httptest.NewRecorder(),
 	}
 

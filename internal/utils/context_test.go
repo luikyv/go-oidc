@@ -128,23 +128,21 @@ func TestExecuteDCRPlugin_HappyPath(t *testing.T) {
 
 func TestGetAudiences_HappyPath(t *testing.T) {
 	// Given.
-	ctx := utils.Context{}
-	ctx.Host = utils.TestHost
+	ctx := utils.NewTestContext(t)
+	ctx.Req = httptest.NewRequest(http.MethodPost, "/auth/token", nil)
 
 	// When.
 	audiences := ctx.Audiences()
 
 	// Then.
 	assert.Contains(t, audiences, ctx.Host)
-	assert.Contains(t, audiences, ctx.Host+string(goidc.EndpointToken))
-	assert.Contains(t, audiences, ctx.Host+string(goidc.EndpointPushedAuthorizationRequest))
-	assert.Contains(t, audiences, ctx.Host+string(goidc.EndpointUserInfo))
+	assert.Contains(t, audiences, ctx.Host+"/auth/token")
 }
 
 func TestGetAudiences_MTLSIsEnabled(t *testing.T) {
 	// Given.
-	ctx := utils.Context{}
-	ctx.Host = utils.TestHost
+	ctx := utils.NewTestContext(t)
+	ctx.Req = httptest.NewRequest(http.MethodPost, "/auth/token", nil)
 	ctx.MTLSIsEnabled = true
 	ctx.MTLSHost = "https://matls-example.com"
 
@@ -153,13 +151,9 @@ func TestGetAudiences_MTLSIsEnabled(t *testing.T) {
 
 	// Then.
 	assert.Contains(t, audiences, ctx.Host)
-	assert.Contains(t, audiences, ctx.Host+string(goidc.EndpointToken))
-	assert.Contains(t, audiences, ctx.Host+string(goidc.EndpointPushedAuthorizationRequest))
-	assert.Contains(t, audiences, ctx.Host+string(goidc.EndpointUserInfo))
+	assert.Contains(t, audiences, ctx.Host+"/auth/token")
 	assert.Contains(t, audiences, ctx.MTLSHost)
-	assert.Contains(t, audiences, ctx.MTLSHost+string(goidc.EndpointToken))
-	assert.Contains(t, audiences, ctx.MTLSHost+string(goidc.EndpointPushedAuthorizationRequest))
-	assert.Contains(t, audiences, ctx.MTLSHost+string(goidc.EndpointUserInfo))
+	assert.Contains(t, audiences, ctx.MTLSHost+"/auth/token")
 }
 
 func TestGetPolicyByID_HappyPath(t *testing.T) {

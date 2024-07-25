@@ -118,19 +118,16 @@ func (ctx *Context) ExecuteAuthorizeErrorPlugin(oauthErr goidc.OAuthError) goidc
 
 // Audiences returns the host names trusted by the server to validate assertions.
 func (ctx *Context) Audiences() []string {
+
 	audiences := []string{
 		ctx.Host,
-		ctx.BaseURL() + string(goidc.EndpointToken),
-		ctx.BaseURL() + string(goidc.EndpointPushedAuthorizationRequest),
-		ctx.BaseURL() + string(goidc.EndpointUserInfo),
+		ctx.Host + ctx.Request().RequestURI,
 	}
 	if ctx.MTLSIsEnabled {
 		audiences = append(
 			audiences,
 			ctx.MTLSHost,
-			ctx.MTLSBaseURL()+string(goidc.EndpointToken),
-			ctx.MTLSBaseURL()+string(goidc.EndpointPushedAuthorizationRequest),
-			ctx.MTLSBaseURL()+string(goidc.EndpointUserInfo),
+			ctx.MTLSHost+ctx.Request().RequestURI,
 		)
 	}
 	return audiences
