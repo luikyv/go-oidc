@@ -1,6 +1,9 @@
 package goidc
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 var (
 	ScopeOpenID         = NewScope("openid")
@@ -32,12 +35,12 @@ func (scopes Scopes) SubSet(ids []string) Scopes {
 	return scopesSubSet
 }
 
-func (scopes Scopes) ContainsOpenID() bool {
+func (scopes Scopes) ContainOpenID() bool {
 	_, ok := scopes.scope(ScopeOpenID.ID)
 	return ok
 }
 
-func (scopes Scopes) Contains(requestedScope string) bool {
+func (scopes Scopes) Contain(requestedScope string) bool {
 	for _, s := range scopes {
 		if s.Matches(requestedScope) {
 			return true
@@ -45,6 +48,17 @@ func (scopes Scopes) Contains(requestedScope string) bool {
 	}
 
 	return false
+}
+
+// AreContainedIn verifies if all the scopes are contained in ids.
+func (scopes Scopes) AreContainedIn(ids []string) bool {
+	for _, scope := range scopes {
+		if !slices.Contains(ids, scope.ID) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (scopes Scopes) String() string {

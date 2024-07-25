@@ -165,7 +165,8 @@ func TestGetURLWithFragmentParams(t *testing.T) {
 		ExpectedParameterizedURL string
 	}{
 		{"http://example", map[string]string{"param1": "value1"}, "http://example#param1=value1"},
-		{"http://example#param=value", map[string]string{"param1": "value1"}, "http://example#param=value&param1=value1"},
+		{"http://example", map[string]string{"param1": "https://localhost"}, "http://example#param1=https%3A%2F%2Flocalhost"},
+		{"http://example?param=value", map[string]string{"param1": "value1"}, "http://example?param=value#param1=value1"},
 		{"http://example", map[string]string{"param1": "value1", "param2": "value2"}, "http://example#param1=value1&param2=value2"},
 	}
 

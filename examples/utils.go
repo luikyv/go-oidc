@@ -43,7 +43,7 @@ func AuthenticateUserWithNoInteraction(
 ) goidc.AuthnStatus {
 	session.SetUserID("random_user_id")
 	session.GrantScopes(session.Scopes)
-	session.AddIDTokenClaim(goidc.ClaimAuthenticationTime, goidc.TimestampNow())
+	session.SetClaimIDToken(goidc.ClaimAuthenticationTime, goidc.TimestampNow())
 
 	// Add claims based on the claims parameter.
 	if session.Claims != nil {
@@ -51,39 +51,39 @@ func AuthenticateUserWithNoInteraction(
 		// acr claim.
 		acrClaim, ok := session.Claims.IDToken[goidc.ClaimAuthenticationContextReference]
 		if ok {
-			session.AddIDTokenClaim(goidc.ClaimAuthenticationContextReference, acrClaim.Value)
+			session.SetClaimIDToken(goidc.ClaimAuthenticationContextReference, acrClaim.Value)
 		}
 		acrClaim, ok = session.Claims.UserInfo[goidc.ClaimAuthenticationContextReference]
 		if ok {
-			session.AddUserInfoClaim(goidc.ClaimAuthenticationContextReference, acrClaim.Value)
+			session.SetClaimUserInfo(goidc.ClaimAuthenticationContextReference, acrClaim.Value)
 		}
 
 		// email claim.
 		_, ok = session.Claims.IDToken[goidc.ClaimEmail]
 		if ok {
-			session.AddIDTokenClaim(goidc.ClaimEmail, "random@gmail.com")
+			session.SetClaimIDToken(goidc.ClaimEmail, "random@gmail.com")
 		}
 		_, ok = session.Claims.UserInfo[goidc.ClaimEmail]
 		if ok {
-			session.AddUserInfoClaim(goidc.ClaimEmail, "random@gmail.com")
+			session.SetClaimUserInfo(goidc.ClaimEmail, "random@gmail.com")
 		}
 
 		// email_verified claim.
 		_, ok = session.Claims.IDToken[goidc.ClaimEmailVerified]
 		if ok {
-			session.AddIDTokenClaim(goidc.ClaimEmailVerified, true)
+			session.SetClaimIDToken(goidc.ClaimEmailVerified, true)
 		}
 		_, ok = session.Claims.UserInfo[goidc.ClaimEmailVerified]
 		if ok {
-			session.AddUserInfoClaim(goidc.ClaimEmailVerified, true)
+			session.SetClaimUserInfo(goidc.ClaimEmailVerified, true)
 		}
 
 	}
 
 	// Add claims based on scope.
 	if strings.Contains(session.Scopes, goidc.ScopeEmail.String()) {
-		session.AddUserInfoClaim(goidc.ClaimEmail, "random@gmail.com")
-		session.AddUserInfoClaim(goidc.ClaimEmailVerified, true)
+		session.SetClaimUserInfo(goidc.ClaimEmail, "random@gmail.com")
+		session.SetClaimUserInfo(goidc.ClaimEmailVerified, true)
 	}
 
 	return goidc.StatusSuccess
@@ -134,9 +134,9 @@ func identifyUser(
 
 	session.SetUserID(username)
 	session.GrantScopes(session.Scopes)
-	session.AddTokenClaim("custom_claim", "random_value")
+	session.SetClaimToken("custom_claim", "random_value")
 	if strings.Contains(session.Scopes, "email") {
-		session.AddIDTokenClaim("email", "random@email.com")
+		session.SetClaimIDToken("email", "random@email.com")
 	}
 	return goidc.StatusSuccess
 }

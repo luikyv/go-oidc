@@ -7,35 +7,27 @@ import (
 	"strings"
 )
 
-const DefaultAuthenticationSessionTimeoutSecs = 30 * 60
-
-const CallbackIDLength int = 20
-
-const RequestURILength int = 20
-
-const AuthorizationCodeLifetimeSecs int = 60
-
-const AuthorizationCodeLength int = 30
-
-// During introspection, a refresh token is identified by its length.
-// Then, setting the length to an unusual value will avoid refresh tokens
-// and opaque access token to be confused.
-const RefreshTokenLength int = 99
-
-const DefaultRefreshTokenLifetimeSecs int = 6000
-
-const DynamicClientIDLength int = 30
-
-// The client secret length must have at least 64 characters, so that it can be also used for
-// symmetric encryption during, for instance, authentication with client_secret_jwt.
-// For client_secret_jwt, the highest algorithm we accept is HS512 which requires a key of at least 512 bits (64 characters).
-const ClientSecretLength int = 64
-
-const RegistrationAccessTokenLength int = 50
-
-const DefaultTokenLifetimeSecs int = 300
-
-const ProtectedParamPrefix string = "p_"
+const (
+	DefaultAuthenticationSessionTimeoutSecs     = 30 * 60
+	DefaultIDTokenLifetimeSecs                  = 600
+	CallbackIDLength                        int = 20
+	RequestURILength                        int = 20
+	AuthorizationCodeLifetimeSecs           int = 60
+	AuthorizationCodeLength                 int = 30
+	// During introspection, a refresh token is identified by its length.
+	// Then, setting the length to an unusual value will avoid refresh tokens
+	// and opaque access token to be confused.
+	RefreshTokenLength              int = 99
+	DefaultRefreshTokenLifetimeSecs int = 6000
+	DynamicClientIDLength           int = 30
+	// The client secret length must have at least 64 characters, so that it can be also used for
+	// symmetric encryption during, for instance, authentication with client_secret_jwt.
+	// For client_secret_jwt, the highest algorithm we accept is HS512 which requires a key of at least 512 bits (64 characters).
+	ClientSecretLength            int    = 64
+	RegistrationAccessTokenLength int    = 50
+	DefaultTokenLifetimeSecs      int    = 300
+	ProtectedParamPrefix          string = "p_"
+)
 
 var FAPIAllowedCipherSuites []uint16 = []uint16{
 	tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,

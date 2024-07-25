@@ -71,7 +71,7 @@ func (c *Client) AreScopesAllowed(ctx Context, availableScopes Scopes, requested
 	scopeIDs := SplitStringWithSpaces(c.Scopes)
 	clientScopes := availableScopes.SubSet(scopeIDs)
 	for _, requestedScope := range SplitStringWithSpaces(requestedScopes) {
-		if !clientScopes.Contains(requestedScope) {
+		if !clientScopes.Contain(requestedScope) {
 			return false
 		}
 	}

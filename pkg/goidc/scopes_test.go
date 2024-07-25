@@ -49,8 +49,8 @@ func TestScopes_Contains_HappyPath(t *testing.T) {
 	})
 
 	// Then.
-	assert.True(t, scopes.Contains("scope1"), "scope1 should be found")
-	assert.False(t, scopes.Contains("invalid_scope"), "invalid_scope should not be found")
+	assert.True(t, scopes.Contain("scope1"), "scope1 should be found")
+	assert.False(t, scopes.Contain("invalid_scope"), "invalid_scope should not be found")
 }
 
 func TestScopes_ContainsOpenID_HappyPath(t *testing.T) {
@@ -59,12 +59,12 @@ func TestScopes_ContainsOpenID_HappyPath(t *testing.T) {
 		goidc.ScopeOpenID,
 	})
 	// Then.
-	assert.True(t, scopes.ContainsOpenID(), "openid should be found")
+	assert.True(t, scopes.ContainOpenID(), "openid should be found")
 
 	// Given.
 	scopes = goidc.Scopes([]goidc.Scope{})
 	// Then.
-	assert.False(t, scopes.ContainsOpenID(), "openid should not be found")
+	assert.False(t, scopes.ContainOpenID(), "openid should not be found")
 }
 
 func TestScopes_String_HappyPath(t *testing.T) {

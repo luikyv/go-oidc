@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/base64"
+	"fmt"
 	"hash"
 	"net/url"
 	"regexp"
@@ -387,23 +388,29 @@ func RegistrationAccessToken() (string, error) {
 }
 
 func URLWithQueryParams(redirectURI string, params map[string]string) string {
+	if len(params) == 0 {
+		return redirectURI
+	}
+
 	parsedURL, _ := url.Parse(redirectURI)
 	query := parsedURL.Query()
 	for param, value := range params {
-		query.Add(param, value)
+		query.Set(param, value)
 	}
 	parsedURL.RawQuery = query.Encode()
 	return parsedURL.String()
 }
 
 func URLWithFragmentParams(redirectURI string, params map[string]string) string {
-	parsedURL, _ := url.Parse(redirectURI)
-	fragments, _ := url.ParseQuery(parsedURL.Fragment)
-	for param, value := range params {
-		fragments.Add(param, value)
+	if len(params) == 0 {
+		return redirectURI
 	}
-	parsedURL.Fragment = fragments.Encode()
-	return parsedURL.String()
+
+	urlParams := url.Values{}
+	for param, value := range params {
+		urlParams.Set(param, value)
+	}
+	return fmt.Sprintf("%s#%s", redirectURI, urlParams.Encode())
 }
 
 func URLWithoutParams(u string) (string, error) {

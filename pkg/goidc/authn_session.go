@@ -39,21 +39,45 @@ func (s *AuthnSession) StoreParameter(key string, value any) {
 	s.Store[key] = value
 }
 
-func (s *AuthnSession) AddTokenClaim(claim string, value any) {
+func (s *AuthnSession) SetClaimToken(claim string, value any) {
 	if s.AdditionalTokenClaims == nil {
 		s.AdditionalTokenClaims = make(map[string]any)
 	}
 	s.AdditionalTokenClaims[claim] = value
 }
 
-func (s *AuthnSession) AddIDTokenClaim(claim string, value any) {
+func (s *AuthnSession) SetACRClaimIDToken(acr AuthenticationContextReference) {
+	s.SetClaimIDToken(ClaimAuthenticationContextReference, acr)
+}
+
+func (s *AuthnSession) SetAuthTimeClaimIDToken(authTime int) {
+	s.SetClaimIDToken(ClaimAuthenticationTime, authTime)
+}
+
+func (s *AuthnSession) SetAMRClaimIDToken(amrs ...AuthenticationMethodReference) {
+	s.SetClaimIDToken(ClaimAuthenticationMethodReferences, amrs)
+}
+
+func (s *AuthnSession) SetClaimIDToken(claim string, value any) {
 	if s.AdditionalIDTokenClaims == nil {
 		s.AdditionalIDTokenClaims = make(map[string]any)
 	}
 	s.AdditionalIDTokenClaims[claim] = value
 }
 
-func (s *AuthnSession) AddUserInfoClaim(claim string, value any) {
+func (s *AuthnSession) SetACRClaimUserInfo(acr AuthenticationContextReference) {
+	s.SetClaimUserInfo(ClaimAuthenticationContextReference, acr)
+}
+
+func (s *AuthnSession) SetAuthTimeClaimUserInfo(authTime int) {
+	s.SetClaimUserInfo(ClaimAuthenticationTime, authTime)
+}
+
+func (s *AuthnSession) SetAMRClaimUserInfo(amrs ...AuthenticationMethodReference) {
+	s.SetClaimUserInfo(ClaimAuthenticationMethodReferences, amrs)
+}
+
+func (s *AuthnSession) SetClaimUserInfo(claim string, value any) {
 	if s.AdditionalUserInfoClaims == nil {
 		s.AdditionalUserInfoClaims = make(map[string]any)
 	}
@@ -79,7 +103,7 @@ func (s *AuthnSession) Push(lifetimeSecs int) (requestURI string, err error) {
 // Start prepares the session to be used while the authentication flow defined by policyID happens.
 func (s *AuthnSession) Start(policyID string, lifetimeSecs int) OAuthError {
 	if s.Nonce != "" {
-		s.AddIDTokenClaim(ClaimNonce, s.Nonce)
+		s.SetClaimIDToken(ClaimNonce, s.Nonce)
 	}
 	s.PolicyID = policyID
 	callbackID, err := CallbackID()

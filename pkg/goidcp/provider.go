@@ -37,16 +37,13 @@ func New(
 			GrantSessionManager: grantSessionManager,
 			Scopes:              []goidc.Scope{goidc.ScopeOpenID},
 			TokenOptions: func(client *goidc.Client, scopes string) (goidc.TokenOptions, error) {
-				return goidc.TokenOptions{
-					TokenLifetimeSecs: goidc.DefaultTokenLifetimeSecs,
-					TokenFormat:       goidc.TokenFormatJWT,
-				}, nil
+				return goidc.NewJWTTokenOptions(defaultTokenKeyID, goidc.DefaultTokenLifetimeSecs), nil
 			},
 			PrivateJWKS:                   privateJWKS,
 			DefaultTokenSignatureKeyID:    defaultTokenKeyID,
 			DefaultUserInfoSignatureKeyID: defaultIDTokenKeyID,
 			UserInfoSignatureKeyIDs:       []string{defaultIDTokenKeyID},
-			IDTokenExpiresInSecs:          600,
+			IDTokenExpiresInSecs:          goidc.DefaultIDTokenLifetimeSecs,
 			UserClaims:                    []string{},
 			GrantTypes: []goidc.GrantType{
 				goidc.GrantAuthorizationCode,
@@ -58,7 +55,6 @@ func New(
 				goidc.ResponseModeFormPost,
 			},
 			ClientAuthnMethods:               []goidc.ClientAuthnType{},
-			DPoPSignatureAlgorithms:          []jose.SignatureAlgorithm{},
 			SubjectIdentifierTypes:           []goidc.SubjectIdentifierType{goidc.SubjectIdentifierPublic},
 			ClaimTypes:                       []goidc.ClaimType{goidc.ClaimTypeNormal},
 			AuthenticationSessionTimeoutSecs: goidc.DefaultAuthenticationSessionTimeoutSecs,
@@ -163,7 +159,7 @@ func (p *Provider) EnableImplicitGrantType() {
 
 func (p *Provider) SetScopes(scopes ...goidc.Scope) {
 	// The scope openid is required to be among the scopes.
-	if goidc.Scopes(scopes).ContainsOpenID() {
+	if goidc.Scopes(scopes).ContainOpenID() {
 		p.config.Scopes = scopes
 	} else {
 		p.config.Scopes = append(scopes, goidc.ScopeOpenID)
@@ -434,9 +430,10 @@ func (p *Provider) SetAuthorizeErrorPlugin(plugin goidc.AuthorizeErrorPluginFunc
 }
 
 // IntrospectToken returns information about the token.
-func (p *Provider) IntrospectToken(token string) goidc.TokenIntrospectionInfo {
+func (p *Provider) IntrospectToken(req *http.Request, resp http.ResponseWriter, token string) goidc.TokenIntrospectionInfo {
 	// The request and response are not needed for this operation.
-	return introspection.TokenIntrospectionInfo(utils.NewContext(p.config, nil, nil), token)
+	// TODO: validate dpop and mtls binding.
+	return introspection.TokenIntrospectionInfo(utils.NewContext(p.config, req, resp), token)
 }
 
 func (p *Provider) Run(

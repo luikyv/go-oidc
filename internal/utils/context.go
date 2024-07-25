@@ -8,6 +8,7 @@ import (
 	"net/textproto"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/goidc/pkg/goidc"
@@ -467,6 +468,24 @@ func (ctx *Context) privateKeyBasedOnAlgorithmOrDefault(
 func (ctx *Context) privateKey(keyID string) jose.JSONWebKey {
 	keys := ctx.PrivateJWKS.Key(keyID)
 	return keys[0]
+}
+
+//---------------------------------------- context.Context ----------------------------------------//
+
+func (ctx *Context) Deadline() (deadline time.Time, ok bool) {
+	return ctx.Request().Context().Deadline()
+}
+
+func (ctx *Context) Done() <-chan struct{} {
+	return ctx.Req.Context().Done()
+}
+
+func (ctx *Context) Err() error {
+	return ctx.Request().Context().Err()
+}
+
+func (ctx *Context) Value(key any) any {
+	return ctx.Request().Context().Value(key)
 }
 
 type Configuration struct {
