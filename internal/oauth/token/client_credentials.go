@@ -77,10 +77,6 @@ func validateClientCredentialsGrantRequest(
 		return goidc.NewOAuthError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
 	}
 
-	if utils.ScopesContainsOpenID(req.Scopes) {
-		return goidc.NewOAuthError(goidc.ErrorCodeInvalidScope, "cannot request openid scope for client credentials grant")
-	}
-
 	if !client.AreScopesAllowed(ctx, ctx.Scopes, req.Scopes) {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidScope, "invalid scope")
 	}

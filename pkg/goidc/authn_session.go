@@ -39,6 +39,10 @@ func (s *AuthnSession) StoreParameter(key string, value any) {
 	s.Store[key] = value
 }
 
+func (s *AuthnSession) Parameter(key string) any {
+	return s.Store[key]
+}
+
 func (s *AuthnSession) SetClaimToken(claim string, value any) {
 	if s.AdditionalTokenClaims == nil {
 		s.AdditionalTokenClaims = make(map[string]any)

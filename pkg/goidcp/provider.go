@@ -429,11 +429,14 @@ func (p *Provider) SetAuthorizeErrorPlugin(plugin goidc.AuthorizeErrorPluginFunc
 	p.config.AuthorizeErrorPlugin = plugin
 }
 
-// IntrospectToken returns information about the token.
-func (p *Provider) IntrospectToken(req *http.Request, resp http.ResponseWriter, token string) goidc.TokenIntrospectionInfo {
-	// The request and response are not needed for this operation.
+// ValidateToken returns information about the token.
+func (p *Provider) ValidateToken(req *http.Request, resp http.ResponseWriter, token string) goidc.TokenIntrospectionInfo {
 	// TODO: validate dpop and mtls binding.
 	return introspection.TokenIntrospectionInfo(utils.NewContext(p.config, req, resp), token)
+}
+
+func (p *Provider) Client(ctx context.Context, clientID string) (*goidc.Client, error) {
+	return p.config.ClientManager.Get(ctx, clientID)
 }
 
 func (p *Provider) Run(
