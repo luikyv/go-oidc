@@ -158,7 +158,12 @@ func (params AuthorizationParameters) DefaultResponseMode() ResponseMode {
 	return params.ResponseMode
 }
 
-type TokenIntrospectionInfo struct {
+type TokenConfirmation struct {
+	JWKThumbprint               string `json:"jkt"`
+	ClientCertificateThumbprint string `json:"x5t#S256"`
+}
+
+type TokenInfo struct {
 	IsActive                    bool
 	TokenUsage                  TokenTypeHint
 	Scopes                      string
@@ -171,7 +176,13 @@ type TokenIntrospectionInfo struct {
 	AdditionalTokenClaims       map[string]any
 }
 
-func (info TokenIntrospectionInfo) MarshalJSON() ([]byte, error) {
+func NewInactiveTokenInfo() TokenInfo {
+	return TokenInfo{
+		IsActive: false,
+	}
+}
+
+func (info TokenInfo) MarshalJSON() ([]byte, error) {
 	if !info.IsActive {
 		return json.Marshal(map[string]any{
 			"active": false,
@@ -207,6 +218,13 @@ func (info TokenIntrospectionInfo) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(params)
+}
+
+func (info TokenInfo) Confirmation() TokenConfirmation {
+	return TokenConfirmation{
+		JWKThumbprint:               info.JWKThumbprint,
+		ClientCertificateThumbprint: info.ClientCertificateThumbprint,
+	}
 }
 
 type ClaimsObject struct {

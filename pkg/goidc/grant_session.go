@@ -20,3 +20,10 @@ func (g *GrantSession) IsRefreshSessionExpired() bool {
 func (g *GrantSession) HasLastTokenExpired() bool {
 	return TimestampNow() > g.LastTokenIssuedAtTimestamp+g.TokenLifetimeSecs
 }
+
+func (g *GrantSession) TokenConfirmation() TokenConfirmation {
+	return TokenConfirmation{
+		JWKThumbprint:               g.JWKThumbprint,
+		ClientCertificateThumbprint: g.ClientCertificateThumbprint,
+	}
+}

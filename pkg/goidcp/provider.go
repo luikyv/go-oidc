@@ -429,10 +429,21 @@ func (p *Provider) SetAuthorizeErrorPlugin(plugin goidc.AuthorizeErrorPluginFunc
 	p.config.AuthorizeErrorPlugin = plugin
 }
 
-// ValidateToken returns information about the token.
-func (p *Provider) ValidateToken(req *http.Request, resp http.ResponseWriter, token string) goidc.TokenIntrospectionInfo {
-	// TODO: validate dpop and mtls binding.
-	return introspection.TokenIntrospectionInfo(utils.NewContext(p.config, req, resp), token)
+// TokenInfo returns information about the token sent in the request.
+// It also validates token binding (DPoP or TLS) to the client.
+func (p *Provider) TokenInfo(req *http.Request, resp http.ResponseWriter) goidc.TokenInfo {
+	ctx := utils.NewContext(p.config, req, resp)
+	token, tokenType, ok := ctx.AuthorizationToken()
+	if !ok {
+		return goidc.NewInactiveTokenInfo()
+	}
+
+	tokenInfo := introspection.TokenIntrospectionInfo(utils.NewContext(p.config, req, resp), token)
+	if utils.ValidateTokenConfirmation(ctx, token, tokenType, tokenInfo.Confirmation()) != nil {
+		return goidc.NewInactiveTokenInfo()
+	}
+
+	return tokenInfo
 }
 
 func (p *Provider) Client(ctx context.Context, clientID string) (*goidc.Client, error) {

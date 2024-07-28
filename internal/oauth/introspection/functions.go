@@ -24,7 +24,7 @@ func validateTokenIntrospectionRequest(
 func TokenIntrospectionInfo(
 	ctx *utils.Context,
 	token string,
-) goidc.TokenIntrospectionInfo {
+) goidc.TokenInfo {
 
 	if len(token) == goidc.RefreshTokenLength {
 		return getRefreshTokenIntrospectionInfo(ctx, token)
@@ -40,21 +40,21 @@ func TokenIntrospectionInfo(
 func getRefreshTokenIntrospectionInfo(
 	ctx *utils.Context,
 	token string,
-) goidc.TokenIntrospectionInfo {
+) goidc.TokenInfo {
 	grantSession, err := ctx.GrantSessionByRefreshToken(token)
 	if err != nil {
-		return goidc.TokenIntrospectionInfo{
+		return goidc.TokenInfo{
 			IsActive: false,
 		}
 	}
 
 	if grantSession.IsRefreshSessionExpired() {
-		return goidc.TokenIntrospectionInfo{
+		return goidc.TokenInfo{
 			IsActive: false,
 		}
 	}
 
-	return goidc.TokenIntrospectionInfo{
+	return goidc.TokenInfo{
 		IsActive:                    true,
 		TokenUsage:                  goidc.TokenHintRefresh,
 		Scopes:                      grantSession.GrantedScopes,
@@ -71,10 +71,10 @@ func getRefreshTokenIntrospectionInfo(
 func getJWTTokenIntrospectionInfo(
 	ctx *utils.Context,
 	token string,
-) goidc.TokenIntrospectionInfo {
+) goidc.TokenInfo {
 	claims, err := utils.ValidClaims(ctx, token)
 	if err != nil || claims[goidc.ClaimTokenID] == nil {
-		return goidc.TokenIntrospectionInfo{
+		return goidc.TokenInfo{
 			IsActive: false,
 		}
 	}
@@ -85,28 +85,28 @@ func getJWTTokenIntrospectionInfo(
 func opaqueTokenIntrospectionInfo(
 	ctx *utils.Context,
 	token string,
-) goidc.TokenIntrospectionInfo {
+) goidc.TokenInfo {
 	return tokenIntrospectionInfoByID(ctx, token)
 }
 
 func tokenIntrospectionInfoByID(
 	ctx *utils.Context,
 	tokenID string,
-) goidc.TokenIntrospectionInfo {
+) goidc.TokenInfo {
 	grantSession, err := ctx.GrantSessionByTokenID(tokenID)
 	if err != nil {
-		return goidc.TokenIntrospectionInfo{
+		return goidc.TokenInfo{
 			IsActive: false,
 		}
 	}
 
 	if grantSession.HasLastTokenExpired() {
-		return goidc.TokenIntrospectionInfo{
+		return goidc.TokenInfo{
 			IsActive: false,
 		}
 	}
 
-	return goidc.TokenIntrospectionInfo{
+	return goidc.TokenInfo{
 		IsActive:                    true,
 		TokenUsage:                  goidc.TokenHintAccess,
 		Scopes:                      grantSession.ActiveScopes,

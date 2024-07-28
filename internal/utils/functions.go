@@ -132,6 +132,68 @@ func jarFromSignedRequestObject(
 	return jarReq, nil
 }
 
+func ValidateTokenConfirmation(
+	ctx *Context,
+	token string,
+	tokenType goidc.TokenType,
+	confirmation goidc.TokenConfirmation,
+) goidc.OAuthError {
+	if err := validateDPoP(ctx, token, tokenType, confirmation); err != nil {
+		return err
+	}
+
+	return validateTLSProofOfPossesion(ctx, confirmation)
+}
+
+func validateDPoP(
+	ctx *Context,
+	token string,
+	tokenType goidc.TokenType,
+	confirmation goidc.TokenConfirmation,
+) goidc.OAuthError {
+
+	if confirmation.JWKThumbprint == "" {
+		if tokenType == goidc.TokenTypeDPoP {
+			// The token type cannot be DPoP if the session was not created with DPoP.
+			return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid token type")
+		} else {
+			// If the session was not created with DPoP and the token is not a DPoP token, there is nothing to validate.
+			return nil
+		}
+	}
+
+	dpopJWT, ok := ctx.DPoPJWT()
+	if !ok {
+		// The session was created with DPoP, then the DPoP header must be passed.
+		return goidc.NewOAuthError(goidc.ErrorCodeUnauthorizedClient, "invalid DPoP header")
+	}
+
+	return ValidateDPoPJWT(ctx, dpopJWT, DPoPJWTValidationOptions{
+		AccessToken:   token,
+		JWKThumbprint: confirmation.JWKThumbprint,
+	})
+}
+
+func validateTLSProofOfPossesion(
+	ctx *Context,
+	confirmation goidc.TokenConfirmation,
+) goidc.OAuthError {
+	if confirmation.ClientCertificateThumbprint == "" {
+		return nil
+	}
+
+	clientCert, ok := ctx.ClientCertificate()
+	if !ok {
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidToken, "the client certificate is required")
+	}
+
+	if confirmation.ClientCertificateThumbprint != HashBase64URLSHA256(string(clientCert.Raw)) {
+		return goidc.NewOAuthError(goidc.ErrorCodeInvalidToken, "invalid client certificate")
+	}
+
+	return nil
+}
+
 func ValidateDPoPJWT(
 	ctx *Context,
 	dpopJWT string,
