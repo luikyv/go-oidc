@@ -31,20 +31,15 @@ if err := json.Unmarshal(
 ); err != nil {
 	panic(err)
 }
-port := ":80"
 
 // Instantiate the manager with all clients and sessions being saved in memory.
 openidProvider := goidcp.New(
-    "http://localhost" + port,
-    goidcp.NewInMemoryClientManager(),
-    goidcp.NewInMemoryAuthnSessionManager(),
-    goidcp.NewInMemoryGrantSessionManager(),
+    "http://localhost",
     jwks,
-    serverKeyID,
     serverKeyID,
 )
 
-openidProvider.Run(port)
+openidProvider.Run(":80")
 ```
 
 You can check the default configurations by accessing http://localhost/.well-known/openid-configuration. \

@@ -19,11 +19,7 @@ func main() {
 	// Create the manager.
 	openidProvider := goidcp.New(
 		Issuer,
-		goidcp.NewInMemoryClientManager(),
-		goidcp.NewInMemoryAuthnSessionManager(),
-		goidcp.NewInMemoryGrantSessionManager(),
 		PrivateJWKS("server_keys/jwks.json"),
-		serverKeyID,
 		serverKeyID,
 	)
 	openidProvider.EnablePushedAuthorizationRequests(60)

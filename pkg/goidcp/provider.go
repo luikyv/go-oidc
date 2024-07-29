@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"log"
 	"net/http"
 
 	"github.com/go-jose/go-jose/v4"
@@ -18,31 +17,28 @@ type Provider struct {
 	config utils.Configuration
 }
 
-// TODO: Make it smaller.
+// New creates a new openid provider.
+// By default, all clients and sessions are stored in memory and tokens are signed with the key corresponding to defaultSignatureKeyID.
 func New(
-	host string,
-	clientManager goidc.ClientManager,
-	authnSessionManager goidc.AuthnSessionManager,
-	grantSessionManager goidc.GrantSessionManager,
+	issuer string,
 	privateJWKS jose.JSONWebKeySet,
-	defaultTokenKeyID string,
-	defaultIDTokenKeyID string,
+	defaultSignatureKeyID string,
 ) *Provider {
 	p := &Provider{
 		config: utils.Configuration{
-			Host:                host,
+			Host:                issuer,
 			Profile:             goidc.ProfileOpenID,
-			ClientManager:       clientManager,
-			AuthnSessionManager: authnSessionManager,
-			GrantSessionManager: grantSessionManager,
+			ClientManager:       NewInMemoryClientManager(),
+			AuthnSessionManager: NewInMemoryAuthnSessionManager(),
+			GrantSessionManager: NewInMemoryGrantSessionManager(),
 			Scopes:              []goidc.Scope{goidc.ScopeOpenID},
 			TokenOptions: func(client *goidc.Client, scopes string) (goidc.TokenOptions, error) {
-				return goidc.NewJWTTokenOptions(defaultTokenKeyID, goidc.DefaultTokenLifetimeSecs), nil
+				return goidc.NewJWTTokenOptions(defaultSignatureKeyID, goidc.DefaultTokenLifetimeSecs), nil
 			},
 			PrivateJWKS:                   privateJWKS,
-			DefaultTokenSignatureKeyID:    defaultTokenKeyID,
-			DefaultUserInfoSignatureKeyID: defaultIDTokenKeyID,
-			UserInfoSignatureKeyIDs:       []string{defaultIDTokenKeyID},
+			DefaultTokenSignatureKeyID:    defaultSignatureKeyID,
+			DefaultUserInfoSignatureKeyID: defaultSignatureKeyID,
+			UserInfoSignatureKeyIDs:       []string{defaultSignatureKeyID},
 			IDTokenExpiresInSecs:          goidc.DefaultIDTokenLifetimeSecs,
 			UserClaims:                    []string{},
 			GrantTypes: []goidc.GrantType{
@@ -62,6 +58,16 @@ func New(
 	}
 
 	return p
+}
+
+func (p *Provider) SetStorage(
+	clientManager goidc.ClientManager,
+	authnSessionManager goidc.AuthnSessionManager,
+	grantSessionManager goidc.GrantSessionManager,
+) {
+	p.config.ClientManager = clientManager
+	p.config.AuthnSessionManager = authnSessionManager
+	p.config.GrantSessionManager = grantSessionManager
 }
 
 func (p *Provider) SetPathPrefix(prefix string) {
@@ -408,13 +414,10 @@ func (p *Provider) SetProfileFAPI2() {
 	p.config.Profile = goidc.ProfileFAPI2
 }
 
-// AddClient creates or updates a static client.
+// AddClient adds a static client to the provider.
+// The static clients are checked before consulting the client manager.
 func (p *Provider) AddClient(client *goidc.Client) {
-	go func() {
-		if err := p.config.ClientManager.Save(context.Background(), client); err != nil {
-			log.Printf("error: could not create ou update client - %s", err.Error())
-		}
-	}()
+	p.config.StaticClients = append(p.config.StaticClients, client)
 }
 
 // AddPolicy adds an authentication policy that will be evaluated at runtime and then executed if selected.
@@ -430,7 +433,7 @@ func (p *Provider) SetAuthorizeErrorPlugin(plugin goidc.AuthorizeErrorPluginFunc
 }
 
 // TokenInfo returns information about the token sent in the request.
-// It also validates token binding (DPoP or TLS) to the client.
+// It also validates token binding (DPoP or TLS).
 func (p *Provider) TokenInfo(req *http.Request, resp http.ResponseWriter) goidc.TokenInfo {
 	ctx := utils.NewContext(p.config, req, resp)
 	token, tokenType, ok := ctx.AuthorizationToken()

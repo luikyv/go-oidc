@@ -85,6 +85,10 @@ func NewOpaqueTokenOptions(
 	tokenLength int,
 	tokenLifetimeSecs int,
 ) TokenOptions {
+	if tokenLength == RefreshTokenLength {
+		// Make sure opaque access token don't have the same length as refresh tokens.
+		tokenLength++
+	}
 	return TokenOptions{
 		TokenFormat:       TokenFormatOpaque,
 		TokenLifetimeSecs: tokenLifetimeSecs,

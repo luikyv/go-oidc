@@ -155,6 +155,11 @@ func (ctx *Context) SaveClient(client *goidc.Client) error {
 }
 
 func (ctx *Context) Client(clientID string) (*goidc.Client, error) {
+	for _, staticClient := range ctx.StaticClients {
+		if staticClient.ID == clientID {
+			return staticClient, nil
+		}
+	}
 	return ctx.ClientManager.Get(ctx.Request().Context(), clientID)
 }
 
@@ -574,4 +579,5 @@ type Configuration struct {
 	// tokens is required, either DPoP or client TLS.
 	SenderConstrainedTokenIsRequired bool
 	AuthorizeErrorPlugin             goidc.AuthorizeErrorPluginFunc
+	StaticClients                    []*goidc.Client
 }

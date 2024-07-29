@@ -14,13 +14,12 @@ const (
 	RequestURILength                        int = 20
 	AuthorizationCodeLifetimeSecs           int = 60
 	AuthorizationCodeLength                 int = 30
-	// During introspection, a refresh token is identified by its length.
-	// Then, setting the length to an unusual value will avoid refresh tokens
-	// and opaque access token to be confused.
+	// RefreshTokenLength has an unusual value so to avoid refresh tokens and opaque access token to be confused.
+	// This happens since a refresh token is identified by its length during introspection.
 	RefreshTokenLength              int = 99
 	DefaultRefreshTokenLifetimeSecs int = 6000
 	DynamicClientIDLength           int = 30
-	// The client secret length must have at least 64 characters, so that it can be also used for
+	// ClientSecretLength must be at least 64 characters, so that it can be also used for
 	// symmetric encryption during, for instance, authentication with client_secret_jwt.
 	// For client_secret_jwt, the highest algorithm we accept is HS512 which requires a key of at least 512 bits (64 characters).
 	ClientSecretLength            int    = 64
