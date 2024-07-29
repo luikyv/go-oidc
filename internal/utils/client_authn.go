@@ -241,7 +241,7 @@ func authenticateWithTLSCertificate(
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "invalid client")
 	}
 
-	clientCert, ok := ctx.SecureClientCertificate()
+	clientCert, ok := ctx.ClientCertificate()
 	if !ok {
 		return goidc.NewOAuthError(goidc.ErrorCodeInvalidClient, "client certificate not informed")
 	}

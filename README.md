@@ -1,5 +1,5 @@
-# goidc
-`goidc` is a client module that provides a customizable Authorization Server with support to OpenID Connect and other standards.
+# go-oidc
+`go-oidc` is a client module that provides a customizable Authorization Server with support to OpenID Connect and other standards.
 
 This library implements the following specifications:
 * [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html)
@@ -14,7 +14,7 @@ This library implements the following specifications:
 * [`RFC 9396` - OAuth 2.0 Rich Authorization Requests (RAR)](https://www.rfc-editor.org/rfc/rfc9396.html)
 
 ## Installation
-To start using the `goidc` module in your project, install it with
+To start using the `go-oidc` module in your project, install it with
 ```
 go get github.com/luikyv/go-oidc
 ```
@@ -47,8 +47,8 @@ openidProvider := goidcp.New(
 openidProvider.Run(port)
 ```
 
-You can check the default configurations by accessing http://localhost/.well-known/openid-configuration.
-
+You can check the default configurations by accessing http://localhost/.well-known/openid-configuration. \
+Also, you can find a more complex example at https://github.com/luikyv/go-open-finance.
 ## Developers
 To check test coverage, you can run:
 ```
@@ -68,25 +68,18 @@ make docs
 Make sure the `GOBIN` environment variable is set.
 
 ## To Do's
-* Endpoint prefix.
 * Don't use the default http client.
-* revoke by jti.
-* Add docs, docs should start with the name of the thing.
-* How golang loads packages?
-* Docker compose with mongo and CS.
 * Add index to mongo db.
-* Implement the revocation endpoint.
+* Implement the revocation endpoint. Revoke by jti.
 * Should I add the default encryption algorithm instead of requiring the dev to pass it?
 * Implement the resource parameter.
 * Implement a client credentials policy.
-* Test the authorization details.
 * Symmetric encryption for JAR?
 * Support pairwise subject type.
 * Create a package.
 * Client jwks is required for JAR.
-* Handle expired sessions.
+* Better way to handle expired sessions.
 * New grant for token introspection?
 * Separate grant session and token session? Could reuse the grant session so the client doesn't need to reauthenticate.
-* Return value with flag or just the default value?
 * Events.
 * Compare ACR values.

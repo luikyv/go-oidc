@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"net/http"
 	"net/textproto"
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -66,27 +67,18 @@ func (ctx *Context) DPoPJWT() (string, bool) {
 	return values[0], true
 }
 
-func (ctx *Context) SecureClientCertificate() (*x509.Certificate, bool) {
-	rawClientCert, ok := ctx.Header(goidc.HeaderClientCertificate)
-	if !ok {
-		return nil, false
-	}
-
-	clientCert, err := x509.ParseCertificate([]byte(rawClientCert))
-	if err != nil {
-		return nil, false
-	}
-
-	return clientCert, true
-}
-
 func (ctx *Context) ClientCertificate() (*x509.Certificate, bool) {
 	rawClientCert, ok := ctx.Header(goidc.HeaderClientCertificate)
 	if !ok {
 		return nil, false
 	}
 
-	clientCertPEM, _ := pem.Decode([]byte(rawClientCert))
+	rawClientCertDecoded, err := url.QueryUnescape(rawClientCert)
+	if err != nil {
+		return nil, false
+	}
+
+	clientCertPEM, _ := pem.Decode([]byte(rawClientCertDecoded))
 	if clientCertPEM == nil {
 		return nil, false
 	}
