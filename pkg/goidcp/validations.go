@@ -154,9 +154,11 @@ func validateOpenIDProfile(provider Provider) error {
 		return errors.New("the default signature algorithm for ID tokens must be RS256")
 	}
 
-	defaultJARMSignatureKey := provider.config.PrivateJWKS.Key(provider.config.DefaultJARMSignatureKeyID)[0]
-	if defaultJARMSignatureKey.Algorithm != string(jose.RS256) {
-		return errors.New("the default signature algorithm for JARM must be RS256")
+	if provider.config.JARMIsEnabled {
+		defaultJARMSignatureKey := provider.config.PrivateJWKS.Key(provider.config.DefaultJARMSignatureKeyID)[0]
+		if defaultJARMSignatureKey.Algorithm != string(jose.RS256) {
+			return errors.New("the default signature algorithm for JARM must be RS256")
+		}
 	}
 
 	return nil
