@@ -16,7 +16,7 @@ func main() {
 	serverKeyID := "rs256_key"
 	scopes := []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeOffilineAccess, goidc.ScopeEmail}
 
-	// Create the manager.
+	// Create and configure the manager.
 	openidProvider := goidcp.New(
 		Issuer,
 		PrivateJWKS("server_keys/jwks.json"),
@@ -50,7 +50,6 @@ func main() {
 		return goidc.NewJWTTokenOptions(serverKeyID, 600), nil
 	})
 
-	// Create Policy
 	openidProvider.AddPolicy(goidc.NewPolicy(
 		"policy",
 		func(ctx goidc.Context, client *goidc.Client, session *goidc.AuthnSession) bool { return true },

@@ -8,7 +8,6 @@ import (
 func GetOpenIDConfiguration(ctx *utils.Context) utils.OpenIDConfiguration {
 	config := utils.OpenIDConfiguration{
 		Issuer:                               ctx.Host,
-		ClientRegistrationEndpoint:           ctx.BaseURL() + string(goidc.EndpointDynamicClient),
 		AuthorizationEndpoint:                ctx.BaseURL() + string(goidc.EndpointAuthorization),
 		TokenEndpoint:                        ctx.BaseURL() + string(goidc.EndpointToken),
 		UserinfoEndpoint:                     ctx.BaseURL() + string(goidc.EndpointUserInfo),
@@ -35,6 +34,10 @@ func GetOpenIDConfiguration(ctx *utils.Context) utils.OpenIDConfiguration {
 	if ctx.PARIsEnabled {
 		config.PARIsRequired = ctx.PARIsRequired
 		config.ParEndpoint = ctx.BaseURL() + string(goidc.EndpointPushedAuthorizationRequest)
+	}
+
+	if ctx.DCRIsEnabled {
+		config.ClientRegistrationEndpoint = ctx.BaseURL() + string(goidc.EndpointDynamicClient)
 	}
 
 	if ctx.JARIsEnabled {
@@ -75,6 +78,10 @@ func GetOpenIDConfiguration(ctx *utils.Context) utils.OpenIDConfiguration {
 
 		if ctx.PARIsEnabled {
 			config.MTLSConfiguration.ParEndpoint = ctx.MTLSBaseURL() + string(goidc.EndpointPushedAuthorizationRequest)
+		}
+
+		if ctx.DCRIsEnabled {
+			config.MTLSConfiguration.ClientRegistrationEndpoint = ctx.MTLSBaseURL() + string(goidc.EndpointDynamicClient)
 		}
 
 		if ctx.IntrospectionIsEnabled {

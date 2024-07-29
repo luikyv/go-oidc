@@ -270,15 +270,16 @@ func (resp DynamicClientResponse) MarshalJSON() ([]byte, error) {
 }
 
 type OpenIDMTLSConfiguration struct {
-	TokenEndpoint         string `json:"token_endpoint"`
-	ParEndpoint           string `json:"pushed_authorization_request_endpoint,omitempty"`
-	UserinfoEndpoint      string `json:"userinfo_endpoint"`
-	IntrospectionEndpoint string `json:"introspection_endpoint,omitempty"`
+	TokenEndpoint              string `json:"token_endpoint"`
+	ParEndpoint                string `json:"pushed_authorization_request_endpoint,omitempty"`
+	UserinfoEndpoint           string `json:"userinfo_endpoint"`
+	ClientRegistrationEndpoint string `json:"registration_endpoint,omitempty"`
+	IntrospectionEndpoint      string `json:"introspection_endpoint,omitempty"`
 }
 
 type OpenIDConfiguration struct {
 	Issuer                                         string                                 `json:"issuer"`
-	ClientRegistrationEndpoint                     string                                 `json:"registration_endpoint"`
+	ClientRegistrationEndpoint                     string                                 `json:"registration_endpoint,omitempty"`
 	AuthorizationEndpoint                          string                                 `json:"authorization_endpoint"`
 	TokenEndpoint                                  string                                 `json:"token_endpoint"`
 	UserinfoEndpoint                               string                                 `json:"userinfo_endpoint"`
