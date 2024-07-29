@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/luikyv/goidc/pkg/goidc"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 type WrapHandlerFunc func(nextHandler http.Handler) http.Handler
@@ -32,7 +32,7 @@ func (handler CacheControlMiddleware) ServeHTTP(w http.ResponseWriter, r *http.R
 	handler.NextHandler.ServeHTTP(w, r)
 }
 
-// This middleware should be used when running the server in TLS mode and mTLS is enabled.
+// ClientCertificateMiddleware should be used when running the server in TLS mode and mTLS is enabled.
 type ClientCertificateMiddleware struct {
 	NextHandler http.Handler
 }
@@ -44,14 +44,7 @@ func NewClientCertificateMiddleware(next http.Handler) ClientCertificateMiddlewa
 }
 
 func (handler ClientCertificateMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	certHeader := goidc.HeaderInsecureClientCertificate
-	// If a chain was built linking the client certificate and one of the trusted certificate authorities,
-	// consider the certificate secure.
-	if len(r.TLS.VerifiedChains) > 0 {
-		certHeader = goidc.HeaderSecureClientCertificate
-	}
-
 	// Transmit the client certificate in a header.
-	r.Header.Set(certHeader, string(r.TLS.PeerCertificates[0].Raw)) // TODO: Must encode it. Generate pem version.
+	r.Header.Set(goidc.HeaderClientCertificate, string(r.TLS.PeerCertificates[0].Raw)) // TODO: Must encode it. Generate pem version.
 	handler.NextHandler.ServeHTTP(w, r)
 }

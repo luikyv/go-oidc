@@ -11,9 +11,9 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
-	"github.com/luikyv/goidc/internal/oauth/authorize"
-	"github.com/luikyv/goidc/internal/utils"
-	"github.com/luikyv/goidc/pkg/goidc"
+	"github.com/luikyv/go-oidc/internal/oauth/authorize"
+	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -1,8 +1,8 @@
 package authorize
 
 import (
-	"github.com/luikyv/goidc/internal/utils"
-	"github.com/luikyv/goidc/pkg/goidc"
+	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func InitAuth(ctx *utils.Context, req utils.AuthorizationRequest) goidc.OAuthError {

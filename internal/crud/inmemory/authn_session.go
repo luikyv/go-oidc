@@ -3,7 +3,7 @@ package inmemory
 import (
 	"context"
 
-	"github.com/luikyv/goidc/pkg/goidc"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 type AuthnSessionManager struct {

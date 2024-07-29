@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/luikyv/goidc/pkg/goidc"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 )
 

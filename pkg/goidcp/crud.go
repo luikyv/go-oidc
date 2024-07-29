@@ -1,9 +1,9 @@
 package goidcp
 
 import (
-	"github.com/luikyv/goidc/internal/crud/inmemory"
-	"github.com/luikyv/goidc/internal/crud/mongodb"
-	"github.com/luikyv/goidc/pkg/goidc"
+	"github.com/luikyv/go-oidc/internal/crud/inmemory"
+	"github.com/luikyv/go-oidc/internal/crud/mongodb"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 

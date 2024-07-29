@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/luikyv/goidc/internal/crud/inmemory"
-	"github.com/luikyv/goidc/pkg/goidc"
+	"github.com/luikyv/go-oidc/internal/crud/inmemory"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

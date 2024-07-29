@@ -217,11 +217,8 @@ func (ec ErrorCode) StatusCode() int {
 
 const (
 	HeaderDPoP string = "DPoP"
-	// HeaderSecureClientCertificate is the header used to transmit a client certificate that was validated by a trusted source.
-	HeaderSecureClientCertificate string = "X-Secure-Client-Certificate"
-	// HeaderInsecureClientCertificate is the header used to trasmit a client certificate that cannot be trusted.
-	// This is useful for clients authenticating with self signed certificates.
-	HeaderInsecureClientCertificate string = "X-Insecure-Client-Certificate"
+	// HeaderClientCertificate is the header used to transmit a client certificate that was validated by a trusted source.
+	HeaderClientCertificate string = "X-Client-Cert"
 )
 
 const ClientSecretCharset string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikyv/goidc/pkg/goidc"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 type DPoPJWTClaims struct {

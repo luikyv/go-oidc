@@ -16,7 +16,7 @@ This library implements the following specifications:
 ## Installation
 To start using the `goidc` module in your project, install it with
 ```
-go get github.com/luikyv/goidc
+go get github.com/luikyv/go-oidc
 ```
 
 ## Get Started

@@ -8,10 +8,10 @@ import (
 	"net/http"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikyv/goidc/internal/api"
-	"github.com/luikyv/goidc/internal/oauth/introspection"
-	"github.com/luikyv/goidc/internal/utils"
-	"github.com/luikyv/goidc/pkg/goidc"
+	"github.com/luikyv/go-oidc/internal/api"
+	"github.com/luikyv/go-oidc/internal/oauth/introspection"
+	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 type Provider struct {

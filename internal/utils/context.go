@@ -3,6 +3,7 @@ package utils
 import (
 	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"html/template"
 	"net/http"
 	"net/textproto"
@@ -11,7 +12,7 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikyv/goidc/pkg/goidc"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 type Context struct {
@@ -66,7 +67,7 @@ func (ctx *Context) DPoPJWT() (string, bool) {
 }
 
 func (ctx *Context) SecureClientCertificate() (*x509.Certificate, bool) {
-	rawClientCert, ok := ctx.Header(goidc.HeaderSecureClientCertificate)
+	rawClientCert, ok := ctx.Header(goidc.HeaderClientCertificate)
 	if !ok {
 		return nil, false
 	}
@@ -79,18 +80,18 @@ func (ctx *Context) SecureClientCertificate() (*x509.Certificate, bool) {
 	return clientCert, true
 }
 
-// ClientCertificate tries to get the secure client certificate first, if it's not informed,
-// it fallbacks to the insecure one.
 func (ctx *Context) ClientCertificate() (*x509.Certificate, bool) {
-	rawClientCert, ok := ctx.Header(goidc.HeaderSecureClientCertificate)
+	rawClientCert, ok := ctx.Header(goidc.HeaderClientCertificate)
 	if !ok {
-		rawClientCert, ok = ctx.Header(goidc.HeaderInsecureClientCertificate)
-		if !ok {
-			return nil, false
-		}
+		return nil, false
 	}
 
-	clientCert, err := x509.ParseCertificate([]byte(rawClientCert))
+	clientCertPEM, _ := pem.Decode([]byte(rawClientCert))
+	if clientCertPEM == nil {
+		return nil, false
+	}
+
+	clientCert, err := x509.ParseCertificate(clientCertPEM.Bytes)
 	if err != nil {
 		return nil, false
 	}

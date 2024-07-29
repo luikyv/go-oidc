@@ -4,14 +4,14 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/luikyv/goidc/internal/oauth/authorize"
-	"github.com/luikyv/goidc/internal/oauth/discovery"
-	"github.com/luikyv/goidc/internal/oauth/introspection"
-	"github.com/luikyv/goidc/internal/oauth/par"
-	"github.com/luikyv/goidc/internal/oauth/token"
-	"github.com/luikyv/goidc/internal/oauth/userinfo"
-	"github.com/luikyv/goidc/internal/utils"
-	"github.com/luikyv/goidc/pkg/goidc"
+	"github.com/luikyv/go-oidc/internal/oauth/authorize"
+	"github.com/luikyv/go-oidc/internal/oauth/discovery"
+	"github.com/luikyv/go-oidc/internal/oauth/introspection"
+	"github.com/luikyv/go-oidc/internal/oauth/par"
+	"github.com/luikyv/go-oidc/internal/oauth/token"
+	"github.com/luikyv/go-oidc/internal/oauth/userinfo"
+	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 //---------------------------------------- Well Known ----------------------------------------//
