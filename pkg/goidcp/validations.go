@@ -169,8 +169,7 @@ func validateFAPI2Profile(provider Provider) error {
 
 	// Validate the authentication methods.
 	if slices.ContainsFunc(provider.config.ClientAuthnMethods, func(authnMethod goidc.ClientAuthnType) bool {
-		// TODO: remove self signed, only for tests.
-		return authnMethod != goidc.ClientAuthnPrivateKeyJWT && authnMethod != goidc.ClientAuthnTLS && authnMethod != goidc.ClientAuthnSelfSignedTLS
+		return authnMethod != goidc.ClientAuthnPrivateKeyJWT && authnMethod != goidc.ClientAuthnTLS
 	}) {
 		return errors.New("only private_key_jwt and tls_client_auth are allowed for FAPI 2.0")
 	}
