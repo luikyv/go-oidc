@@ -71,10 +71,8 @@ Make sure the `GOBIN` environment variable is set.
 * Implement a client credentials policy.
 * Symmetric encryption for JAR?
 * Support pairwise subject type.
-* Create a package.
 * Client jwks is required for JAR.
 * Better way to handle expired sessions.
 * New grant for token introspection?
-* Separate grant session and token session? Could reuse the grant session so the client doesn't need to reauthenticate.
 * Events.
 * Compare ACR values.
