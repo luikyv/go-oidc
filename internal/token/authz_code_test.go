@@ -1,0 +1,82 @@
+package token
+
+import (
+	"fmt"
+	"testing"
+
+	"github.com/go-jose/go-jose/v4"
+	"github.com/luikyv/go-oidc/internal/authn"
+	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/pkg/goidc"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
+
+	// Given.
+	ctx := utils.NewTestContext(t)
+
+	authorizationCode := "random_authz_code"
+	session := &goidc.AuthnSession{
+		ClientID:      utils.TestClientID,
+		GrantedScopes: goidc.ScopeOpenID.String(),
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			Scopes:      goidc.ScopeOpenID.String(),
+			RedirectURI: utils.TestClientRedirectURI,
+		},
+		AuthorizationCode:     authorizationCode,
+		Subject:               "user_id",
+		CreatedAtTimestamp:    goidc.TimestampNow(),
+		ExpiresAtTimestamp:    goidc.TimestampNow() + 60,
+		Store:                 make(map[string]any),
+		AdditionalTokenClaims: make(map[string]any),
+	}
+	require.Nil(t, ctx.SaveAuthnSession(session))
+
+	req := tokenRequest{
+		ClientAuthnRequest: authn.ClientAuthnRequest{
+			ClientID:     utils.TestClientID,
+			ClientSecret: utils.TestClientSecret,
+		},
+		GrantType:         goidc.GrantAuthorizationCode,
+		RedirectURI:       utils.TestClientRedirectURI,
+		AuthorizationCode: authorizationCode,
+	}
+
+	// When.
+	tokenResp, err := HandleTokenCreation(ctx, req)
+
+	// Then.
+	require.Nil(t, err)
+
+	claims := utils.UnsafeClaims(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
+	assert.Equal(t, utils.TestClientID, claims["client_id"], "the token was assigned to a different client")
+	assert.Equal(t, session.Subject, claims["sub"], "the token subject should be the user")
+
+	grantSessions := utils.GrantSessions(t, ctx)
+	assert.Len(t, grantSessions, 1, "there should be one session")
+}
+
+func TestIsPkceValid(t *testing.T) {
+	testCases := []struct {
+		codeVerifier        string
+		codeChallenge       string
+		codeChallengeMethod goidc.CodeChallengeMethod
+		isValid             bool
+	}{
+		{"4ea55634198fb6a0c120d46b26359cf50ccea86fd03302b9bca9fa98", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", goidc.CodeChallengeMethodSHA256, true},
+		{"42d92ec716da149b8c0a553d5cbbdc5fd474625cdffe7335d643105b", "yQ0Wg2MXS83nBOaS3yit-n-xEaEw5LQ8TlhtX_2NkLw", goidc.CodeChallengeMethodSHA256, true},
+		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", goidc.CodeChallengeMethodSHA256, false},
+		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", goidc.CodeChallengeMethodSHA256, false},
+		{"", "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ", goidc.CodeChallengeMethodSHA256, false},
+		{"179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a", "", goidc.CodeChallengeMethodSHA256, false},
+		{"random_string", "random_string", goidc.CodeChallengeMethodPlain, true},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
+			assert.Equal(t, testCase.isValid, isPKCEValid(testCase.codeVerifier, testCase.codeChallenge, testCase.codeChallengeMethod))
+		})
+	}
+}

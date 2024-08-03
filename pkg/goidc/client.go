@@ -96,6 +96,10 @@ func (c *Client) IsRedirectURIAllowed(redirectURI string) bool {
 	return false
 }
 
+func (c *Client) AllowRedirectURI(redirectURI string) {
+	c.RedirectURIS = append(c.RedirectURIS, redirectURI)
+}
+
 func (c *Client) IsAuthorizationDetailTypeAllowed(authDetailType string) bool {
 	// If the client didn't announce the authorization types it will use, consider any value valid.
 	if c.AuthorizationDetailTypes == nil {

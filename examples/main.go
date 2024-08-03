@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"github.com/luikyv/go-oidc/pkg/goidcp"
+	"github.com/luikyv/go-oidc/pkg/goidc/provider"
 )
 
 func main() {
@@ -17,7 +17,7 @@ func main() {
 	scopes := []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeOffilineAccess, goidc.ScopeEmail}
 
 	// Create and configure the manager.
-	openidProvider := goidcp.New(
+	openidProvider := provider.New(
 		Issuer,
 		PrivateJWKS("server_keys/jwks.json"),
 		serverKeyID,
@@ -56,7 +56,7 @@ func main() {
 		AuthenticateUserWithNoInteraction,
 	))
 
-	if err := openidProvider.RunTLS(goidcp.TLSOptions{
+	if err := openidProvider.RunTLS(provider.TLSOptions{
 		TLSAddress:        Port,
 		ServerCertificate: "server_keys/cert.pem",
 		ServerKey:         "server_keys/key.pem",

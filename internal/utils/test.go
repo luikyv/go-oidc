@@ -11,7 +11,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikyv/go-oidc/internal/crud/inmemory"
+	"github.com/luikyv/go-oidc/internal/storage/inmemory"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"

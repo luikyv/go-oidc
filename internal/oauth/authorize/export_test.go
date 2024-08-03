@@ -1,5 +1,0 @@
-package authorize
-
-var ValidateAuthorizationRequest = validateAuthzRequest
-var ValidateAuthorizationRequestWithPAR = validateAuthzRequestWithPAR
-var ValidateAuthorizationRequestWithJAR = validateAuthzRequestWithJAR

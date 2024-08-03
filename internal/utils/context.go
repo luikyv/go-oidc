@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"html/template"
 	"net/http"
 	"net/textproto"
@@ -235,7 +236,6 @@ func (ctx *Context) BearerToken() string {
 	return token
 }
 
-// TODO: Return zero values.
 func (ctx *Context) AuthorizationToken() (
 	token string,
 	tokenType goidc.TokenType,
@@ -325,6 +325,28 @@ func (ctx *Context) WriteJWT(token string, status int) error {
 	return nil
 }
 
+func (ctx *Context) WriteError(err error) {
+
+	var oauthErr goidc.OAuthError
+	if !errors.As(err, &oauthErr) {
+		if err := ctx.Write(map[string]any{
+			"error":             goidc.ErrorCodeInternalError,
+			"error_description": err.Error(),
+		}, http.StatusInternalServerError); err != nil {
+			ctx.Response().WriteHeader(http.StatusInternalServerError)
+		}
+		return
+	}
+
+	errorCode := oauthErr.Code()
+	if err := ctx.Write(map[string]any{
+		"error":             errorCode,
+		"error_description": oauthErr.Error(),
+	}, errorCode.StatusCode()); err != nil {
+		ctx.Response().WriteHeader(http.StatusInternalServerError)
+	}
+}
+
 func (ctx *Context) Redirect(redirectURL string) {
 	http.Redirect(ctx.Resp, ctx.Req, redirectURL, http.StatusSeeOther)
 }
@@ -336,6 +358,7 @@ func (ctx *Context) RenderHTML(
 	// Check if the request was terminated before writing anything.
 	select {
 	case <-ctx.Request().Context().Done():
+		return nil
 	default:
 	}
 
@@ -465,7 +488,7 @@ func (ctx *Context) privateKey(keyID string) jose.JSONWebKey {
 	return keys[0]
 }
 
-//---------------------------------------- context.Context ----------------------------------------//
+//---------------------------------------- utils.Context ----------------------------------------//
 
 func (ctx *Context) Deadline() (deadline time.Time, ok bool) {
 	return ctx.Request().Context().Deadline()
