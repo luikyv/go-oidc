@@ -37,7 +37,7 @@ func PrivateJWKS(filename string) jose.JSONWebKeySet {
 	return clientJWKS
 }
 
-func AuthenticateUserWithNoInteraction(
+func authenticateUserWithNoInteraction(
 	ctx goidc.Context,
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {

@@ -35,17 +35,9 @@ func main() {
 		provider.WithRefreshTokenGrant(6000, false),
 		provider.WithUserClaims(goidc.ClaimEmail, goidc.ClaimEmailVerified),
 		provider.WithACRs(goidc.ACRMaceIncommonIAPBronze, goidc.ACRMaceIncommonIAPSilver),
-		provider.WithDCR(func(ctx goidc.Context, clientInfo *goidc.ClientMetaInfo) {
-			clientInfo.Scopes = goidc.Scopes(scopes).String()
-		}, true),
-		provider.WithTokenOptions(func(c *goidc.Client, s string) (goidc.TokenOptions, error) {
-			return goidc.NewJWTTokenOptions(serverKeyID, 600), nil
-		}),
-		provider.WithPolicy(goidc.NewPolicy(
-			"policy",
-			func(ctx goidc.Context, client *goidc.Client, session *goidc.AuthnSession) bool { return true },
-			AuthenticateUserWithNoInteraction,
-		)),
+		provider.WithDCR(dcrPlugin(scopes), true),
+		provider.WithTokenOptions(tokenOptions(serverKeyID)),
+		provider.WithPolicy(policy()),
 	)
 	if err != nil {
 		panic(err.Error())
@@ -57,5 +49,25 @@ func main() {
 		ServerKey:         "server_keys/key.pem",
 	}); err != nil {
 		panic(err.Error())
+	}
+}
+
+func policy() goidc.AuthnPolicy {
+	return goidc.NewPolicy(
+		"policy",
+		func(ctx goidc.Context, client *goidc.Client, session *goidc.AuthnSession) bool { return true },
+		authenticateUserWithNoInteraction,
+	)
+}
+
+func dcrPlugin(scopes []goidc.Scope) goidc.DCRPluginFunc {
+	return func(ctx goidc.Context, clientInfo *goidc.ClientMetaInfo) {
+		clientInfo.Scopes = goidc.Scopes(scopes).String()
+	}
+}
+
+func tokenOptions(keyID string) goidc.TokenOptionsFunc {
+	return func(c *goidc.Client, s string) (goidc.TokenOptions, error) {
+		return goidc.NewJWTTokenOptions(keyID, 600), nil
 	}
 }
