@@ -3,12 +3,12 @@ package authorize
 import (
 	"strings"
 
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func initAuthnSession(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req authorizationRequest,
 	client *goidc.Client,
 ) (
@@ -24,7 +24,7 @@ func initAuthnSession(
 }
 
 func authnSession(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req authorizationRequest,
 	client *goidc.Client,
 ) (
@@ -44,13 +44,13 @@ func authnSession(
 	return initValidSimpleAuthnSession(ctx, req, client)
 }
 
-func shouldInitAuthnSessionWithPAR(ctx *utils.Context, req goidc.AuthorizationParameters) bool {
+func shouldInitAuthnSessionWithPAR(ctx *oidc.Context, req goidc.AuthorizationParameters) bool {
 	// Note: if PAR is not enabled, we just disconsider the request_uri.
 	return ctx.PARIsRequired || (ctx.PARIsEnabled && req.RequestURI != "")
 }
 
 func authnSessionWithPAR(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req authorizationRequest,
 	client *goidc.Client,
 ) (
@@ -76,7 +76,7 @@ func authnSessionWithPAR(
 }
 
 func getSessionCreatedWithPAR(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req authorizationRequest,
 ) (
 	*goidc.AuthnSession,
@@ -95,7 +95,7 @@ func getSessionCreatedWithPAR(
 }
 
 func shouldInitAuthnSessionWithJAR(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req goidc.AuthorizationParameters,
 	client *goidc.Client,
 ) bool {
@@ -105,7 +105,7 @@ func shouldInitAuthnSessionWithJAR(
 }
 
 func authnSessionWithJAR(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req authorizationRequest,
 	client *goidc.Client,
 ) (
@@ -128,7 +128,7 @@ func authnSessionWithJAR(
 }
 
 func getJAR(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req authorizationRequest,
 	client *goidc.Client,
 ) (
@@ -148,7 +148,7 @@ func getJAR(
 }
 
 func initValidSimpleAuthnSession(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req authorizationRequest,
 	client *goidc.Client,
 ) (
@@ -162,7 +162,7 @@ func initValidSimpleAuthnSession(
 }
 
 func initAuthnSessionWithPolicy(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	session *goidc.AuthnSession,
 ) goidc.OAuthError {
@@ -175,7 +175,7 @@ func initAuthnSessionWithPolicy(
 }
 
 func pushedAuthnSession(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req pushedAuthorizationRequest,
 	client *goidc.Client,
 ) (
@@ -191,7 +191,7 @@ func pushedAuthnSession(
 }
 
 func pushedSimpleAuthnSession(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req pushedAuthorizationRequest,
 	client *goidc.Client,
 ) (
@@ -208,7 +208,7 @@ func pushedSimpleAuthnSession(
 }
 
 func pushedAuthnSessionWithJAR(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req pushedAuthorizationRequest,
 	client *goidc.Client,
 ) (
@@ -229,7 +229,7 @@ func pushedAuthnSessionWithJAR(
 }
 
 func extractJARFromRequest(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req pushedAuthorizationRequest,
 	client *goidc.Client,
 ) (
@@ -243,7 +243,7 @@ func extractJARFromRequest(
 	return JARFromRequestObject(ctx, req.RequestObject, client)
 }
 
-func protectedParams(ctx *utils.Context) map[string]any {
+func protectedParams(ctx *oidc.Context) map[string]any {
 	protectedParams := make(map[string]any)
 	for param, value := range ctx.FormData() {
 		if strings.HasPrefix(param, goidc.ProtectedParamPrefix) {

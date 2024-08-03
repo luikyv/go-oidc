@@ -3,12 +3,12 @@ package userinfo
 import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/token"
-	"github.com/luikyv/go-oidc/internal/utils"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func handleUserInfoRequest(ctx *utils.Context) (userInfoResponse, goidc.OAuthError) {
+func handleUserInfoRequest(ctx *oidc.Context) (userInfoResponse, goidc.OAuthError) {
 
 	accessToken, tokenType, ok := ctx.AuthorizationToken()
 	if !ok {
@@ -43,7 +43,7 @@ func handleUserInfoRequest(ctx *utils.Context) (userInfoResponse, goidc.OAuthErr
 }
 
 func getUserInfoResponse(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	grantSession *goidc.GrantSession,
 ) (
@@ -89,7 +89,7 @@ func getUserInfoResponse(
 }
 
 func signUserInfoClaims(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	claims map[string]any,
 ) (
@@ -115,7 +115,7 @@ func signUserInfoClaims(
 }
 
 func encryptUserInfoJWT(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	userInfoJWT string,
 ) (

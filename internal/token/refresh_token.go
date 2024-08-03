@@ -2,12 +2,12 @@ package token
 
 import (
 	"github.com/luikyv/go-oidc/internal/authn"
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func handleRefreshTokenGrantTokenCreation(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req tokenRequest,
 ) (
 	tokenResponse,
@@ -57,7 +57,7 @@ func handleRefreshTokenGrantTokenCreation(
 }
 
 func updateRefreshTokenGrantSession(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	grantSession *goidc.GrantSession,
 	req tokenRequest,
 	token Token,
@@ -86,7 +86,7 @@ func updateRefreshTokenGrantSession(
 }
 
 func getAuthenticatedClientAndGrantSession(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req tokenRequest,
 ) (
 	*goidc.Client,
@@ -112,7 +112,7 @@ func getAuthenticatedClientAndGrantSession(
 }
 
 func getGrantSessionByRefreshToken(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	refreshToken string,
 	ch chan<- resultChannel,
 ) {
@@ -141,7 +141,7 @@ func preValidateRefreshTokenGrantRequest(
 }
 
 func validateRefreshTokenGrantRequest(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req tokenRequest,
 	client *goidc.Client,
 	grantSession *goidc.GrantSession,
@@ -170,7 +170,7 @@ func validateRefreshTokenGrantRequest(
 }
 
 func validateRefreshTokenProofOfPossesionForPublicClients(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	grantSession *goidc.GrantSession,
 ) goidc.OAuthError {

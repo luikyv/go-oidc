@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/authn"
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,15 +15,15 @@ import (
 func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 
 	// Given.
-	ctx := utils.NewTestContext(t)
+	ctx := oidc.NewTestContext(t)
 
 	authorizationCode := "random_authz_code"
 	session := &goidc.AuthnSession{
-		ClientID:      utils.TestClientID,
+		ClientID:      oidc.TestClientID,
 		GrantedScopes: goidc.ScopeOpenID.String(),
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			Scopes:      goidc.ScopeOpenID.String(),
-			RedirectURI: utils.TestClientRedirectURI,
+			RedirectURI: oidc.TestClientRedirectURI,
 		},
 		AuthorizationCode:     authorizationCode,
 		Subject:               "user_id",
@@ -36,11 +36,11 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 
 	req := tokenRequest{
 		ClientAuthnRequest: authn.ClientAuthnRequest{
-			ClientID:     utils.TestClientID,
-			ClientSecret: utils.TestClientSecret,
+			ClientID:     oidc.TestClientID,
+			ClientSecret: oidc.TestClientSecret,
 		},
 		GrantType:         goidc.GrantAuthorizationCode,
-		RedirectURI:       utils.TestClientRedirectURI,
+		RedirectURI:       oidc.TestClientRedirectURI,
 		AuthorizationCode: authorizationCode,
 	}
 
@@ -50,11 +50,11 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 	// Then.
 	require.Nil(t, err)
 
-	claims := utils.UnsafeClaims(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
-	assert.Equal(t, utils.TestClientID, claims["client_id"], "the token was assigned to a different client")
+	claims := oidc.UnsafeClaims(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
+	assert.Equal(t, oidc.TestClientID, claims["client_id"], "the token was assigned to a different client")
 	assert.Equal(t, session.Subject, claims["sub"], "the token subject should be the user")
 
-	grantSessions := utils.GrantSessions(t, ctx)
+	grantSessions := oidc.GrantSessions(t, ctx)
 	assert.Len(t, grantSessions, 1, "there should be one session")
 }
 

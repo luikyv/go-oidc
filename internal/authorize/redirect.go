@@ -7,13 +7,13 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/token"
-	"github.com/luikyv/go-oidc/internal/utils"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func redirectError(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	err goidc.OAuthError,
 	client *goidc.Client,
 ) goidc.OAuthError {
@@ -31,7 +31,7 @@ func redirectError(
 }
 
 func redirectResponse(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	params goidc.AuthorizationParameters,
 	redirectParams authorizationResponse,
@@ -69,7 +69,7 @@ func redirectResponse(
 }
 
 func createJARMResponse(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	redirectParams authorizationResponse,
 ) (
@@ -92,7 +92,7 @@ func createJARMResponse(
 }
 
 func signJARMResponse(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	redirectParams authorizationResponse,
 ) (
@@ -128,7 +128,7 @@ func signJARMResponse(
 }
 
 func encryptJARMResponse(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	responseJWT string,
 	client *goidc.Client,
 ) (

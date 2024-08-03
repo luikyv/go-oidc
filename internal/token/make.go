@@ -10,7 +10,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -41,7 +41,7 @@ func newIDTokenOptions(grantOpts goidc.GrantOptions) IDTokenOptions {
 }
 
 func MakeIDToken(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	idTokenOpts IDTokenOptions,
 ) (
@@ -67,7 +67,7 @@ func MakeIDToken(
 }
 
 func Make(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	grantOptions goidc.GrantOptions,
 ) (
@@ -82,7 +82,7 @@ func Make(
 }
 
 func EncryptJWT(
-	_ *utils.Context,
+	_ *oidc.Context,
 	jwtString string,
 	encryptionJWK jose.JSONWebKey,
 	contentKeyEncryptionAlgorithm jose.ContentEncryption,
@@ -113,7 +113,7 @@ func EncryptJWT(
 }
 
 func makeIDToken(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	idTokenOpts IDTokenOptions,
 ) (
@@ -166,7 +166,7 @@ func makeIDToken(
 }
 
 func encryptIDToken(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	userInfoJWT string,
 ) (
@@ -188,7 +188,7 @@ func encryptIDToken(
 
 // TODO: Make it simpler. Create a confirmation object.
 func makeJWTToken(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	grantOptions goidc.GrantOptions,
 ) (
@@ -263,7 +263,7 @@ func makeJWTToken(
 }
 
 func makeOpaqueToken(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	_ *goidc.Client,
 	grantOptions goidc.GrantOptions,
 ) (

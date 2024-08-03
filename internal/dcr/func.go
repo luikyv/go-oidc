@@ -2,12 +2,12 @@ package dcr
 
 import (
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"golang.org/x/crypto/bcrypt"
 )
 
-func setDefaults(ctx *utils.Context, dynamicClient *dynamicClientRequest) goidc.OAuthError {
+func setDefaults(ctx *oidc.Context, dynamicClient *dynamicClientRequest) goidc.OAuthError {
 	if dynamicClient.AuthnMethod == "" {
 		dynamicClient.AuthnMethod = goidc.ClientAuthnSecretBasic
 	}
@@ -55,7 +55,7 @@ func setDefaults(ctx *utils.Context, dynamicClient *dynamicClientRequest) goidc.
 }
 
 func setCreationDefaults(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	dynamicClient *dynamicClientRequest,
 ) goidc.OAuthError {
 	id, err := ClientID()
@@ -74,7 +74,7 @@ func setCreationDefaults(
 }
 
 func setUpdateDefaults(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	dynamicClient *dynamicClientRequest,
 ) goidc.OAuthError {
@@ -110,12 +110,12 @@ func newClient(dynamicClient dynamicClientRequest) *goidc.Client {
 	return client
 }
 
-func getClientRegistrationURI(ctx *utils.Context, clientID string) string {
+func getClientRegistrationURI(ctx *oidc.Context, clientID string) string {
 	return ctx.Host + string(goidc.EndpointDynamicClient) + "/" + clientID
 }
 
 func getProtectedClient(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	dynamicClient dynamicClientRequest,
 ) (
 	*goidc.Client,

@@ -3,12 +3,12 @@ package discovery
 import (
 	"net/http"
 
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 )
 
-func HandlerWellKnown(config *utils.Configuration) http.HandlerFunc {
+func HandlerWellKnown(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := utils.NewContext(*config, r, w)
+		ctx := oidc.NewContext(*config, r, w)
 
 		openidConfig := wellKnown(ctx)
 		if err := ctx.Write(openidConfig, http.StatusOK); err != nil {
@@ -18,9 +18,9 @@ func HandlerWellKnown(config *utils.Configuration) http.HandlerFunc {
 
 }
 
-func HandlerJWKS(config *utils.Configuration) http.HandlerFunc {
+func HandlerJWKS(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := utils.NewContext(*config, r, w)
+		ctx := oidc.NewContext(*config, r, w)
 		if err := ctx.Write(ctx.PublicKeys(), http.StatusOK); err != nil {
 			ctx.WriteError(err)
 		}

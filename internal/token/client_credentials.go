@@ -2,12 +2,12 @@ package token
 
 import (
 	"github.com/luikyv/go-oidc/internal/authn"
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func handleClientCredentialsGrantTokenCreation(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req tokenRequest,
 ) (
 	tokenResponse,
@@ -51,7 +51,7 @@ func handleClientCredentialsGrantTokenCreation(
 }
 
 func generateClientCredentialsGrantSession(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	_ *goidc.Client,
 	token Token,
 	grantOptions goidc.GrantOptions,
@@ -69,7 +69,7 @@ func generateClientCredentialsGrantSession(
 }
 
 func validateClientCredentialsGrantRequest(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req tokenRequest,
 	client *goidc.Client,
 ) goidc.OAuthError {
@@ -94,7 +94,7 @@ func validateClientCredentialsGrantRequest(
 }
 
 func newClientCredentialsGrantOptions(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	req tokenRequest,
 ) (

@@ -5,13 +5,13 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/token"
-	"github.com/luikyv/go-oidc/internal/utils"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func JARFromRequestObject(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	reqObject string,
 	client *goidc.Client,
 ) (
@@ -34,7 +34,7 @@ func JARFromRequestObject(
 }
 
 func signedRequestObjectFromEncryptedRequestObject(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	reqObject string,
 	_ *goidc.Client,
 ) (
@@ -65,7 +65,7 @@ func signedRequestObjectFromEncryptedRequestObject(
 }
 
 func jarFromSignedRequestObject(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	reqObject string,
 	client *goidc.Client,
 ) (

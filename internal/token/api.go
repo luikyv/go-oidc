@@ -4,13 +4,13 @@ import (
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/authn"
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func Handler(config *utils.Configuration) http.HandlerFunc {
+func Handler(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := utils.NewContext(*config, r, w)
+		ctx := oidc.NewContext(*config, r, w)
 
 		req := newTokenRequest(ctx.Request())
 		tokenResp, err := HandleTokenCreation(ctx, req)
@@ -26,9 +26,9 @@ func Handler(config *utils.Configuration) http.HandlerFunc {
 
 }
 
-func HandlerIntrospect(config *utils.Configuration) http.HandlerFunc {
+func HandlerIntrospect(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := utils.NewContext(*config, r, w)
+		ctx := oidc.NewContext(*config, r, w)
 
 		req := newTokenIntrospectionRequest(ctx.Request())
 		tokenInfo, err := introspect(ctx, req)

@@ -4,17 +4,17 @@ import (
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetOpenIDConfiguration(t *testing.T) {
 	// Given.
-	tokenKey := utils.PrivateRS256JWK(t, "token_signature_key")
-	userInfoKey := utils.PrivateRS256JWK(t, "user_info_signature_key")
-	ctx := &utils.Context{
-		Configuration: utils.Configuration{
+	tokenKey := oidc.PrivateRS256JWK(t, "token_signature_key")
+	userInfoKey := oidc.PrivateRS256JWK(t, "user_info_signature_key")
+	ctx := &oidc.Context{
+		Configuration: oidc.Configuration{
 			Host:                                   "https://example.com",
 			Scopes:                                 []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeEmail},
 			PrivateJWKS:                            jose.JSONWebKeySet{Keys: []jose.JSONWebKey{tokenKey, userInfoKey}},
@@ -74,8 +74,8 @@ func TestGetOpenIDConfiguration(t *testing.T) {
 
 func TestGetOpenIDConfiguration_WithPAR(t *testing.T) {
 	// Given.
-	ctx := &utils.Context{
-		Configuration: utils.Configuration{
+	ctx := &oidc.Context{
+		Configuration: oidc.Configuration{
 			Host:          "https://example.com",
 			PARIsEnabled:  true,
 			PARIsRequired: true,
@@ -92,8 +92,8 @@ func TestGetOpenIDConfiguration_WithPAR(t *testing.T) {
 
 func TestGetOpenIDConfiguration_WithJAR(t *testing.T) {
 	// Given.
-	ctx := &utils.Context{
-		Configuration: utils.Configuration{
+	ctx := &oidc.Context{
+		Configuration: oidc.Configuration{
 			JARIsEnabled:           true,
 			JARIsRequired:          true,
 			JARSignatureAlgorithms: []jose.SignatureAlgorithm{jose.PS256},
@@ -111,9 +111,9 @@ func TestGetOpenIDConfiguration_WithJAR(t *testing.T) {
 
 func TestGetOpenIDConfiguration_WithJARM(t *testing.T) {
 	// Given.
-	jarmKey := utils.PrivateRS256JWK(t, "jarm_signature_key")
-	ctx := &utils.Context{
-		Configuration: utils.Configuration{
+	jarmKey := oidc.PrivateRS256JWK(t, "jarm_signature_key")
+	ctx := &oidc.Context{
+		Configuration: oidc.Configuration{
 			JARMIsEnabled:       true,
 			PrivateJWKS:         jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jarmKey}},
 			JARMSignatureKeyIDs: []string{jarmKey.KeyID},
@@ -130,8 +130,8 @@ func TestGetOpenIDConfiguration_WithJARM(t *testing.T) {
 
 func TestGetOpenIDConfiguration_WithDPoP(t *testing.T) {
 	// Given.
-	ctx := &utils.Context{
-		Configuration: utils.Configuration{
+	ctx := &oidc.Context{
+		Configuration: oidc.Configuration{
 			DPoPIsEnabled:           true,
 			DPoPSignatureAlgorithms: []jose.SignatureAlgorithm{jose.PS256},
 		},

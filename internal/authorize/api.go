@@ -3,12 +3,12 @@ package authorize
 import (
 	"net/http"
 
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 )
 
-func HandlerPush(config *utils.Configuration) http.HandlerFunc {
+func HandlerPush(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := utils.NewContext(*config, r, w)
+		ctx := oidc.NewContext(*config, r, w)
 
 		req := newPushedAuthorizationRequest(ctx.Request())
 		requestURI, err := pushAuthorization(ctx, req)
@@ -27,9 +27,9 @@ func HandlerPush(config *utils.Configuration) http.HandlerFunc {
 	}
 }
 
-func Handler(config *utils.Configuration) http.HandlerFunc {
+func Handler(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := utils.NewContext(*config, r, w)
+		ctx := oidc.NewContext(*config, r, w)
 
 		req := newAuthorizationRequest(ctx.Request())
 
@@ -45,9 +45,9 @@ func Handler(config *utils.Configuration) http.HandlerFunc {
 
 }
 
-func HandlerCallback(config *utils.Configuration) http.HandlerFunc {
+func HandlerCallback(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := utils.NewContext(*config, r, w)
+		ctx := oidc.NewContext(*config, r, w)
 
 		callbackID := ctx.Request().PathValue("callback")
 		err := continueAuth(ctx, callbackID)

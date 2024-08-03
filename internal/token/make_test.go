@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,8 +13,8 @@ import (
 
 func TestMakeIDToken(t *testing.T) {
 	// Given.
-	ctx := utils.NewTestContext(t)
-	client, _ := ctx.Client(utils.TestClientID)
+	ctx := oidc.NewTestContext(t)
+	client, _ := ctx.Client(oidc.TestClientID)
 	idTokenOptions := IDTokenOptions{
 		Subject: "random_subject",
 		AdditionalIDTokenClaims: map[string]any{
@@ -28,7 +28,7 @@ func TestMakeIDToken(t *testing.T) {
 	// Then.
 	require.Nil(t, err)
 
-	claims := utils.SafeClaims(t, idToken, utils.TestServerPrivateJWK)
+	claims := oidc.SafeClaims(t, idToken, oidc.TestServerPrivateJWK)
 	assert.Equal(t, ctx.Host, claims[goidc.ClaimIssuer])
 	assert.Equal(t, "random_subject", claims[goidc.ClaimSubject])
 	assert.Equal(t, client.ID, claims[goidc.ClaimAudience])
@@ -37,9 +37,9 @@ func TestMakeIDToken(t *testing.T) {
 
 func TestMakeToken_JWTToken(t *testing.T) {
 	// Given.
-	ctx := utils.NewTestContext(t)
-	client, _ := ctx.Client(utils.TestClientID)
-	tokenOptions := goidc.NewJWTTokenOptions(utils.TestServerPrivateJWK.KeyID, 60)
+	ctx := oidc.NewTestContext(t)
+	client, _ := ctx.Client(oidc.TestClientID)
+	tokenOptions := goidc.NewJWTTokenOptions(oidc.TestServerPrivateJWK.KeyID, 60)
 	tokenOptions.AddTokenClaims(map[string]any{"random_claim": "random_value"})
 	grantOptions := goidc.GrantOptions{
 		Subject:      "random_subject",
@@ -53,7 +53,7 @@ func TestMakeToken_JWTToken(t *testing.T) {
 	require.Nil(t, err)
 	assert.Equal(t, goidc.TokenFormatJWT, token.Format)
 
-	claims := utils.SafeClaims(t, token.Value, utils.TestServerPrivateJWK)
+	claims := oidc.SafeClaims(t, token.Value, oidc.TestServerPrivateJWK)
 	assert.Equal(t, ctx.Host, claims[goidc.ClaimIssuer])
 	assert.Equal(t, "random_subject", claims[goidc.ClaimSubject])
 	assert.Equal(t, client.ID, claims[goidc.ClaimClientID])
@@ -62,8 +62,8 @@ func TestMakeToken_JWTToken(t *testing.T) {
 
 func TestMakeToken_OpaqueToken(t *testing.T) {
 	// Given.
-	ctx := utils.NewTestContext(t)
-	client, _ := ctx.Client(utils.TestClientID)
+	ctx := oidc.NewTestContext(t)
+	client, _ := ctx.Client(oidc.TestClientID)
 	grantOptions := goidc.GrantOptions{
 		Subject:      "random_subject",
 		TokenOptions: goidc.NewOpaqueTokenOptions(10, 60),

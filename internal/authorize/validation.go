@@ -3,12 +3,12 @@ package authorize
 import (
 	"slices"
 
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func validateRequest(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req authorizationRequest,
 	client *goidc.Client,
 ) goidc.OAuthError {
@@ -16,7 +16,7 @@ func validateRequest(
 }
 
 func validateRequestWithPAR(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req authorizationRequest,
 	session *goidc.AuthnSession,
 	client *goidc.Client,
@@ -38,7 +38,7 @@ func validateRequestWithPAR(
 }
 
 func validateRequestWithJAR(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req authorizationRequest,
 	jar authorizationRequest,
 	client *goidc.Client,
@@ -64,7 +64,7 @@ func validateRequestWithJAR(
 }
 
 func validatePushedRequestWithJAR(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req pushedAuthorizationRequest,
 	jar authorizationRequest,
 	client *goidc.Client,
@@ -90,7 +90,7 @@ func validatePushedRequestWithJAR(
 }
 
 func validatePushedRequest(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req pushedAuthorizationRequest,
 	client *goidc.Client,
 ) goidc.OAuthError {
@@ -113,7 +113,7 @@ func validatePushedRequest(
 // -------------------------------------------------- Helper Functions -------------------------------------------------- //
 
 func validateInWithOutParams(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	insideParams goidc.AuthorizationParameters,
 	outsideParams goidc.AuthorizationParameters,
 	client *goidc.Client,
@@ -148,7 +148,7 @@ func validateInWithOutParams(
 }
 
 func validateParamsAuthorize(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	params goidc.AuthorizationParameters,
 	client *goidc.Client,
 ) goidc.OAuthError {
@@ -185,7 +185,7 @@ func validateParamsAuthorize(
 }
 
 func validateParams(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	params goidc.AuthorizationParameters,
 	client *goidc.Client,
 ) goidc.OAuthError {
@@ -230,7 +230,7 @@ func validateParams(
 }
 
 func validateScopes(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	params goidc.AuthorizationParameters,
 	client *goidc.Client,
 ) goidc.OAuthError {
@@ -246,7 +246,7 @@ func validateScopes(
 }
 
 func validatePKCE(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	params goidc.AuthorizationParameters,
 	client *goidc.Client,
 ) goidc.OAuthError {
@@ -261,7 +261,7 @@ func validatePKCE(
 }
 
 func validateResponseType(
-	_ *utils.Context,
+	_ *oidc.Context,
 	params goidc.AuthorizationParameters,
 	client *goidc.Client,
 ) goidc.OAuthError {
@@ -282,7 +282,7 @@ func validateResponseType(
 }
 
 func validateResponseMode(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	params goidc.AuthorizationParameters,
 	client *goidc.Client,
 ) goidc.OAuthError {
@@ -303,7 +303,7 @@ func validateResponseMode(
 }
 
 func validateAuthorizationDetails(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	params goidc.AuthorizationParameters,
 	client *goidc.Client,
 ) goidc.OAuthError {
@@ -322,7 +322,7 @@ func validateAuthorizationDetails(
 }
 
 func validateACRValues(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	params goidc.AuthorizationParameters,
 	_ *goidc.Client,
 ) goidc.OAuthError {

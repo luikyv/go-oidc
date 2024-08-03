@@ -2,12 +2,12 @@ package token
 
 import (
 	"github.com/luikyv/go-oidc/internal/authn"
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func introspect(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req tokenIntrospectionRequest,
 ) (
 	goidc.TokenInfo,
@@ -26,7 +26,7 @@ func introspect(
 }
 
 func validateTokenIntrospectionRequest(
-	_ *utils.Context,
+	_ *oidc.Context,
 	req tokenIntrospectionRequest,
 	client *goidc.Client,
 ) goidc.OAuthError {
@@ -42,7 +42,7 @@ func validateTokenIntrospectionRequest(
 }
 
 func TokenIntrospectionInfo(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	accessToken string,
 ) goidc.TokenInfo {
 
@@ -58,7 +58,7 @@ func TokenIntrospectionInfo(
 }
 
 func getRefreshTokenIntrospectionInfo(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	token string,
 ) goidc.TokenInfo {
 	grantSession, err := ctx.GrantSessionByRefreshToken(token)
@@ -89,7 +89,7 @@ func getRefreshTokenIntrospectionInfo(
 }
 
 func getJWTTokenIntrospectionInfo(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	accessToken string,
 ) goidc.TokenInfo {
 	claims, err := ValidClaims(ctx, accessToken)
@@ -103,14 +103,14 @@ func getJWTTokenIntrospectionInfo(
 }
 
 func opaqueTokenIntrospectionInfo(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	token string,
 ) goidc.TokenInfo {
 	return tokenIntrospectionInfoByID(ctx, token)
 }
 
 func tokenIntrospectionInfoByID(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	tokenID string,
 ) goidc.TokenInfo {
 	grantSession, err := ctx.GrantSessionByTokenID(tokenID)

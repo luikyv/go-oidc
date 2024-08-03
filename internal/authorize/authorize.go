@@ -2,13 +2,13 @@ package authorize
 
 import (
 	"github.com/luikyv/go-oidc/internal/authn"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/token"
-	"github.com/luikyv/go-oidc/internal/utils"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func pushAuthorization(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req pushedAuthorizationRequest,
 ) (
 	requestURI string,
@@ -36,7 +36,7 @@ func pushAuthorization(
 	return requestURI, nil
 }
 
-func initAuth(ctx *utils.Context, req authorizationRequest) goidc.OAuthError {
+func initAuth(ctx *oidc.Context, req authorizationRequest) goidc.OAuthError {
 	client, err := client(ctx, req)
 	if err != nil {
 		return err
@@ -49,7 +49,7 @@ func initAuth(ctx *utils.Context, req authorizationRequest) goidc.OAuthError {
 	return nil
 }
 
-func initAuthNoRedirect(ctx *utils.Context, client *goidc.Client, req authorizationRequest) goidc.OAuthError {
+func initAuthNoRedirect(ctx *oidc.Context, client *goidc.Client, req authorizationRequest) goidc.OAuthError {
 	session, err := initAuthnSession(ctx, req, client)
 	if err != nil {
 		return err
@@ -57,7 +57,7 @@ func initAuthNoRedirect(ctx *utils.Context, client *goidc.Client, req authorizat
 	return authenticate(ctx, session)
 }
 
-func continueAuth(ctx *utils.Context, callbackID string) goidc.OAuthError {
+func continueAuth(ctx *oidc.Context, callbackID string) goidc.OAuthError {
 
 	// Fetch the session using the callback ID.
 	session, err := ctx.AuthnSessionByCallbackID(callbackID)
@@ -81,7 +81,7 @@ func continueAuth(ctx *utils.Context, callbackID string) goidc.OAuthError {
 }
 
 func client(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req authorizationRequest,
 ) (
 	*goidc.Client,
@@ -99,7 +99,7 @@ func client(
 	return client, nil
 }
 
-func authenticate(ctx *utils.Context, session *goidc.AuthnSession) goidc.OAuthError {
+func authenticate(ctx *oidc.Context, session *goidc.AuthnSession) goidc.OAuthError {
 	policy := ctx.Policy(session.PolicyID)
 	switch policy.Authenticate(ctx, session) {
 	case goidc.StatusSuccess:
@@ -112,7 +112,7 @@ func authenticate(ctx *utils.Context, session *goidc.AuthnSession) goidc.OAuthEr
 }
 
 func finishFlowWithFailure(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	session *goidc.AuthnSession,
 ) goidc.OAuthError {
 	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
@@ -127,7 +127,7 @@ func finishFlowWithFailure(
 }
 
 func stopFlowInProgress(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	session *goidc.AuthnSession,
 ) goidc.OAuthError {
 	if err := ctx.SaveAuthnSession(session); err != nil {
@@ -137,7 +137,7 @@ func stopFlowInProgress(
 	return nil
 }
 
-func finishFlowSuccessfully(ctx *utils.Context, session *goidc.AuthnSession) goidc.OAuthError {
+func finishFlowSuccessfully(ctx *oidc.Context, session *goidc.AuthnSession) goidc.OAuthError {
 
 	client, err := ctx.Client(session.ClientID)
 	if err != nil {
@@ -189,7 +189,7 @@ func finishFlowSuccessfully(ctx *utils.Context, session *goidc.AuthnSession) goi
 }
 
 func authorizeAuthnSession(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	session *goidc.AuthnSession,
 ) goidc.OAuthError {
 
@@ -213,7 +213,7 @@ func authorizeAuthnSession(
 }
 
 func generateImplicitGrantSession(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	accessToken token.Token,
 	grantOptions goidc.GrantOptions,
 ) goidc.OAuthError {
@@ -227,7 +227,7 @@ func generateImplicitGrantSession(
 }
 
 func newImplicitGrantOptions(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	session *goidc.AuthnSession,
 ) (

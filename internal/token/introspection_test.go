@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/luikyv/go-oidc/internal/authn"
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,8 +12,8 @@ import (
 
 func TestIntrospectToken_OpaqueToken(t *testing.T) {
 	// Given.
-	ctx := utils.NewTestContext(t)
-	client := utils.NewTestClient(t)
+	ctx := oidc.NewTestContext(t)
+	client := oidc.NewTestClient(t)
 	client.GrantTypes = append(client.GrantTypes, goidc.GrantIntrospection)
 	require.Nil(t, ctx.SaveClient(client))
 
@@ -23,7 +23,7 @@ func TestIntrospectToken_OpaqueToken(t *testing.T) {
 		LastTokenIssuedAtTimestamp: goidc.TimestampNow(),
 		ActiveScopes:               goidc.ScopeOpenID.ID,
 		GrantOptions: goidc.GrantOptions{
-			ClientID: utils.TestClientID,
+			ClientID: oidc.TestClientID,
 			TokenOptions: goidc.TokenOptions{
 				TokenLifetimeSecs: 60,
 			},
@@ -33,8 +33,8 @@ func TestIntrospectToken_OpaqueToken(t *testing.T) {
 
 	tokenReq := tokenIntrospectionRequest{
 		ClientAuthnRequest: authn.ClientAuthnRequest{
-			ClientID:     utils.TestClientID,
-			ClientSecret: utils.TestClientSecret,
+			ClientID:     oidc.TestClientID,
+			ClientSecret: oidc.TestClientSecret,
 		},
 		Token: token,
 	}
@@ -46,14 +46,14 @@ func TestIntrospectToken_OpaqueToken(t *testing.T) {
 	require.Nil(t, err)
 	require.True(t, tokenInfo.IsActive)
 	assert.Equal(t, goidc.ScopeOpenID.ID, tokenInfo.Scopes)
-	assert.Equal(t, utils.TestClientID, tokenInfo.ClientID)
+	assert.Equal(t, oidc.TestClientID, tokenInfo.ClientID)
 	goidc.AssertTimestampWithin(t, goidc.TimestampNow()+60, tokenInfo.ExpiresAtTimestamp)
 }
 
 func TestIntrospectToken_RefreshToken(t *testing.T) {
 	// Given.
-	ctx := utils.NewTestContext(t)
-	client := utils.NewTestClient(t)
+	ctx := oidc.NewTestContext(t)
+	client := oidc.NewTestClient(t)
 	client.GrantTypes = append(client.GrantTypes, goidc.GrantIntrospection)
 	require.Nil(t, ctx.SaveClient(client))
 
@@ -63,7 +63,7 @@ func TestIntrospectToken_RefreshToken(t *testing.T) {
 		RefreshToken:       refreshToken,
 		ExpiresAtTimestamp: goidc.TimestampNow() + 60,
 		GrantOptions: goidc.GrantOptions{
-			ClientID:      utils.TestClientID,
+			ClientID:      oidc.TestClientID,
 			GrantedScopes: goidc.ScopeOpenID.ID,
 		},
 	}
@@ -71,8 +71,8 @@ func TestIntrospectToken_RefreshToken(t *testing.T) {
 
 	tokenReq := tokenIntrospectionRequest{
 		ClientAuthnRequest: authn.ClientAuthnRequest{
-			ClientID:     utils.TestClientID,
-			ClientSecret: utils.TestClientSecret,
+			ClientID:     oidc.TestClientID,
+			ClientSecret: oidc.TestClientSecret,
 		},
 		Token: refreshToken,
 	}
@@ -84,6 +84,6 @@ func TestIntrospectToken_RefreshToken(t *testing.T) {
 	require.Nil(t, err)
 	require.True(t, tokenInfo.IsActive)
 	assert.Equal(t, goidc.ScopeOpenID.ID, tokenInfo.Scopes)
-	assert.Equal(t, utils.TestClientID, tokenInfo.ClientID)
+	assert.Equal(t, oidc.TestClientID, tokenInfo.ClientID)
 	goidc.AssertTimestampWithin(t, goidc.TimestampNow()+60, tokenInfo.ExpiresAtTimestamp)
 }

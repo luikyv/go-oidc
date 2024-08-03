@@ -5,7 +5,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/authn"
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,15 +13,15 @@ import (
 
 func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 	// Given.
-	ctx := utils.NewTestContext(t)
+	ctx := oidc.NewTestContext(t)
 
 	req := tokenRequest{
 		ClientAuthnRequest: authn.ClientAuthnRequest{
-			ClientID:     utils.TestClientID,
-			ClientSecret: utils.TestClientSecret,
+			ClientID:     oidc.TestClientID,
+			ClientSecret: oidc.TestClientSecret,
 		},
 		GrantType: goidc.GrantClientCredentials,
-		Scopes:    utils.TestScope1.String(),
+		Scopes:    oidc.TestScope1.String(),
 	}
 
 	// When.
@@ -30,10 +30,10 @@ func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 	// Then.
 	require.Nil(t, err)
 
-	claims := utils.UnsafeClaims(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
-	assert.Equal(t, utils.TestClientID, claims["client_id"], "the token was assigned to a different client")
-	assert.Equal(t, utils.TestClientID, claims["sub"], "the token subject should be the client")
+	claims := oidc.UnsafeClaims(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
+	assert.Equal(t, oidc.TestClientID, claims["client_id"], "the token was assigned to a different client")
+	assert.Equal(t, oidc.TestClientID, claims["sub"], "the token subject should be the client")
 
-	sessions := utils.GrantSessions(t, ctx)
+	sessions := oidc.GrantSessions(t, ctx)
 	assert.Len(t, sessions, 1, "there should be one session")
 }

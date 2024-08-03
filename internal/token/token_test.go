@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/authn"
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +15,7 @@ import (
 
 func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 	// Given.
-	ctx := utils.NewTestContext(t)
+	ctx := oidc.NewTestContext(t)
 
 	// When.
 	_, err := HandleTokenCreation(ctx, tokenRequest{
@@ -32,10 +32,10 @@ func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 
 func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	// Given.
-	client := utils.NewTestClient(t)
+	client := oidc.NewTestClient(t)
 	client.AuthnMethod = goidc.ClientAuthnSecretPost
 
-	ctx := utils.NewTestContext(t)
+	ctx := oidc.NewTestContext(t)
 	require.Nil(t, ctx.SaveClient(client))
 
 	// When.
@@ -58,7 +58,7 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 
 func TestHandleGrantCreationWithDPoP(t *testing.T) {
 	// Given.
-	ctx := utils.NewTestContext(t)
+	ctx := oidc.NewTestContext(t)
 	ctx.Host = "https://example.com"
 	ctx.DPoPIsEnabled = true
 	ctx.DPoPLifetimeSecs = 9999999999999
@@ -69,8 +69,8 @@ func TestHandleGrantCreationWithDPoP(t *testing.T) {
 
 	req := tokenRequest{
 		ClientAuthnRequest: authn.ClientAuthnRequest{
-			ClientID:     utils.TestClientID,
-			ClientSecret: utils.TestClientSecret,
+			ClientID:     oidc.TestClientID,
+			ClientSecret: oidc.TestClientSecret,
 		},
 		GrantType: goidc.GrantClientCredentials,
 		Scopes:    "scope1",
@@ -81,7 +81,7 @@ func TestHandleGrantCreationWithDPoP(t *testing.T) {
 
 	// Then.
 	assert.Nil(t, err)
-	claims := utils.UnsafeClaims(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
+	claims := oidc.UnsafeClaims(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
 
 	require.Contains(t, claims, "cnf")
 	confirmation := claims["cnf"].(map[string]any)

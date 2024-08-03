@@ -1,4 +1,4 @@
-package utils
+package oidc
 
 import (
 	"crypto/x509"
@@ -488,7 +488,7 @@ func (ctx *Context) privateKey(keyID string) jose.JSONWebKey {
 	return keys[0]
 }
 
-//---------------------------------------- utils.Context ----------------------------------------//
+//---------------------------------------- oidc.Context ----------------------------------------//
 
 func (ctx *Context) Deadline() (deadline time.Time, ok bool) {
 	return ctx.Request().Context().Deadline()

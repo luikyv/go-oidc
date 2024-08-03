@@ -1,12 +1,12 @@
 package token
 
 import (
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func validateTokenBindingIsRequired(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 ) goidc.OAuthError {
 	if !ctx.SenderConstrainedTokenIsRequired {
 		return nil
@@ -32,7 +32,7 @@ func validateTokenBindingIsRequired(
 }
 
 func validateTokenBindingRequestWithDPoP(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	_ tokenRequest,
 	client *goidc.Client,
 ) goidc.OAuthError {

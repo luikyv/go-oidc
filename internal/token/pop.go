@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -24,7 +24,7 @@ type dpopJWTClaims struct {
 }
 
 func ValidatePoP(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	token string,
 	tokenType goidc.TokenType,
 	confirmation goidc.TokenConfirmation,
@@ -37,7 +37,7 @@ func ValidatePoP(
 }
 
 func ValidateDPoPJWT(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	dpopJWT string,
 	expectedDPoPClaims DPoPJWTValidationOptions,
 ) goidc.OAuthError {
@@ -112,7 +112,7 @@ func urlWithoutParams(u string) (string, error) {
 }
 
 func validateDPoP(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	token string,
 	tokenType goidc.TokenType,
 	confirmation goidc.TokenConfirmation,
@@ -141,7 +141,7 @@ func validateDPoP(
 }
 
 func validateTLSPoP(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	confirmation goidc.TokenConfirmation,
 ) goidc.OAuthError {
 	if confirmation.ClientCertificateThumbprint == "" {

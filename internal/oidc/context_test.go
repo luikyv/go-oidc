@@ -1,4 +1,4 @@
-package utils_test
+package oidc_test
 
 import (
 	"net/http"
@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +15,7 @@ import (
 
 func TestGetClientSignatureAlgorithms(t *testing.T) {
 	// Given.
-	ctx := utils.Context{}
+	ctx := oidc.Context{}
 	// Then.
 	assert.Nil(t, ctx.ClientSignatureAlgorithms())
 
@@ -32,7 +32,7 @@ func TestGetClientSignatureAlgorithms(t *testing.T) {
 
 func TestGetIntrospectionClientSignatureAlgorithms(t *testing.T) {
 	// Given.
-	ctx := utils.Context{}
+	ctx := oidc.Context{}
 	// Then.
 	assert.Nil(t, ctx.IntrospectionClientSignatureAlgorithms())
 
@@ -51,8 +51,8 @@ func TestGetIntrospectionClientSignatureAlgorithms(t *testing.T) {
 
 func TestGetDPoPJWT_HappyPath(t *testing.T) {
 	// Given the DPoP header was informed.
-	ctx := utils.Context{
-		Req: httptest.NewRequest(http.MethodGet, utils.TestHost, nil),
+	ctx := oidc.Context{
+		Req: httptest.NewRequest(http.MethodGet, oidc.TestHost, nil),
 	}
 	ctx.Req.Header.Set(goidc.HeaderDPoP, "dpop_jwt")
 
@@ -66,8 +66,8 @@ func TestGetDPoPJWT_HappyPath(t *testing.T) {
 
 func TestGetDPoPJWT_DPoPHeaderNotInCanonicalFormat(t *testing.T) {
 	// Given.
-	ctx := utils.Context{
-		Req: httptest.NewRequest(http.MethodGet, utils.TestHost, nil),
+	ctx := oidc.Context{
+		Req: httptest.NewRequest(http.MethodGet, oidc.TestHost, nil),
 	}
 	ctx.Req.Header.Set(strings.ToLower(goidc.HeaderDPoP), "dpop_jwt")
 
@@ -81,8 +81,8 @@ func TestGetDPoPJWT_DPoPHeaderNotInCanonicalFormat(t *testing.T) {
 
 func TestGetDPoPJWT_DPoPHeaderNotInformed(t *testing.T) {
 	// Given.
-	ctx := utils.Context{
-		Req: httptest.NewRequest(http.MethodGet, utils.TestHost, nil),
+	ctx := oidc.Context{
+		Req: httptest.NewRequest(http.MethodGet, oidc.TestHost, nil),
 	}
 	// When.
 	_, ok := ctx.DPoPJWT()
@@ -93,8 +93,8 @@ func TestGetDPoPJWT_DPoPHeaderNotInformed(t *testing.T) {
 
 func TestGetDPoPJWT_MultipleValuesInTheDPoPHeader(t *testing.T) {
 	// Given.
-	ctx := utils.Context{
-		Req: httptest.NewRequest(http.MethodGet, utils.TestHost, nil),
+	ctx := oidc.Context{
+		Req: httptest.NewRequest(http.MethodGet, oidc.TestHost, nil),
 	}
 	ctx.Req.Header.Add(goidc.HeaderDPoP, "dpop_jwt1")
 	ctx.Req.Header.Add(goidc.HeaderDPoP, "dpop_jwt2")
@@ -108,7 +108,7 @@ func TestGetDPoPJWT_MultipleValuesInTheDPoPHeader(t *testing.T) {
 
 func TestExecuteDCRPlugin_HappyPath(t *testing.T) {
 	// Given.
-	ctx := utils.Context{}
+	ctx := oidc.Context{}
 	clientInfo := goidc.ClientMetaInfo{}
 
 	// Then.
@@ -128,7 +128,7 @@ func TestExecuteDCRPlugin_HappyPath(t *testing.T) {
 
 func TestGetAudiences_HappyPath(t *testing.T) {
 	// Given.
-	ctx := utils.NewTestContext(t)
+	ctx := oidc.NewTestContext(t)
 	ctx.Req = httptest.NewRequest(http.MethodPost, "/auth/token", nil)
 
 	// When.
@@ -141,7 +141,7 @@ func TestGetAudiences_HappyPath(t *testing.T) {
 
 func TestGetAudiences_MTLSIsEnabled(t *testing.T) {
 	// Given.
-	ctx := utils.NewTestContext(t)
+	ctx := oidc.NewTestContext(t)
 	ctx.Req = httptest.NewRequest(http.MethodPost, "/auth/token", nil)
 	ctx.MTLSIsEnabled = true
 	ctx.MTLSHost = "https://matls-example.com"
@@ -159,7 +159,7 @@ func TestGetAudiences_MTLSIsEnabled(t *testing.T) {
 func TestGetPolicyByID_HappyPath(t *testing.T) {
 	// Given.
 	policyID := "random_policy_id"
-	ctx := utils.Context{}
+	ctx := oidc.Context{}
 	ctx.Policies = append(ctx.Policies, goidc.NewPolicy(policyID, nil, nil))
 
 	// When.
@@ -186,7 +186,7 @@ func TestGetAvailablePolicy_HappyPath(t *testing.T) {
 		},
 		nil,
 	)
-	ctx := utils.NewTestContext(t)
+	ctx := oidc.NewTestContext(t)
 	ctx.Policies = []goidc.AuthnPolicy{unavailablePolicy, availablePolicy}
 
 	// When.
@@ -206,7 +206,7 @@ func TestGetAvailablePolicy_NoPolicyAvailable(t *testing.T) {
 		},
 		nil,
 	)
-	ctx := utils.NewTestContext(t)
+	ctx := oidc.NewTestContext(t)
 	ctx.Policies = []goidc.AuthnPolicy{unavailablePolicy}
 
 	// When.
@@ -218,8 +218,8 @@ func TestGetAvailablePolicy_NoPolicyAvailable(t *testing.T) {
 
 func TestGetBearerToken_HappyPath(t *testing.T) {
 	// Given.
-	ctx := utils.Context{}
-	ctx.Req = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
+	ctx := oidc.Context{}
+	ctx.Req = httptest.NewRequest(http.MethodGet, oidc.TestHost, nil)
 	ctx.Req.Header.Set("Authorization", "Bearer token")
 
 	// When.
@@ -231,8 +231,8 @@ func TestGetBearerToken_HappyPath(t *testing.T) {
 
 func TestGetBearerToken_NoToken(t *testing.T) {
 	// Given.
-	ctx := utils.Context{}
-	ctx.Req = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
+	ctx := oidc.Context{}
+	ctx.Req = httptest.NewRequest(http.MethodGet, oidc.TestHost, nil)
 
 	// When.
 	token := ctx.BearerToken()
@@ -243,8 +243,8 @@ func TestGetBearerToken_NoToken(t *testing.T) {
 
 func TestGetBearerToken_NotABearerToken(t *testing.T) {
 	// Given.
-	ctx := utils.Context{}
-	ctx.Req = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
+	ctx := oidc.Context{}
+	ctx.Req = httptest.NewRequest(http.MethodGet, oidc.TestHost, nil)
 	ctx.Req.Header.Set("Authorization", "DPoP token")
 
 	// When.
@@ -256,8 +256,8 @@ func TestGetBearerToken_NotABearerToken(t *testing.T) {
 
 func TestGetAuthorizationToken_HappyPath(t *testing.T) {
 	// Given.
-	ctx := utils.Context{}
-	ctx.Req = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
+	ctx := oidc.Context{}
+	ctx.Req = httptest.NewRequest(http.MethodGet, oidc.TestHost, nil)
 	ctx.Req.Header.Set("Authorization", "Bearer token")
 
 	// When.
@@ -271,8 +271,8 @@ func TestGetAuthorizationToken_HappyPath(t *testing.T) {
 
 func TestGetAuthorizationToken_NoToken(t *testing.T) {
 	// Given.
-	ctx := utils.Context{}
-	ctx.Req = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
+	ctx := oidc.Context{}
+	ctx.Req = httptest.NewRequest(http.MethodGet, oidc.TestHost, nil)
 
 	// When.
 	_, _, ok := ctx.AuthorizationToken()
@@ -283,8 +283,8 @@ func TestGetAuthorizationToken_NoToken(t *testing.T) {
 
 func TestAuthorizationToken_InvalidAuthorizationHeader(t *testing.T) {
 	// Given.
-	ctx := utils.Context{}
-	ctx.Req = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
+	ctx := oidc.Context{}
+	ctx.Req = httptest.NewRequest(http.MethodGet, oidc.TestHost, nil)
 	ctx.Req.Header.Set("InvalidAuthorization", "Bearer token")
 
 	// When.
@@ -296,8 +296,8 @@ func TestAuthorizationToken_InvalidAuthorizationHeader(t *testing.T) {
 
 func TestHeader_HappyPath(t *testing.T) {
 	// Given.
-	ctx := utils.Context{}
-	ctx.Req = httptest.NewRequest(http.MethodGet, utils.TestHost, nil)
+	ctx := oidc.Context{}
+	ctx.Req = httptest.NewRequest(http.MethodGet, oidc.TestHost, nil)
 	ctx.Req.Header.Set("Test-Header", "test_value")
 
 	// When.
@@ -310,10 +310,10 @@ func TestHeader_HappyPath(t *testing.T) {
 
 func TestSignatureAlgorithms_HappyPath(t *testing.T) {
 	// Given.
-	signingKey := utils.PrivateRS256JWKWithUsage(t, "signing_key", goidc.KeyUsageSignature)
-	encryptionKey := utils.PrivatePS256JWKWithUsage(t, "encryption_key", goidc.KeyUsageEncryption)
+	signingKey := oidc.PrivateRS256JWKWithUsage(t, "signing_key", goidc.KeyUsageSignature)
+	encryptionKey := oidc.PrivatePS256JWKWithUsage(t, "encryption_key", goidc.KeyUsageEncryption)
 
-	ctx := utils.Context{}
+	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey, encryptionKey}}
 
 	// When.
@@ -326,9 +326,9 @@ func TestSignatureAlgorithms_HappyPath(t *testing.T) {
 
 func TestPublicKeys_HappyPath(t *testing.T) {
 	// Given.
-	signingKey := utils.PrivatePS256JWK(t, "signing_key")
+	signingKey := oidc.PrivatePS256JWK(t, "signing_key")
 
-	ctx := utils.Context{}
+	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	// When.
@@ -343,9 +343,9 @@ func TestPublicKeys_HappyPath(t *testing.T) {
 
 func TestPublicKey_HappyPath(t *testing.T) {
 	// Given.
-	signingKey := utils.PrivatePS256JWK(t, "signing_key")
+	signingKey := oidc.PrivatePS256JWK(t, "signing_key")
 
-	ctx := utils.Context{}
+	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	// When.
@@ -359,9 +359,9 @@ func TestPublicKey_HappyPath(t *testing.T) {
 
 func TestPrivateKey_HappyPath(t *testing.T) {
 	// Given.
-	signingKey := utils.PrivatePS256JWK(t, "signing_key")
+	signingKey := oidc.PrivatePS256JWK(t, "signing_key")
 
-	ctx := utils.Context{}
+	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	// When.
@@ -375,7 +375,7 @@ func TestPrivateKey_HappyPath(t *testing.T) {
 
 func TestPrivateKey_KeyDoesntExist(t *testing.T) {
 	// Given.
-	ctx := utils.Context{}
+	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{}}
 
 	// When.
@@ -388,9 +388,9 @@ func TestPrivateKey_KeyDoesntExist(t *testing.T) {
 func TestTokenSignatureKey_HappyPath(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
+	signingKey := oidc.PrivatePS256JWK(t, signingKeyID)
 
-	ctx := utils.Context{}
+	ctx := oidc.Context{}
 	ctx.DefaultTokenSignatureKeyID = "random_key"
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
@@ -404,9 +404,9 @@ func TestTokenSignatureKey_HappyPath(t *testing.T) {
 func TestTokenSignatureKey_InvalidKeyIDInformed(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
+	signingKey := oidc.PrivatePS256JWK(t, signingKeyID)
 
-	ctx := utils.Context{}
+	ctx := oidc.Context{}
 	ctx.DefaultTokenSignatureKeyID = signingKeyID
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
@@ -420,9 +420,9 @@ func TestTokenSignatureKey_InvalidKeyIDInformed(t *testing.T) {
 func TestTokenSignatureKey_NoKeyIDInformed(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
+	signingKey := oidc.PrivatePS256JWK(t, signingKeyID)
 
-	ctx := utils.Context{}
+	ctx := oidc.Context{}
 	ctx.DefaultTokenSignatureKeyID = signingKeyID
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
@@ -436,9 +436,9 @@ func TestTokenSignatureKey_NoKeyIDInformed(t *testing.T) {
 func TestUserInfoSignatureKey_HappyPath(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
+	signingKey := oidc.PrivatePS256JWK(t, signingKeyID)
 
-	ctx := utils.Context{}
+	ctx := oidc.Context{}
 	ctx.DefaultUserInfoSignatureKeyID = signingKeyID
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
@@ -454,9 +454,9 @@ func TestUserInfoSignatureKey_HappyPath(t *testing.T) {
 func TestUserInfoSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
+	signingKey := oidc.PrivatePS256JWK(t, signingKeyID)
 
-	ctx := utils.Context{}
+	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 	ctx.UserInfoSignatureKeyIDs = []string{signingKeyID}
 
@@ -473,9 +473,9 @@ func TestUserInfoSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 func TestIDTokenSignatureKey_HappyPath(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
+	signingKey := oidc.PrivatePS256JWK(t, signingKeyID)
 
-	ctx := utils.Context{}
+	ctx := oidc.Context{}
 	ctx.DefaultUserInfoSignatureKeyID = signingKeyID
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
@@ -491,9 +491,9 @@ func TestIDTokenSignatureKey_HappyPath(t *testing.T) {
 func TestIDTokenSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
+	signingKey := oidc.PrivatePS256JWK(t, signingKeyID)
 
-	ctx := utils.Context{}
+	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 	ctx.UserInfoSignatureKeyIDs = []string{signingKeyID}
 
@@ -510,9 +510,9 @@ func TestIDTokenSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 func TestJARMSignatureKey_HappyPath(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
+	signingKey := oidc.PrivatePS256JWK(t, signingKeyID)
 
-	ctx := utils.Context{}
+	ctx := oidc.Context{}
 	ctx.DefaultJARMSignatureKeyID = signingKeyID
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
@@ -528,9 +528,9 @@ func TestJARMSignatureKey_HappyPath(t *testing.T) {
 func TestJARMSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := utils.PrivatePS256JWK(t, signingKeyID)
+	signingKey := oidc.PrivatePS256JWK(t, signingKeyID)
 
-	ctx := utils.Context{}
+	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 	ctx.JARMSignatureKeyIDs = []string{signingKeyID}
 

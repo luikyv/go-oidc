@@ -1,12 +1,12 @@
 package dcr
 
 import (
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func create(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	dynamicClient dynamicClientRequest,
 ) (
 	dynamicClientResponse,
@@ -40,7 +40,7 @@ func create(
 }
 
 func update(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	dynamicClient dynamicClientRequest,
 ) (
 	dynamicClientResponse,
@@ -83,7 +83,7 @@ func update(
 }
 
 func client(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	dynamicClientRequest dynamicClientRequest,
 ) (
 	dynamicClientResponse,
@@ -103,7 +103,7 @@ func client(
 }
 
 func remove(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	dynamicClientRequest dynamicClientRequest,
 ) goidc.OAuthError {
 	_, err := getProtectedClient(ctx, dynamicClientRequest)

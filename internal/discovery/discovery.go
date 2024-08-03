@@ -1,11 +1,11 @@
 package discovery
 
 import (
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func wellKnown(ctx *utils.Context) openIDConfiguration {
+func wellKnown(ctx *oidc.Context) openIDConfiguration {
 	config := openIDConfiguration{
 		Issuer:                               ctx.Host,
 		AuthorizationEndpoint:                ctx.BaseURL() + string(goidc.EndpointAuthorization),

@@ -12,13 +12,13 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"golang.org/x/crypto/bcrypt"
 )
 
 func Client(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req ClientAuthnRequest,
 ) (
 	*goidc.Client,
@@ -43,7 +43,7 @@ func Client(
 }
 
 func authenticateClient(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	req ClientAuthnRequest,
 ) goidc.OAuthError {
@@ -68,7 +68,7 @@ func authenticateClient(
 }
 
 func authenticateWithNoneAuthn(
-	_ *utils.Context,
+	_ *oidc.Context,
 	client *goidc.Client,
 	req ClientAuthnRequest,
 ) goidc.OAuthError {
@@ -79,7 +79,7 @@ func authenticateWithNoneAuthn(
 }
 
 func authenticateWithClientSecretPost(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	req ClientAuthnRequest,
 ) goidc.OAuthError {
@@ -90,7 +90,7 @@ func authenticateWithClientSecretPost(
 }
 
 func authenticateWithClientSecretBasic(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	_ ClientAuthnRequest,
 ) goidc.OAuthError {
@@ -102,7 +102,7 @@ func authenticateWithClientSecretBasic(
 }
 
 func validateSecret(
-	_ *utils.Context,
+	_ *oidc.Context,
 	client *goidc.Client,
 	clientSecret string,
 ) goidc.OAuthError {
@@ -114,7 +114,7 @@ func validateSecret(
 }
 
 func authenticateWithPrivateKeyJWT(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	req ClientAuthnRequest,
 ) goidc.OAuthError {
@@ -152,7 +152,7 @@ func authenticateWithPrivateKeyJWT(
 }
 
 func authenticateWithClientSecretJWT(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	req ClientAuthnRequest,
 ) goidc.OAuthError {
@@ -178,7 +178,7 @@ func authenticateWithClientSecretJWT(
 }
 
 func areAssertionClaimsValid(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	claims jwt.Claims,
 	maxLifetimeSecs int,
@@ -200,7 +200,7 @@ func areAssertionClaimsValid(
 }
 
 func authenticateWithSelfSignedTLSCertificate(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	req ClientAuthnRequest,
 ) goidc.OAuthError {
@@ -240,7 +240,7 @@ func authenticateWithSelfSignedTLSCertificate(
 }
 
 func authenticateWithTLSCertificate(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	client *goidc.Client,
 	req ClientAuthnRequest,
 ) goidc.OAuthError {
@@ -264,7 +264,7 @@ func authenticateWithTLSCertificate(
 }
 
 func getClientID(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req ClientAuthnRequest,
 ) (
 	string,
@@ -295,7 +295,7 @@ func getClientID(
 }
 
 func appendClientIDFromAssertion(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	clientIDs []string,
 	req ClientAuthnRequest,
 ) (
@@ -315,7 +315,7 @@ func appendClientIDFromAssertion(
 }
 
 func getClientIDFromAssertion(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	assertion string,
 ) (
 	string,

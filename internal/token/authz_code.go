@@ -3,12 +3,12 @@ package token
 import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/luikyv/go-oidc/internal/authn"
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func handleAuthorizationCodeGrantTokenCreation(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req tokenRequest,
 ) (
 	tokenResponse,
@@ -71,7 +71,7 @@ func handleAuthorizationCodeGrantTokenCreation(
 }
 
 func generateAuthorizationCodeGrantSession(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	token Token,
 	grantOptions goidc.GrantOptions,
 ) (
@@ -97,7 +97,7 @@ func generateAuthorizationCodeGrantSession(
 }
 
 func validateAuthorizationCodeGrantRequest(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req tokenRequest,
 	client *goidc.Client,
 	session *goidc.AuthnSession,
@@ -135,7 +135,7 @@ func validateAuthorizationCodeGrantRequest(
 }
 
 func validatePkce(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req tokenRequest,
 	_ *goidc.Client,
 	session *goidc.AuthnSession,
@@ -163,7 +163,7 @@ func validatePkce(
 }
 
 func getAuthenticatedClientAndSession(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req tokenRequest,
 ) (
 	*goidc.Client,
@@ -188,7 +188,7 @@ func getAuthenticatedClientAndSession(
 	return authenticatedClient, session, nil
 }
 
-func getSessionByAuthorizationCode(ctx *utils.Context, authorizationCode string, ch chan<- resultChannel) {
+func getSessionByAuthorizationCode(ctx *oidc.Context, authorizationCode string, ch chan<- resultChannel) {
 	session, err := ctx.AuthnSessionByAuthorizationCode(authorizationCode)
 	if err != nil {
 		ch <- resultChannel{
@@ -214,7 +214,7 @@ func getSessionByAuthorizationCode(ctx *utils.Context, authorizationCode string,
 }
 
 func newAuthorizationCodeGrantOptions(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req tokenRequest,
 	client *goidc.Client,
 	session *goidc.AuthnSession,

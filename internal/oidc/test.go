@@ -1,4 +1,4 @@
-package utils
+package oidc
 
 import (
 	"crypto/rand"

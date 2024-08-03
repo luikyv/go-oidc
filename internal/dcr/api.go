@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func HandlerCreate(config utils.Configuration) http.HandlerFunc {
+func HandlerCreate(config oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := utils.NewContext(config, r, w)
+		ctx := oidc.NewContext(config, r, w)
 
 		var req dynamicClientRequest
 		if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
@@ -32,9 +32,9 @@ func HandlerCreate(config utils.Configuration) http.HandlerFunc {
 	}
 }
 
-func HandlerUpdate(config utils.Configuration) http.HandlerFunc {
+func HandlerUpdate(config oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := utils.NewContext(config, r, w)
+		ctx := oidc.NewContext(config, r, w)
 
 		var req dynamicClientRequest
 		if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
@@ -63,9 +63,9 @@ func HandlerUpdate(config utils.Configuration) http.HandlerFunc {
 
 }
 
-func HandlerGet(config utils.Configuration) http.HandlerFunc {
+func HandlerGet(config oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := utils.NewContext(config, r, w)
+		ctx := oidc.NewContext(config, r, w)
 
 		token := ctx.BearerToken()
 		if token == "" {
@@ -91,9 +91,9 @@ func HandlerGet(config utils.Configuration) http.HandlerFunc {
 
 }
 
-func HandlerDelete(config utils.Configuration) http.HandlerFunc {
+func HandlerDelete(config oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := utils.NewContext(config, r, w)
+		ctx := oidc.NewContext(config, r, w)
 
 		token := ctx.BearerToken()
 		if token == "" {

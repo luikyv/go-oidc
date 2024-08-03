@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/userinfo"
-	"github.com/luikyv/go-oidc/internal/utils"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,7 +23,7 @@ func TestHandleUserInfoRequest_HappyPath(t *testing.T) {
 		ActiveScopes:               goidc.ScopeOpenID.ID,
 		GrantOptions: goidc.GrantOptions{
 			Subject:  "random_subject",
-			ClientID: utils.TestClientID,
+			ClientID: oidc.TestClientID,
 			AdditionalUserInfoClaims: map[string]any{
 				"random_claim": "random_value",
 			},
@@ -33,7 +33,7 @@ func TestHandleUserInfoRequest_HappyPath(t *testing.T) {
 		},
 	}
 
-	ctx := utils.NewTestContext(t)
+	ctx := oidc.NewTestContext(t)
 	require.Nil(t, ctx.SaveGrantSession(grantSession))
 	ctx.Request().Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 
@@ -58,19 +58,19 @@ func TestHandleUserInfoRequest_SignedResponse(t *testing.T) {
 		ActiveScopes:               goidc.ScopeOpenID.ID,
 		GrantOptions: goidc.GrantOptions{
 			Subject:  "random_subject",
-			ClientID: utils.TestClientID,
+			ClientID: oidc.TestClientID,
 			AdditionalUserInfoClaims: map[string]any{
 				"random_claim": "random_value",
 			},
 		},
 	}
 
-	ctx := utils.NewTestContext(t)
+	ctx := oidc.NewTestContext(t)
 	require.Nil(t, ctx.SaveGrantSession(grantSession))
 	ctx.Request().Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 
-	client := utils.NewTestClient(t)
-	client.UserInfoSignatureAlgorithm = jose.SignatureAlgorithm(utils.TestServerPrivateJWK.Algorithm)
+	client := oidc.NewTestClient(t)
+	client.UserInfoSignatureAlgorithm = jose.SignatureAlgorithm(oidc.TestServerPrivateJWK.Algorithm)
 	require.Nil(t, ctx.SaveClient(client))
 
 	// When.
@@ -80,7 +80,7 @@ func TestHandleUserInfoRequest_SignedResponse(t *testing.T) {
 	require.Nil(t, err)
 	assert.Empty(t, userInfo.Claims)
 
-	claims := utils.SafeClaims(t, userInfo.JWTClaims, utils.TestServerPrivateJWK)
+	claims := oidc.SafeClaims(t, userInfo.JWTClaims, oidc.TestServerPrivateJWK)
 	assert.Equal(t, "random_subject", claims[goidc.ClaimSubject])
 	assert.Equal(t, "random_value", claims["random_claim"])
 }

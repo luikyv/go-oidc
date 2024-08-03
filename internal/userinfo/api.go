@@ -3,12 +3,12 @@ package userinfo
 import (
 	"net/http"
 
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 )
 
-func Handler(config *utils.Configuration) http.HandlerFunc {
+func Handler(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := utils.NewContext(*config, r, w)
+		ctx := oidc.NewContext(*config, r, w)
 
 		var err error
 		userInfoResponse, err := handleUserInfoRequest(ctx)

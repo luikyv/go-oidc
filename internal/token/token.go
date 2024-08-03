@@ -5,12 +5,12 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikyv/go-oidc/internal/utils"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func HandleTokenCreation(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	req tokenRequest,
 ) (
 	tokenResp tokenResponse,
@@ -32,7 +32,7 @@ func HandleTokenCreation(
 
 // TokenID returns the ID of a token.
 // If it's a JWT, the ID is the the "jti" claim. Otherwise, the token is considered opaque and its ID is the token itself.
-func TokenID(ctx *utils.Context, token string) (string, goidc.OAuthError) {
+func TokenID(ctx *oidc.Context, token string) (string, goidc.OAuthError) {
 	if !IsJWS(token) {
 		return token, nil
 	}
@@ -52,7 +52,7 @@ func TokenID(ctx *utils.Context, token string) (string, goidc.OAuthError) {
 
 // ValidClaims verifies a token and returns its claims.
 func ValidClaims(
-	ctx *utils.Context,
+	ctx *oidc.Context,
 	token string,
 ) (
 	map[string]any,
