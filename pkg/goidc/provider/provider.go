@@ -32,6 +32,9 @@ func New(
 	*Provider,
 	error,
 ) {
+
+	// TODO: Get the first signing key as the default key.
+
 	p := &Provider{
 		config: oidc.Configuration{
 			Host:                issuer,

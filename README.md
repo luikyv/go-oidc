@@ -12,6 +12,7 @@ This library implements the following specifications:
 * [`RFC 9449` - OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://www.rfc-editor.org/rfc/rfc9449.html)
 * [`RFC 7662` - OAuth 2.0 Token Introspection](https://www.rfc-editor.org/rfc/rfc7662.html)
 * [`RFC 9396` - OAuth 2.0 Rich Authorization Requests (RAR)](https://www.rfc-editor.org/rfc/rfc9396.html)
+* [`RFC 7592` - OAuth 2.0 Dynamic Client Registration Management Protocol (DCR)](https://www.rfc-editor.org/rfc/rfc7592)
 
 ## Installation
 To start using the `go-oidc` module in your project, install it with
