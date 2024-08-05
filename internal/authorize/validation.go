@@ -328,7 +328,7 @@ func validateACRValues(
 ) goidc.OAuthError {
 
 	for _, acr := range goidc.SplitStringWithSpaces(params.ACRValues) {
-		if !slices.Contains(ctx.AuthenticationContextReferences, goidc.AuthenticationContextReference(acr)) {
+		if !slices.Contains(ctx.AuthenticationContextReferences, goidc.ACR(acr)) {
 			return params.NewRedirectError(goidc.ErrorCodeInvalidRequest, "invalid acr value")
 		}
 	}

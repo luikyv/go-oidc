@@ -149,7 +149,7 @@ func (c *Client) fetchJWKS() (json.RawMessage, error) {
 	return io.ReadAll(resp.Body)
 }
 
-// Function that will be executed during DCR and DCM.
+// DCRPluginFunc defines a function that will be executed during DCR and DCM.
 // It can be used to modify the client and perform custom validations.
 type DCRPluginFunc func(ctx Context, clientInfo *ClientMetaInfo)
 

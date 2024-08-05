@@ -33,13 +33,6 @@ func NewPolicy(
 	}
 }
 
-type UserInfo struct {
-	UserID         string
-	AuthnTimestamp int
-	AuthnContext   AuthenticationContextReference
-	AuthnMethods   []AuthenticationMethodReference
-}
-
 type GrantOptions struct {
 	GrantType                   GrantType             `json:"grant_type" bson:"grant_type"`
 	Subject                     string                `json:"sub" bson:"sub"`
@@ -62,11 +55,11 @@ type TokenOptions struct {
 	AdditionalTokenClaims map[string]any `json:"additional_token_claims,omitempty" bson:"additional_token_claims,omitempty"`
 }
 
-func (opts *TokenOptions) AddTokenClaims(claims map[string]any) {
-	if opts.AdditionalTokenClaims == nil {
-		opts.AdditionalTokenClaims = map[string]any{}
+func (to *TokenOptions) AddTokenClaims(claims map[string]any) {
+	if to.AdditionalTokenClaims == nil {
+		to.AdditionalTokenClaims = map[string]any{}
 	}
-	maps.Copy(opts.AdditionalTokenClaims, claims)
+	maps.Copy(to.AdditionalTokenClaims, claims)
 }
 
 func NewJWTTokenOptions(
@@ -241,12 +234,12 @@ func (claims ClaimsObject) UserInfoEssentials() []string {
 	return essentials(claims.UserInfo)
 }
 
-// UserInfoEssentials returns all the essentials claims requested by the client to be returned in the ID token.
+// IDTokenEssentials returns all the essentials claims requested by the client to be returned in the ID token.
 func (claims ClaimsObject) IDTokenEssentials() []string {
 	return essentials(claims.IDToken)
 }
 
-// UserInfoEssentials returns the claim object info if present.
+// UserInfoClaim returns the claim object info if present.
 func (claims ClaimsObject) UserInfoClaim(claimName string) (ClaimObjectInfo, bool) {
 	return claim(claimName, claims.UserInfo)
 }

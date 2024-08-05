@@ -68,24 +68,6 @@ func TestGenerateRandomString_WithDifferentLengths(t *testing.T) {
 	}
 }
 
-func TestGenerateCallbackID(t *testing.T) {
-	// When.
-	callbackID, err := goidc.CallbackID()
-
-	// Then.
-	assert.Nil(t, err)
-	assert.Len(t, callbackID, goidc.CallbackIDLength, "invalid length")
-}
-
-func TestGenerateAuthorizationCode(t *testing.T) {
-	// When.
-	code, err := goidc.AuthorizationCode()
-
-	// Then.
-	assert.Nil(t, err)
-	assert.Len(t, code, goidc.AuthorizationCodeLength, "invalid length")
-}
-
 func TestContainsAll(t *testing.T) {
 	assert.True(t, goidc.ContainsAll([]string{"a", "b", "c"}, "a", "b"), "super set should contain sub set")
 	assert.False(t, goidc.ContainsAll([]int{1}, 1, 2), "super set should not contain sub set")

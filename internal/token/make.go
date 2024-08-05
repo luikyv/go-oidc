@@ -14,32 +14,6 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-type Token struct {
-	ID                    string
-	Format                goidc.TokenFormat
-	Value                 string
-	Type                  goidc.TokenType
-	JWKThumbprint         string
-	CertificateThumbprint string
-}
-
-type IDTokenOptions struct {
-	Subject                 string
-	AdditionalIDTokenClaims map[string]any
-	// These values here below are intended to be hashed and placed in the ID token.
-	// Then, the ID token can be used as a detached signature for the implicit grant.
-	AccessToken       string
-	AuthorizationCode string
-	State             string
-}
-
-func newIDTokenOptions(grantOpts goidc.GrantOptions) IDTokenOptions {
-	return IDTokenOptions{
-		Subject:                 grantOpts.Subject,
-		AdditionalIDTokenClaims: grantOpts.AdditionalIDTokenClaims,
-	}
-}
-
 func MakeIDToken(
 	ctx *oidc.Context,
 	client *goidc.Client,

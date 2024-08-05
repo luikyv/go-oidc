@@ -42,10 +42,6 @@ const (
 	ProfileFAPI2  Profile = "fapi2_profile"
 )
 
-type ContextKey string
-
-const CorrelationIDKey ContextKey = "correlation_id"
-
 type GrantType string
 
 const (
@@ -255,21 +251,22 @@ const (
 	EndpointTokenIntrospection         EndpointPath = "/introspect"
 )
 
-type AuthenticationMethodReference string
+// AMR defines a type for authentication method references.
+type AMR string
 
 const (
-	AuthenticationMethodFacialRecognition            AuthenticationMethodReference = "face"
-	AuthenticationMethodFingerPrint                  AuthenticationMethodReference = "fpt"
-	AuthenticationMethodGeolocation                  AuthenticationMethodReference = "geo"
-	AuthenticationMethodHardwareSecuredKey           AuthenticationMethodReference = "hwk"
-	AuthenticationMethodIrisScan                     AuthenticationMethodReference = "iris"
-	AuthenticationMethodMultipleFactor               AuthenticationMethodReference = "mfa"
-	AuthenticationMethodOneTimePassoword             AuthenticationMethodReference = "otp"
-	AuthenticationMethodPassword                     AuthenticationMethodReference = "pwd"
-	AuthenticationMethodPersonalIDentificationNumber AuthenticationMethodReference = "pin"
-	AuthenticationMethodRiskBased                    AuthenticationMethodReference = "rba"
-	AuthenticationMethodSMS                          AuthenticationMethodReference = "sms"
-	AuthenticationMethodSoftwareSecuredKey           AuthenticationMethodReference = "swk"
+	AMRFacialRecognition            AMR = "face"
+	AMRFingerPrint                  AMR = "fpt"
+	AMRGeolocation                  AMR = "geo"
+	AMRHardwareSecuredKey           AMR = "hwk"
+	AMRIrisScan                     AMR = "iris"
+	AMRMultipleFactor               AMR = "mfa"
+	AMROneTimePassoword             AMR = "otp"
+	AMRPassword                     AMR = "pwd"
+	AMRPersonalIDentificationNumber AMR = "pin"
+	AMRRiskBased                    AMR = "rba"
+	AMRSMS                          AMR = "sms"
+	AMRSoftwareSecuredKey           AMR = "swk"
 )
 
 type DisplayValue string
@@ -305,10 +302,11 @@ const (
 	TokenHintRefresh TokenTypeHint = "refresh_token"
 )
 
-type AuthenticationContextReference string
+// ACR defines a type for authentication context references.
+type ACR string
 
 const (
-	ACRNoAssuranceLevel      AuthenticationContextReference = "0"
-	ACRMaceIncommonIAPSilver AuthenticationContextReference = "urn:mace:incommon:iap:silver"
-	ACRMaceIncommonIAPBronze AuthenticationContextReference = "urn:mace:incommon:iap:bronze"
+	ACRNoAssuranceLevel      ACR = "0"
+	ACRMaceIncommonIAPSilver ACR = "urn:mace:incommon:iap:silver"
+	ACRMaceIncommonIAPBronze ACR = "urn:mace:incommon:iap:bronze"
 )

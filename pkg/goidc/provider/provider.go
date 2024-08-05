@@ -481,7 +481,7 @@ func WithPKCERequired(
 }
 
 func WithACRs(
-	acrValues ...goidc.AuthenticationContextReference,
+	acrValues ...goidc.ACR,
 ) ProviderOption {
 	return func(p *Provider) {
 		p.config.AuthenticationContextReferences = acrValues

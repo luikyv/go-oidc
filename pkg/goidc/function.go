@@ -2,14 +2,13 @@ package goidc
 
 import (
 	"crypto/rand"
-	"fmt"
 	"math/big"
 	"slices"
 	"strings"
 	"time"
 )
 
-// Get the current timestamp. The result is always on UTC time.
+// TimestampNow returns the current timestamp. The result is always on UTC time.
 func TimestampNow() int {
 	return int(time.Now().Unix())
 }
@@ -21,22 +20,6 @@ func SplitStringWithSpaces(s string) []string {
 	}
 
 	return slice
-}
-
-func CallbackID() (string, error) {
-	return RandomString(CallbackIDLength)
-}
-
-func AuthorizationCode() (string, error) {
-	return RandomString(AuthorizationCodeLength)
-}
-
-func RequestURI() (string, error) {
-	s, err := RandomString(RequestURILength)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("urn:ietf:params:oauth:request_uri:%s", s), nil
 }
 
 func RandomString(n int) (string, error) {

@@ -35,7 +35,7 @@ func TestGetOpenIDConfiguration(t *testing.T) {
 			ClaimsParameterIsEnabled:               true,
 			AuthorizationDetailsParameterIsEnabled: true,
 			AuthorizationDetailTypes:               []string{"detail_type"},
-			AuthenticationContextReferences:        []goidc.AuthenticationContextReference{"0"},
+			AuthenticationContextReferences:        []goidc.ACR{"0"},
 			DisplayValues:                          []goidc.DisplayValue{goidc.DisplayValuePage},
 		},
 	}
@@ -68,7 +68,7 @@ func TestGetOpenIDConfiguration(t *testing.T) {
 	assert.Equal(t, ctx.ClaimsParameterIsEnabled, openidConfig.ClaimsParameterIsEnabled)
 	assert.Equal(t, ctx.AuthorizationDetailsParameterIsEnabled, openidConfig.AuthorizationDetailsIsSupported)
 	assert.Equal(t, []string{"detail_type"}, openidConfig.AuthorizationDetailTypesSupported)
-	assert.Equal(t, []goidc.AuthenticationContextReference{"0"}, openidConfig.AuthenticationContextReferences)
+	assert.Equal(t, []goidc.ACR{"0"}, openidConfig.AuthenticationContextReferences)
 	assert.Equal(t, []goidc.DisplayValue{goidc.DisplayValuePage}, openidConfig.DisplayValuesSupported)
 }
 

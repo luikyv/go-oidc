@@ -11,18 +11,6 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-type DPoPJWTValidationOptions struct {
-	// AccessToken should be filled when the DPoP "ath" claim is expected and should be validated.
-	AccessToken   string
-	JWKThumbprint string
-}
-
-type dpopJWTClaims struct {
-	HTTPMethod      string `json:"htm"`
-	HTTPURI         string `json:"htu"`
-	AccessTokenHash string `json:"ath"`
-}
-
 func ValidatePoP(
 	ctx *oidc.Context,
 	token string,

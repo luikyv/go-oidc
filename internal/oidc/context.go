@@ -596,7 +596,7 @@ type Configuration struct {
 	DCRPlugin                        goidc.DCRPluginFunc
 	AuthenticationSessionTimeoutSecs int
 	TLSBoundTokensIsEnabled          bool
-	AuthenticationContextReferences  []goidc.AuthenticationContextReference
+	AuthenticationContextReferences  []goidc.ACR
 	DisplayValues                    []goidc.DisplayValue
 	// If SenderConstrainedTokenIsRequired is true, at least one mechanism of sender contraining
 	// tokens is required, either DPoP or client TLS.

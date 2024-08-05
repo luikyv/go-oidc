@@ -1,5 +1,7 @@
 package goidc
 
+import "fmt"
+
 type AuthnSession struct {
 	ID                          string                `json:"id" bson:"_id"`
 	CallbackID                  string                `json:"callback_id" bson:"callback_id"`
@@ -50,7 +52,7 @@ func (s *AuthnSession) SetClaimToken(claim string, value any) {
 	s.AdditionalTokenClaims[claim] = value
 }
 
-func (s *AuthnSession) SetACRClaimIDToken(acr AuthenticationContextReference) {
+func (s *AuthnSession) SetACRClaimIDToken(acr ACR) {
 	s.SetClaimIDToken(ClaimAuthenticationContextReference, acr)
 }
 
@@ -58,7 +60,7 @@ func (s *AuthnSession) SetAuthTimeClaimIDToken(authTime int) {
 	s.SetClaimIDToken(ClaimAuthenticationTime, authTime)
 }
 
-func (s *AuthnSession) SetAMRClaimIDToken(amrs ...AuthenticationMethodReference) {
+func (s *AuthnSession) SetAMRClaimIDToken(amrs ...AMR) {
 	s.SetClaimIDToken(ClaimAuthenticationMethodReferences, amrs)
 }
 
@@ -69,7 +71,7 @@ func (s *AuthnSession) SetClaimIDToken(claim string, value any) {
 	s.AdditionalIDTokenClaims[claim] = value
 }
 
-func (s *AuthnSession) SetACRClaimUserInfo(acr AuthenticationContextReference) {
+func (s *AuthnSession) SetACRClaimUserInfo(acr ACR) {
 	s.SetClaimUserInfo(ClaimAuthenticationContextReference, acr)
 }
 
@@ -77,7 +79,7 @@ func (s *AuthnSession) SetAuthTimeClaimUserInfo(authTime int) {
 	s.SetClaimUserInfo(ClaimAuthenticationTime, authTime)
 }
 
-func (s *AuthnSession) SetAMRClaimUserInfo(amrs ...AuthenticationMethodReference) {
+func (s *AuthnSession) SetAMRClaimUserInfo(amrs ...AMR) {
 	s.SetClaimUserInfo(ClaimAuthenticationMethodReferences, amrs)
 }
 
@@ -93,15 +95,15 @@ func (s *AuthnSession) IsExpired() bool {
 }
 
 // Push creates a session that can be referenced by a request URI.
-func (s *AuthnSession) Push(lifetimeSecs int) (requestURI string, err error) {
-	requestURI, err = RequestURI()
+func (s *AuthnSession) Push(lifetimeSecs int) (reqURI string, err error) {
+	reqURI, err = requestURI()
 	if err != nil {
 		return "", err
 	}
 
-	s.RequestURI = requestURI
+	s.RequestURI = reqURI
 	s.ExpiresAtTimestamp = TimestampNow() + lifetimeSecs
-	return requestURI, nil
+	return reqURI, nil
 }
 
 // Start prepares the session to be used while the authentication flow defined by policyID happens.
@@ -110,11 +112,11 @@ func (s *AuthnSession) Start(policyID string, lifetimeSecs int) OAuthError {
 		s.SetClaimIDToken(ClaimNonce, s.Nonce)
 	}
 	s.PolicyID = policyID
-	callbackID, err := CallbackID()
+	id, err := callbackID()
 	if err != nil {
 		return s.NewRedirectError(ErrorCodeInternalError, err.Error())
 	}
-	s.CallbackID = callbackID
+	s.CallbackID = id
 	// FIXME: To think about:Treating the request_uri as one-time use will cause problems when the user refreshes the page.
 	s.RequestURI = ""
 	s.ExpiresAtTimestamp = TimestampNow() + lifetimeSecs
@@ -122,7 +124,7 @@ func (s *AuthnSession) Start(policyID string, lifetimeSecs int) OAuthError {
 }
 
 func (s *AuthnSession) InitAuthorizationCode() OAuthError {
-	code, err := AuthorizationCode()
+	code, err := authorizationCode()
 	if err != nil {
 		return s.NewRedirectError(ErrorCodeInternalError, err.Error())
 	}
@@ -143,4 +145,20 @@ func (s *AuthnSession) GrantAuthorizationDetails(authDetails []AuthorizationDeta
 
 func (s *AuthnSession) SetRedirectError(errorCode ErrorCode, errorDescription string) {
 	s.Error = s.NewRedirectError(errorCode, errorDescription)
+}
+
+func authorizationCode() (string, error) {
+	return RandomString(AuthorizationCodeLength)
+}
+
+func requestURI() (string, error) {
+	s, err := RandomString(RequestURILength)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("urn:ietf:params:oauth:request_uri:%s", s), nil
+}
+
+func callbackID() (string, error) {
+	return RandomString(CallbackIDLength)
 }
