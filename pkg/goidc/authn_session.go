@@ -1,27 +1,38 @@
 package goidc
 
-import "fmt"
+import (
+	"context"
+	"time"
+)
+
+type AuthnSessionManager interface {
+	Save(ctx context.Context, session *AuthnSession) error
+	GetByCallbackID(ctx context.Context, callbackID string) (*AuthnSession, error)
+	GetByAuthorizationCode(ctx context.Context, authorizationCode string) (*AuthnSession, error)
+	GetByRequestURI(ctx context.Context, requestURI string) (*AuthnSession, error)
+	Delete(ctx context.Context, id string) error
+}
 
 type AuthnSession struct {
-	ID                          string                `json:"id" bson:"_id"`
-	CallbackID                  string                `json:"callback_id" bson:"callback_id"`
-	PolicyID                    string                `json:"policy_id" bson:"policy_id"`
-	ExpiresAtTimestamp          int                   `json:"expires_at" bson:"expires_at"`
-	CreatedAtTimestamp          int                   `json:"created_at" bson:"created_at"`
-	Subject                     string                `json:"sub" bson:"sub"`
-	ClientID                    string                `json:"client_id" bson:"client_id"`
-	GrantedScopes               string                `json:"granted_scopes" bson:"granted_scopes"`
-	GrantedAuthorizationDetails []AuthorizationDetail `json:"granted_authorization_details,omitempty" bson:"granted_authorization_details,omitempty"`
-	AuthorizationCode           string                `json:"authorization_code,omitempty" bson:"authorization_code,omitempty"`
-	// ProtectedParameters contains custom parameters sent by PAR or JAR.
-	ProtectedParameters map[string]any `json:"protected_params,omitempty" bson:"protected_params,omitempty"`
+	ID                          string                `json:"id"`
+	CallbackID                  string                `json:"callback_id"`
+	PolicyID                    string                `json:"policy_id"`
+	ExpiresAtTimestamp          int64                 `json:"expires_at"`
+	CreatedAtTimestamp          int64                 `json:"created_at"`
+	Subject                     string                `json:"sub"`
+	ClientID                    string                `json:"client_id"`
+	GrantedScopes               string                `json:"granted_scopes"`
+	GrantedAuthorizationDetails []AuthorizationDetail `json:"granted_authorization_details,omitempty"`
+	AuthorizationCode           string                `json:"authorization_code,omitempty"`
+	// ProtectedParameters contains custom parameters sent by PAR.
+	ProtectedParameters map[string]any `json:"protected_params,omitempty"`
 	// Store allows developers to store information between user interactions.
-	Store                    map[string]any `json:"store,omitempty" bson:"store,omitempty"`
-	AdditionalTokenClaims    map[string]any `json:"additional_token_claims,omitempty" bson:"additional_token_claims,omitempty"`
-	AdditionalIDTokenClaims  map[string]any `json:"additional_id_token_claims,omitempty" bson:"additional_id_token_claims,omitempty"`
-	AdditionalUserInfoClaims map[string]any `json:"additional_user_info_claims,omitempty" bson:"additional_user_info_claims,omitempty"`
-	AuthorizationParameters  `bson:"inline"`
-	Error                    OAuthError `json:"-" bson:"-"`
+	Store                    map[string]any `json:"store,omitempty"`
+	AdditionalTokenClaims    map[string]any `json:"additional_token_claims,omitempty"`
+	AdditionalIDTokenClaims  map[string]any `json:"additional_id_token_claims,omitempty"`
+	AdditionalUserInfoClaims map[string]any `json:"additional_user_info_claims,omitempty"`
+	AuthorizationParameters
+	Error error `json:"-"`
 }
 
 // UpdateParams updates the session with the parameters from an authorization request.
@@ -90,49 +101,6 @@ func (s *AuthnSession) SetClaimUserInfo(claim string, value any) {
 	s.AdditionalUserInfoClaims[claim] = value
 }
 
-func (s *AuthnSession) IsExpired() bool {
-	return TimestampNow() > s.ExpiresAtTimestamp
-}
-
-// Push creates a session that can be referenced by a request URI.
-func (s *AuthnSession) Push(lifetimeSecs int) (reqURI string, err error) {
-	reqURI, err = requestURI()
-	if err != nil {
-		return "", err
-	}
-
-	s.RequestURI = reqURI
-	s.ExpiresAtTimestamp = TimestampNow() + lifetimeSecs
-	return reqURI, nil
-}
-
-// Start prepares the session to be used while the authentication flow defined by policyID happens.
-func (s *AuthnSession) Start(policyID string, lifetimeSecs int) OAuthError {
-	if s.Nonce != "" {
-		s.SetClaimIDToken(ClaimNonce, s.Nonce)
-	}
-	s.PolicyID = policyID
-	id, err := callbackID()
-	if err != nil {
-		return s.NewRedirectError(ErrorCodeInternalError, err.Error())
-	}
-	s.CallbackID = id
-	// FIXME: To think about:Treating the request_uri as one-time use will cause problems when the user refreshes the page.
-	s.RequestURI = ""
-	s.ExpiresAtTimestamp = TimestampNow() + lifetimeSecs
-	return nil
-}
-
-func (s *AuthnSession) InitAuthorizationCode() OAuthError {
-	code, err := authorizationCode()
-	if err != nil {
-		return s.NewRedirectError(ErrorCodeInternalError, err.Error())
-	}
-	s.AuthorizationCode = code
-	s.ExpiresAtTimestamp = TimestampNow() + AuthorizationCodeLifetimeSecs
-	return nil
-}
-
 func (s *AuthnSession) GrantScopes(scopes string) {
 	s.GrantedScopes = scopes
 }
@@ -143,22 +111,6 @@ func (s *AuthnSession) GrantAuthorizationDetails(authDetails []AuthorizationDeta
 	s.GrantedAuthorizationDetails = authDetails
 }
 
-func (s *AuthnSession) SetRedirectError(errorCode ErrorCode, errorDescription string) {
-	s.Error = s.NewRedirectError(errorCode, errorDescription)
-}
-
-func authorizationCode() (string, error) {
-	return RandomString(AuthorizationCodeLength)
-}
-
-func requestURI() (string, error) {
-	s, err := RandomString(RequestURILength)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("urn:ietf:params:oauth:request_uri:%s", s), nil
-}
-
-func callbackID() (string, error) {
-	return RandomString(CallbackIDLength)
+func (s *AuthnSession) IsExpired() bool {
+	return time.Now().Unix() > s.ExpiresAtTimestamp
 }

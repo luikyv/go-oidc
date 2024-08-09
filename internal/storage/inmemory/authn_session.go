@@ -2,6 +2,7 @@ package inmemory
 
 import (
 	"context"
+	"errors"
 
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -35,7 +36,7 @@ func (manager *AuthnSessionManager) GetByCallbackID(
 		return s.CallbackID == callbackID
 	})
 	if !exists {
-		return nil, goidc.ErrorEntityNotFound
+		return nil, errors.New("entity not found")
 	}
 
 	return session, nil
@@ -52,7 +53,7 @@ func (manager *AuthnSessionManager) GetByAuthorizationCode(
 		return s.AuthorizationCode == authorizationCode
 	})
 	if !exists {
-		return nil, goidc.ErrorEntityNotFound
+		return nil, errors.New("entity not found")
 	}
 
 	return session, nil
@@ -69,7 +70,7 @@ func (manager *AuthnSessionManager) GetByRequestURI(
 		return s.RequestURI == requestURI
 	})
 	if !exists {
-		return nil, goidc.ErrorEntityNotFound
+		return nil, errors.New("entity not found")
 	}
 
 	return session, nil

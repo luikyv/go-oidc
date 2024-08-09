@@ -2,9 +2,11 @@ package token
 
 import (
 	"testing"
+	"time"
 
 	"github.com/luikyv/go-oidc/internal/authn"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,13 +22,11 @@ func TestIntrospectToken_OpaqueToken(t *testing.T) {
 	token := "opaque_token"
 	grantSession := &goidc.GrantSession{
 		TokenID:                    token,
-		LastTokenIssuedAtTimestamp: goidc.TimestampNow(),
+		LastTokenIssuedAtTimestamp: time.Now().Unix(),
 		ActiveScopes:               goidc.ScopeOpenID.ID,
-		GrantOptions: goidc.GrantOptions{
-			ClientID: oidc.TestClientID,
-			TokenOptions: goidc.TokenOptions{
-				TokenLifetimeSecs: 60,
-			},
+		ClientID:                   oidc.TestClientID,
+		TokenOptions: goidc.TokenOptions{
+			TokenLifetimeSecs: 60,
 		},
 	}
 	require.Nil(t, ctx.SaveGrantSession(grantSession))
@@ -47,7 +47,9 @@ func TestIntrospectToken_OpaqueToken(t *testing.T) {
 	require.True(t, tokenInfo.IsActive)
 	assert.Equal(t, goidc.ScopeOpenID.ID, tokenInfo.Scopes)
 	assert.Equal(t, oidc.TestClientID, tokenInfo.ClientID)
-	goidc.AssertTimestampWithin(t, goidc.TimestampNow()+60, tokenInfo.ExpiresAtTimestamp)
+	expiryTime := time.Now().Unix() + 60
+	assert.GreaterOrEqual(t, tokenInfo.ExpiresAtTimestamp, expiryTime-5)
+	assert.LessOrEqual(t, tokenInfo.ExpiresAtTimestamp, expiryTime+5)
 }
 
 func TestIntrospectToken_RefreshToken(t *testing.T) {
@@ -57,15 +59,14 @@ func TestIntrospectToken_RefreshToken(t *testing.T) {
 	client.GrantTypes = append(client.GrantTypes, goidc.GrantIntrospection)
 	require.Nil(t, ctx.SaveClient(client))
 
-	refreshToken, err := goidc.RandomString(goidc.RefreshTokenLength)
+	expiryTime := time.Now().Unix() + 60
+	refreshToken, err := strutil.Random(RefreshTokenLength)
 	require.Nil(t, err)
 	grantSession := &goidc.GrantSession{
 		RefreshToken:       refreshToken,
-		ExpiresAtTimestamp: goidc.TimestampNow() + 60,
-		GrantOptions: goidc.GrantOptions{
-			ClientID:      oidc.TestClientID,
-			GrantedScopes: goidc.ScopeOpenID.ID,
-		},
+		ExpiresAtTimestamp: expiryTime,
+		ClientID:           oidc.TestClientID,
+		GrantedScopes:      goidc.ScopeOpenID.ID,
 	}
 	require.Nil(t, ctx.SaveGrantSession(grantSession))
 
@@ -85,5 +86,6 @@ func TestIntrospectToken_RefreshToken(t *testing.T) {
 	require.True(t, tokenInfo.IsActive)
 	assert.Equal(t, goidc.ScopeOpenID.ID, tokenInfo.Scopes)
 	assert.Equal(t, oidc.TestClientID, tokenInfo.ClientID)
-	goidc.AssertTimestampWithin(t, goidc.TimestampNow()+60, tokenInfo.ExpiresAtTimestamp)
+	assert.GreaterOrEqual(t, tokenInfo.ExpiresAtTimestamp, expiryTime-5)
+	assert.LessOrEqual(t, tokenInfo.ExpiresAtTimestamp, expiryTime+5)
 }

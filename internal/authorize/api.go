@@ -11,16 +11,12 @@ func HandlerPush(config *oidc.Configuration) http.HandlerFunc {
 		ctx := oidc.NewContext(*config, r, w)
 
 		req := newPushedAuthorizationRequest(ctx.Request())
-		requestURI, err := pushAuthorization(ctx, req)
+		resp, err := pushAuthorization(ctx, req)
 		if err != nil {
 			ctx.WriteError(err)
 			return
 		}
 
-		resp := pushedAuthorizationResponse{
-			RequestURI: requestURI,
-			ExpiresIn:  ctx.ParLifetimeSecs,
-		}
 		if err := ctx.Write(resp, http.StatusCreated); err != nil {
 			ctx.WriteError(err)
 		}
@@ -42,7 +38,6 @@ func Handler(config *oidc.Configuration) http.HandlerFunc {
 			ctx.WriteError(err)
 		}
 	}
-
 }
 
 func HandlerCallback(config *oidc.Configuration) http.HandlerFunc {

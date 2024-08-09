@@ -2,6 +2,7 @@ package inmemory
 
 import (
 	"context"
+	"errors"
 
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -33,7 +34,7 @@ func (manager *ClientManager) Get(
 ) {
 	client, exists := manager.Clients[id]
 	if !exists {
-		return nil, goidc.ErrorEntityNotFound
+		return nil, errors.New("entity not found")
 	}
 
 	return client, nil

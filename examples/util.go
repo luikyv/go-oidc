@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -43,7 +44,7 @@ func authenticateUserWithNoInteraction(
 ) goidc.AuthnStatus {
 	session.SetUserID("random_user_id")
 	session.GrantScopes(session.Scopes)
-	session.SetClaimIDToken(goidc.ClaimAuthenticationTime, goidc.TimestampNow())
+	session.SetClaimIDToken(goidc.ClaimAuthenticationTime, time.Now().Unix())
 
 	// Add claims based on the claims parameter.
 	if session.Claims != nil {
@@ -81,7 +82,7 @@ func authenticateUserWithNoInteraction(
 	}
 
 	// Add claims based on scope.
-	if strings.Contains(session.Scopes, goidc.ScopeEmail.String()) {
+	if strings.Contains(session.Scopes, goidc.ScopeEmail.ID) {
 		session.SetClaimUserInfo(goidc.ClaimEmail, "random@gmail.com")
 		session.SetClaimUserInfo(goidc.ClaimEmailVerified, true)
 	}

@@ -22,7 +22,6 @@ func TestAreScopesAllowed(t *testing.T) {
 		goidc.NewScope("scope2"),
 		goidc.NewScope("scope3"),
 	}
-	ctx := goidc.NewTestContext(scopes)
 
 	client := goidc.Client{
 		ClientMetaInfo: goidc.ClientMetaInfo{
@@ -43,7 +42,7 @@ func TestAreScopesAllowed(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("case %d", i),
 			func(t *testing.T) {
-				assert.Equal(t, testCase.expectedResult, client.AreScopesAllowed(ctx, scopes, testCase.requestedScopes))
+				assert.Equal(t, testCase.expectedResult, client.AreScopesAllowed(scopes, testCase.requestedScopes))
 			},
 		)
 	}

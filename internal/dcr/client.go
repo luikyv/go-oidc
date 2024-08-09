@@ -3,11 +3,12 @@ package dcr
 import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"golang.org/x/crypto/bcrypt"
 )
 
-func setDefaults(ctx *oidc.Context, dynamicClient *dynamicClientRequest) goidc.OAuthError {
+func setDefaults(_ *oidc.Context, dynamicClient *dynamicClientRequest) oidc.Error {
 	if dynamicClient.AuthnMethod == "" {
 		dynamicClient.AuthnMethod = goidc.ClientAuthnSecretBasic
 	}
@@ -15,16 +16,11 @@ func setDefaults(ctx *oidc.Context, dynamicClient *dynamicClientRequest) goidc.O
 	if dynamicClient.AuthnMethod == goidc.ClientAuthnSecretPost ||
 		dynamicClient.AuthnMethod == goidc.ClientAuthnSecretBasic ||
 		dynamicClient.AuthnMethod == goidc.ClientAuthnSecretJWT {
-		secret, err := ClientSecret()
+		secret, err := clientSecret()
 		if err != nil {
-			return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+			return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 		}
 		dynamicClient.Secret = secret
-	}
-
-	if dynamicClient.Scopes != "" {
-		scopeIDs := goidc.SplitStringWithSpaces(dynamicClient.Scopes)
-		dynamicClient.Scopes = ctx.Scopes.SubSet(scopeIDs).String()
 	}
 
 	if dynamicClient.ResponseTypes == nil {
@@ -54,42 +50,6 @@ func setDefaults(ctx *oidc.Context, dynamicClient *dynamicClientRequest) goidc.O
 	return nil
 }
 
-func setCreationDefaults(
-	ctx *oidc.Context,
-	dynamicClient *dynamicClientRequest,
-) goidc.OAuthError {
-	id, err := ClientID()
-	if err != nil {
-		return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
-	}
-	dynamicClient.ID = id
-
-	token, err := RegistrationAccessToken()
-	if err != nil {
-		return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
-	}
-	dynamicClient.RegistrationAccessToken = token
-
-	return setDefaults(ctx, dynamicClient)
-}
-
-func setUpdateDefaults(
-	ctx *oidc.Context,
-	client *goidc.Client,
-	dynamicClient *dynamicClientRequest,
-) goidc.OAuthError {
-	dynamicClient.ID = client.ID
-	if ctx.ShouldRotateRegistrationTokens {
-		token, err := RegistrationAccessToken()
-		if err != nil {
-			return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
-		}
-		dynamicClient.RegistrationAccessToken = token
-	}
-
-	return setDefaults(ctx, dynamicClient)
-}
-
 func newClient(dynamicClient dynamicClientRequest) *goidc.Client {
 	hashedRegistrationAccessToken, _ := bcrypt.GenerateFromPassword([]byte(dynamicClient.RegistrationAccessToken), bcrypt.DefaultCost)
 	client := &goidc.Client{
@@ -110,46 +70,46 @@ func newClient(dynamicClient dynamicClientRequest) *goidc.Client {
 	return client
 }
 
-func getClientRegistrationURI(ctx *oidc.Context, clientID string) string {
-	return ctx.Host + string(goidc.EndpointDynamicClient) + "/" + clientID
+func registrationURI(ctx *oidc.Context, clientID string) string {
+	return ctx.Host + ctx.PathPrefix + goidc.EndpointDynamicClient + "/" + clientID
 }
 
-func getProtectedClient(
+func protectedClient(
 	ctx *oidc.Context,
 	dynamicClient dynamicClientRequest,
 ) (
 	*goidc.Client,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 	if dynamicClient.ID == "" {
-		return nil, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid client_id")
+		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid client_id")
 	}
 
 	client, err := ctx.Client(dynamicClient.ID)
 	if err != nil {
-		return nil, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, err.Error())
+		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest, err.Error())
 	}
 
 	if dynamicClient.RegistrationAccessToken == "" ||
 		!client.IsRegistrationAccessTokenValid(dynamicClient.RegistrationAccessToken) {
-		return nil, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "invalid token")
+		return nil, oidc.NewError(oidc.ErrorCodeAccessDenied, "invalid token")
 	}
 
 	return client, nil
 }
 
-func ClientID() (string, error) {
-	clientID, err := goidc.RandomString(goidc.DynamicClientIDLength)
+func clientID() (string, error) {
+	clientID, err := strutil.Random(dynamicClientIDLength)
 	if err != nil {
 		return "", err
 	}
 	return "dc-" + clientID, nil
 }
 
-func ClientSecret() (string, error) {
-	return goidc.RandomString(goidc.ClientSecretLength)
+func clientSecret() (string, error) {
+	return strutil.Random(clientSecretLength)
 }
 
-func RegistrationAccessToken() (string, error) {
-	return goidc.RandomString(goidc.RegistrationAccessTokenLength)
+func registrationAccessToken() (string, error) {
+	return strutil.Random(registrationAccessTokenLength)
 }

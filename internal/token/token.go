@@ -24,7 +24,7 @@ func HandleTokenCreation(
 	case goidc.GrantRefreshToken:
 		tokenResp, err = handleRefreshTokenGrantTokenCreation(ctx, req)
 	default:
-		tokenResp, err = tokenResponse{}, goidc.NewOAuthError(goidc.ErrorCodeUnsupportedGrantType, "unsupported grant type")
+		tokenResp, err = tokenResponse{}, oidc.NewError(oidc.ErrorCodeUnsupportedGrantType, "unsupported grant type")
 	}
 
 	return tokenResp, err
@@ -32,7 +32,7 @@ func HandleTokenCreation(
 
 // TokenID returns the ID of a token.
 // If it's a JWT, the ID is the the "jti" claim. Otherwise, the token is considered opaque and its ID is the token itself.
-func TokenID(ctx *oidc.Context, token string) (string, goidc.OAuthError) {
+func TokenID(ctx *oidc.Context, token string) (string, oidc.Error) {
 	if !IsJWS(token) {
 		return token, nil
 	}
@@ -44,7 +44,7 @@ func TokenID(ctx *oidc.Context, token string) (string, goidc.OAuthError) {
 
 	tokenID := claims[string(goidc.ClaimTokenID)]
 	if tokenID == nil {
-		return "", goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "invalid token")
+		return "", oidc.NewError(oidc.ErrorCodeAccessDenied, "invalid token")
 	}
 
 	return tokenID.(string), nil
@@ -56,34 +56,34 @@ func ValidClaims(
 	token string,
 ) (
 	map[string]any,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 	parsedToken, err := jwt.ParseSigned(token, ctx.SignatureAlgorithms())
 	if err != nil {
 		// If the token is not a valid JWT, we'll treat it as an opaque token.
-		return nil, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "could not parse the token")
+		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest, "could not parse the token")
 	}
 
 	if len(parsedToken.Headers) != 1 || parsedToken.Headers[0].KeyID == "" {
-		return nil, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid header kid")
+		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid header kid")
 	}
 
 	keyID := parsedToken.Headers[0].KeyID
 	publicKey, ok := ctx.PublicKey(keyID)
 	if !ok || publicKey.Use != string(goidc.KeyUsageSignature) {
-		return nil, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "invalid token")
+		return nil, oidc.NewError(oidc.ErrorCodeAccessDenied, "invalid token")
 	}
 
 	var claims jwt.Claims
 	var rawClaims map[string]any
 	if err := parsedToken.Claims(publicKey.Key, &claims, &rawClaims); err != nil {
-		return nil, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "invalid token")
+		return nil, oidc.NewError(oidc.ErrorCodeAccessDenied, "invalid token")
 	}
 
 	if err := claims.ValidateWithLeeway(jwt.Expected{
 		Issuer: ctx.Host,
 	}, time.Duration(0)); err != nil {
-		return nil, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "invalid token")
+		return nil, oidc.NewError(oidc.ErrorCodeAccessDenied, "invalid token")
 	}
 
 	return rawClaims, nil

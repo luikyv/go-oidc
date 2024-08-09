@@ -3,6 +3,7 @@ package token
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/authn"
@@ -17,18 +18,19 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 	// Given.
 	ctx := oidc.NewTestContext(t)
 
+	now := time.Now().Unix()
 	authorizationCode := "random_authz_code"
 	session := &goidc.AuthnSession{
 		ClientID:      oidc.TestClientID,
-		GrantedScopes: goidc.ScopeOpenID.String(),
+		GrantedScopes: goidc.ScopeOpenID.ID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
-			Scopes:      goidc.ScopeOpenID.String(),
+			Scopes:      goidc.ScopeOpenID.ID,
 			RedirectURI: oidc.TestClientRedirectURI,
 		},
 		AuthorizationCode:     authorizationCode,
 		Subject:               "user_id",
-		CreatedAtTimestamp:    goidc.TimestampNow(),
-		ExpiresAtTimestamp:    goidc.TimestampNow() + 60,
+		CreatedAtTimestamp:    now,
+		ExpiresAtTimestamp:    now + 60,
 		Store:                 make(map[string]any),
 		AdditionalTokenClaims: make(map[string]any),
 	}

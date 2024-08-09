@@ -1,9 +1,12 @@
 package token
 
 import (
+	"time"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/luikyv/go-oidc/internal/authn"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -12,11 +15,11 @@ func handleAuthorizationCodeGrantTokenCreation(
 	req tokenRequest,
 ) (
 	tokenResponse,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 
 	if req.AuthorizationCode == "" {
-		return tokenResponse{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid authorization code")
+		return tokenResponse{}, oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid authorization code")
 	}
 
 	client, session, oauthErr := getAuthenticatedClientAndSession(ctx, req)
@@ -50,7 +53,7 @@ func handleAuthorizationCodeGrantTokenCreation(
 		RefreshToken: grantSession.RefreshToken,
 	}
 
-	if goidc.ScopesContainsOpenID(session.GrantedScopes) {
+	if strutil.ContainsOpenID(session.GrantedScopes) {
 		tokenResp.IDToken, err = MakeIDToken(ctx, client, newIDTokenOptions(grantOptions))
 		if err != nil {
 			return tokenResponse{}, err
@@ -73,24 +76,25 @@ func handleAuthorizationCodeGrantTokenCreation(
 func generateAuthorizationCodeGrantSession(
 	ctx *oidc.Context,
 	token Token,
-	grantOptions goidc.GrantOptions,
+	grantOptions GrantOptions,
 ) (
 	*goidc.GrantSession,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 
 	grantSession := NewGrantSession(grantOptions, token)
-	if goidc.ScopesContainsOfflineAccess(grantSession.GrantedScopes) {
+	// TODO: Let the dev say when to issue a refresh token.
+	if strutil.ContainsOfflineAccess(grantSession.GrantedScopes) {
 		token, err := refreshToken()
 		if err != nil {
-			return nil, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+			return nil, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 		}
 		grantSession.RefreshToken = token
-		grantSession.ExpiresAtTimestamp = goidc.TimestampNow() + ctx.RefreshTokenLifetimeSecs
+		grantSession.ExpiresAtTimestamp = time.Now().Unix() + ctx.RefreshTokenLifetimeSecs
 	}
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return nil, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return nil, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
 	return grantSession, nil
@@ -101,22 +105,22 @@ func validateAuthorizationCodeGrantRequest(
 	req tokenRequest,
 	client *goidc.Client,
 	session *goidc.AuthnSession,
-) goidc.OAuthError {
+) oidc.Error {
 
 	if !client.IsGrantTypeAllowed(goidc.GrantAuthorizationCode) {
-		return goidc.NewOAuthError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
+		return oidc.NewError(oidc.ErrorCodeUnauthorizedClient, "invalid grant type")
 	}
 
 	if session.ClientID != client.ID {
-		return goidc.NewOAuthError(goidc.ErrorCodeInvalidGrant, "the authorization code was not issued to the client")
+		return oidc.NewError(oidc.ErrorCodeInvalidGrant, "the authorization code was not issued to the client")
 	}
 
 	if session.IsExpired() {
-		return goidc.NewOAuthError(goidc.ErrorCodeInvalidGrant, "the authorization code is expired")
+		return oidc.NewError(oidc.ErrorCodeInvalidGrant, "the authorization code is expired")
 	}
 
 	if session.RedirectURI != req.RedirectURI {
-		return goidc.NewOAuthError(goidc.ErrorCodeInvalidGrant, "invalid redirect_uri")
+		return oidc.NewError(oidc.ErrorCodeInvalidGrant, "invalid redirect_uri")
 	}
 
 	if err := validatePkce(ctx, req, client, session); err != nil {
@@ -139,11 +143,11 @@ func validatePkce(
 	req tokenRequest,
 	_ *goidc.Client,
 	session *goidc.AuthnSession,
-) goidc.OAuthError {
+) oidc.Error {
 	// RFC 7636. "...with a minimum length of 43 characters and a maximum length of 128 characters."
 	codeVerifierLengh := len(req.CodeVerifier)
 	if req.CodeVerifier != "" && (codeVerifierLengh < 43 || codeVerifierLengh > 128) {
-		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid code verifier")
+		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid code verifier")
 	}
 
 	codeChallengeMethod := session.CodeChallengeMethod
@@ -156,7 +160,7 @@ func validatePkce(
 	// In the case PKCE is enabled, if the session was created with a code challenge, the token request must contain the right code verifier.
 	if ctx.PkceIsEnabled && session.CodeChallenge != "" &&
 		(req.CodeVerifier == "" || !isPKCEValid(req.CodeVerifier, session.CodeChallenge, codeChallengeMethod)) {
-		return goidc.NewOAuthError(goidc.ErrorCodeInvalidGrant, "invalid pkce")
+		return oidc.NewError(oidc.ErrorCodeInvalidGrant, "invalid pkce")
 	}
 
 	return nil
@@ -168,7 +172,7 @@ func getAuthenticatedClientAndSession(
 ) (
 	*goidc.Client,
 	*goidc.AuthnSession,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 
 	sessionResultCh := make(chan resultChannel)
@@ -193,7 +197,7 @@ func getSessionByAuthorizationCode(ctx *oidc.Context, authorizationCode string, 
 	if err != nil {
 		ch <- resultChannel{
 			Result: nil,
-			Err:    goidc.NewWrappingOAuthError(err, goidc.ErrorCodeInvalidGrant, "invalid authorization code"),
+			Err:    oidc.NewError(oidc.ErrorCodeInvalidGrant, "invalid authorization code"),
 		}
 	}
 
@@ -203,7 +207,7 @@ func getSessionByAuthorizationCode(ctx *oidc.Context, authorizationCode string, 
 	if err != nil {
 		ch <- resultChannel{
 			Result: nil,
-			Err:    goidc.NewWrappingOAuthError(err, goidc.ErrorCodeInternalError, "could not delete session"),
+			Err:    oidc.NewError(oidc.ErrorCodeInternalError, "could not delete session"),
 		}
 	}
 
@@ -219,17 +223,17 @@ func newAuthorizationCodeGrantOptions(
 	client *goidc.Client,
 	session *goidc.AuthnSession,
 ) (
-	goidc.GrantOptions,
-	goidc.OAuthError,
+	GrantOptions,
+	oidc.Error,
 ) {
 
 	tokenOptions, err := ctx.TokenOptions(client, req.Scopes)
 	if err != nil {
-		return goidc.GrantOptions{}, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, err.Error())
+		return GrantOptions{}, oidc.NewError(oidc.ErrorCodeAccessDenied, err.Error())
 	}
 	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
 
-	grantOptions := goidc.GrantOptions{
+	grantOptions := GrantOptions{
 		GrantType:                goidc.GrantAuthorizationCode,
 		GrantedScopes:            session.GrantedScopes,
 		Subject:                  session.Subject,

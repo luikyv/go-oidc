@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/authn"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -67,7 +69,7 @@ type authorizationResponse struct {
 	IDToken           string
 	AuthorizationCode string
 	State             string
-	Error             goidc.ErrorCode
+	Error             oidc.ErrorCode
 	ErrorDescription  string
 }
 
@@ -158,7 +160,7 @@ func newPushedAuthorizationRequest(req *http.Request) pushedAuthorizationRequest
 
 type pushedAuthorizationResponse struct {
 	RequestURI string `json:"request_uri"`
-	ExpiresIn  int    `json:"expires_in"`
+	ExpiresIn  int64  `json:"expires_in"`
 }
 
 func newAuthnSession(authParams goidc.AuthorizationParameters, client *goidc.Client) *goidc.AuthnSession {
@@ -166,7 +168,7 @@ func newAuthnSession(authParams goidc.AuthorizationParameters, client *goidc.Cli
 		ID:                       uuid.NewString(),
 		ClientID:                 client.ID,
 		AuthorizationParameters:  authParams,
-		CreatedAtTimestamp:       goidc.TimestampNow(),
+		CreatedAtTimestamp:       time.Now().Unix(),
 		Store:                    make(map[string]any),
 		AdditionalTokenClaims:    make(map[string]any),
 		AdditionalIDTokenClaims:  map[string]any{},

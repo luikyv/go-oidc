@@ -11,7 +11,7 @@ func handleClientCredentialsGrantTokenCreation(
 	req tokenRequest,
 ) (
 	tokenResponse,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 	client, oauthErr := authn.Client(ctx, req.ClientAuthnRequest)
 	if oauthErr != nil {
@@ -54,15 +54,15 @@ func generateClientCredentialsGrantSession(
 	ctx *oidc.Context,
 	_ *goidc.Client,
 	token Token,
-	grantOptions goidc.GrantOptions,
+	grantOptions GrantOptions,
 ) (
 	*goidc.GrantSession,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 
 	grantSession := NewGrantSession(grantOptions, token)
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return nil, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return nil, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
 	return grantSession, nil
@@ -72,14 +72,14 @@ func validateClientCredentialsGrantRequest(
 	ctx *oidc.Context,
 	req tokenRequest,
 	client *goidc.Client,
-) goidc.OAuthError {
+) oidc.Error {
 
 	if !client.IsGrantTypeAllowed(goidc.GrantClientCredentials) {
-		return goidc.NewOAuthError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
+		return oidc.NewError(oidc.ErrorCodeUnauthorizedClient, "invalid grant type")
 	}
 
-	if !client.AreScopesAllowed(ctx, ctx.Scopes, req.Scopes) {
-		return goidc.NewOAuthError(goidc.ErrorCodeInvalidScope, "invalid scope")
+	if !client.AreScopesAllowed(ctx.Scopes, req.Scopes) {
+		return oidc.NewError(oidc.ErrorCodeInvalidScope, "invalid scope")
 	}
 
 	if err := validateTokenBindingRequestWithDPoP(ctx, req, client); err != nil {
@@ -98,19 +98,19 @@ func newClientCredentialsGrantOptions(
 	client *goidc.Client,
 	req tokenRequest,
 ) (
-	goidc.GrantOptions,
-	goidc.OAuthError,
+	GrantOptions,
+	oidc.Error,
 ) {
 	tokenOptions, err := ctx.TokenOptions(client, req.Scopes)
 	if err != nil {
-		return goidc.GrantOptions{}, goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, err.Error())
+		return GrantOptions{}, oidc.NewError(oidc.ErrorCodeAccessDenied, err.Error())
 	}
 
 	scopes := req.Scopes
 	if scopes == "" {
 		scopes = client.Scopes
 	}
-	return goidc.GrantOptions{
+	return GrantOptions{
 		GrantType:     goidc.GrantClientCredentials,
 		GrantedScopes: scopes,
 		Subject:       client.ID,

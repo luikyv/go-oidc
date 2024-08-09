@@ -2,6 +2,7 @@ package authorize
 
 import (
 	"testing"
+	"time"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -41,7 +42,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectURI:  client.RedirectURIS[0],
 					ResponseType: goidc.ResponseTypeCode,
-					Scopes:       goidc.ScopeOpenID.String(),
+					Scopes:       goidc.ScopeOpenID.ID,
 				},
 			},
 			func(client *goidc.Client) *goidc.Client {
@@ -56,7 +57,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectURI:  client.RedirectURIS[0],
 					ResponseType: goidc.ResponseTypeCode,
-					Scopes:       goidc.ScopeOpenID.String(),
+					Scopes:       goidc.ScopeOpenID.ID,
 				},
 			},
 			func(client *goidc.Client) *goidc.Client {
@@ -71,7 +72,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 			authorizationRequest{
 				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectURI: client.RedirectURIS[0],
-					Scopes:      goidc.ScopeOpenID.String(),
+					Scopes:      goidc.ScopeOpenID.ID,
 				},
 			},
 			func(client *goidc.Client) *goidc.Client {
@@ -130,10 +131,10 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 				}
 
 				if c.ShouldRedirectError {
-					var redirectErr goidc.OAuthRedirectError
+					var redirectErr redirectionError
 					assert.ErrorAs(t, err, &redirectErr)
 				} else {
-					var oauthErr goidc.OAuthBaseError
+					var oauthErr oidc.Error
 					assert.ErrorAs(t, err, &oauthErr)
 				}
 
@@ -167,7 +168,7 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 			},
 			&goidc.AuthnSession{
 				ClientID:           client.ID,
-				ExpiresAtTimestamp: goidc.TimestampNow() + 10,
+				ExpiresAtTimestamp: time.Now().Unix() + 10,
 			},
 			func(client *goidc.Client) *goidc.Client {
 				return client
@@ -183,13 +184,13 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 					RedirectURI:  client.RedirectURIS[0],
 					ResponseType: goidc.ResponseTypeCodeAndIDToken,
 					ResponseMode: goidc.ResponseModeFragment,
-					Scopes:       goidc.ScopeOpenID.String(),
+					Scopes:       goidc.ScopeOpenID.ID,
 					Nonce:        "random_nonce",
 				},
 			},
 			&goidc.AuthnSession{
 				ClientID:           client.ID,
-				ExpiresAtTimestamp: goidc.TimestampNow() + 10,
+				ExpiresAtTimestamp: time.Now().Unix() + 10,
 				AuthorizationParameters: goidc.AuthorizationParameters{
 					RedirectURI: client.RedirectURIS[0],
 				},
@@ -222,10 +223,10 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 				}
 
 				if c.ShouldRedirectError {
-					var redirectErr goidc.OAuthRedirectError
+					var redirectErr redirectionError
 					assert.ErrorAs(t, err, &redirectErr)
 				} else {
-					var oauthErr goidc.OAuthBaseError
+					var oauthErr oidc.Error
 					assert.ErrorAs(t, err, &oauthErr)
 				}
 			},
@@ -274,7 +275,7 @@ func TestValidateAuthorizationRequestWithJAR(t *testing.T) {
 					RedirectURI:  client.RedirectURIS[0],
 					ResponseType: goidc.ResponseTypeCodeAndIDToken,
 					ResponseMode: goidc.ResponseModeFragment,
-					Scopes:       goidc.ScopeOpenID.String(),
+					Scopes:       goidc.ScopeOpenID.ID,
 				},
 			},
 			authorizationRequest{
@@ -325,10 +326,10 @@ func TestValidateAuthorizationRequestWithJAR(t *testing.T) {
 				}
 
 				if c.ShouldRedirectError {
-					var redirectErr goidc.OAuthRedirectError
+					var redirectErr redirectionError
 					assert.ErrorAs(t, err, &redirectErr)
 				} else {
-					var oauthErr goidc.OAuthBaseError
+					var oauthErr oidc.Error
 					assert.ErrorAs(t, err, &oauthErr)
 				}
 			},

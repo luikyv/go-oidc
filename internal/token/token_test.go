@@ -51,9 +51,9 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	// Then.
 	require.NotNil(t, err, "the client should not be authenticated")
 
-	var oauthErr goidc.OAuthBaseError
+	var oauthErr oidc.Error
 	require.ErrorAs(t, err, &oauthErr)
-	assert.Equal(t, goidc.ErrorCodeInvalidClient, oauthErr.ErrorCode, "invalid error code")
+	assert.Equal(t, oidc.ErrorCodeInvalidClient, oauthErr.Code(), "invalid error code")
 }
 
 func TestHandleGrantCreationWithDPoP(t *testing.T) {

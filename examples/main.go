@@ -3,10 +3,11 @@ package main
 import (
 	"crypto/tls"
 	"net/http"
+	"strings"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"github.com/luikyv/go-oidc/pkg/goidc/provider"
+	"github.com/luikyv/go-oidc/pkg/provider"
 )
 
 func main() {
@@ -14,7 +15,7 @@ func main() {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	serverKeyID := "rs256_key"
-	scopes := []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeOffilineAccess, goidc.ScopeEmail}
+	scopes := []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeOfflineAccess, goidc.ScopeEmail}
 
 	// Create and configure the manager.
 	openidProvider, err := provider.New(
@@ -62,7 +63,11 @@ func policy() goidc.AuthnPolicy {
 
 func dcrPlugin(scopes []goidc.Scope) goidc.DCRPluginFunc {
 	return func(ctx goidc.Context, clientInfo *goidc.ClientMetaInfo) {
-		clientInfo.Scopes = goidc.Scopes(scopes).String()
+		var s []string
+		for _, scope := range scopes {
+			s = append(s, scope.ID)
+		}
+		clientInfo.Scopes = strings.Join(s, " ")
 	}
 }
 

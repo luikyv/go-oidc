@@ -21,7 +21,7 @@ func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 			ClientSecret: oidc.TestClientSecret,
 		},
 		GrantType: goidc.GrantClientCredentials,
-		Scopes:    oidc.TestScope1.String(),
+		Scopes:    oidc.TestScope1.ID,
 	}
 
 	// When.

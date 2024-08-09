@@ -6,6 +6,10 @@ import (
 )
 
 func wellKnown(ctx *oidc.Context) openIDConfiguration {
+	var scopes []string
+	for _, scope := range ctx.Scopes {
+		scopes = append(scopes, scope.ID)
+	}
 	config := openIDConfiguration{
 		Issuer:                               ctx.Host,
 		AuthorizationEndpoint:                ctx.BaseURL() + string(goidc.EndpointAuthorization),
@@ -21,7 +25,7 @@ func wellKnown(ctx *oidc.Context) openIDConfiguration {
 		IDTokenSignatureAlgorithms:           ctx.UserInfoSignatureAlgorithms(),
 		UserInfoSignatureAlgorithms:          ctx.UserInfoSignatureAlgorithms(),
 		ClientAuthnMethods:                   ctx.ClientAuthnMethods,
-		Scopes:                               ctx.Scopes.IDs(),
+		Scopes:                               scopes,
 		TokenEndpointClientSigningAlgorithms: ctx.ClientSignatureAlgorithms(),
 		IssuerResponseParameterIsEnabled:     ctx.IssuerResponseParameterIsEnabled,
 		ClaimsParameterIsEnabled:             ctx.ClaimsParameterIsEnabled,

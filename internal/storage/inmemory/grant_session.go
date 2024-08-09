@@ -2,6 +2,7 @@ package inmemory
 
 import (
 	"context"
+	"errors"
 
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -26,7 +27,7 @@ func (manager *GrantSessionManager) GetByTokenID(_ context.Context, tokenID stri
 		return t.TokenID == tokenID
 	})
 	if !exists {
-		return nil, goidc.ErrorEntityNotFound
+		return nil, errors.New("entity not found")
 	}
 
 	return grantSession, nil
@@ -37,7 +38,7 @@ func (manager *GrantSessionManager) GetByRefreshToken(_ context.Context, refresh
 		return t.RefreshToken == refreshToken
 	})
 	if !exists {
-		return nil, goidc.ErrorEntityNotFound
+		return nil, errors.New("entity not found")
 	}
 
 	return grantSession, nil

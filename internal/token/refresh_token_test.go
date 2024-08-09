@@ -2,6 +2,7 @@ package token
 
 import (
 	"testing"
+	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/authn"
@@ -19,18 +20,17 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
+	now := time.Now().Unix()
 	grantSession := &goidc.GrantSession{
 		RefreshToken:       refreshToken,
-		ExpiresAtTimestamp: goidc.TimestampNow() + 60,
-		CreatedAtTimestamp: goidc.TimestampNow(),
-		GrantOptions: goidc.GrantOptions{
-			Subject:       username,
-			ClientID:      oidc.TestClientID,
-			GrantedScopes: client.Scopes,
-			TokenOptions: goidc.TokenOptions{
-				TokenFormat:       goidc.TokenFormatJWT,
-				TokenLifetimeSecs: 60,
-			},
+		ExpiresAtTimestamp: now + 60,
+		CreatedAtTimestamp: now,
+		Subject:            username,
+		ClientID:           oidc.TestClientID,
+		GrantedScopes:      client.Scopes,
+		TokenOptions: goidc.TokenOptions{
+			TokenFormat:       goidc.TokenFormatJWT,
+			TokenLifetimeSecs: 60,
 		},
 	}
 	require.Nil(t, ctx.SaveGrantSession(grantSession))
@@ -67,17 +67,16 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
+	now := time.Now().Unix()
 	grantSession := &goidc.GrantSession{
 		RefreshToken:       refreshToken,
 		ActiveScopes:       client.Scopes,
-		ExpiresAtTimestamp: goidc.TimestampNow() - 10,
-		GrantOptions: goidc.GrantOptions{
-			Subject:       username,
-			ClientID:      oidc.TestClientID,
-			GrantedScopes: client.Scopes,
-			TokenOptions: goidc.TokenOptions{
-				TokenLifetimeSecs: 60,
-			},
+		ExpiresAtTimestamp: now - 10,
+		Subject:            username,
+		ClientID:           oidc.TestClientID,
+		GrantedScopes:      client.Scopes,
+		TokenOptions: goidc.TokenOptions{
+			TokenLifetimeSecs: 60,
 		},
 	}
 	require.Nil(t, ctx.SaveGrantSession(grantSession))
@@ -103,5 +102,5 @@ func TestGenerateRefreshToken(t *testing.T) {
 
 	// Then.
 	assert.Nil(t, err)
-	assert.Len(t, token, goidc.RefreshTokenLength)
+	assert.Len(t, token, RefreshTokenLength)
 }

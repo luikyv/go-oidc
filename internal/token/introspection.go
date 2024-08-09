@@ -11,7 +11,7 @@ func introspect(
 	req tokenIntrospectionRequest,
 ) (
 	goidc.TokenInfo,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 	client, err := authn.Client(ctx, req.ClientAuthnRequest)
 	if err != nil {
@@ -29,13 +29,13 @@ func validateTokenIntrospectionRequest(
 	_ *oidc.Context,
 	req tokenIntrospectionRequest,
 	client *goidc.Client,
-) goidc.OAuthError {
+) oidc.Error {
 	if !client.IsGrantTypeAllowed(goidc.GrantIntrospection) {
-		return goidc.NewOAuthError(goidc.ErrorCodeInvalidGrant, "client not allowed to introspect tokens")
+		return oidc.NewError(oidc.ErrorCodeInvalidGrant, "client not allowed to introspect tokens")
 	}
 
 	if req.Token == "" {
-		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "token is required")
+		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "token is required")
 	}
 
 	return nil
@@ -46,7 +46,7 @@ func TokenIntrospectionInfo(
 	accessToken string,
 ) goidc.TokenInfo {
 
-	if len(accessToken) == goidc.RefreshTokenLength {
+	if len(accessToken) == RefreshTokenLength {
 		return getRefreshTokenIntrospectionInfo(ctx, accessToken)
 	}
 
@@ -68,7 +68,7 @@ func getRefreshTokenIntrospectionInfo(
 		}
 	}
 
-	if grantSession.IsRefreshSessionExpired() {
+	if grantSession.IsExpired() {
 		return goidc.TokenInfo{
 			IsActive: false,
 		}

@@ -4,15 +4,16 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func handleUserInfoRequest(ctx *oidc.Context) (userInfoResponse, goidc.OAuthError) {
+func handleUserInfoRequest(ctx *oidc.Context) (userInfoResponse, oidc.Error) {
 
 	accessToken, tokenType, ok := ctx.AuthorizationToken()
 	if !ok {
-		return userInfoResponse{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidToken, "no token found")
+		return userInfoResponse{}, oidc.NewError(oidc.ErrorCodeInvalidToken, "no token found")
 	}
 
 	tokenID, oauthErr := token.TokenID(ctx, accessToken)
@@ -22,7 +23,7 @@ func handleUserInfoRequest(ctx *oidc.Context) (userInfoResponse, goidc.OAuthErro
 
 	grantSession, err := ctx.GrantSessionByTokenID(tokenID)
 	if err != nil {
-		return userInfoResponse{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid token")
+		return userInfoResponse{}, oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid token")
 	}
 
 	if err := validateUserInfoRequest(ctx, grantSession, accessToken, tokenType); err != nil {
@@ -31,7 +32,7 @@ func handleUserInfoRequest(ctx *oidc.Context) (userInfoResponse, goidc.OAuthErro
 
 	client, err := ctx.Client(grantSession.ClientID)
 	if err != nil {
-		return userInfoResponse{}, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return userInfoResponse{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
 	resp, oauthErr := getUserInfoResponse(ctx, client, grantSession)
@@ -48,7 +49,7 @@ func getUserInfoResponse(
 	grantSession *goidc.GrantSession,
 ) (
 	userInfoResponse,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 
 	userInfoClaims := map[string]any{
@@ -70,7 +71,7 @@ func getUserInfoResponse(
 	userInfoClaims[goidc.ClaimAudience] = client.ID
 	jwtUserInfoClaims, err := signUserInfoClaims(ctx, client, userInfoClaims)
 	if err != nil {
-		return userInfoResponse{}, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return userInfoResponse{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
 	// If the client doesn't require the user info to be encrypted,
@@ -82,7 +83,7 @@ func getUserInfoResponse(
 
 	jwtUserInfoClaims, err = encryptUserInfoJWT(ctx, client, jwtUserInfoClaims)
 	if err != nil {
-		return userInfoResponse{}, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return userInfoResponse{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 	resp.JWTClaims = jwtUserInfoClaims
 	return resp, nil
@@ -94,7 +95,7 @@ func signUserInfoClaims(
 	claims map[string]any,
 ) (
 	string,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 	privateJWK := ctx.UserInfoSignatureKey(client)
 	signatureAlgorithm := jose.SignatureAlgorithm(privateJWK.Algorithm)
@@ -103,12 +104,12 @@ func signUserInfoClaims(
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
 	)
 	if err != nil {
-		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return "", oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
 	idToken, err := jwt.Signed(signer).Claims(claims).Serialize()
 	if err != nil {
-		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return "", oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
 	return idToken, nil
@@ -120,11 +121,11 @@ func encryptUserInfoJWT(
 	userInfoJWT string,
 ) (
 	string,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
-	jwk, oauthErr := client.UserInfoEncryptionJWK()
-	if oauthErr != nil {
-		return "", oauthErr
+	jwk, err := client.UserInfoEncryptionJWK()
+	if err != nil {
+		return "", oidc.NewError(oidc.ErrorCodeInvalidRequest, err.Error())
 	}
 
 	encryptedUserInfoJWT, oauthErr := token.EncryptJWT(ctx, userInfoJWT, jwk, client.UserInfoContentEncryptionAlgorithm)
@@ -133,4 +134,25 @@ func encryptUserInfoJWT(
 	}
 
 	return encryptedUserInfoJWT, nil
+}
+
+func validateUserInfoRequest(
+	ctx *oidc.Context,
+	grantSession *goidc.GrantSession,
+	accessToken string,
+	tokenType goidc.TokenType,
+) oidc.Error {
+	if grantSession.HasLastTokenExpired() {
+		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "token expired")
+	}
+
+	if !strutil.ContainsOpenID(grantSession.ActiveScopes) {
+		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid scope")
+	}
+
+	confirmation := token.Confirmation{
+		JWKThumbprint:               grantSession.JWKThumbprint,
+		ClientCertificateThumbprint: grantSession.ClientCertificateThumbprint,
+	}
+	return token.ValidatePoP(ctx, accessToken, tokenType, confirmation)
 }

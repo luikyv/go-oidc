@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func HandlerCreate(config oidc.Configuration) http.HandlerFunc {
@@ -44,7 +43,7 @@ func HandlerUpdate(config oidc.Configuration) http.HandlerFunc {
 
 		token := ctx.BearerToken()
 		if token == "" {
-			ctx.WriteError(goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "no token found"))
+			ctx.WriteError(oidc.NewError(oidc.ErrorCodeAccessDenied, "no token found"))
 			return
 		}
 
@@ -69,7 +68,7 @@ func HandlerGet(config oidc.Configuration) http.HandlerFunc {
 
 		token := ctx.BearerToken()
 		if token == "" {
-			ctx.WriteError(goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "no token found"))
+			ctx.WriteError(oidc.NewError(oidc.ErrorCodeAccessDenied, "no token found"))
 			return
 		}
 
@@ -97,7 +96,7 @@ func HandlerDelete(config oidc.Configuration) http.HandlerFunc {
 
 		token := ctx.BearerToken()
 		if token == "" {
-			ctx.WriteError(goidc.NewOAuthError(goidc.ErrorCodeAccessDenied, "no token found"))
+			ctx.WriteError(oidc.NewError(oidc.ErrorCodeAccessDenied, "no token found"))
 			return
 		}
 

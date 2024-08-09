@@ -1,39 +1,20 @@
 package goidc
 
 import (
-	"crypto/tls"
-	"net/http"
 	"slices"
 	"strings"
 )
 
 const (
-	DefaultAuthenticationSessionTimeoutSecs     = 30 * 60
-	DefaultIDTokenLifetimeSecs                  = 600
-	CallbackIDLength                        int = 20
-	RequestURILength                        int = 20
-	AuthorizationCodeLifetimeSecs           int = 60
-	AuthorizationCodeLength                 int = 30
-	// RefreshTokenLength has an unusual value so to avoid refresh tokens and opaque access token to be confused.
-	// This happens since a refresh token is identified by its length during introspection.
-	RefreshTokenLength              int = 99
-	DefaultRefreshTokenLifetimeSecs int = 6000
-	DynamicClientIDLength           int = 30
-	// ClientSecretLength must be at least 64 characters, so that it can be also used for
-	// symmetric encryption during, for instance, authentication with client_secret_jwt.
-	// For client_secret_jwt, the highest algorithm we accept is HS512 which requires a key of at least 512 bits (64 characters).
-	ClientSecretLength            int    = 64
-	RegistrationAccessTokenLength int    = 50
-	DefaultTokenLifetimeSecs      int    = 300
-	ProtectedParamPrefix          string = "p_"
+	EndpointWellKnown                  = "/.well-known/openid-configuration"
+	EndpointJSONWebKeySet              = "/jwks"
+	EndpointPushedAuthorizationRequest = "/par"
+	EndpointAuthorization              = "/authorize"
+	EndpointToken                      = "/token"
+	EndpointUserInfo                   = "/userinfo"
+	EndpointDynamicClient              = "/register"
+	EndpointTokenIntrospection         = "/introspect"
 )
-
-var FAPIAllowedCipherSuites []uint16 = []uint16{
-	tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-	tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-	tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-	tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-}
 
 type Profile string
 
@@ -70,22 +51,6 @@ func (rt ResponseType) Contains(responseType ResponseType) bool {
 
 func (rt ResponseType) IsImplicit() bool {
 	return rt.Contains(ResponseTypeIDToken) || rt.Contains(ResponseTypeToken)
-}
-
-// DefaultResponseMode returns the response mode based on the response type.
-// According to "5. Definitions of Multiple-Valued Response Type Combinations" of https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#Combinations.
-func (rt ResponseType) DefaultResponseMode(jarm bool) ResponseMode {
-	if rt.IsImplicit() {
-		if jarm {
-			return ResponseModeFragmentJWT
-		}
-		return ResponseModeFragment
-	}
-
-	if jarm {
-		return ResponseModeQueryJWT
-	}
-	return ResponseModeQuery
 }
 
 type ResponseMode string
@@ -185,43 +150,12 @@ const (
 	// TODO: Implement pairwise.
 )
 
-type ErrorCode string
-
-const (
-	ErrorCodeAccessDenied                ErrorCode = "access_denied"
-	ErrorCodeInvalidClient               ErrorCode = "invalid_client"
-	ErrorCodeInvalidGrant                ErrorCode = "invalid_grant"
-	ErrorCodeInvalidRequest              ErrorCode = "invalid_request"
-	ErrorCodeUnauthorizedClient          ErrorCode = "unauthorized_client"
-	ErrorCodeInvalidScope                ErrorCode = "invalid_scope"
-	ErrorCodeInvalidAuthorizationDetails ErrorCode = "invalid_authorization_details"
-	ErrorCodeUnsupportedGrantType        ErrorCode = "unsupported_grant_type"
-	ErrorCodeInvalidResquestObject       ErrorCode = "invalid_request_object"
-	ErrorCodeInvalidToken                ErrorCode = "invalid_token"
-	ErrorCodeInternalError               ErrorCode = "internal_error"
-)
-
-func (ec ErrorCode) StatusCode() int {
-	switch ec {
-	case ErrorCodeAccessDenied:
-		return http.StatusForbidden
-	case ErrorCodeInvalidClient, ErrorCodeInvalidToken, ErrorCodeUnauthorizedClient:
-		return http.StatusUnauthorized
-	case ErrorCodeInternalError:
-		return http.StatusInternalServerError
-	default:
-		return http.StatusBadRequest
-	}
-}
-
 const (
 	HeaderDPoP string = "DPoP"
 	// HeaderClientCertificate is the header used to transmit a client certificate that was validated by a trusted source.
 	// The value in this header is expected to be the URL encoding of the client's certificate in PEM format.
 	HeaderClientCertificate string = "X-Client-Cert"
 )
-
-const ClientSecretCharset string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 type AuthnStatus string
 
@@ -236,19 +170,6 @@ type TokenFormat string
 const (
 	TokenFormatJWT    TokenFormat = "jwt"
 	TokenFormatOpaque TokenFormat = "opaque"
-)
-
-type EndpointPath string
-
-const (
-	EndpointWellKnown                  EndpointPath = "/.well-known/openid-configuration"
-	EndpointJSONWebKeySet              EndpointPath = "/jwks"
-	EndpointPushedAuthorizationRequest EndpointPath = "/par"
-	EndpointAuthorization              EndpointPath = "/authorize"
-	EndpointToken                      EndpointPath = "/token"
-	EndpointUserInfo                   EndpointPath = "/userinfo"
-	EndpointDynamicClient              EndpointPath = "/register"
-	EndpointTokenIntrospection         EndpointPath = "/introspect"
 )
 
 // AMR defines a type for authentication method references.

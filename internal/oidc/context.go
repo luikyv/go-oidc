@@ -98,13 +98,13 @@ func (ctx *Context) ExecuteDCRPlugin(clientInfo *goidc.ClientMetaInfo) {
 	}
 }
 
-func (ctx *Context) ExecuteAuthorizeErrorPlugin(oauthErr goidc.OAuthError) goidc.OAuthError {
+func (ctx *Context) ExecuteAuthorizeErrorPlugin(err Error) Error {
 	if ctx.AuthorizeErrorPlugin == nil {
-		return oauthErr
+		return err
 	}
 
-	if err := ctx.AuthorizeErrorPlugin(ctx, oauthErr); err != nil {
-		return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+	if err := ctx.AuthorizeErrorPlugin(ctx, err); err != nil {
+		return NewError(ErrorCodeInternalError, err.Error())
 	}
 
 	return nil
@@ -327,10 +327,10 @@ func (ctx *Context) WriteJWT(token string, status int) error {
 
 func (ctx *Context) WriteError(err error) {
 
-	var oauthErr goidc.OAuthError
+	var oauthErr Error
 	if !errors.As(err, &oauthErr) {
 		if err := ctx.Write(map[string]any{
-			"error":             goidc.ErrorCodeInternalError,
+			"error":             ErrorCodeInternalError,
 			"error_description": err.Error(),
 		}, http.StatusInternalServerError); err != nil {
 			ctx.Response().WriteHeader(http.StatusInternalServerError)
@@ -488,7 +488,7 @@ func (ctx *Context) privateKey(keyID string) jose.JSONWebKey {
 	return keys[0]
 }
 
-//---------------------------------------- oidc.Context ----------------------------------------//
+//----------------------------------------Context ----------------------------------------//
 
 func (ctx *Context) Deadline() (deadline time.Time, ok bool) {
 	return ctx.Request().Context().Deadline()
@@ -513,7 +513,7 @@ type Configuration struct {
 	PathPrefix          string
 	MTLSIsEnabled       bool
 	MTLSHost            string
-	Scopes              goidc.Scopes
+	Scopes              []goidc.Scope
 	ClientManager       goidc.ClientManager
 	GrantSessionManager goidc.GrantSessionManager
 	AuthnSessionManager goidc.AuthnSessionManager
@@ -531,11 +531,11 @@ type Configuration struct {
 	// PrivateKeyJWTSignatureAlgorithms contains algorithms accepted for signing client assertions during private_key_jwt.
 	PrivateKeyJWTSignatureAlgorithms []jose.SignatureAlgorithm
 	// PrivateKeyJWTAssertionLifetimeSecs is used to validate that the assertion will expire in the near future during private_key_jwt.
-	PrivateKeyJWTAssertionLifetimeSecs int
+	PrivateKeyJWTAssertionLifetimeSecs int64
 	// ClientSecretJWTSignatureAlgorithms constains algorithms accepted for signing client assertions during client_secret_jwt.
 	ClientSecretJWTSignatureAlgorithms []jose.SignatureAlgorithm
 	// It is used to validate that the assertion will expire in the near future during client_secret_jwt.
-	ClientSecretJWTAssertionLifetimeSecs int
+	ClientSecretJWTAssertionLifetimeSecs int64
 	OpenIDScopeIsRequired                bool
 	// DefaultUserInfoSignatureKeyID defines the default key used to sign ID tokens and the user info endpoint response.
 	// The key can be overridden depending on the client properties "id_token_signed_response_alg" and "userinfo_signed_response_alg".
@@ -547,9 +547,9 @@ type Configuration struct {
 	UserInfoKeyEncryptionAlgorithms     []jose.KeyAlgorithm
 	UserInfoContentEncryptionAlgorithms []jose.ContentEncryption
 	// IDTokenExpiresInSecs defines the expiry time of ID tokens.
-	IDTokenExpiresInSecs      int
+	IDTokenExpiresInSecs      int64
 	ShouldRotateRefreshTokens bool
-	RefreshTokenLifetimeSecs  int
+	RefreshTokenLifetimeSecs  int64
 	// UserClaims defines the user claims that can be returned in the userinfo endpoint or in the ID token.
 	// This will be transmitted in the /.well-known/openid-configuration endpoint.
 	UserClaims []string
@@ -565,14 +565,14 @@ type Configuration struct {
 	JARMIsEnabled                          bool
 	DefaultJARMSignatureKeyID              string
 	JARMSignatureKeyIDs                    []string
-	JARMLifetimeSecs                       int
+	JARMLifetimeSecs                       int64
 	JARMEncryptionIsEnabled                bool
 	JARMKeyEncrytionAlgorithms             []jose.KeyAlgorithm
 	JARMContentEncryptionAlgorithms        []jose.ContentEncryption
 	JARIsEnabled                           bool
 	JARIsRequired                          bool
 	JARSignatureAlgorithms                 []jose.SignatureAlgorithm
-	JARLifetimeSecs                        int
+	JARLifetimeSecs                        int64
 	JAREncryptionIsEnabled                 bool
 	JARKeyEncryptionIDs                    []string
 	JARContentEncryptionAlgorithms         []jose.ContentEncryption
@@ -580,7 +580,7 @@ type Configuration struct {
 	PARIsEnabled bool
 	// If PARIsRequired is true, authorization requests can only be made if they were pushed.
 	PARIsRequired                    bool
-	ParLifetimeSecs                  int
+	ParLifetimeSecs                  int64
 	DPoPIsEnabled                    bool
 	DPoPIsRequired                   bool
 	DPoPLifetimeSecs                 int
@@ -594,7 +594,7 @@ type Configuration struct {
 	DCRIsEnabled                     bool
 	ShouldRotateRegistrationTokens   bool
 	DCRPlugin                        goidc.DCRPluginFunc
-	AuthenticationSessionTimeoutSecs int
+	AuthenticationSessionTimeoutSecs int64
 	TLSBoundTokensIsEnabled          bool
 	AuthenticationContextReferences  []goidc.ACR
 	DisplayValues                    []goidc.DisplayValue

@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"net/http"
+	"slices"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/authorize"
@@ -44,13 +45,13 @@ func New(
 			GrantSessionManager: NewInMemoryGrantSessionManager(),
 			Scopes:              []goidc.Scope{goidc.ScopeOpenID},
 			TokenOptions: func(client *goidc.Client, scopes string) (goidc.TokenOptions, error) {
-				return goidc.NewJWTTokenOptions(defaultSignatureKeyID, goidc.DefaultTokenLifetimeSecs), nil
+				return goidc.NewJWTTokenOptions(defaultSignatureKeyID, defaultTokenLifetimeSecs), nil
 			},
 			PrivateJWKS:                   privateJWKS,
 			DefaultTokenSignatureKeyID:    defaultSignatureKeyID,
 			DefaultUserInfoSignatureKeyID: defaultSignatureKeyID,
 			UserInfoSignatureKeyIDs:       []string{defaultSignatureKeyID},
-			IDTokenExpiresInSecs:          goidc.DefaultIDTokenLifetimeSecs,
+			IDTokenExpiresInSecs:          defaultIDTokenLifetimeSecs,
 			UserClaims:                    []string{},
 			GrantTypes: []goidc.GrantType{
 				goidc.GrantAuthorizationCode,
@@ -64,7 +65,7 @@ func New(
 			ClientAuthnMethods:               []goidc.ClientAuthnType{},
 			SubjectIdentifierTypes:           []goidc.SubjectIdentifierType{goidc.SubjectIdentifierPublic},
 			ClaimTypes:                       []goidc.ClaimType{goidc.ClaimTypeNormal},
-			AuthenticationSessionTimeoutSecs: goidc.DefaultAuthenticationSessionTimeoutSecs,
+			AuthenticationSessionTimeoutSecs: defaultAuthenticationSessionTimeoutSecs,
 		},
 	}
 
@@ -108,14 +109,14 @@ func WithUserClaims(claims ...string) ProviderOption {
 // This is because clients can choose signing keys per algorithm, e.g. a client can choose the key to sign its ID tokens with the attribute "id_token_signed_response_alg".
 func WithUserInfoSignatureKeyIDs(userInfoSignatureKeyIDs ...string) ProviderOption {
 	return func(p *Provider) {
-		if !goidc.ContainsAll(userInfoSignatureKeyIDs, p.config.DefaultUserInfoSignatureKeyID) {
+		if !slices.Contains(userInfoSignatureKeyIDs, p.config.DefaultUserInfoSignatureKeyID) {
 			userInfoSignatureKeyIDs = append(userInfoSignatureKeyIDs, p.config.DefaultUserInfoSignatureKeyID)
 		}
 		p.config.UserInfoSignatureKeyIDs = userInfoSignatureKeyIDs
 	}
 }
 
-func WithIDTokenLifetime(idTokenLifetimeSecs int) ProviderOption {
+func WithIDTokenLifetime(idTokenLifetimeSecs int64) ProviderOption {
 	return func(p *Provider) {
 		p.config.IDTokenExpiresInSecs = idTokenLifetimeSecs
 	}
@@ -163,7 +164,7 @@ func WithDCR(
 // If set to true, shouldRotateTokens will cause a new refresh token to be issued each time
 // one is used. The one used during the request then becomes invalid.
 func WithRefreshTokenGrant(
-	refreshTokenLifetimeSecs int,
+	refreshTokenLifetimeSecs int64,
 	rotateTokens bool,
 ) ProviderOption {
 	return func(p *Provider) {
@@ -183,7 +184,18 @@ func WithOpenIDScopeRequired() ProviderOption {
 // WithTokenOptions defines how access tokens are issued.
 func WithTokenOptions(getTokenOpts goidc.TokenOptionsFunc) ProviderOption {
 	return func(p *Provider) {
-		p.config.TokenOptions = getTokenOpts
+		p.config.TokenOptions = func(client *goidc.Client, scopes string) (goidc.TokenOptions, error) {
+			opts, err := getTokenOpts(client, scopes)
+			if err != nil {
+				return goidc.TokenOptions{}, err
+			}
+
+			if opts.OpaqueTokenLength == token.RefreshTokenLength {
+				opts.OpaqueTokenLength++
+			}
+
+			return opts, nil
+		}
 	}
 }
 
@@ -205,17 +217,19 @@ func WithImplicitGrant() ProviderOption {
 
 func WithScopes(scopes ...goidc.Scope) ProviderOption {
 	return func(p *Provider) {
+		p.config.Scopes = scopes
 		// The scope openid is required to be among the scopes.
-		if goidc.Scopes(scopes).ContainOpenID() {
-			p.config.Scopes = scopes
-		} else {
-			p.config.Scopes = append(scopes, goidc.ScopeOpenID)
+		for _, scope := range scopes {
+			if scope.ID == goidc.ScopeOpenID.ID {
+				return
+			}
 		}
+		p.config.Scopes = append(scopes, goidc.ScopeOpenID)
 	}
 }
 
 // WithPAR allows authorization flows to start at the /par endpoint.
-func WithPAR(parLifetimeSecs int) ProviderOption {
+func WithPAR(parLifetimeSecs int64) ProviderOption {
 	return func(p *Provider) {
 		p.config.ParLifetimeSecs = parLifetimeSecs
 		p.config.PARIsEnabled = true
@@ -223,7 +237,7 @@ func WithPAR(parLifetimeSecs int) ProviderOption {
 }
 
 // WithPARRequired forces authorization flows to start at the /par endpoint.
-func WithPARRequired(parLifetimeSecs int) ProviderOption {
+func WithPARRequired(parLifetimeSecs int64) ProviderOption {
 	return func(p *Provider) {
 		WithPAR(parLifetimeSecs)
 		p.config.PARIsRequired = true
@@ -231,7 +245,7 @@ func WithPARRequired(parLifetimeSecs int) ProviderOption {
 }
 
 func WithJAR(
-	jarLifetimeSecs int,
+	jarLifetimeSecs int64,
 	jarAlgorithms ...jose.SignatureAlgorithm,
 ) ProviderOption {
 	return func(p *Provider) {
@@ -248,7 +262,7 @@ func WithJAR(
 
 // WithJARRequired makes JAR required.
 func WithJARRequired(
-	jarLifetimeSecs int,
+	jarLifetimeSecs int64,
 	jarAlgorithms ...jose.SignatureAlgorithm,
 ) ProviderOption {
 	return func(p *Provider) {
@@ -270,12 +284,12 @@ func WithJAREncryption(
 
 // WithJARM makes available JWT secured authorization response modes.
 func WithJARM(
-	jarmLifetimeSecs int,
+	jarmLifetimeSecs int64,
 	defaultJARMSignatureKeyID string,
 	jarmSignatureKeyIDs ...string,
 ) ProviderOption {
 	return func(p *Provider) {
-		if !goidc.ContainsAll(jarmSignatureKeyIDs, defaultJARMSignatureKeyID) {
+		if !slices.Contains(jarmSignatureKeyIDs, defaultJARMSignatureKeyID) {
 			jarmSignatureKeyIDs = append(jarmSignatureKeyIDs, defaultJARMSignatureKeyID)
 		}
 
@@ -335,7 +349,7 @@ func WithSecretPostAuthn() ProviderOption {
 }
 
 func WithPrivateKeyJWTAuthn(
-	assertionLifetimeSecs int,
+	assertionLifetimeSecs int64,
 	signatureAlgorithms ...jose.SignatureAlgorithm,
 ) ProviderOption {
 	return func(p *Provider) {
@@ -351,7 +365,7 @@ func WithPrivateKeyJWTAuthn(
 }
 
 func WithClientSecretJWTAuthn(
-	assertionLifetimeSecs int,
+	assertionLifetimeSecs int64,
 	signatureAlgorithms ...jose.SignatureAlgorithm,
 ) ProviderOption {
 	return func(p *Provider) {
@@ -501,7 +515,7 @@ func WithClaimTypes(types ...goidc.ClaimType) ProviderOption {
 }
 
 // WithAuthenticationSessionTimeout sets the user authentication session lifetime.
-func WithAuthenticationSessionTimeout(timeoutSecs int) ProviderOption {
+func WithAuthenticationSessionTimeout(timeoutSecs int64) ProviderOption {
 	return func(p *Provider) {
 		p.config.AuthenticationSessionTimeoutSecs = timeoutSecs
 	}
@@ -546,12 +560,16 @@ func (p *Provider) TokenInfo(req *http.Request, resp http.ResponseWriter) goidc.
 	ctx := oidc.NewContext(p.config, req, resp)
 	accessToken, tokenType, ok := ctx.AuthorizationToken()
 	if !ok {
-		return goidc.NewInactiveTokenInfo()
+		return goidc.TokenInfo{IsActive: false}
 	}
 
 	tokenInfo := token.TokenIntrospectionInfo(ctx, accessToken)
-	if token.ValidatePoP(ctx, accessToken, tokenType, tokenInfo.Confirmation()) != nil {
-		return goidc.NewInactiveTokenInfo()
+	confirmation := token.Confirmation{
+		JWKThumbprint:               tokenInfo.JWKThumbprint,
+		ClientCertificateThumbprint: tokenInfo.ClientCertificateThumbprint,
+	}
+	if token.ValidatePoP(ctx, accessToken, tokenType, confirmation) != nil {
+		return goidc.TokenInfo{IsActive: false}
 	}
 
 	return tokenInfo
@@ -564,20 +582,20 @@ func (p *Provider) Client(req *http.Request, resp http.ResponseWriter, clientID 
 
 func (p *Provider) Run(
 	address string,
-	middlewares ...WrapHandlerFunc,
+	middlewares ...goidc.WrapHandlerFunc,
 ) error {
 
 	handler := p.Handler()
 	for _, wrapHandler := range middlewares {
 		handler = wrapHandler(handler)
 	}
-	handler = NewCacheControlMiddleware(handler)
+	handler = newCacheControlMiddleware(handler)
 	return http.ListenAndServe(address, handler)
 }
 
 func (p *Provider) RunTLS(
 	config TLSOptions,
-	middlewares ...WrapHandlerFunc,
+	middlewares ...goidc.WrapHandlerFunc,
 ) error {
 
 	if p.config.MTLSIsEnabled {
@@ -593,7 +611,7 @@ func (p *Provider) RunTLS(
 	for _, wrapHandler := range middlewares {
 		handler = wrapHandler(handler)
 	}
-	handler = NewCacheControlMiddleware(handler)
+	handler = newCacheControlMiddleware(handler)
 	server := &http.Server{
 		Addr:    config.TLSAddress,
 		Handler: handler,
@@ -607,7 +625,7 @@ func (p *Provider) RunTLS(
 func (p *Provider) runMTLS(config TLSOptions) error {
 
 	handler := p.mtlsHandler()
-	handler = NewCacheControlMiddleware(handler)
+	handler = newCacheControlMiddleware(handler)
 	handler = NewClientCertificateMiddleware(handler)
 
 	tlsClientAuthnType := tls.RequireAndVerifyClientCert
@@ -632,72 +650,72 @@ func (p *Provider) Handler() http.Handler {
 	handler := http.NewServeMux()
 
 	handler.HandleFunc(
-		"GET "+p.config.PathPrefix+string(goidc.EndpointJSONWebKeySet),
+		"GET "+p.config.PathPrefix+goidc.EndpointJSONWebKeySet,
 		discovery.HandlerJWKS(&p.config),
 	)
 
 	if p.config.PARIsEnabled {
 		handler.HandleFunc(
-			"POST "+p.config.PathPrefix+string(goidc.EndpointPushedAuthorizationRequest),
+			"POST "+p.config.PathPrefix+goidc.EndpointPushedAuthorizationRequest,
 			authorize.HandlerPush(&p.config),
 		)
 	}
 
 	handler.HandleFunc(
-		"GET "+p.config.PathPrefix+string(goidc.EndpointAuthorization),
+		"GET "+p.config.PathPrefix+goidc.EndpointAuthorization,
 		authorize.Handler(&p.config),
 	)
 
 	handler.HandleFunc(
-		"POST "+p.config.PathPrefix+string(goidc.EndpointAuthorization)+"/{callback}",
+		"POST "+p.config.PathPrefix+goidc.EndpointAuthorization+"/{callback}",
 		authorize.HandlerCallback(&p.config),
 	)
 
 	handler.HandleFunc(
-		"POST "+p.config.PathPrefix+string(goidc.EndpointToken),
+		"POST "+p.config.PathPrefix+goidc.EndpointToken,
 		token.Handler(&p.config),
 	)
 
 	handler.HandleFunc(
-		"GET "+p.config.PathPrefix+string(goidc.EndpointWellKnown),
+		"GET "+p.config.PathPrefix+goidc.EndpointWellKnown,
 		discovery.HandlerWellKnown(&p.config),
 	)
 
 	handler.HandleFunc(
-		"GET "+p.config.PathPrefix+string(goidc.EndpointUserInfo),
+		"GET "+p.config.PathPrefix+goidc.EndpointUserInfo,
 		userinfo.Handler(&p.config),
 	)
 
 	handler.HandleFunc(
-		"POST "+p.config.PathPrefix+string(goidc.EndpointUserInfo),
+		"POST "+p.config.PathPrefix+goidc.EndpointUserInfo,
 		userinfo.Handler(&p.config),
 	)
 
 	if p.config.DCRIsEnabled {
 		handler.HandleFunc(
-			"POST "+p.config.PathPrefix+string(goidc.EndpointDynamicClient),
+			"POST "+p.config.PathPrefix+goidc.EndpointDynamicClient,
 			dcr.HandlerCreate(p.config),
 		)
 
 		handler.HandleFunc(
-			"PUT "+p.config.PathPrefix+string(goidc.EndpointDynamicClient)+"/{client_id}",
+			"PUT "+p.config.PathPrefix+goidc.EndpointDynamicClient+"/{client_id}",
 			dcr.HandlerUpdate(p.config),
 		)
 
 		handler.HandleFunc(
-			"GET "+p.config.PathPrefix+string(goidc.EndpointDynamicClient)+"/{client_id}",
+			"GET "+p.config.PathPrefix+goidc.EndpointDynamicClient+"/{client_id}",
 			dcr.HandlerGet(p.config),
 		)
 
 		handler.HandleFunc(
-			"DELETE "+p.config.PathPrefix+string(goidc.EndpointDynamicClient)+"/{client_id}",
+			"DELETE "+p.config.PathPrefix+goidc.EndpointDynamicClient+"/{client_id}",
 			dcr.HandlerDelete(p.config),
 		)
 	}
 
 	if p.config.IntrospectionIsEnabled {
 		handler.HandleFunc(
-			"POST "+p.config.PathPrefix+string(goidc.EndpointTokenIntrospection),
+			"POST "+p.config.PathPrefix+goidc.EndpointTokenIntrospection,
 			token.HandlerIntrospect(&p.config),
 		)
 	}
@@ -709,30 +727,30 @@ func (p *Provider) mtlsHandler() http.Handler {
 	serverHandler := http.NewServeMux()
 
 	serverHandler.HandleFunc(
-		"POST "+p.config.PathPrefix+string(goidc.EndpointToken),
+		"POST "+p.config.PathPrefix+goidc.EndpointToken,
 		token.Handler(&p.config),
 	)
 
 	serverHandler.HandleFunc(
-		"GET "+p.config.PathPrefix+string(goidc.EndpointUserInfo),
+		"GET "+p.config.PathPrefix+goidc.EndpointUserInfo,
 		userinfo.Handler(&p.config),
 	)
 
 	serverHandler.HandleFunc(
-		"POST "+p.config.PathPrefix+string(goidc.EndpointUserInfo),
+		"POST "+p.config.PathPrefix+goidc.EndpointUserInfo,
 		userinfo.Handler(&p.config),
 	)
 
 	if p.config.PARIsEnabled {
 		serverHandler.HandleFunc(
-			"POST "+p.config.PathPrefix+string(goidc.EndpointPushedAuthorizationRequest),
+			"POST "+p.config.PathPrefix+goidc.EndpointPushedAuthorizationRequest,
 			authorize.HandlerPush(&p.config),
 		)
 	}
 
 	if p.config.IntrospectionIsEnabled {
 		serverHandler.HandleFunc(
-			"POST "+p.config.PathPrefix+string(goidc.EndpointTokenIntrospection),
+			"POST "+p.config.PathPrefix+goidc.EndpointTokenIntrospection,
 			token.HandlerIntrospect(&p.config),
 		)
 	}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
@@ -14,10 +15,10 @@ import (
 
 func redirectError(
 	ctx *oidc.Context,
-	err goidc.OAuthError,
+	err oidc.Error,
 	client *goidc.Client,
-) goidc.OAuthError {
-	var oauthErr goidc.OAuthRedirectError
+) oidc.Error {
+	var oauthErr redirectionError
 	if !errors.As(err, &oauthErr) {
 		return err
 	}
@@ -35,13 +36,13 @@ func redirectResponse(
 	client *goidc.Client,
 	params goidc.AuthorizationParameters,
 	redirectParams authorizationResponse,
-) goidc.OAuthError {
+) oidc.Error {
 
 	if ctx.IssuerResponseParameterIsEnabled {
 		redirectParams.Issuer = ctx.Host
 	}
 
-	responseMode := params.DefaultResponseMode()
+	responseMode := responseMode(params)
 	if responseMode.IsJARM() || client.JARMSignatureAlgorithm != "" {
 		responseJWT, err := createJARMResponse(ctx, client, redirectParams)
 		if err != nil {
@@ -58,7 +59,7 @@ func redirectResponse(
 	case goidc.ResponseModeFormPost, goidc.ResponseModeFormPostJWT:
 		redirectParamsMap["redirect_uri"] = params.RedirectURI
 		if err := ctx.RenderHTML(formPostResponseTemplate, redirectParamsMap); err != nil {
-			return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+			return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 		}
 	default:
 		redirectURL := urlWithQueryParams(params.RedirectURI, redirectParamsMap)
@@ -68,13 +69,33 @@ func redirectResponse(
 	return nil
 }
 
+// responseMode returns the response mode based on the response type.
+// According to "5. Definitions of Multiple-Valued Response Type Combinations" of https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#Combinations.
+func responseMode(params goidc.AuthorizationParameters) goidc.ResponseMode {
+	if params.ResponseMode == "" {
+		if params.ResponseType.IsImplicit() {
+			return goidc.ResponseModeFragment
+		}
+		return goidc.ResponseModeQuery
+	}
+
+	if params.ResponseMode == goidc.ResponseModeJWT {
+		if params.ResponseType.IsImplicit() {
+			return goidc.ResponseModeFragmentJWT
+		}
+		return goidc.ResponseModeQueryJWT
+	}
+
+	return params.ResponseMode
+}
+
 func createJARMResponse(
 	ctx *oidc.Context,
 	client *goidc.Client,
 	redirectParams authorizationResponse,
 ) (
 	string,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 	responseJWT, err := signJARMResponse(ctx, client, redirectParams)
 	if err != nil {
@@ -97,7 +118,7 @@ func signJARMResponse(
 	redirectParams authorizationResponse,
 ) (
 	string,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 	jwk := ctx.JARMSignatureKey(client)
 	signer, err := jose.NewSigner(
@@ -105,10 +126,10 @@ func signJARMResponse(
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID),
 	)
 	if err != nil {
-		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return "", oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
-	createdAtTimestamp := goidc.TimestampNow()
+	createdAtTimestamp := time.Now().Unix()
 	claims := map[string]any{
 		goidc.ClaimIssuer:   ctx.Host,
 		goidc.ClaimAudience: client.ID,
@@ -121,7 +142,7 @@ func signJARMResponse(
 
 	response, err := jwt.Signed(signer).Claims(claims).Serialize()
 	if err != nil {
-		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return "", oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
 	return response, nil
@@ -133,16 +154,16 @@ func encryptJARMResponse(
 	client *goidc.Client,
 ) (
 	string,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 	jwk, err := client.JARMEncryptionJWK()
 	if err != nil {
-		return "", err
+		return "", oidc.NewError(oidc.ErrorCodeInvalidRequest, err.Error())
 	}
 
 	encryptedResponseJWT, err := token.EncryptJWT(ctx, responseJWT, jwk, client.JARMContentEncryptionAlgorithm)
 	if err != nil {
-		return "", err
+		return "", oidc.NewError(oidc.ErrorCodeInvalidRequest, err.Error())
 	}
 
 	return encryptedResponseJWT, nil

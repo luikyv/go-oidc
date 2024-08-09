@@ -2,10 +2,10 @@ package goidc_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestSaveAndGetParameter_HappyPath(t *testing.T) {
@@ -18,54 +18,6 @@ func TestSaveAndGetParameter_HappyPath(t *testing.T) {
 		// Then.
 		assert.Equal(t, "value", session.Store["key"], "the claim was not added")
 	}
-}
-
-func TestPush_HappyPath(t *testing.T) {
-	// Given.
-	session := goidc.AuthnSession{}
-
-	// When.
-	requestURI, err := session.Push(60)
-
-	// Then.
-	require.Nil(t, err, err)
-	assert.NotEmpty(t, session.RequestURI, "the request URI was not initialized")
-	assert.Equal(t, requestURI, session.RequestURI)
-	assert.Equal(t, goidc.TimestampNow()+60, session.ExpiresAtTimestamp, "the session expiry time was not updated")
-}
-
-func TestStart_HappyPath(t *testing.T) {
-	// Given.
-	session := goidc.AuthnSession{
-		AuthorizationParameters: goidc.AuthorizationParameters{
-			RequestURI: "request_uri",
-		},
-	}
-
-	// When.
-	err := session.Start("policy_id", 60)
-
-	// Then.
-	require.Nil(t, err, err)
-	assert.Equal(t, "policy_id", session.PolicyID, "the policy ID was not initialized")
-	assert.NotEmpty(t, session.CallbackID, "the callback ID was not initialized")
-	assert.Empty(t, session.RequestURI, "the request_uri was not erased")
-	assert.Equal(t, goidc.TimestampNow()+60, session.ExpiresAtTimestamp, "the session expiry time was not updated")
-}
-
-func TestInitAuthorizationCode_HappyPath(t *testing.T) {
-	// Given.
-	session := goidc.AuthnSession{}
-
-	// When.
-	err := session.InitAuthorizationCode()
-
-	// Then.
-	require.Nil(t, err, err)
-	assert.NotEmpty(t, session.AuthorizationCode, "the authorization code was not initialized")
-
-	goidc.AssertTimestampWithin(t, goidc.TimestampNow()+goidc.AuthorizationCodeLifetimeSecs, session.ExpiresAtTimestamp,
-		"the session expiry time was not updated")
 }
 
 func TestAddTokenClaim(t *testing.T) {
@@ -103,7 +55,7 @@ func TestAddUserInfoClaim(t *testing.T) {
 
 func TestIsExpired(t *testing.T) {
 	// Given.
-	now := goidc.TimestampNow()
+	now := time.Now().Unix()
 	session := goidc.AuthnSession{
 		ExpiresAtTimestamp: now - 10,
 	}

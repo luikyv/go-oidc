@@ -3,56 +3,76 @@ package goidc
 import (
 	"encoding/json"
 	"maps"
+	"net/http"
 	"reflect"
 )
 
-type AuthorizeErrorPluginFunc func(ctx Context, err OAuthError) error
+type WrapHandlerFunc func(nextHandler http.Handler) http.Handler
 
-// AuthnFunc executes the user authentication logic.
-type AuthnFunc func(Context, *AuthnSession) AuthnStatus
+// DCRPluginFunc defines a function that will be executed during DCR and DCM.
+// It can be used to modify the client and perform custom validations.
+type DCRPluginFunc func(ctx Context, clientInfo *ClientMetaInfo)
 
-// SetUpAuthnFunc is responsible for deciding if the corresponding policy will be executed.
-type SetUpAuthnFunc func(Context, *Client, *AuthnSession) bool
+type AuthorizeErrorPluginFunc func(ctx Context, err error) error
 
-type AuthnPolicy struct {
-	ID           string
-	SetUp        SetUpAuthnFunc
-	Authenticate AuthnFunc
+var (
+	ScopeOpenID        = NewScope("openid")
+	ScopeProfile       = NewScope("profile")
+	ScopeEmail         = NewScope("email")
+	ScopeAddress       = NewScope("address")
+	ScopeOfflineAccess = NewScope("offline_access")
+)
+
+type ScopeMatchingFunc func(requestedScope string) bool
+
+type Scope struct {
+	// ID is the string representation of the scope.
+	// Its value will be exported as is.
+	ID string
+	// Matches validates if a requested scope is valid.
+	Matches ScopeMatchingFunc
 }
 
-// NewPolicy creates a policy that will be selected based on setUpFunc and that authenticates users with authnFunc.
-func NewPolicy(
-	id string,
-	setUpFunc SetUpAuthnFunc,
-	authnFunc AuthnFunc,
-) AuthnPolicy {
-	return AuthnPolicy{
-		ID:           id,
-		Authenticate: authnFunc,
-		SetUp:        setUpFunc,
+// NewScope creates a scope where the validation logic is simple string comparison.
+func NewScope(scope string) Scope {
+	return Scope{
+		ID: scope,
+		Matches: func(requestedScope string) bool {
+			return scope == requestedScope
+		},
 	}
 }
 
-type GrantOptions struct {
-	GrantType                   GrantType             `json:"grant_type" bson:"grant_type"`
-	Subject                     string                `json:"sub" bson:"sub"`
-	ClientID                    string                `json:"client_id" bson:"client_id"`
-	GrantedScopes               string                `json:"granted_scopes" bson:"granted_scopes"`
-	GrantedAuthorizationDetails []AuthorizationDetail `json:"granted_authorization_details,omitempty" bson:"granted_authorization_details,omitempty"`
-	AdditionalIDTokenClaims     map[string]any        `json:"additional_id_token_claims,omitempty" bson:"additional_id_token_claims,omitempty"`
-	AdditionalUserInfoClaims    map[string]any        `json:"additional_user_info_claims,omitempty" bson:"additional_user_info_claims,omitempty"`
-	TokenOptions                `bson:"inline"`
+// NewDynamicScope creates a scope with custom logic that will be used to validate
+// the scopes requested by the client.
+//
+//	dynamicScope := NewDynamicScope(
+//		"payment",
+//		func(requestedScope string) bool {
+//			return strings.HasPrefix(requestedScope, "payment")
+//		},
+//	)
+//
+//	// This results in true.
+//	dynamicScope.Matches("payment:30")
+func NewDynamicScope(
+	scope string,
+	matchingFunc ScopeMatchingFunc,
+) Scope {
+	return Scope{
+		ID:      scope,
+		Matches: matchingFunc,
+	}
 }
 
 type TokenOptionsFunc func(client *Client, scopes string) (TokenOptions, error)
 
-// TODO: Allow passing the token ID? Or a prefix?
 type TokenOptions struct {
-	TokenFormat           TokenFormat    `json:"token_format" bson:"token_format"`
-	TokenLifetimeSecs     int            `json:"token_lifetime_secs" bson:"token_lifetime_secs"`
-	JWTSignatureKeyID     string         `json:"token_signature_key_id,omitempty" bson:"token_signature_key_id,omitempty"`
-	OpaqueTokenLength     int            `json:"opaque_token_length,omitempty" bson:"opaque_token_length,omitempty"`
-	AdditionalTokenClaims map[string]any `json:"additional_token_claims,omitempty" bson:"additional_token_claims,omitempty"`
+	TokenFormat           TokenFormat    `json:"token_format"`
+	TokenLifetimeSecs     int64          `json:"token_lifetime_secs"`
+	JWTSignatureKeyID     string         `json:"token_signature_key_id,omitempty"`
+	OpaqueTokenLength     int            `json:"opaque_token_length,omitempty"`
+	AdditionalTokenClaims map[string]any `json:"additional_token_claims,omitempty"`
 }
 
 func (to *TokenOptions) AddTokenClaims(claims map[string]any) {
@@ -65,7 +85,7 @@ func (to *TokenOptions) AddTokenClaims(claims map[string]any) {
 func NewJWTTokenOptions(
 	// signatureKeyID is the ID of a signing key present in the server JWKS.
 	signatureKeyID string,
-	tokenLifetimeSecs int,
+	tokenLifetimeSecs int64,
 ) TokenOptions {
 	return TokenOptions{
 		TokenFormat:       TokenFormatJWT,
@@ -76,17 +96,91 @@ func NewJWTTokenOptions(
 
 func NewOpaqueTokenOptions(
 	tokenLength int,
-	tokenLifetimeSecs int,
+	tokenLifetimeSecs int64,
 ) TokenOptions {
-	if tokenLength == RefreshTokenLength {
-		// Make sure opaque access token don't have the same length as refresh tokens.
-		tokenLength++
-	}
 	return TokenOptions{
 		TokenFormat:       TokenFormatOpaque,
 		TokenLifetimeSecs: tokenLifetimeSecs,
 		OpaqueTokenLength: tokenLength,
 	}
+}
+
+// AuthnFunc executes the user authentication logic.
+type AuthnFunc func(Context, *AuthnSession) AuthnStatus
+
+// SetUpAuthnFunc is responsible for deciding if the corresponding policy will
+// be executed.
+type SetUpAuthnFunc func(Context, *Client, *AuthnSession) bool
+
+type AuthnPolicy struct {
+	ID           string
+	SetUp        SetUpAuthnFunc
+	Authenticate AuthnFunc
+}
+
+// NewPolicy creates a policy that will be selected based on setUpFunc and that
+// authenticates users with authnFunc.
+func NewPolicy(
+	id string,
+	setUpFunc SetUpAuthnFunc,
+	authnFunc AuthnFunc,
+) AuthnPolicy {
+	return AuthnPolicy{
+		ID:           id,
+		Authenticate: authnFunc,
+		SetUp:        setUpFunc,
+	}
+}
+
+type TokenInfo struct {
+	IsActive                    bool
+	TokenUsage                  TokenTypeHint
+	Scopes                      string
+	AuthorizationDetails        []AuthorizationDetail
+	ClientID                    string
+	Subject                     string
+	ExpiresAtTimestamp          int64
+	JWKThumbprint               string
+	ClientCertificateThumbprint string
+	AdditionalTokenClaims       map[string]any
+}
+
+func (info TokenInfo) MarshalJSON() ([]byte, error) {
+	if !info.IsActive {
+		return json.Marshal(map[string]any{
+			"active": false,
+		})
+	}
+
+	params := map[string]any{
+		"active":      true,
+		"token_usage": info.TokenUsage,
+		ClaimSubject:  info.Subject,
+		ClaimScope:    info.Scopes,
+		ClaimClientID: info.ClientID,
+		ClaimExpiry:   info.ExpiresAtTimestamp,
+	}
+
+	if info.AuthorizationDetails != nil {
+		params[ClaimAuthorizationDetails] = info.AuthorizationDetails
+	}
+
+	confirmation := make(map[string]string)
+	if info.JWKThumbprint != "" {
+		confirmation["jkt"] = info.JWKThumbprint
+	}
+	if info.ClientCertificateThumbprint != "" {
+		confirmation["x5t#S256"] = info.ClientCertificateThumbprint
+	}
+	if len(confirmation) != 0 {
+		params["cnf"] = confirmation
+	}
+
+	for k, v := range info.AdditionalTokenClaims {
+		params[k] = v
+	}
+
+	return json.Marshal(params)
 }
 
 type AuthorizationParameters struct {
@@ -129,99 +223,20 @@ func (insideParams AuthorizationParameters) Merge(outsideParams AuthorizationPar
 	return params
 }
 
-func (params AuthorizationParameters) NewRedirectError(
-	errorCode ErrorCode,
-	errorDescription string,
-) OAuthRedirectError {
-	return OAuthRedirectError{
-		OAuthBaseError: OAuthBaseError{
-			ErrorCode:        errorCode,
-			ErrorDescription: errorDescription,
-		},
-		AuthorizationParameters: params,
+func nonEmptyOrDefault[T any](s1 T, s2 T) T {
+	if reflect.ValueOf(s1).String() == "" {
+		return s2
 	}
+
+	return s1
 }
 
-// DefaultResponseMode returns the response mode based on the response type.
-func (params AuthorizationParameters) DefaultResponseMode() ResponseMode {
-	if params.ResponseMode == "" {
-		return params.ResponseType.DefaultResponseMode(false)
+func nonNilOrDefault[T any](s1 T, s2 T) T {
+	if reflect.ValueOf(s1).IsNil() {
+		return s2
 	}
 
-	if params.ResponseMode == ResponseModeJWT {
-		return params.ResponseType.DefaultResponseMode(true)
-	}
-
-	return params.ResponseMode
-}
-
-type TokenConfirmation struct {
-	JWKThumbprint               string `json:"jkt"`
-	ClientCertificateThumbprint string `json:"x5t#S256"`
-}
-
-type TokenInfo struct {
-	IsActive                    bool
-	TokenUsage                  TokenTypeHint
-	Scopes                      string
-	AuthorizationDetails        []AuthorizationDetail
-	ClientID                    string
-	Subject                     string
-	ExpiresAtTimestamp          int
-	JWKThumbprint               string
-	ClientCertificateThumbprint string
-	AdditionalTokenClaims       map[string]any
-}
-
-func NewInactiveTokenInfo() TokenInfo {
-	return TokenInfo{
-		IsActive: false,
-	}
-}
-
-func (info TokenInfo) MarshalJSON() ([]byte, error) {
-	if !info.IsActive {
-		return json.Marshal(map[string]any{
-			"active": false,
-		})
-	}
-
-	params := map[string]any{
-		"active":      true,
-		"token_usage": info.TokenUsage,
-		ClaimSubject:  info.Subject,
-		ClaimScope:    info.Scopes,
-		ClaimClientID: info.ClientID,
-		ClaimExpiry:   info.ExpiresAtTimestamp,
-	}
-
-	if info.AuthorizationDetails != nil {
-		params[ClaimAuthorizationDetails] = info.AuthorizationDetails
-	}
-
-	confirmation := make(map[string]string)
-	if info.JWKThumbprint != "" {
-		confirmation["jkt"] = info.JWKThumbprint
-	}
-	if info.ClientCertificateThumbprint != "" {
-		confirmation["x5t#S256"] = info.ClientCertificateThumbprint
-	}
-	if len(confirmation) != 0 {
-		params["cnf"] = confirmation
-	}
-
-	for k, v := range info.AdditionalTokenClaims {
-		params[k] = v
-	}
-
-	return json.Marshal(params)
-}
-
-func (info TokenInfo) Confirmation() TokenConfirmation {
-	return TokenConfirmation{
-		JWKThumbprint:               info.JWKThumbprint,
-		ClientCertificateThumbprint: info.ClientCertificateThumbprint,
-	}
+	return s1
 }
 
 type ClaimsObject struct {
@@ -324,20 +339,4 @@ func (detail AuthorizationDetail) string(key string) string {
 	}
 
 	return s
-}
-
-func nonEmptyOrDefault[T any](s1 T, s2 T) T {
-	if reflect.ValueOf(s1).String() == "" {
-		return s2
-	}
-
-	return s1
-}
-
-func nonNilOrDefault[T any](s1 T, s2 T) T {
-	if reflect.ValueOf(s1).IsNil() {
-		return s2
-	}
-
-	return s1
 }

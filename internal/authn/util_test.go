@@ -2,6 +2,7 @@ package authn
 
 import (
 	"testing"
+	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
@@ -133,7 +134,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
 
-	createdAtTimestamp := goidc.TimestampNow()
+	createdAtTimestamp := time.Now().Unix()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.Algorithm), Key: privateJWK.Key},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
@@ -176,7 +177,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_ClientInformedSigningAlgorithm
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256, jose.RS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
 
-	createdAtTimestamp := goidc.TimestampNow()
+	createdAtTimestamp := time.Now().Unix()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.Algorithm), Key: privateJWK.Key},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
@@ -218,7 +219,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAudienceClaim(t *testin
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
 	require.Nil(t, ctx.SaveClient(client))
 
-	createdAtTimestamp := goidc.TimestampNow()
+	createdAtTimestamp := time.Now().Unix()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.Algorithm), Key: privateJWK.Key},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
@@ -259,7 +260,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidExpiryClaim(t *testing.
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
 
-	createdAtTimestamp := goidc.TimestampNow()
+	createdAtTimestamp := time.Now().Unix()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.Algorithm), Key: privateJWK.Key},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
@@ -299,7 +300,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidKeyID(t *testing.T) {
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
 
-	createdAtTimestamp := goidc.TimestampNow()
+	createdAtTimestamp := time.Now().Unix()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.Algorithm), Key: privateJWK.Key},
 		(&jose.SignerOptions{}).WithType("jwt"),
@@ -341,7 +342,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T)
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
 
-	createdAtTimestamp := goidc.TimestampNow()
+	createdAtTimestamp := time.Now().Unix()
 	claims := map[string]any{
 		goidc.ClaimIssuer:   client.ID,
 		goidc.ClaimSubject:  client.ID,
@@ -413,7 +414,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertionType(t *testin
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
 
-	createdAtTimestamp := goidc.TimestampNow()
+	createdAtTimestamp := time.Now().Unix()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.Algorithm), Key: privateJWK.Key},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
@@ -456,7 +457,7 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_HappyPath(t *testing.T) {
 	ctx.ClientSecretJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.HS256}
 	ctx.ClientSecretJWTAssertionLifetimeSecs = 60
 
-	createdAtTimestamp := goidc.TimestampNow()
+	createdAtTimestamp := time.Now().Unix()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.HS256, Key: []byte(secret)},
 		(&jose.SignerOptions{}).WithType("jwt"),
@@ -499,7 +500,7 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_InvalidAssertionType(t *test
 	ctx.ClientSecretJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.HS256}
 	ctx.ClientSecretJWTAssertionLifetimeSecs = 60
 
-	createdAtTimestamp := goidc.TimestampNow()
+	createdAtTimestamp := time.Now().Unix()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.HS256, Key: []byte(secret)},
 		(&jose.SignerOptions{}).WithType("jwt"),

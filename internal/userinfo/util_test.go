@@ -3,6 +3,7 @@ package userinfo_test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -15,21 +16,20 @@ import (
 func TestHandleUserInfoRequest_HappyPath(t *testing.T) {
 	// Given.
 	token := "opaque_token"
+	now := time.Now().Unix()
 	grantSession := &goidc.GrantSession{
 		TokenID:                    token,
-		LastTokenIssuedAtTimestamp: goidc.TimestampNow(),
-		CreatedAtTimestamp:         goidc.TimestampNow(),
-		ExpiresAtTimestamp:         goidc.TimestampNow() + 60,
+		LastTokenIssuedAtTimestamp: now,
+		CreatedAtTimestamp:         now,
+		ExpiresAtTimestamp:         now + 60,
 		ActiveScopes:               goidc.ScopeOpenID.ID,
-		GrantOptions: goidc.GrantOptions{
-			Subject:  "random_subject",
-			ClientID: oidc.TestClientID,
-			AdditionalUserInfoClaims: map[string]any{
-				"random_claim": "random_value",
-			},
-			TokenOptions: goidc.TokenOptions{
-				TokenLifetimeSecs: 60,
-			},
+		Subject:                    "random_subject",
+		ClientID:                   oidc.TestClientID,
+		AdditionalUserInfoClaims: map[string]any{
+			"random_claim": "random_value",
+		},
+		TokenOptions: goidc.TokenOptions{
+			TokenLifetimeSecs: 60,
 		},
 	}
 
@@ -50,18 +50,17 @@ func TestHandleUserInfoRequest_HappyPath(t *testing.T) {
 func TestHandleUserInfoRequest_SignedResponse(t *testing.T) {
 	// Given.
 	token := "opaque_token"
+	now := time.Now().Unix()
 	grantSession := &goidc.GrantSession{
 		TokenID:                    token,
-		ExpiresAtTimestamp:         goidc.TimestampNow() + 60,
-		LastTokenIssuedAtTimestamp: goidc.TimestampNow() + 60,
-		CreatedAtTimestamp:         goidc.TimestampNow(),
+		ExpiresAtTimestamp:         now + 60,
+		LastTokenIssuedAtTimestamp: now + 60,
+		CreatedAtTimestamp:         now,
 		ActiveScopes:               goidc.ScopeOpenID.ID,
-		GrantOptions: goidc.GrantOptions{
-			Subject:  "random_subject",
-			ClientID: oidc.TestClientID,
-			AdditionalUserInfoClaims: map[string]any{
-				"random_claim": "random_value",
-			},
+		Subject:                    "random_subject",
+		ClientID:                   oidc.TestClientID,
+		AdditionalUserInfoClaims: map[string]any{
+			"random_claim": "random_value",
 		},
 	}
 

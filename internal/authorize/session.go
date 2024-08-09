@@ -1,9 +1,12 @@
 package authorize
 
 import (
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -13,7 +16,7 @@ func initAuthnSession(
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 	session, err := authnSession(ctx, req, client)
 	if err != nil {
@@ -29,7 +32,7 @@ func authnSession(
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 
 	if shouldInitAuthnSessionWithPAR(ctx, req.AuthorizationParameters) {
@@ -55,18 +58,18 @@ func authnSessionWithPAR(
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 
 	session, err := getSessionCreatedWithPAR(ctx, req)
 	if err != nil {
-		return nil, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid request_uri")
+		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid request_uri")
 	}
 
 	if err := validateRequestWithPAR(ctx, req, session, client); err != nil {
 		// If any of the parameters is invalid, we delete the session right away.
 		if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-			return nil, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+			return nil, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 		}
 		return nil, err
 	}
@@ -80,15 +83,15 @@ func getSessionCreatedWithPAR(
 	req authorizationRequest,
 ) (
 	*goidc.AuthnSession,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 	if req.RequestURI == "" {
-		return nil, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "request_uri is required")
+		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest, "request_uri is required")
 	}
 
 	session, err := ctx.AuthnSessionByRequestURI(req.RequestURI)
 	if err != nil {
-		return nil, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid request_uri")
+		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid request_uri")
 	}
 
 	return session, nil
@@ -110,7 +113,7 @@ func authnSessionWithJAR(
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 
 	jar, err := getJAR(ctx, req, client)
@@ -133,10 +136,10 @@ func getJAR(
 	client *goidc.Client,
 ) (
 	authorizationRequest,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 	if req.RequestObject == "" {
-		return authorizationRequest{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "request object is required")
+		return authorizationRequest{}, oidc.NewError(oidc.ErrorCodeInvalidRequest, "request object is required")
 	}
 
 	jar, err := JARFromRequestObject(ctx, req.RequestObject, client)
@@ -153,7 +156,7 @@ func initValidSimpleAuthnSession(
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 	if err := validateRequest(ctx, req, client); err != nil {
 		return nil, err
@@ -165,13 +168,25 @@ func initAuthnSessionWithPolicy(
 	ctx *oidc.Context,
 	client *goidc.Client,
 	session *goidc.AuthnSession,
-) goidc.OAuthError {
+) oidc.Error {
 	policy, ok := ctx.FindAvailablePolicy(client, session)
 	if !ok {
-		return session.NewRedirectError(goidc.ErrorCodeInvalidRequest, "no policy available")
+		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "no policy available", session.AuthorizationParameters)
 	}
 
-	return session.Start(policy.ID, ctx.AuthenticationSessionTimeoutSecs)
+	if session.Nonce != "" {
+		session.SetClaimIDToken(goidc.ClaimNonce, session.Nonce)
+	}
+	session.PolicyID = policy.ID
+	id, err := callbackID()
+	if err != nil {
+		return newRedirectionError(oidc.ErrorCodeInternalError, err.Error(), session.AuthorizationParameters)
+	}
+	session.CallbackID = id
+	// FIXME: To think about:Treating the request_uri as one-time use will cause problems when the user refreshes the page.
+	session.RequestURI = ""
+	session.ExpiresAtTimestamp = time.Now().Unix() + ctx.AuthenticationSessionTimeoutSecs
+	return nil
 }
 
 func pushedAuthnSession(
@@ -180,14 +195,27 @@ func pushedAuthnSession(
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
-
+	var session *goidc.AuthnSession
+	var oauthErr oidc.Error
 	if shouldInitAuthnSessionWithJAR(ctx, req.AuthorizationParameters, client) {
-		return pushedAuthnSessionWithJAR(ctx, req, client)
+		session, oauthErr = pushedAuthnSessionWithJAR(ctx, req, client)
+	} else {
+		session, oauthErr = pushedSimpleAuthnSession(ctx, req, client)
+	}
+	if oauthErr != nil {
+		return nil, oauthErr
 	}
 
-	return pushedSimpleAuthnSession(ctx, req, client)
+	reqURI, err := requestURI()
+	if err != nil {
+		return nil, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+	}
+	session.RequestURI = reqURI
+	session.ExpiresAtTimestamp = time.Now().Unix() + ctx.ParLifetimeSecs
+
+	return session, nil
 }
 
 func pushedSimpleAuthnSession(
@@ -196,7 +224,7 @@ func pushedSimpleAuthnSession(
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 	if err := validatePushedRequest(ctx, req, client); err != nil {
 		return nil, err
@@ -213,7 +241,7 @@ func pushedAuthnSessionWithJAR(
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 	jar, err := extractJARFromRequest(ctx, req, client)
 	if err != nil {
@@ -234,10 +262,10 @@ func extractJARFromRequest(
 	client *goidc.Client,
 ) (
 	authorizationRequest,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 	if req.RequestObject == "" {
-		return authorizationRequest{}, goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "request object is required")
+		return authorizationRequest{}, oidc.NewError(oidc.ErrorCodeInvalidRequest, "request object is required")
 	}
 
 	return JARFromRequestObject(ctx, req.RequestObject, client)
@@ -246,10 +274,26 @@ func extractJARFromRequest(
 func protectedParams(ctx *oidc.Context) map[string]any {
 	protectedParams := make(map[string]any)
 	for param, value := range ctx.FormData() {
-		if strings.HasPrefix(param, goidc.ProtectedParamPrefix) {
+		if strings.HasPrefix(param, protectedParamPrefix) {
 			protectedParams[param] = value
 		}
 	}
 
 	return protectedParams
+}
+
+func authorizationCode() (string, error) {
+	return strutil.Random(authorizationCodeLength)
+}
+
+func requestURI() (string, error) {
+	s, err := strutil.Random(requestURILength)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("urn:ietf:params:oauth:request_uri:%s", s), nil
+}
+
+func callbackID() (string, error) {
+	return strutil.Random(callbackIDLength)
 }

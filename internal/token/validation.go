@@ -7,7 +7,7 @@ import (
 
 func validateTokenBindingIsRequired(
 	ctx *oidc.Context,
-) goidc.OAuthError {
+) oidc.Error {
 	if !ctx.SenderConstrainedTokenIsRequired {
 		return nil
 	}
@@ -25,7 +25,7 @@ func validateTokenBindingIsRequired(
 	}
 
 	if !tokenWillBeBound {
-		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "token binding is required either with dpop or tls")
+		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "token binding is required either with dpop or tls")
 	}
 
 	return nil
@@ -35,12 +35,12 @@ func validateTokenBindingRequestWithDPoP(
 	ctx *oidc.Context,
 	_ tokenRequest,
 	client *goidc.Client,
-) goidc.OAuthError {
+) oidc.Error {
 
 	dpopJWT, ok := ctx.DPoPJWT()
 	// Return an error if the DPoP header was not informed, but it's required either in the context or by the client.
 	if !ok && (ctx.DPoPIsRequired || client.DPoPIsRequired) {
-		return goidc.NewOAuthError(goidc.ErrorCodeInvalidRequest, "invalid dpop header")
+		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid dpop header")
 	}
 
 	// If DPoP is not enabled or, if it is, but the DPoP header was not informed, we just ignore it.

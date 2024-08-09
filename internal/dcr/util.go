@@ -10,7 +10,7 @@ func create(
 	dynamicClient dynamicClientRequest,
 ) (
 	dynamicClientResponse,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 	if err := setCreationDefaults(ctx, &dynamicClient); err != nil {
 		return dynamicClientResponse{}, err
@@ -27,16 +27,35 @@ func create(
 
 	newClient := newClient(dynamicClient)
 	if err := ctx.SaveClient(newClient); err != nil {
-		return dynamicClientResponse{}, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return dynamicClientResponse{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
 	return dynamicClientResponse{
 		ID:                      dynamicClient.ID,
-		RegistrationURI:         getClientRegistrationURI(ctx, dynamicClient.ID),
+		RegistrationURI:         registrationURI(ctx, dynamicClient.ID),
 		RegistrationAccessToken: dynamicClient.RegistrationAccessToken,
 		Secret:                  dynamicClient.Secret,
 		ClientMetaInfo:          dynamicClient.ClientMetaInfo,
 	}, nil
+}
+
+func setCreationDefaults(
+	ctx *oidc.Context,
+	dynamicClient *dynamicClientRequest,
+) oidc.Error {
+	id, err := clientID()
+	if err != nil {
+		return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+	}
+	dynamicClient.ID = id
+
+	token, err := registrationAccessToken()
+	if err != nil {
+		return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+	}
+	dynamicClient.RegistrationAccessToken = token
+
+	return setDefaults(ctx, dynamicClient)
 }
 
 func update(
@@ -44,9 +63,9 @@ func update(
 	dynamicClient dynamicClientRequest,
 ) (
 	dynamicClientResponse,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
-	client, err := getProtectedClient(ctx, dynamicClient)
+	client, err := protectedClient(ctx, dynamicClient)
 	if err != nil {
 		return dynamicClientResponse{}, err
 	}
@@ -65,12 +84,12 @@ func update(
 
 	updatedClient := newClient(dynamicClient)
 	if err := ctx.SaveClient(updatedClient); err != nil {
-		return dynamicClientResponse{}, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return dynamicClientResponse{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
 	resp := dynamicClientResponse{
 		ID:              dynamicClient.ID,
-		RegistrationURI: getClientRegistrationURI(ctx, dynamicClient.ID),
+		RegistrationURI: registrationURI(ctx, dynamicClient.ID),
 		Secret:          dynamicClient.Secret,
 		ClientMetaInfo:  dynamicClient.ClientMetaInfo,
 	}
@@ -82,22 +101,39 @@ func update(
 	return resp, nil
 }
 
+func setUpdateDefaults(
+	ctx *oidc.Context,
+	client *goidc.Client,
+	dynamicClient *dynamicClientRequest,
+) oidc.Error {
+	dynamicClient.ID = client.ID
+	if ctx.ShouldRotateRegistrationTokens {
+		token, err := registrationAccessToken()
+		if err != nil {
+			return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		}
+		dynamicClient.RegistrationAccessToken = token
+	}
+
+	return setDefaults(ctx, dynamicClient)
+}
+
 func client(
 	ctx *oidc.Context,
 	dynamicClientRequest dynamicClientRequest,
 ) (
 	dynamicClientResponse,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 
-	client, err := getProtectedClient(ctx, dynamicClientRequest)
+	client, err := protectedClient(ctx, dynamicClientRequest)
 	if err != nil {
 		return dynamicClientResponse{}, err
 	}
 
 	return dynamicClientResponse{
 		ID:              client.ID,
-		RegistrationURI: getClientRegistrationURI(ctx, client.ID),
+		RegistrationURI: registrationURI(ctx, client.ID),
 		ClientMetaInfo:  client.ClientMetaInfo,
 	}, nil
 }
@@ -105,14 +141,14 @@ func client(
 func remove(
 	ctx *oidc.Context,
 	dynamicClientRequest dynamicClientRequest,
-) goidc.OAuthError {
-	_, err := getProtectedClient(ctx, dynamicClientRequest)
+) oidc.Error {
+	_, err := protectedClient(ctx, dynamicClientRequest)
 	if err != nil {
 		return err
 	}
 
 	if err := ctx.DeleteClient(dynamicClientRequest.ID); err != nil {
-		return goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 	return nil
 }

@@ -96,9 +96,19 @@ func validateClientSecretJWTSignatureAlgorithms(provider Provider) error {
 }
 
 func validateIntrospectionClientAuthnMethods(provider Provider) error {
-	if provider.config.IntrospectionIsEnabled && (!goidc.ContainsAll(provider.config.ClientAuthnMethods, provider.config.IntrospectionClientAuthnMethods...) ||
-		slices.Contains(provider.config.IntrospectionClientAuthnMethods, goidc.ClientAuthnNone)) {
-		return errors.New("invalid client authentication method for token introspection")
+
+	if !provider.config.IntrospectionIsEnabled {
+		return nil
+	}
+
+	if !slices.Contains(provider.config.ClientAuthnMethods, goidc.ClientAuthnNone) {
+		return errors.New("none client authentication method not allowed for token introspection")
+	}
+
+	for _, method := range provider.config.IntrospectionClientAuthnMethods {
+		if !slices.Contains(provider.config.ClientAuthnMethods, method) {
+			return errors.New("invalid client authentication method for token introspection")
+		}
 	}
 
 	return nil

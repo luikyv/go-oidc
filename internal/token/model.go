@@ -2,11 +2,37 @@ package token
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/authn"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
+
+type GrantOptions struct {
+	GrantType                   goidc.GrantType
+	Subject                     string
+	ClientID                    string
+	GrantedScopes               string
+	GrantedAuthorizationDetails []goidc.AuthorizationDetail
+	AdditionalIDTokenClaims     map[string]any
+	AdditionalUserInfoClaims    map[string]any
+	goidc.TokenOptions
+}
+
+func NewGrantOptions(grantSession goidc.GrantSession) GrantOptions {
+	return GrantOptions{
+		GrantType:                   grantSession.GrantType,
+		Subject:                     grantSession.Subject,
+		ClientID:                    grantSession.ClientID,
+		GrantedScopes:               grantSession.GrantedScopes,
+		GrantedAuthorizationDetails: grantSession.GrantedAuthorizationDetails,
+		AdditionalIDTokenClaims:     grantSession.AdditionalIDTokenClaims,
+		AdditionalUserInfoClaims:    grantSession.AdditionalUserInfoClaims,
+		TokenOptions:                grantSession.TokenOptions,
+	}
+}
 
 type Token struct {
 	ID                    string
@@ -27,7 +53,7 @@ type IDTokenOptions struct {
 	State             string
 }
 
-func newIDTokenOptions(grantOpts goidc.GrantOptions) IDTokenOptions {
+func newIDTokenOptions(grantOpts GrantOptions) IDTokenOptions {
 	return IDTokenOptions{
 		Subject:                 grantOpts.Subject,
 		AdditionalIDTokenClaims: grantOpts.AdditionalIDTokenClaims,
@@ -72,7 +98,7 @@ type tokenResponse struct {
 	AccessToken          string                      `json:"access_token"`
 	IDToken              string                      `json:"id_token,omitempty"`
 	RefreshToken         string                      `json:"refresh_token,omitempty"`
-	ExpiresIn            int                         `json:"expires_in"`
+	ExpiresIn            int64                       `json:"expires_in"`
 	TokenType            goidc.TokenType             `json:"token_type"`
 	Scopes               string                      `json:"scope,omitempty"`
 	AuthorizationDetails []goidc.AuthorizationDetail `json:"authorization_details,omitempty"`
@@ -80,7 +106,7 @@ type tokenResponse struct {
 
 type resultChannel struct {
 	Result any
-	Err    goidc.OAuthError
+	Err    oidc.Error
 }
 
 type tokenIntrospectionRequest struct {
@@ -97,8 +123,13 @@ func newTokenIntrospectionRequest(req *http.Request) tokenIntrospectionRequest {
 	}
 }
 
-func NewGrantSession(grantOptions goidc.GrantOptions, token Token) *goidc.GrantSession {
-	timestampNow := goidc.TimestampNow()
+type Confirmation struct {
+	JWKThumbprint               string `json:"jkt"`
+	ClientCertificateThumbprint string `json:"x5t#S256"`
+}
+
+func NewGrantSession(grantOptions GrantOptions, token Token) *goidc.GrantSession {
+	timestampNow := time.Now().Unix()
 	return &goidc.GrantSession{
 		ID:                          uuid.New().String(),
 		TokenID:                     token.ID,
@@ -108,6 +139,13 @@ func NewGrantSession(grantOptions goidc.GrantOptions, token Token) *goidc.GrantS
 		LastTokenIssuedAtTimestamp:  timestampNow,
 		ExpiresAtTimestamp:          timestampNow + grantOptions.TokenLifetimeSecs,
 		ActiveScopes:                grantOptions.GrantedScopes,
-		GrantOptions:                grantOptions,
+		GrantType:                   grantOptions.GrantType,
+		Subject:                     grantOptions.Subject,
+		ClientID:                    grantOptions.ClientID,
+		GrantedScopes:               grantOptions.GrantedScopes,
+		GrantedAuthorizationDetails: grantOptions.GrantedAuthorizationDetails,
+		AdditionalIDTokenClaims:     grantOptions.AdditionalIDTokenClaims,
+		AdditionalUserInfoClaims:    grantOptions.AdditionalUserInfoClaims,
+		TokenOptions:                grantOptions.TokenOptions,
 	}
 }

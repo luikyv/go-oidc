@@ -1,5 +1,6 @@
 package oidc
 
+// TODO: Remove from here.
 import (
 	"crypto/rand"
 	"crypto/rsa"
@@ -42,7 +43,7 @@ func NewTestClient(_ *testing.T) *goidc.Client {
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod:  goidc.ClientAuthnSecretPost,
 			RedirectURIS: []string{TestClientRedirectURI},
-			Scopes:       fmt.Sprintf("%s %s %s", TestScope1, TestScope2, goidc.ScopeOpenID),
+			Scopes:       fmt.Sprintf("%s %s %s", TestScope1.ID, TestScope2.ID, goidc.ScopeOpenID.ID),
 			GrantTypes: []goidc.GrantType{
 				goidc.GrantAuthorizationCode,
 				goidc.GrantImplicit,

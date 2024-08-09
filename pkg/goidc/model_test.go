@@ -1,7 +1,6 @@
 package goidc_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -49,48 +48,6 @@ func TestAuthorizationParameters_Merge_HappyPath(t *testing.T) {
 	assert.Equal(t, "random_nonce", mergedParams.Nonce, "the nonce is not as expected")
 	assert.NotNil(t, mergedParams.AuthorizationDetails, "the authorization details are not as expected")
 	assert.NotNil(t, mergedParams.Claims, "the claims are not as expected")
-}
-
-func TestGetResponseMode_HappyPath(t *testing.T) {
-	// Given.
-	testCases := []struct {
-		params               goidc.AuthorizationParameters
-		expectedResponseMode goidc.ResponseMode
-	}{
-		{
-			goidc.AuthorizationParameters{ResponseMode: goidc.ResponseModeQuery},
-			goidc.ResponseModeQuery,
-		},
-		{
-			goidc.AuthorizationParameters{ResponseType: goidc.ResponseTypeCode},
-			goidc.ResponseModeQuery,
-		},
-		{
-			goidc.AuthorizationParameters{ResponseType: goidc.ResponseTypeIDToken},
-			goidc.ResponseModeFragment,
-		},
-		{
-			goidc.AuthorizationParameters{ResponseMode: goidc.ResponseModeJWT, ResponseType: goidc.ResponseTypeCode},
-			goidc.ResponseModeQueryJWT,
-		},
-		{
-			goidc.AuthorizationParameters{ResponseMode: goidc.ResponseModeJWT, ResponseType: goidc.ResponseTypeIDToken},
-			goidc.ResponseModeFragmentJWT,
-		},
-		{
-			goidc.AuthorizationParameters{ResponseMode: goidc.ResponseModeQueryJWT},
-			goidc.ResponseModeQueryJWT,
-		},
-	}
-
-	for i, testCase := range testCases {
-		t.Run(
-			fmt.Sprintf("case %v", i+1),
-			func(t *testing.T) {
-				assert.Equalf(t, testCase.expectedResponseMode, testCase.params.DefaultResponseMode(), "response mode not as expected")
-			},
-		)
-	}
 }
 
 func TestAuthorizationDetail_GetProperties_HappyPath(t *testing.T) {

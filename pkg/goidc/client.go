@@ -1,6 +1,7 @@
 package goidc
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +13,12 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"golang.org/x/crypto/bcrypt"
 )
+
+type ClientManager interface {
+	Save(ctx context.Context, client *Client) error
+	Get(ctx context.Context, id string) (*Client, error)
+	Delete(ctx context.Context, id string) error
+}
 
 type Client struct {
 	ID string `json:"client_id" bson:"_id"`
@@ -25,37 +32,44 @@ type Client struct {
 	ClientMetaInfo                `bson:"inline"`
 }
 
-func (c *Client) PublicKey(keyID string) (jose.JSONWebKey, OAuthError) {
-	jwks, oauthErr := c.FetchPublicJWKS()
-	if oauthErr != nil {
-		return jose.JSONWebKey{}, NewOAuthError(ErrorCodeInvalidRequest, oauthErr.Error())
+func (c *Client) SetAttribute(key string, value any) {
+	if c.CustomAttributes == nil {
+		c.CustomAttributes = make(map[string]any)
+	}
+	c.CustomAttributes[key] = value
+}
+
+func (c *Client) PublicKey(keyID string) (jose.JSONWebKey, error) {
+	jwks, err := c.FetchPublicJWKS()
+	if err != nil {
+		return jose.JSONWebKey{}, err
 	}
 
 	keys := jwks.Key(keyID)
 	if len(keys) == 0 {
-		return jose.JSONWebKey{}, NewOAuthError(ErrorCodeInvalidClient, "invalid key ID")
+		return jose.JSONWebKey{}, errors.New("invalid key ID")
 	}
 
 	return keys[0], nil
 }
 
-func (c *Client) JARMEncryptionJWK() (jose.JSONWebKey, OAuthError) {
+func (c *Client) JARMEncryptionJWK() (jose.JSONWebKey, error) {
 	return c.encryptionJWK(c.JARMKeyEncryptionAlgorithm)
 }
 
-func (c *Client) UserInfoEncryptionJWK() (jose.JSONWebKey, OAuthError) {
+func (c *Client) UserInfoEncryptionJWK() (jose.JSONWebKey, error) {
 	return c.encryptionJWK(c.UserInfoKeyEncryptionAlgorithm)
 }
 
-func (c *Client) IDTokenEncryptionJWK() (jose.JSONWebKey, OAuthError) {
+func (c *Client) IDTokenEncryptionJWK() (jose.JSONWebKey, error) {
 	return c.encryptionJWK(c.IDTokenKeyEncryptionAlgorithm)
 }
 
 // encryptionJWK returns the encryption JWK based on the algorithm.
-func (c *Client) encryptionJWK(algorithm jose.KeyAlgorithm) (jose.JSONWebKey, OAuthError) {
+func (c *Client) encryptionJWK(algorithm jose.KeyAlgorithm) (jose.JSONWebKey, error) {
 	jwks, err := c.FetchPublicJWKS()
 	if err != nil {
-		return jose.JSONWebKey{}, NewOAuthError(ErrorCodeInvalidRequest, err.Error())
+		return jose.JSONWebKey{}, err
 	}
 
 	for _, jwk := range jwks.Keys {
@@ -64,14 +78,35 @@ func (c *Client) encryptionJWK(algorithm jose.KeyAlgorithm) (jose.JSONWebKey, OA
 		}
 	}
 
-	return jose.JSONWebKey{}, NewOAuthError(ErrorCodeInvalidClient, fmt.Sprintf("invalid key algorithm: %s", algorithm))
+	return jose.JSONWebKey{}, fmt.Errorf("invalid key algorithm: %s", algorithm)
 }
 
-func (c *Client) AreScopesAllowed(ctx Context, availableScopes Scopes, requestedScopes string) bool {
-	scopeIDs := SplitStringWithSpaces(c.Scopes)
-	clientScopes := availableScopes.SubSet(scopeIDs)
-	for _, requestedScope := range SplitStringWithSpaces(requestedScopes) {
-		if !clientScopes.Contain(requestedScope) {
+func (c *Client) AreScopesAllowed(
+	availableScopes []Scope,
+	requestedScopes string,
+) bool {
+	if requestedScopes == "" {
+		return true
+	}
+
+	// Filter the client scopes that are available.
+	var clientScopes []Scope
+	for _, scope := range availableScopes {
+		if strings.Contains(c.Scopes, scope.ID) {
+			clientScopes = append(clientScopes, scope)
+		}
+	}
+
+	// For each scope requested, make sure it matches one of the available client scopes.
+	for _, requestedScope := range strings.Split(requestedScopes, " ") {
+		matches := false
+		for _, scope := range clientScopes {
+			if scope.Matches(requestedScope) {
+				matches = true
+				break
+			}
+		}
+		if !matches {
 			return false
 		}
 	}
@@ -125,12 +160,12 @@ func (c *Client) FetchPublicJWKS() (jose.JSONWebKeySet, error) {
 	}
 
 	if c.PublicJWKSURI == "" {
-		return jose.JSONWebKeySet{}, NewOAuthError(ErrorCodeInvalidRequest, "The client JWKS was informed neither by value or by reference")
+		return jose.JSONWebKeySet{}, errors.New("the client jwks was informed neither by value or by reference")
 	}
 
 	rawJWKS, err := c.fetchJWKS()
 	if err != nil {
-		return jose.JSONWebKeySet{}, NewOAuthError(ErrorCodeInvalidRequest, err.Error())
+		return jose.JSONWebKeySet{}, err
 	}
 	// Cache the client JWKS.
 	c.PublicJWKS = rawJWKS
@@ -148,10 +183,6 @@ func (c *Client) fetchJWKS() (json.RawMessage, error) {
 	defer resp.Body.Close()
 	return io.ReadAll(resp.Body)
 }
-
-// DCRPluginFunc defines a function that will be executed during DCR and DCM.
-// It can be used to modify the client and perform custom validations.
-type DCRPluginFunc func(ctx Context, clientInfo *ClientMetaInfo)
 
 type ClientMetaInfo struct {
 	Name                               string                  `json:"client_name,omitempty" bson:"client_name,omitempty"`
@@ -186,11 +217,4 @@ type ClientMetaInfo struct {
 	DefaultMaxAgeSecs           *int           `json:"default_max_age,omitempty" bson:"default_max_age,omitempty"`
 	DefaultACRValues            string         `json:"default_acr_values,omitempty" bson:"default_acr_values,omitempty"`
 	CustomAttributes            map[string]any `json:"custom_attributes,omitempty" bson:"custom_attributes,omitempty"`
-}
-
-func (c *ClientMetaInfo) SetAttribute(key string, value any) {
-	if c.CustomAttributes == nil {
-		c.CustomAttributes = make(map[string]any)
-	}
-	c.CustomAttributes[key] = value
 }

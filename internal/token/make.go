@@ -6,11 +6,13 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"hash"
+	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -20,7 +22,7 @@ func MakeIDToken(
 	idTokenOpts IDTokenOptions,
 ) (
 	string,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 	idToken, err := makeIDToken(ctx, client, idTokenOpts)
 	if err != nil {
@@ -43,10 +45,10 @@ func MakeIDToken(
 func Make(
 	ctx *oidc.Context,
 	client *goidc.Client,
-	grantOptions goidc.GrantOptions,
+	grantOptions GrantOptions,
 ) (
 	Token,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 	if grantOptions.TokenFormat == goidc.TokenFormatJWT {
 		return makeJWTToken(ctx, client, grantOptions)
@@ -62,7 +64,7 @@ func EncryptJWT(
 	contentKeyEncryptionAlgorithm jose.ContentEncryption,
 ) (
 	string,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 	encrypter, err := jose.NewEncrypter(
 		contentKeyEncryptionAlgorithm,
@@ -70,17 +72,17 @@ func EncryptJWT(
 		(&jose.EncrypterOptions{}).WithType("jwt").WithContentType("jwt"),
 	)
 	if err != nil {
-		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return "", oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
 	encryptedUserInfoJWTJWE, err := encrypter.Encrypt([]byte(jwtString))
 	if err != nil {
-		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return "", oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
 	encryptedUserInfoString, err := encryptedUserInfoJWTJWE.CompactSerialize()
 	if err != nil {
-		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return "", oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
 	return encryptedUserInfoString, nil
@@ -92,11 +94,11 @@ func makeIDToken(
 	idTokenOpts IDTokenOptions,
 ) (
 	string,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 	privateJWK := ctx.IDTokenSignatureKey(client)
 	signatureAlgorithm := jose.SignatureAlgorithm(privateJWK.Algorithm)
-	timestampNow := goidc.TimestampNow()
+	timestampNow := time.Now().Unix()
 
 	// Set the token claims.
 	claims := map[string]any{
@@ -128,12 +130,12 @@ func makeIDToken(
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
 	)
 	if err != nil {
-		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return "", oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
 	idToken, err := jwt.Signed(signer).Claims(claims).Serialize()
 	if err != nil {
-		return "", goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return "", oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
 	return idToken, nil
@@ -145,16 +147,16 @@ func encryptIDToken(
 	userInfoJWT string,
 ) (
 	string,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
-	jwk, oauthErr := client.IDTokenEncryptionJWK()
-	if oauthErr != nil {
-		return "", oauthErr
+	jwk, err := client.IDTokenEncryptionJWK()
+	if err != nil {
+		return "", oidc.NewError(oidc.ErrorCodeInvalidRequest, err.Error())
 	}
 
-	encryptedIDToken, oauthErr := EncryptJWT(ctx, userInfoJWT, jwk, client.IDTokenContentEncryptionAlgorithm)
-	if oauthErr != nil {
-		return "", oauthErr
+	encryptedIDToken, err := EncryptJWT(ctx, userInfoJWT, jwk, client.IDTokenContentEncryptionAlgorithm)
+	if err != nil {
+		return "", oidc.NewError(oidc.ErrorCodeInvalidRequest, err.Error())
 	}
 
 	return encryptedIDToken, nil
@@ -164,14 +166,14 @@ func encryptIDToken(
 func makeJWTToken(
 	ctx *oidc.Context,
 	client *goidc.Client,
-	grantOptions goidc.GrantOptions,
+	grantOptions GrantOptions,
 ) (
 	Token,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
 	privateJWK := ctx.TokenSignatureKey(grantOptions.TokenOptions)
 	jwtID := uuid.NewString()
-	timestampNow := goidc.TimestampNow()
+	timestampNow := time.Now().Unix()
 	claims := map[string]any{
 		goidc.ClaimTokenID:  jwtID,
 		goidc.ClaimIssuer:   ctx.Host,
@@ -218,12 +220,12 @@ func makeJWTToken(
 		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", privateJWK.KeyID),
 	)
 	if err != nil {
-		return Token{}, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return Token{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
 	accessToken, err := jwt.Signed(signer).Claims(claims).Serialize()
 	if err != nil {
-		return Token{}, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return Token{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
 	return Token{
@@ -239,14 +241,14 @@ func makeJWTToken(
 func makeOpaqueToken(
 	ctx *oidc.Context,
 	_ *goidc.Client,
-	grantOptions goidc.GrantOptions,
+	grantOptions GrantOptions,
 ) (
 	Token,
-	goidc.OAuthError,
+	oidc.Error,
 ) {
-	accessToken, err := goidc.RandomString(grantOptions.OpaqueTokenLength)
+	accessToken, err := strutil.Random(grantOptions.OpaqueTokenLength)
 	if err != nil {
-		return Token{}, goidc.NewOAuthError(goidc.ErrorCodeInternalError, err.Error())
+		return Token{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 	tokenType := goidc.TokenTypeBearer
 

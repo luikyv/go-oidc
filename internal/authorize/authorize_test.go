@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
@@ -80,7 +81,7 @@ func TestInitAuth_PolicyEndsWithSuccess_WithJAR(t *testing.T) {
 	client.PublicJWKS = jwks
 	require.Nil(t, ctx.SaveClient(client))
 
-	createdAtTimestamp := goidc.TimestampNow()
+	createdAtTimestamp := time.Now().Unix()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.Algorithm), Key: privateJWK.Key},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
@@ -177,7 +178,7 @@ func TestInitAuth_ShouldNotFindClient(t *testing.T) {
 
 	// Then.
 	require.NotNil(t, err)
-	assert.Equal(t, goidc.ErrorCodeInvalidClient, err.Code())
+	assert.Equal(t, oidc.ErrorCodeInvalidClient, err.Code())
 }
 
 func TestInitAuth_InvalidRedirectURI(t *testing.T) {
@@ -196,9 +197,9 @@ func TestInitAuth_InvalidRedirectURI(t *testing.T) {
 	// Then.
 	require.NotNil(t, err, "the redirect URI should not be valid")
 
-	var oauthErr goidc.OAuthBaseError
+	var oauthErr oidc.Error
 	require.ErrorAs(t, err, &oauthErr)
-	assert.Equal(t, goidc.ErrorCodeInvalidRequest, oauthErr.ErrorCode)
+	assert.Equal(t, oidc.ErrorCodeInvalidRequest, oauthErr.Code())
 }
 
 func TestInitAuth_InvalidScope(t *testing.T) {
@@ -218,7 +219,7 @@ func TestInitAuth_InvalidScope(t *testing.T) {
 
 	// Then.
 	assert.Nil(t, err)
-	assert.Contains(t, ctx.Response().Header().Get("Location"), goidc.ErrorCodeInvalidScope)
+	assert.Contains(t, ctx.Response().Header().Get("Location"), oidc.ErrorCodeInvalidScope)
 }
 
 func TestInitAuth_InvalidResponseType(t *testing.T) {
@@ -240,7 +241,7 @@ func TestInitAuth_InvalidResponseType(t *testing.T) {
 
 	// Then.
 	assert.Nil(t, err)
-	assert.Contains(t, ctx.Response().Header().Get("Location"), goidc.ErrorCodeInvalidRequest)
+	assert.Contains(t, ctx.Response().Header().Get("Location"), oidc.ErrorCodeInvalidRequest)
 }
 
 func TestInitAuth_WhenNoPolicyIsAvailable(t *testing.T) {
@@ -260,7 +261,7 @@ func TestInitAuth_WhenNoPolicyIsAvailable(t *testing.T) {
 
 	// Then.
 	assert.Nil(t, err)
-	assert.Contains(t, ctx.Response().Header().Get("Location"), goidc.ErrorCodeInvalidRequest, "no policy should be available")
+	assert.Contains(t, ctx.Response().Header().Get("Location"), oidc.ErrorCodeInvalidRequest, "no policy should be available")
 }
 
 func TestInitAuth_ShouldEndWithError(t *testing.T) {
@@ -289,7 +290,7 @@ func TestInitAuth_ShouldEndWithError(t *testing.T) {
 
 	// Then.
 	assert.Nil(t, err, "the error should be redirected")
-	assert.Contains(t, ctx.Response().Header().Get("Location"), goidc.ErrorCodeAccessDenied, "no policy should be available")
+	assert.Contains(t, ctx.Response().Header().Get("Location"), oidc.ErrorCodeAccessDenied, "no policy should be available")
 
 	sessions := oidc.AuthnSessions(t, ctx)
 	assert.Len(t, sessions, 0, "no authentication session should remain")
@@ -349,7 +350,7 @@ func TestInitAuth_WithPAR(t *testing.T) {
 				ResponseType: goidc.ResponseTypeCode,
 			},
 			ClientID:           client.ID,
-			ExpiresAtTimestamp: goidc.TimestampNow() + 60,
+			ExpiresAtTimestamp: time.Now().Unix() + 60,
 		},
 	))
 	policy := goidc.NewPolicy(
@@ -401,7 +402,7 @@ func TestContinueAuthentication(t *testing.T) {
 	require.Nil(t, ctx.SaveAuthnSession(&goidc.AuthnSession{
 		PolicyID:           policy.ID,
 		CallbackID:         callbackID,
-		ExpiresAtTimestamp: goidc.TimestampNow() + 60,
+		ExpiresAtTimestamp: time.Now().Unix() + 60,
 	}))
 
 	// When.
@@ -457,7 +458,7 @@ func TestPushAuthorization_WithJAR(t *testing.T) {
 	client.PublicJWKS = jwks
 	require.Nil(t, ctx.SaveClient(client))
 
-	createdAtTimestamp := goidc.TimestampNow()
+	createdAtTimestamp := time.Now().Unix()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.Algorithm), Key: privateJWK.Key},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
@@ -512,7 +513,7 @@ func TestPushAuthorization_ShouldRejectUnauthenticatedClient(t *testing.T) {
 	// Then.
 	require.NotNil(t, err, "the client should not be authenticated")
 
-	var oauthErr goidc.OAuthBaseError
+	var oauthErr oidc.Error
 	require.ErrorAs(t, err, &oauthErr)
-	assert.Equal(t, goidc.ErrorCodeInvalidClient, oauthErr.ErrorCode)
+	assert.Equal(t, oidc.ErrorCodeInvalidClient, oauthErr.Code())
 }
