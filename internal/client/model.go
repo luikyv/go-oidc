@@ -1,11 +1,29 @@
-package dcr
+package client
 
 import (
 	"encoding/json"
+	"net/http"
 	"reflect"
 
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
+
+type AuthnRequest struct {
+	// The client ID sent via form is not specific to authentication. It is also a param for /authorize.
+	ID            string
+	Secret        string
+	AssertionType goidc.ClientAssertionType
+	Assertion     string
+}
+
+func NewAuthnRequest(req *http.Request) AuthnRequest {
+	return AuthnRequest{
+		ID:            req.PostFormValue("client_id"),
+		Secret:        req.PostFormValue("client_secret"),
+		AssertionType: goidc.ClientAssertionType(req.PostFormValue("client_assertion_type")),
+		Assertion:     req.PostFormValue("client_assertion"),
+	}
+}
 
 type dynamicClientRequest struct {
 	ID string

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/luikyv/go-oidc/internal/authn"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -79,18 +79,18 @@ type tokenRequest struct {
 	RedirectURI       string
 	RefreshToken      string
 	CodeVerifier      string
-	authn.ClientAuthnRequest
+	client.AuthnRequest
 }
 
 func newTokenRequest(req *http.Request) tokenRequest {
 	return tokenRequest{
-		ClientAuthnRequest: authn.NewClientAuthnRequest(req),
-		GrantType:          goidc.GrantType(req.PostFormValue("grant_type")),
-		Scopes:             req.PostFormValue("scope"),
-		AuthorizationCode:  req.PostFormValue("code"),
-		RedirectURI:        req.PostFormValue("redirect_uri"),
-		RefreshToken:       req.PostFormValue("refresh_token"),
-		CodeVerifier:       req.PostFormValue("code_verifier"),
+		AuthnRequest:      client.NewAuthnRequest(req),
+		GrantType:         goidc.GrantType(req.PostFormValue("grant_type")),
+		Scopes:            req.PostFormValue("scope"),
+		AuthorizationCode: req.PostFormValue("code"),
+		RedirectURI:       req.PostFormValue("redirect_uri"),
+		RefreshToken:      req.PostFormValue("refresh_token"),
+		CodeVerifier:      req.PostFormValue("code_verifier"),
 	}
 }
 
@@ -110,16 +110,16 @@ type resultChannel struct {
 }
 
 type tokenIntrospectionRequest struct {
-	authn.ClientAuthnRequest
 	Token         string
 	TokenTypeHint goidc.TokenTypeHint
+	client.AuthnRequest
 }
 
 func newTokenIntrospectionRequest(req *http.Request) tokenIntrospectionRequest {
 	return tokenIntrospectionRequest{
-		ClientAuthnRequest: authn.NewClientAuthnRequest(req),
-		Token:              req.PostFormValue("token"),
-		TokenTypeHint:      goidc.TokenTypeHint(req.PostFormValue("token_type_hint")),
+		AuthnRequest:  client.NewAuthnRequest(req),
+		Token:         req.PostFormValue("token"),
+		TokenTypeHint: goidc.TokenTypeHint(req.PostFormValue("token_type_hint")),
 	}
 }
 

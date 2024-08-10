@@ -89,7 +89,7 @@ func TestNewPushedAuthorizationRequest(t *testing.T) {
 	pushedAuthReq := newPushedAuthorizationRequest(req)
 
 	// Then.
-	assert.Equal(t, "random_client_id", pushedAuthReq.ClientID)
+	assert.Equal(t, "random_client_id", pushedAuthReq.ID)
 	assert.Equal(t, "random_request_uri", pushedAuthReq.RequestURI)
 	assert.Equal(t, "random_request_object", pushedAuthReq.RequestObject)
 	assert.Equal(t, "random_redirect_uri", pushedAuthReq.RedirectURI)

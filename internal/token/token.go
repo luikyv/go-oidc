@@ -9,30 +9,9 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func HandleTokenCreation(
-	ctx *oidc.Context,
-	req tokenRequest,
-) (
-	tokenResp tokenResponse,
-	err error,
-) {
-	switch req.GrantType {
-	case goidc.GrantClientCredentials:
-		tokenResp, err = handleClientCredentialsGrantTokenCreation(ctx, req)
-	case goidc.GrantAuthorizationCode:
-		tokenResp, err = handleAuthorizationCodeGrantTokenCreation(ctx, req)
-	case goidc.GrantRefreshToken:
-		tokenResp, err = handleRefreshTokenGrantTokenCreation(ctx, req)
-	default:
-		tokenResp, err = tokenResponse{}, oidc.NewError(oidc.ErrorCodeUnsupportedGrantType, "unsupported grant type")
-	}
-
-	return tokenResp, err
-}
-
-// TokenID returns the ID of a token.
+// ExtractID returns the ID of a token.
 // If it's a JWT, the ID is the the "jti" claim. Otherwise, the token is considered opaque and its ID is the token itself.
-func TokenID(ctx *oidc.Context, token string) (string, oidc.Error) {
+func ExtractID(ctx *oidc.Context, token string) (string, oidc.Error) {
 	if !IsJWS(token) {
 		return token, nil
 	}
@@ -97,4 +76,25 @@ func IsJWS(token string) bool {
 func IsJWE(token string) bool {
 	isJWS, _ := regexp.MatchString("(^[\\w-]*\\.[\\w-]*\\.[\\w-]*\\.[\\w-]*\\.[\\w-]*$)", token)
 	return isJWS
+}
+
+func handleTokenCreation(
+	ctx *oidc.Context,
+	req tokenRequest,
+) (
+	tokenResp tokenResponse,
+	err error,
+) {
+	switch req.GrantType {
+	case goidc.GrantClientCredentials:
+		tokenResp, err = handleClientCredentialsGrantTokenCreation(ctx, req)
+	case goidc.GrantAuthorizationCode:
+		tokenResp, err = handleAuthorizationCodeGrantTokenCreation(ctx, req)
+	case goidc.GrantRefreshToken:
+		tokenResp, err = handleRefreshTokenGrantTokenCreation(ctx, req)
+	default:
+		tokenResp, err = tokenResponse{}, oidc.NewError(oidc.ErrorCodeUnsupportedGrantType, "unsupported grant type")
+	}
+
+	return tokenResp, err
 }

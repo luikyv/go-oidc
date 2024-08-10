@@ -30,13 +30,13 @@ func TestNewTokenRequest(t *testing.T) {
 	tokenReq := newTokenRequest(req)
 
 	// Then.
-	assert.Equal(t, "random_client_id", tokenReq.ClientID)
-	assert.Equal(t, "random_client_secret", tokenReq.ClientSecret)
+	assert.Equal(t, "random_client_id", tokenReq.ID)
+	assert.Equal(t, "random_client_secret", tokenReq.Secret)
 	assert.Equal(t, goidc.GrantAuthorizationCode, tokenReq.GrantType)
 	assert.Equal(t, "openid", tokenReq.Scopes)
 	assert.Equal(t, "random_code", tokenReq.AuthorizationCode)
 	assert.Equal(t, "https://example.com", tokenReq.RedirectURI)
 	assert.Equal(t, "random_refresh_token", tokenReq.RefreshToken)
-	assert.Equal(t, "random_client_secret", tokenReq.ClientSecret)
+	assert.Equal(t, "random_client_secret", tokenReq.Secret)
 	assert.Equal(t, "random_code_verifier", tokenReq.CodeVerifier)
 }

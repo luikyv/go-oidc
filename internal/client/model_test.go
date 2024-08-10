@@ -1,4 +1,4 @@
-package authn
+package client
 
 import (
 	"bytes"
@@ -23,11 +23,11 @@ func TestNewClientAuthnRequest(t *testing.T) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	// When.
-	clientAuthnReq := NewClientAuthnRequest(req)
+	clientAuthnReq := NewAuthnRequest(req)
 
 	// Then.
-	assert.Equal(t, "random_client_id", clientAuthnReq.ClientID)
-	assert.Equal(t, "random_client_secret", clientAuthnReq.ClientSecret)
-	assert.Equal(t, "random_client_assertion", clientAuthnReq.ClientAssertion)
-	assert.Equal(t, goidc.ClientAssertionType("random_client_assertion_type"), clientAuthnReq.ClientAssertionType)
+	assert.Equal(t, "random_client_id", clientAuthnReq.ID)
+	assert.Equal(t, "random_client_secret", clientAuthnReq.Secret)
+	assert.Equal(t, "random_client_assertion", clientAuthnReq.Assertion)
+	assert.Equal(t, goidc.ClientAssertionType("random_client_assertion_type"), clientAuthnReq.AssertionType)
 }

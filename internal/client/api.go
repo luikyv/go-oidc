@@ -1,4 +1,4 @@
-package dcr
+package client
 
 import (
 	"encoding/json"

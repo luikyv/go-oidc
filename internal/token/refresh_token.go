@@ -4,7 +4,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/luikyv/go-oidc/internal/authn"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -101,7 +101,7 @@ func getAuthenticatedClientAndGrantSession(
 	grantSessionResultCh := make(chan resultChannel)
 	go getGrantSessionByRefreshToken(ctx, req.RefreshToken, grantSessionResultCh)
 
-	authenticatedClient, err := authn.Client(ctx, req.ClientAuthnRequest)
+	c, err := client.Authenticated(ctx, req.AuthnRequest)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -112,7 +112,7 @@ func getAuthenticatedClientAndGrantSession(
 		return nil, nil, err
 	}
 
-	return authenticatedClient, grantSession, nil
+	return c, grantSession, nil
 }
 
 func getGrantSessionByRefreshToken(

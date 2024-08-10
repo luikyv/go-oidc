@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/luikyv/go-oidc/internal/authn"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -15,9 +15,9 @@ import (
 func TestIntrospectToken_OpaqueToken(t *testing.T) {
 	// Given.
 	ctx := oidc.NewTestContext(t)
-	client := oidc.NewTestClient(t)
-	client.GrantTypes = append(client.GrantTypes, goidc.GrantIntrospection)
-	require.Nil(t, ctx.SaveClient(client))
+	c := oidc.NewTestClient(t)
+	c.GrantTypes = append(c.GrantTypes, goidc.GrantIntrospection)
+	require.Nil(t, ctx.SaveClient(c))
 
 	token := "opaque_token"
 	grantSession := &goidc.GrantSession{
@@ -32,9 +32,9 @@ func TestIntrospectToken_OpaqueToken(t *testing.T) {
 	require.Nil(t, ctx.SaveGrantSession(grantSession))
 
 	tokenReq := tokenIntrospectionRequest{
-		ClientAuthnRequest: authn.ClientAuthnRequest{
-			ClientID:     oidc.TestClientID,
-			ClientSecret: oidc.TestClientSecret,
+		AuthnRequest: client.AuthnRequest{
+			ID:     oidc.TestClientID,
+			Secret: oidc.TestClientSecret,
 		},
 		Token: token,
 	}
@@ -55,9 +55,9 @@ func TestIntrospectToken_OpaqueToken(t *testing.T) {
 func TestIntrospectToken_RefreshToken(t *testing.T) {
 	// Given.
 	ctx := oidc.NewTestContext(t)
-	client := oidc.NewTestClient(t)
-	client.GrantTypes = append(client.GrantTypes, goidc.GrantIntrospection)
-	require.Nil(t, ctx.SaveClient(client))
+	c := oidc.NewTestClient(t)
+	c.GrantTypes = append(c.GrantTypes, goidc.GrantIntrospection)
+	require.Nil(t, ctx.SaveClient(c))
 
 	expiryTime := time.Now().Unix() + 60
 	refreshToken, err := strutil.Random(RefreshTokenLength)
@@ -71,9 +71,9 @@ func TestIntrospectToken_RefreshToken(t *testing.T) {
 	require.Nil(t, ctx.SaveGrantSession(grantSession))
 
 	tokenReq := tokenIntrospectionRequest{
-		ClientAuthnRequest: authn.ClientAuthnRequest{
-			ClientID:     oidc.TestClientID,
-			ClientSecret: oidc.TestClientSecret,
+		AuthnRequest: client.AuthnRequest{
+			ID:     oidc.TestClientID,
+			Secret: oidc.TestClientSecret,
 		},
 		Token: refreshToken,
 	}

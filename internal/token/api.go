@@ -11,7 +11,7 @@ func Handler(config *oidc.Configuration) http.HandlerFunc {
 		ctx := oidc.NewContext(*config, r, w)
 
 		req := newTokenRequest(ctx.Request())
-		tokenResp, err := HandleTokenCreation(ctx, req)
+		tokenResp, err := handleTokenCreation(ctx, req)
 		if err != nil {
 			ctx.WriteError(err)
 			return

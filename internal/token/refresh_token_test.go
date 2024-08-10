@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikyv/go-oidc/internal/authn"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +16,7 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 
 	// Given.
 	ctx := oidc.NewTestContext(t)
-	client, _ := ctx.Client(oidc.TestClientID)
+	c, _ := ctx.Client(oidc.TestClientID)
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
@@ -27,7 +27,7 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 		CreatedAtTimestamp: now,
 		Subject:            username,
 		ClientID:           oidc.TestClientID,
-		GrantedScopes:      client.Scopes,
+		GrantedScopes:      c.Scopes,
 		TokenOptions: goidc.TokenOptions{
 			TokenFormat:       goidc.TokenFormatJWT,
 			TokenLifetimeSecs: 60,
@@ -36,22 +36,22 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 	require.Nil(t, ctx.SaveGrantSession(grantSession))
 
 	req := tokenRequest{
-		ClientAuthnRequest: authn.ClientAuthnRequest{
-			ClientID:     client.ID,
-			ClientSecret: oidc.TestClientSecret,
+		AuthnRequest: client.AuthnRequest{
+			ID:     c.ID,
+			Secret: oidc.TestClientSecret,
 		},
 		GrantType:    goidc.GrantRefreshToken,
 		RefreshToken: refreshToken,
 	}
 
 	// When.
-	tokenResp, err := HandleTokenCreation(ctx, req)
+	tokenResp, err := handleTokenCreation(ctx, req)
 
 	// Then.
 	require.Nil(t, err)
 
 	claims := oidc.UnsafeClaims(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
-	assert.Equal(t, client.ID, claims["client_id"], "the token was assigned to a different client")
+	assert.Equal(t, c.ID, claims["client_id"], "the token was assigned to a different client")
 	assert.Equal(t, username, claims["sub"], "the token subject should be the client")
 	assert.NotEmpty(t, tokenResp.RefreshToken, "the new refresh token is not valid")
 
@@ -63,18 +63,18 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 
 	// When
 	ctx := oidc.NewTestContext(t)
-	client, _ := ctx.Client(oidc.TestClientID)
+	c, _ := ctx.Client(oidc.TestClientID)
 
 	refreshToken := "random_refresh_token"
 	username := "user_id"
 	now := time.Now().Unix()
 	grantSession := &goidc.GrantSession{
 		RefreshToken:       refreshToken,
-		ActiveScopes:       client.Scopes,
+		ActiveScopes:       c.Scopes,
 		ExpiresAtTimestamp: now - 10,
 		Subject:            username,
 		ClientID:           oidc.TestClientID,
-		GrantedScopes:      client.Scopes,
+		GrantedScopes:      c.Scopes,
 		TokenOptions: goidc.TokenOptions{
 			TokenLifetimeSecs: 60,
 		},
@@ -82,15 +82,15 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 	require.Nil(t, ctx.SaveGrantSession(grantSession))
 
 	req := tokenRequest{
-		ClientAuthnRequest: authn.ClientAuthnRequest{
-			ClientID: oidc.TestClientID,
+		AuthnRequest: client.AuthnRequest{
+			ID: oidc.TestClientID,
 		},
 		GrantType:    goidc.GrantRefreshToken,
 		RefreshToken: refreshToken,
 	}
 
 	// Then
-	_, err := HandleTokenCreation(ctx, req)
+	_, err := handleTokenCreation(ctx, req)
 
 	// Assert
 	assert.NotNil(t, err, "the refresh token request should be denied")

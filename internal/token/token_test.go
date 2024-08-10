@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikyv/go-oidc/internal/authn"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
@@ -18,9 +18,9 @@ func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 	ctx := oidc.NewTestContext(t)
 
 	// When.
-	_, err := HandleTokenCreation(ctx, tokenRequest{
-		ClientAuthnRequest: authn.ClientAuthnRequest{
-			ClientID: "invalid_client_id",
+	_, err := handleTokenCreation(ctx, tokenRequest{
+		AuthnRequest: client.AuthnRequest{
+			ID: "invalid_client_id",
 		},
 		GrantType: goidc.GrantClientCredentials,
 		Scopes:    "scope1",
@@ -32,17 +32,17 @@ func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 
 func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	// Given.
-	client := oidc.NewTestClient(t)
-	client.AuthnMethod = goidc.ClientAuthnSecretPost
+	c := oidc.NewTestClient(t)
+	c.AuthnMethod = goidc.ClientAuthnSecretPost
 
 	ctx := oidc.NewTestContext(t)
-	require.Nil(t, ctx.SaveClient(client))
+	require.Nil(t, ctx.SaveClient(c))
 
 	// When.
-	_, err := HandleTokenCreation(ctx, tokenRequest{
-		ClientAuthnRequest: authn.ClientAuthnRequest{
-			ClientID:     client.ID,
-			ClientSecret: "invalid_password",
+	_, err := handleTokenCreation(ctx, tokenRequest{
+		AuthnRequest: client.AuthnRequest{
+			ID:     c.ID,
+			Secret: "invalid_password",
 		},
 		GrantType: goidc.GrantClientCredentials,
 		Scopes:    "scope1",
@@ -68,16 +68,16 @@ func TestHandleGrantCreationWithDPoP(t *testing.T) {
 	ctx.Request().RequestURI = "/token"
 
 	req := tokenRequest{
-		ClientAuthnRequest: authn.ClientAuthnRequest{
-			ClientID:     oidc.TestClientID,
-			ClientSecret: oidc.TestClientSecret,
+		AuthnRequest: client.AuthnRequest{
+			ID:     oidc.TestClientID,
+			Secret: oidc.TestClientSecret,
 		},
 		GrantType: goidc.GrantClientCredentials,
 		Scopes:    "scope1",
 	}
 
 	// When.
-	tokenResp, err := HandleTokenCreation(ctx, req)
+	tokenResp, err := handleTokenCreation(ctx, req)
 
 	// Then.
 	assert.Nil(t, err)

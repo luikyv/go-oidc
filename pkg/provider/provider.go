@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/authorize"
-	"github.com/luikyv/go-oidc/internal/dcr"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/discovery"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/token"
@@ -694,22 +694,22 @@ func (p *Provider) Handler() http.Handler {
 	if p.config.DCRIsEnabled {
 		handler.HandleFunc(
 			"POST "+p.config.PathPrefix+goidc.EndpointDynamicClient,
-			dcr.HandlerCreate(p.config),
+			client.HandlerCreate(p.config),
 		)
 
 		handler.HandleFunc(
 			"PUT "+p.config.PathPrefix+goidc.EndpointDynamicClient+"/{client_id}",
-			dcr.HandlerUpdate(p.config),
+			client.HandlerUpdate(p.config),
 		)
 
 		handler.HandleFunc(
 			"GET "+p.config.PathPrefix+goidc.EndpointDynamicClient+"/{client_id}",
-			dcr.HandlerGet(p.config),
+			client.HandlerGet(p.config),
 		)
 
 		handler.HandleFunc(
 			"DELETE "+p.config.PathPrefix+goidc.EndpointDynamicClient+"/{client_id}",
-			dcr.HandlerDelete(p.config),
+			client.HandlerDelete(p.config),
 		)
 	}
 

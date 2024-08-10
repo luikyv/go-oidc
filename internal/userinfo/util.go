@@ -16,7 +16,7 @@ func handleUserInfoRequest(ctx *oidc.Context) (userInfoResponse, oidc.Error) {
 		return userInfoResponse{}, oidc.NewError(oidc.ErrorCodeInvalidToken, "no token found")
 	}
 
-	tokenID, oauthErr := token.TokenID(ctx, accessToken)
+	tokenID, oauthErr := token.ExtractID(ctx, accessToken)
 	if oauthErr != nil {
 		return userInfoResponse{}, oauthErr
 	}

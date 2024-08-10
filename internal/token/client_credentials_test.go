@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikyv/go-oidc/internal/authn"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
@@ -16,16 +16,16 @@ func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 	ctx := oidc.NewTestContext(t)
 
 	req := tokenRequest{
-		ClientAuthnRequest: authn.ClientAuthnRequest{
-			ClientID:     oidc.TestClientID,
-			ClientSecret: oidc.TestClientSecret,
+		AuthnRequest: client.AuthnRequest{
+			ID:     oidc.TestClientID,
+			Secret: oidc.TestClientSecret,
 		},
 		GrantType: goidc.GrantClientCredentials,
 		Scopes:    oidc.TestScope1.ID,
 	}
 
 	// When.
-	tokenResp, err := HandleTokenCreation(ctx, req)
+	tokenResp, err := handleTokenCreation(ctx, req)
 
 	// Then.
 	require.Nil(t, err)

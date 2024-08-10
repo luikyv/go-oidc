@@ -1,4 +1,4 @@
-package authn
+package client
 
 import (
 	"testing"
@@ -26,12 +26,12 @@ func TestGetAuthenticatedClient_WithNoneAuthn_HappyPath(t *testing.T) {
 	ctx := oidc.NewTestContext(t)
 	require.Nil(t, ctx.SaveClient(client))
 
-	req := ClientAuthnRequest{
-		ClientID: client.ID,
+	req := AuthnRequest{
+		ID: client.ID,
 	}
 
 	// When.
-	_, err := Client(ctx, req)
+	_, err := Authenticated(ctx, req)
 
 	// Then.
 	assert.Nil(t, err, "The client should be authenticated")
@@ -53,27 +53,27 @@ func TestGetAuthenticatedClient_WithSecretPostAuthn(t *testing.T) {
 	ctx := oidc.NewTestContext(t)
 	require.Nil(t, ctx.SaveClient(client))
 
-	req := ClientAuthnRequest{
-		ClientID:     client.ID,
-		ClientSecret: clientSecret,
+	req := AuthnRequest{
+		ID:     client.ID,
+		Secret: clientSecret,
 	}
 
 	// When.
-	_, err := Client(ctx, req)
+	_, err := Authenticated(ctx, req)
 	// Then.
 	assert.Nil(t, err, "The client should be authenticated")
 
 	// Given.
-	req.ClientSecret = "invalid_secret"
+	req.Secret = "invalid_secret"
 	// When.
-	_, err = Client(ctx, req)
+	_, err = Authenticated(ctx, req)
 	// Then.
 	assert.NotNil(t, err, "The client should be authenticated")
 
 	// Given.
-	req.ClientSecret = ""
+	req.Secret = ""
 	// When.
-	_, err = Client(ctx, req)
+	_, err = Authenticated(ctx, req)
 	// Then.
 	assert.NotNil(t, err, "The client should be authenticated")
 }
@@ -95,24 +95,24 @@ func TestGetAuthenticatedClient_WithBasicSecretAuthn(t *testing.T) {
 	require.Nil(t, ctx.SaveClient(client))
 	ctx.Request().SetBasicAuth(client.ID, clientSecret)
 
-	req := ClientAuthnRequest{}
+	req := AuthnRequest{}
 
 	// When.
-	_, err := Client(ctx, req)
+	_, err := Authenticated(ctx, req)
 	// Then.
 	assert.Nil(t, err, "The client should be authenticated")
 
 	// Given.
 	ctx.Request().SetBasicAuth(client.ID, "invalid_secret")
 	// When.
-	_, err = Client(ctx, req)
+	_, err = Authenticated(ctx, req)
 	// Then.
 	assert.NotNil(t, err, "The client should not be authenticated")
 
 	// Given.
 	ctx.Request().Header.Del("Authorization")
 	// When.
-	_, err = Client(ctx, req)
+	_, err = Authenticated(ctx, req)
 	// Then.
 	assert.NotNil(t, err, "The client should not be authenticated")
 }
@@ -147,13 +147,13 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.PrivateKeyJWTAssertionLifetimeSecs - 10,
 	}
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
-	req := ClientAuthnRequest{
-		ClientAssertionType: goidc.AssertionTypeJWTBearer,
-		ClientAssertion:     assertion,
+	req := AuthnRequest{
+		AssertionType: goidc.AssertionTypeJWTBearer,
+		Assertion:     assertion,
 	}
 
 	// When.
-	_, err := Client(ctx, req)
+	_, err := Authenticated(ctx, req)
 	// Then.
 	assert.Nil(t, err, "The client should be authenticated")
 
@@ -190,13 +190,13 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_ClientInformedSigningAlgorithm
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.PrivateKeyJWTAssertionLifetimeSecs - 10,
 	}
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
-	req := ClientAuthnRequest{
-		ClientAssertionType: goidc.AssertionTypeJWTBearer,
-		ClientAssertion:     assertion,
+	req := AuthnRequest{
+		AssertionType: goidc.AssertionTypeJWTBearer,
+		Assertion:     assertion,
 	}
 
 	// When.
-	_, err := Client(ctx, req)
+	_, err := Authenticated(ctx, req)
 
 	// Then.
 	assert.Nil(t, err, "the client should be authenticated")
@@ -231,13 +231,13 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAudienceClaim(t *testin
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.PrivateKeyJWTAssertionLifetimeSecs - 10,
 	}
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
-	req := ClientAuthnRequest{
-		ClientAssertionType: goidc.AssertionTypeJWTBearer,
-		ClientAssertion:     assertion,
+	req := AuthnRequest{
+		AssertionType: goidc.AssertionTypeJWTBearer,
+		Assertion:     assertion,
 	}
 
 	// When.
-	_, err := Client(ctx, req)
+	_, err := Authenticated(ctx, req)
 
 	// Then.
 	require.NotNil(t, err, "The client should not be authenticated")
@@ -272,12 +272,12 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidExpiryClaim(t *testing.
 		goidc.ClaimIssuedAt: createdAtTimestamp,
 	}
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
-	req := ClientAuthnRequest{
-		ClientAssertionType: goidc.AssertionTypeJWTBearer,
-		ClientAssertion:     assertion,
+	req := AuthnRequest{
+		AssertionType: goidc.AssertionTypeJWTBearer,
+		Assertion:     assertion,
 	}
 	// When.
-	_, err := Client(ctx, req)
+	_, err := Authenticated(ctx, req)
 
 	// Then.
 	require.NotNil(t, err, "The client should not be authenticated")
@@ -313,13 +313,13 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidKeyID(t *testing.T) {
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.PrivateKeyJWTAssertionLifetimeSecs - 10,
 	}
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
-	req := ClientAuthnRequest{
-		ClientAssertionType: goidc.AssertionTypeJWTBearer,
-		ClientAssertion:     assertion,
+	req := AuthnRequest{
+		AssertionType: goidc.AssertionTypeJWTBearer,
+		Assertion:     assertion,
 	}
 
 	// When.
-	_, err := Client(ctx, req)
+	_, err := Authenticated(ctx, req)
 
 	// Then.
 	require.NotNil(t, err, "The client should not be authenticated")
@@ -357,13 +357,13 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T)
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", invalidPrivateJWK.KeyID),
 	)
 	invalidAssertion, _ := jwt.Signed(invalidSigner).Claims(claims).Serialize()
-	req := ClientAuthnRequest{
-		ClientAssertionType: goidc.AssertionTypeJWTBearer,
-		ClientAssertion:     invalidAssertion,
+	req := AuthnRequest{
+		AssertionType: goidc.AssertionTypeJWTBearer,
+		Assertion:     invalidAssertion,
 	}
 
 	// When.
-	_, err := Client(ctx, req)
+	_, err := Authenticated(ctx, req)
 
 	// Then.
 	require.NotNil(t, err, "The client should not be authenticated")
@@ -386,13 +386,13 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertion(t *testing.T)
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
 
-	invalidReq := ClientAuthnRequest{
-		ClientAssertionType: goidc.AssertionTypeJWTBearer,
-		ClientAssertion:     "invalid_assertion",
+	invalidReq := AuthnRequest{
+		AssertionType: goidc.AssertionTypeJWTBearer,
+		Assertion:     "invalid_assertion",
 	}
 
 	// When.
-	_, err := Client(ctx, invalidReq)
+	_, err := Authenticated(ctx, invalidReq)
 
 	// Then.
 	require.NotNil(t, err, "The client should not be authenticated")
@@ -427,13 +427,13 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertionType(t *testin
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.PrivateKeyJWTAssertionLifetimeSecs - 10,
 	}
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
-	invalidReq := ClientAuthnRequest{
-		ClientAssertionType: "invalid_assertion_type",
-		ClientAssertion:     assertion,
+	invalidReq := AuthnRequest{
+		AssertionType: "invalid_assertion_type",
+		Assertion:     assertion,
 	}
 
 	// When.
-	_, err := Client(ctx, invalidReq)
+	_, err := Authenticated(ctx, invalidReq)
 
 	// Then.
 	require.NotNil(t, err, "The client should not be authenticated")
@@ -470,13 +470,13 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_HappyPath(t *testing.T) {
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.ClientSecretJWTAssertionLifetimeSecs - 10,
 	}
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
-	req := ClientAuthnRequest{
-		ClientAssertionType: goidc.AssertionTypeJWTBearer,
-		ClientAssertion:     assertion,
+	req := AuthnRequest{
+		AssertionType: goidc.AssertionTypeJWTBearer,
+		Assertion:     assertion,
 	}
 
 	// When.
-	_, err := Client(ctx, req)
+	_, err := Authenticated(ctx, req)
 
 	// Then.
 	require.Nil(t, err, "The client should be authenticated")
@@ -513,13 +513,13 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_InvalidAssertionType(t *test
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.ClientSecretJWTAssertionLifetimeSecs - 10,
 	}
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
-	req := ClientAuthnRequest{
-		ClientAssertionType: "invalid_assertion_type",
-		ClientAssertion:     assertion,
+	req := AuthnRequest{
+		AssertionType: "invalid_assertion_type",
+		Assertion:     assertion,
 	}
 
 	// When.
-	_, err := Client(ctx, req)
+	_, err := Authenticated(ctx, req)
 
 	// Then.
 	require.NotNil(t, err, "The client should not be authenticated")
@@ -541,15 +541,15 @@ func TestGetAuthenticatedClient_WithDifferentClientIDs(t *testing.T) {
 	require.Nil(t, ctx.SaveClient(client))
 	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256}
 
-	req := ClientAuthnRequest{
-		ClientID: client.ID,
+	req := AuthnRequest{
+		ID: client.ID,
 		// The issuer claim should be the client ID, so this assertion has issuer as "invalid_client_id",
 		// so the unhappy path can be tested.
-		ClientAssertion: "eyJhbGciOiJQUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJpbnZhbGlkX2NsaWVudF9pZCIsInN1YiI6ImludmFsaWRfY2xpZW50X2lkIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.Nog3Y_jeWO0dugsTKCxLx_vGcCbE6kRHzo7wAvfnKe7_uCW9UB1f-WhX4fMKXvJ8v-bScuyx2pTgy4C6ie0ZAcOn_XESblpr_0epoUF2ibdR5DGPKcrPs-S8jp8yvBOxbUmq0jyU9V5H33052h5gBsEAcYXnM150S-ch_1ISL1EgDiZrOm9lYhisp7Jp_mqUZx3OXjfWruz4d6oLe5FeCg7NsB5PpT_N26VZ6Qxt9x6OKUvphRHN1niETkf3_1uTr8CltHesfFl4NnaXSP5f7QStg9JKIpjgJnl-LeQe2C4tM8yHCTENxgHX4oTzrfiEfdN3TwoHDFNszcXnnAUQCg",
+		Assertion: "eyJhbGciOiJQUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJpbnZhbGlkX2NsaWVudF9pZCIsInN1YiI6ImludmFsaWRfY2xpZW50X2lkIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.Nog3Y_jeWO0dugsTKCxLx_vGcCbE6kRHzo7wAvfnKe7_uCW9UB1f-WhX4fMKXvJ8v-bScuyx2pTgy4C6ie0ZAcOn_XESblpr_0epoUF2ibdR5DGPKcrPs-S8jp8yvBOxbUmq0jyU9V5H33052h5gBsEAcYXnM150S-ch_1ISL1EgDiZrOm9lYhisp7Jp_mqUZx3OXjfWruz4d6oLe5FeCg7NsB5PpT_N26VZ6Qxt9x6OKUvphRHN1niETkf3_1uTr8CltHesfFl4NnaXSP5f7QStg9JKIpjgJnl-LeQe2C4tM8yHCTENxgHX4oTzrfiEfdN3TwoHDFNszcXnnAUQCg",
 	}
 
 	// Then.
-	_, err := Client(ctx, req)
+	_, err := Authenticated(ctx, req)
 
 	// Assert.
 	if err == nil {

@@ -1,7 +1,7 @@
 package token
 
 import (
-	"github.com/luikyv/go-oidc/internal/authn"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -13,26 +13,26 @@ func handleClientCredentialsGrantTokenCreation(
 	tokenResponse,
 	oidc.Error,
 ) {
-	client, oauthErr := authn.Client(ctx, req.ClientAuthnRequest)
+	c, oauthErr := client.Authenticated(ctx, req.AuthnRequest)
 	if oauthErr != nil {
 		return tokenResponse{}, oauthErr
 	}
 
-	if oauthErr := validateClientCredentialsGrantRequest(ctx, req, client); oauthErr != nil {
+	if oauthErr := validateClientCredentialsGrantRequest(ctx, req, c); oauthErr != nil {
 		return tokenResponse{}, oauthErr
 	}
 
-	grantOptions, err := newClientCredentialsGrantOptions(ctx, client, req)
+	grantOptions, err := newClientCredentialsGrantOptions(ctx, c, req)
 	if err != nil {
 		return tokenResponse{}, err
 	}
 
-	token, err := Make(ctx, client, grantOptions)
+	token, err := Make(ctx, c, grantOptions)
 	if err != nil {
 		return tokenResponse{}, err
 	}
 
-	_, oauthErr = generateClientCredentialsGrantSession(ctx, client, token, grantOptions)
+	_, oauthErr = generateClientCredentialsGrantSession(ctx, c, token, grantOptions)
 	if oauthErr != nil {
 		return tokenResponse{}, nil
 	}

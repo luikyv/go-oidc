@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/luikyv/go-oidc/internal/authn"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -178,7 +178,7 @@ func getAuthenticatedClientAndSession(
 	sessionResultCh := make(chan resultChannel)
 	go getSessionByAuthorizationCode(ctx, req.AuthorizationCode, sessionResultCh)
 
-	authenticatedClient, err := authn.Client(ctx, req.ClientAuthnRequest)
+	c, err := client.Authenticated(ctx, req.AuthnRequest)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -189,7 +189,7 @@ func getAuthenticatedClientAndSession(
 		return nil, nil, err
 	}
 
-	return authenticatedClient, session, nil
+	return c, session, nil
 }
 
 func getSessionByAuthorizationCode(ctx *oidc.Context, authorizationCode string, ch chan<- resultChannel) {

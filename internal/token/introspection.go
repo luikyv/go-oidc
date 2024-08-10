@@ -1,7 +1,7 @@
 package token
 
 import (
-	"github.com/luikyv/go-oidc/internal/authn"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -13,12 +13,12 @@ func introspect(
 	goidc.TokenInfo,
 	oidc.Error,
 ) {
-	client, err := authn.Client(ctx, req.ClientAuthnRequest)
+	c, err := client.Authenticated(ctx, req.AuthnRequest)
 	if err != nil {
 		return goidc.TokenInfo{}, err
 	}
 
-	if err := validateTokenIntrospectionRequest(ctx, req, client); err != nil {
+	if err := validateTokenIntrospectionRequest(ctx, req, c); err != nil {
 		return goidc.TokenInfo{}, err
 	}
 

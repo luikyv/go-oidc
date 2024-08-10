@@ -12,7 +12,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
-	"github.com/luikyv/go-oidc/internal/authn"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
@@ -418,17 +418,17 @@ func TestContinueAuthentication(t *testing.T) {
 func TestPushAuthorization(t *testing.T) {
 	// Given.
 	ctx := oidc.NewTestContext(t)
-	client, _ := ctx.Client(oidc.TestClientID)
+	c, _ := ctx.Client(oidc.TestClientID)
 
 	// When.
-	requestURI, err := pushAuthorization(ctx, pushedAuthorizationRequest{
-		ClientAuthnRequest: authn.ClientAuthnRequest{
-			ClientID:     oidc.TestClientID,
-			ClientSecret: oidc.TestClientSecret,
+	resp, err := pushAuthorization(ctx, pushedAuthorizationRequest{
+		AuthnRequest: client.AuthnRequest{
+			ID:     oidc.TestClientID,
+			Secret: oidc.TestClientSecret,
 		},
 		AuthorizationParameters: goidc.AuthorizationParameters{
-			RedirectURI:  client.RedirectURIS[0],
-			Scopes:       client.Scopes,
+			RedirectURI:  c.RedirectURIS[0],
+			Scopes:       c.Scopes,
 			ResponseType: goidc.ResponseTypeCode,
 			ResponseMode: goidc.ResponseModeQuery,
 		},
@@ -442,7 +442,7 @@ func TestPushAuthorization(t *testing.T) {
 	require.Len(t, sessions, 1, "the should be only one authentication session")
 
 	session := sessions[0]
-	assert.Equal(t, requestURI, session.RequestURI, "the request URI informed is not the same in the session")
+	assert.Equal(t, resp.RequestURI, session.RequestURI, "the request URI informed is not the same in the session")
 }
 
 func TestPushAuthorization_WithJAR(t *testing.T) {
@@ -453,10 +453,10 @@ func TestPushAuthorization_WithJAR(t *testing.T) {
 	ctx.JARLifetimeSecs = 60
 
 	privateJWK := oidc.PrivateRS256JWK(t, "rsa256_key")
-	client, _ := ctx.Client(oidc.TestClientID)
+	c, _ := ctx.Client(oidc.TestClientID)
 	jwks, _ := json.Marshal(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privateJWK.Public()}})
-	client.PublicJWKS = jwks
-	require.Nil(t, ctx.SaveClient(client))
+	c.PublicJWKS = jwks
+	require.Nil(t, ctx.SaveClient(c))
 
 	createdAtTimestamp := time.Now().Unix()
 	signer, _ := jose.NewSigner(
@@ -464,22 +464,22 @@ func TestPushAuthorization_WithJAR(t *testing.T) {
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
 	)
 	claims := map[string]any{
-		goidc.ClaimIssuer:   client.ID,
+		goidc.ClaimIssuer:   c.ID,
 		goidc.ClaimAudience: ctx.Host,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
 		goidc.ClaimExpiry:   createdAtTimestamp + 10,
-		"client_id":         client.ID,
-		"redirect_uri":      client.RedirectURIS[0],
-		"scope":             client.Scopes,
+		"client_id":         c.ID,
+		"redirect_uri":      c.RedirectURIS[0],
+		"scope":             c.Scopes,
 		"response_type":     goidc.ResponseTypeCode,
 	}
 	requestObject, _ := jwt.Signed(signer).Claims(claims).Serialize()
 
 	// When.
-	requestURI, err := pushAuthorization(ctx, pushedAuthorizationRequest{
-		ClientAuthnRequest: authn.ClientAuthnRequest{
-			ClientID:     oidc.TestClientID,
-			ClientSecret: oidc.TestClientSecret,
+	resp, err := pushAuthorization(ctx, pushedAuthorizationRequest{
+		AuthnRequest: client.AuthnRequest{
+			ID:     oidc.TestClientID,
+			Secret: oidc.TestClientSecret,
 		},
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RequestObject: requestObject,
@@ -488,25 +488,25 @@ func TestPushAuthorization_WithJAR(t *testing.T) {
 
 	// Then.
 	require.Nil(t, err)
-	assert.NotEmpty(t, requestURI)
+	assert.NotEmpty(t, resp.RequestURI)
 
 	sessions := oidc.AuthnSessions(t, ctx)
 	require.Len(t, sessions, 1, "the should be only one authentication session")
 
 	session := sessions[0]
-	assert.Equal(t, requestURI, session.RequestURI, "the request URI informed is not the same in the session")
+	assert.Equal(t, resp.RequestURI, session.RequestURI, "the request URI informed is not the same in the session")
 }
 
 func TestPushAuthorization_ShouldRejectUnauthenticatedClient(t *testing.T) {
 	// Given.
 	ctx := oidc.NewTestContext(t)
-	client, _ := ctx.Client(oidc.TestClientID)
+	c, _ := ctx.Client(oidc.TestClientID)
 
 	// When.
 	_, err := pushAuthorization(ctx, pushedAuthorizationRequest{
-		ClientAuthnRequest: authn.ClientAuthnRequest{
-			ClientID:     client.ID,
-			ClientSecret: "invalid_password",
+		AuthnRequest: client.AuthnRequest{
+			ID:     c.ID,
+			Secret: "invalid_password",
 		},
 	})
 

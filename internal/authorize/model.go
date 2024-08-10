@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/luikyv/go-oidc/internal/authn"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -111,7 +111,7 @@ func (rp authorizationResponse) Parameters() map[string]string {
 
 type pushedAuthorizationRequest struct {
 	goidc.AuthorizationParameters
-	authn.ClientAuthnRequest
+	client.AuthnRequest
 }
 
 func newPushedAuthorizationRequest(req *http.Request) pushedAuthorizationRequest {
@@ -153,7 +153,7 @@ func newPushedAuthorizationRequest(req *http.Request) pushedAuthorizationRequest
 	}
 
 	return pushedAuthorizationRequest{
-		ClientAuthnRequest:      authn.NewClientAuthnRequest(req),
+		AuthnRequest:            client.NewAuthnRequest(req),
 		AuthorizationParameters: params,
 	}
 }

@@ -3,7 +3,7 @@ package authorize
 import (
 	"time"
 
-	"github.com/luikyv/go-oidc/internal/authn"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/token"
@@ -18,12 +18,12 @@ func pushAuthorization(
 	oidc.Error,
 ) {
 
-	client, oauthErr := authn.Client(ctx, req.ClientAuthnRequest)
+	c, oauthErr := client.Authenticated(ctx, req.AuthnRequest)
 	if oauthErr != nil {
 		return pushedAuthorizationResponse{}, oidc.NewError(oidc.ErrorCodeInvalidClient, "client not authenticated")
 	}
 
-	session, oauthErr := pushedAuthnSession(ctx, req, client)
+	session, oauthErr := pushedAuthnSession(ctx, req, c)
 	if oauthErr != nil {
 		return pushedAuthorizationResponse{}, oauthErr
 	}
@@ -38,13 +38,18 @@ func pushAuthorization(
 }
 
 func initAuth(ctx *oidc.Context, req authorizationRequest) oidc.Error {
-	client, err := client(ctx, req)
-	if err != nil {
-		return err
+
+	if req.ClientID == "" {
+		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid client_id")
 	}
 
-	if err = initAuthNoRedirect(ctx, client, req); err != nil {
-		return redirectError(ctx, err, client)
+	c, err := ctx.Client(req.ClientID)
+	if err != nil {
+		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid client_id")
+	}
+
+	if err := initAuthNoRedirect(ctx, c, req); err != nil {
+		return redirectError(ctx, err, c)
 	}
 
 	return nil
@@ -79,25 +84,6 @@ func continueAuth(ctx *oidc.Context, callbackID string) oidc.Error {
 	}
 
 	return nil
-}
-
-func client(
-	ctx *oidc.Context,
-	req authorizationRequest,
-) (
-	*goidc.Client,
-	oidc.Error,
-) {
-	if req.ClientID == "" {
-		return nil, oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid client_id")
-	}
-
-	client, err := ctx.Client(req.ClientID)
-	if err != nil {
-		return nil, oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid client_id")
-	}
-
-	return client, nil
 }
 
 func authenticate(ctx *oidc.Context, session *goidc.AuthnSession) oidc.Error {
