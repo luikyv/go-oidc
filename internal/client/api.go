@@ -5,11 +5,36 @@ import (
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func HandlerCreate(config oidc.Configuration) http.HandlerFunc {
+func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
+	if config.DCRIsEnabled {
+		router.HandleFunc(
+			"POST "+config.PathPrefix+goidc.EndpointDynamicClient,
+			handlerCreate(config),
+		)
+
+		router.HandleFunc(
+			"PUT "+config.PathPrefix+goidc.EndpointDynamicClient+"/{client_id}",
+			handlerUpdate(config),
+		)
+
+		router.HandleFunc(
+			"GET "+config.PathPrefix+goidc.EndpointDynamicClient+"/{client_id}",
+			handlerGet(config),
+		)
+
+		router.HandleFunc(
+			"DELETE "+config.PathPrefix+goidc.EndpointDynamicClient+"/{client_id}",
+			handlerDelete(config),
+		)
+	}
+}
+
+func handlerCreate(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := oidc.NewContext(config, r, w)
+		ctx := oidc.NewContext(*config, r, w)
 
 		var req DynamicClientRequest
 		if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
@@ -31,9 +56,9 @@ func HandlerCreate(config oidc.Configuration) http.HandlerFunc {
 	}
 }
 
-func HandlerUpdate(config oidc.Configuration) http.HandlerFunc {
+func handlerUpdate(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := oidc.NewContext(config, r, w)
+		ctx := oidc.NewContext(*config, r, w)
 
 		var req DynamicClientRequest
 		if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
@@ -62,9 +87,9 @@ func HandlerUpdate(config oidc.Configuration) http.HandlerFunc {
 
 }
 
-func HandlerGet(config oidc.Configuration) http.HandlerFunc {
+func handlerGet(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := oidc.NewContext(config, r, w)
+		ctx := oidc.NewContext(*config, r, w)
 
 		token := ctx.BearerToken()
 		if token == "" {
@@ -90,9 +115,9 @@ func HandlerGet(config oidc.Configuration) http.HandlerFunc {
 
 }
 
-func HandlerDelete(config oidc.Configuration) http.HandlerFunc {
+func handlerDelete(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := oidc.NewContext(config, r, w)
+		ctx := oidc.NewContext(*config, r, w)
 
 		token := ctx.BearerToken()
 		if token == "" {

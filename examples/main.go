@@ -20,7 +20,7 @@ func main() {
 	// Create and configure the manager.
 	openidProvider, err := provider.New(
 		Issuer,
-		PrivateJWKS("server_keys/jwks.json"),
+		privateJWKS("server_keys/jwks.json"),
 		serverKeyID,
 		provider.WithScopes(scopes...),
 		provider.WithPAR(60),

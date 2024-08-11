@@ -1,5 +1,5 @@
 package userinfo
 
 var (
-	HandleUserInfoRequest = handleUserInfoRequest
+	HandleUserInfoRequest = userInfo
 )

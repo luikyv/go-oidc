@@ -219,7 +219,7 @@ func newClient(dynamicClient DynamicClientRequest) *goidc.Client {
 }
 
 func registrationURI(ctx *oidc.Context, clientID string) string {
-	return ctx.Host + ctx.PathPrefix + goidc.EndpointDynamicClient + "/" + clientID
+	return ctx.BaseURL() + goidc.EndpointDynamicClient + "/" + clientID
 }
 
 func protected(

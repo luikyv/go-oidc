@@ -17,7 +17,7 @@ import (
 const Port = ":83"
 const Issuer = "https://host.docker.internal" + Port
 
-func PrivateJWKS(filename string) jose.JSONWebKeySet {
+func privateJWKS(filename string) jose.JSONWebKeySet {
 	absPath, _ := filepath.Abs("./" + filename)
 	clientJWKSFile, err := os.Open(absPath)
 	if err != nil {
@@ -90,7 +90,7 @@ func authenticateUserWithNoInteraction(
 	return goidc.StatusSuccess
 }
 
-func AuthenticateUser(
+func authenticateUser(
 	ctx goidc.Context,
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {

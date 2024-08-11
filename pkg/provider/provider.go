@@ -11,6 +11,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/discovery"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/storage/inmemory"
 	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/internal/userinfo"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -40,9 +41,9 @@ func New(
 		config: oidc.Configuration{
 			Host:                issuer,
 			Profile:             goidc.ProfileOpenID,
-			ClientManager:       NewInMemoryClientManager(),
-			AuthnSessionManager: NewInMemoryAuthnSessionManager(),
-			GrantSessionManager: NewInMemoryGrantSessionManager(),
+			ClientManager:       inmemory.NewClientManager(),
+			AuthnSessionManager: inmemory.NewAuthnSessionManager(),
+			GrantSessionManager: inmemory.NewGrantSessionManager(),
 			Scopes:              []goidc.Scope{goidc.ScopeOpenID},
 			TokenOptions: func(client *goidc.Client, scopes string) (goidc.TokenOptions, error) {
 				return goidc.NewJWTTokenOptions(defaultSignatureKeyID, defaultTokenLifetimeSecs), nil
@@ -624,7 +625,7 @@ func (p *Provider) RunTLS(
 
 func (p *Provider) runMTLS(config TLSOptions) error {
 
-	handler := p.mtlsHandler()
+	handler := p.Handler()
 	handler = newCacheControlMiddleware(handler)
 	handler = NewClientCertificateMiddleware(handler)
 
@@ -647,115 +648,15 @@ func (p *Provider) runMTLS(config TLSOptions) error {
 
 func (p *Provider) Handler() http.Handler {
 
-	handler := http.NewServeMux()
+	server := http.NewServeMux()
 
-	handler.HandleFunc(
-		"GET "+p.config.PathPrefix+goidc.EndpointJSONWebKeySet,
-		discovery.HandlerJWKS(&p.config),
-	)
+	discovery.RegisterHandlers(server, &p.config)
+	token.RegisterHandlers(server, &p.config)
+	authorize.RegisterHandlers(server, &p.config)
+	userinfo.RegisterHandlers(server, &p.config)
+	client.RegisterHandlers(server, &p.config)
 
-	if p.config.PARIsEnabled {
-		handler.HandleFunc(
-			"POST "+p.config.PathPrefix+goidc.EndpointPushedAuthorizationRequest,
-			authorize.HandlerPush(&p.config),
-		)
-	}
-
-	handler.HandleFunc(
-		"GET "+p.config.PathPrefix+goidc.EndpointAuthorization,
-		authorize.Handler(&p.config),
-	)
-
-	handler.HandleFunc(
-		"POST "+p.config.PathPrefix+goidc.EndpointAuthorization+"/{callback}",
-		authorize.HandlerCallback(&p.config),
-	)
-
-	handler.HandleFunc(
-		"POST "+p.config.PathPrefix+goidc.EndpointToken,
-		token.Handler(&p.config),
-	)
-
-	handler.HandleFunc(
-		"GET "+p.config.PathPrefix+goidc.EndpointWellKnown,
-		discovery.HandlerWellKnown(&p.config),
-	)
-
-	handler.HandleFunc(
-		"GET "+p.config.PathPrefix+goidc.EndpointUserInfo,
-		userinfo.Handler(&p.config),
-	)
-
-	handler.HandleFunc(
-		"POST "+p.config.PathPrefix+goidc.EndpointUserInfo,
-		userinfo.Handler(&p.config),
-	)
-
-	if p.config.DCRIsEnabled {
-		handler.HandleFunc(
-			"POST "+p.config.PathPrefix+goidc.EndpointDynamicClient,
-			client.HandlerCreate(p.config),
-		)
-
-		handler.HandleFunc(
-			"PUT "+p.config.PathPrefix+goidc.EndpointDynamicClient+"/{client_id}",
-			client.HandlerUpdate(p.config),
-		)
-
-		handler.HandleFunc(
-			"GET "+p.config.PathPrefix+goidc.EndpointDynamicClient+"/{client_id}",
-			client.HandlerGet(p.config),
-		)
-
-		handler.HandleFunc(
-			"DELETE "+p.config.PathPrefix+goidc.EndpointDynamicClient+"/{client_id}",
-			client.HandlerDelete(p.config),
-		)
-	}
-
-	if p.config.IntrospectionIsEnabled {
-		handler.HandleFunc(
-			"POST "+p.config.PathPrefix+goidc.EndpointTokenIntrospection,
-			token.HandlerIntrospect(&p.config),
-		)
-	}
-
-	return handler
-}
-
-func (p *Provider) mtlsHandler() http.Handler {
-	serverHandler := http.NewServeMux()
-
-	serverHandler.HandleFunc(
-		"POST "+p.config.PathPrefix+goidc.EndpointToken,
-		token.Handler(&p.config),
-	)
-
-	serverHandler.HandleFunc(
-		"GET "+p.config.PathPrefix+goidc.EndpointUserInfo,
-		userinfo.Handler(&p.config),
-	)
-
-	serverHandler.HandleFunc(
-		"POST "+p.config.PathPrefix+goidc.EndpointUserInfo,
-		userinfo.Handler(&p.config),
-	)
-
-	if p.config.PARIsEnabled {
-		serverHandler.HandleFunc(
-			"POST "+p.config.PathPrefix+goidc.EndpointPushedAuthorizationRequest,
-			authorize.HandlerPush(&p.config),
-		)
-	}
-
-	if p.config.IntrospectionIsEnabled {
-		serverHandler.HandleFunc(
-			"POST "+p.config.PathPrefix+goidc.EndpointTokenIntrospection,
-			token.HandlerIntrospect(&p.config),
-		)
-	}
-
-	return serverHandler
+	return server
 }
 
 // TODO: Add more validations.

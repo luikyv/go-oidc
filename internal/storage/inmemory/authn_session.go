@@ -17,22 +17,22 @@ func NewAuthnSessionManager() *AuthnSessionManager {
 	}
 }
 
-func (manager *AuthnSessionManager) Save(
+func (m *AuthnSessionManager) Save(
 	_ context.Context,
 	session *goidc.AuthnSession,
 ) error {
-	manager.Sessions[session.ID] = session
+	m.Sessions[session.ID] = session
 	return nil
 }
 
-func (manager *AuthnSessionManager) GetByCallbackID(
+func (m *AuthnSessionManager) GetByCallbackID(
 	_ context.Context,
 	callbackID string,
 ) (
 	*goidc.AuthnSession,
 	error,
 ) {
-	session, exists := manager.getFirstSession(func(s *goidc.AuthnSession) bool {
+	session, exists := m.getFirstSession(func(s *goidc.AuthnSession) bool {
 		return s.CallbackID == callbackID
 	})
 	if !exists {
@@ -42,14 +42,14 @@ func (manager *AuthnSessionManager) GetByCallbackID(
 	return session, nil
 }
 
-func (manager *AuthnSessionManager) GetByAuthorizationCode(
+func (m *AuthnSessionManager) GetByAuthorizationCode(
 	_ context.Context,
 	authorizationCode string,
 ) (
 	*goidc.AuthnSession,
 	error,
 ) {
-	session, exists := manager.getFirstSession(func(s *goidc.AuthnSession) bool {
+	session, exists := m.getFirstSession(func(s *goidc.AuthnSession) bool {
 		return s.AuthorizationCode == authorizationCode
 	})
 	if !exists {
@@ -59,14 +59,14 @@ func (manager *AuthnSessionManager) GetByAuthorizationCode(
 	return session, nil
 }
 
-func (manager *AuthnSessionManager) GetByRequestURI(
+func (m *AuthnSessionManager) GetByRequestURI(
 	_ context.Context,
 	requestURI string,
 ) (
 	*goidc.AuthnSession,
 	error,
 ) {
-	session, exists := manager.getFirstSession(func(s *goidc.AuthnSession) bool {
+	session, exists := m.getFirstSession(func(s *goidc.AuthnSession) bool {
 		return s.RequestURI == requestURI
 	})
 	if !exists {
@@ -76,19 +76,19 @@ func (manager *AuthnSessionManager) GetByRequestURI(
 	return session, nil
 }
 
-func (manager *AuthnSessionManager) Delete(_ context.Context, id string) error {
-	delete(manager.Sessions, id)
+func (m *AuthnSessionManager) Delete(_ context.Context, id string) error {
+	delete(m.Sessions, id)
 	return nil
 }
 
-func (manager *AuthnSessionManager) getFirstSession(
+func (m *AuthnSessionManager) getFirstSession(
 	condition func(*goidc.AuthnSession) bool,
 ) (
 	*goidc.AuthnSession,
 	bool,
 ) {
-	sessions := make([]*goidc.AuthnSession, 0, len(manager.Sessions))
-	for _, s := range manager.Sessions {
+	sessions := make([]*goidc.AuthnSession, 0, len(m.Sessions))
+	for _, s := range m.Sessions {
 		sessions = append(sessions, s)
 	}
 

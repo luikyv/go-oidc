@@ -17,13 +17,13 @@ func NewGrantSessionManager() *GrantSessionManager {
 	}
 }
 
-func (manager *GrantSessionManager) Save(_ context.Context, grantSession *goidc.GrantSession) error {
-	manager.Sessions[grantSession.ID] = grantSession
+func (m *GrantSessionManager) Save(_ context.Context, grantSession *goidc.GrantSession) error {
+	m.Sessions[grantSession.ID] = grantSession
 	return nil
 }
 
-func (manager *GrantSessionManager) GetByTokenID(_ context.Context, tokenID string) (*goidc.GrantSession, error) {
-	grantSession, exists := manager.getFirstToken(func(t *goidc.GrantSession) bool {
+func (m *GrantSessionManager) GetByTokenID(_ context.Context, tokenID string) (*goidc.GrantSession, error) {
+	grantSession, exists := m.getFirstToken(func(t *goidc.GrantSession) bool {
 		return t.TokenID == tokenID
 	})
 	if !exists {
@@ -33,8 +33,8 @@ func (manager *GrantSessionManager) GetByTokenID(_ context.Context, tokenID stri
 	return grantSession, nil
 }
 
-func (manager *GrantSessionManager) GetByRefreshToken(_ context.Context, refreshToken string) (*goidc.GrantSession, error) {
-	grantSession, exists := manager.getFirstToken(func(t *goidc.GrantSession) bool {
+func (m *GrantSessionManager) GetByRefreshToken(_ context.Context, refreshToken string) (*goidc.GrantSession, error) {
+	grantSession, exists := m.getFirstToken(func(t *goidc.GrantSession) bool {
 		return t.RefreshToken == refreshToken
 	})
 	if !exists {
@@ -44,14 +44,14 @@ func (manager *GrantSessionManager) GetByRefreshToken(_ context.Context, refresh
 	return grantSession, nil
 }
 
-func (manager *GrantSessionManager) Delete(_ context.Context, id string) error {
-	delete(manager.Sessions, id)
+func (m *GrantSessionManager) Delete(_ context.Context, id string) error {
+	delete(m.Sessions, id)
 	return nil
 }
 
-func (manager *GrantSessionManager) getFirstToken(condition func(*goidc.GrantSession) bool) (*goidc.GrantSession, bool) {
-	grantSessions := make([]*goidc.GrantSession, 0, len(manager.Sessions))
-	for _, t := range manager.Sessions {
+func (m *GrantSessionManager) getFirstToken(condition func(*goidc.GrantSession) bool) (*goidc.GrantSession, bool) {
+	grantSessions := make([]*goidc.GrantSession, 0, len(m.Sessions))
+	for _, t := range m.Sessions {
 		grantSessions = append(grantSessions, t)
 	}
 

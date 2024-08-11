@@ -4,14 +4,22 @@ import (
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func Handler(config *oidc.Configuration) http.HandlerFunc {
+func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
+	router.HandleFunc(
+		"POST "+config.PathPrefix+goidc.EndpointUserInfo,
+		handler(config),
+	)
+}
+
+func handler(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := oidc.NewContext(*config, r, w)
 
 		var err error
-		userInfoResponse, err := handleUserInfoRequest(ctx)
+		userInfoResponse, err := userInfo(ctx)
 		if err != nil {
 			ctx.WriteError(err)
 			return

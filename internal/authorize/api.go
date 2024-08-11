@@ -4,9 +4,29 @@ import (
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func HandlerPush(config *oidc.Configuration) http.HandlerFunc {
+func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
+	if config.PARIsEnabled {
+		router.HandleFunc(
+			"POST "+config.PathPrefix+goidc.EndpointPushedAuthorizationRequest,
+			handlerPush(config),
+		)
+	}
+
+	router.HandleFunc(
+		"GET "+config.PathPrefix+goidc.EndpointAuthorization,
+		handler(config),
+	)
+
+	router.HandleFunc(
+		"POST "+config.PathPrefix+goidc.EndpointAuthorization+"/{callback}",
+		handlerCallback(config),
+	)
+}
+
+func handlerPush(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := oidc.NewContext(*config, r, w)
 
@@ -23,7 +43,7 @@ func HandlerPush(config *oidc.Configuration) http.HandlerFunc {
 	}
 }
 
-func Handler(config *oidc.Configuration) http.HandlerFunc {
+func handler(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := oidc.NewContext(*config, r, w)
 
@@ -40,7 +60,7 @@ func Handler(config *oidc.Configuration) http.HandlerFunc {
 	}
 }
 
-func HandlerCallback(config *oidc.Configuration) http.HandlerFunc {
+func handlerCallback(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := oidc.NewContext(*config, r, w)
 

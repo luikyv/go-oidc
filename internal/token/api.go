@@ -4,9 +4,24 @@ import (
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func Handler(config *oidc.Configuration) http.HandlerFunc {
+func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
+	router.HandleFunc(
+		"POST "+config.PathPrefix+goidc.EndpointToken,
+		handler(config),
+	)
+
+	if config.IntrospectionIsEnabled {
+		router.HandleFunc(
+			"POST "+config.PathPrefix+goidc.EndpointTokenIntrospection,
+			handlerIntrospect(config),
+		)
+	}
+}
+
+func handler(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := oidc.NewContext(*config, r, w)
 
@@ -21,10 +36,9 @@ func Handler(config *oidc.Configuration) http.HandlerFunc {
 			ctx.WriteError(err)
 		}
 	}
-
 }
 
-func HandlerIntrospect(config *oidc.Configuration) http.HandlerFunc {
+func handlerIntrospect(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := oidc.NewContext(*config, r, w)
 
