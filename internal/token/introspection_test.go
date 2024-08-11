@@ -1,4 +1,4 @@
-package token
+package token_test
 
 import (
 	"testing"
@@ -7,6 +7,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
+	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,9 +20,9 @@ func TestIntrospectToken_OpaqueToken(t *testing.T) {
 	c.GrantTypes = append(c.GrantTypes, goidc.GrantIntrospection)
 	require.Nil(t, ctx.SaveClient(c))
 
-	token := "opaque_token"
+	accessToken := "opaque_token"
 	grantSession := &goidc.GrantSession{
-		TokenID:                    token,
+		TokenID:                    accessToken,
 		LastTokenIssuedAtTimestamp: time.Now().Unix(),
 		ActiveScopes:               goidc.ScopeOpenID.ID,
 		ClientID:                   oidc.TestClientID,
@@ -31,16 +32,16 @@ func TestIntrospectToken_OpaqueToken(t *testing.T) {
 	}
 	require.Nil(t, ctx.SaveGrantSession(grantSession))
 
-	tokenReq := tokenIntrospectionRequest{
+	tokenReq := token.IntrospectionRequest{
 		AuthnRequest: client.AuthnRequest{
 			ID:     oidc.TestClientID,
 			Secret: oidc.TestClientSecret,
 		},
-		Token: token,
+		Token: accessToken,
 	}
 
 	// When.
-	tokenInfo, err := introspect(ctx, tokenReq)
+	tokenInfo, err := token.Introspect(ctx, tokenReq)
 
 	// Then.
 	require.Nil(t, err)
@@ -60,7 +61,7 @@ func TestIntrospectToken_RefreshToken(t *testing.T) {
 	require.Nil(t, ctx.SaveClient(c))
 
 	expiryTime := time.Now().Unix() + 60
-	refreshToken, err := strutil.Random(RefreshTokenLength)
+	refreshToken, err := strutil.Random(token.RefreshTokenLength)
 	require.Nil(t, err)
 	grantSession := &goidc.GrantSession{
 		RefreshToken:       refreshToken,
@@ -70,7 +71,7 @@ func TestIntrospectToken_RefreshToken(t *testing.T) {
 	}
 	require.Nil(t, ctx.SaveGrantSession(grantSession))
 
-	tokenReq := tokenIntrospectionRequest{
+	tokenReq := token.IntrospectionRequest{
 		AuthnRequest: client.AuthnRequest{
 			ID:     oidc.TestClientID,
 			Secret: oidc.TestClientSecret,
@@ -79,7 +80,7 @@ func TestIntrospectToken_RefreshToken(t *testing.T) {
 	}
 
 	// When.
-	tokenInfo, err := introspect(ctx, tokenReq)
+	tokenInfo, err := token.Introspect(ctx, tokenReq)
 
 	// Then.
 	require.Nil(t, err)

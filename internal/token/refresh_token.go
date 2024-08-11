@@ -10,36 +10,36 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func handleRefreshTokenGrantTokenCreation(
+func generateRefreshTokenGrant(
 	ctx *oidc.Context,
-	req tokenRequest,
+	req Request,
 ) (
-	tokenResponse,
+	Response,
 	oidc.Error,
 ) {
 	if err := preValidateRefreshTokenGrantRequest(req); err != nil {
-		return tokenResponse{}, oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid parameter for refresh token grant")
+		return Response{}, oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid parameter for refresh token grant")
 	}
 
 	client, grantSession, err := getAuthenticatedClientAndGrantSession(ctx, req)
 	if err != nil {
-		return tokenResponse{}, err
+		return Response{}, err
 	}
 
 	if err = validateRefreshTokenGrantRequest(ctx, req, client, grantSession); err != nil {
-		return tokenResponse{}, err
+		return Response{}, err
 	}
 
 	token, err := Make(ctx, client, NewGrantOptions(*grantSession))
 	if err != nil {
-		return tokenResponse{}, err
+		return Response{}, err
 	}
 
 	if err := updateRefreshTokenGrantSession(ctx, grantSession, req, token); err != nil {
-		return tokenResponse{}, err
+		return Response{}, err
 	}
 
-	tokenResp := tokenResponse{
+	tokenResp := Response{
 		AccessToken:  token.Value,
 		ExpiresIn:    grantSession.TokenLifetimeSecs,
 		TokenType:    token.Type,
@@ -53,7 +53,7 @@ func handleRefreshTokenGrantTokenCreation(
 			newIDTokenOptions(NewGrantOptions(*grantSession)),
 		)
 		if err != nil {
-			return tokenResponse{}, err
+			return Response{}, err
 		}
 	}
 
@@ -63,7 +63,7 @@ func handleRefreshTokenGrantTokenCreation(
 func updateRefreshTokenGrantSession(
 	ctx *oidc.Context,
 	grantSession *goidc.GrantSession,
-	req tokenRequest,
+	req Request,
 	token Token,
 ) oidc.Error {
 
@@ -91,7 +91,7 @@ func updateRefreshTokenGrantSession(
 
 func getAuthenticatedClientAndGrantSession(
 	ctx *oidc.Context,
-	req tokenRequest,
+	req Request,
 ) (
 	*goidc.Client,
 	*goidc.GrantSession,
@@ -135,7 +135,7 @@ func getGrantSessionByRefreshToken(
 }
 
 func preValidateRefreshTokenGrantRequest(
-	req tokenRequest,
+	req Request,
 ) oidc.Error {
 	if req.RefreshToken == "" {
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid refresh token")
@@ -146,7 +146,7 @@ func preValidateRefreshTokenGrantRequest(
 
 func validateRefreshTokenGrantRequest(
 	ctx *oidc.Context,
-	req tokenRequest,
+	req Request,
 	client *goidc.Client,
 	grantSession *goidc.GrantSession,
 ) oidc.Error {

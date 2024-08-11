@@ -5,7 +5,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-type openIDConfiguration struct {
+type OpenIDConfiguration struct {
 	Issuer                                         string                        `json:"issuer"`
 	ClientRegistrationEndpoint                     string                        `json:"registration_endpoint,omitempty"`
 	AuthorizationEndpoint                          string                        `json:"authorization_endpoint"`
@@ -45,13 +45,13 @@ type openIDConfiguration struct {
 	IntrospectionEndpoint                          string                        `json:"introspection_endpoint,omitempty"`
 	IntrospectionEndpointClientAuthnMethods        []goidc.ClientAuthnType       `json:"introspection_endpoint_auth_methods_supported,omitempty"`
 	IntrospectionEndpointClientSignatureAlgorithms []jose.SignatureAlgorithm     `json:"introspection_endpoint_auth_signing_alg_values_supported,omitempty"`
-	MTLSConfiguration                              *openIDMTLSConfiguration      `json:"mtls_endpoint_aliases,omitempty"`
+	MTLSConfiguration                              *OpenIDMTLSConfiguration      `json:"mtls_endpoint_aliases,omitempty"`
 	TLSBoundTokensIsEnabled                        bool                          `json:"tls_client_certificate_bound_access_tokens,omitempty"`
 	AuthenticationContextReferences                []goidc.ACR                   `json:"acr_values_supported,omitempty"`
 	DisplayValuesSupported                         []goidc.DisplayValue          `json:"display_values_supported,omitempty"`
 }
 
-type openIDMTLSConfiguration struct {
+type OpenIDMTLSConfiguration struct {
 	TokenEndpoint              string `json:"token_endpoint"`
 	ParEndpoint                string `json:"pushed_authorization_request_endpoint,omitempty"`
 	UserinfoEndpoint           string `json:"userinfo_endpoint"`

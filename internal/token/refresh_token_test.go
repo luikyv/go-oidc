@@ -1,4 +1,4 @@
-package token
+package token_test
 
 import (
 	"testing"
@@ -7,12 +7,13 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
+func TestGenerateGrant_RefreshTokenGrant(t *testing.T) {
 
 	// Given.
 	ctx := oidc.NewTestContext(t)
@@ -35,7 +36,7 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 	}
 	require.Nil(t, ctx.SaveGrantSession(grantSession))
 
-	req := tokenRequest{
+	req := token.Request{
 		AuthnRequest: client.AuthnRequest{
 			ID:     c.ID,
 			Secret: oidc.TestClientSecret,
@@ -45,7 +46,7 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 	}
 
 	// When.
-	tokenResp, err := handleTokenCreation(ctx, req)
+	tokenResp, err := token.GenerateGrant(ctx, req)
 
 	// Then.
 	require.Nil(t, err)
@@ -59,7 +60,7 @@ func TestHandleTokenCreation_RefreshTokenGrant(t *testing.T) {
 	assert.Len(t, grantSessions, 1, "there should be only one grant session")
 }
 
-func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
+func TestGenerateGrant_ShouldDenyExpiredRefreshToken(t *testing.T) {
 
 	// When
 	ctx := oidc.NewTestContext(t)
@@ -81,7 +82,7 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 	}
 	require.Nil(t, ctx.SaveGrantSession(grantSession))
 
-	req := tokenRequest{
+	req := token.Request{
 		AuthnRequest: client.AuthnRequest{
 			ID: oidc.TestClientID,
 		},
@@ -90,17 +91,17 @@ func TestHandleGrantCreation_ShouldDenyExpiredRefreshToken(t *testing.T) {
 	}
 
 	// Then
-	_, err := handleTokenCreation(ctx, req)
+	_, err := token.GenerateGrant(ctx, req)
 
 	// Assert
 	assert.NotNil(t, err, "the refresh token request should be denied")
 }
 
-func TestGenerateRefreshToken(t *testing.T) {
+func TestRefreshToken(t *testing.T) {
 	// When.
-	token, err := refreshToken()
+	refreshToken, err := token.RefreshToken()
 
 	// Then.
 	assert.Nil(t, err)
-	assert.Len(t, token, RefreshTokenLength)
+	assert.Len(t, refreshToken, token.RefreshTokenLength)
 }

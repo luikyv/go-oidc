@@ -10,8 +10,8 @@ func Handler(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := oidc.NewContext(*config, r, w)
 
-		req := newTokenRequest(ctx.Request())
-		tokenResp, err := handleTokenCreation(ctx, req)
+		req := newRequest(ctx.Request())
+		tokenResp, err := generateGrant(ctx, req)
 		if err != nil {
 			ctx.WriteError(err)
 			return
@@ -28,7 +28,7 @@ func HandlerIntrospect(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := oidc.NewContext(*config, r, w)
 
-		req := newTokenIntrospectionRequest(ctx.Request())
+		req := newIntrospectionRequest(ctx.Request())
 		tokenInfo, err := introspect(ctx, req)
 		if err != nil {
 			ctx.WriteError(err)

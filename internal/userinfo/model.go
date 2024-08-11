@@ -1,6 +1,6 @@
 package userinfo
 
-type userInfoResponse struct {
+type UserInfoResponse struct {
 	JWTClaims string
 	Claims    map[string]any
 }

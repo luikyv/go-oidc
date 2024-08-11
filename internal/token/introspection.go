@@ -8,7 +8,7 @@ import (
 
 func introspect(
 	ctx *oidc.Context,
-	req tokenIntrospectionRequest,
+	req IntrospectionRequest,
 ) (
 	goidc.TokenInfo,
 	oidc.Error,
@@ -18,16 +18,16 @@ func introspect(
 		return goidc.TokenInfo{}, err
 	}
 
-	if err := validateTokenIntrospectionRequest(ctx, req, c); err != nil {
+	if err := validateIntrospectionRequest(ctx, req, c); err != nil {
 		return goidc.TokenInfo{}, err
 	}
 
-	return TokenIntrospectionInfo(ctx, req.Token), nil
+	return IntrospectionInfo(ctx, req.Token), nil
 }
 
-func validateTokenIntrospectionRequest(
+func validateIntrospectionRequest(
 	_ *oidc.Context,
-	req tokenIntrospectionRequest,
+	req IntrospectionRequest,
 	client *goidc.Client,
 ) oidc.Error {
 	if !client.IsGrantTypeAllowed(goidc.GrantIntrospection) {
@@ -41,23 +41,23 @@ func validateTokenIntrospectionRequest(
 	return nil
 }
 
-func TokenIntrospectionInfo(
+func IntrospectionInfo(
 	ctx *oidc.Context,
 	accessToken string,
 ) goidc.TokenInfo {
 
 	if len(accessToken) == RefreshTokenLength {
-		return getRefreshTokenIntrospectionInfo(ctx, accessToken)
+		return refreshTokenInfo(ctx, accessToken)
 	}
 
 	if IsJWS(accessToken) {
-		return getJWTTokenIntrospectionInfo(ctx, accessToken)
+		return jwtTokenInfo(ctx, accessToken)
 	}
 
-	return opaqueTokenIntrospectionInfo(ctx, accessToken)
+	return opaqueTokenInfo(ctx, accessToken)
 }
 
-func getRefreshTokenIntrospectionInfo(
+func refreshTokenInfo(
 	ctx *oidc.Context,
 	token string,
 ) goidc.TokenInfo {
@@ -88,7 +88,7 @@ func getRefreshTokenIntrospectionInfo(
 	}
 }
 
-func getJWTTokenIntrospectionInfo(
+func jwtTokenInfo(
 	ctx *oidc.Context,
 	accessToken string,
 ) goidc.TokenInfo {
@@ -102,7 +102,7 @@ func getJWTTokenIntrospectionInfo(
 	return tokenIntrospectionInfoByID(ctx, claims[goidc.ClaimTokenID].(string))
 }
 
-func opaqueTokenIntrospectionInfo(
+func opaqueTokenInfo(
 	ctx *oidc.Context,
 	token string,
 ) goidc.TokenInfo {

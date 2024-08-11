@@ -10,7 +10,7 @@ import (
 
 func validateRequest(
 	ctx *oidc.Context,
-	req authorizationRequest,
+	req Request,
 	client *goidc.Client,
 ) oidc.Error {
 	return validateParamsAuthorize(ctx, req.AuthorizationParameters, client)
@@ -18,7 +18,7 @@ func validateRequest(
 
 func validateRequestWithPAR(
 	ctx *oidc.Context,
-	req authorizationRequest,
+	req Request,
 	session *goidc.AuthnSession,
 	client *goidc.Client,
 ) oidc.Error {
@@ -40,8 +40,8 @@ func validateRequestWithPAR(
 
 func validateRequestWithJAR(
 	ctx *oidc.Context,
-	req authorizationRequest,
-	jar authorizationRequest,
+	req Request,
+	jar Request,
 	client *goidc.Client,
 ) oidc.Error {
 	if jar.ClientID != client.ID {
@@ -66,8 +66,8 @@ func validateRequestWithJAR(
 
 func validatePushedRequestWithJAR(
 	ctx *oidc.Context,
-	req pushedAuthorizationRequest,
-	jar authorizationRequest,
+	req PushedRequest,
+	jar Request,
 	client *goidc.Client,
 ) oidc.Error {
 	if req.RequestURI != "" {
@@ -92,7 +92,7 @@ func validatePushedRequestWithJAR(
 
 func validatePushedRequest(
 	ctx *oidc.Context,
-	req pushedAuthorizationRequest,
+	req PushedRequest,
 	client *goidc.Client,
 ) oidc.Error {
 

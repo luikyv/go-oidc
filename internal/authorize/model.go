@@ -12,13 +12,13 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-type authorizationRequest struct {
+type Request struct {
 	ClientID string `json:"client_id"`
 	goidc.AuthorizationParameters
 }
 
-func newAuthorizationRequest(req *http.Request) authorizationRequest {
-	params := authorizationRequest{
+func newRequest(req *http.Request) Request {
+	params := Request{
 		ClientID: req.URL.Query().Get("client_id"),
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RequestURI:          req.URL.Query().Get("request_uri"),
@@ -37,21 +37,18 @@ func newAuthorizationRequest(req *http.Request) authorizationRequest {
 		},
 	}
 
-	maxAge, err := strconv.Atoi(req.URL.Query().Get("max_age"))
-	if err == nil {
+	if maxAge, err := strconv.Atoi(req.URL.Query().Get("max_age")); err == nil {
 		params.MaxAuthnAgeSecs = &maxAge
 	}
 
-	claims := req.URL.Query().Get("claims")
-	if claims != "" {
+	if claims := req.URL.Query().Get("claims"); claims != "" {
 		var claimsObject goidc.ClaimsObject
 		if err := json.Unmarshal([]byte(claims), &claimsObject); err == nil {
 			params.Claims = &claimsObject
 		}
 	}
 
-	authorizationDetails := req.URL.Query().Get("authorization_details")
-	if authorizationDetails != "" {
+	if authorizationDetails := req.URL.Query().Get("authorization_details"); authorizationDetails != "" {
 		var authorizationDetailsObject []goidc.AuthorizationDetail
 		if err := json.Unmarshal([]byte(authorizationDetails), &authorizationDetailsObject); err == nil {
 			params.AuthorizationDetails = authorizationDetailsObject
@@ -61,7 +58,7 @@ func newAuthorizationRequest(req *http.Request) authorizationRequest {
 	return params
 }
 
-type authorizationResponse struct {
+type Response struct {
 	Response          string
 	Issuer            string
 	AccessToken       string
@@ -73,48 +70,48 @@ type authorizationResponse struct {
 	ErrorDescription  string
 }
 
-func (rp authorizationResponse) Parameters() map[string]string {
+func (resp Response) parameters() map[string]string {
 	params := make(map[string]string)
 
-	if rp.Response != "" {
-		params["response"] = rp.Response
+	if resp.Response != "" {
+		params["response"] = resp.Response
 		return params
 	}
 
-	if rp.Issuer != "" {
-		params["iss"] = rp.Issuer
+	if resp.Issuer != "" {
+		params["iss"] = resp.Issuer
 	}
-	if rp.AccessToken != "" {
-		params["access_token"] = rp.AccessToken
+	if resp.AccessToken != "" {
+		params["access_token"] = resp.AccessToken
 	}
-	if rp.TokenType != "" {
-		params["token_type"] = string(rp.TokenType)
+	if resp.TokenType != "" {
+		params["token_type"] = string(resp.TokenType)
 	}
-	if rp.IDToken != "" {
-		params["id_token"] = rp.IDToken
+	if resp.IDToken != "" {
+		params["id_token"] = resp.IDToken
 	}
-	if rp.AuthorizationCode != "" {
-		params["code"] = rp.AuthorizationCode
+	if resp.AuthorizationCode != "" {
+		params["code"] = resp.AuthorizationCode
 	}
-	if rp.State != "" {
-		params["state"] = rp.State
+	if resp.State != "" {
+		params["state"] = resp.State
 	}
-	if rp.Error != "" {
-		params["error"] = string(rp.Error)
+	if resp.Error != "" {
+		params["error"] = string(resp.Error)
 	}
-	if rp.ErrorDescription != "" {
-		params["error_description"] = rp.ErrorDescription
+	if resp.ErrorDescription != "" {
+		params["error_description"] = resp.ErrorDescription
 	}
 
 	return params
 }
 
-type pushedAuthorizationRequest struct {
+type PushedRequest struct {
 	goidc.AuthorizationParameters
 	client.AuthnRequest
 }
 
-func newPushedAuthorizationRequest(req *http.Request) pushedAuthorizationRequest {
+func newPushedRequest(req *http.Request) PushedRequest {
 	params := goidc.AuthorizationParameters{
 		RequestURI:          req.PostFormValue("request_uri"),
 		RequestObject:       req.PostFormValue("request"),
@@ -131,34 +128,31 @@ func newPushedAuthorizationRequest(req *http.Request) pushedAuthorizationRequest
 		ACRValues:           req.PostFormValue("acr_values"),
 	}
 
-	maxAge, err := strconv.Atoi(req.PostFormValue("max_age"))
-	if err == nil {
+	if maxAge, err := strconv.Atoi(req.PostFormValue("max_age")); err == nil {
 		params.MaxAuthnAgeSecs = &maxAge
 	}
 
-	claims := req.PostFormValue("claims")
-	if claims != "" {
+	if claims := req.PostFormValue("claims"); claims != "" {
 		var claimsObject goidc.ClaimsObject
 		if err := json.Unmarshal([]byte(claims), &claimsObject); err == nil {
 			params.Claims = &claimsObject
 		}
 	}
 
-	authorizationDetails := req.PostFormValue("authorization_details")
-	if authorizationDetails != "" {
+	if authorizationDetails := req.PostFormValue("authorization_details"); authorizationDetails != "" {
 		var authorizationDetailsObject []goidc.AuthorizationDetail
 		if err := json.Unmarshal([]byte(authorizationDetails), &authorizationDetailsObject); err == nil {
 			params.AuthorizationDetails = authorizationDetailsObject
 		}
 	}
 
-	return pushedAuthorizationRequest{
+	return PushedRequest{
 		AuthnRequest:            client.NewAuthnRequest(req),
 		AuthorizationParameters: params,
 	}
 }
 
-type pushedAuthorizationResponse struct {
+type PushedResponse struct {
 	RequestURI string `json:"request_uri"`
 	ExpiresIn  int64  `json:"expires_in"`
 }

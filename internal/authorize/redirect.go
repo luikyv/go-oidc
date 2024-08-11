@@ -18,12 +18,12 @@ func redirectError(
 	err oidc.Error,
 	client *goidc.Client,
 ) oidc.Error {
-	var oauthErr redirectionError
+	var oauthErr RedirectionError
 	if !errors.As(err, &oauthErr) {
 		return err
 	}
 
-	redirectParams := authorizationResponse{
+	redirectParams := Response{
 		Error:            oauthErr.ErrorCode,
 		ErrorDescription: oauthErr.ErrorDescription,
 		State:            oauthErr.State,
@@ -35,7 +35,7 @@ func redirectResponse(
 	ctx *oidc.Context,
 	client *goidc.Client,
 	params goidc.AuthorizationParameters,
-	redirectParams authorizationResponse,
+	redirectParams Response,
 ) oidc.Error {
 
 	if ctx.IssuerResponseParameterIsEnabled {
@@ -51,7 +51,7 @@ func redirectResponse(
 		redirectParams.Response = responseJWT
 	}
 
-	redirectParamsMap := redirectParams.Parameters()
+	redirectParamsMap := redirectParams.parameters()
 	switch responseMode {
 	case goidc.ResponseModeFragment, goidc.ResponseModeFragmentJWT:
 		redirectURL := urlWithFragmentParams(params.RedirectURI, redirectParamsMap)
@@ -92,7 +92,7 @@ func responseMode(params goidc.AuthorizationParameters) goidc.ResponseMode {
 func createJARMResponse(
 	ctx *oidc.Context,
 	client *goidc.Client,
-	redirectParams authorizationResponse,
+	redirectParams Response,
 ) (
 	string,
 	oidc.Error,
@@ -115,7 +115,7 @@ func createJARMResponse(
 func signJARMResponse(
 	ctx *oidc.Context,
 	client *goidc.Client,
-	redirectParams authorizationResponse,
+	redirectParams Response,
 ) (
 	string,
 	oidc.Error,
@@ -136,7 +136,7 @@ func signJARMResponse(
 		goidc.ClaimIssuedAt: createdAtTimestamp,
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JARMLifetimeSecs,
 	}
-	for k, v := range redirectParams.Parameters() {
+	for k, v := range redirectParams.parameters() {
 		claims[k] = v
 	}
 
@@ -194,33 +194,3 @@ func urlWithFragmentParams(redirectURI string, params map[string]string) string 
 	}
 	return fmt.Sprintf("%s#%s", redirectURI, urlParams.Encode())
 }
-
-var formPostResponseTemplate string = `
-	<!-- This HTML document is intended to be used as the response mode "form_post". -->
-	<!-- The parameters that are usually sent to the client via redirect will be sent by posting a form to the client's redirect URI. -->
-	<html>
-	<body onload="javascript:document.forms[0].submit()">
-		<form id="form" method="post" action="{{ .redirect_uri }}">
-			<input type="hidden" name="code" value="{{ .code }}"/>
-			<input type="hidden" name="state" value="{{ .state }}"/>
-			<input type="hidden" name="access_token" value="{{ .access_token }}"/>
-			<input type="hidden" name="token_type" value="{{ .token_type }}"/>
-			<input type="hidden" name="id_token" value="{{ .id_token }}"/>
-			<input type="hidden" name="response" value="{{ .response }}"/>
-			<input type="hidden" name="error" value="{{ .error }}"/>
-			<input type="hidden" name="error_description" value="{{ .error_description }}"/>
-		</form>
-	</body>
-
-	<script>
-		var form = document.getElementByID('form');
-		form.addEventListener('formdata', function(event) {
-			let formData = event.formData;
-			for (let [name, value] of Array.from(formData.entries())) {
-				if (value === '') formData.delete(name);
-			}
-		});
-	</script>
-
-	</html>
-`

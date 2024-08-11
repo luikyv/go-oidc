@@ -10,34 +10,34 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func pushAuthorization(
+func pushAuth(
 	ctx *oidc.Context,
-	req pushedAuthorizationRequest,
+	req PushedRequest,
 ) (
-	pushedAuthorizationResponse,
+	PushedResponse,
 	oidc.Error,
 ) {
 
 	c, oauthErr := client.Authenticated(ctx, req.AuthnRequest)
 	if oauthErr != nil {
-		return pushedAuthorizationResponse{}, oidc.NewError(oidc.ErrorCodeInvalidClient, "client not authenticated")
+		return PushedResponse{}, oidc.NewError(oidc.ErrorCodeInvalidClient, "client not authenticated")
 	}
 
 	session, oauthErr := pushedAuthnSession(ctx, req, c)
 	if oauthErr != nil {
-		return pushedAuthorizationResponse{}, oauthErr
+		return PushedResponse{}, oauthErr
 	}
 
 	if err := ctx.SaveAuthnSession(session); err != nil {
-		return pushedAuthorizationResponse{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return PushedResponse{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
-	return pushedAuthorizationResponse{
+	return PushedResponse{
 		RequestURI: session.RequestURI,
 		ExpiresIn:  ctx.ParLifetimeSecs,
 	}, nil
 }
 
-func initAuth(ctx *oidc.Context, req authorizationRequest) oidc.Error {
+func initAuth(ctx *oidc.Context, req Request) oidc.Error {
 
 	if req.ClientID == "" {
 		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid client_id")
@@ -55,7 +55,7 @@ func initAuth(ctx *oidc.Context, req authorizationRequest) oidc.Error {
 	return nil
 }
 
-func initAuthNoRedirect(ctx *oidc.Context, client *goidc.Client, req authorizationRequest) oidc.Error {
+func initAuthNoRedirect(ctx *oidc.Context, client *goidc.Client, req Request) oidc.Error {
 	session, err := initAuthnSession(ctx, req, client)
 	if err != nil {
 		return err
@@ -135,7 +135,7 @@ func finishFlowSuccessfully(ctx *oidc.Context, session *goidc.AuthnSession) oidc
 		return newRedirectionError(oidc.ErrorCodeInternalError, err.Error(), session.AuthorizationParameters)
 	}
 
-	redirectParams := authorizationResponse{
+	redirectParams := Response{
 		AuthorizationCode: session.AuthorizationCode,
 		State:             session.State,
 	}

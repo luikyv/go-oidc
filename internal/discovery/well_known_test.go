@@ -1,15 +1,16 @@
-package discovery
+package discovery_test
 
 import (
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/luikyv/go-oidc/internal/discovery"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetOpenIDConfiguration(t *testing.T) {
+func TestOIDCConfig(t *testing.T) {
 	// Given.
 	tokenKey := oidc.PrivateRS256JWK(t, "token_signature_key")
 	userInfoKey := oidc.PrivateRS256JWK(t, "user_info_signature_key")
@@ -41,7 +42,7 @@ func TestGetOpenIDConfiguration(t *testing.T) {
 	}
 
 	// When.
-	openidConfig := wellKnown(ctx)
+	openidConfig := discovery.OIDCConfig(ctx)
 
 	// Then.
 	assert.Equal(t, ctx.Host, openidConfig.Issuer)
@@ -72,7 +73,7 @@ func TestGetOpenIDConfiguration(t *testing.T) {
 	assert.Equal(t, []goidc.DisplayValue{goidc.DisplayValuePage}, openidConfig.DisplayValuesSupported)
 }
 
-func TestGetOpenIDConfiguration_WithPAR(t *testing.T) {
+func TestOIDCConfig_WithPAR(t *testing.T) {
 	// Given.
 	ctx := &oidc.Context{
 		Configuration: oidc.Configuration{
@@ -83,14 +84,14 @@ func TestGetOpenIDConfiguration_WithPAR(t *testing.T) {
 	}
 
 	// When.
-	openidConfig := wellKnown(ctx)
+	openidConfig := discovery.OIDCConfig(ctx)
 
 	// Then.
 	assert.Equal(t, ctx.Host+string(goidc.EndpointPushedAuthorizationRequest), openidConfig.ParEndpoint)
 	assert.True(t, openidConfig.PARIsRequired)
 }
 
-func TestGetOpenIDConfiguration_WithJAR(t *testing.T) {
+func TestOIDCConfig_WithJAR(t *testing.T) {
 	// Given.
 	ctx := &oidc.Context{
 		Configuration: oidc.Configuration{
@@ -101,7 +102,7 @@ func TestGetOpenIDConfiguration_WithJAR(t *testing.T) {
 	}
 
 	// When.
-	openidConfig := wellKnown(ctx)
+	openidConfig := discovery.OIDCConfig(ctx)
 
 	// Then.
 	assert.True(t, openidConfig.JARIsEnabled)
@@ -109,7 +110,7 @@ func TestGetOpenIDConfiguration_WithJAR(t *testing.T) {
 	assert.Equal(t, ctx.JARSignatureAlgorithms, openidConfig.JARAlgorithms)
 }
 
-func TestGetOpenIDConfiguration_WithJARM(t *testing.T) {
+func TestOIDCConfig_WithJARM(t *testing.T) {
 	// Given.
 	jarmKey := oidc.PrivateRS256JWK(t, "jarm_signature_key")
 	ctx := &oidc.Context{
@@ -121,14 +122,14 @@ func TestGetOpenIDConfiguration_WithJARM(t *testing.T) {
 	}
 
 	// When.
-	openidConfig := wellKnown(ctx)
+	openidConfig := discovery.OIDCConfig(ctx)
 
 	// Then.
 	assert.Equal(t, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(jarmKey.Algorithm)},
 		openidConfig.JARMAlgorithms)
 }
 
-func TestGetOpenIDConfiguration_WithDPoP(t *testing.T) {
+func TestOIDCConfig_WithDPoP(t *testing.T) {
 	// Given.
 	ctx := &oidc.Context{
 		Configuration: oidc.Configuration{
@@ -138,7 +139,7 @@ func TestGetOpenIDConfiguration_WithDPoP(t *testing.T) {
 	}
 
 	// When.
-	openidConfig := wellKnown(ctx)
+	openidConfig := discovery.OIDCConfig(ctx)
 
 	// Then.
 	assert.Equal(t, ctx.DPoPSignatureAlgorithms, openidConfig.DPoPSignatureAlgorithms)

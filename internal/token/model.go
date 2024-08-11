@@ -72,7 +72,7 @@ type dpopJWTClaims struct {
 	AccessTokenHash string `json:"ath"`
 }
 
-type tokenRequest struct {
+type Request struct {
 	GrantType         goidc.GrantType
 	Scopes            string
 	AuthorizationCode string
@@ -82,8 +82,8 @@ type tokenRequest struct {
 	client.AuthnRequest
 }
 
-func newTokenRequest(req *http.Request) tokenRequest {
-	return tokenRequest{
+func newRequest(req *http.Request) Request {
+	return Request{
 		AuthnRequest:      client.NewAuthnRequest(req),
 		GrantType:         goidc.GrantType(req.PostFormValue("grant_type")),
 		Scopes:            req.PostFormValue("scope"),
@@ -94,7 +94,7 @@ func newTokenRequest(req *http.Request) tokenRequest {
 	}
 }
 
-type tokenResponse struct {
+type Response struct {
 	AccessToken          string                      `json:"access_token"`
 	IDToken              string                      `json:"id_token,omitempty"`
 	RefreshToken         string                      `json:"refresh_token,omitempty"`
@@ -109,14 +109,14 @@ type resultChannel struct {
 	Err    oidc.Error
 }
 
-type tokenIntrospectionRequest struct {
+type IntrospectionRequest struct {
 	Token         string
 	TokenTypeHint goidc.TokenTypeHint
 	client.AuthnRequest
 }
 
-func newTokenIntrospectionRequest(req *http.Request) tokenIntrospectionRequest {
-	return tokenIntrospectionRequest{
+func newIntrospectionRequest(req *http.Request) IntrospectionRequest {
+	return IntrospectionRequest{
 		AuthnRequest:  client.NewAuthnRequest(req),
 		Token:         req.PostFormValue("token"),
 		TokenTypeHint: goidc.TokenTypeHint(req.PostFormValue("token_type_hint")),

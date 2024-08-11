@@ -75,12 +75,12 @@ func EncryptJWT(
 		return "", oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
-	encryptedUserInfoJWTJWE, err := encrypter.Encrypt([]byte(jwtString))
+	encryptedUserInfo, err := encrypter.Encrypt([]byte(jwtString))
 	if err != nil {
 		return "", oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
-	encryptedUserInfoString, err := encryptedUserInfoJWTJWE.CompactSerialize()
+	encryptedUserInfoString, err := encryptedUserInfo.CompactSerialize()
 	if err != nil {
 		return "", oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}

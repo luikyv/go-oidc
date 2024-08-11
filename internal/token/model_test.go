@@ -1,4 +1,4 @@
-package token
+package token_test
 
 import (
 	"bytes"
@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 )
@@ -27,7 +28,7 @@ func TestNewTokenRequest(t *testing.T) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	// When.
-	tokenReq := newTokenRequest(req)
+	tokenReq := token.NewRequest(req)
 
 	// Then.
 	assert.Equal(t, "random_client_id", tokenReq.ID)

@@ -78,22 +78,22 @@ func IsJWE(token string) bool {
 	return isJWS
 }
 
-func handleTokenCreation(
+func generateGrant(
 	ctx *oidc.Context,
-	req tokenRequest,
+	req Request,
 ) (
-	tokenResp tokenResponse,
+	tokenResp Response,
 	err error,
 ) {
 	switch req.GrantType {
 	case goidc.GrantClientCredentials:
-		tokenResp, err = handleClientCredentialsGrantTokenCreation(ctx, req)
+		tokenResp, err = generateClientCredentialsGrant(ctx, req)
 	case goidc.GrantAuthorizationCode:
-		tokenResp, err = handleAuthorizationCodeGrantTokenCreation(ctx, req)
+		tokenResp, err = generateAuthorizationCodeGrant(ctx, req)
 	case goidc.GrantRefreshToken:
-		tokenResp, err = handleRefreshTokenGrantTokenCreation(ctx, req)
+		tokenResp, err = generateRefreshTokenGrant(ctx, req)
 	default:
-		tokenResp, err = tokenResponse{}, oidc.NewError(oidc.ErrorCodeUnsupportedGrantType, "unsupported grant type")
+		tokenResp, err = Response{}, oidc.NewError(oidc.ErrorCodeUnsupportedGrantType, "unsupported grant type")
 	}
 
 	return tokenResp, err

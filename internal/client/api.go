@@ -11,7 +11,7 @@ func HandlerCreate(config oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := oidc.NewContext(config, r, w)
 
-		var req dynamicClientRequest
+		var req DynamicClientRequest
 		if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
 			ctx.WriteError(err)
 			return
@@ -35,7 +35,7 @@ func HandlerUpdate(config oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := oidc.NewContext(config, r, w)
 
-		var req dynamicClientRequest
+		var req DynamicClientRequest
 		if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
 			ctx.WriteError(err)
 			return
@@ -72,12 +72,12 @@ func HandlerGet(config oidc.Configuration) http.HandlerFunc {
 			return
 		}
 
-		req := dynamicClientRequest{
+		req := DynamicClientRequest{
 			ID:                      ctx.Request().PathValue("client_id"),
 			RegistrationAccessToken: token,
 		}
 
-		resp, err := client(ctx, req)
+		resp, err := fetch(ctx, req)
 		if err != nil {
 			ctx.WriteError(err)
 			return
@@ -100,7 +100,7 @@ func HandlerDelete(config oidc.Configuration) http.HandlerFunc {
 			return
 		}
 
-		req := dynamicClientRequest{
+		req := DynamicClientRequest{
 			ID:                      ctx.Request().PathValue("client_id"),
 			RegistrationAccessToken: token,
 		}

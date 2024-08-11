@@ -6,38 +6,38 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func handleClientCredentialsGrantTokenCreation(
+func generateClientCredentialsGrant(
 	ctx *oidc.Context,
-	req tokenRequest,
+	req Request,
 ) (
-	tokenResponse,
+	Response,
 	oidc.Error,
 ) {
 	c, oauthErr := client.Authenticated(ctx, req.AuthnRequest)
 	if oauthErr != nil {
-		return tokenResponse{}, oauthErr
+		return Response{}, oauthErr
 	}
 
 	if oauthErr := validateClientCredentialsGrantRequest(ctx, req, c); oauthErr != nil {
-		return tokenResponse{}, oauthErr
+		return Response{}, oauthErr
 	}
 
 	grantOptions, err := newClientCredentialsGrantOptions(ctx, c, req)
 	if err != nil {
-		return tokenResponse{}, err
+		return Response{}, err
 	}
 
 	token, err := Make(ctx, c, grantOptions)
 	if err != nil {
-		return tokenResponse{}, err
+		return Response{}, err
 	}
 
 	_, oauthErr = generateClientCredentialsGrantSession(ctx, c, token, grantOptions)
 	if oauthErr != nil {
-		return tokenResponse{}, nil
+		return Response{}, nil
 	}
 
-	tokenResp := tokenResponse{
+	tokenResp := Response{
 		AccessToken: token.Value,
 		ExpiresIn:   grantOptions.TokenLifetimeSecs,
 		TokenType:   token.Type,
@@ -70,7 +70,7 @@ func generateClientCredentialsGrantSession(
 
 func validateClientCredentialsGrantRequest(
 	ctx *oidc.Context,
-	req tokenRequest,
+	req Request,
 	client *goidc.Client,
 ) oidc.Error {
 
@@ -96,7 +96,7 @@ func validateClientCredentialsGrantRequest(
 func newClientCredentialsGrantOptions(
 	ctx *oidc.Context,
 	client *goidc.Client,
-	req tokenRequest,
+	req Request,
 ) (
 	GrantOptions,
 	oidc.Error,

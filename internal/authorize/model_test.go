@@ -1,4 +1,4 @@
-package authorize
+package authorize_test
 
 import (
 	"bytes"
@@ -7,12 +7,13 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/luikyv/go-oidc/internal/authorize"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewAuthorizationRequest(t *testing.T) {
+func TestNewRequest(t *testing.T) {
 	// Given.
 	params := url.Values{}
 	params.Set("client_id", "random_client_id")
@@ -38,7 +39,7 @@ func TestNewAuthorizationRequest(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, reqURL.String(), nil)
 
 	// When.
-	authorizationReq := newAuthorizationRequest(req)
+	authorizationReq := authorize.NewRequest(req)
 
 	// Then.
 	assert.Equal(t, "random_client_id", authorizationReq.ClientID)
@@ -61,7 +62,7 @@ func TestNewAuthorizationRequest(t *testing.T) {
 	require.NotNil(t, authorizationReq.AuthorizationDetails)
 }
 
-func TestNewPushedAuthorizationRequest(t *testing.T) {
+func TestNewPushedRequest(t *testing.T) {
 	// Given.
 	params := url.Values{}
 	params.Set("client_id", "random_client_id")
@@ -86,7 +87,7 @@ func TestNewPushedAuthorizationRequest(t *testing.T) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	// When.
-	pushedAuthReq := newPushedAuthorizationRequest(req)
+	pushedAuthReq := authorize.NewPushedRequest(req)
 
 	// Then.
 	assert.Equal(t, "random_client_id", pushedAuthReq.ID)

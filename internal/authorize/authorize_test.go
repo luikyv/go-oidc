@@ -1,4 +1,4 @@
-package authorize
+package authorize_test
 
 import (
 	"encoding/json"
@@ -12,6 +12,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
+	"github.com/luikyv/go-oidc/internal/authorize"
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -34,7 +35,7 @@ func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 	ctx.Policies = append(ctx.Policies, policy)
 
 	// When.
-	err := initAuth(ctx, authorizationRequest{
+	err := authorize.InitAuth(ctx, authorize.Request{
 		ClientID: client.ID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  client.RedirectURIS[0],
@@ -99,7 +100,7 @@ func TestInitAuth_PolicyEndsWithSuccess_WithJAR(t *testing.T) {
 	requestObject, _ := jwt.Signed(signer).Claims(claims).Serialize()
 
 	// When.
-	err := initAuth(ctx, authorizationRequest{
+	err := authorize.InitAuth(ctx, authorize.Request{
 		ClientID: client.ID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RequestObject: requestObject,
@@ -140,7 +141,7 @@ func TestInitAuth_PolicyEndsWithSuccess_WithJARM(t *testing.T) {
 	ctx.Policies = append(ctx.Policies, policy)
 
 	// When.
-	oauthErr := initAuth(ctx, authorizationRequest{
+	oauthErr := authorize.InitAuth(ctx, authorize.Request{
 		ClientID: client.ID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  client.RedirectURIS[0],
@@ -174,7 +175,7 @@ func TestInitAuth_ShouldNotFindClient(t *testing.T) {
 	ctx := oidc.NewTestContext(t)
 
 	// When.
-	err := initAuth(ctx, authorizationRequest{ClientID: "invalid_client_id"})
+	err := authorize.InitAuth(ctx, authorize.Request{ClientID: "invalid_client_id"})
 
 	// Then.
 	require.NotNil(t, err)
@@ -187,7 +188,7 @@ func TestInitAuth_InvalidRedirectURI(t *testing.T) {
 	client, _ := ctx.Client(oidc.TestClientID)
 
 	// When.
-	err := initAuth(ctx, authorizationRequest{
+	err := authorize.InitAuth(ctx, authorize.Request{
 		ClientID: client.ID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI: "https://invalid.com",
@@ -208,7 +209,7 @@ func TestInitAuth_InvalidScope(t *testing.T) {
 	client, _ := ctx.Client(oidc.TestClientID)
 
 	// When.
-	err := initAuth(ctx, authorizationRequest{
+	err := authorize.InitAuth(ctx, authorize.Request{
 		ClientID: oidc.TestClientID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  client.RedirectURIS[0],
@@ -230,7 +231,7 @@ func TestInitAuth_InvalidResponseType(t *testing.T) {
 	require.Nil(t, ctx.SaveClient(client))
 
 	// When.
-	err := initAuth(ctx, authorizationRequest{
+	err := authorize.InitAuth(ctx, authorize.Request{
 		ClientID: oidc.TestClientID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  client.RedirectURIS[0],
@@ -250,7 +251,7 @@ func TestInitAuth_WhenNoPolicyIsAvailable(t *testing.T) {
 	client, _ := ctx.Client(oidc.TestClientID)
 
 	// When.
-	err := initAuth(ctx, authorizationRequest{
+	err := authorize.InitAuth(ctx, authorize.Request{
 		ClientID: oidc.TestClientID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  client.RedirectURIS[0],
@@ -278,7 +279,7 @@ func TestInitAuth_ShouldEndWithError(t *testing.T) {
 	ctx.Policies = append(ctx.Policies, policy)
 
 	// When.
-	err := initAuth(ctx, authorizationRequest{
+	err := authorize.InitAuth(ctx, authorize.Request{
 		ClientID: oidc.TestClientID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  client.RedirectURIS[0],
@@ -310,7 +311,7 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 	ctx.Policies = append(ctx.Policies, policy)
 
 	// When.
-	err := initAuth(ctx, authorizationRequest{
+	err := authorize.InitAuth(ctx, authorize.Request{
 		ClientID: oidc.TestClientID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  client.RedirectURIS[0],
@@ -363,7 +364,7 @@ func TestInitAuth_WithPAR(t *testing.T) {
 	ctx.Policies = append(ctx.Policies, policy)
 
 	// When.
-	err := initAuth(ctx, authorizationRequest{
+	err := authorize.InitAuth(ctx, authorize.Request{
 		ClientID: oidc.TestClientID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RequestURI:   requestURI,
@@ -406,7 +407,7 @@ func TestContinueAuthentication(t *testing.T) {
 	}))
 
 	// When.
-	err := continueAuth(ctx, callbackID)
+	err := authorize.ContinueAuth(ctx, callbackID)
 
 	// Then.
 	require.Nil(t, err)
@@ -415,13 +416,13 @@ func TestContinueAuthentication(t *testing.T) {
 	assert.Len(t, sessions, 1, "the should be only one authentication session")
 }
 
-func TestPushAuthorization(t *testing.T) {
+func TestPushAuth(t *testing.T) {
 	// Given.
 	ctx := oidc.NewTestContext(t)
 	c, _ := ctx.Client(oidc.TestClientID)
 
 	// When.
-	resp, err := pushAuthorization(ctx, pushedAuthorizationRequest{
+	resp, err := authorize.PushAuth(ctx, authorize.PushedRequest{
 		AuthnRequest: client.AuthnRequest{
 			ID:     oidc.TestClientID,
 			Secret: oidc.TestClientSecret,
@@ -436,7 +437,7 @@ func TestPushAuthorization(t *testing.T) {
 
 	// Then.
 	require.Nil(t, err)
-	assert.NotEmpty(t, requestURI)
+	assert.NotEmpty(t, resp.RequestURI)
 
 	sessions := oidc.AuthnSessions(t, ctx)
 	require.Len(t, sessions, 1, "the should be only one authentication session")
@@ -445,7 +446,7 @@ func TestPushAuthorization(t *testing.T) {
 	assert.Equal(t, resp.RequestURI, session.RequestURI, "the request URI informed is not the same in the session")
 }
 
-func TestPushAuthorization_WithJAR(t *testing.T) {
+func TestPushAuth_WithJAR(t *testing.T) {
 	// Given.
 	ctx := oidc.NewTestContext(t)
 	ctx.JARIsEnabled = true
@@ -476,7 +477,7 @@ func TestPushAuthorization_WithJAR(t *testing.T) {
 	requestObject, _ := jwt.Signed(signer).Claims(claims).Serialize()
 
 	// When.
-	resp, err := pushAuthorization(ctx, pushedAuthorizationRequest{
+	resp, err := authorize.PushAuth(ctx, authorize.PushedRequest{
 		AuthnRequest: client.AuthnRequest{
 			ID:     oidc.TestClientID,
 			Secret: oidc.TestClientSecret,
@@ -497,13 +498,13 @@ func TestPushAuthorization_WithJAR(t *testing.T) {
 	assert.Equal(t, resp.RequestURI, session.RequestURI, "the request URI informed is not the same in the session")
 }
 
-func TestPushAuthorization_ShouldRejectUnauthenticatedClient(t *testing.T) {
+func TestPushAuth_ShouldRejectUnauthenticatedClient(t *testing.T) {
 	// Given.
 	ctx := oidc.NewTestContext(t)
 	c, _ := ctx.Client(oidc.TestClientID)
 
 	// When.
-	_, err := pushAuthorization(ctx, pushedAuthorizationRequest{
+	_, err := authorize.PushAuth(ctx, authorize.PushedRequest{
 		AuthnRequest: client.AuthnRequest{
 			ID:     c.ID,
 			Secret: "invalid_password",

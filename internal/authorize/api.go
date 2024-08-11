@@ -10,8 +10,8 @@ func HandlerPush(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := oidc.NewContext(*config, r, w)
 
-		req := newPushedAuthorizationRequest(ctx.Request())
-		resp, err := pushAuthorization(ctx, req)
+		req := newPushedRequest(ctx.Request())
+		resp, err := pushAuth(ctx, req)
 		if err != nil {
 			ctx.WriteError(err)
 			return
@@ -27,7 +27,7 @@ func Handler(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := oidc.NewContext(*config, r, w)
 
-		req := newAuthorizationRequest(ctx.Request())
+		req := newRequest(ctx.Request())
 
 		err := initAuth(ctx, req)
 		if err != nil {

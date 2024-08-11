@@ -25,13 +25,13 @@ func NewAuthnRequest(req *http.Request) AuthnRequest {
 	}
 }
 
-type dynamicClientRequest struct {
-	ID string
+type DynamicClientRequest struct {
+	ID     string
+	Secret string
 	// This value is filled with the authorization header when creating a client with DCR.
 	InitialAccessToken string
 	// This value is filled with the authorization header for all DCM requests.
 	RegistrationAccessToken string
-	Secret                  string
 	goidc.ClientMetaInfo
 }
 

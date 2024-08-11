@@ -1,9 +1,10 @@
-package authorize
+package authorize_test
 
 import (
 	"fmt"
 	"testing"
 
+	"github.com/luikyv/go-oidc/internal/authorize"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,7 +21,7 @@ func TestGetURLWithQueryParams(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
-			assert.Equal(t, testCase.ExpectedParameterizedURL, urlWithQueryParams(testCase.URL, testCase.params))
+			assert.Equal(t, testCase.ExpectedParameterizedURL, authorize.URLWithQueryParams(testCase.URL, testCase.params))
 		})
 	}
 
@@ -40,7 +41,7 @@ func TestGetURLWithFragmentParams(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
-			assert.Equal(t, testCase.ExpectedParameterizedURL, urlWithFragmentParams(testCase.URL, testCase.params))
+			assert.Equal(t, testCase.ExpectedParameterizedURL, authorize.URLWithFragmentParams(testCase.URL, testCase.params))
 		})
 	}
 

@@ -12,7 +12,7 @@ import (
 
 func initAuthnSession(
 	ctx *oidc.Context,
-	req authorizationRequest,
+	req Request,
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
@@ -28,7 +28,7 @@ func initAuthnSession(
 
 func authnSession(
 	ctx *oidc.Context,
-	req authorizationRequest,
+	req Request,
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
@@ -54,7 +54,7 @@ func shouldInitAuthnSessionWithPAR(ctx *oidc.Context, req goidc.AuthorizationPar
 
 func authnSessionWithPAR(
 	ctx *oidc.Context,
-	req authorizationRequest,
+	req Request,
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
@@ -80,7 +80,7 @@ func authnSessionWithPAR(
 
 func getSessionCreatedWithPAR(
 	ctx *oidc.Context,
-	req authorizationRequest,
+	req Request,
 ) (
 	*goidc.AuthnSession,
 	oidc.Error,
@@ -109,7 +109,7 @@ func shouldInitAuthnSessionWithJAR(
 
 func authnSessionWithJAR(
 	ctx *oidc.Context,
-	req authorizationRequest,
+	req Request,
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
@@ -132,19 +132,19 @@ func authnSessionWithJAR(
 
 func getJAR(
 	ctx *oidc.Context,
-	req authorizationRequest,
+	req Request,
 	client *goidc.Client,
 ) (
-	authorizationRequest,
+	Request,
 	oidc.Error,
 ) {
 	if req.RequestObject == "" {
-		return authorizationRequest{}, oidc.NewError(oidc.ErrorCodeInvalidRequest, "request object is required")
+		return Request{}, oidc.NewError(oidc.ErrorCodeInvalidRequest, "request object is required")
 	}
 
-	jar, err := JARFromRequestObject(ctx, req.RequestObject, client)
+	jar, err := jarFromRequestObject(ctx, req.RequestObject, client)
 	if err != nil {
-		return authorizationRequest{}, err
+		return Request{}, err
 	}
 
 	return jar, nil
@@ -152,7 +152,7 @@ func getJAR(
 
 func initValidSimpleAuthnSession(
 	ctx *oidc.Context,
-	req authorizationRequest,
+	req Request,
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
@@ -191,7 +191,7 @@ func initAuthnSessionWithPolicy(
 
 func pushedAuthnSession(
 	ctx *oidc.Context,
-	req pushedAuthorizationRequest,
+	req PushedRequest,
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
@@ -220,7 +220,7 @@ func pushedAuthnSession(
 
 func pushedSimpleAuthnSession(
 	ctx *oidc.Context,
-	req pushedAuthorizationRequest,
+	req PushedRequest,
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
@@ -237,7 +237,7 @@ func pushedSimpleAuthnSession(
 
 func pushedAuthnSessionWithJAR(
 	ctx *oidc.Context,
-	req pushedAuthorizationRequest,
+	req PushedRequest,
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
@@ -258,17 +258,17 @@ func pushedAuthnSessionWithJAR(
 
 func extractJARFromRequest(
 	ctx *oidc.Context,
-	req pushedAuthorizationRequest,
+	req PushedRequest,
 	client *goidc.Client,
 ) (
-	authorizationRequest,
+	Request,
 	oidc.Error,
 ) {
 	if req.RequestObject == "" {
-		return authorizationRequest{}, oidc.NewError(oidc.ErrorCodeInvalidRequest, "request object is required")
+		return Request{}, oidc.NewError(oidc.ErrorCodeInvalidRequest, "request object is required")
 	}
 
-	return JARFromRequestObject(ctx, req.RequestObject, client)
+	return jarFromRequestObject(ctx, req.RequestObject, client)
 }
 
 func protectedParams(ctx *oidc.Context) map[string]any {

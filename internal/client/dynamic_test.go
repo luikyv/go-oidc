@@ -1,8 +1,9 @@
-package client
+package client_test
 
 import (
 	"testing"
 
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
@@ -11,19 +12,19 @@ import (
 
 func TestCreateClient(t *testing.T) {
 	// Given.
-	client := oidc.NewTestClient(t)
+	c := oidc.NewTestClient(t)
 	ctx := oidc.NewTestContext(t)
-	dynamicClientReq := dynamicClientRequest{
-		ClientMetaInfo: client.ClientMetaInfo,
+	req := client.DynamicClientRequest{
+		ClientMetaInfo: c.ClientMetaInfo,
 	}
 
 	// When.
-	resp, oauthErr := create(ctx, dynamicClientReq)
+	resp, oauthErr := client.Create(ctx, req)
 
 	// Then.
 	require.Nil(t, oauthErr)
 	require.NotEmpty(t, resp.ID)
-	assert.Equal(t, ctx.Host+string(goidc.EndpointDynamicClient)+"/"+resp.ID, resp.RegistrationURI)
+	assert.Equal(t, ctx.Host+goidc.EndpointDynamicClient+"/"+resp.ID, resp.RegistrationURI)
 	assert.NotEmpty(t, resp.RegistrationAccessToken)
 
 	_, err := ctx.Client(resp.ID)
@@ -32,74 +33,74 @@ func TestCreateClient(t *testing.T) {
 
 func TestUpdateClient(t *testing.T) {
 	// Given.
-	client := oidc.NewTestClient(t)
+	c := oidc.NewTestClient(t)
 	ctx := oidc.NewTestContext(t)
-	dynamicClientReq := dynamicClientRequest{
+	dynamicClientReq := client.DynamicClientRequest{
 		ID:                      oidc.TestClientID,
 		RegistrationAccessToken: oidc.TestClientRegistrationAccessToken,
-		ClientMetaInfo:          client.ClientMetaInfo,
+		ClientMetaInfo:          c.ClientMetaInfo,
 	}
 
 	// When.
-	resp, oauthErr := update(ctx, dynamicClientReq)
+	resp, oauthErr := client.Update(ctx, dynamicClientReq)
 
 	// Then.
 	require.Nil(t, oauthErr)
-	assert.Equal(t, client.ID, resp.ID)
-	assert.Equal(t, ctx.Host+string(goidc.EndpointDynamicClient)+"/"+resp.ID, resp.RegistrationURI)
+	assert.Equal(t, c.ID, resp.ID)
+	assert.Equal(t, ctx.Host+goidc.EndpointDynamicClient+"/"+resp.ID, resp.RegistrationURI)
 	assert.Empty(t, resp.RegistrationAccessToken)
 }
 
 func TestUpdateClient_WithTokenRotation(t *testing.T) {
 	// Given.
-	client := oidc.NewTestClient(t)
+	c := oidc.NewTestClient(t)
 	ctx := oidc.NewTestContext(t)
 	ctx.ShouldRotateRegistrationTokens = true
-	dynamicClientReq := dynamicClientRequest{
+	dynamicClientReq := client.DynamicClientRequest{
 		ID:                      oidc.TestClientID,
 		RegistrationAccessToken: oidc.TestClientRegistrationAccessToken,
-		ClientMetaInfo:          client.ClientMetaInfo,
+		ClientMetaInfo:          c.ClientMetaInfo,
 	}
 
 	// When.
-	resp, oauthErr := update(ctx, dynamicClientReq)
+	resp, oauthErr := client.Update(ctx, dynamicClientReq)
 
 	// Then.
 	require.Nil(t, oauthErr)
-	assert.Equal(t, client.ID, resp.ID)
+	assert.Equal(t, c.ID, resp.ID)
 	assert.Equal(t, ctx.Host+string(goidc.EndpointDynamicClient)+"/"+resp.ID, resp.RegistrationURI)
 	assert.NotEmpty(t, resp.RegistrationAccessToken)
 	assert.NotEqual(t, oidc.TestClientRegistrationAccessToken, resp.RegistrationAccessToken)
 }
 
-func TestGetClient(t *testing.T) {
+func TestFetchClient(t *testing.T) {
 	// Given.
 	ctx := oidc.NewTestContext(t)
-	dynamicClientReq := dynamicClientRequest{
+	dynamicClientReq := client.DynamicClientRequest{
 		ID:                      oidc.TestClientID,
 		RegistrationAccessToken: oidc.TestClientRegistrationAccessToken,
 	}
 
 	// When.
-	resp, oauthErr := client(ctx, dynamicClientReq)
+	resp, oauthErr := client.Fetch(ctx, dynamicClientReq)
 
 	// Then.
 	require.Nil(t, oauthErr)
 	assert.Equal(t, oidc.TestClientID, resp.ID)
-	assert.Equal(t, ctx.Host+string(goidc.EndpointDynamicClient)+"/"+resp.ID, resp.RegistrationURI)
+	assert.Equal(t, ctx.Host+goidc.EndpointDynamicClient+"/"+resp.ID, resp.RegistrationURI)
 	assert.Empty(t, resp.RegistrationAccessToken)
 }
 
-func TestGetClient_InvalidToken(t *testing.T) {
+func TestFetch_InvalidToken(t *testing.T) {
 	// Given.
 	ctx := oidc.NewTestContext(t)
-	dynamicClientReq := dynamicClientRequest{
+	dynamicClientReq := client.DynamicClientRequest{
 		ID:                      oidc.TestClientID,
 		RegistrationAccessToken: "invalid_token",
 	}
 
 	// When.
-	_, err := client(ctx, dynamicClientReq)
+	_, err := client.Fetch(ctx, dynamicClientReq)
 
 	// Then.
 	require.NotNil(t, err)
@@ -109,13 +110,13 @@ func TestGetClient_InvalidToken(t *testing.T) {
 func TestDeleteClient(t *testing.T) {
 	// Given.
 	ctx := oidc.NewTestContext(t)
-	dynamicClientReq := dynamicClientRequest{
+	dynamicClientReq := client.DynamicClientRequest{
 		ID:                      oidc.TestClientID,
 		RegistrationAccessToken: oidc.TestClientRegistrationAccessToken,
 	}
 
 	// When.
-	err := remove(ctx, dynamicClientReq)
+	err := client.Remove(ctx, dynamicClientReq)
 
 	// Then.
 	require.Nil(t, err)
@@ -127,13 +128,13 @@ func TestDeleteClient(t *testing.T) {
 func TestDeleteClient_InvalidToken(t *testing.T) {
 	// Given.
 	ctx := oidc.NewTestContext(t)
-	dynamicClientReq := dynamicClientRequest{
+	dynamicClientReq := client.DynamicClientRequest{
 		ID:                      oidc.TestClientID,
 		RegistrationAccessToken: "invalid_token",
 	}
 
 	// When.
-	err := remove(ctx, dynamicClientReq)
+	err := client.Remove(ctx, dynamicClientReq)
 
 	// Then.
 	require.NotNil(t, err)

@@ -1,4 +1,4 @@
-package token
+package token_test
 
 import (
 	"testing"
@@ -6,6 +6,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +16,7 @@ func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 	// Given.
 	ctx := oidc.NewTestContext(t)
 
-	req := tokenRequest{
+	req := token.Request{
 		AuthnRequest: client.AuthnRequest{
 			ID:     oidc.TestClientID,
 			Secret: oidc.TestClientSecret,
@@ -25,7 +26,7 @@ func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 	}
 
 	// When.
-	tokenResp, err := handleTokenCreation(ctx, req)
+	tokenResp, err := token.GenerateGrant(ctx, req)
 
 	// Then.
 	require.Nil(t, err)

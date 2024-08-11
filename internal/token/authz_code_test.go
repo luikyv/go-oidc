@@ -1,4 +1,4 @@
-package token
+package token_test
 
 import (
 	"fmt"
@@ -8,6 +8,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,7 +37,7 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 	}
 	require.Nil(t, ctx.SaveAuthnSession(session))
 
-	req := tokenRequest{
+	req := token.Request{
 		AuthnRequest: client.AuthnRequest{
 			ID:     oidc.TestClientID,
 			Secret: oidc.TestClientSecret,
@@ -47,7 +48,7 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 	}
 
 	// When.
-	tokenResp, err := handleTokenCreation(ctx, req)
+	tokenResp, err := token.GenerateGrant(ctx, req)
 
 	// Then.
 	require.Nil(t, err)
@@ -78,7 +79,7 @@ func TestIsPkceValid(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
-			assert.Equal(t, testCase.isValid, isPKCEValid(testCase.codeVerifier, testCase.codeChallenge, testCase.codeChallengeMethod))
+			assert.Equal(t, testCase.isValid, token.IsPKCEValid(testCase.codeVerifier, testCase.codeChallenge, testCase.codeChallengeMethod))
 		})
 	}
 }

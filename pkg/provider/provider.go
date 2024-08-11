@@ -563,7 +563,7 @@ func (p *Provider) TokenInfo(req *http.Request, resp http.ResponseWriter) goidc.
 		return goidc.TokenInfo{IsActive: false}
 	}
 
-	tokenInfo := token.TokenIntrospectionInfo(ctx, accessToken)
+	tokenInfo := token.IntrospectionInfo(ctx, accessToken)
 	confirmation := token.Confirmation{
 		JWKThumbprint:               tokenInfo.JWKThumbprint,
 		ClientCertificateThumbprint: tokenInfo.ClientCertificateThumbprint,
@@ -760,7 +760,6 @@ func (p *Provider) mtlsHandler() http.Handler {
 
 // TODO: Add more validations.
 func (p *Provider) validateConfiguration() error {
-
 	return runValidations(
 		*p,
 		validateJWKS,

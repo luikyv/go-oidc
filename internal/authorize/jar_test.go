@@ -1,4 +1,4 @@
-package authorize
+package authorize_test
 
 import (
 	"net/http"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/luikyv/go-oidc/internal/authorize"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
@@ -40,16 +41,16 @@ func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
 	)
 	claims := map[string]any{
-		string(goidc.ClaimIssuer):   client.ID,
-		string(goidc.ClaimAudience): ctx.Host,
-		string(goidc.ClaimIssuedAt): createdAtTimestamp,
-		string(goidc.ClaimExpiry):   createdAtTimestamp + ctx.JARLifetimeSecs - 1,
-		"client_id":                 client.ID,
-		"redirect_uri":              "https://example.com",
-		"response_type":             goidc.ResponseTypeCode,
-		"scope":                     "scope scope2",
-		"max_age":                   600,
-		"acr_values":                "0 1",
+		goidc.ClaimIssuer:   client.ID,
+		goidc.ClaimAudience: ctx.Host,
+		goidc.ClaimIssuedAt: createdAtTimestamp,
+		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JARLifetimeSecs - 1,
+		"client_id":         client.ID,
+		"redirect_uri":      "https://example.com",
+		"response_type":     goidc.ResponseTypeCode,
+		"scope":             "scope scope2",
+		"max_age":           600,
+		"acr_values":        "0 1",
 		"claims": map[string]any{
 			"userinfo": map[string]any{
 				"acr": map[string]any{
@@ -61,7 +62,7 @@ func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 	request, _ := jwt.Signed(signer).Claims(claims).Serialize()
 
 	// When.
-	jar, err := JARFromRequestObject(ctx, request, client)
+	jar, err := authorize.JARFromRequestObject(ctx, request, client)
 
 	// Then.
 	require.Nil(t, err, "error extracting JAR")

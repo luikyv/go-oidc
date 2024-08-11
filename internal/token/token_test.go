@@ -1,4 +1,4 @@
-package token
+package token_test
 
 import (
 	"fmt"
@@ -8,6 +8,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,7 @@ func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 	ctx := oidc.NewTestContext(t)
 
 	// When.
-	_, err := handleTokenCreation(ctx, tokenRequest{
+	_, err := token.GenerateGrant(ctx, token.Request{
 		AuthnRequest: client.AuthnRequest{
 			ID: "invalid_client_id",
 		},
@@ -39,7 +40,7 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	require.Nil(t, ctx.SaveClient(c))
 
 	// When.
-	_, err := handleTokenCreation(ctx, tokenRequest{
+	_, err := token.GenerateGrant(ctx, token.Request{
 		AuthnRequest: client.AuthnRequest{
 			ID:     c.ID,
 			Secret: "invalid_password",
@@ -56,7 +57,7 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	assert.Equal(t, oidc.ErrorCodeInvalidClient, oauthErr.Code(), "invalid error code")
 }
 
-func TestHandleGrantCreationWithDPoP(t *testing.T) {
+func TestGenerateGrantWithDPoP(t *testing.T) {
 	// Given.
 	ctx := oidc.NewTestContext(t)
 	ctx.Host = "https://example.com"
@@ -67,7 +68,7 @@ func TestHandleGrantCreationWithDPoP(t *testing.T) {
 	ctx.Request().Method = http.MethodPost
 	ctx.Request().RequestURI = "/token"
 
-	req := tokenRequest{
+	req := token.Request{
 		AuthnRequest: client.AuthnRequest{
 			ID:     oidc.TestClientID,
 			Secret: oidc.TestClientSecret,
@@ -77,7 +78,7 @@ func TestHandleGrantCreationWithDPoP(t *testing.T) {
 	}
 
 	// When.
-	tokenResp, err := handleTokenCreation(ctx, req)
+	tokenResp, err := token.GenerateGrant(ctx, req)
 
 	// Then.
 	assert.Nil(t, err)
@@ -100,7 +101,7 @@ func TestIsJWS(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i+1), func(t *testing.T) {
-			assert.Equal(t, testCase.shouldBeJWS, IsJWS(testCase.jws))
+			assert.Equal(t, testCase.shouldBeJWS, token.IsJWS(testCase.jws))
 		})
 	}
 }
@@ -116,7 +117,7 @@ func TestIsJWE(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i+1), func(t *testing.T) {
-			assert.Equal(t, testCase.shouldBeJWE, IsJWE(testCase.jwe))
+			assert.Equal(t, testCase.shouldBeJWE, token.IsJWE(testCase.jwe))
 		})
 	}
 }

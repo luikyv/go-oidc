@@ -5,12 +5,12 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func wellKnown(ctx *oidc.Context) openIDConfiguration {
+func oidcConfig(ctx *oidc.Context) OpenIDConfiguration {
 	var scopes []string
 	for _, scope := range ctx.Scopes {
 		scopes = append(scopes, scope.ID)
 	}
-	config := openIDConfiguration{
+	config := OpenIDConfiguration{
 		Issuer:                               ctx.Host,
 		AuthorizationEndpoint:                ctx.BaseURL() + string(goidc.EndpointAuthorization),
 		TokenEndpoint:                        ctx.BaseURL() + string(goidc.EndpointToken),
@@ -75,7 +75,7 @@ func wellKnown(ctx *oidc.Context) openIDConfiguration {
 	if ctx.MTLSIsEnabled {
 		config.TLSBoundTokensIsEnabled = ctx.TLSBoundTokensIsEnabled
 
-		config.MTLSConfiguration = &openIDMTLSConfiguration{
+		config.MTLSConfiguration = &OpenIDMTLSConfiguration{
 			TokenEndpoint:    ctx.MTLSBaseURL() + string(goidc.EndpointToken),
 			UserinfoEndpoint: ctx.MTLSBaseURL() + string(goidc.EndpointUserInfo),
 		}

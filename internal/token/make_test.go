@@ -1,4 +1,4 @@
-package token
+package token_test
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +16,7 @@ func TestMakeIDToken(t *testing.T) {
 	// Given.
 	ctx := oidc.NewTestContext(t)
 	client, _ := ctx.Client(oidc.TestClientID)
-	idTokenOptions := IDTokenOptions{
+	idTokenOptions := token.IDTokenOptions{
 		Subject: "random_subject",
 		AdditionalIDTokenClaims: map[string]any{
 			"random_claim": "random_value",
@@ -23,7 +24,7 @@ func TestMakeIDToken(t *testing.T) {
 	}
 
 	// When.
-	idToken, err := MakeIDToken(ctx, client, idTokenOptions)
+	idToken, err := token.MakeIDToken(ctx, client, idTokenOptions)
 
 	// Then.
 	require.Nil(t, err)
@@ -41,13 +42,13 @@ func TestMakeToken_JWTToken(t *testing.T) {
 	client, _ := ctx.Client(oidc.TestClientID)
 	tokenOptions := goidc.NewJWTTokenOptions(oidc.TestServerPrivateJWK.KeyID, 60)
 	tokenOptions.AddTokenClaims(map[string]any{"random_claim": "random_value"})
-	grantOptions := GrantOptions{
+	grantOptions := token.GrantOptions{
 		Subject:      "random_subject",
 		TokenOptions: tokenOptions,
 	}
 
 	// When.
-	token, err := Make(ctx, client, grantOptions)
+	token, err := token.Make(ctx, client, grantOptions)
 
 	// Then.
 	require.Nil(t, err)
@@ -64,13 +65,13 @@ func TestMakeToken_OpaqueToken(t *testing.T) {
 	// Given.
 	ctx := oidc.NewTestContext(t)
 	client, _ := ctx.Client(oidc.TestClientID)
-	grantOptions := GrantOptions{
+	grantOptions := token.GrantOptions{
 		Subject:      "random_subject",
 		TokenOptions: goidc.NewOpaqueTokenOptions(10, 60),
 	}
 
 	// When.
-	token, err := Make(ctx, client, grantOptions)
+	token, err := token.Make(ctx, client, grantOptions)
 
 	// Then.
 	require.Nil(t, err)
@@ -92,7 +93,7 @@ func TestGenerateJWKThumbprint(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case %v", i), func(t *testing.T) {
-			assert.Equal(t, testCase.ExpectedThumbprint, jwkThumbprint(testCase.DPoPJWT, dpopSigningAlgorithms))
+			assert.Equal(t, testCase.ExpectedThumbprint, token.JWKThumbprint(testCase.DPoPJWT, dpopSigningAlgorithms))
 		})
 	}
 }
