@@ -8,7 +8,7 @@ import (
 func validateTokenBindingIsRequired(
 	ctx *oidc.Context,
 ) oidc.Error {
-	if !ctx.SenderConstrainedTokenIsRequired {
+	if !ctx.TokenBindingIsRequired {
 		return nil
 	}
 

@@ -26,30 +26,6 @@ func TestAddTokenClaims_HappyPath(t *testing.T) {
 	assert.Equal(t, "value", tokenOptions.AdditionalTokenClaims["claim"], "the claim was not added")
 }
 
-func TestAuthorizationParameters_Merge_HappyPath(t *testing.T) {
-	// Given.
-	insideParams := goidc.AuthorizationParameters{
-		RedirectURI:          "https:example1.com",
-		State:                "random_state",
-		AuthorizationDetails: []goidc.AuthorizationDetail{},
-	}
-	outsideParams := goidc.AuthorizationParameters{
-		RedirectURI: "https:example2.com",
-		Nonce:       "random_nonce",
-		Claims:      &goidc.ClaimsObject{},
-	}
-
-	// When.
-	mergedParams := insideParams.Merge(outsideParams)
-
-	// Then.
-	assert.Equal(t, "https:example1.com", mergedParams.RedirectURI, "the redirect URI is not as expected")
-	assert.Equal(t, "random_state", mergedParams.State, "the redirect URI is not as expected")
-	assert.Equal(t, "random_nonce", mergedParams.Nonce, "the nonce is not as expected")
-	assert.NotNil(t, mergedParams.AuthorizationDetails, "the authorization details are not as expected")
-	assert.NotNil(t, mergedParams.Claims, "the claims are not as expected")
-}
-
 func TestAuthorizationDetail_GetProperties_HappyPath(t *testing.T) {
 	// Given.
 	authDetails := goidc.AuthorizationDetail{

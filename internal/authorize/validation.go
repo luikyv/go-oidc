@@ -30,7 +30,7 @@ func validateRequestWithPAR(
 		return err
 	}
 
-	mergedParams := session.AuthorizationParameters.Merge(req.AuthorizationParameters)
+	mergedParams := mergeParams(session.AuthorizationParameters, req.AuthorizationParameters)
 	if session.IsExpired() {
 		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "the request_uri is expired", mergedParams)
 	}
@@ -52,7 +52,7 @@ func validateRequestWithJAR(
 		return err
 	}
 
-	mergedParams := jar.AuthorizationParameters.Merge(req.AuthorizationParameters)
+	mergedParams := mergeParams(jar.AuthorizationParameters, req.AuthorizationParameters)
 	if jar.RequestURI != "" {
 		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "request_uri is not allowed inside the request object", mergedParams)
 	}
@@ -124,7 +124,7 @@ func validateInWithOutParams(
 		client.AllowRedirectURI(insideParams.RedirectURI)
 	}
 
-	mergedParams := insideParams.Merge(outsideParams)
+	mergedParams := mergeParams(insideParams, outsideParams)
 	if err := validateParamsAuthorize(ctx, mergedParams, client); err != nil {
 		return err
 	}

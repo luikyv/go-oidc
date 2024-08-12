@@ -12,4 +12,5 @@ var (
 	PushAuth               = pushAuth
 	InitAuth               = initAuth
 	ContinueAuth           = continueAuth
+	MergeParams            = mergeParams
 )

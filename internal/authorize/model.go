@@ -3,6 +3,7 @@ package authorize
 import (
 	"encoding/json"
 	"net/http"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -168,4 +169,44 @@ func newAuthnSession(authParams goidc.AuthorizationParameters, client *goidc.Cli
 		AdditionalIDTokenClaims:  map[string]any{},
 		AdditionalUserInfoClaims: map[string]any{},
 	}
+}
+
+func mergeParams(
+	insideParams goidc.AuthorizationParameters,
+	outsideParams goidc.AuthorizationParameters,
+) goidc.AuthorizationParameters {
+	params := goidc.AuthorizationParameters{
+		RedirectURI:          nonEmptyOrDefault(insideParams.RedirectURI, outsideParams.RedirectURI),
+		ResponseMode:         nonEmptyOrDefault(insideParams.ResponseMode, outsideParams.ResponseMode),
+		ResponseType:         nonEmptyOrDefault(insideParams.ResponseType, outsideParams.ResponseType),
+		Scopes:               nonEmptyOrDefault(insideParams.Scopes, outsideParams.Scopes),
+		State:                nonEmptyOrDefault(insideParams.State, outsideParams.State),
+		Nonce:                nonEmptyOrDefault(insideParams.Nonce, outsideParams.Nonce),
+		CodeChallenge:        nonEmptyOrDefault(insideParams.CodeChallenge, outsideParams.CodeChallenge),
+		CodeChallengeMethod:  nonEmptyOrDefault(insideParams.CodeChallengeMethod, outsideParams.CodeChallengeMethod),
+		Prompt:               nonEmptyOrDefault(insideParams.Prompt, outsideParams.Prompt),
+		MaxAuthnAgeSecs:      nonEmptyOrDefault(insideParams.MaxAuthnAgeSecs, outsideParams.MaxAuthnAgeSecs),
+		Display:              nonEmptyOrDefault(insideParams.Display, outsideParams.Display),
+		ACRValues:            nonEmptyOrDefault(insideParams.ACRValues, outsideParams.ACRValues),
+		Claims:               nonNilOrDefault(insideParams.Claims, outsideParams.Claims),
+		AuthorizationDetails: nonNilOrDefault(insideParams.AuthorizationDetails, outsideParams.AuthorizationDetails),
+	}
+
+	return params
+}
+
+func nonEmptyOrDefault[T any](s1 T, s2 T) T {
+	if reflect.ValueOf(s1).String() == "" {
+		return s2
+	}
+
+	return s1
+}
+
+func nonNilOrDefault[T any](s1 T, s2 T) T {
+	if reflect.ValueOf(s1).IsNil() {
+		return s2
+	}
+
+	return s1
 }

@@ -35,12 +35,6 @@ type AuthnSession struct {
 	Error error `json:"-"`
 }
 
-// UpdateParams updates the session with the parameters from an authorization request.
-// The parameters already present in the session have priority.
-func (s *AuthnSession) UpdateParams(params AuthorizationParameters) {
-	s.AuthorizationParameters = s.AuthorizationParameters.Merge(params)
-}
-
 func (s *AuthnSession) SetUserID(userID string) {
 	s.Subject = userID
 }

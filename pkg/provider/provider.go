@@ -81,6 +81,8 @@ func New(
 	return p, nil
 }
 
+// WithStorage defines how the provider will store clients and sessions.
+// It overrides the default storage which keeps everything in memory.
 func WithStorage(
 	clientManager goidc.ClientManager,
 	authnSessionManager goidc.AuthnSessionManager,
@@ -93,21 +95,30 @@ func WithStorage(
 	}
 }
 
+// WithPathPrefix defines a shared prefix for all endpoints.
 func WithPathPrefix(prefix string) ProviderOption {
 	return func(p *Provider) {
 		p.config.PathPrefix = prefix
 	}
 }
 
+// WithUserClaims signals support for custom user claims.
+// These claims are meant to appear in ID tokens and the userinfo endpoint.
+// The values provided will be share with the field "claims_supported" of the
+// well known endpoint response.
 func WithUserClaims(claims ...string) ProviderOption {
 	return func(p *Provider) {
 		p.config.UserClaims = claims
 	}
 }
 
-// WithUserInfoSignatureKeyIDs makes more keys available to sign the user info endpoint response and ID tokens.
-// There should be at most one per algorithm, in other words, there shouldn't be two key IDs that point to two keys that have the same algorithm.
-// This is because clients can choose signing keys per algorithm, e.g. a client can choose the key to sign its ID tokens with the attribute "id_token_signed_response_alg".
+// WithUserInfoSignatureKeyIDs makes more keys available to sign the user info
+// endpoint response and ID tokens.
+// There should be at most one per algorithm, in other words, there shouldn't be
+// two key IDs that point to two keys that have the same algorithm.
+// This is because clients can choose signing keys per algorithm, e.g. a client
+// can choose the key to sign its ID tokens with the attribute
+// "id_token_signed_response_alg".
 func WithUserInfoSignatureKeyIDs(userInfoSignatureKeyIDs ...string) ProviderOption {
 	return func(p *Provider) {
 		if !slices.Contains(userInfoSignatureKeyIDs, p.config.DefaultUserInfoSignatureKeyID) {
@@ -117,13 +128,16 @@ func WithUserInfoSignatureKeyIDs(userInfoSignatureKeyIDs ...string) ProviderOpti
 	}
 }
 
+// WithIDTokenLifetime overrides the default ID token lifetime.
+// The default is 600 seconds.
 func WithIDTokenLifetime(idTokenLifetimeSecs int64) ProviderOption {
 	return func(p *Provider) {
 		p.config.IDTokenExpiresInSecs = idTokenLifetimeSecs
 	}
 }
 
-// WithUserInfoEncryption allows encryption of ID tokens and of the user info endpoint response.
+// WithUserInfoEncryption allows encryption of ID tokens and of the user info
+// endpoint response.
 func WithUserInfoEncryption(
 	keyEncryptionAlgorithms []jose.KeyAlgorithm,
 	contentEncryptionAlgorithms []jose.ContentEncryption,
@@ -148,21 +162,22 @@ func WithUserInfoEncryption(
 }
 
 // WithDCR allows clients to be registered dynamically.
-// The dcrPlugin is executed during registration and update of the client to perform
-// custom validations (e.g. validate a custom property) or set default values (set the default scopes).
+// The plugin is executed during registration and update of the client to
+// perform custom validations (e.g. validate a custom property) or set default
+// values (e.g. set the default scopes).
 func WithDCR(
-	dcrPlugin goidc.DCRPluginFunc,
+	plugin goidc.DCRPluginFunc,
 	rotateTokens bool,
 ) ProviderOption {
 	return func(p *Provider) {
 		p.config.DCRIsEnabled = true
-		p.config.DCRPlugin = dcrPlugin
+		p.config.DCRPlugin = plugin
 		p.config.ShouldRotateRegistrationTokens = rotateTokens
 	}
 }
 
 // WithRefreshTokenGrant makes available the refresh token grant.
-// If set to true, shouldRotateTokens will cause a new refresh token to be issued each time
+// If true, rotateTokens will cause a new refresh token to be issued each time
 // one is used. The one used during the request then becomes invalid.
 func WithRefreshTokenGrant(
 	refreshTokenLifetimeSecs int64,
@@ -175,7 +190,7 @@ func WithRefreshTokenGrant(
 	}
 }
 
-// WithOpenIDScopeRequired forces the openid scope in all requests.
+// WithOpenIDScopeRequired forces the openid scope to be informed in all requests.
 func WithOpenIDScopeRequired() ProviderOption {
 	return func(p *Provider) {
 		p.config.OpenIDScopeIsRequired = true
@@ -185,7 +200,13 @@ func WithOpenIDScopeRequired() ProviderOption {
 // WithTokenOptions defines how access tokens are issued.
 func WithTokenOptions(getTokenOpts goidc.TokenOptionsFunc) ProviderOption {
 	return func(p *Provider) {
-		p.config.TokenOptions = func(client *goidc.Client, scopes string) (goidc.TokenOptions, error) {
+		p.config.TokenOptions = func(
+			client *goidc.Client,
+			scopes string,
+		) (
+			goidc.TokenOptions,
+			error,
+		) {
 			opts, err := getTokenOpts(client, scopes)
 			if err != nil {
 				return goidc.TokenOptions{}, err
@@ -200,7 +221,8 @@ func WithTokenOptions(getTokenOpts goidc.TokenOptionsFunc) ProviderOption {
 	}
 }
 
-// WithImplicitGrant allows the implicit grant type and the associated response types.
+// WithImplicitGrant allows the implicit grant type and the associated
+// response types.
 func WithImplicitGrant() ProviderOption {
 	return func(p *Provider) {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantImplicit)
@@ -216,6 +238,9 @@ func WithImplicitGrant() ProviderOption {
 	}
 }
 
+// WithScopes defines the scopes accepted by the provider.
+// Since the scope openid is required, it will be added in case scopes doesn't
+// contain it.
 func WithScopes(scopes ...goidc.Scope) ProviderOption {
 	return func(p *Provider) {
 		p.config.Scopes = scopes
@@ -229,7 +254,8 @@ func WithScopes(scopes ...goidc.Scope) ProviderOption {
 	}
 }
 
-// WithPAR allows authorization flows to start at the /par endpoint.
+// WithPAR allows authorization flows to start at the pushed authorization
+// request endpoint.
 func WithPAR(parLifetimeSecs int64) ProviderOption {
 	return func(p *Provider) {
 		p.config.ParLifetimeSecs = parLifetimeSecs
@@ -237,7 +263,8 @@ func WithPAR(parLifetimeSecs int64) ProviderOption {
 	}
 }
 
-// WithPARRequired forces authorization flows to start at the /par endpoint.
+// WithPARRequired forces authorization flows to start at the pushed
+// authorization request endpoint.
 func WithPARRequired(parLifetimeSecs int64) ProviderOption {
 	return func(p *Provider) {
 		WithPAR(parLifetimeSecs)
@@ -245,6 +272,7 @@ func WithPARRequired(parLifetimeSecs int64) ProviderOption {
 	}
 }
 
+// WithJAR allows authorization requests to be securely sent as signed JWTs.
 func WithJAR(
 	jarLifetimeSecs int64,
 	jarAlgorithms ...jose.SignatureAlgorithm,
@@ -261,7 +289,8 @@ func WithJAR(
 	}
 }
 
-// WithJARRequired makes JAR required.
+// WithJARRequired requires authorization requests to be securely sent as
+// signed JWTs.
 func WithJARRequired(
 	jarLifetimeSecs int64,
 	jarAlgorithms ...jose.SignatureAlgorithm,
@@ -272,6 +301,8 @@ func WithJARRequired(
 	}
 }
 
+// WithJAREncryption allows authorization requests to be securely sent as
+// encrypted JWTs.
 func WithJAREncryption(
 	keyEncryptionIDs []string,
 	contentEncryptionAlgorithms []jose.ContentEncryption,
@@ -283,7 +314,8 @@ func WithJAREncryption(
 	}
 }
 
-// WithJARM makes available JWT secured authorization response modes.
+// WithJARM allows responses for authorization requests to be sent as signed JWTs.
+// It enables JWT response modes.
 func WithJARM(
 	jarmLifetimeSecs int64,
 	defaultJARMSignatureKeyID string,
@@ -308,6 +340,8 @@ func WithJARM(
 	}
 }
 
+// WithJARM allows responses for authorization requests to be sent as encrypted
+// JWTs.
 func WithJARMEncryption(
 	keyEncryptionAlgorithms []jose.KeyAlgorithm,
 	contentEncryptionAlgorithms []jose.ContentEncryption,
@@ -354,7 +388,10 @@ func WithPrivateKeyJWTAuthn(
 	signatureAlgorithms ...jose.SignatureAlgorithm,
 ) ProviderOption {
 	return func(p *Provider) {
-		p.config.ClientAuthnMethods = append(p.config.ClientAuthnMethods, goidc.ClientAuthnPrivateKeyJWT)
+		p.config.ClientAuthnMethods = append(
+			p.config.ClientAuthnMethods,
+			goidc.ClientAuthnPrivateKeyJWT,
+		)
 		p.config.PrivateKeyJWTAssertionLifetimeSecs = assertionLifetimeSecs
 		for _, signatureAlgorithm := range signatureAlgorithms {
 			p.config.PrivateKeyJWTSignatureAlgorithms = append(
@@ -370,7 +407,10 @@ func WithClientSecretJWTAuthn(
 	signatureAlgorithms ...jose.SignatureAlgorithm,
 ) ProviderOption {
 	return func(p *Provider) {
-		p.config.ClientAuthnMethods = append(p.config.ClientAuthnMethods, goidc.ClientAuthnSecretBasic)
+		p.config.ClientAuthnMethods = append(
+			p.config.ClientAuthnMethods,
+			goidc.ClientAuthnSecretBasic,
+		)
 		p.config.ClientSecretJWTAssertionLifetimeSecs = assertionLifetimeSecs
 		for _, signatureAlgorithm := range signatureAlgorithms {
 			p.config.ClientSecretJWTSignatureAlgorithms = append(
@@ -383,13 +423,19 @@ func WithClientSecretJWTAuthn(
 
 func WithTLSAuthn() ProviderOption {
 	return func(p *Provider) {
-		p.config.ClientAuthnMethods = append(p.config.ClientAuthnMethods, goidc.ClientAuthnTLS)
+		p.config.ClientAuthnMethods = append(
+			p.config.ClientAuthnMethods,
+			goidc.ClientAuthnTLS,
+		)
 	}
 }
 
 func WithSelfSignedTLSAuthn() ProviderOption {
 	return func(p *Provider) {
-		p.config.ClientAuthnMethods = append(p.config.ClientAuthnMethods, goidc.ClientAuthnSelfSignedTLS)
+		p.config.ClientAuthnMethods = append(
+			p.config.ClientAuthnMethods,
+			goidc.ClientAuthnSelfSignedTLS,
+		)
 	}
 }
 
@@ -408,7 +454,10 @@ func WithTLSBoundTokens() ProviderOption {
 
 func WithNoneAuthn() ProviderOption {
 	return func(p *Provider) {
-		p.config.ClientAuthnMethods = append(p.config.ClientAuthnMethods, goidc.ClientAuthnNone)
+		p.config.ClientAuthnMethods = append(
+			p.config.ClientAuthnMethods,
+			goidc.ClientAuthnNone,
+		)
 	}
 }
 
@@ -457,11 +506,11 @@ func WithDPoPRequired(
 	}
 }
 
-// WithSenderConstrainedTokensRequired will make at least one sender constraining mechanism (TLS or DPoP) be required,
-// in order to issue an access token to a client.
+// WithSenderConstrainedTokensRequired will make at least one sender constraining
+// mechanism (TLS or DPoP) be required, in order to issue an access token to a client.
 func WithSenderConstrainedTokensRequired() ProviderOption {
 	return func(p *Provider) {
-		p.config.SenderConstrainedTokenIsRequired = true
+		p.config.TokenBindingIsRequired = true
 	}
 }
 
@@ -471,7 +520,10 @@ func WithIntrospection(
 	return func(p *Provider) {
 		p.config.IntrospectionIsEnabled = true
 		p.config.IntrospectionClientAuthnMethods = clientAuthnMethods
-		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantIntrospection)
+		p.config.GrantTypes = append(
+			p.config.GrantTypes,
+			goidc.GrantIntrospection,
+		)
 	}
 }
 
@@ -523,8 +575,10 @@ func WithAuthenticationSessionTimeout(timeoutSecs int64) ProviderOption {
 }
 
 // WithProfileFAPI2 defines the OpenID Provider profile as FAPI 2.0.
-// The server will only be able to run if it is configured respecting the FAPI 2.0 profile.
-// This will also change some of the behavior of the server during runtime to be compliant with the FAPI 2.0.
+// The server will only be able to run if it is configured respecting the
+// FAPI 2.0 profile.
+// This will also change some of the behavior of the server during runtime to be
+// compliant with the FAPI 2.0.
 func WithProfileFAPI2() ProviderOption {
 	return func(p *Provider) {
 		p.config.Profile = goidc.ProfileFAPI2
@@ -539,15 +593,17 @@ func WithStaticClient(client *goidc.Client) ProviderOption {
 	}
 }
 
-// WithPolicy adds an authentication policy that will be evaluated at runtime and then executed if selected.
+// WithPolicy adds an authentication policy that will be evaluated at runtime
+// and then executed if selected.
 func WithPolicy(policy goidc.AuthnPolicy) ProviderOption {
 	return func(p *Provider) {
 		p.config.Policies = append(p.config.Policies, policy)
 	}
 }
 
-// WithAuthorizeErrorPlugin defines a handler to be executed when the authorization request results in error,
-// but the error can't be redirected. This can be used to display a page with the error.
+// WithAuthorizeErrorPlugin defines a handler to be executed when the
+// authorization request results in error, but the error can't be redirected.
+// This can be used to display a page with the error.
 // The default behavior is to display a JSON with the error information to the user.
 func WithAuthorizeErrorPlugin(plugin goidc.AuthorizeErrorPluginFunc) ProviderOption {
 	return func(p *Provider) {
@@ -557,7 +613,10 @@ func WithAuthorizeErrorPlugin(plugin goidc.AuthorizeErrorPluginFunc) ProviderOpt
 
 // TokenInfo returns information about the token sent in the request.
 // It also validates token binding (DPoP or TLS).
-func (p *Provider) TokenInfo(req *http.Request, resp http.ResponseWriter) goidc.TokenInfo {
+func (p *Provider) TokenInfo(
+	req *http.Request,
+	resp http.ResponseWriter,
+) goidc.TokenInfo {
 	ctx := oidc.NewContext(p.config, req, resp)
 	accessToken, tokenType, ok := ctx.AuthorizationToken()
 	if !ok {
@@ -576,7 +635,14 @@ func (p *Provider) TokenInfo(req *http.Request, resp http.ResponseWriter) goidc.
 	return tokenInfo
 }
 
-func (p *Provider) Client(req *http.Request, resp http.ResponseWriter, clientID string) (*goidc.Client, error) {
+func (p *Provider) Client(
+	req *http.Request,
+	resp http.ResponseWriter,
+	clientID string,
+) (
+	*goidc.Client,
+	error,
+) {
 	ctx := oidc.NewContext(p.config, req, resp)
 	return p.config.ClientManager.Get(ctx, clientID)
 }
@@ -585,7 +651,6 @@ func (p *Provider) Run(
 	address string,
 	middlewares ...goidc.WrapHandlerFunc,
 ) error {
-
 	handler := p.Handler()
 	for _, wrapHandler := range middlewares {
 		handler = wrapHandler(handler)

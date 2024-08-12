@@ -74,7 +74,7 @@ func authnSessionWithPAR(
 		return nil, err
 	}
 
-	session.UpdateParams(req.AuthorizationParameters)
+	session.AuthorizationParameters = mergeParams(session.AuthorizationParameters, req.AuthorizationParameters)
 	return session, nil
 }
 
@@ -126,7 +126,7 @@ func authnSessionWithJAR(
 	}
 
 	session := newAuthnSession(jar.AuthorizationParameters, client)
-	session.UpdateParams(req.AuthorizationParameters)
+	session.AuthorizationParameters = mergeParams(session.AuthorizationParameters, req.AuthorizationParameters)
 	return session, nil
 }
 

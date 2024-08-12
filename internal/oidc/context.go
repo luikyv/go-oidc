@@ -508,7 +508,8 @@ func (ctx *Context) Value(key any) any {
 
 type Configuration struct {
 	Profile goidc.Profile
-	// Host is the domain where the server runs. This value will be used the auth server issuer.
+	// Host is the domain where the server runs. This value will be used as the
+	// authorization server issuer.
 	Host                string
 	PathPrefix          string
 	MTLSIsEnabled       bool
@@ -520,7 +521,8 @@ type Configuration struct {
 	// PrivateJWKS contains the server JWKS with private and public information.
 	// When exposing it, the private information is removed.
 	PrivateJWKS jose.JSONWebKeySet
-	// DefaultTokenSignatureKeyID is the default key used to sign access tokens. The key can be overridden with the TokenOptions.
+	// DefaultTokenSignatureKeyID is the default key used to sign access tokens.
+	// The key can be overridden with the TokenOptions.
 	DefaultTokenSignatureKeyID      string
 	GrantTypes                      []goidc.GrantType
 	ResponseTypes                   []goidc.ResponseType
@@ -528,20 +530,28 @@ type Configuration struct {
 	ClientAuthnMethods              []goidc.ClientAuthnType
 	IntrospectionIsEnabled          bool
 	IntrospectionClientAuthnMethods []goidc.ClientAuthnType
-	// PrivateKeyJWTSignatureAlgorithms contains algorithms accepted for signing client assertions during private_key_jwt.
+	// PrivateKeyJWTSignatureAlgorithms contains algorithms accepted for signing
+	// client assertions during private_key_jwt.
 	PrivateKeyJWTSignatureAlgorithms []jose.SignatureAlgorithm
-	// PrivateKeyJWTAssertionLifetimeSecs is used to validate that the assertion will expire in the near future during private_key_jwt.
+	// PrivateKeyJWTAssertionLifetimeSecs is used to validate that the assertion
+	// will expire in the near future during private_key_jwt.
 	PrivateKeyJWTAssertionLifetimeSecs int64
-	// ClientSecretJWTSignatureAlgorithms constains algorithms accepted for signing client assertions during client_secret_jwt.
+	// ClientSecretJWTSignatureAlgorithms constains algorithms accepted for
+	// signing client assertions during client_secret_jwt.
 	ClientSecretJWTSignatureAlgorithms []jose.SignatureAlgorithm
-	// It is used to validate that the assertion will expire in the near future during client_secret_jwt.
+	// It is used to validate that the assertion will expire in the near future
+	// during client_secret_jwt.
 	ClientSecretJWTAssertionLifetimeSecs int64
 	OpenIDScopeIsRequired                bool
-	// DefaultUserInfoSignatureKeyID defines the default key used to sign ID tokens and the user info endpoint response.
-	// The key can be overridden depending on the client properties "id_token_signed_response_alg" and "userinfo_signed_response_alg".
+	// DefaultUserInfoSignatureKeyID defines the default key used to sign ID
+	// tokens and the user info endpoint response.
+	// The key can be overridden depending on the client properties
+	// "id_token_signed_response_alg" and "userinfo_signed_response_alg".
 	DefaultUserInfoSignatureKeyID string
-	// UserInfoSignatureKeyIDs contains the IDs of the keys used to sign ID tokens and the user info endpoint response. There should be at most one per algorithm.
-	// In other words, there shouldn't be two key IDs that point to two keys that have the same algorithm.
+	// UserInfoSignatureKeyIDs contains the IDs of the keys used to sign ID
+	// tokens and the user info endpoint response.
+	// There should be at most one per algorithm, in other words, there shouldn't
+	// be two key IDs that point to two keys that have the same algorithm.
 	UserInfoSignatureKeyIDs             []string
 	UserInfoEncryptionIsEnabled         bool
 	UserInfoKeyEncryptionAlgorithms     []jose.KeyAlgorithm
@@ -550,15 +560,18 @@ type Configuration struct {
 	IDTokenExpiresInSecs      int64
 	ShouldRotateRefreshTokens bool
 	RefreshTokenLifetimeSecs  int64
-	// UserClaims defines the user claims that can be returned in the userinfo endpoint or in the ID token.
-	// This will be transmitted in the /.well-known/openid-configuration endpoint.
+	// UserClaims defines the user claims that can be returned in the userinfo
+	// endpoint or in the ID token.
+	// This will be published in the /.well-known/openid-configuration endpoint.
 	UserClaims []string
 	// ClaimTypes are claim types supported by the server.
 	ClaimTypes []goidc.ClaimType
-	// IssuerResponseParameterIsEnabled indicates if the "iss" parameter will be returned when redirecting the user back to the client application.
+	// IssuerResponseParameterIsEnabled indicates if the "iss" parameter will be
+	// returned when redirecting the user back to the client application.
 	IssuerResponseParameterIsEnabled bool
-	// ClaimsParameterIsEnabled informs the clients whether the server accepts the "claims" parameter.
-	// This will be transmitted in the /.well-known/openid-configuration endpoint.
+	// ClaimsParameterIsEnabled informs the clients whether the server accepts
+	// the "claims" parameter.
+	// This will be published in the /.well-known/openid-configuration endpoint.
 	ClaimsParameterIsEnabled               bool
 	AuthorizationDetailsParameterIsEnabled bool
 	AuthorizationDetailTypes               []string
@@ -578,7 +591,8 @@ type Configuration struct {
 	JARContentEncryptionAlgorithms         []jose.ContentEncryption
 	// PARIsEnabled allows client to push authorization requests.
 	PARIsEnabled bool
-	// If PARIsRequired is true, authorization requests can only be made if they were pushed.
+	// PARIsRequired indicates that authorization requests can only be made if
+	// they were pushed.
 	PARIsRequired                    bool
 	ParLifetimeSecs                  int64
 	DPoPIsEnabled                    bool
@@ -598,9 +612,9 @@ type Configuration struct {
 	TLSBoundTokensIsEnabled          bool
 	AuthenticationContextReferences  []goidc.ACR
 	DisplayValues                    []goidc.DisplayValue
-	// If SenderConstrainedTokenIsRequired is true, at least one mechanism of sender contraining
-	// tokens is required, either DPoP or client TLS.
-	SenderConstrainedTokenIsRequired bool
-	AuthorizeErrorPlugin             goidc.AuthorizeErrorPluginFunc
-	StaticClients                    []*goidc.Client
+	// TokenBindingIsRequired indicates that at least one mechanism of sender
+	// contraining tokens is required, either DPoP or client TLS.
+	TokenBindingIsRequired bool
+	AuthorizeErrorPlugin   goidc.AuthorizeErrorPluginFunc
+	StaticClients          []*goidc.Client
 }
