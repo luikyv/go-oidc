@@ -35,7 +35,7 @@ type clientCertificateMiddleware struct {
 	nextHandler http.Handler
 }
 
-func NewClientCertificateMiddleware(next http.Handler) clientCertificateMiddleware {
+func newClientCertificateMiddleware(next http.Handler) clientCertificateMiddleware {
 	return clientCertificateMiddleware{
 		nextHandler: next,
 	}

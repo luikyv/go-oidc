@@ -33,7 +33,7 @@ func pushAuth(
 	}
 	return PushedResponse{
 		RequestURI: session.RequestURI,
-		ExpiresIn:  ctx.ParLifetimeSecs,
+		ExpiresIn:  ctx.PARLifetimeSecs,
 	}, nil
 }
 
@@ -231,12 +231,13 @@ func newImplicitGrantOptions(
 
 	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
 	return token.GrantOptions{
-		GrantType:                goidc.GrantImplicit,
-		GrantedScopes:            session.GrantedScopes,
-		Subject:                  session.Subject,
-		ClientID:                 session.ClientID,
-		TokenOptions:             tokenOptions,
-		AdditionalIDTokenClaims:  session.AdditionalIDTokenClaims,
-		AdditionalUserInfoClaims: session.AdditionalUserInfoClaims,
+		GrantType:                   goidc.GrantImplicit,
+		GrantedScopes:               session.GrantedScopes,
+		GrantedAuthorizationDetails: session.GrantedAuthorizationDetails,
+		Subject:                     session.Subject,
+		ClientID:                    session.ClientID,
+		TokenOptions:                tokenOptions,
+		AdditionalIDTokenClaims:     session.AdditionalIDTokenClaims,
+		AdditionalUserInfoClaims:    session.AdditionalUserInfoClaims,
 	}, nil
 }

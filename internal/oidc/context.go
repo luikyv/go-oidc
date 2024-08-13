@@ -423,15 +423,27 @@ func (ctx *Context) TokenSignatureKey(tokenOptions goidc.TokenOptions) jose.JSON
 }
 
 func (ctx *Context) UserInfoSignatureKey(client *goidc.Client) jose.JSONWebKey {
-	return ctx.privateKeyBasedOnAlgorithmOrDefault(client.UserInfoSignatureAlgorithm, ctx.DefaultUserInfoSignatureKeyID, ctx.UserInfoSignatureKeyIDs)
+	return ctx.privateKeyBasedOnAlgorithmOrDefault(
+		client.UserInfoSignatureAlgorithm,
+		ctx.DefaultUserInfoSignatureKeyID,
+		ctx.UserInfoSignatureKeyIDs,
+	)
 }
 
 func (ctx *Context) IDTokenSignatureKey(client *goidc.Client) jose.JSONWebKey {
-	return ctx.privateKeyBasedOnAlgorithmOrDefault(client.IDTokenSignatureAlgorithm, ctx.DefaultUserInfoSignatureKeyID, ctx.UserInfoSignatureKeyIDs)
+	return ctx.privateKeyBasedOnAlgorithmOrDefault(
+		client.IDTokenSignatureAlgorithm,
+		ctx.DefaultUserInfoSignatureKeyID,
+		ctx.UserInfoSignatureKeyIDs,
+	)
 }
 
 func (ctx *Context) JARMSignatureKey(client *goidc.Client) jose.JSONWebKey {
-	return ctx.privateKeyBasedOnAlgorithmOrDefault(client.JARMSignatureAlgorithm, ctx.DefaultJARMSignatureKeyID, ctx.JARMSignatureKeyIDs)
+	return ctx.privateKeyBasedOnAlgorithmOrDefault(
+		client.JARMSignatureAlgorithm,
+		ctx.DefaultJARMSignatureKeyID,
+		ctx.JARMSignatureKeyIDs,
+	)
 }
 
 func (ctx *Context) UserInfoSignatureAlgorithms() []jose.SignatureAlgorithm {
@@ -488,7 +500,7 @@ func (ctx *Context) privateKey(keyID string) jose.JSONWebKey {
 	return keys[0]
 }
 
-//----------------------------------------Context ----------------------------------------//
+//---------------------------------------- Context ----------------------------------------//
 
 func (ctx *Context) Deadline() (deadline time.Time, ok bool) {
 	return ctx.Request().Context().Deadline()
@@ -594,7 +606,8 @@ type Configuration struct {
 	// PARIsRequired indicates that authorization requests can only be made if
 	// they were pushed.
 	PARIsRequired                    bool
-	ParLifetimeSecs                  int64
+	PARLifetimeSecs                  int64
+	PARAllowUnregisteredRedirectURI  bool // TODO.
 	DPoPIsEnabled                    bool
 	DPoPIsRequired                   bool
 	DPoPLifetimeSecs                 int
@@ -614,7 +627,10 @@ type Configuration struct {
 	DisplayValues                    []goidc.DisplayValue
 	// TokenBindingIsRequired indicates that at least one mechanism of sender
 	// contraining tokens is required, either DPoP or client TLS.
-	TokenBindingIsRequired bool
-	AuthorizeErrorPlugin   goidc.AuthorizeErrorPluginFunc
-	StaticClients          []*goidc.Client
+	TokenBindingIsRequired       bool
+	AuthorizeErrorPlugin         goidc.AuthorizeErrorPluginFunc
+	StaticClients                []*goidc.Client
+	ResourceIndicatorsIsEnabled  bool // TODO.
+	ResourceIndicatorsIsRequired bool
+	ResourceIndicators           []string
 }

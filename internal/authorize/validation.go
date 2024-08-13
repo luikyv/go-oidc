@@ -105,7 +105,7 @@ func validatePushedRequest(
 	}
 
 	if ctx.Profile == goidc.ProfileFAPI2 && req.RedirectURI != "" {
-		client.AllowRedirectURI(req.RedirectURI)
+		client.RedirectURIS = append(client.RedirectURIS, req.RedirectURI)
 	}
 
 	return validateParams(ctx, req.AuthorizationParameters, client)
@@ -121,7 +121,7 @@ func validateInWithOutParams(
 ) oidc.Error {
 
 	if ctx.Profile == goidc.ProfileFAPI2 && insideParams.RedirectURI != "" {
-		client.AllowRedirectURI(insideParams.RedirectURI)
+		client.RedirectURIS = append(client.RedirectURIS, insideParams.RedirectURI)
 	}
 
 	mergedParams := mergeParams(insideParams, outsideParams)

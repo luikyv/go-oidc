@@ -81,6 +81,60 @@ func New(
 	return p, nil
 }
 
+func (p *Provider) Handler() http.Handler {
+
+	server := http.NewServeMux()
+
+	discovery.RegisterHandlers(server, &p.config)
+	token.RegisterHandlers(server, &p.config)
+	authorize.RegisterHandlers(server, &p.config)
+	userinfo.RegisterHandlers(server, &p.config)
+	client.RegisterHandlers(server, &p.config)
+
+	return server
+}
+
+func (p *Provider) Run(
+	address string,
+	middlewares ...goidc.WrapHandlerFunc,
+) error {
+	handler := p.Handler()
+	for _, wrapHandler := range middlewares {
+		handler = wrapHandler(handler)
+	}
+	handler = newCacheControlMiddleware(handler)
+	return http.ListenAndServe(address, handler)
+}
+
+func (p *Provider) RunTLS(
+	config TLSOptions,
+	middlewares ...goidc.WrapHandlerFunc,
+) error {
+
+	if p.config.MTLSIsEnabled {
+		go func() {
+			if err := p.runMTLS(config); err != nil {
+				// TODO: Find a way to handle this.
+				panic(err)
+			}
+		}()
+	}
+
+	handler := p.Handler()
+	for _, wrapHandler := range middlewares {
+		handler = wrapHandler(handler)
+	}
+	handler = newCacheControlMiddleware(handler)
+	server := &http.Server{
+		Addr:    config.TLSAddress,
+		Handler: handler,
+		TLSConfig: &tls.Config{
+			CipherSuites: config.CipherSuites,
+		},
+	}
+	return server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)
+}
+
 // WithStorage defines how the provider will store clients and sessions.
 // It overrides the default storage which keeps everything in memory.
 func WithStorage(
@@ -212,8 +266,8 @@ func WithTokenOptions(getTokenOpts goidc.TokenOptionsFunc) ProviderOption {
 				return goidc.TokenOptions{}, err
 			}
 
-			if opts.OpaqueTokenLength == token.RefreshTokenLength {
-				opts.OpaqueTokenLength++
+			if opts.OpaqueLength == token.RefreshTokenLength {
+				opts.OpaqueLength++
 			}
 
 			return opts, nil
@@ -258,7 +312,7 @@ func WithScopes(scopes ...goidc.Scope) ProviderOption {
 // request endpoint.
 func WithPAR(parLifetimeSecs int64) ProviderOption {
 	return func(p *Provider) {
-		p.config.ParLifetimeSecs = parLifetimeSecs
+		p.config.PARLifetimeSecs = parLifetimeSecs
 		p.config.PARIsEnabled = true
 	}
 }
@@ -611,6 +665,20 @@ func WithAuthorizeErrorPlugin(plugin goidc.AuthorizeErrorPluginFunc) ProviderOpt
 	}
 }
 
+func WithResourceIndicators(resources []string) ProviderOption {
+	return func(p *Provider) {
+		p.config.ResourceIndicatorsIsEnabled = true
+		p.config.ResourceIndicators = resources
+	}
+}
+
+func WithResourceIndicatorsRequired(resources []string) ProviderOption {
+	return func(p *Provider) {
+		WithResourceIndicators(resources)
+		p.config.ResourceIndicatorsIsRequired = true
+	}
+}
+
 // TokenInfo returns information about the token sent in the request.
 // It also validates token binding (DPoP or TLS).
 func (p *Provider) TokenInfo(
@@ -647,52 +715,11 @@ func (p *Provider) Client(
 	return p.config.ClientManager.Get(ctx, clientID)
 }
 
-func (p *Provider) Run(
-	address string,
-	middlewares ...goidc.WrapHandlerFunc,
-) error {
-	handler := p.Handler()
-	for _, wrapHandler := range middlewares {
-		handler = wrapHandler(handler)
-	}
-	handler = newCacheControlMiddleware(handler)
-	return http.ListenAndServe(address, handler)
-}
-
-func (p *Provider) RunTLS(
-	config TLSOptions,
-	middlewares ...goidc.WrapHandlerFunc,
-) error {
-
-	if p.config.MTLSIsEnabled {
-		go func() {
-			if err := p.runMTLS(config); err != nil {
-				// TODO: Find a way to handle this.
-				panic(err)
-			}
-		}()
-	}
-
-	handler := p.Handler()
-	for _, wrapHandler := range middlewares {
-		handler = wrapHandler(handler)
-	}
-	handler = newCacheControlMiddleware(handler)
-	server := &http.Server{
-		Addr:    config.TLSAddress,
-		Handler: handler,
-		TLSConfig: &tls.Config{
-			CipherSuites: config.CipherSuites,
-		},
-	}
-	return server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)
-}
-
 func (p *Provider) runMTLS(config TLSOptions) error {
 
 	handler := p.Handler()
 	handler = newCacheControlMiddleware(handler)
-	handler = NewClientCertificateMiddleware(handler)
+	handler = newClientCertificateMiddleware(handler)
 
 	tlsClientAuthnType := tls.RequireAndVerifyClientCert
 	if config.CaCertificatePool == nil || config.UnsecureCertificatesAreAllowed {
@@ -709,19 +736,6 @@ func (p *Provider) runMTLS(config TLSOptions) error {
 		},
 	}
 	return server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)
-}
-
-func (p *Provider) Handler() http.Handler {
-
-	server := http.NewServeMux()
-
-	discovery.RegisterHandlers(server, &p.config)
-	token.RegisterHandlers(server, &p.config)
-	authorize.RegisterHandlers(server, &p.config)
-	userinfo.RegisterHandlers(server, &p.config)
-	client.RegisterHandlers(server, &p.config)
-
-	return server
 }
 
 // TODO: Add more validations.

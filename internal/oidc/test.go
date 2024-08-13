@@ -94,8 +94,8 @@ func NewTestContext(t *testing.T) *Context {
 		UserInfoSignatureKeyIDs:       []string{TestServerPrivateJWK.KeyID},
 		TokenOptions: func(client *goidc.Client, scopes string) (goidc.TokenOptions, error) {
 			return goidc.TokenOptions{
-				TokenLifetimeSecs: 60,
-				TokenFormat:       goidc.TokenFormatJWT,
+				LifetimeSecs: 60,
+				Format:       goidc.TokenFormatJWT,
 			}, nil
 		},
 		AuthenticationSessionTimeoutSecs: 60,

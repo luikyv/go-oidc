@@ -25,7 +25,7 @@ func TestAddTokenClaim(t *testing.T) {
 		// Given.
 		session := goidc.AuthnSession{}
 		// When.
-		session.SetClaimToken("random_claim", "random_value")
+		session.SetTokenClaim("random_claim", "random_value")
 		// Then.
 		assert.Equal(t, "random_value", session.AdditionalTokenClaims["random_claim"])
 	}
@@ -36,7 +36,7 @@ func TestAddIDTokenClaim(t *testing.T) {
 		// Given.
 		session := goidc.AuthnSession{}
 		// When.
-		session.SetClaimIDToken("random_claim", "random_value")
+		session.SetIDTokenClaim("random_claim", "random_value")
 		// Then.
 		assert.Equal(t, "random_value", session.AdditionalIDTokenClaims["random_claim"])
 	}
@@ -47,7 +47,7 @@ func TestAddUserInfoClaim(t *testing.T) {
 		// Given.
 		session := goidc.AuthnSession{}
 		// When.
-		session.SetClaimUserInfo("random_claim", "random_value")
+		session.SetUserInfoClaim("random_claim", "random_value")
 		// Then.
 		assert.Equal(t, "random_value", session.AdditionalUserInfoClaims["random_claim"])
 	}

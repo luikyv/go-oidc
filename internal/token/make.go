@@ -50,7 +50,7 @@ func Make(
 	Token,
 	oidc.Error,
 ) {
-	if grantOptions.TokenFormat == goidc.TokenFormatJWT {
+	if grantOptions.Format == goidc.TokenFormatJWT {
 		return makeJWTToken(ctx, client, grantOptions)
 	} else {
 		return makeOpaqueToken(ctx, client, grantOptions)
@@ -181,7 +181,7 @@ func makeJWTToken(
 		goidc.ClaimClientID: client.ID,
 		goidc.ClaimScope:    grantOptions.GrantedScopes,
 		goidc.ClaimIssuedAt: timestampNow,
-		goidc.ClaimExpiry:   timestampNow + grantOptions.TokenLifetimeSecs,
+		goidc.ClaimExpiry:   timestampNow + grantOptions.LifetimeSecs,
 	}
 
 	if grantOptions.GrantedAuthorizationDetails != nil {
@@ -209,7 +209,7 @@ func makeJWTToken(
 		claims["cnf"] = confirmation
 	}
 
-	for k, v := range grantOptions.AdditionalTokenClaims {
+	for k, v := range grantOptions.AdditionalClaims {
 		claims[k] = v
 	}
 
@@ -246,7 +246,7 @@ func makeOpaqueToken(
 	Token,
 	oidc.Error,
 ) {
-	accessToken, err := strutil.Random(grantOptions.OpaqueTokenLength)
+	accessToken, err := strutil.Random(grantOptions.OpaqueLength)
 	if err != nil {
 		return Token{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}

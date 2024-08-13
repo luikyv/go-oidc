@@ -68,11 +68,13 @@ const (
 )
 
 func (rm ResponseMode) IsJARM() bool {
-	return rm == ResponseModeQueryJWT || rm == ResponseModeFragmentJWT || rm == ResponseModeFormPostJWT || rm == ResponseModeJWT
+	return rm == ResponseModeQueryJWT || rm == ResponseModeFragmentJWT ||
+		rm == ResponseModeFormPostJWT || rm == ResponseModeJWT
 }
 
 func (rm ResponseMode) IsPlain() bool {
-	return rm == ResponseModeQuery || rm == ResponseModeFragment || rm == ResponseModeFormPost
+	return rm == ResponseModeQuery || rm == ResponseModeFragment ||
+		rm == ResponseModeFormPost
 }
 
 func (rm ResponseMode) IsQuery() bool {
@@ -141,7 +143,8 @@ const (
 	CodeChallengeMethodPlain  CodeChallengeMethod = "plain"
 )
 
-// For more information, see: https://openid.net/specs/openid-connect-core-1_0.html#SubjectIDTypes
+// For more information,
+// see: https://openid.net/specs/openid-connect-core-1_0.html#SubjectIDTypes
 type SubjectIdentifierType string
 
 const (
@@ -152,8 +155,10 @@ const (
 
 const (
 	HeaderDPoP string = "DPoP"
-	// HeaderClientCertificate is the header used to transmit a client certificate that was validated by a trusted source.
-	// The value in this header is expected to be the URL encoding of the client's certificate in PEM format.
+	// HeaderClientCertificate is the header used to transmit a client
+	// certificate that was validated by a trusted source.
+	// The value in this header is expected to be the URL encoding of the
+	// client's certificate in PEM format.
 	HeaderClientCertificate string = "X-Client-Cert"
 )
 

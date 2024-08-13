@@ -35,6 +35,7 @@ func newRequest(req *http.Request) Request {
 			Prompt:              goidc.PromptType(req.URL.Query().Get("prompt")),
 			Display:             goidc.DisplayValue(req.URL.Query().Get("display")),
 			ACRValues:           req.URL.Query().Get("acr_values"),
+			Resources:           req.URL.Query()["resource"],
 		},
 	}
 
@@ -127,6 +128,7 @@ func newPushedRequest(req *http.Request) PushedRequest {
 		Prompt:              goidc.PromptType(req.PostFormValue("prompt")),
 		Display:             goidc.DisplayValue(req.PostFormValue("display")),
 		ACRValues:           req.PostFormValue("acr_values"),
+		Resources:           req.PostForm["resource"],
 	}
 
 	if maxAge, err := strconv.Atoi(req.PostFormValue("max_age")); err == nil {

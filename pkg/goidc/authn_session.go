@@ -50,45 +50,45 @@ func (s *AuthnSession) Parameter(key string) any {
 	return s.Store[key]
 }
 
-func (s *AuthnSession) SetClaimToken(claim string, value any) {
+func (s *AuthnSession) SetTokenClaim(claim string, value any) {
 	if s.AdditionalTokenClaims == nil {
 		s.AdditionalTokenClaims = make(map[string]any)
 	}
 	s.AdditionalTokenClaims[claim] = value
 }
 
-func (s *AuthnSession) SetACRClaimIDToken(acr ACR) {
-	s.SetClaimIDToken(ClaimAuthenticationContextReference, acr)
+func (s *AuthnSession) SetIDTokenClaimACR(acr ACR) {
+	s.SetIDTokenClaim(ClaimAuthenticationContextReference, acr)
 }
 
-func (s *AuthnSession) SetAuthTimeClaimIDToken(authTime int) {
-	s.SetClaimIDToken(ClaimAuthenticationTime, authTime)
+func (s *AuthnSession) SetIDTokenClaimAuthTime(authTime int) {
+	s.SetIDTokenClaim(ClaimAuthenticationTime, authTime)
 }
 
-func (s *AuthnSession) SetAMRClaimIDToken(amrs ...AMR) {
-	s.SetClaimIDToken(ClaimAuthenticationMethodReferences, amrs)
+func (s *AuthnSession) SetIDTokenClaimAMR(amrs ...AMR) {
+	s.SetIDTokenClaim(ClaimAuthenticationMethodReferences, amrs)
 }
 
-func (s *AuthnSession) SetClaimIDToken(claim string, value any) {
+func (s *AuthnSession) SetIDTokenClaim(claim string, value any) {
 	if s.AdditionalIDTokenClaims == nil {
 		s.AdditionalIDTokenClaims = make(map[string]any)
 	}
 	s.AdditionalIDTokenClaims[claim] = value
 }
 
-func (s *AuthnSession) SetACRClaimUserInfo(acr ACR) {
-	s.SetClaimUserInfo(ClaimAuthenticationContextReference, acr)
+func (s *AuthnSession) SetUserInfoClaimACR(acr ACR) {
+	s.SetUserInfoClaim(ClaimAuthenticationContextReference, acr)
 }
 
-func (s *AuthnSession) SetAuthTimeClaimUserInfo(authTime int) {
-	s.SetClaimUserInfo(ClaimAuthenticationTime, authTime)
+func (s *AuthnSession) SetUserInfoClaimAuthTime(authTime int) {
+	s.SetUserInfoClaim(ClaimAuthenticationTime, authTime)
 }
 
-func (s *AuthnSession) SetAMRClaimUserInfo(amrs ...AMR) {
-	s.SetClaimUserInfo(ClaimAuthenticationMethodReferences, amrs)
+func (s *AuthnSession) SetUserInfoClaimAMR(amrs ...AMR) {
+	s.SetUserInfoClaim(ClaimAuthenticationMethodReferences, amrs)
 }
 
-func (s *AuthnSession) SetClaimUserInfo(claim string, value any) {
+func (s *AuthnSession) SetUserInfoClaim(claim string, value any) {
 	if s.AdditionalUserInfoClaims == nil {
 		s.AdditionalUserInfoClaims = make(map[string]any)
 	}
@@ -99,8 +99,9 @@ func (s *AuthnSession) GrantScopes(scopes string) {
 	s.GrantedScopes = scopes
 }
 
-// GrantAuthorizationDetails sets the authorization details the client will have permissions to use.
-// This will only have effect if support for authorization details was enabled.
+// GrantAuthorizationDetails sets the authorization details the client will have
+// permissions to use.
+// This will only have effect if support for authorization details is enabled.
 func (s *AuthnSession) GrantAuthorizationDetails(authDetails []AuthorizationDetail) {
 	s.GrantedAuthorizationDetails = authDetails
 }

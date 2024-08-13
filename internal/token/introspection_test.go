@@ -27,7 +27,7 @@ func TestIntrospectToken_OpaqueToken(t *testing.T) {
 		ActiveScopes:               goidc.ScopeOpenID.ID,
 		ClientID:                   oidc.TestClientID,
 		TokenOptions: goidc.TokenOptions{
-			TokenLifetimeSecs: 60,
+			LifetimeSecs: 60,
 		},
 	}
 	require.Nil(t, ctx.SaveGrantSession(grantSession))

@@ -16,6 +16,7 @@ const (
 	ErrorCodeInvalidResquestObject       ErrorCode = "invalid_request_object"
 	ErrorCodeInvalidToken                ErrorCode = "invalid_token"
 	ErrorCodeInternalError               ErrorCode = "internal_error"
+	ErrorCodeInvalidTarget               ErrorCode = "invalid_target"
 )
 
 func (ec ErrorCode) StatusCode() int {

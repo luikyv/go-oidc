@@ -29,7 +29,7 @@ func TestHandleUserInfoRequest_HappyPath(t *testing.T) {
 			"random_claim": "random_value",
 		},
 		TokenOptions: goidc.TokenOptions{
-			TokenLifetimeSecs: 60,
+			LifetimeSecs: 60,
 		},
 	}
 

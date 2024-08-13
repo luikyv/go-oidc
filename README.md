@@ -65,7 +65,6 @@ Make sure the `GOBIN` environment variable is set.
 
 ## To Do's
 * Don't use the default http client.
-* Add index to mongo db.
 * Implement the revocation endpoint. Revoke by jti.
 * Should I add the default encryption algorithm instead of requiring the dev to pass it?
 * Implement the resource parameter.
@@ -77,3 +76,4 @@ Make sure the `GOBIN` environment variable is set.
 * New grant for token introspection?
 * Events.
 * Compare ACR values.
+* Allow overriding endpoints.

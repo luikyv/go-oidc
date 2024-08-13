@@ -39,7 +39,7 @@ func generateClientCredentialsGrant(
 
 	tokenResp := Response{
 		AccessToken: token.Value,
-		ExpiresIn:   grantOptions.TokenLifetimeSecs,
+		ExpiresIn:   grantOptions.LifetimeSecs,
 		TokenType:   token.Type,
 	}
 

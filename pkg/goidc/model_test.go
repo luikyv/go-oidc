@@ -16,14 +16,14 @@ func TestAddTokenClaims_HappyPath(t *testing.T) {
 		"claim": "value",
 	})
 	// Then.
-	assert.Equal(t, "value", tokenOptions.AdditionalTokenClaims["claim"], "the claim was not added")
+	assert.Equal(t, "value", tokenOptions.AdditionalClaims["claim"], "the claim was not added")
 
 	// When.
 	tokenOptions.AddTokenClaims(map[string]any{
 		"claim": "value",
 	})
 	// Then.
-	assert.Equal(t, "value", tokenOptions.AdditionalTokenClaims["claim"], "the claim was not added")
+	assert.Equal(t, "value", tokenOptions.AdditionalClaims["claim"], "the claim was not added")
 }
 
 func TestAuthorizationDetail_GetProperties_HappyPath(t *testing.T) {

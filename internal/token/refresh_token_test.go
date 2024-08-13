@@ -30,8 +30,8 @@ func TestGenerateGrant_RefreshTokenGrant(t *testing.T) {
 		ClientID:           oidc.TestClientID,
 		GrantedScopes:      c.Scopes,
 		TokenOptions: goidc.TokenOptions{
-			TokenFormat:       goidc.TokenFormatJWT,
-			TokenLifetimeSecs: 60,
+			Format:       goidc.TokenFormatJWT,
+			LifetimeSecs: 60,
 		},
 	}
 	require.Nil(t, ctx.SaveGrantSession(grantSession))
@@ -77,7 +77,7 @@ func TestGenerateGrant_ShouldDenyExpiredRefreshToken(t *testing.T) {
 		ClientID:           oidc.TestClientID,
 		GrantedScopes:      c.Scopes,
 		TokenOptions: goidc.TokenOptions{
-			TokenLifetimeSecs: 60,
+			LifetimeSecs: 60,
 		},
 	}
 	require.Nil(t, ctx.SaveGrantSession(grantSession))

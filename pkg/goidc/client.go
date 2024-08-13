@@ -97,7 +97,8 @@ func (c *Client) AreScopesAllowed(
 		}
 	}
 
-	// For each scope requested, make sure it matches one of the available client scopes.
+	// For each scope requested, make sure it matches one of the available
+	// client scopes.
 	for _, requestedScope := range strings.Split(requestedScopes, " ") {
 		matches := false
 		for _, scope := range clientScopes {
@@ -131,12 +132,9 @@ func (c *Client) IsRedirectURIAllowed(redirectURI string) bool {
 	return false
 }
 
-func (c *Client) AllowRedirectURI(redirectURI string) {
-	c.RedirectURIS = append(c.RedirectURIS, redirectURI)
-}
-
 func (c *Client) IsAuthorizationDetailTypeAllowed(authDetailType string) bool {
-	// If the client didn't announce the authorization types it will use, consider any value valid.
+	// If the client didn't announce the authorization types it will use,
+	// consider any value valid.
 	if c.AuthorizationDetailTypes == nil {
 		return true
 	}
@@ -149,7 +147,8 @@ func (c *Client) IsRegistrationAccessTokenValid(token string) bool {
 	return err == nil
 }
 
-// FetchPublicJWKS fetches the client public JWKS either directly from the jwks attribute or using jwks_uri.
+// FetchPublicJWKS fetches the client public JWKS either directly from the jwks
+// attribute or using jwks_uri.
 // This method also caches the keys if they are fetched from jwks_uri.
 func (c *Client) FetchPublicJWKS() (jose.JSONWebKeySet, error) {
 	var jwks jose.JSONWebKeySet
@@ -160,7 +159,8 @@ func (c *Client) FetchPublicJWKS() (jose.JSONWebKeySet, error) {
 	}
 
 	if c.PublicJWKSURI == "" {
-		return jose.JSONWebKeySet{}, errors.New("the client jwks was informed neither by value or by reference")
+		return jose.JSONWebKeySet{},
+			errors.New("the client jwks was informed neither by value or by reference")
 	}
 
 	rawJWKS, err := c.fetchJWKS()

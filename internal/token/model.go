@@ -79,6 +79,7 @@ type Request struct {
 	RedirectURI       string
 	RefreshToken      string
 	CodeVerifier      string
+	Resources         goidc.Resources
 	client.AuthnRequest
 }
 
@@ -91,6 +92,7 @@ func newRequest(req *http.Request) Request {
 		RedirectURI:       req.PostFormValue("redirect_uri"),
 		RefreshToken:      req.PostFormValue("refresh_token"),
 		CodeVerifier:      req.PostFormValue("code_verifier"),
+		Resources:         req.PostForm["resource"],
 	}
 }
 
@@ -137,7 +139,7 @@ func NewGrantSession(grantOptions GrantOptions, token Token) *goidc.GrantSession
 		ClientCertificateThumbprint: token.CertificateThumbprint,
 		CreatedAtTimestamp:          timestampNow,
 		LastTokenIssuedAtTimestamp:  timestampNow,
-		ExpiresAtTimestamp:          timestampNow + grantOptions.TokenLifetimeSecs,
+		ExpiresAtTimestamp:          timestampNow + grantOptions.LifetimeSecs,
 		ActiveScopes:                grantOptions.GrantedScopes,
 		GrantType:                   grantOptions.GrantType,
 		Subject:                     grantOptions.Subject,

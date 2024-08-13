@@ -48,7 +48,7 @@ func generateAuthorizationCodeGrant(
 
 	tokenResp := Response{
 		AccessToken:  token.Value,
-		ExpiresIn:    grantOptions.TokenLifetimeSecs,
+		ExpiresIn:    grantOptions.LifetimeSecs,
 		TokenType:    token.Type,
 		RefreshToken: grantSession.RefreshToken,
 	}

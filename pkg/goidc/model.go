@@ -67,18 +67,18 @@ func NewDynamicScope(
 type TokenOptionsFunc func(client *Client, scopes string) (TokenOptions, error)
 
 type TokenOptions struct {
-	TokenFormat           TokenFormat    `json:"token_format"`
-	TokenLifetimeSecs     int64          `json:"token_lifetime_secs"`
-	JWTSignatureKeyID     string         `json:"token_signature_key_id,omitempty"`
-	OpaqueTokenLength     int            `json:"opaque_token_length,omitempty"`
-	AdditionalTokenClaims map[string]any `json:"additional_token_claims,omitempty"`
+	Format            TokenFormat    `json:"token_format"`
+	LifetimeSecs      int64          `json:"token_lifetime_secs"`
+	JWTSignatureKeyID string         `json:"token_signature_key_id,omitempty"`
+	OpaqueLength      int            `json:"opaque_token_length,omitempty"`
+	AdditionalClaims  map[string]any `json:"additional_token_claims,omitempty"`
 }
 
 func (to *TokenOptions) AddTokenClaims(claims map[string]any) {
-	if to.AdditionalTokenClaims == nil {
-		to.AdditionalTokenClaims = map[string]any{}
+	if to.AdditionalClaims == nil {
+		to.AdditionalClaims = map[string]any{}
 	}
-	maps.Copy(to.AdditionalTokenClaims, claims)
+	maps.Copy(to.AdditionalClaims, claims)
 }
 
 func NewJWTTokenOptions(
@@ -87,8 +87,8 @@ func NewJWTTokenOptions(
 	tokenLifetimeSecs int64,
 ) TokenOptions {
 	return TokenOptions{
-		TokenFormat:       TokenFormatJWT,
-		TokenLifetimeSecs: tokenLifetimeSecs,
+		Format:            TokenFormatJWT,
+		LifetimeSecs:      tokenLifetimeSecs,
 		JWTSignatureKeyID: signatureKeyID,
 	}
 }
@@ -98,9 +98,9 @@ func NewOpaqueTokenOptions(
 	tokenLifetimeSecs int64,
 ) TokenOptions {
 	return TokenOptions{
-		TokenFormat:       TokenFormatOpaque,
-		TokenLifetimeSecs: tokenLifetimeSecs,
-		OpaqueTokenLength: tokenLength,
+		Format:       TokenFormatOpaque,
+		LifetimeSecs: tokenLifetimeSecs,
+		OpaqueLength: tokenLength,
 	}
 }
 
@@ -199,6 +199,33 @@ type AuthorizationParameters struct {
 	ACRValues            string                `json:"acr_values,omitempty"`
 	Claims               *ClaimsObject         `json:"claims,omitempty"`
 	AuthorizationDetails []AuthorizationDetail `json:"authorization_details,omitempty"`
+	Resources            Resources             `json:"resource,omitempty"`
+}
+
+type Resources []string
+
+func (r *Resources) UnmarshalJSON(data []byte) error {
+	var resource string
+	if err := json.Unmarshal(data, &resource); err == nil {
+		*r = []string{resource}
+		return nil
+	}
+
+	var resources []string
+	if err := json.Unmarshal(data, &resources); err != nil {
+		return err
+	}
+
+	*r = resources
+	return nil
+}
+
+func (resources Resources) MarshalJSON() ([]byte, error) {
+	if len(resources) == 1 {
+		return json.Marshal(resources[0])
+	}
+
+	return json.Marshal([]string(resources))
 }
 
 type ClaimsObject struct {

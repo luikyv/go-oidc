@@ -175,7 +175,7 @@ func initAuthnSessionWithPolicy(
 	}
 
 	if session.Nonce != "" {
-		session.SetClaimIDToken(goidc.ClaimNonce, session.Nonce)
+		session.SetIDTokenClaim(goidc.ClaimNonce, session.Nonce)
 	}
 	session.PolicyID = policy.ID
 	id, err := callbackID()
@@ -213,7 +213,7 @@ func pushedAuthnSession(
 		return nil, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 	session.RequestURI = reqURI
-	session.ExpiresAtTimestamp = time.Now().Unix() + ctx.ParLifetimeSecs
+	session.ExpiresAtTimestamp = time.Now().Unix() + ctx.PARLifetimeSecs
 
 	return session, nil
 }

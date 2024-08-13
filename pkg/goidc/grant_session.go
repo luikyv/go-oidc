@@ -22,10 +22,10 @@ type GrantSession struct {
 	CreatedAtTimestamp          int64                 `json:"created_at"`
 	ExpiresAtTimestamp          int64                 `json:"expires_at"`
 	ActiveScopes                string                `json:"active_scopes"`
+	GrantedScopes               string                `json:"granted_scopes"`
 	GrantType                   GrantType             `json:"grant_type"`
 	Subject                     string                `json:"sub"`
 	ClientID                    string                `json:"client_id"`
-	GrantedScopes               string                `json:"granted_scopes"`
 	GrantedAuthorizationDetails []AuthorizationDetail `json:"granted_authorization_details,omitempty"`
 	AdditionalIDTokenClaims     map[string]any        `json:"additional_id_token_claims,omitempty"`
 	AdditionalUserInfoClaims    map[string]any        `json:"additional_user_info_claims,omitempty"`
@@ -37,5 +37,5 @@ func (g *GrantSession) IsExpired() bool {
 }
 
 func (g *GrantSession) HasLastTokenExpired() bool {
-	return time.Now().Unix() > g.LastTokenIssuedAtTimestamp+g.TokenLifetimeSecs
+	return time.Now().Unix() > g.LastTokenIssuedAtTimestamp+g.LifetimeSecs
 }
