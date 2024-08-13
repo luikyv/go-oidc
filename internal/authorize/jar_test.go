@@ -17,13 +17,14 @@ import (
 func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) {
 	// Given.
 	privateJWK := oidc.PrivateRS256JWK(t, "client_key_id")
+	config := oidc.Configuration{
+		Host: "https://server.example.com",
+	}
+	config.JAR.IsEnabled = true
+	config.JAR.SignatureAlgorithms = []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJWK.Algorithm)}
+	config.JAR.LifetimeSecs = 60
 	ctx := &oidc.Context{
-		Configuration: oidc.Configuration{
-			Host:                   "https://server.example.com",
-			JARIsEnabled:           true,
-			JARSignatureAlgorithms: []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJWK.Algorithm)},
-			JARLifetimeSecs:        60,
-		},
+		Configuration: config,
 		Req: &http.Request{
 			Method: http.MethodPost,
 		},
@@ -44,7 +45,7 @@ func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 		goidc.ClaimIssuer:   client.ID,
 		goidc.ClaimAudience: ctx.Host,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JARLifetimeSecs - 1,
+		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JAR.LifetimeSecs - 1,
 		"client_id":         client.ID,
 		"redirect_uri":      "https://example.com",
 		"response_type":     goidc.ResponseTypeCode,

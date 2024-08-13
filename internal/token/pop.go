@@ -29,7 +29,7 @@ func ValidateDPoPJWT(
 	dpopJWT string,
 	expectedDPoPClaims DPoPJWTValidationOptions,
 ) oidc.Error {
-	parsedDPoPJWT, err := jwt.ParseSigned(dpopJWT, ctx.DPoPSignatureAlgorithms)
+	parsedDPoPJWT, err := jwt.ParseSigned(dpopJWT, ctx.DPoP.SignatureAlgorithms)
 	if err != nil {
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid dpop")
 	}
@@ -54,7 +54,7 @@ func ValidateDPoPJWT(
 	}
 
 	// Validate that the "iat" claim is present and it is not too far in the past.
-	if claims.IssuedAt == nil || int(time.Since(claims.IssuedAt.Time()).Seconds()) > ctx.DPoPLifetimeSecs {
+	if claims.IssuedAt == nil || int(time.Since(claims.IssuedAt.Time()).Seconds()) > ctx.DPoP.LifetimeSecs {
 		return oidc.NewError(oidc.ErrorCodeUnauthorizedClient, "invalid dpop")
 	}
 
@@ -77,7 +77,7 @@ func ValidateDPoPJWT(
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid ath claim")
 	}
 
-	if expectedDPoPClaims.JWKThumbprint != "" && jwkThumbprint(dpopJWT, ctx.DPoPSignatureAlgorithms) != expectedDPoPClaims.JWKThumbprint {
+	if expectedDPoPClaims.JWKThumbprint != "" && jwkThumbprint(dpopJWT, ctx.DPoP.SignatureAlgorithms) != expectedDPoPClaims.JWKThumbprint {
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid jwk thumbprint")
 	}
 

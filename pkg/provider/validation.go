@@ -35,9 +35,9 @@ func validateJWKS(provider Provider) error {
 func validateSignatureKeys(provider Provider) error {
 
 	for _, keyID := range slices.Concat(
-		[]string{provider.config.DefaultUserInfoSignatureKeyID},
-		provider.config.UserInfoSignatureKeyIDs,
-		provider.config.JARMSignatureKeyIDs,
+		[]string{provider.config.User.DefaultSignatureKeyID},
+		provider.config.User.SignatureKeyIDs,
+		provider.config.JARM.SignatureKeyIDs,
 	) {
 		jwkSlice := provider.config.PrivateJWKS.Key(keyID)
 		if len(jwkSlice) != 1 {
@@ -59,7 +59,7 @@ func validateSignatureKeys(provider Provider) error {
 
 func validateEncryptionKeys(provider Provider) error {
 	for _, keyID := range slices.Concat(
-		provider.config.JARKeyEncryptionIDs,
+		provider.config.JAR.KeyEncryptionIDs,
 	) {
 		jwkSlice := provider.config.PrivateJWKS.Key(keyID)
 		if len(jwkSlice) != 1 {
@@ -76,7 +76,7 @@ func validateEncryptionKeys(provider Provider) error {
 }
 
 func validatePrivateKeyJWTSignatureAlgorithms(provider Provider) error {
-	for _, signatureAlgorithm := range provider.config.PrivateKeyJWTSignatureAlgorithms {
+	for _, signatureAlgorithm := range provider.config.ClientAuthn.PrivateKeyJWTSignatureAlgorithms {
 		if strings.HasPrefix(string(signatureAlgorithm), "HS") {
 			return errors.New("symetric algorithms are not allowed for private_key_jwt authentication")
 		}
@@ -86,7 +86,7 @@ func validatePrivateKeyJWTSignatureAlgorithms(provider Provider) error {
 }
 
 func validateClientSecretJWTSignatureAlgorithms(provider Provider) error {
-	for _, signatureAlgorithm := range provider.config.ClientSecretJWTSignatureAlgorithms {
+	for _, signatureAlgorithm := range provider.config.ClientAuthn.ClientSecretJWTSignatureAlgorithms {
 		if !strings.HasPrefix(string(signatureAlgorithm), "HS") {
 			return errors.New("assymetric algorithms are not allowed for client_secret_jwt authentication")
 		}
@@ -97,16 +97,16 @@ func validateClientSecretJWTSignatureAlgorithms(provider Provider) error {
 
 func validateIntrospectionClientAuthnMethods(provider Provider) error {
 
-	if !provider.config.IntrospectionIsEnabled {
+	if !provider.config.Introspection.IsEnabled {
 		return nil
 	}
 
-	if !slices.Contains(provider.config.ClientAuthnMethods, goidc.ClientAuthnNone) {
+	if !slices.Contains(provider.config.ClientAuthn.Methods, goidc.ClientAuthnNone) {
 		return errors.New("none client authentication method not allowed for token introspection")
 	}
 
-	for _, method := range provider.config.IntrospectionClientAuthnMethods {
-		if !slices.Contains(provider.config.ClientAuthnMethods, method) {
+	for _, method := range provider.config.Introspection.ClientAuthnMethods {
+		if !slices.Contains(provider.config.ClientAuthn.Methods, method) {
 			return errors.New("invalid client authentication method for token introspection")
 		}
 	}
@@ -115,7 +115,8 @@ func validateIntrospectionClientAuthnMethods(provider Provider) error {
 }
 
 func validateUserInfoEncryption(provider Provider) error {
-	if provider.config.UserInfoEncryptionIsEnabled && !slices.Contains(provider.config.UserInfoContentEncryptionAlgorithms, jose.A128CBC_HS256) {
+	if provider.config.User.EncryptionIsEnabled &&
+		!slices.Contains(provider.config.User.ContentEncryptionAlgorithms, jose.A128CBC_HS256) {
 		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm for user information")
 	}
 
@@ -123,11 +124,12 @@ func validateUserInfoEncryption(provider Provider) error {
 }
 
 func validateJAREncryption(provider Provider) error {
-	if provider.config.JAREncryptionIsEnabled && !provider.config.JARIsEnabled {
+	if provider.config.JAR.EncryptionIsEnabled && !provider.config.JAR.IsEnabled {
 		return errors.New("JAR must be enabled if JAR encryption is enabled")
 	}
 
-	if provider.config.JAREncryptionIsEnabled && !slices.Contains(provider.config.JARContentEncryptionAlgorithms, jose.A128CBC_HS256) {
+	if provider.config.JAR.EncryptionIsEnabled &&
+		!slices.Contains(provider.config.JAR.ContentEncryptionAlgorithms, jose.A128CBC_HS256) {
 		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm for JAR")
 	}
 
@@ -135,11 +137,12 @@ func validateJAREncryption(provider Provider) error {
 }
 
 func validateJARMEncryption(provider Provider) error {
-	if provider.config.JARMEncryptionIsEnabled && !provider.config.JARMIsEnabled {
+	if provider.config.JARM.EncryptionIsEnabled && !provider.config.JARM.IsEnabled {
 		return errors.New("JARM must be enabled if JARM encryption is enabled")
 	}
 
-	if provider.config.JARMEncryptionIsEnabled && !slices.Contains(provider.config.JARMContentEncryptionAlgorithms, jose.A128CBC_HS256) {
+	if provider.config.JARM.EncryptionIsEnabled &&
+		!slices.Contains(provider.config.JARM.ContentEncryptionAlgorithms, jose.A128CBC_HS256) {
 		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm for JARM")
 	}
 
@@ -147,7 +150,9 @@ func validateJARMEncryption(provider Provider) error {
 }
 
 func validateTokenBinding(provider Provider) error {
-	if provider.config.TokenBindingIsRequired && !provider.config.DPoPIsEnabled && !provider.config.TLSBoundTokensIsEnabled {
+	if provider.config.TokenBindingIsRequired &&
+		!provider.config.DPoP.IsEnabled &&
+		!provider.config.MTLS.TokenBindingIsEnabled {
 		return errors.New("if sender constraining tokens is required, at least one mechanism must be enabled, either DPoP or TLS")
 	}
 
@@ -159,13 +164,13 @@ func validateOpenIDProfile(provider Provider) error {
 		return nil
 	}
 
-	defaultIDTokenSignatureKey := provider.config.PrivateJWKS.Key(provider.config.DefaultUserInfoSignatureKeyID)[0]
+	defaultIDTokenSignatureKey := provider.config.PrivateJWKS.Key(provider.config.User.DefaultSignatureKeyID)[0]
 	if defaultIDTokenSignatureKey.Algorithm != string(jose.RS256) {
 		return errors.New("the default signature algorithm for ID tokens must be RS256")
 	}
 
-	if provider.config.JARMIsEnabled {
-		defaultJARMSignatureKey := provider.config.PrivateJWKS.Key(provider.config.DefaultJARMSignatureKeyID)[0]
+	if provider.config.JARM.IsEnabled {
+		defaultJARMSignatureKey := provider.config.PrivateJWKS.Key(provider.config.JARM.DefaultSignatureKeyID)[0]
 		if defaultJARMSignatureKey.Algorithm != string(jose.RS256) {
 			return errors.New("the default signature algorithm for JARM must be RS256")
 		}
@@ -180,7 +185,7 @@ func validateFAPI2Profile(provider Provider) error {
 	}
 
 	// Validate the authentication methods.
-	if slices.ContainsFunc(provider.config.ClientAuthnMethods, func(authnMethod goidc.ClientAuthnType) bool {
+	if slices.ContainsFunc(provider.config.ClientAuthn.Methods, func(authnMethod goidc.ClientAuthnType) bool {
 		return authnMethod != goidc.ClientAuthnPrivateKeyJWT && authnMethod != goidc.ClientAuthnTLS
 	}) {
 		return errors.New("only private_key_jwt and tls_client_auth are allowed for FAPI 2.0")
@@ -190,11 +195,11 @@ func validateFAPI2Profile(provider Provider) error {
 		return errors.New("the implict grant is not allowed for FAPI 2.0")
 	}
 
-	if !provider.config.PARIsEnabled || !provider.config.PARIsRequired {
+	if !provider.config.PAR.IsEnabled || !provider.config.PAR.IsRequired {
 		return errors.New("pushed authorization requests is required for FAPI 2.0")
 	}
 
-	if !provider.config.PkceIsEnabled || !provider.config.PkceIsRequired {
+	if !provider.config.PKCE.IsEnabled || !provider.config.PKCE.IsRequired {
 		return errors.New("proof key for code exchange is required for FAPI 2.0")
 	}
 
@@ -202,7 +207,8 @@ func validateFAPI2Profile(provider Provider) error {
 		return errors.New("the issuer response parameter is required for FAPI 2.0")
 	}
 
-	if slices.Contains(provider.config.GrantTypes, goidc.GrantRefreshToken) && provider.config.ShouldRotateRefreshTokens {
+	if slices.Contains(provider.config.GrantTypes, goidc.GrantRefreshToken) &&
+		provider.config.RefreshToken.RotationIsEnabled {
 		// FAPI 2.0 says that, when rotation is enabled, the old refresh tokens must still be valid. Here, we just forget the old refresh tokens.
 		return errors.New("refresh token rotation is not implemented according to FAPI 2.0, so it shouldn't be enabled when using this profile")
 	}

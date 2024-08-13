@@ -4,17 +4,16 @@ import (
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 	router.HandleFunc(
-		"GET "+config.PathPrefix+goidc.EndpointJSONWebKeySet,
+		"GET "+config.Endpoint.Prefix+config.Endpoint.JWKS,
 		handlerJWKS(config),
 	)
 
 	router.HandleFunc(
-		"GET "+config.PathPrefix+goidc.EndpointWellKnown,
+		"GET "+config.Endpoint.Prefix+config.Endpoint.WellKnown,
 		handlerWellKnown(config),
 	)
 }

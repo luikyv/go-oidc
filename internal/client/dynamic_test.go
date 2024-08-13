@@ -5,7 +5,6 @@ import (
 
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +23,7 @@ func TestCreateClient(t *testing.T) {
 	// Then.
 	require.Nil(t, oauthErr)
 	require.NotEmpty(t, resp.ID)
-	assert.Equal(t, ctx.Host+goidc.EndpointDynamicClient+"/"+resp.ID, resp.RegistrationURI)
+	assert.Equal(t, ctx.Host+ctx.Endpoint.DCR+"/"+resp.ID, resp.RegistrationURI)
 	assert.NotEmpty(t, resp.RegistrationAccessToken)
 
 	_, err := ctx.Client(resp.ID)
@@ -47,7 +46,7 @@ func TestUpdateClient(t *testing.T) {
 	// Then.
 	require.Nil(t, oauthErr)
 	assert.Equal(t, c.ID, resp.ID)
-	assert.Equal(t, ctx.Host+goidc.EndpointDynamicClient+"/"+resp.ID, resp.RegistrationURI)
+	assert.Equal(t, ctx.Host+ctx.Endpoint.DCR+"/"+resp.ID, resp.RegistrationURI)
 	assert.Empty(t, resp.RegistrationAccessToken)
 }
 
@@ -55,7 +54,7 @@ func TestUpdateClient_WithTokenRotation(t *testing.T) {
 	// Given.
 	c := oidc.NewTestClient(t)
 	ctx := oidc.NewTestContext(t)
-	ctx.ShouldRotateRegistrationTokens = true
+	ctx.DCR.TokenRotationIsEnabled = true
 	dynamicClientReq := client.DynamicClientRequest{
 		ID:                      oidc.TestClientID,
 		RegistrationAccessToken: oidc.TestClientRegistrationAccessToken,
@@ -68,7 +67,7 @@ func TestUpdateClient_WithTokenRotation(t *testing.T) {
 	// Then.
 	require.Nil(t, oauthErr)
 	assert.Equal(t, c.ID, resp.ID)
-	assert.Equal(t, ctx.Host+string(goidc.EndpointDynamicClient)+"/"+resp.ID, resp.RegistrationURI)
+	assert.Equal(t, ctx.Host+ctx.Endpoint.DCR+"/"+resp.ID, resp.RegistrationURI)
 	assert.NotEmpty(t, resp.RegistrationAccessToken)
 	assert.NotEqual(t, oidc.TestClientRegistrationAccessToken, resp.RegistrationAccessToken)
 }
@@ -87,7 +86,7 @@ func TestFetchClient(t *testing.T) {
 	// Then.
 	require.Nil(t, oauthErr)
 	assert.Equal(t, oidc.TestClientID, resp.ID)
-	assert.Equal(t, ctx.Host+goidc.EndpointDynamicClient+"/"+resp.ID, resp.RegistrationURI)
+	assert.Equal(t, ctx.Host+ctx.Endpoint.DCR+"/"+resp.ID, resp.RegistrationURI)
 	assert.Empty(t, resp.RegistrationAccessToken)
 }
 

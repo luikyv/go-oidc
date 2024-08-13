@@ -18,7 +18,7 @@ func jarFromRequestObject(
 	Request,
 	oidc.Error,
 ) {
-	if ctx.JAREncryptionIsEnabled && token.IsJWE(reqObject) {
+	if ctx.JAR.EncryptionIsEnabled && token.IsJWE(reqObject) {
 		signedReqObject, err := signedRequestObjectFromEncrypted(ctx, reqObject, client)
 		if err != nil {
 			return Request{}, err
@@ -41,7 +41,11 @@ func signedRequestObjectFromEncrypted(
 	string,
 	oidc.Error,
 ) {
-	encryptedReqObject, err := jose.ParseEncrypted(reqObject, ctx.JARKeyEncryptionAlgorithms(), ctx.JARContentEncryptionAlgorithms)
+	encryptedReqObject, err := jose.ParseEncrypted(
+		reqObject,
+		ctx.JARKeyEncryptionAlgorithms(),
+		ctx.JAR.ContentEncryptionAlgorithms,
+	)
 	if err != nil {
 		return "", oidc.NewError(oidc.ErrorCodeInvalidResquestObject, "could not parse the encrypted request object")
 	}
@@ -72,7 +76,7 @@ func jarFromSignedRequestObject(
 	Request,
 	oidc.Error,
 ) {
-	jarAlgorithms := ctx.JARSignatureAlgorithms
+	jarAlgorithms := ctx.JAR.SignatureAlgorithms
 	if client.JARSignatureAlgorithm != "" {
 		jarAlgorithms = []jose.SignatureAlgorithm{client.JARSignatureAlgorithm}
 	}
@@ -99,7 +103,7 @@ func jarFromSignedRequestObject(
 	}
 
 	// Validate that the "exp" claims is present and it's not too far in the future.
-	if claims.Expiry == nil || int64(time.Until(claims.Expiry.Time()).Seconds()) > ctx.JARLifetimeSecs {
+	if claims.Expiry == nil || int64(time.Until(claims.Expiry.Time()).Seconds()) > ctx.JAR.LifetimeSecs {
 		return Request{}, oidc.NewError(oidc.ErrorCodeInvalidResquestObject, "invalid exp claim")
 	}
 

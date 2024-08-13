@@ -4,18 +4,17 @@ import (
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 	router.HandleFunc(
-		"POST "+config.PathPrefix+goidc.EndpointToken,
+		"POST "+config.Endpoint.Prefix+config.Endpoint.Token,
 		handler(config),
 	)
 
-	if config.IntrospectionIsEnabled {
+	if config.Introspection.IsEnabled {
 		router.HandleFunc(
-			"POST "+config.PathPrefix+goidc.EndpointTokenIntrospection,
+			"POST "+config.Endpoint.Prefix+config.Endpoint.Introspection,
 			handlerIntrospect(config),
 		)
 	}

@@ -49,7 +49,7 @@ func authnSession(
 
 func shouldInitAuthnSessionWithPAR(ctx *oidc.Context, req goidc.AuthorizationParameters) bool {
 	// Note: if PAR is not enabled, we just disconsider the request_uri.
-	return ctx.PARIsRequired || (ctx.PARIsEnabled && req.RequestURI != "")
+	return ctx.PAR.IsRequired || (ctx.PAR.IsEnabled && req.RequestURI != "")
 }
 
 func authnSessionWithPAR(
@@ -104,7 +104,9 @@ func shouldInitAuthnSessionWithJAR(
 ) bool {
 	// If JAR is not enabled, we just disconsider the request object.
 	// Also, if the client defined a signature algorithm for jar, then jar is required.
-	return ctx.JARIsRequired || (ctx.JARIsEnabled && req.RequestObject != "") || client.JARSignatureAlgorithm != ""
+	return ctx.JAR.IsRequired ||
+		(ctx.JAR.IsEnabled && req.RequestObject != "") ||
+		client.JARSignatureAlgorithm != ""
 }
 
 func authnSessionWithJAR(
@@ -185,7 +187,7 @@ func initAuthnSessionWithPolicy(
 	session.CallbackID = id
 	// FIXME: To think about:Treating the request_uri as one-time use will cause problems when the user refreshes the page.
 	session.RequestURI = ""
-	session.ExpiresAtTimestamp = time.Now().Unix() + ctx.AuthenticationSessionTimeoutSecs
+	session.ExpiresAtTimestamp = time.Now().Unix() + ctx.AuthnSessionTimeoutSecs
 	return nil
 }
 
@@ -213,7 +215,7 @@ func pushedAuthnSession(
 		return nil, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 	session.RequestURI = reqURI
-	session.ExpiresAtTimestamp = time.Now().Unix() + ctx.PARLifetimeSecs
+	session.ExpiresAtTimestamp = time.Now().Unix() + ctx.PAR.LifetimeSecs
 
 	return session, nil
 }

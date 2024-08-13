@@ -2,7 +2,6 @@ package provider
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -19,10 +18,10 @@ func newCacheControlMiddleware(next http.Handler) cacheControlMiddleware {
 
 func (handler cacheControlMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// TODO: Add this middleware per endpoint.
-	if strings.Contains(r.RequestURI, goidc.EndpointAuthorization) {
-		handler.nextHandler.ServeHTTP(w, r)
-		return
-	}
+	// if strings.Contains(r.RequestURI, goidc.EndpointAuthorize) {
+	// 	handler.nextHandler.ServeHTTP(w, r)
+	// 	return
+	// }
 
 	// Avoid caching.
 	w.Header().Set("Cache-Control", "no-cache, no-store")

@@ -84,22 +84,22 @@ func (to *TokenOptions) AddTokenClaims(claims map[string]any) {
 func NewJWTTokenOptions(
 	// signatureKeyID is the ID of a signing key present in the server JWKS.
 	signatureKeyID string,
-	tokenLifetimeSecs int64,
+	lifetimeSecs int64,
 ) TokenOptions {
 	return TokenOptions{
 		Format:            TokenFormatJWT,
-		LifetimeSecs:      tokenLifetimeSecs,
+		LifetimeSecs:      lifetimeSecs,
 		JWTSignatureKeyID: signatureKeyID,
 	}
 }
 
 func NewOpaqueTokenOptions(
 	tokenLength int,
-	tokenLifetimeSecs int64,
+	lifetimeSecs int64,
 ) TokenOptions {
 	return TokenOptions{
 		Format:       TokenFormatOpaque,
-		LifetimeSecs: tokenLifetimeSecs,
+		LifetimeSecs: lifetimeSecs,
 		OpaqueLength: tokenLength,
 	}
 }

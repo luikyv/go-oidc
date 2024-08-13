@@ -4,12 +4,11 @@ import (
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 	router.HandleFunc(
-		"POST "+config.PathPrefix+goidc.EndpointUserInfo,
+		"POST "+config.Endpoint.Prefix+config.Endpoint.UserInfo,
 		handler(config),
 	)
 }

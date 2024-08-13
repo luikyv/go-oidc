@@ -166,7 +166,7 @@ func validateParamsAuthorize(
 		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "response_type is required", params)
 	}
 
-	if ctx.OpenIDScopeIsRequired && !strutil.ContainsOpenID(params.Scopes) {
+	if ctx.OpenIDIsRequired && !strutil.ContainsOpenID(params.Scopes) {
 		return newRedirectionError(oidc.ErrorCodeInvalidScope, "scope openid is required", params)
 	}
 
@@ -207,7 +207,7 @@ func validateParams(
 		return err
 	}
 
-	if params.CodeChallengeMethod != "" && !slices.Contains(ctx.CodeChallengeMethods, params.CodeChallengeMethod) {
+	if params.CodeChallengeMethod != "" && !slices.Contains(ctx.PKCE.CodeChallengeMethods, params.CodeChallengeMethod) {
 		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "invalid code_challenge_method", params)
 	}
 
@@ -239,7 +239,7 @@ func validateScopes(
 		return newRedirectionError(oidc.ErrorCodeInvalidScope, "invalid scope", params)
 	}
 
-	if params.Scopes != "" && ctx.OpenIDScopeIsRequired && !strutil.ContainsOpenID(params.Scopes) {
+	if params.Scopes != "" && ctx.OpenIDIsRequired && !strutil.ContainsOpenID(params.Scopes) {
 		return newRedirectionError(oidc.ErrorCodeInvalidScope, "scope openid is required", params)
 	}
 
@@ -251,11 +251,11 @@ func validatePKCE(
 	params goidc.AuthorizationParameters,
 	client *goidc.Client,
 ) oidc.Error {
-	if ctx.PkceIsEnabled && client.AuthnMethod == goidc.ClientAuthnNone && params.CodeChallenge == "" {
+	if ctx.PKCE.IsEnabled && client.AuthnMethod == goidc.ClientAuthnNone && params.CodeChallenge == "" {
 		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "pkce is required for public clients", params)
 	}
 
-	if ctx.PkceIsRequired && params.CodeChallenge == "" {
+	if ctx.PKCE.IsRequired && params.CodeChallenge == "" {
 		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "code_challenge is required", params)
 	}
 	return nil
@@ -287,7 +287,7 @@ func validateResponseMode(
 	params goidc.AuthorizationParameters,
 	client *goidc.Client,
 ) oidc.Error {
-	if !ctx.JARMIsEnabled && params.ResponseMode.IsJARM() {
+	if !ctx.JARM.IsEnabled && params.ResponseMode.IsJARM() {
 		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "invalid response_mode", params)
 	}
 
@@ -308,13 +308,13 @@ func validateAuthorizationDetails(
 	params goidc.AuthorizationParameters,
 	client *goidc.Client,
 ) oidc.Error {
-	if !ctx.AuthorizationDetailsParameterIsEnabled || params.AuthorizationDetails == nil {
+	if !ctx.AuthorizationDetails.IsEnabled || params.AuthorizationDetails == nil {
 		return nil
 	}
 
 	for _, authDetail := range params.AuthorizationDetails {
 		authDetailType := authDetail.Type()
-		if !slices.Contains(ctx.AuthorizationDetailTypes, authDetailType) || !client.IsAuthorizationDetailTypeAllowed(authDetailType) {
+		if !slices.Contains(ctx.AuthorizationDetails.Types, authDetailType) || !client.IsAuthorizationDetailTypeAllowed(authDetailType) {
 			return newRedirectionError(oidc.ErrorCodeInvalidRequest, "invalid authorization detail type", params)
 		}
 	}
@@ -329,7 +329,7 @@ func validateACRValues(
 ) oidc.Error {
 
 	for _, acr := range strutil.SplitWithSpaces(params.ACRValues) {
-		if !slices.Contains(ctx.AuthenticationContextReferences, goidc.ACR(acr)) {
+		if !slices.Contains(ctx.ACRs, goidc.ACR(acr)) {
 			return newRedirectionError(oidc.ErrorCodeInvalidRequest, "invalid acr value", params)
 		}
 	}

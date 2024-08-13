@@ -70,7 +70,7 @@ func updateRefreshTokenGrantSession(
 	grantSession.LastTokenIssuedAtTimestamp = time.Now().Unix()
 	grantSession.TokenID = token.ID
 
-	if ctx.ShouldRotateRefreshTokens {
+	if ctx.RefreshToken.RotationIsEnabled {
 		token, err := refreshToken()
 		if err != nil {
 			return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())

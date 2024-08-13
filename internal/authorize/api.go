@@ -4,24 +4,23 @@ import (
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
-	if config.PARIsEnabled {
+	if config.PAR.IsEnabled {
 		router.HandleFunc(
-			"POST "+config.PathPrefix+goidc.EndpointPushedAuthorizationRequest,
+			"POST "+config.Endpoint.Prefix+config.Endpoint.PushedAuthorization,
 			handlerPush(config),
 		)
 	}
 
 	router.HandleFunc(
-		"GET "+config.PathPrefix+goidc.EndpointAuthorization,
+		"GET "+config.Endpoint.Prefix+config.Endpoint.Authorize,
 		handler(config),
 	)
 
 	router.HandleFunc(
-		"POST "+config.PathPrefix+goidc.EndpointAuthorization+"/{callback}",
+		"POST "+config.Endpoint.Prefix+config.Endpoint.Authorize+"/{callback}",
 		handlerCallback(config),
 	)
 }

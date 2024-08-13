@@ -14,46 +14,45 @@ func TestOIDCConfig(t *testing.T) {
 	// Given.
 	tokenKey := oidc.PrivateRS256JWK(t, "token_signature_key")
 	userInfoKey := oidc.PrivateRS256JWK(t, "user_info_signature_key")
-	ctx := &oidc.Context{
-		Configuration: oidc.Configuration{
-			Host:                                   "https://example.com",
-			Scopes:                                 []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeEmail},
-			PrivateJWKS:                            jose.JSONWebKeySet{Keys: []jose.JSONWebKey{tokenKey, userInfoKey}},
-			DefaultTokenSignatureKeyID:             tokenKey.KeyID,
-			DefaultUserInfoSignatureKeyID:          userInfoKey.KeyID,
-			UserInfoSignatureKeyIDs:                []string{userInfoKey.KeyID},
-			DCRIsEnabled:                           true,
-			ClientAuthnMethods:                     []goidc.ClientAuthnType{goidc.ClientAuthnNone},
-			PrivateKeyJWTSignatureAlgorithms:       []jose.SignatureAlgorithm{jose.PS256},
-			ClientSecretJWTSignatureAlgorithms:     []jose.SignatureAlgorithm{jose.RS256},
-			GrantTypes:                             []goidc.GrantType{goidc.GrantAuthorizationCode},
-			ResponseTypes:                          []goidc.ResponseType{goidc.ResponseTypeCode},
-			ResponseModes:                          []goidc.ResponseMode{goidc.ResponseModeQuery},
-			UserClaims:                             []string{"random_claim"},
-			ClaimTypes:                             []goidc.ClaimType{goidc.ClaimTypeNormal},
-			SubjectIdentifierTypes:                 []goidc.SubjectIdentifierType{goidc.SubjectIdentifierPublic},
-			IssuerResponseParameterIsEnabled:       true,
-			ClaimsParameterIsEnabled:               true,
-			AuthorizationDetailsParameterIsEnabled: true,
-			AuthorizationDetailTypes:               []string{"detail_type"},
-			AuthenticationContextReferences:        []goidc.ACR{"0"},
-			DisplayValues:                          []goidc.DisplayValue{goidc.DisplayValuePage},
-		},
+	config := oidc.Configuration{
+		Host:                             "https://example.com",
+		Scopes:                           []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeEmail},
+		PrivateJWKS:                      jose.JSONWebKeySet{Keys: []jose.JSONWebKey{tokenKey, userInfoKey}},
+		GrantTypes:                       []goidc.GrantType{goidc.GrantAuthorizationCode},
+		ResponseTypes:                    []goidc.ResponseType{goidc.ResponseTypeCode},
+		ResponseModes:                    []goidc.ResponseMode{goidc.ResponseModeQuery},
+		Claims:                           []string{"random_claim"},
+		ClaimTypes:                       []goidc.ClaimType{goidc.ClaimTypeNormal},
+		SubjectIdentifierTypes:           []goidc.SubjectIdentifierType{goidc.SubjectIdentifierPublic},
+		IssuerResponseParameterIsEnabled: true,
+		ClaimsParameterIsEnabled:         true,
+
+		ACRs:          []goidc.ACR{"0"},
+		DisplayValues: []goidc.DisplayValue{goidc.DisplayValuePage},
 	}
+	config.User.DefaultSignatureKeyID = userInfoKey.KeyID
+	config.User.SignatureKeyIDs = []string{userInfoKey.KeyID}
+	config.DCR.IsEnabled = true
+	config.ClientAuthn.Methods = []goidc.ClientAuthnType{goidc.ClientAuthnNone}
+	config.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256}
+	config.ClientAuthn.ClientSecretJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256}
+	config.AuthorizationDetails.IsEnabled = true
+	config.AuthorizationDetails.Types = []string{"detail_type"}
+	ctx := &oidc.Context{Configuration: config}
 
 	// When.
 	openidConfig := discovery.OIDCConfig(ctx)
 
 	// Then.
 	assert.Equal(t, ctx.Host, openidConfig.Issuer)
-	assert.Equal(t, ctx.Host+string(goidc.EndpointDynamicClient), openidConfig.ClientRegistrationEndpoint)
-	assert.Equal(t, ctx.Host+string(goidc.EndpointAuthorization), openidConfig.AuthorizationEndpoint)
-	assert.Equal(t, ctx.Host+string(goidc.EndpointToken), openidConfig.TokenEndpoint)
-	assert.Equal(t, ctx.Host+string(goidc.EndpointUserInfo), openidConfig.UserinfoEndpoint)
-	assert.Equal(t, ctx.Host+string(goidc.EndpointAuthorization), openidConfig.AuthorizationEndpoint)
-	assert.Equal(t, ctx.Host+string(goidc.EndpointJSONWebKeySet), openidConfig.JWKSEndpoint)
+	assert.Equal(t, ctx.Host+ctx.Endpoint.DCR, openidConfig.ClientRegistrationEndpoint)
+	assert.Equal(t, ctx.Host+ctx.Endpoint.Authorize, openidConfig.AuthorizationEndpoint)
+	assert.Equal(t, ctx.Host+ctx.Endpoint.Token, openidConfig.TokenEndpoint)
+	assert.Equal(t, ctx.Host+ctx.Endpoint.UserInfo, openidConfig.UserinfoEndpoint)
+	assert.Equal(t, ctx.Host+ctx.Endpoint.Authorize, openidConfig.AuthorizationEndpoint)
+	assert.Equal(t, ctx.Host+ctx.Endpoint.JWKS, openidConfig.JWKSEndpoint)
 	assert.Equal(t, []string{"openid", "email"}, openidConfig.Scopes)
-	assert.Equal(t, ctx.ClientAuthnMethods, openidConfig.ClientAuthnMethods)
+	assert.Equal(t, ctx.ClientAuthn.Methods, openidConfig.ClientAuthnMethods)
 	assert.Equal(t, []jose.SignatureAlgorithm{jose.PS256, jose.RS256}, openidConfig.TokenEndpointClientSigningAlgorithms)
 	assert.Equal(t, ctx.GrantTypes, openidConfig.GrantTypes)
 	assert.Equal(t, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(userInfoKey.Algorithm)},
@@ -62,12 +61,12 @@ func TestOIDCConfig(t *testing.T) {
 		openidConfig.IDTokenSignatureAlgorithms)
 	assert.Equal(t, ctx.ResponseTypes, openidConfig.ResponseTypes)
 	assert.Equal(t, ctx.ResponseModes, openidConfig.ResponseModes)
-	assert.Equal(t, ctx.UserClaims, openidConfig.UserClaimsSupported)
+	assert.Equal(t, ctx.Claims, openidConfig.UserClaimsSupported)
 	assert.Equal(t, ctx.ClaimTypes, openidConfig.ClaimTypesSupported)
 	assert.Equal(t, ctx.SubjectIdentifierTypes, openidConfig.SubjectIdentifierTypes)
 	assert.Equal(t, ctx.IssuerResponseParameterIsEnabled, openidConfig.IssuerResponseParameterIsEnabled)
 	assert.Equal(t, ctx.ClaimsParameterIsEnabled, openidConfig.ClaimsParameterIsEnabled)
-	assert.Equal(t, ctx.AuthorizationDetailsParameterIsEnabled, openidConfig.AuthorizationDetailsIsSupported)
+	assert.Equal(t, ctx.AuthorizationDetails.IsEnabled, openidConfig.AuthorizationDetailsIsSupported)
 	assert.Equal(t, []string{"detail_type"}, openidConfig.AuthorizationDetailTypesSupported)
 	assert.Equal(t, []goidc.ACR{"0"}, openidConfig.AuthenticationContextReferences)
 	assert.Equal(t, []goidc.DisplayValue{goidc.DisplayValuePage}, openidConfig.DisplayValuesSupported)
@@ -75,31 +74,28 @@ func TestOIDCConfig(t *testing.T) {
 
 func TestOIDCConfig_WithPAR(t *testing.T) {
 	// Given.
-	ctx := &oidc.Context{
-		Configuration: oidc.Configuration{
-			Host:          "https://example.com",
-			PARIsEnabled:  true,
-			PARIsRequired: true,
-		},
+	config := oidc.Configuration{
+		Host: "https://example.com",
 	}
+	config.PAR.IsEnabled = true
+	config.PAR.IsRequired = true
+	ctx := &oidc.Context{Configuration: config}
 
 	// When.
 	openidConfig := discovery.OIDCConfig(ctx)
 
 	// Then.
-	assert.Equal(t, ctx.Host+string(goidc.EndpointPushedAuthorizationRequest), openidConfig.ParEndpoint)
+	assert.Equal(t, ctx.Host+ctx.Endpoint.PushedAuthorization, openidConfig.ParEndpoint)
 	assert.True(t, openidConfig.PARIsRequired)
 }
 
 func TestOIDCConfig_WithJAR(t *testing.T) {
 	// Given.
-	ctx := &oidc.Context{
-		Configuration: oidc.Configuration{
-			JARIsEnabled:           true,
-			JARIsRequired:          true,
-			JARSignatureAlgorithms: []jose.SignatureAlgorithm{jose.PS256},
-		},
-	}
+	config := oidc.Configuration{}
+	config.JAR.IsEnabled = true
+	config.JAR.IsRequired = true
+	config.JAR.SignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256}
+	ctx := &oidc.Context{Configuration: config}
 
 	// When.
 	openidConfig := discovery.OIDCConfig(ctx)
@@ -107,19 +103,18 @@ func TestOIDCConfig_WithJAR(t *testing.T) {
 	// Then.
 	assert.True(t, openidConfig.JARIsEnabled)
 	assert.True(t, openidConfig.JARIsRequired)
-	assert.Equal(t, ctx.JARSignatureAlgorithms, openidConfig.JARAlgorithms)
+	assert.Equal(t, ctx.JAR.SignatureAlgorithms, openidConfig.JARAlgorithms)
 }
 
 func TestOIDCConfig_WithJARM(t *testing.T) {
 	// Given.
 	jarmKey := oidc.PrivateRS256JWK(t, "jarm_signature_key")
-	ctx := &oidc.Context{
-		Configuration: oidc.Configuration{
-			JARMIsEnabled:       true,
-			PrivateJWKS:         jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jarmKey}},
-			JARMSignatureKeyIDs: []string{jarmKey.KeyID},
-		},
+	config := oidc.Configuration{
+		PrivateJWKS: jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jarmKey}},
 	}
+	config.JARM.IsEnabled = true
+	config.JARM.SignatureKeyIDs = []string{jarmKey.KeyID}
+	ctx := &oidc.Context{Configuration: config}
 
 	// When.
 	openidConfig := discovery.OIDCConfig(ctx)
@@ -131,16 +126,14 @@ func TestOIDCConfig_WithJARM(t *testing.T) {
 
 func TestOIDCConfig_WithDPoP(t *testing.T) {
 	// Given.
-	ctx := &oidc.Context{
-		Configuration: oidc.Configuration{
-			DPoPIsEnabled:           true,
-			DPoPSignatureAlgorithms: []jose.SignatureAlgorithm{jose.PS256},
-		},
-	}
+	config := oidc.Configuration{}
+	config.DPoP.IsEnabled = true
+	config.DPoP.SignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256}
+	ctx := &oidc.Context{Configuration: config}
 
 	// When.
 	openidConfig := discovery.OIDCConfig(ctx)
 
 	// Then.
-	assert.Equal(t, ctx.DPoPSignatureAlgorithms, openidConfig.DPoPSignatureAlgorithms)
+	assert.Equal(t, ctx.DPoP.SignatureAlgorithms, openidConfig.DPoPSignatureAlgorithms)
 }

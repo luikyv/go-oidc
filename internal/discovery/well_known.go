@@ -2,7 +2,6 @@ package discovery
 
 import (
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func oidcConfig(ctx *oidc.Context) OpenIDConfiguration {
@@ -12,92 +11,92 @@ func oidcConfig(ctx *oidc.Context) OpenIDConfiguration {
 	}
 	config := OpenIDConfiguration{
 		Issuer:                               ctx.Host,
-		AuthorizationEndpoint:                ctx.BaseURL() + string(goidc.EndpointAuthorization),
-		TokenEndpoint:                        ctx.BaseURL() + string(goidc.EndpointToken),
-		UserinfoEndpoint:                     ctx.BaseURL() + string(goidc.EndpointUserInfo),
-		JWKSEndpoint:                         ctx.BaseURL() + string(goidc.EndpointJSONWebKeySet),
+		AuthorizationEndpoint:                ctx.BaseURL() + ctx.Endpoint.Authorize,
+		TokenEndpoint:                        ctx.BaseURL() + ctx.Endpoint.Token,
+		UserinfoEndpoint:                     ctx.BaseURL() + ctx.Endpoint.UserInfo,
+		JWKSEndpoint:                         ctx.BaseURL() + ctx.Endpoint.JWKS,
 		ResponseTypes:                        ctx.ResponseTypes,
 		ResponseModes:                        ctx.ResponseModes,
 		GrantTypes:                           ctx.GrantTypes,
-		UserClaimsSupported:                  ctx.UserClaims,
+		UserClaimsSupported:                  ctx.Claims,
 		ClaimTypesSupported:                  ctx.ClaimTypes,
 		SubjectIdentifierTypes:               ctx.SubjectIdentifierTypes,
 		IDTokenSignatureAlgorithms:           ctx.UserInfoSignatureAlgorithms(),
 		UserInfoSignatureAlgorithms:          ctx.UserInfoSignatureAlgorithms(),
-		ClientAuthnMethods:                   ctx.ClientAuthnMethods,
+		ClientAuthnMethods:                   ctx.ClientAuthn.Methods,
 		Scopes:                               scopes,
 		TokenEndpointClientSigningAlgorithms: ctx.ClientSignatureAlgorithms(),
 		IssuerResponseParameterIsEnabled:     ctx.IssuerResponseParameterIsEnabled,
 		ClaimsParameterIsEnabled:             ctx.ClaimsParameterIsEnabled,
-		AuthorizationDetailsIsSupported:      ctx.AuthorizationDetailsParameterIsEnabled,
-		AuthorizationDetailTypesSupported:    ctx.AuthorizationDetailTypes,
-		AuthenticationContextReferences:      ctx.AuthenticationContextReferences,
+		AuthorizationDetailsIsSupported:      ctx.AuthorizationDetails.IsEnabled,
+		AuthorizationDetailTypesSupported:    ctx.AuthorizationDetails.Types,
+		AuthenticationContextReferences:      ctx.ACRs,
 		DisplayValuesSupported:               ctx.DisplayValues,
 	}
 
-	if ctx.PARIsEnabled {
-		config.PARIsRequired = ctx.PARIsRequired
-		config.ParEndpoint = ctx.BaseURL() + string(goidc.EndpointPushedAuthorizationRequest)
+	if ctx.PAR.IsEnabled {
+		config.PARIsRequired = ctx.PAR.IsRequired
+		config.ParEndpoint = ctx.BaseURL() + ctx.Endpoint.PushedAuthorization
 	}
 
-	if ctx.DCRIsEnabled {
-		config.ClientRegistrationEndpoint = ctx.BaseURL() + string(goidc.EndpointDynamicClient)
+	if ctx.DCR.IsEnabled {
+		config.ClientRegistrationEndpoint = ctx.BaseURL() + ctx.Endpoint.DCR
 	}
 
-	if ctx.JARIsEnabled {
-		config.JARIsEnabled = ctx.JARIsEnabled
-		config.JARIsRequired = ctx.JARIsRequired
-		config.JARAlgorithms = ctx.JARSignatureAlgorithms
-		if ctx.JAREncryptionIsEnabled {
+	if ctx.JAR.IsEnabled {
+		config.JARIsEnabled = ctx.JAR.IsEnabled
+		config.JARIsRequired = ctx.JAR.IsRequired
+		config.JARAlgorithms = ctx.JAR.SignatureAlgorithms
+		if ctx.JAR.EncryptionIsEnabled {
 			config.JARKeyEncrytionAlgorithms = ctx.JARKeyEncryptionAlgorithms()
-			config.JARContentEncryptionAlgorithms = ctx.JARContentEncryptionAlgorithms
+			config.JARContentEncryptionAlgorithms = ctx.JAR.ContentEncryptionAlgorithms
 		}
 	}
 
-	if ctx.JARMIsEnabled {
+	if ctx.JARM.IsEnabled {
 		config.JARMAlgorithms = ctx.JARMSignatureAlgorithms()
-		if ctx.JARMEncryptionIsEnabled {
-			config.JARMKeyEncryptionAlgorithms = ctx.JARMKeyEncrytionAlgorithms
-			config.JARMContentEncryptionAlgorithms = ctx.JARMContentEncryptionAlgorithms
+		if ctx.JARM.EncryptionIsEnabled {
+			config.JARMKeyEncryptionAlgorithms = ctx.JARM.KeyEncrytionAlgorithms
+			config.JARMContentEncryptionAlgorithms = ctx.JARM.ContentEncryptionAlgorithms
 		}
 	}
 
-	if ctx.DPoPIsEnabled {
-		config.DPoPSignatureAlgorithms = ctx.DPoPSignatureAlgorithms
+	if ctx.DPoP.IsEnabled {
+		config.DPoPSignatureAlgorithms = ctx.DPoP.SignatureAlgorithms
 	}
 
-	if ctx.IntrospectionIsEnabled {
-		config.IntrospectionEndpoint = ctx.BaseURL() + string(goidc.EndpointTokenIntrospection)
-		config.IntrospectionEndpointClientAuthnMethods = ctx.IntrospectionClientAuthnMethods
+	if ctx.Introspection.IsEnabled {
+		config.IntrospectionEndpoint = ctx.BaseURL() + ctx.Endpoint.Introspection
+		config.IntrospectionEndpointClientAuthnMethods = ctx.Introspection.ClientAuthnMethods
 		config.IntrospectionEndpointClientSignatureAlgorithms = ctx.IntrospectionClientSignatureAlgorithms()
 	}
 
-	if ctx.MTLSIsEnabled {
-		config.TLSBoundTokensIsEnabled = ctx.TLSBoundTokensIsEnabled
+	if ctx.MTLS.IsEnabled {
+		config.TLSBoundTokensIsEnabled = ctx.MTLS.TokenBindingIsEnabled
 
 		config.MTLSConfiguration = &OpenIDMTLSConfiguration{
-			TokenEndpoint:    ctx.MTLSBaseURL() + string(goidc.EndpointToken),
-			UserinfoEndpoint: ctx.MTLSBaseURL() + string(goidc.EndpointUserInfo),
+			TokenEndpoint:    ctx.MTLSBaseURL() + ctx.Endpoint.Token,
+			UserinfoEndpoint: ctx.MTLSBaseURL() + ctx.Endpoint.UserInfo,
 		}
 
-		if ctx.PARIsEnabled {
-			config.MTLSConfiguration.ParEndpoint = ctx.MTLSBaseURL() + string(goidc.EndpointPushedAuthorizationRequest)
+		if ctx.PAR.IsEnabled {
+			config.MTLSConfiguration.ParEndpoint = ctx.MTLSBaseURL() + ctx.Endpoint.PushedAuthorization
 		}
 
-		if ctx.DCRIsEnabled {
-			config.MTLSConfiguration.ClientRegistrationEndpoint = ctx.MTLSBaseURL() + string(goidc.EndpointDynamicClient)
+		if ctx.DCR.IsEnabled {
+			config.MTLSConfiguration.ClientRegistrationEndpoint = ctx.MTLSBaseURL() + ctx.Endpoint.DCR
 		}
 
-		if ctx.IntrospectionIsEnabled {
-			config.IntrospectionEndpoint = ctx.MTLSBaseURL() + string(goidc.EndpointTokenIntrospection)
+		if ctx.Introspection.IsEnabled {
+			config.IntrospectionEndpoint = ctx.MTLSBaseURL() + ctx.Endpoint.Introspection
 		}
 	}
 
-	if ctx.UserInfoEncryptionIsEnabled {
-		config.IDTokenKeyEncryptionAlgorithms = ctx.UserInfoKeyEncryptionAlgorithms
-		config.IDTokenContentEncryptionAlgorithms = ctx.UserInfoContentEncryptionAlgorithms
-		config.UserInfoKeyEncryptionAlgorithms = ctx.UserInfoKeyEncryptionAlgorithms
-		config.UserInfoContentEncryptionAlgorithms = ctx.UserInfoContentEncryptionAlgorithms
+	if ctx.User.EncryptionIsEnabled {
+		config.IDTokenKeyEncryptionAlgorithms = ctx.User.KeyEncryptionAlgorithms
+		config.IDTokenContentEncryptionAlgorithms = ctx.User.ContentEncryptionAlgorithms
+		config.UserInfoKeyEncryptionAlgorithms = ctx.User.KeyEncryptionAlgorithms
+		config.UserInfoContentEncryptionAlgorithms = ctx.User.ContentEncryptionAlgorithms
 	}
 
 	return config

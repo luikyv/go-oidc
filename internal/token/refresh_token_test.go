@@ -30,8 +30,9 @@ func TestGenerateGrant_RefreshTokenGrant(t *testing.T) {
 		ClientID:           oidc.TestClientID,
 		GrantedScopes:      c.Scopes,
 		TokenOptions: goidc.TokenOptions{
-			Format:       goidc.TokenFormatJWT,
-			LifetimeSecs: 60,
+			JWTSignatureKeyID: oidc.TestKeyID,
+			Format:            goidc.TokenFormatJWT,
+			LifetimeSecs:      60,
 		},
 	}
 	require.Nil(t, ctx.SaveGrantSession(grantSession))

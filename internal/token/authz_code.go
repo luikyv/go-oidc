@@ -90,7 +90,7 @@ func generateAuthorizationCodeGrantSession(
 			return nil, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 		}
 		grantSession.RefreshToken = token
-		grantSession.ExpiresAtTimestamp = time.Now().Unix() + ctx.RefreshTokenLifetimeSecs
+		grantSession.ExpiresAtTimestamp = time.Now().Unix() + ctx.RefreshToken.LifetimeSecs
 	}
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
@@ -158,7 +158,7 @@ func validatePkce(
 		codeChallengeMethod = goidc.CodeChallengeMethodSHA256
 	}
 	// In the case PKCE is enabled, if the session was created with a code challenge, the token request must contain the right code verifier.
-	if ctx.PkceIsEnabled && session.CodeChallenge != "" &&
+	if ctx.PKCE.IsEnabled && session.CodeChallenge != "" &&
 		(req.CodeVerifier == "" || !isPKCEValid(req.CodeVerifier, session.CodeChallenge, codeChallengeMethod)) {
 		return oidc.NewError(oidc.ErrorCodeInvalidGrant, "invalid pkce")
 	}
@@ -242,7 +242,7 @@ func newAuthorizationCodeGrantOptions(
 		AdditionalIDTokenClaims:  session.AdditionalIDTokenClaims,
 		AdditionalUserInfoClaims: session.AdditionalUserInfoClaims,
 	}
-	if ctx.AuthorizationDetailsParameterIsEnabled {
+	if ctx.AuthorizationDetails.IsEnabled {
 		grantOptions.GrantedAuthorizationDetails = session.GrantedAuthorizationDetails
 	}
 

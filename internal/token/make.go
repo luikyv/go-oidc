@@ -106,7 +106,7 @@ func makeIDToken(
 		goidc.ClaimSubject:  idTokenOpts.Subject,
 		goidc.ClaimAudience: client.ID,
 		goidc.ClaimIssuedAt: timestampNow,
-		goidc.ClaimExpiry:   timestampNow + ctx.IDTokenExpiresInSecs,
+		goidc.ClaimExpiry:   timestampNow + ctx.User.IDTokenExpiresInSecs,
 	}
 
 	if idTokenOpts.AccessToken != "" {
@@ -193,15 +193,15 @@ func makeJWTToken(
 	// DPoP token binding.
 	dpopJWT, ok := ctx.DPoPJWT()
 	jkt := ""
-	if ctx.DPoPIsEnabled && ok {
+	if ctx.DPoP.IsEnabled && ok {
 		tokenType = goidc.TokenTypeDPoP
-		jkt = jwkThumbprint(dpopJWT, ctx.DPoPSignatureAlgorithms)
+		jkt = jwkThumbprint(dpopJWT, ctx.DPoP.SignatureAlgorithms)
 		confirmation["jkt"] = jkt
 	}
 	// TLS token binding.
 	clientCert, ok := ctx.ClientCertificate()
 	certThumbprint := ""
-	if ctx.TLSBoundTokensIsEnabled && ok {
+	if ctx.MTLS.TokenBindingIsEnabled && ok {
 		certThumbprint = hashBase64URLSHA256(string(clientCert.Raw))
 		confirmation["x5t#S256"] = certThumbprint
 	}
@@ -255,15 +255,15 @@ func makeOpaqueToken(
 	// DPoP token binding.
 	dpopJWT, ok := ctx.DPoPJWT()
 	jkt := ""
-	if ctx.DPoPIsEnabled && ok {
+	if ctx.DPoP.IsEnabled && ok {
 		tokenType = goidc.TokenTypeDPoP
-		jkt = jwkThumbprint(dpopJWT, ctx.DPoPSignatureAlgorithms)
+		jkt = jwkThumbprint(dpopJWT, ctx.DPoP.SignatureAlgorithms)
 	}
 
 	// TLS token binding.
 	clientCert, ok := ctx.ClientCertificate()
 	certThumbprint := ""
-	if ctx.TLSBoundTokensIsEnabled && ok {
+	if ctx.MTLS.TokenBindingIsEnabled && ok {
 		certThumbprint = hashBase64URLSHA256(string(clientCert.Raw))
 	}
 

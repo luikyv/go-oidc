@@ -63,42 +63,42 @@ func setCreationDefaults(
 
 func update(
 	ctx *oidc.Context,
-	req DynamicClientRequest,
+	dc DynamicClientRequest,
 ) (
 	dynamicClientResponse,
 	oidc.Error,
 ) {
-	c, err := protected(ctx, req)
+	c, err := protected(ctx, dc)
 	if err != nil {
 		return dynamicClientResponse{}, err
 	}
 
-	if err := setUpdateDefaults(ctx, c, &req); err != nil {
+	if err := setUpdateDefaults(ctx, c, &dc); err != nil {
 		return dynamicClientResponse{}, err
 	}
-	if err := validateDynamicClientRequest(ctx, req); err != nil {
-		return dynamicClientResponse{}, err
-	}
-
-	ctx.ExecuteDCRPlugin(&req.ClientMetaInfo)
-	if err := validateDynamicClientRequest(ctx, req); err != nil {
+	if err := validateDynamicClientRequest(ctx, dc); err != nil {
 		return dynamicClientResponse{}, err
 	}
 
-	updatedClient := newClient(req)
+	ctx.ExecuteDCRPlugin(&dc.ClientMetaInfo)
+	if err := validateDynamicClientRequest(ctx, dc); err != nil {
+		return dynamicClientResponse{}, err
+	}
+
+	updatedClient := newClient(dc)
 	if err := ctx.SaveClient(updatedClient); err != nil {
 		return dynamicClientResponse{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
 	resp := dynamicClientResponse{
-		ID:              req.ID,
-		RegistrationURI: registrationURI(ctx, req.ID),
-		Secret:          req.Secret,
-		ClientMetaInfo:  req.ClientMetaInfo,
+		ID:              dc.ID,
+		RegistrationURI: registrationURI(ctx, dc.ID),
+		Secret:          dc.Secret,
+		ClientMetaInfo:  dc.ClientMetaInfo,
 	}
 
-	if ctx.ShouldRotateRegistrationTokens {
-		resp.RegistrationAccessToken = req.RegistrationAccessToken
+	if ctx.DCR.TokenRotationIsEnabled {
+		resp.RegistrationAccessToken = dc.RegistrationAccessToken
 	}
 
 	return resp, nil
@@ -110,7 +110,7 @@ func setUpdateDefaults(
 	dynamicClient *DynamicClientRequest,
 ) oidc.Error {
 	dynamicClient.ID = client.ID
-	if ctx.ShouldRotateRegistrationTokens {
+	if ctx.DCR.TokenRotationIsEnabled {
 		token, err := registrationAccessToken()
 		if err != nil {
 			return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
@@ -219,7 +219,7 @@ func newClient(dynamicClient DynamicClientRequest) *goidc.Client {
 }
 
 func registrationURI(ctx *oidc.Context, clientID string) string {
-	return ctx.BaseURL() + goidc.EndpointDynamicClient + "/" + clientID
+	return ctx.BaseURL() + ctx.Endpoint.DCR + "/" + clientID
 }
 
 func protected(

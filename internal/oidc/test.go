@@ -65,14 +65,10 @@ func NewTestClient(_ *testing.T) *goidc.Client {
 
 func NewTestContext(t *testing.T) *Context {
 	config := Configuration{
-		Profile:             goidc.ProfileOpenID,
-		Host:                TestHost,
-		ClientManager:       inmemory.NewClientManager(),
-		GrantSessionManager: inmemory.NewGrantSessionManager(),
-		AuthnSessionManager: inmemory.NewAuthnSessionManager(),
-		Scopes:              []goidc.Scope{goidc.ScopeOpenID, TestScope1, TestScope2},
-		PrivateJWKS:         jose.JSONWebKeySet{Keys: []jose.JSONWebKey{TestServerPrivateJWK}},
-		ClientAuthnMethods:  []goidc.ClientAuthnType{goidc.ClientAuthnNone, goidc.ClientAuthnSecretPost},
+		Profile:     goidc.ProfileOpenID,
+		Host:        TestHost,
+		Scopes:      []goidc.Scope{goidc.ScopeOpenID, TestScope1, TestScope2},
+		PrivateJWKS: jose.JSONWebKeySet{Keys: []jose.JSONWebKey{TestServerPrivateJWK}},
 		GrantTypes: []goidc.GrantType{
 			goidc.GrantAuthorizationCode,
 			goidc.GrantClientCredentials,
@@ -89,17 +85,29 @@ func NewTestContext(t *testing.T) *Context {
 			goidc.ResponseTypeIDTokenAndToken,
 			goidc.ResponseTypeCodeAndIDTokenAndToken,
 		},
-		DefaultTokenSignatureKeyID:    TestServerPrivateJWK.KeyID,
-		DefaultUserInfoSignatureKeyID: TestServerPrivateJWK.KeyID,
-		UserInfoSignatureKeyIDs:       []string{TestServerPrivateJWK.KeyID},
 		TokenOptions: func(client *goidc.Client, scopes string) (goidc.TokenOptions, error) {
 			return goidc.TokenOptions{
-				LifetimeSecs: 60,
-				Format:       goidc.TokenFormatJWT,
+				JWTSignatureKeyID: TestServerPrivateJWK.KeyID,
+				LifetimeSecs:      60,
+				Format:            goidc.TokenFormatJWT,
 			}, nil
 		},
-		AuthenticationSessionTimeoutSecs: 60,
+		AuthnSessionTimeoutSecs: 60,
 	}
+	config.Storage.Client = inmemory.NewClientManager()
+	config.Storage.GrantSession = inmemory.NewGrantSessionManager()
+	config.Storage.AuthnSession = inmemory.NewAuthnSessionManager()
+	config.ClientAuthn.Methods = []goidc.ClientAuthnType{goidc.ClientAuthnNone, goidc.ClientAuthnSecretPost}
+	config.User.DefaultSignatureKeyID = TestServerPrivateJWK.KeyID
+	config.User.SignatureKeyIDs = []string{TestServerPrivateJWK.KeyID}
+	config.Endpoint.WellKnown = goidc.EndpointWellKnown
+	config.Endpoint.JWKS = goidc.EndpointJSONWebKeySet
+	config.Endpoint.Token = goidc.EndpointToken
+	config.Endpoint.Authorize = goidc.EndpointAuthorize
+	config.Endpoint.PushedAuthorization = goidc.EndpointPushedAuthorizationRequest
+	config.Endpoint.DCR = goidc.EndpointDynamicClient
+	config.Endpoint.UserInfo = goidc.EndpointUserInfo
+	config.Endpoint.Introspection = goidc.EndpointTokenIntrospection
 	ctx := Context{
 		Configuration: config,
 		Req:           httptest.NewRequest(http.MethodGet, "/auth", nil),
@@ -112,7 +120,7 @@ func NewTestContext(t *testing.T) *Context {
 }
 
 func AuthnSessions(_ *testing.T, ctx *Context) []*goidc.AuthnSession {
-	sessionManager, _ := ctx.AuthnSessionManager.(*inmemory.AuthnSessionManager)
+	sessionManager, _ := ctx.Storage.AuthnSession.(*inmemory.AuthnSessionManager)
 	sessions := make([]*goidc.AuthnSession, 0, len(sessionManager.Sessions))
 	for _, s := range sessionManager.Sessions {
 		sessions = append(sessions, s)
@@ -122,7 +130,7 @@ func AuthnSessions(_ *testing.T, ctx *Context) []*goidc.AuthnSession {
 }
 
 func GrantSessions(_ *testing.T, ctx *Context) []*goidc.GrantSession {
-	manager, _ := ctx.GrantSessionManager.(*inmemory.GrantSessionManager)
+	manager, _ := ctx.Storage.GrantSession.(*inmemory.GrantSessionManager)
 	tokens := make([]*goidc.GrantSession, 0, len(manager.Sessions))
 	for _, t := range manager.Sessions {
 		tokens = append(tokens, t)
@@ -132,7 +140,7 @@ func GrantSessions(_ *testing.T, ctx *Context) []*goidc.GrantSession {
 }
 
 func Clients(_ *testing.T, ctx *Context) []*goidc.Client {
-	manager, _ := ctx.ClientManager.(*inmemory.ClientManager)
+	manager, _ := ctx.Storage.Client.(*inmemory.ClientManager)
 	clients := make([]*goidc.Client, 0, len(manager.Clients))
 	for _, c := range manager.Clients {
 		clients = append(clients, c)

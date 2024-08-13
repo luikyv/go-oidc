@@ -26,10 +26,17 @@ func TestValidateDPoPJWT(t *testing.T) {
 			token.DPoPJWTValidationOptions{},
 			&oidc.Context{
 				Configuration: oidc.Configuration{
-					Host:                    "https://server.example.com",
-					DPoPIsEnabled:           true,
-					DPoPSignatureAlgorithms: []jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256},
-					DPoPLifetimeSecs:        99999999999,
+					Host: "https://server.example.com",
+					DPoP: struct {
+						IsEnabled           bool
+						IsRequired          bool
+						LifetimeSecs        int
+						SignatureAlgorithms []jose.SignatureAlgorithm
+					}{
+						IsEnabled:           true,
+						SignatureAlgorithms: []jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256},
+						LifetimeSecs:        99999999999,
+					},
 				},
 				Req: httptest.NewRequest(http.MethodPost, "/token", nil),
 			},
@@ -43,10 +50,17 @@ func TestValidateDPoPJWT(t *testing.T) {
 			},
 			&oidc.Context{
 				Configuration: oidc.Configuration{
-					Host:                    "https://resource.example.org",
-					DPoPIsEnabled:           true,
-					DPoPSignatureAlgorithms: []jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256},
-					DPoPLifetimeSecs:        99999999999,
+					Host: "https://resource.example.org",
+					DPoP: struct {
+						IsEnabled           bool
+						IsRequired          bool
+						LifetimeSecs        int
+						SignatureAlgorithms []jose.SignatureAlgorithm
+					}{
+						IsEnabled:           true,
+						SignatureAlgorithms: []jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256},
+						LifetimeSecs:        99999999999,
+					},
 				},
 				Req: httptest.NewRequest(http.MethodGet, "/protectedresource", nil),
 			},

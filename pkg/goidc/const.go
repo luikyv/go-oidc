@@ -9,7 +9,7 @@ const (
 	EndpointWellKnown                  = "/.well-known/openid-configuration"
 	EndpointJSONWebKeySet              = "/jwks"
 	EndpointPushedAuthorizationRequest = "/par"
-	EndpointAuthorization              = "/authorize"
+	EndpointAuthorize                  = "/authorize"
 	EndpointToken                      = "/token"
 	EndpointUserInfo                   = "/userinfo"
 	EndpointDynamicClient              = "/register"

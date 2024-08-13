@@ -20,12 +20,12 @@ func TestGetClientSignatureAlgorithms(t *testing.T) {
 	assert.Nil(t, ctx.ClientSignatureAlgorithms())
 
 	// Given.
-	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256}
+	ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256}
 	// Then.
 	assert.Equal(t, []jose.SignatureAlgorithm{jose.PS256}, ctx.ClientSignatureAlgorithms())
 
 	// Given.
-	ctx.ClientSecretJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.HS256}
+	ctx.ClientAuthn.ClientSecretJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.HS256}
 	// Then.
 	assert.Equal(t, []jose.SignatureAlgorithm{jose.PS256, jose.HS256}, ctx.ClientSignatureAlgorithms())
 }
@@ -37,14 +37,20 @@ func TestGetIntrospectionClientSignatureAlgorithms(t *testing.T) {
 	assert.Nil(t, ctx.IntrospectionClientSignatureAlgorithms())
 
 	// Given.
-	ctx.IntrospectionClientAuthnMethods = append(ctx.IntrospectionClientAuthnMethods, goidc.ClientAuthnPrivateKeyJWT)
-	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256}
+	ctx.Introspection.ClientAuthnMethods = append(
+		ctx.Introspection.ClientAuthnMethods,
+		goidc.ClientAuthnPrivateKeyJWT,
+	)
+	ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256}
 	// Then.
 	assert.Equal(t, []jose.SignatureAlgorithm{jose.PS256}, ctx.IntrospectionClientSignatureAlgorithms())
 
 	// Given.
-	ctx.IntrospectionClientAuthnMethods = append(ctx.IntrospectionClientAuthnMethods, goidc.ClientAuthnSecretJWT)
-	ctx.ClientSecretJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.HS256}
+	ctx.Introspection.ClientAuthnMethods = append(
+		ctx.Introspection.ClientAuthnMethods,
+		goidc.ClientAuthnSecretJWT,
+	)
+	ctx.ClientAuthn.ClientSecretJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.HS256}
 	// Then.
 	assert.Equal(t, []jose.SignatureAlgorithm{jose.PS256, jose.HS256}, ctx.IntrospectionClientSignatureAlgorithms())
 }
@@ -115,7 +121,7 @@ func TestExecuteDCRPlugin_HappyPath(t *testing.T) {
 	assert.NotPanics(t, func() { ctx.ExecuteDCRPlugin(&clientInfo) })
 
 	// Given.
-	ctx.DCRPlugin = func(ctx goidc.Context, clientInfo *goidc.ClientMetaInfo) {
+	ctx.DCR.Plugin = func(ctx goidc.Context, clientInfo *goidc.ClientMetaInfo) {
 		clientInfo.AuthnMethod = goidc.ClientAuthnNone
 	}
 
@@ -143,8 +149,8 @@ func TestGetAudiences_MTLSIsEnabled(t *testing.T) {
 	// Given.
 	ctx := oidc.NewTestContext(t)
 	ctx.Req = httptest.NewRequest(http.MethodPost, "/auth/token", nil)
-	ctx.MTLSIsEnabled = true
-	ctx.MTLSHost = "https://matls-example.com"
+	ctx.MTLS.IsEnabled = true
+	ctx.MTLS.Host = "https://matls-example.com"
 
 	// When.
 	audiences := ctx.Audiences()
@@ -152,8 +158,8 @@ func TestGetAudiences_MTLSIsEnabled(t *testing.T) {
 	// Then.
 	assert.Contains(t, audiences, ctx.Host)
 	assert.Contains(t, audiences, ctx.Host+"/auth/token")
-	assert.Contains(t, audiences, ctx.MTLSHost)
-	assert.Contains(t, audiences, ctx.MTLSHost+"/auth/token")
+	assert.Contains(t, audiences, ctx.MTLS.Host)
+	assert.Contains(t, audiences, ctx.MTLS.Host+"/auth/token")
 }
 
 func TestGetPolicyByID_HappyPath(t *testing.T) {
@@ -385,61 +391,13 @@ func TestPrivateKey_KeyDoesntExist(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestTokenSignatureKey_HappyPath(t *testing.T) {
-	// Given.
-	signingKeyID := "signing_key"
-	signingKey := oidc.PrivatePS256JWK(t, signingKeyID)
-
-	ctx := oidc.Context{}
-	ctx.DefaultTokenSignatureKeyID = "random_key"
-	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
-
-	// When.
-	jwk := ctx.TokenSignatureKey(goidc.NewJWTTokenOptions(signingKeyID, 60))
-
-	// Then.
-	assert.Equal(t, signingKeyID, jwk.KeyID)
-}
-
-func TestTokenSignatureKey_InvalidKeyIDInformed(t *testing.T) {
-	// Given.
-	signingKeyID := "signing_key"
-	signingKey := oidc.PrivatePS256JWK(t, signingKeyID)
-
-	ctx := oidc.Context{}
-	ctx.DefaultTokenSignatureKeyID = signingKeyID
-	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
-
-	// When.
-	jwk := ctx.TokenSignatureKey(goidc.NewJWTTokenOptions("random_key", 60))
-
-	// Then.
-	assert.Equal(t, signingKeyID, jwk.KeyID)
-}
-
-func TestTokenSignatureKey_NoKeyIDInformed(t *testing.T) {
-	// Given.
-	signingKeyID := "signing_key"
-	signingKey := oidc.PrivatePS256JWK(t, signingKeyID)
-
-	ctx := oidc.Context{}
-	ctx.DefaultTokenSignatureKeyID = signingKeyID
-	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
-
-	// When.
-	jwk := ctx.TokenSignatureKey(goidc.TokenOptions{})
-
-	// Then.
-	assert.Equal(t, signingKeyID, jwk.KeyID)
-}
-
 func TestUserInfoSignatureKey_HappyPath(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
 	signingKey := oidc.PrivatePS256JWK(t, signingKeyID)
 
 	ctx := oidc.Context{}
-	ctx.DefaultUserInfoSignatureKeyID = signingKeyID
+	ctx.User.DefaultSignatureKeyID = signingKeyID
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	client := &goidc.Client{}
@@ -458,7 +416,7 @@ func TestUserInfoSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 
 	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
-	ctx.UserInfoSignatureKeyIDs = []string{signingKeyID}
+	ctx.User.SignatureKeyIDs = []string{signingKeyID}
 
 	client := &goidc.Client{}
 	client.UserInfoSignatureAlgorithm = jose.PS256
@@ -476,7 +434,7 @@ func TestIDTokenSignatureKey_HappyPath(t *testing.T) {
 	signingKey := oidc.PrivatePS256JWK(t, signingKeyID)
 
 	ctx := oidc.Context{}
-	ctx.DefaultUserInfoSignatureKeyID = signingKeyID
+	ctx.User.DefaultSignatureKeyID = signingKeyID
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	client := &goidc.Client{}
@@ -495,7 +453,7 @@ func TestIDTokenSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 
 	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
-	ctx.UserInfoSignatureKeyIDs = []string{signingKeyID}
+	ctx.User.SignatureKeyIDs = []string{signingKeyID}
 
 	client := &goidc.Client{}
 	client.IDTokenSignatureAlgorithm = jose.PS256
@@ -513,7 +471,7 @@ func TestJARMSignatureKey_HappyPath(t *testing.T) {
 	signingKey := oidc.PrivatePS256JWK(t, signingKeyID)
 
 	ctx := oidc.Context{}
-	ctx.DefaultJARMSignatureKeyID = signingKeyID
+	ctx.JARM.DefaultSignatureKeyID = signingKeyID
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	client := &goidc.Client{}
@@ -532,7 +490,7 @@ func TestJARMSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 
 	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
-	ctx.JARMSignatureKeyIDs = []string{signingKeyID}
+	ctx.JARM.SignatureKeyIDs = []string{signingKeyID}
 
 	client := &goidc.Client{}
 	client.JARMSignatureAlgorithm = jose.PS256

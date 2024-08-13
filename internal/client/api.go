@@ -5,28 +5,27 @@ import (
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
-	if config.DCRIsEnabled {
+	if config.DCR.IsEnabled {
 		router.HandleFunc(
-			"POST "+config.PathPrefix+goidc.EndpointDynamicClient,
+			"POST "+config.Endpoint.Prefix+config.Endpoint.DCR,
 			handlerCreate(config),
 		)
 
 		router.HandleFunc(
-			"PUT "+config.PathPrefix+goidc.EndpointDynamicClient+"/{client_id}",
+			"PUT "+config.Endpoint.Prefix+config.Endpoint.DCR+"/{client_id}",
 			handlerUpdate(config),
 		)
 
 		router.HandleFunc(
-			"GET "+config.PathPrefix+goidc.EndpointDynamicClient+"/{client_id}",
+			"GET "+config.Endpoint.Prefix+config.Endpoint.DCR+"/{client_id}",
 			handlerGet(config),
 		)
 
 		router.HandleFunc(
-			"DELETE "+config.PathPrefix+goidc.EndpointDynamicClient+"/{client_id}",
+			"DELETE "+config.Endpoint.Prefix+config.Endpoint.DCR+"/{client_id}",
 			handlerDelete(config),
 		)
 	}

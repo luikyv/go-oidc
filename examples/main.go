@@ -21,7 +21,6 @@ func main() {
 	openidProvider, err := provider.New(
 		Issuer,
 		privateJWKS("server_keys/jwks.json"),
-		serverKeyID,
 		provider.WithScopes(scopes...),
 		provider.WithPAR(60),
 		provider.WithJAR(600, jose.RS256),

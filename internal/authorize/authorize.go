@@ -33,7 +33,7 @@ func pushAuth(
 	}
 	return PushedResponse{
 		RequestURI: session.RequestURI,
-		ExpiresIn:  ctx.PARLifetimeSecs,
+		ExpiresIn:  ctx.PAR.LifetimeSecs,
 	}, nil
 }
 

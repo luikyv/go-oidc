@@ -134,7 +134,7 @@ func signJARMResponse(
 		goidc.ClaimIssuer:   ctx.Host,
 		goidc.ClaimAudience: client.ID,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JARMLifetimeSecs,
+		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JARM.LifetimeSecs,
 	}
 	for k, v := range redirectParams.parameters() {
 		claims[k] = v

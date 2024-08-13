@@ -123,7 +123,7 @@ func authenticateWithPrivateKeyJWT(
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid assertion_type")
 	}
 
-	signatureAlgorithms := ctx.PrivateKeyJWTSignatureAlgorithms
+	signatureAlgorithms := ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms
 	if client.AuthnSignatureAlgorithm != "" {
 		signatureAlgorithms = []jose.SignatureAlgorithm{client.AuthnSignatureAlgorithm}
 	}
@@ -148,7 +148,7 @@ func authenticateWithPrivateKeyJWT(
 		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid assertion signature")
 	}
 
-	return areAssertionClaimsValid(ctx, client, claims, ctx.PrivateKeyJWTAssertionLifetimeSecs)
+	return areAssertionClaimsValid(ctx, client, claims, ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs)
 }
 
 func authenticateWithClientSecretJWT(
@@ -160,7 +160,7 @@ func authenticateWithClientSecretJWT(
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid assertion_type")
 	}
 
-	signatureAlgorithms := ctx.ClientSecretJWTSignatureAlgorithms
+	signatureAlgorithms := ctx.ClientAuthn.ClientSecretJWTSignatureAlgorithms
 	if client.AuthnSignatureAlgorithm != "" {
 		signatureAlgorithms = []jose.SignatureAlgorithm{client.AuthnSignatureAlgorithm}
 	}
@@ -174,7 +174,7 @@ func authenticateWithClientSecretJWT(
 		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid assertion")
 	}
 
-	return areAssertionClaimsValid(ctx, client, claims, ctx.ClientSecretJWTAssertionLifetimeSecs)
+	return areAssertionClaimsValid(ctx, client, claims, ctx.ClientAuthn.ClientSecretJWTAssertionLifetimeSecs)
 }
 
 func areAssertionClaimsValid(

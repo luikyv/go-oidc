@@ -36,18 +36,27 @@ func NewContext(
 }
 
 func (ctx *Context) ClientSignatureAlgorithms() []jose.SignatureAlgorithm {
-	return append(ctx.PrivateKeyJWTSignatureAlgorithms, ctx.ClientSecretJWTSignatureAlgorithms...)
+	return append(
+		ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms,
+		ctx.ClientAuthn.ClientSecretJWTSignatureAlgorithms...,
+	)
 }
 
 func (ctx *Context) IntrospectionClientSignatureAlgorithms() []jose.SignatureAlgorithm {
 	var signatureAlgorithms []jose.SignatureAlgorithm
 
-	if slices.Contains(ctx.IntrospectionClientAuthnMethods, goidc.ClientAuthnPrivateKeyJWT) {
-		signatureAlgorithms = append(signatureAlgorithms, ctx.PrivateKeyJWTSignatureAlgorithms...)
+	if slices.Contains(ctx.Introspection.ClientAuthnMethods, goidc.ClientAuthnPrivateKeyJWT) {
+		signatureAlgorithms = append(
+			signatureAlgorithms,
+			ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms...,
+		)
 	}
 
-	if slices.Contains(ctx.IntrospectionClientAuthnMethods, goidc.ClientAuthnSecretJWT) {
-		signatureAlgorithms = append(signatureAlgorithms, ctx.ClientSecretJWTSignatureAlgorithms...)
+	if slices.Contains(ctx.Introspection.ClientAuthnMethods, goidc.ClientAuthnSecretJWT) {
+		signatureAlgorithms = append(
+			signatureAlgorithms,
+			ctx.ClientAuthn.ClientSecretJWTSignatureAlgorithms...,
+		)
 	}
 
 	return signatureAlgorithms
@@ -93,8 +102,8 @@ func (ctx *Context) ClientCertificate() (*x509.Certificate, bool) {
 }
 
 func (ctx *Context) ExecuteDCRPlugin(clientInfo *goidc.ClientMetaInfo) {
-	if ctx.DCRPlugin != nil {
-		ctx.DCRPlugin(ctx, clientInfo)
+	if ctx.DCR.Plugin != nil {
+		ctx.DCR.Plugin(ctx, clientInfo)
 	}
 }
 
@@ -117,11 +126,11 @@ func (ctx *Context) Audiences() []string {
 		ctx.Host,
 		ctx.Host + ctx.Request().RequestURI,
 	}
-	if ctx.MTLSIsEnabled {
+	if ctx.MTLS.IsEnabled {
 		audiences = append(
 			audiences,
-			ctx.MTLSHost,
-			ctx.MTLSHost+ctx.Request().RequestURI,
+			ctx.MTLS.Host,
+			ctx.MTLS.Host+ctx.Request().RequestURI,
 		)
 	}
 	return audiences
@@ -152,7 +161,7 @@ func (ctx *Context) FindAvailablePolicy(client *goidc.Client, session *goidc.Aut
 //---------------------------------------- CRUD ----------------------------------------//
 
 func (ctx *Context) SaveClient(client *goidc.Client) error {
-	return ctx.ClientManager.Save(ctx.Request().Context(), client)
+	return ctx.Storage.Client.Save(ctx.Request().Context(), client)
 }
 
 func (ctx *Context) Client(clientID string) (*goidc.Client, error) {
@@ -161,58 +170,58 @@ func (ctx *Context) Client(clientID string) (*goidc.Client, error) {
 			return staticClient, nil
 		}
 	}
-	return ctx.ClientManager.Get(ctx.Request().Context(), clientID)
+	return ctx.Storage.Client.Get(ctx.Request().Context(), clientID)
 }
 
 func (ctx *Context) DeleteClient(id string) error {
-	return ctx.ClientManager.Delete(ctx.Request().Context(), id)
+	return ctx.Storage.Client.Delete(ctx.Request().Context(), id)
 }
 
 func (ctx *Context) SaveGrantSession(session *goidc.GrantSession) error {
 	// TODO: Flag to avoid saving jwt tokens.
-	return ctx.GrantSessionManager.Save(ctx.Request().Context(), session)
+	return ctx.Storage.GrantSession.Save(ctx.Request().Context(), session)
 }
 
 func (ctx *Context) GrantSessionByTokenID(tokenID string) (*goidc.GrantSession, error) {
-	return ctx.GrantSessionManager.GetByTokenID(ctx.Request().Context(), tokenID)
+	return ctx.Storage.GrantSession.GetByTokenID(ctx.Request().Context(), tokenID)
 }
 
 func (ctx *Context) GrantSessionByRefreshToken(refreshToken string) (*goidc.GrantSession, error) {
-	return ctx.GrantSessionManager.GetByRefreshToken(ctx.Request().Context(), refreshToken)
+	return ctx.Storage.GrantSession.GetByRefreshToken(ctx.Request().Context(), refreshToken)
 }
 
 func (ctx *Context) DeleteGrantSession(id string) error {
-	return ctx.GrantSessionManager.Delete(ctx.Request().Context(), id)
+	return ctx.Storage.GrantSession.Delete(ctx.Request().Context(), id)
 }
 
 func (ctx *Context) SaveAuthnSession(session *goidc.AuthnSession) error {
-	return ctx.AuthnSessionManager.Save(ctx.Request().Context(), session)
+	return ctx.Storage.AuthnSession.Save(ctx.Request().Context(), session)
 }
 
 func (ctx *Context) AuthnSessionByCallbackID(callbackID string) (*goidc.AuthnSession, error) {
-	return ctx.AuthnSessionManager.GetByCallbackID(ctx.Request().Context(), callbackID)
+	return ctx.Storage.AuthnSession.GetByCallbackID(ctx.Request().Context(), callbackID)
 }
 
 func (ctx *Context) AuthnSessionByAuthorizationCode(authorizationCode string) (*goidc.AuthnSession, error) {
-	return ctx.AuthnSessionManager.GetByAuthorizationCode(ctx.Request().Context(), authorizationCode)
+	return ctx.Storage.AuthnSession.GetByAuthorizationCode(ctx.Request().Context(), authorizationCode)
 }
 
 func (ctx *Context) AuthnSessionByRequestURI(requestURI string) (*goidc.AuthnSession, error) {
-	return ctx.AuthnSessionManager.GetByRequestURI(ctx.Request().Context(), requestURI)
+	return ctx.Storage.AuthnSession.GetByRequestURI(ctx.Request().Context(), requestURI)
 }
 
 func (ctx *Context) DeleteAuthnSession(id string) error {
-	return ctx.AuthnSessionManager.Delete(ctx.Request().Context(), id)
+	return ctx.Storage.AuthnSession.Delete(ctx.Request().Context(), id)
 }
 
 //---------------------------------------- HTTP Utils ----------------------------------------//
 
 func (ctx *Context) BaseURL() string {
-	return ctx.Host + ctx.PathPrefix
+	return ctx.Host + ctx.Endpoint.Prefix
 }
 
 func (ctx *Context) MTLSBaseURL() string {
-	return ctx.MTLSHost + ctx.PathPrefix
+	return ctx.MTLS.Host + ctx.Endpoint.Prefix
 }
 
 func (ctx *Context) Request() *http.Request {
@@ -407,55 +416,43 @@ func (ctx *Context) PrivateKey(keyID string) (jose.JSONWebKey, bool) {
 }
 
 func (ctx *Context) TokenSignatureKey(tokenOptions goidc.TokenOptions) jose.JSONWebKey {
-	keyID := tokenOptions.JWTSignatureKeyID
-	if keyID == "" {
-		return ctx.privateKey(ctx.DefaultTokenSignatureKeyID)
-	}
-
-	keys := ctx.PrivateJWKS.Key(keyID)
-	// If the key informed is not present in the JWKS or if its usage is not signing,
-	// return the default key.
-	if len(keys) == 0 || keys[0].Use != string(goidc.KeyUsageSignature) {
-		return ctx.privateKey(ctx.DefaultTokenSignatureKeyID)
-	}
-
-	return keys[0]
+	return ctx.privateKey(tokenOptions.JWTSignatureKeyID)
 }
 
 func (ctx *Context) UserInfoSignatureKey(client *goidc.Client) jose.JSONWebKey {
 	return ctx.privateKeyBasedOnAlgorithmOrDefault(
 		client.UserInfoSignatureAlgorithm,
-		ctx.DefaultUserInfoSignatureKeyID,
-		ctx.UserInfoSignatureKeyIDs,
+		ctx.User.DefaultSignatureKeyID,
+		ctx.User.SignatureKeyIDs,
 	)
 }
 
 func (ctx *Context) IDTokenSignatureKey(client *goidc.Client) jose.JSONWebKey {
 	return ctx.privateKeyBasedOnAlgorithmOrDefault(
 		client.IDTokenSignatureAlgorithm,
-		ctx.DefaultUserInfoSignatureKeyID,
-		ctx.UserInfoSignatureKeyIDs,
+		ctx.User.DefaultSignatureKeyID,
+		ctx.User.SignatureKeyIDs,
 	)
 }
 
 func (ctx *Context) JARMSignatureKey(client *goidc.Client) jose.JSONWebKey {
 	return ctx.privateKeyBasedOnAlgorithmOrDefault(
 		client.JARMSignatureAlgorithm,
-		ctx.DefaultJARMSignatureKeyID,
-		ctx.JARMSignatureKeyIDs,
+		ctx.JARM.DefaultSignatureKeyID,
+		ctx.JARM.SignatureKeyIDs,
 	)
 }
 
 func (ctx *Context) UserInfoSignatureAlgorithms() []jose.SignatureAlgorithm {
-	return ctx.signatureAlgorithms(ctx.UserInfoSignatureKeyIDs)
+	return ctx.signatureAlgorithms(ctx.User.SignatureKeyIDs)
 }
 
 func (ctx *Context) JARMSignatureAlgorithms() []jose.SignatureAlgorithm {
-	return ctx.signatureAlgorithms(ctx.JARMSignatureKeyIDs)
+	return ctx.signatureAlgorithms(ctx.JARM.SignatureKeyIDs)
 }
 
 func (ctx *Context) JARKeyEncryptionAlgorithms() []jose.KeyAlgorithm {
-	return ctx.keyEncryptionAlgorithms(ctx.JARKeyEncryptionIDs)
+	return ctx.keyEncryptionAlgorithms(ctx.JAR.KeyEncryptionIDs)
 }
 
 func (ctx *Context) keyEncryptionAlgorithms(keyIDs []string) []jose.KeyAlgorithm {
@@ -522,115 +519,164 @@ type Configuration struct {
 	Profile goidc.Profile
 	// Host is the domain where the server runs. This value will be used as the
 	// authorization server issuer.
-	Host                string
-	PathPrefix          string
-	MTLSIsEnabled       bool
-	MTLSHost            string
-	Scopes              []goidc.Scope
-	ClientManager       goidc.ClientManager
-	GrantSessionManager goidc.GrantSessionManager
-	AuthnSessionManager goidc.AuthnSessionManager
+	Host string
 	// PrivateJWKS contains the server JWKS with private and public information.
 	// When exposing it, the private information is removed.
-	PrivateJWKS jose.JSONWebKeySet
-	// DefaultTokenSignatureKeyID is the default key used to sign access tokens.
-	// The key can be overridden with the TokenOptions.
-	DefaultTokenSignatureKeyID      string
-	GrantTypes                      []goidc.GrantType
-	ResponseTypes                   []goidc.ResponseType
-	ResponseModes                   []goidc.ResponseMode
-	ClientAuthnMethods              []goidc.ClientAuthnType
-	IntrospectionIsEnabled          bool
-	IntrospectionClientAuthnMethods []goidc.ClientAuthnType
-	// PrivateKeyJWTSignatureAlgorithms contains algorithms accepted for signing
-	// client assertions during private_key_jwt.
-	PrivateKeyJWTSignatureAlgorithms []jose.SignatureAlgorithm
-	// PrivateKeyJWTAssertionLifetimeSecs is used to validate that the assertion
-	// will expire in the near future during private_key_jwt.
-	PrivateKeyJWTAssertionLifetimeSecs int64
-	// ClientSecretJWTSignatureAlgorithms constains algorithms accepted for
-	// signing client assertions during client_secret_jwt.
-	ClientSecretJWTSignatureAlgorithms []jose.SignatureAlgorithm
-	// It is used to validate that the assertion will expire in the near future
-	// during client_secret_jwt.
-	ClientSecretJWTAssertionLifetimeSecs int64
-	OpenIDScopeIsRequired                bool
-	// DefaultUserInfoSignatureKeyID defines the default key used to sign ID
-	// tokens and the user info endpoint response.
-	// The key can be overridden depending on the client properties
-	// "id_token_signed_response_alg" and "userinfo_signed_response_alg".
-	DefaultUserInfoSignatureKeyID string
-	// UserInfoSignatureKeyIDs contains the IDs of the keys used to sign ID
-	// tokens and the user info endpoint response.
-	// There should be at most one per algorithm, in other words, there shouldn't
-	// be two key IDs that point to two keys that have the same algorithm.
-	UserInfoSignatureKeyIDs             []string
-	UserInfoEncryptionIsEnabled         bool
-	UserInfoKeyEncryptionAlgorithms     []jose.KeyAlgorithm
-	UserInfoContentEncryptionAlgorithms []jose.ContentEncryption
-	// IDTokenExpiresInSecs defines the expiry time of ID tokens.
-	IDTokenExpiresInSecs      int64
-	ShouldRotateRefreshTokens bool
-	RefreshTokenLifetimeSecs  int64
-	// UserClaims defines the user claims that can be returned in the userinfo
-	// endpoint or in the ID token.
+	PrivateJWKS             jose.JSONWebKeySet
+	TokenOptions            goidc.TokenOptionsFunc
+	Policies                []goidc.AuthnPolicy
+	Scopes                  []goidc.Scope
+	OpenIDIsRequired        bool
+	GrantTypes              []goidc.GrantType
+	ResponseTypes           []goidc.ResponseType
+	ResponseModes           []goidc.ResponseMode
+	AuthnSessionTimeoutSecs int64
+	ACRs                    []goidc.ACR
+	DisplayValues           []goidc.DisplayValue
+	// Claims defines the user claims that can be returned in the userinfo
+	// endpoint or in ID tokens.
 	// This will be published in the /.well-known/openid-configuration endpoint.
-	UserClaims []string
-	// ClaimTypes are claim types supported by the server.
-	ClaimTypes []goidc.ClaimType
+	Claims                 []string
+	ClaimTypes             []goidc.ClaimType
+	SubjectIdentifierTypes []goidc.SubjectIdentifierType
+	StaticClients          []*goidc.Client
 	// IssuerResponseParameterIsEnabled indicates if the "iss" parameter will be
 	// returned when redirecting the user back to the client application.
 	IssuerResponseParameterIsEnabled bool
 	// ClaimsParameterIsEnabled informs the clients whether the server accepts
 	// the "claims" parameter.
 	// This will be published in the /.well-known/openid-configuration endpoint.
-	ClaimsParameterIsEnabled               bool
-	AuthorizationDetailsParameterIsEnabled bool
-	AuthorizationDetailTypes               []string
-	JARMIsEnabled                          bool
-	DefaultJARMSignatureKeyID              string
-	JARMSignatureKeyIDs                    []string
-	JARMLifetimeSecs                       int64
-	JARMEncryptionIsEnabled                bool
-	JARMKeyEncrytionAlgorithms             []jose.KeyAlgorithm
-	JARMContentEncryptionAlgorithms        []jose.ContentEncryption
-	JARIsEnabled                           bool
-	JARIsRequired                          bool
-	JARSignatureAlgorithms                 []jose.SignatureAlgorithm
-	JARLifetimeSecs                        int64
-	JAREncryptionIsEnabled                 bool
-	JARKeyEncryptionIDs                    []string
-	JARContentEncryptionAlgorithms         []jose.ContentEncryption
-	// PARIsEnabled allows client to push authorization requests.
-	PARIsEnabled bool
-	// PARIsRequired indicates that authorization requests can only be made if
-	// they were pushed.
-	PARIsRequired                    bool
-	PARLifetimeSecs                  int64
-	PARAllowUnregisteredRedirectURI  bool // TODO.
-	DPoPIsEnabled                    bool
-	DPoPIsRequired                   bool
-	DPoPLifetimeSecs                 int
-	DPoPSignatureAlgorithms          []jose.SignatureAlgorithm
-	PkceIsEnabled                    bool
-	PkceIsRequired                   bool
-	CodeChallengeMethods             []goidc.CodeChallengeMethod
-	SubjectIdentifierTypes           []goidc.SubjectIdentifierType
-	Policies                         []goidc.AuthnPolicy
-	TokenOptions                     goidc.TokenOptionsFunc
-	DCRIsEnabled                     bool
-	ShouldRotateRegistrationTokens   bool
-	DCRPlugin                        goidc.DCRPluginFunc
-	AuthenticationSessionTimeoutSecs int64
-	TLSBoundTokensIsEnabled          bool
-	AuthenticationContextReferences  []goidc.ACR
-	DisplayValues                    []goidc.DisplayValue
+	ClaimsParameterIsEnabled bool
 	// TokenBindingIsRequired indicates that at least one mechanism of sender
 	// contraining tokens is required, either DPoP or client TLS.
-	TokenBindingIsRequired       bool
-	AuthorizeErrorPlugin         goidc.AuthorizeErrorPluginFunc
-	StaticClients                []*goidc.Client
-	ResourceIndicatorsIsEnabled  bool // TODO.
-	ResourceIndicatorsIsRequired bool
-	ResourceIndicators           []string
+	TokenBindingIsRequired bool
+	AuthorizeErrorPlugin   goidc.AuthorizeErrorPluginFunc
+
+	Endpoint struct {
+		WellKnown           string
+		JWKS                string
+		Token               string
+		Authorize           string
+		PushedAuthorization string
+		DCR                 string
+		UserInfo            string
+		Introspection       string
+		Prefix              string
+	}
+
+	Storage struct {
+		Client       goidc.ClientManager
+		GrantSession goidc.GrantSessionManager
+		AuthnSession goidc.AuthnSessionManager
+	}
+
+	User struct {
+		// DefaultSignatureKeyID defines the default key used to sign ID
+		// tokens and the user info endpoint response.
+		// The key can be overridden depending on the client properties
+		// "id_token_signed_response_alg" and "userinfo_signed_response_alg".
+		DefaultSignatureKeyID string
+		// SignatureKeyIDs contains the IDs of the keys used to sign ID tokens
+		// and the user info endpoint response.
+		// There should be at most one per algorithm, in other words, there should
+		// not be two key IDs that point to two keys that have the same algorithm.
+		SignatureKeyIDs             []string
+		EncryptionIsEnabled         bool
+		KeyEncryptionAlgorithms     []jose.KeyAlgorithm
+		ContentEncryptionAlgorithms []jose.ContentEncryption
+		// IDTokenExpiresInSecs defines the expiry time of ID tokens.
+		IDTokenExpiresInSecs int64
+	}
+
+	ClientAuthn struct {
+		Methods []goidc.ClientAuthnType
+		// PrivateKeyJWTSignatureAlgorithms contains algorithms accepted for signing
+		// client assertions during private_key_jwt.
+		PrivateKeyJWTSignatureAlgorithms []jose.SignatureAlgorithm
+		// PrivateKeyJWTAssertionLifetimeSecs is used to validate that the assertion
+		// will expire in the near future during private_key_jwt.
+		PrivateKeyJWTAssertionLifetimeSecs int64
+		// ClientSecretJWTSignatureAlgorithms constains algorithms accepted for
+		// signing client assertions during client_secret_jwt.
+		ClientSecretJWTSignatureAlgorithms []jose.SignatureAlgorithm
+		// It is used to validate that the assertion will expire in the near future
+		// during client_secret_jwt.
+		ClientSecretJWTAssertionLifetimeSecs int64
+	}
+
+	DCR struct {
+		IsEnabled              bool
+		TokenRotationIsEnabled bool
+		Plugin                 goidc.DCRPluginFunc
+	}
+
+	Introspection struct {
+		IsEnabled          bool
+		ClientAuthnMethods []goidc.ClientAuthnType
+	}
+
+	RefreshToken struct {
+		RotationIsEnabled bool
+		LifetimeSecs      int64
+	}
+
+	JARM struct {
+		IsEnabled                   bool
+		DefaultSignatureKeyID       string
+		SignatureKeyIDs             []string
+		LifetimeSecs                int64
+		EncryptionIsEnabled         bool
+		KeyEncrytionAlgorithms      []jose.KeyAlgorithm
+		ContentEncryptionAlgorithms []jose.ContentEncryption
+	}
+
+	JAR struct {
+		IsEnabled                   bool
+		IsRequired                  bool
+		SignatureAlgorithms         []jose.SignatureAlgorithm
+		LifetimeSecs                int64
+		EncryptionIsEnabled         bool
+		KeyEncryptionIDs            []string
+		ContentEncryptionAlgorithms []jose.ContentEncryption
+	}
+
+	PAR struct {
+		// IsEnabled allows client to push authorization requests.
+		IsEnabled bool
+		// IsRequired indicates that authorization requests can only be made if
+		// they were pushed.
+		IsRequired                   bool
+		LifetimeSecs                 int64
+		AllowUnregisteredRedirectURI bool // TODO.
+	}
+
+	MTLS struct {
+		IsEnabled             bool
+		Host                  string
+		TokenBindingIsEnabled bool
+	}
+
+	DPoP struct {
+		IsEnabled           bool
+		IsRequired          bool
+		LifetimeSecs        int
+		SignatureAlgorithms []jose.SignatureAlgorithm
+	}
+
+	PKCE struct {
+		IsEnabled            bool
+		IsRequired           bool
+		CodeChallengeMethods []goidc.CodeChallengeMethod
+	}
+
+	AuthorizationDetails struct {
+		IsEnabled bool
+		Types     []string
+	}
+
+	ResourceIndicators struct {
+		IsEnabled  bool // TODO.
+		IsRequired bool
+		Resources  []string
+	}
 }

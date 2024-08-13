@@ -76,7 +76,7 @@ func validateGrantTypes(
 	}
 
 	if slices.Contains(dc.GrantTypes, goidc.GrantIntrospection) &&
-		!slices.Contains(ctx.IntrospectionClientAuthnMethods, dc.AuthnMethod) {
+		!slices.Contains(ctx.Introspection.ClientAuthnMethods, dc.AuthnMethod) {
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "client_credentials grant type not allowed")
 	}
 
@@ -120,7 +120,7 @@ func validateAuthnMethod(
 	ctx *oidc.Context,
 	dc DynamicClientRequest,
 ) oidc.Error {
-	if !slices.Contains(ctx.ClientAuthnMethods, dc.AuthnMethod) {
+	if !slices.Contains(ctx.ClientAuthn.Methods, dc.AuthnMethod) {
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "authn method not allowed")
 	}
 	return nil
@@ -130,7 +130,7 @@ func validateOpenIDScopeIfRequired(
 	ctx *oidc.Context,
 	dc DynamicClientRequest,
 ) oidc.Error {
-	if !ctx.OpenIDScopeIsRequired {
+	if !ctx.OpenIDIsRequired {
 		return nil
 	}
 
@@ -191,7 +191,7 @@ func validateJARSignatureAlgorithm(
 		return nil
 	}
 
-	if !slices.Contains(ctx.JARSignatureAlgorithms, dc.JARSignatureAlgorithm) {
+	if !slices.Contains(ctx.JAR.SignatureAlgorithms, dc.JARSignatureAlgorithm) {
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "request_object_signing_alg not supported")
 	}
 	return nil
@@ -223,7 +223,7 @@ func validateClientSignatureAlgorithmForPrivateKeyJWT(
 		return nil
 	}
 
-	if !slices.Contains(ctx.PrivateKeyJWTSignatureAlgorithms, dc.AuthnSignatureAlgorithm) {
+	if !slices.Contains(ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms, dc.AuthnSignatureAlgorithm) {
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "token_endpoint_auth_signing_alg not supported")
 	}
 	return nil
@@ -241,7 +241,7 @@ func validateClientSignatureAlgorithmForClientSecretJWT(
 		return nil
 	}
 
-	if !slices.Contains(ctx.ClientSecretJWTSignatureAlgorithms, dc.AuthnSignatureAlgorithm) {
+	if !slices.Contains(ctx.ClientAuthn.ClientSecretJWTSignatureAlgorithms, dc.AuthnSignatureAlgorithm) {
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "token_endpoint_auth_signing_alg not supported")
 	}
 	return nil
@@ -311,14 +311,15 @@ func validateIDTokenEncryptionAlgorithms(
 	dc DynamicClientRequest,
 ) oidc.Error {
 	// Return an error if ID token encryption is not enabled, but the client requested it.
-	if !ctx.UserInfoEncryptionIsEnabled {
+	if !ctx.User.EncryptionIsEnabled {
 		if dc.IDTokenKeyEncryptionAlgorithm != "" || dc.IDTokenContentEncryptionAlgorithm != "" {
 			return oidc.NewError(oidc.ErrorCodeInvalidRequest, "ID token encryption is not supported")
 		}
 		return nil
 	}
 
-	if dc.IDTokenKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.UserInfoKeyEncryptionAlgorithms, dc.IDTokenKeyEncryptionAlgorithm) {
+	if dc.IDTokenKeyEncryptionAlgorithm != "" &&
+		!slices.Contains(ctx.User.KeyEncryptionAlgorithms, dc.IDTokenKeyEncryptionAlgorithm) {
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "id_token_encrypted_response_alg not supported")
 	}
 
@@ -326,7 +327,8 @@ func validateIDTokenEncryptionAlgorithms(
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "id_token_encrypted_response_alg is required if id_token_encrypted_response_enc is informed")
 	}
 
-	if dc.IDTokenContentEncryptionAlgorithm != "" && !slices.Contains(ctx.UserInfoContentEncryptionAlgorithms, dc.IDTokenContentEncryptionAlgorithm) {
+	if dc.IDTokenContentEncryptionAlgorithm != "" &&
+		!slices.Contains(ctx.User.ContentEncryptionAlgorithms, dc.IDTokenContentEncryptionAlgorithm) {
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "id_token_encrypted_response_enc not supported")
 	}
 
@@ -338,14 +340,15 @@ func validateUserInfoEncryptionAlgorithms(
 	dc DynamicClientRequest,
 ) oidc.Error {
 	// Return an error if user info encryption is not enabled, but the client requested it.
-	if !ctx.UserInfoEncryptionIsEnabled {
+	if !ctx.User.EncryptionIsEnabled {
 		if dc.UserInfoKeyEncryptionAlgorithm != "" || dc.UserInfoContentEncryptionAlgorithm != "" {
 			return oidc.NewError(oidc.ErrorCodeInvalidRequest, "user info encryption is not supported")
 		}
 		return nil
 	}
 
-	if dc.UserInfoKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.UserInfoKeyEncryptionAlgorithms, dc.UserInfoKeyEncryptionAlgorithm) {
+	if dc.UserInfoKeyEncryptionAlgorithm != "" &&
+		!slices.Contains(ctx.User.KeyEncryptionAlgorithms, dc.UserInfoKeyEncryptionAlgorithm) {
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "userinfo_encrypted_response_alg not supported")
 	}
 
@@ -353,7 +356,8 @@ func validateUserInfoEncryptionAlgorithms(
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "userinfo_encrypted_response_alg is required if userinfo_encrypted_response_enc is informed")
 	}
 
-	if dc.UserInfoContentEncryptionAlgorithm != "" && !slices.Contains(ctx.UserInfoContentEncryptionAlgorithms, dc.UserInfoContentEncryptionAlgorithm) {
+	if dc.UserInfoContentEncryptionAlgorithm != "" &&
+		!slices.Contains(ctx.User.ContentEncryptionAlgorithms, dc.UserInfoContentEncryptionAlgorithm) {
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "userinfo_encrypted_response_enc not supported")
 	}
 
@@ -365,14 +369,14 @@ func validateJARMEncryptionAlgorithms(
 	dc DynamicClientRequest,
 ) oidc.Error {
 	// Return an error if jarm encryption is not enabled, but the client requested it.
-	if !ctx.JARMIsEnabled {
+	if !ctx.JARM.IsEnabled {
 		if dc.JARMKeyEncryptionAlgorithm != "" || dc.JARMContentEncryptionAlgorithm != "" {
 			return oidc.NewError(oidc.ErrorCodeInvalidRequest, "jarm encryption is not supported")
 		}
 		return nil
 	}
 
-	if dc.JARMKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.JARMKeyEncrytionAlgorithms, dc.JARMKeyEncryptionAlgorithm) {
+	if dc.JARMKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.JARM.KeyEncrytionAlgorithms, dc.JARMKeyEncryptionAlgorithm) {
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "authorization_encrypted_response_alg not supported")
 	}
 
@@ -380,7 +384,7 @@ func validateJARMEncryptionAlgorithms(
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "authorization_encrypted_response_alg is required if authorization_encrypted_response_enc is informed")
 	}
 
-	if dc.JARMContentEncryptionAlgorithm != "" && !slices.Contains(ctx.JARMContentEncryptionAlgorithms, dc.JARMContentEncryptionAlgorithm) {
+	if dc.JARMContentEncryptionAlgorithm != "" && !slices.Contains(ctx.JARM.ContentEncryptionAlgorithms, dc.JARMContentEncryptionAlgorithm) {
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "authorization_encrypted_response_enc not supported")
 	}
 
@@ -392,14 +396,15 @@ func validateJAREncryptionAlgorithms(
 	dc DynamicClientRequest,
 ) oidc.Error {
 	// Return an error if jar encryption is not enabled, but the client requested it.
-	if !ctx.JAREncryptionIsEnabled {
+	if !ctx.JAR.EncryptionIsEnabled {
 		if dc.JARKeyEncryptionAlgorithm != "" || dc.JARContentEncryptionAlgorithm != "" {
 			return oidc.NewError(oidc.ErrorCodeInvalidRequest, "jar encryption is not supported")
 		}
 		return nil
 	}
 
-	if dc.JARKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.JARKeyEncryptionAlgorithms(), dc.JARKeyEncryptionAlgorithm) {
+	if dc.JARKeyEncryptionAlgorithm != "" &&
+		!slices.Contains(ctx.JARKeyEncryptionAlgorithms(), dc.JARKeyEncryptionAlgorithm) {
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "request_object_encryption_alg not supported")
 	}
 
@@ -407,7 +412,8 @@ func validateJAREncryptionAlgorithms(
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "request_object_encryption_alg is required if request_object_encryption_enc is informed")
 	}
 
-	if dc.JARContentEncryptionAlgorithm != "" && !slices.Contains(ctx.JARContentEncryptionAlgorithms, dc.JARContentEncryptionAlgorithm) {
+	if dc.JARContentEncryptionAlgorithm != "" &&
+		!slices.Contains(ctx.JAR.ContentEncryptionAlgorithms, dc.JARContentEncryptionAlgorithm) {
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "request_object_encryption_enc not supported")
 	}
 
@@ -447,12 +453,12 @@ func validateAuthorizationDetailTypes(
 	ctx *oidc.Context,
 	dc DynamicClientRequest,
 ) oidc.Error {
-	if !ctx.AuthorizationDetailsParameterIsEnabled || dc.AuthorizationDetailTypes == nil {
+	if !ctx.AuthorizationDetails.IsEnabled || dc.AuthorizationDetailTypes == nil {
 		return nil
 	}
 
 	for _, dt := range dc.AuthorizationDetailTypes {
-		if !slices.Contains(ctx.AuthorizationDetailTypes, dt) {
+		if !slices.Contains(ctx.AuthorizationDetails.Types, dt) {
 			return oidc.NewError(oidc.ErrorCodeInvalidRequest, "authorization detail type not supported")
 		}
 	}

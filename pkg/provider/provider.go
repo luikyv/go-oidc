@@ -3,6 +3,7 @@ package provider
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"net/http"
 	"slices"
 
@@ -24,36 +25,38 @@ type Provider struct {
 }
 
 // New creates a new openid provider.
-// By default, all clients and sessions are stored in memory and tokens are signed with the key corresponding to defaultSignatureKeyID.
+// By default, all clients and sessions are stored in memory and tokens are
+// signed with the first signing key in the JWKS.
 func New(
 	issuer string,
 	privateJWKS jose.JSONWebKeySet,
-	defaultSignatureKeyID string,
 	opts ...ProviderOption,
 ) (
 	*Provider,
 	error,
 ) {
 
-	// TODO: Get the first signing key as the default key.
+	// Use the first signature key as the default key.
+	var defaultSignatureKeyID string
+	for _, key := range privateJWKS.Keys {
+		if key.Use == string(goidc.KeyUsageSignature) {
+			defaultSignatureKeyID = key.KeyID
+			break
+		}
+	}
+	if defaultSignatureKeyID == "" {
+		return nil, errors.New("the private jwks doesn't contain any signing key")
+	}
 
 	p := &Provider{
 		config: oidc.Configuration{
-			Host:                issuer,
-			Profile:             goidc.ProfileOpenID,
-			ClientManager:       inmemory.NewClientManager(),
-			AuthnSessionManager: inmemory.NewAuthnSessionManager(),
-			GrantSessionManager: inmemory.NewGrantSessionManager(),
-			Scopes:              []goidc.Scope{goidc.ScopeOpenID},
+			Host:    issuer,
+			Profile: goidc.ProfileOpenID,
+			Scopes:  []goidc.Scope{goidc.ScopeOpenID},
 			TokenOptions: func(client *goidc.Client, scopes string) (goidc.TokenOptions, error) {
 				return goidc.NewJWTTokenOptions(defaultSignatureKeyID, defaultTokenLifetimeSecs), nil
 			},
-			PrivateJWKS:                   privateJWKS,
-			DefaultTokenSignatureKeyID:    defaultSignatureKeyID,
-			DefaultUserInfoSignatureKeyID: defaultSignatureKeyID,
-			UserInfoSignatureKeyIDs:       []string{defaultSignatureKeyID},
-			IDTokenExpiresInSecs:          defaultIDTokenLifetimeSecs,
-			UserClaims:                    []string{},
+			PrivateJWKS: privateJWKS,
 			GrantTypes: []goidc.GrantType{
 				goidc.GrantAuthorizationCode,
 			},
@@ -63,12 +66,25 @@ func New(
 				goidc.ResponseModeFragment,
 				goidc.ResponseModeFormPost,
 			},
-			ClientAuthnMethods:               []goidc.ClientAuthnType{},
-			SubjectIdentifierTypes:           []goidc.SubjectIdentifierType{goidc.SubjectIdentifierPublic},
-			ClaimTypes:                       []goidc.ClaimType{goidc.ClaimTypeNormal},
-			AuthenticationSessionTimeoutSecs: defaultAuthenticationSessionTimeoutSecs,
+			SubjectIdentifierTypes:  []goidc.SubjectIdentifierType{goidc.SubjectIdentifierPublic},
+			ClaimTypes:              []goidc.ClaimType{goidc.ClaimTypeNormal},
+			AuthnSessionTimeoutSecs: defaultAuthenticationSessionTimeoutSecs,
 		},
 	}
+	p.config.Storage.Client = inmemory.NewClientManager()
+	p.config.Storage.AuthnSession = inmemory.NewAuthnSessionManager()
+	p.config.Storage.GrantSession = inmemory.NewGrantSessionManager()
+	p.config.User.DefaultSignatureKeyID = defaultSignatureKeyID
+	p.config.User.SignatureKeyIDs = []string{defaultSignatureKeyID}
+	p.config.User.IDTokenExpiresInSecs = defaultIDTokenLifetimeSecs
+	p.config.Endpoint.WellKnown = goidc.EndpointWellKnown
+	p.config.Endpoint.JWKS = goidc.EndpointJSONWebKeySet
+	p.config.Endpoint.Token = goidc.EndpointToken
+	p.config.Endpoint.Authorize = goidc.EndpointAuthorize
+	p.config.Endpoint.PushedAuthorization = goidc.EndpointPushedAuthorizationRequest
+	p.config.Endpoint.DCR = goidc.EndpointDynamicClient
+	p.config.Endpoint.UserInfo = goidc.EndpointUserInfo
+	p.config.Endpoint.Introspection = goidc.EndpointTokenIntrospection
 
 	for _, opt := range opts {
 		opt(p)
@@ -111,7 +127,7 @@ func (p *Provider) RunTLS(
 	middlewares ...goidc.WrapHandlerFunc,
 ) error {
 
-	if p.config.MTLSIsEnabled {
+	if p.config.MTLS.IsEnabled {
 		go func() {
 			if err := p.runMTLS(config); err != nil {
 				// TODO: Find a way to handle this.
@@ -143,16 +159,59 @@ func WithStorage(
 	grantSessionManager goidc.GrantSessionManager,
 ) ProviderOption {
 	return func(p *Provider) {
-		p.config.ClientManager = clientManager
-		p.config.AuthnSessionManager = authnSessionManager
-		p.config.GrantSessionManager = grantSessionManager
+		p.config.Storage.Client = clientManager
+		p.config.Storage.AuthnSession = authnSessionManager
+		p.config.Storage.GrantSession = grantSessionManager
 	}
 }
 
-// WithPathPrefix defines a shared prefix for all endpoints.
-func WithPathPrefix(prefix string) ProviderOption {
+// WithEndpointPrefix defines a shared prefix for all endpoints.
+func WithEndpointPrefix(prefix string) ProviderOption {
 	return func(p *Provider) {
-		p.config.PathPrefix = prefix
+		p.config.Endpoint.Prefix = prefix
+	}
+}
+
+// WithEndpoints allows changing the default endpoints paths.
+func WithEndpoints(
+	endpointOpts struct {
+		JWKS                string
+		Token               string
+		Authorize           string
+		PushedAuthorization string
+		DCR                 string
+		UserInfo            string
+		Introspect          string
+	},
+) ProviderOption {
+	return func(p *Provider) {
+		if endpointOpts.JWKS != "" {
+			p.config.Endpoint.JWKS = endpointOpts.JWKS
+		}
+
+		if endpointOpts.Token != "" {
+			p.config.Endpoint.Token = endpointOpts.Token
+		}
+
+		if endpointOpts.DCR != "" {
+			p.config.Endpoint.DCR = endpointOpts.DCR
+		}
+
+		if endpointOpts.Authorize != "" {
+			p.config.Endpoint.Authorize = endpointOpts.Authorize
+		}
+
+		if endpointOpts.PushedAuthorization != "" {
+			p.config.Endpoint.PushedAuthorization = endpointOpts.PushedAuthorization
+		}
+
+		if endpointOpts.UserInfo != "" {
+			p.config.Endpoint.UserInfo = endpointOpts.UserInfo
+		}
+
+		if endpointOpts.Introspect != "" {
+			p.config.Endpoint.Introspection = endpointOpts.Introspect
+		}
 	}
 }
 
@@ -162,23 +221,26 @@ func WithPathPrefix(prefix string) ProviderOption {
 // well known endpoint response.
 func WithUserClaims(claims ...string) ProviderOption {
 	return func(p *Provider) {
-		p.config.UserClaims = claims
+		p.config.Claims = claims
 	}
 }
 
-// WithUserInfoSignatureKeyIDs makes more keys available to sign the user info
+// WithUserInfoSignatureKeyIDs set the keys available to sign the user info
 // endpoint response and ID tokens.
 // There should be at most one per algorithm, in other words, there shouldn't be
 // two key IDs that point to two keys that have the same algorithm.
 // This is because clients can choose signing keys per algorithm, e.g. a client
 // can choose the key to sign its ID tokens with the attribute
 // "id_token_signed_response_alg".
-func WithUserInfoSignatureKeyIDs(userInfoSignatureKeyIDs ...string) ProviderOption {
+func WithUserInfoSignatureKeyIDs(defaultSignatureKeyID string, signatureKeyIDs ...string) ProviderOption {
 	return func(p *Provider) {
-		if !slices.Contains(userInfoSignatureKeyIDs, p.config.DefaultUserInfoSignatureKeyID) {
-			userInfoSignatureKeyIDs = append(userInfoSignatureKeyIDs, p.config.DefaultUserInfoSignatureKeyID)
+		if !slices.Contains(signatureKeyIDs, defaultSignatureKeyID) {
+			signatureKeyIDs = append(
+				signatureKeyIDs,
+				defaultSignatureKeyID,
+			)
 		}
-		p.config.UserInfoSignatureKeyIDs = userInfoSignatureKeyIDs
+		p.config.User.SignatureKeyIDs = signatureKeyIDs
 	}
 }
 
@@ -186,7 +248,7 @@ func WithUserInfoSignatureKeyIDs(userInfoSignatureKeyIDs ...string) ProviderOpti
 // The default is 600 seconds.
 func WithIDTokenLifetime(idTokenLifetimeSecs int64) ProviderOption {
 	return func(p *Provider) {
-		p.config.IDTokenExpiresInSecs = idTokenLifetimeSecs
+		p.config.User.IDTokenExpiresInSecs = idTokenLifetimeSecs
 	}
 }
 
@@ -197,18 +259,18 @@ func WithUserInfoEncryption(
 	contentEncryptionAlgorithms []jose.ContentEncryption,
 ) ProviderOption {
 	return func(p *Provider) {
-		p.config.UserInfoEncryptionIsEnabled = true
+		p.config.User.EncryptionIsEnabled = true
 
 		for _, keyAlg := range keyEncryptionAlgorithms {
-			p.config.UserInfoKeyEncryptionAlgorithms = append(
-				p.config.UserInfoKeyEncryptionAlgorithms,
+			p.config.User.KeyEncryptionAlgorithms = append(
+				p.config.User.KeyEncryptionAlgorithms,
 				jose.KeyAlgorithm(keyAlg),
 			)
 		}
 
 		for _, contentAlg := range contentEncryptionAlgorithms {
-			p.config.UserInfoContentEncryptionAlgorithms = append(
-				p.config.UserInfoContentEncryptionAlgorithms,
+			p.config.User.ContentEncryptionAlgorithms = append(
+				p.config.User.ContentEncryptionAlgorithms,
 				jose.ContentEncryption(contentAlg),
 			)
 		}
@@ -224,9 +286,9 @@ func WithDCR(
 	rotateTokens bool,
 ) ProviderOption {
 	return func(p *Provider) {
-		p.config.DCRIsEnabled = true
-		p.config.DCRPlugin = plugin
-		p.config.ShouldRotateRegistrationTokens = rotateTokens
+		p.config.DCR.IsEnabled = true
+		p.config.DCR.Plugin = plugin
+		p.config.DCR.TokenRotationIsEnabled = rotateTokens
 	}
 }
 
@@ -239,15 +301,15 @@ func WithRefreshTokenGrant(
 ) ProviderOption {
 	return func(p *Provider) {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantRefreshToken)
-		p.config.RefreshTokenLifetimeSecs = refreshTokenLifetimeSecs
-		p.config.ShouldRotateRefreshTokens = rotateTokens
+		p.config.RefreshToken.LifetimeSecs = refreshTokenLifetimeSecs
+		p.config.RefreshToken.RotationIsEnabled = rotateTokens
 	}
 }
 
 // WithOpenIDScopeRequired forces the openid scope to be informed in all requests.
 func WithOpenIDScopeRequired() ProviderOption {
 	return func(p *Provider) {
-		p.config.OpenIDScopeIsRequired = true
+		p.config.OpenIDIsRequired = true
 	}
 }
 
@@ -312,8 +374,8 @@ func WithScopes(scopes ...goidc.Scope) ProviderOption {
 // request endpoint.
 func WithPAR(parLifetimeSecs int64) ProviderOption {
 	return func(p *Provider) {
-		p.config.PARLifetimeSecs = parLifetimeSecs
-		p.config.PARIsEnabled = true
+		p.config.PAR.IsEnabled = true
+		p.config.PAR.LifetimeSecs = parLifetimeSecs
 	}
 }
 
@@ -322,7 +384,7 @@ func WithPAR(parLifetimeSecs int64) ProviderOption {
 func WithPARRequired(parLifetimeSecs int64) ProviderOption {
 	return func(p *Provider) {
 		WithPAR(parLifetimeSecs)
-		p.config.PARIsRequired = true
+		p.config.PAR.IsRequired = true
 	}
 }
 
@@ -332,11 +394,11 @@ func WithJAR(
 	jarAlgorithms ...jose.SignatureAlgorithm,
 ) ProviderOption {
 	return func(p *Provider) {
-		p.config.JARIsEnabled = true
-		p.config.JARLifetimeSecs = jarLifetimeSecs
+		p.config.JAR.IsEnabled = true
+		p.config.JAR.LifetimeSecs = jarLifetimeSecs
 		for _, jarAlgorithm := range jarAlgorithms {
-			p.config.JARSignatureAlgorithms = append(
-				p.config.JARSignatureAlgorithms,
+			p.config.JAR.SignatureAlgorithms = append(
+				p.config.JAR.SignatureAlgorithms,
 				jose.SignatureAlgorithm(jarAlgorithm),
 			)
 		}
@@ -351,7 +413,7 @@ func WithJARRequired(
 ) ProviderOption {
 	return func(p *Provider) {
 		WithJAR(jarLifetimeSecs, jarAlgorithms...)
-		p.config.JARIsRequired = true
+		p.config.JAR.IsRequired = true
 	}
 }
 
@@ -362,9 +424,9 @@ func WithJAREncryption(
 	contentEncryptionAlgorithms []jose.ContentEncryption,
 ) ProviderOption {
 	return func(p *Provider) {
-		p.config.JAREncryptionIsEnabled = true
-		p.config.JARKeyEncryptionIDs = keyEncryptionIDs
-		p.config.JARContentEncryptionAlgorithms = contentEncryptionAlgorithms
+		p.config.JAR.EncryptionIsEnabled = true
+		p.config.JAR.KeyEncryptionIDs = keyEncryptionIDs
+		p.config.JAR.ContentEncryptionAlgorithms = contentEncryptionAlgorithms
 	}
 }
 
@@ -380,7 +442,7 @@ func WithJARM(
 			jarmSignatureKeyIDs = append(jarmSignatureKeyIDs, defaultJARMSignatureKeyID)
 		}
 
-		p.config.JARMIsEnabled = true
+		p.config.JARM.IsEnabled = true
 		p.config.ResponseModes = append(
 			p.config.ResponseModes,
 			goidc.ResponseModeJWT,
@@ -388,9 +450,9 @@ func WithJARM(
 			goidc.ResponseModeFragmentJWT,
 			goidc.ResponseModeFormPostJWT,
 		)
-		p.config.JARMLifetimeSecs = jarmLifetimeSecs
-		p.config.DefaultJARMSignatureKeyID = defaultJARMSignatureKeyID
-		p.config.JARMSignatureKeyIDs = jarmSignatureKeyIDs
+		p.config.JARM.LifetimeSecs = jarmLifetimeSecs
+		p.config.JARM.DefaultSignatureKeyID = defaultJARMSignatureKeyID
+		p.config.JARM.SignatureKeyIDs = jarmSignatureKeyIDs
 	}
 }
 
@@ -401,18 +463,18 @@ func WithJARMEncryption(
 	contentEncryptionAlgorithms []jose.ContentEncryption,
 ) ProviderOption {
 	return func(p *Provider) {
-		p.config.JARMEncryptionIsEnabled = true
+		p.config.JARM.EncryptionIsEnabled = true
 
 		for _, keyAlg := range keyEncryptionAlgorithms {
-			p.config.JARMKeyEncrytionAlgorithms = append(
-				p.config.JARMKeyEncrytionAlgorithms,
+			p.config.JARM.KeyEncrytionAlgorithms = append(
+				p.config.JARM.KeyEncrytionAlgorithms,
 				jose.KeyAlgorithm(keyAlg),
 			)
 		}
 
 		for _, contentAlg := range contentEncryptionAlgorithms {
-			p.config.JARMContentEncryptionAlgorithms = append(
-				p.config.JARMContentEncryptionAlgorithms,
+			p.config.JARM.ContentEncryptionAlgorithms = append(
+				p.config.JARM.ContentEncryptionAlgorithms,
 				jose.ContentEncryption(contentAlg),
 			)
 		}
@@ -421,8 +483,8 @@ func WithJARMEncryption(
 
 func WithBasicSecretAuthn() ProviderOption {
 	return func(p *Provider) {
-		p.config.ClientAuthnMethods = append(
-			p.config.ClientAuthnMethods,
+		p.config.ClientAuthn.Methods = append(
+			p.config.ClientAuthn.Methods,
 			goidc.ClientAuthnSecretBasic,
 		)
 	}
@@ -430,8 +492,8 @@ func WithBasicSecretAuthn() ProviderOption {
 
 func WithSecretPostAuthn() ProviderOption {
 	return func(p *Provider) {
-		p.config.ClientAuthnMethods = append(
-			p.config.ClientAuthnMethods,
+		p.config.ClientAuthn.Methods = append(
+			p.config.ClientAuthn.Methods,
 			goidc.ClientAuthnSecretPost,
 		)
 	}
@@ -442,14 +504,14 @@ func WithPrivateKeyJWTAuthn(
 	signatureAlgorithms ...jose.SignatureAlgorithm,
 ) ProviderOption {
 	return func(p *Provider) {
-		p.config.ClientAuthnMethods = append(
-			p.config.ClientAuthnMethods,
+		p.config.ClientAuthn.Methods = append(
+			p.config.ClientAuthn.Methods,
 			goidc.ClientAuthnPrivateKeyJWT,
 		)
-		p.config.PrivateKeyJWTAssertionLifetimeSecs = assertionLifetimeSecs
+		p.config.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs = assertionLifetimeSecs
 		for _, signatureAlgorithm := range signatureAlgorithms {
-			p.config.PrivateKeyJWTSignatureAlgorithms = append(
-				p.config.PrivateKeyJWTSignatureAlgorithms,
+			p.config.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = append(
+				p.config.ClientAuthn.PrivateKeyJWTSignatureAlgorithms,
 				jose.SignatureAlgorithm(signatureAlgorithm),
 			)
 		}
@@ -461,14 +523,14 @@ func WithClientSecretJWTAuthn(
 	signatureAlgorithms ...jose.SignatureAlgorithm,
 ) ProviderOption {
 	return func(p *Provider) {
-		p.config.ClientAuthnMethods = append(
-			p.config.ClientAuthnMethods,
+		p.config.ClientAuthn.Methods = append(
+			p.config.ClientAuthn.Methods,
 			goidc.ClientAuthnSecretBasic,
 		)
-		p.config.ClientSecretJWTAssertionLifetimeSecs = assertionLifetimeSecs
+		p.config.ClientAuthn.ClientSecretJWTAssertionLifetimeSecs = assertionLifetimeSecs
 		for _, signatureAlgorithm := range signatureAlgorithms {
-			p.config.ClientSecretJWTSignatureAlgorithms = append(
-				p.config.ClientSecretJWTSignatureAlgorithms,
+			p.config.ClientAuthn.ClientSecretJWTSignatureAlgorithms = append(
+				p.config.ClientAuthn.ClientSecretJWTSignatureAlgorithms,
 				jose.SignatureAlgorithm(signatureAlgorithm),
 			)
 		}
@@ -477,8 +539,8 @@ func WithClientSecretJWTAuthn(
 
 func WithTLSAuthn() ProviderOption {
 	return func(p *Provider) {
-		p.config.ClientAuthnMethods = append(
-			p.config.ClientAuthnMethods,
+		p.config.ClientAuthn.Methods = append(
+			p.config.ClientAuthn.Methods,
 			goidc.ClientAuthnTLS,
 		)
 	}
@@ -486,8 +548,8 @@ func WithTLSAuthn() ProviderOption {
 
 func WithSelfSignedTLSAuthn() ProviderOption {
 	return func(p *Provider) {
-		p.config.ClientAuthnMethods = append(
-			p.config.ClientAuthnMethods,
+		p.config.ClientAuthn.Methods = append(
+			p.config.ClientAuthn.Methods,
 			goidc.ClientAuthnSelfSignedTLS,
 		)
 	}
@@ -495,21 +557,21 @@ func WithSelfSignedTLSAuthn() ProviderOption {
 
 func WithMTLS(mtlsHost string) ProviderOption {
 	return func(p *Provider) {
-		p.config.MTLSIsEnabled = true
-		p.config.MTLSHost = mtlsHost
+		p.config.MTLS.IsEnabled = true
+		p.config.MTLS.Host = mtlsHost
 	}
 }
 
 func WithTLSBoundTokens() ProviderOption {
 	return func(p *Provider) {
-		p.config.TLSBoundTokensIsEnabled = true
+		p.config.TokenBindingIsRequired = true
 	}
 }
 
 func WithNoneAuthn() ProviderOption {
 	return func(p *Provider) {
-		p.config.ClientAuthnMethods = append(
-			p.config.ClientAuthnMethods,
+		p.config.ClientAuthn.Methods = append(
+			p.config.ClientAuthn.Methods,
 			goidc.ClientAuthnNone,
 		)
 	}
@@ -529,8 +591,8 @@ func WithClaimsParameter() ProviderOption {
 
 func WithAuthorizationDetails(types ...string) ProviderOption {
 	return func(p *Provider) {
-		p.config.AuthorizationDetailsParameterIsEnabled = true
-		p.config.AuthorizationDetailTypes = types
+		p.config.AuthorizationDetails.IsEnabled = true
+		p.config.AuthorizationDetails.Types = types
 	}
 }
 
@@ -539,11 +601,11 @@ func WithDPoP(
 	dpopSigningAlgorithms ...jose.SignatureAlgorithm,
 ) ProviderOption {
 	return func(p *Provider) {
-		p.config.DPoPIsEnabled = true
-		p.config.DPoPLifetimeSecs = dpopLifetimeSecs
+		p.config.DPoP.IsEnabled = true
+		p.config.DPoP.LifetimeSecs = dpopLifetimeSecs
 		for _, signatureAlgorithm := range dpopSigningAlgorithms {
-			p.config.DPoPSignatureAlgorithms = append(
-				p.config.DPoPSignatureAlgorithms,
+			p.config.DPoP.SignatureAlgorithms = append(
+				p.config.DPoP.SignatureAlgorithms,
 				jose.SignatureAlgorithm(signatureAlgorithm),
 			)
 		}
@@ -556,7 +618,7 @@ func WithDPoPRequired(
 ) ProviderOption {
 	return func(p *Provider) {
 		WithDPoP(dpopLifetimeSecs, dpopSigningAlgorithms...)
-		p.config.DPoPIsRequired = true
+		p.config.DPoP.IsRequired = true
 	}
 }
 
@@ -572,8 +634,8 @@ func WithIntrospection(
 	clientAuthnMethods ...goidc.ClientAuthnType,
 ) ProviderOption {
 	return func(p *Provider) {
-		p.config.IntrospectionIsEnabled = true
-		p.config.IntrospectionClientAuthnMethods = clientAuthnMethods
+		p.config.Introspection.IsEnabled = true
+		p.config.Introspection.ClientAuthnMethods = clientAuthnMethods
 		p.config.GrantTypes = append(
 			p.config.GrantTypes,
 			goidc.GrantIntrospection,
@@ -586,8 +648,8 @@ func WithPKCE(
 	codeChallengeMethods ...goidc.CodeChallengeMethod,
 ) ProviderOption {
 	return func(p *Provider) {
-		p.config.CodeChallengeMethods = codeChallengeMethods
-		p.config.PkceIsEnabled = true
+		p.config.PKCE.IsEnabled = true
+		p.config.PKCE.CodeChallengeMethods = codeChallengeMethods
 	}
 }
 
@@ -597,7 +659,7 @@ func WithPKCERequired(
 ) ProviderOption {
 	return func(p *Provider) {
 		WithPKCE(codeChallengeMethods...)
-		p.config.PkceIsRequired = true
+		p.config.PKCE.IsRequired = true
 	}
 }
 
@@ -605,7 +667,7 @@ func WithACRs(
 	acrValues ...goidc.ACR,
 ) ProviderOption {
 	return func(p *Provider) {
-		p.config.AuthenticationContextReferences = acrValues
+		p.config.ACRs = acrValues
 	}
 }
 
@@ -624,7 +686,7 @@ func WithClaimTypes(types ...goidc.ClaimType) ProviderOption {
 // WithAuthenticationSessionTimeout sets the user authentication session lifetime.
 func WithAuthenticationSessionTimeout(timeoutSecs int64) ProviderOption {
 	return func(p *Provider) {
-		p.config.AuthenticationSessionTimeoutSecs = timeoutSecs
+		p.config.AuthnSessionTimeoutSecs = timeoutSecs
 	}
 }
 
@@ -667,15 +729,15 @@ func WithAuthorizeErrorPlugin(plugin goidc.AuthorizeErrorPluginFunc) ProviderOpt
 
 func WithResourceIndicators(resources []string) ProviderOption {
 	return func(p *Provider) {
-		p.config.ResourceIndicatorsIsEnabled = true
-		p.config.ResourceIndicators = resources
+		p.config.ResourceIndicators.IsEnabled = true
+		p.config.ResourceIndicators.Resources = resources
 	}
 }
 
 func WithResourceIndicatorsRequired(resources []string) ProviderOption {
 	return func(p *Provider) {
 		WithResourceIndicators(resources)
-		p.config.ResourceIndicatorsIsRequired = true
+		p.config.ResourceIndicators.IsRequired = true
 	}
 }
 
@@ -712,7 +774,7 @@ func (p *Provider) Client(
 	error,
 ) {
 	ctx := oidc.NewContext(p.config, req, resp)
-	return p.config.ClientManager.Get(ctx, clientID)
+	return p.config.Storage.Client.Get(ctx, clientID)
 }
 
 func (p *Provider) runMTLS(config TLSOptions) error {

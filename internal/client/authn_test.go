@@ -132,8 +132,8 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 
 	ctx := oidc.NewTestContext(t)
 	require.Nil(t, ctx.SaveClient(c))
-	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
-	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
+	ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
+	ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs = 60
 
 	createdAtTimestamp := time.Now().Unix()
 	signer, _ := jose.NewSigner(
@@ -145,7 +145,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 		goidc.ClaimSubject:  c.ID,
 		goidc.ClaimAudience: ctx.Host,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.PrivateKeyJWTAssertionLifetimeSecs - 10,
+		goidc.ClaimExpiry:   createdAtTimestamp + ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs - 10,
 	}
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
 	req := client.AuthnRequest{
@@ -175,8 +175,8 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_ClientInformedSigningAlgorithm
 
 	ctx := oidc.NewTestContext(t)
 	require.Nil(t, ctx.SaveClient(c))
-	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256, jose.RS256}
-	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
+	ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256, jose.RS256}
+	ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs = 60
 
 	createdAtTimestamp := time.Now().Unix()
 	signer, _ := jose.NewSigner(
@@ -188,7 +188,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_ClientInformedSigningAlgorithm
 		goidc.ClaimSubject:  c.ID,
 		goidc.ClaimAudience: ctx.Host,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.PrivateKeyJWTAssertionLifetimeSecs - 10,
+		goidc.ClaimExpiry:   createdAtTimestamp + ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs - 10,
 	}
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
 	req := client.AuthnRequest{
@@ -216,8 +216,8 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAudienceClaim(t *testin
 	}
 
 	ctx := oidc.NewTestContext(t)
-	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
-	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
+	ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
+	ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs = 60
 	require.Nil(t, ctx.SaveClient(c))
 
 	createdAtTimestamp := time.Now().Unix()
@@ -229,7 +229,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAudienceClaim(t *testin
 		goidc.ClaimIssuer:   c.ID,
 		goidc.ClaimSubject:  c.ID,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.PrivateKeyJWTAssertionLifetimeSecs - 10,
+		goidc.ClaimExpiry:   createdAtTimestamp + ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs - 10,
 	}
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
 	req := client.AuthnRequest{
@@ -258,8 +258,8 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidExpiryClaim(t *testing.
 
 	ctx := oidc.NewTestContext(t)
 	require.Nil(t, ctx.SaveClient(c))
-	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
-	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
+	ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
+	ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs = 60
 
 	createdAtTimestamp := time.Now().Unix()
 	signer, _ := jose.NewSigner(
@@ -298,8 +298,8 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidKeyID(t *testing.T) {
 
 	ctx := oidc.NewTestContext(t)
 	require.Nil(t, ctx.SaveClient(c))
-	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
-	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
+	ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
+	ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs = 60
 
 	createdAtTimestamp := time.Now().Unix()
 	signer, _ := jose.NewSigner(
@@ -311,7 +311,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidKeyID(t *testing.T) {
 		goidc.ClaimSubject:  c.ID,
 		goidc.ClaimAudience: ctx.Host,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.PrivateKeyJWTAssertionLifetimeSecs - 10,
+		goidc.ClaimExpiry:   createdAtTimestamp + ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs - 10,
 	}
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
 	req := client.AuthnRequest{
@@ -340,8 +340,8 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T)
 
 	ctx := oidc.NewTestContext(t)
 	require.Nil(t, ctx.SaveClient(c))
-	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
-	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
+	ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
+	ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs = 60
 
 	createdAtTimestamp := time.Now().Unix()
 	claims := map[string]any{
@@ -349,7 +349,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T)
 		goidc.ClaimSubject:  c.ID,
 		goidc.ClaimAudience: ctx.Host,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.PrivateKeyJWTAssertionLifetimeSecs - 10,
+		goidc.ClaimExpiry:   createdAtTimestamp + ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs - 10,
 	}
 
 	invalidPrivateJWK := oidc.PrivatePS256JWK(t, "rsa256_key")
@@ -384,8 +384,8 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertion(t *testing.T)
 
 	ctx := oidc.NewTestContext(t)
 	require.Nil(t, ctx.SaveClient(c))
-	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
-	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
+	ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
+	ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs = 60
 
 	invalidReq := client.AuthnRequest{
 		AssertionType: goidc.AssertionTypeJWTBearer,
@@ -412,8 +412,8 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertionType(t *testin
 
 	ctx := oidc.NewTestContext(t)
 	require.Nil(t, ctx.SaveClient(c))
-	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
-	ctx.PrivateKeyJWTAssertionLifetimeSecs = 60
+	ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
+	ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs = 60
 
 	createdAtTimestamp := time.Now().Unix()
 	signer, _ := jose.NewSigner(
@@ -425,7 +425,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertionType(t *testin
 		goidc.ClaimSubject:  c.ID,
 		goidc.ClaimAudience: ctx.Host,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.PrivateKeyJWTAssertionLifetimeSecs - 10,
+		goidc.ClaimExpiry:   createdAtTimestamp + ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs - 10,
 	}
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
 	invalidReq := client.AuthnRequest{
@@ -455,8 +455,8 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_HappyPath(t *testing.T) {
 
 	ctx := oidc.NewTestContext(t)
 	require.Nil(t, ctx.SaveClient(c))
-	ctx.ClientSecretJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.HS256}
-	ctx.ClientSecretJWTAssertionLifetimeSecs = 60
+	ctx.ClientAuthn.ClientSecretJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.HS256}
+	ctx.ClientAuthn.ClientSecretJWTAssertionLifetimeSecs = 60
 
 	createdAtTimestamp := time.Now().Unix()
 	signer, _ := jose.NewSigner(
@@ -468,7 +468,7 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_HappyPath(t *testing.T) {
 		goidc.ClaimSubject:  c.ID,
 		goidc.ClaimAudience: ctx.Host,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.ClientSecretJWTAssertionLifetimeSecs - 10,
+		goidc.ClaimExpiry:   createdAtTimestamp + ctx.ClientAuthn.ClientSecretJWTAssertionLifetimeSecs - 10,
 	}
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
 	req := client.AuthnRequest{
@@ -498,8 +498,8 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_InvalidAssertionType(t *test
 
 	ctx := oidc.NewTestContext(t)
 	require.Nil(t, ctx.SaveClient(c))
-	ctx.ClientSecretJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.HS256}
-	ctx.ClientSecretJWTAssertionLifetimeSecs = 60
+	ctx.ClientAuthn.ClientSecretJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.HS256}
+	ctx.ClientAuthn.ClientSecretJWTAssertionLifetimeSecs = 60
 
 	createdAtTimestamp := time.Now().Unix()
 	signer, _ := jose.NewSigner(
@@ -511,7 +511,7 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_InvalidAssertionType(t *test
 		goidc.ClaimSubject:  c.ID,
 		goidc.ClaimAudience: ctx.Host,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.ClientSecretJWTAssertionLifetimeSecs - 10,
+		goidc.ClaimExpiry:   createdAtTimestamp + ctx.ClientAuthn.ClientSecretJWTAssertionLifetimeSecs - 10,
 	}
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
 	req := client.AuthnRequest{
@@ -540,7 +540,7 @@ func TestGetAuthenticatedClient_WithDifferentClientIDs(t *testing.T) {
 
 	ctx := oidc.NewTestContext(t)
 	require.Nil(t, ctx.SaveClient(c))
-	ctx.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256}
+	ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256}
 
 	req := client.AuthnRequest{
 		ID: c.ID,

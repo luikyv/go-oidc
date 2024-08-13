@@ -63,9 +63,9 @@ func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 func TestInitAuth_PolicyEndsWithSuccess_WithJAR(t *testing.T) {
 	// Given.
 	ctx := oidc.NewTestContext(t)
-	ctx.JARIsEnabled = true
-	ctx.JARSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256}
-	ctx.JARLifetimeSecs = 60
+	ctx.JAR.IsEnabled = true
+	ctx.JAR.SignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256}
+	ctx.JAR.LifetimeSecs = 60
 	ctx.Policies = append(ctx.Policies, goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.Context, c *goidc.Client, s *goidc.AuthnSession) bool { return true },
@@ -126,9 +126,9 @@ func TestInitAuth_PolicyEndsWithSuccess_WithJAR(t *testing.T) {
 func TestInitAuth_PolicyEndsWithSuccess_WithJARM(t *testing.T) {
 	// Given.
 	ctx := oidc.NewTestContext(t)
-	ctx.JARMIsEnabled = true
-	ctx.JARMLifetimeSecs = 60
-	ctx.DefaultJARMSignatureKeyID = oidc.TestServerPrivateJWK.KeyID
+	ctx.JARM.IsEnabled = true
+	ctx.JARM.LifetimeSecs = 60
+	ctx.JARM.DefaultSignatureKeyID = oidc.TestServerPrivateJWK.KeyID
 
 	client, _ := ctx.Client(oidc.TestClientID)
 	policy := goidc.NewPolicy(
@@ -338,7 +338,7 @@ func TestInitAuth_WithPAR(t *testing.T) {
 	// Given.
 	ctx := oidc.NewTestContext(t)
 	client, _ := ctx.Client(oidc.TestClientID)
-	ctx.PARIsEnabled = true
+	ctx.PAR.IsEnabled = true
 
 	requestURI := "urn:goidc:random_value"
 	require.Nil(t, ctx.SaveAuthnSession(
@@ -449,9 +449,9 @@ func TestPushAuth(t *testing.T) {
 func TestPushAuth_WithJAR(t *testing.T) {
 	// Given.
 	ctx := oidc.NewTestContext(t)
-	ctx.JARIsEnabled = true
-	ctx.JARSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256}
-	ctx.JARLifetimeSecs = 60
+	ctx.JAR.IsEnabled = true
+	ctx.JAR.SignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256}
+	ctx.JAR.LifetimeSecs = 60
 
 	privateJWK := oidc.PrivateRS256JWK(t, "rsa256_key")
 	c, _ := ctx.Client(oidc.TestClientID)
