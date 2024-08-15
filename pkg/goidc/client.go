@@ -211,10 +211,12 @@ type ClientMetaInfo struct {
 	DPoPIsRequired                     bool                    `json:"dpop_bound_access_tokens,omitempty"`
 	TLSSubjectDistinguishedName        string                  `json:"tls_client_auth_subject_dn,omitempty"`
 	// TLSSubjectAlternativeName represents a DNS name.
-	TLSSubjectAlternativeName   string         `json:"tls_client_auth_san_dns,omitempty"`
-	TLSSubjectAlternativeNameIp string         `json:"tls_client_auth_san_ip,omitempty"`
-	AuthorizationDetailTypes    []string       `json:"authorization_data_types,omitempty"`
-	DefaultMaxAgeSecs           *int           `json:"default_max_age,omitempty"`
-	DefaultACRValues            string         `json:"default_acr_values,omitempty"`
-	CustomAttributes            map[string]any `json:"custom_attributes,omitempty"`
+	TLSSubjectAlternativeName   string   `json:"tls_client_auth_san_dns,omitempty"`
+	TLSSubjectAlternativeNameIp string   `json:"tls_client_auth_san_ip,omitempty"`
+	AuthorizationDetailTypes    []string `json:"authorization_data_types,omitempty"`
+	DefaultMaxAgeSecs           *int     `json:"default_max_age,omitempty"`
+	DefaultACRValues            string   `json:"default_acr_values,omitempty"`
+	// CustomAttributes holds any additional attributes a client has.
+	// This field is flattened for DCR responses.
+	CustomAttributes map[string]any `json:"custom_attributes,omitempty"`
 }

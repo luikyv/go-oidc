@@ -12,6 +12,8 @@ type GrantSessionManager interface {
 	Delete(ctx context.Context, id string) error
 }
 
+// GrantSession represents the granted access an entity (a user or client) gave
+// to a client.
 type GrantSession struct {
 	ID                          string                `json:"id"`
 	JWKThumbprint               string                `json:"jwk_thumbprint,omitempty"`
@@ -36,6 +38,8 @@ func (g *GrantSession) IsExpired() bool {
 	return time.Now().Unix() > g.ExpiresAtTimestamp
 }
 
+// HasLastTokenExpired returns whether the last token issued for the grant
+// session is expired or not.
 func (g *GrantSession) HasLastTokenExpired() bool {
 	return time.Now().Unix() > g.LastTokenIssuedAtTimestamp+g.LifetimeSecs
 }

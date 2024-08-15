@@ -56,11 +56,9 @@ func (rt ResponseType) IsImplicit() bool {
 type ResponseMode string
 
 const (
-	ResponseModeQuery    ResponseMode = "query"
-	ResponseModeFragment ResponseMode = "fragment"
-	ResponseModeFormPost ResponseMode = "form_post"
-	// JARM - JWT Secured Authorization Response Mode.
-	// For more information, see https://openid.net/specs-v2-jarm.html.
+	ResponseModeQuery       ResponseMode = "query"
+	ResponseModeFragment    ResponseMode = "fragment"
+	ResponseModeFormPost    ResponseMode = "form_post"
 	ResponseModeQueryJWT    ResponseMode = "query.jwt"
 	ResponseModeFragmentJWT ResponseMode = "fragment.jwt"
 	ResponseModeFormPostJWT ResponseMode = "form_post.jwt"
@@ -143,12 +141,15 @@ const (
 	CodeChallengeMethodPlain  CodeChallengeMethod = "plain"
 )
 
+// SubjectIdentifierType defines how the auth server provides subject
+// identifiers to its clients.
 // For more information,
 // see: https://openid.net/specs/openid-connect-core-1_0.html#SubjectIDTypes
 type SubjectIdentifierType string
 
 const (
-	// The server provides the same sub (subject) value to all Clients.
+	// SubjectIdentifierPublic makes the server provide the same subject
+	// identifier to all clients.
 	SubjectIdentifierPublic SubjectIdentifierType = "public"
 	// TODO: Implement pairwise.
 )

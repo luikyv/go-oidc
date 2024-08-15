@@ -12,6 +12,8 @@ type WrapHandlerFunc func(nextHandler http.Handler) http.Handler
 // It can be used to modify the client and perform custom validations.
 type DCRPluginFunc func(ctx Context, clientInfo *ClientMetaInfo)
 
+// AuthorizeErrorPluginFunc defines a function that will be called when errors
+// during the authorization request cannot be handled.
 type AuthorizeErrorPluginFunc func(ctx Context, err error) error
 
 var (
@@ -26,7 +28,7 @@ type ScopeMatchingFunc func(requestedScope string) bool
 
 type Scope struct {
 	// ID is the string representation of the scope.
-	// Its value will be exported as is.
+	// Its value will be published as is.
 	ID string
 	// Matches validates if a requested scope is valid.
 	Matches ScopeMatchingFunc
@@ -48,7 +50,7 @@ func NewScope(scope string) Scope {
 //	dynamicScope := NewDynamicScope(
 //		"payment",
 //		func(requestedScope string) bool {
-//			return strings.HasPrefix(requestedScope, "payment")
+//			return strings.HasPrefix(requestedScope, "payment:")
 //		},
 //	)
 //
@@ -64,6 +66,8 @@ func NewDynamicScope(
 	}
 }
 
+// TokenOptionsFunc defines a function that returns token configuration and is
+// executed when issuing access tokens.
 type TokenOptionsFunc func(client *Client, scopes string) (TokenOptions, error)
 
 type TokenOptions struct {
@@ -109,8 +113,11 @@ type AuthnFunc func(Context, *AuthnSession) AuthnStatus
 
 // SetUpAuthnFunc is responsible for deciding if the corresponding policy will
 // be executed.
+// TODO: Split this.
 type SetUpAuthnFunc func(Context, *Client, *AuthnSession) bool
 
+// AuthnPolicy holds information on how to set up an authentication session and
+// authenticate users.
 type AuthnPolicy struct {
 	ID           string
 	SetUp        SetUpAuthnFunc
@@ -233,12 +240,14 @@ type ClaimsObject struct {
 	IDToken  map[string]ClaimObjectInfo `json:"id_token"`
 }
 
-// UserInfoEssentials returns all the essentials claims requested by the client to be returned in the userinfo endpoint.
+// UserInfoEssentials returns all the essentials claims requested by the client
+// to be returned in the userinfo endpoint.
 func (claims ClaimsObject) UserInfoEssentials() []string {
 	return essentials(claims.UserInfo)
 }
 
-// IDTokenEssentials returns all the essentials claims requested by the client to be returned in the ID token.
+// IDTokenEssentials returns all the essentials claims requested by the client
+// to be returned in the ID token.
 func (claims ClaimsObject) IDTokenEssentials() []string {
 	return essentials(claims.IDToken)
 }
@@ -278,8 +287,8 @@ type ClaimObjectInfo struct {
 	Values      []string `json:"values"`
 }
 
-// Authorization details is a map instead of a struct, because its fields vary a lot depending on the use case.
-// Some fields are well know so they are accessible as methods.
+// AuthorizationDetail represents an authorization details as a map instead of
+// a struct, because its fields vary a lot depending on the use case.
 type AuthorizationDetail map[string]any
 
 func (detail AuthorizationDetail) Type() string {

@@ -20,7 +20,7 @@ func main() {
 	// Create and configure the manager.
 	openidProvider, err := provider.New(
 		Issuer,
-		privateJWKS("server_keys/jwks.json"),
+		privateJWKS("keys/jwks.json"),
 		provider.WithScopes(scopes...),
 		provider.WithPAR(60),
 		provider.WithJAR(600, jose.RS256),
@@ -33,7 +33,7 @@ func main() {
 		provider.WithDPoP(600, jose.RS256, jose.PS256, jose.ES256),
 		provider.WithPKCE(goidc.CodeChallengeMethodSHA256),
 		provider.WithRefreshTokenGrant(6000, false),
-		provider.WithUserClaims(goidc.ClaimEmail, goidc.ClaimEmailVerified),
+		provider.WithClaims(goidc.ClaimEmail, goidc.ClaimEmailVerified),
 		provider.WithACRs(goidc.ACRMaceIncommonIAPBronze, goidc.ACRMaceIncommonIAPSilver),
 		provider.WithDCR(dcrPlugin(scopes), true),
 		provider.WithTokenOptions(tokenOptions(serverKeyID)),
@@ -45,8 +45,8 @@ func main() {
 
 	if err := openidProvider.RunTLS(provider.TLSOptions{
 		TLSAddress:        Port,
-		ServerCertificate: "server_keys/cert.pem",
-		ServerKey:         "server_keys/key.pem",
+		ServerCertificate: "keys/cert.pem",
+		ServerKey:         "keys/key.pem",
 	}); err != nil {
 		panic(err.Error())
 	}

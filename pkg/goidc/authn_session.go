@@ -13,6 +13,8 @@ type AuthnSessionManager interface {
 	Delete(ctx context.Context, id string) error
 }
 
+// AuthnSession is a short lived session that holds information about
+// authorization requests.
 type AuthnSession struct {
 	ID                          string                `json:"id"`
 	CallbackID                  string                `json:"callback_id"`
@@ -95,6 +97,7 @@ func (s *AuthnSession) SetUserInfoClaim(claim string, value any) {
 	s.AdditionalUserInfoClaims[claim] = value
 }
 
+// GrantScopes sets the scopes the client will have access to.
 func (s *AuthnSession) GrantScopes(scopes string) {
 	s.GrantedScopes = scopes
 }

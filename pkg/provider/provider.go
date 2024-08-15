@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -97,10 +98,18 @@ func New(
 	return p, nil
 }
 
+// Handler returns an HTTP handler with all the logic defined for the openid
+// provider.
+// This may be used to add the oidc logic to a HTTP server.
+//
+//	handler := provider.Handler()
+//	server := http.NewServeMux()
+//	server.Handle("/auth/*", server)
+//
+// TODO: Make sure it works.
 func (p *Provider) Handler() http.Handler {
 
 	server := http.NewServeMux()
-
 	discovery.RegisterHandlers(server, &p.config)
 	token.RegisterHandlers(server, &p.config)
 	authorize.RegisterHandlers(server, &p.config)
@@ -181,7 +190,7 @@ func WithEndpoints(
 		PushedAuthorization string
 		DCR                 string
 		UserInfo            string
-		Introspect          string
+		Introspection       string
 	},
 ) ProviderOption {
 	return func(p *Provider) {
@@ -209,19 +218,25 @@ func WithEndpoints(
 			p.config.Endpoint.UserInfo = endpointOpts.UserInfo
 		}
 
-		if endpointOpts.Introspect != "" {
-			p.config.Endpoint.Introspection = endpointOpts.Introspect
+		if endpointOpts.Introspection != "" {
+			p.config.Endpoint.Introspection = endpointOpts.Introspection
 		}
 	}
 }
 
-// WithUserClaims signals support for custom user claims.
+// WithClaims signals support for custom user claims.
 // These claims are meant to appear in ID tokens and the userinfo endpoint.
 // The values provided will be share with the field "claims_supported" of the
 // well known endpoint response.
-func WithUserClaims(claims ...string) ProviderOption {
+func WithClaims(claims ...string) ProviderOption {
 	return func(p *Provider) {
 		p.config.Claims = claims
+	}
+}
+
+func WithClaimTypes(types ...goidc.ClaimType) ProviderOption {
+	return func(p *Provider) {
+		p.config.ClaimTypes = types
 	}
 }
 
@@ -388,6 +403,15 @@ func WithPARRequired(parLifetimeSecs int64) ProviderOption {
 	}
 }
 
+// WithUnregisteredRedirectURIsDuringPAR allows clients to inform unregistered
+// redirect URIs during request to pushed authorization endpoint.
+// This only takes effect when PAR is enabled
+func WithUnregisteredRedirectURIsDuringPAR() ProviderOption {
+	return func(p *Provider) {
+		p.config.PAR.AllowUnregisteredRedirectURI = true
+	}
+}
+
 // WithJAR allows authorization requests to be securely sent as signed JWTs.
 func WithJAR(
 	jarLifetimeSecs int64,
@@ -481,6 +505,7 @@ func WithJARMEncryption(
 	}
 }
 
+// WithBasicSecretAuthn allows secret basic client authentication.
 func WithBasicSecretAuthn() ProviderOption {
 	return func(p *Provider) {
 		p.config.ClientAuthn.Methods = append(
@@ -490,6 +515,7 @@ func WithBasicSecretAuthn() ProviderOption {
 	}
 }
 
+// WithBasicSecretAuthn allows secret post client authentication.
 func WithSecretPostAuthn() ProviderOption {
 	return func(p *Provider) {
 		p.config.ClientAuthn.Methods = append(
@@ -499,6 +525,7 @@ func WithSecretPostAuthn() ProviderOption {
 	}
 }
 
+// WithBasicSecretAuthn allows private key jwt client authentication.
 func WithPrivateKeyJWTAuthn(
 	assertionLifetimeSecs int64,
 	signatureAlgorithms ...jose.SignatureAlgorithm,
@@ -518,6 +545,7 @@ func WithPrivateKeyJWTAuthn(
 	}
 }
 
+// WithBasicSecretAuthn allows client secret jwt client authentication.
 func WithClientSecretJWTAuthn(
 	assertionLifetimeSecs int64,
 	signatureAlgorithms ...jose.SignatureAlgorithm,
@@ -537,6 +565,7 @@ func WithClientSecretJWTAuthn(
 	}
 }
 
+// WithBasicSecretAuthn allows tls client authentication.
 func WithTLSAuthn() ProviderOption {
 	return func(p *Provider) {
 		p.config.ClientAuthn.Methods = append(
@@ -546,6 +575,7 @@ func WithTLSAuthn() ProviderOption {
 	}
 }
 
+// WithBasicSecretAuthn allows self signed tls client authentication.
 func WithSelfSignedTLSAuthn() ProviderOption {
 	return func(p *Provider) {
 		p.config.ClientAuthn.Methods = append(
@@ -555,19 +585,7 @@ func WithSelfSignedTLSAuthn() ProviderOption {
 	}
 }
 
-func WithMTLS(mtlsHost string) ProviderOption {
-	return func(p *Provider) {
-		p.config.MTLS.IsEnabled = true
-		p.config.MTLS.Host = mtlsHost
-	}
-}
-
-func WithTLSBoundTokens() ProviderOption {
-	return func(p *Provider) {
-		p.config.TokenBindingIsRequired = true
-	}
-}
-
+// WithBasicSecretAuthn allows none client authentication.
 func WithNoneAuthn() ProviderOption {
 	return func(p *Provider) {
 		p.config.ClientAuthn.Methods = append(
@@ -577,18 +595,23 @@ func WithNoneAuthn() ProviderOption {
 	}
 }
 
+// WithIssuerResponseParameter enables the "iss" parameter to be sent in the
+// response of authorization requests.
 func WithIssuerResponseParameter() ProviderOption {
 	return func(p *Provider) {
 		p.config.IssuerResponseParameterIsEnabled = true
 	}
 }
 
+// WithClaimsParameter allows clients to send the "claims" parameter during
+// authorization requests.
 func WithClaimsParameter() ProviderOption {
 	return func(p *Provider) {
 		p.config.ClaimsParameterIsEnabled = true
 	}
 }
 
+// WithAuthorizationDetails allows clients to make rich authorization requests.
 func WithAuthorizationDetails(types ...string) ProviderOption {
 	return func(p *Provider) {
 		p.config.AuthorizationDetails.IsEnabled = true
@@ -596,6 +619,17 @@ func WithAuthorizationDetails(types ...string) ProviderOption {
 	}
 }
 
+// WithMTLS allows requests to be established with mutual TLS.
+func WithMTLS(mtlsHost string, bindTokens bool) ProviderOption {
+	return func(p *Provider) {
+		p.config.MTLS.IsEnabled = true
+		p.config.MTLS.Host = mtlsHost
+		p.config.MTLS.TokenBindingIsEnabled = bindTokens
+	}
+}
+
+// WithDPoP enables demonstrating proof of possesion which allows tokens to be
+// bound to a cryptographic key.
 func WithDPoP(
 	dpopLifetimeSecs int,
 	dpopSigningAlgorithms ...jose.SignatureAlgorithm,
@@ -612,6 +646,8 @@ func WithDPoP(
 	}
 }
 
+// WithDPoP requires tokens to be bound to a cryptographic key by demonstrating
+// proof of possesion.
 func WithDPoPRequired(
 	dpopLifetimeSecs int,
 	dpopSigningAlgorithms ...jose.SignatureAlgorithm,
@@ -630,6 +666,7 @@ func WithSenderConstrainedTokensRequired() ProviderOption {
 	}
 }
 
+// WithIntrospection allows authorized clients to introspect tokens.
 func WithIntrospection(
 	clientAuthnMethods ...goidc.ClientAuthnType,
 ) ProviderOption {
@@ -643,7 +680,7 @@ func WithIntrospection(
 	}
 }
 
-// WithPKCE makes PKCE available to clients.
+// WithPKCE makes proof key for code exchange available to clients.
 func WithPKCE(
 	codeChallengeMethods ...goidc.CodeChallengeMethod,
 ) ProviderOption {
@@ -653,7 +690,7 @@ func WithPKCE(
 	}
 }
 
-// WithPKCERequired makes PCKE required.
+// WithPKCERequired makes proof key for code exchange required.
 func WithPKCERequired(
 	codeChallengeMethods ...goidc.CodeChallengeMethod,
 ) ProviderOption {
@@ -674,12 +711,6 @@ func WithACRs(
 func WithDisplayValues(values ...goidc.DisplayValue) ProviderOption {
 	return func(p *Provider) {
 		p.config.DisplayValues = values
-	}
-}
-
-func WithClaimTypes(types ...goidc.ClaimType) ProviderOption {
-	return func(p *Provider) {
-		p.config.ClaimTypes = types
 	}
 }
 
@@ -765,15 +796,14 @@ func (p *Provider) TokenInfo(
 	return tokenInfo
 }
 
+// Client is a shortcut to fetch client using the client storage.
 func (p *Provider) Client(
-	req *http.Request,
-	resp http.ResponseWriter,
+	ctx context.Context,
 	clientID string,
 ) (
 	*goidc.Client,
 	error,
 ) {
-	ctx := oidc.NewContext(p.config, req, resp)
 	return p.config.Storage.Client.Get(ctx, clientID)
 }
 

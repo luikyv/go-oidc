@@ -162,7 +162,6 @@ func encryptIDToken(
 	return encryptedIDToken, nil
 }
 
-// TODO: Make it simpler. Create a confirmation object.
 func makeJWTToken(
 	ctx *oidc.Context,
 	client *goidc.Client,

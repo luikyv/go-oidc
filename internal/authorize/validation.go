@@ -13,7 +13,7 @@ func validateRequest(
 	req Request,
 	client *goidc.Client,
 ) oidc.Error {
-	return validateParamsAuthorize(ctx, req.AuthorizationParameters, client)
+	return validateParams(ctx, req.AuthorizationParameters, client)
 }
 
 func validateRequestWithPAR(
@@ -108,7 +108,7 @@ func validatePushedRequest(
 		client.RedirectURIS = append(client.RedirectURIS, req.RedirectURI)
 	}
 
-	return validateParams(ctx, req.AuthorizationParameters, client)
+	return validateParamsAsOptionals(ctx, req.AuthorizationParameters, client)
 }
 
 // -------------------------------------------------- Helper Functions -------------------------------------------------- //
@@ -125,7 +125,7 @@ func validateInWithOutParams(
 	}
 
 	mergedParams := mergeParams(insideParams, outsideParams)
-	if err := validateParamsAuthorize(ctx, mergedParams, client); err != nil {
+	if err := validateParams(ctx, mergedParams, client); err != nil {
 		return err
 	}
 
@@ -148,7 +148,7 @@ func validateInWithOutParams(
 	return nil
 }
 
-func validateParamsAuthorize(
+func validateParams(
 	ctx *oidc.Context,
 	params goidc.AuthorizationParameters,
 	client *goidc.Client,
@@ -158,7 +158,7 @@ func validateParamsAuthorize(
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "redirect_uri is required")
 	}
 
-	if err := validateParams(ctx, params, client); err != nil {
+	if err := validateParamsAsOptionals(ctx, params, client); err != nil {
 		return err
 	}
 
@@ -185,13 +185,13 @@ func validateParamsAuthorize(
 	return nil
 }
 
-func validateParams(
+func validateParamsAsOptionals(
 	ctx *oidc.Context,
 	params goidc.AuthorizationParameters,
 	client *goidc.Client,
 ) oidc.Error {
 
-	if !client.IsRedirectURIAllowed(params.RedirectURI) {
+	if params.RedirectURI != "" && !client.IsRedirectURIAllowed(params.RedirectURI) {
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid redirect_uri")
 	}
 
@@ -287,11 +287,13 @@ func validateResponseMode(
 	params goidc.AuthorizationParameters,
 	client *goidc.Client,
 ) oidc.Error {
-	if !ctx.JARM.IsEnabled && params.ResponseMode.IsJARM() {
+
+	if params.ResponseMode != "" &&
+		!slices.Contains(ctx.ResponseModes, params.ResponseMode) {
 		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "invalid response_mode", params)
 	}
 
-	if params.ResponseType.IsImplicit() && params.ResponseMode.IsQuery() {
+	if params.ResponseMode.IsQuery() && params.ResponseType.IsImplicit() {
 		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "invalid response_mode for the chosen response_type", params)
 	}
 
