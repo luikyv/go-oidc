@@ -12,8 +12,8 @@ import (
 
 func TestOIDCConfig(t *testing.T) {
 	// Given.
-	tokenKey := oidc.PrivateRS256JWK(t, "token_signature_key")
-	userInfoKey := oidc.PrivateRS256JWK(t, "user_info_signature_key")
+	tokenKey := oidc.TestPrivateRS256JWK(t, "token_signature_key")
+	userInfoKey := oidc.TestPrivateRS256JWK(t, "user_info_signature_key")
 	config := oidc.Configuration{
 		Host:                             "https://example.com",
 		Scopes:                           []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeEmail},
@@ -108,7 +108,7 @@ func TestOIDCConfig_WithJAR(t *testing.T) {
 
 func TestOIDCConfig_WithJARM(t *testing.T) {
 	// Given.
-	jarmKey := oidc.PrivateRS256JWK(t, "jarm_signature_key")
+	jarmKey := oidc.TestPrivateRS256JWK(t, "jarm_signature_key")
 	config := oidc.Configuration{
 		PrivateJWKS: jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jarmKey}},
 	}

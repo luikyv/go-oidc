@@ -647,7 +647,7 @@ type Configuration struct {
 		// they were pushed.
 		IsRequired                   bool
 		LifetimeSecs                 int64
-		AllowUnregisteredRedirectURI bool // TODO.
+		AllowUnregisteredRedirectURI bool
 	}
 
 	MTLS struct {
@@ -666,7 +666,7 @@ type Configuration struct {
 	PKCE struct {
 		IsEnabled                  bool
 		IsRequired                 bool
-		DefaultCodeChallengeMethod goidc.CodeChallengeMethod // TODO
+		DefaultCodeChallengeMethod goidc.CodeChallengeMethod
 		CodeChallengeMethods       []goidc.CodeChallengeMethod
 	}
 

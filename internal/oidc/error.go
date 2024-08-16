@@ -17,6 +17,8 @@ const (
 	ErrorCodeInvalidToken                ErrorCode = "invalid_token"
 	ErrorCodeInternalError               ErrorCode = "internal_error"
 	ErrorCodeInvalidTarget               ErrorCode = "invalid_target"
+	ErrorCodeInvalidRedirectURI          ErrorCode = "invalid_redirect_uri"
+	ErrorCodeInvalidClientMetadata       ErrorCode = "invalid_client_metadata"
 )
 
 func (ec ErrorCode) StatusCode() int {

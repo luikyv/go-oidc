@@ -12,28 +12,28 @@ func create(
 	ctx *oidc.Context,
 	req DynamicClientRequest,
 ) (
-	dynamicClientResponse,
+	DynamicClientResponse,
 	oidc.Error,
 ) {
 	if err := setCreationDefaults(ctx, &req); err != nil {
-		return dynamicClientResponse{}, err
+		return DynamicClientResponse{}, err
 	}
 
 	if err := validateDynamicClientRequest(ctx, req); err != nil {
-		return dynamicClientResponse{}, err
+		return DynamicClientResponse{}, err
 	}
 
 	ctx.ExecuteDCRPlugin(&req.ClientMetaInfo)
 	if err := validateDynamicClientRequest(ctx, req); err != nil {
-		return dynamicClientResponse{}, err
+		return DynamicClientResponse{}, err
 	}
 
 	newClient := newClient(req)
 	if err := ctx.SaveClient(newClient); err != nil {
-		return dynamicClientResponse{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return DynamicClientResponse{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
-	return dynamicClientResponse{
+	return DynamicClientResponse{
 		ID:                      req.ID,
 		RegistrationURI:         registrationURI(ctx, req.ID),
 		RegistrationAccessToken: req.RegistrationAccessToken,
@@ -65,32 +65,32 @@ func update(
 	ctx *oidc.Context,
 	dc DynamicClientRequest,
 ) (
-	dynamicClientResponse,
+	DynamicClientResponse,
 	oidc.Error,
 ) {
 	c, err := protected(ctx, dc)
 	if err != nil {
-		return dynamicClientResponse{}, err
+		return DynamicClientResponse{}, err
 	}
 
 	if err := setUpdateDefaults(ctx, c, &dc); err != nil {
-		return dynamicClientResponse{}, err
+		return DynamicClientResponse{}, err
 	}
 	if err := validateDynamicClientRequest(ctx, dc); err != nil {
-		return dynamicClientResponse{}, err
+		return DynamicClientResponse{}, err
 	}
 
 	ctx.ExecuteDCRPlugin(&dc.ClientMetaInfo)
 	if err := validateDynamicClientRequest(ctx, dc); err != nil {
-		return dynamicClientResponse{}, err
+		return DynamicClientResponse{}, err
 	}
 
 	updatedClient := newClient(dc)
 	if err := ctx.SaveClient(updatedClient); err != nil {
-		return dynamicClientResponse{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return DynamicClientResponse{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
-	resp := dynamicClientResponse{
+	resp := DynamicClientResponse{
 		ID:              dc.ID,
 		RegistrationURI: registrationURI(ctx, dc.ID),
 		Secret:          dc.Secret,
@@ -125,16 +125,16 @@ func fetch(
 	ctx *oidc.Context,
 	dynamicClientRequest DynamicClientRequest,
 ) (
-	dynamicClientResponse,
+	DynamicClientResponse,
 	oidc.Error,
 ) {
 
 	client, err := protected(ctx, dynamicClientRequest)
 	if err != nil {
-		return dynamicClientResponse{}, err
+		return DynamicClientResponse{}, err
 	}
 
-	return dynamicClientResponse{
+	return DynamicClientResponse{
 		ID:              client.ID,
 		RegistrationURI: registrationURI(ctx, client.ID),
 		ClientMetaInfo:  client.ClientMetaInfo,

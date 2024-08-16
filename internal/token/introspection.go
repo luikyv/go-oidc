@@ -74,17 +74,24 @@ func refreshTokenInfo(
 		}
 	}
 
+	var cnf *goidc.TokenConfirmation
+	if grantSession.JWKThumbprint != "" || grantSession.ClientCertThumbprint != "" {
+		cnf = &goidc.TokenConfirmation{
+			JWKThumbprint:               grantSession.JWKThumbprint,
+			ClientCertificateThumbprint: grantSession.ClientCertThumbprint,
+		}
+	}
+
 	return goidc.TokenInfo{
-		IsActive:                    true,
-		TokenUsage:                  goidc.TokenHintRefresh,
-		Scopes:                      grantSession.GrantedScopes,
-		AuthorizationDetails:        grantSession.GrantedAuthorizationDetails,
-		ClientID:                    grantSession.ClientID,
-		Subject:                     grantSession.Subject,
-		ExpiresAtTimestamp:          grantSession.ExpiresAtTimestamp,
-		JWKThumbprint:               grantSession.JWKThumbprint,
-		ClientCertificateThumbprint: grantSession.ClientCertThumbprint,
-		AdditionalTokenClaims:       grantSession.TokenOptions.AdditionalClaims,
+		IsActive:              true,
+		Type:                  goidc.TokenHintRefresh,
+		Scopes:                grantSession.GrantedScopes,
+		AuthorizationDetails:  grantSession.GrantedAuthorizationDetails,
+		ClientID:              grantSession.ClientID,
+		Subject:               grantSession.Subject,
+		ExpiresAtTimestamp:    grantSession.ExpiresAtTimestamp,
+		Confirmation:          cnf,
+		AdditionalTokenClaims: grantSession.TokenOptions.AdditionalClaims,
 	}
 }
 
@@ -126,16 +133,23 @@ func tokenIntrospectionInfoByID(
 		}
 	}
 
+	var cnf *goidc.TokenConfirmation
+	if grantSession.JWKThumbprint != "" || grantSession.ClientCertThumbprint != "" {
+		cnf = &goidc.TokenConfirmation{
+			JWKThumbprint:               grantSession.JWKThumbprint,
+			ClientCertificateThumbprint: grantSession.ClientCertThumbprint,
+		}
+	}
+
 	return goidc.TokenInfo{
-		IsActive:                    true,
-		TokenUsage:                  goidc.TokenHintAccess,
-		Scopes:                      grantSession.ActiveScopes,
-		AuthorizationDetails:        grantSession.GrantedAuthorizationDetails,
-		ClientID:                    grantSession.ClientID,
-		Subject:                     grantSession.Subject,
-		ExpiresAtTimestamp:          grantSession.LastTokenIssuedAtTimestamp + grantSession.TokenOptions.LifetimeSecs,
-		JWKThumbprint:               grantSession.JWKThumbprint,
-		ClientCertificateThumbprint: grantSession.ClientCertThumbprint,
-		AdditionalTokenClaims:       grantSession.TokenOptions.AdditionalClaims,
+		IsActive:              true,
+		Type:                  goidc.TokenHintAccess,
+		Scopes:                grantSession.ActiveScopes,
+		AuthorizationDetails:  grantSession.GrantedAuthorizationDetails,
+		ClientID:              grantSession.ClientID,
+		Subject:               grantSession.Subject,
+		ExpiresAtTimestamp:    grantSession.LastTokenIssuedAtTimestamp + grantSession.TokenOptions.LifetimeSecs,
+		Confirmation:          cnf,
+		AdditionalTokenClaims: grantSession.TokenOptions.AdditionalClaims,
 	}
 }

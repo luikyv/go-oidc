@@ -15,7 +15,7 @@ func ValidatePoP(
 	ctx *oidc.Context,
 	token string,
 	tokenType goidc.TokenType,
-	confirmation Confirmation,
+	confirmation goidc.TokenConfirmation,
 ) oidc.Error {
 	if err := validateDPoP(ctx, token, tokenType, confirmation); err != nil {
 		return err
@@ -103,7 +103,7 @@ func validateDPoP(
 	ctx *oidc.Context,
 	token string,
 	tokenType goidc.TokenType,
-	confirmation Confirmation,
+	confirmation goidc.TokenConfirmation,
 ) oidc.Error {
 
 	if confirmation.JWKThumbprint == "" {
@@ -130,7 +130,7 @@ func validateDPoP(
 
 func validateTLSPoP(
 	ctx *oidc.Context,
-	confirmation Confirmation,
+	confirmation goidc.TokenConfirmation,
 ) oidc.Error {
 	if confirmation.ClientCertificateThumbprint == "" {
 		return nil

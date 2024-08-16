@@ -1,6 +1,5 @@
 package oidc
 
-// TODO: Remove from here.
 import (
 	"crypto/rand"
 	"crypto/rsa"
@@ -30,7 +29,7 @@ const (
 var (
 	TestScope1           = goidc.NewScope("scope1")
 	TestScope2           = goidc.NewScope("scope2")
-	TestServerPrivateJWK = PrivateRS256JWK(nil, TestKeyID)
+	TestServerPrivateJWK = TestPrivateRS256JWK(nil, TestKeyID)
 )
 
 func NewTestClient(_ *testing.T) *goidc.Client {
@@ -144,7 +143,7 @@ func GrantSessions(_ *testing.T, ctx *Context) []*goidc.GrantSession {
 	return tokens
 }
 
-func Clients(_ *testing.T, ctx *Context) []*goidc.Client {
+func TestClients(_ *testing.T, ctx *Context) []*goidc.Client {
 	manager, _ := ctx.Storage.Client.(*inmemory.ClientManager)
 	clients := make([]*goidc.Client, 0, len(manager.Clients))
 	for _, c := range manager.Clients {
@@ -154,12 +153,12 @@ func Clients(_ *testing.T, ctx *Context) []*goidc.Client {
 	return clients
 }
 
-func RawJWKS(jwk jose.JSONWebKey) []byte {
+func TestRawJWKS(jwk jose.JSONWebKey) []byte {
 	jwks, _ := json.Marshal(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jwk}})
 	return jwks
 }
 
-func PrivateRS256JWK(t *testing.T, keyID string) jose.JSONWebKey {
+func TestPrivateRS256JWK(t *testing.T, keyID string) jose.JSONWebKey {
 	return PrivateRS256JWKWithUsage(t, keyID, goidc.KeyUsageSignature)
 }
 

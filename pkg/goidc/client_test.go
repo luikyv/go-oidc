@@ -107,7 +107,7 @@ func TestIsRedirectURIAllowed(t *testing.T) {
 		expectedResult bool
 	}{
 		{"https://example.com/callback", true},
-		{"https://example.com/callback?param=value", true},
+		{"https://example.com/callback?param=value", false},
 		{"https://example.com/invalid", false},
 	}
 

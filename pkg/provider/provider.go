@@ -329,7 +329,7 @@ func WithOpenIDScopeRequired() ProviderOption {
 }
 
 // WithTokenOptions defines how access tokens are issued.
-func WithTokenOptions(getTokenOpts goidc.TokenOptionsFunc) ProviderOption {
+func WithTokenOptions(tokenOpts goidc.TokenOptionsFunc) ProviderOption {
 	return func(p *Provider) {
 		p.config.TokenOptions = func(
 			client *goidc.Client,
@@ -338,13 +338,17 @@ func WithTokenOptions(getTokenOpts goidc.TokenOptionsFunc) ProviderOption {
 			goidc.TokenOptions,
 			error,
 		) {
-			opts, err := getTokenOpts(client, scopes)
+			opts, err := tokenOpts(client, scopes)
 			if err != nil {
 				return goidc.TokenOptions{}, err
 			}
 
 			if opts.OpaqueLength == token.RefreshTokenLength {
 				opts.OpaqueLength++
+			}
+
+			if !client.IsGrantTypeAllowed(goidc.GrantRefreshToken) {
+				opts.IsRefreshable = false
 			}
 
 			return opts, nil
@@ -790,30 +794,23 @@ func WithResourceIndicatorsRequired(resources []string) ProviderOption {
 func (p *Provider) TokenInfo(
 	req *http.Request,
 	resp http.ResponseWriter,
-) (
-	goidc.TokenInfo,
-	error,
-) {
+) goidc.TokenInfo {
 	ctx := oidc.NewContext(p.config, req, resp)
 	accessToken, tokenType, ok := ctx.AuthorizationToken()
 	if !ok {
-		return goidc.TokenInfo{IsActive: false}, errors.New("invalid token")
+		return goidc.TokenInfo{}
 	}
 
 	tokenInfo := token.IntrospectionInfo(ctx, accessToken)
-	if !tokenInfo.IsActive {
-		return tokenInfo, errors.New("token expired")
+	if tokenInfo.Confirmation == nil {
+		return tokenInfo
 	}
 
-	confirmation := token.Confirmation{
-		JWKThumbprint:               tokenInfo.JWKThumbprint,
-		ClientCertificateThumbprint: tokenInfo.ClientCertificateThumbprint,
-	}
-	if err := token.ValidatePoP(ctx, accessToken, tokenType, confirmation); err != nil {
-		return goidc.TokenInfo{}, err
+	if err := token.ValidatePoP(ctx, accessToken, tokenType, *tokenInfo.Confirmation); err != nil {
+		return goidc.TokenInfo{}
 	}
 
-	return tokenInfo, nil
+	return tokenInfo
 }
 
 // Client is a shortcut to fetch clients using the client storage.

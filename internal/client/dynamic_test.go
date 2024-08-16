@@ -120,7 +120,7 @@ func TestDeleteClient(t *testing.T) {
 	// Then.
 	require.Nil(t, err)
 
-	clients := oidc.Clients(t, ctx)
+	clients := oidc.TestClients(t, ctx)
 	assert.Len(t, clients, 0)
 }
 

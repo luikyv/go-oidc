@@ -150,7 +150,7 @@ func validateUserInfoRequest(
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid scope")
 	}
 
-	confirmation := token.Confirmation{
+	confirmation := goidc.TokenConfirmation{
 		JWKThumbprint:               grantSession.JWKThumbprint,
 		ClientCertificateThumbprint: grantSession.ClientCertThumbprint,
 	}

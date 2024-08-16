@@ -16,7 +16,7 @@ import (
 
 func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) {
 	// Given.
-	privateJWK := oidc.PrivateRS256JWK(t, "client_key_id")
+	privateJWK := oidc.TestPrivateRS256JWK(t, "client_key_id")
 	config := oidc.Configuration{
 		Host: "https://server.example.com",
 	}
@@ -32,7 +32,7 @@ func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 
 	client := &goidc.Client{
 		ClientMetaInfo: goidc.ClientMetaInfo{
-			PublicJWKS: oidc.RawJWKS(privateJWK.Public()),
+			PublicJWKS: oidc.TestRawJWKS(privateJWK.Public()),
 		},
 	}
 

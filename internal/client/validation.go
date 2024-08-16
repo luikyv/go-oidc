@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"slices"
 
 	"github.com/go-jose/go-jose/v4"
@@ -66,18 +67,21 @@ func validateGrantTypes(
 ) oidc.Error {
 	for _, gt := range dc.GrantTypes {
 		if !slices.Contains(ctx.GrantTypes, gt) {
-			return oidc.NewError(oidc.ErrorCodeInvalidRequest, "grant type not allowed")
+			return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+				"grant type not allowed")
 		}
 	}
 
 	if dc.AuthnMethod == goidc.ClientAuthnNone &&
 		slices.Contains(dc.GrantTypes, goidc.GrantClientCredentials) {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "client_credentials grant type not allowed")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"client_credentials grant type not allowed")
 	}
 
 	if slices.Contains(dc.GrantTypes, goidc.GrantIntrospection) &&
 		!slices.Contains(ctx.Introspection.ClientAuthnMethods, dc.AuthnMethod) {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "client_credentials grant type not allowed")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"client_credentials grant type not allowed")
 	}
 
 	return nil
@@ -87,9 +91,18 @@ func validateRedirectURIS(
 	ctx *oidc.Context,
 	dc DynamicClientRequest,
 ) oidc.Error {
-	if len(dc.RedirectURIS) == 0 {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "at least one redirect uri must be informed")
+	for _, ru := range dc.RedirectURIS {
+		parsedRU, err := url.Parse(ru)
+		if err != nil {
+			return oidc.NewError(oidc.ErrorCodeInvalidRedirectURI,
+				"invalid redirect uri")
+		}
+		if parsedRU.Fragment != "" {
+			return oidc.NewError(oidc.ErrorCodeInvalidRedirectURI,
+				"the redirect uri cannot contain a fragment")
+		}
 	}
+
 	return nil
 }
 
@@ -100,17 +113,20 @@ func validateResponseTypes(
 
 	for _, rt := range dc.ResponseTypes {
 		if !slices.Contains(ctx.ResponseTypes, rt) {
-			return oidc.NewError(oidc.ErrorCodeInvalidRequest, "response type not allowed")
+			return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+				"response type not allowed")
 		}
 	}
 
 	if !slices.Contains(ctx.GrantTypes, goidc.GrantImplicit) {
 		for _, rt := range dc.ResponseTypes {
 			if rt.IsImplicit() {
-				return oidc.NewError(oidc.ErrorCodeInvalidRequest, "implicit grant type is required for implicit response types")
+				return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+					"implicit grant type is required for implicit response types")
 			}
 		}
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "implicit grant type is required for implicit response types")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"implicit grant type is required for implicit response types")
 	}
 
 	return nil
@@ -121,7 +137,8 @@ func validateAuthnMethod(
 	dc DynamicClientRequest,
 ) oidc.Error {
 	if !slices.Contains(ctx.ClientAuthn.Methods, dc.AuthnMethod) {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "authn method not allowed")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"authn method not allowed")
 	}
 	return nil
 }
@@ -135,7 +152,8 @@ func validateOpenIDScopeIfRequired(
 	}
 
 	if dc.Scopes != "" || !strutil.ContainsOpenID(dc.Scopes) {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "scope openid is required")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"scope openid is required")
 	}
 
 	return nil
@@ -150,7 +168,8 @@ func validateSubjectIdentifierType(
 	}
 
 	if !slices.Contains(ctx.SubjectIdentifierTypes, dc.SubjectIdentifierType) {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "subject_type not supported")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"subject_type not supported")
 	}
 	return nil
 }
@@ -164,7 +183,8 @@ func validateIDTokenSignatureAlgorithm(
 	}
 
 	if !slices.Contains(ctx.UserInfoSignatureAlgorithms(), dc.IDTokenSignatureAlgorithm) {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "id_token_signed_response_alg not supported")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"id_token_signed_response_alg not supported")
 	}
 	return nil
 }
@@ -178,7 +198,8 @@ func validateUserInfoSignatureAlgorithm(
 	}
 
 	if !slices.Contains(ctx.UserInfoSignatureAlgorithms(), dc.UserInfoSignatureAlgorithm) {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "id_token_signed_response_alg not supported")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"id_token_signed_response_alg not supported")
 	}
 	return nil
 }
@@ -192,7 +213,8 @@ func validateJARSignatureAlgorithm(
 	}
 
 	if !slices.Contains(ctx.JAR.SignatureAlgorithms, dc.JARSignatureAlgorithm) {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "request_object_signing_alg not supported")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"request_object_signing_alg not supported")
 	}
 	return nil
 }
@@ -206,7 +228,8 @@ func validateJARMSignatureAlgorithm(
 	}
 
 	if !slices.Contains(ctx.JARMSignatureAlgorithms(), dc.JARMSignatureAlgorithm) {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "authorization_signed_response_alg not supported")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"authorization_signed_response_alg not supported")
 	}
 	return nil
 }
@@ -224,7 +247,8 @@ func validateClientSignatureAlgorithmForPrivateKeyJWT(
 	}
 
 	if !slices.Contains(ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms, dc.AuthnSignatureAlgorithm) {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "token_endpoint_auth_signing_alg not supported")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"token_endpoint_auth_signing_alg not supported")
 	}
 	return nil
 }
@@ -242,7 +266,8 @@ func validateClientSignatureAlgorithmForClientSecretJWT(
 	}
 
 	if !slices.Contains(ctx.ClientAuthn.ClientSecretJWTSignatureAlgorithms, dc.AuthnSignatureAlgorithm) {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "token_endpoint_auth_signing_alg not supported")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"token_endpoint_auth_signing_alg not supported")
 	}
 	return nil
 }
@@ -256,7 +281,8 @@ func validateJWKSAreRequiredForPrivateKeyJWTAuthn(
 	}
 
 	if dc.PublicJWKS == nil && dc.PublicJWKSURI == "" {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "the jwks is required for private_key_jwt")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"the jwks is required for private_key_jwt")
 	}
 
 	return nil
@@ -271,7 +297,8 @@ func validateJWKSIsRequiredWhenSelfSignedTLSAuthn(
 	}
 
 	if dc.PublicJWKSURI == "" && dc.PublicJWKS == nil {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "jwks is required when authenticating with self signed certificates")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"jwks is required when authenticating with self signed certificates")
 	}
 
 	return nil
@@ -300,7 +327,8 @@ func validateTLSSubjectInfoWhenTLSAuthn(
 	}
 
 	if numberOfIdentifiers != 1 {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "only one of: tls_client_auth_subject_dn, tls_client_auth_san_dns, tls_client_auth_san_ip must be informed")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"only one of: tls_client_auth_subject_dn, tls_client_auth_san_dns, tls_client_auth_san_ip must be informed")
 	}
 
 	return nil
@@ -313,23 +341,27 @@ func validateIDTokenEncryptionAlgorithms(
 	// Return an error if ID token encryption is not enabled, but the client requested it.
 	if !ctx.User.EncryptionIsEnabled {
 		if dc.IDTokenKeyEncryptionAlgorithm != "" || dc.IDTokenContentEncryptionAlgorithm != "" {
-			return oidc.NewError(oidc.ErrorCodeInvalidRequest, "ID token encryption is not supported")
+			return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+				"ID token encryption is not supported")
 		}
 		return nil
 	}
 
 	if dc.IDTokenKeyEncryptionAlgorithm != "" &&
 		!slices.Contains(ctx.User.KeyEncryptionAlgorithms, dc.IDTokenKeyEncryptionAlgorithm) {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "id_token_encrypted_response_alg not supported")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"id_token_encrypted_response_alg not supported")
 	}
 
 	if dc.IDTokenContentEncryptionAlgorithm != "" && dc.IDTokenKeyEncryptionAlgorithm == "" {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "id_token_encrypted_response_alg is required if id_token_encrypted_response_enc is informed")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"id_token_encrypted_response_alg is required if id_token_encrypted_response_enc is informed")
 	}
 
 	if dc.IDTokenContentEncryptionAlgorithm != "" &&
 		!slices.Contains(ctx.User.ContentEncryptionAlgorithms, dc.IDTokenContentEncryptionAlgorithm) {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "id_token_encrypted_response_enc not supported")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"id_token_encrypted_response_enc not supported")
 	}
 
 	return nil
@@ -342,23 +374,27 @@ func validateUserInfoEncryptionAlgorithms(
 	// Return an error if user info encryption is not enabled, but the client requested it.
 	if !ctx.User.EncryptionIsEnabled {
 		if dc.UserInfoKeyEncryptionAlgorithm != "" || dc.UserInfoContentEncryptionAlgorithm != "" {
-			return oidc.NewError(oidc.ErrorCodeInvalidRequest, "user info encryption is not supported")
+			return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+				"user info encryption is not supported")
 		}
 		return nil
 	}
 
 	if dc.UserInfoKeyEncryptionAlgorithm != "" &&
 		!slices.Contains(ctx.User.KeyEncryptionAlgorithms, dc.UserInfoKeyEncryptionAlgorithm) {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "userinfo_encrypted_response_alg not supported")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"userinfo_encrypted_response_alg not supported")
 	}
 
 	if dc.UserInfoContentEncryptionAlgorithm != "" && dc.UserInfoKeyEncryptionAlgorithm == "" {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "userinfo_encrypted_response_alg is required if userinfo_encrypted_response_enc is informed")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"userinfo_encrypted_response_alg is required if userinfo_encrypted_response_enc is informed")
 	}
 
 	if dc.UserInfoContentEncryptionAlgorithm != "" &&
 		!slices.Contains(ctx.User.ContentEncryptionAlgorithms, dc.UserInfoContentEncryptionAlgorithm) {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "userinfo_encrypted_response_enc not supported")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"userinfo_encrypted_response_enc not supported")
 	}
 
 	return nil
@@ -371,21 +407,25 @@ func validateJARMEncryptionAlgorithms(
 	// Return an error if jarm encryption is not enabled, but the client requested it.
 	if !ctx.JARM.IsEnabled {
 		if dc.JARMKeyEncryptionAlgorithm != "" || dc.JARMContentEncryptionAlgorithm != "" {
-			return oidc.NewError(oidc.ErrorCodeInvalidRequest, "jarm encryption is not supported")
+			return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+				"jarm encryption is not supported")
 		}
 		return nil
 	}
 
 	if dc.JARMKeyEncryptionAlgorithm != "" && !slices.Contains(ctx.JARM.KeyEncrytionAlgorithms, dc.JARMKeyEncryptionAlgorithm) {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "authorization_encrypted_response_alg not supported")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"authorization_encrypted_response_alg not supported")
 	}
 
 	if dc.JARMContentEncryptionAlgorithm != "" && dc.JARMKeyEncryptionAlgorithm == "" {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "authorization_encrypted_response_alg is required if authorization_encrypted_response_enc is informed")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"authorization_encrypted_response_alg is required if authorization_encrypted_response_enc is informed")
 	}
 
 	if dc.JARMContentEncryptionAlgorithm != "" && !slices.Contains(ctx.JARM.ContentEncryptionAlgorithms, dc.JARMContentEncryptionAlgorithm) {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "authorization_encrypted_response_enc not supported")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"authorization_encrypted_response_enc not supported")
 	}
 
 	return nil
@@ -398,23 +438,27 @@ func validateJAREncryptionAlgorithms(
 	// Return an error if jar encryption is not enabled, but the client requested it.
 	if !ctx.JAR.EncryptionIsEnabled {
 		if dc.JARKeyEncryptionAlgorithm != "" || dc.JARContentEncryptionAlgorithm != "" {
-			return oidc.NewError(oidc.ErrorCodeInvalidRequest, "jar encryption is not supported")
+			return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+				"jar encryption is not supported")
 		}
 		return nil
 	}
 
 	if dc.JARKeyEncryptionAlgorithm != "" &&
 		!slices.Contains(ctx.JARKeyEncryptionAlgorithms(), dc.JARKeyEncryptionAlgorithm) {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "request_object_encryption_alg not supported")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"request_object_encryption_alg not supported")
 	}
 
 	if dc.JARContentEncryptionAlgorithm != "" && dc.JARKeyEncryptionAlgorithm == "" {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "request_object_encryption_alg is required if request_object_encryption_enc is informed")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"request_object_encryption_alg is required if request_object_encryption_enc is informed")
 	}
 
 	if dc.JARContentEncryptionAlgorithm != "" &&
 		!slices.Contains(ctx.JAR.ContentEncryptionAlgorithms, dc.JARContentEncryptionAlgorithm) {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "request_object_encryption_enc not supported")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"request_object_encryption_enc not supported")
 	}
 
 	return nil
@@ -430,12 +474,13 @@ func validatePublicJWKS(
 
 	var jwks jose.JSONWebKeySet
 	if err := json.Unmarshal(dc.PublicJWKS, &jwks); err != nil {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid jwks")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata, "invalid jwks")
 	}
 
 	for _, jwk := range jwks.Keys {
 		if !jwk.IsPublic() || !jwk.Valid() {
-			return oidc.NewError(oidc.ErrorCodeInvalidRequest, fmt.Sprintf("the key with ID: %s jwks is invalid", jwk.KeyID))
+			return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+				fmt.Sprintf("the key with ID: %s jwks is invalid", jwk.KeyID))
 		}
 	}
 	return nil
@@ -459,7 +504,8 @@ func validateAuthorizationDetailTypes(
 
 	for _, dt := range dc.AuthorizationDetailTypes {
 		if !slices.Contains(ctx.AuthorizationDetails.Types, dt) {
-			return oidc.NewError(oidc.ErrorCodeInvalidRequest, "authorization detail type not supported")
+			return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+				"authorization detail type not supported")
 		}
 	}
 
@@ -471,7 +517,8 @@ func validateRefreshTokenGrant(
 	dc DynamicClientRequest,
 ) oidc.Error {
 	if strutil.ContainsOfflineAccess(dc.Scopes) && !slices.Contains(dc.GrantTypes, goidc.GrantRefreshToken) {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "refresh_token grant is required for using the scope offline_access")
+		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+			"refresh_token grant is required for using the scope offline_access")
 	}
 
 	return nil
@@ -490,7 +537,8 @@ func validateScopes(
 			}
 		}
 		if !matches {
-			return oidc.NewError(oidc.ErrorCodeInvalidRequest, "scope "+requestedScope+" is not valid")
+			return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
+				"scope "+requestedScope+" is not valid")
 		}
 	}
 

@@ -78,6 +78,7 @@ type TokenOptions struct {
 	LifetimeSecs      int64          `json:"token_lifetime_secs"`
 	JWTSignatureKeyID string         `json:"token_signature_key_id,omitempty"`
 	OpaqueLength      int            `json:"opaque_token_length,omitempty"`
+	IsRefreshable     bool           `json:"-"`
 	AdditionalClaims  map[string]any `json:"additional_token_claims,omitempty"`
 }
 
@@ -141,55 +142,42 @@ func NewPolicy(
 	}
 }
 
-type TokenInfo struct {
-	IsActive                    bool
-	TokenUsage                  TokenTypeHint
-	Scopes                      string
-	AuthorizationDetails        []AuthorizationDetail
-	ClientID                    string
-	Subject                     string
-	ExpiresAtTimestamp          int64
-	JWKThumbprint               string
-	ClientCertificateThumbprint string
-	AdditionalTokenClaims       map[string]any
+type TokenConfirmation struct {
+	JWKThumbprint               string `json:"jkt"`
+	ClientCertificateThumbprint string `json:"x5t#S256"`
 }
 
-func (info TokenInfo) MarshalJSON() ([]byte, error) {
-	if !info.IsActive {
-		return json.Marshal(map[string]any{
-			"active": false,
-		})
+type TokenInfo struct {
+	IsActive              bool                  `json:"active"`
+	Type                  TokenTypeHint         `json:"hint,omitempty"`
+	Scopes                string                `json:"scope,omitempty"`
+	AuthorizationDetails  []AuthorizationDetail `json:"authorization_details,omitempty"`
+	ClientID              string                `json:"client_id,omitempty"`
+	Subject               string                `json:"sub,omitempty"`
+	ExpiresAtTimestamp    int64                 `json:"exp,omitempty"`
+	Confirmation          *TokenConfirmation    `json:"cnf,omitempty"`
+	AdditionalTokenClaims map[string]any        `json:"-"`
+}
+
+func (ti TokenInfo) MarshalJSON() ([]byte, error) {
+
+	type tokenInfo TokenInfo
+	attributesBytes, err := json.Marshal(tokenInfo(ti))
+	if err != nil {
+		return nil, err
 	}
 
-	params := map[string]any{
-		"active":      true,
-		"token_usage": info.TokenUsage,
-		ClaimSubject:  info.Subject,
-		ClaimScope:    info.Scopes,
-		ClaimClientID: info.ClientID,
-		ClaimExpiry:   info.ExpiresAtTimestamp,
+	var rawValues map[string]any
+	if err := json.Unmarshal(attributesBytes, &rawValues); err != nil {
+		return nil, err
 	}
 
-	if info.AuthorizationDetails != nil {
-		params[ClaimAuthorizationDetails] = info.AuthorizationDetails
+	// Inline the additional claims.
+	for k, v := range ti.AdditionalTokenClaims {
+		rawValues[k] = v
 	}
 
-	confirmation := make(map[string]string)
-	if info.JWKThumbprint != "" {
-		confirmation["jkt"] = info.JWKThumbprint
-	}
-	if info.ClientCertificateThumbprint != "" {
-		confirmation["x5t#S256"] = info.ClientCertificateThumbprint
-	}
-	if len(confirmation) != 0 {
-		params["cnf"] = confirmation
-	}
-
-	for k, v := range info.AdditionalTokenClaims {
-		params[k] = v
-	}
-
-	return json.Marshal(params)
+	return json.Marshal(rawValues)
 }
 
 type AuthorizationParameters struct {

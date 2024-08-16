@@ -125,11 +125,6 @@ func newIntrospectionRequest(req *http.Request) IntrospectionRequest {
 	}
 }
 
-type Confirmation struct {
-	JWKThumbprint               string `json:"jkt"`
-	ClientCertificateThumbprint string `json:"x5t#S256"`
-}
-
 func NewGrantSession(grantOptions GrantOptions, token Token) *goidc.GrantSession {
 	timestampNow := time.Now().Unix()
 	return &goidc.GrantSession{

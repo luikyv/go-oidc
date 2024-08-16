@@ -96,8 +96,8 @@ func authenticateUser(
 ) goidc.AuthnStatus {
 
 	// Init the step if empty.
-	stepID, ok := session.Store["step"]
-	if !ok {
+	stepID := session.Parameter("step")
+	if stepID == nil {
 		stepID = "identity"
 		session.StoreParameter("step", stepID)
 	}

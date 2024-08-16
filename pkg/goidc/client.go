@@ -74,15 +74,43 @@ func (c *Client) IDTokenEncryptionJWK() (jose.JSONWebKey, error) {
 	return c.encryptionJWK(c.IDTokenKeyEncryptionAlgorithm)
 }
 
+// SignatureJWK returns the signature JWK based on the algorithm.
+func (c *Client) SignatureJWK(algorithm jose.SignatureAlgorithm) (jose.JSONWebKey, error) {
+	jwk, err := c.jwk(string(algorithm))
+	if err != nil {
+		return jose.JSONWebKey{}, err
+	}
+
+	if jwk.Use != string(KeyUsageSignature) {
+		return jose.JSONWebKey{}, errors.New("invalid key usege")
+	}
+
+	return jwk, nil
+}
+
 // encryptionJWK returns the encryption JWK based on the algorithm.
 func (c *Client) encryptionJWK(algorithm jose.KeyAlgorithm) (jose.JSONWebKey, error) {
+	jwk, err := c.jwk(string(algorithm))
+	if err != nil {
+		return jose.JSONWebKey{}, err
+	}
+
+	if jwk.Use != string(KeyUsageEncryption) {
+		return jose.JSONWebKey{}, errors.New("invalid key usege")
+	}
+
+	return jwk, nil
+}
+
+// jwk returns a client JWK based on the algorithm.
+func (c *Client) jwk(algorithm string) (jose.JSONWebKey, error) {
 	jwks, err := c.FetchPublicJWKS()
 	if err != nil {
 		return jose.JSONWebKey{}, err
 	}
 
 	for _, jwk := range jwks.Keys {
-		if jwk.Use == string(KeyUsageEncryption) && jwk.Algorithm == string(algorithm) {
+		if jwk.Algorithm == algorithm {
 			return jwk, nil
 		}
 	}
@@ -134,7 +162,7 @@ func (c *Client) IsGrantTypeAllowed(grantType GrantType) bool {
 
 func (c *Client) IsRedirectURIAllowed(redirectURI string) bool {
 	for _, ru := range c.RedirectURIS {
-		if strings.HasPrefix(redirectURI, ru) {
+		if redirectURI == ru {
 			return true
 		}
 	}

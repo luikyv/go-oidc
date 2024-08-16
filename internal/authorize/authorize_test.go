@@ -74,7 +74,7 @@ func TestInitAuth_PolicyEndsWithSuccess_WithJAR(t *testing.T) {
 		},
 	))
 
-	privateJWK := oidc.PrivateRS256JWK(t, "rsa256_key")
+	privateJWK := oidc.TestPrivateRS256JWK(t, "rsa256_key")
 	client, _ := ctx.Client(oidc.TestClientID)
 	jwks, _ := json.Marshal(jose.JSONWebKeySet{
 		Keys: []jose.JSONWebKey{privateJWK.Public()},
@@ -454,7 +454,7 @@ func TestPushAuth_WithJAR(t *testing.T) {
 	ctx.JAR.SignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256}
 	ctx.JAR.LifetimeSecs = 60
 
-	privateJWK := oidc.PrivateRS256JWK(t, "rsa256_key")
+	privateJWK := oidc.TestPrivateRS256JWK(t, "rsa256_key")
 	c, _ := ctx.Client(oidc.TestClientID)
 	jwks, _ := json.Marshal(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privateJWK.Public()}})
 	c.PublicJWKS = jwks

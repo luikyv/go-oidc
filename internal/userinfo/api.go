@@ -11,6 +11,11 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 		"POST "+config.Endpoint.Prefix+config.Endpoint.UserInfo,
 		handler(config),
 	)
+
+	router.HandleFunc(
+		"GET "+config.Endpoint.Prefix+config.Endpoint.UserInfo,
+		handler(config),
+	)
 }
 
 func handler(config *oidc.Configuration) http.HandlerFunc {

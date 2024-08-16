@@ -1,3 +1,4 @@
+// Package strutil contains functions to help handling strings.
 package strutil
 
 import (
@@ -8,6 +9,8 @@ import (
 
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
+
+const charset string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 func ContainsOpenID(scopes string) bool {
 	return slices.Contains(SplitWithSpaces(scopes), goidc.ScopeOpenID.ID)

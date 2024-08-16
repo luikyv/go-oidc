@@ -7,6 +7,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
+	"errors"
 	"slices"
 	"time"
 
@@ -132,13 +133,22 @@ func authenticateWithPrivateKeyJWT(
 		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid assertion signature")
 	}
 
-	// Verify that the assertion indicates the key ID.
-	if len(assertion.Headers) != 1 || assertion.Headers[0].KeyID == "" {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid kid header in the assertion")
+	// Verify that the assertion has only one header.
+	if len(assertion.Headers) != 1 {
+		return oidc.NewError(oidc.ErrorCodeInvalidClient, "no header found")
 	}
 
-	// Verify that the key ID belongs to the client.
-	jwk, err := client.PublicKey(assertion.Headers[0].KeyID)
+	// Try to find the jwk used to sign the assertion by key id or algorithm.
+	var jwk jose.JSONWebKey
+	if assertion.Headers[0].KeyID != "" {
+		jwk, err = client.PublicKey(assertion.Headers[0].KeyID)
+	} else if assertion.Headers[0].Algorithm != "" {
+		alg := jose.SignatureAlgorithm(assertion.Headers[0].Algorithm)
+		jwk, err = client.SignatureJWK(alg)
+	} else {
+		err = errors.New("could not identify the jwk used to sign the assertion")
+	}
+
 	if err != nil {
 		return oidc.NewError(oidc.ErrorCodeInvalidClient, err.Error())
 	}

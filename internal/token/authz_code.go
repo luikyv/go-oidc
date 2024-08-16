@@ -83,8 +83,7 @@ func generateAuthorizationCodeGrantSession(
 ) {
 
 	grantSession := NewGrantSession(grantOptions, token)
-	// TODO: Let the dev say when to issue a refresh token.
-	if strutil.ContainsOfflineAccess(grantSession.GrantedScopes) {
+	if grantOptions.IsRefreshable {
 		token, err := refreshToken()
 		if err != nil {
 			return nil, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())

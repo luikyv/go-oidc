@@ -3,7 +3,6 @@ package client
 import (
 	"encoding/json"
 	"net/http"
-	"reflect"
 
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -35,7 +34,7 @@ type DynamicClientRequest struct {
 	goidc.ClientMetaInfo
 }
 
-type dynamicClientResponse struct {
+type DynamicClientResponse struct {
 	ID                      string `json:"client_id"`
 	Secret                  string `json:"client_secret,omitempty"`
 	RegistrationAccessToken string `json:"registration_access_token,omitempty"`
@@ -43,24 +42,17 @@ type dynamicClientResponse struct {
 	goidc.ClientMetaInfo
 }
 
-func (resp dynamicClientResponse) MarshalJSON() ([]byte, error) {
+func (resp DynamicClientResponse) MarshalJSON() ([]byte, error) {
 
-	rawValues := map[string]any{
-		"client_id":                 resp.ID,
-		"registration_access_token": resp.RegistrationAccessToken,
-		"registration_client_uri":   resp.RegistrationURI,
-	}
-	if resp.Secret != "" {
-		rawValues["client_secret"] = resp.Secret
+	type dynamicClientResponse DynamicClientResponse
+	attributesBytes, err := json.Marshal(dynamicClientResponse(resp))
+	if err != nil {
+		return nil, err
 	}
 
-	valueReflect := reflect.ValueOf(resp.ClientMetaInfo)
-	typeReflect := reflect.TypeOf(resp.ClientMetaInfo)
-	for i := 0; i < valueReflect.NumField(); i++ {
-		if jsonTag := typeReflect.Field(i).Tag.Get("json"); jsonTag != "" {
-			field := valueReflect.Field(i)
-			rawValues[jsonTag] = field.Interface()
-		}
+	var rawValues map[string]any
+	if err := json.Unmarshal(attributesBytes, &rawValues); err != nil {
+		return nil, err
 	}
 
 	// Inline the custom attributes.

@@ -15,9 +15,9 @@ func main() {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	serverKeyID := "rs256_key"
-	scopes := []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeOfflineAccess, goidc.ScopeEmail}
+	scopes := []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeEmail}
 
-	// Create and configure the manager.
+	// Create and configure the OpenID provider.
 	openidProvider, err := provider.New(
 		Issuer,
 		privateJWKS("keys/jwks.json"),
@@ -32,6 +32,7 @@ func main() {
 		provider.WithClaimsParameter(),
 		provider.WithDPoP(600, jose.RS256, jose.PS256, jose.ES256),
 		provider.WithPKCE(goidc.CodeChallengeMethodSHA256),
+		provider.WithImplicitGrant(),
 		provider.WithRefreshTokenGrant(6000, false),
 		provider.WithClaims(goidc.ClaimEmail, goidc.ClaimEmailVerified),
 		provider.WithACRs(goidc.ACRMaceIncommonIAPBronze, goidc.ACRMaceIncommonIAPSilver),
