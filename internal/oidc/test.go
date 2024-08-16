@@ -85,6 +85,11 @@ func NewTestContext(t *testing.T) *Context {
 			goidc.ResponseTypeIDTokenAndToken,
 			goidc.ResponseTypeCodeAndIDTokenAndToken,
 		},
+		ResponseModes: []goidc.ResponseMode{
+			goidc.ResponseModeQuery,
+			goidc.ResponseModeFragment,
+			goidc.ResponseModeFormPost,
+		},
 		TokenOptions: func(client *goidc.Client, scopes string) (goidc.TokenOptions, error) {
 			return goidc.TokenOptions{
 				JWTSignatureKeyID: TestServerPrivateJWK.KeyID,

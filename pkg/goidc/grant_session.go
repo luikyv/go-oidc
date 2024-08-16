@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// GrantSessionManager contains all the logic needed to manage grant sessions.
 type GrantSessionManager interface {
 	Save(ctx context.Context, grantSession *GrantSession) error
 	GetByTokenID(ctx context.Context, tokenID string) (*GrantSession, error)
@@ -12,26 +13,42 @@ type GrantSessionManager interface {
 	Delete(ctx context.Context, id string) error
 }
 
-// GrantSession represents the granted access an entity (a user or client) gave
-// to a client.
+// GrantSession represents the granted access an entity (a user or the client itself)
+// gave to a client.
 type GrantSession struct {
-	ID                          string                `json:"id"`
-	JWKThumbprint               string                `json:"jwk_thumbprint,omitempty"`
-	ClientCertificateThumbprint string                `json:"certificate_thumbprint,omitempty"`
-	TokenID                     string                `json:"token_id"`
-	RefreshToken                string                `json:"refresh_token,omitempty"`
-	LastTokenIssuedAtTimestamp  int64                 `json:"last_token_issued_at"`
-	CreatedAtTimestamp          int64                 `json:"created_at"`
-	ExpiresAtTimestamp          int64                 `json:"expires_at"`
-	ActiveScopes                string                `json:"active_scopes"`
-	GrantedScopes               string                `json:"granted_scopes"`
-	GrantType                   GrantType             `json:"grant_type"`
-	Subject                     string                `json:"sub"`
-	ClientID                    string                `json:"client_id"`
+	ID string `json:"id"`
+	// JWKThumbprint is the thumbprint of the JWK informed via DPoP.
+	JWKThumbprint string `json:"jwk_thumbprint,omitempty"`
+	// ClientCertThumbprint is the thumbprint of the certificate informed by the
+	// client when generating a token.
+	ClientCertThumbprint string `json:"certificate_thumbprint,omitempty"`
+	// TokenID is the id of the token issued for this grant.
+	TokenID      string `json:"token_id"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+	// LastTokenIssuedAtTimestamp is the timestamp when the last token issued
+	// for this grant was created.
+	LastTokenIssuedAtTimestamp int64 `json:"last_token_issued_at"`
+	CreatedAtTimestamp         int64 `json:"created_at"`
+	ExpiresAtTimestamp         int64 `json:"expires_at"`
+	// ActiveScopes is a sub set of the granted scopes the current access token
+	// give permissions to.
+	// Most of the times, GrantedScopes and ActiveScopes are equal.
+	// This is not true when a client refreshes a token asking less permissions
+	// than it was granted.
+	// In this case, only the scopes requested will be active.
+	ActiveScopes string `json:"active_scopes"`
+	// GrantedScopes are all the scopes a client was given permission to.
+	GrantedScopes string    `json:"granted_scopes"`
+	GrantType     GrantType `json:"grant_type"`
+	Subject       string    `json:"sub"`
+	ClientID      string    `json:"client_id"`
+	// GrantedAuthorizationDetails are all the authorization details a client
+	// was given permission to.
 	GrantedAuthorizationDetails []AuthorizationDetail `json:"granted_authorization_details,omitempty"`
 	AdditionalIDTokenClaims     map[string]any        `json:"additional_id_token_claims,omitempty"`
 	AdditionalUserInfoClaims    map[string]any        `json:"additional_user_info_claims,omitempty"`
-	TokenOptions
+	// TokenOptions is the template used to generate the access token.
+	TokenOptions TokenOptions `json:"token_options"`
 }
 
 func (g *GrantSession) IsExpired() bool {
@@ -41,5 +58,5 @@ func (g *GrantSession) IsExpired() bool {
 // HasLastTokenExpired returns whether the last token issued for the grant
 // session is expired or not.
 func (g *GrantSession) HasLastTokenExpired() bool {
-	return time.Now().Unix() > g.LastTokenIssuedAtTimestamp+g.LifetimeSecs
+	return time.Now().Unix() > g.LastTokenIssuedAtTimestamp+g.TokenOptions.LifetimeSecs
 }

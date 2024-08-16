@@ -129,6 +129,7 @@ func TestInitAuth_PolicyEndsWithSuccess_WithJARM(t *testing.T) {
 	ctx.JARM.IsEnabled = true
 	ctx.JARM.LifetimeSecs = 60
 	ctx.JARM.DefaultSignatureKeyID = oidc.TestServerPrivateJWK.KeyID
+	ctx.ResponseModes = append(ctx.ResponseModes, goidc.ResponseModeJWT)
 
 	client, _ := ctx.Client(oidc.TestClientID)
 	policy := goidc.NewPolicy(

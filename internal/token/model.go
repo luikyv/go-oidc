@@ -136,7 +136,7 @@ func NewGrantSession(grantOptions GrantOptions, token Token) *goidc.GrantSession
 		ID:                          uuid.New().String(),
 		TokenID:                     token.ID,
 		JWKThumbprint:               token.JWKThumbprint,
-		ClientCertificateThumbprint: token.CertificateThumbprint,
+		ClientCertThumbprint:        token.CertificateThumbprint,
 		CreatedAtTimestamp:          timestampNow,
 		LastTokenIssuedAtTimestamp:  timestampNow,
 		ExpiresAtTimestamp:          timestampNow + grantOptions.LifetimeSecs,

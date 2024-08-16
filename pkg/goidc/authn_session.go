@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+// AuthnSessionManager contains all the logic needed to manage authentication
+// sessions.
 type AuthnSessionManager interface {
 	Save(ctx context.Context, session *AuthnSession) error
 	GetByCallbackID(ctx context.Context, callbackID string) (*AuthnSession, error)
@@ -15,15 +17,27 @@ type AuthnSessionManager interface {
 
 // AuthnSession is a short lived session that holds information about
 // authorization requests.
+// It can be interacted with so to implement more sophisticated user
+// authentication flows.
 type AuthnSession struct {
-	ID                          string                `json:"id"`
-	CallbackID                  string                `json:"callback_id"`
-	PolicyID                    string                `json:"policy_id"`
-	ExpiresAtTimestamp          int64                 `json:"expires_at"`
-	CreatedAtTimestamp          int64                 `json:"created_at"`
-	Subject                     string                `json:"sub"`
-	ClientID                    string                `json:"client_id"`
-	GrantedScopes               string                `json:"granted_scopes"`
+	ID string `json:"id"`
+	// CallbackID is an unique id used to fetch the authentication session
+	// after use interaction.
+	CallbackID string `json:"callback_id"`
+	// PolicyID is the id of the autentication policy used to authenticate
+	// the user.
+	PolicyID           string `json:"policy_id"`
+	ExpiresAtTimestamp int64  `json:"expires_at"`
+	CreatedAtTimestamp int64  `json:"created_at"`
+	// Subject is the user identifier.
+	// This value must be informed during the authentication flow.
+	Subject  string `json:"sub"`
+	ClientID string `json:"client_id"`
+	// GrantedScopes are the scopes the client will be granted access once the
+	// access token is generated.
+	GrantedScopes string `json:"granted_scopes"`
+	// GrantedScopes are the authorization details the client will be granted
+	// access once the access token is generated.
 	GrantedAuthorizationDetails []AuthorizationDetail `json:"granted_authorization_details,omitempty"`
 	AuthorizationCode           string                `json:"authorization_code,omitempty"`
 	// ProtectedParameters contains custom parameters sent by PAR.
@@ -37,6 +51,7 @@ type AuthnSession struct {
 	Error error `json:"-"`
 }
 
+// SetUserID sets the subject in the authentication session.
 func (s *AuthnSession) SetUserID(userID string) {
 	s.Subject = userID
 }
@@ -71,6 +86,7 @@ func (s *AuthnSession) SetIDTokenClaimAMR(amrs ...AMR) {
 	s.SetIDTokenClaim(ClaimAuthenticationMethodReferences, amrs)
 }
 
+// SetIDTokenClaim sets a claim that will be accessible in the ID token.
 func (s *AuthnSession) SetIDTokenClaim(claim string, value any) {
 	if s.AdditionalIDTokenClaims == nil {
 		s.AdditionalIDTokenClaims = make(map[string]any)
@@ -90,6 +106,7 @@ func (s *AuthnSession) SetUserInfoClaimAMR(amrs ...AMR) {
 	s.SetUserInfoClaim(ClaimAuthenticationMethodReferences, amrs)
 }
 
+// SetUserInfoClaim sets a claim that will be accessible via the user info endpoint.
 func (s *AuthnSession) SetUserInfoClaim(claim string, value any) {
 	if s.AdditionalUserInfoClaims == nil {
 		s.AdditionalUserInfoClaims = make(map[string]any)

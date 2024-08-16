@@ -83,8 +83,8 @@ func refreshTokenInfo(
 		Subject:                     grantSession.Subject,
 		ExpiresAtTimestamp:          grantSession.ExpiresAtTimestamp,
 		JWKThumbprint:               grantSession.JWKThumbprint,
-		ClientCertificateThumbprint: grantSession.ClientCertificateThumbprint,
-		AdditionalTokenClaims:       grantSession.AdditionalClaims,
+		ClientCertificateThumbprint: grantSession.ClientCertThumbprint,
+		AdditionalTokenClaims:       grantSession.TokenOptions.AdditionalClaims,
 	}
 }
 
@@ -133,9 +133,9 @@ func tokenIntrospectionInfoByID(
 		AuthorizationDetails:        grantSession.GrantedAuthorizationDetails,
 		ClientID:                    grantSession.ClientID,
 		Subject:                     grantSession.Subject,
-		ExpiresAtTimestamp:          grantSession.LastTokenIssuedAtTimestamp + grantSession.LifetimeSecs,
+		ExpiresAtTimestamp:          grantSession.LastTokenIssuedAtTimestamp + grantSession.TokenOptions.LifetimeSecs,
 		JWKThumbprint:               grantSession.JWKThumbprint,
-		ClientCertificateThumbprint: grantSession.ClientCertificateThumbprint,
-		AdditionalTokenClaims:       grantSession.AdditionalClaims,
+		ClientCertificateThumbprint: grantSession.ClientCertThumbprint,
+		AdditionalTokenClaims:       grantSession.TokenOptions.AdditionalClaims,
 	}
 }

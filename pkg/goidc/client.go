@@ -14,12 +14,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// ClientManager contains all the logic needed to manage clients.
 type ClientManager interface {
 	Save(ctx context.Context, client *Client) error
 	Get(ctx context.Context, id string) (*Client, error)
 	Delete(ctx context.Context, id string) error
 }
 
+// Client contains all information about an OAuth client.
 type Client struct {
 	ID string `json:"client_id"`
 	// Secret is used when the client authenticates with client_secret_jwt,
@@ -27,16 +29,23 @@ type Client struct {
 	Secret string `json:"client_secret,omitempty"`
 	// HashedSecret is the hash of the client secret for the client_secret_basic
 	// and client_secret_post authentication methods.
-	HashedSecret                  string `json:"hashed_secret,omitempty"`
+	HashedSecret string `json:"hashed_secret,omitempty"`
+	// HashedRegistrationAccessToken is the hash of the registration access token
+	// generated during dynamic client registration.
 	HashedRegistrationAccessToken string `json:"hashed_registration_access_token"`
 	ClientMetaInfo
 }
 
+// SetAttribute sets a custom attribute.
 func (c *Client) SetAttribute(key string, value any) {
 	if c.CustomAttributes == nil {
 		c.CustomAttributes = make(map[string]any)
 	}
 	c.CustomAttributes[key] = value
+}
+
+func (c *Client) Attribute(key string) any {
+	return c.CustomAttributes[key]
 }
 
 func (c *Client) PublicKey(keyID string) (jose.JSONWebKey, error) {

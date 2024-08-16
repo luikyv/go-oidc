@@ -144,6 +144,11 @@ func validatePkce(
 	_ *goidc.Client,
 	session *goidc.AuthnSession,
 ) oidc.Error {
+
+	if !ctx.PKCE.IsEnabled {
+		return nil
+	}
+
 	// RFC 7636. "...with a minimum length of 43 characters and a maximum length of 128 characters."
 	codeVerifierLengh := len(req.CodeVerifier)
 	if req.CodeVerifier != "" && (codeVerifierLengh < 43 || codeVerifierLengh > 128) {
@@ -152,10 +157,7 @@ func validatePkce(
 
 	codeChallengeMethod := session.CodeChallengeMethod
 	if codeChallengeMethod == "" {
-		codeChallengeMethod = goidc.CodeChallengeMethodPlain
-	}
-	if ctx.Profile == goidc.ProfileFAPI2 {
-		codeChallengeMethod = goidc.CodeChallengeMethodSHA256
+		codeChallengeMethod = ctx.PKCE.DefaultCodeChallengeMethod
 	}
 	// In the case PKCE is enabled, if the session was created with a code challenge, the token request must contain the right code verifier.
 	if ctx.PKCE.IsEnabled && session.CodeChallenge != "" &&

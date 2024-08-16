@@ -152,7 +152,7 @@ func validateUserInfoRequest(
 
 	confirmation := token.Confirmation{
 		JWKThumbprint:               grantSession.JWKThumbprint,
-		ClientCertificateThumbprint: grantSession.ClientCertificateThumbprint,
+		ClientCertificateThumbprint: grantSession.ClientCertThumbprint,
 	}
 	return token.ValidatePoP(ctx, accessToken, tokenType, confirmation)
 }

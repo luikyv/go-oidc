@@ -29,7 +29,8 @@ func (handler cacheControlMiddleware) ServeHTTP(w http.ResponseWriter, r *http.R
 	handler.nextHandler.ServeHTTP(w, r)
 }
 
-// clientCertificateMiddleware should be used when running the server in TLS mode and mTLS is enabled.
+// clientCertificateMiddleware should be used when running the server in TLS
+// mode and mTLS is enabled.
 type clientCertificateMiddleware struct {
 	nextHandler http.Handler
 }

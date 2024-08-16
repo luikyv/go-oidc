@@ -664,9 +664,10 @@ type Configuration struct {
 	}
 
 	PKCE struct {
-		IsEnabled            bool
-		IsRequired           bool
-		CodeChallengeMethods []goidc.CodeChallengeMethod
+		IsEnabled                  bool
+		IsRequired                 bool
+		DefaultCodeChallengeMethod goidc.CodeChallengeMethod // TODO
+		CodeChallengeMethods       []goidc.CodeChallengeMethod
 	}
 
 	AuthorizationDetails struct {

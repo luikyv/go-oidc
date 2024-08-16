@@ -26,7 +26,7 @@ type Provider struct {
 }
 
 // New creates a new openid provider.
-// By default, all clients and sessions are stored in memory and tokens are
+// By default, all clients and sessions are stored in memory and JWTs are
 // signed with the first signing key in the JWKS.
 func New(
 	issuer string,
@@ -121,7 +121,7 @@ func (p *Provider) Handler() http.Handler {
 
 func (p *Provider) Run(
 	address string,
-	middlewares ...goidc.WrapHandlerFunc,
+	middlewares ...goidc.MiddlewareFunc,
 ) error {
 	handler := p.Handler()
 	for _, wrapHandler := range middlewares {
@@ -133,7 +133,7 @@ func (p *Provider) Run(
 
 func (p *Provider) RunTLS(
 	config TLSOptions,
-	middlewares ...goidc.WrapHandlerFunc,
+	middlewares ...goidc.MiddlewareFunc,
 ) error {
 
 	if p.config.MTLS.IsEnabled {
@@ -308,7 +308,7 @@ func WithDCR(
 }
 
 // WithRefreshTokenGrant makes available the refresh token grant.
-// If true, rotateTokens will cause a new refresh token to be issued each time
+// If true, rotateTokens causes a new refresh token to be issued each time
 // one is used. The one used during the request then becomes invalid.
 func WithRefreshTokenGrant(
 	refreshTokenLifetimeSecs int64,
@@ -658,9 +658,9 @@ func WithDPoPRequired(
 	}
 }
 
-// WithSenderConstrainedTokensRequired will make at least one sender constraining
-// mechanism (TLS or DPoP) be required, in order to issue an access token to a client.
-func WithSenderConstrainedTokensRequired() ProviderOption {
+// WithTokenBindingRequired makes at least one sender constraining mechanism
+// (TLS or DPoP) be required, in order to issue an access token to a client.
+func WithTokenBindingRequired() ProviderOption {
 	return func(p *Provider) {
 		p.config.TokenBindingIsRequired = true
 	}
@@ -682,24 +682,33 @@ func WithIntrospection(
 
 // WithPKCE makes proof key for code exchange available to clients.
 func WithPKCE(
+	defaultCodeChallengeMethod goidc.CodeChallengeMethod,
 	codeChallengeMethods ...goidc.CodeChallengeMethod,
 ) ProviderOption {
+
+	if !slices.Contains(codeChallengeMethods, defaultCodeChallengeMethod) {
+		codeChallengeMethods = append(codeChallengeMethods, defaultCodeChallengeMethod)
+	}
 	return func(p *Provider) {
 		p.config.PKCE.IsEnabled = true
+		p.config.PKCE.DefaultCodeChallengeMethod = defaultCodeChallengeMethod
 		p.config.PKCE.CodeChallengeMethods = codeChallengeMethods
 	}
 }
 
 // WithPKCERequired makes proof key for code exchange required.
 func WithPKCERequired(
+	defaultCodeChallengeMethod goidc.CodeChallengeMethod,
 	codeChallengeMethods ...goidc.CodeChallengeMethod,
 ) ProviderOption {
 	return func(p *Provider) {
-		WithPKCE(codeChallengeMethods...)
+		WithPKCE(defaultCodeChallengeMethod, codeChallengeMethods...)
 		p.config.PKCE.IsRequired = true
 	}
 }
 
+// WithACRs makes available authentication context references.
+// These values will be published as are.
 func WithACRs(
 	acrValues ...goidc.ACR,
 ) ProviderOption {
@@ -708,6 +717,9 @@ func WithACRs(
 	}
 }
 
+// WithACRs makes available display values during requests to the authorization
+// endpoint.
+// These values will be published as are.
 func WithDisplayValues(values ...goidc.DisplayValue) ProviderOption {
 	return func(p *Provider) {
 		p.config.DisplayValues = values
@@ -715,6 +727,7 @@ func WithDisplayValues(values ...goidc.DisplayValue) ProviderOption {
 }
 
 // WithAuthenticationSessionTimeout sets the user authentication session lifetime.
+// This defines how long an authorization request may last.
 func WithAuthenticationSessionTimeout(timeoutSecs int64) ProviderOption {
 	return func(p *Provider) {
 		p.config.AuthnSessionTimeoutSecs = timeoutSecs
@@ -772,31 +785,38 @@ func WithResourceIndicatorsRequired(resources []string) ProviderOption {
 	}
 }
 
-// TokenInfo returns information about the token sent in the request.
+// TokenInfo returns information about the access token sent in the request.
 // It also validates token binding (DPoP or TLS).
 func (p *Provider) TokenInfo(
 	req *http.Request,
 	resp http.ResponseWriter,
-) goidc.TokenInfo {
+) (
+	goidc.TokenInfo,
+	error,
+) {
 	ctx := oidc.NewContext(p.config, req, resp)
 	accessToken, tokenType, ok := ctx.AuthorizationToken()
 	if !ok {
-		return goidc.TokenInfo{IsActive: false}
+		return goidc.TokenInfo{IsActive: false}, errors.New("invalid token")
 	}
 
 	tokenInfo := token.IntrospectionInfo(ctx, accessToken)
+	if !tokenInfo.IsActive {
+		return tokenInfo, errors.New("token expired")
+	}
+
 	confirmation := token.Confirmation{
 		JWKThumbprint:               tokenInfo.JWKThumbprint,
 		ClientCertificateThumbprint: tokenInfo.ClientCertificateThumbprint,
 	}
-	if token.ValidatePoP(ctx, accessToken, tokenType, confirmation) != nil {
-		return goidc.TokenInfo{IsActive: false}
+	if err := token.ValidatePoP(ctx, accessToken, tokenType, confirmation); err != nil {
+		return goidc.TokenInfo{}, err
 	}
 
-	return tokenInfo
+	return tokenInfo, nil
 }
 
-// Client is a shortcut to fetch client using the client storage.
+// Client is a shortcut to fetch clients using the client storage.
 func (p *Provider) Client(
 	ctx context.Context,
 	clientID string,

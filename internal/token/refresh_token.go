@@ -41,7 +41,7 @@ func generateRefreshTokenGrant(
 
 	tokenResp := Response{
 		AccessToken:  token.Value,
-		ExpiresIn:    grantSession.LifetimeSecs,
+		ExpiresIn:    grantSession.TokenOptions.LifetimeSecs,
 		TokenType:    token.Type,
 		RefreshToken: grantSession.RefreshToken,
 	}

@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-type WrapHandlerFunc func(nextHandler http.Handler) http.Handler
+type MiddlewareFunc func(next http.Handler) http.Handler
 
 // DCRPluginFunc defines a function that will be executed during DCR and DCM.
 // It can be used to modify the client and perform custom validations.
@@ -24,11 +24,13 @@ var (
 	ScopeOfflineAccess = NewScope("offline_access")
 )
 
+// ScopeMatchingFunc defines a function executed to verify whether a requested
+// scope matches the current one.
 type ScopeMatchingFunc func(requestedScope string) bool
 
 type Scope struct {
 	// ID is the string representation of the scope.
-	// Its value will be published as is.
+	// Its value will be published as is in the well known endpoint.
 	ID string
 	// Matches validates if a requested scope is valid.
 	Matches ScopeMatchingFunc
@@ -70,6 +72,7 @@ func NewDynamicScope(
 // executed when issuing access tokens.
 type TokenOptionsFunc func(client *Client, scopes string) (TokenOptions, error)
 
+// TokenOptions defines a template for generating access tokens.
 type TokenOptions struct {
 	Format            TokenFormat    `json:"token_format"`
 	LifetimeSecs      int64          `json:"token_lifetime_secs"`
@@ -111,9 +114,9 @@ func NewOpaqueTokenOptions(
 // AuthnFunc executes the user authentication logic.
 type AuthnFunc func(Context, *AuthnSession) AuthnStatus
 
-// SetUpAuthnFunc is responsible for deciding if the corresponding policy will
-// be executed.
-// TODO: Split this.
+// SetUpAuthnFunc is responsible for initiating the authentication session.
+// It returns true when the policy is ready to executed and false for when the
+// policy should be skipped.
 type SetUpAuthnFunc func(Context, *Client, *AuthnSession) bool
 
 // AuthnPolicy holds information on how to set up an authentication session and

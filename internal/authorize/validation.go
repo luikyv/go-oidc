@@ -26,6 +26,10 @@ func validateRequestWithPAR(
 		return oidc.NewError(oidc.ErrorCodeAccessDenied, "invalid client")
 	}
 
+	if ctx.PAR.AllowUnregisteredRedirectURI && req.RedirectURI != "" {
+		client.RedirectURIS = append(client.RedirectURIS, req.RedirectURI)
+	}
+
 	if err := validateInWithOutParams(ctx, session.AuthorizationParameters, req.AuthorizationParameters, client); err != nil {
 		return err
 	}
@@ -83,9 +87,11 @@ func validatePushedRequestWithJAR(
 	}
 
 	// The PAR RFC says:
-	// "...The rules for processing, signing, and encryption of the Request Object as defined in JAR [RFC9101] apply..."
+	// "...The rules for processing, signing, and encryption of the Request
+	// Object as defined in JAR [RFC9101] apply..."
 	// In turn, the JAR RFC says about the request object:
-	// "...It MUST contain all the parameters (including extension parameters) used to process the OAuth 2.0 [RFC6749] authorization request..."
+	// "...It MUST contain all the parameters (including extension parameters)
+	// used to process the OAuth 2.0 [RFC6749] authorization request..."
 	req.AuthorizationParameters = jar.AuthorizationParameters
 	return validatePushedRequest(ctx, req, client)
 }
@@ -104,7 +110,7 @@ func validatePushedRequest(
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "request_uri is not allowed during PAR")
 	}
 
-	if ctx.Profile == goidc.ProfileFAPI2 && req.RedirectURI != "" {
+	if ctx.PAR.AllowUnregisteredRedirectURI && req.RedirectURI != "" {
 		client.RedirectURIS = append(client.RedirectURIS, req.RedirectURI)
 	}
 
@@ -113,18 +119,18 @@ func validatePushedRequest(
 
 // -------------------------------------------------- Helper Functions -------------------------------------------------- //
 
+// validateInWithOutParams validates the combination of inner parameters, those
+// sent during PAR or inside a request object during JAR, and outter parameters,
+// those sent during the authorization request as query parameters.
+// The inner parameters take priority over the outter ones.
 func validateInWithOutParams(
 	ctx *oidc.Context,
-	insideParams goidc.AuthorizationParameters,
-	outsideParams goidc.AuthorizationParameters,
+	inParams goidc.AuthorizationParameters,
+	outParams goidc.AuthorizationParameters,
 	client *goidc.Client,
 ) oidc.Error {
 
-	if ctx.Profile == goidc.ProfileFAPI2 && insideParams.RedirectURI != "" {
-		client.RedirectURIS = append(client.RedirectURIS, insideParams.RedirectURI)
-	}
-
-	mergedParams := mergeParams(insideParams, outsideParams)
+	mergedParams := mergeParams(inParams, outParams)
 	if err := validateParams(ctx, mergedParams, client); err != nil {
 		return err
 	}
@@ -132,15 +138,15 @@ func validateInWithOutParams(
 	// When the openid scope is not requested, the authorization request becomes a standard OAuth one,
 	// so there's no need to validate these rules below.
 	if ctx.Profile == goidc.ProfileOpenID && strutil.ContainsOpenID(mergedParams.Scopes) {
-		if outsideParams.ResponseType == "" {
+		if outParams.ResponseType == "" {
 			return newRedirectionError(oidc.ErrorCodeInvalidRequest, "invalid response_type", mergedParams)
 		}
 
-		if insideParams.ResponseType != "" && insideParams.ResponseType != outsideParams.ResponseType {
+		if inParams.ResponseType != "" && inParams.ResponseType != outParams.ResponseType {
 			return newRedirectionError(oidc.ErrorCodeInvalidRequest, "invalid response_type", mergedParams)
 		}
 
-		if !strutil.ContainsOpenID(outsideParams.Scopes) {
+		if !strutil.ContainsOpenID(outParams.Scopes) {
 			return newRedirectionError(oidc.ErrorCodeInvalidScope, "scope openid is required", mergedParams)
 		}
 	}
@@ -148,6 +154,7 @@ func validateInWithOutParams(
 	return nil
 }
 
+// validateParams validates the parameters of an authorization request.
 func validateParams(
 	ctx *oidc.Context,
 	params goidc.AuthorizationParameters,
@@ -163,19 +170,24 @@ func validateParams(
 	}
 
 	if params.ResponseType == "" {
-		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "response_type is required", params)
+		return newRedirectionError(oidc.ErrorCodeInvalidRequest,
+			"response_type is required", params)
 	}
 
 	if ctx.OpenIDIsRequired && !strutil.ContainsOpenID(params.Scopes) {
-		return newRedirectionError(oidc.ErrorCodeInvalidScope, "scope openid is required", params)
+		return newRedirectionError(oidc.ErrorCodeInvalidScope,
+			"scope openid is required", params)
 	}
 
-	if params.ResponseType.Contains(goidc.ResponseTypeIDToken) && !strutil.ContainsOpenID(params.Scopes) {
-		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "cannot request id_token without the scope openid", params)
+	if params.ResponseType.Contains(goidc.ResponseTypeIDToken) &&
+		!strutil.ContainsOpenID(params.Scopes) {
+		return newRedirectionError(oidc.ErrorCodeInvalidRequest,
+			"cannot request id_token without the scope openid", params)
 	}
 
 	if params.ResponseType.Contains(goidc.ResponseTypeIDToken) && params.Nonce == "" {
-		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "nonce is required when response type id_token is requested", params)
+		return newRedirectionError(oidc.ErrorCodeInvalidRequest,
+			"nonce is required when response type id_token is requested", params)
 	}
 
 	if err := validatePKCE(ctx, params, client); err != nil {
@@ -185,6 +197,9 @@ func validateParams(
 	return nil
 }
 
+// validateParamsAsOptionals validates the parameters of an authorization
+// request considering them as optional.
+// This validation is meant to be shared during PAR and authorization requests.
 func validateParamsAsOptionals(
 	ctx *oidc.Context,
 	params goidc.AuthorizationParameters,
@@ -195,36 +210,50 @@ func validateParamsAsOptionals(
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid redirect_uri")
 	}
 
-	if err := validateScopes(ctx, params, client); err != nil {
-		return err
+	if params.Scopes != "" {
+		if err := validateScopes(ctx, params, client); err != nil {
+			return err
+		}
 	}
 
-	if err := validateResponseType(ctx, params, client); err != nil {
-		return err
+	if params.ResponseType != "" {
+		if err := validateResponseType(ctx, params, client); err != nil {
+			return err
+		}
 	}
 
-	if err := validateResponseMode(ctx, params, client); err != nil {
-		return err
+	if params.ResponseMode != "" {
+		if err := validateResponseMode(ctx, params, client); err != nil {
+			return err
+		}
 	}
 
-	if params.CodeChallengeMethod != "" && !slices.Contains(ctx.PKCE.CodeChallengeMethods, params.CodeChallengeMethod) {
-		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "invalid code_challenge_method", params)
+	if params.CodeChallengeMethod != "" &&
+		!slices.Contains(ctx.PKCE.CodeChallengeMethods, params.CodeChallengeMethod) {
+		return newRedirectionError(oidc.ErrorCodeInvalidRequest,
+			"invalid code_challenge_method", params)
 	}
 
-	if err := validateAuthorizationDetails(ctx, params, client); err != nil {
-		return err
+	if params.AuthorizationDetails != nil {
+		if err := validateAuthorizationDetails(ctx, params, client); err != nil {
+			return err
+		}
 	}
 
-	if err := validateACRValues(ctx, params, client); err != nil {
-		return err
+	if params.ACRValues != "" {
+		if err := validateACRValues(ctx, params, client); err != nil {
+			return err
+		}
 	}
 
 	if params.Display != "" && !slices.Contains(ctx.DisplayValues, params.Display) {
-		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "invalid display value", params)
+		return newRedirectionError(oidc.ErrorCodeInvalidRequest,
+			"invalid display value", params)
 	}
 
 	if params.RequestURI != "" && params.RequestObject != "" {
-		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "cannot inform a request object and request_uri at the same time", params)
+		return newRedirectionError(oidc.ErrorCodeInvalidRequest,
+			"cannot inform a request object and request_uri at the same time", params)
 	}
 
 	return nil
@@ -239,7 +268,7 @@ func validateScopes(
 		return newRedirectionError(oidc.ErrorCodeInvalidScope, "invalid scope", params)
 	}
 
-	if params.Scopes != "" && ctx.OpenIDIsRequired && !strutil.ContainsOpenID(params.Scopes) {
+	if ctx.OpenIDIsRequired && !strutil.ContainsOpenID(params.Scopes) {
 		return newRedirectionError(oidc.ErrorCodeInvalidScope, "scope openid is required", params)
 	}
 
@@ -249,14 +278,16 @@ func validateScopes(
 func validatePKCE(
 	ctx *oidc.Context,
 	params goidc.AuthorizationParameters,
-	client *goidc.Client,
+	c *goidc.Client,
 ) oidc.Error {
-	if ctx.PKCE.IsEnabled && client.AuthnMethod == goidc.ClientAuthnNone && params.CodeChallenge == "" {
-		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "pkce is required for public clients", params)
+	if ctx.PKCE.IsEnabled && c.AuthnMethod == goidc.ClientAuthnNone && params.CodeChallenge == "" {
+		return newRedirectionError(oidc.ErrorCodeInvalidRequest,
+			"pkce is required for public clients", params)
 	}
 
 	if ctx.PKCE.IsRequired && params.CodeChallenge == "" {
-		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "code_challenge is required", params)
+		return newRedirectionError(oidc.ErrorCodeInvalidRequest,
+			"code_challenge is required", params)
 	}
 	return nil
 }
@@ -264,19 +295,24 @@ func validatePKCE(
 func validateResponseType(
 	_ *oidc.Context,
 	params goidc.AuthorizationParameters,
-	client *goidc.Client,
+	c *goidc.Client,
 ) oidc.Error {
 
-	if params.ResponseType != "" && !client.IsResponseTypeAllowed(params.ResponseType) {
-		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "invalid response_type", params)
+	if !c.IsResponseTypeAllowed(params.ResponseType) {
+		return newRedirectionError(oidc.ErrorCodeInvalidRequest,
+			"invalid response_type", params)
 	}
 
-	if params.ResponseType.Contains(goidc.ResponseTypeCode) && !client.IsGrantTypeAllowed(goidc.GrantAuthorizationCode) {
-		return newRedirectionError(oidc.ErrorCodeInvalidGrant, "response type code is not allowed", params)
+	if params.ResponseType.Contains(goidc.ResponseTypeCode) &&
+		!c.IsGrantTypeAllowed(goidc.GrantAuthorizationCode) {
+		return newRedirectionError(oidc.ErrorCodeInvalidGrant,
+			"response type code is not allowed", params)
 	}
 
-	if params.ResponseType.IsImplicit() && !client.IsGrantTypeAllowed(goidc.GrantImplicit) {
-		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "implicit response type is not allowed", params)
+	if params.ResponseType.IsImplicit() &&
+		!c.IsGrantTypeAllowed(goidc.GrantImplicit) {
+		return newRedirectionError(oidc.ErrorCodeInvalidRequest,
+			"implicit response type is not allowed", params)
 	}
 
 	return nil
@@ -285,21 +321,23 @@ func validateResponseType(
 func validateResponseMode(
 	ctx *oidc.Context,
 	params goidc.AuthorizationParameters,
-	client *goidc.Client,
+	c *goidc.Client,
 ) oidc.Error {
 
-	if params.ResponseMode != "" &&
-		!slices.Contains(ctx.ResponseModes, params.ResponseMode) {
-		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "invalid response_mode", params)
+	if !slices.Contains(ctx.ResponseModes, params.ResponseMode) {
+		return newRedirectionError(oidc.ErrorCodeInvalidRequest,
+			"invalid response_mode", params)
 	}
 
 	if params.ResponseMode.IsQuery() && params.ResponseType.IsImplicit() {
-		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "invalid response_mode for the chosen response_type", params)
+		return newRedirectionError(oidc.ErrorCodeInvalidRequest,
+			"invalid response_mode for the chosen response_type", params)
 	}
 
 	// If the client has defined a signature algorithm for JARM, then JARM is required.
-	if client.JARMSignatureAlgorithm != "" && params.ResponseMode.IsPlain() {
-		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "invalid response_mode", params)
+	if c.JARMSignatureAlgorithm != "" && params.ResponseMode.IsPlain() {
+		return newRedirectionError(oidc.ErrorCodeInvalidRequest,
+			"invalid response_mode", params)
 	}
 
 	return nil
@@ -308,16 +346,18 @@ func validateResponseMode(
 func validateAuthorizationDetails(
 	ctx *oidc.Context,
 	params goidc.AuthorizationParameters,
-	client *goidc.Client,
+	c *goidc.Client,
 ) oidc.Error {
-	if !ctx.AuthorizationDetails.IsEnabled || params.AuthorizationDetails == nil {
+	if !ctx.AuthorizationDetails.IsEnabled {
 		return nil
 	}
 
 	for _, authDetail := range params.AuthorizationDetails {
 		authDetailType := authDetail.Type()
-		if !slices.Contains(ctx.AuthorizationDetails.Types, authDetailType) || !client.IsAuthorizationDetailTypeAllowed(authDetailType) {
-			return newRedirectionError(oidc.ErrorCodeInvalidRequest, "invalid authorization detail type", params)
+		if !slices.Contains(ctx.AuthorizationDetails.Types, authDetailType) ||
+			!c.IsAuthorizationDetailTypeAllowed(authDetailType) {
+			return newRedirectionError(oidc.ErrorCodeInvalidRequest,
+				"invalid authorization detail type", params)
 		}
 	}
 
@@ -332,7 +372,8 @@ func validateACRValues(
 
 	for _, acr := range strutil.SplitWithSpaces(params.ACRValues) {
 		if !slices.Contains(ctx.ACRs, goidc.ACR(acr)) {
-			return newRedirectionError(oidc.ErrorCodeInvalidRequest, "invalid acr value", params)
+			return newRedirectionError(oidc.ErrorCodeInvalidRequest,
+				"invalid acr value", params)
 		}
 	}
 
