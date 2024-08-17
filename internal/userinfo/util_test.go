@@ -79,7 +79,7 @@ func TestHandleUserInfoRequest_SignedResponse(t *testing.T) {
 	require.Nil(t, err)
 	assert.Empty(t, userInfo.Claims)
 
-	claims := oidc.SafeClaims(t, userInfo.JWTClaims, oidc.TestServerPrivateJWK)
+	claims := oidc.TestSafeClaims(t, userInfo.JWTClaims, oidc.TestServerPrivateJWK)
 	assert.Equal(t, "random_subject", claims[goidc.ClaimSubject])
 	assert.Equal(t, "random_value", claims["random_claim"])
 }

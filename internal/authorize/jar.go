@@ -10,6 +10,17 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
+func shouldUseJAR(
+	ctx *oidc.Context,
+	req goidc.AuthorizationParameters,
+	client *goidc.Client,
+) bool {
+	// If JAR is not enabled, we just disconsider the request object.
+	// Also, if the client defined a signature algorithm for jar, then jar is required.
+	return ctx.JAR.IsRequired ||
+		(ctx.JAR.IsEnabled && (req.RequestObject != "" || client.JARSignatureAlgorithm != ""))
+}
+
 func jarFromRequestObject(
 	ctx *oidc.Context,
 	reqObject string,

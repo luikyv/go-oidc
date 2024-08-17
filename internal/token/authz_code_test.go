@@ -53,11 +53,11 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 	// Then.
 	require.Nil(t, err)
 
-	claims := oidc.UnsafeClaims(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
+	claims := oidc.TestUnsafeClaims(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
 	assert.Equal(t, oidc.TestClientID, claims["client_id"], "the token was assigned to a different client")
 	assert.Equal(t, session.Subject, claims["sub"], "the token subject should be the user")
 
-	grantSessions := oidc.GrantSessions(t, ctx)
+	grantSessions := oidc.TestGrantSessions(t, ctx)
 	assert.Len(t, grantSessions, 1, "there should be one session")
 }
 

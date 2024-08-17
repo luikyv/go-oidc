@@ -163,7 +163,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_ClientInformedSigningAlgorithms(t *testing.T) {
 
 	// Given.
-	privateJWK := oidc.PrivatePS256JWK(t, "ps256_key")
+	privateJWK := oidc.TestPrivatePS256JWK(t, "ps256_key")
 	c := &goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
@@ -351,7 +351,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T)
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs - 10,
 	}
 
-	invalidPrivateJWK := oidc.PrivatePS256JWK(t, "rsa256_key")
+	invalidPrivateJWK := oidc.TestPrivatePS256JWK(t, "rsa256_key")
 	invalidSigner, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(invalidPrivateJWK.Algorithm), Key: invalidPrivateJWK.Key},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", invalidPrivateJWK.KeyID),

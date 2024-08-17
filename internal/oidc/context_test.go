@@ -316,8 +316,8 @@ func TestHeader_HappyPath(t *testing.T) {
 
 func TestSignatureAlgorithms_HappyPath(t *testing.T) {
 	// Given.
-	signingKey := oidc.PrivateRS256JWKWithUsage(t, "signing_key", goidc.KeyUsageSignature)
-	encryptionKey := oidc.PrivatePS256JWKWithUsage(t, "encryption_key", goidc.KeyUsageEncryption)
+	signingKey := oidc.TestPrivateRS256JWKWithUsage(t, "signing_key", goidc.KeyUsageSignature)
+	encryptionKey := oidc.TestPrivatePS256JWKWithUsage(t, "encryption_key", goidc.KeyUsageEncryption)
 
 	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey, encryptionKey}}
@@ -332,7 +332,7 @@ func TestSignatureAlgorithms_HappyPath(t *testing.T) {
 
 func TestPublicKeys_HappyPath(t *testing.T) {
 	// Given.
-	signingKey := oidc.PrivatePS256JWK(t, "signing_key")
+	signingKey := oidc.TestPrivatePS256JWK(t, "signing_key")
 
 	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
@@ -349,7 +349,7 @@ func TestPublicKeys_HappyPath(t *testing.T) {
 
 func TestPublicKey_HappyPath(t *testing.T) {
 	// Given.
-	signingKey := oidc.PrivatePS256JWK(t, "signing_key")
+	signingKey := oidc.TestPrivatePS256JWK(t, "signing_key")
 
 	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
@@ -365,7 +365,7 @@ func TestPublicKey_HappyPath(t *testing.T) {
 
 func TestPrivateKey_HappyPath(t *testing.T) {
 	// Given.
-	signingKey := oidc.PrivatePS256JWK(t, "signing_key")
+	signingKey := oidc.TestPrivatePS256JWK(t, "signing_key")
 
 	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
@@ -394,7 +394,7 @@ func TestPrivateKey_KeyDoesntExist(t *testing.T) {
 func TestUserInfoSignatureKey_HappyPath(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := oidc.PrivatePS256JWK(t, signingKeyID)
+	signingKey := oidc.TestPrivatePS256JWK(t, signingKeyID)
 
 	ctx := oidc.Context{}
 	ctx.User.DefaultSignatureKeyID = signingKeyID
@@ -412,7 +412,7 @@ func TestUserInfoSignatureKey_HappyPath(t *testing.T) {
 func TestUserInfoSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := oidc.PrivatePS256JWK(t, signingKeyID)
+	signingKey := oidc.TestPrivatePS256JWK(t, signingKeyID)
 
 	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
@@ -431,7 +431,7 @@ func TestUserInfoSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 func TestIDTokenSignatureKey_HappyPath(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := oidc.PrivatePS256JWK(t, signingKeyID)
+	signingKey := oidc.TestPrivatePS256JWK(t, signingKeyID)
 
 	ctx := oidc.Context{}
 	ctx.User.DefaultSignatureKeyID = signingKeyID
@@ -449,7 +449,7 @@ func TestIDTokenSignatureKey_HappyPath(t *testing.T) {
 func TestIDTokenSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := oidc.PrivatePS256JWK(t, signingKeyID)
+	signingKey := oidc.TestPrivatePS256JWK(t, signingKeyID)
 
 	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
@@ -468,7 +468,7 @@ func TestIDTokenSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 func TestJARMSignatureKey_HappyPath(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := oidc.PrivatePS256JWK(t, signingKeyID)
+	signingKey := oidc.TestPrivatePS256JWK(t, signingKeyID)
 
 	ctx := oidc.Context{}
 	ctx.JARM.DefaultSignatureKeyID = signingKeyID
@@ -486,7 +486,7 @@ func TestJARMSignatureKey_HappyPath(t *testing.T) {
 func TestJARMSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	// Given.
 	signingKeyID := "signing_key"
-	signingKey := oidc.PrivatePS256JWK(t, signingKeyID)
+	signingKey := oidc.TestPrivatePS256JWK(t, signingKeyID)
 
 	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}

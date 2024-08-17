@@ -123,7 +123,7 @@ func NewTestContext(t *testing.T) *Context {
 	return &ctx
 }
 
-func AuthnSessions(_ *testing.T, ctx *Context) []*goidc.AuthnSession {
+func TestAuthnSessions(_ *testing.T, ctx *Context) []*goidc.AuthnSession {
 	sessionManager, _ := ctx.Storage.AuthnSession.(*inmemory.AuthnSessionManager)
 	sessions := make([]*goidc.AuthnSession, 0, len(sessionManager.Sessions))
 	for _, s := range sessionManager.Sessions {
@@ -133,7 +133,7 @@ func AuthnSessions(_ *testing.T, ctx *Context) []*goidc.AuthnSession {
 	return sessions
 }
 
-func GrantSessions(_ *testing.T, ctx *Context) []*goidc.GrantSession {
+func TestGrantSessions(_ *testing.T, ctx *Context) []*goidc.GrantSession {
 	manager, _ := ctx.Storage.GrantSession.(*inmemory.GrantSessionManager)
 	tokens := make([]*goidc.GrantSession, 0, len(manager.Sessions))
 	for _, t := range manager.Sessions {
@@ -159,10 +159,10 @@ func TestRawJWKS(jwk jose.JSONWebKey) []byte {
 }
 
 func TestPrivateRS256JWK(t *testing.T, keyID string) jose.JSONWebKey {
-	return PrivateRS256JWKWithUsage(t, keyID, goidc.KeyUsageSignature)
+	return TestPrivateRS256JWKWithUsage(t, keyID, goidc.KeyUsageSignature)
 }
 
-func PrivateRS256JWKWithUsage(
+func TestPrivateRS256JWKWithUsage(
 	_ *testing.T,
 	keyID string,
 	usage goidc.KeyUsage,
@@ -176,11 +176,11 @@ func PrivateRS256JWKWithUsage(
 	}
 }
 
-func PrivatePS256JWK(t *testing.T, keyID string) jose.JSONWebKey {
-	return PrivatePS256JWKWithUsage(t, keyID, goidc.KeyUsageSignature)
+func TestPrivatePS256JWK(t *testing.T, keyID string) jose.JSONWebKey {
+	return TestPrivatePS256JWKWithUsage(t, keyID, goidc.KeyUsageSignature)
 }
 
-func PrivatePS256JWKWithUsage(
+func TestPrivatePS256JWKWithUsage(
 	_ *testing.T,
 	keyID string,
 	usage goidc.KeyUsage,
@@ -194,7 +194,7 @@ func PrivatePS256JWKWithUsage(
 	}
 }
 
-func SafeClaims(t *testing.T, jws string, privateJWK jose.JSONWebKey) map[string]any {
+func TestSafeClaims(t *testing.T, jws string, privateJWK jose.JSONWebKey) map[string]any {
 	parsedToken, err := jwt.ParseSigned(jws, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJWK.Algorithm)})
 	require.Nil(t, err, "invalid JWT")
 
@@ -205,7 +205,7 @@ func SafeClaims(t *testing.T, jws string, privateJWK jose.JSONWebKey) map[string
 	return claims
 }
 
-func UnsafeClaims(t *testing.T, jws string, algorithms []jose.SignatureAlgorithm) map[string]any {
+func TestUnsafeClaims(t *testing.T, jws string, algorithms []jose.SignatureAlgorithm) map[string]any {
 	parsedToken, err := jwt.ParseSigned(jws, algorithms)
 	require.Nil(t, err, "invalid JWT")
 

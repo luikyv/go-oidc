@@ -52,12 +52,12 @@ func TestGenerateGrant_RefreshTokenGrant(t *testing.T) {
 	// Then.
 	require.Nil(t, err)
 
-	claims := oidc.UnsafeClaims(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
+	claims := oidc.TestUnsafeClaims(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
 	assert.Equal(t, c.ID, claims["client_id"], "the token was assigned to a different client")
 	assert.Equal(t, username, claims["sub"], "the token subject should be the client")
 	assert.NotEmpty(t, tokenResp.RefreshToken, "the new refresh token is not valid")
 
-	grantSessions := oidc.GrantSessions(t, ctx)
+	grantSessions := oidc.TestGrantSessions(t, ctx)
 	assert.Len(t, grantSessions, 1, "there should be only one grant session")
 }
 

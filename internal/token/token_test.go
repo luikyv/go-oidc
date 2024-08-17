@@ -82,7 +82,7 @@ func TestGenerateGrantWithDPoP(t *testing.T) {
 
 	// Then.
 	assert.Nil(t, err)
-	claims := oidc.UnsafeClaims(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
+	claims := oidc.TestUnsafeClaims(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
 
 	require.Contains(t, claims, "cnf")
 	confirmation := claims["cnf"].(map[string]any)

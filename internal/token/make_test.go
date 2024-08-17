@@ -29,7 +29,7 @@ func TestMakeIDToken(t *testing.T) {
 	// Then.
 	require.Nil(t, err)
 
-	claims := oidc.SafeClaims(t, idToken, oidc.TestServerPrivateJWK)
+	claims := oidc.TestSafeClaims(t, idToken, oidc.TestServerPrivateJWK)
 	assert.Equal(t, ctx.Host, claims[goidc.ClaimIssuer])
 	assert.Equal(t, "random_subject", claims[goidc.ClaimSubject])
 	assert.Equal(t, client.ID, claims[goidc.ClaimAudience])
@@ -54,7 +54,7 @@ func TestMakeToken_JWTToken(t *testing.T) {
 	require.Nil(t, err)
 	assert.Equal(t, goidc.TokenFormatJWT, token.Format)
 
-	claims := oidc.SafeClaims(t, token.Value, oidc.TestServerPrivateJWK)
+	claims := oidc.TestSafeClaims(t, token.Value, oidc.TestServerPrivateJWK)
 	assert.Equal(t, ctx.Host, claims[goidc.ClaimIssuer])
 	assert.Equal(t, "random_subject", claims[goidc.ClaimSubject])
 	assert.Equal(t, client.ID, claims[goidc.ClaimClientID])

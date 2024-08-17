@@ -18,7 +18,7 @@ func main() {
 	scopes := []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeEmail}
 
 	// Create and configure the OpenID provider.
-	openidProvider, err := provider.New(
+	op, err := provider.New(
 		Issuer,
 		privateJWKS("keys/jwks.json"),
 		provider.WithScopes(scopes...),
@@ -44,13 +44,14 @@ func main() {
 		panic(err.Error())
 	}
 
-	if err := openidProvider.RunTLS(provider.TLSOptions{
+	if err := op.RunTLS(provider.TLSOptions{
 		TLSAddress:        Port,
 		ServerCertificate: "keys/cert.pem",
 		ServerKey:         "keys/key.pem",
 	}); err != nil {
 		panic(err.Error())
 	}
+
 }
 
 func policy() goidc.AuthnPolicy {

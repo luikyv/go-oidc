@@ -101,15 +101,15 @@ func New(
 // Handler returns an HTTP handler with all the logic defined for the openid
 // provider.
 // This may be used to add the oidc logic to a HTTP server.
+// For using the handler under a path prefix, the option WithPathPrefix must be
+// added when creating the provider.
 //
-//	handler := provider.Handler()
 //	server := http.NewServeMux()
-//	server.Handle("/auth/*", server)
-//
-// TODO: Make sure it works.
+//	server.Handle("/", op.Handler())
 func (p *Provider) Handler() http.Handler {
 
 	server := http.NewServeMux()
+
 	discovery.RegisterHandlers(server, &p.config)
 	token.RegisterHandlers(server, &p.config)
 	authorize.RegisterHandlers(server, &p.config)
@@ -174,8 +174,18 @@ func WithStorage(
 	}
 }
 
-// WithEndpointPrefix defines a shared prefix for all endpoints.
-func WithEndpointPrefix(prefix string) ProviderOption {
+// WithPathPrefix defines a shared prefix for all endpoints.
+// When using the provider http handler directly, the path prefix must be added
+// to the router.
+//
+//	op, err := provider.New(
+//		"http://example.com",
+//		jose.JSONWebKeySet{},
+//		provider.WithPathPrefix("/auth"),
+//	)
+//	server := http.NewServeMux()
+//	server.Handle("/auth/", op.Handler())
+func WithPathPrefix(prefix string) ProviderOption {
 	return func(p *Provider) {
 		p.config.Endpoint.Prefix = prefix
 	}
