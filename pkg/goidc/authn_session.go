@@ -78,7 +78,7 @@ func (s *AuthnSession) SetIDTokenClaimACR(acr ACR) {
 	s.SetIDTokenClaim(ClaimAuthenticationContextReference, acr)
 }
 
-func (s *AuthnSession) SetIDTokenClaimAuthTime(authTime int) {
+func (s *AuthnSession) SetIDTokenClaimAuthTime(authTime int64) {
 	s.SetIDTokenClaim(ClaimAuthenticationTime, authTime)
 }
 
