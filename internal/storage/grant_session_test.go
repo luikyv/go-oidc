@@ -1,10 +1,10 @@
-package inmemory_test
+package storage_test
 
 import (
 	"context"
 	"testing"
 
-	"github.com/luikyv/go-oidc/internal/storage/inmemory"
+	"github.com/luikyv/go-oidc/internal/storage"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,7 +12,7 @@ import (
 
 func TestCreateOrUpdateGrantSessionSession_HappyPath(t *testing.T) {
 	// Given.
-	manager := inmemory.NewGrantSessionManager()
+	manager := storage.NewGrantSessionManager()
 	session := &goidc.GrantSession{
 		ID: "random_session_id",
 	}
@@ -34,7 +34,7 @@ func TestCreateOrUpdateGrantSessionSession_HappyPath(t *testing.T) {
 
 func TestGetGrantSessionByTokenID_HappyPath(t *testing.T) {
 	// Given.
-	manager := inmemory.NewGrantSessionManager()
+	manager := storage.NewGrantSessionManager()
 	sessionID := "random_session_id"
 	tokenID := "random_token_id"
 	manager.Sessions[sessionID] = &goidc.GrantSession{
@@ -52,7 +52,7 @@ func TestGetGrantSessionByTokenID_HappyPath(t *testing.T) {
 
 func TestGetGrantSessionByRefreshToken_HappyPath(t *testing.T) {
 	// Given.
-	manager := inmemory.NewGrantSessionManager()
+	manager := storage.NewGrantSessionManager()
 	sessionID := "random_session_id"
 	refreshToken := "random_refresh_token"
 	manager.Sessions[sessionID] = &goidc.GrantSession{
@@ -70,7 +70,7 @@ func TestGetGrantSessionByRefreshToken_HappyPath(t *testing.T) {
 
 func TestDeleteGrantSession_HappyPath(t *testing.T) {
 	// Given.
-	manager := inmemory.NewGrantSessionManager()
+	manager := storage.NewGrantSessionManager()
 	sessionID := "random_session_id"
 	manager.Sessions[sessionID] = &goidc.GrantSession{
 		ID: sessionID,
@@ -86,7 +86,7 @@ func TestDeleteGrantSession_HappyPath(t *testing.T) {
 
 func TestDeleteAuthnGrantSession_SessionDoesNotExist(t *testing.T) {
 	// Given.
-	manager := inmemory.NewGrantSessionManager()
+	manager := storage.NewGrantSessionManager()
 	sessionID := "random_session_id"
 
 	// When.

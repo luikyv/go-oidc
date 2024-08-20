@@ -1,4 +1,4 @@
-package inmemory
+package storage
 
 // findFirst returns the first element in a slice for which the condition is true.
 // If no element is found, 'ok' is set to false.

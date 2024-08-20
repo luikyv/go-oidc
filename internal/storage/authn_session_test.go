@@ -1,10 +1,10 @@
-package inmemory_test
+package storage_test
 
 import (
 	"context"
 	"testing"
 
-	"github.com/luikyv/go-oidc/internal/storage/inmemory"
+	"github.com/luikyv/go-oidc/internal/storage"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,7 +12,7 @@ import (
 
 func TestCreateOrUpdateAuthnSession_HappyPath(t *testing.T) {
 	// Given.
-	manager := inmemory.NewAuthnSessionManager()
+	manager := storage.NewAuthnSessionManager()
 	session := &goidc.AuthnSession{
 		ID: "random_session_id",
 	}
@@ -34,7 +34,7 @@ func TestCreateOrUpdateAuthnSession_HappyPath(t *testing.T) {
 
 func TestGetAuthnSessionByCallbackID_HappyPath(t *testing.T) {
 	// Given.
-	manager := inmemory.NewAuthnSessionManager()
+	manager := storage.NewAuthnSessionManager()
 	sessionID := "random_session_id"
 	callbackID := "random_callback_id"
 	manager.Sessions[sessionID] = &goidc.AuthnSession{
@@ -52,7 +52,7 @@ func TestGetAuthnSessionByCallbackID_HappyPath(t *testing.T) {
 
 func TestGetAuthnSessionByAuthorizationCode_HappyPath(t *testing.T) {
 	// Given.
-	manager := inmemory.NewAuthnSessionManager()
+	manager := storage.NewAuthnSessionManager()
 	sessionID := "random_session_id"
 	authorizationCode := "random_authorization_code"
 	manager.Sessions[sessionID] = &goidc.AuthnSession{
@@ -70,7 +70,7 @@ func TestGetAuthnSessionByAuthorizationCode_HappyPath(t *testing.T) {
 
 func TestGetAuthnSessionByRequestURI_HappyPath(t *testing.T) {
 	// Given.
-	manager := inmemory.NewAuthnSessionManager()
+	manager := storage.NewAuthnSessionManager()
 	sessionID := "random_session_id"
 	requestURI := "random_request_uri"
 	manager.Sessions[sessionID] = &goidc.AuthnSession{
@@ -90,7 +90,7 @@ func TestGetAuthnSessionByRequestURI_HappyPath(t *testing.T) {
 
 func TestDeleteAuthnSession_HappyPath(t *testing.T) {
 	// Given.
-	manager := inmemory.NewAuthnSessionManager()
+	manager := storage.NewAuthnSessionManager()
 	sessionID := "random_session_id"
 	manager.Sessions[sessionID] = &goidc.AuthnSession{
 		ID: sessionID,
@@ -106,7 +106,7 @@ func TestDeleteAuthnSession_HappyPath(t *testing.T) {
 
 func TestDeleteAuthnSession_SessionDoesNotExist(t *testing.T) {
 	// Given.
-	manager := inmemory.NewAuthnSessionManager()
+	manager := storage.NewAuthnSessionManager()
 	sessionID := "random_session_id"
 
 	// When.

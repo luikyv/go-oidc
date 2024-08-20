@@ -1,10 +1,10 @@
-package inmemory_test
+package storage_test
 
 import (
 	"context"
 	"testing"
 
-	"github.com/luikyv/go-oidc/internal/storage/inmemory"
+	"github.com/luikyv/go-oidc/internal/storage"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,7 +12,7 @@ import (
 
 func TestCreateOrUpdateClient_HappyPath(t *testing.T) {
 	// Given.
-	manager := inmemory.NewClientManager()
+	manager := storage.NewClientManager()
 	client := &goidc.Client{
 		ID: "random_client_id",
 	}
@@ -27,7 +27,7 @@ func TestCreateOrUpdateClient_HappyPath(t *testing.T) {
 
 func TestGetClient_HappyPath(t *testing.T) {
 	// Given.
-	manager := inmemory.NewClientManager()
+	manager := storage.NewClientManager()
 	clientID := "random_client_id"
 	manager.Clients[clientID] = &goidc.Client{
 		ID: clientID,
@@ -43,7 +43,7 @@ func TestGetClient_HappyPath(t *testing.T) {
 
 func TestGetClient_ClientDoesNotExist(t *testing.T) {
 	// Given.
-	manager := inmemory.NewClientManager()
+	manager := storage.NewClientManager()
 	clientID := "random_client_id"
 
 	// When.
@@ -55,7 +55,7 @@ func TestGetClient_ClientDoesNotExist(t *testing.T) {
 
 func TestDeleteClient_HappyPath(t *testing.T) {
 	// Given.
-	manager := inmemory.NewClientManager()
+	manager := storage.NewClientManager()
 	clientID := "random_client_id"
 	manager.Clients[clientID] = &goidc.Client{
 		ID: clientID,
@@ -71,7 +71,7 @@ func TestDeleteClient_HappyPath(t *testing.T) {
 
 func TestDeleteClient_ClientDoesNotExist(t *testing.T) {
 	// Given.
-	manager := inmemory.NewClientManager()
+	manager := storage.NewClientManager()
 	clientID := "random_client_id"
 
 	// When.

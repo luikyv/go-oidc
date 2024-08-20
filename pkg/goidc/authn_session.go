@@ -2,6 +2,7 @@ package goidc
 
 import (
 	"context"
+	"errors"
 	"time"
 )
 
@@ -128,4 +129,10 @@ func (s *AuthnSession) GrantAuthorizationDetails(authDetails []AuthorizationDeta
 
 func (s *AuthnSession) IsExpired() bool {
 	return time.Now().Unix() > s.ExpiresAtTimestamp
+}
+
+// SetError defines the error that will be informed to the client once the
+// authentication flow results in failure.
+func (s *AuthnSession) SetError(err string) {
+	s.Error = errors.New(err)
 }

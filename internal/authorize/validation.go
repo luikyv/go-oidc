@@ -135,9 +135,7 @@ func validateInWithOutParams(
 		return err
 	}
 
-	// When the openid scope is not requested, the authorization request becomes a standard OAuth one,
-	// so there's no need to validate these rules below.
-	if ctx.Profile == goidc.ProfileOpenID && strutil.ContainsOpenID(mergedParams.Scopes) {
+	if ctx.OutterAuthParamsRequired {
 		if outParams.ResponseType == "" {
 			return newRedirectionError(oidc.ErrorCodeInvalidRequest, "invalid response_type", mergedParams)
 		}
@@ -146,7 +144,7 @@ func validateInWithOutParams(
 			return newRedirectionError(oidc.ErrorCodeInvalidRequest, "invalid response_type", mergedParams)
 		}
 
-		if !strutil.ContainsOpenID(outParams.Scopes) {
+		if strutil.ContainsOpenID(inParams.Scopes) && !strutil.ContainsOpenID(outParams.Scopes) {
 			return newRedirectionError(oidc.ErrorCodeInvalidScope, "scope openid is required", mergedParams)
 		}
 	}

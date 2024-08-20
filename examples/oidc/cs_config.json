@@ -1,0 +1,12 @@
+{
+    "alias": "test",
+    "server": {
+        "discoveryUrl": "https://host.docker.internal/.well-known/openid-configuration"
+    },
+    "client": {
+        "client_name": "client_one"
+    },
+    "client2": {
+        "client_name": "client_two"
+    }
+}

@@ -53,7 +53,8 @@ func pushAuthnSession(
 
 	reqURI, err := requestURI()
 	if err != nil {
-		return nil, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return nil, oidc.NewError(oidc.ErrorCodeInternalError,
+			"could not generate the request uri")
 	}
 	session.RequestURI = reqURI
 	session.ExpiresAtTimestamp = time.Now().Unix() + ctx.PAR.LifetimeSecs
@@ -102,7 +103,8 @@ func pushedAuthnSessionWithJAR(
 ) {
 
 	if req.RequestObject == "" {
-		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest, "request object is required")
+		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest,
+			"request object is required")
 	}
 
 	jar, err := jarFromRequestObject(ctx, req.RequestObject, client)

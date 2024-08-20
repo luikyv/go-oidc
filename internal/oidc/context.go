@@ -336,11 +336,12 @@ func (ctx *Context) WriteJWT(token string, status int) error {
 
 func (ctx *Context) WriteError(err error) {
 
+	// TODO: hide the error messages.
 	var oauthErr Error
 	if !errors.As(err, &oauthErr) {
 		if err := ctx.Write(map[string]any{
 			"error":             ErrorCodeInternalError,
-			"error_description": err.Error(),
+			"error_description": "internal error",
 		}, http.StatusInternalServerError); err != nil {
 			ctx.Response().WriteHeader(http.StatusInternalServerError)
 		}
@@ -550,7 +551,12 @@ type Configuration struct {
 	// TokenBindingIsRequired indicates that at least one mechanism of sender
 	// contraining tokens is required, either DPoP or client TLS.
 	TokenBindingIsRequired bool
-	AuthorizeErrorPlugin   goidc.AuthorizeErrorPluginFunc
+	AuthorizeErrorPlugin   goidc.AuthorizeErrorFunc
+	// OutterAuthParamsRequired indicates that the required authorization params
+	// must be informed as query parameters during the request to the
+	// authorization endpoint even if they were informed previously during PAR
+	// or inside JAR.
+	OutterAuthParamsRequired bool
 
 	Endpoint struct {
 		WellKnown           string
@@ -607,7 +613,7 @@ type Configuration struct {
 	DCR struct {
 		IsEnabled              bool
 		TokenRotationIsEnabled bool
-		Plugin                 goidc.DCRPluginFunc
+		Plugin                 goidc.DCRFunc
 	}
 
 	Introspection struct {

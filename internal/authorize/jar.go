@@ -93,7 +93,8 @@ func jarFromSignedRequestObject(
 	}
 	parsedToken, err := jwt.ParseSigned(reqObject, jarAlgorithms)
 	if err != nil {
-		return Request{}, oidc.NewError(oidc.ErrorCodeInvalidResquestObject, err.Error())
+		return Request{}, oidc.NewError(oidc.ErrorCodeInvalidResquestObject,
+			"invalid request object")
 	}
 
 	// Verify that the assertion indicates the key ID.
@@ -104,13 +105,15 @@ func jarFromSignedRequestObject(
 	// Verify that the key ID belongs to the client.
 	jwk, oauthErr := client.PublicKey(parsedToken.Headers[0].KeyID)
 	if oauthErr != nil {
-		return Request{}, oidc.NewError(oidc.ErrorCodeInvalidResquestObject, oauthErr.Error())
+		return Request{}, oidc.NewError(oidc.ErrorCodeInvalidResquestObject,
+			"could not fetch the client public key")
 	}
 
 	var claims jwt.Claims
 	var jarReq Request
 	if err := parsedToken.Claims(jwk.Key, &claims, &jarReq); err != nil {
-		return Request{}, oidc.NewError(oidc.ErrorCodeInvalidResquestObject, "could not extract claims")
+		return Request{}, oidc.NewError(oidc.ErrorCodeInvalidResquestObject,
+			"could not extract claims")
 	}
 
 	// Validate that the "exp" claims is present and it's not too far in the future.

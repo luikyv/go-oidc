@@ -8,13 +8,13 @@ import (
 
 type MiddlewareFunc func(next http.Handler) http.Handler
 
-// DCRPluginFunc defines a function that will be executed during DCR and DCM.
+// DCRFunc defines a function that will be executed during DCR and DCM.
 // It can be used to modify the client and perform custom validations.
-type DCRPluginFunc func(ctx Context, clientInfo *ClientMetaInfo)
+type DCRFunc func(ctx Context, clientInfo *ClientMetaInfo)
 
-// AuthorizeErrorPluginFunc defines a function that will be called when errors
+// AuthorizeErrorFunc defines a function that will be called when errors
 // during the authorization request cannot be handled.
-type AuthorizeErrorPluginFunc func(ctx Context, err error) error
+type AuthorizeErrorFunc func(ctx Context, err error) error
 
 var (
 	ScopeOpenID        = NewScope("openid")

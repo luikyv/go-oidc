@@ -40,7 +40,7 @@ func continueAuth(ctx *oidc.Context, callbackID string) oidc.Error {
 	// Fetch the session using the callback ID.
 	session, err := ctx.AuthnSessionByCallbackID(callbackID)
 	if err != nil {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, err.Error())
+		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "could not load the session")
 	}
 
 	if session.IsExpired() {
@@ -50,7 +50,7 @@ func continueAuth(ctx *oidc.Context, callbackID string) oidc.Error {
 	if oauthErr := authenticate(ctx, session); oauthErr != nil {
 		client, err := ctx.Client(session.ClientID)
 		if err != nil {
-			return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+			return oidc.NewError(oidc.ErrorCodeInternalError, "could not load the client")
 		}
 		return redirectError(ctx, oauthErr, client)
 	}
@@ -118,7 +118,7 @@ func authnSessionWithPAR(
 	if err := validateRequestWithPAR(ctx, req, session, client); err != nil {
 		// If any of the parameters is invalid, we delete the session right away.
 		if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-			return nil, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+			return nil, oidc.NewError(oidc.ErrorCodeInternalError, "could not delete the session")
 		}
 		return nil, err
 	}
@@ -192,7 +192,7 @@ func initAuthnSessionWithPolicy(
 	id, err := callbackID()
 	if err != nil {
 		return newRedirectionError(oidc.ErrorCodeInternalError,
-			err.Error(), session.AuthorizationParameters)
+			"error generating the callback id", session.AuthorizationParameters)
 	}
 	session.CallbackID = id
 	// FIXME: To think about:Treating the request_uri as one-time use will cause
@@ -228,7 +228,7 @@ func finishFlowWithFailure(
 ) oidc.Error {
 	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
 		return newRedirectionError(oidc.ErrorCodeInternalError,
-			err.Error(), session.AuthorizationParameters)
+			"could not delete the session", session.AuthorizationParameters)
 	}
 
 	if session.Error != nil {
@@ -245,7 +245,7 @@ func stopFlowInProgress(
 	session *goidc.AuthnSession,
 ) oidc.Error {
 	if err := ctx.SaveAuthnSession(session); err != nil {
-		return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return oidc.NewError(oidc.ErrorCodeInternalError, "could not save the session")
 	}
 
 	return nil
@@ -256,7 +256,7 @@ func finishFlowSuccessfully(ctx *oidc.Context, session *goidc.AuthnSession) oidc
 	client, err := ctx.Client(session.ClientID)
 	if err != nil {
 		return newRedirectionError(oidc.ErrorCodeInternalError,
-			err.Error(), session.AuthorizationParameters)
+			"could not load the client", session.AuthorizationParameters)
 	}
 
 	if err := authorizeAuthnSession(ctx, session); err != nil {
@@ -325,13 +325,13 @@ func authorizeAuthnSession(
 	code, err := authorizationCode()
 	if err != nil {
 		return newRedirectionError(oidc.ErrorCodeInternalError,
-			err.Error(), session.AuthorizationParameters)
+			"could not generate the authorization code", session.AuthorizationParameters)
 	}
 	session.AuthorizationCode = code
 	session.ExpiresAtTimestamp = time.Now().Unix() + authorizationCodeLifetimeSecs
 
 	if err := ctx.SaveAuthnSession(session); err != nil {
-		return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return oidc.NewError(oidc.ErrorCodeInternalError, "could not save the session")
 	}
 
 	return nil
@@ -345,7 +345,7 @@ func generateImplicitGrantSession(
 
 	grantSession := token.NewGrantSession(grantOptions, accessToken)
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return oidc.NewError(oidc.ErrorCodeInternalError, "could not save the session")
 	}
 
 	return nil
@@ -362,7 +362,7 @@ func newImplicitGrantOptions(
 	tokenOptions, err := ctx.TokenOptions(client, session.Scopes)
 	if err != nil {
 		return token.GrantOptions{}, newRedirectionError(oidc.ErrorCodeAccessDenied,
-			err.Error(), session.AuthorizationParameters)
+			"access denied", session.AuthorizationParameters)
 	}
 
 	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)

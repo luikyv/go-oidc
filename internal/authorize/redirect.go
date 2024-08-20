@@ -59,7 +59,7 @@ func redirectResponse(
 	case goidc.ResponseModeFormPost, goidc.ResponseModeFormPostJWT:
 		redirectParamsMap["redirect_uri"] = params.RedirectURI
 		if err := ctx.RenderHTML(formPostResponseTemplate, redirectParamsMap); err != nil {
-			return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+			return oidc.NewError(oidc.ErrorCodeInternalError, "could not render the html")
 		}
 	default:
 		redirectURL := urlWithQueryParams(params.RedirectURI, redirectParamsMap)
@@ -127,7 +127,8 @@ func signJARMResponse(
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID),
 	)
 	if err != nil {
-		return "", oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return "", oidc.NewError(oidc.ErrorCodeInternalError,
+			"could not sign the response object")
 	}
 
 	createdAtTimestamp := time.Now().Unix()
@@ -143,7 +144,8 @@ func signJARMResponse(
 
 	response, err := jwt.Signed(signer).Claims(claims).Serialize()
 	if err != nil {
-		return "", oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return "", oidc.NewError(oidc.ErrorCodeInternalError,
+			"could not sign the response object")
 	}
 
 	return response, nil
@@ -162,9 +164,9 @@ func encryptJARMResponse(
 		return "", oidc.NewError(oidc.ErrorCodeInvalidRequest, err.Error())
 	}
 
-	encryptedResponseJWT, err := token.EncryptJWT(ctx, responseJWT, jwk, client.JARMContentEncryptionAlgorithm)
-	if err != nil {
-		return "", oidc.NewError(oidc.ErrorCodeInvalidRequest, err.Error())
+	encryptedResponseJWT, oauthErr := token.EncryptJWT(ctx, responseJWT, jwk, client.JARMContentEncryptionAlgorithm)
+	if oauthErr != nil {
+		return "", oauthErr
 	}
 
 	return encryptedResponseJWT, nil

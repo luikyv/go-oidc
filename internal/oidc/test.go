@@ -11,7 +11,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikyv/go-oidc/internal/storage/inmemory"
+	"github.com/luikyv/go-oidc/internal/storage"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
@@ -98,9 +98,9 @@ func NewTestContext(t *testing.T) *Context {
 		},
 		AuthnSessionTimeoutSecs: 60,
 	}
-	config.Storage.Client = inmemory.NewClientManager()
-	config.Storage.GrantSession = inmemory.NewGrantSessionManager()
-	config.Storage.AuthnSession = inmemory.NewAuthnSessionManager()
+	config.Storage.Client = storage.NewClientManager()
+	config.Storage.GrantSession = storage.NewGrantSessionManager()
+	config.Storage.AuthnSession = storage.NewAuthnSessionManager()
 	config.ClientAuthn.Methods = []goidc.ClientAuthnType{goidc.ClientAuthnNone, goidc.ClientAuthnSecretPost}
 	config.User.DefaultSignatureKeyID = TestServerPrivateJWK.KeyID
 	config.User.SignatureKeyIDs = []string{TestServerPrivateJWK.KeyID}
@@ -124,7 +124,7 @@ func NewTestContext(t *testing.T) *Context {
 }
 
 func TestAuthnSessions(_ *testing.T, ctx *Context) []*goidc.AuthnSession {
-	sessionManager, _ := ctx.Storage.AuthnSession.(*inmemory.AuthnSessionManager)
+	sessionManager, _ := ctx.Storage.AuthnSession.(*storage.AuthnSessionManager)
 	sessions := make([]*goidc.AuthnSession, 0, len(sessionManager.Sessions))
 	for _, s := range sessionManager.Sessions {
 		sessions = append(sessions, s)
@@ -134,7 +134,7 @@ func TestAuthnSessions(_ *testing.T, ctx *Context) []*goidc.AuthnSession {
 }
 
 func TestGrantSessions(_ *testing.T, ctx *Context) []*goidc.GrantSession {
-	manager, _ := ctx.Storage.GrantSession.(*inmemory.GrantSessionManager)
+	manager, _ := ctx.Storage.GrantSession.(*storage.GrantSessionManager)
 	tokens := make([]*goidc.GrantSession, 0, len(manager.Sessions))
 	for _, t := range manager.Sessions {
 		tokens = append(tokens, t)
@@ -144,7 +144,7 @@ func TestGrantSessions(_ *testing.T, ctx *Context) []*goidc.GrantSession {
 }
 
 func TestClients(_ *testing.T, ctx *Context) []*goidc.Client {
-	manager, _ := ctx.Storage.Client.(*inmemory.ClientManager)
+	manager, _ := ctx.Storage.Client.(*storage.ClientManager)
 	clients := make([]*goidc.Client, 0, len(manager.Clients))
 	for _, c := range manager.Clients {
 		clients = append(clients, c)

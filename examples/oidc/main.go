@@ -17,7 +17,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/provider"
 )
 
-const issuer = "https://host.docker.internal"
+const issuer = "https://localhost"
 
 func main() {
 	// Allow insecure requests to clients' jwks uri during local tests.
@@ -60,7 +60,6 @@ func main() {
 	}); err != nil {
 		panic(err.Error())
 	}
-
 }
 
 func policy() goidc.AuthnPolicy {
@@ -71,7 +70,7 @@ func policy() goidc.AuthnPolicy {
 	)
 }
 
-func dcrPlugin(scopes []goidc.Scope) goidc.DCRPluginFunc {
+func dcrPlugin(scopes []goidc.Scope) goidc.DCRFunc {
 	return func(ctx goidc.Context, clientInfo *goidc.ClientMetaInfo) {
 		var s []string
 		for _, scope := range scopes {
