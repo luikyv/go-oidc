@@ -21,7 +21,8 @@ func pushAuth(
 
 	c, oauthErr := client.Authenticated(ctx, req.AuthnRequest)
 	if oauthErr != nil {
-		return PushedResponse{}, oidc.NewError(oidc.ErrorCodeInvalidClient, "client not authenticated")
+		return PushedResponse{}, oidc.NewError(oidc.ErrorCodeInvalidClient,
+			"client not authenticated")
 	}
 
 	session, oauthErr := pushAuthnSession(ctx, req, c)
@@ -30,7 +31,8 @@ func pushAuth(
 	}
 
 	if err := ctx.SaveAuthnSession(session); err != nil {
-		return PushedResponse{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return PushedResponse{}, oidc.NewError(oidc.ErrorCodeInternalError,
+			"could not save the session")
 	}
 	return PushedResponse{
 		RequestURI: session.RequestURI,

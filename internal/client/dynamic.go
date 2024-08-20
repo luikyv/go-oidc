@@ -30,7 +30,8 @@ func create(
 
 	newClient := newClient(req)
 	if err := ctx.SaveClient(newClient); err != nil {
-		return DynamicClientResponse{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return DynamicClientResponse{}, oidc.NewError(oidc.ErrorCodeInternalError,
+			"could not save the client")
 	}
 
 	return DynamicClientResponse{
@@ -48,13 +49,15 @@ func setCreationDefaults(
 ) oidc.Error {
 	id, err := clientID()
 	if err != nil {
-		return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return oidc.NewError(oidc.ErrorCodeInternalError,
+			"could not generate the client id")
 	}
 	req.ID = id
 
 	token, err := registrationAccessToken()
 	if err != nil {
-		return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return oidc.NewError(oidc.ErrorCodeInternalError,
+			"could not generate the registration access token")
 	}
 	req.RegistrationAccessToken = token
 
@@ -87,7 +90,8 @@ func update(
 
 	updatedClient := newClient(dc)
 	if err := ctx.SaveClient(updatedClient); err != nil {
-		return DynamicClientResponse{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return DynamicClientResponse{}, oidc.NewError(oidc.ErrorCodeInternalError,
+			"could not save the client")
 	}
 
 	resp := DynamicClientResponse{
@@ -113,7 +117,8 @@ func setUpdateDefaults(
 	if ctx.DCR.TokenRotationIsEnabled {
 		token, err := registrationAccessToken()
 		if err != nil {
-			return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+			return oidc.NewError(oidc.ErrorCodeInternalError,
+				"could not generate the registration access token")
 		}
 		dynamicClient.RegistrationAccessToken = token
 	}
@@ -151,7 +156,8 @@ func remove(
 	}
 
 	if err := ctx.DeleteClient(dynamicClientRequest.ID); err != nil {
-		return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return oidc.NewError(oidc.ErrorCodeInternalError,
+			"could not delete the client")
 	}
 	return nil
 }
@@ -166,7 +172,8 @@ func setDefaults(_ *oidc.Context, dynamicClient *DynamicClientRequest) oidc.Erro
 		dynamicClient.AuthnMethod == goidc.ClientAuthnSecretJWT {
 		secret, err := clientSecret()
 		if err != nil {
-			return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+			return oidc.NewError(oidc.ErrorCodeInternalError,
+				"could not generate the client secret")
 		}
 		dynamicClient.Secret = secret
 	}
@@ -235,7 +242,7 @@ func protected(
 
 	client, err := ctx.Client(dynamicClient.ID)
 	if err != nil {
-		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest, err.Error())
+		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest, "could not load the client")
 	}
 
 	if dynamicClient.RegistrationAccessToken == "" ||

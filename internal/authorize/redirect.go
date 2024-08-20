@@ -161,7 +161,8 @@ func encryptJARMResponse(
 ) {
 	jwk, err := client.JARMEncryptionJWK()
 	if err != nil {
-		return "", oidc.NewError(oidc.ErrorCodeInvalidRequest, err.Error())
+		return "", oidc.NewError(oidc.ErrorCodeInvalidRequest,
+			"could not fetch the client encryption jwk for jarm")
 	}
 
 	encryptedResponseJWT, oauthErr := token.EncryptJWT(ctx, responseJWT, jwk, client.JARMContentEncryptionAlgorithm)

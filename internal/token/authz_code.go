@@ -86,7 +86,8 @@ func generateAuthorizationCodeGrantSession(
 	if grantOptions.IsRefreshable {
 		token, err := refreshToken()
 		if err != nil {
-			return nil, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+			return nil, oidc.NewError(oidc.ErrorCodeInternalError,
+				"could not generate the refresh token")
 		}
 		grantSession.RefreshToken = token
 		grantSession.ExpiresAtTimestamp = time.Now().Unix() + ctx.RefreshToken.LifetimeSecs

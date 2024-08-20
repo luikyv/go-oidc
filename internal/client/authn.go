@@ -150,7 +150,8 @@ func authenticateWithPrivateKeyJWT(
 	}
 
 	if err != nil {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, err.Error())
+		return oidc.NewError(oidc.ErrorCodeInvalidClient,
+			"could not identify the jwk used to sign the assertion")
 	}
 
 	claims := jwt.Claims{}

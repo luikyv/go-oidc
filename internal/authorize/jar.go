@@ -58,22 +58,26 @@ func signedRequestObjectFromEncrypted(
 		ctx.JAR.ContentEncryptionAlgorithms,
 	)
 	if err != nil {
-		return "", oidc.NewError(oidc.ErrorCodeInvalidResquestObject, "could not parse the encrypted request object")
+		return "", oidc.NewError(oidc.ErrorCodeInvalidResquestObject,
+			"could not parse the encrypted request object")
 	}
 
 	keyID := encryptedReqObject.Header.KeyID
 	if keyID == "" {
-		return "", oidc.NewError(oidc.ErrorCodeInvalidResquestObject, "invalid JWE key ID")
+		return "", oidc.NewError(oidc.ErrorCodeInvalidResquestObject,
+			"invalid jwe key ID")
 	}
 
 	jwk, ok := ctx.PrivateKey(keyID)
 	if !ok || jwk.Use != string(goidc.KeyUsageEncryption) {
-		return "", oidc.NewError(oidc.ErrorCodeInvalidResquestObject, "invalid JWK used for encryption")
+		return "", oidc.NewError(oidc.ErrorCodeInvalidResquestObject,
+			"invalid jwk used for encryption")
 	}
 
 	decryptedReqObject, err := encryptedReqObject.Decrypt(jwk.Key)
 	if err != nil {
-		return "", oidc.NewError(oidc.ErrorCodeInvalidResquestObject, err.Error())
+		return "", oidc.NewError(oidc.ErrorCodeInvalidResquestObject,
+			"could not decrypt the request object")
 	}
 
 	return string(decryptedReqObject), nil

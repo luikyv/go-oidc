@@ -107,13 +107,13 @@ func (ctx *Context) ExecuteDCRPlugin(clientInfo *goidc.ClientMetaInfo) {
 	}
 }
 
-func (ctx *Context) ExecuteAuthorizeErrorPlugin(err Error) Error {
+func (ctx *Context) ExecuteAuthorizeErrorPlugin(oidcErr Error) Error {
 	if ctx.AuthorizeErrorPlugin == nil {
-		return err
+		return oidcErr
 	}
 
-	if err := ctx.AuthorizeErrorPlugin(ctx, err); err != nil {
-		return NewError(ErrorCodeInternalError, err.Error())
+	if err := ctx.AuthorizeErrorPlugin(ctx, oidcErr); err != nil {
+		return oidcErr
 	}
 
 	return nil

@@ -130,12 +130,12 @@ func makeIDToken(
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
 	)
 	if err != nil {
-		return "", oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return "", oidc.NewError(oidc.ErrorCodeInternalError, "could not create the id token signer")
 	}
 
 	idToken, err := jwt.Signed(signer).Claims(claims).Serialize()
 	if err != nil {
-		return "", oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return "", oidc.NewError(oidc.ErrorCodeInternalError, "could not sign the id token")
 	}
 
 	return idToken, nil
@@ -219,12 +219,12 @@ func makeJWTToken(
 		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", privateJWK.KeyID),
 	)
 	if err != nil {
-		return Token{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return Token{}, oidc.NewError(oidc.ErrorCodeInternalError, "could not create the token signer")
 	}
 
 	accessToken, err := jwt.Signed(signer).Claims(claims).Serialize()
 	if err != nil {
-		return Token{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return Token{}, oidc.NewError(oidc.ErrorCodeInternalError, "could not sign the token")
 	}
 
 	return Token{
@@ -247,7 +247,8 @@ func makeOpaqueToken(
 ) {
 	accessToken, err := strutil.Random(grantOptions.OpaqueLength)
 	if err != nil {
-		return Token{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return Token{}, oidc.NewError(oidc.ErrorCodeInternalError,
+			"could not generate the opaque token")
 	}
 	tokenType := goidc.TokenTypeBearer
 
@@ -297,6 +298,7 @@ func halfHashIDTokenClaim(claimValue string, idTokenAlgorithm jose.SignatureAlgo
 // jwkThumbprint generates a JWK thumbprint for a valid DPoP JWT.
 func jwkThumbprint(dpopJWT string, dpopSigningAlgorithms []jose.SignatureAlgorithm) string {
 	parsedDPoPJWT, _ := jwt.ParseSigned(dpopJWT, dpopSigningAlgorithms)
+	// TODO: handle the error
 	jkt, _ := parsedDPoPJWT.Headers[0].JSONWebKey.Thumbprint(crypto.SHA256)
 	return base64.RawURLEncoding.EncodeToString(jkt)
 }

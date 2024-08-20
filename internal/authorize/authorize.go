@@ -260,7 +260,7 @@ func finishFlowSuccessfully(ctx *oidc.Context, session *goidc.AuthnSession) oidc
 	}
 
 	if err := authorizeAuthnSession(ctx, session); err != nil {
-		return newRedirectionError(oidc.ErrorCodeInternalError,
+		return newRedirectionError(err.Code(),
 			err.Error(), session.AuthorizationParameters)
 	}
 
@@ -271,20 +271,20 @@ func finishFlowSuccessfully(ctx *oidc.Context, session *goidc.AuthnSession) oidc
 	if session.ResponseType.Contains(goidc.ResponseTypeToken) {
 		grantOptions, err := newImplicitGrantOptions(ctx, client, session)
 		if err != nil {
-			return newRedirectionError(oidc.ErrorCodeInternalError,
+			return newRedirectionError(err.Code(),
 				err.Error(), session.AuthorizationParameters)
 		}
 
 		token, err := token.Make(ctx, client, grantOptions)
 		if err != nil {
-			return newRedirectionError(oidc.ErrorCodeInternalError,
+			return newRedirectionError(err.Code(),
 				err.Error(), session.AuthorizationParameters)
 		}
 
 		redirectParams.AccessToken = token.Value
 		redirectParams.TokenType = token.Type
 		if err := generateImplicitGrantSession(ctx, token, grantOptions); err != nil {
-			return newRedirectionError(oidc.ErrorCodeInternalError,
+			return newRedirectionError(err.Code(),
 				err.Error(), session.AuthorizationParameters)
 		}
 	}
@@ -299,11 +299,12 @@ func finishFlowSuccessfully(ctx *oidc.Context, session *goidc.AuthnSession) oidc
 			State:                   session.State,
 		}
 
-		redirectParams.IDToken, err = token.MakeIDToken(ctx, client, idTokenOptions)
+		idToken, err := token.MakeIDToken(ctx, client, idTokenOptions)
 		if err != nil {
-			return newRedirectionError(oidc.ErrorCodeInternalError,
+			return newRedirectionError(err.Code(),
 				err.Error(), session.AuthorizationParameters)
 		}
+		redirectParams.IDToken = idToken
 	}
 
 	return redirectResponse(ctx, client, session.AuthorizationParameters, redirectParams)
@@ -318,7 +319,7 @@ func authorizeAuthnSession(
 		// The client didn't request an authorization code to later exchange it
 		// for an access token, so we don't keep the session anymore.
 		if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-			return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+			return oidc.NewError(oidc.ErrorCodeInternalError, "could not delete session")
 		}
 	}
 
