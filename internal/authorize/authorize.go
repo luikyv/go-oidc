@@ -118,7 +118,7 @@ func authnSessionWithPAR(
 	if err := validateRequestWithPAR(ctx, req, session, client); err != nil {
 		// If any of the parameters is invalid, we delete the session right away.
 		if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-			return nil, oidc.NewError(oidc.ErrorCodeInternalError, "could not delete the session")
+			return nil, err
 		}
 		return nil, err
 	}
@@ -227,8 +227,8 @@ func finishFlowWithFailure(
 	session *goidc.AuthnSession,
 ) oidc.Error {
 	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-		return newRedirectionError(oidc.ErrorCodeInternalError,
-			"could not delete the session", session.AuthorizationParameters)
+		return newRedirectionError(err.Code(),
+			err.Error(), session.AuthorizationParameters)
 	}
 
 	if session.Error != nil {
@@ -245,7 +245,7 @@ func stopFlowInProgress(
 	session *goidc.AuthnSession,
 ) oidc.Error {
 	if err := ctx.SaveAuthnSession(session); err != nil {
-		return oidc.NewError(oidc.ErrorCodeInternalError, "could not save the session")
+		return err
 	}
 
 	return nil
@@ -319,7 +319,7 @@ func authorizeAuthnSession(
 		// The client didn't request an authorization code to later exchange it
 		// for an access token, so we don't keep the session anymore.
 		if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-			return oidc.NewError(oidc.ErrorCodeInternalError, "could not delete session")
+			return err
 		}
 	}
 
@@ -332,7 +332,7 @@ func authorizeAuthnSession(
 	session.ExpiresAtTimestamp = time.Now().Unix() + authorizationCodeLifetimeSecs
 
 	if err := ctx.SaveAuthnSession(session); err != nil {
-		return oidc.NewError(oidc.ErrorCodeInternalError, "could not save the session")
+		return err
 	}
 
 	return nil
@@ -346,7 +346,7 @@ func generateImplicitGrantSession(
 
 	grantSession := token.NewGrantSession(grantOptions, accessToken)
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return oidc.NewError(oidc.ErrorCodeInternalError, "could not save the session")
+		return err
 	}
 
 	return nil

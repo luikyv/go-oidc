@@ -1,7 +1,6 @@
 package client
 
 import (
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -30,8 +29,7 @@ func create(
 
 	newClient := newClient(req)
 	if err := ctx.SaveClient(newClient); err != nil {
-		return DynamicClientResponse{}, oidc.NewError(oidc.ErrorCodeInternalError,
-			"could not save the client")
+		return DynamicClientResponse{}, err
 	}
 
 	return DynamicClientResponse{
@@ -90,8 +88,7 @@ func update(
 
 	updatedClient := newClient(dc)
 	if err := ctx.SaveClient(updatedClient); err != nil {
-		return DynamicClientResponse{}, oidc.NewError(oidc.ErrorCodeInternalError,
-			"could not save the client")
+		return DynamicClientResponse{}, err
 	}
 
 	resp := DynamicClientResponse{
@@ -162,7 +159,7 @@ func remove(
 	return nil
 }
 
-func setDefaults(_ *oidc.Context, dynamicClient *DynamicClientRequest) oidc.Error {
+func setDefaults(ctx *oidc.Context, dynamicClient *DynamicClientRequest) oidc.Error {
 	if dynamicClient.AuthnMethod == "" {
 		dynamicClient.AuthnMethod = goidc.ClientAuthnSecretBasic
 	}
@@ -183,19 +180,19 @@ func setDefaults(_ *oidc.Context, dynamicClient *DynamicClientRequest) oidc.Erro
 	}
 
 	if dynamicClient.IDTokenKeyEncryptionAlgorithm != "" && dynamicClient.IDTokenContentEncryptionAlgorithm == "" {
-		dynamicClient.IDTokenContentEncryptionAlgorithm = jose.A128CBC_HS256
+		dynamicClient.IDTokenContentEncryptionAlgorithm = ctx.User.DefaultContentEncryptionAlgorithm
 	}
 
 	if dynamicClient.UserInfoKeyEncryptionAlgorithm != "" && dynamicClient.UserInfoContentEncryptionAlgorithm == "" {
-		dynamicClient.UserInfoContentEncryptionAlgorithm = jose.A128CBC_HS256
+		dynamicClient.UserInfoContentEncryptionAlgorithm = ctx.User.DefaultContentEncryptionAlgorithm
 	}
 
 	if dynamicClient.JARMKeyEncryptionAlgorithm != "" && dynamicClient.JARMContentEncryptionAlgorithm == "" {
-		dynamicClient.JARMContentEncryptionAlgorithm = jose.A128CBC_HS256
+		dynamicClient.JARMContentEncryptionAlgorithm = ctx.JARM.DefaultContentEncryptionAlgorithm
 	}
 
 	if dynamicClient.JARKeyEncryptionAlgorithm != "" && dynamicClient.JARContentEncryptionAlgorithm == "" {
-		dynamicClient.JARContentEncryptionAlgorithm = jose.A128CBC_HS256
+		dynamicClient.JARContentEncryptionAlgorithm = ctx.JAR.DefaultContentEncryptionAlgorithm
 	}
 
 	if dynamicClient.CustomAttributes == nil {

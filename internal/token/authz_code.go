@@ -94,7 +94,7 @@ func generateAuthorizationCodeGrantSession(
 	}
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return nil, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return nil, err
 	}
 
 	return grantSession, nil
@@ -209,7 +209,7 @@ func sessionByAuthorizationCode(ctx *oidc.Context, authorizationCode string, ch 
 	if err != nil {
 		ch <- resultChannel{
 			Result: nil,
-			Err:    oidc.NewError(oidc.ErrorCodeInternalError, "could not delete session"),
+			Err:    err,
 		}
 	}
 
@@ -231,7 +231,7 @@ func newAuthorizationCodeGrantOptions(
 
 	tokenOptions, err := ctx.TokenOptions(client, req.Scopes)
 	if err != nil {
-		return GrantOptions{}, oidc.NewError(oidc.ErrorCodeAccessDenied, err.Error())
+		return GrantOptions{}, err
 	}
 	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
 

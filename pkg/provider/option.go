@@ -146,26 +146,19 @@ func WithIDTokenLifetime(idTokenLifetimeSecs int64) ProviderOption {
 
 // WithUserInfoEncryption allows encryption of ID tokens and of the user info
 // endpoint response.
-func WithUserInfoEncryption(
-	keyEncryptionAlgorithms []jose.KeyAlgorithm,
-	contentEncryptionAlgorithms []jose.ContentEncryption,
-) ProviderOption {
+// If none passed, the default key encryption is RSA-OAEP-256.
+// The default content encryption algorithm is A128CBC-HS256.
+func WithUserInfoEncryption(keyEncAlgs ...jose.KeyAlgorithm) ProviderOption {
+
+	if len(keyEncAlgs) == 0 {
+		keyEncAlgs = append(keyEncAlgs, jose.RSA_OAEP_256)
+	}
+
 	return func(p *Provider) {
 		p.config.User.EncryptionIsEnabled = true
-
-		for _, keyAlg := range keyEncryptionAlgorithms {
-			p.config.User.KeyEncryptionAlgorithms = append(
-				p.config.User.KeyEncryptionAlgorithms,
-				jose.KeyAlgorithm(keyAlg),
-			)
-		}
-
-		for _, contentAlg := range contentEncryptionAlgorithms {
-			p.config.User.ContentEncryptionAlgorithms = append(
-				p.config.User.ContentEncryptionAlgorithms,
-				jose.ContentEncryption(contentAlg),
-			)
-		}
+		p.config.User.KeyEncryptionAlgorithms = keyEncAlgs
+		p.config.User.DefaultContentEncryptionAlgorithm = jose.A128CBC_HS256
+		p.config.User.ContentEncryptionAlgorithms = []jose.ContentEncryption{jose.A128CBC_HS256}
 	}
 }
 
@@ -324,14 +317,16 @@ func WithJARRequired(
 
 // WithJAREncryption allows authorization requests to be securely sent as
 // encrypted JWTs.
+// The default content encryption algorithm is A128CBC-HS256.
 func WithJAREncryption(
+	// TODO: Use the first key as the default
 	keyEncryptionIDs []string,
-	contentEncryptionAlgorithms []jose.ContentEncryption,
 ) ProviderOption {
 	return func(p *Provider) {
 		p.config.JAR.EncryptionIsEnabled = true
 		p.config.JAR.KeyEncryptionIDs = keyEncryptionIDs
-		p.config.JAR.ContentEncryptionAlgorithms = contentEncryptionAlgorithms
+		p.config.JAR.DefaultContentEncryptionAlgorithm = jose.A128CBC_HS256
+		p.config.JAR.ContentEncryptionAlgorithms = []jose.ContentEncryption{jose.A128CBC_HS256}
 	}
 }
 
@@ -363,26 +358,20 @@ func WithJARM(
 
 // WithJARM allows responses for authorization requests to be sent as encrypted
 // JWTs.
+// If none passed, the default key encryption is RSA-OAEP-256.
+// The default content encryption algorithm is A128CBC-HS256.
 func WithJARMEncryption(
-	keyEncryptionAlgorithms []jose.KeyAlgorithm,
-	contentEncryptionAlgorithms []jose.ContentEncryption,
+	keyEncAlgs ...jose.KeyAlgorithm,
 ) ProviderOption {
+	if len(keyEncAlgs) == 0 {
+		keyEncAlgs = append(keyEncAlgs, jose.RSA_OAEP_256)
+	}
+
 	return func(p *Provider) {
 		p.config.JARM.EncryptionIsEnabled = true
-
-		for _, keyAlg := range keyEncryptionAlgorithms {
-			p.config.JARM.KeyEncrytionAlgorithms = append(
-				p.config.JARM.KeyEncrytionAlgorithms,
-				jose.KeyAlgorithm(keyAlg),
-			)
-		}
-
-		for _, contentAlg := range contentEncryptionAlgorithms {
-			p.config.JARM.ContentEncryptionAlgorithms = append(
-				p.config.JARM.ContentEncryptionAlgorithms,
-				jose.ContentEncryption(contentAlg),
-			)
-		}
+		p.config.JARM.KeyEncrytionAlgorithms = keyEncAlgs
+		p.config.JARM.DefaultContentEncryptionAlgorithm = jose.A128CBC_HS256
+		p.config.JARM.ContentEncryptionAlgorithms = []jose.ContentEncryption{jose.A128CBC_HS256}
 	}
 }
 
@@ -509,10 +498,18 @@ func WithAuthorizationDetails(types ...string) ProviderOption {
 }
 
 // WithMTLS allows requests to be established with mutual TLS.
-func WithMTLS(mtlsHost string, bindTokens bool) ProviderOption {
+// If clientCertFunc is not nil, it will be used to extract the client
+// certificate from the request. The default logic is to extract the client
+// certificate from the header [goidc.HeaderClientCertificate].
+func WithMTLS(
+	mtlsHost string,
+	bindTokens bool,
+	clientCertFunc goidc.ClientCertFunc,
+) ProviderOption {
 	return func(p *Provider) {
 		p.config.MTLS.IsEnabled = true
 		p.config.MTLS.Host = mtlsHost
+		p.config.MTLS.ClientCertFunc = clientCertFunc
 		p.config.MTLS.TokenBindingIsEnabled = bindTokens
 	}
 }

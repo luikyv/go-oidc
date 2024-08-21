@@ -73,9 +73,11 @@ func New(
 	p.config.Storage.Client = storage.NewClientManager()
 	p.config.Storage.AuthnSession = storage.NewAuthnSessionManager()
 	p.config.Storage.GrantSession = storage.NewGrantSessionManager()
+
 	p.config.User.DefaultSignatureKeyID = defaultSignatureKeyID
 	p.config.User.SignatureKeyIDs = []string{defaultSignatureKeyID}
 	p.config.User.IDTokenExpiresInSecs = defaultIDTokenLifetimeSecs
+
 	p.config.Endpoint.WellKnown = goidc.EndpointWellKnown
 	p.config.Endpoint.JWKS = goidc.EndpointJSONWebKeySet
 	p.config.Endpoint.Token = goidc.EndpointToken
@@ -214,7 +216,6 @@ func (p *Provider) validateConfiguration() error {
 		validatePrivateKeyJWTSignatureAlgorithms,
 		validateClientSecretJWTSignatureAlgorithms,
 		validateIntrospectionClientAuthnMethods,
-		validateUserInfoEncryption,
 		validateJAREncryption,
 		validateJARMEncryption,
 		validateTokenBinding,

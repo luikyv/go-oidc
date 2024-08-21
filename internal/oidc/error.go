@@ -2,6 +2,7 @@ package oidc
 
 import "net/http"
 
+// TODO: Change to struct.
 type ErrorCode string
 
 const (
@@ -36,7 +37,7 @@ func (ec ErrorCode) StatusCode() int {
 
 type Error interface {
 	Code() ErrorCode
-	Error() string
+	error
 }
 
 type baseError struct {

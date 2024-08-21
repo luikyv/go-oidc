@@ -78,6 +78,11 @@ func (ctx *Context) DPoPJWT() (string, bool) {
 }
 
 func (ctx *Context) ClientCertificate() (*x509.Certificate, bool) {
+
+	if ctx.MTLS.ClientCertFunc != nil {
+		return ctx.MTLS.ClientCertFunc(ctx)
+	}
+
 	rawClientCert, ok := ctx.Header(goidc.HeaderClientCertificate)
 	if !ok {
 		return nil, false
@@ -102,9 +107,10 @@ func (ctx *Context) ClientCertificate() (*x509.Certificate, bool) {
 }
 
 func (ctx *Context) ExecuteDCRPlugin(clientInfo *goidc.ClientMetaInfo) {
-	if ctx.DCR.Plugin != nil {
-		ctx.DCR.Plugin(ctx, clientInfo)
+	if ctx.DCR.Plugin == nil {
+		return
 	}
+	ctx.DCR.Plugin(ctx, clientInfo)
 }
 
 func (ctx *Context) ExecuteAuthorizeErrorPlugin(oidcErr Error) Error {
@@ -160,58 +166,108 @@ func (ctx *Context) FindAvailablePolicy(client *goidc.Client, session *goidc.Aut
 
 //---------------------------------------- CRUD ----------------------------------------//
 
-func (ctx *Context) SaveClient(client *goidc.Client) error {
-	return ctx.Storage.Client.Save(ctx.Request().Context(), client)
+func (ctx *Context) SaveClient(client *goidc.Client) Error {
+	if err := ctx.Storage.Client.Save(ctx.Request().Context(), client); err != nil {
+		return NewError(ErrorCodeInternalError, "could not save the client")
+	}
+	return nil
 }
 
-func (ctx *Context) Client(clientID string) (*goidc.Client, error) {
+func (ctx *Context) Client(clientID string) (*goidc.Client, Error) {
 	for _, staticClient := range ctx.StaticClients {
 		if staticClient.ID == clientID {
 			return staticClient, nil
 		}
 	}
-	return ctx.Storage.Client.Get(ctx.Request().Context(), clientID)
+
+	client, err := ctx.Storage.Client.Get(ctx.Request().Context(), clientID)
+	if err != nil {
+		return nil, NewError(ErrorCodeInternalError, "could not load the client")
+	}
+
+	return client, nil
 }
 
-func (ctx *Context) DeleteClient(id string) error {
-	return ctx.Storage.Client.Delete(ctx.Request().Context(), id)
+func (ctx *Context) DeleteClient(id string) Error {
+	if err := ctx.Storage.Client.Delete(ctx.Request().Context(), id); err != nil {
+		return NewError(ErrorCodeInternalError, "could not delete the client")
+	}
+
+	return nil
 }
 
-func (ctx *Context) SaveGrantSession(session *goidc.GrantSession) error {
-	// TODO: Flag to avoid saving jwt tokens.
-	return ctx.Storage.GrantSession.Save(ctx.Request().Context(), session)
+func (ctx *Context) SaveGrantSession(session *goidc.GrantSession) Error {
+	// TODO: Flag to avoid saving jwt tokens?
+	if err := ctx.Storage.GrantSession.Save(ctx.Request().Context(), session); err != nil {
+		return NewError(ErrorCodeInternalError, "could not save the grant session")
+	}
+	return nil
 }
 
-func (ctx *Context) GrantSessionByTokenID(tokenID string) (*goidc.GrantSession, error) {
-	return ctx.Storage.GrantSession.GetByTokenID(ctx.Request().Context(), tokenID)
+func (ctx *Context) GrantSessionByTokenID(tokenID string) (*goidc.GrantSession, Error) {
+	session, err := ctx.Storage.GrantSession.GetByTokenID(ctx.Request().Context(), tokenID)
+	if err != nil {
+		return nil, NewError(ErrorCodeInternalError, "could not load the grant session")
+	}
+
+	return session, nil
 }
 
-func (ctx *Context) GrantSessionByRefreshToken(refreshToken string) (*goidc.GrantSession, error) {
-	return ctx.Storage.GrantSession.GetByRefreshToken(ctx.Request().Context(), refreshToken)
+func (ctx *Context) GrantSessionByRefreshToken(refreshToken string) (*goidc.GrantSession, Error) {
+	session, err := ctx.Storage.GrantSession.GetByRefreshToken(ctx.Request().Context(), refreshToken)
+	if err != nil {
+		return nil, NewError(ErrorCodeInternalError, "could not load the grant session")
+	}
+
+	return session, nil
 }
 
-func (ctx *Context) DeleteGrantSession(id string) error {
-	return ctx.Storage.GrantSession.Delete(ctx.Request().Context(), id)
+func (ctx *Context) DeleteGrantSession(id string) Error {
+	if err := ctx.Storage.GrantSession.Delete(ctx.Request().Context(), id); err != nil {
+		return NewError(ErrorCodeInternalError, "could not delete the grant session")
+	}
+	return nil
 }
 
-func (ctx *Context) SaveAuthnSession(session *goidc.AuthnSession) error {
-	return ctx.Storage.AuthnSession.Save(ctx.Request().Context(), session)
+func (ctx *Context) SaveAuthnSession(session *goidc.AuthnSession) Error {
+	if err := ctx.Storage.AuthnSession.Save(ctx.Request().Context(), session); err != nil {
+		return NewError(ErrorCodeInternalError, "could not save the authentication session")
+	}
+	return nil
 }
 
-func (ctx *Context) AuthnSessionByCallbackID(callbackID string) (*goidc.AuthnSession, error) {
-	return ctx.Storage.AuthnSession.GetByCallbackID(ctx.Request().Context(), callbackID)
+func (ctx *Context) AuthnSessionByCallbackID(callbackID string) (*goidc.AuthnSession, Error) {
+	session, err := ctx.Storage.AuthnSession.GetByCallbackID(ctx.Request().Context(), callbackID)
+	if err != nil {
+		return nil, NewError(ErrorCodeInternalError, "could not load the authentication session")
+	}
+
+	return session, nil
 }
 
-func (ctx *Context) AuthnSessionByAuthorizationCode(authorizationCode string) (*goidc.AuthnSession, error) {
-	return ctx.Storage.AuthnSession.GetByAuthorizationCode(ctx.Request().Context(), authorizationCode)
+func (ctx *Context) AuthnSessionByAuthorizationCode(code string) (*goidc.AuthnSession, Error) {
+	session, err := ctx.Storage.AuthnSession.GetByAuthorizationCode(ctx.Request().Context(), code)
+	if err != nil {
+		return nil, NewError(ErrorCodeInternalError, "could not load the authentication session")
+	}
+
+	return session, nil
 }
 
-func (ctx *Context) AuthnSessionByRequestURI(requestURI string) (*goidc.AuthnSession, error) {
-	return ctx.Storage.AuthnSession.GetByRequestURI(ctx.Request().Context(), requestURI)
+func (ctx *Context) AuthnSessionByRequestURI(requestURI string) (*goidc.AuthnSession, Error) {
+	session, err := ctx.Storage.AuthnSession.GetByRequestURI(ctx.Request().Context(), requestURI)
+	if err != nil {
+		return nil, NewError(ErrorCodeInternalError, "could not load the authentication session")
+	}
+
+	return session, nil
 }
 
-func (ctx *Context) DeleteAuthnSession(id string) error {
-	return ctx.Storage.AuthnSession.Delete(ctx.Request().Context(), id)
+func (ctx *Context) DeleteAuthnSession(id string) Error {
+	if err := ctx.Storage.AuthnSession.Delete(ctx.Request().Context(), id); err != nil {
+		return NewError(ErrorCodeInternalError, "could not delete the authentication session")
+	}
+	return nil
 }
 
 //---------------------------------------- HTTP Utils ----------------------------------------//
@@ -336,9 +392,8 @@ func (ctx *Context) WriteJWT(token string, status int) error {
 
 func (ctx *Context) WriteError(err error) {
 
-	// TODO: hide the error messages.
-	var oauthErr Error
-	if !errors.As(err, &oauthErr) {
+	var oidcErr Error
+	if !errors.As(err, &oidcErr) {
 		if err := ctx.Write(map[string]any{
 			"error":             ErrorCodeInternalError,
 			"error_description": "internal error",
@@ -348,11 +403,8 @@ func (ctx *Context) WriteError(err error) {
 		return
 	}
 
-	errorCode := oauthErr.Code()
-	if err := ctx.Write(map[string]any{
-		"error":             errorCode,
-		"error_description": oauthErr.Error(),
-	}, errorCode.StatusCode()); err != nil {
+	errorCode := oidcErr.Code()
+	if err := ctx.Write(oidcErr, errorCode.StatusCode()); err != nil {
 		ctx.Response().WriteHeader(http.StatusInternalServerError)
 	}
 }
@@ -498,6 +550,15 @@ func (ctx *Context) privateKey(keyID string) jose.JSONWebKey {
 	return keys[0]
 }
 
+func (ctx *Context) TokenOptions(client *goidc.Client, scopes string) (goidc.TokenOptions, Error) {
+	opts, err := ctx.Configuration.TokenOptions(client, scopes)
+	if err != nil {
+		return goidc.TokenOptions{}, NewError(ErrorCodeAccessDenied, "access denied")
+	}
+
+	return opts, nil
+}
+
 //---------------------------------------- Context ----------------------------------------//
 
 func (ctx *Context) Deadline() (deadline time.Time, ok bool) {
@@ -586,10 +647,11 @@ type Configuration struct {
 		// and the user info endpoint response.
 		// There should be at most one per algorithm, in other words, there should
 		// not be two key IDs that point to two keys that have the same algorithm.
-		SignatureKeyIDs             []string
-		EncryptionIsEnabled         bool
-		KeyEncryptionAlgorithms     []jose.KeyAlgorithm
-		ContentEncryptionAlgorithms []jose.ContentEncryption
+		SignatureKeyIDs                   []string
+		EncryptionIsEnabled               bool
+		KeyEncryptionAlgorithms           []jose.KeyAlgorithm
+		DefaultContentEncryptionAlgorithm jose.ContentEncryption
+		ContentEncryptionAlgorithms       []jose.ContentEncryption
 		// IDTokenExpiresInSecs defines the expiry time of ID tokens.
 		IDTokenExpiresInSecs int64
 	}
@@ -627,23 +689,25 @@ type Configuration struct {
 	}
 
 	JARM struct {
-		IsEnabled                   bool
-		DefaultSignatureKeyID       string
-		SignatureKeyIDs             []string
-		LifetimeSecs                int64
-		EncryptionIsEnabled         bool
-		KeyEncrytionAlgorithms      []jose.KeyAlgorithm
-		ContentEncryptionAlgorithms []jose.ContentEncryption
+		IsEnabled                         bool
+		DefaultSignatureKeyID             string
+		SignatureKeyIDs                   []string
+		LifetimeSecs                      int64
+		EncryptionIsEnabled               bool
+		KeyEncrytionAlgorithms            []jose.KeyAlgorithm
+		DefaultContentEncryptionAlgorithm jose.ContentEncryption
+		ContentEncryptionAlgorithms       []jose.ContentEncryption
 	}
 
 	JAR struct {
-		IsEnabled                   bool
-		IsRequired                  bool
-		SignatureAlgorithms         []jose.SignatureAlgorithm
-		LifetimeSecs                int64
-		EncryptionIsEnabled         bool
-		KeyEncryptionIDs            []string
-		ContentEncryptionAlgorithms []jose.ContentEncryption
+		IsEnabled                         bool
+		IsRequired                        bool
+		SignatureAlgorithms               []jose.SignatureAlgorithm
+		LifetimeSecs                      int64
+		EncryptionIsEnabled               bool
+		KeyEncryptionIDs                  []string
+		DefaultContentEncryptionAlgorithm jose.ContentEncryption
+		ContentEncryptionAlgorithms       []jose.ContentEncryption
 	}
 
 	PAR struct {
@@ -660,6 +724,7 @@ type Configuration struct {
 		IsEnabled             bool
 		Host                  string
 		TokenBindingIsEnabled bool
+		ClientCertFunc        goidc.ClientCertFunc
 	}
 
 	DPoP struct {

@@ -31,8 +31,7 @@ func pushAuth(
 	}
 
 	if err := ctx.SaveAuthnSession(session); err != nil {
-		return PushedResponse{}, oidc.NewError(oidc.ErrorCodeInternalError,
-			"could not save the session")
+		return PushedResponse{}, err
 	}
 	return PushedResponse{
 		RequestURI: session.RequestURI,

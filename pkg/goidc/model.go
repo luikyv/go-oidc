@@ -1,10 +1,13 @@
 package goidc
 
 import (
+	"crypto/x509"
 	"encoding/json"
 	"maps"
 	"net/http"
 )
+
+type ClientCertFunc func(ctx Context) (*x509.Certificate, bool)
 
 type MiddlewareFunc func(next http.Handler) http.Handler
 

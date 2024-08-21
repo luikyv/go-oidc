@@ -21,7 +21,7 @@ func generateRefreshTokenGrant(
 		return Response{}, oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid parameter for refresh token grant")
 	}
 
-	client, grantSession, err := getAuthenticatedClientAndGrantSession(ctx, req)
+	client, grantSession, err := authenticatedClientAndGrantSession(ctx, req)
 	if err != nil {
 		return Response{}, err
 	}
@@ -83,13 +83,13 @@ func updateRefreshTokenGrantSession(
 	}
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return err
 	}
 
 	return nil
 }
 
-func getAuthenticatedClientAndGrantSession(
+func authenticatedClientAndGrantSession(
 	ctx *oidc.Context,
 	req Request,
 ) (
@@ -99,7 +99,7 @@ func getAuthenticatedClientAndGrantSession(
 ) {
 
 	grantSessionResultCh := make(chan resultChannel)
-	go getGrantSessionByRefreshToken(ctx, req.RefreshToken, grantSessionResultCh)
+	go grantSessionByRefreshToken(ctx, req.RefreshToken, grantSessionResultCh)
 
 	c, err := client.Authenticated(ctx, req.AuthnRequest)
 	if err != nil {
@@ -115,7 +115,7 @@ func getAuthenticatedClientAndGrantSession(
 	return c, grantSession, nil
 }
 
-func getGrantSessionByRefreshToken(
+func grantSessionByRefreshToken(
 	ctx *oidc.Context,
 	refreshToken string,
 	ch chan<- resultChannel,
@@ -170,14 +170,16 @@ func validateRefreshTokenGrantRequest(
 		return oidc.NewError(oidc.ErrorCodeInvalidScope, "invalid scope")
 	}
 
-	return validateRefreshTokenProofOfPossesionForPublicClients(ctx, client, grantSession)
+	return validateRefreshTokenPoPForPublicClients(ctx, client, grantSession)
 }
 
-func validateRefreshTokenProofOfPossesionForPublicClients(
+func validateRefreshTokenPoPForPublicClients(
 	ctx *oidc.Context,
 	client *goidc.Client,
 	grantSession *goidc.GrantSession,
 ) oidc.Error {
+
+	// TODO: Validate the certificate?
 
 	// Refresh tokens are bound to the client. If the client is authenticated,
 	// then there's no need to validate proof of possesion.

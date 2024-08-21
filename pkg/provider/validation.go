@@ -114,23 +114,9 @@ func validateIntrospectionClientAuthnMethods(provider Provider) error {
 	return nil
 }
 
-func validateUserInfoEncryption(provider Provider) error {
-	if provider.config.User.EncryptionIsEnabled &&
-		!slices.Contains(provider.config.User.ContentEncryptionAlgorithms, jose.A128CBC_HS256) {
-		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm for user information")
-	}
-
-	return nil
-}
-
 func validateJAREncryption(provider Provider) error {
 	if provider.config.JAR.EncryptionIsEnabled && !provider.config.JAR.IsEnabled {
 		return errors.New("JAR must be enabled if JAR encryption is enabled")
-	}
-
-	if provider.config.JAR.EncryptionIsEnabled &&
-		!slices.Contains(provider.config.JAR.ContentEncryptionAlgorithms, jose.A128CBC_HS256) {
-		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm for JAR")
 	}
 
 	return nil
@@ -139,11 +125,6 @@ func validateJAREncryption(provider Provider) error {
 func validateJARMEncryption(provider Provider) error {
 	if provider.config.JARM.EncryptionIsEnabled && !provider.config.JARM.IsEnabled {
 		return errors.New("JARM must be enabled if JARM encryption is enabled")
-	}
-
-	if provider.config.JARM.EncryptionIsEnabled &&
-		!slices.Contains(provider.config.JARM.ContentEncryptionAlgorithms, jose.A128CBC_HS256) {
-		return errors.New("A128CBC-HS256 should be supported as a content key encryption algorithm for JARM")
 	}
 
 	return nil

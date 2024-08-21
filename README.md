@@ -88,7 +88,5 @@ Make sure the `GOBIN` environment variable is set.
 * Support pairwise subject type.
 * Client jwks is required for JAR.
 * Better way to handle expired sessions.
-* New grant for token introspection?
 * Events.
 * Compare ACR values.
-* Allow overriding endpoints.
