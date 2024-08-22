@@ -1,4 +1,4 @@
-package client_test
+package clientauthn_test
 
 import (
 	"testing"
@@ -32,7 +32,7 @@ func TestGetAuthenticatedClient_WithNoneAuthn_HappyPath(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, req)
+	_, err := clientauthn.Authenticated(ctx, req)
 
 	// Then.
 	assert.Nil(t, err, "The client should be authenticated")
@@ -60,21 +60,21 @@ func TestGetAuthenticatedClient_WithSecretPostAuthn(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, req)
+	_, err := clientauthn.Authenticated(ctx, req)
 	// Then.
 	assert.Nil(t, err, "The client should be authenticated")
 
 	// Given.
 	req.Secret = "invalid_secret"
 	// When.
-	_, err = client.Authenticated(ctx, req)
+	_, err = clientauthn.Authenticated(ctx, req)
 	// Then.
 	assert.NotNil(t, err, "The client should be authenticated")
 
 	// Given.
 	req.Secret = ""
 	// When.
-	_, err = client.Authenticated(ctx, req)
+	_, err = clientauthn.Authenticated(ctx, req)
 	// Then.
 	assert.NotNil(t, err, "The client should be authenticated")
 }
@@ -99,21 +99,21 @@ func TestGetAuthenticatedClient_WithBasicSecretAuthn(t *testing.T) {
 	req := client.AuthnRequest{}
 
 	// When.
-	_, err := client.Authenticated(ctx, req)
+	_, err := clientauthn.Authenticated(ctx, req)
 	// Then.
 	assert.Nil(t, err, "The client should be authenticated")
 
 	// Given.
 	ctx.Request().SetBasicAuth(c.ID, "invalid_secret")
 	// When.
-	_, err = client.Authenticated(ctx, req)
+	_, err = clientauthn.Authenticated(ctx, req)
 	// Then.
 	assert.NotNil(t, err, "The client should not be authenticated")
 
 	// Given.
 	ctx.Request().Header.Del("Authorization")
 	// When.
-	_, err = client.Authenticated(ctx, req)
+	_, err = clientauthn.Authenticated(ctx, req)
 	// Then.
 	assert.NotNil(t, err, "The client should not be authenticated")
 }
@@ -154,7 +154,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, req)
+	_, err := clientauthn.Authenticated(ctx, req)
 	// Then.
 	assert.Nil(t, err, "The client should be authenticated")
 
@@ -197,7 +197,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_ClientInformedSigningAlgorithm
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, req)
+	_, err := clientauthn.Authenticated(ctx, req)
 
 	// Then.
 	assert.Nil(t, err, "the client should be authenticated")
@@ -238,7 +238,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAudienceClaim(t *testin
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, req)
+	_, err := clientauthn.Authenticated(ctx, req)
 
 	// Then.
 	require.NotNil(t, err, "The client should not be authenticated")
@@ -278,7 +278,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidExpiryClaim(t *testing.
 		Assertion:     assertion,
 	}
 	// When.
-	_, err := client.Authenticated(ctx, req)
+	_, err := clientauthn.Authenticated(ctx, req)
 
 	// Then.
 	require.NotNil(t, err, "The client should not be authenticated")
@@ -320,7 +320,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_CannotIdentifyJWK(t *testing.T
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, req)
+	_, err := clientauthn.Authenticated(ctx, req)
 
 	// Then.
 	require.NotNil(t, err, "The client should not be authenticated")
@@ -363,7 +363,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T)
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, req)
+	_, err := clientauthn.Authenticated(ctx, req)
 
 	// Then.
 	require.NotNil(t, err, "The client should not be authenticated")
@@ -392,7 +392,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertion(t *testing.T)
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, invalidReq)
+	_, err := clientauthn.Authenticated(ctx, invalidReq)
 
 	// Then.
 	require.NotNil(t, err, "The client should not be authenticated")
@@ -433,7 +433,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertionType(t *testin
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, invalidReq)
+	_, err := clientauthn.Authenticated(ctx, invalidReq)
 
 	// Then.
 	require.NotNil(t, err, "The client should not be authenticated")
@@ -476,7 +476,7 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_HappyPath(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, req)
+	_, err := clientauthn.Authenticated(ctx, req)
 
 	// Then.
 	require.Nil(t, err, "The client should be authenticated")
@@ -519,7 +519,7 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_InvalidAssertionType(t *test
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, req)
+	_, err := clientauthn.Authenticated(ctx, req)
 
 	// Then.
 	require.NotNil(t, err, "The client should not be authenticated")
@@ -549,7 +549,7 @@ func TestGetAuthenticatedClient_WithDifferentClientIDs(t *testing.T) {
 	}
 
 	// Then.
-	_, err := client.Authenticated(ctx, req)
+	_, err := clientauthn.Authenticated(ctx, req)
 
 	// Assert.
 	if err == nil {

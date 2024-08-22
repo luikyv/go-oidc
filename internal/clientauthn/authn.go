@@ -1,4 +1,4 @@
-package client
+package clientauthn
 
 import (
 	"crypto"
@@ -20,7 +20,7 @@ import (
 
 func Authenticated(
 	ctx *oidc.Context,
-	req AuthnRequest,
+	req Request,
 ) (
 	*goidc.Client,
 	oidc.Error,
@@ -46,7 +46,7 @@ func Authenticated(
 func authenticate(
 	ctx *oidc.Context,
 	client *goidc.Client,
-	req AuthnRequest,
+	req Request,
 ) oidc.Error {
 	switch client.AuthnMethod {
 	case goidc.ClientAuthnNone:
@@ -71,7 +71,7 @@ func authenticate(
 func authenticateWithNoneAuthn(
 	_ *oidc.Context,
 	client *goidc.Client,
-	req AuthnRequest,
+	req Request,
 ) oidc.Error {
 	if client.ID != req.ID {
 		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid client")
@@ -82,7 +82,7 @@ func authenticateWithNoneAuthn(
 func authenticateWithClientSecretPost(
 	ctx *oidc.Context,
 	client *goidc.Client,
-	req AuthnRequest,
+	req Request,
 ) oidc.Error {
 	if client.ID != req.ID || req.Secret == "" {
 		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid client")
@@ -93,7 +93,7 @@ func authenticateWithClientSecretPost(
 func authenticateWithClientSecretBasic(
 	ctx *oidc.Context,
 	client *goidc.Client,
-	_ AuthnRequest,
+	_ Request,
 ) oidc.Error {
 	clientID, clientSecret, ok := ctx.Request().BasicAuth()
 	if !ok || client.ID != clientID {
@@ -117,7 +117,7 @@ func validateSecret(
 func authenticateWithPrivateKeyJWT(
 	ctx *oidc.Context,
 	client *goidc.Client,
-	req AuthnRequest,
+	req Request,
 ) oidc.Error {
 
 	if req.AssertionType != goidc.AssertionTypeJWTBearer {
@@ -165,7 +165,7 @@ func authenticateWithPrivateKeyJWT(
 func authenticateWithClientSecretJWT(
 	ctx *oidc.Context,
 	client *goidc.Client,
-	req AuthnRequest,
+	req Request,
 ) oidc.Error {
 	if req.AssertionType != goidc.AssertionTypeJWTBearer {
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid assertion_type")
@@ -213,7 +213,7 @@ func areAssertionClaimsValid(
 func authenticateWithSelfSignedTLSCertificate(
 	ctx *oidc.Context,
 	client *goidc.Client,
-	req AuthnRequest,
+	req Request,
 ) oidc.Error {
 	if client.ID != req.ID {
 		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid client")
@@ -253,7 +253,7 @@ func authenticateWithSelfSignedTLSCertificate(
 func authenticateWithTLSCertificate(
 	ctx *oidc.Context,
 	client *goidc.Client,
-	req AuthnRequest,
+	req Request,
 ) oidc.Error {
 	if client.ID != req.ID {
 		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid client")
@@ -276,7 +276,7 @@ func authenticateWithTLSCertificate(
 
 func extractClientID(
 	ctx *oidc.Context,
-	req AuthnRequest,
+	req Request,
 ) (
 	string,
 	bool,
@@ -308,7 +308,7 @@ func extractClientID(
 func appendClientIDFromAssertion(
 	ctx *oidc.Context,
 	clientIDs []string,
-	req AuthnRequest,
+	req Request,
 ) (
 	[]string,
 	bool,

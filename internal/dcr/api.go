@@ -1,4 +1,4 @@
-package client
+package dcr
 
 import (
 	"encoding/json"
@@ -6,13 +6,6 @@ import (
 
 	"github.com/luikyv/go-oidc/internal/oidc"
 )
-
-type Router struct {
-}
-
-func (r Router) RegisterRouters(router *http.ServeMux) {
-
-}
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 	if config.DCR.IsEnabled {
@@ -42,7 +35,7 @@ func handlerCreate(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := oidc.NewContext(*config, r, w)
 
-		var req dynamicRequest
+		var req request
 		if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
 			ctx.WriteError(err)
 			return
@@ -66,7 +59,7 @@ func handlerUpdate(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := oidc.NewContext(*config, r, w)
 
-		var req dynamicRequest
+		var req request
 		if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
 			ctx.WriteError(err)
 			return
@@ -103,7 +96,7 @@ func handlerGet(config *oidc.Configuration) http.HandlerFunc {
 			return
 		}
 
-		req := dynamicRequest{
+		req := request{
 			id:                      ctx.Request().PathValue("client_id"),
 			registrationAccessToken: token,
 		}
@@ -131,7 +124,7 @@ func handlerDelete(config *oidc.Configuration) http.HandlerFunc {
 			return
 		}
 
-		req := dynamicRequest{
+		req := request{
 			id:                      ctx.Request().PathValue("client_id"),
 			registrationAccessToken: token,
 		}

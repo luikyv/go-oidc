@@ -1,4 +1,4 @@
-package client
+package dcr
 
 var (
 	Create = create

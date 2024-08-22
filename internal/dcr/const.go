@@ -1,4 +1,4 @@
-package client
+package dcr
 
 const (
 	idLength int = 30

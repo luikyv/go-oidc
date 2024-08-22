@@ -1,30 +1,12 @@
-package client
+package dcr
 
 import (
 	"encoding/json"
-	"net/http"
 
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-type AuthnRequest struct {
-	// The client ID sent via form is not specific to authentication. It is also a param for /authorize.
-	ID            string
-	Secret        string
-	AssertionType goidc.ClientAssertionType
-	Assertion     string
-}
-
-func NewAuthnRequest(req *http.Request) AuthnRequest {
-	return AuthnRequest{
-		ID:            req.PostFormValue("client_id"),
-		Secret:        req.PostFormValue("client_secret"),
-		AssertionType: goidc.ClientAssertionType(req.PostFormValue("client_assertion_type")),
-		Assertion:     req.PostFormValue("client_assertion"),
-	}
-}
-
-type dynamicRequest struct {
+type request struct {
 	id     string
 	secret string
 	// initialAccessToken holds the value of the authorization header when
@@ -36,7 +18,7 @@ type dynamicRequest struct {
 	goidc.ClientMetaInfo
 }
 
-type dynamicResponse struct {
+type response struct {
 	ID                      string `json:"client_id"`
 	Secret                  string `json:"client_secret,omitempty"`
 	RegistrationAccessToken string `json:"registration_access_token,omitempty"`
@@ -44,10 +26,10 @@ type dynamicResponse struct {
 	goidc.ClientMetaInfo
 }
 
-func (resp dynamicResponse) MarshalJSON() ([]byte, error) {
+func (resp response) MarshalJSON() ([]byte, error) {
 
 	// Define a new type to avoid recursion while marshaling.
-	type dcResp dynamicResponse
+	type dcResp response
 	attributesBytes, err := json.Marshal(dcResp(resp))
 	if err != nil {
 		return nil, err

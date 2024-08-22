@@ -1,4 +1,4 @@
-package client
+package dcr
 
 import (
 	"encoding/json"
@@ -14,8 +14,8 @@ import (
 
 func validateDynamicRequest(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	return runValidations(
 		ctx, dc,
 		validateAuthnMethod,
@@ -47,12 +47,12 @@ func validateDynamicRequest(
 
 func runValidations(
 	ctx *oidc.Context,
-	dc dynamicRequest,
+	dc request,
 	validations ...func(
 		ctx *oidc.Context,
-		dc dynamicRequest,
-	) oidc.Error,
-) oidc.Error {
+		dc request,
+	) error,
+) error {
 	for _, validation := range validations {
 		if err := validation(ctx, dc); err != nil {
 			return err
@@ -63,8 +63,8 @@ func runValidations(
 
 func validateGrantTypes(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	for _, gt := range dc.GrantTypes {
 		if !slices.Contains(ctx.GrantTypes, gt) {
 			return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
@@ -89,8 +89,8 @@ func validateGrantTypes(
 
 func validateRedirectURIS(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	for _, ru := range dc.RedirectURIS {
 		parsedRU, err := url.Parse(ru)
 		if err != nil {
@@ -108,8 +108,8 @@ func validateRedirectURIS(
 
 func validateResponseTypes(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 
 	for _, rt := range dc.ResponseTypes {
 		if !slices.Contains(ctx.ResponseTypes, rt) {
@@ -134,8 +134,8 @@ func validateResponseTypes(
 
 func validateAuthnMethod(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	if !slices.Contains(ctx.ClientAuthn.Methods, dc.AuthnMethod) {
 		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
 			"authn method not allowed")
@@ -145,8 +145,8 @@ func validateAuthnMethod(
 
 func validateOpenIDScopeIfRequired(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	if !ctx.OpenIDIsRequired {
 		return nil
 	}
@@ -161,8 +161,8 @@ func validateOpenIDScopeIfRequired(
 
 func validateSubjectIdentifierType(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	if dc.SubjectIdentifierType == "" {
 		return nil
 	}
@@ -176,8 +176,8 @@ func validateSubjectIdentifierType(
 
 func validateIDTokenSignatureAlgorithm(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	if dc.IDTokenSignatureAlgorithm == "" {
 		return nil
 	}
@@ -191,8 +191,8 @@ func validateIDTokenSignatureAlgorithm(
 
 func validateUserInfoSignatureAlgorithm(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	if dc.UserInfoSignatureAlgorithm == "" {
 		return nil
 	}
@@ -206,8 +206,8 @@ func validateUserInfoSignatureAlgorithm(
 
 func validateJARSignatureAlgorithm(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	if dc.JARSignatureAlgorithm == "" {
 		return nil
 	}
@@ -221,8 +221,8 @@ func validateJARSignatureAlgorithm(
 
 func validateJARMSignatureAlgorithm(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	if dc.JARMSignatureAlgorithm == "" {
 		return nil
 	}
@@ -236,8 +236,8 @@ func validateJARMSignatureAlgorithm(
 
 func validateClientSignatureAlgorithmForPrivateKeyJWT(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	if dc.AuthnMethod != goidc.ClientAuthnPrivateKeyJWT {
 		return nil
 	}
@@ -255,8 +255,8 @@ func validateClientSignatureAlgorithmForPrivateKeyJWT(
 
 func validateClientSignatureAlgorithmForClientSecretJWT(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	if dc.AuthnMethod != goidc.ClientAuthnSecretJWT {
 		return nil
 	}
@@ -274,8 +274,8 @@ func validateClientSignatureAlgorithmForClientSecretJWT(
 
 func validateJWKSAreRequiredForPrivateKeyJWTAuthn(
 	_ *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	if dc.AuthnMethod != goidc.ClientAuthnPrivateKeyJWT {
 		return nil
 	}
@@ -290,8 +290,8 @@ func validateJWKSAreRequiredForPrivateKeyJWTAuthn(
 
 func validateJWKSIsRequiredWhenSelfSignedTLSAuthn(
 	_ *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	if dc.AuthnMethod != goidc.ClientAuthnSelfSignedTLS {
 		return nil
 	}
@@ -306,8 +306,8 @@ func validateJWKSIsRequiredWhenSelfSignedTLSAuthn(
 
 func validateTLSSubjectInfoWhenTLSAuthn(
 	_ *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	if dc.AuthnMethod != goidc.ClientAuthnTLS {
 		return nil
 	}
@@ -336,8 +336,8 @@ func validateTLSSubjectInfoWhenTLSAuthn(
 
 func validateIDTokenEncryptionAlgorithms(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	// Return an error if ID token encryption is not enabled, but the client requested it.
 	if !ctx.User.EncryptionIsEnabled {
 		if dc.IDTokenKeyEncryptionAlgorithm != "" || dc.IDTokenContentEncryptionAlgorithm != "" {
@@ -369,8 +369,8 @@ func validateIDTokenEncryptionAlgorithms(
 
 func validateUserInfoEncryptionAlgorithms(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	// Return an error if user info encryption is not enabled, but the client requested it.
 	if !ctx.User.EncryptionIsEnabled {
 		if dc.UserInfoKeyEncryptionAlgorithm != "" || dc.UserInfoContentEncryptionAlgorithm != "" {
@@ -402,8 +402,8 @@ func validateUserInfoEncryptionAlgorithms(
 
 func validateJARMEncryptionAlgorithms(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	// Return an error if jarm encryption is not enabled, but the client requested it.
 	if !ctx.JARM.IsEnabled {
 		if dc.JARMKeyEncryptionAlgorithm != "" || dc.JARMContentEncryptionAlgorithm != "" {
@@ -433,8 +433,8 @@ func validateJARMEncryptionAlgorithms(
 
 func validateJAREncryptionAlgorithms(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	// Return an error if jar encryption is not enabled, but the client requested it.
 	if !ctx.JAR.EncryptionIsEnabled {
 		if dc.JARKeyEncryptionAlgorithm != "" || dc.JARContentEncryptionAlgorithm != "" {
@@ -466,8 +466,8 @@ func validateJAREncryptionAlgorithms(
 
 func validatePublicJWKS(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	if dc.PublicJWKS == nil {
 		return nil
 	}
@@ -488,16 +488,16 @@ func validatePublicJWKS(
 
 func validatePublicJWKSURI(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	// TODO: validate the client jwks uri.
 	return nil
 }
 
 func validateAuthorizationDetailTypes(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	if !ctx.AuthorizationDetails.IsEnabled || dc.AuthorizationDetailTypes == nil {
 		return nil
 	}
@@ -514,8 +514,8 @@ func validateAuthorizationDetailTypes(
 
 func validateRefreshTokenGrant(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	if strutil.ContainsOfflineAccess(dc.Scopes) && !slices.Contains(dc.GrantTypes, goidc.GrantRefreshToken) {
 		return oidc.NewError(oidc.ErrorCodeInvalidClientMetadata,
 			"refresh_token grant is required for using the scope offline_access")
@@ -526,8 +526,8 @@ func validateRefreshTokenGrant(
 
 func validateScopes(
 	ctx *oidc.Context,
-	dc dynamicRequest,
-) oidc.Error {
+	dc request,
+) error {
 	for _, requestedScope := range strutil.SplitWithSpaces(dc.Scopes) {
 		matches := false
 		for _, scope := range ctx.Scopes {

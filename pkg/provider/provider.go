@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/authorize"
-	"github.com/luikyv/go-oidc/internal/client"
+	"github.com/luikyv/go-oidc/internal/dcr"
 	"github.com/luikyv/go-oidc/internal/discovery"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/storage"
@@ -120,7 +120,7 @@ func (p *provider) Handler() http.Handler {
 	token.RegisterHandlers(server, &p.config)
 	authorize.RegisterHandlers(server, &p.config)
 	userinfo.RegisterHandlers(server, &p.config)
-	client.RegisterHandlers(server, &p.config)
+	dcr.RegisterHandlers(server, &p.config)
 
 	return server
 }

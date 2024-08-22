@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/luikyv/go-oidc/internal/client"
+	"github.com/luikyv/go-oidc/internal/clientauthn"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -19,7 +19,7 @@ func pushAuth(
 	oidc.Error,
 ) {
 
-	c, oauthErr := client.Authenticated(ctx, req.AuthnRequest)
+	c, oauthErr := clientauthn.Authenticated(ctx, req.Request)
 	if oauthErr != nil {
 		return pushedResponse{}, oidc.NewError(oidc.ErrorCodeInvalidClient,
 			"client not authenticated")

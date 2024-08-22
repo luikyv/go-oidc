@@ -1,4 +1,4 @@
-package client
+package dcr
 
 import (
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -9,30 +9,30 @@ import (
 
 func create(
 	ctx *oidc.Context,
-	req dynamicRequest,
+	req request,
 ) (
-	dynamicResponse,
-	oidc.Error,
+	response,
+	error,
 ) {
 	if err := setCreationDefaults(ctx, &req); err != nil {
-		return dynamicResponse{}, err
+		return response{}, err
 	}
 
 	if err := validateDynamicRequest(ctx, req); err != nil {
-		return dynamicResponse{}, err
+		return response{}, err
 	}
 
 	ctx.ExecuteDCRPlugin(&req.ClientMetaInfo)
 	if err := validateDynamicRequest(ctx, req); err != nil {
-		return dynamicResponse{}, err
+		return response{}, err
 	}
 
 	newClient := newClient(req)
 	if err := ctx.SaveClient(newClient); err != nil {
-		return dynamicResponse{}, err
+		return response{}, err
 	}
 
-	return dynamicResponse{
+	return response{
 		ID:                      req.id,
 		RegistrationURI:         registrationURI(ctx, req.id),
 		RegistrationAccessToken: req.registrationAccessToken,
@@ -43,8 +43,8 @@ func create(
 
 func setCreationDefaults(
 	ctx *oidc.Context,
-	req *dynamicRequest,
-) oidc.Error {
+	req *request,
+) error {
 	id, err := clientID()
 	if err != nil {
 		return oidc.NewError(oidc.ErrorCodeInternalError,
@@ -64,34 +64,34 @@ func setCreationDefaults(
 
 func update(
 	ctx *oidc.Context,
-	dc dynamicRequest,
+	dc request,
 ) (
-	dynamicResponse,
-	oidc.Error,
+	response,
+	error,
 ) {
 	c, err := protected(ctx, dc)
 	if err != nil {
-		return dynamicResponse{}, err
+		return response{}, err
 	}
 
 	if err := setUpdateDefaults(ctx, c, &dc); err != nil {
-		return dynamicResponse{}, err
+		return response{}, err
 	}
 	if err := validateDynamicRequest(ctx, dc); err != nil {
-		return dynamicResponse{}, err
+		return response{}, err
 	}
 
 	ctx.ExecuteDCRPlugin(&dc.ClientMetaInfo)
 	if err := validateDynamicRequest(ctx, dc); err != nil {
-		return dynamicResponse{}, err
+		return response{}, err
 	}
 
 	updatedClient := newClient(dc)
 	if err := ctx.SaveClient(updatedClient); err != nil {
-		return dynamicResponse{}, err
+		return response{}, err
 	}
 
-	resp := dynamicResponse{
+	resp := response{
 		ID:              dc.id,
 		RegistrationURI: registrationURI(ctx, dc.id),
 		Secret:          dc.secret,
@@ -108,8 +108,8 @@ func update(
 func setUpdateDefaults(
 	ctx *oidc.Context,
 	client *goidc.Client,
-	dynamicClient *dynamicRequest,
-) oidc.Error {
+	dynamicClient *request,
+) error {
 	dynamicClient.id = client.ID
 	if ctx.DCR.TokenRotationIsEnabled {
 		token, err := registrationAccessToken()
@@ -125,18 +125,18 @@ func setUpdateDefaults(
 
 func fetch(
 	ctx *oidc.Context,
-	dynamicClientRequest dynamicRequest,
+	dynamicClientRequest request,
 ) (
-	dynamicResponse,
-	oidc.Error,
+	response,
+	error,
 ) {
 
 	client, err := protected(ctx, dynamicClientRequest)
 	if err != nil {
-		return dynamicResponse{}, err
+		return response{}, err
 	}
 
-	return dynamicResponse{
+	return response{
 		ID:              client.ID,
 		RegistrationURI: registrationURI(ctx, client.ID),
 		ClientMetaInfo:  client.ClientMetaInfo,
@@ -145,8 +145,8 @@ func fetch(
 
 func remove(
 	ctx *oidc.Context,
-	dynamicClientRequest dynamicRequest,
-) oidc.Error {
+	dynamicClientRequest request,
+) error {
 	_, err := protected(ctx, dynamicClientRequest)
 	if err != nil {
 		return err
@@ -159,7 +159,7 @@ func remove(
 	return nil
 }
 
-func setDefaults(ctx *oidc.Context, dynamicClient *dynamicRequest) oidc.Error {
+func setDefaults(ctx *oidc.Context, dynamicClient *request) oidc.Error {
 	if dynamicClient.AuthnMethod == "" {
 		dynamicClient.AuthnMethod = goidc.ClientAuthnSecretBasic
 	}
@@ -202,7 +202,7 @@ func setDefaults(ctx *oidc.Context, dynamicClient *dynamicRequest) oidc.Error {
 	return nil
 }
 
-func newClient(dynamicClient dynamicRequest) *goidc.Client {
+func newClient(dynamicClient request) *goidc.Client {
 	hashedRegistrationAccessToken, _ := bcrypt.GenerateFromPassword([]byte(dynamicClient.registrationAccessToken), bcrypt.DefaultCost)
 	client := &goidc.Client{
 		ID:                            dynamicClient.id,
@@ -228,10 +228,10 @@ func registrationURI(ctx *oidc.Context, clientID string) string {
 
 func protected(
 	ctx *oidc.Context,
-	dynamicClient dynamicRequest,
+	dynamicClient request,
 ) (
 	*goidc.Client,
-	oidc.Error,
+	error,
 ) {
 	if dynamicClient.id == "" {
 		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid client_id")
