@@ -1,4 +1,4 @@
-package oidc
+package oidctest
 
 import (
 	"crypto/rand"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/storage"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/require"
@@ -18,31 +19,31 @@ import (
 )
 
 const (
-	TestHost                          string = "https://example.com"
-	TestKeyID                         string = "test_rsa256_key"
-	TestClientID                      string = "test_client_id"
-	TestClientSecret                  string = "test_client_secret"
-	TestClientRedirectURI             string = "https://example.com/callback"
-	TestClientRegistrationAccessToken string = "random_registration_access_token"
+	Host                          string = "https://example.com"
+	KeyID                         string = "test_rsa256_key"
+	ClientID                      string = "test_client_id"
+	ClientSecret                  string = "test_client_secret"
+	ClientRedirectURI             string = "https://example.com/callback"
+	ClientRegistrationAccessToken string = "random_registration_access_token"
 )
 
 var (
-	TestScope1           = goidc.NewScope("scope1")
-	TestScope2           = goidc.NewScope("scope2")
-	TestServerPrivateJWK = TestPrivateRS256JWK(nil, TestKeyID)
+	Scope1           = goidc.NewScope("scope1")
+	Scope2           = goidc.NewScope("scope2")
+	ServerPrivateJWK = PrivateRS256JWK(nil, KeyID)
 )
 
-func NewTestClient(_ *testing.T) *goidc.Client {
-	hashedRegistrationAccessToken, _ := bcrypt.GenerateFromPassword([]byte(TestClientRegistrationAccessToken), bcrypt.DefaultCost)
-	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(TestClientSecret), bcrypt.DefaultCost)
+func NewClient(_ *testing.T) *goidc.Client {
+	hashedRegistrationAccessToken, _ := bcrypt.GenerateFromPassword([]byte(ClientRegistrationAccessToken), bcrypt.DefaultCost)
+	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(ClientSecret), bcrypt.DefaultCost)
 	return &goidc.Client{
-		ID:                            TestClientID,
+		ID:                            ClientID,
 		HashedSecret:                  string(hashedClientSecret),
 		HashedRegistrationAccessToken: string(hashedRegistrationAccessToken),
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod:  goidc.ClientAuthnSecretPost,
-			RedirectURIS: []string{TestClientRedirectURI},
-			Scopes:       fmt.Sprintf("%s %s %s", TestScope1.ID, TestScope2.ID, goidc.ScopeOpenID.ID),
+			RedirectURIS: []string{ClientRedirectURI},
+			Scopes:       fmt.Sprintf("%s %s %s", Scope1.ID, Scope2.ID, goidc.ScopeOpenID.ID),
 			GrantTypes: []goidc.GrantType{
 				goidc.GrantAuthorizationCode,
 				goidc.GrantImplicit,
@@ -62,12 +63,12 @@ func NewTestClient(_ *testing.T) *goidc.Client {
 	}
 }
 
-func NewTestContext(t *testing.T) *Context {
-	config := Configuration{
+func NewContext(t *testing.T) *oidc.Context {
+	config := oidc.Configuration{
 		Profile:     goidc.ProfileOpenID,
-		Host:        TestHost,
-		Scopes:      []goidc.Scope{goidc.ScopeOpenID, TestScope1, TestScope2},
-		PrivateJWKS: jose.JSONWebKeySet{Keys: []jose.JSONWebKey{TestServerPrivateJWK}},
+		Host:        Host,
+		Scopes:      []goidc.Scope{goidc.ScopeOpenID, Scope1, Scope2},
+		PrivateJWKS: jose.JSONWebKeySet{Keys: []jose.JSONWebKey{ServerPrivateJWK}},
 		GrantTypes: []goidc.GrantType{
 			goidc.GrantAuthorizationCode,
 			goidc.GrantClientCredentials,
@@ -91,7 +92,7 @@ func NewTestContext(t *testing.T) *Context {
 		},
 		TokenOptions: func(client *goidc.Client, scopes string) (goidc.TokenOptions, error) {
 			return goidc.TokenOptions{
-				JWTSignatureKeyID: TestServerPrivateJWK.KeyID,
+				JWTSignatureKeyID: ServerPrivateJWK.KeyID,
 				LifetimeSecs:      60,
 				Format:            goidc.TokenFormatJWT,
 			}, nil
@@ -102,8 +103,8 @@ func NewTestContext(t *testing.T) *Context {
 	config.Storage.GrantSession = storage.NewGrantSessionManager()
 	config.Storage.AuthnSession = storage.NewAuthnSessionManager()
 	config.ClientAuthn.Methods = []goidc.ClientAuthnType{goidc.ClientAuthnNone, goidc.ClientAuthnSecretPost}
-	config.User.DefaultSignatureKeyID = TestServerPrivateJWK.KeyID
-	config.User.SignatureKeyIDs = []string{TestServerPrivateJWK.KeyID}
+	config.User.DefaultSignatureKeyID = ServerPrivateJWK.KeyID
+	config.User.SignatureKeyIDs = []string{ServerPrivateJWK.KeyID}
 	config.Endpoint.WellKnown = goidc.EndpointWellKnown
 	config.Endpoint.JWKS = goidc.EndpointJSONWebKeySet
 	config.Endpoint.Token = goidc.EndpointToken
@@ -112,18 +113,18 @@ func NewTestContext(t *testing.T) *Context {
 	config.Endpoint.DCR = goidc.EndpointDynamicClient
 	config.Endpoint.UserInfo = goidc.EndpointUserInfo
 	config.Endpoint.Introspection = goidc.EndpointTokenIntrospection
-	ctx := Context{
+	ctx := oidc.Context{
 		Configuration: config,
 		Req:           httptest.NewRequest(http.MethodGet, "/auth", nil),
 		Resp:          httptest.NewRecorder(),
 	}
 
-	require.Nil(t, ctx.SaveClient(NewTestClient(t)), "could not create the test client")
+	require.Nil(t, ctx.SaveClient(NewClient(t)), "could not create the test client")
 
 	return &ctx
 }
 
-func TestAuthnSessions(_ *testing.T, ctx *Context) []*goidc.AuthnSession {
+func AuthnSessions(_ *testing.T, ctx *oidc.Context) []*goidc.AuthnSession {
 	sessionManager, _ := ctx.Storage.AuthnSession.(*storage.AuthnSessionManager)
 	sessions := make([]*goidc.AuthnSession, 0, len(sessionManager.Sessions))
 	for _, s := range sessionManager.Sessions {
@@ -133,7 +134,7 @@ func TestAuthnSessions(_ *testing.T, ctx *Context) []*goidc.AuthnSession {
 	return sessions
 }
 
-func TestGrantSessions(_ *testing.T, ctx *Context) []*goidc.GrantSession {
+func GrantSessions(_ *testing.T, ctx *oidc.Context) []*goidc.GrantSession {
 	manager, _ := ctx.Storage.GrantSession.(*storage.GrantSessionManager)
 	tokens := make([]*goidc.GrantSession, 0, len(manager.Sessions))
 	for _, t := range manager.Sessions {
@@ -143,7 +144,7 @@ func TestGrantSessions(_ *testing.T, ctx *Context) []*goidc.GrantSession {
 	return tokens
 }
 
-func TestClients(_ *testing.T, ctx *Context) []*goidc.Client {
+func Clients(_ *testing.T, ctx *oidc.Context) []*goidc.Client {
 	manager, _ := ctx.Storage.Client.(*storage.ClientManager)
 	clients := make([]*goidc.Client, 0, len(manager.Clients))
 	for _, c := range manager.Clients {
@@ -153,16 +154,16 @@ func TestClients(_ *testing.T, ctx *Context) []*goidc.Client {
 	return clients
 }
 
-func TestRawJWKS(jwk jose.JSONWebKey) []byte {
+func RawJWKS(jwk jose.JSONWebKey) []byte {
 	jwks, _ := json.Marshal(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jwk}})
 	return jwks
 }
 
-func TestPrivateRS256JWK(t *testing.T, keyID string) jose.JSONWebKey {
-	return TestPrivateRS256JWKWithUsage(t, keyID, goidc.KeyUsageSignature)
+func PrivateRS256JWK(t *testing.T, keyID string) jose.JSONWebKey {
+	return PrivateRS256JWKWithUsage(t, keyID, goidc.KeyUsageSignature)
 }
 
-func TestPrivateRS256JWKWithUsage(
+func PrivateRS256JWKWithUsage(
 	_ *testing.T,
 	keyID string,
 	usage goidc.KeyUsage,
@@ -176,11 +177,11 @@ func TestPrivateRS256JWKWithUsage(
 	}
 }
 
-func TestPrivatePS256JWK(t *testing.T, keyID string) jose.JSONWebKey {
-	return TestPrivatePS256JWKWithUsage(t, keyID, goidc.KeyUsageSignature)
+func PrivatePS256JWK(t *testing.T, keyID string) jose.JSONWebKey {
+	return PrivatePS256JWKWithUsage(t, keyID, goidc.KeyUsageSignature)
 }
 
-func TestPrivatePS256JWKWithUsage(
+func PrivatePS256JWKWithUsage(
 	_ *testing.T,
 	keyID string,
 	usage goidc.KeyUsage,
@@ -194,7 +195,7 @@ func TestPrivatePS256JWKWithUsage(
 	}
 }
 
-func TestSafeClaims(t *testing.T, jws string, privateJWK jose.JSONWebKey) map[string]any {
+func SafeClaims(t *testing.T, jws string, privateJWK jose.JSONWebKey) map[string]any {
 	parsedToken, err := jwt.ParseSigned(jws, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJWK.Algorithm)})
 	require.Nil(t, err, "invalid JWT")
 
@@ -205,7 +206,7 @@ func TestSafeClaims(t *testing.T, jws string, privateJWK jose.JSONWebKey) map[st
 	return claims
 }
 
-func TestUnsafeClaims(t *testing.T, jws string, algorithms []jose.SignatureAlgorithm) map[string]any {
+func UnsafeClaims(t *testing.T, jws string, algorithms []jose.SignatureAlgorithm) map[string]any {
 	parsedToken, err := jwt.ParseSigned(jws, algorithms)
 	require.Nil(t, err, "invalid JWT")
 

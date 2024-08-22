@@ -4,15 +4,15 @@ import (
 	"testing"
 
 	"github.com/luikyv/go-oidc/internal/client"
-	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCreateClient(t *testing.T) {
 	// Given.
-	c := oidc.NewTestClient(t)
-	ctx := oidc.NewTestContext(t)
+	c := oidctest.NewClient(t)
+	ctx := oidctest.NewContext(t)
 	req := client.DynamicClientRequest{
 		ClientMetaInfo: c.ClientMetaInfo,
 	}
@@ -32,11 +32,11 @@ func TestCreateClient(t *testing.T) {
 
 func TestUpdateClient(t *testing.T) {
 	// Given.
-	c := oidc.NewTestClient(t)
-	ctx := oidc.NewTestContext(t)
+	c := oidctest.NewClient(t)
+	ctx := oidctest.NewContext(t)
 	dynamicClientReq := client.DynamicClientRequest{
-		ID:                      oidc.TestClientID,
-		RegistrationAccessToken: oidc.TestClientRegistrationAccessToken,
+		ID:                      oidctest.ClientID,
+		RegistrationAccessToken: oidctest.ClientRegistrationAccessToken,
 		ClientMetaInfo:          c.ClientMetaInfo,
 	}
 
@@ -52,12 +52,12 @@ func TestUpdateClient(t *testing.T) {
 
 func TestUpdateClient_WithTokenRotation(t *testing.T) {
 	// Given.
-	c := oidc.NewTestClient(t)
-	ctx := oidc.NewTestContext(t)
+	c := oidctest.NewClient(t)
+	ctx := oidctest.NewContext(t)
 	ctx.DCR.TokenRotationIsEnabled = true
 	dynamicClientReq := client.DynamicClientRequest{
-		ID:                      oidc.TestClientID,
-		RegistrationAccessToken: oidc.TestClientRegistrationAccessToken,
+		ID:                      oidctest.ClientID,
+		RegistrationAccessToken: oidctest.ClientRegistrationAccessToken,
 		ClientMetaInfo:          c.ClientMetaInfo,
 	}
 
@@ -69,15 +69,15 @@ func TestUpdateClient_WithTokenRotation(t *testing.T) {
 	assert.Equal(t, c.ID, resp.ID)
 	assert.Equal(t, ctx.Host+ctx.Endpoint.DCR+"/"+resp.ID, resp.RegistrationURI)
 	assert.NotEmpty(t, resp.RegistrationAccessToken)
-	assert.NotEqual(t, oidc.TestClientRegistrationAccessToken, resp.RegistrationAccessToken)
+	assert.NotEqual(t, oidctest.ClientRegistrationAccessToken, resp.RegistrationAccessToken)
 }
 
 func TestFetchClient(t *testing.T) {
 	// Given.
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	dynamicClientReq := client.DynamicClientRequest{
-		ID:                      oidc.TestClientID,
-		RegistrationAccessToken: oidc.TestClientRegistrationAccessToken,
+		ID:                      oidctest.ClientID,
+		RegistrationAccessToken: oidctest.ClientRegistrationAccessToken,
 	}
 
 	// When.
@@ -85,16 +85,16 @@ func TestFetchClient(t *testing.T) {
 
 	// Then.
 	require.Nil(t, oauthErr)
-	assert.Equal(t, oidc.TestClientID, resp.ID)
+	assert.Equal(t, oidctest.ClientID, resp.ID)
 	assert.Equal(t, ctx.Host+ctx.Endpoint.DCR+"/"+resp.ID, resp.RegistrationURI)
 	assert.Empty(t, resp.RegistrationAccessToken)
 }
 
 func TestFetch_InvalidToken(t *testing.T) {
 	// Given.
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	dynamicClientReq := client.DynamicClientRequest{
-		ID:                      oidc.TestClientID,
+		ID:                      oidctest.ClientID,
 		RegistrationAccessToken: "invalid_token",
 	}
 
@@ -108,10 +108,10 @@ func TestFetch_InvalidToken(t *testing.T) {
 
 func TestDeleteClient(t *testing.T) {
 	// Given.
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	dynamicClientReq := client.DynamicClientRequest{
-		ID:                      oidc.TestClientID,
-		RegistrationAccessToken: oidc.TestClientRegistrationAccessToken,
+		ID:                      oidctest.ClientID,
+		RegistrationAccessToken: oidctest.ClientRegistrationAccessToken,
 	}
 
 	// When.
@@ -120,15 +120,15 @@ func TestDeleteClient(t *testing.T) {
 	// Then.
 	require.Nil(t, err)
 
-	clients := oidc.TestClients(t, ctx)
+	clients := oidctest.Clients(t, ctx)
 	assert.Len(t, clients, 0)
 }
 
 func TestDeleteClient_InvalidToken(t *testing.T) {
 	// Given.
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	dynamicClientReq := client.DynamicClientRequest{
-		ID:                      oidc.TestClientID,
+		ID:                      oidctest.ClientID,
 		RegistrationAccessToken: "invalid_token",
 	}
 

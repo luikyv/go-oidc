@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/authorize"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,8 +22,8 @@ import (
 
 func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 	// Given.
-	ctx := oidc.NewTestContext(t)
-	client, _ := ctx.Client(oidc.TestClientID)
+	ctx := oidctest.NewContext(t)
+	client, _ := ctx.Client(oidctest.ClientID)
 	policy := goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.Context, c *goidc.Client, s *goidc.AuthnSession) bool { return true },
@@ -48,7 +49,7 @@ func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 	// Then.
 	require.Nil(t, err)
 
-	sessions := oidc.TestAuthnSessions(t, ctx)
+	sessions := oidctest.AuthnSessions(t, ctx)
 	assert.Len(t, sessions, 1, "the should be only one authentication session")
 
 	session := sessions[0]
@@ -61,7 +62,7 @@ func TestInitAuth_PolicyEndsWithSuccess(t *testing.T) {
 
 func TestInitAuth_PolicyEndsWithSuccess_WithJAR(t *testing.T) {
 	// Given.
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	ctx.JAR.IsEnabled = true
 	ctx.JAR.SignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256}
 	ctx.JAR.LifetimeSecs = 60
@@ -73,8 +74,8 @@ func TestInitAuth_PolicyEndsWithSuccess_WithJAR(t *testing.T) {
 		},
 	))
 
-	privateJWK := oidc.TestPrivateRS256JWK(t, "rsa256_key")
-	client, _ := ctx.Client(oidc.TestClientID)
+	privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key")
+	client, _ := ctx.Client(oidctest.ClientID)
 	jwks, _ := json.Marshal(jose.JSONWebKeySet{
 		Keys: []jose.JSONWebKey{privateJWK.Public()},
 	})
@@ -112,7 +113,7 @@ func TestInitAuth_PolicyEndsWithSuccess_WithJAR(t *testing.T) {
 	// Then.
 	require.Nil(t, err)
 
-	sessions := oidc.TestAuthnSessions(t, ctx)
+	sessions := oidctest.AuthnSessions(t, ctx)
 	require.Len(t, sessions, 1, "the should be only one authentication session")
 
 	session := sessions[0]
@@ -124,13 +125,13 @@ func TestInitAuth_PolicyEndsWithSuccess_WithJAR(t *testing.T) {
 
 func TestInitAuth_PolicyEndsWithSuccess_WithJARM(t *testing.T) {
 	// Given.
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	ctx.JARM.IsEnabled = true
 	ctx.JARM.LifetimeSecs = 60
-	ctx.JARM.DefaultSignatureKeyID = oidc.TestServerPrivateJWK.KeyID
+	ctx.JARM.DefaultSignatureKeyID = oidctest.ServerPrivateJWK.KeyID
 	ctx.ResponseModes = append(ctx.ResponseModes, goidc.ResponseModeJWT)
 
-	client, _ := ctx.Client(oidc.TestClientID)
+	client, _ := ctx.Client(oidctest.ClientID)
 	policy := goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.Context, c *goidc.Client, s *goidc.AuthnSession) bool { return true },
@@ -154,7 +155,7 @@ func TestInitAuth_PolicyEndsWithSuccess_WithJARM(t *testing.T) {
 	// Then.
 	require.Nil(t, oauthErr)
 
-	sessions := oidc.TestAuthnSessions(t, ctx)
+	sessions := oidctest.AuthnSessions(t, ctx)
 	assert.Len(t, sessions, 1, "the should be only one authentication session")
 
 	session := sessions[0]
@@ -166,13 +167,13 @@ func TestInitAuth_PolicyEndsWithSuccess_WithJARM(t *testing.T) {
 	responseObject := redirectURL.Query().Get("response")
 	require.NotEmpty(t, responseObject)
 
-	claims := oidc.TestSafeClaims(t, responseObject, oidc.TestServerPrivateJWK)
+	claims := oidctest.SafeClaims(t, responseObject, oidctest.ServerPrivateJWK)
 	assert.Equal(t, session.AuthorizationCode, claims["code"])
 }
 
 func TestInitAuth_ShouldNotFindClient(t *testing.T) {
 	// Given.
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 
 	// When.
 	err := authorize.InitAuth(ctx, authorize.Request{ClientID: "invalid_client_id"})
@@ -184,8 +185,8 @@ func TestInitAuth_ShouldNotFindClient(t *testing.T) {
 
 func TestInitAuth_InvalidRedirectURI(t *testing.T) {
 	// Given
-	ctx := oidc.NewTestContext(t)
-	client, _ := ctx.Client(oidc.TestClientID)
+	ctx := oidctest.NewContext(t)
+	client, _ := ctx.Client(oidctest.ClientID)
 
 	// When.
 	err := authorize.InitAuth(ctx, authorize.Request{
@@ -205,12 +206,12 @@ func TestInitAuth_InvalidRedirectURI(t *testing.T) {
 
 func TestInitAuth_InvalidScope(t *testing.T) {
 	// Given.
-	ctx := oidc.NewTestContext(t)
-	client, _ := ctx.Client(oidc.TestClientID)
+	ctx := oidctest.NewContext(t)
+	client, _ := ctx.Client(oidctest.ClientID)
 
 	// When.
 	err := authorize.InitAuth(ctx, authorize.Request{
-		ClientID: oidc.TestClientID,
+		ClientID: oidctest.ClientID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  client.RedirectURIS[0],
 			Scopes:       "invalid_scope",
@@ -225,14 +226,14 @@ func TestInitAuth_InvalidScope(t *testing.T) {
 
 func TestInitAuth_InvalidResponseType(t *testing.T) {
 	// Given.
-	client := oidc.NewTestClient(t)
+	client := oidctest.NewClient(t)
 	client.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeCode}
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	require.Nil(t, ctx.SaveClient(client))
 
 	// When.
 	err := authorize.InitAuth(ctx, authorize.Request{
-		ClientID: oidc.TestClientID,
+		ClientID: oidctest.ClientID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  client.RedirectURIS[0],
 			Scopes:       client.Scopes,
@@ -247,12 +248,12 @@ func TestInitAuth_InvalidResponseType(t *testing.T) {
 
 func TestInitAuth_WhenNoPolicyIsAvailable(t *testing.T) {
 	// Given.
-	ctx := oidc.NewTestContext(t)
-	client, _ := ctx.Client(oidc.TestClientID)
+	ctx := oidctest.NewContext(t)
+	client, _ := ctx.Client(oidctest.ClientID)
 
 	// When.
 	err := authorize.InitAuth(ctx, authorize.Request{
-		ClientID: oidc.TestClientID,
+		ClientID: oidctest.ClientID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  client.RedirectURIS[0],
 			Scopes:       client.Scopes,
@@ -267,8 +268,8 @@ func TestInitAuth_WhenNoPolicyIsAvailable(t *testing.T) {
 
 func TestInitAuth_ShouldEndWithError(t *testing.T) {
 	// Given.
-	ctx := oidc.NewTestContext(t)
-	client, _ := ctx.Client(oidc.TestClientID)
+	ctx := oidctest.NewContext(t)
+	client, _ := ctx.Client(oidctest.ClientID)
 	policy := goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.Context, c *goidc.Client, s *goidc.AuthnSession) bool { return true },
@@ -280,7 +281,7 @@ func TestInitAuth_ShouldEndWithError(t *testing.T) {
 
 	// When.
 	err := authorize.InitAuth(ctx, authorize.Request{
-		ClientID: oidc.TestClientID,
+		ClientID: oidctest.ClientID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  client.RedirectURIS[0],
 			Scopes:       client.Scopes,
@@ -293,14 +294,14 @@ func TestInitAuth_ShouldEndWithError(t *testing.T) {
 	assert.Nil(t, err, "the error should be redirected")
 	assert.Contains(t, ctx.Response().Header().Get("Location"), oidc.ErrorCodeAccessDenied, "no policy should be available")
 
-	sessions := oidc.TestAuthnSessions(t, ctx)
+	sessions := oidctest.AuthnSessions(t, ctx)
 	assert.Len(t, sessions, 0, "no authentication session should remain")
 }
 
 func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 	// Given.
-	ctx := oidc.NewTestContext(t)
-	client, _ := ctx.Client(oidc.TestClientID)
+	ctx := oidctest.NewContext(t)
+	client, _ := ctx.Client(oidctest.ClientID)
 	policy := goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.Context, c *goidc.Client, s *goidc.AuthnSession) bool { return true },
@@ -312,7 +313,7 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 
 	// When.
 	err := authorize.InitAuth(ctx, authorize.Request{
-		ClientID: oidc.TestClientID,
+		ClientID: oidctest.ClientID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  client.RedirectURIS[0],
 			Scopes:       client.Scopes,
@@ -326,7 +327,7 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 	assert.Equal(t, http.StatusOK, ctx.Response().(*httptest.ResponseRecorder).Result().StatusCode,
 		"invalid status code for in progress status")
 
-	sessions := oidc.TestAuthnSessions(t, ctx)
+	sessions := oidctest.AuthnSessions(t, ctx)
 	assert.Len(t, sessions, 1, "there should be only one authentication session")
 
 	session := sessions[0]
@@ -336,8 +337,8 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 
 func TestInitAuth_WithPAR(t *testing.T) {
 	// Given.
-	ctx := oidc.NewTestContext(t)
-	client, _ := ctx.Client(oidc.TestClientID)
+	ctx := oidctest.NewContext(t)
+	client, _ := ctx.Client(oidctest.ClientID)
 	ctx.PAR.IsEnabled = true
 
 	requestURI := "urn:goidc:random_value"
@@ -365,7 +366,7 @@ func TestInitAuth_WithPAR(t *testing.T) {
 
 	// When.
 	err := authorize.InitAuth(ctx, authorize.Request{
-		ClientID: oidc.TestClientID,
+		ClientID: oidctest.ClientID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RequestURI:   requestURI,
 			ResponseType: goidc.ResponseTypeCode,
@@ -376,7 +377,7 @@ func TestInitAuth_WithPAR(t *testing.T) {
 	// Then.
 	require.Nil(t, err)
 
-	sessions := oidc.TestAuthnSessions(t, ctx)
+	sessions := oidctest.AuthnSessions(t, ctx)
 	assert.Len(t, sessions, 1, "the should be only one authentication session")
 
 	session := sessions[0]
@@ -389,7 +390,7 @@ func TestInitAuth_WithPAR(t *testing.T) {
 func TestContinueAuthentication(t *testing.T) {
 
 	// Given.
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	policy := goidc.NewPolicy(
 		"policy_id",
 		func(ctx goidc.Context, c *goidc.Client, s *goidc.AuthnSession) bool { return true },
@@ -412,6 +413,6 @@ func TestContinueAuthentication(t *testing.T) {
 	// Then.
 	require.Nil(t, err)
 
-	sessions := oidc.TestAuthnSessions(t, ctx)
+	sessions := oidctest.AuthnSessions(t, ctx)
 	assert.Len(t, sessions, 1, "the should be only one authentication session")
 }

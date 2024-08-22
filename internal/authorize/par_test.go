@@ -10,6 +10,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/authorize"
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,14 +18,14 @@ import (
 
 func TestPushAuth(t *testing.T) {
 	// Given.
-	ctx := oidc.NewTestContext(t)
-	c, _ := ctx.Client(oidc.TestClientID)
+	ctx := oidctest.NewContext(t)
+	c, _ := ctx.Client(oidctest.ClientID)
 
 	// When.
 	resp, err := authorize.PushAuth(ctx, authorize.PushedRequest{
 		AuthnRequest: client.AuthnRequest{
-			ID:     oidc.TestClientID,
-			Secret: oidc.TestClientSecret,
+			ID:     oidctest.ClientID,
+			Secret: oidctest.ClientSecret,
 		},
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  c.RedirectURIS[0],
@@ -38,7 +39,7 @@ func TestPushAuth(t *testing.T) {
 	require.Nil(t, err)
 	assert.NotEmpty(t, resp.RequestURI)
 
-	sessions := oidc.TestAuthnSessions(t, ctx)
+	sessions := oidctest.AuthnSessions(t, ctx)
 	require.Len(t, sessions, 1, "the should be only one authentication session")
 
 	session := sessions[0]
@@ -47,13 +48,13 @@ func TestPushAuth(t *testing.T) {
 
 func TestPushAuth_WithJAR(t *testing.T) {
 	// Given.
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	ctx.JAR.IsEnabled = true
 	ctx.JAR.SignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256}
 	ctx.JAR.LifetimeSecs = 60
 
-	privateJWK := oidc.TestPrivateRS256JWK(t, "rsa256_key")
-	c, _ := ctx.Client(oidc.TestClientID)
+	privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key")
+	c, _ := ctx.Client(oidctest.ClientID)
 	jwks, _ := json.Marshal(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privateJWK.Public()}})
 	c.PublicJWKS = jwks
 	require.Nil(t, ctx.SaveClient(c))
@@ -78,8 +79,8 @@ func TestPushAuth_WithJAR(t *testing.T) {
 	// When.
 	resp, err := authorize.PushAuth(ctx, authorize.PushedRequest{
 		AuthnRequest: client.AuthnRequest{
-			ID:     oidc.TestClientID,
-			Secret: oidc.TestClientSecret,
+			ID:     oidctest.ClientID,
+			Secret: oidctest.ClientSecret,
 		},
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RequestObject: requestObject,
@@ -90,7 +91,7 @@ func TestPushAuth_WithJAR(t *testing.T) {
 	require.Nil(t, err)
 	assert.NotEmpty(t, resp.RequestURI)
 
-	sessions := oidc.TestAuthnSessions(t, ctx)
+	sessions := oidctest.AuthnSessions(t, ctx)
 	require.Len(t, sessions, 1, "the should be only one authentication session")
 
 	session := sessions[0]
@@ -99,8 +100,8 @@ func TestPushAuth_WithJAR(t *testing.T) {
 
 func TestPushAuth_ShouldRejectUnauthenticatedClient(t *testing.T) {
 	// Given.
-	ctx := oidc.NewTestContext(t)
-	c, _ := ctx.Client(oidc.TestClientID)
+	ctx := oidctest.NewContext(t)
+	c, _ := ctx.Client(oidctest.ClientID)
 
 	// When.
 	_, err := authorize.PushAuth(ctx, authorize.PushedRequest{

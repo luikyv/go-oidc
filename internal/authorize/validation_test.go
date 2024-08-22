@@ -6,13 +6,14 @@ import (
 
 	"github.com/luikyv/go-oidc/internal/authorize"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestValidateAuthorizationRequest(t *testing.T) {
-	client := oidc.NewTestClient(t)
+	client := oidctest.NewClient(t)
 
 	var cases = []struct {
 		Name                string
@@ -120,7 +121,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 			func(t *testing.T) {
 				// When.
 				err := authorize.ValidateRequest(
-					oidc.NewTestContext(t),
+					oidctest.NewContext(t),
 					c.Req,
 					c.ClientModifyFunc(client),
 				)
@@ -146,7 +147,7 @@ func TestValidateAuthorizationRequest(t *testing.T) {
 }
 
 func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
-	client := oidc.NewTestClient(t)
+	client := oidctest.NewClient(t)
 
 	var cases = []struct {
 		Name                string
@@ -209,7 +210,7 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 			c.Name,
 			func(t *testing.T) {
 				// When.
-				ctx := oidc.NewTestContext(t)
+				ctx := oidctest.NewContext(t)
 				err := authorize.ValidateRequestWithPAR(
 					ctx,
 					c.Req,
@@ -236,7 +237,7 @@ func TestValidateAuthorizationRequestWithPAR(t *testing.T) {
 }
 
 func TestValidateAuthorizationRequestWithJAR(t *testing.T) {
-	client := oidc.NewTestClient(t)
+	client := oidctest.NewClient(t)
 
 	var cases = []struct {
 		Name                string
@@ -314,7 +315,7 @@ func TestValidateAuthorizationRequestWithJAR(t *testing.T) {
 			func(t *testing.T) {
 				// When.
 				err := authorize.ValidateRequestWithJAR(
-					oidc.NewTestContext(t),
+					oidctest.NewContext(t),
 					c.Req,
 					c.JAR,
 					c.ClientModifyFunc(client),

@@ -6,14 +6,15 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/discovery"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestOIDCConfig(t *testing.T) {
 	// Given.
-	tokenKey := oidc.TestPrivateRS256JWK(t, "token_signature_key")
-	userInfoKey := oidc.TestPrivateRS256JWK(t, "user_info_signature_key")
+	tokenKey := oidctest.PrivateRS256JWK(t, "token_signature_key")
+	userInfoKey := oidctest.PrivateRS256JWK(t, "user_info_signature_key")
 	config := oidc.Configuration{
 		Host:                             "https://example.com",
 		Scopes:                           []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeEmail},
@@ -108,7 +109,7 @@ func TestOIDCConfig_WithJAR(t *testing.T) {
 
 func TestOIDCConfig_WithJARM(t *testing.T) {
 	// Given.
-	jarmKey := oidc.TestPrivateRS256JWK(t, "jarm_signature_key")
+	jarmKey := oidctest.PrivateRS256JWK(t, "jarm_signature_key")
 	config := oidc.Configuration{
 		PrivateJWKS: jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jarmKey}},
 	}

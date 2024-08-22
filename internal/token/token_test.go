@@ -8,6 +8,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +17,7 @@ import (
 
 func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 	// Given.
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 
 	// When.
 	_, err := token.GenerateGrant(ctx, token.Request{
@@ -33,10 +34,10 @@ func TestHandleGrantCreationShouldNotFindClient(t *testing.T) {
 
 func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 	// Given.
-	c := oidc.NewTestClient(t)
+	c := oidctest.NewClient(t)
 	c.AuthnMethod = goidc.ClientAuthnSecretPost
 
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	require.Nil(t, ctx.SaveClient(c))
 
 	// When.
@@ -59,7 +60,7 @@ func TestHandleGrantCreationShouldRejectUnauthenticatedClient(t *testing.T) {
 
 func TestGenerateGrantWithDPoP(t *testing.T) {
 	// Given.
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	ctx.Host = "https://example.com"
 	ctx.DPoP.IsEnabled = true
 	ctx.DPoP.LifetimeSecs = 9999999999999
@@ -70,8 +71,8 @@ func TestGenerateGrantWithDPoP(t *testing.T) {
 
 	req := token.Request{
 		AuthnRequest: client.AuthnRequest{
-			ID:     oidc.TestClientID,
-			Secret: oidc.TestClientSecret,
+			ID:     oidctest.ClientID,
+			Secret: oidctest.ClientSecret,
 		},
 		GrantType: goidc.GrantClientCredentials,
 		Scopes:    "scope1",
@@ -82,7 +83,7 @@ func TestGenerateGrantWithDPoP(t *testing.T) {
 
 	// Then.
 	assert.Nil(t, err)
-	claims := oidc.TestUnsafeClaims(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
+	claims := oidctest.UnsafeClaims(t, tokenResp.AccessToken, []jose.SignatureAlgorithm{jose.PS256, jose.RS256})
 
 	require.Contains(t, claims, "cnf")
 	confirmation := claims["cnf"].(map[string]any)

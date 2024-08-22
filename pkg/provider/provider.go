@@ -88,7 +88,9 @@ func New(
 	p.config.Endpoint.Introspection = goidc.EndpointTokenIntrospection
 
 	for _, opt := range opts {
-		opt(p)
+		if err := opt(p); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := p.validateConfiguration(); err != nil {

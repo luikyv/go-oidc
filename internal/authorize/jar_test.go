@@ -9,6 +9,7 @@ import (
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/authorize"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,7 +17,7 @@ import (
 
 func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) {
 	// Given.
-	privateJWK := oidc.TestPrivateRS256JWK(t, "client_key_id")
+	privateJWK := oidctest.PrivateRS256JWK(t, "client_key_id")
 	config := oidc.Configuration{
 		Host: "https://server.example.com",
 	}
@@ -32,7 +33,7 @@ func TestExtractJARFromRequestObject_SignedRequestObjectHappyPath(t *testing.T) 
 
 	client := &goidc.Client{
 		ClientMetaInfo: goidc.ClientMetaInfo{
-			PublicJWKS: oidc.TestRawJWKS(privateJWK.Public()),
+			PublicJWKS: oidctest.RawJWKS(privateJWK.Public()),
 		},
 	}
 

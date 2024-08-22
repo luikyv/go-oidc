@@ -7,7 +7,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/client"
-	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -24,7 +24,7 @@ func TestGetAuthenticatedClient_WithNoneAuthn_HappyPath(t *testing.T) {
 		},
 	}
 
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	require.Nil(t, ctx.SaveClient(c))
 
 	req := client.AuthnRequest{
@@ -51,7 +51,7 @@ func TestGetAuthenticatedClient_WithSecretPostAuthn(t *testing.T) {
 		HashedSecret: string(hashedClientSecret),
 	}
 
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	require.Nil(t, ctx.SaveClient(c))
 
 	req := client.AuthnRequest{
@@ -92,7 +92,7 @@ func TestGetAuthenticatedClient_WithBasicSecretAuthn(t *testing.T) {
 		HashedSecret: string(hashedClientSecret),
 	}
 
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	require.Nil(t, ctx.SaveClient(c))
 	ctx.Request().SetBasicAuth(c.ID, clientSecret)
 
@@ -121,16 +121,16 @@ func TestGetAuthenticatedClient_WithBasicSecretAuthn(t *testing.T) {
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 
 	// Given.
-	privateJWK := oidc.TestPrivateRS256JWK(t, "rsa256_key")
+	privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key")
 	c := &goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
-			PublicJWKS:  oidc.TestRawJWKS(privateJWK.Public()),
+			PublicJWKS:  oidctest.RawJWKS(privateJWK.Public()),
 		},
 	}
 
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	require.Nil(t, ctx.SaveClient(c))
 	ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs = 60
@@ -163,17 +163,17 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_HappyPath(t *testing.T) {
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_ClientInformedSigningAlgorithms(t *testing.T) {
 
 	// Given.
-	privateJWK := oidc.TestPrivatePS256JWK(t, "ps256_key")
+	privateJWK := oidctest.PrivatePS256JWK(t, "ps256_key")
 	c := &goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod:             goidc.ClientAuthnPrivateKeyJWT,
-			PublicJWKS:              oidc.TestRawJWKS(privateJWK.Public()),
+			PublicJWKS:              oidctest.RawJWKS(privateJWK.Public()),
 			AuthnSignatureAlgorithm: jose.PS256,
 		},
 	}
 
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	require.Nil(t, ctx.SaveClient(c))
 	ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256, jose.RS256}
 	ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs = 60
@@ -206,16 +206,16 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_ClientInformedSigningAlgorithm
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAudienceClaim(t *testing.T) {
 	// Given.
-	privateJWK := oidc.TestPrivateRS256JWK(t, "rsa256_key")
+	privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key")
 	c := &goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
-			PublicJWKS:  oidc.TestRawJWKS(privateJWK.Public()),
+			PublicJWKS:  oidctest.RawJWKS(privateJWK.Public()),
 		},
 	}
 
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs = 60
 	require.Nil(t, ctx.SaveClient(c))
@@ -247,16 +247,16 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAudienceClaim(t *testin
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidExpiryClaim(t *testing.T) {
 	// Given.
-	privateJWK := oidc.TestPrivateRS256JWK(t, "rsa256_key")
+	privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key")
 	c := &goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
-			PublicJWKS:  oidc.TestRawJWKS(privateJWK.Public()),
+			PublicJWKS:  oidctest.RawJWKS(privateJWK.Public()),
 		},
 	}
 
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	require.Nil(t, ctx.SaveClient(c))
 	ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs = 60
@@ -287,16 +287,16 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidExpiryClaim(t *testing.
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_CannotIdentifyJWK(t *testing.T) {
 	// Given.
-	privateJWK := oidc.TestPrivateRS256JWK(t, "rsa256_key")
+	privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key")
 	c := &goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
-			PublicJWKS:  oidc.TestRawJWKS(privateJWK.Public()),
+			PublicJWKS:  oidctest.RawJWKS(privateJWK.Public()),
 		},
 	}
 
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	require.Nil(t, ctx.SaveClient(c))
 	ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs = 60
@@ -328,16 +328,16 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_CannotIdentifyJWK(t *testing.T
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T) {
 	// Given.
-	privateJWK := oidc.TestPrivateRS256JWK(t, "rsa256_key")
+	privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key")
 	c := &goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
-			PublicJWKS:  oidc.TestRawJWKS(privateJWK.Public()),
+			PublicJWKS:  oidctest.RawJWKS(privateJWK.Public()),
 		},
 	}
 
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	require.Nil(t, ctx.SaveClient(c))
 	ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs = 60
@@ -351,7 +351,7 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T)
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs - 10,
 	}
 
-	invalidPrivateJWK := oidc.TestPrivatePS256JWK(t, "rsa256_key")
+	invalidPrivateJWK := oidctest.PrivatePS256JWK(t, "rsa256_key")
 	invalidSigner, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(invalidPrivateJWK.Algorithm), Key: invalidPrivateJWK.Key},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", invalidPrivateJWK.KeyID),
@@ -372,16 +372,16 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidSignature(t *testing.T)
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertion(t *testing.T) {
 	// Given.
-	privateJWK := oidc.TestPrivateRS256JWK(t, "rsa256_key")
+	privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key")
 	c := &goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
-			PublicJWKS:  oidc.TestRawJWKS(privateJWK.Public()),
+			PublicJWKS:  oidctest.RawJWKS(privateJWK.Public()),
 		},
 	}
 
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	require.Nil(t, ctx.SaveClient(c))
 	ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs = 60
@@ -400,16 +400,16 @@ func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertion(t *testing.T)
 
 func TestGetAuthenticatedClient_WithPrivateKeyJWT_InvalidAssertionType(t *testing.T) {
 	// Given.
-	privateJWK := oidc.TestPrivateRS256JWK(t, "rsa256_key")
+	privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key")
 	c := &goidc.Client{
 		ID: "random_client_id",
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
-			PublicJWKS:  oidc.TestRawJWKS(privateJWK.Public()),
+			PublicJWKS:  oidctest.RawJWKS(privateJWK.Public()),
 		},
 	}
 
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	require.Nil(t, ctx.SaveClient(c))
 	ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
 	ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs = 60
@@ -452,7 +452,7 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_HappyPath(t *testing.T) {
 		},
 	}
 
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	require.Nil(t, ctx.SaveClient(c))
 	ctx.ClientAuthn.ClientSecretJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.HS256}
 	ctx.ClientAuthn.ClientSecretJWTAssertionLifetimeSecs = 60
@@ -495,7 +495,7 @@ func TestGetAuthenticatedClient_WithClientSecretJWT_InvalidAssertionType(t *test
 		},
 	}
 
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	require.Nil(t, ctx.SaveClient(c))
 	ctx.ClientAuthn.ClientSecretJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.HS256}
 	ctx.ClientAuthn.ClientSecretJWTAssertionLifetimeSecs = 60
@@ -537,7 +537,7 @@ func TestGetAuthenticatedClient_WithDifferentClientIDs(t *testing.T) {
 		},
 	}
 
-	ctx := oidc.NewTestContext(t)
+	ctx := oidctest.NewContext(t)
 	require.Nil(t, ctx.SaveClient(c))
 	ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms = []jose.SignatureAlgorithm{jose.PS256}
 
