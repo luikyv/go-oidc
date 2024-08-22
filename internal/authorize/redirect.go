@@ -18,15 +18,15 @@ func redirectError(
 	err oidc.Error,
 	client *goidc.Client,
 ) oidc.Error {
-	var oauthErr RedirectionError
+	var oauthErr redirectionError
 	if !errors.As(err, &oauthErr) {
 		return err
 	}
 
-	redirectParams := Response{
-		Error:            oauthErr.ErrorCode,
-		ErrorDescription: oauthErr.ErrorDescription,
-		State:            oauthErr.State,
+	redirectParams := response{
+		errorCode:        oauthErr.ErrorCode,
+		errorDescription: oauthErr.ErrorDescription,
+		state:            oauthErr.State,
 	}
 	return redirectResponse(ctx, client, oauthErr.AuthorizationParameters, redirectParams)
 }
@@ -35,11 +35,11 @@ func redirectResponse(
 	ctx *oidc.Context,
 	client *goidc.Client,
 	params goidc.AuthorizationParameters,
-	redirectParams Response,
+	redirectParams response,
 ) oidc.Error {
 
 	if ctx.IssuerResponseParameterIsEnabled {
-		redirectParams.Issuer = ctx.Host
+		redirectParams.issuer = ctx.Host
 	}
 
 	responseMode := responseMode(params)
@@ -48,7 +48,7 @@ func redirectResponse(
 		if err != nil {
 			return err
 		}
-		redirectParams.Response = responseJWT
+		redirectParams.response = responseJWT
 	}
 
 	redirectParamsMap := redirectParams.parameters()
@@ -93,7 +93,7 @@ func responseMode(params goidc.AuthorizationParameters) goidc.ResponseMode {
 func createJARMResponse(
 	ctx *oidc.Context,
 	client *goidc.Client,
-	redirectParams Response,
+	redirectParams response,
 ) (
 	string,
 	oidc.Error,
@@ -116,7 +116,7 @@ func createJARMResponse(
 func signJARMResponse(
 	ctx *oidc.Context,
 	client *goidc.Client,
-	redirectParams Response,
+	redirectParams response,
 ) (
 	string,
 	oidc.Error,

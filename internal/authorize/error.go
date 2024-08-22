@@ -5,17 +5,17 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-type RedirectionError struct {
+type redirectionError struct {
 	ErrorCode        oidc.ErrorCode
 	ErrorDescription string
 	goidc.AuthorizationParameters
 }
 
-func (err RedirectionError) Code() oidc.ErrorCode {
+func (err redirectionError) Code() oidc.ErrorCode {
 	return err.ErrorCode
 }
 
-func (err RedirectionError) Error() string {
+func (err redirectionError) Error() string {
 	return err.ErrorDescription
 }
 
@@ -24,7 +24,7 @@ func newRedirectionError(
 	description string,
 	params goidc.AuthorizationParameters,
 ) oidc.Error {
-	return RedirectionError{
+	return redirectionError{
 		ErrorCode:               code,
 		ErrorDescription:        description,
 		AuthorizationParameters: params,

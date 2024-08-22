@@ -10,7 +10,7 @@ import (
 
 func validateRequest(
 	ctx *oidc.Context,
-	req Request,
+	req request,
 	client *goidc.Client,
 ) oidc.Error {
 	return validateParams(ctx, req.AuthorizationParameters, client)
@@ -18,7 +18,7 @@ func validateRequest(
 
 func validateRequestWithPAR(
 	ctx *oidc.Context,
-	req Request,
+	req request,
 	session *goidc.AuthnSession,
 	client *goidc.Client,
 ) oidc.Error {
@@ -30,13 +30,16 @@ func validateRequestWithPAR(
 		client.RedirectURIS = append(client.RedirectURIS, req.RedirectURI)
 	}
 
-	if err := validateInWithOutParams(ctx, session.AuthorizationParameters, req.AuthorizationParameters, client); err != nil {
+	if err := validateInWithOutParams(ctx, session.AuthorizationParameters,
+		req.AuthorizationParameters, client); err != nil {
 		return err
 	}
 
-	mergedParams := mergeParams(session.AuthorizationParameters, req.AuthorizationParameters)
+	mergedParams := mergeParams(session.AuthorizationParameters,
+		req.AuthorizationParameters)
 	if session.IsExpired() {
-		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "the request_uri is expired", mergedParams)
+		return newRedirectionError(oidc.ErrorCodeInvalidRequest,
+			"the request_uri is expired", mergedParams)
 	}
 
 	return nil
@@ -44,25 +47,30 @@ func validateRequestWithPAR(
 
 func validateRequestWithJAR(
 	ctx *oidc.Context,
-	req Request,
-	jar Request,
+	req request,
+	jar request,
 	client *goidc.Client,
 ) oidc.Error {
 	if jar.ClientID != client.ID {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid client_id")
+		return oidc.NewError(oidc.ErrorCodeInvalidRequest,
+			"invalid client_id")
 	}
 
-	if err := validateInWithOutParams(ctx, jar.AuthorizationParameters, req.AuthorizationParameters, client); err != nil {
+	if err := validateInWithOutParams(ctx, jar.AuthorizationParameters,
+		req.AuthorizationParameters, client); err != nil {
 		return err
 	}
 
-	mergedParams := mergeParams(jar.AuthorizationParameters, req.AuthorizationParameters)
+	mergedParams := mergeParams(jar.AuthorizationParameters,
+		req.AuthorizationParameters)
 	if jar.RequestURI != "" {
-		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "request_uri is not allowed inside the request object", mergedParams)
+		return newRedirectionError(oidc.ErrorCodeInvalidRequest,
+			"request_uri is not allowed inside the request object", mergedParams)
 	}
 
 	if jar.RequestObject != "" {
-		return newRedirectionError(oidc.ErrorCodeInvalidRequest, "request is not allowed inside the request object", mergedParams)
+		return newRedirectionError(oidc.ErrorCodeInvalidRequest,
+			"request is not allowed inside the request object", mergedParams)
 	}
 
 	return nil
@@ -70,20 +78,23 @@ func validateRequestWithJAR(
 
 func validatePushedRequestWithJAR(
 	ctx *oidc.Context,
-	req PushedRequest,
-	jar Request,
+	req pushedRequest,
+	jar request,
 	client *goidc.Client,
 ) oidc.Error {
 	if req.RequestURI != "" {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "request_uri is not allowed during PAR")
+		return oidc.NewError(oidc.ErrorCodeInvalidRequest,
+			"request_uri is not allowed during PAR")
 	}
 
 	if jar.ClientID != client.ID {
-		return oidc.NewError(oidc.ErrorCodeInvalidResquestObject, "invalid client_id")
+		return oidc.NewError(oidc.ErrorCodeInvalidResquestObject,
+			"invalid client_id")
 	}
 
 	if jar.RequestObject != "" {
-		return oidc.NewError(oidc.ErrorCodeInvalidResquestObject, "request object is not allowed inside JAR")
+		return oidc.NewError(oidc.ErrorCodeInvalidResquestObject,
+			"request object is not allowed inside JAR")
 	}
 
 	// The PAR RFC says:
@@ -98,16 +109,18 @@ func validatePushedRequestWithJAR(
 
 func validatePushedRequest(
 	ctx *oidc.Context,
-	req PushedRequest,
+	req pushedRequest,
 	client *goidc.Client,
 ) oidc.Error {
 
 	if client.AuthnMethod == goidc.ClientAuthnNone {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid client authentication method")
+		return oidc.NewError(oidc.ErrorCodeInvalidRequest,
+			"invalid client authentication method")
 	}
 
 	if req.RequestURI != "" {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "request_uri is not allowed during PAR")
+		return oidc.NewError(oidc.ErrorCodeInvalidRequest,
+			"request_uri is not allowed during PAR")
 	}
 
 	if ctx.PAR.AllowUnregisteredRedirectURI && req.RedirectURI != "" {
@@ -137,15 +150,18 @@ func validateInWithOutParams(
 
 	if ctx.OutterAuthParamsRequired {
 		if outParams.ResponseType == "" {
-			return newRedirectionError(oidc.ErrorCodeInvalidRequest, "invalid response_type", mergedParams)
+			return newRedirectionError(oidc.ErrorCodeInvalidRequest,
+				"invalid response_type", mergedParams)
 		}
 
 		if inParams.ResponseType != "" && inParams.ResponseType != outParams.ResponseType {
-			return newRedirectionError(oidc.ErrorCodeInvalidRequest, "invalid response_type", mergedParams)
+			return newRedirectionError(oidc.ErrorCodeInvalidRequest,
+				"invalid response_type", mergedParams)
 		}
 
 		if strutil.ContainsOpenID(inParams.Scopes) && !strutil.ContainsOpenID(outParams.Scopes) {
-			return newRedirectionError(oidc.ErrorCodeInvalidScope, "scope openid is required", mergedParams)
+			return newRedirectionError(oidc.ErrorCodeInvalidScope,
+				"scope openid is required", mergedParams)
 		}
 	}
 
@@ -160,7 +176,8 @@ func validateParams(
 ) oidc.Error {
 
 	if params.RedirectURI == "" {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "redirect_uri is required")
+		return oidc.NewError(oidc.ErrorCodeInvalidRequest,
+			"redirect_uri is required")
 	}
 
 	if err := validateParamsAsOptionals(ctx, params, client); err != nil {

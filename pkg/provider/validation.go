@@ -11,8 +11,8 @@ import (
 )
 
 func runValidations(
-	provider Provider,
-	validators ...func(Provider) error,
+	provider provider,
+	validators ...func(provider) error,
 ) error {
 	for _, validator := range validators {
 		if err := validator(provider); err != nil {
@@ -22,7 +22,7 @@ func runValidations(
 	return nil
 }
 
-func validateJWKS(provider Provider) error {
+func validateJWKS(provider provider) error {
 	for _, key := range provider.config.PrivateJWKS.Keys {
 		if !key.Valid() {
 			return fmt.Errorf("the key with ID: %s is not valid", key.KeyID)
@@ -32,7 +32,7 @@ func validateJWKS(provider Provider) error {
 	return nil
 }
 
-func validateSignatureKeys(provider Provider) error {
+func validateSignatureKeys(provider provider) error {
 
 	for _, keyID := range slices.Concat(
 		[]string{provider.config.User.DefaultSignatureKeyID},
@@ -57,7 +57,7 @@ func validateSignatureKeys(provider Provider) error {
 	return nil
 }
 
-func validateEncryptionKeys(provider Provider) error {
+func validateEncryptionKeys(provider provider) error {
 	for _, keyID := range slices.Concat(
 		provider.config.JAR.KeyEncryptionIDs,
 	) {
@@ -75,7 +75,7 @@ func validateEncryptionKeys(provider Provider) error {
 	return nil
 }
 
-func validatePrivateKeyJWTSignatureAlgorithms(provider Provider) error {
+func validatePrivateKeyJWTSignatureAlgorithms(provider provider) error {
 	for _, signatureAlgorithm := range provider.config.ClientAuthn.PrivateKeyJWTSignatureAlgorithms {
 		if strings.HasPrefix(string(signatureAlgorithm), "HS") {
 			return errors.New("symetric algorithms are not allowed for private_key_jwt authentication")
@@ -85,7 +85,7 @@ func validatePrivateKeyJWTSignatureAlgorithms(provider Provider) error {
 	return nil
 }
 
-func validateClientSecretJWTSignatureAlgorithms(provider Provider) error {
+func validateClientSecretJWTSignatureAlgorithms(provider provider) error {
 	for _, signatureAlgorithm := range provider.config.ClientAuthn.ClientSecretJWTSignatureAlgorithms {
 		if !strings.HasPrefix(string(signatureAlgorithm), "HS") {
 			return errors.New("assymetric algorithms are not allowed for client_secret_jwt authentication")
@@ -95,7 +95,7 @@ func validateClientSecretJWTSignatureAlgorithms(provider Provider) error {
 	return nil
 }
 
-func validateIntrospectionClientAuthnMethods(provider Provider) error {
+func validateIntrospectionClientAuthnMethods(provider provider) error {
 
 	if !provider.config.Introspection.IsEnabled {
 		return nil
@@ -114,7 +114,7 @@ func validateIntrospectionClientAuthnMethods(provider Provider) error {
 	return nil
 }
 
-func validateJAREncryption(provider Provider) error {
+func validateJAREncryption(provider provider) error {
 	if provider.config.JAR.EncryptionIsEnabled && !provider.config.JAR.IsEnabled {
 		return errors.New("JAR must be enabled if JAR encryption is enabled")
 	}
@@ -122,7 +122,7 @@ func validateJAREncryption(provider Provider) error {
 	return nil
 }
 
-func validateJARMEncryption(provider Provider) error {
+func validateJARMEncryption(provider provider) error {
 	if provider.config.JARM.EncryptionIsEnabled && !provider.config.JARM.IsEnabled {
 		return errors.New("JARM must be enabled if JARM encryption is enabled")
 	}
@@ -130,7 +130,7 @@ func validateJARMEncryption(provider Provider) error {
 	return nil
 }
 
-func validateTokenBinding(provider Provider) error {
+func validateTokenBinding(provider provider) error {
 	if provider.config.TokenBindingIsRequired &&
 		!provider.config.DPoP.IsEnabled &&
 		!provider.config.MTLS.TokenBindingIsEnabled {
@@ -140,7 +140,7 @@ func validateTokenBinding(provider Provider) error {
 	return nil
 }
 
-func validateOpenIDProfile(provider Provider) error {
+func validateOpenIDProfile(provider provider) error {
 	if provider.config.Profile != goidc.ProfileOpenID {
 		return nil
 	}
@@ -160,7 +160,7 @@ func validateOpenIDProfile(provider Provider) error {
 	return nil
 }
 
-func validateFAPI2Profile(provider Provider) error {
+func validateFAPI2Profile(provider provider) error {
 	if provider.config.Profile != goidc.ProfileFAPI2 {
 		return nil
 	}

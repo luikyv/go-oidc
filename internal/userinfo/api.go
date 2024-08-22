@@ -29,10 +29,10 @@ func handler(config *oidc.Configuration) http.HandlerFunc {
 			return
 		}
 
-		if userInfoResponse.JWTClaims != "" {
-			err = ctx.WriteJWT(userInfoResponse.JWTClaims, http.StatusOK)
+		if userInfoResponse.jwtClaims != "" {
+			err = ctx.WriteJWT(userInfoResponse.jwtClaims, http.StatusOK)
 		} else {
-			err = ctx.Write(userInfoResponse.Claims, http.StatusOK)
+			err = ctx.Write(userInfoResponse.claims, http.StatusOK)
 		}
 
 		if err != nil {

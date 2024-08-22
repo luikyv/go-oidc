@@ -13,13 +13,13 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-type Request struct {
+type request struct {
 	ClientID string `json:"client_id"`
 	goidc.AuthorizationParameters
 }
 
-func newRequest(req *http.Request) Request {
-	params := Request{
+func newRequest(req *http.Request) request {
+	params := request{
 		ClientID: req.URL.Query().Get("client_id"),
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RequestURI:          req.URL.Query().Get("request_uri"),
@@ -60,60 +60,60 @@ func newRequest(req *http.Request) Request {
 	return params
 }
 
-type Response struct {
-	Response          string
-	Issuer            string
-	AccessToken       string
-	TokenType         goidc.TokenType
-	IDToken           string
-	AuthorizationCode string
-	State             string
-	Error             oidc.ErrorCode
-	ErrorDescription  string
+type response struct {
+	response          string
+	issuer            string
+	accessToken       string
+	tokenType         goidc.TokenType
+	idToken           string
+	authorizationCode string
+	state             string
+	errorCode         oidc.ErrorCode
+	errorDescription  string
 }
 
-func (resp Response) parameters() map[string]string {
+func (resp response) parameters() map[string]string {
 	params := make(map[string]string)
 
-	if resp.Response != "" {
-		params["response"] = resp.Response
+	if resp.response != "" {
+		params["response"] = resp.response
 		return params
 	}
 
-	if resp.Issuer != "" {
-		params["iss"] = resp.Issuer
+	if resp.issuer != "" {
+		params["iss"] = resp.issuer
 	}
-	if resp.AccessToken != "" {
-		params["access_token"] = resp.AccessToken
+	if resp.accessToken != "" {
+		params["access_token"] = resp.accessToken
 	}
-	if resp.TokenType != "" {
-		params["token_type"] = string(resp.TokenType)
+	if resp.tokenType != "" {
+		params["token_type"] = string(resp.tokenType)
 	}
-	if resp.IDToken != "" {
-		params["id_token"] = resp.IDToken
+	if resp.idToken != "" {
+		params["id_token"] = resp.idToken
 	}
-	if resp.AuthorizationCode != "" {
-		params["code"] = resp.AuthorizationCode
+	if resp.authorizationCode != "" {
+		params["code"] = resp.authorizationCode
 	}
-	if resp.State != "" {
-		params["state"] = resp.State
+	if resp.state != "" {
+		params["state"] = resp.state
 	}
-	if resp.Error != "" {
-		params["error"] = string(resp.Error)
+	if resp.errorCode != "" {
+		params["error"] = string(resp.errorCode)
 	}
-	if resp.ErrorDescription != "" {
-		params["error_description"] = resp.ErrorDescription
+	if resp.errorDescription != "" {
+		params["error_description"] = resp.errorDescription
 	}
 
 	return params
 }
 
-type PushedRequest struct {
+type pushedRequest struct {
 	goidc.AuthorizationParameters
 	client.AuthnRequest
 }
 
-func newPushedRequest(req *http.Request) PushedRequest {
+func newPushedRequest(req *http.Request) pushedRequest {
 	params := goidc.AuthorizationParameters{
 		RequestURI:          req.PostFormValue("request_uri"),
 		RequestObject:       req.PostFormValue("request"),
@@ -149,18 +149,21 @@ func newPushedRequest(req *http.Request) PushedRequest {
 		}
 	}
 
-	return PushedRequest{
+	return pushedRequest{
 		AuthnRequest:            client.NewAuthnRequest(req),
 		AuthorizationParameters: params,
 	}
 }
 
-type PushedResponse struct {
+type pushedResponse struct {
 	RequestURI string `json:"request_uri"`
 	ExpiresIn  int64  `json:"expires_in"`
 }
 
-func newAuthnSession(authParams goidc.AuthorizationParameters, client *goidc.Client) *goidc.AuthnSession {
+func newAuthnSession(
+	authParams goidc.AuthorizationParameters,
+	client *goidc.Client,
+) *goidc.AuthnSession {
 	return &goidc.AuthnSession{
 		ID:                       uuid.NewString(),
 		ClientID:                 client.ID,
@@ -178,20 +181,34 @@ func mergeParams(
 	outsideParams goidc.AuthorizationParameters,
 ) goidc.AuthorizationParameters {
 	params := goidc.AuthorizationParameters{
-		RedirectURI:          nonEmptyOrDefault(insideParams.RedirectURI, outsideParams.RedirectURI),
-		ResponseMode:         nonEmptyOrDefault(insideParams.ResponseMode, outsideParams.ResponseMode),
-		ResponseType:         nonEmptyOrDefault(insideParams.ResponseType, outsideParams.ResponseType),
-		Scopes:               nonEmptyOrDefault(insideParams.Scopes, outsideParams.Scopes),
-		State:                nonEmptyOrDefault(insideParams.State, outsideParams.State),
-		Nonce:                nonEmptyOrDefault(insideParams.Nonce, outsideParams.Nonce),
-		CodeChallenge:        nonEmptyOrDefault(insideParams.CodeChallenge, outsideParams.CodeChallenge),
-		CodeChallengeMethod:  nonEmptyOrDefault(insideParams.CodeChallengeMethod, outsideParams.CodeChallengeMethod),
-		Prompt:               nonEmptyOrDefault(insideParams.Prompt, outsideParams.Prompt),
-		MaxAuthnAgeSecs:      nonEmptyOrDefault(insideParams.MaxAuthnAgeSecs, outsideParams.MaxAuthnAgeSecs),
-		Display:              nonEmptyOrDefault(insideParams.Display, outsideParams.Display),
-		ACRValues:            nonEmptyOrDefault(insideParams.ACRValues, outsideParams.ACRValues),
-		Claims:               nonNilOrDefault(insideParams.Claims, outsideParams.Claims),
-		AuthorizationDetails: nonNilOrDefault(insideParams.AuthorizationDetails, outsideParams.AuthorizationDetails),
+		RedirectURI: nonEmptyOrDefault(insideParams.RedirectURI,
+			outsideParams.RedirectURI),
+		ResponseMode: nonEmptyOrDefault(insideParams.ResponseMode,
+			outsideParams.ResponseMode),
+		ResponseType: nonEmptyOrDefault(insideParams.ResponseType,
+			outsideParams.ResponseType),
+		Scopes: nonEmptyOrDefault(insideParams.Scopes,
+			outsideParams.Scopes),
+		State: nonEmptyOrDefault(insideParams.State,
+			outsideParams.State),
+		Nonce: nonEmptyOrDefault(insideParams.Nonce,
+			outsideParams.Nonce),
+		CodeChallenge: nonEmptyOrDefault(insideParams.CodeChallenge,
+			outsideParams.CodeChallenge),
+		CodeChallengeMethod: nonEmptyOrDefault(insideParams.CodeChallengeMethod,
+			outsideParams.CodeChallengeMethod),
+		Prompt: nonEmptyOrDefault(insideParams.Prompt,
+			outsideParams.Prompt),
+		MaxAuthnAgeSecs: nonEmptyOrDefault(insideParams.MaxAuthnAgeSecs,
+			outsideParams.MaxAuthnAgeSecs),
+		Display: nonEmptyOrDefault(insideParams.Display,
+			outsideParams.Display),
+		ACRValues: nonEmptyOrDefault(insideParams.ACRValues,
+			outsideParams.ACRValues),
+		Claims: nonNilOrDefault(insideParams.Claims,
+			outsideParams.Claims),
+		AuthorizationDetails: nonNilOrDefault(insideParams.AuthorizationDetails,
+			outsideParams.AuthorizationDetails),
 	}
 
 	return params

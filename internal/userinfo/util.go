@@ -9,35 +9,35 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func userInfo(ctx *oidc.Context) (Response, oidc.Error) {
+func userInfo(ctx *oidc.Context) (response, oidc.Error) {
 
 	accessToken, tokenType, ok := ctx.AuthorizationToken()
 	if !ok {
-		return Response{}, oidc.NewError(oidc.ErrorCodeInvalidToken, "no token found")
+		return response{}, oidc.NewError(oidc.ErrorCodeInvalidToken, "no token found")
 	}
 
 	tokenID, oauthErr := token.ExtractID(ctx, accessToken)
 	if oauthErr != nil {
-		return Response{}, oauthErr
+		return response{}, oauthErr
 	}
 
 	grantSession, err := ctx.GrantSessionByTokenID(tokenID)
 	if err != nil {
-		return Response{}, oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid token")
+		return response{}, oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid token")
 	}
 
 	if err := validateUserInfoRequest(ctx, grantSession, accessToken, tokenType); err != nil {
-		return Response{}, err
+		return response{}, err
 	}
 
 	client, err := ctx.Client(grantSession.ClientID)
 	if err != nil {
-		return Response{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return response{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
 	resp, oauthErr := userInfoResponse(ctx, client, grantSession)
 	if oauthErr != nil {
-		return Response{}, oauthErr
+		return response{}, oauthErr
 	}
 
 	return resp, nil
@@ -48,7 +48,7 @@ func userInfoResponse(
 	client *goidc.Client,
 	grantSession *goidc.GrantSession,
 ) (
-	Response,
+	response,
 	oidc.Error,
 ) {
 
@@ -59,11 +59,11 @@ func userInfoResponse(
 		userInfoClaims[k] = v
 	}
 
-	resp := Response{}
+	resp := response{}
 	// If the client doesn't require the user info to be signed,
 	// we'll just return the claims as a JSON object.
 	if client.UserInfoSignatureAlgorithm == "" {
-		resp.Claims = userInfoClaims
+		resp.claims = userInfoClaims
 		return resp, nil
 	}
 
@@ -71,21 +71,21 @@ func userInfoResponse(
 	userInfoClaims[goidc.ClaimAudience] = client.ID
 	jwtUserInfoClaims, err := signUserInfoClaims(ctx, client, userInfoClaims)
 	if err != nil {
-		return Response{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return response{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
 
 	// If the client doesn't require the user info to be encrypted,
 	// we'll just return the claims as a signed JWT.
 	if client.UserInfoKeyEncryptionAlgorithm == "" {
-		resp.JWTClaims = jwtUserInfoClaims
+		resp.jwtClaims = jwtUserInfoClaims
 		return resp, nil
 	}
 
 	jwtUserInfoClaims, err = encryptUserInfoJWT(ctx, client, jwtUserInfoClaims)
 	if err != nil {
-		return Response{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return response{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
 	}
-	resp.JWTClaims = jwtUserInfoClaims
+	resp.jwtClaims = jwtUserInfoClaims
 	return resp, nil
 }
 

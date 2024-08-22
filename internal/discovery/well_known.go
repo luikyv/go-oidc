@@ -4,12 +4,12 @@ import (
 	"github.com/luikyv/go-oidc/internal/oidc"
 )
 
-func oidcConfig(ctx *oidc.Context) OpenIDConfiguration {
+func oidcConfig(ctx *oidc.Context) openIDConfiguration {
 	var scopes []string
 	for _, scope := range ctx.Scopes {
 		scopes = append(scopes, scope.ID)
 	}
-	config := OpenIDConfiguration{
+	config := openIDConfiguration{
 		Issuer:                               ctx.Host,
 		AuthorizationEndpoint:                ctx.BaseURL() + ctx.Endpoint.Authorize,
 		TokenEndpoint:                        ctx.BaseURL() + ctx.Endpoint.Token,
@@ -74,7 +74,7 @@ func oidcConfig(ctx *oidc.Context) OpenIDConfiguration {
 	if ctx.MTLS.IsEnabled {
 		config.TLSBoundTokensIsEnabled = ctx.MTLS.TokenBindingIsEnabled
 
-		config.MTLSConfiguration = &OpenIDMTLSConfiguration{
+		config.MTLSConfiguration = &openIDMTLSConfiguration{
 			TokenEndpoint:    ctx.MTLSBaseURL() + ctx.Endpoint.Token,
 			UserinfoEndpoint: ctx.MTLSBaseURL() + ctx.Endpoint.UserInfo,
 		}

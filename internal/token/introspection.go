@@ -8,7 +8,7 @@ import (
 
 func introspect(
 	ctx *oidc.Context,
-	req IntrospectionRequest,
+	req introspectionRequest,
 ) (
 	goidc.TokenInfo,
 	oidc.Error,
@@ -27,7 +27,7 @@ func introspect(
 
 func validateIntrospectionRequest(
 	_ *oidc.Context,
-	req IntrospectionRequest,
+	req introspectionRequest,
 	client *goidc.Client,
 ) oidc.Error {
 	if !client.IsGrantTypeAllowed(goidc.GrantIntrospection) {

@@ -9,97 +9,97 @@ import (
 
 func create(
 	ctx *oidc.Context,
-	req DynamicClientRequest,
+	req dynamicRequest,
 ) (
-	DynamicClientResponse,
+	dynamicResponse,
 	oidc.Error,
 ) {
 	if err := setCreationDefaults(ctx, &req); err != nil {
-		return DynamicClientResponse{}, err
+		return dynamicResponse{}, err
 	}
 
-	if err := validateDynamicClientRequest(ctx, req); err != nil {
-		return DynamicClientResponse{}, err
+	if err := validateDynamicRequest(ctx, req); err != nil {
+		return dynamicResponse{}, err
 	}
 
 	ctx.ExecuteDCRPlugin(&req.ClientMetaInfo)
-	if err := validateDynamicClientRequest(ctx, req); err != nil {
-		return DynamicClientResponse{}, err
+	if err := validateDynamicRequest(ctx, req); err != nil {
+		return dynamicResponse{}, err
 	}
 
 	newClient := newClient(req)
 	if err := ctx.SaveClient(newClient); err != nil {
-		return DynamicClientResponse{}, err
+		return dynamicResponse{}, err
 	}
 
-	return DynamicClientResponse{
-		ID:                      req.ID,
-		RegistrationURI:         registrationURI(ctx, req.ID),
-		RegistrationAccessToken: req.RegistrationAccessToken,
-		Secret:                  req.Secret,
+	return dynamicResponse{
+		ID:                      req.id,
+		RegistrationURI:         registrationURI(ctx, req.id),
+		RegistrationAccessToken: req.registrationAccessToken,
+		Secret:                  req.secret,
 		ClientMetaInfo:          req.ClientMetaInfo,
 	}, nil
 }
 
 func setCreationDefaults(
 	ctx *oidc.Context,
-	req *DynamicClientRequest,
+	req *dynamicRequest,
 ) oidc.Error {
 	id, err := clientID()
 	if err != nil {
 		return oidc.NewError(oidc.ErrorCodeInternalError,
 			"could not generate the client id")
 	}
-	req.ID = id
+	req.id = id
 
 	token, err := registrationAccessToken()
 	if err != nil {
 		return oidc.NewError(oidc.ErrorCodeInternalError,
 			"could not generate the registration access token")
 	}
-	req.RegistrationAccessToken = token
+	req.registrationAccessToken = token
 
 	return setDefaults(ctx, req)
 }
 
 func update(
 	ctx *oidc.Context,
-	dc DynamicClientRequest,
+	dc dynamicRequest,
 ) (
-	DynamicClientResponse,
+	dynamicResponse,
 	oidc.Error,
 ) {
 	c, err := protected(ctx, dc)
 	if err != nil {
-		return DynamicClientResponse{}, err
+		return dynamicResponse{}, err
 	}
 
 	if err := setUpdateDefaults(ctx, c, &dc); err != nil {
-		return DynamicClientResponse{}, err
+		return dynamicResponse{}, err
 	}
-	if err := validateDynamicClientRequest(ctx, dc); err != nil {
-		return DynamicClientResponse{}, err
+	if err := validateDynamicRequest(ctx, dc); err != nil {
+		return dynamicResponse{}, err
 	}
 
 	ctx.ExecuteDCRPlugin(&dc.ClientMetaInfo)
-	if err := validateDynamicClientRequest(ctx, dc); err != nil {
-		return DynamicClientResponse{}, err
+	if err := validateDynamicRequest(ctx, dc); err != nil {
+		return dynamicResponse{}, err
 	}
 
 	updatedClient := newClient(dc)
 	if err := ctx.SaveClient(updatedClient); err != nil {
-		return DynamicClientResponse{}, err
+		return dynamicResponse{}, err
 	}
 
-	resp := DynamicClientResponse{
-		ID:              dc.ID,
-		RegistrationURI: registrationURI(ctx, dc.ID),
-		Secret:          dc.Secret,
+	resp := dynamicResponse{
+		ID:              dc.id,
+		RegistrationURI: registrationURI(ctx, dc.id),
+		Secret:          dc.secret,
 		ClientMetaInfo:  dc.ClientMetaInfo,
 	}
 
 	if ctx.DCR.TokenRotationIsEnabled {
-		resp.RegistrationAccessToken = dc.RegistrationAccessToken
+		resp.RegistrationAccessToken = dc.registrationAccessToken
 	}
 
 	return resp, nil
@@ -108,16 +108,16 @@ func update(
 func setUpdateDefaults(
 	ctx *oidc.Context,
 	client *goidc.Client,
-	dynamicClient *DynamicClientRequest,
+	dynamicClient *dynamicRequest,
 ) oidc.Error {
-	dynamicClient.ID = client.ID
+	dynamicClient.id = client.ID
 	if ctx.DCR.TokenRotationIsEnabled {
 		token, err := registrationAccessToken()
 		if err != nil {
 			return oidc.NewError(oidc.ErrorCodeInternalError,
 				"could not generate the registration access token")
 		}
-		dynamicClient.RegistrationAccessToken = token
+		dynamicClient.registrationAccessToken = token
 	}
 
 	return setDefaults(ctx, dynamicClient)
@@ -125,18 +125,18 @@ func setUpdateDefaults(
 
 func fetch(
 	ctx *oidc.Context,
-	dynamicClientRequest DynamicClientRequest,
+	dynamicClientRequest dynamicRequest,
 ) (
-	DynamicClientResponse,
+	dynamicResponse,
 	oidc.Error,
 ) {
 
 	client, err := protected(ctx, dynamicClientRequest)
 	if err != nil {
-		return DynamicClientResponse{}, err
+		return dynamicResponse{}, err
 	}
 
-	return DynamicClientResponse{
+	return dynamicResponse{
 		ID:              client.ID,
 		RegistrationURI: registrationURI(ctx, client.ID),
 		ClientMetaInfo:  client.ClientMetaInfo,
@@ -145,21 +145,21 @@ func fetch(
 
 func remove(
 	ctx *oidc.Context,
-	dynamicClientRequest DynamicClientRequest,
+	dynamicClientRequest dynamicRequest,
 ) oidc.Error {
 	_, err := protected(ctx, dynamicClientRequest)
 	if err != nil {
 		return err
 	}
 
-	if err := ctx.DeleteClient(dynamicClientRequest.ID); err != nil {
+	if err := ctx.DeleteClient(dynamicClientRequest.id); err != nil {
 		return oidc.NewError(oidc.ErrorCodeInternalError,
 			"could not delete the client")
 	}
 	return nil
 }
 
-func setDefaults(ctx *oidc.Context, dynamicClient *DynamicClientRequest) oidc.Error {
+func setDefaults(ctx *oidc.Context, dynamicClient *dynamicRequest) oidc.Error {
 	if dynamicClient.AuthnMethod == "" {
 		dynamicClient.AuthnMethod = goidc.ClientAuthnSecretBasic
 	}
@@ -172,7 +172,7 @@ func setDefaults(ctx *oidc.Context, dynamicClient *DynamicClientRequest) oidc.Er
 			return oidc.NewError(oidc.ErrorCodeInternalError,
 				"could not generate the client secret")
 		}
-		dynamicClient.Secret = secret
+		dynamicClient.secret = secret
 	}
 
 	if dynamicClient.ResponseTypes == nil {
@@ -202,21 +202,21 @@ func setDefaults(ctx *oidc.Context, dynamicClient *DynamicClientRequest) oidc.Er
 	return nil
 }
 
-func newClient(dynamicClient DynamicClientRequest) *goidc.Client {
-	hashedRegistrationAccessToken, _ := bcrypt.GenerateFromPassword([]byte(dynamicClient.RegistrationAccessToken), bcrypt.DefaultCost)
+func newClient(dynamicClient dynamicRequest) *goidc.Client {
+	hashedRegistrationAccessToken, _ := bcrypt.GenerateFromPassword([]byte(dynamicClient.registrationAccessToken), bcrypt.DefaultCost)
 	client := &goidc.Client{
-		ID:                            dynamicClient.ID,
+		ID:                            dynamicClient.id,
 		HashedRegistrationAccessToken: string(hashedRegistrationAccessToken),
 		ClientMetaInfo:                dynamicClient.ClientMetaInfo,
 	}
 
 	if dynamicClient.AuthnMethod == goidc.ClientAuthnSecretPost || dynamicClient.AuthnMethod == goidc.ClientAuthnSecretBasic {
-		clientHashedSecret, _ := bcrypt.GenerateFromPassword([]byte(dynamicClient.Secret), bcrypt.DefaultCost)
+		clientHashedSecret, _ := bcrypt.GenerateFromPassword([]byte(dynamicClient.secret), bcrypt.DefaultCost)
 		client.HashedSecret = string(clientHashedSecret)
 	}
 
 	if dynamicClient.AuthnMethod == goidc.ClientAuthnSecretJWT {
-		client.Secret = dynamicClient.Secret
+		client.Secret = dynamicClient.secret
 	}
 
 	return client
@@ -228,22 +228,22 @@ func registrationURI(ctx *oidc.Context, clientID string) string {
 
 func protected(
 	ctx *oidc.Context,
-	dynamicClient DynamicClientRequest,
+	dynamicClient dynamicRequest,
 ) (
 	*goidc.Client,
 	oidc.Error,
 ) {
-	if dynamicClient.ID == "" {
+	if dynamicClient.id == "" {
 		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid client_id")
 	}
 
-	client, err := ctx.Client(dynamicClient.ID)
+	client, err := ctx.Client(dynamicClient.id)
 	if err != nil {
 		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest, "could not load the client")
 	}
 
-	if dynamicClient.RegistrationAccessToken == "" ||
-		!client.IsRegistrationAccessTokenValid(dynamicClient.RegistrationAccessToken) {
+	if dynamicClient.registrationAccessToken == "" ||
+		!client.IsRegistrationAccessTokenValid(dynamicClient.registrationAccessToken) {
 		return nil, oidc.NewError(oidc.ErrorCodeAccessDenied, "invalid token")
 	}
 

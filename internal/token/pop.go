@@ -27,7 +27,7 @@ func ValidatePoP(
 func ValidateDPoPJWT(
 	ctx *oidc.Context,
 	dpopJWT string,
-	expectedDPoPClaims DPoPJWTValidationOptions,
+	expectedDPoPClaims dpopValidationOptions,
 ) oidc.Error {
 	parsedDPoPJWT, err := jwt.ParseSigned(dpopJWT, ctx.DPoP.SignatureAlgorithms)
 	if err != nil {
@@ -48,7 +48,7 @@ func ValidateDPoPJWT(
 	}
 
 	var claims jwt.Claims
-	var dpopClaims dpopJWTClaims
+	var dpopClaims dpopClaims
 	if err := parsedDPoPJWT.Claims(jwk.Key, &claims, &dpopClaims); err != nil {
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid dpop")
 	}
@@ -122,7 +122,7 @@ func validateDPoP(
 		return oidc.NewError(oidc.ErrorCodeUnauthorizedClient, "invalid DPoP header")
 	}
 
-	return ValidateDPoPJWT(ctx, dpopJWT, DPoPJWTValidationOptions{
+	return ValidateDPoPJWT(ctx, dpopJWT, dpopValidationOptions{
 		AccessToken:   token,
 		JWKThumbprint: confirmation.JWKThumbprint,
 	})

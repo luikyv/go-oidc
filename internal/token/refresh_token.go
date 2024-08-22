@@ -12,34 +12,34 @@ import (
 
 func generateRefreshTokenGrant(
 	ctx *oidc.Context,
-	req Request,
+	req request,
 ) (
-	Response,
+	response,
 	oidc.Error,
 ) {
 	if err := preValidateRefreshTokenGrantRequest(req); err != nil {
-		return Response{}, oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid parameter for refresh token grant")
+		return response{}, oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid parameter for refresh token grant")
 	}
 
 	client, grantSession, err := authenticatedClientAndGrantSession(ctx, req)
 	if err != nil {
-		return Response{}, err
+		return response{}, err
 	}
 
 	if err = validateRefreshTokenGrantRequest(ctx, req, client, grantSession); err != nil {
-		return Response{}, err
+		return response{}, err
 	}
 
 	token, err := Make(ctx, client, NewGrantOptions(*grantSession))
 	if err != nil {
-		return Response{}, err
+		return response{}, err
 	}
 
 	if err := updateRefreshTokenGrantSession(ctx, grantSession, req, token); err != nil {
-		return Response{}, err
+		return response{}, err
 	}
 
-	tokenResp := Response{
+	tokenResp := response{
 		AccessToken:  token.Value,
 		ExpiresIn:    grantSession.TokenOptions.LifetimeSecs,
 		TokenType:    token.Type,
@@ -53,7 +53,7 @@ func generateRefreshTokenGrant(
 			newIDTokenOptions(NewGrantOptions(*grantSession)),
 		)
 		if err != nil {
-			return Response{}, err
+			return response{}, err
 		}
 	}
 
@@ -63,7 +63,7 @@ func generateRefreshTokenGrant(
 func updateRefreshTokenGrantSession(
 	ctx *oidc.Context,
 	grantSession *goidc.GrantSession,
-	req Request,
+	req request,
 	token Token,
 ) oidc.Error {
 
@@ -91,7 +91,7 @@ func updateRefreshTokenGrantSession(
 
 func authenticatedClientAndGrantSession(
 	ctx *oidc.Context,
-	req Request,
+	req request,
 ) (
 	*goidc.Client,
 	*goidc.GrantSession,
@@ -135,7 +135,7 @@ func grantSessionByRefreshToken(
 }
 
 func preValidateRefreshTokenGrantRequest(
-	req Request,
+	req request,
 ) oidc.Error {
 	if req.RefreshToken == "" {
 		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid refresh token")
@@ -146,7 +146,7 @@ func preValidateRefreshTokenGrantRequest(
 
 func validateRefreshTokenGrantRequest(
 	ctx *oidc.Context,
-	req Request,
+	req request,
 	client *goidc.Client,
 	grantSession *goidc.GrantSession,
 ) oidc.Error {
@@ -193,7 +193,7 @@ func validateRefreshTokenPoPForPublicClients(
 		return oidc.NewError(oidc.ErrorCodeUnauthorizedClient, "invalid DPoP header")
 	}
 
-	return ValidateDPoPJWT(ctx, dpopJWT, DPoPJWTValidationOptions{
+	return ValidateDPoPJWT(ctx, dpopJWT, dpopValidationOptions{
 		JWKThumbprint: grantSession.JWKThumbprint,
 	})
 }

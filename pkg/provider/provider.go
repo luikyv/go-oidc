@@ -19,8 +19,16 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-type Provider struct {
-	config oidc.Configuration
+type Provider interface {
+	// Handler returns an HTTP handler with all the logic defined for the openid
+	// provider.
+	//
+	// This may be used to add the oidc logic to a HTTP server.
+	//	server := http.NewServeMux()
+	//	server.Handle("/", op.Handler())
+	Handler() http.Handler
+	Run(address string, middlewares ...goidc.MiddlewareFunc) error
+	RunTLS(opts TLSOptions, middlewares ...goidc.MiddlewareFunc) error
 }
 
 // New creates a new openid provider.
@@ -31,7 +39,7 @@ func New(
 	privateJWKS jose.JSONWebKeySet,
 	opts ...ProviderOption,
 ) (
-	*Provider,
+	Provider,
 	error,
 ) {
 
@@ -47,7 +55,7 @@ func New(
 		return nil, errors.New("the private jwks doesn't contain any signing key")
 	}
 
-	p := &Provider{
+	p := &provider{
 		config: oidc.Configuration{
 			Host:    issuer,
 			Profile: goidc.ProfileOpenID,
@@ -100,15 +108,11 @@ func New(
 	return p, nil
 }
 
-// Handler returns an HTTP handler with all the logic defined for the openid
-// provider.
-// This may be used to add the oidc logic to a HTTP server.
-// For using the handler under a path prefix, the option WithPathPrefix must be
-// added when creating the provider.
-//
-//	server := http.NewServeMux()
-//	server.Handle("/", op.Handler())
-func (p *Provider) Handler() http.Handler {
+type provider struct {
+	config oidc.Configuration
+}
+
+func (p *provider) Handler() http.Handler {
 
 	server := http.NewServeMux()
 
@@ -121,7 +125,7 @@ func (p *Provider) Handler() http.Handler {
 	return server
 }
 
-func (p *Provider) Run(
+func (p *provider) Run(
 	address string,
 	middlewares ...goidc.MiddlewareFunc,
 ) error {
@@ -133,7 +137,7 @@ func (p *Provider) Run(
 	return http.ListenAndServe(address, handler)
 }
 
-func (p *Provider) RunTLS(
+func (p *provider) RunTLS(
 	config TLSOptions,
 	middlewares ...goidc.MiddlewareFunc,
 ) error {
@@ -175,7 +179,7 @@ func (p *Provider) RunTLS(
 
 // TokenInfo returns information about the access token sent in the request.
 // It also validates token binding (DPoP or TLS).
-func (p *Provider) TokenInfo(
+func (p *provider) TokenInfo(
 	req *http.Request,
 	resp http.ResponseWriter,
 ) goidc.TokenInfo {
@@ -198,7 +202,7 @@ func (p *Provider) TokenInfo(
 }
 
 // Client is a shortcut to fetch clients using the client storage.
-func (p *Provider) Client(
+func (p *provider) Client(
 	ctx context.Context,
 	clientID string,
 ) (
@@ -209,7 +213,7 @@ func (p *Provider) Client(
 }
 
 // TODO: Refactor.
-func (p *Provider) validateConfiguration() error {
+func (p *provider) validateConfiguration() error {
 	return runValidations(
 		*p,
 		validateJWKS,

@@ -60,19 +60,19 @@ func newIDTokenOptions(grantOpts GrantOptions) IDTokenOptions {
 	}
 }
 
-type DPoPJWTValidationOptions struct {
+type dpopValidationOptions struct {
 	// AccessToken should be filled when the DPoP "ath" claim is expected and should be validated.
 	AccessToken   string
 	JWKThumbprint string
 }
 
-type dpopJWTClaims struct {
+type dpopClaims struct {
 	HTTPMethod      string `json:"htm"`
 	HTTPURI         string `json:"htu"`
 	AccessTokenHash string `json:"ath"`
 }
 
-type Request struct {
+type request struct {
 	GrantType         goidc.GrantType
 	Scopes            string
 	AuthorizationCode string
@@ -83,8 +83,8 @@ type Request struct {
 	client.AuthnRequest
 }
 
-func newRequest(req *http.Request) Request {
-	return Request{
+func newRequest(req *http.Request) request {
+	return request{
 		AuthnRequest:      client.NewAuthnRequest(req),
 		GrantType:         goidc.GrantType(req.PostFormValue("grant_type")),
 		Scopes:            req.PostFormValue("scope"),
@@ -96,7 +96,7 @@ func newRequest(req *http.Request) Request {
 	}
 }
 
-type Response struct {
+type response struct {
 	AccessToken          string                      `json:"access_token"`
 	IDToken              string                      `json:"id_token,omitempty"`
 	RefreshToken         string                      `json:"refresh_token,omitempty"`
@@ -111,14 +111,14 @@ type resultChannel struct {
 	Err    oidc.Error
 }
 
-type IntrospectionRequest struct {
+type introspectionRequest struct {
 	Token         string
 	TokenTypeHint goidc.TokenTypeHint
 	client.AuthnRequest
 }
 
-func newIntrospectionRequest(req *http.Request) IntrospectionRequest {
-	return IntrospectionRequest{
+func newIntrospectionRequest(req *http.Request) introspectionRequest {
+	return introspectionRequest{
 		AuthnRequest:  client.NewAuthnRequest(req),
 		Token:         req.PostFormValue("token"),
 		TokenTypeHint: goidc.TokenTypeHint(req.PostFormValue("token_type_hint")),

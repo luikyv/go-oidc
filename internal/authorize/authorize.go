@@ -9,7 +9,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func initAuth(ctx *oidc.Context, req Request) oidc.Error {
+func initAuth(ctx *oidc.Context, req request) oidc.Error {
 
 	if req.ClientID == "" {
 		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid client_id")
@@ -27,7 +27,7 @@ func initAuth(ctx *oidc.Context, req Request) oidc.Error {
 	return nil
 }
 
-func initAuthNoRedirect(ctx *oidc.Context, client *goidc.Client, req Request) oidc.Error {
+func initAuthNoRedirect(ctx *oidc.Context, client *goidc.Client, req request) oidc.Error {
 	session, err := initAuthnSession(ctx, req, client)
 	if err != nil {
 		return err
@@ -60,7 +60,7 @@ func continueAuth(ctx *oidc.Context, callbackID string) oidc.Error {
 
 func initAuthnSession(
 	ctx *oidc.Context,
-	req Request,
+	req request,
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
@@ -76,7 +76,7 @@ func initAuthnSession(
 
 func authnSession(
 	ctx *oidc.Context,
-	req Request,
+	req request,
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
@@ -97,7 +97,7 @@ func authnSession(
 
 func authnSessionWithPAR(
 	ctx *oidc.Context,
-	req Request,
+	req request,
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
@@ -132,7 +132,7 @@ func authnSessionWithPAR(
 
 func authnSessionWithJAR(
 	ctx *oidc.Context,
-	req Request,
+	req request,
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
@@ -162,7 +162,7 @@ func authnSessionWithJAR(
 
 func simpleAuthnSession(
 	ctx *oidc.Context,
-	req Request,
+	req request,
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
@@ -264,9 +264,9 @@ func finishFlowSuccessfully(ctx *oidc.Context, session *goidc.AuthnSession) oidc
 			err.Error(), session.AuthorizationParameters)
 	}
 
-	redirectParams := Response{
-		AuthorizationCode: session.AuthorizationCode,
-		State:             session.State,
+	redirectParams := response{
+		authorizationCode: session.AuthorizationCode,
+		state:             session.State,
 	}
 	if session.ResponseType.Contains(goidc.ResponseTypeToken) {
 		grantOptions, err := newImplicitGrantOptions(ctx, client, session)
@@ -281,8 +281,8 @@ func finishFlowSuccessfully(ctx *oidc.Context, session *goidc.AuthnSession) oidc
 				err.Error(), session.AuthorizationParameters)
 		}
 
-		redirectParams.AccessToken = token.Value
-		redirectParams.TokenType = token.Type
+		redirectParams.accessToken = token.Value
+		redirectParams.tokenType = token.Type
 		if err := generateImplicitGrantSession(ctx, token, grantOptions); err != nil {
 			return newRedirectionError(err.Code(),
 				err.Error(), session.AuthorizationParameters)
@@ -294,7 +294,7 @@ func finishFlowSuccessfully(ctx *oidc.Context, session *goidc.AuthnSession) oidc
 		idTokenOptions := token.IDTokenOptions{
 			Subject:                 session.Subject,
 			AdditionalIDTokenClaims: session.AdditionalIDTokenClaims,
-			AccessToken:             redirectParams.AccessToken,
+			AccessToken:             redirectParams.accessToken,
 			AuthorizationCode:       session.AuthorizationCode,
 			State:                   session.State,
 		}
@@ -304,7 +304,7 @@ func finishFlowSuccessfully(ctx *oidc.Context, session *goidc.AuthnSession) oidc
 			return newRedirectionError(err.Code(),
 				err.Error(), session.AuthorizationParameters)
 		}
-		redirectParams.IDToken = idToken
+		redirectParams.idToken = idToken
 	}
 
 	return redirectResponse(ctx, client, session.AuthorizationParameters, redirectParams)

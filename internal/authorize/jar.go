@@ -26,19 +26,19 @@ func jarFromRequestObject(
 	reqObject string,
 	client *goidc.Client,
 ) (
-	Request,
+	request,
 	oidc.Error,
 ) {
 	if ctx.JAR.EncryptionIsEnabled && token.IsJWE(reqObject) {
 		signedReqObject, err := signedRequestObjectFromEncrypted(ctx, reqObject, client)
 		if err != nil {
-			return Request{}, err
+			return request{}, err
 		}
 		reqObject = signedReqObject
 	}
 
 	if !token.IsJWS(reqObject) {
-		return Request{}, oidc.NewError(oidc.ErrorCodeInvalidRequest, "the request object is not a JWS")
+		return request{}, oidc.NewError(oidc.ErrorCodeInvalidRequest, "the request object is not a JWS")
 	}
 
 	return jarFromSignedRequestObject(ctx, reqObject, client)
@@ -88,7 +88,7 @@ func jarFromSignedRequestObject(
 	reqObject string,
 	client *goidc.Client,
 ) (
-	Request,
+	request,
 	oidc.Error,
 ) {
 	jarAlgorithms := ctx.JAR.SignatureAlgorithms
@@ -97,32 +97,32 @@ func jarFromSignedRequestObject(
 	}
 	parsedToken, err := jwt.ParseSigned(reqObject, jarAlgorithms)
 	if err != nil {
-		return Request{}, oidc.NewError(oidc.ErrorCodeInvalidResquestObject,
+		return request{}, oidc.NewError(oidc.ErrorCodeInvalidResquestObject,
 			"invalid request object")
 	}
 
 	// Verify that the assertion indicates the key ID.
 	if len(parsedToken.Headers) != 1 || parsedToken.Headers[0].KeyID == "" {
-		return Request{}, oidc.NewError(oidc.ErrorCodeInvalidResquestObject, "invalid kid header")
+		return request{}, oidc.NewError(oidc.ErrorCodeInvalidResquestObject, "invalid kid header")
 	}
 
 	// Verify that the key ID belongs to the client.
 	jwk, oauthErr := client.PublicKey(parsedToken.Headers[0].KeyID)
 	if oauthErr != nil {
-		return Request{}, oidc.NewError(oidc.ErrorCodeInvalidResquestObject,
+		return request{}, oidc.NewError(oidc.ErrorCodeInvalidResquestObject,
 			"could not fetch the client public key")
 	}
 
 	var claims jwt.Claims
-	var jarReq Request
+	var jarReq request
 	if err := parsedToken.Claims(jwk.Key, &claims, &jarReq); err != nil {
-		return Request{}, oidc.NewError(oidc.ErrorCodeInvalidResquestObject,
+		return request{}, oidc.NewError(oidc.ErrorCodeInvalidResquestObject,
 			"could not extract claims")
 	}
 
 	// Validate that the "exp" claims is present and it's not too far in the future.
 	if claims.Expiry == nil || int64(time.Until(claims.Expiry.Time()).Seconds()) > ctx.JAR.LifetimeSecs {
-		return Request{}, oidc.NewError(oidc.ErrorCodeInvalidResquestObject, "invalid exp claim")
+		return request{}, oidc.NewError(oidc.ErrorCodeInvalidResquestObject, "invalid exp claim")
 	}
 
 	err = claims.ValidateWithLeeway(jwt.Expected{
@@ -130,7 +130,7 @@ func jarFromSignedRequestObject(
 		AnyAudience: []string{ctx.Host},
 	}, time.Duration(0))
 	if err != nil {
-		return Request{}, oidc.NewError(oidc.ErrorCodeInvalidResquestObject, "invalid claims")
+		return request{}, oidc.NewError(oidc.ErrorCodeInvalidResquestObject, "invalid claims")
 	}
 
 	return jarReq, nil

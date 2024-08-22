@@ -33,7 +33,7 @@ func validateTokenBindingIsRequired(
 
 func validateTokenBindingRequestWithDPoP(
 	ctx *oidc.Context,
-	_ Request,
+	_ request,
 	client *goidc.Client,
 ) oidc.Error {
 
@@ -48,5 +48,5 @@ func validateTokenBindingRequestWithDPoP(
 		return nil
 	}
 
-	return ValidateDPoPJWT(ctx, dpopJWT, DPoPJWTValidationOptions{})
+	return ValidateDPoPJWT(ctx, dpopJWT, dpopValidationOptions{})
 }

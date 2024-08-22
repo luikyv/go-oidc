@@ -7,6 +7,13 @@ import (
 	"github.com/luikyv/go-oidc/internal/oidc"
 )
 
+type Router struct {
+}
+
+func (r Router) RegisterRouters(router *http.ServeMux) {
+
+}
+
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 	if config.DCR.IsEnabled {
 		router.HandleFunc(
@@ -35,13 +42,13 @@ func handlerCreate(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := oidc.NewContext(*config, r, w)
 
-		var req DynamicClientRequest
+		var req dynamicRequest
 		if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
 			ctx.WriteError(err)
 			return
 		}
 
-		req.InitialAccessToken = ctx.BearerToken()
+		req.initialAccessToken = ctx.BearerToken()
 
 		resp, err := create(ctx, req)
 		if err != nil {
@@ -59,7 +66,7 @@ func handlerUpdate(config *oidc.Configuration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := oidc.NewContext(*config, r, w)
 
-		var req DynamicClientRequest
+		var req dynamicRequest
 		if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
 			ctx.WriteError(err)
 			return
@@ -71,8 +78,8 @@ func handlerUpdate(config *oidc.Configuration) http.HandlerFunc {
 			return
 		}
 
-		req.ID = ctx.Request().PathValue("client_id")
-		req.RegistrationAccessToken = token
+		req.id = ctx.Request().PathValue("client_id")
+		req.registrationAccessToken = token
 		resp, err := update(ctx, req)
 		if err != nil {
 			ctx.WriteError(err)
@@ -96,9 +103,9 @@ func handlerGet(config *oidc.Configuration) http.HandlerFunc {
 			return
 		}
 
-		req := DynamicClientRequest{
-			ID:                      ctx.Request().PathValue("client_id"),
-			RegistrationAccessToken: token,
+		req := dynamicRequest{
+			id:                      ctx.Request().PathValue("client_id"),
+			registrationAccessToken: token,
 		}
 
 		resp, err := fetch(ctx, req)
@@ -124,9 +131,9 @@ func handlerDelete(config *oidc.Configuration) http.HandlerFunc {
 			return
 		}
 
-		req := DynamicClientRequest{
-			ID:                      ctx.Request().PathValue("client_id"),
-			RegistrationAccessToken: token,
+		req := dynamicRequest{
+			id:                      ctx.Request().PathValue("client_id"),
+			registrationAccessToken: token,
 		}
 
 		if err := remove(ctx, req); err != nil {

@@ -80,9 +80,9 @@ func IsJWE(token string) bool {
 
 func generateGrant(
 	ctx *oidc.Context,
-	req Request,
+	req request,
 ) (
-	tokenResp Response,
+	tokenResp response,
 	err error,
 ) {
 	switch req.GrantType {
@@ -93,7 +93,7 @@ func generateGrant(
 	case goidc.GrantRefreshToken:
 		tokenResp, err = generateRefreshTokenGrant(ctx, req)
 	default:
-		tokenResp, err = Response{}, oidc.NewError(oidc.ErrorCodeUnsupportedGrantType, "unsupported grant type")
+		tokenResp, err = response{}, oidc.NewError(oidc.ErrorCodeUnsupportedGrantType, "unsupported grant type")
 	}
 
 	return tokenResp, err

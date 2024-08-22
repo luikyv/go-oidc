@@ -8,36 +8,36 @@ import (
 
 func generateClientCredentialsGrant(
 	ctx *oidc.Context,
-	req Request,
+	req request,
 ) (
-	Response,
+	response,
 	oidc.Error,
 ) {
 	c, oauthErr := client.Authenticated(ctx, req.AuthnRequest)
 	if oauthErr != nil {
-		return Response{}, oauthErr
+		return response{}, oauthErr
 	}
 
 	if oauthErr := validateClientCredentialsGrantRequest(ctx, req, c); oauthErr != nil {
-		return Response{}, oauthErr
+		return response{}, oauthErr
 	}
 
 	grantOptions, err := newClientCredentialsGrantOptions(ctx, c, req)
 	if err != nil {
-		return Response{}, err
+		return response{}, err
 	}
 
 	token, err := Make(ctx, c, grantOptions)
 	if err != nil {
-		return Response{}, err
+		return response{}, err
 	}
 
 	_, oauthErr = generateClientCredentialsGrantSession(ctx, c, token, grantOptions)
 	if oauthErr != nil {
-		return Response{}, nil
+		return response{}, nil
 	}
 
-	tokenResp := Response{
+	tokenResp := response{
 		AccessToken: token.Value,
 		ExpiresIn:   grantOptions.LifetimeSecs,
 		TokenType:   token.Type,
@@ -70,7 +70,7 @@ func generateClientCredentialsGrantSession(
 
 func validateClientCredentialsGrantRequest(
 	ctx *oidc.Context,
-	req Request,
+	req request,
 	client *goidc.Client,
 ) oidc.Error {
 
@@ -96,7 +96,7 @@ func validateClientCredentialsGrantRequest(
 func newClientCredentialsGrantOptions(
 	ctx *oidc.Context,
 	client *goidc.Client,
-	req Request,
+	req request,
 ) (
 	GrantOptions,
 	oidc.Error,

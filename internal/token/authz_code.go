@@ -12,41 +12,41 @@ import (
 
 func generateAuthorizationCodeGrant(
 	ctx *oidc.Context,
-	req Request,
+	req request,
 ) (
-	Response,
+	response,
 	oidc.Error,
 ) {
 
 	if req.AuthorizationCode == "" {
-		return Response{}, oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid authorization code")
+		return response{}, oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid authorization code")
 	}
 
 	client, session, oauthErr := authenticatedClientAndSession(ctx, req)
 	if oauthErr != nil {
-		return Response{}, oauthErr
+		return response{}, oauthErr
 	}
 
 	if oauthErr = validateAuthorizationCodeGrantRequest(ctx, req, client, session); oauthErr != nil {
-		return Response{}, oauthErr
+		return response{}, oauthErr
 	}
 
 	grantOptions, err := newAuthorizationCodeGrantOptions(ctx, req, client, session)
 	if err != nil {
-		return Response{}, err
+		return response{}, err
 	}
 
 	token, err := Make(ctx, client, grantOptions)
 	if err != nil {
-		return Response{}, err
+		return response{}, err
 	}
 
 	grantSession, err := generateAuthorizationCodeGrantSession(ctx, token, grantOptions)
 	if err != nil {
-		return Response{}, err
+		return response{}, err
 	}
 
-	tokenResp := Response{
+	tokenResp := response{
 		AccessToken:  token.Value,
 		ExpiresIn:    grantOptions.LifetimeSecs,
 		TokenType:    token.Type,
@@ -56,7 +56,7 @@ func generateAuthorizationCodeGrant(
 	if strutil.ContainsOpenID(session.GrantedScopes) {
 		tokenResp.IDToken, err = MakeIDToken(ctx, client, newIDTokenOptions(grantOptions))
 		if err != nil {
-			return Response{}, err
+			return response{}, err
 		}
 	}
 
@@ -102,7 +102,7 @@ func generateAuthorizationCodeGrantSession(
 
 func validateAuthorizationCodeGrantRequest(
 	ctx *oidc.Context,
-	req Request,
+	req request,
 	client *goidc.Client,
 	session *goidc.AuthnSession,
 ) oidc.Error {
@@ -140,7 +140,7 @@ func validateAuthorizationCodeGrantRequest(
 
 func validatePkce(
 	ctx *oidc.Context,
-	req Request,
+	req request,
 	_ *goidc.Client,
 	session *goidc.AuthnSession,
 ) oidc.Error {
@@ -170,7 +170,7 @@ func validatePkce(
 
 func authenticatedClientAndSession(
 	ctx *oidc.Context,
-	req Request,
+	req request,
 ) (
 	*goidc.Client,
 	*goidc.AuthnSession,
@@ -221,7 +221,7 @@ func sessionByAuthorizationCode(ctx *oidc.Context, authorizationCode string, ch 
 
 func newAuthorizationCodeGrantOptions(
 	ctx *oidc.Context,
-	req Request,
+	req request,
 	client *goidc.Client,
 	session *goidc.AuthnSession,
 ) (

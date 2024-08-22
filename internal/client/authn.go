@@ -317,7 +317,7 @@ func appendClientIDFromAssertion(
 		return clientIDs, true
 	}
 
-	assertionClientID, ok := getClientIDFromAssertion(ctx, req.Assertion)
+	assertionClientID, ok := clientIDFromAssertion(ctx, req.Assertion)
 	if !ok {
 		return []string{}, false
 	}
@@ -325,7 +325,7 @@ func appendClientIDFromAssertion(
 	return append(clientIDs, assertionClientID), true
 }
 
-func getClientIDFromAssertion(
+func clientIDFromAssertion(
 	ctx *oidc.Context,
 	assertion string,
 ) (

@@ -24,17 +24,19 @@ func NewAuthnRequest(req *http.Request) AuthnRequest {
 	}
 }
 
-type DynamicClientRequest struct {
-	ID     string
-	Secret string
-	// This value is filled with the authorization header when creating a client with DCR.
-	InitialAccessToken string
-	// This value is filled with the authorization header for all DCM requests.
-	RegistrationAccessToken string
+type dynamicRequest struct {
+	id     string
+	secret string
+	// initialAccessToken holds the value of the authorization header when
+	// creating a client with DCR.
+	initialAccessToken string
+	// registrationAccessToken holds the value of the authorization header for
+	// all DCM requests.
+	registrationAccessToken string
 	goidc.ClientMetaInfo
 }
 
-type DynamicClientResponse struct {
+type dynamicResponse struct {
 	ID                      string `json:"client_id"`
 	Secret                  string `json:"client_secret,omitempty"`
 	RegistrationAccessToken string `json:"registration_access_token,omitempty"`
@@ -42,10 +44,11 @@ type DynamicClientResponse struct {
 	goidc.ClientMetaInfo
 }
 
-func (resp DynamicClientResponse) MarshalJSON() ([]byte, error) {
+func (resp dynamicResponse) MarshalJSON() ([]byte, error) {
 
-	type dynamicClientResponse DynamicClientResponse
-	attributesBytes, err := json.Marshal(dynamicClientResponse(resp))
+	// Define a new type to avoid recursion while marshaling.
+	type dcResp dynamicResponse
+	attributesBytes, err := json.Marshal(dcResp(resp))
 	if err != nil {
 		return nil, err
 	}

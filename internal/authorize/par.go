@@ -13,27 +13,27 @@ import (
 
 func pushAuth(
 	ctx *oidc.Context,
-	req PushedRequest,
+	req pushedRequest,
 ) (
-	PushedResponse,
+	pushedResponse,
 	oidc.Error,
 ) {
 
 	c, oauthErr := client.Authenticated(ctx, req.AuthnRequest)
 	if oauthErr != nil {
-		return PushedResponse{}, oidc.NewError(oidc.ErrorCodeInvalidClient,
+		return pushedResponse{}, oidc.NewError(oidc.ErrorCodeInvalidClient,
 			"client not authenticated")
 	}
 
 	session, oauthErr := pushAuthnSession(ctx, req, c)
 	if oauthErr != nil {
-		return PushedResponse{}, oauthErr
+		return pushedResponse{}, oauthErr
 	}
 
 	if err := ctx.SaveAuthnSession(session); err != nil {
-		return PushedResponse{}, err
+		return pushedResponse{}, err
 	}
-	return PushedResponse{
+	return pushedResponse{
 		RequestURI: session.RequestURI,
 		ExpiresIn:  ctx.PAR.LifetimeSecs,
 	}, nil
@@ -41,7 +41,7 @@ func pushAuth(
 
 func pushAuthnSession(
 	ctx *oidc.Context,
-	req PushedRequest,
+	req pushedRequest,
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
@@ -65,7 +65,7 @@ func pushAuthnSession(
 
 func pushedAuthnSession(
 	ctx *oidc.Context,
-	req PushedRequest,
+	req pushedRequest,
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
@@ -79,7 +79,7 @@ func pushedAuthnSession(
 
 func simplePushedAuthnSession(
 	ctx *oidc.Context,
-	req PushedRequest,
+	req pushedRequest,
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
@@ -96,7 +96,7 @@ func simplePushedAuthnSession(
 
 func pushedAuthnSessionWithJAR(
 	ctx *oidc.Context,
-	req PushedRequest,
+	req pushedRequest,
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
