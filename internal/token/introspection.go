@@ -3,6 +3,7 @@ package token
 import (
 	"github.com/luikyv/go-oidc/internal/clientauthn"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -11,9 +12,9 @@ func introspect(
 	req introspectionRequest,
 ) (
 	goidc.TokenInfo,
-	oidc.Error,
+	error,
 ) {
-	c, err := clientauthn.Authenticated(ctx, req.Request)
+	c, err := clientauthn.Authenticated(ctx)
 	if err != nil {
 		return goidc.TokenInfo{}, err
 	}
@@ -29,13 +30,13 @@ func validateIntrospectionRequest(
 	_ *oidc.Context,
 	req introspectionRequest,
 	client *goidc.Client,
-) oidc.Error {
+) error {
 	if !client.IsGrantTypeAllowed(goidc.GrantIntrospection) {
-		return oidc.NewError(oidc.ErrorCodeInvalidGrant, "client not allowed to introspect tokens")
+		return oidcerr.New(oidcerr.CodeInvalidGrant, "client not allowed to introspect tokens")
 	}
 
 	if req.Token == "" {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "token is required")
+		return oidcerr.New(oidcerr.CodeInvalidRequest, "token is required")
 	}
 
 	return nil

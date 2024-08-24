@@ -4,16 +4,17 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func userInfo(ctx *oidc.Context) (response, oidc.Error) {
+func userInfo(ctx *oidc.Context) (response, error) {
 
 	accessToken, tokenType, ok := ctx.AuthorizationToken()
 	if !ok {
-		return response{}, oidc.NewError(oidc.ErrorCodeInvalidToken, "no token found")
+		return response{}, oidcerr.New(oidcerr.CodeInvalidToken, "no token found")
 	}
 
 	tokenID, oauthErr := token.ExtractID(ctx, accessToken)
@@ -23,7 +24,7 @@ func userInfo(ctx *oidc.Context) (response, oidc.Error) {
 
 	grantSession, err := ctx.GrantSessionByTokenID(tokenID)
 	if err != nil {
-		return response{}, oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid token")
+		return response{}, oidcerr.New(oidcerr.CodeInvalidRequest, "invalid token")
 	}
 
 	if err := validateUserInfoRequest(ctx, grantSession, accessToken, tokenType); err != nil {
@@ -32,7 +33,7 @@ func userInfo(ctx *oidc.Context) (response, oidc.Error) {
 
 	client, err := ctx.Client(grantSession.ClientID)
 	if err != nil {
-		return response{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return response{}, oidcerr.New(oidcerr.CodeInternalError, err.Error())
 	}
 
 	resp, oauthErr := userInfoResponse(ctx, client, grantSession)
@@ -49,7 +50,7 @@ func userInfoResponse(
 	grantSession *goidc.GrantSession,
 ) (
 	response,
-	oidc.Error,
+	error,
 ) {
 
 	userInfoClaims := map[string]any{
@@ -71,7 +72,7 @@ func userInfoResponse(
 	userInfoClaims[goidc.ClaimAudience] = client.ID
 	jwtUserInfoClaims, err := signUserInfoClaims(ctx, client, userInfoClaims)
 	if err != nil {
-		return response{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return response{}, oidcerr.New(oidcerr.CodeInternalError, err.Error())
 	}
 
 	// If the client doesn't require the user info to be encrypted,
@@ -83,7 +84,7 @@ func userInfoResponse(
 
 	jwtUserInfoClaims, err = encryptUserInfoJWT(ctx, client, jwtUserInfoClaims)
 	if err != nil {
-		return response{}, oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return response{}, oidcerr.New(oidcerr.CodeInternalError, err.Error())
 	}
 	resp.jwtClaims = jwtUserInfoClaims
 	return resp, nil
@@ -95,7 +96,7 @@ func signUserInfoClaims(
 	claims map[string]any,
 ) (
 	string,
-	oidc.Error,
+	error,
 ) {
 	privateJWK := ctx.UserInfoSignatureKey(client)
 	signatureAlgorithm := jose.SignatureAlgorithm(privateJWK.Algorithm)
@@ -104,12 +105,12 @@ func signUserInfoClaims(
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
 	)
 	if err != nil {
-		return "", oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return "", oidcerr.New(oidcerr.CodeInternalError, err.Error())
 	}
 
 	idToken, err := jwt.Signed(signer).Claims(claims).Serialize()
 	if err != nil {
-		return "", oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+		return "", oidcerr.New(oidcerr.CodeInternalError, err.Error())
 	}
 
 	return idToken, nil
@@ -121,11 +122,11 @@ func encryptUserInfoJWT(
 	userInfoJWT string,
 ) (
 	string,
-	oidc.Error,
+	error,
 ) {
 	jwk, err := client.UserInfoEncryptionJWK()
 	if err != nil {
-		return "", oidc.NewError(oidc.ErrorCodeInvalidRequest, err.Error())
+		return "", oidcerr.New(oidcerr.CodeInvalidRequest, err.Error())
 	}
 
 	encryptedUserInfoJWT, oauthErr := token.EncryptJWT(ctx, userInfoJWT, jwk, client.UserInfoContentEncryptionAlgorithm)
@@ -141,13 +142,13 @@ func validateUserInfoRequest(
 	grantSession *goidc.GrantSession,
 	accessToken string,
 	tokenType goidc.TokenType,
-) oidc.Error {
+) error {
 	if grantSession.HasLastTokenExpired() {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "token expired")
+		return oidcerr.New(oidcerr.CodeInvalidRequest, "token expired")
 	}
 
 	if !strutil.ContainsOpenID(grantSession.ActiveScopes) {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid scope")
+		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid scope")
 	}
 
 	confirmation := goidc.TokenConfirmation{

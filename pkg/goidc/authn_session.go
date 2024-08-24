@@ -3,7 +3,8 @@ package goidc
 import (
 	"context"
 	"errors"
-	"time"
+
+	"github.com/luikyv/go-oidc/internal/timeutil"
 )
 
 // AuthnSessionManager contains all the logic needed to manage authentication
@@ -28,8 +29,8 @@ type AuthnSession struct {
 	// PolicyID is the id of the autentication policy used to authenticate
 	// the user.
 	PolicyID           string `json:"policy_id"`
-	ExpiresAtTimestamp int64  `json:"expires_at"`
-	CreatedAtTimestamp int64  `json:"created_at"`
+	ExpiresAtTimestamp int    `json:"expires_at"`
+	CreatedAtTimestamp int    `json:"created_at"`
 	// Subject is the user identifier.
 	// This value must be informed during the authentication flow.
 	Subject  string `json:"sub"`
@@ -79,7 +80,7 @@ func (s *AuthnSession) SetIDTokenClaimACR(acr ACR) {
 	s.SetIDTokenClaim(ClaimAuthenticationContextReference, acr)
 }
 
-func (s *AuthnSession) SetIDTokenClaimAuthTime(authTime int64) {
+func (s *AuthnSession) SetIDTokenClaimAuthTime(authTime int) {
 	s.SetIDTokenClaim(ClaimAuthenticationTime, authTime)
 }
 
@@ -128,7 +129,7 @@ func (s *AuthnSession) GrantAuthorizationDetails(authDetails []AuthorizationDeta
 }
 
 func (s *AuthnSession) IsExpired() bool {
-	return time.Now().Unix() > s.ExpiresAtTimestamp
+	return timeutil.TimestampNow() > s.ExpiresAtTimestamp
 }
 
 // SetError defines the error that will be informed to the client once the

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -37,8 +38,8 @@ func NewContext(
 
 func (ctx *Context) ClientSignatureAlgorithms() []jose.SignatureAlgorithm {
 	return append(
-		ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms,
-		ctx.ClientAuthn.ClientSecretJWTSignatureAlgorithms...,
+		ctx.ClientAuthn.PrivateKeyJWTSigAlgs,
+		ctx.ClientAuthn.ClientSecretJWTSigAlgs...,
 	)
 }
 
@@ -48,14 +49,14 @@ func (ctx *Context) IntrospectionClientSignatureAlgorithms() []jose.SignatureAlg
 	if slices.Contains(ctx.Introspection.ClientAuthnMethods, goidc.ClientAuthnPrivateKeyJWT) {
 		signatureAlgorithms = append(
 			signatureAlgorithms,
-			ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms...,
+			ctx.ClientAuthn.PrivateKeyJWTSigAlgs...,
 		)
 	}
 
 	if slices.Contains(ctx.Introspection.ClientAuthnMethods, goidc.ClientAuthnSecretJWT) {
 		signatureAlgorithms = append(
 			signatureAlgorithms,
-			ctx.ClientAuthn.ClientSecretJWTSignatureAlgorithms...,
+			ctx.ClientAuthn.ClientSecretJWTSigAlgs...,
 		)
 	}
 
@@ -113,13 +114,13 @@ func (ctx *Context) ExecuteDCRPlugin(clientInfo *goidc.ClientMetaInfo) {
 	ctx.DCR.Plugin(ctx, clientInfo)
 }
 
-func (ctx *Context) ExecuteAuthorizeErrorPlugin(oidcErr Error) Error {
-	if ctx.AuthorizeErrorPlugin == nil {
-		return oidcErr
+func (ctx *Context) ExecuteAuthorizeErrorPlugin(err error) error {
+	if ctx.AuthorizeErrPlugin == nil {
+		return err
 	}
 
-	if err := ctx.AuthorizeErrorPlugin(ctx, oidcErr); err != nil {
-		return oidcErr
+	if err := ctx.AuthorizeErrPlugin(ctx, err); err != nil {
+		return err
 	}
 
 	return nil
@@ -166,14 +167,15 @@ func (ctx *Context) FindAvailablePolicy(client *goidc.Client, session *goidc.Aut
 
 //---------------------------------------- CRUD ----------------------------------------//
 
-func (ctx *Context) SaveClient(client *goidc.Client) Error {
+func (ctx *Context) SaveClient(client *goidc.Client) error {
 	if err := ctx.Storage.Client.Save(ctx.Request().Context(), client); err != nil {
-		return NewError(ErrorCodeInternalError, "could not save the client")
+		return oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not save the client", err)
 	}
 	return nil
 }
 
-func (ctx *Context) Client(clientID string) (*goidc.Client, Error) {
+func (ctx *Context) Client(clientID string) (*goidc.Client, error) {
 	for _, staticClient := range ctx.StaticClients {
 		if staticClient.ID == clientID {
 			return staticClient, nil
@@ -182,90 +184,100 @@ func (ctx *Context) Client(clientID string) (*goidc.Client, Error) {
 
 	client, err := ctx.Storage.Client.Get(ctx.Request().Context(), clientID)
 	if err != nil {
-		return nil, NewError(ErrorCodeInternalError, "could not load the client")
+		return nil, oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not load the client", err)
 	}
 
 	return client, nil
 }
 
-func (ctx *Context) DeleteClient(id string) Error {
+func (ctx *Context) DeleteClient(id string) error {
 	if err := ctx.Storage.Client.Delete(ctx.Request().Context(), id); err != nil {
-		return NewError(ErrorCodeInternalError, "could not delete the client")
+		return oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not delete the client", err)
 	}
 
 	return nil
 }
 
-func (ctx *Context) SaveGrantSession(session *goidc.GrantSession) Error {
-	// TODO: Flag to avoid saving jwt tokens?
+func (ctx *Context) SaveGrantSession(session *goidc.GrantSession) error {
 	if err := ctx.Storage.GrantSession.Save(ctx.Request().Context(), session); err != nil {
-		return NewError(ErrorCodeInternalError, "could not save the grant session")
+		return oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not save the grant session", err)
 	}
 	return nil
 }
 
-func (ctx *Context) GrantSessionByTokenID(tokenID string) (*goidc.GrantSession, Error) {
+func (ctx *Context) GrantSessionByTokenID(tokenID string) (*goidc.GrantSession, error) {
 	session, err := ctx.Storage.GrantSession.GetByTokenID(ctx.Request().Context(), tokenID)
 	if err != nil {
-		return nil, NewError(ErrorCodeInternalError, "could not load the grant session")
+		return nil, oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not load the grant session", err)
 	}
 
 	return session, nil
 }
 
-func (ctx *Context) GrantSessionByRefreshToken(refreshToken string) (*goidc.GrantSession, Error) {
+func (ctx *Context) GrantSessionByRefreshToken(refreshToken string) (*goidc.GrantSession, error) {
 	session, err := ctx.Storage.GrantSession.GetByRefreshToken(ctx.Request().Context(), refreshToken)
 	if err != nil {
-		return nil, NewError(ErrorCodeInternalError, "could not load the grant session")
+		return nil, oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not load the grant session", err)
 	}
 
 	return session, nil
 }
 
-func (ctx *Context) DeleteGrantSession(id string) Error {
+func (ctx *Context) DeleteGrantSession(id string) error {
 	if err := ctx.Storage.GrantSession.Delete(ctx.Request().Context(), id); err != nil {
-		return NewError(ErrorCodeInternalError, "could not delete the grant session")
+		return oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not delete the grant session", err)
 	}
 	return nil
 }
 
-func (ctx *Context) SaveAuthnSession(session *goidc.AuthnSession) Error {
+func (ctx *Context) SaveAuthnSession(session *goidc.AuthnSession) error {
 	if err := ctx.Storage.AuthnSession.Save(ctx.Request().Context(), session); err != nil {
-		return NewError(ErrorCodeInternalError, "could not save the authentication session")
+		return oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not save the authentication session", err)
 	}
 	return nil
 }
 
-func (ctx *Context) AuthnSessionByCallbackID(callbackID string) (*goidc.AuthnSession, Error) {
+func (ctx *Context) AuthnSessionByCallbackID(callbackID string) (*goidc.AuthnSession, error) {
 	session, err := ctx.Storage.AuthnSession.GetByCallbackID(ctx.Request().Context(), callbackID)
 	if err != nil {
-		return nil, NewError(ErrorCodeInternalError, "could not load the authentication session")
+		return nil, oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not load the authentication session", err)
 	}
 
 	return session, nil
 }
 
-func (ctx *Context) AuthnSessionByAuthorizationCode(code string) (*goidc.AuthnSession, Error) {
+func (ctx *Context) AuthnSessionByAuthorizationCode(code string) (*goidc.AuthnSession, error) {
 	session, err := ctx.Storage.AuthnSession.GetByAuthorizationCode(ctx.Request().Context(), code)
 	if err != nil {
-		return nil, NewError(ErrorCodeInternalError, "could not load the authentication session")
+		return nil, oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not load the authentication session", err)
 	}
 
 	return session, nil
 }
 
-func (ctx *Context) AuthnSessionByRequestURI(requestURI string) (*goidc.AuthnSession, Error) {
+func (ctx *Context) AuthnSessionByRequestURI(requestURI string) (*goidc.AuthnSession, error) {
 	session, err := ctx.Storage.AuthnSession.GetByRequestURI(ctx.Request().Context(), requestURI)
 	if err != nil {
-		return nil, NewError(ErrorCodeInternalError, "could not load the authentication session")
+		return nil, oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not load the authentication session", err)
 	}
 
 	return session, nil
 }
 
-func (ctx *Context) DeleteAuthnSession(id string) Error {
+func (ctx *Context) DeleteAuthnSession(id string) error {
 	if err := ctx.Storage.AuthnSession.Delete(ctx.Request().Context(), id); err != nil {
-		return NewError(ErrorCodeInternalError, "could not delete the authentication session")
+		return oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not delete the authentication session", err)
 	}
 	return nil
 }
@@ -392,10 +404,10 @@ func (ctx *Context) WriteJWT(token string, status int) error {
 
 func (ctx *Context) WriteError(err error) {
 
-	var oidcErr Error
+	var oidcErr oidcerr.Error
 	if !errors.As(err, &oidcErr) {
 		if err := ctx.Write(map[string]any{
-			"error":             ErrorCodeInternalError,
+			"error":             oidcerr.CodeInternalError,
 			"error_description": "internal error",
 		}, http.StatusInternalServerError); err != nil {
 			ctx.Response().WriteHeader(http.StatusInternalServerError)
@@ -403,8 +415,7 @@ func (ctx *Context) WriteError(err error) {
 		return
 	}
 
-	errorCode := oidcErr.Code()
-	if err := ctx.Write(oidcErr, errorCode.StatusCode()); err != nil {
+	if err := ctx.Write(oidcErr, oidcErr.Code.StatusCode()); err != nil {
 		ctx.Response().WriteHeader(http.StatusInternalServerError)
 	}
 }
@@ -476,7 +487,7 @@ func (ctx *Context) UserInfoSignatureKey(client *goidc.Client) jose.JSONWebKey {
 	return ctx.privateKeyBasedOnAlgorithmOrDefault(
 		client.UserInfoSignatureAlgorithm,
 		ctx.User.DefaultSignatureKeyID,
-		ctx.User.SignatureKeyIDs,
+		ctx.User.SigKeyIDs,
 	)
 }
 
@@ -484,28 +495,28 @@ func (ctx *Context) IDTokenSignatureKey(client *goidc.Client) jose.JSONWebKey {
 	return ctx.privateKeyBasedOnAlgorithmOrDefault(
 		client.IDTokenSignatureAlgorithm,
 		ctx.User.DefaultSignatureKeyID,
-		ctx.User.SignatureKeyIDs,
+		ctx.User.SigKeyIDs,
 	)
 }
 
 func (ctx *Context) JARMSignatureKey(client *goidc.Client) jose.JSONWebKey {
 	return ctx.privateKeyBasedOnAlgorithmOrDefault(
 		client.JARMSignatureAlgorithm,
-		ctx.JARM.DefaultSignatureKeyID,
-		ctx.JARM.SignatureKeyIDs,
+		ctx.JARM.DefaultSigKeyID,
+		ctx.JARM.SigKeyIDs,
 	)
 }
 
 func (ctx *Context) UserInfoSignatureAlgorithms() []jose.SignatureAlgorithm {
-	return ctx.signatureAlgorithms(ctx.User.SignatureKeyIDs)
+	return ctx.signatureAlgorithms(ctx.User.SigKeyIDs)
 }
 
 func (ctx *Context) JARMSignatureAlgorithms() []jose.SignatureAlgorithm {
-	return ctx.signatureAlgorithms(ctx.JARM.SignatureKeyIDs)
+	return ctx.signatureAlgorithms(ctx.JARM.SigKeyIDs)
 }
 
 func (ctx *Context) JARKeyEncryptionAlgorithms() []jose.KeyAlgorithm {
-	return ctx.keyEncryptionAlgorithms(ctx.JAR.KeyEncryptionIDs)
+	return ctx.keyEncryptionAlgorithms(ctx.JAR.KeyEncIDs)
 }
 
 func (ctx *Context) keyEncryptionAlgorithms(keyIDs []string) []jose.KeyAlgorithm {
@@ -550,10 +561,11 @@ func (ctx *Context) privateKey(keyID string) jose.JSONWebKey {
 	return keys[0]
 }
 
-func (ctx *Context) TokenOptions(client *goidc.Client, scopes string) (goidc.TokenOptions, Error) {
+func (ctx *Context) TokenOptions(client *goidc.Client, scopes string) (goidc.TokenOptions, error) {
 	opts, err := ctx.Configuration.TokenOptions(client, scopes)
 	if err != nil {
-		return goidc.TokenOptions{}, NewError(ErrorCodeAccessDenied, "access denied")
+		return goidc.TokenOptions{}, oidcerr.Errorf(oidcerr.CodeAccessDenied,
+			"access denied", err)
 	}
 
 	return opts, nil
@@ -575,180 +587,4 @@ func (ctx *Context) Err() error {
 
 func (ctx *Context) Value(key any) any {
 	return ctx.Request().Context().Value(key)
-}
-
-type Configuration struct {
-	Profile goidc.Profile
-	// Host is the domain where the server runs. This value will be used as the
-	// authorization server issuer.
-	Host string
-	// PrivateJWKS contains the server JWKS with private and public information.
-	// When exposing it, the private information is removed.
-	PrivateJWKS             jose.JSONWebKeySet
-	TokenOptions            goidc.TokenOptionsFunc
-	Policies                []goidc.AuthnPolicy
-	Scopes                  []goidc.Scope
-	OpenIDIsRequired        bool
-	GrantTypes              []goidc.GrantType
-	ResponseTypes           []goidc.ResponseType
-	ResponseModes           []goidc.ResponseMode
-	AuthnSessionTimeoutSecs int64
-	ACRs                    []goidc.ACR
-	DisplayValues           []goidc.DisplayValue
-	// Claims defines the user claims that can be returned in the userinfo
-	// endpoint or in ID tokens.
-	// This will be published in the /.well-known/openid-configuration endpoint.
-	Claims                 []string
-	ClaimTypes             []goidc.ClaimType
-	SubjectIdentifierTypes []goidc.SubjectIdentifierType
-	StaticClients          []*goidc.Client
-	// IssuerResponseParameterIsEnabled indicates if the "iss" parameter will be
-	// returned when redirecting the user back to the client application.
-	IssuerResponseParameterIsEnabled bool
-	// ClaimsParameterIsEnabled informs the clients whether the server accepts
-	// the "claims" parameter.
-	// This will be published in the /.well-known/openid-configuration endpoint.
-	ClaimsParameterIsEnabled bool
-	// TokenBindingIsRequired indicates that at least one mechanism of sender
-	// contraining tokens is required, either DPoP or client TLS.
-	TokenBindingIsRequired bool
-	AuthorizeErrorPlugin   goidc.AuthorizeErrorFunc
-	// OutterAuthParamsRequired indicates that the required authorization params
-	// must be informed as query parameters during the request to the
-	// authorization endpoint even if they were informed previously during PAR
-	// or inside JAR.
-	OutterAuthParamsRequired bool
-
-	Endpoint struct {
-		WellKnown           string
-		JWKS                string
-		Token               string
-		Authorize           string
-		PushedAuthorization string
-		DCR                 string
-		UserInfo            string
-		Introspection       string
-		Prefix              string
-	}
-
-	Storage struct {
-		Client       goidc.ClientManager
-		GrantSession goidc.GrantSessionManager
-		AuthnSession goidc.AuthnSessionManager
-	}
-
-	User struct {
-		// DefaultSignatureKeyID defines the default key used to sign ID
-		// tokens and the user info endpoint response.
-		// The key can be overridden depending on the client properties
-		// "id_token_signed_response_alg" and "userinfo_signed_response_alg".
-		DefaultSignatureKeyID string
-		// SignatureKeyIDs contains the IDs of the keys used to sign ID tokens
-		// and the user info endpoint response.
-		// There should be at most one per algorithm, in other words, there should
-		// not be two key IDs that point to two keys that have the same algorithm.
-		SignatureKeyIDs                   []string
-		EncryptionIsEnabled               bool
-		KeyEncryptionAlgorithms           []jose.KeyAlgorithm
-		DefaultContentEncryptionAlgorithm jose.ContentEncryption
-		ContentEncryptionAlgorithms       []jose.ContentEncryption
-		// IDTokenExpiresInSecs defines the expiry time of ID tokens.
-		IDTokenExpiresInSecs int64
-	}
-
-	ClientAuthn struct {
-		Methods []goidc.ClientAuthnType
-		// PrivateKeyJWTSignatureAlgorithms contains algorithms accepted for signing
-		// client assertions during private_key_jwt.
-		PrivateKeyJWTSignatureAlgorithms []jose.SignatureAlgorithm
-		// PrivateKeyJWTAssertionLifetimeSecs is used to validate that the assertion
-		// will expire in the near future during private_key_jwt.
-		PrivateKeyJWTAssertionLifetimeSecs int64
-		// ClientSecretJWTSignatureAlgorithms constains algorithms accepted for
-		// signing client assertions during client_secret_jwt.
-		ClientSecretJWTSignatureAlgorithms []jose.SignatureAlgorithm
-		// It is used to validate that the assertion will expire in the near future
-		// during client_secret_jwt.
-		ClientSecretJWTAssertionLifetimeSecs int64
-	}
-
-	DCR struct {
-		IsEnabled              bool
-		TokenRotationIsEnabled bool
-		Plugin                 goidc.DCRFunc
-	}
-
-	Introspection struct {
-		IsEnabled          bool
-		ClientAuthnMethods []goidc.ClientAuthnType
-	}
-
-	RefreshToken struct {
-		RotationIsEnabled bool
-		LifetimeSecs      int64
-	}
-
-	JARM struct {
-		IsEnabled                         bool
-		DefaultSignatureKeyID             string
-		SignatureKeyIDs                   []string
-		LifetimeSecs                      int64
-		EncryptionIsEnabled               bool
-		KeyEncrytionAlgorithms            []jose.KeyAlgorithm
-		DefaultContentEncryptionAlgorithm jose.ContentEncryption
-		ContentEncryptionAlgorithms       []jose.ContentEncryption
-	}
-
-	JAR struct {
-		IsEnabled                         bool
-		IsRequired                        bool
-		SignatureAlgorithms               []jose.SignatureAlgorithm
-		LifetimeSecs                      int64
-		EncryptionIsEnabled               bool
-		KeyEncryptionIDs                  []string
-		DefaultContentEncryptionAlgorithm jose.ContentEncryption
-		ContentEncryptionAlgorithms       []jose.ContentEncryption
-	}
-
-	PAR struct {
-		// IsEnabled allows client to push authorization requests.
-		IsEnabled bool
-		// IsRequired indicates that authorization requests can only be made if
-		// they were pushed.
-		IsRequired                   bool
-		LifetimeSecs                 int64
-		AllowUnregisteredRedirectURI bool
-	}
-
-	MTLS struct {
-		IsEnabled             bool
-		Host                  string
-		TokenBindingIsEnabled bool
-		ClientCertFunc        goidc.ClientCertFunc
-	}
-
-	DPoP struct {
-		IsEnabled           bool
-		IsRequired          bool
-		LifetimeSecs        int
-		SignatureAlgorithms []jose.SignatureAlgorithm
-	}
-
-	PKCE struct {
-		IsEnabled                  bool
-		IsRequired                 bool
-		DefaultCodeChallengeMethod goidc.CodeChallengeMethod
-		CodeChallengeMethods       []goidc.CodeChallengeMethod
-	}
-
-	AuthorizationDetails struct {
-		IsEnabled bool
-		Types     []string
-	}
-
-	ResourceIndicators struct {
-		IsEnabled  bool // TODO.
-		IsRequired bool
-		Resources  []string
-	}
 }

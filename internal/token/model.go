@@ -2,11 +2,9 @@ package token
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/google/uuid"
-	"github.com/luikyv/go-oidc/internal/clientauthn"
-	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -80,12 +78,10 @@ type request struct {
 	RefreshToken      string
 	CodeVerifier      string
 	Resources         goidc.Resources
-	clientauthn.Request
 }
 
 func newRequest(req *http.Request) request {
 	return request{
-		Request:           clientauthn.NewRequest(req),
 		GrantType:         goidc.GrantType(req.PostFormValue("grant_type")),
 		Scopes:            req.PostFormValue("scope"),
 		AuthorizationCode: req.PostFormValue("code"),
@@ -100,7 +96,7 @@ type response struct {
 	AccessToken          string                      `json:"access_token"`
 	IDToken              string                      `json:"id_token,omitempty"`
 	RefreshToken         string                      `json:"refresh_token,omitempty"`
-	ExpiresIn            int64                       `json:"expires_in"`
+	ExpiresIn            int                         `json:"expires_in"`
 	TokenType            goidc.TokenType             `json:"token_type"`
 	Scopes               string                      `json:"scope,omitempty"`
 	AuthorizationDetails []goidc.AuthorizationDetail `json:"authorization_details,omitempty"`
@@ -108,25 +104,23 @@ type response struct {
 
 type resultChannel struct {
 	Result any
-	Err    oidc.Error
+	Err    error
 }
 
 type introspectionRequest struct {
 	Token         string
 	TokenTypeHint goidc.TokenTypeHint
-	clientauthn.Request
 }
 
 func newIntrospectionRequest(req *http.Request) introspectionRequest {
 	return introspectionRequest{
-		Request:       clientauthn.NewRequest(req),
 		Token:         req.PostFormValue("token"),
 		TokenTypeHint: goidc.TokenTypeHint(req.PostFormValue("token_type_hint")),
 	}
 }
 
 func NewGrantSession(grantOptions GrantOptions, token Token) *goidc.GrantSession {
-	timestampNow := time.Now().Unix()
+	timestampNow := timeutil.TimestampNow()
 	return &goidc.GrantSession{
 		ID:                          uuid.New().String(),
 		TokenID:                     token.ID,

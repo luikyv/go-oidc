@@ -20,14 +20,14 @@ func oidcConfig(ctx *oidc.Context) openIDConfiguration {
 		GrantTypes:                           ctx.GrantTypes,
 		UserClaimsSupported:                  ctx.Claims,
 		ClaimTypesSupported:                  ctx.ClaimTypes,
-		SubjectIdentifierTypes:               ctx.SubjectIdentifierTypes,
+		SubjectIdentifierTypes:               ctx.SubIdentifierTypes,
 		IDTokenSignatureAlgorithms:           ctx.UserInfoSignatureAlgorithms(),
 		UserInfoSignatureAlgorithms:          ctx.UserInfoSignatureAlgorithms(),
 		ClientAuthnMethods:                   ctx.ClientAuthn.Methods,
 		Scopes:                               scopes,
 		TokenEndpointClientSigningAlgorithms: ctx.ClientSignatureAlgorithms(),
-		IssuerResponseParameterIsEnabled:     ctx.IssuerResponseParameterIsEnabled,
-		ClaimsParameterIsEnabled:             ctx.ClaimsParameterIsEnabled,
+		IssuerResponseParameterIsEnabled:     ctx.IssuerRespParamIsEnabled,
+		ClaimsParameterIsEnabled:             ctx.ClaimsParamIsEnabled,
 		AuthorizationDetailsIsSupported:      ctx.AuthorizationDetails.IsEnabled,
 		AuthorizationDetailTypesSupported:    ctx.AuthorizationDetails.Types,
 		AuthenticationContextReferences:      ctx.ACRs,
@@ -46,23 +46,23 @@ func oidcConfig(ctx *oidc.Context) openIDConfiguration {
 	if ctx.JAR.IsEnabled {
 		config.JARIsEnabled = ctx.JAR.IsEnabled
 		config.JARIsRequired = ctx.JAR.IsRequired
-		config.JARAlgorithms = ctx.JAR.SignatureAlgorithms
-		if ctx.JAR.EncryptionIsEnabled {
+		config.JARAlgorithms = ctx.JAR.SigAlgs
+		if ctx.JAR.EncIsEnabled {
 			config.JARKeyEncrytionAlgorithms = ctx.JARKeyEncryptionAlgorithms()
-			config.JARContentEncryptionAlgorithms = ctx.JAR.ContentEncryptionAlgorithms
+			config.JARContentEncryptionAlgorithms = ctx.JAR.ContentEncAlgs
 		}
 	}
 
 	if ctx.JARM.IsEnabled {
 		config.JARMAlgorithms = ctx.JARMSignatureAlgorithms()
-		if ctx.JARM.EncryptionIsEnabled {
-			config.JARMKeyEncryptionAlgorithms = ctx.JARM.KeyEncrytionAlgorithms
-			config.JARMContentEncryptionAlgorithms = ctx.JARM.ContentEncryptionAlgorithms
+		if ctx.JARM.EncIsEnabled {
+			config.JARMKeyEncryptionAlgorithms = ctx.JARM.KeyEncAlgs
+			config.JARMContentEncryptionAlgorithms = ctx.JARM.ContentEncAlgs
 		}
 	}
 
 	if ctx.DPoP.IsEnabled {
-		config.DPoPSignatureAlgorithms = ctx.DPoP.SignatureAlgorithms
+		config.DPoPSignatureAlgorithms = ctx.DPoP.SigAlgs
 	}
 
 	if ctx.Introspection.IsEnabled {
@@ -92,11 +92,11 @@ func oidcConfig(ctx *oidc.Context) openIDConfiguration {
 		}
 	}
 
-	if ctx.User.EncryptionIsEnabled {
-		config.IDTokenKeyEncryptionAlgorithms = ctx.User.KeyEncryptionAlgorithms
-		config.IDTokenContentEncryptionAlgorithms = ctx.User.ContentEncryptionAlgorithms
-		config.UserInfoKeyEncryptionAlgorithms = ctx.User.KeyEncryptionAlgorithms
-		config.UserInfoContentEncryptionAlgorithms = ctx.User.ContentEncryptionAlgorithms
+	if ctx.User.EncIsEnabled {
+		config.IDTokenKeyEncryptionAlgorithms = ctx.User.KeyEncAlgs
+		config.IDTokenContentEncryptionAlgorithms = ctx.User.ContentEncAlg
+		config.UserInfoKeyEncryptionAlgorithms = ctx.User.KeyEncAlgs
+		config.UserInfoContentEncryptionAlgorithms = ctx.User.ContentEncAlg
 	}
 
 	return config

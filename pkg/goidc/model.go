@@ -78,7 +78,7 @@ type TokenOptionsFunc func(client *Client, scopes string) (TokenOptions, error)
 // TokenOptions defines a template for generating access tokens.
 type TokenOptions struct {
 	Format            TokenFormat    `json:"token_format"`
-	LifetimeSecs      int64          `json:"token_lifetime_secs"`
+	LifetimeSecs      int            `json:"token_lifetime_secs"`
 	JWTSignatureKeyID string         `json:"token_signature_key_id,omitempty"`
 	OpaqueLength      int            `json:"opaque_token_length,omitempty"`
 	IsRefreshable     bool           `json:"-"`
@@ -95,7 +95,7 @@ func (to *TokenOptions) AddTokenClaims(claims map[string]any) {
 func NewJWTTokenOptions(
 	// signatureKeyID is the ID of a signing key present in the server JWKS.
 	signatureKeyID string,
-	lifetimeSecs int64,
+	lifetimeSecs int,
 ) TokenOptions {
 	return TokenOptions{
 		Format:            TokenFormatJWT,
@@ -106,7 +106,7 @@ func NewJWTTokenOptions(
 
 func NewOpaqueTokenOptions(
 	tokenLength int,
-	lifetimeSecs int64,
+	lifetimeSecs int,
 ) TokenOptions {
 	return TokenOptions{
 		Format:       TokenFormatOpaque,
@@ -157,7 +157,7 @@ type TokenInfo struct {
 	AuthorizationDetails  []AuthorizationDetail `json:"authorization_details,omitempty"`
 	ClientID              string                `json:"client_id,omitempty"`
 	Subject               string                `json:"sub,omitempty"`
-	ExpiresAtTimestamp    int64                 `json:"exp,omitempty"`
+	ExpiresAtTimestamp    int                   `json:"exp,omitempty"`
 	Confirmation          *TokenConfirmation    `json:"cnf,omitempty"`
 	AdditionalTokenClaims map[string]any        `json:"-"`
 }

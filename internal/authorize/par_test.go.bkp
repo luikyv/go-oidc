@@ -59,7 +59,7 @@ func TestPushAuth_WithJAR(t *testing.T) {
 	c.PublicJWKS = jwks
 	require.Nil(t, ctx.SaveClient(c))
 
-	createdAtTimestamp := time.Now().Unix()
+	createdAtTimestamp := timeutil.TimestampNow()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.Algorithm), Key: privateJWK.Key},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
@@ -114,7 +114,7 @@ func TestPushAuth_ShouldRejectUnauthenticatedClient(t *testing.T) {
 	// Then.
 	require.NotNil(t, err, "the client should not be authenticated")
 
-	var oauthErr oidc.Error
+	var oauthErr error
 	require.ErrorAs(t, err, &oauthErr)
-	assert.Equal(t, oidc.ErrorCodeInvalidClient, oauthErr.Code())
+	assert.Equal(t, oidcerr.CodeInvalidClient, oauthErr.Code())
 }

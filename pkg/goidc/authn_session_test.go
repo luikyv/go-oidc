@@ -2,8 +2,8 @@ package goidc_test
 
 import (
 	"testing"
-	"time"
 
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 )
@@ -55,7 +55,7 @@ func TestAddUserInfoClaim(t *testing.T) {
 
 func TestIsExpired(t *testing.T) {
 	// Given.
-	now := time.Now().Unix()
+	now := timeutil.TimestampNow()
 	session := goidc.AuthnSession{
 		ExpiresAtTimestamp: now - 10,
 	}

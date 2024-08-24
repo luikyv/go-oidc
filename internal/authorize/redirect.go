@@ -4,31 +4,32 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/oidcerr"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func redirectError(
 	ctx *oidc.Context,
-	err oidc.Error,
+	err error,
 	client *goidc.Client,
-) oidc.Error {
-	var oauthErr redirectionError
-	if !errors.As(err, &oauthErr) {
+) error {
+	var redirectErr redirectionError
+	if !errors.As(err, &redirectErr) {
 		return err
 	}
 
 	redirectParams := response{
-		errorCode:        oauthErr.ErrorCode,
-		errorDescription: oauthErr.ErrorDescription,
-		state:            oauthErr.State,
+		errorCode:        redirectErr.code,
+		errorDescription: redirectErr.desc,
+		state:            redirectErr.State,
 	}
-	return redirectResponse(ctx, client, oauthErr.AuthorizationParameters, redirectParams)
+	return redirectResponse(ctx, client, redirectErr.AuthorizationParameters, redirectParams)
 }
 
 func redirectResponse(
@@ -36,9 +37,9 @@ func redirectResponse(
 	client *goidc.Client,
 	params goidc.AuthorizationParameters,
 	redirectParams response,
-) oidc.Error {
+) error {
 
-	if ctx.IssuerResponseParameterIsEnabled {
+	if ctx.IssuerRespParamIsEnabled {
 		redirectParams.issuer = ctx.Host
 	}
 
@@ -59,7 +60,7 @@ func redirectResponse(
 	case goidc.ResponseModeFormPost, goidc.ResponseModeFormPostJWT:
 		redirectParamsMap["redirect_uri"] = params.RedirectURI
 		if err := ctx.RenderHTML(formPostResponseTemplate, redirectParamsMap); err != nil {
-			return oidc.NewError(oidc.ErrorCodeInternalError, "could not render the html")
+			return oidcerr.New(oidcerr.CodeInternalError, "could not render the html")
 		}
 	default:
 		redirectURL := urlWithQueryParams(params.RedirectURI, redirectParamsMap)
@@ -96,7 +97,7 @@ func createJARMResponse(
 	redirectParams response,
 ) (
 	string,
-	oidc.Error,
+	error,
 ) {
 	responseJWT, err := signJARMResponse(ctx, client, redirectParams)
 	if err != nil {
@@ -119,7 +120,7 @@ func signJARMResponse(
 	redirectParams response,
 ) (
 	string,
-	oidc.Error,
+	error,
 ) {
 	jwk := ctx.JARMSignatureKey(client)
 	signer, err := jose.NewSigner(
@@ -127,11 +128,11 @@ func signJARMResponse(
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID),
 	)
 	if err != nil {
-		return "", oidc.NewError(oidc.ErrorCodeInternalError,
+		return "", oidcerr.New(oidcerr.CodeInternalError,
 			"could not sign the response object")
 	}
 
-	createdAtTimestamp := time.Now().Unix()
+	createdAtTimestamp := timeutil.TimestampNow()
 	claims := map[string]any{
 		goidc.ClaimIssuer:   ctx.Host,
 		goidc.ClaimAudience: client.ID,
@@ -144,7 +145,7 @@ func signJARMResponse(
 
 	response, err := jwt.Signed(signer).Claims(claims).Serialize()
 	if err != nil {
-		return "", oidc.NewError(oidc.ErrorCodeInternalError,
+		return "", oidcerr.New(oidcerr.CodeInternalError,
 			"could not sign the response object")
 	}
 
@@ -157,11 +158,11 @@ func encryptJARMResponse(
 	client *goidc.Client,
 ) (
 	string,
-	oidc.Error,
+	error,
 ) {
 	jwk, err := client.JARMEncryptionJWK()
 	if err != nil {
-		return "", oidc.NewError(oidc.ErrorCodeInvalidRequest,
+		return "", oidcerr.New(oidcerr.CodeInvalidRequest,
 			"could not fetch the client encryption jwk for jarm")
 	}
 

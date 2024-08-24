@@ -104,7 +104,7 @@ func NewContext(t *testing.T) *oidc.Context {
 	config.Storage.AuthnSession = storage.NewAuthnSessionManager()
 	config.ClientAuthn.Methods = []goidc.ClientAuthnType{goidc.ClientAuthnNone, goidc.ClientAuthnSecretPost}
 	config.User.DefaultSignatureKeyID = ServerPrivateJWK.KeyID
-	config.User.SignatureKeyIDs = []string{ServerPrivateJWK.KeyID}
+	config.User.SigKeyIDs = []string{ServerPrivateJWK.KeyID}
 	config.Endpoint.WellKnown = goidc.EndpointWellKnown
 	config.Endpoint.JWKS = goidc.EndpointJSONWebKeySet
 	config.Endpoint.Token = goidc.EndpointToken

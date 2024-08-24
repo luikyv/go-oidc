@@ -1,23 +1,23 @@
 package authorize
 
 import (
-	"time"
-
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/strutil"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func initAuth(ctx *oidc.Context, req request) oidc.Error {
+func initAuth(ctx *oidc.Context, req request) error {
 
 	if req.ClientID == "" {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid client_id")
+		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid client_id")
 	}
 
 	c, err := ctx.Client(req.ClientID)
 	if err != nil {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid client_id")
+		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid client_id")
 	}
 
 	if err := initAuthNoRedirect(ctx, c, req); err != nil {
@@ -27,7 +27,7 @@ func initAuth(ctx *oidc.Context, req request) oidc.Error {
 	return nil
 }
 
-func initAuthNoRedirect(ctx *oidc.Context, client *goidc.Client, req request) oidc.Error {
+func initAuthNoRedirect(ctx *oidc.Context, client *goidc.Client, req request) error {
 	session, err := initAuthnSession(ctx, req, client)
 	if err != nil {
 		return err
@@ -35,22 +35,22 @@ func initAuthNoRedirect(ctx *oidc.Context, client *goidc.Client, req request) oi
 	return authenticate(ctx, session)
 }
 
-func continueAuth(ctx *oidc.Context, callbackID string) oidc.Error {
+func continueAuth(ctx *oidc.Context, callbackID string) error {
 
 	// Fetch the session using the callback ID.
 	session, err := ctx.AuthnSessionByCallbackID(callbackID)
 	if err != nil {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "could not load the session")
+		return oidcerr.New(oidcerr.CodeInvalidRequest, "could not load the session")
 	}
 
 	if session.IsExpired() {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "session timeout")
+		return oidcerr.New(oidcerr.CodeInvalidRequest, "session timeout")
 	}
 
 	if oauthErr := authenticate(ctx, session); oauthErr != nil {
 		client, err := ctx.Client(session.ClientID)
 		if err != nil {
-			return oidc.NewError(oidc.ErrorCodeInternalError, "could not load the client")
+			return oidcerr.New(oidcerr.CodeInternalError, "could not load the client")
 		}
 		return redirectError(ctx, oauthErr, client)
 	}
@@ -64,7 +64,7 @@ func initAuthnSession(
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
-	oidc.Error,
+	error,
 ) {
 	session, err := authnSession(ctx, req, client)
 	if err != nil {
@@ -80,7 +80,7 @@ func authnSession(
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
-	oidc.Error,
+	error,
 ) {
 
 	if ctx.PAR.IsRequired || (ctx.PAR.IsEnabled && req.RequestURI != "") {
@@ -101,17 +101,17 @@ func authnSessionWithPAR(
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
-	oidc.Error,
+	error,
 ) {
 
 	if req.RequestURI == "" {
-		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest,
+		return nil, oidcerr.New(oidcerr.CodeInvalidRequest,
 			"request_uri is required")
 	}
 
 	session, err := ctx.AuthnSessionByRequestURI(req.RequestURI)
 	if err != nil {
-		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest,
+		return nil, oidcerr.New(oidcerr.CodeInvalidRequest,
 			"invalid request_uri")
 	}
 
@@ -136,10 +136,10 @@ func authnSessionWithJAR(
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
-	oidc.Error,
+	error,
 ) {
 	if req.RequestObject == "" {
-		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest,
+		return nil, oidcerr.New(oidcerr.CodeInvalidRequest,
 			"request object is required")
 	}
 
@@ -166,7 +166,7 @@ func simpleAuthnSession(
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
-	oidc.Error,
+	error,
 ) {
 	if err := validateRequest(ctx, req, client); err != nil {
 		return nil, err
@@ -178,10 +178,10 @@ func initAuthnSessionWithPolicy(
 	ctx *oidc.Context,
 	client *goidc.Client,
 	session *goidc.AuthnSession,
-) oidc.Error {
+) error {
 	policy, ok := ctx.FindAvailablePolicy(client, session)
 	if !ok {
-		return newRedirectionError(oidc.ErrorCodeInvalidRequest,
+		return newRedirectionError(oidcerr.CodeInvalidRequest,
 			"no policy available", session.AuthorizationParameters)
 	}
 
@@ -191,14 +191,14 @@ func initAuthnSessionWithPolicy(
 	session.PolicyID = policy.ID
 	id, err := callbackID()
 	if err != nil {
-		return newRedirectionError(oidc.ErrorCodeInternalError,
+		return newRedirectionError(oidcerr.CodeInternalError,
 			"error generating the callback id", session.AuthorizationParameters)
 	}
 	session.CallbackID = id
 	// FIXME: To think about:Treating the request_uri as one-time use will cause
 	// problems when the user refreshes the page.
 	session.RequestURI = ""
-	session.ExpiresAtTimestamp = time.Now().Unix() + ctx.AuthnSessionTimeoutSecs
+	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.AuthnSessionTimeoutSecs
 	return nil
 }
 
@@ -210,7 +210,7 @@ func callbackID() (string, error) {
 	return strutil.Random(callbackIDLength)
 }
 
-func authenticate(ctx *oidc.Context, session *goidc.AuthnSession) oidc.Error {
+func authenticate(ctx *oidc.Context, session *goidc.AuthnSession) error {
 	policy := ctx.Policy(session.PolicyID)
 	switch policy.Authenticate(ctx, session) {
 	case goidc.StatusSuccess:
@@ -225,25 +225,25 @@ func authenticate(ctx *oidc.Context, session *goidc.AuthnSession) oidc.Error {
 func finishFlowWithFailure(
 	ctx *oidc.Context,
 	session *goidc.AuthnSession,
-) oidc.Error {
+) error {
 	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-		return newRedirectionError(err.Code(),
-			err.Error(), session.AuthorizationParameters)
+		return redirectionErrorf(oidcerr.CodeInternalError,
+			"internal error", session.AuthorizationParameters, err)
 	}
 
 	if session.Error != nil {
-		return newRedirectionError(oidc.ErrorCodeAccessDenied,
+		return newRedirectionError(oidcerr.CodeAccessDenied,
 			session.Error.Error(), session.AuthorizationParameters)
 	}
 
-	return newRedirectionError(oidc.ErrorCodeAccessDenied,
+	return newRedirectionError(oidcerr.CodeAccessDenied,
 		"access denied", session.AuthorizationParameters)
 }
 
 func stopFlowInProgress(
 	ctx *oidc.Context,
 	session *goidc.AuthnSession,
-) oidc.Error {
+) error {
 	if err := ctx.SaveAuthnSession(session); err != nil {
 		return err
 	}
@@ -251,17 +251,19 @@ func stopFlowInProgress(
 	return nil
 }
 
-func finishFlowSuccessfully(ctx *oidc.Context, session *goidc.AuthnSession) oidc.Error {
+func finishFlowSuccessfully(
+	ctx *oidc.Context,
+	session *goidc.AuthnSession,
+) error {
 
 	client, err := ctx.Client(session.ClientID)
 	if err != nil {
-		return newRedirectionError(oidc.ErrorCodeInternalError,
-			"could not load the client", session.AuthorizationParameters)
+		return redirectionErrorf(oidcerr.CodeInternalError,
+			"could not load the client", session.AuthorizationParameters, err)
 	}
 
 	if err := authorizeAuthnSession(ctx, session); err != nil {
-		return newRedirectionError(err.Code(),
-			err.Error(), session.AuthorizationParameters)
+		return err
 	}
 
 	redirectParams := response{
@@ -271,21 +273,19 @@ func finishFlowSuccessfully(ctx *oidc.Context, session *goidc.AuthnSession) oidc
 	if session.ResponseType.Contains(goidc.ResponseTypeToken) {
 		grantOptions, err := newImplicitGrantOptions(ctx, client, session)
 		if err != nil {
-			return newRedirectionError(err.Code(),
-				err.Error(), session.AuthorizationParameters)
+			return err
 		}
 
 		token, err := token.Make(ctx, client, grantOptions)
 		if err != nil {
-			return newRedirectionError(err.Code(),
-				err.Error(), session.AuthorizationParameters)
+			return redirectionErrorf(oidcerr.CodeInternalError,
+				"could not generate the access token", session.AuthorizationParameters, err)
 		}
 
 		redirectParams.accessToken = token.Value
 		redirectParams.tokenType = token.Type
 		if err := generateImplicitGrantSession(ctx, token, grantOptions); err != nil {
-			return newRedirectionError(err.Code(),
-				err.Error(), session.AuthorizationParameters)
+			return err
 		}
 	}
 
@@ -299,12 +299,11 @@ func finishFlowSuccessfully(ctx *oidc.Context, session *goidc.AuthnSession) oidc
 			State:                   session.State,
 		}
 
-		idToken, err := token.MakeIDToken(ctx, client, idTokenOptions)
+		redirectParams.idToken, err = token.MakeIDToken(ctx, client, idTokenOptions)
 		if err != nil {
-			return newRedirectionError(err.Code(),
-				err.Error(), session.AuthorizationParameters)
+			return redirectionErrorf(oidcerr.CodeInternalError,
+				"could not generate the id token", session.AuthorizationParameters, err)
 		}
-		redirectParams.idToken = idToken
 	}
 
 	return redirectResponse(ctx, client, session.AuthorizationParameters, redirectParams)
@@ -313,7 +312,7 @@ func finishFlowSuccessfully(ctx *oidc.Context, session *goidc.AuthnSession) oidc
 func authorizeAuthnSession(
 	ctx *oidc.Context,
 	session *goidc.AuthnSession,
-) oidc.Error {
+) error {
 
 	if !session.ResponseType.Contains(goidc.ResponseTypeCode) {
 		// The client didn't request an authorization code to later exchange it
@@ -325,11 +324,11 @@ func authorizeAuthnSession(
 
 	code, err := authorizationCode()
 	if err != nil {
-		return newRedirectionError(oidc.ErrorCodeInternalError,
+		return newRedirectionError(oidcerr.CodeInternalError,
 			"could not generate the authorization code", session.AuthorizationParameters)
 	}
 	session.AuthorizationCode = code
-	session.ExpiresAtTimestamp = time.Now().Unix() + authorizationCodeLifetimeSecs
+	session.ExpiresAtTimestamp = timeutil.TimestampNow() + authorizationCodeLifetimeSecs
 
 	if err := ctx.SaveAuthnSession(session); err != nil {
 		return err
@@ -342,7 +341,7 @@ func generateImplicitGrantSession(
 	ctx *oidc.Context,
 	accessToken token.Token,
 	grantOptions token.GrantOptions,
-) oidc.Error {
+) error {
 
 	grantSession := token.NewGrantSession(grantOptions, accessToken)
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
@@ -358,12 +357,12 @@ func newImplicitGrantOptions(
 	session *goidc.AuthnSession,
 ) (
 	token.GrantOptions,
-	oidc.Error,
+	error,
 ) {
 	tokenOptions, err := ctx.TokenOptions(client, session.Scopes)
 	if err != nil {
-		return token.GrantOptions{}, newRedirectionError(oidc.ErrorCodeAccessDenied,
-			"access denied", session.AuthorizationParameters)
+		return token.GrantOptions{}, redirectionErrorf(oidcerr.CodeAccessDenied,
+			"access denied", session.AuthorizationParameters, err)
 	}
 
 	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)

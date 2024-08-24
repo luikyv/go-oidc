@@ -7,36 +7,36 @@ import (
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
-	"errors"
 	"slices"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"golang.org/x/crypto/bcrypt"
 )
 
+// Authenticated fetches a client associated to the request and returns it
+// if the client is authenticated according to its authentication method.
 func Authenticated(
 	ctx *oidc.Context,
-	req Request,
 ) (
 	*goidc.Client,
-	oidc.Error,
+	error,
 ) {
-
-	clientID, ok := extractClientID(ctx, req)
-	if !ok {
-		return nil, oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid client")
-	}
-
-	client, err := ctx.Client(clientID)
+	id, err := extractID(ctx)
 	if err != nil {
-		return nil, oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid client")
+		return nil, err
 	}
 
-	if err := authenticate(ctx, client, req); err != nil {
+	client, err := ctx.Client(id)
+	if err != nil {
+		return nil, oidcerr.Errorf(oidcerr.CodeInvalidClient, "client not found", err)
+	}
+
+	if err := authenticate(ctx, client); err != nil {
 		return nil, err
 	}
 
@@ -46,157 +46,182 @@ func Authenticated(
 func authenticate(
 	ctx *oidc.Context,
 	client *goidc.Client,
-	req Request,
-) oidc.Error {
+) error {
 	switch client.AuthnMethod {
 	case goidc.ClientAuthnNone:
-		return authenticateWithNoneAuthn(ctx, client, req)
+		return nil
 	case goidc.ClientAuthnSecretPost:
-		return authenticateWithClientSecretPost(ctx, client, req)
+		return authenticateSecretPost(ctx, client)
 	case goidc.ClientAuthnSecretBasic:
-		return authenticateWithClientSecretBasic(ctx, client, req)
+		return authenticateSecretBasic(ctx, client)
 	case goidc.ClientAuthnPrivateKeyJWT:
-		return authenticateWithPrivateKeyJWT(ctx, client, req)
+		return authenticatePrivateKeyJWT(ctx, client)
 	case goidc.ClientAuthnSecretJWT:
-		return authenticateWithClientSecretJWT(ctx, client, req)
+		return authenticateSecretJWT(ctx, client)
 	case goidc.ClientAuthnSelfSignedTLS:
-		return authenticateWithSelfSignedTLSCertificate(ctx, client, req)
+		return authenticateSelfSignedTLSCert(ctx, client)
 	case goidc.ClientAuthnTLS:
-		return authenticateWithTLSCertificate(ctx, client, req)
+		return authenticateTLSCert(ctx, client)
 	default:
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid authentication method")
+		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid authentication method")
 	}
 }
 
-func authenticateWithNoneAuthn(
-	_ *oidc.Context,
-	client *goidc.Client,
-	req Request,
-) oidc.Error {
-	if client.ID != req.ID {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid client")
-	}
-	return nil
-}
-
-func authenticateWithClientSecretPost(
+func authenticateSecretPost(
 	ctx *oidc.Context,
-	client *goidc.Client,
-	req Request,
-) oidc.Error {
-	if client.ID != req.ID || req.Secret == "" {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid client")
+	c *goidc.Client,
+) error {
+
+	if c.ID != ctx.Request().PostFormValue(idFormPostParam) {
+		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid client id")
 	}
-	return validateSecret(ctx, client, req.Secret)
+
+	secret := ctx.Request().PostFormValue(secretFormPostParam)
+	if secret == "" {
+		return oidcerr.New(oidcerr.CodeInvalidClient, "client secret not informed")
+	}
+	return validateSecret(c, secret)
 }
 
-func authenticateWithClientSecretBasic(
+func authenticateSecretBasic(
 	ctx *oidc.Context,
-	client *goidc.Client,
-	_ Request,
-) oidc.Error {
-	clientID, clientSecret, ok := ctx.Request().BasicAuth()
-	if !ok || client.ID != clientID {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid client")
+	c *goidc.Client,
+) error {
+	id, secret, ok := ctx.Request().BasicAuth()
+	if !ok {
+		return oidcerr.New(oidcerr.CodeInvalidClient,
+			"client basic authentication not informed")
 	}
-	return validateSecret(ctx, client, clientSecret)
+
+	if c.ID != id {
+		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid client id")
+	}
+
+	return validateSecret(c, secret)
 }
 
 func validateSecret(
-	_ *oidc.Context,
 	client *goidc.Client,
-	clientSecret string,
-) oidc.Error {
-	err := bcrypt.CompareHashAndPassword([]byte(client.HashedSecret), []byte(clientSecret))
+	secret string,
+) error {
+	err := bcrypt.CompareHashAndPassword([]byte(client.HashedSecret), []byte(secret))
 	if err != nil {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid secret")
+		return oidcerr.Errorf(oidcerr.CodeInvalidClient, "invalid client secret", err)
 	}
 	return nil
 }
 
-func authenticateWithPrivateKeyJWT(
+func authenticatePrivateKeyJWT(
 	ctx *oidc.Context,
-	client *goidc.Client,
-	req Request,
-) oidc.Error {
+	c *goidc.Client,
+) error {
 
-	if req.AssertionType != goidc.AssertionTypeJWTBearer {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid assertion_type")
-	}
-
-	signatureAlgorithms := ctx.ClientAuthn.PrivateKeyJWTSignatureAlgorithms
-	if client.AuthnSignatureAlgorithm != "" {
-		signatureAlgorithms = []jose.SignatureAlgorithm{client.AuthnSignatureAlgorithm}
-	}
-	assertion, err := jwt.ParseSigned(req.Assertion, signatureAlgorithms)
+	assertion, err := assertion(ctx)
 	if err != nil {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid assertion signature")
+		return err
+	}
+
+	sigAlgs := ctx.ClientAuthn.PrivateKeyJWTSigAlgs
+	if c.AuthnSignatureAlgorithm != "" {
+		sigAlgs = []jose.SignatureAlgorithm{c.AuthnSignatureAlgorithm}
+	}
+	assertionJWT, err := jwt.ParseSigned(assertion, sigAlgs)
+	if err != nil {
+		return oidcerr.Errorf(oidcerr.CodeInvalidClient,
+			"could not parse the client assertion", err)
 	}
 
 	// Verify that the assertion has only one header.
-	if len(assertion.Headers) != 1 {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "no header found")
+	if len(assertionJWT.Headers) != 1 {
+		return oidcerr.New(oidcerr.CodeInvalidClient,
+			"invalid client assertion header")
 	}
 
 	// Try to find the jwk used to sign the assertion by key id or algorithm.
 	var jwk jose.JSONWebKey
-	if assertion.Headers[0].KeyID != "" {
-		jwk, err = client.PublicKey(assertion.Headers[0].KeyID)
-	} else if assertion.Headers[0].Algorithm != "" {
-		alg := jose.SignatureAlgorithm(assertion.Headers[0].Algorithm)
-		jwk, err = client.SignatureJWK(alg)
+	if assertionJWT.Headers[0].KeyID != "" {
+		jwk, err = c.PublicKey(assertionJWT.Headers[0].KeyID)
 	} else {
-		err = errors.New("could not identify the jwk used to sign the assertion")
+		alg := jose.SignatureAlgorithm(assertionJWT.Headers[0].Algorithm)
+		jwk, err = c.SignatureJWK(alg)
 	}
-
 	if err != nil {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient,
-			"could not identify the jwk used to sign the assertion")
+		return oidcerr.Errorf(oidcerr.CodeInvalidClient,
+			"could not identify the jwk used to sign the assertion", err)
 	}
 
 	claims := jwt.Claims{}
-	if err := assertion.Claims(jwk.Key, &claims); err != nil {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid assertion signature")
+	if err := assertionJWT.Claims(jwk.Key, &claims); err != nil {
+		return oidcerr.Errorf(oidcerr.CodeInvalidClient,
+			"could not parse the client assertion claims", err)
 	}
 
-	return areAssertionClaimsValid(ctx, client, claims, ctx.ClientAuthn.PrivateKeyJWTAssertionLifetimeSecs)
+	return areClaimsValid(ctx, c, claims)
 }
 
-func authenticateWithClientSecretJWT(
+func authenticateSecretJWT(
 	ctx *oidc.Context,
-	client *goidc.Client,
-	req Request,
-) oidc.Error {
-	if req.AssertionType != goidc.AssertionTypeJWTBearer {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid assertion_type")
+	c *goidc.Client,
+) error {
+	assertion, err := assertion(ctx)
+	if err != nil {
+		return err
 	}
 
-	signatureAlgorithms := ctx.ClientAuthn.ClientSecretJWTSignatureAlgorithms
-	if client.AuthnSignatureAlgorithm != "" {
-		signatureAlgorithms = []jose.SignatureAlgorithm{client.AuthnSignatureAlgorithm}
+	sigAlgs := ctx.ClientAuthn.ClientSecretJWTSigAlgs
+	if c.AuthnSignatureAlgorithm != "" {
+		sigAlgs = []jose.SignatureAlgorithm{c.AuthnSignatureAlgorithm}
 	}
-	assertion, err := jwt.ParseSigned(req.Assertion, signatureAlgorithms)
+	parsedAssertion, err := jwt.ParseSigned(assertion, sigAlgs)
 	if err != nil {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid assertion")
+		return oidcerr.Errorf(oidcerr.CodeInvalidClient,
+			"could not parse the client assertion", err)
 	}
 
 	claims := jwt.Claims{}
-	if err := assertion.Claims([]byte(client.Secret), &claims); err != nil {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid assertion")
+	if err := parsedAssertion.Claims([]byte(c.Secret), &claims); err != nil {
+		return oidcerr.Errorf(oidcerr.CodeInvalidClient,
+			"could not parse the client assertion claims", err)
 	}
 
-	return areAssertionClaimsValid(ctx, client, claims, ctx.ClientAuthn.ClientSecretJWTAssertionLifetimeSecs)
+	return areClaimsValid(ctx, c, claims)
 }
 
-func areAssertionClaimsValid(
+func assertion(ctx *oidc.Context) (string, error) {
+	if ctx.Request().PostFormValue(assertionFormPostParam) != string(goidc.AssertionTypeJWTBearer) {
+		return "", oidcerr.New(oidcerr.CodeInvalidClient,
+			"invalid assertion_type")
+	}
+
+	assertion := ctx.Request().PostFormValue(assertionFormPostParam)
+	if assertion == "" {
+		return "", oidcerr.New(oidcerr.CodeInvalidClient,
+			"client_assertion not informed")
+	}
+
+	return assertion, nil
+}
+
+func areClaimsValid(
 	ctx *oidc.Context,
 	client *goidc.Client,
 	claims jwt.Claims,
-	maxLifetimeSecs int64,
-) oidc.Error {
-	// Validate that the "iat" and "exp" claims are present and their difference is not too great.
-	if claims.Expiry == nil || claims.IssuedAt == nil || int64(claims.Expiry.Time().Sub(claims.IssuedAt.Time()).Seconds()) > maxLifetimeSecs {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid time claim in the assertion")
+) error {
+
+	if claims.Expiry == nil {
+		return oidcerr.New(oidcerr.CodeInvalidClient,
+			"claim 'exp' is missing in the client assertion")
+	}
+
+	if claims.IssuedAt == nil {
+		return oidcerr.New(oidcerr.CodeInvalidClient,
+			"claim 'iat' is missing in the client assertion")
+	}
+
+	// Validate that the difference between "iat" and "exp" is not too great.
+	if int(claims.Expiry.Time().Sub(claims.IssuedAt.Time()).Seconds()) > ctx.ClientAuthn.AssertionLifetimeSecs {
+		return oidcerr.New(oidcerr.CodeInvalidClient,
+			"the assertion has a life time more than allowed")
 	}
 
 	err := claims.ValidateWithLeeway(jwt.Expected{
@@ -205,155 +230,168 @@ func areAssertionClaimsValid(
 		AnyAudience: ctx.Audiences(),
 	}, time.Duration(0))
 	if err != nil {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid assertion")
+		return oidcerr.Errorf(oidcerr.CodeInvalidClient, "invalid assertion", err)
 	}
 	return nil
 }
 
-func authenticateWithSelfSignedTLSCertificate(
+func authenticateSelfSignedTLSCert(
 	ctx *oidc.Context,
-	client *goidc.Client,
-	req Request,
-) oidc.Error {
-	if client.ID != req.ID {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid client")
+	c *goidc.Client,
+) error {
+	if c.ID != ctx.Request().PostFormValue(idFormPostParam) {
+		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid client id")
 	}
 
-	clientCert, ok := ctx.ClientCertificate()
+	cert, ok := ctx.ClientCertificate()
 	if !ok {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "client certificate not informed")
+		return oidcerr.New(oidcerr.CodeInvalidClient, "client certificate not informed")
 	}
 
-	jwks, err := client.FetchPublicJWKS()
+	jwks, err := c.FetchPublicJWKS()
 	if err != nil {
-		return oidc.NewError(oidc.ErrorCodeInternalError, "could not load the client JWKS")
+		return oidcerr.Errorf(oidcerr.CodeInternalError, "could not load the client JWKS", err)
 	}
 
 	var jwk jose.JSONWebKey
 	foundMatchingJWK := false
 	for _, key := range jwks.Keys {
-		if string(key.CertificateThumbprintSHA256) == hashSHA256(clientCert.Raw) ||
-			string(key.CertificateThumbprintSHA1) == hashSHA1(clientCert.Raw) {
+		if string(key.CertificateThumbprintSHA256) == hashSHA256(cert.Raw) ||
+			string(key.CertificateThumbprintSHA1) == hashSHA1(cert.Raw) {
 			foundMatchingJWK = true
 			jwk = key
 		}
 	}
 
 	if !foundMatchingJWK {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "could not find a JWK matching the client certificate")
+		return oidcerr.New(oidcerr.CodeInvalidClient,
+			"could not find a JWK matching the client certificate")
 	}
 
-	if !comparePublicKeys(jwk.Key, clientCert.PublicKey) {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "the public key in the client certificate and ")
+	if !comparePublicKeys(jwk.Key, cert.PublicKey) {
+		return oidcerr.New(oidcerr.CodeInvalidClient,
+			"the public key in the client certificate and ")
 	}
 
 	return nil
 }
 
-func authenticateWithTLSCertificate(
+func authenticateTLSCert(
 	ctx *oidc.Context,
-	client *goidc.Client,
-	req Request,
-) oidc.Error {
-	if client.ID != req.ID {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid client")
+	c *goidc.Client,
+) error {
+	if c.ID != ctx.Request().PostFormValue(idFormPostParam) {
+		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid client id")
 	}
 
-	clientCert, ok := ctx.ClientCertificate()
+	cert, ok := ctx.ClientCertificate()
 	if !ok {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "client certificate not informed")
+		return oidcerr.New(oidcerr.CodeInvalidClient,
+			"client certificate not informed")
 	}
 
-	if client.TLSSubjectDistinguishedName != "" && clientCert.Subject.String() != client.TLSSubjectDistinguishedName {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid distinguished name")
+	if c.TLSSubjectDistinguishedName != "" &&
+		cert.Subject.String() != c.TLSSubjectDistinguishedName {
+		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid distinguished name")
 	}
-	if client.TLSSubjectAlternativeName != "" && !slices.Contains(clientCert.DNSNames, client.TLSSubjectAlternativeName) {
-		return oidc.NewError(oidc.ErrorCodeInvalidClient, "invalid alternative name")
+	if c.TLSSubjectAlternativeName != "" &&
+		!slices.Contains(cert.DNSNames, c.TLSSubjectAlternativeName) {
+		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid alternative name")
 	}
 
 	return nil
 }
 
-func extractClientID(
+// extractID extracts a client ID from the request.
+//
+// It looks to all places where an ID can be informed such as the basic
+// authentication header and the post form field 'client_id'.
+//
+// If different client IDs are found in the request, it returns an error.
+func extractID(
 	ctx *oidc.Context,
-	req Request,
 ) (
 	string,
-	bool,
+	error,
 ) {
-	clientIDs := []string{}
+	ids := []string{}
 
-	if req.ID != "" {
-		clientIDs = append(clientIDs, req.ID)
+	postID := ctx.Request().PostFormValue(idFormPostParam)
+	if postID != "" {
+		ids = append(ids, postID)
 	}
 
-	basicClientID, _, _ := ctx.Request().BasicAuth()
-	if basicClientID != "" {
-		clientIDs = append(clientIDs, basicClientID)
+	basicID, _, _ := ctx.Request().BasicAuth()
+	if basicID != "" {
+		ids = append(ids, basicID)
 	}
 
-	clientIDs, ok := appendClientIDFromAssertion(ctx, clientIDs, req)
-	if !ok {
-		return "", false
+	assertion := ctx.Request().PostFormValue(assertionFormPostParam)
+	if assertion != "" {
+		var err error
+		ids, err = appendAssertionClientID(ids, assertion, ctx.ClientSignatureAlgorithms())
+		if err != nil {
+			return "", err
+		}
 	}
 
 	// All the client IDs present must be equal.
-	if len(clientIDs) == 0 || !allEquals(clientIDs) {
-		return "", false
+	if len(ids) == 0 || !allEquals(ids) {
+		return "", oidcerr.New(oidcerr.CodeInvalidClient, "invalid client id")
 	}
 
-	return clientIDs[0], true
+	return ids[0], nil
 }
 
-func appendClientIDFromAssertion(
-	ctx *oidc.Context,
-	clientIDs []string,
-	req Request,
+func appendAssertionClientID(
+	ids []string,
+	assertion string,
+	sigAlgs []jose.SignatureAlgorithm,
 ) (
 	[]string,
-	bool,
+	error,
 ) {
-	if req.Assertion == "" {
-		return clientIDs, true
+	id, err := assertionClientID(assertion, sigAlgs)
+	if err != nil {
+		return nil, err
 	}
 
-	assertionClientID, ok := clientIDFromAssertion(ctx, req.Assertion)
-	if !ok {
-		return []string{}, false
-	}
-
-	return append(clientIDs, assertionClientID), true
+	return append(ids, id), nil
 }
 
-func clientIDFromAssertion(
-	ctx *oidc.Context,
+func assertionClientID(
 	assertion string,
+	sigAlgs []jose.SignatureAlgorithm,
 ) (
 	string,
-	bool,
+	error,
 ) {
-	parsedAssertion, err := jwt.ParseSigned(assertion, ctx.ClientSignatureAlgorithms())
+	parsedAssertion, err := jwt.ParseSigned(assertion, sigAlgs)
 	if err != nil {
-		return "", false
+		return "", oidcerr.Errorf(oidcerr.CodeInvalidClient,
+			"could not parse the client assertion", err)
 	}
 
 	var claims map[string]any
 	if err := parsedAssertion.UnsafeClaimsWithoutVerification(&claims); err != nil {
-		return "", false
+		return "", oidcerr.Errorf(oidcerr.CodeInvalidClient,
+			"could not parse the client assertion claims", err)
 	}
 
-	// The issuer claim is supposed to have the client ID.
+	// The issuer claim is supposed to be the client ID.
 	clientID, ok := claims[goidc.ClaimIssuer]
 	if !ok {
-		return "", false
+		return "", oidcerr.New(oidcerr.CodeInvalidClient,
+			"invalid claim 'iss' in the client assertion")
 	}
 
 	clientIDAsString, ok := clientID.(string)
 	if !ok {
-		return "", false
+		return "", oidcerr.New(oidcerr.CodeInvalidClient,
+			"invalid claim 'iss' in the client assertion")
 	}
 
-	return clientIDAsString, true
+	return clientIDAsString, nil
 }
 
 // Return true only if all the elements in values are equal.

@@ -82,7 +82,7 @@ func TestInitAuth_PolicyEndsWithSuccess_WithJAR(t *testing.T) {
 	client.PublicJWKS = jwks
 	require.Nil(t, ctx.SaveClient(client))
 
-	createdAtTimestamp := time.Now().Unix()
+	createdAtTimestamp := timeutil.TimestampNow()
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.Algorithm), Key: privateJWK.Key},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
@@ -180,7 +180,7 @@ func TestInitAuth_ShouldNotFindClient(t *testing.T) {
 
 	// Then.
 	require.NotNil(t, err)
-	assert.Equal(t, oidc.ErrorCodeInvalidClient, err.Code())
+	assert.Equal(t, oidcerr.CodeInvalidClient, err.Code())
 }
 
 func TestInitAuth_InvalidRedirectURI(t *testing.T) {
@@ -199,9 +199,9 @@ func TestInitAuth_InvalidRedirectURI(t *testing.T) {
 	// Then.
 	require.NotNil(t, err, "the redirect URI should not be valid")
 
-	var oauthErr oidc.Error
+	var oauthErr error
 	require.ErrorAs(t, err, &oauthErr)
-	assert.Equal(t, oidc.ErrorCodeInvalidRequest, oauthErr.Code())
+	assert.Equal(t, oidcerr.CodeInvalidRequest, oauthErr.Code())
 }
 
 func TestInitAuth_InvalidScope(t *testing.T) {
@@ -221,7 +221,7 @@ func TestInitAuth_InvalidScope(t *testing.T) {
 
 	// Then.
 	assert.Nil(t, err)
-	assert.Contains(t, ctx.Response().Header().Get("Location"), oidc.ErrorCodeInvalidScope)
+	assert.Contains(t, ctx.Response().Header().Get("Location"), oidcerr.CodeInvalidScope)
 }
 
 func TestInitAuth_InvalidResponseType(t *testing.T) {
@@ -243,7 +243,7 @@ func TestInitAuth_InvalidResponseType(t *testing.T) {
 
 	// Then.
 	assert.Nil(t, err)
-	assert.Contains(t, ctx.Response().Header().Get("Location"), oidc.ErrorCodeInvalidRequest)
+	assert.Contains(t, ctx.Response().Header().Get("Location"), oidcerr.CodeInvalidRequest)
 }
 
 func TestInitAuth_WhenNoPolicyIsAvailable(t *testing.T) {
@@ -263,7 +263,7 @@ func TestInitAuth_WhenNoPolicyIsAvailable(t *testing.T) {
 
 	// Then.
 	assert.Nil(t, err)
-	assert.Contains(t, ctx.Response().Header().Get("Location"), oidc.ErrorCodeInvalidRequest, "no policy should be available")
+	assert.Contains(t, ctx.Response().Header().Get("Location"), oidcerr.CodeInvalidRequest, "no policy should be available")
 }
 
 func TestInitAuth_ShouldEndWithError(t *testing.T) {
@@ -292,7 +292,7 @@ func TestInitAuth_ShouldEndWithError(t *testing.T) {
 
 	// Then.
 	assert.Nil(t, err, "the error should be redirected")
-	assert.Contains(t, ctx.Response().Header().Get("Location"), oidc.ErrorCodeAccessDenied, "no policy should be available")
+	assert.Contains(t, ctx.Response().Header().Get("Location"), oidcerr.CodeAccessDenied, "no policy should be available")
 
 	sessions := oidctest.AuthnSessions(t, ctx)
 	assert.Len(t, sessions, 0, "no authentication session should remain")
@@ -352,7 +352,7 @@ func TestInitAuth_WithPAR(t *testing.T) {
 				ResponseType: goidc.ResponseTypeCode,
 			},
 			ClientID:           client.ID,
-			ExpiresAtTimestamp: time.Now().Unix() + 60,
+			ExpiresAtTimestamp: timeutil.TimestampNow() + 60,
 		},
 	))
 	policy := goidc.NewPolicy(
@@ -404,7 +404,7 @@ func TestContinueAuthentication(t *testing.T) {
 	require.Nil(t, ctx.SaveAuthnSession(&goidc.AuthnSession{
 		PolicyID:           policy.ID,
 		CallbackID:         callbackID,
-		ExpiresAtTimestamp: time.Now().Unix() + 60,
+		ExpiresAtTimestamp: timeutil.TimestampNow() + 60,
 	}))
 
 	// When.

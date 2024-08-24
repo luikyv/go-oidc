@@ -19,7 +19,7 @@ func TestHandleGrantCreation_AuthorizationCodeGrantHappyPath(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 
-	now := time.Now().Unix()
+	now := timeutil.TimestampNow()
 	authorizationCode := "random_authz_code"
 	session := &goidc.AuthnSession{
 		ClientID:      oidctest.ClientID,

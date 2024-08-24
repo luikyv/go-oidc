@@ -2,8 +2,8 @@ package goidc_test
 
 import (
 	"testing"
-	"time"
 
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/stretchr/testify/assert"
 )
@@ -11,7 +11,7 @@ import (
 func TestIsRefreshSessionExpired(t *testing.T) {
 	// Given.
 	session := goidc.GrantSession{
-		ExpiresAtTimestamp: time.Now().Unix() - 1,
+		ExpiresAtTimestamp: timeutil.TimestampNow() - 1,
 	}
 
 	// Then.
@@ -21,7 +21,7 @@ func TestIsRefreshSessionExpired(t *testing.T) {
 func TestHasLastTokenExpired(t *testing.T) {
 	// Given.
 	session := goidc.GrantSession{
-		LastTokenIssuedAtTimestamp: time.Now().Unix() - 1,
+		LastTokenIssuedAtTimestamp: timeutil.TimestampNow() - 1,
 	}
 
 	// Then.

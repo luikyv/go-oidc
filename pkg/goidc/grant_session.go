@@ -2,7 +2,8 @@ package goidc
 
 import (
 	"context"
-	"time"
+
+	"github.com/luikyv/go-oidc/internal/timeutil"
 )
 
 // GrantSessionManager contains all the logic needed to manage grant sessions.
@@ -27,9 +28,9 @@ type GrantSession struct {
 	RefreshToken string `json:"refresh_token,omitempty"`
 	// LastTokenIssuedAtTimestamp is the timestamp when the last token issued
 	// for this grant was created.
-	LastTokenIssuedAtTimestamp int64 `json:"last_token_issued_at"`
-	CreatedAtTimestamp         int64 `json:"created_at"`
-	ExpiresAtTimestamp         int64 `json:"expires_at"`
+	LastTokenIssuedAtTimestamp int `json:"last_token_issued_at"`
+	CreatedAtTimestamp         int `json:"created_at"`
+	ExpiresAtTimestamp         int `json:"expires_at"`
 	// ActiveScopes is a sub set of the granted scopes the current access token
 	// give permissions to.
 	// Most of the times, GrantedScopes and ActiveScopes are equal.
@@ -52,11 +53,11 @@ type GrantSession struct {
 }
 
 func (g *GrantSession) IsExpired() bool {
-	return time.Now().Unix() > g.ExpiresAtTimestamp
+	return timeutil.TimestampNow() > g.ExpiresAtTimestamp
 }
 
 // HasLastTokenExpired returns whether the last token issued for the grant
 // session is expired or not.
 func (g *GrantSession) HasLastTokenExpired() bool {
-	return time.Now().Unix() > g.LastTokenIssuedAtTimestamp+g.TokenOptions.LifetimeSecs
+	return timeutil.TimestampNow() > g.LastTokenIssuedAtTimestamp+g.TokenOptions.LifetimeSecs
 }

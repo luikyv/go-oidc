@@ -2,11 +2,12 @@ package token
 
 import (
 	"slices"
-	"time"
 
 	"github.com/luikyv/go-oidc/internal/clientauthn"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/strutil"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -15,10 +16,10 @@ func generateRefreshTokenGrant(
 	req request,
 ) (
 	response,
-	oidc.Error,
+	error,
 ) {
 	if err := preValidateRefreshTokenGrantRequest(req); err != nil {
-		return response{}, oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid parameter for refresh token grant")
+		return response{}, oidcerr.New(oidcerr.CodeInvalidRequest, "invalid parameter for refresh token grant")
 	}
 
 	client, grantSession, err := authenticatedClientAndGrantSession(ctx, req)
@@ -65,15 +66,15 @@ func updateRefreshTokenGrantSession(
 	grantSession *goidc.GrantSession,
 	req request,
 	token Token,
-) oidc.Error {
+) error {
 
-	grantSession.LastTokenIssuedAtTimestamp = time.Now().Unix()
+	grantSession.LastTokenIssuedAtTimestamp = timeutil.TimestampNow()
 	grantSession.TokenID = token.ID
 
 	if ctx.RefreshToken.RotationIsEnabled {
 		token, err := refreshToken()
 		if err != nil {
-			return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+			return oidcerr.New(oidcerr.CodeInternalError, err.Error())
 		}
 		grantSession.RefreshToken = token
 	}
@@ -95,13 +96,13 @@ func authenticatedClientAndGrantSession(
 ) (
 	*goidc.Client,
 	*goidc.GrantSession,
-	oidc.Error,
+	error,
 ) {
 
 	grantSessionResultCh := make(chan resultChannel)
 	go grantSessionByRefreshToken(ctx, req.RefreshToken, grantSessionResultCh)
 
-	c, err := clientauthn.Authenticated(ctx, req.Request)
+	c, err := clientauthn.Authenticated(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -124,7 +125,7 @@ func grantSessionByRefreshToken(
 	if err != nil {
 		ch <- resultChannel{
 			Result: nil,
-			Err:    oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid refresh_token"),
+			Err:    oidcerr.New(oidcerr.CodeInvalidRequest, "invalid refresh_token"),
 		}
 	}
 
@@ -136,9 +137,9 @@ func grantSessionByRefreshToken(
 
 func preValidateRefreshTokenGrantRequest(
 	req request,
-) oidc.Error {
+) error {
 	if req.RefreshToken == "" {
-		return oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid refresh token")
+		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid refresh token")
 	}
 
 	return nil
@@ -149,25 +150,25 @@ func validateRefreshTokenGrantRequest(
 	req request,
 	client *goidc.Client,
 	grantSession *goidc.GrantSession,
-) oidc.Error {
+) error {
 
 	if !client.IsGrantTypeAllowed(goidc.GrantRefreshToken) {
-		return oidc.NewError(oidc.ErrorCodeUnauthorizedClient, "invalid grant type")
+		return oidcerr.New(oidcerr.CodeUnauthorizedClient, "invalid grant type")
 	}
 
 	if client.ID != grantSession.ClientID {
-		return oidc.NewError(oidc.ErrorCodeInvalidGrant, "the refresh token was not issued to the client")
+		return oidcerr.New(oidcerr.CodeInvalidGrant, "the refresh token was not issued to the client")
 	}
 
 	if grantSession.IsExpired() {
 		if err := ctx.DeleteGrantSession(grantSession.ID); err != nil {
-			return oidc.NewError(oidc.ErrorCodeInternalError, err.Error())
+			return oidcerr.New(oidcerr.CodeInternalError, err.Error())
 		}
-		return oidc.NewError(oidc.ErrorCodeUnauthorizedClient, "the refresh token is expired")
+		return oidcerr.New(oidcerr.CodeUnauthorizedClient, "the refresh token is expired")
 	}
 
 	if req.Scopes != "" && !containsAllScopes(grantSession.GrantedScopes, req.Scopes) {
-		return oidc.NewError(oidc.ErrorCodeInvalidScope, "invalid scope")
+		return oidcerr.New(oidcerr.CodeInvalidScope, "invalid scope")
 	}
 
 	return validateRefreshTokenPoPForPublicClients(ctx, client, grantSession)
@@ -177,7 +178,7 @@ func validateRefreshTokenPoPForPublicClients(
 	ctx *oidc.Context,
 	client *goidc.Client,
 	grantSession *goidc.GrantSession,
-) oidc.Error {
+) error {
 
 	// TODO: Validate the certificate?
 
@@ -190,7 +191,7 @@ func validateRefreshTokenPoPForPublicClients(
 	dpopJWT, ok := ctx.DPoPJWT()
 	if !ok {
 		// The session was created with DPoP for a public client, then the DPoP header must be passed.
-		return oidc.NewError(oidc.ErrorCodeUnauthorizedClient, "invalid DPoP header")
+		return oidcerr.New(oidcerr.CodeUnauthorizedClient, "invalid DPoP header")
 	}
 
 	return ValidateDPoPJWT(ctx, dpopJWT, dpopValidationOptions{

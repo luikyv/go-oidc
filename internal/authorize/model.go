@@ -5,11 +5,10 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
-	"time"
 
 	"github.com/google/uuid"
-	"github.com/luikyv/go-oidc/internal/clientauthn"
-	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/oidcerr"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -68,7 +67,7 @@ type response struct {
 	idToken           string
 	authorizationCode string
 	state             string
-	errorCode         oidc.ErrorCode
+	errorCode         oidcerr.Code
 	errorDescription  string
 }
 
@@ -110,7 +109,6 @@ func (resp response) parameters() map[string]string {
 
 type pushedRequest struct {
 	goidc.AuthorizationParameters
-	clientauthn.Request
 }
 
 func newPushedRequest(req *http.Request) pushedRequest {
@@ -150,14 +148,13 @@ func newPushedRequest(req *http.Request) pushedRequest {
 	}
 
 	return pushedRequest{
-		Request:                 clientauthn.NewRequest(req),
 		AuthorizationParameters: params,
 	}
 }
 
 type pushedResponse struct {
 	RequestURI string `json:"request_uri"`
-	ExpiresIn  int64  `json:"expires_in"`
+	ExpiresIn  int    `json:"expires_in"`
 }
 
 func newAuthnSession(
@@ -168,7 +165,7 @@ func newAuthnSession(
 		ID:                       uuid.NewString(),
 		ClientID:                 client.ID,
 		AuthorizationParameters:  authParams,
-		CreatedAtTimestamp:       time.Now().Unix(),
+		CreatedAtTimestamp:       timeutil.TimestampNow(),
 		Store:                    make(map[string]any),
 		AdditionalTokenClaims:    make(map[string]any),
 		AdditionalIDTokenClaims:  map[string]any{},

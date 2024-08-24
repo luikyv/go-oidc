@@ -6,12 +6,13 @@ import (
 
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 // ExtractID returns the ID of a token.
 // If it's a JWT, the ID is the the "jti" claim. Otherwise, the token is considered opaque and its ID is the token itself.
-func ExtractID(ctx *oidc.Context, token string) (string, oidc.Error) {
+func ExtractID(ctx *oidc.Context, token string) (string, error) {
 	if !IsJWS(token) {
 		return token, nil
 	}
@@ -23,7 +24,7 @@ func ExtractID(ctx *oidc.Context, token string) (string, oidc.Error) {
 
 	tokenID := claims[string(goidc.ClaimTokenID)]
 	if tokenID == nil {
-		return "", oidc.NewError(oidc.ErrorCodeAccessDenied, "invalid token")
+		return "", oidcerr.New(oidcerr.CodeAccessDenied, "invalid token")
 	}
 
 	return tokenID.(string), nil
@@ -35,34 +36,34 @@ func ValidClaims(
 	token string,
 ) (
 	map[string]any,
-	oidc.Error,
+	error,
 ) {
 	parsedToken, err := jwt.ParseSigned(token, ctx.SignatureAlgorithms())
 	if err != nil {
 		// If the token is not a valid JWT, we'll treat it as an opaque token.
-		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest, "could not parse the token")
+		return nil, oidcerr.New(oidcerr.CodeInvalidRequest, "could not parse the token")
 	}
 
 	if len(parsedToken.Headers) != 1 || parsedToken.Headers[0].KeyID == "" {
-		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid header kid")
+		return nil, oidcerr.New(oidcerr.CodeInvalidRequest, "invalid header kid")
 	}
 
 	keyID := parsedToken.Headers[0].KeyID
 	publicKey, ok := ctx.PublicKey(keyID)
 	if !ok || publicKey.Use != string(goidc.KeyUsageSignature) {
-		return nil, oidc.NewError(oidc.ErrorCodeAccessDenied, "invalid token")
+		return nil, oidcerr.New(oidcerr.CodeAccessDenied, "invalid token")
 	}
 
 	var claims jwt.Claims
 	var rawClaims map[string]any
 	if err := parsedToken.Claims(publicKey.Key, &claims, &rawClaims); err != nil {
-		return nil, oidc.NewError(oidc.ErrorCodeAccessDenied, "invalid token")
+		return nil, oidcerr.New(oidcerr.CodeAccessDenied, "invalid token")
 	}
 
 	if err := claims.ValidateWithLeeway(jwt.Expected{
 		Issuer: ctx.Host,
 	}, time.Duration(0)); err != nil {
-		return nil, oidc.NewError(oidc.ErrorCodeAccessDenied, "invalid token")
+		return nil, oidcerr.New(oidcerr.CodeAccessDenied, "invalid token")
 	}
 
 	return rawClaims, nil
@@ -93,7 +94,7 @@ func generateGrant(
 	case goidc.GrantRefreshToken:
 		tokenResp, err = generateRefreshTokenGrant(ctx, req)
 	default:
-		tokenResp, err = response{}, oidc.NewError(oidc.ErrorCodeUnsupportedGrantType, "unsupported grant type")
+		tokenResp, err = response{}, oidcerr.New(oidcerr.CodeUnsupportedGrantType, "unsupported grant type")
 	}
 
 	return tokenResp, err

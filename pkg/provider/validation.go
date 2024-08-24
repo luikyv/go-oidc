@@ -36,8 +36,8 @@ func validateSignatureKeys(provider provider) error {
 
 	for _, keyID := range slices.Concat(
 		[]string{provider.config.User.DefaultSignatureKeyID},
-		provider.config.User.SignatureKeyIDs,
-		provider.config.JARM.SignatureKeyIDs,
+		provider.config.User.SigKeyIDs,
+		provider.config.JARM.SigKeyIDs,
 	) {
 		jwkSlice := provider.config.PrivateJWKS.Key(keyID)
 		if len(jwkSlice) != 1 {
@@ -59,7 +59,7 @@ func validateSignatureKeys(provider provider) error {
 
 func validateEncryptionKeys(provider provider) error {
 	for _, keyID := range slices.Concat(
-		provider.config.JAR.KeyEncryptionIDs,
+		provider.config.JAR.KeyEncIDs,
 	) {
 		jwkSlice := provider.config.PrivateJWKS.Key(keyID)
 		if len(jwkSlice) != 1 {
@@ -76,7 +76,7 @@ func validateEncryptionKeys(provider provider) error {
 }
 
 func validatePrivateKeyJWTSignatureAlgorithms(provider provider) error {
-	for _, signatureAlgorithm := range provider.config.ClientAuthn.PrivateKeyJWTSignatureAlgorithms {
+	for _, signatureAlgorithm := range provider.config.ClientAuthn.PrivateKeyJWTSigAlgs {
 		if strings.HasPrefix(string(signatureAlgorithm), "HS") {
 			return errors.New("symetric algorithms are not allowed for private_key_jwt authentication")
 		}
@@ -86,7 +86,7 @@ func validatePrivateKeyJWTSignatureAlgorithms(provider provider) error {
 }
 
 func validateClientSecretJWTSignatureAlgorithms(provider provider) error {
-	for _, signatureAlgorithm := range provider.config.ClientAuthn.ClientSecretJWTSignatureAlgorithms {
+	for _, signatureAlgorithm := range provider.config.ClientAuthn.ClientSecretJWTSigAlgs {
 		if !strings.HasPrefix(string(signatureAlgorithm), "HS") {
 			return errors.New("assymetric algorithms are not allowed for client_secret_jwt authentication")
 		}
@@ -115,7 +115,7 @@ func validateIntrospectionClientAuthnMethods(provider provider) error {
 }
 
 func validateJAREncryption(provider provider) error {
-	if provider.config.JAR.EncryptionIsEnabled && !provider.config.JAR.IsEnabled {
+	if provider.config.JAR.EncIsEnabled && !provider.config.JAR.IsEnabled {
 		return errors.New("JAR must be enabled if JAR encryption is enabled")
 	}
 
@@ -123,7 +123,7 @@ func validateJAREncryption(provider provider) error {
 }
 
 func validateJARMEncryption(provider provider) error {
-	if provider.config.JARM.EncryptionIsEnabled && !provider.config.JARM.IsEnabled {
+	if provider.config.JARM.EncIsEnabled && !provider.config.JARM.IsEnabled {
 		return errors.New("JARM must be enabled if JARM encryption is enabled")
 	}
 
@@ -151,7 +151,7 @@ func validateOpenIDProfile(provider provider) error {
 	}
 
 	if provider.config.JARM.IsEnabled {
-		defaultJARMSignatureKey := provider.config.PrivateJWKS.Key(provider.config.JARM.DefaultSignatureKeyID)[0]
+		defaultJARMSignatureKey := provider.config.PrivateJWKS.Key(provider.config.JARM.DefaultSigKeyID)[0]
 		if defaultJARMSignatureKey.Algorithm != string(jose.RS256) {
 			return errors.New("the default signature algorithm for JARM must be RS256")
 		}
@@ -184,7 +184,7 @@ func validateFAPI2Profile(provider provider) error {
 		return errors.New("proof key for code exchange is required for FAPI 2.0")
 	}
 
-	if !provider.config.IssuerResponseParameterIsEnabled {
+	if !provider.config.IssuerRespParamIsEnabled {
 		return errors.New("the issuer response parameter is required for FAPI 2.0")
 	}
 

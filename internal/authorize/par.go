@@ -3,11 +3,12 @@ package authorize
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/luikyv/go-oidc/internal/clientauthn"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/strutil"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -16,12 +17,12 @@ func pushAuth(
 	req pushedRequest,
 ) (
 	pushedResponse,
-	oidc.Error,
+	error,
 ) {
 
-	c, oauthErr := clientauthn.Authenticated(ctx, req.Request)
+	c, oauthErr := clientauthn.Authenticated(ctx)
 	if oauthErr != nil {
-		return pushedResponse{}, oidc.NewError(oidc.ErrorCodeInvalidClient,
+		return pushedResponse{}, oidcerr.New(oidcerr.CodeInvalidClient,
 			"client not authenticated")
 	}
 
@@ -45,7 +46,7 @@ func pushAuthnSession(
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
-	oidc.Error,
+	error,
 ) {
 	session, oauthErr := pushedAuthnSession(ctx, req, client)
 	if oauthErr != nil {
@@ -54,11 +55,11 @@ func pushAuthnSession(
 
 	reqURI, err := requestURI()
 	if err != nil {
-		return nil, oidc.NewError(oidc.ErrorCodeInternalError,
+		return nil, oidcerr.New(oidcerr.CodeInternalError,
 			"could not generate the request uri")
 	}
 	session.RequestURI = reqURI
-	session.ExpiresAtTimestamp = time.Now().Unix() + ctx.PAR.LifetimeSecs
+	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.PAR.LifetimeSecs
 
 	return session, nil
 }
@@ -69,7 +70,7 @@ func pushedAuthnSession(
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
-	oidc.Error,
+	error,
 ) {
 	if shouldUseJAR(ctx, req.AuthorizationParameters, client) {
 		return pushedAuthnSessionWithJAR(ctx, req, client)
@@ -83,7 +84,7 @@ func simplePushedAuthnSession(
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
-	oidc.Error,
+	error,
 ) {
 	if err := validatePushedRequest(ctx, req, client); err != nil {
 		return nil, err
@@ -100,11 +101,11 @@ func pushedAuthnSessionWithJAR(
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
-	oidc.Error,
+	error,
 ) {
 
 	if req.RequestObject == "" {
-		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest,
+		return nil, oidcerr.New(oidcerr.CodeInvalidRequest,
 			"request object is required")
 	}
 

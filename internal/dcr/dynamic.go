@@ -2,6 +2,7 @@ package dcr
 
 import (
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"golang.org/x/crypto/bcrypt"
@@ -47,14 +48,14 @@ func setCreationDefaults(
 ) error {
 	id, err := clientID()
 	if err != nil {
-		return oidc.NewError(oidc.ErrorCodeInternalError,
+		return oidcerr.New(oidcerr.CodeInternalError,
 			"could not generate the client id")
 	}
 	req.id = id
 
 	token, err := registrationAccessToken()
 	if err != nil {
-		return oidc.NewError(oidc.ErrorCodeInternalError,
+		return oidcerr.New(oidcerr.CodeInternalError,
 			"could not generate the registration access token")
 	}
 	req.registrationAccessToken = token
@@ -114,7 +115,7 @@ func setUpdateDefaults(
 	if ctx.DCR.TokenRotationIsEnabled {
 		token, err := registrationAccessToken()
 		if err != nil {
-			return oidc.NewError(oidc.ErrorCodeInternalError,
+			return oidcerr.New(oidcerr.CodeInternalError,
 				"could not generate the registration access token")
 		}
 		dynamicClient.registrationAccessToken = token
@@ -153,13 +154,13 @@ func remove(
 	}
 
 	if err := ctx.DeleteClient(dynamicClientRequest.id); err != nil {
-		return oidc.NewError(oidc.ErrorCodeInternalError,
+		return oidcerr.New(oidcerr.CodeInternalError,
 			"could not delete the client")
 	}
 	return nil
 }
 
-func setDefaults(ctx *oidc.Context, dynamicClient *request) oidc.Error {
+func setDefaults(ctx *oidc.Context, dynamicClient *request) error {
 	if dynamicClient.AuthnMethod == "" {
 		dynamicClient.AuthnMethod = goidc.ClientAuthnSecretBasic
 	}
@@ -169,7 +170,7 @@ func setDefaults(ctx *oidc.Context, dynamicClient *request) oidc.Error {
 		dynamicClient.AuthnMethod == goidc.ClientAuthnSecretJWT {
 		secret, err := clientSecret()
 		if err != nil {
-			return oidc.NewError(oidc.ErrorCodeInternalError,
+			return oidcerr.New(oidcerr.CodeInternalError,
 				"could not generate the client secret")
 		}
 		dynamicClient.secret = secret
@@ -180,19 +181,19 @@ func setDefaults(ctx *oidc.Context, dynamicClient *request) oidc.Error {
 	}
 
 	if dynamicClient.IDTokenKeyEncryptionAlgorithm != "" && dynamicClient.IDTokenContentEncryptionAlgorithm == "" {
-		dynamicClient.IDTokenContentEncryptionAlgorithm = ctx.User.DefaultContentEncryptionAlgorithm
+		dynamicClient.IDTokenContentEncryptionAlgorithm = ctx.User.DefaultContentEncAlg
 	}
 
 	if dynamicClient.UserInfoKeyEncryptionAlgorithm != "" && dynamicClient.UserInfoContentEncryptionAlgorithm == "" {
-		dynamicClient.UserInfoContentEncryptionAlgorithm = ctx.User.DefaultContentEncryptionAlgorithm
+		dynamicClient.UserInfoContentEncryptionAlgorithm = ctx.User.DefaultContentEncAlg
 	}
 
 	if dynamicClient.JARMKeyEncryptionAlgorithm != "" && dynamicClient.JARMContentEncryptionAlgorithm == "" {
-		dynamicClient.JARMContentEncryptionAlgorithm = ctx.JARM.DefaultContentEncryptionAlgorithm
+		dynamicClient.JARMContentEncryptionAlgorithm = ctx.JARM.DefaultContentEncAlg
 	}
 
 	if dynamicClient.JARKeyEncryptionAlgorithm != "" && dynamicClient.JARContentEncryptionAlgorithm == "" {
-		dynamicClient.JARContentEncryptionAlgorithm = ctx.JAR.DefaultContentEncryptionAlgorithm
+		dynamicClient.JARContentEncryptionAlgorithm = ctx.JAR.DefaultContentEncAlg
 	}
 
 	if dynamicClient.CustomAttributes == nil {
@@ -234,17 +235,17 @@ func protected(
 	error,
 ) {
 	if dynamicClient.id == "" {
-		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest, "invalid client_id")
+		return nil, oidcerr.New(oidcerr.CodeInvalidRequest, "invalid client_id")
 	}
 
 	client, err := ctx.Client(dynamicClient.id)
 	if err != nil {
-		return nil, oidc.NewError(oidc.ErrorCodeInvalidRequest, "could not load the client")
+		return nil, oidcerr.New(oidcerr.CodeInvalidRequest, "could not load the client")
 	}
 
 	if dynamicClient.registrationAccessToken == "" ||
 		!client.IsRegistrationAccessTokenValid(dynamicClient.registrationAccessToken) {
-		return nil, oidc.NewError(oidc.ErrorCodeAccessDenied, "invalid token")
+		return nil, oidcerr.New(oidcerr.CodeAccessDenied, "invalid token")
 	}
 
 	return client, nil

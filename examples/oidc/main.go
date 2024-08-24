@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/luikyv/go-oidc/pkg/provider"
 )
@@ -34,7 +34,7 @@ func main() {
 		provider.WithPAR(60),
 		provider.WithJAR(600, jose.RS256),
 		provider.WithJARM(600, serverKeyID),
-		provider.WithPrivateKeyJWTAuthn(600, jose.RS256),
+		provider.WithPrivateKeyJWTAuthn(jose.RS256),
 		provider.WithBasicSecretAuthn(),
 		provider.WithSecretPostAuthn(),
 		provider.WithIssuerResponseParameter(),
@@ -205,7 +205,7 @@ func finishAuthentication(
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 	session.GrantScopes(session.Scopes)
-	session.SetIDTokenClaimAuthTime(time.Now().Unix())
+	session.SetIDTokenClaimAuthTime(timeutil.TimestampNow())
 
 	// Add claims based on the claims parameter.
 	if session.Claims != nil {

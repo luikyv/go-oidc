@@ -73,7 +73,7 @@ func New(
 				goidc.ResponseModeFragment,
 				goidc.ResponseModeFormPost,
 			},
-			SubjectIdentifierTypes:  []goidc.SubjectIdentifierType{goidc.SubjectIdentifierPublic},
+			SubIdentifierTypes:      []goidc.SubjectIdentifierType{goidc.SubjectIdentifierPublic},
 			ClaimTypes:              []goidc.ClaimType{goidc.ClaimTypeNormal},
 			AuthnSessionTimeoutSecs: defaultAuthenticationSessionTimeoutSecs,
 		},
@@ -83,8 +83,8 @@ func New(
 	p.config.Storage.GrantSession = storage.NewGrantSessionManager()
 
 	p.config.User.DefaultSignatureKeyID = defaultSignatureKeyID
-	p.config.User.SignatureKeyIDs = []string{defaultSignatureKeyID}
-	p.config.User.IDTokenExpiresInSecs = defaultIDTokenLifetimeSecs
+	p.config.User.SigKeyIDs = []string{defaultSignatureKeyID}
+	p.config.User.IDTokenLifetimeSecs = defaultIDTokenLifetimeSecs
 
 	p.config.Endpoint.WellKnown = goidc.EndpointWellKnown
 	p.config.Endpoint.JWKS = goidc.EndpointJSONWebKeySet
@@ -94,6 +94,8 @@ func New(
 	p.config.Endpoint.DCR = goidc.EndpointDynamicClient
 	p.config.Endpoint.UserInfo = goidc.EndpointUserInfo
 	p.config.Endpoint.Introspection = goidc.EndpointTokenIntrospection
+
+	p.config.ClientAuthn.AssertionLifetimeSecs = 600
 
 	for _, opt := range opts {
 		if err := opt(p); err != nil {

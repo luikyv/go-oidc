@@ -1,32 +1,49 @@
 package authorize
 
 import (
-	"github.com/luikyv/go-oidc/internal/oidc"
+	"fmt"
+
+	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 type redirectionError struct {
-	ErrorCode        oidc.ErrorCode
-	ErrorDescription string
+	code    oidcerr.Code
+	desc    string
+	wrapped error
 	goidc.AuthorizationParameters
 }
 
-func (err redirectionError) Code() oidc.ErrorCode {
-	return err.ErrorCode
+func (err redirectionError) Error() string {
+	return fmt.Sprintf("%s %s", err.code, err.desc)
 }
 
-func (err redirectionError) Error() string {
-	return err.ErrorDescription
+func (err redirectionError) Unwrap() error {
+	return err.wrapped
 }
 
 func newRedirectionError(
-	code oidc.ErrorCode,
-	description string,
+	code oidcerr.Code,
+	desc string,
 	params goidc.AuthorizationParameters,
-) oidc.Error {
+) error {
 	return redirectionError{
-		ErrorCode:               code,
-		ErrorDescription:        description,
+		code:                    code,
+		desc:                    desc,
 		AuthorizationParameters: params,
+	}
+}
+
+func redirectionErrorf(
+	code oidcerr.Code,
+	desc string,
+	params goidc.AuthorizationParameters,
+	err error,
+) error {
+	return redirectionError{
+		code:                    code,
+		desc:                    desc,
+		AuthorizationParameters: params,
+		wrapped:                 err,
 	}
 }

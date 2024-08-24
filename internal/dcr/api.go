@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/oidcerr"
 )
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
@@ -67,7 +68,7 @@ func handlerUpdate(config *oidc.Configuration) http.HandlerFunc {
 
 		token := ctx.BearerToken()
 		if token == "" {
-			ctx.WriteError(oidc.NewError(oidc.ErrorCodeAccessDenied, "no token found"))
+			ctx.WriteError(oidcerr.New(oidcerr.CodeAccessDenied, "no token found"))
 			return
 		}
 
@@ -92,7 +93,7 @@ func handlerGet(config *oidc.Configuration) http.HandlerFunc {
 
 		token := ctx.BearerToken()
 		if token == "" {
-			ctx.WriteError(oidc.NewError(oidc.ErrorCodeAccessDenied, "no token found"))
+			ctx.WriteError(oidcerr.New(oidcerr.CodeAccessDenied, "no token found"))
 			return
 		}
 
@@ -120,7 +121,7 @@ func handlerDelete(config *oidc.Configuration) http.HandlerFunc {
 
 		token := ctx.BearerToken()
 		if token == "" {
-			ctx.WriteError(oidc.NewError(oidc.ErrorCodeAccessDenied, "no token found"))
+			ctx.WriteError(oidcerr.New(oidcerr.CodeAccessDenied, "no token found"))
 			return
 		}
 
