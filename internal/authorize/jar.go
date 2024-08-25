@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/token"
@@ -14,24 +15,24 @@ import (
 func shouldUseJAR(
 	ctx *oidc.Context,
 	req goidc.AuthorizationParameters,
-	client *goidc.Client,
+	c *goidc.Client,
 ) bool {
 	// If JAR is not enabled, we just disconsider the request object.
 	// Also, if the client defined a signature algorithm for jar, then jar is required.
 	return ctx.JAR.IsRequired ||
-		(ctx.JAR.IsEnabled && (req.RequestObject != "" || client.JARSigAlg != ""))
+		(ctx.JAR.IsEnabled && (req.RequestObject != "" || c.JARSigAlg != ""))
 }
 
 func jarFromRequestObject(
 	ctx *oidc.Context,
 	reqObject string,
-	client *goidc.Client,
+	c *goidc.Client,
 ) (
 	request,
 	error,
 ) {
 	if ctx.JAR.EncIsEnabled && token.IsJWE(reqObject) {
-		signedReqObject, err := signedRequestObjectFromEncrypted(ctx, reqObject, client)
+		signedReqObject, err := signedRequestObjectFromEncrypted(ctx, reqObject, c)
 		if err != nil {
 			return request{}, err
 		}
@@ -42,7 +43,7 @@ func jarFromRequestObject(
 		return request{}, oidcerr.New(oidcerr.CodeInvalidRequest, "the request object is not a JWS")
 	}
 
-	return jarFromSignedRequestObject(ctx, reqObject, client)
+	return jarFromSignedRequestObject(ctx, reqObject, c)
 }
 
 func signedRequestObjectFromEncrypted(
@@ -87,14 +88,14 @@ func signedRequestObjectFromEncrypted(
 func jarFromSignedRequestObject(
 	ctx *oidc.Context,
 	reqObject string,
-	client *goidc.Client,
+	c *goidc.Client,
 ) (
 	request,
 	error,
 ) {
 	jarAlgorithms := ctx.JAR.SigAlgs
-	if client.JARSigAlg != "" {
-		jarAlgorithms = []jose.SignatureAlgorithm{client.JARSigAlg}
+	if c.JARSigAlg != "" {
+		jarAlgorithms = []jose.SignatureAlgorithm{c.JARSigAlg}
 	}
 	parsedToken, err := jwt.ParseSigned(reqObject, jarAlgorithms)
 	if err != nil {
@@ -108,7 +109,7 @@ func jarFromSignedRequestObject(
 	}
 
 	// Verify that the key ID belongs to the client.
-	jwk, oauthErr := client.PublicKey(parsedToken.Headers[0].KeyID)
+	jwk, oauthErr := clientutil.PublicKey(c, parsedToken.Headers[0].KeyID)
 	if oauthErr != nil {
 		return request{}, oidcerr.New(oidcerr.CodeInvalidResquestObject,
 			"could not fetch the client public key")
@@ -127,7 +128,7 @@ func jarFromSignedRequestObject(
 	}
 
 	err = claims.ValidateWithLeeway(jwt.Expected{
-		Issuer:      client.ID,
+		Issuer:      c.ID,
 		AnyAudience: []string{ctx.Host},
 	}, time.Duration(0))
 	if err != nil {

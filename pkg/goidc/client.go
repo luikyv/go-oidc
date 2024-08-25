@@ -4,17 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
-	"slices"
-	"strings"
 
 	"github.com/go-jose/go-jose/v4"
-	"golang.org/x/crypto/bcrypt"
 )
-
-// TODO: Remove the unused methods.
 
 // ClientManager contains all the logic needed to manage clients.
 type ClientManager interface {
@@ -48,142 +42,6 @@ func (c *Client) SetAttribute(key string, value any) {
 
 func (c *Client) Attribute(key string) any {
 	return c.CustomAttributes[key]
-}
-
-func (c *Client) PublicKey(keyID string) (jose.JSONWebKey, error) {
-	jwks, err := c.FetchPublicJWKS()
-	if err != nil {
-		return jose.JSONWebKey{}, err
-	}
-
-	keys := jwks.Key(keyID)
-	if len(keys) == 0 {
-		return jose.JSONWebKey{}, errors.New("invalid key ID")
-	}
-
-	return keys[0], nil
-}
-
-func (c *Client) JARMEncryptionJWK() (jose.JSONWebKey, error) {
-	return c.encryptionJWK(c.JARMKeyEncAlg)
-}
-
-func (c *Client) UserInfoEncryptionJWK() (jose.JSONWebKey, error) {
-	return c.encryptionJWK(c.UserInfoKeyEncAlg)
-}
-
-func (c *Client) IDTokenEncryptionJWK() (jose.JSONWebKey, error) {
-	return c.encryptionJWK(c.IDTokenKeyEncAlg)
-}
-
-// SignatureJWK returns the signature JWK based on the algorithm.
-func (c *Client) SignatureJWK(algorithm jose.SignatureAlgorithm) (jose.JSONWebKey, error) {
-	jwk, err := c.jwk(string(algorithm))
-	if err != nil {
-		return jose.JSONWebKey{}, err
-	}
-
-	if jwk.Use != string(KeyUsageSignature) {
-		return jose.JSONWebKey{}, errors.New("invalid key usege")
-	}
-
-	return jwk, nil
-}
-
-// encryptionJWK returns the encryption JWK based on the algorithm.
-func (c *Client) encryptionJWK(algorithm jose.KeyAlgorithm) (jose.JSONWebKey, error) {
-	jwk, err := c.jwk(string(algorithm))
-	if err != nil {
-		return jose.JSONWebKey{}, err
-	}
-
-	if jwk.Use != string(KeyUsageEncryption) {
-		return jose.JSONWebKey{}, errors.New("invalid key usege")
-	}
-
-	return jwk, nil
-}
-
-// jwk returns a client JWK based on the algorithm.
-func (c *Client) jwk(algorithm string) (jose.JSONWebKey, error) {
-	jwks, err := c.FetchPublicJWKS()
-	if err != nil {
-		return jose.JSONWebKey{}, err
-	}
-
-	for _, jwk := range jwks.Keys {
-		if jwk.Algorithm == algorithm {
-			return jwk, nil
-		}
-	}
-
-	return jose.JSONWebKey{}, fmt.Errorf("invalid key algorithm: %s", algorithm)
-}
-
-func (c *Client) AreScopesAllowed(
-	availableScopes []Scope,
-	requestedScopes string,
-) bool {
-	if requestedScopes == "" {
-		return true
-	}
-
-	// Filter the client scopes that are available.
-	var clientScopes []Scope
-	for _, scope := range availableScopes {
-		if strings.Contains(c.Scopes, scope.ID) {
-			clientScopes = append(clientScopes, scope)
-		}
-	}
-
-	// For each scope requested, make sure it matches one of the available
-	// client scopes.
-	for _, requestedScope := range strings.Split(requestedScopes, " ") {
-		matches := false
-		for _, scope := range clientScopes {
-			if scope.Matches(requestedScope) {
-				matches = true
-				break
-			}
-		}
-		if !matches {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (c *Client) IsResponseTypeAllowed(responseType ResponseType) bool {
-	return slices.Contains(c.ResponseTypes, responseType)
-}
-
-func (c *Client) IsGrantTypeAllowed(grantType GrantType) bool {
-	return slices.Contains(c.GrantTypes, grantType)
-}
-
-func (c *Client) IsRedirectURIAllowed(redirectURI string) bool {
-	for _, ru := range c.RedirectURIs {
-		if redirectURI == ru {
-			return true
-		}
-	}
-	return false
-}
-
-func (c *Client) IsAuthorizationDetailTypeAllowed(authDetailType string) bool {
-	// If the client didn't announce the authorization types it will use,
-	// consider any value valid.
-	if c.AuthDetailTypes == nil {
-		return true
-	}
-
-	return slices.Contains(c.AuthDetailTypes, authDetailType)
-}
-
-func (c *Client) IsRegistrationAccessTokenValid(token string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(c.HashedRegistrationAccessToken), []byte(token))
-	return err == nil
 }
 
 // FetchPublicJWKS fetches the client public JWKS either directly from the jwks

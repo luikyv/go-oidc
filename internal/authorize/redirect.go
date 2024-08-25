@@ -6,6 +6,7 @@ import (
 	"net/url"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidcerr"
@@ -16,7 +17,7 @@ import (
 func redirectError(
 	ctx *oidc.Context,
 	err error,
-	client *goidc.Client,
+	c *goidc.Client,
 ) error {
 	var redirectErr redirectionError
 	if !errors.As(err, &redirectErr) {
@@ -28,12 +29,12 @@ func redirectError(
 		errorDescription: redirectErr.desc,
 		state:            redirectErr.State,
 	}
-	return redirectResponse(ctx, client, redirectErr.AuthorizationParameters, redirectParams)
+	return redirectResponse(ctx, c, redirectErr.AuthorizationParameters, redirectParams)
 }
 
 func redirectResponse(
 	ctx *oidc.Context,
-	client *goidc.Client,
+	c *goidc.Client,
 	params goidc.AuthorizationParameters,
 	redirectParams response,
 ) error {
@@ -43,8 +44,8 @@ func redirectResponse(
 	}
 
 	responseMode := responseMode(params)
-	if responseMode.IsJARM() || client.JARMSigAlg != "" {
-		responseJWT, err := createJARMResponse(ctx, client, redirectParams)
+	if responseMode.IsJARM() || c.JARMSigAlg != "" {
+		responseJWT, err := createJARMResponse(ctx, c, redirectParams)
 		if err != nil {
 			return err
 		}
@@ -92,19 +93,19 @@ func responseMode(params goidc.AuthorizationParameters) goidc.ResponseMode {
 
 func createJARMResponse(
 	ctx *oidc.Context,
-	client *goidc.Client,
+	c *goidc.Client,
 	redirectParams response,
 ) (
 	string,
 	error,
 ) {
-	responseJWT, err := signJARMResponse(ctx, client, redirectParams)
+	responseJWT, err := signJARMResponse(ctx, c, redirectParams)
 	if err != nil {
 		return "", err
 	}
 
-	if client.JARMKeyEncAlg != "" {
-		responseJWT, err = encryptJARMResponse(ctx, responseJWT, client)
+	if c.JARMKeyEncAlg != "" {
+		responseJWT, err = encryptJARMResponse(ctx, responseJWT, c)
 		if err != nil {
 			return "", err
 		}
@@ -115,7 +116,7 @@ func createJARMResponse(
 
 func signJARMResponse(
 	ctx *oidc.Context,
-	client *goidc.Client,
+	c *goidc.Client,
 	redirectParams response,
 ) (
 	string,
@@ -124,7 +125,7 @@ func signJARMResponse(
 	createdAtTimestamp := timeutil.TimestampNow()
 	claims := map[string]any{
 		goidc.ClaimIssuer:   ctx.Host,
-		goidc.ClaimAudience: client.ID,
+		goidc.ClaimAudience: c.ID,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JARM.LifetimeSecs,
 	}
@@ -132,7 +133,7 @@ func signJARMResponse(
 		claims[k] = v
 	}
 
-	jwk := ctx.JARMSignatureKey(client)
+	jwk := ctx.JARMSignatureKey(c)
 	resp, err := jwtutil.Sign(claims, jwk,
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
 	if err != nil {
@@ -146,18 +147,18 @@ func signJARMResponse(
 func encryptJARMResponse(
 	_ *oidc.Context,
 	responseJWT string,
-	client *goidc.Client,
+	c *goidc.Client,
 ) (
 	string,
 	error,
 ) {
-	jwk, err := client.JARMEncryptionJWK()
+	jwk, err := clientutil.JARMEncryptionJWK(c)
 	if err != nil {
 		return "", oidcerr.New(oidcerr.CodeInvalidRequest,
 			"could not fetch the client encryption jwk for jarm")
 	}
 
-	jwe, err := jwtutil.Encrypt(responseJWT, jwk, client.JARMContentEncAlg)
+	jwe, err := jwtutil.Encrypt(responseJWT, jwk, c.JARMContentEncAlg)
 	if err != nil {
 		return "", err
 	}

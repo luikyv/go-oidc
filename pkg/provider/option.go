@@ -225,13 +225,13 @@ func WithOpenIDScopeRequired() ProviderOption {
 func WithTokenOptions(tokenOpts goidc.TokenOptionsFunc) ProviderOption {
 	return func(p *provider) error {
 		p.config.TokenOptions = func(
-			client *goidc.Client,
+			c *goidc.Client,
 			scopes string,
 		) (
 			goidc.TokenOptions,
 			error,
 		) {
-			opts, err := tokenOpts(client, scopes)
+			opts, err := tokenOpts(c, scopes)
 			if err != nil {
 				return goidc.TokenOptions{}, err
 			}
@@ -241,7 +241,7 @@ func WithTokenOptions(tokenOpts goidc.TokenOptionsFunc) ProviderOption {
 				opts.OpaqueLength++
 			}
 
-			if !client.IsGrantTypeAllowed(goidc.GrantRefreshToken) {
+			if !slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) {
 				opts.IsRefreshable = false
 			}
 

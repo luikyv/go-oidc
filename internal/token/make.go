@@ -10,6 +10,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
+	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidcerr"
@@ -114,18 +115,18 @@ func makeIDToken(
 
 func encryptIDToken(
 	_ *oidc.Context,
-	client *goidc.Client,
+	c *goidc.Client,
 	userInfoJWT string,
 ) (
 	string,
 	error,
 ) {
-	jwk, err := client.IDTokenEncryptionJWK()
+	jwk, err := clientutil.IDTokenEncryptionJWK(c)
 	if err != nil {
 		return "", oidcerr.New(oidcerr.CodeInvalidRequest, err.Error())
 	}
 
-	encIDToken, err := jwtutil.Encrypt(userInfoJWT, jwk, client.IDTokenContentEncAlg)
+	encIDToken, err := jwtutil.Encrypt(userInfoJWT, jwk, c.IDTokenContentEncAlg)
 	if err != nil {
 		return "", oidcerr.New(oidcerr.CodeInvalidRequest, err.Error())
 	}

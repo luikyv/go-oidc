@@ -1,7 +1,9 @@
 package token
 
 import (
-	"github.com/luikyv/go-oidc/internal/clientauthn"
+	"slices"
+
+	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -14,7 +16,7 @@ func generateClientCredentialsGrant(
 	response,
 	error,
 ) {
-	c, oauthErr := clientauthn.Authenticated(ctx)
+	c, oauthErr := clientutil.Authenticated(ctx)
 	if oauthErr != nil {
 		return response{}, oauthErr
 	}
@@ -72,18 +74,18 @@ func generateClientCredentialsGrantSession(
 func validateClientCredentialsGrantRequest(
 	ctx *oidc.Context,
 	req request,
-	client *goidc.Client,
+	c *goidc.Client,
 ) error {
 
-	if !client.IsGrantTypeAllowed(goidc.GrantClientCredentials) {
+	if !slices.Contains(c.GrantTypes, goidc.GrantClientCredentials) {
 		return oidcerr.New(oidcerr.CodeUnauthorizedClient, "invalid grant type")
 	}
 
-	if !client.AreScopesAllowed(ctx.Scopes, req.Scopes) {
+	if !clientutil.AreScopesAllowed(c, ctx.Scopes, req.Scopes) {
 		return oidcerr.New(oidcerr.CodeInvalidScope, "invalid scope")
 	}
 
-	if err := validateTokenBindingRequestWithDPoP(ctx, req, client); err != nil {
+	if err := validateTokenBindingRequestWithDPoP(ctx, req, c); err != nil {
 		return err
 	}
 

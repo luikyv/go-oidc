@@ -11,6 +11,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func validateDynamicRequest(
@@ -551,4 +552,9 @@ func validateScopes(
 	}
 
 	return nil
+}
+
+func isRegistrationAccessTokenValid(c *goidc.Client, token string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(c.HashedRegistrationAccessToken), []byte(token))
+	return err == nil
 }

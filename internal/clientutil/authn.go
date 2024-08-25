@@ -1,4 +1,4 @@
-package clientauthn
+package clientutil
 
 import (
 	"crypto"
@@ -139,7 +139,7 @@ func authenticatePrivateKeyJWT(
 			"invalid client assertion header")
 	}
 
-	jwk, err := jwk(c, parsedAssertion.Headers[0])
+	jwk, err := jwkMatchingHeader(c, parsedAssertion.Headers[0])
 	if err != nil {
 		return err
 	}
@@ -153,9 +153,9 @@ func authenticatePrivateKeyJWT(
 	return areClaimsValid(ctx, c, claims)
 }
 
-func jwk(c *goidc.Client, header jose.Header) (jose.JSONWebKey, error) {
+func jwkMatchingHeader(c *goidc.Client, header jose.Header) (jose.JSONWebKey, error) {
 	if header.KeyID != "" {
-		jwk, err := c.PublicKey(header.KeyID)
+		jwk, err := PublicKey(c, header.KeyID)
 		if err != nil {
 			return jose.JSONWebKey{}, oidcerr.Errorf(oidcerr.CodeInvalidClient,
 				"could not find the jwk used to sign the assertion that matches the 'kid' header", err)
@@ -164,7 +164,7 @@ func jwk(c *goidc.Client, header jose.Header) (jose.JSONWebKey, error) {
 	}
 
 	alg := jose.SignatureAlgorithm(header.Algorithm)
-	jwk, err := c.SignatureJWK(alg)
+	jwk, err := sigJWK(c, alg)
 	if err != nil {
 		return jose.JSONWebKey{}, oidcerr.Errorf(oidcerr.CodeInvalidClient,
 			"could not find the jwk used to sign the assertion that matches the 'alg' header", err)

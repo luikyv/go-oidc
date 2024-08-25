@@ -1,8 +1,10 @@
 package token
 
 import (
+	"slices"
+
 	"github.com/google/go-cmp/cmp"
-	"github.com/luikyv/go-oidc/internal/clientauthn"
+	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/strutil"
@@ -103,15 +105,15 @@ func generateAuthorizationCodeGrantSession(
 func validateAuthorizationCodeGrantRequest(
 	ctx *oidc.Context,
 	req request,
-	client *goidc.Client,
+	c *goidc.Client,
 	session *goidc.AuthnSession,
 ) error {
 
-	if !client.IsGrantTypeAllowed(goidc.GrantAuthorizationCode) {
+	if !slices.Contains(c.GrantTypes, goidc.GrantAuthorizationCode) {
 		return oidcerr.New(oidcerr.CodeUnauthorizedClient, "invalid grant type")
 	}
 
-	if session.ClientID != client.ID {
+	if session.ClientID != c.ID {
 		return oidcerr.New(oidcerr.CodeInvalidGrant, "the authorization code was not issued to the client")
 	}
 
@@ -123,7 +125,7 @@ func validateAuthorizationCodeGrantRequest(
 		return oidcerr.New(oidcerr.CodeInvalidGrant, "invalid redirect_uri")
 	}
 
-	if err := validatePkce(ctx, req, client, session); err != nil {
+	if err := validatePkce(ctx, req, c, session); err != nil {
 		return err
 	}
 
@@ -131,7 +133,7 @@ func validateAuthorizationCodeGrantRequest(
 		return err
 	}
 
-	if err := validateTokenBindingRequestWithDPoP(ctx, req, client); err != nil {
+	if err := validateTokenBindingRequestWithDPoP(ctx, req, c); err != nil {
 		return err
 	}
 
@@ -180,7 +182,7 @@ func authenticatedClientAndSession(
 	sessionResultCh := make(chan resultChannel)
 	go sessionByAuthorizationCode(ctx, req.AuthorizationCode, sessionResultCh)
 
-	c, err := clientauthn.Authenticated(ctx)
+	c, err := clientutil.Authenticated(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

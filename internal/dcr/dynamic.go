@@ -117,19 +117,19 @@ func update(
 
 func setUpdateDefaults(
 	ctx *oidc.Context,
-	client *goidc.Client,
-	dynamicClient *request,
+	c *goidc.Client,
+	dc *request,
 ) error {
-	dynamicClient.id = client.ID
+	dc.id = c.ID
 	if ctx.DCR.TokenRotationIsEnabled {
 		token, err := registrationAccessToken()
 		if err != nil {
 			return err
 		}
-		dynamicClient.registrationToken = token
+		dc.registrationToken = token
 	}
 
-	return setDefaults(ctx, dynamicClient)
+	return setDefaults(ctx, dc)
 }
 
 func fetch(
@@ -140,15 +140,15 @@ func fetch(
 	error,
 ) {
 
-	client, err := protected(ctx, dynamicClientRequest)
+	c, err := protected(ctx, dynamicClientRequest)
 	if err != nil {
 		return response{}, err
 	}
 
 	return response{
-		ID:              client.ID,
-		RegistrationURI: registrationURI(ctx, client.ID),
-		ClientMetaInfo:  client.ClientMetaInfo,
+		ID:              c.ID,
+		RegistrationURI: registrationURI(ctx, c.ID),
+		ClientMetaInfo:  c.ClientMetaInfo,
 	}, nil
 }
 
@@ -219,7 +219,7 @@ func newClient(dc request) *goidc.Client {
 		[]byte(dc.registrationToken),
 		bcrypt.DefaultCost,
 	)
-	client := &goidc.Client{
+	c := &goidc.Client{
 		ID:                            dc.id,
 		HashedRegistrationAccessToken: string(hashedRegistrationAccessToken),
 		ClientMetaInfo:                dc.ClientMetaInfo,
@@ -231,14 +231,14 @@ func newClient(dc request) *goidc.Client {
 			[]byte(dc.secret),
 			bcrypt.DefaultCost,
 		)
-		client.HashedSecret = string(clientHashedSecret)
+		c.HashedSecret = string(clientHashedSecret)
 	}
 
 	if dc.AuthnMethod == goidc.ClientAuthnSecretJWT {
-		client.Secret = dc.secret
+		c.Secret = dc.secret
 	}
 
-	return client
+	return c
 }
 
 func registrationURI(ctx *oidc.Context, id string) string {
@@ -256,18 +256,18 @@ func protected(
 		return nil, oidcerr.New(oidcerr.CodeInvalidRequest, "invalid client_id")
 	}
 
-	client, err := ctx.Client(dc.id)
+	c, err := ctx.Client(dc.id)
 	if err != nil {
 		return nil, oidcerr.Errorf(oidcerr.CodeInvalidRequest,
 			"could not find the client", err)
 	}
 
 	if dc.registrationToken == "" ||
-		!client.IsRegistrationAccessTokenValid(dc.registrationToken) {
+		!isRegistrationAccessTokenValid(c, dc.registrationToken) {
 		return nil, oidcerr.New(oidcerr.CodeAccessDenied, "invalid access token")
 	}
 
-	return client, nil
+	return c, nil
 }
 
 func clientID() (string, error) {

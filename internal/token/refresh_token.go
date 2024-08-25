@@ -3,7 +3,7 @@ package token
 import (
 	"slices"
 
-	"github.com/luikyv/go-oidc/internal/clientauthn"
+	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/strutil"
@@ -102,7 +102,7 @@ func authenticatedClientAndGrantSession(
 	grantSessionResultCh := make(chan resultChannel)
 	go grantSessionByRefreshToken(ctx, req.RefreshToken, grantSessionResultCh)
 
-	c, err := clientauthn.Authenticated(ctx)
+	c, err := clientutil.Authenticated(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -148,15 +148,15 @@ func preValidateRefreshTokenGrantRequest(
 func validateRefreshTokenGrantRequest(
 	ctx *oidc.Context,
 	req request,
-	client *goidc.Client,
+	c *goidc.Client,
 	grantSession *goidc.GrantSession,
 ) error {
 
-	if !client.IsGrantTypeAllowed(goidc.GrantRefreshToken) {
+	if !slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) {
 		return oidcerr.New(oidcerr.CodeUnauthorizedClient, "invalid grant type")
 	}
 
-	if client.ID != grantSession.ClientID {
+	if c.ID != grantSession.ClientID {
 		return oidcerr.New(oidcerr.CodeInvalidGrant, "the refresh token was not issued to the client")
 	}
 
@@ -171,7 +171,7 @@ func validateRefreshTokenGrantRequest(
 		return oidcerr.New(oidcerr.CodeInvalidScope, "invalid scope")
 	}
 
-	return validateRefreshTokenPoPForPublicClients(ctx, client, grantSession)
+	return validateRefreshTokenPoPForPublicClients(ctx, c, grantSession)
 }
 
 func validateRefreshTokenPoPForPublicClients(

@@ -1,4 +1,4 @@
-package clientauthn
+package clientutil
 
 const (
 	idFormPostParam            = "client_id"

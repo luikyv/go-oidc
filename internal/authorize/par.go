@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/luikyv/go-oidc/internal/clientauthn"
+	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/strutil"
@@ -20,7 +20,7 @@ func pushAuth(
 	error,
 ) {
 
-	c, oauthErr := clientauthn.Authenticated(ctx)
+	c, oauthErr := clientutil.Authenticated(ctx)
 	if oauthErr != nil {
 		return pushedResponse{}, oidcerr.New(oidcerr.CodeInvalidClient,
 			"client not authenticated")

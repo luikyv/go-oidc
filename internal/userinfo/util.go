@@ -2,6 +2,7 @@ package userinfo
 
 import (
 	"github.com/go-jose/go-jose/v4"
+	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidcerr"
@@ -113,18 +114,18 @@ func signUserInfoClaims(
 
 func encryptUserInfoJWT(
 	_ *oidc.Context,
-	client *goidc.Client,
+	c *goidc.Client,
 	userInfoJWT string,
 ) (
 	string,
 	error,
 ) {
-	jwk, err := client.UserInfoEncryptionJWK()
+	jwk, err := clientutil.UserInfoEncryptionJWK(c)
 	if err != nil {
 		return "", oidcerr.New(oidcerr.CodeInvalidRequest, err.Error())
 	}
 
-	userInfoJWE, err := jwtutil.Encrypt(userInfoJWT, jwk, client.UserInfoContentEncAlg)
+	userInfoJWE, err := jwtutil.Encrypt(userInfoJWT, jwk, c.UserInfoContentEncAlg)
 	if err != nil {
 		return "", oidcerr.Errorf(oidcerr.CodeInternalError,
 			"could not encrypt the user info response", err)
