@@ -46,8 +46,6 @@ type Configuration struct {
 	// authorization endpoint even if they were informed previously during PAR
 	// or inside JAR.
 	OutterAuthParamsRequired bool
-	// TODO.
-	ErrLoggingFunc func(ctx goidc.Context, err error)
 
 	Endpoint struct {
 		WellKnown           string
@@ -169,7 +167,7 @@ type Configuration struct {
 		ChallengeMethods       []goidc.CodeChallengeMethod
 	}
 
-	AuthorizationDetails struct {
+	AuthDetails struct {
 		IsEnabled bool
 		Types     []string
 	}
@@ -178,5 +176,9 @@ type Configuration struct {
 		IsEnabled  bool // TODO.
 		IsRequired bool
 		Resources  []string
+	}
+
+	Event struct {
+		HandleError goidc.HandleErrorEventFunc
 	}
 }

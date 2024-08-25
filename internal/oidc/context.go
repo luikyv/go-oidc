@@ -24,6 +24,15 @@ type Context struct {
 	Configuration
 }
 
+func Handler(
+	config *Configuration,
+	exec func(ctx *Context),
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		exec(NewContext(*config, r, w))
+	}
+}
+
 func NewContext(
 	configuration Configuration,
 	req *http.Request,
@@ -78,6 +87,7 @@ func (ctx *Context) DPoPJWT() (string, bool) {
 	return values[0], true
 }
 
+// TODO: return an error.
 func (ctx *Context) ClientCertificate() (*x509.Certificate, bool) {
 
 	if ctx.MTLS.ClientCertFunc != nil {
@@ -107,11 +117,11 @@ func (ctx *Context) ClientCertificate() (*x509.Certificate, bool) {
 	return clientCert, true
 }
 
-func (ctx *Context) ExecuteDCRPlugin(clientInfo *goidc.ClientMetaInfo) {
+func (ctx *Context) ExecuteDCRPlugin(clientInfo *goidc.ClientMetaInfo) error {
 	if ctx.DCR.Plugin == nil {
-		return
+		return nil
 	}
-	ctx.DCR.Plugin(ctx, clientInfo)
+	return ctx.DCR.Plugin(ctx, clientInfo)
 }
 
 func (ctx *Context) ExecuteAuthorizeErrorPlugin(err error) error {
@@ -168,11 +178,7 @@ func (ctx *Context) FindAvailablePolicy(client *goidc.Client, session *goidc.Aut
 //---------------------------------------- CRUD ----------------------------------------//
 
 func (ctx *Context) SaveClient(client *goidc.Client) error {
-	if err := ctx.Storage.Client.Save(ctx.Request().Context(), client); err != nil {
-		return oidcerr.Errorf(oidcerr.CodeInternalError,
-			"could not save the client", err)
-	}
-	return nil
+	return ctx.Storage.Client.Save(ctx.Request().Context(), client)
 }
 
 func (ctx *Context) Client(clientID string) (*goidc.Client, error) {
@@ -182,104 +188,84 @@ func (ctx *Context) Client(clientID string) (*goidc.Client, error) {
 		}
 	}
 
-	client, err := ctx.Storage.Client.Get(ctx.Request().Context(), clientID)
-	if err != nil {
-		return nil, oidcerr.Errorf(oidcerr.CodeInternalError,
-			"could not load the client", err)
-	}
-
-	return client, nil
+	return ctx.Storage.Client.Get(ctx.Request().Context(), clientID)
 }
 
 func (ctx *Context) DeleteClient(id string) error {
-	if err := ctx.Storage.Client.Delete(ctx.Request().Context(), id); err != nil {
-		return oidcerr.Errorf(oidcerr.CodeInternalError,
-			"could not delete the client", err)
-	}
-
-	return nil
+	return ctx.Storage.Client.Delete(ctx.Request().Context(), id)
 }
 
 func (ctx *Context) SaveGrantSession(session *goidc.GrantSession) error {
-	if err := ctx.Storage.GrantSession.Save(ctx.Request().Context(), session); err != nil {
-		return oidcerr.Errorf(oidcerr.CodeInternalError,
-			"could not save the grant session", err)
-	}
-	return nil
+	return ctx.Storage.GrantSession.Save(
+		ctx.Request().Context(),
+		session,
+	)
 }
 
-func (ctx *Context) GrantSessionByTokenID(tokenID string) (*goidc.GrantSession, error) {
-	session, err := ctx.Storage.GrantSession.GetByTokenID(ctx.Request().Context(), tokenID)
-	if err != nil {
-		return nil, oidcerr.Errorf(oidcerr.CodeInternalError,
-			"could not load the grant session", err)
-	}
-
-	return session, nil
+func (ctx *Context) GrantSessionByTokenID(
+	id string,
+) (
+	*goidc.GrantSession,
+	error,
+) {
+	return ctx.Storage.GrantSession.GetByTokenID(
+		ctx.Request().Context(),
+		id,
+	)
 }
 
-func (ctx *Context) GrantSessionByRefreshToken(refreshToken string) (*goidc.GrantSession, error) {
-	session, err := ctx.Storage.GrantSession.GetByRefreshToken(ctx.Request().Context(), refreshToken)
-	if err != nil {
-		return nil, oidcerr.Errorf(oidcerr.CodeInternalError,
-			"could not load the grant session", err)
-	}
-
-	return session, nil
+func (ctx *Context) GrantSessionByRefreshToken(
+	token string,
+) (
+	*goidc.GrantSession,
+	error,
+) {
+	return ctx.Storage.GrantSession.GetByRefreshToken(
+		ctx.Request().Context(),
+		token,
+	)
 }
 
 func (ctx *Context) DeleteGrantSession(id string) error {
-	if err := ctx.Storage.GrantSession.Delete(ctx.Request().Context(), id); err != nil {
-		return oidcerr.Errorf(oidcerr.CodeInternalError,
-			"could not delete the grant session", err)
-	}
-	return nil
+	return ctx.Storage.GrantSession.Delete(ctx.Request().Context(), id)
 }
 
 func (ctx *Context) SaveAuthnSession(session *goidc.AuthnSession) error {
-	if err := ctx.Storage.AuthnSession.Save(ctx.Request().Context(), session); err != nil {
-		return oidcerr.Errorf(oidcerr.CodeInternalError,
-			"could not save the authentication session", err)
-	}
-	return nil
+	return ctx.Storage.AuthnSession.Save(ctx.Request().Context(), session)
 }
 
-func (ctx *Context) AuthnSessionByCallbackID(callbackID string) (*goidc.AuthnSession, error) {
-	session, err := ctx.Storage.AuthnSession.GetByCallbackID(ctx.Request().Context(), callbackID)
-	if err != nil {
-		return nil, oidcerr.Errorf(oidcerr.CodeInternalError,
-			"could not load the authentication session", err)
-	}
-
-	return session, nil
+func (ctx *Context) AuthnSessionByCallbackID(
+	id string,
+) (
+	*goidc.AuthnSession,
+	error,
+) {
+	return ctx.Storage.AuthnSession.GetByCallbackID(ctx.Request().Context(), id)
 }
 
-func (ctx *Context) AuthnSessionByAuthorizationCode(code string) (*goidc.AuthnSession, error) {
-	session, err := ctx.Storage.AuthnSession.GetByAuthorizationCode(ctx.Request().Context(), code)
-	if err != nil {
-		return nil, oidcerr.Errorf(oidcerr.CodeInternalError,
-			"could not load the authentication session", err)
-	}
-
-	return session, nil
+func (ctx *Context) AuthnSessionByAuthorizationCode(
+	code string,
+) (
+	*goidc.AuthnSession,
+	error,
+) {
+	return ctx.Storage.AuthnSession.GetByAuthorizationCode(
+		ctx.Request().Context(),
+		code,
+	)
 }
 
-func (ctx *Context) AuthnSessionByRequestURI(requestURI string) (*goidc.AuthnSession, error) {
-	session, err := ctx.Storage.AuthnSession.GetByRequestURI(ctx.Request().Context(), requestURI)
-	if err != nil {
-		return nil, oidcerr.Errorf(oidcerr.CodeInternalError,
-			"could not load the authentication session", err)
-	}
-
-	return session, nil
+func (ctx *Context) AuthnSessionByRequestURI(
+	uri string,
+) (
+	*goidc.AuthnSession,
+	error,
+) {
+	return ctx.Storage.AuthnSession.GetByRequestURI(ctx.Request().Context(), uri)
 }
 
 func (ctx *Context) DeleteAuthnSession(id string) error {
-	if err := ctx.Storage.AuthnSession.Delete(ctx.Request().Context(), id); err != nil {
-		return oidcerr.Errorf(oidcerr.CodeInternalError,
-			"could not delete the authentication session", err)
-	}
-	return nil
+	return ctx.Storage.AuthnSession.Delete(ctx.Request().Context(), id)
 }
 
 //---------------------------------------- HTTP Utils ----------------------------------------//
@@ -300,17 +286,17 @@ func (ctx *Context) Response() http.ResponseWriter {
 	return ctx.Resp
 }
 
-func (ctx *Context) BearerToken() string {
+func (ctx *Context) BearerToken() (string, bool) {
 	token, tokenType, ok := ctx.AuthorizationToken()
 	if !ok {
-		return ""
+		return "", false
 	}
 
 	if tokenType != goidc.TokenTypeBearer {
-		return ""
+		return "", false
 	}
 
-	return token
+	return token, true
 }
 
 func (ctx *Context) AuthorizationToken() (
@@ -403,6 +389,9 @@ func (ctx *Context) WriteJWT(token string, status int) error {
 }
 
 func (ctx *Context) WriteError(err error) {
+	if ctx.Event.HandleError != nil {
+		ctx.Event.HandleError(ctx, err)
+	}
 
 	var oidcErr oidcerr.Error
 	if !errors.As(err, &oidcErr) {
@@ -485,7 +474,7 @@ func (ctx *Context) TokenSignatureKey(tokenOptions goidc.TokenOptions) jose.JSON
 
 func (ctx *Context) UserInfoSignatureKey(client *goidc.Client) jose.JSONWebKey {
 	return ctx.privateKeyBasedOnAlgorithmOrDefault(
-		client.UserInfoSignatureAlgorithm,
+		client.UserInfoSigAlg,
 		ctx.User.DefaultSignatureKeyID,
 		ctx.User.SigKeyIDs,
 	)
@@ -493,7 +482,7 @@ func (ctx *Context) UserInfoSignatureKey(client *goidc.Client) jose.JSONWebKey {
 
 func (ctx *Context) IDTokenSignatureKey(client *goidc.Client) jose.JSONWebKey {
 	return ctx.privateKeyBasedOnAlgorithmOrDefault(
-		client.IDTokenSignatureAlgorithm,
+		client.IDTokenSigAlg,
 		ctx.User.DefaultSignatureKeyID,
 		ctx.User.SigKeyIDs,
 	)
@@ -501,7 +490,7 @@ func (ctx *Context) IDTokenSignatureKey(client *goidc.Client) jose.JSONWebKey {
 
 func (ctx *Context) JARMSignatureKey(client *goidc.Client) jose.JSONWebKey {
 	return ctx.privateKeyBasedOnAlgorithmOrDefault(
-		client.JARMSignatureAlgorithm,
+		client.JARMSigAlg,
 		ctx.JARM.DefaultSigKeyID,
 		ctx.JARM.SigKeyIDs,
 	)

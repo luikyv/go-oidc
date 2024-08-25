@@ -13,11 +13,13 @@ type MiddlewareFunc func(next http.Handler) http.Handler
 
 // DCRFunc defines a function that will be executed during DCR and DCM.
 // It can be used to modify the client and perform custom validations.
-type DCRFunc func(ctx Context, clientInfo *ClientMetaInfo)
+type DCRFunc func(ctx Context, clientInfo *ClientMetaInfo) error
 
 // AuthorizeErrorFunc defines a function that will be called when errors
 // during the authorization request cannot be handled.
 type AuthorizeErrorFunc func(ctx Context, err error) error
+
+type HandleErrorEventFunc func(ctx Context, err error)
 
 var (
 	ScopeOpenID        = NewScope("openid")

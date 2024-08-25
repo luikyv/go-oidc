@@ -244,7 +244,7 @@ func newAuthorizationCodeGrantOptions(
 		AdditionalIDTokenClaims:  session.AdditionalIDTokenClaims,
 		AdditionalUserInfoClaims: session.AdditionalUserInfoClaims,
 	}
-	if ctx.AuthorizationDetails.IsEnabled {
+	if ctx.AuthDetails.IsEnabled {
 		grantOptions.GrantedAuthorizationDetails = session.GrantedAuthorizationDetails
 	}
 

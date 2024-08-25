@@ -71,15 +71,18 @@ func policy() goidc.AuthnPolicy {
 }
 
 func dcrPlugin(scopes []goidc.Scope) goidc.DCRFunc {
-	return func(ctx goidc.Context, clientInfo *goidc.ClientMetaInfo) {
+	return func(ctx goidc.Context, clientInfo *goidc.ClientMetaInfo) error {
 		var s []string
 		for _, scope := range scopes {
 			s = append(s, scope.ID)
 		}
 		clientInfo.Scopes = strings.Join(s, " ")
+
 		if !slices.Contains(clientInfo.GrantTypes, goidc.GrantRefreshToken) {
 			clientInfo.GrantTypes = append(clientInfo.GrantTypes, goidc.GrantRefreshToken)
 		}
+
+		return nil
 	}
 }
 

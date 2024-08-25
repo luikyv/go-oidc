@@ -9,20 +9,20 @@ import (
 type request struct {
 	id     string
 	secret string
-	// initialAccessToken holds the value of the authorization header when
+	// initialToken holds the value of the authorization header when
 	// creating a client with DCR.
-	initialAccessToken string
-	// registrationAccessToken holds the value of the authorization header for
+	initialToken string
+	// registrationToken holds the value of the authorization header for
 	// all DCM requests.
-	registrationAccessToken string
+	registrationToken string
 	goidc.ClientMetaInfo
 }
 
 type response struct {
-	ID                      string `json:"client_id"`
-	Secret                  string `json:"client_secret,omitempty"`
-	RegistrationAccessToken string `json:"registration_access_token,omitempty"`
-	RegistrationURI         string `json:"registration_client_uri"`
+	ID                string `json:"client_id"`
+	Secret            string `json:"client_secret,omitempty"`
+	RegistrationToken string `json:"registration_access_token,omitempty"`
+	RegistrationURI   string `json:"registration_client_uri"`
 	goidc.ClientMetaInfo
 }
 

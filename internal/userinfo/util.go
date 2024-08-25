@@ -17,28 +17,30 @@ func userInfo(ctx *oidc.Context) (response, error) {
 		return response{}, oidcerr.New(oidcerr.CodeInvalidToken, "no token found")
 	}
 
-	tokenID, oauthErr := token.ExtractID(ctx, accessToken)
-	if oauthErr != nil {
-		return response{}, oauthErr
+	tokenID, err := token.ExtractID(ctx, accessToken)
+	if err != nil {
+		return response{}, err
 	}
 
 	grantSession, err := ctx.GrantSessionByTokenID(tokenID)
 	if err != nil {
-		return response{}, oidcerr.New(oidcerr.CodeInvalidRequest, "invalid token")
+		return response{}, oidcerr.Errorf(oidcerr.CodeInvalidRequest,
+			"invalid token", err)
 	}
 
-	if err := validateUserInfoRequest(ctx, grantSession, accessToken, tokenType); err != nil {
+	if err := validateRequest(ctx, grantSession, accessToken, tokenType); err != nil {
 		return response{}, err
 	}
 
 	client, err := ctx.Client(grantSession.ClientID)
 	if err != nil {
-		return response{}, oidcerr.New(oidcerr.CodeInternalError, err.Error())
+		return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not load the client", err)
 	}
 
-	resp, oauthErr := userInfoResponse(ctx, client, grantSession)
-	if oauthErr != nil {
-		return response{}, oauthErr
+	resp, err := userInfoResponse(ctx, client, grantSession)
+	if err != nil {
+		return response{}, err
 	}
 
 	return resp, nil
@@ -46,7 +48,7 @@ func userInfo(ctx *oidc.Context) (response, error) {
 
 func userInfoResponse(
 	ctx *oidc.Context,
-	client *goidc.Client,
+	c *goidc.Client,
 	grantSession *goidc.GrantSession,
 ) (
 	response,
@@ -63,28 +65,28 @@ func userInfoResponse(
 	resp := response{}
 	// If the client doesn't require the user info to be signed,
 	// we'll just return the claims as a JSON object.
-	if client.UserInfoSignatureAlgorithm == "" {
+	if c.UserInfoSigAlg == "" {
 		resp.claims = userInfoClaims
 		return resp, nil
 	}
 
 	userInfoClaims[goidc.ClaimIssuer] = ctx.Host
-	userInfoClaims[goidc.ClaimAudience] = client.ID
-	jwtUserInfoClaims, err := signUserInfoClaims(ctx, client, userInfoClaims)
+	userInfoClaims[goidc.ClaimAudience] = c.ID
+	jwtUserInfoClaims, err := signUserInfoClaims(ctx, c, userInfoClaims)
 	if err != nil {
-		return response{}, oidcerr.New(oidcerr.CodeInternalError, err.Error())
+		return response{}, err
 	}
 
 	// If the client doesn't require the user info to be encrypted,
 	// we'll just return the claims as a signed JWT.
-	if client.UserInfoKeyEncryptionAlgorithm == "" {
+	if c.UserInfoKeyEncAlg == "" {
 		resp.jwtClaims = jwtUserInfoClaims
 		return resp, nil
 	}
 
-	jwtUserInfoClaims, err = encryptUserInfoJWT(ctx, client, jwtUserInfoClaims)
+	jwtUserInfoClaims, err = encryptUserInfoJWT(ctx, c, jwtUserInfoClaims)
 	if err != nil {
-		return response{}, oidcerr.New(oidcerr.CodeInternalError, err.Error())
+		return response{}, err
 	}
 	resp.jwtClaims = jwtUserInfoClaims
 	return resp, nil
@@ -92,25 +94,27 @@ func userInfoResponse(
 
 func signUserInfoClaims(
 	ctx *oidc.Context,
-	client *goidc.Client,
+	c *goidc.Client,
 	claims map[string]any,
 ) (
 	string,
 	error,
 ) {
-	privateJWK := ctx.UserInfoSignatureKey(client)
+	privateJWK := ctx.UserInfoSignatureKey(c)
 	signatureAlgorithm := jose.SignatureAlgorithm(privateJWK.Algorithm)
 	signer, err := jose.NewSigner(
 		jose.SigningKey{Algorithm: signatureAlgorithm, Key: privateJWK.Key},
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
 	)
 	if err != nil {
-		return "", oidcerr.New(oidcerr.CodeInternalError, err.Error())
+		return "", oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not sign the user info claims", err)
 	}
 
 	idToken, err := jwt.Signed(signer).Claims(claims).Serialize()
 	if err != nil {
-		return "", oidcerr.New(oidcerr.CodeInternalError, err.Error())
+		return "", oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not sign the user info claims", err)
 	}
 
 	return idToken, nil
@@ -129,15 +133,21 @@ func encryptUserInfoJWT(
 		return "", oidcerr.New(oidcerr.CodeInvalidRequest, err.Error())
 	}
 
-	encryptedUserInfoJWT, oauthErr := token.EncryptJWT(ctx, userInfoJWT, jwk, client.UserInfoContentEncryptionAlgorithm)
-	if oauthErr != nil {
-		return "", oauthErr
+	UserInfoJWE, err := token.EncryptJWT(
+		ctx,
+		userInfoJWT,
+		jwk,
+		client.UserInfoContentEncAlg,
+	)
+	if err != nil {
+		return "", oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not encrypt the user info response", err)
 	}
 
-	return encryptedUserInfoJWT, nil
+	return UserInfoJWE, nil
 }
 
-func validateUserInfoRequest(
+func validateRequest(
 	ctx *oidc.Context,
 	grantSession *goidc.GrantSession,
 	accessToken string,

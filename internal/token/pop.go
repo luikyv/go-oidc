@@ -74,11 +74,13 @@ func ValidateDPoPJWT(
 		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid htu claim")
 	}
 
-	if expectedDPoPClaims.AccessToken != "" && dpopClaims.AccessTokenHash != hashBase64URLSHA256(expectedDPoPClaims.AccessToken) {
+	if expectedDPoPClaims.AccessToken != "" &&
+		dpopClaims.AccessTokenHash != hashBase64URLSHA256(expectedDPoPClaims.AccessToken) {
 		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid ath claim")
 	}
 
-	if expectedDPoPClaims.JWKThumbprint != "" && jwkThumbprint(dpopJWT, ctx.DPoP.SigAlgs) != expectedDPoPClaims.JWKThumbprint {
+	if expectedDPoPClaims.JWKThumbprint != "" &&
+		jwkThumbprint(dpopJWT, ctx.DPoP.SigAlgs) != expectedDPoPClaims.JWKThumbprint {
 		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid jwk thumbprint")
 	}
 
@@ -112,7 +114,8 @@ func validateDPoP(
 			// The token type cannot be DPoP if the session was not created with DPoP.
 			return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid token type")
 		} else {
-			// If the session was not created with DPoP and the token is not a DPoP token, there is nothing to validate.
+			// If the session was not created with DPoP and the token is not of
+			// DPoP type, there is nothing to validate.
 			return nil
 		}
 	}
@@ -139,11 +142,13 @@ func validateTLSPoP(
 
 	clientCert, ok := ctx.ClientCertificate()
 	if !ok {
-		return oidcerr.New(oidcerr.CodeInvalidToken, "the client certificate is required")
+		return oidcerr.New(oidcerr.CodeInvalidToken,
+			"the client certificate is required")
 	}
 
 	if confirmation.ClientCertificateThumbprint != hashBase64URLSHA256(string(clientCert.Raw)) {
-		return oidcerr.New(oidcerr.CodeInvalidToken, "invalid client certificate")
+		return oidcerr.New(oidcerr.CodeInvalidToken,
+			"invalid client certificate")
 	}
 
 	return nil

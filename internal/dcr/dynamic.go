@@ -10,35 +10,40 @@ import (
 
 func create(
 	ctx *oidc.Context,
-	req request,
+	dc request,
 ) (
 	response,
 	error,
 ) {
-	if err := setCreationDefaults(ctx, &req); err != nil {
+	if err := setCreationDefaults(ctx, &dc); err != nil {
 		return response{}, err
 	}
 
-	if err := validateDynamicRequest(ctx, req); err != nil {
+	if err := validateDynamicRequest(ctx, dc); err != nil {
 		return response{}, err
 	}
 
-	ctx.ExecuteDCRPlugin(&req.ClientMetaInfo)
-	if err := validateDynamicRequest(ctx, req); err != nil {
+	if err := ctx.ExecuteDCRPlugin(&dc.ClientMetaInfo); err != nil {
+		return response{}, oidcerr.Errorf(oidcerr.CodeInvalidClientMetadata,
+			"invalid metadata", err)
+	}
+
+	if err := validateDynamicRequest(ctx, dc); err != nil {
 		return response{}, err
 	}
 
-	newClient := newClient(req)
+	newClient := newClient(dc)
 	if err := ctx.SaveClient(newClient); err != nil {
-		return response{}, err
+		return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not store the client", err)
 	}
 
 	return response{
-		ID:                      req.id,
-		RegistrationURI:         registrationURI(ctx, req.id),
-		RegistrationAccessToken: req.registrationAccessToken,
-		Secret:                  req.secret,
-		ClientMetaInfo:          req.ClientMetaInfo,
+		ID:                dc.id,
+		RegistrationURI:   registrationURI(ctx, dc.id),
+		RegistrationToken: dc.registrationToken,
+		Secret:            dc.secret,
+		ClientMetaInfo:    dc.ClientMetaInfo,
 	}, nil
 }
 
@@ -48,17 +53,15 @@ func setCreationDefaults(
 ) error {
 	id, err := clientID()
 	if err != nil {
-		return oidcerr.New(oidcerr.CodeInternalError,
-			"could not generate the client id")
+		return err
 	}
 	req.id = id
 
 	token, err := registrationAccessToken()
 	if err != nil {
-		return oidcerr.New(oidcerr.CodeInternalError,
-			"could not generate the registration access token")
+		return err
 	}
-	req.registrationAccessToken = token
+	req.registrationToken = token
 
 	return setDefaults(ctx, req)
 }
@@ -78,18 +81,24 @@ func update(
 	if err := setUpdateDefaults(ctx, c, &dc); err != nil {
 		return response{}, err
 	}
+
 	if err := validateDynamicRequest(ctx, dc); err != nil {
 		return response{}, err
 	}
 
-	ctx.ExecuteDCRPlugin(&dc.ClientMetaInfo)
+	if err := ctx.ExecuteDCRPlugin(&dc.ClientMetaInfo); err != nil {
+		return response{}, oidcerr.Errorf(oidcerr.CodeInvalidClientMetadata,
+			"invalid metadata", err)
+	}
+
 	if err := validateDynamicRequest(ctx, dc); err != nil {
 		return response{}, err
 	}
 
 	updatedClient := newClient(dc)
 	if err := ctx.SaveClient(updatedClient); err != nil {
-		return response{}, err
+		return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not store the client", err)
 	}
 
 	resp := response{
@@ -100,7 +109,7 @@ func update(
 	}
 
 	if ctx.DCR.TokenRotationIsEnabled {
-		resp.RegistrationAccessToken = dc.registrationAccessToken
+		resp.RegistrationToken = dc.registrationToken
 	}
 
 	return resp, nil
@@ -115,10 +124,9 @@ func setUpdateDefaults(
 	if ctx.DCR.TokenRotationIsEnabled {
 		token, err := registrationAccessToken()
 		if err != nil {
-			return oidcerr.New(oidcerr.CodeInternalError,
-				"could not generate the registration access token")
+			return err
 		}
-		dynamicClient.registrationAccessToken = token
+		dynamicClient.registrationToken = token
 	}
 
 	return setDefaults(ctx, dynamicClient)
@@ -154,8 +162,8 @@ func remove(
 	}
 
 	if err := ctx.DeleteClient(dynamicClientRequest.id); err != nil {
-		return oidcerr.New(oidcerr.CodeInternalError,
-			"could not delete the client")
+		return oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not delete the client", err)
 	}
 	return nil
 }
@@ -170,8 +178,7 @@ func setDefaults(ctx *oidc.Context, dynamicClient *request) error {
 		dynamicClient.AuthnMethod == goidc.ClientAuthnSecretJWT {
 		secret, err := clientSecret()
 		if err != nil {
-			return oidcerr.New(oidcerr.CodeInternalError,
-				"could not generate the client secret")
+			return err
 		}
 		dynamicClient.secret = secret
 	}
@@ -180,20 +187,24 @@ func setDefaults(ctx *oidc.Context, dynamicClient *request) error {
 		dynamicClient.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeCode}
 	}
 
-	if dynamicClient.IDTokenKeyEncryptionAlgorithm != "" && dynamicClient.IDTokenContentEncryptionAlgorithm == "" {
-		dynamicClient.IDTokenContentEncryptionAlgorithm = ctx.User.DefaultContentEncAlg
+	if dynamicClient.IDTokenKeyEncAlg != "" &&
+		dynamicClient.IDTokenContentEncAlg == "" {
+		dynamicClient.IDTokenContentEncAlg = ctx.User.DefaultContentEncAlg
 	}
 
-	if dynamicClient.UserInfoKeyEncryptionAlgorithm != "" && dynamicClient.UserInfoContentEncryptionAlgorithm == "" {
-		dynamicClient.UserInfoContentEncryptionAlgorithm = ctx.User.DefaultContentEncAlg
+	if dynamicClient.UserInfoKeyEncAlg != "" &&
+		dynamicClient.UserInfoContentEncAlg == "" {
+		dynamicClient.UserInfoContentEncAlg = ctx.User.DefaultContentEncAlg
 	}
 
-	if dynamicClient.JARMKeyEncryptionAlgorithm != "" && dynamicClient.JARMContentEncryptionAlgorithm == "" {
-		dynamicClient.JARMContentEncryptionAlgorithm = ctx.JARM.DefaultContentEncAlg
+	if dynamicClient.JARMKeyEncAlg != "" &&
+		dynamicClient.JARMContentEncAlg == "" {
+		dynamicClient.JARMContentEncAlg = ctx.JARM.DefaultContentEncAlg
 	}
 
-	if dynamicClient.JARKeyEncryptionAlgorithm != "" && dynamicClient.JARContentEncryptionAlgorithm == "" {
-		dynamicClient.JARContentEncryptionAlgorithm = ctx.JAR.DefaultContentEncAlg
+	if dynamicClient.JARKeyEncAlg != "" &&
+		dynamicClient.JARContentEncAlg == "" {
+		dynamicClient.JARContentEncAlg = ctx.JAR.DefaultContentEncAlg
 	}
 
 	if dynamicClient.CustomAttributes == nil {
@@ -203,49 +214,57 @@ func setDefaults(ctx *oidc.Context, dynamicClient *request) error {
 	return nil
 }
 
-func newClient(dynamicClient request) *goidc.Client {
-	hashedRegistrationAccessToken, _ := bcrypt.GenerateFromPassword([]byte(dynamicClient.registrationAccessToken), bcrypt.DefaultCost)
+func newClient(dc request) *goidc.Client {
+	hashedRegistrationAccessToken, _ := bcrypt.GenerateFromPassword(
+		[]byte(dc.registrationToken),
+		bcrypt.DefaultCost,
+	)
 	client := &goidc.Client{
-		ID:                            dynamicClient.id,
+		ID:                            dc.id,
 		HashedRegistrationAccessToken: string(hashedRegistrationAccessToken),
-		ClientMetaInfo:                dynamicClient.ClientMetaInfo,
+		ClientMetaInfo:                dc.ClientMetaInfo,
 	}
 
-	if dynamicClient.AuthnMethod == goidc.ClientAuthnSecretPost || dynamicClient.AuthnMethod == goidc.ClientAuthnSecretBasic {
-		clientHashedSecret, _ := bcrypt.GenerateFromPassword([]byte(dynamicClient.secret), bcrypt.DefaultCost)
+	if dc.AuthnMethod == goidc.ClientAuthnSecretPost ||
+		dc.AuthnMethod == goidc.ClientAuthnSecretBasic {
+		clientHashedSecret, _ := bcrypt.GenerateFromPassword(
+			[]byte(dc.secret),
+			bcrypt.DefaultCost,
+		)
 		client.HashedSecret = string(clientHashedSecret)
 	}
 
-	if dynamicClient.AuthnMethod == goidc.ClientAuthnSecretJWT {
-		client.Secret = dynamicClient.secret
+	if dc.AuthnMethod == goidc.ClientAuthnSecretJWT {
+		client.Secret = dc.secret
 	}
 
 	return client
 }
 
-func registrationURI(ctx *oidc.Context, clientID string) string {
-	return ctx.BaseURL() + ctx.Endpoint.DCR + "/" + clientID
+func registrationURI(ctx *oidc.Context, id string) string {
+	return ctx.BaseURL() + ctx.Endpoint.DCR + "/" + id
 }
 
 func protected(
 	ctx *oidc.Context,
-	dynamicClient request,
+	dc request,
 ) (
 	*goidc.Client,
 	error,
 ) {
-	if dynamicClient.id == "" {
+	if dc.id == "" {
 		return nil, oidcerr.New(oidcerr.CodeInvalidRequest, "invalid client_id")
 	}
 
-	client, err := ctx.Client(dynamicClient.id)
+	client, err := ctx.Client(dc.id)
 	if err != nil {
-		return nil, oidcerr.New(oidcerr.CodeInvalidRequest, "could not load the client")
+		return nil, oidcerr.Errorf(oidcerr.CodeInvalidRequest,
+			"could not find the client", err)
 	}
 
-	if dynamicClient.registrationAccessToken == "" ||
-		!client.IsRegistrationAccessTokenValid(dynamicClient.registrationAccessToken) {
-		return nil, oidcerr.New(oidcerr.CodeAccessDenied, "invalid token")
+	if dc.registrationToken == "" ||
+		!client.IsRegistrationAccessTokenValid(dc.registrationToken) {
+		return nil, oidcerr.New(oidcerr.CodeAccessDenied, "invalid access token")
 	}
 
 	return client, nil
@@ -254,15 +273,26 @@ func protected(
 func clientID() (string, error) {
 	id, err := strutil.Random(idLength)
 	if err != nil {
-		return "", err
+		return "", oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not generate the client id", err)
 	}
 	return "dc-" + id, nil
 }
 
 func clientSecret() (string, error) {
-	return strutil.Random(secretLength)
+	s, err := strutil.Random(secretLength)
+	if err != nil {
+		return "", oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not generate the client secret", err)
+	}
+	return s, nil
 }
 
 func registrationAccessToken() (string, error) {
-	return strutil.Random(registrationAccessTokenLength)
+	token, err := strutil.Random(registrationAccessTokenLength)
+	if err != nil {
+		return "", oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not generate the registration access token", err)
+	}
+	return token, nil
 }

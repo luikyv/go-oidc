@@ -44,7 +44,7 @@ func redirectResponse(
 	}
 
 	responseMode := responseMode(params)
-	if responseMode.IsJARM() || client.JARMSignatureAlgorithm != "" {
+	if responseMode.IsJARM() || client.JARMSigAlg != "" {
 		responseJWT, err := createJARMResponse(ctx, client, redirectParams)
 		if err != nil {
 			return err
@@ -104,7 +104,7 @@ func createJARMResponse(
 		return "", err
 	}
 
-	if client.JARMKeyEncryptionAlgorithm != "" {
+	if client.JARMKeyEncAlg != "" {
 		responseJWT, err = encryptJARMResponse(ctx, responseJWT, client)
 		if err != nil {
 			return "", err
@@ -166,7 +166,7 @@ func encryptJARMResponse(
 			"could not fetch the client encryption jwk for jarm")
 	}
 
-	encryptedResponseJWT, oauthErr := token.EncryptJWT(ctx, responseJWT, jwk, client.JARMContentEncryptionAlgorithm)
+	encryptedResponseJWT, oauthErr := token.EncryptJWT(ctx, responseJWT, jwk, client.JARMContentEncAlg)
 	if oauthErr != nil {
 		return "", oauthErr
 	}

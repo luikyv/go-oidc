@@ -14,6 +14,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// TODO: Remove the unused methods.
+
 // ClientManager contains all the logic needed to manage clients.
 type ClientManager interface {
 	Save(ctx context.Context, client *Client) error
@@ -63,15 +65,15 @@ func (c *Client) PublicKey(keyID string) (jose.JSONWebKey, error) {
 }
 
 func (c *Client) JARMEncryptionJWK() (jose.JSONWebKey, error) {
-	return c.encryptionJWK(c.JARMKeyEncryptionAlgorithm)
+	return c.encryptionJWK(c.JARMKeyEncAlg)
 }
 
 func (c *Client) UserInfoEncryptionJWK() (jose.JSONWebKey, error) {
-	return c.encryptionJWK(c.UserInfoKeyEncryptionAlgorithm)
+	return c.encryptionJWK(c.UserInfoKeyEncAlg)
 }
 
 func (c *Client) IDTokenEncryptionJWK() (jose.JSONWebKey, error) {
-	return c.encryptionJWK(c.IDTokenKeyEncryptionAlgorithm)
+	return c.encryptionJWK(c.IDTokenKeyEncAlg)
 }
 
 // SignatureJWK returns the signature JWK based on the algorithm.
@@ -161,7 +163,7 @@ func (c *Client) IsGrantTypeAllowed(grantType GrantType) bool {
 }
 
 func (c *Client) IsRedirectURIAllowed(redirectURI string) bool {
-	for _, ru := range c.RedirectURIS {
+	for _, ru := range c.RedirectURIs {
 		if redirectURI == ru {
 			return true
 		}
@@ -172,11 +174,11 @@ func (c *Client) IsRedirectURIAllowed(redirectURI string) bool {
 func (c *Client) IsAuthorizationDetailTypeAllowed(authDetailType string) bool {
 	// If the client didn't announce the authorization types it will use,
 	// consider any value valid.
-	if c.AuthorizationDetailTypes == nil {
+	if c.AuthDetailTypes == nil {
 		return true
 	}
 
-	return slices.Contains(c.AuthorizationDetailTypes, authDetailType)
+	return slices.Contains(c.AuthDetailTypes, authDetailType)
 }
 
 func (c *Client) IsRegistrationAccessTokenValid(token string) bool {
@@ -222,37 +224,37 @@ func (c *Client) fetchJWKS() (json.RawMessage, error) {
 }
 
 type ClientMetaInfo struct {
-	Name                               string                  `json:"client_name,omitempty"`
-	LogoURI                            string                  `json:"logo_uri,omitempty"`
-	RedirectURIS                       []string                `json:"redirect_uris"`
-	GrantTypes                         []GrantType             `json:"grant_types"`
-	ResponseTypes                      []ResponseType          `json:"response_types"`
-	PublicJWKSURI                      string                  `json:"jwks_uri,omitempty"`
-	PublicJWKS                         json.RawMessage         `json:"jwks,omitempty"`
-	Scopes                             string                  `json:"scope"`
-	SubjectIdentifierType              SubjectIdentifierType   `json:"subject_type,omitempty"`
-	IDTokenSignatureAlgorithm          jose.SignatureAlgorithm `json:"id_token_signed_response_alg,omitempty"`
-	IDTokenKeyEncryptionAlgorithm      jose.KeyAlgorithm       `json:"id_token_encrypted_response_alg,omitempty"`
-	IDTokenContentEncryptionAlgorithm  jose.ContentEncryption  `json:"id_token_encrypted_response_enc,omitempty"`
-	UserInfoSignatureAlgorithm         jose.SignatureAlgorithm `json:"userinfo_signed_response_alg,omitempty"`
-	UserInfoKeyEncryptionAlgorithm     jose.KeyAlgorithm       `json:"userinfo_encrypted_response_alg,omitempty"`
-	UserInfoContentEncryptionAlgorithm jose.ContentEncryption  `json:"userinfo_encrypted_response_enc,omitempty"`
-	JARSignatureAlgorithm              jose.SignatureAlgorithm `json:"request_object_signing_alg,omitempty"`
-	JARKeyEncryptionAlgorithm          jose.KeyAlgorithm       `json:"request_object_encryption_alg,omitempty"`
-	JARContentEncryptionAlgorithm      jose.ContentEncryption  `json:"request_object_encryption_enc,omitempty"`
-	JARMSignatureAlgorithm             jose.SignatureAlgorithm `json:"authorization_signed_response_alg,omitempty"`
-	JARMKeyEncryptionAlgorithm         jose.KeyAlgorithm       `json:"authorization_encrypted_response_alg,omitempty"`
-	JARMContentEncryptionAlgorithm     jose.ContentEncryption  `json:"authorization_encrypted_response_enc,omitempty"`
-	AuthnMethod                        ClientAuthnType         `json:"token_endpoint_auth_method"`
-	AuthnSignatureAlgorithm            jose.SignatureAlgorithm `json:"token_endpoint_auth_signing_alg,omitempty"`
-	DPoPIsRequired                     bool                    `json:"dpop_bound_access_tokens,omitempty"`
-	TLSSubjectDistinguishedName        string                  `json:"tls_client_auth_subject_dn,omitempty"`
-	// TLSSubjectAlternativeName represents a DNS name.
-	TLSSubjectAlternativeName   string   `json:"tls_client_auth_san_dns,omitempty"`
-	TLSSubjectAlternativeNameIp string   `json:"tls_client_auth_san_ip,omitempty"`
-	AuthorizationDetailTypes    []string `json:"authorization_data_types,omitempty"`
-	DefaultMaxAgeSecs           *int     `json:"default_max_age,omitempty"`
-	DefaultACRValues            string   `json:"default_acr_values,omitempty"`
+	Name                    string                  `json:"client_name,omitempty"`
+	LogoURI                 string                  `json:"logo_uri,omitempty"`
+	RedirectURIs            []string                `json:"redirect_uris"`
+	GrantTypes              []GrantType             `json:"grant_types"`
+	ResponseTypes           []ResponseType          `json:"response_types"`
+	PublicJWKSURI           string                  `json:"jwks_uri,omitempty"`
+	PublicJWKS              json.RawMessage         `json:"jwks,omitempty"`
+	Scopes                  string                  `json:"scope"`
+	SubIdentifierType       SubjectIdentifierType   `json:"subject_type,omitempty"`
+	IDTokenSigAlg           jose.SignatureAlgorithm `json:"id_token_signed_response_alg,omitempty"`
+	IDTokenKeyEncAlg        jose.KeyAlgorithm       `json:"id_token_encrypted_response_alg,omitempty"`
+	IDTokenContentEncAlg    jose.ContentEncryption  `json:"id_token_encrypted_response_enc,omitempty"`
+	UserInfoSigAlg          jose.SignatureAlgorithm `json:"userinfo_signed_response_alg,omitempty"`
+	UserInfoKeyEncAlg       jose.KeyAlgorithm       `json:"userinfo_encrypted_response_alg,omitempty"`
+	UserInfoContentEncAlg   jose.ContentEncryption  `json:"userinfo_encrypted_response_enc,omitempty"`
+	JARSigAlg               jose.SignatureAlgorithm `json:"request_object_signing_alg,omitempty"`
+	JARKeyEncAlg            jose.KeyAlgorithm       `json:"request_object_encryption_alg,omitempty"`
+	JARContentEncAlg        jose.ContentEncryption  `json:"request_object_encryption_enc,omitempty"`
+	JARMSigAlg              jose.SignatureAlgorithm `json:"authorization_signed_response_alg,omitempty"`
+	JARMKeyEncAlg           jose.KeyAlgorithm       `json:"authorization_encrypted_response_alg,omitempty"`
+	JARMContentEncAlg       jose.ContentEncryption  `json:"authorization_encrypted_response_enc,omitempty"`
+	AuthnMethod             ClientAuthnType         `json:"token_endpoint_auth_method"`
+	AuthnSigAlg             jose.SignatureAlgorithm `json:"token_endpoint_auth_signing_alg,omitempty"`
+	DPoPIsRequired          bool                    `json:"dpop_bound_access_tokens,omitempty"`
+	TLSSubDistinguishedName string                  `json:"tls_client_auth_subject_dn,omitempty"`
+	// TLSSubAlternativeName represents a DNS name.
+	TLSSubAlternativeName   string   `json:"tls_client_auth_san_dns,omitempty"`
+	TLSSubAlternativeNameIp string   `json:"tls_client_auth_san_ip,omitempty"`
+	AuthDetailTypes         []string `json:"authorization_data_types,omitempty"`
+	DefaultMaxAgeSecs       *int     `json:"default_max_age,omitempty"`
+	DefaultACRValues        string   `json:"default_acr_values,omitempty"`
 	// CustomAttributes holds any additional attributes a client has.
 	// This field is flattened for DCR responses.
 	CustomAttributes map[string]any `json:"custom_attributes,omitempty"`

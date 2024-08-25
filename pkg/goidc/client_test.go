@@ -99,7 +99,7 @@ func TestIsGrantTypeAllowed(t *testing.T) {
 func TestIsRedirectURIAllowed(t *testing.T) {
 	client := goidc.Client{
 		ClientMetaInfo: goidc.ClientMetaInfo{
-			RedirectURIS: []string{"https://example.com/callback", "http://example.com?param=value"},
+			RedirectURIs: []string{"https://example.com/callback", "http://example.com?param=value"},
 		},
 	}
 	testCases := []struct {
@@ -130,7 +130,7 @@ func TestIsAuthorizationDetailTypeAllowed(t *testing.T) {
 		"when the client doesn't specify the detail types, any type should be accepted")
 
 	// Given.
-	client.AuthorizationDetailTypes = []string{"valid_type"}
+	client.AuthDetailTypes = []string{"valid_type"}
 
 	// Then.
 	assert.True(t, client.IsAuthorizationDetailTypeAllowed("valid_type"),

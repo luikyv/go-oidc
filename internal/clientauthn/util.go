@@ -7,6 +7,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
+	"crypto/x509"
 	"slices"
 	"time"
 
@@ -33,7 +34,8 @@ func Authenticated(
 
 	client, err := ctx.Client(id)
 	if err != nil {
-		return nil, oidcerr.Errorf(oidcerr.CodeInvalidClient, "client not found", err)
+		return nil, oidcerr.Errorf(oidcerr.CodeInvalidClient,
+			"client not found", err)
 	}
 
 	if err := authenticate(ctx, client); err != nil {
@@ -122,41 +124,52 @@ func authenticatePrivateKeyJWT(
 	}
 
 	sigAlgs := ctx.ClientAuthn.PrivateKeyJWTSigAlgs
-	if c.AuthnSignatureAlgorithm != "" {
-		sigAlgs = []jose.SignatureAlgorithm{c.AuthnSignatureAlgorithm}
+	if c.AuthnSigAlg != "" {
+		sigAlgs = []jose.SignatureAlgorithm{c.AuthnSigAlg}
 	}
-	assertionJWT, err := jwt.ParseSigned(assertion, sigAlgs)
+	parsedAssertion, err := jwt.ParseSigned(assertion, sigAlgs)
 	if err != nil {
 		return oidcerr.Errorf(oidcerr.CodeInvalidClient,
 			"could not parse the client assertion", err)
 	}
 
 	// Verify that the assertion has only one header.
-	if len(assertionJWT.Headers) != 1 {
+	if len(parsedAssertion.Headers) != 1 {
 		return oidcerr.New(oidcerr.CodeInvalidClient,
 			"invalid client assertion header")
 	}
 
-	// Try to find the jwk used to sign the assertion by key id or algorithm.
-	var jwk jose.JSONWebKey
-	if assertionJWT.Headers[0].KeyID != "" {
-		jwk, err = c.PublicKey(assertionJWT.Headers[0].KeyID)
-	} else {
-		alg := jose.SignatureAlgorithm(assertionJWT.Headers[0].Algorithm)
-		jwk, err = c.SignatureJWK(alg)
-	}
+	jwk, err := jwk(c, parsedAssertion.Headers[0])
 	if err != nil {
-		return oidcerr.Errorf(oidcerr.CodeInvalidClient,
-			"could not identify the jwk used to sign the assertion", err)
+		return err
 	}
 
 	claims := jwt.Claims{}
-	if err := assertionJWT.Claims(jwk.Key, &claims); err != nil {
+	if err := parsedAssertion.Claims(jwk.Key, &claims); err != nil {
 		return oidcerr.Errorf(oidcerr.CodeInvalidClient,
 			"could not parse the client assertion claims", err)
 	}
 
 	return areClaimsValid(ctx, c, claims)
+}
+
+func jwk(c *goidc.Client, header jose.Header) (jose.JSONWebKey, error) {
+	if header.KeyID != "" {
+		jwk, err := c.PublicKey(header.KeyID)
+		if err != nil {
+			return jose.JSONWebKey{}, oidcerr.Errorf(oidcerr.CodeInvalidClient,
+				"could not find the jwk used to sign the assertion that matches the 'kid' header", err)
+		}
+		return jwk, nil
+	}
+
+	alg := jose.SignatureAlgorithm(header.Algorithm)
+	jwk, err := c.SignatureJWK(alg)
+	if err != nil {
+		return jose.JSONWebKey{}, oidcerr.Errorf(oidcerr.CodeInvalidClient,
+			"could not find the jwk used to sign the assertion that matches the 'alg' header", err)
+	}
+	return jwk, nil
 }
 
 func authenticateSecretJWT(
@@ -169,8 +182,8 @@ func authenticateSecretJWT(
 	}
 
 	sigAlgs := ctx.ClientAuthn.ClientSecretJWTSigAlgs
-	if c.AuthnSignatureAlgorithm != "" {
-		sigAlgs = []jose.SignatureAlgorithm{c.AuthnSignatureAlgorithm}
+	if c.AuthnSigAlg != "" {
+		sigAlgs = []jose.SignatureAlgorithm{c.AuthnSigAlg}
 	}
 	parsedAssertion, err := jwt.ParseSigned(assertion, sigAlgs)
 	if err != nil {
@@ -188,7 +201,8 @@ func authenticateSecretJWT(
 }
 
 func assertion(ctx *oidc.Context) (string, error) {
-	if ctx.Request().PostFormValue(assertionFormPostParam) != string(goidc.AssertionTypeJWTBearer) {
+	assertionType := ctx.Request().PostFormValue(assertionFormPostParam)
+	if assertionType != string(goidc.AssertionTypeJWTBearer) {
 		return "", oidcerr.New(oidcerr.CodeInvalidClient,
 			"invalid assertion_type")
 	}
@@ -219,7 +233,8 @@ func areClaimsValid(
 	}
 
 	// Validate that the difference between "iat" and "exp" is not too great.
-	if int(claims.Expiry.Time().Sub(claims.IssuedAt.Time()).Seconds()) > ctx.ClientAuthn.AssertionLifetimeSecs {
+	secsToExpiry := int(claims.Expiry.Time().Sub(claims.IssuedAt.Time()).Seconds())
+	if secsToExpiry > ctx.ClientAuthn.AssertionLifetimeSecs {
 		return oidcerr.New(oidcerr.CodeInvalidClient,
 			"the assertion has a life time more than allowed")
 	}
@@ -245,27 +260,13 @@ func authenticateSelfSignedTLSCert(
 
 	cert, ok := ctx.ClientCertificate()
 	if !ok {
-		return oidcerr.New(oidcerr.CodeInvalidClient, "client certificate not informed")
-	}
-
-	jwks, err := c.FetchPublicJWKS()
-	if err != nil {
-		return oidcerr.Errorf(oidcerr.CodeInternalError, "could not load the client JWKS", err)
-	}
-
-	var jwk jose.JSONWebKey
-	foundMatchingJWK := false
-	for _, key := range jwks.Keys {
-		if string(key.CertificateThumbprintSHA256) == hashSHA256(cert.Raw) ||
-			string(key.CertificateThumbprintSHA1) == hashSHA1(cert.Raw) {
-			foundMatchingJWK = true
-			jwk = key
-		}
-	}
-
-	if !foundMatchingJWK {
 		return oidcerr.New(oidcerr.CodeInvalidClient,
-			"could not find a JWK matching the client certificate")
+			"client certificate not informed")
+	}
+
+	jwk, err := jwkMatchingCert(c, cert)
+	if err != nil {
+		return err
 	}
 
 	if !comparePublicKeys(jwk.Key, cert.PublicKey) {
@@ -274,6 +275,30 @@ func authenticateSelfSignedTLSCert(
 	}
 
 	return nil
+}
+
+func jwkMatchingCert(
+	c *goidc.Client,
+	cert *x509.Certificate,
+) (
+	jose.JSONWebKey,
+	error,
+) {
+	jwks, err := c.FetchPublicJWKS()
+	if err != nil {
+		return jose.JSONWebKey{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not load the client JWKS", err)
+	}
+
+	for _, jwk := range jwks.Keys {
+		if string(jwk.CertificateThumbprintSHA256) == hashSHA256(cert.Raw) ||
+			string(jwk.CertificateThumbprintSHA1) == hashSHA1(cert.Raw) {
+			return jwk, nil
+		}
+	}
+
+	return jose.JSONWebKey{}, oidcerr.New(oidcerr.CodeInvalidClient,
+		"could not find a JWK matching the client certificate")
 }
 
 func authenticateTLSCert(
@@ -290,12 +315,12 @@ func authenticateTLSCert(
 			"client certificate not informed")
 	}
 
-	if c.TLSSubjectDistinguishedName != "" &&
-		cert.Subject.String() != c.TLSSubjectDistinguishedName {
+	if c.TLSSubDistinguishedName != "" &&
+		cert.Subject.String() != c.TLSSubDistinguishedName {
 		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid distinguished name")
 	}
-	if c.TLSSubjectAlternativeName != "" &&
-		!slices.Contains(cert.DNSNames, c.TLSSubjectAlternativeName) {
+	if c.TLSSubAlternativeName != "" &&
+		!slices.Contains(cert.DNSNames, c.TLSSubAlternativeName) {
 		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid alternative name")
 	}
 
@@ -328,11 +353,12 @@ func extractID(
 
 	assertion := ctx.Request().PostFormValue(assertionFormPostParam)
 	if assertion != "" {
-		var err error
-		ids, err = appendAssertionClientID(ids, assertion, ctx.ClientSignatureAlgorithms())
+		assertionID, err := assertionClientID(assertion,
+			ctx.ClientSignatureAlgorithms())
 		if err != nil {
 			return "", err
 		}
+		ids = append(ids, assertionID)
 	}
 
 	// All the client IDs present must be equal.
@@ -341,22 +367,6 @@ func extractID(
 	}
 
 	return ids[0], nil
-}
-
-func appendAssertionClientID(
-	ids []string,
-	assertion string,
-	sigAlgs []jose.SignatureAlgorithm,
-) (
-	[]string,
-	error,
-) {
-	id, err := assertionClientID(assertion, sigAlgs)
-	if err != nil {
-		return nil, err
-	}
-
-	return append(ids, id), nil
 }
 
 func assertionClientID(

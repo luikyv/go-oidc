@@ -119,17 +119,21 @@ func TestExecuteDCRPlugin_HappyPath(t *testing.T) {
 	clientInfo := goidc.ClientMetaInfo{}
 
 	// Then.
-	assert.NotPanics(t, func() { ctx.ExecuteDCRPlugin(&clientInfo) })
+	var err error
+	assert.NotPanics(t, func() { err = ctx.ExecuteDCRPlugin(&clientInfo) })
+	assert.Nil(t, err)
 
 	// Given.
-	ctx.DCR.Plugin = func(ctx goidc.Context, clientInfo *goidc.ClientMetaInfo) {
+	ctx.DCR.Plugin = func(ctx goidc.Context, clientInfo *goidc.ClientMetaInfo) error {
 		clientInfo.AuthnMethod = goidc.ClientAuthnNone
+		return nil
 	}
 
 	// When.
-	ctx.ExecuteDCRPlugin(&clientInfo)
+	err = ctx.ExecuteDCRPlugin(&clientInfo)
 
 	// Then.
+	assert.Nil(t, err)
 	assert.Equal(t, goidc.ClientAuthnNone, clientInfo.AuthnMethod)
 }
 
@@ -230,9 +234,10 @@ func TestGetBearerToken_HappyPath(t *testing.T) {
 	ctx.Req.Header.Set("Authorization", "Bearer token")
 
 	// When.
-	token := ctx.BearerToken()
+	token, ok := ctx.BearerToken()
 
 	// Then.
+	assert.True(t, ok)
 	assert.Equal(t, "token", token)
 }
 
@@ -242,9 +247,10 @@ func TestGetBearerToken_NoToken(t *testing.T) {
 	ctx.Req = httptest.NewRequest(http.MethodGet, oidctest.Host, nil)
 
 	// When.
-	token := ctx.BearerToken()
+	token, ok := ctx.BearerToken()
 
 	// Then.
+	assert.False(t, ok)
 	require.Empty(t, token)
 }
 
@@ -255,9 +261,10 @@ func TestGetBearerToken_NotABearerToken(t *testing.T) {
 	ctx.Req.Header.Set("Authorization", "DPoP token")
 
 	// When.
-	token := ctx.BearerToken()
+	token, ok := ctx.BearerToken()
 
 	// Then.
+	assert.False(t, ok)
 	require.Empty(t, token)
 }
 
@@ -420,7 +427,7 @@ func TestUserInfoSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	ctx.User.SigKeyIDs = []string{signingKeyID}
 
 	client := &goidc.Client{}
-	client.UserInfoSignatureAlgorithm = jose.PS256
+	client.UserInfoSigAlg = jose.PS256
 
 	// When.
 	jwk := ctx.UserInfoSignatureKey(client)
@@ -457,7 +464,7 @@ func TestIDTokenSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	ctx.User.SigKeyIDs = []string{signingKeyID}
 
 	client := &goidc.Client{}
-	client.IDTokenSignatureAlgorithm = jose.PS256
+	client.IDTokenSigAlg = jose.PS256
 
 	// When.
 	jwk := ctx.IDTokenSignatureKey(client)
@@ -494,7 +501,7 @@ func TestJARMSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	ctx.JARM.SigKeyIDs = []string{signingKeyID}
 
 	client := &goidc.Client{}
-	client.JARMSignatureAlgorithm = jose.PS256
+	client.JARMSigAlg = jose.PS256
 
 	// When.
 	jwk := ctx.JARMSignatureKey(client)

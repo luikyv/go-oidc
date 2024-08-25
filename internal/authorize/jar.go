@@ -19,7 +19,7 @@ func shouldUseJAR(
 	// If JAR is not enabled, we just disconsider the request object.
 	// Also, if the client defined a signature algorithm for jar, then jar is required.
 	return ctx.JAR.IsRequired ||
-		(ctx.JAR.IsEnabled && (req.RequestObject != "" || client.JARSignatureAlgorithm != ""))
+		(ctx.JAR.IsEnabled && (req.RequestObject != "" || client.JARSigAlg != ""))
 }
 
 func jarFromRequestObject(
@@ -93,8 +93,8 @@ func jarFromSignedRequestObject(
 	error,
 ) {
 	jarAlgorithms := ctx.JAR.SigAlgs
-	if client.JARSignatureAlgorithm != "" {
-		jarAlgorithms = []jose.SignatureAlgorithm{client.JARSignatureAlgorithm}
+	if client.JARSigAlg != "" {
+		jarAlgorithms = []jose.SignatureAlgorithm{client.JARSigAlg}
 	}
 	parsedToken, err := jwt.ParseSigned(reqObject, jarAlgorithms)
 	if err != nil {

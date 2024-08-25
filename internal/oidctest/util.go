@@ -42,7 +42,7 @@ func NewClient(_ *testing.T) *goidc.Client {
 		HashedRegistrationAccessToken: string(hashedRegistrationAccessToken),
 		ClientMetaInfo: goidc.ClientMetaInfo{
 			AuthnMethod:  goidc.ClientAuthnSecretPost,
-			RedirectURIS: []string{ClientRedirectURI},
+			RedirectURIs: []string{ClientRedirectURI},
 			Scopes:       fmt.Sprintf("%s %s %s", Scope1.ID, Scope2.ID, goidc.ScopeOpenID.ID),
 			GrantTypes: []goidc.GrantType{
 				goidc.GrantAuthorizationCode,

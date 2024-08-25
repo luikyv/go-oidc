@@ -31,7 +31,7 @@ func MakeIDToken(
 	}
 
 	// If encryption is disabled, just return the signed ID token.
-	if client.IDTokenKeyEncryptionAlgorithm == "" {
+	if client.IDTokenKeyEncAlg == "" {
 		return idToken, nil
 	}
 
@@ -60,33 +60,37 @@ func Make(
 
 func EncryptJWT(
 	_ *oidc.Context,
-	jwtString string,
-	encryptionJWK jose.JSONWebKey,
-	contentKeyEncryptionAlgorithm jose.ContentEncryption,
+	content string,
+	encJWK jose.JSONWebKey,
+	encAlg jose.ContentEncryption,
 ) (
 	string,
 	error,
 ) {
 	encrypter, err := jose.NewEncrypter(
-		contentKeyEncryptionAlgorithm,
-		jose.Recipient{Algorithm: jose.KeyAlgorithm(encryptionJWK.Algorithm), Key: encryptionJWK.Key, KeyID: encryptionJWK.KeyID},
+		encAlg,
+		jose.Recipient{
+			Algorithm: jose.KeyAlgorithm(encJWK.Algorithm),
+			Key:       encJWK.Key,
+			KeyID:     encJWK.KeyID,
+		},
 		(&jose.EncrypterOptions{}).WithType("jwt").WithContentType("jwt"),
 	)
 	if err != nil {
 		return "", oidcerr.New(oidcerr.CodeInternalError, err.Error())
 	}
 
-	encryptedUserInfo, err := encrypter.Encrypt([]byte(jwtString))
+	encContent, err := encrypter.Encrypt([]byte(content))
 	if err != nil {
 		return "", oidcerr.New(oidcerr.CodeInternalError, err.Error())
 	}
 
-	encryptedUserInfoString, err := encryptedUserInfo.CompactSerialize()
+	encContentString, err := encContent.CompactSerialize()
 	if err != nil {
 		return "", oidcerr.New(oidcerr.CodeInternalError, err.Error())
 	}
 
-	return encryptedUserInfoString, nil
+	return encContentString, nil
 }
 
 func makeIDToken(
@@ -131,12 +135,14 @@ func makeIDToken(
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
 	)
 	if err != nil {
-		return "", oidcerr.New(oidcerr.CodeInternalError, "could not create the id token signer")
+		return "", oidcerr.New(oidcerr.CodeInternalError,
+			"could not sign the id token")
 	}
 
 	idToken, err := jwt.Signed(signer).Claims(claims).Serialize()
 	if err != nil {
-		return "", oidcerr.New(oidcerr.CodeInternalError, "could not sign the id token")
+		return "", oidcerr.New(oidcerr.CodeInternalError,
+			"could not sign the id token")
 	}
 
 	return idToken, nil
@@ -155,7 +161,7 @@ func encryptIDToken(
 		return "", oidcerr.New(oidcerr.CodeInvalidRequest, err.Error())
 	}
 
-	encryptedIDToken, err := EncryptJWT(ctx, userInfoJWT, jwk, client.IDTokenContentEncryptionAlgorithm)
+	encryptedIDToken, err := EncryptJWT(ctx, userInfoJWT, jwk, client.IDTokenContentEncAlg)
 	if err != nil {
 		return "", oidcerr.New(oidcerr.CodeInvalidRequest, err.Error())
 	}

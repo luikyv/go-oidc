@@ -28,7 +28,7 @@ func validateRequestWithPAR(
 	}
 
 	if ctx.PAR.AllowUnregisteredRedirectURI && req.RedirectURI != "" {
-		client.RedirectURIS = append(client.RedirectURIS, req.RedirectURI)
+		client.RedirectURIs = append(client.RedirectURIs, req.RedirectURI)
 	}
 
 	if err := validateInWithOutParams(ctx, session.AuthorizationParameters,
@@ -125,7 +125,7 @@ func validatePushedRequest(
 	}
 
 	if ctx.PAR.AllowUnregisteredRedirectURI && req.RedirectURI != "" {
-		client.RedirectURIS = append(client.RedirectURIS, req.RedirectURI)
+		client.RedirectURIs = append(client.RedirectURIs, req.RedirectURI)
 	}
 
 	return validateParamsAsOptionals(ctx, req.AuthorizationParameters, client)
@@ -351,7 +351,7 @@ func validateResponseMode(
 	}
 
 	// If the client has defined a signature algorithm for JARM, then JARM is required.
-	if c.JARMSignatureAlgorithm != "" && params.ResponseMode.IsPlain() {
+	if c.JARMSigAlg != "" && params.ResponseMode.IsPlain() {
 		return newRedirectionError(oidcerr.CodeInvalidRequest,
 			"invalid response_mode", params)
 	}
@@ -364,13 +364,13 @@ func validateAuthorizationDetails(
 	params goidc.AuthorizationParameters,
 	c *goidc.Client,
 ) error {
-	if !ctx.AuthorizationDetails.IsEnabled {
+	if !ctx.AuthDetails.IsEnabled {
 		return nil
 	}
 
 	for _, authDetail := range params.AuthorizationDetails {
 		authDetailType := authDetail.Type()
-		if !slices.Contains(ctx.AuthorizationDetails.Types, authDetailType) ||
+		if !slices.Contains(ctx.AuthDetails.Types, authDetailType) ||
 			!c.IsAuthorizationDetailTypeAllowed(authDetailType) {
 			return newRedirectionError(oidcerr.CodeInvalidRequest,
 				"invalid authorization detail type", params)

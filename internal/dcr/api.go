@@ -12,130 +12,117 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 	if config.DCR.IsEnabled {
 		router.HandleFunc(
 			"POST "+config.Endpoint.Prefix+config.Endpoint.DCR,
-			handlerCreate(config),
+			oidc.Handler(config, handleCreate),
 		)
 
 		router.HandleFunc(
 			"PUT "+config.Endpoint.Prefix+config.Endpoint.DCR+"/{client_id}",
-			handlerUpdate(config),
+			oidc.Handler(config, handleUpdate),
 		)
 
 		router.HandleFunc(
 			"GET "+config.Endpoint.Prefix+config.Endpoint.DCR+"/{client_id}",
-			handlerGet(config),
+			oidc.Handler(config, handleGet),
 		)
 
 		router.HandleFunc(
 			"DELETE "+config.Endpoint.Prefix+config.Endpoint.DCR+"/{client_id}",
-			handlerDelete(config),
+			oidc.Handler(config, handleDelete),
 		)
 	}
 }
 
-func handlerCreate(config *oidc.Configuration) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := oidc.NewContext(*config, r, w)
+func handleCreate(ctx *oidc.Context) {
+	var req request
+	if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
+		err = oidcerr.Errorf(oidcerr.CodeInvalidRequest,
+			"could not parse the request", err)
+		ctx.WriteError(err)
+		return
+	}
 
-		var req request
-		if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
-			ctx.WriteError(err)
-			return
-		}
+	if t, ok := ctx.BearerToken(); ok {
+		req.initialToken = t
+	}
 
-		req.initialAccessToken = ctx.BearerToken()
+	resp, err := create(ctx, req)
+	if err != nil {
+		ctx.WriteError(err)
+		return
+	}
 
-		resp, err := create(ctx, req)
-		if err != nil {
-			ctx.WriteError(err)
-			return
-		}
-
-		if err := ctx.Write(resp, http.StatusCreated); err != nil {
-			ctx.WriteError(err)
-		}
+	if err := ctx.Write(resp, http.StatusCreated); err != nil {
+		ctx.WriteError(err)
 	}
 }
 
-func handlerUpdate(config *oidc.Configuration) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := oidc.NewContext(*config, r, w)
-
-		var req request
-		if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
-			ctx.WriteError(err)
-			return
-		}
-
-		token := ctx.BearerToken()
-		if token == "" {
-			ctx.WriteError(oidcerr.New(oidcerr.CodeAccessDenied, "no token found"))
-			return
-		}
-
-		req.id = ctx.Request().PathValue("client_id")
-		req.registrationAccessToken = token
-		resp, err := update(ctx, req)
-		if err != nil {
-			ctx.WriteError(err)
-			return
-		}
-
-		if err := ctx.Write(resp, http.StatusOK); err != nil {
-			ctx.WriteError(err)
-		}
+func handleUpdate(ctx *oidc.Context) {
+	var req request
+	if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
+		err = oidcerr.Errorf(oidcerr.CodeInvalidRequest,
+			"could not parse the request", err)
+		ctx.WriteError(err)
+		return
 	}
 
+	token, ok := ctx.BearerToken()
+	if !ok {
+		ctx.WriteError(oidcerr.New(oidcerr.CodeAccessDenied, "no token found"))
+		return
+	}
+
+	req.id = ctx.Request().PathValue("client_id")
+	req.registrationToken = token
+	resp, err := update(ctx, req)
+	if err != nil {
+		ctx.WriteError(err)
+		return
+	}
+
+	if err := ctx.Write(resp, http.StatusOK); err != nil {
+		ctx.WriteError(err)
+	}
 }
 
-func handlerGet(config *oidc.Configuration) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := oidc.NewContext(*config, r, w)
-
-		token := ctx.BearerToken()
-		if token == "" {
-			ctx.WriteError(oidcerr.New(oidcerr.CodeAccessDenied, "no token found"))
-			return
-		}
-
-		req := request{
-			id:                      ctx.Request().PathValue("client_id"),
-			registrationAccessToken: token,
-		}
-
-		resp, err := fetch(ctx, req)
-		if err != nil {
-			ctx.WriteError(err)
-			return
-		}
-
-		if err := ctx.Write(resp, http.StatusOK); err != nil {
-			ctx.WriteError(err)
-		}
+func handleGet(ctx *oidc.Context) {
+	token, ok := ctx.BearerToken()
+	if !ok {
+		ctx.WriteError(oidcerr.New(oidcerr.CodeAccessDenied, "no token found"))
+		return
 	}
 
+	req := request{
+		id:                ctx.Request().PathValue("client_id"),
+		registrationToken: token,
+	}
+
+	resp, err := fetch(ctx, req)
+	if err != nil {
+		ctx.WriteError(err)
+		return
+	}
+
+	if err := ctx.Write(resp, http.StatusOK); err != nil {
+		ctx.WriteError(err)
+	}
 }
 
-func handlerDelete(config *oidc.Configuration) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := oidc.NewContext(*config, r, w)
-
-		token := ctx.BearerToken()
-		if token == "" {
-			ctx.WriteError(oidcerr.New(oidcerr.CodeAccessDenied, "no token found"))
-			return
-		}
-
-		req := request{
-			id:                      ctx.Request().PathValue("client_id"),
-			registrationAccessToken: token,
-		}
-
-		if err := remove(ctx, req); err != nil {
-			ctx.WriteError(err)
-			return
-		}
-
-		ctx.Response().WriteHeader(http.StatusNoContent)
+func handleDelete(ctx *oidc.Context) {
+	token, ok := ctx.BearerToken()
+	if !ok {
+		ctx.WriteError(oidcerr.New(oidcerr.CodeAccessDenied, "no token found"))
+		return
 	}
 
+	req := request{
+		id:                ctx.Request().PathValue("client_id"),
+		registrationToken: token,
+	}
+
+	if err := remove(ctx, req); err != nil {
+		ctx.WriteError(err)
+		return
+	}
+
+	ctx.Response().WriteHeader(http.StatusNoContent)
 }

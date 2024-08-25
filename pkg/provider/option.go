@@ -536,8 +536,8 @@ func WithAuthorizationDetails(types ...string) ProviderOption {
 			return errors.New("at least one authorization detail type must be informed")
 		}
 
-		p.config.AuthorizationDetails.IsEnabled = true
-		p.config.AuthorizationDetails.Types = types
+		p.config.AuthDetails.IsEnabled = true
+		p.config.AuthDetails.Types = types
 		return nil
 	}
 }

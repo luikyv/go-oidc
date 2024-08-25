@@ -19,9 +19,9 @@ func NewClientManager() *ClientManager {
 
 func (m *ClientManager) Save(
 	_ context.Context,
-	client *goidc.Client,
+	c *goidc.Client,
 ) error {
-	m.Clients[client.ID] = client
+	m.Clients[c.ID] = c
 	return nil
 }
 
@@ -32,12 +32,12 @@ func (m *ClientManager) Get(
 	*goidc.Client,
 	error,
 ) {
-	client, exists := m.Clients[id]
+	c, exists := m.Clients[id]
 	if !exists {
 		return nil, errors.New("entity not found")
 	}
 
-	return client, nil
+	return c, nil
 }
 
 func (m *ClientManager) Delete(
