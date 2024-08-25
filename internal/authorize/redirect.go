@@ -6,11 +6,10 @@ import (
 	"net/url"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/timeutil"
-	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -122,16 +121,6 @@ func signJARMResponse(
 	string,
 	error,
 ) {
-	jwk := ctx.JARMSignatureKey(client)
-	signer, err := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID),
-	)
-	if err != nil {
-		return "", oidcerr.New(oidcerr.CodeInternalError,
-			"could not sign the response object")
-	}
-
 	createdAtTimestamp := timeutil.TimestampNow()
 	claims := map[string]any{
 		goidc.ClaimIssuer:   ctx.Host,
@@ -143,17 +132,19 @@ func signJARMResponse(
 		claims[k] = v
 	}
 
-	response, err := jwt.Signed(signer).Claims(claims).Serialize()
+	jwk := ctx.JARMSignatureKey(client)
+	resp, err := jwtutil.Sign(claims, jwk,
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
 	if err != nil {
 		return "", oidcerr.New(oidcerr.CodeInternalError,
 			"could not sign the response object")
 	}
 
-	return response, nil
+	return resp, nil
 }
 
 func encryptJARMResponse(
-	ctx *oidc.Context,
+	_ *oidc.Context,
 	responseJWT string,
 	client *goidc.Client,
 ) (
@@ -166,12 +157,12 @@ func encryptJARMResponse(
 			"could not fetch the client encryption jwk for jarm")
 	}
 
-	encryptedResponseJWT, oauthErr := token.EncryptJWT(ctx, responseJWT, jwk, client.JARMContentEncAlg)
-	if oauthErr != nil {
-		return "", oauthErr
+	jwe, err := jwtutil.Encrypt(responseJWT, jwk, client.JARMContentEncAlg)
+	if err != nil {
+		return "", err
 	}
 
-	return encryptedResponseJWT, nil
+	return jwe, nil
 }
 
 func urlWithQueryParams(redirectURI string, params map[string]string) string {

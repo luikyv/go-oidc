@@ -10,6 +10,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
+	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/strutil"
@@ -58,98 +59,61 @@ func Make(
 	}
 }
 
-func EncryptJWT(
-	_ *oidc.Context,
-	content string,
-	encJWK jose.JSONWebKey,
-	encAlg jose.ContentEncryption,
-) (
-	string,
-	error,
-) {
-	encrypter, err := jose.NewEncrypter(
-		encAlg,
-		jose.Recipient{
-			Algorithm: jose.KeyAlgorithm(encJWK.Algorithm),
-			Key:       encJWK.Key,
-			KeyID:     encJWK.KeyID,
-		},
-		(&jose.EncrypterOptions{}).WithType("jwt").WithContentType("jwt"),
-	)
-	if err != nil {
-		return "", oidcerr.New(oidcerr.CodeInternalError, err.Error())
-	}
-
-	encContent, err := encrypter.Encrypt([]byte(content))
-	if err != nil {
-		return "", oidcerr.New(oidcerr.CodeInternalError, err.Error())
-	}
-
-	encContentString, err := encContent.CompactSerialize()
-	if err != nil {
-		return "", oidcerr.New(oidcerr.CodeInternalError, err.Error())
-	}
-
-	return encContentString, nil
-}
-
 func makeIDToken(
 	ctx *oidc.Context,
 	client *goidc.Client,
-	idTokenOpts IDTokenOptions,
+	opts IDTokenOptions,
 ) (
 	string,
 	error,
 ) {
-	privateJWK := ctx.IDTokenSignatureKey(client)
-	signatureAlgorithm := jose.SignatureAlgorithm(privateJWK.Algorithm)
-	timestampNow := timeutil.TimestampNow()
+	jwk := ctx.IDTokenSignatureKey(client)
+	sigAlg := jose.SignatureAlgorithm(jwk.Algorithm)
+	now := timeutil.TimestampNow()
 
 	// Set the token claims.
 	claims := map[string]any{
 		goidc.ClaimIssuer:   ctx.Host,
-		goidc.ClaimSubject:  idTokenOpts.Subject,
+		goidc.ClaimSubject:  opts.Subject,
 		goidc.ClaimAudience: client.ID,
-		goidc.ClaimIssuedAt: timestampNow,
-		goidc.ClaimExpiry:   timestampNow + ctx.User.IDTokenLifetimeSecs,
+		goidc.ClaimIssuedAt: now,
+		goidc.ClaimExpiry:   now + ctx.User.IDTokenLifetimeSecs,
 	}
 
-	if idTokenOpts.AccessToken != "" {
-		claims[goidc.ClaimAccessTokenHash] = halfHashIDTokenClaim(idTokenOpts.AccessToken, signatureAlgorithm)
+	if opts.AccessToken != "" {
+		claims[goidc.ClaimAccessTokenHash] = halfHashIDTokenClaim(
+			opts.AccessToken,
+			sigAlg,
+		)
 	}
 
-	if idTokenOpts.AuthorizationCode != "" {
-		claims[goidc.ClaimAuthorizationCodeHash] = halfHashIDTokenClaim(idTokenOpts.AuthorizationCode, signatureAlgorithm)
+	if opts.AuthorizationCode != "" {
+		claims[goidc.ClaimAuthorizationCodeHash] = halfHashIDTokenClaim(
+			opts.AuthorizationCode,
+			sigAlg,
+		)
 	}
 
-	if idTokenOpts.State != "" {
-		claims[goidc.ClaimStateHash] = halfHashIDTokenClaim(idTokenOpts.State, signatureAlgorithm)
+	if opts.State != "" {
+		claims[goidc.ClaimStateHash] = halfHashIDTokenClaim(opts.State, sigAlg)
 	}
 
-	for k, v := range idTokenOpts.AdditionalIDTokenClaims {
+	for k, v := range opts.AdditionalIDTokenClaims {
 		claims[k] = v
 	}
 
-	signer, err := jose.NewSigner(
-		jose.SigningKey{Algorithm: signatureAlgorithm, Key: privateJWK.Key},
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
-	)
+	idToken, err := jwtutil.Sign(claims, jwk,
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
 	if err != nil {
 		return "", oidcerr.New(oidcerr.CodeInternalError,
-			"could not sign the id token")
-	}
-
-	idToken, err := jwt.Signed(signer).Claims(claims).Serialize()
-	if err != nil {
-		return "", oidcerr.New(oidcerr.CodeInternalError,
-			"could not sign the id token")
+			"could not sign the response object")
 	}
 
 	return idToken, nil
 }
 
 func encryptIDToken(
-	ctx *oidc.Context,
+	_ *oidc.Context,
 	client *goidc.Client,
 	userInfoJWT string,
 ) (
@@ -161,12 +125,12 @@ func encryptIDToken(
 		return "", oidcerr.New(oidcerr.CodeInvalidRequest, err.Error())
 	}
 
-	encryptedIDToken, err := EncryptJWT(ctx, userInfoJWT, jwk, client.IDTokenContentEncAlg)
+	encIDToken, err := jwtutil.Encrypt(userInfoJWT, jwk, client.IDTokenContentEncAlg)
 	if err != nil {
 		return "", oidcerr.New(oidcerr.CodeInvalidRequest, err.Error())
 	}
 
-	return encryptedIDToken, nil
+	return encIDToken, nil
 }
 
 func makeJWTToken(
@@ -219,19 +183,13 @@ func makeJWTToken(
 		claims[k] = v
 	}
 
-	signer, err := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(privateJWK.Algorithm), Key: privateJWK.Key},
-		// RFC9068. "...This specification registers the "application/at+jwt" media type,
-		// which can be used to indicate that the content is a JWT access token."
-		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", privateJWK.KeyID),
-	)
+	// RFC9068. "...This specification registers the "application/at+jwt" media type,
+	// which can be used to indicate that the content is a JWT access token."
+	accessToken, err := jwtutil.Sign(claims, privateJWK,
+		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", privateJWK.KeyID))
 	if err != nil {
-		return Token{}, oidcerr.New(oidcerr.CodeInternalError, "could not create the token signer")
-	}
-
-	accessToken, err := jwt.Signed(signer).Claims(claims).Serialize()
-	if err != nil {
-		return Token{}, oidcerr.New(oidcerr.CodeInternalError, "could not sign the token")
+		return Token{}, oidcerr.New(oidcerr.CodeInternalError,
+			"could not sign the response object")
 	}
 
 	return Token{
