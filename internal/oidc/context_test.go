@@ -124,7 +124,7 @@ func TestExecuteDCRPlugin_HappyPath(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Given.
-	ctx.DCR.Plugin = func(ctx goidc.Context, clientInfo *goidc.ClientMetaInfo) error {
+	ctx.DCR.Plugin = func(r *http.Request, clientInfo *goidc.ClientMetaInfo) error {
 		clientInfo.AuthnMethod = goidc.ClientAuthnNone
 		return nil
 	}
@@ -185,14 +185,14 @@ func TestGetAvailablePolicy_HappyPath(t *testing.T) {
 	// Given.
 	unavailablePolicy := goidc.NewPolicy(
 		"unavailable_policy",
-		func(ctx goidc.Context, c *goidc.Client, s *goidc.AuthnSession) bool {
+		func(r *http.Request, c *goidc.Client, s *goidc.AuthnSession) bool {
 			return false
 		},
 		nil,
 	)
 	availablePolicy := goidc.NewPolicy(
 		"available_policy",
-		func(ctx goidc.Context, c *goidc.Client, s *goidc.AuthnSession) bool {
+		func(r *http.Request, c *goidc.Client, s *goidc.AuthnSession) bool {
 			return true
 		},
 		nil,
@@ -212,7 +212,7 @@ func TestGetAvailablePolicy_NoPolicyAvailable(t *testing.T) {
 	// Given.
 	unavailablePolicy := goidc.NewPolicy(
 		"unavailable_policy",
-		func(ctx goidc.Context, c *goidc.Client, s *goidc.AuthnSession) bool {
+		func(r *http.Request, c *goidc.Client, s *goidc.AuthnSession) bool {
 			return false
 		},
 		nil,

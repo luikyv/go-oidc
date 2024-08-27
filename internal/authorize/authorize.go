@@ -212,7 +212,7 @@ func callbackID() (string, error) {
 
 func authenticate(ctx *oidc.Context, session *goidc.AuthnSession) error {
 	policy := ctx.Policy(session.PolicyID)
-	switch policy.Authenticate(ctx, session) {
+	switch policy.Authenticate(ctx.Response(), ctx.Request(), session) {
 	case goidc.StatusSuccess:
 		return finishFlowSuccessfully(ctx, session)
 	case goidc.StatusInProgress:

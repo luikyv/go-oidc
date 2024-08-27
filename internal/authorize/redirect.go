@@ -38,7 +38,7 @@ func redirectError(
 	if err == nil {
 		// If the error was successfully redirected, an event to inform it must
 		// be triggered.
-		ctx.Event.HandleError(ctx, redirectErr)
+		ctx.Event.HandleError(ctx.Request(), redirectErr)
 	}
 
 	return err

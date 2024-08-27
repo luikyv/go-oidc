@@ -91,7 +91,7 @@ func (ctx *Context) DPoPJWT() (string, bool) {
 func (ctx *Context) ClientCertificate() (*x509.Certificate, bool) {
 
 	if ctx.MTLS.ClientCertFunc != nil {
-		return ctx.MTLS.ClientCertFunc(ctx)
+		return ctx.MTLS.ClientCertFunc(ctx.Request())
 	}
 
 	rawClientCert, ok := ctx.Header(goidc.HeaderClientCertificate)
@@ -117,11 +117,11 @@ func (ctx *Context) ClientCertificate() (*x509.Certificate, bool) {
 	return clientCert, true
 }
 
-func (ctx *Context) ExecuteDCRPlugin(clientInfo *goidc.ClientMetaInfo) error {
+func (ctx *Context) ExecuteDCRPlugin(c *goidc.ClientMetaInfo) error {
 	if ctx.DCR.Plugin == nil {
 		return nil
 	}
-	return ctx.DCR.Plugin(ctx, clientInfo)
+	return ctx.DCR.Plugin(ctx.Request(), c)
 }
 
 func (ctx *Context) ExecuteAuthorizeErrorPlugin(err error) error {
@@ -129,7 +129,7 @@ func (ctx *Context) ExecuteAuthorizeErrorPlugin(err error) error {
 		return err
 	}
 
-	if err := ctx.AuthorizeErrPlugin(ctx, err); err != nil {
+	if err := ctx.AuthorizeErrPlugin(ctx.Response(), ctx.Request(), err); err != nil {
 		return err
 	}
 
@@ -167,7 +167,7 @@ func (ctx *Context) FindAvailablePolicy(client *goidc.Client, session *goidc.Aut
 	ok bool,
 ) {
 	for _, policy = range ctx.Policies {
-		if ok = policy.SetUp(ctx, client, session); ok {
+		if ok = policy.SetUp(ctx.Request(), client, session); ok {
 			return policy, true
 		}
 	}
@@ -390,7 +390,7 @@ func (ctx *Context) WriteJWT(token string, status int) error {
 
 func (ctx *Context) WriteError(err error) {
 	if ctx.Event.HandleError != nil {
-		ctx.Event.HandleError(ctx, err)
+		ctx.Event.HandleError(ctx.Request(), err)
 	}
 
 	var oidcErr oidcerr.Error

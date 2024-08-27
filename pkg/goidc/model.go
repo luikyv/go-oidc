@@ -7,19 +7,19 @@ import (
 	"net/http"
 )
 
-type ClientCertFunc func(ctx Context) (*x509.Certificate, bool)
+type ClientCertFunc func(r *http.Request) (*x509.Certificate, bool)
 
 type MiddlewareFunc func(next http.Handler) http.Handler
 
 // DCRFunc defines a function that will be executed during DCR and DCM.
 // It can be used to modify the client and perform custom validations.
-type DCRFunc func(ctx Context, clientInfo *ClientMetaInfo) error
+type DCRFunc func(r *http.Request, c *ClientMetaInfo) error
 
 // AuthorizeErrorFunc defines a function that will be called when errors
 // during the authorization request cannot be handled.
-type AuthorizeErrorFunc func(ctx Context, err error) error
+type AuthorizeErrorFunc func(w http.ResponseWriter, r *http.Request, err error) error
 
-type HandleErrorEventFunc func(ctx Context, err error)
+type HandleErrorEventFunc func(r *http.Request, err error)
 
 var (
 	ScopeOpenID        = NewScope("openid")
@@ -118,12 +118,12 @@ func NewOpaqueTokenOptions(
 }
 
 // AuthnFunc executes the user authentication logic.
-type AuthnFunc func(Context, *AuthnSession) AuthnStatus
+type AuthnFunc func(http.ResponseWriter, *http.Request, *AuthnSession) AuthnStatus
 
 // SetUpAuthnFunc is responsible for initiating the authentication session.
 // It returns true when the policy is ready to executed and false for when the
 // policy should be skipped.
-type SetUpAuthnFunc func(Context, *Client, *AuthnSession) bool
+type SetUpAuthnFunc func(*http.Request, *Client, *AuthnSession) bool
 
 // AuthnPolicy holds information on how to set up an authentication session and
 // authenticate users.

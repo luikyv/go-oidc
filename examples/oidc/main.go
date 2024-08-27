@@ -65,13 +65,13 @@ func main() {
 func policy() goidc.AuthnPolicy {
 	return goidc.NewPolicy(
 		"policy",
-		func(ctx goidc.Context, client *goidc.Client, session *goidc.AuthnSession) bool { return true },
+		func(r *http.Request, client *goidc.Client, session *goidc.AuthnSession) bool { return true },
 		authenticateUser,
 	)
 }
 
 func dcrPlugin(scopes []goidc.Scope) goidc.DCRFunc {
-	return func(ctx goidc.Context, clientInfo *goidc.ClientMetaInfo) error {
+	return func(r *http.Request, clientInfo *goidc.ClientMetaInfo) error {
 		var s []string
 		for _, scope := range scopes {
 			s = append(s, scope.ID)
@@ -116,7 +116,8 @@ func privateJWKS(filename string) jose.JSONWebKeySet {
 }
 
 func authenticateUser(
-	ctx goidc.Context,
+	w http.ResponseWriter,
+	r *http.Request,
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 
@@ -126,7 +127,7 @@ func authenticateUser(
 	}
 
 	if session.Parameter("step") == "identity" {
-		status := identifyUser(ctx, session)
+		status := identifyUser(w, r, session)
 		if status != goidc.StatusSuccess {
 			return status
 		}
@@ -135,7 +136,7 @@ func authenticateUser(
 	}
 
 	if session.Parameter("step") == "password" {
-		status := authenticateWithPassword(ctx, session)
+		status := authenticateWithPassword(w, r, session)
 		if status != goidc.StatusSuccess {
 			return status
 		}
@@ -143,20 +144,21 @@ func authenticateUser(
 		session.StoreParameter("step", "finish")
 	}
 
-	return finishAuthentication(ctx, session)
+	return finishAuthentication(session)
 }
 
 func identifyUser(
-	ctx goidc.Context,
+	w http.ResponseWriter,
+	r *http.Request,
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 
-	ctx.Request().ParseForm()
-	username := ctx.Request().PostFormValue("username")
+	r.ParseForm()
+	username := r.PostFormValue("username")
 	if username == "" {
-		ctx.Response().WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusOK)
 		tmpl, _ := template.New("default").Parse(identityForm)
-		if err := tmpl.Execute(ctx.Response(), map[string]any{
+		if err := tmpl.Execute(w, map[string]any{
 			"host":       strings.Replace(issuer, "host.docker.internal", "localhost", -1),
 			"callbackID": session.CallbackID,
 		}); err != nil {
@@ -170,15 +172,16 @@ func identifyUser(
 }
 
 func authenticateWithPassword(
-	ctx goidc.Context,
+	w http.ResponseWriter,
+	r *http.Request,
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
-	ctx.Request().ParseForm()
-	password := ctx.Request().PostFormValue("password")
+	r.ParseForm()
+	password := r.PostFormValue("password")
 	if password == "" {
-		ctx.Response().WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusOK)
 		tmpl, _ := template.New("default").Parse(passwordForm)
-		if err := tmpl.Execute(ctx.Response(), map[string]any{
+		if err := tmpl.Execute(w, map[string]any{
 			"host":       strings.Replace(issuer, "host.docker.internal", "localhost", -1),
 			"callbackID": session.CallbackID,
 		}); err != nil {
@@ -188,9 +191,9 @@ func authenticateWithPassword(
 	}
 
 	if password != "password" {
-		ctx.Response().WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusOK)
 		tmpl, _ := template.New("default").Parse(passwordForm)
-		if err := tmpl.Execute(ctx.Response(), map[string]any{
+		if err := tmpl.Execute(w, map[string]any{
 			"host":       strings.Replace(issuer, "host.docker.internal", "localhost", -1),
 			"callbackID": session.CallbackID,
 			"error":      "invalid password",
@@ -204,7 +207,6 @@ func authenticateWithPassword(
 }
 
 func finishAuthentication(
-	_ goidc.Context,
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 	session.GrantScopes(session.Scopes)
