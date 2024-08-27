@@ -105,7 +105,7 @@ func jwtTokenInfo(
 	ctx *oidc.Context,
 	accessToken string,
 ) goidc.TokenInfo {
-	claims, err := ValidClaims(ctx, accessToken)
+	claims, err := validClaims(ctx, accessToken)
 	if err != nil || claims[goidc.ClaimTokenID] == nil {
 		return goidc.TokenInfo{
 			IsActive: false,

@@ -19,7 +19,7 @@ func ExtractID(ctx *oidc.Context, token string) (string, error) {
 		return token, nil
 	}
 
-	claims, err := ValidClaims(ctx, token)
+	claims, err := validClaims(ctx, token)
 	if err != nil {
 		return "", err
 	}
@@ -32,8 +32,8 @@ func ExtractID(ctx *oidc.Context, token string) (string, error) {
 	return tokenID.(string), nil
 }
 
-// ValidClaims verifies a token and returns its claims.
-func ValidClaims(
+// validClaims verifies a token and returns its claims.
+func validClaims(
 	ctx *oidc.Context,
 	token string,
 ) (

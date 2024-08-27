@@ -121,6 +121,7 @@ func NewOpaqueTokenOptions(
 type AuthnFunc func(http.ResponseWriter, *http.Request, *AuthnSession) AuthnStatus
 
 // SetUpAuthnFunc is responsible for initiating the authentication session.
+//
 // It returns true when the policy is ready to executed and false for when the
 // policy should be skipped.
 type SetUpAuthnFunc func(*http.Request, *Client, *AuthnSession) bool
@@ -283,8 +284,10 @@ type ClaimObjectInfo struct {
 	Values      []string `json:"values"`
 }
 
-// AuthorizationDetail represents an authorization details as a map instead of
-// a struct, because its fields vary a lot depending on the use case.
+// AuthorizationDetail represents an authorization details as a map.
+//
+// It is a map instead of a struct, because its fields vary a lot depending on
+// the use case.
 type AuthorizationDetail map[string]any
 
 func (detail AuthorizationDetail) Type() string {
