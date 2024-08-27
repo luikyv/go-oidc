@@ -1,19 +1,21 @@
 package token
 
 import (
-	"regexp"
 	"time"
 
 	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 // ExtractID returns the ID of a token.
-// If it's a JWT, the ID is the the "jti" claim. Otherwise, the token is considered opaque and its ID is the token itself.
+//
+// If it's a JWT, the ID is the the "jti" claim. Otherwise, the token is
+// considered opaque and its ID is the token itself.
 func ExtractID(ctx *oidc.Context, token string) (string, error) {
-	if !IsJWS(token) {
+	if !jwtutil.IsJWS(token) {
 		return token, nil
 	}
 
@@ -41,7 +43,8 @@ func ValidClaims(
 	parsedToken, err := jwt.ParseSigned(token, ctx.SignatureAlgorithms())
 	if err != nil {
 		// If the token is not a valid JWT, we'll treat it as an opaque token.
-		return nil, oidcerr.New(oidcerr.CodeInvalidRequest, "could not parse the token")
+		return nil, oidcerr.Errorf(oidcerr.CodeInvalidRequest,
+			"could not parse the token", err)
 	}
 
 	if len(parsedToken.Headers) != 1 || parsedToken.Headers[0].KeyID == "" {
@@ -57,26 +60,17 @@ func ValidClaims(
 	var claims jwt.Claims
 	var rawClaims map[string]any
 	if err := parsedToken.Claims(publicKey.Key, &claims, &rawClaims); err != nil {
-		return nil, oidcerr.New(oidcerr.CodeAccessDenied, "invalid token")
+		return nil, oidcerr.Errorf(oidcerr.CodeAccessDenied,
+			"invalid token", err)
 	}
 
 	if err := claims.ValidateWithLeeway(jwt.Expected{
 		Issuer: ctx.Host,
 	}, time.Duration(0)); err != nil {
-		return nil, oidcerr.New(oidcerr.CodeAccessDenied, "invalid token")
+		return nil, oidcerr.Errorf(oidcerr.CodeAccessDenied, "invalid token", err)
 	}
 
 	return rawClaims, nil
-}
-
-func IsJWS(token string) bool {
-	isJWS, _ := regexp.MatchString("(^[\\w-]*\\.[\\w-]*\\.[\\w-]*$)", token)
-	return isJWS
-}
-
-func IsJWE(token string) bool {
-	isJWS, _ := regexp.MatchString("(^[\\w-]*\\.[\\w-]*\\.[\\w-]*\\.[\\w-]*\\.[\\w-]*$)", token)
-	return isJWS
 }
 
 func generateGrant(
@@ -88,14 +82,13 @@ func generateGrant(
 ) {
 	switch req.GrantType {
 	case goidc.GrantClientCredentials:
-		tokenResp, err = generateClientCredentialsGrant(ctx, req)
+		return generateClientCredentialsGrant(ctx, req)
 	case goidc.GrantAuthorizationCode:
-		tokenResp, err = generateAuthorizationCodeGrant(ctx, req)
+		return generateAuthorizationCodeGrant(ctx, req)
 	case goidc.GrantRefreshToken:
-		tokenResp, err = generateRefreshTokenGrant(ctx, req)
+		return generateRefreshTokenGrant(ctx, req)
 	default:
-		tokenResp, err = response{}, oidcerr.New(oidcerr.CodeUnsupportedGrantType, "unsupported grant type")
+		return response{}, oidcerr.New(oidcerr.CodeUnsupportedGrantType,
+			"unsupported grant type")
 	}
-
-	return tokenResp, err
 }

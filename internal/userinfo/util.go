@@ -120,9 +120,10 @@ func encryptUserInfoJWT(
 	string,
 	error,
 ) {
-	jwk, err := clientutil.UserInfoEncryptionJWK(c)
+	jwk, err := clientutil.JWKByAlg(c, string(c.UserInfoKeyEncAlg))
 	if err != nil {
-		return "", oidcerr.New(oidcerr.CodeInvalidRequest, err.Error())
+		return "", oidcerr.Errorf(oidcerr.CodeInvalidRequest,
+			"could not find a jwk to encrypt the user info response", err)
 	}
 
 	userInfoJWE, err := jwtutil.Encrypt(userInfoJWT, jwk, c.UserInfoContentEncAlg)

@@ -14,7 +14,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func validateDynamicRequest(
+func validateRequest(
 	ctx *oidc.Context,
 	dc request,
 ) error {
@@ -347,7 +347,8 @@ func validateIDTokenEncryptionAlgorithms(
 	ctx *oidc.Context,
 	dc request,
 ) error {
-	// Return an error if ID token encryption is not enabled, but the client requested it.
+	// Return an error if ID token encryption is not enabled, but the client
+	// requested it.
 	if !ctx.User.EncIsEnabled {
 		if dc.IDTokenKeyEncAlg != "" || dc.IDTokenContentEncAlg != "" {
 			return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
@@ -380,7 +381,8 @@ func validateUserInfoEncryptionAlgorithms(
 	ctx *oidc.Context,
 	dc request,
 ) error {
-	// Return an error if user info encryption is not enabled, but the client requested it.
+	// Return an error if user info encryption is not enabled, but the client
+	// requested it.
 	if !ctx.User.EncIsEnabled {
 		if dc.UserInfoKeyEncAlg != "" || dc.UserInfoContentEncAlg != "" {
 			return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
@@ -422,7 +424,8 @@ func validateJARMEncryptionAlgorithms(
 		return nil
 	}
 
-	if dc.JARMKeyEncAlg != "" && !slices.Contains(ctx.JARM.KeyEncAlgs, dc.JARMKeyEncAlg) {
+	if dc.JARMKeyEncAlg != "" &&
+		!slices.Contains(ctx.JARM.KeyEncAlgs, dc.JARMKeyEncAlg) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"authorization_encrypted_response_alg not supported")
 	}
@@ -432,7 +435,8 @@ func validateJARMEncryptionAlgorithms(
 			"authorization_encrypted_response_alg is required if authorization_encrypted_response_enc is informed")
 	}
 
-	if dc.JARMContentEncAlg != "" && !slices.Contains(ctx.JARM.ContentEncAlgs, dc.JARMContentEncAlg) {
+	if dc.JARMContentEncAlg != "" &&
+		!slices.Contains(ctx.JARM.ContentEncAlgs, dc.JARMContentEncAlg) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"authorization_encrypted_response_enc not supported")
 	}
@@ -525,7 +529,8 @@ func validateRefreshTokenGrant(
 	ctx *oidc.Context,
 	dc request,
 ) error {
-	if strutil.ContainsOfflineAccess(dc.Scopes) && !slices.Contains(dc.GrantTypes, goidc.GrantRefreshToken) {
+	if strutil.ContainsOfflineAccess(dc.Scopes) &&
+		!slices.Contains(dc.GrantTypes, goidc.GrantRefreshToken) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"refresh_token grant is required for using the scope offline_access")
 	}
@@ -555,6 +560,9 @@ func validateScopes(
 }
 
 func isRegistrationAccessTokenValid(c *goidc.Client, token string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(c.HashedRegistrationAccessToken), []byte(token))
+	err := bcrypt.CompareHashAndPassword(
+		[]byte(c.HashedRegistrationAccessToken),
+		[]byte(token),
+	)
 	return err == nil
 }

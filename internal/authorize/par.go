@@ -20,19 +20,19 @@ func pushAuth(
 	error,
 ) {
 
-	c, oauthErr := clientutil.Authenticated(ctx)
-	if oauthErr != nil {
-		return pushedResponse{}, oidcerr.New(oidcerr.CodeInvalidClient,
-			"client not authenticated")
+	c, err := clientutil.Authenticated(ctx)
+	if err != nil {
+		return pushedResponse{}, err
 	}
 
-	session, oauthErr := pushAuthnSession(ctx, req, c)
-	if oauthErr != nil {
-		return pushedResponse{}, oauthErr
+	session, err := pushAuthnSession(ctx, req, c)
+	if err != nil {
+		return pushedResponse{}, err
 	}
 
 	if err := ctx.SaveAuthnSession(session); err != nil {
-		return pushedResponse{}, err
+		return pushedResponse{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not store the pushed authentication session", err)
 	}
 	return pushedResponse{
 		RequestURI: session.RequestURI,
@@ -48,15 +48,14 @@ func pushAuthnSession(
 	*goidc.AuthnSession,
 	error,
 ) {
-	session, oauthErr := pushedAuthnSession(ctx, req, client)
-	if oauthErr != nil {
-		return nil, oauthErr
+	session, err := pushedAuthnSession(ctx, req, client)
+	if err != nil {
+		return nil, err
 	}
 
 	reqURI, err := requestURI()
 	if err != nil {
-		return nil, oidcerr.New(oidcerr.CodeInternalError,
-			"could not generate the request uri")
+		return nil, err
 	}
 	session.RequestURI = reqURI
 	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.PAR.LifetimeSecs
@@ -136,7 +135,8 @@ func protectedParams(ctx *oidc.Context) map[string]any {
 func requestURI() (string, error) {
 	s, err := strutil.Random(requestURILength)
 	if err != nil {
-		return "", err
+		return "", oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not generate the request uri", err)
 	}
 	return fmt.Sprintf("urn:ietf:params:oauth:request_uri:%s", s), nil
 }

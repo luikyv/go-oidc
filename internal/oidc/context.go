@@ -24,15 +24,6 @@ type Context struct {
 	Configuration
 }
 
-func Handler(
-	config *Configuration,
-	exec func(ctx *Context),
-) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		exec(NewContext(*config, r, w))
-	}
-}
-
 func NewContext(
 	configuration Configuration,
 	req *http.Request,
@@ -42,6 +33,15 @@ func NewContext(
 		Configuration: configuration,
 		Req:           req,
 		Resp:          resp,
+	}
+}
+
+func Handler(
+	config *Configuration,
+	exec func(ctx *Context),
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		exec(NewContext(*config, r, w))
 	}
 }
 

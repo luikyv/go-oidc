@@ -32,7 +32,7 @@ func ValidateDPoPJWT(
 ) error {
 	parsedDPoPJWT, err := jwt.ParseSigned(dpopJWT, ctx.DPoP.SigAlgs)
 	if err != nil {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid dpop")
+		return oidcerr.Errorf(oidcerr.CodeInvalidRequest, "invalid dpop jwt", err)
 	}
 
 	if len(parsedDPoPJWT.Headers) != 1 {
@@ -40,7 +40,8 @@ func ValidateDPoPJWT(
 	}
 
 	if parsedDPoPJWT.Headers[0].ExtraHeaders["typ"] != "dpop+jwt" {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid typ header. it should be dpop+jwt")
+		return oidcerr.New(oidcerr.CodeInvalidRequest,
+			"invalid typ header. it should be dpop+jwt")
 	}
 
 	jwk := parsedDPoPJWT.Headers[0].JSONWebKey
@@ -51,12 +52,13 @@ func ValidateDPoPJWT(
 	var claims jwt.Claims
 	var dpopClaims dpopClaims
 	if err := parsedDPoPJWT.Claims(jwk.Key, &claims, &dpopClaims); err != nil {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid dpop")
+		return oidcerr.Errorf(oidcerr.CodeInvalidRequest, "invalid dpop jwt", err)
 	}
 
 	// Validate that the "iat" claim is present and it is not too far in the past.
 	if claims.IssuedAt == nil || int(time.Since(claims.IssuedAt.Time()).Seconds()) > ctx.DPoP.LifetimeSecs {
-		return oidcerr.New(oidcerr.CodeUnauthorizedClient, "invalid dpop")
+		return oidcerr.New(oidcerr.CodeUnauthorizedClient,
+			"invalid dpop jwt issuance time")
 	}
 
 	if claims.ID == "" {

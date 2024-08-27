@@ -64,6 +64,13 @@ func NewClient(_ *testing.T) *goidc.Client {
 }
 
 func NewContext(t *testing.T) *oidc.Context {
+	return NewContextWithRequest(
+		t,
+		httptest.NewRequest(http.MethodGet, "/auth", nil),
+	)
+}
+
+func NewContextWithRequest(t *testing.T, r *http.Request) *oidc.Context {
 	config := oidc.Configuration{
 		Profile:     goidc.ProfileOpenID,
 		Host:        Host,
@@ -113,15 +120,17 @@ func NewContext(t *testing.T) *oidc.Context {
 	config.Endpoint.DCR = goidc.EndpointDynamicClient
 	config.Endpoint.UserInfo = goidc.EndpointUserInfo
 	config.Endpoint.Introspection = goidc.EndpointTokenIntrospection
-	ctx := oidc.Context{
-		Configuration: config,
-		Req:           httptest.NewRequest(http.MethodGet, "/auth", nil),
-		Resp:          httptest.NewRecorder(),
-	}
 
+	config.ClientAuthn.AssertionLifetimeSecs = 600
+
+	ctx := oidc.NewContext(
+		config,
+		r,
+		httptest.NewRecorder(),
+	)
 	require.Nil(t, ctx.SaveClient(NewClient(t)), "could not create the test client")
 
-	return &ctx
+	return ctx
 }
 
 func AuthnSessions(_ *testing.T, ctx *oidc.Context) []*goidc.AuthnSession {

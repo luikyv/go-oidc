@@ -19,7 +19,7 @@ func create(
 		return response{}, err
 	}
 
-	if err := validateDynamicRequest(ctx, dc); err != nil {
+	if err := validateRequest(ctx, dc); err != nil {
 		return response{}, err
 	}
 
@@ -28,7 +28,7 @@ func create(
 			"invalid metadata", err)
 	}
 
-	if err := validateDynamicRequest(ctx, dc); err != nil {
+	if err := validateRequest(ctx, dc); err != nil {
 		return response{}, err
 	}
 
@@ -82,7 +82,7 @@ func update(
 		return response{}, err
 	}
 
-	if err := validateDynamicRequest(ctx, dc); err != nil {
+	if err := validateRequest(ctx, dc); err != nil {
 		return response{}, err
 	}
 
@@ -91,7 +91,7 @@ func update(
 			"invalid metadata", err)
 	}
 
-	if err := validateDynamicRequest(ctx, dc); err != nil {
+	if err := validateRequest(ctx, dc); err != nil {
 		return response{}, err
 	}
 

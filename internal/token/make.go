@@ -106,8 +106,8 @@ func makeIDToken(
 	idToken, err := jwtutil.Sign(claims, jwk,
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
 	if err != nil {
-		return "", oidcerr.New(oidcerr.CodeInternalError,
-			"could not sign the response object")
+		return "", oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not sign the id token", err)
 	}
 
 	return idToken, nil
@@ -121,14 +121,16 @@ func encryptIDToken(
 	string,
 	error,
 ) {
-	jwk, err := clientutil.IDTokenEncryptionJWK(c)
+	jwk, err := clientutil.JWKByAlg(c, string(c.IDTokenKeyEncAlg))
 	if err != nil {
-		return "", oidcerr.New(oidcerr.CodeInvalidRequest, err.Error())
+		return "", oidcerr.Errorf(oidcerr.CodeInvalidRequest,
+			"could not encrypt the id token", err)
 	}
 
 	encIDToken, err := jwtutil.Encrypt(userInfoJWT, jwk, c.IDTokenContentEncAlg)
 	if err != nil {
-		return "", oidcerr.New(oidcerr.CodeInvalidRequest, err.Error())
+		return "", oidcerr.Errorf(oidcerr.CodeInvalidRequest,
+			"could not encrypt the id token", err)
 	}
 
 	return encIDToken, nil
@@ -189,8 +191,8 @@ func makeJWTToken(
 	accessToken, err := jwtutil.Sign(claims, privateJWK,
 		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", privateJWK.KeyID))
 	if err != nil {
-		return Token{}, oidcerr.New(oidcerr.CodeInternalError,
-			"could not sign the response object")
+		return Token{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not sign the access token", err)
 	}
 
 	return Token{
@@ -213,8 +215,8 @@ func makeOpaqueToken(
 ) {
 	accessToken, err := strutil.Random(grantOptions.OpaqueLength)
 	if err != nil {
-		return Token{}, oidcerr.New(oidcerr.CodeInternalError,
-			"could not generate the opaque token")
+		return Token{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not generate the opaque token", err)
 	}
 	tokenType := goidc.TokenTypeBearer
 

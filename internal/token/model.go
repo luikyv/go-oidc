@@ -102,11 +102,6 @@ type response struct {
 	AuthorizationDetails []goidc.AuthorizationDetail `json:"authorization_details,omitempty"`
 }
 
-type resultChannel struct {
-	Result any
-	Err    error
-}
-
 type introspectionRequest struct {
 	Token         string
 	TokenTypeHint goidc.TokenTypeHint

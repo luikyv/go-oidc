@@ -26,7 +26,8 @@ func validateTokenBindingIsRequired(
 	}
 
 	if !tokenWillBeBound {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "token binding is required either with dpop or tls")
+		return oidcerr.New(oidcerr.CodeInvalidRequest,
+			"token binding is required either with dpop or tls")
 	}
 
 	return nil
@@ -39,12 +40,14 @@ func validateTokenBindingRequestWithDPoP(
 ) error {
 
 	dpopJWT, ok := ctx.DPoPJWT()
-	// Return an error if the DPoP header was not informed, but it's required either in the context or by the client.
+	// Return an error if the DPoP header was not informed, but it's required
+	// either in the context or by the client.
 	if !ok && (ctx.DPoP.IsRequired || client.DPoPIsRequired) {
 		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid dpop header")
 	}
 
-	// If DPoP is not enabled or, if it is, but the DPoP header was not informed, we just ignore it.
+	// If DPoP is not enabled or, if it is, but the DPoP header was not informed,
+	// we just ignore it.
 	if !ctx.DPoP.IsEnabled || !ok {
 		return nil
 	}

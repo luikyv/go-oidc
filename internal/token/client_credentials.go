@@ -32,11 +32,12 @@ func generateClientCredentialsGrant(
 
 	token, err := Make(ctx, c, grantOptions)
 	if err != nil {
-		return response{}, err
+		return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not generate an access token for the client credentials grant", err)
 	}
 
-	_, oauthErr = generateClientCredentialsGrantSession(ctx, c, token, grantOptions)
-	if oauthErr != nil {
+	_, err = generateClientCredentialsGrantSession(ctx, c, token, grantOptions)
+	if err != nil {
 		return response{}, nil
 	}
 
@@ -65,7 +66,8 @@ func generateClientCredentialsGrantSession(
 
 	grantSession := NewGrantSession(grantOptions, token)
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return nil, err
+		return nil, oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not store the grant session", err)
 	}
 
 	return grantSession, nil
@@ -106,7 +108,8 @@ func newClientCredentialsGrantOptions(
 ) {
 	tokenOptions, err := ctx.TokenOptions(client, req.Scopes)
 	if err != nil {
-		return GrantOptions{}, oidcerr.New(oidcerr.CodeAccessDenied, err.Error())
+		return GrantOptions{}, oidcerr.Errorf(oidcerr.CodeAccessDenied,
+			"access denied", err)
 	}
 
 	scopes := req.Scopes

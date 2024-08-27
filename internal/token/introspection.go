@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/luikyv/go-oidc/internal/clientutil"
+	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -34,7 +35,8 @@ func validateIntrospectionRequest(
 	c *goidc.Client,
 ) error {
 	if !slices.Contains(c.GrantTypes, goidc.GrantIntrospection) {
-		return oidcerr.New(oidcerr.CodeInvalidGrant, "client not allowed to introspect tokens")
+		return oidcerr.New(oidcerr.CodeInvalidGrant,
+			"client not allowed to introspect tokens")
 	}
 
 	if req.Token == "" {
@@ -53,7 +55,7 @@ func IntrospectionInfo(
 		return refreshTokenInfo(ctx, accessToken)
 	}
 
-	if IsJWS(accessToken) {
+	if jwtutil.IsJWS(accessToken) {
 		return jwtTokenInfo(ctx, accessToken)
 	}
 
@@ -78,7 +80,8 @@ func refreshTokenInfo(
 	}
 
 	var cnf *goidc.TokenConfirmation
-	if grantSession.JWKThumbprint != "" || grantSession.ClientCertThumbprint != "" {
+	if grantSession.JWKThumbprint != "" ||
+		grantSession.ClientCertThumbprint != "" {
 		cnf = &goidc.TokenConfirmation{
 			JWKThumbprint:               grantSession.JWKThumbprint,
 			ClientCertificateThumbprint: grantSession.ClientCertThumbprint,

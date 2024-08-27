@@ -29,7 +29,19 @@ func redirectError(
 		errorDescription: redirectErr.desc,
 		state:            redirectErr.State,
 	}
-	return redirectResponse(ctx, c, redirectErr.AuthorizationParameters, redirectParams)
+	err = redirectResponse(
+		ctx,
+		c,
+		redirectErr.AuthorizationParameters,
+		redirectParams,
+	)
+	if err == nil {
+		// If the error was successfully redirected, an event to inform it must
+		// be triggered.
+		ctx.Event.HandleError(ctx, redirectErr)
+	}
+
+	return err
 }
 
 func redirectResponse(
@@ -60,7 +72,8 @@ func redirectResponse(
 	case goidc.ResponseModeFormPost, goidc.ResponseModeFormPostJWT:
 		redirectParamsMap["redirect_uri"] = params.RedirectURI
 		if err := ctx.RenderHTML(formPostResponseTemplate, redirectParamsMap); err != nil {
-			return oidcerr.New(oidcerr.CodeInternalError, "could not render the html")
+			return oidcerr.Errorf(oidcerr.CodeInternalError,
+				"could not render the html for the form_post response mode", err)
 		}
 	default:
 		redirectURL := urlWithQueryParams(params.RedirectURI, redirectParamsMap)
@@ -137,8 +150,8 @@ func signJARMResponse(
 	resp, err := jwtutil.Sign(claims, jwk,
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
 	if err != nil {
-		return "", oidcerr.New(oidcerr.CodeInternalError,
-			"could not sign the response object")
+		return "", oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not sign the response object", err)
 	}
 
 	return resp, nil
@@ -152,15 +165,16 @@ func encryptJARMResponse(
 	string,
 	error,
 ) {
-	jwk, err := clientutil.JARMEncryptionJWK(c)
+	jwk, err := clientutil.JWKByAlg(c, string(c.JARMKeyEncAlg))
 	if err != nil {
-		return "", oidcerr.New(oidcerr.CodeInvalidRequest,
-			"could not fetch the client encryption jwk for jarm")
+		return "", oidcerr.Errorf(oidcerr.CodeInvalidRequest,
+			"could not fetch the client encryption jwk for jarm", err)
 	}
 
 	jwe, err := jwtutil.Encrypt(responseJWT, jwk, c.JARMContentEncAlg)
 	if err != nil {
-		return "", err
+		return "", oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not encrypt the response object", err)
 	}
 
 	return jwe, nil

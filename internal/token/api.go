@@ -9,47 +9,39 @@ import (
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 	router.HandleFunc(
 		"POST "+config.Endpoint.Prefix+config.Endpoint.Token,
-		handler(config),
+		oidc.Handler(config, handleCreate),
 	)
 
 	if config.Introspection.IsEnabled {
 		router.HandleFunc(
 			"POST "+config.Endpoint.Prefix+config.Endpoint.Introspection,
-			handlerIntrospect(config),
+			oidc.Handler(config, handleIntrospect),
 		)
 	}
 }
 
-func handler(config *oidc.Configuration) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := oidc.NewContext(*config, r, w)
+func handleCreate(ctx *oidc.Context) {
+	req := newRequest(ctx.Request())
+	tokenResp, err := generateGrant(ctx, req)
+	if err != nil {
+		ctx.WriteError(err)
+		return
+	}
 
-		req := newRequest(ctx.Request())
-		tokenResp, err := generateGrant(ctx, req)
-		if err != nil {
-			ctx.WriteError(err)
-			return
-		}
-
-		if err := ctx.Write(tokenResp, http.StatusOK); err != nil {
-			ctx.WriteError(err)
-		}
+	if err := ctx.Write(tokenResp, http.StatusOK); err != nil {
+		ctx.WriteError(err)
 	}
 }
 
-func handlerIntrospect(config *oidc.Configuration) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := oidc.NewContext(*config, r, w)
+func handleIntrospect(ctx *oidc.Context) {
+	req := newIntrospectionRequest(ctx.Request())
+	tokenInfo, err := introspect(ctx, req)
+	if err != nil {
+		ctx.WriteError(err)
+		return
+	}
 
-		req := newIntrospectionRequest(ctx.Request())
-		tokenInfo, err := introspect(ctx, req)
-		if err != nil {
-			ctx.WriteError(err)
-			return
-		}
-
-		if err := ctx.Write(tokenInfo, http.StatusOK); err != nil {
-			ctx.WriteError(err)
-		}
+	if err := ctx.Write(tokenInfo, http.StatusOK); err != nil {
+		ctx.WriteError(err)
 	}
 }

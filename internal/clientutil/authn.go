@@ -21,6 +21,9 @@ import (
 
 // Authenticated fetches a client associated to the request and returns it
 // if the client is authenticated according to its authentication method.
+//
+// This function always returns in case of error an instance of [oidcerr.Error]
+// with error code as [oidcerr.CodeInvalidClient].
 func Authenticated(
 	ctx *oidc.Context,
 ) (
@@ -155,7 +158,7 @@ func authenticatePrivateKeyJWT(
 
 func jwkMatchingHeader(c *goidc.Client, header jose.Header) (jose.JSONWebKey, error) {
 	if header.KeyID != "" {
-		jwk, err := PublicKey(c, header.KeyID)
+		jwk, err := JWKByKeyID(c, header.KeyID)
 		if err != nil {
 			return jose.JSONWebKey{}, oidcerr.Errorf(oidcerr.CodeInvalidClient,
 				"could not find the jwk used to sign the assertion that matches the 'kid' header", err)
@@ -163,8 +166,7 @@ func jwkMatchingHeader(c *goidc.Client, header jose.Header) (jose.JSONWebKey, er
 		return jwk, nil
 	}
 
-	alg := jose.SignatureAlgorithm(header.Algorithm)
-	jwk, err := sigJWK(c, alg)
+	jwk, err := JWKByAlg(c, header.Algorithm)
 	if err != nil {
 		return jose.JSONWebKey{}, oidcerr.Errorf(oidcerr.CodeInvalidClient,
 			"could not find the jwk used to sign the assertion that matches the 'alg' header", err)

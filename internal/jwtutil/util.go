@@ -1,6 +1,8 @@
 package jwtutil
 
 import (
+	"regexp"
+
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 )
@@ -61,4 +63,14 @@ func Encrypt(
 	}
 
 	return encContentString, nil
+}
+
+func IsJWS(token string) bool {
+	isJWS, _ := regexp.MatchString("(^[\\w-]*\\.[\\w-]*\\.[\\w-]*$)", token)
+	return isJWS
+}
+
+func IsJWE(token string) bool {
+	isJWS, _ := regexp.MatchString("(^[\\w-]*\\.[\\w-]*\\.[\\w-]*\\.[\\w-]*\\.[\\w-]*$)", token)
+	return isJWS
 }

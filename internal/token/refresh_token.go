@@ -18,22 +18,30 @@ func generateRefreshTokenGrant(
 	response,
 	error,
 ) {
-	if err := preValidateRefreshTokenGrantRequest(req); err != nil {
-		return response{}, oidcerr.New(oidcerr.CodeInvalidRequest, "invalid parameter for refresh token grant")
+	if req.RefreshToken == "" {
+		return response{}, oidcerr.New(oidcerr.CodeInvalidRequest,
+			"invalid refresh token")
 	}
 
-	client, grantSession, err := authenticatedClientAndGrantSession(ctx, req)
+	c, err := clientutil.Authenticated(ctx)
 	if err != nil {
 		return response{}, err
 	}
 
-	if err = validateRefreshTokenGrantRequest(ctx, req, client, grantSession); err != nil {
+	grantSession, err := ctx.GrantSessionByRefreshToken(req.RefreshToken)
+	if err != nil {
+		return response{}, oidcerr.Errorf(oidcerr.CodeInvalidRequest,
+			"invalid refresh_token", err)
+	}
+
+	if err = validateRefreshTokenGrantRequest(ctx, req, c, grantSession); err != nil {
 		return response{}, err
 	}
 
-	token, err := Make(ctx, client, NewGrantOptions(*grantSession))
+	token, err := Make(ctx, c, NewGrantOptions(*grantSession))
 	if err != nil {
-		return response{}, err
+		return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not generate token during refresh token grant", err)
 	}
 
 	if err := updateRefreshTokenGrantSession(ctx, grantSession, req, token); err != nil {
@@ -50,11 +58,12 @@ func generateRefreshTokenGrant(
 	if strutil.ContainsOpenID(grantSession.ActiveScopes) {
 		tokenResp.IDToken, err = MakeIDToken(
 			ctx,
-			client,
+			c,
 			newIDTokenOptions(NewGrantOptions(*grantSession)),
 		)
 		if err != nil {
-			return response{}, err
+			return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+				"could not generate id token during refresh token grant", err)
 		}
 	}
 
@@ -74,7 +83,7 @@ func updateRefreshTokenGrantSession(
 	if ctx.RefreshToken.RotationIsEnabled {
 		token, err := refreshToken()
 		if err != nil {
-			return oidcerr.New(oidcerr.CodeInternalError, err.Error())
+			return err
 		}
 		grantSession.RefreshToken = token
 	}
@@ -84,62 +93,8 @@ func updateRefreshTokenGrantSession(
 	}
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func authenticatedClientAndGrantSession(
-	ctx *oidc.Context,
-	req request,
-) (
-	*goidc.Client,
-	*goidc.GrantSession,
-	error,
-) {
-
-	grantSessionResultCh := make(chan resultChannel)
-	go grantSessionByRefreshToken(ctx, req.RefreshToken, grantSessionResultCh)
-
-	c, err := clientutil.Authenticated(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	grantSessionResult := <-grantSessionResultCh
-	grantSession, err := grantSessionResult.Result.(*goidc.GrantSession), grantSessionResult.Err
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return c, grantSession, nil
-}
-
-func grantSessionByRefreshToken(
-	ctx *oidc.Context,
-	refreshToken string,
-	ch chan<- resultChannel,
-) {
-	grantSession, err := ctx.GrantSessionByRefreshToken(refreshToken)
-	if err != nil {
-		ch <- resultChannel{
-			Result: nil,
-			Err:    oidcerr.New(oidcerr.CodeInvalidRequest, "invalid refresh_token"),
-		}
-	}
-
-	ch <- resultChannel{
-		Result: grantSession,
-		Err:    nil,
-	}
-}
-
-func preValidateRefreshTokenGrantRequest(
-	req request,
-) error {
-	if req.RefreshToken == "" {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid refresh token")
+		return oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not store the grant session", err)
 	}
 
 	return nil
@@ -157,12 +112,14 @@ func validateRefreshTokenGrantRequest(
 	}
 
 	if c.ID != grantSession.ClientID {
-		return oidcerr.New(oidcerr.CodeInvalidGrant, "the refresh token was not issued to the client")
+		return oidcerr.New(oidcerr.CodeInvalidGrant,
+			"the refresh token was not issued to the client")
 	}
 
 	if grantSession.IsExpired() {
 		if err := ctx.DeleteGrantSession(grantSession.ID); err != nil {
-			return oidcerr.New(oidcerr.CodeInternalError, err.Error())
+			return oidcerr.Errorf(oidcerr.CodeInternalError,
+				"internal error", err)
 		}
 		return oidcerr.New(oidcerr.CodeUnauthorizedClient, "the refresh token is expired")
 	}
@@ -200,7 +157,12 @@ func validateRefreshTokenPoPForPublicClients(
 }
 
 func refreshToken() (string, error) {
-	return strutil.Random(RefreshTokenLength)
+	token, err := strutil.Random(RefreshTokenLength)
+	if err != nil {
+		return "", oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not generate the refresh token", err)
+	}
+	return token, nil
 }
 
 func containsAllScopes(availableScopes string, requestedScopes string) bool {

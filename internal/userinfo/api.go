@@ -9,34 +9,30 @@ import (
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 	router.HandleFunc(
 		"POST "+config.Endpoint.Prefix+config.Endpoint.UserInfo,
-		handler(config),
+		oidc.Handler(config, handle),
 	)
 
 	router.HandleFunc(
 		"GET "+config.Endpoint.Prefix+config.Endpoint.UserInfo,
-		handler(config),
+		oidc.Handler(config, handle),
 	)
 }
 
-func handler(config *oidc.Configuration) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := oidc.NewContext(*config, r, w)
+func handle(ctx *oidc.Context) {
+	var err error
+	userInfoResponse, err := userInfo(ctx)
+	if err != nil {
+		ctx.WriteError(err)
+		return
+	}
 
-		var err error
-		userInfoResponse, err := userInfo(ctx)
-		if err != nil {
-			ctx.WriteError(err)
-			return
-		}
+	if userInfoResponse.jwtClaims != "" {
+		err = ctx.WriteJWT(userInfoResponse.jwtClaims, http.StatusOK)
+	} else {
+		err = ctx.Write(userInfoResponse.claims, http.StatusOK)
+	}
 
-		if userInfoResponse.jwtClaims != "" {
-			err = ctx.WriteJWT(userInfoResponse.jwtClaims, http.StatusOK)
-		} else {
-			err = ctx.Write(userInfoResponse.claims, http.StatusOK)
-		}
-
-		if err != nil {
-			ctx.WriteError(err)
-		}
+	if err != nil {
+		ctx.WriteError(err)
 	}
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 )
 
-// ClientManager contains all the logic needed to manage clients.
+// ClientManager gathers all the logic needed to manage clients.
 type ClientManager interface {
 	Save(ctx context.Context, client *Client) error
 	Get(ctx context.Context, id string) (*Client, error)
