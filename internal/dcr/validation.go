@@ -81,7 +81,7 @@ func validateGrantTypes(
 	}
 
 	if slices.Contains(dc.GrantTypes, goidc.GrantIntrospection) &&
-		!slices.Contains(ctx.Introspection.ClientAuthnMethods, dc.AuthnMethod) {
+		!slices.Contains(ctx.IntrospectionClientAuthnMethods, dc.AuthnMethod) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"introspection grant type not allowed for the authentication method requested")
 	}
@@ -145,7 +145,7 @@ func validateAuthnMethod(
 	ctx *oidc.Context,
 	dc request,
 ) error {
-	if !slices.Contains(ctx.ClientAuthn.Methods, dc.AuthnMethod) {
+	if !slices.Contains(ctx.ClientAuthnMethods, dc.AuthnMethod) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"authn method not allowed")
 	}
@@ -221,7 +221,7 @@ func validateJARSignatureAlgorithm(
 		return nil
 	}
 
-	if !slices.Contains(ctx.JAR.SigAlgs, dc.JARSigAlg) {
+	if !slices.Contains(ctx.JARSigAlgs, dc.JARSigAlg) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"request_object_signing_alg not supported")
 	}
@@ -255,7 +255,7 @@ func validateClientSignatureAlgorithmForPrivateKeyJWT(
 		return nil
 	}
 
-	if !slices.Contains(ctx.ClientAuthn.PrivateKeyJWTSigAlgs, dc.AuthnSigAlg) {
+	if !slices.Contains(ctx.PrivateKeyJWTSigAlgs, dc.AuthnSigAlg) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"token_endpoint_auth_signing_alg not supported")
 	}
@@ -274,7 +274,7 @@ func validateClientSignatureAlgorithmForClientSecretJWT(
 		return nil
 	}
 
-	if !slices.Contains(ctx.ClientAuthn.ClientSecretJWTSigAlgs, dc.AuthnSigAlg) {
+	if !slices.Contains(ctx.ClientSecretJWTSigAlgs, dc.AuthnSigAlg) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"token_endpoint_auth_signing_alg not supported")
 	}
@@ -349,7 +349,7 @@ func validateIDTokenEncryptionAlgorithms(
 ) error {
 	// Return an error if ID token encryption is not enabled, but the client
 	// requested it.
-	if !ctx.User.EncIsEnabled {
+	if !ctx.UserEncIsEnabled {
 		if dc.IDTokenKeyEncAlg != "" || dc.IDTokenContentEncAlg != "" {
 			return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 				"ID token encryption is not supported")
@@ -358,7 +358,7 @@ func validateIDTokenEncryptionAlgorithms(
 	}
 
 	if dc.IDTokenKeyEncAlg != "" &&
-		!slices.Contains(ctx.User.KeyEncAlgs, dc.IDTokenKeyEncAlg) {
+		!slices.Contains(ctx.UserKeyEncAlgs, dc.IDTokenKeyEncAlg) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"id_token_encrypted_response_alg not supported")
 	}
@@ -369,7 +369,7 @@ func validateIDTokenEncryptionAlgorithms(
 	}
 
 	if dc.IDTokenContentEncAlg != "" &&
-		!slices.Contains(ctx.User.ContentEncAlg, dc.IDTokenContentEncAlg) {
+		!slices.Contains(ctx.UserContentEncAlg, dc.IDTokenContentEncAlg) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"id_token_encrypted_response_enc not supported")
 	}
@@ -383,7 +383,7 @@ func validateUserInfoEncryptionAlgorithms(
 ) error {
 	// Return an error if user info encryption is not enabled, but the client
 	// requested it.
-	if !ctx.User.EncIsEnabled {
+	if !ctx.UserEncIsEnabled {
 		if dc.UserInfoKeyEncAlg != "" || dc.UserInfoContentEncAlg != "" {
 			return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 				"user info encryption is not supported")
@@ -392,7 +392,7 @@ func validateUserInfoEncryptionAlgorithms(
 	}
 
 	if dc.UserInfoKeyEncAlg != "" &&
-		!slices.Contains(ctx.User.KeyEncAlgs, dc.UserInfoKeyEncAlg) {
+		!slices.Contains(ctx.UserKeyEncAlgs, dc.UserInfoKeyEncAlg) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"userinfo_encrypted_response_alg not supported")
 	}
@@ -403,7 +403,7 @@ func validateUserInfoEncryptionAlgorithms(
 	}
 
 	if dc.UserInfoContentEncAlg != "" &&
-		!slices.Contains(ctx.User.ContentEncAlg, dc.UserInfoContentEncAlg) {
+		!slices.Contains(ctx.UserContentEncAlg, dc.UserInfoContentEncAlg) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"userinfo_encrypted_response_enc not supported")
 	}
@@ -416,7 +416,7 @@ func validateJARMEncryptionAlgorithms(
 	dc request,
 ) error {
 	// Return an error if jarm encryption is not enabled, but the client requested it.
-	if !ctx.JARM.IsEnabled {
+	if !ctx.JARMIsEnabled {
 		if dc.JARMKeyEncAlg != "" || dc.JARMContentEncAlg != "" {
 			return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 				"jarm encryption is not supported")
@@ -425,7 +425,7 @@ func validateJARMEncryptionAlgorithms(
 	}
 
 	if dc.JARMKeyEncAlg != "" &&
-		!slices.Contains(ctx.JARM.KeyEncAlgs, dc.JARMKeyEncAlg) {
+		!slices.Contains(ctx.JARMKeyEncAlgs, dc.JARMKeyEncAlg) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"authorization_encrypted_response_alg not supported")
 	}
@@ -436,7 +436,7 @@ func validateJARMEncryptionAlgorithms(
 	}
 
 	if dc.JARMContentEncAlg != "" &&
-		!slices.Contains(ctx.JARM.ContentEncAlgs, dc.JARMContentEncAlg) {
+		!slices.Contains(ctx.JARMContentEncAlgs, dc.JARMContentEncAlg) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"authorization_encrypted_response_enc not supported")
 	}
@@ -449,7 +449,7 @@ func validateJAREncryptionAlgorithms(
 	dc request,
 ) error {
 	// Return an error if jar encryption is not enabled, but the client requested it.
-	if !ctx.JAR.EncIsEnabled {
+	if !ctx.JAREncIsEnabled {
 		if dc.JARKeyEncAlg != "" || dc.JARContentEncAlg != "" {
 			return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 				"jar encryption is not supported")
@@ -469,7 +469,7 @@ func validateJAREncryptionAlgorithms(
 	}
 
 	if dc.JARContentEncAlg != "" &&
-		!slices.Contains(ctx.JAR.ContentEncAlgs, dc.JARContentEncAlg) {
+		!slices.Contains(ctx.JARContentEncAlgs, dc.JARContentEncAlg) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"request_object_encryption_enc not supported")
 	}
@@ -511,12 +511,12 @@ func validateAuthorizationDetailTypes(
 	ctx *oidc.Context,
 	dc request,
 ) error {
-	if !ctx.AuthDetails.IsEnabled || dc.AuthDetailTypes == nil {
+	if !ctx.AuthDetailsIsEnabled || dc.AuthDetailTypes == nil {
 		return nil
 	}
 
 	for _, dt := range dc.AuthDetailTypes {
-		if !slices.Contains(ctx.AuthDetails.Types, dt) {
+		if !slices.Contains(ctx.AuthDetailTypes, dt) {
 			return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 				"authorization detail type not supported")
 		}

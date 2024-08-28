@@ -9,24 +9,24 @@ import (
 )
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
-	if config.DCR.IsEnabled {
+	if config.DCRIsEnabled {
 		router.HandleFunc(
-			"POST "+config.Endpoint.Prefix+config.Endpoint.DCR,
+			"POST "+config.EndpointPrefix+config.EndpointDCR,
 			oidc.Handler(config, handleCreate),
 		)
 
 		router.HandleFunc(
-			"PUT "+config.Endpoint.Prefix+config.Endpoint.DCR+"/{client_id}",
+			"PUT "+config.EndpointPrefix+config.EndpointDCR+"/{client_id}",
 			oidc.Handler(config, handleUpdate),
 		)
 
 		router.HandleFunc(
-			"GET "+config.Endpoint.Prefix+config.Endpoint.DCR+"/{client_id}",
+			"GET "+config.EndpointPrefix+config.EndpointDCR+"/{client_id}",
 			oidc.Handler(config, handleGet),
 		)
 
 		router.HandleFunc(
-			"DELETE "+config.Endpoint.Prefix+config.Endpoint.DCR+"/{client_id}",
+			"DELETE "+config.EndpointPrefix+config.EndpointDCR+"/{client_id}",
 			oidc.Handler(config, handleDelete),
 		)
 	}

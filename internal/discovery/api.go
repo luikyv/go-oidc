@@ -8,12 +8,12 @@ import (
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 	router.HandleFunc(
-		"GET "+config.Endpoint.Prefix+config.Endpoint.JWKS,
+		"GET "+config.EndpointPrefix+config.EndpointJWKS,
 		oidc.Handler(config, handleJWKS),
 	)
 
 	router.HandleFunc(
-		"GET "+config.Endpoint.Prefix+config.Endpoint.WellKnown,
+		"GET "+config.EndpointPrefix+config.EndpointWellKnown,
 		oidc.Handler(config, handleWellKnown),
 	)
 }

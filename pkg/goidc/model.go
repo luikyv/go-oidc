@@ -5,19 +5,245 @@ import (
 	"encoding/json"
 	"maps"
 	"net/http"
+	"slices"
+	"strings"
+)
+
+type Profile string
+
+const (
+	ProfileOpenID Profile = "oidc_profile"
+	ProfileFAPI2  Profile = "fapi2_profile"
+)
+
+type GrantType string
+
+const (
+	GrantClientCredentials GrantType = "client_credentials"
+	GrantAuthorizationCode GrantType = "authorization_code"
+	GrantRefreshToken      GrantType = "refresh_token"
+	GrantImplicit          GrantType = "implicit"
+	GrantIntrospection     GrantType = "urn:goidc:oauth2:grant_type:token_intropection"
+)
+
+type ResponseType string
+
+const (
+	ResponseTypeCode                   ResponseType = "code"
+	ResponseTypeIDToken                ResponseType = "id_token"
+	ResponseTypeToken                  ResponseType = "token"
+	ResponseTypeCodeAndIDToken         ResponseType = "code id_token"
+	ResponseTypeCodeAndToken           ResponseType = "code token"
+	ResponseTypeIDTokenAndToken        ResponseType = "id_token token"
+	ResponseTypeCodeAndIDTokenAndToken ResponseType = "code id_token token"
+)
+
+func (rt ResponseType) Contains(responseType ResponseType) bool {
+	return slices.Contains(strings.Split(string(rt), " "), string(responseType))
+}
+
+func (rt ResponseType) IsImplicit() bool {
+	return rt.Contains(ResponseTypeIDToken) || rt.Contains(ResponseTypeToken)
+}
+
+type ResponseMode string
+
+const (
+	ResponseModeQuery       ResponseMode = "query"
+	ResponseModeFragment    ResponseMode = "fragment"
+	ResponseModeFormPost    ResponseMode = "form_post"
+	ResponseModeQueryJWT    ResponseMode = "query.jwt"
+	ResponseModeFragmentJWT ResponseMode = "fragment.jwt"
+	ResponseModeFormPostJWT ResponseMode = "form_post.jwt"
+	ResponseModeJWT         ResponseMode = "jwt"
+)
+
+func (rm ResponseMode) IsJARM() bool {
+	return rm == ResponseModeQueryJWT || rm == ResponseModeFragmentJWT ||
+		rm == ResponseModeFormPostJWT || rm == ResponseModeJWT
+}
+
+func (rm ResponseMode) IsPlain() bool {
+	return rm == ResponseModeQuery || rm == ResponseModeFragment ||
+		rm == ResponseModeFormPost
+}
+
+func (rm ResponseMode) IsQuery() bool {
+	return rm == ResponseModeQuery || rm == ResponseModeQueryJWT
+}
+
+type ClientAuthnType string
+
+const (
+	ClientAuthnNone          ClientAuthnType = "none"
+	ClientAuthnSecretBasic   ClientAuthnType = "client_secret_basic"
+	ClientAuthnSecretPost    ClientAuthnType = "client_secret_post"
+	ClientAuthnSecretJWT     ClientAuthnType = "client_secret_jwt"
+	ClientAuthnPrivateKeyJWT ClientAuthnType = "private_key_jwt"
+	ClientAuthnTLS           ClientAuthnType = "tls_client_auth"
+	ClientAuthnSelfSignedTLS ClientAuthnType = "self_signed_tls_client_auth"
+)
+
+type ClientAssertionType string
+
+const (
+	AssertionTypeJWTBearer ClientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+)
+
+type TokenType string
+
+const (
+	TokenTypeBearer TokenType = "Bearer"
+	TokenTypeDPoP   TokenType = "DPoP"
+)
+
+const (
+	ClaimTokenID                        string = "jti"
+	ClaimIssuer                         string = "iss"
+	ClaimSubject                        string = "sub"
+	ClaimAudience                       string = "aud"
+	ClaimClientID                       string = "client_id"
+	ClaimExpiry                         string = "exp"
+	ClaimIssuedAt                       string = "iat"
+	ClaimScope                          string = "scope"
+	ClaimNonce                          string = "nonce"
+	ClaimAuthenticationTime             string = "auth_time"
+	ClaimAuthenticationMethodReferences string = "amr"
+	ClaimAuthenticationContextReference string = "acr"
+	ClaimProfile                        string = "profile"
+	ClaimEmail                          string = "email"
+	ClaimEmailVerified                  string = "email_verified"
+	ClaimAddress                        string = "address"
+	ClaimAuthorizationDetails           string = "authorization_details"
+	ClaimAccessTokenHash                string = "at_hash"
+	ClaimAuthorizationCodeHash          string = "c_hash"
+	ClaimStateHash                      string = "s_hash"
+)
+
+type KeyUsage string
+
+const (
+	KeyUsageSignature  KeyUsage = "sig"
+	KeyUsageEncryption KeyUsage = "enc"
+)
+
+type CodeChallengeMethod string
+
+const (
+	CodeChallengeMethodSHA256 CodeChallengeMethod = "S256"
+	CodeChallengeMethodPlain  CodeChallengeMethod = "plain"
+)
+
+// SubjectIdentifierType defines how the auth server provides subject
+// identifiers to its clients.
+// For more information,
+// see: https://openid.net/specs/openid-connect-core-1_0.html#SubjectIDTypes
+type SubjectIdentifierType string
+
+const (
+	// SubjectIdentifierPublic makes the server provide the same subject
+	// identifier to all clients.
+	SubjectIdentifierPublic SubjectIdentifierType = "public"
+	// TODO: Implement pairwise.
+)
+
+const (
+	HeaderDPoP string = "DPoP"
+	// HeaderClientCertificate is the header used to transmit a client
+	// certificate that was validated by a trusted source.
+	// The value in this header is expected to be the URL encoding of the
+	// client's certificate in PEM format.
+	HeaderClientCertificate string = "X-Client-Cert"
+)
+
+type AuthnStatus string
+
+const (
+	StatusSuccess    AuthnStatus = "success"
+	StatusInProgress AuthnStatus = "in_progress"
+	StatusFailure    AuthnStatus = "failure"
+)
+
+type TokenFormat string
+
+const (
+	TokenFormatJWT    TokenFormat = "jwt"
+	TokenFormatOpaque TokenFormat = "opaque"
+)
+
+// AMR defines a type for authentication method references.
+type AMR string
+
+const (
+	AMRFacialRecognition            AMR = "face"
+	AMRFingerPrint                  AMR = "fpt"
+	AMRGeolocation                  AMR = "geo"
+	AMRHardwareSecuredKey           AMR = "hwk"
+	AMRIrisScan                     AMR = "iris"
+	AMRMultipleFactor               AMR = "mfa"
+	AMROneTimePassoword             AMR = "otp"
+	AMRPassword                     AMR = "pwd"
+	AMRPersonalIDentificationNumber AMR = "pin"
+	AMRRiskBased                    AMR = "rba"
+	AMRSMS                          AMR = "sms"
+	AMRSoftwareSecuredKey           AMR = "swk"
+)
+
+type DisplayValue string
+
+const (
+	DisplayValuePage  DisplayValue = "page"
+	DisplayValuePopUp DisplayValue = "popup"
+	DisplayValueTouch DisplayValue = "touch"
+	DisplayValueWAP   DisplayValue = "wap"
+)
+
+type PromptType string
+
+const (
+	PromptTypeNone          PromptType = "none"
+	PromptTypeLogin         PromptType = "login"
+	PromptTypeConsent       PromptType = "consent"
+	PromptTypeSelectAccount PromptType = "select_account"
+)
+
+type ClaimType string
+
+const (
+	ClaimTypeNormal      ClaimType = "normal"
+	ClaimTypeAggregated  ClaimType = "aggregated"
+	ClaimTypeDistributed ClaimType = "distributed"
+)
+
+type TokenTypeHint string
+
+const (
+	TokenHintAccess  TokenTypeHint = "access_token"
+	TokenHintRefresh TokenTypeHint = "refresh_token"
+)
+
+// ACR defines a type for authentication context references.
+type ACR string
+
+const (
+	ACRNoAssuranceLevel      ACR = "0"
+	ACRMaceIncommonIAPSilver ACR = "urn:mace:incommon:iap:silver"
+	ACRMaceIncommonIAPBronze ACR = "urn:mace:incommon:iap:bronze"
 )
 
 type ClientCertFunc func(r *http.Request) (*x509.Certificate, bool)
 
 type MiddlewareFunc func(next http.Handler) http.Handler
 
-// DCRFunc defines a function that will be executed during DCR and DCM.
+// HandleDynamicClientFunc defines a function that will be executed during DCR
+// and DCM.
+//
 // It can be used to modify the client and perform custom validations.
-type DCRFunc func(r *http.Request, c *ClientMetaInfo) error
+type HandleDynamicClientFunc func(r *http.Request, c *ClientMetaInfo) error
 
-// AuthorizeErrorFunc defines a function that will be called when errors
+// RenderErrorFunc defines a function that will be called when errors
 // during the authorization request cannot be handled.
-type AuthorizeErrorFunc func(w http.ResponseWriter, r *http.Request, err error) error
+type RenderErrorFunc func(w http.ResponseWriter, r *http.Request, err error) error
 
 type HandleErrorEventFunc func(r *http.Request, err error)
 
@@ -29,16 +255,16 @@ var (
 	ScopeOfflineAccess = NewScope("offline_access")
 )
 
-// ScopeMatchingFunc defines a function executed to verify whether a requested
-// scope matches the current one.
-type ScopeMatchingFunc func(requestedScope string) bool
+// MatchScopeFunc defines a function executed to verify whether a requested
+// scope is a match or not.
+type MatchScopeFunc func(requestedScope string) bool
 
 type Scope struct {
 	// ID is the string representation of the scope.
 	// Its value will be published as is in the well known endpoint.
 	ID string
-	// Matches validates if a requested scope is valid.
-	Matches ScopeMatchingFunc
+	// Matches validates if a requested scope matches the current scope.
+	Matches MatchScopeFunc
 }
 
 // NewScope creates a scope where the validation logic is simple string comparison.
@@ -65,7 +291,7 @@ func NewScope(scope string) Scope {
 //	dynamicScope.Matches("payment:30")
 func NewDynamicScope(
 	scope string,
-	matchingFunc ScopeMatchingFunc,
+	matchingFunc MatchScopeFunc,
 ) Scope {
 	return Scope{
 		ID:      scope,
@@ -87,11 +313,13 @@ type TokenOptions struct {
 	AdditionalClaims  map[string]any `json:"additional_token_claims,omitempty"`
 }
 
-func (to *TokenOptions) AddTokenClaims(claims map[string]any) {
+func (to TokenOptions) WithClaims(claims map[string]any) TokenOptions {
 	if to.AdditionalClaims == nil {
 		to.AdditionalClaims = map[string]any{}
 	}
 	maps.Copy(to.AdditionalClaims, claims)
+
+	return to
 }
 
 func NewJWTTokenOptions(
@@ -290,28 +518,28 @@ type ClaimObjectInfo struct {
 // the use case.
 type AuthorizationDetail map[string]any
 
-func (detail AuthorizationDetail) Type() string {
-	return detail.string("type")
+func (d AuthorizationDetail) Type() string {
+	return d.string("type")
 }
 
-func (detail AuthorizationDetail) Identifier() string {
-	return detail.string("identifier")
+func (d AuthorizationDetail) Identifier() string {
+	return d.string("identifier")
 }
 
-func (detail AuthorizationDetail) Locations() []string {
-	return detail.stringSlice("locations")
+func (d AuthorizationDetail) Locations() []string {
+	return d.stringSlice("locations")
 }
 
-func (detail AuthorizationDetail) Actions() []string {
-	return detail.stringSlice("actions")
+func (d AuthorizationDetail) Actions() []string {
+	return d.stringSlice("actions")
 }
 
-func (detail AuthorizationDetail) DataTypes() []string {
-	return detail.stringSlice("datatypes")
+func (d AuthorizationDetail) DataTypes() []string {
+	return d.stringSlice("datatypes")
 }
 
-func (detail AuthorizationDetail) stringSlice(key string) []string {
-	value, ok := detail[key]
+func (d AuthorizationDetail) stringSlice(key string) []string {
+	value, ok := d[key]
 	if !ok {
 		return nil
 	}
@@ -324,8 +552,8 @@ func (detail AuthorizationDetail) stringSlice(key string) []string {
 	return slice
 }
 
-func (detail AuthorizationDetail) string(key string) string {
-	value, ok := detail[key]
+func (d AuthorizationDetail) string(key string) string {
+	value, ok := d[key]
 	if !ok {
 		return ""
 	}

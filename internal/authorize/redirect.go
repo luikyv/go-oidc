@@ -29,19 +29,12 @@ func redirectError(
 		errorDescription: redirectErr.desc,
 		state:            redirectErr.State,
 	}
-	err = redirectResponse(
+	return redirectResponse(
 		ctx,
 		c,
 		redirectErr.AuthorizationParameters,
 		redirectParams,
 	)
-	if err == nil {
-		// If the error was successfully redirected, an event to inform it must
-		// be triggered.
-		ctx.Event.HandleError(ctx.Request(), redirectErr)
-	}
-
-	return err
 }
 
 func redirectResponse(
@@ -140,7 +133,7 @@ func signJARMResponse(
 		goidc.ClaimIssuer:   ctx.Host,
 		goidc.ClaimAudience: c.ID,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JARM.LifetimeSecs,
+		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JARMLifetimeSecs,
 	}
 	for k, v := range redirectParams.parameters() {
 		claims[k] = v

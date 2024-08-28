@@ -19,8 +19,8 @@ func shouldUseJAR(
 ) bool {
 	// If JAR is not enabled, we just disconsider the request object.
 	// Also, if the client defined a signature algorithm for jar, then jar is required.
-	return ctx.JAR.IsRequired ||
-		(ctx.JAR.IsEnabled && (req.RequestObject != "" || c.JARSigAlg != ""))
+	return ctx.JARIsRequired ||
+		(ctx.JARIsEnabled && (req.RequestObject != "" || c.JARSigAlg != ""))
 }
 
 func jarFromRequestObject(
@@ -31,7 +31,7 @@ func jarFromRequestObject(
 	request,
 	error,
 ) {
-	if ctx.JAR.EncIsEnabled && jwtutil.IsJWE(reqObject) {
+	if ctx.JAREncIsEnabled && jwtutil.IsJWE(reqObject) {
 		signedReqObject, err := signedRequestObjectFromEncrypted(ctx, reqObject, c)
 		if err != nil {
 			return request{}, err
@@ -57,7 +57,7 @@ func signedRequestObjectFromEncrypted(
 	encryptedReqObject, err := jose.ParseEncrypted(
 		reqObject,
 		ctx.JARKeyEncryptionAlgorithms(),
-		ctx.JAR.ContentEncAlgs,
+		ctx.JARContentEncAlgs,
 	)
 	if err != nil {
 		return "", oidcerr.Errorf(oidcerr.CodeInvalidResquestObject,
@@ -93,7 +93,7 @@ func jarFromSignedRequestObject(
 	request,
 	error,
 ) {
-	jarAlgorithms := ctx.JAR.SigAlgs
+	jarAlgorithms := ctx.JARSigAlgs
 	if c.JARSigAlg != "" {
 		jarAlgorithms = []jose.SignatureAlgorithm{c.JARSigAlg}
 	}
@@ -123,7 +123,7 @@ func jarFromSignedRequestObject(
 	}
 
 	// Validate that the "exp" claims is present and it's not too far in the future.
-	if claims.Expiry == nil || int(time.Until(claims.Expiry.Time()).Seconds()) > ctx.JAR.LifetimeSecs {
+	if claims.Expiry == nil || int(time.Until(claims.Expiry.Time()).Seconds()) > ctx.JARLifetimeSecs {
 		return request{}, oidcerr.New(oidcerr.CodeInvalidResquestObject,
 			"invalid exp claim in the request object")
 	}

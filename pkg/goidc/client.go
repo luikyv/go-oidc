@@ -57,7 +57,7 @@ func (c *Client) FetchPublicJWKS() (jose.JSONWebKeySet, error) {
 
 	if c.PublicJWKSURI == "" {
 		return jose.JSONWebKeySet{},
-			errors.New("the client jwks was informed neither by value or by reference")
+			errors.New("the client jwks was informed neither by value nor by reference")
 	}
 
 	rawJWKS, err := c.fetchJWKS()

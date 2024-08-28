@@ -8,13 +8,13 @@ import (
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 	router.HandleFunc(
-		"POST "+config.Endpoint.Prefix+config.Endpoint.Token,
+		"POST "+config.EndpointPrefix+config.EndpointToken,
 		oidc.Handler(config, handleCreate),
 	)
 
-	if config.Introspection.IsEnabled {
+	if config.IntrospectionIsEnabled {
 		router.HandleFunc(
-			"POST "+config.Endpoint.Prefix+config.Endpoint.Introspection,
+			"POST "+config.EndpointPrefix+config.EndpointIntrospection,
 			oidc.Handler(config, handleIntrospect),
 		)
 	}

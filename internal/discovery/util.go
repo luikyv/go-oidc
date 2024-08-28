@@ -11,10 +11,10 @@ func oidcConfig(ctx *oidc.Context) openIDConfiguration {
 	}
 	config := openIDConfiguration{
 		Issuer:                       ctx.Host,
-		AuthorizationEndpoint:        ctx.BaseURL() + ctx.Endpoint.Authorize,
-		TokenEndpoint:                ctx.BaseURL() + ctx.Endpoint.Token,
-		UserinfoEndpoint:             ctx.BaseURL() + ctx.Endpoint.UserInfo,
-		JWKSEndpoint:                 ctx.BaseURL() + ctx.Endpoint.JWKS,
+		AuthorizationEndpoint:        ctx.BaseURL() + ctx.EndpointAuthorize,
+		TokenEndpoint:                ctx.BaseURL() + ctx.EndpointToken,
+		UserinfoEndpoint:             ctx.BaseURL() + ctx.EndpointUserInfo,
+		JWKSEndpoint:                 ctx.BaseURL() + ctx.EndpointJWKS,
 		ResponseTypes:                ctx.ResponseTypes,
 		ResponseModes:                ctx.ResponseModes,
 		GrantTypes:                   ctx.GrantTypes,
@@ -23,80 +23,80 @@ func oidcConfig(ctx *oidc.Context) openIDConfiguration {
 		SubIdentifierTypes:           ctx.SubIdentifierTypes,
 		IDTokenSigAlgs:               ctx.UserInfoSignatureAlgorithms(),
 		UserInfoSigAlgs:              ctx.UserInfoSignatureAlgorithms(),
-		ClientAuthnMethods:           ctx.ClientAuthn.Methods,
+		ClientAuthnMethods:           ctx.ClientAuthnMethods,
 		Scopes:                       scopes,
 		TokenEndpointClientSigAlgs:   ctx.ClientSignatureAlgorithms(),
 		IssuerResponseParamIsEnabled: ctx.IssuerRespParamIsEnabled,
 		ClaimsParamIsEnabled:         ctx.ClaimsParamIsEnabled,
-		AuthDetailsIsEnabled:         ctx.AuthDetails.IsEnabled,
-		AuthDetailTypesSupported:     ctx.AuthDetails.Types,
+		AuthDetailsIsEnabled:         ctx.AuthDetailsIsEnabled,
+		AuthDetailTypesSupported:     ctx.AuthDetailTypes,
 		ACRs:                         ctx.ACRs,
 		DisplayValues:                ctx.DisplayValues,
 	}
 
-	if ctx.PAR.IsEnabled {
-		config.PARIsRequired = ctx.PAR.IsRequired
-		config.ParEndpoint = ctx.BaseURL() + ctx.Endpoint.PushedAuthorization
+	if ctx.PARIsEnabled {
+		config.PARIsRequired = ctx.PARIsRequired
+		config.ParEndpoint = ctx.BaseURL() + ctx.EndpointPushedAuthorization
 	}
 
-	if ctx.DCR.IsEnabled {
-		config.ClientRegistrationEndpoint = ctx.BaseURL() + ctx.Endpoint.DCR
+	if ctx.DCRIsEnabled {
+		config.ClientRegistrationEndpoint = ctx.BaseURL() + ctx.EndpointDCR
 	}
 
-	if ctx.JAR.IsEnabled {
-		config.JARIsEnabled = ctx.JAR.IsEnabled
-		config.JARIsRequired = ctx.JAR.IsRequired
-		config.JARAlgs = ctx.JAR.SigAlgs
-		if ctx.JAR.EncIsEnabled {
+	if ctx.JARIsEnabled {
+		config.JARIsEnabled = ctx.JARIsEnabled
+		config.JARIsRequired = ctx.JARIsRequired
+		config.JARAlgs = ctx.JARSigAlgs
+		if ctx.JAREncIsEnabled {
 			config.JARKeyEncAlgs = ctx.JARKeyEncryptionAlgorithms()
-			config.JARContentEncAlgs = ctx.JAR.ContentEncAlgs
+			config.JARContentEncAlgs = ctx.JARContentEncAlgs
 		}
 	}
 
-	if ctx.JARM.IsEnabled {
+	if ctx.JARMIsEnabled {
 		config.JARMAlgs = ctx.JARMSignatureAlgorithms()
-		if ctx.JARM.EncIsEnabled {
-			config.JARMKeyEncAlgs = ctx.JARM.KeyEncAlgs
-			config.JARMContentEncAlgs = ctx.JARM.ContentEncAlgs
+		if ctx.JARMEncIsEnabled {
+			config.JARMKeyEncAlgs = ctx.JARMKeyEncAlgs
+			config.JARMContentEncAlgs = ctx.JARMContentEncAlgs
 		}
 	}
 
-	if ctx.DPoP.IsEnabled {
-		config.DPoPSigAlgs = ctx.DPoP.SigAlgs
+	if ctx.DPoPIsEnabled {
+		config.DPoPSigAlgs = ctx.DPoPSigAlgs
 	}
 
-	if ctx.Introspection.IsEnabled {
-		config.IntrospectionEndpoint = ctx.BaseURL() + ctx.Endpoint.Introspection
-		config.IntrospectionEndpointClientAuthnMethods = ctx.Introspection.ClientAuthnMethods
+	if ctx.IntrospectionIsEnabled {
+		config.IntrospectionEndpoint = ctx.BaseURL() + ctx.EndpointIntrospection
+		config.IntrospectionEndpointClientAuthnMethods = ctx.IntrospectionClientAuthnMethods
 		config.IntrospectionEndpointClientSigAlgs = ctx.IntrospectionClientSignatureAlgorithms()
 	}
 
-	if ctx.MTLS.IsEnabled {
-		config.TLSBoundTokensIsEnabled = ctx.MTLS.TokenBindingIsEnabled
+	if ctx.MTLSIsEnabled {
+		config.TLSBoundTokensIsEnabled = ctx.MTLSTokenBindingIsEnabled
 
 		config.MTLSConfig = &openIDMTLSConfiguration{
-			TokenEndpoint:    ctx.MTLSBaseURL() + ctx.Endpoint.Token,
-			UserinfoEndpoint: ctx.MTLSBaseURL() + ctx.Endpoint.UserInfo,
+			TokenEndpoint:    ctx.MTLSBaseURL() + ctx.EndpointToken,
+			UserinfoEndpoint: ctx.MTLSBaseURL() + ctx.EndpointUserInfo,
 		}
 
-		if ctx.PAR.IsEnabled {
-			config.MTLSConfig.ParEndpoint = ctx.MTLSBaseURL() + ctx.Endpoint.PushedAuthorization
+		if ctx.PARIsEnabled {
+			config.MTLSConfig.ParEndpoint = ctx.MTLSBaseURL() + ctx.EndpointPushedAuthorization
 		}
 
-		if ctx.DCR.IsEnabled {
-			config.MTLSConfig.ClientRegistrationEndpoint = ctx.MTLSBaseURL() + ctx.Endpoint.DCR
+		if ctx.DCRIsEnabled {
+			config.MTLSConfig.ClientRegistrationEndpoint = ctx.MTLSBaseURL() + ctx.EndpointDCR
 		}
 
-		if ctx.Introspection.IsEnabled {
-			config.IntrospectionEndpoint = ctx.MTLSBaseURL() + ctx.Endpoint.Introspection
+		if ctx.IntrospectionIsEnabled {
+			config.IntrospectionEndpoint = ctx.MTLSBaseURL() + ctx.EndpointIntrospection
 		}
 	}
 
-	if ctx.User.EncIsEnabled {
-		config.IDTokenKeyEncAlgs = ctx.User.KeyEncAlgs
-		config.IDTokenContentEncAlgs = ctx.User.ContentEncAlg
-		config.UserInfoKeyEncAlgs = ctx.User.KeyEncAlgs
-		config.UserInfoContentEncAlgs = ctx.User.ContentEncAlg
+	if ctx.UserEncIsEnabled {
+		config.IDTokenKeyEncAlgs = ctx.UserKeyEncAlgs
+		config.IDTokenContentEncAlgs = ctx.UserContentEncAlg
+		config.UserInfoKeyEncAlgs = ctx.UserKeyEncAlgs
+		config.UserInfoContentEncAlgs = ctx.UserContentEncAlg
 	}
 
 	return config

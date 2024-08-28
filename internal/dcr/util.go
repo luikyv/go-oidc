@@ -23,7 +23,7 @@ func create(
 		return response{}, err
 	}
 
-	if err := ctx.ExecuteDCRPlugin(&dc.ClientMetaInfo); err != nil {
+	if err := ctx.HandleDynamicClient(&dc.ClientMetaInfo); err != nil {
 		return response{}, oidcerr.Errorf(oidcerr.CodeInvalidClientMetadata,
 			"invalid metadata", err)
 	}
@@ -86,7 +86,7 @@ func update(
 		return response{}, err
 	}
 
-	if err := ctx.ExecuteDCRPlugin(&dc.ClientMetaInfo); err != nil {
+	if err := ctx.HandleDynamicClient(&dc.ClientMetaInfo); err != nil {
 		return response{}, oidcerr.Errorf(oidcerr.CodeInvalidClientMetadata,
 			"invalid metadata", err)
 	}
@@ -108,7 +108,7 @@ func update(
 		ClientMetaInfo:  dc.ClientMetaInfo,
 	}
 
-	if ctx.DCR.TokenRotationIsEnabled {
+	if ctx.DCRTokenRotationIsEnabled {
 		resp.RegistrationToken = dc.registrationToken
 	}
 
@@ -121,7 +121,7 @@ func setUpdateDefaults(
 	dc *request,
 ) error {
 	dc.id = c.ID
-	if ctx.DCR.TokenRotationIsEnabled {
+	if ctx.DCRTokenRotationIsEnabled {
 		token, err := registrationAccessToken()
 		if err != nil {
 			return err
@@ -189,22 +189,22 @@ func setDefaults(ctx *oidc.Context, dynamicClient *request) error {
 
 	if dynamicClient.IDTokenKeyEncAlg != "" &&
 		dynamicClient.IDTokenContentEncAlg == "" {
-		dynamicClient.IDTokenContentEncAlg = ctx.User.DefaultContentEncAlg
+		dynamicClient.IDTokenContentEncAlg = ctx.UserDefaultContentEncAlg
 	}
 
 	if dynamicClient.UserInfoKeyEncAlg != "" &&
 		dynamicClient.UserInfoContentEncAlg == "" {
-		dynamicClient.UserInfoContentEncAlg = ctx.User.DefaultContentEncAlg
+		dynamicClient.UserInfoContentEncAlg = ctx.UserDefaultContentEncAlg
 	}
 
 	if dynamicClient.JARMKeyEncAlg != "" &&
 		dynamicClient.JARMContentEncAlg == "" {
-		dynamicClient.JARMContentEncAlg = ctx.JARM.DefaultContentEncAlg
+		dynamicClient.JARMContentEncAlg = ctx.JARMDefaultContentEncAlg
 	}
 
 	if dynamicClient.JARKeyEncAlg != "" &&
 		dynamicClient.JARContentEncAlg == "" {
-		dynamicClient.JARContentEncAlg = ctx.JAR.DefaultContentEncAlg
+		dynamicClient.JARContentEncAlg = ctx.JARDefaultContentEncAlg
 	}
 
 	if dynamicClient.CustomAttributes == nil {
@@ -242,7 +242,7 @@ func newClient(dc request) *goidc.Client {
 }
 
 func registrationURI(ctx *oidc.Context, id string) string {
-	return ctx.BaseURL() + ctx.Endpoint.DCR + "/" + id
+	return ctx.BaseURL() + ctx.EndpointDCR + "/" + id
 }
 
 func protected(

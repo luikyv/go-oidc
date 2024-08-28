@@ -80,7 +80,7 @@ func updateRefreshTokenGrantSession(
 	grantSession.LastTokenIssuedAtTimestamp = timeutil.TimestampNow()
 	grantSession.TokenID = token.ID
 
-	if ctx.RefreshToken.RotationIsEnabled {
+	if ctx.RefreshTokenRotationIsEnabled {
 		token, err := refreshToken()
 		if err != nil {
 			return err

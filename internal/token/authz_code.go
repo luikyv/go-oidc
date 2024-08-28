@@ -99,7 +99,7 @@ func generateAuthorizationCodeGrantSession(
 			return nil, err
 		}
 		grantSession.RefreshToken = token
-		grantSession.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshToken.LifetimeSecs
+		grantSession.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
@@ -157,7 +157,7 @@ func validatePkce(
 	session *goidc.AuthnSession,
 ) error {
 
-	if !ctx.PKCE.IsEnabled {
+	if !ctx.PKCEIsEnabled {
 		return nil
 	}
 
@@ -170,7 +170,7 @@ func validatePkce(
 
 	codeChallengeMethod := session.CodeChallengeMethod
 	if codeChallengeMethod == "" {
-		codeChallengeMethod = ctx.PKCE.DefaultChallengeMethod
+		codeChallengeMethod = ctx.PKCEDefaultChallengeMethod
 	}
 	// In the case PKCE is enabled, if the session was created with a code
 	// challenge, the token request must contain the right code verifier.
@@ -200,7 +200,7 @@ func newAuthorizationCodeGrantOptions(
 		return GrantOptions{}, oidcerr.Errorf(oidcerr.CodeAccessDenied,
 			"access denied", err)
 	}
-	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
+	tokenOptions = tokenOptions.WithClaims(session.AdditionalTokenClaims)
 
 	grantOptions := GrantOptions{
 		GrantType:                goidc.GrantAuthorizationCode,
@@ -211,7 +211,7 @@ func newAuthorizationCodeGrantOptions(
 		AdditionalIDTokenClaims:  session.AdditionalIDTokenClaims,
 		AdditionalUserInfoClaims: session.AdditionalUserInfoClaims,
 	}
-	if ctx.AuthDetails.IsEnabled {
+	if ctx.AuthDetailsIsEnabled {
 		grantOptions.GrantedAuthorizationDetails = session.GrantedAuthorizationDetails
 	}
 

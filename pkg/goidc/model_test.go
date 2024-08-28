@@ -12,14 +12,14 @@ func TestAddTokenClaims_HappyPath(t *testing.T) {
 	tokenOptions := goidc.TokenOptions{}
 
 	// When.
-	tokenOptions.AddTokenClaims(map[string]any{
+	tokenOptions = tokenOptions.WithClaims(map[string]any{
 		"claim": "value",
 	})
 	// Then.
 	assert.Equal(t, "value", tokenOptions.AdditionalClaims["claim"], "the claim was not added")
 
 	// When.
-	tokenOptions.AddTokenClaims(map[string]any{
+	tokenOptions = tokenOptions.WithClaims(map[string]any{
 		"claim": "value",
 	})
 	// Then.

@@ -21,9 +21,9 @@ func WithStorage(
 	grantSessionManager goidc.GrantSessionManager,
 ) ProviderOption {
 	return func(p *provider) error {
-		p.config.Storage.Client = clientManager
-		p.config.Storage.AuthnSession = authnSessionManager
-		p.config.Storage.GrantSession = grantSessionManager
+		p.config.ClientManager = clientManager
+		p.config.AuthnSessionManager = authnSessionManager
+		p.config.GrantSessionManager = grantSessionManager
 		return nil
 	}
 }
@@ -41,7 +41,7 @@ func WithStorage(
 //	server.Handle("/auth/", op.Handler())
 func WithPathPrefix(prefix string) ProviderOption {
 	return func(p *provider) error {
-		p.config.Endpoint.Prefix = prefix
+		p.config.EndpointPrefix = prefix
 		return nil
 	}
 }
@@ -50,7 +50,7 @@ func WithPathPrefix(prefix string) ProviderOption {
 // /jwks.
 func WithJWKSEndpoint(endpoint string) ProviderOption {
 	return func(p *provider) error {
-		p.config.Endpoint.JWKS = endpoint
+		p.config.EndpointJWKS = endpoint
 		return nil
 	}
 }
@@ -59,7 +59,7 @@ func WithJWKSEndpoint(endpoint string) ProviderOption {
 // endpoint which is /token.
 func WithTokenEndpoint(endpoint string) ProviderOption {
 	return func(p *provider) error {
-		p.config.Endpoint.Token = endpoint
+		p.config.EndpointToken = endpoint
 		return nil
 	}
 }
@@ -68,7 +68,7 @@ func WithTokenEndpoint(endpoint string) ProviderOption {
 // which is /authorize.
 func WithAuthorizeEndpoint(endpoint string) ProviderOption {
 	return func(p *provider) error {
-		p.config.Endpoint.Authorize = endpoint
+		p.config.EndpointAuthorize = endpoint
 		return nil
 	}
 }
@@ -77,7 +77,7 @@ func WithAuthorizeEndpoint(endpoint string) ProviderOption {
 // is /par.
 func WithPAREndpoint(endpoint string) ProviderOption {
 	return func(p *provider) error {
-		p.config.Endpoint.PushedAuthorization = endpoint
+		p.config.EndpointPushedAuthorization = endpoint
 		return nil
 	}
 }
@@ -86,7 +86,7 @@ func WithPAREndpoint(endpoint string) ProviderOption {
 // is /register.
 func WithDCREndpoint(endpoint string) ProviderOption {
 	return func(p *provider) error {
-		p.config.Endpoint.DCR = endpoint
+		p.config.EndpointDCR = endpoint
 		return nil
 	}
 }
@@ -95,7 +95,7 @@ func WithDCREndpoint(endpoint string) ProviderOption {
 // which is /userinfo.
 func WithUserInfoEndpoint(endpoint string) ProviderOption {
 	return func(p *provider) error {
-		p.config.Endpoint.UserInfo = endpoint
+		p.config.EndpointUserInfo = endpoint
 		return nil
 	}
 }
@@ -104,7 +104,7 @@ func WithUserInfoEndpoint(endpoint string) ProviderOption {
 // endpoint which is /introspect.
 func WithIntrospectionEndpoint(endpoint string) ProviderOption {
 	return func(p *provider) error {
-		p.config.Endpoint.Introspection = endpoint
+		p.config.EndpointIntrospection = endpoint
 		return nil
 	}
 }
@@ -149,7 +149,7 @@ func WithUserInfoSignatureKeyIDs(defaultSignatureKeyID string, signatureKeyIDs .
 				defaultSignatureKeyID,
 			)
 		}
-		p.config.User.SigKeyIDs = signatureKeyIDs
+		p.config.UserSigKeyIDs = signatureKeyIDs
 		return nil
 	}
 }
@@ -158,7 +158,7 @@ func WithUserInfoSignatureKeyIDs(defaultSignatureKeyID string, signatureKeyIDs .
 // The default is 600 seconds.
 func WithIDTokenLifetime(idTokenLifetimeSecs int) ProviderOption {
 	return func(p *provider) error {
-		p.config.User.IDTokenLifetimeSecs = idTokenLifetimeSecs
+		p.config.IDTokenLifetimeSecs = idTokenLifetimeSecs
 		return nil
 	}
 }
@@ -174,41 +174,53 @@ func WithUserInfoEncryption(keyEncAlgs ...jose.KeyAlgorithm) ProviderOption {
 	}
 
 	return func(p *provider) error {
-		p.config.User.EncIsEnabled = true
-		p.config.User.KeyEncAlgs = keyEncAlgs
-		p.config.User.DefaultContentEncAlg = jose.A128CBC_HS256
-		p.config.User.ContentEncAlg = []jose.ContentEncryption{jose.A128CBC_HS256}
+		p.config.UserEncIsEnabled = true
+		p.config.UserKeyEncAlgs = keyEncAlgs
+		p.config.UserDefaultContentEncAlg = jose.A128CBC_HS256
+		p.config.UserContentEncAlg = []jose.ContentEncryption{jose.A128CBC_HS256}
 		return nil
 	}
 }
 
 // WithDCR allows clients to be registered dynamically.
-// The plugin is executed during registration and update of the client to
+//
+// The handler is executed during registration and update of the client to
 // perform custom validations (e.g. validate a custom property) or set default
 // values (e.g. set the default scopes).
 func WithDCR(
-	plugin goidc.DCRFunc,
+	handler goidc.HandleDynamicClientFunc,
 	rotateTokens bool,
 ) ProviderOption {
 	return func(p *provider) error {
-		p.config.DCR.IsEnabled = true
-		p.config.DCR.Plugin = plugin
-		p.config.DCR.TokenRotationIsEnabled = rotateTokens
+		p.config.DCRIsEnabled = true
+		p.config.HandleDynamicClientFunc = handler
+		return nil
+	}
+}
+
+func WithDCRTokenRotation() ProviderOption {
+	return func(p *provider) error {
+		p.config.DCRTokenRotationIsEnabled = true
 		return nil
 	}
 }
 
 // WithRefreshTokenGrant makes available the refresh token grant.
-// If true, rotateTokens causes a new refresh token to be issued each time
-// one is used. The one used during the request then becomes invalid.
 func WithRefreshTokenGrant(
 	refreshTokenLifetimeSecs int,
-	rotateTokens bool,
 ) ProviderOption {
 	return func(p *provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantRefreshToken)
-		p.config.RefreshToken.LifetimeSecs = refreshTokenLifetimeSecs
-		p.config.RefreshToken.RotationIsEnabled = rotateTokens
+		p.config.RefreshTokenLifetimeSecs = refreshTokenLifetimeSecs
+		return nil
+	}
+}
+
+// WithRefreshTokenRotation causes a new refresh token to be issued each time
+// one is used. The one used during the request then becomes invalid.
+func WithRefreshTokenRotation() ProviderOption {
+	return func(p *provider) error {
+		p.config.RefreshTokenRotationIsEnabled = true
 		return nil
 	}
 }
@@ -288,20 +300,20 @@ func WithScopes(scopes ...goidc.Scope) ProviderOption {
 
 // WithPAR allows authorization flows to start at the pushed authorization
 // request endpoint.
-func WithPAR(parLifetimeSecs int) ProviderOption {
+func WithPAR(lifetimeSecs int) ProviderOption {
 	return func(p *provider) error {
-		p.config.PAR.IsEnabled = true
-		p.config.PAR.LifetimeSecs = parLifetimeSecs
+		p.config.PARIsEnabled = true
+		p.config.PARLifetimeSecs = lifetimeSecs
 		return nil
 	}
 }
 
 // WithPARRequired forces authorization flows to start at the pushed
 // authorization request endpoint.
-func WithPARRequired(parLifetimeSecs int) ProviderOption {
+func WithPARRequired(lifetimeSecs int) ProviderOption {
 	return func(p *provider) error {
-		p.config.PAR.IsRequired = true
-		return WithPAR(parLifetimeSecs)(p)
+		p.config.PARIsRequired = true
+		return WithPAR(lifetimeSecs)(p)
 	}
 }
 
@@ -310,7 +322,7 @@ func WithPARRequired(parLifetimeSecs int) ProviderOption {
 // This only takes effect when PAR is enabled
 func WithUnregisteredRedirectURIsDuringPAR() ProviderOption {
 	return func(p *provider) error {
-		p.config.PAR.AllowUnregisteredRedirectURI = true
+		p.config.PARAllowUnregisteredRedirectURI = true
 		return nil
 	}
 }
@@ -321,11 +333,11 @@ func WithJAR(
 	jarAlgorithms ...jose.SignatureAlgorithm,
 ) ProviderOption {
 	return func(p *provider) error {
-		p.config.JAR.IsEnabled = true
-		p.config.JAR.LifetimeSecs = jarLifetimeSecs
+		p.config.JARIsEnabled = true
+		p.config.JARLifetimeSecs = jarLifetimeSecs
 		for _, jarAlgorithm := range jarAlgorithms {
-			p.config.JAR.SigAlgs = append(
-				p.config.JAR.SigAlgs,
+			p.config.JARSigAlgs = append(
+				p.config.JARSigAlgs,
 				jose.SignatureAlgorithm(jarAlgorithm),
 			)
 		}
@@ -340,7 +352,7 @@ func WithJARRequired(
 	jarAlgorithms ...jose.SignatureAlgorithm,
 ) ProviderOption {
 	return func(p *provider) error {
-		p.config.JAR.IsRequired = true
+		p.config.JARIsRequired = true
 		return WithJAR(jarLifetimeSecs, jarAlgorithms...)(p)
 	}
 }
@@ -353,10 +365,10 @@ func WithJAREncryption(
 	keyEncryptionIDs []string,
 ) ProviderOption {
 	return func(p *provider) error {
-		p.config.JAR.EncIsEnabled = true
-		p.config.JAR.KeyEncIDs = keyEncryptionIDs
-		p.config.JAR.DefaultContentEncAlg = jose.A128CBC_HS256
-		p.config.JAR.ContentEncAlgs = []jose.ContentEncryption{jose.A128CBC_HS256}
+		p.config.JAREncIsEnabled = true
+		p.config.JARKeyEncIDs = keyEncryptionIDs
+		p.config.JARDefaultContentEncAlg = jose.A128CBC_HS256
+		p.config.JARContentEncAlgs = []jose.ContentEncryption{jose.A128CBC_HS256}
 		return nil
 	}
 }
@@ -364,16 +376,16 @@ func WithJAREncryption(
 // WithJARM allows responses for authorization requests to be sent as signed JWTs.
 // It enables JWT response modes.
 func WithJARM(
-	jarmLifetimeSecs int,
-	defaultJARMSignatureKeyID string,
-	jarmSignatureKeyIDs ...string,
+	lifetimeSecs int,
+	defaultSigKeyID string,
+	jarmSigKeyIDs ...string,
 ) ProviderOption {
 	return func(p *provider) error {
-		if !slices.Contains(jarmSignatureKeyIDs, defaultJARMSignatureKeyID) {
-			jarmSignatureKeyIDs = append(jarmSignatureKeyIDs, defaultJARMSignatureKeyID)
+		if !slices.Contains(jarmSigKeyIDs, defaultSigKeyID) {
+			jarmSigKeyIDs = append(jarmSigKeyIDs, defaultSigKeyID)
 		}
 
-		p.config.JARM.IsEnabled = true
+		p.config.JARMIsEnabled = true
 		p.config.ResponseModes = append(
 			p.config.ResponseModes,
 			goidc.ResponseModeJWT,
@@ -381,15 +393,16 @@ func WithJARM(
 			goidc.ResponseModeFragmentJWT,
 			goidc.ResponseModeFormPostJWT,
 		)
-		p.config.JARM.LifetimeSecs = jarmLifetimeSecs
-		p.config.JARM.DefaultSigKeyID = defaultJARMSignatureKeyID
-		p.config.JARM.SigKeyIDs = jarmSignatureKeyIDs
+		p.config.JARMLifetimeSecs = lifetimeSecs
+		p.config.JARMDefaultSigKeyID = defaultSigKeyID
+		p.config.JARMSigKeyIDs = jarmSigKeyIDs
 		return nil
 	}
 }
 
 // WithJARM allows responses for authorization requests to be sent as encrypted
 // JWTs.
+//
 // If none passed, the default key encryption is RSA-OAEP-256.
 // The default content encryption algorithm is A128CBC-HS256.
 func WithJARMEncryption(
@@ -400,10 +413,10 @@ func WithJARMEncryption(
 	}
 
 	return func(p *provider) error {
-		p.config.JARM.EncIsEnabled = true
-		p.config.JARM.KeyEncAlgs = keyEncAlgs
-		p.config.JARM.DefaultContentEncAlg = jose.A128CBC_HS256
-		p.config.JARM.ContentEncAlgs = []jose.ContentEncryption{jose.A128CBC_HS256}
+		p.config.JARMEncIsEnabled = true
+		p.config.JARMKeyEncAlgs = keyEncAlgs
+		p.config.JARMDefaultContentEncAlg = jose.A128CBC_HS256
+		p.config.JARMContentEncAlgs = []jose.ContentEncryption{jose.A128CBC_HS256}
 		return nil
 	}
 }
@@ -411,8 +424,8 @@ func WithJARMEncryption(
 // WithBasicSecretAuthn allows secret basic client authentication.
 func WithBasicSecretAuthn() ProviderOption {
 	return func(p *provider) error {
-		p.config.ClientAuthn.Methods = append(
-			p.config.ClientAuthn.Methods,
+		p.config.ClientAuthnMethods = append(
+			p.config.ClientAuthnMethods,
 			goidc.ClientAuthnSecretBasic,
 		)
 		return nil
@@ -422,8 +435,8 @@ func WithBasicSecretAuthn() ProviderOption {
 // WithSecretPostAuthn allows secret post client authentication.
 func WithSecretPostAuthn() ProviderOption {
 	return func(p *provider) error {
-		p.config.ClientAuthn.Methods = append(
-			p.config.ClientAuthn.Methods,
+		p.config.ClientAuthnMethods = append(
+			p.config.ClientAuthnMethods,
 			goidc.ClientAuthnSecretPost,
 		)
 		return nil
@@ -439,11 +452,11 @@ func WithPrivateKeyJWTAuthn(
 		sigAlgs = append(sigAlgs, jose.RS256)
 	}
 	return func(p *provider) error {
-		p.config.ClientAuthn.Methods = append(
-			p.config.ClientAuthn.Methods,
+		p.config.ClientAuthnMethods = append(
+			p.config.ClientAuthnMethods,
 			goidc.ClientAuthnPrivateKeyJWT,
 		)
-		p.config.ClientAuthn.PrivateKeyJWTSigAlgs = sigAlgs
+		p.config.PrivateKeyJWTSigAlgs = sigAlgs
 		return nil
 	}
 }
@@ -457,11 +470,11 @@ func WithClientSecretJWTAuthn(
 		sigAlgs = append(sigAlgs, jose.HS256)
 	}
 	return func(p *provider) error {
-		p.config.ClientAuthn.Methods = append(
-			p.config.ClientAuthn.Methods,
+		p.config.ClientAuthnMethods = append(
+			p.config.ClientAuthnMethods,
 			goidc.ClientAuthnSecretBasic,
 		)
-		p.config.ClientAuthn.ClientSecretJWTSigAlgs = sigAlgs
+		p.config.ClientSecretJWTSigAlgs = sigAlgs
 		return nil
 	}
 }
@@ -472,7 +485,7 @@ func WithClientSecretJWTAuthn(
 // assertions.
 func WithAssertionLifetime(secs int) ProviderOption {
 	return func(p *provider) error {
-		p.config.ClientAuthn.AssertionLifetimeSecs = secs
+		p.config.AssertionLifetimeSecs = secs
 		return nil
 	}
 }
@@ -480,8 +493,8 @@ func WithAssertionLifetime(secs int) ProviderOption {
 // WithTLSAuthn allows tls client authentication.
 func WithTLSAuthn() ProviderOption {
 	return func(p *provider) error {
-		p.config.ClientAuthn.Methods = append(
-			p.config.ClientAuthn.Methods,
+		p.config.ClientAuthnMethods = append(
+			p.config.ClientAuthnMethods,
 			goidc.ClientAuthnTLS,
 		)
 		return nil
@@ -491,8 +504,8 @@ func WithTLSAuthn() ProviderOption {
 // WithSelfSignedTLSAuthn allows self signed tls client authentication.
 func WithSelfSignedTLSAuthn() ProviderOption {
 	return func(p *provider) error {
-		p.config.ClientAuthn.Methods = append(
-			p.config.ClientAuthn.Methods,
+		p.config.ClientAuthnMethods = append(
+			p.config.ClientAuthnMethods,
 			goidc.ClientAuthnSelfSignedTLS,
 		)
 		return nil
@@ -502,8 +515,8 @@ func WithSelfSignedTLSAuthn() ProviderOption {
 // WithNoneAuthn allows none client authentication.
 func WithNoneAuthn() ProviderOption {
 	return func(p *provider) error {
-		p.config.ClientAuthn.Methods = append(
-			p.config.ClientAuthn.Methods,
+		p.config.ClientAuthnMethods = append(
+			p.config.ClientAuthnMethods,
 			goidc.ClientAuthnNone,
 		)
 		return nil
@@ -536,46 +549,61 @@ func WithAuthorizationDetails(types ...string) ProviderOption {
 			return errors.New("at least one authorization detail type must be informed")
 		}
 
-		p.config.AuthDetails.IsEnabled = true
-		p.config.AuthDetails.Types = types
+		p.config.AuthDetailsIsEnabled = true
+		p.config.AuthDetailTypes = types
 		return nil
 	}
 }
 
 // WithMTLS allows requests to be established with mutual TLS.
-// If clientCertFunc is not nil, it will be used to extract the client
-// certificate from the request. The default logic is to extract the client
-// certificate from the header [goidc.HeaderClientCertificate].
+//
+// The default logic to extract the client certificate is using the header
+// [goidc.HeaderClientCertificate].
 func WithMTLS(
 	mtlsHost string,
-	bindTokens bool,
 	clientCertFunc goidc.ClientCertFunc,
 ) ProviderOption {
 	return func(p *provider) error {
-		p.config.MTLS.IsEnabled = true
-		p.config.MTLS.Host = mtlsHost
-		p.config.MTLS.ClientCertFunc = clientCertFunc
-		p.config.MTLS.TokenBindingIsEnabled = bindTokens
+		p.config.MTLSIsEnabled = true
+		p.config.MTLSHost = mtlsHost
+		return nil
+	}
+}
+
+func WithClientCertFunc(
+	f goidc.ClientCertFunc,
+) ProviderOption {
+	return func(p *provider) error {
+		p.config.ClientCertFunc = f
+		return nil
+	}
+}
+
+func WithMTLSTokenBinding() ProviderOption {
+	return func(p *provider) error {
+		p.config.MTLSTokenBindingIsEnabled = true
 		return nil
 	}
 }
 
 // WithDPoP enables proof of possesion with DPoP.
+//
 // It requires tokens to be bound to a cryptographic key generated by the client.
+//
 // If not algorithm is informed, the default is RS256.
 func WithDPoP(
 	lifetimeSecs int,
-	signingAlgs ...jose.SignatureAlgorithm,
+	sigAlgs ...jose.SignatureAlgorithm,
 ) ProviderOption {
-	if len(signingAlgs) == 0 {
-		signingAlgs = append(signingAlgs, jose.RS256)
+	if len(sigAlgs) == 0 {
+		sigAlgs = append(sigAlgs, jose.RS256)
 	}
 	return func(p *provider) error {
-		p.config.DPoP.IsEnabled = true
-		p.config.DPoP.LifetimeSecs = lifetimeSecs
-		for _, signatureAlgorithm := range signingAlgs {
-			p.config.DPoP.SigAlgs = append(
-				p.config.DPoP.SigAlgs,
+		p.config.DPoPIsEnabled = true
+		p.config.DPoPLifetimeSecs = lifetimeSecs
+		for _, signatureAlgorithm := range sigAlgs {
+			p.config.DPoPSigAlgs = append(
+				p.config.DPoPSigAlgs,
 				jose.SignatureAlgorithm(signatureAlgorithm),
 			)
 		}
@@ -587,11 +615,11 @@ func WithDPoP(
 // For more information, see [WithDPoP].
 func WithDPoPRequired(
 	lifetimeSecs int,
-	signingAlgs ...jose.SignatureAlgorithm,
+	sigAlgs ...jose.SignatureAlgorithm,
 ) ProviderOption {
 	return func(p *provider) error {
-		p.config.DPoP.IsRequired = true
-		return WithDPoP(lifetimeSecs, signingAlgs...)(p)
+		p.config.DPoPIsRequired = true
+		return WithDPoP(lifetimeSecs, sigAlgs...)(p)
 	}
 }
 
@@ -612,26 +640,27 @@ func WithIntrospection(
 		if len(clientAuthnMethods) == 0 {
 			return errors.New("at least one client authentication mechanism must be informed for introspection")
 		}
-		p.config.Introspection.IsEnabled = true
-		p.config.Introspection.ClientAuthnMethods = clientAuthnMethods
+		p.config.IntrospectionIsEnabled = true
+		p.config.IntrospectionClientAuthnMethods = clientAuthnMethods
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantIntrospection)
 		return nil
 	}
 }
 
 // WithPKCE makes proof key for code exchange available to clients.
+//
 // The first code challenged informed is used as the default.
 // If no code challenge method is informed, the default is S256.
 func WithPKCE(
-	codeChallengeMethods ...goidc.CodeChallengeMethod,
+	methods ...goidc.CodeChallengeMethod,
 ) ProviderOption {
-	if len(codeChallengeMethods) == 0 {
-		codeChallengeMethods = append(codeChallengeMethods, goidc.CodeChallengeMethodSHA256)
+	if len(methods) == 0 {
+		methods = append(methods, goidc.CodeChallengeMethodSHA256)
 	}
 	return func(p *provider) error {
-		p.config.PKCE.IsEnabled = true
-		p.config.PKCE.DefaultChallengeMethod = codeChallengeMethods[0]
-		p.config.PKCE.ChallengeMethods = codeChallengeMethods
+		p.config.PKCEIsEnabled = true
+		p.config.PKCEDefaultChallengeMethod = methods[0]
+		p.config.PKCEChallengeMethods = methods
 		return nil
 	}
 }
@@ -639,28 +668,29 @@ func WithPKCE(
 // WithPKCERequired makes proof key for code exchange required.
 // For more info, see [WithPKCE].
 func WithPKCERequired(
-	codeChallengeMethods ...goidc.CodeChallengeMethod,
+	methods ...goidc.CodeChallengeMethod,
 ) ProviderOption {
 	return func(p *provider) error {
-		p.config.PKCE.IsRequired = true
-		return WithPKCE(codeChallengeMethods...)(p)
+		p.config.PKCEIsRequired = true
+		return WithPKCE(methods...)(p)
 	}
 }
 
 // WithACRs makes available authentication context references.
 // These values will be published as are.
 func WithACRs(
-	acrValues ...goidc.ACR,
+	values ...goidc.ACR,
 ) ProviderOption {
 	return func(p *provider) error {
-		p.config.ACRs = acrValues
+		p.config.ACRs = values
 		return nil
 	}
 }
 
-// WithDisplayValues makes available display values during requests to the authorization
-// endpoint.
-// These values will be published as are.
+// WithDisplayValues makes available display values during requests to the
+// authorization endpoint.
+//
+// These values will be published as are in the well known endpoint response.
 func WithDisplayValues(values ...goidc.DisplayValue) ProviderOption {
 	return func(p *provider) error {
 		p.config.DisplayValues = values
@@ -669,6 +699,7 @@ func WithDisplayValues(values ...goidc.DisplayValue) ProviderOption {
 }
 
 // WithAuthenticationSessionTimeout sets the user authentication session lifetime.
+//
 // This defines how long an authorization request may last.
 func WithAuthenticationSessionTimeout(timeoutSecs int) ProviderOption {
 	return func(p *provider) error {
@@ -711,9 +742,9 @@ func WithPolicy(policy goidc.AuthnPolicy) ProviderOption {
 // authorization request results in error, but the error can't be redirected.
 // This can be used to display a page with the error.
 // The default behavior is to display a JSON with the error information to the user.
-func WithAuthorizeErrorPlugin(plugin goidc.AuthorizeErrorFunc) ProviderOption {
+func WithAuthorizeErrorPlugin(plugin goidc.RenderErrorFunc) ProviderOption {
 	return func(p *provider) error {
-		p.config.AuthorizeErrPlugin = plugin
+		p.config.RenderErrorFunc = plugin
 		return nil
 	}
 }
@@ -723,15 +754,15 @@ func WithResourceIndicators(resources ...string) ProviderOption {
 		if len(resources) == 0 {
 			return errors.New("at least one resource indicator must be provided")
 		}
-		p.config.ResourceIndicators.IsEnabled = true
-		p.config.ResourceIndicators.Resources = resources
+		p.config.ResourceIndicatorsIsEnabled = true
+		p.config.Resources = resources
 		return nil
 	}
 }
 
 func WithResourceIndicatorsRequired(resources ...string) ProviderOption {
 	return func(p *provider) error {
-		p.config.ResourceIndicators.IsRequired = true
+		p.config.ResourceIndicatorsIsRequired = true
 		return WithResourceIndicators(resources...)(p)
 	}
 }

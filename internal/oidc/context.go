@@ -3,12 +3,10 @@ package oidc
 import (
 	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"html/template"
 	"net/http"
 	"net/textproto"
-	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -25,14 +23,14 @@ type Context struct {
 }
 
 func NewContext(
-	configuration Configuration,
-	req *http.Request,
-	resp http.ResponseWriter,
+	w http.ResponseWriter,
+	r *http.Request,
+	config Configuration,
 ) *Context {
 	return &Context{
-		Configuration: configuration,
-		Req:           req,
-		Resp:          resp,
+		Configuration: config,
+		Req:           r,
+		Resp:          w,
 	}
 }
 
@@ -41,31 +39,31 @@ func Handler(
 	exec func(ctx *Context),
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		exec(NewContext(*config, r, w))
+		exec(NewContext(w, r, *config))
 	}
 }
 
 func (ctx *Context) ClientSignatureAlgorithms() []jose.SignatureAlgorithm {
 	return append(
-		ctx.ClientAuthn.PrivateKeyJWTSigAlgs,
-		ctx.ClientAuthn.ClientSecretJWTSigAlgs...,
+		ctx.PrivateKeyJWTSigAlgs,
+		ctx.ClientSecretJWTSigAlgs...,
 	)
 }
 
 func (ctx *Context) IntrospectionClientSignatureAlgorithms() []jose.SignatureAlgorithm {
 	var signatureAlgorithms []jose.SignatureAlgorithm
 
-	if slices.Contains(ctx.Introspection.ClientAuthnMethods, goidc.ClientAuthnPrivateKeyJWT) {
+	if slices.Contains(ctx.IntrospectionClientAuthnMethods, goidc.ClientAuthnPrivateKeyJWT) {
 		signatureAlgorithms = append(
 			signatureAlgorithms,
-			ctx.ClientAuthn.PrivateKeyJWTSigAlgs...,
+			ctx.PrivateKeyJWTSigAlgs...,
 		)
 	}
 
-	if slices.Contains(ctx.Introspection.ClientAuthnMethods, goidc.ClientAuthnSecretJWT) {
+	if slices.Contains(ctx.IntrospectionClientAuthnMethods, goidc.ClientAuthnSecretJWT) {
 		signatureAlgorithms = append(
 			signatureAlgorithms,
-			ctx.ClientAuthn.ClientSecretJWTSigAlgs...,
+			ctx.ClientSecretJWTSigAlgs...,
 		)
 	}
 
@@ -88,52 +86,29 @@ func (ctx *Context) DPoPJWT() (string, bool) {
 }
 
 // TODO: return an error.
-func (ctx *Context) ClientCertificate() (*x509.Certificate, bool) {
+func (ctx *Context) ClientCert() (*x509.Certificate, bool) {
 
-	if ctx.MTLS.ClientCertFunc != nil {
-		return ctx.MTLS.ClientCertFunc(ctx.Request())
-	}
-
-	rawClientCert, ok := ctx.Header(goidc.HeaderClientCertificate)
-	if !ok {
+	if ctx.ClientCertFunc == nil {
 		return nil, false
 	}
 
-	rawClientCertDecoded, err := url.QueryUnescape(rawClientCert)
-	if err != nil {
-		return nil, false
-	}
-
-	clientCertPEM, _ := pem.Decode([]byte(rawClientCertDecoded))
-	if clientCertPEM == nil {
-		return nil, false
-	}
-
-	clientCert, err := x509.ParseCertificate(clientCertPEM.Bytes)
-	if err != nil {
-		return nil, false
-	}
-
-	return clientCert, true
+	return ctx.ClientCertFunc(ctx.Request())
 }
 
-func (ctx *Context) ExecuteDCRPlugin(c *goidc.ClientMetaInfo) error {
-	if ctx.DCR.Plugin == nil {
+func (ctx *Context) HandleDynamicClient(c *goidc.ClientMetaInfo) error {
+	if ctx.HandleDynamicClientFunc == nil {
 		return nil
 	}
-	return ctx.DCR.Plugin(ctx.Request(), c)
+
+	return ctx.HandleDynamicClientFunc(ctx.Request(), c)
 }
 
-func (ctx *Context) ExecuteAuthorizeErrorPlugin(err error) error {
-	if ctx.AuthorizeErrPlugin == nil {
+func (ctx *Context) RenderError(err error) error {
+	if ctx.RenderErrorFunc == nil {
 		return err
 	}
 
-	if err := ctx.AuthorizeErrPlugin(ctx.Response(), ctx.Request(), err); err != nil {
-		return err
-	}
-
-	return nil
+	return ctx.RenderErrorFunc(ctx.Response(), ctx.Request(), err)
 }
 
 // Audiences returns the host names trusted by the server to validate assertions.
@@ -143,11 +118,11 @@ func (ctx *Context) Audiences() []string {
 		ctx.Host,
 		ctx.Host + ctx.Request().RequestURI,
 	}
-	if ctx.MTLS.IsEnabled {
+	if ctx.MTLSIsEnabled {
 		audiences = append(
 			audiences,
-			ctx.MTLS.Host,
-			ctx.MTLS.Host+ctx.Request().RequestURI,
+			ctx.MTLSHost,
+			ctx.MTLSHost+ctx.Request().RequestURI,
 		)
 	}
 	return audiences
@@ -178,7 +153,7 @@ func (ctx *Context) FindAvailablePolicy(client *goidc.Client, session *goidc.Aut
 //---------------------------------------- CRUD ----------------------------------------//
 
 func (ctx *Context) SaveClient(client *goidc.Client) error {
-	return ctx.Storage.Client.Save(ctx.Request().Context(), client)
+	return ctx.ClientManager.Save(ctx.Request().Context(), client)
 }
 
 func (ctx *Context) Client(clientID string) (*goidc.Client, error) {
@@ -188,15 +163,15 @@ func (ctx *Context) Client(clientID string) (*goidc.Client, error) {
 		}
 	}
 
-	return ctx.Storage.Client.Get(ctx.Request().Context(), clientID)
+	return ctx.ClientManager.Get(ctx.Request().Context(), clientID)
 }
 
 func (ctx *Context) DeleteClient(id string) error {
-	return ctx.Storage.Client.Delete(ctx.Request().Context(), id)
+	return ctx.ClientManager.Delete(ctx.Request().Context(), id)
 }
 
 func (ctx *Context) SaveGrantSession(session *goidc.GrantSession) error {
-	return ctx.Storage.GrantSession.Save(
+	return ctx.GrantSessionManager.Save(
 		ctx.Request().Context(),
 		session,
 	)
@@ -208,7 +183,7 @@ func (ctx *Context) GrantSessionByTokenID(
 	*goidc.GrantSession,
 	error,
 ) {
-	return ctx.Storage.GrantSession.GetByTokenID(
+	return ctx.GrantSessionManager.GetByTokenID(
 		ctx.Request().Context(),
 		id,
 	)
@@ -220,18 +195,18 @@ func (ctx *Context) GrantSessionByRefreshToken(
 	*goidc.GrantSession,
 	error,
 ) {
-	return ctx.Storage.GrantSession.GetByRefreshToken(
+	return ctx.GrantSessionManager.GetByRefreshToken(
 		ctx.Request().Context(),
 		token,
 	)
 }
 
 func (ctx *Context) DeleteGrantSession(id string) error {
-	return ctx.Storage.GrantSession.Delete(ctx.Request().Context(), id)
+	return ctx.GrantSessionManager.Delete(ctx.Request().Context(), id)
 }
 
 func (ctx *Context) SaveAuthnSession(session *goidc.AuthnSession) error {
-	return ctx.Storage.AuthnSession.Save(ctx.Request().Context(), session)
+	return ctx.AuthnSessionManager.Save(ctx.Request().Context(), session)
 }
 
 func (ctx *Context) AuthnSessionByCallbackID(
@@ -240,7 +215,7 @@ func (ctx *Context) AuthnSessionByCallbackID(
 	*goidc.AuthnSession,
 	error,
 ) {
-	return ctx.Storage.AuthnSession.GetByCallbackID(ctx.Request().Context(), id)
+	return ctx.AuthnSessionManager.GetByCallbackID(ctx.Request().Context(), id)
 }
 
 func (ctx *Context) AuthnSessionByAuthorizationCode(
@@ -249,7 +224,7 @@ func (ctx *Context) AuthnSessionByAuthorizationCode(
 	*goidc.AuthnSession,
 	error,
 ) {
-	return ctx.Storage.AuthnSession.GetByAuthorizationCode(
+	return ctx.AuthnSessionManager.GetByAuthorizationCode(
 		ctx.Request().Context(),
 		code,
 	)
@@ -261,21 +236,21 @@ func (ctx *Context) AuthnSessionByRequestURI(
 	*goidc.AuthnSession,
 	error,
 ) {
-	return ctx.Storage.AuthnSession.GetByRequestURI(ctx.Request().Context(), uri)
+	return ctx.AuthnSessionManager.GetByRequestURI(ctx.Request().Context(), uri)
 }
 
 func (ctx *Context) DeleteAuthnSession(id string) error {
-	return ctx.Storage.AuthnSession.Delete(ctx.Request().Context(), id)
+	return ctx.AuthnSessionManager.Delete(ctx.Request().Context(), id)
 }
 
 //---------------------------------------- HTTP Utils ----------------------------------------//
 
 func (ctx *Context) BaseURL() string {
-	return ctx.Host + ctx.Endpoint.Prefix
+	return ctx.Host + ctx.EndpointPrefix
 }
 
 func (ctx *Context) MTLSBaseURL() string {
-	return ctx.MTLS.Host + ctx.Endpoint.Prefix
+	return ctx.MTLSHost + ctx.EndpointPrefix
 }
 
 func (ctx *Context) Request() *http.Request {
@@ -389,9 +364,6 @@ func (ctx *Context) WriteJWT(token string, status int) error {
 }
 
 func (ctx *Context) WriteError(err error) {
-	if ctx.Event.HandleError != nil {
-		ctx.Event.HandleError(ctx.Request(), err)
-	}
 
 	var oidcErr oidcerr.Error
 	if !errors.As(err, &oidcErr) {
@@ -475,37 +447,37 @@ func (ctx *Context) TokenSignatureKey(tokenOptions goidc.TokenOptions) jose.JSON
 func (ctx *Context) UserInfoSignatureKey(client *goidc.Client) jose.JSONWebKey {
 	return ctx.privateKeyBasedOnAlgorithmOrDefault(
 		client.UserInfoSigAlg,
-		ctx.User.DefaultSignatureKeyID,
-		ctx.User.SigKeyIDs,
+		ctx.UserDefaultSigKeyID,
+		ctx.UserSigKeyIDs,
 	)
 }
 
 func (ctx *Context) IDTokenSignatureKey(client *goidc.Client) jose.JSONWebKey {
 	return ctx.privateKeyBasedOnAlgorithmOrDefault(
 		client.IDTokenSigAlg,
-		ctx.User.DefaultSignatureKeyID,
-		ctx.User.SigKeyIDs,
+		ctx.UserDefaultSigKeyID,
+		ctx.UserSigKeyIDs,
 	)
 }
 
 func (ctx *Context) JARMSignatureKey(client *goidc.Client) jose.JSONWebKey {
 	return ctx.privateKeyBasedOnAlgorithmOrDefault(
 		client.JARMSigAlg,
-		ctx.JARM.DefaultSigKeyID,
-		ctx.JARM.SigKeyIDs,
+		ctx.JARMDefaultSigKeyID,
+		ctx.JARMSigKeyIDs,
 	)
 }
 
 func (ctx *Context) UserInfoSignatureAlgorithms() []jose.SignatureAlgorithm {
-	return ctx.signatureAlgorithms(ctx.User.SigKeyIDs)
+	return ctx.signatureAlgorithms(ctx.UserSigKeyIDs)
 }
 
 func (ctx *Context) JARMSignatureAlgorithms() []jose.SignatureAlgorithm {
-	return ctx.signatureAlgorithms(ctx.JARM.SigKeyIDs)
+	return ctx.signatureAlgorithms(ctx.JARMSigKeyIDs)
 }
 
 func (ctx *Context) JARKeyEncryptionAlgorithms() []jose.KeyAlgorithm {
-	return ctx.keyEncryptionAlgorithms(ctx.JAR.KeyEncIDs)
+	return ctx.keyEncryptionAlgorithms(ctx.JARKeyEncIDs)
 }
 
 func (ctx *Context) keyEncryptionAlgorithms(keyIDs []string) []jose.KeyAlgorithm {

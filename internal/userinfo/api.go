@@ -8,12 +8,12 @@ import (
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 	router.HandleFunc(
-		"POST "+config.Endpoint.Prefix+config.Endpoint.UserInfo,
+		"POST "+config.EndpointPrefix+config.EndpointUserInfo,
 		oidc.Handler(config, handle),
 	)
 
 	router.HandleFunc(
-		"GET "+config.Endpoint.Prefix+config.Endpoint.UserInfo,
+		"GET "+config.EndpointPrefix+config.EndpointUserInfo,
 		oidc.Handler(config, handle),
 	)
 }

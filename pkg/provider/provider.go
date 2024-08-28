@@ -42,16 +42,15 @@ func New(
 	Provider,
 	error,
 ) {
-
 	// Use the first signature key as the default key.
-	var defaultSignatureKeyID string
+	var defaultSigKeyID string
 	for _, key := range privateJWKS.Keys {
 		if key.Use == string(goidc.KeyUsageSignature) {
-			defaultSignatureKeyID = key.KeyID
+			defaultSigKeyID = key.KeyID
 			break
 		}
 	}
-	if defaultSignatureKeyID == "" {
+	if defaultSigKeyID == "" {
 		return nil, errors.New("the private jwks doesn't contain any signing key")
 	}
 
@@ -59,43 +58,41 @@ func New(
 		config: oidc.Configuration{
 			Host:    issuer,
 			Profile: goidc.ProfileOpenID,
-			Scopes:  []goidc.Scope{goidc.ScopeOpenID},
-			TokenOptions: func(client *goidc.Client, scopes string) (goidc.TokenOptions, error) {
-				return goidc.NewJWTTokenOptions(defaultSignatureKeyID, defaultTokenLifetimeSecs), nil
-			},
-			PrivateJWKS: privateJWKS,
-			GrantTypes: []goidc.GrantType{
-				goidc.GrantAuthorizationCode,
-			},
-			ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCode},
+
+			ClientManager:       storage.NewClientManager(),
+			AuthnSessionManager: storage.NewAuthnSessionManager(),
+			GrantSessionManager: storage.NewGrantSessionManager(),
+
+			Scopes:              []goidc.Scope{goidc.ScopeOpenID},
+			TokenOptions:        defaultTokenOptionsFunc(defaultSigKeyID),
+			PrivateJWKS:         privateJWKS,
+			UserDefaultSigKeyID: defaultSigKeyID,
+			UserSigKeyIDs:       []string{defaultSigKeyID},
+			IDTokenLifetimeSecs: defaultIDTokenLifetimeSecs,
+			GrantTypes:          []goidc.GrantType{goidc.GrantAuthorizationCode},
+			ResponseTypes:       []goidc.ResponseType{goidc.ResponseTypeCode},
 			ResponseModes: []goidc.ResponseMode{
 				goidc.ResponseModeQuery,
 				goidc.ResponseModeFragment,
 				goidc.ResponseModeFormPost,
 			},
-			SubIdentifierTypes:      []goidc.SubjectIdentifierType{goidc.SubjectIdentifierPublic},
-			ClaimTypes:              []goidc.ClaimType{goidc.ClaimTypeNormal},
-			AuthnSessionTimeoutSecs: defaultAuthenticationSessionTimeoutSecs,
+			SubIdentifierTypes: []goidc.SubjectIdentifierType{
+				goidc.SubjectIdentifierPublic,
+			},
+			ClaimTypes:                  []goidc.ClaimType{goidc.ClaimTypeNormal},
+			AuthnSessionTimeoutSecs:     defaultAuthnSessionTimeoutSecs,
+			AssertionLifetimeSecs:       defaultAssertionLifetimeSecs,
+			EndpointWellKnown:           defaultEndpointWellKnown,
+			EndpointJWKS:                defaultEndpointJSONWebKeySet,
+			EndpointToken:               defaultEndpointToken,
+			EndpointAuthorize:           defaultEndpointAuthorize,
+			EndpointPushedAuthorization: defaultEndpointPushedAuthorizationRequest,
+			EndpointDCR:                 defaultEndpointDynamicClient,
+			EndpointUserInfo:            defaultEndpointUserInfo,
+			EndpointIntrospection:       defaultEndpointTokenIntrospection,
+			ClientCertFunc:              defaultClientCertFunc(),
 		},
 	}
-	p.config.Storage.Client = storage.NewClientManager()
-	p.config.Storage.AuthnSession = storage.NewAuthnSessionManager()
-	p.config.Storage.GrantSession = storage.NewGrantSessionManager()
-
-	p.config.User.DefaultSignatureKeyID = defaultSignatureKeyID
-	p.config.User.SigKeyIDs = []string{defaultSignatureKeyID}
-	p.config.User.IDTokenLifetimeSecs = defaultIDTokenLifetimeSecs
-
-	p.config.Endpoint.WellKnown = goidc.EndpointWellKnown
-	p.config.Endpoint.JWKS = goidc.EndpointJSONWebKeySet
-	p.config.Endpoint.Token = goidc.EndpointToken
-	p.config.Endpoint.Authorize = goidc.EndpointAuthorize
-	p.config.Endpoint.PushedAuthorization = goidc.EndpointPushedAuthorizationRequest
-	p.config.Endpoint.DCR = goidc.EndpointDynamicClient
-	p.config.Endpoint.UserInfo = goidc.EndpointUserInfo
-	p.config.Endpoint.Introspection = goidc.EndpointTokenIntrospection
-
-	p.config.ClientAuthn.AssertionLifetimeSecs = 600
 
 	for _, opt := range opts {
 		if err := opt(p); err != nil {
@@ -158,8 +155,8 @@ func (p *provider) RunTLS(
 	}
 	mux.Handle(hostURL.Host+"/", handler)
 
-	if p.config.MTLS.IsEnabled {
-		mtlsHostURL, err := url.Parse(p.config.MTLS.Host)
+	if p.config.MTLSIsEnabled {
+		mtlsHostURL, err := url.Parse(p.config.MTLSHost)
 		if err != nil {
 			return err
 		}
@@ -171,21 +168,21 @@ func (p *provider) RunTLS(
 		Addr:    config.TLSAddress,
 		Handler: mux,
 		TLSConfig: &tls.Config{
-			ClientCAs:    config.CaCertificatePool,
+			ClientCAs:    config.CaCertPool,
 			ClientAuth:   tls.VerifyClientCertIfGiven,
 			CipherSuites: config.CipherSuites,
 		},
 	}
-	return server.ListenAndServeTLS(config.ServerCertificate, config.ServerKey)
+	return server.ListenAndServeTLS(config.ServerCert, config.ServerKey)
 }
 
 // TokenInfo returns information about the access token sent in the request.
 // It also validates token binding (DPoP or TLS).
 func (p *provider) TokenInfo(
-	req *http.Request,
-	resp http.ResponseWriter,
+	w http.ResponseWriter,
+	r *http.Request,
 ) goidc.TokenInfo {
-	ctx := oidc.NewContext(p.config, req, resp)
+	ctx := oidc.NewContext(w, r, p.config)
 	accessToken, tokenType, ok := ctx.AuthorizationToken()
 	if !ok {
 		return goidc.TokenInfo{}
@@ -211,7 +208,7 @@ func (p *provider) Client(
 	*goidc.Client,
 	error,
 ) {
-	return p.config.Storage.Client.Get(ctx, clientID)
+	return p.config.ClientManager.Get(ctx, clientID)
 }
 
 // TODO: Refactor.
@@ -233,9 +230,9 @@ func (p *provider) validateConfiguration() error {
 }
 
 type TLSOptions struct {
-	TLSAddress        string
-	ServerCertificate string
-	ServerKey         string
-	CipherSuites      []uint16
-	CaCertificatePool *x509.CertPool
+	TLSAddress   string
+	ServerCert   string
+	ServerKey    string
+	CipherSuites []uint16
+	CaCertPool   *x509.CertPool
 }

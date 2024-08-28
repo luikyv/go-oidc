@@ -16,12 +16,12 @@ func validateTokenBindingIsRequired(
 	tokenWillBeBound := false
 
 	_, ok := ctx.DPoPJWT()
-	if ctx.DPoP.IsEnabled && ok {
+	if ctx.DPoPIsEnabled && ok {
 		tokenWillBeBound = true
 	}
 
-	_, ok = ctx.ClientCertificate()
-	if ctx.MTLS.TokenBindingIsEnabled && ok {
+	_, ok = ctx.ClientCert()
+	if ctx.MTLSTokenBindingIsEnabled && ok {
 		tokenWillBeBound = true
 	}
 
@@ -42,13 +42,13 @@ func validateTokenBindingRequestWithDPoP(
 	dpopJWT, ok := ctx.DPoPJWT()
 	// Return an error if the DPoP header was not informed, but it's required
 	// either in the context or by the client.
-	if !ok && (ctx.DPoP.IsRequired || client.DPoPIsRequired) {
+	if !ok && (ctx.DPoPIsRequired || client.DPoPIsRequired) {
 		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid dpop header")
 	}
 
 	// If DPoP is not enabled or, if it is, but the DPoP header was not informed,
 	// we just ignore it.
-	if !ctx.DPoP.IsEnabled || !ok {
+	if !ctx.DPoPIsEnabled || !ok {
 		return nil
 	}
 

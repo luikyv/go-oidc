@@ -80,7 +80,6 @@ make docs
 Make sure the `GOBIN` environment variable is set.
 
 ## To Do's
-* Get rid of the custom context.
 * Don't use the default http client.
 * Implement the revocation endpoint. Revoke by jti.
 * Should I add the default encryption algorithm instead of requiring the dev to pass it?
@@ -91,3 +90,4 @@ Make sure the `GOBIN` environment variable is set.
 * Better way to handle expired sessions.
 * Events.
 * Compare ACR values.
+* Refactor DPoP.

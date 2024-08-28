@@ -36,7 +36,7 @@ func pushAuth(
 	}
 	return pushedResponse{
 		RequestURI: session.RequestURI,
-		ExpiresIn:  ctx.PAR.LifetimeSecs,
+		ExpiresIn:  ctx.PARLifetimeSecs,
 	}, nil
 }
 
@@ -58,7 +58,7 @@ func pushAuthnSession(
 		return nil, err
 	}
 	session.RequestURI = reqURI
-	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.PAR.LifetimeSecs
+	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.PARLifetimeSecs
 
 	return session, nil
 }

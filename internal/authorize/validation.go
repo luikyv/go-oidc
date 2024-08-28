@@ -28,7 +28,7 @@ func validateRequestWithPAR(
 		return oidcerr.New(oidcerr.CodeAccessDenied, "invalid client")
 	}
 
-	if ctx.PAR.AllowUnregisteredRedirectURI && req.RedirectURI != "" {
+	if ctx.PARAllowUnregisteredRedirectURI && req.RedirectURI != "" {
 		c.RedirectURIs = append(c.RedirectURIs, req.RedirectURI)
 	}
 
@@ -125,7 +125,7 @@ func validatePushedRequest(
 			"request_uri is not allowed during PAR")
 	}
 
-	if ctx.PAR.AllowUnregisteredRedirectURI && req.RedirectURI != "" {
+	if ctx.PARAllowUnregisteredRedirectURI && req.RedirectURI != "" {
 		c.RedirectURIs = append(c.RedirectURIs, req.RedirectURI)
 	}
 
@@ -246,7 +246,7 @@ func validateParamsAsOptionals(
 	}
 
 	if params.CodeChallengeMethod != "" &&
-		!slices.Contains(ctx.PKCE.ChallengeMethods, params.CodeChallengeMethod) {
+		!slices.Contains(ctx.PKCEChallengeMethods, params.CodeChallengeMethod) {
 		return newRedirectionError(oidcerr.CodeInvalidRequest,
 			"invalid code_challenge_method", params)
 	}
@@ -297,12 +297,12 @@ func validatePKCE(
 	params goidc.AuthorizationParameters,
 	c *goidc.Client,
 ) error {
-	if ctx.PKCE.IsEnabled && c.AuthnMethod == goidc.ClientAuthnNone && params.CodeChallenge == "" {
+	if ctx.PKCEIsEnabled && c.AuthnMethod == goidc.ClientAuthnNone && params.CodeChallenge == "" {
 		return newRedirectionError(oidcerr.CodeInvalidRequest,
 			"pkce is required for public clients", params)
 	}
 
-	if ctx.PKCE.IsRequired && params.CodeChallenge == "" {
+	if ctx.PKCEIsRequired && params.CodeChallenge == "" {
 		return newRedirectionError(oidcerr.CodeInvalidRequest,
 			"code_challenge is required", params)
 	}
@@ -365,13 +365,13 @@ func validateAuthorizationDetails(
 	params goidc.AuthorizationParameters,
 	c *goidc.Client,
 ) error {
-	if !ctx.AuthDetails.IsEnabled {
+	if !ctx.AuthDetailsIsEnabled {
 		return nil
 	}
 
 	for _, authDetail := range params.AuthorizationDetails {
 		authDetailType := authDetail.Type()
-		if !slices.Contains(ctx.AuthDetails.Types, authDetailType) ||
+		if !slices.Contains(ctx.AuthDetailTypes, authDetailType) ||
 			!isAuthDetailTypeAllowed(c, authDetailType) {
 			return newRedirectionError(oidcerr.CodeInvalidRequest,
 				"invalid authorization detail type", params)

@@ -35,9 +35,9 @@ func validateJWKS(provider provider) error {
 func validateSignatureKeys(provider provider) error {
 
 	for _, keyID := range slices.Concat(
-		[]string{provider.config.User.DefaultSignatureKeyID},
-		provider.config.User.SigKeyIDs,
-		provider.config.JARM.SigKeyIDs,
+		[]string{provider.config.UserDefaultSigKeyID},
+		provider.config.UserSigKeyIDs,
+		provider.config.JARMSigKeyIDs,
 	) {
 		jwkSlice := provider.config.PrivateJWKS.Key(keyID)
 		if len(jwkSlice) != 1 {
@@ -59,7 +59,7 @@ func validateSignatureKeys(provider provider) error {
 
 func validateEncryptionKeys(provider provider) error {
 	for _, keyID := range slices.Concat(
-		provider.config.JAR.KeyEncIDs,
+		provider.config.JARKeyEncIDs,
 	) {
 		jwkSlice := provider.config.PrivateJWKS.Key(keyID)
 		if len(jwkSlice) != 1 {
@@ -76,7 +76,7 @@ func validateEncryptionKeys(provider provider) error {
 }
 
 func validatePrivateKeyJWTSignatureAlgorithms(provider provider) error {
-	for _, signatureAlgorithm := range provider.config.ClientAuthn.PrivateKeyJWTSigAlgs {
+	for _, signatureAlgorithm := range provider.config.PrivateKeyJWTSigAlgs {
 		if strings.HasPrefix(string(signatureAlgorithm), "HS") {
 			return errors.New("symetric algorithms are not allowed for private_key_jwt authentication")
 		}
@@ -86,7 +86,7 @@ func validatePrivateKeyJWTSignatureAlgorithms(provider provider) error {
 }
 
 func validateClientSecretJWTSignatureAlgorithms(provider provider) error {
-	for _, signatureAlgorithm := range provider.config.ClientAuthn.ClientSecretJWTSigAlgs {
+	for _, signatureAlgorithm := range provider.config.ClientSecretJWTSigAlgs {
 		if !strings.HasPrefix(string(signatureAlgorithm), "HS") {
 			return errors.New("assymetric algorithms are not allowed for client_secret_jwt authentication")
 		}
@@ -97,16 +97,16 @@ func validateClientSecretJWTSignatureAlgorithms(provider provider) error {
 
 func validateIntrospectionClientAuthnMethods(provider provider) error {
 
-	if !provider.config.Introspection.IsEnabled {
+	if !provider.config.IntrospectionIsEnabled {
 		return nil
 	}
 
-	if !slices.Contains(provider.config.ClientAuthn.Methods, goidc.ClientAuthnNone) {
+	if !slices.Contains(provider.config.ClientAuthnMethods, goidc.ClientAuthnNone) {
 		return errors.New("none client authentication method not allowed for token introspection")
 	}
 
-	for _, method := range provider.config.Introspection.ClientAuthnMethods {
-		if !slices.Contains(provider.config.ClientAuthn.Methods, method) {
+	for _, method := range provider.config.IntrospectionClientAuthnMethods {
+		if !slices.Contains(provider.config.ClientAuthnMethods, method) {
 			return errors.New("invalid client authentication method for token introspection")
 		}
 	}
@@ -115,7 +115,7 @@ func validateIntrospectionClientAuthnMethods(provider provider) error {
 }
 
 func validateJAREncryption(provider provider) error {
-	if provider.config.JAR.EncIsEnabled && !provider.config.JAR.IsEnabled {
+	if provider.config.JAREncIsEnabled && !provider.config.JARIsEnabled {
 		return errors.New("JAR must be enabled if JAR encryption is enabled")
 	}
 
@@ -123,7 +123,7 @@ func validateJAREncryption(provider provider) error {
 }
 
 func validateJARMEncryption(provider provider) error {
-	if provider.config.JARM.EncIsEnabled && !provider.config.JARM.IsEnabled {
+	if provider.config.JARMEncIsEnabled && !provider.config.JARMIsEnabled {
 		return errors.New("JARM must be enabled if JARM encryption is enabled")
 	}
 
@@ -132,8 +132,8 @@ func validateJARMEncryption(provider provider) error {
 
 func validateTokenBinding(provider provider) error {
 	if provider.config.TokenBindingIsRequired &&
-		!provider.config.DPoP.IsEnabled &&
-		!provider.config.MTLS.TokenBindingIsEnabled {
+		!provider.config.DPoPIsEnabled &&
+		!provider.config.MTLSTokenBindingIsEnabled {
 		return errors.New("if sender constraining tokens is required, at least one mechanism must be enabled, either DPoP or TLS")
 	}
 
@@ -145,13 +145,13 @@ func validateOpenIDProfile(provider provider) error {
 		return nil
 	}
 
-	defaultIDTokenSignatureKey := provider.config.PrivateJWKS.Key(provider.config.User.DefaultSignatureKeyID)[0]
+	defaultIDTokenSignatureKey := provider.config.PrivateJWKS.Key(provider.config.UserDefaultSigKeyID)[0]
 	if defaultIDTokenSignatureKey.Algorithm != string(jose.RS256) {
 		return errors.New("the default signature algorithm for ID tokens must be RS256")
 	}
 
-	if provider.config.JARM.IsEnabled {
-		defaultJARMSignatureKey := provider.config.PrivateJWKS.Key(provider.config.JARM.DefaultSigKeyID)[0]
+	if provider.config.JARMIsEnabled {
+		defaultJARMSignatureKey := provider.config.PrivateJWKS.Key(provider.config.JARMDefaultSigKeyID)[0]
 		if defaultJARMSignatureKey.Algorithm != string(jose.RS256) {
 			return errors.New("the default signature algorithm for JARM must be RS256")
 		}
@@ -166,7 +166,7 @@ func validateFAPI2Profile(provider provider) error {
 	}
 
 	// Validate the authentication methods.
-	if slices.ContainsFunc(provider.config.ClientAuthn.Methods, func(authnMethod goidc.ClientAuthnType) bool {
+	if slices.ContainsFunc(provider.config.ClientAuthnMethods, func(authnMethod goidc.ClientAuthnType) bool {
 		return authnMethod != goidc.ClientAuthnPrivateKeyJWT && authnMethod != goidc.ClientAuthnTLS
 	}) {
 		return errors.New("only private_key_jwt and tls_client_auth are allowed for FAPI 2.0")
@@ -176,11 +176,11 @@ func validateFAPI2Profile(provider provider) error {
 		return errors.New("the implict grant is not allowed for FAPI 2.0")
 	}
 
-	if !provider.config.PAR.IsEnabled || !provider.config.PAR.IsRequired {
+	if !provider.config.PARIsEnabled || !provider.config.PARIsRequired {
 		return errors.New("pushed authorization requests is required for FAPI 2.0")
 	}
 
-	if !provider.config.PKCE.IsEnabled || !provider.config.PKCE.IsRequired {
+	if !provider.config.PKCEIsEnabled || !provider.config.PKCEIsRequired {
 		return errors.New("proof key for code exchange is required for FAPI 2.0")
 	}
 
@@ -189,7 +189,7 @@ func validateFAPI2Profile(provider provider) error {
 	}
 
 	if slices.Contains(provider.config.GrantTypes, goidc.GrantRefreshToken) &&
-		provider.config.RefreshToken.RotationIsEnabled {
+		provider.config.RefreshTokenRotationIsEnabled {
 		// FAPI 2.0 says that, when rotation is enabled, the old refresh tokens must still be valid. Here, we just forget the old refresh tokens.
 		return errors.New("refresh token rotation is not implemented according to FAPI 2.0, so it shouldn't be enabled when using this profile")
 	}

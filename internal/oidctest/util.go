@@ -106,35 +106,28 @@ func NewContextWithRequest(t *testing.T, r *http.Request) *oidc.Context {
 		},
 		AuthnSessionTimeoutSecs: 60,
 	}
-	config.Storage.Client = storage.NewClientManager()
-	config.Storage.GrantSession = storage.NewGrantSessionManager()
-	config.Storage.AuthnSession = storage.NewAuthnSessionManager()
-	config.ClientAuthn.Methods = []goidc.ClientAuthnType{goidc.ClientAuthnNone, goidc.ClientAuthnSecretPost}
-	config.User.DefaultSignatureKeyID = ServerPrivateJWK.KeyID
-	config.User.SigKeyIDs = []string{ServerPrivateJWK.KeyID}
-	config.Endpoint.WellKnown = goidc.EndpointWellKnown
-	config.Endpoint.JWKS = goidc.EndpointJSONWebKeySet
-	config.Endpoint.Token = goidc.EndpointToken
-	config.Endpoint.Authorize = goidc.EndpointAuthorize
-	config.Endpoint.PushedAuthorization = goidc.EndpointPushedAuthorizationRequest
-	config.Endpoint.DCR = goidc.EndpointDynamicClient
-	config.Endpoint.UserInfo = goidc.EndpointUserInfo
-	config.Endpoint.Introspection = goidc.EndpointTokenIntrospection
+	config.ClientAuthnMethods = []goidc.ClientAuthnType{goidc.ClientAuthnNone, goidc.ClientAuthnSecretPost}
+	config.UserDefaultSigKeyID = ServerPrivateJWK.KeyID
+	config.UserSigKeyIDs = []string{ServerPrivateJWK.KeyID}
+	config.EndpointWellKnown = "/.well-known/openid-configuration"
+	config.EndpointJWKS = "/jwks"
+	config.EndpointToken = "/token"
+	config.EndpointAuthorize = "/authorize"
+	config.EndpointPushedAuthorization = "/par"
+	config.EndpointDCR = "/register"
+	config.EndpointUserInfo = "/userinfo"
+	config.EndpointIntrospection = "/introspect"
 
-	config.ClientAuthn.AssertionLifetimeSecs = 600
+	config.AssertionLifetimeSecs = 600
 
-	ctx := oidc.NewContext(
-		config,
-		r,
-		httptest.NewRecorder(),
-	)
+	ctx := oidc.NewContext(httptest.NewRecorder(), r, config)
 	require.Nil(t, ctx.SaveClient(NewClient(t)), "could not create the test client")
 
 	return ctx
 }
 
 func AuthnSessions(_ *testing.T, ctx *oidc.Context) []*goidc.AuthnSession {
-	sessionManager, _ := ctx.Storage.AuthnSession.(*storage.AuthnSessionManager)
+	sessionManager, _ := ctx.AuthnSessionManager.(*storage.AuthnSessionManager)
 	sessions := make([]*goidc.AuthnSession, 0, len(sessionManager.Sessions))
 	for _, s := range sessionManager.Sessions {
 		sessions = append(sessions, s)
@@ -144,7 +137,7 @@ func AuthnSessions(_ *testing.T, ctx *oidc.Context) []*goidc.AuthnSession {
 }
 
 func GrantSessions(_ *testing.T, ctx *oidc.Context) []*goidc.GrantSession {
-	manager, _ := ctx.Storage.GrantSession.(*storage.GrantSessionManager)
+	manager, _ := ctx.GrantSessionManager.(*storage.GrantSessionManager)
 	tokens := make([]*goidc.GrantSession, 0, len(manager.Sessions))
 	for _, t := range manager.Sessions {
 		tokens = append(tokens, t)
@@ -154,7 +147,7 @@ func GrantSessions(_ *testing.T, ctx *oidc.Context) []*goidc.GrantSession {
 }
 
 func Clients(_ *testing.T, ctx *oidc.Context) []*goidc.Client {
-	manager, _ := ctx.Storage.Client.(*storage.ClientManager)
+	manager, _ := ctx.ClientManager.(*storage.ClientManager)
 	clients := make([]*goidc.Client, 0, len(manager.Clients))
 	for _, c := range manager.Clients {
 		clients = append(clients, c)

@@ -42,7 +42,7 @@ func main() {
 		provider.WithDPoP(600, jose.RS256, jose.PS256, jose.ES256),
 		provider.WithPKCE(goidc.CodeChallengeMethodSHA256),
 		provider.WithImplicitGrant(),
-		provider.WithRefreshTokenGrant(6000, false),
+		provider.WithRefreshTokenGrant(6000),
 		provider.WithClaims(goidc.ClaimEmail, goidc.ClaimEmailVerified),
 		provider.WithACRs(goidc.ACRMaceIncommonIAPBronze, goidc.ACRMaceIncommonIAPSilver),
 		provider.WithDCR(dcrPlugin(scopes), true),
@@ -54,9 +54,9 @@ func main() {
 	}
 
 	if err := op.RunTLS(provider.TLSOptions{
-		TLSAddress:        ":443",
-		ServerCertificate: "keys/cert.pem",
-		ServerKey:         "keys/key.pem",
+		TLSAddress: ":443",
+		ServerCert: "keys/cert.pem",
+		ServerKey:  "keys/key.pem",
 	}); err != nil {
 		panic(err.Error())
 	}
@@ -70,7 +70,7 @@ func policy() goidc.AuthnPolicy {
 	)
 }
 
-func dcrPlugin(scopes []goidc.Scope) goidc.DCRFunc {
+func dcrPlugin(scopes []goidc.Scope) goidc.HandleDynamicClientFunc {
 	return func(r *http.Request, clientInfo *goidc.ClientMetaInfo) error {
 		var s []string
 		for _, scope := range scopes {

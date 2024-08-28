@@ -30,7 +30,7 @@ func ValidateDPoPJWT(
 	dpopJWT string,
 	expectedDPoPClaims dpopValidationOptions,
 ) error {
-	parsedDPoPJWT, err := jwt.ParseSigned(dpopJWT, ctx.DPoP.SigAlgs)
+	parsedDPoPJWT, err := jwt.ParseSigned(dpopJWT, ctx.DPoPSigAlgs)
 	if err != nil {
 		return oidcerr.Errorf(oidcerr.CodeInvalidRequest, "invalid dpop jwt", err)
 	}
@@ -56,7 +56,7 @@ func ValidateDPoPJWT(
 	}
 
 	// Validate that the "iat" claim is present and it is not too far in the past.
-	if claims.IssuedAt == nil || int(time.Since(claims.IssuedAt.Time()).Seconds()) > ctx.DPoP.LifetimeSecs {
+	if claims.IssuedAt == nil || int(time.Since(claims.IssuedAt.Time()).Seconds()) > ctx.DPoPLifetimeSecs {
 		return oidcerr.New(oidcerr.CodeUnauthorizedClient,
 			"invalid dpop jwt issuance time")
 	}
@@ -82,7 +82,7 @@ func ValidateDPoPJWT(
 	}
 
 	if expectedDPoPClaims.JWKThumbprint != "" &&
-		jwkThumbprint(dpopJWT, ctx.DPoP.SigAlgs) != expectedDPoPClaims.JWKThumbprint {
+		jwkThumbprint(dpopJWT, ctx.DPoPSigAlgs) != expectedDPoPClaims.JWKThumbprint {
 		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid jwk thumbprint")
 	}
 
@@ -142,7 +142,7 @@ func validateTLSPoP(
 		return nil
 	}
 
-	clientCert, ok := ctx.ClientCertificate()
+	clientCert, ok := ctx.ClientCert()
 	if !ok {
 		return oidcerr.New(oidcerr.CodeInvalidToken,
 			"the client certificate is required")

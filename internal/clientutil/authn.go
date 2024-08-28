@@ -19,6 +19,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const (
+	idFormPostParam            = "client_id"
+	secretFormPostParam        = "client_secret"
+	assertionFormPostParam     = "client_assertion"
+	assertionTypeFormPostParam = "client_assertion_type"
+)
+
 // Authenticated fetches a client associated to the request and returns it
 // if the client is authenticated according to its authentication method.
 //
@@ -126,7 +133,7 @@ func authenticatePrivateKeyJWT(
 		return err
 	}
 
-	sigAlgs := ctx.ClientAuthn.PrivateKeyJWTSigAlgs
+	sigAlgs := ctx.PrivateKeyJWTSigAlgs
 	if c.AuthnSigAlg != "" {
 		sigAlgs = []jose.SignatureAlgorithm{c.AuthnSigAlg}
 	}
@@ -183,7 +190,7 @@ func authenticateSecretJWT(
 		return err
 	}
 
-	sigAlgs := ctx.ClientAuthn.ClientSecretJWTSigAlgs
+	sigAlgs := ctx.ClientSecretJWTSigAlgs
 	if c.AuthnSigAlg != "" {
 		sigAlgs = []jose.SignatureAlgorithm{c.AuthnSigAlg}
 	}
@@ -236,7 +243,7 @@ func areClaimsValid(
 
 	// Validate that the difference between "iat" and "exp" is not too great.
 	secsToExpiry := int(claims.Expiry.Time().Sub(claims.IssuedAt.Time()).Seconds())
-	if secsToExpiry > ctx.ClientAuthn.AssertionLifetimeSecs {
+	if secsToExpiry > ctx.AssertionLifetimeSecs {
 		return oidcerr.New(oidcerr.CodeInvalidClient,
 			"the assertion has a life time more than allowed")
 	}
@@ -260,7 +267,7 @@ func authenticateSelfSignedTLSCert(
 		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid client id")
 	}
 
-	cert, ok := ctx.ClientCertificate()
+	cert, ok := ctx.ClientCert()
 	if !ok {
 		return oidcerr.New(oidcerr.CodeInvalidClient,
 			"client certificate not informed")
@@ -311,7 +318,7 @@ func authenticateTLSCert(
 		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid client id")
 	}
 
-	cert, ok := ctx.ClientCertificate()
+	cert, ok := ctx.ClientCert()
 	if !ok {
 		return oidcerr.New(oidcerr.CodeInvalidClient,
 			"client certificate not informed")

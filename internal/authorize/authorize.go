@@ -83,7 +83,7 @@ func authnSession(
 	error,
 ) {
 
-	if ctx.PAR.IsRequired || (ctx.PAR.IsEnabled && req.RequestURI != "") {
+	if ctx.PARIsRequired || (ctx.PARIsEnabled && req.RequestURI != "") {
 		return authnSessionWithPAR(ctx, req, client)
 	}
 
@@ -365,7 +365,7 @@ func newImplicitGrantOptions(
 			"access denied", session.AuthorizationParameters, err)
 	}
 
-	tokenOptions.AddTokenClaims(session.AdditionalTokenClaims)
+	tokenOptions = tokenOptions.WithClaims(session.AdditionalTokenClaims)
 	return token.GrantOptions{
 		GrantType:                   goidc.GrantImplicit,
 		GrantedScopes:               session.GrantedScopes,
