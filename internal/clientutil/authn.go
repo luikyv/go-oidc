@@ -210,7 +210,7 @@ func authenticateSecretJWT(
 }
 
 func assertion(ctx *oidc.Context) (string, error) {
-	assertionType := ctx.Request().PostFormValue(assertionFormPostParam)
+	assertionType := ctx.Request().PostFormValue(assertionTypeFormPostParam)
 	if assertionType != string(goidc.AssertionTypeJWTBearer) {
 		return "", oidcerr.New(oidcerr.CodeInvalidClient,
 			"invalid assertion_type")

@@ -329,13 +329,13 @@ func WithUnregisteredRedirectURIsDuringPAR() ProviderOption {
 
 // WithJAR allows authorization requests to be securely sent as signed JWTs.
 func WithJAR(
-	jarLifetimeSecs int,
-	jarAlgorithms ...jose.SignatureAlgorithm,
+	lifetimeSecs int,
+	algs ...jose.SignatureAlgorithm,
 ) ProviderOption {
 	return func(p *provider) error {
 		p.config.JARIsEnabled = true
-		p.config.JARLifetimeSecs = jarLifetimeSecs
-		for _, jarAlgorithm := range jarAlgorithms {
+		p.config.JARLifetimeSecs = lifetimeSecs
+		for _, jarAlgorithm := range algs {
 			p.config.JARSigAlgs = append(
 				p.config.JARSigAlgs,
 				jose.SignatureAlgorithm(jarAlgorithm),
@@ -348,25 +348,26 @@ func WithJAR(
 // WithJARRequired requires authorization requests to be securely sent as
 // signed JWTs.
 func WithJARRequired(
-	jarLifetimeSecs int,
-	jarAlgorithms ...jose.SignatureAlgorithm,
+	lifetimeSecs int,
+	algs ...jose.SignatureAlgorithm,
 ) ProviderOption {
 	return func(p *provider) error {
 		p.config.JARIsRequired = true
-		return WithJAR(jarLifetimeSecs, jarAlgorithms...)(p)
+		return WithJAR(lifetimeSecs, algs...)(p)
 	}
 }
 
 // WithJAREncryption allows authorization requests to be securely sent as
 // encrypted JWTs.
+//
 // The default content encryption algorithm is A128CBC-HS256.
 func WithJAREncryption(
 	// TODO: Use the first key as the default
-	keyEncryptionIDs []string,
+	keyEncIDs []string,
 ) ProviderOption {
 	return func(p *provider) error {
 		p.config.JAREncIsEnabled = true
-		p.config.JARKeyEncIDs = keyEncryptionIDs
+		p.config.JARKeyEncIDs = keyEncIDs
 		p.config.JARDefaultContentEncAlg = jose.A128CBC_HS256
 		p.config.JARContentEncAlgs = []jose.ContentEncryption{jose.A128CBC_HS256}
 		return nil
@@ -378,11 +379,11 @@ func WithJAREncryption(
 func WithJARM(
 	lifetimeSecs int,
 	defaultSigKeyID string,
-	jarmSigKeyIDs ...string,
+	sigKeyIDs ...string,
 ) ProviderOption {
 	return func(p *provider) error {
-		if !slices.Contains(jarmSigKeyIDs, defaultSigKeyID) {
-			jarmSigKeyIDs = append(jarmSigKeyIDs, defaultSigKeyID)
+		if !slices.Contains(sigKeyIDs, defaultSigKeyID) {
+			sigKeyIDs = append(sigKeyIDs, defaultSigKeyID)
 		}
 
 		p.config.JARMIsEnabled = true
@@ -395,7 +396,7 @@ func WithJARM(
 		)
 		p.config.JARMLifetimeSecs = lifetimeSecs
 		p.config.JARMDefaultSigKeyID = defaultSigKeyID
-		p.config.JARMSigKeyIDs = jarmSigKeyIDs
+		p.config.JARMSigKeyIDs = sigKeyIDs
 		return nil
 	}
 }
@@ -479,7 +480,7 @@ func WithClientSecretJWTAuthn(
 	}
 }
 
-// assertionLifetimeSecs defines a maximum threshold for the difference between
+// WithAssertionLifetime defines a maximum threshold for the difference between
 // issuance and expiry time of client assertions.
 // signatureAlgorithms defines the symmetric algorithms allowed to sign the
 // assertions.

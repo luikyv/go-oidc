@@ -72,8 +72,13 @@ func NewContext(t *testing.T) *oidc.Context {
 
 func NewContextWithRequest(t *testing.T, r *http.Request) *oidc.Context {
 	config := oidc.Configuration{
-		Profile:     goidc.ProfileOpenID,
-		Host:        Host,
+		Profile: goidc.ProfileOpenID,
+		Host:    Host,
+
+		ClientManager:       storage.NewClientManager(),
+		AuthnSessionManager: storage.NewAuthnSessionManager(),
+		GrantSessionManager: storage.NewGrantSessionManager(),
+
 		Scopes:      []goidc.Scope{goidc.ScopeOpenID, Scope1, Scope2},
 		PrivateJWKS: jose.JSONWebKeySet{Keys: []jose.JSONWebKey{ServerPrivateJWK}},
 		GrantTypes: []goidc.GrantType{

@@ -80,9 +80,8 @@ make docs
 Make sure the `GOBIN` environment variable is set.
 
 ## To Do's
-* Don't use the default http client.
+* Tests.
 * Implement the revocation endpoint. Revoke by jti.
-* Should I add the default encryption algorithm instead of requiring the dev to pass it?
 * Implement a client credentials policy.
 * Symmetric encryption for JAR?
 * Support pairwise subject type.

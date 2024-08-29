@@ -72,6 +72,7 @@ func (c *Client) FetchPublicJWKS() (jose.JSONWebKeySet, error) {
 }
 
 func (c *Client) fetchJWKS() (json.RawMessage, error) {
+	// FIXME: Don't use the default client.
 	resp, err := http.Get(c.PublicJWKSURI)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		return nil, errors.New("could not fetch client jwks")
