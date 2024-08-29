@@ -68,7 +68,7 @@ func makeIDToken(
 	string,
 	error,
 ) {
-	jwk := ctx.IDTokenSignatureKey(client)
+	jwk := ctx.IDTokenSigKey(client)
 	sigAlg := jose.SignatureAlgorithm(jwk.Algorithm)
 	now := timeutil.TimestampNow()
 
@@ -144,7 +144,7 @@ func makeJWTToken(
 	Token,
 	error,
 ) {
-	privateJWK := ctx.TokenSignatureKey(grantOptions.TokenOptions)
+	privateJWK := ctx.TokenSigKey(grantOptions.TokenOptions)
 	jwtID := uuid.NewString()
 	timestampNow := timeutil.TimestampNow()
 	claims := map[string]any{
@@ -164,7 +164,7 @@ func makeJWTToken(
 	tokenType := goidc.TokenTypeBearer
 	confirmation := make(map[string]string)
 	// DPoP token binding.
-	dpopJWT, ok := ctx.DPoPJWT()
+	dpopJWT, ok := dpopJWT(ctx)
 	jkt := ""
 	if ctx.DPoPIsEnabled && ok {
 		tokenType = goidc.TokenTypeDPoP
@@ -221,7 +221,7 @@ func makeOpaqueToken(
 	tokenType := goidc.TokenTypeBearer
 
 	// DPoP token binding.
-	dpopJWT, ok := ctx.DPoPJWT()
+	dpopJWT, ok := dpopJWT(ctx)
 	jkt := ""
 	if ctx.DPoPIsEnabled && ok {
 		tokenType = goidc.TokenTypeDPoP

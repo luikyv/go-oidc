@@ -1,173 +1,222 @@
 package oidc_test
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-func TestGetClientSignatureAlgorithms(t *testing.T) {
+func TestClientAuthnSigAlgs(t *testing.T) {
+
+	// Given.
+	testCases := []struct {
+		ctx     *oidc.Context
+		sigAlgs []jose.SignatureAlgorithm
+	}{
+		{
+			ctx:     &oidc.Context{},
+			sigAlgs: nil,
+		},
+		{
+			ctx: &oidc.Context{
+				Configuration: oidc.Configuration{
+					PrivateKeyJWTSigAlgs: []jose.SignatureAlgorithm{jose.PS256},
+				},
+			},
+			sigAlgs: []jose.SignatureAlgorithm{jose.PS256},
+		},
+		{
+			ctx: &oidc.Context{
+				Configuration: oidc.Configuration{
+					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
+				},
+			},
+			sigAlgs: []jose.SignatureAlgorithm{jose.HS256},
+		},
+		{
+			ctx: &oidc.Context{
+				Configuration: oidc.Configuration{
+					PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
+					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
+				},
+			},
+			sigAlgs: []jose.SignatureAlgorithm{jose.PS256, jose.HS256},
+		},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(
+			fmt.Sprintf("case %d", i),
+			func(t *testing.T) {
+				// When.
+				sigAlgs := testCase.ctx.ClientAuthnSigAlgs()
+
+				// Then.
+				if !cmp.Equal(sigAlgs, testCase.sigAlgs, cmpopts.EquateEmpty()) {
+					t.Errorf("ClientAuthnSigAlgs() = %v, want %v", sigAlgs, testCase.sigAlgs)
+				}
+			},
+		)
+	}
+}
+
+func TestIntrospectionClientAuthnSigAlgs(t *testing.T) {
+
+	// Given.
+	testCases := []struct {
+		ctx     *oidc.Context
+		sigAlgs []jose.SignatureAlgorithm
+	}{
+		{
+			ctx: &oidc.Context{
+				Configuration: oidc.Configuration{
+					PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
+					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
+				},
+			},
+			sigAlgs: nil,
+		},
+		{
+			ctx: &oidc.Context{
+				Configuration: oidc.Configuration{
+					PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
+					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
+					IntrospectionClientAuthnMethods: []goidc.ClientAuthnType{
+						goidc.ClientAuthnPrivateKeyJWT,
+					},
+				},
+			},
+			sigAlgs: []jose.SignatureAlgorithm{jose.PS256},
+		},
+		{
+			ctx: &oidc.Context{
+				Configuration: oidc.Configuration{
+					PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
+					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
+					IntrospectionClientAuthnMethods: []goidc.ClientAuthnType{
+						goidc.ClientAuthnSecretJWT,
+					},
+				},
+			},
+			sigAlgs: []jose.SignatureAlgorithm{jose.HS256},
+		},
+		{
+			ctx: &oidc.Context{
+				Configuration: oidc.Configuration{
+					PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
+					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
+					IntrospectionClientAuthnMethods: []goidc.ClientAuthnType{
+						goidc.ClientAuthnPrivateKeyJWT,
+						goidc.ClientAuthnSecretJWT,
+					},
+				},
+			},
+			sigAlgs: []jose.SignatureAlgorithm{jose.PS256, jose.HS256},
+		},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(
+			fmt.Sprintf("case %d", i),
+			func(t *testing.T) {
+				// When.
+				sigAlgs := testCase.ctx.IntrospectionClientAuthnSigAlgs()
+
+				// Then.
+				if !cmp.Equal(sigAlgs, testCase.sigAlgs, cmpopts.EquateEmpty()) {
+					t.Errorf("IntrospectionClientAuthnSigAlgs() = %v, want %v", sigAlgs, testCase.sigAlgs)
+				}
+			},
+		)
+	}
+}
+
+func TestHandleDynamicClient(t *testing.T) {
 	// Given.
 	ctx := oidc.Context{}
-	// Then.
-	assert.Nil(t, ctx.ClientSignatureAlgorithms())
-
-	// Given.
-	ctx.PrivateKeyJWTSigAlgs = []jose.SignatureAlgorithm{jose.PS256}
-	// Then.
-	assert.Equal(t, []jose.SignatureAlgorithm{jose.PS256}, ctx.ClientSignatureAlgorithms())
-
-	// Given.
-	ctx.ClientSecretJWTSigAlgs = []jose.SignatureAlgorithm{jose.HS256}
-	// Then.
-	assert.Equal(t, []jose.SignatureAlgorithm{jose.PS256, jose.HS256}, ctx.ClientSignatureAlgorithms())
-}
-
-func TestGetIntrospectionClientSignatureAlgorithms(t *testing.T) {
-	// Given.
-	ctx := oidc.Context{}
-	// Then.
-	assert.Nil(t, ctx.IntrospectionClientSignatureAlgorithms())
-
-	// Given.
-	ctx.IntrospectionClientAuthnMethods = append(
-		ctx.IntrospectionClientAuthnMethods,
-		goidc.ClientAuthnPrivateKeyJWT,
-	)
-	ctx.PrivateKeyJWTSigAlgs = []jose.SignatureAlgorithm{jose.PS256}
-	// Then.
-	assert.Equal(t, []jose.SignatureAlgorithm{jose.PS256}, ctx.IntrospectionClientSignatureAlgorithms())
-
-	// Given.
-	ctx.IntrospectionClientAuthnMethods = append(
-		ctx.IntrospectionClientAuthnMethods,
-		goidc.ClientAuthnSecretJWT,
-	)
-	ctx.ClientSecretJWTSigAlgs = []jose.SignatureAlgorithm{jose.HS256}
-	// Then.
-	assert.Equal(t, []jose.SignatureAlgorithm{jose.PS256, jose.HS256}, ctx.IntrospectionClientSignatureAlgorithms())
-}
-
-func TestGetDPoPJWT_HappyPath(t *testing.T) {
-	// Given the DPoP header was informed.
-	ctx := oidc.Context{
-		Req: httptest.NewRequest(http.MethodGet, oidctest.Host, nil),
-	}
-	ctx.Req.Header.Set(goidc.HeaderDPoP, "dpop_jwt")
-
-	// When.
-	dpopJwt, ok := ctx.DPoPJWT()
-
-	// Then.
-	require.True(t, ok)
-	assert.Equal(t, "dpop_jwt", dpopJwt)
-}
-
-func TestGetDPoPJWT_DPoPHeaderNotInCanonicalFormat(t *testing.T) {
-	// Given.
-	ctx := oidc.Context{
-		Req: httptest.NewRequest(http.MethodGet, oidctest.Host, nil),
-	}
-	ctx.Req.Header.Set(strings.ToLower(goidc.HeaderDPoP), "dpop_jwt")
-
-	// When.
-	dpopJwt, ok := ctx.DPoPJWT()
-
-	// Then.
-	require.True(t, ok)
-	assert.Equal(t, "dpop_jwt", dpopJwt)
-}
-
-func TestGetDPoPJWT_DPoPHeaderNotInformed(t *testing.T) {
-	// Given.
-	ctx := oidc.Context{
-		Req: httptest.NewRequest(http.MethodGet, oidctest.Host, nil),
-	}
-	// When.
-	_, ok := ctx.DPoPJWT()
-
-	// Then.
-	require.False(t, ok)
-}
-
-func TestGetDPoPJWT_MultipleValuesInTheDPoPHeader(t *testing.T) {
-	// Given.
-	ctx := oidc.Context{
-		Req: httptest.NewRequest(http.MethodGet, oidctest.Host, nil),
-	}
-	ctx.Req.Header.Add(goidc.HeaderDPoP, "dpop_jwt1")
-	ctx.Req.Header.Add(goidc.HeaderDPoP, "dpop_jwt2")
-
-	// When.
-	_, ok := ctx.DPoPJWT()
-
-	// Then.
-	require.False(t, ok)
-}
-
-func TestExecuteDCRPlugin_HappyPath(t *testing.T) {
-	// Given.
-	ctx := oidc.Context{}
-	clientInfo := goidc.ClientMetaInfo{}
-
-	// Then.
-	var err error
-	assert.NotPanics(t, func() { err = ctx.HandleDynamicClient(&clientInfo) })
-	assert.Nil(t, err)
-
-	// Given.
 	ctx.HandleDynamicClientFunc = func(r *http.Request, clientInfo *goidc.ClientMetaInfo) error {
 		clientInfo.AuthnMethod = goidc.ClientAuthnNone
 		return nil
 	}
+	clientInfo := &goidc.ClientMetaInfo{}
 
 	// When.
-	err = ctx.HandleDynamicClient(&clientInfo)
+	err := ctx.HandleDynamicClient(clientInfo)
 
 	// Then.
-	assert.Nil(t, err)
-	assert.Equal(t, goidc.ClientAuthnNone, clientInfo.AuthnMethod)
+	if err != nil {
+		t.Errorf("no error was expected: %v", err)
+	}
+
+	if clientInfo.AuthnMethod != goidc.ClientAuthnNone {
+		t.Errorf("AuthnMethod = %s, want %s", clientInfo.AuthnMethod, goidc.ClientAuthnNone)
+	}
 }
 
-func TestGetAudiences_HappyPath(t *testing.T) {
+func TestHandleDynamicClient_HandlerIsNil(t *testing.T) {
 	// Given.
-	ctx := oidctest.NewContext(t)
-	ctx.Req = httptest.NewRequest(http.MethodPost, "/auth/token", nil)
+	ctx := &oidc.Context{}
+	clientInfo := &goidc.ClientMetaInfo{}
+	// When.
+	err := ctx.HandleDynamicClient(clientInfo)
+	// Then.
+	if err != nil {
+		t.Errorf("no error was expected: %v", err)
+	}
+}
+
+func TestGetAudiences(t *testing.T) {
+	// Given.
+	host := "https://example.com"
+	ctx := &oidc.Context{
+		Request: httptest.NewRequest(http.MethodPost, "/token", nil),
+		Configuration: oidc.Configuration{
+			Host: host,
+		},
+	}
 
 	// When.
-	audiences := ctx.Audiences()
+	auds := ctx.Audiences()
 
 	// Then.
-	assert.Contains(t, audiences, ctx.Host)
-	assert.Contains(t, audiences, ctx.Host+"/auth/token")
+	wantedAuds := []string{host, host + "/token"}
+	if !cmp.Equal(auds, wantedAuds) {
+		t.Errorf("Audiences() = %v, want %v", auds, wantedAuds)
+	}
 }
 
 func TestGetAudiences_MTLSIsEnabled(t *testing.T) {
 	// Given.
-	ctx := oidctest.NewContext(t)
-	ctx.Req = httptest.NewRequest(http.MethodPost, "/auth/token", nil)
-	ctx.MTLSIsEnabled = true
-	ctx.MTLSHost = "https://matls-example.com"
+	host := "https://example.com"
+	mtlsHost := "https://matls-example.com"
+	ctx := &oidc.Context{
+		Request: httptest.NewRequest(http.MethodPost, "/token", nil),
+		Configuration: oidc.Configuration{
+			Host:          host,
+			MTLSIsEnabled: true,
+			MTLSHost:      mtlsHost,
+		},
+	}
 
 	// When.
-	audiences := ctx.Audiences()
+	auds := ctx.Audiences()
 
 	// Then.
-	assert.Contains(t, audiences, ctx.Host)
-	assert.Contains(t, audiences, ctx.Host+"/auth/token")
-	assert.Contains(t, audiences, ctx.MTLSHost)
-	assert.Contains(t, audiences, ctx.MTLSHost+"/auth/token")
+	wantedAuds := []string{host, host + "/token", mtlsHost, mtlsHost + "/token"}
+	if !cmp.Equal(auds, wantedAuds) {
+		t.Errorf("Audiences() = %v, want %v", auds, wantedAuds)
+	}
 }
 
-func TestGetPolicyByID_HappyPath(t *testing.T) {
+func TestPolicy(t *testing.T) {
 	// Given.
 	policyID := "random_policy_id"
 	ctx := oidc.Context{}
@@ -177,11 +226,12 @@ func TestGetPolicyByID_HappyPath(t *testing.T) {
 	policy := ctx.Policy(policyID)
 
 	// Then.
-	assert.Equal(t, policyID, policy.ID)
+	if policy.ID != policyID {
+		t.Errorf("ID = %s, want %s", policy.ID, policyID)
+	}
 }
 
-func TestGetAvailablePolicy_HappyPath(t *testing.T) {
-
+func TestAvailablePolicy(t *testing.T) {
 	// Given.
 	unavailablePolicy := goidc.NewPolicy(
 		"unavailable_policy",
@@ -197,18 +247,23 @@ func TestGetAvailablePolicy_HappyPath(t *testing.T) {
 		},
 		nil,
 	)
-	ctx := oidctest.NewContext(t)
+	ctx := &oidc.Context{}
 	ctx.Policies = []goidc.AuthnPolicy{unavailablePolicy, availablePolicy}
 
 	// When.
-	policy, policyIsAvailable := ctx.FindAvailablePolicy(&goidc.Client{}, &goidc.AuthnSession{})
+	policy, ok := ctx.AvailablePolicy(&goidc.Client{}, &goidc.AuthnSession{})
 
 	// Then.
-	require.True(t, policyIsAvailable, "GetPolicy is not fetching any policy")
-	assert.Equal(t, policy.ID, availablePolicy.ID, "GetPolicy is not fetching the right policy")
+	if !ok {
+		t.Errorf("no policy was found available, but the one with id %s should be", availablePolicy.ID)
+	}
+
+	if policy.ID != availablePolicy.ID {
+		t.Errorf("ID = %s, want %s", policy.ID, availablePolicy.ID)
+	}
 }
 
-func TestGetAvailablePolicy_NoPolicyAvailable(t *testing.T) {
+func TestAvailablePolicy_NoPolicyAvailable(t *testing.T) {
 	// Given.
 	unavailablePolicy := goidc.NewPolicy(
 		"unavailable_policy",
@@ -217,131 +272,173 @@ func TestGetAvailablePolicy_NoPolicyAvailable(t *testing.T) {
 		},
 		nil,
 	)
-	ctx := oidctest.NewContext(t)
+	ctx := &oidc.Context{}
 	ctx.Policies = []goidc.AuthnPolicy{unavailablePolicy}
 
 	// When.
-	_, policyIsAvailable := ctx.FindAvailablePolicy(&goidc.Client{}, &goidc.AuthnSession{})
+	policy, ok := ctx.AvailablePolicy(&goidc.Client{}, &goidc.AuthnSession{})
 
 	// Then.
-	require.False(t, policyIsAvailable, "GetPolicy is not fetching any policy")
+	if ok {
+		t.Errorf("no policy is available, but one was found %s", policy.ID)
+	}
 }
 
-func TestGetBearerToken_HappyPath(t *testing.T) {
+func TestBaseURL(t *testing.T) {
+	// Given.
+	ctx := &oidc.Context{}
+	ctx.Host = "https://example.com"
+	ctx.EndpointPrefix = "/auth"
+
+	// When.
+	baseURL := ctx.BaseURL()
+
+	// Then.
+	if baseURL != "https://example.com/auth" {
+		t.Errorf("BaseURL() = %s, want %s", baseURL, "https://example.com/auth")
+	}
+}
+
+func TestMTLSBaseURL(t *testing.T) {
+	// Given.
+	ctx := &oidc.Context{}
+	ctx.MTLSHost = "https://matls-example.com"
+	ctx.EndpointPrefix = "/auth"
+
+	// When.
+	baseURL := ctx.MTLSBaseURL()
+
+	// Then.
+	if baseURL != "https://matls-example.com/auth" {
+		t.Errorf("MTLSBaseURL() = %s, want %s", baseURL, "https://matls-example.com/auth")
+	}
+}
+
+func TestBearerToken(t *testing.T) {
 	// Given.
 	ctx := oidc.Context{}
-	ctx.Req = httptest.NewRequest(http.MethodGet, oidctest.Host, nil)
-	ctx.Req.Header.Set("Authorization", "Bearer token")
+	ctx.Request = httptest.NewRequest(http.MethodGet, "https://example.com", nil)
+	ctx.Request.Header.Set("Authorization", "Bearer access_token")
 
 	// When.
 	token, ok := ctx.BearerToken()
 
 	// Then.
-	assert.True(t, ok)
-	assert.Equal(t, "token", token)
+	if !ok {
+		t.Fatal("a bearer token is present in the request, but was not found")
+	}
+
+	if token != "access_token" {
+		t.Errorf("BearerToken() = %s, want %s", token, "access_token")
+	}
 }
 
-func TestGetBearerToken_NoToken(t *testing.T) {
+func TestBearerToken_NoToken(t *testing.T) {
 	// Given.
 	ctx := oidc.Context{}
-	ctx.Req = httptest.NewRequest(http.MethodGet, oidctest.Host, nil)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "https://example.com", nil)
 
 	// When.
 	token, ok := ctx.BearerToken()
 
 	// Then.
-	assert.False(t, ok)
-	require.Empty(t, token)
+	if ok {
+		t.Fatalf("a bearer token was not informed, but found %s", token)
+	}
 }
 
-func TestGetBearerToken_NotABearerToken(t *testing.T) {
+func TestBearerToken_NotABearerToken(t *testing.T) {
 	// Given.
 	ctx := oidc.Context{}
-	ctx.Req = httptest.NewRequest(http.MethodGet, oidctest.Host, nil)
-	ctx.Req.Header.Set("Authorization", "DPoP token")
+	ctx.Request = httptest.NewRequest(http.MethodGet, "https://example.com", nil)
+	ctx.Request.Header.Set("Authorization", "DPoP token")
 
 	// When.
 	token, ok := ctx.BearerToken()
 
 	// Then.
-	assert.False(t, ok)
-	require.Empty(t, token)
+	if ok {
+		t.Fatalf("a bearer token was not informed, but found %s", token)
+	}
 }
 
-func TestGetAuthorizationToken_HappyPath(t *testing.T) {
+func TestAuthorizationToken(t *testing.T) {
 	// Given.
 	ctx := oidc.Context{}
-	ctx.Req = httptest.NewRequest(http.MethodGet, oidctest.Host, nil)
-	ctx.Req.Header.Set("Authorization", "Bearer token")
+	ctx.Request = httptest.NewRequest(http.MethodGet, "https://example.com", nil)
+	ctx.Request.Header.Set("Authorization", "Bearer access_token")
 
 	// When.
 	token, tokenType, ok := ctx.AuthorizationToken()
 
 	// Then.
-	require.True(t, ok)
-	assert.Equal(t, goidc.TokenTypeBearer, tokenType)
-	assert.Equal(t, "token", token)
+	if !ok {
+		t.Fatal("a token is present in the request, but was not found")
+	}
+
+	if token != "access_token" {
+		t.Errorf("AuthorizationToken() = %s, want %s", token, "access_token")
+	}
+
+	if tokenType != goidc.TokenTypeBearer {
+		t.Errorf("AuthorizationToken() = %s, want %s", tokenType, goidc.TokenTypeBearer)
+	}
 }
 
-func TestGetAuthorizationToken_NoToken(t *testing.T) {
+func TestAuthorizationToken_NoToken(t *testing.T) {
 	// Given.
 	ctx := oidc.Context{}
-	ctx.Req = httptest.NewRequest(http.MethodGet, oidctest.Host, nil)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "https://example.com", nil)
 
 	// When.
-	_, _, ok := ctx.AuthorizationToken()
+	token, tokenType, ok := ctx.AuthorizationToken()
 
 	// Then.
-	require.False(t, ok)
+	if ok {
+		t.Fatalf("a bearer token was not informed, but found %s with type %s", token, tokenType)
+	}
 }
 
-func TestAuthorizationToken_InvalidAuthorizationHeader(t *testing.T) {
+func TestHeader(t *testing.T) {
 	// Given.
 	ctx := oidc.Context{}
-	ctx.Req = httptest.NewRequest(http.MethodGet, oidctest.Host, nil)
-	ctx.Req.Header.Set("InvalidAuthorization", "Bearer token")
-
-	// When.
-	_, _, ok := ctx.AuthorizationToken()
-
-	// Then.
-	require.False(t, ok)
-}
-
-func TestHeader_HappyPath(t *testing.T) {
-	// Given.
-	ctx := oidc.Context{}
-	ctx.Req = httptest.NewRequest(http.MethodGet, oidctest.Host, nil)
-	ctx.Req.Header.Set("Test-Header", "test_value")
+	ctx.Request = httptest.NewRequest(http.MethodGet, "https://example.com", nil)
+	ctx.Request.Header.Set("Test-Header", "test_value")
 
 	// When.
 	header, ok := ctx.Header("Test-Header")
 
 	// Then.
-	require.True(t, ok)
-	assert.Equal(t, "test_value", header)
+	if !ok {
+		t.Fatal("the header was informed, but was not found")
+	}
+
+	if header != "test_value" {
+		t.Fatalf("Header() = %s, want %s", header, "test_value")
+	}
 }
 
-func TestSignatureAlgorithms_HappyPath(t *testing.T) {
+func TestSigAlgs(t *testing.T) {
 	// Given.
-	signingKey := oidctest.PrivateRS256JWKWithUsage(t, "signing_key", goidc.KeyUsageSignature)
-	encryptionKey := oidctest.PrivatePS256JWKWithUsage(t, "encryption_key", goidc.KeyUsageEncryption)
+	signingKey := oidctest.PrivatePS256JWK(t, "signing_key", goidc.KeyUsageSignature)
+	encryptionKey := oidctest.PrivatePS256JWK(t, "encryption_key", goidc.KeyUsageEncryption)
 
 	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey, encryptionKey}}
 
 	// When.
-	algorithms := ctx.SignatureAlgorithms()
+	algs := ctx.SigAlgs()
 
 	// Then.
-	require.Len(t, algorithms, 1)
-	assert.Contains(t, algorithms, jose.RS256)
+	want := []jose.SignatureAlgorithm{jose.PS256}
+	if !cmp.Equal(algs, want) {
+		t.Errorf("SignatureAlgorithms() = %s, want %s", algs, want)
+	}
 }
 
 func TestPublicKeys_HappyPath(t *testing.T) {
 	// Given.
-	signingKey := oidctest.PrivatePS256JWK(t, "signing_key")
-
+	signingKey := oidctest.PrivatePS256JWK(t, "signing_key", goidc.KeyUsageSignature)
 	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
@@ -349,15 +446,23 @@ func TestPublicKeys_HappyPath(t *testing.T) {
 	publicJWKS := ctx.PublicKeys()
 
 	// Then.
-	require.Len(t, publicJWKS.Keys, 1)
+	if len(publicJWKS.Keys) != 1 {
+		t.Fatalf("len(Keys) = %d, want 1. jwks: %v", len(publicJWKS.Keys), publicJWKS)
+	}
+
 	publicJWK := publicJWKS.Keys[0]
-	assert.Equal(t, "signing_key", publicJWK.KeyID)
-	assert.True(t, publicJWK.IsPublic())
+	if publicJWK.KeyID != signingKey.KeyID {
+		t.Errorf("KeyID = %s, want %s", publicJWK.KeyID, signingKey.KeyID)
+	}
+
+	if !publicJWK.IsPublic() {
+		t.Error("the jwk found is not public")
+	}
 }
 
 func TestPublicKey_HappyPath(t *testing.T) {
 	// Given.
-	signingKey := oidctest.PrivatePS256JWK(t, "signing_key")
+	signingKey := oidctest.PrivatePS256JWK(t, "signing_key", goidc.KeyUsageSignature)
 
 	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
@@ -366,14 +471,22 @@ func TestPublicKey_HappyPath(t *testing.T) {
 	publicJWK, ok := ctx.PublicKey("signing_key")
 
 	// Then.
-	require.True(t, ok)
-	assert.Equal(t, "signing_key", publicJWK.KeyID)
-	assert.True(t, publicJWK.IsPublic())
+	if !ok {
+		t.Fatalf("no jwk found")
+	}
+
+	if publicJWK.KeyID != signingKey.KeyID {
+		t.Errorf("KeyID = %s, want %s", publicJWK.KeyID, signingKey.KeyID)
+	}
+
+	if !publicJWK.IsPublic() {
+		t.Error("the jwk found is not public")
+	}
 }
 
 func TestPrivateKey_HappyPath(t *testing.T) {
 	// Given.
-	signingKey := oidctest.PrivatePS256JWK(t, "signing_key")
+	signingKey := oidctest.PrivatePS256JWK(t, "signing_key", goidc.KeyUsageSignature)
 
 	ctx := oidc.Context{}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
@@ -382,9 +495,17 @@ func TestPrivateKey_HappyPath(t *testing.T) {
 	privateJWK, ok := ctx.PrivateKey("signing_key")
 
 	// Then.
-	require.True(t, ok)
-	assert.Equal(t, "signing_key", privateJWK.KeyID)
-	assert.False(t, privateJWK.IsPublic())
+	if !ok {
+		t.Fatalf("no jwk found")
+	}
+
+	if privateJWK.KeyID != signingKey.KeyID {
+		t.Errorf("KeyID = %s, want %s", privateJWK.KeyID, signingKey.KeyID)
+	}
+
+	if privateJWK.IsPublic() {
+		t.Error("the jwk found is public")
+	}
 }
 
 func TestPrivateKey_KeyDoesntExist(t *testing.T) {
@@ -396,116 +517,136 @@ func TestPrivateKey_KeyDoesntExist(t *testing.T) {
 	_, ok := ctx.PrivateKey("signing_key")
 
 	// Then.
-	require.False(t, ok)
+	if ok {
+		t.Error("a key was found, but none should be")
+	}
 }
 
-func TestUserInfoSignatureKey_HappyPath(t *testing.T) {
+func TestUserInfoSigKey(t *testing.T) {
 	// Given.
-	signingKeyID := "signing_key"
-	signingKey := oidctest.PrivatePS256JWK(t, signingKeyID)
+	keyID := "signing_key"
+	signingKey := oidctest.PrivatePS256JWK(t, keyID, goidc.KeyUsageSignature)
 
 	ctx := oidc.Context{}
-	ctx.UserDefaultSigKeyID = signingKeyID
+	ctx.UserDefaultSigKeyID = keyID
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	client := &goidc.Client{}
 
 	// When.
-	jwk := ctx.UserInfoSignatureKey(client)
+	jwk := ctx.UserInfoSigKey(client)
 
 	// Then.
-	assert.Equal(t, signingKeyID, jwk.KeyID)
+	if jwk.KeyID != keyID {
+		t.Errorf("KeyID = %s, want %s", jwk.KeyID, keyID)
+	}
 }
 
-func TestUserInfoSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
+func TestUserInfoSigKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	// Given.
-	signingKeyID := "signing_key"
-	signingKey := oidctest.PrivatePS256JWK(t, signingKeyID)
+	defaultKey := oidctest.PrivatePS256JWK(t, "default_key", goidc.KeyUsageSignature)
+	alternativeKey := oidctest.PrivateRS256JWK(t, "alternative_key", goidc.KeyUsageSignature)
 
 	ctx := oidc.Context{}
-	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
-	ctx.UserSigKeyIDs = []string{signingKeyID}
+	ctx.PrivateJWKS = jose.JSONWebKeySet{
+		Keys: []jose.JSONWebKey{defaultKey, alternativeKey},
+	}
+	ctx.UserDefaultSigKeyID = defaultKey.KeyID
+	ctx.UserSigKeyIDs = []string{defaultKey.KeyID, alternativeKey.KeyID}
 
 	client := &goidc.Client{}
-	client.UserInfoSigAlg = jose.PS256
+	client.UserInfoSigAlg = jose.RS256
 
 	// When.
-	jwk := ctx.UserInfoSignatureKey(client)
+	jwk := ctx.UserInfoSigKey(client)
 
 	// Then.
-	assert.Equal(t, signingKeyID, jwk.KeyID)
+	if jwk.KeyID != alternativeKey.KeyID {
+		t.Errorf("KeyID = %s, want %s", jwk.KeyID, alternativeKey.KeyID)
+	}
 }
 
-func TestIDTokenSignatureKey_HappyPath(t *testing.T) {
+func TestIDTokenSigKey(t *testing.T) {
 	// Given.
-	signingKeyID := "signing_key"
-	signingKey := oidctest.PrivatePS256JWK(t, signingKeyID)
+	signingKey := oidctest.PrivatePS256JWK(t, "signing_key", goidc.KeyUsageSignature)
 
 	ctx := oidc.Context{}
-	ctx.UserDefaultSigKeyID = signingKeyID
+	ctx.UserDefaultSigKeyID = signingKey.KeyID
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	client := &goidc.Client{}
 
 	// When.
-	jwk := ctx.IDTokenSignatureKey(client)
+	jwk := ctx.IDTokenSigKey(client)
 
 	// Then.
-	assert.Equal(t, signingKeyID, jwk.KeyID)
+	if jwk.KeyID != signingKey.KeyID {
+		t.Errorf("KeyID = %s, want %s", jwk.KeyID, signingKey.KeyID)
+	}
 }
 
-func TestIDTokenSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
+func TestIDTokenSigKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	// Given.
-	signingKeyID := "signing_key"
-	signingKey := oidctest.PrivatePS256JWK(t, signingKeyID)
+	defaultKey := oidctest.PrivatePS256JWK(t, "default_key", goidc.KeyUsageSignature)
+	alternativeKey := oidctest.PrivateRS256JWK(t, "alternative_key", goidc.KeyUsageSignature)
 
 	ctx := oidc.Context{}
-	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
-	ctx.UserSigKeyIDs = []string{signingKeyID}
+	ctx.PrivateJWKS = jose.JSONWebKeySet{
+		Keys: []jose.JSONWebKey{defaultKey, alternativeKey},
+	}
+	ctx.UserDefaultSigKeyID = defaultKey.KeyID
+	ctx.UserSigKeyIDs = []string{defaultKey.KeyID, alternativeKey.KeyID}
 
 	client := &goidc.Client{}
-	client.IDTokenSigAlg = jose.PS256
+	client.IDTokenSigAlg = jose.RS256
 
 	// When.
-	jwk := ctx.IDTokenSignatureKey(client)
+	jwk := ctx.IDTokenSigKey(client)
 
 	// Then.
-	assert.Equal(t, signingKeyID, jwk.KeyID)
+	if jwk.KeyID != alternativeKey.KeyID {
+		t.Errorf("KeyID = %s, want %s", jwk.KeyID, alternativeKey.KeyID)
+	}
 }
 
 func TestJARMSignatureKey_HappyPath(t *testing.T) {
 	// Given.
-	signingKeyID := "signing_key"
-	signingKey := oidctest.PrivatePS256JWK(t, signingKeyID)
+	signingKey := oidctest.PrivatePS256JWK(t, "signing_key", goidc.KeyUsageSignature)
 
 	ctx := oidc.Context{}
-	ctx.JARMDefaultSigKeyID = signingKeyID
+	ctx.JARMDefaultSigKeyID = signingKey.KeyID
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	client := &goidc.Client{}
 
 	// When.
-	jwk := ctx.JARMSignatureKey(client)
+	jwk := ctx.JARMSigKey(client)
 
 	// Then.
-	assert.Equal(t, signingKeyID, jwk.KeyID)
+	if jwk.KeyID != signingKey.KeyID {
+		t.Errorf("KeyID = %s, want %s", jwk.KeyID, signingKey.KeyID)
+	}
 }
 
 func TestJARMSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	// Given.
-	signingKeyID := "signing_key"
-	signingKey := oidctest.PrivatePS256JWK(t, signingKeyID)
+	defaultKey := oidctest.PrivatePS256JWK(t, "default_key", goidc.KeyUsageSignature)
+	alternativeKey := oidctest.PrivateRS256JWK(t, "alternative_key", goidc.KeyUsageSignature)
 
 	ctx := oidc.Context{}
-	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
-	ctx.JARMSigKeyIDs = []string{signingKeyID}
+	ctx.PrivateJWKS = jose.JSONWebKeySet{
+		Keys: []jose.JSONWebKey{defaultKey, alternativeKey},
+	}
+	ctx.JARMSigKeyIDs = []string{defaultKey.KeyID, alternativeKey.KeyID}
 
 	client := &goidc.Client{}
-	client.JARMSigAlg = jose.PS256
+	client.JARMSigAlg = jose.RS256
 
 	// When.
-	jwk := ctx.JARMSignatureKey(client)
+	jwk := ctx.JARMSigKey(client)
 
 	// Then.
-	assert.Equal(t, signingKeyID, jwk.KeyID)
+	if jwk.KeyID != alternativeKey.KeyID {
+		t.Errorf("KeyID = %s, want %s", jwk.KeyID, alternativeKey.KeyID)
+	}
 }

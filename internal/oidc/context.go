@@ -6,7 +6,6 @@ import (
 	"errors"
 	"html/template"
 	"net/http"
-	"net/textproto"
 	"slices"
 	"strings"
 	"time"
@@ -17,8 +16,8 @@ import (
 )
 
 type Context struct {
-	Req  *http.Request
-	Resp http.ResponseWriter
+	Response http.ResponseWriter
+	Request  *http.Request
 	Configuration
 }
 
@@ -29,8 +28,8 @@ func NewContext(
 ) *Context {
 	return &Context{
 		Configuration: config,
-		Req:           r,
-		Resp:          w,
+		Response:      w,
+		Request:       r,
 	}
 }
 
@@ -43,14 +42,14 @@ func Handler(
 	}
 }
 
-func (ctx *Context) ClientSignatureAlgorithms() []jose.SignatureAlgorithm {
+func (ctx *Context) ClientAuthnSigAlgs() []jose.SignatureAlgorithm {
 	return append(
 		ctx.PrivateKeyJWTSigAlgs,
 		ctx.ClientSecretJWTSigAlgs...,
 	)
 }
 
-func (ctx *Context) IntrospectionClientSignatureAlgorithms() []jose.SignatureAlgorithm {
+func (ctx *Context) IntrospectionClientAuthnSigAlgs() []jose.SignatureAlgorithm {
 	var signatureAlgorithms []jose.SignatureAlgorithm
 
 	if slices.Contains(ctx.IntrospectionClientAuthnMethods, goidc.ClientAuthnPrivateKeyJWT) {
@@ -70,21 +69,6 @@ func (ctx *Context) IntrospectionClientSignatureAlgorithms() []jose.SignatureAlg
 	return signatureAlgorithms
 }
 
-// DPoPJWT gets the DPoP JWT sent in the DPoP header.
-// According to RFC 9449: "There is not more than one DPoP HTTP request header field."
-// Therefore, an empty string and false will be returned if more than one value is found in the DPoP header.
-func (ctx *Context) DPoPJWT() (string, bool) {
-	// Consider case insensitive headers by canonicalizing them.
-	canonicalizedDPoPHeader := textproto.CanonicalMIMEHeaderKey(goidc.HeaderDPoP)
-	canonicalizedHeaders := textproto.MIMEHeader(ctx.Req.Header)
-
-	values := canonicalizedHeaders[canonicalizedDPoPHeader]
-	if values == nil || len(values) != 1 {
-		return "", false
-	}
-	return values[0], true
-}
-
 // TODO: return an error.
 func (ctx *Context) ClientCert() (*x509.Certificate, bool) {
 
@@ -92,7 +76,7 @@ func (ctx *Context) ClientCert() (*x509.Certificate, bool) {
 		return nil, false
 	}
 
-	return ctx.ClientCertFunc(ctx.Request())
+	return ctx.ClientCertFunc(ctx.Request)
 }
 
 func (ctx *Context) HandleDynamicClient(c *goidc.ClientMetaInfo) error {
@@ -100,7 +84,7 @@ func (ctx *Context) HandleDynamicClient(c *goidc.ClientMetaInfo) error {
 		return nil
 	}
 
-	return ctx.HandleDynamicClientFunc(ctx.Request(), c)
+	return ctx.HandleDynamicClientFunc(ctx.Request, c)
 }
 
 func (ctx *Context) RenderError(err error) error {
@@ -108,7 +92,7 @@ func (ctx *Context) RenderError(err error) error {
 		return err
 	}
 
-	return ctx.RenderErrorFunc(ctx.Response(), ctx.Request(), err)
+	return ctx.RenderErrorFunc(ctx.Response, ctx.Request, err)
 }
 
 // Audiences returns the host names trusted by the server to validate assertions.
@@ -116,33 +100,36 @@ func (ctx *Context) Audiences() []string {
 
 	audiences := []string{
 		ctx.Host,
-		ctx.Host + ctx.Request().RequestURI,
+		ctx.Host + ctx.Request.RequestURI,
 	}
 	if ctx.MTLSIsEnabled {
 		audiences = append(
 			audiences,
 			ctx.MTLSHost,
-			ctx.MTLSHost+ctx.Request().RequestURI,
+			ctx.MTLSHost+ctx.Request.RequestURI,
 		)
 	}
 	return audiences
 }
 
-func (ctx *Context) Policy(policyID string) goidc.AuthnPolicy {
+func (ctx *Context) Policy(id string) goidc.AuthnPolicy {
 	for _, policy := range ctx.Policies {
-		if policy.ID == policyID {
+		if policy.ID == id {
 			return policy
 		}
 	}
 	return goidc.AuthnPolicy{}
 }
 
-func (ctx *Context) FindAvailablePolicy(client *goidc.Client, session *goidc.AuthnSession) (
+func (ctx *Context) AvailablePolicy(
+	client *goidc.Client,
+	session *goidc.AuthnSession,
+) (
 	policy goidc.AuthnPolicy,
 	ok bool,
 ) {
 	for _, policy = range ctx.Policies {
-		if ok = policy.SetUp(ctx.Request(), client, session); ok {
+		if ok = policy.SetUp(ctx.Request, client, session); ok {
 			return policy, true
 		}
 	}
@@ -153,7 +140,7 @@ func (ctx *Context) FindAvailablePolicy(client *goidc.Client, session *goidc.Aut
 //---------------------------------------- CRUD ----------------------------------------//
 
 func (ctx *Context) SaveClient(client *goidc.Client) error {
-	return ctx.ClientManager.Save(ctx.Request().Context(), client)
+	return ctx.ClientManager.Save(ctx.Request.Context(), client)
 }
 
 func (ctx *Context) Client(clientID string) (*goidc.Client, error) {
@@ -163,16 +150,16 @@ func (ctx *Context) Client(clientID string) (*goidc.Client, error) {
 		}
 	}
 
-	return ctx.ClientManager.Get(ctx.Request().Context(), clientID)
+	return ctx.ClientManager.Get(ctx.Request.Context(), clientID)
 }
 
 func (ctx *Context) DeleteClient(id string) error {
-	return ctx.ClientManager.Delete(ctx.Request().Context(), id)
+	return ctx.ClientManager.Delete(ctx.Request.Context(), id)
 }
 
 func (ctx *Context) SaveGrantSession(session *goidc.GrantSession) error {
 	return ctx.GrantSessionManager.Save(
-		ctx.Request().Context(),
+		ctx.Request.Context(),
 		session,
 	)
 }
@@ -184,7 +171,7 @@ func (ctx *Context) GrantSessionByTokenID(
 	error,
 ) {
 	return ctx.GrantSessionManager.GetByTokenID(
-		ctx.Request().Context(),
+		ctx.Request.Context(),
 		id,
 	)
 }
@@ -196,17 +183,17 @@ func (ctx *Context) GrantSessionByRefreshToken(
 	error,
 ) {
 	return ctx.GrantSessionManager.GetByRefreshToken(
-		ctx.Request().Context(),
+		ctx.Request.Context(),
 		token,
 	)
 }
 
 func (ctx *Context) DeleteGrantSession(id string) error {
-	return ctx.GrantSessionManager.Delete(ctx.Request().Context(), id)
+	return ctx.GrantSessionManager.Delete(ctx.Request.Context(), id)
 }
 
 func (ctx *Context) SaveAuthnSession(session *goidc.AuthnSession) error {
-	return ctx.AuthnSessionManager.Save(ctx.Request().Context(), session)
+	return ctx.AuthnSessionManager.Save(ctx.Request.Context(), session)
 }
 
 func (ctx *Context) AuthnSessionByCallbackID(
@@ -215,7 +202,7 @@ func (ctx *Context) AuthnSessionByCallbackID(
 	*goidc.AuthnSession,
 	error,
 ) {
-	return ctx.AuthnSessionManager.GetByCallbackID(ctx.Request().Context(), id)
+	return ctx.AuthnSessionManager.GetByCallbackID(ctx.Request.Context(), id)
 }
 
 func (ctx *Context) AuthnSessionByAuthorizationCode(
@@ -225,7 +212,7 @@ func (ctx *Context) AuthnSessionByAuthorizationCode(
 	error,
 ) {
 	return ctx.AuthnSessionManager.GetByAuthorizationCode(
-		ctx.Request().Context(),
+		ctx.Request.Context(),
 		code,
 	)
 }
@@ -236,11 +223,11 @@ func (ctx *Context) AuthnSessionByRequestURI(
 	*goidc.AuthnSession,
 	error,
 ) {
-	return ctx.AuthnSessionManager.GetByRequestURI(ctx.Request().Context(), uri)
+	return ctx.AuthnSessionManager.GetByRequestURI(ctx.Request.Context(), uri)
 }
 
 func (ctx *Context) DeleteAuthnSession(id string) error {
-	return ctx.AuthnSessionManager.Delete(ctx.Request().Context(), id)
+	return ctx.AuthnSessionManager.Delete(ctx.Request.Context(), id)
 }
 
 //---------------------------------------- HTTP Utils ----------------------------------------//
@@ -251,14 +238,6 @@ func (ctx *Context) BaseURL() string {
 
 func (ctx *Context) MTLSBaseURL() string {
 	return ctx.MTLSHost + ctx.EndpointPrefix
-}
-
-func (ctx *Context) Request() *http.Request {
-	return ctx.Req
-}
-
-func (ctx *Context) Response() http.ResponseWriter {
-	return ctx.Resp
 }
 
 func (ctx *Context) BearerToken() (string, bool) {
@@ -293,7 +272,7 @@ func (ctx *Context) AuthorizationToken() (
 }
 
 func (ctx *Context) Header(name string) (string, bool) {
-	value := ctx.Req.Header.Get(name)
+	value := ctx.Request.Header.Get(name)
 	if value == "" {
 		return "", false
 	}
@@ -302,26 +281,26 @@ func (ctx *Context) Header(name string) (string, bool) {
 }
 
 func (ctx *Context) RequestMethod() string {
-	return ctx.Req.Method
+	return ctx.Request.Method
 }
 
 func (ctx *Context) FormParam(param string) string {
 
-	if err := ctx.Req.ParseForm(); err != nil {
+	if err := ctx.Request.ParseForm(); err != nil {
 		return ""
 	}
 
-	return ctx.Req.PostFormValue(param)
+	return ctx.Request.PostFormValue(param)
 }
 
 func (ctx *Context) FormData() map[string]any {
 
-	if err := ctx.Req.ParseForm(); err != nil {
+	if err := ctx.Request.ParseForm(); err != nil {
 		return map[string]any{}
 	}
 
 	formData := make(map[string]any)
-	for param, values := range ctx.Req.PostForm {
+	for param, values := range ctx.Request.PostForm {
 		formData[param] = values[0]
 	}
 	return formData
@@ -331,14 +310,14 @@ func (ctx *Context) FormData() map[string]any {
 func (ctx *Context) Write(obj any, status int) error {
 	// Check if the request was terminated before writing anything.
 	select {
-	case <-ctx.Request().Context().Done():
+	case <-ctx.Request.Context().Done():
 		return nil
 	default:
 	}
 
-	ctx.Resp.Header().Set("Content-Type", "application/json")
-	ctx.Resp.WriteHeader(status)
-	if err := json.NewEncoder(ctx.Resp).Encode(obj); err != nil {
+	ctx.Response.Header().Set("Content-Type", "application/json")
+	ctx.Response.WriteHeader(status)
+	if err := json.NewEncoder(ctx.Response).Encode(obj); err != nil {
 		return err
 	}
 
@@ -348,15 +327,15 @@ func (ctx *Context) Write(obj any, status int) error {
 func (ctx *Context) WriteJWT(token string, status int) error {
 	// Check if the request was terminated before writing anything.
 	select {
-	case <-ctx.Request().Context().Done():
+	case <-ctx.Request.Context().Done():
 		return nil
 	default:
 	}
 
-	ctx.Resp.Header().Set("Content-Type", "application/jwt")
-	ctx.Resp.WriteHeader(status)
+	ctx.Response.Header().Set("Content-Type", "application/jwt")
+	ctx.Response.WriteHeader(status)
 
-	if _, err := ctx.Resp.Write([]byte(token)); err != nil {
+	if _, err := ctx.Response.Write([]byte(token)); err != nil {
 		return err
 	}
 
@@ -371,18 +350,18 @@ func (ctx *Context) WriteError(err error) {
 			"error":             oidcerr.CodeInternalError,
 			"error_description": "internal error",
 		}, http.StatusInternalServerError); err != nil {
-			ctx.Response().WriteHeader(http.StatusInternalServerError)
+			ctx.Response.WriteHeader(http.StatusInternalServerError)
 		}
 		return
 	}
 
 	if err := ctx.Write(oidcErr, oidcErr.Code.StatusCode()); err != nil {
-		ctx.Response().WriteHeader(http.StatusInternalServerError)
+		ctx.Response.WriteHeader(http.StatusInternalServerError)
 	}
 }
 
 func (ctx *Context) Redirect(redirectURL string) {
-	http.Redirect(ctx.Resp, ctx.Req, redirectURL, http.StatusSeeOther)
+	http.Redirect(ctx.Response, ctx.Request, redirectURL, http.StatusSeeOther)
 }
 
 func (ctx *Context) RenderHTML(
@@ -391,20 +370,20 @@ func (ctx *Context) RenderHTML(
 ) error {
 	// Check if the request was terminated before writing anything.
 	select {
-	case <-ctx.Request().Context().Done():
+	case <-ctx.Request.Context().Done():
 		return nil
 	default:
 	}
 
-	ctx.Resp.Header().Set("Content-Type", "text/html")
-	ctx.Resp.WriteHeader(http.StatusOK)
+	ctx.Response.Header().Set("Content-Type", "text/html")
+	ctx.Response.WriteHeader(http.StatusOK)
 	tmpl, _ := template.New("default").Parse(html)
-	return tmpl.Execute(ctx.Resp, params)
+	return tmpl.Execute(ctx.Response, params)
 }
 
 //---------------------------------------- Key Management ----------------------------------------//
 
-func (ctx *Context) SignatureAlgorithms() []jose.SignatureAlgorithm {
+func (ctx *Context) SigAlgs() []jose.SignatureAlgorithm {
 	var algorithms []jose.SignatureAlgorithm
 	for _, privateKey := range ctx.PrivateJWKS.Keys {
 		if privateKey.Use == string(goidc.KeyUsageSignature) {
@@ -440,47 +419,47 @@ func (ctx *Context) PrivateKey(keyID string) (jose.JSONWebKey, bool) {
 	return keys[0], true
 }
 
-func (ctx *Context) TokenSignatureKey(tokenOptions goidc.TokenOptions) jose.JSONWebKey {
+func (ctx *Context) TokenSigKey(tokenOptions goidc.TokenOptions) jose.JSONWebKey {
 	return ctx.privateKey(tokenOptions.JWTSignatureKeyID)
 }
 
-func (ctx *Context) UserInfoSignatureKey(client *goidc.Client) jose.JSONWebKey {
-	return ctx.privateKeyBasedOnAlgorithmOrDefault(
+func (ctx *Context) UserInfoSigKey(client *goidc.Client) jose.JSONWebKey {
+	return ctx.privateKeyByAlgOrDefault(
 		client.UserInfoSigAlg,
 		ctx.UserDefaultSigKeyID,
 		ctx.UserSigKeyIDs,
 	)
 }
 
-func (ctx *Context) IDTokenSignatureKey(client *goidc.Client) jose.JSONWebKey {
-	return ctx.privateKeyBasedOnAlgorithmOrDefault(
+func (ctx *Context) IDTokenSigKey(client *goidc.Client) jose.JSONWebKey {
+	return ctx.privateKeyByAlgOrDefault(
 		client.IDTokenSigAlg,
 		ctx.UserDefaultSigKeyID,
 		ctx.UserSigKeyIDs,
 	)
 }
 
-func (ctx *Context) JARMSignatureKey(client *goidc.Client) jose.JSONWebKey {
-	return ctx.privateKeyBasedOnAlgorithmOrDefault(
+func (ctx *Context) JARMSigKey(client *goidc.Client) jose.JSONWebKey {
+	return ctx.privateKeyByAlgOrDefault(
 		client.JARMSigAlg,
 		ctx.JARMDefaultSigKeyID,
 		ctx.JARMSigKeyIDs,
 	)
 }
 
-func (ctx *Context) UserInfoSignatureAlgorithms() []jose.SignatureAlgorithm {
-	return ctx.signatureAlgorithms(ctx.UserSigKeyIDs)
+func (ctx *Context) UserInfoSigAlgs() []jose.SignatureAlgorithm {
+	return ctx.sigAlgs(ctx.UserSigKeyIDs)
 }
 
-func (ctx *Context) JARMSignatureAlgorithms() []jose.SignatureAlgorithm {
-	return ctx.signatureAlgorithms(ctx.JARMSigKeyIDs)
+func (ctx *Context) JARMSigAlgs() []jose.SignatureAlgorithm {
+	return ctx.sigAlgs(ctx.JARMSigKeyIDs)
 }
 
-func (ctx *Context) JARKeyEncryptionAlgorithms() []jose.KeyAlgorithm {
-	return ctx.keyEncryptionAlgorithms(ctx.JARKeyEncIDs)
+func (ctx *Context) JARKeyEncAlgs() []jose.KeyAlgorithm {
+	return ctx.keyEncAlgs(ctx.JARKeyEncIDs)
 }
 
-func (ctx *Context) keyEncryptionAlgorithms(keyIDs []string) []jose.KeyAlgorithm {
+func (ctx *Context) keyEncAlgs(keyIDs []string) []jose.KeyAlgorithm {
 	var algorithms []jose.KeyAlgorithm
 	for _, keyID := range keyIDs {
 		key := ctx.privateKey(keyID)
@@ -489,7 +468,7 @@ func (ctx *Context) keyEncryptionAlgorithms(keyIDs []string) []jose.KeyAlgorithm
 	return algorithms
 }
 
-func (ctx *Context) signatureAlgorithms(keyIDs []string) []jose.SignatureAlgorithm {
+func (ctx *Context) sigAlgs(keyIDs []string) []jose.SignatureAlgorithm {
 	var algorithms []jose.SignatureAlgorithm
 	for _, keyID := range keyIDs {
 		key := ctx.privateKey(keyID)
@@ -498,17 +477,20 @@ func (ctx *Context) signatureAlgorithms(keyIDs []string) []jose.SignatureAlgorit
 	return algorithms
 }
 
-// privateKeyBasedOnAlgorithmOrDefault tries to find a key that matches signatureAlgorithm
+// privateKeyByAlgOrDefault tries to find a key that matches signatureAlgorithm
 // from the subset of keys defined by keyIDs.
 // If no key is found, return the key associated to defaultKeyID.
-func (ctx *Context) privateKeyBasedOnAlgorithmOrDefault(
-	signatureAlgorithm jose.SignatureAlgorithm,
+func (ctx *Context) privateKeyByAlgOrDefault(
+	sigAlg jose.SignatureAlgorithm,
 	defaultKeyID string,
 	keyIDs []string,
 ) jose.JSONWebKey {
-	if signatureAlgorithm != "" {
+	if sigAlg != "" {
 		for _, keyID := range keyIDs {
-			return ctx.privateKey(keyID)
+			key := ctx.privateKey(keyID)
+			if key.Algorithm == string(sigAlg) {
+				return key
+			}
 		}
 	}
 
@@ -523,7 +505,7 @@ func (ctx *Context) privateKey(keyID string) jose.JSONWebKey {
 }
 
 func (ctx *Context) TokenOptions(client *goidc.Client, scopes string) (goidc.TokenOptions, error) {
-	opts, err := ctx.Configuration.TokenOptions(client, scopes)
+	opts, err := ctx.Configuration.TokenOptionsFunc(client, scopes)
 	if err != nil {
 		return goidc.TokenOptions{}, oidcerr.Errorf(oidcerr.CodeAccessDenied,
 			"access denied", err)
@@ -535,17 +517,17 @@ func (ctx *Context) TokenOptions(client *goidc.Client, scopes string) (goidc.Tok
 //---------------------------------------- Context ----------------------------------------//
 
 func (ctx *Context) Deadline() (deadline time.Time, ok bool) {
-	return ctx.Request().Context().Deadline()
+	return ctx.Request.Context().Deadline()
 }
 
 func (ctx *Context) Done() <-chan struct{} {
-	return ctx.Req.Context().Done()
+	return ctx.Request.Context().Done()
 }
 
 func (ctx *Context) Err() error {
-	return ctx.Request().Context().Err()
+	return ctx.Request.Context().Err()
 }
 
 func (ctx *Context) Value(key any) any {
-	return ctx.Request().Context().Value(key)
+	return ctx.Request.Context().Value(key)
 }

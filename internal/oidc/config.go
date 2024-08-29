@@ -18,7 +18,7 @@ type Configuration struct {
 	// PrivateJWKS contains the server JWKS with private and public information.
 	// When exposing it, the private information is removed.
 	PrivateJWKS             jose.JSONWebKeySet
-	TokenOptions            goidc.TokenOptionsFunc
+	TokenOptionsFunc        goidc.TokenOptionsFunc
 	Policies                []goidc.AuthnPolicy
 	Scopes                  []goidc.Scope
 	OpenIDIsRequired        bool

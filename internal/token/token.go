@@ -40,7 +40,7 @@ func validClaims(
 	map[string]any,
 	error,
 ) {
-	parsedToken, err := jwt.ParseSigned(token, ctx.SignatureAlgorithms())
+	parsedToken, err := jwt.ParseSigned(token, ctx.SigAlgs())
 	if err != nil {
 		// If the token is not a valid JWT, we'll treat it as an opaque token.
 		return nil, oidcerr.Errorf(oidcerr.CodeInvalidRequest,

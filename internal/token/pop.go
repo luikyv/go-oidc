@@ -1,6 +1,7 @@
 package token
 
 import (
+	"net/textproto"
 	"net/url"
 	"slices"
 	"strings"
@@ -122,7 +123,7 @@ func validateDPoP(
 		}
 	}
 
-	dpopJWT, ok := ctx.DPoPJWT()
+	dpopJWT, ok := dpopJWT(ctx)
 	if !ok {
 		// The session was created with DPoP, then the DPoP header must be passed.
 		return oidcerr.New(oidcerr.CodeUnauthorizedClient, "invalid DPoP header")
@@ -154,4 +155,19 @@ func validateTLSPoP(
 	}
 
 	return nil
+}
+
+// DPoPJWT gets the DPoP JWT sent in the DPoP header.
+// According to RFC 9449: "There is not more than one DPoP HTTP request header field."
+// Therefore, an empty string and false will be returned if more than one value is found in the DPoP header.
+func dpopJWT(ctx *oidc.Context) (string, bool) {
+	// Consider case insensitive headers by canonicalizing them.
+	canonicalizedDPoPHeader := textproto.CanonicalMIMEHeaderKey(goidc.HeaderDPoP)
+	canonicalizedHeaders := textproto.MIMEHeader(ctx.Request.Header)
+
+	values := canonicalizedHeaders[canonicalizedDPoPHeader]
+	if values == nil || len(values) != 1 {
+		return "", false
+	}
+	return values[0], true
 }

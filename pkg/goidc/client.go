@@ -83,14 +83,15 @@ func (c *Client) fetchJWKS() (json.RawMessage, error) {
 }
 
 type ClientMetaInfo struct {
-	Name                    string                  `json:"client_name,omitempty"`
-	LogoURI                 string                  `json:"logo_uri,omitempty"`
-	RedirectURIs            []string                `json:"redirect_uris"`
-	GrantTypes              []GrantType             `json:"grant_types"`
-	ResponseTypes           []ResponseType          `json:"response_types"`
-	PublicJWKSURI           string                  `json:"jwks_uri,omitempty"`
-	PublicJWKS              json.RawMessage         `json:"jwks,omitempty"`
-	Scopes                  string                  `json:"scope"`
+	Name          string          `json:"client_name,omitempty"`
+	LogoURI       string          `json:"logo_uri,omitempty"`
+	RedirectURIs  []string        `json:"redirect_uris"`
+	GrantTypes    []GrantType     `json:"grant_types"`
+	ResponseTypes []ResponseType  `json:"response_types"`
+	PublicJWKSURI string          `json:"jwks_uri,omitempty"`
+	PublicJWKS    json.RawMessage `json:"jwks,omitempty"`
+	// ScopeIDs contains the scopes available to the client separeted by spaces.
+	ScopeIDs                string                  `json:"scope"`
 	SubIdentifierType       SubjectIdentifierType   `json:"subject_type,omitempty"`
 	IDTokenSigAlg           jose.SignatureAlgorithm `json:"id_token_signed_response_alg,omitempty"`
 	IDTokenKeyEncAlg        jose.KeyAlgorithm       `json:"id_token_encrypted_response_alg,omitempty"`

@@ -21,11 +21,11 @@ func oidcConfig(ctx *oidc.Context) openIDConfiguration {
 		UserClaimsSupported:          ctx.Claims,
 		ClaimTypesSupported:          ctx.ClaimTypes,
 		SubIdentifierTypes:           ctx.SubIdentifierTypes,
-		IDTokenSigAlgs:               ctx.UserInfoSignatureAlgorithms(),
-		UserInfoSigAlgs:              ctx.UserInfoSignatureAlgorithms(),
+		IDTokenSigAlgs:               ctx.UserInfoSigAlgs(),
+		UserInfoSigAlgs:              ctx.UserInfoSigAlgs(),
 		ClientAuthnMethods:           ctx.ClientAuthnMethods,
 		Scopes:                       scopes,
-		TokenEndpointClientSigAlgs:   ctx.ClientSignatureAlgorithms(),
+		TokenEndpointClientSigAlgs:   ctx.ClientAuthnSigAlgs(),
 		IssuerResponseParamIsEnabled: ctx.IssuerRespParamIsEnabled,
 		ClaimsParamIsEnabled:         ctx.ClaimsParamIsEnabled,
 		AuthDetailsIsEnabled:         ctx.AuthDetailsIsEnabled,
@@ -48,13 +48,13 @@ func oidcConfig(ctx *oidc.Context) openIDConfiguration {
 		config.JARIsRequired = ctx.JARIsRequired
 		config.JARAlgs = ctx.JARSigAlgs
 		if ctx.JAREncIsEnabled {
-			config.JARKeyEncAlgs = ctx.JARKeyEncryptionAlgorithms()
+			config.JARKeyEncAlgs = ctx.JARKeyEncAlgs()
 			config.JARContentEncAlgs = ctx.JARContentEncAlgs
 		}
 	}
 
 	if ctx.JARMIsEnabled {
-		config.JARMAlgs = ctx.JARMSignatureAlgorithms()
+		config.JARMAlgs = ctx.JARMSigAlgs()
 		if ctx.JARMEncIsEnabled {
 			config.JARMKeyEncAlgs = ctx.JARMKeyEncAlgs
 			config.JARMContentEncAlgs = ctx.JARMContentEncAlgs
@@ -68,7 +68,7 @@ func oidcConfig(ctx *oidc.Context) openIDConfiguration {
 	if ctx.IntrospectionIsEnabled {
 		config.IntrospectionEndpoint = ctx.BaseURL() + ctx.EndpointIntrospection
 		config.IntrospectionEndpointClientAuthnMethods = ctx.IntrospectionClientAuthnMethods
-		config.IntrospectionEndpointClientSigAlgs = ctx.IntrospectionClientSignatureAlgorithms()
+		config.IntrospectionEndpointClientSigAlgs = ctx.IntrospectionClientAuthnSigAlgs()
 	}
 
 	if ctx.MTLSIsEnabled {

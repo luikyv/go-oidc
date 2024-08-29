@@ -139,7 +139,7 @@ func signJARMResponse(
 		claims[k] = v
 	}
 
-	jwk := ctx.JARMSignatureKey(c)
+	jwk := ctx.JARMSigKey(c)
 	resp, err := jwtutil.Sign(claims, jwk,
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
 	if err != nil {

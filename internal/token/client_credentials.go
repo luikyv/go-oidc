@@ -114,7 +114,7 @@ func newClientCredentialsGrantOptions(
 
 	scopes := req.Scopes
 	if scopes == "" {
-		scopes = client.Scopes
+		scopes = client.ScopeIDs
 	}
 	return GrantOptions{
 		GrantType:     goidc.GrantClientCredentials,

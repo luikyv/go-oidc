@@ -160,7 +160,7 @@ func validateOpenIDScopeIfRequired(
 		return nil
 	}
 
-	if dc.Scopes != "" || !strutil.ContainsOpenID(dc.Scopes) {
+	if dc.ScopeIDs != "" || !strutil.ContainsOpenID(dc.ScopeIDs) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"scope openid is required")
 	}
@@ -191,7 +191,7 @@ func validateIDTokenSignatureAlgorithm(
 		return nil
 	}
 
-	if !slices.Contains(ctx.UserInfoSignatureAlgorithms(), dc.IDTokenSigAlg) {
+	if !slices.Contains(ctx.UserInfoSigAlgs(), dc.IDTokenSigAlg) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"id_token_signed_response_alg not supported")
 	}
@@ -206,7 +206,7 @@ func validateUserInfoSignatureAlgorithm(
 		return nil
 	}
 
-	if !slices.Contains(ctx.UserInfoSignatureAlgorithms(), dc.UserInfoSigAlg) {
+	if !slices.Contains(ctx.UserInfoSigAlgs(), dc.UserInfoSigAlg) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"id_token_signed_response_alg not supported")
 	}
@@ -236,7 +236,7 @@ func validateJARMSignatureAlgorithm(
 		return nil
 	}
 
-	if !slices.Contains(ctx.JARMSignatureAlgorithms(), dc.JARMSigAlg) {
+	if !slices.Contains(ctx.JARMSigAlgs(), dc.JARMSigAlg) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"authorization_signed_response_alg not supported")
 	}
@@ -458,7 +458,7 @@ func validateJAREncryptionAlgorithms(
 	}
 
 	if dc.JARKeyEncAlg != "" &&
-		!slices.Contains(ctx.JARKeyEncryptionAlgorithms(), dc.JARKeyEncAlg) {
+		!slices.Contains(ctx.JARKeyEncAlgs(), dc.JARKeyEncAlg) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"request_object_encryption_alg not supported")
 	}
@@ -529,7 +529,7 @@ func validateRefreshTokenGrant(
 	ctx *oidc.Context,
 	dc request,
 ) error {
-	if strutil.ContainsOfflineAccess(dc.Scopes) &&
+	if strutil.ContainsOfflineAccess(dc.ScopeIDs) &&
 		!slices.Contains(dc.GrantTypes, goidc.GrantRefreshToken) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"refresh_token grant is required for using the scope offline_access")
@@ -542,7 +542,7 @@ func validateScopes(
 	ctx *oidc.Context,
 	dc request,
 ) error {
-	for _, requestedScope := range strutil.SplitWithSpaces(dc.Scopes) {
+	for _, requestedScope := range strutil.SplitWithSpaces(dc.ScopeIDs) {
 		matches := false
 		for _, scope := range ctx.Scopes {
 			if requestedScope == scope.ID {

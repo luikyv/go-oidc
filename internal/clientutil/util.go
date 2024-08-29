@@ -21,7 +21,7 @@ func AreScopesAllowed(
 	// Filter the client scopes that are available.
 	var clientScopes []goidc.Scope
 	for _, scope := range availableScopes {
-		if strings.Contains(c.Scopes, scope.ID) {
+		if strings.Contains(c.ScopeIDs, scope.ID) {
 			clientScopes = append(clientScopes, scope)
 		}
 	}

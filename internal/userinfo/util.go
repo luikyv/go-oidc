@@ -101,7 +101,7 @@ func signUserInfoClaims(
 	string,
 	error,
 ) {
-	jwk := ctx.UserInfoSignatureKey(c)
+	jwk := ctx.UserInfoSigKey(c)
 	jws, err := jwtutil.Sign(claims, jwk,
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
 	if err != nil {

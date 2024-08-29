@@ -235,8 +235,9 @@ func WithOpenIDScopeRequired() ProviderOption {
 
 // WithTokenOptions defines how access tokens are issued.
 func WithTokenOptions(tokenOpts goidc.TokenOptionsFunc) ProviderOption {
+	// TODO: Move this logic to the context.
 	return func(p *provider) error {
-		p.config.TokenOptions = func(
+		p.config.TokenOptionsFunc = func(
 			c *goidc.Client,
 			scopes string,
 		) (

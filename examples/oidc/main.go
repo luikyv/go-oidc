@@ -76,7 +76,7 @@ func dcrPlugin(scopes []goidc.Scope) goidc.HandleDynamicClientFunc {
 		for _, scope := range scopes {
 			s = append(s, scope.ID)
 		}
-		clientInfo.Scopes = strings.Join(s, " ")
+		clientInfo.ScopeIDs = strings.Join(s, " ")
 
 		if !slices.Contains(clientInfo.GrantTypes, goidc.GrantRefreshToken) {
 			clientInfo.GrantTypes = append(clientInfo.GrantTypes, goidc.GrantRefreshToken)

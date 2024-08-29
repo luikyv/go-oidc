@@ -34,7 +34,7 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 
 func handleCreate(ctx *oidc.Context) {
 	var req request
-	if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
 		err = oidcerr.Errorf(oidcerr.CodeInvalidRequest,
 			"could not parse the request", err)
 		ctx.WriteError(err)
@@ -58,7 +58,7 @@ func handleCreate(ctx *oidc.Context) {
 
 func handleUpdate(ctx *oidc.Context) {
 	var req request
-	if err := json.NewDecoder(ctx.Request().Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
 		err = oidcerr.Errorf(oidcerr.CodeInvalidRequest,
 			"could not parse the request", err)
 		ctx.WriteError(err)
@@ -71,7 +71,7 @@ func handleUpdate(ctx *oidc.Context) {
 		return
 	}
 
-	req.id = ctx.Request().PathValue("client_id")
+	req.id = ctx.Request.PathValue("client_id")
 	req.registrationToken = token
 	resp, err := update(ctx, req)
 	if err != nil {
@@ -92,7 +92,7 @@ func handleGet(ctx *oidc.Context) {
 	}
 
 	req := request{
-		id:                ctx.Request().PathValue("client_id"),
+		id:                ctx.Request.PathValue("client_id"),
 		registrationToken: token,
 	}
 
@@ -115,7 +115,7 @@ func handleDelete(ctx *oidc.Context) {
 	}
 
 	req := request{
-		id:                ctx.Request().PathValue("client_id"),
+		id:                ctx.Request.PathValue("client_id"),
 		registrationToken: token,
 	}
 
@@ -124,5 +124,5 @@ func handleDelete(ctx *oidc.Context) {
 		return
 	}
 
-	ctx.Response().WriteHeader(http.StatusNoContent)
+	ctx.Response.WriteHeader(http.StatusNoContent)
 }

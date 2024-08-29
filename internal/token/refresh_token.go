@@ -145,7 +145,7 @@ func validateRefreshTokenPoPForPublicClients(
 		return nil
 	}
 
-	dpopJWT, ok := ctx.DPoPJWT()
+	dpopJWT, ok := dpopJWT(ctx)
 	if !ok {
 		// The session was created with DPoP for a public client, then the DPoP header must be passed.
 		return oidcerr.New(oidcerr.CodeUnauthorizedClient, "invalid DPoP header")

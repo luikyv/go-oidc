@@ -27,7 +27,7 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 
 func handlerPush(ctx *oidc.Context) {
 
-	req := newPushedRequest(ctx.Request())
+	req := newPushedRequest(ctx.Request)
 	resp, err := pushAuth(ctx, req)
 	if err != nil {
 		ctx.WriteError(err)
@@ -40,7 +40,7 @@ func handlerPush(ctx *oidc.Context) {
 }
 
 func handler(ctx *oidc.Context) {
-	req := newRequest(ctx.Request())
+	req := newRequest(ctx.Request)
 
 	err := initAuth(ctx, req)
 	if err != nil {
@@ -53,7 +53,7 @@ func handler(ctx *oidc.Context) {
 }
 
 func handlerCallback(ctx *oidc.Context) {
-	callbackID := ctx.Request().PathValue("callback")
+	callbackID := ctx.Request.PathValue("callback")
 	err := continueAuth(ctx, callbackID)
 	if err == nil {
 		return

@@ -64,7 +64,7 @@ func New(
 			GrantSessionManager: storage.NewGrantSessionManager(),
 
 			Scopes:              []goidc.Scope{goidc.ScopeOpenID},
-			TokenOptions:        defaultTokenOptionsFunc(defaultSigKeyID),
+			TokenOptionsFunc:    defaultTokenOptionsFunc(defaultSigKeyID),
 			PrivateJWKS:         privateJWKS,
 			UserDefaultSigKeyID: defaultSigKeyID,
 			UserSigKeyIDs:       []string{defaultSigKeyID},

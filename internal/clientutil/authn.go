@@ -84,11 +84,11 @@ func authenticateSecretPost(
 	c *goidc.Client,
 ) error {
 
-	if c.ID != ctx.Request().PostFormValue(idFormPostParam) {
+	if c.ID != ctx.Request.PostFormValue(idFormPostParam) {
 		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid client id")
 	}
 
-	secret := ctx.Request().PostFormValue(secretFormPostParam)
+	secret := ctx.Request.PostFormValue(secretFormPostParam)
 	if secret == "" {
 		return oidcerr.New(oidcerr.CodeInvalidClient, "client secret not informed")
 	}
@@ -99,7 +99,7 @@ func authenticateSecretBasic(
 	ctx *oidc.Context,
 	c *goidc.Client,
 ) error {
-	id, secret, ok := ctx.Request().BasicAuth()
+	id, secret, ok := ctx.Request.BasicAuth()
 	if !ok {
 		return oidcerr.New(oidcerr.CodeInvalidClient,
 			"client basic authentication not informed")
@@ -210,13 +210,13 @@ func authenticateSecretJWT(
 }
 
 func assertion(ctx *oidc.Context) (string, error) {
-	assertionType := ctx.Request().PostFormValue(assertionTypeFormPostParam)
+	assertionType := ctx.Request.PostFormValue(assertionTypeFormPostParam)
 	if assertionType != string(goidc.AssertionTypeJWTBearer) {
 		return "", oidcerr.New(oidcerr.CodeInvalidClient,
 			"invalid assertion_type")
 	}
 
-	assertion := ctx.Request().PostFormValue(assertionFormPostParam)
+	assertion := ctx.Request.PostFormValue(assertionFormPostParam)
 	if assertion == "" {
 		return "", oidcerr.New(oidcerr.CodeInvalidClient,
 			"client_assertion not informed")
@@ -263,7 +263,7 @@ func authenticateSelfSignedTLSCert(
 	ctx *oidc.Context,
 	c *goidc.Client,
 ) error {
-	if c.ID != ctx.Request().PostFormValue(idFormPostParam) {
+	if c.ID != ctx.Request.PostFormValue(idFormPostParam) {
 		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid client id")
 	}
 
@@ -314,7 +314,7 @@ func authenticateTLSCert(
 	ctx *oidc.Context,
 	c *goidc.Client,
 ) error {
-	if c.ID != ctx.Request().PostFormValue(idFormPostParam) {
+	if c.ID != ctx.Request.PostFormValue(idFormPostParam) {
 		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid client id")
 	}
 
@@ -350,20 +350,20 @@ func extractID(
 ) {
 	ids := []string{}
 
-	postID := ctx.Request().PostFormValue(idFormPostParam)
+	postID := ctx.Request.PostFormValue(idFormPostParam)
 	if postID != "" {
 		ids = append(ids, postID)
 	}
 
-	basicID, _, _ := ctx.Request().BasicAuth()
+	basicID, _, _ := ctx.Request.BasicAuth()
 	if basicID != "" {
 		ids = append(ids, basicID)
 	}
 
-	assertion := ctx.Request().PostFormValue(assertionFormPostParam)
+	assertion := ctx.Request.PostFormValue(assertionFormPostParam)
 	if assertion != "" {
 		assertionID, err := assertionClientID(assertion,
-			ctx.ClientSignatureAlgorithms())
+			ctx.ClientAuthnSigAlgs())
 		if err != nil {
 			return "", err
 		}

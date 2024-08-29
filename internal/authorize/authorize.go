@@ -179,7 +179,7 @@ func initAuthnSessionWithPolicy(
 	client *goidc.Client,
 	session *goidc.AuthnSession,
 ) error {
-	policy, ok := ctx.FindAvailablePolicy(client, session)
+	policy, ok := ctx.AvailablePolicy(client, session)
 	if !ok {
 		return newRedirectionError(oidcerr.CodeInvalidRequest,
 			"no policy available", session.AuthorizationParameters)
@@ -212,7 +212,7 @@ func callbackID() (string, error) {
 
 func authenticate(ctx *oidc.Context, session *goidc.AuthnSession) error {
 	policy := ctx.Policy(session.PolicyID)
-	switch policy.Authenticate(ctx.Response(), ctx.Request(), session) {
+	switch policy.Authenticate(ctx.Response, ctx.Request, session) {
 	case goidc.StatusSuccess:
 		return finishFlowSuccessfully(ctx, session)
 	case goidc.StatusInProgress:

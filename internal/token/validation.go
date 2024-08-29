@@ -15,7 +15,7 @@ func validateTokenBindingIsRequired(
 
 	tokenWillBeBound := false
 
-	_, ok := ctx.DPoPJWT()
+	_, ok := dpopJWT(ctx)
 	if ctx.DPoPIsEnabled && ok {
 		tokenWillBeBound = true
 	}
@@ -39,7 +39,7 @@ func validateTokenBindingRequestWithDPoP(
 	client *goidc.Client,
 ) error {
 
-	dpopJWT, ok := ctx.DPoPJWT()
+	dpopJWT, ok := dpopJWT(ctx)
 	// Return an error if the DPoP header was not informed, but it's required
 	// either in the context or by the client.
 	if !ok && (ctx.DPoPIsRequired || client.DPoPIsRequired) {

@@ -51,7 +51,11 @@ func New(code Code, desc string) Error {
 }
 
 func (err Error) Error() string {
-	return fmt.Sprintf("%s %s", err.Code, err.Description)
+	if err.wrapped == nil {
+		return fmt.Sprintf("%s %s", err.Code, err.Description)
+	}
+
+	return fmt.Sprintf("%s %s: %v", err.Code, err.Description, err.wrapped)
 }
 
 func (err Error) Unwrap() error {

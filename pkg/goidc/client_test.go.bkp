@@ -15,38 +15,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func TestAreScopesAllowed(t *testing.T) {
-	// Given.
-	scopes := []goidc.Scope{
-		goidc.NewScope("scope1"),
-		goidc.NewScope("scope2"),
-		goidc.NewScope("scope3"),
-	}
 
-	client := goidc.Client{
-		ClientMetaInfo: goidc.ClientMetaInfo{
-			Scopes: "scope1 scope2 scope3",
-		},
-	}
-
-	testCases := []struct {
-		requestedScopes string
-		expectedResult  bool
-	}{
-		{"scope1 scope3", true},
-		{"scope3 scope2", true},
-		{"invalid_scope scope3", false},
-	}
-
-	for i, testCase := range testCases {
-		t.Run(
-			fmt.Sprintf("case %d", i),
-			func(t *testing.T) {
-				assert.Equal(t, testCase.expectedResult, client.AreScopesAllowed(scopes, testCase.requestedScopes))
-			},
-		)
-	}
-}
 
 func TestIsResponseTypeAllowed(t *testing.T) {
 	client := goidc.Client{

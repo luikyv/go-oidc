@@ -56,7 +56,7 @@ func signedRequestObjectFromEncrypted(
 ) {
 	encryptedReqObject, err := jose.ParseEncrypted(
 		reqObject,
-		ctx.JARKeyEncryptionAlgorithms(),
+		ctx.JARKeyEncAlgs(),
 		ctx.JARContentEncAlgs,
 	)
 	if err != nil {
