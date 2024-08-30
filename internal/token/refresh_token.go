@@ -154,7 +154,7 @@ func validateRefreshTokenPoPForPublicClients(
 		return oidcerr.New(oidcerr.CodeUnauthorizedClient, "invalid DPoP header")
 	}
 
-	return ValidateDPoPJWT(ctx, dpopJWT, dpopValidationOptions{
+	return validateDPoPJWT(ctx, dpopJWT, dpopValidationOptions{
 		jwkThumbprint: grantSession.JWKThumbprint,
 	})
 }

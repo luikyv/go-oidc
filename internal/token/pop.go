@@ -26,10 +26,10 @@ func ValidatePoP(
 	return validateTLSPoP(ctx, confirmation)
 }
 
-func ValidateDPoPJWT(
+func validateDPoPJWT(
 	ctx *oidc.Context,
 	dpopJWT string,
-	expectedDPoPClaims dpopValidationOptions,
+	opts dpopValidationOptions,
 ) error {
 	parsedDPoPJWT, err := jwt.ParseSigned(dpopJWT, ctx.DPoPSigAlgs)
 	if err != nil {
@@ -77,13 +77,13 @@ func ValidateDPoPJWT(
 		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid htu claim")
 	}
 
-	if expectedDPoPClaims.accessToken != "" &&
-		dpopClaims.AccessTokenHash != hashBase64URLSHA256(expectedDPoPClaims.accessToken) {
+	if opts.accessToken != "" &&
+		dpopClaims.AccessTokenHash != hashBase64URLSHA256(opts.accessToken) {
 		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid ath claim")
 	}
 
-	if expectedDPoPClaims.jwkThumbprint != "" &&
-		jwkThumbprint(dpopJWT, ctx.DPoPSigAlgs) != expectedDPoPClaims.jwkThumbprint {
+	if opts.jwkThumbprint != "" &&
+		jwkThumbprint(dpopJWT, ctx.DPoPSigAlgs) != opts.jwkThumbprint {
 		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid jwk thumbprint")
 	}
 
@@ -129,7 +129,7 @@ func validateDPoP(
 		return oidcerr.New(oidcerr.CodeUnauthorizedClient, "invalid DPoP header")
 	}
 
-	return ValidateDPoPJWT(ctx, dpopJWT, dpopValidationOptions{
+	return validateDPoPJWT(ctx, dpopJWT, dpopValidationOptions{
 		accessToken:   token,
 		jwkThumbprint: confirmation.JWKThumbprint,
 	})

@@ -21,6 +21,7 @@ type AuthnSessionManager interface {
 // authorization requests.
 // It can be interacted with so to implement more sophisticated user
 // authentication flows.
+// TODO: Inline the request_uri.
 type AuthnSession struct {
 	ID string `json:"id"`
 	// CallbackID is an unique id used to fetch the authentication session

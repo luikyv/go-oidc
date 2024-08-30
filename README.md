@@ -80,6 +80,7 @@ make docs
 Make sure the `GOBIN` environment variable is set.
 
 ## To Do's
+* Verify the error types during tests.
 * is cmp slow?
 * Tests.
 * Implement the revocation endpoint. Revoke by jti.

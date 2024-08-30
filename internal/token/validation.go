@@ -52,5 +52,5 @@ func validateTokenBindingRequestWithDPoP(
 		return nil
 	}
 
-	return ValidateDPoPJWT(ctx, dpopJWT, dpopValidationOptions{})
+	return validateDPoPJWT(ctx, dpopJWT, dpopValidationOptions{})
 }
