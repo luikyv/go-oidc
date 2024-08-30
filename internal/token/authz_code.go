@@ -20,7 +20,7 @@ func generateAuthorizationCodeGrant(
 	error,
 ) {
 
-	if req.AuthorizationCode == "" {
+	if req.authorizationCode == "" {
 		return response{}, oidcerr.New(oidcerr.CodeInvalidRequest, "invalid authorization code")
 	}
 
@@ -29,10 +29,15 @@ func generateAuthorizationCodeGrant(
 		return response{}, err
 	}
 
-	session, err := ctx.AuthnSessionByAuthorizationCode(req.AuthorizationCode)
+	session, err := ctx.AuthnSessionByAuthorizationCode(req.authorizationCode)
 	if err != nil {
 		return response{}, oidcerr.Errorf(oidcerr.CodeInvalidGrant,
 			"invalid authorization code", err)
+	}
+
+	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
+		return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not delete the authn session", err)
 	}
 
 	if err := validateAuthorizationCodeGrantRequest(ctx, req, c, session); err != nil {
@@ -131,7 +136,7 @@ func validateAuthorizationCodeGrantRequest(
 			"the authorization code is expired")
 	}
 
-	if session.RedirectURI != req.RedirectURI {
+	if session.RedirectURI != req.redirectURI {
 		return oidcerr.New(oidcerr.CodeInvalidGrant, "invalid redirect_uri")
 	}
 
@@ -163,8 +168,8 @@ func validatePkce(
 
 	// RFC 7636. "...with a minimum length of 43 characters and a maximum length
 	// of 128 characters."
-	codeVerifierLengh := len(req.CodeVerifier)
-	if req.CodeVerifier != "" && (codeVerifierLengh < 43 || codeVerifierLengh > 128) {
+	codeVerifierLengh := len(req.codeVerifier)
+	if req.codeVerifier != "" && (codeVerifierLengh < 43 || codeVerifierLengh > 128) {
 		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid code verifier")
 	}
 
@@ -174,11 +179,11 @@ func validatePkce(
 	}
 	// In the case PKCE is enabled, if the session was created with a code
 	// challenge, the token request must contain the right code verifier.
-	if session.CodeChallenge != "" && req.CodeVerifier == "" {
+	if session.CodeChallenge != "" && req.codeVerifier == "" {
 		return oidcerr.New(oidcerr.CodeInvalidGrant, "code_verifier cannot be empty")
 	}
 	if session.CodeChallenge != "" &&
-		!isPKCEValid(req.CodeVerifier, session.CodeChallenge, codeChallengeMethod) {
+		!isPKCEValid(req.codeVerifier, session.CodeChallenge, codeChallengeMethod) {
 		return oidcerr.New(oidcerr.CodeInvalidGrant, "invalid code_verifier")
 	}
 
@@ -195,7 +200,7 @@ func newAuthorizationCodeGrantOptions(
 	error,
 ) {
 
-	tokenOptions, err := ctx.TokenOptions(client, req.Scopes)
+	tokenOptions, err := ctx.TokenOptions(client, req.scopes)
 	if err != nil {
 		return GrantOptions{}, oidcerr.Errorf(oidcerr.CodeAccessDenied,
 			"access denied", err)

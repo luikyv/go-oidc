@@ -47,7 +47,7 @@ func generateClientCredentialsGrant(
 		TokenType:   token.Type,
 	}
 
-	if req.Scopes != grantOptions.GrantedScopes {
+	if req.scopes != grantOptions.GrantedScopes {
 		tokenResp.Scopes = grantOptions.GrantedScopes
 	}
 
@@ -83,7 +83,7 @@ func validateClientCredentialsGrantRequest(
 		return oidcerr.New(oidcerr.CodeUnauthorizedClient, "invalid grant type")
 	}
 
-	if !clientutil.AreScopesAllowed(c, ctx.Scopes, req.Scopes) {
+	if !clientutil.AreScopesAllowed(c, ctx.Scopes, req.scopes) {
 		return oidcerr.New(oidcerr.CodeInvalidScope, "invalid scope")
 	}
 
@@ -106,13 +106,13 @@ func newClientCredentialsGrantOptions(
 	GrantOptions,
 	error,
 ) {
-	tokenOptions, err := ctx.TokenOptions(client, req.Scopes)
+	tokenOptions, err := ctx.TokenOptions(client, req.scopes)
 	if err != nil {
 		return GrantOptions{}, oidcerr.Errorf(oidcerr.CodeAccessDenied,
 			"access denied", err)
 	}
 
-	scopes := req.Scopes
+	scopes := req.scopes
 	if scopes == "" {
 		scopes = client.ScopeIDs
 	}

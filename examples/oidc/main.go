@@ -45,7 +45,7 @@ func main() {
 		provider.WithRefreshTokenGrant(6000),
 		provider.WithClaims(goidc.ClaimEmail, goidc.ClaimEmailVerified),
 		provider.WithACRs(goidc.ACRMaceIncommonIAPBronze, goidc.ACRMaceIncommonIAPSilver),
-		provider.WithDCR(dcrPlugin(scopes), true),
+		provider.WithDCR(dcrPlugin(scopes)),
 		provider.WithTokenOptions(tokenOptions(serverKeyID)),
 		provider.WithPolicy(policy()),
 	)

@@ -16,7 +16,10 @@ func Sign(
 	error,
 ) {
 	signer, err := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.SignatureAlgorithm(jwk.Algorithm), Key: jwk.Key},
+		jose.SigningKey{
+			Algorithm: jose.SignatureAlgorithm(jwk.Algorithm),
+			Key:       jwk.Key,
+		},
 		opts,
 	)
 	if err != nil {
@@ -66,11 +69,17 @@ func Encrypt(
 }
 
 func IsJWS(token string) bool {
-	isJWS, _ := regexp.MatchString("(^[\\w-]*\\.[\\w-]*\\.[\\w-]*$)", token)
+	isJWS, _ := regexp.MatchString(
+		"(^[\\w-]*\\.[\\w-]*\\.[\\w-]*$)",
+		token,
+	)
 	return isJWS
 }
 
 func IsJWE(token string) bool {
-	isJWS, _ := regexp.MatchString("(^[\\w-]*\\.[\\w-]*\\.[\\w-]*\\.[\\w-]*\\.[\\w-]*$)", token)
+	isJWS, _ := regexp.MatchString(
+		"(^[\\w-]*\\.[\\w-]*\\.[\\w-]*\\.[\\w-]*\\.[\\w-]*$)",
+		token,
+	)
 	return isJWS
 }

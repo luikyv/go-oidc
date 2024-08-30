@@ -29,6 +29,7 @@ type Provider interface {
 	Handler() http.Handler
 	Run(address string, middlewares ...goidc.MiddlewareFunc) error
 	RunTLS(opts TLSOptions, middlewares ...goidc.MiddlewareFunc) error
+	Client(ctx context.Context, id string) (*goidc.Client, error)
 }
 
 // New creates a new openid provider.

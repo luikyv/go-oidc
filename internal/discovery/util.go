@@ -36,7 +36,7 @@ func oidcConfig(ctx *oidc.Context) openIDConfiguration {
 
 	if ctx.PARIsEnabled {
 		config.PARIsRequired = ctx.PARIsRequired
-		config.ParEndpoint = ctx.BaseURL() + ctx.EndpointPushedAuthorization
+		config.PAREndpoint = ctx.BaseURL() + ctx.EndpointPushedAuthorization
 	}
 
 	if ctx.DCRIsEnabled {

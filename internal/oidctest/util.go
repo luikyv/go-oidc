@@ -4,20 +4,57 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/storage"
 	"github.com/luikyv/go-oidc/pkg/goidc"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
 	Scope1 = goidc.NewScope("scope1")
 	Scope2 = goidc.NewScope("scope2")
 )
+
+func NewClient(t *testing.T) (client *goidc.Client, secret string) {
+	t.Helper()
+
+	secret = "test_secret"
+	hashedSecret, _ := bcrypt.GenerateFromPassword([]byte(secret), bcrypt.DefaultCost)
+	client = &goidc.Client{
+		ID:           "test_client",
+		HashedSecret: string(hashedSecret),
+		ClientMetaInfo: goidc.ClientMetaInfo{
+			AuthnMethod:  goidc.ClientAuthnSecretPost,
+			RedirectURIs: []string{"https://example.com/callback"},
+			ScopeIDs:     fmt.Sprintf("%s %s %s", Scope1.ID, Scope2.ID, goidc.ScopeOpenID.ID),
+			GrantTypes: []goidc.GrantType{
+				goidc.GrantAuthorizationCode,
+				goidc.GrantImplicit,
+				goidc.GrantRefreshToken,
+				goidc.GrantClientCredentials,
+			},
+			ResponseTypes: []goidc.ResponseType{
+				goidc.ResponseTypeCode,
+				goidc.ResponseTypeIDToken,
+				goidc.ResponseTypeToken,
+				goidc.ResponseTypeCodeAndIDToken,
+				goidc.ResponseTypeCodeAndToken,
+				goidc.ResponseTypeIDTokenAndToken,
+				goidc.ResponseTypeCodeAndIDTokenAndToken,
+			},
+		},
+	}
+
+	return client, secret
+}
 
 func NewContext(t *testing.T) *oidc.Context {
 	t.Helper()
@@ -82,6 +119,7 @@ func NewContext(t *testing.T) *oidc.Context {
 		EndpointUserInfo:            "/userinfo",
 		EndpointIntrospection:       "/introspect",
 		AssertionLifetimeSecs:       600,
+		IDTokenLifetimeSecs:         60,
 	}
 
 	ctx := oidc.NewContext(
@@ -170,16 +208,18 @@ func RawJWKS(jwk jose.JSONWebKey) []byte {
 	return jwks
 }
 
-// func SafeClaims(t *testing.T, jws string, privateJWK jose.JSONWebKey) map[string]any {
-// 	parsedToken, err := jwt.ParseSigned(jws, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(privateJWK.Algorithm)})
-// 	require.Nil(t, err, "invalid JWT")
+func SafeClaims(t *testing.T, jws string, jwk jose.JSONWebKey) map[string]any {
+	t.Helper()
 
-// 	var claims map[string]any
-// 	err = parsedToken.Claims(privateJWK.Public().Key, &claims)
-// 	require.Nil(t, err, "could not read claims")
+	parsedToken, err := jwt.ParseSigned(jws, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(jwk.Algorithm)})
+	require.Nil(t, err, "invalid JWT")
 
-// 	return claims
-// }
+	var claims map[string]any
+	err = parsedToken.Claims(jwk.Public().Key, &claims)
+	require.Nil(t, err, "could not read claims")
+
+	return claims
+}
 
 // func UnsafeClaims(t *testing.T, jws string, algs []jose.SignatureAlgorithm) map[string]any {
 // 	parsedToken, err := jwt.ParseSigned(jws, algs)

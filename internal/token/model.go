@@ -59,9 +59,9 @@ func newIDTokenOptions(grantOpts GrantOptions) IDTokenOptions {
 }
 
 type dpopValidationOptions struct {
-	// AccessToken should be filled when the DPoP "ath" claim is expected and should be validated.
-	AccessToken   string
-	JWKThumbprint string
+	// accessToken should be filled when the DPoP "ath" claim is expected and should be validated.
+	accessToken   string
+	jwkThumbprint string
 }
 
 type dpopClaims struct {
@@ -71,24 +71,24 @@ type dpopClaims struct {
 }
 
 type request struct {
-	GrantType         goidc.GrantType
-	Scopes            string
-	AuthorizationCode string
-	RedirectURI       string
-	RefreshToken      string
-	CodeVerifier      string
-	Resources         goidc.Resources
+	grantType         goidc.GrantType
+	scopes            string
+	authorizationCode string
+	redirectURI       string
+	refreshToken      string
+	codeVerifier      string
+	resources         goidc.Resources
 }
 
 func newRequest(req *http.Request) request {
 	return request{
-		GrantType:         goidc.GrantType(req.PostFormValue("grant_type")),
-		Scopes:            req.PostFormValue("scope"),
-		AuthorizationCode: req.PostFormValue("code"),
-		RedirectURI:       req.PostFormValue("redirect_uri"),
-		RefreshToken:      req.PostFormValue("refresh_token"),
-		CodeVerifier:      req.PostFormValue("code_verifier"),
-		Resources:         req.PostForm["resource"],
+		grantType:         goidc.GrantType(req.PostFormValue("grant_type")),
+		scopes:            req.PostFormValue("scope"),
+		authorizationCode: req.PostFormValue("code"),
+		redirectURI:       req.PostFormValue("redirect_uri"),
+		refreshToken:      req.PostFormValue("refresh_token"),
+		codeVerifier:      req.PostFormValue("code_verifier"),
+		resources:         req.PostForm["resource"],
 	}
 }
 
@@ -103,14 +103,14 @@ type response struct {
 }
 
 type introspectionRequest struct {
-	Token         string
-	TokenTypeHint goidc.TokenTypeHint
+	token         string
+	tokenTypeHint goidc.TokenTypeHint
 }
 
 func newIntrospectionRequest(req *http.Request) introspectionRequest {
 	return introspectionRequest{
-		Token:         req.PostFormValue("token"),
-		TokenTypeHint: goidc.TokenTypeHint(req.PostFormValue("token_type_hint")),
+		token:         req.PostFormValue("token"),
+		tokenTypeHint: goidc.TokenTypeHint(req.PostFormValue("token_type_hint")),
 	}
 }
 

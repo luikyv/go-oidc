@@ -80,7 +80,7 @@ func generateGrant(
 	tokenResp response,
 	err error,
 ) {
-	switch req.GrantType {
+	switch req.grantType {
 	case goidc.GrantClientCredentials:
 		return generateClientCredentialsGrant(ctx, req)
 	case goidc.GrantAuthorizationCode:

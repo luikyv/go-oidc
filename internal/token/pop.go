@@ -77,13 +77,13 @@ func ValidateDPoPJWT(
 		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid htu claim")
 	}
 
-	if expectedDPoPClaims.AccessToken != "" &&
-		dpopClaims.AccessTokenHash != hashBase64URLSHA256(expectedDPoPClaims.AccessToken) {
+	if expectedDPoPClaims.accessToken != "" &&
+		dpopClaims.AccessTokenHash != hashBase64URLSHA256(expectedDPoPClaims.accessToken) {
 		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid ath claim")
 	}
 
-	if expectedDPoPClaims.JWKThumbprint != "" &&
-		jwkThumbprint(dpopJWT, ctx.DPoPSigAlgs) != expectedDPoPClaims.JWKThumbprint {
+	if expectedDPoPClaims.jwkThumbprint != "" &&
+		jwkThumbprint(dpopJWT, ctx.DPoPSigAlgs) != expectedDPoPClaims.jwkThumbprint {
 		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid jwk thumbprint")
 	}
 
@@ -130,8 +130,8 @@ func validateDPoP(
 	}
 
 	return ValidateDPoPJWT(ctx, dpopJWT, dpopValidationOptions{
-		AccessToken:   token,
-		JWKThumbprint: confirmation.JWKThumbprint,
+		accessToken:   token,
+		jwkThumbprint: confirmation.JWKThumbprint,
 	})
 }
 

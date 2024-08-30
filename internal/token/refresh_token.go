@@ -18,7 +18,7 @@ func generateRefreshTokenGrant(
 	response,
 	error,
 ) {
-	if req.RefreshToken == "" {
+	if req.refreshToken == "" {
 		return response{}, oidcerr.New(oidcerr.CodeInvalidRequest,
 			"invalid refresh token")
 	}
@@ -28,7 +28,7 @@ func generateRefreshTokenGrant(
 		return response{}, err
 	}
 
-	grantSession, err := ctx.GrantSessionByRefreshToken(req.RefreshToken)
+	grantSession, err := ctx.GrantSessionByRefreshToken(req.refreshToken)
 	if err != nil {
 		return response{}, oidcerr.Errorf(oidcerr.CodeInvalidRequest,
 			"invalid refresh_token", err)
@@ -49,10 +49,13 @@ func generateRefreshTokenGrant(
 	}
 
 	tokenResp := response{
-		AccessToken:  token.Value,
-		ExpiresIn:    grantSession.TokenOptions.LifetimeSecs,
-		TokenType:    token.Type,
-		RefreshToken: grantSession.RefreshToken,
+		AccessToken: token.Value,
+		ExpiresIn:   grantSession.TokenOptions.LifetimeSecs,
+		TokenType:   token.Type,
+	}
+
+	if ctx.RefreshTokenRotationIsEnabled {
+		tokenResp.RefreshToken = grantSession.RefreshToken
 	}
 
 	if strutil.ContainsOpenID(grantSession.ActiveScopes) {
@@ -88,8 +91,8 @@ func updateRefreshTokenGrantSession(
 		grantSession.RefreshToken = token
 	}
 
-	if req.Scopes != "" {
-		grantSession.ActiveScopes = req.Scopes
+	if req.scopes != "" {
+		grantSession.ActiveScopes = req.scopes
 	}
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
@@ -124,7 +127,7 @@ func validateRefreshTokenGrantRequest(
 		return oidcerr.New(oidcerr.CodeUnauthorizedClient, "the refresh token is expired")
 	}
 
-	if req.Scopes != "" && !containsAllScopes(grantSession.GrantedScopes, req.Scopes) {
+	if req.scopes != "" && !containsAllScopes(grantSession.GrantedScopes, req.scopes) {
 		return oidcerr.New(oidcerr.CodeInvalidScope, "invalid scope")
 	}
 
@@ -152,12 +155,12 @@ func validateRefreshTokenPoPForPublicClients(
 	}
 
 	return ValidateDPoPJWT(ctx, dpopJWT, dpopValidationOptions{
-		JWKThumbprint: grantSession.JWKThumbprint,
+		jwkThumbprint: grantSession.JWKThumbprint,
 	})
 }
 
 func refreshToken() (string, error) {
-	token, err := strutil.Random(RefreshTokenLength)
+	token, err := strutil.Random(goidc.RefreshTokenLength)
 	if err != nil {
 		return "", oidcerr.Errorf(oidcerr.CodeInternalError,
 			"could not generate the refresh token", err)

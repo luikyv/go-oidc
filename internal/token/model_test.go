@@ -1,4 +1,4 @@
-package token_test
+package token
 
 import (
 	"bytes"
@@ -7,12 +7,11 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/luikyv/go-oidc/internal/token"
+	"github.com/google/go-cmp/cmp"
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"github.com/stretchr/testify/assert"
 )
 
-func TestNewTokenRequest(t *testing.T) {
+func TestNewRequest(t *testing.T) {
 	// Given.
 	params := url.Values{}
 	params.Set("client_id", "random_client_id")
@@ -28,16 +27,18 @@ func TestNewTokenRequest(t *testing.T) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	// When.
-	tokenReq := token.NewRequest(req)
+	tokenReq := newRequest(req)
 
 	// Then.
-	assert.Equal(t, "random_client_id", tokenReq.ID)
-	assert.Equal(t, "random_client_secret", tokenReq.Secret)
-	assert.Equal(t, goidc.GrantAuthorizationCode, tokenReq.GrantType)
-	assert.Equal(t, "openid", tokenReq.Scopes)
-	assert.Equal(t, "random_code", tokenReq.AuthorizationCode)
-	assert.Equal(t, "https://example.com", tokenReq.RedirectURI)
-	assert.Equal(t, "random_refresh_token", tokenReq.RefreshToken)
-	assert.Equal(t, "random_client_secret", tokenReq.Secret)
-	assert.Equal(t, "random_code_verifier", tokenReq.CodeVerifier)
+	want := request{
+		grantType:         goidc.GrantAuthorizationCode,
+		scopes:            "openid",
+		authorizationCode: "random_code",
+		redirectURI:       "https://example.com",
+		refreshToken:      "random_refresh_token",
+		codeVerifier:      "random_code_verifier",
+	}
+	if diff := cmp.Diff(tokenReq, want, cmp.AllowUnexported(request{})); diff != "" {
+		t.Error(diff)
+	}
 }

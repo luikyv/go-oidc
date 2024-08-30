@@ -12,7 +12,7 @@ type openIDConfiguration struct {
 	TokenEndpoint                           string                        `json:"token_endpoint"`
 	UserinfoEndpoint                        string                        `json:"userinfo_endpoint"`
 	JWKSEndpoint                            string                        `json:"jwks_uri"`
-	ParEndpoint                             string                        `json:"pushed_authorization_request_endpoint,omitempty"`
+	PAREndpoint                             string                        `json:"pushed_authorization_request_endpoint,omitempty"`
 	PARIsRequired                           bool                          `json:"require_pushed_authorization_requests,omitempty"`
 	ResponseTypes                           []goidc.ResponseType          `json:"response_types_supported"`
 	ResponseModes                           []goidc.ResponseMode          `json:"response_modes_supported"`

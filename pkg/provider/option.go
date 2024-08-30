@@ -7,7 +7,6 @@ import (
 	"slices"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -141,24 +140,27 @@ func WithClaimTypes(types ...goidc.ClaimType) ProviderOption {
 // This is because clients can choose signing keys per algorithm, e.g. a client
 // can choose the key to sign its ID tokens with the attribute
 // "id_token_signed_response_alg".
-func WithUserInfoSignatureKeyIDs(defaultSignatureKeyID string, signatureKeyIDs ...string) ProviderOption {
+func WithUserInfoSignatureKeyIDs(
+	defaultSigKeyID string,
+	sigKeyIDs ...string,
+) ProviderOption {
 	return func(p *provider) error {
-		if !slices.Contains(signatureKeyIDs, defaultSignatureKeyID) {
-			signatureKeyIDs = append(
-				signatureKeyIDs,
-				defaultSignatureKeyID,
+		if !slices.Contains(sigKeyIDs, defaultSigKeyID) {
+			sigKeyIDs = append(
+				sigKeyIDs,
+				defaultSigKeyID,
 			)
 		}
-		p.config.UserSigKeyIDs = signatureKeyIDs
+		p.config.UserSigKeyIDs = sigKeyIDs
 		return nil
 	}
 }
 
 // WithIDTokenLifetime overrides the default ID token lifetime.
 // The default is 600 seconds.
-func WithIDTokenLifetime(idTokenLifetimeSecs int) ProviderOption {
+func WithIDTokenLifetime(lifetimeSecs int) ProviderOption {
 	return func(p *provider) error {
-		p.config.IDTokenLifetimeSecs = idTokenLifetimeSecs
+		p.config.IDTokenLifetimeSecs = lifetimeSecs
 		return nil
 	}
 }
@@ -189,7 +191,6 @@ func WithUserInfoEncryption(keyEncAlgs ...jose.KeyAlgorithm) ProviderOption {
 // values (e.g. set the default scopes).
 func WithDCR(
 	handler goidc.HandleDynamicClientFunc,
-	rotateTokens bool,
 ) ProviderOption {
 	return func(p *provider) error {
 		p.config.DCRIsEnabled = true
@@ -207,11 +208,11 @@ func WithDCRTokenRotation() ProviderOption {
 
 // WithRefreshTokenGrant makes available the refresh token grant.
 func WithRefreshTokenGrant(
-	refreshTokenLifetimeSecs int,
+	lifetimeSecs int,
 ) ProviderOption {
 	return func(p *provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantRefreshToken)
-		p.config.RefreshTokenLifetimeSecs = refreshTokenLifetimeSecs
+		p.config.RefreshTokenLifetimeSecs = lifetimeSecs
 		return nil
 	}
 }
@@ -235,31 +236,8 @@ func WithOpenIDScopeRequired() ProviderOption {
 
 // WithTokenOptions defines how access tokens are issued.
 func WithTokenOptions(tokenOpts goidc.TokenOptionsFunc) ProviderOption {
-	// TODO: Move this logic to the context.
 	return func(p *provider) error {
-		p.config.TokenOptionsFunc = func(
-			c *goidc.Client,
-			scopes string,
-		) (
-			goidc.TokenOptions,
-			error,
-		) {
-			opts, err := tokenOpts(c, scopes)
-			if err != nil {
-				return goidc.TokenOptions{}, err
-			}
-
-			// Opaque access tokens cannot be the same size of refresh tokens.
-			if opts.OpaqueLength == token.RefreshTokenLength {
-				opts.OpaqueLength++
-			}
-
-			if !slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) {
-				opts.IsRefreshable = false
-			}
-
-			return opts, nil
-		}
+		p.config.TokenOptionsFunc = tokenOpts
 		return nil
 	}
 }
@@ -713,6 +691,7 @@ func WithAuthenticationSessionTimeout(timeoutSecs int) ProviderOption {
 // WithProfileFAPI2 defines the OpenID Provider profile as FAPI 2.0.
 // The server will only be able to run if it is configured respecting the
 // FAPI 2.0 profile.
+//
 // This will also change some of the behavior of the server during runtime to be
 // compliant with the FAPI 2.0.
 func WithProfileFAPI2() ProviderOption {
@@ -742,11 +721,13 @@ func WithPolicy(policy goidc.AuthnPolicy) ProviderOption {
 
 // WithAuthorizeErrorPlugin defines a handler to be executed when the
 // authorization request results in error, but the error can't be redirected.
+//
 // This can be used to display a page with the error.
+//
 // The default behavior is to display a JSON with the error information to the user.
-func WithAuthorizeErrorPlugin(plugin goidc.RenderErrorFunc) ProviderOption {
+func WithRenderErrorFunc(render goidc.RenderErrorFunc) ProviderOption {
 	return func(p *provider) error {
-		p.config.RenderErrorFunc = plugin
+		p.config.RenderErrorFunc = render
 		return nil
 	}
 }
@@ -773,7 +754,6 @@ func WithResourceIndicatorsRequired(resources ...string) ProviderOption {
 // authorization params be informed as query parameters during requests to the
 // authorization endpoint even if they were informed previously during PAR
 // or inside JAR.
-// This option is mandatory for the OpenID profile.
 func WithOutterAuthorizationParamsRequired() ProviderOption {
 	return func(p *provider) error {
 		p.config.OutterAuthParamsRequired = true

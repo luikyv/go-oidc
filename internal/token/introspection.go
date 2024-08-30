@@ -26,7 +26,7 @@ func introspect(
 		return goidc.TokenInfo{}, err
 	}
 
-	return IntrospectionInfo(ctx, req.Token), nil
+	return IntrospectionInfo(ctx, req.token), nil
 }
 
 func validateIntrospectionRequest(
@@ -39,7 +39,7 @@ func validateIntrospectionRequest(
 			"client not allowed to introspect tokens")
 	}
 
-	if req.Token == "" {
+	if req.token == "" {
 		return oidcerr.New(oidcerr.CodeInvalidRequest, "token is required")
 	}
 
@@ -51,7 +51,7 @@ func IntrospectionInfo(
 	accessToken string,
 ) goidc.TokenInfo {
 
-	if len(accessToken) == RefreshTokenLength {
+	if len(accessToken) == goidc.RefreshTokenLength {
 		return refreshTokenInfo(ctx, accessToken)
 	}
 
