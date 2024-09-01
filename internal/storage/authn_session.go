@@ -59,7 +59,7 @@ func (m *AuthnSessionManager) GetByAuthorizationCode(
 	return session, nil
 }
 
-func (m *AuthnSessionManager) GetByRequestURI(
+func (m *AuthnSessionManager) GetByReferenceID(
 	_ context.Context,
 	requestURI string,
 ) (
@@ -67,7 +67,7 @@ func (m *AuthnSessionManager) GetByRequestURI(
 	error,
 ) {
 	session, exists := m.getFirstSession(func(s *goidc.AuthnSession) bool {
-		return s.RequestURI == requestURI
+		return s.ReferenceID == requestURI
 	})
 	if !exists {
 		return nil, errors.New("entity not found")

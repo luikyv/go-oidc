@@ -35,7 +35,7 @@ func pushAuth(
 			"could not store the pushed authentication session", err)
 	}
 	return pushedResponse{
-		RequestURI: session.RequestURI,
+		RequestURI: session.ReferenceID,
 		ExpiresIn:  ctx.PARLifetimeSecs,
 	}, nil
 }
@@ -57,7 +57,7 @@ func pushAuthnSession(
 	if err != nil {
 		return nil, err
 	}
-	session.RequestURI = reqURI
+	session.ReferenceID = reqURI
 	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.PARLifetimeSecs
 
 	return session, nil

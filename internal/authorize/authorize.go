@@ -197,7 +197,7 @@ func initAuthnSessionWithPolicy(
 	session.CallbackID = id
 	// FIXME: To think about:Treating the request_uri as one-time use will cause
 	// problems when the user refreshes the page.
-	session.RequestURI = ""
+	session.ReferenceID = ""
 	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.AuthnSessionTimeoutSecs
 	return nil
 }

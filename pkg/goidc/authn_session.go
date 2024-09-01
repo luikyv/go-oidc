@@ -13,7 +13,7 @@ type AuthnSessionManager interface {
 	Save(ctx context.Context, session *AuthnSession) error
 	GetByCallbackID(ctx context.Context, callbackID string) (*AuthnSession, error)
 	GetByAuthorizationCode(ctx context.Context, authorizationCode string) (*AuthnSession, error)
-	GetByRequestURI(ctx context.Context, requestURI string) (*AuthnSession, error)
+	GetByReferenceID(ctx context.Context, requestURI string) (*AuthnSession, error)
 	Delete(ctx context.Context, id string) error
 }
 
@@ -21,11 +21,15 @@ type AuthnSessionManager interface {
 // authorization requests.
 // It can be interacted with so to implement more sophisticated user
 // authentication flows.
-// TODO: Inline the request_uri.
 type AuthnSession struct {
 	ID string `json:"id"`
-	// CallbackID is an unique id used to fetch the authentication session
-	// after use interaction.
+	// ReferenceID is the id generated during /par used to fetch the session
+	// during calls to /authorize.
+	//
+	// This value will be returned as the request_uri of the /par response.
+	ReferenceID string `json:"reference_id"`
+	// CallbackID is the id used to fetch the authentication session after user
+	// interaction during calls to the callback endpoint.
 	CallbackID string `json:"callback_id"`
 	// PolicyID is the id of the autentication policy used to authenticate
 	// the user.
@@ -33,6 +37,7 @@ type AuthnSession struct {
 	ExpiresAtTimestamp int    `json:"expires_at"`
 	CreatedAtTimestamp int    `json:"created_at"`
 	// Subject is the user identifier.
+	//
 	// This value must be informed during the authentication flow.
 	Subject  string `json:"sub"`
 	ClientID string `json:"client_id"`

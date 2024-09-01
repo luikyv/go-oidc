@@ -30,6 +30,10 @@ type Provider interface {
 	Run(address string, middlewares ...goidc.MiddlewareFunc) error
 	RunTLS(opts TLSOptions, middlewares ...goidc.MiddlewareFunc) error
 	Client(ctx context.Context, id string) (*goidc.Client, error)
+	// TokenInfo returns information about the access token sent in the request.
+	// It also validates proof of possesions with DPoP and/or TLS binding if the
+	// token was created with these mechanisms.
+	TokenInfo(http.ResponseWriter, *http.Request) goidc.TokenInfo
 }
 
 // New creates a new openid provider.
@@ -142,6 +146,7 @@ func (p *provider) RunTLS(
 	middlewares ...goidc.MiddlewareFunc,
 ) error {
 
+	clientAuth := tls.NoClientCert
 	handler := p.Handler()
 	handler = newCacheControlMiddleware(handler)
 	for _, wrapHandler := range middlewares {
@@ -157,6 +162,7 @@ func (p *provider) RunTLS(
 	mux.Handle(hostURL.Host+"/", handler)
 
 	if p.config.MTLSIsEnabled {
+		clientAuth = tls.VerifyClientCertIfGiven
 		mtlsHostURL, err := url.Parse(p.config.MTLSHost)
 		if err != nil {
 			return err
@@ -170,15 +176,13 @@ func (p *provider) RunTLS(
 		Handler: mux,
 		TLSConfig: &tls.Config{
 			ClientCAs:    config.CaCertPool,
-			ClientAuth:   tls.VerifyClientCertIfGiven,
+			ClientAuth:   clientAuth,
 			CipherSuites: config.CipherSuites,
 		},
 	}
 	return server.ListenAndServeTLS(config.ServerCert, config.ServerKey)
 }
 
-// TokenInfo returns information about the access token sent in the request.
-// It also validates token binding (DPoP or TLS).
 func (p *provider) TokenInfo(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -194,7 +198,12 @@ func (p *provider) TokenInfo(
 		return tokenInfo
 	}
 
-	if err := token.ValidatePoP(ctx, accessToken, tokenType, *tokenInfo.Confirmation); err != nil {
+	if err := token.ValidatePoP(
+		ctx,
+		accessToken,
+		tokenType,
+		*tokenInfo.Confirmation,
+	); err != nil {
 		return goidc.TokenInfo{}
 	}
 
@@ -204,12 +213,12 @@ func (p *provider) TokenInfo(
 // Client is a shortcut to fetch clients using the client storage.
 func (p *provider) Client(
 	ctx context.Context,
-	clientID string,
+	id string,
 ) (
 	*goidc.Client,
 	error,
 ) {
-	return p.config.ClientManager.Get(ctx, clientID)
+	return p.config.ClientManager.Get(ctx, id)
 }
 
 // TODO: Refactor.

@@ -76,20 +76,18 @@ func TestAuthnSessionByAuthorizationCode(t *testing.T) {
 	}
 }
 
-func TestAuthnSessionByRequestURI(t *testing.T) {
+func TestAuthnSessionByReferenceID(t *testing.T) {
 	// Given.
 	manager := storage.NewAuthnSessionManager()
 	sessionID := "random_session_id"
 	requestURI := "random_request_uri"
 	manager.Sessions[sessionID] = &goidc.AuthnSession{
-		ID: sessionID,
-		AuthorizationParameters: goidc.AuthorizationParameters{
-			RequestURI: requestURI,
-		},
+		ID:          sessionID,
+		ReferenceID: requestURI,
 	}
 
 	// When.
-	session, err := manager.GetByRequestURI(context.Background(), requestURI)
+	session, err := manager.GetByReferenceID(context.Background(), requestURI)
 
 	// Then.
 	if err != nil {

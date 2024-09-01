@@ -223,7 +223,7 @@ func (ctx *Context) AuthnSessionByRequestURI(
 	*goidc.AuthnSession,
 	error,
 ) {
-	return ctx.AuthnSessionManager.GetByRequestURI(ctx.Request.Context(), uri)
+	return ctx.AuthnSessionManager.GetByReferenceID(ctx.Request.Context(), uri)
 }
 
 func (ctx *Context) DeleteAuthnSession(id string) error {
