@@ -51,7 +51,7 @@ type AuthnSession struct {
 	AdditionalIDTokenClaims  map[string]any `json:"additional_id_token_claims,omitempty"`
 	AdditionalUserInfoClaims map[string]any `json:"additional_user_info_claims,omitempty"`
 	AuthorizationParameters
-	Error error `json:"-"`
+	Error error `json:"-"` // TODO: Make this a string.
 }
 
 // SetUserID sets the subject in the authentication session.

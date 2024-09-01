@@ -29,7 +29,11 @@ func TestGenerateGrant_RefreshTokenGrant(t *testing.T) {
 		t.Fatalf("error generating the refresh token grant: %v", err)
 	}
 
-	claims := oidctest.SafeClaims(t, tokenResp.AccessToken, ctx.PrivateJWKS.Keys[0])
+	claims, err := oidctest.SafeClaims(tokenResp.AccessToken, ctx.PrivateJWKS.Keys[0])
+	if err != nil {
+		t.Fatalf("error parsing claims: %v", err)
+	}
+
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
 		"iss":       ctx.Host,

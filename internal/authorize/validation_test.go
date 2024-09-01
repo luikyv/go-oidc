@@ -1,12 +1,13 @@
 package authorize
 
 import (
+	"errors"
 	"testing"
 
+	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestValidateRequest(t *testing.T) {
@@ -18,6 +19,7 @@ func TestValidateRequest(t *testing.T) {
 		modifiedClient      func(client *goidc.Client) *goidc.Client
 		shouldBeValid       bool
 		shouldRedirectError bool
+		errorCode           oidcerr.Code
 	}{
 		{
 			"valid_oauth_request",
@@ -34,6 +36,7 @@ func TestValidateRequest(t *testing.T) {
 			},
 			true,
 			false,
+			"",
 		},
 		{
 			"valid_openid_request",
@@ -49,6 +52,7 @@ func TestValidateRequest(t *testing.T) {
 			},
 			true,
 			false,
+			"",
 		},
 		{
 			"oauth_request_invalid_response_type",
@@ -65,6 +69,7 @@ func TestValidateRequest(t *testing.T) {
 			},
 			false,
 			true,
+			oidcerr.CodeInvalidRequest,
 		},
 		{
 			"oauth_request_missing_response_type",
@@ -79,6 +84,7 @@ func TestValidateRequest(t *testing.T) {
 			},
 			false,
 			true,
+			oidcerr.CodeInvalidRequest,
 		},
 		{
 			"oauth_request_invalid_scope",
@@ -94,6 +100,7 @@ func TestValidateRequest(t *testing.T) {
 			},
 			false,
 			true,
+			oidcerr.CodeInvalidScope,
 		},
 		{
 			"oauth_request_invalid_redirect_uri",
@@ -109,6 +116,7 @@ func TestValidateRequest(t *testing.T) {
 			},
 			false,
 			false,
+			oidcerr.CodeInvalidRedirectURI,
 		},
 	}
 
@@ -128,18 +136,29 @@ func TestValidateRequest(t *testing.T) {
 				if isValid != c.shouldBeValid {
 					t.Errorf("isValid = %t, want %t", isValid, c.shouldBeValid)
 				}
+
 				if err == nil {
 					return
 				}
 
+				var code oidcerr.Code
 				if c.shouldRedirectError {
 					var redirectErr redirectionError
-					assert.ErrorAs(t, err, &redirectErr)
+					if !errors.As(err, &redirectErr) {
+						t.Error("the error should be redirected")
+					}
+					code = redirectErr.code
 				} else {
-					var oauthErr error
-					assert.ErrorAs(t, err, &oauthErr)
+					var oidcErr oidcerr.Error
+					if !errors.As(err, &oidcErr) {
+						t.Error("invalid error type")
+					}
+					code = oidcErr.Code
 				}
 
+				if code != c.errorCode {
+					t.Errorf("code = %s, want %s", code, c.errorCode)
+				}
 			},
 		)
 	}
@@ -156,6 +175,7 @@ func TestValidateRequestWithPAR(t *testing.T) {
 		modifiedClient      func(client *goidc.Client) *goidc.Client
 		shouldBeValid       bool
 		shouldRedirectError bool
+		errorCode           oidcerr.Code
 	}{
 		{
 			"valid_oauth_request",
@@ -177,6 +197,7 @@ func TestValidateRequestWithPAR(t *testing.T) {
 			},
 			true,
 			false,
+			"",
 		},
 		{
 			"valid_openid_request",
@@ -202,6 +223,7 @@ func TestValidateRequestWithPAR(t *testing.T) {
 			},
 			true,
 			false,
+			"",
 		},
 	}
 
@@ -227,12 +249,23 @@ func TestValidateRequestWithPAR(t *testing.T) {
 					return
 				}
 
+				var code oidcerr.Code
 				if c.shouldRedirectError {
 					var redirectErr redirectionError
-					assert.ErrorAs(t, err, &redirectErr)
+					if !errors.As(err, &redirectErr) {
+						t.Error("the error should be redirected")
+					}
+					code = redirectErr.code
 				} else {
-					var oauthErr error
-					assert.ErrorAs(t, err, &oauthErr)
+					var oidcErr oidcerr.Error
+					if !errors.As(err, &oidcErr) {
+						t.Error("invalid error type")
+					}
+					code = oidcErr.Code
+				}
+
+				if code != c.errorCode {
+					t.Errorf("code = %s, want %s", code, c.errorCode)
 				}
 			},
 		)
@@ -249,6 +282,7 @@ func TestValidateRequestWithJAR(t *testing.T) {
 		modifiedClientFunc  func(client *goidc.Client) *goidc.Client
 		shouldBeValid       bool
 		shouldRedirectError bool
+		errorCode           oidcerr.Code
 	}{
 		{
 			"valid_oauth_request",
@@ -271,6 +305,7 @@ func TestValidateRequestWithJAR(t *testing.T) {
 			},
 			true,
 			false,
+			"",
 		},
 		{
 			"valid_openid_request",
@@ -295,6 +330,7 @@ func TestValidateRequestWithJAR(t *testing.T) {
 			},
 			true,
 			false,
+			"",
 		},
 		{
 			"client_id_does_not_match",
@@ -309,6 +345,7 @@ func TestValidateRequestWithJAR(t *testing.T) {
 			},
 			false,
 			false,
+			oidcerr.CodeInvalidClient,
 		},
 	}
 
@@ -333,12 +370,23 @@ func TestValidateRequestWithJAR(t *testing.T) {
 					return
 				}
 
+				var code oidcerr.Code
 				if c.shouldRedirectError {
 					var redirectErr redirectionError
-					assert.ErrorAs(t, err, &redirectErr)
+					if !errors.As(err, &redirectErr) {
+						t.Error("the error should be redirected")
+					}
+					code = redirectErr.code
 				} else {
-					var oauthErr error
-					assert.ErrorAs(t, err, &oauthErr)
+					var oidcErr oidcerr.Error
+					if !errors.As(err, &oidcErr) {
+						t.Error("invalid error type")
+					}
+					code = oidcErr.Code
+				}
+
+				if code != c.errorCode {
+					t.Errorf("code = %s, want %s", code, c.errorCode)
 				}
 			},
 		)

@@ -29,7 +29,11 @@ func TestHandleGrantCreation_ClientCredentialsHappyPath(t *testing.T) {
 	}
 
 	now := timeutil.TimestampNow()
-	claims := oidctest.SafeClaims(t, tokenResp.AccessToken, ctx.PrivateJWKS.Keys[0])
+	claims, err := oidctest.SafeClaims(tokenResp.AccessToken, ctx.PrivateJWKS.Keys[0])
+	if err != nil {
+		t.Fatalf("error parsing claims: %v", err)
+	}
+
 	wantedClaims := map[string]any{
 		"iss":       ctx.Host,
 		"sub":       client.ID,

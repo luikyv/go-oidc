@@ -3,30 +3,28 @@ package goidc_test
 import (
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"github.com/stretchr/testify/assert"
 )
 
-func TestAddTokenClaims_HappyPath(t *testing.T) {
+func TestWithClaims(t *testing.T) {
 	// Given.
 	tokenOptions := goidc.TokenOptions{}
 
-	// When.
-	tokenOptions = tokenOptions.WithClaims(map[string]any{
-		"claim": "value",
-	})
-	// Then.
-	assert.Equal(t, "value", tokenOptions.AdditionalClaims["claim"], "the claim was not added")
-
-	// When.
-	tokenOptions = tokenOptions.WithClaims(map[string]any{
-		"claim": "value",
-	})
-	// Then.
-	assert.Equal(t, "value", tokenOptions.AdditionalClaims["claim"], "the claim was not added")
+	for i := 0; i < 2; i++ {
+		// When.
+		tokenOptions = tokenOptions.WithClaims(map[string]any{
+			"claim": "value",
+		})
+		// Then.
+		if tokenOptions.AdditionalClaims["claim"] != "value" {
+			t.Errorf("AdditionalClaims[\"claim\"] = %v, want value",
+				tokenOptions.AdditionalClaims["claim"])
+		}
+	}
 }
 
-func TestAuthorizationDetail_GetProperties_HappyPath(t *testing.T) {
+func TestAuthorizationDetails(t *testing.T) {
 	// Given.
 	authDetails := goidc.AuthorizationDetail{
 		"type":       "random_type",
@@ -35,7 +33,18 @@ func TestAuthorizationDetail_GetProperties_HappyPath(t *testing.T) {
 	}
 
 	// Then.
-	assert.Equal(t, "random_type", authDetails.Type(), "type not as expected")
-	assert.Equal(t, "random_identifier", authDetails.Identifier(), "identifier not as expected")
-	assert.Contains(t, authDetails.Actions(), "random_action", "action not as expected")
+	if authDetails.Type() != "random_type" {
+		t.Errorf("Type() = %v, want random_type", authDetails.Type())
+	}
+
+	if authDetails.Identifier() != "random_identifier" {
+		t.Errorf("Identifier() = %v, want random_identifier",
+			authDetails.Identifier())
+	}
+	if diff := cmp.Diff(
+		authDetails.Actions(),
+		[]string{"random_action"},
+	); diff != "" {
+		t.Errorf(diff)
+	}
 }

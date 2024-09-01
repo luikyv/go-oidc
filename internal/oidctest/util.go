@@ -14,7 +14,6 @@ import (
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/storage"
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -208,26 +207,17 @@ func RawJWKS(jwk jose.JSONWebKey) []byte {
 	return jwks
 }
 
-func SafeClaims(t *testing.T, jws string, jwk jose.JSONWebKey) map[string]any {
-	t.Helper()
-
+func SafeClaims(jws string, jwk jose.JSONWebKey) (map[string]any, error) {
 	parsedToken, err := jwt.ParseSigned(jws, []jose.SignatureAlgorithm{jose.SignatureAlgorithm(jwk.Algorithm)})
-	require.Nil(t, err, "invalid JWT")
+	if err != nil {
+		return nil, err
+	}
 
 	var claims map[string]any
 	err = parsedToken.Claims(jwk.Public().Key, &claims)
-	require.Nil(t, err, "could not read claims")
+	if err != nil {
+		return nil, err
+	}
 
-	return claims
+	return claims, nil
 }
-
-// func UnsafeClaims(t *testing.T, jws string, algs []jose.SignatureAlgorithm) map[string]any {
-// 	parsedToken, err := jwt.ParseSigned(jws, algs)
-// 	require.Nil(t, err, "invalid JWT")
-
-// 	var claims map[string]any
-// 	err = parsedToken.UnsafeClaimsWithoutVerification(&claims)
-// 	require.Nil(t, err, "could not read claims")
-
-// 	return claims
-// }

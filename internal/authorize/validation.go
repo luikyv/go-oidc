@@ -54,7 +54,7 @@ func validateRequestWithJAR(
 	c *goidc.Client,
 ) error {
 	if jar.ClientID != c.ID {
-		return oidcerr.New(oidcerr.CodeInvalidRequest,
+		return oidcerr.New(oidcerr.CodeInvalidClient,
 			"invalid client_id")
 	}
 
@@ -178,7 +178,7 @@ func validateParams(
 ) error {
 
 	if params.RedirectURI == "" {
-		return oidcerr.New(oidcerr.CodeInvalidRequest,
+		return oidcerr.New(oidcerr.CodeInvalidRedirectURI,
 			"redirect_uri is required")
 	}
 
@@ -224,7 +224,8 @@ func validateParamsAsOptionals(
 ) error {
 
 	if params.RedirectURI != "" && !isRedirectURIAllowed(c, params.RedirectURI) {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid redirect_uri")
+		return oidcerr.New(oidcerr.CodeInvalidRedirectURI,
+			"invalid redirect_uri")
 	}
 
 	if params.Scopes != "" {

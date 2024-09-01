@@ -245,9 +245,9 @@ func makeOpaqueToken(
 	}, nil
 }
 
-func halfHashIDTokenClaim(claimValue string, idTokenAlgorithm jose.SignatureAlgorithm) string {
+func halfHashIDTokenClaim(claim string, alg jose.SignatureAlgorithm) string {
 	var hash hash.Hash
-	switch idTokenAlgorithm {
+	switch alg {
 	case jose.RS256, jose.ES256, jose.PS256, jose.HS256:
 		hash = sha256.New()
 	case jose.RS384, jose.ES384, jose.PS384, jose.HS384:
@@ -258,14 +258,14 @@ func halfHashIDTokenClaim(claimValue string, idTokenAlgorithm jose.SignatureAlgo
 		hash = nil
 	}
 
-	hash.Write([]byte(claimValue))
+	hash.Write([]byte(claim))
 	halfHashedClaim := hash.Sum(nil)[:hash.Size()/2]
 	return base64.RawURLEncoding.EncodeToString(halfHashedClaim)
 }
 
 // jwkThumbprint generates a JWK thumbprint for a valid DPoP JWT.
-func jwkThumbprint(dpopJWT string, dpopSigningAlgorithms []jose.SignatureAlgorithm) string {
-	parsedDPoPJWT, _ := jwt.ParseSigned(dpopJWT, dpopSigningAlgorithms)
+func jwkThumbprint(dpopJWT string, algs []jose.SignatureAlgorithm) string {
+	parsedDPoPJWT, _ := jwt.ParseSigned(dpopJWT, algs)
 	// TODO: handle the error
 	jkt, _ := parsedDPoPJWT.Headers[0].JSONWebKey.Thumbprint(crypto.SHA256)
 	return base64.RawURLEncoding.EncodeToString(jkt)

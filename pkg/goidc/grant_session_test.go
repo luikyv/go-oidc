@@ -5,7 +5,6 @@ import (
 
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestIsRefreshSessionExpired(t *testing.T) {
@@ -15,7 +14,9 @@ func TestIsRefreshSessionExpired(t *testing.T) {
 	}
 
 	// Then.
-	assert.True(t, session.IsExpired())
+	if !session.IsExpired() {
+		t.Errorf("IsExpired() = %t, want true", session.IsExpired())
+	}
 }
 
 func TestHasLastTokenExpired(t *testing.T) {
@@ -25,5 +26,7 @@ func TestHasLastTokenExpired(t *testing.T) {
 	}
 
 	// Then.
-	assert.True(t, session.HasLastTokenExpired())
+	if !session.HasLastTokenExpired() {
+		t.Errorf("HasLastTokenExpired() = %t, want true", session.HasLastTokenExpired())
+	}
 }

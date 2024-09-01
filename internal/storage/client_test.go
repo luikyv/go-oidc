@@ -6,8 +6,6 @@ import (
 
 	"github.com/luikyv/go-oidc/internal/storage"
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestCreateOrUpdateClient_HappyPath(t *testing.T) {
@@ -21,11 +19,16 @@ func TestCreateOrUpdateClient_HappyPath(t *testing.T) {
 	err := manager.Save(context.Background(), client)
 
 	// Then.
-	require.Nil(t, err)
-	assert.Len(t, manager.Clients, 1, "there should be exactly one client")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(manager.Clients) != 1 {
+		t.Errorf("len(manager.Clients) = %d, want 1", len(manager.Clients))
+	}
 }
 
-func TestGetClient_HappyPath(t *testing.T) {
+func TestClient(t *testing.T) {
 	// Given.
 	manager := storage.NewClientManager()
 	clientID := "random_client_id"
@@ -37,8 +40,13 @@ func TestGetClient_HappyPath(t *testing.T) {
 	client, err := manager.Get(context.Background(), clientID)
 
 	// Then.
-	require.Nil(t, err)
-	assert.Equal(t, clientID, client.ID, "invalid client ID")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if client.ID != clientID {
+		t.Errorf("ID = %s, want %s", client.ID, clientID)
+	}
 }
 
 func TestGetClient_ClientDoesNotExist(t *testing.T) {
@@ -50,10 +58,12 @@ func TestGetClient_ClientDoesNotExist(t *testing.T) {
 	_, err := manager.Get(context.Background(), clientID)
 
 	// Then.
-	assert.NotNil(t, err)
+	if err == nil {
+		t.Errorf("the client should not be found")
+	}
 }
 
-func TestDeleteClient_HappyPath(t *testing.T) {
+func TestDeleteClient(t *testing.T) {
 	// Given.
 	manager := storage.NewClientManager()
 	clientID := "random_client_id"
@@ -65,8 +75,13 @@ func TestDeleteClient_HappyPath(t *testing.T) {
 	err := manager.Delete(context.Background(), clientID)
 
 	// Then.
-	require.Nil(t, err)
-	assert.Len(t, manager.Clients, 0, "there shouldn't be any clients")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(manager.Clients) != 0 {
+		t.Errorf("len(manager.Clients) = %d, want 0", len(manager.Clients))
+	}
 }
 
 func TestDeleteClient_ClientDoesNotExist(t *testing.T) {
@@ -78,5 +93,7 @@ func TestDeleteClient_ClientDoesNotExist(t *testing.T) {
 	err := manager.Delete(context.Background(), clientID)
 
 	// Then.
-	require.Nil(t, err)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 }

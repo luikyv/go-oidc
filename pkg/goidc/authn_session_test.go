@@ -5,7 +5,6 @@ import (
 
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestSaveAndGetParameter_HappyPath(t *testing.T) {
@@ -16,7 +15,9 @@ func TestSaveAndGetParameter_HappyPath(t *testing.T) {
 		// When.
 		session.StoreParameter("key", "value")
 		// Then.
-		assert.Equal(t, "value", session.Store["key"], "the claim was not added")
+		if session.Store["key"] != "value" {
+			t.Errorf("Store[\"key\"] = %v, want %s", session.Store["key"], "value")
+		}
 	}
 }
 
@@ -27,7 +28,10 @@ func TestAddTokenClaim(t *testing.T) {
 		// When.
 		session.SetTokenClaim("random_claim", "random_value")
 		// Then.
-		assert.Equal(t, "random_value", session.AdditionalTokenClaims["random_claim"])
+		if session.AdditionalTokenClaims["random_claim"] != "random_value" {
+			t.Errorf("AdditionalTokenClaims[\"random_claim\"] = %v, want %s",
+				session.AdditionalTokenClaims["random_claim"], "random_value")
+		}
 	}
 }
 
@@ -38,7 +42,10 @@ func TestAddIDTokenClaim(t *testing.T) {
 		// When.
 		session.SetIDTokenClaim("random_claim", "random_value")
 		// Then.
-		assert.Equal(t, "random_value", session.AdditionalIDTokenClaims["random_claim"])
+		if session.AdditionalIDTokenClaims["random_claim"] != "random_value" {
+			t.Errorf("AdditionalIDTokenClaims[\"random_claim\"] = %v, want %s",
+				session.AdditionalIDTokenClaims["random_claim"], "random_value")
+		}
 	}
 }
 
@@ -49,7 +56,10 @@ func TestAddUserInfoClaim(t *testing.T) {
 		// When.
 		session.SetUserInfoClaim("random_claim", "random_value")
 		// Then.
-		assert.Equal(t, "random_value", session.AdditionalUserInfoClaims["random_claim"])
+		if session.AdditionalUserInfoClaims["random_claim"] != "random_value" {
+			t.Errorf("AdditionalUserInfoClaims[\"random_claim\"] = %v, want %s",
+				session.AdditionalUserInfoClaims["random_claim"], "random_value")
+		}
 	}
 }
 
@@ -60,5 +70,7 @@ func TestIsExpired(t *testing.T) {
 		ExpiresAtTimestamp: now - 10,
 	}
 	// Then.
-	assert.True(t, session.IsExpired())
+	if !session.IsExpired() {
+		t.Errorf("IsExpired() = %t, want true", session.IsExpired())
+	}
 }

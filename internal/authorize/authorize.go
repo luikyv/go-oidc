@@ -329,6 +329,8 @@ func authorizeAuthnSession(
 	}
 	session.AuthorizationCode = code
 	session.ExpiresAtTimestamp = timeutil.TimestampNow() + authorizationCodeLifetimeSecs
+	// Make sure the session won't be reached anymore from the callback endpoint.
+	session.CallbackID = ""
 
 	if err := ctx.SaveAuthnSession(session); err != nil {
 		return err

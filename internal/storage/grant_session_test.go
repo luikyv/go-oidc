@@ -6,11 +6,9 @@ import (
 
 	"github.com/luikyv/go-oidc/internal/storage"
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-func TestCreateOrUpdateGrantSessionSession_HappyPath(t *testing.T) {
+func TestSaveGrantSession(t *testing.T) {
 	// Given.
 	manager := storage.NewGrantSessionManager()
 	session := &goidc.GrantSession{
@@ -21,15 +19,15 @@ func TestCreateOrUpdateGrantSessionSession_HappyPath(t *testing.T) {
 	err := manager.Save(context.Background(), session)
 
 	// Then.
-	require.Nil(t, err)
-	assert.Len(t, manager.Sessions, 1, "there should be exactly one session")
+	for i := 0; i < 2; i++ {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 
-	// When.
-	err = manager.Save(context.Background(), session)
-
-	// Then.
-	require.Nil(t, err)
-	assert.Len(t, manager.Sessions, 1, "there should be exactly one session")
+		if len(manager.Sessions) != 1 {
+			t.Errorf("len(manager.Session) = %d, want 1", len(manager.Sessions))
+		}
+	}
 }
 
 func TestGetGrantSessionByTokenID_HappyPath(t *testing.T) {
@@ -46,11 +44,16 @@ func TestGetGrantSessionByTokenID_HappyPath(t *testing.T) {
 	session, err := manager.GetByTokenID(context.Background(), tokenID)
 
 	// Then.
-	require.Nil(t, err)
-	assert.Equal(t, sessionID, session.ID, "invalid session ID")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if session.ID != sessionID {
+		t.Errorf("ID = %s, want %s", session.ID, sessionID)
+	}
 }
 
-func TestGetGrantSessionByRefreshToken_HappyPath(t *testing.T) {
+func TestGrantSessionByRefreshToken(t *testing.T) {
 	// Given.
 	manager := storage.NewGrantSessionManager()
 	sessionID := "random_session_id"
@@ -64,11 +67,16 @@ func TestGetGrantSessionByRefreshToken_HappyPath(t *testing.T) {
 	session, err := manager.GetByRefreshToken(context.Background(), refreshToken)
 
 	// Then.
-	require.Nil(t, err)
-	assert.Equal(t, sessionID, session.ID, "invalid session ID")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if session.ID != sessionID {
+		t.Errorf("ID = %s, want %s", session.ID, sessionID)
+	}
 }
 
-func TestDeleteGrantSession_HappyPath(t *testing.T) {
+func TestDeleteGrantSession(t *testing.T) {
 	// Given.
 	manager := storage.NewGrantSessionManager()
 	sessionID := "random_session_id"
@@ -80,11 +88,16 @@ func TestDeleteGrantSession_HappyPath(t *testing.T) {
 	err := manager.Delete(context.Background(), sessionID)
 
 	// Then.
-	require.Nil(t, err)
-	assert.Len(t, manager.Sessions, 0, "there shouldn't be any sessions")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(manager.Sessions) != 0 {
+		t.Errorf("len(manager.Session) = %d, want 0", len(manager.Sessions))
+	}
 }
 
-func TestDeleteAuthnGrantSession_SessionDoesNotExist(t *testing.T) {
+func TestDeleteAuthnGrantSession(t *testing.T) {
 	// Given.
 	manager := storage.NewGrantSessionManager()
 	sessionID := "random_session_id"
@@ -93,5 +106,7 @@ func TestDeleteAuthnGrantSession_SessionDoesNotExist(t *testing.T) {
 	err := manager.Delete(context.Background(), sessionID)
 
 	// Then.
-	require.Nil(t, err)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 }

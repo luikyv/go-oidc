@@ -6,33 +6,31 @@ import (
 
 	"github.com/luikyv/go-oidc/internal/storage"
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-func TestCreateOrUpdateAuthnSession_HappyPath(t *testing.T) {
+func TestSaveAuthnSession(t *testing.T) {
 	// Given.
 	manager := storage.NewAuthnSessionManager()
 	session := &goidc.AuthnSession{
 		ID: "random_session_id",
 	}
 
-	// When.
-	err := manager.Save(context.Background(), session)
+	for i := 0; i < 2; i++ {
+		// When.
+		err := manager.Save(context.Background(), session)
 
-	// Then.
-	require.Nil(t, err)
-	assert.Len(t, manager.Sessions, 1, "there should be exactly one session")
+		// Then.
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 
-	// When.
-	err = manager.Save(context.Background(), session)
-
-	// Then.
-	require.Nil(t, err)
-	assert.Len(t, manager.Sessions, 1, "there should be exactly one session")
+		if len(manager.Sessions) != 1 {
+			t.Errorf("len(manager.Sessions) = %d, want 1", len(manager.Sessions))
+		}
+	}
 }
 
-func TestGetAuthnSessionByCallbackID_HappyPath(t *testing.T) {
+func TestAuthnSessionByCallbackID(t *testing.T) {
 	// Given.
 	manager := storage.NewAuthnSessionManager()
 	sessionID := "random_session_id"
@@ -46,11 +44,16 @@ func TestGetAuthnSessionByCallbackID_HappyPath(t *testing.T) {
 	session, err := manager.GetByCallbackID(context.Background(), callbackID)
 
 	// Then.
-	require.Nil(t, err)
-	assert.Equal(t, sessionID, session.ID, "invalid session ID")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if session.ID != sessionID {
+		t.Errorf("ID = %s, want %s", session.ID, sessionID)
+	}
 }
 
-func TestGetAuthnSessionByAuthorizationCode_HappyPath(t *testing.T) {
+func TestAuthnSessionByAuthorizationCode(t *testing.T) {
 	// Given.
 	manager := storage.NewAuthnSessionManager()
 	sessionID := "random_session_id"
@@ -63,12 +66,17 @@ func TestGetAuthnSessionByAuthorizationCode_HappyPath(t *testing.T) {
 	// When.
 	session, err := manager.GetByAuthorizationCode(context.Background(), authorizationCode)
 
-	// Assert.
-	require.Nil(t, err)
-	assert.Equal(t, sessionID, session.ID, "invalid session ID")
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if session.ID != sessionID {
+		t.Errorf("ID = %s, want %s", session.ID, sessionID)
+	}
 }
 
-func TestGetAuthnSessionByRequestURI_HappyPath(t *testing.T) {
+func TestAuthnSessionByRequestURI(t *testing.T) {
 	// Given.
 	manager := storage.NewAuthnSessionManager()
 	sessionID := "random_session_id"
@@ -84,11 +92,16 @@ func TestGetAuthnSessionByRequestURI_HappyPath(t *testing.T) {
 	session, err := manager.GetByRequestURI(context.Background(), requestURI)
 
 	// Then.
-	require.Nil(t, err)
-	assert.Equal(t, sessionID, session.ID, "invalid session ID")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if session.ID != sessionID {
+		t.Errorf("ID = %s, want %s", session.ID, sessionID)
+	}
 }
 
-func TestDeleteAuthnSession_HappyPath(t *testing.T) {
+func TestDeleteAuthnSession(t *testing.T) {
 	// Given.
 	manager := storage.NewAuthnSessionManager()
 	sessionID := "random_session_id"
@@ -100,8 +113,13 @@ func TestDeleteAuthnSession_HappyPath(t *testing.T) {
 	err := manager.Delete(context.Background(), sessionID)
 
 	// Then.
-	require.Nil(t, err)
-	assert.Len(t, manager.Sessions, 0, "the session should be deleted")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(manager.Sessions) != 0 {
+		t.Errorf("len(manager.Sessions) = %d, want 0", len(manager.Sessions))
+	}
 }
 
 func TestDeleteAuthnSession_SessionDoesNotExist(t *testing.T) {
@@ -113,5 +131,7 @@ func TestDeleteAuthnSession_SessionDoesNotExist(t *testing.T) {
 	err := manager.Delete(context.Background(), sessionID)
 
 	// Then.
-	require.Nil(t, err)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 }
