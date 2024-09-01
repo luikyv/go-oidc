@@ -1,4 +1,6 @@
 # go-oidc
+[![Go Reference](https://pkg.go.dev/badge/github.com/luikyv/go-oidc.svg)](https://pkg.go.dev/github.com/luikyv/go-oidc)
+
 `go-oidc` is a client module that provides a customizable Authorization Server with support to OpenID Connect and other standards.
 
 This library implements the following specifications:
@@ -74,19 +76,3 @@ And the run
 ```
 make docs
 ```
-
-Make sure the `GOBIN` environment variable is set.
-
-## To Do's
-* Verify the error types during tests.
-* is cmp slow?
-* Tests.
-* Implement the revocation endpoint. Revoke by jti.
-* Implement a client credentials policy.
-* Symmetric encryption for JAR?
-* Support pairwise subject type.
-* Client jwks is required for JAR.
-* Better way to handle expired sessions.
-* Events.
-* Compare ACR values.
-* Refactor DPoP.

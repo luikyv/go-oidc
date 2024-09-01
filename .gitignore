@@ -28,3 +28,4 @@ go.work
 playground/
 *.http
 *.pem
+todo.md

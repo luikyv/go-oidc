@@ -218,6 +218,12 @@ func (p *provider) Client(
 	*goidc.Client,
 	error,
 ) {
+	for _, staticClient := range p.config.StaticClients {
+		if staticClient.ID == id {
+			return staticClient, nil
+		}
+	}
+
 	return p.config.ClientManager.Client(ctx, id)
 }
 
