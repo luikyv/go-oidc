@@ -541,7 +541,6 @@ func WithAuthorizationDetails(types ...string) ProviderOption {
 // [goidc.HeaderClientCertificate].
 func WithMTLS(
 	mtlsHost string,
-	clientCertFunc goidc.ClientCertFunc,
 ) ProviderOption {
 	return func(p *provider) error {
 		p.config.MTLSIsEnabled = true
