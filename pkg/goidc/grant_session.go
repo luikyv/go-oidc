@@ -9,8 +9,8 @@ import (
 // GrantSessionManager contains all the logic needed to manage grant sessions.
 type GrantSessionManager interface {
 	Save(ctx context.Context, grantSession *GrantSession) error
-	GetByTokenID(ctx context.Context, tokenID string) (*GrantSession, error)
-	GetByRefreshToken(ctx context.Context, refreshToken string) (*GrantSession, error)
+	SessionByTokenID(ctx context.Context, tokenID string) (*GrantSession, error)
+	SessionByRefreshToken(ctx context.Context, refreshToken string) (*GrantSession, error)
 	Delete(ctx context.Context, id string) error
 }
 

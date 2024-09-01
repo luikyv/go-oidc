@@ -25,7 +25,7 @@ func (m *AuthnSessionManager) Save(
 	return nil
 }
 
-func (m *AuthnSessionManager) GetByCallbackID(
+func (m *AuthnSessionManager) SessionByCallbackID(
 	_ context.Context,
 	callbackID string,
 ) (
@@ -42,7 +42,7 @@ func (m *AuthnSessionManager) GetByCallbackID(
 	return session, nil
 }
 
-func (m *AuthnSessionManager) GetByAuthorizationCode(
+func (m *AuthnSessionManager) SessionByAuthorizationCode(
 	_ context.Context,
 	authorizationCode string,
 ) (
@@ -59,7 +59,7 @@ func (m *AuthnSessionManager) GetByAuthorizationCode(
 	return session, nil
 }
 
-func (m *AuthnSessionManager) GetByReferenceID(
+func (m *AuthnSessionManager) SessionByReferenceID(
 	_ context.Context,
 	requestURI string,
 ) (

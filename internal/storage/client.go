@@ -25,7 +25,7 @@ func (m *ClientManager) Save(
 	return nil
 }
 
-func (m *ClientManager) Get(
+func (m *ClientManager) Client(
 	_ context.Context,
 	id string,
 ) (

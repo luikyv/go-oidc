@@ -13,7 +13,7 @@ import (
 // ClientManager gathers all the logic needed to manage clients.
 type ClientManager interface {
 	Save(ctx context.Context, client *Client) error
-	Get(ctx context.Context, id string) (*Client, error)
+	Client(ctx context.Context, id string) (*Client, error)
 	Delete(ctx context.Context, id string) error
 }
 

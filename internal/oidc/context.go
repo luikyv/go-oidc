@@ -150,7 +150,7 @@ func (ctx *Context) Client(clientID string) (*goidc.Client, error) {
 		}
 	}
 
-	return ctx.ClientManager.Get(ctx.Request.Context(), clientID)
+	return ctx.ClientManager.Client(ctx.Request.Context(), clientID)
 }
 
 func (ctx *Context) DeleteClient(id string) error {
@@ -170,7 +170,7 @@ func (ctx *Context) GrantSessionByTokenID(
 	*goidc.GrantSession,
 	error,
 ) {
-	return ctx.GrantSessionManager.GetByTokenID(
+	return ctx.GrantSessionManager.SessionByTokenID(
 		ctx.Request.Context(),
 		id,
 	)
@@ -182,7 +182,7 @@ func (ctx *Context) GrantSessionByRefreshToken(
 	*goidc.GrantSession,
 	error,
 ) {
-	return ctx.GrantSessionManager.GetByRefreshToken(
+	return ctx.GrantSessionManager.SessionByRefreshToken(
 		ctx.Request.Context(),
 		token,
 	)
@@ -202,7 +202,7 @@ func (ctx *Context) AuthnSessionByCallbackID(
 	*goidc.AuthnSession,
 	error,
 ) {
-	return ctx.AuthnSessionManager.GetByCallbackID(ctx.Request.Context(), id)
+	return ctx.AuthnSessionManager.SessionByCallbackID(ctx.Request.Context(), id)
 }
 
 func (ctx *Context) AuthnSessionByAuthorizationCode(
@@ -211,7 +211,7 @@ func (ctx *Context) AuthnSessionByAuthorizationCode(
 	*goidc.AuthnSession,
 	error,
 ) {
-	return ctx.AuthnSessionManager.GetByAuthorizationCode(
+	return ctx.AuthnSessionManager.SessionByAuthorizationCode(
 		ctx.Request.Context(),
 		code,
 	)
@@ -223,7 +223,7 @@ func (ctx *Context) AuthnSessionByRequestURI(
 	*goidc.AuthnSession,
 	error,
 ) {
-	return ctx.AuthnSessionManager.GetByReferenceID(ctx.Request.Context(), uri)
+	return ctx.AuthnSessionManager.SessionByReferenceID(ctx.Request.Context(), uri)
 }
 
 func (ctx *Context) DeleteAuthnSession(id string) error {

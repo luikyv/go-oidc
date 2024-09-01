@@ -22,7 +22,7 @@ func (m *GrantSessionManager) Save(_ context.Context, grantSession *goidc.GrantS
 	return nil
 }
 
-func (m *GrantSessionManager) GetByTokenID(_ context.Context, tokenID string) (*goidc.GrantSession, error) {
+func (m *GrantSessionManager) SessionByTokenID(_ context.Context, tokenID string) (*goidc.GrantSession, error) {
 	grantSession, exists := m.getFirstToken(func(t *goidc.GrantSession) bool {
 		return t.TokenID == tokenID
 	})
@@ -33,7 +33,7 @@ func (m *GrantSessionManager) GetByTokenID(_ context.Context, tokenID string) (*
 	return grantSession, nil
 }
 
-func (m *GrantSessionManager) GetByRefreshToken(_ context.Context, refreshToken string) (*goidc.GrantSession, error) {
+func (m *GrantSessionManager) SessionByRefreshToken(_ context.Context, refreshToken string) (*goidc.GrantSession, error) {
 	grantSession, exists := m.getFirstToken(func(t *goidc.GrantSession) bool {
 		return t.RefreshToken == refreshToken
 	})

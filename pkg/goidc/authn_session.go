@@ -11,9 +11,9 @@ import (
 // sessions.
 type AuthnSessionManager interface {
 	Save(ctx context.Context, session *AuthnSession) error
-	GetByCallbackID(ctx context.Context, callbackID string) (*AuthnSession, error)
-	GetByAuthorizationCode(ctx context.Context, authorizationCode string) (*AuthnSession, error)
-	GetByReferenceID(ctx context.Context, requestURI string) (*AuthnSession, error)
+	SessionByCallbackID(ctx context.Context, callbackID string) (*AuthnSession, error)
+	SessionByAuthorizationCode(ctx context.Context, authorizationCode string) (*AuthnSession, error)
+	SessionByReferenceID(ctx context.Context, requestURI string) (*AuthnSession, error)
 	Delete(ctx context.Context, id string) error
 }
 

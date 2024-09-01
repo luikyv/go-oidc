@@ -41,7 +41,7 @@ func TestAuthnSessionByCallbackID(t *testing.T) {
 	}
 
 	// When.
-	session, err := manager.GetByCallbackID(context.Background(), callbackID)
+	session, err := manager.SessionByCallbackID(context.Background(), callbackID)
 
 	// Then.
 	if err != nil {
@@ -64,7 +64,7 @@ func TestAuthnSessionByAuthorizationCode(t *testing.T) {
 	}
 
 	// When.
-	session, err := manager.GetByAuthorizationCode(context.Background(), authorizationCode)
+	session, err := manager.SessionByAuthorizationCode(context.Background(), authorizationCode)
 
 	// Then.
 	if err != nil {
@@ -87,7 +87,7 @@ func TestAuthnSessionByReferenceID(t *testing.T) {
 	}
 
 	// When.
-	session, err := manager.GetByReferenceID(context.Background(), requestURI)
+	session, err := manager.SessionByReferenceID(context.Background(), requestURI)
 
 	// Then.
 	if err != nil {

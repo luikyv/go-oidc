@@ -41,7 +41,7 @@ func TestGetGrantSessionByTokenID_HappyPath(t *testing.T) {
 	}
 
 	// When.
-	session, err := manager.GetByTokenID(context.Background(), tokenID)
+	session, err := manager.SessionByTokenID(context.Background(), tokenID)
 
 	// Then.
 	if err != nil {
@@ -64,7 +64,7 @@ func TestGrantSessionByRefreshToken(t *testing.T) {
 	}
 
 	// When.
-	session, err := manager.GetByRefreshToken(context.Background(), refreshToken)
+	session, err := manager.SessionByRefreshToken(context.Background(), refreshToken)
 
 	// Then.
 	if err != nil {

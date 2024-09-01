@@ -218,7 +218,7 @@ func (p *provider) Client(
 	*goidc.Client,
 	error,
 ) {
-	return p.config.ClientManager.Get(ctx, id)
+	return p.config.ClientManager.Client(ctx, id)
 }
 
 // TODO: Refactor.

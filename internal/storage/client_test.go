@@ -37,7 +37,7 @@ func TestClient(t *testing.T) {
 	}
 
 	// When.
-	client, err := manager.Get(context.Background(), clientID)
+	client, err := manager.Client(context.Background(), clientID)
 
 	// Then.
 	if err != nil {
@@ -49,13 +49,13 @@ func TestClient(t *testing.T) {
 	}
 }
 
-func TestGetClient_ClientDoesNotExist(t *testing.T) {
+func TestClient_ClientDoesNotExist(t *testing.T) {
 	// Given.
 	manager := storage.NewClientManager()
 	clientID := "random_client_id"
 
 	// When.
-	_, err := manager.Get(context.Background(), clientID)
+	_, err := manager.Client(context.Background(), clientID)
 
 	// Then.
 	if err == nil {
