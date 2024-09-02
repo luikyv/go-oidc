@@ -13,6 +13,7 @@ import (
 type ProviderOption func(p *provider) error
 
 // WithStorage defines how the provider will store clients and sessions.
+//
 // It overrides the default storage which keeps everything in memory.
 func WithStorage(
 	clientManager goidc.ClientManager,
@@ -549,6 +550,8 @@ func WithMTLS(
 	}
 }
 
+// WithClientCertFunc overrides the default logic to fetch a client
+// certificate during requests.
 func WithClientCertFunc(
 	f goidc.ClientCertFunc,
 ) ProviderOption {
@@ -558,6 +561,8 @@ func WithClientCertFunc(
 	}
 }
 
+// WithMTLSTokenBinding makes requests to /token return tokens bound to the
+// client certificate if any is sent.
 func WithMTLSTokenBinding() ProviderOption {
 	return func(p *provider) error {
 		p.config.MTLSTokenBindingIsEnabled = true
@@ -591,6 +596,7 @@ func WithDPoP(
 }
 
 // WithDPoPRequired makes DPoP required.
+//
 // For more information, see [WithDPoP].
 func WithDPoPRequired(
 	lifetimeSecs int,
@@ -603,7 +609,7 @@ func WithDPoPRequired(
 }
 
 // WithTokenBindingRequired makes at least one sender constraining mechanism
-// (TLS or DPoP) be required, in order to issue an access token to a client.
+// (TLS or DPoP) be required in order to issue an access token to a client.
 func WithTokenBindingRequired() ProviderOption {
 	return func(p *provider) error {
 		p.config.TokenBindingIsRequired = true
@@ -645,6 +651,7 @@ func WithPKCE(
 }
 
 // WithPKCERequired makes proof key for code exchange required.
+//
 // For more info, see [WithPKCE].
 func WithPKCERequired(
 	methods ...goidc.CodeChallengeMethod,
@@ -656,7 +663,8 @@ func WithPKCERequired(
 }
 
 // WithACRs makes available authentication context references.
-// These values will be published as are.
+//
+// These values will be published as are in the well know endpoint response.
 func WithACRs(
 	values ...goidc.ACR,
 ) ProviderOption {
@@ -701,6 +709,7 @@ func WithProfileFAPI2() ProviderOption {
 }
 
 // WithStaticClient adds a static client to the provider.
+//
 // The static clients are checked before consulting the client manager.
 func WithStaticClient(client *goidc.Client) ProviderOption {
 	return func(p *provider) error {
@@ -749,10 +758,9 @@ func WithResourceIndicatorsRequired(resources ...string) ProviderOption {
 	}
 }
 
-// WithOutterAuthorizationParamsRequired requires that the required
-// authorization params be informed as query parameters during requests to the
-// authorization endpoint even if they were informed previously during PAR
-// or inside JAR.
+// WithOutterAuthorizationParamsRequired enforces that the parameters required
+// during /authorize must be informed as query parameters even if they were
+// already sent previously during PAR or inside JAR.
 func WithOutterAuthorizationParamsRequired() ProviderOption {
 	return func(p *provider) error {
 		p.config.OutterAuthParamsRequired = true

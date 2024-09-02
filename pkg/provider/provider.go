@@ -37,6 +37,7 @@ type Provider interface {
 }
 
 // New creates a new openid provider.
+//
 // By default, all clients and sessions are stored in memory and JWTs are
 // signed with the first signing key in the JWKS.
 func New(

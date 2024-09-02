@@ -46,7 +46,8 @@ func (c *Client) Attribute(key string) any {
 
 // FetchPublicJWKS fetches the client public JWKS either directly from the jwks
 // attribute or using jwks_uri.
-// This method also caches the keys if they are fetched from jwks_uri.
+//
+// This function also caches the keys if they are fetched from jwks_uri.
 func (c *Client) FetchPublicJWKS() (jose.JSONWebKeySet, error) {
 	var jwks jose.JSONWebKeySet
 
@@ -116,6 +117,7 @@ type ClientMetaInfo struct {
 	DefaultMaxAgeSecs       *int     `json:"default_max_age,omitempty"`
 	DefaultACRValues        string   `json:"default_acr_values,omitempty"`
 	// CustomAttributes holds any additional attributes a client has.
+	//
 	// This field is flattened for DCR responses.
 	CustomAttributes map[string]any `json:"custom_attributes,omitempty"`
 }

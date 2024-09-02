@@ -2,7 +2,6 @@ package goidc
 
 import (
 	"context"
-	"errors"
 
 	"github.com/luikyv/go-oidc/internal/timeutil"
 )
@@ -56,7 +55,7 @@ type AuthnSession struct {
 	AdditionalIDTokenClaims  map[string]any `json:"additional_id_token_claims,omitempty"`
 	AdditionalUserInfoClaims map[string]any `json:"additional_user_info_claims,omitempty"`
 	AuthorizationParameters
-	Error error `json:"-"` // TODO: Make this a string.
+	Error string `json:"-"`
 }
 
 // SetUserID sets the subject in the authentication session.
@@ -141,5 +140,5 @@ func (s *AuthnSession) IsExpired() bool {
 // SetError defines the error that will be informed to the client once the
 // authentication flow results in failure.
 func (s *AuthnSession) SetError(err string) {
-	s.Error = errors.New(err)
+	s.Error = err
 }

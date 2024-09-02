@@ -61,18 +61,6 @@ op.Run(":80")
 ```
 
 You can then check the default configurations by accessing http://localhost/.well-known/openid-configuration.
-## Developers
-To check test coverage, you can run:
-```
-make test-coverage
-```
 
-To see the documentation, you can install `pkgsite` with
-```
-go install golang.org/x/pkgsite/cmd/pkgsite@latest
-```
-
-And the run
-```
-make docs
-```
+#### Links
+- [An implementation of the Brazil Open Finance specifications in GO](https://github.com/luikyv/go-open-finance)

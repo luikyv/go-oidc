@@ -231,9 +231,9 @@ func finishFlowWithFailure(
 			"internal error", session.AuthorizationParameters, err)
 	}
 
-	if session.Error != nil {
+	if session.Error != "" {
 		return newRedirectionError(oidcerr.CodeAccessDenied,
-			session.Error.Error(), session.AuthorizationParameters)
+			session.Error, session.AuthorizationParameters)
 	}
 
 	return newRedirectionError(oidcerr.CodeAccessDenied,

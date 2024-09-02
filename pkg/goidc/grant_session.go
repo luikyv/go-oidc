@@ -14,8 +14,11 @@ type GrantSessionManager interface {
 	Delete(ctx context.Context, id string) error
 }
 
-// GrantSession represents the granted access an entity (a user or the client itself)
-// gave to a client.
+// GrantSession represents the granted access an entity (a user or the client
+// itself) gave to a client.
+//
+// It holds information about the token issued to a client and about the user
+// who granted access.
 type GrantSession struct {
 	ID string `json:"id"`
 	// JWKThumbprint is the thumbprint of the JWK informed via DPoP.

@@ -143,14 +143,14 @@ func (ctx *Context) SaveClient(client *goidc.Client) error {
 	return ctx.ClientManager.Save(ctx.Request.Context(), client)
 }
 
-func (ctx *Context) Client(clientID string) (*goidc.Client, error) {
+func (ctx *Context) Client(id string) (*goidc.Client, error) {
 	for _, staticClient := range ctx.StaticClients {
-		if staticClient.ID == clientID {
+		if staticClient.ID == id {
 			return staticClient, nil
 		}
 	}
 
-	return ctx.ClientManager.Client(ctx.Request.Context(), clientID)
+	return ctx.ClientManager.Client(ctx.Request.Context(), id)
 }
 
 func (ctx *Context) DeleteClient(id string) error {
