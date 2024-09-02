@@ -3,6 +3,8 @@ package provider
 import (
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -37,27 +39,27 @@ func defaultTokenOptionsFunc(
 }
 
 func defaultClientCertFunc() goidc.ClientCertFunc {
-	return func(r *http.Request) (*x509.Certificate, bool) {
+	return func(r *http.Request) (*x509.Certificate, error) {
 		rawClientCert := r.Header.Get(goidc.HeaderClientCertificate)
 		if rawClientCert != "" {
-			return nil, false
+			return nil, errors.New("the client certificate was not informed")
 		}
 
 		rawClientCertDecoded, err := url.QueryUnescape(rawClientCert)
 		if err != nil {
-			return nil, false
+			return nil, fmt.Errorf("could not parse the client certificate: %w", err)
 		}
 
 		clientCertPEM, _ := pem.Decode([]byte(rawClientCertDecoded))
 		if clientCertPEM == nil {
-			return nil, false
+			return nil, errors.New("could not decode the client certificate")
 		}
 
 		clientCert, err := x509.ParseCertificate(clientCertPEM.Bytes)
 		if err != nil {
-			return nil, false
+			return nil, fmt.Errorf("could not parse the client certificate: %w", err)
 		}
 
-		return clientCert, true
+		return clientCert, nil
 	}
 }

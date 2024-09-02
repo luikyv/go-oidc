@@ -20,8 +20,8 @@ func validateTokenBindingIsRequired(
 		tokenWillBeBound = true
 	}
 
-	_, ok = ctx.ClientCert()
-	if ctx.MTLSTokenBindingIsEnabled && ok {
+	_, err := ctx.ClientCert()
+	if ctx.MTLSTokenBindingIsEnabled && err != nil {
 		tokenWillBeBound = true
 	}
 

@@ -267,10 +267,10 @@ func authenticateSelfSignedTLSCert(
 		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid client id")
 	}
 
-	cert, ok := ctx.ClientCert()
-	if !ok {
-		return oidcerr.New(oidcerr.CodeInvalidClient,
-			"client certificate not informed")
+	cert, err := ctx.ClientCert()
+	if err != nil {
+		return oidcerr.Errorf(oidcerr.CodeInvalidClient,
+			"invalid client certificate", err)
 	}
 
 	jwk, err := jwkMatchingCert(c, cert)
@@ -318,10 +318,10 @@ func authenticateTLSCert(
 		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid client id")
 	}
 
-	cert, ok := ctx.ClientCert()
-	if !ok {
-		return oidcerr.New(oidcerr.CodeInvalidClient,
-			"client certificate not informed")
+	cert, err := ctx.ClientCert()
+	if err != nil {
+		return oidcerr.Errorf(oidcerr.CodeInvalidClient,
+			"invalid client certificate", err)
 	}
 
 	if c.TLSSubDistinguishedName != "" &&

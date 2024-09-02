@@ -172,9 +172,9 @@ func makeJWTToken(
 		confirmation["jkt"] = jkt
 	}
 	// TLS token binding.
-	clientCert, ok := ctx.ClientCert()
+	clientCert, err := ctx.ClientCert()
 	certThumbprint := ""
-	if ctx.MTLSTokenBindingIsEnabled && ok {
+	if ctx.MTLSTokenBindingIsEnabled && err != nil {
 		certThumbprint = hashBase64URLSHA256(string(clientCert.Raw))
 		confirmation["x5t#S256"] = certThumbprint
 	}
@@ -229,9 +229,9 @@ func makeOpaqueToken(
 	}
 
 	// TLS token binding.
-	clientCert, ok := ctx.ClientCert()
+	clientCert, err := ctx.ClientCert()
 	certThumbprint := ""
-	if ctx.MTLSTokenBindingIsEnabled && ok {
+	if ctx.MTLSTokenBindingIsEnabled && err != nil {
 		certThumbprint = hashBase64URLSHA256(string(clientCert.Raw))
 	}
 

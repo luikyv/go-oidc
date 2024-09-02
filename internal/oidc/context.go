@@ -69,11 +69,10 @@ func (ctx *Context) IntrospectionClientAuthnSigAlgs() []jose.SignatureAlgorithm 
 	return signatureAlgorithms
 }
 
-// TODO: return an error.
-func (ctx *Context) ClientCert() (*x509.Certificate, bool) {
+func (ctx *Context) ClientCert() (*x509.Certificate, error) {
 
 	if ctx.ClientCertFunc == nil {
-		return nil, false
+		return nil, errors.New("the client certificate function was not defined")
 	}
 
 	return ctx.ClientCertFunc(ctx.Request)

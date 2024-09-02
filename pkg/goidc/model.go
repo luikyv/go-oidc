@@ -239,7 +239,7 @@ const (
 	ACRMaceIncommonIAPBronze ACR = "urn:mace:incommon:iap:bronze"
 )
 
-type ClientCertFunc func(r *http.Request) (*x509.Certificate, bool)
+type ClientCertFunc func(r *http.Request) (*x509.Certificate, error)
 
 type MiddlewareFunc func(next http.Handler) http.Handler
 

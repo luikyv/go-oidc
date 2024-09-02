@@ -143,10 +143,10 @@ func validateTLSPoP(
 		return nil
 	}
 
-	clientCert, ok := ctx.ClientCert()
-	if !ok {
-		return oidcerr.New(oidcerr.CodeInvalidToken,
-			"the client certificate is required")
+	clientCert, err := ctx.ClientCert()
+	if err != nil {
+		return oidcerr.Errorf(oidcerr.CodeInvalidToken,
+			"the client certificate is required", err)
 	}
 
 	if confirmation.ClientCertificateThumbprint != hashBase64URLSHA256(string(clientCert.Raw)) {
