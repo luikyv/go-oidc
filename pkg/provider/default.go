@@ -12,10 +12,12 @@ import (
 )
 
 const (
-	defaultAuthnSessionTimeoutSecs = 1800 // 30 minutes.
-	defaultIDTokenLifetimeSecs     = 600
-	defaultTokenLifetimeSecs       = 300
-	defaultAssertionLifetimeSecs   = 600
+	defaultAuthnSessionTimeoutSecs  = 1800 // 30 minutes.
+	defaultIDTokenLifetimeSecs      = 600
+	defaultTokenLifetimeSecs        = 300
+	defaultRefreshTokenLifetimeSecs = 3600 // 1 hour.
+	defaultPARLifetimeSecs          = 60
+	defaultJWTLifetimeSecs          = 600
 
 	defaultEndpointWellKnown                  = "/.well-known/openid-configuration"
 	defaultEndpointJSONWebKeySet              = "/jwks"
@@ -52,7 +54,7 @@ func defaultClientCertFunc() goidc.ClientCertFunc {
 		// Apply URL decoding.
 		rawClientCert, err := url.QueryUnescape(rawClientCert)
 		if err != nil {
-			return nil, fmt.Errorf("could not parse the client certificate: %w", err)
+			return nil, fmt.Errorf("could not url decode the client certificate: %w", err)
 		}
 
 		clientCertPEM, _ := pem.Decode([]byte(rawClientCert))

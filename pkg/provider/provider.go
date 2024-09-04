@@ -86,7 +86,7 @@ func New(
 			},
 			ClaimTypes:                  []goidc.ClaimType{goidc.ClaimTypeNormal},
 			AuthnSessionTimeoutSecs:     defaultAuthnSessionTimeoutSecs,
-			AssertionLifetimeSecs:       defaultAssertionLifetimeSecs,
+			AssertionLifetimeSecs:       defaultJWTLifetimeSecs,
 			EndpointWellKnown:           defaultEndpointWellKnown,
 			EndpointJWKS:                defaultEndpointJSONWebKeySet,
 			EndpointToken:               defaultEndpointToken,
