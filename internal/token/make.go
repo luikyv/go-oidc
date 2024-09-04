@@ -265,8 +265,8 @@ func halfHashIDTokenClaim(claim string, alg jose.SignatureAlgorithm) string {
 
 // jwkThumbprint generates a JWK thumbprint for a valid DPoP JWT.
 func jwkThumbprint(dpopJWT string, algs []jose.SignatureAlgorithm) string {
-	parsedDPoPJWT, _ := jwt.ParseSigned(dpopJWT, algs)
 	// TODO: handle the error
+	parsedDPoPJWT, _ := jwt.ParseSigned(dpopJWT, algs)
 	jkt, _ := parsedDPoPJWT.Headers[0].JSONWebKey.Thumbprint(crypto.SHA256)
 	return base64.RawURLEncoding.EncodeToString(jkt)
 }

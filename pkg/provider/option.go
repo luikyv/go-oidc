@@ -342,14 +342,31 @@ func WithJARRequired(
 //
 // The default content encryption algorithm is A128CBC-HS256.
 func WithJAREncryption(
-	// TODO: Use the first key as the default
-	keyEncIDs []string,
+	keyEncIDs ...string,
 ) ProviderOption {
 	return func(p *provider) error {
+		if len(keyEncIDs) == 0 {
+			return errors.New("at least one key id must be informed for jar encryption")
+		}
 		p.config.JAREncIsEnabled = true
 		p.config.JARKeyEncIDs = keyEncIDs
 		p.config.JARDefaultContentEncAlg = jose.A128CBC_HS256
 		p.config.JARContentEncAlgs = []jose.ContentEncryption{jose.A128CBC_HS256}
+		return nil
+	}
+}
+
+func WithJARContentEncryptionAlgs(
+	defaultAlg jose.ContentEncryption,
+	algs ...jose.ContentEncryption,
+) ProviderOption {
+	return func(p *provider) error {
+		p.config.JARDefaultContentEncAlg = defaultAlg
+		if !slices.Contains(algs, defaultAlg) {
+			algs = append(algs, defaultAlg)
+		}
+		p.config.JARContentEncAlgs = algs
+
 		return nil
 	}
 }

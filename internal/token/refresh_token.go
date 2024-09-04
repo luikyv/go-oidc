@@ -140,7 +140,8 @@ func validateRefreshTokenPoPForPublicClients(
 	grantSession *goidc.GrantSession,
 ) error {
 
-	// TODO: Validate the certificate?
+	// TODO: Does token binding mechanisms need to be validated? The client
+	// is already authenticated during refresh_token.
 
 	// Refresh tokens are bound to the client. If the client is authenticated,
 	// then there's no need to validate proof of possesion.
