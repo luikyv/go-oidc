@@ -94,9 +94,9 @@ func oidcConfig(ctx *oidc.Context) openIDConfiguration {
 
 	if ctx.UserEncIsEnabled {
 		config.IDTokenKeyEncAlgs = ctx.UserKeyEncAlgs
-		config.IDTokenContentEncAlgs = ctx.UserContentEncAlg
+		config.IDTokenContentEncAlgs = ctx.UserContentEncAlgs
 		config.UserInfoKeyEncAlgs = ctx.UserKeyEncAlgs
-		config.UserInfoContentEncAlgs = ctx.UserContentEncAlg
+		config.UserInfoContentEncAlgs = ctx.UserContentEncAlgs
 	}
 
 	return config

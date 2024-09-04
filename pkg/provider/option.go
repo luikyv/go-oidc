@@ -184,7 +184,22 @@ func WithUserInfoEncryption(keyEncAlgs ...jose.KeyAlgorithm) ProviderOption {
 		p.config.UserEncIsEnabled = true
 		p.config.UserKeyEncAlgs = keyEncAlgs
 		p.config.UserDefaultContentEncAlg = jose.A128CBC_HS256
-		p.config.UserContentEncAlg = []jose.ContentEncryption{jose.A128CBC_HS256}
+		p.config.UserContentEncAlgs = []jose.ContentEncryption{jose.A128CBC_HS256}
+		return nil
+	}
+}
+
+func WithUserInfoContentEncryptionAlgs(
+	defaultAlg jose.ContentEncryption,
+	algs ...jose.ContentEncryption,
+) ProviderOption {
+	return func(p *provider) error {
+		p.config.UserDefaultContentEncAlg = defaultAlg
+		if !slices.Contains(algs, defaultAlg) {
+			algs = append(algs, defaultAlg)
+		}
+		p.config.UserContentEncAlgs = algs
+
 		return nil
 	}
 }
@@ -423,6 +438,21 @@ func WithJARMEncryption(
 		p.config.JARMKeyEncAlgs = keyEncAlgs
 		p.config.JARMDefaultContentEncAlg = jose.A128CBC_HS256
 		p.config.JARMContentEncAlgs = []jose.ContentEncryption{jose.A128CBC_HS256}
+		return nil
+	}
+}
+
+func WithJARMContentEncryptionAlgs(
+	defaultAlg jose.ContentEncryption,
+	algs ...jose.ContentEncryption,
+) ProviderOption {
+	return func(p *provider) error {
+		p.config.JARMDefaultContentEncAlg = defaultAlg
+		if !slices.Contains(algs, defaultAlg) {
+			algs = append(algs, defaultAlg)
+		}
+		p.config.JARMContentEncAlgs = algs
+
 		return nil
 	}
 }

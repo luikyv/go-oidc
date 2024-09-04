@@ -73,7 +73,7 @@ type Configuration struct {
 	UserEncIsEnabled         bool
 	UserKeyEncAlgs           []jose.KeyAlgorithm
 	UserDefaultContentEncAlg jose.ContentEncryption
-	UserContentEncAlg        []jose.ContentEncryption
+	UserContentEncAlgs       []jose.ContentEncryption
 	// IDTokenLifetimeSecs defines the expiry time of ID tokens.
 	IDTokenLifetimeSecs int
 

@@ -369,7 +369,7 @@ func validateIDTokenEncryptionAlgorithms(
 	}
 
 	if dc.IDTokenContentEncAlg != "" &&
-		!slices.Contains(ctx.UserContentEncAlg, dc.IDTokenContentEncAlg) {
+		!slices.Contains(ctx.UserContentEncAlgs, dc.IDTokenContentEncAlg) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"id_token_encrypted_response_enc not supported")
 	}
@@ -403,7 +403,7 @@ func validateUserInfoEncryptionAlgorithms(
 	}
 
 	if dc.UserInfoContentEncAlg != "" &&
-		!slices.Contains(ctx.UserContentEncAlg, dc.UserInfoContentEncAlg) {
+		!slices.Contains(ctx.UserContentEncAlgs, dc.UserInfoContentEncAlg) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 			"userinfo_encrypted_response_enc not supported")
 	}
