@@ -38,19 +38,24 @@ func defaultTokenOptionsFunc(
 	}
 }
 
+// defaultClientCertFunc returns a function that extracts a client certificate
+// from the request.
+// It looks for a certificate in the header [goidc.HeaderClientCert].
+// The certificate is expected to be a URL encoded PEM certificate.
 func defaultClientCertFunc() goidc.ClientCertFunc {
 	return func(r *http.Request) (*x509.Certificate, error) {
-		rawClientCert := r.Header.Get(goidc.HeaderClientCertificate)
-		if rawClientCert != "" {
+		rawClientCert := r.Header.Get(goidc.HeaderClientCert)
+		if rawClientCert == "" {
 			return nil, errors.New("the client certificate was not informed")
 		}
 
-		rawClientCertDecoded, err := url.QueryUnescape(rawClientCert)
+		// Apply URL decoding.
+		rawClientCert, err := url.QueryUnescape(rawClientCert)
 		if err != nil {
 			return nil, fmt.Errorf("could not parse the client certificate: %w", err)
 		}
 
-		clientCertPEM, _ := pem.Decode([]byte(rawClientCertDecoded))
+		clientCertPEM, _ := pem.Decode([]byte(rawClientCert))
 		if clientCertPEM == nil {
 			return nil, errors.New("could not decode the client certificate")
 		}

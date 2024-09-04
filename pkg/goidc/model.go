@@ -150,11 +150,11 @@ const (
 
 const (
 	HeaderDPoP string = "DPoP"
-	// HeaderClientCertificate is the header used to transmit a client
+	// HeaderClientCert is the header used to transmit a client
 	// certificate that was validated by a trusted source.
 	// The value in this header is expected to be the URL encoding of the
 	// client's certificate in PEM format.
-	HeaderClientCertificate string = "X-Client-Cert"
+	HeaderClientCert string = "X-Client-Cert"
 )
 
 type AuthnStatus string

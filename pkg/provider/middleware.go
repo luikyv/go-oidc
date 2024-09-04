@@ -43,6 +43,6 @@ func newClientCertificateMiddleware(next http.Handler) clientCertificateMiddlewa
 
 func (handler clientCertificateMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Transmit the client certificate in a header.
-	r.Header.Set(goidc.HeaderClientCertificate, string(r.TLS.PeerCertificates[0].Raw)) // TODO: Must encode it. Generate pem version.
+	r.Header.Set(goidc.HeaderClientCert, string(r.TLS.PeerCertificates[0].Raw)) // TODO: Must encode it. Generate pem version.
 	handler.nextHandler.ServeHTTP(w, r)
 }
