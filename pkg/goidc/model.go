@@ -17,13 +17,6 @@ const (
 	RefreshTokenLength int = 99
 )
 
-type Profile string
-
-const (
-	ProfileOpenID Profile = "oidc_profile"
-	ProfileFAPI2  Profile = "fapi2_profile"
-)
-
 type GrantType string
 
 const (
@@ -354,6 +347,14 @@ func NewOpaqueTokenOptions(
 }
 
 // AuthnFunc executes the user authentication logic.
+//
+// If it returns [StatusSuccess], the flow will end successfully and the client
+// will be granted the accesses the user consented.
+// If it returns [StatusFailure], the flow will end with failure and the client
+// will be denied access.
+// If it return [StatusInProgress], the flow will be suspended so an interaction
+// with the user via the user agent can happen. The flow can be resumed at the
+// callback endpoint with the session callback ID.
 type AuthnFunc func(http.ResponseWriter, *http.Request, *AuthnSession) AuthnStatus
 
 // SetUpAuthnFunc is responsible for initiating the authentication session.

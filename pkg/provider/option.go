@@ -1,7 +1,5 @@
 package provider
 
-// TODO: Review defaults, params and validations.
-
 import (
 	"errors"
 	"slices"
@@ -14,7 +12,7 @@ type ProviderOption func(p *provider) error
 
 // WithStorage defines how the provider will store clients and sessions.
 //
-// It overrides the default storage which keeps everything in memory.
+// The default storage which keeps everything in memory.
 func WithStorage(
 	clientManager goidc.ClientManager,
 	authnSessionManager goidc.AuthnSessionManager,
@@ -29,6 +27,7 @@ func WithStorage(
 }
 
 // WithPathPrefix defines a shared prefix for all endpoints.
+//
 // When using the provider http handler directly, the path prefix must be added
 // to the router.
 //
@@ -110,7 +109,8 @@ func WithIntrospectionEndpoint(endpoint string) ProviderOption {
 }
 
 // WithClaims signals support for custom user claims.
-// These claims are meant to appear in ID tokens and the userinfo endpoint.
+//
+// The claims are meant to appear in ID tokens and the userinfo endpoint.
 // The values provided will be shared with the field "claims_supported" of the
 // well known endpoint response.
 // The default value for "claim_types_supported" is set to "normal".
@@ -123,7 +123,8 @@ func WithClaims(claims ...string) ProviderOption {
 }
 
 // WithClaimTypes defines the types supported for the user claims.
-// The value provided are published at "claim_types_supported".
+//
+// The values provided are published at "claim_types_supported".
 func WithClaimTypes(types ...goidc.ClaimType) ProviderOption {
 	if len(types) == 0 {
 		types = append(types, goidc.ClaimTypeNormal)
@@ -136,9 +137,10 @@ func WithClaimTypes(types ...goidc.ClaimType) ProviderOption {
 
 // WithUserInfoSignatureKeyIDs set the keys available to sign the user info
 // endpoint response and ID tokens.
-// There should be at most one per algorithm, in other words, there shouldn't be
-// two key IDs that point to two keys that have the same algorithm.
-// This is because clients can choose signing keys per algorithm, e.g. a client
+//
+// There should be at most one per algorithm, in other words, there shouldn't
+// be two key IDs that point to two keys that have the same algorithm. This
+// is because clients can choose signing keys per algorithm, e.g. a client
 // can choose the key to sign its ID tokens with the attribute
 // "id_token_signed_response_alg".
 func WithUserInfoSignatureKeyIDs(
@@ -158,6 +160,7 @@ func WithUserInfoSignatureKeyIDs(
 }
 
 // WithIDTokenLifetime overrides the default ID token lifetime.
+//
 // The default is 600 seconds.
 func WithIDTokenLifetime(lifetimeSecs int) ProviderOption {
 	return func(p *provider) error {
@@ -168,6 +171,7 @@ func WithIDTokenLifetime(lifetimeSecs int) ProviderOption {
 
 // WithUserInfoEncryption allows encryption of ID tokens and of the user info
 // endpoint response.
+//
 // If none passed, the default key encryption is RSA-OAEP-256.
 // The default content encryption algorithm is A128CBC-HS256.
 func WithUserInfoEncryption(keyEncAlgs ...jose.KeyAlgorithm) ProviderOption {
@@ -262,7 +266,8 @@ func WithImplicitGrant() ProviderOption {
 }
 
 // WithScopes defines the scopes accepted by the provider.
-// Since the scope openid is required, it will be added in case scopes doesn't
+//
+// The scope openid is required, so it will be added in case scopes doesn't
 // contain it.
 func WithScopes(scopes ...goidc.Scope) ProviderOption {
 	return func(p *provider) error {
@@ -299,6 +304,7 @@ func WithPARRequired(lifetimeSecs int) ProviderOption {
 
 // WithUnregisteredRedirectURIsDuringPAR allows clients to inform unregistered
 // redirect URIs during request to pushed authorization endpoint.
+//
 // This only takes effect when PAR is enabled
 func WithUnregisteredRedirectURIsDuringPAR() ProviderOption {
 	return func(p *provider) error {
@@ -308,25 +314,27 @@ func WithUnregisteredRedirectURIsDuringPAR() ProviderOption {
 }
 
 // WithJAR allows authorization requests to be securely sent as signed JWTs.
+//
+// If no algorithm is informed, the default is RS256.
 func WithJAR(
 	lifetimeSecs int,
 	algs ...jose.SignatureAlgorithm,
 ) ProviderOption {
 	return func(p *provider) error {
+		if len(algs) == 0 {
+			algs = append(algs, jose.RS256)
+		}
 		p.config.JARIsEnabled = true
 		p.config.JARLifetimeSecs = lifetimeSecs
-		for _, jarAlgorithm := range algs {
-			p.config.JARSigAlgs = append(
-				p.config.JARSigAlgs,
-				jose.SignatureAlgorithm(jarAlgorithm),
-			)
-		}
+		p.config.JARSigAlgs = algs
 		return nil
 	}
 }
 
 // WithJARRequired requires authorization requests to be securely sent as
 // signed JWTs.
+//
+// For more info, see [WithJAR].
 func WithJARRequired(
 	lifetimeSecs int,
 	algs ...jose.SignatureAlgorithm,
@@ -372,7 +380,6 @@ func WithJARContentEncryptionAlgs(
 }
 
 // WithJARM allows responses for authorization requests to be sent as signed JWTs.
-// It enables JWT response modes.
 func WithJARM(
 	lifetimeSecs int,
 	defaultSigKeyID string,
@@ -402,6 +409,7 @@ func WithJARM(
 // JWTs.
 //
 // If none passed, the default key encryption is RSA-OAEP-256.
+//
 // The default content encryption algorithm is A128CBC-HS256.
 func WithJARMEncryption(
 	keyEncAlgs ...jose.KeyAlgorithm,
@@ -441,8 +449,9 @@ func WithSecretPostAuthn() ProviderOption {
 	}
 }
 
-// WithPrivateKeyJWTAuthn allows private key jwt client authentication. If no
-// algorithm is specified, the default is RS256.
+// WithPrivateKeyJWTAuthn allows private key jwt client authentication.
+//
+// If no algorithm is specified, the default is RS256.
 func WithPrivateKeyJWTAuthn(
 	sigAlgs ...jose.SignatureAlgorithm,
 ) ProviderOption {
@@ -459,8 +468,9 @@ func WithPrivateKeyJWTAuthn(
 	}
 }
 
-// WithBasicSecretAuthn allows client secret jwt client authentication. If no
-// algorithm is specified, the default is HS256.
+// WithBasicSecretAuthn allows client secret jwt client authentication.
+//
+// If no algorithm is specified, the default is HS256.
 func WithClientSecretJWTAuthn(
 	sigAlgs ...jose.SignatureAlgorithm,
 ) ProviderOption {
@@ -479,8 +489,6 @@ func WithClientSecretJWTAuthn(
 
 // WithAssertionLifetime defines a maximum threshold for the difference between
 // issuance and expiry time of client assertions.
-// signatureAlgorithms defines the symmetric algorithms allowed to sign the
-// assertions.
 func WithAssertionLifetime(secs int) ProviderOption {
 	return func(p *provider) error {
 		p.config.AssertionLifetimeSecs = secs
@@ -558,11 +566,11 @@ func WithAuthorizationDetails(types ...string) ProviderOption {
 // The default logic to extract the client certificate is using the header
 // [goidc.HeaderClientCertificate].
 func WithMTLS(
-	mtlsHost string,
+	host string,
 ) ProviderOption {
 	return func(p *provider) error {
 		p.config.MTLSIsEnabled = true
-		p.config.MTLSHost = mtlsHost
+		p.config.MTLSHost = host
 		return nil
 	}
 }
@@ -602,12 +610,7 @@ func WithDPoP(
 	return func(p *provider) error {
 		p.config.DPoPIsEnabled = true
 		p.config.DPoPLifetimeSecs = lifetimeSecs
-		for _, signatureAlgorithm := range sigAlgs {
-			p.config.DPoPSigAlgs = append(
-				p.config.DPoPSigAlgs,
-				jose.SignatureAlgorithm(signatureAlgorithm),
-			)
-		}
+		p.config.DPoPSigAlgs = sigAlgs
 		return nil
 	}
 }
@@ -708,19 +711,6 @@ func WithDisplayValues(values ...goidc.DisplayValue) ProviderOption {
 func WithAuthenticationSessionTimeout(timeoutSecs int) ProviderOption {
 	return func(p *provider) error {
 		p.config.AuthnSessionTimeoutSecs = timeoutSecs
-		return nil
-	}
-}
-
-// WithProfileFAPI2 defines the OpenID Provider profile as FAPI 2.0.
-// The server will only be able to run if it is configured respecting the
-// FAPI 2.0 profile.
-//
-// This will also change some of the behavior of the server during runtime to be
-// compliant with the FAPI 2.0.
-func WithProfileFAPI2() ProviderOption {
-	return func(p *provider) error {
-		p.config.Profile = goidc.ProfileFAPI2
 		return nil
 	}
 }

@@ -10,7 +10,6 @@ type Configuration struct {
 	AuthnSessionManager goidc.AuthnSessionManager
 	GrantSessionManager goidc.GrantSessionManager
 
-	Profile goidc.Profile
 	// Host is the domain where the server runs. This value will be used as the
 	// authorization server issuer.
 	Host string

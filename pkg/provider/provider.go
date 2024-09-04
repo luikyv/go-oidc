@@ -62,8 +62,7 @@ func New(
 
 	p := &provider{
 		config: oidc.Configuration{
-			Host:    issuer,
-			Profile: goidc.ProfileOpenID,
+			Host: issuer,
 
 			ClientManager:       storage.NewClientManager(),
 			AuthnSessionManager: storage.NewAuthnSessionManager(),
@@ -106,7 +105,7 @@ func New(
 		}
 	}
 
-	if err := p.validateConfiguration(); err != nil {
+	if err := p.validate(); err != nil {
 		return nil, err
 	}
 
@@ -147,14 +146,14 @@ func (p *provider) RunTLS(
 	middlewares ...goidc.MiddlewareFunc,
 ) error {
 
+	mux := http.NewServeMux()
+
 	clientAuth := tls.NoClientCert
 	handler := p.Handler()
 	handler = newCacheControlMiddleware(handler)
 	for _, wrapHandler := range middlewares {
 		handler = wrapHandler(handler)
 	}
-
-	mux := http.NewServeMux()
 
 	hostURL, err := url.Parse(p.config.Host)
 	if err != nil {
@@ -226,24 +225,6 @@ func (p *provider) Client(
 	}
 
 	return p.config.ClientManager.Client(ctx, id)
-}
-
-// TODO: Refactor.
-func (p *provider) validateConfiguration() error {
-	return runValidations(
-		*p,
-		validateJWKS,
-		validateSignatureKeys,
-		validateEncryptionKeys,
-		validatePrivateKeyJWTSignatureAlgorithms,
-		validateClientSecretJWTSignatureAlgorithms,
-		validateIntrospectionClientAuthnMethods,
-		validateJAREncryption,
-		validateJARMEncryption,
-		validateTokenBinding,
-		validateOpenIDProfile,
-		validateFAPI2Profile,
-	)
 }
 
 type TLSOptions struct {
