@@ -1056,12 +1056,12 @@ func TestWithPrivateKeyJWTAuthn_NoAlgInformed(t *testing.T) {
 	}
 }
 
-func TestWithClientSecretJWTAuthn(t *testing.T) {
+func TestWithSecretJWTAuthn(t *testing.T) {
 	// Given.
 	p := &provider{}
 
 	// When.
-	err := WithClientSecretJWTAuthn(jose.HS384)(p)
+	err := WithSecretJWTAuthn(jose.HS384)(p)
 
 	// Then.
 	if err != nil {
@@ -1084,7 +1084,7 @@ func TestWithClientSecretJWTAuthn_NoAlgInformed(t *testing.T) {
 	p := &provider{}
 
 	// When.
-	err := WithClientSecretJWTAuthn()(p)
+	err := WithSecretJWTAuthn()(p)
 
 	// Then.
 	if err != nil {

@@ -227,6 +227,21 @@ func (p *provider) Client(
 	return p.config.ClientManager.Client(ctx, id)
 }
 
+func (p *provider) validate() error {
+	return runValidations(
+		*p,
+		validateJWKS,
+		validateSigKeys,
+		validateEncKeys,
+		validatePrivateKeyJWTSigAlgs,
+		validateClientSecretJWTSigAlgs,
+		validateIntrospectionClientAuthnMethods,
+		validateJAREnc,
+		validateJARMEnc,
+		validateTokenBinding,
+	)
+}
+
 type TLSOptions struct {
 	TLSAddress   string
 	ServerCert   string

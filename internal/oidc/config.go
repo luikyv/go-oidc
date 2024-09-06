@@ -99,18 +99,24 @@ type Configuration struct {
 	RefreshTokenRotationIsEnabled bool
 	RefreshTokenLifetimeSecs      int
 
-	JARMIsEnabled            bool
-	JARMDefaultSigKeyID      string
-	JARMSigKeyIDs            []string
+	JARMIsEnabled bool
+	// JARMDefaultSigKeyID indicates the key that will be used to sign the
+	// response object if the client doesn't have an algorithm defined.
+	JARMDefaultSigKeyID string
+	// JARMSigKeyIDs indicates all the keys available to sign the response object.
+	JARMSigKeyIDs []string
+	// JARMLifetimeSecs defines how long response objects are valid for.
 	JARMLifetimeSecs         int
 	JARMEncIsEnabled         bool
 	JARMKeyEncAlgs           []jose.KeyAlgorithm
 	JARMDefaultContentEncAlg jose.ContentEncryption
 	JARMContentEncAlgs       []jose.ContentEncryption
 
-	JARIsEnabled            bool
-	JARIsRequired           bool
-	JARSigAlgs              []jose.SignatureAlgorithm
+	JARIsEnabled  bool
+	JARIsRequired bool
+	JARSigAlgs    []jose.SignatureAlgorithm
+	// JARLifetimeSecs defines the max difference allowed between the claims "iat"
+	// and "exp" for request objects.
 	JARLifetimeSecs         int
 	JAREncIsEnabled         bool
 	JARKeyEncIDs            []string
@@ -121,8 +127,10 @@ type Configuration struct {
 	PARIsEnabled bool
 	// PARIsRequired indicates that authorization requests can only be made if
 	// they were pushed.
-	PARIsRequired                   bool
-	PARLifetimeSecs                 int
+	PARIsRequired   bool
+	PARLifetimeSecs int
+	// PARAllowUnregisteredRedirectURI indicates whether the redirect URIs
+	// informed during PAR must be previously registered or not.
 	PARAllowUnregisteredRedirectURI bool
 
 	MTLSIsEnabled             bool

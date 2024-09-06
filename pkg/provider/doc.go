@@ -1,4 +1,4 @@
-// Package provider implements a customizable Open ID provider.
+// Package provider implements a configurable Open ID provider.
 //
 // A new provider can be configured with [ProviderOption]s and instantiated
 // using [New]. By default all sessions and clients are stored in memory.
@@ -8,9 +8,10 @@
 // [goidc.GrantSessionManager]. For more info, see [WithClientStorage],
 // [WithAuthnSessionStorage] and [WithGrantSessionStorage].
 //
-// In order to verify that the provider is compliant with some specification,
-// the utilities [ValidateOpenIDCompliance] and [ValidateFAPI2Compliance]
-// can be executed.
+// For authorization requests, users are authenticated with an available
+// [goidc.AuthnPolicy]. The policy is responsible for interacting with the user
+// and modifing the [goidc.AuthnSession] to define how access and ID tokens are
+// issued and with what information.
 package provider
 
 import (

@@ -10,6 +10,8 @@ import (
 
 type ProviderOption func(p *provider) error
 
+// WithClientStorage replaces the default client storage which keeps the clients
+// stored in memory.
 func WithClientStorage(
 	storage goidc.ClientManager,
 ) ProviderOption {
@@ -19,6 +21,8 @@ func WithClientStorage(
 	}
 }
 
+// WithAuthnSessionStorage replaces the default authn session storage which
+// keeps the authn sessions stored in memory.
 func WithAuthnSessionStorage(
 	storage goidc.AuthnSessionManager,
 ) ProviderOption {
@@ -28,6 +32,8 @@ func WithAuthnSessionStorage(
 	}
 }
 
+// WithGrantSessionStorage replaces the default grant session storage which
+// keeps the authn sessions stored in memory.
 func WithGrantSessionStorage(
 	storage goidc.GrantSessionManager,
 ) ProviderOption {
@@ -57,7 +63,7 @@ func WithPathPrefix(prefix string) ProviderOption {
 }
 
 // WithJWKSEndpoint overrides the default value for the jwks endpoint which is
-// /jwks.
+// [defaultEndpointJSONWebKeySet].
 func WithJWKSEndpoint(endpoint string) ProviderOption {
 	return func(p *provider) error {
 		p.config.EndpointJWKS = endpoint
@@ -66,7 +72,7 @@ func WithJWKSEndpoint(endpoint string) ProviderOption {
 }
 
 // WithTokenEndpoint overrides the default value for the authorization
-// endpoint which is /token.
+// endpoint which is [defaultEndpointToken].
 func WithTokenEndpoint(endpoint string) ProviderOption {
 	return func(p *provider) error {
 		p.config.EndpointToken = endpoint
@@ -75,7 +81,7 @@ func WithTokenEndpoint(endpoint string) ProviderOption {
 }
 
 // WithAuthorizeEndpoint overrides the default value for the token endpoint
-// which is /authorize.
+// which is [defaultEndpointAuthorize].
 func WithAuthorizeEndpoint(endpoint string) ProviderOption {
 	return func(p *provider) error {
 		p.config.EndpointAuthorize = endpoint
@@ -84,7 +90,7 @@ func WithAuthorizeEndpoint(endpoint string) ProviderOption {
 }
 
 // WithPAREndpoint overrides the default value for the par endpoint which
-// is /par.
+// is [defaultEndpointPushedAuthorizationRequest].
 // To enable pushed authorization request, see [WithPAR].
 func WithPAREndpoint(endpoint string) ProviderOption {
 	return func(p *provider) error {
@@ -94,7 +100,7 @@ func WithPAREndpoint(endpoint string) ProviderOption {
 }
 
 // WithDCREndpoint overrides the default value for the dcr endpoint which
-// is /register.
+// is [defaultEndpointDynamicClient].
 // To enable dynamic client registration, see [WithDCR].
 func WithDCREndpoint(endpoint string) ProviderOption {
 	return func(p *provider) error {
@@ -104,7 +110,7 @@ func WithDCREndpoint(endpoint string) ProviderOption {
 }
 
 // WithUserInfoEndpoint overrides the default value for the user info endpoint
-// which is /userinfo.
+// which is [defaultEndpointUserInfo].
 func WithUserInfoEndpoint(endpoint string) ProviderOption {
 	return func(p *provider) error {
 		p.config.EndpointUserInfo = endpoint
@@ -113,8 +119,8 @@ func WithUserInfoEndpoint(endpoint string) ProviderOption {
 }
 
 // WithIntrospectionEndpoint overrides the default value for the introspection
-// endpoint which is /introspect.
-// To enable introspection, see [WithIntrospection].
+// endpoint which is [defaultEndpointTokenIntrospection]
+// To enable token introspection, see [WithIntrospection].
 func WithIntrospectionEndpoint(endpoint string) ProviderOption {
 	return func(p *provider) error {
 		p.config.EndpointIntrospection = endpoint
@@ -122,9 +128,9 @@ func WithIntrospectionEndpoint(endpoint string) ProviderOption {
 	}
 }
 
-// WithClaims signals support for custom user claims.
+// WithClaims signals support for user claims.
 // The claims are meant to appear in ID tokens and the userinfo endpoint.
-// The values provided will be shared with the field "claims_supported" of the
+// The values provided will be shared in the field "claims_supported" of the
 // well known endpoint response.
 // The default value for "claim_types_supported" is set to "normal".
 // To defines other claim types, see [WithClaimTypes].
@@ -186,8 +192,14 @@ func WithIDTokenLifetime(secs int) ProviderOption {
 
 // WithUserInfoEncryption allows encryption of ID tokens and of the user info
 // endpoint response.
-// If none passed, the default key encryption is RSA-OAEP-256.
+// If none passed, the default key encryption algorithm is RSA-OAEP-256.
 // The default content encryption algorithm is A128CBC-HS256.
+// To make available more content encryption algorithms, see
+// [WithUserInfoContentEncryptionAlgs].
+// Clients can choose the encryption algorithms for ID tokens by informing the
+// attributes "id_token_encrypted_response_alg" and "id_token_encrypted_response_enc".
+// As for the encryption of the userinfo endpoint response, the attributes are
+// "userinfo_signed_response_alg" and "userinfo_encrypted_response_alg".
 func WithUserInfoEncryption(keyEncAlgs ...jose.KeyAlgorithm) ProviderOption {
 
 	if len(keyEncAlgs) == 0 {
@@ -222,9 +234,10 @@ func WithUserInfoContentEncryptionAlgs(
 }
 
 // WithDCR allows clients to be registered dynamically.
-// The handler is executed during registration and update of the client to
+// handler is executed during registration and update of the client to
 // perform custom validations (e.g. validate the initial access token) or set
 // default values (e.g. set the default scopes).
+// To make registration access tokens rotate, see [WithDCRTokenRotation].
 func WithDCR(
 	handler goidc.HandleDynamicClientFunc,
 ) ProviderOption {
@@ -277,7 +290,8 @@ func WithRefreshTokenRotation() ProviderOption {
 	}
 }
 
-// WithOpenIDScopeRequired forces the openid scope to be informed in all requests.
+// WithOpenIDScopeRequired forces the openid scope to be informed in all
+// the authorization requests.
 func WithOpenIDScopeRequired() ProviderOption {
 	return func(p *provider) error {
 		p.config.OpenIDIsRequired = true
@@ -371,6 +385,8 @@ func WithUnregisteredRedirectURIsForPAR() ProviderOption {
 
 // WithJAR allows authorization requests to be securely sent as signed JWTs.
 // If no algorithm is informed, the default is RS256.
+// Clients can choose the signing algorithm by setting the attribute
+// "request_object_signing_alg".
 // By default, the max difference between "iat" and "exp" of request objects is
 // set to [defaultJWTLifetimeSecs].
 func WithJAR(
@@ -402,7 +418,11 @@ func WithJARRequired(
 
 // WithJAREncryption allows authorization requests to be securely sent as
 // encrypted JWTs.
+// keyEncIDs defines the keys available for clients to encrypt the request object.
 // The default content encryption algorithm is A128CBC-HS256.
+// Clients can inform previously the encryption algorithms they must use with
+// the attributes "request_object_encryption_alg" and
+// "request_object_encryption_enc"
 // To enable JAR, see [WithJAR].
 func WithJAREncryption(
 	keyEncIDs ...string,
@@ -438,6 +458,10 @@ func WithJARContentEncryptionAlgs(
 }
 
 // WithJARM allows responses for authorization requests to be sent as signed JWTs.
+// defaultSigKeyID and sigKeyIDs define the keys available to sign the response
+// object.
+// Clients can choose the algorithm by setting the attribute
+// "authorization_signed_response_alg".
 // By default, the lifetime of a response object is [defaultJWTLifetimeSecs].
 func WithJARM(
 	defaultSigKeyID string,
@@ -478,6 +502,8 @@ func WithJARMLifetimeSecs(secs int) ProviderOption {
 // JWTs.
 // If none passed, the default key encryption is RSA-OAEP-256.
 // The default content encryption algorithm is A128CBC-HS256.
+// Clients can choose the encryption algorithms by setting the attributes
+// "authorization_encrypted_response_al" and "authorization_encrypted_response_enc".
 // To enabled JARM, see [WithJARM].
 func WithJARMEncryption(
 	keyEncAlgs ...jose.KeyAlgorithm,
@@ -537,6 +563,8 @@ func WithSecretPostAuthn() ProviderOption {
 
 // WithPrivateKeyJWTAuthn allows private key jwt client authentication.
 // If no algorithm is specified, the default is RS256.
+// Clients can inform previously the algorithm they must use to sign assertions
+// with the attribute "token_endpoint_auth_signing_alg".
 func WithPrivateKeyJWTAuthn(
 	sigAlgs ...jose.SignatureAlgorithm,
 ) ProviderOption {
@@ -556,7 +584,9 @@ func WithPrivateKeyJWTAuthn(
 
 // WithBasicSecretAuthn allows client secret jwt client authentication.
 // If no algorithm is specified, the default is HS256.
-func WithClientSecretJWTAuthn(
+// Clients can inform previously the algorithm they must use to sign assertions
+// with the attribute "token_endpoint_auth_signing_alg".
+func WithSecretJWTAuthn(
 	sigAlgs ...jose.SignatureAlgorithm,
 ) ProviderOption {
 	if len(sigAlgs) == 0 {
@@ -586,10 +616,8 @@ func WithAssertionLifetime(secs int) ProviderOption {
 // To enable MTLS, see [WithMTLS].
 func WithTLSAuthn() ProviderOption {
 	return func(p *provider) error {
-		p.config.ClientAuthnMethods = append(
-			p.config.ClientAuthnMethods,
-			goidc.ClientAuthnTLS,
-		)
+		p.config.ClientAuthnMethods = append(p.config.ClientAuthnMethods,
+			goidc.ClientAuthnTLS)
 		return nil
 	}
 }
@@ -598,10 +626,8 @@ func WithTLSAuthn() ProviderOption {
 // To enable MTLS, see [WithMTLS].
 func WithSelfSignedTLSAuthn() ProviderOption {
 	return func(p *provider) error {
-		p.config.ClientAuthnMethods = append(
-			p.config.ClientAuthnMethods,
-			goidc.ClientAuthnSelfSignedTLS,
-		)
+		p.config.ClientAuthnMethods = append(p.config.ClientAuthnMethods,
+			goidc.ClientAuthnSelfSignedTLS)
 		return nil
 	}
 }
@@ -609,10 +635,8 @@ func WithSelfSignedTLSAuthn() ProviderOption {
 // WithNoneAuthn allows none client authentication.
 func WithNoneAuthn() ProviderOption {
 	return func(p *provider) error {
-		p.config.ClientAuthnMethods = append(
-			p.config.ClientAuthnMethods,
-			goidc.ClientAuthnNone,
-		)
+		p.config.ClientAuthnMethods = append(p.config.ClientAuthnMethods,
+			goidc.ClientAuthnNone)
 		return nil
 	}
 }
@@ -729,6 +753,8 @@ func WithTokenBindingRequired() ProviderOption {
 }
 
 // WithIntrospection allows authorized clients to introspect tokens.
+// A client can only introspect tokens if it has the grant type
+// [goidc.GrantIntrospection].
 func WithIntrospection(
 	clientAuthnMethods ...goidc.ClientAuthnType,
 ) ProviderOption {
@@ -812,7 +838,8 @@ func WithAuthenticationSessionTimeout(secs int) ProviderOption {
 }
 
 // WithStaticClient adds a static client to the provider.
-// The static clients are checked before consulting the client manager.
+// The static clients are kept in memory only and are checked before consulting
+// the client manager.
 func WithStaticClient(client *goidc.Client) ProviderOption {
 	return func(p *provider) error {
 		p.config.StaticClients = append(p.config.StaticClients, client)

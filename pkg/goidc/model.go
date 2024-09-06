@@ -24,7 +24,9 @@ const (
 	GrantAuthorizationCode GrantType = "authorization_code"
 	GrantRefreshToken      GrantType = "refresh_token"
 	GrantImplicit          GrantType = "implicit"
-	GrantIntrospection     GrantType = "urn:goidc:oauth2:grant_type:token_intropection"
+	// GrantIntrospection is a non standard grant type defined here to indicate
+	// when a client is able to introspect tokens.
+	GrantIntrospection GrantType = "urn:goidc:oauth2:grant_type:token_intropection"
 )
 
 type ResponseType string
@@ -392,6 +394,7 @@ type TokenConfirmation struct {
 
 type TokenInfo struct {
 	IsActive              bool                  `json:"active"`
+	Reason                string                `json:"-"` // TODO. Fill this.
 	Type                  TokenTypeHint         `json:"hint,omitempty"`
 	Scopes                string                `json:"scope,omitempty"`
 	AuthorizationDetails  []AuthorizationDetail `json:"authorization_details,omitempty"`
