@@ -87,11 +87,7 @@ func validateClientCredentialsGrantRequest(
 		return oidcerr.New(oidcerr.CodeInvalidScope, "invalid scope")
 	}
 
-	if err := validateTokenBindingRequestWithDPoP(ctx, req, c); err != nil {
-		return err
-	}
-
-	if err := validateTokenBindingIsRequired(ctx); err != nil {
+	if err := validateTokenBinding(ctx, c); err != nil {
 		return err
 	}
 

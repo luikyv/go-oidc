@@ -133,10 +133,11 @@ type Configuration struct {
 	// informed during PAR must be previously registered or not.
 	PARAllowUnregisteredRedirectURI bool
 
-	MTLSIsEnabled             bool
-	MTLSHost                  string
-	MTLSTokenBindingIsEnabled bool
-	ClientCertFunc            goidc.ClientCertFunc
+	MTLSIsEnabled              bool
+	MTLSHost                   string
+	MTLSTokenBindingIsEnabled  bool
+	MTLSTokenBindingIsRequired bool
+	ClientCertFunc             goidc.ClientCertFunc
 
 	DPoPIsEnabled    bool
 	DPoPIsRequired   bool

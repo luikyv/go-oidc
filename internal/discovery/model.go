@@ -46,9 +46,10 @@ type openIDConfiguration struct {
 	IntrospectionEndpointClientAuthnMethods []goidc.ClientAuthnType       `json:"introspection_endpoint_auth_methods_supported,omitempty"`
 	IntrospectionEndpointClientSigAlgs      []jose.SignatureAlgorithm     `json:"introspection_endpoint_auth_signing_alg_values_supported,omitempty"`
 	MTLSConfig                              *openIDMTLSConfiguration      `json:"mtls_endpoint_aliases,omitempty"`
-	TLSBoundTokensIsEnabled                 bool                          `json:"tls_client_certificate_bound_access_tokens,omitempty"`
-	ACRs                                    []goidc.ACR                   `json:"acr_values_supported,omitempty"`
-	DisplayValues                           []goidc.DisplayValue          `json:"display_values_supported,omitempty"`
+	// TLSBoundTokensIsEnabled signals support for certificate bound tokens.
+	TLSBoundTokensIsEnabled bool                 `json:"tls_client_certificate_bound_access_tokens,omitempty"`
+	ACRs                    []goidc.ACR          `json:"acr_values_supported,omitempty"`
+	DisplayValues           []goidc.DisplayValue `json:"display_values_supported,omitempty"`
 }
 
 type openIDMTLSConfiguration struct {

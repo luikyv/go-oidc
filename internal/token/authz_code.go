@@ -144,11 +144,7 @@ func validateAuthorizationCodeGrantRequest(
 		return err
 	}
 
-	if err := validateTokenBindingIsRequired(ctx); err != nil {
-		return err
-	}
-
-	if err := validateTokenBindingRequestWithDPoP(ctx, req, c); err != nil {
+	if err := validateTokenBinding(ctx, c); err != nil {
 		return err
 	}
 

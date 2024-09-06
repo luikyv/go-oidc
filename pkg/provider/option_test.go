@@ -1289,6 +1289,29 @@ func TestWithMTLSTokenBinding(t *testing.T) {
 	}
 }
 
+func TestWithMTLSTokenBindingRequired(t *testing.T) {
+	// Given.
+	p := &provider{}
+
+	// When.
+	err := WithMTLSTokenBindingRequired()(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := provider{
+		config: oidc.Configuration{
+			MTLSTokenBindingIsEnabled:  true,
+			MTLSTokenBindingIsRequired: true,
+		},
+	}
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+		t.Error(diff)
+	}
+}
+
 func TestWithDPoP(t *testing.T) {
 	// Given.
 	p := &provider{}
