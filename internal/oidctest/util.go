@@ -105,6 +105,8 @@ func NewContext(t *testing.T) *oidc.Context {
 			goidc.ClientAuthnSecretBasic,
 			goidc.ClientAuthnPrivateKeyJWT,
 			goidc.ClientAuthnSecretJWT,
+			goidc.ClientAuthnSelfSignedTLS,
+			goidc.ClientAuthnTLS,
 		},
 		UserDefaultSigKeyID:         keyID,
 		UserSigKeyIDs:               []string{keyID},
@@ -118,6 +120,9 @@ func NewContext(t *testing.T) *oidc.Context {
 		EndpointIntrospection:       "/introspect",
 		AssertionLifetimeSecs:       600,
 		IDTokenLifetimeSecs:         60,
+		SubIdentifierTypes: []goidc.SubjectIdentifierType{
+			goidc.SubjectIdentifierPublic,
+		},
 	}
 
 	ctx := oidc.NewContext(

@@ -296,3 +296,11 @@ func registrationAccessToken() (string, error) {
 	}
 	return token, nil
 }
+
+func isRegistrationAccessTokenValid(c *goidc.Client, token string) bool {
+	err := bcrypt.CompareHashAndPassword(
+		[]byte(c.HashedRegistrationAccessToken),
+		[]byte(token),
+	)
+	return err == nil
+}

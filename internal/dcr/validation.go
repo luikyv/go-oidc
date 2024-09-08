@@ -11,7 +11,6 @@ import (
 	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func validateRequest(
@@ -22,28 +21,27 @@ func validateRequest(
 		ctx, dc,
 		validateAuthnMethod,
 		validateScopes,
-		validateClientSignatureAlgorithmForPrivateKeyJWT,
-		validateClientSignatureAlgorithmForClientSecretJWT,
-		validateJWKSAreRequiredForPrivateKeyJWTAuthn,
-		validateJWKSIsRequiredWhenSelfSignedTLSAuthn,
-		validateTLSSubjectInfoWhenTLSAuthn,
+		validatePrivateKeyJWT,
+		validateSecretJWT,
+		validateSelfSignedTLSAuthn,
+		validateTLSAuthn,
 		validateGrantTypes,
-		validateRefreshTokenGrant,
 		validateRedirectURIS,
 		validateResponseTypes,
 		validateOpenIDScopeIfRequired,
 		validateSubjectIdentifierType,
-		validateIDTokenSignatureAlgorithm,
-		validateIDTokenEncryptionAlgorithms,
-		validateUserInfoSignatureAlgorithm,
-		validateUserInfoEncryptionAlgorithms,
-		validateJARSignatureAlgorithm,
-		validateJAREncryptionAlgorithms,
-		validateJARMSignatureAlgorithm,
-		validateJARMEncryptionAlgorithms,
+		validateIDTokenSigAlg,
+		validateIDTokenEncAlgs,
+		validateUserInfoSigAlg,
+		validateUserInfoEncAlgs,
+		validateJARSigAlg,
+		validateJAREncAlgs,
+		validateJARMSigAlg,
+		validateJARMEncAlgs,
 		validatePublicJWKS,
 		validatePublicJWKSURI,
 		validateAuthorizationDetailTypes,
+		validateTLSTokenBinding,
 	)
 }
 
@@ -94,13 +92,13 @@ func validateRedirectURIS(
 	dc request,
 ) error {
 	for _, ru := range dc.RedirectURIs {
-		parsedRU, err := url.Parse(ru)
+		parsedRU, err := url.ParseRequestURI(ru)
 		if err != nil {
-			return oidcerr.New(oidcerr.CodeInvalidRedirectURI,
+			return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 				"invalid redirect uri")
 		}
 		if parsedRU.Fragment != "" {
-			return oidcerr.New(oidcerr.CodeInvalidRedirectURI,
+			return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
 				"the redirect uri cannot contain a fragment")
 		}
 	}
@@ -120,7 +118,7 @@ func validateResponseTypes(
 		}
 	}
 
-	if !slices.Contains(ctx.GrantTypes, goidc.GrantImplicit) {
+	if !slices.Contains(dc.GrantTypes, goidc.GrantImplicit) {
 		for _, rt := range dc.ResponseTypes {
 			if rt.IsImplicit() {
 				return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
@@ -129,7 +127,7 @@ func validateResponseTypes(
 		}
 	}
 
-	if !slices.Contains(ctx.GrantTypes, goidc.GrantAuthorizationCode) {
+	if !slices.Contains(dc.GrantTypes, goidc.GrantAuthorizationCode) {
 		for _, rt := range dc.ResponseTypes {
 			if rt.Contains(goidc.ResponseTypeCode) {
 				return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
@@ -183,7 +181,7 @@ func validateSubjectIdentifierType(
 	return nil
 }
 
-func validateIDTokenSignatureAlgorithm(
+func validateIDTokenSigAlg(
 	ctx *oidc.Context,
 	dc request,
 ) error {
@@ -198,7 +196,7 @@ func validateIDTokenSignatureAlgorithm(
 	return nil
 }
 
-func validateUserInfoSignatureAlgorithm(
+func validateUserInfoSigAlg(
 	ctx *oidc.Context,
 	dc request,
 ) error {
@@ -213,7 +211,7 @@ func validateUserInfoSignatureAlgorithm(
 	return nil
 }
 
-func validateJARSignatureAlgorithm(
+func validateJARSigAlg(
 	ctx *oidc.Context,
 	dc request,
 ) error {
@@ -228,7 +226,7 @@ func validateJARSignatureAlgorithm(
 	return nil
 }
 
-func validateJARMSignatureAlgorithm(
+func validateJARMSigAlg(
 	ctx *oidc.Context,
 	dc request,
 ) error {
@@ -243,7 +241,7 @@ func validateJARMSignatureAlgorithm(
 	return nil
 }
 
-func validateClientSignatureAlgorithmForPrivateKeyJWT(
+func validatePrivateKeyJWT(
 	ctx *oidc.Context,
 	dc request,
 ) error {
@@ -251,42 +249,9 @@ func validateClientSignatureAlgorithmForPrivateKeyJWT(
 		return nil
 	}
 
-	if dc.AuthnSigAlg == "" {
-		return nil
-	}
-
-	if !slices.Contains(ctx.PrivateKeyJWTSigAlgs, dc.AuthnSigAlg) {
+	if dc.AuthnSigAlg != "" && !slices.Contains(ctx.PrivateKeyJWTSigAlgs, dc.AuthnSigAlg) {
 		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
-			"token_endpoint_auth_signing_alg not supported")
-	}
-	return nil
-}
-
-func validateClientSignatureAlgorithmForClientSecretJWT(
-	ctx *oidc.Context,
-	dc request,
-) error {
-	if dc.AuthnMethod != goidc.ClientAuthnSecretJWT {
-		return nil
-	}
-
-	if dc.AuthnSigAlg == "" {
-		return nil
-	}
-
-	if !slices.Contains(ctx.ClientSecretJWTSigAlgs, dc.AuthnSigAlg) {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
-			"token_endpoint_auth_signing_alg not supported")
-	}
-	return nil
-}
-
-func validateJWKSAreRequiredForPrivateKeyJWTAuthn(
-	_ *oidc.Context,
-	dc request,
-) error {
-	if dc.AuthnMethod != goidc.ClientAuthnPrivateKeyJWT {
-		return nil
+			"token_endpoint_auth_signing_alg not supported for private_key_jwt")
 	}
 
 	if dc.PublicJWKS == nil && dc.PublicJWKSURI == "" {
@@ -297,7 +262,22 @@ func validateJWKSAreRequiredForPrivateKeyJWTAuthn(
 	return nil
 }
 
-func validateJWKSIsRequiredWhenSelfSignedTLSAuthn(
+func validateSecretJWT(
+	ctx *oidc.Context,
+	dc request,
+) error {
+	if dc.AuthnMethod != goidc.ClientAuthnSecretJWT {
+		return nil
+	}
+
+	if dc.AuthnSigAlg != "" && !slices.Contains(ctx.ClientSecretJWTSigAlgs, dc.AuthnSigAlg) {
+		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+			"token_endpoint_auth_signing_alg not supported for client_secret_jwt")
+	}
+	return nil
+}
+
+func validateSelfSignedTLSAuthn(
 	_ *oidc.Context,
 	dc request,
 ) error {
@@ -313,7 +293,7 @@ func validateJWKSIsRequiredWhenSelfSignedTLSAuthn(
 	return nil
 }
 
-func validateTLSSubjectInfoWhenTLSAuthn(
+func validateTLSAuthn(
 	_ *oidc.Context,
 	dc request,
 ) error {
@@ -343,7 +323,7 @@ func validateTLSSubjectInfoWhenTLSAuthn(
 	return nil
 }
 
-func validateIDTokenEncryptionAlgorithms(
+func validateIDTokenEncAlgs(
 	ctx *oidc.Context,
 	dc request,
 ) error {
@@ -377,7 +357,7 @@ func validateIDTokenEncryptionAlgorithms(
 	return nil
 }
 
-func validateUserInfoEncryptionAlgorithms(
+func validateUserInfoEncAlgs(
 	ctx *oidc.Context,
 	dc request,
 ) error {
@@ -411,7 +391,7 @@ func validateUserInfoEncryptionAlgorithms(
 	return nil
 }
 
-func validateJARMEncryptionAlgorithms(
+func validateJARMEncAlgs(
 	ctx *oidc.Context,
 	dc request,
 ) error {
@@ -444,7 +424,7 @@ func validateJARMEncryptionAlgorithms(
 	return nil
 }
 
-func validateJAREncryptionAlgorithms(
+func validateJAREncAlgs(
 	ctx *oidc.Context,
 	dc request,
 ) error {
@@ -525,44 +505,37 @@ func validateAuthorizationDetailTypes(
 	return nil
 }
 
-func validateRefreshTokenGrant(
-	ctx *oidc.Context,
-	dc request,
-) error {
-	if strutil.ContainsOfflineAccess(dc.ScopeIDs) &&
-		!slices.Contains(dc.GrantTypes, goidc.GrantRefreshToken) {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
-			"refresh_token grant is required for using the scope offline_access")
-	}
-
-	return nil
-}
-
 func validateScopes(
 	ctx *oidc.Context,
 	dc request,
 ) error {
 	for _, requestedScope := range strutil.SplitWithSpaces(dc.ScopeIDs) {
-		matches := false
-		for _, scope := range ctx.Scopes {
-			if requestedScope == scope.ID {
-				matches = true
-				break
-			}
-		}
-		if !matches {
-			return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
-				"scope "+requestedScope+" is not valid")
+		if err := validateScope(ctx, requestedScope); err != nil {
+			return err
 		}
 	}
 
 	return nil
 }
 
-func isRegistrationAccessTokenValid(c *goidc.Client, token string) bool {
-	err := bcrypt.CompareHashAndPassword(
-		[]byte(c.HashedRegistrationAccessToken),
-		[]byte(token),
-	)
-	return err == nil
+func validateScope(ctx *oidc.Context, requestedScope string) error {
+	for _, scope := range ctx.Scopes {
+		if requestedScope == scope.ID {
+			return nil
+		}
+	}
+	return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		"scope "+requestedScope+" is not valid")
+}
+
+func validateTLSTokenBinding(
+	ctx *oidc.Context,
+	dc request,
+) error {
+	if !ctx.MTLSTokenBindingIsEnabled && dc.TLSBoundTokensIsRequired {
+		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+			"tls_client_certificate_bound_access_tokens is not supported")
+	}
+
+	return nil
 }
