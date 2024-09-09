@@ -173,6 +173,34 @@ func Clients(t *testing.T, ctx *oidc.Context) []*goidc.Client {
 	return clients
 }
 
+func PrivateRSAOAEPJWK(
+	t *testing.T,
+	keyID string,
+) jose.JSONWebKey {
+	t.Helper()
+
+	jwkStr := `
+		{
+		"p": "6Kn6z5npGNQ_N6z7Ujp4p3SkaRrgTRLNq1k-NqKeyYPUsqOrwddoeuZ_xZzoKhBDehSepsrk8fnJ0D2Y1mInufgoXpPI0raDO5HTeymUj8b6fvZEHOBukv4XHtu01Gp7aetXX-6Cd8Hw0hSpdGSdDldh3S92eULxyUaOQd5XRc0",
+		"kty": "RSA",
+		"q": "xjk0Hy_Bh93zw2u5u-t446NZZWfP9jPAiBeVPHXhzpmsq8-K_t9xnIVM0KScxEZ7VzqXcVpLYBBJVxBeCS_qs4P0AHwBsqECOExSD4oIq7qJUG4xjFQ9g78pbCCnXB18uQr0MoWu85XJaOVudyDLgXgYs-kbJvNQ9-KknBRWp1M",
+		"d": "eeqF_6aoCO79D3Yf1dDDOVaakrmaPfFsiUNqj-yiwcPXG7PEIRlvkN7zXqkGSOPXYQ99X9TXHa0OsHWIDYth1sxmtpY0NZkEwUKkOq4QgKbjMZOzUimwlyo9NmzOM1lwj1PXjSeaH9921_jQLYj7bZ6PVJeir8BhCz720MSsOc0PjYYm78Fm57lilsJYxLqr3tu16TZ4n77ZFu4yDSkm91J0iBUTUtMsAQdeFfkaPqdUWftaQqzTmTvTlExQQE3rtSKClSeJUZBvB5T6MGOizZ8d0qVgP7k4AakhaOjRX97jEH-FNKmRrvSyrh66QK0BTZRyd3zI6H0z9NMT2KzeqQ",
+		"e": "AQAB",
+		"use": "enc",
+		"qi": "mYkPTGpY1YJo-b-f8RbX0lO6PYSPfjgm3UB58FQwUS7uiEgUmWs2DmGC9LCUfUc6V1qcnq9C_IT76-4nXKI7DucAdizBHZZf4lSr7HJ75gCUdeIXkBZSCTJLB9OUWBaZ-LhWLjVECf2UmMbSFOLYHshIOgNWpVqWFQLY4xDXpvY",
+		"dp": "hqfqO0DOwcoFlImPIzYoInLFvPcLHlBlrGgIM8LGt8aO0Z0ciSHMnGTPSmXXkJC9HOjWMZ54BvwUq2sbC-jfKSjQ5HwP3LQ5G774cO3Nx7DXxaduIHBcTsK0Su3JqK7AIrtMZH88D2e1o0DGGlEo_OXiBAu2O9Rc76rgJosyY3k",
+		"alg": "RSA-OAEP",
+		"dq": "ZD9Z1MvaHFRri1FXxWn44WcjNt2hlunlXO5QUxtq74lYgiucJ_npAzeG-Z3Gipz6k8rV_EWmCRczgAyPAiZxlAgPxo7wbN5wuPggKCuu5uqXt02DUWzpD1AGKuD4wuVGxm57wXFKYXZHPf2KOEUlpnyOQa6KRNCZCkRc63J9wHE",
+		"n": "tCd1NEgyMS87vQncSxB2XS8ywCHgYKt4RyibIMxlMBdTEG1BBzICAq5mlITzBJni_pRM25ugxjdVdCR1szc91oLi2cPQESlwsOaj2wCW_d3W8JCQA5Wln_TZtKmFCviDVQIxVZz7CeiL0irRjbrd7jjEx10VREvZt49LK0JbP6nQ44E-_zAN8LUQQgwCgB_IF0dvSYGVJJ-yAUxknwpaTGUUMFjhR7Nk49ya812Z1tIjEVgGOo1LOQoUItEn1Gr73cy5zDemzy6Y0LcFeiDj5GQfqIsI2cIM3Mk9Medc-YsYQ0UfdmKZkyLwytnR2tH6aGp0_zCyVooIDHcXe7Jcdw"
+	}`
+	var jwk jose.JSONWebKey
+	if err := json.Unmarshal([]byte(jwkStr), &jwk); err != nil {
+		t.Fatal(err)
+	}
+	jwk.KeyID = keyID
+	return jwk
+}
+
 func PrivateRS256JWK(
 	t *testing.T,
 	keyID string,

@@ -157,6 +157,7 @@ func validateTLSPoP(
 	return nil
 }
 
+// addPoP checks for available pop mechanisms and add them to the grant info.
 func addPoP(ctx *oidc.Context, grantInfo *goidc.GrantInfo) {
 	dpopJWT, ok := dpopJWT(ctx)
 	if ctx.DPoPIsEnabled && ok {
@@ -169,7 +170,7 @@ func addPoP(ctx *oidc.Context, grantInfo *goidc.GrantInfo) {
 	}
 }
 
-// DPoPJWT gets the DPoP JWT sent in the DPoP header.
+// dpopJWT gets the DPoP JWT sent in the DPoP header.
 // According to RFC 9449: "There is not more than one DPoP HTTP request header field."
 // Therefore, an empty string and false will be returned if more than one value is found in the DPoP header.
 func dpopJWT(ctx *oidc.Context) (string, bool) {

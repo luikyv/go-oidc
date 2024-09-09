@@ -46,6 +46,37 @@ func TestSign(t *testing.T) {
 	}
 }
 
+func TestEncrypt(t *testing.T) {
+	// Given.
+	jwk := oidctest.PrivateRSAOAEPJWK(t, "enc_key")
+
+	// When.
+	encryptedStr, err := jwtutil.Encrypt("test", jwk.Public(), jose.A128CBC_HS256)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	jwe, err := jose.ParseEncrypted(
+		encryptedStr,
+		[]jose.KeyAlgorithm{jose.RSA_OAEP},
+		[]jose.ContentEncryption{jose.A128CBC_HS256},
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	decryptedStr, err := jwe.Decrypt(jwk.Key)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if string(decryptedStr) != "test" {
+		t.Errorf("got = %s, want = %s", decryptedStr, "test")
+	}
+}
+
 func TestIsJWS(t *testing.T) {
 	testCases := []struct {
 		jws      string
