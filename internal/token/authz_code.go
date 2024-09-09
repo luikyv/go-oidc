@@ -218,5 +218,10 @@ func newAuthorizationCodeGrantInfo(
 
 	addPoP(ctx, &grantInfo)
 
+	if err := ctx.HandleGrant(&grantInfo); err != nil {
+		return goidc.GrantInfo{}, oidcerr.Errorf(oidcerr.CodeAccessDenied,
+			"access denied", err)
+	}
+
 	return grantInfo, nil
 }

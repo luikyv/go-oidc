@@ -522,6 +522,14 @@ func (ctx *Context) TokenOptions(
 	return opts
 }
 
+func (ctx *Context) HandleGrant(grantInfo *goidc.GrantInfo) error {
+	if ctx.HandleGrantFunc == nil {
+		return nil
+	}
+
+	return ctx.HandleGrantFunc(grantInfo)
+}
+
 //---------------------------------------- Context ----------------------------------------//
 
 func (ctx *Context) Deadline() (deadline time.Time, ok bool) {

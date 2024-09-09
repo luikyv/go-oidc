@@ -589,7 +589,27 @@ func TestWithTokenOptions(t *testing.T) {
 	}
 
 	if p.config.TokenOptionsFunc == nil {
-		t.Error("TokenOptionsFunc cannot be nill")
+		t.Error("TokenOptionsFunc cannot be nil")
+	}
+}
+
+func TestWithGrantHandler(t *testing.T) {
+	// Given.
+	p := &provider{}
+	var grantHandler goidc.HandleGrantFunc = func(gi *goidc.GrantInfo) error {
+		return nil
+	}
+
+	// When.
+	err := WithGrantHandler(grantHandler)(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if p.config.HandleGrantFunc == nil {
+		t.Error("HandleGrantFunc cannot be nil")
 	}
 }
 

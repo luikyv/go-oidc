@@ -21,7 +21,7 @@ type GrantSessionManager interface {
 type GrantSession struct {
 	ID string `json:"id"`
 	// TokenID is the id of the token issued for this grant.
-	TokenID      string `json:"token_id"` // TODO: Think about it. The jti will work for this.
+	TokenID      string `json:"token_id"` // FIXME: The jti will work for this.
 	RefreshToken string `json:"refresh_token,omitempty"`
 	// LastTokenExpiresAtTimestamp is the timestamp when the last token issued
 	// for this grant was created.
@@ -31,7 +31,7 @@ type GrantSession struct {
 	GrantInfo
 }
 
-type HandleGrantFunc func(*GrantInfo) error // TODO.
+type HandleGrantFunc func(*GrantInfo) error
 
 type GrantInfo struct {
 	GrantType GrantType `json:"grant_type"`

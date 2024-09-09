@@ -306,6 +306,16 @@ func WithTokenOptions(tokenOpts goidc.TokenOptionsFunc) ProviderOption {
 	}
 }
 
+// WithGrantHandler defines a function executed everytime a new grant is created.
+// It can be used to perform validations or change the grant information before
+// issuing a new access token.
+func WithGrantHandler(grantHandler goidc.HandleGrantFunc) ProviderOption {
+	return func(p *provider) error {
+		p.config.HandleGrantFunc = grantHandler
+		return nil
+	}
+}
+
 // WithImplicitGrant allows the implicit grant type and the associated
 // response types.
 func WithImplicitGrant() ProviderOption {

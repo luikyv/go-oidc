@@ -38,7 +38,10 @@ func generateRefreshTokenGrant(
 		return response{}, err
 	}
 
-	updateRefreshTokenGrantInfo(ctx, &grantSession.GrantInfo, req)
+	if err := updateRefreshTokenGrantInfo(ctx, &grantSession.GrantInfo, req); err != nil {
+		return response{}, err
+	}
+
 	token, err := Make(ctx, c, grantSession.GrantInfo)
 	if err != nil {
 		return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
@@ -78,7 +81,7 @@ func updateRefreshTokenGrantInfo(
 	ctx *oidc.Context,
 	grantInfo *goidc.GrantInfo,
 	req request,
-) {
+) error {
 
 	grantInfo.GrantType = goidc.GrantRefreshToken
 
@@ -89,6 +92,13 @@ func updateRefreshTokenGrantInfo(
 	if ctx.ResourceIndicatorsIsEnabled && req.resources != nil {
 		grantInfo.ActiveResources = req.resources
 	}
+
+	if err := ctx.HandleGrant(grantInfo); err != nil {
+		return oidcerr.Errorf(oidcerr.CodeAccessDenied,
+			"access denied", err)
+	}
+
+	return nil
 }
 
 func updateRefreshTokenGrantSession(
