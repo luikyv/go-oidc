@@ -40,7 +40,7 @@ func TestGenerateGrant_RefreshTokenGrant(t *testing.T) {
 		"sub":       grantSession.Subject,
 		"client_id": client.ID,
 		"scope":     grantSession.GrantedScopes,
-		"exp":       float64(now + grantSession.TokenOptions.LifetimeSecs),
+		"exp":       float64(grantSession.LastTokenExpiresAtTimestamp),
 		"iat":       float64(now),
 	}
 	if diff := cmp.Diff(
@@ -109,15 +109,12 @@ func setUpRefreshTokenGrant(t *testing.T) (
 	now := timeutil.TimestampNow()
 	grantSession = &goidc.GrantSession{
 		RefreshToken:       "random_refresh_token",
-		ActiveScopes:       client.ScopeIDs,
 		ExpiresAtTimestamp: now + 600,
-		Subject:            "random_user",
-		ClientID:           client.ID,
-		GrantedScopes:      client.ScopeIDs,
-		TokenOptions: goidc.TokenOptions{
-			JWTSignatureKeyID: ctx.PrivateJWKS.Keys[0].KeyID,
-			LifetimeSecs:      60,
-			Format:            goidc.TokenFormatJWT,
+		GrantInfo: goidc.GrantInfo{
+			ActiveScopes:  client.ScopeIDs,
+			Subject:       "random_user",
+			ClientID:      client.ID,
+			GrantedScopes: client.ScopeIDs,
 		},
 	}
 	if err := ctx.SaveGrantSession(grantSession); err != nil {

@@ -47,7 +47,71 @@ func TestGenerateGrant_AuthorizationCodeGrant(t *testing.T) {
 		"sub":       session.Subject,
 		"client_id": client.ID,
 		"scope":     session.GrantedScopes,
-		"exp":       float64(now + grantSession.TokenOptions.LifetimeSecs),
+		"exp":       float64(grantSession.LastTokenExpiresAtTimestamp),
+		"iat":       float64(now),
+	}
+	if diff := cmp.Diff(
+		claims,
+		wantedClaims,
+		cmpopts.IgnoreMapEntries(func(k string, _ any) bool {
+			return k == "jti"
+		}),
+		cmpopts.EquateApprox(0, 1),
+	); diff != "" {
+		t.Error(diff)
+	}
+
+	if grantSession.TokenID != claims["jti"] {
+		t.Errorf("TokenID = %s, want %s", grantSession.TokenID, claims["jti"])
+	}
+
+	authnSessions := oidctest.AuthnSessions(t, ctx)
+	if len(authnSessions) != 0 {
+		t.Errorf("len(authnSessions) = %d, want 0", len(authnSessions))
+	}
+}
+
+func TestGenerateGrant_AuthorizationCodeGrant_ResourceIndicators(t *testing.T) {
+
+	// Given.
+	ctx, client, session := setUpAuthzCodeGrant(t)
+	ctx.ResourceIndicatorsIsEnabled = true
+	ctx.Resources = []string{"https://resource1.com", "https://resource2.com", "https://resource3.com"}
+	session.GrantedResources = []string{"https://resource1.com", "https://resource2.com", "https://resource3.com"}
+
+	req := request{
+		grantType:         goidc.GrantAuthorizationCode,
+		redirectURI:       client.RedirectURIs[0],
+		authorizationCode: session.AuthorizationCode,
+		resources:         []string{"https://resource1.com", "https://resource2.com"},
+	}
+
+	// When.
+	tokenResp, err := generateGrant(ctx, req)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("error generating the authorization code grant: %v", err)
+	}
+
+	grantSessions := oidctest.GrantSessions(t, ctx)
+	if len(grantSessions) != 1 {
+		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
+	}
+	grantSession := grantSessions[0]
+
+	claims, err := oidctest.SafeClaims(tokenResp.AccessToken, ctx.PrivateJWKS.Keys[0])
+	if err != nil {
+		t.Fatalf("error parsing claims: %v", err)
+	}
+	now := timeutil.TimestampNow()
+	wantedClaims := map[string]any{
+		"iss":       ctx.Host,
+		"sub":       session.Subject,
+		"aud":       []any{"https://resource1.com", "https://resource2.com"},
+		"client_id": client.ID,
+		"scope":     session.GrantedScopes,
+		"exp":       float64(grantSession.LastTokenExpiresAtTimestamp),
 		"iat":       float64(now),
 	}
 	if diff := cmp.Diff(

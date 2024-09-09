@@ -97,7 +97,8 @@ func refreshTokenInfo(
 		Subject:               grantSession.Subject,
 		ExpiresAtTimestamp:    grantSession.ExpiresAtTimestamp,
 		Confirmation:          cnf,
-		AdditionalTokenClaims: grantSession.TokenOptions.AdditionalClaims,
+		Resources:             grantSession.GrantedResources,
+		AdditionalTokenClaims: grantSession.AdditionalTokenClaims,
 	}
 }
 
@@ -154,8 +155,9 @@ func tokenIntrospectionInfoByID(
 		AuthorizationDetails:  grantSession.GrantedAuthorizationDetails,
 		ClientID:              grantSession.ClientID,
 		Subject:               grantSession.Subject,
-		ExpiresAtTimestamp:    grantSession.LastTokenIssuedAtTimestamp + grantSession.TokenOptions.LifetimeSecs,
+		ExpiresAtTimestamp:    grantSession.LastTokenExpiresAtTimestamp,
 		Confirmation:          cnf,
-		AdditionalTokenClaims: grantSession.TokenOptions.AdditionalClaims,
+		Resources:             grantSession.ActiveResources,
+		AdditionalTokenClaims: grantSession.AdditionalTokenClaims,
 	}
 }

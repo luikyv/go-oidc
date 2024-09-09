@@ -11,7 +11,6 @@ import (
 )
 
 // ExtractID returns the ID of a token.
-//
 // If it's a JWT, the ID is the the "jti" claim. Otherwise, the token is
 // considered opaque and its ID is the token itself.
 func ExtractID(ctx *oidc.Context, token string) (string, error) {

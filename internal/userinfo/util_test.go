@@ -97,18 +97,17 @@ func setUp(t *testing.T) (*oidc.Context, *goidc.Client) {
 	token := "opaque_token"
 	now := timeutil.TimestampNow()
 	grantSession := &goidc.GrantSession{
-		TokenID:                    token,
-		LastTokenIssuedAtTimestamp: now,
-		CreatedAtTimestamp:         now,
-		ExpiresAtTimestamp:         now + 60,
-		ActiveScopes:               goidc.ScopeOpenID.ID,
-		Subject:                    "random_subject",
-		ClientID:                   client.ID,
-		AdditionalUserInfoClaims: map[string]any{
-			"random_claim": "random_value",
-		},
-		TokenOptions: goidc.TokenOptions{
-			LifetimeSecs: 60,
+		TokenID:                     token,
+		CreatedAtTimestamp:          now,
+		ExpiresAtTimestamp:          now + 60,
+		LastTokenExpiresAtTimestamp: now + 60,
+		GrantInfo: goidc.GrantInfo{
+			ActiveScopes: goidc.ScopeOpenID.ID,
+			Subject:      "random_subject",
+			ClientID:     client.ID,
+			AdditionalUserInfoClaims: map[string]any{
+				"random_claim": "random_value",
+			},
 		},
 	}
 

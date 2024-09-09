@@ -7,23 +7,6 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func TestWithClaims(t *testing.T) {
-	// Given.
-	tokenOptions := goidc.TokenOptions{}
-
-	for i := 0; i < 2; i++ {
-		// When.
-		tokenOptions = tokenOptions.WithClaims(map[string]any{
-			"claim": "value",
-		})
-		// Then.
-		if tokenOptions.AdditionalClaims["claim"] != "value" {
-			t.Errorf("AdditionalClaims[\"claim\"] = %v, want value",
-				tokenOptions.AdditionalClaims["claim"])
-		}
-	}
-}
-
 func TestAuthorizationDetails(t *testing.T) {
 	// Given.
 	authDetails := goidc.AuthorizationDetail{

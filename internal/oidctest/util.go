@@ -91,12 +91,15 @@ func NewContext(t *testing.T) *oidc.Context {
 			goidc.ResponseModeFragment,
 			goidc.ResponseModeFormPost,
 		},
-		TokenOptionsFunc: func(c *goidc.Client, scopes string) (goidc.TokenOptions, error) {
+		TokenOptionsFunc: func(
+			client *goidc.Client,
+			grantInfo goidc.GrantInfo,
+		) goidc.TokenOptions {
 			return goidc.TokenOptions{
 				JWTSignatureKeyID: keyID,
 				LifetimeSecs:      60,
 				Format:            goidc.TokenFormatJWT,
-			}, nil
+			}
 		},
 		AuthnSessionTimeoutSecs: 60,
 		ClientAuthnMethods: []goidc.ClientAuthnType{

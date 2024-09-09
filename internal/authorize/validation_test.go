@@ -4,19 +4,22 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
+// TODO: Split this.
 func TestValidateRequest(t *testing.T) {
 	client, _ := oidctest.NewClient(t)
 
 	var cases = []struct {
 		name                string
 		req                 request
-		modifiedClient      func(client *goidc.Client) *goidc.Client
+		modifiedContext     func(ctx oidc.Context) *oidc.Context
+		modifiedClient      func(client goidc.Client) *goidc.Client
 		shouldBeValid       bool
 		shouldRedirectError bool
 		errorCode           oidcerr.Code
@@ -31,8 +34,9 @@ func TestValidateRequest(t *testing.T) {
 					Scopes:       client.ScopeIDs,
 				},
 			},
-			func(client *goidc.Client) *goidc.Client {
-				return client
+			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(client goidc.Client) *goidc.Client {
+				return &client
 			},
 			true,
 			false,
@@ -47,8 +51,9 @@ func TestValidateRequest(t *testing.T) {
 					Scopes:       goidc.ScopeOpenID.ID,
 				},
 			},
-			func(client *goidc.Client) *goidc.Client {
-				return client
+			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(client goidc.Client) *goidc.Client {
+				return &client
 			},
 			true,
 			false,
@@ -63,9 +68,10 @@ func TestValidateRequest(t *testing.T) {
 					Scopes:       goidc.ScopeOpenID.ID,
 				},
 			},
-			func(client *goidc.Client) *goidc.Client {
+			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(client goidc.Client) *goidc.Client {
 				client.ResponseTypes = []goidc.ResponseType{}
-				return client
+				return &client
 			},
 			false,
 			true,
@@ -79,8 +85,9 @@ func TestValidateRequest(t *testing.T) {
 					Scopes:      goidc.ScopeOpenID.ID,
 				},
 			},
-			func(client *goidc.Client) *goidc.Client {
-				return client
+			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(client goidc.Client) *goidc.Client {
+				return &client
 			},
 			false,
 			true,
@@ -95,8 +102,9 @@ func TestValidateRequest(t *testing.T) {
 					Scopes:       "invalid_scope",
 				},
 			},
-			func(client *goidc.Client) *goidc.Client {
-				return client
+			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(client goidc.Client) *goidc.Client {
+				return &client
 			},
 			false,
 			true,
@@ -111,12 +119,57 @@ func TestValidateRequest(t *testing.T) {
 					Scopes:       client.ScopeIDs,
 				},
 			},
-			func(client *goidc.Client) *goidc.Client {
-				return client
+			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(client goidc.Client) *goidc.Client {
+				return &client
 			},
 			false,
 			false,
 			oidcerr.CodeInvalidRedirectURI,
+		},
+		{
+			"valid_resource",
+			request{
+				AuthorizationParameters: goidc.AuthorizationParameters{
+					RedirectURI:  client.RedirectURIs[0],
+					ResponseType: goidc.ResponseTypeCode,
+					Scopes:       client.ScopeIDs,
+					Resources:    []string{"https://resource.com"},
+				},
+			},
+			func(ctx oidc.Context) *oidc.Context {
+				ctx.ResourceIndicatorsIsEnabled = true
+				ctx.Resources = []string{"https://resource.com"}
+				return &ctx
+			},
+			func(client goidc.Client) *goidc.Client {
+				return &client
+			},
+			true,
+			false,
+			"",
+		},
+		{
+			"invalid_resource",
+			request{
+				AuthorizationParameters: goidc.AuthorizationParameters{
+					RedirectURI:  client.RedirectURIs[0],
+					ResponseType: goidc.ResponseTypeCode,
+					Scopes:       client.ScopeIDs,
+					Resources:    []string{"invalid"},
+				},
+			},
+			func(ctx oidc.Context) *oidc.Context {
+				ctx.ResourceIndicatorsIsEnabled = true
+				ctx.Resources = []string{"https://resource.com"}
+				return &ctx
+			},
+			func(client goidc.Client) *goidc.Client {
+				return &client
+			},
+			false,
+			true,
+			oidcerr.CodeInvalidTarget,
 		},
 	}
 
@@ -125,10 +178,12 @@ func TestValidateRequest(t *testing.T) {
 			c.name,
 			func(t *testing.T) {
 				// When.
+				ctx := oidctest.NewContext(t)
+				ctx = c.modifiedContext(*ctx)
 				err := validateRequest(
-					oidctest.NewContext(t),
+					ctx,
 					c.req,
-					c.modifiedClient(client),
+					c.modifiedClient(*client),
 				)
 
 				// Then.
@@ -145,13 +200,13 @@ func TestValidateRequest(t *testing.T) {
 				if c.shouldRedirectError {
 					var redirectErr redirectionError
 					if !errors.As(err, &redirectErr) {
-						t.Error("the error should be redirected")
+						t.Fatalf("the error should be redirected")
 					}
 					code = redirectErr.code
 				} else {
 					var oidcErr oidcerr.Error
 					if !errors.As(err, &oidcErr) {
-						t.Error("invalid error type")
+						t.Fatalf("invalid error type")
 					}
 					code = oidcErr.Code
 				}

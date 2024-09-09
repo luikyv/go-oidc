@@ -1,7 +1,10 @@
 package clientutil_test
 
 import (
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"errors"
+	"net/http"
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
@@ -583,7 +586,6 @@ func TestAuthenticated_ClientSecretJWT(t *testing.T) {
 
 // TestAuthenticated_DifferentClientIDs tests that when different client IDs are
 // sent in the request, the client won't be authenticated.
-//
 // For instance, the form parameter "client_id" could have value "client_one"
 // and the issuer of the parameter "client_assertion" could have value
 // "client_two". In that case, the client must not be authenticate.
@@ -609,10 +611,98 @@ func TestAuthenticated_DifferentClientIDs(t *testing.T) {
 		"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
 	}
 
-	// Then.
+	// When.
 	_, err := clientutil.Authenticated(ctx)
 
-	// Assert.
+	// Then.
+	if err == nil {
+		t.Fatal("The client should not be authenticated")
+	}
+
+	var oidcErr oidcerr.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatal("invalid error type")
+	}
+
+	if oidcErr.Code != oidcerr.CodeInvalidClient {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	}
+}
+
+func TestAuthenticated_TLSAuthn_DistinguishedName(t *testing.T) {
+
+	// Given.
+	ctx, client := setUpTLSAuthn(t)
+	client.TLSSubDistinguishedName = "CN=https://example.com"
+	ctx.Request.PostForm = map[string][]string{
+		"client_id": {client.ID},
+	}
+
+	// When.
+	_, err := clientutil.Authenticated(ctx)
+	// Then.
+	if err != nil {
+		t.Errorf("The client should be authenticated, but error was found: %v", err)
+	}
+}
+
+func TestAuthenticated_TLSAuthn_InvalidDistinguishedName(t *testing.T) {
+
+	// Given.
+	ctx, client := setUpTLSAuthn(t)
+	client.TLSSubDistinguishedName = "invalid"
+	ctx.Request.PostForm = map[string][]string{
+		"client_id": {client.ID},
+	}
+
+	// When.
+	_, err := clientutil.Authenticated(ctx)
+
+	// Then.
+	if err == nil {
+		t.Fatal("The client should not be authenticated")
+	}
+
+	var oidcErr oidcerr.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatal("invalid error type")
+	}
+
+	if oidcErr.Code != oidcerr.CodeInvalidClient {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	}
+}
+
+func TestAuthenticated_TLSAuthn_AlternativeName(t *testing.T) {
+
+	// Given.
+	ctx, client := setUpTLSAuthn(t)
+	client.TLSSubAlternativeName = "https://sub.example.com"
+	ctx.Request.PostForm = map[string][]string{
+		"client_id": {client.ID},
+	}
+
+	// When.
+	_, err := clientutil.Authenticated(ctx)
+	// Then.
+	if err != nil {
+		t.Errorf("The client should be authenticated, but error was found: %v", err)
+	}
+}
+
+func TestAuthenticated_TLSAuthn_InvalidAlternativeName(t *testing.T) {
+
+	// Given.
+	ctx, client := setUpTLSAuthn(t)
+	client.TLSSubAlternativeName = "invalid"
+	ctx.Request.PostForm = map[string][]string{
+		"client_id": {client.ID},
+	}
+
+	// When.
+	_, err := clientutil.Authenticated(ctx)
+
+	// Then.
 	if err == nil {
 		t.Fatal("The client should not be authenticated")
 	}
@@ -713,4 +803,33 @@ func signAssertion(t *testing.T, claims map[string]any, jwk jose.JSONWebKey) str
 	}
 
 	return assertion
+}
+
+func setUpTLSAuthn(t *testing.T) (
+	ctx *oidc.Context,
+	client *goidc.Client,
+) {
+	t.Helper()
+
+	ctx = oidctest.NewContext(t)
+	ctx.ClientCertFunc = func(r *http.Request) (*x509.Certificate, error) {
+		return &x509.Certificate{
+			Subject: pkix.Name{
+				CommonName: "https://example.com",
+			},
+			DNSNames: []string{"https://sub.example.com"},
+		}, nil
+	}
+
+	client = &goidc.Client{
+		ID: "random_client_id",
+		ClientMetaInfo: goidc.ClientMetaInfo{
+			AuthnMethod: goidc.ClientAuthnTLS,
+		},
+	}
+	if err := ctx.SaveClient(client); err != nil {
+		t.Fatalf("error setting up tls authn: %v", err)
+	}
+
+	return ctx, client
 }

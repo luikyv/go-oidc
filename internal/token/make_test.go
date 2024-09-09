@@ -59,15 +59,16 @@ func TestMakeToken_JWTToken(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	client, _ := oidctest.NewClient(t)
-	tokenOptions := goidc.NewJWTTokenOptions(ctx.PrivateJWKS.Keys[0].KeyID, 60)
-	tokenOptions = tokenOptions.WithClaims(map[string]any{"random_claim": "random_value"})
-	grantOptions := token.GrantOptions{
-		Subject:      "random_subject",
-		TokenOptions: tokenOptions,
+	grantInfo := goidc.GrantInfo{
+		Subject:  "random_subject",
+		ClientID: client.ID,
+		AdditionalTokenClaims: map[string]any{
+			"random_claim": "random_value",
+		},
 	}
 
 	// When.
-	token, err := token.Make(ctx, client, grantOptions)
+	token, err := token.Make(ctx, client, grantInfo)
 
 	// Then.
 	if err != nil {
@@ -86,9 +87,9 @@ func TestMakeToken_JWTToken(t *testing.T) {
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
 		"iss":          ctx.Host,
-		"sub":          grantOptions.Subject,
+		"sub":          grantInfo.Subject,
 		"client_id":    client.ID,
-		"scope":        grantOptions.GrantedScopes,
+		"scope":        grantInfo.GrantedScopes,
 		"exp":          float64(now + 60),
 		"iat":          float64(now),
 		"random_claim": "random_value",
@@ -109,14 +110,19 @@ func TestMakeToken_JWTToken(t *testing.T) {
 func TestMakeToken_OpaqueToken(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
+	ctx.TokenOptionsFunc = func(
+		client *goidc.Client,
+		grantInfo goidc.GrantInfo,
+	) goidc.TokenOptions {
+		return goidc.NewOpaqueTokenOptions(10, 60)
+	}
 	client, _ := oidctest.NewClient(t)
-	grantOptions := token.GrantOptions{
-		Subject:      "random_subject",
-		TokenOptions: goidc.NewOpaqueTokenOptions(10, 60),
+	grantInfo := goidc.GrantInfo{
+		Subject: "random_subject",
 	}
 
 	// When.
-	token, err := token.Make(ctx, client, grantOptions)
+	token, err := token.Make(ctx, client, grantInfo)
 
 	// Then.
 	if err != nil {

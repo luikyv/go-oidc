@@ -3,7 +3,6 @@ package goidc
 import (
 	"crypto/x509"
 	"encoding/json"
-	"maps"
 	"net/http"
 	"slices"
 	"strings"
@@ -240,7 +239,6 @@ type MiddlewareFunc func(next http.Handler) http.Handler
 
 // HandleDynamicClientFunc defines a function that will be executed during DCR
 // and DCM.
-//
 // It can be used to modify the client and perform custom validations.
 type HandleDynamicClientFunc func(r *http.Request, c *ClientMetaInfo) error
 
@@ -304,36 +302,25 @@ func NewDynamicScope(
 
 // TokenOptionsFunc defines a function that returns token configuration and is
 // executed when issuing access tokens.
-type TokenOptionsFunc func(client *Client, scopes string) (TokenOptions, error)
+type TokenOptionsFunc func(client *Client, grantInfo GrantInfo) TokenOptions
 
 // TokenOptions defines a template for generating access tokens.
 type TokenOptions struct {
-	Format            TokenFormat    `json:"token_format"`
-	LifetimeSecs      int            `json:"token_lifetime_secs"`
-	JWTSignatureKeyID string         `json:"token_signature_key_id,omitempty"`
-	OpaqueLength      int            `json:"opaque_token_length,omitempty"`
-	IsRefreshable     bool           `json:"-"`
-	AdditionalClaims  map[string]any `json:"additional_token_claims,omitempty"`
-}
-
-func (to TokenOptions) WithClaims(claims map[string]any) TokenOptions {
-	if to.AdditionalClaims == nil {
-		to.AdditionalClaims = map[string]any{}
-	}
-	maps.Copy(to.AdditionalClaims, claims)
-
-	return to
+	Format            TokenFormat
+	LifetimeSecs      int
+	JWTSignatureKeyID string
+	OpaqueLength      int
+	IsRefreshable     bool
 }
 
 func NewJWTTokenOptions(
-	// signatureKeyID is the ID of a signing key present in the server JWKS.
-	signatureKeyID string,
+	sigKeyID string,
 	lifetimeSecs int,
 ) TokenOptions {
 	return TokenOptions{
 		Format:            TokenFormatJWT,
 		LifetimeSecs:      lifetimeSecs,
-		JWTSignatureKeyID: signatureKeyID,
+		JWTSignatureKeyID: sigKeyID,
 	}
 }
 
@@ -349,7 +336,6 @@ func NewOpaqueTokenOptions(
 }
 
 // AuthnFunc executes the user authentication logic.
-//
 // If it returns [StatusSuccess], the flow will end successfully and the client
 // will be granted the accesses the user consented.
 // If it returns [StatusFailure], the flow will end with failure and the client
@@ -360,7 +346,6 @@ func NewOpaqueTokenOptions(
 type AuthnFunc func(http.ResponseWriter, *http.Request, *AuthnSession) AuthnStatus
 
 // SetUpAuthnFunc is responsible for initiating the authentication session.
-//
 // It returns true when the policy is ready to executed and false for when the
 // policy should be skipped.
 type SetUpAuthnFunc func(*http.Request, *Client, *AuthnSession) bool
@@ -402,6 +387,7 @@ type TokenInfo struct {
 	Subject               string                `json:"sub,omitempty"`
 	ExpiresAtTimestamp    int                   `json:"exp,omitempty"`
 	Confirmation          *TokenConfirmation    `json:"cnf,omitempty"`
+	Resources             Resources             `json:"aud,omitempty"`
 	AdditionalTokenClaims map[string]any        `json:"-"`
 }
 
@@ -525,7 +511,6 @@ type ClaimObjectInfo struct {
 }
 
 // AuthorizationDetail represents an authorization details as a map.
-//
 // It is a map instead of a struct, because its fields vary a lot depending on
 // the use case.
 type AuthorizationDetail map[string]any

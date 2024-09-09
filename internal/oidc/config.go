@@ -152,7 +152,7 @@ type Configuration struct {
 	AuthDetailsIsEnabled bool
 	AuthDetailTypes      []string
 
-	ResourceIndicatorsIsEnabled  bool // TODO.
+	ResourceIndicatorsIsEnabled  bool
 	ResourceIndicatorsIsRequired bool
 	Resources                    []string
 }

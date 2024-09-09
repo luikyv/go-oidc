@@ -48,15 +48,16 @@ func MakeIDToken(
 func Make(
 	ctx *oidc.Context,
 	client *goidc.Client,
-	grantOptions GrantOptions,
+	grantInfo goidc.GrantInfo,
 ) (
 	Token,
 	error,
 ) {
-	if grantOptions.Format == goidc.TokenFormatJWT {
-		return makeJWTToken(ctx, client, grantOptions)
+	opts := ctx.TokenOptions(client, grantInfo)
+	if opts.Format == goidc.TokenFormatJWT {
+		return makeJWTToken(ctx, grantInfo, opts)
 	} else {
-		return makeOpaqueToken(ctx, client, grantOptions)
+		return makeOpaqueToken(ctx, grantInfo, opts)
 	}
 }
 
@@ -138,51 +139,47 @@ func encryptIDToken(
 
 func makeJWTToken(
 	ctx *oidc.Context,
-	client *goidc.Client,
-	grantOptions GrantOptions,
+	grantInfo goidc.GrantInfo,
+	opts goidc.TokenOptions,
 ) (
 	Token,
 	error,
 ) {
-	privateJWK := ctx.TokenSigKey(grantOptions.TokenOptions)
+	privateJWK := ctx.TokenSigKey(opts) // TODO: review this.
 	jwtID := uuid.NewString()
 	timestampNow := timeutil.TimestampNow()
 	claims := map[string]any{
 		goidc.ClaimTokenID:  jwtID,
 		goidc.ClaimIssuer:   ctx.Host,
-		goidc.ClaimSubject:  grantOptions.Subject,
-		goidc.ClaimClientID: client.ID,
-		goidc.ClaimScope:    grantOptions.GrantedScopes,
+		goidc.ClaimSubject:  grantInfo.Subject,
+		goidc.ClaimClientID: grantInfo.ClientID,
+		goidc.ClaimScope:    grantInfo.ActiveScopes,
 		goidc.ClaimIssuedAt: timestampNow,
-		goidc.ClaimExpiry:   timestampNow + grantOptions.LifetimeSecs,
+		goidc.ClaimExpiry:   timestampNow + opts.LifetimeSecs,
 	}
 
-	if grantOptions.GrantedAuthorizationDetails != nil {
-		claims[goidc.ClaimAuthorizationDetails] = grantOptions.GrantedAuthorizationDetails
+	if grantInfo.GrantedAuthorizationDetails != nil {
+		claims[goidc.ClaimAuthorizationDetails] = grantInfo.GrantedAuthorizationDetails
+	}
+
+	if grantInfo.ActiveResources != nil {
+		claims[goidc.ClaimAudience] = grantInfo.ActiveResources
 	}
 
 	tokenType := goidc.TokenTypeBearer
 	confirmation := make(map[string]string)
-	// DPoP token binding.
-	dpopJWT, ok := dpopJWT(ctx)
-	jkt := ""
-	if ctx.DPoPIsEnabled && ok {
+	if grantInfo.JWKThumbprint != "" {
 		tokenType = goidc.TokenTypeDPoP
-		jkt = jwkThumbprint(dpopJWT, ctx.DPoPSigAlgs)
-		confirmation["jkt"] = jkt
+		confirmation["jkt"] = grantInfo.JWKThumbprint
 	}
-	// TLS token binding.
-	clientCert, err := ctx.ClientCert()
-	certThumbprint := ""
-	if ctx.MTLSTokenBindingIsEnabled && err != nil {
-		certThumbprint = hashBase64URLSHA256(string(clientCert.Raw))
-		confirmation["x5t#S256"] = certThumbprint
+	if grantInfo.ClientCertThumbprint != "" {
+		confirmation["x5t#S256"] = grantInfo.ClientCertThumbprint
 	}
 	if len(confirmation) != 0 {
 		claims["cnf"] = confirmation
 	}
 
-	for k, v := range grantOptions.AdditionalClaims {
+	for k, v := range grantInfo.AdditionalTokenClaims {
 		claims[k] = v
 	}
 
@@ -196,52 +193,41 @@ func makeJWTToken(
 	}
 
 	return Token{
-		ID:                    jwtID,
-		Format:                goidc.TokenFormatJWT,
-		Value:                 accessToken,
-		Type:                  tokenType,
-		JWKThumbprint:         jkt,
-		CertificateThumbprint: certThumbprint,
+		ID:            jwtID,
+		Format:        goidc.TokenFormatJWT,
+		Value:         accessToken,
+		Type:          tokenType,
+		LifetimeSecs:  opts.LifetimeSecs,
+		IsRefreshable: opts.IsRefreshable,
 	}, nil
 }
 
 func makeOpaqueToken(
-	ctx *oidc.Context,
-	_ *goidc.Client,
-	grantOptions GrantOptions,
+	_ *oidc.Context,
+	grantInfo goidc.GrantInfo,
+	opts goidc.TokenOptions,
 ) (
 	Token,
 	error,
 ) {
-	accessToken, err := strutil.Random(grantOptions.OpaqueLength)
+	accessToken, err := strutil.Random(opts.OpaqueLength)
 	if err != nil {
 		return Token{}, oidcerr.Errorf(oidcerr.CodeInternalError,
 			"could not generate the opaque token", err)
 	}
+
 	tokenType := goidc.TokenTypeBearer
-
-	// DPoP token binding.
-	dpopJWT, ok := dpopJWT(ctx)
-	jkt := ""
-	if ctx.DPoPIsEnabled && ok {
+	if grantInfo.JWKThumbprint != "" {
 		tokenType = goidc.TokenTypeDPoP
-		jkt = jwkThumbprint(dpopJWT, ctx.DPoPSigAlgs)
-	}
-
-	// TLS token binding.
-	clientCert, err := ctx.ClientCert()
-	certThumbprint := ""
-	if ctx.MTLSTokenBindingIsEnabled && err != nil {
-		certThumbprint = hashBase64URLSHA256(string(clientCert.Raw))
 	}
 
 	return Token{
-		ID:                    accessToken,
-		Format:                goidc.TokenFormatOpaque,
-		Value:                 accessToken,
-		Type:                  tokenType,
-		JWKThumbprint:         jkt,
-		CertificateThumbprint: certThumbprint,
+		ID:            accessToken,
+		Format:        goidc.TokenFormatOpaque,
+		Value:         accessToken,
+		Type:          tokenType,
+		LifetimeSecs:  opts.LifetimeSecs,
+		IsRefreshable: opts.IsRefreshable,
 	}, nil
 }
 

@@ -8,37 +8,13 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-type GrantOptions struct {
-	GrantType                   goidc.GrantType
-	Subject                     string
-	ClientID                    string
-	GrantedScopes               string
-	GrantedAuthorizationDetails []goidc.AuthorizationDetail
-	AdditionalIDTokenClaims     map[string]any
-	AdditionalUserInfoClaims    map[string]any
-	goidc.TokenOptions
-}
-
-func NewGrantOptions(grantSession goidc.GrantSession) GrantOptions {
-	return GrantOptions{
-		GrantType:                   grantSession.GrantType,
-		Subject:                     grantSession.Subject,
-		ClientID:                    grantSession.ClientID,
-		GrantedScopes:               grantSession.GrantedScopes,
-		GrantedAuthorizationDetails: grantSession.GrantedAuthorizationDetails,
-		AdditionalIDTokenClaims:     grantSession.AdditionalIDTokenClaims,
-		AdditionalUserInfoClaims:    grantSession.AdditionalUserInfoClaims,
-		TokenOptions:                grantSession.TokenOptions,
-	}
-}
-
 type Token struct {
-	ID                    string
-	Format                goidc.TokenFormat
-	Value                 string
-	Type                  goidc.TokenType
-	JWKThumbprint         string
-	CertificateThumbprint string
+	ID            string
+	Format        goidc.TokenFormat
+	Value         string
+	Type          goidc.TokenType
+	LifetimeSecs  int
+	IsRefreshable bool
 }
 
 type IDTokenOptions struct {
@@ -51,10 +27,10 @@ type IDTokenOptions struct {
 	State             string
 }
 
-func newIDTokenOptions(grantOpts GrantOptions) IDTokenOptions {
+func newIDTokenOptions(grantInfo goidc.GrantInfo) IDTokenOptions {
 	return IDTokenOptions{
-		Subject:                 grantOpts.Subject,
-		AdditionalIDTokenClaims: grantOpts.AdditionalIDTokenClaims,
+		Subject:                 grantInfo.Subject,
+		AdditionalIDTokenClaims: grantInfo.AdditionalIDTokenClaims,
 	}
 }
 
@@ -100,6 +76,7 @@ type response struct {
 	TokenType            goidc.TokenType             `json:"token_type"`
 	Scopes               string                      `json:"scope,omitempty"`
 	AuthorizationDetails []goidc.AuthorizationDetail `json:"authorization_details,omitempty"`
+	Resources            goidc.Resources             `json:"resources,omitempty"`
 }
 
 type introspectionRequest struct {
@@ -114,24 +91,14 @@ func newIntrospectionRequest(req *http.Request) introspectionRequest {
 	}
 }
 
-func NewGrantSession(grantOptions GrantOptions, token Token) *goidc.GrantSession {
+func NewGrantSession(grantInfo goidc.GrantInfo, token Token) *goidc.GrantSession {
 	timestampNow := timeutil.TimestampNow()
 	return &goidc.GrantSession{
 		ID:                          uuid.New().String(),
 		TokenID:                     token.ID,
-		JWKThumbprint:               token.JWKThumbprint,
-		ClientCertThumbprint:        token.CertificateThumbprint,
 		CreatedAtTimestamp:          timestampNow,
-		LastTokenIssuedAtTimestamp:  timestampNow,
-		ExpiresAtTimestamp:          timestampNow + grantOptions.LifetimeSecs,
-		ActiveScopes:                grantOptions.GrantedScopes,
-		GrantType:                   grantOptions.GrantType,
-		Subject:                     grantOptions.Subject,
-		ClientID:                    grantOptions.ClientID,
-		GrantedScopes:               grantOptions.GrantedScopes,
-		GrantedAuthorizationDetails: grantOptions.GrantedAuthorizationDetails,
-		AdditionalIDTokenClaims:     grantOptions.AdditionalIDTokenClaims,
-		AdditionalUserInfoClaims:    grantOptions.AdditionalUserInfoClaims,
-		TokenOptions:                grantOptions.TokenOptions,
+		LastTokenExpiresAtTimestamp: timestampNow + token.LifetimeSecs,
+		ExpiresAtTimestamp:          timestampNow + token.LifetimeSecs,
+		GrantInfo:                   grantInfo,
 	}
 }

@@ -575,9 +575,9 @@ func TestWithTokenOptions(t *testing.T) {
 	p := &provider{}
 	var tokenOpts goidc.TokenOptionsFunc = func(
 		client *goidc.Client,
-		scopes string,
-	) (goidc.TokenOptions, error) {
-		return goidc.NewOpaqueTokenOptions(10, 60), nil
+		grantInfo goidc.GrantInfo,
+	) goidc.TokenOptions {
+		return goidc.NewOpaqueTokenOptions(10, 60)
 	}
 
 	// When.

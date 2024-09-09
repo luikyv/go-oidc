@@ -36,14 +36,14 @@ func generateClientCredentialsGrant(
 			"could not generate an access token for the client credentials grant", err)
 	}
 
-	_, err = generateClientCredentialsGrantSession(ctx, c, token, grantOptions)
+	_, err = generateClientCredentialsGrantSession(ctx, grantOptions, token)
 	if err != nil {
 		return response{}, nil
 	}
 
 	tokenResp := response{
 		AccessToken: token.Value,
-		ExpiresIn:   grantOptions.LifetimeSecs,
+		ExpiresIn:   token.LifetimeSecs,
 		TokenType:   token.Type,
 	}
 
@@ -56,15 +56,14 @@ func generateClientCredentialsGrant(
 
 func generateClientCredentialsGrantSession(
 	ctx *oidc.Context,
-	_ *goidc.Client,
+	grantInfo goidc.GrantInfo,
 	token Token,
-	grantOptions GrantOptions,
 ) (
 	*goidc.GrantSession,
 	error,
 ) {
 
-	grantSession := NewGrantSession(grantOptions, token)
+	grantSession := NewGrantSession(grantInfo, token)
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
 		return nil, oidcerr.Errorf(oidcerr.CodeInternalError,
 			"could not store the grant session", err)
@@ -87,6 +86,10 @@ func validateClientCredentialsGrantRequest(
 		return oidcerr.New(oidcerr.CodeInvalidScope, "invalid scope")
 	}
 
+	if err := validateResources(ctx, ctx.Resources, req); err != nil {
+		return err
+	}
+
 	if err := validateTokenBinding(ctx, c); err != nil {
 		return err
 	}
@@ -99,24 +102,29 @@ func newClientCredentialsGrantOptions(
 	client *goidc.Client,
 	req request,
 ) (
-	GrantOptions,
+	goidc.GrantInfo,
 	error,
 ) {
-	tokenOptions, err := ctx.TokenOptions(client, req.scopes)
-	if err != nil {
-		return GrantOptions{}, oidcerr.Errorf(oidcerr.CodeAccessDenied,
-			"access denied", err)
-	}
 
-	scopes := req.scopes
-	if scopes == "" {
-		scopes = client.ScopeIDs
-	}
-	return GrantOptions{
+	grantInfo := goidc.GrantInfo{
 		GrantType:     goidc.GrantClientCredentials,
-		GrantedScopes: scopes,
+		ActiveScopes:  client.ScopeIDs,
+		GrantedScopes: client.ScopeIDs,
 		Subject:       client.ID,
 		ClientID:      client.ID,
-		TokenOptions:  tokenOptions,
-	}, nil
+	}
+
+	if req.scopes != "" {
+		grantInfo.ActiveScopes = req.scopes
+		grantInfo.GrantedScopes = req.scopes
+	}
+
+	if ctx.ResourceIndicatorsIsEnabled && req.resources != nil {
+		grantInfo.ActiveResources = req.resources
+		grantInfo.GrantedResources = req.resources
+	}
+
+	addPoP(ctx, &grantInfo)
+
+	return grantInfo, nil
 }

@@ -157,6 +157,18 @@ func validateTLSPoP(
 	return nil
 }
 
+func addPoP(ctx *oidc.Context, grantInfo *goidc.GrantInfo) {
+	dpopJWT, ok := dpopJWT(ctx)
+	if ctx.DPoPIsEnabled && ok {
+		grantInfo.JWKThumbprint = jwkThumbprint(dpopJWT, ctx.DPoPSigAlgs)
+	}
+
+	clientCert, err := ctx.ClientCert()
+	if ctx.MTLSTokenBindingIsEnabled && err != nil {
+		grantInfo.ClientCertThumbprint = hashBase64URLSHA256(string(clientCert.Raw))
+	}
+}
+
 // DPoPJWT gets the DPoP JWT sent in the DPoP header.
 // According to RFC 9449: "There is not more than one DPoP HTTP request header field."
 // Therefore, an empty string and false will be returned if more than one value is found in the DPoP header.

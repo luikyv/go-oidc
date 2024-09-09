@@ -270,6 +270,76 @@ func TestInitAuth_JARM(t *testing.T) {
 	}
 }
 
+func TestInitAuth_ResourceIndicator(t *testing.T) {
+	ctx, client := setUpAuth(t)
+	ctx.ResourceIndicatorsIsEnabled = true
+	ctx.Resources = []string{"https://resource1.com", "https://resource2.com"}
+	ctx.Policies[0].Authenticate = func(
+		w http.ResponseWriter,
+		r *http.Request,
+		as *goidc.AuthnSession,
+	) goidc.AuthnStatus {
+		as.GrantScopes(as.Scopes)
+		as.GrantResources([]string{"https://resource1.com"})
+		return goidc.StatusSuccess
+	}
+
+	req := request{
+		ClientID: client.ID,
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  client.RedirectURIs[0],
+			Scopes:       client.ScopeIDs,
+			ResponseType: goidc.ResponseTypeCodeAndIDToken,
+			ResponseMode: goidc.ResponseModeFragment,
+			Nonce:        "random_nonce",
+			Resources:    []string{"https://resource1.com", "https://resource2.com"},
+		},
+	}
+
+	// When.
+	err := initAuth(ctx, req)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	sessions := oidctest.AuthnSessions(t, ctx)
+	if len(sessions) != 1 {
+		t.Fatalf("len(sessions) = %d, want 1", len(sessions))
+	}
+
+	session := sessions[0]
+	if session.AuthorizationCode == "" {
+		t.Error("the authorization code in the session cannot be emtpy")
+	}
+
+	wantedSession := goidc.AuthnSession{
+		ID:                 session.ID,
+		PolicyID:           ctx.Policies[0].ID,
+		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
+		CreatedAtTimestamp: session.CreatedAtTimestamp,
+		ClientID:           client.ID,
+		AuthorizationCode:  session.AuthorizationCode,
+		GrantedScopes:      client.ScopeIDs,
+		GrantedResources:   []string{"https://resource1.com"},
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  client.RedirectURIs[0],
+			Scopes:       client.ScopeIDs,
+			ResponseType: goidc.ResponseTypeCodeAndIDToken,
+			ResponseMode: goidc.ResponseModeFragment,
+			Nonce:        "random_nonce",
+			Resources:    []string{"https://resource1.com", "https://resource2.com"},
+		},
+		AdditionalIDTokenClaims: map[string]any{
+			"nonce": "random_nonce",
+		},
+	}
+	if diff := cmp.Diff(*session, wantedSession, cmpopts.EquateEmpty()); diff != "" {
+		t.Error(diff)
+	}
+}
+
 func TestInitAuth_ShouldNotFindClient(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)

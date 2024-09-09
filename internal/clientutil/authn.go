@@ -28,7 +28,6 @@ const (
 
 // Authenticated fetches a client associated to the request and returns it
 // if the client is authenticated according to its authentication method.
-//
 // This function always returns in case of error an instance of [oidcerr.Error]
 // with error code as [oidcerr.CodeInvalidClient].
 func Authenticated(
@@ -324,23 +323,25 @@ func authenticateTLSCert(
 			"invalid client certificate", err)
 	}
 
-	if c.TLSSubDistinguishedName != "" &&
-		cert.Subject.String() != c.TLSSubDistinguishedName {
-		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid distinguished name")
-	}
-	if c.TLSSubAlternativeName != "" &&
-		!slices.Contains(cert.DNSNames, c.TLSSubAlternativeName) {
-		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid alternative name")
+	switch {
+	case c.TLSSubDistinguishedName != "":
+		if c.TLSSubDistinguishedName != cert.Subject.String() {
+			return oidcerr.New(oidcerr.CodeInvalidClient, "invalid distinguished name")
+		}
+	case c.TLSSubAlternativeName != "":
+		if !slices.Contains(cert.DNSNames, c.TLSSubAlternativeName) {
+			return oidcerr.New(oidcerr.CodeInvalidClient, "invalid alternative name")
+		}
+	default:
+		return oidcerr.New(oidcerr.CodeInvalidClient, "client is missing attributes for tls authn")
 	}
 
 	return nil
 }
 
 // extractID extracts a client ID from the request.
-//
 // It looks to all places where an ID can be informed such as the basic
 // authentication header and the post form field 'client_id'.
-//
 // If different client IDs are found in the request, it returns an error.
 func extractID(
 	ctx *oidc.Context,

@@ -21,7 +21,8 @@ func generateAuthorizationCodeGrant(
 ) {
 
 	if req.authorizationCode == "" {
-		return response{}, oidcerr.New(oidcerr.CodeInvalidRequest, "invalid authorization code")
+		return response{}, oidcerr.New(oidcerr.CodeInvalidRequest,
+			"invalid authorization code")
 	}
 
 	c, err := clientutil.Authenticated(ctx)
@@ -29,81 +30,101 @@ func generateAuthorizationCodeGrant(
 		return response{}, err
 	}
 
-	session, err := ctx.AuthnSessionByAuthorizationCode(req.authorizationCode)
+	session, err := authnSession(ctx, req.authorizationCode)
 	if err != nil {
 		return response{}, oidcerr.Errorf(oidcerr.CodeInvalidGrant,
 			"invalid authorization code", err)
-	}
-
-	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-		return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
-			"could not delete the authn session", err)
 	}
 
 	if err := validateAuthorizationCodeGrantRequest(ctx, req, c, session); err != nil {
 		return response{}, err
 	}
 
-	grantOptions, err := newAuthorizationCodeGrantOptions(ctx, req, c, session)
+	grantInfo, err := newAuthorizationCodeGrantInfo(ctx, req, session)
 	if err != nil {
 		return response{}, err
 	}
 
-	token, err := Make(ctx, c, grantOptions)
+	token, err := Make(ctx, c, grantInfo)
 	if err != nil {
 		return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
 			"could not generate access token for the authorization code grant", err)
 	}
 
-	grantSession, err := generateAuthorizationCodeGrantSession(ctx, token, grantOptions)
+	grantSession, err := generateAuthorizationCodeGrantSession(ctx, grantInfo, token)
 	if err != nil {
 		return response{}, err
 	}
 
 	tokenResp := response{
 		AccessToken:  token.Value,
-		ExpiresIn:    grantOptions.LifetimeSecs,
+		ExpiresIn:    token.LifetimeSecs,
 		TokenType:    token.Type,
 		RefreshToken: grantSession.RefreshToken,
 	}
 
 	if strutil.ContainsOpenID(session.GrantedScopes) {
-		tokenResp.IDToken, err = MakeIDToken(ctx, c, newIDTokenOptions(grantOptions))
+		tokenResp.IDToken, err = MakeIDToken(ctx, c, newIDTokenOptions(grantInfo))
 		if err != nil {
 			return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
 				"could not generate access id token for the authorization code grant", err)
 		}
 	}
 
-	if session.Scopes != grantOptions.GrantedScopes {
-		tokenResp.Scopes = grantOptions.GrantedScopes
+	if grantInfo.ActiveScopes != session.Scopes {
+		tokenResp.Scopes = grantInfo.ActiveScopes
 	}
 
-	// If the granted auth details are different from the requested ones, we must inform it to the client
-	// by sending the granted auth details back in the token response.
-	if !cmp.Equal(session.AuthorizationDetails, grantOptions.GrantedAuthorizationDetails) {
-		tokenResp.AuthorizationDetails = grantOptions.GrantedAuthorizationDetails
+	if ctx.AuthDetailsIsEnabled &&
+		!cmp.Equal(grantInfo.GrantedAuthorizationDetails, session.AuthorizationDetails) {
+		tokenResp.AuthorizationDetails = grantInfo.GrantedAuthorizationDetails
+	}
+
+	if ctx.ResourceIndicatorsIsEnabled &&
+		!cmp.Equal(grantInfo.ActiveResources, session.Resources) {
+		tokenResp.Resources = grantInfo.ActiveResources
 	}
 
 	return tokenResp, nil
 }
 
+func authnSession(
+	ctx *oidc.Context,
+	authzCode string,
+) (
+	*goidc.AuthnSession,
+	error,
+) {
+	session, err := ctx.AuthnSessionByAuthorizationCode(authzCode)
+	if err != nil {
+		return nil, oidcerr.Errorf(oidcerr.CodeInvalidGrant,
+			"invalid authorization code", err)
+	}
+
+	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
+		return nil, oidcerr.Errorf(oidcerr.CodeInternalError,
+			"could not delete the authn session", err)
+	}
+
+	return session, nil
+}
+
 func generateAuthorizationCodeGrantSession(
 	ctx *oidc.Context,
+	grantInfo goidc.GrantInfo,
 	token Token,
-	grantOptions GrantOptions,
 ) (
 	*goidc.GrantSession,
 	error,
 ) {
 
-	grantSession := NewGrantSession(grantOptions, token)
-	if grantOptions.IsRefreshable {
-		token, err := refreshToken()
+	grantSession := NewGrantSession(grantInfo, token)
+	if token.IsRefreshable {
+		refreshToken, err := refreshToken()
 		if err != nil {
 			return nil, err
 		}
-		grantSession.RefreshToken = token
+		grantSession.RefreshToken = refreshToken
 		grantSession.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
 
@@ -144,6 +165,14 @@ func validateAuthorizationCodeGrantRequest(
 		return err
 	}
 
+	if err := validateResources(ctx, session.GrantedResources, req); err != nil {
+		return err
+	}
+
+	if err := validateScopes(ctx, req, session); err != nil {
+		return err
+	}
+
 	if err := validateTokenBinding(ctx, c); err != nil {
 		return err
 	}
@@ -151,81 +180,43 @@ func validateAuthorizationCodeGrantRequest(
 	return nil
 }
 
-func validatePkce(
+func newAuthorizationCodeGrantInfo(
 	ctx *oidc.Context,
 	req request,
-	_ *goidc.Client,
-	session *goidc.AuthnSession,
-) error {
-
-	if !ctx.PKCEIsEnabled {
-		return nil
-	}
-
-	// RFC 7636. "...with a minimum length of 43 characters and a maximum length
-	// of 128 characters."
-	codeVerifierLengh := len(req.codeVerifier)
-	if req.codeVerifier != "" && (codeVerifierLengh < 43 || codeVerifierLengh > 128) {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid code verifier")
-	}
-
-	codeChallengeMethod := session.CodeChallengeMethod
-	if codeChallengeMethod == "" {
-		codeChallengeMethod = ctx.PKCEDefaultChallengeMethod
-	}
-	// In the case PKCE is enabled, if the session was created with a code
-	// challenge, the token request must contain the right code verifier.
-	if session.CodeChallenge != "" && req.codeVerifier == "" {
-		return oidcerr.New(oidcerr.CodeInvalidGrant, "code_verifier cannot be empty")
-	}
-	if session.CodeChallenge != "" &&
-		!isPKCEValid(req.codeVerifier, session.CodeChallenge, codeChallengeMethod) {
-		return oidcerr.New(oidcerr.CodeInvalidGrant, "invalid code_verifier")
-	}
-
-	return nil
-}
-
-func newAuthorizationCodeGrantOptions(
-	ctx *oidc.Context,
-	req request,
-	client *goidc.Client,
 	session *goidc.AuthnSession,
 ) (
-	GrantOptions,
+	goidc.GrantInfo,
 	error,
 ) {
 
-	tokenOptions, err := ctx.TokenOptions(client, req.scopes)
-	if err != nil {
-		return GrantOptions{}, oidcerr.Errorf(oidcerr.CodeAccessDenied,
-			"access denied", err)
-	}
-	tokenOptions = tokenOptions.WithClaims(session.AdditionalTokenClaims)
-
-	grantOptions := GrantOptions{
+	grantInfo := goidc.GrantInfo{
 		GrantType:                goidc.GrantAuthorizationCode,
-		GrantedScopes:            session.GrantedScopes,
 		Subject:                  session.Subject,
 		ClientID:                 session.ClientID,
-		TokenOptions:             tokenOptions,
+		ActiveScopes:             session.GrantedScopes,
+		GrantedScopes:            session.GrantedScopes,
 		AdditionalIDTokenClaims:  session.AdditionalIDTokenClaims,
 		AdditionalUserInfoClaims: session.AdditionalUserInfoClaims,
+		AdditionalTokenClaims:    session.AdditionalTokenClaims,
 	}
+
+	if req.scopes != "" {
+		grantInfo.ActiveScopes = req.scopes
+	}
+
 	if ctx.AuthDetailsIsEnabled {
-		grantOptions.GrantedAuthorizationDetails = session.GrantedAuthorizationDetails
+		grantInfo.GrantedAuthorizationDetails = session.GrantedAuthorizationDetails
 	}
 
-	return grantOptions, nil
-}
-
-func isPKCEValid(codeVerifier string, codeChallenge string, codeChallengeMethod goidc.CodeChallengeMethod) bool {
-	switch codeChallengeMethod {
-	case goidc.CodeChallengeMethodPlain:
-		return codeChallenge == codeVerifier
-	case goidc.CodeChallengeMethodSHA256:
-		return codeChallenge == hashBase64URLSHA256(codeVerifier)
+	if ctx.ResourceIndicatorsIsEnabled {
+		grantInfo.GrantedResources = session.GrantedResources
+		grantInfo.ActiveResources = session.GrantedResources
+		if req.resources != nil {
+			grantInfo.ActiveResources = req.resources
+		}
 	}
 
-	return false
+	addPoP(ctx, &grantInfo)
+
+	return grantInfo, nil
 }

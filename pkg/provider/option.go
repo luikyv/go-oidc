@@ -44,7 +44,6 @@ func WithGrantSessionStorage(
 }
 
 // WithPathPrefix defines a shared prefix for all endpoints.
-//
 // When using the provider http handler directly, the path prefix must be added
 // to the router.
 //

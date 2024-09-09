@@ -505,17 +505,10 @@ func (ctx *Context) privateKey(keyID string) jose.JSONWebKey {
 
 func (ctx *Context) TokenOptions(
 	client *goidc.Client,
-	scopes string,
-) (
-	goidc.TokenOptions,
-	error,
-) {
+	grantInfo goidc.GrantInfo,
+) goidc.TokenOptions {
 
-	opts, err := ctx.TokenOptionsFunc(client, scopes)
-	if err != nil {
-		return goidc.TokenOptions{}, oidcerr.Errorf(oidcerr.CodeAccessDenied,
-			"access denied", err)
-	}
+	opts := ctx.TokenOptionsFunc(client, grantInfo)
 
 	// Opaque access tokens cannot be the same size of refresh tokens.
 	if opts.OpaqueLength == goidc.RefreshTokenLength {
@@ -526,7 +519,7 @@ func (ctx *Context) TokenOptions(
 		opts.IsRefreshable = false
 	}
 
-	return opts, nil
+	return opts
 }
 
 //---------------------------------------- Context ----------------------------------------//

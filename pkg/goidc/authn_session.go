@@ -46,6 +46,7 @@ type AuthnSession struct {
 	// GrantedScopes are the authorization details the client will be granted
 	// access once the access token is generated.
 	GrantedAuthorizationDetails []AuthorizationDetail `json:"granted_authorization_details,omitempty"`
+	GrantedResources            Resources             `json:"granted_resources,omitempty"`
 	AuthorizationCode           string                `json:"authorization_code,omitempty"`
 	// ProtectedParameters contains custom parameters sent by PAR.
 	ProtectedParameters map[string]any `json:"protected_params,omitempty"`
@@ -131,6 +132,10 @@ func (s *AuthnSession) GrantScopes(scopes string) {
 // This will only have effect if support for authorization details is enabled.
 func (s *AuthnSession) GrantAuthorizationDetails(authDetails []AuthorizationDetail) {
 	s.GrantedAuthorizationDetails = authDetails
+}
+
+func (s *AuthnSession) GrantResources(resources []string) {
+	s.GrantedResources = resources
 }
 
 func (s *AuthnSession) IsExpired() bool {

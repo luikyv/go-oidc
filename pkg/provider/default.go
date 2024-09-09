@@ -32,11 +32,11 @@ const (
 func defaultTokenOptionsFunc(
 	sigKeyID string,
 ) goidc.TokenOptionsFunc {
-	return func(c *goidc.Client, scopes string) (goidc.TokenOptions, error) {
+	return func(c *goidc.Client, grantInfo goidc.GrantInfo) goidc.TokenOptions {
 		return goidc.NewJWTTokenOptions(
 			sigKeyID,
 			defaultTokenLifetimeSecs,
-		), nil
+		)
 	}
 }
 

@@ -88,10 +88,10 @@ func dcrPlugin(scopes []goidc.Scope) goidc.HandleDynamicClientFunc {
 }
 
 func tokenOptions(keyID string) goidc.TokenOptionsFunc {
-	return func(c *goidc.Client, s string) (goidc.TokenOptions, error) {
+	return func(client *goidc.Client, grantInfo goidc.GrantInfo) goidc.TokenOptions {
 		opts := goidc.NewJWTTokenOptions(keyID, 600)
 		opts.IsRefreshable = true
-		return opts, nil
+		return opts
 	}
 }
 

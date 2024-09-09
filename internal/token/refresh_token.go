@@ -38,19 +38,20 @@ func generateRefreshTokenGrant(
 		return response{}, err
 	}
 
-	token, err := Make(ctx, c, NewGrantOptions(*grantSession))
+	updateRefreshTokenGrantInfo(ctx, &grantSession.GrantInfo, req)
+	token, err := Make(ctx, c, grantSession.GrantInfo)
 	if err != nil {
 		return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
 			"could not generate token during refresh token grant", err)
 	}
 
-	if err := updateRefreshTokenGrantSession(ctx, grantSession, req, token); err != nil {
+	if err := updateRefreshTokenGrantSession(ctx, grantSession, token); err != nil {
 		return response{}, err
 	}
 
 	tokenResp := response{
 		AccessToken: token.Value,
-		ExpiresIn:   grantSession.TokenOptions.LifetimeSecs,
+		ExpiresIn:   token.LifetimeSecs,
 		TokenType:   token.Type,
 	}
 
@@ -62,7 +63,7 @@ func generateRefreshTokenGrant(
 		tokenResp.IDToken, err = MakeIDToken(
 			ctx,
 			c,
-			newIDTokenOptions(NewGrantOptions(*grantSession)),
+			newIDTokenOptions(grantSession.GrantInfo),
 		)
 		if err != nil {
 			return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
@@ -73,14 +74,30 @@ func generateRefreshTokenGrant(
 	return tokenResp, nil
 }
 
+func updateRefreshTokenGrantInfo(
+	ctx *oidc.Context,
+	grantInfo *goidc.GrantInfo,
+	req request,
+) {
+
+	grantInfo.GrantType = goidc.GrantRefreshToken
+
+	if req.scopes != "" {
+		grantInfo.ActiveScopes = req.scopes
+	}
+
+	if ctx.ResourceIndicatorsIsEnabled && req.resources != nil {
+		grantInfo.ActiveResources = req.resources
+	}
+}
+
 func updateRefreshTokenGrantSession(
 	ctx *oidc.Context,
 	grantSession *goidc.GrantSession,
-	req request,
 	token Token,
 ) error {
 
-	grantSession.LastTokenIssuedAtTimestamp = timeutil.TimestampNow()
+	grantSession.LastTokenExpiresAtTimestamp = timeutil.TimestampNow() + token.LifetimeSecs
 	grantSession.TokenID = token.ID
 
 	if ctx.RefreshTokenRotationIsEnabled {
@@ -89,10 +106,6 @@ func updateRefreshTokenGrantSession(
 			return err
 		}
 		grantSession.RefreshToken = token
-	}
-
-	if req.scopes != "" {
-		grantSession.ActiveScopes = req.scopes
 	}
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
@@ -127,8 +140,12 @@ func validateRefreshTokenGrantRequest(
 		return oidcerr.New(oidcerr.CodeUnauthorizedClient, "the refresh token is expired")
 	}
 
-	if req.scopes != "" && !containsAllScopes(grantSession.GrantedScopes, req.scopes) {
+	if !containsAllScopes(grantSession.GrantedScopes, req.scopes) {
 		return oidcerr.New(oidcerr.CodeInvalidScope, "invalid scope")
+	}
+
+	if err := validateResources(ctx, grantSession.GrantedResources, req); err != nil {
+		return err
 	}
 
 	return validateRefreshTokenPoPForPublicClients(ctx, c, grantSession)
@@ -167,15 +184,4 @@ func refreshToken() (string, error) {
 			"could not generate the refresh token", err)
 	}
 	return token, nil
-}
-
-func containsAllScopes(availableScopes string, requestedScopes string) bool {
-	scopeSlice := strutil.SplitWithSpaces(availableScopes)
-	for _, e := range strutil.SplitWithSpaces(requestedScopes) {
-		if !slices.Contains(scopeSlice, e) {
-			return false
-		}
-	}
-
-	return true
 }

@@ -17,12 +17,11 @@ func TestIntrospect_OpaqueToken(t *testing.T) {
 
 	accessToken := "opaque_token"
 	grantSession := &goidc.GrantSession{
-		TokenID:                    accessToken,
-		LastTokenIssuedAtTimestamp: timeutil.TimestampNow(),
-		ActiveScopes:               goidc.ScopeOpenID.ID,
-		ClientID:                   client.ID,
-		TokenOptions: goidc.TokenOptions{
-			LifetimeSecs: 60,
+		TokenID:                     accessToken,
+		LastTokenExpiresAtTimestamp: timeutil.TimestampNow() + 60,
+		GrantInfo: goidc.GrantInfo{
+			ActiveScopes: goidc.ScopeOpenID.ID,
+			ClientID:     client.ID,
 		},
 	}
 	_ = ctx.SaveGrantSession(grantSession)
@@ -65,8 +64,10 @@ func TestIntrospect_RefreshToken(t *testing.T) {
 	grantSession := &goidc.GrantSession{
 		RefreshToken:       refreshToken,
 		ExpiresAtTimestamp: expiryTime,
-		ClientID:           client.ID,
-		GrantedScopes:      goidc.ScopeOpenID.ID,
+		GrantInfo: goidc.GrantInfo{
+			ClientID:      client.ID,
+			GrantedScopes: goidc.ScopeOpenID.ID,
+		},
 	}
 	_ = ctx.SaveGrantSession(grantSession)
 

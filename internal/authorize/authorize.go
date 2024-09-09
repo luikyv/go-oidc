@@ -271,12 +271,12 @@ func finishFlowSuccessfully(
 		state:             session.State,
 	}
 	if session.ResponseType.Contains(goidc.ResponseTypeToken) {
-		grantOptions, err := newImplicitGrantOptions(ctx, client, session)
+		grantInfo, err := newImplicitGrantInfo(session)
 		if err != nil {
 			return err
 		}
 
-		token, err := token.Make(ctx, client, grantOptions)
+		token, err := token.Make(ctx, client, grantInfo)
 		if err != nil {
 			return redirectionErrorf(oidcerr.CodeInternalError,
 				"could not generate the access token", session.AuthorizationParameters, err)
@@ -284,7 +284,7 @@ func finishFlowSuccessfully(
 
 		redirectParams.accessToken = token.Value
 		redirectParams.tokenType = token.Type
-		if err := generateImplicitGrantSession(ctx, token, grantOptions); err != nil {
+		if err := generateImplicitGrantSession(ctx, grantInfo, token); err != nil {
 			return err
 		}
 	}
@@ -341,11 +341,11 @@ func authorizeAuthnSession(
 
 func generateImplicitGrantSession(
 	ctx *oidc.Context,
+	grantInfo goidc.GrantInfo,
 	accessToken token.Token,
-	grantOptions token.GrantOptions,
 ) error {
 
-	grantSession := token.NewGrantSession(grantOptions, accessToken)
+	grantSession := token.NewGrantSession(grantInfo, accessToken)
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
 		return err
 	}
@@ -353,29 +353,23 @@ func generateImplicitGrantSession(
 	return nil
 }
 
-func newImplicitGrantOptions(
-	ctx *oidc.Context,
-	client *goidc.Client,
+func newImplicitGrantInfo(
 	session *goidc.AuthnSession,
 ) (
-	token.GrantOptions,
+	goidc.GrantInfo,
 	error,
 ) {
-	tokenOptions, err := ctx.TokenOptions(client, session.Scopes)
-	if err != nil {
-		return token.GrantOptions{}, redirectionErrorf(oidcerr.CodeAccessDenied,
-			"access denied", session.AuthorizationParameters, err)
-	}
-
-	tokenOptions = tokenOptions.WithClaims(session.AdditionalTokenClaims)
-	return token.GrantOptions{
+	return goidc.GrantInfo{
 		GrantType:                   goidc.GrantImplicit,
-		GrantedScopes:               session.GrantedScopes,
-		GrantedAuthorizationDetails: session.GrantedAuthorizationDetails,
 		Subject:                     session.Subject,
 		ClientID:                    session.ClientID,
-		TokenOptions:                tokenOptions,
+		ActiveScopes:                session.GrantedScopes,
+		GrantedScopes:               session.GrantedScopes,
+		GrantedAuthorizationDetails: session.GrantedAuthorizationDetails,
+		ActiveResources:             session.GrantedResources,
+		GrantedResources:            session.GrantedResources,
 		AdditionalIDTokenClaims:     session.AdditionalIDTokenClaims,
 		AdditionalUserInfoClaims:    session.AdditionalUserInfoClaims,
+		AdditionalTokenClaims:       session.AdditionalTokenClaims,
 	}, nil
 }

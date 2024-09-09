@@ -22,7 +22,7 @@ func TestIsRefreshSessionExpired(t *testing.T) {
 func TestHasLastTokenExpired(t *testing.T) {
 	// Given.
 	session := goidc.GrantSession{
-		LastTokenIssuedAtTimestamp: timeutil.TimestampNow() - 1,
+		LastTokenExpiresAtTimestamp: timeutil.TimestampNow() - 1,
 	}
 
 	// Then.

@@ -191,6 +191,11 @@ func validateParams(
 			"response_type is required", params)
 	}
 
+	if ctx.ResourceIndicatorsIsRequired && params.Resources == nil {
+		return newRedirectionError(oidcerr.CodeInvalidTarget,
+			"the resources parameter is required", params)
+	}
+
 	if ctx.OpenIDIsRequired && !strutil.ContainsOpenID(params.Scopes) {
 		return newRedirectionError(oidcerr.CodeInvalidScope,
 			"scope openid is required", params)
@@ -260,6 +265,12 @@ func validateParamsAsOptionals(
 
 	if params.ACRValues != "" {
 		if err := validateACRValues(ctx, params, c); err != nil {
+			return err
+		}
+	}
+
+	if params.Resources != nil {
+		if err := validateResources(ctx, params, c); err != nil {
 			return err
 		}
 	}
@@ -392,6 +403,26 @@ func validateACRValues(
 		if !slices.Contains(ctx.ACRs, goidc.ACR(acr)) {
 			return newRedirectionError(oidcerr.CodeInvalidRequest,
 				"invalid acr value", params)
+		}
+	}
+
+	return nil
+}
+
+func validateResources(
+	ctx *oidc.Context,
+	params goidc.AuthorizationParameters,
+	_ *goidc.Client,
+) error {
+
+	if !ctx.ResourceIndicatorsIsEnabled {
+		return nil
+	}
+
+	for _, resource := range params.Resources {
+		if !slices.Contains(ctx.Resources, resource) {
+			return newRedirectionError(oidcerr.CodeInvalidTarget,
+				"the resource "+resource+" is invalid", params)
 		}
 	}
 
