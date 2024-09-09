@@ -150,7 +150,7 @@ type Configuration struct {
 	PKCEDefaultChallengeMethod goidc.CodeChallengeMethod
 	PKCEChallengeMethods       []goidc.CodeChallengeMethod
 
-	AuthDetailsIsEnabled bool
+	AuthDetailsIsEnabled bool // TODO: Allow custom comparison.
 	AuthDetailTypes      []string
 
 	ResourceIndicatorsIsEnabled  bool

@@ -4,446 +4,316 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-// TODO: Split this.
 func TestValidateRequest(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
 	client, _ := oidctest.NewClient(t)
 
-	var cases = []struct {
-		name                string
-		req                 request
-		modifiedContext     func(ctx oidc.Context) *oidc.Context
-		modifiedClient      func(client goidc.Client) *goidc.Client
-		shouldBeValid       bool
-		shouldRedirectError bool
-		errorCode           oidcerr.Code
-	}{
-		{
-			"valid_oauth_request",
-			request{
-				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectURI:  client.RedirectURIs[0],
-					ResponseType: goidc.ResponseTypeCode,
-					ResponseMode: goidc.ResponseModeQuery,
-					Scopes:       client.ScopeIDs,
-				},
-			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
-			func(client goidc.Client) *goidc.Client {
-				return &client
-			},
-			true,
-			false,
-			"",
-		},
-		{
-			"valid_openid_request",
-			request{
-				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectURI:  client.RedirectURIs[0],
-					ResponseType: goidc.ResponseTypeCode,
-					Scopes:       goidc.ScopeOpenID.ID,
-				},
-			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
-			func(client goidc.Client) *goidc.Client {
-				return &client
-			},
-			true,
-			false,
-			"",
-		},
-		{
-			"oauth_request_invalid_response_type",
-			request{
-				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectURI:  client.RedirectURIs[0],
-					ResponseType: goidc.ResponseTypeCode,
-					Scopes:       goidc.ScopeOpenID.ID,
-				},
-			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
-			func(client goidc.Client) *goidc.Client {
-				client.ResponseTypes = []goidc.ResponseType{}
-				return &client
-			},
-			false,
-			true,
-			oidcerr.CodeInvalidRequest,
-		},
-		{
-			"oauth_request_missing_response_type",
-			request{
-				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectURI: client.RedirectURIs[0],
-					Scopes:      goidc.ScopeOpenID.ID,
-				},
-			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
-			func(client goidc.Client) *goidc.Client {
-				return &client
-			},
-			false,
-			true,
-			oidcerr.CodeInvalidRequest,
-		},
-		{
-			"oauth_request_invalid_scope",
-			request{
-				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectURI:  client.RedirectURIs[0],
-					ResponseType: goidc.ResponseTypeCode,
-					Scopes:       "invalid_scope",
-				},
-			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
-			func(client goidc.Client) *goidc.Client {
-				return &client
-			},
-			false,
-			true,
-			oidcerr.CodeInvalidScope,
-		},
-		{
-			"oauth_request_invalid_redirect_uri",
-			request{
-				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectURI:  "https://invalid.com",
-					ResponseType: goidc.ResponseTypeCode,
-					Scopes:       client.ScopeIDs,
-				},
-			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
-			func(client goidc.Client) *goidc.Client {
-				return &client
-			},
-			false,
-			false,
-			oidcerr.CodeInvalidRedirectURI,
-		},
-		{
-			"valid_resource",
-			request{
-				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectURI:  client.RedirectURIs[0],
-					ResponseType: goidc.ResponseTypeCode,
-					Scopes:       client.ScopeIDs,
-					Resources:    []string{"https://resource.com"},
-				},
-			},
-			func(ctx oidc.Context) *oidc.Context {
-				ctx.ResourceIndicatorsIsEnabled = true
-				ctx.Resources = []string{"https://resource.com"}
-				return &ctx
-			},
-			func(client goidc.Client) *goidc.Client {
-				return &client
-			},
-			true,
-			false,
-			"",
-		},
-		{
-			"invalid_resource",
-			request{
-				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectURI:  client.RedirectURIs[0],
-					ResponseType: goidc.ResponseTypeCode,
-					Scopes:       client.ScopeIDs,
-					Resources:    []string{"invalid"},
-				},
-			},
-			func(ctx oidc.Context) *oidc.Context {
-				ctx.ResourceIndicatorsIsEnabled = true
-				ctx.Resources = []string{"https://resource.com"}
-				return &ctx
-			},
-			func(client goidc.Client) *goidc.Client {
-				return &client
-			},
-			false,
-			true,
-			oidcerr.CodeInvalidTarget,
+	req := request{
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  client.RedirectURIs[0],
+			ResponseType: goidc.ResponseTypeCode,
+			ResponseMode: goidc.ResponseModeQuery,
+			Scopes:       client.ScopeIDs,
+			State:        "random_state",
+			Nonce:        "random_nonce",
 		},
 	}
 
-	for _, c := range cases {
-		t.Run(
-			c.name,
-			func(t *testing.T) {
-				// When.
-				ctx := oidctest.NewContext(t)
-				ctx = c.modifiedContext(*ctx)
-				err := validateRequest(
-					ctx,
-					c.req,
-					c.modifiedClient(*client),
-				)
+	// When.
+	err := validateRequest(ctx, req, client)
 
-				// Then.
-				isValid := err == nil
-				if isValid != c.shouldBeValid {
-					t.Errorf("isValid = %t, want %t", isValid, c.shouldBeValid)
-				}
-
-				if err == nil {
-					return
-				}
-
-				var code oidcerr.Code
-				if c.shouldRedirectError {
-					var redirectErr redirectionError
-					if !errors.As(err, &redirectErr) {
-						t.Fatalf("the error should be redirected")
-					}
-					code = redirectErr.code
-				} else {
-					var oidcErr oidcerr.Error
-					if !errors.As(err, &oidcErr) {
-						t.Fatalf("invalid error type")
-					}
-					code = oidcErr.Code
-				}
-
-				if code != c.errorCode {
-					t.Errorf("code = %s, want %s", code, c.errorCode)
-				}
-			},
-		)
-	}
-
-}
-
-func TestValidateRequestWithPAR(t *testing.T) {
-	client, _ := oidctest.NewClient(t)
-
-	var cases = []struct {
-		name                string
-		req                 request
-		session             *goidc.AuthnSession
-		modifiedClient      func(client *goidc.Client) *goidc.Client
-		shouldBeValid       bool
-		shouldRedirectError bool
-		errorCode           oidcerr.Code
-	}{
-		{
-			"valid_oauth_request",
-			request{
-				ClientID: client.ID,
-				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectURI:  client.RedirectURIs[0],
-					ResponseType: goidc.ResponseTypeCode,
-					ResponseMode: goidc.ResponseModeQuery,
-					Scopes:       client.ScopeIDs,
-				},
-			},
-			&goidc.AuthnSession{
-				ClientID:           client.ID,
-				ExpiresAtTimestamp: timeutil.TimestampNow() + 10,
-			},
-			func(client *goidc.Client) *goidc.Client {
-				return client
-			},
-			true,
-			false,
-			"",
-		},
-		{
-			"valid_openid_request",
-			request{
-				ClientID: client.ID,
-				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectURI:  client.RedirectURIs[0],
-					ResponseType: goidc.ResponseTypeCodeAndIDToken,
-					ResponseMode: goidc.ResponseModeFragment,
-					Scopes:       goidc.ScopeOpenID.ID,
-					Nonce:        "random_nonce",
-				},
-			},
-			&goidc.AuthnSession{
-				ClientID:           client.ID,
-				ExpiresAtTimestamp: timeutil.TimestampNow() + 10,
-				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectURI: client.RedirectURIs[0],
-				},
-			},
-			func(client *goidc.Client) *goidc.Client {
-				return client
-			},
-			true,
-			false,
-			"",
-		},
-	}
-
-	for _, c := range cases {
-		t.Run(
-			c.name,
-			func(t *testing.T) {
-				// When.
-				ctx := oidctest.NewContext(t)
-				err := validateRequestWithPAR(
-					ctx,
-					c.req,
-					c.session,
-					c.modifiedClient(client),
-				)
-
-				// Then.
-				isValid := err == nil
-				if isValid != c.shouldBeValid {
-					t.Errorf("isValid = %t, want %t", isValid, c.shouldBeValid)
-				}
-				if err == nil {
-					return
-				}
-
-				var code oidcerr.Code
-				if c.shouldRedirectError {
-					var redirectErr redirectionError
-					if !errors.As(err, &redirectErr) {
-						t.Error("the error should be redirected")
-					}
-					code = redirectErr.code
-				} else {
-					var oidcErr oidcerr.Error
-					if !errors.As(err, &oidcErr) {
-						t.Error("invalid error type")
-					}
-					code = oidcErr.Code
-				}
-
-				if code != c.errorCode {
-					t.Errorf("code = %s, want %s", code, c.errorCode)
-				}
-			},
-		)
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
-func TestValidateRequestWithJAR(t *testing.T) {
+func TestValidateRequest_InvalidResponseType(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
 	client, _ := oidctest.NewClient(t)
+	client.ResponseTypes = nil
 
-	var cases = []struct {
-		name                string
-		req                 request
-		jar                 request
-		modifiedClientFunc  func(client *goidc.Client) *goidc.Client
-		shouldBeValid       bool
-		shouldRedirectError bool
-		errorCode           oidcerr.Code
-	}{
-		{
-			"valid_oauth_request",
-			request{
-				ClientID: client.ID,
-				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectURI:  client.RedirectURIs[0],
-					ResponseType: goidc.ResponseTypeCode,
-					ResponseMode: goidc.ResponseModeQuery,
-					Scopes:       client.ScopeIDs,
-					Nonce:        "random_nonce",
-				},
-			},
-			request{
-				ClientID:                client.ID,
-				AuthorizationParameters: goidc.AuthorizationParameters{},
-			},
-			func(client *goidc.Client) *goidc.Client {
-				return client
-			},
-			true,
-			false,
-			"",
-		},
-		{
-			"valid_openid_request",
-			request{
-				ClientID: client.ID,
-				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectURI:  client.RedirectURIs[0],
-					ResponseType: goidc.ResponseTypeCodeAndIDToken,
-					ResponseMode: goidc.ResponseModeFragment,
-					Scopes:       goidc.ScopeOpenID.ID,
-				},
-			},
-			request{
-				ClientID: client.ID,
-				AuthorizationParameters: goidc.AuthorizationParameters{
-					RedirectURI: client.RedirectURIs[0],
-					Nonce:       "random_nonce",
-				},
-			},
-			func(client *goidc.Client) *goidc.Client {
-				return client
-			},
-			true,
-			false,
-			"",
-		},
-		{
-			"client_id_does_not_match",
-			request{
-				ClientID: client.ID,
-			},
-			request{
-				ClientID: "invalid_client_id",
-			},
-			func(client *goidc.Client) *goidc.Client {
-				return client
-			},
-			false,
-			false,
-			oidcerr.CodeInvalidClient,
+	req := request{
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  client.RedirectURIs[0],
+			ResponseType: goidc.ResponseTypeCode,
+			ResponseMode: goidc.ResponseModeQuery,
+			Scopes:       client.ScopeIDs,
+			State:        "random_state",
+			Nonce:        "random_nonce",
 		},
 	}
 
-	for _, c := range cases {
-		t.Run(
-			c.name,
-			func(t *testing.T) {
-				// When.
-				err := validateRequestWithJAR(
-					oidctest.NewContext(t),
-					c.req,
-					c.jar,
-					c.modifiedClientFunc(client),
-				)
+	// When.
+	err := validateRequest(ctx, req, client)
 
-				// Then.
-				isValid := err == nil
-				if isValid != c.shouldBeValid {
-					t.Errorf("isValid = %t, want %t", isValid, c.shouldBeValid)
-				}
-				if err == nil {
-					return
-				}
+	// Then.
+	if err == nil {
+		t.Fatalf("no error for invalid response type")
+	}
 
-				var code oidcerr.Code
-				if c.shouldRedirectError {
-					var redirectErr redirectionError
-					if !errors.As(err, &redirectErr) {
-						t.Error("the error should be redirected")
-					}
-					code = redirectErr.code
-				} else {
-					var oidcErr oidcerr.Error
-					if !errors.As(err, &oidcErr) {
-						t.Error("invalid error type")
-					}
-					code = oidcErr.Code
-				}
+	var redirectErr redirectionError
+	if !errors.As(err, &redirectErr) {
+		t.Fatalf("the error should be redirected")
+	}
 
-				if code != c.errorCode {
-					t.Errorf("code = %s, want %s", code, c.errorCode)
-				}
-			},
-		)
+	if redirectErr.code != oidcerr.CodeInvalidRequest {
+		t.Errorf("code = %s, want %s", redirectErr.code, oidcerr.CodeInvalidRequest)
+	}
+}
+
+func TestValidateRequest_InvalidScope(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	client, _ := oidctest.NewClient(t)
+
+	req := request{
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  client.RedirectURIs[0],
+			ResponseType: goidc.ResponseTypeCode,
+			ResponseMode: goidc.ResponseModeQuery,
+			Scopes:       "invalid_scope",
+			State:        "random_state",
+			Nonce:        "random_nonce",
+		},
+	}
+
+	// When.
+	err := validateRequest(ctx, req, client)
+
+	// Then.
+	if err == nil {
+		t.Fatalf("no error for invalid scope")
+	}
+
+	var redirectErr redirectionError
+	if !errors.As(err, &redirectErr) {
+		t.Fatalf("the error should be redirected")
+	}
+
+	if redirectErr.code != oidcerr.CodeInvalidScope {
+		t.Errorf("code = %s, want %s", redirectErr.code, oidcerr.CodeInvalidScope)
+	}
+}
+
+func TestValidateRequest_InvalidRedirectURI(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	client, _ := oidctest.NewClient(t)
+
+	req := request{
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  "https://invalid.com",
+			ResponseType: goidc.ResponseTypeCode,
+			ResponseMode: goidc.ResponseModeQuery,
+			Scopes:       client.ScopeIDs,
+			State:        "random_state",
+			Nonce:        "random_nonce",
+		},
+	}
+
+	// When.
+	err := validateRequest(ctx, req, client)
+
+	// Then.
+	if err == nil {
+		t.Fatalf("no error for invalid redirect uri")
+	}
+
+	var oidcErr oidcerr.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("the error should not be redirected")
+	}
+
+	if oidcErr.Code != oidcerr.CodeInvalidRedirectURI {
+		t.Errorf("code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidRedirectURI)
+	}
+}
+
+func TestValidateRequest_ResourceIndicator(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.ResourceIndicatorsIsEnabled = true
+	ctx.Resources = []string{"https://resource.com"}
+	client, _ := oidctest.NewClient(t)
+
+	req := request{
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  client.RedirectURIs[0],
+			ResponseType: goidc.ResponseTypeCode,
+			Scopes:       client.ScopeIDs,
+			Resources:    []string{"https://resource.com"},
+		},
+	}
+
+	// When.
+	err := validateRequest(ctx, req, client)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateRequest_ResourceIndicator_InvalidResource(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.ResourceIndicatorsIsEnabled = true
+	ctx.Resources = []string{"https://resource.com"}
+	client, _ := oidctest.NewClient(t)
+
+	req := request{
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  client.RedirectURIs[0],
+			ResponseType: goidc.ResponseTypeCode,
+			Scopes:       client.ScopeIDs,
+			Resources:    []string{"https://invalid.com"},
+		},
+	}
+
+	// When.
+	err := validateRequest(ctx, req, client)
+
+	// Then.
+	if err == nil {
+		t.Fatalf("no error for invalid redirect uri")
+	}
+
+	var redirectErr redirectionError
+	if !errors.As(err, &redirectErr) {
+		t.Fatalf("the error should be redirected")
+	}
+
+	if redirectErr.code != oidcerr.CodeInvalidTarget {
+		t.Errorf("code = %s, want %s", redirectErr.code, oidcerr.CodeInvalidTarget)
+	}
+}
+
+func TestValidateRequest_PAR(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	client, _ := oidctest.NewClient(t)
+	session := &goidc.AuthnSession{
+		ClientID:           client.ID,
+		ExpiresAtTimestamp: timeutil.TimestampNow() + 10,
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  client.RedirectURIs[0],
+			ResponseType: goidc.ResponseTypeCodeAndIDToken,
+		},
+	}
+	req := request{
+		ClientID: client.ID,
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			Scopes: goidc.ScopeOpenID.ID,
+			Nonce:  "random_nonce",
+		},
+	}
+
+	// When.
+	err := validateRequestWithPAR(ctx, req, session, client)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateRequest_PAR_OutterParamsRequired(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.OutterAuthParamsRequired = true
+	client, _ := oidctest.NewClient(t)
+	session := &goidc.AuthnSession{
+		ClientID:           client.ID,
+		ExpiresAtTimestamp: timeutil.TimestampNow() + 10,
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  client.RedirectURIs[0],
+			ResponseType: goidc.ResponseTypeCodeAndIDToken,
+		},
+	}
+	req := request{
+		ClientID: client.ID,
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			Scopes:       goidc.ScopeOpenID.ID,
+			Nonce:        "random_nonce",
+			ResponseType: goidc.ResponseTypeCodeAndIDToken,
+		},
+	}
+
+	// When.
+	err := validateRequestWithPAR(ctx, req, session, client)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateRequest_JAR(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.OutterAuthParamsRequired = true
+	client, _ := oidctest.NewClient(t)
+
+	req := request{
+		ClientID: client.ID,
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  client.RedirectURIs[0],
+			ResponseType: goidc.ResponseTypeCode,
+			ResponseMode: goidc.ResponseModeQuery,
+			Scopes:       client.ScopeIDs,
+			Nonce:        "random_nonce",
+		},
+	}
+	jar := request{
+		ClientID:                client.ID,
+		AuthorizationParameters: goidc.AuthorizationParameters{},
+	}
+
+	// When.
+	err := validateRequestWithJAR(ctx, req, jar, client)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateRequest_JAR_InvalidClientID(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.OutterAuthParamsRequired = true
+	client, _ := oidctest.NewClient(t)
+
+	req := request{
+		ClientID: client.ID,
+	}
+	jar := request{
+		ClientID: "invalid_client_id",
+	}
+
+	// When.
+	err := validateRequestWithJAR(ctx, req, jar, client)
+
+	// Then.
+	if err == nil {
+		t.Fatalf("no error for invalid client id")
+	}
+
+	var oidcErr oidcerr.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("the error should not be redirected")
+	}
+
+	if oidcErr.Code != oidcerr.CodeInvalidClient {
+		t.Errorf("code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
 	}
 }
