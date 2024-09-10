@@ -86,7 +86,7 @@ func validateClientCredentialsGrantRequest(
 		return oidcerr.New(oidcerr.CodeInvalidScope, "invalid scope")
 	}
 
-	if err := validateResources(ctx, ctx.Resources, req); err != nil {
+	if err := validateResourcesForClientCredentials(ctx, req); err != nil {
 		return err
 	}
 
@@ -132,4 +132,17 @@ func newClientCredentialsGrantOptions(
 	}
 
 	return grantInfo, nil
+}
+
+func validateResourcesForClientCredentials(
+	ctx *oidc.Context,
+	req request,
+) error {
+
+	if ctx.ResourceIndicatorsIsRequired && req.resources == nil {
+		return oidcerr.New(oidcerr.CodeInvalidTarget,
+			"the resources parameter is required")
+	}
+
+	return validateResources(ctx, ctx.Resources, req)
 }

@@ -1,6 +1,6 @@
 // Package provider implements a configurable Open ID provider.
 //
-// A new provider can be configured with [ProviderOption]s and instantiated
+// A new provider can be configured with [ProviderOption] and instantiated
 // using [New]. By default all sessions and clients are stored in memory.
 //
 // It is highly recommended to change the default storage with custom
