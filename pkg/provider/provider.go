@@ -94,7 +94,6 @@ func New(
 			EndpointDCR:                 defaultEndpointDynamicClient,
 			EndpointUserInfo:            defaultEndpointUserInfo,
 			EndpointIntrospection:       defaultEndpointTokenIntrospection,
-			ClientCertFunc:              defaultClientCertFunc(),
 		},
 	}
 

@@ -113,7 +113,7 @@ type ClientMetaInfo struct {
 	// TLSSubAlternativeName represents a DNS name.
 	TLSSubAlternativeName    string   `json:"tls_client_auth_san_dns,omitempty"`
 	TLSSubAlternativeNameIp  string   `json:"tls_client_auth_san_ip,omitempty"`
-	TLSBoundTokensIsRequired bool     `json:"tls_client_certificate_bound_access_tokens,omitempty"` // TODO: Use this.
+	TLSBoundTokensIsRequired bool     `json:"tls_client_certificate_bound_access_tokens,omitempty"`
 	AuthDetailTypes          []string `json:"authorization_data_types,omitempty"`
 	DefaultMaxAgeSecs        *int     `json:"default_max_age,omitempty"`
 	DefaultACRValues         string   `json:"default_acr_values,omitempty"`

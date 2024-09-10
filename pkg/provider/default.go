@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 
+	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -28,6 +30,13 @@ const (
 	defaultEndpointDynamicClient              = "/register"
 	defaultEndpointTokenIntrospection         = "/introspect"
 )
+
+func defaultIssueRefreshTokenFunc() goidc.IssueRefreshTokenFunc {
+	return func(client *goidc.Client, grantInfo goidc.GrantInfo) bool {
+		return slices.Contains(client.GrantTypes, goidc.GrantRefreshToken) &&
+			strutil.ContainsOfflineAccess(grantInfo.GrantedScopes)
+	}
+}
 
 func defaultTokenOptionsFunc(
 	sigKeyID string,

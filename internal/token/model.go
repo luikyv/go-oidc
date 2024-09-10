@@ -9,12 +9,11 @@ import (
 )
 
 type Token struct {
-	ID            string
-	Format        goidc.TokenFormat
-	Value         string
-	Type          goidc.TokenType
-	LifetimeSecs  int
-	IsRefreshable bool
+	ID           string
+	Format       goidc.TokenFormat
+	Value        string
+	Type         goidc.TokenType
+	LifetimeSecs int
 }
 
 type IDTokenOptions struct {

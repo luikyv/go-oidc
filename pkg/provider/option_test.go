@@ -499,7 +499,12 @@ func TestWithRefreshTokenGrant(t *testing.T) {
 			RefreshTokenLifetimeSecs: defaultRefreshTokenLifetimeSecs,
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(
+		*p,
+		want,
+		cmp.AllowUnexported(provider{}),
+		cmpopts.IgnoreFields(provider{}, "config.IssueRefreshTokenFunc"),
+	); diff != "" {
 		t.Error(diff)
 	}
 }
@@ -567,6 +572,29 @@ func TestWithOpenIDScopeRequired(t *testing.T) {
 	}
 	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
 		t.Error(diff)
+	}
+}
+
+func TestWithIssueRefreshTokenFunc(t *testing.T) {
+	// Given.
+	p := &provider{}
+	var f goidc.IssueRefreshTokenFunc = func(
+		client *goidc.Client,
+		grantInfo goidc.GrantInfo,
+	) bool {
+		return false
+	}
+
+	// When.
+	err := WithIssueRefreshTokenFunc(f)(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if p.config.IssueRefreshTokenFunc == nil {
+		t.Error("IssueRefreshTokenFunc cannot be nil")
 	}
 }
 
@@ -1287,12 +1315,12 @@ func TestWithMTLS(t *testing.T) {
 	}
 }
 
-func TestWithMTLSTokenBinding(t *testing.T) {
+func TestWithTLSCertTokenBinding(t *testing.T) {
 	// Given.
 	p := &provider{}
 
 	// When.
-	err := WithMTLSTokenBinding()(p)
+	err := WithTLSCertTokenBinding()(p)
 
 	// Then.
 	if err != nil {

@@ -300,6 +300,8 @@ func NewDynamicScope(
 	}
 }
 
+type IssueRefreshTokenFunc func(client *Client, grantInfo GrantInfo) bool
+
 // TokenOptionsFunc defines a function that returns token configuration and is
 // executed when issuing access tokens.
 type TokenOptionsFunc func(client *Client, grantInfo GrantInfo) TokenOptions
@@ -310,7 +312,6 @@ type TokenOptions struct {
 	LifetimeSecs      int
 	JWTSignatureKeyID string
 	OpaqueLength      int
-	IsRefreshable     bool
 }
 
 func NewJWTTokenOptions(

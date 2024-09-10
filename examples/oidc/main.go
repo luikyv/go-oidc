@@ -43,6 +43,7 @@ func main() {
 		provider.WithPKCE(goidc.CodeChallengeMethodSHA256),
 		provider.WithImplicitGrant(),
 		provider.WithRefreshTokenGrant(),
+		provider.WithIssueRefreshTokenFunc(issueRefreshToken),
 		provider.WithRefreshTokenLifetimeSecs(6000),
 		provider.WithClaims(goidc.ClaimEmail, goidc.ClaimEmailVerified),
 		provider.WithACRs(goidc.ACRMaceIncommonIAPBronze, goidc.ACRMaceIncommonIAPSilver),
@@ -90,9 +91,12 @@ func dcrPlugin(scopes []goidc.Scope) goidc.HandleDynamicClientFunc {
 func tokenOptions(keyID string) goidc.TokenOptionsFunc {
 	return func(client *goidc.Client, grantInfo goidc.GrantInfo) goidc.TokenOptions {
 		opts := goidc.NewJWTTokenOptions(keyID, 600)
-		opts.IsRefreshable = true
 		return opts
 	}
+}
+
+func issueRefreshToken(client *goidc.Client, grantInfo goidc.GrantInfo) bool {
+	return slices.Contains(client.GrantTypes, goidc.GrantRefreshToken)
 }
 
 func privateJWKS(filename string) jose.JSONWebKeySet {

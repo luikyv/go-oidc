@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/base64"
+	"fmt"
 	"hash"
 
 	"github.com/go-jose/go-jose/v4"
@@ -145,7 +146,10 @@ func makeJWTToken(
 	Token,
 	error,
 ) {
-	privateJWK := ctx.TokenSigKey(opts) // TODO: review this.
+	privateJWK, ok := ctx.PrivateKey(opts.JWTSignatureKeyID)
+	if !ok {
+		return Token{}, fmt.Errorf("could not find key with id: %s", opts.JWTSignatureKeyID)
+	}
 	jwtID := uuid.NewString()
 	timestampNow := timeutil.TimestampNow()
 	claims := map[string]any{
@@ -193,12 +197,11 @@ func makeJWTToken(
 	}
 
 	return Token{
-		ID:            jwtID,
-		Format:        goidc.TokenFormatJWT,
-		Value:         accessToken,
-		Type:          tokenType,
-		LifetimeSecs:  opts.LifetimeSecs,
-		IsRefreshable: opts.IsRefreshable,
+		ID:           jwtID,
+		Format:       goidc.TokenFormatJWT,
+		Value:        accessToken,
+		Type:         tokenType,
+		LifetimeSecs: opts.LifetimeSecs,
 	}, nil
 }
 
@@ -222,12 +225,11 @@ func makeOpaqueToken(
 	}
 
 	return Token{
-		ID:            accessToken,
-		Format:        goidc.TokenFormatOpaque,
-		Value:         accessToken,
-		Type:          tokenType,
-		LifetimeSecs:  opts.LifetimeSecs,
-		IsRefreshable: opts.IsRefreshable,
+		ID:           accessToken,
+		Format:       goidc.TokenFormatOpaque,
+		Value:        accessToken,
+		Type:         tokenType,
+		LifetimeSecs: opts.LifetimeSecs,
 	}, nil
 }
 

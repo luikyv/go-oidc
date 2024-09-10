@@ -25,7 +25,7 @@ func generateAuthorizationCodeGrant(
 			"invalid authorization code")
 	}
 
-	c, err := clientutil.Authenticated(ctx)
+	client, err := clientutil.Authenticated(ctx)
 	if err != nil {
 		return response{}, err
 	}
@@ -36,7 +36,7 @@ func generateAuthorizationCodeGrant(
 			"invalid authorization code", err)
 	}
 
-	if err := validateAuthorizationCodeGrantRequest(ctx, req, c, session); err != nil {
+	if err := validateAuthorizationCodeGrantRequest(ctx, req, client, session); err != nil {
 		return response{}, err
 	}
 
@@ -45,13 +45,18 @@ func generateAuthorizationCodeGrant(
 		return response{}, err
 	}
 
-	token, err := Make(ctx, c, grantInfo)
+	token, err := Make(ctx, client, grantInfo)
 	if err != nil {
 		return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
 			"could not generate access token for the authorization code grant", err)
 	}
 
-	grantSession, err := generateAuthorizationCodeGrantSession(ctx, grantInfo, token)
+	grantSession, err := generateAuthorizationCodeGrantSession(
+		ctx,
+		client,
+		grantInfo,
+		token,
+	)
 	if err != nil {
 		return response{}, err
 	}
@@ -64,7 +69,7 @@ func generateAuthorizationCodeGrant(
 	}
 
 	if strutil.ContainsOpenID(session.GrantedScopes) {
-		tokenResp.IDToken, err = MakeIDToken(ctx, c, newIDTokenOptions(grantInfo))
+		tokenResp.IDToken, err = MakeIDToken(ctx, client, newIDTokenOptions(grantInfo))
 		if err != nil {
 			return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
 				"could not generate access id token for the authorization code grant", err)
@@ -111,6 +116,7 @@ func authnSession(
 
 func generateAuthorizationCodeGrantSession(
 	ctx *oidc.Context,
+	client *goidc.Client,
 	grantInfo goidc.GrantInfo,
 	token Token,
 ) (
@@ -119,7 +125,7 @@ func generateAuthorizationCodeGrantSession(
 ) {
 
 	grantSession := NewGrantSession(grantInfo, token)
-	if token.IsRefreshable {
+	if ctx.IssueRefreshToken(client, grantInfo) {
 		refreshToken, err := refreshToken()
 		if err != nil {
 			return nil, err

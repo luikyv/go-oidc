@@ -258,12 +258,23 @@ func WithDCRTokenRotation() ProviderOption {
 }
 
 // WithRefreshTokenGrant makes available the refresh token grant.
-// The default refresh token lifetime is [defaultRefreshTokenLifetimeSecs].
+// The default refresh token lifetime is [defaultRefreshTokenLifetimeSecs] and
+// the default logic to issue refresh token is [defaultIssueRefreshTokenFunc].
 func WithRefreshTokenGrant() ProviderOption {
 	return func(p *provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes,
 			goidc.GrantRefreshToken)
 		p.config.RefreshTokenLifetimeSecs = defaultRefreshTokenLifetimeSecs
+		p.config.IssueRefreshTokenFunc = defaultIssueRefreshTokenFunc()
+		return nil
+	}
+}
+
+// WithIssueRefreshTokenFunc overrides the default logic to issue refresh tokens.
+// For more info, see: [WithRefreshTokenGrant].
+func WithIssueRefreshTokenFunc(f goidc.IssueRefreshTokenFunc) ProviderOption {
+	return func(p *provider) error {
+		p.config.IssueRefreshTokenFunc = f
 		return nil
 	}
 }
@@ -710,10 +721,10 @@ func WithClientCertFunc(
 	}
 }
 
-// WithMTLSTokenBinding makes requests to /token return tokens bound to the
+// WithTLSCertTokenBinding makes requests to /token return tokens bound to the
 // client certificate if any is sent.
 // To enable MTLS, see [WithMTLS].
-func WithMTLSTokenBinding() ProviderOption {
+func WithTLSCertTokenBinding() ProviderOption {
 	return func(p *provider) error {
 		p.config.MTLSTokenBindingIsEnabled = true
 		return nil
@@ -722,11 +733,11 @@ func WithMTLSTokenBinding() ProviderOption {
 
 // WithMTLSTokenBindingRequired makes requests to /token return tokens bound to the
 // client certificate.
-// For more info, see [WithMTLSTokenBinding].
+// For more info, see [WithTLSCertTokenBinding].
 func WithMTLSTokenBindingRequired() ProviderOption {
 	return func(p *provider) error {
 		p.config.MTLSTokenBindingIsRequired = true
-		return WithMTLSTokenBinding()(p)
+		return WithTLSCertTokenBinding()(p)
 	}
 }
 
@@ -763,7 +774,7 @@ func WithDPoPRequired(
 
 // WithTokenBindingRequired makes at least one sender constraining mechanism
 // (TLS or DPoP) be required in order to issue an access token to a client.
-// For more info, see [WithMTLSTokenBinding] and [WithDPoP].
+// For more info, see [WithTLSCertTokenBinding] and [WithDPoP].
 func WithTokenBindingRequired() ProviderOption {
 	return func(p *provider) error {
 		p.config.TokenBindingIsRequired = true

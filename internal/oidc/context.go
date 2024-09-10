@@ -418,10 +418,6 @@ func (ctx *Context) PrivateKey(keyID string) (jose.JSONWebKey, bool) {
 	return keys[0], true
 }
 
-func (ctx *Context) TokenSigKey(tokenOptions goidc.TokenOptions) jose.JSONWebKey {
-	return ctx.privateKey(tokenOptions.JWTSignatureKeyID)
-}
-
 func (ctx *Context) UserInfoSigKey(client *goidc.Client) jose.JSONWebKey {
 	return ctx.privateKeyByAlgOrDefault(
 		client.UserInfoSigAlg,
@@ -503,6 +499,18 @@ func (ctx *Context) privateKey(keyID string) jose.JSONWebKey {
 	return keys[0]
 }
 
+func (ctx *Context) IssueRefreshToken(
+	client *goidc.Client,
+	grantInfo goidc.GrantInfo,
+) bool {
+	if ctx.IssueRefreshTokenFunc == nil ||
+		!slices.Contains(client.GrantTypes, goidc.GrantRefreshToken) {
+		return false
+	}
+
+	return ctx.IssueRefreshTokenFunc(client, grantInfo)
+}
+
 func (ctx *Context) TokenOptions(
 	client *goidc.Client,
 	grantInfo goidc.GrantInfo,
@@ -513,10 +521,6 @@ func (ctx *Context) TokenOptions(
 	// Opaque access tokens cannot be the same size of refresh tokens.
 	if opts.OpaqueLength == goidc.RefreshTokenLength {
 		opts.OpaqueLength++
-	}
-
-	if !slices.Contains(client.GrantTypes, goidc.GrantRefreshToken) {
-		opts.IsRefreshable = false
 	}
 
 	return opts
