@@ -43,7 +43,7 @@ func main() {
 		provider.WithPKCE(goidc.CodeChallengeMethodSHA256),
 		provider.WithImplicitGrant(),
 		provider.WithRefreshTokenGrant(),
-		provider.WithIssueRefreshTokenFunc(issueRefreshToken),
+		provider.WithShouldIssueRefreshTokenFunc(issueRefreshToken),
 		provider.WithRefreshTokenLifetimeSecs(6000),
 		provider.WithClaims(goidc.ClaimEmail, goidc.ClaimEmailVerified),
 		provider.WithACRs(goidc.ACRMaceIncommonIAPBronze, goidc.ACRMaceIncommonIAPSilver),

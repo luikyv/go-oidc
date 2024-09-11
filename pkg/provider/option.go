@@ -265,16 +265,16 @@ func WithRefreshTokenGrant() ProviderOption {
 		p.config.GrantTypes = append(p.config.GrantTypes,
 			goidc.GrantRefreshToken)
 		p.config.RefreshTokenLifetimeSecs = defaultRefreshTokenLifetimeSecs
-		p.config.IssueRefreshTokenFunc = defaultIssueRefreshTokenFunc()
+		p.config.ShouldIssueRefreshTokenFunc = defaultShouldIssueRefreshTokenFunc()
 		return nil
 	}
 }
 
-// WithIssueRefreshTokenFunc overrides the default logic to issue refresh tokens.
+// WithShouldIssueRefreshTokenFunc overrides the default logic to issue refresh tokens.
 // For more info, see: [WithRefreshTokenGrant].
-func WithIssueRefreshTokenFunc(f goidc.IssueRefreshTokenFunc) ProviderOption {
+func WithShouldIssueRefreshTokenFunc(f goidc.ShouldIssueRefreshTokenFunc) ProviderOption {
 	return func(p *provider) error {
-		p.config.IssueRefreshTokenFunc = f
+		p.config.ShouldIssueRefreshTokenFunc = f
 		return nil
 	}
 }
@@ -731,10 +731,10 @@ func WithTLSCertTokenBinding() ProviderOption {
 	}
 }
 
-// WithMTLSTokenBindingRequired makes requests to /token return tokens bound to the
+// WithTLSCertTokenBindingRequired makes requests to /token return tokens bound to the
 // client certificate.
 // For more info, see [WithTLSCertTokenBinding].
-func WithMTLSTokenBindingRequired() ProviderOption {
+func WithTLSCertTokenBindingRequired() ProviderOption {
 	return func(p *provider) error {
 		p.config.MTLSTokenBindingIsRequired = true
 		return WithTLSCertTokenBinding()(p)

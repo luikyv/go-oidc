@@ -499,16 +499,16 @@ func (ctx *Context) privateKey(keyID string) jose.JSONWebKey {
 	return keys[0]
 }
 
-func (ctx *Context) IssueRefreshToken(
+func (ctx *Context) ShouldIssueRefreshToken(
 	client *goidc.Client,
 	grantInfo goidc.GrantInfo,
 ) bool {
-	if ctx.IssueRefreshTokenFunc == nil ||
+	if ctx.ShouldIssueRefreshTokenFunc == nil ||
 		!slices.Contains(client.GrantTypes, goidc.GrantRefreshToken) {
 		return false
 	}
 
-	return ctx.IssueRefreshTokenFunc(client, grantInfo)
+	return ctx.ShouldIssueRefreshTokenFunc(client, grantInfo)
 }
 
 func (ctx *Context) TokenOptions(

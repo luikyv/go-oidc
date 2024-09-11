@@ -125,7 +125,7 @@ func generateAuthorizationCodeGrantSession(
 ) {
 
 	grantSession := NewGrantSession(grantInfo, token)
-	if ctx.IssueRefreshToken(client, grantInfo) {
+	if ctx.ShouldIssueRefreshToken(client, grantInfo) {
 		refreshToken, err := refreshToken()
 		if err != nil {
 			return nil, err

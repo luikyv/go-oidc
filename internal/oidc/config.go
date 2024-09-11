@@ -97,7 +97,7 @@ type Configuration struct {
 	IntrospectionIsEnabled          bool
 	IntrospectionClientAuthnMethods []goidc.ClientAuthnType
 
-	IssueRefreshTokenFunc         goidc.IssueRefreshTokenFunc
+	ShouldIssueRefreshTokenFunc   goidc.ShouldIssueRefreshTokenFunc
 	RefreshTokenRotationIsEnabled bool
 	RefreshTokenLifetimeSecs      int
 

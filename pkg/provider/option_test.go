@@ -575,10 +575,10 @@ func TestWithOpenIDScopeRequired(t *testing.T) {
 	}
 }
 
-func TestWithIssueRefreshTokenFunc(t *testing.T) {
+func TestWithShouldIssueRefreshTokenFunc(t *testing.T) {
 	// Given.
 	p := &provider{}
-	var f goidc.IssueRefreshTokenFunc = func(
+	var f goidc.ShouldIssueRefreshTokenFunc = func(
 		client *goidc.Client,
 		grantInfo goidc.GrantInfo,
 	) bool {
@@ -586,14 +586,14 @@ func TestWithIssueRefreshTokenFunc(t *testing.T) {
 	}
 
 	// When.
-	err := WithIssueRefreshTokenFunc(f)(p)
+	err := WithShouldIssueRefreshTokenFunc(f)(p)
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if p.config.IssueRefreshTokenFunc == nil {
+	if p.config.ShouldIssueRefreshTokenFunc == nil {
 		t.Error("IssueRefreshTokenFunc cannot be nil")
 	}
 }
@@ -1337,12 +1337,12 @@ func TestWithTLSCertTokenBinding(t *testing.T) {
 	}
 }
 
-func TestWithMTLSTokenBindingRequired(t *testing.T) {
+func TestWithTLSCertTokenBindingRequired(t *testing.T) {
 	// Given.
 	p := &provider{}
 
 	// When.
-	err := WithMTLSTokenBindingRequired()(p)
+	err := WithTLSCertTokenBindingRequired()(p)
 
 	// Then.
 	if err != nil {

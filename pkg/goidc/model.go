@@ -300,7 +300,7 @@ func NewDynamicScope(
 	}
 }
 
-type IssueRefreshTokenFunc func(client *Client, grantInfo GrantInfo) bool
+type ShouldIssueRefreshTokenFunc func(client *Client, grantInfo GrantInfo) bool
 
 // TokenOptionsFunc defines a function that returns token configuration and is
 // executed when issuing access tokens.

@@ -31,7 +31,7 @@ const (
 	defaultEndpointTokenIntrospection         = "/introspect"
 )
 
-func defaultIssueRefreshTokenFunc() goidc.IssueRefreshTokenFunc {
+func defaultShouldIssueRefreshTokenFunc() goidc.ShouldIssueRefreshTokenFunc {
 	return func(client *goidc.Client, grantInfo goidc.GrantInfo) bool {
 		return slices.Contains(client.GrantTypes, goidc.GrantRefreshToken) &&
 			strutil.ContainsOfflineAccess(grantInfo.GrantedScopes)
