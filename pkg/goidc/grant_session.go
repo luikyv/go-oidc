@@ -2,6 +2,7 @@ package goidc
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/timeutil"
 )
@@ -31,7 +32,7 @@ type GrantSession struct {
 	GrantInfo
 }
 
-type HandleGrantFunc func(*GrantInfo) error
+type HandleGrantFunc func(*http.Request, *GrantInfo) error
 
 type GrantInfo struct {
 	GrantType GrantType `json:"grant_type"`

@@ -22,7 +22,6 @@ import (
 type Provider interface {
 	// Handler returns an HTTP handler with all the logic defined for the openid
 	// provider.
-	//
 	// This may be used to add the oidc logic to a HTTP server.
 	//	server := http.NewServeMux()
 	//	server.Handle("/", op.Handler())

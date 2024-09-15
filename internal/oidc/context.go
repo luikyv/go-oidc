@@ -531,7 +531,7 @@ func (ctx *Context) HandleGrant(grantInfo *goidc.GrantInfo) error {
 		return nil
 	}
 
-	return ctx.HandleGrantFunc(grantInfo)
+	return ctx.HandleGrantFunc(ctx.Request, grantInfo)
 }
 
 //---------------------------------------- Context ----------------------------------------//

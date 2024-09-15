@@ -270,7 +270,8 @@ func WithRefreshTokenGrant() ProviderOption {
 	}
 }
 
-// WithShouldIssueRefreshTokenFunc overrides the default logic to issue refresh tokens.
+// WithShouldIssueRefreshTokenFunc overrides the default logic to issue refresh
+// tokens with is defined at [defaultShouldIssueRefreshTokenFunc].
 // For more info, see: [WithRefreshTokenGrant].
 func WithShouldIssueRefreshTokenFunc(f goidc.ShouldIssueRefreshTokenFunc) ProviderOption {
 	return func(p *provider) error {
@@ -317,10 +318,10 @@ func WithTokenOptions(tokenOpts goidc.TokenOptionsFunc) ProviderOption {
 	}
 }
 
-// WithGrantHandler defines a function executed everytime a new grant is created.
+// WithHandleGrantFunc defines a function executed everytime a new grant is created.
 // It can be used to perform validations or change the grant information before
 // issuing a new access token.
-func WithGrantHandler(grantHandler goidc.HandleGrantFunc) ProviderOption {
+func WithHandleGrantFunc(grantHandler goidc.HandleGrantFunc) ProviderOption {
 	return func(p *provider) error {
 		p.config.HandleGrantFunc = grantHandler
 		return nil

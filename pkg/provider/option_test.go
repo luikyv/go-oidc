@@ -621,15 +621,15 @@ func TestWithTokenOptions(t *testing.T) {
 	}
 }
 
-func TestWithGrantHandler(t *testing.T) {
+func TestWithHandleGrantFunc(t *testing.T) {
 	// Given.
 	p := &provider{}
-	var grantHandler goidc.HandleGrantFunc = func(gi *goidc.GrantInfo) error {
+	var grantHandler goidc.HandleGrantFunc = func(r *http.Request, gi *goidc.GrantInfo) error {
 		return nil
 	}
 
 	// When.
-	err := WithGrantHandler(grantHandler)(p)
+	err := WithHandleGrantFunc(grantHandler)(p)
 
 	// Then.
 	if err != nil {
