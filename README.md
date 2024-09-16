@@ -48,7 +48,7 @@ jwksStr := `{
 }`
 var jwks jose.JSONWebKeySet
 if err := json.Unmarshal([]byte(jwksStr), &jwks); err != nil {
-	panic(err)
+	log.Fatal(err)
 }
 
 op := provider.New(

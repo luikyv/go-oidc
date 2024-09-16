@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"html/template"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -52,7 +53,7 @@ func main() {
 		provider.WithPolicy(policy()),
 	)
 	if err != nil {
-		panic(err.Error())
+		log.Fatal(err)
 	}
 
 	if err := op.RunTLS(provider.TLSOptions{
@@ -60,7 +61,7 @@ func main() {
 		ServerCert: "keys/cert.pem",
 		ServerKey:  "keys/key.pem",
 	}); err != nil {
-		panic(err.Error())
+		log.Fatal(err)
 	}
 }
 
@@ -103,18 +104,18 @@ func privateJWKS(filename string) jose.JSONWebKeySet {
 	absPath, _ := filepath.Abs("./" + filename)
 	clientJWKSFile, err := os.Open(absPath)
 	if err != nil {
-		panic(err.Error())
+		log.Fatal(err)
 	}
 	defer clientJWKSFile.Close()
 
 	clientJWKSBytes, err := io.ReadAll(clientJWKSFile)
 	if err != nil {
-		panic(err.Error())
+		log.Fatal(err)
 	}
 
 	var clientJWKS jose.JSONWebKeySet
 	if err := json.Unmarshal(clientJWKSBytes, &clientJWKS); err != nil {
-		panic(err.Error())
+		log.Fatal(err)
 	}
 
 	return clientJWKS
