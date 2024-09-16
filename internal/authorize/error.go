@@ -3,12 +3,11 @@ package authorize
 import (
 	"fmt"
 
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 type redirectionError struct {
-	code    oidcerr.Code
+	code    goidc.ErrorCode
 	desc    string
 	wrapped error
 	goidc.AuthorizationParameters
@@ -23,7 +22,7 @@ func (err redirectionError) Unwrap() error {
 }
 
 func newRedirectionError(
-	code oidcerr.Code,
+	code goidc.ErrorCode,
 	desc string,
 	params goidc.AuthorizationParameters,
 ) error {
@@ -35,7 +34,7 @@ func newRedirectionError(
 }
 
 func redirectionErrorf(
-	code oidcerr.Code,
+	code goidc.ErrorCode,
 	desc string,
 	params goidc.AuthorizationParameters,
 	err error,

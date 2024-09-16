@@ -9,7 +9,6 @@ import (
 
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -33,63 +32,63 @@ func validateDPoPJWT(
 ) error {
 	parsedDPoPJWT, err := jwt.ParseSigned(dpopJWT, ctx.DPoPSigAlgs)
 	if err != nil {
-		return oidcerr.Errorf(oidcerr.CodeInvalidRequest, "invalid dpop jwt", err)
+		return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid dpop jwt", err)
 	}
 
 	if len(parsedDPoPJWT.Headers) != 1 {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid dpop")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid dpop")
 	}
 
 	if parsedDPoPJWT.Headers[0].ExtraHeaders["typ"] != "dpop+jwt" {
-		return oidcerr.New(oidcerr.CodeInvalidRequest,
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
 			"invalid typ header. it should be dpop+jwt")
 	}
 
 	jwk := parsedDPoPJWT.Headers[0].JSONWebKey
 	if jwk == nil || !jwk.Valid() || !jwk.IsPublic() {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid jwk header")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid jwk header")
 	}
 
 	var claims jwt.Claims
 	var dpopClaims dpopClaims
 	if err := parsedDPoPJWT.Claims(jwk.Key, &claims, &dpopClaims); err != nil {
-		return oidcerr.Errorf(oidcerr.CodeInvalidRequest, "invalid dpop jwt", err)
+		return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid dpop jwt", err)
 	}
 
 	// Validate that the "iat" claim is present and it is not too far in the past.
 	if claims.IssuedAt == nil || int(time.Since(claims.IssuedAt.Time()).Seconds()) > ctx.DPoPLifetimeSecs {
-		return oidcerr.New(oidcerr.CodeUnauthorizedClient,
+		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient,
 			"invalid dpop jwt issuance time")
 	}
 
 	if claims.ID == "" {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid jti claim")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid jti claim")
 	}
 
 	if dpopClaims.HTTPMethod != ctx.RequestMethod() {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid htm claim")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid htm claim")
 	}
 
 	// The query and fragment components of the "htu" must be ignored.
 	// Also, htu should be case-insensitive.
 	httpURI, err := urlWithoutParams(strings.ToLower(dpopClaims.HTTPURI))
 	if err != nil || !slices.Contains(ctx.Audiences(), httpURI) {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid htu claim")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid htu claim")
 	}
 
 	if opts.accessToken != "" &&
 		dpopClaims.AccessTokenHash != hashBase64URLSHA256(opts.accessToken) {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid ath claim")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid ath claim")
 	}
 
 	if opts.jwkThumbprint != "" &&
 		jwkThumbprint(dpopJWT, ctx.DPoPSigAlgs) != opts.jwkThumbprint {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid jwk thumbprint")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid jwk thumbprint")
 	}
 
 	err = claims.ValidateWithLeeway(jwt.Expected{}, time.Duration(0))
 	if err != nil {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid dpop")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid dpop")
 	}
 
 	return nil
@@ -115,7 +114,7 @@ func validateDPoP(
 	if confirmation.JWKThumbprint == "" {
 		if tokenType == goidc.TokenTypeDPoP {
 			// The token type cannot be DPoP if the session was not created with DPoP.
-			return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid token type")
+			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid token type")
 		} else {
 			// If the session was not created with DPoP and the token is not of
 			// DPoP type, there is nothing to validate.
@@ -126,7 +125,7 @@ func validateDPoP(
 	dpopJWT, ok := dpopJWT(ctx)
 	if !ok {
 		// The session was created with DPoP, then the DPoP header must be passed.
-		return oidcerr.New(oidcerr.CodeUnauthorizedClient, "invalid DPoP header")
+		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid DPoP header")
 	}
 
 	return validateDPoPJWT(ctx, dpopJWT, dpopValidationOptions{
@@ -145,12 +144,12 @@ func validateTLSPoP(
 
 	clientCert, err := ctx.ClientCert()
 	if err != nil {
-		return oidcerr.Errorf(oidcerr.CodeInvalidToken,
+		return goidc.Errorf(goidc.ErrorCodeInvalidToken,
 			"the client certificate is required", err)
 	}
 
 	if confirmation.ClientCertificateThumbprint != hashBase64URLSHA256(string(clientCert.Raw)) {
-		return oidcerr.New(oidcerr.CodeInvalidToken,
+		return goidc.NewError(goidc.ErrorCodeInvalidToken,
 			"invalid client certificate")
 	}
 

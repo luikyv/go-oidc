@@ -8,7 +8,6 @@ import (
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -40,7 +39,7 @@ func jarFromRequestObject(
 	}
 
 	if !jwtutil.IsJWS(reqObject) {
-		return request{}, oidcerr.New(oidcerr.CodeInvalidRequest, "the request object is not a JWS")
+		return request{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "the request object is not a JWS")
 	}
 
 	return jarFromSignedRequestObject(ctx, reqObject, c)
@@ -60,25 +59,25 @@ func signedRequestObjectFromEncrypted(
 		ctx.JARContentEncAlgs,
 	)
 	if err != nil {
-		return "", oidcerr.Errorf(oidcerr.CodeInvalidResquestObject,
+		return "", goidc.Errorf(goidc.ErrorCodeInvalidResquestObject,
 			"could not parse the encrypted request object", err)
 	}
 
 	keyID := encryptedReqObject.Header.KeyID
 	if keyID == "" {
-		return "", oidcerr.New(oidcerr.CodeInvalidResquestObject,
+		return "", goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
 			"invalid jwe key ID")
 	}
 
 	jwk, ok := ctx.PrivateKey(keyID)
 	if !ok || jwk.Use != string(goidc.KeyUsageEncryption) {
-		return "", oidcerr.New(oidcerr.CodeInvalidResquestObject,
+		return "", goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
 			"invalid jwk used for encryption")
 	}
 
 	decryptedReqObject, err := encryptedReqObject.Decrypt(jwk.Key)
 	if err != nil {
-		return "", oidcerr.Errorf(oidcerr.CodeInvalidResquestObject,
+		return "", goidc.Errorf(goidc.ErrorCodeInvalidResquestObject,
 			"could not decrypt the request object", err)
 	}
 
@@ -99,32 +98,32 @@ func jarFromSignedRequestObject(
 	}
 	parsedToken, err := jwt.ParseSigned(reqObject, jarAlgorithms)
 	if err != nil {
-		return request{}, oidcerr.Errorf(oidcerr.CodeInvalidResquestObject,
+		return request{}, goidc.Errorf(goidc.ErrorCodeInvalidResquestObject,
 			"invalid request object", err)
 	}
 
 	// Verify that the assertion indicates the key ID.
 	if len(parsedToken.Headers) != 1 || parsedToken.Headers[0].KeyID == "" {
-		return request{}, oidcerr.New(oidcerr.CodeInvalidResquestObject, "invalid kid header")
+		return request{}, goidc.NewError(goidc.ErrorCodeInvalidResquestObject, "invalid kid header")
 	}
 
 	// Verify that the key ID belongs to the client.
 	jwk, err := clientutil.JWKByKeyID(c, parsedToken.Headers[0].KeyID)
 	if err != nil {
-		return request{}, oidcerr.Errorf(oidcerr.CodeInvalidResquestObject,
+		return request{}, goidc.Errorf(goidc.ErrorCodeInvalidResquestObject,
 			"could not fetch the client public key", err)
 	}
 
 	var claims jwt.Claims
 	var jarReq request
 	if err := parsedToken.Claims(jwk.Key, &claims, &jarReq); err != nil {
-		return request{}, oidcerr.Errorf(oidcerr.CodeInvalidResquestObject,
+		return request{}, goidc.Errorf(goidc.ErrorCodeInvalidResquestObject,
 			"could not extract claims from the request object", err)
 	}
 
 	// Validate that the "exp" claims is present and it's not too far in the future.
 	if claims.Expiry == nil || int(time.Until(claims.Expiry.Time()).Seconds()) > ctx.JARLifetimeSecs {
-		return request{}, oidcerr.New(oidcerr.CodeInvalidResquestObject,
+		return request{}, goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
 			"invalid exp claim in the request object")
 	}
 
@@ -133,7 +132,7 @@ func jarFromSignedRequestObject(
 		AnyAudience: []string{ctx.Host},
 	}, time.Duration(0))
 	if err != nil {
-		return request{}, oidcerr.Errorf(oidcerr.CodeInvalidResquestObject,
+		return request{}, goidc.Errorf(goidc.ErrorCodeInvalidResquestObject,
 			"the request object contains invalid claims", err)
 	}
 

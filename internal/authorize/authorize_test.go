@@ -15,7 +15,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -353,13 +352,13 @@ func TestInitAuth_ShouldNotFindClient(t *testing.T) {
 		t.Fatal("The client should not be found")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
 	}
 }
 
@@ -382,13 +381,13 @@ func TestInitAuth_InvalidRedirectURI(t *testing.T) {
 		t.Fatal("the redirect uri should not be valid")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidRedirectURI {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidRedirectURI)
+	if oidcErr.Code != goidc.ErrorCodeInvalidRedirectURI {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRedirectURI)
 	}
 }
 
@@ -418,9 +417,9 @@ func TestInitAuth_InvalidScope(t *testing.T) {
 		t.Fatalf("could not parse the redirect url: %v", err)
 	}
 
-	if redirectURL.Query().Get("error") != string(oidcerr.CodeInvalidScope) {
+	if redirectURL.Query().Get("error") != string(goidc.ErrorCodeInvalidScope) {
 		t.Errorf("error code = %s, want %s", redirectURL.Query().Get("error"),
-			oidcerr.CodeInvalidScope)
+			goidc.ErrorCodeInvalidScope)
 	}
 }
 
@@ -455,9 +454,9 @@ func TestInitAuth_InvalidResponseType(t *testing.T) {
 		t.Fatalf("could not parse the redirect params: %v", err)
 	}
 
-	if redirectParams.Get("error") != string(oidcerr.CodeInvalidRequest) {
+	if redirectParams.Get("error") != string(goidc.ErrorCodeInvalidRequest) {
 		t.Errorf("error code = %s, want %s", redirectParams.Get("error"),
-			oidcerr.CodeInvalidScope)
+			goidc.ErrorCodeInvalidScope)
 	}
 }
 
@@ -488,9 +487,9 @@ func TestInitAuth_NoPolicyAvailable(t *testing.T) {
 		t.Fatalf("could not parse the redirect url: %v", err)
 	}
 
-	if redirectURL.Query().Get("error") != string(oidcerr.CodeInvalidRequest) {
+	if redirectURL.Query().Get("error") != string(goidc.ErrorCodeInvalidRequest) {
 		t.Errorf("error code = %s, want %s", redirectURL.Query().Get("error"),
-			oidcerr.CodeInvalidScope)
+			goidc.ErrorCodeInvalidScope)
 	}
 }
 
@@ -531,9 +530,9 @@ func TestInitAuth_AuthnFailed(t *testing.T) {
 		t.Fatalf("could not parse the redirect url: %v", err)
 	}
 
-	if redirectURL.Query().Get("error") != string(oidcerr.CodeAccessDenied) {
+	if redirectURL.Query().Get("error") != string(goidc.ErrorCodeAccessDenied) {
 		t.Errorf("error code = %s, want %s", redirectURL.Query().Get("error"),
-			oidcerr.CodeAccessDenied)
+			goidc.ErrorCodeAccessDenied)
 	}
 
 	sessions := oidctest.AuthnSessions(t, ctx)

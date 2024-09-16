@@ -10,7 +10,6 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -163,13 +162,13 @@ func TestPushAuth_UnauthenticatedClient(t *testing.T) {
 		t.Fatal("The client should not be authenticated")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidClient {
-		t.Errorf("Code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
 	}
 }
 

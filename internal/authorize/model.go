@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -67,7 +66,7 @@ type response struct {
 	idToken           string
 	authorizationCode string
 	state             string
-	errorCode         oidcerr.Code
+	errorCode         goidc.ErrorCode
 	errorDescription  string
 }
 

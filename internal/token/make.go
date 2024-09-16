@@ -14,7 +14,6 @@ import (
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -108,7 +107,7 @@ func makeIDToken(
 	idToken, err := jwtutil.Sign(claims, jwk,
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
 	if err != nil {
-		return "", oidcerr.Errorf(oidcerr.CodeInternalError,
+		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not sign the id token", err)
 	}
 
@@ -125,13 +124,13 @@ func encryptIDToken(
 ) {
 	jwk, err := clientutil.JWKByAlg(c, string(c.IDTokenKeyEncAlg))
 	if err != nil {
-		return "", oidcerr.Errorf(oidcerr.CodeInvalidRequest,
+		return "", goidc.Errorf(goidc.ErrorCodeInvalidRequest,
 			"could not encrypt the id token", err)
 	}
 
 	encIDToken, err := jwtutil.Encrypt(userInfoJWT, jwk, c.IDTokenContentEncAlg)
 	if err != nil {
-		return "", oidcerr.Errorf(oidcerr.CodeInvalidRequest,
+		return "", goidc.Errorf(goidc.ErrorCodeInvalidRequest,
 			"could not encrypt the id token", err)
 	}
 
@@ -192,7 +191,7 @@ func makeJWTToken(
 	accessToken, err := jwtutil.Sign(claims, privateJWK,
 		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", privateJWK.KeyID))
 	if err != nil {
-		return Token{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+		return Token{}, goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not sign the access token", err)
 	}
 
@@ -215,7 +214,7 @@ func makeOpaqueToken(
 ) {
 	accessToken, err := strutil.Random(opts.OpaqueLength)
 	if err != nil {
-		return Token{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+		return Token{}, goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not generate the opaque token", err)
 	}
 

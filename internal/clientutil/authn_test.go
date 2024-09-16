@@ -12,7 +12,6 @@ import (
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -40,13 +39,13 @@ func TestAuthenticated_ClientNotFound(t *testing.T) {
 		t.Fatal("The client should not be found")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
 	}
 }
 
@@ -108,13 +107,13 @@ func TestAuthenticated_SecretPostAuthn_InvalidSecret(t *testing.T) {
 		t.Fatal("The client should not be authenticated")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
 	}
 }
 
@@ -134,13 +133,13 @@ func TestAuthenticated_SecretPostAuthn_MissingSecret(t *testing.T) {
 		t.Fatal("The client should not be authenticated")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
 	}
 }
 
@@ -165,13 +164,13 @@ func TestAuthenticated_SecretPostAuthn_InvalidID(t *testing.T) {
 		t.Fatal("The client should not be authenticated")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
 	}
 }
 
@@ -204,13 +203,13 @@ func TestAuthenticated_BasicSecretAuthn_InvalidSecret(t *testing.T) {
 		t.Fatal("The client should not be authenticated")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
 	}
 }
 
@@ -231,13 +230,13 @@ func TestAuthenticated_BasicSecretAuthn_MissingSecret(t *testing.T) {
 		t.Fatal("The client should not be authenticated")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
 	}
 }
 
@@ -328,13 +327,13 @@ func TestAuthenticated_PrivateKeyJWT_ClientInformedSigningAlgorithms_InvalidSign
 		t.Fatal("The client should not be authenticated")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
 	}
 }
 
@@ -363,13 +362,13 @@ func TestAuthenticated_PrivateKeyJWT_InvalidAudienceClaim(t *testing.T) {
 		t.Fatal("The client should not be authenticated")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
 	}
 }
 
@@ -398,13 +397,13 @@ func TestAuthenticated_PrivateKeyJWT_InvalidExpiryClaim(t *testing.T) {
 		t.Fatal("The client should not be authenticated")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
 	}
 }
 
@@ -436,13 +435,13 @@ func TestAuthenticated_PrivateKeyJWT_CannotIdentifyJWK(t *testing.T) {
 		t.Fatal("The client should not be authenticated")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
 	}
 }
 
@@ -477,13 +476,13 @@ func TestAuthenticated_PrivateKeyJWT_InvalidSigningKey(t *testing.T) {
 		t.Fatal("The client should not be authenticated")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
 	}
 }
 
@@ -507,13 +506,13 @@ func TestAuthenticated_PrivateKeyJWT_InvalidAssertion(t *testing.T) {
 		t.Fatal("The client should not be authenticated")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
 	}
 }
 
@@ -542,13 +541,13 @@ func TestAuthenticated_PrivateKeyJWT_InvalidAssertionType(t *testing.T) {
 		t.Fatal("The client should not be authenticated")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
 	}
 }
 
@@ -619,13 +618,13 @@ func TestAuthenticated_DifferentClientIDs(t *testing.T) {
 		t.Fatal("The client should not be authenticated")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
 	}
 }
 
@@ -663,13 +662,13 @@ func TestAuthenticated_TLSAuthn_InvalidDistinguishedName(t *testing.T) {
 		t.Fatal("The client should not be authenticated")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
 	}
 }
 
@@ -707,13 +706,13 @@ func TestAuthenticated_TLSAuthn_InvalidAlternativeName(t *testing.T) {
 		t.Fatal("The client should not be authenticated")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
 	}
 }
 

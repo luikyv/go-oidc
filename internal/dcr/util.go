@@ -2,7 +2,6 @@ package dcr
 
 import (
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"golang.org/x/crypto/bcrypt"
@@ -24,7 +23,7 @@ func create(
 	}
 
 	if err := ctx.HandleDynamicClient(&dc.ClientMetaInfo); err != nil {
-		return response{}, oidcerr.Errorf(oidcerr.CodeInvalidClientMetadata,
+		return response{}, goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata,
 			"invalid metadata", err)
 	}
 
@@ -34,7 +33,7 @@ func create(
 
 	newClient := newClient(dc)
 	if err := ctx.SaveClient(newClient); err != nil {
-		return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not store the client", err)
 	}
 
@@ -87,7 +86,7 @@ func update(
 	}
 
 	if err := ctx.HandleDynamicClient(&dc.ClientMetaInfo); err != nil {
-		return response{}, oidcerr.Errorf(oidcerr.CodeInvalidClientMetadata,
+		return response{}, goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata,
 			"invalid metadata", err)
 	}
 
@@ -97,7 +96,7 @@ func update(
 
 	updatedClient := newClient(dc)
 	if err := ctx.SaveClient(updatedClient); err != nil {
-		return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not store the client", err)
 	}
 
@@ -162,7 +161,7 @@ func remove(
 	}
 
 	if err := ctx.DeleteClient(dynamicClientRequest.id); err != nil {
-		return oidcerr.Errorf(oidcerr.CodeInternalError,
+		return goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not delete the client", err)
 	}
 	return nil
@@ -253,18 +252,18 @@ func protected(
 	error,
 ) {
 	if dc.id == "" {
-		return nil, oidcerr.New(oidcerr.CodeInvalidRequest, "invalid client_id")
+		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid client_id")
 	}
 
 	c, err := ctx.Client(dc.id)
 	if err != nil {
-		return nil, oidcerr.Errorf(oidcerr.CodeInvalidRequest,
+		return nil, goidc.Errorf(goidc.ErrorCodeInvalidRequest,
 			"could not find the client", err)
 	}
 
 	if dc.registrationToken == "" ||
 		!isRegistrationAccessTokenValid(c, dc.registrationToken) {
-		return nil, oidcerr.New(oidcerr.CodeAccessDenied, "invalid access token")
+		return nil, goidc.NewError(goidc.ErrorCodeAccessDenied, "invalid access token")
 	}
 
 	return c, nil
@@ -273,7 +272,7 @@ func protected(
 func clientID() (string, error) {
 	id, err := strutil.Random(idLength)
 	if err != nil {
-		return "", oidcerr.Errorf(oidcerr.CodeInternalError,
+		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not generate the client id", err)
 	}
 	return "dc-" + id, nil
@@ -282,7 +281,7 @@ func clientID() (string, error) {
 func clientSecret() (string, error) {
 	s, err := strutil.Random(secretLength)
 	if err != nil {
-		return "", oidcerr.Errorf(oidcerr.CodeInternalError,
+		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not generate the client secret", err)
 	}
 	return s, nil
@@ -291,7 +290,7 @@ func clientSecret() (string, error) {
 func registrationAccessToken() (string, error) {
 	token, err := strutil.Random(registrationAccessTokenLength)
 	if err != nil {
-		return "", oidcerr.Errorf(oidcerr.CodeInternalError,
+		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not generate the registration access token", err)
 	}
 	return token, nil

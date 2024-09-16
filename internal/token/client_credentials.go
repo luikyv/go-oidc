@@ -5,7 +5,6 @@ import (
 
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -32,7 +31,7 @@ func generateClientCredentialsGrant(
 
 	token, err := Make(ctx, c, grantOptions)
 	if err != nil {
-		return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not generate an access token for the client credentials grant", err)
 	}
 
@@ -65,7 +64,7 @@ func generateClientCredentialsGrantSession(
 
 	grantSession := NewGrantSession(grantInfo, token)
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return nil, oidcerr.Errorf(oidcerr.CodeInternalError,
+		return nil, goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not store the grant session", err)
 	}
 
@@ -79,11 +78,11 @@ func validateClientCredentialsGrantRequest(
 ) error {
 
 	if !slices.Contains(c.GrantTypes, goidc.GrantClientCredentials) {
-		return oidcerr.New(oidcerr.CodeUnauthorizedClient, "invalid grant type")
+		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
 	}
 
 	if !clientutil.AreScopesAllowed(c, ctx.Scopes, req.scopes) {
-		return oidcerr.New(oidcerr.CodeInvalidScope, "invalid scope")
+		return goidc.NewError(goidc.ErrorCodeInvalidScope, "invalid scope")
 	}
 
 	if err := validateResourcesForClientCredentials(ctx, req); err != nil {
@@ -127,8 +126,7 @@ func newClientCredentialsGrantOptions(
 	addPoP(ctx, &grantInfo)
 
 	if err := ctx.HandleGrant(&grantInfo); err != nil {
-		return goidc.GrantInfo{}, oidcerr.Errorf(oidcerr.CodeAccessDenied,
-			"access denied", err)
+		return goidc.GrantInfo{}, err
 	}
 
 	return grantInfo, nil
@@ -140,7 +138,7 @@ func validateResourcesForClientCredentials(
 ) error {
 
 	if ctx.ResourceIndicatorsIsRequired && req.resources == nil {
-		return oidcerr.New(oidcerr.CodeInvalidTarget,
+		return goidc.NewError(goidc.ErrorCodeInvalidTarget,
 			"the resources parameter is required")
 	}
 

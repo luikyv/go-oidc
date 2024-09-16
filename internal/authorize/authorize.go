@@ -2,7 +2,6 @@ package authorize
 
 import (
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/internal/token"
@@ -12,12 +11,12 @@ import (
 func initAuth(ctx *oidc.Context, req request) error {
 
 	if req.ClientID == "" {
-		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid client_id")
+		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client_id")
 	}
 
 	c, err := ctx.Client(req.ClientID)
 	if err != nil {
-		return oidcerr.New(oidcerr.CodeInvalidClient, "invalid client_id")
+		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client_id")
 	}
 
 	if err := initAuthNoRedirect(ctx, c, req); err != nil {
@@ -40,17 +39,17 @@ func continueAuth(ctx *oidc.Context, callbackID string) error {
 	// Fetch the session using the callback ID.
 	session, err := ctx.AuthnSessionByCallbackID(callbackID)
 	if err != nil {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "could not load the session")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "could not load the session")
 	}
 
 	if session.IsExpired() {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "session timeout")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "session timeout")
 	}
 
 	if oauthErr := authenticate(ctx, session); oauthErr != nil {
 		client, err := ctx.Client(session.ClientID)
 		if err != nil {
-			return oidcerr.New(oidcerr.CodeInternalError, "could not load the client")
+			return goidc.NewError(goidc.ErrorCodeInternalError, "could not load the client")
 		}
 		return redirectError(ctx, oauthErr, client)
 	}
@@ -105,13 +104,13 @@ func authnSessionWithPAR(
 ) {
 
 	if req.RequestURI == "" {
-		return nil, oidcerr.New(oidcerr.CodeInvalidRequest,
+		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest,
 			"request_uri is required")
 	}
 
 	session, err := ctx.AuthnSessionByRequestURI(req.RequestURI)
 	if err != nil {
-		return nil, oidcerr.New(oidcerr.CodeInvalidRequest,
+		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest,
 			"invalid request_uri")
 	}
 
@@ -139,7 +138,7 @@ func authnSessionWithJAR(
 	error,
 ) {
 	if req.RequestObject == "" {
-		return nil, oidcerr.New(oidcerr.CodeInvalidRequest,
+		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest,
 			"request object is required")
 	}
 
@@ -181,7 +180,7 @@ func initAuthnSessionWithPolicy(
 ) error {
 	policy, ok := ctx.AvailablePolicy(client, session)
 	if !ok {
-		return newRedirectionError(oidcerr.CodeInvalidRequest,
+		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
 			"no policy available", session.AuthorizationParameters)
 	}
 
@@ -191,7 +190,7 @@ func initAuthnSessionWithPolicy(
 	session.PolicyID = policy.ID
 	id, err := callbackID()
 	if err != nil {
-		return newRedirectionError(oidcerr.CodeInternalError,
+		return newRedirectionError(goidc.ErrorCodeInternalError,
 			"error generating the callback id", session.AuthorizationParameters)
 	}
 	session.CallbackID = id
@@ -227,16 +226,16 @@ func finishFlowWithFailure(
 	session *goidc.AuthnSession,
 ) error {
 	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-		return redirectionErrorf(oidcerr.CodeInternalError,
+		return redirectionErrorf(goidc.ErrorCodeInternalError,
 			"internal error", session.AuthorizationParameters, err)
 	}
 
 	if session.Error != "" {
-		return newRedirectionError(oidcerr.CodeAccessDenied,
+		return newRedirectionError(goidc.ErrorCodeAccessDenied,
 			session.Error, session.AuthorizationParameters)
 	}
 
-	return newRedirectionError(oidcerr.CodeAccessDenied,
+	return newRedirectionError(goidc.ErrorCodeAccessDenied,
 		"access denied", session.AuthorizationParameters)
 }
 
@@ -258,7 +257,7 @@ func finishFlowSuccessfully(
 
 	client, err := ctx.Client(session.ClientID)
 	if err != nil {
-		return redirectionErrorf(oidcerr.CodeInternalError,
+		return redirectionErrorf(goidc.ErrorCodeInternalError,
 			"could not load the client", session.AuthorizationParameters, err)
 	}
 
@@ -278,7 +277,7 @@ func finishFlowSuccessfully(
 
 		token, err := token.Make(ctx, client, grantInfo)
 		if err != nil {
-			return redirectionErrorf(oidcerr.CodeInternalError,
+			return redirectionErrorf(goidc.ErrorCodeInternalError,
 				"could not generate the access token", session.AuthorizationParameters, err)
 		}
 
@@ -301,7 +300,7 @@ func finishFlowSuccessfully(
 
 		redirectParams.idToken, err = token.MakeIDToken(ctx, client, idTokenOptions)
 		if err != nil {
-			return redirectionErrorf(oidcerr.CodeInternalError,
+			return redirectionErrorf(goidc.ErrorCodeInternalError,
 				"could not generate the id token", session.AuthorizationParameters, err)
 		}
 	}
@@ -324,7 +323,7 @@ func authorizeAuthnSession(
 
 	code, err := authorizationCode()
 	if err != nil {
-		return newRedirectionError(oidcerr.CodeInternalError,
+		return newRedirectionError(goidc.ErrorCodeInternalError,
 			"could not generate the authorization code", session.AuthorizationParameters)
 	}
 	session.AuthorizationCode = code

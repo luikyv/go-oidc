@@ -6,7 +6,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -21,7 +20,7 @@ func generateAuthorizationCodeGrant(
 ) {
 
 	if req.authorizationCode == "" {
-		return response{}, oidcerr.New(oidcerr.CodeInvalidRequest,
+		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest,
 			"invalid authorization code")
 	}
 
@@ -32,7 +31,7 @@ func generateAuthorizationCodeGrant(
 
 	session, err := authnSession(ctx, req.authorizationCode)
 	if err != nil {
-		return response{}, oidcerr.Errorf(oidcerr.CodeInvalidGrant,
+		return response{}, goidc.Errorf(goidc.ErrorCodeInvalidGrant,
 			"invalid authorization code", err)
 	}
 
@@ -47,7 +46,7 @@ func generateAuthorizationCodeGrant(
 
 	token, err := Make(ctx, client, grantInfo)
 	if err != nil {
-		return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not generate access token for the authorization code grant", err)
 	}
 
@@ -71,7 +70,7 @@ func generateAuthorizationCodeGrant(
 	if strutil.ContainsOpenID(session.GrantedScopes) {
 		tokenResp.IDToken, err = MakeIDToken(ctx, client, newIDTokenOptions(grantInfo))
 		if err != nil {
-			return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+			return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
 				"could not generate access id token for the authorization code grant", err)
 		}
 	}
@@ -102,12 +101,12 @@ func authnSession(
 ) {
 	session, err := ctx.AuthnSessionByAuthorizationCode(authzCode)
 	if err != nil {
-		return nil, oidcerr.Errorf(oidcerr.CodeInvalidGrant,
+		return nil, goidc.Errorf(goidc.ErrorCodeInvalidGrant,
 			"invalid authorization code", err)
 	}
 
 	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-		return nil, oidcerr.Errorf(oidcerr.CodeInternalError,
+		return nil, goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not delete the authn session", err)
 	}
 
@@ -135,7 +134,7 @@ func generateAuthorizationCodeGrantSession(
 	}
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return nil, oidcerr.Errorf(oidcerr.CodeInternalError,
+		return nil, goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not store the authorization code grant session", err)
 	}
 
@@ -150,21 +149,21 @@ func validateAuthorizationCodeGrantRequest(
 ) error {
 
 	if !slices.Contains(c.GrantTypes, goidc.GrantAuthorizationCode) {
-		return oidcerr.New(oidcerr.CodeUnauthorizedClient, "invalid grant type")
+		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
 	}
 
 	if session.ClientID != c.ID {
-		return oidcerr.New(oidcerr.CodeInvalidGrant,
+		return goidc.NewError(goidc.ErrorCodeInvalidGrant,
 			"the authorization code was not issued to the client")
 	}
 
 	if session.IsExpired() {
-		return oidcerr.New(oidcerr.CodeInvalidGrant,
+		return goidc.NewError(goidc.ErrorCodeInvalidGrant,
 			"the authorization code is expired")
 	}
 
 	if session.RedirectURI != req.redirectURI {
-		return oidcerr.New(oidcerr.CodeInvalidGrant, "invalid redirect_uri")
+		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid redirect_uri")
 	}
 
 	if err := validatePkce(ctx, req, c, session); err != nil {
@@ -225,8 +224,7 @@ func newAuthorizationCodeGrantInfo(
 	addPoP(ctx, &grantInfo)
 
 	if err := ctx.HandleGrant(&grantInfo); err != nil {
-		return goidc.GrantInfo{}, oidcerr.Errorf(oidcerr.CodeAccessDenied,
-			"access denied", err)
+		return goidc.GrantInfo{}, err
 	}
 
 	return grantInfo, nil

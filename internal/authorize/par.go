@@ -6,7 +6,6 @@ import (
 
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -31,7 +30,7 @@ func pushAuth(
 	}
 
 	if err := ctx.SaveAuthnSession(session); err != nil {
-		return pushedResponse{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+		return pushedResponse{}, goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not store the pushed authentication session", err)
 	}
 	return pushedResponse{
@@ -104,7 +103,7 @@ func pushedAuthnSessionWithJAR(
 ) {
 
 	if req.RequestObject == "" {
-		return nil, oidcerr.New(oidcerr.CodeInvalidRequest,
+		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest,
 			"request object is required")
 	}
 
@@ -135,7 +134,7 @@ func protectedParams(ctx *oidc.Context) map[string]any {
 func requestURI() (string, error) {
 	s, err := strutil.Random(requestURILength)
 	if err != nil {
-		return "", oidcerr.Errorf(oidcerr.CodeInternalError,
+		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not generate the request uri", err)
 	}
 	return fmt.Sprintf("urn:ietf:params:oauth:request_uri:%s", s), nil

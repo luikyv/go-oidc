@@ -8,7 +8,6 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -67,20 +66,20 @@ func validateGrantTypes(
 ) error {
 	for _, gt := range dc.GrantTypes {
 		if !slices.Contains(ctx.GrantTypes, gt) {
-			return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 				"grant type not allowed")
 		}
 	}
 
 	if dc.AuthnMethod == goidc.ClientAuthnNone &&
 		slices.Contains(dc.GrantTypes, goidc.GrantClientCredentials) {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"client_credentials grant type not allowed for a client with no authentication")
 	}
 
 	if slices.Contains(dc.GrantTypes, goidc.GrantIntrospection) &&
 		!slices.Contains(ctx.IntrospectionClientAuthnMethods, dc.AuthnMethod) {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"introspection grant type not allowed for the authentication method requested")
 	}
 
@@ -94,11 +93,11 @@ func validateRedirectURIS(
 	for _, ru := range dc.RedirectURIs {
 		parsedRU, err := url.ParseRequestURI(ru)
 		if err != nil {
-			return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 				"invalid redirect uri")
 		}
 		if parsedRU.Fragment != "" {
-			return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 				"the redirect uri cannot contain a fragment")
 		}
 	}
@@ -113,7 +112,7 @@ func validateResponseTypes(
 
 	for _, rt := range dc.ResponseTypes {
 		if !slices.Contains(ctx.ResponseTypes, rt) {
-			return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 				"response type not allowed")
 		}
 	}
@@ -121,7 +120,7 @@ func validateResponseTypes(
 	if !slices.Contains(dc.GrantTypes, goidc.GrantImplicit) {
 		for _, rt := range dc.ResponseTypes {
 			if rt.IsImplicit() {
-				return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+				return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 					"implicit grant type is required for implicit response types")
 			}
 		}
@@ -130,7 +129,7 @@ func validateResponseTypes(
 	if !slices.Contains(dc.GrantTypes, goidc.GrantAuthorizationCode) {
 		for _, rt := range dc.ResponseTypes {
 			if rt.Contains(goidc.ResponseTypeCode) {
-				return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+				return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 					"authorization code grant type is required for code response types")
 			}
 		}
@@ -144,7 +143,7 @@ func validateAuthnMethod(
 	dc request,
 ) error {
 	if !slices.Contains(ctx.ClientAuthnMethods, dc.AuthnMethod) {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"authn method not allowed")
 	}
 	return nil
@@ -159,7 +158,7 @@ func validateOpenIDScopeIfRequired(
 	}
 
 	if dc.ScopeIDs != "" || !strutil.ContainsOpenID(dc.ScopeIDs) {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"scope openid is required")
 	}
 
@@ -175,7 +174,7 @@ func validateSubjectIdentifierType(
 	}
 
 	if !slices.Contains(ctx.SubIdentifierTypes, dc.SubIdentifierType) {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"subject_type not supported")
 	}
 	return nil
@@ -190,7 +189,7 @@ func validateIDTokenSigAlg(
 	}
 
 	if !slices.Contains(ctx.UserInfoSigAlgs(), dc.IDTokenSigAlg) {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"id_token_signed_response_alg not supported")
 	}
 	return nil
@@ -205,7 +204,7 @@ func validateUserInfoSigAlg(
 	}
 
 	if !slices.Contains(ctx.UserInfoSigAlgs(), dc.UserInfoSigAlg) {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"id_token_signed_response_alg not supported")
 	}
 	return nil
@@ -220,7 +219,7 @@ func validateJARSigAlg(
 	}
 
 	if !slices.Contains(ctx.JARSigAlgs, dc.JARSigAlg) {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"request_object_signing_alg not supported")
 	}
 	return nil
@@ -235,7 +234,7 @@ func validateJARMSigAlg(
 	}
 
 	if !slices.Contains(ctx.JARMSigAlgs(), dc.JARMSigAlg) {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"authorization_signed_response_alg not supported")
 	}
 	return nil
@@ -250,12 +249,12 @@ func validatePrivateKeyJWT(
 	}
 
 	if dc.AuthnSigAlg != "" && !slices.Contains(ctx.PrivateKeyJWTSigAlgs, dc.AuthnSigAlg) {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"token_endpoint_auth_signing_alg not supported for private_key_jwt")
 	}
 
 	if dc.PublicJWKS == nil && dc.PublicJWKSURI == "" {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"the jwks is required for private_key_jwt")
 	}
 
@@ -271,7 +270,7 @@ func validateSecretJWT(
 	}
 
 	if dc.AuthnSigAlg != "" && !slices.Contains(ctx.ClientSecretJWTSigAlgs, dc.AuthnSigAlg) {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"token_endpoint_auth_signing_alg not supported for client_secret_jwt")
 	}
 	return nil
@@ -286,7 +285,7 @@ func validateSelfSignedTLSAuthn(
 	}
 
 	if dc.PublicJWKSURI == "" && dc.PublicJWKS == nil {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"jwks is required when authenticating with self signed certificates")
 	}
 
@@ -316,7 +315,7 @@ func validateTLSAuthn(
 	}
 
 	if numberOfIdentifiers != 1 {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"only one of: tls_client_auth_subject_dn, tls_client_auth_san_dns, tls_client_auth_san_ip must be informed")
 	}
 
@@ -331,7 +330,7 @@ func validateIDTokenEncAlgs(
 	// requested it.
 	if !ctx.UserEncIsEnabled {
 		if dc.IDTokenKeyEncAlg != "" || dc.IDTokenContentEncAlg != "" {
-			return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 				"ID token encryption is not supported")
 		}
 		return nil
@@ -339,18 +338,18 @@ func validateIDTokenEncAlgs(
 
 	if dc.IDTokenKeyEncAlg != "" &&
 		!slices.Contains(ctx.UserKeyEncAlgs, dc.IDTokenKeyEncAlg) {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"id_token_encrypted_response_alg not supported")
 	}
 
 	if dc.IDTokenContentEncAlg != "" && dc.IDTokenKeyEncAlg == "" {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"id_token_encrypted_response_alg is required if id_token_encrypted_response_enc is informed")
 	}
 
 	if dc.IDTokenContentEncAlg != "" &&
 		!slices.Contains(ctx.UserContentEncAlgs, dc.IDTokenContentEncAlg) {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"id_token_encrypted_response_enc not supported")
 	}
 
@@ -365,7 +364,7 @@ func validateUserInfoEncAlgs(
 	// requested it.
 	if !ctx.UserEncIsEnabled {
 		if dc.UserInfoKeyEncAlg != "" || dc.UserInfoContentEncAlg != "" {
-			return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 				"user info encryption is not supported")
 		}
 		return nil
@@ -373,18 +372,18 @@ func validateUserInfoEncAlgs(
 
 	if dc.UserInfoKeyEncAlg != "" &&
 		!slices.Contains(ctx.UserKeyEncAlgs, dc.UserInfoKeyEncAlg) {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"userinfo_encrypted_response_alg not supported")
 	}
 
 	if dc.UserInfoContentEncAlg != "" && dc.UserInfoKeyEncAlg == "" {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"userinfo_encrypted_response_alg is required if userinfo_encrypted_response_enc is informed")
 	}
 
 	if dc.UserInfoContentEncAlg != "" &&
 		!slices.Contains(ctx.UserContentEncAlgs, dc.UserInfoContentEncAlg) {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"userinfo_encrypted_response_enc not supported")
 	}
 
@@ -398,7 +397,7 @@ func validateJARMEncAlgs(
 	// Return an error if jarm encryption is not enabled, but the client requested it.
 	if !ctx.JARMIsEnabled {
 		if dc.JARMKeyEncAlg != "" || dc.JARMContentEncAlg != "" {
-			return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 				"jarm encryption is not supported")
 		}
 		return nil
@@ -406,18 +405,18 @@ func validateJARMEncAlgs(
 
 	if dc.JARMKeyEncAlg != "" &&
 		!slices.Contains(ctx.JARMKeyEncAlgs, dc.JARMKeyEncAlg) {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"authorization_encrypted_response_alg not supported")
 	}
 
 	if dc.JARMContentEncAlg != "" && dc.JARMKeyEncAlg == "" {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"authorization_encrypted_response_alg is required if authorization_encrypted_response_enc is informed")
 	}
 
 	if dc.JARMContentEncAlg != "" &&
 		!slices.Contains(ctx.JARMContentEncAlgs, dc.JARMContentEncAlg) {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"authorization_encrypted_response_enc not supported")
 	}
 
@@ -431,7 +430,7 @@ func validateJAREncAlgs(
 	// Return an error if jar encryption is not enabled, but the client requested it.
 	if !ctx.JAREncIsEnabled {
 		if dc.JARKeyEncAlg != "" || dc.JARContentEncAlg != "" {
-			return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 				"jar encryption is not supported")
 		}
 		return nil
@@ -439,18 +438,18 @@ func validateJAREncAlgs(
 
 	if dc.JARKeyEncAlg != "" &&
 		!slices.Contains(ctx.JARKeyEncAlgs(), dc.JARKeyEncAlg) {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"request_object_encryption_alg not supported")
 	}
 
 	if dc.JARContentEncAlg != "" && dc.JARKeyEncAlg == "" {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"request_object_encryption_alg is required if request_object_encryption_enc is informed")
 	}
 
 	if dc.JARContentEncAlg != "" &&
 		!slices.Contains(ctx.JARContentEncAlgs, dc.JARContentEncAlg) {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"request_object_encryption_enc not supported")
 	}
 
@@ -467,12 +466,12 @@ func validatePublicJWKS(
 
 	var jwks jose.JSONWebKeySet
 	if err := json.Unmarshal(dc.PublicJWKS, &jwks); err != nil {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata, "invalid jwks")
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "invalid jwks")
 	}
 
 	for _, jwk := range jwks.Keys {
 		if !jwk.IsPublic() || !jwk.Valid() {
-			return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 				fmt.Sprintf("the key with ID: %s jwks is invalid", jwk.KeyID))
 		}
 	}
@@ -497,7 +496,7 @@ func validateAuthorizationDetailTypes(
 
 	for _, dt := range dc.AuthDetailTypes {
 		if !slices.Contains(ctx.AuthDetailTypes, dt) {
-			return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 				"authorization detail type not supported")
 		}
 	}
@@ -524,7 +523,7 @@ func validateScope(ctx *oidc.Context, requestedScope string) error {
 			return nil
 		}
 	}
-	return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+	return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 		"scope "+requestedScope+" is not valid")
 }
 
@@ -533,7 +532,7 @@ func validateTLSTokenBinding(
 	dc request,
 ) error {
 	if !ctx.MTLSTokenBindingIsEnabled && dc.TLSBoundTokensIsRequired {
-		return oidcerr.New(oidcerr.CodeInvalidClientMetadata,
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"tls_client_certificate_bound_access_tokens is not supported")
 	}
 

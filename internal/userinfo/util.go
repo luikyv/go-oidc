@@ -5,7 +5,6 @@ import (
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -15,7 +14,7 @@ func userInfo(ctx *oidc.Context) (response, error) {
 
 	accessToken, tokenType, ok := ctx.AuthorizationToken()
 	if !ok {
-		return response{}, oidcerr.New(oidcerr.CodeInvalidToken, "no token found")
+		return response{}, goidc.NewError(goidc.ErrorCodeInvalidToken, "no token found")
 	}
 
 	tokenID, err := token.ExtractID(ctx, accessToken)
@@ -25,7 +24,7 @@ func userInfo(ctx *oidc.Context) (response, error) {
 
 	grantSession, err := ctx.GrantSessionByTokenID(tokenID)
 	if err != nil {
-		return response{}, oidcerr.Errorf(oidcerr.CodeInvalidRequest,
+		return response{}, goidc.Errorf(goidc.ErrorCodeInvalidRequest,
 			"invalid token", err)
 	}
 
@@ -35,7 +34,7 @@ func userInfo(ctx *oidc.Context) (response, error) {
 
 	client, err := ctx.Client(grantSession.ClientID)
 	if err != nil {
-		return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not load the client", err)
 	}
 
@@ -105,7 +104,7 @@ func signUserInfoClaims(
 	jws, err := jwtutil.Sign(claims, jwk,
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
 	if err != nil {
-		return "", oidcerr.Errorf(oidcerr.CodeInternalError,
+		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not sign the user info claims", err)
 	}
 
@@ -122,13 +121,13 @@ func encryptUserInfoJWT(
 ) {
 	jwk, err := clientutil.JWKByAlg(c, string(c.UserInfoKeyEncAlg))
 	if err != nil {
-		return "", oidcerr.Errorf(oidcerr.CodeInvalidRequest,
+		return "", goidc.Errorf(goidc.ErrorCodeInvalidRequest,
 			"could not find a jwk to encrypt the user info response", err)
 	}
 
 	userInfoJWE, err := jwtutil.Encrypt(userInfoJWT, jwk, c.UserInfoContentEncAlg)
 	if err != nil {
-		return "", oidcerr.Errorf(oidcerr.CodeInternalError,
+		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not encrypt the user info response", err)
 	}
 
@@ -142,11 +141,11 @@ func validateRequest(
 	tokenType goidc.TokenType,
 ) error {
 	if grantSession.HasLastTokenExpired() {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "token expired")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "token expired")
 	}
 
 	if !strutil.ContainsOpenID(grantSession.ActiveScopes) {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid scope")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid scope")
 	}
 
 	confirmation := goidc.TokenConfirmation{

@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/oidcerr"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
@@ -35,7 +35,7 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 func handleCreate(ctx *oidc.Context) {
 	var req request
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
-		err = oidcerr.Errorf(oidcerr.CodeInvalidRequest,
+		err = goidc.Errorf(goidc.ErrorCodeInvalidRequest,
 			"could not parse the request", err)
 		ctx.WriteError(err)
 		return
@@ -59,7 +59,7 @@ func handleCreate(ctx *oidc.Context) {
 func handleUpdate(ctx *oidc.Context) {
 	var req request
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
-		err = oidcerr.Errorf(oidcerr.CodeInvalidRequest,
+		err = goidc.Errorf(goidc.ErrorCodeInvalidRequest,
 			"could not parse the request", err)
 		ctx.WriteError(err)
 		return
@@ -67,7 +67,7 @@ func handleUpdate(ctx *oidc.Context) {
 
 	token, ok := ctx.BearerToken()
 	if !ok {
-		ctx.WriteError(oidcerr.New(oidcerr.CodeAccessDenied, "no token found"))
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeAccessDenied, "no token found"))
 		return
 	}
 
@@ -87,7 +87,7 @@ func handleUpdate(ctx *oidc.Context) {
 func handleGet(ctx *oidc.Context) {
 	token, ok := ctx.BearerToken()
 	if !ok {
-		ctx.WriteError(oidcerr.New(oidcerr.CodeAccessDenied, "no token found"))
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeAccessDenied, "no token found"))
 		return
 	}
 
@@ -110,7 +110,7 @@ func handleGet(ctx *oidc.Context) {
 func handleDelete(ctx *oidc.Context) {
 	token, ok := ctx.BearerToken()
 	if !ok {
-		ctx.WriteError(oidcerr.New(oidcerr.CodeAccessDenied, "no token found"))
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeAccessDenied, "no token found"))
 		return
 	}
 

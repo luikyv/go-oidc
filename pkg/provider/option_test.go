@@ -503,7 +503,7 @@ func TestWithRefreshTokenGrant(t *testing.T) {
 		*p,
 		want,
 		cmp.AllowUnexported(provider{}),
-		cmpopts.IgnoreFields(provider{}, "config.IssueRefreshTokenFunc"),
+		cmpopts.IgnoreFields(provider{}, "config.ShouldIssueRefreshTokenFunc"),
 	); diff != "" {
 		t.Error(diff)
 	}

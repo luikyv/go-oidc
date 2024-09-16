@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -274,13 +273,13 @@ func TestValidateRequest(t *testing.T) {
 				return
 			}
 
-			var oidcErr oidcerr.Error
+			var oidcErr goidc.Error
 			if !errors.As(err, &oidcErr) {
 				t.Fatalf("invalid error type")
 			}
 
-			if oidcErr.Code != oidcerr.CodeInvalidClientMetadata {
-				t.Errorf("Code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClientMetadata)
+			if oidcErr.Code != goidc.ErrorCodeInvalidClientMetadata {
+				t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClientMetadata)
 			}
 
 		})

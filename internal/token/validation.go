@@ -4,7 +4,6 @@ import (
 	"slices"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -34,7 +33,7 @@ func validateTokenBindingDPoP(
 	// Return an error if the DPoP header was not informed, but it's required
 	// either in the general config or by the client.
 	if !ok && (ctx.DPoPIsRequired || client.DPoPIsRequired) {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid dpop header")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid dpop header")
 	}
 
 	// If the DPoP header was not informed, there's nothing to validate.
@@ -54,7 +53,7 @@ func validateTokenBindingTLS(
 
 	_, err := ctx.ClientCert()
 	if err != nil && (ctx.MTLSTokenBindingIsRequired || client.TLSBoundTokensIsRequired) {
-		return oidcerr.Errorf(oidcerr.CodeInvalidRequest, "invalid client certificate", err)
+		return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid client certificate", err)
 	}
 
 	return nil
@@ -78,7 +77,7 @@ func validateTokenBindingIsRequired(ctx *oidc.Context) error {
 	}
 
 	if !tokenWillBeBound {
-		return oidcerr.New(oidcerr.CodeInvalidRequest,
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
 			"token binding is required either with dpop or tls")
 	}
 
@@ -96,7 +95,7 @@ func validateResources(
 
 	for _, resource := range req.resources {
 		if !slices.Contains(availableResources, resource) {
-			return oidcerr.New(oidcerr.CodeInvalidTarget,
+			return goidc.NewError(goidc.ErrorCodeInvalidTarget,
 				"the resource "+resource+" is invalid")
 		}
 	}
@@ -110,7 +109,7 @@ func validateScopes(
 	session *goidc.AuthnSession,
 ) error {
 	if !containsAllScopes(session.GrantedScopes, req.scopes) {
-		return oidcerr.New(oidcerr.CodeInvalidScope, "invalid scope")
+		return goidc.NewError(goidc.ErrorCodeInvalidScope, "invalid scope")
 	}
 
 	return nil
@@ -142,7 +141,7 @@ func validatePkce(
 	// of 128 characters."
 	codeVerifierLengh := len(req.codeVerifier)
 	if req.codeVerifier != "" && (codeVerifierLengh < 43 || codeVerifierLengh > 128) {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "invalid code verifier")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid code verifier")
 	}
 
 	codeChallengeMethod := session.CodeChallengeMethod
@@ -152,11 +151,11 @@ func validatePkce(
 	// In the case PKCE is enabled, if the session was created with a code
 	// challenge, the token request must contain the right code verifier.
 	if session.CodeChallenge != "" && req.codeVerifier == "" {
-		return oidcerr.New(oidcerr.CodeInvalidGrant, "code_verifier cannot be empty")
+		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "code_verifier cannot be empty")
 	}
 	if session.CodeChallenge != "" &&
 		!isPKCEValid(req.codeVerifier, session.CodeChallenge, codeChallengeMethod) {
-		return oidcerr.New(oidcerr.CodeInvalidGrant, "invalid code_verifier")
+		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid code_verifier")
 	}
 
 	return nil

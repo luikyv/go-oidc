@@ -4,7 +4,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -65,8 +64,8 @@ func TestValidateRequest_InvalidResponseType(t *testing.T) {
 		t.Fatalf("the error should be redirected")
 	}
 
-	if redirectErr.code != oidcerr.CodeInvalidRequest {
-		t.Errorf("code = %s, want %s", redirectErr.code, oidcerr.CodeInvalidRequest)
+	if redirectErr.code != goidc.ErrorCodeInvalidRequest {
+		t.Errorf("code = %s, want %s", redirectErr.code, goidc.ErrorCodeInvalidRequest)
 	}
 }
 
@@ -99,8 +98,8 @@ func TestValidateRequest_InvalidScope(t *testing.T) {
 		t.Fatalf("the error should be redirected")
 	}
 
-	if redirectErr.code != oidcerr.CodeInvalidScope {
-		t.Errorf("code = %s, want %s", redirectErr.code, oidcerr.CodeInvalidScope)
+	if redirectErr.code != goidc.ErrorCodeInvalidScope {
+		t.Errorf("code = %s, want %s", redirectErr.code, goidc.ErrorCodeInvalidScope)
 	}
 }
 
@@ -128,13 +127,13 @@ func TestValidateRequest_InvalidRedirectURI(t *testing.T) {
 		t.Fatalf("no error for invalid redirect uri")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatalf("the error should not be redirected")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidRedirectURI {
-		t.Errorf("code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidRedirectURI)
+	if oidcErr.Code != goidc.ErrorCodeInvalidRedirectURI {
+		t.Errorf("code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRedirectURI)
 	}
 }
 
@@ -192,8 +191,8 @@ func TestValidateRequest_ResourceIndicator_InvalidResource(t *testing.T) {
 		t.Fatalf("the error should be redirected")
 	}
 
-	if redirectErr.code != oidcerr.CodeInvalidTarget {
-		t.Errorf("code = %s, want %s", redirectErr.code, oidcerr.CodeInvalidTarget)
+	if redirectErr.code != goidc.ErrorCodeInvalidTarget {
+		t.Errorf("code = %s, want %s", redirectErr.code, goidc.ErrorCodeInvalidTarget)
 	}
 }
 
@@ -308,12 +307,12 @@ func TestValidateRequest_JAR_InvalidClientID(t *testing.T) {
 		t.Fatalf("no error for invalid client id")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatalf("the error should not be redirected")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidClient {
-		t.Errorf("code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
+		t.Errorf("code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
 	}
 }

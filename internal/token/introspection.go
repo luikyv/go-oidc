@@ -6,7 +6,6 @@ import (
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -35,12 +34,12 @@ func validateIntrospectionRequest(
 	c *goidc.Client,
 ) error {
 	if !slices.Contains(c.GrantTypes, goidc.GrantIntrospection) {
-		return oidcerr.New(oidcerr.CodeInvalidGrant,
+		return goidc.NewError(goidc.ErrorCodeInvalidGrant,
 			"client not allowed to introspect tokens")
 	}
 
 	if req.token == "" {
-		return oidcerr.New(oidcerr.CodeInvalidRequest, "token is required")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "token is required")
 	}
 
 	return nil

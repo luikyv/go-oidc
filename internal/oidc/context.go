@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -343,10 +342,10 @@ func (ctx *Context) WriteJWT(token string, status int) error {
 
 func (ctx *Context) WriteError(err error) {
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		if err := ctx.Write(map[string]any{
-			"error":             oidcerr.CodeInternalError,
+			"error":             goidc.ErrorCodeInternalError,
 			"error_description": "internal error",
 		}, http.StatusInternalServerError); err != nil {
 			ctx.Response.WriteHeader(http.StatusInternalServerError)
@@ -531,7 +530,13 @@ func (ctx *Context) HandleGrant(grantInfo *goidc.GrantInfo) error {
 		return nil
 	}
 
-	return ctx.HandleGrantFunc(ctx.Request, grantInfo)
+	err := ctx.HandleGrantFunc(ctx.Request, grantInfo)
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		return goidc.Errorf(goidc.ErrorCodeAccessDenied, "access denied", err)
+	}
+
+	return oidcErr
 }
 
 //---------------------------------------- Context ----------------------------------------//

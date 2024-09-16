@@ -5,7 +5,6 @@ import (
 
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -19,7 +18,7 @@ func generateRefreshTokenGrant(
 	error,
 ) {
 	if req.refreshToken == "" {
-		return response{}, oidcerr.New(oidcerr.CodeInvalidRequest,
+		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest,
 			"invalid refresh token")
 	}
 
@@ -30,7 +29,7 @@ func generateRefreshTokenGrant(
 
 	grantSession, err := ctx.GrantSessionByRefreshToken(req.refreshToken)
 	if err != nil {
-		return response{}, oidcerr.Errorf(oidcerr.CodeInvalidRequest,
+		return response{}, goidc.Errorf(goidc.ErrorCodeInvalidRequest,
 			"invalid refresh_token", err)
 	}
 
@@ -44,7 +43,7 @@ func generateRefreshTokenGrant(
 
 	token, err := Make(ctx, c, grantSession.GrantInfo)
 	if err != nil {
-		return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not generate token during refresh token grant", err)
 	}
 
@@ -69,7 +68,7 @@ func generateRefreshTokenGrant(
 			newIDTokenOptions(grantSession.GrantInfo),
 		)
 		if err != nil {
-			return response{}, oidcerr.Errorf(oidcerr.CodeInternalError,
+			return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
 				"could not generate id token during refresh token grant", err)
 		}
 	}
@@ -94,8 +93,7 @@ func updateRefreshTokenGrantInfo(
 	}
 
 	if err := ctx.HandleGrant(grantInfo); err != nil {
-		return oidcerr.Errorf(oidcerr.CodeAccessDenied,
-			"access denied", err)
+		return err
 	}
 
 	return nil
@@ -119,7 +117,7 @@ func updateRefreshTokenGrantSession(
 	}
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return oidcerr.Errorf(oidcerr.CodeInternalError,
+		return goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not store the grant session", err)
 	}
 
@@ -134,24 +132,24 @@ func validateRefreshTokenGrantRequest(
 ) error {
 
 	if !slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) {
-		return oidcerr.New(oidcerr.CodeUnauthorizedClient, "invalid grant type")
+		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
 	}
 
 	if c.ID != grantSession.ClientID {
-		return oidcerr.New(oidcerr.CodeInvalidGrant,
+		return goidc.NewError(goidc.ErrorCodeInvalidGrant,
 			"the refresh token was not issued to the client")
 	}
 
 	if grantSession.IsExpired() {
 		if err := ctx.DeleteGrantSession(grantSession.ID); err != nil {
-			return oidcerr.Errorf(oidcerr.CodeInternalError,
+			return goidc.Errorf(goidc.ErrorCodeInternalError,
 				"internal error", err)
 		}
-		return oidcerr.New(oidcerr.CodeUnauthorizedClient, "the refresh token is expired")
+		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "the refresh token is expired")
 	}
 
 	if !containsAllScopes(grantSession.GrantedScopes, req.scopes) {
-		return oidcerr.New(oidcerr.CodeInvalidScope, "invalid scope")
+		return goidc.NewError(goidc.ErrorCodeInvalidScope, "invalid scope")
 	}
 
 	if err := validateResources(ctx, grantSession.GrantedResources, req); err != nil {
@@ -179,7 +177,7 @@ func validateRefreshTokenPoPForPublicClients(
 	dpopJWT, ok := dpopJWT(ctx)
 	if !ok {
 		// The session was created with DPoP for a public client, then the DPoP header must be passed.
-		return oidcerr.New(oidcerr.CodeUnauthorizedClient, "invalid DPoP header")
+		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid DPoP header")
 	}
 
 	return validateDPoPJWT(ctx, dpopJWT, dpopValidationOptions{
@@ -190,7 +188,7 @@ func validateRefreshTokenPoPForPublicClients(
 func refreshToken() (string, error) {
 	token, err := strutil.Random(goidc.RefreshTokenLength)
 	if err != nil {
-		return "", oidcerr.Errorf(oidcerr.CodeInternalError,
+		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not generate the refresh token", err)
 	}
 	return token, nil

@@ -8,7 +8,6 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/luikyv/go-oidc/internal/oidcerr"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -32,13 +31,13 @@ func TestGenerateGrant_ClientNotFound(t *testing.T) {
 		t.Fatal("The client should not be authenticated")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
 	}
 }
 
@@ -64,13 +63,13 @@ func TestGenerateGrant_UnauthenticatedClient(t *testing.T) {
 		t.Fatal("The client should not be authenticated")
 	}
 
-	var oidcErr oidcerr.Error
+	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != oidcerr.CodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, oidcerr.CodeInvalidClient)
+	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
 	}
 }
 
