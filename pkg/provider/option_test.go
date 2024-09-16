@@ -25,14 +25,8 @@ func TestWithClientStorage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-
-	want := provider{
-		config: oidc.Configuration{
-			ClientManager: st,
-		},
-	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
-		t.Error(diff)
+	if p.config.ClientManager != st {
+		t.Errorf("invalid client manager")
 	}
 }
 
@@ -48,14 +42,8 @@ func TestWithAuthnSessionStorage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-
-	want := provider{
-		config: oidc.Configuration{
-			AuthnSessionManager: st,
-		},
-	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
-		t.Error(diff)
+	if p.config.AuthnSessionManager != st {
+		t.Errorf("invalid session manager")
 	}
 }
 
@@ -71,14 +59,8 @@ func TestWithGrantSessionStorage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-
-	want := provider{
-		config: oidc.Configuration{
-			GrantSessionManager: st,
-		},
-	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
-		t.Error(diff)
+	if p.config.GrantSessionManager != st {
+		t.Errorf("invalid session manager")
 	}
 }
 

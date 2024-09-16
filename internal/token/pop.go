@@ -1,7 +1,7 @@
 package token
 
 import (
-	"net/textproto"
+	"net/http"
 	"net/url"
 	"slices"
 	"strings"
@@ -173,13 +173,11 @@ func addPoP(ctx *oidc.Context, grantInfo *goidc.GrantInfo) {
 // According to RFC 9449: "There is not more than one DPoP HTTP request header field."
 // Therefore, an empty string and false will be returned if more than one value is found in the DPoP header.
 func dpopJWT(ctx *oidc.Context) (string, bool) {
-	// Consider case insensitive headers by canonicalizing them.
-	canonicalizedDPoPHeader := textproto.CanonicalMIMEHeaderKey(goidc.HeaderDPoP)
-	canonicalizedHeaders := textproto.MIMEHeader(ctx.Request.Header)
-
-	values := canonicalizedHeaders[canonicalizedDPoPHeader]
-	if values == nil || len(values) != 1 {
+	// To access the dpop jwts from the field Header, we need to use the
+	// canonical version of the header "DPoP" which is "Dpop".
+	dpopJWTs := ctx.Request.Header[http.CanonicalHeaderKey(goidc.HeaderDPoP)]
+	if len(dpopJWTs) != 1 {
 		return "", false
 	}
-	return values[0], true
+	return dpopJWTs[0], true
 }

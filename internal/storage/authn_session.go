@@ -3,12 +3,14 @@ package storage
 import (
 	"context"
 	"errors"
+	"sync"
 
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 type AuthnSessionManager struct {
 	Sessions map[string]*goidc.AuthnSession
+	mu       sync.RWMutex
 }
 
 func NewAuthnSessionManager() *AuthnSessionManager {
@@ -21,6 +23,9 @@ func (m *AuthnSessionManager) Save(
 	_ context.Context,
 	session *goidc.AuthnSession,
 ) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	m.Sessions[session.ID] = session
 	return nil
 }
@@ -32,7 +37,7 @@ func (m *AuthnSessionManager) SessionByCallbackID(
 	*goidc.AuthnSession,
 	error,
 ) {
-	session, exists := m.getFirstSession(func(s *goidc.AuthnSession) bool {
+	session, exists := m.firstSession(func(s *goidc.AuthnSession) bool {
 		return s.CallbackID == callbackID
 	})
 	if !exists {
@@ -49,7 +54,7 @@ func (m *AuthnSessionManager) SessionByAuthorizationCode(
 	*goidc.AuthnSession,
 	error,
 ) {
-	session, exists := m.getFirstSession(func(s *goidc.AuthnSession) bool {
+	session, exists := m.firstSession(func(s *goidc.AuthnSession) bool {
 		return s.AuthorizationCode == authorizationCode
 	})
 	if !exists {
@@ -66,7 +71,7 @@ func (m *AuthnSessionManager) SessionByReferenceID(
 	*goidc.AuthnSession,
 	error,
 ) {
-	session, exists := m.getFirstSession(func(s *goidc.AuthnSession) bool {
+	session, exists := m.firstSession(func(s *goidc.AuthnSession) bool {
 		return s.ReferenceID == requestURI
 	})
 	if !exists {
@@ -77,16 +82,23 @@ func (m *AuthnSessionManager) SessionByReferenceID(
 }
 
 func (m *AuthnSessionManager) Delete(_ context.Context, id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	delete(m.Sessions, id)
 	return nil
 }
 
-func (m *AuthnSessionManager) getFirstSession(
+func (m *AuthnSessionManager) firstSession(
 	condition func(*goidc.AuthnSession) bool,
 ) (
 	*goidc.AuthnSession,
 	bool,
 ) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	// Convert the map to a slice of sessions.
 	sessions := make([]*goidc.AuthnSession, 0, len(m.Sessions))
 	for _, s := range m.Sessions {
 		sessions = append(sessions, s)

@@ -531,6 +531,10 @@ func (ctx *Context) HandleGrant(grantInfo *goidc.GrantInfo) error {
 	}
 
 	err := ctx.HandleGrantFunc(ctx.Request, grantInfo)
+	if err == nil {
+		return nil
+	}
+
 	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		return goidc.Errorf(goidc.ErrorCodeAccessDenied, "access denied", err)
