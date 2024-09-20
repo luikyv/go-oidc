@@ -27,5 +27,6 @@ go.work
 ## Random files
 playground/
 *.http
-*.pem
 todo.md
+conformance-suite/
+*.zip

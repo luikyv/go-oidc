@@ -1,12 +1,25 @@
 {
-    "alias": "test",
     "server": {
-        "discoveryUrl": "https://host.docker.internal/.well-known/openid-configuration"
+        "discoveryUrl": "https://auth.localhost:8445/.well-known/openid-configuration"
     },
     "client": {
         "client_name": "client_one"
     },
     "client2": {
         "client_name": "client_two"
-    }
+    },
+    "browser": [
+        {
+            "match": "https://auth.localhost*/auth*",
+            "tasks": [
+                {
+                    "task":  "Verify Complete",
+                    "match": "*/test/*/callback*",
+                    "commands": [
+                        ["wait", "id", "submission_complete", 10]
+                    ]
+                }
+            ]
+        }
+    ]
 }
