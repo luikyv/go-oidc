@@ -246,7 +246,7 @@ type HandleDynamicClientFunc func(r *http.Request, c *ClientMetaInfo) error
 // during the authorization request cannot be handled.
 type RenderErrorFunc func(w http.ResponseWriter, r *http.Request, err error) error
 
-type HandleErrorEventFunc func(r *http.Request, err error)
+type HandleErrorFunc func(r *http.Request, err error)
 
 var (
 	ScopeOpenID        = NewScope("openid")

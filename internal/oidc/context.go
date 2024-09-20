@@ -87,10 +87,21 @@ func (ctx *Context) HandleDynamicClient(c *goidc.ClientMetaInfo) error {
 
 func (ctx *Context) RenderError(err error) error {
 	if ctx.RenderErrorFunc == nil {
+		// No need to call handleError here, since this error will end up being
+		// passed to WriteError which already calls handleError.
 		return err
 	}
 
+	ctx.handleError(err)
 	return ctx.RenderErrorFunc(ctx.Response, ctx.Request, err)
+}
+
+func (ctx *Context) handleError(err error) {
+	if ctx.HandleErrorFunc == nil {
+		return
+	}
+
+	ctx.HandleErrorFunc(ctx.Request, err)
 }
 
 // Audiences returns the host names trusted by the server to validate assertions.
@@ -341,6 +352,8 @@ func (ctx *Context) WriteJWT(token string, status int) error {
 }
 
 func (ctx *Context) WriteError(err error) {
+
+	ctx.handleError(err)
 
 	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {

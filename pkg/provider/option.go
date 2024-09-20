@@ -898,6 +898,15 @@ func WithRenderErrorFunc(render goidc.RenderErrorFunc) ProviderOption {
 	}
 }
 
+// WithHandleErrorFunc defines a handler to be executed when an error happens.
+// For instance, this can be used to log information about the error
+func WithHandleErrorFunc(f goidc.HandleErrorFunc) ProviderOption {
+	return func(p *provider) error {
+		p.config.HandleErrorFunc = f
+		return nil
+	}
+}
+
 // WithResourceIndicators enables client to indicate which resources they intend
 // to access.
 func WithResourceIndicators(resources ...string) ProviderOption {

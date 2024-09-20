@@ -45,6 +45,7 @@ type Configuration struct {
 	// contraining tokens is required, either DPoP or client TLS.
 	TokenBindingIsRequired bool
 	RenderErrorFunc        goidc.RenderErrorFunc
+	HandleErrorFunc        goidc.HandleErrorFunc
 	// OutterAuthParamsRequired indicates that the required authorization params
 	// must be informed as query parameters during the request to the
 	// authorization endpoint even if they were informed previously during PAR
@@ -89,7 +90,6 @@ type Configuration struct {
 	// will expire in the near future during private_key_jwt and
 	// client_secret_jwt.
 	AssertionLifetimeSecs int
-	AssertionAudiences    []string // TODO: Use this.
 
 	DCRIsEnabled              bool
 	DCRTokenRotationIsEnabled bool

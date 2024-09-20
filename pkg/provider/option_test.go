@@ -1672,6 +1672,28 @@ func TestWithRenderErrorFunc(t *testing.T) {
 	}
 }
 
+func TestWithHandleErrorFunc(t *testing.T) {
+	// Given.
+	p := &provider{}
+	var handleErrorFunc goidc.HandleErrorFunc = func(
+		r *http.Request,
+		err error,
+	) {
+	}
+
+	// When.
+	err := WithHandleErrorFunc(handleErrorFunc)(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if p.config.HandleErrorFunc == nil {
+		t.Error("HandleErrorFunc cannot be nil")
+	}
+}
+
 func TestWithResourceIndicators(t *testing.T) {
 	// Given.
 	p := &provider{}
