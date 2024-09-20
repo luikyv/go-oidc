@@ -108,7 +108,7 @@ func jarFromSignedRequestObject(
 	}
 
 	// Verify that the key ID belongs to the client.
-	jwk, err := clientutil.JWKByKeyID(c, parsedToken.Headers[0].KeyID)
+	jwk, err := clientutil.JWKByKeyID(ctx, c, parsedToken.Headers[0].KeyID)
 	if err != nil {
 		return request{}, goidc.Errorf(goidc.ErrorCodeInvalidResquestObject,
 			"could not fetch the client public key", err)

@@ -1740,3 +1740,22 @@ func TestWithOutterAuthorizationParamsRequired(t *testing.T) {
 		t.Error(diff)
 	}
 }
+
+func TestWithHTTPClientFunc(t *testing.T) {
+	// Given.
+	p := &provider{}
+
+	// When.
+	err := WithHTTPClientFunc(func(r *http.Request) *http.Client {
+		return http.DefaultClient
+	})(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if p.config.HTTPClientFunc == nil {
+		t.Error("HTTPClientFunc cannot be nil")
+	}
+}

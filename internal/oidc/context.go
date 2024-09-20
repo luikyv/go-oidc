@@ -543,6 +543,15 @@ func (ctx *Context) HandleGrant(grantInfo *goidc.GrantInfo) error {
 	return oidcErr
 }
 
+func (ctx *Context) HTTPClient() *http.Client {
+
+	if ctx.HTTPClientFunc == nil {
+		return http.DefaultClient
+	}
+
+	return ctx.HTTPClientFunc(ctx.Request)
+}
+
 //---------------------------------------- Context ----------------------------------------//
 
 func (ctx *Context) Deadline() (deadline time.Time, ok bool) {

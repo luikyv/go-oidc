@@ -115,14 +115,14 @@ func makeIDToken(
 }
 
 func encryptIDToken(
-	_ *oidc.Context,
+	ctx *oidc.Context,
 	c *goidc.Client,
 	userInfoJWT string,
 ) (
 	string,
 	error,
 ) {
-	jwk, err := clientutil.JWKByAlg(c, string(c.IDTokenKeyEncAlg))
+	jwk, err := clientutil.JWKByAlg(ctx, c, string(c.IDTokenKeyEncAlg))
 	if err != nil {
 		return "", goidc.Errorf(goidc.ErrorCodeInvalidRequest,
 			"could not encrypt the id token", err)

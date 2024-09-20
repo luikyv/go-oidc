@@ -24,10 +24,7 @@ const (
 )
 
 func main() {
-	// TODO: Find a way to pass the http client.
 	// TODO: Only use necessary configs.
-	// Allow insecure requests to clients' jwks uri during local tests.
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	// Get the file path of the source file.
 	_, filename, _, _ := runtime.Caller(0)
 	sourceDir := filepath.Dir(filename)
@@ -61,6 +58,7 @@ func main() {
 		provider.WithDCR(dcrPlugin(scopes)),
 		provider.WithTokenOptions(tokenOptions(serverKeyID)),
 		provider.WithOutterAuthorizationParamsRequired(),
+		provider.WithHTTPClientFunc(httpClient),
 		provider.WithPolicy(policy()),
 	)
 	if err != nil {
@@ -109,6 +107,14 @@ func tokenOptions(keyID string) goidc.TokenOptionsFunc {
 
 func issueRefreshToken(client *goidc.Client, grantInfo goidc.GrantInfo) bool {
 	return slices.Contains(client.GrantTypes, goidc.GrantRefreshToken)
+}
+
+func httpClient(_ *http.Request) *http.Client {
+	return &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
 }
 
 func privateJWKS(filename string) jose.JSONWebKeySet {

@@ -36,7 +36,7 @@ func TestFetchPublicJWKS(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		// When.
-		_, err := client.FetchPublicJWKS()
+		_, err := client.FetchPublicJWKS(http.DefaultClient)
 		// Then.
 		if err != nil {
 			t.Fatalf("unexpected error during attempt %d: %v", i+1, err)

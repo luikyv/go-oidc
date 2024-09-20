@@ -300,11 +300,13 @@ func NewDynamicScope(
 	}
 }
 
-type ShouldIssueRefreshTokenFunc func(client *Client, grantInfo GrantInfo) bool
+type HTTPClientFunc func(*http.Request) *http.Client
+
+type ShouldIssueRefreshTokenFunc func(*Client, GrantInfo) bool
 
 // TokenOptionsFunc defines a function that returns token configuration and is
 // executed when issuing access tokens.
-type TokenOptionsFunc func(client *Client, grantInfo GrantInfo) TokenOptions
+type TokenOptionsFunc func(*Client, GrantInfo) TokenOptions
 
 // TokenOptions defines a template for generating access tokens.
 type TokenOptions struct {

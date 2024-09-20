@@ -930,3 +930,13 @@ func WithOutterAuthorizationParamsRequired() ProviderOption {
 		return nil
 	}
 }
+
+// WithHTTPClientFunc defines how to generate the client used to make HTTP
+// requests to, for instance, a client's JWKS endpoint.
+// The default behavior is to use the default HTTP client from the std library.
+func WithHTTPClientFunc(f goidc.HTTPClientFunc) ProviderOption {
+	return func(p *provider) error {
+		p.config.HTTPClientFunc = f
+		return nil
+	}
+}

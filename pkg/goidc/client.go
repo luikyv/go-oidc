@@ -48,7 +48,7 @@ func (c *Client) Attribute(key string) any {
 // attribute or using jwks_uri.
 //
 // This function also caches the keys if they are fetched from jwks_uri.
-func (c *Client) FetchPublicJWKS() (jose.JSONWebKeySet, error) {
+func (c *Client) FetchPublicJWKS(httpClient *http.Client) (jose.JSONWebKeySet, error) {
 	var jwks jose.JSONWebKeySet
 
 	if c.PublicJWKS != nil {
@@ -61,7 +61,7 @@ func (c *Client) FetchPublicJWKS() (jose.JSONWebKeySet, error) {
 			errors.New("the client jwks was informed neither by value nor by reference")
 	}
 
-	rawJWKS, err := c.fetchJWKS()
+	rawJWKS, err := c.fetchJWKS(httpClient)
 	if err != nil {
 		return jose.JSONWebKeySet{}, err
 	}
@@ -72,9 +72,8 @@ func (c *Client) FetchPublicJWKS() (jose.JSONWebKeySet, error) {
 	return jwks, err
 }
 
-func (c *Client) fetchJWKS() (json.RawMessage, error) {
-	// FIXME: Don't use the default client.
-	resp, err := http.Get(c.PublicJWKSURI)
+func (c *Client) fetchJWKS(httpClient *http.Client) (json.RawMessage, error) {
+	resp, err := httpClient.Get(c.PublicJWKSURI)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		return nil, errors.New("could not fetch client jwks")
 	}

@@ -147,7 +147,7 @@ func authenticatePrivateKeyJWT(
 			"invalid client assertion header")
 	}
 
-	jwk, err := jwkMatchingHeader(c, parsedAssertion.Headers[0])
+	jwk, err := jwkMatchingHeader(ctx, c, parsedAssertion.Headers[0])
 	if err != nil {
 		return err
 	}
@@ -161,9 +161,9 @@ func authenticatePrivateKeyJWT(
 	return areClaimsValid(ctx, c, claims)
 }
 
-func jwkMatchingHeader(c *goidc.Client, header jose.Header) (jose.JSONWebKey, error) {
+func jwkMatchingHeader(ctx *oidc.Context, c *goidc.Client, header jose.Header) (jose.JSONWebKey, error) {
 	if header.KeyID != "" {
-		jwk, err := JWKByKeyID(c, header.KeyID)
+		jwk, err := JWKByKeyID(ctx, c, header.KeyID)
 		if err != nil {
 			return jose.JSONWebKey{}, goidc.Errorf(goidc.ErrorCodeInvalidClient,
 				"could not find the jwk used to sign the assertion that matches the 'kid' header", err)
@@ -171,7 +171,7 @@ func jwkMatchingHeader(c *goidc.Client, header jose.Header) (jose.JSONWebKey, er
 		return jwk, nil
 	}
 
-	jwk, err := JWKByAlg(c, header.Algorithm)
+	jwk, err := JWKByAlg(ctx, c, header.Algorithm)
 	if err != nil {
 		return jose.JSONWebKey{}, goidc.Errorf(goidc.ErrorCodeInvalidClient,
 			"could not find the jwk used to sign the assertion that matches the 'alg' header", err)
@@ -271,7 +271,7 @@ func authenticateSelfSignedTLSCert(
 			"invalid client certificate", err)
 	}
 
-	jwk, err := jwkMatchingCert(c, cert)
+	jwk, err := jwkMatchingCert(ctx, c, cert)
 	if err != nil {
 		return err
 	}
@@ -285,13 +285,14 @@ func authenticateSelfSignedTLSCert(
 }
 
 func jwkMatchingCert(
+	ctx *oidc.Context,
 	c *goidc.Client,
 	cert *x509.Certificate,
 ) (
 	jose.JSONWebKey,
 	error,
 ) {
-	jwks, err := c.FetchPublicJWKS()
+	jwks, err := c.FetchPublicJWKS(ctx.HTTPClient())
 	if err != nil {
 		return jose.JSONWebKey{}, goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not load the client JWKS", err)

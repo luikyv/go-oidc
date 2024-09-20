@@ -158,4 +158,6 @@ type Configuration struct {
 	ResourceIndicatorsIsEnabled  bool
 	ResourceIndicatorsIsRequired bool
 	Resources                    []string
+
+	HTTPClientFunc goidc.HTTPClientFunc
 }

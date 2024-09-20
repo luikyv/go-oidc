@@ -71,10 +71,11 @@ const (
 type testStatus string
 
 const (
-	testStatusCreated  = "CREATED"
-	testStatusWaiting  = "WAITING"
-	testStatusRunning  = "RUNNING"
-	testStatusFinished = "FINISHED"
+	testStatusCreated    = "CREATED"
+	testStatusConfigured = "CONFIGURED"
+	testStatusWaiting    = "WAITING"
+	testStatusRunning    = "RUNNING"
+	testStatusFinished   = "FINISHED"
 )
 
 type testResult string
@@ -221,6 +222,7 @@ func runTestModule(name string, plan testPlan) error {
 		if !slices.Contains(
 			[]testStatus{
 				testStatusCreated,
+				testStatusConfigured,
 				testStatusWaiting,
 				testStatusRunning,
 			},
