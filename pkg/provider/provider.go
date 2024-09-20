@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/authorize"
@@ -27,6 +28,7 @@ type Provider interface {
 	//	server.Handle("/", op.Handler())
 	Handler() http.Handler
 	Run(address string, middlewares ...goidc.MiddlewareFunc) error
+	// TODO: Document it.
 	RunTLS(opts TLSOptions, middlewares ...goidc.MiddlewareFunc) error
 	Client(ctx context.Context, id string) (*goidc.Client, error)
 	// TokenInfo returns information about the access token sent in the request.
@@ -156,7 +158,9 @@ func (p *provider) RunTLS(
 	if err != nil {
 		return err
 	}
-	mux.Handle(hostURL.Host+"/", handler)
+	// Remove the port from the host name if any.
+	host := strings.Split(hostURL.Host, ":")[0]
+	mux.Handle(host+"/", handler)
 
 	if p.config.MTLSIsEnabled {
 		clientAuth = tls.VerifyClientCertIfGiven

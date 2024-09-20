@@ -3,12 +3,12 @@ package main
 import (
 	"crypto/tls"
 	"encoding/json"
+	"html/template"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strings"
 
@@ -18,22 +18,11 @@ import (
 	"github.com/luikyv/go-oidc/pkg/provider"
 )
 
-const (
-	port   string = ":8445"
-	issuer string = "https://auth.localhost" + port
-)
+const issuer = "https://localhost"
 
 func main() {
-	// TODO: Find a way to pass the http client.
-	// TODO: Only use necessary configs.
 	// Allow insecure requests to clients' jwks uri during local tests.
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	// Get the file path of the source file.
-	_, filename, _, _ := runtime.Caller(0)
-	sourceDir := filepath.Dir(filename)
-	jwksFilePath := filepath.Join(sourceDir, "../keys/jwks.json")
-	certFilePath := filepath.Join(sourceDir, "../keys/cert.pem")
-	certKeyFilePath := filepath.Join(sourceDir, "../keys/key.pem")
 
 	serverKeyID := "rs256_key"
 	scopes := []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeOfflineAccess, goidc.ScopeEmail}
@@ -41,7 +30,7 @@ func main() {
 	// Create and configure the OpenID provider.
 	op, err := provider.New(
 		issuer,
-		privateJWKS(jwksFilePath),
+		privateJWKS("keys/jwks.json"),
 		provider.WithScopes(scopes...),
 		provider.WithPAR(),
 		provider.WithJAR(),
@@ -51,6 +40,7 @@ func main() {
 		provider.WithSecretPostAuthn(),
 		provider.WithIssuerResponseParameter(),
 		provider.WithClaimsParameter(),
+		provider.WithDPoP(jose.RS256, jose.PS256, jose.ES256),
 		provider.WithPKCE(goidc.CodeChallengeMethodSHA256),
 		provider.WithImplicitGrant(),
 		provider.WithRefreshTokenGrant(),
@@ -60,7 +50,6 @@ func main() {
 		provider.WithACRs(goidc.ACRMaceIncommonIAPBronze, goidc.ACRMaceIncommonIAPSilver),
 		provider.WithDCR(dcrPlugin(scopes)),
 		provider.WithTokenOptions(tokenOptions(serverKeyID)),
-		provider.WithOutterAuthorizationParamsRequired(),
 		provider.WithPolicy(policy()),
 	)
 	if err != nil {
@@ -68,9 +57,9 @@ func main() {
 	}
 
 	if err := op.RunTLS(provider.TLSOptions{
-		TLSAddress: port,
-		ServerCert: certFilePath,
-		ServerKey:  certKeyFilePath,
+		TLSAddress: ":443",
+		ServerCert: "keys/cert.pem",
+		ServerKey:  "keys/key.pem",
 	}); err != nil {
 		log.Fatal(err)
 	}
@@ -112,7 +101,7 @@ func issueRefreshToken(client *goidc.Client, grantInfo goidc.GrantInfo) bool {
 }
 
 func privateJWKS(filename string) jose.JSONWebKeySet {
-	absPath, _ := filepath.Abs(filename)
+	absPath, _ := filepath.Abs("./" + filename)
 	clientJWKSFile, err := os.Open(absPath)
 	if err != nil {
 		log.Fatal(err)
@@ -137,7 +126,95 @@ func authenticateUser(
 	r *http.Request,
 	session *goidc.AuthnSession,
 ) goidc.AuthnStatus {
-	session.SetUserID("random@gmail.com")
+
+	// Init the step if empty.
+	if session.Parameter("step") == nil {
+		session.StoreParameter("step", "identity")
+	}
+
+	if session.Parameter("step") == "identity" {
+		status := identifyUser(w, r, session)
+		if status != goidc.StatusSuccess {
+			return status
+		}
+		// The status is success so we can move to the next step.
+		session.StoreParameter("step", "password")
+	}
+
+	if session.Parameter("step") == "password" {
+		status := authenticateWithPassword(w, r, session)
+		if status != goidc.StatusSuccess {
+			return status
+		}
+		// The status is success so we can move to the next step.
+		session.StoreParameter("step", "finish")
+	}
+
+	return finishAuthentication(session)
+}
+
+func identifyUser(
+	w http.ResponseWriter,
+	r *http.Request,
+	session *goidc.AuthnSession,
+) goidc.AuthnStatus {
+
+	r.ParseForm()
+	username := r.PostFormValue("username")
+	if username == "" {
+		w.WriteHeader(http.StatusOK)
+		tmpl, _ := template.New("default").Parse(identityForm)
+		if err := tmpl.Execute(w, map[string]any{
+			"host":       strings.Replace(issuer, "host.docker.internal", "localhost", -1),
+			"callbackID": session.CallbackID,
+		}); err != nil {
+			return goidc.StatusFailure
+		}
+		return goidc.StatusInProgress
+	}
+
+	session.SetUserID(username)
+	return goidc.StatusSuccess
+}
+
+func authenticateWithPassword(
+	w http.ResponseWriter,
+	r *http.Request,
+	session *goidc.AuthnSession,
+) goidc.AuthnStatus {
+	r.ParseForm()
+	password := r.PostFormValue("password")
+	if password == "" {
+		w.WriteHeader(http.StatusOK)
+		tmpl, _ := template.New("default").Parse(passwordForm)
+		if err := tmpl.Execute(w, map[string]any{
+			"host":       strings.Replace(issuer, "host.docker.internal", "localhost", -1),
+			"callbackID": session.CallbackID,
+		}); err != nil {
+			return goidc.StatusFailure
+		}
+		return goidc.StatusInProgress
+	}
+
+	if password != "password" {
+		w.WriteHeader(http.StatusOK)
+		tmpl, _ := template.New("default").Parse(passwordForm)
+		if err := tmpl.Execute(w, map[string]any{
+			"host":       strings.Replace(issuer, "host.docker.internal", "localhost", -1),
+			"callbackID": session.CallbackID,
+			"error":      "invalid password",
+		}); err != nil {
+			return goidc.StatusFailure
+		}
+		return goidc.StatusInProgress
+	}
+
+	return goidc.StatusSuccess
+}
+
+func finishAuthentication(
+	session *goidc.AuthnSession,
+) goidc.AuthnStatus {
 	session.GrantScopes(session.Scopes)
 	session.SetIDTokenClaimAuthTime(timeutil.TimestampNow())
 
@@ -184,3 +261,43 @@ func authenticateUser(
 
 	return goidc.StatusSuccess
 }
+
+var identityForm string = `
+	<html>
+	<head>
+		<title>identity</title>
+	</head>
+	<body>
+		<h1>Username Form</h1>
+		<form action="{{ .host }}/authorize/{{ .callbackID }}" method="post">
+			<label for="username">Username:</label>
+			<input type="text" id="username" name="username"><br><br>
+			<input type="submit" value="Submit">
+		</form>
+	</body>
+	</html>
+`
+
+var passwordForm string = `
+	<html>
+	<head>
+		<title>password</title>
+	</head>
+	<body>
+		<h1>Password Form</h1>
+		<form action="{{ .host }}/authorize/{{ .callbackID }}" method="post">
+			<label for="password">Password:</label>
+			<input type="text" id="password" name="password"><br><br>
+			<input type="submit" value="Submit">
+		</form>
+	</body>
+
+	<script>
+		var error = "{{ .error}}";
+		if(error) {
+			alert(error);
+		}
+	</script>
+
+	</html>
+`

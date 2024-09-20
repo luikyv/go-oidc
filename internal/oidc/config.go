@@ -89,6 +89,7 @@ type Configuration struct {
 	// will expire in the near future during private_key_jwt and
 	// client_secret_jwt.
 	AssertionLifetimeSecs int
+	AssertionAudiences    []string // TODO: Use this.
 
 	DCRIsEnabled              bool
 	DCRTokenRotationIsEnabled bool
