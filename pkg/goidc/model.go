@@ -433,6 +433,7 @@ type AuthorizationParameters struct {
 	Claims               *ClaimsObject         `json:"claims,omitempty"`
 	AuthorizationDetails []AuthorizationDetail `json:"authorization_details,omitempty"`
 	Resources            Resources             `json:"resource,omitempty"`
+	DPoPJWKThumbprint    string                `json:"dpop_jkt,omitempty"`
 }
 
 type Resources []string
