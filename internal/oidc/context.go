@@ -149,7 +149,10 @@ func (ctx *Context) AvailablePolicy(
 //---------------------------------------- CRUD ----------------------------------------//
 
 func (ctx *Context) SaveClient(client *goidc.Client) error {
-	return ctx.ClientManager.Save(ctx.Request.Context(), client)
+	if err := ctx.ClientManager.Save(ctx.Request.Context(), client); err != nil {
+		return goidc.Errorf(goidc.ErrorCodeInternalError, "internal error", err)
+	}
+	return nil
 }
 
 func (ctx *Context) Client(id string) (*goidc.Client, error) {

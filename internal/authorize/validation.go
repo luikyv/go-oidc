@@ -1,6 +1,7 @@
 package authorize
 
 import (
+	"errors"
 	"slices"
 
 	"github.com/luikyv/go-oidc/internal/clientutil"
@@ -128,7 +129,16 @@ func validatePushedRequest(
 		c.RedirectURIs = append(c.RedirectURIs, req.RedirectURI)
 	}
 
-	return validateParamsAsOptionals(ctx, req.AuthorizationParameters, c)
+	// Convert redirect errors to JSON.
+	if err := validateParamsAsOptionals(ctx, req.AuthorizationParameters, c); err != nil {
+		var redirectErr redirectionError
+		if errors.As(err, &redirectErr) {
+			return goidc.Errorf(redirectErr.code, redirectErr.desc, redirectErr)
+		}
+		return err
+	}
+
+	return nil
 }
 
 // -------------------------------------------------- Helper Functions -------------------------------------------------- //

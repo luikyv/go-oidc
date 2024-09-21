@@ -31,18 +31,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// If the run all modules flag was informed, consider all available modules
-	// in the test plan.
-	if args.runAllTestModules {
-		var modules []string
-		for _, m := range plan.TestModules {
-			modules = append(modules, m.Name)
-		}
-		args.testModuleNames = modules
-	}
-
+	testModules := chosenTestModules(plan, args)
 	var testErrs []error
-	for _, module := range args.testModuleNames {
+	for _, module := range testModules {
 		log.Printf("------------------------------ %s ------------------------------", module)
 		err = runTestModule(module, plan)
 		log.Printf("------------------------------------------------------------")
@@ -64,6 +55,7 @@ const (
 	argTestPlanName      string = "--plan="
 	argTestModuleNames   string = "--modules="
 	argRunAllTestModules string = "--all-modules"
+	argExcludeModules    string = "--exclude-modules"
 	argConfigFile        string = "--config="
 	argResponseType      string = "--response_type="
 )
@@ -93,11 +85,11 @@ var httpClient = &http.Client{
 }
 
 type arguments struct {
-	testPlanName      string
-	runAllTestModules bool
-	testModuleNames   []string
-	variant           variant
-	configFile        string
+	testPlanName       string
+	testModules        []string
+	excludeTestModules []string
+	variant            variant
+	configFile         string
 }
 
 type testPlan struct {
@@ -130,6 +122,32 @@ func (v variant) String() string {
 	return string(b)
 }
 
+func chosenTestModules(plan testPlan, args arguments) []string {
+	var testModules []string
+	for _, m := range plan.TestModules {
+		testModules = append(testModules, m.Name)
+	}
+
+	// If specific test modules were informed, they are the only ones to be run.
+	if len(args.testModules) != 0 {
+		testModules = args.testModules
+	}
+
+	// Remove excluded test modules.
+	if len(args.excludeTestModules) != 0 {
+		var filteredModules []string
+		for _, m := range testModules {
+			if slices.Contains(args.excludeTestModules, m) {
+				continue
+			}
+			filteredModules = append(filteredModules, m)
+		}
+		testModules = filteredModules
+	}
+
+	return testModules
+}
+
 // buildArguments parses the command line arguments sent when running this routine.
 func buildArguments() arguments {
 	args := arguments{}
@@ -143,12 +161,15 @@ func buildArguments() arguments {
 		case strings.HasPrefix(arg, argTestPlanName):
 			args.testPlanName = strings.Replace(arg, argTestPlanName, "", 1)
 		case strings.HasPrefix(arg, argTestModuleNames):
-			args.testModuleNames = strings.Split(
+			args.testModules = strings.Split(
 				strings.Replace(arg, argTestModuleNames, "", 1),
 				",",
 			)
-		case strings.HasPrefix(arg, argRunAllTestModules):
-			args.runAllTestModules = true
+		case strings.HasPrefix(arg, argExcludeModules):
+			args.testModules = strings.Split(
+				strings.Replace(arg, argExcludeModules, "", 1),
+				",",
+			)
 		case strings.HasPrefix(arg, argConfigFile):
 			args.configFile = strings.Replace(arg, argConfigFile, "", 1)
 		case strings.HasPrefix(arg, argResponseType):

@@ -23,45 +23,52 @@ const (
 	issuer string = "https://auth.localhost" + port
 )
 
+var (
+	scopes = []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeOfflineAccess, goidc.ScopeEmail}
+)
+
 func main() {
 	// Get the file path of the source file.
 	_, filename, _, _ := runtime.Caller(0)
 	sourceDir := filepath.Dir(filename)
+	clientOneJWKSFilePath := filepath.Join(sourceDir, "../keys/client_one.jwks")
+	clientTwoJWKSFilePath := filepath.Join(sourceDir, "../keys/client_two.jwks")
 	jwksFilePath := filepath.Join(sourceDir, "../keys/server.jwks")
 	certFilePath := filepath.Join(sourceDir, "../keys/server.cert")
 	certKeyFilePath := filepath.Join(sourceDir, "../keys/server.key")
 
-	serverKeyID := "rs256_key"
-	scopes := []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeOfflineAccess, goidc.ScopeEmail}
+	serverKeyID := "ps256_key"
 
 	// Create and configure the OpenID provider.
 	op, err := provider.New(
 		issuer,
 		privateJWKS(jwksFilePath),
 		provider.WithScopes(scopes...),
-		provider.WithPAR(),
+		provider.WithUserInfoSignatureKeyIDs(serverKeyID),
+		provider.WithPARRequired(),
 		provider.WithJAR(),
 		provider.WithJARM(serverKeyID),
-		provider.WithPrivateKeyJWTAuthn(jose.RS256),
-		provider.WithBasicSecretAuthn(),
-		provider.WithSecretPostAuthn(),
+		provider.WithPrivateKeyJWTAuthn(jose.PS256),
 		provider.WithIssuerResponseParameter(),
 		provider.WithClaimsParameter(),
-		provider.WithPKCE(goidc.CodeChallengeMethodSHA256),
-		provider.WithImplicitGrant(),
+		provider.WithPKCERequired(goidc.CodeChallengeMethodSHA256),
 		provider.WithRefreshTokenGrant(),
 		provider.WithShouldIssueRefreshTokenFunc(issueRefreshToken),
 		provider.WithRefreshTokenLifetimeSecs(6000),
+		provider.WithDPoP(jose.PS256, jose.ES256),
+		provider.WithTokenBindingRequired(),
 		provider.WithClaims(goidc.ClaimEmail, goidc.ClaimEmailVerified),
 		provider.WithACRs(goidc.ACRMaceIncommonIAPBronze, goidc.ACRMaceIncommonIAPSilver),
 		provider.WithDCR(dcrPlugin(scopes)),
 		provider.WithTokenOptions(tokenOptions(serverKeyID)),
-		provider.WithOutterAuthorizationParamsRequired(),
 		provider.WithHTTPClientFunc(httpClient),
 		provider.WithPolicy(policy()),
 		provider.WithHandleErrorFunc(func(r *http.Request, err error) {
 			log.Printf("error during request %s: %s\n", r.RequestURI, err.Error())
 		}),
+		provider.WithStaticClient(client("client_one", clientOneJWKSFilePath)),
+		provider.WithStaticClient(client("client_two", clientTwoJWKSFilePath)),
+		provider.WithUnregisteredRedirectURIsForPAR(),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -71,8 +78,47 @@ func main() {
 		TLSAddress: port,
 		ServerCert: certFilePath,
 		ServerKey:  certKeyFilePath,
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+		},
 	}); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func client(id, jwksFilepath string) *goidc.Client {
+	// Extract the public client JWKS.
+	jwks := privateJWKS(jwksFilepath)
+	var publicKeys []jose.JSONWebKey
+	for _, key := range jwks.Keys {
+		publicKeys = append(publicKeys, key.Public())
+	}
+	jwks.Keys = publicKeys
+	jwksBytes, _ := json.Marshal(jwks)
+
+	// Extract scopes IDs.
+	var scopesIDs []string
+	for _, scope := range scopes {
+		scopesIDs = append(scopesIDs, scope.ID)
+	}
+
+	return &goidc.Client{
+		ID: id,
+		ClientMetaInfo: goidc.ClientMetaInfo{
+			AuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
+			PublicJWKS:  jwksBytes,
+			ScopeIDs:    strings.Join(scopesIDs, " "),
+			GrantTypes: []goidc.GrantType{
+				goidc.GrantAuthorizationCode,
+				goidc.GrantRefreshToken,
+			},
+			ResponseTypes: []goidc.ResponseType{
+				goidc.ResponseTypeCode,
+			},
+		},
 	}
 }
 

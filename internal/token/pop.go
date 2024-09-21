@@ -41,7 +41,7 @@ func validateDPoPJWT(
 
 	if parsedDPoPJWT.Headers[0].ExtraHeaders["typ"] != "dpop+jwt" {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"invalid typ header. it should be dpop+jwt")
+			"invalid typ header, it should be dpop+jwt")
 	}
 
 	jwk := parsedDPoPJWT.Headers[0].JSONWebKey

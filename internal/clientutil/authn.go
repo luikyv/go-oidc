@@ -37,7 +37,8 @@ func Authenticated(
 ) {
 	id, err := extractID(ctx)
 	if err != nil {
-		return nil, err
+		return nil, goidc.Errorf(goidc.ErrorCodeInvalidClient,
+			"could not authenticate the client", err)
 	}
 
 	client, err := ctx.Client(id)
@@ -47,7 +48,8 @@ func Authenticated(
 	}
 
 	if err := authenticate(ctx, client); err != nil {
-		return nil, err
+		return nil, goidc.Errorf(goidc.ErrorCodeInvalidClient,
+			"could not authenticate the client", err)
 	}
 
 	return client, nil

@@ -46,6 +46,32 @@ jobs:
             config: ./examples/oidc/cs_config.json
             server_main: ./examples/oidc/main.go
             response_type: code id_token token
+          - name: fapi2-message-signing-id1-test-plan
+            modules:
+              - fapi2-security-profile-id2-discovery-end-point-verification
+              - fapi2-security-profile-id2-happy-flow
+              - fapi2-security-profile-id2-ensure-request-object-with-multiple-aud-succeeds
+              - fapi2-security-profile-id2-ensure-authorization-request-without-state-success
+              - fapi2-security-profile-id2-ensure-authorization-request-without-nonce-success
+              - fapi2-security-profile-id2-ensure-other-scope-order-succeeds
+              - fapi2-security-profile-id2-test-claims-parameter-identity-claims
+              - fapi2-security-profile-id2-access-token-type-header-case-sensitivity
+              - fapi2-security-profile-id2-check-dpop-proof-nbf-exp
+              - fapi2-security-profile-id2-ensure-dpopproof-with-iat-10seconds-before-succeeds
+              - fapi2-security-profile-id2-ensure-response-type-code-idtoken-fails
+              - fapi2-security-profile-id2-ensure-client-id-in-token-endpoint
+              - fapi2-security-profile-id2-ensure-different-nonce-inside-and-outside-request-object
+              - fapi2-security-profile-id2-ensure-holder-of-key-required
+              - fapi2-security-profile-id2-ensure-authorization-code-is-bound-to-client
+              - fapi2-security-profile-id2-state-only-outside-request-object-not-used
+            config: ./examples/oidc/cs_config.json
+            server_main: ./examples/fapi2/main.go
+            sender_constrain: dpop
+            client_auth_type: private_key_jwt
+            openid: openid_connect
+            fapi_request_method: unsigned
+            fapi_profile: plain_fapi
+            fapi_response_mode: plain_response
 
     steps:
         - uses: actions/checkout@v4
@@ -88,13 +114,18 @@ jobs:
             # Prepare base arguments
             ARGS="--plan=${{ matrix.plan.name }} --config=${{ matrix.plan.config }}"
 
-            # If not specific test modules are set, all modules will execute.
+            # Specified modules are the only ones to execute.
             if [ -n "${{ matrix.plan.modules }}" ]; then
               # Convert the test modules list to comma-separated string
               MODULES=$(echo '${{ toJson(matrix.plan.modules) }}' | jq -r '.[]' | tr '\n' ',' | sed 's/,$//')
               ARGS="$ARGS --modules=$MODULES"
-            else
-              ARGS="$ARGS --all-modules"
+            fi
+
+            # Excluded modules won't execute.
+            if [ -n "${{ matrix.plan.excluded_modules }}" ]; then
+              # Convert the excluded test modules list to comma-separated string
+              MODULES=$(echo '${{ toJson(matrix.plan.excluded_modules) }}' | jq -r '.[]' | tr '\n' ',' | sed 's/,$//')
+              ARGS="$ARGS --exclude-modules=$MODULES"
             fi
 
             # Add variants
