@@ -1,17 +1,13 @@
 package token
 
 import (
-	"net/http"
-	"net/url"
-	"slices"
-	"strings"
-	"time"
-
-	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
+// ValidatePoP validates that the context contains the information required to
+// prove the client's possession of the token.
 func ValidatePoP(
 	ctx *oidc.Context,
 	token string,
@@ -25,85 +21,8 @@ func ValidatePoP(
 	return validateTLSPoP(ctx, confirmation)
 }
 
-func validateDPoPJWT(
-	ctx *oidc.Context,
-	dpopJWT string,
-	opts dpopValidationOptions,
-) error {
-	parsedDPoPJWT, err := jwt.ParseSigned(dpopJWT, ctx.DPoPSigAlgs)
-	if err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid dpop jwt", err)
-	}
-
-	if len(parsedDPoPJWT.Headers) != 1 {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid dpop")
-	}
-
-	if parsedDPoPJWT.Headers[0].ExtraHeaders["typ"] != "dpop+jwt" {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"invalid typ header, it should be dpop+jwt")
-	}
-
-	jwk := parsedDPoPJWT.Headers[0].JSONWebKey
-	if jwk == nil || !jwk.Valid() || !jwk.IsPublic() {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid jwk header")
-	}
-
-	var claims jwt.Claims
-	var dpopClaims dpopClaims
-	if err := parsedDPoPJWT.Claims(jwk.Key, &claims, &dpopClaims); err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid dpop jwt", err)
-	}
-
-	// Validate that the "iat" claim is present and it is not too far in the past.
-	if claims.IssuedAt == nil || int(time.Since(claims.IssuedAt.Time()).Seconds()) > ctx.DPoPLifetimeSecs {
-		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient,
-			"invalid dpop jwt issuance time")
-	}
-
-	if claims.ID == "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid jti claim")
-	}
-
-	if dpopClaims.HTTPMethod != ctx.RequestMethod() {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid htm claim")
-	}
-
-	// The query and fragment components of the "htu" must be ignored.
-	// Also, htu should be case-insensitive.
-	httpURI, err := urlWithoutParams(strings.ToLower(dpopClaims.HTTPURI))
-	if err != nil || !slices.Contains(ctx.Audiences(), httpURI) {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid htu claim")
-	}
-
-	if opts.accessToken != "" &&
-		dpopClaims.AccessTokenHash != hashBase64URLSHA256(opts.accessToken) {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid ath claim")
-	}
-
-	if opts.jwkThumbprint != "" &&
-		jwkThumbprint(dpopJWT, ctx.DPoPSigAlgs) != opts.jwkThumbprint {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid jwk thumbprint")
-	}
-
-	err = claims.ValidateWithLeeway(jwt.Expected{}, time.Duration(0))
-	if err != nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid dpop")
-	}
-
-	return nil
-}
-
-func urlWithoutParams(u string) (string, error) {
-	parsedURL, err := url.Parse(u)
-	if err != nil {
-		return "", err
-	}
-	parsedURL.RawQuery = ""
-	parsedURL.Fragment = ""
-	return parsedURL.String(), nil
-}
-
+// validateDPoP validates that the context contains the information required to
+// prove the client's possession of the access token with DPoP if applicable.
 func validateDPoP(
 	ctx *oidc.Context,
 	token string,
@@ -122,18 +41,21 @@ func validateDPoP(
 		}
 	}
 
-	dpopJWT, ok := dpopJWT(ctx)
+	dpopJWT, ok := dpop.JWT(ctx)
 	if !ok {
 		// The session was created with DPoP, then the DPoP header must be passed.
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid DPoP header")
 	}
 
-	return validateDPoPJWT(ctx, dpopJWT, dpopValidationOptions{
-		accessToken:   token,
-		jwkThumbprint: confirmation.JWKThumbprint,
+	return dpop.ValidateJWT(ctx, dpopJWT, dpop.ValidationOptions{
+		AccessToken:   token,
+		JWKThumbprint: confirmation.JWKThumbprint,
 	})
 }
 
+// validateDPoP validates that the context contains the information required to
+// prove the client's possession of the access token with TLS binding if
+// applicable.
 func validateTLSPoP(
 	ctx *oidc.Context,
 	confirmation goidc.TokenConfirmation,
@@ -156,28 +78,15 @@ func validateTLSPoP(
 	return nil
 }
 
-// addPoP checks for available pop mechanisms and add them to the grant info.
-func addPoP(ctx *oidc.Context, grantInfo *goidc.GrantInfo) {
-	dpopJWT, ok := dpopJWT(ctx)
+// setPoP adds the available pop mechanisms to the grant info.
+func setPoP(ctx *oidc.Context, grantInfo *goidc.GrantInfo) {
+	dpopJWT, ok := dpop.JWT(ctx)
 	if ctx.DPoPIsEnabled && ok {
-		grantInfo.JWKThumbprint = jwkThumbprint(dpopJWT, ctx.DPoPSigAlgs)
+		grantInfo.JWKThumbprint = dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)
 	}
 
 	clientCert, err := ctx.ClientCert()
-	if ctx.MTLSTokenBindingIsEnabled && err != nil {
+	if ctx.MTLSTokenBindingIsEnabled && err == nil {
 		grantInfo.ClientCertThumbprint = hashBase64URLSHA256(string(clientCert.Raw))
 	}
-}
-
-// dpopJWT gets the DPoP JWT sent in the DPoP header.
-// According to RFC 9449: "There is not more than one DPoP HTTP request header field."
-// Therefore, an empty string and false will be returned if more than one value is found in the DPoP header.
-func dpopJWT(ctx *oidc.Context) (string, bool) {
-	// To access the dpop jwts from the field Header, we need to use the
-	// canonical version of the header "DPoP" which is "Dpop".
-	dpopJWTs := ctx.Request.Header[http.CanonicalHeaderKey(goidc.HeaderDPoP)]
-	if len(dpopJWTs) != 1 {
-		return "", false
-	}
-	return dpopJWTs[0], true
 }

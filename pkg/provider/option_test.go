@@ -763,9 +763,10 @@ func TestWithJAR(t *testing.T) {
 
 	want := provider{
 		config: oidc.Configuration{
-			JARIsEnabled:    true,
-			JARLifetimeSecs: defaultJWTLifetimeSecs,
-			JARSigAlgs:      []jose.SignatureAlgorithm{jose.PS256},
+			JARIsEnabled:      true,
+			JARLifetimeSecs:   defaultJWTLifetimeSecs,
+			JARLeewayTimeSecs: defaultJWTLeewayTimeSecs,
+			JARSigAlgs:        []jose.SignatureAlgorithm{jose.PS256},
 		},
 	}
 	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
@@ -787,9 +788,10 @@ func TestWithJAR_NoAlgInformed(t *testing.T) {
 
 	want := provider{
 		config: oidc.Configuration{
-			JARIsEnabled:    true,
-			JARLifetimeSecs: defaultJWTLifetimeSecs,
-			JARSigAlgs:      []jose.SignatureAlgorithm{jose.RS256},
+			JARIsEnabled:      true,
+			JARLifetimeSecs:   defaultJWTLifetimeSecs,
+			JARLeewayTimeSecs: defaultJWTLeewayTimeSecs,
+			JARSigAlgs:        []jose.SignatureAlgorithm{jose.RS256},
 		},
 	}
 	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
@@ -811,10 +813,11 @@ func TestWithJARRequired(t *testing.T) {
 
 	want := provider{
 		config: oidc.Configuration{
-			JARIsEnabled:    true,
-			JARIsRequired:   true,
-			JARLifetimeSecs: defaultJWTLifetimeSecs,
-			JARSigAlgs:      []jose.SignatureAlgorithm{jose.PS256},
+			JARIsEnabled:      true,
+			JARIsRequired:     true,
+			JARLifetimeSecs:   defaultJWTLifetimeSecs,
+			JARLeewayTimeSecs: defaultJWTLeewayTimeSecs,
+			JARSigAlgs:        []jose.SignatureAlgorithm{jose.PS256},
 		},
 	}
 	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
@@ -1356,9 +1359,10 @@ func TestWithDPoP(t *testing.T) {
 
 	want := provider{
 		config: oidc.Configuration{
-			DPoPIsEnabled:    true,
-			DPoPSigAlgs:      []jose.SignatureAlgorithm{jose.PS256},
-			DPoPLifetimeSecs: defaultJWTLifetimeSecs,
+			DPoPIsEnabled:      true,
+			DPoPSigAlgs:        []jose.SignatureAlgorithm{jose.PS256},
+			DPoPLifetimeSecs:   defaultJWTLifetimeSecs,
+			DPoPLeewayTimeSecs: defaultJWTLeewayTimeSecs,
 		},
 	}
 	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
@@ -1380,9 +1384,10 @@ func TestWithDPoP_NoAlgInformed(t *testing.T) {
 
 	want := provider{
 		config: oidc.Configuration{
-			DPoPIsEnabled:    true,
-			DPoPSigAlgs:      []jose.SignatureAlgorithm{jose.RS256},
-			DPoPLifetimeSecs: defaultJWTLifetimeSecs,
+			DPoPIsEnabled:      true,
+			DPoPSigAlgs:        []jose.SignatureAlgorithm{jose.RS256},
+			DPoPLifetimeSecs:   defaultJWTLifetimeSecs,
+			DPoPLeewayTimeSecs: defaultJWTLeewayTimeSecs,
 		},
 	}
 	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
@@ -1404,10 +1409,11 @@ func TestWithDPoPRequired(t *testing.T) {
 
 	want := provider{
 		config: oidc.Configuration{
-			DPoPIsEnabled:    true,
-			DPoPIsRequired:   true,
-			DPoPSigAlgs:      []jose.SignatureAlgorithm{jose.PS256},
-			DPoPLifetimeSecs: defaultJWTLifetimeSecs,
+			DPoPIsEnabled:      true,
+			DPoPIsRequired:     true,
+			DPoPSigAlgs:        []jose.SignatureAlgorithm{jose.PS256},
+			DPoPLifetimeSecs:   defaultJWTLifetimeSecs,
+			DPoPLeewayTimeSecs: defaultJWTLeewayTimeSecs,
 		},
 	}
 	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {

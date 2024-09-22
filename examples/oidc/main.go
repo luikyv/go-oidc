@@ -36,9 +36,11 @@ func main() {
 
 	// Create and configure the OpenID provider.
 	op, err := provider.New(
+		goidc.ProfileOpenID,
 		issuer,
 		privateJWKS(jwksFilePath),
 		provider.WithScopes(scopes...),
+		provider.WithUserInfoSignatureKeyIDs(serverKeyID),
 		provider.WithPAR(),
 		provider.WithJAR(),
 		provider.WithJARM(serverKeyID),

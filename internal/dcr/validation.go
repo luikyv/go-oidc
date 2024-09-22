@@ -531,7 +531,7 @@ func validateTLSTokenBinding(
 	ctx *oidc.Context,
 	dc request,
 ) error {
-	if !ctx.MTLSTokenBindingIsEnabled && dc.TLSBoundTokensIsRequired {
+	if !ctx.MTLSTokenBindingIsEnabled && dc.TLSTokenBindingIsRequired {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"tls_client_certificate_bound_access_tokens is not supported")
 	}

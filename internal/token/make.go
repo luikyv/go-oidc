@@ -1,7 +1,6 @@
 package token
 
 import (
-	"crypto"
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/base64"
@@ -9,7 +8,6 @@ import (
 	"hash"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/jwtutil"
@@ -248,14 +246,6 @@ func halfHashIDTokenClaim(claim string, alg jose.SignatureAlgorithm) string {
 	hash.Write([]byte(claim))
 	halfHashedClaim := hash.Sum(nil)[:hash.Size()/2]
 	return base64.RawURLEncoding.EncodeToString(halfHashedClaim)
-}
-
-// jwkThumbprint generates a JWK thumbprint for a valid DPoP JWT.
-func jwkThumbprint(dpopJWT string, algs []jose.SignatureAlgorithm) string {
-	// TODO: handle the error
-	parsedDPoPJWT, _ := jwt.ParseSigned(dpopJWT, algs)
-	jkt, _ := parsedDPoPJWT.Headers[0].JSONWebKey.Thumbprint(crypto.SHA256)
-	return base64.RawURLEncoding.EncodeToString(jkt)
 }
 
 func hashBase64URLSHA256(s string) string {

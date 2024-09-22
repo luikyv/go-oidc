@@ -16,6 +16,13 @@ const (
 	RefreshTokenLength int = 99
 )
 
+type Profile string
+
+const (
+	ProfileOpenID Profile = "openid"
+	ProfileFAPI2  Profile = "fapi2"
+)
+
 type GrantType string
 
 const (

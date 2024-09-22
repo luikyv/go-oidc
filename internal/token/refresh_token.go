@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/luikyv/go-oidc/internal/clientutil"
+	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -174,14 +175,14 @@ func validateRefreshTokenPoPForPublicClients(
 		return nil
 	}
 
-	dpopJWT, ok := dpopJWT(ctx)
+	dpopJWT, ok := dpop.JWT(ctx)
 	if !ok {
 		// The session was created with DPoP for a public client, then the DPoP header must be passed.
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid DPoP header")
 	}
 
-	return validateDPoPJWT(ctx, dpopJWT, dpopValidationOptions{
-		jwkThumbprint: grantSession.JWKThumbprint,
+	return dpop.ValidateJWT(ctx, dpopJWT, dpop.ValidationOptions{
+		JWKThumbprint: grantSession.JWKThumbprint,
 	})
 }
 

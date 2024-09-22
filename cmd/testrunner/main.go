@@ -55,9 +55,15 @@ const (
 	argTestPlanName      string = "--plan="
 	argTestModuleNames   string = "--modules="
 	argRunAllTestModules string = "--all-modules"
-	argExcludeModules    string = "--exclude-modules"
+	argExcludedModules   string = "--excluded-modules="
 	argConfigFile        string = "--config="
 	argResponseType      string = "--response_type="
+	argSenderConstrain   string = "--sender_constrain="
+	argClientAuthType    string = "--client_auth_type="
+	argOpenID            string = "--openid="
+	argFAPIRequestMethod string = "--fapi_request_method="
+	argFAPIProfile       string = "--fapi_profile="
+	argFAPIResponseMode  string = "--fapi_response_mode="
 )
 
 type testStatus string
@@ -85,11 +91,11 @@ var httpClient = &http.Client{
 }
 
 type arguments struct {
-	testPlanName       string
-	testModules        []string
-	excludeTestModules []string
-	variant            variant
-	configFile         string
+	testPlanName        string
+	testModules         []string
+	excludedTestModules []string
+	variant             variant
+	configFile          string
 }
 
 type testPlan struct {
@@ -115,6 +121,11 @@ type variant struct {
 	ClientRegistration string `json:"client_registration,omitempty"`
 	ResponseType       string `json:"response_type,omitempty"`
 	ResponseMode       string `json:"response_mode,omitempty"`
+	SenderConstrain    string `json:"sender_constrain,omitempty"`
+	OpenID             string `json:"openid,omitempty"`
+	FAPIRequestMethod  string `json:"fapi_request_method,omitempty"`
+	FAPIProfile        string `json:"fapi_profile,omitempty"`
+	FAPIResponseMode   string `json:"fapi_response_mode,omitempty"`
 }
 
 func (v variant) String() string {
@@ -134,10 +145,10 @@ func chosenTestModules(plan testPlan, args arguments) []string {
 	}
 
 	// Remove excluded test modules.
-	if len(args.excludeTestModules) != 0 {
+	if len(args.excludedTestModules) != 0 {
 		var filteredModules []string
 		for _, m := range testModules {
-			if slices.Contains(args.excludeTestModules, m) {
+			if slices.Contains(args.excludedTestModules, m) {
 				continue
 			}
 			filteredModules = append(filteredModules, m)
@@ -145,6 +156,7 @@ func chosenTestModules(plan testPlan, args arguments) []string {
 		testModules = filteredModules
 	}
 
+	log.Printf("the following test modules will execute: %v\n", testModules)
 	return testModules
 }
 
@@ -165,15 +177,27 @@ func buildArguments() arguments {
 				strings.Replace(arg, argTestModuleNames, "", 1),
 				",",
 			)
-		case strings.HasPrefix(arg, argExcludeModules):
-			args.testModules = strings.Split(
-				strings.Replace(arg, argExcludeModules, "", 1),
+		case strings.HasPrefix(arg, argExcludedModules):
+			args.excludedTestModules = strings.Split(
+				strings.Replace(arg, argExcludedModules, "", 1),
 				",",
 			)
 		case strings.HasPrefix(arg, argConfigFile):
 			args.configFile = strings.Replace(arg, argConfigFile, "", 1)
+		case strings.HasPrefix(arg, argClientAuthType):
+			args.variant.ClientAuthType = strings.Replace(arg, argClientAuthType, "", 1)
 		case strings.HasPrefix(arg, argResponseType):
 			args.variant.ResponseType = strings.Replace(arg, argResponseType, "", 1)
+		case strings.HasPrefix(arg, argSenderConstrain):
+			args.variant.SenderConstrain = strings.Replace(arg, argSenderConstrain, "", 1)
+		case strings.HasPrefix(arg, argOpenID):
+			args.variant.OpenID = strings.Replace(arg, argOpenID, "", 1)
+		case strings.HasPrefix(arg, argFAPIRequestMethod):
+			args.variant.FAPIRequestMethod = strings.Replace(arg, argFAPIRequestMethod, "", 1)
+		case strings.HasPrefix(arg, argFAPIProfile):
+			args.variant.FAPIProfile = strings.Replace(arg, argFAPIProfile, "", 1)
+		case strings.HasPrefix(arg, argFAPIResponseMode):
+			args.variant.FAPIResponseMode = strings.Replace(arg, argFAPIResponseMode, "", 1)
 		}
 	}
 
@@ -258,11 +282,11 @@ func runTestModule(name string, plan testPlan) error {
 	}
 
 	if !slices.Contains([]testResult{testResultPassed, testResultReview}, module.Result) {
-		log.Printf("test module with id %s failed\n", module.ID)
-		return fmt.Errorf("test module with id %s resulted in %s", module.ID, module.Result)
+		log.Printf("test module with id %s failed with result as %s\n", module.ID, module.Result)
+		return fmt.Errorf("test module %s with id %s resulted in %s", module.Name, module.ID, module.Result)
 	}
 
-	log.Printf("test module with id %s resulted in %s\n", module.ID, module.Result)
+	log.Printf("test module %s with id %s resulted in %s\n", module.Name, module.ID, module.Result)
 	return nil
 }
 

@@ -44,6 +44,7 @@ services:
         max-size: "500k"
         max-file: "5"
     extra_hosts:
-      # Requests to auth.localhost are forwarded the docker host where the
-      # authorization server is running.
+      # Requests to auth.localhost and matls-auth.localhost are forwarded to the
+      # docker host where the authorization server is running.
       - auth.localhost:host-gateway
+      - matls-auth.localhost:host-gateway

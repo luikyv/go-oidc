@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/luikyv/go-oidc/internal/clientutil"
+	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -39,6 +40,8 @@ func pushAuth(
 	}, nil
 }
 
+// pushAuthnSession builds a new authentication session with a reference ID and
+// saves it.
 func pushAuthnSession(
 	ctx *oidc.Context,
 	req pushedRequest,
@@ -58,6 +61,8 @@ func pushAuthnSession(
 	}
 	session.ReferenceID = reqURI
 	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.PARLifetimeSecs
+
+	setDPoP(ctx, session)
 
 	return session, nil
 }
@@ -120,6 +125,8 @@ func pushedAuthnSessionWithJAR(
 	return session, nil
 }
 
+// protectedParams returns the params sent in the form that start with
+// [protectedParamPrefix].
 func protectedParams(ctx *oidc.Context) map[string]any {
 	protectedParams := make(map[string]any)
 	for param, value := range ctx.FormData() {
@@ -138,4 +145,12 @@ func requestURI() (string, error) {
 			"could not generate the request uri", err)
 	}
 	return fmt.Sprintf("urn:ietf:params:oauth:request_uri:%s", s), nil
+}
+
+// setDPoP adds DPoP for authorization code to the session if available.
+func setDPoP(ctx *oidc.Context, session *goidc.AuthnSession) {
+	dpopJWT, ok := dpop.JWT(ctx)
+	if ctx.DPoPIsEnabled && ok {
+		session.DPoPJWKThumbprint = dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)
+	}
 }

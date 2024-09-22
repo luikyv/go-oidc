@@ -109,12 +109,14 @@ func (ctx *Context) Audiences() []string {
 
 	audiences := []string{
 		ctx.Host,
+		ctx.BaseURL() + ctx.EndpointToken,
 		ctx.Host + ctx.Request.RequestURI,
 	}
 	if ctx.MTLSIsEnabled {
 		audiences = append(
 			audiences,
 			ctx.MTLSHost,
+			ctx.MTLSBaseURL()+ctx.EndpointToken,
 			ctx.MTLSHost+ctx.Request.RequestURI,
 		)
 	}

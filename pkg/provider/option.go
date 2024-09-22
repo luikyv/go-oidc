@@ -420,6 +420,7 @@ func WithJAR(
 	return func(p *provider) error {
 		p.config.JARIsEnabled = true
 		p.config.JARLifetimeSecs = defaultJWTLifetimeSecs
+		p.config.JARLeewayTimeSecs = defaultJWTLeewayTimeSecs
 		p.config.JARSigAlgs = algs
 		return nil
 	}
@@ -757,6 +758,7 @@ func WithDPoP(
 	return func(p *provider) error {
 		p.config.DPoPIsEnabled = true
 		p.config.DPoPLifetimeSecs = defaultJWTLifetimeSecs
+		p.config.DPoPLeewayTimeSecs = defaultJWTLeewayTimeSecs
 		p.config.DPoPSigAlgs = sigAlgs
 		return nil
 	}

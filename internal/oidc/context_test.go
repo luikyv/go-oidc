@@ -177,9 +177,10 @@ func TestGetAudiences(t *testing.T) {
 	// Given.
 	host := "https://example.com"
 	ctx := &oidc.Context{
-		Request: httptest.NewRequest(http.MethodPost, "/token", nil),
+		Request: httptest.NewRequest(http.MethodPost, "/userinfo", nil),
 		Configuration: oidc.Configuration{
-			Host: host,
+			Host:          host,
+			EndpointToken: "/token",
 		},
 	}
 
@@ -187,7 +188,7 @@ func TestGetAudiences(t *testing.T) {
 	auds := ctx.Audiences()
 
 	// Then.
-	wantedAuds := []string{host, host + "/token"}
+	wantedAuds := []string{host, host + "/token", host + "/userinfo"}
 	if !cmp.Equal(auds, wantedAuds) {
 		t.Errorf("Audiences() = %v, want %v", auds, wantedAuds)
 	}
@@ -198,11 +199,12 @@ func TestGetAudiences_MTLSIsEnabled(t *testing.T) {
 	host := "https://example.com"
 	mtlsHost := "https://matls-example.com"
 	ctx := &oidc.Context{
-		Request: httptest.NewRequest(http.MethodPost, "/token", nil),
+		Request: httptest.NewRequest(http.MethodPost, "/userinfo", nil),
 		Configuration: oidc.Configuration{
 			Host:          host,
 			MTLSIsEnabled: true,
 			MTLSHost:      mtlsHost,
+			EndpointToken: "/token",
 		},
 	}
 
@@ -210,7 +212,8 @@ func TestGetAudiences_MTLSIsEnabled(t *testing.T) {
 	auds := ctx.Audiences()
 
 	// Then.
-	wantedAuds := []string{host, host + "/token", mtlsHost, mtlsHost + "/token"}
+	wantedAuds := []string{host, host + "/token", host + "/userinfo",
+		mtlsHost, mtlsHost + "/token", mtlsHost + "/userinfo"}
 	if !cmp.Equal(auds, wantedAuds) {
 		t.Errorf("Audiences() = %v, want %v", auds, wantedAuds)
 	}

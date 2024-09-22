@@ -1,10 +1,8 @@
 package token_test
 
 import (
-	"fmt"
 	"testing"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/luikyv/go-oidc/internal/oidctest"
@@ -135,34 +133,5 @@ func TestMakeToken_OpaqueToken(t *testing.T) {
 
 	if token.ID != token.Value {
 		t.Errorf("ID = %s, want %s", token.ID, token.Value)
-	}
-}
-
-func TestGenerateJWKThumbprint(t *testing.T) {
-	// Given.
-	dpopSigningAlgorithms := []jose.SignatureAlgorithm{jose.ES256}
-	testCases := []struct {
-		dpopJWT  string
-		expected string
-	}{
-		{
-			"eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7Imt0eSI6IkVDIiwieCI6Imw4dEZyaHgtMzR0VjNoUklDUkRZOXpDa0RscEJoRjQyVVFVZldWQVdCRnMiLCJ5IjoiOVZFNGpmX09rX282NHpiVFRsY3VOSmFqSG10NnY5VERWclUwQ2R2R1JEQSIsImNydiI6IlAtMjU2In19.eyJqdGkiOiItQndDM0VTYzZhY2MybFRjIiwiaHRtIjoiUE9TVCIsImh0dSI6Imh0dHBzOi8vc2VydmVyLmV4YW1wbGUuY29tL3Rva2VuIiwiaWF0IjoxNTYyMjY1Mjk2fQ.pAqut2IRDm_De6PR93SYmGBPXpwrAk90e8cP2hjiaG5QsGSuKDYW7_X620BxqhvYC8ynrrvZLTk41mSRroapUA",
-			"0ZcOCORZNYy-DWpqq30jZyJGHTN0d2HglBV3uiguA4I",
-		},
-	}
-
-	for i, testCase := range testCases {
-		t.Run(
-			fmt.Sprintf("case %v", i),
-			func(t *testing.T) {
-				// When.
-				got := token.JWKThumbprint(testCase.dpopJWT, dpopSigningAlgorithms)
-
-				// Then.
-				if got != testCase.expected {
-					t.Errorf("JWKThumbprint() = %s, want %s", got, testCase.expected)
-				}
-			},
-		)
 	}
 }

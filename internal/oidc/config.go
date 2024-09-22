@@ -10,6 +10,7 @@ type Configuration struct {
 	AuthnSessionManager goidc.AuthnSessionManager
 	GrantSessionManager goidc.GrantSessionManager
 
+	Profile goidc.Profile
 	// Host is the domain where the server runs. This value will be used as the
 	// authorization server issuer.
 	Host string
@@ -121,6 +122,7 @@ type Configuration struct {
 	// JARLifetimeSecs defines the max difference allowed between the claims "iat"
 	// and "exp" for request objects.
 	JARLifetimeSecs         int
+	JARLeewayTimeSecs       int
 	JAREncIsEnabled         bool
 	JARKeyEncIDs            []string
 	JARDefaultContentEncAlg jose.ContentEncryption
@@ -142,10 +144,11 @@ type Configuration struct {
 	MTLSTokenBindingIsRequired bool
 	ClientCertFunc             goidc.ClientCertFunc
 
-	DPoPIsEnabled    bool
-	DPoPIsRequired   bool
-	DPoPLifetimeSecs int
-	DPoPSigAlgs      []jose.SignatureAlgorithm
+	DPoPIsEnabled      bool
+	DPoPIsRequired     bool
+	DPoPLifetimeSecs   int
+	DPoPLeewayTimeSecs int
+	DPoPSigAlgs        []jose.SignatureAlgorithm
 
 	PKCEIsEnabled              bool
 	PKCEIsRequired             bool

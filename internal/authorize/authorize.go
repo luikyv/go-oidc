@@ -270,7 +270,7 @@ func finishFlowSuccessfully(
 		state:             session.State,
 	}
 	if session.ResponseType.Contains(goidc.ResponseTypeToken) {
-		grantInfo, err := newImplicitGrantInfo(session)
+		grantInfo, err := implicitGrantInfo(session)
 		if err != nil {
 			return err
 		}
@@ -352,7 +352,7 @@ func generateImplicitGrantSession(
 	return nil
 }
 
-func newImplicitGrantInfo(
+func implicitGrantInfo(
 	session *goidc.AuthnSession,
 ) (
 	goidc.GrantInfo,

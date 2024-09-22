@@ -28,7 +28,9 @@ type Provider interface {
 	//	server.Handle("/", op.Handler())
 	Handler() http.Handler
 	Run(address string, middlewares ...goidc.MiddlewareFunc) error
-	// TODO: Document it.
+	// RunTLS runs the provider on TLS mode.
+	// This is intended for development purposes and must not be used for
+	// production environments.
 	RunTLS(opts TLSOptions, middlewares ...goidc.MiddlewareFunc) error
 	Client(ctx context.Context, id string) (*goidc.Client, error)
 	// TokenInfo returns information about the access token sent in the request.
@@ -40,7 +42,12 @@ type Provider interface {
 // New creates a new openid provider.
 // By default, all clients and sessions are stored in memory and JWTs are
 // signed with the first signing key in the JWKS.
+// The profile parameter adjusts the server's behavior for non-configurable
+// settings, ensuring compliance with the associated specification. Depending on
+// the profile selected, the server may modify its operations to meet specific
+// requirements dictated by the corresponding standards or protocols.
 func New(
+	profile goidc.Profile,
 	issuer string,
 	privateJWKS jose.JSONWebKeySet,
 	opts ...ProviderOption,
@@ -62,7 +69,8 @@ func New(
 
 	p := &provider{
 		config: oidc.Configuration{
-			Host: issuer,
+			Profile: profile,
+			Host:    issuer,
 
 			ClientManager:       storage.NewClientManager(),
 			AuthnSessionManager: storage.NewAuthnSessionManager(),
@@ -133,15 +141,15 @@ func (p *provider) Run(
 	middlewares ...goidc.MiddlewareFunc,
 ) error {
 	handler := p.Handler()
-	for _, wrapHandler := range middlewares {
-		handler = wrapHandler(handler)
+	for _, middleware := range middlewares {
+		handler = middleware(handler)
 	}
-	handler = newCacheControlMiddleware(handler)
+	handler = goidc.CacheControlMiddleware(handler)
 	return http.ListenAndServe(address, handler)
 }
 
 func (p *provider) RunTLS(
-	config TLSOptions,
+	tlsOpts TLSOptions,
 	middlewares ...goidc.MiddlewareFunc,
 ) error {
 
@@ -149,7 +157,7 @@ func (p *provider) RunTLS(
 
 	clientAuth := tls.NoClientCert
 	handler := p.Handler()
-	handler = newCacheControlMiddleware(handler)
+	handler = goidc.CacheControlMiddleware(handler)
 	for _, wrapHandler := range middlewares {
 		handler = wrapHandler(handler)
 	}
@@ -168,20 +176,21 @@ func (p *provider) RunTLS(
 		if err != nil {
 			return err
 		}
-		handler = newClientCertificateMiddleware(handler)
-		mux.Handle(mtlsHostURL.Host+"/", handler)
+		// Remove the port from the host name if any.
+		mtlsHost := strings.Split(mtlsHostURL.Host, ":")[0]
+		mux.Handle(mtlsHost+"/", handler)
 	}
 
 	server := &http.Server{
-		Addr:    config.TLSAddress,
+		Addr:    tlsOpts.TLSAddress,
 		Handler: mux,
 		TLSConfig: &tls.Config{
-			ClientCAs:    config.CaCertPool,
+			ClientCAs:    tlsOpts.CaCertPool,
 			ClientAuth:   clientAuth,
-			CipherSuites: config.CipherSuites,
+			CipherSuites: tlsOpts.CipherSuites,
 		},
 	}
-	return server.ListenAndServeTLS(config.ServerCert, config.ServerKey)
+	return server.ListenAndServeTLS(tlsOpts.ServerCert, tlsOpts.ServerKey)
 }
 
 func (p *provider) TokenInfo(

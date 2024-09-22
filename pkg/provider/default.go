@@ -20,6 +20,7 @@ const (
 	defaultRefreshTokenLifetimeSecs = 3600 // 1 hour.
 	defaultPARLifetimeSecs          = 60
 	defaultJWTLifetimeSecs          = 600
+	defaultJWTLeewayTimeSecs        = 30
 
 	defaultEndpointWellKnown                  = "/.well-known/openid-configuration"
 	defaultEndpointJSONWebKeySet              = "/jwks"

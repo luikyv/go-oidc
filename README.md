@@ -52,6 +52,7 @@ if err := json.Unmarshal([]byte(jwksStr), &jwks); err != nil {
 }
 
 op := provider.New(
+    goidc.ProfileOpenID,
     "http://localhost",
     jwks,
 )

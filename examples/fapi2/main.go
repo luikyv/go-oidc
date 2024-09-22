@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"io"
 	"log"
@@ -19,8 +20,9 @@ import (
 )
 
 const (
-	port   string = ":8445"
-	issuer string = "https://auth.localhost" + port
+	port     string = ":8445"
+	issuer   string = "https://auth.localhost" + port
+	mtlsHost string = "https://matls-auth.localhost" + port
 )
 
 var (
@@ -31,8 +33,13 @@ func main() {
 	// Get the file path of the source file.
 	_, filename, _, _ := runtime.Caller(0)
 	sourceDir := filepath.Dir(filename)
+
 	clientOneJWKSFilePath := filepath.Join(sourceDir, "../keys/client_one.jwks")
+	clientOneCertFilePath := filepath.Join(sourceDir, "../keys/client_one.cert")
+
 	clientTwoJWKSFilePath := filepath.Join(sourceDir, "../keys/client_two.jwks")
+	clientTwoCertFilePath := filepath.Join(sourceDir, "../keys/client_two.cert")
+
 	jwksFilePath := filepath.Join(sourceDir, "../keys/server.jwks")
 	certFilePath := filepath.Join(sourceDir, "../keys/server.cert")
 	certKeyFilePath := filepath.Join(sourceDir, "../keys/server.key")
@@ -41,13 +48,16 @@ func main() {
 
 	// Create and configure the OpenID provider.
 	op, err := provider.New(
+		goidc.ProfileFAPI2,
 		issuer,
 		privateJWKS(jwksFilePath),
 		provider.WithScopes(scopes...),
 		provider.WithUserInfoSignatureKeyIDs(serverKeyID),
 		provider.WithPARRequired(),
-		provider.WithJAR(),
+		provider.WithMTLS(mtlsHost),
+		provider.WithJAR(jose.PS256),
 		provider.WithJARM(serverKeyID),
+		provider.WithTLSAuthn(),
 		provider.WithPrivateKeyJWTAuthn(jose.PS256),
 		provider.WithIssuerResponseParameter(),
 		provider.WithClaimsParameter(),
@@ -55,6 +65,7 @@ func main() {
 		provider.WithRefreshTokenGrant(),
 		provider.WithShouldIssueRefreshTokenFunc(issueRefreshToken),
 		provider.WithRefreshTokenLifetimeSecs(6000),
+		provider.WithTLSCertTokenBinding(),
 		provider.WithDPoP(jose.PS256, jose.ES256),
 		provider.WithTokenBindingRequired(),
 		provider.WithClaims(goidc.ClaimEmail, goidc.ClaimEmailVerified),
@@ -66,30 +77,49 @@ func main() {
 		provider.WithHandleErrorFunc(func(r *http.Request, err error) {
 			log.Printf("error during request %s: %s\n", r.RequestURI, err.Error())
 		}),
-		provider.WithStaticClient(client("client_one", clientOneJWKSFilePath)),
-		provider.WithStaticClient(client("client_two", clientTwoJWKSFilePath)),
+		provider.WithStaticClient(clientPrivateKeyJWT("client_one", clientOneJWKSFilePath)),
+		provider.WithStaticClient(clientPrivateKeyJWT("client_two", clientTwoJWKSFilePath)),
+		provider.WithStaticClient(clientMTLS("mtls_client_one", "client_one", clientOneJWKSFilePath)),
+		provider.WithStaticClient(clientMTLS("mtls_client_two", "client_two", clientTwoJWKSFilePath)),
 		provider.WithUnregisteredRedirectURIsForPAR(),
 	)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if err := op.RunTLS(provider.TLSOptions{
+	caPool := clientCACertPool(clientOneCertFilePath, clientTwoCertFilePath)
+	tlsOpts := provider.TLSOptions{
 		TLSAddress: port,
 		ServerCert: certFilePath,
 		ServerKey:  certKeyFilePath,
+		CaCertPool: caPool,
 		CipherSuites: []uint16{
 			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 		},
-	}); err != nil {
+	}
+	if err := op.RunTLS(tlsOpts, goidc.ClientCertMiddleware); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func client(id, jwksFilepath string) *goidc.Client {
+func clientMTLS(id, cn, jwksFilepath string) *goidc.Client {
+	client := client(id, jwksFilepath)
+	client.AuthnMethod = goidc.ClientAuthnTLS
+	client.TLSSubDistinguishedName = "CN=" + cn
+
+	return client
+}
+
+func clientPrivateKeyJWT(id, jwksFilepath string) *goidc.Client {
+	client := client(id, jwksFilepath)
+	client.AuthnMethod = goidc.ClientAuthnPrivateKeyJWT
+	return client
+}
+
+func client(id string, jwksFilepath string) *goidc.Client {
 	// Extract the public client JWKS.
 	jwks := privateJWKS(jwksFilepath)
 	var publicKeys []jose.JSONWebKey
@@ -108,9 +138,8 @@ func client(id, jwksFilepath string) *goidc.Client {
 	return &goidc.Client{
 		ID: id,
 		ClientMetaInfo: goidc.ClientMetaInfo{
-			AuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
-			PublicJWKS:  jwksBytes,
-			ScopeIDs:    strings.Join(scopesIDs, " "),
+			ScopeIDs:   strings.Join(scopesIDs, " "),
+			PublicJWKS: jwksBytes,
 			GrantTypes: []goidc.GrantType{
 				goidc.GrantAuthorizationCode,
 				goidc.GrantRefreshToken,
@@ -163,6 +192,36 @@ func httpClient(_ *http.Request) *http.Client {
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
 	}
+}
+
+func clientCACertPool(clientOneCertFile, clientTwoCertFile string) *x509.CertPool {
+	clientOneCert, err := os.Open(clientOneCertFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer clientOneCert.Close()
+
+	clientOneCertBytes, err := io.ReadAll(clientOneCert)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	clientTwoCert, err := os.Open(clientTwoCertFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer clientTwoCert.Close()
+
+	clientTwoCertBytes, err := io.ReadAll(clientTwoCert)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	caPool := x509.NewCertPool()
+	caPool.AppendCertsFromPEM(clientOneCertBytes)
+	caPool.AppendCertsFromPEM(clientTwoCertBytes)
+
+	return caPool
 }
 
 func privateJWKS(filename string) jose.JSONWebKeySet {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/luikyv/go-oidc/internal/clientutil"
+	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -39,7 +40,7 @@ func generateAuthorizationCodeGrant(
 		return response{}, err
 	}
 
-	grantInfo, err := newAuthorizationCodeGrantInfo(ctx, req, session)
+	grantInfo, err := authorizationCodeGrantInfo(ctx, req, session)
 	if err != nil {
 		return response{}, err
 	}
@@ -178,14 +179,16 @@ func validateAuthorizationCodeGrantRequest(
 		return err
 	}
 
-	if err := validateTokenBinding(ctx, c); err != nil {
+	if err := validateBinding(ctx, c, &dpop.ValidationOptions{
+		JWKThumbprint: session.DPoPJWKThumbprint,
+	}); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func newAuthorizationCodeGrantInfo(
+func authorizationCodeGrantInfo(
 	ctx *oidc.Context,
 	req request,
 	session *goidc.AuthnSession,
@@ -221,7 +224,7 @@ func newAuthorizationCodeGrantInfo(
 		}
 	}
 
-	addPoP(ctx, &grantInfo)
+	setPoP(ctx, &grantInfo)
 
 	if err := ctx.HandleGrant(&grantInfo); err != nil {
 		return goidc.GrantInfo{}, err

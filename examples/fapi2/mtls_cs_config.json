@@ -4,7 +4,7 @@
     },
     "client": {
         "client_name": "client_one",
-        "client_id": "client_one",
+        "client_id": "mtls_client_one",
         "scope": "openid email",
         "jwks": {
             "keys": [
@@ -28,7 +28,7 @@
     },
     "client2": {
         "client_name": "client two",
-        "client_id": "client_two",
+        "client_id": "mtls_client_two",
         "scope": "openid email",
         "jwks": {
             "keys": [
@@ -78,6 +78,6 @@
         "key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCxJ+qRNWwKDrYd\nO9uUI9hzeX82NJPf+p4xwsDyHgsXji7s1pFfXqs/zUwsJjDII4oNxFVq1P0PelrH\nxLnPSxxUcGFwrnn2pA8eZSrpTLJO5upm8vDZN4iMfxKFw/ma/iOyABy8CsKiCgSR\nfR5+onx7sEO+wFkfYfgVFQdM3UchY5ubruO01x+u7uFjldQWmtmilgl+Y/0vKc++\nYq3Ii4ThLUUVMOHHBD+EKkLcxl0o4ATVBCVKlIKzKvqJP7/qP0VBuzRITC17ZNw0\nwp5K3/OIk6wwdin0/+1uYYyaCp3SocHU44h97ijekr585GQ7K9npkwts55hR/i7q\n27gyspHPAgMBAAECggEAJ22U3UCgjRR9H8CEvFHGCN1PnMbS6pSixLxtqPVazqFM\nfFW9ARbW0lpky6asUL7oKOw7fo1szRcUQUXdfO9gnMJuTV/nsScOXltx037IaJso\nLEWBqTac43gcrTzSvtY1J5ayzn8ullXYcnEAanrLbdPrH/c7Xqq1Rivp9geBn0Jm\n8z04LGgaLwH199zmWQTglzcAZV2gaL4slB7MadP9irg9dNE1I9eaymitzYhV/qFN\nXDaQcn7UD3g48OExk6qwve5541B/Ptff5jQnGfJsVLoTyzhjTHNdZvJPln1WMfcp\nNdeT7rTXmeyoDfBcGCrkmDXMHYgklLcjRARKAeneoQKBgQDm167aZsr3SXfk283L\nXLCJBz16Ojk7ilntLpqyvkgYRJ/04dL5/2Hgsi5u4ebjhXKkQ77dRX+WhP5K9VmB\nPmOc0hi9vzuRF7QCUt+OApvJYyuLn8fFZPdXDKg3xuKqGr8uKgDgH3zUX/pEDOeW\nwZZqP/mj9hHV8XS8PfSTJuqbGQKBgQDEdmvhZnlHsB/hgTy1vwTJ6xHw4QDHN/M1\nran+eBdG3T/FAIb5xNAh6vNdXbfaZefQTl4ESgj6ZDoWcVtEcrUA2PRuAl8E72mv\nnjWH36KVpNIFcYrcPwqORIYknZLubhyUfgvNJqba/hUFZXwVG/LvWEK7MdHTa/M2\nCKH1O7uZJwKBgBvqFv3YElEm9DWbkt41ni9jzb5bDhKyHz+8M/7LXcJ5gfJF4JJU\nnIxkX5MPBDGdMIjGnGz7e3tDJ9D+rE0hs0ACc/V2C4j3GdByHxB4JkiLEnf24Vxw\nYiyHnkvoY/5374hwkdyIUjsIRCY4fUTQshS1GcYG+o8pfJlK0Kl+uj35AoGAIYkh\nYylt3GnZF1JLPa7sr1b8CgUub9NCJdCOKwzu1D7iKsurPql06cVEY5Si1Jn+lxU5\ngTvuCmffboNNFAMMmKdwGfM3qwz/GmZENvxasXagDyPRk0UDlUNnLorjUOXk5Qgb\nFZracplal0A6jRPnRSnowjF/4roTmw6gLs9Sd5MCgYACQCpbzo7xHnKY0ZtsaO4Y\nCHTn4ehiPcIUruKynOOLE+rre5QYV/pVNsKEsuhsZXMWV5uovh98z+L4eLZ47M+R\nTBd1zO3z0oRR8WV1FMze7icfWKeR2NAL1CsXpA/p7w+B/T5Id23h/4Zqb4cR+Rnk\nHsU2QZ+/eqU/qOZ/WJQriQ==\n-----END PRIVATE KEY-----"
     },
     "resource": {
-        "resourceUrl": "https://auth.localhost:8445/userinfo"
+        "resourceUrl": "https://matls-auth.localhost:8445/userinfo"
     }
 }
