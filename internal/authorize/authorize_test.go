@@ -339,6 +339,78 @@ func TestInitAuth_ResourceIndicator(t *testing.T) {
 	}
 }
 
+func TestInitAuth_IDTokenHint(t *testing.T) {
+	ctx, client := setUpAuth(t)
+
+	key, ok := ctx.PrivateKey(ctx.UserDefaultSigKeyID)
+	if !ok {
+		t.Fatalf("could not find key to sign the id token: %s", ctx.UserDefaultSigKeyID)
+	}
+
+	idToken, err := jwtutil.Sign(
+		map[string]any{
+			goidc.ClaimSubject: "random_user",
+		},
+		key,
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", key.KeyID),
+	)
+	if err != nil {
+		t.Fatalf("could not sign the id token: %v", err)
+	}
+
+	req := request{
+		ClientID: client.ID,
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  client.RedirectURIs[0],
+			Scopes:       client.ScopeIDs,
+			ResponseType: goidc.ResponseTypeCodeAndIDToken,
+			Nonce:        "random_nonce",
+			IDTokenHint:  idToken,
+		},
+	}
+
+	// When.
+	err = initAuth(ctx, req)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	sessions := oidctest.AuthnSessions(t, ctx)
+	if len(sessions) != 1 {
+		t.Fatalf("len(sessions) = %d, want 1", len(sessions))
+	}
+
+	session := sessions[0]
+	if session.AuthorizationCode == "" {
+		t.Error("the authorization code in the session cannot be emtpy")
+	}
+
+	wantedSession := goidc.AuthnSession{
+		ID:                 session.ID,
+		PolicyID:           ctx.Policies[0].ID,
+		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
+		CreatedAtTimestamp: session.CreatedAtTimestamp,
+		ClientID:           client.ID,
+		AuthorizationCode:  session.AuthorizationCode,
+		GrantedScopes:      client.ScopeIDs,
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  client.RedirectURIs[0],
+			Scopes:       client.ScopeIDs,
+			ResponseType: goidc.ResponseTypeCodeAndIDToken,
+			Nonce:        "random_nonce",
+			IDTokenHint:  idToken,
+		},
+		AdditionalIDTokenClaims: map[string]any{
+			"nonce": "random_nonce",
+		},
+	}
+	if diff := cmp.Diff(*session, wantedSession, cmpopts.EquateEmpty()); diff != "" {
+		t.Error(diff)
+	}
+}
+
 func TestInitAuth_ShouldNotFindClient(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"slices"
 
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -242,56 +243,44 @@ func validateParamsAsOptionals(
 	c *goidc.Client,
 ) error {
 
-	if params.RedirectURI != "" && !isRedirectURIAllowed(c, params.RedirectURI) {
-		return goidc.NewError(goidc.ErrorCodeInvalidRedirectURI,
-			"invalid redirect_uri")
+	if err := validateRedirectURIAsOptional(ctx, params, c); err != nil {
+		return err
 	}
 
-	if params.Scopes != "" {
-		if err := validateScopes(ctx, params, c); err != nil {
-			return err
-		}
+	if err := validateScopesAsOptional(ctx, params, c); err != nil {
+		return err
 	}
 
-	if params.ResponseType != "" {
-		if err := validateResponseType(ctx, params, c); err != nil {
-			return err
-		}
+	if err := validateResponseTypeAsOptional(ctx, params, c); err != nil {
+		return err
 	}
 
-	if params.ResponseMode != "" {
-		if err := validateResponseMode(ctx, params, c); err != nil {
-			return err
-		}
+	if err := validateResponseModeAsOptional(ctx, params, c); err != nil {
+		return err
 	}
 
-	if params.CodeChallengeMethod != "" &&
-		!slices.Contains(ctx.PKCEChallengeMethods, params.CodeChallengeMethod) {
-		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
-			"invalid code_challenge_method", params)
+	if err := validateCodeChallengeMethodAsOptional(ctx, params, c); err != nil {
+		return err
 	}
 
-	if params.AuthorizationDetails != nil {
-		if err := validateAuthorizationDetails(ctx, params, c); err != nil {
-			return err
-		}
+	if err := validateAuthorizationDetailsAsOptional(ctx, params, c); err != nil {
+		return err
 	}
 
-	if params.ACRValues != "" {
-		if err := validateACRValues(ctx, params, c); err != nil {
-			return err
-		}
+	if err := validateACRValuesAsOptional(ctx, params, c); err != nil {
+		return err
 	}
 
-	if params.Resources != nil {
-		if err := validateResources(ctx, params, c); err != nil {
-			return err
-		}
+	if err := validateResourcesAsOptional(ctx, params, c); err != nil {
+		return err
 	}
 
-	if params.Display != "" && !slices.Contains(ctx.DisplayValues, params.Display) {
-		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
-			"invalid display value", params)
+	if err := validateIDTokenHintAsOptional(ctx, params, c); err != nil {
+		return err
+	}
+
+	if err := validateDisplayValueAsOptional(ctx, params, c); err != nil {
+		return err
 	}
 
 	if params.RequestURI != "" && params.RequestObject != "" {
@@ -302,11 +291,67 @@ func validateParamsAsOptionals(
 	return nil
 }
 
-func validateScopes(
+func validateRedirectURIAsOptional(
+	_ *oidc.Context,
+	params goidc.AuthorizationParameters,
+	c *goidc.Client,
+) error {
+	if params.RedirectURI == "" {
+		return nil
+	}
+
+	if !isRedirectURIAllowed(c, params.RedirectURI) {
+		return goidc.NewError(goidc.ErrorCodeInvalidRedirectURI,
+			"invalid redirect_uri")
+	}
+
+	return nil
+}
+
+func validateCodeChallengeMethodAsOptional(
+	ctx *oidc.Context,
+	params goidc.AuthorizationParameters,
+	_ *goidc.Client,
+) error {
+	if params.CodeChallengeMethod == "" {
+		return nil
+	}
+
+	if !slices.Contains(ctx.PKCEChallengeMethods, params.CodeChallengeMethod) {
+		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
+			"invalid code_challenge_method", params)
+	}
+
+	return nil
+}
+
+func validateDisplayValueAsOptional(
+	ctx *oidc.Context,
+	params goidc.AuthorizationParameters,
+	_ *goidc.Client,
+) error {
+	if params.Display == "" {
+		return nil
+	}
+
+	if !slices.Contains(ctx.DisplayValues, params.Display) {
+		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
+			"invalid display value", params)
+	}
+
+	return nil
+}
+
+func validateScopesAsOptional(
 	ctx *oidc.Context,
 	params goidc.AuthorizationParameters,
 	c *goidc.Client,
 ) error {
+
+	if params.Scopes == "" {
+		return nil
+	}
+
 	if !clientutil.AreScopesAllowed(c, ctx.Scopes, params.Scopes) {
 		return newRedirectionError(goidc.ErrorCodeInvalidScope, "invalid scope", params)
 	}
@@ -335,11 +380,15 @@ func validatePKCE(
 	return nil
 }
 
-func validateResponseType(
+func validateResponseTypeAsOptional(
 	_ *oidc.Context,
 	params goidc.AuthorizationParameters,
 	c *goidc.Client,
 ) error {
+
+	if params.ResponseType == "" {
+		return nil
+	}
 
 	if !slices.Contains(c.ResponseTypes, params.ResponseType) {
 		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
@@ -361,11 +410,15 @@ func validateResponseType(
 	return nil
 }
 
-func validateResponseMode(
+func validateResponseModeAsOptional(
 	ctx *oidc.Context,
 	params goidc.AuthorizationParameters,
 	c *goidc.Client,
 ) error {
+
+	if params.ResponseMode == "" {
+		return nil
+	}
 
 	if !slices.Contains(ctx.ResponseModes, params.ResponseMode) {
 		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
@@ -386,12 +439,12 @@ func validateResponseMode(
 	return nil
 }
 
-func validateAuthorizationDetails(
+func validateAuthorizationDetailsAsOptional(
 	ctx *oidc.Context,
 	params goidc.AuthorizationParameters,
 	c *goidc.Client,
 ) error {
-	if !ctx.AuthDetailsIsEnabled {
+	if !ctx.AuthDetailsIsEnabled || params.AuthorizationDetails == nil {
 		return nil
 	}
 
@@ -407,11 +460,15 @@ func validateAuthorizationDetails(
 	return nil
 }
 
-func validateACRValues(
+func validateACRValuesAsOptional(
 	ctx *oidc.Context,
 	params goidc.AuthorizationParameters,
 	_ *goidc.Client,
 ) error {
+
+	if params.ACRValues == "" {
+		return nil
+	}
 
 	for _, acr := range strutil.SplitWithSpaces(params.ACRValues) {
 		if !slices.Contains(ctx.ACRs, goidc.ACR(acr)) {
@@ -423,11 +480,15 @@ func validateACRValues(
 	return nil
 }
 
-func validateResources(
+func validateResourcesAsOptional(
 	ctx *oidc.Context,
 	params goidc.AuthorizationParameters,
 	_ *goidc.Client,
 ) error {
+
+	if params.Resources == nil {
+		return nil
+	}
 
 	if !ctx.ResourceIndicatorsIsEnabled {
 		return nil
@@ -438,6 +499,37 @@ func validateResources(
 			return newRedirectionError(goidc.ErrorCodeInvalidTarget,
 				"the resource "+resource+" is invalid", params)
 		}
+	}
+
+	return nil
+}
+
+func validateIDTokenHintAsOptional(
+	ctx *oidc.Context,
+	params goidc.AuthorizationParameters,
+	_ *goidc.Client,
+) error {
+
+	if params.IDTokenHint == "" {
+		return nil
+	}
+
+	parsedIDToken, err := jwt.ParseSigned(params.IDTokenHint, ctx.UserInfoSigAlgs())
+	if err != nil {
+		return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid id token hint", err)
+	}
+
+	if len(parsedIDToken.Headers) != 1 {
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid id token hint")
+	}
+
+	publicKey, ok := ctx.PublicKey(parsedIDToken.Headers[0].KeyID)
+	if !ok {
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid id token hint")
+	}
+
+	if err := parsedIDToken.Claims(publicKey); err != nil {
+		return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid id token hint", err)
 	}
 
 	return nil

@@ -441,6 +441,8 @@ type AuthorizationParameters struct {
 	AuthorizationDetails []AuthorizationDetail `json:"authorization_details,omitempty"`
 	Resources            Resources             `json:"resource,omitempty"`
 	DPoPJWKThumbprint    string                `json:"dpop_jkt,omitempty"`
+	LoginHint            string                `json:"login_hint,omitempty"`
+	IDTokenHint          string                `json:"id_token_hint,omitempty"`
 }
 
 type Resources []string

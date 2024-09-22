@@ -35,6 +35,8 @@ func newRequest(req *http.Request) request {
 			ACRValues:           req.URL.Query().Get("acr_values"),
 			Resources:           req.URL.Query()["resource"],
 			DPoPJWKThumbprint:   req.URL.Query().Get("dpop_jkt"),
+			LoginHint:           req.URL.Query().Get("login_hint"),
+			IDTokenHint:         req.URL.Query().Get("id_token_hint"),
 		},
 	}
 
@@ -128,6 +130,8 @@ func newPushedRequest(req *http.Request) pushedRequest {
 		ACRValues:           req.PostFormValue("acr_values"),
 		Resources:           req.PostForm["resource"],
 		DPoPJWKThumbprint:   req.PostFormValue("dpop_jkt"),
+		LoginHint:           req.PostFormValue("login_hint"),
+		IDTokenHint:         req.PostFormValue("id_token_hint"),
 	}
 
 	if maxAge, err := strconv.Atoi(req.PostFormValue("max_age")); err == nil {
@@ -211,6 +215,10 @@ func mergeParams(
 			outsideParams.Resources),
 		DPoPJWKThumbprint: nonEmptyOrDefault(insideParams.DPoPJWKThumbprint,
 			outsideParams.DPoPJWKThumbprint),
+		LoginHint: nonEmptyOrDefault(insideParams.LoginHint,
+			outsideParams.LoginHint),
+		IDTokenHint: nonEmptyOrDefault(insideParams.IDTokenHint,
+			outsideParams.IDTokenHint),
 	}
 
 	return params
