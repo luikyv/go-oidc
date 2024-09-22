@@ -33,18 +33,6 @@ func newIDTokenOptions(grantInfo goidc.GrantInfo) IDTokenOptions {
 	}
 }
 
-type dpopValidationOptions struct {
-	// accessToken should be filled when the DPoP "ath" claim is expected and should be validated.
-	accessToken   string
-	jwkThumbprint string
-}
-
-type dpopClaims struct {
-	HTTPMethod      string `json:"htm"`
-	HTTPURI         string `json:"htu"`
-	AccessTokenHash string `json:"ath"`
-}
-
 type request struct {
 	grantType         goidc.GrantType
 	scopes            string

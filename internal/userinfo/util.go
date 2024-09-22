@@ -112,14 +112,14 @@ func signUserInfoClaims(
 }
 
 func encryptUserInfoJWT(
-	_ *oidc.Context,
+	ctx *oidc.Context,
 	c *goidc.Client,
 	userInfoJWT string,
 ) (
 	string,
 	error,
 ) {
-	jwk, err := clientutil.JWKByAlg(c, string(c.UserInfoKeyEncAlg))
+	jwk, err := clientutil.JWKByAlg(ctx, c, string(c.UserInfoKeyEncAlg))
 	if err != nil {
 		return "", goidc.Errorf(goidc.ErrorCodeInvalidRequest,
 			"could not find a jwk to encrypt the user info response", err)

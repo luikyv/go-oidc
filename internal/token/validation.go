@@ -3,36 +3,49 @@ package token
 import (
 	"slices"
 
+	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func validateTokenBinding(ctx *oidc.Context, client *goidc.Client) error {
-	if err := validateTokenBindingDPoP(ctx, client); err != nil {
-		return err
-	}
-
-	if err := validateTokenBindingTLS(ctx, client); err != nil {
-		return err
-	}
-
-	return validateTokenBindingIsRequired(ctx)
-}
-
-func validateTokenBindingDPoP(
+// TODO: Document it.
+func validateBinding(
 	ctx *oidc.Context,
 	client *goidc.Client,
+	dpopOpts *dpop.ValidationOptions,
+) error {
+	if dpopOpts == nil {
+		dpopOpts = &dpop.ValidationOptions{}
+	}
+	if err := validateBindingDPoP(ctx, client, *dpopOpts); err != nil {
+		return err
+	}
+
+	if err := validateBindingTLS(ctx, client); err != nil {
+		return err
+	}
+
+	return validateBindingIsRequired(ctx)
+}
+
+func validateBindingDPoP(
+	ctx *oidc.Context,
+	client *goidc.Client,
+	dpopOpts dpop.ValidationOptions,
 ) error {
 
 	if !ctx.DPoPIsEnabled {
 		return nil
 	}
 
-	dpopJWT, ok := dpopJWT(ctx)
-	// Return an error if the DPoP header was not informed, but it's required
-	// either in the general config or by the client.
-	if !ok && (ctx.DPoPIsRequired || client.DPoPIsRequired) {
+	dpopJWT, ok := dpop.JWT(ctx)
+	// Return an error if the DPoP header was not informed and one of the below
+	// applies:
+	// 	* DPoP is required as a general configuration.
+	// 	* The client requires DPoP.
+	// 	* The JWK thumbprint was informed as a validation option.
+	if !ok && (ctx.DPoPIsRequired || client.DPoPTokenBindingIsRequired || dpopOpts.JWKThumbprint != "") {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid dpop header")
 	}
 
@@ -40,10 +53,10 @@ func validateTokenBindingDPoP(
 	if !ok {
 		return nil
 	}
-	return validateDPoPJWT(ctx, dpopJWT, dpopValidationOptions{})
+	return dpop.ValidateJWT(ctx, dpopJWT, dpopOpts)
 }
 
-func validateTokenBindingTLS(
+func validateBindingTLS(
 	ctx *oidc.Context,
 	client *goidc.Client,
 ) error {
@@ -52,27 +65,27 @@ func validateTokenBindingTLS(
 	}
 
 	_, err := ctx.ClientCert()
-	if err != nil && (ctx.MTLSTokenBindingIsRequired || client.TLSBoundTokensIsRequired) {
+	if err != nil && (ctx.MTLSTokenBindingIsRequired || client.TLSTokenBindingIsRequired) {
 		return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid client certificate", err)
 	}
 
 	return nil
 }
 
-func validateTokenBindingIsRequired(ctx *oidc.Context) error {
+func validateBindingIsRequired(ctx *oidc.Context) error {
 	if !ctx.TokenBindingIsRequired {
 		return nil
 	}
 
 	tokenWillBeBound := false
 
-	_, ok := dpopJWT(ctx)
+	_, ok := dpop.JWT(ctx)
 	if ctx.DPoPIsEnabled && ok {
 		tokenWillBeBound = true
 	}
 
 	_, err := ctx.ClientCert()
-	if ctx.MTLSTokenBindingIsEnabled && err != nil {
+	if ctx.MTLSTokenBindingIsEnabled && err == nil {
 		tokenWillBeBound = true
 	}
 

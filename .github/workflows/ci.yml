@@ -33,13 +33,13 @@ jobs:
 
       - name: Quality Gate
         env:
-            TESTCOVERAGE_THRESHOLD: 55
+            TEST_COVERAGE_THRESHOLD: 55
         run: |
               echo "Quality Gate: checking test coverage is above threshold ..."
-              echo "Threshold             : $TESTCOVERAGE_THRESHOLD %"
+              echo "Threshold             : $TEST_COVERAGE_THRESHOLD %"
               totalCoverage=`go tool cover -func=coverage.out | grep total | grep -Eo '[0-9]+\.[0-9]+'`
               echo "Current test coverage : $totalCoverage %"
-              if (( $(echo "$totalCoverage $TESTCOVERAGE_THRESHOLD" | awk '{print ($1 >= $2)}') )); then
+              if (( $(echo "$totalCoverage $TEST_COVERAGE_THRESHOLD" | awk '{print ($1 >= $2)}') )); then
                   echo "OK"
               else
                   echo "Current test coverage is below threshold. Please add more unit tests or adjust threshold to a lower value."

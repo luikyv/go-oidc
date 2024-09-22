@@ -10,6 +10,7 @@ type Configuration struct {
 	AuthnSessionManager goidc.AuthnSessionManager
 	GrantSessionManager goidc.GrantSessionManager
 
+	Profile goidc.Profile
 	// Host is the domain where the server runs. This value will be used as the
 	// authorization server issuer.
 	Host string
@@ -45,6 +46,7 @@ type Configuration struct {
 	// contraining tokens is required, either DPoP or client TLS.
 	TokenBindingIsRequired bool
 	RenderErrorFunc        goidc.RenderErrorFunc
+	HandleErrorFunc        goidc.HandleErrorFunc
 	// OutterAuthParamsRequired indicates that the required authorization params
 	// must be informed as query parameters during the request to the
 	// authorization endpoint even if they were informed previously during PAR
@@ -89,7 +91,6 @@ type Configuration struct {
 	// will expire in the near future during private_key_jwt and
 	// client_secret_jwt.
 	AssertionLifetimeSecs int
-	AssertionAudiences    []string // TODO: Use this.
 
 	DCRIsEnabled              bool
 	DCRTokenRotationIsEnabled bool
@@ -121,6 +122,7 @@ type Configuration struct {
 	// JARLifetimeSecs defines the max difference allowed between the claims "iat"
 	// and "exp" for request objects.
 	JARLifetimeSecs         int
+	JARLeewayTimeSecs       int
 	JAREncIsEnabled         bool
 	JARKeyEncIDs            []string
 	JARDefaultContentEncAlg jose.ContentEncryption
@@ -142,10 +144,11 @@ type Configuration struct {
 	MTLSTokenBindingIsRequired bool
 	ClientCertFunc             goidc.ClientCertFunc
 
-	DPoPIsEnabled    bool
-	DPoPIsRequired   bool
-	DPoPLifetimeSecs int
-	DPoPSigAlgs      []jose.SignatureAlgorithm
+	DPoPIsEnabled      bool
+	DPoPIsRequired     bool
+	DPoPLifetimeSecs   int
+	DPoPLeewayTimeSecs int
+	DPoPSigAlgs        []jose.SignatureAlgorithm
 
 	PKCEIsEnabled              bool
 	PKCEIsRequired             bool
@@ -158,4 +161,6 @@ type Configuration struct {
 	ResourceIndicatorsIsEnabled  bool
 	ResourceIndicatorsIsRequired bool
 	Resources                    []string
+
+	HTTPClientFunc goidc.HTTPClientFunc
 }

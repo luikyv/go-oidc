@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -44,8 +45,8 @@ func AreScopesAllowed(
 	return true
 }
 
-func JWKByKeyID(c *goidc.Client, keyID string) (jose.JSONWebKey, error) {
-	jwks, err := c.FetchPublicJWKS()
+func JWKByKeyID(ctx *oidc.Context, c *goidc.Client, keyID string) (jose.JSONWebKey, error) {
+	jwks, err := c.FetchPublicJWKS(ctx.HTTPClient())
 	if err != nil {
 		return jose.JSONWebKey{},
 			fmt.Errorf("could not find the jwk by key id: %w", err)
@@ -60,8 +61,8 @@ func JWKByKeyID(c *goidc.Client, keyID string) (jose.JSONWebKey, error) {
 }
 
 // JWKByAlg returns a client JWK based on the algorithm.
-func JWKByAlg(c *goidc.Client, alg string) (jose.JSONWebKey, error) {
-	jwks, err := c.FetchPublicJWKS()
+func JWKByAlg(ctx *oidc.Context, c *goidc.Client, alg string) (jose.JSONWebKey, error) {
+	jwks, err := c.FetchPublicJWKS(ctx.HTTPClient())
 	if err != nil {
 		return jose.JSONWebKey{},
 			fmt.Errorf("could not find the jwk by algorithm: %w", err)

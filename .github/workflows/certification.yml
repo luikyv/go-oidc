@@ -34,12 +34,14 @@ jobs:
             config: ./examples/oidc/cs_config.json
             server_main: ./examples/oidc/main.go
             response_type: code id_token
+
           - name: oidcc-dynamic-certification-test-plan
             modules:
               - oidcc-server
             config: ./examples/oidc/cs_config.json
             server_main: ./examples/oidc/main.go
             response_type: code
+
           - name: oidcc-dynamic-certification-test-plan
             modules:
               - oidcc-server
@@ -47,12 +49,62 @@ jobs:
             server_main: ./examples/oidc/main.go
             response_type: code id_token token
 
+          - name: fapi2-message-signing-id1-test-plan
+            excluded_modules:
+              - fapi2-security-profile-id2-user-rejects-authentication
+              - fapi2-security-profile-id2-ensure-request-object-without-redirect-uri-fails
+              - fapi2-security-profile-id2-ensure-registered-redirect-uri
+              - fapi2-security-profile-id2-ensure-unsigned-authorization-request-without-using-par-fails
+              - fapi2-security-profile-id2-ensure-redirect-uri-in-authorization-request
+              - fapi2-security-profile-id2-attempt-reuse-authorization-code-after-one-second
+              - fapi2-security-profile-id2-dpop-negative-tests
+              - fapi2-security-profile-id2-refresh-token
+              - fapi2-security-profile-id2-par-attempt-reuse-request_uri
+              - fapi2-security-profile-id2-par-attempt-to-use-expired-request_uri
+              - fapi2-security-profile-id2-par-attempt-to-use-request_uri-for-different-client
+              - fapi2-security-profile-id2-ensure-request-object-with-nbf-over-60-fails
+              - fapi2-security-profile-id2-ensure-unsigned-request-at-par-endpoint-fails
+              - fapi2-security-profile-id2-par-authorization-request-containing-request_uri
+              - fapi2-security-profile-id2-state-only-outside-request-object-not-used
+              - fapi2-security-profile-id2-ensure-request-object-without-nbf-fails
+            config: ./examples/fapi2/cs_config.json
+            server_main: ./examples/fapi2/main.go
+            sender_constrain: dpop
+            client_auth_type: private_key_jwt
+            openid: openid_connect
+            fapi_request_method: signed_non_repudiation
+            fapi_profile: plain_fapi
+            fapi_response_mode: jarm
+
+          - name: fapi2-message-signing-id1-test-plan
+            modules:
+              - fapi2-security-profile-id2-happy-flow
+            config: ./examples/fapi2/cs_config.json
+            server_main: ./examples/fapi2/main.go
+            sender_constrain: dpop
+            client_auth_type: private_key_jwt
+            openid: openid_connect
+            fapi_request_method: unsigned
+            fapi_profile: plain_fapi
+            fapi_response_mode: plain_response
+
+          - name: fapi2-message-signing-id1-test-plan
+            modules:
+              - fapi2-security-profile-id2-happy-flow
+            config: ./examples/fapi2/mtls_cs_config.json
+            server_main: ./examples/fapi2/main.go
+            sender_constrain: mtls
+            client_auth_type: mtls
+            openid: openid_connect
+            fapi_request_method: signed_non_repudiation
+            fapi_profile: plain_fapi
+            fapi_response_mode: jarm
+
     steps:
         - uses: actions/checkout@v4
         - uses: actions/setup-go@v4
           with:
             go-version: '1.22.x'
-        - uses: docker/setup-buildx-action@v3
 
         - name: Cache Conformance Suite repository
           uses: actions/cache@v3
@@ -89,37 +141,68 @@ jobs:
             # Prepare base arguments
             ARGS="--plan=${{ matrix.plan.name }} --config=${{ matrix.plan.config }}"
 
-            # If not specific test modules are set, all modules will execute.
+            # Specified modules are the only ones to execute.
             if [ -n "${{ matrix.plan.modules }}" ]; then
               # Convert the test modules list to comma-separated string
               MODULES=$(echo '${{ toJson(matrix.plan.modules) }}' | jq -r '.[]' | tr '\n' ',' | sed 's/,$//')
               ARGS="$ARGS --modules=$MODULES"
-            else
-              ARGS="$ARGS --all-modules"
+            fi
+
+            # Excluded modules won't execute.
+            if [ -n "${{ matrix.plan.excluded_modules }}" ]; then
+              # Convert the excluded test modules list to comma-separated string
+              MODULES=$(echo '${{ toJson(matrix.plan.excluded_modules) }}' | jq -r '.[]' | tr '\n' ',' | sed 's/,$//')
+              ARGS="$ARGS --excluded-modules=$MODULES"
             fi
 
             # Add variants
             if [ -n "${{ matrix.plan.response_type }}" ]; then
               ARGS="$ARGS --response_type=\"${{ matrix.plan.response_type }}\""
             fi
+            if [ -n "${{ matrix.plan.sender_constrain }}" ]; then
+              ARGS="$ARGS --sender_constrain=\"${{ matrix.plan.sender_constrain }}\""
+            fi
+            if [ -n "${{ matrix.plan.client_auth_type }}" ]; then
+              ARGS="$ARGS --client_auth_type=\"${{ matrix.plan.client_auth_type }}\""
+            fi
+            if [ -n "${{ matrix.plan.openid }}" ]; then
+              ARGS="$ARGS --openid=\"${{ matrix.plan.openid }}\""
+            fi
+            if [ -n "${{ matrix.plan.fapi_request_method }}" ]; then
+              ARGS="$ARGS --fapi_request_method=\"${{ matrix.plan.fapi_request_method }}\""
+            fi
+            if [ -n "${{ matrix.plan.fapi_profile }}" ]; then
+              ARGS="$ARGS --fapi_profile=\"${{ matrix.plan.fapi_profile }}\""
+            fi
+            if [ -n "${{ matrix.plan.fapi_response_mode }}" ]; then
+              ARGS="$ARGS --fapi_response_mode=\"${{ matrix.plan.fapi_response_mode }}\""
+            fi
 
             echo "Running with arguments: $ARGS"
             # Ensure that the arguments are passed correctly with spaces preserved.
             sh -c "go run cmd/testrunner/main.go $ARGS"
 
-            # Find the generated test log
-            ZIP_FILE=$(find . -maxdepth 1 -name "*.zip" -print -quit)
-            # Extract the file name from the path
-            FILE_NAME=$(basename "$ZIP_FILE")
-            # Set the file name in an env var for the upload job
-            echo "FILE_NAME=$FILE_NAME" >> $GITHUB_ENV
+        - name: Find test plan log zip file
+          id: find_zip
+          if: ${{ always() }}
+          run: |
+            # Find the first ZIP file
+            FILE=$(find . -type f -name "*.zip" | head -n 1)
+
+            # If no file is found, fail the job
+            if [ -z "$FILE" ]; then
+              echo "No ZIP file found!"
+              exit 1
+            fi
+
+            echo "ZIP_FILE=$(basename "$FILE")" >> $GITHUB_ENV
 
         - name: Upload test plan Log
           uses: actions/upload-artifact@v4
           if: ${{ always() }}
           with:
-            path: ${{ env.FILE_NAME }}
-            name: ${{ strategy.job-index }}-${{ env.FILE_NAME }}
+            path: ${{ env.ZIP_FILE }}
+            name: ${{ strategy.job-index }}-${{ env.ZIP_FILE }}
 
         - name: Cleanup
           if: always()

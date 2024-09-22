@@ -99,5 +99,9 @@ func oidcConfig(ctx *oidc.Context) openIDConfiguration {
 		config.UserInfoContentEncAlgs = ctx.UserContentEncAlgs
 	}
 
+	if ctx.PKCEIsEnabled {
+		config.CodeChallengeMethods = ctx.PKCEChallengeMethods
+	}
+
 	return config
 }

@@ -420,6 +420,7 @@ func WithJAR(
 	return func(p *provider) error {
 		p.config.JARIsEnabled = true
 		p.config.JARLifetimeSecs = defaultJWTLifetimeSecs
+		p.config.JARLeewayTimeSecs = defaultJWTLeewayTimeSecs
 		p.config.JARSigAlgs = algs
 		return nil
 	}
@@ -757,6 +758,7 @@ func WithDPoP(
 	return func(p *provider) error {
 		p.config.DPoPIsEnabled = true
 		p.config.DPoPLifetimeSecs = defaultJWTLifetimeSecs
+		p.config.DPoPLeewayTimeSecs = defaultJWTLeewayTimeSecs
 		p.config.DPoPSigAlgs = sigAlgs
 		return nil
 	}
@@ -898,6 +900,15 @@ func WithRenderErrorFunc(render goidc.RenderErrorFunc) ProviderOption {
 	}
 }
 
+// WithHandleErrorFunc defines a handler to be executed when an error happens.
+// For instance, this can be used to log information about the error
+func WithHandleErrorFunc(f goidc.HandleErrorFunc) ProviderOption {
+	return func(p *provider) error {
+		p.config.HandleErrorFunc = f
+		return nil
+	}
+}
+
 // WithResourceIndicators enables client to indicate which resources they intend
 // to access.
 func WithResourceIndicators(resources ...string) ProviderOption {
@@ -927,6 +938,16 @@ func WithResourceIndicatorsRequired(resources ...string) ProviderOption {
 func WithOutterAuthorizationParamsRequired() ProviderOption {
 	return func(p *provider) error {
 		p.config.OutterAuthParamsRequired = true
+		return nil
+	}
+}
+
+// WithHTTPClientFunc defines how to generate the client used to make HTTP
+// requests to, for instance, a client's JWKS endpoint.
+// The default behavior is to use the default HTTP client from the std library.
+func WithHTTPClientFunc(f goidc.HTTPClientFunc) ProviderOption {
+	return func(p *provider) error {
+		p.config.HTTPClientFunc = f
 		return nil
 	}
 }

@@ -16,6 +16,13 @@ const (
 	RefreshTokenLength int = 99
 )
 
+type Profile string
+
+const (
+	ProfileOpenID Profile = "openid"
+	ProfileFAPI2  Profile = "fapi2"
+)
+
 type GrantType string
 
 const (
@@ -246,7 +253,7 @@ type HandleDynamicClientFunc func(r *http.Request, c *ClientMetaInfo) error
 // during the authorization request cannot be handled.
 type RenderErrorFunc func(w http.ResponseWriter, r *http.Request, err error) error
 
-type HandleErrorEventFunc func(r *http.Request, err error)
+type HandleErrorFunc func(r *http.Request, err error)
 
 var (
 	ScopeOpenID        = NewScope("openid")
@@ -300,11 +307,13 @@ func NewDynamicScope(
 	}
 }
 
-type ShouldIssueRefreshTokenFunc func(client *Client, grantInfo GrantInfo) bool
+type HTTPClientFunc func(*http.Request) *http.Client
+
+type ShouldIssueRefreshTokenFunc func(*Client, GrantInfo) bool
 
 // TokenOptionsFunc defines a function that returns token configuration and is
 // executed when issuing access tokens.
-type TokenOptionsFunc func(client *Client, grantInfo GrantInfo) TokenOptions
+type TokenOptionsFunc func(*Client, GrantInfo) TokenOptions
 
 // TokenOptions defines a template for generating access tokens.
 type TokenOptions struct {
@@ -431,6 +440,7 @@ type AuthorizationParameters struct {
 	Claims               *ClaimsObject         `json:"claims,omitempty"`
 	AuthorizationDetails []AuthorizationDetail `json:"authorization_details,omitempty"`
 	Resources            Resources             `json:"resource,omitempty"`
+	DPoPJWKThumbprint    string                `json:"dpop_jkt,omitempty"`
 }
 
 type Resources []string

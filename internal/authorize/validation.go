@@ -1,9 +1,11 @@
 package authorize
 
 import (
+	"errors"
 	"slices"
 
 	"github.com/luikyv/go-oidc/internal/clientutil"
+	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -93,7 +95,7 @@ func validatePushedRequestWithJAR(
 			"invalid client_id")
 	}
 
-	if jar.RequestObject != "" {
+	if jar.RequestObject != "" || jar.RequestURI != "" {
 		return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
 			"request object is not allowed inside JAR")
 	}
@@ -128,7 +130,20 @@ func validatePushedRequest(
 		c.RedirectURIs = append(c.RedirectURIs, req.RedirectURI)
 	}
 
-	return validateParamsAsOptionals(ctx, req.AuthorizationParameters, c)
+	// Convert redirect errors to JSON.
+	if err := validateParamsAsOptionals(ctx, req.AuthorizationParameters, c); err != nil {
+		var redirectErr redirectionError
+		if errors.As(err, &redirectErr) {
+			return goidc.Errorf(redirectErr.code, redirectErr.desc, redirectErr)
+		}
+		return err
+	}
+
+	if err := validateCodeBindingDPoP(ctx, req.AuthorizationParameters); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // -------------------------------------------------- Helper Functions -------------------------------------------------- //
@@ -445,4 +460,24 @@ func isAuthDetailTypeAllowed(c *goidc.Client, authDetailType string) bool {
 	}
 
 	return slices.Contains(c.AuthDetailTypes, authDetailType)
+}
+
+func validateCodeBindingDPoP(
+	ctx *oidc.Context,
+	params goidc.AuthorizationParameters,
+) error {
+
+	if !ctx.DPoPIsEnabled {
+		return nil
+	}
+
+	dpopJWT, ok := dpop.JWT(ctx)
+	// If the DPoP header was not informed, there's nothing to validate.
+	if !ok {
+		return nil
+	}
+
+	return dpop.ValidateJWT(ctx, dpopJWT, dpop.ValidationOptions{
+		JWKThumbprint: params.DPoPJWKThumbprint,
+	})
 }

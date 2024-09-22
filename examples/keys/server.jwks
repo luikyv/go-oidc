@@ -10,7 +10,7 @@
           "kid": "ps256_key",
           "qi": "KcMTbfV0YYSdiNWntyAnxNO8NAN2iMaNYETDmfLHTzDmRUnbDbi0g9eeqN0oL3DX3fPw7waLhmDAxBB9Fesuq63MQ6F_8okXBJalQayQJoV8oItzY9A7iNyzm2SziZUD0dehA2_tzYFrVEYhmLGGlmdN6D3VYdZt8l5O5eZ9ujE",
           "dp": "0eV-1rE9_pjQYvzyoZo1stJzLI6dYMnVop8RYYAWXM0ef7k1MqKKTe7_KvoR9_F5ZhOsFqPQiewpUQyhPrNm_78Qg5FlSXUBM4UwwQ090YUWEOeuJNO0YOHKa4HwWOqF2qqzu-4iGvtN7BEfuAWz3XJGQM88XKp9illHizzylw8",
-          "alg": "RS256",
+          "alg": "PS256",
           "dq": "X66gqazaG-B9w6ESkNHPCXWrGnd1394wBE_ADKOuLkkEcPUo4DIcdgqeJk63drwgculVsKpYXlpd4aVzU9iOUNVq8vyHmvaV7nYMgsmVHjAz3Av6L_0WKew8JUnbAbWfUY8dcjoJxro2xAbAdRQR67a5OdKbHTaAPoQkQg0RhHE",
           "n": "yxS5N3pWGXhkduaYe7vAJ9rc0gsr-UGVdDL2QecMedO5n6m1p12FrQrHAahYtNqlGsGe7U51wqnKH79f81rBrCLrugU1hc8uGRzFlDw36UBSz_vwmDLkkofR1reaPRt7-uUkPJUoD853YyRIHjpLiZhTZ5BsORyD-TBEqGsVlmEz5E7fElcLerkbI6GF83ZWkSlLB3Gul0--LX1tgfTck0RU5LfA68w-XbQStMwPGLo9CoGOcbJiiSFUcmSgCnGT1vlhWd2H_EHXptE2-JrpfvEY4MLu_tt8Y4BGMrCfJrLsJFJQuCaFi6Mf7_lfHQtCyCnZbZaBwdwvyINc4LHA-Q"
       },

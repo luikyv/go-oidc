@@ -24,7 +24,7 @@ func generateClientCredentialsGrant(
 		return response{}, oauthErr
 	}
 
-	grantOptions, err := newClientCredentialsGrantOptions(ctx, c, req)
+	grantOptions, err := clientCredentialsGrantOptions(ctx, c, req)
 	if err != nil {
 		return response{}, err
 	}
@@ -89,14 +89,14 @@ func validateClientCredentialsGrantRequest(
 		return err
 	}
 
-	if err := validateTokenBinding(ctx, c); err != nil {
+	if err := validateBinding(ctx, c, nil); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func newClientCredentialsGrantOptions(
+func clientCredentialsGrantOptions(
 	ctx *oidc.Context,
 	client *goidc.Client,
 	req request,
@@ -123,7 +123,7 @@ func newClientCredentialsGrantOptions(
 		grantInfo.GrantedResources = req.resources
 	}
 
-	addPoP(ctx, &grantInfo)
+	setPoP(ctx, &grantInfo)
 
 	if err := ctx.HandleGrant(&grantInfo); err != nil {
 		return goidc.GrantInfo{}, err

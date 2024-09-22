@@ -87,10 +87,21 @@ func (ctx *Context) HandleDynamicClient(c *goidc.ClientMetaInfo) error {
 
 func (ctx *Context) RenderError(err error) error {
 	if ctx.RenderErrorFunc == nil {
+		// No need to call handleError here, since this error will end up being
+		// passed to WriteError which already calls handleError.
 		return err
 	}
 
+	ctx.handleError(err)
 	return ctx.RenderErrorFunc(ctx.Response, ctx.Request, err)
+}
+
+func (ctx *Context) handleError(err error) {
+	if ctx.HandleErrorFunc == nil {
+		return
+	}
+
+	ctx.HandleErrorFunc(ctx.Request, err)
 }
 
 // Audiences returns the host names trusted by the server to validate assertions.
@@ -98,12 +109,14 @@ func (ctx *Context) Audiences() []string {
 
 	audiences := []string{
 		ctx.Host,
+		ctx.BaseURL() + ctx.EndpointToken,
 		ctx.Host + ctx.Request.RequestURI,
 	}
 	if ctx.MTLSIsEnabled {
 		audiences = append(
 			audiences,
 			ctx.MTLSHost,
+			ctx.MTLSBaseURL()+ctx.EndpointToken,
 			ctx.MTLSHost+ctx.Request.RequestURI,
 		)
 	}
@@ -138,7 +151,10 @@ func (ctx *Context) AvailablePolicy(
 //---------------------------------------- CRUD ----------------------------------------//
 
 func (ctx *Context) SaveClient(client *goidc.Client) error {
-	return ctx.ClientManager.Save(ctx.Request.Context(), client)
+	if err := ctx.ClientManager.Save(ctx.Request.Context(), client); err != nil {
+		return goidc.Errorf(goidc.ErrorCodeInternalError, "internal error", err)
+	}
+	return nil
 }
 
 func (ctx *Context) Client(id string) (*goidc.Client, error) {
@@ -342,6 +358,8 @@ func (ctx *Context) WriteJWT(token string, status int) error {
 
 func (ctx *Context) WriteError(err error) {
 
+	ctx.handleError(err)
+
 	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
 		if err := ctx.Write(map[string]any{
@@ -541,6 +559,15 @@ func (ctx *Context) HandleGrant(grantInfo *goidc.GrantInfo) error {
 	}
 
 	return oidcErr
+}
+
+func (ctx *Context) HTTPClient() *http.Client {
+
+	if ctx.HTTPClientFunc == nil {
+		return http.DefaultClient
+	}
+
+	return ctx.HTTPClientFunc(ctx.Request)
 }
 
 //---------------------------------------- Context ----------------------------------------//

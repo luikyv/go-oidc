@@ -150,14 +150,14 @@ func signJARMResponse(
 }
 
 func encryptJARMResponse(
-	_ *oidc.Context,
+	ctx *oidc.Context,
 	responseJWT string,
 	c *goidc.Client,
 ) (
 	string,
 	error,
 ) {
-	jwk, err := clientutil.JWKByAlg(c, string(c.JARMKeyEncAlg))
+	jwk, err := clientutil.JWKByAlg(ctx, c, string(c.JARMKeyEncAlg))
 	if err != nil {
 		return "", goidc.Errorf(goidc.ErrorCodeInvalidRequest,
 			"could not fetch the client encryption jwk for jarm", err)
