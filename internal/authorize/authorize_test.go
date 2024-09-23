@@ -458,8 +458,8 @@ func TestInitAuth_InvalidRedirectURI(t *testing.T) {
 		t.Fatal("invalid error type")
 	}
 
-	if oidcErr.Code != goidc.ErrorCodeInvalidRedirectURI {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRedirectURI)
+	if oidcErr.Code != goidc.ErrorCodeInvalidRequest {
+		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRequest)
 	}
 }
 

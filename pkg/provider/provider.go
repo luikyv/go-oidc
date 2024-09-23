@@ -20,6 +20,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
+// TODO: Get rid of this.
 type Provider interface {
 	// Handler returns an HTTP handler with all the logic defined for the openid
 	// provider.
@@ -37,6 +38,10 @@ type Provider interface {
 	// It also validates proof of possesions with DPoP and/or TLS binding if the
 	// token was created with these mechanisms.
 	TokenInfo(http.ResponseWriter, *http.Request) goidc.TokenInfo
+}
+
+type provider struct {
+	config oidc.Configuration
 }
 
 // New creates a new openid provider.
@@ -119,10 +124,6 @@ func New(
 	return p, nil
 }
 
-type provider struct {
-	config oidc.Configuration
-}
-
 func (p *provider) Handler() http.Handler {
 
 	server := http.NewServeMux()
@@ -133,7 +134,8 @@ func (p *provider) Handler() http.Handler {
 	userinfo.RegisterHandlers(server, &p.config)
 	dcr.RegisterHandlers(server, &p.config)
 
-	return server
+	handler := goidc.CacheControlMiddleware(server)
+	return handler
 }
 
 func (p *provider) Run(
@@ -144,7 +146,6 @@ func (p *provider) Run(
 	for _, middleware := range middlewares {
 		handler = middleware(handler)
 	}
-	handler = goidc.CacheControlMiddleware(handler)
 	return http.ListenAndServe(address, handler)
 }
 
@@ -157,7 +158,6 @@ func (p *provider) RunTLS(
 
 	clientAuth := tls.NoClientCert
 	handler := p.Handler()
-	handler = goidc.CacheControlMiddleware(handler)
 	for _, wrapHandler := range middlewares {
 		handler = wrapHandler(handler)
 	}
@@ -176,6 +176,7 @@ func (p *provider) RunTLS(
 		if err != nil {
 			return err
 		}
+
 		// Remove the port from the host name if any.
 		mtlsHost := strings.Split(mtlsHostURL.Host, ":")[0]
 		mux.Handle(mtlsHost+"/", handler)

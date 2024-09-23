@@ -395,11 +395,20 @@ func WithPARLifetimeSecs(secs int) ProviderOption {
 }
 
 // WithUnregisteredRedirectURIsForPAR allows clients to inform unregistered
-// redirect URIs during request to pushed authorization endpoint.
+// redirect URIs during requests to pushed authorization endpoint.
 // To enable pushed authorization request, see [WithPAR].
 func WithUnregisteredRedirectURIsForPAR() ProviderOption {
 	return func(p *provider) error {
 		p.config.PARAllowUnregisteredRedirectURI = true
+		return nil
+	}
+}
+
+// WithRedirectURIRequiredForPAR makes the parameter redirect_uri required
+// during pushed authorization requests.
+func WithRedirectURIRequiredForPAR() ProviderOption {
+	return func(p *provider) error {
+		p.config.PARRedirectURIIsRequired = true
 		return nil
 	}
 }

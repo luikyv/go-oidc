@@ -140,6 +140,11 @@ func validatePushedRequest(
 		return err
 	}
 
+	if ctx.PARRedirectURIIsRequired && req.RedirectURI == "" {
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
+			"redirect_uri is required")
+	}
+
 	if err := validateCodeBindingDPoP(ctx, req.AuthorizationParameters); err != nil {
 		return err
 	}
@@ -301,7 +306,7 @@ func validateRedirectURIAsOptional(
 	}
 
 	if !isRedirectURIAllowed(c, params.RedirectURI) {
-		return goidc.NewError(goidc.ErrorCodeInvalidRedirectURI,
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
 			"invalid redirect_uri")
 	}
 

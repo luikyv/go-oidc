@@ -5,7 +5,7 @@ const (
 	callbackIDLength              int    = 20
 	requestURILength              int    = 20
 	authorizationCodeLength       int    = 30
-	authorizationCodeLifetimeSecs int    = 60
+	authorizationCodeLifetimeSecs int    = 60 // TODO: Make it a config.
 	formPostResponseTemplate      string = `
 	<!-- This HTML document is intended to be used as the response mode "form_post". -->
 	<!-- The parameters that are usually sent to the client via redirect will be sent by posting a form to the client's redirect URI. -->

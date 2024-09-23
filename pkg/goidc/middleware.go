@@ -21,6 +21,7 @@ func CacheControlMiddleware(next http.Handler) http.Handler {
 // mode and mTLS is enabled.
 // This is intended for development purposes and must not be used for production
 // environments.
+// TODO: See where this should go.
 func ClientCertMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		clientCerts := r.TLS.PeerCertificates

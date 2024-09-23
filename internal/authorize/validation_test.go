@@ -132,8 +132,8 @@ func TestValidateRequest_InvalidRedirectURI(t *testing.T) {
 		t.Fatalf("the error should not be redirected")
 	}
 
-	if oidcErr.Code != goidc.ErrorCodeInvalidRedirectURI {
-		t.Errorf("code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRedirectURI)
+	if oidcErr.Code != goidc.ErrorCodeInvalidRequest {
+		t.Errorf("code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRequest)
 	}
 }
 
@@ -314,5 +314,68 @@ func TestValidateRequest_JAR_InvalidClientID(t *testing.T) {
 
 	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
 		t.Errorf("code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
+	}
+}
+
+func TestValidatePushedRequest(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	client, _ := oidctest.NewClient(t)
+	client.RedirectURIs = append(client.RedirectURIs, "https://example.com")
+
+	req := pushedRequest{
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  "https://example.com",
+			ResponseType: goidc.ResponseTypeCode,
+			State:        "random_state",
+		},
+	}
+
+	// When.
+	err := validatePushedRequest(ctx, req, client)
+
+	// Then.
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestValidatePushedRequest_RedirectURIIsRequired(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.PARRedirectURIIsRequired = true
+	client, _ := oidctest.NewClient(t)
+	client.RedirectURIs = append(client.RedirectURIs, "https://example.com")
+
+	req := pushedRequest{
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI: "https://example.com",
+		},
+	}
+
+	// When.
+	err := validatePushedRequest(ctx, req, client)
+
+	// Then.
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestValidatePushedRequest_RedirectURIIsRequired_RedirectURINotInformed(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.PARRedirectURIIsRequired = true
+	client, _ := oidctest.NewClient(t)
+	client.RedirectURIs = append(client.RedirectURIs, "https://example.com")
+
+	req := pushedRequest{}
+
+	// When.
+	err := validatePushedRequest(ctx, req, client)
+
+	// Then.
+	if err == nil {
+		t.Error("the redirect uri was not informed")
 	}
 }

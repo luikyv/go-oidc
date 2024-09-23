@@ -749,6 +749,28 @@ func TestWithUnregisteredRedirectURIsForPAR(t *testing.T) {
 	}
 }
 
+func TestWithRedirectURIRequiredForPAR(t *testing.T) {
+	// Given.
+	p := &provider{}
+
+	// When.
+	err := WithRedirectURIRequiredForPAR()(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := provider{
+		config: oidc.Configuration{
+			PARRedirectURIIsRequired: true,
+		},
+	}
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+		t.Error(diff)
+	}
+}
+
 func TestWithJAR(t *testing.T) {
 	// Given.
 	p := &provider{}

@@ -1,4 +1,4 @@
-# go-oidc
+# GOIDC - A Configurable OpenID Provider built in GO.
 [![Go Reference](https://pkg.go.dev/badge/github.com/luikyv/go-oidc.svg)](https://pkg.go.dev/github.com/luikyv/go-oidc)
 
 `go-oidc` is a client module that provides a customizable Authorization Server with support to OpenID Connect and other standards.

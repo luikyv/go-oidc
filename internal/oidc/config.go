@@ -137,6 +137,7 @@ type Configuration struct {
 	// PARAllowUnregisteredRedirectURI indicates whether the redirect URIs
 	// informed during PAR must be previously registered or not.
 	PARAllowUnregisteredRedirectURI bool
+	PARRedirectURIIsRequired        bool
 
 	MTLSIsEnabled              bool
 	MTLSHost                   string
