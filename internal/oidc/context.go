@@ -104,9 +104,9 @@ func (ctx *Context) handleError(err error) {
 	ctx.HandleErrorFunc(ctx.Request, err)
 }
 
-// Audiences returns the host names trusted by the server to validate assertions.
-func (ctx *Context) Audiences() []string {
-
+// AssertionAudiences returns the host names trusted by the server to validate
+// assertions.
+func (ctx *Context) AssertionAudiences() []string {
 	audiences := []string{
 		ctx.Host,
 		ctx.BaseURL() + ctx.EndpointToken,
@@ -115,7 +115,6 @@ func (ctx *Context) Audiences() []string {
 	if ctx.MTLSIsEnabled {
 		audiences = append(
 			audiences,
-			ctx.MTLSHost,
 			ctx.MTLSBaseURL()+ctx.EndpointToken,
 			ctx.MTLSHost+ctx.Request.RequestURI,
 		)

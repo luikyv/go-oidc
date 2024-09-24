@@ -185,7 +185,7 @@ func TestGetAudiences(t *testing.T) {
 	}
 
 	// When.
-	auds := ctx.Audiences()
+	auds := ctx.AssertionAudiences()
 
 	// Then.
 	wantedAuds := []string{host, host + "/token", host + "/userinfo"}
@@ -209,11 +209,11 @@ func TestGetAudiences_MTLSIsEnabled(t *testing.T) {
 	}
 
 	// When.
-	auds := ctx.Audiences()
+	auds := ctx.AssertionAudiences()
 
 	// Then.
 	wantedAuds := []string{host, host + "/token", host + "/userinfo",
-		mtlsHost, mtlsHost + "/token", mtlsHost + "/userinfo"}
+		mtlsHost + "/token", mtlsHost + "/userinfo"}
 	if !cmp.Equal(auds, wantedAuds) {
 		t.Errorf("Audiences() = %v, want %v", auds, wantedAuds)
 	}

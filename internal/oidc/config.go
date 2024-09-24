@@ -47,11 +47,6 @@ type Configuration struct {
 	TokenBindingIsRequired bool
 	RenderErrorFunc        goidc.RenderErrorFunc
 	HandleErrorFunc        goidc.HandleErrorFunc
-	// OutterAuthParamsRequired indicates that the required authorization params
-	// must be informed as query parameters during the request to the
-	// authorization endpoint even if they were informed previously during PAR
-	// or inside JAR.
-	OutterAuthParamsRequired bool
 
 	EndpointWellKnown           string
 	EndpointJWKS                string

@@ -15,7 +15,7 @@ import (
 
 func TestWithClientStorage(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 	st := storage.NewClientManager()
 
 	// When.
@@ -32,7 +32,7 @@ func TestWithClientStorage(t *testing.T) {
 
 func TestWithAuthnSessionStorage(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 	st := storage.NewAuthnSessionManager()
 
 	// When.
@@ -49,7 +49,7 @@ func TestWithAuthnSessionStorage(t *testing.T) {
 
 func TestWithGrantSessionStorage(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 	st := storage.NewGrantSessionManager()
 
 	// When.
@@ -66,7 +66,7 @@ func TestWithGrantSessionStorage(t *testing.T) {
 
 func TestWithPathPrefix(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithPathPrefix("/auth")(p)
@@ -76,19 +76,19 @@ func TestWithPathPrefix(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			EndpointPrefix: "/auth",
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithJWKSEndpoint(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithJWKSEndpoint("/jwks")(p)
@@ -98,19 +98,19 @@ func TestWithJWKSEndpoint(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			EndpointJWKS: "/jwks",
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithTokenEndpoint(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithTokenEndpoint("/token")(p)
@@ -120,19 +120,19 @@ func TestWithTokenEndpoint(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			EndpointToken: "/token",
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithAuthorizeEndpoint(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithAuthorizeEndpoint("/authorize")(p)
@@ -142,19 +142,19 @@ func TestWithAuthorizeEndpoint(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			EndpointAuthorize: "/authorize",
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithPAREndpoint(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithPAREndpoint("/par")(p)
@@ -164,19 +164,19 @@ func TestWithPAREndpoint(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			EndpointPushedAuthorization: "/par",
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithDCREndpoint(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithDCREndpoint("/register")(p)
@@ -186,19 +186,19 @@ func TestWithDCREndpoint(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			EndpointDCR: "/register",
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithUserInfoEndpoint(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithUserInfoEndpoint("/userinfo")(p)
@@ -208,19 +208,19 @@ func TestWithUserInfoEndpoint(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			EndpointUserInfo: "/userinfo",
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithIntrospectionEndpoint(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithIntrospectionEndpoint("/introspect")(p)
@@ -230,19 +230,19 @@ func TestWithIntrospectionEndpoint(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			EndpointIntrospection: "/introspect",
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithClaims(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithClaims("claim_one", "claim_two")(p)
@@ -252,20 +252,20 @@ func TestWithClaims(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			Claims:     []string{"claim_one", "claim_two"},
 			ClaimTypes: []goidc.ClaimType{goidc.ClaimTypeNormal},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithClaimTypes(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithClaimTypes(goidc.ClaimTypeDistributed)(p)
@@ -275,19 +275,19 @@ func TestWithClaimTypes(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			ClaimTypes: []goidc.ClaimType{goidc.ClaimTypeDistributed},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithUserInfoSignatureKeyIDs(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithUserInfoSignatureKeyIDs("sig_key")(p)
@@ -297,20 +297,20 @@ func TestWithUserInfoSignatureKeyIDs(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			UserDefaultSigKeyID: "sig_key",
 			UserSigKeyIDs:       []string{"sig_key"},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithIDTokenLifetime(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithIDTokenLifetime(60)(p)
@@ -320,19 +320,19 @@ func TestWithIDTokenLifetime(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			IDTokenLifetimeSecs: 60,
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithUserInfoEncryption(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithUserInfoEncryption(jose.RSA_OAEP)(p)
@@ -342,7 +342,7 @@ func TestWithUserInfoEncryption(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			UserEncIsEnabled:         true,
 			UserKeyEncAlgs:           []jose.KeyAlgorithm{jose.RSA_OAEP},
@@ -350,14 +350,14 @@ func TestWithUserInfoEncryption(t *testing.T) {
 			UserContentEncAlgs:       []jose.ContentEncryption{jose.A128CBC_HS256},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithUserInfoEncryption_NoAlgInformed(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithUserInfoEncryption()(p)
@@ -367,7 +367,7 @@ func TestWithUserInfoEncryption_NoAlgInformed(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			UserEncIsEnabled:         true,
 			UserKeyEncAlgs:           []jose.KeyAlgorithm{jose.RSA_OAEP_256},
@@ -375,14 +375,14 @@ func TestWithUserInfoEncryption_NoAlgInformed(t *testing.T) {
 			UserContentEncAlgs:       []jose.ContentEncryption{jose.A128CBC_HS256},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithUserInfoContentEncryptionAlgs(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithUserInfoContentEncryptionAlgs(jose.A128GCM)(p)
@@ -392,20 +392,20 @@ func TestWithUserInfoContentEncryptionAlgs(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			UserDefaultContentEncAlg: jose.A128GCM,
 			UserContentEncAlgs:       []jose.ContentEncryption{jose.A128GCM},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithDCR(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 	var handleDCRFunc goidc.HandleDynamicClientFunc = func(
 		r *http.Request,
 		c *goidc.ClientMetaInfo,
@@ -421,7 +421,7 @@ func TestWithDCR(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			DCRIsEnabled:            true,
 			HandleDynamicClientFunc: handleDCRFunc,
@@ -430,8 +430,8 @@ func TestWithDCR(t *testing.T) {
 	if diff := cmp.Diff(
 		*p,
 		want,
-		cmp.AllowUnexported(provider{}),
-		cmpopts.IgnoreFields(provider{}, "config.HandleDynamicClientFunc"),
+		cmp.AllowUnexported(Provider{}),
+		cmpopts.IgnoreFields(Provider{}, "config.HandleDynamicClientFunc"),
 	); diff != "" {
 		t.Error(diff)
 	}
@@ -443,7 +443,7 @@ func TestWithDCR(t *testing.T) {
 
 func TestWithDCRTokenRotation(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithDCRTokenRotation()(p)
@@ -453,19 +453,45 @@ func TestWithDCRTokenRotation(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			DCRTokenRotationIsEnabled: true,
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithClientCredentialsGrant(t *testing.T) {
+	// Given.
+	p := &Provider{}
+
+	// When.
+	err := WithClientCredentialsGrant()(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := Provider{
+		config: oidc.Configuration{
+			GrantTypes: []goidc.GrantType{goidc.GrantClientCredentials},
+		},
+	}
+	if diff := cmp.Diff(
+		*p,
+		want,
+		cmp.AllowUnexported(Provider{}),
+	); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithRefreshTokenGrant(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithRefreshTokenGrant()(p)
@@ -475,7 +501,7 @@ func TestWithRefreshTokenGrant(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			GrantTypes:               []goidc.GrantType{goidc.GrantRefreshToken},
 			RefreshTokenLifetimeSecs: defaultRefreshTokenLifetimeSecs,
@@ -484,8 +510,8 @@ func TestWithRefreshTokenGrant(t *testing.T) {
 	if diff := cmp.Diff(
 		*p,
 		want,
-		cmp.AllowUnexported(provider{}),
-		cmpopts.IgnoreFields(provider{}, "config.ShouldIssueRefreshTokenFunc"),
+		cmp.AllowUnexported(Provider{}),
+		cmpopts.IgnoreFields(Provider{}, "config.ShouldIssueRefreshTokenFunc"),
 	); diff != "" {
 		t.Error(diff)
 	}
@@ -493,7 +519,7 @@ func TestWithRefreshTokenGrant(t *testing.T) {
 
 func TestWithRefreshTokenLifetimeSecs(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithRefreshTokenLifetimeSecs(600)(p)
@@ -503,19 +529,19 @@ func TestWithRefreshTokenLifetimeSecs(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			RefreshTokenLifetimeSecs: 600,
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithRefreshTokenRotation(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithRefreshTokenRotation()(p)
@@ -525,19 +551,19 @@ func TestWithRefreshTokenRotation(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			RefreshTokenRotationIsEnabled: true,
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithOpenIDScopeRequired(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithOpenIDScopeRequired()(p)
@@ -547,19 +573,19 @@ func TestWithOpenIDScopeRequired(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			OpenIDIsRequired: true,
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithShouldIssueRefreshTokenFunc(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 	var f goidc.ShouldIssueRefreshTokenFunc = func(
 		client *goidc.Client,
 		grantInfo goidc.GrantInfo,
@@ -582,7 +608,7 @@ func TestWithShouldIssueRefreshTokenFunc(t *testing.T) {
 
 func TestWithTokenOptions(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 	var tokenOpts goidc.TokenOptionsFunc = func(
 		client *goidc.Client,
 		grantInfo goidc.GrantInfo,
@@ -605,7 +631,7 @@ func TestWithTokenOptions(t *testing.T) {
 
 func TestWithHandleGrantFunc(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 	var grantHandler goidc.HandleGrantFunc = func(r *http.Request, gi *goidc.GrantInfo) error {
 		return nil
 	}
@@ -625,7 +651,7 @@ func TestWithHandleGrantFunc(t *testing.T) {
 
 func TestWithImplicitGrant(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithImplicitGrant()(p)
@@ -635,7 +661,7 @@ func TestWithImplicitGrant(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			GrantTypes: []goidc.GrantType{goidc.GrantImplicit},
 			ResponseTypes: []goidc.ResponseType{
@@ -648,14 +674,14 @@ func TestWithImplicitGrant(t *testing.T) {
 			},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithScopes(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When
 	err := WithScopes(goidc.ScopeEmail)(p)
@@ -665,7 +691,7 @@ func TestWithScopes(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			Scopes: []goidc.Scope{goidc.ScopeEmail, goidc.ScopeOpenID},
 		},
@@ -673,7 +699,7 @@ func TestWithScopes(t *testing.T) {
 	if diff := cmp.Diff(
 		*p,
 		want,
-		cmp.AllowUnexported(provider{}),
+		cmp.AllowUnexported(Provider{}),
 		cmpopts.IgnoreFields(goidc.Scope{}, "Matches"),
 	); diff != "" {
 		t.Error(diff)
@@ -682,7 +708,7 @@ func TestWithScopes(t *testing.T) {
 
 func TestWithPAR(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithPAR()(p)
@@ -692,20 +718,20 @@ func TestWithPAR(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			PARIsEnabled:    true,
 			PARLifetimeSecs: defaultPARLifetimeSecs,
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithPARRequired(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithPARRequired()(p)
@@ -715,21 +741,21 @@ func TestWithPARRequired(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			PARIsEnabled:    true,
 			PARIsRequired:   true,
 			PARLifetimeSecs: defaultPARLifetimeSecs,
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithUnregisteredRedirectURIsForPAR(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithUnregisteredRedirectURIsForPAR()(p)
@@ -739,19 +765,19 @@ func TestWithUnregisteredRedirectURIsForPAR(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			PARAllowUnregisteredRedirectURI: true,
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithJAR(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithJAR(jose.PS256)(p)
@@ -761,7 +787,7 @@ func TestWithJAR(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			JARIsEnabled:      true,
 			JARLifetimeSecs:   defaultJWTLifetimeSecs,
@@ -769,14 +795,14 @@ func TestWithJAR(t *testing.T) {
 			JARSigAlgs:        []jose.SignatureAlgorithm{jose.PS256},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithJAR_NoAlgInformed(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithJAR()(p)
@@ -786,7 +812,7 @@ func TestWithJAR_NoAlgInformed(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			JARIsEnabled:      true,
 			JARLifetimeSecs:   defaultJWTLifetimeSecs,
@@ -794,14 +820,14 @@ func TestWithJAR_NoAlgInformed(t *testing.T) {
 			JARSigAlgs:        []jose.SignatureAlgorithm{jose.RS256},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithJARRequired(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithJARRequired(jose.PS256)(p)
@@ -811,7 +837,7 @@ func TestWithJARRequired(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			JARIsEnabled:      true,
 			JARIsRequired:     true,
@@ -820,14 +846,14 @@ func TestWithJARRequired(t *testing.T) {
 			JARSigAlgs:        []jose.SignatureAlgorithm{jose.PS256},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithJAREncryption(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithJAREncryption("enc_key")(p)
@@ -837,7 +863,7 @@ func TestWithJAREncryption(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			JAREncIsEnabled:         true,
 			JARKeyEncIDs:            []string{"enc_key"},
@@ -845,14 +871,14 @@ func TestWithJAREncryption(t *testing.T) {
 			JARContentEncAlgs:       []jose.ContentEncryption{jose.A128CBC_HS256},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithJARContentEncryptionAlgs(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithJARContentEncryptionAlgs(jose.A128GCM)(p)
@@ -862,20 +888,20 @@ func TestWithJARContentEncryptionAlgs(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			JARDefaultContentEncAlg: jose.A128GCM,
 			JARContentEncAlgs:       []jose.ContentEncryption{jose.A128GCM},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithJARM(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithJARM("sig_key")(p)
@@ -885,7 +911,7 @@ func TestWithJARM(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			JARMIsEnabled: true,
 			ResponseModes: []goidc.ResponseMode{
@@ -899,14 +925,14 @@ func TestWithJARM(t *testing.T) {
 			JARMSigKeyIDs:       []string{"sig_key"},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithJARMLifetimeSecs(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithJARMLifetimeSecs(60)(p)
@@ -916,19 +942,19 @@ func TestWithJARMLifetimeSecs(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			JARMLifetimeSecs: 60,
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithJARMEncryption(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithJARMEncryption(jose.RSA_OAEP)(p)
@@ -938,7 +964,7 @@ func TestWithJARMEncryption(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			JARMEncIsEnabled:         true,
 			JARMKeyEncAlgs:           []jose.KeyAlgorithm{jose.RSA_OAEP},
@@ -946,14 +972,14 @@ func TestWithJARMEncryption(t *testing.T) {
 			JARMContentEncAlgs:       []jose.ContentEncryption{jose.A128CBC_HS256},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithJARMEncryption_NoAlgInformed(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithJARMEncryption()(p)
@@ -963,7 +989,7 @@ func TestWithJARMEncryption_NoAlgInformed(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			JARMEncIsEnabled:         true,
 			JARMKeyEncAlgs:           []jose.KeyAlgorithm{jose.RSA_OAEP_256},
@@ -971,14 +997,14 @@ func TestWithJARMEncryption_NoAlgInformed(t *testing.T) {
 			JARMContentEncAlgs:       []jose.ContentEncryption{jose.A128CBC_HS256},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithJARMContentEncryptionAlgs(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithJARMContentEncryptionAlgs(jose.A128GCM)(p)
@@ -988,20 +1014,20 @@ func TestWithJARMContentEncryptionAlgs(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			JARMDefaultContentEncAlg: jose.A128GCM,
 			JARMContentEncAlgs:       []jose.ContentEncryption{jose.A128GCM},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithBasicSecretAuthn(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithBasicSecretAuthn()(p)
@@ -1011,19 +1037,19 @@ func TestWithBasicSecretAuthn(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			ClientAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnSecretBasic},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithSecretPostAuthn(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithSecretPostAuthn()(p)
@@ -1033,19 +1059,19 @@ func TestWithSecretPostAuthn(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			ClientAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnSecretPost},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithPrivateKeyJWTAuthn(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithPrivateKeyJWTAuthn(jose.PS256)(p)
@@ -1055,20 +1081,20 @@ func TestWithPrivateKeyJWTAuthn(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			ClientAuthnMethods:   []goidc.ClientAuthnType{goidc.ClientAuthnPrivateKeyJWT},
 			PrivateKeyJWTSigAlgs: []jose.SignatureAlgorithm{jose.PS256},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithPrivateKeyJWTAuthn_NoAlgInformed(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithPrivateKeyJWTAuthn()(p)
@@ -1078,20 +1104,20 @@ func TestWithPrivateKeyJWTAuthn_NoAlgInformed(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			ClientAuthnMethods:   []goidc.ClientAuthnType{goidc.ClientAuthnPrivateKeyJWT},
 			PrivateKeyJWTSigAlgs: []jose.SignatureAlgorithm{jose.RS256},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithSecretJWTAuthn(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithSecretJWTAuthn(jose.HS384)(p)
@@ -1101,20 +1127,20 @@ func TestWithSecretJWTAuthn(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			ClientAuthnMethods:     []goidc.ClientAuthnType{goidc.ClientAuthnSecretJWT},
 			ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS384},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithClientSecretJWTAuthn_NoAlgInformed(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithSecretJWTAuthn()(p)
@@ -1124,20 +1150,20 @@ func TestWithClientSecretJWTAuthn_NoAlgInformed(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			ClientAuthnMethods:     []goidc.ClientAuthnType{goidc.ClientAuthnSecretJWT},
 			ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithAssertionLifetime(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithAssertionLifetime(60)(p)
@@ -1147,19 +1173,19 @@ func TestWithAssertionLifetime(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			AssertionLifetimeSecs: 60,
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithTLSAuthn(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithTLSAuthn()(p)
@@ -1169,19 +1195,19 @@ func TestWithTLSAuthn(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			ClientAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnTLS},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithSelfSignedTLSAuthn(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithSelfSignedTLSAuthn()(p)
@@ -1191,19 +1217,19 @@ func TestWithSelfSignedTLSAuthn(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			ClientAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnSelfSignedTLS},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithNoneAuthn(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithNoneAuthn()(p)
@@ -1213,19 +1239,19 @@ func TestWithNoneAuthn(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			ClientAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnNone},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithIssuerResponseParameter(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithIssuerResponseParameter()(p)
@@ -1235,19 +1261,19 @@ func TestWithIssuerResponseParameter(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			IssuerRespParamIsEnabled: true,
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithAuthorizationDetails(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithAuthorizationDetails("detail_type")(p)
@@ -1257,20 +1283,20 @@ func TestWithAuthorizationDetails(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			AuthDetailsIsEnabled: true,
 			AuthDetailTypes:      []string{"detail_type"},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithMTLS(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithMTLS("https://matls-example.com")(p)
@@ -1280,7 +1306,7 @@ func TestWithMTLS(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			MTLSIsEnabled: true,
 			MTLSHost:      "https://matls-example.com",
@@ -1289,8 +1315,8 @@ func TestWithMTLS(t *testing.T) {
 	if diff := cmp.Diff(
 		*p,
 		want,
-		cmp.AllowUnexported(provider{}),
-		cmpopts.IgnoreFields(provider{}, "config.ClientCertFunc"),
+		cmp.AllowUnexported(Provider{}),
+		cmpopts.IgnoreFields(Provider{}, "config.ClientCertFunc"),
 	); diff != "" {
 		t.Error(diff)
 	}
@@ -1302,7 +1328,7 @@ func TestWithMTLS(t *testing.T) {
 
 func TestWithTLSCertTokenBinding(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithTLSCertTokenBinding()(p)
@@ -1312,19 +1338,19 @@ func TestWithTLSCertTokenBinding(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			MTLSTokenBindingIsEnabled: true,
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithTLSCertTokenBindingRequired(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithTLSCertTokenBindingRequired()(p)
@@ -1334,20 +1360,20 @@ func TestWithTLSCertTokenBindingRequired(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			MTLSTokenBindingIsEnabled:  true,
 			MTLSTokenBindingIsRequired: true,
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithDPoP(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithDPoP(jose.PS256)(p)
@@ -1357,7 +1383,7 @@ func TestWithDPoP(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			DPoPIsEnabled:      true,
 			DPoPSigAlgs:        []jose.SignatureAlgorithm{jose.PS256},
@@ -1365,14 +1391,14 @@ func TestWithDPoP(t *testing.T) {
 			DPoPLeewayTimeSecs: defaultJWTLeewayTimeSecs,
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithDPoP_NoAlgInformed(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithDPoP()(p)
@@ -1382,7 +1408,7 @@ func TestWithDPoP_NoAlgInformed(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			DPoPIsEnabled:      true,
 			DPoPSigAlgs:        []jose.SignatureAlgorithm{jose.RS256},
@@ -1390,14 +1416,14 @@ func TestWithDPoP_NoAlgInformed(t *testing.T) {
 			DPoPLeewayTimeSecs: defaultJWTLeewayTimeSecs,
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithDPoPRequired(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithDPoPRequired(jose.PS256)(p)
@@ -1407,7 +1433,7 @@ func TestWithDPoPRequired(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			DPoPIsEnabled:      true,
 			DPoPIsRequired:     true,
@@ -1416,14 +1442,14 @@ func TestWithDPoPRequired(t *testing.T) {
 			DPoPLeewayTimeSecs: defaultJWTLeewayTimeSecs,
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithTokenBindingRequired(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithTokenBindingRequired()(p)
@@ -1433,19 +1459,19 @@ func TestWithTokenBindingRequired(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			TokenBindingIsRequired: true,
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithIntrospection(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithIntrospection(goidc.ClientAuthnSecretPost)(p)
@@ -1455,21 +1481,21 @@ func TestWithIntrospection(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			IntrospectionIsEnabled:          true,
 			IntrospectionClientAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnSecretPost},
 			GrantTypes:                      []goidc.GrantType{goidc.GrantIntrospection},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithPKCE(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithPKCE(goidc.CodeChallengeMethodPlain)(p)
@@ -1479,21 +1505,21 @@ func TestWithPKCE(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			PKCEIsEnabled:              true,
 			PKCEDefaultChallengeMethod: goidc.CodeChallengeMethodPlain,
 			PKCEChallengeMethods:       []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodPlain},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithPKCE_NoMethodInformed(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithPKCE()(p)
@@ -1503,21 +1529,21 @@ func TestWithPKCE_NoMethodInformed(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			PKCEIsEnabled:              true,
 			PKCEDefaultChallengeMethod: goidc.CodeChallengeMethodSHA256,
 			PKCEChallengeMethods:       []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodSHA256},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithPKCERequired(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithPKCERequired(goidc.CodeChallengeMethodPlain)(p)
@@ -1527,7 +1553,7 @@ func TestWithPKCERequired(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			PKCEIsEnabled:              true,
 			PKCEIsRequired:             true,
@@ -1535,14 +1561,14 @@ func TestWithPKCERequired(t *testing.T) {
 			PKCEChallengeMethods:       []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodPlain},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithACRs(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithACRs("0")(p)
@@ -1552,19 +1578,19 @@ func TestWithACRs(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			ACRs: []goidc.ACR{"0"},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithDisplayValues(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithDisplayValues(goidc.DisplayValuePage)(p)
@@ -1574,19 +1600,19 @@ func TestWithDisplayValues(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			DisplayValues: []goidc.DisplayValue{goidc.DisplayValuePage},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithAuthenticationSessionTimeout(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithAuthenticationSessionTimeout(10)(p)
@@ -1596,19 +1622,19 @@ func TestWithAuthenticationSessionTimeout(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			AuthnSessionTimeoutSecs: 10,
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithStaticClient(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 	c, _ := oidctest.NewClient(t)
 
 	// When.
@@ -1619,19 +1645,19 @@ func TestWithStaticClient(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			StaticClients: []*goidc.Client{c},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithPolicy(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 	policy := goidc.AuthnPolicy{
 		ID: "policy_id",
 	}
@@ -1644,19 +1670,19 @@ func TestWithPolicy(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			Policies: []goidc.AuthnPolicy{policy},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithRenderErrorFunc(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 	var renderFunc goidc.RenderErrorFunc = func(
 		w http.ResponseWriter,
 		r *http.Request,
@@ -1680,7 +1706,7 @@ func TestWithRenderErrorFunc(t *testing.T) {
 
 func TestWithHandleErrorFunc(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 	var handleErrorFunc goidc.HandleErrorFunc = func(
 		r *http.Request,
 		err error,
@@ -1702,7 +1728,7 @@ func TestWithHandleErrorFunc(t *testing.T) {
 
 func TestWithResourceIndicators(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithResourceIndicators("https://resource.com")(p)
@@ -1712,20 +1738,20 @@ func TestWithResourceIndicators(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			ResourceIndicatorsIsEnabled: true,
 			Resources:                   []string{"https://resource.com"},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithResourceIndicatorsRequired(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithResourceIndicatorsRequired("https://resource.com")(p)
@@ -1735,43 +1761,21 @@ func TestWithResourceIndicatorsRequired(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := provider{
+	want := Provider{
 		config: oidc.Configuration{
 			ResourceIndicatorsIsEnabled:  true,
 			ResourceIndicatorsIsRequired: true,
 			Resources:                    []string{"https://resource.com"},
 		},
 	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
-		t.Error(diff)
-	}
-}
-
-func TestWithOutterAuthorizationParamsRequired(t *testing.T) {
-	// Given.
-	p := &provider{}
-
-	// When.
-	err := WithOutterAuthorizationParamsRequired()(p)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	want := provider{
-		config: oidc.Configuration{
-			OutterAuthParamsRequired: true,
-		},
-	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
+	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
 	}
 }
 
 func TestWithHTTPClientFunc(t *testing.T) {
 	// Given.
-	p := &provider{}
+	p := &Provider{}
 
 	// When.
 	err := WithHTTPClientFunc(func(r *http.Request) *http.Client {

@@ -66,11 +66,11 @@ type GrantInfo struct {
 }
 
 func (g *GrantSession) IsExpired() bool {
-	return timeutil.TimestampNow() > g.ExpiresAtTimestamp
+	return timeutil.TimestampNow() >= g.ExpiresAtTimestamp
 }
 
 // HasLastTokenExpired returns whether the last token issued for the grant
 // session is expired or not.
 func (g *GrantSession) HasLastTokenExpired() bool {
-	return timeutil.TimestampNow() > g.LastTokenExpiresAtTimestamp
+	return timeutil.TimestampNow() >= g.LastTokenExpiresAtTimestamp
 }

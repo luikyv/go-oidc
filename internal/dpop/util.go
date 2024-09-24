@@ -13,6 +13,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -80,7 +81,8 @@ func ValidateJWT(
 	}
 
 	// Validate that the "iat" claim is present and it is not too far in the past.
-	if claims.IssuedAt == nil || int(time.Since(claims.IssuedAt.Time()).Seconds()) > ctx.DPoPLifetimeSecs {
+	if claims.IssuedAt == nil ||
+		int(timeutil.Now().Sub(claims.IssuedAt.Time()).Seconds()) > ctx.DPoPLifetimeSecs {
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient,
 			"invalid dpop jwt issuance time")
 	}
@@ -96,7 +98,11 @@ func ValidateJWT(
 	// The query and fragment components of the "htu" must be ignored.
 	// Also, htu should be case-insensitive.
 	httpURI, err := urlWithoutParams(strings.ToLower(dpopClaims.HTTPURI))
-	if err != nil || !slices.Contains(ctx.Audiences(), httpURI) {
+	auds := []string{ctx.BaseURL() + ctx.Request.RequestURI}
+	if ctx.MTLSIsEnabled {
+		auds = append(auds, ctx.MTLSBaseURL()+ctx.Request.RequestURI)
+	}
+	if err != nil || !slices.Contains(auds, httpURI) {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid htu claim")
 	}
 

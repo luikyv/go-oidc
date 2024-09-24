@@ -132,8 +132,8 @@ func TestValidateRequest_InvalidRedirectURI(t *testing.T) {
 		t.Fatalf("the error should not be redirected")
 	}
 
-	if oidcErr.Code != goidc.ErrorCodeInvalidRedirectURI {
-		t.Errorf("code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRedirectURI)
+	if oidcErr.Code != goidc.ErrorCodeInvalidRequest {
+		t.Errorf("code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRequest)
 	}
 }
 
@@ -211,36 +211,6 @@ func TestValidateRequest_PAR(t *testing.T) {
 	req := request{
 		ClientID: client.ID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
-			Scopes: goidc.ScopeOpenID.ID,
-			Nonce:  "random_nonce",
-		},
-	}
-
-	// When.
-	err := validateRequestWithPAR(ctx, req, session, client)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestValidateRequest_PAR_OutterParamsRequired(t *testing.T) {
-	// Given.
-	ctx := oidctest.NewContext(t)
-	ctx.OutterAuthParamsRequired = true
-	client, _ := oidctest.NewClient(t)
-	session := &goidc.AuthnSession{
-		ClientID:           client.ID,
-		ExpiresAtTimestamp: timeutil.TimestampNow() + 10,
-		AuthorizationParameters: goidc.AuthorizationParameters{
-			RedirectURI:  client.RedirectURIs[0],
-			ResponseType: goidc.ResponseTypeCodeAndIDToken,
-		},
-	}
-	req := request{
-		ClientID: client.ID,
-		AuthorizationParameters: goidc.AuthorizationParameters{
 			Scopes:       goidc.ScopeOpenID.ID,
 			Nonce:        "random_nonce",
 			ResponseType: goidc.ResponseTypeCodeAndIDToken,
@@ -259,7 +229,6 @@ func TestValidateRequest_PAR_OutterParamsRequired(t *testing.T) {
 func TestValidateRequest_JAR(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.OutterAuthParamsRequired = true
 	client, _ := oidctest.NewClient(t)
 
 	req := request{
@@ -289,7 +258,6 @@ func TestValidateRequest_JAR(t *testing.T) {
 func TestValidateRequest_JAR_InvalidClientID(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.OutterAuthParamsRequired = true
 	client, _ := oidctest.NewClient(t)
 
 	req := request{
@@ -314,5 +282,69 @@ func TestValidateRequest_JAR_InvalidClientID(t *testing.T) {
 
 	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
 		t.Errorf("code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
+	}
+}
+
+func TestValidatePushedRequest(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	client, _ := oidctest.NewClient(t)
+	client.RedirectURIs = append(client.RedirectURIs, "https://example.com")
+
+	req := pushedRequest{
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  "https://example.com",
+			ResponseType: goidc.ResponseTypeCode,
+			State:        "random_state",
+		},
+	}
+
+	// When.
+	err := validatePushedRequest(ctx, req, client)
+
+	// Then.
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestValidatePushedRequest_RedirectURIIsRequiredForFAPI2(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.Profile = goidc.ProfileFAPI2
+	client, _ := oidctest.NewClient(t)
+	client.RedirectURIs = append(client.RedirectURIs, "https://example.com")
+
+	req := pushedRequest{
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  "https://example.com",
+			ResponseType: goidc.ResponseTypeCode,
+		},
+	}
+
+	// When.
+	err := validatePushedRequest(ctx, req, client)
+
+	// Then.
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestValidatePushedRequest_RedirectURIIsRequiredForFAPI2_RedirectURINotInformed(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.Profile = goidc.ProfileFAPI2
+	client, _ := oidctest.NewClient(t)
+	client.RedirectURIs = append(client.RedirectURIs, "https://example.com")
+
+	req := pushedRequest{}
+
+	// When.
+	err := validatePushedRequest(ctx, req, client)
+
+	// Then.
+	if err == nil {
+		t.Error("the redirect uri was not informed")
 	}
 }

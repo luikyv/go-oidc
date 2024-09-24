@@ -55,18 +55,13 @@ jobs:
               - fapi2-security-profile-id2-ensure-request-object-without-redirect-uri-fails
               - fapi2-security-profile-id2-ensure-registered-redirect-uri
               - fapi2-security-profile-id2-ensure-unsigned-authorization-request-without-using-par-fails
-              - fapi2-security-profile-id2-ensure-redirect-uri-in-authorization-request
               - fapi2-security-profile-id2-attempt-reuse-authorization-code-after-one-second
               - fapi2-security-profile-id2-dpop-negative-tests
               - fapi2-security-profile-id2-refresh-token
               - fapi2-security-profile-id2-par-attempt-reuse-request_uri
               - fapi2-security-profile-id2-par-attempt-to-use-expired-request_uri
               - fapi2-security-profile-id2-par-attempt-to-use-request_uri-for-different-client
-              - fapi2-security-profile-id2-ensure-request-object-with-nbf-over-60-fails
               - fapi2-security-profile-id2-ensure-unsigned-request-at-par-endpoint-fails
-              - fapi2-security-profile-id2-par-authorization-request-containing-request_uri
-              - fapi2-security-profile-id2-state-only-outside-request-object-not-used
-              - fapi2-security-profile-id2-ensure-request-object-without-nbf-fails
             config: ./examples/fapi2/cs_config.json
             server_main: ./examples/fapi2/main.go
             sender_constrain: dpop

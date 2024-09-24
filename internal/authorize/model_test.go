@@ -102,6 +102,10 @@ func setUpParams(t *testing.T) (url.Values, goidc.AuthorizationParameters) {
 	rawParams.Set("max_age", "0")
 	rawParams.Set("claims", `{"id_token": {"auth_time": {"essential": true}}}`)
 	rawParams.Set("authorization_details", `[{"key": "value"}]`)
+	rawParams.Set("login_hint", "random_user")
+	rawParams.Set("id_token_hint", "random_id_token")
+	rawParams.Set("resource", "resource1")
+	rawParams.Add("resource", "resource2")
 
 	maxAge := 0
 	params := goidc.AuthorizationParameters{
@@ -131,6 +135,9 @@ func setUpParams(t *testing.T) (url.Values, goidc.AuthorizationParameters) {
 				"key": "value",
 			},
 		},
+		Resources:   []string{"resource1", "resource2"},
+		LoginHint:   "random_user",
+		IDTokenHint: "random_id_token",
 	}
 
 	return rawParams, params

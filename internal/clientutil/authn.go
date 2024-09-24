@@ -14,6 +14,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -236,13 +237,12 @@ func areClaimsValid(
 			"claim 'exp' is missing in the client assertion")
 	}
 
-	if claims.IssuedAt == nil {
+	if claims.ID == "" {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient,
-			"claim 'iat' is missing in the client assertion")
+			"claim 'jti' is missing in the client assertion")
 	}
 
-	// Validate that the difference between "iat" and "exp" is not too great.
-	secsToExpiry := int(claims.Expiry.Time().Sub(claims.IssuedAt.Time()).Seconds())
+	secsToExpiry := int(claims.Expiry.Time().Sub(timeutil.Now()).Seconds())
 	if secsToExpiry > ctx.AssertionLifetimeSecs {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient,
 			"the assertion has a life time more than allowed")
@@ -251,7 +251,7 @@ func areClaimsValid(
 	err := claims.ValidateWithLeeway(jwt.Expected{
 		Issuer:      client.ID,
 		Subject:     client.ID,
-		AnyAudience: ctx.Audiences(),
+		AnyAudience: ctx.AssertionAudiences(),
 	}, time.Duration(0))
 	if err != nil {
 		return goidc.Errorf(goidc.ErrorCodeInvalidClient, "invalid assertion", err)

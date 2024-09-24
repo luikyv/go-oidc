@@ -20,23 +20,8 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-type Provider interface {
-	// Handler returns an HTTP handler with all the logic defined for the openid
-	// provider.
-	// This may be used to add the oidc logic to a HTTP server.
-	//	server := http.NewServeMux()
-	//	server.Handle("/", op.Handler())
-	Handler() http.Handler
-	Run(address string, middlewares ...goidc.MiddlewareFunc) error
-	// RunTLS runs the provider on TLS mode.
-	// This is intended for development purposes and must not be used for
-	// production environments.
-	RunTLS(opts TLSOptions, middlewares ...goidc.MiddlewareFunc) error
-	Client(ctx context.Context, id string) (*goidc.Client, error)
-	// TokenInfo returns information about the access token sent in the request.
-	// It also validates proof of possesions with DPoP and/or TLS binding if the
-	// token was created with these mechanisms.
-	TokenInfo(http.ResponseWriter, *http.Request) goidc.TokenInfo
+type Provider struct {
+	config oidc.Configuration
 }
 
 // New creates a new openid provider.
@@ -52,7 +37,7 @@ func New(
 	privateJWKS jose.JSONWebKeySet,
 	opts ...ProviderOption,
 ) (
-	Provider,
+	*Provider,
 	error,
 ) {
 	// Use the first signature key as the default key.
@@ -67,7 +52,7 @@ func New(
 		return nil, errors.New("the private jwks doesn't contain any signing key")
 	}
 
-	p := &provider{
+	p := &Provider{
 		config: oidc.Configuration{
 			Profile: profile,
 			Host:    issuer,
@@ -119,11 +104,13 @@ func New(
 	return p, nil
 }
 
-type provider struct {
-	config oidc.Configuration
-}
-
-func (p *provider) Handler() http.Handler {
+// Handler returns an HTTP handler with all the logic defined for the openid
+// provider.
+// This may be used to add the oidc logic to a HTTP server.
+//
+//	server := http.NewServeMux()
+//	server.Handle("/", op.Handler())
+func (p *Provider) Handler() http.Handler {
 
 	server := http.NewServeMux()
 
@@ -133,10 +120,11 @@ func (p *provider) Handler() http.Handler {
 	userinfo.RegisterHandlers(server, &p.config)
 	dcr.RegisterHandlers(server, &p.config)
 
-	return server
+	handler := goidc.CacheControlMiddleware(server)
+	return handler
 }
 
-func (p *provider) Run(
+func (p *Provider) Run(
 	address string,
 	middlewares ...goidc.MiddlewareFunc,
 ) error {
@@ -144,11 +132,13 @@ func (p *provider) Run(
 	for _, middleware := range middlewares {
 		handler = middleware(handler)
 	}
-	handler = goidc.CacheControlMiddleware(handler)
 	return http.ListenAndServe(address, handler)
 }
 
-func (p *provider) RunTLS(
+// RunTLS runs the provider on TLS mode.
+// This is intended for development purposes and must not be used for production
+// environments.
+func (p *Provider) RunTLS(
 	tlsOpts TLSOptions,
 	middlewares ...goidc.MiddlewareFunc,
 ) error {
@@ -157,7 +147,6 @@ func (p *provider) RunTLS(
 
 	clientAuth := tls.NoClientCert
 	handler := p.Handler()
-	handler = goidc.CacheControlMiddleware(handler)
 	for _, wrapHandler := range middlewares {
 		handler = wrapHandler(handler)
 	}
@@ -176,6 +165,7 @@ func (p *provider) RunTLS(
 		if err != nil {
 			return err
 		}
+
 		// Remove the port from the host name if any.
 		mtlsHost := strings.Split(mtlsHostURL.Host, ":")[0]
 		mux.Handle(mtlsHost+"/", handler)
@@ -193,7 +183,11 @@ func (p *provider) RunTLS(
 	return server.ListenAndServeTLS(tlsOpts.ServerCert, tlsOpts.ServerKey)
 }
 
-func (p *provider) TokenInfo(
+// TokenInfo returns information about the access token sent in the request.
+// It also validates proof of possesions with DPoP and/or TLS binding if the
+// token was created with these mechanisms.
+// TODO: Return an error?
+func (p *Provider) TokenInfo(
 	w http.ResponseWriter,
 	r *http.Request,
 ) goidc.TokenInfo {
@@ -221,7 +215,7 @@ func (p *provider) TokenInfo(
 }
 
 // Client is a shortcut to fetch clients using the client storage.
-func (p *provider) Client(
+func (p *Provider) Client(
 	ctx context.Context,
 	id string,
 ) (
@@ -237,9 +231,9 @@ func (p *provider) Client(
 	return p.config.ClientManager.Client(ctx, id)
 }
 
-func (p *provider) validate() error {
+func (p *Provider) validate() error {
 	return runValidations(
-		*p,
+		p.config,
 		validateJWKS,
 		validateSigKeys,
 		validateEncKeys,

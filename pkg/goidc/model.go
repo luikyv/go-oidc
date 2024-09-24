@@ -240,20 +240,20 @@ const (
 	ACRMaceIncommonIAPBronze ACR = "urn:mace:incommon:iap:bronze"
 )
 
-type ClientCertFunc func(r *http.Request) (*x509.Certificate, error)
+type ClientCertFunc func(*http.Request) (*x509.Certificate, error)
 
 type MiddlewareFunc func(next http.Handler) http.Handler
 
 // HandleDynamicClientFunc defines a function that will be executed during DCR
 // and DCM.
 // It can be used to modify the client and perform custom validations.
-type HandleDynamicClientFunc func(r *http.Request, c *ClientMetaInfo) error
+type HandleDynamicClientFunc func(*http.Request, *ClientMetaInfo) error
 
 // RenderErrorFunc defines a function that will be called when errors
 // during the authorization request cannot be handled.
-type RenderErrorFunc func(w http.ResponseWriter, r *http.Request, err error) error
+type RenderErrorFunc func(http.ResponseWriter, *http.Request, error) error
 
-type HandleErrorFunc func(r *http.Request, err error)
+type HandleErrorFunc func(*http.Request, error)
 
 var (
 	ScopeOpenID        = NewScope("openid")
@@ -441,6 +441,8 @@ type AuthorizationParameters struct {
 	AuthorizationDetails []AuthorizationDetail `json:"authorization_details,omitempty"`
 	Resources            Resources             `json:"resource,omitempty"`
 	DPoPJWKThumbprint    string                `json:"dpop_jkt,omitempty"`
+	LoginHint            string                `json:"login_hint,omitempty"`
+	IDTokenHint          string                `json:"id_token_hint,omitempty"`
 }
 
 type Resources []string

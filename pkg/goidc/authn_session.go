@@ -139,7 +139,7 @@ func (s *AuthnSession) GrantResources(resources []string) {
 }
 
 func (s *AuthnSession) IsExpired() bool {
-	return timeutil.TimestampNow() > s.ExpiresAtTimestamp
+	return timeutil.TimestampNow() >= s.ExpiresAtTimestamp
 }
 
 // SetError defines the error that will be informed to the client once the

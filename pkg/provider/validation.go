@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -75,8 +76,8 @@ import (
 // 	return nil
 // }
 
-func validateJWKS(provider provider) error {
-	for _, key := range provider.config.PrivateJWKS.Keys {
+func validateJWKS(config oidc.Configuration) error {
+	for _, key := range config.PrivateJWKS.Keys {
 		if !key.Valid() {
 			return fmt.Errorf("the key with ID: %s is not valid", key.KeyID)
 		}
@@ -85,14 +86,14 @@ func validateJWKS(provider provider) error {
 	return nil
 }
 
-func validateSigKeys(provider provider) error {
+func validateSigKeys(config oidc.Configuration) error {
 
 	for _, keyID := range slices.Concat(
-		[]string{provider.config.UserDefaultSigKeyID},
-		provider.config.UserSigKeyIDs,
-		provider.config.JARMSigKeyIDs,
+		[]string{config.UserDefaultSigKeyID},
+		config.UserSigKeyIDs,
+		config.JARMSigKeyIDs,
 	) {
-		jwkSlice := provider.config.PrivateJWKS.Key(keyID)
+		jwkSlice := config.PrivateJWKS.Key(keyID)
 		if len(jwkSlice) != 1 {
 			return fmt.Errorf("the key ID: %s is not present in the server JWKS or is duplicated", keyID)
 		}
@@ -110,11 +111,11 @@ func validateSigKeys(provider provider) error {
 	return nil
 }
 
-func validateEncKeys(provider provider) error {
+func validateEncKeys(config oidc.Configuration) error {
 	for _, keyID := range slices.Concat(
-		provider.config.JARKeyEncIDs,
+		config.JARKeyEncIDs,
 	) {
-		jwkSlice := provider.config.PrivateJWKS.Key(keyID)
+		jwkSlice := config.PrivateJWKS.Key(keyID)
 		if len(jwkSlice) != 1 {
 			return fmt.Errorf("the key ID: %s is not present in the server JWKS or is duplicated", keyID)
 		}
@@ -128,8 +129,8 @@ func validateEncKeys(provider provider) error {
 	return nil
 }
 
-func validatePrivateKeyJWTSigAlgs(provider provider) error {
-	for _, signatureAlgorithm := range provider.config.PrivateKeyJWTSigAlgs {
+func validatePrivateKeyJWTSigAlgs(config oidc.Configuration) error {
+	for _, signatureAlgorithm := range config.PrivateKeyJWTSigAlgs {
 		if strings.HasPrefix(string(signatureAlgorithm), "HS") {
 			return errors.New("symetric algorithms are not allowed for private_key_jwt authentication")
 		}
@@ -138,8 +139,8 @@ func validatePrivateKeyJWTSigAlgs(provider provider) error {
 	return nil
 }
 
-func validateClientSecretJWTSigAlgs(provider provider) error {
-	for _, signatureAlgorithm := range provider.config.ClientSecretJWTSigAlgs {
+func validateClientSecretJWTSigAlgs(config oidc.Configuration) error {
+	for _, signatureAlgorithm := range config.ClientSecretJWTSigAlgs {
 		if !strings.HasPrefix(string(signatureAlgorithm), "HS") {
 			return errors.New("assymetric algorithms are not allowed for client_secret_jwt authentication")
 		}
@@ -148,18 +149,18 @@ func validateClientSecretJWTSigAlgs(provider provider) error {
 	return nil
 }
 
-func validateIntrospectionClientAuthnMethods(provider provider) error {
+func validateIntrospectionClientAuthnMethods(config oidc.Configuration) error {
 
-	if !provider.config.IntrospectionIsEnabled {
+	if !config.IntrospectionIsEnabled {
 		return nil
 	}
 
-	if !slices.Contains(provider.config.IntrospectionClientAuthnMethods, goidc.ClientAuthnNone) {
+	if !slices.Contains(config.IntrospectionClientAuthnMethods, goidc.ClientAuthnNone) {
 		return errors.New("none client authentication method not allowed for token introspection")
 	}
 
-	for _, method := range provider.config.IntrospectionClientAuthnMethods {
-		if !slices.Contains(provider.config.ClientAuthnMethods, method) {
+	for _, method := range config.IntrospectionClientAuthnMethods {
+		if !slices.Contains(config.ClientAuthnMethods, method) {
 			return errors.New("invalid client authentication method for token introspection")
 		}
 	}
@@ -167,26 +168,26 @@ func validateIntrospectionClientAuthnMethods(provider provider) error {
 	return nil
 }
 
-func validateJAREnc(provider provider) error {
-	if provider.config.JAREncIsEnabled && !provider.config.JARIsEnabled {
+func validateJAREnc(config oidc.Configuration) error {
+	if config.JAREncIsEnabled && !config.JARIsEnabled {
 		return errors.New("JAR must be enabled if JAR encryption is enabled")
 	}
 
 	return nil
 }
 
-func validateJARMEnc(provider provider) error {
-	if provider.config.JARMEncIsEnabled && !provider.config.JARMIsEnabled {
+func validateJARMEnc(config oidc.Configuration) error {
+	if config.JARMEncIsEnabled && !config.JARMIsEnabled {
 		return errors.New("JARM must be enabled if JARM encryption is enabled")
 	}
 
 	return nil
 }
 
-func validateTokenBinding(provider provider) error {
-	if provider.config.TokenBindingIsRequired &&
-		!provider.config.DPoPIsEnabled &&
-		!provider.config.MTLSTokenBindingIsEnabled {
+func validateTokenBinding(config oidc.Configuration) error {
+	if config.TokenBindingIsRequired &&
+		!config.DPoPIsEnabled &&
+		!config.MTLSTokenBindingIsEnabled {
 		return errors.New("if sender constraining tokens is required, at least one mechanism must be enabled, either DPoP or TLS")
 	}
 
@@ -194,11 +195,11 @@ func validateTokenBinding(provider provider) error {
 }
 
 func runValidations(
-	provider provider,
-	validators ...func(provider) error,
+	config oidc.Configuration,
+	validators ...func(oidc.Configuration) error,
 ) error {
 	for _, validator := range validators {
-		if err := validator(provider); err != nil {
+		if err := validator(config); err != nil {
 			return err
 		}
 	}
