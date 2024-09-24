@@ -749,28 +749,6 @@ func TestWithUnregisteredRedirectURIsForPAR(t *testing.T) {
 	}
 }
 
-func TestWithRedirectURIRequiredForPAR(t *testing.T) {
-	// Given.
-	p := &provider{}
-
-	// When.
-	err := WithRedirectURIRequiredForPAR()(p)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	want := provider{
-		config: oidc.Configuration{
-			PARRedirectURIIsRequired: true,
-		},
-	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
-		t.Error(diff)
-	}
-}
-
 func TestWithJAR(t *testing.T) {
 	// Given.
 	p := &provider{}
@@ -1762,28 +1740,6 @@ func TestWithResourceIndicatorsRequired(t *testing.T) {
 			ResourceIndicatorsIsEnabled:  true,
 			ResourceIndicatorsIsRequired: true,
 			Resources:                    []string{"https://resource.com"},
-		},
-	}
-	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {
-		t.Error(diff)
-	}
-}
-
-func TestWithOutterAuthorizationParamsRequired(t *testing.T) {
-	// Given.
-	p := &provider{}
-
-	// When.
-	err := WithOutterAuthorizationParamsRequired()(p)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	want := provider{
-		config: oidc.Configuration{
-			OutterAuthParamsRequired: true,
 		},
 	}
 	if diff := cmp.Diff(*p, want, cmp.AllowUnexported(provider{})); diff != "" {

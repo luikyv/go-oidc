@@ -116,12 +116,19 @@ func authnSessionWithPAR(
 
 	if err := validateRequestWithPAR(ctx, req, session, client); err != nil {
 		// If any of the parameters is invalid, we delete the session right away.
-		if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-			return nil, err
+		if dErr := ctx.DeleteAuthnSession(session.ID); dErr != nil {
+			return nil, dErr
 		}
 		return nil, err
 	}
 
+	// For FAPI 2.0, only the parameters sent during PAR are considered.
+	if ctx.Profile == goidc.ProfileFAPI2 {
+		return session, nil
+	}
+
+	// For OIDC, the parameters sent in the authorization endpoint are merged
+	// with the ones sent during PAR.
 	session.AuthorizationParameters = mergeParams(
 		session.AuthorizationParameters,
 		req.AuthorizationParameters,

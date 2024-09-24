@@ -121,8 +121,27 @@ func jarFromSignedRequestObject(
 			"could not extract claims from the request object", err)
 	}
 
-	// Validate that the "exp" claims is present and it's not too far in the future.
-	if claims.Expiry == nil || int(time.Until(claims.Expiry.Time()).Seconds()) > ctx.JARLifetimeSecs {
+	validFrom := time.Now().UTC()
+	if claims.IssuedAt != nil {
+		validFrom = claims.IssuedAt.Time()
+	}
+	// The claim 'nbf' required for FAPI 2.0.
+	if ctx.Profile == goidc.ProfileFAPI2 {
+		if claims.NotBefore == nil {
+			return request{}, goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
+				"claim 'nbf' is required in the request object")
+		}
+		validFrom = claims.NotBefore.Time().UTC()
+	}
+
+	if claims.Expiry == nil {
+		return request{}, goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
+			"claim 'exp' is required in the request object")
+	}
+
+	// Validate that the "exp" claims is present and it's not far in the future.
+	secsToExpiry := int(claims.Expiry.Time().Sub(validFrom).Seconds())
+	if secsToExpiry > ctx.JARLifetimeSecs {
 		return request{}, goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
 			"invalid exp claim in the request object")
 	}

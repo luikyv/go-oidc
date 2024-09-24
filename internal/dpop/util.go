@@ -96,7 +96,11 @@ func ValidateJWT(
 	// The query and fragment components of the "htu" must be ignored.
 	// Also, htu should be case-insensitive.
 	httpURI, err := urlWithoutParams(strings.ToLower(dpopClaims.HTTPURI))
-	if err != nil || !slices.Contains(ctx.Audiences(), httpURI) {
+	auds := []string{ctx.BaseURL() + ctx.Request.RequestURI}
+	if ctx.MTLSIsEnabled {
+		auds = append(auds, ctx.MTLSBaseURL()+ctx.Request.RequestURI)
+	}
+	if err != nil || !slices.Contains(auds, httpURI) {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid htu claim")
 	}
 

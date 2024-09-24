@@ -404,15 +404,6 @@ func WithUnregisteredRedirectURIsForPAR() ProviderOption {
 	}
 }
 
-// WithRedirectURIRequiredForPAR makes the parameter redirect_uri required
-// during pushed authorization requests.
-func WithRedirectURIRequiredForPAR() ProviderOption {
-	return func(p *provider) error {
-		p.config.PARRedirectURIIsRequired = true
-		return nil
-	}
-}
-
 // WithJAR allows authorization requests to be securely sent as signed JWTs.
 // If no algorithm is informed, the default is RS256.
 // Clients can choose the signing algorithm by setting the attribute
@@ -938,16 +929,6 @@ func WithResourceIndicatorsRequired(resources ...string) ProviderOption {
 	return func(p *provider) error {
 		p.config.ResourceIndicatorsIsRequired = true
 		return WithResourceIndicators(resources...)(p)
-	}
-}
-
-// WithOutterAuthorizationParamsRequired enforces that the parameters required
-// during /authorize must be informed as query parameters even if they were
-// already sent previously during PAR or inside JAR.
-func WithOutterAuthorizationParamsRequired() ProviderOption {
-	return func(p *provider) error {
-		p.config.OutterAuthParamsRequired = true
-		return nil
 	}
 }
 

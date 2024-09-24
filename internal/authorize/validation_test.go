@@ -211,36 +211,6 @@ func TestValidateRequest_PAR(t *testing.T) {
 	req := request{
 		ClientID: client.ID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
-			Scopes: goidc.ScopeOpenID.ID,
-			Nonce:  "random_nonce",
-		},
-	}
-
-	// When.
-	err := validateRequestWithPAR(ctx, req, session, client)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestValidateRequest_PAR_OutterParamsRequired(t *testing.T) {
-	// Given.
-	ctx := oidctest.NewContext(t)
-	ctx.OutterAuthParamsRequired = true
-	client, _ := oidctest.NewClient(t)
-	session := &goidc.AuthnSession{
-		ClientID:           client.ID,
-		ExpiresAtTimestamp: timeutil.TimestampNow() + 10,
-		AuthorizationParameters: goidc.AuthorizationParameters{
-			RedirectURI:  client.RedirectURIs[0],
-			ResponseType: goidc.ResponseTypeCodeAndIDToken,
-		},
-	}
-	req := request{
-		ClientID: client.ID,
-		AuthorizationParameters: goidc.AuthorizationParameters{
 			Scopes:       goidc.ScopeOpenID.ID,
 			Nonce:        "random_nonce",
 			ResponseType: goidc.ResponseTypeCodeAndIDToken,
@@ -259,7 +229,6 @@ func TestValidateRequest_PAR_OutterParamsRequired(t *testing.T) {
 func TestValidateRequest_JAR(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.OutterAuthParamsRequired = true
 	client, _ := oidctest.NewClient(t)
 
 	req := request{
@@ -289,7 +258,6 @@ func TestValidateRequest_JAR(t *testing.T) {
 func TestValidateRequest_JAR_InvalidClientID(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.OutterAuthParamsRequired = true
 	client, _ := oidctest.NewClient(t)
 
 	req := request{
@@ -340,16 +308,17 @@ func TestValidatePushedRequest(t *testing.T) {
 	}
 }
 
-func TestValidatePushedRequest_RedirectURIIsRequired(t *testing.T) {
+func TestValidatePushedRequest_RedirectURIIsRequiredForFAPI2(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.PARRedirectURIIsRequired = true
+	ctx.Profile = goidc.ProfileFAPI2
 	client, _ := oidctest.NewClient(t)
 	client.RedirectURIs = append(client.RedirectURIs, "https://example.com")
 
 	req := pushedRequest{
 		AuthorizationParameters: goidc.AuthorizationParameters{
-			RedirectURI: "https://example.com",
+			RedirectURI:  "https://example.com",
+			ResponseType: goidc.ResponseTypeCode,
 		},
 	}
 
@@ -362,10 +331,10 @@ func TestValidatePushedRequest_RedirectURIIsRequired(t *testing.T) {
 	}
 }
 
-func TestValidatePushedRequest_RedirectURIIsRequired_RedirectURINotInformed(t *testing.T) {
+func TestValidatePushedRequest_RedirectURIIsRequiredForFAPI2_RedirectURINotInformed(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.PARRedirectURIIsRequired = true
+	ctx.Profile = goidc.ProfileFAPI2
 	client, _ := oidctest.NewClient(t)
 	client.RedirectURIs = append(client.RedirectURIs, "https://example.com")
 

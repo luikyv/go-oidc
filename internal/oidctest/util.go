@@ -62,7 +62,8 @@ func NewContext(t *testing.T) *oidc.Context {
 	jwk := PrivatePS256JWK(t, keyID, goidc.KeyUsageSignature)
 
 	config := oidc.Configuration{
-		Host: "https://example.com",
+		Profile: goidc.ProfileOpenID,
+		Host:    "https://example.com",
 
 		ClientManager:       storage.NewClientManager(),
 		AuthnSessionManager: storage.NewAuthnSessionManager(),

@@ -251,6 +251,7 @@ func TestAuthenticated_PrivateKeyJWT(t *testing.T) {
 		goidc.ClaimAudience: ctx.Host,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.AssertionLifetimeSecs - 10,
+		goidc.ClaimTokenID:  "random_jti",
 	}
 
 	ctx.Request.PostForm = map[string][]string{
@@ -280,6 +281,7 @@ func TestAuthenticated_PrivateKeyJWT_ClientInformedSigningAlgorithms(t *testing.
 		goidc.ClaimAudience: ctx.Host,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.AssertionLifetimeSecs - 10,
+		goidc.ClaimTokenID:  "random_jti",
 	}
 
 	ctx.Request.PostForm = map[string][]string{
@@ -562,6 +564,7 @@ func TestAuthenticated_ClientSecretJWT(t *testing.T) {
 		goidc.ClaimAudience: ctx.Host,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.AssertionLifetimeSecs - 10,
+		goidc.ClaimTokenID:  "random_jti",
 	}
 	signer, _ := jose.NewSigner(
 		jose.SigningKey{Algorithm: jose.HS256, Key: []byte(secret)},

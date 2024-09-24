@@ -58,7 +58,6 @@ func main() {
 		provider.WithACRs(goidc.ACRMaceIncommonIAPBronze, goidc.ACRMaceIncommonIAPSilver),
 		provider.WithDCR(dcrPlugin(scopes)),
 		provider.WithTokenOptions(tokenOptions(serverKeyID)),
-		provider.WithOutterAuthorizationParamsRequired(),
 		provider.WithHTTPClientFunc(httpClient),
 		provider.WithPolicy(policy()),
 		provider.WithHandleErrorFunc(func(r *http.Request, err error) {
