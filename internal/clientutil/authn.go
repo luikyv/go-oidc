@@ -14,6 +14,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -241,7 +242,7 @@ func areClaimsValid(
 			"claim 'jti' is missing in the client assertion")
 	}
 
-	secsToExpiry := int(claims.Expiry.Time().Sub(time.Now().UTC()).Seconds())
+	secsToExpiry := int(claims.Expiry.Time().Sub(timeutil.Now()).Seconds())
 	if secsToExpiry > ctx.AssertionLifetimeSecs {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient,
 			"the assertion has a life time more than allowed")

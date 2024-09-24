@@ -8,6 +8,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -121,7 +122,7 @@ func jarFromSignedRequestObject(
 			"could not extract claims from the request object", err)
 	}
 
-	validFrom := time.Now().UTC()
+	validFrom := timeutil.Now()
 	if claims.IssuedAt != nil {
 		validFrom = claims.IssuedAt.Time()
 	}
