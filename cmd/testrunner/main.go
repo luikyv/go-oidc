@@ -1,5 +1,6 @@
 // Test runner will be given a test plan and a list of test modules that it will
 // run against the conformance suite and output their results.
+// TODO: Add more doc.
 package main
 
 import (
