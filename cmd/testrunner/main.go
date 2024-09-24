@@ -1,6 +1,52 @@
-// Test runner will be given a test plan and a list of test modules that it will
-// run against the conformance suite and output their results.
-// TODO: Add more doc.
+// Command testrunner automates the execution of a Conformance Suite test plan
+// against a specified authorization server.
+//
+// At the end of the test execution, a zip file is generated containing the
+// complete logs of the test plan.
+//
+// Usage:
+//
+//	go run cmd/testrunner/main.go --plan=plan_name --config=cs_config [flags]
+//
+// Required Flags:
+//
+//	--plan     Specifies the test plan to execute.
+//	--config   Path to the configuration file for the Conformance Suite.
+//
+// Optional Flags:
+//
+//	--modules             Comma-separated list of test modules to run.
+//	                      If omitted, all available modules will be executed.
+//	--excluded-modules    Comma-separated list of test modules to skip during
+//	                      execution.
+//	--response_type       Defines the OAuth 2.0 response type (e.g., code, token).
+//	--sender_constrain    Specifies the sender-constrain mechanism to apply to
+//	                      tokens (e.g., dpop, mtls).
+//	--client_auth_type    Defines the client authentication type (e.g., mtls,
+//	                      private_key_jwt).
+//	--openid              Indicates the OpenID profile (e.g., openid_connect,
+//	                      plain_oauth).
+//	--fapi_request_method Specifies the FAPI request method (e.g., unsigned,
+//	                      signed_non_repudiation).
+//	--fapi_profile        Defines the FAPI profile for testing (e.g., plain_fapi).
+//	--fapi_response_mode  Specifies the response mode for FAPI tests (e.g.,
+//	                      jarm, plain_response).
+//
+// Notes:
+//
+//	Depending on the test plan, some of the optional flags may be required.
+//	Be sure to review the test plan documentation for any specific mandatory
+//	flags.
+//
+//	If any flag value contains spaces, enclose the value in double quotes.
+//
+// Example:
+//
+//	go run cmd/testrunner/main.go \
+//	--plan=authorizationoidcc-dynamic-certification-test-plan_code \
+//	--config=config.json \
+//	--modules=oidcc-server,oidcc-idtoken-rs256 \
+//	--response_type="code id_token"
 package main
 
 import (
@@ -55,7 +101,6 @@ const (
 	conformanceSuiteURL  string = "https://localhost:8443"
 	argTestPlanName      string = "--plan="
 	argTestModuleNames   string = "--modules="
-	argRunAllTestModules string = "--all-modules"
 	argExcludedModules   string = "--excluded-modules="
 	argConfigFile        string = "--config="
 	argResponseType      string = "--response_type="
