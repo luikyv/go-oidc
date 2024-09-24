@@ -463,6 +463,32 @@ func TestWithDCRTokenRotation(t *testing.T) {
 	}
 }
 
+func TestWithClientCredentialsGrant(t *testing.T) {
+	// Given.
+	p := &Provider{}
+
+	// When.
+	err := WithClientCredentialsGrant()(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := Provider{
+		config: oidc.Configuration{
+			GrantTypes: []goidc.GrantType{goidc.GrantClientCredentials},
+		},
+	}
+	if diff := cmp.Diff(
+		*p,
+		want,
+		cmp.AllowUnexported(Provider{}),
+	); diff != "" {
+		t.Error(diff)
+	}
+}
+
 func TestWithRefreshTokenGrant(t *testing.T) {
 	// Given.
 	p := &Provider{}

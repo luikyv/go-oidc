@@ -257,6 +257,15 @@ func WithDCRTokenRotation() ProviderOption {
 	}
 }
 
+// WithClientCredentialsGrant makes available the client credentials grant.
+func WithClientCredentialsGrant() ProviderOption {
+	return func(p *Provider) error {
+		p.config.GrantTypes = append(p.config.GrantTypes,
+			goidc.GrantClientCredentials)
+		return nil
+	}
+}
+
 // WithRefreshTokenGrant makes available the refresh token grant.
 // The default refresh token lifetime is [defaultRefreshTokenLifetimeSecs] and
 // the default logic to issue refresh token is [defaultIssueRefreshTokenFunc].
