@@ -42,11 +42,6 @@ func validateRequestWithPAR(
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "the request_uri is expired")
 	}
 
-	// For FAPI 2.0, All the validations already happened during PAR.
-	if ctx.Profile == goidc.ProfileFAPI2 {
-		return nil
-	}
-
 	if ctx.PARAllowUnregisteredRedirectURI && session.RedirectURI != "" {
 		c.RedirectURIs = append(c.RedirectURIs, session.RedirectURI)
 	}
@@ -197,6 +192,8 @@ func validateInWithOutParams(
 		return err
 	}
 
+	// For OIDC, the required OAuth parameters must be sent as query parameters
+	// even if they are among the inner parameters.
 	if ctx.Profile == goidc.ProfileOpenID && strutil.ContainsOpenID(mergedParams.Scopes) {
 		if outParams.ResponseType == "" {
 			return newRedirectionError(goidc.ErrorCodeInvalidRequest,

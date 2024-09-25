@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GOIDC</title>
+    <title>goidc</title>
     <style>
         body {
             display: flex;
@@ -129,7 +129,7 @@
             }
         }
 
-        function toggleStructInfo() {
+        function toggleAuthInfo() {
             var infoDiv = document.getElementById('auth-info');
             if (infoDiv.classList.contains('hidden')) {
                 infoDiv.classList.remove('hidden');
@@ -138,13 +138,15 @@
             }
         }
 
+        // Make sure the URL on the browser indicates this page is for the login step.
         window.history.pushState({}, '', "{{ .BaseURL }}/authorize/{{ .CallbackID }}/login");
         window.onload = showError;
     </script>
 </head>
 <body>
     <div class="login-container">
-        <h1>GOIDC</h1>
+        <h1>go-oidc</h1>
+        <h2>Login Form</h2>
         <div id="error-message" class="error-message"></div>
 
         <!-- Login Form -->
@@ -154,17 +156,17 @@
             <input type="text" id="username" name="username" required>
             <label for="password">Password:</label>
             <input type="password" id="password" name="password" required>
-            <button type="submit">Login</button>
+            <button type="submit" id="submit_button">Login</button>
         </form>
 
         <!-- Deny Button -->
         <form action="{{ .BaseURL }}/authorize/{{ .CallbackID }}/login" method="POST">
             <input type="hidden" id="loginFalse" name="login" value="false">
-            <button type="submit" class="cancel-button">Deny</button>
+            <button type="submit" id="cancel_button" class="cancel-button">Deny</button>
         </form>
 
         <!-- Toggle Button -->
-        <button type="button" class="toggle-button" onclick="toggleStructInfo()">Toggle Authentication Session Info</button>
+        <button type="button" class="toggle-button" onclick="toggleAuthInfo()">Toggle Authentication Session Info</button>
 
         <div id="auth-info" class="auth-info hidden">
             <h2>Authentication Session Info</h2>

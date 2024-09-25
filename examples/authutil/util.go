@@ -1,5 +1,6 @@
 // Package authutil contains utilities to set up example authorization server
 // using goidc.
+// TODO: Document this.
 package authutil
 
 import (
@@ -47,6 +48,14 @@ const (
 	correctPassword = "pass"
 )
 
+type authnPage struct {
+	Subject    string
+	BaseURL    string
+	CallbackID string
+	Error      string
+	Session    map[string]any
+}
+
 func ClientMTLS(id, cn, jwksFilepath string) *goidc.Client {
 	client := Client(id, jwksFilepath)
 	client.AuthnMethod = goidc.ClientAuthnTLS
@@ -88,6 +97,9 @@ func Client(id string, jwksFilepath string) *goidc.Client {
 			},
 			ResponseTypes: []goidc.ResponseType{
 				goidc.ResponseTypeCode,
+			},
+			RedirectURIs: []string{
+				"https://localhost.emobix.co.uk:8443/test/a/goidc/callback",
 			},
 		},
 	}
@@ -185,13 +197,6 @@ func Policy() goidc.AuthnPolicy {
 	)
 }
 
-type authnPage struct {
-	BaseURL    string
-	CallbackID string
-	Error      string
-	Session    map[string]any
-}
-
 func authenticate(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -274,6 +279,7 @@ func grantConsent(
 		w.WriteHeader(http.StatusOK)
 		tmpl, _ := template.ParseFiles("../templates/consent.html")
 		tmpl.Execute(w, authnPage{
+			Subject:    as.Subject,
 			BaseURL:    as.Parameter(paramBaseURL).(string),
 			CallbackID: as.CallbackID,
 			Session:    sessionToMap(as),
@@ -340,6 +346,15 @@ func finishFlow(
 	}
 
 	return goidc.StatusSuccess
+}
+
+func RenderError(w http.ResponseWriter, _ *http.Request, err error) error {
+	w.WriteHeader(http.StatusOK)
+	tmpl, _ := template.ParseFiles("../templates/error.html")
+	tmpl.Execute(w, authnPage{
+		Error: err.Error(),
+	})
+	return nil
 }
 
 func sessionToMap(as *goidc.AuthnSession) map[string]any {

@@ -202,7 +202,7 @@ func chosenTestModules(plan testPlan, args arguments) []string {
 		testModules = filteredModules
 	}
 
-	log.Printf("the following test modules will execute: %v\n", testModules)
+	log.Printf("the following test modules will execute: \n\t-%s\n", strings.Join(testModules, "\n\t-"))
 	return testModules
 }
 

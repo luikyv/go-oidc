@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GOIDC</title>
+    <title>goidc</title>
     <style>
         body {
             display: flex;
@@ -38,11 +38,11 @@
             cursor: pointer;
             margin-bottom: 15px;
         }
-        .login-container .login-button {
+        .login-container .consent-button {
             background-color: #007bff;
             color: #fff;
         }
-        .login-container .login-button:hover {
+        .login-container .consent-button:hover {
             background-color: #0056b3;
         }
         .login-container .cancel-button {
@@ -102,7 +102,7 @@
 
     <script>
 
-        function toggleStructInfo() {
+        function toggleAuthInfo() {
             var infoDiv = document.getElementById('auth-info');
             if (infoDiv.classList.contains('hidden')) {
                 infoDiv.classList.remove('hidden');
@@ -111,15 +111,18 @@
             }
         }
 
+        // Make sure the URL on the browser indicates this page is for the consent step.
         window.history.pushState({}, '', "{{ .BaseURL }}/authorize/{{ .CallbackID }}/consent");
     </script>
 </head>
 <body>
     <div class="login-container">
-        <h1>GOICD</h1>
+        <h1>go-oidc</h1>
+        <h2>Consent Form</h2>
+        <p>User: {{ .Subject }}</p>
         <form action="{{ .BaseURL }}/authorize/{{ .CallbackID }}/consent" method="POST">
             <input type="hidden" id="consentTrue" name="consent" value="true">
-            <button type="submit" class="login-button">Consent</button>
+            <button type="submit" id="submit_button" class="consent-button">Consent</button>
         </form>
         <form action="{{ .BaseURL }}/authorize/{{ .CallbackID }}/consent" method="POST">
             <input type="hidden" id="consentFalse" name="consent" value="false">
@@ -127,7 +130,7 @@
         </form>
 
         <!-- Toggle Button -->
-        <button type="button" class="toggle-button" onclick="toggleStructInfo()">Toggle Authentication Session Info</button>
+        <button type="button" class="toggle-button" onclick="toggleAuthInfo()">Toggle Authentication Session Info</button>
 
         <div id="auth-info" class="auth-info hidden">
             <h2>Authentication Session Info</h2>

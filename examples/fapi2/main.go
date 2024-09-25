@@ -38,7 +38,6 @@ func main() {
 		provider.WithUserInfoSignatureKeyIDs(serverKeyID),
 		provider.WithPARRequired(),
 		provider.WithPARLifetimeSecs(10),
-		provider.WithUnregisteredRedirectURIsForPAR(),
 		provider.WithMTLS(authutil.MTLSHost),
 		provider.WithJAR(jose.PS256),
 		provider.WithJARM(serverKeyID),
@@ -64,6 +63,7 @@ func main() {
 		provider.WithStaticClient(authutil.ClientPrivateKeyJWT("client_two", clientTwoJWKSFilePath)),
 		provider.WithStaticClient(authutil.ClientMTLS("mtls_client_one", "client_one", clientOneJWKSFilePath)),
 		provider.WithStaticClient(authutil.ClientMTLS("mtls_client_two", "client_two", clientTwoJWKSFilePath)),
+		provider.WithRenderErrorFunc(authutil.RenderError),
 	)
 	if err != nil {
 		log.Fatal(err)
