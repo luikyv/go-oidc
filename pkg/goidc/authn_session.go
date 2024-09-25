@@ -83,15 +83,15 @@ func (s *AuthnSession) SetTokenClaim(claim string, value any) {
 }
 
 func (s *AuthnSession) SetIDTokenClaimACR(acr ACR) {
-	s.SetIDTokenClaim(ClaimAuthenticationContextReference, acr)
+	s.SetIDTokenClaim(ClaimACR, acr)
 }
 
 func (s *AuthnSession) SetIDTokenClaimAuthTime(authTime int) {
-	s.SetIDTokenClaim(ClaimAuthenticationTime, authTime)
+	s.SetIDTokenClaim(ClaimAuthTime, authTime)
 }
 
 func (s *AuthnSession) SetIDTokenClaimAMR(amrs ...AMR) {
-	s.SetIDTokenClaim(ClaimAuthenticationMethodReferences, amrs)
+	s.SetIDTokenClaim(ClaimAMR, amrs)
 }
 
 // SetIDTokenClaim sets a claim that will be accessible in the ID token.
@@ -103,15 +103,15 @@ func (s *AuthnSession) SetIDTokenClaim(claim string, value any) {
 }
 
 func (s *AuthnSession) SetUserInfoClaimACR(acr ACR) {
-	s.SetUserInfoClaim(ClaimAuthenticationContextReference, acr)
+	s.SetUserInfoClaim(ClaimACR, acr)
 }
 
 func (s *AuthnSession) SetUserInfoClaimAuthTime(authTime int) {
-	s.SetUserInfoClaim(ClaimAuthenticationTime, authTime)
+	s.SetUserInfoClaim(ClaimAuthTime, authTime)
 }
 
 func (s *AuthnSession) SetUserInfoClaimAMR(amrs ...AMR) {
-	s.SetUserInfoClaim(ClaimAuthenticationMethodReferences, amrs)
+	s.SetUserInfoClaim(ClaimAMR, amrs)
 }
 
 // SetUserInfoClaim sets a claim that will be accessible via the user info endpoint.

@@ -88,7 +88,7 @@ func makeIDToken(
 	}
 
 	if opts.AuthorizationCode != "" {
-		claims[goidc.ClaimAuthorizationCodeHash] = halfHashIDTokenClaim(
+		claims[goidc.ClaimAuthzCodeHash] = halfHashIDTokenClaim(
 			opts.AuthorizationCode,
 			sigAlg,
 		)
@@ -160,7 +160,7 @@ func makeJWTToken(
 	}
 
 	if grantInfo.GrantedAuthorizationDetails != nil {
-		claims[goidc.ClaimAuthorizationDetails] = grantInfo.GrantedAuthorizationDetails
+		claims[goidc.ClaimAuthDetails] = grantInfo.GrantedAuthorizationDetails
 	}
 
 	if grantInfo.ActiveResources != nil {
