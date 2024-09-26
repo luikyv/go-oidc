@@ -187,8 +187,21 @@ func validateInWithOutParams(
 	c *goidc.Client,
 ) error {
 
+	// Always validate the redirect URI first before other validations.
+	// If the redirect URI is invalid, we cannot safely redirect the error, even
+	// if the redirect URI is not used in the flow.
+	if err := validateRedirectURIAsOptional(ctx, outParams, c); err != nil {
+		return err
+	}
+
 	mergedParams := mergeParams(inParams, outParams)
 	if err := validateParams(ctx, mergedParams, c); err != nil {
+		return err
+	}
+
+	// Make sure all the outter parameters parameters are valid even if they are
+	// not used.
+	if err := validateParamsAsOptionals(ctx, outParams, c); err != nil {
 		return err
 	}
 
@@ -266,6 +279,8 @@ func validateParams(
 // validateParamsAsOptionals validates the parameters of an authorization
 // request considering them as optional.
 // This validation is meant to be shared during PAR and authorization requests.
+// The redirect URI is ALWAYS validated before any other validations, since
+// it determines when or not to redirect errors.
 func validateParamsAsOptionals(
 	ctx *oidc.Context,
 	params goidc.AuthorizationParameters,

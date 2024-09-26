@@ -17,6 +17,8 @@ func main() {
 	_, filename, _, _ := runtime.Caller(0)
 	sourceDir := filepath.Dir(filename)
 
+	templatesDirPath := filepath.Join(sourceDir, "../templates")
+
 	clientOneJWKSFilePath := filepath.Join(sourceDir, "../keys/client_one.jwks")
 	clientOneCertFilePath := filepath.Join(sourceDir, "../keys/client_one.cert")
 
@@ -57,13 +59,13 @@ func main() {
 		provider.WithDCR(authutil.DCRFunc),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(serverKeyID)),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
-		provider.WithPolicy(authutil.Policy()),
+		provider.WithPolicy(authutil.Policy(templatesDirPath)),
 		provider.WithHandleErrorFunc(authutil.ErrorLoggingFunc),
 		provider.WithStaticClient(authutil.ClientPrivateKeyJWT("client_one", clientOneJWKSFilePath)),
 		provider.WithStaticClient(authutil.ClientPrivateKeyJWT("client_two", clientTwoJWKSFilePath)),
 		provider.WithStaticClient(authutil.ClientMTLS("mtls_client_one", "client_one", clientOneJWKSFilePath)),
 		provider.WithStaticClient(authutil.ClientMTLS("mtls_client_two", "client_two", clientTwoJWKSFilePath)),
-		provider.WithRenderErrorFunc(authutil.RenderError),
+		provider.WithRenderErrorFunc(authutil.RenderError(templatesDirPath)),
 	)
 	if err != nil {
 		log.Fatal(err)

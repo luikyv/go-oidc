@@ -45,6 +45,12 @@ func (m *ClientManager) Client(
 		return nil, errors.New("entity not found")
 	}
 
+	// Make sure the content of jwks_uri is cleared from jwks when fetching the
+	// client from the in memory storaged.
+	if c.PublicJWKSURI != "" {
+		c.PublicJWKS = nil
+	}
+
 	return c, nil
 }
 

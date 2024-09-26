@@ -17,7 +17,7 @@
 //
 //	--modules             Comma-separated list of test modules to run.
 //	                      If omitted, all available modules will be executed.
-//	--excluded-modules    Comma-separated list of test modules to skip during
+//	--skip-modules        Comma-separated list of test modules to skip during
 //	                      execution.
 //	--response_type       Defines the OAuth 2.0 response type (e.g., code, token).
 //	--sender_constrain    Specifies the sender-constrain mechanism to apply to
@@ -51,6 +51,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -67,9 +68,11 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
 	args := buildArguments()
 
 	plan, err := createTestPlan(
+		ctx,
 		args.testPlanName,
 		args.configFile,
 		args.variant,
@@ -79,19 +82,23 @@ func main() {
 	}
 
 	testModules := chosenTestModules(plan, args)
-	var testErrs []error
+	var testErrs []string
 	for _, module := range testModules {
+		ctx, cancel := context.WithTimeout(ctx, 90*time.Second)
+		defer cancel()
+
 		log.Printf("------------------------------ %s ------------------------------", module)
-		err = runTestModule(module, plan)
+		err = runTestModule(ctx, module, plan)
 		log.Printf("------------------------------------------------------------")
 		if err != nil {
-			testErrs = append(testErrs, err)
+			testErrs = append(testErrs, err.Error())
 		}
 	}
 
-	downloadTestPlanLogs(plan.ID)
+	downloadTestPlanLogs(ctx, plan.ID)
 	if len(testErrs) > 0 {
-		log.Fatalf("test plan %s has failures: %v\n", plan.Name, testErrs)
+		log.Fatalf("test plan %s has %d failure(s): \n\t- %s\n", plan.Name,
+			len(testErrs), strings.Join(testErrs, "\n\t- "))
 	}
 
 	log.Printf("test plan %s executed successfully\n", plan.Name)
@@ -101,7 +108,7 @@ const (
 	conformanceSuiteURL  string = "https://localhost:8443"
 	argTestPlanName      string = "--plan="
 	argTestModuleNames   string = "--modules="
-	argExcludedModules   string = "--excluded-modules="
+	argSkipModules       string = "--skip-modules="
 	argConfigFile        string = "--config="
 	argResponseType      string = "--response_type="
 	argSenderConstrain   string = "--sender_constrain="
@@ -202,7 +209,8 @@ func chosenTestModules(plan testPlan, args arguments) []string {
 		testModules = filteredModules
 	}
 
-	log.Printf("the following test modules will execute: \n\t-%s\n", strings.Join(testModules, "\n\t-"))
+	log.Printf("the following test modules will execute: \n\t- %s\n",
+		strings.Join(testModules, "\n\t- "))
 	return testModules
 }
 
@@ -223,9 +231,9 @@ func buildArguments() arguments {
 				strings.Replace(arg, argTestModuleNames, "", 1),
 				",",
 			)
-		case strings.HasPrefix(arg, argExcludedModules):
+		case strings.HasPrefix(arg, argSkipModules):
 			args.excludedTestModules = strings.Split(
-				strings.Replace(arg, argExcludedModules, "", 1),
+				strings.Replace(arg, argSkipModules, "", 1),
 				",",
 			)
 		case strings.HasPrefix(arg, argConfigFile):
@@ -253,6 +261,7 @@ func buildArguments() arguments {
 // createTestPlan creates a test plan that will be used to run individual test
 // modules.
 func createTestPlan(
+	_ context.Context,
 	name, configFile string,
 	variant variant,
 ) (
@@ -297,15 +306,23 @@ func createTestPlan(
 }
 
 // runTestModule runs a single test module from a test plan.
-func runTestModule(name string, plan testPlan) error {
-	testID, err := createTestModule(name, plan.ID)
+func runTestModule(ctx context.Context, name string, plan testPlan) error {
+	testID, err := createTestModule(ctx, name, plan.ID)
 	if err != nil {
 		return err
 	}
 
 	var module testModule
 	for {
-		module, err = fetchTestModule(testID)
+
+		select {
+		case <-ctx.Done():
+			log.Printf("test module %s with id %s timed out\n", name, testID)
+			return fmt.Errorf("test module %s with id %s timed out: %w", name, testID, ctx.Err())
+		default:
+		}
+
+		module, err = fetchTestModule(ctx, testID)
 		if err != nil {
 			return err
 		}
@@ -337,7 +354,7 @@ func runTestModule(name string, plan testPlan) error {
 }
 
 // createTestModule creates a test module from a test plan.
-func createTestModule(name string, planID string) (string, error) {
+func createTestModule(_ context.Context, name string, planID string) (string, error) {
 	log.Printf("create test module %s for test plan id %s\n", name, planID)
 
 	csURL, _ := url.Parse(conformanceSuiteURL + "/api/runner")
@@ -368,7 +385,7 @@ func createTestModule(name string, planID string) (string, error) {
 }
 
 // fetchTestModule fetches information about a running test module.
-func fetchTestModule(id string) (testModule, error) {
+func fetchTestModule(_ context.Context, id string) (testModule, error) {
 	csURL := fmt.Sprintf("%s/api/info/%s", conformanceSuiteURL, id)
 	resp, err := httpClient.Get(csURL)
 	if err != nil {
@@ -391,7 +408,7 @@ func fetchTestModule(id string) (testModule, error) {
 // downloadTestPlanLogs fetches the test plan logs html in zip format and
 // creates a file to store it.
 // If an error happens it just aborts the execution.
-func downloadTestPlanLogs(planID string) {
+func downloadTestPlanLogs(_ context.Context, planID string) {
 	csURL := fmt.Sprintf("%s/api/plan/exporthtml/%s", conformanceSuiteURL, planID)
 	resp, err := httpClient.Get(csURL)
 	if err != nil {

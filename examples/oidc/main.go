@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"net/http"
 	"path/filepath"
 	"runtime"
 
@@ -16,6 +15,9 @@ func main() {
 	// Get the file path of the source file.
 	_, filename, _, _ := runtime.Caller(0)
 	sourceDir := filepath.Dir(filename)
+
+	templatesDirPath := filepath.Join(sourceDir, "../templates")
+
 	jwksFilePath := filepath.Join(sourceDir, "../keys/server.jwks")
 	certFilePath := filepath.Join(sourceDir, "../keys/server.cert")
 	certKeyFilePath := filepath.Join(sourceDir, "../keys/server.key")
@@ -46,10 +48,9 @@ func main() {
 		provider.WithDCR(authutil.DCRFunc),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(serverKeyID)),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
-		provider.WithPolicy(authutil.Policy()),
-		provider.WithHandleErrorFunc(func(r *http.Request, err error) {
-			log.Printf("error during request %s: %s\n", r.RequestURI, err.Error())
-		}),
+		provider.WithPolicy(authutil.Policy(templatesDirPath)),
+		provider.WithHandleErrorFunc(authutil.ErrorLoggingFunc),
+		provider.WithRenderErrorFunc(authutil.RenderError(templatesDirPath)),
 	)
 	if err != nil {
 		log.Fatal(err)

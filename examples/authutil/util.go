@@ -1,6 +1,5 @@
 // Package authutil contains utilities to set up example authorization server
 // using goidc.
-// TODO: Document this.
 package authutil
 
 import (
@@ -13,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -33,19 +33,16 @@ var (
 )
 
 const (
-	paramStepID  = "step_id"
-	paramBaseURL = "base_url"
-
-	stepIDLogin      = "step_login"
-	stepIDConsent    = "step_consent"
-	stepIDFinishFlow = "step_finish_flow"
-
-	usernameFormParam = "username"
-	passwordFormParam = "password"
-	loginFormParam    = "login"
-	consentFormParam  = "consent"
-
-	correctPassword = "pass"
+	paramStepID       string = "step_id"
+	paramBaseURL      string = "base_url"
+	stepIDLogin       string = "step_login"
+	stepIDConsent     string = "step_consent"
+	stepIDFinishFlow  string = "step_finish_flow"
+	usernameFormParam string = "username"
+	passwordFormParam string = "password"
+	loginFormParam    string = "login"
+	consentFormParam  string = "consent"
+	correctPassword   string = "pass"
 )
 
 type authnPage struct {
@@ -100,6 +97,7 @@ func Client(id string, jwksFilepath string) *goidc.Client {
 			},
 			RedirectURIs: []string{
 				"https://localhost.emobix.co.uk:8443/test/a/goidc/callback",
+				"https://localhost.emobix.co.uk:8443/test/a/goidc/callback?dummy1=lorem&dummy2=ipsum",
 			},
 		},
 	}
@@ -184,46 +182,58 @@ func ErrorLoggingFunc(r *http.Request, err error) {
 	log.Printf("error during request %s: %s\n", r.RequestURI, err.Error())
 }
 
-func Policy() goidc.AuthnPolicy {
+func Policy(templatesDir string) goidc.AuthnPolicy {
+
+	loginTemplate := filepath.Join(templatesDir, "/login.html")
+	consentTemplate := filepath.Join(templatesDir, "/consent.html")
+	tmpl, err := template.ParseFiles(loginTemplate, consentTemplate)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	authenticator := authenticator{tmpl: tmpl}
 	return goidc.NewPolicy(
 		"main",
 		func(r *http.Request, c *goidc.Client, as *goidc.AuthnSession) bool {
 			// The flow starts at the login step.
 			as.StoreParameter(paramStepID, stepIDLogin)
-			as.StoreParameter(paramBaseURL, Issuer)
 			return true
 		},
-		authenticate,
+		authenticator.authenticate,
 	)
 }
 
-func authenticate(
+type authenticator struct {
+	tmpl *template.Template
+}
+
+func (a authenticator) authenticate(
 	w http.ResponseWriter,
 	r *http.Request,
 	as *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 	if as.Parameter(paramStepID) == stepIDLogin {
-		if status := login(w, r, as); status != goidc.StatusSuccess {
+		if status := a.login(w, r, as); status != goidc.StatusSuccess {
 			return status
 		}
 		as.StoreParameter(paramStepID, stepIDConsent)
 	}
 
 	if as.Parameter(paramStepID) == stepIDConsent {
-		if status := grantConsent(w, r, as); status != goidc.StatusSuccess {
+		if status := a.grantConsent(w, r, as); status != goidc.StatusSuccess {
 			return status
 		}
 		as.StoreParameter(paramStepID, stepIDFinishFlow)
 	}
 
 	if as.Parameter(paramStepID) == stepIDFinishFlow {
-		return finishFlow(as)
+		return a.finishFlow(as)
 	}
 
 	return goidc.StatusFailure
 }
 
-func login(
+func (a authenticator) login(
 	w http.ResponseWriter,
 	r *http.Request,
 	as *goidc.AuthnSession,
@@ -234,9 +244,8 @@ func login(
 	isLogin := r.PostFormValue(loginFormParam)
 	if isLogin == "" {
 		w.WriteHeader(http.StatusOK)
-		tmpl, _ := template.ParseFiles("../templates/login.html")
-		tmpl.Execute(w, authnPage{
-			BaseURL:    as.Parameter(paramBaseURL).(string),
+		a.tmpl.ExecuteTemplate(w, "login.html", authnPage{
+			BaseURL:    Issuer,
 			CallbackID: as.CallbackID,
 			Session:    sessionToMap(as),
 		})
@@ -252,8 +261,7 @@ func login(
 	password := r.PostFormValue(passwordFormParam)
 	if password != correctPassword {
 		w.WriteHeader(http.StatusOK)
-		tmpl, _ := template.ParseFiles("../templates/login.html")
-		tmpl.Execute(w, authnPage{
+		a.tmpl.ExecuteTemplate(w, "login.html", authnPage{
 			BaseURL:    as.Parameter(paramBaseURL).(string),
 			CallbackID: as.CallbackID,
 			Error:      fmt.Sprintf("invalid password, try '%s'", correctPassword),
@@ -266,7 +274,7 @@ func login(
 	return goidc.StatusSuccess
 }
 
-func grantConsent(
+func (a authenticator) grantConsent(
 	w http.ResponseWriter,
 	r *http.Request,
 	as *goidc.AuthnSession,
@@ -277,10 +285,9 @@ func grantConsent(
 	isConsented := r.PostFormValue(consentFormParam)
 	if isConsented == "" {
 		w.WriteHeader(http.StatusOK)
-		tmpl, _ := template.ParseFiles("../templates/consent.html")
-		tmpl.Execute(w, authnPage{
+		a.tmpl.ExecuteTemplate(w, "consent.html", authnPage{
 			Subject:    as.Subject,
-			BaseURL:    as.Parameter(paramBaseURL).(string),
+			BaseURL:    Issuer,
 			CallbackID: as.CallbackID,
 			Session:    sessionToMap(as),
 		})
@@ -295,7 +302,7 @@ func grantConsent(
 	return goidc.StatusSuccess
 }
 
-func finishFlow(
+func (a authenticator) finishFlow(
 	as *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 	as.GrantScopes(as.Scopes)
@@ -348,13 +355,21 @@ func finishFlow(
 	return goidc.StatusSuccess
 }
 
-func RenderError(w http.ResponseWriter, _ *http.Request, err error) error {
-	w.WriteHeader(http.StatusOK)
-	tmpl, _ := template.ParseFiles("../templates/error.html")
-	tmpl.Execute(w, authnPage{
-		Error: err.Error(),
-	})
-	return nil
+func RenderError(templatesDir string) goidc.RenderErrorFunc {
+	errorTemplate := filepath.Join(templatesDir, "/error.html")
+	tmpl, err := template.ParseFiles(errorTemplate)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return func(w http.ResponseWriter, r *http.Request, err error) error {
+		w.WriteHeader(http.StatusOK)
+		tmpl.Execute(w, authnPage{
+			Error: err.Error(),
+		})
+		return nil
+	}
+
 }
 
 func sessionToMap(as *goidc.AuthnSession) map[string]any {

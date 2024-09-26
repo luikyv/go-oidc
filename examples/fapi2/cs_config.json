@@ -84,7 +84,7 @@
                 },
                 {
                     "task": "Verify complete",
-                    "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback?*",
+                    "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback*",
                     "commands": [
                         ["wait", "id", "submission_complete", 10]
                     ]
@@ -107,7 +107,7 @@
                         },
                         {
                             "task": "Verify complete",
-                            "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback?*",
+                            "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback*",
                             "commands": [
                                 ["wait", "id", "submission_complete", 10]
                             ]
@@ -142,7 +142,7 @@
                         {
                             "task": "Verify complete",
                             "optional": true,
-                            "match": "https://localhost.emobix.co.uk:8443/*/callback?*",
+                            "match": "https://localhost.emobix.co.uk:8443/*/callback*",
                             "commands": [
                                 ["wait", "id", "submission_complete", 5]
                             ]
@@ -202,6 +202,24 @@
                     "tasks": [
                         {
                             "task": "Expect request_uri is invalid",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+
+                }
+            ]
+        },
+        "fapi2-security-profile-id2-ensure-registered-redirect-uri": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect redirect_uri is invalid",
                             "optional": true,
                             "match": "https://auth.localhost*/authorize*",
                             "commands": [

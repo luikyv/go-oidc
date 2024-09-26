@@ -158,16 +158,7 @@ func TestValidateRequest(t *testing.T) {
 		{
 			"redirect_uri_with_fragment",
 			func(c goidc.Client) *goidc.Client {
-				c.RedirectURIs = append(c.RedirectURIs, "https://example.com#fragment")
-				return &c
-			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
-			false,
-		},
-		{
-			"redirect_uri_with_fragment",
-			func(c goidc.Client) *goidc.Client {
-				c.RedirectURIs = append(c.RedirectURIs, "https://example.com#fragment")
+				c.RedirectURIs = append(c.RedirectURIs, "https://example.com?param=value#fragment")
 				return &c
 			},
 			func(ctx oidc.Context) *oidc.Context { return &ctx },
