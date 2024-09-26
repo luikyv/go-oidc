@@ -23,6 +23,10 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 		"POST "+config.EndpointPrefix+config.EndpointAuthorize+"/{callback}",
 		oidc.Handler(config, handlerCallback),
 	)
+	router.HandleFunc(
+		"POST "+config.EndpointPrefix+config.EndpointAuthorize+"/{callback}/{callback_path...}",
+		oidc.Handler(config, handlerCallback),
+	)
 }
 
 func handlerPush(ctx *oidc.Context) {

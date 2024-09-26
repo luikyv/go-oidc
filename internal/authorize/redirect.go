@@ -78,6 +78,8 @@ func redirectResponse(
 // responseMode returns the response mode based on the response type.
 // According to "5. Definitions of Multiple-Valued Response Type Combinations"
 // of https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#Combinations.
+// TODO: What if the response mode is not valid? The only func that calls it already
+// handles this, but it's better to handle it here.
 func responseMode(params goidc.AuthorizationParameters) goidc.ResponseMode {
 	if params.ResponseMode == "" {
 		if params.ResponseType.IsImplicit() {

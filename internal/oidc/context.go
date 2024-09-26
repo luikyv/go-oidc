@@ -17,6 +17,7 @@ import (
 type Context struct {
 	Response http.ResponseWriter
 	Request  *http.Request
+	// TODO: Make it a pointer.
 	Configuration
 }
 

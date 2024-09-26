@@ -91,11 +91,17 @@ func validateRedirectURIS(
 	dc request,
 ) error {
 	for _, ru := range dc.RedirectURIs {
-		parsedRU, err := url.ParseRequestURI(ru)
+		parsedRU, err := url.Parse(ru)
 		if err != nil {
 			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 				"invalid redirect uri")
 		}
+
+		if parsedRU.Scheme != "https" || parsedRU.Host == "" {
+			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
+				"invalid redirect uri")
+		}
+
 		if parsedRU.Fragment != "" {
 			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 				"the redirect uri cannot contain a fragment")
