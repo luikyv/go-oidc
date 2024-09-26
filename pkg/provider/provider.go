@@ -21,7 +21,7 @@ import (
 )
 
 type Provider struct {
-	config oidc.Configuration
+	config *oidc.Configuration
 }
 
 // New creates a new openid provider.
@@ -37,7 +37,7 @@ func New(
 	privateJWKS jose.JSONWebKeySet,
 	opts ...ProviderOption,
 ) (
-	*Provider,
+	Provider,
 	error,
 ) {
 	// Use the first signature key as the default key.
@@ -49,11 +49,11 @@ func New(
 		}
 	}
 	if defaultSigKeyID == "" {
-		return nil, errors.New("the private jwks doesn't contain any signing key")
+		return Provider{}, errors.New("the private jwks doesn't contain any signing key")
 	}
 
-	p := &Provider{
-		config: oidc.Configuration{
+	p := Provider{
+		config: &oidc.Configuration{
 			Profile: profile,
 			Host:    issuer,
 
@@ -93,12 +93,12 @@ func New(
 
 	for _, opt := range opts {
 		if err := opt(p); err != nil {
-			return nil, err
+			return Provider{}, err
 		}
 	}
 
 	if err := p.validate(); err != nil {
-		return nil, err
+		return Provider{}, err
 	}
 
 	return p, nil
@@ -110,21 +110,21 @@ func New(
 //
 //	server := http.NewServeMux()
 //	server.Handle("/", op.Handler())
-func (p *Provider) Handler() http.Handler {
+func (p Provider) Handler() http.Handler {
 
 	server := http.NewServeMux()
 
-	discovery.RegisterHandlers(server, &p.config)
-	token.RegisterHandlers(server, &p.config)
-	authorize.RegisterHandlers(server, &p.config)
-	userinfo.RegisterHandlers(server, &p.config)
-	dcr.RegisterHandlers(server, &p.config)
+	discovery.RegisterHandlers(server, p.config)
+	token.RegisterHandlers(server, p.config)
+	authorize.RegisterHandlers(server, p.config)
+	userinfo.RegisterHandlers(server, p.config)
+	dcr.RegisterHandlers(server, p.config)
 
 	handler := goidc.CacheControlMiddleware(server)
 	return handler
 }
 
-func (p *Provider) Run(
+func (p Provider) Run(
 	address string,
 	middlewares ...goidc.MiddlewareFunc,
 ) error {
@@ -138,7 +138,7 @@ func (p *Provider) Run(
 // RunTLS runs the provider on TLS mode.
 // This is intended for development purposes and must not be used for production
 // environments.
-func (p *Provider) RunTLS(
+func (p Provider) RunTLS(
 	tlsOpts TLSOptions,
 	middlewares ...goidc.MiddlewareFunc,
 ) error {
@@ -187,7 +187,7 @@ func (p *Provider) RunTLS(
 // It also validates proof of possesions with DPoP and/or TLS binding if the
 // token was created with these mechanisms.
 // TODO: Return an error?
-func (p *Provider) TokenInfo(
+func (p Provider) TokenInfo(
 	w http.ResponseWriter,
 	r *http.Request,
 ) goidc.TokenInfo {
@@ -231,7 +231,7 @@ func (p *Provider) Client(
 	return p.config.ClientManager.Client(ctx, id)
 }
 
-func (p *Provider) validate() error {
+func (p Provider) validate() error {
 	return runValidations(
 		p.config,
 		validateJWKS,

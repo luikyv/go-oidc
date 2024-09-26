@@ -4,7 +4,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/oidc"
 )
 
-func oidcConfig(ctx *oidc.Context) openIDConfiguration {
+func oidcConfig(ctx oidc.Context) openIDConfiguration {
 	var scopes []string
 	for _, scope := range ctx.Scopes {
 		scopes = append(scopes, scope.ID)

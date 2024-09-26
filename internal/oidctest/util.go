@@ -55,13 +55,13 @@ func NewClient(t *testing.T) (client *goidc.Client, secret string) {
 	return client, secret
 }
 
-func NewContext(t *testing.T) *oidc.Context {
+func NewContext(t *testing.T) oidc.Context {
 	t.Helper()
 
 	keyID := "test_server_key"
 	jwk := PrivatePS256JWK(t, keyID, goidc.KeyUsageSignature)
 
-	config := oidc.Configuration{
+	config := &oidc.Configuration{
 		Profile: goidc.ProfileOpenID,
 		Host:    "https://example.com",
 
@@ -138,7 +138,7 @@ func NewContext(t *testing.T) *oidc.Context {
 	return ctx
 }
 
-func AuthnSessions(t *testing.T, ctx *oidc.Context) []*goidc.AuthnSession {
+func AuthnSessions(t *testing.T, ctx oidc.Context) []*goidc.AuthnSession {
 	t.Helper()
 
 	sessionManager, _ := ctx.AuthnSessionManager.(*storage.AuthnSessionManager)
@@ -150,7 +150,7 @@ func AuthnSessions(t *testing.T, ctx *oidc.Context) []*goidc.AuthnSession {
 	return sessions
 }
 
-func GrantSessions(t *testing.T, ctx *oidc.Context) []*goidc.GrantSession {
+func GrantSessions(t *testing.T, ctx oidc.Context) []*goidc.GrantSession {
 	t.Helper()
 
 	manager, _ := ctx.GrantSessionManager.(*storage.GrantSessionManager)
@@ -162,7 +162,7 @@ func GrantSessions(t *testing.T, ctx *oidc.Context) []*goidc.GrantSession {
 	return tokens
 }
 
-func Clients(t *testing.T, ctx *oidc.Context) []*goidc.Client {
+func Clients(t *testing.T, ctx oidc.Context) []*goidc.Client {
 	t.Helper()
 
 	manager, _ := ctx.ClientManager.(*storage.ClientManager)

@@ -720,7 +720,7 @@ func TestAuthenticated_TLSAuthn_InvalidAlternativeName(t *testing.T) {
 }
 
 func setUpSecretAuthn(t *testing.T, secretAuthnMethod goidc.ClientAuthnType) (
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	client *goidc.Client,
 	secret string,
 ) {
@@ -744,7 +744,7 @@ func setUpSecretAuthn(t *testing.T, secretAuthnMethod goidc.ClientAuthnType) (
 }
 
 func setUpPrivateKeyJWTAuthn(t *testing.T) (
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	client *goidc.Client,
 	jwk jose.JSONWebKey,
 ) {
@@ -770,7 +770,7 @@ func setUpPrivateKeyJWTAuthn(t *testing.T) (
 }
 
 func setUpClientSecretJWTAuthn(t *testing.T) (
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	client *goidc.Client,
 	secret string,
 ) {
@@ -808,7 +808,7 @@ func signAssertion(t *testing.T, claims map[string]any, jwk jose.JSONWebKey) str
 }
 
 func setUpTLSAuthn(t *testing.T) (
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	client *goidc.Client,
 ) {
 	t.Helper()

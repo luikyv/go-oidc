@@ -14,7 +14,7 @@ import (
 )
 
 func redirectError(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	err error,
 	c *goidc.Client,
 ) error {
@@ -37,7 +37,7 @@ func redirectError(
 }
 
 func redirectResponse(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	c *goidc.Client,
 	params goidc.AuthorizationParameters,
 	redirectParams response,
@@ -99,7 +99,7 @@ func responseMode(params goidc.AuthorizationParameters) goidc.ResponseMode {
 }
 
 func createJARMResponse(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	c *goidc.Client,
 	redirectParams response,
 ) (
@@ -122,7 +122,7 @@ func createJARMResponse(
 }
 
 func signJARMResponse(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	c *goidc.Client,
 	redirectParams response,
 ) (
@@ -152,7 +152,7 @@ func signJARMResponse(
 }
 
 func encryptJARMResponse(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	responseJWT string,
 	c *goidc.Client,
 ) (

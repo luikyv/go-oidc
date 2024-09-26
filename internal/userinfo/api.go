@@ -18,7 +18,7 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 	)
 }
 
-func handle(ctx *oidc.Context) {
+func handle(ctx oidc.Context) {
 	var err error
 	userInfoResponse, err := userInfo(ctx)
 	if err != nil {

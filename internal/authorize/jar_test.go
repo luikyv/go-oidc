@@ -17,8 +17,8 @@ func TestExtractJARFromRequestObject(t *testing.T) {
 	// Given.
 	privateJWK := oidctest.PrivateRS256JWK(t, "client_key_id",
 		goidc.KeyUsageSignature)
-	ctx := &oidc.Context{
-		Configuration: oidc.Configuration{
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{
 			Host:         "https://server.example.com",
 			JARIsEnabled: true,
 			JARSigAlgs: []jose.SignatureAlgorithm{

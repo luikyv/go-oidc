@@ -40,7 +40,7 @@ func JWKThumbprint(dpopJWT string, algs []jose.SignatureAlgorithm) string {
 // JWT gets the DPoP JWT sent in the DPoP header.
 // According to RFC 9449: "There is not more than one DPoP HTTP request header field."
 // Therefore, an empty string and false will be returned if more than one value is found in the DPoP header.
-func JWT(ctx *oidc.Context) (string, bool) {
+func JWT(ctx oidc.Context) (string, bool) {
 	// To access the dpop jwts from the field Header, we need to use the
 	// canonical version of the header "DPoP" which is "Dpop".
 	dpopJWTs := ctx.Request.Header[http.CanonicalHeaderKey(goidc.HeaderDPoP)]
@@ -51,7 +51,7 @@ func JWT(ctx *oidc.Context) (string, bool) {
 }
 
 func ValidateJWT(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dpopJWT string,
 	opts ValidationOptions,
 ) error {

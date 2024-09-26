@@ -9,7 +9,7 @@ import (
 // ValidatePoP validates that the context contains the information required to
 // prove the client's possession of the token.
 func ValidatePoP(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	token string,
 	tokenType goidc.TokenType,
 	confirmation goidc.TokenConfirmation,
@@ -24,7 +24,7 @@ func ValidatePoP(
 // validateDPoP validates that the context contains the information required to
 // prove the client's possession of the access token with DPoP if applicable.
 func validateDPoP(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	token string,
 	tokenType goidc.TokenType,
 	confirmation goidc.TokenConfirmation,
@@ -57,7 +57,7 @@ func validateDPoP(
 // prove the client's possession of the access token with TLS binding if
 // applicable.
 func validateTLSPoP(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	confirmation goidc.TokenConfirmation,
 ) error {
 	if confirmation.ClientCertificateThumbprint == "" {
@@ -79,7 +79,7 @@ func validateTLSPoP(
 }
 
 // setPoP adds the available pop mechanisms to the grant info.
-func setPoP(ctx *oidc.Context, grantInfo *goidc.GrantInfo) {
+func setPoP(ctx oidc.Context, grantInfo *goidc.GrantInfo) {
 	dpopJWT, ok := dpop.JWT(ctx)
 	if ctx.DPoPIsEnabled && ok {
 		grantInfo.JWKThumbprint = dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)

@@ -11,7 +11,7 @@ import (
 
 // TODO: Document it.
 func validateBinding(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	client *goidc.Client,
 	dpopOpts *dpop.ValidationOptions,
 ) error {
@@ -30,7 +30,7 @@ func validateBinding(
 }
 
 func validateBindingDPoP(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	client *goidc.Client,
 	dpopOpts dpop.ValidationOptions,
 ) error {
@@ -57,7 +57,7 @@ func validateBindingDPoP(
 }
 
 func validateBindingTLS(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	client *goidc.Client,
 ) error {
 	if !ctx.MTLSTokenBindingIsEnabled {
@@ -72,7 +72,7 @@ func validateBindingTLS(
 	return nil
 }
 
-func validateBindingIsRequired(ctx *oidc.Context) error {
+func validateBindingIsRequired(ctx oidc.Context) error {
 	if !ctx.TokenBindingIsRequired {
 		return nil
 	}
@@ -98,7 +98,7 @@ func validateBindingIsRequired(ctx *oidc.Context) error {
 }
 
 func validateResources(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	availableResources goidc.Resources,
 	req request,
 ) error {
@@ -117,7 +117,7 @@ func validateResources(
 }
 
 func validateScopes(
-	_ *oidc.Context,
+	_ oidc.Context,
 	req request,
 	session *goidc.AuthnSession,
 ) error {
@@ -140,7 +140,7 @@ func containsAllScopes(availableScopes string, requestedScopes string) bool {
 }
 
 func validatePkce(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req request,
 	_ *goidc.Client,
 	session *goidc.AuthnSession,

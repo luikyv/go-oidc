@@ -84,7 +84,7 @@ func TestUserInfo_SignedResponse(t *testing.T) {
 	}
 }
 
-func setUp(t *testing.T) (*oidc.Context, *goidc.Client) {
+func setUp(t *testing.T) (oidc.Context, *goidc.Client) {
 	t.Helper()
 
 	ctx := oidctest.NewContext(t)

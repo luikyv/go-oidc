@@ -18,14 +18,14 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 	)
 }
 
-func handleWellKnown(ctx *oidc.Context) {
+func handleWellKnown(ctx oidc.Context) {
 	openidConfig := oidcConfig(ctx)
 	if err := ctx.Write(openidConfig, http.StatusOK); err != nil {
 		ctx.WriteError(err)
 	}
 }
 
-func handleJWKS(ctx *oidc.Context) {
+func handleJWKS(ctx oidc.Context) {
 	if err := ctx.Write(ctx.PublicKeys(), http.StatusOK); err != nil {
 		ctx.WriteError(err)
 	}

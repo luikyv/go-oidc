@@ -18,32 +18,34 @@ func TestClientAuthnSigAlgs(t *testing.T) {
 
 	// Given.
 	testCases := []struct {
-		ctx     *oidc.Context
+		ctx     oidc.Context
 		sigAlgs []jose.SignatureAlgorithm
 	}{
 		{
-			ctx:     &oidc.Context{},
+			ctx: oidc.Context{
+				Configuration: &oidc.Configuration{},
+			},
 			sigAlgs: nil,
 		},
 		{
-			ctx: &oidc.Context{
-				Configuration: oidc.Configuration{
+			ctx: oidc.Context{
+				Configuration: &oidc.Configuration{
 					PrivateKeyJWTSigAlgs: []jose.SignatureAlgorithm{jose.PS256},
 				},
 			},
 			sigAlgs: []jose.SignatureAlgorithm{jose.PS256},
 		},
 		{
-			ctx: &oidc.Context{
-				Configuration: oidc.Configuration{
+			ctx: oidc.Context{
+				Configuration: &oidc.Configuration{
 					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
 				},
 			},
 			sigAlgs: []jose.SignatureAlgorithm{jose.HS256},
 		},
 		{
-			ctx: &oidc.Context{
-				Configuration: oidc.Configuration{
+			ctx: oidc.Context{
+				Configuration: &oidc.Configuration{
 					PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
 					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
 				},
@@ -72,12 +74,12 @@ func TestIntrospectionClientAuthnSigAlgs(t *testing.T) {
 
 	// Given.
 	testCases := []struct {
-		ctx     *oidc.Context
+		ctx     oidc.Context
 		sigAlgs []jose.SignatureAlgorithm
 	}{
 		{
-			ctx: &oidc.Context{
-				Configuration: oidc.Configuration{
+			ctx: oidc.Context{
+				Configuration: &oidc.Configuration{
 					PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
 					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
 				},
@@ -85,8 +87,8 @@ func TestIntrospectionClientAuthnSigAlgs(t *testing.T) {
 			sigAlgs: nil,
 		},
 		{
-			ctx: &oidc.Context{
-				Configuration: oidc.Configuration{
+			ctx: oidc.Context{
+				Configuration: &oidc.Configuration{
 					PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
 					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
 					IntrospectionClientAuthnMethods: []goidc.ClientAuthnType{
@@ -97,8 +99,8 @@ func TestIntrospectionClientAuthnSigAlgs(t *testing.T) {
 			sigAlgs: []jose.SignatureAlgorithm{jose.PS256},
 		},
 		{
-			ctx: &oidc.Context{
-				Configuration: oidc.Configuration{
+			ctx: oidc.Context{
+				Configuration: &oidc.Configuration{
 					PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
 					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
 					IntrospectionClientAuthnMethods: []goidc.ClientAuthnType{
@@ -109,8 +111,8 @@ func TestIntrospectionClientAuthnSigAlgs(t *testing.T) {
 			sigAlgs: []jose.SignatureAlgorithm{jose.HS256},
 		},
 		{
-			ctx: &oidc.Context{
-				Configuration: oidc.Configuration{
+			ctx: oidc.Context{
+				Configuration: &oidc.Configuration{
 					PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
 					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
 					IntrospectionClientAuthnMethods: []goidc.ClientAuthnType{
@@ -141,7 +143,9 @@ func TestIntrospectionClientAuthnSigAlgs(t *testing.T) {
 
 func TestHandleDynamicClient(t *testing.T) {
 	// Given.
-	ctx := oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.HandleDynamicClientFunc = func(r *http.Request, clientInfo *goidc.ClientMetaInfo) error {
 		clientInfo.AuthnMethod = goidc.ClientAuthnNone
 		return nil
@@ -163,7 +167,9 @@ func TestHandleDynamicClient(t *testing.T) {
 
 func TestHandleDynamicClient_HandlerIsNil(t *testing.T) {
 	// Given.
-	ctx := &oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	clientInfo := &goidc.ClientMetaInfo{}
 	// When.
 	err := ctx.HandleDynamicClient(clientInfo)
@@ -176,9 +182,9 @@ func TestHandleDynamicClient_HandlerIsNil(t *testing.T) {
 func TestGetAudiences(t *testing.T) {
 	// Given.
 	host := "https://example.com"
-	ctx := &oidc.Context{
+	ctx := oidc.Context{
 		Request: httptest.NewRequest(http.MethodPost, "/userinfo", nil),
-		Configuration: oidc.Configuration{
+		Configuration: &oidc.Configuration{
 			Host:          host,
 			EndpointToken: "/token",
 		},
@@ -198,9 +204,9 @@ func TestGetAudiences_MTLSIsEnabled(t *testing.T) {
 	// Given.
 	host := "https://example.com"
 	mtlsHost := "https://matls-example.com"
-	ctx := &oidc.Context{
+	ctx := oidc.Context{
 		Request: httptest.NewRequest(http.MethodPost, "/userinfo", nil),
-		Configuration: oidc.Configuration{
+		Configuration: &oidc.Configuration{
 			Host:          host,
 			MTLSIsEnabled: true,
 			MTLSHost:      mtlsHost,
@@ -222,7 +228,9 @@ func TestGetAudiences_MTLSIsEnabled(t *testing.T) {
 func TestPolicy(t *testing.T) {
 	// Given.
 	policyID := "random_policy_id"
-	ctx := oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.Policies = append(ctx.Policies, goidc.NewPolicy(policyID, nil, nil))
 
 	// When.
@@ -250,7 +258,9 @@ func TestAvailablePolicy(t *testing.T) {
 		},
 		nil,
 	)
-	ctx := &oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.Policies = []goidc.AuthnPolicy{unavailablePolicy, availablePolicy}
 
 	// When.
@@ -275,7 +285,9 @@ func TestAvailablePolicy_NoPolicyAvailable(t *testing.T) {
 		},
 		nil,
 	)
-	ctx := &oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.Policies = []goidc.AuthnPolicy{unavailablePolicy}
 
 	// When.
@@ -289,7 +301,9 @@ func TestAvailablePolicy_NoPolicyAvailable(t *testing.T) {
 
 func TestBaseURL(t *testing.T) {
 	// Given.
-	ctx := &oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.Host = "https://example.com"
 	ctx.EndpointPrefix = "/auth"
 
@@ -304,7 +318,9 @@ func TestBaseURL(t *testing.T) {
 
 func TestMTLSBaseURL(t *testing.T) {
 	// Given.
-	ctx := &oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.MTLSHost = "https://matls-example.com"
 	ctx.EndpointPrefix = "/auth"
 
@@ -319,7 +335,9 @@ func TestMTLSBaseURL(t *testing.T) {
 
 func TestBearerToken(t *testing.T) {
 	// Given.
-	ctx := oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.Request = httptest.NewRequest(http.MethodGet, "https://example.com", nil)
 	ctx.Request.Header.Set("Authorization", "Bearer access_token")
 
@@ -338,7 +356,9 @@ func TestBearerToken(t *testing.T) {
 
 func TestBearerToken_NoToken(t *testing.T) {
 	// Given.
-	ctx := oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.Request = httptest.NewRequest(http.MethodGet, "https://example.com", nil)
 
 	// When.
@@ -352,7 +372,9 @@ func TestBearerToken_NoToken(t *testing.T) {
 
 func TestBearerToken_NotABearerToken(t *testing.T) {
 	// Given.
-	ctx := oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.Request = httptest.NewRequest(http.MethodGet, "https://example.com", nil)
 	ctx.Request.Header.Set("Authorization", "DPoP token")
 
@@ -367,7 +389,9 @@ func TestBearerToken_NotABearerToken(t *testing.T) {
 
 func TestAuthorizationToken(t *testing.T) {
 	// Given.
-	ctx := oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.Request = httptest.NewRequest(http.MethodGet, "https://example.com", nil)
 	ctx.Request.Header.Set("Authorization", "Bearer access_token")
 
@@ -390,7 +414,9 @@ func TestAuthorizationToken(t *testing.T) {
 
 func TestAuthorizationToken_NoToken(t *testing.T) {
 	// Given.
-	ctx := oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.Request = httptest.NewRequest(http.MethodGet, "https://example.com", nil)
 
 	// When.
@@ -404,7 +430,9 @@ func TestAuthorizationToken_NoToken(t *testing.T) {
 
 func TestHeader(t *testing.T) {
 	// Given.
-	ctx := oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.Request = httptest.NewRequest(http.MethodGet, "https://example.com", nil)
 	ctx.Request.Header.Set("Test-Header", "test_value")
 
@@ -426,7 +454,9 @@ func TestSigAlgs(t *testing.T) {
 	signingKey := oidctest.PrivatePS256JWK(t, "signing_key", goidc.KeyUsageSignature)
 	encryptionKey := oidctest.PrivatePS256JWK(t, "encryption_key", goidc.KeyUsageEncryption)
 
-	ctx := oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey, encryptionKey}}
 
 	// When.
@@ -442,7 +472,9 @@ func TestSigAlgs(t *testing.T) {
 func TestPublicKeys_HappyPath(t *testing.T) {
 	// Given.
 	signingKey := oidctest.PrivatePS256JWK(t, "signing_key", goidc.KeyUsageSignature)
-	ctx := oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	// When.
@@ -467,7 +499,9 @@ func TestPublicKey_HappyPath(t *testing.T) {
 	// Given.
 	signingKey := oidctest.PrivatePS256JWK(t, "signing_key", goidc.KeyUsageSignature)
 
-	ctx := oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	// When.
@@ -491,7 +525,9 @@ func TestPrivateKey_HappyPath(t *testing.T) {
 	// Given.
 	signingKey := oidctest.PrivatePS256JWK(t, "signing_key", goidc.KeyUsageSignature)
 
-	ctx := oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	// When.
@@ -513,7 +549,9 @@ func TestPrivateKey_HappyPath(t *testing.T) {
 
 func TestPrivateKey_KeyDoesntExist(t *testing.T) {
 	// Given.
-	ctx := oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{}}
 
 	// When.
@@ -530,7 +568,9 @@ func TestUserInfoSigKey(t *testing.T) {
 	keyID := "signing_key"
 	signingKey := oidctest.PrivatePS256JWK(t, keyID, goidc.KeyUsageSignature)
 
-	ctx := oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.UserDefaultSigKeyID = keyID
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
@@ -550,7 +590,9 @@ func TestUserInfoSigKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	defaultKey := oidctest.PrivatePS256JWK(t, "default_key", goidc.KeyUsageSignature)
 	alternativeKey := oidctest.PrivateRS256JWK(t, "alternative_key", goidc.KeyUsageSignature)
 
-	ctx := oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{
 		Keys: []jose.JSONWebKey{defaultKey, alternativeKey},
 	}
@@ -573,7 +615,9 @@ func TestIDTokenSigKey(t *testing.T) {
 	// Given.
 	signingKey := oidctest.PrivatePS256JWK(t, "signing_key", goidc.KeyUsageSignature)
 
-	ctx := oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.UserDefaultSigKeyID = signingKey.KeyID
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
@@ -593,7 +637,9 @@ func TestIDTokenSigKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	defaultKey := oidctest.PrivatePS256JWK(t, "default_key", goidc.KeyUsageSignature)
 	alternativeKey := oidctest.PrivateRS256JWK(t, "alternative_key", goidc.KeyUsageSignature)
 
-	ctx := oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{
 		Keys: []jose.JSONWebKey{defaultKey, alternativeKey},
 	}
@@ -616,7 +662,9 @@ func TestJARMSignatureKey_HappyPath(t *testing.T) {
 	// Given.
 	signingKey := oidctest.PrivatePS256JWK(t, "signing_key", goidc.KeyUsageSignature)
 
-	ctx := oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.JARMDefaultSigKeyID = signingKey.KeyID
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
@@ -636,7 +684,9 @@ func TestJARMSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	defaultKey := oidctest.PrivatePS256JWK(t, "default_key", goidc.KeyUsageSignature)
 	alternativeKey := oidctest.PrivateRS256JWK(t, "alternative_key", goidc.KeyUsageSignature)
 
-	ctx := oidc.Context{}
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
 	ctx.PrivateJWKS = jose.JSONWebKeySet{
 		Keys: []jose.JSONWebKey{defaultKey, alternativeKey},
 	}

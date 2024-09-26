@@ -16,7 +16,7 @@ func TestOIDCConfig(t *testing.T) {
 		goidc.KeyUsageSignature)
 	userInfoKey := oidctest.PrivateRS256JWK(t, "user_info_signature_key",
 		goidc.KeyUsageSignature)
-	config := oidc.Configuration{
+	config := &oidc.Configuration{
 		Host:                        "https://example.com",
 		EndpointWellKnown:           "/.well-known/openid-configuration",
 		EndpointJWKS:                "/jwks",
@@ -53,7 +53,7 @@ func TestOIDCConfig(t *testing.T) {
 		AuthDetailsIsEnabled:     true,
 		AuthDetailTypes:          []string{"detail_type"},
 	}
-	ctx := &oidc.Context{Configuration: config}
+	ctx := oidc.Context{Configuration: config}
 
 	// When.
 	got := oidcConfig(ctx)
@@ -105,7 +105,7 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		goidc.KeyUsageSignature)
 	jarmKey := oidctest.PrivateRS256JWK(t, "jarm_signature_key",
 		goidc.KeyUsageSignature)
-	config := oidc.Configuration{
+	config := &oidc.Configuration{
 		Host:                        "https://example.com",
 		EndpointWellKnown:           "/.well-known/openid-configuration",
 		EndpointJWKS:                "/jwks",
@@ -151,7 +151,7 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		DPoPIsEnabled:            true,
 		DPoPSigAlgs:              []jose.SignatureAlgorithm{jose.PS256},
 	}
-	ctx := &oidc.Context{Configuration: config}
+	ctx := oidc.Context{Configuration: config}
 
 	// When.
 	got := oidcConfig(ctx)

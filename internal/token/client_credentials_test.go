@@ -112,7 +112,7 @@ func TestHandleGrantCreation_ClientCredentialsGrant_ResourceIndicators(t *testin
 }
 
 func setUpClientCredentialsGrant(t *testing.T) (
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	client *goidc.Client,
 ) {
 	t.Helper()

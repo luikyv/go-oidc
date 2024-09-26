@@ -174,7 +174,7 @@ func TestDeleteClient_InvalidToken(t *testing.T) {
 }
 
 func setUp(t *testing.T) (
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	client *goidc.Client,
 	regToken string,
 ) {

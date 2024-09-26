@@ -10,7 +10,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func userInfo(ctx *oidc.Context) (response, error) {
+func userInfo(ctx oidc.Context) (response, error) {
 
 	accessToken, tokenType, ok := ctx.AuthorizationToken()
 	if !ok {
@@ -47,7 +47,7 @@ func userInfo(ctx *oidc.Context) (response, error) {
 }
 
 func userInfoResponse(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	c *goidc.Client,
 	grantSession *goidc.GrantSession,
 ) (
@@ -93,7 +93,7 @@ func userInfoResponse(
 }
 
 func signUserInfoClaims(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	c *goidc.Client,
 	claims map[string]any,
 ) (
@@ -112,7 +112,7 @@ func signUserInfoClaims(
 }
 
 func encryptUserInfoJWT(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	c *goidc.Client,
 	userInfoJWT string,
 ) (
@@ -135,7 +135,7 @@ func encryptUserInfoJWT(
 }
 
 func validateRequest(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	grantSession *goidc.GrantSession,
 	accessToken string,
 	tokenType goidc.TokenType,

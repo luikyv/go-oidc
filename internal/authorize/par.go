@@ -13,7 +13,7 @@ import (
 )
 
 func pushAuth(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req pushedRequest,
 ) (
 	pushedResponse,
@@ -43,7 +43,7 @@ func pushAuth(
 // pushAuthnSession builds a new authentication session with a reference ID and
 // saves it.
 func pushAuthnSession(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req pushedRequest,
 	client *goidc.Client,
 ) (
@@ -68,7 +68,7 @@ func pushAuthnSession(
 }
 
 func pushedAuthnSession(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req pushedRequest,
 	client *goidc.Client,
 ) (
@@ -82,7 +82,7 @@ func pushedAuthnSession(
 }
 
 func simplePushedAuthnSession(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req pushedRequest,
 	client *goidc.Client,
 ) (
@@ -99,7 +99,7 @@ func simplePushedAuthnSession(
 }
 
 func pushedAuthnSessionWithJAR(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req pushedRequest,
 	client *goidc.Client,
 ) (
@@ -127,7 +127,7 @@ func pushedAuthnSessionWithJAR(
 
 // protectedParams returns the params sent in the form that start with
 // [protectedParamPrefix].
-func protectedParams(ctx *oidc.Context) map[string]any {
+func protectedParams(ctx oidc.Context) map[string]any {
 	protectedParams := make(map[string]any)
 	for param, value := range ctx.FormData() {
 		if strings.HasPrefix(param, protectedParamPrefix) {
@@ -148,7 +148,7 @@ func requestURI() (string, error) {
 }
 
 // setDPoP adds DPoP for authorization code to the session if available.
-func setDPoP(ctx *oidc.Context, session *goidc.AuthnSession) {
+func setDPoP(ctx oidc.Context, session *goidc.AuthnSession) {
 	dpopJWT, ok := dpop.JWT(ctx)
 	if ctx.DPoPIsEnabled && ok {
 		session.DPoPJWKThumbprint = dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)

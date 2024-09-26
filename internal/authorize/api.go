@@ -29,7 +29,7 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 	)
 }
 
-func handlerPush(ctx *oidc.Context) {
+func handlerPush(ctx oidc.Context) {
 
 	req := newPushedRequest(ctx.Request)
 	resp, err := pushAuth(ctx, req)
@@ -43,7 +43,7 @@ func handlerPush(ctx *oidc.Context) {
 	}
 }
 
-func handler(ctx *oidc.Context) {
+func handler(ctx oidc.Context) {
 	req := newRequest(ctx.Request)
 
 	err := initAuth(ctx, req)
@@ -56,7 +56,7 @@ func handler(ctx *oidc.Context) {
 	}
 }
 
-func handlerCallback(ctx *oidc.Context) {
+func handlerCallback(ctx oidc.Context) {
 	callbackID := ctx.Request.PathValue("callback")
 	err := continueAuth(ctx, callbackID)
 	if err == nil {

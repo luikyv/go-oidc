@@ -12,7 +12,7 @@ import (
 // ExtractID returns the ID of a token.
 // If it's a JWT, the ID is the the "jti" claim. Otherwise, the token is
 // considered opaque and its ID is the token itself.
-func ExtractID(ctx *oidc.Context, token string) (string, error) {
+func ExtractID(ctx oidc.Context, token string) (string, error) {
 	if !jwtutil.IsJWS(token) {
 		return token, nil
 	}
@@ -32,7 +32,7 @@ func ExtractID(ctx *oidc.Context, token string) (string, error) {
 
 // validClaims verifies a token and returns its claims.
 func validClaims(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	token string,
 ) (
 	map[string]any,
@@ -72,7 +72,7 @@ func validClaims(
 }
 
 func generateGrant(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req request,
 ) (
 	tokenResp response,

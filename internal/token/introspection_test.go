@@ -100,7 +100,7 @@ func TestIntrospect_RefreshToken(t *testing.T) {
 	}
 }
 
-func setUpIntrospection(t *testing.T) (ctx *oidc.Context, client *goidc.Client) {
+func setUpIntrospection(t *testing.T) (ctx oidc.Context, client *goidc.Client) {
 	t.Helper()
 
 	ctx = oidctest.NewContext(t)

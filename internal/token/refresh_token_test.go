@@ -89,7 +89,7 @@ func TestGenerateGrant_ExpiredRefreshToken(t *testing.T) {
 }
 
 func setUpRefreshTokenGrant(t *testing.T) (
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	client *goidc.Client,
 	grantSession *goidc.GrantSession,
 ) {

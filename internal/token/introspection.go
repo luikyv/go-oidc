@@ -10,7 +10,7 @@ import (
 )
 
 func introspect(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req introspectionRequest,
 ) (
 	goidc.TokenInfo,
@@ -29,7 +29,7 @@ func introspect(
 }
 
 func validateIntrospectionRequest(
-	_ *oidc.Context,
+	_ oidc.Context,
 	req introspectionRequest,
 	c *goidc.Client,
 ) error {
@@ -46,7 +46,7 @@ func validateIntrospectionRequest(
 }
 
 func IntrospectionInfo(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	accessToken string,
 ) goidc.TokenInfo {
 
@@ -62,7 +62,7 @@ func IntrospectionInfo(
 }
 
 func refreshTokenInfo(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	token string,
 ) goidc.TokenInfo {
 	grantSession, err := ctx.GrantSessionByRefreshToken(token)
@@ -102,7 +102,7 @@ func refreshTokenInfo(
 }
 
 func jwtTokenInfo(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	accessToken string,
 ) goidc.TokenInfo {
 	claims, err := validClaims(ctx, accessToken)
@@ -116,14 +116,14 @@ func jwtTokenInfo(
 }
 
 func opaqueTokenInfo(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	token string,
 ) goidc.TokenInfo {
 	return tokenIntrospectionInfoByID(ctx, token)
 }
 
 func tokenIntrospectionInfoByID(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	tokenID string,
 ) goidc.TokenInfo {
 	grantSession, err := ctx.GrantSessionByTokenID(tokenID)

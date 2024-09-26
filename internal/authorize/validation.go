@@ -15,7 +15,7 @@ import (
 // validateRequest validates the parameters sent in an authorization request.
 // This behavior does not apply to FAPI 2.0, as PAR is mandatory.
 func validateRequest(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req request,
 	c *goidc.Client,
 ) error {
@@ -29,7 +29,7 @@ func validateRequest(
 // In OIDC, the parameters sent during PAR are merged with the query parameters
 // from the authorization request, and then the combined parameters must be validated.
 func validateRequestWithPAR(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req request,
 	session *goidc.AuthnSession,
 	c *goidc.Client,
@@ -57,7 +57,7 @@ func validateRequestWithPAR(
 // then validated.
 // This behavior does not apply to FAPI 2.0, as PAR is mandatory.
 func validateRequestWithJAR(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req request,
 	jar request,
 	c *goidc.Client,
@@ -95,7 +95,7 @@ func validateRequestWithJAR(
 // supplied later at the authorization endpoint, where they will be merged.
 // For both cases, any parameters outside the JAR are ignored.
 func validatePushedRequestWithJAR(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req pushedRequest,
 	jar request,
 	c *goidc.Client,
@@ -133,7 +133,7 @@ func validatePushedRequestWithJAR(
 // optional, as any missing parameters can be provided later at the authorization
 // endpoint, where they will be merged.
 func validatePushedRequest(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req pushedRequest,
 	c *goidc.Client,
 ) error {
@@ -181,7 +181,7 @@ func validatePushedRequest(
 // those sent during the authorization request as query parameters.
 // The inner parameters take priority over the outter ones.
 func validateInWithOutParams(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	inParams goidc.AuthorizationParameters,
 	outParams goidc.AuthorizationParameters,
 	c *goidc.Client,
@@ -229,7 +229,7 @@ func validateInWithOutParams(
 
 // validateParams validates the parameters of an authorization request.
 func validateParams(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	params goidc.AuthorizationParameters,
 	c *goidc.Client,
 ) error {
@@ -282,7 +282,7 @@ func validateParams(
 // The redirect URI is ALWAYS validated before any other validations, since
 // it determines when or not to redirect errors.
 func validateParamsAsOptionals(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	params goidc.AuthorizationParameters,
 	c *goidc.Client,
 ) error {
@@ -336,7 +336,7 @@ func validateParamsAsOptionals(
 }
 
 func validateRedirectURIAsOptional(
-	_ *oidc.Context,
+	_ oidc.Context,
 	params goidc.AuthorizationParameters,
 	c *goidc.Client,
 ) error {
@@ -353,7 +353,7 @@ func validateRedirectURIAsOptional(
 }
 
 func validateCodeChallengeMethodAsOptional(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	params goidc.AuthorizationParameters,
 	_ *goidc.Client,
 ) error {
@@ -370,7 +370,7 @@ func validateCodeChallengeMethodAsOptional(
 }
 
 func validateDisplayValueAsOptional(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	params goidc.AuthorizationParameters,
 	_ *goidc.Client,
 ) error {
@@ -387,7 +387,7 @@ func validateDisplayValueAsOptional(
 }
 
 func validateScopesAsOptional(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	params goidc.AuthorizationParameters,
 	c *goidc.Client,
 ) error {
@@ -408,7 +408,7 @@ func validateScopesAsOptional(
 }
 
 func validatePKCE(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	params goidc.AuthorizationParameters,
 	c *goidc.Client,
 ) error {
@@ -425,7 +425,7 @@ func validatePKCE(
 }
 
 func validateResponseTypeAsOptional(
-	_ *oidc.Context,
+	_ oidc.Context,
 	params goidc.AuthorizationParameters,
 	c *goidc.Client,
 ) error {
@@ -455,7 +455,7 @@ func validateResponseTypeAsOptional(
 }
 
 func validateResponseModeAsOptional(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	params goidc.AuthorizationParameters,
 	c *goidc.Client,
 ) error {
@@ -484,7 +484,7 @@ func validateResponseModeAsOptional(
 }
 
 func validateAuthorizationDetailsAsOptional(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	params goidc.AuthorizationParameters,
 	c *goidc.Client,
 ) error {
@@ -505,7 +505,7 @@ func validateAuthorizationDetailsAsOptional(
 }
 
 func validateACRValuesAsOptional(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	params goidc.AuthorizationParameters,
 	_ *goidc.Client,
 ) error {
@@ -525,7 +525,7 @@ func validateACRValuesAsOptional(
 }
 
 func validateResourcesAsOptional(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	params goidc.AuthorizationParameters,
 	_ *goidc.Client,
 ) error {
@@ -549,7 +549,7 @@ func validateResourcesAsOptional(
 }
 
 func validateIDTokenHintAsOptional(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	params goidc.AuthorizationParameters,
 	_ *goidc.Client,
 ) error {
@@ -599,7 +599,7 @@ func isAuthDetailTypeAllowed(c *goidc.Client, authDetailType string) bool {
 }
 
 func validateCodeBindingDPoP(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	params goidc.AuthorizationParameters,
 ) error {
 

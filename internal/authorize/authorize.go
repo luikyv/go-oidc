@@ -8,7 +8,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func initAuth(ctx *oidc.Context, req request) error {
+func initAuth(ctx oidc.Context, req request) error {
 
 	if req.ClientID == "" {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client_id")
@@ -26,7 +26,7 @@ func initAuth(ctx *oidc.Context, req request) error {
 	return nil
 }
 
-func initAuthNoRedirect(ctx *oidc.Context, client *goidc.Client, req request) error {
+func initAuthNoRedirect(ctx oidc.Context, client *goidc.Client, req request) error {
 	session, err := initAuthnSession(ctx, req, client)
 	if err != nil {
 		return err
@@ -34,7 +34,7 @@ func initAuthNoRedirect(ctx *oidc.Context, client *goidc.Client, req request) er
 	return authenticate(ctx, session)
 }
 
-func continueAuth(ctx *oidc.Context, callbackID string) error {
+func continueAuth(ctx oidc.Context, callbackID string) error {
 
 	// Fetch the session using the callback ID.
 	session, err := ctx.AuthnSessionByCallbackID(callbackID)
@@ -58,7 +58,7 @@ func continueAuth(ctx *oidc.Context, callbackID string) error {
 }
 
 func initAuthnSession(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req request,
 	client *goidc.Client,
 ) (
@@ -74,7 +74,7 @@ func initAuthnSession(
 }
 
 func authnSession(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req request,
 	client *goidc.Client,
 ) (
@@ -95,7 +95,7 @@ func authnSession(
 }
 
 func authnSessionWithPAR(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req request,
 	client *goidc.Client,
 ) (
@@ -137,7 +137,7 @@ func authnSessionWithPAR(
 }
 
 func authnSessionWithJAR(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req request,
 	client *goidc.Client,
 ) (
@@ -167,7 +167,7 @@ func authnSessionWithJAR(
 }
 
 func simpleAuthnSession(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req request,
 	client *goidc.Client,
 ) (
@@ -181,7 +181,7 @@ func simpleAuthnSession(
 }
 
 func initAuthnSessionWithPolicy(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	client *goidc.Client,
 	session *goidc.AuthnSession,
 ) error {
@@ -216,7 +216,7 @@ func callbackID() (string, error) {
 	return strutil.Random(callbackIDLength)
 }
 
-func authenticate(ctx *oidc.Context, session *goidc.AuthnSession) error {
+func authenticate(ctx oidc.Context, session *goidc.AuthnSession) error {
 	policy := ctx.Policy(session.PolicyID)
 	switch policy.Authenticate(ctx.Response, ctx.Request, session) {
 	case goidc.StatusSuccess:
@@ -229,7 +229,7 @@ func authenticate(ctx *oidc.Context, session *goidc.AuthnSession) error {
 }
 
 func finishFlowWithFailure(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	session *goidc.AuthnSession,
 ) error {
 	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
@@ -247,7 +247,7 @@ func finishFlowWithFailure(
 }
 
 func stopFlowInProgress(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	session *goidc.AuthnSession,
 ) error {
 	if err := ctx.SaveAuthnSession(session); err != nil {
@@ -258,7 +258,7 @@ func stopFlowInProgress(
 }
 
 func finishFlowSuccessfully(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	session *goidc.AuthnSession,
 ) error {
 
@@ -316,7 +316,7 @@ func finishFlowSuccessfully(
 }
 
 func authorizeAuthnSession(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	session *goidc.AuthnSession,
 ) error {
 
@@ -346,7 +346,7 @@ func authorizeAuthnSession(
 }
 
 func generateImplicitGrantSession(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	grantInfo goidc.GrantInfo,
 	accessToken token.Token,
 ) error {

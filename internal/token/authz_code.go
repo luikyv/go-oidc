@@ -13,7 +13,7 @@ import (
 )
 
 func generateAuthorizationCodeGrant(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req request,
 ) (
 	response,
@@ -94,7 +94,7 @@ func generateAuthorizationCodeGrant(
 }
 
 func authnSession(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	authzCode string,
 ) (
 	*goidc.AuthnSession,
@@ -115,7 +115,7 @@ func authnSession(
 }
 
 func generateAuthorizationCodeGrantSession(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	client *goidc.Client,
 	grantInfo goidc.GrantInfo,
 	token Token,
@@ -143,7 +143,7 @@ func generateAuthorizationCodeGrantSession(
 }
 
 func validateAuthorizationCodeGrantRequest(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req request,
 	c *goidc.Client,
 	session *goidc.AuthnSession,
@@ -189,7 +189,7 @@ func validateAuthorizationCodeGrantRequest(
 }
 
 func authorizationCodeGrantInfo(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req request,
 	session *goidc.AuthnSession,
 ) (

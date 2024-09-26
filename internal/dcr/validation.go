@@ -13,7 +13,7 @@ import (
 )
 
 func validateRequest(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 	return runValidations(
@@ -45,10 +45,10 @@ func validateRequest(
 }
 
 func runValidations(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 	validations ...func(
-		ctx *oidc.Context,
+		ctx oidc.Context,
 		dc request,
 	) error,
 ) error {
@@ -61,7 +61,7 @@ func runValidations(
 }
 
 func validateGrantTypes(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 	for _, gt := range dc.GrantTypes {
@@ -87,7 +87,7 @@ func validateGrantTypes(
 }
 
 func validateRedirectURIS(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 	for _, ru := range dc.RedirectURIs {
@@ -112,7 +112,7 @@ func validateRedirectURIS(
 }
 
 func validateResponseTypes(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 
@@ -145,7 +145,7 @@ func validateResponseTypes(
 }
 
 func validateAuthnMethod(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 	if !slices.Contains(ctx.ClientAuthnMethods, dc.AuthnMethod) {
@@ -156,7 +156,7 @@ func validateAuthnMethod(
 }
 
 func validateOpenIDScopeIfRequired(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 	if !ctx.OpenIDIsRequired {
@@ -172,7 +172,7 @@ func validateOpenIDScopeIfRequired(
 }
 
 func validateSubjectIdentifierType(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 	if dc.SubIdentifierType == "" {
@@ -187,7 +187,7 @@ func validateSubjectIdentifierType(
 }
 
 func validateIDTokenSigAlg(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 	if dc.IDTokenSigAlg == "" {
@@ -202,7 +202,7 @@ func validateIDTokenSigAlg(
 }
 
 func validateUserInfoSigAlg(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 	if dc.UserInfoSigAlg == "" {
@@ -217,7 +217,7 @@ func validateUserInfoSigAlg(
 }
 
 func validateJARSigAlg(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 	if dc.JARSigAlg == "" {
@@ -232,7 +232,7 @@ func validateJARSigAlg(
 }
 
 func validateJARMSigAlg(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 	if dc.JARMSigAlg == "" {
@@ -247,7 +247,7 @@ func validateJARMSigAlg(
 }
 
 func validatePrivateKeyJWT(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 	if dc.AuthnMethod != goidc.ClientAuthnPrivateKeyJWT {
@@ -268,7 +268,7 @@ func validatePrivateKeyJWT(
 }
 
 func validateSecretJWT(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 	if dc.AuthnMethod != goidc.ClientAuthnSecretJWT {
@@ -283,7 +283,7 @@ func validateSecretJWT(
 }
 
 func validateSelfSignedTLSAuthn(
-	_ *oidc.Context,
+	_ oidc.Context,
 	dc request,
 ) error {
 	if dc.AuthnMethod != goidc.ClientAuthnSelfSignedTLS {
@@ -299,7 +299,7 @@ func validateSelfSignedTLSAuthn(
 }
 
 func validateTLSAuthn(
-	_ *oidc.Context,
+	_ oidc.Context,
 	dc request,
 ) error {
 	if dc.AuthnMethod != goidc.ClientAuthnTLS {
@@ -329,7 +329,7 @@ func validateTLSAuthn(
 }
 
 func validateIDTokenEncAlgs(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 	// Return an error if ID token encryption is not enabled, but the client
@@ -363,7 +363,7 @@ func validateIDTokenEncAlgs(
 }
 
 func validateUserInfoEncAlgs(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 	// Return an error if user info encryption is not enabled, but the client
@@ -397,7 +397,7 @@ func validateUserInfoEncAlgs(
 }
 
 func validateJARMEncAlgs(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 	// Return an error if jarm encryption is not enabled, but the client requested it.
@@ -430,7 +430,7 @@ func validateJARMEncAlgs(
 }
 
 func validateJAREncAlgs(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 	// Return an error if jar encryption is not enabled, but the client requested it.
@@ -463,7 +463,7 @@ func validateJAREncAlgs(
 }
 
 func validatePublicJWKS(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 	if dc.PublicJWKS == nil {
@@ -485,7 +485,7 @@ func validatePublicJWKS(
 }
 
 func validatePublicJWKSURI(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 	// TODO: validate the client jwks uri.
@@ -493,7 +493,7 @@ func validatePublicJWKSURI(
 }
 
 func validateAuthorizationDetailTypes(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 	if !ctx.AuthDetailsIsEnabled || dc.AuthDetailTypes == nil {
@@ -511,7 +511,7 @@ func validateAuthorizationDetailTypes(
 }
 
 func validateScopes(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 	for _, requestedScope := range strutil.SplitWithSpaces(dc.ScopeIDs) {
@@ -523,7 +523,7 @@ func validateScopes(
 	return nil
 }
 
-func validateScope(ctx *oidc.Context, requestedScope string) error {
+func validateScope(ctx oidc.Context, requestedScope string) error {
 	for _, scope := range ctx.Scopes {
 		if requestedScope == scope.ID {
 			return nil
@@ -534,7 +534,7 @@ func validateScope(ctx *oidc.Context, requestedScope string) error {
 }
 
 func validateTLSTokenBinding(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) error {
 	if !ctx.MTLSTokenBindingIsEnabled && dc.TLSTokenBindingIsRequired {

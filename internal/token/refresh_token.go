@@ -12,7 +12,7 @@ import (
 )
 
 func generateRefreshTokenGrant(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req request,
 ) (
 	response,
@@ -78,7 +78,7 @@ func generateRefreshTokenGrant(
 }
 
 func updateRefreshTokenGrantInfo(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	grantInfo *goidc.GrantInfo,
 	req request,
 ) error {
@@ -101,7 +101,7 @@ func updateRefreshTokenGrantInfo(
 }
 
 func updateRefreshTokenGrantSession(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	grantSession *goidc.GrantSession,
 	token Token,
 ) error {
@@ -126,7 +126,7 @@ func updateRefreshTokenGrantSession(
 }
 
 func validateRefreshTokenGrantRequest(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req request,
 	c *goidc.Client,
 	grantSession *goidc.GrantSession,
@@ -161,7 +161,7 @@ func validateRefreshTokenGrantRequest(
 }
 
 func validateRefreshTokenPoPForPublicClients(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	client *goidc.Client,
 	grantSession *goidc.GrantSession,
 ) error {

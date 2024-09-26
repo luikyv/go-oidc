@@ -18,15 +18,15 @@ func TestValidateJWT(t *testing.T) {
 		name          string
 		dpopJWT       string
 		opts          dpop.ValidationOptions
-		ctx           *oidc.Context
+		ctx           oidc.Context
 		shouldBeValid bool
 	}{
 		{
 			"valid_dpop_jwt",
 			"eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7Imt0eSI6IkVDIiwieCI6Imw4dEZyaHgtMzR0VjNoUklDUkRZOXpDa0RscEJoRjQyVVFVZldWQVdCRnMiLCJ5IjoiOVZFNGpmX09rX282NHpiVFRsY3VOSmFqSG10NnY5VERWclUwQ2R2R1JEQSIsImNydiI6IlAtMjU2In19.eyJqdGkiOiItQndDM0VTYzZhY2MybFRjIiwiaHRtIjoiUE9TVCIsImh0dSI6Imh0dHBzOi8vc2VydmVyLmV4YW1wbGUuY29tL3Rva2VuIiwiaWF0IjoxNTYyMjY1Mjk2fQ.pAqut2IRDm_De6PR93SYmGBPXpwrAk90e8cP2hjiaG5QsGSuKDYW7_X620BxqhvYC8ynrrvZLTk41mSRroapUA",
 			dpop.ValidationOptions{},
-			&oidc.Context{
-				Configuration: oidc.Configuration{
+			oidc.Context{
+				Configuration: &oidc.Configuration{
 					Host:             "https://server.example.com",
 					DPoPIsEnabled:    true,
 					DPoPSigAlgs:      []jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256},
@@ -42,8 +42,8 @@ func TestValidateJWT(t *testing.T) {
 			dpop.ValidationOptions{
 				AccessToken: "Kz~8mXK1EalYznwH-LC-1fBAo.4Ljp~zsPE_NeO.gxU",
 			},
-			&oidc.Context{
-				Configuration: oidc.Configuration{
+			oidc.Context{
+				Configuration: &oidc.Configuration{
 					Host:             "https://resource.example.org",
 					DPoPIsEnabled:    true,
 					DPoPSigAlgs:      []jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256},
@@ -104,7 +104,7 @@ func TestJWKThumbprint(t *testing.T) {
 func TestJWT(t *testing.T) {
 
 	// Given.
-	ctx := &oidc.Context{
+	ctx := oidc.Context{
 		Request: &http.Request{Header: map[string][]string{}},
 	}
 	ctx.Request.Header.Set(goidc.HeaderDPoP, "dpop_jwt")
@@ -125,7 +125,7 @@ func TestJWT(t *testing.T) {
 func TestJWT_NonCanonical(t *testing.T) {
 
 	// Given.
-	ctx := &oidc.Context{
+	ctx := oidc.Context{
 		Request: &http.Request{Header: map[string][]string{}},
 	}
 	ctx.Request.Header.Set("dpOp", "dpop_jwt")
@@ -146,7 +146,7 @@ func TestJWT_NonCanonical(t *testing.T) {
 func TestJWT_NoHeader(t *testing.T) {
 
 	// Given.
-	ctx := &oidc.Context{
+	ctx := oidc.Context{
 		Request: &http.Request{Header: map[string][]string{}},
 	}
 
@@ -162,7 +162,7 @@ func TestJWT_NoHeader(t *testing.T) {
 func TestJWT_MoreThanOneValue(t *testing.T) {
 
 	// Given.
-	ctx := &oidc.Context{
+	ctx := oidc.Context{
 		Request: &http.Request{Header: map[string][]string{}},
 	}
 	ctx.Request.Header.Add(goidc.HeaderDPoP, "dpop_jwt")

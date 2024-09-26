@@ -141,7 +141,7 @@ jobs:
             if [ -n "${{ matrix.plan.skip_modules }}" ]; then
               # Convert the excluded test modules list to comma-separated string
               MODULES=$(echo '${{ toJson(matrix.plan.skip_modules) }}' | jq -r '.[]' | tr '\n' ',' | sed 's/,$//')
-              ARGS="$ARGS --skip-modules=$MODULES"
+              ARGS="$ARGS --skip_modules=$MODULES"
             fi
 
             # Add variants

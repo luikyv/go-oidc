@@ -31,7 +31,7 @@ const (
 // This function always returns in case of error an instance of [goidc.Error]
 // with error code as [goidc.ErrorCodeInvalidClient].
 func Authenticated(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 ) (
 	*goidc.Client,
 	error,
@@ -57,7 +57,7 @@ func Authenticated(
 }
 
 func authenticate(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	client *goidc.Client,
 ) error {
 	switch client.AuthnMethod {
@@ -81,7 +81,7 @@ func authenticate(
 }
 
 func authenticateSecretPost(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	c *goidc.Client,
 ) error {
 
@@ -97,7 +97,7 @@ func authenticateSecretPost(
 }
 
 func authenticateSecretBasic(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	c *goidc.Client,
 ) error {
 	id, secret, ok := ctx.Request.BasicAuth()
@@ -125,7 +125,7 @@ func validateSecret(
 }
 
 func authenticatePrivateKeyJWT(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	c *goidc.Client,
 ) error {
 
@@ -164,7 +164,7 @@ func authenticatePrivateKeyJWT(
 	return areClaimsValid(ctx, c, claims)
 }
 
-func jwkMatchingHeader(ctx *oidc.Context, c *goidc.Client, header jose.Header) (jose.JSONWebKey, error) {
+func jwkMatchingHeader(ctx oidc.Context, c *goidc.Client, header jose.Header) (jose.JSONWebKey, error) {
 	if header.KeyID != "" {
 		jwk, err := JWKByKeyID(ctx, c, header.KeyID)
 		if err != nil {
@@ -183,7 +183,7 @@ func jwkMatchingHeader(ctx *oidc.Context, c *goidc.Client, header jose.Header) (
 }
 
 func authenticateSecretJWT(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	c *goidc.Client,
 ) error {
 	assertion, err := assertion(ctx)
@@ -210,7 +210,7 @@ func authenticateSecretJWT(
 	return areClaimsValid(ctx, c, claims)
 }
 
-func assertion(ctx *oidc.Context) (string, error) {
+func assertion(ctx oidc.Context) (string, error) {
 	assertionType := ctx.Request.PostFormValue(assertionTypeFormPostParam)
 	if assertionType != string(goidc.AssertionTypeJWTBearer) {
 		return "", goidc.NewError(goidc.ErrorCodeInvalidClient,
@@ -227,7 +227,7 @@ func assertion(ctx *oidc.Context) (string, error) {
 }
 
 func areClaimsValid(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	client *goidc.Client,
 	claims jwt.Claims,
 ) error {
@@ -260,7 +260,7 @@ func areClaimsValid(
 }
 
 func authenticateSelfSignedTLSCert(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	c *goidc.Client,
 ) error {
 	if c.ID != ctx.Request.PostFormValue(idFormPostParam) {
@@ -287,7 +287,7 @@ func authenticateSelfSignedTLSCert(
 }
 
 func jwkMatchingCert(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	c *goidc.Client,
 	cert *x509.Certificate,
 ) (
@@ -312,7 +312,7 @@ func jwkMatchingCert(
 }
 
 func authenticateTLSCert(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	c *goidc.Client,
 ) error {
 	if c.ID != ctx.Request.PostFormValue(idFormPostParam) {
@@ -346,7 +346,7 @@ func authenticateTLSCert(
 // authentication header and the post form field 'client_id'.
 // If different client IDs are found in the request, it returns an error.
 func extractID(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 ) (
 	string,
 	error,

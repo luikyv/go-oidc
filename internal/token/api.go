@@ -20,7 +20,7 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 	}
 }
 
-func handleCreate(ctx *oidc.Context) {
+func handleCreate(ctx oidc.Context) {
 	req := newRequest(ctx.Request)
 	tokenResp, err := generateGrant(ctx, req)
 	if err != nil {
@@ -33,7 +33,7 @@ func handleCreate(ctx *oidc.Context) {
 	}
 }
 
-func handleIntrospect(ctx *oidc.Context) {
+func handleIntrospect(ctx oidc.Context) {
 	req := newIntrospectionRequest(ctx.Request)
 	tokenInfo, err := introspect(ctx, req)
 	if err != nil {
