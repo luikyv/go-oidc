@@ -205,6 +205,10 @@ func (ctx Context) DeleteGrantSession(id string) error {
 	return ctx.GrantSessionManager.Delete(ctx.Request.Context(), id)
 }
 
+func (ctx Context) DeleteGrantSessionByAuthorizationCode(code string) error {
+	return ctx.GrantSessionManager.DeleteByAuthorizationCode(ctx.Request.Context(), code)
+}
+
 func (ctx Context) SaveAuthnSession(session *goidc.AuthnSession) error {
 	return ctx.AuthnSessionManager.Save(ctx.Request.Context(), session)
 }

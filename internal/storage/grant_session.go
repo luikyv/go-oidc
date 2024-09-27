@@ -66,6 +66,21 @@ func (m *GrantSessionManager) Delete(_ context.Context, id string) error {
 	return nil
 }
 
+func (m *GrantSessionManager) DeleteByAuthorizationCode(
+	ctx context.Context,
+	code string,
+) error {
+	grantSession, exists := m.firstSession(func(t *goidc.GrantSession) bool {
+		return t.AuthorizationCode == code
+	})
+
+	if !exists {
+		return nil
+	}
+
+	return m.Delete(ctx, grantSession.ID)
+}
+
 func (m *GrantSessionManager) firstSession(
 	condition func(*goidc.GrantSession) bool,
 ) (

@@ -56,6 +56,7 @@ func generateAuthorizationCodeGrant(
 		client,
 		grantInfo,
 		token,
+		session.AuthorizationCode,
 	)
 	if err != nil {
 		return response{}, err
@@ -93,6 +94,9 @@ func generateAuthorizationCodeGrant(
 	return tokenResp, nil
 }
 
+// authnSession fetches an authentication session by searching for the
+// authorization code. If the session is found, it is deleted to prevent reuse
+// of the code.
 func authnSession(
 	ctx oidc.Context,
 	authzCode string,
@@ -102,13 +106,17 @@ func authnSession(
 ) {
 	session, err := ctx.AuthnSessionByAuthorizationCode(authzCode)
 	if err != nil {
+		// Invalidate any grant associated with the authorization code.
+		// This ensures that even if the code is compromised, the access token
+		// that it generated cannot be misused by a malicious client.
+		_ = ctx.DeleteGrantSessionByAuthorizationCode(authzCode)
 		return nil, goidc.Errorf(goidc.ErrorCodeInvalidGrant,
 			"invalid authorization code", err)
 	}
 
 	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
 		return nil, goidc.Errorf(goidc.ErrorCodeInternalError,
-			"could not delete the authn session", err)
+			"internal error", err)
 	}
 
 	return session, nil
@@ -119,12 +127,14 @@ func generateAuthorizationCodeGrantSession(
 	client *goidc.Client,
 	grantInfo goidc.GrantInfo,
 	token Token,
+	code string,
 ) (
 	*goidc.GrantSession,
 	error,
 ) {
 
 	grantSession := NewGrantSession(grantInfo, token)
+	grantSession.AuthorizationCode = code
 	if ctx.ShouldIssueRefreshToken(client, grantInfo) {
 		refreshToken, err := refreshToken()
 		if err != nil {
@@ -136,7 +146,7 @@ func generateAuthorizationCodeGrantSession(
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
 		return nil, goidc.Errorf(goidc.ErrorCodeInternalError,
-			"could not store the authorization code grant session", err)
+			"internal error", err)
 	}
 
 	return grantSession, nil

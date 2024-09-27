@@ -9,10 +9,11 @@ import (
 
 // GrantSessionManager contains all the logic needed to manage grant sessions.
 type GrantSessionManager interface {
-	Save(ctx context.Context, grantSession *GrantSession) error
-	SessionByTokenID(ctx context.Context, tokenID string) (*GrantSession, error)
-	SessionByRefreshToken(ctx context.Context, refreshToken string) (*GrantSession, error)
+	Save(context.Context, *GrantSession) error
+	SessionByTokenID(context.Context, string) (*GrantSession, error)
+	SessionByRefreshToken(context.Context, string) (*GrantSession, error)
 	Delete(ctx context.Context, id string) error
+	DeleteByAuthorizationCode(context.Context, string) error
 }
 
 // GrantSession represents the granted access an entity (a user or the client
@@ -29,6 +30,9 @@ type GrantSession struct {
 	LastTokenExpiresAtTimestamp int `json:"last_token_expires_at"`
 	CreatedAtTimestamp          int `json:"created_at"`
 	ExpiresAtTimestamp          int `json:"expires_at"`
+	// AuthorizationCode is the authorization code used to generate this grant
+	// session in case of authorization code grant type.
+	AuthorizationCode string `json:"authorization_code,omitempty"`
 	GrantInfo
 }
 

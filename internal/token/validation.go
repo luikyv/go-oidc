@@ -9,7 +9,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-// TODO: Document it.
+// validateBinding checks both DPoP and TLS binding for issuing a token.
 func validateBinding(
 	ctx oidc.Context,
 	client *goidc.Client,
