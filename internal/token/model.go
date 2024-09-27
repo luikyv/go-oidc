@@ -66,13 +66,13 @@ type response struct {
 	Resources            goidc.Resources             `json:"resources,omitempty"`
 }
 
-type introspectionRequest struct {
+type queryRequest struct {
 	token         string
 	tokenTypeHint goidc.TokenTypeHint
 }
 
-func newIntrospectionRequest(req *http.Request) introspectionRequest {
-	return introspectionRequest{
+func newQueryRequest(req *http.Request) queryRequest {
+	return queryRequest{
 		token:         req.PostFormValue("token"),
 		tokenTypeHint: goidc.TokenTypeHint(req.PostFormValue("token_type_hint")),
 	}

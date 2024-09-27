@@ -56,6 +56,7 @@ type Configuration struct {
 	EndpointDCR                 string
 	EndpointUserInfo            string
 	EndpointIntrospection       string
+	EndpointTokenRevocation     string
 	EndpointPrefix              string
 
 	// DefaultSigKeyID defines the default key used to sign ID
@@ -93,6 +94,8 @@ type Configuration struct {
 
 	IntrospectionIsEnabled          bool
 	IntrospectionClientAuthnMethods []goidc.ClientAuthnType
+
+	TokenRevocationIsEnabled bool
 
 	ShouldIssueRefreshTokenFunc   goidc.ShouldIssueRefreshTokenFunc
 	RefreshTokenRotationIsEnabled bool

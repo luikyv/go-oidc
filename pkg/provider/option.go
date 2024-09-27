@@ -127,6 +127,16 @@ func WithIntrospectionEndpoint(endpoint string) ProviderOption {
 	}
 }
 
+// WithTokenRevocationEndpoint overrides the default value for the token
+// revocation endpoint which is [defaultEndpointTokenRevocation]
+// To enable token revocation, see [WithTokenRevocation].
+func WithTokenRevocationEndpoint(endpoint string) ProviderOption {
+	return func(p Provider) error {
+		p.config.EndpointTokenRevocation = endpoint
+		return nil
+	}
+}
+
 // WithClaims signals support for user claims.
 // The claims are meant to appear in ID tokens and the userinfo endpoint.
 // The values provided will be shared in the field "claims_supported" of the
@@ -208,8 +218,6 @@ func WithUserInfoEncryption(keyEncAlgs ...jose.KeyAlgorithm) ProviderOption {
 	return func(p Provider) error {
 		p.config.UserEncIsEnabled = true
 		p.config.UserKeyEncAlgs = keyEncAlgs
-		p.config.UserDefaultContentEncAlg = jose.A128CBC_HS256
-		p.config.UserContentEncAlgs = []jose.ContentEncryption{jose.A128CBC_HS256}
 		return nil
 	}
 }
@@ -273,8 +281,6 @@ func WithRefreshTokenGrant() ProviderOption {
 	return func(p Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes,
 			goidc.GrantRefreshToken)
-		p.config.RefreshTokenLifetimeSecs = defaultRefreshTokenLifetimeSecs
-		p.config.ShouldIssueRefreshTokenFunc = defaultShouldIssueRefreshTokenFunc()
 		return nil
 	}
 }
@@ -378,7 +384,6 @@ func WithScopes(scopes ...goidc.Scope) ProviderOption {
 func WithPAR() ProviderOption {
 	return func(p Provider) error {
 		p.config.PARIsEnabled = true
-		p.config.PARLifetimeSecs = defaultPARLifetimeSecs
 		return nil
 	}
 }
@@ -428,8 +433,6 @@ func WithJAR(
 
 	return func(p Provider) error {
 		p.config.JARIsEnabled = true
-		p.config.JARLifetimeSecs = defaultJWTLifetimeSecs
-		p.config.JARLeewayTimeSecs = defaultJWTLeewayTimeSecs
 		p.config.JARSigAlgs = algs
 		return nil
 	}
@@ -464,8 +467,6 @@ func WithJAREncryption(
 		}
 		p.config.JAREncIsEnabled = true
 		p.config.JARKeyEncIDs = keyEncIDs
-		p.config.JARDefaultContentEncAlg = jose.A128CBC_HS256
-		p.config.JARContentEncAlgs = []jose.ContentEncryption{jose.A128CBC_HS256}
 		return nil
 	}
 }
@@ -511,7 +512,6 @@ func WithJARM(
 			goidc.ResponseModeFragmentJWT,
 			goidc.ResponseModeFormPostJWT,
 		)
-		p.config.JARMLifetimeSecs = defaultJWTLifetimeSecs
 		p.config.JARMDefaultSigKeyID = defaultSigKeyID
 		p.config.JARMSigKeyIDs = sigKeyIDs
 		return nil
@@ -546,8 +546,6 @@ func WithJARMEncryption(
 	return func(p Provider) error {
 		p.config.JARMEncIsEnabled = true
 		p.config.JARMKeyEncAlgs = keyEncAlgs
-		p.config.JARMDefaultContentEncAlg = jose.A128CBC_HS256
-		p.config.JARMContentEncAlgs = []jose.ContentEncryption{jose.A128CBC_HS256}
 		return nil
 	}
 }
@@ -714,7 +712,6 @@ func WithMTLS(
 	return func(p Provider) error {
 		p.config.MTLSIsEnabled = true
 		p.config.MTLSHost = host
-		p.config.ClientCertFunc = defaultClientCertFunc()
 		return nil
 	}
 }
@@ -766,8 +763,6 @@ func WithDPoP(
 
 	return func(p Provider) error {
 		p.config.DPoPIsEnabled = true
-		p.config.DPoPLifetimeSecs = defaultJWTLifetimeSecs
-		p.config.DPoPLeewayTimeSecs = defaultJWTLeewayTimeSecs
 		p.config.DPoPSigAlgs = sigAlgs
 		return nil
 	}
@@ -807,6 +802,14 @@ func WithIntrospection(
 		p.config.IntrospectionIsEnabled = true
 		p.config.IntrospectionClientAuthnMethods = clientAuthnMethods
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantIntrospection)
+		return nil
+	}
+}
+
+// WithTokenRevocation allows clients to revoke tokens.
+func WithTokenRevocation() ProviderOption {
+	return func(p Provider) error {
+		p.config.TokenRevocationIsEnabled = true
 		return nil
 	}
 }

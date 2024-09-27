@@ -323,6 +323,17 @@ func (ctx Context) FormData() map[string]any {
 	return formData
 }
 
+func (ctx Context) WriteStatus(status int) {
+	// Check if the request was terminated before writing anything.
+	select {
+	case <-ctx.Request.Context().Done():
+		return
+	default:
+	}
+
+	ctx.Response.WriteHeader(status)
+}
+
 // Write responds the current request writing obj as JSON.
 func (ctx Context) Write(obj any, status int) error {
 	// Check if the request was terminated before writing anything.

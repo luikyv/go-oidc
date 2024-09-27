@@ -61,14 +61,15 @@ func New(
 			AuthnSessionManager: storage.NewAuthnSessionManager(),
 			GrantSessionManager: storage.NewGrantSessionManager(),
 
-			Scopes:              []goidc.Scope{goidc.ScopeOpenID},
-			TokenOptionsFunc:    defaultTokenOptionsFunc(defaultSigKeyID),
-			PrivateJWKS:         privateJWKS,
-			UserDefaultSigKeyID: defaultSigKeyID,
-			UserSigKeyIDs:       []string{defaultSigKeyID},
-			IDTokenLifetimeSecs: defaultIDTokenLifetimeSecs,
-			GrantTypes:          []goidc.GrantType{goidc.GrantAuthorizationCode},
-			ResponseTypes:       []goidc.ResponseType{goidc.ResponseTypeCode},
+			Scopes:                      []goidc.Scope{goidc.ScopeOpenID},
+			TokenOptionsFunc:            defaultTokenOptionsFunc(defaultSigKeyID),
+			ShouldIssueRefreshTokenFunc: defaultShouldIssueRefreshTokenFunc(),
+			PrivateJWKS:                 privateJWKS,
+			UserDefaultSigKeyID:         defaultSigKeyID,
+			UserSigKeyIDs:               []string{defaultSigKeyID},
+			IDTokenLifetimeSecs:         defaultIDTokenLifetimeSecs,
+			GrantTypes:                  []goidc.GrantType{goidc.GrantAuthorizationCode},
+			ResponseTypes:               []goidc.ResponseType{goidc.ResponseTypeCode},
 			ResponseModes: []goidc.ResponseMode{
 				goidc.ResponseModeQuery,
 				goidc.ResponseModeFragment,
@@ -77,9 +78,8 @@ func New(
 			SubIdentifierTypes: []goidc.SubjectIdentifierType{
 				goidc.SubjectIdentifierPublic,
 			},
-			ClaimTypes:                  []goidc.ClaimType{goidc.ClaimTypeNormal},
-			AuthnSessionTimeoutSecs:     defaultAuthnSessionTimeoutSecs,
-			AssertionLifetimeSecs:       defaultJWTLifetimeSecs,
+			ClaimTypes: []goidc.ClaimType{goidc.ClaimTypeNormal},
+
 			EndpointWellKnown:           defaultEndpointWellKnown,
 			EndpointJWKS:                defaultEndpointJSONWebKeySet,
 			EndpointToken:               defaultEndpointToken,
@@ -88,6 +88,26 @@ func New(
 			EndpointDCR:                 defaultEndpointDynamicClient,
 			EndpointUserInfo:            defaultEndpointUserInfo,
 			EndpointIntrospection:       defaultEndpointTokenIntrospection,
+			EndpointTokenRevocation:     defaultEndpointTokenRevocation,
+
+			AuthnSessionTimeoutSecs:  defaultAuthnSessionTimeoutSecs,
+			AssertionLifetimeSecs:    defaultJWTLifetimeSecs,
+			RefreshTokenLifetimeSecs: defaultRefreshTokenLifetimeSecs,
+			PARLifetimeSecs:          defaultPARLifetimeSecs,
+			JARLifetimeSecs:          defaultJWTLifetimeSecs,
+			JARLeewayTimeSecs:        defaultJWTLeewayTimeSecs,
+			JARMLifetimeSecs:         defaultJWTLifetimeSecs,
+			DPoPLifetimeSecs:         defaultJWTLifetimeSecs,
+			DPoPLeewayTimeSecs:       defaultJWTLeewayTimeSecs,
+
+			JARMDefaultContentEncAlg: jose.A128CBC_HS256,
+			JARMContentEncAlgs:       []jose.ContentEncryption{jose.A128CBC_HS256},
+			UserDefaultContentEncAlg: jose.A128CBC_HS256,
+			UserContentEncAlgs:       []jose.ContentEncryption{jose.A128CBC_HS256},
+			JARDefaultContentEncAlg:  jose.A128CBC_HS256,
+			JARContentEncAlgs:        []jose.ContentEncryption{jose.A128CBC_HS256},
+
+			ClientCertFunc: defaultClientCertFunc(),
 		},
 	}
 

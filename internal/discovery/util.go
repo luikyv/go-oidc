@@ -23,8 +23,8 @@ func oidcConfig(ctx oidc.Context) openIDConfiguration {
 		SubIdentifierTypes:           ctx.SubIdentifierTypes,
 		IDTokenSigAlgs:               ctx.UserInfoSigAlgs(),
 		UserInfoSigAlgs:              ctx.UserInfoSigAlgs(),
-		ClientAuthnMethods:           ctx.ClientAuthnMethods,
 		Scopes:                       scopes,
+		ClientAuthnMethods:           ctx.ClientAuthnMethods,
 		TokenEndpointClientSigAlgs:   ctx.ClientAuthnSigAlgs(),
 		IssuerResponseParamIsEnabled: ctx.IssuerRespParamIsEnabled,
 		ClaimsParamIsEnabled:         ctx.ClaimsParamIsEnabled,
@@ -71,6 +71,12 @@ func oidcConfig(ctx oidc.Context) openIDConfiguration {
 		config.IntrospectionEndpointClientSigAlgs = ctx.IntrospectionClientAuthnSigAlgs()
 	}
 
+	if ctx.TokenRevocationIsEnabled {
+		config.TokenRevocationEndpoint = ctx.BaseURL() + ctx.EndpointTokenRevocation
+		config.TokenRevocationClientAuthnMethods = ctx.ClientAuthnMethods
+		config.TokenRevocationClientSigAlgs = ctx.ClientAuthnSigAlgs()
+	}
+
 	if ctx.MTLSIsEnabled {
 		config.TLSBoundTokensIsEnabled = ctx.MTLSTokenBindingIsEnabled
 
@@ -89,6 +95,10 @@ func oidcConfig(ctx oidc.Context) openIDConfiguration {
 
 		if ctx.IntrospectionIsEnabled {
 			config.IntrospectionEndpoint = ctx.MTLSBaseURL() + ctx.EndpointIntrospection
+		}
+
+		if ctx.TokenRevocationIsEnabled {
+			config.TokenRevocationEndpoint = ctx.MTLSBaseURL() + ctx.EndpointTokenRevocation
 		}
 	}
 

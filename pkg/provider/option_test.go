@@ -262,6 +262,30 @@ func TestWithIntrospectionEndpoint(t *testing.T) {
 	}
 }
 
+func TestWithTokenRevocationEndpoint(t *testing.T) {
+	// Given.
+	p := Provider{
+		config: &oidc.Configuration{},
+	}
+
+	// When.
+	err := WithTokenRevocationEndpoint("/revoke")(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := Provider{
+		config: &oidc.Configuration{
+			EndpointTokenRevocation: "/revoke",
+		},
+	}
+	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
+		t.Error(diff)
+	}
+}
+
 func TestWithClaims(t *testing.T) {
 	// Given.
 	p := Provider{
@@ -376,10 +400,8 @@ func TestWithUserInfoEncryption(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			UserEncIsEnabled:         true,
-			UserKeyEncAlgs:           []jose.KeyAlgorithm{jose.RSA_OAEP},
-			UserDefaultContentEncAlg: jose.A128CBC_HS256,
-			UserContentEncAlgs:       []jose.ContentEncryption{jose.A128CBC_HS256},
+			UserEncIsEnabled: true,
+			UserKeyEncAlgs:   []jose.KeyAlgorithm{jose.RSA_OAEP},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -403,10 +425,8 @@ func TestWithUserInfoEncryption_NoAlgInformed(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			UserEncIsEnabled:         true,
-			UserKeyEncAlgs:           []jose.KeyAlgorithm{jose.RSA_OAEP_256},
-			UserDefaultContentEncAlg: jose.A128CBC_HS256,
-			UserContentEncAlgs:       []jose.ContentEncryption{jose.A128CBC_HS256},
+			UserEncIsEnabled: true,
+			UserKeyEncAlgs:   []jose.KeyAlgorithm{jose.RSA_OAEP_256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -547,8 +567,7 @@ func TestWithRefreshTokenGrant(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			GrantTypes:               []goidc.GrantType{goidc.GrantRefreshToken},
-			RefreshTokenLifetimeSecs: defaultRefreshTokenLifetimeSecs,
+			GrantTypes: []goidc.GrantType{goidc.GrantRefreshToken},
 		},
 	}
 	if diff := cmp.Diff(
@@ -782,8 +801,7 @@ func TestWithPAR(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			PARIsEnabled:    true,
-			PARLifetimeSecs: defaultPARLifetimeSecs,
+			PARIsEnabled: true,
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -807,9 +825,8 @@ func TestWithPARRequired(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			PARIsEnabled:    true,
-			PARIsRequired:   true,
-			PARLifetimeSecs: defaultPARLifetimeSecs,
+			PARIsEnabled:  true,
+			PARIsRequired: true,
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -857,10 +874,8 @@ func TestWithJAR(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			JARIsEnabled:      true,
-			JARLifetimeSecs:   defaultJWTLifetimeSecs,
-			JARLeewayTimeSecs: defaultJWTLeewayTimeSecs,
-			JARSigAlgs:        []jose.SignatureAlgorithm{jose.PS256},
+			JARIsEnabled: true,
+			JARSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -884,10 +899,8 @@ func TestWithJAR_NoAlgInformed(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			JARIsEnabled:      true,
-			JARLifetimeSecs:   defaultJWTLifetimeSecs,
-			JARLeewayTimeSecs: defaultJWTLeewayTimeSecs,
-			JARSigAlgs:        []jose.SignatureAlgorithm{jose.RS256},
+			JARIsEnabled: true,
+			JARSigAlgs:   []jose.SignatureAlgorithm{jose.RS256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -911,11 +924,9 @@ func TestWithJARRequired(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			JARIsEnabled:      true,
-			JARIsRequired:     true,
-			JARLifetimeSecs:   defaultJWTLifetimeSecs,
-			JARLeewayTimeSecs: defaultJWTLeewayTimeSecs,
-			JARSigAlgs:        []jose.SignatureAlgorithm{jose.PS256},
+			JARIsEnabled:  true,
+			JARIsRequired: true,
+			JARSigAlgs:    []jose.SignatureAlgorithm{jose.PS256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -939,10 +950,8 @@ func TestWithJAREncryption(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			JAREncIsEnabled:         true,
-			JARKeyEncIDs:            []string{"enc_key"},
-			JARDefaultContentEncAlg: jose.A128CBC_HS256,
-			JARContentEncAlgs:       []jose.ContentEncryption{jose.A128CBC_HS256},
+			JAREncIsEnabled: true,
+			JARKeyEncIDs:    []string{"enc_key"},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -998,7 +1007,6 @@ func TestWithJARM(t *testing.T) {
 				goidc.ResponseModeFragmentJWT,
 				goidc.ResponseModeFormPostJWT,
 			},
-			JARMLifetimeSecs:    defaultJWTLifetimeSecs,
 			JARMDefaultSigKeyID: "sig_key",
 			JARMSigKeyIDs:       []string{"sig_key"},
 		},
@@ -1048,10 +1056,8 @@ func TestWithJARMEncryption(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			JARMEncIsEnabled:         true,
-			JARMKeyEncAlgs:           []jose.KeyAlgorithm{jose.RSA_OAEP},
-			JARMDefaultContentEncAlg: jose.A128CBC_HS256,
-			JARMContentEncAlgs:       []jose.ContentEncryption{jose.A128CBC_HS256},
+			JARMEncIsEnabled: true,
+			JARMKeyEncAlgs:   []jose.KeyAlgorithm{jose.RSA_OAEP},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1075,10 +1081,8 @@ func TestWithJARMEncryption_NoAlgInformed(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			JARMEncIsEnabled:         true,
-			JARMKeyEncAlgs:           []jose.KeyAlgorithm{jose.RSA_OAEP_256},
-			JARMDefaultContentEncAlg: jose.A128CBC_HS256,
-			JARMContentEncAlgs:       []jose.ContentEncryption{jose.A128CBC_HS256},
+			JARMEncIsEnabled: true,
+			JARMKeyEncAlgs:   []jose.KeyAlgorithm{jose.RSA_OAEP_256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1432,10 +1436,6 @@ func TestWithMTLS(t *testing.T) {
 	); diff != "" {
 		t.Error(diff)
 	}
-
-	if p.config.ClientCertFunc == nil {
-		t.Error("ClientCertFunc cannot be nil")
-	}
 }
 
 func TestWithTLSCertTokenBinding(t *testing.T) {
@@ -1503,10 +1503,8 @@ func TestWithDPoP(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			DPoPIsEnabled:      true,
-			DPoPSigAlgs:        []jose.SignatureAlgorithm{jose.PS256},
-			DPoPLifetimeSecs:   defaultJWTLifetimeSecs,
-			DPoPLeewayTimeSecs: defaultJWTLeewayTimeSecs,
+			DPoPIsEnabled: true,
+			DPoPSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1530,10 +1528,8 @@ func TestWithDPoP_NoAlgInformed(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			DPoPIsEnabled:      true,
-			DPoPSigAlgs:        []jose.SignatureAlgorithm{jose.RS256},
-			DPoPLifetimeSecs:   defaultJWTLifetimeSecs,
-			DPoPLeewayTimeSecs: defaultJWTLeewayTimeSecs,
+			DPoPIsEnabled: true,
+			DPoPSigAlgs:   []jose.SignatureAlgorithm{jose.RS256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1557,11 +1553,9 @@ func TestWithDPoPRequired(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			DPoPIsEnabled:      true,
-			DPoPIsRequired:     true,
-			DPoPSigAlgs:        []jose.SignatureAlgorithm{jose.PS256},
-			DPoPLifetimeSecs:   defaultJWTLifetimeSecs,
-			DPoPLeewayTimeSecs: defaultJWTLeewayTimeSecs,
+			DPoPIsEnabled:  true,
+			DPoPIsRequired: true,
+			DPoPSigAlgs:    []jose.SignatureAlgorithm{jose.PS256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1612,6 +1606,30 @@ func TestWithIntrospection(t *testing.T) {
 			IntrospectionIsEnabled:          true,
 			IntrospectionClientAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnSecretPost},
 			GrantTypes:                      []goidc.GrantType{goidc.GrantIntrospection},
+		},
+	}
+	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithTokenRevocation(t *testing.T) {
+	// Given.
+	p := Provider{
+		config: &oidc.Configuration{},
+	}
+
+	// When.
+	err := WithTokenRevocation()(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := Provider{
+		config: &oidc.Configuration{
+			TokenRevocationIsEnabled: true,
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {

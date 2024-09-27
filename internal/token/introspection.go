@@ -12,7 +12,7 @@ import (
 
 func introspect(
 	ctx oidc.Context,
-	req introspectionRequest,
+	req queryRequest,
 ) (
 	goidc.TokenInfo,
 	error,
@@ -35,7 +35,7 @@ func introspect(
 
 func validateIntrospectionRequest(
 	_ oidc.Context,
-	req introspectionRequest,
+	req queryRequest,
 	c *goidc.Client,
 ) error {
 	if !slices.Contains(c.GrantTypes, goidc.GrantIntrospection) {

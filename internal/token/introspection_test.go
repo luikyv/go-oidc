@@ -26,7 +26,7 @@ func TestIntrospect_OpaqueToken(t *testing.T) {
 	}
 	_ = ctx.SaveGrantSession(grantSession)
 
-	tokenReq := introspectionRequest{
+	tokenReq := queryRequest{
 		token: accessToken,
 	}
 
@@ -71,7 +71,7 @@ func TestIntrospect_RefreshToken(t *testing.T) {
 	}
 	_ = ctx.SaveGrantSession(grantSession)
 
-	tokenReq := introspectionRequest{
+	tokenReq := queryRequest{
 		token: refreshToken,
 	}
 
