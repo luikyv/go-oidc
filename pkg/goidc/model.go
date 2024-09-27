@@ -388,16 +388,17 @@ type TokenConfirmation struct {
 }
 
 type TokenInfo struct {
+	// GrantID is the ID of the grant session associated to token.
+	GrantID               string                `json:"-"`
 	IsActive              bool                  `json:"active"`
-	Reason                string                `json:"-"` // TODO. Fill this.
-	Type                  TokenTypeHint         `json:"hint,omitempty"`
+	Type                  TokenTypeHint         `json:"token_type,omitempty"`
 	Scopes                string                `json:"scope,omitempty"`
 	AuthorizationDetails  []AuthorizationDetail `json:"authorization_details,omitempty"`
+	ResourceAudiences     Resources             `json:"aud,omitempty"`
 	ClientID              string                `json:"client_id,omitempty"`
 	Subject               string                `json:"sub,omitempty"`
 	ExpiresAtTimestamp    int                   `json:"exp,omitempty"`
 	Confirmation          *TokenConfirmation    `json:"cnf,omitempty"`
-	Resources             Resources             `json:"aud,omitempty"`
 	AdditionalTokenClaims map[string]any        `json:"-"`
 }
 

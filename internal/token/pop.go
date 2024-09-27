@@ -33,7 +33,7 @@ func validateDPoP(
 	if confirmation.JWKThumbprint == "" {
 		if tokenType == goidc.TokenTypeDPoP {
 			// The token type cannot be DPoP if the session was not created with DPoP.
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid token type")
+			return goidc.NewError(goidc.ErrorCodeInvalidToken, "invalid token type")
 		} else {
 			// If the session was not created with DPoP and the token is not of
 			// DPoP type, there is nothing to validate.
@@ -44,13 +44,17 @@ func validateDPoP(
 	dpopJWT, ok := dpop.JWT(ctx)
 	if !ok {
 		// The session was created with DPoP, then the DPoP header must be passed.
-		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid DPoP header")
+		return goidc.NewError(goidc.ErrorCodeInvalidToken, "invalid request")
 	}
 
-	return dpop.ValidateJWT(ctx, dpopJWT, dpop.ValidationOptions{
+	if err := dpop.ValidateJWT(ctx, dpopJWT, dpop.ValidationOptions{
 		AccessToken:   token,
 		JWKThumbprint: confirmation.JWKThumbprint,
-	})
+	}); err != nil {
+		return goidc.Errorf(goidc.ErrorCodeInvalidToken, "invalid request", err)
+	}
+
+	return nil
 }
 
 // validateDPoP validates that the context contains the information required to

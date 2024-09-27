@@ -1,6 +1,9 @@
 package userinfo
 
 import (
+	"errors"
+	"net/http"
+
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/jwtutil"
@@ -10,7 +13,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func userInfo(ctx oidc.Context) (response, error) {
+func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 
 	accessToken, tokenType, ok := ctx.AuthorizationToken()
 	if !ok {
@@ -29,6 +32,11 @@ func userInfo(ctx oidc.Context) (response, error) {
 	}
 
 	if err := validateRequest(ctx, grantSession, accessToken, tokenType); err != nil {
+		var oidcErr goidc.Error
+		// Delete the grant if the client is not allowed to access it.
+		if errors.As(err, &oidcErr) && oidcErr.Code.StatusCode() == http.StatusUnauthorized {
+			_ = ctx.DeleteGrantSession(grantSession.ID)
+		}
 		return response{}, err
 	}
 
@@ -141,16 +149,20 @@ func validateRequest(
 	tokenType goidc.TokenType,
 ) error {
 	if grantSession.HasLastTokenExpired() {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "token expired")
+		return goidc.NewError(goidc.ErrorCodeAccessDenied, "token expired")
 	}
 
 	if !strutil.ContainsOpenID(grantSession.ActiveScopes) {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid scope")
+		return goidc.NewError(goidc.ErrorCodeAccessDenied, "invalid scope")
 	}
 
 	confirmation := goidc.TokenConfirmation{
 		JWKThumbprint:               grantSession.JWKThumbprint,
 		ClientCertificateThumbprint: grantSession.ClientCertThumbprint,
 	}
-	return token.ValidatePoP(ctx, accessToken, tokenType, confirmation)
+	if err := token.ValidatePoP(ctx, accessToken, tokenType, confirmation); err != nil {
+		return err
+	}
+
+	return nil
 }

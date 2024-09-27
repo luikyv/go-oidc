@@ -88,6 +88,7 @@ func refreshTokenInfo(
 	}
 
 	return goidc.TokenInfo{
+		GrantID:               grantSession.ID,
 		IsActive:              true,
 		Type:                  goidc.TokenHintRefresh,
 		Scopes:                grantSession.GrantedScopes,
@@ -96,7 +97,7 @@ func refreshTokenInfo(
 		Subject:               grantSession.Subject,
 		ExpiresAtTimestamp:    grantSession.ExpiresAtTimestamp,
 		Confirmation:          cnf,
-		Resources:             grantSession.GrantedResources,
+		ResourceAudiences:     grantSession.GrantedResources,
 		AdditionalTokenClaims: grantSession.AdditionalTokenClaims,
 	}
 }
@@ -148,6 +149,7 @@ func tokenIntrospectionInfoByID(
 	}
 
 	return goidc.TokenInfo{
+		GrantID:               grantSession.ID,
 		IsActive:              true,
 		Type:                  goidc.TokenHintAccess,
 		Scopes:                grantSession.ActiveScopes,
@@ -156,7 +158,7 @@ func tokenIntrospectionInfoByID(
 		Subject:               grantSession.Subject,
 		ExpiresAtTimestamp:    grantSession.LastTokenExpiresAtTimestamp,
 		Confirmation:          cnf,
-		Resources:             grantSession.ActiveResources,
+		ResourceAudiences:     grantSession.ActiveResources,
 		AdditionalTokenClaims: grantSession.AdditionalTokenClaims,
 	}
 }
