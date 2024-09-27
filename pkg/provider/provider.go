@@ -183,23 +183,30 @@ func (p Provider) RunTLS(
 	return server.ListenAndServeTLS(tlsOpts.ServerCert, tlsOpts.ServerKey)
 }
 
-// TokenInfo returns information about the access token sent in the request.
-// It also validates proof of possesions with DPoP and/or TLS binding if the
-// token was created with these mechanisms.
-// TODO: Return an error?
+// TokenInfo retrieves details about the access token included in the request.
+// If the token was issued with mechanisms such as DPoP (Demonstrating Proof
+// of Possession) or TLS binding, the function also validates these proofs to
+// ensure the token's ownership.
 func (p Provider) TokenInfo(
 	w http.ResponseWriter,
 	r *http.Request,
-) goidc.TokenInfo {
+) (
+	goidc.TokenInfo,
+	error,
+) {
 	ctx := oidc.NewContext(w, r, p.config)
 	accessToken, tokenType, ok := ctx.AuthorizationToken()
 	if !ok {
-		return goidc.TokenInfo{}
+		return goidc.TokenInfo{}, errors.New("no token informed")
 	}
 
-	tokenInfo := token.IntrospectionInfo(ctx, accessToken)
+	tokenInfo, err := token.IntrospectionInfo(ctx, accessToken)
+	if err != nil {
+		return goidc.TokenInfo{}, err
+	}
+
 	if tokenInfo.Confirmation == nil {
-		return tokenInfo
+		return tokenInfo, nil
 	}
 
 	if err := token.ValidatePoP(
@@ -208,12 +215,12 @@ func (p Provider) TokenInfo(
 		tokenType,
 		*tokenInfo.Confirmation,
 	); err != nil {
-		// Make sure the token is revoked if the proof of possesion fails.
+		// Make sure the grant is revoked if the proof of possesion fails.
 		_ = ctx.DeleteGrantSession(tokenInfo.GrantID)
-		return goidc.TokenInfo{}
+		return goidc.TokenInfo{}, err
 	}
 
-	return tokenInfo
+	return tokenInfo, nil
 }
 
 // Client is a shortcut to fetch clients using the client storage.
