@@ -161,4 +161,5 @@ type Configuration struct {
 	Resources                    []string
 
 	HTTPClientFunc goidc.HTTPClientFunc
+	CheckJTIFunc   goidc.CheckJTIFunc
 }

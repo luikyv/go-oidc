@@ -142,10 +142,7 @@ func validateRefreshTokenGrantRequest(
 	}
 
 	if grantSession.IsExpired() {
-		if err := ctx.DeleteGrantSession(grantSession.ID); err != nil {
-			return goidc.Errorf(goidc.ErrorCodeInternalError,
-				"internal error", err)
-		}
+		_ = ctx.DeleteGrantSession(grantSession.ID)
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "the refresh token is expired")
 	}
 

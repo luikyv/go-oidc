@@ -147,6 +147,13 @@ func jarFromSignedRequestObject(
 			"invalid exp claim in the request object")
 	}
 
+	if claims.ID != "" {
+		if err := ctx.CheckJTI(claims.ID); err != nil {
+			return request{}, goidc.Errorf(goidc.ErrorCodeInvalidResquestObject,
+				"invalid jti claim", err)
+		}
+	}
+
 	err = claims.ValidateWithLeeway(jwt.Expected{
 		Issuer:      c.ID,
 		AnyAudience: []string{ctx.Host},

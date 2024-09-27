@@ -913,10 +913,21 @@ func WithRenderErrorFunc(render goidc.RenderErrorFunc) ProviderOption {
 }
 
 // WithHandleErrorFunc defines a handler to be executed when an error happens.
-// For instance, this can be used to log information about the error
+// For instance, this can be used to log information about the error.
 func WithHandleErrorFunc(f goidc.HandleErrorFunc) ProviderOption {
 	return func(p Provider) error {
 		p.config.HandleErrorFunc = f
+		return nil
+	}
+}
+
+// WithCheckJTIFunc registers a function to validate JWT IDs (JTI) during JWT
+// processing.
+// This function is used to prevent replay attacks by ensuring that each JTI is
+// unique and not reused.
+func WithCheckJTIFunc(f goidc.CheckJTIFunc) ProviderOption {
+	return func(p Provider) error {
+		p.config.CheckJTIFunc = f
 		return nil
 	}
 }

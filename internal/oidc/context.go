@@ -85,6 +85,14 @@ func (ctx Context) HandleDynamicClient(c *goidc.ClientMetaInfo) error {
 	return ctx.HandleDynamicClientFunc(ctx.Request, c)
 }
 
+func (ctx Context) CheckJTI(jti string) error {
+	if ctx.CheckJTIFunc == nil {
+		return nil
+	}
+
+	return ctx.CheckJTIFunc(ctx, jti)
+}
+
 func (ctx Context) RenderError(err error) error {
 	if ctx.RenderErrorFunc == nil {
 		// No need to call handleError here, since this error will end up being

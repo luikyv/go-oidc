@@ -53,7 +53,6 @@ jobs:
 
           - name: fapi2-message-signing-id1-test-plan
             skip_modules:
-              - fapi2-security-profile-id2-dpop-negative-tests
               - fapi2-security-profile-id2-refresh-token
             config: ./examples/fapi2/cs_config.json
             server_main: ./examples/fapi2/main.go
@@ -67,7 +66,6 @@ jobs:
           - name: fapi2-security-profile-id2-test-plan
             skip_modules:
               - fapi2-security-profile-id2-ensure-unsigned-request-at-par-endpoint-fails
-              - fapi2-security-profile-id2-dpop-negative-tests
               - fapi2-security-profile-id2-refresh-token
             config: ./examples/fapi2/cs_config.json
             server_main: ./examples/fapi2/main.go

@@ -1,6 +1,7 @@
 package goidc
 
 import (
+	"context"
 	"crypto/x509"
 	"encoding/json"
 	"net/http"
@@ -306,6 +307,9 @@ func NewDynamicScope(
 		Matches: matchingFunc,
 	}
 }
+
+// CheckJTIFunc defines a function to verify when a JTI is safe to use.
+type CheckJTIFunc func(context.Context, string) error
 
 type HTTPClientFunc func(*http.Request) *http.Client
 

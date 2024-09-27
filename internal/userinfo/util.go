@@ -1,9 +1,6 @@
 package userinfo
 
 import (
-	"errors"
-	"net/http"
-
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/jwtutil"
@@ -32,11 +29,6 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 	}
 
 	if err := validateRequest(ctx, grantSession, accessToken, tokenType); err != nil {
-		var oidcErr goidc.Error
-		// Delete the grant if the client is not allowed to access it.
-		if errors.As(err, &oidcErr) && oidcErr.Code.StatusCode() == http.StatusUnauthorized {
-			_ = ctx.DeleteGrantSession(grantSession.ID)
-		}
 		return response{}, err
 	}
 

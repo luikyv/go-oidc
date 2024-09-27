@@ -235,8 +235,6 @@ func (p Provider) TokenInfo(
 		tokenType,
 		*tokenInfo.Confirmation,
 	); err != nil {
-		// Make sure the grant is revoked if the proof of possesion fails.
-		_ = ctx.DeleteGrantSession(tokenInfo.GrantID)
 		return goidc.TokenInfo{}, err
 	}
 

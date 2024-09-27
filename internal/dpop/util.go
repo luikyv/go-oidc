@@ -91,6 +91,10 @@ func ValidateJWT(
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid jti claim")
 	}
 
+	if err := ctx.CheckJTI(claims.ID); err != nil {
+		return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid jti claim", err)
+	}
+
 	if dpopClaims.HTTPMethod != ctx.RequestMethod() {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid htm claim")
 	}
