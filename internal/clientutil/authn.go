@@ -242,6 +242,11 @@ func areClaimsValid(
 			"claim 'jti' is missing in the client assertion")
 	}
 
+	if err := ctx.CheckJTI(claims.ID); err != nil {
+		return goidc.Errorf(goidc.ErrorCodeInvalidClient,
+			"invalid jti claim", err)
+	}
+
 	secsToExpiry := int(claims.Expiry.Time().Sub(timeutil.Now()).Seconds())
 	if secsToExpiry > ctx.AssertionLifetimeSecs {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient,

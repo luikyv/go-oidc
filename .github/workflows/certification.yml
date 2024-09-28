@@ -63,6 +63,7 @@ jobs:
 
           - name: fapi2-security-profile-id2-test-plan
             skip_modules:
+              # JAR is configured as optional so the unsigned variant can execute.
               - fapi2-security-profile-id2-ensure-unsigned-request-at-par-endpoint-fails
             config: ./examples/fapi2/cs_config.json
             server_main: ./examples/fapi2/main.go
@@ -73,6 +74,7 @@ jobs:
 
           - name: fapi2-security-profile-id2-test-plan
             skip_modules:
+              # JAR is configured as optional so the unsigned variant can execute.
               - fapi2-security-profile-id2-ensure-unsigned-request-at-par-endpoint-fails
             config: ./examples/fapi2/mtls_cs_config.json
             server_main: ./examples/fapi2/main.go
