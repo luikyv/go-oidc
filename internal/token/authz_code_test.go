@@ -1,6 +1,7 @@
 package token
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -135,6 +136,45 @@ func TestGenerateGrant_AuthorizationCodeGrant_ResourceIndicators(t *testing.T) {
 	}
 }
 
+func TestGenerateGrant_AuthorizationCodeGrant_CodeReuseInvalidatesGrant(t *testing.T) {
+
+	// Given.
+	ctx, client, session := setUpAuthzCodeGrant(t)
+	_ = ctx.DeleteAuthnSession(session.ID)
+	_ = ctx.SaveGrantSession(&goidc.GrantSession{
+		ID:                "random_id",
+		AuthorizationCode: session.AuthorizationCode,
+	})
+
+	req := request{
+		grantType:         goidc.GrantAuthorizationCode,
+		redirectURI:       client.RedirectURIs[0],
+		authorizationCode: session.AuthorizationCode,
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("the session should not be found")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Error("invalid error type")
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeInvalidGrant {
+		t.Errorf("ErrorCode = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidGrant)
+	}
+
+	grantSessions := oidctest.GrantSessions(t, ctx)
+	if len(grantSessions) != 0 {
+		t.Errorf("len(grantSessions) = %d, want 0", len(grantSessions))
+	}
+}
+
 func TestIsPkceValid(t *testing.T) {
 	testCases := []struct {
 		codeVerifier        string
@@ -168,7 +208,7 @@ func TestIsPkceValid(t *testing.T) {
 }
 
 func setUpAuthzCodeGrant(t *testing.T) (
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	client *goidc.Client,
 	session *goidc.AuthnSession,
 ) {

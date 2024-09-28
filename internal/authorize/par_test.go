@@ -172,7 +172,7 @@ func TestPushAuth_UnauthenticatedClient(t *testing.T) {
 	}
 }
 
-func setUpPAR(t *testing.T) (*oidc.Context, *goidc.Client) {
+func setUpPAR(t *testing.T) (oidc.Context, *goidc.Client) {
 	t.Helper()
 
 	ctx := oidctest.NewContext(t)

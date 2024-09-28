@@ -52,10 +52,6 @@ jobs:
             response_type: code id_token token
 
           - name: fapi2-message-signing-id1-test-plan
-            skip_modules:
-              - fapi2-security-profile-id2-attempt-reuse-authorization-code-after-one-second
-              - fapi2-security-profile-id2-dpop-negative-tests
-              - fapi2-security-profile-id2-refresh-token
             config: ./examples/fapi2/cs_config.json
             server_main: ./examples/fapi2/main.go
             sender_constrain: dpop
@@ -67,10 +63,8 @@ jobs:
 
           - name: fapi2-security-profile-id2-test-plan
             skip_modules:
+              # JAR is configured as optional so the unsigned variant can execute.
               - fapi2-security-profile-id2-ensure-unsigned-request-at-par-endpoint-fails
-              - fapi2-security-profile-id2-attempt-reuse-authorization-code-after-one-second
-              - fapi2-security-profile-id2-dpop-negative-tests
-              - fapi2-security-profile-id2-refresh-token
             config: ./examples/fapi2/cs_config.json
             server_main: ./examples/fapi2/main.go
             sender_constrain: dpop
@@ -80,8 +74,8 @@ jobs:
 
           - name: fapi2-security-profile-id2-test-plan
             skip_modules:
+              # JAR is configured as optional so the unsigned variant can execute.
               - fapi2-security-profile-id2-ensure-unsigned-request-at-par-endpoint-fails
-              - fapi2-security-profile-id2-attempt-reuse-authorization-code-after-one-second
             config: ./examples/fapi2/mtls_cs_config.json
             server_main: ./examples/fapi2/main.go
             sender_constrain: mtls
@@ -141,7 +135,7 @@ jobs:
             if [ -n "${{ matrix.plan.skip_modules }}" ]; then
               # Convert the excluded test modules list to comma-separated string
               MODULES=$(echo '${{ toJson(matrix.plan.skip_modules) }}' | jq -r '.[]' | tr '\n' ',' | sed 's/,$//')
-              ARGS="$ARGS --skip-modules=$MODULES"
+              ARGS="$ARGS --skip_modules=$MODULES"
             fi
 
             # Add variants

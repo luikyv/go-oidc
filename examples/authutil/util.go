@@ -3,9 +3,11 @@
 package authutil
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -377,4 +379,16 @@ func sessionToMap(as *goidc.AuthnSession) map[string]any {
 	var m map[string]any
 	_ = json.Unmarshal(data, &m)
 	return m
+}
+
+func CheckJTIFunc() goidc.CheckJTIFunc {
+	jtiStore := make(map[string]struct{})
+	return func(ctx context.Context, jti string) error {
+		if _, ok := jtiStore[jti]; ok {
+			return errors.New("jti already used")
+		}
+
+		jtiStore[jti] = struct{}{}
+		return nil
+	}
 }

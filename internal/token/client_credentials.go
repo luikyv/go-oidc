@@ -9,7 +9,7 @@ import (
 )
 
 func generateClientCredentialsGrant(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req request,
 ) (
 	response,
@@ -54,7 +54,7 @@ func generateClientCredentialsGrant(
 }
 
 func generateClientCredentialsGrantSession(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	grantInfo goidc.GrantInfo,
 	token Token,
 ) (
@@ -72,7 +72,7 @@ func generateClientCredentialsGrantSession(
 }
 
 func validateClientCredentialsGrantRequest(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req request,
 	c *goidc.Client,
 ) error {
@@ -97,7 +97,7 @@ func validateClientCredentialsGrantRequest(
 }
 
 func clientCredentialsGrantOptions(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	client *goidc.Client,
 	req request,
 ) (
@@ -133,7 +133,7 @@ func clientCredentialsGrantOptions(
 }
 
 func validateResourcesForClientCredentials(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req request,
 ) error {
 

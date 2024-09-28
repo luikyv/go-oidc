@@ -76,7 +76,7 @@ import (
 // 	return nil
 // }
 
-func validateJWKS(config oidc.Configuration) error {
+func validateJWKS(config *oidc.Configuration) error {
 	for _, key := range config.PrivateJWKS.Keys {
 		if !key.Valid() {
 			return fmt.Errorf("the key with ID: %s is not valid", key.KeyID)
@@ -86,7 +86,7 @@ func validateJWKS(config oidc.Configuration) error {
 	return nil
 }
 
-func validateSigKeys(config oidc.Configuration) error {
+func validateSigKeys(config *oidc.Configuration) error {
 
 	for _, keyID := range slices.Concat(
 		[]string{config.UserDefaultSigKeyID},
@@ -111,7 +111,7 @@ func validateSigKeys(config oidc.Configuration) error {
 	return nil
 }
 
-func validateEncKeys(config oidc.Configuration) error {
+func validateEncKeys(config *oidc.Configuration) error {
 	for _, keyID := range slices.Concat(
 		config.JARKeyEncIDs,
 	) {
@@ -129,7 +129,7 @@ func validateEncKeys(config oidc.Configuration) error {
 	return nil
 }
 
-func validatePrivateKeyJWTSigAlgs(config oidc.Configuration) error {
+func validatePrivateKeyJWTSigAlgs(config *oidc.Configuration) error {
 	for _, signatureAlgorithm := range config.PrivateKeyJWTSigAlgs {
 		if strings.HasPrefix(string(signatureAlgorithm), "HS") {
 			return errors.New("symetric algorithms are not allowed for private_key_jwt authentication")
@@ -139,7 +139,7 @@ func validatePrivateKeyJWTSigAlgs(config oidc.Configuration) error {
 	return nil
 }
 
-func validateClientSecretJWTSigAlgs(config oidc.Configuration) error {
+func validateClientSecretJWTSigAlgs(config *oidc.Configuration) error {
 	for _, signatureAlgorithm := range config.ClientSecretJWTSigAlgs {
 		if !strings.HasPrefix(string(signatureAlgorithm), "HS") {
 			return errors.New("assymetric algorithms are not allowed for client_secret_jwt authentication")
@@ -149,7 +149,7 @@ func validateClientSecretJWTSigAlgs(config oidc.Configuration) error {
 	return nil
 }
 
-func validateIntrospectionClientAuthnMethods(config oidc.Configuration) error {
+func validateIntrospectionClientAuthnMethods(config *oidc.Configuration) error {
 
 	if !config.IntrospectionIsEnabled {
 		return nil
@@ -168,7 +168,7 @@ func validateIntrospectionClientAuthnMethods(config oidc.Configuration) error {
 	return nil
 }
 
-func validateJAREnc(config oidc.Configuration) error {
+func validateJAREnc(config *oidc.Configuration) error {
 	if config.JAREncIsEnabled && !config.JARIsEnabled {
 		return errors.New("JAR must be enabled if JAR encryption is enabled")
 	}
@@ -176,7 +176,7 @@ func validateJAREnc(config oidc.Configuration) error {
 	return nil
 }
 
-func validateJARMEnc(config oidc.Configuration) error {
+func validateJARMEnc(config *oidc.Configuration) error {
 	if config.JARMEncIsEnabled && !config.JARMIsEnabled {
 		return errors.New("JARM must be enabled if JARM encryption is enabled")
 	}
@@ -184,7 +184,7 @@ func validateJARMEnc(config oidc.Configuration) error {
 	return nil
 }
 
-func validateTokenBinding(config oidc.Configuration) error {
+func validateTokenBinding(config *oidc.Configuration) error {
 	if config.TokenBindingIsRequired &&
 		!config.DPoPIsEnabled &&
 		!config.MTLSTokenBindingIsEnabled {
@@ -195,8 +195,8 @@ func validateTokenBinding(config oidc.Configuration) error {
 }
 
 func runValidations(
-	config oidc.Configuration,
-	validators ...func(oidc.Configuration) error,
+	config *oidc.Configuration,
+	validators ...func(*oidc.Configuration) error,
 ) error {
 	for _, validator := range validators {
 		if err := validator(config); err != nil {

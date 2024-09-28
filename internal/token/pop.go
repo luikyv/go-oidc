@@ -8,37 +8,30 @@ import (
 
 // ValidatePoP validates that the context contains the information required to
 // prove the client's possession of the token.
+// If token is omitted, the validation of the claim 'ath' of DPoP JWTs is skipped.
 func ValidatePoP(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	token string,
-	tokenType goidc.TokenType,
-	confirmation goidc.TokenConfirmation,
+	cnf goidc.TokenConfirmation,
 ) error {
-	if err := validateDPoP(ctx, token, tokenType, confirmation); err != nil {
+	if err := validateDPoP(ctx, token, cnf); err != nil {
 		return err
 	}
 
-	return validateTLSPoP(ctx, confirmation)
+	return validateTLSPoP(ctx, cnf)
 }
 
 // validateDPoP validates that the context contains the information required to
 // prove the client's possession of the access token with DPoP if applicable.
+// If token is omitted, the validation of the claim 'ath' of DPoP JWTs is skipped.
 func validateDPoP(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	token string,
-	tokenType goidc.TokenType,
 	confirmation goidc.TokenConfirmation,
 ) error {
 
 	if confirmation.JWKThumbprint == "" {
-		if tokenType == goidc.TokenTypeDPoP {
-			// The token type cannot be DPoP if the session was not created with DPoP.
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid token type")
-		} else {
-			// If the session was not created with DPoP and the token is not of
-			// DPoP type, there is nothing to validate.
-			return nil
-		}
+		return nil
 	}
 
 	dpopJWT, ok := dpop.JWT(ctx)
@@ -57,10 +50,10 @@ func validateDPoP(
 // prove the client's possession of the access token with TLS binding if
 // applicable.
 func validateTLSPoP(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	confirmation goidc.TokenConfirmation,
 ) error {
-	if confirmation.ClientCertificateThumbprint == "" {
+	if confirmation.ClientCertThumbprint == "" {
 		return nil
 	}
 
@@ -70,7 +63,7 @@ func validateTLSPoP(
 			"the client certificate is required", err)
 	}
 
-	if confirmation.ClientCertificateThumbprint != hashBase64URLSHA256(string(clientCert.Raw)) {
+	if confirmation.ClientCertThumbprint != hashBase64URLSHA256(string(clientCert.Raw)) {
 		return goidc.NewError(goidc.ErrorCodeInvalidToken,
 			"invalid client certificate")
 	}
@@ -78,8 +71,29 @@ func validateTLSPoP(
 	return nil
 }
 
+// // validateDPoP validates that the context contains the information required to
+// // prove the client's possession of the access token with TLS binding.
+// func validateTLSPoP(
+// 	ctx oidc.Context,
+// 	certThumbprint string,
+// ) error {
+
+// 	clientCert, err := ctx.ClientCert()
+// 	if err != nil {
+// 		return goidc.Errorf(goidc.ErrorCodeInvalidToken,
+// 			"the client certificate is required", err)
+// 	}
+
+// 	if hashBase64URLSHA256(string(clientCert.Raw)) != certThumbprint {
+// 		return goidc.NewError(goidc.ErrorCodeInvalidToken,
+// 			"invalid client certificate")
+// 	}
+
+// 	return nil
+// }
+
 // setPoP adds the available pop mechanisms to the grant info.
-func setPoP(ctx *oidc.Context, grantInfo *goidc.GrantInfo) {
+func setPoP(ctx oidc.Context, grantInfo *goidc.GrantInfo) {
 	dpopJWT, ok := dpop.JWT(ctx)
 	if ctx.DPoPIsEnabled && ok {
 		grantInfo.JWKThumbprint = dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)

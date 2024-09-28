@@ -10,9 +10,9 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func userInfo(ctx *oidc.Context) (response, error) {
+func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 
-	accessToken, tokenType, ok := ctx.AuthorizationToken()
+	accessToken, _, ok := ctx.AuthorizationToken()
 	if !ok {
 		return response{}, goidc.NewError(goidc.ErrorCodeInvalidToken, "no token found")
 	}
@@ -28,7 +28,7 @@ func userInfo(ctx *oidc.Context) (response, error) {
 			"invalid token", err)
 	}
 
-	if err := validateRequest(ctx, grantSession, accessToken, tokenType); err != nil {
+	if err := validateRequest(ctx, grantSession, accessToken); err != nil {
 		return response{}, err
 	}
 
@@ -47,7 +47,7 @@ func userInfo(ctx *oidc.Context) (response, error) {
 }
 
 func userInfoResponse(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	c *goidc.Client,
 	grantSession *goidc.GrantSession,
 ) (
@@ -93,7 +93,7 @@ func userInfoResponse(
 }
 
 func signUserInfoClaims(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	c *goidc.Client,
 	claims map[string]any,
 ) (
@@ -112,7 +112,7 @@ func signUserInfoClaims(
 }
 
 func encryptUserInfoJWT(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	c *goidc.Client,
 	userInfoJWT string,
 ) (
@@ -135,22 +135,25 @@ func encryptUserInfoJWT(
 }
 
 func validateRequest(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	grantSession *goidc.GrantSession,
 	accessToken string,
-	tokenType goidc.TokenType,
 ) error {
 	if grantSession.HasLastTokenExpired() {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "token expired")
+		return goidc.NewError(goidc.ErrorCodeAccessDenied, "token expired")
 	}
 
 	if !strutil.ContainsOpenID(grantSession.ActiveScopes) {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid scope")
+		return goidc.NewError(goidc.ErrorCodeAccessDenied, "invalid scope")
 	}
 
 	confirmation := goidc.TokenConfirmation{
-		JWKThumbprint:               grantSession.JWKThumbprint,
-		ClientCertificateThumbprint: grantSession.ClientCertThumbprint,
+		JWKThumbprint:        grantSession.JWKThumbprint,
+		ClientCertThumbprint: grantSession.ClientCertThumbprint,
 	}
-	return token.ValidatePoP(ctx, accessToken, tokenType, confirmation)
+	if err := token.ValidatePoP(ctx, accessToken, confirmation); err != nil {
+		return err
+	}
+
+	return nil
 }

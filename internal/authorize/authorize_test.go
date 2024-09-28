@@ -807,7 +807,7 @@ func TestContinueAuthentication(t *testing.T) {
 	}
 }
 
-func setUpAuth(t *testing.T) (*oidc.Context, *goidc.Client) {
+func setUpAuth(t *testing.T) (oidc.Context, *goidc.Client) {
 	t.Helper()
 
 	ctx := oidctest.NewContext(t)

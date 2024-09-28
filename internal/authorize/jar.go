@@ -13,7 +13,7 @@ import (
 )
 
 func shouldUseJAR(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req goidc.AuthorizationParameters,
 	c *goidc.Client,
 ) bool {
@@ -24,7 +24,7 @@ func shouldUseJAR(
 }
 
 func jarFromRequestObject(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	reqObject string,
 	c *goidc.Client,
 ) (
@@ -47,7 +47,7 @@ func jarFromRequestObject(
 }
 
 func signedRequestObjectFromEncrypted(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	reqObject string,
 	_ *goidc.Client,
 ) (
@@ -86,7 +86,7 @@ func signedRequestObjectFromEncrypted(
 }
 
 func jarFromSignedRequestObject(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	reqObject string,
 	c *goidc.Client,
 ) (
@@ -145,6 +145,13 @@ func jarFromSignedRequestObject(
 	if secsToExpiry > ctx.JARLifetimeSecs {
 		return request{}, goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
 			"invalid exp claim in the request object")
+	}
+
+	if claims.ID != "" {
+		if err := ctx.CheckJTI(claims.ID); err != nil {
+			return request{}, goidc.Errorf(goidc.ErrorCodeInvalidResquestObject,
+				"invalid jti claim", err)
+		}
 	}
 
 	err = claims.ValidateWithLeeway(jwt.Expected{

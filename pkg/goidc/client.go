@@ -32,16 +32,8 @@ type Client struct {
 	ClientMetaInfo
 }
 
-// SetAttribute sets a custom attribute.
-func (c *Client) SetAttribute(key string, value any) {
-	if c.CustomAttributes == nil {
-		c.CustomAttributes = make(map[string]any)
-	}
-	c.CustomAttributes[key] = value
-}
-
-func (c *Client) Attribute(key string) any {
-	return c.CustomAttributes[key]
+func (c *Client) IsPublic() bool {
+	return c.AuthnMethod == ClientAuthnNone
 }
 
 // FetchPublicJWKS fetches the client public JWKS either directly from the jwks
@@ -119,4 +111,15 @@ type ClientMetaInfo struct {
 	// CustomAttributes holds any additional attributes a client has.
 	// This field is flattened for DCR responses.
 	CustomAttributes map[string]any `json:"custom_attributes,omitempty"`
+}
+
+func (c *ClientMetaInfo) SetAttribute(key string, value any) {
+	if c.CustomAttributes == nil {
+		c.CustomAttributes = make(map[string]any)
+	}
+	c.CustomAttributes[key] = value
+}
+
+func (c *ClientMetaInfo) Attribute(key string) any {
+	return c.CustomAttributes[key]
 }

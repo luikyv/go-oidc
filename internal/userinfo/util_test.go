@@ -1,6 +1,7 @@
 package userinfo
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -12,12 +13,12 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func TestUserInfo(t *testing.T) {
+func TestHandleUserInfoRequest(t *testing.T) {
 	// Given.
-	ctx, _ := setUp(t)
+	ctx, _, _ := setUp(t)
 
 	// When.
-	resp, err := userInfo(ctx)
+	resp, err := handleUserInfoRequest(ctx)
 
 	// Then.
 	if err != nil {
@@ -39,13 +40,13 @@ func TestUserInfo(t *testing.T) {
 	}
 }
 
-func TestUserInfo_SignedResponse(t *testing.T) {
+func TestHandleUserInfoRequest_SignedResponse(t *testing.T) {
 	// Given.
-	ctx, client := setUp(t)
+	ctx, client, _ := setUp(t)
 	client.UserInfoSigAlg = jose.SignatureAlgorithm(ctx.PrivateJWKS.Keys[0].Algorithm)
 
 	// When.
-	resp, err := userInfo(ctx)
+	resp, err := handleUserInfoRequest(ctx)
 
 	// Then.
 	if err != nil {
@@ -84,7 +85,26 @@ func TestUserInfo_SignedResponse(t *testing.T) {
 	}
 }
 
-func setUp(t *testing.T) (*oidc.Context, *goidc.Client) {
+func TestHandleUserInfoRequest_InvalidPoP(t *testing.T) {
+	// Given.
+	ctx, _, grantSession := setUp(t)
+	grantSession.JWKThumbprint = "random_jkt"
+
+	// When.
+	_, err := handleUserInfoRequest(ctx)
+
+	// Then.
+	if err == nil {
+		t.Fatal("request should result in error")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Errorf("invalid error information: %v", err)
+	}
+}
+
+func setUp(t *testing.T) (oidc.Context, *goidc.Client, *goidc.GrantSession) {
 	t.Helper()
 
 	ctx := oidctest.NewContext(t)
@@ -116,5 +136,5 @@ func setUp(t *testing.T) (*oidc.Context, *goidc.Client) {
 	}
 	ctx.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 
-	return ctx, client
+	return ctx, client, grantSession
 }

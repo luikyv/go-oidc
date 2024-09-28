@@ -13,13 +13,13 @@ func TestValidateRequest(t *testing.T) {
 	testCases := []struct {
 		name                string
 		modifiedClientFunc  func(goidc.Client) *goidc.Client
-		modifiedContextFunc func(oidc.Context) *oidc.Context
+		modifiedContextFunc func(oidc.Context) oidc.Context
 		shouldBeValid       bool
 	}{
 		{
 			"valid_client",
 			func(c goidc.Client) *goidc.Client { return &c },
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(ctx oidc.Context) oidc.Context { return ctx },
 			true,
 		},
 		{
@@ -28,7 +28,7 @@ func TestValidateRequest(t *testing.T) {
 				c.AuthnMethod = "invalid_authn"
 				return &c
 			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(ctx oidc.Context) oidc.Context { return ctx },
 			false,
 		},
 		{
@@ -37,7 +37,7 @@ func TestValidateRequest(t *testing.T) {
 				c.ScopeIDs = "invalid_scope_id"
 				return &c
 			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(ctx oidc.Context) oidc.Context { return ctx },
 			false,
 		},
 		{
@@ -47,7 +47,7 @@ func TestValidateRequest(t *testing.T) {
 				c.AuthnSigAlg = "invalid_sig_alg"
 				return &c
 			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(ctx oidc.Context) oidc.Context { return ctx },
 			false,
 		},
 		{
@@ -58,7 +58,7 @@ func TestValidateRequest(t *testing.T) {
 				c.PublicJWKSURI = ""
 				return &c
 			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(ctx oidc.Context) oidc.Context { return ctx },
 			false,
 		},
 		{
@@ -69,7 +69,7 @@ func TestValidateRequest(t *testing.T) {
 				c.PublicJWKSURI = ""
 				return &c
 			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(ctx oidc.Context) oidc.Context { return ctx },
 			false,
 		},
 		{
@@ -79,7 +79,7 @@ func TestValidateRequest(t *testing.T) {
 				c.AuthnSigAlg = "invalid_sig_alg"
 				return &c
 			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(ctx oidc.Context) oidc.Context { return ctx },
 			false,
 		},
 		{
@@ -89,7 +89,7 @@ func TestValidateRequest(t *testing.T) {
 				c.TLSSubDistinguishedName = "example"
 				return &c
 			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(ctx oidc.Context) oidc.Context { return ctx },
 			true,
 		},
 		{
@@ -98,7 +98,7 @@ func TestValidateRequest(t *testing.T) {
 				c.AuthnMethod = goidc.ClientAuthnTLS
 				return &c
 			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(ctx oidc.Context) oidc.Context { return ctx },
 			false,
 		},
 		{
@@ -109,7 +109,7 @@ func TestValidateRequest(t *testing.T) {
 				c.TLSSubAlternativeName = "example"
 				return &c
 			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(ctx oidc.Context) oidc.Context { return ctx },
 			false,
 		},
 		{
@@ -118,7 +118,7 @@ func TestValidateRequest(t *testing.T) {
 				c.GrantTypes = append(c.GrantTypes, "invalid_grant")
 				return &c
 			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(ctx oidc.Context) oidc.Context { return ctx },
 			false,
 		},
 		{
@@ -128,7 +128,7 @@ func TestValidateRequest(t *testing.T) {
 				c.GrantTypes = append(c.GrantTypes, goidc.GrantClientCredentials)
 				return &c
 			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(ctx oidc.Context) oidc.Context { return ctx },
 			false,
 		},
 		{
@@ -138,11 +138,11 @@ func TestValidateRequest(t *testing.T) {
 				c.GrantTypes = append(c.GrantTypes, goidc.GrantIntrospection)
 				return &c
 			},
-			func(ctx oidc.Context) *oidc.Context {
+			func(ctx oidc.Context) oidc.Context {
 				ctx.IntrospectionClientAuthnMethods = []goidc.ClientAuthnType{
 					goidc.ClientAuthnSecretBasic,
 				}
-				return &ctx
+				return ctx
 			},
 			false,
 		},
@@ -152,7 +152,7 @@ func TestValidateRequest(t *testing.T) {
 				c.RedirectURIs = append(c.RedirectURIs, "invalid")
 				return &c
 			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(ctx oidc.Context) oidc.Context { return ctx },
 			false,
 		},
 		{
@@ -161,7 +161,7 @@ func TestValidateRequest(t *testing.T) {
 				c.RedirectURIs = append(c.RedirectURIs, "https://example.com?param=value#fragment")
 				return &c
 			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(ctx oidc.Context) oidc.Context { return ctx },
 			false,
 		},
 		{
@@ -170,7 +170,7 @@ func TestValidateRequest(t *testing.T) {
 				c.ResponseTypes = append(c.ResponseTypes, "invalid")
 				return &c
 			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(ctx oidc.Context) oidc.Context { return ctx },
 			false,
 		},
 		{
@@ -180,7 +180,7 @@ func TestValidateRequest(t *testing.T) {
 				c.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeIDToken}
 				return &c
 			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(ctx oidc.Context) oidc.Context { return ctx },
 			false,
 		},
 		{
@@ -190,7 +190,7 @@ func TestValidateRequest(t *testing.T) {
 				c.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeCode}
 				return &c
 			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(ctx oidc.Context) oidc.Context { return ctx },
 			false,
 		},
 		{
@@ -199,7 +199,7 @@ func TestValidateRequest(t *testing.T) {
 				c.SubIdentifierType = goidc.SubjectIdentifierPublic
 				return &c
 			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(ctx oidc.Context) oidc.Context { return ctx },
 			true,
 		},
 		{
@@ -208,7 +208,7 @@ func TestValidateRequest(t *testing.T) {
 				c.SubIdentifierType = "invalid"
 				return &c
 			},
-			func(ctx oidc.Context) *oidc.Context { return &ctx },
+			func(ctx oidc.Context) oidc.Context { return ctx },
 			false,
 		},
 		{
@@ -217,10 +217,10 @@ func TestValidateRequest(t *testing.T) {
 				c.AuthDetailTypes = append(c.AuthDetailTypes, "type1")
 				return &c
 			},
-			func(ctx oidc.Context) *oidc.Context {
+			func(ctx oidc.Context) oidc.Context {
 				ctx.AuthDetailsIsEnabled = true
 				ctx.AuthDetailTypes = append(ctx.AuthDetailTypes, "type1")
-				return &ctx
+				return ctx
 			},
 			true,
 		},
@@ -230,10 +230,10 @@ func TestValidateRequest(t *testing.T) {
 				c.AuthDetailTypes = append(c.AuthDetailTypes, "invalid")
 				return &c
 			},
-			func(ctx oidc.Context) *oidc.Context {
+			func(ctx oidc.Context) oidc.Context {
 				ctx.AuthDetailsIsEnabled = true
 				ctx.AuthDetailTypes = append(ctx.AuthDetailTypes, "type1")
-				return &ctx
+				return ctx
 			},
 			false,
 		},
@@ -243,7 +243,7 @@ func TestValidateRequest(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			// Given.
 			ctx := oidctest.NewContext(t)
-			ctx = testCase.modifiedContextFunc(*ctx)
+			ctx = testCase.modifiedContextFunc(ctx)
 
 			validClient, _ := oidctest.NewClient(t)
 			client := testCase.modifiedClientFunc(*validClient)

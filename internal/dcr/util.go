@@ -8,7 +8,7 @@ import (
 )
 
 func create(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) (
 	response,
@@ -47,7 +47,7 @@ func create(
 }
 
 func setCreationDefaults(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req *request,
 ) error {
 	id, err := clientID()
@@ -66,7 +66,7 @@ func setCreationDefaults(
 }
 
 func update(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) (
 	response,
@@ -115,7 +115,7 @@ func update(
 }
 
 func setUpdateDefaults(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	c *goidc.Client,
 	dc *request,
 ) error {
@@ -132,7 +132,7 @@ func setUpdateDefaults(
 }
 
 func fetch(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dynamicClientRequest request,
 ) (
 	response,
@@ -152,7 +152,7 @@ func fetch(
 }
 
 func remove(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dynamicClientRequest request,
 ) error {
 	_, err := protected(ctx, dynamicClientRequest)
@@ -167,7 +167,7 @@ func remove(
 	return nil
 }
 
-func setDefaults(ctx *oidc.Context, dynamicClient *request) error {
+func setDefaults(ctx oidc.Context, dynamicClient *request) error {
 	if dynamicClient.AuthnMethod == "" {
 		dynamicClient.AuthnMethod = goidc.ClientAuthnSecretBasic
 	}
@@ -240,12 +240,12 @@ func newClient(dc request) *goidc.Client {
 	return c
 }
 
-func registrationURI(ctx *oidc.Context, id string) string {
+func registrationURI(ctx oidc.Context, id string) string {
 	return ctx.BaseURL() + ctx.EndpointDCR + "/" + id
 }
 
 func protected(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	dc request,
 ) (
 	*goidc.Client,

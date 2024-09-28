@@ -45,7 +45,7 @@ func AreScopesAllowed(
 	return true
 }
 
-func JWKByKeyID(ctx *oidc.Context, c *goidc.Client, keyID string) (jose.JSONWebKey, error) {
+func JWKByKeyID(ctx oidc.Context, c *goidc.Client, keyID string) (jose.JSONWebKey, error) {
 	jwks, err := c.FetchPublicJWKS(ctx.HTTPClient())
 	if err != nil {
 		return jose.JSONWebKey{},
@@ -61,7 +61,7 @@ func JWKByKeyID(ctx *oidc.Context, c *goidc.Client, keyID string) (jose.JSONWebK
 }
 
 // JWKByAlg returns a client JWK based on the algorithm.
-func JWKByAlg(ctx *oidc.Context, c *goidc.Client, alg string) (jose.JSONWebKey, error) {
+func JWKByAlg(ctx oidc.Context, c *goidc.Client, alg string) (jose.JSONWebKey, error) {
 	jwks, err := c.FetchPublicJWKS(ctx.HTTPClient())
 	if err != nil {
 		return jose.JSONWebKey{},

@@ -26,7 +26,7 @@ func TestIntrospect_OpaqueToken(t *testing.T) {
 	}
 	_ = ctx.SaveGrantSession(grantSession)
 
-	tokenReq := introspectionRequest{
+	tokenReq := queryRequest{
 		token: accessToken,
 	}
 
@@ -71,7 +71,7 @@ func TestIntrospect_RefreshToken(t *testing.T) {
 	}
 	_ = ctx.SaveGrantSession(grantSession)
 
-	tokenReq := introspectionRequest{
+	tokenReq := queryRequest{
 		token: refreshToken,
 	}
 
@@ -100,7 +100,7 @@ func TestIntrospect_RefreshToken(t *testing.T) {
 	}
 }
 
-func setUpIntrospection(t *testing.T) (ctx *oidc.Context, client *goidc.Client) {
+func setUpIntrospection(t *testing.T) (ctx oidc.Context, client *goidc.Client) {
 	t.Helper()
 
 	ctx = oidctest.NewContext(t)

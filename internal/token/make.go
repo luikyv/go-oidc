@@ -18,7 +18,7 @@ import (
 )
 
 func MakeIDToken(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	client *goidc.Client,
 	idTokenOpts IDTokenOptions,
 ) (
@@ -44,7 +44,7 @@ func MakeIDToken(
 }
 
 func Make(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	client *goidc.Client,
 	grantInfo goidc.GrantInfo,
 ) (
@@ -60,7 +60,7 @@ func Make(
 }
 
 func makeIDToken(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	client *goidc.Client,
 	opts IDTokenOptions,
 ) (
@@ -113,7 +113,7 @@ func makeIDToken(
 }
 
 func encryptIDToken(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	c *goidc.Client,
 	userInfoJWT string,
 ) (
@@ -136,7 +136,7 @@ func encryptIDToken(
 }
 
 func makeJWTToken(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	grantInfo goidc.GrantInfo,
 	opts goidc.TokenOptions,
 ) (
@@ -203,7 +203,7 @@ func makeJWTToken(
 }
 
 func makeOpaqueToken(
-	_ *oidc.Context,
+	_ oidc.Context,
 	grantInfo goidc.GrantInfo,
 	opts goidc.TokenOptions,
 ) (

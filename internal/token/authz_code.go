@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/luikyv/go-oidc/internal/clientutil"
-	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -13,7 +12,7 @@ import (
 )
 
 func generateAuthorizationCodeGrant(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req request,
 ) (
 	response,
@@ -56,6 +55,7 @@ func generateAuthorizationCodeGrant(
 		client,
 		grantInfo,
 		token,
+		session.AuthorizationCode,
 	)
 	if err != nil {
 		return response{}, err
@@ -93,8 +93,11 @@ func generateAuthorizationCodeGrant(
 	return tokenResp, nil
 }
 
+// authnSession fetches an authentication session by searching for the
+// authorization code. If the session is found, it is deleted to prevent reuse
+// of the code.
 func authnSession(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	authzCode string,
 ) (
 	*goidc.AuthnSession,
@@ -102,29 +105,35 @@ func authnSession(
 ) {
 	session, err := ctx.AuthnSessionByAuthorizationCode(authzCode)
 	if err != nil {
+		// Invalidate any grant associated with the authorization code.
+		// This ensures that even if the code is compromised, the access token
+		// that it generated cannot be misused by a malicious client.
+		_ = ctx.DeleteGrantSessionByAuthorizationCode(authzCode)
 		return nil, goidc.Errorf(goidc.ErrorCodeInvalidGrant,
 			"invalid authorization code", err)
 	}
 
 	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
 		return nil, goidc.Errorf(goidc.ErrorCodeInternalError,
-			"could not delete the authn session", err)
+			"internal error", err)
 	}
 
 	return session, nil
 }
 
 func generateAuthorizationCodeGrantSession(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	client *goidc.Client,
 	grantInfo goidc.GrantInfo,
 	token Token,
+	code string,
 ) (
 	*goidc.GrantSession,
 	error,
 ) {
 
 	grantSession := NewGrantSession(grantInfo, token)
+	grantSession.AuthorizationCode = code
 	if ctx.ShouldIssueRefreshToken(client, grantInfo) {
 		refreshToken, err := refreshToken()
 		if err != nil {
@@ -136,14 +145,14 @@ func generateAuthorizationCodeGrantSession(
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
 		return nil, goidc.Errorf(goidc.ErrorCodeInternalError,
-			"could not store the authorization code grant session", err)
+			"internal error", err)
 	}
 
 	return grantSession, nil
 }
 
 func validateAuthorizationCodeGrantRequest(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req request,
 	c *goidc.Client,
 	session *goidc.AuthnSession,
@@ -179,9 +188,10 @@ func validateAuthorizationCodeGrantRequest(
 		return err
 	}
 
-	if err := validateBinding(ctx, c, &dpop.ValidationOptions{
-		JWKThumbprint: session.DPoPJWKThumbprint,
-	}); err != nil {
+	opts := bindindValidationsOptions{}
+	opts.dpopIsRequired = session.DPoPJWKThumbprint != ""
+	opts.dpop.JWKThumbprint = session.DPoPJWKThumbprint
+	if err := validateBinding(ctx, c, &opts); err != nil {
 		return err
 	}
 
@@ -189,7 +199,7 @@ func validateAuthorizationCodeGrantRequest(
 }
 
 func authorizationCodeGrantInfo(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	req request,
 	session *goidc.AuthnSession,
 ) (

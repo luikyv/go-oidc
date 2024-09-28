@@ -21,7 +21,7 @@ import (
 )
 
 type Provider struct {
-	config oidc.Configuration
+	config *oidc.Configuration
 }
 
 // New creates a new openid provider.
@@ -37,7 +37,7 @@ func New(
 	privateJWKS jose.JSONWebKeySet,
 	opts ...ProviderOption,
 ) (
-	*Provider,
+	Provider,
 	error,
 ) {
 	// Use the first signature key as the default key.
@@ -49,11 +49,11 @@ func New(
 		}
 	}
 	if defaultSigKeyID == "" {
-		return nil, errors.New("the private jwks doesn't contain any signing key")
+		return Provider{}, errors.New("the private jwks doesn't contain any signing key")
 	}
 
-	p := &Provider{
-		config: oidc.Configuration{
+	p := Provider{
+		config: &oidc.Configuration{
 			Profile: profile,
 			Host:    issuer,
 
@@ -61,14 +61,15 @@ func New(
 			AuthnSessionManager: storage.NewAuthnSessionManager(),
 			GrantSessionManager: storage.NewGrantSessionManager(),
 
-			Scopes:              []goidc.Scope{goidc.ScopeOpenID},
-			TokenOptionsFunc:    defaultTokenOptionsFunc(defaultSigKeyID),
-			PrivateJWKS:         privateJWKS,
-			UserDefaultSigKeyID: defaultSigKeyID,
-			UserSigKeyIDs:       []string{defaultSigKeyID},
-			IDTokenLifetimeSecs: defaultIDTokenLifetimeSecs,
-			GrantTypes:          []goidc.GrantType{goidc.GrantAuthorizationCode},
-			ResponseTypes:       []goidc.ResponseType{goidc.ResponseTypeCode},
+			Scopes:                      []goidc.Scope{goidc.ScopeOpenID},
+			TokenOptionsFunc:            defaultTokenOptionsFunc(defaultSigKeyID),
+			ShouldIssueRefreshTokenFunc: defaultShouldIssueRefreshTokenFunc(),
+			PrivateJWKS:                 privateJWKS,
+			UserDefaultSigKeyID:         defaultSigKeyID,
+			UserSigKeyIDs:               []string{defaultSigKeyID},
+			IDTokenLifetimeSecs:         defaultIDTokenLifetimeSecs,
+			GrantTypes:                  []goidc.GrantType{goidc.GrantAuthorizationCode},
+			ResponseTypes:               []goidc.ResponseType{goidc.ResponseTypeCode},
 			ResponseModes: []goidc.ResponseMode{
 				goidc.ResponseModeQuery,
 				goidc.ResponseModeFragment,
@@ -77,9 +78,8 @@ func New(
 			SubIdentifierTypes: []goidc.SubjectIdentifierType{
 				goidc.SubjectIdentifierPublic,
 			},
-			ClaimTypes:                  []goidc.ClaimType{goidc.ClaimTypeNormal},
-			AuthnSessionTimeoutSecs:     defaultAuthnSessionTimeoutSecs,
-			AssertionLifetimeSecs:       defaultJWTLifetimeSecs,
+			ClaimTypes: []goidc.ClaimType{goidc.ClaimTypeNormal},
+
 			EndpointWellKnown:           defaultEndpointWellKnown,
 			EndpointJWKS:                defaultEndpointJSONWebKeySet,
 			EndpointToken:               defaultEndpointToken,
@@ -88,17 +88,37 @@ func New(
 			EndpointDCR:                 defaultEndpointDynamicClient,
 			EndpointUserInfo:            defaultEndpointUserInfo,
 			EndpointIntrospection:       defaultEndpointTokenIntrospection,
+			EndpointTokenRevocation:     defaultEndpointTokenRevocation,
+
+			AuthnSessionTimeoutSecs:  defaultAuthnSessionTimeoutSecs,
+			AssertionLifetimeSecs:    defaultJWTLifetimeSecs,
+			RefreshTokenLifetimeSecs: defaultRefreshTokenLifetimeSecs,
+			PARLifetimeSecs:          defaultPARLifetimeSecs,
+			JARLifetimeSecs:          defaultJWTLifetimeSecs,
+			JARLeewayTimeSecs:        defaultJWTLeewayTimeSecs,
+			JARMLifetimeSecs:         defaultJWTLifetimeSecs,
+			DPoPLifetimeSecs:         defaultJWTLifetimeSecs,
+			DPoPLeewayTimeSecs:       defaultJWTLeewayTimeSecs,
+
+			JARMDefaultContentEncAlg: jose.A128CBC_HS256,
+			JARMContentEncAlgs:       []jose.ContentEncryption{jose.A128CBC_HS256},
+			UserDefaultContentEncAlg: jose.A128CBC_HS256,
+			UserContentEncAlgs:       []jose.ContentEncryption{jose.A128CBC_HS256},
+			JARDefaultContentEncAlg:  jose.A128CBC_HS256,
+			JARContentEncAlgs:        []jose.ContentEncryption{jose.A128CBC_HS256},
+
+			ClientCertFunc: defaultClientCertFunc(),
 		},
 	}
 
 	for _, opt := range opts {
 		if err := opt(p); err != nil {
-			return nil, err
+			return Provider{}, err
 		}
 	}
 
 	if err := p.validate(); err != nil {
-		return nil, err
+		return Provider{}, err
 	}
 
 	return p, nil
@@ -110,21 +130,21 @@ func New(
 //
 //	server := http.NewServeMux()
 //	server.Handle("/", op.Handler())
-func (p *Provider) Handler() http.Handler {
+func (p Provider) Handler() http.Handler {
 
 	server := http.NewServeMux()
 
-	discovery.RegisterHandlers(server, &p.config)
-	token.RegisterHandlers(server, &p.config)
-	authorize.RegisterHandlers(server, &p.config)
-	userinfo.RegisterHandlers(server, &p.config)
-	dcr.RegisterHandlers(server, &p.config)
+	discovery.RegisterHandlers(server, p.config)
+	token.RegisterHandlers(server, p.config)
+	authorize.RegisterHandlers(server, p.config)
+	userinfo.RegisterHandlers(server, p.config)
+	dcr.RegisterHandlers(server, p.config)
 
 	handler := goidc.CacheControlMiddleware(server)
 	return handler
 }
 
-func (p *Provider) Run(
+func (p Provider) Run(
 	address string,
 	middlewares ...goidc.MiddlewareFunc,
 ) error {
@@ -138,7 +158,7 @@ func (p *Provider) Run(
 // RunTLS runs the provider on TLS mode.
 // This is intended for development purposes and must not be used for production
 // environments.
-func (p *Provider) RunTLS(
+func (p Provider) RunTLS(
 	tlsOpts TLSOptions,
 	middlewares ...goidc.MiddlewareFunc,
 ) error {
@@ -183,35 +203,41 @@ func (p *Provider) RunTLS(
 	return server.ListenAndServeTLS(tlsOpts.ServerCert, tlsOpts.ServerKey)
 }
 
-// TokenInfo returns information about the access token sent in the request.
-// It also validates proof of possesions with DPoP and/or TLS binding if the
-// token was created with these mechanisms.
-// TODO: Return an error?
-func (p *Provider) TokenInfo(
+// TokenInfo retrieves details about the access token included in the request.
+// If the token was issued with mechanisms such as DPoP (Demonstrating Proof
+// of Possession) or TLS binding, the function also validates these proofs to
+// ensure the token's ownership.
+func (p Provider) TokenInfo(
 	w http.ResponseWriter,
 	r *http.Request,
-) goidc.TokenInfo {
+) (
+	goidc.TokenInfo,
+	error,
+) {
 	ctx := oidc.NewContext(w, r, p.config)
-	accessToken, tokenType, ok := ctx.AuthorizationToken()
+	accessToken, _, ok := ctx.AuthorizationToken()
 	if !ok {
-		return goidc.TokenInfo{}
+		return goidc.TokenInfo{}, errors.New("no token informed")
 	}
 
-	tokenInfo := token.IntrospectionInfo(ctx, accessToken)
+	tokenInfo, err := token.IntrospectionInfo(ctx, accessToken)
+	if err != nil {
+		return goidc.TokenInfo{}, err
+	}
+
 	if tokenInfo.Confirmation == nil {
-		return tokenInfo
+		return tokenInfo, nil
 	}
 
 	if err := token.ValidatePoP(
 		ctx,
 		accessToken,
-		tokenType,
 		*tokenInfo.Confirmation,
 	); err != nil {
-		return goidc.TokenInfo{}
+		return goidc.TokenInfo{}, err
 	}
 
-	return tokenInfo
+	return tokenInfo, nil
 }
 
 // Client is a shortcut to fetch clients using the client storage.
@@ -231,7 +257,7 @@ func (p *Provider) Client(
 	return p.config.ClientManager.Client(ctx, id)
 }
 
-func (p *Provider) validate() error {
+func (p Provider) validate() error {
 	return runValidations(
 		p.config,
 		validateJWKS,

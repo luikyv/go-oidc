@@ -32,7 +32,7 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 	}
 }
 
-func handleCreate(ctx *oidc.Context) {
+func handleCreate(ctx oidc.Context) {
 	var req request
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
 		err = goidc.Errorf(goidc.ErrorCodeInvalidRequest,
@@ -56,7 +56,7 @@ func handleCreate(ctx *oidc.Context) {
 	}
 }
 
-func handleUpdate(ctx *oidc.Context) {
+func handleUpdate(ctx oidc.Context) {
 	var req request
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
 		err = goidc.Errorf(goidc.ErrorCodeInvalidRequest,
@@ -84,7 +84,7 @@ func handleUpdate(ctx *oidc.Context) {
 	}
 }
 
-func handleGet(ctx *oidc.Context) {
+func handleGet(ctx oidc.Context) {
 	token, ok := ctx.BearerToken()
 	if !ok {
 		ctx.WriteError(goidc.NewError(goidc.ErrorCodeAccessDenied, "no token found"))
@@ -107,7 +107,7 @@ func handleGet(ctx *oidc.Context) {
 	}
 }
 
-func handleDelete(ctx *oidc.Context) {
+func handleDelete(ctx oidc.Context) {
 	token, ok := ctx.BearerToken()
 	if !ok {
 		ctx.WriteError(goidc.NewError(goidc.ErrorCodeAccessDenied, "no token found"))

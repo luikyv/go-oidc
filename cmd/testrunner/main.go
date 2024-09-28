@@ -17,7 +17,7 @@
 //
 //	--modules             Comma-separated list of test modules to run.
 //	                      If omitted, all available modules will be executed.
-//	--skip-modules        Comma-separated list of test modules to skip during
+//	--skip_modules        Comma-separated list of test modules to skip during
 //	                      execution.
 //	--response_type       Defines the OAuth 2.0 response type (e.g., code, token).
 //	--sender_constrain    Specifies the sender-constrain mechanism to apply to
@@ -108,7 +108,7 @@ const (
 	conformanceSuiteURL  string = "https://localhost:8443"
 	argTestPlanName      string = "--plan="
 	argTestModuleNames   string = "--modules="
-	argSkipModules       string = "--skip-modules="
+	argSkipModules       string = "--skip_modules="
 	argConfigFile        string = "--config="
 	argResponseType      string = "--response_type="
 	argSenderConstrain   string = "--sender_constrain="

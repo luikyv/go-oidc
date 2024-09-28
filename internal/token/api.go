@@ -15,12 +15,19 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 	if config.IntrospectionIsEnabled {
 		router.HandleFunc(
 			"POST "+config.EndpointPrefix+config.EndpointIntrospection,
-			oidc.Handler(config, handleIntrospect),
+			oidc.Handler(config, handleIntrospection),
+		)
+	}
+
+	if config.TokenRevocationIsEnabled {
+		router.HandleFunc(
+			"POST "+config.EndpointPrefix+config.EndpointTokenRevocation,
+			oidc.Handler(config, handleRevocation),
 		)
 	}
 }
 
-func handleCreate(ctx *oidc.Context) {
+func handleCreate(ctx oidc.Context) {
 	req := newRequest(ctx.Request)
 	tokenResp, err := generateGrant(ctx, req)
 	if err != nil {
@@ -33,8 +40,8 @@ func handleCreate(ctx *oidc.Context) {
 	}
 }
 
-func handleIntrospect(ctx *oidc.Context) {
-	req := newIntrospectionRequest(ctx.Request)
+func handleIntrospection(ctx oidc.Context) {
+	req := newQueryRequest(ctx.Request)
 	tokenInfo, err := introspect(ctx, req)
 	if err != nil {
 		ctx.WriteError(err)
@@ -44,4 +51,15 @@ func handleIntrospect(ctx *oidc.Context) {
 	if err := ctx.Write(tokenInfo, http.StatusOK); err != nil {
 		ctx.WriteError(err)
 	}
+}
+
+func handleRevocation(ctx oidc.Context) {
+	req := newQueryRequest(ctx.Request)
+	err := revoke(ctx, req)
+	if err != nil {
+		ctx.WriteError(err)
+		return
+	}
+
+	ctx.WriteStatus(http.StatusOK)
 }

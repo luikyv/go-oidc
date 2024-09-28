@@ -30,6 +30,7 @@ const (
 	defaultEndpointUserInfo                   = "/userinfo"
 	defaultEndpointDynamicClient              = "/register"
 	defaultEndpointTokenIntrospection         = "/introspect"
+	defaultEndpointTokenRevocation            = "/revoke"
 )
 
 func defaultShouldIssueRefreshTokenFunc() goidc.ShouldIssueRefreshTokenFunc {

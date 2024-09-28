@@ -1,6 +1,7 @@
 package goidc
 
 import (
+	"context"
 	"crypto/x509"
 	"encoding/json"
 	"net/http"
@@ -307,6 +308,9 @@ func NewDynamicScope(
 	}
 }
 
+// CheckJTIFunc defines a function to verify when a JTI is safe to use.
+type CheckJTIFunc func(context.Context, string) error
+
 type HTTPClientFunc func(*http.Request) *http.Client
 
 type ShouldIssueRefreshTokenFunc func(*Client, GrantInfo) bool
@@ -383,21 +387,22 @@ func NewPolicy(
 }
 
 type TokenConfirmation struct {
-	JWKThumbprint               string `json:"jkt"`
-	ClientCertificateThumbprint string `json:"x5t#S256"`
+	JWKThumbprint        string `json:"jkt"`
+	ClientCertThumbprint string `json:"x5t#S256"`
 }
 
 type TokenInfo struct {
+	// GrantID is the ID of the grant session associated to token.
+	GrantID               string                `json:"-"`
 	IsActive              bool                  `json:"active"`
-	Reason                string                `json:"-"` // TODO. Fill this.
-	Type                  TokenTypeHint         `json:"hint,omitempty"`
+	Type                  TokenTypeHint         `json:"token_type,omitempty"`
 	Scopes                string                `json:"scope,omitempty"`
 	AuthorizationDetails  []AuthorizationDetail `json:"authorization_details,omitempty"`
+	ResourceAudiences     Resources             `json:"aud,omitempty"`
 	ClientID              string                `json:"client_id,omitempty"`
 	Subject               string                `json:"sub,omitempty"`
 	ExpiresAtTimestamp    int                   `json:"exp,omitempty"`
 	Confirmation          *TokenConfirmation    `json:"cnf,omitempty"`
-	Resources             Resources             `json:"aud,omitempty"`
 	AdditionalTokenClaims map[string]any        `json:"-"`
 }
 

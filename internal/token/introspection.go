@@ -1,6 +1,7 @@
 package token
 
 import (
+	"errors"
 	"slices"
 
 	"github.com/luikyv/go-oidc/internal/clientutil"
@@ -10,8 +11,8 @@ import (
 )
 
 func introspect(
-	ctx *oidc.Context,
-	req introspectionRequest,
+	ctx oidc.Context,
+	req queryRequest,
 ) (
 	goidc.TokenInfo,
 	error,
@@ -25,12 +26,16 @@ func introspect(
 		return goidc.TokenInfo{}, err
 	}
 
-	return IntrospectionInfo(ctx, req.token), nil
+	// The information of an invalid token must not be sent as an error.
+	// It will be returned as the default value of [goidc.TokenInfo] with the
+	// field is_active as false.
+	tokenInfo, _ := IntrospectionInfo(ctx, req.token)
+	return tokenInfo, nil
 }
 
 func validateIntrospectionRequest(
-	_ *oidc.Context,
-	req introspectionRequest,
+	_ oidc.Context,
+	req queryRequest,
 	c *goidc.Client,
 ) error {
 	if !slices.Contains(c.GrantTypes, goidc.GrantIntrospection) {
@@ -46,9 +51,12 @@ func validateIntrospectionRequest(
 }
 
 func IntrospectionInfo(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	accessToken string,
-) goidc.TokenInfo {
+) (
+	goidc.TokenInfo,
+	error,
+) {
 
 	if len(accessToken) == goidc.RefreshTokenLength {
 		return refreshTokenInfo(ctx, accessToken)
@@ -62,32 +70,33 @@ func IntrospectionInfo(
 }
 
 func refreshTokenInfo(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	token string,
-) goidc.TokenInfo {
+) (
+	goidc.TokenInfo,
+	error,
+) {
 	grantSession, err := ctx.GrantSessionByRefreshToken(token)
 	if err != nil {
-		return goidc.TokenInfo{
-			IsActive: false,
-		}
+		return goidc.TokenInfo{},
+			errors.New("token not found")
 	}
 
 	if grantSession.IsExpired() {
-		return goidc.TokenInfo{
-			IsActive: false,
-		}
+		return goidc.TokenInfo{}, errors.New("token is expired")
 	}
 
 	var cnf *goidc.TokenConfirmation
 	if grantSession.JWKThumbprint != "" ||
 		grantSession.ClientCertThumbprint != "" {
 		cnf = &goidc.TokenConfirmation{
-			JWKThumbprint:               grantSession.JWKThumbprint,
-			ClientCertificateThumbprint: grantSession.ClientCertThumbprint,
+			JWKThumbprint:        grantSession.JWKThumbprint,
+			ClientCertThumbprint: grantSession.ClientCertThumbprint,
 		}
 	}
 
 	return goidc.TokenInfo{
+		GrantID:               grantSession.ID,
 		IsActive:              true,
 		Type:                  goidc.TokenHintRefresh,
 		Scopes:                grantSession.GrantedScopes,
@@ -96,58 +105,59 @@ func refreshTokenInfo(
 		Subject:               grantSession.Subject,
 		ExpiresAtTimestamp:    grantSession.ExpiresAtTimestamp,
 		Confirmation:          cnf,
-		Resources:             grantSession.GrantedResources,
+		ResourceAudiences:     grantSession.GrantedResources,
 		AdditionalTokenClaims: grantSession.AdditionalTokenClaims,
-	}
+	}, nil
 }
 
 func jwtTokenInfo(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	accessToken string,
-) goidc.TokenInfo {
+) (
+	goidc.TokenInfo,
+	error,
+) {
 	claims, err := validClaims(ctx, accessToken)
 	if err != nil || claims[goidc.ClaimTokenID] == nil {
-		return goidc.TokenInfo{
-			IsActive: false,
-		}
+		return goidc.TokenInfo{}, errors.New("invalid token")
 	}
 
 	return tokenIntrospectionInfoByID(ctx, claims[goidc.ClaimTokenID].(string))
 }
 
 func opaqueTokenInfo(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	token string,
-) goidc.TokenInfo {
+) (goidc.TokenInfo, error) {
 	return tokenIntrospectionInfoByID(ctx, token)
 }
 
 func tokenIntrospectionInfoByID(
-	ctx *oidc.Context,
+	ctx oidc.Context,
 	tokenID string,
-) goidc.TokenInfo {
+) (
+	goidc.TokenInfo,
+	error,
+) {
 	grantSession, err := ctx.GrantSessionByTokenID(tokenID)
 	if err != nil {
-		return goidc.TokenInfo{
-			IsActive: false,
-		}
+		return goidc.TokenInfo{}, errors.New("token not found")
 	}
 
 	if grantSession.HasLastTokenExpired() {
-		return goidc.TokenInfo{
-			IsActive: false,
-		}
+		return goidc.TokenInfo{}, errors.New("token is expired")
 	}
 
 	var cnf *goidc.TokenConfirmation
 	if grantSession.JWKThumbprint != "" || grantSession.ClientCertThumbprint != "" {
 		cnf = &goidc.TokenConfirmation{
-			JWKThumbprint:               grantSession.JWKThumbprint,
-			ClientCertificateThumbprint: grantSession.ClientCertThumbprint,
+			JWKThumbprint:        grantSession.JWKThumbprint,
+			ClientCertThumbprint: grantSession.ClientCertThumbprint,
 		}
 	}
 
 	return goidc.TokenInfo{
+		GrantID:               grantSession.ID,
 		IsActive:              true,
 		Type:                  goidc.TokenHintAccess,
 		Scopes:                grantSession.ActiveScopes,
@@ -156,7 +166,7 @@ func tokenIntrospectionInfoByID(
 		Subject:               grantSession.Subject,
 		ExpiresAtTimestamp:    grantSession.LastTokenExpiresAtTimestamp,
 		Confirmation:          cnf,
-		Resources:             grantSession.ActiveResources,
+		ResourceAudiences:     grantSession.ActiveResources,
 		AdditionalTokenClaims: grantSession.AdditionalTokenClaims,
-	}
+	}, nil
 }
