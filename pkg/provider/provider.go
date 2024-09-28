@@ -215,7 +215,7 @@ func (p Provider) TokenInfo(
 	error,
 ) {
 	ctx := oidc.NewContext(w, r, p.config)
-	accessToken, tokenType, ok := ctx.AuthorizationToken()
+	accessToken, _, ok := ctx.AuthorizationToken()
 	if !ok {
 		return goidc.TokenInfo{}, errors.New("no token informed")
 	}
@@ -232,7 +232,6 @@ func (p Provider) TokenInfo(
 	if err := token.ValidatePoP(
 		ctx,
 		accessToken,
-		tokenType,
 		*tokenInfo.Confirmation,
 	); err != nil {
 		return goidc.TokenInfo{}, err

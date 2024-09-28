@@ -12,7 +12,7 @@ import (
 
 func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 
-	accessToken, tokenType, ok := ctx.AuthorizationToken()
+	accessToken, _, ok := ctx.AuthorizationToken()
 	if !ok {
 		return response{}, goidc.NewError(goidc.ErrorCodeInvalidToken, "no token found")
 	}
@@ -28,7 +28,7 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 			"invalid token", err)
 	}
 
-	if err := validateRequest(ctx, grantSession, accessToken, tokenType); err != nil {
+	if err := validateRequest(ctx, grantSession, accessToken); err != nil {
 		return response{}, err
 	}
 
@@ -138,7 +138,6 @@ func validateRequest(
 	ctx oidc.Context,
 	grantSession *goidc.GrantSession,
 	accessToken string,
-	tokenType goidc.TokenType,
 ) error {
 	if grantSession.HasLastTokenExpired() {
 		return goidc.NewError(goidc.ErrorCodeAccessDenied, "token expired")
@@ -149,10 +148,10 @@ func validateRequest(
 	}
 
 	confirmation := goidc.TokenConfirmation{
-		JWKThumbprint:               grantSession.JWKThumbprint,
-		ClientCertificateThumbprint: grantSession.ClientCertThumbprint,
+		JWKThumbprint:        grantSession.JWKThumbprint,
+		ClientCertThumbprint: grantSession.ClientCertThumbprint,
 	}
-	if err := token.ValidatePoP(ctx, accessToken, tokenType, confirmation); err != nil {
+	if err := token.ValidatePoP(ctx, accessToken, confirmation); err != nil {
 		return err
 	}
 

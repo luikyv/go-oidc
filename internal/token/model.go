@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -76,6 +77,12 @@ func newQueryRequest(req *http.Request) queryRequest {
 		token:         req.PostFormValue("token"),
 		tokenTypeHint: goidc.TokenTypeHint(req.PostFormValue("token_type_hint")),
 	}
+}
+
+type bindindValidationsOptions struct {
+	tlsIsRequired  bool
+	dpopIsRequired bool
+	dpop           dpop.ValidationOptions
 }
 
 func NewGrantSession(grantInfo goidc.GrantInfo, token Token) *goidc.GrantSession {

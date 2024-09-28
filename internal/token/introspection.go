@@ -90,8 +90,8 @@ func refreshTokenInfo(
 	if grantSession.JWKThumbprint != "" ||
 		grantSession.ClientCertThumbprint != "" {
 		cnf = &goidc.TokenConfirmation{
-			JWKThumbprint:               grantSession.JWKThumbprint,
-			ClientCertificateThumbprint: grantSession.ClientCertThumbprint,
+			JWKThumbprint:        grantSession.JWKThumbprint,
+			ClientCertThumbprint: grantSession.ClientCertThumbprint,
 		}
 	}
 
@@ -151,8 +151,8 @@ func tokenIntrospectionInfoByID(
 	var cnf *goidc.TokenConfirmation
 	if grantSession.JWKThumbprint != "" || grantSession.ClientCertThumbprint != "" {
 		cnf = &goidc.TokenConfirmation{
-			JWKThumbprint:               grantSession.JWKThumbprint,
-			ClientCertificateThumbprint: grantSession.ClientCertThumbprint,
+			JWKThumbprint:        grantSession.JWKThumbprint,
+			ClientCertThumbprint: grantSession.ClientCertThumbprint,
 		}
 	}
 

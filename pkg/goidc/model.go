@@ -387,8 +387,8 @@ func NewPolicy(
 }
 
 type TokenConfirmation struct {
-	JWKThumbprint               string `json:"jkt"`
-	ClientCertificateThumbprint string `json:"x5t#S256"`
+	JWKThumbprint        string `json:"jkt"`
+	ClientCertThumbprint string `json:"x5t#S256"`
 }
 
 type TokenInfo struct {

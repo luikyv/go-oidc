@@ -149,8 +149,12 @@ func requestURI() (string, error) {
 
 // setDPoP adds DPoP for authorization code to the session if available.
 func setDPoP(ctx oidc.Context, session *goidc.AuthnSession) {
-	dpopJWT, ok := dpop.JWT(ctx)
-	if ctx.DPoPIsEnabled && ok {
+
+	if !ctx.DPoPIsEnabled {
+		return
+	}
+
+	if dpopJWT, ok := dpop.JWT(ctx); ok {
 		session.DPoPJWKThumbprint = dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)
 	}
 }

@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/luikyv/go-oidc/internal/clientutil"
-	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -189,9 +188,10 @@ func validateAuthorizationCodeGrantRequest(
 		return err
 	}
 
-	if err := validateBinding(ctx, c, &dpop.ValidationOptions{
-		JWKThumbprint: session.DPoPJWKThumbprint,
-	}); err != nil {
+	opts := bindindValidationsOptions{}
+	opts.dpopIsRequired = session.DPoPJWKThumbprint != ""
+	opts.dpop.JWKThumbprint = session.DPoPJWKThumbprint
+	if err := validateBinding(ctx, c, &opts); err != nil {
 		return err
 	}
 

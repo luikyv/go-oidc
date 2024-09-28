@@ -277,7 +277,7 @@ func finishFlowSuccessfully(
 		state:             session.State,
 	}
 	if session.ResponseType.Contains(goidc.ResponseTypeToken) {
-		grantInfo, err := implicitGrantInfo(session)
+		grantInfo, err := implicitGrantInfo(ctx, session)
 		if err != nil {
 			return err
 		}
@@ -360,12 +360,13 @@ func generateImplicitGrantSession(
 }
 
 func implicitGrantInfo(
+	ctx oidc.Context,
 	session *goidc.AuthnSession,
 ) (
 	goidc.GrantInfo,
 	error,
 ) {
-	return goidc.GrantInfo{
+	grantInfo := goidc.GrantInfo{
 		GrantType:                   goidc.GrantImplicit,
 		Subject:                     session.Subject,
 		ClientID:                    session.ClientID,
@@ -377,5 +378,14 @@ func implicitGrantInfo(
 		AdditionalIDTokenClaims:     session.AdditionalIDTokenClaims,
 		AdditionalUserInfoClaims:    session.AdditionalUserInfoClaims,
 		AdditionalTokenClaims:       session.AdditionalTokenClaims,
-	}, nil
+		JWKThumbprint:               session.DPoPJWKThumbprint,
+	}
+
+	setPoP(ctx, &grantInfo, session)
+
+	return grantInfo, nil
+}
+
+func setPoP(_ oidc.Context, grantInfo *goidc.GrantInfo, session *goidc.AuthnSession) {
+	grantInfo.JWKThumbprint = session.DPoPJWKThumbprint
 }

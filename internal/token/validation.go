@@ -13,16 +13,16 @@ import (
 func validateBinding(
 	ctx oidc.Context,
 	client *goidc.Client,
-	dpopOpts *dpop.ValidationOptions,
+	opts *bindindValidationsOptions,
 ) error {
-	if dpopOpts == nil {
-		dpopOpts = &dpop.ValidationOptions{}
+	if opts == nil {
+		opts = &bindindValidationsOptions{}
 	}
-	if err := validateBindingDPoP(ctx, client, *dpopOpts); err != nil {
+	if err := validateBindingDPoP(ctx, client, *opts); err != nil {
 		return err
 	}
 
-	if err := validateBindingTLS(ctx, client); err != nil {
+	if err := validateBindingTLS(ctx, client, *opts); err != nil {
 		return err
 	}
 
@@ -32,7 +32,7 @@ func validateBinding(
 func validateBindingDPoP(
 	ctx oidc.Context,
 	client *goidc.Client,
-	dpopOpts dpop.ValidationOptions,
+	opts bindindValidationsOptions,
 ) error {
 
 	if !ctx.DPoPIsEnabled {
@@ -40,33 +40,41 @@ func validateBindingDPoP(
 	}
 
 	dpopJWT, ok := dpop.JWT(ctx)
-	// Return an error if the DPoP header was not informed and one of the below
-	// applies:
-	// 	* DPoP is required as a general configuration.
-	// 	* The client requires DPoP.
-	// 	* The JWK thumbprint was informed as a validation option.
-	if !ok && (ctx.DPoPIsRequired || client.DPoPTokenBindingIsRequired || dpopOpts.JWKThumbprint != "") {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid dpop header")
-	}
-
-	// If the DPoP header was not informed, there's nothing to validate.
 	if !ok {
+		// Return an error if the DPoP header was not informed and one of the
+		// below applies:
+		// 	* DPoP is required as a general configuration.
+		// 	* The client requires DPoP.
+		// 	* DPoP is required as a validation option.
+		if ctx.DPoPIsRequired || client.DPoPTokenBindingIsRequired || opts.dpopIsRequired {
+			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid dpop header")
+		}
 		return nil
 	}
-	return dpop.ValidateJWT(ctx, dpopJWT, dpopOpts)
+
+	return dpop.ValidateJWT(ctx, dpopJWT, opts.dpop)
 }
 
 func validateBindingTLS(
 	ctx oidc.Context,
 	client *goidc.Client,
+	opts bindindValidationsOptions,
 ) error {
 	if !ctx.MTLSTokenBindingIsEnabled {
 		return nil
 	}
 
 	_, err := ctx.ClientCert()
-	if err != nil && (ctx.MTLSTokenBindingIsRequired || client.TLSTokenBindingIsRequired) {
-		return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid client certificate", err)
+	if err != nil {
+		// Return an error if the certificate was not informed and one of the
+		// below applies:
+		// 	* TLS binding is required as a general configuration.
+		// 	* The client requires TLS binding.
+		// 	* TLS binding is required as a validation option.
+		if ctx.MTLSTokenBindingIsRequired || client.TLSTokenBindingIsRequired || opts.tlsIsRequired {
+			return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid client certificate", err)
+		}
+		return nil
 	}
 
 	return nil

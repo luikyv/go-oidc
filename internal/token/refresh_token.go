@@ -117,6 +117,8 @@ func updateRefreshTokenGrantSession(
 		grantSession.RefreshToken = token
 	}
 
+	updatePoPForRefreshedToken(ctx, &grantSession.GrantInfo)
+
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
 		return goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not store the grant session", err)
@@ -125,18 +127,33 @@ func updateRefreshTokenGrantSession(
 	return nil
 }
 
+// updatePoPForRefreshedToken updates the token binding mechanisms used when
+// issuing the initial access token. If the original access token was not bound
+// with DPoP or TLS, subsequent tokens will also not be bound to these mechanisms.
+func updatePoPForRefreshedToken(ctx oidc.Context, grantInfo *goidc.GrantInfo) {
+	dpopJWT, ok := dpop.JWT(ctx)
+	if grantInfo.JWKThumbprint != "" && ok {
+		grantInfo.JWKThumbprint = dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)
+	}
+
+	clientCert, err := ctx.ClientCert()
+	if grantInfo.ClientCertThumbprint != "" && err == nil {
+		grantInfo.ClientCertThumbprint = hashBase64URLSHA256(string(clientCert.Raw))
+	}
+}
+
 func validateRefreshTokenGrantRequest(
 	ctx oidc.Context,
 	req request,
-	c *goidc.Client,
+	client *goidc.Client,
 	grantSession *goidc.GrantSession,
 ) error {
 
-	if !slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) {
+	if !slices.Contains(client.GrantTypes, goidc.GrantRefreshToken) {
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
 	}
 
-	if c.ID != grantSession.ClientID {
+	if client.ID != grantSession.ClientID {
 		return goidc.NewError(goidc.ErrorCodeInvalidGrant,
 			"the refresh token was not issued to the client")
 	}
@@ -154,33 +171,67 @@ func validateRefreshTokenGrantRequest(
 		return err
 	}
 
-	return validateRefreshTokenPoPForPublicClients(ctx, c, grantSession)
+	cnf := goidc.TokenConfirmation{
+		JWKThumbprint:        grantSession.JWKThumbprint,
+		ClientCertThumbprint: grantSession.ClientCertThumbprint,
+	}
+	if err := validateRefreshTokenBinding(ctx, client, cnf); err != nil {
+		return err
+	}
+
+	if err := validateRefreshTokenPoP(ctx, client, cnf); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func validateRefreshTokenPoPForPublicClients(
+func validateRefreshTokenBinding(
 	ctx oidc.Context,
 	client *goidc.Client,
-	grantSession *goidc.GrantSession,
+	confirmation goidc.TokenConfirmation,
 ) error {
 
-	// TODO: Does token binding mechanisms need to be validated? The client
-	// is already authenticated during refresh_token.
-
-	// Refresh tokens are bound to the client. If the client is authenticated,
-	// then there's no need to validate proof of possesion.
-	if client.AuthnMethod != goidc.ClientAuthnNone || grantSession.JWKThumbprint == "" {
+	if client.IsPublic() {
 		return nil
 	}
 
-	dpopJWT, ok := dpop.JWT(ctx)
-	if !ok {
-		// The session was created with DPoP for a public client, then the DPoP header must be passed.
-		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid DPoP header")
+	// If the refresh token was issued with DPoP, make sure the following tokens
+	// are bound with DPoP as well.
+	if confirmation.JWKThumbprint != "" {
+		opts := bindindValidationsOptions{}
+		opts.dpopIsRequired = true
+		if err := validateBindingDPoP(ctx, client, opts); err != nil {
+			return err
+		}
 	}
 
-	return dpop.ValidateJWT(ctx, dpopJWT, dpop.ValidationOptions{
-		JWKThumbprint: grantSession.JWKThumbprint,
-	})
+	// If the refresh token was issued with TLS binding, make sure the following token
+	// are bound with TLS as well.
+	if confirmation.ClientCertThumbprint != "" {
+		opts := bindindValidationsOptions{}
+		opts.tlsIsRequired = true
+		if err := validateBindingTLS(ctx, client, opts); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func validateRefreshTokenPoP(
+	ctx oidc.Context,
+	client *goidc.Client,
+	cnf goidc.TokenConfirmation,
+) error {
+
+	// Proof of possession validation is not needed during the refresh token
+	// for confidential clients, as they are already authenticated.
+	if !client.IsPublic() {
+		return nil
+	}
+
+	return ValidatePoP(ctx, "", cnf)
 }
 
 func refreshToken() (string, error) {
