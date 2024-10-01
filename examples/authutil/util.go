@@ -24,9 +24,9 @@ import (
 )
 
 const (
-	Port     string = ":8445"
-	Issuer   string = "https://auth.localhost" + Port
-	MTLSHost string = "https://matls-auth.localhost" + Port
+	Port     string = ":443"
+	Issuer   string = "https://ec2-18-204-208-110.compute-1.amazonaws.com"
+	MTLSHost string = "https://18.204.208.110"
 )
 
 var (
@@ -100,6 +100,8 @@ func Client(id string, jwksFilepath string) *goidc.Client {
 			RedirectURIs: []string{
 				"https://localhost.emobix.co.uk:8443/test/a/goidc/callback",
 				"https://localhost.emobix.co.uk:8443/test/a/goidc/callback?dummy1=lorem&dummy2=ipsum",
+				"https://www.certification.openid.net/test/a/goidc/callback",
+				"https://www.certification.openid.net/test/a/goidc/callback?dummy1=lorem&dummy2=ipsum",
 			},
 		},
 	}
