@@ -121,14 +121,14 @@ func init() {
 	log.Printf("public host: %s\n", publicHost)
 	log.Printf("public ip: %s\n", publicIP)
 
-	Issuer = publicHost
-	MTLSHost = publicIP
+	Issuer = "https://" + publicHost
+	MTLSHost = "https://" + publicIP
 }
 
 var (
 	Port     string = ":443"
-	Issuer   string = "https://ec2-3-88-196-97.compute-1.amazonaws.com"
-	MTLSHost string = "https://3.88.196.97"
+	Issuer   string = ""
+	MTLSHost string = ""
 )
 
 var (
