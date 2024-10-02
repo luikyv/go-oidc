@@ -42,7 +42,7 @@ func main() {
 		provider.WithPARRequired(),
 		provider.WithPARLifetimeSecs(10),
 		provider.WithMTLS(authutil.MTLSHost),
-		provider.WithJARRequired(jose.PS256),
+		provider.WithJAR(jose.PS256),
 		provider.WithJARM(serverKeyID),
 		provider.WithTLSAuthn(),
 		provider.WithPrivateKeyJWTAuthn(jose.PS256),
