@@ -13,6 +13,7 @@ import (
 )
 
 func main() {
+	log.Printf("======================== %s\n", authutil.Issuer)
 	// Get the file path of the source file.
 	_, filename, _, _ := runtime.Caller(0)
 	sourceDir := filepath.Dir(filename)
