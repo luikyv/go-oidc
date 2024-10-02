@@ -118,6 +118,9 @@ func init() {
 		log.Fatalf("Error fetching public IP: %v", err)
 	}
 
+	log.Printf("public host: %s\n", publicHost)
+	log.Printf("public ip: %s\n", publicIP)
+
 	Issuer = publicHost
 	MTLSHost = publicIP
 }
