@@ -107,15 +107,10 @@ func clientCredentialsGrantOptions(
 
 	grantInfo := goidc.GrantInfo{
 		GrantType:     goidc.GrantClientCredentials,
-		ActiveScopes:  client.ScopeIDs,
-		GrantedScopes: client.ScopeIDs,
+		ActiveScopes:  req.scopes,
+		GrantedScopes: req.scopes,
 		Subject:       client.ID,
 		ClientID:      client.ID,
-	}
-
-	if req.scopes != "" {
-		grantInfo.ActiveScopes = req.scopes
-		grantInfo.GrantedScopes = req.scopes
 	}
 
 	if ctx.ResourceIndicatorsIsEnabled && req.resources != nil {

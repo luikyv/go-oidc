@@ -1,7 +1,7 @@
 # go-oidc - A Configurable OpenID Provider built in GO.
 [![Go Reference](https://pkg.go.dev/badge/github.com/luikyv/go-oidc.svg)](https://pkg.go.dev/github.com/luikyv/go-oidc)
 
-`go-oidc` is a client module that provides a customizable Authorization Server with support to OpenID Connect and other standards.
+`go-oidc` is a client module that provides a configurable Authorization Server with support for OpenID Connect and other standards.
 
 This library implements the following specifications:
 * [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html)
@@ -20,6 +20,12 @@ This library implements the following specifications:
 * [`RFC 8707` - Resource Indicators for OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc8707)
 * [`RFC 7662` - OAuth 2.0 Token Introspection](https://www.rfc-editor.org/rfc/rfc7662.html)
 * [`RFC 7009` - OAuth 2.0 Token Revocation](https://www.rfc-editor.org/rfc/rfc7009.html)
+
+## Certification
+
+Luiky Vasconcelos has certified that [go-oidc](https://pkg.go.dev/github.com/luikyv/go-oidc@v0.3.0) conforms to the FAPI 2.0 profile of the OpenID Connect™ protocol.
+
+[<img src="http://openid.net/wordpress-content/uploads/2016/04/oid-l-certification-mark-l-rgb-150dpi-90mm.png" alt="OpenID Certification" width="200"/>](https://openid.net/certification/)
 
 ## Installation
 To start using the `go-oidc` module in your project, install it with
@@ -62,6 +68,3 @@ op.Run(":80")
 ```
 
 You can then check the default configurations by accessing http://localhost/.well-known/openid-configuration.
-
-#### Links
-- [An implementation of the Brazil Open Finance specifications in GO](https://github.com/luikyv/go-open-finance)
