@@ -42,6 +42,7 @@ type request struct {
 	refreshToken      string
 	codeVerifier      string
 	resources         goidc.Resources
+	// TODO: auth details.
 }
 
 func newRequest(req *http.Request) request {
