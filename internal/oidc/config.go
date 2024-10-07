@@ -156,10 +156,15 @@ type Configuration struct {
 	AuthDetailsIsEnabled bool // TODO: Allow custom comparison.
 	AuthDetailTypes      []string
 
-	ResourceIndicatorsIsEnabled  bool
+	ResourceIndicatorsIsEnabled bool
+	// ResourceIndicatorsIsRequired indicates that the resource parameter is
+	// required during authorization requests.
 	ResourceIndicatorsIsRequired bool
 	Resources                    []string
 
 	HTTPClientFunc goidc.HTTPClientFunc
 	CheckJTIFunc   goidc.CheckJTIFunc
+
+	JWTBearerGrantClientAuthnIsRequired bool
+	HandleJWTBearerGrantAssertionFunc   goidc.HandleJWTBearerGrantAssertionFunc
 }

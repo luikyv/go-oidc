@@ -42,7 +42,7 @@ func generateRefreshTokenGrant(
 		return response{}, err
 	}
 
-	token, err := Make(ctx, c, grantSession.GrantInfo)
+	token, err := Make(ctx, grantSession.GrantInfo)
 	if err != nil {
 		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not generate token during refresh token grant", err)

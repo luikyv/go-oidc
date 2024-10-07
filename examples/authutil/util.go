@@ -162,7 +162,7 @@ func DCRFunc(r *http.Request, clientInfo *goidc.ClientMetaInfo) error {
 }
 
 func TokenOptionsFunc(keyID string) goidc.TokenOptionsFunc {
-	return func(client *goidc.Client, grantInfo goidc.GrantInfo) goidc.TokenOptions {
+	return func(grantInfo goidc.GrantInfo) goidc.TokenOptions {
 		opts := goidc.NewJWTTokenOptions(keyID, 600)
 		return opts
 	}

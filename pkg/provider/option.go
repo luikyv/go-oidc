@@ -964,3 +964,22 @@ func WithHTTPClientFunc(f goidc.HTTPClientFunc) ProviderOption {
 		return nil
 	}
 }
+
+// WithJWTBearerGrant enables the JWT bearer grant type.
+func WithJWTBearerGrant(f goidc.HandleJWTBearerGrantAssertionFunc) ProviderOption {
+	return func(p Provider) error {
+		p.config.GrantTypes = append(p.config.GrantTypes,
+			goidc.GrantJWTBearer)
+		p.config.HandleJWTBearerGrantAssertionFunc = f
+		return nil
+	}
+}
+
+// WithJWTBearerGrantClientAuthnRequired makes client authentication required
+// for the JWT bearer grant.
+func WithJWTBearerGrantClientAuthnRequired(f goidc.HandleJWTBearerGrantAssertionFunc) ProviderOption {
+	return func(p Provider) error {
+		p.config.JWTBearerGrantClientAuthnIsRequired = true
+		return nil
+	}
+}

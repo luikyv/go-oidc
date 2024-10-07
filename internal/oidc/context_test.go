@@ -563,7 +563,7 @@ func TestPrivateKey_KeyDoesntExist(t *testing.T) {
 	}
 }
 
-func TestUserInfoSigKey(t *testing.T) {
+func TestUserInfoSigKeyForClient(t *testing.T) {
 	// Given.
 	keyID := "signing_key"
 	signingKey := oidctest.PrivatePS256JWK(t, keyID, goidc.KeyUsageSignature)
@@ -577,15 +577,19 @@ func TestUserInfoSigKey(t *testing.T) {
 	client := &goidc.Client{}
 
 	// When.
-	jwk := ctx.UserInfoSigKey(client)
+	jwk, ok := ctx.UserInfoSigKeyForClient(client)
 
 	// Then.
+	if !ok {
+		t.Fatalf("the key should be found")
+	}
+
 	if jwk.KeyID != keyID {
 		t.Errorf("KeyID = %s, want %s", jwk.KeyID, keyID)
 	}
 }
 
-func TestUserInfoSigKey_ClientWithDefaultAlgorithm(t *testing.T) {
+func TestUserInfoSigKeyForClient_ClientWithDefaultAlgorithm(t *testing.T) {
 	// Given.
 	defaultKey := oidctest.PrivatePS256JWK(t, "default_key", goidc.KeyUsageSignature)
 	alternativeKey := oidctest.PrivateRS256JWK(t, "alternative_key", goidc.KeyUsageSignature)
@@ -603,15 +607,19 @@ func TestUserInfoSigKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	client.UserInfoSigAlg = jose.RS256
 
 	// When.
-	jwk := ctx.UserInfoSigKey(client)
+	jwk, ok := ctx.UserInfoSigKeyForClient(client)
 
 	// Then.
+	if !ok {
+		t.Fatalf("the key should be found")
+	}
+
 	if jwk.KeyID != alternativeKey.KeyID {
 		t.Errorf("KeyID = %s, want %s", jwk.KeyID, alternativeKey.KeyID)
 	}
 }
 
-func TestIDTokenSigKey(t *testing.T) {
+func TestIDTokenSigKeyForClient(t *testing.T) {
 	// Given.
 	signingKey := oidctest.PrivatePS256JWK(t, "signing_key", goidc.KeyUsageSignature)
 
@@ -624,15 +632,19 @@ func TestIDTokenSigKey(t *testing.T) {
 	client := &goidc.Client{}
 
 	// When.
-	jwk := ctx.IDTokenSigKey(client)
+	jwk, ok := ctx.IDTokenSigKeyForClient(client)
 
 	// Then.
+	if !ok {
+		t.Fatalf("the key should be found")
+	}
+
 	if jwk.KeyID != signingKey.KeyID {
 		t.Errorf("KeyID = %s, want %s", jwk.KeyID, signingKey.KeyID)
 	}
 }
 
-func TestIDTokenSigKey_ClientWithDefaultAlgorithm(t *testing.T) {
+func TestIDTokenSigKeyForClient_ClientWithDefaultAlgorithm(t *testing.T) {
 	// Given.
 	defaultKey := oidctest.PrivatePS256JWK(t, "default_key", goidc.KeyUsageSignature)
 	alternativeKey := oidctest.PrivateRS256JWK(t, "alternative_key", goidc.KeyUsageSignature)
@@ -650,15 +662,19 @@ func TestIDTokenSigKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	client.IDTokenSigAlg = jose.RS256
 
 	// When.
-	jwk := ctx.IDTokenSigKey(client)
+	jwk, ok := ctx.IDTokenSigKeyForClient(client)
 
 	// Then.
+	if !ok {
+		t.Fatalf("the key should be found")
+	}
+
 	if jwk.KeyID != alternativeKey.KeyID {
 		t.Errorf("KeyID = %s, want %s", jwk.KeyID, alternativeKey.KeyID)
 	}
 }
 
-func TestJARMSignatureKey_HappyPath(t *testing.T) {
+func TestJARMSigKeyForClient_HappyPath(t *testing.T) {
 	// Given.
 	signingKey := oidctest.PrivatePS256JWK(t, "signing_key", goidc.KeyUsageSignature)
 
@@ -671,15 +687,19 @@ func TestJARMSignatureKey_HappyPath(t *testing.T) {
 	client := &goidc.Client{}
 
 	// When.
-	jwk := ctx.JARMSigKey(client)
+	jwk, ok := ctx.JARMSigKeyForClient(client)
 
 	// Then.
+	if !ok {
+		t.Fatalf("the key should be found")
+	}
+
 	if jwk.KeyID != signingKey.KeyID {
 		t.Errorf("KeyID = %s, want %s", jwk.KeyID, signingKey.KeyID)
 	}
 }
 
-func TestJARMSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
+func TestJARMSigKeyForClient_ClientWithDefaultAlgorithm(t *testing.T) {
 	// Given.
 	defaultKey := oidctest.PrivatePS256JWK(t, "default_key", goidc.KeyUsageSignature)
 	alternativeKey := oidctest.PrivateRS256JWK(t, "alternative_key", goidc.KeyUsageSignature)
@@ -696,9 +716,13 @@ func TestJARMSignatureKey_ClientWithDefaultAlgorithm(t *testing.T) {
 	client.JARMSigAlg = jose.RS256
 
 	// When.
-	jwk := ctx.JARMSigKey(client)
+	jwk, ok := ctx.JARMSigKeyForClient(client)
 
 	// Then.
+	if !ok {
+		t.Fatalf("the key should be found")
+	}
+
 	if jwk.KeyID != alternativeKey.KeyID {
 		t.Errorf("KeyID = %s, want %s", jwk.KeyID, alternativeKey.KeyID)
 	}

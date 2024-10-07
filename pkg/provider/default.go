@@ -43,7 +43,7 @@ func defaultShouldIssueRefreshTokenFunc() goidc.ShouldIssueRefreshTokenFunc {
 func defaultTokenOptionsFunc(
 	sigKeyID string,
 ) goidc.TokenOptionsFunc {
-	return func(c *goidc.Client, grantInfo goidc.GrantInfo) goidc.TokenOptions {
+	return func(grantInfo goidc.GrantInfo) goidc.TokenOptions {
 		return goidc.NewJWTTokenOptions(
 			sigKeyID,
 			defaultTokenLifetimeSecs,

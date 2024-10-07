@@ -282,7 +282,7 @@ func finishFlowSuccessfully(
 			return err
 		}
 
-		token, err := token.Make(ctx, client, grantInfo)
+		token, err := token.Make(ctx, grantInfo)
 		if err != nil {
 			return redirectionErrorf(goidc.ErrorCodeInternalError,
 				"could not generate the access token", session.AuthorizationParameters, err)

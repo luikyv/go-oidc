@@ -24,20 +24,20 @@ func generateClientCredentialsGrant(
 		return response{}, oauthErr
 	}
 
-	grantOptions, err := clientCredentialsGrantOptions(ctx, c, req)
+	grantInfo, err := clientCredentialsGrantInfo(ctx, c, req)
 	if err != nil {
 		return response{}, err
 	}
 
-	token, err := Make(ctx, c, grantOptions)
+	token, err := Make(ctx, grantInfo)
 	if err != nil {
 		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not generate an access token for the client credentials grant", err)
 	}
 
-	_, err = generateClientCredentialsGrantSession(ctx, grantOptions, token)
+	_, err = generateClientCredentialsGrantSession(ctx, grantInfo, token)
 	if err != nil {
-		return response{}, nil
+		return response{}, err
 	}
 
 	tokenResp := response{
@@ -46,8 +46,8 @@ func generateClientCredentialsGrant(
 		TokenType:   token.Type,
 	}
 
-	if req.scopes != grantOptions.GrantedScopes {
-		tokenResp.Scopes = grantOptions.GrantedScopes
+	if req.scopes != grantInfo.GrantedScopes {
+		tokenResp.Scopes = grantInfo.GrantedScopes
 	}
 
 	return tokenResp, nil
@@ -85,7 +85,7 @@ func validateClientCredentialsGrantRequest(
 		return goidc.NewError(goidc.ErrorCodeInvalidScope, "invalid scope")
 	}
 
-	if err := validateResourcesForClientCredentials(ctx, req); err != nil {
+	if err := validateResources(ctx, ctx.Resources, req); err != nil {
 		return err
 	}
 
@@ -96,7 +96,7 @@ func validateClientCredentialsGrantRequest(
 	return nil
 }
 
-func clientCredentialsGrantOptions(
+func clientCredentialsGrantInfo(
 	ctx oidc.Context,
 	client *goidc.Client,
 	req request,
@@ -125,17 +125,4 @@ func clientCredentialsGrantOptions(
 	}
 
 	return grantInfo, nil
-}
-
-func validateResourcesForClientCredentials(
-	ctx oidc.Context,
-	req request,
-) error {
-
-	if ctx.ResourceIndicatorsIsRequired && req.resources == nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidTarget,
-			"the resources parameter is required")
-	}
-
-	return validateResources(ctx, ctx.Resources, req)
 }

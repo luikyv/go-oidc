@@ -45,13 +45,12 @@ func MakeIDToken(
 
 func Make(
 	ctx oidc.Context,
-	client *goidc.Client,
 	grantInfo goidc.GrantInfo,
 ) (
 	Token,
 	error,
 ) {
-	opts := ctx.TokenOptions(client, grantInfo)
+	opts := ctx.TokenOptions(grantInfo)
 	if opts.Format == goidc.TokenFormatJWT {
 		return makeJWTToken(ctx, grantInfo, opts)
 	} else {
@@ -67,17 +66,24 @@ func makeIDToken(
 	string,
 	error,
 ) {
-	jwk := ctx.IDTokenSigKey(client)
+	jwk, ok := ctx.IDTokenSigKeyForClient(client)
+	if !ok {
+		return "", goidc.NewError(goidc.ErrorCodeInvalidRequest,
+			"the id token signing algorithm defined for the client is not available")
+	}
 	sigAlg := jose.SignatureAlgorithm(jwk.Algorithm)
 	now := timeutil.TimestampNow()
 
-	// Set the token claims.
 	claims := map[string]any{
 		goidc.ClaimIssuer:   ctx.Host,
 		goidc.ClaimSubject:  opts.Subject,
-		goidc.ClaimAudience: client.ID,
 		goidc.ClaimIssuedAt: now,
 		goidc.ClaimExpiry:   now + ctx.IDTokenLifetimeSecs,
+	}
+
+	// Avoid an empty client ID claim for anonymous client.
+	if client.ID != "" {
+		claims[goidc.ClaimAudience] = client.ID
 	}
 
 	if opts.AccessToken != "" {
@@ -153,10 +159,13 @@ func makeJWTToken(
 		goidc.ClaimTokenID:  jwtID,
 		goidc.ClaimIssuer:   ctx.Host,
 		goidc.ClaimSubject:  grantInfo.Subject,
-		goidc.ClaimClientID: grantInfo.ClientID,
 		goidc.ClaimScope:    grantInfo.ActiveScopes,
 		goidc.ClaimIssuedAt: timestampNow,
 		goidc.ClaimExpiry:   timestampNow + opts.LifetimeSecs,
+	}
+
+	if grantInfo.ClientID != "" {
+		claims[goidc.ClaimClientID] = grantInfo.ClientID
 	}
 
 	if grantInfo.GrantedAuthorizationDetails != nil {

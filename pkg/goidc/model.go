@@ -31,6 +31,7 @@ const (
 	GrantAuthorizationCode GrantType = "authorization_code"
 	GrantRefreshToken      GrantType = "refresh_token"
 	GrantImplicit          GrantType = "implicit"
+	GrantJWTBearer         GrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 	// GrantIntrospection is a non standard grant type defined here to indicate
 	// when a client is able to introspect tokens.
 	GrantIntrospection GrantType = "urn:goidc:oauth2:grant_type:token_intropection"
@@ -317,7 +318,7 @@ type ShouldIssueRefreshTokenFunc func(*Client, GrantInfo) bool
 
 // TokenOptionsFunc defines a function that returns token configuration and is
 // executed when issuing access tokens.
-type TokenOptionsFunc func(*Client, GrantInfo) TokenOptions
+type TokenOptionsFunc func(GrantInfo) TokenOptions
 
 // TokenOptions defines a template for generating access tokens.
 type TokenOptions struct {
@@ -579,4 +580,17 @@ func (d AuthorizationDetail) string(key string) string {
 	}
 
 	return s
+}
+
+type HandleJWTBearerGrantAssertionFunc func(
+	r *http.Request,
+	assertion string,
+) (
+	JWTBearerGrantInfo,
+	error,
+)
+
+type JWTBearerGrantInfo struct {
+	Subject string
+	Store   map[string]any
 }
