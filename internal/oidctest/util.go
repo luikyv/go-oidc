@@ -77,6 +77,7 @@ func NewContext(t *testing.T) oidc.Context {
 			goidc.GrantImplicit,
 			goidc.GrantRefreshToken,
 			goidc.GrantIntrospection,
+			goidc.GrantJWTBearer,
 		},
 		ResponseTypes: []goidc.ResponseType{
 			goidc.ResponseTypeCode,
@@ -93,7 +94,6 @@ func NewContext(t *testing.T) oidc.Context {
 			goidc.ResponseModeFormPost,
 		},
 		TokenOptionsFunc: func(
-			client *goidc.Client,
 			grantInfo goidc.GrantInfo,
 		) goidc.TokenOptions {
 			return goidc.TokenOptions{

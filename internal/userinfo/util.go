@@ -100,7 +100,12 @@ func signUserInfoClaims(
 	string,
 	error,
 ) {
-	jwk := ctx.UserInfoSigKey(c)
+	jwk, ok := ctx.UserInfoSigKeyForClient(c)
+	if !ok {
+		return "", goidc.NewError(goidc.ErrorCodeInvalidRequest,
+			"the user info signing algorithm defined for the client is not available")
+	}
+
 	jws, err := jwtutil.Sign(claims, jwk,
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
 	if err != nil {

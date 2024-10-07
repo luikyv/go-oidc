@@ -85,6 +85,8 @@ func generateGrant(
 		return generateAuthorizationCodeGrant(ctx, req)
 	case goidc.GrantRefreshToken:
 		return generateRefreshTokenGrant(ctx, req)
+	case goidc.GrantJWTBearer:
+		return generateJWTBearerGrant(ctx, req)
 	default:
 		return response{}, goidc.NewError(goidc.ErrorCodeUnsupportedGrantType,
 			"unsupported grant type")

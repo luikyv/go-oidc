@@ -39,7 +39,7 @@ func Authenticated(
 	id, err := extractID(ctx)
 	if err != nil {
 		return nil, goidc.Errorf(goidc.ErrorCodeInvalidClient,
-			"could not authenticate the client", err)
+			"invalid client", err)
 	}
 
 	client, err := ctx.Client(id)
@@ -378,8 +378,12 @@ func extractID(
 		ids = append(ids, assertionID)
 	}
 
+	if len(ids) == 0 {
+		return "", ErrClientNotIdentified
+	}
+
 	// All the client IDs present must be equal.
-	if len(ids) == 0 || !allEquals(ids) {
+	if !allEquals(ids) {
 		return "", goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client id")
 	}
 

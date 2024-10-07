@@ -66,7 +66,7 @@ func TestMakeToken_JWTToken(t *testing.T) {
 	}
 
 	// When.
-	token, err := token.Make(ctx, client, grantInfo)
+	token, err := token.Make(ctx, grantInfo)
 
 	// Then.
 	if err != nil {
@@ -109,18 +109,16 @@ func TestMakeToken_OpaqueToken(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	ctx.TokenOptionsFunc = func(
-		client *goidc.Client,
 		grantInfo goidc.GrantInfo,
 	) goidc.TokenOptions {
 		return goidc.NewOpaqueTokenOptions(10, 60)
 	}
-	client, _ := oidctest.NewClient(t)
 	grantInfo := goidc.GrantInfo{
 		Subject: "random_subject",
 	}
 
 	// When.
-	token, err := token.Make(ctx, client, grantInfo)
+	token, err := token.Make(ctx, grantInfo)
 
 	// Then.
 	if err != nil {

@@ -22,7 +22,6 @@ This library implements the following specifications:
 * [`RFC 7009` - OAuth 2.0 Token Revocation](https://www.rfc-editor.org/rfc/rfc7009.html)
 
 ## Certification
-
 Luiky Vasconcelos has certified that [go-oidc](https://pkg.go.dev/github.com/luikyv/go-oidc@v0.3.0) conforms to the FAPI 2.0 profile of the OpenID Connect™ protocol.
 
 [<img src="http://openid.net/wordpress-content/uploads/2016/04/oid-l-certification-mark-l-rgb-150dpi-90mm.png" alt="OpenID Certification" width="200"/>](https://openid.net/certification/)

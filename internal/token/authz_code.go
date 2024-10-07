@@ -44,7 +44,7 @@ func generateAuthorizationCodeGrant(
 		return response{}, err
 	}
 
-	token, err := Make(ctx, client, grantInfo)
+	token, err := Make(ctx, grantInfo)
 	if err != nil {
 		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not generate access token for the authorization code grant", err)
@@ -68,7 +68,7 @@ func generateAuthorizationCodeGrant(
 		RefreshToken: grantSession.RefreshToken,
 	}
 
-	if strutil.ContainsOpenID(session.GrantedScopes) {
+	if strutil.ContainsOpenID(grantInfo.ActiveScopes) {
 		tokenResp.IDToken, err = MakeIDToken(ctx, client, newIDTokenOptions(grantInfo))
 		if err != nil {
 			return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
