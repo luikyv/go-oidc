@@ -684,7 +684,6 @@ func TestWithTokenOptions(t *testing.T) {
 		config: &oidc.Configuration{},
 	}
 	var tokenOpts goidc.TokenOptionsFunc = func(
-		client *goidc.Client,
 		grantInfo goidc.GrantInfo,
 	) goidc.TokenOptions {
 		return goidc.NewOpaqueTokenOptions(10, 60)
@@ -1982,5 +1981,26 @@ func TestWithHTTPClientFunc(t *testing.T) {
 
 	if p.config.HTTPClientFunc == nil {
 		t.Error("HTTPClientFunc cannot be nil")
+	}
+}
+
+func TestJWTBearerGrant(t *testing.T) {
+	// Given.
+	p := Provider{
+		config: &oidc.Configuration{},
+	}
+
+	// When.
+	err := WithJWTBearerGrant(func(r *http.Request, assertion string) (goidc.JWTBearerGrantInfo, error) {
+		return goidc.JWTBearerGrantInfo{}, nil
+	})(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if p.config.HandleJWTBearerGrantAssertionFunc == nil {
+		t.Error("HandleJWTBearerGrantAssertionFunc cannot be nil")
 	}
 }

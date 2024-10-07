@@ -42,6 +42,7 @@ type request struct {
 	refreshToken      string
 	codeVerifier      string
 	resources         goidc.Resources
+	assertion         string
 	// TODO: auth details.
 }
 
@@ -54,6 +55,7 @@ func newRequest(req *http.Request) request {
 		refreshToken:      req.PostFormValue("refresh_token"),
 		codeVerifier:      req.PostFormValue("code_verifier"),
 		resources:         req.PostForm["resource"],
+		assertion:         req.PostFormValue("assertion"),
 	}
 }
 

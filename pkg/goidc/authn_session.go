@@ -50,7 +50,7 @@ type AuthnSession struct {
 	AuthorizationCode           string                `json:"authorization_code,omitempty"`
 	// ProtectedParameters contains custom parameters sent by PAR.
 	ProtectedParameters map[string]any `json:"protected_params,omitempty"`
-	// Store allows developers to store information between user interactions.
+	// Store allows storing information between user interactions.
 	Store                    map[string]any `json:"store,omitempty"`
 	AdditionalTokenClaims    map[string]any `json:"additional_token_claims,omitempty"`
 	AdditionalIDTokenClaims  map[string]any `json:"additional_id_token_claims,omitempty"`

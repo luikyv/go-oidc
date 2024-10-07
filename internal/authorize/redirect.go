@@ -140,7 +140,12 @@ func signJARMResponse(
 		claims[k] = v
 	}
 
-	jwk := ctx.JARMSigKey(c)
+	jwk, ok := ctx.JARMSigKeyForClient(c)
+	if !ok {
+		return "", goidc.NewError(goidc.ErrorCodeInvalidRequest,
+			"the jarm signing algorithm defined for the client is not available")
+	}
+
 	resp, err := jwtutil.Sign(claims, jwk,
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
 	if err != nil {
