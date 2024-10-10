@@ -91,6 +91,7 @@ type ClientMetaInfo struct {
 	UserInfoSigAlg                jose.SignatureAlgorithm `json:"userinfo_signed_response_alg,omitempty"`
 	UserInfoKeyEncAlg             jose.KeyAlgorithm       `json:"userinfo_encrypted_response_alg,omitempty"`
 	UserInfoContentEncAlg         jose.ContentEncryption  `json:"userinfo_encrypted_response_enc,omitempty"`
+	JARIsRequired                 bool                    `json:"require_signed_request_object,omitempty"`
 	JARSigAlg                     jose.SignatureAlgorithm `json:"request_object_signing_alg,omitempty"`
 	JARKeyEncAlg                  jose.KeyAlgorithm       `json:"request_object_encryption_alg,omitempty"`
 	JARContentEncAlg              jose.ContentEncryption  `json:"request_object_encryption_enc,omitempty"`
@@ -112,6 +113,7 @@ type ClientMetaInfo struct {
 	AuthDetailTypes           []string `json:"authorization_data_types,omitempty"`
 	DefaultMaxAgeSecs         *int     `json:"default_max_age,omitempty"`
 	DefaultACRValues          string   `json:"default_acr_values,omitempty"`
+	PARIsRequired             bool     `json:"require_pushed_authorization_requests,omitempty"`
 	// CustomAttributes holds any additional attributes a client has.
 	// This field is flattened for DCR responses.
 	CustomAttributes map[string]any `json:"custom_attributes,omitempty"`

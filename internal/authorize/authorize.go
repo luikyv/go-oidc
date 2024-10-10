@@ -82,16 +82,28 @@ func authnSession(
 	error,
 ) {
 
-	if ctx.PARIsRequired || (ctx.PARIsEnabled && req.RequestURI != "") {
+	if shouldUsePAR(ctx, req.AuthorizationParameters, client) {
 		return authnSessionWithPAR(ctx, req, client)
 	}
 
-	// The jar requirement comes after the par one, because the client can send the jar during par.
+	// The jar requirement comes after the par one, because the client may have
+	// sent the jar during par.
 	if shouldUseJAR(ctx, req.AuthorizationParameters, client) {
 		return authnSessionWithJAR(ctx, req, client)
 	}
 
 	return simpleAuthnSession(ctx, req, client)
+}
+
+func shouldUsePAR(
+	ctx oidc.Context,
+	req goidc.AuthorizationParameters,
+	c *goidc.Client,
+) bool {
+	if !ctx.PARIsEnabled {
+		return false
+	}
+	return ctx.PARIsRequired || c.PARIsRequired || req.RequestURI != ""
 }
 
 func authnSessionWithPAR(

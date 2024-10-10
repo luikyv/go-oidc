@@ -17,10 +17,10 @@ func shouldUseJAR(
 	req goidc.AuthorizationParameters,
 	c *goidc.Client,
 ) bool {
-	// If JAR is not enabled, we just disconsider the request object.
-	// Also, if the client defined a signature algorithm for jar, then jar is required.
-	return ctx.JARIsRequired ||
-		(ctx.JARIsEnabled && (req.RequestObject != "" || c.JARSigAlg != ""))
+	if !ctx.JARIsEnabled {
+		return false
+	}
+	return ctx.JARIsRequired || c.JARIsRequired || req.RequestObject != ""
 }
 
 func jarFromRequestObject(
