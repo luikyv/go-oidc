@@ -49,15 +49,20 @@ func jarFromRequestObject(
 func signedRequestObjectFromEncrypted(
 	ctx oidc.Context,
 	reqObject string,
-	_ *goidc.Client,
+	client *goidc.Client,
 ) (
 	string,
 	error,
 ) {
+
+	contentEncAlgs := ctx.JARContentEncAlgs
+	if client.JARContentEncAlg != "" {
+		contentEncAlgs = []jose.ContentEncryption{client.JARContentEncAlg}
+	}
 	encryptedReqObject, err := jose.ParseEncrypted(
 		reqObject,
 		ctx.JARKeyEncAlgs(),
-		ctx.JARContentEncAlgs,
+		contentEncAlgs,
 	)
 	if err != nil {
 		return "", goidc.Errorf(goidc.ErrorCodeInvalidResquestObject,

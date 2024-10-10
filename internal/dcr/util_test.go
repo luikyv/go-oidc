@@ -13,12 +13,9 @@ func TestCreate(t *testing.T) {
 	// Given.
 	c, _ := oidctest.NewClient(t)
 	ctx := oidctest.NewContext(t)
-	req := request{
-		ClientMetaInfo: c.ClientMetaInfo,
-	}
 
 	// When.
-	resp, err := create(ctx, req)
+	resp, err := create(ctx, "", &c.ClientMetaInfo)
 
 	// Then.
 	if err != nil {
@@ -43,17 +40,10 @@ func TestCreate(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	// Given.
 	ctx, client, regToken := setUp(t)
-
 	ctx.DCRTokenRotationIsEnabled = false
 
-	dynamicClientReq := request{
-		id:                client.ID,
-		registrationToken: regToken,
-		ClientMetaInfo:    client.ClientMetaInfo,
-	}
-
 	// When.
-	resp, err := update(ctx, dynamicClientReq)
+	resp, err := update(ctx, client.ID, regToken, &client.ClientMetaInfo)
 
 	// Then.
 	if err != nil {
@@ -73,14 +63,9 @@ func TestUpdate_TokenRotation(t *testing.T) {
 	// Given.
 	ctx, client, regToken := setUp(t)
 	ctx.DCRTokenRotationIsEnabled = true
-	dynamicClientReq := request{
-		id:                client.ID,
-		registrationToken: regToken,
-		ClientMetaInfo:    client.ClientMetaInfo,
-	}
 
 	// When.
-	resp, err := update(ctx, dynamicClientReq)
+	resp, err := update(ctx, client.ID, regToken, &client.ClientMetaInfo)
 
 	// Then.
 	if err != nil {
@@ -99,13 +84,9 @@ func TestUpdate_TokenRotation(t *testing.T) {
 func TestFetch(t *testing.T) {
 	// Given.
 	ctx, client, regToken := setUp(t)
-	dynamicClientReq := request{
-		id:                client.ID,
-		registrationToken: regToken,
-	}
 
 	// When.
-	resp, err := fetch(ctx, dynamicClientReq)
+	resp, err := fetch(ctx, client.ID, regToken)
 
 	// Then.
 	if err != nil {
@@ -120,13 +101,9 @@ func TestFetch(t *testing.T) {
 func TestFetch_InvalidToken(t *testing.T) {
 	// Given.
 	ctx, client, _ := setUp(t)
-	dynamicClientReq := request{
-		id:                client.ID,
-		registrationToken: "invalid_token",
-	}
 
 	// When.
-	_, err := fetch(ctx, dynamicClientReq)
+	_, err := fetch(ctx, client.ID, "invalid_token")
 
 	// Then.
 	if err == nil {
@@ -137,13 +114,9 @@ func TestFetch_InvalidToken(t *testing.T) {
 func TestDeleteClient(t *testing.T) {
 	// Given.
 	ctx, client, regToken := setUp(t)
-	dynamicClientReq := request{
-		id:                client.ID,
-		registrationToken: regToken,
-	}
 
 	// When.
-	err := remove(ctx, dynamicClientReq)
+	err := remove(ctx, client.ID, regToken)
 
 	// Then.
 	if err != nil {
@@ -159,13 +132,9 @@ func TestDeleteClient(t *testing.T) {
 func TestDeleteClient_InvalidToken(t *testing.T) {
 	// Given.
 	ctx, client, _ := setUp(t)
-	dynamicClientReq := request{
-		id:                client.ID,
-		registrationToken: "invalid_token",
-	}
 
 	// When.
-	err := remove(ctx, dynamicClientReq)
+	err := remove(ctx, client.ID, "invalid_token")
 
 	// Then.
 	if err == nil {

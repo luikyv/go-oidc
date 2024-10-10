@@ -32,9 +32,6 @@ const (
 	GrantRefreshToken      GrantType = "refresh_token"
 	GrantImplicit          GrantType = "implicit"
 	GrantJWTBearer         GrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer"
-	// GrantIntrospection is a non standard grant type defined here to indicate
-	// when a client is able to introspect tokens.
-	GrantIntrospection GrantType = "urn:goidc:oauth2:grant_type:token_intropection"
 )
 
 type ResponseType string
@@ -250,6 +247,8 @@ type MiddlewareFunc func(next http.Handler) http.Handler
 // and DCM.
 // It can be used to modify the client and perform custom validations.
 type HandleDynamicClientFunc func(*http.Request, *ClientMetaInfo) error
+
+type ValidateInitialAccessTokenFunc func(*http.Request, string) error
 
 // RenderErrorFunc defines a function that will be called when errors
 // during the authorization request cannot be handled.
@@ -594,3 +593,5 @@ type JWTBearerGrantInfo struct {
 	Subject string
 	Store   map[string]any
 }
+
+type IsClientAllowedFunc func(*Client) bool

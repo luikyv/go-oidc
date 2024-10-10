@@ -14,7 +14,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func TestClientAuthnSigAlgs(t *testing.T) {
+func TestTokenAuthnSigAlgs(t *testing.T) {
 
 	// Given.
 	testCases := []struct {
@@ -23,13 +23,18 @@ func TestClientAuthnSigAlgs(t *testing.T) {
 	}{
 		{
 			ctx: oidc.Context{
-				Configuration: &oidc.Configuration{},
+				Configuration: &oidc.Configuration{
+					TokenAuthnMethods: []goidc.ClientAuthnType{},
+				},
 			},
 			sigAlgs: nil,
 		},
 		{
 			ctx: oidc.Context{
 				Configuration: &oidc.Configuration{
+					TokenAuthnMethods: []goidc.ClientAuthnType{
+						goidc.ClientAuthnPrivateKeyJWT,
+					},
 					PrivateKeyJWTSigAlgs: []jose.SignatureAlgorithm{jose.PS256},
 				},
 			},
@@ -38,6 +43,9 @@ func TestClientAuthnSigAlgs(t *testing.T) {
 		{
 			ctx: oidc.Context{
 				Configuration: &oidc.Configuration{
+					TokenAuthnMethods: []goidc.ClientAuthnType{
+						goidc.ClientAuthnSecretJWT,
+					},
 					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
 				},
 			},
@@ -46,6 +54,10 @@ func TestClientAuthnSigAlgs(t *testing.T) {
 		{
 			ctx: oidc.Context{
 				Configuration: &oidc.Configuration{
+					TokenAuthnMethods: []goidc.ClientAuthnType{
+						goidc.ClientAuthnPrivateKeyJWT,
+						goidc.ClientAuthnSecretJWT,
+					},
 					PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
 					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
 				},
@@ -59,7 +71,7 @@ func TestClientAuthnSigAlgs(t *testing.T) {
 			fmt.Sprintf("case %d", i),
 			func(t *testing.T) {
 				// When.
-				sigAlgs := testCase.ctx.ClientAuthnSigAlgs()
+				sigAlgs := testCase.ctx.TokenAuthnSigAlgs()
 
 				// Then.
 				if !cmp.Equal(sigAlgs, testCase.sigAlgs, cmpopts.EquateEmpty()) {
@@ -91,7 +103,7 @@ func TestIntrospectionClientAuthnSigAlgs(t *testing.T) {
 				Configuration: &oidc.Configuration{
 					PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
 					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
-					IntrospectionClientAuthnMethods: []goidc.ClientAuthnType{
+					TokenIntrospectionAuthnMethods: []goidc.ClientAuthnType{
 						goidc.ClientAuthnPrivateKeyJWT,
 					},
 				},
@@ -103,7 +115,7 @@ func TestIntrospectionClientAuthnSigAlgs(t *testing.T) {
 				Configuration: &oidc.Configuration{
 					PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
 					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
-					IntrospectionClientAuthnMethods: []goidc.ClientAuthnType{
+					TokenIntrospectionAuthnMethods: []goidc.ClientAuthnType{
 						goidc.ClientAuthnSecretJWT,
 					},
 				},
@@ -115,7 +127,7 @@ func TestIntrospectionClientAuthnSigAlgs(t *testing.T) {
 				Configuration: &oidc.Configuration{
 					PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
 					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
-					IntrospectionClientAuthnMethods: []goidc.ClientAuthnType{
+					TokenIntrospectionAuthnMethods: []goidc.ClientAuthnType{
 						goidc.ClientAuthnPrivateKeyJWT,
 						goidc.ClientAuthnSecretJWT,
 					},
@@ -130,7 +142,7 @@ func TestIntrospectionClientAuthnSigAlgs(t *testing.T) {
 			fmt.Sprintf("case %d", i),
 			func(t *testing.T) {
 				// When.
-				sigAlgs := testCase.ctx.IntrospectionClientAuthnSigAlgs()
+				sigAlgs := testCase.ctx.TokenIntrospectionAuthnSigAlgs()
 
 				// Then.
 				if !cmp.Equal(sigAlgs, testCase.sigAlgs, cmpopts.EquateEmpty()) {
@@ -147,7 +159,7 @@ func TestHandleDynamicClient(t *testing.T) {
 		Configuration: &oidc.Configuration{},
 	}
 	ctx.HandleDynamicClientFunc = func(r *http.Request, clientInfo *goidc.ClientMetaInfo) error {
-		clientInfo.AuthnMethod = goidc.ClientAuthnNone
+		clientInfo.TokenAuthnMethod = goidc.ClientAuthnNone
 		return nil
 	}
 	clientInfo := &goidc.ClientMetaInfo{}
@@ -160,8 +172,8 @@ func TestHandleDynamicClient(t *testing.T) {
 		t.Errorf("no error was expected: %v", err)
 	}
 
-	if clientInfo.AuthnMethod != goidc.ClientAuthnNone {
-		t.Errorf("AuthnMethod = %s, want %s", clientInfo.AuthnMethod, goidc.ClientAuthnNone)
+	if clientInfo.TokenAuthnMethod != goidc.ClientAuthnNone {
+		t.Errorf("AuthnMethod = %s, want %s", clientInfo.TokenAuthnMethod, goidc.ClientAuthnNone)
 	}
 }
 

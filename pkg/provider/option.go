@@ -119,7 +119,7 @@ func WithUserInfoEndpoint(endpoint string) ProviderOption {
 
 // WithIntrospectionEndpoint overrides the default value for the introspection
 // endpoint which is [defaultEndpointTokenIntrospection]
-// To enable token introspection, see [WithIntrospection].
+// To enable token introspection, see [WithTokenIntrospection].
 func WithIntrospectionEndpoint(endpoint string) ProviderOption {
 	return func(p Provider) error {
 		p.config.EndpointIntrospection = endpoint
@@ -475,15 +475,14 @@ func WithJAREncryption(
 // algorithm for request objects which is A128CBC-HS256.
 // To enable JAR encryption, see [WithJAREncryption].
 func WithJARContentEncryptionAlgs(
-	defaultAlg jose.ContentEncryption,
+	alg jose.ContentEncryption,
 	algs ...jose.ContentEncryption,
 ) ProviderOption {
-	if !slices.Contains(algs, defaultAlg) {
-		algs = append(algs, defaultAlg)
+	if !slices.Contains(algs, alg) {
+		algs = append(algs, alg)
 	}
 
 	return func(p Provider) error {
-		p.config.JARDefaultContentEncAlg = defaultAlg
 		p.config.JARContentEncAlgs = algs
 		return nil
 	}
@@ -568,65 +567,33 @@ func WithJARMContentEncryptionAlgs(
 	}
 }
 
-// WithBasicSecretAuthn allows secret basic client authentication.
-func WithBasicSecretAuthn() ProviderOption {
-	return func(p Provider) error {
-		p.config.ClientAuthnMethods = append(
-			p.config.ClientAuthnMethods,
-			goidc.ClientAuthnSecretBasic,
-		)
-		return nil
-	}
-}
-
-// WithSecretPostAuthn allows secret post client authentication.
-func WithSecretPostAuthn() ProviderOption {
-	return func(p Provider) error {
-		p.config.ClientAuthnMethods = append(
-			p.config.ClientAuthnMethods,
-			goidc.ClientAuthnSecretPost,
-		)
-		return nil
-	}
-}
-
-// WithPrivateKeyJWTAuthn allows private key jwt client authentication.
-// If no algorithm is specified, the default is RS256.
-// Clients can inform previously the algorithm they must use to sign assertions
-// with the attribute "token_endpoint_auth_signing_alg".
-func WithPrivateKeyJWTAuthn(
+// WithPrivateKeyJWTSignatureAlgs sets the signature algorithms for private key JWT
+// authentication.
+func WithPrivateKeyJWTSignatureAlgs(
+	sigAlg jose.SignatureAlgorithm,
 	sigAlgs ...jose.SignatureAlgorithm,
 ) ProviderOption {
-	if len(sigAlgs) == 0 {
-		sigAlgs = append(sigAlgs, jose.RS256)
+	if !slices.Contains(sigAlgs, sigAlg) {
+		sigAlgs = append(sigAlgs, sigAlg)
 	}
 
 	return func(p Provider) error {
-		p.config.ClientAuthnMethods = append(
-			p.config.ClientAuthnMethods,
-			goidc.ClientAuthnPrivateKeyJWT,
-		)
 		p.config.PrivateKeyJWTSigAlgs = sigAlgs
 		return nil
 	}
 }
 
-// WithBasicSecretAuthn allows client secret jwt client authentication.
-// If no algorithm is specified, the default is HS256.
-// Clients can inform previously the algorithm they must use to sign assertions
-// with the attribute "token_endpoint_auth_signing_alg".
-func WithSecretJWTAuthn(
+// WithSecretJWTSignatureAlgs sets the signature algorithms for private key JWT
+// authentication.
+func WithSecretJWTSignatureAlgs(
+	sigAlg jose.SignatureAlgorithm,
 	sigAlgs ...jose.SignatureAlgorithm,
 ) ProviderOption {
-	if len(sigAlgs) == 0 {
-		sigAlgs = append(sigAlgs, jose.HS256)
+	if !slices.Contains(sigAlgs, sigAlg) {
+		sigAlgs = append(sigAlgs, sigAlg)
 	}
 
 	return func(p Provider) error {
-		p.config.ClientAuthnMethods = append(
-			p.config.ClientAuthnMethods,
-			goidc.ClientAuthnSecretJWT,
-		)
 		p.config.ClientSecretJWTSigAlgs = sigAlgs
 		return nil
 	}
@@ -637,35 +604,6 @@ func WithSecretJWTAuthn(
 func WithAssertionLifetime(secs int) ProviderOption {
 	return func(p Provider) error {
 		p.config.AssertionLifetimeSecs = secs
-		return nil
-	}
-}
-
-// WithTLSAuthn allows tls client authentication.
-// To enable MTLS, see [WithMTLS].
-func WithTLSAuthn() ProviderOption {
-	return func(p Provider) error {
-		p.config.ClientAuthnMethods = append(p.config.ClientAuthnMethods,
-			goidc.ClientAuthnTLS)
-		return nil
-	}
-}
-
-// WithSelfSignedTLSAuthn allows self signed tls client authentication.
-// To enable MTLS, see [WithMTLS].
-func WithSelfSignedTLSAuthn() ProviderOption {
-	return func(p Provider) error {
-		p.config.ClientAuthnMethods = append(p.config.ClientAuthnMethods,
-			goidc.ClientAuthnSelfSignedTLS)
-		return nil
-	}
-}
-
-// WithNoneAuthn allows none client authentication.
-func WithNoneAuthn() ProviderOption {
-	return func(p Provider) error {
-		p.config.ClientAuthnMethods = append(p.config.ClientAuthnMethods,
-			goidc.ClientAuthnNone)
 		return nil
 	}
 }
@@ -689,15 +627,18 @@ func WithClaimsParameter() ProviderOption {
 }
 
 // WithAuthorizationDetails allows clients to make rich authorization requests.
-func WithAuthorizationDetails(types ...string) ProviderOption {
+func WithAuthorizationDetails(
+	authType string,
+	authTypes ...string,
+) ProviderOption {
+
+	if !slices.Contains(authTypes, authType) {
+		authTypes = append(authTypes, authType)
+	}
 
 	return func(p Provider) error {
-		if len(types) == 0 {
-			return errors.New("WithAuthorizationDetails. at least one authorization detail type must be informed")
-		}
-
 		p.config.AuthDetailsIsEnabled = true
-		p.config.AuthDetailTypes = types
+		p.config.AuthDetailTypes = authTypes
 		return nil
 	}
 }
@@ -789,27 +730,48 @@ func WithTokenBindingRequired() ProviderOption {
 	}
 }
 
-// WithIntrospection allows authorized clients to introspect tokens.
+func WithTokenAuthnMethods(
+	method goidc.ClientAuthnType,
+	methods ...goidc.ClientAuthnType,
+) ProviderOption {
+	if !slices.Contains(methods, method) {
+		methods = append(methods, method)
+	}
+
+	return func(p Provider) error {
+		p.config.TokenAuthnMethods = methods
+		return nil
+	}
+}
+
+// WithTokenIntrospection allows authorized clients to introspect tokens.
+// If no authentication methods are specified, default to using the values set
+// for the token endpoint.
 // A client can only introspect tokens if it has the grant type
 // [goidc.GrantIntrospection].
-func WithIntrospection(
-	clientAuthnMethods ...goidc.ClientAuthnType,
+func WithTokenIntrospection(
+	f goidc.IsClientAllowedFunc,
+	methods ...goidc.ClientAuthnType,
 ) ProviderOption {
 	return func(p Provider) error {
-		if len(clientAuthnMethods) == 0 {
-			return errors.New("WithIntrospection. at least one client authentication mechanism must be informed")
-		}
-		p.config.IntrospectionIsEnabled = true
-		p.config.IntrospectionClientAuthnMethods = clientAuthnMethods
-		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantIntrospection)
+		p.config.TokenIntrospectionIsEnabled = true
+		p.config.IsClientAllowedTokenIntrospectionFunc = f
+		p.config.TokenIntrospectionAuthnMethods = methods
 		return nil
 	}
 }
 
 // WithTokenRevocation allows clients to revoke tokens.
-func WithTokenRevocation() ProviderOption {
+// If no authentication methods are specified, default to using the values set
+// for the token endpoint.
+func WithTokenRevocation(
+	f goidc.IsClientAllowedFunc,
+	methods ...goidc.ClientAuthnType,
+) ProviderOption {
 	return func(p Provider) error {
 		p.config.TokenRevocationIsEnabled = true
+		p.config.IsClientAllowedTokenRevocationFunc = f
+		p.config.TokenRevocationAuthnMethods = methods
 		return nil
 	}
 }
@@ -846,13 +808,14 @@ func WithPKCERequired(
 // WithACRs makes available authentication context references.
 // These values will be published as are in the well know endpoint response.
 func WithACRs(
+	value goidc.ACR,
 	values ...goidc.ACR,
 ) ProviderOption {
-	return func(p Provider) error {
-		if len(values) == 0 {
-			return errors.New("WithACRs. at least one acr must be informed")
-		}
+	if !slices.Contains(values, value) {
+		values = append(values, value)
+	}
 
+	return func(p Provider) error {
 		p.config.ACRs = values
 		return nil
 	}
@@ -861,12 +824,15 @@ func WithACRs(
 // WithDisplayValues makes available display values during requests to the
 // authorization endpoint.
 // These values will be published as are in the well known endpoint response.
-func WithDisplayValues(values ...goidc.DisplayValue) ProviderOption {
-	return func(p Provider) error {
-		if len(values) == 0 {
-			return errors.New("WithDisplayValues. at least one value must be informed")
-		}
+func WithDisplayValues(
+	value goidc.DisplayValue,
+	values ...goidc.DisplayValue,
+) ProviderOption {
+	if !slices.Contains(values, value) {
+		values = append(values, value)
+	}
 
+	return func(p Provider) error {
 		p.config.DisplayValues = values
 		return nil
 	}

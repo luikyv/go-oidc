@@ -23,7 +23,7 @@ func generateRefreshTokenGrant(
 			"invalid refresh token")
 	}
 
-	c, err := clientutil.Authenticated(ctx)
+	c, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
 	if err != nil {
 		return response{}, err
 	}
@@ -110,11 +110,7 @@ func updateRefreshTokenGrantSession(
 	grantSession.TokenID = token.ID
 
 	if ctx.RefreshTokenRotationIsEnabled {
-		token, err := refreshToken()
-		if err != nil {
-			return err
-		}
-		grantSession.RefreshToken = token
+		grantSession.RefreshToken = refreshToken()
 	}
 
 	updatePoPForRefreshedToken(ctx, &grantSession.GrantInfo)
@@ -234,11 +230,6 @@ func validateRefreshTokenPoP(
 	return ValidatePoP(ctx, "", cnf)
 }
 
-func refreshToken() (string, error) {
-	token, err := strutil.Random(goidc.RefreshTokenLength)
-	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
-			"could not generate the refresh token", err)
-	}
-	return token, nil
+func refreshToken() string {
+	return strutil.Random(goidc.RefreshTokenLength)
 }

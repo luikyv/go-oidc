@@ -61,6 +61,10 @@ func New(
 			AuthnSessionManager: storage.NewAuthnSessionManager(),
 			GrantSessionManager: storage.NewGrantSessionManager(),
 
+			TokenAuthnMethods:      []goidc.ClientAuthnType{goidc.ClientAuthnSecretPost},
+			PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{defaultPrivateKeyJWTSigAlg},
+			ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{defaultSecretJWTSigAlg},
+
 			Scopes:                      []goidc.Scope{goidc.ScopeOpenID},
 			TokenOptionsFunc:            defaultTokenOptionsFunc(defaultSigKeyID),
 			ShouldIssueRefreshTokenFunc: defaultShouldIssueRefreshTokenFunc(),
@@ -104,7 +108,6 @@ func New(
 			JARMContentEncAlgs:       []jose.ContentEncryption{jose.A128CBC_HS256},
 			UserDefaultContentEncAlg: jose.A128CBC_HS256,
 			UserContentEncAlgs:       []jose.ContentEncryption{jose.A128CBC_HS256},
-			JARDefaultContentEncAlg:  jose.A128CBC_HS256,
 			JARContentEncAlgs:        []jose.ContentEncryption{jose.A128CBC_HS256},
 
 			ClientCertFunc: defaultClientCertFunc(),
@@ -116,6 +119,8 @@ func New(
 			return Provider{}, err
 		}
 	}
+
+	p.setPostDefaults()
 
 	if err := p.validate(); err != nil {
 		return Provider{}, err
@@ -255,6 +260,22 @@ func (p *Provider) Client(
 	}
 
 	return p.config.ClientManager.Client(ctx, id)
+}
+
+func (p Provider) setPostDefaults() {
+	// Set the defaults token introspection authn methods to the same as for the
+	// token endpoint.
+	if p.config.TokenIntrospectionIsEnabled &&
+		p.config.TokenIntrospectionAuthnMethods == nil {
+		p.config.TokenIntrospectionAuthnMethods = p.config.TokenAuthnMethods
+	}
+
+	// Set the defaults token revocation authn methods to the same as for the
+	// token endpoint.
+	if p.config.TokenRevocationIsEnabled &&
+		p.config.TokenRevocationAuthnMethods == nil {
+		p.config.TokenRevocationAuthnMethods = p.config.TokenAuthnMethods
+	}
 }
 
 func (p Provider) validate() error {

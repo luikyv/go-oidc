@@ -6,31 +6,19 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-type request struct {
-	id     string
-	secret string
-	// initialToken holds the value of the authorization header when
-	// creating a client with DCR.
-	initialToken string
-	// registrationToken holds the value of the authorization header for
-	// all DCM requests.
-	registrationToken string
-	goidc.ClientMetaInfo
-}
-
 type response struct {
 	ID                string `json:"client_id"`
 	Secret            string `json:"client_secret,omitempty"`
 	RegistrationToken string `json:"registration_access_token,omitempty"`
 	RegistrationURI   string `json:"registration_client_uri"`
-	goidc.ClientMetaInfo
+	*goidc.ClientMetaInfo
 }
 
 func (resp response) MarshalJSON() ([]byte, error) {
 
 	// Define a new type to avoid recursion while marshaling.
-	type dcResp response
-	attributesBytes, err := json.Marshal(dcResp(resp))
+	type auxResponse response
+	attributesBytes, err := json.Marshal(auxResponse(resp))
 	if err != nil {
 		return nil, err
 	}

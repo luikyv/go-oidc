@@ -15,7 +15,7 @@ func generateClientCredentialsGrant(
 	response,
 	error,
 ) {
-	c, oauthErr := clientutil.Authenticated(ctx)
+	c, oauthErr := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
 	if oauthErr != nil {
 		return response{}, oauthErr
 	}

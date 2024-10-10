@@ -195,12 +195,7 @@ func initAuthnSessionWithPolicy(
 		session.SetIDTokenClaim(goidc.ClaimNonce, session.Nonce)
 	}
 	session.PolicyID = policy.ID
-	id, err := callbackID()
-	if err != nil {
-		return newRedirectionError(goidc.ErrorCodeInternalError,
-			"error generating the callback id", session.AuthorizationParameters)
-	}
-	session.CallbackID = id
+	session.CallbackID = callbackID()
 	// FIXME: To think about:Treating the request_uri as one-time use will cause
 	// problems when the user refreshes the page.
 	session.ReferenceID = ""
@@ -208,11 +203,11 @@ func initAuthnSessionWithPolicy(
 	return nil
 }
 
-func authorizationCode() (string, error) {
+func authorizationCode() string {
 	return strutil.Random(authorizationCodeLength)
 }
 
-func callbackID() (string, error) {
+func callbackID() string {
 	return strutil.Random(callbackIDLength)
 }
 
@@ -328,12 +323,7 @@ func authorizeAuthnSession(
 		}
 	}
 
-	code, err := authorizationCode()
-	if err != nil {
-		return newRedirectionError(goidc.ErrorCodeInternalError,
-			"could not generate the authorization code", session.AuthorizationParameters)
-	}
-	session.AuthorizationCode = code
+	session.AuthorizationCode = authorizationCode()
 	session.ExpiresAtTimestamp = timeutil.TimestampNow() + authorizationCodeLifetimeSecs
 	// Make sure the session won't be reached anymore from the callback endpoint.
 	session.CallbackID = ""

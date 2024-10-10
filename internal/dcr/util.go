@@ -1,6 +1,8 @@
 package dcr
 
 import (
+	"slices"
+
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -9,291 +11,251 @@ import (
 
 func create(
 	ctx oidc.Context,
-	dc request,
+	initialToken string,
+	meta *goidc.ClientMetaInfo,
 ) (
 	response,
 	error,
 ) {
-	if err := setCreationDefaults(ctx, &dc); err != nil {
+
+	if err := ctx.ValidateInitalAccessToken(initialToken); err != nil {
+		return response{}, goidc.Errorf(goidc.ErrorCodeAccessDenied,
+			"invalid token", err)
+	}
+
+	if err := validate(ctx, meta); err != nil {
 		return response{}, err
 	}
 
-	if err := validateRequest(ctx, dc); err != nil {
-		return response{}, err
-	}
-
-	if err := ctx.HandleDynamicClient(&dc.ClientMetaInfo); err != nil {
+	if err := ctx.HandleDynamicClient(meta); err != nil {
 		return response{}, goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata,
 			"invalid metadata", err)
 	}
 
-	if err := validateRequest(ctx, dc); err != nil {
+	if err := validate(ctx, meta); err != nil {
 		return response{}, err
 	}
 
-	newClient := newClient(dc)
-	if err := ctx.SaveClient(newClient); err != nil {
-		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
-			"could not store the client", err)
+	client := &goidc.Client{
+		ClientMetaInfo: *meta,
 	}
-
-	return response{
-		ID:                dc.id,
-		RegistrationURI:   registrationURI(ctx, dc.id),
-		RegistrationToken: dc.registrationToken,
-		Secret:            dc.secret,
-		ClientMetaInfo:    dc.ClientMetaInfo,
-	}, nil
-}
-
-func setCreationDefaults(
-	ctx oidc.Context,
-	req *request,
-) error {
-	id, err := clientID()
-	if err != nil {
-		return err
-	}
-	req.id = id
-
-	token, err := registrationAccessToken()
-	if err != nil {
-		return err
-	}
-	req.registrationToken = token
-
-	return setDefaults(ctx, req)
+	return modifyAndSaveClient(ctx, client)
 }
 
 func update(
 	ctx oidc.Context,
-	dc request,
+	id string,
+	regToken string,
+	meta *goidc.ClientMetaInfo,
 ) (
 	response,
 	error,
 ) {
-	c, err := protected(ctx, dc)
+	client, err := protected(ctx, id, regToken)
 	if err != nil {
 		return response{}, err
 	}
 
-	if err := setUpdateDefaults(ctx, c, &dc); err != nil {
+	if err := validate(ctx, meta); err != nil {
 		return response{}, err
 	}
 
-	if err := validateRequest(ctx, dc); err != nil {
-		return response{}, err
-	}
-
-	if err := ctx.HandleDynamicClient(&dc.ClientMetaInfo); err != nil {
+	if err := ctx.HandleDynamicClient(meta); err != nil {
 		return response{}, goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata,
 			"invalid metadata", err)
 	}
 
-	if err := validateRequest(ctx, dc); err != nil {
+	if err := validate(ctx, meta); err != nil {
 		return response{}, err
 	}
 
-	updatedClient := newClient(dc)
-	if err := ctx.SaveClient(updatedClient); err != nil {
-		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
-			"could not store the client", err)
-	}
-
-	resp := response{
-		ID:              dc.id,
-		RegistrationURI: registrationURI(ctx, dc.id),
-		Secret:          dc.secret,
-		ClientMetaInfo:  dc.ClientMetaInfo,
-	}
-
-	if ctx.DCRTokenRotationIsEnabled {
-		resp.RegistrationToken = dc.registrationToken
-	}
-
-	return resp, nil
-}
-
-func setUpdateDefaults(
-	ctx oidc.Context,
-	c *goidc.Client,
-	dc *request,
-) error {
-	dc.id = c.ID
-	if ctx.DCRTokenRotationIsEnabled {
-		token, err := registrationAccessToken()
-		if err != nil {
-			return err
-		}
-		dc.registrationToken = token
-	}
-
-	return setDefaults(ctx, dc)
+	client.ClientMetaInfo = *meta
+	return modifyAndSaveClient(ctx, client)
 }
 
 func fetch(
 	ctx oidc.Context,
-	dynamicClientRequest request,
+	id string,
+	regToken string,
 ) (
 	response,
 	error,
 ) {
 
-	c, err := protected(ctx, dynamicClientRequest)
+	client, err := protected(ctx, id, regToken)
 	if err != nil {
 		return response{}, err
 	}
 
 	return response{
-		ID:              c.ID,
-		RegistrationURI: registrationURI(ctx, c.ID),
-		ClientMetaInfo:  c.ClientMetaInfo,
+		ID:              client.ID,
+		RegistrationURI: registrationURI(ctx, client.ID),
+		ClientMetaInfo:  &client.ClientMetaInfo,
 	}, nil
 }
 
 func remove(
 	ctx oidc.Context,
-	dynamicClientRequest request,
+	id string,
+	regToken string,
 ) error {
-	_, err := protected(ctx, dynamicClientRequest)
+	_, err := protected(ctx, id, regToken)
 	if err != nil {
 		return err
 	}
 
-	if err := ctx.DeleteClient(dynamicClientRequest.id); err != nil {
+	if err := ctx.DeleteClient(id); err != nil {
 		return goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not delete the client", err)
 	}
 	return nil
 }
 
-func setDefaults(ctx oidc.Context, dynamicClient *request) error {
-	if dynamicClient.AuthnMethod == "" {
-		dynamicClient.AuthnMethod = goidc.ClientAuthnSecretBasic
+func modifyAndSaveClient(
+	ctx oidc.Context,
+	client *goidc.Client,
+) (
+	response,
+	error,
+) {
+
+	id := setID(ctx, client)
+	regToken := setRegistrationToken(ctx, client)
+	secret := setSecret(ctx, client)
+
+	if err := ctx.SaveClient(client); err != nil {
+		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
+			"could not store the client", err)
 	}
 
-	if dynamicClient.AuthnMethod == goidc.ClientAuthnSecretPost ||
-		dynamicClient.AuthnMethod == goidc.ClientAuthnSecretBasic ||
-		dynamicClient.AuthnMethod == goidc.ClientAuthnSecretJWT {
-		secret, err := clientSecret()
-		if err != nil {
-			return err
-		}
-		dynamicClient.secret = secret
-	}
-
-	if dynamicClient.ResponseTypes == nil {
-		dynamicClient.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeCode}
-	}
-
-	if dynamicClient.IDTokenKeyEncAlg != "" &&
-		dynamicClient.IDTokenContentEncAlg == "" {
-		dynamicClient.IDTokenContentEncAlg = ctx.UserDefaultContentEncAlg
-	}
-
-	if dynamicClient.UserInfoKeyEncAlg != "" &&
-		dynamicClient.UserInfoContentEncAlg == "" {
-		dynamicClient.UserInfoContentEncAlg = ctx.UserDefaultContentEncAlg
-	}
-
-	if dynamicClient.JARMKeyEncAlg != "" &&
-		dynamicClient.JARMContentEncAlg == "" {
-		dynamicClient.JARMContentEncAlg = ctx.JARMDefaultContentEncAlg
-	}
-
-	if dynamicClient.JARKeyEncAlg != "" &&
-		dynamicClient.JARContentEncAlg == "" {
-		dynamicClient.JARContentEncAlg = ctx.JARDefaultContentEncAlg
-	}
-
-	if dynamicClient.CustomAttributes == nil {
-		dynamicClient.CustomAttributes = make(map[string]any)
-	}
-
-	return nil
+	return response{
+		ID:                id,
+		RegistrationURI:   registrationURI(ctx, id),
+		RegistrationToken: regToken,
+		Secret:            secret,
+		ClientMetaInfo:    &client.ClientMetaInfo,
+	}, nil
 }
 
-func newClient(dc request) *goidc.Client {
-	hashedRegistrationAccessToken, _ := bcrypt.GenerateFromPassword(
-		[]byte(dc.registrationToken),
-		bcrypt.DefaultCost,
-	)
-	c := &goidc.Client{
-		ID:                            dc.id,
-		HashedRegistrationAccessToken: string(hashedRegistrationAccessToken),
-		ClientMetaInfo:                dc.ClientMetaInfo,
+// setID assigns a unique ID to the client if it doesn't already have one.
+// If the client already has an ID, it returns the existing ID.
+// Otherwise, it generates a new ID and returns it.
+func setID(_ oidc.Context, client *goidc.Client) string {
+	if client.ID == "" {
+		client.ID = clientID()
+	}
+	return client.ID
+}
+
+// setRegistrationToken generates and assigns a new registration token for the
+// client if one doesn't already exist or if token rotation is enabled.
+// The function returns the plain registration token, or an empty string if no
+// new token is generated.
+func setRegistrationToken(ctx oidc.Context, client *goidc.Client) string {
+	// Generate a new registration token only if the client does not have one
+	// or if token rotation is enabled.
+	if client.HashedRegistrationAccessToken != "" && !ctx.DCRTokenRotationIsEnabled {
+		return ""
 	}
 
-	if dc.AuthnMethod == goidc.ClientAuthnSecretPost ||
-		dc.AuthnMethod == goidc.ClientAuthnSecretBasic {
-		clientHashedSecret, _ := bcrypt.GenerateFromPassword(
-			[]byte(dc.secret),
-			bcrypt.DefaultCost,
-		)
-		c.HashedSecret = string(clientHashedSecret)
+	regToken, hashedRegToken := registrationAccessTokenAndHash()
+	client.HashedRegistrationAccessToken = hashedRegToken
+	return regToken
+}
+
+// setSecret configures the client's secret based on its authentication methods.
+// It supports two types of secret-based authentication:
+//  1. Basic/Post: The secret is stored as a hashed value.
+//  2. JWT: The secret is stored as plain text.
+//
+// If a new secret is generated, it returns the plain secret; otherwise, it
+// returns an empty string.
+func setSecret(ctx oidc.Context, client *goidc.Client) string {
+	var secret string
+	// Clear the client's secret and hashed secret to ensure it's only set when
+	// secret-based authentication is required.
+	client.Secret = ""
+	client.HashedSecret = ""
+	authnMethods := authnMethods(ctx, &client.ClientMetaInfo)
+
+	// Check for client authentication methods that require a secret that must
+	// be store as a hash.
+	if slices.ContainsFunc(authnMethods, func(method goidc.ClientAuthnType) bool {
+		return method == goidc.ClientAuthnSecretBasic || method == goidc.ClientAuthnSecretPost
+	}) {
+		secret, client.HashedSecret = clientSecretAndHash()
 	}
 
-	if dc.AuthnMethod == goidc.ClientAuthnSecretJWT {
-		c.Secret = dc.secret
+	// Check for client authentication using secret JWT.
+	if slices.ContainsFunc(authnMethods, func(method goidc.ClientAuthnType) bool {
+		return method == goidc.ClientAuthnSecretJWT
+	}) {
+		// Use existing secret or generate a new one if not already set.
+		if secret == "" {
+			secret = clientSecret()
+		}
+		client.Secret = secret
 	}
 
-	return c
+	return secret
+}
+
+func authnMethods(ctx oidc.Context, meta *goidc.ClientMetaInfo) []goidc.ClientAuthnType {
+	authnMethods := []goidc.ClientAuthnType{meta.TokenAuthnMethod}
+	if ctx.TokenIntrospectionIsEnabled {
+		authnMethods = append(authnMethods, meta.TokenIntrospectionAuthnMethod)
+	}
+	if ctx.TokenRevocationIsEnabled {
+		authnMethods = append(authnMethods, meta.TokenRevocationAuthnMethod)
+	}
+	return authnMethods
 }
 
 func registrationURI(ctx oidc.Context, id string) string {
 	return ctx.BaseURL() + ctx.EndpointDCR + "/" + id
 }
 
+// protected returns a client corresponding to the id informed if the
+// the registration access token is valid.
 func protected(
 	ctx oidc.Context,
-	dc request,
+	id string,
+	regToken string,
 ) (
 	*goidc.Client,
 	error,
 ) {
-	if dc.id == "" {
-		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid client_id")
-	}
-
-	c, err := ctx.Client(dc.id)
+	c, err := ctx.Client(id)
 	if err != nil {
 		return nil, goidc.Errorf(goidc.ErrorCodeInvalidRequest,
 			"could not find the client", err)
 	}
 
-	if dc.registrationToken == "" ||
-		!isRegistrationAccessTokenValid(c, dc.registrationToken) {
+	if !isRegistrationAccessTokenValid(c, regToken) {
 		return nil, goidc.NewError(goidc.ErrorCodeAccessDenied, "invalid access token")
 	}
 
 	return c, nil
 }
 
-func clientID() (string, error) {
-	id, err := strutil.Random(idLength)
-	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
-			"could not generate the client id", err)
-	}
-	return "dc-" + id, nil
+func clientID() string {
+	return "dc-" + strutil.Random(idLength)
 }
 
-func clientSecret() (string, error) {
-	s, err := strutil.Random(secretLength)
-	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
-			"could not generate the client secret", err)
-	}
-	return s, nil
+func clientSecretAndHash() (string, string) {
+	secret := clientSecret()
+	hashedSecret := strutil.BCryptHash(secret)
+	return secret, hashedSecret
 }
 
-func registrationAccessToken() (string, error) {
-	token, err := strutil.Random(registrationAccessTokenLength)
-	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
-			"could not generate the registration access token", err)
-	}
-	return token, nil
+func clientSecret() string {
+	return strutil.Random(secretLength)
+}
+
+func registrationAccessTokenAndHash() (string, string) {
+	token := strutil.Random(registrationAccessTokenLength)
+	hashedToken := strutil.BCryptHash(token)
+	return token, hashedToken
 }
 
 func isRegistrationAccessTokenValid(c *goidc.Client, token string) bool {

@@ -41,31 +41,46 @@ func Handler(
 	}
 }
 
-func (ctx Context) ClientAuthnSigAlgs() []jose.SignatureAlgorithm {
-	return append(
-		ctx.PrivateKeyJWTSigAlgs,
-		ctx.ClientSecretJWTSigAlgs...,
-	)
+func (ctx Context) TokenAuthnSigAlgs() []jose.SignatureAlgorithm {
+	return ctx.clientAuthnSigAlgs(ctx.TokenAuthnMethods)
 }
 
-func (ctx Context) IntrospectionClientAuthnSigAlgs() []jose.SignatureAlgorithm {
-	var signatureAlgorithms []jose.SignatureAlgorithm
-
-	if slices.Contains(ctx.IntrospectionClientAuthnMethods, goidc.ClientAuthnPrivateKeyJWT) {
-		signatureAlgorithms = append(
-			signatureAlgorithms,
-			ctx.PrivateKeyJWTSigAlgs...,
-		)
+func (ctx Context) IsClientAllowedTokenIntrospection(c *goidc.Client) bool {
+	if ctx.IsClientAllowedTokenIntrospectionFunc == nil {
+		return false
 	}
 
-	if slices.Contains(ctx.IntrospectionClientAuthnMethods, goidc.ClientAuthnSecretJWT) {
-		signatureAlgorithms = append(
-			signatureAlgorithms,
-			ctx.ClientSecretJWTSigAlgs...,
-		)
+	return ctx.IsClientAllowedTokenIntrospectionFunc(c)
+}
+
+func (ctx Context) TokenIntrospectionAuthnSigAlgs() []jose.SignatureAlgorithm {
+	return ctx.clientAuthnSigAlgs(ctx.TokenIntrospectionAuthnMethods)
+}
+
+func (ctx Context) IsClientAllowedTokenRevocation(c *goidc.Client) bool {
+	if ctx.IsClientAllowedTokenRevocationFunc == nil {
+		return false
 	}
 
-	return signatureAlgorithms
+	return ctx.IsClientAllowedTokenRevocationFunc(c)
+}
+
+func (ctx Context) TokenRevocationAuthnSigAlgs() []jose.SignatureAlgorithm {
+	return ctx.clientAuthnSigAlgs(ctx.TokenRevocationAuthnMethods)
+}
+
+func (ctx Context) clientAuthnSigAlgs(methods []goidc.ClientAuthnType) []jose.SignatureAlgorithm {
+	var sigAlgs []jose.SignatureAlgorithm
+
+	if slices.Contains(methods, goidc.ClientAuthnPrivateKeyJWT) {
+		sigAlgs = append(sigAlgs, ctx.PrivateKeyJWTSigAlgs...)
+	}
+
+	if slices.Contains(methods, goidc.ClientAuthnSecretJWT) {
+		sigAlgs = append(sigAlgs, ctx.ClientSecretJWTSigAlgs...)
+	}
+
+	return sigAlgs
 }
 
 func (ctx Context) ClientCert() (*x509.Certificate, error) {
@@ -75,6 +90,14 @@ func (ctx Context) ClientCert() (*x509.Certificate, error) {
 	}
 
 	return ctx.ClientCertFunc(ctx.Request)
+}
+
+func (ctx Context) ValidateInitalAccessToken(token string) error {
+	if ctx.ValidateInitialAccessTokenFunc == nil {
+		return nil
+	}
+
+	return ctx.ValidateInitialAccessTokenFunc(ctx.Request, token)
 }
 
 func (ctx Context) HandleDynamicClient(c *goidc.ClientMetaInfo) error {

@@ -33,19 +33,16 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 }
 
 func handleCreate(ctx oidc.Context) {
-	var req request
-	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
+	var meta *goidc.ClientMetaInfo
+	if err := json.NewDecoder(ctx.Request.Body).Decode(meta); err != nil {
 		err = goidc.Errorf(goidc.ErrorCodeInvalidRequest,
 			"could not parse the request", err)
 		ctx.WriteError(err)
 		return
 	}
 
-	if t, ok := ctx.BearerToken(); ok {
-		req.initialToken = t
-	}
-
-	resp, err := create(ctx, req)
+	initialToken, _ := ctx.BearerToken()
+	resp, err := create(ctx, initialToken, meta)
 	if err != nil {
 		ctx.WriteError(err)
 		return
@@ -57,23 +54,22 @@ func handleCreate(ctx oidc.Context) {
 }
 
 func handleUpdate(ctx oidc.Context) {
-	var req request
-	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
+	var meta *goidc.ClientMetaInfo
+	if err := json.NewDecoder(ctx.Request.Body).Decode(meta); err != nil {
 		err = goidc.Errorf(goidc.ErrorCodeInvalidRequest,
 			"could not parse the request", err)
 		ctx.WriteError(err)
 		return
 	}
 
-	token, ok := ctx.BearerToken()
+	regToken, ok := ctx.BearerToken()
 	if !ok {
 		ctx.WriteError(goidc.NewError(goidc.ErrorCodeAccessDenied, "no token found"))
 		return
 	}
 
-	req.id = ctx.Request.PathValue("client_id")
-	req.registrationToken = token
-	resp, err := update(ctx, req)
+	id := ctx.Request.PathValue("client_id")
+	resp, err := update(ctx, id, regToken, meta)
 	if err != nil {
 		ctx.WriteError(err)
 		return
@@ -91,12 +87,7 @@ func handleGet(ctx oidc.Context) {
 		return
 	}
 
-	req := request{
-		id:                ctx.Request.PathValue("client_id"),
-		registrationToken: token,
-	}
-
-	resp, err := fetch(ctx, req)
+	resp, err := fetch(ctx, ctx.Request.PathValue("client_id"), token)
 	if err != nil {
 		ctx.WriteError(err)
 		return
@@ -114,12 +105,7 @@ func handleDelete(ctx oidc.Context) {
 		return
 	}
 
-	req := request{
-		id:                ctx.Request.PathValue("client_id"),
-		registrationToken: token,
-	}
-
-	if err := remove(ctx, req); err != nil {
+	if err := remove(ctx, ctx.Request.PathValue("client_id"), token); err != nil {
 		ctx.WriteError(err)
 		return
 	}

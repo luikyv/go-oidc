@@ -7,9 +7,14 @@ import (
 )
 
 func revoke(ctx oidc.Context, req queryRequest) error {
-	client, err := clientutil.Authenticated(ctx)
+	client, err := clientutil.Authenticated(ctx, clientutil.TokenRevocationAuthnContext)
 	if err != nil {
 		return err
+	}
+
+	if !ctx.IsClientAllowedTokenRevocation(client) {
+		return goidc.NewError(goidc.ErrorCodeAccessDenied,
+			"client not allowed to revoke tokens")
 	}
 
 	info, err := IntrospectionInfo(ctx, req.token)

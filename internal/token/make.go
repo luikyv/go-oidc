@@ -31,7 +31,7 @@ func MakeIDToken(
 	}
 
 	// If encryption is disabled, just return the signed ID token.
-	if client.IDTokenKeyEncAlg == "" {
+	if !ctx.UserEncIsEnabled || client.IDTokenKeyEncAlg == "" {
 		return idToken, nil
 	}
 
@@ -132,7 +132,11 @@ func encryptIDToken(
 			"could not encrypt the id token", err)
 	}
 
-	encIDToken, err := jwtutil.Encrypt(userInfoJWT, jwk, c.IDTokenContentEncAlg)
+	contentEncAlg := c.IDTokenContentEncAlg
+	if contentEncAlg == "" {
+		contentEncAlg = ctx.UserDefaultContentEncAlg
+	}
+	encIDToken, err := jwtutil.Encrypt(userInfoJWT, jwk, contentEncAlg)
 	if err != nil {
 		return "", goidc.Errorf(goidc.ErrorCodeInvalidRequest,
 			"could not encrypt the id token", err)
@@ -219,12 +223,7 @@ func makeOpaqueToken(
 	Token,
 	error,
 ) {
-	accessToken, err := strutil.Random(opts.OpaqueLength)
-	if err != nil {
-		return Token{}, goidc.Errorf(goidc.ErrorCodeInternalError,
-			"could not generate the opaque token", err)
-	}
-
+	accessToken := strutil.Random(opts.OpaqueLength)
 	tokenType := goidc.TokenTypeBearer
 	if grantInfo.JWKThumbprint != "" {
 		tokenType = goidc.TokenTypeDPoP

@@ -20,7 +20,7 @@ func pushAuth(
 	error,
 ) {
 
-	c, err := clientutil.Authenticated(ctx)
+	c, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
 	if err != nil {
 		return pushedResponse{}, err
 	}
@@ -55,11 +55,7 @@ func pushAuthnSession(
 		return nil, err
 	}
 
-	reqURI, err := requestURI()
-	if err != nil {
-		return nil, err
-	}
-	session.ReferenceID = reqURI
+	session.ReferenceID = requestURI()
 	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.PARLifetimeSecs
 
 	setDPoP(ctx, session)
@@ -138,13 +134,8 @@ func protectedParams(ctx oidc.Context) map[string]any {
 	return protectedParams
 }
 
-func requestURI() (string, error) {
-	s, err := strutil.Random(requestURILength)
-	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
-			"could not generate the request uri", err)
-	}
-	return fmt.Sprintf("urn:ietf:params:oauth:request_uri:%s", s), nil
+func requestURI() string {
+	return fmt.Sprintf("urn:ietf:params:oauth:request_uri:%s", strutil.Random(requestURILength))
 }
 
 // setDPoP adds DPoP for authorization code to the session if available.

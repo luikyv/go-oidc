@@ -2,7 +2,6 @@ package token
 
 import (
 	"errors"
-	"slices"
 
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/jwtutil"
@@ -17,7 +16,7 @@ func introspect(
 	goidc.TokenInfo,
 	error,
 ) {
-	c, err := clientutil.Authenticated(ctx)
+	c, err := clientutil.Authenticated(ctx, clientutil.TokenIntrospectionAuthnContext)
 	if err != nil {
 		return goidc.TokenInfo{}, err
 	}
@@ -34,12 +33,13 @@ func introspect(
 }
 
 func validateIntrospectionRequest(
-	_ oidc.Context,
+	ctx oidc.Context,
 	req queryRequest,
 	c *goidc.Client,
 ) error {
-	if !slices.Contains(c.GrantTypes, goidc.GrantIntrospection) {
-		return goidc.NewError(goidc.ErrorCodeInvalidGrant,
+
+	if !ctx.IsClientAllowedTokenIntrospection(c) {
+		return goidc.NewError(goidc.ErrorCodeAccessDenied,
 			"client not allowed to introspect tokens")
 	}
 

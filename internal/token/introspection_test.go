@@ -60,7 +60,7 @@ func TestIntrospect_RefreshToken(t *testing.T) {
 	ctx, client := setUpIntrospection(t)
 
 	expiryTime := timeutil.TimestampNow() + 60
-	refreshToken, _ := strutil.Random(goidc.RefreshTokenLength)
+	refreshToken := strutil.Random(goidc.RefreshTokenLength)
 	grantSession := &goidc.GrantSession{
 		RefreshToken:       refreshToken,
 		ExpiresAtTimestamp: expiryTime,
@@ -104,8 +104,13 @@ func setUpIntrospection(t *testing.T) (ctx oidc.Context, client *goidc.Client) {
 	t.Helper()
 
 	ctx = oidctest.NewContext(t)
+	ctx.TokenIntrospectionIsEnabled = true
+	ctx.IsClientAllowedTokenIntrospectionFunc = func(c *goidc.Client) bool {
+		return true
+	}
+
 	client, secret := oidctest.NewClient(t)
-	client.GrantTypes = append(client.GrantTypes, goidc.GrantIntrospection)
+	client.TokenIntrospectionAuthnMethod = goidc.ClientAuthnSecretPost
 	_ = ctx.SaveClient(client)
 
 	ctx.Request.PostForm = map[string][]string{

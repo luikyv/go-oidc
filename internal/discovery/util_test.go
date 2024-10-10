@@ -48,11 +48,15 @@ func TestOIDCConfig(t *testing.T) {
 		UserDefaultSigKeyID:      userInfoKey.KeyID,
 		UserSigKeyIDs:            []string{userInfoKey.KeyID},
 		DCRIsEnabled:             true,
-		ClientAuthnMethods:       []goidc.ClientAuthnType{goidc.ClientAuthnNone},
-		PrivateKeyJWTSigAlgs:     []jose.SignatureAlgorithm{jose.PS256},
-		ClientSecretJWTSigAlgs:   []jose.SignatureAlgorithm{jose.HS256},
-		AuthDetailsIsEnabled:     true,
-		AuthDetailTypes:          []string{"detail_type"},
+		TokenAuthnMethods: []goidc.ClientAuthnType{
+			goidc.ClientAuthnNone,
+			goidc.ClientAuthnPrivateKeyJWT,
+			goidc.ClientAuthnSecretJWT,
+		},
+		PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
+		ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
+		AuthDetailsIsEnabled:   true,
+		AuthDetailTypes:        []string{"detail_type"},
 	}
 	ctx := oidc.Context{Configuration: config}
 
@@ -68,8 +72,8 @@ func TestOIDCConfig(t *testing.T) {
 		UserinfoEndpoint:           ctx.Host + ctx.EndpointUserInfo,
 		JWKSEndpoint:               ctx.Host + ctx.EndpointJWKS,
 		Scopes:                     []string{"openid", "email"},
-		ClientAuthnMethods:         ctx.ClientAuthnMethods,
-		TokenEndpointClientSigAlgs: []jose.SignatureAlgorithm{
+		TokenAuthnMethods:          ctx.TokenAuthnMethods,
+		TokenAuthnSigAlgs: []jose.SignatureAlgorithm{
 			jose.PS256, jose.HS256,
 		},
 		GrantTypes: ctx.GrantTypes,
@@ -138,27 +142,30 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		UserDefaultSigKeyID:      userInfoKey.KeyID,
 		UserSigKeyIDs:            []string{userInfoKey.KeyID},
 		DCRIsEnabled:             true,
-		ClientAuthnMethods: []goidc.ClientAuthnType{
+		TokenAuthnMethods: []goidc.ClientAuthnType{
 			goidc.ClientAuthnNone,
 			goidc.ClientAuthnPrivateKeyJWT,
 			goidc.ClientAuthnSecretJWT,
 		},
-		PrivateKeyJWTSigAlgs:            []jose.SignatureAlgorithm{jose.PS256},
-		ClientSecretJWTSigAlgs:          []jose.SignatureAlgorithm{jose.HS256},
-		AuthDetailsIsEnabled:            true,
-		AuthDetailTypes:                 []string{"detail_type"},
-		PARIsEnabled:                    true,
-		JARIsEnabled:                    true,
-		JARIsRequired:                   true,
-		JARSigAlgs:                      []jose.SignatureAlgorithm{jose.PS256},
-		JARMIsEnabled:                   true,
-		JARMDefaultSigKeyID:             jarmKey.KeyID,
-		JARMSigKeyIDs:                   []string{jarmKey.KeyID},
-		DPoPIsEnabled:                   true,
-		DPoPSigAlgs:                     []jose.SignatureAlgorithm{jose.PS256},
-		IntrospectionIsEnabled:          true,
-		IntrospectionClientAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnPrivateKeyJWT},
-		TokenRevocationIsEnabled:        true,
+		TokenRevocationAuthnMethods: []goidc.ClientAuthnType{
+			goidc.ClientAuthnPrivateKeyJWT,
+		},
+		PrivateKeyJWTSigAlgs:           []jose.SignatureAlgorithm{jose.PS256},
+		ClientSecretJWTSigAlgs:         []jose.SignatureAlgorithm{jose.HS256},
+		AuthDetailsIsEnabled:           true,
+		AuthDetailTypes:                []string{"detail_type"},
+		PARIsEnabled:                   true,
+		JARIsEnabled:                   true,
+		JARIsRequired:                  true,
+		JARSigAlgs:                     []jose.SignatureAlgorithm{jose.PS256},
+		JARMIsEnabled:                  true,
+		JARMDefaultSigKeyID:            jarmKey.KeyID,
+		JARMSigKeyIDs:                  []string{jarmKey.KeyID},
+		DPoPIsEnabled:                  true,
+		DPoPSigAlgs:                    []jose.SignatureAlgorithm{jose.PS256},
+		TokenIntrospectionIsEnabled:    true,
+		TokenIntrospectionAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnSecretJWT},
+		TokenRevocationIsEnabled:       true,
 	}
 	ctx := oidc.Context{Configuration: config}
 
@@ -174,20 +181,20 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		UserinfoEndpoint:           ctx.Host + ctx.EndpointUserInfo,
 		JWKSEndpoint:               ctx.Host + ctx.EndpointJWKS,
 		PAREndpoint:                ctx.Host + ctx.EndpointPushedAuthorization,
-		IntrospectionEndpoint:      ctx.Host + ctx.EndpointIntrospection,
+		TokenIntrospectionEndpoint: ctx.Host + ctx.EndpointIntrospection,
 		TokenRevocationEndpoint:    ctx.Host + ctx.EndpointTokenRevocation,
 		Scopes:                     []string{"openid", "email"},
-		ClientAuthnMethods:         ctx.ClientAuthnMethods,
-		TokenEndpointClientSigAlgs: []jose.SignatureAlgorithm{
+		TokenAuthnMethods:          ctx.TokenAuthnMethods,
+		TokenAuthnSigAlgs: []jose.SignatureAlgorithm{
 			jose.PS256, jose.HS256,
 		},
-		IntrospectionEndpointClientAuthnMethods: ctx.IntrospectionClientAuthnMethods,
-		IntrospectionEndpointClientSigAlgs: []jose.SignatureAlgorithm{
+		TokenIntrospectionAuthnMethods: ctx.TokenIntrospectionAuthnMethods,
+		TokenIntrospectionAuthnSigAlgs: []jose.SignatureAlgorithm{
+			jose.HS256,
+		},
+		TokenRevocationAuthnMethods: ctx.TokenRevocationAuthnMethods,
+		TokenRevocationAuthnSigAlgs: []jose.SignatureAlgorithm{
 			jose.PS256,
-		},
-		TokenRevocationClientAuthnMethods: ctx.ClientAuthnMethods,
-		TokenRevocationClientSigAlgs: []jose.SignatureAlgorithm{
-			jose.PS256, jose.HS256,
 		},
 		GrantTypes: ctx.GrantTypes,
 		UserInfoSigAlgs: []jose.SignatureAlgorithm{

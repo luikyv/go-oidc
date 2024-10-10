@@ -76,7 +76,8 @@ type Configuration struct {
 	// IDTokenLifetimeSecs defines the expiry time of ID tokens.
 	IDTokenLifetimeSecs int
 
-	ClientAuthnMethods []goidc.ClientAuthnType
+	TokenAuthnMethods []goidc.ClientAuthnType
+
 	// PrivateKeyJWTSigAlgs contains algorithms accepted for signing
 	// client assertions during private_key_jwt.
 	PrivateKeyJWTSigAlgs []jose.SignatureAlgorithm
@@ -88,14 +89,18 @@ type Configuration struct {
 	// client_secret_jwt.
 	AssertionLifetimeSecs int
 
-	DCRIsEnabled              bool
-	DCRTokenRotationIsEnabled bool
-	HandleDynamicClientFunc   goidc.HandleDynamicClientFunc
+	DCRIsEnabled                   bool
+	DCRTokenRotationIsEnabled      bool
+	HandleDynamicClientFunc        goidc.HandleDynamicClientFunc
+	ValidateInitialAccessTokenFunc goidc.ValidateInitialAccessTokenFunc
 
-	IntrospectionIsEnabled          bool
-	IntrospectionClientAuthnMethods []goidc.ClientAuthnType
+	TokenIntrospectionIsEnabled           bool
+	TokenIntrospectionAuthnMethods        []goidc.ClientAuthnType
+	IsClientAllowedTokenIntrospectionFunc goidc.IsClientAllowedFunc
 
-	TokenRevocationIsEnabled bool
+	TokenRevocationIsEnabled           bool
+	TokenRevocationAuthnMethods        []goidc.ClientAuthnType
+	IsClientAllowedTokenRevocationFunc goidc.IsClientAllowedFunc
 
 	ShouldIssueRefreshTokenFunc   goidc.ShouldIssueRefreshTokenFunc
 	RefreshTokenRotationIsEnabled bool
@@ -119,12 +124,11 @@ type Configuration struct {
 	JARSigAlgs    []jose.SignatureAlgorithm
 	// JARLifetimeSecs defines the max difference allowed between the claims "iat"
 	// and "exp" for request objects.
-	JARLifetimeSecs         int
-	JARLeewayTimeSecs       int
-	JAREncIsEnabled         bool
-	JARKeyEncIDs            []string
-	JARDefaultContentEncAlg jose.ContentEncryption
-	JARContentEncAlgs       []jose.ContentEncryption
+	JARLifetimeSecs   int
+	JARLeewayTimeSecs int
+	JAREncIsEnabled   bool
+	JARKeyEncIDs      []string
+	JARContentEncAlgs []jose.ContentEncryption
 
 	// PARIsEnabled allows client to push authorization requests.
 	PARIsEnabled bool

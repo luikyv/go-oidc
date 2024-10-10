@@ -27,7 +27,7 @@ func generateJWTBearerGrant(
 	error,
 ) {
 
-	client, err := clientutil.Authenticated(ctx)
+	client, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
 	// Return an error for client authentication only if authentication is
 	// required or if the error is unrelated to client identification, such as
 	// when the client provides invalid credentials.
@@ -178,11 +178,7 @@ func generateJWTBearerGrantSession(
 
 	grantSession := NewGrantSession(grantInfo, token)
 	if ctx.ShouldIssueRefreshToken(client, grantInfo) {
-		refreshToken, err := refreshToken()
-		if err != nil {
-			return nil, err
-		}
-		grantSession.RefreshToken = refreshToken
+		grantSession.RefreshToken = refreshToken()
 		grantSession.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
 

@@ -24,7 +24,7 @@ func generateAuthorizationCodeGrant(
 			"invalid authorization code")
 	}
 
-	client, err := clientutil.Authenticated(ctx)
+	client, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
 	if err != nil {
 		return response{}, err
 	}
@@ -135,11 +135,7 @@ func generateAuthorizationCodeGrantSession(
 	grantSession := NewGrantSession(grantInfo, token)
 	grantSession.AuthorizationCode = code
 	if ctx.ShouldIssueRefreshToken(client, grantInfo) {
-		refreshToken, err := refreshToken()
-		if err != nil {
-			return nil, err
-		}
-		grantSession.RefreshToken = refreshToken
+		grantSession.RefreshToken = refreshToken()
 		grantSession.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
 

@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"slices"
 
+	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -21,6 +22,9 @@ const (
 	defaultPARLifetimeSecs          = 60
 	defaultJWTLifetimeSecs          = 600
 	defaultJWTLeewayTimeSecs        = 30
+
+	defaultPrivateKeyJWTSigAlg = jose.RS256
+	defaultSecretJWTSigAlg     = jose.HS256
 
 	defaultEndpointWellKnown                  = "/.well-known/openid-configuration"
 	defaultEndpointJSONWebKeySet              = "/jwks"

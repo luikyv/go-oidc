@@ -151,16 +151,16 @@ func validateClientSecretJWTSigAlgs(config *oidc.Configuration) error {
 
 func validateIntrospectionClientAuthnMethods(config *oidc.Configuration) error {
 
-	if !config.IntrospectionIsEnabled {
+	if !config.TokenIntrospectionIsEnabled {
 		return nil
 	}
 
-	if !slices.Contains(config.IntrospectionClientAuthnMethods, goidc.ClientAuthnNone) {
+	if !slices.Contains(config.TokenIntrospectionAuthnMethods, goidc.ClientAuthnNone) {
 		return errors.New("none client authentication method not allowed for token introspection")
 	}
 
-	for _, method := range config.IntrospectionClientAuthnMethods {
-		if !slices.Contains(config.ClientAuthnMethods, method) {
+	for _, method := range config.TokenIntrospectionAuthnMethods {
+		if !slices.Contains(config.TokenAuthnMethods, method) {
 			return errors.New("invalid client authentication method for token introspection")
 		}
 	}

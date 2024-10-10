@@ -111,14 +111,11 @@ func createJARMResponse(
 		return "", err
 	}
 
-	if c.JARMKeyEncAlg != "" {
-		responseJWT, err = encryptJARMResponse(ctx, responseJWT, c)
-		if err != nil {
-			return "", err
-		}
+	if !ctx.JARMEncIsEnabled || c.JARMKeyEncAlg == "" {
+		return responseJWT, nil
 	}
 
-	return responseJWT, nil
+	return encryptJARMResponse(ctx, responseJWT, c)
 }
 
 func signJARMResponse(
@@ -170,7 +167,11 @@ func encryptJARMResponse(
 			"could not fetch the client encryption jwk for jarm", err)
 	}
 
-	jwe, err := jwtutil.Encrypt(responseJWT, jwk, c.JARMContentEncAlg)
+	contentEncAlg := c.JARMContentEncAlg
+	if contentEncAlg == "" {
+		contentEncAlg = ctx.JARMDefaultContentEncAlg
+	}
+	jwe, err := jwtutil.Encrypt(responseJWT, jwk, contentEncAlg)
 	if err != nil {
 		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not encrypt the response object", err)

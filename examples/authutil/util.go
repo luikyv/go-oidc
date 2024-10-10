@@ -57,7 +57,7 @@ type authnPage struct {
 
 func ClientMTLS(id, cn, jwksFilepath string) *goidc.Client {
 	client := Client(id, jwksFilepath)
-	client.AuthnMethod = goidc.ClientAuthnTLS
+	client.TokenAuthnMethod = goidc.ClientAuthnTLS
 	client.TLSSubDistinguishedName = "CN=" + cn
 
 	return client
@@ -65,7 +65,7 @@ func ClientMTLS(id, cn, jwksFilepath string) *goidc.Client {
 
 func ClientPrivateKeyJWT(id, jwksFilepath string) *goidc.Client {
 	client := Client(id, jwksFilepath)
-	client.AuthnMethod = goidc.ClientAuthnPrivateKeyJWT
+	client.TokenAuthnMethod = goidc.ClientAuthnPrivateKeyJWT
 	return client
 }
 

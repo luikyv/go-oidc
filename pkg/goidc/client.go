@@ -33,7 +33,7 @@ type Client struct {
 }
 
 func (c *Client) IsPublic() bool {
-	return c.AuthnMethod == ClientAuthnNone
+	return c.TokenAuthnMethod == ClientAuthnNone
 }
 
 // FetchPublicJWKS fetches the client public JWKS either directly from the jwks
@@ -83,24 +83,28 @@ type ClientMetaInfo struct {
 	PublicJWKSURI string          `json:"jwks_uri,omitempty"`
 	PublicJWKS    json.RawMessage `json:"jwks,omitempty"`
 	// ScopeIDs contains the scopes available to the client separeted by spaces.
-	ScopeIDs                   string                  `json:"scope"`
-	SubIdentifierType          SubjectIdentifierType   `json:"subject_type,omitempty"`
-	IDTokenSigAlg              jose.SignatureAlgorithm `json:"id_token_signed_response_alg,omitempty"`
-	IDTokenKeyEncAlg           jose.KeyAlgorithm       `json:"id_token_encrypted_response_alg,omitempty"`
-	IDTokenContentEncAlg       jose.ContentEncryption  `json:"id_token_encrypted_response_enc,omitempty"`
-	UserInfoSigAlg             jose.SignatureAlgorithm `json:"userinfo_signed_response_alg,omitempty"`
-	UserInfoKeyEncAlg          jose.KeyAlgorithm       `json:"userinfo_encrypted_response_alg,omitempty"`
-	UserInfoContentEncAlg      jose.ContentEncryption  `json:"userinfo_encrypted_response_enc,omitempty"`
-	JARSigAlg                  jose.SignatureAlgorithm `json:"request_object_signing_alg,omitempty"`
-	JARKeyEncAlg               jose.KeyAlgorithm       `json:"request_object_encryption_alg,omitempty"`
-	JARContentEncAlg           jose.ContentEncryption  `json:"request_object_encryption_enc,omitempty"`
-	JARMSigAlg                 jose.SignatureAlgorithm `json:"authorization_signed_response_alg,omitempty"`
-	JARMKeyEncAlg              jose.KeyAlgorithm       `json:"authorization_encrypted_response_alg,omitempty"`
-	JARMContentEncAlg          jose.ContentEncryption  `json:"authorization_encrypted_response_enc,omitempty"`
-	AuthnMethod                ClientAuthnType         `json:"token_endpoint_auth_method"`
-	AuthnSigAlg                jose.SignatureAlgorithm `json:"token_endpoint_auth_signing_alg,omitempty"`
-	DPoPTokenBindingIsRequired bool                    `json:"dpop_bound_access_tokens,omitempty"`
-	TLSSubDistinguishedName    string                  `json:"tls_client_auth_subject_dn,omitempty"`
+	ScopeIDs                      string                  `json:"scope"`
+	SubIdentifierType             SubjectIdentifierType   `json:"subject_type,omitempty"`
+	IDTokenSigAlg                 jose.SignatureAlgorithm `json:"id_token_signed_response_alg,omitempty"`
+	IDTokenKeyEncAlg              jose.KeyAlgorithm       `json:"id_token_encrypted_response_alg,omitempty"`
+	IDTokenContentEncAlg          jose.ContentEncryption  `json:"id_token_encrypted_response_enc,omitempty"`
+	UserInfoSigAlg                jose.SignatureAlgorithm `json:"userinfo_signed_response_alg,omitempty"`
+	UserInfoKeyEncAlg             jose.KeyAlgorithm       `json:"userinfo_encrypted_response_alg,omitempty"`
+	UserInfoContentEncAlg         jose.ContentEncryption  `json:"userinfo_encrypted_response_enc,omitempty"`
+	JARSigAlg                     jose.SignatureAlgorithm `json:"request_object_signing_alg,omitempty"`
+	JARKeyEncAlg                  jose.KeyAlgorithm       `json:"request_object_encryption_alg,omitempty"`
+	JARContentEncAlg              jose.ContentEncryption  `json:"request_object_encryption_enc,omitempty"`
+	JARMSigAlg                    jose.SignatureAlgorithm `json:"authorization_signed_response_alg,omitempty"`
+	JARMKeyEncAlg                 jose.KeyAlgorithm       `json:"authorization_encrypted_response_alg,omitempty"`
+	JARMContentEncAlg             jose.ContentEncryption  `json:"authorization_encrypted_response_enc,omitempty"`
+	TokenAuthnMethod              ClientAuthnType         `json:"token_endpoint_auth_method"`
+	TokenAuthnSigAlg              jose.SignatureAlgorithm `json:"token_endpoint_auth_signing_alg,omitempty"`
+	TokenIntrospectionAuthnMethod ClientAuthnType         `json:"introspection_endpoint_auth_method,omitempty"`
+	TokenIntrospectionAuthnSigAlg jose.SignatureAlgorithm `json:"introspection_endpoint_auth_signing_alg,omitempty"`
+	TokenRevocationAuthnMethod    ClientAuthnType         `json:"revocation_endpoint_auth_method,omitempty"`
+	TokenRevocationAuthnSigAlg    jose.SignatureAlgorithm `json:"revocation_endpoint_auth_signing_alg,omitempty"`
+	DPoPTokenBindingIsRequired    bool                    `json:"dpop_bound_access_tokens,omitempty"`
+	TLSSubDistinguishedName       string                  `json:"tls_client_auth_subject_dn,omitempty"`
 	// TLSSubAlternativeName represents a DNS name.
 	TLSSubAlternativeName     string   `json:"tls_client_auth_san_dns,omitempty"`
 	TLSSubAlternativeNameIp   string   `json:"tls_client_auth_san_ip,omitempty"`

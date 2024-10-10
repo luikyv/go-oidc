@@ -975,8 +975,7 @@ func TestWithJARContentEncryptionAlgs(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			JARDefaultContentEncAlg: jose.A128GCM,
-			JARContentEncAlgs:       []jose.ContentEncryption{jose.A128GCM},
+			JARContentEncAlgs: []jose.ContentEncryption{jose.A128GCM},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1115,154 +1114,6 @@ func TestWithJARMContentEncryptionAlgs(t *testing.T) {
 	}
 }
 
-func TestWithBasicSecretAuthn(t *testing.T) {
-	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
-	}
-
-	// When.
-	err := WithBasicSecretAuthn()(p)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	want := Provider{
-		config: &oidc.Configuration{
-			ClientAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnSecretBasic},
-		},
-	}
-	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
-		t.Error(diff)
-	}
-}
-
-func TestWithSecretPostAuthn(t *testing.T) {
-	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
-	}
-
-	// When.
-	err := WithSecretPostAuthn()(p)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	want := Provider{
-		config: &oidc.Configuration{
-			ClientAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnSecretPost},
-		},
-	}
-	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
-		t.Error(diff)
-	}
-}
-
-func TestWithPrivateKeyJWTAuthn(t *testing.T) {
-	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
-	}
-
-	// When.
-	err := WithPrivateKeyJWTAuthn(jose.PS256)(p)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	want := Provider{
-		config: &oidc.Configuration{
-			ClientAuthnMethods:   []goidc.ClientAuthnType{goidc.ClientAuthnPrivateKeyJWT},
-			PrivateKeyJWTSigAlgs: []jose.SignatureAlgorithm{jose.PS256},
-		},
-	}
-	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
-		t.Error(diff)
-	}
-}
-
-func TestWithPrivateKeyJWTAuthn_NoAlgInformed(t *testing.T) {
-	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
-	}
-
-	// When.
-	err := WithPrivateKeyJWTAuthn()(p)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	want := Provider{
-		config: &oidc.Configuration{
-			ClientAuthnMethods:   []goidc.ClientAuthnType{goidc.ClientAuthnPrivateKeyJWT},
-			PrivateKeyJWTSigAlgs: []jose.SignatureAlgorithm{jose.RS256},
-		},
-	}
-	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
-		t.Error(diff)
-	}
-}
-
-func TestWithSecretJWTAuthn(t *testing.T) {
-	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
-	}
-
-	// When.
-	err := WithSecretJWTAuthn(jose.HS384)(p)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	want := Provider{
-		config: &oidc.Configuration{
-			ClientAuthnMethods:     []goidc.ClientAuthnType{goidc.ClientAuthnSecretJWT},
-			ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS384},
-		},
-	}
-	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
-		t.Error(diff)
-	}
-}
-
-func TestWithClientSecretJWTAuthn_NoAlgInformed(t *testing.T) {
-	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
-	}
-
-	// When.
-	err := WithSecretJWTAuthn()(p)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	want := Provider{
-		config: &oidc.Configuration{
-			ClientAuthnMethods:     []goidc.ClientAuthnType{goidc.ClientAuthnSecretJWT},
-			ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
-		},
-	}
-	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
-		t.Error(diff)
-	}
-}
-
 func TestWithAssertionLifetime(t *testing.T) {
 	// Given.
 	p := Provider{
@@ -1280,78 +1131,6 @@ func TestWithAssertionLifetime(t *testing.T) {
 	want := Provider{
 		config: &oidc.Configuration{
 			AssertionLifetimeSecs: 60,
-		},
-	}
-	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
-		t.Error(diff)
-	}
-}
-
-func TestWithTLSAuthn(t *testing.T) {
-	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
-	}
-
-	// When.
-	err := WithTLSAuthn()(p)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	want := Provider{
-		config: &oidc.Configuration{
-			ClientAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnTLS},
-		},
-	}
-	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
-		t.Error(diff)
-	}
-}
-
-func TestWithSelfSignedTLSAuthn(t *testing.T) {
-	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
-	}
-
-	// When.
-	err := WithSelfSignedTLSAuthn()(p)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	want := Provider{
-		config: &oidc.Configuration{
-			ClientAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnSelfSignedTLS},
-		},
-	}
-	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
-		t.Error(diff)
-	}
-}
-
-func TestWithNoneAuthn(t *testing.T) {
-	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
-	}
-
-	// When.
-	err := WithNoneAuthn()(p)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	want := Provider{
-		config: &oidc.Configuration{
-			ClientAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnNone},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1594,7 +1373,10 @@ func TestWithIntrospection(t *testing.T) {
 	}
 
 	// When.
-	err := WithIntrospection(goidc.ClientAuthnSecretPost)(p)
+	err := WithTokenIntrospection(
+		nil,
+		goidc.ClientAuthnSecretPost,
+	)(p)
 
 	// Then.
 	if err != nil {
@@ -1603,9 +1385,8 @@ func TestWithIntrospection(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			IntrospectionIsEnabled:          true,
-			IntrospectionClientAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnSecretPost},
-			GrantTypes:                      []goidc.GrantType{goidc.GrantIntrospection},
+			TokenIntrospectionIsEnabled:    true,
+			TokenIntrospectionAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnSecretPost},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1620,7 +1401,7 @@ func TestWithTokenRevocation(t *testing.T) {
 	}
 
 	// When.
-	err := WithTokenRevocation()(p)
+	err := WithTokenRevocation(nil, goidc.ClientAuthnNone)(p)
 
 	// Then.
 	if err != nil {
@@ -1629,7 +1410,8 @@ func TestWithTokenRevocation(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			TokenRevocationIsEnabled: true,
+			TokenRevocationIsEnabled:    true,
+			TokenRevocationAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnNone},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
