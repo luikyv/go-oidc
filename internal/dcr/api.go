@@ -33,8 +33,8 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 }
 
 func handleCreate(ctx oidc.Context) {
-	var meta *goidc.ClientMetaInfo
-	if err := json.NewDecoder(ctx.Request.Body).Decode(meta); err != nil {
+	var meta goidc.ClientMetaInfo
+	if err := json.NewDecoder(ctx.Request.Body).Decode(&meta); err != nil {
 		err = goidc.Errorf(goidc.ErrorCodeInvalidRequest,
 			"could not parse the request", err)
 		ctx.WriteError(err)
@@ -42,7 +42,7 @@ func handleCreate(ctx oidc.Context) {
 	}
 
 	initialToken, _ := ctx.BearerToken()
-	resp, err := create(ctx, initialToken, meta)
+	resp, err := create(ctx, initialToken, &meta)
 	if err != nil {
 		ctx.WriteError(err)
 		return
@@ -54,8 +54,8 @@ func handleCreate(ctx oidc.Context) {
 }
 
 func handleUpdate(ctx oidc.Context) {
-	var meta *goidc.ClientMetaInfo
-	if err := json.NewDecoder(ctx.Request.Body).Decode(meta); err != nil {
+	var meta goidc.ClientMetaInfo
+	if err := json.NewDecoder(ctx.Request.Body).Decode(&meta); err != nil {
 		err = goidc.Errorf(goidc.ErrorCodeInvalidRequest,
 			"could not parse the request", err)
 		ctx.WriteError(err)
@@ -69,7 +69,7 @@ func handleUpdate(ctx oidc.Context) {
 	}
 
 	id := ctx.Request.PathValue("client_id")
-	resp, err := update(ctx, id, regToken, meta)
+	resp, err := update(ctx, id, regToken, &meta)
 	if err != nil {
 		ctx.WriteError(err)
 		return

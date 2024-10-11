@@ -53,6 +53,7 @@ func New(
 	}
 
 	p := Provider{
+		// TODO: Set this in one place. Only necessary.
 		config: &oidc.Configuration{
 			Profile: profile,
 			Host:    issuer,

@@ -33,11 +33,12 @@ func main() {
 		provider.WithPAR(),
 		provider.WithJAR(),
 		provider.WithJARM(serverKeyID),
-		provider.WithPrivateKeyJWTSignatureAlgs(jose.RS256),
 		provider.WithTokenAuthnMethods(
 			goidc.ClientAuthnSecretBasic,
 			goidc.ClientAuthnSecretPost,
+			goidc.ClientAuthnPrivateKeyJWT,
 		),
+		provider.WithPrivateKeyJWTSignatureAlgs(jose.RS256),
 		provider.WithIssuerResponseParameter(),
 		provider.WithClaimsParameter(),
 		provider.WithPKCE(goidc.CodeChallengeMethodSHA256),
