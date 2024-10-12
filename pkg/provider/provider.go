@@ -156,31 +156,31 @@ func (p Provider) setDefaults() error {
 		return errors.New("the private jwks doesn't contain any signing key")
 	}
 
-	p.config.UserDefaultSigKeyID = nonEmptyOrDefault(
+	p.config.UserDefaultSigKeyID = nonZeroOrDefault(
 		p.config.UserDefaultSigKeyID,
 		defaultSigKeyID,
 	)
-	p.config.UserSigKeyIDs = nonNilOrDefault(
+	p.config.UserSigKeyIDs = nonZeroOrDefault(
 		p.config.UserSigKeyIDs,
 		[]string{defaultSigKeyID},
 	)
-	p.config.Scopes = nonNilOrDefault(
+	p.config.Scopes = nonZeroOrDefault(
 		p.config.Scopes,
 		[]goidc.Scope{goidc.ScopeOpenID},
 	)
-	p.config.ClientManager = nonNilOrDefault(
+	p.config.ClientManager = nonZeroOrDefault(
 		p.config.ClientManager,
 		goidc.ClientManager(storage.NewClientManager()),
 	)
-	p.config.AuthnSessionManager = nonNilOrDefault(
+	p.config.AuthnSessionManager = nonZeroOrDefault(
 		p.config.AuthnSessionManager,
 		goidc.AuthnSessionManager(storage.NewAuthnSessionManager()),
 	)
-	p.config.GrantSessionManager = nonNilOrDefault(
+	p.config.GrantSessionManager = nonZeroOrDefault(
 		p.config.GrantSessionManager,
 		goidc.GrantSessionManager(storage.NewGrantSessionManager()),
 	)
-	p.config.TokenOptionsFunc = nonNilOrDefault(
+	p.config.TokenOptionsFunc = nonZeroOrDefault(
 		p.config.TokenOptionsFunc,
 		defaultTokenOptionsFunc(defaultSigKeyID),
 	)
@@ -189,11 +189,11 @@ func (p Provider) setDefaults() error {
 		goidc.ResponseModeFragment,
 		goidc.ResponseModeFormPost,
 	}
-	p.config.SubIdentifierTypes = nonNilOrDefault(
+	p.config.SubIdentifierTypes = nonZeroOrDefault(
 		p.config.SubIdentifierTypes,
 		[]goidc.SubjectIdentifierType{goidc.SubjectIdentifierPublic},
 	)
-	p.config.ClaimTypes = nonNilOrDefault(
+	p.config.ClaimTypes = nonZeroOrDefault(
 		p.config.ClaimTypes,
 		[]goidc.ClaimType{goidc.ClaimTypeNormal},
 	)
@@ -205,23 +205,23 @@ func (p Provider) setDefaults() error {
 		p.config.IDTokenLifetimeSecs,
 		defaultIDTokenLifetimeSecs,
 	)
-	p.config.EndpointWellKnown = nonEmptyOrDefault(
+	p.config.EndpointWellKnown = nonZeroOrDefault(
 		p.config.EndpointWellKnown,
 		defaultEndpointWellKnown,
 	)
-	p.config.EndpointJWKS = nonEmptyOrDefault(
+	p.config.EndpointJWKS = nonZeroOrDefault(
 		p.config.EndpointJWKS,
 		defaultEndpointJSONWebKeySet,
 	)
-	p.config.EndpointToken = nonEmptyOrDefault(
+	p.config.EndpointToken = nonZeroOrDefault(
 		p.config.EndpointToken,
 		defaultEndpointToken,
 	)
-	p.config.EndpointAuthorize = nonEmptyOrDefault(
+	p.config.EndpointAuthorize = nonZeroOrDefault(
 		p.config.EndpointAuthorize,
 		defaultEndpointAuthorize,
 	)
-	p.config.EndpointUserInfo = nonEmptyOrDefault(
+	p.config.EndpointUserInfo = nonZeroOrDefault(
 		p.config.EndpointUserInfo,
 		defaultEndpointUserInfo,
 	)
@@ -268,13 +268,13 @@ func (p Provider) setDefaults() error {
 		p.config.TokenRevocationAuthnMethods...,
 	)
 	if slices.Contains(authnMethods, goidc.ClientAuthnPrivateKeyJWT) {
-		p.config.PrivateKeyJWTSigAlgs = nonNilOrDefault(
+		p.config.PrivateKeyJWTSigAlgs = nonZeroOrDefault(
 			p.config.PrivateKeyJWTSigAlgs,
 			[]jose.SignatureAlgorithm{defaultPrivateKeyJWTSigAlg},
 		)
 	}
 	if slices.Contains(authnMethods, goidc.ClientAuthnSecretJWT) {
-		p.config.ClientSecretJWTSigAlgs = nonNilOrDefault(
+		p.config.ClientSecretJWTSigAlgs = nonZeroOrDefault(
 			p.config.ClientSecretJWTSigAlgs,
 			[]jose.SignatureAlgorithm{defaultSecretJWTSigAlg},
 		)
@@ -288,14 +288,14 @@ func (p Provider) setDefaults() error {
 	}
 
 	if p.config.DCRIsEnabled {
-		p.config.EndpointDCR = nonEmptyOrDefault(
+		p.config.EndpointDCR = nonZeroOrDefault(
 			p.config.EndpointDCR,
 			defaultEndpointDynamicClient,
 		)
 	}
 
 	if p.config.PARIsEnabled {
-		p.config.EndpointPushedAuthorization = nonEmptyOrDefault(
+		p.config.EndpointPushedAuthorization = nonZeroOrDefault(
 			p.config.EndpointPushedAuthorization,
 			defaultEndpointPushedAuthorizationRequest,
 		)
@@ -317,7 +317,7 @@ func (p Provider) setDefaults() error {
 	}
 
 	if p.config.JAREncIsEnabled {
-		p.config.JARContentEncAlgs = nonNilOrDefault(
+		p.config.JARContentEncAlgs = nonZeroOrDefault(
 			p.config.JARContentEncAlgs,
 			[]jose.ContentEncryption{jose.A128CBC_HS256},
 		)
@@ -338,11 +338,11 @@ func (p Provider) setDefaults() error {
 	}
 
 	if p.config.JARMEncIsEnabled {
-		p.config.JARMDefaultContentEncAlg = nonEmptyOrDefault(
+		p.config.JARMDefaultContentEncAlg = nonZeroOrDefault(
 			p.config.JARMDefaultContentEncAlg,
 			jose.A128CBC_HS256,
 		)
-		p.config.JARMContentEncAlgs = nonNilOrDefault(
+		p.config.JARMContentEncAlgs = nonZeroOrDefault(
 			p.config.JARMContentEncAlgs,
 			[]jose.ContentEncryption{jose.A128CBC_HS256},
 		)
@@ -360,37 +360,37 @@ func (p Provider) setDefaults() error {
 	}
 
 	if p.config.TokenIntrospectionIsEnabled {
-		p.config.EndpointIntrospection = nonEmptyOrDefault(
+		p.config.EndpointIntrospection = nonZeroOrDefault(
 			p.config.EndpointIntrospection,
 			defaultEndpointTokenIntrospection,
 		)
 		// Set the defaults token introspection authn methods to the same as for the
 		// token endpoint.
-		p.config.TokenIntrospectionAuthnMethods = nonNilOrDefault(
+		p.config.TokenIntrospectionAuthnMethods = nonZeroOrDefault(
 			p.config.TokenIntrospectionAuthnMethods,
 			p.config.TokenAuthnMethods,
 		)
 	}
 
 	if p.config.TokenRevocationIsEnabled {
-		p.config.EndpointTokenRevocation = nonEmptyOrDefault(
+		p.config.EndpointTokenRevocation = nonZeroOrDefault(
 			p.config.EndpointTokenRevocation,
 			defaultEndpointTokenRevocation,
 		)
 		// Set the defaults token revocation authn methods to the same as for the
 		// token endpoint.
-		p.config.TokenRevocationAuthnMethods = nonNilOrDefault(
+		p.config.TokenRevocationAuthnMethods = nonZeroOrDefault(
 			p.config.TokenRevocationAuthnMethods,
 			p.config.TokenAuthnMethods,
 		)
 	}
 
 	if p.config.UserEncIsEnabled {
-		p.config.UserDefaultContentEncAlg = nonEmptyOrDefault(
+		p.config.UserDefaultContentEncAlg = nonZeroOrDefault(
 			p.config.UserDefaultContentEncAlg,
 			jose.A128CBC_HS256,
 		)
-		p.config.UserContentEncAlgs = nonNilOrDefault(
+		p.config.UserContentEncAlgs = nonZeroOrDefault(
 			p.config.UserContentEncAlgs,
 			[]jose.ContentEncryption{jose.A128CBC_HS256},
 		)
@@ -414,28 +414,16 @@ func (p Provider) validate() error {
 	)
 }
 
-func nonEmptyOrDefault[T any](s1 T, s2 T) T {
-	if reflect.ValueOf(s1).String() == "" {
-		return s2
-	}
-
-	return s1
-}
-
 func nonZeroOrDefault[T any](s1 T, s2 T) T {
-	if reflect.ValueOf(s1).Int() == 0 {
+	if isNil(s1) || reflect.ValueOf(s1).IsZero() {
 		return s2
 	}
 
 	return s1
 }
 
-func nonNilOrDefault[T any](s1 T, s2 T) T {
-	if reflect.ValueOf(s1).IsNil() {
-		return s2
-	}
-
-	return s1
+func isNil(i any) bool {
+	return i == nil
 }
 
 func firstSigKeyID(jwks jose.JSONWebKeySet) (string, bool) {
