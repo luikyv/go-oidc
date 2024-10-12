@@ -2,12 +2,10 @@ package provider
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"net/http"
-	"net/url"
-	"strings"
+	"reflect"
+	"slices"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/authorize"
@@ -40,78 +38,12 @@ func New(
 	Provider,
 	error,
 ) {
-	// Use the first signature key as the default key.
-	var defaultSigKeyID string
-	for _, key := range privateJWKS.Keys {
-		if key.Use == string(goidc.KeyUsageSignature) {
-			defaultSigKeyID = key.KeyID
-			break
-		}
-	}
-	if defaultSigKeyID == "" {
-		return Provider{}, errors.New("the private jwks doesn't contain any signing key")
-	}
 
 	p := Provider{
-		// TODO: Set this in one place. Only necessary.
 		config: &oidc.Configuration{
-			Profile: profile,
-			Host:    issuer,
-
-			ClientManager:       storage.NewClientManager(),
-			AuthnSessionManager: storage.NewAuthnSessionManager(),
-			GrantSessionManager: storage.NewGrantSessionManager(),
-
-			TokenAuthnMethods:      []goidc.ClientAuthnType{goidc.ClientAuthnSecretPost},
-			PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{defaultPrivateKeyJWTSigAlg},
-			ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{defaultSecretJWTSigAlg},
-
-			Scopes:                      []goidc.Scope{goidc.ScopeOpenID},
-			TokenOptionsFunc:            defaultTokenOptionsFunc(defaultSigKeyID),
-			ShouldIssueRefreshTokenFunc: defaultShouldIssueRefreshTokenFunc(),
-			PrivateJWKS:                 privateJWKS,
-			UserDefaultSigKeyID:         defaultSigKeyID,
-			UserSigKeyIDs:               []string{defaultSigKeyID},
-			IDTokenLifetimeSecs:         defaultIDTokenLifetimeSecs,
-			GrantTypes:                  []goidc.GrantType{goidc.GrantAuthorizationCode},
-			ResponseTypes:               []goidc.ResponseType{goidc.ResponseTypeCode},
-			ResponseModes: []goidc.ResponseMode{
-				goidc.ResponseModeQuery,
-				goidc.ResponseModeFragment,
-				goidc.ResponseModeFormPost,
-			},
-			SubIdentifierTypes: []goidc.SubjectIdentifierType{
-				goidc.SubjectIdentifierPublic,
-			},
-			ClaimTypes: []goidc.ClaimType{goidc.ClaimTypeNormal},
-
-			EndpointWellKnown:           defaultEndpointWellKnown,
-			EndpointJWKS:                defaultEndpointJSONWebKeySet,
-			EndpointToken:               defaultEndpointToken,
-			EndpointAuthorize:           defaultEndpointAuthorize,
-			EndpointPushedAuthorization: defaultEndpointPushedAuthorizationRequest,
-			EndpointDCR:                 defaultEndpointDynamicClient,
-			EndpointUserInfo:            defaultEndpointUserInfo,
-			EndpointIntrospection:       defaultEndpointTokenIntrospection,
-			EndpointTokenRevocation:     defaultEndpointTokenRevocation,
-
-			AuthnSessionTimeoutSecs:  defaultAuthnSessionTimeoutSecs,
-			AssertionLifetimeSecs:    defaultJWTLifetimeSecs,
-			RefreshTokenLifetimeSecs: defaultRefreshTokenLifetimeSecs,
-			PARLifetimeSecs:          defaultPARLifetimeSecs,
-			JARLifetimeSecs:          defaultJWTLifetimeSecs,
-			JARLeewayTimeSecs:        defaultJWTLeewayTimeSecs,
-			JARMLifetimeSecs:         defaultJWTLifetimeSecs,
-			DPoPLifetimeSecs:         defaultJWTLifetimeSecs,
-			DPoPLeewayTimeSecs:       defaultJWTLeewayTimeSecs,
-
-			JARMDefaultContentEncAlg: jose.A128CBC_HS256,
-			JARMContentEncAlgs:       []jose.ContentEncryption{jose.A128CBC_HS256},
-			UserDefaultContentEncAlg: jose.A128CBC_HS256,
-			UserContentEncAlgs:       []jose.ContentEncryption{jose.A128CBC_HS256},
-			JARContentEncAlgs:        []jose.ContentEncryption{jose.A128CBC_HS256},
-
-			ClientCertFunc: defaultClientCertFunc(),
+			Profile:     profile,
+			Host:        issuer,
+			PrivateJWKS: privateJWKS,
 		},
 	}
 
@@ -121,7 +53,9 @@ func New(
 		}
 	}
 
-	p.setPostDefaults()
+	if err := p.setDefaults(); err != nil {
+		return Provider{}, err
+	}
 
 	if err := p.validate(); err != nil {
 		return Provider{}, err
@@ -159,54 +93,6 @@ func (p Provider) Run(
 		handler = middleware(handler)
 	}
 	return http.ListenAndServe(address, handler)
-}
-
-// RunTLS runs the provider on TLS mode.
-// This is intended for development purposes and must not be used for production
-// environments.
-func (p Provider) RunTLS(
-	tlsOpts TLSOptions,
-	middlewares ...goidc.MiddlewareFunc,
-) error {
-
-	mux := http.NewServeMux()
-
-	clientAuth := tls.NoClientCert
-	handler := p.Handler()
-	for _, wrapHandler := range middlewares {
-		handler = wrapHandler(handler)
-	}
-
-	hostURL, err := url.Parse(p.config.Host)
-	if err != nil {
-		return err
-	}
-	// Remove the port from the host name if any.
-	host := strings.Split(hostURL.Host, ":")[0]
-	mux.Handle(host+"/", handler)
-
-	if p.config.MTLSIsEnabled {
-		clientAuth = tls.VerifyClientCertIfGiven
-		mtlsHostURL, err := url.Parse(p.config.MTLSHost)
-		if err != nil {
-			return err
-		}
-
-		// Remove the port from the host name if any.
-		mtlsHost := strings.Split(mtlsHostURL.Host, ":")[0]
-		mux.Handle(mtlsHost+"/", handler)
-	}
-
-	server := &http.Server{
-		Addr:    tlsOpts.TLSAddress,
-		Handler: mux,
-		TLSConfig: &tls.Config{
-			ClientCAs:    tlsOpts.CaCertPool,
-			ClientAuth:   clientAuth,
-			CipherSuites: tlsOpts.CipherSuites,
-		},
-	}
-	return server.ListenAndServeTLS(tlsOpts.ServerCert, tlsOpts.ServerKey)
 }
 
 // TokenInfo retrieves details about the access token included in the request.
@@ -263,20 +149,254 @@ func (p *Provider) Client(
 	return p.config.ClientManager.Client(ctx, id)
 }
 
-func (p Provider) setPostDefaults() {
-	// Set the defaults token introspection authn methods to the same as for the
-	// token endpoint.
-	if p.config.TokenIntrospectionIsEnabled &&
-		p.config.TokenIntrospectionAuthnMethods == nil {
-		p.config.TokenIntrospectionAuthnMethods = p.config.TokenAuthnMethods
+func (p Provider) setDefaults() error {
+	// Use the first signature key as the default key.
+	defaultSigKeyID, ok := firstSigKeyID(p.config.PrivateJWKS)
+	if !ok {
+		return errors.New("the private jwks doesn't contain any signing key")
 	}
 
-	// Set the defaults token revocation authn methods to the same as for the
-	// token endpoint.
-	if p.config.TokenRevocationIsEnabled &&
-		p.config.TokenRevocationAuthnMethods == nil {
-		p.config.TokenRevocationAuthnMethods = p.config.TokenAuthnMethods
+	p.config.UserDefaultSigKeyID = nonEmptyOrDefault(
+		p.config.UserDefaultSigKeyID,
+		defaultSigKeyID,
+	)
+	p.config.UserSigKeyIDs = nonNilOrDefault(
+		p.config.UserSigKeyIDs,
+		[]string{defaultSigKeyID},
+	)
+	p.config.Scopes = nonNilOrDefault(
+		p.config.Scopes,
+		[]goidc.Scope{goidc.ScopeOpenID},
+	)
+	p.config.ClientManager = nonNilOrDefault(
+		p.config.ClientManager,
+		goidc.ClientManager(storage.NewClientManager()),
+	)
+	p.config.AuthnSessionManager = nonNilOrDefault(
+		p.config.AuthnSessionManager,
+		goidc.AuthnSessionManager(storage.NewAuthnSessionManager()),
+	)
+	p.config.GrantSessionManager = nonNilOrDefault(
+		p.config.GrantSessionManager,
+		goidc.GrantSessionManager(storage.NewGrantSessionManager()),
+	)
+	p.config.TokenOptionsFunc = nonNilOrDefault(
+		p.config.TokenOptionsFunc,
+		defaultTokenOptionsFunc(defaultSigKeyID),
+	)
+	p.config.ResponseModes = []goidc.ResponseMode{
+		goidc.ResponseModeQuery,
+		goidc.ResponseModeFragment,
+		goidc.ResponseModeFormPost,
 	}
+	p.config.SubIdentifierTypes = nonNilOrDefault(
+		p.config.SubIdentifierTypes,
+		[]goidc.SubjectIdentifierType{goidc.SubjectIdentifierPublic},
+	)
+	p.config.ClaimTypes = nonNilOrDefault(
+		p.config.ClaimTypes,
+		[]goidc.ClaimType{goidc.ClaimTypeNormal},
+	)
+	p.config.AuthnSessionTimeoutSecs = nonZeroOrDefault(
+		p.config.AuthnSessionTimeoutSecs,
+		defaultAuthnSessionTimeoutSecs,
+	)
+	p.config.IDTokenLifetimeSecs = nonZeroOrDefault(
+		p.config.IDTokenLifetimeSecs,
+		defaultIDTokenLifetimeSecs,
+	)
+	p.config.EndpointWellKnown = nonEmptyOrDefault(
+		p.config.EndpointWellKnown,
+		defaultEndpointWellKnown,
+	)
+	p.config.EndpointJWKS = nonEmptyOrDefault(
+		p.config.EndpointJWKS,
+		defaultEndpointJSONWebKeySet,
+	)
+	p.config.EndpointToken = nonEmptyOrDefault(
+		p.config.EndpointToken,
+		defaultEndpointToken,
+	)
+	p.config.EndpointAuthorize = nonEmptyOrDefault(
+		p.config.EndpointAuthorize,
+		defaultEndpointAuthorize,
+	)
+	p.config.EndpointUserInfo = nonEmptyOrDefault(
+		p.config.EndpointUserInfo,
+		defaultEndpointUserInfo,
+	)
+
+	if slices.Contains(p.config.GrantTypes, goidc.GrantAuthorizationCode) {
+		p.config.ResponseTypes = append(
+			p.config.ResponseTypes,
+			goidc.ResponseTypeCode,
+		)
+	}
+
+	if slices.Contains(p.config.GrantTypes, goidc.GrantImplicit) {
+		p.config.ResponseTypes = append(
+			p.config.ResponseTypes,
+			goidc.ResponseTypeToken,
+			goidc.ResponseTypeIDToken,
+			goidc.ResponseTypeIDTokenAndToken,
+		)
+	}
+
+	if slices.Contains(p.config.GrantTypes, goidc.GrantAuthorizationCode) &&
+		slices.Contains(p.config.GrantTypes, goidc.GrantImplicit) {
+		p.config.ResponseTypes = append(
+			p.config.ResponseTypes,
+			goidc.ResponseTypeCodeAndIDToken,
+			goidc.ResponseTypeCodeAndToken,
+			goidc.ResponseTypeCodeAndIDTokenAndToken,
+		)
+	}
+
+	if slices.Contains(p.config.GrantTypes, goidc.GrantRefreshToken) {
+		p.config.RefreshTokenLifetimeSecs = nonZeroOrDefault(
+			p.config.RefreshTokenLifetimeSecs,
+			defaultRefreshTokenLifetimeSecs,
+		)
+	}
+
+	authnMethods := append(
+		p.config.TokenAuthnMethods,
+		p.config.TokenIntrospectionAuthnMethods...,
+	)
+	authnMethods = append(
+		authnMethods,
+		p.config.TokenRevocationAuthnMethods...,
+	)
+	if slices.Contains(authnMethods, goidc.ClientAuthnPrivateKeyJWT) {
+		p.config.PrivateKeyJWTSigAlgs = nonNilOrDefault(
+			p.config.PrivateKeyJWTSigAlgs,
+			[]jose.SignatureAlgorithm{defaultPrivateKeyJWTSigAlg},
+		)
+	}
+	if slices.Contains(authnMethods, goidc.ClientAuthnSecretJWT) {
+		p.config.ClientSecretJWTSigAlgs = nonNilOrDefault(
+			p.config.ClientSecretJWTSigAlgs,
+			[]jose.SignatureAlgorithm{defaultSecretJWTSigAlg},
+		)
+	}
+	if slices.Contains(authnMethods, goidc.ClientAuthnPrivateKeyJWT) ||
+		slices.Contains(authnMethods, goidc.ClientAuthnSecretJWT) {
+		p.config.AssertionLifetimeSecs = nonZeroOrDefault(
+			p.config.AssertionLifetimeSecs,
+			defaultJWTLifetimeSecs,
+		)
+	}
+
+	if p.config.DCRIsEnabled {
+		p.config.EndpointDCR = nonEmptyOrDefault(
+			p.config.EndpointDCR,
+			defaultEndpointDynamicClient,
+		)
+	}
+
+	if p.config.PARIsEnabled {
+		p.config.EndpointPushedAuthorization = nonEmptyOrDefault(
+			p.config.EndpointPushedAuthorization,
+			defaultEndpointPushedAuthorizationRequest,
+		)
+		p.config.PARLifetimeSecs = nonZeroOrDefault(
+			p.config.PARLifetimeSecs,
+			defaultPARLifetimeSecs,
+		)
+	}
+
+	if p.config.JARIsEnabled {
+		p.config.JARLifetimeSecs = nonZeroOrDefault(
+			p.config.JARLifetimeSecs,
+			defaultJWTLifetimeSecs,
+		)
+		p.config.JARLeewayTimeSecs = nonZeroOrDefault(
+			p.config.JARLeewayTimeSecs,
+			defaultJWTLeewayTimeSecs,
+		)
+	}
+
+	if p.config.JAREncIsEnabled {
+		p.config.JARContentEncAlgs = nonNilOrDefault(
+			p.config.JARContentEncAlgs,
+			[]jose.ContentEncryption{jose.A128CBC_HS256},
+		)
+	}
+
+	if p.config.JARMIsEnabled {
+		p.config.JARMLifetimeSecs = nonZeroOrDefault(
+			p.config.JARMLifetimeSecs,
+			defaultJWTLifetimeSecs,
+		)
+		p.config.ResponseModes = append(
+			p.config.ResponseModes,
+			goidc.ResponseModeJWT,
+			goidc.ResponseModeQueryJWT,
+			goidc.ResponseModeFragmentJWT,
+			goidc.ResponseModeFormPostJWT,
+		)
+	}
+
+	if p.config.JARMEncIsEnabled {
+		p.config.JARMDefaultContentEncAlg = nonEmptyOrDefault(
+			p.config.JARMDefaultContentEncAlg,
+			jose.A128CBC_HS256,
+		)
+		p.config.JARMContentEncAlgs = nonNilOrDefault(
+			p.config.JARMContentEncAlgs,
+			[]jose.ContentEncryption{jose.A128CBC_HS256},
+		)
+	}
+
+	if p.config.DPoPIsEnabled {
+		p.config.DPoPLifetimeSecs = nonZeroOrDefault(
+			p.config.DPoPLifetimeSecs,
+			defaultJWTLifetimeSecs,
+		)
+		p.config.DPoPLeewayTimeSecs = nonZeroOrDefault(
+			p.config.DPoPLeewayTimeSecs,
+			defaultJWTLeewayTimeSecs,
+		)
+	}
+
+	if p.config.TokenIntrospectionIsEnabled {
+		p.config.EndpointIntrospection = nonEmptyOrDefault(
+			p.config.EndpointIntrospection,
+			defaultEndpointTokenIntrospection,
+		)
+		// Set the defaults token introspection authn methods to the same as for the
+		// token endpoint.
+		p.config.TokenIntrospectionAuthnMethods = nonNilOrDefault(
+			p.config.TokenIntrospectionAuthnMethods,
+			p.config.TokenAuthnMethods,
+		)
+	}
+
+	if p.config.TokenRevocationIsEnabled {
+		p.config.EndpointTokenRevocation = nonEmptyOrDefault(
+			p.config.EndpointTokenRevocation,
+			defaultEndpointTokenRevocation,
+		)
+		// Set the defaults token revocation authn methods to the same as for the
+		// token endpoint.
+		p.config.TokenRevocationAuthnMethods = nonNilOrDefault(
+			p.config.TokenRevocationAuthnMethods,
+			p.config.TokenAuthnMethods,
+		)
+	}
+
+	if p.config.UserEncIsEnabled {
+		p.config.UserDefaultContentEncAlg = nonEmptyOrDefault(
+			p.config.UserDefaultContentEncAlg,
+			jose.A128CBC_HS256,
+		)
+		p.config.UserContentEncAlgs = nonNilOrDefault(
+			p.config.UserContentEncAlgs,
+			[]jose.ContentEncryption{jose.A128CBC_HS256},
+		)
+	}
+
+	return nil
 }
 
 func (p Provider) validate() error {
@@ -294,10 +414,36 @@ func (p Provider) validate() error {
 	)
 }
 
-type TLSOptions struct {
-	TLSAddress   string
-	ServerCert   string
-	ServerKey    string
-	CipherSuites []uint16
-	CaCertPool   *x509.CertPool
+func nonEmptyOrDefault[T any](s1 T, s2 T) T {
+	if reflect.ValueOf(s1).String() == "" {
+		return s2
+	}
+
+	return s1
+}
+
+func nonZeroOrDefault[T any](s1 T, s2 T) T {
+	if reflect.ValueOf(s1).Int() == 0 {
+		return s2
+	}
+
+	return s1
+}
+
+func nonNilOrDefault[T any](s1 T, s2 T) T {
+	if reflect.ValueOf(s1).IsNil() {
+		return s2
+	}
+
+	return s1
+}
+
+func firstSigKeyID(jwks jose.JSONWebKeySet) (string, bool) {
+	for _, key := range jwks.Keys {
+		if key.KeyID != "" && key.Use == string(goidc.KeyUsageSignature) {
+			return key.KeyID, true
+		}
+	}
+	return "", false
+
 }

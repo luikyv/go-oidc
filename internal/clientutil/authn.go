@@ -94,11 +94,15 @@ func authenticate(
 	}
 }
 
+// authnMethod returns the appropriate client authentication method based on
+// the provided authentication context.
+// If the context-specific method is defined, it will be used. Otherwise, the
+// method for the token endpoint is returned.
 func authnMethod(client *goidc.Client, authnCtx AuthnContext) goidc.ClientAuthnType {
-	switch authnCtx {
-	case TokenRevocationAuthnContext:
+	switch {
+	case authnCtx == TokenRevocationAuthnContext && client.TokenRevocationAuthnMethod != "":
 		return client.TokenRevocationAuthnMethod
-	case TokenIntrospectionAuthnContext:
+	case authnCtx == TokenIntrospectionAuthnContext && client.TokenIntrospectionAuthnMethod != "":
 		return client.TokenIntrospectionAuthnMethod
 	default:
 		return client.TokenAuthnMethod
