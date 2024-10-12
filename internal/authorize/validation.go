@@ -138,7 +138,7 @@ func validatePushedRequest(
 	c *goidc.Client,
 ) error {
 
-	if c.AuthnMethod == goidc.ClientAuthnNone {
+	if c.TokenAuthnMethod == goidc.ClientAuthnNone {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
 			"invalid client authentication method")
 	}
@@ -412,7 +412,7 @@ func validatePKCE(
 	params goidc.AuthorizationParameters,
 	c *goidc.Client,
 ) error {
-	if ctx.PKCEIsEnabled && c.AuthnMethod == goidc.ClientAuthnNone && params.CodeChallenge == "" {
+	if ctx.PKCEIsEnabled && c.TokenAuthnMethod == goidc.ClientAuthnNone && params.CodeChallenge == "" {
 		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
 			"pkce is required for public clients", params)
 	}

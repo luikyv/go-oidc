@@ -67,6 +67,9 @@ type GrantInfo struct {
 	// ClientCertThumbprint is the thumbprint of the certificate informed by the
 	// client when generating a token.
 	ClientCertThumbprint string `json:"certificate_thumbprint,omitempty"`
+
+	// Store allows storing information in the grant session.
+	Store map[string]any `json:"store"`
 }
 
 func (g *GrantSession) IsExpired() bool {

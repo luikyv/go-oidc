@@ -24,8 +24,8 @@ func oidcConfig(ctx oidc.Context) openIDConfiguration {
 		IDTokenSigAlgs:               ctx.UserInfoSigAlgs(),
 		UserInfoSigAlgs:              ctx.UserInfoSigAlgs(),
 		Scopes:                       scopes,
-		ClientAuthnMethods:           ctx.ClientAuthnMethods,
-		TokenEndpointClientSigAlgs:   ctx.ClientAuthnSigAlgs(),
+		TokenAuthnMethods:            ctx.TokenAuthnMethods,
+		TokenAuthnSigAlgs:            ctx.TokenAuthnSigAlgs(),
 		IssuerResponseParamIsEnabled: ctx.IssuerRespParamIsEnabled,
 		ClaimsParamIsEnabled:         ctx.ClaimsParamIsEnabled,
 		AuthDetailsIsEnabled:         ctx.AuthDetailsIsEnabled,
@@ -65,16 +65,16 @@ func oidcConfig(ctx oidc.Context) openIDConfiguration {
 		config.DPoPSigAlgs = ctx.DPoPSigAlgs
 	}
 
-	if ctx.IntrospectionIsEnabled {
-		config.IntrospectionEndpoint = ctx.BaseURL() + ctx.EndpointIntrospection
-		config.IntrospectionEndpointClientAuthnMethods = ctx.IntrospectionClientAuthnMethods
-		config.IntrospectionEndpointClientSigAlgs = ctx.IntrospectionClientAuthnSigAlgs()
+	if ctx.TokenIntrospectionIsEnabled {
+		config.TokenIntrospectionEndpoint = ctx.BaseURL() + ctx.EndpointIntrospection
+		config.TokenIntrospectionAuthnMethods = ctx.TokenIntrospectionAuthnMethods
+		config.TokenIntrospectionAuthnSigAlgs = ctx.TokenIntrospectionAuthnSigAlgs()
 	}
 
 	if ctx.TokenRevocationIsEnabled {
 		config.TokenRevocationEndpoint = ctx.BaseURL() + ctx.EndpointTokenRevocation
-		config.TokenRevocationClientAuthnMethods = ctx.ClientAuthnMethods
-		config.TokenRevocationClientSigAlgs = ctx.ClientAuthnSigAlgs()
+		config.TokenRevocationAuthnMethods = ctx.TokenRevocationAuthnMethods
+		config.TokenRevocationAuthnSigAlgs = ctx.TokenRevocationAuthnSigAlgs()
 	}
 
 	if ctx.MTLSIsEnabled {
@@ -93,8 +93,8 @@ func oidcConfig(ctx oidc.Context) openIDConfiguration {
 			config.MTLSConfig.ClientRegistrationEndpoint = ctx.MTLSBaseURL() + ctx.EndpointDCR
 		}
 
-		if ctx.IntrospectionIsEnabled {
-			config.IntrospectionEndpoint = ctx.MTLSBaseURL() + ctx.EndpointIntrospection
+		if ctx.TokenIntrospectionIsEnabled {
+			config.TokenIntrospectionEndpoint = ctx.MTLSBaseURL() + ctx.EndpointIntrospection
 		}
 
 		if ctx.TokenRevocationIsEnabled {

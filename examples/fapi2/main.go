@@ -3,8 +3,11 @@ package main
 import (
 	"crypto/tls"
 	"log"
+	"net/http"
+	"net/url"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/examples/authutil"
@@ -39,24 +42,26 @@ func main() {
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithUserInfoSignatureKeyIDs(serverKeyID),
 		provider.WithPARRequired(),
-		provider.WithPARLifetimeSecs(10),
-		provider.WithMTLS(authutil.MTLSHost),
+		provider.WithPARLifetime(10),
+		provider.WithMTLS(authutil.MTLSHost, authutil.ClientCertFunc),
 		provider.WithJAR(jose.PS256),
 		provider.WithJARM(serverKeyID),
-		provider.WithTLSAuthn(),
-		provider.WithPrivateKeyJWTAuthn(jose.PS256),
+		provider.WithTokenAuthnMethods(
+			goidc.ClientAuthnPrivateKeyJWT,
+			goidc.ClientAuthnTLS,
+		),
+		provider.WithPrivateKeyJWTSignatureAlgs(jose.PS256),
 		provider.WithIssuerResponseParameter(),
 		provider.WithClaimsParameter(),
 		provider.WithPKCERequired(goidc.CodeChallengeMethodSHA256),
-		provider.WithRefreshTokenGrant(),
-		provider.WithShouldIssueRefreshTokenFunc(authutil.IssueRefreshToken),
-		provider.WithRefreshTokenLifetimeSecs(6000),
+		provider.WithAuthorizationCodeGrant(),
+		provider.WithRefreshTokenGrant(authutil.IssueRefreshToken),
+		provider.WithRefreshTokenLifetime(6000),
 		provider.WithTLSCertTokenBinding(),
 		provider.WithDPoP(jose.PS256, jose.ES256),
 		provider.WithTokenBindingRequired(),
 		provider.WithClaims(goidc.ClaimEmail, goidc.ClaimEmailVerified),
-		provider.WithACRs(authutil.ACRs...),
-		provider.WithDCR(authutil.DCRFunc),
+		provider.WithACRs(authutil.ACRs[0], authutil.ACRs[1:]...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(serverKeyID)),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithPolicy(authutil.Policy(templatesDirPath)),
@@ -72,20 +77,36 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Set up the server.
+	mux := http.NewServeMux()
+	handler := op.Handler()
+
+	hostURL, _ := url.Parse(authutil.Issuer)
+	// Remove the port from the host name if any.
+	host := strings.Split(hostURL.Host, ":")[0]
+	mux.Handle(host+"/", handler)
+
+	mtlsHostURL, _ := url.Parse(authutil.MTLSHost)
+	// Remove the port from the host name if any.
+	mtlsHost := strings.Split(mtlsHostURL.Host, ":")[0]
+	mux.Handle(mtlsHost+"/", authutil.ClientCertMiddleware(handler))
+
 	caPool := authutil.ClientCACertPool(clientOneCertFilePath, clientTwoCertFilePath)
-	tlsOpts := provider.TLSOptions{
-		TLSAddress: authutil.Port,
-		ServerCert: serverCertFilePath,
-		ServerKey:  serverCertKeyFilePath,
-		CaCertPool: caPool,
-		CipherSuites: []uint16{
-			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+	server := &http.Server{
+		Addr:    authutil.Port,
+		Handler: mux,
+		TLSConfig: &tls.Config{
+			ClientCAs:  caPool,
+			ClientAuth: tls.VerifyClientCertIfGiven,
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			},
 		},
 	}
-	if err := op.RunTLS(tlsOpts, goidc.ClientCertMiddleware); err != nil {
+	if err := server.ListenAndServeTLS(serverCertFilePath, serverCertKeyFilePath); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/x509"
+	"fmt"
 	"slices"
 	"time"
 
@@ -26,12 +27,21 @@ const (
 	assertionTypeFormPostParam = "client_assertion_type"
 )
 
+type AuthnContext string
+
+const (
+	TokenAuthnContext              AuthnContext = "token"
+	TokenIntrospectionAuthnContext AuthnContext = "token_introspection"
+	TokenRevocationAuthnContext    AuthnContext = "token_revocation"
+)
+
 // Authenticated fetches a client associated to the request and returns it
 // if the client is authenticated according to its authentication method.
 // This function always returns in case of error an instance of [goidc.Error]
 // with error code as [goidc.ErrorCodeInvalidClient].
 func Authenticated(
 	ctx oidc.Context,
+	authnCtx AuthnContext,
 ) (
 	*goidc.Client,
 	error,
@@ -39,7 +49,7 @@ func Authenticated(
 	id, err := extractID(ctx)
 	if err != nil {
 		return nil, goidc.Errorf(goidc.ErrorCodeInvalidClient,
-			"could not authenticate the client", err)
+			"invalid client", err)
 	}
 
 	client, err := ctx.Client(id)
@@ -48,7 +58,7 @@ func Authenticated(
 			"client not found", err)
 	}
 
-	if err := authenticate(ctx, client); err != nil {
+	if err := authenticate(ctx, client, authnCtx); err != nil {
 		return nil, goidc.Errorf(goidc.ErrorCodeInvalidClient,
 			"could not authenticate the client", err)
 	}
@@ -59,8 +69,11 @@ func Authenticated(
 func authenticate(
 	ctx oidc.Context,
 	client *goidc.Client,
+	authnCtx AuthnContext,
 ) error {
-	switch client.AuthnMethod {
+
+	method := authnMethod(client, authnCtx)
+	switch method {
 	case goidc.ClientAuthnNone:
 		return nil
 	case goidc.ClientAuthnSecretPost:
@@ -76,7 +89,23 @@ func authenticate(
 	case goidc.ClientAuthnTLS:
 		return authenticateTLSCert(ctx, client)
 	default:
-		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid authentication method")
+		return goidc.NewError(goidc.ErrorCodeInvalidClient,
+			fmt.Sprintf("invalid authentication method for %s request", method))
+	}
+}
+
+// authnMethod returns the appropriate client authentication method based on
+// the provided authentication context.
+// If the context-specific method is defined, it will be used. Otherwise, the
+// method for the token endpoint is returned.
+func authnMethod(client *goidc.Client, authnCtx AuthnContext) goidc.ClientAuthnType {
+	switch {
+	case authnCtx == TokenRevocationAuthnContext && client.TokenRevocationAuthnMethod != "":
+		return client.TokenRevocationAuthnMethod
+	case authnCtx == TokenIntrospectionAuthnContext && client.TokenIntrospectionAuthnMethod != "":
+		return client.TokenIntrospectionAuthnMethod
+	default:
+		return client.TokenAuthnMethod
 	}
 }
 
@@ -135,8 +164,8 @@ func authenticatePrivateKeyJWT(
 	}
 
 	sigAlgs := ctx.PrivateKeyJWTSigAlgs
-	if c.AuthnSigAlg != "" {
-		sigAlgs = []jose.SignatureAlgorithm{c.AuthnSigAlg}
+	if c.TokenAuthnSigAlg != "" {
+		sigAlgs = []jose.SignatureAlgorithm{c.TokenAuthnSigAlg}
 	}
 	parsedAssertion, err := jwt.ParseSigned(assertion, sigAlgs)
 	if err != nil {
@@ -164,7 +193,14 @@ func authenticatePrivateKeyJWT(
 	return areClaimsValid(ctx, c, claims)
 }
 
-func jwkMatchingHeader(ctx oidc.Context, c *goidc.Client, header jose.Header) (jose.JSONWebKey, error) {
+func jwkMatchingHeader(
+	ctx oidc.Context,
+	c *goidc.Client,
+	header jose.Header,
+) (
+	jose.JSONWebKey,
+	error,
+) {
 	if header.KeyID != "" {
 		jwk, err := JWKByKeyID(ctx, c, header.KeyID)
 		if err != nil {
@@ -192,8 +228,8 @@ func authenticateSecretJWT(
 	}
 
 	sigAlgs := ctx.ClientSecretJWTSigAlgs
-	if c.AuthnSigAlg != "" {
-		sigAlgs = []jose.SignatureAlgorithm{c.AuthnSigAlg}
+	if c.TokenAuthnSigAlg != "" {
+		sigAlgs = []jose.SignatureAlgorithm{c.TokenAuthnSigAlg}
 	}
 	parsedAssertion, err := jwt.ParseSigned(assertion, sigAlgs)
 	if err != nil {
@@ -371,15 +407,19 @@ func extractID(
 	assertion := ctx.Request.PostFormValue(assertionFormPostParam)
 	if assertion != "" {
 		assertionID, err := assertionClientID(assertion,
-			ctx.ClientAuthnSigAlgs())
+			ctx.TokenAuthnSigAlgs())
 		if err != nil {
 			return "", err
 		}
 		ids = append(ids, assertionID)
 	}
 
+	if len(ids) == 0 {
+		return "", ErrClientNotIdentified
+	}
+
 	// All the client IDs present must be equal.
-	if len(ids) == 0 || !allEquals(ids) {
+	if !allEquals(ids) {
 		return "", goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client id")
 	}
 

@@ -12,7 +12,7 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 		oidc.Handler(config, handleCreate),
 	)
 
-	if config.IntrospectionIsEnabled {
+	if config.TokenIntrospectionIsEnabled {
 		router.HandleFunc(
 			"POST "+config.EndpointPrefix+config.EndpointIntrospection,
 			oidc.Handler(config, handleIntrospection),

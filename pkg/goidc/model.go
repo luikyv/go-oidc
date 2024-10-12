@@ -31,9 +31,7 @@ const (
 	GrantAuthorizationCode GrantType = "authorization_code"
 	GrantRefreshToken      GrantType = "refresh_token"
 	GrantImplicit          GrantType = "implicit"
-	// GrantIntrospection is a non standard grant type defined here to indicate
-	// when a client is able to introspect tokens.
-	GrantIntrospection GrantType = "urn:goidc:oauth2:grant_type:token_intropection"
+	GrantJWTBearer         GrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 )
 
 type ResponseType string
@@ -159,11 +157,6 @@ const (
 
 const (
 	HeaderDPoP string = "DPoP"
-	// HeaderClientCert is the header used to transmit a client
-	// certificate that was validated by a trusted source.
-	// The value in this header is expected to be the URL encoding of the
-	// client's certificate in PEM format.
-	HeaderClientCert string = "X-Client-Cert"
 )
 
 type AuthnStatus string
@@ -250,6 +243,8 @@ type MiddlewareFunc func(next http.Handler) http.Handler
 // It can be used to modify the client and perform custom validations.
 type HandleDynamicClientFunc func(*http.Request, *ClientMetaInfo) error
 
+type ValidateInitialAccessTokenFunc func(*http.Request, string) error
+
 // RenderErrorFunc defines a function that will be called when errors
 // during the authorization request cannot be handled.
 type RenderErrorFunc func(http.ResponseWriter, *http.Request, error) error
@@ -317,7 +312,7 @@ type ShouldIssueRefreshTokenFunc func(*Client, GrantInfo) bool
 
 // TokenOptionsFunc defines a function that returns token configuration and is
 // executed when issuing access tokens.
-type TokenOptionsFunc func(*Client, GrantInfo) TokenOptions
+type TokenOptionsFunc func(GrantInfo) TokenOptions
 
 // TokenOptions defines a template for generating access tokens.
 type TokenOptions struct {
@@ -580,3 +575,18 @@ func (d AuthorizationDetail) string(key string) string {
 
 	return s
 }
+
+type HandleJWTBearerGrantAssertionFunc func(
+	r *http.Request,
+	assertion string,
+) (
+	JWTBearerGrantInfo,
+	error,
+)
+
+type JWTBearerGrantInfo struct {
+	Subject string
+	Store   map[string]any
+}
+
+type IsClientAllowedFunc func(*Client) bool

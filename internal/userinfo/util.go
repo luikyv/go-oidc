@@ -79,7 +79,7 @@ func userInfoResponse(
 
 	// If the client doesn't require the user info to be encrypted,
 	// we'll just return the claims as a signed JWT.
-	if c.UserInfoKeyEncAlg == "" {
+	if !ctx.UserEncIsEnabled || c.UserInfoKeyEncAlg == "" {
 		resp.jwtClaims = jwtUserInfoClaims
 		return resp, nil
 	}
@@ -100,7 +100,12 @@ func signUserInfoClaims(
 	string,
 	error,
 ) {
-	jwk := ctx.UserInfoSigKey(c)
+	jwk, ok := ctx.UserInfoSigKeyForClient(c)
+	if !ok {
+		return "", goidc.NewError(goidc.ErrorCodeInvalidRequest,
+			"the user info signing algorithm defined for the client is not available")
+	}
+
 	jws, err := jwtutil.Sign(claims, jwk,
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
 	if err != nil {
@@ -125,7 +130,11 @@ func encryptUserInfoJWT(
 			"could not find a jwk to encrypt the user info response", err)
 	}
 
-	userInfoJWE, err := jwtutil.Encrypt(userInfoJWT, jwk, c.UserInfoContentEncAlg)
+	contentEncAlg := c.UserInfoContentEncAlg
+	if contentEncAlg == "" {
+		contentEncAlg = ctx.UserDefaultContentEncAlg
+	}
+	userInfoJWE, err := jwtutil.Encrypt(userInfoJWT, jwk, contentEncAlg)
 	if err != nil {
 		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not encrypt the user info response", err)

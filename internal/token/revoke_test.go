@@ -48,7 +48,7 @@ func TestRevoke_RefreshToken(t *testing.T) {
 	// Given.
 	ctx, client := setUpRevocation(t)
 
-	refreshToken, _ := strutil.Random(goidc.RefreshTokenLength)
+	refreshToken := strutil.Random(goidc.RefreshTokenLength)
 	now := timeutil.TimestampNow()
 	grantSession := &goidc.GrantSession{
 		RefreshToken:       refreshToken,
@@ -140,7 +140,13 @@ func setUpRevocation(t *testing.T) (ctx oidc.Context, client *goidc.Client) {
 	t.Helper()
 
 	ctx = oidctest.NewContext(t)
+	ctx.TokenRevocationIsEnabled = true
+	ctx.IsClientAllowedTokenRevocationFunc = func(c *goidc.Client) bool {
+		return true
+	}
+
 	client, secret := oidctest.NewClient(t)
+	client.TokenRevocationAuthnMethod = goidc.ClientAuthnSecretPost
 	_ = ctx.SaveClient(client)
 
 	ctx.Request.PostForm = map[string][]string{

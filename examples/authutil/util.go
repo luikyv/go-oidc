@@ -7,12 +7,14 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"html/template"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -24,9 +26,10 @@ import (
 )
 
 const (
-	Port     string = ":8445"
-	Issuer   string = "https://auth.localhost" + Port
-	MTLSHost string = "https://matls-auth.localhost" + Port
+	Port             string = ":8445"
+	Issuer           string = "https://auth.localhost" + Port
+	MTLSHost         string = "https://matls-auth.localhost" + Port
+	HeaderClientCert string = "X-Client-Cert"
 )
 
 var (
@@ -57,7 +60,7 @@ type authnPage struct {
 
 func ClientMTLS(id, cn, jwksFilepath string) *goidc.Client {
 	client := Client(id, jwksFilepath)
-	client.AuthnMethod = goidc.ClientAuthnTLS
+	client.TokenAuthnMethod = goidc.ClientAuthnTLS
 	client.TLSSubDistinguishedName = "CN=" + cn
 
 	return client
@@ -65,7 +68,7 @@ func ClientMTLS(id, cn, jwksFilepath string) *goidc.Client {
 
 func ClientPrivateKeyJWT(id, jwksFilepath string) *goidc.Client {
 	client := Client(id, jwksFilepath)
-	client.AuthnMethod = goidc.ClientAuthnPrivateKeyJWT
+	client.TokenAuthnMethod = goidc.ClientAuthnPrivateKeyJWT
 	return client
 }
 
@@ -161,11 +164,40 @@ func DCRFunc(r *http.Request, clientInfo *goidc.ClientMetaInfo) error {
 	return nil
 }
 
+func ValidateInitialTokenFunc(r *http.Request, s string) error {
+	return nil
+}
+
 func TokenOptionsFunc(keyID string) goidc.TokenOptionsFunc {
-	return func(client *goidc.Client, grantInfo goidc.GrantInfo) goidc.TokenOptions {
+	return func(grantInfo goidc.GrantInfo) goidc.TokenOptions {
 		opts := goidc.NewJWTTokenOptions(keyID, 600)
 		return opts
 	}
+}
+
+func ClientCertFunc(r *http.Request) (*x509.Certificate, error) {
+	rawClientCert := r.Header.Get(HeaderClientCert)
+	if rawClientCert == "" {
+		return nil, errors.New("the client certificate was not informed")
+	}
+
+	// Apply URL decoding.
+	rawClientCert, err := url.QueryUnescape(rawClientCert)
+	if err != nil {
+		return nil, fmt.Errorf("could not url decode the client certificate: %w", err)
+	}
+
+	clientCertPEM, _ := pem.Decode([]byte(rawClientCert))
+	if clientCertPEM == nil {
+		return nil, errors.New("could not decode the client certificate")
+	}
+
+	clientCert, err := x509.ParseCertificate(clientCertPEM.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse the client certificate: %w", err)
+	}
+
+	return clientCert, nil
 }
 
 func IssueRefreshToken(client *goidc.Client, grantInfo goidc.GrantInfo) bool {
@@ -391,4 +423,29 @@ func CheckJTIFunc() goidc.CheckJTIFunc {
 		jtiStore[jti] = struct{}{}
 		return nil
 	}
+}
+
+func ClientCertMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		clientCerts := r.TLS.PeerCertificates
+		if len(clientCerts) == 0 {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		pemBlock := &pem.Block{
+			Type:  "CERTIFICATE",
+			Bytes: clientCerts[0].Raw,
+		}
+		// Convert the PEM block to a string
+		pemBytes := pem.EncodeToMemory(pemBlock)
+
+		// URL encode the PEM string
+		encodedPem := url.QueryEscape(string(pemBytes))
+
+		// Transmit the client certificate in a header.
+		r.Header.Set(HeaderClientCert, encodedPem)
+
+		next.ServeHTTP(w, r)
+	})
 }

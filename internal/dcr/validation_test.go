@@ -12,228 +12,210 @@ import (
 func TestValidateRequest(t *testing.T) {
 	testCases := []struct {
 		name                string
-		modifiedClientFunc  func(goidc.Client) *goidc.Client
-		modifiedContextFunc func(oidc.Context) oidc.Context
+		modifiedClientFunc  func(*goidc.Client)
+		modifiedContextFunc func(oidc.Context)
 		shouldBeValid       bool
 	}{
 		{
 			"valid_client",
-			func(c goidc.Client) *goidc.Client { return &c },
-			func(ctx oidc.Context) oidc.Context { return ctx },
+			func(c *goidc.Client) {},
+			func(ctx oidc.Context) {},
 			true,
 		},
 		{
 			"invalid_authn_method",
-			func(c goidc.Client) *goidc.Client {
-				c.AuthnMethod = "invalid_authn"
-				return &c
+			func(c *goidc.Client) {
+				c.TokenAuthnMethod = "invalid_authn"
 			},
-			func(ctx oidc.Context) oidc.Context { return ctx },
+			func(ctx oidc.Context) {},
 			false,
 		},
 		{
 			"invalid_scope",
-			func(c goidc.Client) *goidc.Client {
+			func(c *goidc.Client) {
 				c.ScopeIDs = "invalid_scope_id"
-				return &c
 			},
-			func(ctx oidc.Context) oidc.Context { return ctx },
+			func(ctx oidc.Context) {},
 			false,
 		},
 		{
 			"invalid_private_key_jwt_sig_alg",
-			func(c goidc.Client) *goidc.Client {
-				c.AuthnMethod = goidc.ClientAuthnPrivateKeyJWT
-				c.AuthnSigAlg = "invalid_sig_alg"
-				return &c
+			func(c *goidc.Client) {
+				c.TokenAuthnMethod = goidc.ClientAuthnPrivateKeyJWT
+				c.TokenAuthnSigAlg = "invalid_sig_alg"
 			},
-			func(ctx oidc.Context) oidc.Context { return ctx },
+			func(ctx oidc.Context) {},
 			false,
 		},
 		{
 			"jwks_jwks_uri_is_required_for_private_key_jwt",
-			func(c goidc.Client) *goidc.Client {
-				c.AuthnMethod = goidc.ClientAuthnPrivateKeyJWT
+			func(c *goidc.Client) {
+				c.TokenAuthnMethod = goidc.ClientAuthnPrivateKeyJWT
 				c.PublicJWKS = nil
 				c.PublicJWKSURI = ""
-				return &c
 			},
-			func(ctx oidc.Context) oidc.Context { return ctx },
+			func(ctx oidc.Context) {},
 			false,
 		},
 		{
 			"jwks_jwks_uri_is_required_for_self_signed_tls",
-			func(c goidc.Client) *goidc.Client {
-				c.AuthnMethod = goidc.ClientAuthnSelfSignedTLS
+			func(c *goidc.Client) {
+				c.TokenAuthnMethod = goidc.ClientAuthnSelfSignedTLS
 				c.PublicJWKS = nil
 				c.PublicJWKSURI = ""
-				return &c
 			},
-			func(ctx oidc.Context) oidc.Context { return ctx },
+			func(ctx oidc.Context) {},
 			false,
 		},
 		{
 			"invalid_secret_jwt_sig_alg",
-			func(c goidc.Client) *goidc.Client {
-				c.AuthnMethod = goidc.ClientAuthnSecretJWT
-				c.AuthnSigAlg = "invalid_sig_alg"
-				return &c
+			func(c *goidc.Client) {
+				c.TokenAuthnMethod = goidc.ClientAuthnSecretJWT
+				c.TokenAuthnSigAlg = "invalid_sig_alg"
 			},
-			func(ctx oidc.Context) oidc.Context { return ctx },
+			func(ctx oidc.Context) {},
 			false,
 		},
 		{
 			"valid_tls_authn",
-			func(c goidc.Client) *goidc.Client {
-				c.AuthnMethod = goidc.ClientAuthnTLS
+			func(c *goidc.Client) {
+				c.TokenAuthnMethod = goidc.ClientAuthnTLS
 				c.TLSSubDistinguishedName = "example"
-				return &c
 			},
-			func(ctx oidc.Context) oidc.Context { return ctx },
+			func(ctx oidc.Context) {},
 			true,
 		},
 		{
 			"no_sub_identifier_for_tls_authn",
-			func(c goidc.Client) *goidc.Client {
-				c.AuthnMethod = goidc.ClientAuthnTLS
-				return &c
+			func(c *goidc.Client) {
+				c.TokenAuthnMethod = goidc.ClientAuthnTLS
 			},
-			func(ctx oidc.Context) oidc.Context { return ctx },
+			func(ctx oidc.Context) {},
 			false,
 		},
 		{
 			"more_than_one_sub_identifier_for_tls_authn",
-			func(c goidc.Client) *goidc.Client {
-				c.AuthnMethod = goidc.ClientAuthnTLS
+			func(c *goidc.Client) {
+				c.TokenAuthnMethod = goidc.ClientAuthnTLS
 				c.TLSSubDistinguishedName = "example"
 				c.TLSSubAlternativeName = "example"
-				return &c
+
 			},
-			func(ctx oidc.Context) oidc.Context { return ctx },
+			func(ctx oidc.Context) {},
 			false,
 		},
 		{
 			"invalid_grant_type",
-			func(c goidc.Client) *goidc.Client {
+			func(c *goidc.Client) {
 				c.GrantTypes = append(c.GrantTypes, "invalid_grant")
-				return &c
 			},
-			func(ctx oidc.Context) oidc.Context { return ctx },
+			func(ctx oidc.Context) {},
 			false,
 		},
 		{
 			"none_authn_invalid_for_client_credentials",
-			func(c goidc.Client) *goidc.Client {
-				c.AuthnMethod = goidc.ClientAuthnNone
+			func(c *goidc.Client) {
+				c.TokenAuthnMethod = goidc.ClientAuthnNone
 				c.GrantTypes = append(c.GrantTypes, goidc.GrantClientCredentials)
-				return &c
 			},
-			func(ctx oidc.Context) oidc.Context { return ctx },
+			func(ctx oidc.Context) {},
 			false,
 		},
 		{
 			"invalid_authn_for_introspection",
-			func(c goidc.Client) *goidc.Client {
-				c.AuthnMethod = goidc.ClientAuthnSecretPost
-				c.GrantTypes = append(c.GrantTypes, goidc.GrantIntrospection)
-				return &c
+			func(c *goidc.Client) {
+				c.TokenIntrospectionAuthnMethod = goidc.ClientAuthnSecretPost
 			},
-			func(ctx oidc.Context) oidc.Context {
-				ctx.IntrospectionClientAuthnMethods = []goidc.ClientAuthnType{
+			func(ctx oidc.Context) {
+				ctx.TokenIntrospectionAuthnMethods = []goidc.ClientAuthnType{
 					goidc.ClientAuthnSecretBasic,
 				}
-				return ctx
 			},
 			false,
 		},
 		{
 			"invalid_redirect_uri",
-			func(c goidc.Client) *goidc.Client {
+			func(c *goidc.Client) {
 				c.RedirectURIs = append(c.RedirectURIs, "invalid")
-				return &c
+
 			},
-			func(ctx oidc.Context) oidc.Context { return ctx },
+			func(ctx oidc.Context) {},
 			false,
 		},
 		{
 			"redirect_uri_with_fragment",
-			func(c goidc.Client) *goidc.Client {
+			func(c *goidc.Client) {
 				c.RedirectURIs = append(c.RedirectURIs, "https://example.com?param=value#fragment")
-				return &c
+
 			},
-			func(ctx oidc.Context) oidc.Context { return ctx },
+			func(ctx oidc.Context) {},
 			false,
 		},
 		{
 			"invalid_response_type",
-			func(c goidc.Client) *goidc.Client {
+			func(c *goidc.Client) {
 				c.ResponseTypes = append(c.ResponseTypes, "invalid")
-				return &c
+
 			},
-			func(ctx oidc.Context) oidc.Context { return ctx },
+			func(ctx oidc.Context) {},
 			false,
 		},
 		{
 			"implicit_grant_is_required_for_implicit_response_type",
-			func(c goidc.Client) *goidc.Client {
+			func(c *goidc.Client) {
 				c.GrantTypes = []goidc.GrantType{goidc.GrantAuthorizationCode}
 				c.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeIDToken}
-				return &c
+
 			},
-			func(ctx oidc.Context) oidc.Context { return ctx },
+			func(ctx oidc.Context) {},
 			false,
 		},
 		{
 			"authz_code_grant_is_required_for_code_response_type",
-			func(c goidc.Client) *goidc.Client {
+			func(c *goidc.Client) {
 				c.GrantTypes = []goidc.GrantType{goidc.GrantClientCredentials}
 				c.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeCode}
-				return &c
+
 			},
-			func(ctx oidc.Context) oidc.Context { return ctx },
+			func(ctx oidc.Context) {},
 			false,
 		},
 		{
 			"valid_subject_identifier_type",
-			func(c goidc.Client) *goidc.Client {
+			func(c *goidc.Client) {
 				c.SubIdentifierType = goidc.SubjectIdentifierPublic
-				return &c
+
 			},
-			func(ctx oidc.Context) oidc.Context { return ctx },
+			func(ctx oidc.Context) {},
 			true,
 		},
 		{
 			"invalid_subject_identifier_type",
-			func(c goidc.Client) *goidc.Client {
+			func(c *goidc.Client) {
 				c.SubIdentifierType = "invalid"
-				return &c
 			},
-			func(ctx oidc.Context) oidc.Context { return ctx },
+			func(ctx oidc.Context) {},
 			false,
 		},
 		{
 			"valid_auth_details",
-			func(c goidc.Client) *goidc.Client {
+			func(c *goidc.Client) {
 				c.AuthDetailTypes = append(c.AuthDetailTypes, "type1")
-				return &c
 			},
-			func(ctx oidc.Context) oidc.Context {
+			func(ctx oidc.Context) {
 				ctx.AuthDetailsIsEnabled = true
 				ctx.AuthDetailTypes = append(ctx.AuthDetailTypes, "type1")
-				return ctx
 			},
 			true,
 		},
 		{
 			"invalid_auth_details",
-			func(c goidc.Client) *goidc.Client {
+			func(c *goidc.Client) {
 				c.AuthDetailTypes = append(c.AuthDetailTypes, "invalid")
-				return &c
 			},
-			func(ctx oidc.Context) oidc.Context {
+			func(ctx oidc.Context) {
 				ctx.AuthDetailsIsEnabled = true
 				ctx.AuthDetailTypes = append(ctx.AuthDetailTypes, "type1")
-				return ctx
 			},
 			false,
 		},
@@ -243,16 +225,13 @@ func TestValidateRequest(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			// Given.
 			ctx := oidctest.NewContext(t)
-			ctx = testCase.modifiedContextFunc(ctx)
+			testCase.modifiedContextFunc(ctx)
 
-			validClient, _ := oidctest.NewClient(t)
-			client := testCase.modifiedClientFunc(*validClient)
-			req := request{
-				ClientMetaInfo: client.ClientMetaInfo,
-			}
+			client, _ := oidctest.NewClient(t)
+			testCase.modifiedClientFunc(client)
 
 			// When.
-			err := validateRequest(ctx, req)
+			err := validate(ctx, &client.ClientMetaInfo)
 
 			// Then.
 			isValid := err == nil

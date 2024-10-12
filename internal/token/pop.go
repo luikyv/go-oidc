@@ -71,27 +71,6 @@ func validateTLSPoP(
 	return nil
 }
 
-// // validateDPoP validates that the context contains the information required to
-// // prove the client's possession of the access token with TLS binding.
-// func validateTLSPoP(
-// 	ctx oidc.Context,
-// 	certThumbprint string,
-// ) error {
-
-// 	clientCert, err := ctx.ClientCert()
-// 	if err != nil {
-// 		return goidc.Errorf(goidc.ErrorCodeInvalidToken,
-// 			"the client certificate is required", err)
-// 	}
-
-// 	if hashBase64URLSHA256(string(clientCert.Raw)) != certThumbprint {
-// 		return goidc.NewError(goidc.ErrorCodeInvalidToken,
-// 			"invalid client certificate")
-// 	}
-
-// 	return nil
-// }
-
 // setPoP adds the available pop mechanisms to the grant info.
 func setPoP(ctx oidc.Context, grantInfo *goidc.GrantInfo) {
 	dpopJWT, ok := dpop.JWT(ctx)

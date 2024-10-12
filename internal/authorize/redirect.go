@@ -111,14 +111,11 @@ func createJARMResponse(
 		return "", err
 	}
 
-	if c.JARMKeyEncAlg != "" {
-		responseJWT, err = encryptJARMResponse(ctx, responseJWT, c)
-		if err != nil {
-			return "", err
-		}
+	if !ctx.JARMEncIsEnabled || c.JARMKeyEncAlg == "" {
+		return responseJWT, nil
 	}
 
-	return responseJWT, nil
+	return encryptJARMResponse(ctx, responseJWT, c)
 }
 
 func signJARMResponse(
@@ -140,7 +137,12 @@ func signJARMResponse(
 		claims[k] = v
 	}
 
-	jwk := ctx.JARMSigKey(c)
+	jwk, ok := ctx.JARMSigKeyForClient(c)
+	if !ok {
+		return "", goidc.NewError(goidc.ErrorCodeInvalidRequest,
+			"the jarm signing algorithm defined for the client is not available")
+	}
+
 	resp, err := jwtutil.Sign(claims, jwk,
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
 	if err != nil {
@@ -165,7 +167,11 @@ func encryptJARMResponse(
 			"could not fetch the client encryption jwk for jarm", err)
 	}
 
-	jwe, err := jwtutil.Encrypt(responseJWT, jwk, c.JARMContentEncAlg)
+	contentEncAlg := c.JARMContentEncAlg
+	if contentEncAlg == "" {
+		contentEncAlg = ctx.JARMDefaultContentEncAlg
+	}
+	jwe, err := jwtutil.Encrypt(responseJWT, jwk, contentEncAlg)
 	if err != nil {
 		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not encrypt the response object", err)

@@ -24,7 +24,7 @@ func generateAuthorizationCodeGrant(
 			"invalid authorization code")
 	}
 
-	client, err := clientutil.Authenticated(ctx)
+	client, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
 	if err != nil {
 		return response{}, err
 	}
@@ -44,7 +44,7 @@ func generateAuthorizationCodeGrant(
 		return response{}, err
 	}
 
-	token, err := Make(ctx, client, grantInfo)
+	token, err := Make(ctx, grantInfo)
 	if err != nil {
 		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not generate access token for the authorization code grant", err)
@@ -68,7 +68,7 @@ func generateAuthorizationCodeGrant(
 		RefreshToken: grantSession.RefreshToken,
 	}
 
-	if strutil.ContainsOpenID(session.GrantedScopes) {
+	if strutil.ContainsOpenID(grantInfo.ActiveScopes) {
 		tokenResp.IDToken, err = MakeIDToken(ctx, client, newIDTokenOptions(grantInfo))
 		if err != nil {
 			return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
@@ -135,11 +135,7 @@ func generateAuthorizationCodeGrantSession(
 	grantSession := NewGrantSession(grantInfo, token)
 	grantSession.AuthorizationCode = code
 	if ctx.ShouldIssueRefreshToken(client, grantInfo) {
-		refreshToken, err := refreshToken()
-		if err != nil {
-			return nil, err
-		}
-		grantSession.RefreshToken = refreshToken
+		grantSession.RefreshToken = refreshToken()
 		grantSession.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
 

@@ -2,8 +2,11 @@ package main
 
 import (
 	"log"
+	"net/http"
+	"net/url"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/examples/authutil"
@@ -19,8 +22,8 @@ func main() {
 	templatesDirPath := filepath.Join(sourceDir, "../templates")
 
 	jwksFilePath := filepath.Join(sourceDir, "../keys/server.jwks")
-	certFilePath := filepath.Join(sourceDir, "../keys/server.cert")
-	certKeyFilePath := filepath.Join(sourceDir, "../keys/server.key")
+	serverCertFilePath := filepath.Join(sourceDir, "../keys/server.cert")
+	serverCertKeyFilePath := filepath.Join(sourceDir, "../keys/server.key")
 
 	serverKeyID := "rs256_key"
 	// Create and configure the OpenID provider.
@@ -31,21 +34,24 @@ func main() {
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithUserInfoSignatureKeyIDs(serverKeyID),
 		provider.WithPAR(),
-		provider.WithJAR(),
+		provider.WithJAR(jose.RS256),
 		provider.WithJARM(serverKeyID),
-		provider.WithPrivateKeyJWTAuthn(jose.RS256),
-		provider.WithBasicSecretAuthn(),
-		provider.WithSecretPostAuthn(),
+		provider.WithTokenAuthnMethods(
+			goidc.ClientAuthnSecretBasic,
+			goidc.ClientAuthnSecretPost,
+			goidc.ClientAuthnPrivateKeyJWT,
+		),
+		provider.WithPrivateKeyJWTSignatureAlgs(jose.RS256),
 		provider.WithIssuerResponseParameter(),
 		provider.WithClaimsParameter(),
 		provider.WithPKCE(goidc.CodeChallengeMethodSHA256),
 		provider.WithImplicitGrant(),
-		provider.WithRefreshTokenGrant(),
-		provider.WithShouldIssueRefreshTokenFunc(authutil.IssueRefreshToken),
-		provider.WithRefreshTokenLifetimeSecs(6000),
+		provider.WithAuthorizationCodeGrant(),
+		provider.WithRefreshTokenGrant(authutil.IssueRefreshToken),
+		provider.WithRefreshTokenLifetime(6000),
 		provider.WithClaims(goidc.ClaimEmail, goidc.ClaimEmailVerified),
 		provider.WithACRs(goidc.ACRMaceIncommonIAPBronze, goidc.ACRMaceIncommonIAPSilver),
-		provider.WithDCR(authutil.DCRFunc),
+		provider.WithDCR(authutil.DCRFunc, authutil.ValidateInitialTokenFunc),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(serverKeyID)),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithPolicy(authutil.Policy(templatesDirPath)),
@@ -56,11 +62,20 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := op.RunTLS(provider.TLSOptions{
-		TLSAddress: authutil.Port,
-		ServerCert: certFilePath,
-		ServerKey:  certKeyFilePath,
-	}); err != nil {
+	// Set up the server.
+	mux := http.NewServeMux()
+	handler := op.Handler()
+
+	hostURL, _ := url.Parse(authutil.Issuer)
+	// Remove the port from the host name if any.
+	host := strings.Split(hostURL.Host, ":")[0]
+	mux.Handle(host+"/", handler)
+
+	server := &http.Server{
+		Addr:    authutil.Port,
+		Handler: mux,
+	}
+	if err := server.ListenAndServeTLS(serverCertFilePath, serverCertKeyFilePath); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -17,10 +17,10 @@ func shouldUseJAR(
 	req goidc.AuthorizationParameters,
 	c *goidc.Client,
 ) bool {
-	// If JAR is not enabled, we just disconsider the request object.
-	// Also, if the client defined a signature algorithm for jar, then jar is required.
-	return ctx.JARIsRequired ||
-		(ctx.JARIsEnabled && (req.RequestObject != "" || c.JARSigAlg != ""))
+	if !ctx.JARIsEnabled {
+		return false
+	}
+	return ctx.JARIsRequired || c.JARIsRequired || req.RequestObject != ""
 }
 
 func jarFromRequestObject(
@@ -49,15 +49,20 @@ func jarFromRequestObject(
 func signedRequestObjectFromEncrypted(
 	ctx oidc.Context,
 	reqObject string,
-	_ *goidc.Client,
+	client *goidc.Client,
 ) (
 	string,
 	error,
 ) {
+
+	contentEncAlgs := ctx.JARContentEncAlgs
+	if client.JARContentEncAlg != "" {
+		contentEncAlgs = []jose.ContentEncryption{client.JARContentEncAlg}
+	}
 	encryptedReqObject, err := jose.ParseEncrypted(
 		reqObject,
 		ctx.JARKeyEncAlgs(),
-		ctx.JARContentEncAlgs,
+		contentEncAlgs,
 	)
 	if err != nil {
 		return "", goidc.Errorf(goidc.ErrorCodeInvalidResquestObject,

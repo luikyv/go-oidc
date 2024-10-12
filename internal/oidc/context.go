@@ -41,31 +41,46 @@ func Handler(
 	}
 }
 
-func (ctx Context) ClientAuthnSigAlgs() []jose.SignatureAlgorithm {
-	return append(
-		ctx.PrivateKeyJWTSigAlgs,
-		ctx.ClientSecretJWTSigAlgs...,
-	)
+func (ctx Context) TokenAuthnSigAlgs() []jose.SignatureAlgorithm {
+	return ctx.clientAuthnSigAlgs(ctx.TokenAuthnMethods)
 }
 
-func (ctx Context) IntrospectionClientAuthnSigAlgs() []jose.SignatureAlgorithm {
-	var signatureAlgorithms []jose.SignatureAlgorithm
-
-	if slices.Contains(ctx.IntrospectionClientAuthnMethods, goidc.ClientAuthnPrivateKeyJWT) {
-		signatureAlgorithms = append(
-			signatureAlgorithms,
-			ctx.PrivateKeyJWTSigAlgs...,
-		)
+func (ctx Context) IsClientAllowedTokenIntrospection(c *goidc.Client) bool {
+	if ctx.IsClientAllowedTokenIntrospectionFunc == nil {
+		return false
 	}
 
-	if slices.Contains(ctx.IntrospectionClientAuthnMethods, goidc.ClientAuthnSecretJWT) {
-		signatureAlgorithms = append(
-			signatureAlgorithms,
-			ctx.ClientSecretJWTSigAlgs...,
-		)
+	return ctx.IsClientAllowedTokenIntrospectionFunc(c)
+}
+
+func (ctx Context) TokenIntrospectionAuthnSigAlgs() []jose.SignatureAlgorithm {
+	return ctx.clientAuthnSigAlgs(ctx.TokenIntrospectionAuthnMethods)
+}
+
+func (ctx Context) IsClientAllowedTokenRevocation(c *goidc.Client) bool {
+	if ctx.IsClientAllowedTokenRevocationFunc == nil {
+		return false
 	}
 
-	return signatureAlgorithms
+	return ctx.IsClientAllowedTokenRevocationFunc(c)
+}
+
+func (ctx Context) TokenRevocationAuthnSigAlgs() []jose.SignatureAlgorithm {
+	return ctx.clientAuthnSigAlgs(ctx.TokenRevocationAuthnMethods)
+}
+
+func (ctx Context) clientAuthnSigAlgs(methods []goidc.ClientAuthnType) []jose.SignatureAlgorithm {
+	var sigAlgs []jose.SignatureAlgorithm
+
+	if slices.Contains(methods, goidc.ClientAuthnPrivateKeyJWT) {
+		sigAlgs = append(sigAlgs, ctx.PrivateKeyJWTSigAlgs...)
+	}
+
+	if slices.Contains(methods, goidc.ClientAuthnSecretJWT) {
+		sigAlgs = append(sigAlgs, ctx.ClientSecretJWTSigAlgs...)
+	}
+
+	return sigAlgs
 }
 
 func (ctx Context) ClientCert() (*x509.Certificate, error) {
@@ -75,6 +90,14 @@ func (ctx Context) ClientCert() (*x509.Certificate, error) {
 	}
 
 	return ctx.ClientCertFunc(ctx.Request)
+}
+
+func (ctx Context) ValidateInitalAccessToken(token string) error {
+	if ctx.ValidateInitialAccessTokenFunc == nil {
+		return nil
+	}
+
+	return ctx.ValidateInitialAccessTokenFunc(ctx.Request, token)
 }
 
 func (ctx Context) HandleDynamicClient(c *goidc.ClientMetaInfo) error {
@@ -457,26 +480,39 @@ func (ctx Context) PrivateKey(keyID string) (jose.JSONWebKey, bool) {
 	return keys[0], true
 }
 
-func (ctx Context) UserInfoSigKey(client *goidc.Client) jose.JSONWebKey {
-	return ctx.privateKeyByAlgOrDefault(
-		client.UserInfoSigAlg,
-		ctx.UserDefaultSigKeyID,
+func (ctx Context) UserInfoSigKeyForClient(c *goidc.Client) (jose.JSONWebKey, bool) {
+	if c.UserInfoSigAlg == "" {
+		return ctx.UserSigKey(), true
+	}
+
+	return ctx.privateKeyByAlg(
+		c.UserInfoSigAlg,
 		ctx.UserSigKeyIDs,
 	)
 }
 
-func (ctx Context) IDTokenSigKey(client *goidc.Client) jose.JSONWebKey {
-	return ctx.privateKeyByAlgOrDefault(
-		client.IDTokenSigAlg,
-		ctx.UserDefaultSigKeyID,
+func (ctx Context) IDTokenSigKeyForClient(c *goidc.Client) (jose.JSONWebKey, bool) {
+	if c.IDTokenSigAlg == "" {
+		return ctx.UserSigKey(), true
+	}
+
+	return ctx.privateKeyByAlg(
+		c.IDTokenSigAlg,
 		ctx.UserSigKeyIDs,
 	)
 }
 
-func (ctx Context) JARMSigKey(client *goidc.Client) jose.JSONWebKey {
-	return ctx.privateKeyByAlgOrDefault(
-		client.JARMSigAlg,
-		ctx.JARMDefaultSigKeyID,
+func (ctx Context) UserSigKey() jose.JSONWebKey {
+	return ctx.privateKey(ctx.UserDefaultSigKeyID)
+}
+
+func (ctx Context) JARMSigKeyForClient(c *goidc.Client) (jose.JSONWebKey, bool) {
+	if c.JARMSigAlg == "" {
+		return ctx.privateKey(ctx.JARMDefaultSigKeyID), true
+	}
+
+	return ctx.privateKeyByAlg(
+		c.JARMSigAlg,
 		ctx.JARMSigKeyIDs,
 	)
 }
@@ -511,24 +547,23 @@ func (ctx Context) sigAlgs(keyIDs []string) []jose.SignatureAlgorithm {
 	return algorithms
 }
 
-// privateKeyByAlgOrDefault tries to find a key that matches signatureAlgorithm
-// from the subset of keys defined by keyIDs.
-// If no key is found, return the key associated to defaultKeyID.
-func (ctx Context) privateKeyByAlgOrDefault(
+// privateKeyByAlg tries to find a key that matches signature algorithm from the
+// subset of keys defined by keyIDs.
+func (ctx Context) privateKeyByAlg(
 	sigAlg jose.SignatureAlgorithm,
-	defaultKeyID string,
 	keyIDs []string,
-) jose.JSONWebKey {
-	if sigAlg != "" {
-		for _, keyID := range keyIDs {
-			key := ctx.privateKey(keyID)
-			if key.Algorithm == string(sigAlg) {
-				return key
-			}
+) (
+	jose.JSONWebKey,
+	bool,
+) {
+	for _, keyID := range keyIDs {
+		key := ctx.privateKey(keyID)
+		if key.Algorithm == string(sigAlg) {
+			return key, true
 		}
 	}
 
-	return ctx.privateKey(defaultKeyID)
+	return jose.JSONWebKey{}, false
 }
 
 // privateKey returns a private JWK based on the key ID.
@@ -551,11 +586,10 @@ func (ctx Context) ShouldIssueRefreshToken(
 }
 
 func (ctx Context) TokenOptions(
-	client *goidc.Client,
 	grantInfo goidc.GrantInfo,
 ) goidc.TokenOptions {
 
-	opts := ctx.TokenOptionsFunc(client, grantInfo)
+	opts := ctx.TokenOptionsFunc(grantInfo)
 
 	// Opaque access tokens cannot be the same size of refresh tokens.
 	if opts.OpaqueLength == goidc.RefreshTokenLength {
@@ -581,6 +615,10 @@ func (ctx Context) HandleGrant(grantInfo *goidc.GrantInfo) error {
 	}
 
 	return oidcErr
+}
+
+func (ctx Context) HandleJWTBearerGrantAssertion(assertion string) (goidc.JWTBearerGrantInfo, error) {
+	return ctx.HandleJWTBearerGrantAssertionFunc(ctx.Request, assertion)
 }
 
 func (ctx Context) HTTPClient() *http.Client {

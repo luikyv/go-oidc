@@ -82,16 +82,28 @@ func authnSession(
 	error,
 ) {
 
-	if ctx.PARIsRequired || (ctx.PARIsEnabled && req.RequestURI != "") {
+	if shouldUsePAR(ctx, req.AuthorizationParameters, client) {
 		return authnSessionWithPAR(ctx, req, client)
 	}
 
-	// The jar requirement comes after the par one, because the client can send the jar during par.
+	// The jar requirement comes after the par one, because the client may have
+	// sent the jar during par.
 	if shouldUseJAR(ctx, req.AuthorizationParameters, client) {
 		return authnSessionWithJAR(ctx, req, client)
 	}
 
 	return simpleAuthnSession(ctx, req, client)
+}
+
+func shouldUsePAR(
+	ctx oidc.Context,
+	req goidc.AuthorizationParameters,
+	c *goidc.Client,
+) bool {
+	if !ctx.PARIsEnabled {
+		return false
+	}
+	return ctx.PARIsRequired || c.PARIsRequired || req.RequestURI != ""
 }
 
 func authnSessionWithPAR(
@@ -195,12 +207,7 @@ func initAuthnSessionWithPolicy(
 		session.SetIDTokenClaim(goidc.ClaimNonce, session.Nonce)
 	}
 	session.PolicyID = policy.ID
-	id, err := callbackID()
-	if err != nil {
-		return newRedirectionError(goidc.ErrorCodeInternalError,
-			"error generating the callback id", session.AuthorizationParameters)
-	}
-	session.CallbackID = id
+	session.CallbackID = callbackID()
 	// FIXME: To think about:Treating the request_uri as one-time use will cause
 	// problems when the user refreshes the page.
 	session.ReferenceID = ""
@@ -208,11 +215,11 @@ func initAuthnSessionWithPolicy(
 	return nil
 }
 
-func authorizationCode() (string, error) {
+func authorizationCode() string {
 	return strutil.Random(authorizationCodeLength)
 }
 
-func callbackID() (string, error) {
+func callbackID() string {
 	return strutil.Random(callbackIDLength)
 }
 
@@ -282,7 +289,7 @@ func finishFlowSuccessfully(
 			return err
 		}
 
-		token, err := token.Make(ctx, client, grantInfo)
+		token, err := token.Make(ctx, grantInfo)
 		if err != nil {
 			return redirectionErrorf(goidc.ErrorCodeInternalError,
 				"could not generate the access token", session.AuthorizationParameters, err)
@@ -328,12 +335,7 @@ func authorizeAuthnSession(
 		}
 	}
 
-	code, err := authorizationCode()
-	if err != nil {
-		return newRedirectionError(goidc.ErrorCodeInternalError,
-			"could not generate the authorization code", session.AuthorizationParameters)
-	}
-	session.AuthorizationCode = code
+	session.AuthorizationCode = authorizationCode()
 	session.ExpiresAtTimestamp = timeutil.TimestampNow() + authorizationCodeLifetimeSecs
 	// Make sure the session won't be reached anymore from the callback endpoint.
 	session.CallbackID = ""

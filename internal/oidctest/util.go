@@ -31,9 +31,9 @@ func NewClient(t *testing.T) (client *goidc.Client, secret string) {
 		ID:           "test_client",
 		HashedSecret: string(hashedSecret),
 		ClientMetaInfo: goidc.ClientMetaInfo{
-			AuthnMethod:  goidc.ClientAuthnSecretPost,
-			RedirectURIs: []string{"https://example.com/callback"},
-			ScopeIDs:     fmt.Sprintf("%s %s %s", Scope1.ID, Scope2.ID, goidc.ScopeOpenID.ID),
+			TokenAuthnMethod: goidc.ClientAuthnSecretPost,
+			RedirectURIs:     []string{"https://example.com/callback"},
+			ScopeIDs:         fmt.Sprintf("%s %s %s", Scope1.ID, Scope2.ID, goidc.ScopeOpenID.ID),
 			GrantTypes: []goidc.GrantType{
 				goidc.GrantAuthorizationCode,
 				goidc.GrantImplicit,
@@ -76,7 +76,7 @@ func NewContext(t *testing.T) oidc.Context {
 			goidc.GrantClientCredentials,
 			goidc.GrantImplicit,
 			goidc.GrantRefreshToken,
-			goidc.GrantIntrospection,
+			goidc.GrantJWTBearer,
 		},
 		ResponseTypes: []goidc.ResponseType{
 			goidc.ResponseTypeCode,
@@ -93,7 +93,6 @@ func NewContext(t *testing.T) oidc.Context {
 			goidc.ResponseModeFormPost,
 		},
 		TokenOptionsFunc: func(
-			client *goidc.Client,
 			grantInfo goidc.GrantInfo,
 		) goidc.TokenOptions {
 			return goidc.TokenOptions{
@@ -103,7 +102,7 @@ func NewContext(t *testing.T) oidc.Context {
 			}
 		},
 		AuthnSessionTimeoutSecs: 60,
-		ClientAuthnMethods: []goidc.ClientAuthnType{
+		TokenAuthnMethods: []goidc.ClientAuthnType{
 			goidc.ClientAuthnNone,
 			goidc.ClientAuthnSecretPost,
 			goidc.ClientAuthnSecretBasic,
