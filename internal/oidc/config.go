@@ -157,8 +157,9 @@ type Configuration struct {
 	PKCEDefaultChallengeMethod goidc.CodeChallengeMethod
 	PKCEChallengeMethods       []goidc.CodeChallengeMethod
 
-	AuthDetailsIsEnabled bool // TODO: Allow custom comparison.
-	AuthDetailTypes      []string
+	AuthDetailsIsEnabled   bool
+	AuthDetailTypes        []string
+	CompareAuthDetailsFunc goidc.CompareAuthDetailsFunc
 
 	ResourceIndicatorsIsEnabled bool
 	// ResourceIndicatorsIsRequired indicates that the resource parameter is

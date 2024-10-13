@@ -172,8 +172,8 @@ func makeJWTToken(
 		claims[goidc.ClaimClientID] = grantInfo.ClientID
 	}
 
-	if grantInfo.GrantedAuthorizationDetails != nil {
-		claims[goidc.ClaimAuthDetails] = grantInfo.GrantedAuthorizationDetails
+	if grantInfo.ActiveAuthDetails != nil {
+		claims[goidc.ClaimAuthDetails] = grantInfo.ActiveAuthDetails
 	}
 
 	if grantInfo.ActiveResources != nil {

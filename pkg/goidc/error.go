@@ -8,20 +8,20 @@ import (
 type ErrorCode string
 
 const (
-	ErrorCodeAccessDenied                ErrorCode = "access_denied"
-	ErrorCodeInvalidClient               ErrorCode = "invalid_client"
-	ErrorCodeInvalidGrant                ErrorCode = "invalid_grant"
-	ErrorCodeInvalidRequest              ErrorCode = "invalid_request"
-	ErrorCodeUnauthorizedClient          ErrorCode = "unauthorized_client"
-	ErrorCodeInvalidScope                ErrorCode = "invalid_scope"
-	ErrorCodeInvalidAuthorizationDetails ErrorCode = "invalid_authorization_details"
-	ErrorCodeUnsupportedGrantType        ErrorCode = "unsupported_grant_type"
-	ErrorCodeInvalidResquestObject       ErrorCode = "invalid_request_object"
-	ErrorCodeInvalidToken                ErrorCode = "invalid_token"
-	ErrorCodeInternalError               ErrorCode = "internal_error"
-	ErrorCodeInvalidTarget               ErrorCode = "invalid_target"
-	ErrorCodeInvalidRedirectURI          ErrorCode = "invalid_redirect_uri"
-	ErrorCodeInvalidClientMetadata       ErrorCode = "invalid_client_metadata"
+	ErrorCodeAccessDenied          ErrorCode = "access_denied"
+	ErrorCodeInvalidClient         ErrorCode = "invalid_client"
+	ErrorCodeInvalidGrant          ErrorCode = "invalid_grant"
+	ErrorCodeInvalidRequest        ErrorCode = "invalid_request"
+	ErrorCodeUnauthorizedClient    ErrorCode = "unauthorized_client"
+	ErrorCodeInvalidScope          ErrorCode = "invalid_scope"
+	ErrorCodeInvalidAuthDetails    ErrorCode = "invalid_authorization_details"
+	ErrorCodeUnsupportedGrantType  ErrorCode = "unsupported_grant_type"
+	ErrorCodeInvalidResquestObject ErrorCode = "invalid_request_object"
+	ErrorCodeInvalidToken          ErrorCode = "invalid_token"
+	ErrorCodeInternalError         ErrorCode = "internal_error"
+	ErrorCodeInvalidTarget         ErrorCode = "invalid_target"
+	ErrorCodeInvalidRedirectURI    ErrorCode = "invalid_redirect_uri"
+	ErrorCodeInvalidClientMetadata ErrorCode = "invalid_client_metadata"
 )
 
 func (c ErrorCode) StatusCode() int {

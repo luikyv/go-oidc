@@ -40,14 +40,14 @@ type AuthnSession struct {
 	// This value must be informed during the authentication flow.
 	Subject  string `json:"sub"`
 	ClientID string `json:"client_id"`
-	// GrantedScopes are the scopes the client will be granted access once the
+	// GrantedScopes is the scopes the client will be granted access once the
 	// access token is generated.
 	GrantedScopes string `json:"granted_scopes"`
-	// GrantedScopes are the authorization details the client will be granted
+	// GrantedAuthDetails is the authorization details the client will be granted
 	// access once the access token is generated.
-	GrantedAuthorizationDetails []AuthorizationDetail `json:"granted_authorization_details,omitempty"`
-	GrantedResources            Resources             `json:"granted_resources,omitempty"`
-	AuthorizationCode           string                `json:"authorization_code,omitempty"`
+	GrantedAuthDetails []AuthorizationDetail `json:"granted_authorization_details,omitempty"`
+	GrantedResources   Resources             `json:"granted_resources,omitempty"`
+	AuthorizationCode  string                `json:"authorization_code,omitempty"`
 	// ProtectedParameters contains custom parameters sent by PAR.
 	ProtectedParameters map[string]any `json:"protected_params,omitempty"`
 	// Store allows storing information between user interactions.
@@ -131,7 +131,7 @@ func (s *AuthnSession) GrantScopes(scopes string) {
 // permissions to use.
 // This will only have effect if support for authorization details is enabled.
 func (s *AuthnSession) GrantAuthorizationDetails(authDetails []AuthorizationDetail) {
-	s.GrantedAuthorizationDetails = authDetails
+	s.GrantedAuthDetails = authDetails
 }
 
 func (s *AuthnSession) GrantResources(resources []string) {

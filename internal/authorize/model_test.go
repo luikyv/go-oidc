@@ -56,9 +56,9 @@ func TestNewPushedRequest(t *testing.T) {
 func TestMergeParams(t *testing.T) {
 	// Given.
 	insideParams := goidc.AuthorizationParameters{
-		RedirectURI:          "https:example1.com",
-		State:                "random_state",
-		AuthorizationDetails: []goidc.AuthorizationDetail{},
+		RedirectURI: "https:example1.com",
+		State:       "random_state",
+		AuthDetails: []goidc.AuthorizationDetail{},
 	}
 	outsideParams := goidc.AuthorizationParameters{
 		RedirectURI: "https:example2.com",
@@ -71,11 +71,11 @@ func TestMergeParams(t *testing.T) {
 
 	// Then.
 	want := goidc.AuthorizationParameters{
-		RedirectURI:          "https:example1.com",
-		State:                "random_state",
-		AuthorizationDetails: []goidc.AuthorizationDetail{},
-		Nonce:                "random_nonce",
-		Claims:               &goidc.ClaimsObject{},
+		RedirectURI: "https:example1.com",
+		State:       "random_state",
+		AuthDetails: []goidc.AuthorizationDetail{},
+		Nonce:       "random_nonce",
+		Claims:      &goidc.ClaimsObject{},
 	}
 	if diff := cmp.Diff(mergedParams, want, cmpopts.EquateComparable()); diff != "" {
 		t.Error(diff)
@@ -130,7 +130,7 @@ func setUpParams(t *testing.T) (url.Values, goidc.AuthorizationParameters) {
 				},
 			},
 		},
-		AuthorizationDetails: []goidc.AuthorizationDetail{
+		AuthDetails: []goidc.AuthorizationDetail{
 			map[string]any{
 				"key": "value",
 			},

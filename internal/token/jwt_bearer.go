@@ -74,10 +74,11 @@ func generateJWTBearerGrant(
 	}
 
 	tokenResp := response{
-		AccessToken:  token.Value,
-		ExpiresIn:    token.LifetimeSecs,
-		TokenType:    token.Type,
-		RefreshToken: grantSession.RefreshToken,
+		AccessToken:          token.Value,
+		ExpiresIn:            token.LifetimeSecs,
+		TokenType:            token.Type,
+		RefreshToken:         grantSession.RefreshToken,
+		AuthorizationDetails: grantInfo.ActiveAuthDetails,
 	}
 
 	if strutil.ContainsOpenID(grantInfo.ActiveScopes) {
@@ -123,6 +124,10 @@ func validateJWTBearerGrantRequest(
 	}
 
 	if err := validateResources(ctx, ctx.Resources, req); err != nil {
+		return err
+	}
+
+	if err := validateAuthDetailsTypes(ctx, req); err != nil {
 		return err
 	}
 

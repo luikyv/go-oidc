@@ -1097,24 +1097,32 @@ func TestWithAuthorizationDetails(t *testing.T) {
 	p := Provider{
 		config: &oidc.Configuration{},
 	}
+	var compareDetailsFunc goidc.CompareAuthDetailsFunc = func(
+		granted, requested []goidc.AuthorizationDetail,
+	) error {
+		return nil
+	}
 
 	// When.
-	err := WithAuthorizationDetails("detail_type")(p)
+	err := WithAuthorizationDetails(compareDetailsFunc, "detail_type")(p)
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
-			AuthDetailsIsEnabled: true,
-			AuthDetailTypes:      []string{"detail_type"},
-		},
+	if !p.config.AuthDetailsIsEnabled {
+		t.Errorf("auth details must be enabled")
 	}
-	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
-		t.Error(diff)
+
+	if p.config.CompareAuthDetailsFunc == nil {
+		t.Error("CompareAuthDetailsFunc cannot be nil")
 	}
+
+	if p.config.AuthDetailTypes == nil {
+		t.Error("auth detail types should be set")
+	}
+
 }
 
 func TestWithMTLS(t *testing.T) {
@@ -1703,7 +1711,7 @@ func TestJWTBearerGrant(t *testing.T) {
 	// When.
 	err := WithJWTBearerGrant(func(r *http.Request, assertion string) (goidc.JWTBearerGrantInfo, error) {
 		return goidc.JWTBearerGrantInfo{}, nil
-	}, true)(p)
+	})(p)
 
 	// Then.
 	if err != nil {

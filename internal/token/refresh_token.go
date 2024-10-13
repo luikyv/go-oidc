@@ -53,9 +53,10 @@ func generateRefreshTokenGrant(
 	}
 
 	tokenResp := response{
-		AccessToken: token.Value,
-		ExpiresIn:   token.LifetimeSecs,
-		TokenType:   token.Type,
+		AccessToken:          token.Value,
+		ExpiresIn:            token.LifetimeSecs,
+		TokenType:            token.Type,
+		AuthorizationDetails: grantSession.ActiveAuthDetails,
 	}
 
 	if ctx.RefreshTokenRotationIsEnabled {
@@ -87,10 +88,24 @@ func updateRefreshTokenGrantInfo(
 
 	if req.scopes != "" {
 		grantInfo.ActiveScopes = req.scopes
+	} else {
+		grantInfo.ActiveScopes = grantInfo.GrantedScopes
 	}
 
-	if ctx.ResourceIndicatorsIsEnabled && req.resources != nil {
-		grantInfo.ActiveResources = req.resources
+	if ctx.AuthDetailsIsEnabled {
+		if req.authDetails != nil {
+			grantInfo.ActiveAuthDetails = req.authDetails
+		} else {
+			grantInfo.ActiveAuthDetails = grantInfo.GrantedAuthDetails
+		}
+	}
+
+	if ctx.ResourceIndicatorsIsEnabled {
+		if req.resources != nil {
+			grantInfo.ActiveResources = req.resources
+		} else {
+			grantInfo.ActiveResources = grantInfo.GrantedResources
+		}
 	}
 
 	if err := ctx.HandleGrant(grantInfo); err != nil {
@@ -164,6 +179,10 @@ func validateRefreshTokenGrantRequest(
 	}
 
 	if err := validateResources(ctx, grantSession.GrantedResources, req); err != nil {
+		return err
+	}
+
+	if err := validateAuthDetails(ctx, grantSession.GrantedAuthDetails, req); err != nil {
 		return err
 	}
 

@@ -569,12 +569,14 @@ func WithClaimsParameter() ProviderOption {
 
 // WithAuthorizationDetails allows clients to make rich authorization requests.
 func WithAuthorizationDetails(
+	compareDetailsFunc goidc.CompareAuthDetailsFunc,
 	authType string,
 	authTypes ...string,
 ) ProviderOption {
 	authTypes = appendIfNotIn(authTypes, authType)
 	return func(p Provider) error {
 		p.config.AuthDetailsIsEnabled = true
+		p.config.CompareAuthDetailsFunc = compareDetailsFunc
 		p.config.AuthDetailTypes = authTypes
 		return nil
 	}
@@ -850,13 +852,20 @@ func WithHTTPClientFunc(f goidc.HTTPClientFunc) ProviderOption {
 // WithJWTBearerGrant enables the JWT bearer grant type.
 func WithJWTBearerGrant(
 	f goidc.HandleJWTBearerGrantAssertionFunc,
-	clientAuthnIsRequired bool,
 ) ProviderOption {
 	return func(p Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes,
 			goidc.GrantJWTBearer)
 		p.config.HandleJWTBearerGrantAssertionFunc = f
-		p.config.JWTBearerGrantClientAuthnIsRequired = clientAuthnIsRequired
+		return nil
+	}
+}
+
+// WithJWTBearerGrantClientAuthnRequired makes client authentication required
+// for the jwt bearer grant type.
+func WithJWTBearerGrantClientAuthnRequired() ProviderOption {
+	return func(p Provider) error {
+		p.config.JWTBearerGrantClientAuthnIsRequired = true
 		return nil
 	}
 }

@@ -124,6 +124,49 @@ func validateResources(
 	return nil
 }
 
+func validateAuthDetails(
+	ctx oidc.Context,
+	grantedDetails []goidc.AuthorizationDetail,
+	req request,
+) error {
+	if !shouldValidateAuthDetails(ctx, req) {
+		return nil
+	}
+
+	if err := validateAuthDetailsTypes(ctx, req); err != nil {
+		return err
+	}
+
+	if err := ctx.CompareAuthDetails(grantedDetails, req.authDetails); err != nil {
+		return goidc.Errorf(goidc.ErrorCodeInvalidAuthDetails,
+			"invalid authorization details", err)
+	}
+
+	return nil
+}
+
+func validateAuthDetailsTypes(
+	ctx oidc.Context,
+	req request,
+) error {
+	if !shouldValidateAuthDetails(ctx, req) {
+		return nil
+	}
+
+	for _, detail := range req.authDetails {
+		if !slices.Contains(ctx.AuthDetailTypes, detail.Type()) {
+			return goidc.NewError(goidc.ErrorCodeInvalidAuthDetails,
+				"invalid authorization details")
+		}
+	}
+
+	return nil
+}
+
+func shouldValidateAuthDetails(ctx oidc.Context, req request) bool {
+	return ctx.AuthDetailsIsEnabled && req.authDetails != nil
+}
+
 func validateScopes(
 	_ oidc.Context,
 	req request,

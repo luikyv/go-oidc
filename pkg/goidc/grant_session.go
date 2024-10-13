@@ -38,37 +38,53 @@ type GrantSession struct {
 
 type HandleGrantFunc func(*http.Request, *GrantInfo) error
 
+// GrantInfo contains the information assigned during token issuance.
+//
+//   - For authorization_code and refresh_token grant types:
+//     Granted information represents what the user authorized. Active information
+//     is either the subset requested by the client during the token request or
+//     the full granted information if no specific subset was requested.
+//
+//   - For client_credentials and jwt_bearer grant types:
+//     Both granted and active information reflect exactly what the client
+//     requested in the token request.
+//
+// Additional validations can be performed using a [HandleGrantFunc].
 type GrantInfo struct {
 	GrantType GrantType `json:"grant_type"`
-	Subject   string    `json:"sub"`
-	ClientID  string    `json:"client_id"`
+	// Subject is the ID of the user or client associated with the grant.
+	Subject  string `json:"sub"`
+	ClientID string `json:"client_id"`
 
-	// ActiveScopes is a sub set of the granted scopes the current access token
-	// give permissions to.
-	// Most of the times, GrantedScopes and ActiveScopes are equal.
-	// This is not true when a client refreshes a token asking less permissions
-	// than it was granted.
-	// In this case, only the scopes requested will be active.
+	// ActiveScopes represents the subset of GrantedScopes that are active
+	// for the current access token.
+	// Typically, ActiveScopes are equals to GrantedScopes, unless the token
+	// request asks fewer scopes than initially granted.
 	ActiveScopes string `json:"active_scopes"`
-	// GrantedScopes are all the scopes a client was given permission to.
+	// GrantedScopes lists all scopes the client has permission to access.
 	GrantedScopes string `json:"granted_scopes"`
-	// GrantedAuthorizationDetails are all the authorization details a client
-	// was given permission to.
-	GrantedAuthorizationDetails []AuthorizationDetail `json:"granted_authorization_details,omitempty"`
-	ActiveResources             Resources             `json:"active_resources,omitempty"`
-	GrantedResources            Resources             `json:"granted_resources,omitempty"`
+	// ActiveAuthDetails contains the subset of GrantedAuthDetails currently
+	// active for this access token.
+	ActiveAuthDetails []AuthorizationDetail `json:"active_auth_details,omitempty"`
+	// GrantedAuthDetails holds all authorization details assigned to the client.
+	GrantedAuthDetails []AuthorizationDetail `json:"granted_auth_details,omitempty"`
+	// ActiveResources are the specific resources the current token can be used
+	// with.
+	ActiveResources Resources `json:"active_resources,omitempty"`
+	// GrantedResources lists all resources the client was authorized to interact.
+	GrantedResources Resources `json:"granted_resources,omitempty"`
 
 	AdditionalIDTokenClaims  map[string]any `json:"additional_id_token_claims,omitempty"`
 	AdditionalUserInfoClaims map[string]any `json:"additional_user_info_claims,omitempty"`
 	AdditionalTokenClaims    map[string]any `json:"additional_token_claims,omitempty"`
 
-	// JWKThumbprint is the thumbprint of the JWK informed via DPoP.
+	// JWKThumbprint stores the thumbprint of the JWK provided via DPoP.
 	JWKThumbprint string `json:"jwk_thumbprint,omitempty"`
-	// ClientCertThumbprint is the thumbprint of the certificate informed by the
-	// client when generating a token.
+	// ClientCertThumbprint contains the thumbprint of the certificate used by
+	// the client to generate the token.
 	ClientCertThumbprint string `json:"certificate_thumbprint,omitempty"`
 
-	// Store allows storing information in the grant session.
+	// Store allows storing custom data within the grant session.
 	Store map[string]any `json:"store"`
 }
 

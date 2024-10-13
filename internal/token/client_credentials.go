@@ -41,13 +41,14 @@ func generateClientCredentialsGrant(
 	}
 
 	tokenResp := response{
-		AccessToken: token.Value,
-		ExpiresIn:   token.LifetimeSecs,
-		TokenType:   token.Type,
+		AccessToken:          token.Value,
+		ExpiresIn:            token.LifetimeSecs,
+		TokenType:            token.Type,
+		AuthorizationDetails: grantInfo.ActiveAuthDetails,
 	}
 
-	if req.scopes != grantInfo.GrantedScopes {
-		tokenResp.Scopes = grantInfo.GrantedScopes
+	if req.scopes != grantInfo.ActiveScopes {
+		tokenResp.Scopes = grantInfo.ActiveScopes
 	}
 
 	return tokenResp, nil
@@ -89,6 +90,10 @@ func validateClientCredentialsGrantRequest(
 		return err
 	}
 
+	if err := validateAuthDetailsTypes(ctx, req); err != nil {
+		return err
+	}
+
 	if err := validateBinding(ctx, c, nil); err != nil {
 		return err
 	}
@@ -116,6 +121,11 @@ func clientCredentialsGrantInfo(
 	if ctx.ResourceIndicatorsIsEnabled && req.resources != nil {
 		grantInfo.ActiveResources = req.resources
 		grantInfo.GrantedResources = req.resources
+	}
+
+	if ctx.AuthDetailsIsEnabled && req.authDetails != nil {
+		grantInfo.ActiveAuthDetails = req.authDetails
+		grantInfo.GrantedAuthDetails = req.authDetails
 	}
 
 	setPoP(ctx, &grantInfo)

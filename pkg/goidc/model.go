@@ -423,26 +423,26 @@ func (ti TokenInfo) MarshalJSON() ([]byte, error) {
 }
 
 type AuthorizationParameters struct {
-	RequestURI           string                `json:"request_uri,omitempty"`
-	RequestObject        string                `json:"request,omitempty"`
-	RedirectURI          string                `json:"redirect_uri,omitempty"`
-	ResponseMode         ResponseMode          `json:"response_mode,omitempty"`
-	ResponseType         ResponseType          `json:"response_type,omitempty"`
-	Scopes               string                `json:"scope,omitempty"`
-	State                string                `json:"state,omitempty"`
-	Nonce                string                `json:"nonce,omitempty"`
-	CodeChallenge        string                `json:"code_challenge,omitempty"`
-	CodeChallengeMethod  CodeChallengeMethod   `json:"code_challenge_method,omitempty"`
-	Prompt               PromptType            `json:"prompt,omitempty"`
-	MaxAuthnAgeSecs      *int                  `json:"max_age,omitempty"`
-	Display              DisplayValue          `json:"display,omitempty"`
-	ACRValues            string                `json:"acr_values,omitempty"`
-	Claims               *ClaimsObject         `json:"claims,omitempty"`
-	AuthorizationDetails []AuthorizationDetail `json:"authorization_details,omitempty"`
-	Resources            Resources             `json:"resource,omitempty"`
-	DPoPJWKThumbprint    string                `json:"dpop_jkt,omitempty"`
-	LoginHint            string                `json:"login_hint,omitempty"`
-	IDTokenHint          string                `json:"id_token_hint,omitempty"`
+	RequestURI          string                `json:"request_uri,omitempty"`
+	RequestObject       string                `json:"request,omitempty"`
+	RedirectURI         string                `json:"redirect_uri,omitempty"`
+	ResponseMode        ResponseMode          `json:"response_mode,omitempty"`
+	ResponseType        ResponseType          `json:"response_type,omitempty"`
+	Scopes              string                `json:"scope,omitempty"`
+	State               string                `json:"state,omitempty"`
+	Nonce               string                `json:"nonce,omitempty"`
+	CodeChallenge       string                `json:"code_challenge,omitempty"`
+	CodeChallengeMethod CodeChallengeMethod   `json:"code_challenge_method,omitempty"`
+	Prompt              PromptType            `json:"prompt,omitempty"`
+	MaxAuthnAgeSecs     *int                  `json:"max_age,omitempty"`
+	Display             DisplayValue          `json:"display,omitempty"`
+	ACRValues           string                `json:"acr_values,omitempty"`
+	Claims              *ClaimsObject         `json:"claims,omitempty"`
+	AuthDetails         []AuthorizationDetail `json:"authorization_details,omitempty"`
+	Resources           Resources             `json:"resource,omitempty"`
+	DPoPJWKThumbprint   string                `json:"dpop_jkt,omitempty"`
+	LoginHint           string                `json:"login_hint,omitempty"`
+	IDTokenHint         string                `json:"id_token_hint,omitempty"`
 }
 
 type Resources []string
@@ -590,3 +590,8 @@ type JWTBearerGrantInfo struct {
 }
 
 type IsClientAllowedFunc func(*Client) bool
+
+// CompareAuthDetailsFunc defines a function used in authorization_code and
+// refresh_token grant types to validate that the requested authorization details
+// are consistent with the granted ones.
+type CompareAuthDetailsFunc func(granted, requested []AuthorizationDetail) error

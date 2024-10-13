@@ -369,18 +369,18 @@ func implicitGrantInfo(
 	error,
 ) {
 	grantInfo := goidc.GrantInfo{
-		GrantType:                   goidc.GrantImplicit,
-		Subject:                     session.Subject,
-		ClientID:                    session.ClientID,
-		ActiveScopes:                session.GrantedScopes,
-		GrantedScopes:               session.GrantedScopes,
-		GrantedAuthorizationDetails: session.GrantedAuthorizationDetails,
-		ActiveResources:             session.GrantedResources,
-		GrantedResources:            session.GrantedResources,
-		AdditionalIDTokenClaims:     session.AdditionalIDTokenClaims,
-		AdditionalUserInfoClaims:    session.AdditionalUserInfoClaims,
-		AdditionalTokenClaims:       session.AdditionalTokenClaims,
-		JWKThumbprint:               session.DPoPJWKThumbprint,
+		GrantType:                goidc.GrantImplicit,
+		Subject:                  session.Subject,
+		ClientID:                 session.ClientID,
+		ActiveScopes:             session.GrantedScopes,
+		GrantedScopes:            session.GrantedScopes,
+		GrantedAuthDetails:       session.GrantedAuthDetails,
+		ActiveResources:          session.GrantedResources,
+		GrantedResources:         session.GrantedResources,
+		AdditionalIDTokenClaims:  session.AdditionalIDTokenClaims,
+		AdditionalUserInfoClaims: session.AdditionalUserInfoClaims,
+		AdditionalTokenClaims:    session.AdditionalTokenClaims,
+		JWKThumbprint:            session.DPoPJWKThumbprint,
 	}
 
 	setPoP(ctx, &grantInfo, session)
