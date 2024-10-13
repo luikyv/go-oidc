@@ -54,7 +54,7 @@ func newRequest(req *http.Request) request {
 	if authorizationDetails := req.URL.Query().Get("authorization_details"); authorizationDetails != "" {
 		var authorizationDetailsObject []goidc.AuthorizationDetail
 		if err := json.Unmarshal([]byte(authorizationDetails), &authorizationDetailsObject); err == nil {
-			params.AuthorizationDetails = authorizationDetailsObject
+			params.AuthDetails = authorizationDetailsObject
 		}
 	}
 
@@ -148,7 +148,7 @@ func newPushedRequest(req *http.Request) pushedRequest {
 	if authorizationDetails := req.PostFormValue("authorization_details"); authorizationDetails != "" {
 		var authorizationDetailsObject []goidc.AuthorizationDetail
 		if err := json.Unmarshal([]byte(authorizationDetails), &authorizationDetailsObject); err == nil {
-			params.AuthorizationDetails = authorizationDetailsObject
+			params.AuthDetails = authorizationDetailsObject
 		}
 	}
 
@@ -183,59 +183,55 @@ func mergeParams(
 	outsideParams goidc.AuthorizationParameters,
 ) goidc.AuthorizationParameters {
 	params := goidc.AuthorizationParameters{
-		RedirectURI: nonEmptyOrDefault(insideParams.RedirectURI,
+		RedirectURI: nonZeroOrDefault(insideParams.RedirectURI,
 			outsideParams.RedirectURI),
-		ResponseMode: nonEmptyOrDefault(insideParams.ResponseMode,
+		ResponseMode: nonZeroOrDefault(insideParams.ResponseMode,
 			outsideParams.ResponseMode),
-		ResponseType: nonEmptyOrDefault(insideParams.ResponseType,
+		ResponseType: nonZeroOrDefault(insideParams.ResponseType,
 			outsideParams.ResponseType),
-		Scopes: nonEmptyOrDefault(insideParams.Scopes,
+		Scopes: nonZeroOrDefault(insideParams.Scopes,
 			outsideParams.Scopes),
-		State: nonEmptyOrDefault(insideParams.State,
+		State: nonZeroOrDefault(insideParams.State,
 			outsideParams.State),
-		Nonce: nonEmptyOrDefault(insideParams.Nonce,
+		Nonce: nonZeroOrDefault(insideParams.Nonce,
 			outsideParams.Nonce),
-		CodeChallenge: nonEmptyOrDefault(insideParams.CodeChallenge,
+		CodeChallenge: nonZeroOrDefault(insideParams.CodeChallenge,
 			outsideParams.CodeChallenge),
-		CodeChallengeMethod: nonEmptyOrDefault(insideParams.CodeChallengeMethod,
+		CodeChallengeMethod: nonZeroOrDefault(insideParams.CodeChallengeMethod,
 			outsideParams.CodeChallengeMethod),
-		Prompt: nonEmptyOrDefault(insideParams.Prompt,
+		Prompt: nonZeroOrDefault(insideParams.Prompt,
 			outsideParams.Prompt),
-		MaxAuthnAgeSecs: nonEmptyOrDefault(insideParams.MaxAuthnAgeSecs,
+		MaxAuthnAgeSecs: nonZeroOrDefault(insideParams.MaxAuthnAgeSecs,
 			outsideParams.MaxAuthnAgeSecs),
-		Display: nonEmptyOrDefault(insideParams.Display,
+		Display: nonZeroOrDefault(insideParams.Display,
 			outsideParams.Display),
-		ACRValues: nonEmptyOrDefault(insideParams.ACRValues,
+		ACRValues: nonZeroOrDefault(insideParams.ACRValues,
 			outsideParams.ACRValues),
-		Claims: nonNilOrDefault(insideParams.Claims,
+		Claims: nonZeroOrDefault(insideParams.Claims,
 			outsideParams.Claims),
-		AuthorizationDetails: nonNilOrDefault(insideParams.AuthorizationDetails,
-			outsideParams.AuthorizationDetails),
-		Resources: nonNilOrDefault(insideParams.Resources,
+		AuthDetails: nonZeroOrDefault(insideParams.AuthDetails,
+			outsideParams.AuthDetails),
+		Resources: nonZeroOrDefault(insideParams.Resources,
 			outsideParams.Resources),
-		DPoPJWKThumbprint: nonEmptyOrDefault(insideParams.DPoPJWKThumbprint,
+		DPoPJWKThumbprint: nonZeroOrDefault(insideParams.DPoPJWKThumbprint,
 			outsideParams.DPoPJWKThumbprint),
-		LoginHint: nonEmptyOrDefault(insideParams.LoginHint,
+		LoginHint: nonZeroOrDefault(insideParams.LoginHint,
 			outsideParams.LoginHint),
-		IDTokenHint: nonEmptyOrDefault(insideParams.IDTokenHint,
+		IDTokenHint: nonZeroOrDefault(insideParams.IDTokenHint,
 			outsideParams.IDTokenHint),
 	}
 
 	return params
 }
 
-func nonEmptyOrDefault[T any](s1 T, s2 T) T {
-	if reflect.ValueOf(s1).String() == "" {
+func nonZeroOrDefault[T any](s1 T, s2 T) T {
+	if isNil(s1) || reflect.ValueOf(s1).IsZero() {
 		return s2
 	}
 
 	return s1
 }
 
-func nonNilOrDefault[T any](s1 T, s2 T) T {
-	if reflect.ValueOf(s1).IsNil() {
-		return s2
-	}
-
-	return s1
+func isNil(i any) bool {
+	return i == nil
 }

@@ -62,10 +62,11 @@ func generateAuthorizationCodeGrant(
 	}
 
 	tokenResp := response{
-		AccessToken:  token.Value,
-		ExpiresIn:    token.LifetimeSecs,
-		TokenType:    token.Type,
-		RefreshToken: grantSession.RefreshToken,
+		AccessToken:          token.Value,
+		ExpiresIn:            token.LifetimeSecs,
+		TokenType:            token.Type,
+		RefreshToken:         grantSession.RefreshToken,
+		AuthorizationDetails: grantInfo.ActiveAuthDetails,
 	}
 
 	if strutil.ContainsOpenID(grantInfo.ActiveScopes) {
@@ -78,11 +79,6 @@ func generateAuthorizationCodeGrant(
 
 	if grantInfo.ActiveScopes != session.Scopes {
 		tokenResp.Scopes = grantInfo.ActiveScopes
-	}
-
-	if ctx.AuthDetailsIsEnabled &&
-		!cmp.Equal(grantInfo.GrantedAuthorizationDetails, session.AuthorizationDetails) {
-		tokenResp.AuthorizationDetails = grantInfo.GrantedAuthorizationDetails
 	}
 
 	if ctx.ResourceIndicatorsIsEnabled &&
@@ -158,7 +154,7 @@ func validateAuthorizationCodeGrantRequest(
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
 	}
 
-	if session.ClientID != c.ID {
+	if c.ID != session.ClientID {
 		return goidc.NewError(goidc.ErrorCodeInvalidGrant,
 			"the authorization code was not issued to the client")
 	}
@@ -177,6 +173,10 @@ func validateAuthorizationCodeGrantRequest(
 	}
 
 	if err := validateResources(ctx, session.GrantedResources, req); err != nil {
+		return err
+	}
+
+	if err := validateAuthDetails(ctx, session.GrantedAuthDetails, req); err != nil {
 		return err
 	}
 
@@ -212,6 +212,7 @@ func authorizationCodeGrantInfo(
 		AdditionalIDTokenClaims:  session.AdditionalIDTokenClaims,
 		AdditionalUserInfoClaims: session.AdditionalUserInfoClaims,
 		AdditionalTokenClaims:    session.AdditionalTokenClaims,
+		Store:                    session.Store,
 	}
 
 	if req.scopes != "" {
@@ -219,7 +220,11 @@ func authorizationCodeGrantInfo(
 	}
 
 	if ctx.AuthDetailsIsEnabled {
-		grantInfo.GrantedAuthorizationDetails = session.GrantedAuthorizationDetails
+		grantInfo.GrantedAuthDetails = session.GrantedAuthDetails
+		grantInfo.ActiveAuthDetails = session.GrantedAuthDetails
+		if req.authDetails != nil {
+			grantInfo.ActiveAuthDetails = req.authDetails
+		}
 	}
 
 	if ctx.ResourceIndicatorsIsEnabled {

@@ -488,15 +488,15 @@ func validateAuthorizationDetailsAsOptional(
 	params goidc.AuthorizationParameters,
 	c *goidc.Client,
 ) error {
-	if !ctx.AuthDetailsIsEnabled || params.AuthorizationDetails == nil {
+	if !ctx.AuthDetailsIsEnabled || params.AuthDetails == nil {
 		return nil
 	}
 
-	for _, authDetail := range params.AuthorizationDetails {
+	for _, authDetail := range params.AuthDetails {
 		authDetailType := authDetail.Type()
 		if !slices.Contains(ctx.AuthDetailTypes, authDetailType) ||
 			!isAuthDetailTypeAllowed(c, authDetailType) {
-			return newRedirectionError(goidc.ErrorCodeInvalidRequest,
+			return newRedirectionError(goidc.ErrorCodeInvalidAuthDetails,
 				"invalid authorization detail type", params)
 		}
 	}
@@ -530,11 +530,7 @@ func validateResourcesAsOptional(
 	_ *goidc.Client,
 ) error {
 
-	if params.Resources == nil {
-		return nil
-	}
-
-	if !ctx.ResourceIndicatorsIsEnabled {
+	if !ctx.ResourceIndicatorsIsEnabled || params.Resources == nil {
 		return nil
 	}
 

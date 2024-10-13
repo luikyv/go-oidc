@@ -341,7 +341,7 @@ func (a authenticator) finishFlow(
 ) goidc.AuthnStatus {
 	as.GrantScopes(as.Scopes)
 	as.GrantResources(as.Resources)
-	as.GrantAuthorizationDetails(as.AuthorizationDetails)
+	as.GrantAuthorizationDetails(as.AuthDetails)
 
 	as.SetIDTokenClaimAuthTime(timeutil.TimestampNow())
 	as.SetIDTokenClaimACR(goidc.ACRMaceIncommonIAPSilver)

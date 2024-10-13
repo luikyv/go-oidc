@@ -1,6 +1,7 @@
 package token
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -42,21 +43,30 @@ type request struct {
 	refreshToken      string
 	codeVerifier      string
 	resources         goidc.Resources
+	authDetails       []goidc.AuthorizationDetail
 	assertion         string
-	// TODO: auth details.
 }
 
-func newRequest(req *http.Request) request {
-	return request{
-		grantType:         goidc.GrantType(req.PostFormValue("grant_type")),
-		scopes:            req.PostFormValue("scope"),
-		authorizationCode: req.PostFormValue("code"),
-		redirectURI:       req.PostFormValue("redirect_uri"),
-		refreshToken:      req.PostFormValue("refresh_token"),
-		codeVerifier:      req.PostFormValue("code_verifier"),
-		resources:         req.PostForm["resource"],
-		assertion:         req.PostFormValue("assertion"),
+func newRequest(r *http.Request) request {
+	req := request{
+		grantType:         goidc.GrantType(r.PostFormValue("grant_type")),
+		scopes:            r.PostFormValue("scope"),
+		authorizationCode: r.PostFormValue("code"),
+		redirectURI:       r.PostFormValue("redirect_uri"),
+		refreshToken:      r.PostFormValue("refresh_token"),
+		codeVerifier:      r.PostFormValue("code_verifier"),
+		resources:         r.PostForm["resource"],
+		assertion:         r.PostFormValue("assertion"),
 	}
+
+	if authDetails := r.PostFormValue("authorization_details"); authDetails != "" {
+		var authDetailsObject []goidc.AuthorizationDetail
+		if err := json.Unmarshal([]byte(authDetails), &authDetailsObject); err == nil {
+			req.authDetails = authDetailsObject
+		}
+	}
+
+	return req
 }
 
 type response struct {

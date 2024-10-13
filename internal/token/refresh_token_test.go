@@ -68,6 +68,161 @@ func TestGenerateGrant_RefreshTokenGrant(t *testing.T) {
 	}
 }
 
+func TestGenerateGrant_RefreshTokenGrant_AuthDetails(t *testing.T) {
+
+	// Given.
+	ctx, client, grantSession := setUpRefreshTokenGrant(t)
+	ctx.AuthDetailsIsEnabled = true
+	ctx.AuthDetailTypes = []string{"type1", "type2"}
+	authDetails := []goidc.AuthorizationDetail{
+		{
+			"type":         "type1",
+			"random_claim": "random_value",
+		},
+		{
+			"type":         "type2",
+			"random_claim": "random_value",
+		},
+	}
+	grantSession.ActiveAuthDetails = authDetails
+	grantSession.GrantedAuthDetails = authDetails
+
+	req := request{
+		grantType:    goidc.GrantRefreshToken,
+		refreshToken: grantSession.RefreshToken,
+	}
+
+	// When.
+	tokenResp, err := generateGrant(ctx, req)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("error generating the refresh token grant: %v", err)
+	}
+
+	grantSessions := oidctest.GrantSessions(t, ctx)
+	if len(grantSessions) != 1 {
+		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
+	}
+	grantSession = grantSessions[0]
+	if diff := cmp.Diff(grantSession.GrantedAuthDetails, authDetails); diff != "" {
+		t.Error(diff)
+	}
+	if diff := cmp.Diff(grantSession.ActiveAuthDetails, authDetails); diff != "" {
+		t.Error(diff)
+	}
+
+	claims, err := oidctest.SafeClaims(tokenResp.AccessToken, ctx.PrivateJWKS.Keys[0])
+	if err != nil {
+		t.Fatalf("error parsing claims: %v", err)
+	}
+
+	now := timeutil.TimestampNow()
+	wantedClaims := map[string]any{
+		"iss":       ctx.Host,
+		"sub":       grantSession.Subject,
+		"client_id": client.ID,
+		"scope":     grantSession.GrantedScopes,
+		"exp":       float64(grantSession.LastTokenExpiresAtTimestamp),
+		"iat":       float64(now),
+		"jti":       grantSession.TokenID,
+		"authorization_details": []any{
+			map[string]any{
+				"type":         "type1",
+				"random_claim": "random_value",
+			},
+			map[string]any{
+				"type":         "type2",
+				"random_claim": "random_value",
+			},
+		},
+	}
+	if diff := cmp.Diff(
+		claims,
+		wantedClaims,
+		cmpopts.EquateApprox(0, 1),
+	); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestGenerateGrant_RefreshTokenGrant_AuthDetails_ClientRequestsSubset(t *testing.T) {
+
+	// Given.
+	ctx, client, grantSession := setUpRefreshTokenGrant(t)
+	ctx.AuthDetailsIsEnabled = true
+	ctx.AuthDetailTypes = []string{"type1", "type2"}
+	authDetails := []goidc.AuthorizationDetail{
+		{
+			"type":         "type1",
+			"random_claim": "random_value",
+		},
+		{
+			"type":         "type2",
+			"random_claim": "random_value",
+		},
+	}
+	grantSession.ActiveAuthDetails = authDetails
+	grantSession.GrantedAuthDetails = authDetails
+
+	authDetailsSubSet := []goidc.AuthorizationDetail{
+		map[string]any{
+			"type":         "type1",
+			"random_claim": "random_value",
+		},
+	}
+	req := request{
+		grantType:    goidc.GrantRefreshToken,
+		refreshToken: grantSession.RefreshToken,
+		authDetails:  authDetailsSubSet,
+	}
+
+	// When.
+	tokenResp, err := generateGrant(ctx, req)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("error generating the refresh token grant: %v", err)
+	}
+
+	grantSession = oidctest.GrantSessions(t, ctx)[0]
+	if diff := cmp.Diff(grantSession.GrantedAuthDetails, authDetails); diff != "" {
+		t.Error(diff)
+	}
+	if diff := cmp.Diff(grantSession.ActiveAuthDetails, authDetailsSubSet); diff != "" {
+		t.Error(diff)
+	}
+
+	claims, err := oidctest.SafeClaims(tokenResp.AccessToken, ctx.PrivateJWKS.Keys[0])
+	if err != nil {
+		t.Fatalf("error parsing claims: %v", err)
+	}
+
+	now := timeutil.TimestampNow()
+	wantedClaims := map[string]any{
+		"iss":       ctx.Host,
+		"sub":       grantSession.Subject,
+		"client_id": client.ID,
+		"scope":     grantSession.GrantedScopes,
+		"exp":       float64(grantSession.LastTokenExpiresAtTimestamp),
+		"iat":       float64(now),
+		"jti":       grantSession.TokenID,
+		"authorization_details": []any{
+			map[string]any{
+				"type":         "type1",
+				"random_claim": "random_value",
+			},
+		},
+	}
+	if diff := cmp.Diff(
+		claims,
+		wantedClaims,
+		cmpopts.EquateApprox(0, 1),
+	); diff != "" {
+		t.Error(diff)
+	}
+}
+
 func TestGenerateGrant_ExpiredRefreshToken(t *testing.T) {
 
 	// When

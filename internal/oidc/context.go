@@ -178,6 +178,16 @@ func (ctx Context) AvailablePolicy(
 	return goidc.AuthnPolicy{}, false
 }
 
+func (ctx Context) CompareAuthDetails(
+	granted []goidc.AuthorizationDetail,
+	requested []goidc.AuthorizationDetail,
+) error {
+	if ctx.CompareAuthDetailsFunc == nil {
+		return nil
+	}
+	return ctx.CompareAuthDetailsFunc(granted, requested)
+}
+
 //---------------------------------------- CRUD ----------------------------------------//
 
 func (ctx Context) SaveClient(client *goidc.Client) error {
