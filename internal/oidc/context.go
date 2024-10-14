@@ -492,96 +492,77 @@ func (ctx Context) PrivateKey(keyID string) (jose.JSONWebKey, bool) {
 
 func (ctx Context) UserInfoSigKeyForClient(c *goidc.Client) (jose.JSONWebKey, bool) {
 	if c.UserInfoSigAlg == "" {
-		return ctx.UserSigKey(), true
+		return ctx.UserSigKey()
 	}
 
-	return ctx.privateKeyByAlg(
-		c.UserInfoSigAlg,
-		ctx.UserSigKeyIDs,
-	)
+	return ctx.privateKeyByAlg(c.UserInfoSigAlg)
 }
 
 func (ctx Context) IDTokenSigKeyForClient(c *goidc.Client) (jose.JSONWebKey, bool) {
 	if c.IDTokenSigAlg == "" {
-		return ctx.UserSigKey(), true
+		return ctx.UserSigKey()
 	}
 
-	return ctx.privateKeyByAlg(
-		c.IDTokenSigAlg,
-		ctx.UserSigKeyIDs,
-	)
+	return ctx.privateKeyByAlg(c.IDTokenSigAlg)
 }
 
-func (ctx Context) UserSigKey() jose.JSONWebKey {
-	return ctx.privateKey(ctx.UserDefaultSigKeyID)
+func (ctx Context) UserSigKey() (jose.JSONWebKey, bool) {
+	return ctx.privateKeyByAlg(ctx.UserDefaultSigAlg)
+}
+
+func (ctx Context) UserInfoSigAlgsContainsNone() bool {
+	return slices.Contains(ctx.UserSigAlgs, goidc.NoneSignatureAlgorithm)
 }
 
 func (ctx Context) JARMSigKeyForClient(c *goidc.Client) (jose.JSONWebKey, bool) {
 	if c.JARMSigAlg == "" {
-		return ctx.privateKey(ctx.JARMDefaultSigKeyID), true
+		return ctx.privateKeyByAlg(ctx.JARMDefaultSigAlg)
 	}
 
-	return ctx.privateKeyByAlg(
-		c.JARMSigAlg,
-		ctx.JARMSigKeyIDs,
-	)
+	return ctx.privateKeyByAlg(c.JARMSigAlg)
 }
 
-func (ctx Context) UserInfoSigAlgs() []jose.SignatureAlgorithm {
-	return ctx.sigAlgs(ctx.UserSigKeyIDs)
-}
+// func (ctx Context) keyEncAlgs(keyIDs []string) []jose.KeyAlgorithm {
+// 	var algorithms []jose.KeyAlgorithm
+// 	for _, keyID := range keyIDs {
+// 		key := ctx.privateKey(keyID)
+// 		algorithms = append(algorithms, jose.KeyAlgorithm(key.Algorithm))
+// 	}
+// 	return algorithms
+// }
 
-func (ctx Context) JARMSigAlgs() []jose.SignatureAlgorithm {
-	return ctx.sigAlgs(ctx.JARMSigKeyIDs)
-}
+// func (ctx Context) sigAlgs(keyIDs []string) []jose.SignatureAlgorithm {
+// 	var algorithms []jose.SignatureAlgorithm
+// 	for _, keyID := range keyIDs {
+// 		key := ctx.privateKey(keyID)
+// 		algorithms = append(algorithms, jose.SignatureAlgorithm(key.Algorithm))
+// 	}
+// 	return algorithms
+// }
 
-func (ctx Context) JARKeyEncAlgs() []jose.KeyAlgorithm {
-	return ctx.keyEncAlgs(ctx.JARKeyEncIDs)
-}
-
-func (ctx Context) keyEncAlgs(keyIDs []string) []jose.KeyAlgorithm {
-	var algorithms []jose.KeyAlgorithm
-	for _, keyID := range keyIDs {
-		key := ctx.privateKey(keyID)
-		algorithms = append(algorithms, jose.KeyAlgorithm(key.Algorithm))
-	}
-	return algorithms
-}
-
-func (ctx Context) sigAlgs(keyIDs []string) []jose.SignatureAlgorithm {
-	var algorithms []jose.SignatureAlgorithm
-	for _, keyID := range keyIDs {
-		key := ctx.privateKey(keyID)
-		algorithms = append(algorithms, jose.SignatureAlgorithm(key.Algorithm))
-	}
-	return algorithms
-}
-
-// privateKeyByAlg tries to find a key that matches signature algorithm from the
-// subset of keys defined by keyIDs.
+// privateKeyByAlg tries to find a key that matches the signature algorithm from
+// the server JWKS.
 func (ctx Context) privateKeyByAlg(
-	sigAlg jose.SignatureAlgorithm,
-	keyIDs []string,
+	alg jose.SignatureAlgorithm,
 ) (
 	jose.JSONWebKey,
 	bool,
 ) {
-	for _, keyID := range keyIDs {
-		key := ctx.privateKey(keyID)
-		if key.Algorithm == string(sigAlg) {
-			return key, true
+	for _, jwk := range ctx.PrivateJWKS.Keys {
+		if jwk.Algorithm == string(alg) {
+			return jwk, true
 		}
 	}
 
 	return jose.JSONWebKey{}, false
 }
 
-// privateKey returns a private JWK based on the key ID.
-// This is intended to be used with key IDs we're sure are present in the server JWKS.
-func (ctx Context) privateKey(keyID string) jose.JSONWebKey {
-	keys := ctx.PrivateJWKS.Key(keyID)
-	return keys[0]
-}
+// // privateKey returns a private JWK based on the key ID.
+// // This is intended to be used with key IDs we're sure are present in the server JWKS.
+// func (ctx Context) privateKey(keyID string) jose.JSONWebKey {
+// 	keys := ctx.PrivateJWKS.Key(keyID)
+// 	return keys[0]
+// }
 
 func (ctx Context) ShouldIssueRefreshToken(
 	client *goidc.Client,

@@ -21,8 +21,8 @@ func oidcConfig(ctx oidc.Context) openIDConfiguration {
 		UserClaimsSupported:          ctx.Claims,
 		ClaimTypesSupported:          ctx.ClaimTypes,
 		SubIdentifierTypes:           ctx.SubIdentifierTypes,
-		IDTokenSigAlgs:               ctx.UserInfoSigAlgs(),
-		UserInfoSigAlgs:              ctx.UserInfoSigAlgs(),
+		IDTokenSigAlgs:               ctx.UserSigAlgs,
+		UserInfoSigAlgs:              ctx.UserSigAlgs,
 		Scopes:                       scopes,
 		TokenAuthnMethods:            ctx.TokenAuthnMethods,
 		TokenAuthnSigAlgs:            ctx.TokenAuthnSigAlgs(),
@@ -47,14 +47,16 @@ func oidcConfig(ctx oidc.Context) openIDConfiguration {
 		config.JARIsEnabled = ctx.JARIsEnabled
 		config.JARIsRequired = ctx.JARIsRequired
 		config.JARAlgs = ctx.JARSigAlgs
+		config.JARByReferenceIsEnabled = ctx.JARByReferenceIsEnabled
+		config.JARRequestURIRegistrationIsRequired = ctx.JARRequestURIRegistrationIsRequired
 		if ctx.JAREncIsEnabled {
-			config.JARKeyEncAlgs = ctx.JARKeyEncAlgs()
+			config.JARKeyEncAlgs = ctx.JARKeyEncAlgs
 			config.JARContentEncAlgs = ctx.JARContentEncAlgs
 		}
 	}
 
 	if ctx.JARMIsEnabled {
-		config.JARMAlgs = ctx.JARMSigAlgs()
+		config.JARMAlgs = ctx.JARMSigAlgs
 		if ctx.JARMEncIsEnabled {
 			config.JARMKeyEncAlgs = ctx.JARMKeyEncAlgs
 			config.JARMContentEncAlgs = ctx.JARMContentEncAlgs

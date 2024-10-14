@@ -111,8 +111,8 @@ func NewContext(t *testing.T) oidc.Context {
 			goidc.ClientAuthnSelfSignedTLS,
 			goidc.ClientAuthnTLS,
 		},
-		UserDefaultSigKeyID:         keyID,
-		UserSigKeyIDs:               []string{keyID},
+		UserDefaultSigAlg:           jose.SignatureAlgorithm(jwk.Algorithm),
+		UserSigAlgs:                 []jose.SignatureAlgorithm{jose.SignatureAlgorithm(jwk.Algorithm)},
 		EndpointWellKnown:           "/.well-known/openid-configuration",
 		EndpointJWKS:                "/jwks",
 		EndpointToken:               "/token",
@@ -250,6 +250,21 @@ func SafeClaims(jws string, jwk jose.JSONWebKey) (map[string]any, error) {
 
 	var claims map[string]any
 	err = parsedToken.Claims(jwk.Public().Key, &claims)
+	if err != nil {
+		return nil, err
+	}
+
+	return claims, nil
+}
+
+func UnsafeClaims(jws string, algs ...jose.SignatureAlgorithm) (map[string]any, error) {
+	parsedToken, err := jwt.ParseSigned(jws, algs)
+	if err != nil {
+		return nil, err
+	}
+
+	var claims map[string]any
+	err = parsedToken.UnsafeClaimsWithoutVerification(&claims)
 	if err != nil {
 		return nil, err
 	}

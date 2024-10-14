@@ -77,7 +77,8 @@ func (c *Client) fetchJWKS(httpClient *http.Client) (json.RawMessage, error) {
 type ClientMetaInfo struct {
 	Name          string          `json:"client_name,omitempty"`
 	LogoURI       string          `json:"logo_uri,omitempty"`
-	RedirectURIs  []string        `json:"redirect_uris"`
+	RedirectURIs  []string        `json:"redirect_uris,omitempty"`
+	RequestURIs   []string        `json:"request_uris,omitempty"`
 	GrantTypes    []GrantType     `json:"grant_types"`
 	ResponseTypes []ResponseType  `json:"response_types"`
 	PublicJWKSURI string          `json:"jwks_uri,omitempty"`

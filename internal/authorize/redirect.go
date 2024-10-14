@@ -174,7 +174,7 @@ func encryptJARMResponse(
 	jwe, err := jwtutil.Encrypt(responseJWT, jwk, contentEncAlg)
 	if err != nil {
 		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
-			"could not encrypt the response object", err)
+			"internal error", err)
 	}
 
 	return jwe, nil

@@ -206,7 +206,7 @@ func TestInitAuth_JARM(t *testing.T) {
 	ctx, client := setUpAuth(t)
 	ctx.JARMIsEnabled = true
 	ctx.JARMLifetimeSecs = 60
-	ctx.JARMDefaultSigKeyID = ctx.PrivateJWKS.Keys[0].KeyID
+	ctx.JARMDefaultSigAlg = jose.SignatureAlgorithm(ctx.PrivateJWKS.Keys[0].Algorithm)
 	ctx.ResponseModes = append(ctx.ResponseModes, goidc.ResponseModeJWT)
 
 	req := request{
@@ -342,9 +342,9 @@ func TestInitAuth_ResourceIndicator(t *testing.T) {
 func TestInitAuth_IDTokenHint(t *testing.T) {
 	ctx, client := setUpAuth(t)
 
-	key, ok := ctx.PrivateKey(ctx.UserDefaultSigKeyID)
+	key, ok := ctx.UserSigKey()
 	if !ok {
-		t.Fatalf("could not find key to sign the id token: %s", ctx.UserDefaultSigKeyID)
+		t.Fatalf("could not find key to sign the id token: %s", ctx.UserDefaultSigAlg)
 	}
 
 	idToken, err := jwtutil.Sign(
@@ -688,7 +688,7 @@ func TestInitAuth_PAR(t *testing.T) {
 	ctx, client := setUpAuth(t)
 	ctx.PARIsEnabled = true
 
-	requestURI := "urn:goidc:random_value"
+	requestURI := "urn:ietf:params:oauth:request_uri:random_value"
 	_ = ctx.SaveAuthnSession(
 		&goidc.AuthnSession{
 			ID:          uuid.NewString(),

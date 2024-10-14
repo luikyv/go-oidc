@@ -1,7 +1,9 @@
 package provider
 
 import (
+	"errors"
 	"slices"
+	"strings"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -168,21 +170,16 @@ func WithClaimTypes(
 	}
 }
 
-// WithUserInfoSignatureKeyIDs set the keys available to sign the user info
+// WithUserSignatureAlgs set the algorithms available to sign the user info
 // endpoint response and ID tokens.
-// There should be at most one per algorithm, in other words, there shouldn't
-// be two key IDs that point to two keys that have the same algorithm. This
-// is because clients can choose signing keys per algorithm, e.g. a client
-// can choose the key to sign its ID tokens with the attribute
-// "id_token_signed_response_alg".
-func WithUserInfoSignatureKeyIDs(
-	defaultSigKeyID string,
-	sigKeyIDs ...string,
+func WithUserSignatureAlgs(
+	defaultAlg jose.SignatureAlgorithm,
+	algs ...jose.SignatureAlgorithm,
 ) ProviderOption {
-	sigKeyIDs = appendIfNotIn(sigKeyIDs, defaultSigKeyID)
+	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p Provider) error {
-		p.config.UserDefaultSigKeyID = defaultSigKeyID
-		p.config.UserSigKeyIDs = sigKeyIDs
+		p.config.UserDefaultSigAlg = defaultAlg
+		p.config.UserSigAlgs = algs
 		return nil
 	}
 }
@@ -428,22 +425,25 @@ func WithJARRequired(
 	}
 }
 
+func WithJARByReference(requireReqURIRegistration bool) ProviderOption {
+	return func(p Provider) error {
+		p.config.JARByReferenceIsEnabled = true
+		p.config.JARRequestURIRegistrationIsRequired = requireReqURIRegistration
+		return nil
+	}
+}
+
 // WithJAREncryption allows authorization requests to be securely sent as
 // encrypted JWTs.
-// keyEncIDs defines the keys available for clients to encrypt the request object.
-// The default content encryption algorithm is A128CBC-HS256.
-// Clients can inform previously the encryption algorithms they must use with
-// the attributes "request_object_encryption_alg" and
-// "request_object_encryption_enc"
 // To enable JAR, see [WithJAR].
 func WithJAREncryption(
-	keyEncID string,
-	keyEncIDs ...string,
+	alg jose.KeyAlgorithm,
+	algs ...jose.KeyAlgorithm,
 ) ProviderOption {
-	keyEncIDs = appendIfNotIn(keyEncIDs, keyEncID)
+	algs = appendIfNotIn(algs, alg)
 	return func(p Provider) error {
 		p.config.JAREncIsEnabled = true
-		p.config.JARKeyEncIDs = keyEncIDs
+		p.config.JARKeyEncAlgs = algs
 		return nil
 	}
 }
@@ -469,14 +469,17 @@ func WithJARContentEncryptionAlgs(
 // "authorization_signed_response_alg".
 // By default, the lifetime of a response object is [defaultJWTLifetimeSecs].
 func WithJARM(
-	defaultSigKeyID string,
-	sigKeyIDs ...string,
+	defaultAlg jose.SignatureAlgorithm,
+	algs ...jose.SignatureAlgorithm,
 ) ProviderOption {
-	sigKeyIDs = appendIfNotIn(sigKeyIDs, defaultSigKeyID)
+	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p Provider) error {
+		if slices.Contains(algs, goidc.NoneSignatureAlgorithm) {
+			return errors.New("'none' algorithm is not allowed for JARM")
+		}
 		p.config.JARMIsEnabled = true
-		p.config.JARMDefaultSigKeyID = defaultSigKeyID
-		p.config.JARMSigKeyIDs = sigKeyIDs
+		p.config.JARMDefaultSigAlg = defaultAlg
+		p.config.JARMSigAlgs = algs
 		return nil
 	}
 }
@@ -521,7 +524,19 @@ func WithPrivateKeyJWTSignatureAlgs(
 	algs ...jose.SignatureAlgorithm,
 ) ProviderOption {
 	algs = appendIfNotIn(algs, alg)
+
 	return func(p Provider) error {
+
+		if slices.Contains(algs, goidc.NoneSignatureAlgorithm) {
+			return errors.New("'none' algorithm is not allowed for private_key_jwt")
+		}
+
+		for _, a := range algs {
+			if strings.HasPrefix(string(a), "HS") {
+				return errors.New("symetric algorithms are not allowed for private_key_jwt authentication")
+			}
+		}
+
 		p.config.PrivateKeyJWTSigAlgs = algs
 		return nil
 	}
@@ -535,6 +550,17 @@ func WithSecretJWTSignatureAlgs(
 ) ProviderOption {
 	algs = appendIfNotIn(algs, alg)
 	return func(p Provider) error {
+
+		if slices.Contains(algs, goidc.NoneSignatureAlgorithm) {
+			return errors.New("'none' algorithm is not allowed for client_secret_jwt")
+		}
+
+		for _, a := range alg {
+			if !strings.HasPrefix(string(a), "HS") {
+				return errors.New("assymetric algorithms are not allowed for client_secret_jwt authentication")
+			}
+		}
+
 		p.config.ClientSecretJWTSigAlgs = algs
 		return nil
 	}
@@ -628,6 +654,9 @@ func WithDPoP(
 ) ProviderOption {
 	algs = appendIfNotIn(algs, alg)
 	return func(p Provider) error {
+		if slices.Contains(algs, goidc.NoneSignatureAlgorithm) {
+			return errors.New("'none' algorithm is not allowed for DPoP")
+		}
 		p.config.DPoPIsEnabled = true
 		p.config.DPoPSigAlgs = algs
 		return nil
@@ -668,14 +697,14 @@ func WithTokenAuthnMethods(
 }
 
 // WithTokenIntrospection allows authorized clients to introspect tokens.
-// If no authentication methods are specified, default to using the values set
-// for the token endpoint.
 // A client can only introspect tokens if it has the grant type
 // [goidc.GrantIntrospection].
 func WithTokenIntrospection(
 	f goidc.IsClientAllowedFunc,
+	method goidc.ClientAuthnType,
 	methods ...goidc.ClientAuthnType,
 ) ProviderOption {
+	methods = appendIfNotIn(methods, method)
 	return func(p Provider) error {
 		p.config.TokenIntrospectionIsEnabled = true
 		p.config.IsClientAllowedTokenIntrospectionFunc = f
@@ -689,8 +718,10 @@ func WithTokenIntrospection(
 // for the token endpoint.
 func WithTokenRevocation(
 	f goidc.IsClientAllowedFunc,
+	method goidc.ClientAuthnType,
 	methods ...goidc.ClientAuthnType,
 ) ProviderOption {
+	methods = appendIfNotIn(methods, method)
 	return func(p Provider) error {
 		p.config.TokenRevocationIsEnabled = true
 		p.config.IsClientAllowedTokenRevocationFunc = f

@@ -1,10 +1,14 @@
 package jwtutil
 
 import (
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
 	"regexp"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func Sign(
@@ -68,9 +72,37 @@ func Encrypt(
 	return encContentString, nil
 }
 
+func Unsigned(claims map[string]any) (string, error) {
+	header := map[string]any{
+		"alg": goidc.NoneSignatureAlgorithm,
+		"typ": "jwt",
+	}
+	headerJSON, err := json.Marshal(header)
+	if err != nil {
+		return "", err
+	}
+	encodedHeader := base64.RawURLEncoding.EncodeToString(headerJSON)
+
+	claimsJSON, err := json.Marshal(claims)
+	if err != nil {
+		return "", err
+	}
+	encodedClaims := base64.RawURLEncoding.EncodeToString(claimsJSON)
+
+	return fmt.Sprintf("%s.%s.", encodedHeader, encodedClaims), nil
+}
+
+func IsUnsignedJWT(token string) bool {
+	isJWS, _ := regexp.MatchString(
+		"(^[\\w-]+\\.[\\w-]+\\.$)",
+		token,
+	)
+	return isJWS
+}
+
 func IsJWS(token string) bool {
 	isJWS, _ := regexp.MatchString(
-		"(^[\\w-]*\\.[\\w-]*\\.[\\w-]*$)",
+		"(^[\\w-]+\\.[\\w-]+\\.[\\w-]+$)",
 		token,
 	)
 	return isJWS
@@ -78,7 +110,7 @@ func IsJWS(token string) bool {
 
 func IsJWE(token string) bool {
 	isJWS, _ := regexp.MatchString(
-		"(^[\\w-]*\\.[\\w-]*\\.[\\w-]*\\.[\\w-]*\\.[\\w-]*$)",
+		"(^[\\w-]+\\.[\\w-]+\\.[\\w-]+\\.[\\w-]+\\.[\\w-]+$)",
 		token,
 	)
 	return isJWS

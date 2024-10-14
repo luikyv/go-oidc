@@ -64,7 +64,8 @@ func TestHandleGrantCreation_JWTBearerGrant(t *testing.T) {
 		t.Error(diff)
 	}
 
-	idTokenClaims, err := oidctest.SafeClaims(tokenResp.IDToken, ctx.UserSigKey())
+	jwk, _ := ctx.UserSigKey()
+	idTokenClaims, err := oidctest.SafeClaims(tokenResp.IDToken, jwk)
 	if err != nil {
 		t.Fatalf("error parsing claims: %v", err)
 	}
@@ -133,7 +134,8 @@ func TestHandleGrantCreation_JWTBearerGrant_NoClientIdentified(t *testing.T) {
 		t.Error(diff)
 	}
 
-	idTokenClaims, err := oidctest.SafeClaims(tokenResp.IDToken, ctx.UserSigKey())
+	jwk, _ := ctx.UserSigKey()
+	idTokenClaims, err := oidctest.SafeClaims(tokenResp.IDToken, jwk)
 	if err != nil {
 		t.Fatalf("error parsing claims: %v", err)
 	}

@@ -1,6 +1,8 @@
 package authorize
 
 import (
+	"strings"
+
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -103,7 +105,7 @@ func shouldUsePAR(
 	if !ctx.PARIsEnabled {
 		return false
 	}
-	return ctx.PARIsRequired || c.PARIsRequired || req.RequestURI != ""
+	return ctx.PARIsRequired || c.PARIsRequired || strings.HasPrefix(req.RequestURI, parRequestURIPrefix)
 }
 
 func authnSessionWithPAR(
@@ -156,12 +158,17 @@ func authnSessionWithJAR(
 	*goidc.AuthnSession,
 	error,
 ) {
-	if req.RequestObject == "" {
-		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest,
+	var jar request
+	var err error
+	switch {
+	case req.RequestObject != "":
+		jar, err = jarFromRequestObject(ctx, req.RequestObject, client)
+	case req.RequestURI != "":
+		jar, err = jarFromRequestURI(ctx, req.RequestURI, client)
+	default:
+		err = goidc.NewError(goidc.ErrorCodeInvalidRequest,
 			"request object is required")
 	}
-
-	jar, err := jarFromRequestObject(ctx, req.RequestObject, client)
 	if err != nil {
 		return nil, err
 	}

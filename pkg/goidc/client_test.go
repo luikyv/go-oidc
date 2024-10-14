@@ -23,7 +23,7 @@ func TestFetchPublicJWKS(t *testing.T) {
 		if err := json.NewEncoder(w).Encode(jose.JSONWebKeySet{
 			Keys: []jose.JSONWebKey{jwk},
 		}); err != nil {
-			panic(err)
+			t.Fatal(err)
 		}
 	}))
 

@@ -340,14 +340,14 @@ func TestWithClaimTypes(t *testing.T) {
 	}
 }
 
-func TestWithUserInfoSignatureKeyIDs(t *testing.T) {
+func TestWithUserSignatureAlgs(t *testing.T) {
 	// Given.
 	p := Provider{
 		config: &oidc.Configuration{},
 	}
 
 	// When.
-	err := WithUserInfoSignatureKeyIDs("sig_key")(p)
+	err := WithUserSignatureAlgs(jose.RS256)(p)
 
 	// Then.
 	if err != nil {
@@ -356,8 +356,8 @@ func TestWithUserInfoSignatureKeyIDs(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			UserDefaultSigKeyID: "sig_key",
-			UserSigKeyIDs:       []string{"sig_key"},
+			UserDefaultSigAlg: jose.RS256,
+			UserSigAlgs:       []jose.SignatureAlgorithm{jose.RS256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -901,7 +901,7 @@ func TestWithJAREncryption(t *testing.T) {
 	}
 
 	// When.
-	err := WithJAREncryption("enc_key")(p)
+	err := WithJAREncryption(jose.RSA_OAEP_256)(p)
 
 	// Then.
 	if err != nil {
@@ -911,7 +911,7 @@ func TestWithJAREncryption(t *testing.T) {
 	want := Provider{
 		config: &oidc.Configuration{
 			JAREncIsEnabled: true,
-			JARKeyEncIDs:    []string{"enc_key"},
+			JARKeyEncAlgs:   []jose.KeyAlgorithm{jose.RSA_OAEP_256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -950,7 +950,7 @@ func TestWithJARM(t *testing.T) {
 	}
 
 	// When.
-	err := WithJARM("sig_key")(p)
+	err := WithJARM(jose.RS256)(p)
 
 	// Then.
 	if err != nil {
@@ -959,9 +959,9 @@ func TestWithJARM(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			JARMIsEnabled:       true,
-			JARMDefaultSigKeyID: "sig_key",
-			JARMSigKeyIDs:       []string{"sig_key"},
+			JARMIsEnabled:     true,
+			JARMDefaultSigAlg: jose.RS256,
+			JARMSigAlgs:       []jose.SignatureAlgorithm{jose.RS256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {

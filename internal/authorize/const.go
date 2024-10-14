@@ -3,7 +3,8 @@ package authorize
 const (
 	protectedParamPrefix          string = "p_"
 	callbackIDLength              int    = 20
-	requestURILength              int    = 20
+	parRequestURIPrefix           string = "urn:ietf:params:oauth:request_uri:"
+	parRequestURILength           int    = 20
 	authorizationCodeLength       int    = 30
 	authorizationCodeLifetimeSecs int    = 60 // TODO: Make it a config.
 	formPostResponseTemplate      string = `
