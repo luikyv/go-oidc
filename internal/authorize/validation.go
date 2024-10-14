@@ -2,7 +2,9 @@ package authorize
 
 import (
 	"errors"
+	"net/url"
 	"slices"
+	"strings"
 
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/clientutil"
@@ -137,11 +139,6 @@ func validatePushedRequest(
 	req pushedRequest,
 	c *goidc.Client,
 ) error {
-
-	if c.TokenAuthnMethod == goidc.ClientAuthnNone {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"invalid client authentication method")
-	}
 
 	if req.RequestURI != "" {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
@@ -291,6 +288,10 @@ func validateParamsAsOptionals(
 		return err
 	}
 
+	if err := validateRequestURIAsOptional(ctx, params, c); err != nil {
+		return err
+	}
+
 	if err := validateScopesAsOptional(ctx, params, c); err != nil {
 		return err
 	}
@@ -347,6 +348,33 @@ func validateRedirectURIAsOptional(
 	if !isRedirectURIAllowed(c, params.RedirectURI) {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
 			"invalid redirect_uri")
+	}
+
+	return nil
+}
+
+func validateRequestURIAsOptional(
+	ctx oidc.Context,
+	params goidc.AuthorizationParameters,
+	client *goidc.Client,
+) error {
+	if params.RequestURI == "" || strings.HasPrefix(params.RequestURI, parRequestURIPrefix) {
+		return nil
+	}
+
+	if !ctx.JARByReferenceIsEnabled {
+		return goidc.NewError(goidc.ErrorCodeRequestURINotSupported,
+			"request_uri is not supported")
+	}
+
+	if ctx.JARRequestURIRegistrationIsRequired && !isRequestURIAllowed(client, params.RequestURI) {
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
+			"request_uri not allowed")
+	}
+
+	if parsedURI, err := url.Parse(params.RequestURI); err != nil || parsedURI.Scheme != "https" {
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
+			"invalid request_uri")
 	}
 
 	return nil
@@ -578,6 +606,15 @@ func validateIDTokenHintAsOptional(
 func isRedirectURIAllowed(c *goidc.Client, redirectURI string) bool {
 	for _, ru := range c.RedirectURIs {
 		if redirectURI == ru {
+			return true
+		}
+	}
+	return false
+}
+
+func isRequestURIAllowed(c *goidc.Client, requestURI string) bool {
+	for _, ru := range c.RequestURIs {
+		if requestURI == ru {
 			return true
 		}
 	}

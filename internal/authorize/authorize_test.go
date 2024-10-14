@@ -688,7 +688,7 @@ func TestInitAuth_PAR(t *testing.T) {
 	ctx, client := setUpAuth(t)
 	ctx.PARIsEnabled = true
 
-	requestURI := "urn:goidc:random_value"
+	requestURI := "urn:ietf:params:oauth:request_uri:random_value"
 	_ = ctx.SaveAuthnSession(
 		&goidc.AuthnSession{
 			ID:          uuid.NewString(),

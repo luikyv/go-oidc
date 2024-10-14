@@ -2,6 +2,8 @@ package authorize
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
@@ -13,7 +15,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func shouldUseJAR(
+func shouldUseJARDuringPAR(
 	ctx oidc.Context,
 	req goidc.AuthorizationParameters,
 	c *goidc.Client,
@@ -22,6 +24,50 @@ func shouldUseJAR(
 		return false
 	}
 	return ctx.JARIsRequired || c.JARIsRequired || req.RequestObject != ""
+}
+
+func shouldUseJAR(
+	ctx oidc.Context,
+	req goidc.AuthorizationParameters,
+	c *goidc.Client,
+) bool {
+	if !ctx.JARIsEnabled {
+		return false
+	}
+
+	// JAR was informed either by value or reference.
+	jarWasInformed := req.RequestObject != "" || (ctx.JARByReferenceIsEnabled && req.RequestURI != "")
+	return ctx.JARIsRequired || c.JARIsRequired || jarWasInformed
+}
+
+func jarFromRequestURI(
+	ctx oidc.Context,
+	reqURI string,
+	client *goidc.Client,
+) (
+	request,
+	error,
+) {
+	httpClient := ctx.HTTPClient()
+	resp, err := httpClient.Get(reqURI)
+	if err != nil {
+		return request{}, goidc.Errorf(goidc.ErrorCodeInvalidRequest,
+			"invalid request uri", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return request{}, goidc.Errorf(goidc.ErrorCodeInvalidRequest,
+			"invalid request uri", err)
+	}
+
+	reqObject, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return request{}, goidc.Errorf(goidc.ErrorCodeInvalidRequest,
+			"invalid request uri", err)
+	}
+
+	return jarFromRequestObject(ctx, string(reqObject), client)
 }
 
 func jarFromRequestObject(
@@ -105,15 +151,10 @@ func jarFromUnsignedRequestObject(
 		return request{}, fmt.Errorf("failed to parse JWT: %w", err)
 	}
 
-	var claims jwt.Claims
 	var jarReq request
-	if err := parsedJWT.UnsafeClaimsWithoutVerification(&claims, &jarReq); err != nil {
+	if err := parsedJWT.UnsafeClaimsWithoutVerification(&jarReq); err != nil {
 		return request{}, goidc.Errorf(goidc.ErrorCodeInvalidResquestObject,
 			"could not extract claims from the request object", err)
-	}
-
-	if err := validateClaims(ctx, claims, c); err != nil {
-		return request{}, err
 	}
 
 	return jarReq, nil

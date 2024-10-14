@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func validateJWKS(config *oidc.Configuration) error {
@@ -30,6 +31,9 @@ func validateSigKeys(config *oidc.Configuration) error {
 		config.JARMSigAlgs,
 		config.JARSigAlgs,
 	) {
+		if keyAlg == goidc.NoneSignatureAlgorithm {
+			continue
+		}
 		if strings.HasPrefix(string(keyAlg), "HS") {
 			return fmt.Errorf("symetric algorithm %s is not allowed for signing", keyAlg)
 		}

@@ -1,7 +1,6 @@
 package authorize
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/luikyv/go-oidc/internal/clientutil"
@@ -71,7 +70,7 @@ func pushedAuthnSession(
 	*goidc.AuthnSession,
 	error,
 ) {
-	if shouldUseJAR(ctx, req.AuthorizationParameters, client) {
+	if shouldUseJARDuringPAR(ctx, req.AuthorizationParameters, client) {
 		return pushedAuthnSessionWithJAR(ctx, req, client)
 	}
 	return simplePushedAuthnSession(ctx, req, client)
@@ -135,7 +134,7 @@ func protectedParams(ctx oidc.Context) map[string]any {
 }
 
 func requestURI() string {
-	return fmt.Sprintf("urn:ietf:params:oauth:request_uri:%s", strutil.Random(requestURILength))
+	return parRequestURIPrefix + strutil.Random(parRequestURILength)
 }
 
 // setDPoP adds DPoP for authorization code to the session if available.

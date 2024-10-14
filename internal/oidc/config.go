@@ -108,9 +108,11 @@ type Configuration struct {
 	JARMDefaultContentEncAlg jose.ContentEncryption
 	JARMContentEncAlgs       []jose.ContentEncryption
 
-	JARIsEnabled  bool
-	JARIsRequired bool
-	JARSigAlgs    []jose.SignatureAlgorithm
+	JARIsEnabled                        bool
+	JARIsRequired                       bool
+	JARSigAlgs                          []jose.SignatureAlgorithm
+	JARByReferenceIsEnabled             bool
+	JARRequestURIRegistrationIsRequired bool
 	// JARLifetimeSecs defines the max difference allowed between the claims "iat"
 	// and "exp" for request objects.
 	JARLifetimeSecs   int

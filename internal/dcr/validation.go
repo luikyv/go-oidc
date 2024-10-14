@@ -29,6 +29,7 @@ func validate(
 		validateGrantTypes,
 		validateClientCredentialsGrantType,
 		validateRedirectURIS,
+		validateRequestURIS,
 		validateResponseTypes,
 		validateImplicitResponseTypes,
 		validateResponseTypeCode,
@@ -96,20 +97,28 @@ func validateRedirectURIS(
 	meta *goidc.ClientMetaInfo,
 ) error {
 	for _, ru := range meta.RedirectURIs {
-		parsedRU, err := url.Parse(ru)
-		if err != nil {
+		if parsedRU, err := url.Parse(ru); err != nil ||
+			parsedRU.Scheme != "https" ||
+			parsedRU.Host == "" ||
+			parsedRU.Fragment != "" {
 			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 				"invalid redirect uri")
 		}
+	}
 
-		if parsedRU.Scheme != "https" || parsedRU.Host == "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-				"invalid redirect uri")
-		}
+	return nil
+}
 
-		if parsedRU.Fragment != "" {
+func validateRequestURIS(
+	_ oidc.Context,
+	meta *goidc.ClientMetaInfo,
+) error {
+	for _, ru := range meta.RequestURIs {
+		if parsedRU, err := url.Parse(ru); err != nil ||
+			parsedRU.Scheme != "https" ||
+			parsedRU.Host == "" {
 			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-				"the redirect uri cannot contain a fragment")
+				"invalid request uri")
 		}
 	}
 

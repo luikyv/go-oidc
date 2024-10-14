@@ -425,6 +425,14 @@ func WithJARRequired(
 	}
 }
 
+func WithJARByReference(requireReqURIRegistration bool) ProviderOption {
+	return func(p Provider) error {
+		p.config.JARByReferenceIsEnabled = true
+		p.config.JARRequestURIRegistrationIsRequired = requireReqURIRegistration
+		return nil
+	}
+}
+
 // WithJAREncryption allows authorization requests to be securely sent as
 // encrypted JWTs.
 // To enable JAR, see [WithJAR].

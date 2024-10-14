@@ -32,9 +32,10 @@ func main() {
 		authutil.Issuer,
 		authutil.PrivateJWKS(jwksFilePath),
 		provider.WithScopes(authutil.Scopes...),
-		provider.WithUserSignatureAlgs(jose.RS256),
+		provider.WithUserSignatureAlgs(jose.RS256, goidc.NoneSignatureAlgorithm),
 		provider.WithPAR(),
-		provider.WithJAR(jose.RS256),
+		provider.WithJAR(jose.RS256, goidc.NoneSignatureAlgorithm),
+		provider.WithJARByReference(false),
 		provider.WithJARM(jose.RS256),
 		provider.WithTokenAuthnMethods(
 			goidc.ClientAuthnSecretBasic,
