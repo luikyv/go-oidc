@@ -583,7 +583,7 @@ func TestUserInfoSigKeyForClient(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.UserDefaultSigKeyID = keyID
+	ctx.UserDefaultSigAlg = jose.SignatureAlgorithm(signingKey.Algorithm)
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	client := &goidc.Client{}
@@ -612,8 +612,11 @@ func TestUserInfoSigKeyForClient_ClientWithDefaultAlgorithm(t *testing.T) {
 	ctx.PrivateJWKS = jose.JSONWebKeySet{
 		Keys: []jose.JSONWebKey{defaultKey, alternativeKey},
 	}
-	ctx.UserDefaultSigKeyID = defaultKey.KeyID
-	ctx.UserSigKeyIDs = []string{defaultKey.KeyID, alternativeKey.KeyID}
+	ctx.UserDefaultSigAlg = jose.SignatureAlgorithm(defaultKey.Algorithm)
+	ctx.UserSigAlgs = []jose.SignatureAlgorithm{
+		jose.SignatureAlgorithm(defaultKey.Algorithm),
+		jose.SignatureAlgorithm(alternativeKey.Algorithm),
+	}
 
 	client := &goidc.Client{}
 	client.UserInfoSigAlg = jose.RS256
@@ -638,7 +641,7 @@ func TestIDTokenSigKeyForClient(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.UserDefaultSigKeyID = signingKey.KeyID
+	ctx.UserDefaultSigAlg = jose.SignatureAlgorithm(signingKey.Algorithm)
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	client := &goidc.Client{}
@@ -667,8 +670,11 @@ func TestIDTokenSigKeyForClient_ClientWithDefaultAlgorithm(t *testing.T) {
 	ctx.PrivateJWKS = jose.JSONWebKeySet{
 		Keys: []jose.JSONWebKey{defaultKey, alternativeKey},
 	}
-	ctx.UserDefaultSigKeyID = defaultKey.KeyID
-	ctx.UserSigKeyIDs = []string{defaultKey.KeyID, alternativeKey.KeyID}
+	ctx.UserDefaultSigAlg = jose.SignatureAlgorithm(defaultKey.Algorithm)
+	ctx.UserSigAlgs = []jose.SignatureAlgorithm{
+		jose.SignatureAlgorithm(defaultKey.Algorithm),
+		jose.SignatureAlgorithm(alternativeKey.Algorithm),
+	}
 
 	client := &goidc.Client{}
 	client.IDTokenSigAlg = jose.RS256
@@ -693,7 +699,7 @@ func TestJARMSigKeyForClient_HappyPath(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.JARMDefaultSigKeyID = signingKey.KeyID
+	ctx.JARMDefaultSigAlg = jose.SignatureAlgorithm(signingKey.Algorithm)
 	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
 
 	client := &goidc.Client{}
@@ -722,7 +728,10 @@ func TestJARMSigKeyForClient_ClientWithDefaultAlgorithm(t *testing.T) {
 	ctx.PrivateJWKS = jose.JSONWebKeySet{
 		Keys: []jose.JSONWebKey{defaultKey, alternativeKey},
 	}
-	ctx.JARMSigKeyIDs = []string{defaultKey.KeyID, alternativeKey.KeyID}
+	ctx.JARMSigAlgs = []jose.SignatureAlgorithm{
+		jose.SignatureAlgorithm(defaultKey.Algorithm),
+		jose.SignatureAlgorithm(alternativeKey.Algorithm),
+	}
 
 	client := &goidc.Client{}
 	client.JARMSigAlg = jose.RS256

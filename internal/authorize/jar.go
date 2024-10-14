@@ -1,6 +1,7 @@
 package authorize
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
@@ -39,8 +40,8 @@ func jarFromRequestObject(
 		reqObject = signedReqObject
 	}
 
-	if !jwtutil.IsJWS(reqObject) {
-		return request{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "the request object is not a JWS")
+	if jwtutil.IsUnsignedJWT(reqObject) {
+		return jarFromUnsignedRequestObject(ctx, reqObject, c)
 	}
 
 	return jarFromSignedRequestObject(ctx, reqObject, c)
@@ -61,7 +62,7 @@ func signedRequestObjectFromEncrypted(
 	}
 	encryptedReqObject, err := jose.ParseEncrypted(
 		reqObject,
-		ctx.JARKeyEncAlgs(),
+		ctx.JARKeyEncAlgs,
 		contentEncAlgs,
 	)
 	if err != nil {
@@ -90,6 +91,34 @@ func signedRequestObjectFromEncrypted(
 	return string(decryptedReqObject), nil
 }
 
+func jarFromUnsignedRequestObject(
+	ctx oidc.Context,
+	reqObject string,
+	c *goidc.Client,
+) (
+	request,
+	error,
+) {
+	jarAlgorithms := jarAlgorithms(ctx, c)
+	parsedJWT, err := jwt.ParseSigned(reqObject, jarAlgorithms)
+	if err != nil {
+		return request{}, fmt.Errorf("failed to parse JWT: %w", err)
+	}
+
+	var claims jwt.Claims
+	var jarReq request
+	if err := parsedJWT.UnsafeClaimsWithoutVerification(&claims, &jarReq); err != nil {
+		return request{}, goidc.Errorf(goidc.ErrorCodeInvalidResquestObject,
+			"could not extract claims from the request object", err)
+	}
+
+	if err := validateClaims(ctx, claims, c); err != nil {
+		return request{}, err
+	}
+
+	return jarReq, nil
+}
+
 func jarFromSignedRequestObject(
 	ctx oidc.Context,
 	reqObject string,
@@ -98,10 +127,7 @@ func jarFromSignedRequestObject(
 	request,
 	error,
 ) {
-	jarAlgorithms := ctx.JARSigAlgs
-	if c.JARSigAlg != "" {
-		jarAlgorithms = []jose.SignatureAlgorithm{c.JARSigAlg}
-	}
+	jarAlgorithms := jarAlgorithms(ctx, c)
 	parsedToken, err := jwt.ParseSigned(reqObject, jarAlgorithms)
 	if err != nil {
 		return request{}, goidc.Errorf(goidc.ErrorCodeInvalidResquestObject,
@@ -127,46 +153,66 @@ func jarFromSignedRequestObject(
 			"could not extract claims from the request object", err)
 	}
 
+	if err := validateClaims(ctx, claims, c); err != nil {
+		return request{}, err
+	}
+
+	return jarReq, nil
+}
+
+func jarAlgorithms(ctx oidc.Context, client *goidc.Client) []jose.SignatureAlgorithm {
+	jarAlgorithms := ctx.JARSigAlgs
+	if client.JARSigAlg != "" {
+		jarAlgorithms = []jose.SignatureAlgorithm{client.JARSigAlg}
+	}
+	return jarAlgorithms
+}
+
+func validateClaims(
+	ctx oidc.Context,
+	claims jwt.Claims,
+	client *goidc.Client,
+) error {
 	validFrom := timeutil.Now()
 	if claims.IssuedAt != nil {
 		validFrom = claims.IssuedAt.Time()
 	}
-	// The claim 'nbf' required for FAPI 2.0.
+	// The claim 'nbf' is required for FAPI 2.0.
 	if ctx.Profile == goidc.ProfileFAPI2 {
 		if claims.NotBefore == nil {
-			return request{}, goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
+			return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
 				"claim 'nbf' is required in the request object")
 		}
 		validFrom = claims.NotBefore.Time().UTC()
 	}
 
 	if claims.Expiry == nil {
-		return request{}, goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
+		return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
 			"claim 'exp' is required in the request object")
 	}
 
 	// Validate that the "exp" claims is present and it's not far in the future.
 	secsToExpiry := int(claims.Expiry.Time().Sub(validFrom).Seconds())
 	if secsToExpiry > ctx.JARLifetimeSecs {
-		return request{}, goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
+		return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
 			"invalid exp claim in the request object")
 	}
 
 	if claims.ID != "" {
 		if err := ctx.CheckJTI(claims.ID); err != nil {
-			return request{}, goidc.Errorf(goidc.ErrorCodeInvalidResquestObject,
+			return goidc.Errorf(goidc.ErrorCodeInvalidResquestObject,
 				"invalid jti claim", err)
 		}
 	}
 
-	err = claims.ValidateWithLeeway(jwt.Expected{
-		Issuer:      c.ID,
+	err := claims.ValidateWithLeeway(jwt.Expected{
+		Issuer:      client.ID,
 		AnyAudience: []string{ctx.Host},
 	}, time.Duration(ctx.JARLeewayTimeSecs)*time.Second)
 	if err != nil {
-		return request{}, goidc.Errorf(goidc.ErrorCodeInvalidResquestObject,
+		return goidc.Errorf(goidc.ErrorCodeInvalidResquestObject,
 			"the request object contains invalid claims", err)
 	}
 
-	return jarReq, nil
+	return nil
 }

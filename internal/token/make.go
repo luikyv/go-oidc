@@ -35,12 +35,7 @@ func MakeIDToken(
 		return idToken, nil
 	}
 
-	idToken, err = encryptIDToken(ctx, client, idToken)
-	if err != nil {
-		return "", err
-	}
-
-	return idToken, nil
+	return encryptIDToken(ctx, client, idToken)
 }
 
 func Make(
@@ -66,12 +61,45 @@ func makeIDToken(
 	string,
 	error,
 ) {
+	if ctx.UserInfoSigAlgsContainsNone() && client.IDTokenSigAlg == goidc.NoneSignatureAlgorithm {
+		return makeUnsignedIDToken(ctx, client, opts)
+	}
+
 	jwk, ok := ctx.IDTokenSigKeyForClient(client)
 	if !ok {
 		return "", goidc.NewError(goidc.ErrorCodeInvalidRequest,
 			"the id token signing algorithm defined for the client is not available")
 	}
-	sigAlg := jose.SignatureAlgorithm(jwk.Algorithm)
+
+	claims := idTokenClaims(ctx, client, opts, jose.SignatureAlgorithm(jwk.Algorithm))
+	idToken, err := jwtutil.Sign(claims, jwk,
+		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
+	if err != nil {
+		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
+			"could not sign the id token", err)
+	}
+
+	return idToken, nil
+}
+
+func makeUnsignedIDToken(
+	ctx oidc.Context,
+	client *goidc.Client,
+	opts IDTokenOptions,
+) (
+	string,
+	error,
+) {
+	claims := idTokenClaims(ctx, client, opts, goidc.NoneSignatureAlgorithm)
+	return jwtutil.Unsigned(claims)
+}
+
+func idTokenClaims(
+	ctx oidc.Context,
+	client *goidc.Client,
+	opts IDTokenOptions,
+	sigAlg jose.SignatureAlgorithm,
+) map[string]any {
 	now := timeutil.TimestampNow()
 
 	claims := map[string]any{
@@ -108,14 +136,7 @@ func makeIDToken(
 		claims[k] = v
 	}
 
-	idToken, err := jwtutil.Sign(claims, jwk,
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
-	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
-			"could not sign the id token", err)
-	}
-
-	return idToken, nil
+	return claims
 }
 
 func encryptIDToken(
@@ -241,14 +262,12 @@ func makeOpaqueToken(
 func halfHashIDTokenClaim(claim string, alg jose.SignatureAlgorithm) string {
 	var hash hash.Hash
 	switch alg {
-	case jose.RS256, jose.ES256, jose.PS256, jose.HS256:
-		hash = sha256.New()
 	case jose.RS384, jose.ES384, jose.PS384, jose.HS384:
 		hash = sha512.New384()
 	case jose.RS512, jose.ES512, jose.PS512, jose.HS512:
 		hash = sha512.New()
 	default:
-		hash = nil
+		hash = sha256.New()
 	}
 
 	hash.Write([]byte(claim))

@@ -29,8 +29,8 @@ type openIDConfiguration struct {
 	UserInfoSigAlgs                []jose.SignatureAlgorithm     `json:"userinfo_signing_alg_values_supported"`
 	TokenAuthnMethods              []goidc.ClientAuthnType       `json:"token_endpoint_auth_methods_supported"`
 	TokenAuthnSigAlgs              []jose.SignatureAlgorithm     `json:"token_endpoint_auth_signing_alg_values_supported,omitempty"`
+	JARIsEnabled                   bool                          `json:"request_parameter_supported,omitempty"`
 	JARIsRequired                  bool                          `json:"require_signed_request_object,omitempty"`
-	JARIsEnabled                   bool                          `json:"request_parameter_supported"`
 	JARAlgs                        []jose.SignatureAlgorithm     `json:"request_object_signing_alg_values_supported,omitempty"`
 	JARKeyEncAlgs                  []jose.KeyAlgorithm           `json:"request_object_encryption_alg_values_supported,omitempty"`
 	JARContentEncAlgs              []jose.ContentEncryption      `json:"request_object_encryption_enc_values_supported,omitempty"`

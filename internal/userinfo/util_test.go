@@ -85,6 +85,53 @@ func TestHandleUserInfoRequest_SignedResponse(t *testing.T) {
 	}
 }
 
+func TestHandleUserInfoRequest_UnsignedResponse(t *testing.T) {
+	// Given.
+	ctx, client, _ := setUp(t)
+	ctx.UserSigAlgs = append(ctx.UserSigAlgs, goidc.NoneSignatureAlgorithm)
+
+	client.UserInfoSigAlg = goidc.NoneSignatureAlgorithm
+
+	// When.
+	resp, err := handleUserInfoRequest(ctx)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	wantedResp := response{jwtClaims: resp.jwtClaims}
+	if diff := cmp.Diff(
+		resp,
+		wantedResp,
+		cmp.AllowUnexported(response{}),
+	); diff != "" {
+		t.Error(diff)
+	}
+
+	if resp.jwtClaims == "" {
+		t.Fatalf("the user info response must be a jwt")
+	}
+
+	claims, err := oidctest.UnsafeClaims(resp.jwtClaims, goidc.NoneSignatureAlgorithm)
+	if err != nil {
+		t.Fatalf("error parsing claims: %v", err)
+	}
+
+	wantedClaims := map[string]any{
+		"iss":          ctx.Host,
+		"sub":          "random_subject",
+		"aud":          client.ID,
+		"random_claim": "random_value",
+	}
+	if diff := cmp.Diff(
+		claims,
+		wantedClaims,
+	); diff != "" {
+		t.Error(diff)
+	}
+}
+
 func TestHandleUserInfoRequest_InvalidPoP(t *testing.T) {
 	// Given.
 	ctx, _, grantSession := setUp(t)

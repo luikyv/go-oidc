@@ -59,16 +59,8 @@ type Configuration struct {
 	EndpointTokenRevocation     string
 	EndpointPrefix              string
 
-	// DefaultSigKeyID defines the default key used to sign ID
-	// tokens and the user info endpoint response.
-	// The key can be overridden depending on the client properties
-	// "id_token_signed_response_alg" and "userinfo_signed_response_alg".
-	UserDefaultSigKeyID string
-	// SigKeyIDs contains the IDs of the keys used to sign ID tokens
-	// and the user info endpoint response.
-	// There should be at most one per algorithm, in other words, there should
-	// not be two key IDs that point to two keys that have the same algorithm.
-	UserSigKeyIDs            []string
+	UserDefaultSigAlg        jose.SignatureAlgorithm
+	UserSigAlgs              []jose.SignatureAlgorithm
 	UserEncIsEnabled         bool
 	UserKeyEncAlgs           []jose.KeyAlgorithm
 	UserDefaultContentEncAlg jose.ContentEncryption
@@ -106,12 +98,9 @@ type Configuration struct {
 	RefreshTokenRotationIsEnabled bool
 	RefreshTokenLifetimeSecs      int
 
-	JARMIsEnabled bool
-	// JARMDefaultSigKeyID indicates the key that will be used to sign the
-	// response object if the client doesn't have an algorithm defined.
-	JARMDefaultSigKeyID string
-	// JARMSigKeyIDs indicates all the keys available to sign the response object.
-	JARMSigKeyIDs []string
+	JARMIsEnabled     bool
+	JARMDefaultSigAlg jose.SignatureAlgorithm
+	JARMSigAlgs       []jose.SignatureAlgorithm
 	// JARMLifetimeSecs defines how long response objects are valid for.
 	JARMLifetimeSecs         int
 	JARMEncIsEnabled         bool
@@ -127,7 +116,7 @@ type Configuration struct {
 	JARLifetimeSecs   int
 	JARLeewayTimeSecs int
 	JAREncIsEnabled   bool
-	JARKeyEncIDs      []string
+	JARKeyEncAlgs     []jose.KeyAlgorithm
 	JARContentEncAlgs []jose.ContentEncryption
 
 	// PARIsEnabled allows client to push authorization requests.

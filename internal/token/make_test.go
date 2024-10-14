@@ -53,6 +53,51 @@ func TestMakeIDToken(t *testing.T) {
 	}
 }
 
+func TestMakeIDToken_Unsigned(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.UserSigAlgs = append(ctx.UserSigAlgs, goidc.NoneSignatureAlgorithm)
+
+	client, _ := oidctest.NewClient(t)
+	client.IDTokenSigAlg = goidc.NoneSignatureAlgorithm
+	idTokenOptions := token.IDTokenOptions{
+		Subject: "random_subject",
+		AdditionalIDTokenClaims: map[string]any{
+			"random_claim": "random_value",
+		},
+	}
+
+	// When.
+	idToken, err := token.MakeIDToken(ctx, client, idTokenOptions)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	claims, err := oidctest.UnsafeClaims(idToken, goidc.NoneSignatureAlgorithm)
+	if err != nil {
+		t.Fatalf("error parsing claims: %v", err)
+	}
+
+	now := timeutil.TimestampNow()
+	wantedClaims := map[string]any{
+		"iss":          ctx.Host,
+		"sub":          idTokenOptions.Subject,
+		"aud":          client.ID,
+		"random_claim": "random_value",
+		"iat":          float64(now),
+		"exp":          float64(now + ctx.IDTokenLifetimeSecs),
+	}
+	if diff := cmp.Diff(
+		claims,
+		wantedClaims,
+		cmpopts.EquateApprox(0, 1),
+	); diff != "" {
+		t.Error(diff)
+	}
+}
+
 func TestMakeToken_JWTToken(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)

@@ -253,7 +253,7 @@ func validateIDTokenSigAlg(
 		return nil
 	}
 
-	if !slices.Contains(ctx.UserInfoSigAlgs(), meta.IDTokenSigAlg) {
+	if !slices.Contains(ctx.UserSigAlgs, meta.IDTokenSigAlg) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"id_token_signed_response_alg not supported")
 	}
@@ -268,7 +268,7 @@ func validateUserInfoSigAlg(
 		return nil
 	}
 
-	if !slices.Contains(ctx.UserInfoSigAlgs(), meta.UserInfoSigAlg) {
+	if !slices.Contains(ctx.UserSigAlgs, meta.UserInfoSigAlg) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"id_token_signed_response_alg not supported")
 	}
@@ -298,7 +298,7 @@ func validateJARMSigAlg(
 		return nil
 	}
 
-	if !slices.Contains(ctx.JARMSigAlgs(), meta.JARMSigAlg) {
+	if !slices.Contains(ctx.JARMSigAlgs, meta.JARMSigAlg) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"authorization_signed_response_alg not supported")
 	}
@@ -508,7 +508,7 @@ func validateJAREncAlgs(
 	}
 
 	if meta.JARKeyEncAlg != "" &&
-		!slices.Contains(ctx.JARKeyEncAlgs(), meta.JARKeyEncAlg) {
+		!slices.Contains(ctx.JARKeyEncAlgs, meta.JARKeyEncAlg) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"request_object_encryption_alg not supported")
 	}

@@ -62,16 +62,17 @@ func userInfoResponse(
 		userInfoClaims[k] = v
 	}
 
-	resp := response{}
 	// If the client doesn't require the user info to be signed,
 	// we'll just return the claims as a JSON object.
 	if c.UserInfoSigAlg == "" {
-		resp.claims = userInfoClaims
-		return resp, nil
+		return response{
+			claims: userInfoClaims,
+		}, nil
 	}
 
 	userInfoClaims[goidc.ClaimIssuer] = ctx.Host
 	userInfoClaims[goidc.ClaimAudience] = c.ID
+
 	jwtUserInfoClaims, err := signUserInfoClaims(ctx, c, userInfoClaims)
 	if err != nil {
 		return response{}, err
@@ -80,16 +81,18 @@ func userInfoResponse(
 	// If the client doesn't require the user info to be encrypted,
 	// we'll just return the claims as a signed JWT.
 	if !ctx.UserEncIsEnabled || c.UserInfoKeyEncAlg == "" {
-		resp.jwtClaims = jwtUserInfoClaims
-		return resp, nil
+		return response{
+			jwtClaims: jwtUserInfoClaims,
+		}, nil
 	}
 
 	jwtUserInfoClaims, err = encryptUserInfoJWT(ctx, c, jwtUserInfoClaims)
 	if err != nil {
 		return response{}, err
 	}
-	resp.jwtClaims = jwtUserInfoClaims
-	return resp, nil
+	return response{
+		jwtClaims: jwtUserInfoClaims,
+	}, nil
 }
 
 func signUserInfoClaims(
@@ -100,6 +103,15 @@ func signUserInfoClaims(
 	string,
 	error,
 ) {
+
+	if ctx.UserInfoSigAlgsContainsNone() && c.UserInfoSigAlg == goidc.NoneSignatureAlgorithm {
+		unsignedJWT, err := jwtutil.Unsigned(claims)
+		if err != nil {
+			return "", goidc.Errorf(goidc.ErrorCodeInternalError, "internal error signing the user info", err)
+		}
+		return unsignedJWT, nil
+	}
+
 	jwk, ok := ctx.UserInfoSigKeyForClient(c)
 	if !ok {
 		return "", goidc.NewError(goidc.ErrorCodeInvalidRequest,

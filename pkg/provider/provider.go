@@ -150,19 +150,19 @@ func (p *Provider) Client(
 }
 
 func (p Provider) setDefaults() error {
-	// Use the first signature key as the default key.
-	defaultSigKeyID, ok := firstSigKeyID(p.config.PrivateJWKS)
+	defaultSigKey, ok := firstSigKey(p.config.PrivateJWKS)
 	if !ok {
 		return errors.New("the private jwks doesn't contain any signing key")
 	}
+	defaultSigAlg := jose.SignatureAlgorithm(defaultSigKey.Algorithm)
 
-	p.config.UserDefaultSigKeyID = nonZeroOrDefault(
-		p.config.UserDefaultSigKeyID,
-		defaultSigKeyID,
+	p.config.UserDefaultSigAlg = nonZeroOrDefault(
+		p.config.UserDefaultSigAlg,
+		defaultSigAlg,
 	)
-	p.config.UserSigKeyIDs = nonZeroOrDefault(
-		p.config.UserSigKeyIDs,
-		[]string{defaultSigKeyID},
+	p.config.UserSigAlgs = nonZeroOrDefault(
+		p.config.UserSigAlgs,
+		[]jose.SignatureAlgorithm{defaultSigAlg},
 	)
 	p.config.Scopes = nonZeroOrDefault(
 		p.config.Scopes,
@@ -182,7 +182,7 @@ func (p Provider) setDefaults() error {
 	)
 	p.config.TokenOptionsFunc = nonZeroOrDefault(
 		p.config.TokenOptionsFunc,
-		defaultTokenOptionsFunc(defaultSigKeyID),
+		defaultTokenOptionsFunc(defaultSigKey.KeyID),
 	)
 	p.config.ResponseModes = []goidc.ResponseMode{
 		goidc.ResponseModeQuery,
@@ -364,24 +364,12 @@ func (p Provider) setDefaults() error {
 			p.config.EndpointIntrospection,
 			defaultEndpointTokenIntrospection,
 		)
-		// Set the defaults token introspection authn methods to the same as for the
-		// token endpoint.
-		p.config.TokenIntrospectionAuthnMethods = nonZeroOrDefault(
-			p.config.TokenIntrospectionAuthnMethods,
-			p.config.TokenAuthnMethods,
-		)
 	}
 
 	if p.config.TokenRevocationIsEnabled {
 		p.config.EndpointTokenRevocation = nonZeroOrDefault(
 			p.config.EndpointTokenRevocation,
 			defaultEndpointTokenRevocation,
-		)
-		// Set the defaults token revocation authn methods to the same as for the
-		// token endpoint.
-		p.config.TokenRevocationAuthnMethods = nonZeroOrDefault(
-			p.config.TokenRevocationAuthnMethods,
-			p.config.TokenAuthnMethods,
 		)
 	}
 
@@ -405,15 +393,20 @@ func (p Provider) validate() error {
 		validateJWKS,
 		validateSigKeys,
 		validateEncKeys,
-		validatePrivateKeyJWTSigAlgs,
-		validateClientSecretJWTSigAlgs,
-		validateIntrospectionClientAuthnMethods,
 		validateJAREnc,
 		validateJARMEnc,
 		validateTokenBinding,
 	)
 }
 
+// nonZeroOrDefault returns the first argument `s1“ if it is non-nil and non-zero.
+// Otherwise, it returns the second argument `s2` as the default value.
+//
+// Example:
+//
+//	nonZeroOrDefault(42, 100) // returns 42
+//	nonZeroOrDefault(0, 100)  // returns 100
+//	nonZeroOrDefault("", "default") // returns "default"
 func nonZeroOrDefault[T any](s1 T, s2 T) T {
 	if isNil(s1) || reflect.ValueOf(s1).IsZero() {
 		return s2
@@ -426,12 +419,11 @@ func isNil(i any) bool {
 	return i == nil
 }
 
-func firstSigKeyID(jwks jose.JSONWebKeySet) (string, bool) {
+func firstSigKey(jwks jose.JSONWebKeySet) (jose.JSONWebKey, bool) {
 	for _, key := range jwks.Keys {
-		if key.KeyID != "" && key.Use == string(goidc.KeyUsageSignature) {
-			return key.KeyID, true
+		if key.KeyID != "" && key.Algorithm != "" && key.Use == string(goidc.KeyUsageSignature) {
+			return key, true
 		}
 	}
-	return "", false
-
+	return jose.JSONWebKey{}, false
 }
