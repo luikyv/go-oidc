@@ -1,6 +1,7 @@
 package oidc
 
 import (
+	"context"
 	"crypto/x509"
 	"encoding/json"
 	"errors"
@@ -17,6 +18,7 @@ import (
 type Context struct {
 	Response http.ResponseWriter
 	Request  *http.Request
+	context  context.Context
 	*Configuration
 }
 
@@ -67,6 +69,10 @@ func (ctx Context) IsClientAllowedTokenRevocation(c *goidc.Client) bool {
 
 func (ctx Context) TokenRevocationAuthnSigAlgs() []jose.SignatureAlgorithm {
 	return ctx.clientAuthnSigAlgs(ctx.TokenRevocationAuthnMethods)
+}
+
+func (ctx Context) ClientAuthnSigAlgs() []jose.SignatureAlgorithm {
+	return append(ctx.PrivateKeyJWTSigAlgs, ctx.ClientSecretJWTSigAlgs...)
 }
 
 func (ctx Context) clientAuthnSigAlgs(methods []goidc.ClientAuthnType) []jose.SignatureAlgorithm {
@@ -123,16 +129,16 @@ func (ctx Context) RenderError(err error) error {
 		return err
 	}
 
-	ctx.handleError(err)
+	ctx.NotifyError(err)
 	return ctx.RenderErrorFunc(ctx.Response, ctx.Request, err)
 }
 
-func (ctx Context) handleError(err error) {
-	if ctx.HandleErrorFunc == nil {
+func (ctx Context) NotifyError(err error) {
+	if ctx.NotifyErrorFunc == nil {
 		return
 	}
 
-	ctx.HandleErrorFunc(ctx.Request, err)
+	ctx.NotifyErrorFunc(ctx.Request, err)
 }
 
 // AssertionAudiences returns the host names trusted by the server to validate
@@ -191,7 +197,7 @@ func (ctx Context) CompareAuthDetails(
 //---------------------------------------- CRUD ----------------------------------------//
 
 func (ctx Context) SaveClient(client *goidc.Client) error {
-	if err := ctx.ClientManager.Save(ctx.Request.Context(), client); err != nil {
+	if err := ctx.ClientManager.Save(ctx.Context(), client); err != nil {
 		return goidc.Errorf(goidc.ErrorCodeInternalError, "internal error", err)
 	}
 	return nil
@@ -204,16 +210,16 @@ func (ctx Context) Client(id string) (*goidc.Client, error) {
 		}
 	}
 
-	return ctx.ClientManager.Client(ctx.Request.Context(), id)
+	return ctx.ClientManager.Client(ctx.Context(), id)
 }
 
 func (ctx Context) DeleteClient(id string) error {
-	return ctx.ClientManager.Delete(ctx.Request.Context(), id)
+	return ctx.ClientManager.Delete(ctx.Context(), id)
 }
 
 func (ctx Context) SaveGrantSession(session *goidc.GrantSession) error {
 	return ctx.GrantSessionManager.Save(
-		ctx.Request.Context(),
+		ctx.Context(),
 		session,
 	)
 }
@@ -225,7 +231,7 @@ func (ctx Context) GrantSessionByTokenID(
 	error,
 ) {
 	return ctx.GrantSessionManager.SessionByTokenID(
-		ctx.Request.Context(),
+		ctx.Context(),
 		id,
 	)
 }
@@ -237,21 +243,21 @@ func (ctx Context) GrantSessionByRefreshToken(
 	error,
 ) {
 	return ctx.GrantSessionManager.SessionByRefreshToken(
-		ctx.Request.Context(),
+		ctx.Context(),
 		token,
 	)
 }
 
 func (ctx Context) DeleteGrantSession(id string) error {
-	return ctx.GrantSessionManager.Delete(ctx.Request.Context(), id)
+	return ctx.GrantSessionManager.Delete(ctx.Context(), id)
 }
 
 func (ctx Context) DeleteGrantSessionByAuthorizationCode(code string) error {
-	return ctx.GrantSessionManager.DeleteByAuthorizationCode(ctx.Request.Context(), code)
+	return ctx.GrantSessionManager.DeleteByAuthorizationCode(ctx.Context(), code)
 }
 
 func (ctx Context) SaveAuthnSession(session *goidc.AuthnSession) error {
-	return ctx.AuthnSessionManager.Save(ctx.Request.Context(), session)
+	return ctx.AuthnSessionManager.Save(ctx.Context(), session)
 }
 
 func (ctx Context) AuthnSessionByCallbackID(
@@ -260,7 +266,7 @@ func (ctx Context) AuthnSessionByCallbackID(
 	*goidc.AuthnSession,
 	error,
 ) {
-	return ctx.AuthnSessionManager.SessionByCallbackID(ctx.Request.Context(), id)
+	return ctx.AuthnSessionManager.SessionByCallbackID(ctx.Context(), id)
 }
 
 func (ctx Context) AuthnSessionByAuthorizationCode(
@@ -270,7 +276,7 @@ func (ctx Context) AuthnSessionByAuthorizationCode(
 	error,
 ) {
 	return ctx.AuthnSessionManager.SessionByAuthorizationCode(
-		ctx.Request.Context(),
+		ctx.Context(),
 		code,
 	)
 }
@@ -281,11 +287,11 @@ func (ctx Context) AuthnSessionByRequestURI(
 	*goidc.AuthnSession,
 	error,
 ) {
-	return ctx.AuthnSessionManager.SessionByReferenceID(ctx.Request.Context(), uri)
+	return ctx.AuthnSessionManager.SessionByReferenceID(ctx.Context(), uri)
 }
 
 func (ctx Context) DeleteAuthnSession(id string) error {
-	return ctx.AuthnSessionManager.Delete(ctx.Request.Context(), id)
+	return ctx.AuthnSessionManager.Delete(ctx.Context(), id)
 }
 
 //---------------------------------------- HTTP Utils ----------------------------------------//
@@ -367,7 +373,7 @@ func (ctx Context) FormData() map[string]any {
 func (ctx Context) WriteStatus(status int) {
 	// Check if the request was terminated before writing anything.
 	select {
-	case <-ctx.Request.Context().Done():
+	case <-ctx.Context().Done():
 		return
 	default:
 	}
@@ -379,7 +385,7 @@ func (ctx Context) WriteStatus(status int) {
 func (ctx Context) Write(obj any, status int) error {
 	// Check if the request was terminated before writing anything.
 	select {
-	case <-ctx.Request.Context().Done():
+	case <-ctx.Context().Done():
 		return nil
 	default:
 	}
@@ -396,7 +402,7 @@ func (ctx Context) Write(obj any, status int) error {
 func (ctx Context) WriteJWT(token string, status int) error {
 	// Check if the request was terminated before writing anything.
 	select {
-	case <-ctx.Request.Context().Done():
+	case <-ctx.Context().Done():
 		return nil
 	default:
 	}
@@ -413,7 +419,7 @@ func (ctx Context) WriteJWT(token string, status int) error {
 
 func (ctx Context) WriteError(err error) {
 
-	ctx.handleError(err)
+	ctx.NotifyError(err)
 
 	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
@@ -441,7 +447,7 @@ func (ctx Context) RenderHTML(
 ) error {
 	// Check if the request was terminated before writing anything.
 	select {
-	case <-ctx.Request.Context().Done():
+	case <-ctx.Context().Done():
 		return nil
 	default:
 	}
@@ -618,23 +624,46 @@ func (ctx Context) HTTPClient() *http.Client {
 		return http.DefaultClient
 	}
 
-	return ctx.HTTPClientFunc(ctx.Request)
+	return ctx.HTTPClientFunc(ctx.Context())
 }
 
-//---------------------------------------- Context ----------------------------------------//
+//---------------------------------------- context.Context ----------------------------------------//
+
+func (ctx Context) Context() context.Context {
+	if ctx.context != nil {
+		return ctx.context
+	}
+	return ctx.Request.Context()
+}
+
+func (ctx *Context) SetContext(c context.Context) {
+	ctx.context = c
+}
 
 func (ctx Context) Deadline() (deadline time.Time, ok bool) {
-	return ctx.Request.Context().Deadline()
+	if ctx.context != nil {
+		return ctx.context.Deadline()
+	}
+	return ctx.Context().Deadline()
 }
 
 func (ctx Context) Done() <-chan struct{} {
-	return ctx.Request.Context().Done()
+	if ctx.context != nil {
+		return ctx.context.Done()
+	}
+	return ctx.Context().Done()
 }
 
 func (ctx Context) Err() error {
-	return ctx.Request.Context().Err()
+	if ctx.context != nil {
+		return ctx.context.Err()
+	}
+	return ctx.Context().Err()
 }
 
 func (ctx Context) Value(key any) any {
-	return ctx.Request.Context().Value(key)
+	if ctx.context != nil {
+		return ctx.context.Value(key)
+	}
+	return ctx.Context().Value(key)
 }

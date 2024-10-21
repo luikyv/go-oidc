@@ -95,44 +95,31 @@ func (p Provider) Run(
 	return http.ListenAndServe(address, handler)
 }
 
-// TokenInfo retrieves details about the access token included in the request.
-// If the token was issued with mechanisms such as DPoP (Demonstrating Proof
-// of Possession) or TLS binding, the function also validates these proofs to
-// ensure the token's ownership.
 func (p Provider) TokenInfo(
-	w http.ResponseWriter,
-	r *http.Request,
+	ctx context.Context,
+	accessToken string,
 ) (
 	goidc.TokenInfo,
 	error,
 ) {
-	ctx := oidc.NewContext(w, r, p.config)
-	accessToken, _, ok := ctx.AuthorizationToken()
-	if !ok {
-		return goidc.TokenInfo{}, errors.New("no token informed")
-	}
-
-	tokenInfo, err := token.IntrospectionInfo(ctx, accessToken)
-	if err != nil {
-		return goidc.TokenInfo{}, err
-	}
-
-	if tokenInfo.Confirmation == nil {
-		return tokenInfo, nil
-	}
-
-	if err := token.ValidatePoP(
-		ctx,
-		accessToken,
-		*tokenInfo.Confirmation,
-	); err != nil {
-		return goidc.TokenInfo{}, err
-	}
-
-	return tokenInfo, nil
+	// Passing the response writer and request as nil should not cause any
+	// problems, since IntrospectionInfo shouldn't need HTTP information.
+	oidcCtx := oidc.NewContext(nil, nil, p.config)
+	oidcCtx.SetContext(ctx)
+	return token.IntrospectionInfo(oidcCtx, accessToken)
 }
 
-// Client is a shortcut to fetch clients using the client storage.
+func (p Provider) ValidateTokenPoP(
+	r *http.Request,
+	accessToken string,
+	cnf goidc.TokenConfirmation,
+) error {
+	// Passing the response writer as nil should not cause any problems, since
+	// no HTTP response should be rendered by ValidatePoP.
+	ctx := oidc.NewContext(nil, r, p.config)
+	return token.ValidatePoP(ctx, accessToken, cnf)
+}
+
 func (p *Provider) Client(
 	ctx context.Context,
 	id string,
@@ -252,13 +239,6 @@ func (p Provider) setDefaults() error {
 		)
 	}
 
-	if slices.Contains(p.config.GrantTypes, goidc.GrantRefreshToken) {
-		p.config.RefreshTokenLifetimeSecs = nonZeroOrDefault(
-			p.config.RefreshTokenLifetimeSecs,
-			defaultRefreshTokenLifetimeSecs,
-		)
-	}
-
 	authnMethods := append(
 		p.config.TokenAuthnMethods,
 		p.config.TokenIntrospectionAuthnMethods...,
@@ -298,10 +278,6 @@ func (p Provider) setDefaults() error {
 		p.config.EndpointPushedAuthorization = nonZeroOrDefault(
 			p.config.EndpointPushedAuthorization,
 			defaultEndpointPushedAuthorizationRequest,
-		)
-		p.config.PARLifetimeSecs = nonZeroOrDefault(
-			p.config.PARLifetimeSecs,
-			defaultPARLifetimeSecs,
 		)
 	}
 

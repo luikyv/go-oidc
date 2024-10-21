@@ -251,7 +251,7 @@ type ValidateInitialAccessTokenFunc func(*http.Request, string) error
 // during the authorization request cannot be handled.
 type RenderErrorFunc func(http.ResponseWriter, *http.Request, error) error
 
-type HandleErrorFunc func(*http.Request, error)
+type NotifyErrorFunc func(*http.Request, error)
 
 var (
 	ScopeOpenID        = NewScope("openid")
@@ -308,7 +308,7 @@ func NewDynamicScope(
 // CheckJTIFunc defines a function to verify when a JTI is safe to use.
 type CheckJTIFunc func(context.Context, string) error
 
-type HTTPClientFunc func(*http.Request) *http.Client
+type HTTPClientFunc func(ctx context.Context) *http.Client
 
 type ShouldIssueRefreshTokenFunc func(*Client, GrantInfo) bool
 

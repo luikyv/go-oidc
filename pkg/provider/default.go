@@ -6,13 +6,11 @@ import (
 )
 
 const (
-	defaultAuthnSessionTimeoutSecs  = 1800 // 30 minutes.
-	defaultIDTokenLifetimeSecs      = 600
-	defaultTokenLifetimeSecs        = 300
-	defaultRefreshTokenLifetimeSecs = 3600 // 1 hour.
-	defaultPARLifetimeSecs          = 60
-	defaultJWTLifetimeSecs          = 600
-	defaultJWTLeewayTimeSecs        = 30
+	defaultAuthnSessionTimeoutSecs = 1800 // 30 minutes.
+	defaultIDTokenLifetimeSecs     = 600
+	defaultTokenLifetimeSecs       = 300
+	defaultJWTLifetimeSecs         = 600
+	defaultJWTLeewayTimeSecs       = 30
 
 	defaultPrivateKeyJWTSigAlg = jose.RS256
 	defaultSecretJWTSigAlg     = jose.HS256

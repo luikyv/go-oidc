@@ -23,6 +23,8 @@ func redirectError(
 		return err
 	}
 
+	ctx.NotifyError(err)
+
 	redirectParams := response{
 		errorCode:        redirectErr.code,
 		errorDescription: redirectErr.desc,

@@ -13,6 +13,10 @@ type GrantSessionManager interface {
 	SessionByTokenID(context.Context, string) (*GrantSession, error)
 	SessionByRefreshToken(context.Context, string) (*GrantSession, error)
 	Delete(ctx context.Context, id string) error
+	// DeleteByAuthorizationCode deletes a grant session associated with the
+	// provided authorization code. This function is a security measure to prevent
+	// the reuse of authorization codes, mitigating potential replay attacks.
+	// It is an optional, but recommended, behavior to enhance security.
 	DeleteByAuthorizationCode(context.Context, string) error
 }
 
@@ -23,7 +27,7 @@ type GrantSessionManager interface {
 type GrantSession struct {
 	ID string `json:"id"`
 	// TokenID is the id of the token issued for this grant.
-	TokenID      string `json:"token_id"` // FIXME: The jti will work for this.
+	TokenID      string `json:"token_id"`
 	RefreshToken string `json:"refresh_token,omitempty"`
 	// LastTokenExpiresAtTimestamp is the timestamp when the last token issued
 	// for this grant was created.

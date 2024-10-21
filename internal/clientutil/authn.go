@@ -81,16 +81,16 @@ func authenticate(
 	case goidc.ClientAuthnSecretBasic:
 		return authenticateSecretBasic(ctx, client)
 	case goidc.ClientAuthnPrivateKeyJWT:
-		return authenticatePrivateKeyJWT(ctx, client)
+		return authenticatePrivateKeyJWT(ctx, client, authnCtx)
 	case goidc.ClientAuthnSecretJWT:
-		return authenticateSecretJWT(ctx, client)
+		return authenticateSecretJWT(ctx, client, authnCtx)
 	case goidc.ClientAuthnSelfSignedTLS:
 		return authenticateSelfSignedTLSCert(ctx, client)
 	case goidc.ClientAuthnTLS:
 		return authenticateTLSCert(ctx, client)
 	default:
 		return goidc.NewError(goidc.ErrorCodeInvalidClient,
-			fmt.Sprintf("invalid authentication method for %s request", method))
+			fmt.Sprintf("invalid authentication method %s for %s request", method, authnCtx))
 	}
 }
 
@@ -155,7 +155,8 @@ func validateSecret(
 
 func authenticatePrivateKeyJWT(
 	ctx oidc.Context,
-	c *goidc.Client,
+	client *goidc.Client,
+	authnCtx AuthnContext,
 ) error {
 
 	assertion, err := assertion(ctx)
@@ -163,10 +164,7 @@ func authenticatePrivateKeyJWT(
 		return err
 	}
 
-	sigAlgs := ctx.PrivateKeyJWTSigAlgs
-	if c.TokenAuthnSigAlg != "" {
-		sigAlgs = []jose.SignatureAlgorithm{c.TokenAuthnSigAlg}
-	}
+	sigAlgs := privateKeyJWTSigAlgs(ctx, client, authnCtx)
 	parsedAssertion, err := jwt.ParseSigned(assertion, sigAlgs)
 	if err != nil {
 		return goidc.Errorf(goidc.ErrorCodeInvalidClient,
@@ -179,9 +177,14 @@ func authenticatePrivateKeyJWT(
 			"invalid client assertion header")
 	}
 
-	jwk, err := jwkMatchingHeader(ctx, c, parsedAssertion.Headers[0])
+	jwk, err := jwkMatchingHeader(ctx, client, parsedAssertion.Headers[0])
 	if err != nil {
 		return err
+	}
+
+	if !jwk.IsPublic() {
+		return goidc.NewError(goidc.ErrorCodeInvalidClient,
+			"invalid client assertion")
 	}
 
 	claims := jwt.Claims{}
@@ -190,7 +193,15 @@ func authenticatePrivateKeyJWT(
 			"could not parse the client assertion claims", err)
 	}
 
-	return areClaimsValid(ctx, c, claims)
+	return areClaimsValid(ctx, client, claims)
+}
+
+func privateKeyJWTSigAlgs(
+	ctx oidc.Context,
+	client *goidc.Client,
+	authnCtx AuthnContext,
+) []jose.SignatureAlgorithm {
+	return authnSigAlgs(client, authnCtx, ctx.PrivateKeyJWTSigAlgs)
 }
 
 func jwkMatchingHeader(
@@ -220,17 +231,15 @@ func jwkMatchingHeader(
 
 func authenticateSecretJWT(
 	ctx oidc.Context,
-	c *goidc.Client,
+	client *goidc.Client,
+	authnCtx AuthnContext,
 ) error {
 	assertion, err := assertion(ctx)
 	if err != nil {
 		return err
 	}
 
-	sigAlgs := ctx.ClientSecretJWTSigAlgs
-	if c.TokenAuthnSigAlg != "" {
-		sigAlgs = []jose.SignatureAlgorithm{c.TokenAuthnSigAlg}
-	}
+	sigAlgs := secretJWTSigAlgs(ctx, client, authnCtx)
 	parsedAssertion, err := jwt.ParseSigned(assertion, sigAlgs)
 	if err != nil {
 		return goidc.Errorf(goidc.ErrorCodeInvalidClient,
@@ -238,12 +247,37 @@ func authenticateSecretJWT(
 	}
 
 	claims := jwt.Claims{}
-	if err := parsedAssertion.Claims([]byte(c.Secret), &claims); err != nil {
+	if err := parsedAssertion.Claims([]byte(client.Secret), &claims); err != nil {
 		return goidc.Errorf(goidc.ErrorCodeInvalidClient,
 			"could not parse the client assertion claims", err)
 	}
 
-	return areClaimsValid(ctx, c, claims)
+	return areClaimsValid(ctx, client, claims)
+}
+
+func secretJWTSigAlgs(
+	ctx oidc.Context,
+	client *goidc.Client,
+	authnCtx AuthnContext,
+) []jose.SignatureAlgorithm {
+	return authnSigAlgs(client, authnCtx, ctx.ClientSecretJWTSigAlgs)
+}
+
+func authnSigAlgs(
+	client *goidc.Client,
+	authnCtx AuthnContext,
+	defaultAlgs []jose.SignatureAlgorithm,
+) []jose.SignatureAlgorithm {
+	switch {
+	case authnCtx == TokenAuthnContext && client.TokenAuthnSigAlg != "":
+		return []jose.SignatureAlgorithm{client.TokenAuthnSigAlg}
+	case authnCtx == TokenIntrospectionAuthnContext && client.TokenIntrospectionAuthnMethod != "":
+		return []jose.SignatureAlgorithm{client.TokenIntrospectionAuthnSigAlg}
+	case authnCtx == TokenRevocationAuthnContext && client.TokenRevocationAuthnSigAlg != "":
+		return []jose.SignatureAlgorithm{client.TokenRevocationAuthnSigAlg}
+	default:
+		return defaultAlgs
+	}
 }
 
 func assertion(ctx oidc.Context) (string, error) {
@@ -407,7 +441,7 @@ func extractID(
 	assertion := ctx.Request.PostFormValue(assertionFormPostParam)
 	if assertion != "" {
 		assertionID, err := assertionClientID(assertion,
-			ctx.TokenAuthnSigAlgs())
+			ctx.ClientAuthnSigAlgs())
 		if err != nil {
 			return "", err
 		}

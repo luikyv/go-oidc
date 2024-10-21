@@ -204,7 +204,7 @@ func IssueRefreshToken(client *goidc.Client, grantInfo goidc.GrantInfo) bool {
 	return slices.Contains(client.GrantTypes, goidc.GrantRefreshToken)
 }
 
-func HTTPClient(_ *http.Request) *http.Client {
+func HTTPClient(_ context.Context) *http.Client {
 	return &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -273,12 +273,12 @@ func (a authenticator) login(
 	as *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 
-	r.ParseForm()
+	_ = r.ParseForm()
 
 	isLogin := r.PostFormValue(loginFormParam)
 	if isLogin == "" {
 		w.WriteHeader(http.StatusOK)
-		a.tmpl.ExecuteTemplate(w, "login.html", authnPage{
+		_ = a.tmpl.ExecuteTemplate(w, "login.html", authnPage{
 			BaseURL:    Issuer,
 			CallbackID: as.CallbackID,
 			Session:    sessionToMap(as),
@@ -295,7 +295,7 @@ func (a authenticator) login(
 	password := r.PostFormValue(passwordFormParam)
 	if password != correctPassword {
 		w.WriteHeader(http.StatusOK)
-		a.tmpl.ExecuteTemplate(w, "login.html", authnPage{
+		_ = a.tmpl.ExecuteTemplate(w, "login.html", authnPage{
 			BaseURL:    as.Parameter(paramBaseURL).(string),
 			CallbackID: as.CallbackID,
 			Error:      fmt.Sprintf("invalid password, try '%s'", correctPassword),
@@ -314,12 +314,12 @@ func (a authenticator) grantConsent(
 	as *goidc.AuthnSession,
 ) goidc.AuthnStatus {
 
-	r.ParseForm()
+	_ = r.ParseForm()
 
 	isConsented := r.PostFormValue(consentFormParam)
 	if isConsented == "" {
 		w.WriteHeader(http.StatusOK)
-		a.tmpl.ExecuteTemplate(w, "consent.html", authnPage{
+		_ = a.tmpl.ExecuteTemplate(w, "consent.html", authnPage{
 			Subject:    as.Subject,
 			BaseURL:    Issuer,
 			CallbackID: as.CallbackID,
@@ -398,7 +398,7 @@ func RenderError(templatesDir string) goidc.RenderErrorFunc {
 
 	return func(w http.ResponseWriter, r *http.Request, err error) error {
 		w.WriteHeader(http.StatusOK)
-		tmpl.Execute(w, authnPage{
+		_ = tmpl.Execute(w, authnPage{
 			Error: err.Error(),
 		})
 		return nil

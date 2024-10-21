@@ -271,18 +271,13 @@ func WithClientCredentialsGrant() ProviderOption {
 // the default logic to issue refresh token is [defaultIssueRefreshTokenFunc].
 func WithRefreshTokenGrant(
 	f goidc.ShouldIssueRefreshTokenFunc,
+	lifetimeSecs int,
 ) ProviderOption {
 	return func(p Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes,
 			goidc.GrantRefreshToken)
 		p.config.ShouldIssueRefreshTokenFunc = f
-		return nil
-	}
-}
-
-func WithRefreshTokenLifetime(secs int) ProviderOption {
-	return func(p Provider) error {
-		p.config.RefreshTokenLifetimeSecs = secs
+		p.config.RefreshTokenLifetimeSecs = lifetimeSecs
 		return nil
 	}
 }
@@ -361,9 +356,10 @@ func WithScopes(scopes ...goidc.Scope) ProviderOption {
 
 // WithPAR allows authorization flows to start at the pushed authorization
 // request endpoint.
-func WithPAR() ProviderOption {
+func WithPAR(lifetimeSecs int) ProviderOption {
 	return func(p Provider) error {
 		p.config.PARIsEnabled = true
+		p.config.PARLifetimeSecs = lifetimeSecs
 		return nil
 	}
 }
@@ -371,17 +367,10 @@ func WithPAR() ProviderOption {
 // WithPARRequired forces authorization flows to start at the pushed
 // authorization request endpoint.
 // For more info, see [WithPAR].
-func WithPARRequired() ProviderOption {
+func WithPARRequired(lifetimeSecs int) ProviderOption {
 	return func(p Provider) error {
 		p.config.PARIsRequired = true
-		return WithPAR()(p)
-	}
-}
-
-func WithPARLifetime(secs int) ProviderOption {
-	return func(p Provider) error {
-		p.config.PARLifetimeSecs = secs
-		return nil
+		return WithPAR(lifetimeSecs)(p)
 	}
 }
 
@@ -824,11 +813,11 @@ func WithRenderErrorFunc(render goidc.RenderErrorFunc) ProviderOption {
 	}
 }
 
-// WithHandleErrorFunc defines a handler to be executed when an error happens.
+// WithNotifyErrorFunc defines a handler to be executed when an error happens.
 // For instance, this can be used to log information about the error.
-func WithHandleErrorFunc(f goidc.HandleErrorFunc) ProviderOption {
+func WithNotifyErrorFunc(f goidc.NotifyErrorFunc) ProviderOption {
 	return func(p Provider) error {
-		p.config.HandleErrorFunc = f
+		p.config.NotifyErrorFunc = f
 		return nil
 	}
 }
