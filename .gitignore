@@ -31,3 +31,4 @@ todo.md
 conformance-suite/
 *.zip
 *.bkp
+.DS_store

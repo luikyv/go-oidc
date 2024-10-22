@@ -48,6 +48,7 @@ type AuthnSession struct {
 	GrantedAuthDetails []AuthorizationDetail `json:"granted_authorization_details,omitempty"`
 	GrantedResources   Resources             `json:"granted_resources,omitempty"`
 	AuthorizationCode  string                `json:"authorization_code,omitempty"`
+	IDTokenHintClaims  map[string]any        `json:"id_token_hint_claim,omitempty"`
 	// ProtectedParameters contains custom parameters sent by PAR.
 	ProtectedParameters map[string]any `json:"protected_params,omitempty"`
 	// Store allows storing information between user interactions.
@@ -56,7 +57,6 @@ type AuthnSession struct {
 	AdditionalIDTokenClaims  map[string]any `json:"additional_id_token_claims,omitempty"`
 	AdditionalUserInfoClaims map[string]any `json:"additional_user_info_claims,omitempty"`
 	AuthorizationParameters
-	Error string `json:"-"`
 }
 
 // SetUserID sets the subject in the authentication session.
@@ -140,10 +140,4 @@ func (s *AuthnSession) GrantResources(resources []string) {
 
 func (s *AuthnSession) IsExpired() bool {
 	return timeutil.TimestampNow() >= s.ExpiresAtTimestamp
-}
-
-// SetError defines the error that will be informed to the client once the
-// authentication flow results in failure.
-func (s *AuthnSession) SetError(err string) {
-	s.Error = err
 }

@@ -1,8 +1,10 @@
 package authorize
 
 import (
+	"errors"
 	"strings"
 
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -72,7 +74,25 @@ func initAuthnSession(
 		return nil, err
 	}
 
-	return session, initAuthnSessionWithPolicy(ctx, client, session)
+	policy, ok := ctx.AvailablePolicy(client, session)
+	if !ok {
+		return nil, newRedirectionError(goidc.ErrorCodeInvalidRequest,
+			"no policy available", session.AuthorizationParameters)
+	}
+
+	if session.Nonce != "" {
+		session.SetIDTokenClaim(goidc.ClaimNonce, session.Nonce)
+	}
+	session.PolicyID = policy.ID
+	session.CallbackID = callbackID()
+	session.ReferenceID = ""
+	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.AuthnSessionTimeoutSecs
+	if session.IDTokenHint != "" {
+		// The ID token hint was already validated.
+		idToken, _ := jwt.ParseSigned(session.IDTokenHint, ctx.UserSigAlgs)
+		_ = idToken.UnsafeClaimsWithoutVerification(&session.IDTokenHintClaims)
+	}
+	return session, nil
 }
 
 func authnSession(
@@ -199,29 +219,6 @@ func simpleAuthnSession(
 	return newAuthnSession(req.AuthorizationParameters, client), nil
 }
 
-func initAuthnSessionWithPolicy(
-	ctx oidc.Context,
-	client *goidc.Client,
-	session *goidc.AuthnSession,
-) error {
-	policy, ok := ctx.AvailablePolicy(client, session)
-	if !ok {
-		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
-			"no policy available", session.AuthorizationParameters)
-	}
-
-	if session.Nonce != "" {
-		session.SetIDTokenClaim(goidc.ClaimNonce, session.Nonce)
-	}
-	session.PolicyID = policy.ID
-	session.CallbackID = callbackID()
-	// FIXME: To think about:Treating the request_uri as one-time use will cause
-	// problems when the user refreshes the page.
-	session.ReferenceID = ""
-	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.AuthnSessionTimeoutSecs
-	return nil
-}
-
 func authorizationCode() string {
 	return strutil.Random(authorizationCodeLength)
 }
@@ -232,28 +229,35 @@ func callbackID() string {
 
 func authenticate(ctx oidc.Context, session *goidc.AuthnSession) error {
 	policy := ctx.Policy(session.PolicyID)
-	switch policy.Authenticate(ctx.Response, ctx.Request, session) {
+	switch status, err := policy.Authenticate(ctx.Response, ctx.Request, session); status {
 	case goidc.StatusSuccess:
 		return finishFlowSuccessfully(ctx, session)
 	case goidc.StatusInProgress:
 		return stopFlowInProgress(ctx, session)
 	default:
-		return finishFlowWithFailure(ctx, session)
+		return finishFlowWithFailure(ctx, session, err)
 	}
 }
 
 func finishFlowWithFailure(
 	ctx oidc.Context,
 	session *goidc.AuthnSession,
+	err error,
 ) error {
 	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
 		return redirectionErrorf(goidc.ErrorCodeInternalError,
 			"internal error", session.AuthorizationParameters, err)
 	}
 
-	if session.Error != "" {
+	var oidcErr goidc.Error
+	if errors.As(err, &oidcErr) {
+		return newRedirectionError(oidcErr.Code,
+			oidcErr.Description, session.AuthorizationParameters)
+	}
+
+	if err != nil {
 		return newRedirectionError(goidc.ErrorCodeAccessDenied,
-			session.Error, session.AuthorizationParameters)
+			err.Error(), session.AuthorizationParameters)
 	}
 
 	return newRedirectionError(goidc.ErrorCodeAccessDenied,

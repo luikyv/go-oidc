@@ -46,7 +46,7 @@ type Configuration struct {
 	// contraining tokens is required, either DPoP or client TLS.
 	TokenBindingIsRequired bool
 	RenderErrorFunc        goidc.RenderErrorFunc
-	HandleErrorFunc        goidc.HandleErrorFunc
+	NotifyErrorFunc        goidc.NotifyErrorFunc
 
 	EndpointWellKnown           string
 	EndpointJWKS                string
@@ -59,6 +59,7 @@ type Configuration struct {
 	EndpointTokenRevocation     string
 	EndpointPrefix              string
 
+	// TODO: Split this.
 	UserDefaultSigAlg        jose.SignatureAlgorithm
 	UserSigAlgs              []jose.SignatureAlgorithm
 	UserEncIsEnabled         bool

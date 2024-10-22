@@ -19,7 +19,8 @@ func TestPushAuth(t *testing.T) {
 	// Given.
 	ctx, client := setUpPAR(t)
 
-	req := pushedRequest{
+	req := request{
+		ClientID: client.ID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  client.RedirectURIs[0],
 			Scopes:       client.ScopeIDs,
@@ -99,7 +100,8 @@ func TestPushAuth_WithJAR(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	req := pushedRequest{
+	req := request{
+		ClientID: client.ID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RequestObject: requestObject,
 		},
@@ -152,7 +154,7 @@ func TestPushAuth_UnauthenticatedClient(t *testing.T) {
 		"client_secret": {"invalid_secret"},
 	}
 
-	req := pushedRequest{}
+	req := request{}
 
 	// When.
 	_, err := pushAuth(ctx, req)

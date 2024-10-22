@@ -109,11 +109,7 @@ func (resp response) parameters() map[string]string {
 	return params
 }
 
-type pushedRequest struct {
-	goidc.AuthorizationParameters
-}
-
-func newPushedRequest(req *http.Request) pushedRequest {
+func newFormRequest(req *http.Request) request {
 	params := goidc.AuthorizationParameters{
 		RequestURI:          req.PostFormValue("request_uri"),
 		RequestObject:       req.PostFormValue("request"),
@@ -152,7 +148,8 @@ func newPushedRequest(req *http.Request) pushedRequest {
 		}
 	}
 
-	return pushedRequest{
+	return request{
+		ClientID:                req.PostFormValue("client_id"),
 		AuthorizationParameters: params,
 	}
 }
@@ -162,6 +159,7 @@ type pushedResponse struct {
 	ExpiresIn  int    `json:"expires_in"`
 }
 
+// TODO: Should ask the expiry?
 func newAuthnSession(
 	authParams goidc.AuthorizationParameters,
 	client *goidc.Client,

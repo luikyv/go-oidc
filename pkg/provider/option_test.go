@@ -568,7 +568,7 @@ func TestWithRefreshTokenGrant(t *testing.T) {
 	}
 
 	// When.
-	err := WithRefreshTokenGrant(shouldIssueRefreshTokenFunc)(p)
+	err := WithRefreshTokenGrant(shouldIssueRefreshTokenFunc, 300)(p)
 
 	// Then.
 	if err != nil {
@@ -581,30 +581,6 @@ func TestWithRefreshTokenGrant(t *testing.T) {
 
 	if p.config.ShouldIssueRefreshTokenFunc == nil {
 		t.Error("ValidateInitialAccessTokenFunc cannot be nil")
-	}
-}
-
-func TestWithRefreshTokenLifetimeSecs(t *testing.T) {
-	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
-	}
-
-	// When.
-	err := WithRefreshTokenLifetime(600)(p)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	want := Provider{
-		config: &oidc.Configuration{
-			RefreshTokenLifetimeSecs: 600,
-		},
-	}
-	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
-		t.Error(diff)
 	}
 }
 
@@ -752,7 +728,7 @@ func TestWithPAR(t *testing.T) {
 	}
 
 	// When.
-	err := WithPAR()(p)
+	err := WithPAR(60)(p)
 
 	// Then.
 	if err != nil {
@@ -761,7 +737,8 @@ func TestWithPAR(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			PARIsEnabled: true,
+			PARIsEnabled:    true,
+			PARLifetimeSecs: 60,
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -776,7 +753,7 @@ func TestWithPARRequired(t *testing.T) {
 	}
 
 	// When.
-	err := WithPARRequired()(p)
+	err := WithPARRequired(60)(p)
 
 	// Then.
 	if err != nil {
@@ -785,8 +762,9 @@ func TestWithPARRequired(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			PARIsEnabled:  true,
-			PARIsRequired: true,
+			PARIsEnabled:    true,
+			PARIsRequired:   true,
+			PARLifetimeSecs: 60,
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1584,26 +1562,26 @@ func TestWithRenderErrorFunc(t *testing.T) {
 	}
 }
 
-func TestWithHandleErrorFunc(t *testing.T) {
+func TestWithNotifyErrorFunc(t *testing.T) {
 	// Given.
 	p := Provider{
 		config: &oidc.Configuration{},
 	}
-	var handleErrorFunc goidc.HandleErrorFunc = func(
+	var handleErrorFunc goidc.NotifyErrorFunc = func(
 		r *http.Request,
 		err error,
 	) {
 	}
 
 	// When.
-	err := WithHandleErrorFunc(handleErrorFunc)(p)
+	err := WithNotifyErrorFunc(handleErrorFunc)(p)
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if p.config.HandleErrorFunc == nil {
+	if p.config.NotifyErrorFunc == nil {
 		t.Error("HandleErrorFunc cannot be nil")
 	}
 }
@@ -1688,7 +1666,7 @@ func TestWithHTTPClientFunc(t *testing.T) {
 	}
 
 	// When.
-	err := WithHTTPClientFunc(func(r *http.Request) *http.Client {
+	err := WithHTTPClientFunc(func(ctx context.Context) *http.Client {
 		return http.DefaultClient
 	})(p)
 

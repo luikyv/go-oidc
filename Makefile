@@ -1,5 +1,8 @@
 CS_VERSION = v5.1.22
 
+test:
+	@go test ./pkg/... ./internal/...
+
 test-coverage:
 	@go test -coverprofile=coverage.out ./pkg/... ./internal/...
 	@go tool cover -html="coverage.out" -o coverage.html
@@ -17,4 +20,4 @@ run-cs:
 	  git clone --branch "release-$(CS_VERSION)" --single-branch --depth=1 https://gitlab.com/openid/conformance-suite.git; \
 	  docker compose -f ./conformance-suite/builder-compose.yml run builder; \
 	fi
-	docker-compose -f cs-docker-compose.yml up
+	docker compose up

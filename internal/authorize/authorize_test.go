@@ -277,10 +277,10 @@ func TestInitAuth_ResourceIndicator(t *testing.T) {
 		w http.ResponseWriter,
 		r *http.Request,
 		as *goidc.AuthnSession,
-	) goidc.AuthnStatus {
+	) (goidc.AuthnStatus, error) {
 		as.GrantScopes(as.Scopes)
 		as.GrantResources([]string{"https://resource1.com"})
-		return goidc.StatusSuccess
+		return goidc.StatusSuccess, nil
 	}
 
 	req := request{
@@ -395,6 +395,9 @@ func TestInitAuth_IDTokenHint(t *testing.T) {
 		ClientID:           client.ID,
 		AuthorizationCode:  session.AuthorizationCode,
 		GrantedScopes:      client.ScopeIDs,
+		IDTokenHintClaims: map[string]any{
+			"sub": "random_user",
+		},
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  client.RedirectURIs[0],
 			Scopes:       client.ScopeIDs,
@@ -573,8 +576,8 @@ func TestInitAuth_AuthnFailed(t *testing.T) {
 		func(r *http.Request, c *goidc.Client, as *goidc.AuthnSession) bool {
 			return true
 		},
-		func(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) goidc.AuthnStatus {
-			return goidc.StatusFailure
+		func(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) (goidc.AuthnStatus, error) {
+			return goidc.StatusFailure, nil
 		},
 	)
 	ctx.Policies = []goidc.AuthnPolicy{policy}
@@ -621,8 +624,8 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 		func(r *http.Request, c *goidc.Client, as *goidc.AuthnSession) bool {
 			return true
 		},
-		func(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) goidc.AuthnStatus {
-			return goidc.StatusInProgress
+		func(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) (goidc.AuthnStatus, error) {
+			return goidc.StatusInProgress, nil
 		},
 	)
 	ctx.Policies = []goidc.AuthnPolicy{policy}
@@ -775,8 +778,8 @@ func TestContinueAuthentication(t *testing.T) {
 		func(r *http.Request, c *goidc.Client, as *goidc.AuthnSession) bool {
 			return true
 		},
-		func(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) goidc.AuthnStatus {
-			return goidc.StatusInProgress
+		func(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) (goidc.AuthnStatus, error) {
+			return goidc.StatusInProgress, nil
 		},
 	)
 	ctx.Policies = []goidc.AuthnPolicy{policy}
@@ -821,9 +824,9 @@ func setUpAuth(t *testing.T) (oidc.Context, *goidc.Client) {
 		func(r *http.Request, c *goidc.Client, as *goidc.AuthnSession) bool {
 			return true
 		},
-		func(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) goidc.AuthnStatus {
+		func(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) (goidc.AuthnStatus, error) {
 			as.GrantScopes(as.Scopes)
-			return goidc.StatusSuccess
+			return goidc.StatusSuccess, nil
 		},
 	)
 	ctx.Policies = append(ctx.Policies, policy)

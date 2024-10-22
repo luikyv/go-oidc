@@ -14,13 +14,13 @@ type openIDConfiguration struct {
 	JWKSEndpoint                        string                        `json:"jwks_uri"`
 	PAREndpoint                         string                        `json:"pushed_authorization_request_endpoint,omitempty"`
 	PARIsRequired                       bool                          `json:"require_pushed_authorization_requests,omitempty"`
-	ResponseTypes                       []goidc.ResponseType          `json:"response_types_supported"`
-	ResponseModes                       []goidc.ResponseMode          `json:"response_modes_supported"`
+	ResponseTypes                       []goidc.ResponseType          `json:"response_types_supported,omitempty"`
+	ResponseModes                       []goidc.ResponseMode          `json:"response_modes_supported,omitempty"`
 	GrantTypes                          []goidc.GrantType             `json:"grant_types_supported"`
 	Scopes                              []string                      `json:"scopes_supported"`
-	UserClaimsSupported                 []string                      `json:"claims_supported"`
+	UserClaimsSupported                 []string                      `json:"claims_supported,omitempty"`
 	ClaimTypesSupported                 []goidc.ClaimType             `json:"claim_types_supported,omitempty"`
-	SubIdentifierTypes                  []goidc.SubjectIdentifierType `json:"subject_types_supported"`
+	SubIdentifierTypes                  []goidc.SubjectIdentifierType `json:"subject_types_supported,omitempty"`
 	IDTokenSigAlgs                      []jose.SignatureAlgorithm     `json:"id_token_signing_alg_values_supported"`
 	IDTokenKeyEncAlgs                   []jose.KeyAlgorithm           `json:"id_token_encryption_alg_values_supported,omitempty"`
 	IDTokenContentEncAlgs               []jose.ContentEncryption      `json:"id_token_encryption_enc_values_supported,omitempty"`

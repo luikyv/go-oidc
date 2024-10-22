@@ -37,15 +37,17 @@ func TestNewRequest(t *testing.T) {
 func TestNewPushedRequest(t *testing.T) {
 	// Given.
 	rawParams, params := setUpParams(t)
+	rawParams.Set("client_id", "random_client_id")
 
 	r := httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString(rawParams.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	// When.
-	req := newPushedRequest(r)
+	req := newFormRequest(r)
 
 	// Then.
-	want := pushedRequest{
+	want := request{
+		ClientID:                "random_client_id",
 		AuthorizationParameters: params,
 	}
 	if diff := cmp.Diff(req, want, cmpopts.EquateComparable()); diff != "" {

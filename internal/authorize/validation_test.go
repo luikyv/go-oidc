@@ -291,7 +291,8 @@ func TestValidatePushedRequest(t *testing.T) {
 	client, _ := oidctest.NewClient(t)
 	client.RedirectURIs = append(client.RedirectURIs, "https://example.com")
 
-	req := pushedRequest{
+	req := request{
+		ClientID: client.ID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  "https://example.com",
 			ResponseType: goidc.ResponseTypeCode,
@@ -315,7 +316,8 @@ func TestValidatePushedRequest_RedirectURIIsRequiredForFAPI2(t *testing.T) {
 	client, _ := oidctest.NewClient(t)
 	client.RedirectURIs = append(client.RedirectURIs, "https://example.com")
 
-	req := pushedRequest{
+	req := request{
+		ClientID: client.ID,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  "https://example.com",
 			ResponseType: goidc.ResponseTypeCode,
@@ -338,7 +340,7 @@ func TestValidatePushedRequest_RedirectURIIsRequiredForFAPI2_RedirectURINotInfor
 	client, _ := oidctest.NewClient(t)
 	client.RedirectURIs = append(client.RedirectURIs, "https://example.com")
 
-	req := pushedRequest{}
+	req := request{}
 
 	// When.
 	err := validatePushedRequest(ctx, req, client)
