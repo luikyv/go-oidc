@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -33,30 +32,17 @@ const (
 )
 
 var (
-	Scopes = []goidc.Scope{goidc.ScopeOpenID, goidc.ScopeOfflineAccess, goidc.ScopeEmail}
-	ACRs   = []goidc.ACR{goidc.ACRMaceIncommonIAPBronze, goidc.ACRMaceIncommonIAPSilver}
+	Scopes = []goidc.Scope{
+		goidc.ScopeOpenID, goidc.ScopeOfflineAccess, goidc.ScopeProfile,
+		goidc.ScopeEmail, goidc.ScopeAddress, goidc.ScopePhone,
+	}
+	Claims = []string{
+		goidc.ClaimEmail, goidc.ClaimEmailVerified, goidc.ClaimPhoneNumber,
+		goidc.ClaimPhoneNumberVerified, goidc.ClaimAddress,
+	}
+	ACRs          = []goidc.ACR{goidc.ACRMaceIncommonIAPBronze, goidc.ACRMaceIncommonIAPSilver}
+	DisplayValues = []goidc.DisplayValue{goidc.DisplayValuePage, goidc.DisplayValuePopUp}
 )
-
-const (
-	paramStepID       string = "step_id"
-	paramBaseURL      string = "base_url"
-	stepIDLogin       string = "step_login"
-	stepIDConsent     string = "step_consent"
-	stepIDFinishFlow  string = "step_finish_flow"
-	usernameFormParam string = "username"
-	passwordFormParam string = "password"
-	loginFormParam    string = "login"
-	consentFormParam  string = "consent"
-	correctPassword   string = "pass"
-)
-
-type authnPage struct {
-	Subject    string
-	BaseURL    string
-	CallbackID string
-	Error      string
-	Session    map[string]any
-}
 
 func ClientMTLS(id, cn, jwksFilepath string) *goidc.Client {
 	client := Client(id, jwksFilepath)
@@ -216,179 +202,6 @@ func ErrorLoggingFunc(r *http.Request, err error) {
 	log.Printf("error during request %s: %s\n", r.RequestURI, err.Error())
 }
 
-func Policy(templatesDir string) goidc.AuthnPolicy {
-
-	loginTemplate := filepath.Join(templatesDir, "/login.html")
-	consentTemplate := filepath.Join(templatesDir, "/consent.html")
-	tmpl, err := template.ParseFiles(loginTemplate, consentTemplate)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	authenticator := authenticator{tmpl: tmpl}
-	return goidc.NewPolicy(
-		"main",
-		func(r *http.Request, c *goidc.Client, as *goidc.AuthnSession) bool {
-			// The flow starts at the login step.
-			as.StoreParameter(paramStepID, stepIDLogin)
-			return true
-		},
-		authenticator.authenticate,
-	)
-}
-
-type authenticator struct {
-	tmpl *template.Template
-}
-
-func (a authenticator) authenticate(
-	w http.ResponseWriter,
-	r *http.Request,
-	as *goidc.AuthnSession,
-) goidc.AuthnStatus {
-	if as.Parameter(paramStepID) == stepIDLogin {
-		if status := a.login(w, r, as); status != goidc.StatusSuccess {
-			return status
-		}
-		as.StoreParameter(paramStepID, stepIDConsent)
-	}
-
-	if as.Parameter(paramStepID) == stepIDConsent {
-		if status := a.grantConsent(w, r, as); status != goidc.StatusSuccess {
-			return status
-		}
-		as.StoreParameter(paramStepID, stepIDFinishFlow)
-	}
-
-	if as.Parameter(paramStepID) == stepIDFinishFlow {
-		return a.finishFlow(as)
-	}
-
-	return goidc.StatusFailure
-}
-
-func (a authenticator) login(
-	w http.ResponseWriter,
-	r *http.Request,
-	as *goidc.AuthnSession,
-) goidc.AuthnStatus {
-
-	_ = r.ParseForm()
-
-	isLogin := r.PostFormValue(loginFormParam)
-	if isLogin == "" {
-		w.WriteHeader(http.StatusOK)
-		_ = a.tmpl.ExecuteTemplate(w, "login.html", authnPage{
-			BaseURL:    Issuer,
-			CallbackID: as.CallbackID,
-			Session:    sessionToMap(as),
-		})
-		return goidc.StatusInProgress
-	}
-
-	if isLogin != "true" {
-		as.SetError("consent not granted")
-		return goidc.StatusFailure
-	}
-
-	username := r.PostFormValue(usernameFormParam)
-	password := r.PostFormValue(passwordFormParam)
-	if password != correctPassword {
-		w.WriteHeader(http.StatusOK)
-		_ = a.tmpl.ExecuteTemplate(w, "login.html", authnPage{
-			BaseURL:    as.Parameter(paramBaseURL).(string),
-			CallbackID: as.CallbackID,
-			Error:      fmt.Sprintf("invalid password, try '%s'", correctPassword),
-			Session:    sessionToMap(as),
-		})
-		return goidc.StatusInProgress
-	}
-
-	as.SetUserID(username)
-	return goidc.StatusSuccess
-}
-
-func (a authenticator) grantConsent(
-	w http.ResponseWriter,
-	r *http.Request,
-	as *goidc.AuthnSession,
-) goidc.AuthnStatus {
-
-	_ = r.ParseForm()
-
-	isConsented := r.PostFormValue(consentFormParam)
-	if isConsented == "" {
-		w.WriteHeader(http.StatusOK)
-		_ = a.tmpl.ExecuteTemplate(w, "consent.html", authnPage{
-			Subject:    as.Subject,
-			BaseURL:    Issuer,
-			CallbackID: as.CallbackID,
-			Session:    sessionToMap(as),
-		})
-		return goidc.StatusInProgress
-	}
-
-	if isConsented != "true" {
-		as.SetError("consent not granted")
-		return goidc.StatusFailure
-	}
-
-	return goidc.StatusSuccess
-}
-
-func (a authenticator) finishFlow(
-	as *goidc.AuthnSession,
-) goidc.AuthnStatus {
-	as.GrantScopes(as.Scopes)
-	as.GrantResources(as.Resources)
-	as.GrantAuthorizationDetails(as.AuthDetails)
-
-	as.SetIDTokenClaimAuthTime(timeutil.TimestampNow())
-	as.SetIDTokenClaimACR(goidc.ACRMaceIncommonIAPSilver)
-
-	// Add claims based on the claims parameter.
-	if as.Claims != nil {
-
-		// acr claim.
-		acrClaim, ok := as.Claims.IDToken[goidc.ClaimACR]
-		if ok {
-			as.SetIDTokenClaim(goidc.ClaimACR, acrClaim.Value)
-		}
-		acrClaim, ok = as.Claims.UserInfo[goidc.ClaimACR]
-		if ok {
-			as.SetUserInfoClaim(goidc.ClaimACR, acrClaim.Value)
-		}
-
-		// email claim.
-		_, ok = as.Claims.IDToken[goidc.ClaimEmail]
-		if ok {
-			as.SetIDTokenClaim(goidc.ClaimEmail, as.Subject)
-		}
-		_, ok = as.Claims.UserInfo[goidc.ClaimEmail]
-		if ok {
-			as.SetUserInfoClaim(goidc.ClaimEmail, as.Subject)
-		}
-
-		// email_verified claim.
-		_, ok = as.Claims.IDToken[goidc.ClaimEmailVerified]
-		if ok {
-			as.SetIDTokenClaim(goidc.ClaimEmailVerified, true)
-		}
-		_, ok = as.Claims.UserInfo[goidc.ClaimEmailVerified]
-		if ok {
-			as.SetUserInfoClaim(goidc.ClaimEmailVerified, true)
-		}
-	}
-
-	// Add claims based on scope.
-	if strings.Contains(as.Scopes, goidc.ScopeEmail.ID) {
-		as.SetUserInfoClaim(goidc.ClaimEmail, as.Subject)
-		as.SetUserInfoClaim(goidc.ClaimEmailVerified, true)
-	}
-
-	return goidc.StatusSuccess
-}
-
 func RenderError(templatesDir string) goidc.RenderErrorFunc {
 	errorTemplate := filepath.Join(templatesDir, "/error.html")
 	tmpl, err := template.ParseFiles(errorTemplate)
@@ -404,13 +217,6 @@ func RenderError(templatesDir string) goidc.RenderErrorFunc {
 		return nil
 	}
 
-}
-
-func sessionToMap(as *goidc.AuthnSession) map[string]any {
-	data, _ := json.Marshal(as)
-	var m map[string]any
-	_ = json.Unmarshal(data, &m)
-	return m
 }
 
 func CheckJTIFunc() goidc.CheckJTIFunc {

@@ -22,6 +22,12 @@ jobs:
         # The variants such as response_type and client_auth_type are required
         # depending on the test plan.
         plan:
+          - name: oidcc-basic-certification-test-plan
+            config: ./examples/oidc/cs_config.json
+            server_main: ./examples/oidc/main.go
+            server_metadata: discovery
+            client_registration: dynamic_client
+
           - name: oidcc-dynamic-certification-test-plan
             skip_modules:
               - oidcc-ensure-request-object-with-redirect-uri
@@ -104,7 +110,7 @@ jobs:
 
         - name: Run Conformance Suite
           run: |
-            docker compose -f cs-docker-compose.yml up -d
+            docker compose up -d
             echo "Wait for the conformance suite to be ready"
             timeout 60 bash -c '
             while [ "$(curl -skf -o /dev/null -w ''%{http_code}'' https://localhost:8443/api/runner/available)" != "200" ]; do
@@ -169,6 +175,12 @@ jobs:
             if [ -n "${{ matrix.plan.fapi_response_mode }}" ]; then
               ARGS="$ARGS --fapi_response_mode=\"${{ matrix.plan.fapi_response_mode }}\""
             fi
+            if [ -n "${{ matrix.plan.server_metadata }}" ]; then
+              ARGS="$ARGS --server_metadata=\"${{ matrix.plan.server_metadata }}\""
+            fi
+            if [ -n "${{ matrix.plan.client_registration }}" ]; then
+              ARGS="$ARGS --client_registration=\"${{ matrix.plan.client_registration }}\""
+            fi
 
             echo "Running with arguments: $ARGS"
             # Ensure that the arguments are passed correctly with spaces preserved.
@@ -201,7 +213,7 @@ jobs:
         - name: Cleanup
           if: always()
           run: |
-            docker compose -f cs-docker-compose.yml down
+            docker compose down
             kill $(cat /tmp/go-server.pid)
 
   all-tests-succeeded:

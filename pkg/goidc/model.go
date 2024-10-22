@@ -108,26 +108,41 @@ const (
 )
 
 const (
-	ClaimTokenID         string = "jti"
-	ClaimIssuer          string = "iss"
-	ClaimSubject         string = "sub"
-	ClaimAudience        string = "aud"
-	ClaimClientID        string = "client_id"
-	ClaimExpiry          string = "exp"
-	ClaimIssuedAt        string = "iat"
-	ClaimScope           string = "scope"
-	ClaimNonce           string = "nonce"
-	ClaimAuthTime        string = "auth_time"
-	ClaimAMR             string = "amr"
-	ClaimACR             string = "acr"
-	ClaimProfile         string = "profile"
-	ClaimEmail           string = "email"
-	ClaimEmailVerified   string = "email_verified"
-	ClaimAddress         string = "address"
-	ClaimAuthDetails     string = "authorization_details"
-	ClaimAccessTokenHash string = "at_hash"
-	ClaimAuthzCodeHash   string = "c_hash"
-	ClaimStateHash       string = "s_hash"
+	ClaimTokenID             string = "jti"
+	ClaimIssuer              string = "iss"
+	ClaimSubject             string = "sub"
+	ClaimAudience            string = "aud"
+	ClaimClientID            string = "client_id"
+	ClaimExpiry              string = "exp"
+	ClaimIssuedAt            string = "iat"
+	ClaimScope               string = "scope"
+	ClaimNonce               string = "nonce"
+	ClaimAuthTime            string = "auth_time"
+	ClaimAMR                 string = "amr"
+	ClaimACR                 string = "acr"
+	ClaimProfile             string = "profile"
+	ClaimEmail               string = "email"
+	ClaimEmailVerified       string = "email_verified"
+	ClaimPhoneNumber         string = "phone_number"
+	ClaimPhoneNumberVerified string = "phone_number_verified"
+	ClaimAddress             string = "address"
+	ClaimName                string = "name"
+	ClaimWebsite             string = "website"
+	ClaimZoneInfo            string = "zoneinfo"
+	ClaimBirthdate           string = "birthdate"
+	ClaimGender              string = "gender"
+	ClaimPreferredUsername   string = "preferred_username"
+	ClaimGivenName           string = "given_name"
+	ClaimMiddleName          string = "middle_name"
+	ClaimLocale              string = "locale"
+	ClaimPicture             string = "picture"
+	ClaimUpdatedAt           string = "updated_at"
+	ClaimNickname            string = "nickname"
+	ClaimFamilyName          string = "family_name"
+	ClaimAuthDetails         string = "authorization_details"
+	ClaimAccessTokenHash     string = "at_hash"
+	ClaimAuthzCodeHash       string = "c_hash"
+	ClaimStateHash           string = "s_hash"
 )
 
 type KeyUsage string
@@ -257,6 +272,7 @@ var (
 	ScopeOpenID        = NewScope("openid")
 	ScopeProfile       = NewScope("profile")
 	ScopeEmail         = NewScope("email")
+	ScopePhone         = NewScope("phone")
 	ScopeAddress       = NewScope("address")
 	ScopeOfflineAccess = NewScope("offline_access")
 )
@@ -349,12 +365,12 @@ func NewOpaqueTokenOptions(
 // AuthnFunc executes the user authentication logic.
 // If it returns [StatusSuccess], the flow will end successfully and the client
 // will be granted the accesses the user consented.
-// If it returns [StatusFailure], the flow will end with failure and the client
-// will be denied access.
+// If it returns [StatusFailure] or an error the flow will end with failure and
+// the client will be denied access.
 // If it return [StatusInProgress], the flow will be suspended so an interaction
 // with the user via the user agent can happen. The flow can be resumed at the
 // callback endpoint with the session callback ID.
-type AuthnFunc func(http.ResponseWriter, *http.Request, *AuthnSession) AuthnStatus
+type AuthnFunc func(http.ResponseWriter, *http.Request, *AuthnSession) (AuthnStatus, error)
 
 // SetUpAuthnFunc is responsible for initiating the authentication session.
 // It returns true when the policy is ready to executed and false for when the

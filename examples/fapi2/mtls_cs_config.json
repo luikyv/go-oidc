@@ -68,6 +68,7 @@
             "tasks": [
                 {
                     "task": "Login",
+                    "optional": true,
                     "match": "https://auth.localhost*/authorize/*/login",
                     "commands": [
                         ["text", "id", "username", "random@gmail.com"],

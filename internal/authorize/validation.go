@@ -98,7 +98,7 @@ func validateRequestWithJAR(
 // For both cases, any parameters outside the JAR are ignored.
 func validatePushedRequestWithJAR(
 	ctx oidc.Context,
-	req pushedRequest,
+	req request,
 	jar request,
 	c *goidc.Client,
 ) error {
@@ -136,7 +136,7 @@ func validatePushedRequestWithJAR(
 // endpoint, where they will be merged.
 func validatePushedRequest(
 	ctx oidc.Context,
-	req pushedRequest,
+	req request,
 	c *goidc.Client,
 ) error {
 

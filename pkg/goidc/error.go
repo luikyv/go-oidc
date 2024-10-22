@@ -23,6 +23,7 @@ const (
 	ErrorCodeInvalidRedirectURI     ErrorCode = "invalid_redirect_uri"
 	ErrorCodeInvalidClientMetadata  ErrorCode = "invalid_client_metadata"
 	ErrorCodeRequestURINotSupported ErrorCode = "request_uri_not_supported"
+	ErrorCodeLoginRequired          ErrorCode = "login_required"
 )
 
 func (c ErrorCode) StatusCode() int {

@@ -58,8 +58,8 @@ func main() {
 		provider.WithTLSCertTokenBinding(),
 		provider.WithDPoP(jose.PS256, jose.ES256),
 		provider.WithTokenBindingRequired(),
-		provider.WithClaims(goidc.ClaimEmail, goidc.ClaimEmailVerified),
-		provider.WithACRs(authutil.ACRs[0], authutil.ACRs[1:]...),
+		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
+		provider.WithACRs(authutil.ACRs[0], authutil.ACRs...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(serverKeyID)),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithPolicy(authutil.Policy(templatesDirPath)),
@@ -70,6 +70,7 @@ func main() {
 		provider.WithStaticClient(authutil.ClientMTLS("mtls_client_two", "client_two", clientTwoJWKSFilePath)),
 		provider.WithRenderErrorFunc(authutil.RenderError(templatesDirPath)),
 		provider.WithCheckJTIFunc(authutil.CheckJTIFunc()),
+		provider.WithDisplayValues(authutil.DisplayValues[0], authutil.DisplayValues...),
 	)
 	if err != nil {
 		log.Fatal(err)

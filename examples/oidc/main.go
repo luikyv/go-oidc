@@ -49,14 +49,15 @@ func main() {
 		provider.WithImplicitGrant(),
 		provider.WithAuthorizationCodeGrant(),
 		provider.WithRefreshTokenGrant(authutil.IssueRefreshToken, 600),
-		provider.WithClaims(goidc.ClaimEmail, goidc.ClaimEmailVerified),
-		provider.WithACRs(goidc.ACRMaceIncommonIAPBronze, goidc.ACRMaceIncommonIAPSilver),
+		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
+		provider.WithACRs(authutil.ACRs[0], authutil.ACRs...),
 		provider.WithDCR(authutil.DCRFunc, authutil.ValidateInitialTokenFunc),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(serverKeyID)),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithPolicy(authutil.Policy(templatesDirPath)),
 		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
 		provider.WithRenderErrorFunc(authutil.RenderError(templatesDirPath)),
+		provider.WithDisplayValues(authutil.DisplayValues[0], authutil.DisplayValues...),
 	)
 	if err != nil {
 		log.Fatal(err)

@@ -9,6 +9,10 @@ func TimestampNow() int {
 	return int(time.Now().Unix())
 }
 
+func Timestamp(t time.Time) int {
+	return int(t.Unix())
+}
+
 func Now() time.Time {
 	return time.Now().UTC()
 }

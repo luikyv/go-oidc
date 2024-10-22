@@ -13,7 +13,7 @@ import (
 
 func pushAuth(
 	ctx oidc.Context,
-	req pushedRequest,
+	req request,
 ) (
 	pushedResponse,
 	error,
@@ -43,7 +43,7 @@ func pushAuth(
 // saves it.
 func pushAuthnSession(
 	ctx oidc.Context,
-	req pushedRequest,
+	req request,
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
@@ -64,7 +64,7 @@ func pushAuthnSession(
 
 func pushedAuthnSession(
 	ctx oidc.Context,
-	req pushedRequest,
+	req request,
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
@@ -78,7 +78,7 @@ func pushedAuthnSession(
 
 func simplePushedAuthnSession(
 	ctx oidc.Context,
-	req pushedRequest,
+	req request,
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,
@@ -95,7 +95,7 @@ func simplePushedAuthnSession(
 
 func pushedAuthnSessionWithJAR(
 	ctx oidc.Context,
-	req pushedRequest,
+	req request,
 	client *goidc.Client,
 ) (
 	*goidc.AuthnSession,

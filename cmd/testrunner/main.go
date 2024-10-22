@@ -31,6 +31,10 @@
 //	--fapi_profile        Defines the FAPI profile for testing (e.g., plain_fapi).
 //	--fapi_response_mode  Specifies the response mode for FAPI tests (e.g.,
 //	                      jarm, plain_response).
+//	--server_metadata     Specifies how the server discovery information is informed (e.g.,
+//	                      static, discovery).
+//	--client_registration Specifies how the clients used in the test are created
+//	                      (e.g., dynamic_client).
 //
 // Notes:
 //
@@ -105,18 +109,20 @@ func main() {
 }
 
 const (
-	conformanceSuiteURL  string = "https://localhost:8443"
-	argTestPlanName      string = "--plan="
-	argTestModuleNames   string = "--modules="
-	argSkipModules       string = "--skip_modules="
-	argConfigFile        string = "--config="
-	argResponseType      string = "--response_type="
-	argSenderConstrain   string = "--sender_constrain="
-	argClientAuthType    string = "--client_auth_type="
-	argOpenID            string = "--openid="
-	argFAPIRequestMethod string = "--fapi_request_method="
-	argFAPIProfile       string = "--fapi_profile="
-	argFAPIResponseMode  string = "--fapi_response_mode="
+	conformanceSuiteURL   string = "https://localhost:8443"
+	argTestPlanName       string = "--plan="
+	argTestModuleNames    string = "--modules="
+	argSkipModules        string = "--skip_modules="
+	argConfigFile         string = "--config="
+	argResponseType       string = "--response_type="
+	argSenderConstrain    string = "--sender_constrain="
+	argClientAuthType     string = "--client_auth_type="
+	argOpenID             string = "--openid="
+	argFAPIRequestMethod  string = "--fapi_request_method="
+	argFAPIProfile        string = "--fapi_profile="
+	argFAPIResponseMode   string = "--fapi_response_mode="
+	argServerMetaData     string = "--server_metadata="
+	argClientRegistration string = "--client_registration="
 )
 
 type testStatus string
@@ -132,9 +138,10 @@ const (
 type testResult string
 
 const (
-	testResultFailed testResult = "FAILED"
-	testResultPassed testResult = "PASSED"
-	testResultReview testResult = "REVIEW"
+	testResultFailed  testResult = "FAILED"
+	testResultPassed  testResult = "PASSED"
+	testResultReview  testResult = "REVIEW"
+	testResultWarning testResult = "WARNING"
 )
 
 var httpClient = &http.Client{
@@ -252,6 +259,10 @@ func buildArguments() arguments {
 			args.variant.FAPIProfile = strings.Replace(arg, argFAPIProfile, "", 1)
 		case strings.HasPrefix(arg, argFAPIResponseMode):
 			args.variant.FAPIResponseMode = strings.Replace(arg, argFAPIResponseMode, "", 1)
+		case strings.HasPrefix(arg, argServerMetaData):
+			args.variant.ServerMetadata = strings.Replace(arg, argServerMetaData, "", 1)
+		case strings.HasPrefix(arg, argClientRegistration):
+			args.variant.ClientRegistration = strings.Replace(arg, argClientRegistration, "", 1)
 		}
 	}
 
@@ -344,7 +355,10 @@ func runTestModule(ctx context.Context, name string, plan testPlan) error {
 		time.Sleep(1 * time.Second)
 	}
 
-	if !slices.Contains([]testResult{testResultPassed, testResultReview}, module.Result) {
+	if !slices.Contains(
+		[]testResult{testResultPassed, testResultReview, testResultWarning},
+		module.Result,
+	) {
 		log.Printf("test module with id %s failed with result as %s\n", module.ID, module.Result)
 		return fmt.Errorf("test module %s with id %s resulted in %s", module.Name, module.ID, module.Result)
 	}

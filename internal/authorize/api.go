@@ -18,6 +18,10 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 		"GET "+config.EndpointPrefix+config.EndpointAuthorize,
 		oidc.Handler(config, handler),
 	)
+	router.HandleFunc(
+		"POST "+config.EndpointPrefix+config.EndpointAuthorize,
+		oidc.Handler(config, handler),
+	)
 
 	router.HandleFunc(
 		"POST "+config.EndpointPrefix+config.EndpointAuthorize+"/{callback}",
@@ -31,7 +35,7 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 
 func handlerPush(ctx oidc.Context) {
 
-	req := newPushedRequest(ctx.Request)
+	req := newFormRequest(ctx.Request)
 	resp, err := pushAuth(ctx, req)
 	if err != nil {
 		ctx.WriteError(err)
@@ -44,7 +48,12 @@ func handlerPush(ctx oidc.Context) {
 }
 
 func handler(ctx oidc.Context) {
-	req := newRequest(ctx.Request)
+	var req request
+	if ctx.Request.Method == http.MethodPost {
+		req = newFormRequest(ctx.Request)
+	} else {
+		req = newRequest(ctx.Request)
+	}
 
 	err := initAuth(ctx, req)
 	if err != nil {
