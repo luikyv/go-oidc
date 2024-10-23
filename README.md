@@ -1,5 +1,6 @@
 # go-oidc - A Configurable OpenID Provider built in GO.
 [![Go Reference](https://pkg.go.dev/badge/github.com/luikyv/go-oidc.svg)](https://pkg.go.dev/github.com/luikyv/go-oidc)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fluikyv%2Fgo-oidc.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fluikyv%2Fgo-oidc?ref=badge_shield)
 
 `go-oidc` is a client module that provides a configurable Authorization Server with support for OpenID Connect and other standards.
 
@@ -67,3 +68,7 @@ op.Run(":80")
 ```
 
 You can then check the default configurations by accessing http://localhost/.well-known/openid-configuration.
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fluikyv%2Fgo-oidc.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fluikyv%2Fgo-oidc?ref=badge_large)
