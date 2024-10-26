@@ -82,7 +82,8 @@ jobs:
             skip_modules:
               # JAR is configured as optional so the unsigned variant can execute.
               - fapi2-security-profile-id2-ensure-unsigned-request-at-par-endpoint-fails
-            config: ./examples/fapi2/mtls_cs_config.json
+            config: ./examples/fapi2/cs_config.json
+            config_override: ./examples/fapi2/mtls_cs_config.json
             server_main: ./examples/fapi2/main.go
             sender_constrain: mtls
             client_auth_type: mtls
@@ -136,8 +137,11 @@ jobs:
 
         - name: Run test plan
           run: |
-            # Prepare base arguments
+            # Prepare base arguments.
             ARGS="--plan=${{ matrix.plan.name }} --config=${{ matrix.plan.config }}"
+            if [ -n "${{ matrix.plan.config_override }}" ]; then
+              ARGS="$ARGS --config_override=\"${{ matrix.plan.config_override }}\""
+            fi
 
             # Specified modules are the only ones to execute.
             if [ -n "${{ matrix.plan.modules }}" ]; then

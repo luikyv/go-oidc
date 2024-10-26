@@ -1,3 +1,5 @@
+// Example fapi2 demonstrates the implementation of an Authorization Server
+// that complies with the FAPI 2.0 specifications.
 package main
 
 import (
@@ -105,7 +107,10 @@ func main() {
 			},
 		},
 	}
-	if err := server.ListenAndServeTLS(serverCertFilePath, serverCertKeyFilePath); err != nil {
+	if err := server.ListenAndServeTLS(
+		serverCertFilePath,
+		serverCertKeyFilePath,
+	); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
 }
