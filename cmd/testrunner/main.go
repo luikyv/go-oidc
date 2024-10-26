@@ -6,7 +6,7 @@
 //
 // Usage:
 //
-//	go run cmd/testrunner/main.go --plan=plan_name --config=cs_config [flags]
+//	go run cmd/testrunner/main.go --plan=plan_name --config=./cs_config.json [flags]
 //
 // Required Flags:
 //
@@ -15,6 +15,7 @@
 //
 // Optional Flags:
 //
+//	--config_override     Path with content to override the configuration file.
 //	--modules             Comma-separated list of test modules to run.
 //	                      If omitted, all available modules will be executed.
 //	--skip_modules        Comma-separated list of test modules to skip during
@@ -74,11 +75,15 @@ import (
 func main() {
 	ctx := context.Background()
 	args := buildArguments()
+	config, err := generateConfig(args.configFile, args.configOverrideFile)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	plan, err := createTestPlan(
 		ctx,
 		args.testPlanName,
-		args.configFile,
+		config,
 		args.variant,
 	)
 	if err != nil {
@@ -114,6 +119,7 @@ const (
 	argTestModuleNames    string = "--modules="
 	argSkipModules        string = "--skip_modules="
 	argConfigFile         string = "--config="
+	argConfigOverrideFile string = "--config_override="
 	argResponseType       string = "--response_type="
 	argSenderConstrain    string = "--sender_constrain="
 	argClientAuthType     string = "--client_auth_type="
@@ -156,6 +162,7 @@ type arguments struct {
 	excludedTestModules []string
 	variant             variant
 	configFile          string
+	configOverrideFile  string
 }
 
 type testPlan struct {
@@ -245,6 +252,8 @@ func buildArguments() arguments {
 			)
 		case strings.HasPrefix(arg, argConfigFile):
 			args.configFile = strings.Replace(arg, argConfigFile, "", 1)
+		case strings.HasPrefix(arg, argConfigOverrideFile):
+			args.configOverrideFile = strings.Replace(arg, argConfigOverrideFile, "", 1)
 		case strings.HasPrefix(arg, argClientAuthType):
 			args.variant.ClientAuthType = strings.Replace(arg, argClientAuthType, "", 1)
 		case strings.HasPrefix(arg, argResponseType):
@@ -273,7 +282,8 @@ func buildArguments() arguments {
 // modules.
 func createTestPlan(
 	_ context.Context,
-	name, configFile string,
+	name string,
+	config map[string]any,
 	variant variant,
 ) (
 	testPlan,
@@ -287,7 +297,7 @@ func createTestPlan(
 	queryParams.Add("variant", variant.String())
 	csURL.RawQuery = queryParams.Encode()
 
-	config, err := os.ReadFile(configFile)
+	configData, err := json.Marshal(config)
 	if err != nil {
 		log.Printf("could not load the configuration file: %v\n", err)
 		return testPlan{}, err
@@ -296,7 +306,7 @@ func createTestPlan(
 	resp, err := httpClient.Post(
 		csURL.String(),
 		"application/json",
-		bytes.NewBuffer(config),
+		bytes.NewBuffer(configData),
 	)
 	if err != nil {
 		log.Printf("could create the test plan %s due to: %v\n", name, err)
@@ -444,4 +454,59 @@ func downloadTestPlanLogs(_ context.Context, planID string) {
 	if err := os.WriteFile(fileName, b, 0644); err != nil {
 		log.Printf("could not write test logs for test plan %s\n", planID)
 	}
+}
+
+func generateConfig(
+	configFile, configOverrideFile string,
+) (
+	map[string]any,
+	error,
+) {
+	config, err := os.ReadFile(configFile)
+	if err != nil {
+		log.Printf("could not load the configuration file: %v\n", err)
+		return nil, err
+	}
+
+	var configMap map[string]any
+	if err := json.Unmarshal(config, &configMap); err != nil {
+		log.Printf("could not parse the configuration file: %v\n", err)
+		return nil, err
+	}
+
+	if configOverrideFile == "" {
+		return configMap, nil
+	}
+
+	overrideConfig, err := os.ReadFile(configOverrideFile)
+	if err != nil {
+		log.Printf("could not load the override configuration file: %v\n", err)
+		return nil, err
+	}
+
+	var overrideConfigMap map[string]any
+	if err := json.Unmarshal(overrideConfig, &overrideConfigMap); err != nil {
+		log.Printf("could not parse the override configuration file: %v\n", err)
+		return nil, err
+	}
+
+	return deepMerge(configMap, overrideConfigMap), nil
+}
+
+// deepMerge recursively merges two maps, overriding matching keys where needed.
+func deepMerge(original, override map[string]interface{}) map[string]interface{} {
+	for key, overrideValue := range override {
+		if origValue, exists := original[key]; exists {
+			// If both values are maps, merge them recursively.
+			if origMap, ok1 := origValue.(map[string]interface{}); ok1 {
+				if overrideMap, ok2 := overrideValue.(map[string]interface{}); ok2 {
+					original[key] = deepMerge(origMap, overrideMap)
+					continue
+				}
+			}
+		}
+		// If the key does not exist or values are not maps, override the value.
+		original[key] = overrideValue
+	}
+	return original
 }

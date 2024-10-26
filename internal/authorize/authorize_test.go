@@ -50,7 +50,7 @@ func TestInitAuth(t *testing.T) {
 
 	session := sessions[0]
 	if session.AuthorizationCode == "" {
-		t.Error("the authorization code in the session cannot be emtpy")
+		t.Error("the authorization code in the session cannot be empty")
 	}
 
 	wantedSession := goidc.AuthnSession{
@@ -170,7 +170,7 @@ func TestInitAuth_JAR(t *testing.T) {
 
 	session := sessions[0]
 	if session.AuthorizationCode == "" {
-		t.Error("the authorization code in the session cannot be emtpy")
+		t.Error("the authorization code in the session cannot be empty")
 	}
 
 	redirectURL, err := url.Parse(ctx.Response.Header().Get("Location"))
@@ -234,7 +234,7 @@ func TestInitAuth_JARM(t *testing.T) {
 
 	session := sessions[0]
 	if session.AuthorizationCode == "" {
-		t.Error("the authorization code in the session cannot be emtpy")
+		t.Error("the authorization code in the session cannot be empty")
 	}
 
 	redirectURL, err := url.Parse(ctx.Response.Header().Get("Location"))
@@ -310,7 +310,7 @@ func TestInitAuth_ResourceIndicator(t *testing.T) {
 
 	session := sessions[0]
 	if session.AuthorizationCode == "" {
-		t.Error("the authorization code in the session cannot be emtpy")
+		t.Error("the authorization code in the session cannot be empty")
 	}
 
 	wantedSession := goidc.AuthnSession{
@@ -384,7 +384,7 @@ func TestInitAuth_IDTokenHint(t *testing.T) {
 
 	session := sessions[0]
 	if session.AuthorizationCode == "" {
-		t.Error("the authorization code in the session cannot be emtpy")
+		t.Error("the authorization code in the session cannot be empty")
 	}
 
 	wantedSession := goidc.AuthnSession{

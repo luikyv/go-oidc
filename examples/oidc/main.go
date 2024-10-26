@@ -1,3 +1,5 @@
+// Example oidc demonstrates the implementation of an Authorization Server
+// that complies with the OpenID Connect specifications.
 package main
 
 import (
@@ -76,7 +78,10 @@ func main() {
 		Addr:    authutil.Port,
 		Handler: mux,
 	}
-	if err := server.ListenAndServeTLS(serverCertFilePath, serverCertKeyFilePath); err != nil {
+	if err := server.ListenAndServeTLS(
+		serverCertFilePath,
+		serverCertKeyFilePath,
+	); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
 }
