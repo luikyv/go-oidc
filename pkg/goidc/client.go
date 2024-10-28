@@ -115,8 +115,14 @@ type ClientMetaInfo struct {
 	DefaultMaxAgeSecs         *int     `json:"default_max_age,omitempty"`
 	DefaultACRValues          string   `json:"default_acr_values,omitempty"`
 	PARIsRequired             bool     `json:"require_pushed_authorization_requests,omitempty"`
-	// CustomAttributes holds any additional attributes a client has.
-	// This field is flattened for DCR responses.
+	// CustomAttributes holds any additional dynamic attributes a client may
+	// provide during registration.
+	// These attributes allow clients to extend their metadata beyond the
+	// predefined fields (e.g., client_name, logo_uri).
+	// During DCR, any attributes that are not explicitly defined in the struct
+	// will be captured here.
+	// These additional fields are **flattened** in the DCR response, meaning
+	// they are merged directly into the JSON response alongside standard fields.
 	CustomAttributes map[string]any `json:"custom_attributes,omitempty"`
 }
 
