@@ -405,7 +405,7 @@ func TestIsPkceValid(t *testing.T) {
 	}
 }
 
-func setUpAuthzCodeGrant(t *testing.T) (
+func setUpAuthzCodeGrant(t testing.TB) (
 	ctx oidc.Context,
 	client *goidc.Client,
 	session *goidc.AuthnSession,

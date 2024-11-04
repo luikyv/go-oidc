@@ -67,7 +67,7 @@ func (c *Client) FetchPublicJWKS(httpClient *http.Client) (jose.JSONWebKeySet, e
 func (c *Client) fetchJWKS(httpClient *http.Client) (json.RawMessage, error) {
 	resp, err := httpClient.Get(c.PublicJWKSURI)
 	if err != nil || resp.StatusCode != http.StatusOK {
-		return nil, errors.New("could not fetch client jwks")
+		return nil, Errorf(ErrorCodeInvalidClientMetadata, "could not fetch client jwks", err)
 	}
 
 	defer resp.Body.Close()
@@ -84,7 +84,7 @@ type ClientMetaInfo struct {
 	PublicJWKSURI string          `json:"jwks_uri,omitempty"`
 	PublicJWKS    json.RawMessage `json:"jwks,omitempty"`
 	// ScopeIDs contains the scopes available to the client separeted by spaces.
-	ScopeIDs                      string                  `json:"scope"`
+	ScopeIDs                      string                  `json:"scope,omitempty"`
 	SubIdentifierType             SubjectIdentifierType   `json:"subject_type,omitempty"`
 	IDTokenSigAlg                 jose.SignatureAlgorithm `json:"id_token_signed_response_alg,omitempty"`
 	IDTokenKeyEncAlg              jose.KeyAlgorithm       `json:"id_token_encrypted_response_alg,omitempty"`

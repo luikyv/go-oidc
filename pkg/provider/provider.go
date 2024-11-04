@@ -120,7 +120,7 @@ func (p Provider) ValidateTokenPoP(
 	return token.ValidatePoP(ctx, accessToken, cnf)
 }
 
-func (p *Provider) Client(
+func (p Provider) Client(
 	ctx context.Context,
 	id string,
 ) (
