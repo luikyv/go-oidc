@@ -6,35 +6,35 @@
 //
 // Usage:
 //
-//	go run cmd/testrunner/main.go --plan=plan_name --config=./cs_config.json [flags]
+//	go run cmd/testrunner/main.go -plan=plan_name -config=./cs_config.json [flags]
 //
 // Required Flags:
 //
-//	--plan     Specifies the test plan to execute.
-//	--config   Path to the configuration file for the Conformance Suite.
+//	-plan     Specifies the test plan to execute.
+//	-config   Path to the configuration file for the Conformance Suite.
 //
 // Optional Flags:
 //
-//	--config_override     Path with content to override the configuration file.
-//	--modules             Comma-separated list of test modules to run.
+//	-config_override     Path with content to override the configuration file.
+//	-modules             Comma-separated list of test modules to run.
 //	                      If omitted, all available modules will be executed.
-//	--skip_modules        Comma-separated list of test modules to skip during
+//	-skip_modules        Comma-separated list of test modules to skip during
 //	                      execution.
-//	--response_type       Defines the OAuth 2.0 response type (e.g., code, token).
-//	--sender_constrain    Specifies the sender-constrain mechanism to apply to
+//	-response_type       Defines the OAuth 2.0 response type (e.g., code, token).
+//	-sender_constrain    Specifies the sender-constrain mechanism to apply to
 //	                      tokens (e.g., dpop, mtls).
-//	--client_auth_type    Defines the client authentication type (e.g., mtls,
+//	-client_auth_type    Defines the client authentication type (e.g., mtls,
 //	                      private_key_jwt).
-//	--openid              Indicates the OpenID profile (e.g., openid_connect,
+//	-openid              Indicates the OpenID profile (e.g., openid_connect,
 //	                      plain_oauth).
-//	--fapi_request_method Specifies the FAPI request method (e.g., unsigned,
+//	-fapi_request_method Specifies the FAPI request method (e.g., unsigned,
 //	                      signed_non_repudiation).
-//	--fapi_profile        Defines the FAPI profile for testing (e.g., plain_fapi).
-//	--fapi_response_mode  Specifies the response mode for FAPI tests (e.g.,
+//	-fapi_profile        Defines the FAPI profile for testing (e.g., plain_fapi).
+//	-fapi_response_mode  Specifies the response mode for FAPI tests (e.g.,
 //	                      jarm, plain_response).
-//	--server_metadata     Specifies how the server discovery information is informed (e.g.,
+//	-server_metadata     Specifies how the server discovery information is informed (e.g.,
 //	                      static, discovery).
-//	--client_registration Specifies how the clients used in the test are created
+//	-client_registration Specifies how the clients used in the test are created
 //	                      (e.g., dynamic_client).
 //
 // Notes:
@@ -60,6 +60,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -115,20 +116,20 @@ func main() {
 
 const (
 	conformanceSuiteURL   string = "https://localhost:8443"
-	argTestPlanName       string = "--plan="
-	argTestModuleNames    string = "--modules="
-	argSkipModules        string = "--skip_modules="
-	argConfigFile         string = "--config="
-	argConfigOverrideFile string = "--config_override="
-	argResponseType       string = "--response_type="
-	argSenderConstrain    string = "--sender_constrain="
-	argClientAuthType     string = "--client_auth_type="
-	argOpenID             string = "--openid="
-	argFAPIRequestMethod  string = "--fapi_request_method="
-	argFAPIProfile        string = "--fapi_profile="
-	argFAPIResponseMode   string = "--fapi_response_mode="
-	argServerMetaData     string = "--server_metadata="
-	argClientRegistration string = "--client_registration="
+	argTestPlanName       string = "plan"
+	argTestModuleNames    string = "modules"
+	argSkipModules        string = "skip_modules"
+	argConfigFile         string = "config"
+	argConfigOverrideFile string = "config_override"
+	argResponseType       string = "response_type"
+	argSenderConstrain    string = "sender_constrain"
+	argClientAuthType     string = "client_auth_type"
+	argOpenID             string = "openid"
+	argFAPIRequestMethod  string = "fapi_request_method"
+	argFAPIProfile        string = "fapi_profile"
+	argFAPIResponseMode   string = "fapi_response_mode"
+	argServerMetaData     string = "server_metadata"
+	argClientRegistration string = "client_registration"
 )
 
 type testStatus string
@@ -230,52 +231,48 @@ func chosenTestModules(plan testPlan, args arguments) []string {
 
 // buildArguments parses the command line arguments sent when running this routine.
 func buildArguments() arguments {
-	args := arguments{}
+	plan := flag.String(argTestPlanName, "", "test plan name")
+	testModules := flag.String(argTestModuleNames, "", "test modules")
+	skippedTestModules := flag.String(argSkipModules, "", "skipped test modules")
+	configFile := flag.String(argConfigFile, "", "plan configuration file")
+	configOverrideFile := flag.String(argConfigOverrideFile, "", "plan configuration override file")
+	clientAuthType := flag.String(argClientAuthType, "", "client authentication type")
+	responseType := flag.String(argResponseType, "", "response type")
+	senderConstrain := flag.String(argSenderConstrain, "", "sender constrain type")
+	openID := flag.String(argOpenID, "", "openid")
+	fapiReqMethod := flag.String(argFAPIRequestMethod, "", "fapi request method")
+	fapiProfile := flag.String(argFAPIProfile, "", "fapi profile")
+	fapiRespMode := flag.String(argFAPIResponseMode, "", "fapi response mode")
+	serverMetaData := flag.String(argServerMetaData, "", "server meta data")
+	clientReg := flag.String(argClientRegistration, "", "client registration")
 
-	for _, arg := range os.Args[1:] {
-		// Remove quotes if any.
-		arg = strings.Replace(arg, "'", "", -1)
-		arg = strings.Replace(arg, "\"", "", -1)
+	flag.Parse()
 
-		switch {
-		case strings.HasPrefix(arg, argTestPlanName):
-			args.testPlanName = strings.Replace(arg, argTestPlanName, "", 1)
-		case strings.HasPrefix(arg, argTestModuleNames):
-			args.testModules = strings.Split(
-				strings.Replace(arg, argTestModuleNames, "", 1),
-				",",
-			)
-		case strings.HasPrefix(arg, argSkipModules):
-			args.excludedTestModules = strings.Split(
-				strings.Replace(arg, argSkipModules, "", 1),
-				",",
-			)
-		case strings.HasPrefix(arg, argConfigFile):
-			args.configFile = strings.Replace(arg, argConfigFile, "", 1)
-		case strings.HasPrefix(arg, argConfigOverrideFile):
-			args.configOverrideFile = strings.Replace(arg, argConfigOverrideFile, "", 1)
-		case strings.HasPrefix(arg, argClientAuthType):
-			args.variant.ClientAuthType = strings.Replace(arg, argClientAuthType, "", 1)
-		case strings.HasPrefix(arg, argResponseType):
-			args.variant.ResponseType = strings.Replace(arg, argResponseType, "", 1)
-		case strings.HasPrefix(arg, argSenderConstrain):
-			args.variant.SenderConstrain = strings.Replace(arg, argSenderConstrain, "", 1)
-		case strings.HasPrefix(arg, argOpenID):
-			args.variant.OpenID = strings.Replace(arg, argOpenID, "", 1)
-		case strings.HasPrefix(arg, argFAPIRequestMethod):
-			args.variant.FAPIRequestMethod = strings.Replace(arg, argFAPIRequestMethod, "", 1)
-		case strings.HasPrefix(arg, argFAPIProfile):
-			args.variant.FAPIProfile = strings.Replace(arg, argFAPIProfile, "", 1)
-		case strings.HasPrefix(arg, argFAPIResponseMode):
-			args.variant.FAPIResponseMode = strings.Replace(arg, argFAPIResponseMode, "", 1)
-		case strings.HasPrefix(arg, argServerMetaData):
-			args.variant.ServerMetadata = strings.Replace(arg, argServerMetaData, "", 1)
-		case strings.HasPrefix(arg, argClientRegistration):
-			args.variant.ClientRegistration = strings.Replace(arg, argClientRegistration, "", 1)
-		}
+	return arguments{
+		testPlanName:        *plan,
+		testModules:         splitByComma(*testModules),
+		excludedTestModules: splitByComma(*skippedTestModules),
+		configFile:          *configFile,
+		configOverrideFile:  *configOverrideFile,
+		variant: variant{
+			ClientAuthType:     *clientAuthType,
+			ResponseType:       *responseType,
+			SenderConstrain:    *senderConstrain,
+			OpenID:             *openID,
+			FAPIRequestMethod:  *fapiReqMethod,
+			FAPIProfile:        *fapiProfile,
+			FAPIResponseMode:   *fapiRespMode,
+			ServerMetadata:     *serverMetaData,
+			ClientRegistration: *clientReg,
+		},
 	}
+}
 
-	return args
+func splitByComma(s string) []string {
+	if s == "" {
+		return []string{}
+	}
+	return strings.Split(s, ",")
 }
 
 // createTestPlan creates a test plan that will be used to run individual test

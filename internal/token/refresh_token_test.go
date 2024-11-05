@@ -243,7 +243,7 @@ func TestGenerateGrant_ExpiredRefreshToken(t *testing.T) {
 	}
 }
 
-func setUpRefreshTokenGrant(t *testing.T) (
+func setUpRefreshTokenGrant(t testing.TB) (
 	ctx oidc.Context,
 	client *goidc.Client,
 	grantSession *goidc.GrantSession,

@@ -29,11 +29,16 @@ type GrantSession struct {
 	// TokenID is the id of the token issued for this grant.
 	TokenID      string `json:"token_id"`
 	RefreshToken string `json:"refresh_token,omitempty"`
-	// LastTokenExpiresAtTimestamp is the timestamp when the last token issued
-	// for this grant was created.
+	// LastTokenExpiresAtTimestamp indicates the timestamp when the last issued
+	// token for this grant will expire.
 	LastTokenExpiresAtTimestamp int `json:"last_token_expires_at"`
 	CreatedAtTimestamp          int `json:"created_at"`
-	ExpiresAtTimestamp          int `json:"expires_at"`
+	// ExpiresAtTimestamp is the timestamp for when the overall grant session
+	// will expire.
+	// If a refresh token is issued with the access token, ExpiresAtTimestamp
+	// will be later than LastTokenExpiresAtTimestamp.
+	// Otherwise, ExpiresAtTimestamp and LastTokenExpiresAtTimestamp will match.
+	ExpiresAtTimestamp int `json:"expires_at"`
 	// AuthorizationCode is the authorization code used to generate this grant
 	// session in case of authorization code grant type.
 	AuthorizationCode string `json:"authorization_code,omitempty"`

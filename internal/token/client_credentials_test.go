@@ -111,7 +111,7 @@ func TestHandleGrantCreation_ClientCredentialsGrant_ResourceIndicators(t *testin
 	}
 }
 
-func setUpClientCredentialsGrant(t *testing.T) (
+func setUpClientCredentialsGrant(t testing.TB) (
 	ctx oidc.Context,
 	client *goidc.Client,
 ) {

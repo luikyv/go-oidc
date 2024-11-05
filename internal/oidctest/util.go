@@ -22,7 +22,7 @@ var (
 	Scope2 = goidc.NewScope("scope2")
 )
 
-func NewClient(t *testing.T) (client *goidc.Client, secret string) {
+func NewClient(t testing.TB) (client *goidc.Client, secret string) {
 	t.Helper()
 
 	secret = "test_secret"
@@ -55,7 +55,7 @@ func NewClient(t *testing.T) (client *goidc.Client, secret string) {
 	return client, secret
 }
 
-func NewContext(t *testing.T) oidc.Context {
+func NewContext(t testing.TB) oidc.Context {
 	t.Helper()
 
 	keyID := "test_server_key"
@@ -210,7 +210,7 @@ func PrivateRS256JWK(
 }
 
 func PrivatePS256JWK(
-	t *testing.T,
+	t testing.TB,
 	keyID string,
 	usage goidc.KeyUsage,
 ) jose.JSONWebKey {
@@ -218,7 +218,7 @@ func PrivatePS256JWK(
 }
 
 func privateRSAJWK(
-	t *testing.T,
+	t testing.TB,
 	keyID string,
 	alg jose.SignatureAlgorithm,
 	usage goidc.KeyUsage,
