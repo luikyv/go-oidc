@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"path/filepath"
 	"runtime"
-	"strings"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/examples/authutil"
@@ -47,10 +46,7 @@ func main() {
 		provider.WithMTLS(authutil.MTLSHost, authutil.ClientCertFunc),
 		provider.WithJAR(jose.PS256),
 		provider.WithJARM(jose.PS256),
-		provider.WithTokenAuthnMethods(
-			goidc.ClientAuthnPrivateKeyJWT,
-			goidc.ClientAuthnTLS,
-		),
+		provider.WithTokenAuthnMethods(goidc.ClientAuthnPrivateKeyJWT, goidc.ClientAuthnTLS),
 		provider.WithPrivateKeyJWTSignatureAlgs(jose.PS256),
 		provider.WithIssuerResponseParameter(),
 		provider.WithClaimsParameter(),
@@ -83,14 +79,10 @@ func main() {
 	handler := op.Handler()
 
 	hostURL, _ := url.Parse(authutil.Issuer)
-	// Remove the port from the host name if any.
-	host := strings.Split(hostURL.Host, ":")[0]
-	mux.Handle(host+"/", handler)
+	mux.Handle(hostURL.Hostname()+"/", handler)
 
 	mtlsHostURL, _ := url.Parse(authutil.MTLSHost)
-	// Remove the port from the host name if any.
-	mtlsHost := strings.Split(mtlsHostURL.Host, ":")[0]
-	mux.Handle(mtlsHost+"/", authutil.ClientCertMiddleware(handler))
+	mux.Handle(mtlsHostURL.Hostname()+"/", authutil.ClientCertMiddleware(handler))
 
 	caPool := authutil.ClientCACertPool(clientOneCertFilePath, clientTwoCertFilePath)
 	server := &http.Server{

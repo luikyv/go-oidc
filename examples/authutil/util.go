@@ -25,9 +25,9 @@ import (
 )
 
 const (
-	Port             string = ":8445"
-	Issuer           string = "https://auth.localhost" + Port
-	MTLSHost         string = "https://matls-auth.localhost" + Port
+	Port             string = ":443"
+	Issuer           string = "https://auth.localhost"
+	MTLSHost         string = "https://matls-auth.localhost"
 	HeaderClientCert string = "X-Client-Cert"
 )
 

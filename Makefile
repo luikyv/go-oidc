@@ -23,4 +23,4 @@ run-cs:
 	  git clone --branch "release-$(CS_VERSION)" --single-branch --depth=1 https://gitlab.com/openid/conformance-suite.git; \
 	  docker compose -f ./conformance-suite/builder-compose.yml run builder; \
 	fi
-	docker compose up
+	@docker compose up

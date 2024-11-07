@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"path/filepath"
 	"runtime"
-	"strings"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/examples/authutil"
@@ -70,9 +69,7 @@ func main() {
 	handler := op.Handler()
 
 	hostURL, _ := url.Parse(authutil.Issuer)
-	// Remove the port from the host name if any.
-	host := strings.Split(hostURL.Host, ":")[0]
-	mux.Handle(host+"/", handler)
+	mux.Handle(hostURL.Hostname()+"/", handler)
 
 	server := &http.Server{
 		Addr:    authutil.Port,
