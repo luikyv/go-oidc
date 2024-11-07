@@ -129,7 +129,7 @@ jobs:
             echo "Wait for the auth server to be ready"
             timeout 10 bash -c '
             while [ "$(curl -skf -o /dev/null -w ''%{http_code}'' https://auth.localhost/.well-known/openid-configuration)" != "200" ]; do
-              echo "Conformance suite not ready, sleeping for 2 seconds"
+              echo "Auth server not ready, sleeping for 2 seconds"
               sleep 2
             done
             echo "Auth server is ready"
