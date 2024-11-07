@@ -122,10 +122,10 @@ func signedRequestObjectFromEncrypted(
 			"invalid jwe key ID")
 	}
 
-	jwk, ok := ctx.PrivateKey(keyID)
-	if !ok || jwk.Use != string(goidc.KeyUsageEncryption) {
-		return "", goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
-			"invalid jwk used for encryption")
+	jwk, err := ctx.PrivateKey(keyID)
+	if err != nil || jwk.Use != string(goidc.KeyUsageEncryption) {
+		return "", goidc.Errorf(goidc.ErrorCodeInvalidResquestObject,
+			"invalid jwk used for encryption", err)
 	}
 
 	decryptedReqObject, err := encryptedReqObject.Decrypt(jwk.Key)

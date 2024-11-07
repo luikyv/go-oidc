@@ -104,7 +104,7 @@ func TestGenerateGrantWithDPoP(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	claims, err := oidctest.SafeClaims(tokenResp.AccessToken, ctx.PrivateJWKS.Keys[0])
+	claims, err := oidctest.SafeClaims(tokenResp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 	if err != nil {
 		t.Fatalf("error parsing claims: %v", err)
 	}

@@ -43,7 +43,7 @@ func TestHandleUserInfoRequest(t *testing.T) {
 func TestHandleUserInfoRequest_SignedResponse(t *testing.T) {
 	// Given.
 	ctx, client, _ := setUp(t)
-	client.UserInfoSigAlg = jose.SignatureAlgorithm(ctx.PrivateJWKS.Keys[0].Algorithm)
+	client.UserInfoSigAlg = jose.SignatureAlgorithm(oidctest.PrivateJWKS(t, ctx).Keys[0].Algorithm)
 
 	// When.
 	resp, err := handleUserInfoRequest(ctx)
@@ -66,7 +66,7 @@ func TestHandleUserInfoRequest_SignedResponse(t *testing.T) {
 		t.Fatalf("the user info response must be a jwt")
 	}
 
-	claims, err := oidctest.SafeClaims(resp.jwtClaims, ctx.PrivateJWKS.Keys[0])
+	claims, err := oidctest.SafeClaims(resp.jwtClaims, oidctest.PrivateJWKS(t, ctx).Keys[0])
 	if err != nil {
 		t.Fatalf("error parsing claims: %v", err)
 	}

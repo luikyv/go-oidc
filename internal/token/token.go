@@ -38,7 +38,12 @@ func validClaims(
 	map[string]any,
 	error,
 ) {
-	parsedToken, err := jwt.ParseSigned(token, ctx.SigAlgs())
+	algs, err := ctx.SigAlgs()
+	if err != nil {
+		return nil, err
+	}
+
+	parsedToken, err := jwt.ParseSigned(token, algs)
 	if err != nil {
 		// If the token is not a valid JWT, we'll treat it as an opaque token.
 		return nil, goidc.Errorf(goidc.ErrorCodeInvalidRequest,
@@ -50,9 +55,9 @@ func validClaims(
 	}
 
 	keyID := parsedToken.Headers[0].KeyID
-	publicKey, ok := ctx.PublicKey(keyID)
-	if !ok || publicKey.Use != string(goidc.KeyUsageSignature) {
-		return nil, goidc.NewError(goidc.ErrorCodeAccessDenied, "invalid token")
+	publicKey, err := ctx.PublicKey(keyID)
+	if err != nil || publicKey.Use != string(goidc.KeyUsageSignature) {
+		return nil, goidc.Errorf(goidc.ErrorCodeAccessDenied, "invalid token", err)
 	}
 
 	var claims jwt.Claims

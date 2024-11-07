@@ -39,7 +39,7 @@ func main() {
 	op, err := provider.New(
 		goidc.ProfileFAPI2,
 		authutil.Issuer,
-		authutil.PrivateJWKS(serverJWKSFilePath),
+		authutil.PrivateJWKSFunc(serverJWKSFilePath),
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithUserSignatureAlgs(jose.PS256),
 		provider.WithPARRequired(10),

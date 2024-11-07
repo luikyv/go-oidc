@@ -94,7 +94,7 @@ func TestInitAuth(t *testing.T) {
 		t.Fatalf("the redirect url %s don't contain the id token", redirectURL)
 	}
 
-	claims, err := oidctest.SafeClaims(idToken, ctx.PrivateJWKS.Keys[0])
+	claims, err := oidctest.SafeClaims(idToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 	if err != nil {
 		t.Fatalf("error parsing claims: %v", err)
 	}
@@ -206,7 +206,7 @@ func TestInitAuth_JARM(t *testing.T) {
 	ctx, client := setUpAuth(t)
 	ctx.JARMIsEnabled = true
 	ctx.JARMLifetimeSecs = 60
-	ctx.JARMDefaultSigAlg = jose.SignatureAlgorithm(ctx.PrivateJWKS.Keys[0].Algorithm)
+	ctx.JARMDefaultSigAlg = jose.SignatureAlgorithm(oidctest.PrivateJWKS(t, ctx).Keys[0].Algorithm)
 	ctx.ResponseModes = append(ctx.ResponseModes, goidc.ResponseModeJWT)
 
 	req := request{
@@ -247,7 +247,7 @@ func TestInitAuth_JARM(t *testing.T) {
 		t.Fatalf("the redirect url %s don't contain the id token", responseObject)
 	}
 
-	claims, err := oidctest.SafeClaims(responseObject, ctx.PrivateJWKS.Keys[0])
+	claims, err := oidctest.SafeClaims(responseObject, oidctest.PrivateJWKS(t, ctx).Keys[0])
 	if err != nil {
 		t.Fatalf("error parsing claims: %v", err)
 	}
@@ -342,8 +342,8 @@ func TestInitAuth_ResourceIndicator(t *testing.T) {
 func TestInitAuth_IDTokenHint(t *testing.T) {
 	ctx, client := setUpAuth(t)
 
-	key, ok := ctx.UserSigKey()
-	if !ok {
+	key, err := ctx.UserSigKey()
+	if err != nil {
 		t.Fatalf("could not find key to sign the id token: %s", ctx.UserDefaultSigAlg)
 	}
 

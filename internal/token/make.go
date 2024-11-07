@@ -65,10 +65,10 @@ func makeIDToken(
 		return makeUnsignedIDToken(ctx, client, opts)
 	}
 
-	jwk, ok := ctx.IDTokenSigKeyForClient(client)
-	if !ok {
-		return "", goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"the id token signing algorithm defined for the client is not available")
+	jwk, err := ctx.IDTokenSigKeyForClient(client)
+	if err != nil {
+		return "", goidc.Errorf(goidc.ErrorCodeInvalidRequest,
+			"internal error", err)
 	}
 
 	claims := idTokenClaims(ctx, client, opts, jose.SignatureAlgorithm(jwk.Algorithm))
@@ -174,10 +174,11 @@ func makeJWTToken(
 	Token,
 	error,
 ) {
-	privateJWK, ok := ctx.PrivateKey(opts.JWTSignatureKeyID)
-	if !ok {
-		return Token{}, fmt.Errorf("could not find key with id: %s", opts.JWTSignatureKeyID)
+	privateJWK, err := ctx.PrivateKey(opts.JWTSignatureKeyID)
+	if err != nil {
+		return Token{}, fmt.Errorf("could not find key with id %s: %w", opts.JWTSignatureKeyID, err)
 	}
+
 	jwtID := uuid.NewString()
 	timestampNow := timeutil.TimestampNow()
 	claims := map[string]any{

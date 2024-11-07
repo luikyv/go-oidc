@@ -12,6 +12,7 @@ const (
 	defaultJWTLifetimeSecs         = 600
 	defaultJWTLeewayTimeSecs       = 30
 
+	defaultUserInfoSigAlg      = jose.RS256
 	defaultPrivateKeyJWTSigAlg = jose.RS256
 	defaultSecretJWTSigAlg     = jose.HS256
 
@@ -26,12 +27,10 @@ const (
 	defaultEndpointTokenRevocation            = "/revoke"
 )
 
-func defaultTokenOptionsFunc(
-	sigKeyID string,
-) goidc.TokenOptionsFunc {
+func defaultTokenOptionsFunc() goidc.TokenOptionsFunc {
 	return func(grantInfo goidc.GrantInfo) goidc.TokenOptions {
-		return goidc.NewJWTTokenOptions(
-			sigKeyID,
+		return goidc.NewOpaqueTokenOptions(
+			goidc.DefaultOpaqueTokenLength,
 			defaultTokenLifetimeSecs,
 		)
 	}

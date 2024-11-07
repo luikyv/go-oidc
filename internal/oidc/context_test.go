@@ -469,12 +469,18 @@ func TestSigAlgs(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey, encryptionKey}}
+	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey, encryptionKey}}, nil
+	}
 
 	// When.
-	algs := ctx.SigAlgs()
+	algs, err := ctx.SigAlgs()
 
 	// Then.
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	want := []jose.SignatureAlgorithm{jose.PS256}
 	if !cmp.Equal(algs, want) {
 		t.Errorf("SignatureAlgorithms() = %s, want %s", algs, want)
@@ -487,12 +493,18 @@ func TestPublicKeys_HappyPath(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
+	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
+	}
 
 	// When.
-	publicJWKS := ctx.PublicKeys()
+	publicJWKS, err := ctx.PublicKeys()
 
 	// Then.
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	if len(publicJWKS.Keys) != 1 {
 		t.Fatalf("len(Keys) = %d, want 1. jwks: %v", len(publicJWKS.Keys), publicJWKS)
 	}
@@ -514,13 +526,15 @@ func TestPublicKey_HappyPath(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
+	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
+	}
 
 	// When.
-	publicJWK, ok := ctx.PublicKey("signing_key")
+	publicJWK, err := ctx.PublicKey("signing_key")
 
 	// Then.
-	if !ok {
+	if err != nil {
 		t.Fatalf("no jwk found")
 	}
 
@@ -540,13 +554,15 @@ func TestPrivateKey_HappyPath(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
+	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
+	}
 
 	// When.
-	privateJWK, ok := ctx.PrivateKey("signing_key")
+	privateJWK, err := ctx.PrivateKey("signing_key")
 
 	// Then.
-	if !ok {
+	if err != nil {
 		t.Fatalf("no jwk found")
 	}
 
@@ -564,13 +580,15 @@ func TestPrivateKey_KeyDoesntExist(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{}}
+	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{}}, nil
+	}
 
 	// When.
-	_, ok := ctx.PrivateKey("signing_key")
+	_, err := ctx.PrivateKey("signing_key")
 
 	// Then.
-	if ok {
+	if err == nil {
 		t.Error("a key was found, but none should be")
 	}
 }
@@ -584,15 +602,17 @@ func TestUserInfoSigKeyForClient(t *testing.T) {
 		Configuration: &oidc.Configuration{},
 	}
 	ctx.UserDefaultSigAlg = jose.SignatureAlgorithm(signingKey.Algorithm)
-	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
+	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
+	}
 
 	client := &goidc.Client{}
 
 	// When.
-	jwk, ok := ctx.UserInfoSigKeyForClient(client)
+	jwk, err := ctx.UserInfoSigKeyForClient(client)
 
 	// Then.
-	if !ok {
+	if err != nil {
 		t.Fatalf("the key should be found")
 	}
 
@@ -609,8 +629,10 @@ func TestUserInfoSigKeyForClient_ClientWithDefaultAlgorithm(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.PrivateJWKS = jose.JSONWebKeySet{
-		Keys: []jose.JSONWebKey{defaultKey, alternativeKey},
+	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+		return jose.JSONWebKeySet{
+			Keys: []jose.JSONWebKey{defaultKey, alternativeKey},
+		}, nil
 	}
 	ctx.UserDefaultSigAlg = jose.SignatureAlgorithm(defaultKey.Algorithm)
 	ctx.UserSigAlgs = []jose.SignatureAlgorithm{
@@ -622,10 +644,10 @@ func TestUserInfoSigKeyForClient_ClientWithDefaultAlgorithm(t *testing.T) {
 	client.UserInfoSigAlg = jose.RS256
 
 	// When.
-	jwk, ok := ctx.UserInfoSigKeyForClient(client)
+	jwk, err := ctx.UserInfoSigKeyForClient(client)
 
 	// Then.
-	if !ok {
+	if err != nil {
 		t.Fatalf("the key should be found")
 	}
 
@@ -642,15 +664,17 @@ func TestIDTokenSigKeyForClient(t *testing.T) {
 		Configuration: &oidc.Configuration{},
 	}
 	ctx.UserDefaultSigAlg = jose.SignatureAlgorithm(signingKey.Algorithm)
-	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
+	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
+	}
 
 	client := &goidc.Client{}
 
 	// When.
-	jwk, ok := ctx.IDTokenSigKeyForClient(client)
+	jwk, err := ctx.IDTokenSigKeyForClient(client)
 
 	// Then.
-	if !ok {
+	if err != nil {
 		t.Fatalf("the key should be found")
 	}
 
@@ -667,8 +691,10 @@ func TestIDTokenSigKeyForClient_ClientWithDefaultAlgorithm(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.PrivateJWKS = jose.JSONWebKeySet{
-		Keys: []jose.JSONWebKey{defaultKey, alternativeKey},
+	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+		return jose.JSONWebKeySet{
+			Keys: []jose.JSONWebKey{defaultKey, alternativeKey},
+		}, nil
 	}
 	ctx.UserDefaultSigAlg = jose.SignatureAlgorithm(defaultKey.Algorithm)
 	ctx.UserSigAlgs = []jose.SignatureAlgorithm{
@@ -680,10 +706,10 @@ func TestIDTokenSigKeyForClient_ClientWithDefaultAlgorithm(t *testing.T) {
 	client.IDTokenSigAlg = jose.RS256
 
 	// When.
-	jwk, ok := ctx.IDTokenSigKeyForClient(client)
+	jwk, err := ctx.IDTokenSigKeyForClient(client)
 
 	// Then.
-	if !ok {
+	if err != nil {
 		t.Fatalf("the key should be found")
 	}
 
@@ -700,16 +726,18 @@ func TestJARMSigKeyForClient_HappyPath(t *testing.T) {
 		Configuration: &oidc.Configuration{},
 	}
 	ctx.JARMDefaultSigAlg = jose.SignatureAlgorithm(signingKey.Algorithm)
-	ctx.PrivateJWKS = jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}
+	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
+	}
 
 	client := &goidc.Client{}
 
 	// When.
-	jwk, ok := ctx.JARMSigKeyForClient(client)
+	jwk, err := ctx.JARMSigKeyForClient(client)
 
 	// Then.
-	if !ok {
-		t.Fatalf("the key should be found")
+	if err != nil {
+		t.Fatal("the key should be found", err)
 	}
 
 	if jwk.KeyID != signingKey.KeyID {
@@ -725,8 +753,10 @@ func TestJARMSigKeyForClient_ClientWithDefaultAlgorithm(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.PrivateJWKS = jose.JSONWebKeySet{
-		Keys: []jose.JSONWebKey{defaultKey, alternativeKey},
+	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+		return jose.JSONWebKeySet{
+			Keys: []jose.JSONWebKey{defaultKey, alternativeKey},
+		}, nil
 	}
 	ctx.JARMSigAlgs = []jose.SignatureAlgorithm{
 		jose.SignatureAlgorithm(defaultKey.Algorithm),
@@ -737,11 +767,11 @@ func TestJARMSigKeyForClient_ClientWithDefaultAlgorithm(t *testing.T) {
 	client.JARMSigAlg = jose.RS256
 
 	// When.
-	jwk, ok := ctx.JARMSigKeyForClient(client)
+	jwk, err := ctx.JARMSigKeyForClient(client)
 
 	// Then.
-	if !ok {
-		t.Fatalf("the key should be found")
+	if err != nil {
+		t.Fatal("the key should be found", err)
 	}
 
 	if jwk.KeyID != alternativeKey.KeyID {

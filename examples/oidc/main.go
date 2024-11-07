@@ -31,7 +31,7 @@ func main() {
 	op, err := provider.New(
 		goidc.ProfileOpenID,
 		authutil.Issuer,
-		authutil.PrivateJWKS(jwksFilePath),
+		authutil.PrivateJWKSFunc(jwksFilePath),
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithUserSignatureAlgs(jose.RS256, goidc.NoneSignatureAlgorithm),
 		provider.WithPAR(10),
