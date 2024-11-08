@@ -85,7 +85,8 @@ type ClientMetaInfo struct {
 	PublicJWKS    json.RawMessage `json:"jwks,omitempty"`
 	// ScopeIDs contains the scopes available to the client separeted by spaces.
 	ScopeIDs                      string                  `json:"scope,omitempty"`
-	SubIdentifierType             SubjectIdentifierType   `json:"subject_type,omitempty"`
+	SubIdentifierType             SubIdentifierType       `json:"subject_type,omitempty"`
+	SectorIdentifierURI           string                  `json:"sector_identifier_uri,omitempty"`
 	IDTokenSigAlg                 jose.SignatureAlgorithm `json:"id_token_signed_response_alg,omitempty"`
 	IDTokenKeyEncAlg              jose.KeyAlgorithm       `json:"id_token_encrypted_response_alg,omitempty"`
 	IDTokenContentEncAlg          jose.ContentEncryption  `json:"id_token_encrypted_response_enc,omitempty"`

@@ -301,7 +301,11 @@ func WithOpenIDScopeRequired() ProviderOption {
 	}
 }
 
-// WithTokenOptions defines how access tokens are issued.
+// WithTokenOptions configures the way access tokens are issued by the provider.
+//
+// If pairwise subject identifiers are enabled and applicable to the subject,
+// the token will be issued as an opaque token, even when the token option is set
+// to issue a JWT token.
 func WithTokenOptions(tokenOpts goidc.TokenOptionsFunc) ProviderOption {
 	return func(p Provider) error {
 		p.config.TokenOptionsFunc = tokenOpts
@@ -886,6 +890,34 @@ func WithJWTBearerGrant(
 func WithJWTBearerGrantClientAuthnRequired() ProviderOption {
 	return func(p Provider) error {
 		p.config.JWTBearerGrantClientAuthnIsRequired = true
+		return nil
+	}
+}
+
+// WithSubIdentifierTypes sets de subject identifier types available for clients.
+//
+// If [goidc.SubIdentifierPairwise] is informed, the default behavior for
+// generating subjects is defined at [defaultGeneratePairwiseSubIDFunc].
+// This can be overriden with [WithGeneratePairwiseSubIDFunc].
+// Also, only opaque tokens are issued when pairwise IDs are applied to avoid
+// information leakage.
+func WithSubIdentifierTypes(
+	defaultIDType goidc.SubIdentifierType,
+	idTypes ...goidc.SubIdentifierType,
+) ProviderOption {
+	idTypes = appendIfNotIn(idTypes, defaultIDType)
+	return func(p Provider) error {
+		p.config.DefaultSubIdentifierType = defaultIDType
+		p.config.SubIdentifierTypes = idTypes
+		return nil
+	}
+}
+
+func WithGeneratePairwiseSubIDFunc(
+	f goidc.GeneratePairwiseSubIDFunc,
+) ProviderOption {
+	return func(p Provider) error {
+		p.config.GeneratePairwiseSubIDFunc = f
 		return nil
 	}
 }

@@ -1,7 +1,10 @@
 package dcr
 
 import (
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -181,13 +184,70 @@ func TestValidateRequest(t *testing.T) {
 			false,
 		},
 		{
-			"valid_subject_identifier_type",
+			"valid_public_subject_identifier_type",
 			func(c *goidc.Client) {
-				c.SubIdentifierType = goidc.SubjectIdentifierPublic
-
+				c.SubIdentifierType = goidc.SubIdentifierPublic
 			},
 			func(ctx oidc.Context) {},
 			true,
+		},
+		{
+			"valid_pairwise_subject_identifier_type",
+			func(c *goidc.Client) {
+				server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					data, _ := json.Marshal(c.RedirectURIs)
+					if _, err := w.Write(data); err != nil {
+						t.Fatal(err)
+					}
+				}))
+
+				c.SubIdentifierType = goidc.SubIdentifierPairwise
+				c.SectorIdentifierURI = server.URL
+			},
+			func(ctx oidc.Context) {
+				ctx.SubIdentifierTypes = []goidc.SubIdentifierType{goidc.SubIdentifierPairwise}
+			},
+			true,
+		},
+		{
+			"valid_pairwise_subject_identifier_type_with_no_sector_uri",
+			func(c *goidc.Client) {
+				c.SubIdentifierType = goidc.SubIdentifierPairwise
+				c.RedirectURIs = []string{"https://example.com/test1", "https://example.com/test2"}
+			},
+			func(ctx oidc.Context) {
+				ctx.SubIdentifierTypes = []goidc.SubIdentifierType{goidc.SubIdentifierPairwise}
+			},
+			true,
+		},
+		{
+			"invalid_pairwise_subject_identifier_no_sector_uri_and_redirect_uris_with_multiple_hosts",
+			func(c *goidc.Client) {
+				c.SubIdentifierType = goidc.SubIdentifierPairwise
+				c.RedirectURIs = []string{"https://example1.com", "https://example.com2"}
+			},
+			func(ctx oidc.Context) {
+				ctx.SubIdentifierTypes = []goidc.SubIdentifierType{goidc.SubIdentifierPairwise}
+			},
+			false,
+		},
+		{
+			"invalid_redirect_uris_not_present_when_fetching_sector_identifier_uri",
+			func(c *goidc.Client) {
+				server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					data, _ := json.Marshal([]string{"https://random-redirect-uri-123.com"})
+					if _, err := w.Write(data); err != nil {
+						t.Fatal(err)
+					}
+				}))
+
+				c.SubIdentifierType = goidc.SubIdentifierPairwise
+				c.SectorIdentifierURI = server.URL
+			},
+			func(ctx oidc.Context) {
+				ctx.SubIdentifierTypes = []goidc.SubIdentifierType{goidc.SubIdentifierPairwise}
+			},
+			false,
 		},
 		{
 			"invalid_subject_identifier_type",
@@ -235,8 +295,12 @@ func TestValidateRequest(t *testing.T) {
 
 			// Then.
 			isValid := err == nil
+			if !isValid {
+				t.Log(err)
+			}
+
 			if isValid != testCase.shouldBeValid {
-				t.Fatalf("isValid = %t, want %t", isValid, testCase.shouldBeValid)
+				t.Errorf("isValid = %t, want %t", isValid, testCase.shouldBeValid)
 			}
 
 			if isValid {

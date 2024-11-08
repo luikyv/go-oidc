@@ -30,13 +30,12 @@ Luiky Vasconcelos has certified that [go-oidc](https://pkg.go.dev/github.com/lui
 
 [<img src="http://openid.net/wordpress-content/uploads/2016/04/oid-l-certification-mark-l-rgb-150dpi-90mm.png" alt="OpenID Certification" width="200"/>](https://openid.net/certification/)
 
-## Installation
+## Get Started
 To start using the `go-oidc` module in your project, install it with
 ```
 go get github.com/luikyv/go-oidc@latest
 ```
 
-## Get Started
 Once installed, you can instantiate an openid provider and run it as shown below.
 ```go
 jwksStr := `{

@@ -1,8 +1,10 @@
 package oidctest
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -96,6 +98,7 @@ func NewContext(t testing.TB) oidc.Context {
 		},
 		TokenOptionsFunc: func(
 			grantInfo goidc.GrantInfo,
+			client *goidc.Client,
 		) goidc.TokenOptions {
 			return goidc.TokenOptions{
 				JWTSignatureKeyID: keyID,
@@ -125,8 +128,16 @@ func NewContext(t testing.TB) oidc.Context {
 		EndpointIntrospection:       "/introspect",
 		AssertionLifetimeSecs:       600,
 		IDTokenLifetimeSecs:         60,
-		SubIdentifierTypes: []goidc.SubjectIdentifierType{
-			goidc.SubjectIdentifierPublic,
+		DefaultSubIdentifierType:    goidc.SubIdentifierPublic,
+		SubIdentifierTypes: []goidc.SubIdentifierType{
+			goidc.SubIdentifierPublic,
+		},
+		HTTPClientFunc: func(_ context.Context) *http.Client {
+			return &http.Client{
+				Transport: &http.Transport{
+					TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				},
+			}
 		},
 	}
 

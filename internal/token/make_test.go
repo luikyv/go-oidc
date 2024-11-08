@@ -98,6 +98,52 @@ func TestMakeIDToken_Unsigned(t *testing.T) {
 	}
 }
 
+func TestMakeIDToken_PairwiseSub(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.SubIdentifierTypes = []goidc.SubIdentifierType{goidc.SubIdentifierPairwise}
+	ctx.GeneratePairwiseSubIDFunc = func(sub, hostSectorURI string) (string, error) {
+		return hostSectorURI + "_" + sub, nil
+	}
+
+	client, _ := oidctest.NewClient(t)
+	client.SubIdentifierType = goidc.SubIdentifierPairwise
+	client.SectorIdentifierURI = "https://example.com/redirect_uris.json"
+
+	idTokenOptions := token.IDTokenOptions{
+		Subject: "random_subject",
+	}
+
+	// When.
+	idToken, err := token.MakeIDToken(ctx, client, idTokenOptions)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	claims, err := oidctest.SafeClaims(idToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
+	if err != nil {
+		t.Fatalf("error parsing claims: %v", err)
+	}
+
+	now := timeutil.TimestampNow()
+	wantedClaims := map[string]any{
+		"iss": ctx.Host,
+		"sub": "example.com_random_subject",
+		"aud": client.ID,
+		"iat": float64(now),
+		"exp": float64(now + ctx.IDTokenLifetimeSecs),
+	}
+	if diff := cmp.Diff(
+		claims,
+		wantedClaims,
+		cmpopts.EquateApprox(0, 1),
+	); diff != "" {
+		t.Error(diff)
+	}
+}
+
 func TestMakeToken_JWTToken(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
@@ -111,7 +157,7 @@ func TestMakeToken_JWTToken(t *testing.T) {
 	}
 
 	// When.
-	token, err := token.Make(ctx, grantInfo)
+	token, err := token.Make(ctx, grantInfo, client)
 
 	// Then.
 	if err != nil {
@@ -155,15 +201,17 @@ func TestMakeToken_OpaqueToken(t *testing.T) {
 	ctx := oidctest.NewContext(t)
 	ctx.TokenOptionsFunc = func(
 		grantInfo goidc.GrantInfo,
+		client *goidc.Client,
 	) goidc.TokenOptions {
 		return goidc.NewOpaqueTokenOptions(10, 60)
 	}
 	grantInfo := goidc.GrantInfo{
 		Subject: "random_subject",
 	}
+	client := &goidc.Client{}
 
 	// When.
-	token, err := token.Make(ctx, grantInfo)
+	token, err := token.Make(ctx, grantInfo, client)
 
 	// Then.
 	if err != nil {

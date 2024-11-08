@@ -23,7 +23,7 @@ func generateRefreshTokenGrant(
 			"invalid refresh token")
 	}
 
-	c, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	client, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
 	if err != nil {
 		return response{}, err
 	}
@@ -34,7 +34,7 @@ func generateRefreshTokenGrant(
 			"invalid refresh_token", err)
 	}
 
-	if err = validateRefreshTokenGrantRequest(ctx, req, c, grantSession); err != nil {
+	if err = validateRefreshTokenGrantRequest(ctx, req, client, grantSession); err != nil {
 		return response{}, err
 	}
 
@@ -42,7 +42,7 @@ func generateRefreshTokenGrant(
 		return response{}, err
 	}
 
-	token, err := Make(ctx, grantSession.GrantInfo)
+	token, err := Make(ctx, grantSession.GrantInfo, client)
 	if err != nil {
 		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not generate token during refresh token grant", err)
@@ -66,7 +66,7 @@ func generateRefreshTokenGrant(
 	if strutil.ContainsOpenID(grantSession.ActiveScopes) {
 		tokenResp.IDToken, err = MakeIDToken(
 			ctx,
-			c,
+			client,
 			newIDTokenOptions(grantSession.GrantInfo),
 		)
 		if err != nil {

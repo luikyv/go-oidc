@@ -778,3 +778,61 @@ func TestJARMSigKeyForClient_ClientWithDefaultAlgorithm(t *testing.T) {
 		t.Errorf("KeyID = %s, want %s", jwk.KeyID, alternativeKey.KeyID)
 	}
 }
+
+func TestExportableSubject(t *testing.T) {
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{
+			GeneratePairwiseSubIDFunc: func(sub, hostSectorURI string) (string, error) {
+				return hostSectorURI + "_" + sub, nil
+			},
+		},
+	}
+	client := &goidc.Client{
+		ClientMetaInfo: goidc.ClientMetaInfo{
+			SubIdentifierType:   goidc.SubIdentifierPairwise,
+			SectorIdentifierURI: "https://example.com",
+		},
+	}
+
+	// When.
+	sub, err := ctx.ExportableSubject("random_sub", client)
+
+	// Then.
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if sub != "example.com_random_sub" {
+		t.Errorf("got %s, want = %s", sub, "example.com_random_sub")
+	}
+}
+
+func TestExportableSubject_PairwiseAsDefault(t *testing.T) {
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{
+			DefaultSubIdentifierType: goidc.SubIdentifierPairwise,
+			GeneratePairwiseSubIDFunc: func(sub, hostSectorURI string) (string, error) {
+				return hostSectorURI + "_" + sub, nil
+			},
+		},
+	}
+	client := &goidc.Client{
+		ClientMetaInfo: goidc.ClientMetaInfo{
+			SectorIdentifierURI: "https://example.com",
+		},
+	}
+
+	// When.
+	sub, err := ctx.ExportableSubject("random_sub", client)
+
+	// Then.
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if sub != "example.com_random_sub" {
+		t.Errorf("got %s, want = %s", sub, "example.com_random_sub")
+	}
+}

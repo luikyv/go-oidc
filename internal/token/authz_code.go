@@ -44,7 +44,7 @@ func generateAuthorizationCodeGrant(
 		return response{}, err
 	}
 
-	token, err := Make(ctx, grantInfo)
+	token, err := Make(ctx, grantInfo, client)
 	if err != nil {
 		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not generate access token for the authorization code grant", err)

@@ -54,9 +54,14 @@ func userInfoResponse(
 	response,
 	error,
 ) {
+	sub, err := ctx.ExportableSubject(grantSession.Subject, c)
+	if err != nil {
+		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
+			"internal error", err)
+	}
 
 	userInfoClaims := map[string]any{
-		goidc.ClaimSubject: grantSession.Subject,
+		goidc.ClaimSubject: sub,
 	}
 	for k, v := range grantSession.AdditionalUserInfoClaims {
 		userInfoClaims[k] = v

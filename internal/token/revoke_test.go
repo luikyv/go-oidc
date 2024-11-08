@@ -118,7 +118,7 @@ func TestRevoke_TokenNotIssuedToClient(t *testing.T) {
 
 	// Then.
 	if err == nil {
-		t.Error("an error must be returned")
+		t.Fatal("an error must be returned")
 	}
 
 	var oidcErr goidc.Error
