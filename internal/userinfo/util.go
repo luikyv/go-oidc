@@ -112,10 +112,10 @@ func signUserInfoClaims(
 		return unsignedJWT, nil
 	}
 
-	jwk, ok := ctx.UserInfoSigKeyForClient(c)
-	if !ok {
-		return "", goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"the user info signing algorithm defined for the client is not available")
+	jwk, err := ctx.UserInfoSigKeyForClient(c)
+	if err != nil {
+		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
+			"internal error", err)
 	}
 
 	jws, err := jwtutil.Sign(claims, jwk,

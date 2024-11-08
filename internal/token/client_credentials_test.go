@@ -29,7 +29,7 @@ func TestHandleGrantCreation_ClientCredentialsGrant(t *testing.T) {
 	}
 
 	now := timeutil.TimestampNow()
-	claims, err := oidctest.SafeClaims(tokenResp.AccessToken, ctx.PrivateJWKS.Keys[0])
+	claims, err := oidctest.SafeClaims(tokenResp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 	if err != nil {
 		t.Fatalf("error parsing claims: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestHandleGrantCreation_ClientCredentialsGrant_ResourceIndicators(t *testin
 	}
 
 	now := timeutil.TimestampNow()
-	claims, err := oidctest.SafeClaims(tokenResp.AccessToken, ctx.PrivateJWKS.Keys[0])
+	claims, err := oidctest.SafeClaims(tokenResp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 	if err != nil {
 		t.Fatalf("error parsing claims: %v", err)
 	}

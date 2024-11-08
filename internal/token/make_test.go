@@ -30,7 +30,7 @@ func TestMakeIDToken(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	claims, err := oidctest.SafeClaims(idToken, ctx.PrivateJWKS.Keys[0])
+	claims, err := oidctest.SafeClaims(idToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 	if err != nil {
 		t.Fatalf("error parsing claims: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestMakeToken_JWTToken(t *testing.T) {
 		t.Errorf("Format = %s, want %s", token.Format, goidc.TokenFormatJWT)
 	}
 
-	claims, err := oidctest.SafeClaims(token.Value, ctx.PrivateJWKS.Keys[0])
+	claims, err := oidctest.SafeClaims(token.Value, oidctest.PrivateJWKS(t, ctx).Keys[0])
 	if err != nil {
 		t.Fatalf("error parsing claims: %v", err)
 	}

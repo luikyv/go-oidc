@@ -11,11 +11,15 @@ import (
 	"github.com/go-jose/go-jose/v4"
 )
 
+type PrivateJWKSFunc func(*http.Request) (jose.JSONWebKeySet, error)
+
 // RefreshTokenLength has an unusual value so to avoid refresh tokens and
 // opaque access token to be confused.
 // This happens since a refresh token is identified by its length during
 // introspection.
 const RefreshTokenLength int = 99
+
+const DefaultOpaqueTokenLength int = 50
 
 const NoneSignatureAlgorithm jose.SignatureAlgorithm = "none"
 

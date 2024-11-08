@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"html/template"
 	"net/http"
 	"slices"
@@ -18,7 +19,6 @@ import (
 type Context struct {
 	Response http.ResponseWriter
 	Request  *http.Request
-	context  context.Context
 	*Configuration
 }
 
@@ -460,43 +460,70 @@ func (ctx Context) RenderHTML(
 
 //---------------------------------------- Key Management ----------------------------------------//
 
-func (ctx Context) SigAlgs() []jose.SignatureAlgorithm {
-	var algorithms []jose.SignatureAlgorithm
-	for _, privateKey := range ctx.PrivateJWKS.Keys {
-		if privateKey.Use == string(goidc.KeyUsageSignature) {
-			algorithms = append(algorithms, jose.SignatureAlgorithm(privateKey.Algorithm))
-		}
+func (ctx Context) PrivateJWKS() (jose.JSONWebKeySet, error) {
+	jwks, err := ctx.PrivateJWKSFunc(ctx.Request)
+	if err != nil {
+		return jose.JSONWebKeySet{}, goidc.Errorf(goidc.ErrorCodeInternalError,
+			"internal error fetching the server jwks", err)
 	}
-	return algorithms
+
+	return jwks, nil
 }
 
-func (ctx Context) PublicKeys() jose.JSONWebKeySet {
+func (ctx Context) SigAlgs() ([]jose.SignatureAlgorithm, error) {
+	jwks, err := ctx.PrivateJWKS()
+	if err != nil {
+		return nil, err
+	}
+
+	var algorithms []jose.SignatureAlgorithm
+	for _, jwk := range jwks.Keys {
+		if jwk.Use == string(goidc.KeyUsageSignature) {
+			algorithms = append(algorithms, jose.SignatureAlgorithm(jwk.Algorithm))
+		}
+	}
+
+	return algorithms, nil
+}
+
+func (ctx Context) PublicKeys() (jose.JSONWebKeySet, error) {
+	jwks, err := ctx.PrivateJWKS()
+	if err != nil {
+		return jose.JSONWebKeySet{}, err
+	}
+
 	publicKeys := []jose.JSONWebKey{}
-	for _, privateKey := range ctx.PrivateJWKS.Keys {
+	for _, privateKey := range jwks.Keys {
 		publicKeys = append(publicKeys, privateKey.Public())
 	}
 
-	return jose.JSONWebKeySet{Keys: publicKeys}
+	return jose.JSONWebKeySet{Keys: publicKeys}, nil
 }
 
-func (ctx Context) PublicKey(keyID string) (jose.JSONWebKey, bool) {
-	key, ok := ctx.PrivateKey(keyID)
-	if !ok {
-		return jose.JSONWebKey{}, false
+func (ctx Context) PublicKey(keyID string) (jose.JSONWebKey, error) {
+	key, err := ctx.PrivateKey(keyID)
+	if err != nil {
+		return jose.JSONWebKey{}, err
 	}
 
-	return key.Public(), true
+	return key.Public(), nil
 }
 
-func (ctx Context) PrivateKey(keyID string) (jose.JSONWebKey, bool) {
-	keys := ctx.PrivateJWKS.Key(keyID)
+func (ctx Context) PrivateKey(keyID string) (jose.JSONWebKey, error) {
+	jwks, err := ctx.PrivateJWKS()
+	if err != nil {
+		return jose.JSONWebKey{}, err
+	}
+
+	keys := jwks.Key(keyID)
 	if len(keys) == 0 {
-		return jose.JSONWebKey{}, false
+		return jose.JSONWebKey{}, goidc.NewError(goidc.ErrorCodeInternalError,
+			fmt.Sprintf("could not find jwk matching id %s", keyID))
 	}
-	return keys[0], true
+	return keys[0], nil
 }
 
-func (ctx Context) UserInfoSigKeyForClient(c *goidc.Client) (jose.JSONWebKey, bool) {
+func (ctx Context) UserInfoSigKeyForClient(c *goidc.Client) (jose.JSONWebKey, error) {
 	if c.UserInfoSigAlg == "" {
 		return ctx.UserSigKey()
 	}
@@ -504,7 +531,7 @@ func (ctx Context) UserInfoSigKeyForClient(c *goidc.Client) (jose.JSONWebKey, bo
 	return ctx.privateKeyByAlg(c.UserInfoSigAlg)
 }
 
-func (ctx Context) IDTokenSigKeyForClient(c *goidc.Client) (jose.JSONWebKey, bool) {
+func (ctx Context) IDTokenSigKeyForClient(c *goidc.Client) (jose.JSONWebKey, error) {
 	if c.IDTokenSigAlg == "" {
 		return ctx.UserSigKey()
 	}
@@ -512,7 +539,7 @@ func (ctx Context) IDTokenSigKeyForClient(c *goidc.Client) (jose.JSONWebKey, boo
 	return ctx.privateKeyByAlg(c.IDTokenSigAlg)
 }
 
-func (ctx Context) UserSigKey() (jose.JSONWebKey, bool) {
+func (ctx Context) UserSigKey() (jose.JSONWebKey, error) {
 	return ctx.privateKeyByAlg(ctx.UserDefaultSigAlg)
 }
 
@@ -520,7 +547,7 @@ func (ctx Context) UserInfoSigAlgsContainsNone() bool {
 	return slices.Contains(ctx.UserSigAlgs, goidc.NoneSignatureAlgorithm)
 }
 
-func (ctx Context) JARMSigKeyForClient(c *goidc.Client) (jose.JSONWebKey, bool) {
+func (ctx Context) JARMSigKeyForClient(c *goidc.Client) (jose.JSONWebKey, error) {
 	if c.JARMSigAlg == "" {
 		return ctx.privateKeyByAlg(ctx.JARMDefaultSigAlg)
 	}
@@ -528,47 +555,28 @@ func (ctx Context) JARMSigKeyForClient(c *goidc.Client) (jose.JSONWebKey, bool) 
 	return ctx.privateKeyByAlg(c.JARMSigAlg)
 }
 
-// func (ctx Context) keyEncAlgs(keyIDs []string) []jose.KeyAlgorithm {
-// 	var algorithms []jose.KeyAlgorithm
-// 	for _, keyID := range keyIDs {
-// 		key := ctx.privateKey(keyID)
-// 		algorithms = append(algorithms, jose.KeyAlgorithm(key.Algorithm))
-// 	}
-// 	return algorithms
-// }
-
-// func (ctx Context) sigAlgs(keyIDs []string) []jose.SignatureAlgorithm {
-// 	var algorithms []jose.SignatureAlgorithm
-// 	for _, keyID := range keyIDs {
-// 		key := ctx.privateKey(keyID)
-// 		algorithms = append(algorithms, jose.SignatureAlgorithm(key.Algorithm))
-// 	}
-// 	return algorithms
-// }
-
 // privateKeyByAlg tries to find a key that matches the signature algorithm from
 // the server JWKS.
 func (ctx Context) privateKeyByAlg(
 	alg jose.SignatureAlgorithm,
 ) (
 	jose.JSONWebKey,
-	bool,
+	error,
 ) {
-	for _, jwk := range ctx.PrivateJWKS.Keys {
+	jwks, err := ctx.PrivateJWKS()
+	if err != nil {
+		return jose.JSONWebKey{}, err
+	}
+
+	for _, jwk := range jwks.Keys {
 		if jwk.Algorithm == string(alg) {
-			return jwk, true
+			return jwk, nil
 		}
 	}
 
-	return jose.JSONWebKey{}, false
+	return jose.JSONWebKey{}, goidc.NewError(goidc.ErrorCodeInternalError,
+		fmt.Sprintf("could not find jwk matching %s", alg))
 }
-
-// // privateKey returns a private JWK based on the key ID.
-// // This is intended to be used with key IDs we're sure are present in the server JWKS.
-// func (ctx Context) privateKey(keyID string) jose.JSONWebKey {
-// 	keys := ctx.PrivateJWKS.Key(keyID)
-// 	return keys[0]
-// }
 
 func (ctx Context) ShouldIssueRefreshToken(
 	client *goidc.Client,
@@ -630,40 +638,21 @@ func (ctx Context) HTTPClient() *http.Client {
 //---------------------------------------- context.Context ----------------------------------------//
 
 func (ctx Context) Context() context.Context {
-	if ctx.context != nil {
-		return ctx.context
-	}
 	return ctx.Request.Context()
 }
 
-func (ctx *Context) SetContext(c context.Context) {
-	ctx.context = c
-}
-
 func (ctx Context) Deadline() (deadline time.Time, ok bool) {
-	if ctx.context != nil {
-		return ctx.context.Deadline()
-	}
 	return ctx.Context().Deadline()
 }
 
 func (ctx Context) Done() <-chan struct{} {
-	if ctx.context != nil {
-		return ctx.context.Done()
-	}
 	return ctx.Context().Done()
 }
 
 func (ctx Context) Err() error {
-	if ctx.context != nil {
-		return ctx.context.Err()
-	}
 	return ctx.Context().Err()
 }
 
 func (ctx Context) Value(key any) any {
-	if ctx.context != nil {
-		return ctx.context.Value(key)
-	}
 	return ctx.Context().Value(key)
 }

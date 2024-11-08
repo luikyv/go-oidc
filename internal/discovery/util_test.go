@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
@@ -30,8 +31,10 @@ func TestOIDCConfig(t *testing.T) {
 		Scopes: []goidc.Scope{
 			goidc.ScopeOpenID, goidc.ScopeEmail,
 		},
-		PrivateJWKS: jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{tokenKey, userInfoKey},
+		PrivateJWKSFunc: func(r *http.Request) (jose.JSONWebKeySet, error) {
+			return jose.JSONWebKeySet{
+				Keys: []jose.JSONWebKey{tokenKey, userInfoKey},
+			}, nil
 		},
 		GrantTypes:    []goidc.GrantType{goidc.GrantAuthorizationCode},
 		ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCode},
@@ -124,8 +127,10 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		Scopes: []goidc.Scope{
 			goidc.ScopeOpenID, goidc.ScopeEmail,
 		},
-		PrivateJWKS: jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{tokenKey, userInfoKey, jarmKey},
+		PrivateJWKSFunc: func(r *http.Request) (jose.JSONWebKeySet, error) {
+			return jose.JSONWebKeySet{
+				Keys: []jose.JSONWebKey{tokenKey, userInfoKey, jarmKey},
+			}, nil
 		},
 		GrantTypes:    []goidc.GrantType{goidc.GrantAuthorizationCode},
 		ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCode},

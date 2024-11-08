@@ -139,10 +139,10 @@ func signJARMResponse(
 		claims[k] = v
 	}
 
-	jwk, ok := ctx.JARMSigKeyForClient(c)
-	if !ok {
-		return "", goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"the jarm signing algorithm defined for the client is not available")
+	jwk, err := ctx.JARMSigKeyForClient(c)
+	if err != nil {
+		return "", goidc.Errorf(goidc.ErrorCodeInvalidRequest,
+			"the jarm signing algorithm defined for the client is not available", err)
 	}
 
 	resp, err := jwtutil.Sign(claims, jwk,

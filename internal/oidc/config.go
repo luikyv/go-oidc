@@ -14,9 +14,9 @@ type Configuration struct {
 	// Host is the domain where the server runs. This value will be used as the
 	// authorization server issuer.
 	Host string
-	// PrivateJWKS contains the server JWKS with private and public information.
+	// PrivateJWKSFunc fetches the server JWKS with private and public information.
 	// When exposing it, the private information is removed.
-	PrivateJWKS             jose.JSONWebKeySet
+	PrivateJWKSFunc         goidc.PrivateJWKSFunc
 	HandleGrantFunc         goidc.HandleGrantFunc
 	TokenOptionsFunc        goidc.TokenOptionsFunc
 	Policies                []goidc.AuthnPolicy

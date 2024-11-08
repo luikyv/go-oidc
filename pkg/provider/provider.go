@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"reflect"
 	"slices"
@@ -23,16 +22,21 @@ type Provider struct {
 }
 
 // New creates a new openid provider.
-// By default, all clients and sessions are stored in memory and JWTs are
-// signed with the first signing key in the JWKS.
 // The profile parameter adjusts the server's behavior for non-configurable
 // settings, ensuring compliance with the associated specification. Depending on
 // the profile selected, the server may modify its operations to meet specific
 // requirements dictated by the corresponding standards or protocols.
+//
+// Default Settings:
+//   - All clients and sessions are stored in memory.
+//   - ID tokens and user info responses are signed using RS256.
+//     Ensure a JWK supporting RS256 is available in the server's JWKS.
+//     This algorithm can be overridden with the [WithUserSignatureAlgs] option.
+//   - Access tokens are issued as opaque tokens.
 func New(
 	profile goidc.Profile,
 	issuer string,
-	privateJWKS jose.JSONWebKeySet,
+	privateJWKSFunc goidc.PrivateJWKSFunc,
 	opts ...ProviderOption,
 ) (
 	Provider,
@@ -41,9 +45,9 @@ func New(
 
 	p := Provider{
 		config: &oidc.Configuration{
-			Profile:     profile,
-			Host:        issuer,
-			PrivateJWKS: privateJWKS,
+			Profile:         profile,
+			Host:            issuer,
+			PrivateJWKSFunc: privateJWKSFunc,
 		},
 	}
 
@@ -95,29 +99,39 @@ func (p Provider) Run(
 	return http.ListenAndServe(address, handler)
 }
 
+// TokenInfo processes a request to retrieve information about an access token.
+// It extracts the access token from the request, performs introspection to validate
+// and gather information about the token, and checks for Proof of Possession (PoP)
+// if required.
+// If the token is valid and PoP validation (if any) is successful, the function
+// returns token information; otherwise, it returns an appropriate error.
 func (p Provider) TokenInfo(
-	ctx context.Context,
-	accessToken string,
+	w http.ResponseWriter,
+	r *http.Request,
 ) (
 	goidc.TokenInfo,
 	error,
 ) {
-	// Passing the response writer and request as nil should not cause any
-	// problems, since IntrospectionInfo shouldn't need HTTP information.
-	oidcCtx := oidc.NewContext(nil, nil, p.config)
-	oidcCtx.SetContext(ctx)
-	return token.IntrospectionInfo(oidcCtx, accessToken)
-}
+	ctx := oidc.NewContext(w, r, p.config)
 
-func (p Provider) ValidateTokenPoP(
-	r *http.Request,
-	accessToken string,
-	cnf goidc.TokenConfirmation,
-) error {
-	// Passing the response writer as nil should not cause any problems, since
-	// no HTTP response should be rendered by ValidatePoP.
-	ctx := oidc.NewContext(nil, r, p.config)
-	return token.ValidatePoP(ctx, accessToken, cnf)
+	accessToken, _, ok := ctx.AuthorizationToken()
+	if !ok {
+		return goidc.TokenInfo{}, goidc.NewError(goidc.ErrorCodeInvalidToken, "no token found")
+	}
+
+	info, err := token.IntrospectionInfo(ctx, accessToken)
+	if err != nil {
+		return goidc.TokenInfo{}, err
+	}
+
+	if info.Confirmation == nil {
+		return info, nil
+	}
+
+	if err := token.ValidatePoP(ctx, accessToken, *info.Confirmation); err != nil {
+		return goidc.TokenInfo{}, err
+	}
+	return info, nil
 }
 
 func (p Provider) Client(
@@ -137,19 +151,13 @@ func (p Provider) Client(
 }
 
 func (p Provider) setDefaults() error {
-	defaultSigKey, ok := firstSigKey(p.config.PrivateJWKS)
-	if !ok {
-		return errors.New("the private jwks doesn't contain any signing key")
-	}
-	defaultSigAlg := jose.SignatureAlgorithm(defaultSigKey.Algorithm)
-
 	p.config.UserDefaultSigAlg = nonZeroOrDefault(
 		p.config.UserDefaultSigAlg,
-		defaultSigAlg,
+		defaultUserInfoSigAlg,
 	)
 	p.config.UserSigAlgs = nonZeroOrDefault(
 		p.config.UserSigAlgs,
-		[]jose.SignatureAlgorithm{defaultSigAlg},
+		[]jose.SignatureAlgorithm{defaultUserInfoSigAlg},
 	)
 	p.config.Scopes = nonZeroOrDefault(
 		p.config.Scopes,
@@ -169,7 +177,7 @@ func (p Provider) setDefaults() error {
 	)
 	p.config.TokenOptionsFunc = nonZeroOrDefault(
 		p.config.TokenOptionsFunc,
-		defaultTokenOptionsFunc(defaultSigKey.KeyID),
+		defaultTokenOptionsFunc(),
 	)
 	p.config.ResponseModes = []goidc.ResponseMode{
 		goidc.ResponseModeQuery,
@@ -366,9 +374,6 @@ func (p Provider) setDefaults() error {
 func (p Provider) validate() error {
 	return runValidations(
 		p.config,
-		validateJWKS,
-		validateSigKeys,
-		validateEncKeys,
 		validateJAREnc,
 		validateJARMEnc,
 		validateTokenBinding,
@@ -393,13 +398,4 @@ func nonZeroOrDefault[T any](s1 T, s2 T) T {
 
 func isNil(i any) bool {
 	return i == nil
-}
-
-func firstSigKey(jwks jose.JSONWebKeySet) (jose.JSONWebKey, bool) {
-	for _, key := range jwks.Keys {
-		if key.KeyID != "" && key.Algorithm != "" && key.Use == string(goidc.KeyUsageSignature) {
-			return key, true
-		}
-	}
-	return jose.JSONWebKey{}, false
 }

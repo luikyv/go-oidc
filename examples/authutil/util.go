@@ -25,9 +25,9 @@ import (
 )
 
 const (
-	Port             string = ":8445"
-	Issuer           string = "https://auth.localhost" + Port
-	MTLSHost         string = "https://matls-auth.localhost" + Port
+	Port             string = ":443"
+	Issuer           string = "https://auth.localhost"
+	MTLSHost         string = "https://matls-auth.localhost"
 	HeaderClientCert string = "X-Client-Cert"
 )
 
@@ -60,7 +60,7 @@ func ClientPrivateKeyJWT(id, jwksFilepath string) *goidc.Client {
 
 func Client(id string, jwksFilepath string) *goidc.Client {
 	// Extract the public client JWKS.
-	jwks := PrivateJWKS(jwksFilepath)
+	jwks := privateJWKS(jwksFilepath)
 	var publicKeys []jose.JSONWebKey
 	for _, key := range jwks.Keys {
 		publicKeys = append(publicKeys, key.Public())
@@ -94,7 +94,29 @@ func Client(id string, jwksFilepath string) *goidc.Client {
 	}
 }
 
-func PrivateJWKS(filename string) jose.JSONWebKeySet {
+func PrivateJWKSFunc(filename string) goidc.PrivateJWKSFunc {
+	jwksFile, err := os.Open(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer jwksFile.Close()
+
+	jwksBytes, err := io.ReadAll(jwksFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var jwks jose.JSONWebKeySet
+	if err := json.Unmarshal(jwksBytes, &jwks); err != nil {
+		log.Fatal(err)
+	}
+
+	return func(r *http.Request) (jose.JSONWebKeySet, error) {
+		return jwks, nil
+	}
+}
+
+func privateJWKS(filename string) jose.JSONWebKeySet {
 	jwksFile, err := os.Open(filename)
 	if err != nil {
 		log.Fatal(err)

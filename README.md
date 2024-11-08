@@ -63,9 +63,11 @@ if err := json.Unmarshal([]byte(jwksStr), &jwks); err != nil {
 }
 
 op := provider.New(
-    goidc.ProfileOpenID,
-    "http://localhost",
-    jwks,
+	goidc.ProfileOpenID,
+	"http://localhost",
+	func(_ *http.Request) (jose.JSONWebKeySet, error) {
+		return jwks, nil
+	},
 )
 op.Run(":80")
 ```

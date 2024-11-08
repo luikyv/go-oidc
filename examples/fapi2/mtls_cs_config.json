@@ -6,6 +6,6 @@
         "client_id": "mtls_client_two"
     },
     "resource": {
-        "resourceUrl": "https://matls-auth.localhost:8445/userinfo"
+        "resourceUrl": "https://matls-auth.localhost/userinfo"
     }
 }

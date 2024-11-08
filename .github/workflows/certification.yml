@@ -124,12 +124,12 @@ jobs:
         - name: Start authorization server
           run: |
             # Run the server on background and save the process ID so we can kill it later
-            go run ${{ matrix.plan.server_main }} & echo $! > /tmp/go-server.pid
+            sudo go run ${{ matrix.plan.server_main }} & echo $! > /tmp/go-server.pid
 
             echo "Wait for the auth server to be ready"
             timeout 10 bash -c '
-            while [ "$(curl -skf -o /dev/null -w ''%{http_code}'' https://auth.localhost:8445/.well-known/openid-configuration)" != "200" ]; do
-              echo "Conformance suite not ready, sleeping for 2 seconds"
+            while [ "$(curl -skf -o /dev/null -w ''%{http_code}'' https://auth.localhost/.well-known/openid-configuration)" != "200" ]; do
+              echo "Auth server not ready, sleeping for 2 seconds"
               sleep 2
             done
             echo "Auth server is ready"

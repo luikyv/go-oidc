@@ -1,7 +1,7 @@
 {
     "alias": "goidc",
     "server": {
-        "discoveryUrl": "https://auth.localhost:8445/.well-known/openid-configuration"
+        "discoveryUrl": "https://auth.localhost/.well-known/openid-configuration"
     },
     "client": {
         "client_name": "client_one"

@@ -69,8 +69,10 @@ func NewContext(t testing.TB) oidc.Context {
 		AuthnSessionManager: storage.NewAuthnSessionManager(),
 		GrantSessionManager: storage.NewGrantSessionManager(),
 
-		Scopes:      []goidc.Scope{goidc.ScopeOpenID, Scope1, Scope2},
-		PrivateJWKS: jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jwk}},
+		Scopes: []goidc.Scope{goidc.ScopeOpenID, Scope1, Scope2},
+		PrivateJWKSFunc: func(r *http.Request) (jose.JSONWebKeySet, error) {
+			return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jwk}}, nil
+		},
 		GrantTypes: []goidc.GrantType{
 			goidc.GrantAuthorizationCode,
 			goidc.GrantClientCredentials,
@@ -137,7 +139,17 @@ func NewContext(t testing.TB) oidc.Context {
 	return ctx
 }
 
-func AuthnSessions(t *testing.T, ctx oidc.Context) []*goidc.AuthnSession {
+func PrivateJWKS(t testing.TB, ctx oidc.Context) jose.JSONWebKeySet {
+	t.Helper()
+
+	jwks, err := ctx.PrivateJWKS()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return jwks
+}
+
+func AuthnSessions(t testing.TB, ctx oidc.Context) []*goidc.AuthnSession {
 	t.Helper()
 
 	sessionManager, _ := ctx.AuthnSessionManager.(*storage.AuthnSessionManager)
