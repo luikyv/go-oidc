@@ -3,6 +3,7 @@ package dcr
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"slices"
 
@@ -34,7 +35,6 @@ func validate(
 		validateImplicitResponseTypes,
 		validateResponseTypeCode,
 		validateOpenIDScopeIfRequired,
-		validateSubjectIdentifierType,
 		validateIDTokenSigAlg,
 		validateIDTokenEncAlgs,
 		validateUserInfoSigAlg,
@@ -46,6 +46,9 @@ func validate(
 		validatePublicJWKS,
 		validatePublicJWKSURI,
 		validateAuthorizationDetailTypes,
+		validateSubjectIdentifierType,
+		validateSectorIdentifierURI,
+		validateSubIdentifierPairwise,
 	)
 }
 
@@ -251,6 +254,77 @@ func validateSubjectIdentifierType(
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"subject_type not supported")
 	}
+	return nil
+}
+
+func validateSubIdentifierPairwise(
+	ctx oidc.Context,
+	meta *goidc.ClientMetaInfo,
+) error {
+	if meta.SubIdentifierType == goidc.SubIdentifierPublic {
+		return nil
+	}
+
+	if meta.SubIdentifierType == "" && ctx.DefaultSubIdentifierType == goidc.SubIdentifierPublic {
+		return nil
+	}
+
+	if meta.SectorIdentifierURI != "" {
+		return nil
+	}
+
+	var redirectURIHosts []string
+	for _, ru := range meta.RedirectURIs {
+		parsedRU, _ := url.Parse(ru)
+		if !slices.Contains(redirectURIHosts, parsedRU.Host) {
+			redirectURIHosts = append(redirectURIHosts, parsedRU.Host)
+		}
+	}
+
+	if len(redirectURIHosts) != 1 {
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
+			"only one host is allowed among the redirect uris if pairwise sub identifier is used and the sector identifier uri is not informed")
+	}
+
+	return nil
+}
+
+func validateSectorIdentifierURI(
+	ctx oidc.Context,
+	meta *goidc.ClientMetaInfo,
+) error {
+	if meta.SectorIdentifierURI == "" {
+		return nil
+	}
+
+	if parsedRU, err := url.Parse(meta.SectorIdentifierURI); err != nil ||
+		parsedRU.Scheme != "https" ||
+		parsedRU.Host == "" {
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
+			"invalid sector_identifier_uri")
+	}
+
+	httpClient := ctx.HTTPClient()
+	resp, err := httpClient.Get(meta.SectorIdentifierURI)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata,
+			"could not fetch the sector_identifier_uri", err)
+	}
+	defer resp.Body.Close()
+
+	var redirectURIs []string
+	if err := json.NewDecoder(resp.Body).Decode(&redirectURIs); err != nil {
+		return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata,
+			"could not decode the result of sector_identifier_uri", err)
+	}
+
+	for _, ru := range meta.RedirectURIs {
+		if !slices.Contains(redirectURIs, ru) {
+			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
+				fmt.Sprintf("the redirect uri %s is not among the ones fetched from sector_identifier_uri", ru))
+		}
+	}
+
 	return nil
 }
 

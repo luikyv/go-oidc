@@ -163,17 +163,17 @@ const (
 	CodeChallengeMethodPlain  CodeChallengeMethod = "plain"
 )
 
-// SubjectIdentifierType defines how the auth server provides subject
+// SubIdentifierType defines how the auth server provides subject
 // identifiers to its clients.
 // For more information,
 // see: https://openid.net/specs/openid-connect-core-1_0.html#SubjectIDTypes
-type SubjectIdentifierType string
+type SubIdentifierType string
 
 const (
-	// SubjectIdentifierPublic makes the server provide the same subject
+	// SubIdentifierPublic makes the server provide the same subject
 	// identifier to all clients.
-	SubjectIdentifierPublic SubjectIdentifierType = "public"
-	// TODO: Implement pairwise.
+	SubIdentifierPublic   SubIdentifierType = "public"
+	SubIdentifierPairwise SubIdentifierType = "pairwise"
 )
 
 const (
@@ -334,7 +334,7 @@ type ShouldIssueRefreshTokenFunc func(*Client, GrantInfo) bool
 
 // TokenOptionsFunc defines a function that returns token configuration and is
 // executed when issuing access tokens.
-type TokenOptionsFunc func(GrantInfo) TokenOptions
+type TokenOptionsFunc func(GrantInfo, *Client) TokenOptions
 
 // TokenOptions defines a template for generating access tokens.
 type TokenOptions struct {
@@ -367,13 +367,17 @@ func NewOpaqueTokenOptions(
 }
 
 // AuthnFunc executes the user authentication logic.
+//
 // If it returns [StatusSuccess], the flow will end successfully and the client
 // will be granted the accesses the user consented.
+//
 // If it returns [StatusFailure] or an error the flow will end with failure and
 // the client will be denied access.
+//
 // If it return [StatusInProgress], the flow will be suspended so an interaction
-// with the user via the user agent can happen. The flow can be resumed at the
-// callback endpoint with the session callback ID.
+// with the user via the user agent can happen, e.g. an HTML page is rendered to
+// to gather user credentials.
+// The flow can be resumed at the callback endpoint with the session callback ID.
 type AuthnFunc func(http.ResponseWriter, *http.Request, *AuthnSession) (AuthnStatus, error)
 
 // SetUpAuthnFunc is responsible for initiating the authentication session.
@@ -617,3 +621,5 @@ type IsClientAllowedFunc func(*Client) bool
 // refresh_token grant types to validate that the requested authorization details
 // are consistent with the granted ones.
 type CompareAuthDetailsFunc func(granted, requested []AuthorizationDetail) error
+
+type GeneratePairwiseSubIDFunc func(sub, hostSectorURI string) (string, error)

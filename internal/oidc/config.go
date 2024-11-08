@@ -31,10 +31,12 @@ type Configuration struct {
 	// Claims defines the user claims that can be returned in the userinfo
 	// endpoint or in ID tokens.
 	// This will be published in the /.well-known/openid-configuration endpoint.
-	Claims             []string
-	ClaimTypes         []goidc.ClaimType
-	SubIdentifierTypes []goidc.SubjectIdentifierType
-	StaticClients      []*goidc.Client
+	Claims                    []string
+	ClaimTypes                []goidc.ClaimType
+	DefaultSubIdentifierType  goidc.SubIdentifierType
+	SubIdentifierTypes        []goidc.SubIdentifierType
+	GeneratePairwiseSubIDFunc goidc.GeneratePairwiseSubIDFunc
+	StaticClients             []*goidc.Client
 	// IssuerRespParamIsEnabled indicates if the "iss" parameter will be
 	// returned when redirecting the user back to the client application.
 	IssuerRespParamIsEnabled bool

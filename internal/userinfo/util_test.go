@@ -132,6 +132,40 @@ func TestHandleUserInfoRequest_UnsignedResponse(t *testing.T) {
 	}
 }
 
+func TestHandleUserInfoRequest_PairwiseSub(t *testing.T) {
+	// Given.
+	ctx, client, _ := setUp(t)
+	ctx.SubIdentifierTypes = []goidc.SubIdentifierType{goidc.SubIdentifierPairwise}
+	ctx.GeneratePairwiseSubIDFunc = func(sub, hostSectorURI string) (string, error) {
+		return hostSectorURI + "_" + sub, nil
+	}
+
+	client.SubIdentifierType = goidc.SubIdentifierPairwise
+	client.SectorIdentifierURI = "https://example.com/redirect_uris.json"
+
+	// When.
+	resp, err := handleUserInfoRequest(ctx)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := response{
+		claims: map[string]any{
+			"sub":          "example.com_random_subject",
+			"random_claim": "random_value",
+		},
+	}
+	if diff := cmp.Diff(
+		resp,
+		want,
+		cmp.AllowUnexported(response{}),
+	); diff != "" {
+		t.Error(diff)
+	}
+}
+
 func TestHandleUserInfoRequest_InvalidPoP(t *testing.T) {
 	// Given.
 	ctx, _, grantSession := setUp(t)

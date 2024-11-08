@@ -1,6 +1,9 @@
 package provider
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -28,10 +31,19 @@ const (
 )
 
 func defaultTokenOptionsFunc() goidc.TokenOptionsFunc {
-	return func(grantInfo goidc.GrantInfo) goidc.TokenOptions {
+	return func(grantInfo goidc.GrantInfo, _ *goidc.Client) goidc.TokenOptions {
 		return goidc.NewOpaqueTokenOptions(
 			goidc.DefaultOpaqueTokenLength,
 			defaultTokenLifetimeSecs,
 		)
+	}
+}
+
+func defaultGeneratePairwiseSubIDFunc() goidc.GeneratePairwiseSubIDFunc {
+	return func(sub, sectorURI string) (string, error) {
+		combined := sectorURI + "_" + sub
+		hash := sha256.New()
+		hash.Write([]byte(combined))
+		return hex.EncodeToString(hash.Sum(nil)), nil
 	}
 }

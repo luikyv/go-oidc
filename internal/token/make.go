@@ -41,11 +41,12 @@ func MakeIDToken(
 func Make(
 	ctx oidc.Context,
 	grantInfo goidc.GrantInfo,
+	client *goidc.Client,
 ) (
 	Token,
 	error,
 ) {
-	opts := ctx.TokenOptions(grantInfo)
+	opts := ctx.TokenOptions(grantInfo, client)
 	if opts.Format == goidc.TokenFormatJWT {
 		return makeJWTToken(ctx, grantInfo, opts)
 	} else {
@@ -71,7 +72,10 @@ func makeIDToken(
 			"internal error", err)
 	}
 
-	claims := idTokenClaims(ctx, client, opts, jose.SignatureAlgorithm(jwk.Algorithm))
+	claims, err := idTokenClaims(ctx, client, opts, jose.SignatureAlgorithm(jwk.Algorithm))
+	if err != nil {
+		return "", err
+	}
 	idToken, err := jwtutil.Sign(claims, jwk,
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
 	if err != nil {
@@ -90,7 +94,10 @@ func makeUnsignedIDToken(
 	string,
 	error,
 ) {
-	claims := idTokenClaims(ctx, client, opts, goidc.NoneSignatureAlgorithm)
+	claims, err := idTokenClaims(ctx, client, opts, goidc.NoneSignatureAlgorithm)
+	if err != nil {
+		return "", err
+	}
 	return jwtutil.Unsigned(claims)
 }
 
@@ -99,15 +106,24 @@ func idTokenClaims(
 	client *goidc.Client,
 	opts IDTokenOptions,
 	sigAlg jose.SignatureAlgorithm,
-) map[string]any {
+) (
+	map[string]any,
+	error,
+) {
 	now := timeutil.TimestampNow()
 
 	claims := map[string]any{
 		goidc.ClaimIssuer:   ctx.Host,
-		goidc.ClaimSubject:  opts.Subject,
 		goidc.ClaimIssuedAt: now,
 		goidc.ClaimExpiry:   now + ctx.IDTokenLifetimeSecs,
 	}
+
+	sub, err := ctx.ExportableSubject(opts.Subject, client)
+	if err != nil {
+		return nil, err
+	}
+
+	claims[goidc.ClaimSubject] = sub
 
 	// Avoid an empty client ID claim for anonymous client.
 	if client.ID != "" {
@@ -136,7 +152,7 @@ func idTokenClaims(
 		claims[k] = v
 	}
 
-	return claims
+	return claims, nil
 }
 
 func encryptIDToken(

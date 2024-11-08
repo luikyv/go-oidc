@@ -15,21 +15,21 @@ func generateClientCredentialsGrant(
 	response,
 	error,
 ) {
-	c, oauthErr := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	client, oauthErr := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
 	if oauthErr != nil {
 		return response{}, oauthErr
 	}
 
-	if oauthErr := validateClientCredentialsGrantRequest(ctx, req, c); oauthErr != nil {
+	if oauthErr := validateClientCredentialsGrantRequest(ctx, req, client); oauthErr != nil {
 		return response{}, oauthErr
 	}
 
-	grantInfo, err := clientCredentialsGrantInfo(ctx, c, req)
+	grantInfo, err := clientCredentialsGrantInfo(ctx, client, req)
 	if err != nil {
 		return response{}, err
 	}
 
-	token, err := Make(ctx, grantInfo)
+	token, err := Make(ctx, grantInfo, client)
 	if err != nil {
 		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
 			"could not generate an access token for the client credentials grant", err)

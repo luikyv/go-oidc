@@ -12,6 +12,7 @@
 // [goidc.AuthnPolicy]. The policy is responsible for interacting with the user
 // and modifing the [goidc.AuthnSession] to define how access and ID tokens are
 // issued and with what information.
+// Check the folder examples for more details of how to set up policies.
 package provider
 
 import (

@@ -29,7 +29,10 @@ func introspect(
 	// The information of an invalid token must not be sent as an error.
 	// It will be returned as the default value of [goidc.TokenInfo] with the
 	// field is_active as false.
-	tokenInfo, _ := IntrospectionInfo(ctx, req.token)
+	tokenInfo, err := IntrospectionInfo(ctx, req.token)
+	if err != nil {
+		ctx.NotifyError(err)
+	}
 	return tokenInfo, nil
 }
 
@@ -59,12 +62,12 @@ func IntrospectionInfo(
 	error,
 ) {
 
-	if len(accessToken) == goidc.RefreshTokenLength {
-		return refreshTokenInfo(ctx, accessToken)
-	}
-
 	if jwtutil.IsJWS(accessToken) {
 		return jwtTokenInfo(ctx, accessToken)
+	}
+
+	if len(accessToken) == goidc.RefreshTokenLength {
+		return refreshTokenInfo(ctx, accessToken)
 	}
 
 	return opaqueTokenInfo(ctx, accessToken)
@@ -99,11 +102,11 @@ func refreshTokenInfo(
 	return goidc.TokenInfo{
 		GrantID:               grantSession.ID,
 		IsActive:              true,
+		Subject:               grantSession.Subject,
 		Type:                  goidc.TokenHintRefresh,
 		Scopes:                grantSession.GrantedScopes,
 		AuthorizationDetails:  grantSession.GrantedAuthDetails,
 		ClientID:              grantSession.ClientID,
-		Subject:               grantSession.Subject,
 		ExpiresAtTimestamp:    grantSession.ExpiresAtTimestamp,
 		Confirmation:          cnf,
 		ResourceAudiences:     grantSession.GrantedResources,
@@ -169,11 +172,11 @@ func tokenIntrospectionInfoByID(
 	return goidc.TokenInfo{
 		GrantID:               grantSession.ID,
 		IsActive:              true,
+		Subject:               grantSession.Subject,
 		Type:                  goidc.TokenHintAccess,
 		Scopes:                grantSession.ActiveScopes,
-		AuthorizationDetails:  grantSession.GrantedAuthDetails,
+		AuthorizationDetails:  grantSession.ActiveAuthDetails,
 		ClientID:              grantSession.ClientID,
-		Subject:               grantSession.Subject,
 		ExpiresAtTimestamp:    grantSession.LastTokenExpiresAtTimestamp,
 		Confirmation:          cnf,
 		ResourceAudiences:     grantSession.ActiveResources,

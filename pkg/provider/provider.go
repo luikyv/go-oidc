@@ -184,9 +184,13 @@ func (p Provider) setDefaults() error {
 		goidc.ResponseModeFragment,
 		goidc.ResponseModeFormPost,
 	}
+	p.config.DefaultSubIdentifierType = nonZeroOrDefault(
+		p.config.DefaultSubIdentifierType,
+		goidc.SubIdentifierPublic,
+	)
 	p.config.SubIdentifierTypes = nonZeroOrDefault(
 		p.config.SubIdentifierTypes,
-		[]goidc.SubjectIdentifierType{goidc.SubjectIdentifierPublic},
+		[]goidc.SubIdentifierType{goidc.SubIdentifierPublic},
 	)
 	p.config.ClaimTypes = nonZeroOrDefault(
 		p.config.ClaimTypes,
@@ -365,6 +369,13 @@ func (p Provider) setDefaults() error {
 		p.config.UserContentEncAlgs = nonZeroOrDefault(
 			p.config.UserContentEncAlgs,
 			[]jose.ContentEncryption{jose.A128CBC_HS256},
+		)
+	}
+
+	if slices.Contains(p.config.SubIdentifierTypes, goidc.SubIdentifierPairwise) {
+		p.config.GeneratePairwiseSubIDFunc = nonZeroOrDefault(
+			p.config.GeneratePairwiseSubIDFunc,
+			defaultGeneratePairwiseSubIDFunc(),
 		)
 	}
 

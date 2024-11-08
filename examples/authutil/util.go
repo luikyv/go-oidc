@@ -177,7 +177,7 @@ func ValidateInitialTokenFunc(r *http.Request, s string) error {
 }
 
 func TokenOptionsFunc(keyID string) goidc.TokenOptionsFunc {
-	return func(grantInfo goidc.GrantInfo) goidc.TokenOptions {
+	return func(grantInfo goidc.GrantInfo, _ *goidc.Client) goidc.TokenOptions {
 		opts := goidc.NewJWTTokenOptions(keyID, 600)
 		return opts
 	}

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -458,8 +459,6 @@ func (ctx Context) RenderHTML(
 	return tmpl.Execute(ctx.Response, params)
 }
 
-//---------------------------------------- Key Management ----------------------------------------//
-
 func (ctx Context) PrivateJWKS() (jose.JSONWebKeySet, error) {
 	jwks, err := ctx.PrivateJWKSFunc(ctx.Request)
 	if err != nil {
@@ -583,7 +582,8 @@ func (ctx Context) ShouldIssueRefreshToken(
 	grantInfo goidc.GrantInfo,
 ) bool {
 	if ctx.ShouldIssueRefreshTokenFunc == nil ||
-		!slices.Contains(client.GrantTypes, goidc.GrantRefreshToken) {
+		!slices.Contains(client.GrantTypes, goidc.GrantRefreshToken) ||
+		grantInfo.GrantType == goidc.GrantClientCredentials {
 		return false
 	}
 
@@ -592,9 +592,14 @@ func (ctx Context) ShouldIssueRefreshToken(
 
 func (ctx Context) TokenOptions(
 	grantInfo goidc.GrantInfo,
+	client *goidc.Client,
 ) goidc.TokenOptions {
 
-	opts := ctx.TokenOptionsFunc(grantInfo)
+	opts := ctx.TokenOptionsFunc(grantInfo, client)
+
+	if shouldSwitchToOpaque(ctx, grantInfo, client, opts) {
+		opts = goidc.NewOpaqueTokenOptions(goidc.DefaultOpaqueTokenLength, opts.LifetimeSecs)
+	}
 
 	// Opaque access tokens cannot be the same size of refresh tokens.
 	if opts.OpaqueLength == goidc.RefreshTokenLength {
@@ -602,6 +607,25 @@ func (ctx Context) TokenOptions(
 	}
 
 	return opts
+}
+
+func shouldSwitchToOpaque(
+	ctx Context,
+	grantInfo goidc.GrantInfo,
+	client *goidc.Client,
+	opts goidc.TokenOptions,
+) bool {
+	// Use an opaque token format if the subject identifier type is pairwise.
+	// This prevents potential information leakage that could occur if the JWT
+	// token was decoded by clients.
+	subIsPairwise := client.SubIdentifierType == goidc.SubIdentifierPairwise ||
+		(client.SubIdentifierType == "" && ctx.DefaultSubIdentifierType == goidc.SubIdentifierPairwise)
+
+	// Only switch to opaque if the token is of type JWT and the grant type is
+	// not client credentials.
+	return opts.Format == goidc.TokenFormatJWT &&
+		grantInfo.GrantType != goidc.GrantClientCredentials &&
+		subIsPairwise
 }
 
 func (ctx Context) HandleGrant(grantInfo *goidc.GrantInfo) error {
@@ -633,6 +657,49 @@ func (ctx Context) HTTPClient() *http.Client {
 	}
 
 	return ctx.HTTPClientFunc(ctx.Context())
+}
+
+// ExportableSubject returns a subject identifier for the given client based on
+// its subject identifier type.
+// If the subject identifier type is "public", it returns the provided subject.
+// If the subject identifier type is "pairwise", it generates a pairwise
+// identifier using the sector URI or a redirect URI.
+func (ctx Context) ExportableSubject(
+	sub string,
+	client *goidc.Client,
+) (
+	string,
+	error,
+) {
+	if ctx.GeneratePairwiseSubIDFunc == nil {
+		return sub, nil
+	}
+
+	if client.SubIdentifierType == goidc.SubIdentifierPublic {
+		return sub, nil
+	}
+
+	if client.SubIdentifierType == "" && ctx.DefaultSubIdentifierType == goidc.SubIdentifierPublic {
+		return sub, nil
+	}
+
+	// Use the client's SectorIdentifierURI if available, or the first redirect
+	// URI as a fallback.
+	sectorURI := client.SectorIdentifierURI
+	if sectorURI == "" && len(client.RedirectURIs) != 0 {
+		sectorURI = client.RedirectURIs[0]
+	}
+
+	if sectorURI == "" {
+		return "", errors.New("could not identify a sector uri to compute the pairwise subject")
+	}
+
+	parsedSectorURI, err := url.Parse(sectorURI)
+	if err != nil {
+		return "", fmt.Errorf("could not extract the hostname of the sector uri: %w", err)
+	}
+
+	return ctx.GeneratePairwiseSubIDFunc(sub, parsedSectorURI.Hostname())
 }
 
 //---------------------------------------- context.Context ----------------------------------------//

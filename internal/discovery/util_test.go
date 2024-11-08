@@ -41,8 +41,8 @@ func TestOIDCConfig(t *testing.T) {
 		ResponseModes: []goidc.ResponseMode{goidc.ResponseModeQuery},
 		Claims:        []string{"random_claim"},
 		ClaimTypes:    []goidc.ClaimType{goidc.ClaimTypeNormal},
-		SubIdentifierTypes: []goidc.SubjectIdentifierType{
-			goidc.SubjectIdentifierPublic,
+		SubIdentifierTypes: []goidc.SubIdentifierType{
+			goidc.SubIdentifierPublic,
 		},
 		IssuerRespParamIsEnabled: true,
 		ClaimsParamIsEnabled:     true,
@@ -137,8 +137,8 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		ResponseModes: []goidc.ResponseMode{goidc.ResponseModeQuery},
 		Claims:        []string{"random_claim"},
 		ClaimTypes:    []goidc.ClaimType{goidc.ClaimTypeNormal},
-		SubIdentifierTypes: []goidc.SubjectIdentifierType{
-			goidc.SubjectIdentifierPublic,
+		SubIdentifierTypes: []goidc.SubIdentifierType{
+			goidc.SubIdentifierPublic,
 		},
 		IssuerRespParamIsEnabled: true,
 		ClaimsParamIsEnabled:     true,
