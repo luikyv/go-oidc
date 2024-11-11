@@ -72,7 +72,7 @@ func NewContext(t testing.TB) oidc.Context {
 		GrantSessionManager: storage.NewGrantSessionManager(),
 
 		Scopes: []goidc.Scope{goidc.ScopeOpenID, Scope1, Scope2},
-		PrivateJWKSFunc: func(r *http.Request) (jose.JSONWebKeySet, error) {
+		PrivateJWKSFunc: func(ctx context.Context) (jose.JSONWebKeySet, error) {
 			return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jwk}}, nil
 		},
 		GrantTypes: []goidc.GrantType{

@@ -1,8 +1,6 @@
 package authorize
 
 import (
-	"strings"
-
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -30,11 +28,11 @@ func pushAuth(
 	}
 
 	if err := ctx.SaveAuthnSession(session); err != nil {
-		return pushedResponse{}, goidc.Errorf(goidc.ErrorCodeInternalError,
-			"could not store the pushed authentication session", err)
+		return pushedResponse{}, goidc.WrapError(goidc.ErrorCodeInternalError,
+			"internal error", err)
 	}
 	return pushedResponse{
-		RequestURI: session.ReferenceID,
+		RequestURI: session.PushedAuthReqID,
 		ExpiresIn:  ctx.PARLifetimeSecs,
 	}, nil
 }
@@ -54,7 +52,7 @@ func pushAuthnSession(
 		return nil, err
 	}
 
-	session.ReferenceID = requestURI()
+	session.PushedAuthReqID = requestURI()
 	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.PARLifetimeSecs
 
 	setDPoP(ctx, session)
@@ -89,7 +87,6 @@ func simplePushedAuthnSession(
 	}
 
 	session := newAuthnSession(req.AuthorizationParameters, client)
-	session.ProtectedParameters = protectedParams(ctx)
 	return session, nil
 }
 
@@ -118,19 +115,6 @@ func pushedAuthnSessionWithJAR(
 
 	session := newAuthnSession(jar.AuthorizationParameters, client)
 	return session, nil
-}
-
-// protectedParams returns the params sent in the form that start with
-// [protectedParamPrefix].
-func protectedParams(ctx oidc.Context) map[string]any {
-	protectedParams := make(map[string]any)
-	for param, value := range ctx.FormData() {
-		if strings.HasPrefix(param, protectedParamPrefix) {
-			protectedParams[param] = value
-		}
-	}
-
-	return protectedParams
 }
 
 func requestURI() string {

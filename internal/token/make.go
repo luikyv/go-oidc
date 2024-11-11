@@ -68,7 +68,7 @@ func makeIDToken(
 
 	jwk, err := ctx.IDTokenSigKeyForClient(client)
 	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInvalidRequest,
+		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"internal error", err)
 	}
 
@@ -79,7 +79,7 @@ func makeIDToken(
 	idToken, err := jwtutil.Sign(claims, jwk,
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
 	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
+		return "", goidc.WrapError(goidc.ErrorCodeInternalError,
 			"could not sign the id token", err)
 	}
 
@@ -125,27 +125,29 @@ func idTokenClaims(
 
 	claims[goidc.ClaimSubject] = sub
 
-	// Avoid an empty client ID claim for anonymous client.
+	// Avoid an empty client ID claim for anonymous clients.
 	if client.ID != "" {
 		claims[goidc.ClaimAudience] = client.ID
 	}
 
 	if opts.AccessToken != "" {
-		claims[goidc.ClaimAccessTokenHash] = halfHashIDTokenClaim(
-			opts.AccessToken,
-			sigAlg,
-		)
+		claims[goidc.ClaimAccessTokenHash] = halfHashIDTokenClaim(opts.AccessToken, sigAlg)
 	}
 
 	if opts.AuthorizationCode != "" {
-		claims[goidc.ClaimAuthzCodeHash] = halfHashIDTokenClaim(
-			opts.AuthorizationCode,
-			sigAlg,
-		)
+		claims[goidc.ClaimAuthzCodeHash] = halfHashIDTokenClaim(opts.AuthorizationCode, sigAlg)
 	}
 
 	if opts.State != "" {
 		claims[goidc.ClaimStateHash] = halfHashIDTokenClaim(opts.State, sigAlg)
+	}
+
+	if opts.RefreshToken != "" {
+		claims[goidc.ClaimRefreshTokenHash] = halfHashIDTokenClaim(opts.RefreshToken, sigAlg)
+	}
+
+	if opts.AuthReqID != "" {
+		claims[goidc.ClaimAuthReqID] = halfHashIDTokenClaim(opts.AuthReqID, sigAlg)
 	}
 
 	for k, v := range opts.AdditionalIDTokenClaims {
@@ -165,7 +167,7 @@ func encryptIDToken(
 ) {
 	jwk, err := clientutil.JWKByAlg(ctx, c, string(c.IDTokenKeyEncAlg))
 	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInvalidRequest,
+		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"could not encrypt the id token", err)
 	}
 
@@ -175,7 +177,7 @@ func encryptIDToken(
 	}
 	encIDToken, err := jwtutil.Encrypt(userInfoJWT, jwk, contentEncAlg)
 	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInvalidRequest,
+		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"could not encrypt the id token", err)
 	}
 
@@ -240,7 +242,7 @@ func makeJWTToken(
 	accessToken, err := jwtutil.Sign(claims, privateJWK,
 		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", privateJWK.KeyID))
 	if err != nil {
-		return Token{}, goidc.Errorf(goidc.ErrorCodeInternalError,
+		return Token{}, goidc.WrapError(goidc.ErrorCodeInternalError,
 			"could not sign the access token", err)
 	}
 

@@ -29,7 +29,7 @@ func handleWellKnown(ctx oidc.Context) {
 func handleJWKS(ctx oidc.Context) {
 	jwks, err := ctx.PublicKeys()
 	if err != nil {
-		ctx.WriteError(goidc.Errorf(goidc.ErrorCodeInternalError,
+		ctx.WriteError(goidc.WrapError(goidc.ErrorCodeInternalError,
 			"internal error", err))
 		return
 	}

@@ -138,6 +138,15 @@ func WithTokenRevocationEndpoint(endpoint string) ProviderOption {
 	}
 }
 
+// WithCIBAEndpoint overrides the default value for the CIBA endpoint which is
+// [defaultEndpointCIBA].
+func WithCIBAEndpoint(endpoint string) ProviderOption {
+	return func(p Provider) error {
+		p.config.EndpointCIBA = endpoint
+		return nil
+	}
+}
+
 // WithClaims signals support for user claims.
 // The claims are meant to appear in ID tokens and the userinfo endpoint.
 // The values provided will be shared in the field "claims_supported" of the
@@ -289,6 +298,46 @@ func WithRefreshTokenRotation() ProviderOption {
 	return func(p Provider) error {
 		p.config.RefreshTokenRotationIsEnabled = true
 		return nil
+	}
+}
+
+func WithCIBAGrant(
+	initFunc goidc.InitBackAuthFunc,
+	validateFunc goidc.ValidateBackAuthFunc,
+	mode goidc.CIBATokenDeliveryMode,
+	modes ...goidc.CIBATokenDeliveryMode,
+) ProviderOption {
+	return func(p Provider) error {
+		p.config.CIBAIsEnabled = true
+		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantCIBA)
+		p.config.CIBATokenDeliveryModels = appendIfNotIn(modes, mode)
+		p.config.InitBackAuthFunc = initFunc
+		p.config.ValidateBackAuthFunc = validateFunc
+		p.config.CIBADefaultSessionLifetimeSecs = 60
+		p.config.CIBAPollingIntervalSecs = 5
+		return nil
+	}
+}
+
+func WithCIBAJAR(
+	alg jose.SignatureAlgorithm,
+	algs ...jose.SignatureAlgorithm,
+) ProviderOption {
+	algs = appendIfNotIn(algs, alg)
+	return func(p Provider) error {
+		p.config.CIBAJARIsEnabled = true
+		p.config.CIBAJARSigAlgs = algs
+		return nil
+	}
+}
+
+func WithCIBAJARRequired(
+	alg jose.SignatureAlgorithm,
+	algs ...jose.SignatureAlgorithm,
+) ProviderOption {
+	return func(p Provider) error {
+		p.config.CIBAJARIsRequired = true
+		return WithJAR(alg, algs...)(p)
 	}
 }
 

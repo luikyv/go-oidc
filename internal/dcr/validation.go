@@ -307,14 +307,14 @@ func validateSectorIdentifierURI(
 	httpClient := ctx.HTTPClient()
 	resp, err := httpClient.Get(meta.SectorIdentifierURI)
 	if err != nil || resp.StatusCode != http.StatusOK {
-		return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata,
+		return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata,
 			"could not fetch the sector_identifier_uri", err)
 	}
 	defer resp.Body.Close()
 
 	var redirectURIs []string
 	if err := json.NewDecoder(resp.Body).Decode(&redirectURIs); err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata,
+		return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata,
 			"could not decode the result of sector_identifier_uri", err)
 	}
 

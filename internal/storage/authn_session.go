@@ -47,7 +47,7 @@ func (m *AuthnSessionManager) SessionByCallbackID(
 	return session, nil
 }
 
-func (m *AuthnSessionManager) SessionByAuthorizationCode(
+func (m *AuthnSessionManager) SessionByAuthCode(
 	_ context.Context,
 	authorizationCode string,
 ) (
@@ -64,7 +64,7 @@ func (m *AuthnSessionManager) SessionByAuthorizationCode(
 	return session, nil
 }
 
-func (m *AuthnSessionManager) SessionByReferenceID(
+func (m *AuthnSessionManager) SessionByPushedAuthReqID(
 	_ context.Context,
 	requestURI string,
 ) (
@@ -72,7 +72,24 @@ func (m *AuthnSessionManager) SessionByReferenceID(
 	error,
 ) {
 	session, exists := m.firstSession(func(s *goidc.AuthnSession) bool {
-		return s.ReferenceID == requestURI
+		return s.PushedAuthReqID == requestURI
+	})
+	if !exists {
+		return nil, errors.New("entity not found")
+	}
+
+	return session, nil
+}
+
+func (m *AuthnSessionManager) SessionByCIBAAuthID(
+	_ context.Context,
+	id string,
+) (
+	*goidc.AuthnSession,
+	error,
+) {
+	session, exists := m.firstSession(func(s *goidc.AuthnSession) bool {
+		return s.CIBAAuthID == id
 	})
 	if !exists {
 		return nil, errors.New("entity not found")

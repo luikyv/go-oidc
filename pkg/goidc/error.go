@@ -24,6 +24,11 @@ const (
 	ErrorCodeInvalidClientMetadata  ErrorCode = "invalid_client_metadata"
 	ErrorCodeRequestURINotSupported ErrorCode = "request_uri_not_supported"
 	ErrorCodeLoginRequired          ErrorCode = "login_required"
+	ErrorCodeAuthPending            ErrorCode = "authorization_pending"
+	ErrorCodeSlowDown               ErrorCode = "slow_down"
+	ErrorCodeExpiredToken           ErrorCode = "expired_token"
+	ErrorCodeMissingUserCode        ErrorCode = "missing_user_code"
+	ErrorCodeInvalidBindingMessage  ErrorCode = "invalid_binding_message"
 )
 
 func (c ErrorCode) StatusCode() int {
@@ -64,7 +69,7 @@ func (err Error) Unwrap() error {
 	return err.wrapped
 }
 
-func Errorf(code ErrorCode, desc string, err error) Error {
+func WrapError(code ErrorCode, desc string, err error) Error {
 	return Error{
 		Code:        code,
 		Description: desc,

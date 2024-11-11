@@ -150,233 +150,170 @@ func (p Provider) Client(
 	return p.config.ClientManager.Client(ctx, id)
 }
 
+func (p Provider) NotifyAuth(
+	ctx context.Context,
+	authReqID string,
+) error {
+	oidcCtx := oidc.FromContext(ctx, p.config)
+	return token.NotifyCIBAGrant(oidcCtx, authReqID)
+}
+
 func (p Provider) setDefaults() error {
-	p.config.UserDefaultSigAlg = nonZeroOrDefault(
-		p.config.UserDefaultSigAlg,
-		defaultUserInfoSigAlg,
-	)
-	p.config.UserSigAlgs = nonZeroOrDefault(
-		p.config.UserSigAlgs,
-		[]jose.SignatureAlgorithm{defaultUserInfoSigAlg},
-	)
-	p.config.Scopes = nonZeroOrDefault(
-		p.config.Scopes,
-		[]goidc.Scope{goidc.ScopeOpenID},
-	)
-	p.config.ClientManager = nonZeroOrDefault(
-		p.config.ClientManager,
-		goidc.ClientManager(storage.NewClientManager()),
-	)
-	p.config.AuthnSessionManager = nonZeroOrDefault(
-		p.config.AuthnSessionManager,
-		goidc.AuthnSessionManager(storage.NewAuthnSessionManager()),
-	)
-	p.config.GrantSessionManager = nonZeroOrDefault(
-		p.config.GrantSessionManager,
-		goidc.GrantSessionManager(storage.NewGrantSessionManager()),
-	)
-	p.config.TokenOptionsFunc = nonZeroOrDefault(
-		p.config.TokenOptionsFunc,
-		defaultTokenOptionsFunc(),
-	)
-	p.config.ResponseModes = []goidc.ResponseMode{
-		goidc.ResponseModeQuery,
-		goidc.ResponseModeFragment,
-		goidc.ResponseModeFormPost,
-	}
-	p.config.DefaultSubIdentifierType = nonZeroOrDefault(
-		p.config.DefaultSubIdentifierType,
-		goidc.SubIdentifierPublic,
-	)
-	p.config.SubIdentifierTypes = nonZeroOrDefault(
-		p.config.SubIdentifierTypes,
-		[]goidc.SubIdentifierType{goidc.SubIdentifierPublic},
-	)
-	p.config.ClaimTypes = nonZeroOrDefault(
-		p.config.ClaimTypes,
-		[]goidc.ClaimType{goidc.ClaimTypeNormal},
-	)
-	p.config.AuthnSessionTimeoutSecs = nonZeroOrDefault(
-		p.config.AuthnSessionTimeoutSecs,
-		defaultAuthnSessionTimeoutSecs,
-	)
-	p.config.IDTokenLifetimeSecs = nonZeroOrDefault(
-		p.config.IDTokenLifetimeSecs,
-		defaultIDTokenLifetimeSecs,
-	)
-	p.config.EndpointWellKnown = nonZeroOrDefault(
-		p.config.EndpointWellKnown,
-		defaultEndpointWellKnown,
-	)
-	p.config.EndpointJWKS = nonZeroOrDefault(
-		p.config.EndpointJWKS,
-		defaultEndpointJSONWebKeySet,
-	)
-	p.config.EndpointToken = nonZeroOrDefault(
-		p.config.EndpointToken,
-		defaultEndpointToken,
-	)
-	p.config.EndpointAuthorize = nonZeroOrDefault(
-		p.config.EndpointAuthorize,
-		defaultEndpointAuthorize,
-	)
-	p.config.EndpointUserInfo = nonZeroOrDefault(
-		p.config.EndpointUserInfo,
-		defaultEndpointUserInfo,
-	)
+	p.config.UserDefaultSigAlg = nonZeroOrDefault(p.config.UserDefaultSigAlg,
+		defaultUserInfoSigAlg)
+
+	p.config.UserSigAlgs = nonZeroOrDefault(p.config.UserSigAlgs,
+		[]jose.SignatureAlgorithm{defaultUserInfoSigAlg})
+
+	p.config.Scopes = nonZeroOrDefault(p.config.Scopes,
+		[]goidc.Scope{goidc.ScopeOpenID})
+
+	p.config.ClientManager = nonZeroOrDefault(p.config.ClientManager,
+		goidc.ClientManager(storage.NewClientManager()))
+
+	p.config.AuthnSessionManager = nonZeroOrDefault(p.config.AuthnSessionManager,
+		goidc.AuthnSessionManager(storage.NewAuthnSessionManager()))
+
+	p.config.GrantSessionManager = nonZeroOrDefault(p.config.GrantSessionManager,
+		goidc.GrantSessionManager(storage.NewGrantSessionManager()))
+
+	p.config.TokenOptionsFunc = nonZeroOrDefault(p.config.TokenOptionsFunc,
+		defaultTokenOptionsFunc())
+
+	p.config.ResponseModes = []goidc.ResponseMode{goidc.ResponseModeQuery,
+		goidc.ResponseModeFragment, goidc.ResponseModeFormPost}
+
+	p.config.DefaultSubIdentifierType = nonZeroOrDefault(p.config.DefaultSubIdentifierType,
+		goidc.SubIdentifierPublic)
+
+	p.config.SubIdentifierTypes = nonZeroOrDefault(p.config.SubIdentifierTypes,
+		[]goidc.SubIdentifierType{goidc.SubIdentifierPublic})
+
+	p.config.ClaimTypes = nonZeroOrDefault(p.config.ClaimTypes,
+		[]goidc.ClaimType{goidc.ClaimTypeNormal})
+
+	p.config.AuthnSessionTimeoutSecs = nonZeroOrDefault(p.config.AuthnSessionTimeoutSecs,
+		defaultAuthnSessionTimeoutSecs)
+
+	p.config.IDTokenLifetimeSecs = nonZeroOrDefault(p.config.IDTokenLifetimeSecs,
+		defaultIDTokenLifetimeSecs)
+
+	p.config.EndpointWellKnown = nonZeroOrDefault(p.config.EndpointWellKnown,
+		defaultEndpointWellKnown)
+
+	p.config.EndpointJWKS = nonZeroOrDefault(p.config.EndpointJWKS,
+		defaultEndpointJSONWebKeySet)
+
+	p.config.EndpointToken = nonZeroOrDefault(p.config.EndpointToken,
+		defaultEndpointToken)
+
+	p.config.EndpointAuthorize = nonZeroOrDefault(p.config.EndpointAuthorize,
+		defaultEndpointAuthorize)
+
+	p.config.EndpointUserInfo = nonZeroOrDefault(p.config.EndpointUserInfo,
+		defaultEndpointUserInfo)
 
 	if slices.Contains(p.config.GrantTypes, goidc.GrantAuthorizationCode) {
-		p.config.ResponseTypes = append(
-			p.config.ResponseTypes,
-			goidc.ResponseTypeCode,
-		)
+		p.config.ResponseTypes = append(p.config.ResponseTypes, goidc.ResponseTypeCode)
 	}
 
 	if slices.Contains(p.config.GrantTypes, goidc.GrantImplicit) {
-		p.config.ResponseTypes = append(
-			p.config.ResponseTypes,
-			goidc.ResponseTypeToken,
-			goidc.ResponseTypeIDToken,
-			goidc.ResponseTypeIDTokenAndToken,
-		)
+		p.config.ResponseTypes = append(p.config.ResponseTypes, goidc.ResponseTypeToken,
+			goidc.ResponseTypeIDToken, goidc.ResponseTypeIDTokenAndToken)
 	}
 
 	if slices.Contains(p.config.GrantTypes, goidc.GrantAuthorizationCode) &&
 		slices.Contains(p.config.GrantTypes, goidc.GrantImplicit) {
-		p.config.ResponseTypes = append(
-			p.config.ResponseTypes,
-			goidc.ResponseTypeCodeAndIDToken,
-			goidc.ResponseTypeCodeAndToken,
-			goidc.ResponseTypeCodeAndIDTokenAndToken,
-		)
+		p.config.ResponseTypes = append(p.config.ResponseTypes, goidc.ResponseTypeCodeAndIDToken,
+			goidc.ResponseTypeCodeAndToken, goidc.ResponseTypeCodeAndIDTokenAndToken)
 	}
 
-	authnMethods := append(
-		p.config.TokenAuthnMethods,
-		p.config.TokenIntrospectionAuthnMethods...,
-	)
-	authnMethods = append(
-		authnMethods,
-		p.config.TokenRevocationAuthnMethods...,
-	)
+	authnMethods := append(p.config.TokenAuthnMethods,
+		p.config.TokenIntrospectionAuthnMethods...)
+	authnMethods = append(authnMethods,
+		p.config.TokenRevocationAuthnMethods...)
 	if slices.Contains(authnMethods, goidc.ClientAuthnPrivateKeyJWT) {
-		p.config.PrivateKeyJWTSigAlgs = nonZeroOrDefault(
-			p.config.PrivateKeyJWTSigAlgs,
-			[]jose.SignatureAlgorithm{defaultPrivateKeyJWTSigAlg},
-		)
+		p.config.PrivateKeyJWTSigAlgs = nonZeroOrDefault(p.config.PrivateKeyJWTSigAlgs,
+			[]jose.SignatureAlgorithm{defaultPrivateKeyJWTSigAlg})
 	}
 	if slices.Contains(authnMethods, goidc.ClientAuthnSecretJWT) {
-		p.config.ClientSecretJWTSigAlgs = nonZeroOrDefault(
-			p.config.ClientSecretJWTSigAlgs,
-			[]jose.SignatureAlgorithm{defaultSecretJWTSigAlg},
-		)
+		p.config.ClientSecretJWTSigAlgs = nonZeroOrDefault(p.config.ClientSecretJWTSigAlgs,
+			[]jose.SignatureAlgorithm{defaultSecretJWTSigAlg})
 	}
 	if slices.Contains(authnMethods, goidc.ClientAuthnPrivateKeyJWT) ||
 		slices.Contains(authnMethods, goidc.ClientAuthnSecretJWT) {
-		p.config.AssertionLifetimeSecs = nonZeroOrDefault(
-			p.config.AssertionLifetimeSecs,
-			defaultJWTLifetimeSecs,
-		)
+		p.config.AssertionLifetimeSecs = nonZeroOrDefault(p.config.AssertionLifetimeSecs,
+			defaultJWTLifetimeSecs)
 	}
 
 	if p.config.DCRIsEnabled {
-		p.config.EndpointDCR = nonZeroOrDefault(
-			p.config.EndpointDCR,
-			defaultEndpointDynamicClient,
-		)
+		p.config.EndpointDCR = nonZeroOrDefault(p.config.EndpointDCR,
+			defaultEndpointDynamicClient)
 	}
 
 	if p.config.PARIsEnabled {
-		p.config.EndpointPushedAuthorization = nonZeroOrDefault(
-			p.config.EndpointPushedAuthorization,
-			defaultEndpointPushedAuthorizationRequest,
-		)
+		p.config.EndpointPushedAuthorization = nonZeroOrDefault(p.config.EndpointPushedAuthorization,
+			defaultEndpointPushedAuthorizationRequest)
 	}
 
 	if p.config.JARIsEnabled {
-		p.config.JARLifetimeSecs = nonZeroOrDefault(
-			p.config.JARLifetimeSecs,
-			defaultJWTLifetimeSecs,
-		)
-		p.config.JARLeewayTimeSecs = nonZeroOrDefault(
-			p.config.JARLeewayTimeSecs,
-			defaultJWTLeewayTimeSecs,
-		)
+		p.config.JARLifetimeSecs = nonZeroOrDefault(p.config.JARLifetimeSecs,
+			defaultJWTLifetimeSecs)
+		p.config.JARLeewayTimeSecs = nonZeroOrDefault(p.config.JARLeewayTimeSecs,
+			defaultJWTLeewayTimeSecs)
 	}
 
 	if p.config.JAREncIsEnabled {
-		p.config.JARContentEncAlgs = nonZeroOrDefault(
-			p.config.JARContentEncAlgs,
-			[]jose.ContentEncryption{jose.A128CBC_HS256},
-		)
+		p.config.JARContentEncAlgs = nonZeroOrDefault(p.config.JARContentEncAlgs,
+			[]jose.ContentEncryption{jose.A128CBC_HS256})
 	}
 
 	if p.config.JARMIsEnabled {
-		p.config.JARMLifetimeSecs = nonZeroOrDefault(
-			p.config.JARMLifetimeSecs,
-			defaultJWTLifetimeSecs,
-		)
-		p.config.ResponseModes = append(
-			p.config.ResponseModes,
-			goidc.ResponseModeJWT,
-			goidc.ResponseModeQueryJWT,
-			goidc.ResponseModeFragmentJWT,
-			goidc.ResponseModeFormPostJWT,
-		)
+		p.config.JARMLifetimeSecs = nonZeroOrDefault(p.config.JARMLifetimeSecs,
+			defaultJWTLifetimeSecs)
+		p.config.ResponseModes = append(p.config.ResponseModes, goidc.ResponseModeJWT,
+			goidc.ResponseModeQueryJWT, goidc.ResponseModeFragmentJWT, goidc.ResponseModeFormPostJWT)
 	}
 
 	if p.config.JARMEncIsEnabled {
-		p.config.JARMDefaultContentEncAlg = nonZeroOrDefault(
-			p.config.JARMDefaultContentEncAlg,
-			jose.A128CBC_HS256,
-		)
-		p.config.JARMContentEncAlgs = nonZeroOrDefault(
-			p.config.JARMContentEncAlgs,
-			[]jose.ContentEncryption{jose.A128CBC_HS256},
-		)
+		p.config.JARMDefaultContentEncAlg = nonZeroOrDefault(p.config.JARMDefaultContentEncAlg,
+			jose.A128CBC_HS256)
+		p.config.JARMContentEncAlgs = nonZeroOrDefault(p.config.JARMContentEncAlgs,
+			[]jose.ContentEncryption{jose.A128CBC_HS256})
 	}
 
 	if p.config.DPoPIsEnabled {
-		p.config.DPoPLifetimeSecs = nonZeroOrDefault(
-			p.config.DPoPLifetimeSecs,
-			defaultJWTLifetimeSecs,
-		)
-		p.config.DPoPLeewayTimeSecs = nonZeroOrDefault(
-			p.config.DPoPLeewayTimeSecs,
-			defaultJWTLeewayTimeSecs,
-		)
+		p.config.DPoPLifetimeSecs = nonZeroOrDefault(p.config.DPoPLifetimeSecs,
+			defaultJWTLifetimeSecs)
+		p.config.DPoPLeewayTimeSecs = nonZeroOrDefault(p.config.DPoPLeewayTimeSecs,
+			defaultJWTLeewayTimeSecs)
 	}
 
 	if p.config.TokenIntrospectionIsEnabled {
-		p.config.EndpointIntrospection = nonZeroOrDefault(
-			p.config.EndpointIntrospection,
-			defaultEndpointTokenIntrospection,
-		)
+		p.config.EndpointIntrospection = nonZeroOrDefault(p.config.EndpointIntrospection,
+			defaultEndpointTokenIntrospection)
 	}
 
 	if p.config.TokenRevocationIsEnabled {
-		p.config.EndpointTokenRevocation = nonZeroOrDefault(
-			p.config.EndpointTokenRevocation,
-			defaultEndpointTokenRevocation,
-		)
+		p.config.EndpointTokenRevocation = nonZeroOrDefault(p.config.EndpointTokenRevocation,
+			defaultEndpointTokenRevocation)
 	}
 
 	if p.config.UserEncIsEnabled {
-		p.config.UserDefaultContentEncAlg = nonZeroOrDefault(
-			p.config.UserDefaultContentEncAlg,
-			jose.A128CBC_HS256,
-		)
-		p.config.UserContentEncAlgs = nonZeroOrDefault(
-			p.config.UserContentEncAlgs,
-			[]jose.ContentEncryption{jose.A128CBC_HS256},
-		)
+		p.config.UserDefaultContentEncAlg = nonZeroOrDefault(p.config.UserDefaultContentEncAlg,
+			jose.A128CBC_HS256)
+		p.config.UserContentEncAlgs = nonZeroOrDefault(p.config.UserContentEncAlgs,
+			[]jose.ContentEncryption{jose.A128CBC_HS256})
 	}
 
 	if slices.Contains(p.config.SubIdentifierTypes, goidc.SubIdentifierPairwise) {
-		p.config.GeneratePairwiseSubIDFunc = nonZeroOrDefault(
-			p.config.GeneratePairwiseSubIDFunc,
-			defaultGeneratePairwiseSubIDFunc(),
-		)
+		p.config.GeneratePairwiseSubIDFunc = nonZeroOrDefault(p.config.GeneratePairwiseSubIDFunc,
+			defaultGeneratePairwiseSubIDFunc())
+	}
+
+	if p.config.CIBAIsEnabled {
+		p.config.EndpointCIBA = nonZeroOrDefault(p.config.EndpointCIBA,
+			defaultEndpointCIBA)
 	}
 
 	return nil

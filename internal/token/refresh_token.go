@@ -30,7 +30,7 @@ func generateRefreshTokenGrant(
 
 	grantSession, err := ctx.GrantSessionByRefreshToken(req.refreshToken)
 	if err != nil {
-		return response{}, goidc.Errorf(goidc.ErrorCodeInvalidRequest,
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"invalid refresh_token", err)
 	}
 
@@ -44,7 +44,7 @@ func generateRefreshTokenGrant(
 
 	token, err := Make(ctx, grantSession.GrantInfo, client)
 	if err != nil {
-		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
+		return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
 			"could not generate token during refresh token grant", err)
 	}
 
@@ -70,7 +70,7 @@ func generateRefreshTokenGrant(
 			newIDTokenOptions(grantSession.GrantInfo),
 		)
 		if err != nil {
-			return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
+			return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
 				"could not generate id token during refresh token grant", err)
 		}
 	}
@@ -131,7 +131,7 @@ func updateRefreshTokenGrantSession(
 	updatePoPForRefreshedToken(ctx, &grantSession.GrantInfo)
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInternalError,
+		return goidc.WrapError(goidc.ErrorCodeInternalError,
 			"could not store the grant session", err)
 	}
 

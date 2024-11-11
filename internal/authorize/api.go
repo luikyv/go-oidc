@@ -14,6 +14,13 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 		)
 	}
 
+	if config.CIBAIsEnabled {
+		router.HandleFunc(
+			"POST "+config.EndpointPrefix+config.EndpointCIBA,
+			oidc.Handler(config, handlerCIBA),
+		)
+	}
+
 	router.HandleFunc(
 		"GET "+config.EndpointPrefix+config.EndpointAuthorize,
 		oidc.Handler(config, handler),
@@ -77,4 +84,18 @@ func handlerCallback(ctx oidc.Context) {
 		ctx.WriteError(err)
 	}
 
+}
+
+func handlerCIBA(ctx oidc.Context) {
+
+	req := newFormRequest(ctx.Request)
+	resp, err := initBackAuth(ctx, req)
+	if err != nil {
+		ctx.WriteError(err)
+		return
+	}
+
+	if err := ctx.Write(resp, http.StatusOK); err != nil {
+		ctx.WriteError(err)
+	}
 }

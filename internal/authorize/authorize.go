@@ -40,10 +40,9 @@ func initAuthNoRedirect(ctx oidc.Context, client *goidc.Client, req request) err
 
 func continueAuth(ctx oidc.Context, callbackID string) error {
 
-	// Fetch the session using the callback ID.
 	session, err := ctx.AuthnSessionByCallbackID(callbackID)
 	if err != nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "could not load the session")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not load the session", err)
 	}
 
 	if session.IsExpired() {
@@ -53,7 +52,7 @@ func continueAuth(ctx oidc.Context, callbackID string) error {
 	if oauthErr := authenticate(ctx, session); oauthErr != nil {
 		client, err := ctx.Client(session.ClientID)
 		if err != nil {
-			return goidc.NewError(goidc.ErrorCodeInternalError, "could not load the client")
+			return goidc.WrapError(goidc.ErrorCodeInternalError, "could not load the client", err)
 		}
 		return redirectError(ctx, oauthErr, client)
 	}
@@ -85,7 +84,7 @@ func initAuthnSession(
 	}
 	session.PolicyID = policy.ID
 	session.CallbackID = callbackID()
-	session.ReferenceID = ""
+	session.PushedAuthReqID = ""
 	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.AuthnSessionTimeoutSecs
 	if session.IDTokenHint != "" {
 		// The ID token hint was already validated.
@@ -341,9 +340,7 @@ func authorizeAuthnSession(
 	if !session.ResponseType.Contains(goidc.ResponseTypeCode) {
 		// The client didn't request an authorization code to later exchange it
 		// for an access token, so we don't keep the session anymore.
-		if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-			return err
-		}
+		return ctx.DeleteAuthnSession(session.ID)
 	}
 
 	session.AuthorizationCode = authorizationCode()

@@ -24,7 +24,7 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 
 	grantSession, err := ctx.GrantSessionByTokenID(tokenID)
 	if err != nil {
-		return response{}, goidc.Errorf(goidc.ErrorCodeInvalidRequest,
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"invalid token", err)
 	}
 
@@ -34,7 +34,7 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 
 	client, err := ctx.Client(grantSession.ClientID)
 	if err != nil {
-		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
+		return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
 			"could not load the client", err)
 	}
 
@@ -56,7 +56,7 @@ func userInfoResponse(
 ) {
 	sub, err := ctx.ExportableSubject(grantSession.Subject, c)
 	if err != nil {
-		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
+		return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
 			"internal error", err)
 	}
 
@@ -112,21 +112,21 @@ func signUserInfoClaims(
 	if ctx.UserInfoSigAlgsContainsNone() && c.UserInfoSigAlg == goidc.NoneSignatureAlgorithm {
 		unsignedJWT, err := jwtutil.Unsigned(claims)
 		if err != nil {
-			return "", goidc.Errorf(goidc.ErrorCodeInternalError, "internal error signing the user info", err)
+			return "", goidc.WrapError(goidc.ErrorCodeInternalError, "internal error signing the user info", err)
 		}
 		return unsignedJWT, nil
 	}
 
 	jwk, err := ctx.UserInfoSigKeyForClient(c)
 	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
+		return "", goidc.WrapError(goidc.ErrorCodeInternalError,
 			"internal error", err)
 	}
 
 	jws, err := jwtutil.Sign(claims, jwk,
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
 	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
+		return "", goidc.WrapError(goidc.ErrorCodeInternalError,
 			"could not sign the user info claims", err)
 	}
 
@@ -143,7 +143,7 @@ func encryptUserInfoJWT(
 ) {
 	jwk, err := clientutil.JWKByAlg(ctx, c, string(c.UserInfoKeyEncAlg))
 	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInvalidRequest,
+		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"could not find a jwk to encrypt the user info response", err)
 	}
 
@@ -153,7 +153,7 @@ func encryptUserInfoJWT(
 	}
 	userInfoJWE, err := jwtutil.Encrypt(userInfoJWT, jwk, contentEncAlg)
 	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
+		return "", goidc.WrapError(goidc.ErrorCodeInternalError,
 			"could not encrypt the user info response", err)
 	}
 

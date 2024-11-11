@@ -26,6 +26,8 @@ type IDTokenOptions struct {
 	AccessToken       string
 	AuthorizationCode string
 	State             string
+	RefreshToken      string
+	AuthReqID         string
 }
 
 func newIDTokenOptions(grantInfo goidc.GrantInfo) IDTokenOptions {
@@ -45,6 +47,7 @@ type request struct {
 	resources         goidc.Resources
 	authDetails       []goidc.AuthorizationDetail
 	assertion         string
+	authReqID         string
 }
 
 func newRequest(r *http.Request) request {
@@ -57,6 +60,7 @@ func newRequest(r *http.Request) request {
 		codeVerifier:      r.PostFormValue("code_verifier"),
 		resources:         r.PostForm["resource"],
 		assertion:         r.PostFormValue("assertion"),
+		authReqID:         r.PostFormValue("auth_req_id"),
 	}
 
 	if authDetails := r.PostFormValue("authorization_details"); authDetails != "" {
@@ -70,14 +74,15 @@ func newRequest(r *http.Request) request {
 }
 
 type response struct {
-	AccessToken          string                      `json:"access_token"`
+	AccessToken          string                      `json:"access_token,omitempty"`
 	IDToken              string                      `json:"id_token,omitempty"`
 	RefreshToken         string                      `json:"refresh_token,omitempty"`
-	ExpiresIn            int                         `json:"expires_in"`
-	TokenType            goidc.TokenType             `json:"token_type"`
+	ExpiresIn            int                         `json:"expires_in,omitempty"`
+	TokenType            goidc.TokenType             `json:"token_type,omitempty"`
 	Scopes               string                      `json:"scope,omitempty"`
 	AuthorizationDetails []goidc.AuthorizationDetail `json:"authorization_details,omitempty"`
 	Resources            goidc.Resources             `json:"resources,omitempty"`
+	AuthReqID            string                      `json:"auth_req_id,omitempty"`
 }
 
 type queryRequest struct {

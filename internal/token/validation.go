@@ -72,7 +72,7 @@ func validateBindingTLS(
 		// 	* The client requires TLS binding.
 		// 	* TLS binding is required as a validation option.
 		if ctx.MTLSTokenBindingIsRequired || client.TLSTokenBindingIsRequired || opts.tlsIsRequired {
-			return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid client certificate", err)
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid client certificate", err)
 		}
 		return nil
 	}
@@ -138,7 +138,7 @@ func validateAuthDetails(
 	}
 
 	if err := ctx.CompareAuthDetails(grantedDetails, req.authDetails); err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidAuthDetails,
+		return goidc.WrapError(goidc.ErrorCodeInvalidAuthDetails,
 			"invalid authorization details", err)
 	}
 

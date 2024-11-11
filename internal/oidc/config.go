@@ -55,6 +55,7 @@ type Configuration struct {
 	EndpointToken               string
 	EndpointAuthorize           string
 	EndpointPushedAuthorization string
+	EndpointCIBA                string
 	EndpointDCR                 string
 	EndpointUserInfo            string
 	EndpointIntrospection       string
@@ -116,6 +117,7 @@ type Configuration struct {
 	JARSigAlgs                          []jose.SignatureAlgorithm
 	JARByReferenceIsEnabled             bool
 	JARRequestURIRegistrationIsRequired bool
+	// TODO: Remove if not needed.
 	// JARLifetimeSecs defines the max difference allowed between the claims "iat"
 	// and "exp" for request objects.
 	JARLifetimeSecs   int
@@ -133,6 +135,18 @@ type Configuration struct {
 	// PARAllowUnregisteredRedirectURI indicates whether the redirect URIs
 	// informed during PAR must be previously registered or not.
 	PARAllowUnregisteredRedirectURI bool
+
+	CIBAIsEnabled                  bool
+	CIBATokenDeliveryModels        []goidc.CIBATokenDeliveryMode
+	InitBackAuthFunc               goidc.InitBackAuthFunc
+	ValidateBackAuthFunc           goidc.ValidateBackAuthFunc
+	CIBAUserCodeIsEnabled          bool
+	CIBADefaultSessionLifetimeSecs int
+	CIBAPollingIntervalSecs        int
+
+	CIBAJARIsEnabled  bool
+	CIBAJARIsRequired bool
+	CIBAJARSigAlgs    []jose.SignatureAlgorithm
 
 	MTLSIsEnabled              bool
 	MTLSHost                   string

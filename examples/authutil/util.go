@@ -111,7 +111,7 @@ func PrivateJWKSFunc(filename string) goidc.PrivateJWKSFunc {
 		log.Fatal(err)
 	}
 
-	return func(r *http.Request) (jose.JSONWebKeySet, error) {
+	return func(ctx context.Context) (jose.JSONWebKeySet, error) {
 		return jwks, nil
 	}
 }
@@ -220,8 +220,8 @@ func HTTPClient(_ context.Context) *http.Client {
 	}
 }
 
-func ErrorLoggingFunc(r *http.Request, err error) {
-	log.Printf("error during request %s: %s\n", r.RequestURI, err.Error())
+func ErrorLoggingFunc(ctx context.Context, err error) {
+	log.Printf("error: %s\n", err.Error())
 }
 
 func RenderError(templatesDir string) goidc.RenderErrorFunc {

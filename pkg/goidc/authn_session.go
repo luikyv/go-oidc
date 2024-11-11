@@ -11,8 +11,15 @@ import (
 type AuthnSessionManager interface {
 	Save(ctx context.Context, session *AuthnSession) error
 	SessionByCallbackID(ctx context.Context, callbackID string) (*AuthnSession, error)
-	SessionByAuthorizationCode(ctx context.Context, authorizationCode string) (*AuthnSession, error)
-	SessionByReferenceID(ctx context.Context, requestURI string) (*AuthnSession, error)
+	SessionByAuthCode(ctx context.Context, authorizationCode string) (*AuthnSession, error)
+	// SessionByPushedAuthReqID fetches an authn session by the request URI created
+	// during PAR.
+	// If PAR is not enalbed, this function can be left empty.
+	SessionByPushedAuthReqID(ctx context.Context, id string) (*AuthnSession, error)
+	// SessionByCIBAAuthID fetches an authn session by the auth request ID created
+	// during CIBA.
+	// If CIBA is not enalbed, this function can be left empty.
+	SessionByCIBAAuthID(ctx context.Context, id string) (*AuthnSession, error)
 	Delete(ctx context.Context, id string) error
 }
 
@@ -22,17 +29,18 @@ type AuthnSessionManager interface {
 // authentication flows.
 type AuthnSession struct {
 	ID string `json:"id"`
-	// ReferenceID is the id generated during /par used to fetch the session
+	// PushedAuthReqID is the id generated during /par used to fetch the session
 	// during calls to /authorize.
 	//
 	// This value will be returned as the request_uri of the /par response.
-	ReferenceID string `json:"reference_id"`
+	PushedAuthReqID string `json:"request_uri,omitempty"`
 	// CallbackID is the id used to fetch the authentication session after user
 	// interaction during calls to the callback endpoint.
-	CallbackID string `json:"callback_id"`
+	CallbackID string `json:"callback_id,omitempty"`
+	CIBAAuthID string `json:"auth_req_id,omitempty"`
 	// PolicyID is the id of the autentication policy used to authenticate
 	// the user.
-	PolicyID           string `json:"policy_id"`
+	PolicyID           string `json:"policy_id,omitempty"`
 	ExpiresAtTimestamp int    `json:"expires_at"`
 	CreatedAtTimestamp int    `json:"created_at"`
 	// Subject is the user identifier.
@@ -49,8 +57,6 @@ type AuthnSession struct {
 	GrantedResources   Resources             `json:"granted_resources,omitempty"`
 	AuthorizationCode  string                `json:"authorization_code,omitempty"`
 	IDTokenHintClaims  map[string]any        `json:"id_token_hint_claim,omitempty"`
-	// ProtectedParameters contains custom parameters sent by PAR.
-	ProtectedParameters map[string]any `json:"protected_params,omitempty"`
 	// Store allows storing information between user interactions.
 	Store                    map[string]any `json:"store,omitempty"`
 	AdditionalTokenClaims    map[string]any `json:"additional_token_claims,omitempty"`

@@ -46,7 +46,7 @@ func validClaims(
 	parsedToken, err := jwt.ParseSigned(token, algs)
 	if err != nil {
 		// If the token is not a valid JWT, we'll treat it as an opaque token.
-		return nil, goidc.Errorf(goidc.ErrorCodeInvalidRequest,
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"could not parse the token", err)
 	}
 
@@ -57,20 +57,20 @@ func validClaims(
 	keyID := parsedToken.Headers[0].KeyID
 	publicKey, err := ctx.PublicKey(keyID)
 	if err != nil || publicKey.Use != string(goidc.KeyUsageSignature) {
-		return nil, goidc.Errorf(goidc.ErrorCodeAccessDenied, "invalid token", err)
+		return nil, goidc.WrapError(goidc.ErrorCodeAccessDenied, "invalid token", err)
 	}
 
 	var claims jwt.Claims
 	var rawClaims map[string]any
 	if err := parsedToken.Claims(publicKey.Key, &claims, &rawClaims); err != nil {
-		return nil, goidc.Errorf(goidc.ErrorCodeAccessDenied,
+		return nil, goidc.WrapError(goidc.ErrorCodeAccessDenied,
 			"invalid token", err)
 	}
 
 	if err := claims.ValidateWithLeeway(jwt.Expected{
 		Issuer: ctx.Host,
 	}, time.Duration(0)); err != nil {
-		return nil, goidc.Errorf(goidc.ErrorCodeAccessDenied, "invalid token", err)
+		return nil, goidc.WrapError(goidc.ErrorCodeAccessDenied, "invalid token", err)
 	}
 
 	return rawClaims, nil
@@ -92,6 +92,8 @@ func generateGrant(
 		return generateRefreshTokenGrant(ctx, req)
 	case goidc.GrantJWTBearer:
 		return generateJWTBearerGrant(ctx, req)
+	case goidc.GrantCIBA:
+		return generateCIBAGrant(ctx, req)
 	default:
 		return response{}, goidc.NewError(goidc.ErrorCodeUnsupportedGrantType,
 			"unsupported grant type")

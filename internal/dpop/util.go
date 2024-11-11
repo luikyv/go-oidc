@@ -57,7 +57,7 @@ func ValidateJWT(
 ) error {
 	parsedDPoPJWT, err := jwt.ParseSigned(dpopJWT, ctx.DPoPSigAlgs)
 	if err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid dpop jwt", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid dpop jwt", err)
 	}
 
 	if len(parsedDPoPJWT.Headers) != 1 {
@@ -77,7 +77,7 @@ func ValidateJWT(
 	var claims jwt.Claims
 	var dpopClaims Claims
 	if err := parsedDPoPJWT.Claims(jwk.Key, &claims, &dpopClaims); err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid dpop jwt", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid dpop jwt", err)
 	}
 
 	// Validate that the "iat" claim is present and it is not too far in the past.
@@ -92,7 +92,7 @@ func ValidateJWT(
 	}
 
 	if err := ctx.CheckJTI(claims.ID); err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid jti claim", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid jti claim", err)
 	}
 
 	if dpopClaims.HTTPMethod != ctx.RequestMethod() {

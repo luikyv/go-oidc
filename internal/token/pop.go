@@ -59,7 +59,7 @@ func validateTLSPoP(
 
 	clientCert, err := ctx.ClientCert()
 	if err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidToken,
+		return goidc.WrapError(goidc.ErrorCodeInvalidToken,
 			"the client certificate is required", err)
 	}
 

@@ -31,7 +31,7 @@ func generateAuthorizationCodeGrant(
 
 	session, err := authnSession(ctx, req.authorizationCode)
 	if err != nil {
-		return response{}, goidc.Errorf(goidc.ErrorCodeInvalidGrant,
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant,
 			"invalid authorization code", err)
 	}
 
@@ -46,7 +46,7 @@ func generateAuthorizationCodeGrant(
 
 	token, err := Make(ctx, grantInfo, client)
 	if err != nil {
-		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
+		return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
 			"could not generate access token for the authorization code grant", err)
 	}
 
@@ -72,8 +72,8 @@ func generateAuthorizationCodeGrant(
 	if strutil.ContainsOpenID(grantInfo.ActiveScopes) {
 		tokenResp.IDToken, err = MakeIDToken(ctx, client, newIDTokenOptions(grantInfo))
 		if err != nil {
-			return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
-				"could not generate access id token for the authorization code grant", err)
+			return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
+				"could not generate id token for the authorization code grant", err)
 		}
 	}
 
@@ -105,12 +105,12 @@ func authnSession(
 		// This ensures that even if the code is compromised, the access token
 		// that it generated cannot be misused by a malicious client.
 		_ = ctx.DeleteGrantSessionByAuthorizationCode(authzCode)
-		return nil, goidc.Errorf(goidc.ErrorCodeInvalidGrant,
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidGrant,
 			"invalid authorization code", err)
 	}
 
 	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-		return nil, goidc.Errorf(goidc.ErrorCodeInternalError,
+		return nil, goidc.WrapError(goidc.ErrorCodeInternalError,
 			"internal error", err)
 	}
 
@@ -136,7 +136,7 @@ func generateAuthorizationCodeGrantSession(
 	}
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return nil, goidc.Errorf(goidc.ErrorCodeInternalError,
+		return nil, goidc.WrapError(goidc.ErrorCodeInternalError,
 			"internal error", err)
 	}
 

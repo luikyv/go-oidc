@@ -1569,7 +1569,7 @@ func TestWithNotifyErrorFunc(t *testing.T) {
 		config: &oidc.Configuration{},
 	}
 	var handleErrorFunc goidc.NotifyErrorFunc = func(
-		r *http.Request,
+		ctx context.Context,
 		err error,
 	) {
 	}

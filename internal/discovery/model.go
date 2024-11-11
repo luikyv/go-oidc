@@ -50,7 +50,13 @@ type openIDConfiguration struct {
 	TokenRevocationEndpoint             string                    `json:"revocation_endpoint,omitempty"`
 	TokenRevocationAuthnMethods         []goidc.ClientAuthnType   `json:"revocation_endpoint_auth_methods_supported,omitempty"`
 	TokenRevocationAuthnSigAlgs         []jose.SignatureAlgorithm `json:"revocation_endpoint_auth_signing_alg_values_supported,omitempty"`
-	MTLSConfig                          *openIDMTLSConfiguration  `json:"mtls_endpoint_aliases,omitempty"`
+
+	CIBATokenDeliveryModes []goidc.CIBATokenDeliveryMode `json:"backchannel_token_delivery_modes_supported,omitempty"`
+	CIBAEndpoint           string                        `json:"backchannel_authentication_endpoint,omitempty"`
+	CIBAJARSigAlgs         []jose.SignatureAlgorithm     `json:"backchannel_authentication_request_signing_alg_values_supported,omitempty"`
+	CIBAUserCodeIsEnabled  bool                          `json:"backchannel_user_code_parameter_supported,omitempty"`
+
+	MTLSConfig *openIDMTLSConfiguration `json:"mtls_endpoint_aliases,omitempty"`
 	// TLSBoundTokensIsEnabled signals support for certificate bound tokens.
 	TLSBoundTokensIsEnabled bool                        `json:"tls_client_certificate_bound_access_tokens,omitempty"`
 	ACRs                    []goidc.ACR                 `json:"acr_values_supported,omitempty"`
@@ -63,5 +69,7 @@ type openIDMTLSConfiguration struct {
 	ParEndpoint                string `json:"pushed_authorization_request_endpoint,omitempty"`
 	UserinfoEndpoint           string `json:"userinfo_endpoint"`
 	ClientRegistrationEndpoint string `json:"registration_endpoint,omitempty"`
-	IntrospectionEndpoint      string `json:"introspection_endpoint,omitempty"`
+	TokenIntrospectionEndpoint string `json:"introspection_endpoint,omitempty"`
+	TokenRevocationEndpoint    string `json:"revocation_endpoint,omitempty"`
+	CIBAEndpoint               string `json:"backchannel_authentication_endpoint,omitempty"`
 }
