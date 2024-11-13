@@ -25,7 +25,6 @@ func TestJARFromRequestObject(t *testing.T) {
 			JARSigAlgs: []jose.SignatureAlgorithm{
 				jose.SignatureAlgorithm(privateJWK.Algorithm),
 			},
-			JARLifetimeSecs: 60,
 		},
 		Request: &http.Request{Method: http.MethodPost},
 	}
@@ -41,7 +40,7 @@ func TestJARFromRequestObject(t *testing.T) {
 		goidc.ClaimIssuer:   client.ID,
 		goidc.ClaimAudience: ctx.Host,
 		goidc.ClaimIssuedAt: now,
-		goidc.ClaimExpiry:   now + ctx.JARLifetimeSecs - 10,
+		goidc.ClaimExpiry:   now + 10,
 		"client_id":         client.ID,
 		"redirect_uri":      "https://example.com",
 		"response_type":     goidc.ResponseTypeCode,
@@ -102,7 +101,6 @@ func TestJARFromRequestObject_JARByReference(t *testing.T) {
 			JARSigAlgs: []jose.SignatureAlgorithm{
 				jose.SignatureAlgorithm(privateJWK.Algorithm),
 			},
-			JARLifetimeSecs:         60,
 			JARByReferenceIsEnabled: true,
 		},
 		Request: &http.Request{Method: http.MethodPost},
@@ -119,7 +117,7 @@ func TestJARFromRequestObject_JARByReference(t *testing.T) {
 		goidc.ClaimIssuer:   client.ID,
 		goidc.ClaimAudience: ctx.Host,
 		goidc.ClaimIssuedAt: now,
-		goidc.ClaimExpiry:   now + ctx.JARLifetimeSecs - 10,
+		goidc.ClaimExpiry:   now + 10,
 		"client_id":         client.ID,
 		"redirect_uri":      "https://example.com",
 		"response_type":     goidc.ResponseTypeCode,
@@ -186,7 +184,6 @@ func TestJARFromRequestObject_Unsigned(t *testing.T) {
 			JARSigAlgs: []jose.SignatureAlgorithm{
 				goidc.NoneSignatureAlgorithm,
 			},
-			JARLifetimeSecs: 60,
 		},
 		Request: &http.Request{Method: http.MethodPost},
 	}

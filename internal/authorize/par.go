@@ -28,8 +28,7 @@ func pushAuth(
 	}
 
 	if err := ctx.SaveAuthnSession(session); err != nil {
-		return pushedResponse{}, goidc.WrapError(goidc.ErrorCodeInternalError,
-			"internal error", err)
+		return pushedResponse{}, err
 	}
 	return pushedResponse{
 		RequestURI: session.PushedAuthReqID,

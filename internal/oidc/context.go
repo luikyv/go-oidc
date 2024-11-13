@@ -36,6 +36,7 @@ func NewContext(
 	}
 }
 
+// TODO: Rename this.
 func FromContext(ctx context.Context, config *Configuration) Context {
 	return Context{
 		context:       ctx,
@@ -247,28 +248,12 @@ func (ctx Context) SaveGrantSession(session *goidc.GrantSession) error {
 	)
 }
 
-func (ctx Context) GrantSessionByTokenID(
-	id string,
-) (
-	*goidc.GrantSession,
-	error,
-) {
-	return ctx.GrantSessionManager.SessionByTokenID(
-		ctx.Context(),
-		id,
-	)
+func (ctx Context) GrantSessionByTokenID(id string) (*goidc.GrantSession, error) {
+	return ctx.GrantSessionManager.SessionByTokenID(ctx.Context(), id)
 }
 
-func (ctx Context) GrantSessionByRefreshToken(
-	token string,
-) (
-	*goidc.GrantSession,
-	error,
-) {
-	return ctx.GrantSessionManager.SessionByRefreshToken(
-		ctx.Context(),
-		token,
-	)
+func (ctx Context) GrantSessionByRefreshToken(token string) (*goidc.GrantSession, error) {
+	return ctx.GrantSessionManager.SessionByRefreshToken(ctx.Context(), token)
 }
 
 func (ctx Context) DeleteGrantSession(id string) error {
@@ -287,7 +272,7 @@ func (ctx Context) SaveAuthnSession(session *goidc.AuthnSession) error {
 	if session.PushedAuthReqID != "" {
 		numberOfIndexes++
 	}
-	if session.AuthorizationCode != "" {
+	if session.AuthCode != "" {
 		numberOfIndexes++
 	}
 	if session.CIBAAuthID != "" {
@@ -302,16 +287,11 @@ func (ctx Context) SaveAuthnSession(session *goidc.AuthnSession) error {
 	return ctx.AuthnSessionManager.Save(ctx.Context(), session)
 }
 
-func (ctx Context) AuthnSessionByCallbackID(
-	id string,
-) (
-	*goidc.AuthnSession,
-	error,
-) {
+func (ctx Context) AuthnSessionByCallbackID(id string) (*goidc.AuthnSession, error) {
 	return ctx.AuthnSessionManager.SessionByCallbackID(ctx, id)
 }
 
-func (ctx Context) AuthnSessionByAuthorizationCode(code string) (*goidc.AuthnSession, error) {
+func (ctx Context) AuthnSessionByAuthCode(code string) (*goidc.AuthnSession, error) {
 	return ctx.AuthnSessionManager.SessionByAuthCode(ctx, code)
 }
 
@@ -465,7 +445,7 @@ func (ctx Context) WriteError(err error) {
 		return
 	}
 
-	if err := ctx.Write(oidcErr, oidcErr.Code.StatusCode()); err != nil {
+	if err := ctx.Write(oidcErr, oidcErr.StatusCode()); err != nil {
 		ctx.Response.WriteHeader(http.StatusInternalServerError)
 	}
 }

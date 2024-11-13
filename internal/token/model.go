@@ -82,7 +82,6 @@ type response struct {
 	Scopes               string                      `json:"scope,omitempty"`
 	AuthorizationDetails []goidc.AuthorizationDetail `json:"authorization_details,omitempty"`
 	Resources            goidc.Resources             `json:"resources,omitempty"`
-	AuthReqID            string                      `json:"auth_req_id,omitempty"`
 }
 
 type queryRequest struct {

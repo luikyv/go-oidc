@@ -21,14 +21,16 @@ import (
 	"strings"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 const (
-	Port             string = ":443"
-	Issuer           string = "https://auth.localhost"
-	MTLSHost         string = "https://matls-auth.localhost"
-	HeaderClientCert string = "X-Client-Cert"
+	Port                     string = ":443"
+	Issuer                   string = "https://auth.localhost"
+	MTLSHost                 string = "https://matls-auth.localhost"
+	headerClientCert         string = "X-Client-Cert"
+	headerXFAPIInteractionID        = "X-FAPI-Interaction-ID"
 )
 
 var (
@@ -184,7 +186,7 @@ func TokenOptionsFunc(keyID string) goidc.TokenOptionsFunc {
 }
 
 func ClientCertFunc(r *http.Request) (*x509.Certificate, error) {
-	rawClientCert := r.Header.Get(HeaderClientCert)
+	rawClientCert := r.Header.Get(headerClientCert)
 	if rawClientCert == "" {
 		return nil, errors.New("the client certificate was not informed")
 	}
@@ -272,7 +274,24 @@ func ClientCertMiddleware(next http.Handler) http.Handler {
 		encodedPem := url.QueryEscape(string(pemBytes))
 
 		// Transmit the client certificate in a header.
-		r.Header.Set(HeaderClientCert, encodedPem)
+		r.Header.Set(headerClientCert, encodedPem)
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func FAPIIDMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		interactionID := r.Header.Get(headerXFAPIInteractionID)
+
+		// Verify if the interaction ID is valid, generate a new value if not.
+		if _, err := uuid.Parse(interactionID); err != nil {
+			interactionID = uuid.NewString()
+		}
+
+		// Return the same interaction ID in the response or a new valid value
+		// if the original is invalid.
+		w.Header().Add(headerXFAPIInteractionID, interactionID)
 
 		next.ServeHTTP(w, r)
 	})

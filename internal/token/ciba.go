@@ -3,6 +3,7 @@ package token
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -33,9 +34,13 @@ func NotifyCIBAGrant(
 		return nil
 	}
 
+	type cibaResponse struct {
+		AuthReqID string `json:"auth_req_id,omitempty"`
+		response
+	}
 	if client.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePing {
-		return sendClientNotification(ctx, client, session, response{
-			AuthReqID: session.PushedAuthReqID,
+		return sendClientNotification(ctx, client, session, cibaResponse{
+			AuthReqID: session.CIBAAuthID,
 		})
 	}
 
@@ -59,13 +64,15 @@ func NotifyCIBAGrant(
 		return err
 	}
 
-	resp := response{
-		AuthReqID:            session.PushedAuthReqID,
-		AccessToken:          token.Value,
-		ExpiresIn:            token.LifetimeSecs,
-		TokenType:            token.Type,
-		RefreshToken:         grantSession.RefreshToken,
-		AuthorizationDetails: grantInfo.ActiveAuthDetails,
+	resp := cibaResponse{
+		AuthReqID: session.CIBAAuthID,
+		response: response{
+			AccessToken:          token.Value,
+			ExpiresIn:            token.LifetimeSecs,
+			TokenType:            token.Type,
+			RefreshToken:         grantSession.RefreshToken,
+			AuthorizationDetails: grantInfo.ActiveAuthDetails,
+		},
 	}
 
 	if strutil.ContainsOpenID(grantInfo.ActiveScopes) {
@@ -91,11 +98,50 @@ func NotifyCIBAGrant(
 	return sendClientNotification(ctx, client, session, resp)
 }
 
+func NotifyCIBAGrantFailure(
+	ctx oidc.Context,
+	authReqID string,
+	goidcErr goidc.Error,
+) error {
+	session, err := ctx.AuthnSessionByAuthReqID(authReqID)
+	if err != nil {
+		return err
+	}
+
+	client, err := ctx.Client(session.ClientID)
+	if err != nil {
+		return err
+	}
+
+	if client.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePoll {
+		return nil
+	}
+
+	type cibaErrorResponse struct {
+		AuthReqID string `json:"auth_req_id,omitempty"`
+		goidc.Error
+	}
+	if client.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePing {
+		return sendClientNotification(ctx, client, session, cibaErrorResponse{
+			AuthReqID: session.CIBAAuthID,
+		})
+	}
+
+	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
+		return err
+	}
+
+	return sendClientNotification(ctx, client, session, cibaErrorResponse{
+		AuthReqID: session.CIBAAuthID,
+		Error:     goidcErr,
+	})
+}
+
 func sendClientNotification(
 	ctx oidc.Context,
 	client *goidc.Client,
 	session *goidc.AuthnSession,
-	resp response,
+	resp any,
 ) error {
 	body, _ := json.Marshal(resp)
 	req, _ := http.NewRequest(http.MethodPost, client.CIBANotificationEndpoint,
@@ -109,7 +155,7 @@ func sendClientNotification(
 	}
 	defer notificationResp.Body.Close()
 
-	if notificationResp.StatusCode != http.StatusNoContent {
+	if !slices.Contains([]int{http.StatusNoContent, http.StatusOK}, notificationResp.StatusCode) {
 		return fmt.Errorf("sending notification resulted in status %d", notificationResp.StatusCode)
 	}
 
@@ -123,19 +169,19 @@ func generateCIBAGrant(
 	response,
 	error,
 ) {
-	if req.authReqID == "" {
-		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"authorization request id is required")
-	}
-
 	client, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
 	if err != nil {
 		return response{}, err
 	}
 
-	session, err := authnSessionByAuthReqID(ctx, req.authReqID)
+	if req.authReqID == "" {
+		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest,
+			"authorization request id is required")
+	}
+	session, err := ctx.AuthnSessionByAuthReqID(req.authReqID)
 	if err != nil {
-		return response{}, err
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant,
+			"invalid auth_req_id", err)
 	}
 
 	if err := validateCIBAGrantRequest(ctx, req, client, session); err != nil {
@@ -186,30 +232,7 @@ func generateCIBAGrant(
 	return resp, nil
 }
 
-func authnSessionByAuthReqID(
-	ctx oidc.Context,
-	authReqID string,
-) (
-	*goidc.AuthnSession,
-	error,
-) {
-	session, err := ctx.AuthnSessionByAuthReqID(authReqID)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := ctx.ValidateBackAuth(session); err != nil {
-		return nil, err
-	}
-
-	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeInternalError,
-			"internal error", err)
-	}
-
-	return session, nil
-}
-
+// TODO: Find a way to bind the token.
 func cibaPushedGrantInfo(
 	ctx oidc.Context,
 	session *goidc.AuthnSession,
@@ -227,7 +250,7 @@ func cibaPushedGrantInfo(
 		AdditionalIDTokenClaims:  session.AdditionalIDTokenClaims,
 		AdditionalUserInfoClaims: session.AdditionalUserInfoClaims,
 		AdditionalTokenClaims:    session.AdditionalTokenClaims,
-		Store:                    session.Store,
+		Store:                    session.Storage,
 	}
 
 	if ctx.AuthDetailsIsEnabled {
@@ -265,7 +288,7 @@ func cibaGrantInfo(
 		AdditionalIDTokenClaims:  session.AdditionalIDTokenClaims,
 		AdditionalUserInfoClaims: session.AdditionalUserInfoClaims,
 		AdditionalTokenClaims:    session.AdditionalTokenClaims,
-		Store:                    session.Store,
+		Store:                    session.Storage,
 	}
 
 	if req.scopes != "" {
@@ -314,8 +337,7 @@ func generateCIBAGrantSession(
 	}
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeInternalError,
-			"internal error", err)
+		return nil, err
 	}
 
 	return grantSession, nil
@@ -331,14 +353,23 @@ func validateCIBAGrantRequest(
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
 	}
 
+	if client.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePush {
+		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient,
+			"the client is not authorized as it is configured in push mode")
+	}
+
 	if client.ID != session.ClientID {
 		return goidc.NewError(goidc.ErrorCodeInvalidGrant,
 			"the authorization request id was not issued to the client")
 	}
 
 	if session.IsExpired() {
-		return goidc.NewError(goidc.ErrorCodeInvalidGrant,
+		return goidc.NewError(goidc.ErrorCodeExpiredToken,
 			"the authorization request id is expired")
+	}
+
+	if err := validateBackAuth(ctx, session); err != nil {
+		return err
 	}
 
 	if err := validateResources(ctx, session.GrantedResources, req); err != nil {
@@ -354,4 +385,30 @@ func validateCIBAGrantRequest(
 	}
 
 	return nil
+}
+
+func validateBackAuth(ctx oidc.Context, session *goidc.AuthnSession) error {
+	validationErr := ctx.ValidateBackAuth(session)
+	if validationErr == nil {
+		// If validation succeeds, delete the session to prevent reuse.
+		return ctx.DeleteAuthnSession(session.ID)
+	}
+
+	// If validation fails with either an authorization_pending or slow_down error
+	// (indicating the client should retry later), return the specific error
+	// without further processing.
+	var goidcErr goidc.Error
+	if errors.As(validationErr, &goidcErr) && slices.Contains(
+		[]goidc.ErrorCode{goidc.ErrorCodeAuthPending, goidc.ErrorCodeSlowDown},
+		goidcErr.Code,
+	) {
+		return validationErr
+	}
+
+	// If validation fails for other reasons, delete the session to prevent reuse
+	// and return the validation error.
+	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
+		return err
+	}
+	return validationErr
 }

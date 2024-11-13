@@ -250,7 +250,7 @@ func TestWithIntrospectionEndpoint(t *testing.T) {
 	}
 
 	// When.
-	err := WithIntrospectionEndpoint("/introspect")(p)
+	err := WithTokenIntrospectionEndpoint("/introspect")(p)
 
 	// Then.
 	if err != nil {

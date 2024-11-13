@@ -10,15 +10,14 @@ import (
 	"net/url"
 	"path/filepath"
 	"runtime"
-	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/examples/authutil"
+	"github.com/luikyv/go-oidc/internal/storage"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/luikyv/go-oidc/pkg/provider"
 )
-
-var openidProvider provider.Provider
 
 func main() {
 	// Get the file path of the source file.
@@ -32,18 +31,23 @@ func main() {
 	serverKeyID := "ps256_key"
 
 	// Create and configure the OpenID provider.
+	authnSessionManager := storage.NewAuthnSessionManager()
 	op, err := provider.New(
 		goidc.ProfileFAPI2,
 		authutil.Issuer,
 		authutil.PrivateJWKSFunc(serverJWKSFilePath),
+		provider.WithAuthnSessionStorage(authnSessionManager),
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithUserSignatureAlgs(jose.PS256),
+		provider.WithCIBAGrant(initBackAuthFunc(), validateBackAuthFunc(),
+			goidc.CIBATokenDeliveryModePoll, goidc.CIBATokenDeliveryModePing, goidc.CIBATokenDeliveryModePush),
+		provider.WithCIBAJAR(jose.PS256),
 		provider.WithMTLS(authutil.MTLSHost, authutil.ClientCertFunc),
+		provider.WithTLSCertTokenBindingRequired(),
 		provider.WithTokenAuthnMethods(goidc.ClientAuthnPrivateKeyJWT, goidc.ClientAuthnTLS),
 		provider.WithPrivateKeyJWTSignatureAlgs(jose.PS256),
 		provider.WithClaimsParameter(),
 		provider.WithRefreshTokenGrant(authutil.IssueRefreshToken, 6000),
-		provider.WithTLSCertTokenBinding(),
 		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
 		provider.WithACRs(authutil.ACRs[0], authutil.ACRs...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(serverKeyID)),
@@ -51,30 +55,29 @@ func main() {
 		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
 		provider.WithCheckJTIFunc(authutil.CheckJTIFunc()),
 		provider.WithDCR(authutil.DCRFunc, authutil.ValidateInitialTokenFunc),
-		provider.WithCIBAGrant(initBackAuthFunc(), validateBackAuthFunc(),
-			goidc.CIBATokenDeliveryModePoll, goidc.CIBATokenDeliveryModePing, goidc.CIBATokenDeliveryModePush),
-		provider.WithCIBAJAR(jose.PS256),
 	)
 	if err != nil {
 		log.Fatal(err)
 	}
-	openidProvider = op
 
 	// Set up the server.
 	mux := http.NewServeMux()
 	handler := op.Handler()
+	handler = authutil.FAPIIDMiddleware(handler)
 
 	hostURL, _ := url.Parse(authutil.Issuer)
 	mux.Handle(hostURL.Hostname()+"/", handler)
+	mux.Handle(hostURL.Hostname()+"/ciba-action", cibaActionHandler(op, authnSessionManager))
 
 	mtlsHostURL, _ := url.Parse(authutil.MTLSHost)
-	mux.Handle(mtlsHostURL.Hostname()+"/", authutil.ClientCertMiddleware(handler))
+	handler = authutil.ClientCertMiddleware(handler)
+	mux.Handle(mtlsHostURL.Hostname()+"/", handler)
 
 	server := &http.Server{
 		Addr:    authutil.Port,
 		Handler: mux,
 		TLSConfig: &tls.Config{
-			ClientAuth: tls.NoClientCert,
+			ClientAuth: tls.RequestClientCert,
 			CipherSuites: []uint16{
 				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
@@ -94,30 +97,65 @@ func main() {
 func initBackAuthFunc() goidc.InitBackAuthFunc {
 	return func(ctx context.Context, as *goidc.AuthnSession) error {
 
+		if len(as.BindingMessage) > 10 {
+			return goidc.NewError(goidc.ErrorCodeInvalidBindingMessage,
+				"invalid binding message")
+		}
+
 		as.SetUserID(as.LoginHint)
 		as.StoreParameter("ready", false)
+		as.GrantScopes(as.Scopes)
+
+		if as.RequestedExpiry != nil {
+			as.ExpiresAtTimestamp = timeutil.TimestampNow() + *as.RequestedExpiry
+		}
 
 		if as.ACRValues != "" {
 			as.SetIDTokenClaim(goidc.ClaimACR, as.ACRValues)
 		}
 
-		go func() {
-			time.Sleep(10 * time.Second)
-			as.GrantScopes(as.Scopes)
-			as.StoreParameter("ready", true)
-			if err := openidProvider.NotifyAuth(ctx, as.PushedAuthReqID); err != nil {
-				log.Println(err)
-			}
-		}()
 		return nil
 	}
 }
 
 func validateBackAuthFunc() goidc.ValidateBackAuthFunc {
 	return func(ctx context.Context, as *goidc.AuthnSession) error {
-		if as.Parameter("ready") == true {
-			return nil
+		if as.StoredParameter("error") == true {
+			return goidc.NewErrorWithStatus(goidc.ErrorCodeAccessDenied,
+				"access denied", http.StatusBadRequest)
 		}
-		return goidc.NewError(goidc.ErrorCodeAuthPending, "not ready")
+
+		if as.StoredParameter("ready") != true {
+			return goidc.NewError(goidc.ErrorCodeAuthPending, "not ready")
+		}
+
+		return nil
+	}
+}
+
+func cibaActionHandler(
+	op provider.Provider,
+	authnSessionManager *storage.AuthnSessionManager,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		authReqID := r.URL.Query().Get("token")
+		authnSession, _ := authnSessionManager.SessionByCIBAAuthID(r.Context(), authReqID)
+
+		action := r.URL.Query().Get("type")
+		if action != "allow" {
+			authnSession.StoreParameter("error", true)
+			_ = authnSessionManager.Save(r.Context(), authnSession)
+			goidcErr := goidc.NewError(goidc.ErrorCodeAccessDenied, "access denied")
+			if err := op.NotifyCIBAFailure(r.Context(), authReqID, goidcErr); err != nil {
+				log.Println(err)
+			}
+			return
+		}
+
+		authnSession.StoreParameter("ready", true)
+		_ = authnSessionManager.Save(r.Context(), authnSession)
+		if err := op.NotifyCIBASuccess(r.Context(), authReqID); err != nil {
+			log.Println(err)
+		}
 	}
 }

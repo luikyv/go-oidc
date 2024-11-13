@@ -68,8 +68,7 @@ func makeIDToken(
 
 	jwk, err := ctx.IDTokenSigKeyForClient(client)
 	if err != nil {
-		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest,
-			"internal error", err)
+		return "", err
 	}
 
 	claims, err := idTokenClaims(ctx, client, opts, jose.SignatureAlgorithm(jwk.Algorithm))

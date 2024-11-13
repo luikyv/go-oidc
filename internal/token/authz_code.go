@@ -55,7 +55,7 @@ func generateAuthorizationCodeGrant(
 		client,
 		grantInfo,
 		token,
-		session.AuthorizationCode,
+		session.AuthCode,
 	)
 	if err != nil {
 		return response{}, err
@@ -99,7 +99,7 @@ func authnSession(
 	*goidc.AuthnSession,
 	error,
 ) {
-	session, err := ctx.AuthnSessionByAuthorizationCode(authzCode)
+	session, err := ctx.AuthnSessionByAuthCode(authzCode)
 	if err != nil {
 		// Invalidate any grant associated with the authorization code.
 		// This ensures that even if the code is compromised, the access token
@@ -110,8 +110,7 @@ func authnSession(
 	}
 
 	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeInternalError,
-			"internal error", err)
+		return nil, err
 	}
 
 	return session, nil
@@ -136,8 +135,7 @@ func generateAuthorizationCodeGrantSession(
 	}
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeInternalError,
-			"internal error", err)
+		return nil, err
 	}
 
 	return grantSession, nil
@@ -212,7 +210,7 @@ func authorizationCodeGrantInfo(
 		AdditionalIDTokenClaims:  session.AdditionalIDTokenClaims,
 		AdditionalUserInfoClaims: session.AdditionalUserInfoClaims,
 		AdditionalTokenClaims:    session.AdditionalTokenClaims,
-		Store:                    session.Store,
+		Store:                    session.Storage,
 	}
 
 	if req.scopes != "" {

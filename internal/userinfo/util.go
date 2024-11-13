@@ -56,8 +56,7 @@ func userInfoResponse(
 ) {
 	sub, err := ctx.ExportableSubject(grantSession.Subject, c)
 	if err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
-			"internal error", err)
+		return response{}, err
 	}
 
 	userInfoClaims := map[string]any{
@@ -119,8 +118,7 @@ func signUserInfoClaims(
 
 	jwk, err := ctx.UserInfoSigKeyForClient(c)
 	if err != nil {
-		return "", goidc.WrapError(goidc.ErrorCodeInternalError,
-			"internal error", err)
+		return "", err
 	}
 
 	jws, err := jwtutil.Sign(claims, jwk,

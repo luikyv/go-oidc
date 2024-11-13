@@ -30,16 +30,15 @@ func initBackAuth(ctx oidc.Context, req request) (cibaResponse, error) {
 	}
 
 	if err := ctx.SaveAuthnSession(session); err != nil {
-		return cibaResponse{}, goidc.WrapError(goidc.ErrorCodeInternalError,
-			"internal error", err)
+		return cibaResponse{}, err
 	}
 
 	resp := cibaResponse{
-		AuthReqID: session.PushedAuthReqID,
+		AuthReqID: session.CIBAAuthID,
 		ExpiresIn: session.ExpiresAtTimestamp - timeutil.TimestampNow(),
 	}
 
-	if client.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePoll {
+	if client.CIBATokenDeliveryMode.IsPollableMode() {
 		resp.Interval = ctx.CIBAPollingIntervalSecs
 	}
 
@@ -65,7 +64,7 @@ func cibaAuthnSession(
 		return nil, err
 	}
 
-	session.PushedAuthReqID = uuid.NewString()
+	session.CIBAAuthID = uuid.NewString()
 	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.CIBADefaultSessionLifetimeSecs
 	if session.IDTokenHint != "" {
 		// The ID token hint was already validated.
@@ -80,6 +79,7 @@ func shouldUseJARDuringCIBA(
 	req goidc.AuthorizationParameters,
 	c *goidc.Client,
 ) bool {
+	// TODO: Review this.
 	if !ctx.CIBAJARIsEnabled {
 		return false
 	}
@@ -140,26 +140,26 @@ func cibaJARFromRequestObject(
 	jarAlgorithms := cibaJARAlgorithms(ctx, c)
 	parsedToken, err := jwt.ParseSigned(reqObject, jarAlgorithms)
 	if err != nil {
-		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"invalid request object", err)
 	}
 
 	// Verify that the assertion indicates the key ID.
 	if len(parsedToken.Headers) != 1 || parsedToken.Headers[0].KeyID == "" {
-		return request{}, goidc.NewError(goidc.ErrorCodeInvalidResquestObject, "invalid kid header")
+		return request{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid kid header")
 	}
 
 	// Verify that the key ID belongs to the client.
 	jwk, err := clientutil.JWKByKeyID(ctx, c, parsedToken.Headers[0].KeyID)
 	if err != nil {
-		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"could not fetch the client public key", err)
 	}
 
 	var claims jwt.Claims
 	var jarReq request
 	if err := parsedToken.Claims(jwk.Key, &claims, &jarReq); err != nil {
-		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"could not extract claims from the request object", err)
 	}
 
@@ -176,27 +176,27 @@ func validateCIBAJARClaims(
 	client *goidc.Client,
 ) error {
 	if claims.IssuedAt == nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
 			"claim 'iat' is required in the request object")
 	}
 
 	if claims.NotBefore == nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
 			"claim 'nbf' is required in the request object")
 	}
 
 	if claims.Expiry == nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
 			"claim 'exp' is required in the request object")
 	}
 
 	if claims.ID == "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
 			"claim 'jti' is required in the request object")
 	}
 
 	if err := ctx.CheckJTI(claims.ID); err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"invalid jti claim", err)
 	}
 
@@ -204,7 +204,7 @@ func validateCIBAJARClaims(
 		Issuer:      client.ID,
 		AnyAudience: []string{ctx.Host},
 	}); err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"the request object contains invalid claims", err)
 	}
 
@@ -212,11 +212,10 @@ func validateCIBAJARClaims(
 }
 
 func cibaJARAlgorithms(ctx oidc.Context, client *goidc.Client) []jose.SignatureAlgorithm {
-	jarAlgorithms := ctx.CIBAJARSigAlgs
 	if client.CIBAJARSigAlg != "" {
-		jarAlgorithms = []jose.SignatureAlgorithm{client.CIBAJARSigAlg}
+		return []jose.SignatureAlgorithm{client.CIBAJARSigAlg}
 	}
-	return jarAlgorithms
+	return ctx.CIBAJARSigAlgs
 }
 
 func validateCIBARequest(
@@ -230,7 +229,7 @@ func validateCIBARequest(
 			"grant ciba not allowed")
 	}
 
-	if !strutil.ContainsOpenID(req.Scopes) {
+	if ctx.OpenIDIsRequired && !strutil.ContainsOpenID(req.Scopes) {
 		return goidc.NewError(goidc.ErrorCodeInvalidScope,
 			"scope openid is required")
 	}

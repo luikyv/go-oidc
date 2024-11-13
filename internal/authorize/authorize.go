@@ -52,7 +52,7 @@ func continueAuth(ctx oidc.Context, callbackID string) error {
 	if oauthErr := authenticate(ctx, session); oauthErr != nil {
 		client, err := ctx.Client(session.ClientID)
 		if err != nil {
-			return goidc.WrapError(goidc.ErrorCodeInternalError, "could not load the client", err)
+			return err
 		}
 		return redirectError(ctx, oauthErr, client)
 	}
@@ -290,7 +290,7 @@ func finishFlowSuccessfully(
 	}
 
 	redirectParams := response{
-		authorizationCode: session.AuthorizationCode,
+		authorizationCode: session.AuthCode,
 		state:             session.State,
 	}
 	if session.ResponseType.Contains(goidc.ResponseTypeToken) {
@@ -318,7 +318,7 @@ func finishFlowSuccessfully(
 			Subject:                 session.Subject,
 			AdditionalIDTokenClaims: session.AdditionalIDTokenClaims,
 			AccessToken:             redirectParams.accessToken,
-			AuthorizationCode:       session.AuthorizationCode,
+			AuthorizationCode:       session.AuthCode,
 			State:                   session.State,
 		}
 
@@ -343,7 +343,7 @@ func authorizeAuthnSession(
 		return ctx.DeleteAuthnSession(session.ID)
 	}
 
-	session.AuthorizationCode = authorizationCode()
+	session.AuthCode = authorizationCode()
 	session.ExpiresAtTimestamp = timeutil.TimestampNow() + authorizationCodeLifetimeSecs
 	// Make sure the session won't be reached anymore from the callback endpoint.
 	session.CallbackID = ""
@@ -397,5 +397,6 @@ func implicitGrantInfo(
 }
 
 func setPoP(_ oidc.Context, grantInfo *goidc.GrantInfo, session *goidc.AuthnSession) {
+	// TODO: Review this.
 	grantInfo.JWKThumbprint = session.DPoPJWKThumbprint
 }

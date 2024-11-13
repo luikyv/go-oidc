@@ -59,8 +59,8 @@ func TestAuthnSessionByAuthorizationCode(t *testing.T) {
 	sessionID := "random_session_id"
 	authorizationCode := "random_authorization_code"
 	manager.Sessions[sessionID] = &goidc.AuthnSession{
-		ID:                sessionID,
-		AuthorizationCode: authorizationCode,
+		ID:       sessionID,
+		AuthCode: authorizationCode,
 	}
 
 	// When.

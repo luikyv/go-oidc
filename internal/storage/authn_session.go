@@ -55,7 +55,7 @@ func (m *AuthnSessionManager) SessionByAuthCode(
 	error,
 ) {
 	session, exists := m.firstSession(func(s *goidc.AuthnSession) bool {
-		return s.AuthorizationCode == authorizationCode
+		return s.AuthCode == authorizationCode
 	})
 	if !exists {
 		return nil, errors.New("entity not found")

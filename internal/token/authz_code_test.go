@@ -21,7 +21,7 @@ func TestGenerateGrant_AuthorizationCodeGrant(t *testing.T) {
 	req := request{
 		grantType:         goidc.GrantAuthorizationCode,
 		redirectURI:       client.RedirectURIs[0],
-		authorizationCode: session.AuthorizationCode,
+		authorizationCode: session.AuthCode,
 	}
 
 	// When.
@@ -43,7 +43,7 @@ func TestGenerateGrant_AuthorizationCodeGrant(t *testing.T) {
 		LastTokenExpiresAtTimestamp: grantSession.LastTokenExpiresAtTimestamp,
 		CreatedAtTimestamp:          grantSession.CreatedAtTimestamp,
 		ExpiresAtTimestamp:          grantSession.ExpiresAtTimestamp,
-		AuthorizationCode:           session.AuthorizationCode,
+		AuthorizationCode:           session.AuthCode,
 		GrantInfo: goidc.GrantInfo{
 			GrantType:     goidc.GrantAuthorizationCode,
 			Subject:       session.Subject,
@@ -113,7 +113,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails(t *testing.T) {
 	req := request{
 		grantType:         goidc.GrantAuthorizationCode,
 		redirectURI:       client.RedirectURIs[0],
-		authorizationCode: session.AuthorizationCode,
+		authorizationCode: session.AuthCode,
 	}
 
 	// When.
@@ -135,7 +135,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails(t *testing.T) {
 		LastTokenExpiresAtTimestamp: grantSession.LastTokenExpiresAtTimestamp,
 		CreatedAtTimestamp:          grantSession.CreatedAtTimestamp,
 		ExpiresAtTimestamp:          grantSession.ExpiresAtTimestamp,
-		AuthorizationCode:           session.AuthorizationCode,
+		AuthorizationCode:           session.AuthCode,
 		GrantInfo: goidc.GrantInfo{
 			GrantType:          goidc.GrantAuthorizationCode,
 			Subject:            session.Subject,
@@ -219,7 +219,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails_ClientRequestsSubset(t
 	req := request{
 		grantType:         goidc.GrantAuthorizationCode,
 		redirectURI:       client.RedirectURIs[0],
-		authorizationCode: session.AuthorizationCode,
+		authorizationCode: session.AuthCode,
 		authDetails: []goidc.AuthorizationDetail{
 			map[string]any{
 				"type":         "type1",
@@ -287,7 +287,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_ResourceIndicators(t *testing.T) {
 	req := request{
 		grantType:         goidc.GrantAuthorizationCode,
 		redirectURI:       client.RedirectURIs[0],
-		authorizationCode: session.AuthorizationCode,
+		authorizationCode: session.AuthCode,
 		resources:         []string{"https://resource1.com", "https://resource2.com"},
 	}
 
@@ -341,13 +341,13 @@ func TestGenerateGrant_AuthorizationCodeGrant_CodeReuseInvalidatesGrant(t *testi
 	_ = ctx.DeleteAuthnSession(session.ID)
 	_ = ctx.SaveGrantSession(&goidc.GrantSession{
 		ID:                "random_id",
-		AuthorizationCode: session.AuthorizationCode,
+		AuthorizationCode: session.AuthCode,
 	})
 
 	req := request{
 		grantType:         goidc.GrantAuthorizationCode,
 		redirectURI:       client.RedirectURIs[0],
-		authorizationCode: session.AuthorizationCode,
+		authorizationCode: session.AuthCode,
 	}
 
 	// When.
@@ -432,11 +432,11 @@ func setUpAuthzCodeGrant(t testing.TB) (
 			Scopes:      goidc.ScopeOpenID.ID,
 			RedirectURI: client.RedirectURIs[0],
 		},
-		AuthorizationCode:     authorizationCode,
+		AuthCode:              authorizationCode,
 		Subject:               "user_id",
 		CreatedAtTimestamp:    now,
 		ExpiresAtTimestamp:    now + 60,
-		Store:                 make(map[string]any),
+		Storage:               make(map[string]any),
 		AdditionalTokenClaims: make(map[string]any),
 	}
 	if err := ctx.SaveAuthnSession(session); err != nil {

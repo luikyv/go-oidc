@@ -188,8 +188,7 @@ func generateJWTBearerGrantSession(
 	}
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeInternalError,
-			"internal error", err)
+		return nil, err
 	}
 
 	return grantSession, nil

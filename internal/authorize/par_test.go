@@ -74,7 +74,6 @@ func TestPushAuth_WithJAR(t *testing.T) {
 	ctx, client := setUpPAR(t)
 	ctx.JARIsEnabled = true
 	ctx.JARSigAlgs = []jose.SignatureAlgorithm{jose.RS256}
-	ctx.JARLifetimeSecs = 60
 
 	privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
 	jwks, _ := json.Marshal(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privateJWK.Public()}})

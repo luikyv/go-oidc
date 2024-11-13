@@ -66,8 +66,7 @@ func redirectResponse(
 	case goidc.ResponseModeFormPost, goidc.ResponseModeFormPostJWT:
 		redirectParamsMap["redirect_uri"] = params.RedirectURI
 		if err := ctx.RenderHTML(formPostResponseTemplate, redirectParamsMap); err != nil {
-			return goidc.WrapError(goidc.ErrorCodeInternalError,
-				"could not render the html for the form_post response mode", err)
+			return fmt.Errorf("could not render the html for the form_post response mode: %w", err)
 		}
 	default:
 		redirectURL := urlWithQueryParams(params.RedirectURI, redirectParamsMap)
@@ -148,8 +147,7 @@ func signJARMResponse(
 	resp, err := jwtutil.Sign(claims, jwk,
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
 	if err != nil {
-		return "", goidc.WrapError(goidc.ErrorCodeInternalError,
-			"could not sign the response object", err)
+		return "", fmt.Errorf("could not sign the response object: %w", err)
 	}
 
 	return resp, nil
@@ -175,8 +173,7 @@ func encryptJARMResponse(
 	}
 	jwe, err := jwtutil.Encrypt(responseJWT, jwk, contentEncAlg)
 	if err != nil {
-		return "", goidc.WrapError(goidc.ErrorCodeInternalError,
-			"internal error", err)
+		return "", err
 	}
 
 	return jwe, nil

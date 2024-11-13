@@ -117,14 +117,9 @@ type Configuration struct {
 	JARSigAlgs                          []jose.SignatureAlgorithm
 	JARByReferenceIsEnabled             bool
 	JARRequestURIRegistrationIsRequired bool
-	// TODO: Remove if not needed.
-	// JARLifetimeSecs defines the max difference allowed between the claims "iat"
-	// and "exp" for request objects.
-	JARLifetimeSecs   int
-	JARLeewayTimeSecs int
-	JAREncIsEnabled   bool
-	JARKeyEncAlgs     []jose.KeyAlgorithm
-	JARContentEncAlgs []jose.ContentEncryption
+	JAREncIsEnabled                     bool
+	JARKeyEncAlgs                       []jose.KeyAlgorithm
+	JARContentEncAlgs                   []jose.ContentEncryption
 
 	// PARIsEnabled allows client to push authorization requests.
 	PARIsEnabled bool

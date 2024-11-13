@@ -652,6 +652,10 @@ func (mode CIBATokenDeliveryMode) IsNotificationMode() bool {
 	return mode == CIBATokenDeliveryModePing || mode == CIBATokenDeliveryModePush
 }
 
+func (mode CIBATokenDeliveryMode) IsPollableMode() bool {
+	return mode == CIBATokenDeliveryModePoll || mode == CIBATokenDeliveryModePing
+}
+
 type InitBackAuthFunc func(context.Context, *AuthnSession) error
 
 type ValidateBackAuthFunc func(context.Context, *AuthnSession) error

@@ -4,14 +4,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -214,29 +212,16 @@ func validateClaims(
 	claims jwt.Claims,
 	client *goidc.Client,
 ) error {
-	validFrom := timeutil.Now()
-	if claims.IssuedAt != nil {
-		validFrom = claims.IssuedAt.Time()
-	}
+
 	// The claim 'nbf' is required for FAPI 2.0.
-	if ctx.Profile == goidc.ProfileFAPI2 {
-		if claims.NotBefore == nil {
-			return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
-				"claim 'nbf' is required in the request object")
-		}
-		validFrom = claims.NotBefore.Time().UTC()
+	if ctx.Profile == goidc.ProfileFAPI2 && claims.NotBefore == nil {
+		return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
+			"claim 'nbf' is required in the request object")
 	}
 
 	if claims.Expiry == nil {
 		return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
 			"claim 'exp' is required in the request object")
-	}
-
-	// Validate that the "exp" claims is present and it's not far in the future.
-	secsToExpiry := int(claims.Expiry.Time().Sub(validFrom).Seconds())
-	if secsToExpiry > ctx.JARLifetimeSecs {
-		return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
-			"invalid exp claim in the request object")
 	}
 
 	if claims.ID != "" {
@@ -246,11 +231,10 @@ func validateClaims(
 		}
 	}
 
-	err := claims.ValidateWithLeeway(jwt.Expected{
+	if err := claims.Validate(jwt.Expected{
 		Issuer:      client.ID,
 		AnyAudience: []string{ctx.Host},
-	}, time.Duration(ctx.JARLeewayTimeSecs)*time.Second)
-	if err != nil {
+	}); err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
 			"the request object contains invalid claims", err)
 	}

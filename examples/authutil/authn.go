@@ -86,35 +86,35 @@ func (a authenticator) authenticate(
 	error,
 ) {
 
-	if as.Parameter(paramStepID) == stepIDLoadUser {
+	if as.StoredParameter(paramStepID) == stepIDLoadUser {
 		if status, err := a.loadUser(r, as); status != goidc.StatusSuccess {
 			return status, err
 		}
 		as.StoreParameter(paramStepID, stepIDLogin)
 	}
 
-	if as.Parameter(paramStepID) == stepIDLogin {
+	if as.StoredParameter(paramStepID) == stepIDLogin {
 		if status, err := a.login(w, r, as); status != goidc.StatusSuccess {
 			return status, err
 		}
 		as.StoreParameter(paramStepID, stepIDCreateSession)
 	}
 
-	if as.Parameter(paramStepID) == stepIDCreateSession {
+	if as.StoredParameter(paramStepID) == stepIDCreateSession {
 		if status, err := a.createUserSession(w, as); status != goidc.StatusSuccess {
 			return status, err
 		}
 		as.StoreParameter(paramStepID, stepIDConsent)
 	}
 
-	if as.Parameter(paramStepID) == stepIDConsent {
+	if as.StoredParameter(paramStepID) == stepIDConsent {
 		if status, err := a.grantConsent(w, r, as); status != goidc.StatusSuccess {
 			return status, err
 		}
 		as.StoreParameter(paramStepID, stepIDFinishFlow)
 	}
 
-	if as.Parameter(paramStepID) == stepIDFinishFlow {
+	if as.StoredParameter(paramStepID) == stepIDFinishFlow {
 		return a.finishFlow(as)
 	}
 
@@ -175,7 +175,7 @@ func (a authenticator) login(
 	// If the max age is exceeded or 'auth_time' is unavailable, force re-authentication.
 	if as.MaxAuthnAgeSecs != nil {
 		maxAgeSecs := *as.MaxAuthnAgeSecs
-		authTime := as.Parameter(paramAuthTime)
+		authTime := as.StoredParameter(paramAuthTime)
 		if authTime == nil || timeutil.TimestampNow() > authTime.(int)+maxAgeSecs {
 			mustAuthenticate = true
 		}
@@ -223,13 +223,13 @@ func (a authenticator) createUserSession(
 	error,
 ) {
 	sessionID := uuid.NewString()
-	if id := as.Parameter(paramUserSessionID); id != nil {
+	if id := as.StoredParameter(paramUserSessionID); id != nil {
 		sessionID = id.(string)
 	}
 	userSessionStore[sessionID] = userSession{
 		ID:       sessionID,
 		Subject:  as.Subject,
-		AuthTime: as.Parameter(paramAuthTime).(int),
+		AuthTime: as.StoredParameter(paramAuthTime).(int),
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     cookieUserSessionID,
@@ -279,7 +279,7 @@ func (a authenticator) finishFlow(
 	as.GrantResources(as.Resources)
 	as.GrantAuthorizationDetails(as.AuthDetails)
 
-	as.SetIDTokenClaimAuthTime(as.Store[paramAuthTime].(int))
+	as.SetIDTokenClaimAuthTime(as.Storage[paramAuthTime].(int))
 	as.SetIDTokenClaimACR(goidc.ACRMaceIncommonIAPSilver)
 
 	// Add claims based on the claims parameter.

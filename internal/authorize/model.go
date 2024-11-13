@@ -191,7 +191,7 @@ func newAuthnSession(
 		ClientID:                 client.ID,
 		AuthorizationParameters:  authParams,
 		CreatedAtTimestamp:       timeutil.TimestampNow(),
-		Store:                    make(map[string]any),
+		Storage:                  make(map[string]any),
 		AdditionalTokenClaims:    make(map[string]any),
 		AdditionalIDTokenClaims:  map[string]any{},
 		AdditionalUserInfoClaims: map[string]any{},

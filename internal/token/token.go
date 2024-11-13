@@ -1,6 +1,7 @@
 package token
 
 import (
+	"slices"
 	"time"
 
 	"github.com/go-jose/go-jose/v4/jwt"
@@ -83,6 +84,12 @@ func generateGrant(
 	tokenResp response,
 	err error,
 ) {
+
+	if !slices.Contains(ctx.GrantTypes, req.grantType) {
+		return response{}, goidc.NewError(goidc.ErrorCodeUnsupportedGrantType,
+			"unsupported grant type")
+	}
+
 	switch req.grantType {
 	case goidc.GrantClientCredentials:
 		return generateClientCredentialsGrant(ctx, req)

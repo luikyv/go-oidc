@@ -118,10 +118,10 @@ func WithUserInfoEndpoint(endpoint string) ProviderOption {
 	}
 }
 
-// WithIntrospectionEndpoint overrides the default value for the introspection
+// WithTokenIntrospectionEndpoint overrides the default value for the introspection
 // endpoint which is [defaultEndpointTokenIntrospection]
 // To enable token introspection, see [WithTokenIntrospection].
-func WithIntrospectionEndpoint(endpoint string) ProviderOption {
+func WithTokenIntrospectionEndpoint(endpoint string) ProviderOption {
 	return func(p Provider) error {
 		p.config.EndpointIntrospection = endpoint
 		return nil
@@ -338,6 +338,27 @@ func WithCIBAJARRequired(
 	return func(p Provider) error {
 		p.config.CIBAJARIsRequired = true
 		return WithJAR(alg, algs...)(p)
+	}
+}
+
+func WithCIBAUserCode() ProviderOption {
+	return func(p Provider) error {
+		p.config.CIBAUserCodeIsEnabled = true
+		return nil
+	}
+}
+
+func WithCIBAPollingInterval(interval int) ProviderOption {
+	return func(p Provider) error {
+		p.config.CIBAPollingIntervalSecs = interval
+		return nil
+	}
+}
+
+func WithCIBALifetime(secs int) ProviderOption {
+	return func(p Provider) error {
+		p.config.CIBADefaultSessionLifetimeSecs = secs
+		return nil
 	}
 }
 

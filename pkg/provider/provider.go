@@ -22,7 +22,8 @@ type Provider struct {
 }
 
 // New creates a new openid provider.
-// The profile parameter adjusts the server's behavior for non-configurable
+//
+// The parameter "profile" adjusts the server's behavior for non-configurable
 // settings, ensuring compliance with the associated specification. Depending on
 // the profile selected, the server may modify its operations to meet specific
 // requirements dictated by the corresponding standards or protocols.
@@ -105,6 +106,7 @@ func (p Provider) Run(
 // if required.
 // If the token is valid and PoP validation (if any) is successful, the function
 // returns token information; otherwise, it returns an appropriate error.
+// TODO: Ask only for the context?
 func (p Provider) TokenInfo(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -150,12 +152,21 @@ func (p Provider) Client(
 	return p.config.ClientManager.Client(ctx, id)
 }
 
-func (p Provider) NotifyAuth(
+func (p Provider) NotifyCIBASuccess(
 	ctx context.Context,
 	authReqID string,
 ) error {
 	oidcCtx := oidc.FromContext(ctx, p.config)
 	return token.NotifyCIBAGrant(oidcCtx, authReqID)
+}
+
+func (p Provider) NotifyCIBAFailure(
+	ctx context.Context,
+	authReqID string,
+	err goidc.Error,
+) error {
+	oidcCtx := oidc.FromContext(ctx, p.config)
+	return token.NotifyCIBAGrantFailure(oidcCtx, authReqID, err)
 }
 
 func (p Provider) setDefaults() error {
@@ -254,13 +265,6 @@ func (p Provider) setDefaults() error {
 	if p.config.PARIsEnabled {
 		p.config.EndpointPushedAuthorization = nonZeroOrDefault(p.config.EndpointPushedAuthorization,
 			defaultEndpointPushedAuthorizationRequest)
-	}
-
-	if p.config.JARIsEnabled {
-		p.config.JARLifetimeSecs = nonZeroOrDefault(p.config.JARLifetimeSecs,
-			defaultJWTLifetimeSecs)
-		p.config.JARLeewayTimeSecs = nonZeroOrDefault(p.config.JARLeewayTimeSecs,
-			defaultJWTLeewayTimeSecs)
 	}
 
 	if p.config.JAREncIsEnabled {
