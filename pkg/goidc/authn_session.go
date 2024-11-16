@@ -11,8 +11,18 @@ import (
 type AuthnSessionManager interface {
 	Save(ctx context.Context, session *AuthnSession) error
 	SessionByCallbackID(ctx context.Context, callbackID string) (*AuthnSession, error)
-	SessionByAuthorizationCode(ctx context.Context, authorizationCode string) (*AuthnSession, error)
-	SessionByReferenceID(ctx context.Context, requestURI string) (*AuthnSession, error)
+	// SessionByAuthCode fetches an authn session by the code created during the
+	// authorization code flow.
+	// If authorization code is not enalbed, this function can be left empty.
+	SessionByAuthCode(ctx context.Context, authorizationCode string) (*AuthnSession, error)
+	// SessionByPushedAuthReqID fetches an authn session by the request URI created
+	// during PAR.
+	// If PAR is not enalbed, this function can be left empty.
+	SessionByPushedAuthReqID(ctx context.Context, id string) (*AuthnSession, error)
+	// SessionByCIBAAuthID fetches an authn session by the auth request ID created
+	// during CIBA.
+	// If CIBA is not enalbed, this function can be left empty.
+	SessionByCIBAAuthID(ctx context.Context, id string) (*AuthnSession, error)
 	Delete(ctx context.Context, id string) error
 }
 
@@ -22,40 +32,46 @@ type AuthnSessionManager interface {
 // authentication flows.
 type AuthnSession struct {
 	ID string `json:"id"`
-	// ReferenceID is the id generated during /par used to fetch the session
-	// during calls to /authorize.
-	//
-	// This value will be returned as the request_uri of the /par response.
-	ReferenceID string `json:"reference_id"`
-	// CallbackID is the id used to fetch the authentication session after user
-	// interaction during calls to the callback endpoint.
-	CallbackID string `json:"callback_id"`
-	// PolicyID is the id of the autentication policy used to authenticate
-	// the user.
-	PolicyID           string `json:"policy_id"`
-	ExpiresAtTimestamp int    `json:"expires_at"`
-	CreatedAtTimestamp int    `json:"created_at"`
 	// Subject is the user identifier.
 	//
 	// This value must be informed during the authentication flow.
 	Subject  string `json:"sub"`
 	ClientID string `json:"client_id"`
+	// PushedAuthReqID is the id generated during /par used to fetch the session
+	// during calls to /authorize.
+	//
+	// This value will be returned as the request_uri of the /par response.
+	PushedAuthReqID string `json:"pushed_auth_req_id,omitempty"`
+	// CallbackID is the id used to fetch the authentication session after user
+	// interaction during calls to the callback endpoint.
+	CallbackID string `json:"callback_id,omitempty"`
+	CIBAAuthID string `json:"ciba_auth_req_id,omitempty"`
+	AuthCode   string `json:"auth_code,omitempty"`
+	// PolicyID is the id of the autentication policy used to authenticate
+	// the user.
+	PolicyID string `json:"policy_id,omitempty"`
+
 	// GrantedScopes is the scopes the client will be granted access once the
 	// access token is generated.
-	GrantedScopes string `json:"granted_scopes"`
+	GrantedScopes string `json:"granted_scopes,omitempty"`
 	// GrantedAuthDetails is the authorization details the client will be granted
 	// access once the access token is generated.
 	GrantedAuthDetails []AuthorizationDetail `json:"granted_authorization_details,omitempty"`
 	GrantedResources   Resources             `json:"granted_resources,omitempty"`
-	AuthorizationCode  string                `json:"authorization_code,omitempty"`
-	IDTokenHintClaims  map[string]any        `json:"id_token_hint_claim,omitempty"`
-	// ProtectedParameters contains custom parameters sent by PAR.
-	ProtectedParameters map[string]any `json:"protected_params,omitempty"`
-	// Store allows storing information between user interactions.
-	Store                    map[string]any `json:"store,omitempty"`
+
+	JWKThumbprint string `json:"jwk_thumbprint,omitempty"`
+	// ClientCertThumbprint contains the thumbprint of the certificate used by
+	// the client to generate the token.
+	ClientCertThumbprint string `json:"client_cert_thumbprint,omitempty"`
+
+	// Storage allows storing additional information between interactions.
+	Storage                  map[string]any `json:"store,omitempty"`
 	AdditionalTokenClaims    map[string]any `json:"additional_token_claims,omitempty"`
 	AdditionalIDTokenClaims  map[string]any `json:"additional_id_token_claims,omitempty"`
 	AdditionalUserInfoClaims map[string]any `json:"additional_user_info_claims,omitempty"`
+	ExpiresAtTimestamp       int            `json:"expires_at"`
+	CreatedAtTimestamp       int            `json:"created_at"`
+	IDTokenHintClaims        map[string]any `json:"id_token_hint_claims,omitempty"`
 	AuthorizationParameters
 }
 
@@ -65,14 +81,14 @@ func (s *AuthnSession) SetUserID(userID string) {
 }
 
 func (s *AuthnSession) StoreParameter(key string, value any) {
-	if s.Store == nil {
-		s.Store = make(map[string]any)
+	if s.Storage == nil {
+		s.Storage = make(map[string]any)
 	}
-	s.Store[key] = value
+	s.Storage[key] = value
 }
 
-func (s *AuthnSession) Parameter(key string) any {
-	return s.Store[key]
+func (s *AuthnSession) StoredParameter(key string) any {
+	return s.Storage[key]
 }
 
 func (s *AuthnSession) SetTokenClaim(claim string, value any) {

@@ -31,11 +31,11 @@ func generateAuthorizationCodeGrant(
 
 	session, err := authnSession(ctx, req.authorizationCode)
 	if err != nil {
-		return response{}, goidc.Errorf(goidc.ErrorCodeInvalidGrant,
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant,
 			"invalid authorization code", err)
 	}
 
-	if err := validateAuthorizationCodeGrantRequest(ctx, req, client, session); err != nil {
+	if err := validateAuthCodeGrantRequest(ctx, req, client, session); err != nil {
 		return response{}, err
 	}
 
@@ -46,7 +46,7 @@ func generateAuthorizationCodeGrant(
 
 	token, err := Make(ctx, grantInfo, client)
 	if err != nil {
-		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
+		return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
 			"could not generate access token for the authorization code grant", err)
 	}
 
@@ -55,7 +55,7 @@ func generateAuthorizationCodeGrant(
 		client,
 		grantInfo,
 		token,
-		session.AuthorizationCode,
+		session.AuthCode,
 	)
 	if err != nil {
 		return response{}, err
@@ -72,8 +72,8 @@ func generateAuthorizationCodeGrant(
 	if strutil.ContainsOpenID(grantInfo.ActiveScopes) {
 		tokenResp.IDToken, err = MakeIDToken(ctx, client, newIDTokenOptions(grantInfo))
 		if err != nil {
-			return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
-				"could not generate access id token for the authorization code grant", err)
+			return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
+				"could not generate id token for the authorization code grant", err)
 		}
 	}
 
@@ -99,19 +99,18 @@ func authnSession(
 	*goidc.AuthnSession,
 	error,
 ) {
-	session, err := ctx.AuthnSessionByAuthorizationCode(authzCode)
+	session, err := ctx.AuthnSessionByAuthCode(authzCode)
 	if err != nil {
 		// Invalidate any grant associated with the authorization code.
 		// This ensures that even if the code is compromised, the access token
 		// that it generated cannot be misused by a malicious client.
 		_ = ctx.DeleteGrantSessionByAuthorizationCode(authzCode)
-		return nil, goidc.Errorf(goidc.ErrorCodeInvalidGrant,
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidGrant,
 			"invalid authorization code", err)
 	}
 
 	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-		return nil, goidc.Errorf(goidc.ErrorCodeInternalError,
-			"internal error", err)
+		return nil, err
 	}
 
 	return session, nil
@@ -136,14 +135,13 @@ func generateAuthorizationCodeGrantSession(
 	}
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return nil, goidc.Errorf(goidc.ErrorCodeInternalError,
-			"internal error", err)
+		return nil, err
 	}
 
 	return grantSession, nil
 }
 
-func validateAuthorizationCodeGrantRequest(
+func validateAuthCodeGrantRequest(
 	ctx oidc.Context,
 	req request,
 	c *goidc.Client,
@@ -164,6 +162,15 @@ func validateAuthorizationCodeGrantRequest(
 			"the authorization code is expired")
 	}
 
+	opts := bindindValidationsOptions{}
+	opts.tlsIsRequired = session.ClientCertThumbprint != ""
+	opts.tlsCertThumbprint = session.ClientCertThumbprint
+	opts.dpopIsRequired = session.JWKThumbprint != ""
+	opts.dpop.JWKThumbprint = session.JWKThumbprint
+	if err := ValidateBinding(ctx, c, &opts); err != nil {
+		return err
+	}
+
 	if session.RedirectURI != req.redirectURI {
 		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid redirect_uri")
 	}
@@ -181,13 +188,6 @@ func validateAuthorizationCodeGrantRequest(
 	}
 
 	if err := validateScopes(ctx, req, session); err != nil {
-		return err
-	}
-
-	opts := bindindValidationsOptions{}
-	opts.dpopIsRequired = session.DPoPJWKThumbprint != ""
-	opts.dpop.JWKThumbprint = session.DPoPJWKThumbprint
-	if err := validateBinding(ctx, c, &opts); err != nil {
 		return err
 	}
 
@@ -212,7 +212,7 @@ func authorizationCodeGrantInfo(
 		AdditionalIDTokenClaims:  session.AdditionalIDTokenClaims,
 		AdditionalUserInfoClaims: session.AdditionalUserInfoClaims,
 		AdditionalTokenClaims:    session.AdditionalTokenClaims,
-		Store:                    session.Store,
+		Store:                    session.Storage,
 	}
 
 	if req.scopes != "" {

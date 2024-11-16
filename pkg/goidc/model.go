@@ -11,7 +11,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 )
 
-type PrivateJWKSFunc func(*http.Request) (jose.JSONWebKeySet, error)
+type PrivateJWKSFunc func(context.Context) (jose.JSONWebKeySet, error)
 
 // RefreshTokenLength has an unusual value so to avoid refresh tokens and
 // opaque access token to be confused.
@@ -38,6 +38,7 @@ const (
 	GrantRefreshToken      GrantType = "refresh_token"
 	GrantImplicit          GrantType = "implicit"
 	GrantJWTBearer         GrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+	GrantCIBA              GrantType = "urn:openid:params:grant-type:ciba"
 )
 
 type ResponseType string
@@ -119,6 +120,7 @@ const (
 	ClaimClientID            string = "client_id"
 	ClaimExpiry              string = "exp"
 	ClaimIssuedAt            string = "iat"
+	ClaimNotBefore           string = "nbf"
 	ClaimScope               string = "scope"
 	ClaimNonce               string = "nonce"
 	ClaimAuthTime            string = "auth_time"
@@ -147,6 +149,8 @@ const (
 	ClaimAccessTokenHash     string = "at_hash"
 	ClaimAuthzCodeHash       string = "c_hash"
 	ClaimStateHash           string = "s_hash"
+	ClaimRefreshTokenHash    string = "urn:openid:params:jwt:claim:rt_hash"
+	ClaimAuthReqID           string = "urn:openid:params:jwt:claim:auth_req_id"
 )
 
 type KeyUsage string
@@ -174,6 +178,13 @@ const (
 	// identifier to all clients.
 	SubIdentifierPublic   SubIdentifierType = "public"
 	SubIdentifierPairwise SubIdentifierType = "pairwise"
+)
+
+type ApplicationType string
+
+const (
+	ApplicationTypeWeb    ApplicationType = "web"
+	ApplicationTypeNative ApplicationType = "native"
 )
 
 const (
@@ -270,7 +281,7 @@ type ValidateInitialAccessTokenFunc func(*http.Request, string) error
 // during the authorization request cannot be handled.
 type RenderErrorFunc func(http.ResponseWriter, *http.Request, error) error
 
-type NotifyErrorFunc func(*http.Request, error)
+type NotifyErrorFunc func(context.Context, error)
 
 var (
 	ScopeOpenID        = NewScope("openid")
@@ -328,6 +339,10 @@ func NewDynamicScope(
 // CheckJTIFunc defines a function to verify when a JTI is safe to use.
 type CheckJTIFunc func(context.Context, string) error
 
+// HTTPClientFunc defines a function that generates an HTTP client for performing
+// requests.
+// Note: Make sure to not enable automatic redirect-following, as some profiles
+// require this behavior is disabled.
 type HTTPClientFunc func(ctx context.Context) *http.Client
 
 type ShouldIssueRefreshTokenFunc func(*Client, GrantInfo) bool
@@ -408,8 +423,8 @@ func NewPolicy(
 }
 
 type TokenConfirmation struct {
-	JWKThumbprint        string `json:"jkt"`
-	ClientCertThumbprint string `json:"x5t#S256"`
+	JWKThumbprint        string `json:"jkt,omitempty"`
+	ClientCertThumbprint string `json:"x5t#S256,omitempty"`
 }
 
 type TokenInfo struct {
@@ -449,26 +464,31 @@ func (ti TokenInfo) MarshalJSON() ([]byte, error) {
 }
 
 type AuthorizationParameters struct {
-	RequestURI          string                `json:"request_uri,omitempty"`
-	RequestObject       string                `json:"request,omitempty"`
-	RedirectURI         string                `json:"redirect_uri,omitempty"`
-	ResponseMode        ResponseMode          `json:"response_mode,omitempty"`
-	ResponseType        ResponseType          `json:"response_type,omitempty"`
-	Scopes              string                `json:"scope,omitempty"`
-	State               string                `json:"state,omitempty"`
-	Nonce               string                `json:"nonce,omitempty"`
-	CodeChallenge       string                `json:"code_challenge,omitempty"`
-	CodeChallengeMethod CodeChallengeMethod   `json:"code_challenge_method,omitempty"`
-	Prompt              PromptType            `json:"prompt,omitempty"`
-	MaxAuthnAgeSecs     *int                  `json:"max_age,omitempty"`
-	Display             DisplayValue          `json:"display,omitempty"`
-	ACRValues           string                `json:"acr_values,omitempty"`
-	Claims              *ClaimsObject         `json:"claims,omitempty"`
-	AuthDetails         []AuthorizationDetail `json:"authorization_details,omitempty"`
-	Resources           Resources             `json:"resource,omitempty"`
-	DPoPJWKThumbprint   string                `json:"dpop_jkt,omitempty"`
-	LoginHint           string                `json:"login_hint,omitempty"`
-	IDTokenHint         string                `json:"id_token_hint,omitempty"`
+	RequestURI              string                `json:"request_uri,omitempty"`
+	RequestObject           string                `json:"request,omitempty"`
+	RedirectURI             string                `json:"redirect_uri,omitempty"`
+	ResponseMode            ResponseMode          `json:"response_mode,omitempty"`
+	ResponseType            ResponseType          `json:"response_type,omitempty"`
+	Scopes                  string                `json:"scope,omitempty"`
+	State                   string                `json:"state,omitempty"`
+	Nonce                   string                `json:"nonce,omitempty"`
+	CodeChallenge           string                `json:"code_challenge,omitempty"`
+	CodeChallengeMethod     CodeChallengeMethod   `json:"code_challenge_method,omitempty"`
+	Prompt                  PromptType            `json:"prompt,omitempty"`
+	MaxAuthnAgeSecs         *int                  `json:"max_age,omitempty"`
+	Display                 DisplayValue          `json:"display,omitempty"`
+	ACRValues               string                `json:"acr_values,omitempty"`
+	Claims                  *ClaimsObject         `json:"claims,omitempty"`
+	AuthDetails             []AuthorizationDetail `json:"authorization_details,omitempty"`
+	Resources               Resources             `json:"resource,omitempty"`
+	DPoPJKT                 string                `json:"dpop_jkt,omitempty"`
+	LoginHint               string                `json:"login_hint,omitempty"`
+	LoginTokenHint          string                `json:"login_hint_token,omitempty"`
+	IDTokenHint             string                `json:"id_token_hint,omitempty"`
+	ClientNotificationToken string                `json:"client_notification_token,omitempty"`
+	BindingMessage          string                `json:"binding_message,omitempty"`
+	UserCode                string                `json:"user_code,omitempty"`
+	RequestedExpiry         *int                  `json:"requested_expiry,omitempty"`
 }
 
 type Resources []string
@@ -622,4 +642,32 @@ type IsClientAllowedFunc func(*Client) bool
 // are consistent with the granted ones.
 type CompareAuthDetailsFunc func(granted, requested []AuthorizationDetail) error
 
+// TODO: Review this.
 type GeneratePairwiseSubIDFunc func(sub, hostSectorURI string) (string, error)
+
+type CIBATokenDeliveryMode string
+
+const (
+	CIBATokenDeliveryModePoll CIBATokenDeliveryMode = "poll"
+	CIBATokenDeliveryModePing CIBATokenDeliveryMode = "ping"
+	CIBATokenDeliveryModePush CIBATokenDeliveryMode = "push"
+)
+
+func (mode CIBATokenDeliveryMode) IsNotificationMode() bool {
+	return mode == CIBATokenDeliveryModePing || mode == CIBATokenDeliveryModePush
+}
+
+func (mode CIBATokenDeliveryMode) IsPollableMode() bool {
+	return mode == CIBATokenDeliveryModePoll || mode == CIBATokenDeliveryModePing
+}
+
+// InitBackAuthFunc allows modifying the authn session when initializing the
+// CIBA process.
+// If an error is returned, the authentication flow will not be initiated.
+type InitBackAuthFunc func(context.Context, *AuthnSession) error
+
+// ValidateBackAuthFunc validates a CIBA session during a client's polling
+// request to the token endpoint.
+// If an error other than [ErrorCodeAuthPending] or [ErrorCodeSlowDown] is
+// returned, the session will be terminated.
+type ValidateBackAuthFunc func(context.Context, *AuthnSession) error

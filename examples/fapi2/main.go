@@ -68,7 +68,6 @@ func main() {
 		provider.WithStaticClient(authutil.ClientMTLS("mtls_client_two", "client_two", clientTwoJWKSFilePath)),
 		provider.WithRenderErrorFunc(authutil.RenderError(templatesDirPath)),
 		provider.WithCheckJTIFunc(authutil.CheckJTIFunc()),
-		provider.WithDisplayValues(authutil.DisplayValues[0], authutil.DisplayValues...),
 	)
 	if err != nil {
 		log.Fatal(err)

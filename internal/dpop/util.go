@@ -2,7 +2,6 @@ package dpop
 
 import (
 	"crypto"
-	"crypto/sha256"
 	"encoding/base64"
 	"net/http"
 	"net/url"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -57,7 +57,7 @@ func ValidateJWT(
 ) error {
 	parsedDPoPJWT, err := jwt.ParseSigned(dpopJWT, ctx.DPoPSigAlgs)
 	if err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid dpop jwt", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid dpop jwt", err)
 	}
 
 	if len(parsedDPoPJWT.Headers) != 1 {
@@ -77,7 +77,7 @@ func ValidateJWT(
 	var claims jwt.Claims
 	var dpopClaims Claims
 	if err := parsedDPoPJWT.Claims(jwk.Key, &claims, &dpopClaims); err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid dpop jwt", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid dpop jwt", err)
 	}
 
 	// Validate that the "iat" claim is present and it is not too far in the past.
@@ -92,7 +92,7 @@ func ValidateJWT(
 	}
 
 	if err := ctx.CheckJTI(claims.ID); err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid jti claim", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid jti claim", err)
 	}
 
 	if dpopClaims.HTTPMethod != ctx.RequestMethod() {
@@ -111,7 +111,7 @@ func ValidateJWT(
 	}
 
 	if opts.AccessToken != "" &&
-		dpopClaims.AccessTokenHash != hashBase64URLSHA256(opts.AccessToken) {
+		dpopClaims.AccessTokenHash != hashutil.Thumbprint(opts.AccessToken) {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid ath claim")
 	}
 
@@ -136,10 +136,4 @@ func urlWithoutParams(u string) (string, error) {
 	parsedURL.RawQuery = ""
 	parsedURL.Fragment = ""
 	return parsedURL.String(), nil
-}
-
-func hashBase64URLSHA256(s string) string {
-	hash := sha256.New()
-	hash.Write([]byte(s))
-	return base64.RawURLEncoding.EncodeToString(hash.Sum(nil))
 }

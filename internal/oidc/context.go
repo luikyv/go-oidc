@@ -20,6 +20,7 @@ import (
 type Context struct {
 	Response http.ResponseWriter
 	Request  *http.Request
+	context  context.Context
 	*Configuration
 }
 
@@ -32,6 +33,14 @@ func NewContext(
 		Configuration: config,
 		Response:      w,
 		Request:       r,
+	}
+}
+
+// TODO: Rename this.
+func FromContext(ctx context.Context, config *Configuration) Context {
+	return Context{
+		context:       ctx,
+		Configuration: config,
 	}
 }
 
@@ -139,7 +148,7 @@ func (ctx Context) NotifyError(err error) {
 		return
 	}
 
-	ctx.NotifyErrorFunc(ctx.Request, err)
+	ctx.NotifyErrorFunc(ctx, err)
 }
 
 // AssertionAudiences returns the host names trusted by the server to validate
@@ -195,11 +204,25 @@ func (ctx Context) CompareAuthDetails(
 	return ctx.CompareAuthDetailsFunc(granted, requested)
 }
 
+func (ctx Context) InitBackAuth(session *goidc.AuthnSession) error {
+	if ctx.InitBackAuthFunc == nil {
+		return errors.New("ciba init back auth function is not set")
+	}
+	return ctx.InitBackAuthFunc(ctx, session)
+}
+
+func (ctx Context) ValidateBackAuth(session *goidc.AuthnSession) error {
+	if ctx.ValidateBackAuthFunc == nil {
+		return errors.New("ciba validate back auth function is not set")
+	}
+	return ctx.ValidateBackAuthFunc(ctx, session)
+}
+
 //---------------------------------------- CRUD ----------------------------------------//
 
 func (ctx Context) SaveClient(client *goidc.Client) error {
 	if err := ctx.ClientManager.Save(ctx.Context(), client); err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInternalError, "internal error", err)
+		return goidc.WrapError(goidc.ErrorCodeInternalError, "internal error", err)
 	}
 	return nil
 }
@@ -225,28 +248,12 @@ func (ctx Context) SaveGrantSession(session *goidc.GrantSession) error {
 	)
 }
 
-func (ctx Context) GrantSessionByTokenID(
-	id string,
-) (
-	*goidc.GrantSession,
-	error,
-) {
-	return ctx.GrantSessionManager.SessionByTokenID(
-		ctx.Context(),
-		id,
-	)
+func (ctx Context) GrantSessionByTokenID(id string) (*goidc.GrantSession, error) {
+	return ctx.GrantSessionManager.SessionByTokenID(ctx.Context(), id)
 }
 
-func (ctx Context) GrantSessionByRefreshToken(
-	token string,
-) (
-	*goidc.GrantSession,
-	error,
-) {
-	return ctx.GrantSessionManager.SessionByRefreshToken(
-		ctx.Context(),
-		token,
-	)
+func (ctx Context) GrantSessionByRefreshToken(token string) (*goidc.GrantSession, error) {
+	return ctx.GrantSessionManager.SessionByRefreshToken(ctx.Context(), token)
 }
 
 func (ctx Context) DeleteGrantSession(id string) error {
@@ -258,37 +265,42 @@ func (ctx Context) DeleteGrantSessionByAuthorizationCode(code string) error {
 }
 
 func (ctx Context) SaveAuthnSession(session *goidc.AuthnSession) error {
+	numberOfIndexes := 0
+	if session.CallbackID != "" {
+		numberOfIndexes++
+	}
+	if session.PushedAuthReqID != "" {
+		numberOfIndexes++
+	}
+	if session.AuthCode != "" {
+		numberOfIndexes++
+	}
+	if session.CIBAAuthID != "" {
+		numberOfIndexes++
+	}
+
+	if numberOfIndexes != 1 {
+		return goidc.NewError(goidc.ErrorCodeInternalError,
+			"only one index must be set for the authn session")
+	}
+
 	return ctx.AuthnSessionManager.Save(ctx.Context(), session)
 }
 
-func (ctx Context) AuthnSessionByCallbackID(
-	id string,
-) (
-	*goidc.AuthnSession,
-	error,
-) {
-	return ctx.AuthnSessionManager.SessionByCallbackID(ctx.Context(), id)
+func (ctx Context) AuthnSessionByCallbackID(id string) (*goidc.AuthnSession, error) {
+	return ctx.AuthnSessionManager.SessionByCallbackID(ctx, id)
 }
 
-func (ctx Context) AuthnSessionByAuthorizationCode(
-	code string,
-) (
-	*goidc.AuthnSession,
-	error,
-) {
-	return ctx.AuthnSessionManager.SessionByAuthorizationCode(
-		ctx.Context(),
-		code,
-	)
+func (ctx Context) AuthnSessionByAuthCode(code string) (*goidc.AuthnSession, error) {
+	return ctx.AuthnSessionManager.SessionByAuthCode(ctx, code)
 }
 
-func (ctx Context) AuthnSessionByRequestURI(
-	uri string,
-) (
-	*goidc.AuthnSession,
-	error,
-) {
-	return ctx.AuthnSessionManager.SessionByReferenceID(ctx.Context(), uri)
+func (ctx Context) AuthnSessionByRequestURI(uri string) (*goidc.AuthnSession, error) {
+	return ctx.AuthnSessionManager.SessionByPushedAuthReqID(ctx, uri)
+}
+
+func (ctx Context) AuthnSessionByAuthReqID(id string) (*goidc.AuthnSession, error) {
+	return ctx.AuthnSessionManager.SessionByCIBAAuthID(ctx.Context(), id)
 }
 
 func (ctx Context) DeleteAuthnSession(id string) error {
@@ -433,7 +445,7 @@ func (ctx Context) WriteError(err error) {
 		return
 	}
 
-	if err := ctx.Write(oidcErr, oidcErr.Code.StatusCode()); err != nil {
+	if err := ctx.Write(oidcErr, oidcErr.StatusCode()); err != nil {
 		ctx.Response.WriteHeader(http.StatusInternalServerError)
 	}
 }
@@ -460,9 +472,9 @@ func (ctx Context) RenderHTML(
 }
 
 func (ctx Context) PrivateJWKS() (jose.JSONWebKeySet, error) {
-	jwks, err := ctx.PrivateJWKSFunc(ctx.Request)
+	jwks, err := ctx.PrivateJWKSFunc(ctx)
 	if err != nil {
-		return jose.JSONWebKeySet{}, goidc.Errorf(goidc.ErrorCodeInternalError,
+		return jose.JSONWebKeySet{}, goidc.WrapError(goidc.ErrorCodeInternalError,
 			"internal error fetching the server jwks", err)
 	}
 
@@ -640,7 +652,7 @@ func (ctx Context) HandleGrant(grantInfo *goidc.GrantInfo) error {
 
 	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
-		return goidc.Errorf(goidc.ErrorCodeAccessDenied, "access denied", err)
+		return goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", err)
 	}
 
 	return oidcErr
@@ -656,7 +668,7 @@ func (ctx Context) HTTPClient() *http.Client {
 		return http.DefaultClient
 	}
 
-	return ctx.HTTPClientFunc(ctx.Context())
+	return ctx.HTTPClientFunc(ctx)
 }
 
 // ExportableSubject returns a subject identifier for the given client based on
@@ -705,6 +717,9 @@ func (ctx Context) ExportableSubject(
 //---------------------------------------- context.Context ----------------------------------------//
 
 func (ctx Context) Context() context.Context {
+	if ctx.context != nil {
+		return ctx.context
+	}
 	return ctx.Request.Context()
 }
 

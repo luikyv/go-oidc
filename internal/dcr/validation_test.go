@@ -7,11 +7,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
+// TODO: Split this.
 func TestValidateRequest(t *testing.T) {
 	testCases := []struct {
 		name                string
@@ -276,6 +278,153 @@ func TestValidateRequest(t *testing.T) {
 			func(ctx oidc.Context) {
 				ctx.AuthDetailsIsEnabled = true
 				ctx.AuthDetailTypes = append(ctx.AuthDetailTypes, "type1")
+			},
+			false,
+		},
+		{
+			"valid_ciba_ping",
+			func(c *goidc.Client) {
+				c.GrantTypes = append(c.GrantTypes, goidc.GrantCIBA)
+				c.CIBATokenDeliveryMode = goidc.CIBATokenDeliveryModePing
+				c.CIBANotificationEndpoint = "https://example.com"
+			},
+			func(ctx oidc.Context) {
+				ctx.CIBAIsEnabled = true
+				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
+				ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
+					goidc.CIBATokenDeliveryModePing,
+					goidc.CIBATokenDeliveryModePoll,
+					goidc.CIBATokenDeliveryModePush,
+				}
+			},
+			true,
+		},
+		{
+			"valid_ciba_push",
+			func(c *goidc.Client) {
+				c.GrantTypes = append(c.GrantTypes, goidc.GrantCIBA)
+				c.CIBATokenDeliveryMode = goidc.CIBATokenDeliveryModePush
+				c.CIBANotificationEndpoint = "https://example.com"
+			},
+			func(ctx oidc.Context) {
+				ctx.CIBAIsEnabled = true
+				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
+				ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
+					goidc.CIBATokenDeliveryModePing,
+					goidc.CIBATokenDeliveryModePoll,
+					goidc.CIBATokenDeliveryModePush,
+				}
+			},
+			true,
+		},
+		{
+			"valid_ciba_poll",
+			func(c *goidc.Client) {
+				c.GrantTypes = append(c.GrantTypes, goidc.GrantCIBA)
+				c.CIBATokenDeliveryMode = goidc.CIBATokenDeliveryModePoll
+			},
+			func(ctx oidc.Context) {
+				ctx.CIBAIsEnabled = true
+				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
+				ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
+					goidc.CIBATokenDeliveryModePing,
+					goidc.CIBATokenDeliveryModePoll,
+					goidc.CIBATokenDeliveryModePush,
+				}
+			},
+			true,
+		},
+		{
+			"valid_ciba_jar",
+			func(c *goidc.Client) {
+				c.GrantTypes = append(c.GrantTypes, goidc.GrantCIBA)
+				c.CIBATokenDeliveryMode = goidc.CIBATokenDeliveryModePoll
+				c.CIBAJARSigAlg = jose.RS256
+			},
+			func(ctx oidc.Context) {
+				ctx.CIBAIsEnabled = true
+				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
+				ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
+					goidc.CIBATokenDeliveryModePing,
+					goidc.CIBATokenDeliveryModePoll,
+					goidc.CIBATokenDeliveryModePush,
+				}
+				ctx.CIBAJARIsEnabled = true
+				ctx.CIBAJARSigAlgs = append(ctx.CIBAJARSigAlgs, jose.RS256)
+			},
+			true,
+		},
+		{
+			"invalid_ciba_jar",
+			func(c *goidc.Client) {
+				c.GrantTypes = append(c.GrantTypes, goidc.GrantCIBA)
+				c.CIBATokenDeliveryMode = goidc.CIBATokenDeliveryModePoll
+				c.CIBAJARSigAlg = jose.PS256
+			},
+			func(ctx oidc.Context) {
+				ctx.CIBAIsEnabled = true
+				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
+				ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
+					goidc.CIBATokenDeliveryModePing,
+					goidc.CIBATokenDeliveryModePoll,
+					goidc.CIBATokenDeliveryModePush,
+				}
+				ctx.CIBAJARIsEnabled = true
+				ctx.CIBAJARSigAlgs = append(ctx.CIBAJARSigAlgs, jose.RS256)
+			},
+			false,
+		},
+		{
+			"valid_ciba_user_code",
+			func(c *goidc.Client) {
+				c.GrantTypes = append(c.GrantTypes, goidc.GrantCIBA)
+				c.CIBATokenDeliveryMode = goidc.CIBATokenDeliveryModePoll
+				c.CIBAUserCodeIsEnabled = true
+			},
+			func(ctx oidc.Context) {
+				ctx.CIBAIsEnabled = true
+				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
+				ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
+					goidc.CIBATokenDeliveryModePing,
+					goidc.CIBATokenDeliveryModePoll,
+					goidc.CIBATokenDeliveryModePush,
+				}
+				ctx.CIBAUserCodeIsEnabled = true
+			},
+			true,
+		},
+		{
+			"invalid_ciba_delivery_mode",
+			func(c *goidc.Client) {
+				c.GrantTypes = append(c.GrantTypes, goidc.GrantCIBA)
+				c.CIBATokenDeliveryMode = "invalid_mode"
+			},
+			func(ctx oidc.Context) {
+				ctx.CIBAIsEnabled = true
+				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
+				ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
+					goidc.CIBATokenDeliveryModePing,
+					goidc.CIBATokenDeliveryModePoll,
+					goidc.CIBATokenDeliveryModePush,
+				}
+			},
+			false,
+		},
+		{
+			"invalid_ciba_user_code",
+			func(c *goidc.Client) {
+				c.GrantTypes = append(c.GrantTypes, goidc.GrantCIBA)
+				c.CIBATokenDeliveryMode = goidc.CIBATokenDeliveryModePoll
+				c.CIBAUserCodeIsEnabled = true
+			},
+			func(ctx oidc.Context) {
+				ctx.CIBAIsEnabled = true
+				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
+				ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
+					goidc.CIBATokenDeliveryModePing,
+					goidc.CIBATokenDeliveryModePoll,
+					goidc.CIBATokenDeliveryModePush,
+				}
 			},
 			false,
 		},

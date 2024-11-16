@@ -31,7 +31,7 @@ func generateClientCredentialsGrant(
 
 	token, err := Make(ctx, grantInfo, client)
 	if err != nil {
-		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
+		return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
 			"could not generate an access token for the client credentials grant", err)
 	}
 
@@ -65,7 +65,7 @@ func generateClientCredentialsGrantSession(
 
 	grantSession := NewGrantSession(grantInfo, token)
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return nil, goidc.Errorf(goidc.ErrorCodeInternalError,
+		return nil, goidc.WrapError(goidc.ErrorCodeInternalError,
 			"could not store the grant session", err)
 	}
 
@@ -82,6 +82,10 @@ func validateClientCredentialsGrantRequest(
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
 	}
 
+	if err := ValidateBinding(ctx, c, nil); err != nil {
+		return err
+	}
+
 	if !clientutil.AreScopesAllowed(c, ctx.Scopes, req.scopes) {
 		return goidc.NewError(goidc.ErrorCodeInvalidScope, "invalid scope")
 	}
@@ -91,10 +95,6 @@ func validateClientCredentialsGrantRequest(
 	}
 
 	if err := validateAuthDetailsTypes(ctx, req); err != nil {
-		return err
-	}
-
-	if err := validateBinding(ctx, c, nil); err != nil {
 		return err
 	}
 

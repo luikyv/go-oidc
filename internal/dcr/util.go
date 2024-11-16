@@ -3,6 +3,7 @@ package dcr
 import (
 	"slices"
 
+	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -19,7 +20,7 @@ func create(
 ) {
 
 	if err := ctx.ValidateInitalAccessToken(initialToken); err != nil {
-		return response{}, goidc.Errorf(goidc.ErrorCodeAccessDenied,
+		return response{}, goidc.WrapError(goidc.ErrorCodeAccessDenied,
 			"invalid token", err)
 	}
 
@@ -28,7 +29,7 @@ func create(
 	}
 
 	if err := ctx.HandleDynamicClient(meta); err != nil {
-		return response{}, goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata,
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata,
 			"invalid metadata", err)
 	}
 
@@ -61,7 +62,7 @@ func update(
 	}
 
 	if err := ctx.HandleDynamicClient(meta); err != nil {
-		return response{}, goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata,
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata,
 			"invalid metadata", err)
 	}
 
@@ -105,7 +106,7 @@ func remove(
 	}
 
 	if err := ctx.DeleteClient(id); err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInternalError,
+		return goidc.WrapError(goidc.ErrorCodeInternalError,
 			"could not delete the client", err)
 	}
 	return nil
@@ -124,7 +125,7 @@ func modifyAndSaveClient(
 	secret := setSecret(ctx, client)
 
 	if err := ctx.SaveClient(client); err != nil {
-		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
+		return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
 			"could not store the client", err)
 	}
 
@@ -227,7 +228,7 @@ func protected(
 ) {
 	c, err := ctx.Client(id)
 	if err != nil {
-		return nil, goidc.Errorf(goidc.ErrorCodeInvalidRequest,
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"could not find the client", err)
 	}
 
@@ -244,7 +245,7 @@ func clientID() string {
 
 func clientSecretAndHash() (string, string) {
 	secret := clientSecret()
-	hashedSecret := strutil.BCryptHash(secret)
+	hashedSecret := hashutil.BCryptHash(secret)
 	return secret, hashedSecret
 }
 
@@ -254,7 +255,7 @@ func clientSecret() string {
 
 func registrationAccessTokenAndHash() (string, string) {
 	token := strutil.Random(registrationAccessTokenLength)
-	hashedToken := strutil.BCryptHash(token)
+	hashedToken := hashutil.BCryptHash(token)
 	return token, hashedToken
 }
 

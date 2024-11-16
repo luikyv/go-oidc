@@ -1,10 +1,9 @@
 package authorize
 
 import (
-	"strings"
-
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/dpop"
+	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -24,44 +23,21 @@ func pushAuth(
 		return pushedResponse{}, err
 	}
 
-	session, err := pushAuthnSession(ctx, req, c)
+	session, err := pushedAuthnSession(ctx, req, c)
 	if err != nil {
 		return pushedResponse{}, err
 	}
 
 	if err := ctx.SaveAuthnSession(session); err != nil {
-		return pushedResponse{}, goidc.Errorf(goidc.ErrorCodeInternalError,
-			"could not store the pushed authentication session", err)
+		return pushedResponse{}, err
 	}
 	return pushedResponse{
-		RequestURI: session.ReferenceID,
+		RequestURI: session.PushedAuthReqID,
 		ExpiresIn:  ctx.PARLifetimeSecs,
 	}, nil
 }
 
-// pushAuthnSession builds a new authentication session with a reference ID and
-// saves it.
-func pushAuthnSession(
-	ctx oidc.Context,
-	req request,
-	client *goidc.Client,
-) (
-	*goidc.AuthnSession,
-	error,
-) {
-	session, err := pushedAuthnSession(ctx, req, client)
-	if err != nil {
-		return nil, err
-	}
-
-	session.ReferenceID = requestURI()
-	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.PARLifetimeSecs
-
-	setDPoP(ctx, session)
-
-	return session, nil
-}
-
+// pushedAuthnSession builds a new authentication session and saves it.
 func pushedAuthnSession(
 	ctx oidc.Context,
 	req request,
@@ -70,10 +46,23 @@ func pushedAuthnSession(
 	*goidc.AuthnSession,
 	error,
 ) {
+	var session *goidc.AuthnSession
+	var err error
 	if shouldUseJARDuringPAR(ctx, req.AuthorizationParameters, client) {
-		return pushedAuthnSessionWithJAR(ctx, req, client)
+		session, err = pushedAuthnSessionWithJAR(ctx, req, client)
+	} else {
+		session, err = simplePushedAuthnSession(ctx, req, client)
 	}
-	return simplePushedAuthnSession(ctx, req, client)
+	if err != nil {
+		return nil, err
+	}
+
+	session.PushedAuthReqID = requestURI()
+	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.PARLifetimeSecs
+
+	setPoPForPAR(ctx, session)
+
+	return session, nil
 }
 
 func simplePushedAuthnSession(
@@ -89,7 +78,6 @@ func simplePushedAuthnSession(
 	}
 
 	session := newAuthnSession(req.AuthorizationParameters, client)
-	session.ProtectedParameters = protectedParams(ctx)
 	return session, nil
 }
 
@@ -120,31 +108,21 @@ func pushedAuthnSessionWithJAR(
 	return session, nil
 }
 
-// protectedParams returns the params sent in the form that start with
-// [protectedParamPrefix].
-func protectedParams(ctx oidc.Context) map[string]any {
-	protectedParams := make(map[string]any)
-	for param, value := range ctx.FormData() {
-		if strings.HasPrefix(param, protectedParamPrefix) {
-			protectedParams[param] = value
-		}
-	}
-
-	return protectedParams
-}
-
 func requestURI() string {
 	return parRequestURIPrefix + strutil.Random(parRequestURILength)
 }
 
-// setDPoP adds DPoP for authorization code to the session if available.
-func setDPoP(ctx oidc.Context, session *goidc.AuthnSession) {
-
-	if !ctx.DPoPIsEnabled {
-		return
+func setPoPForPAR(ctx oidc.Context, session *goidc.AuthnSession) {
+	if ctx.DPoPIsEnabled {
+		session.JWKThumbprint = session.DPoPJKT
+		dpopJWT, ok := dpop.JWT(ctx)
+		if ok {
+			session.JWKThumbprint = dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)
+		}
 	}
 
-	if dpopJWT, ok := dpop.JWT(ctx); ok {
-		session.DPoPJWKThumbprint = dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)
+	clientCert, err := ctx.ClientCert()
+	if ctx.MTLSTokenBindingIsEnabled && err == nil {
+		session.ClientCertThumbprint = hashutil.Thumbprint(string(clientCert.Raw))
 	}
 }

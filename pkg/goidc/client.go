@@ -67,7 +67,7 @@ func (c *Client) FetchPublicJWKS(httpClient *http.Client) (jose.JSONWebKeySet, e
 func (c *Client) fetchJWKS(httpClient *http.Client) (json.RawMessage, error) {
 	resp, err := httpClient.Get(c.PublicJWKSURI)
 	if err != nil || resp.StatusCode != http.StatusOK {
-		return nil, Errorf(ErrorCodeInvalidClientMetadata, "could not fetch client jwks", err)
+		return nil, WrapError(ErrorCodeInvalidClientMetadata, "could not fetch client jwks", err)
 	}
 
 	defer resp.Body.Close()
@@ -75,25 +75,28 @@ func (c *Client) fetchJWKS(httpClient *http.Client) (json.RawMessage, error) {
 }
 
 type ClientMetaInfo struct {
-	Name          string          `json:"client_name,omitempty"`
-	LogoURI       string          `json:"logo_uri,omitempty"`
-	RedirectURIs  []string        `json:"redirect_uris,omitempty"`
-	RequestURIs   []string        `json:"request_uris,omitempty"`
-	GrantTypes    []GrantType     `json:"grant_types"`
-	ResponseTypes []ResponseType  `json:"response_types"`
-	PublicJWKSURI string          `json:"jwks_uri,omitempty"`
-	PublicJWKS    json.RawMessage `json:"jwks,omitempty"`
+	Name            string          `json:"client_name,omitempty"`
+	ApplicationType ApplicationType `json:"application_type,omitempty"`
+	LogoURI         string          `json:"logo_uri,omitempty"`
+	Contacts        []string        `json:"contacts,omitempty"`
+	RedirectURIs    []string        `json:"redirect_uris,omitempty"`
+	RequestURIs     []string        `json:"request_uris,omitempty"`
+	GrantTypes      []GrantType     `json:"grant_types"`
+	ResponseTypes   []ResponseType  `json:"response_types"`
+	PublicJWKSURI   string          `json:"jwks_uri,omitempty"`
+	PublicJWKS      json.RawMessage `json:"jwks,omitempty"`
 	// ScopeIDs contains the scopes available to the client separeted by spaces.
-	ScopeIDs                      string                  `json:"scope,omitempty"`
-	SubIdentifierType             SubIdentifierType       `json:"subject_type,omitempty"`
-	SectorIdentifierURI           string                  `json:"sector_identifier_uri,omitempty"`
-	IDTokenSigAlg                 jose.SignatureAlgorithm `json:"id_token_signed_response_alg,omitempty"`
-	IDTokenKeyEncAlg              jose.KeyAlgorithm       `json:"id_token_encrypted_response_alg,omitempty"`
-	IDTokenContentEncAlg          jose.ContentEncryption  `json:"id_token_encrypted_response_enc,omitempty"`
-	UserInfoSigAlg                jose.SignatureAlgorithm `json:"userinfo_signed_response_alg,omitempty"`
-	UserInfoKeyEncAlg             jose.KeyAlgorithm       `json:"userinfo_encrypted_response_alg,omitempty"`
-	UserInfoContentEncAlg         jose.ContentEncryption  `json:"userinfo_encrypted_response_enc,omitempty"`
-	JARIsRequired                 bool                    `json:"require_signed_request_object,omitempty"`
+	ScopeIDs              string                  `json:"scope,omitempty"`
+	SubIdentifierType     SubIdentifierType       `json:"subject_type,omitempty"`
+	SectorIdentifierURI   string                  `json:"sector_identifier_uri,omitempty"`
+	IDTokenSigAlg         jose.SignatureAlgorithm `json:"id_token_signed_response_alg,omitempty"`
+	IDTokenKeyEncAlg      jose.KeyAlgorithm       `json:"id_token_encrypted_response_alg,omitempty"`
+	IDTokenContentEncAlg  jose.ContentEncryption  `json:"id_token_encrypted_response_enc,omitempty"`
+	UserInfoSigAlg        jose.SignatureAlgorithm `json:"userinfo_signed_response_alg,omitempty"`
+	UserInfoKeyEncAlg     jose.KeyAlgorithm       `json:"userinfo_encrypted_response_alg,omitempty"`
+	UserInfoContentEncAlg jose.ContentEncryption  `json:"userinfo_encrypted_response_enc,omitempty"`
+	JARIsRequired         bool                    `json:"require_signed_request_object,omitempty"`
+	// TODO: Is JAR required if this is passed?
 	JARSigAlg                     jose.SignatureAlgorithm `json:"request_object_signing_alg,omitempty"`
 	JARKeyEncAlg                  jose.KeyAlgorithm       `json:"request_object_encryption_alg,omitempty"`
 	JARContentEncAlg              jose.ContentEncryption  `json:"request_object_encryption_enc,omitempty"`
@@ -109,13 +112,17 @@ type ClientMetaInfo struct {
 	DPoPTokenBindingIsRequired    bool                    `json:"dpop_bound_access_tokens,omitempty"`
 	TLSSubDistinguishedName       string                  `json:"tls_client_auth_subject_dn,omitempty"`
 	// TLSSubAlternativeName represents a DNS name.
-	TLSSubAlternativeName     string   `json:"tls_client_auth_san_dns,omitempty"`
-	TLSSubAlternativeNameIp   string   `json:"tls_client_auth_san_ip,omitempty"`
-	TLSTokenBindingIsRequired bool     `json:"tls_client_certificate_bound_access_tokens,omitempty"`
-	AuthDetailTypes           []string `json:"authorization_data_types,omitempty"`
-	DefaultMaxAgeSecs         *int     `json:"default_max_age,omitempty"`
-	DefaultACRValues          string   `json:"default_acr_values,omitempty"`
-	PARIsRequired             bool     `json:"require_pushed_authorization_requests,omitempty"`
+	TLSSubAlternativeName     string                  `json:"tls_client_auth_san_dns,omitempty"`
+	TLSSubAlternativeNameIp   string                  `json:"tls_client_auth_san_ip,omitempty"`
+	TLSTokenBindingIsRequired bool                    `json:"tls_client_certificate_bound_access_tokens,omitempty"`
+	AuthDetailTypes           []string                `json:"authorization_data_types,omitempty"`
+	DefaultMaxAgeSecs         *int                    `json:"default_max_age,omitempty"`
+	DefaultACRValues          string                  `json:"default_acr_values,omitempty"`
+	PARIsRequired             bool                    `json:"require_pushed_authorization_requests,omitempty"`
+	CIBATokenDeliveryMode     CIBATokenDeliveryMode   `json:"backchannel_token_delivery_mode,omitempty"`
+	CIBANotificationEndpoint  string                  `json:"backchannel_client_notification_endpoint,omitempty"`
+	CIBAJARSigAlg             jose.SignatureAlgorithm `json:"backchannel_authentication_request_signing_alg,omitempty"`
+	CIBAUserCodeIsEnabled     bool                    `json:"backchannel_user_code_parameter,omitempty"`
 	// CustomAttributes holds any additional dynamic attributes a client may
 	// provide during registration.
 	// These attributes allow clients to extend their metadata beyond the

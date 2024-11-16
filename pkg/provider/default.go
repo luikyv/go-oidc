@@ -28,6 +28,7 @@ const (
 	defaultEndpointDynamicClient              = "/register"
 	defaultEndpointTokenIntrospection         = "/introspect"
 	defaultEndpointTokenRevocation            = "/revoke"
+	defaultEndpointCIBA                       = "/bc-authorize"
 )
 
 func defaultTokenOptionsFunc() goidc.TokenOptionsFunc {

@@ -118,10 +118,10 @@ func WithUserInfoEndpoint(endpoint string) ProviderOption {
 	}
 }
 
-// WithIntrospectionEndpoint overrides the default value for the introspection
+// WithTokenIntrospectionEndpoint overrides the default value for the introspection
 // endpoint which is [defaultEndpointTokenIntrospection]
 // To enable token introspection, see [WithTokenIntrospection].
-func WithIntrospectionEndpoint(endpoint string) ProviderOption {
+func WithTokenIntrospectionEndpoint(endpoint string) ProviderOption {
 	return func(p Provider) error {
 		p.config.EndpointIntrospection = endpoint
 		return nil
@@ -134,6 +134,15 @@ func WithIntrospectionEndpoint(endpoint string) ProviderOption {
 func WithTokenRevocationEndpoint(endpoint string) ProviderOption {
 	return func(p Provider) error {
 		p.config.EndpointTokenRevocation = endpoint
+		return nil
+	}
+}
+
+// WithCIBAEndpoint overrides the default value for the CIBA endpoint which is
+// [defaultEndpointCIBA].
+func WithCIBAEndpoint(endpoint string) ProviderOption {
+	return func(p Provider) error {
+		p.config.EndpointCIBA = endpoint
 		return nil
 	}
 }
@@ -288,6 +297,67 @@ func WithRefreshTokenGrant(
 func WithRefreshTokenRotation() ProviderOption {
 	return func(p Provider) error {
 		p.config.RefreshTokenRotationIsEnabled = true
+		return nil
+	}
+}
+
+func WithCIBAGrant(
+	initFunc goidc.InitBackAuthFunc,
+	validateFunc goidc.ValidateBackAuthFunc,
+	mode goidc.CIBATokenDeliveryMode,
+	modes ...goidc.CIBATokenDeliveryMode,
+) ProviderOption {
+	return func(p Provider) error {
+		p.config.CIBAIsEnabled = true
+		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantCIBA)
+		p.config.CIBATokenDeliveryModels = appendIfNotIn(modes, mode)
+		p.config.InitBackAuthFunc = initFunc
+		p.config.ValidateBackAuthFunc = validateFunc
+		p.config.CIBADefaultSessionLifetimeSecs = 60
+		p.config.CIBAPollingIntervalSecs = 5
+		return nil
+	}
+}
+
+func WithCIBAJAR(
+	alg jose.SignatureAlgorithm,
+	algs ...jose.SignatureAlgorithm,
+) ProviderOption {
+	algs = appendIfNotIn(algs, alg)
+	return func(p Provider) error {
+		p.config.CIBAJARIsEnabled = true
+		p.config.CIBAJARSigAlgs = algs
+		return nil
+	}
+}
+
+func WithCIBAJARRequired(
+	alg jose.SignatureAlgorithm,
+	algs ...jose.SignatureAlgorithm,
+) ProviderOption {
+	return func(p Provider) error {
+		p.config.CIBAJARIsRequired = true
+		return WithJAR(alg, algs...)(p)
+	}
+}
+
+func WithCIBAUserCode() ProviderOption {
+	return func(p Provider) error {
+		p.config.CIBAUserCodeIsEnabled = true
+		return nil
+	}
+}
+
+func WithCIBAPollingInterval(interval int) ProviderOption {
+	return func(p Provider) error {
+		p.config.CIBAPollingIntervalSecs = interval
+		return nil
+	}
+}
+
+func WithCIBALifetime(secs int) ProviderOption {
+	return func(p Provider) error {
+		p.config.CIBADefaultSessionLifetimeSecs = secs
 		return nil
 	}
 }

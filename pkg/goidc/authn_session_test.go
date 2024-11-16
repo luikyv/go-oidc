@@ -15,8 +15,8 @@ func TestSaveAndGetParameter_HappyPath(t *testing.T) {
 		// When.
 		session.StoreParameter("key", "value")
 		// Then.
-		if session.Store["key"] != "value" {
-			t.Errorf("Store[\"key\"] = %v, want %s", session.Store["key"], "value")
+		if session.Storage["key"] != "value" {
+			t.Errorf("Store[\"key\"] = %v, want %s", session.Storage["key"], "value")
 		}
 	}
 }

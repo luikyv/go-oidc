@@ -24,6 +24,15 @@ const (
 	ErrorCodeInvalidClientMetadata  ErrorCode = "invalid_client_metadata"
 	ErrorCodeRequestURINotSupported ErrorCode = "request_uri_not_supported"
 	ErrorCodeLoginRequired          ErrorCode = "login_required"
+	ErrorCodeAuthPending            ErrorCode = "authorization_pending"
+	ErrorCodeSlowDown               ErrorCode = "slow_down"
+	ErrorCodeExpiredToken           ErrorCode = "expired_token"
+	ErrorCodeMissingUserCode        ErrorCode = "missing_user_code"
+	ErrorCodeInvalidUserCode        ErrorCode = "invalid_user_code"
+	ErrorCodeInvalidBindingMessage  ErrorCode = "invalid_binding_message"
+	ErrorCodeUnknownUserID          ErrorCode = "unknown_user_id"
+	ErrorCodeTransactionFailed      ErrorCode = "transaction_failed"
+	ErrorCodeExpiredLoginHintToken  ErrorCode = "expired_login_hint_token"
 )
 
 func (c ErrorCode) StatusCode() int {
@@ -40,15 +49,24 @@ func (c ErrorCode) StatusCode() int {
 }
 
 type Error struct {
-	Code        ErrorCode `json:"error"`
-	Description string    `json:"error_description"`
-	wrapped     error
+	Code        ErrorCode `json:"error,omitempty"`
+	Description string    `json:"error_description,omitempty"`
+	statusCode  int       `json:"-"`
+	wrapped     error     `json:"-"`
 }
 
 func NewError(code ErrorCode, desc string) Error {
 	return Error{
 		Code:        code,
 		Description: desc,
+	}
+}
+
+func NewErrorWithStatus(code ErrorCode, desc string, status int) Error {
+	return Error{
+		Code:        code,
+		Description: desc,
+		statusCode:  status,
 	}
 }
 
@@ -60,11 +78,19 @@ func (err Error) Error() string {
 	return fmt.Sprintf("%s %s: %v", err.Code, err.Description, err.wrapped)
 }
 
+func (err Error) StatusCode() int {
+	if err.statusCode != 0 {
+		return err.statusCode
+	}
+
+	return err.Code.StatusCode()
+}
+
 func (err Error) Unwrap() error {
 	return err.wrapped
 }
 
-func Errorf(code ErrorCode, desc string, err error) Error {
+func WrapError(code ErrorCode, desc string, err error) Error {
 	return Error{
 		Code:        code,
 		Description: desc,

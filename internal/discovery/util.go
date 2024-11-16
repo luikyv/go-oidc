@@ -96,11 +96,15 @@ func oidcConfig(ctx oidc.Context) openIDConfiguration {
 		}
 
 		if ctx.TokenIntrospectionIsEnabled {
-			config.TokenIntrospectionEndpoint = ctx.MTLSBaseURL() + ctx.EndpointIntrospection
+			config.MTLSConfig.TokenIntrospectionEndpoint = ctx.MTLSBaseURL() + ctx.EndpointIntrospection
 		}
 
 		if ctx.TokenRevocationIsEnabled {
-			config.TokenRevocationEndpoint = ctx.MTLSBaseURL() + ctx.EndpointTokenRevocation
+			config.MTLSConfig.TokenRevocationEndpoint = ctx.MTLSBaseURL() + ctx.EndpointTokenRevocation
+		}
+
+		if ctx.CIBAIsEnabled {
+			config.MTLSConfig.CIBAEndpoint = ctx.MTLSBaseURL() + ctx.EndpointCIBA
 		}
 	}
 
@@ -113,6 +117,16 @@ func oidcConfig(ctx oidc.Context) openIDConfiguration {
 
 	if ctx.PKCEIsEnabled {
 		config.CodeChallengeMethods = ctx.PKCEChallengeMethods
+	}
+
+	if ctx.CIBAIsEnabled {
+		config.CIBAEndpoint = ctx.BaseURL() + ctx.EndpointCIBA
+		config.CIBATokenDeliveryModes = ctx.CIBATokenDeliveryModels
+		config.CIBAUserCodeIsEnabled = ctx.CIBAUserCodeIsEnabled
+
+		if ctx.CIBAJARIsEnabled {
+			config.CIBAJARSigAlgs = ctx.CIBAJARSigAlgs
+		}
 	}
 
 	return config
