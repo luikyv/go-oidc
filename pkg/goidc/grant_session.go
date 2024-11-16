@@ -91,10 +91,10 @@ type GrantInfo struct {
 	JWKThumbprint string `json:"jwk_thumbprint,omitempty"`
 	// ClientCertThumbprint contains the thumbprint of the certificate used by
 	// the client to generate the token.
-	ClientCertThumbprint string `json:"certificate_thumbprint,omitempty"`
+	ClientCertThumbprint string `json:"client_cert_thumbprint,omitempty"`
 
 	// Store allows storing custom data within the grant session.
-	Store map[string]any `json:"store"`
+	Store map[string]any `json:"store,omitempty"`
 }
 
 func (g *GrantSession) IsExpired() bool {

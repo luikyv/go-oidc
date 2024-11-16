@@ -1,15 +1,12 @@
 package token
 
 import (
-	"crypto/sha256"
-	"crypto/sha512"
-	"encoding/base64"
 	"fmt"
-	"hash"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/clientutil"
+	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
@@ -68,8 +65,7 @@ func makeIDToken(
 
 	jwk, err := ctx.IDTokenSigKeyForClient(client)
 	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInvalidRequest,
-			"internal error", err)
+		return "", err
 	}
 
 	claims, err := idTokenClaims(ctx, client, opts, jose.SignatureAlgorithm(jwk.Algorithm))
@@ -79,7 +75,7 @@ func makeIDToken(
 	idToken, err := jwtutil.Sign(claims, jwk,
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
 	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
+		return "", goidc.WrapError(goidc.ErrorCodeInternalError,
 			"could not sign the id token", err)
 	}
 
@@ -125,27 +121,29 @@ func idTokenClaims(
 
 	claims[goidc.ClaimSubject] = sub
 
-	// Avoid an empty client ID claim for anonymous client.
+	// Avoid an empty client ID claim for anonymous clients.
 	if client.ID != "" {
 		claims[goidc.ClaimAudience] = client.ID
 	}
 
 	if opts.AccessToken != "" {
-		claims[goidc.ClaimAccessTokenHash] = halfHashIDTokenClaim(
-			opts.AccessToken,
-			sigAlg,
-		)
+		claims[goidc.ClaimAccessTokenHash] = hashutil.HalfHash(opts.AccessToken, sigAlg)
 	}
 
 	if opts.AuthorizationCode != "" {
-		claims[goidc.ClaimAuthzCodeHash] = halfHashIDTokenClaim(
-			opts.AuthorizationCode,
-			sigAlg,
-		)
+		claims[goidc.ClaimAuthzCodeHash] = hashutil.HalfHash(opts.AuthorizationCode, sigAlg)
 	}
 
 	if opts.State != "" {
-		claims[goidc.ClaimStateHash] = halfHashIDTokenClaim(opts.State, sigAlg)
+		claims[goidc.ClaimStateHash] = hashutil.HalfHash(opts.State, sigAlg)
+	}
+
+	if opts.RefreshToken != "" {
+		claims[goidc.ClaimRefreshTokenHash] = hashutil.HalfHash(opts.RefreshToken, sigAlg)
+	}
+
+	if opts.AuthReqID != "" {
+		claims[goidc.ClaimAuthReqID] = hashutil.HalfHash(opts.AuthReqID, sigAlg)
 	}
 
 	for k, v := range opts.AdditionalIDTokenClaims {
@@ -165,7 +163,7 @@ func encryptIDToken(
 ) {
 	jwk, err := clientutil.JWKByAlg(ctx, c, string(c.IDTokenKeyEncAlg))
 	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInvalidRequest,
+		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"could not encrypt the id token", err)
 	}
 
@@ -175,7 +173,7 @@ func encryptIDToken(
 	}
 	encIDToken, err := jwtutil.Encrypt(userInfoJWT, jwk, contentEncAlg)
 	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInvalidRequest,
+		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"could not encrypt the id token", err)
 	}
 
@@ -240,7 +238,7 @@ func makeJWTToken(
 	accessToken, err := jwtutil.Sign(claims, privateJWK,
 		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", privateJWK.KeyID))
 	if err != nil {
-		return Token{}, goidc.Errorf(goidc.ErrorCodeInternalError,
+		return Token{}, goidc.WrapError(goidc.ErrorCodeInternalError,
 			"could not sign the access token", err)
 	}
 
@@ -274,26 +272,4 @@ func makeOpaqueToken(
 		Type:         tokenType,
 		LifetimeSecs: opts.LifetimeSecs,
 	}, nil
-}
-
-func halfHashIDTokenClaim(claim string, alg jose.SignatureAlgorithm) string {
-	var hash hash.Hash
-	switch alg {
-	case jose.RS384, jose.ES384, jose.PS384, jose.HS384:
-		hash = sha512.New384()
-	case jose.RS512, jose.ES512, jose.PS512, jose.HS512:
-		hash = sha512.New()
-	default:
-		hash = sha256.New()
-	}
-
-	hash.Write([]byte(claim))
-	halfHashedClaim := hash.Sum(nil)[:hash.Size()/2]
-	return base64.RawURLEncoding.EncodeToString(halfHashedClaim)
-}
-
-func hashBase64URLSHA256(s string) string {
-	hash := sha256.New()
-	hash.Write([]byte(s))
-	return base64.RawURLEncoding.EncodeToString(hash.Sum(nil))
 }

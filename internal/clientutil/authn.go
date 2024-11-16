@@ -48,18 +48,18 @@ func Authenticated(
 ) {
 	id, err := extractID(ctx)
 	if err != nil {
-		return nil, goidc.Errorf(goidc.ErrorCodeInvalidClient,
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClient,
 			"invalid client", err)
 	}
 
 	client, err := ctx.Client(id)
 	if err != nil {
-		return nil, goidc.Errorf(goidc.ErrorCodeInvalidClient,
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClient,
 			"client not found", err)
 	}
 
 	if err := authenticate(ctx, client, authnCtx); err != nil {
-		return nil, goidc.Errorf(goidc.ErrorCodeInvalidClient,
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClient,
 			"could not authenticate the client", err)
 	}
 
@@ -148,7 +148,7 @@ func validateSecret(
 ) error {
 	err := bcrypt.CompareHashAndPassword([]byte(client.HashedSecret), []byte(secret))
 	if err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidClient, "invalid client secret", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client secret", err)
 	}
 	return nil
 }
@@ -167,7 +167,7 @@ func authenticatePrivateKeyJWT(
 	sigAlgs := privateKeyJWTSigAlgs(ctx, client, authnCtx)
 	parsedAssertion, err := jwt.ParseSigned(assertion, sigAlgs)
 	if err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidClient,
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient,
 			"could not parse the client assertion", err)
 	}
 
@@ -189,7 +189,7 @@ func authenticatePrivateKeyJWT(
 
 	claims := jwt.Claims{}
 	if err := parsedAssertion.Claims(jwk.Key, &claims); err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidClient,
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient,
 			"could not parse the client assertion claims", err)
 	}
 
@@ -215,7 +215,7 @@ func jwkMatchingHeader(
 	if header.KeyID != "" {
 		jwk, err := JWKByKeyID(ctx, c, header.KeyID)
 		if err != nil {
-			return jose.JSONWebKey{}, goidc.Errorf(goidc.ErrorCodeInvalidClient,
+			return jose.JSONWebKey{}, goidc.WrapError(goidc.ErrorCodeInvalidClient,
 				"could not find the jwk used to sign the assertion that matches the 'kid' header", err)
 		}
 		return jwk, nil
@@ -223,7 +223,7 @@ func jwkMatchingHeader(
 
 	jwk, err := JWKByAlg(ctx, c, header.Algorithm)
 	if err != nil {
-		return jose.JSONWebKey{}, goidc.Errorf(goidc.ErrorCodeInvalidClient,
+		return jose.JSONWebKey{}, goidc.WrapError(goidc.ErrorCodeInvalidClient,
 			"could not find the jwk used to sign the assertion that matches the 'alg' header", err)
 	}
 	return jwk, nil
@@ -242,13 +242,13 @@ func authenticateSecretJWT(
 	sigAlgs := secretJWTSigAlgs(ctx, client, authnCtx)
 	parsedAssertion, err := jwt.ParseSigned(assertion, sigAlgs)
 	if err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidClient,
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient,
 			"could not parse the client assertion", err)
 	}
 
 	claims := jwt.Claims{}
 	if err := parsedAssertion.Claims([]byte(client.Secret), &claims); err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidClient,
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient,
 			"could not parse the client assertion claims", err)
 	}
 
@@ -313,7 +313,7 @@ func areClaimsValid(
 	}
 
 	if err := ctx.CheckJTI(claims.ID); err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidClient,
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient,
 			"invalid jti claim", err)
 	}
 
@@ -329,7 +329,7 @@ func areClaimsValid(
 		AnyAudience: ctx.AssertionAudiences(),
 	}, time.Duration(0))
 	if err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidClient, "invalid assertion", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid assertion", err)
 	}
 	return nil
 }
@@ -344,7 +344,7 @@ func authenticateSelfSignedTLSCert(
 
 	cert, err := ctx.ClientCert()
 	if err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidClient,
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient,
 			"invalid client certificate", err)
 	}
 
@@ -371,7 +371,7 @@ func jwkMatchingCert(
 ) {
 	jwks, err := c.FetchPublicJWKS(ctx.HTTPClient())
 	if err != nil {
-		return jose.JSONWebKey{}, goidc.Errorf(goidc.ErrorCodeInternalError,
+		return jose.JSONWebKey{}, goidc.WrapError(goidc.ErrorCodeInternalError,
 			"could not load the client JWKS", err)
 	}
 
@@ -396,7 +396,7 @@ func authenticateTLSCert(
 
 	cert, err := ctx.ClientCert()
 	if err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidClient,
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient,
 			"invalid client certificate", err)
 	}
 
@@ -469,13 +469,13 @@ func assertionClientID(
 ) {
 	parsedAssertion, err := jwt.ParseSigned(assertion, sigAlgs)
 	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInvalidClient,
+		return "", goidc.WrapError(goidc.ErrorCodeInvalidClient,
 			"could not parse the client assertion", err)
 	}
 
 	var claims map[string]any
 	if err := parsedAssertion.UnsafeClaimsWithoutVerification(&claims); err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInvalidClient,
+		return "", goidc.WrapError(goidc.ErrorCodeInvalidClient,
 			"could not parse the client assertion claims", err)
 	}
 

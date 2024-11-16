@@ -40,10 +40,9 @@ func initAuthNoRedirect(ctx oidc.Context, client *goidc.Client, req request) err
 
 func continueAuth(ctx oidc.Context, callbackID string) error {
 
-	// Fetch the session using the callback ID.
 	session, err := ctx.AuthnSessionByCallbackID(callbackID)
 	if err != nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "could not load the session")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not load the session", err)
 	}
 
 	if session.IsExpired() {
@@ -53,7 +52,7 @@ func continueAuth(ctx oidc.Context, callbackID string) error {
 	if oauthErr := authenticate(ctx, session); oauthErr != nil {
 		client, err := ctx.Client(session.ClientID)
 		if err != nil {
-			return goidc.NewError(goidc.ErrorCodeInternalError, "could not load the client")
+			return err
 		}
 		return redirectError(ctx, oauthErr, client)
 	}
@@ -85,7 +84,7 @@ func initAuthnSession(
 	}
 	session.PolicyID = policy.ID
 	session.CallbackID = callbackID()
-	session.ReferenceID = ""
+	session.PushedAuthReqID = ""
 	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.AuthnSessionTimeoutSecs
 	if session.IDTokenHint != "" {
 		// The ID token hint was already validated.
@@ -291,7 +290,7 @@ func finishFlowSuccessfully(
 	}
 
 	redirectParams := response{
-		authorizationCode: session.AuthorizationCode,
+		authorizationCode: session.AuthCode,
 		state:             session.State,
 	}
 	if session.ResponseType.Contains(goidc.ResponseTypeToken) {
@@ -319,7 +318,7 @@ func finishFlowSuccessfully(
 			Subject:                 session.Subject,
 			AdditionalIDTokenClaims: session.AdditionalIDTokenClaims,
 			AccessToken:             redirectParams.accessToken,
-			AuthorizationCode:       session.AuthorizationCode,
+			AuthorizationCode:       session.AuthCode,
 			State:                   session.State,
 		}
 
@@ -341,12 +340,10 @@ func authorizeAuthnSession(
 	if !session.ResponseType.Contains(goidc.ResponseTypeCode) {
 		// The client didn't request an authorization code to later exchange it
 		// for an access token, so we don't keep the session anymore.
-		if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-			return err
-		}
+		return ctx.DeleteAuthnSession(session.ID)
 	}
 
-	session.AuthorizationCode = authorizationCode()
+	session.AuthCode = authorizationCode()
 	session.ExpiresAtTimestamp = timeutil.TimestampNow() + authorizationCodeLifetimeSecs
 	// Make sure the session won't be reached anymore from the callback endpoint.
 	session.CallbackID = ""
@@ -391,14 +388,29 @@ func implicitGrantInfo(
 		AdditionalIDTokenClaims:  session.AdditionalIDTokenClaims,
 		AdditionalUserInfoClaims: session.AdditionalUserInfoClaims,
 		AdditionalTokenClaims:    session.AdditionalTokenClaims,
-		JWKThumbprint:            session.DPoPJWKThumbprint,
 	}
 
-	setPoP(ctx, &grantInfo, session)
+	setPoPForImplicitGrant(ctx, &grantInfo, session)
 
 	return grantInfo, nil
 }
 
-func setPoP(_ oidc.Context, grantInfo *goidc.GrantInfo, session *goidc.AuthnSession) {
-	grantInfo.JWKThumbprint = session.DPoPJWKThumbprint
+func setPoPForImplicitGrant(
+	ctx oidc.Context,
+	grantInfo *goidc.GrantInfo,
+	session *goidc.AuthnSession,
+) {
+	if !ctx.DPoPIsEnabled {
+		return
+	}
+
+	// Default to the JWK thumbprint stored in the session (e.g., from a previous PAR).
+	// If not available, fallback to the thumbprint provided via the dpop_jkt parameter.
+	grantInfo.JWKThumbprint = session.JWKThumbprint
+	if grantInfo.JWKThumbprint == "" {
+		grantInfo.JWKThumbprint = session.DPoPJKT
+	}
+
+	// TODO: Should the token be bound with tls cert if the client used mtls during /par?
+	// It could be an one-time self signed certificate the client wants to use for binding.
 }

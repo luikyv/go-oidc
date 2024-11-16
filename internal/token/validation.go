@@ -4,13 +4,14 @@ import (
 	"slices"
 
 	"github.com/luikyv/go-oidc/internal/dpop"
+	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-// validateBinding checks both DPoP and TLS binding for issuing a token.
-func validateBinding(
+// ValidateBinding checks both DPoP and TLS binding for issuing a token.
+func ValidateBinding(
 	ctx oidc.Context,
 	client *goidc.Client,
 	opts *bindindValidationsOptions,
@@ -64,17 +65,20 @@ func validateBindingTLS(
 		return nil
 	}
 
-	_, err := ctx.ClientCert()
+	cert, err := ctx.ClientCert()
 	if err != nil {
-		// Return an error if the certificate was not informed and one of the
+		// Return an error if a valid certificate was not informed and one of the
 		// below applies:
 		// 	* TLS binding is required as a general configuration.
 		// 	* The client requires TLS binding.
 		// 	* TLS binding is required as a validation option.
 		if ctx.MTLSTokenBindingIsRequired || client.TLSTokenBindingIsRequired || opts.tlsIsRequired {
-			return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid client certificate", err)
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "client certificate is required", err)
 		}
-		return nil
+	}
+
+	if opts.tlsCertThumbprint != "" && opts.tlsCertThumbprint != hashutil.Thumbprint(string(cert.Raw)) {
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid client certificate")
 	}
 
 	return nil
@@ -138,7 +142,7 @@ func validateAuthDetails(
 	}
 
 	if err := ctx.CompareAuthDetails(grantedDetails, req.authDetails); err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidAuthDetails,
+		return goidc.WrapError(goidc.ErrorCodeInvalidAuthDetails,
 			"invalid authorization details", err)
 	}
 
@@ -230,7 +234,7 @@ func isPKCEValid(codeVerifier string, codeChallenge string, codeChallengeMethod 
 	case goidc.CodeChallengeMethodPlain:
 		return codeChallenge == codeVerifier
 	case goidc.CodeChallengeMethodSHA256:
-		return codeChallenge == hashBase64URLSHA256(codeVerifier)
+		return codeChallenge == hashutil.Thumbprint(codeVerifier)
 	}
 
 	return false

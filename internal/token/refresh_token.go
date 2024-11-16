@@ -5,6 +5,7 @@ import (
 
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/dpop"
+	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -30,7 +31,7 @@ func generateRefreshTokenGrant(
 
 	grantSession, err := ctx.GrantSessionByRefreshToken(req.refreshToken)
 	if err != nil {
-		return response{}, goidc.Errorf(goidc.ErrorCodeInvalidRequest,
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"invalid refresh_token", err)
 	}
 
@@ -44,7 +45,7 @@ func generateRefreshTokenGrant(
 
 	token, err := Make(ctx, grantSession.GrantInfo, client)
 	if err != nil {
-		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
+		return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
 			"could not generate token during refresh token grant", err)
 	}
 
@@ -70,7 +71,7 @@ func generateRefreshTokenGrant(
 			newIDTokenOptions(grantSession.GrantInfo),
 		)
 		if err != nil {
-			return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
+			return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
 				"could not generate id token during refresh token grant", err)
 		}
 	}
@@ -131,7 +132,7 @@ func updateRefreshTokenGrantSession(
 	updatePoPForRefreshedToken(ctx, &grantSession.GrantInfo)
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInternalError,
+		return goidc.WrapError(goidc.ErrorCodeInternalError,
 			"could not store the grant session", err)
 	}
 
@@ -149,7 +150,7 @@ func updatePoPForRefreshedToken(ctx oidc.Context, grantInfo *goidc.GrantInfo) {
 
 	clientCert, err := ctx.ClientCert()
 	if grantInfo.ClientCertThumbprint != "" && err == nil {
-		grantInfo.ClientCertThumbprint = hashBase64URLSHA256(string(clientCert.Raw))
+		grantInfo.ClientCertThumbprint = hashutil.Thumbprint(string(clientCert.Raw))
 	}
 }
 
@@ -174,18 +175,6 @@ func validateRefreshTokenGrantRequest(
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "the refresh token is expired")
 	}
 
-	if !containsAllScopes(grantSession.GrantedScopes, req.scopes) {
-		return goidc.NewError(goidc.ErrorCodeInvalidScope, "invalid scope")
-	}
-
-	if err := validateResources(ctx, grantSession.GrantedResources, req); err != nil {
-		return err
-	}
-
-	if err := validateAuthDetails(ctx, grantSession.GrantedAuthDetails, req); err != nil {
-		return err
-	}
-
 	cnf := goidc.TokenConfirmation{
 		JWKThumbprint:        grantSession.JWKThumbprint,
 		ClientCertThumbprint: grantSession.ClientCertThumbprint,
@@ -198,6 +187,18 @@ func validateRefreshTokenGrantRequest(
 		return err
 	}
 
+	if !containsAllScopes(grantSession.GrantedScopes, req.scopes) {
+		return goidc.NewError(goidc.ErrorCodeInvalidScope, "invalid scope")
+	}
+
+	if err := validateResources(ctx, grantSession.GrantedResources, req); err != nil {
+		return err
+	}
+
+	if err := validateAuthDetails(ctx, grantSession.GrantedAuthDetails, req); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -207,13 +208,17 @@ func validateRefreshTokenBinding(
 	confirmation goidc.TokenConfirmation,
 ) error {
 
+	// For public clients, tokens are bound to the mechanism specified when
+	// issuing the first token.
+	// In that case proof of possession is verified instead of token binding.
 	if client.IsPublic() {
 		return nil
 	}
 
-	// If the refresh token was issued with DPoP, make sure the following tokens
-	// are bound with DPoP as well.
+	// If the refresh token was issued with DPoP, make sure the following token
+	// is bound with DPoP as well.
 	if confirmation.JWKThumbprint != "" {
+		// Note that a DPoP JWT for a different key can be used to bind the token.
 		opts := bindindValidationsOptions{}
 		opts.dpopIsRequired = true
 		if err := validateBindingDPoP(ctx, client, opts); err != nil {
@@ -221,11 +226,13 @@ func validateRefreshTokenBinding(
 		}
 	}
 
-	// If the refresh token was issued with TLS binding, make sure the following token
-	// are bound with TLS as well.
+	// If the refresh token was issued with TLS binding, make sure the following
+	// token is bound to the same tls certificate.
 	if confirmation.ClientCertThumbprint != "" {
-		opts := bindindValidationsOptions{}
-		opts.tlsIsRequired = true
+		opts := bindindValidationsOptions{
+			tlsIsRequired:     true,
+			tlsCertThumbprint: confirmation.ClientCertThumbprint,
+		}
 		if err := validateBindingTLS(ctx, client, opts); err != nil {
 			return err
 		}

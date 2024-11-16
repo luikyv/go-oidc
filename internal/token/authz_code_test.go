@@ -1,9 +1,14 @@
 package token
 
 import (
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"errors"
 	"fmt"
+	"math/big"
+	"net/http"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -21,7 +26,7 @@ func TestGenerateGrant_AuthorizationCodeGrant(t *testing.T) {
 	req := request{
 		grantType:         goidc.GrantAuthorizationCode,
 		redirectURI:       client.RedirectURIs[0],
-		authorizationCode: session.AuthorizationCode,
+		authorizationCode: session.AuthCode,
 	}
 
 	// When.
@@ -43,7 +48,7 @@ func TestGenerateGrant_AuthorizationCodeGrant(t *testing.T) {
 		LastTokenExpiresAtTimestamp: grantSession.LastTokenExpiresAtTimestamp,
 		CreatedAtTimestamp:          grantSession.CreatedAtTimestamp,
 		ExpiresAtTimestamp:          grantSession.ExpiresAtTimestamp,
-		AuthorizationCode:           session.AuthorizationCode,
+		AuthorizationCode:           session.AuthCode,
 		GrantInfo: goidc.GrantInfo{
 			GrantType:     goidc.GrantAuthorizationCode,
 			Subject:       session.Subject,
@@ -113,7 +118,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails(t *testing.T) {
 	req := request{
 		grantType:         goidc.GrantAuthorizationCode,
 		redirectURI:       client.RedirectURIs[0],
-		authorizationCode: session.AuthorizationCode,
+		authorizationCode: session.AuthCode,
 	}
 
 	// When.
@@ -135,7 +140,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails(t *testing.T) {
 		LastTokenExpiresAtTimestamp: grantSession.LastTokenExpiresAtTimestamp,
 		CreatedAtTimestamp:          grantSession.CreatedAtTimestamp,
 		ExpiresAtTimestamp:          grantSession.ExpiresAtTimestamp,
-		AuthorizationCode:           session.AuthorizationCode,
+		AuthorizationCode:           session.AuthCode,
 		GrantInfo: goidc.GrantInfo{
 			GrantType:          goidc.GrantAuthorizationCode,
 			Subject:            session.Subject,
@@ -219,7 +224,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails_ClientRequestsSubset(t
 	req := request{
 		grantType:         goidc.GrantAuthorizationCode,
 		redirectURI:       client.RedirectURIs[0],
-		authorizationCode: session.AuthorizationCode,
+		authorizationCode: session.AuthCode,
 		authDetails: []goidc.AuthorizationDetail{
 			map[string]any{
 				"type":         "type1",
@@ -287,7 +292,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_ResourceIndicators(t *testing.T) {
 	req := request{
 		grantType:         goidc.GrantAuthorizationCode,
 		redirectURI:       client.RedirectURIs[0],
-		authorizationCode: session.AuthorizationCode,
+		authorizationCode: session.AuthCode,
 		resources:         []string{"https://resource1.com", "https://resource2.com"},
 	}
 
@@ -341,13 +346,13 @@ func TestGenerateGrant_AuthorizationCodeGrant_CodeReuseInvalidatesGrant(t *testi
 	_ = ctx.DeleteAuthnSession(session.ID)
 	_ = ctx.SaveGrantSession(&goidc.GrantSession{
 		ID:                "random_id",
-		AuthorizationCode: session.AuthorizationCode,
+		AuthorizationCode: session.AuthCode,
 	})
 
 	req := request{
 		grantType:         goidc.GrantAuthorizationCode,
 		redirectURI:       client.RedirectURIs[0],
-		authorizationCode: session.AuthorizationCode,
+		authorizationCode: session.AuthCode,
 	}
 
 	// When.
@@ -405,6 +410,79 @@ func TestIsPkceValid(t *testing.T) {
 	}
 }
 
+func TestGenerateGrant_AuthorizationCodeGrant_MTLSBinding(t *testing.T) {
+
+	// Given.
+	ctx, client, session := setUpAuthzCodeGrant(t)
+	ctx.MTLSTokenBindingIsEnabled = true
+	ctx.ClientCertFunc = func(r *http.Request) (*x509.Certificate, error) {
+		return &x509.Certificate{
+			SerialNumber: big.NewInt(time.Now().UnixNano()),
+			Subject: pkix.Name{
+				CommonName: "random",
+			},
+			NotBefore:   time.Now(),
+			NotAfter:    time.Now().Add(365 * 24 * time.Hour),
+			KeyUsage:    x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+			ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		}, nil
+	}
+
+	req := request{
+		grantType:         goidc.GrantAuthorizationCode,
+		redirectURI:       client.RedirectURIs[0],
+		authorizationCode: session.AuthCode,
+	}
+
+	// When.
+	tokenResp, err := generateGrant(ctx, req)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("error generating the authorization code grant: %v", err)
+	}
+
+	grantSessions := oidctest.GrantSessions(t, ctx)
+	if len(grantSessions) != 1 {
+		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
+	}
+	grantSession := grantSessions[0]
+
+	if grantSession.ClientCertThumbprint == "" {
+		t.Fatalf("invalid certificate thumbprint")
+	}
+
+	claims, err := oidctest.SafeClaims(tokenResp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
+	if err != nil {
+		t.Fatalf("error parsing claims: %v", err)
+	}
+	now := timeutil.TimestampNow()
+	wantedClaims := map[string]any{
+		"iss":       ctx.Host,
+		"sub":       session.Subject,
+		"client_id": client.ID,
+		"scope":     session.GrantedScopes,
+		"exp":       float64(grantSession.LastTokenExpiresAtTimestamp),
+		"iat":       float64(now),
+		"jti":       grantSession.TokenID,
+		"cnf": map[string]any{
+			"x5t#S256": grantSession.ClientCertThumbprint,
+		},
+	}
+	if diff := cmp.Diff(
+		claims,
+		wantedClaims,
+		cmpopts.EquateApprox(0, 1),
+	); diff != "" {
+		t.Error(diff)
+	}
+
+	authnSessions := oidctest.AuthnSessions(t, ctx)
+	if len(authnSessions) != 0 {
+		t.Errorf("len(authnSessions) = %d, want 0", len(authnSessions))
+	}
+}
+
 func setUpAuthzCodeGrant(t testing.TB) (
 	ctx oidc.Context,
 	client *goidc.Client,
@@ -432,11 +510,11 @@ func setUpAuthzCodeGrant(t testing.TB) (
 			Scopes:      goidc.ScopeOpenID.ID,
 			RedirectURI: client.RedirectURIs[0],
 		},
-		AuthorizationCode:     authorizationCode,
+		AuthCode:              authorizationCode,
 		Subject:               "user_id",
 		CreatedAtTimestamp:    now,
 		ExpiresAtTimestamp:    now + 60,
-		Store:                 make(map[string]any),
+		Storage:               make(map[string]any),
 		AdditionalTokenClaims: make(map[string]any),
 	}
 	if err := ctx.SaveAuthnSession(session); err != nil {

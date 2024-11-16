@@ -159,7 +159,7 @@ func validatePushedRequest(
 		// Convert the redirection error to a standard one.
 		var redirectErr redirectionError
 		if errors.As(err, &redirectErr) {
-			return goidc.Errorf(redirectErr.code, redirectErr.desc, redirectErr)
+			return goidc.WrapError(redirectErr.code, redirectErr.desc, redirectErr)
 		}
 		return err
 	}
@@ -584,7 +584,7 @@ func validateIDTokenHintAsOptional(
 
 	parsedIDToken, err := jwt.ParseSigned(params.IDTokenHint, ctx.UserSigAlgs)
 	if err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid id token hint", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid id token hint", err)
 	}
 
 	if len(parsedIDToken.Headers) != 1 {
@@ -593,11 +593,11 @@ func validateIDTokenHintAsOptional(
 
 	publicKey, err := ctx.PublicKey(parsedIDToken.Headers[0].KeyID)
 	if err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid id token hint", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid id token hint", err)
 	}
 
 	if err := parsedIDToken.Claims(publicKey); err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidRequest, "invalid id token hint", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid id token hint", err)
 	}
 
 	return nil
@@ -648,6 +648,6 @@ func validateCodeBindingDPoP(
 
 	return dpop.ValidateJWT(ctx, dpopJWT, dpop.ValidationOptions{
 		// "dpop_jkt" is optional, but it must match the DPoP JWT if present.
-		JWKThumbprint: params.DPoPJWKThumbprint,
+		JWKThumbprint: params.DPoPJKT,
 	})
 }

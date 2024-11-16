@@ -59,12 +59,12 @@ func TestAuthnSessionByAuthorizationCode(t *testing.T) {
 	sessionID := "random_session_id"
 	authorizationCode := "random_authorization_code"
 	manager.Sessions[sessionID] = &goidc.AuthnSession{
-		ID:                sessionID,
-		AuthorizationCode: authorizationCode,
+		ID:       sessionID,
+		AuthCode: authorizationCode,
 	}
 
 	// When.
-	session, err := manager.SessionByAuthorizationCode(context.Background(), authorizationCode)
+	session, err := manager.SessionByAuthCode(context.Background(), authorizationCode)
 
 	// Then.
 	if err != nil {
@@ -82,12 +82,12 @@ func TestAuthnSessionByReferenceID(t *testing.T) {
 	sessionID := "random_session_id"
 	requestURI := "random_request_uri"
 	manager.Sessions[sessionID] = &goidc.AuthnSession{
-		ID:          sessionID,
-		ReferenceID: requestURI,
+		ID:              sessionID,
+		PushedAuthReqID: requestURI,
 	}
 
 	// When.
-	session, err := manager.SessionByReferenceID(context.Background(), requestURI)
+	session, err := manager.SessionByPushedAuthReqID(context.Background(), requestURI)
 
 	// Then.
 	if err != nil {

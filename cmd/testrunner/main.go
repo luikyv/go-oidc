@@ -15,27 +15,29 @@
 //
 // Optional Flags:
 //
-//	-config_override     Path with content to override the configuration file.
-//	-modules             Comma-separated list of test modules to run.
-//	                      If omitted, all available modules will be executed.
-//	-skip_modules        Comma-separated list of test modules to skip during
-//	                      execution.
-//	-response_type       Defines the OAuth 2.0 response type (e.g., code, token).
-//	-sender_constrain    Specifies the sender-constrain mechanism to apply to
-//	                      tokens (e.g., dpop, mtls).
-//	-client_auth_type    Defines the client authentication type (e.g., mtls,
-//	                      private_key_jwt).
-//	-openid              Indicates the OpenID profile (e.g., openid_connect,
-//	                      plain_oauth).
-//	-fapi_request_method Specifies the FAPI request method (e.g., unsigned,
-//	                      signed_non_repudiation).
-//	-fapi_profile        Defines the FAPI profile for testing (e.g., plain_fapi).
-//	-fapi_response_mode  Specifies the response mode for FAPI tests (e.g.,
-//	                      jarm, plain_response).
-//	-server_metadata     Specifies how the server discovery information is informed (e.g.,
-//	                      static, discovery).
-//	-client_registration Specifies how the clients used in the test are created
-//	                      (e.g., dynamic_client).
+//		-config_override     Path with content to override the configuration file.
+//		-modules             Comma-separated list of test modules to run.
+//		                      If omitted, all available modules will be executed.
+//		-skip_modules        Comma-separated list of test modules to skip during
+//		                      execution.
+//		-response_type       Defines the OAuth 2.0 response type (e.g., code, token).
+//		-sender_constrain    Specifies the sender-constrain mechanism to apply to
+//		                      tokens (e.g., dpop, mtls).
+//		-client_auth_type    Defines the client authentication type (e.g., mtls,
+//		                      private_key_jwt).
+//		-openid              Indicates the OpenID profile (e.g., openid_connect,
+//		                      plain_oauth).
+//		-fapi_request_method Specifies the FAPI request method (e.g., unsigned,
+//		                      signed_non_repudiation).
+//		-fapi_profile        Defines the FAPI profile for testing (e.g., plain_fapi).
+//		-fapi_response_mode  Specifies the response mode for FAPI tests (e.g.,
+//		                      jarm, plain_response).
+//		-server_metadata     Specifies how the server discovery information is informed (e.g.,
+//		                      static, discovery).
+//		-client_registration Specifies how the clients used in the test are created
+//		                      (e.g., dynamic_client).
+//		-ciba_mode           Specifies how the CIBA token delivery mode
+//	                       (e.g., poll, ping).
 //
 // Notes:
 //
@@ -130,6 +132,7 @@ const (
 	argFAPIResponseMode   string = "fapi_response_mode"
 	argServerMetaData     string = "server_metadata"
 	argClientRegistration string = "client_registration"
+	argCIBAMode           string = "ciba_mode"
 )
 
 type testStatus string
@@ -194,6 +197,7 @@ type variant struct {
 	FAPIRequestMethod  string `json:"fapi_request_method,omitempty"`
 	FAPIProfile        string `json:"fapi_profile,omitempty"`
 	FAPIResponseMode   string `json:"fapi_response_mode,omitempty"`
+	CIBAMode           string `json:"ciba_mode,omitempty"`
 }
 
 func (v variant) String() string {
@@ -245,6 +249,7 @@ func buildArguments() arguments {
 	fapiRespMode := flag.String(argFAPIResponseMode, "", "fapi response mode")
 	serverMetaData := flag.String(argServerMetaData, "", "server meta data")
 	clientReg := flag.String(argClientRegistration, "", "client registration")
+	cibaMode := flag.String(argCIBAMode, "", "ciba mode")
 
 	flag.Parse()
 
@@ -264,6 +269,7 @@ func buildArguments() arguments {
 			FAPIResponseMode:   *fapiRespMode,
 			ServerMetadata:     *serverMetaData,
 			ClientRegistration: *clientReg,
+			CIBAMode:           *cibaMode,
 		},
 	}
 }
@@ -330,6 +336,7 @@ func runTestModule(ctx context.Context, name string, plan testPlan) error {
 		return err
 	}
 
+	// Poll the test module until it finishes or times out.
 	var module testModule
 	for {
 

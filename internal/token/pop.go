@@ -2,6 +2,7 @@ package token
 
 import (
 	"github.com/luikyv/go-oidc/internal/dpop"
+	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -59,11 +60,11 @@ func validateTLSPoP(
 
 	clientCert, err := ctx.ClientCert()
 	if err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidToken,
+		return goidc.WrapError(goidc.ErrorCodeInvalidToken,
 			"the client certificate is required", err)
 	}
 
-	if confirmation.ClientCertThumbprint != hashBase64URLSHA256(string(clientCert.Raw)) {
+	if confirmation.ClientCertThumbprint != hashutil.Thumbprint(string(clientCert.Raw)) {
 		return goidc.NewError(goidc.ErrorCodeInvalidToken,
 			"invalid client certificate")
 	}
@@ -80,6 +81,6 @@ func setPoP(ctx oidc.Context, grantInfo *goidc.GrantInfo) {
 
 	clientCert, err := ctx.ClientCert()
 	if ctx.MTLSTokenBindingIsEnabled && err == nil {
-		grantInfo.ClientCertThumbprint = hashBase64URLSHA256(string(clientCert.Raw))
+		grantInfo.ClientCertThumbprint = hashutil.Thumbprint(string(clientCert.Raw))
 	}
 }

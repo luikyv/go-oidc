@@ -45,7 +45,7 @@ func TestPushAuth(t *testing.T) {
 
 	wantedSession := goidc.AuthnSession{
 		ID:                 session.ID,
-		ReferenceID:        resp.RequestURI,
+		PushedAuthReqID:    resp.RequestURI,
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
 		ClientID:           client.ID,
@@ -61,7 +61,7 @@ func TestPushAuth(t *testing.T) {
 	}
 
 	wantedResp := pushedResponse{
-		RequestURI: session.ReferenceID,
+		RequestURI: session.PushedAuthReqID,
 		ExpiresIn:  ctx.PARLifetimeSecs,
 	}
 	if diff := cmp.Diff(resp, wantedResp); diff != "" {
@@ -74,7 +74,6 @@ func TestPushAuth_WithJAR(t *testing.T) {
 	ctx, client := setUpPAR(t)
 	ctx.JARIsEnabled = true
 	ctx.JARSigAlgs = []jose.SignatureAlgorithm{jose.RS256}
-	ctx.JARLifetimeSecs = 60
 
 	privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
 	jwks, _ := json.Marshal(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privateJWK.Public()}})
@@ -123,7 +122,7 @@ func TestPushAuth_WithJAR(t *testing.T) {
 
 	wantedSession := goidc.AuthnSession{
 		ID:                 session.ID,
-		ReferenceID:        resp.RequestURI,
+		PushedAuthReqID:    resp.RequestURI,
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
 		ClientID:           client.ID,
@@ -138,7 +137,7 @@ func TestPushAuth_WithJAR(t *testing.T) {
 	}
 
 	wantedResp := pushedResponse{
-		RequestURI: session.ReferenceID,
+		RequestURI: session.PushedAuthReqID,
 		ExpiresIn:  ctx.PARLifetimeSecs,
 	}
 	if diff := cmp.Diff(resp, wantedResp); diff != "" {

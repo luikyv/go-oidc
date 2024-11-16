@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"golang.org/x/crypto/bcrypt"
 )
 
 const charset string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -31,26 +30,16 @@ func SplitWithSpaces(s string) []string {
 }
 
 func Random(length int) string {
-	charsetLen := int64(len(charset))
-	ret := make([]byte, length)
+	result := strings.Builder{}
+	charsetLength := big.NewInt(int64(len(charset)))
+
 	for i := 0; i < length; i++ {
-		num, err := rand.Int(rand.Reader, big.NewInt(charsetLen))
+		n, err := rand.Int(rand.Reader, charsetLength)
 		if err != nil {
 			panic(err)
 		}
-		ret[i] = charset[num.Int64()]
+		result.WriteByte(charset[n.Int64()])
 	}
 
-	return string(ret)
-}
-
-func BCryptHash(s string) string {
-	hashedS, err := bcrypt.GenerateFromPassword(
-		[]byte(s),
-		bcrypt.DefaultCost,
-	)
-	if err != nil {
-		panic(err)
-	}
-	return string(hashedS)
+	return result.String()
 }

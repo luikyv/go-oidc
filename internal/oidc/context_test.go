@@ -1,6 +1,7 @@
 package oidc_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -469,7 +470,7 @@ func TestSigAlgs(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
 		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey, encryptionKey}}, nil
 	}
 
@@ -493,7 +494,7 @@ func TestPublicKeys_HappyPath(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
 		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
 	}
 
@@ -526,7 +527,7 @@ func TestPublicKey_HappyPath(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
 		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
 	}
 
@@ -554,7 +555,7 @@ func TestPrivateKey_HappyPath(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
 		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
 	}
 
@@ -580,7 +581,7 @@ func TestPrivateKey_KeyDoesntExist(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
 		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{}}, nil
 	}
 
@@ -602,7 +603,7 @@ func TestUserInfoSigKeyForClient(t *testing.T) {
 		Configuration: &oidc.Configuration{},
 	}
 	ctx.UserDefaultSigAlg = jose.SignatureAlgorithm(signingKey.Algorithm)
-	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
 		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
 	}
 
@@ -629,7 +630,7 @@ func TestUserInfoSigKeyForClient_ClientWithDefaultAlgorithm(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
 		return jose.JSONWebKeySet{
 			Keys: []jose.JSONWebKey{defaultKey, alternativeKey},
 		}, nil
@@ -664,7 +665,7 @@ func TestIDTokenSigKeyForClient(t *testing.T) {
 		Configuration: &oidc.Configuration{},
 	}
 	ctx.UserDefaultSigAlg = jose.SignatureAlgorithm(signingKey.Algorithm)
-	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
 		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
 	}
 
@@ -691,7 +692,7 @@ func TestIDTokenSigKeyForClient_ClientWithDefaultAlgorithm(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
 		return jose.JSONWebKeySet{
 			Keys: []jose.JSONWebKey{defaultKey, alternativeKey},
 		}, nil
@@ -726,7 +727,7 @@ func TestJARMSigKeyForClient_HappyPath(t *testing.T) {
 		Configuration: &oidc.Configuration{},
 	}
 	ctx.JARMDefaultSigAlg = jose.SignatureAlgorithm(signingKey.Algorithm)
-	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
 		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
 	}
 
@@ -753,7 +754,7 @@ func TestJARMSigKeyForClient_ClientWithDefaultAlgorithm(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.PrivateJWKSFunc = func(r *http.Request) (jose.JSONWebKeySet, error) {
+	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
 		return jose.JSONWebKeySet{
 			Keys: []jose.JSONWebKey{defaultKey, alternativeKey},
 		}, nil

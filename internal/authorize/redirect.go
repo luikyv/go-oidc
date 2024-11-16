@@ -66,8 +66,7 @@ func redirectResponse(
 	case goidc.ResponseModeFormPost, goidc.ResponseModeFormPostJWT:
 		redirectParamsMap["redirect_uri"] = params.RedirectURI
 		if err := ctx.RenderHTML(formPostResponseTemplate, redirectParamsMap); err != nil {
-			return goidc.Errorf(goidc.ErrorCodeInternalError,
-				"could not render the html for the form_post response mode", err)
+			return fmt.Errorf("could not render the html for the form_post response mode: %w", err)
 		}
 	default:
 		redirectURL := urlWithQueryParams(params.RedirectURI, redirectParamsMap)
@@ -141,15 +140,14 @@ func signJARMResponse(
 
 	jwk, err := ctx.JARMSigKeyForClient(c)
 	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInvalidRequest,
+		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"the jarm signing algorithm defined for the client is not available", err)
 	}
 
 	resp, err := jwtutil.Sign(claims, jwk,
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
 	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
-			"could not sign the response object", err)
+		return "", fmt.Errorf("could not sign the response object: %w", err)
 	}
 
 	return resp, nil
@@ -165,7 +163,7 @@ func encryptJARMResponse(
 ) {
 	jwk, err := clientutil.JWKByAlg(ctx, c, string(c.JARMKeyEncAlg))
 	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInvalidRequest,
+		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"could not fetch the client encryption jwk for jarm", err)
 	}
 
@@ -175,8 +173,7 @@ func encryptJARMResponse(
 	}
 	jwe, err := jwtutil.Encrypt(responseJWT, jwk, contentEncAlg)
 	if err != nil {
-		return "", goidc.Errorf(goidc.ErrorCodeInternalError,
-			"internal error", err)
+		return "", err
 	}
 
 	return jwe, nil

@@ -90,6 +90,22 @@ jobs:
             openid: openid_connect
             fapi_profile: plain_fapi
 
+          - name: fapi-ciba-id1-test-plan
+            config: ./examples/fapiciba/cs_config.json
+            server_main: ./examples/fapiciba/main.go
+            client_auth_type: private_key_jwt
+            ciba_mode: poll
+            fapi_profile: plain_fapi
+            client_registration: dynamic_client
+
+          - name: fapi-ciba-id1-test-plan
+            config: ./examples/fapiciba/cs_config.json
+            server_main: ./examples/fapiciba/main.go
+            client_auth_type: private_key_jwt
+            ciba_mode: ping
+            fapi_profile: plain_fapi
+            client_registration: dynamic_client
+
     steps:
         - uses: actions/checkout@v4
         - uses: actions/setup-go@v4
@@ -184,6 +200,9 @@ jobs:
             fi
             if [ -n "${{ matrix.plan.client_registration }}" ]; then
               ARGS="$ARGS --client_registration=\"${{ matrix.plan.client_registration }}\""
+            fi
+            if [ -n "${{ matrix.plan.ciba_mode }}" ]; then
+              ARGS="$ARGS --ciba_mode=\"${{ matrix.plan.ciba_mode }}\""
             fi
 
             echo "Running with arguments: $ARGS"

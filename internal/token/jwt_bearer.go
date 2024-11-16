@@ -48,7 +48,7 @@ func generateJWTBearerGrant(
 
 	info, err := ctx.HandleJWTBearerGrantAssertion(req.assertion)
 	if err != nil {
-		return response{}, goidc.Errorf(goidc.ErrorCodeInvalidGrant,
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant,
 			"invalid assertion", err)
 	}
 
@@ -59,7 +59,7 @@ func generateJWTBearerGrant(
 
 	token, err := Make(ctx, grantInfo, client)
 	if err != nil {
-		return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
+		return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
 			"could not generate an access token for the jwt bearer grant", err)
 	}
 
@@ -84,7 +84,7 @@ func generateJWTBearerGrant(
 	if strutil.ContainsOpenID(grantInfo.ActiveScopes) {
 		tokenResp.IDToken, err = makeIDToken(ctx, client, newIDTokenOptions(grantInfo))
 		if err != nil {
-			return response{}, goidc.Errorf(goidc.ErrorCodeInternalError,
+			return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
 				"could not generate access id token for the authorization code grant", err)
 		}
 	}
@@ -115,6 +115,10 @@ func validateJWTBearerGrantRequest(
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
 	}
 
+	if err := ValidateBinding(ctx, client, nil); err != nil {
+		return err
+	}
+
 	if req.assertion == "" {
 		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid assertion")
 	}
@@ -128,10 +132,6 @@ func validateJWTBearerGrantRequest(
 	}
 
 	if err := validateAuthDetailsTypes(ctx, req); err != nil {
-		return err
-	}
-
-	if err := validateBinding(ctx, client, nil); err != nil {
 		return err
 	}
 
@@ -188,8 +188,7 @@ func generateJWTBearerGrantSession(
 	}
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return nil, goidc.Errorf(goidc.ErrorCodeInternalError,
-			"internal error", err)
+		return nil, err
 	}
 
 	return grantSession, nil

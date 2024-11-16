@@ -49,6 +49,11 @@ func validate(
 		validateSubjectIdentifierType,
 		validateSectorIdentifierURI,
 		validateSubIdentifierPairwise,
+		validateCIBAGrant,
+		validateCIBATokenDeliveryModes,
+		validateCIBATokenNotificationEndpoint,
+		validateCIBAUserCodeParam,
+		validateCIBAJARAlgs,
 	)
 }
 
@@ -113,15 +118,17 @@ func validateRedirectURIS(
 }
 
 func validateRequestURIS(
-	_ oidc.Context,
+	ctx oidc.Context,
 	meta *goidc.ClientMetaInfo,
 ) error {
+
+	if !ctx.JARByReferenceIsEnabled {
+		return nil
+	}
+
 	for _, ru := range meta.RequestURIs {
-		if parsedRU, err := url.Parse(ru); err != nil ||
-			parsedRU.Scheme != "https" ||
-			parsedRU.Host == "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-				"invalid request uri")
+		if err := validateURL("request_uri", ru); err != nil {
+			return err
 		}
 	}
 
@@ -297,24 +304,21 @@ func validateSectorIdentifierURI(
 		return nil
 	}
 
-	if parsedRU, err := url.Parse(meta.SectorIdentifierURI); err != nil ||
-		parsedRU.Scheme != "https" ||
-		parsedRU.Host == "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-			"invalid sector_identifier_uri")
+	if err := validateURL("sector_identifier_uri", meta.SectorIdentifierURI); err != nil {
+		return err
 	}
 
 	httpClient := ctx.HTTPClient()
 	resp, err := httpClient.Get(meta.SectorIdentifierURI)
 	if err != nil || resp.StatusCode != http.StatusOK {
-		return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata,
+		return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata,
 			"could not fetch the sector_identifier_uri", err)
 	}
 	defer resp.Body.Close()
 
 	var redirectURIs []string
 	if err := json.NewDecoder(resp.Body).Decode(&redirectURIs); err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata,
+		return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata,
 			"could not decode the result of sector_identifier_uri", err)
 	}
 
@@ -679,4 +683,112 @@ func validateScope(ctx oidc.Context, requestedScope string) error {
 	}
 	return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 		"scope "+requestedScope+" is not valid")
+}
+
+func validateCIBAGrant(
+	_ oidc.Context,
+	meta *goidc.ClientMetaInfo,
+) error {
+	if !slices.Contains(meta.GrantTypes, goidc.GrantCIBA) {
+		return nil
+	}
+
+	if meta.TokenAuthnMethod == goidc.ClientAuthnNone {
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
+			"none authn method not allowed for ciba")
+	}
+
+	return nil
+}
+
+func validateCIBATokenDeliveryModes(
+	ctx oidc.Context,
+	meta *goidc.ClientMetaInfo,
+) error {
+	if !slices.Contains(meta.GrantTypes, goidc.GrantCIBA) {
+		return nil
+	}
+
+	if meta.CIBATokenDeliveryMode == "" {
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
+			"backchannel_token_delivery_mode not allowed")
+	}
+
+	if !slices.Contains(ctx.CIBATokenDeliveryModels, meta.CIBATokenDeliveryMode) {
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
+			"backchannel_token_delivery_mode not allowed")
+	}
+
+	return nil
+}
+
+func validateCIBATokenNotificationEndpoint(
+	ctx oidc.Context,
+	meta *goidc.ClientMetaInfo,
+) error {
+	if !slices.Contains(meta.GrantTypes, goidc.GrantCIBA) {
+		return nil
+	}
+
+	if !meta.CIBATokenDeliveryMode.IsNotificationMode() {
+		return nil
+	}
+
+	if meta.CIBANotificationEndpoint == "" {
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
+			"backchannel_client_notification_endpoint is required for ping or push token delivery modes")
+	}
+
+	if err := validateURL("backchannel_client_notification_endpoint", meta.CIBANotificationEndpoint); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateURL(field, s string) error {
+	parsedRU, err := url.Parse(s)
+	if err != nil {
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
+			fmt.Sprintf("could not parse %s", field))
+	}
+
+	if parsedRU.Scheme != "https" || parsedRU.Host == "" {
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
+			fmt.Sprintf("%s with value %s is invalid", field, s))
+	}
+
+	return nil
+}
+
+func validateCIBAUserCodeParam(
+	ctx oidc.Context,
+	meta *goidc.ClientMetaInfo,
+) error {
+	if !slices.Contains(meta.GrantTypes, goidc.GrantCIBA) {
+		return nil
+	}
+
+	if !ctx.CIBAUserCodeIsEnabled && meta.CIBAUserCodeIsEnabled {
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
+			"backchannel_user_code_parameter not supported")
+	}
+
+	return nil
+}
+
+func validateCIBAJARAlgs(
+	ctx oidc.Context,
+	meta *goidc.ClientMetaInfo,
+) error {
+	if !ctx.CIBAJARIsEnabled || meta.CIBAJARSigAlg == "" {
+		return nil
+	}
+
+	if !slices.Contains(ctx.CIBAJARSigAlgs, meta.CIBAJARSigAlg) {
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
+			"backchannel_authentication_request_signing_alg not supported")
+	}
+
+	return nil
 }

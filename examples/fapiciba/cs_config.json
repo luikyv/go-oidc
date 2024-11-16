@@ -1,0 +1,21 @@
+{
+    "alias": "goidc",
+    "server": {
+        "discoveryUrl": "https://auth.localhost/.well-known/openid-configuration"
+    },
+    "client": {
+        "client_name": "client_one",
+        "scope": "openid email",
+        "hint_type": "login_hint",
+        "hint_value": "random@gmail.com"
+    },
+    "client2": {
+        "client_name": "client two",
+        "scope": "openid email",
+        "acr_value": "urn:mace:incommon:iap:silver"
+    },
+    "resource": {
+        "resourceUrl": "https://matls-auth.localhost/userinfo"
+    },
+    "automated_ciba_approval_url": "https://auth.localhost/ciba-action?token={auth_req_id}&type={action}"
+}

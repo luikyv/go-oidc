@@ -250,7 +250,7 @@ func TestWithIntrospectionEndpoint(t *testing.T) {
 	}
 
 	// When.
-	err := WithIntrospectionEndpoint("/introspect")(p)
+	err := WithTokenIntrospectionEndpoint("/introspect")(p)
 
 	// Then.
 	if err != nil {
@@ -1569,7 +1569,7 @@ func TestWithNotifyErrorFunc(t *testing.T) {
 		config: &oidc.Configuration{},
 	}
 	var handleErrorFunc goidc.NotifyErrorFunc = func(
-		r *http.Request,
+		ctx context.Context,
 		err error,
 	) {
 	}
@@ -1668,7 +1668,7 @@ func TestWithHTTPClientFunc(t *testing.T) {
 
 	// When.
 	err := WithHTTPClientFunc(func(ctx context.Context) *http.Client {
-		return http.DefaultClient
+		return &http.Client{}
 	})(p)
 
 	// Then.

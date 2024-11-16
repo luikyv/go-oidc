@@ -49,7 +49,7 @@ func TestInitAuth(t *testing.T) {
 	}
 
 	session := sessions[0]
-	if session.AuthorizationCode == "" {
+	if session.AuthCode == "" {
 		t.Error("the authorization code in the session cannot be empty")
 	}
 
@@ -59,7 +59,7 @@ func TestInitAuth(t *testing.T) {
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
 		ClientID:           client.ID,
-		AuthorizationCode:  session.AuthorizationCode,
+		AuthCode:           session.AuthCode,
 		GrantedScopes:      client.ScopeIDs,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  client.RedirectURIs[0],
@@ -85,8 +85,8 @@ func TestInitAuth(t *testing.T) {
 		t.Fatalf("could not parse the redirect params: %v", err)
 	}
 
-	if redirectParams.Get("code") != session.AuthorizationCode {
-		t.Errorf("the redirect url %s don't contain the code: %s", redirectURL, session.AuthorizationCode)
+	if redirectParams.Get("code") != session.AuthCode {
+		t.Errorf("the redirect url %s don't contain the code: %s", redirectURL, session.AuthCode)
 	}
 
 	idToken := redirectParams.Get("id_token")
@@ -106,7 +106,7 @@ func TestInitAuth(t *testing.T) {
 		"exp":    float64(now + ctx.IDTokenLifetimeSecs),
 		"iat":    float64(now),
 		"nonce":  "random_nonce",
-		"c_hash": halfHash(session.AuthorizationCode),
+		"c_hash": halfHash(session.AuthCode),
 	}
 	if diff := cmp.Diff(
 		claims,
@@ -122,7 +122,6 @@ func TestInitAuth_JAR(t *testing.T) {
 	ctx, client := setUpAuth(t)
 	ctx.JARIsEnabled = true
 	ctx.JARSigAlgs = []jose.SignatureAlgorithm{jose.RS256}
-	ctx.JARLifetimeSecs = 60
 
 	privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
 	publicJWK := privateJWK.Public()
@@ -169,7 +168,7 @@ func TestInitAuth_JAR(t *testing.T) {
 	}
 
 	session := sessions[0]
-	if session.AuthorizationCode == "" {
+	if session.AuthCode == "" {
 		t.Error("the authorization code in the session cannot be empty")
 	}
 
@@ -178,8 +177,8 @@ func TestInitAuth_JAR(t *testing.T) {
 		t.Fatalf("could not parse the redirect url: %v", err)
 	}
 
-	if redirectURL.Query().Get("code") != session.AuthorizationCode {
-		t.Errorf("the redirect url %s don't contain the code: %s", redirectURL, session.AuthorizationCode)
+	if redirectURL.Query().Get("code") != session.AuthCode {
+		t.Errorf("the redirect url %s don't contain the code: %s", redirectURL, session.AuthCode)
 	}
 
 	wantedSession := goidc.AuthnSession{
@@ -188,7 +187,7 @@ func TestInitAuth_JAR(t *testing.T) {
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
 		ClientID:           client.ID,
-		AuthorizationCode:  session.AuthorizationCode,
+		AuthCode:           session.AuthCode,
 		GrantedScopes:      client.ScopeIDs,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  client.RedirectURIs[0],
@@ -233,7 +232,7 @@ func TestInitAuth_JARM(t *testing.T) {
 	}
 
 	session := sessions[0]
-	if session.AuthorizationCode == "" {
+	if session.AuthCode == "" {
 		t.Error("the authorization code in the session cannot be empty")
 	}
 
@@ -258,7 +257,7 @@ func TestInitAuth_JARM(t *testing.T) {
 		"aud":  client.ID,
 		"exp":  float64(now + ctx.JARMLifetimeSecs),
 		"iat":  float64(now),
-		"code": session.AuthorizationCode,
+		"code": session.AuthCode,
 	}
 	if diff := cmp.Diff(
 		claims,
@@ -309,7 +308,7 @@ func TestInitAuth_ResourceIndicator(t *testing.T) {
 	}
 
 	session := sessions[0]
-	if session.AuthorizationCode == "" {
+	if session.AuthCode == "" {
 		t.Error("the authorization code in the session cannot be empty")
 	}
 
@@ -319,7 +318,7 @@ func TestInitAuth_ResourceIndicator(t *testing.T) {
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
 		ClientID:           client.ID,
-		AuthorizationCode:  session.AuthorizationCode,
+		AuthCode:           session.AuthCode,
 		GrantedScopes:      client.ScopeIDs,
 		GrantedResources:   []string{"https://resource1.com"},
 		AuthorizationParameters: goidc.AuthorizationParameters{
@@ -383,7 +382,7 @@ func TestInitAuth_IDTokenHint(t *testing.T) {
 	}
 
 	session := sessions[0]
-	if session.AuthorizationCode == "" {
+	if session.AuthCode == "" {
 		t.Error("the authorization code in the session cannot be empty")
 	}
 
@@ -393,7 +392,7 @@ func TestInitAuth_IDTokenHint(t *testing.T) {
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
 		ClientID:           client.ID,
-		AuthorizationCode:  session.AuthorizationCode,
+		AuthCode:           session.AuthCode,
 		GrantedScopes:      client.ScopeIDs,
 		IDTokenHintClaims: map[string]any{
 			"sub": "random_user",
@@ -694,8 +693,8 @@ func TestInitAuth_PAR(t *testing.T) {
 	requestURI := "urn:ietf:params:oauth:request_uri:random_value"
 	_ = ctx.SaveAuthnSession(
 		&goidc.AuthnSession{
-			ID:          uuid.NewString(),
-			ReferenceID: requestURI,
+			ID:              uuid.NewString(),
+			PushedAuthReqID: requestURI,
 			AuthorizationParameters: goidc.AuthorizationParameters{
 				RequestURI:   requestURI,
 				Scopes:       client.ScopeIDs,
@@ -731,7 +730,7 @@ func TestInitAuth_PAR(t *testing.T) {
 	}
 
 	session := sessions[0]
-	if session.AuthorizationCode == "" {
+	if session.AuthCode == "" {
 		t.Error("the authorization code should be set in the session")
 	}
 
@@ -741,7 +740,7 @@ func TestInitAuth_PAR(t *testing.T) {
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
 		ClientID:           client.ID,
-		AuthorizationCode:  session.AuthorizationCode,
+		AuthCode:           session.AuthCode,
 		GrantedScopes:      client.ScopeIDs,
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			RedirectURI:  client.RedirectURIs[0],
@@ -763,9 +762,9 @@ func TestInitAuth_PAR(t *testing.T) {
 		t.Fatalf("could not parse the redirect url: %v", err)
 	}
 
-	if redirectURL.Query().Get("code") != session.AuthorizationCode {
+	if redirectURL.Query().Get("code") != session.AuthCode {
 		t.Errorf("the redirect url %s don't contain the code: %s", redirectURL,
-			session.AuthorizationCode)
+			session.AuthCode)
 	}
 }
 

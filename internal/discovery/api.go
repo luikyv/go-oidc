@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
@@ -29,8 +28,7 @@ func handleWellKnown(ctx oidc.Context) {
 func handleJWKS(ctx oidc.Context) {
 	jwks, err := ctx.PublicKeys()
 	if err != nil {
-		ctx.WriteError(goidc.Errorf(goidc.ErrorCodeInternalError,
-			"internal error", err))
+		ctx.WriteError(err)
 		return
 	}
 
