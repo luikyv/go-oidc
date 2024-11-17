@@ -96,7 +96,7 @@ type ClientMetaInfo struct {
 	UserInfoKeyEncAlg     jose.KeyAlgorithm       `json:"userinfo_encrypted_response_alg,omitempty"`
 	UserInfoContentEncAlg jose.ContentEncryption  `json:"userinfo_encrypted_response_enc,omitempty"`
 	JARIsRequired         bool                    `json:"require_signed_request_object,omitempty"`
-	// TODO: Is JAR required if this is passed?
+	// TODO: Is JAR required if this is informed?
 	JARSigAlg                     jose.SignatureAlgorithm `json:"request_object_signing_alg,omitempty"`
 	JARKeyEncAlg                  jose.KeyAlgorithm       `json:"request_object_encryption_alg,omitempty"`
 	JARContentEncAlg              jose.ContentEncryption  `json:"request_object_encryption_enc,omitempty"`

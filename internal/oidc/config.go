@@ -62,7 +62,6 @@ type Configuration struct {
 	EndpointTokenRevocation     string
 	EndpointPrefix              string
 
-	// TODO: Split this.
 	UserDefaultSigAlg        jose.SignatureAlgorithm
 	UserSigAlgs              []jose.SignatureAlgorithm
 	UserEncIsEnabled         bool
