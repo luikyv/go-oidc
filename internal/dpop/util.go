@@ -81,7 +81,7 @@ func ValidateJWT(
 
 	// Validate that the "iat" claim is present and it is not too far in the past.
 	if claims.IssuedAt == nil ||
-		int(timeutil.Now().Sub(claims.IssuedAt.Time()).Seconds()) > ctx.DPoPLifetimeSecs {
+		int(timeutil.Now().Sub(claims.IssuedAt.Time()).Seconds()) > ctx.JWTLifetimeSecs {
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient,
 			"invalid dpop jwt issuance time")
 	}
@@ -117,7 +117,7 @@ func ValidateJWT(
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid jwk thumbprint")
 	}
 
-	err = claims.ValidateWithLeeway(jwt.Expected{}, time.Duration(ctx.DPoPLeewayTimeSecs)*time.Second)
+	err = claims.ValidateWithLeeway(jwt.Expected{}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second)
 	if err != nil {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid dpop")
 	}

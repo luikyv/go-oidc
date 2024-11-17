@@ -220,10 +220,10 @@ func validateCIBAJARClaims(
 			"invalid jti claim", err)
 	}
 
-	if err := claims.Validate(jwt.Expected{
+	if err := claims.ValidateWithLeeway(jwt.Expected{
 		Issuer:      client.ID,
 		AnyAudience: []string{ctx.Host},
-	}); err != nil {
+	}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second); err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"the request object contains invalid claims", err)
 	}

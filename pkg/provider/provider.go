@@ -252,6 +252,9 @@ func (p Provider) setDefaults() error {
 	p.config.EndpointUserInfo = nonZeroOrDefault(p.config.EndpointUserInfo,
 		defaultEndpointUserInfo)
 
+	p.config.JWTLifetimeSecs = nonZeroOrDefault(p.config.JWTLifetimeSecs,
+		defaultJWTLifetimeSecs)
+
 	if slices.Contains(p.config.GrantTypes, goidc.GrantAuthorizationCode) {
 		p.config.ResponseTypes = append(p.config.ResponseTypes, goidc.ResponseTypeCode)
 	}
@@ -278,11 +281,6 @@ func (p Provider) setDefaults() error {
 	if slices.Contains(authnMethods, goidc.ClientAuthnSecretJWT) {
 		p.config.ClientSecretJWTSigAlgs = nonZeroOrDefault(p.config.ClientSecretJWTSigAlgs,
 			[]jose.SignatureAlgorithm{defaultSecretJWTSigAlg})
-	}
-	if slices.Contains(authnMethods, goidc.ClientAuthnPrivateKeyJWT) ||
-		slices.Contains(authnMethods, goidc.ClientAuthnSecretJWT) {
-		p.config.AssertionLifetimeSecs = nonZeroOrDefault(p.config.AssertionLifetimeSecs,
-			defaultJWTLifetimeSecs)
 	}
 
 	if p.config.DCRIsEnabled {
@@ -312,13 +310,6 @@ func (p Provider) setDefaults() error {
 			jose.A128CBC_HS256)
 		p.config.JARMContentEncAlgs = nonZeroOrDefault(p.config.JARMContentEncAlgs,
 			[]jose.ContentEncryption{jose.A128CBC_HS256})
-	}
-
-	if p.config.DPoPIsEnabled {
-		p.config.DPoPLifetimeSecs = nonZeroOrDefault(p.config.DPoPLifetimeSecs,
-			defaultJWTLifetimeSecs)
-		p.config.DPoPLeewayTimeSecs = nonZeroOrDefault(p.config.DPoPLeewayTimeSecs,
-			defaultJWTLeewayTimeSecs)
 	}
 
 	if p.config.TokenIntrospectionIsEnabled {

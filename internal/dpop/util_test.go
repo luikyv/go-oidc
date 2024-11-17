@@ -27,10 +27,10 @@ func TestValidateJWT(t *testing.T) {
 			dpop.ValidationOptions{},
 			oidc.Context{
 				Configuration: &oidc.Configuration{
-					Host:             "https://server.example.com",
-					DPoPIsEnabled:    true,
-					DPoPSigAlgs:      []jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256},
-					DPoPLifetimeSecs: 99999999999,
+					Host:            "https://server.example.com",
+					DPoPIsEnabled:   true,
+					DPoPSigAlgs:     []jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256},
+					JWTLifetimeSecs: 99999999999,
 				},
 				Request: httptest.NewRequest(http.MethodPost, "/token", nil),
 			},
@@ -44,10 +44,10 @@ func TestValidateJWT(t *testing.T) {
 			},
 			oidc.Context{
 				Configuration: &oidc.Configuration{
-					Host:             "https://resource.example.org",
-					DPoPIsEnabled:    true,
-					DPoPSigAlgs:      []jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256},
-					DPoPLifetimeSecs: 99999999999,
+					Host:            "https://resource.example.org",
+					DPoPIsEnabled:   true,
+					DPoPSigAlgs:     []jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256},
+					JWTLifetimeSecs: 99999999999,
 				},
 				Request: httptest.NewRequest(http.MethodGet, "/protectedresource", nil),
 			},

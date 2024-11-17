@@ -126,7 +126,7 @@ func NewContext(t testing.TB) oidc.Context {
 		EndpointDCR:                 "/register",
 		EndpointUserInfo:            "/userinfo",
 		EndpointIntrospection:       "/introspect",
-		AssertionLifetimeSecs:       600,
+		JWTLifetimeSecs:             600,
 		IDTokenLifetimeSecs:         60,
 		DefaultSubIdentifierType:    goidc.SubIdentifierPublic,
 		SubIdentifierTypes: []goidc.SubIdentifierType{

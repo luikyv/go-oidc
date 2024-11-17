@@ -318,7 +318,7 @@ func areClaimsValid(
 	}
 
 	secsToExpiry := int(claims.Expiry.Time().Sub(timeutil.Now()).Seconds())
-	if secsToExpiry > ctx.AssertionLifetimeSecs {
+	if secsToExpiry > ctx.JWTLifetimeSecs {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient,
 			"the assertion has a life time more than allowed")
 	}
@@ -327,7 +327,7 @@ func areClaimsValid(
 		Issuer:      client.ID,
 		Subject:     client.ID,
 		AnyAudience: ctx.AssertionAudiences(),
-	}, time.Duration(0))
+	}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second)
 	if err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid assertion", err)
 	}

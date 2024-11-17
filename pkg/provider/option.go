@@ -629,11 +629,19 @@ func WithSecretJWTSignatureAlgs(
 	}
 }
 
-// WithAssertionLifetime defines a maximum threshold for the difference between
-// issuance and expiry time of client assertions.
-func WithAssertionLifetime(secs int) ProviderOption {
+// WithJWTLifetime defines a maximum threshold for lifetime of JWTs.
+func WithJWTLifetime(secs int) ProviderOption {
 	return func(p Provider) error {
-		p.config.AssertionLifetimeSecs = secs
+		p.config.JWTLifetimeSecs = secs
+		return nil
+	}
+}
+
+// WithJWTLeewayTime defines a tolarance in seconds when validating time based
+// claims in JWTs.
+func WithJWTLeewayTime(secs int) ProviderOption {
+	return func(p Provider) error {
+		p.config.JWTLeewayTimeSecs = secs
 		return nil
 	}
 }
