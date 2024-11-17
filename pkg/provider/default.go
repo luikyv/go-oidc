@@ -1,8 +1,7 @@
 package provider
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
+	"context"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -41,10 +40,7 @@ func defaultTokenOptionsFunc() goidc.TokenOptionsFunc {
 }
 
 func defaultGeneratePairwiseSubIDFunc() goidc.GeneratePairwiseSubIDFunc {
-	return func(sub, sectorURI string) (string, error) {
-		combined := sectorURI + "_" + sub
-		hash := sha256.New()
-		hash.Write([]byte(combined))
-		return hex.EncodeToString(hash.Sum(nil)), nil
+	return func(ctx context.Context, sub string, client *goidc.Client) (string, error) {
+		return sub, nil
 	}
 }

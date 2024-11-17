@@ -4,15 +4,14 @@ import (
 	"crypto"
 	"encoding/base64"
 	"net/http"
-	"net/url"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -99,9 +98,7 @@ func ValidateJWT(
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid htm claim")
 	}
 
-	// The query and fragment components of the "htu" must be ignored.
-	// Also, htu should be case-insensitive.
-	httpURI, err := urlWithoutParams(strings.ToLower(dpopClaims.HTTPURI))
+	httpURI, err := strutil.NormalizeURL(dpopClaims.HTTPURI)
 	auds := []string{ctx.BaseURL() + ctx.Request.RequestURI}
 	if ctx.MTLSIsEnabled {
 		auds = append(auds, ctx.MTLSBaseURL()+ctx.Request.RequestURI)
@@ -126,14 +123,4 @@ func ValidateJWT(
 	}
 
 	return nil
-}
-
-func urlWithoutParams(u string) (string, error) {
-	parsedURL, err := url.Parse(u)
-	if err != nil {
-		return "", err
-	}
-	parsedURL.RawQuery = ""
-	parsedURL.Fragment = ""
-	return parsedURL.String(), nil
 }

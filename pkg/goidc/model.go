@@ -642,8 +642,7 @@ type IsClientAllowedFunc func(*Client) bool
 // are consistent with the granted ones.
 type CompareAuthDetailsFunc func(granted, requested []AuthorizationDetail) error
 
-// TODO: Review this.
-type GeneratePairwiseSubIDFunc func(sub, hostSectorURI string) (string, error)
+type GeneratePairwiseSubIDFunc func(ctx context.Context, sub string, client *Client) (string, error)
 
 type CIBATokenDeliveryMode string
 

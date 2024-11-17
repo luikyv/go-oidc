@@ -47,9 +47,10 @@ type GrantSession struct {
 
 type HandleGrantFunc func(*http.Request, *GrantInfo) error
 
+// TODO: ciba, override grant type for refresh?
 // GrantInfo contains the information assigned during token issuance.
 //
-//   - For authorization_code and refresh_token grant types:
+//   - For authorization_code, refresh_token, and ciba grant types:
 //     Granted information represents what the user authorized. Active information
 //     is either the subset requested by the client during the token request or
 //     the full granted information if no specific subset was requested.

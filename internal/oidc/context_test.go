@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
@@ -784,8 +785,9 @@ func TestExportableSubject(t *testing.T) {
 	// Given.
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{
-			GeneratePairwiseSubIDFunc: func(sub, hostSectorURI string) (string, error) {
-				return hostSectorURI + "_" + sub, nil
+			GeneratePairwiseSubIDFunc: func(ctx context.Context, sub string, client *goidc.Client) (string, error) {
+				parseURL, _ := url.Parse(client.SectorIdentifierURI)
+				return parseURL.Hostname() + "_" + sub, nil
 			},
 		},
 	}
@@ -814,8 +816,9 @@ func TestExportableSubject_PairwiseAsDefault(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{
 			DefaultSubIdentifierType: goidc.SubIdentifierPairwise,
-			GeneratePairwiseSubIDFunc: func(sub, hostSectorURI string) (string, error) {
-				return hostSectorURI + "_" + sub, nil
+			GeneratePairwiseSubIDFunc: func(ctx context.Context, sub string, client *goidc.Client) (string, error) {
+				parseURL, _ := url.Parse(client.SectorIdentifierURI)
+				return parseURL.Hostname() + "_" + sub, nil
 			},
 		},
 	}

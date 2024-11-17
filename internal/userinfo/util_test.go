@@ -1,8 +1,10 @@
 package userinfo
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
@@ -136,8 +138,9 @@ func TestHandleUserInfoRequest_PairwiseSub(t *testing.T) {
 	// Given.
 	ctx, client, _ := setUp(t)
 	ctx.SubIdentifierTypes = []goidc.SubIdentifierType{goidc.SubIdentifierPairwise}
-	ctx.GeneratePairwiseSubIDFunc = func(sub, hostSectorURI string) (string, error) {
-		return hostSectorURI + "_" + sub, nil
+	ctx.GeneratePairwiseSubIDFunc = func(ctx context.Context, sub string, client *goidc.Client) (string, error) {
+		parseURL, _ := url.Parse(client.SectorIdentifierURI)
+		return parseURL.Hostname() + "_" + sub, nil
 	}
 
 	client.SubIdentifierType = goidc.SubIdentifierPairwise

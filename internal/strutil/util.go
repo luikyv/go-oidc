@@ -3,7 +3,9 @@ package strutil
 
 import (
 	"crypto/rand"
+	"fmt"
 	"math/big"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -42,4 +44,30 @@ func Random(length int) string {
 	}
 
 	return result.String()
+}
+
+func NormalizeURL(inputURL string) (string, error) {
+	parsedURL, err := url.Parse(inputURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid url: %v", err)
+	}
+
+	parsedURL.Scheme = strings.ToLower(parsedURL.Scheme)
+	parsedURL.Host = strings.ToLower(parsedURL.Host)
+	parsedURL.Host = strings.TrimSuffix(parsedURL.Host, ":")
+
+	// Remove the port if it's the default for the scheme
+	if (parsedURL.Scheme == "http" && parsedURL.Port() == "80") ||
+		(parsedURL.Scheme == "https" && parsedURL.Port() == "443") {
+		parsedURL.Host = parsedURL.Hostname()
+	}
+
+	// Remove the trailing slash if present in the path
+	parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/")
+
+	// Remove query and fragment
+	parsedURL.RawQuery = ""
+	parsedURL.Fragment = ""
+
+	return parsedURL.String(), nil
 }
