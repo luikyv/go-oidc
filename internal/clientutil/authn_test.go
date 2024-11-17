@@ -250,7 +250,7 @@ func TestAuthenticated_PrivateKeyJWT(t *testing.T) {
 		goidc.ClaimSubject:  client.ID,
 		goidc.ClaimAudience: ctx.Host,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.AssertionLifetimeSecs - 10,
+		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
 		goidc.ClaimTokenID:  "random_jti",
 	}
 
@@ -280,7 +280,7 @@ func TestAuthenticated_PrivateKeyJWT_ClientInformedSigningAlgorithms(t *testing.
 		goidc.ClaimSubject:  client.ID,
 		goidc.ClaimAudience: ctx.Host,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.AssertionLifetimeSecs - 10,
+		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
 		goidc.ClaimTokenID:  "random_jti",
 	}
 
@@ -313,7 +313,7 @@ func TestAuthenticated_PrivateKeyJWT_ClientInformedSigningAlgorithms_InvalidSign
 		goidc.ClaimSubject:  client.ID,
 		goidc.ClaimAudience: ctx.Host,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.AssertionLifetimeSecs - 10,
+		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
 	}
 
 	ctx.Request.PostForm = map[string][]string{
@@ -348,7 +348,7 @@ func TestAuthenticated_PrivateKeyJWT_InvalidAudienceClaim(t *testing.T) {
 		goidc.ClaimIssuer:   client.ID,
 		goidc.ClaimSubject:  client.ID,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.AssertionLifetimeSecs - 10,
+		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
 	}
 
 	ctx.Request.PostForm = map[string][]string{
@@ -421,7 +421,7 @@ func TestAuthenticated_PrivateKeyJWT_CannotIdentifyJWK(t *testing.T) {
 		goidc.ClaimSubject:  client.ID,
 		goidc.ClaimAudience: ctx.Host,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.AssertionLifetimeSecs - 10,
+		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
 	}
 
 	ctx.Request.PostForm = map[string][]string{
@@ -459,7 +459,7 @@ func TestAuthenticated_PrivateKeyJWT_InvalidSigningKey(t *testing.T) {
 		goidc.ClaimSubject:  client.ID,
 		goidc.ClaimAudience: ctx.Host,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.AssertionLifetimeSecs - 10,
+		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
 	}
 
 	invalidJWK := oidctest.PrivateRS256JWK(t, jwk.KeyID, goidc.KeyUsageSignature)
@@ -527,7 +527,7 @@ func TestAuthenticated_PrivateKeyJWT_InvalidAssertionType(t *testing.T) {
 		goidc.ClaimSubject:  client.ID,
 		goidc.ClaimAudience: ctx.Host,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.AssertionLifetimeSecs - 10,
+		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
 	}
 
 	ctx.Request.PostForm = map[string][]string{
@@ -563,7 +563,7 @@ func TestAuthenticated_ClientSecretJWT(t *testing.T) {
 		goidc.ClaimSubject:  client.ID,
 		goidc.ClaimAudience: ctx.Host,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.AssertionLifetimeSecs - 10,
+		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
 		goidc.ClaimTokenID:  "random_jti",
 	}
 	signer, _ := jose.NewSigner(
@@ -752,7 +752,7 @@ func setUpPrivateKeyJWTAuthn(t *testing.T) (
 
 	ctx = oidctest.NewContext(t)
 	ctx.PrivateKeyJWTSigAlgs = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
-	ctx.AssertionLifetimeSecs = 60
+	ctx.JWTLifetimeSecs = 60
 
 	jwk = oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
 	client = &goidc.Client{
@@ -778,7 +778,7 @@ func setUpClientSecretJWTAuthn(t *testing.T) (
 
 	ctx = oidctest.NewContext(t)
 	ctx.ClientSecretJWTSigAlgs = []jose.SignatureAlgorithm{jose.HS256}
-	ctx.AssertionLifetimeSecs = 60
+	ctx.JWTLifetimeSecs = 60
 
 	secret = "random_password12345678910111213"
 	client = &goidc.Client{

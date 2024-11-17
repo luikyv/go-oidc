@@ -47,8 +47,8 @@ func validate(
 		validatePublicJWKSURI,
 		validateAuthorizationDetailTypes,
 		validateSubjectIdentifierType,
-		validateSectorIdentifierURI,
 		validateSubIdentifierPairwise,
+		validateSectorIdentifierURI,
 		validateCIBAGrant,
 		validateCIBATokenDeliveryModes,
 		validateCIBATokenNotificationEndpoint,
@@ -104,13 +104,14 @@ func validateRedirectURIS(
 	ctx oidc.Context,
 	meta *goidc.ClientMetaInfo,
 ) error {
+
 	for _, ru := range meta.RedirectURIs {
 		if parsedRU, err := url.Parse(ru); err != nil ||
 			parsedRU.Scheme != "https" ||
 			parsedRU.Host == "" ||
 			parsedRU.Fragment != "" {
 			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-				"invalid redirect uri")
+				fmt.Sprintf("invalid redirect uri %s", ru))
 		}
 	}
 
@@ -268,29 +269,58 @@ func validateSubIdentifierPairwise(
 	ctx oidc.Context,
 	meta *goidc.ClientMetaInfo,
 ) error {
-	if meta.SubIdentifierType == goidc.SubIdentifierPublic {
+
+	isPairwise := meta.SubIdentifierType == "" && ctx.DefaultSubIdentifierType == goidc.SubIdentifierPairwise
+	isPairwise = isPairwise || meta.SubIdentifierType == goidc.SubIdentifierPairwise
+	if !isPairwise {
 		return nil
 	}
 
-	if meta.SubIdentifierType == "" && ctx.DefaultSubIdentifierType == goidc.SubIdentifierPublic {
-		return nil
-	}
-
-	if meta.SectorIdentifierURI != "" {
-		return nil
-	}
-
-	var redirectURIHosts []string
-	for _, ru := range meta.RedirectURIs {
-		parsedRU, _ := url.Parse(ru)
-		if !slices.Contains(redirectURIHosts, parsedRU.Host) {
-			redirectURIHosts = append(redirectURIHosts, parsedRU.Host)
+	// When the sector identifier uri is not provided, and the client is using
+	// the authorization code or implicit grant types, it is necessary to enforce
+	// restrictions on redirect URIs.
+	//
+	// The logic performs the following steps:
+	// 1. Check if SectorIdentifierURI is empty and if the client uses the
+	//    authorization code or implicit grant type.
+	// 2. Extract the host component of each Redirect URI, ensuring no duplicates.
+	// 3. Verify that all Redirect URIs share the same host as this violates the
+	// 	  requirements for pairwise sub identifiers without a sector identifier uri.
+	if meta.SectorIdentifierURI == "" && slices.ContainsFunc(meta.GrantTypes, func(gt goidc.GrantType) bool {
+		return gt == goidc.GrantAuthorizationCode || gt == goidc.GrantImplicit
+	}) {
+		var redirectURIHosts []string
+		for _, ru := range meta.RedirectURIs {
+			parsedRU, _ := url.Parse(ru)
+			if !slices.Contains(redirectURIHosts, parsedRU.Host) {
+				redirectURIHosts = append(redirectURIHosts, parsedRU.Host)
+			}
+		}
+		if len(redirectURIHosts) != 1 {
+			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
+				"all redirect URIs must share the same host when using pairwise subject identifier type without specifying a sector identifier uri")
 		}
 	}
 
-	if len(redirectURIHosts) != 1 {
-		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-			"only one host is allowed among the redirect uris if pairwise sub identifier is used and the sector identifier uri is not informed")
+	// If the CIBA grant type is used with non-push modes, `jwks_uri` is required.
+	// Also, make sure 'jwks_uri' ownership will be validated at the /bc-authorize
+	// endpoint via one of these methods:
+	//    - 'private_key_jwt' for token authentication.
+	//    - 'self_signed_tls_client_auth' for token authentication.
+	//    - Usage of signed request objects.
+	if slices.Contains(meta.GrantTypes, goidc.GrantCIBA) && meta.CIBATokenDeliveryMode != goidc.CIBATokenDeliveryModePush {
+		if meta.PublicJWKSURI == "" {
+			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
+				"the 'jwks_uri' is required for CIBA with non-push delivery modes when using pairwise sub type")
+		}
+
+		jwksURIOwnershipIsGuaranteed := meta.TokenAuthnMethod == goidc.ClientAuthnPrivateKeyJWT
+		jwksURIOwnershipIsGuaranteed = jwksURIOwnershipIsGuaranteed || meta.TokenAuthnMethod == goidc.ClientAuthnSelfSignedTLS
+		jwksURIOwnershipIsGuaranteed = jwksURIOwnershipIsGuaranteed || meta.CIBAJARSigAlg != ""
+		if !jwksURIOwnershipIsGuaranteed {
+			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
+				"the client needs to demonstrate that the 'jwks_uri' belongs to it when using pairwise sub type")
+		}
 	}
 
 	return nil
@@ -316,16 +346,31 @@ func validateSectorIdentifierURI(
 	}
 	defer resp.Body.Close()
 
-	var redirectURIs []string
-	if err := json.NewDecoder(resp.Body).Decode(&redirectURIs); err != nil {
+	var uris []string
+	if err := json.NewDecoder(resp.Body).Decode(&uris); err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata,
 			"could not decode the result of sector_identifier_uri", err)
 	}
 
-	for _, ru := range meta.RedirectURIs {
-		if !slices.Contains(redirectURIs, ru) {
+	var wantedURIs []string
+	if slices.ContainsFunc(meta.GrantTypes, func(gt goidc.GrantType) bool {
+		return gt == goidc.GrantAuthorizationCode || gt == goidc.GrantImplicit
+	}) {
+		wantedURIs = append(wantedURIs, meta.RedirectURIs...)
+	}
+
+	if slices.Contains(meta.GrantTypes, goidc.GrantCIBA) {
+		if meta.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePush {
+			wantedURIs = append(wantedURIs, meta.CIBANotificationEndpoint)
+		} else if meta.PublicJWKSURI != "" {
+			wantedURIs = append(wantedURIs, meta.PublicJWKSURI)
+		}
+	}
+
+	for _, uri := range wantedURIs {
+		if !slices.Contains(uris, uri) {
 			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-				fmt.Sprintf("the redirect uri %s is not among the ones fetched from sector_identifier_uri", ru))
+				fmt.Sprintf("the uri %s is not among the ones fetched from sector_identifier_uri", uri))
 		}
 	}
 

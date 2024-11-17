@@ -1030,7 +1030,7 @@ func TestWithAssertionLifetime(t *testing.T) {
 	}
 
 	// When.
-	err := WithAssertionLifetime(60)(p)
+	err := WithJWTLifetime(60)(p)
 
 	// Then.
 	if err != nil {
@@ -1039,7 +1039,7 @@ func TestWithAssertionLifetime(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			AssertionLifetimeSecs: 60,
+			JWTLifetimeSecs: 60,
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {

@@ -18,7 +18,6 @@ func Thumbprint(s string) string {
 	return base64.RawURLEncoding.EncodeToString(hash.Sum(nil))
 }
 
-// TODO: Move this.
 func BCryptHash(s string) string {
 	hashedS, err := bcrypt.GenerateFromPassword(
 		[]byte(s),

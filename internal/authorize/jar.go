@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
@@ -231,10 +232,10 @@ func validateClaims(
 		}
 	}
 
-	if err := claims.Validate(jwt.Expected{
+	if err := claims.ValidateWithLeeway(jwt.Expected{
 		Issuer:      client.ID,
 		AnyAudience: []string{ctx.Host},
-	}); err != nil {
+	}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second); err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
 			"the request object contains invalid claims", err)
 	}

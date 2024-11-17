@@ -62,7 +62,6 @@ type Configuration struct {
 	EndpointTokenRevocation     string
 	EndpointPrefix              string
 
-	// TODO: Split this.
 	UserDefaultSigAlg        jose.SignatureAlgorithm
 	UserSigAlgs              []jose.SignatureAlgorithm
 	UserEncIsEnabled         bool
@@ -80,10 +79,9 @@ type Configuration struct {
 	// ClientSecretJWTSigAlgs constains algorithms accepted for
 	// signing client assertions during client_secret_jwt.
 	ClientSecretJWTSigAlgs []jose.SignatureAlgorithm
-	// AssertionLifetimeSecs is used to validate that the client assertions
-	// will expire in the near future during private_key_jwt and
-	// client_secret_jwt.
-	AssertionLifetimeSecs int
+
+	JWTLifetimeSecs   int
+	JWTLeewayTimeSecs int
 
 	DCRIsEnabled                   bool
 	DCRTokenRotationIsEnabled      bool
@@ -149,11 +147,9 @@ type Configuration struct {
 	MTLSTokenBindingIsRequired bool
 	ClientCertFunc             goidc.ClientCertFunc
 
-	DPoPIsEnabled      bool
-	DPoPIsRequired     bool
-	DPoPLifetimeSecs   int
-	DPoPLeewayTimeSecs int
-	DPoPSigAlgs        []jose.SignatureAlgorithm
+	DPoPIsEnabled  bool
+	DPoPIsRequired bool
+	DPoPSigAlgs    []jose.SignatureAlgorithm
 
 	PKCEIsEnabled              bool
 	PKCEIsRequired             bool

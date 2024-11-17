@@ -4,15 +4,14 @@ import (
 	"crypto"
 	"encoding/base64"
 	"net/http"
-	"net/url"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -82,7 +81,7 @@ func ValidateJWT(
 
 	// Validate that the "iat" claim is present and it is not too far in the past.
 	if claims.IssuedAt == nil ||
-		int(timeutil.Now().Sub(claims.IssuedAt.Time()).Seconds()) > ctx.DPoPLifetimeSecs {
+		int(timeutil.Now().Sub(claims.IssuedAt.Time()).Seconds()) > ctx.JWTLifetimeSecs {
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient,
 			"invalid dpop jwt issuance time")
 	}
@@ -99,9 +98,7 @@ func ValidateJWT(
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid htm claim")
 	}
 
-	// The query and fragment components of the "htu" must be ignored.
-	// Also, htu should be case-insensitive.
-	httpURI, err := urlWithoutParams(strings.ToLower(dpopClaims.HTTPURI))
+	httpURI, err := strutil.NormalizeURL(dpopClaims.HTTPURI)
 	auds := []string{ctx.BaseURL() + ctx.Request.RequestURI}
 	if ctx.MTLSIsEnabled {
 		auds = append(auds, ctx.MTLSBaseURL()+ctx.Request.RequestURI)
@@ -120,20 +117,10 @@ func ValidateJWT(
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid jwk thumbprint")
 	}
 
-	err = claims.ValidateWithLeeway(jwt.Expected{}, time.Duration(ctx.DPoPLeewayTimeSecs)*time.Second)
+	err = claims.ValidateWithLeeway(jwt.Expected{}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second)
 	if err != nil {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid dpop")
 	}
 
 	return nil
-}
-
-func urlWithoutParams(u string) (string, error) {
-	parsedURL, err := url.Parse(u)
-	if err != nil {
-		return "", err
-	}
-	parsedURL.RawQuery = ""
-	parsedURL.Fragment = ""
-	return parsedURL.String(), nil
 }

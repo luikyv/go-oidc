@@ -1,6 +1,8 @@
 package token_test
 
 import (
+	"context"
+	"net/url"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -102,8 +104,9 @@ func TestMakeIDToken_PairwiseSub(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	ctx.SubIdentifierTypes = []goidc.SubIdentifierType{goidc.SubIdentifierPairwise}
-	ctx.GeneratePairwiseSubIDFunc = func(sub, hostSectorURI string) (string, error) {
-		return hostSectorURI + "_" + sub, nil
+	ctx.GeneratePairwiseSubIDFunc = func(ctx context.Context, sub string, client *goidc.Client) (string, error) {
+		parseURL, _ := url.Parse(client.SectorIdentifierURI)
+		return parseURL.Hostname() + "_" + sub, nil
 	}
 
 	client, _ := oidctest.NewClient(t)

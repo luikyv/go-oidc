@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -627,17 +626,20 @@ func shouldSwitchToOpaque(
 	client *goidc.Client,
 	opts goidc.TokenOptions,
 ) bool {
-	// Use an opaque token format if the subject identifier type is pairwise.
-	// This prevents potential information leakage that could occur if the JWT
-	// token was decoded by clients.
-	subIsPairwise := client.SubIdentifierType == goidc.SubIdentifierPairwise ||
-		(client.SubIdentifierType == "" && ctx.DefaultSubIdentifierType == goidc.SubIdentifierPairwise)
 
 	// Only switch to opaque if the token is of type JWT and the grant type is
 	// not client credentials.
 	return opts.Format == goidc.TokenFormatJWT &&
 		grantInfo.GrantType != goidc.GrantClientCredentials &&
-		subIsPairwise
+		// Use an opaque token format if the subject identifier type is pairwise.
+		// This prevents potential information leakage that could occur if the JWT
+		// token was decoded by clients.
+		ctx.shouldGeneratePairwiseSub(client)
+}
+
+func (ctx Context) shouldGeneratePairwiseSub(client *goidc.Client) bool {
+	return client.SubIdentifierType == goidc.SubIdentifierPairwise ||
+		(client.SubIdentifierType == "" && ctx.DefaultSubIdentifierType == goidc.SubIdentifierPairwise)
 }
 
 func (ctx Context) HandleGrant(grantInfo *goidc.GrantInfo) error {
@@ -687,31 +689,11 @@ func (ctx Context) ExportableSubject(
 		return sub, nil
 	}
 
-	if client.SubIdentifierType == goidc.SubIdentifierPublic {
+	if !ctx.shouldGeneratePairwiseSub(client) {
 		return sub, nil
 	}
 
-	if client.SubIdentifierType == "" && ctx.DefaultSubIdentifierType == goidc.SubIdentifierPublic {
-		return sub, nil
-	}
-
-	// Use the client's SectorIdentifierURI if available, or the first redirect
-	// URI as a fallback.
-	sectorURI := client.SectorIdentifierURI
-	if sectorURI == "" && len(client.RedirectURIs) != 0 {
-		sectorURI = client.RedirectURIs[0]
-	}
-
-	if sectorURI == "" {
-		return "", errors.New("could not identify a sector uri to compute the pairwise subject")
-	}
-
-	parsedSectorURI, err := url.Parse(sectorURI)
-	if err != nil {
-		return "", fmt.Errorf("could not extract the hostname of the sector uri: %w", err)
-	}
-
-	return ctx.GeneratePairwiseSubIDFunc(sub, parsedSectorURI.Hostname())
+	return ctx.GeneratePairwiseSubIDFunc(ctx, sub, client)
 }
 
 //---------------------------------------- context.Context ----------------------------------------//
