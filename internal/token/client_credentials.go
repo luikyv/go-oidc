@@ -1,6 +1,7 @@
 package token
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/luikyv/go-oidc/internal/clientutil"
@@ -31,8 +32,7 @@ func generateClientCredentialsGrant(
 
 	token, err := Make(ctx, grantInfo, client)
 	if err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
-			"could not generate an access token for the client credentials grant", err)
+		return response{}, fmt.Errorf("could not generate an access token for the client credentials grant: %w", err)
 	}
 
 	_, err = generateClientCredentialsGrantSession(ctx, grantInfo, token)
@@ -65,10 +65,8 @@ func generateClientCredentialsGrantSession(
 
 	grantSession := NewGrantSession(grantInfo, token)
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeInternalError,
-			"could not store the grant session", err)
+		return nil, err
 	}
-
 	return grantSession, nil
 }
 

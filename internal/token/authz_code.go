@@ -1,6 +1,7 @@
 package token
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/google/go-cmp/cmp"
@@ -46,8 +47,7 @@ func generateAuthorizationCodeGrant(
 
 	token, err := Make(ctx, grantInfo, client)
 	if err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
-			"could not generate access token for the authorization code grant", err)
+		return response{}, err
 	}
 
 	grantSession, err := generateAuthorizationCodeGrantSession(
@@ -72,8 +72,7 @@ func generateAuthorizationCodeGrant(
 	if strutil.ContainsOpenID(grantInfo.ActiveScopes) {
 		tokenResp.IDToken, err = MakeIDToken(ctx, client, newIDTokenOptions(grantInfo))
 		if err != nil {
-			return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
-				"could not generate id token for the authorization code grant", err)
+			return response{}, fmt.Errorf("could not generate id token for the authorization code grant: %w", err)
 		}
 	}
 

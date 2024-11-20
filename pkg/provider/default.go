@@ -1,8 +1,6 @@
 package provider
 
 import (
-	"context"
-
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -35,11 +33,5 @@ func defaultTokenOptionsFunc() goidc.TokenOptionsFunc {
 			goidc.DefaultOpaqueTokenLength,
 			defaultTokenLifetimeSecs,
 		)
-	}
-}
-
-func defaultGeneratePairwiseSubIDFunc() goidc.GeneratePairwiseSubIDFunc {
-	return func(ctx context.Context, sub string, client *goidc.Client) (string, error) {
-		return sub, nil
 	}
 }

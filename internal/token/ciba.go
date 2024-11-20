@@ -63,8 +63,7 @@ func NotifyCIBAGrant(
 
 	token, err := Make(ctx, grantInfo, client)
 	if err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInternalError,
-			"could not generate access token for the ciba grant", err)
+		return fmt.Errorf("could not generate access token for the ciba grant: %w", err)
 	}
 
 	grantSession, err := generateCIBAGrantSession(ctx, client, grantInfo, token)
@@ -85,8 +84,7 @@ func NotifyCIBAGrant(
 		idTokenOpts.RefreshToken = grantSession.RefreshToken
 		resp.IDToken, err = MakeIDToken(ctx, client, idTokenOpts)
 		if err != nil {
-			return goidc.WrapError(goidc.ErrorCodeInternalError,
-				"could not generate id token for the ciba grant", err)
+			return fmt.Errorf("could not generate id token for the ciba grant: %w", err)
 		}
 	}
 
@@ -198,8 +196,7 @@ func generateCIBAGrant(ctx oidc.Context, req request) (response, error) {
 
 	token, err := Make(ctx, grantInfo, client)
 	if err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
-			"could not generate access token for the ciba grant", err)
+		return response{}, fmt.Errorf("could not generate access token for the ciba grant: %w", err)
 	}
 
 	grantSession, err := generateCIBAGrantSession(ctx, client, grantInfo, token)
@@ -218,8 +215,7 @@ func generateCIBAGrant(ctx oidc.Context, req request) (response, error) {
 	if strutil.ContainsOpenID(grantInfo.ActiveScopes) {
 		resp.IDToken, err = MakeIDToken(ctx, client, newIDTokenOptions(grantInfo))
 		if err != nil {
-			return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
-				"could not generate id token for the ciba grant", err)
+			return response{}, fmt.Errorf("could not generate id token for the ciba grant: %w", err)
 		}
 	}
 

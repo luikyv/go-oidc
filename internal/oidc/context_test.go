@@ -2,6 +2,8 @@ package oidc_test
 
 import (
 	"context"
+	"crypto/x509"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -838,5 +840,491 @@ func TestExportableSubject_PairwiseAsDefault(t *testing.T) {
 
 	if sub != "example.com_random_sub" {
 		t.Errorf("got %s, want = %s", sub, "example.com_random_sub")
+	}
+}
+
+func TestIsClientAllowedTokenIntrospection(t *testing.T) {
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
+	client := &goidc.Client{}
+	// When.
+	isAllowed := ctx.IsClientAllowedTokenIntrospection(client)
+	// Then.
+	if isAllowed {
+		t.Error("the default behavior should be to not allow introspection")
+	}
+
+	// Given.
+	ctx.IsClientAllowedTokenIntrospectionFunc = func(c *goidc.Client) bool {
+		return true
+	}
+	// When.
+	isAllowed = ctx.IsClientAllowedTokenIntrospection(client)
+	// Then.
+	if !isAllowed {
+		t.Errorf("got %t, want %t", isAllowed, true)
+	}
+}
+
+func TestIsClientAllowedTokenRevocationFunc(t *testing.T) {
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
+	client := &goidc.Client{}
+	// When.
+	isAllowed := ctx.IsClientAllowedTokenRevocation(client)
+	// Then.
+	if isAllowed {
+		t.Error("the default behavior should be to not allow revocation")
+	}
+
+	// Given.
+	ctx.IsClientAllowedTokenRevocationFunc = func(c *goidc.Client) bool {
+		return true
+	}
+	// When.
+	isAllowed = ctx.IsClientAllowedTokenRevocation(client)
+	// Then.
+	if !isAllowed {
+		t.Errorf("got %t, want %t", isAllowed, true)
+	}
+}
+
+func TestClientCert(t *testing.T) {
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
+	// When.
+	_, err := ctx.ClientCert()
+	// Then.
+	if err == nil {
+		t.Error("the default behavior is to return an error")
+	}
+
+	// Given.
+	ctx.ClientCertFunc = func(r *http.Request) (*x509.Certificate, error) {
+		return &x509.Certificate{}, nil
+	}
+	// When.
+	cert, err := ctx.ClientCert()
+	// Then.
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cert == nil {
+		t.Error("the client certificate should not be nil")
+	}
+}
+
+func TestValidateInitalAccessToken(t *testing.T) {
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
+	// When.
+	err := ctx.ValidateInitalAccessToken("random_token")
+	// Then.
+	if err != nil {
+		t.Error("the default behavior is to return nil")
+	}
+
+	// Given.
+	ctx.ValidateInitialAccessTokenFunc = func(r *http.Request, s string) error {
+		return errors.New("error")
+	}
+	// When.
+	err = ctx.ValidateInitalAccessToken("random_token")
+	// Then.
+	if err == nil {
+		t.Fatal("an error should be returned")
+	}
+}
+
+func TestCheckJTI(t *testing.T) {
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
+	// When.
+	err := ctx.CheckJTI("token_id")
+	// Then.
+	if err != nil {
+		t.Error("the default behavior is to return nil")
+	}
+
+	// Given.
+	ctx.CheckJTIFunc = func(ctx context.Context, s string) error {
+		return errors.New("error")
+	}
+	// When.
+	err = ctx.CheckJTI("token_id")
+	// Then.
+	if err == nil {
+		t.Fatal("an error should be returned")
+	}
+}
+
+func TestRenderError(t *testing.T) {
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
+	// When.
+	err := ctx.RenderError(errors.New("error"))
+	// Then.
+	if err == nil {
+		t.Error("the default behavior is to return the error")
+	}
+
+	// Given.
+	ctx.RenderErrorFunc = func(w http.ResponseWriter, r *http.Request, err error) error {
+		return nil
+	}
+	// When.
+	err = ctx.RenderError(errors.New("error"))
+	// Then.
+	if err != nil {
+		t.Fatal("no error should be returned")
+	}
+}
+
+func TestCompareAuthDetails(t *testing.T) {
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
+	// When.
+	err := ctx.CompareAuthDetails(nil, nil)
+	// Then.
+	if err == nil {
+		t.Error("the default behavior is to return an error")
+	}
+
+	// Given.
+	ctx.CompareAuthDetailsFunc = func(granted, requested []goidc.AuthorizationDetail) error {
+		return nil
+	}
+	// When.
+	err = ctx.CompareAuthDetails(nil, nil)
+	// Then.
+	if err != nil {
+		t.Fatal("no error should be returned")
+	}
+}
+
+func TestInitBackAuth(t *testing.T) {
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
+	// When.
+	err := ctx.InitBackAuth(nil)
+	// Then.
+	if err == nil {
+		t.Error("the default behavior is to return an error")
+	}
+
+	// Given.
+	ctx.InitBackAuthFunc = func(ctx context.Context, as *goidc.AuthnSession) error {
+		return nil
+	}
+	// When.
+	err = ctx.InitBackAuth(nil)
+	// Then.
+	if err != nil {
+		t.Fatal("no error should be returned")
+	}
+}
+
+func TestValidateBackAuth(t *testing.T) {
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
+	// When.
+	err := ctx.ValidateBackAuth(nil)
+	// Then.
+	if err == nil {
+		t.Error("the default behavior is to return an error")
+	}
+
+	// Given.
+	ctx.ValidateBackAuthFunc = func(ctx context.Context, as *goidc.AuthnSession) error {
+		return nil
+	}
+	// When.
+	err = ctx.ValidateBackAuth(nil)
+	// Then.
+	if err != nil {
+		t.Fatal("no error should be returned")
+	}
+}
+
+func TestShouldIssueRefreshToken(t *testing.T) {
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
+	client := &goidc.Client{}
+	grantInfo := goidc.GrantInfo{}
+
+	// When.
+	should := ctx.ShouldIssueRefreshToken(client, grantInfo)
+
+	// Then.
+	if should {
+		t.Error("the default behavior is to return false")
+	}
+
+	// Given.
+	ctx.ShouldIssueRefreshTokenFunc = func(c *goidc.Client, gi goidc.GrantInfo) bool {
+		return true
+	}
+	client.GrantTypes = append(client.GrantTypes, goidc.GrantRefreshToken, goidc.GrantAuthorizationCode)
+	grantInfo.GrantType = goidc.GrantAuthorizationCode
+
+	// When.
+	should = ctx.ShouldIssueRefreshToken(client, grantInfo)
+
+	// Then.
+	if !should {
+		t.Error("the refresh token should be allowed")
+	}
+
+}
+
+func TestShouldIssueRefreshToken_RefreshTokenNotAllowed(t *testing.T) {
+
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{
+			ShouldIssueRefreshTokenFunc: func(c *goidc.Client, gi goidc.GrantInfo) bool {
+				return true
+			},
+		},
+	}
+	client := &goidc.Client{
+		ClientMetaInfo: goidc.ClientMetaInfo{
+			GrantTypes: []goidc.GrantType{goidc.GrantAuthorizationCode},
+		},
+	}
+	grantInfo := goidc.GrantInfo{
+		GrantType: goidc.GrantAuthorizationCode,
+	}
+
+	// When.
+	should := ctx.ShouldIssueRefreshToken(client, grantInfo)
+
+	// Then.
+	if should {
+		t.Error("the default behavior is to return false")
+	}
+}
+
+func TestShouldIssueRefreshToken_ClientCredentialsGrant(t *testing.T) {
+
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{
+			ShouldIssueRefreshTokenFunc: func(c *goidc.Client, gi goidc.GrantInfo) bool {
+				return true
+			},
+		},
+	}
+	client := &goidc.Client{
+		ClientMetaInfo: goidc.ClientMetaInfo{
+			GrantTypes: []goidc.GrantType{goidc.GrantRefreshToken, goidc.GrantClientCredentials},
+		},
+	}
+	grantInfo := goidc.GrantInfo{
+		GrantType: goidc.GrantClientCredentials,
+	}
+
+	// When.
+	should := ctx.ShouldIssueRefreshToken(client, grantInfo)
+
+	// Then.
+	if should {
+		t.Error("the default behavior is to return false")
+	}
+}
+
+func TestTokenOptions_JWT(t *testing.T) {
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{
+			TokenOptionsFunc: func(gi goidc.GrantInfo, c *goidc.Client) goidc.TokenOptions {
+				return goidc.NewJWTTokenOptions("random_key_id", 600)
+			},
+		},
+	}
+	client := &goidc.Client{}
+	grantInfo := goidc.GrantInfo{}
+
+	// When.
+	opts := ctx.TokenOptions(grantInfo, client)
+
+	// Then.
+	if opts.Format != goidc.TokenFormatJWT {
+		t.Errorf("got %s, want %s", opts.Format, goidc.TokenFormatJWT)
+	}
+}
+
+func TestTokenOptions_Opaque(t *testing.T) {
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{
+			TokenOptionsFunc: func(gi goidc.GrantInfo, c *goidc.Client) goidc.TokenOptions {
+				return goidc.NewOpaqueTokenOptions(30, 600)
+			},
+		},
+	}
+	client := &goidc.Client{}
+	grantInfo := goidc.GrantInfo{}
+
+	// When.
+	opts := ctx.TokenOptions(grantInfo, client)
+
+	// Then.
+	if opts.Format != goidc.TokenFormatOpaque {
+		t.Errorf("got %s, want %s", opts.Format, goidc.TokenFormatOpaque)
+	}
+}
+
+func TestTokenOptions_OpaqueTokenCannotHaveRefreshTokenLength(t *testing.T) {
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{
+			TokenOptionsFunc: func(gi goidc.GrantInfo, c *goidc.Client) goidc.TokenOptions {
+				return goidc.NewOpaqueTokenOptions(goidc.RefreshTokenLength, 600)
+			},
+		},
+	}
+	client := &goidc.Client{}
+	grantInfo := goidc.GrantInfo{}
+
+	// When.
+	opts := ctx.TokenOptions(grantInfo, client)
+
+	// Then.
+	if opts.Format != goidc.TokenFormatOpaque {
+		t.Errorf("got %s, want %s", opts.Format, goidc.TokenFormatOpaque)
+	}
+
+	if opts.OpaqueLength == goidc.RefreshTokenLength {
+		t.Error("opaque tokens cannot have the same size as refresh tokens")
+	}
+}
+
+func TestTokenOptions_JWTNotAllowedWhenPairwiseSubject(t *testing.T) {
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{
+			TokenOptionsFunc: func(gi goidc.GrantInfo, c *goidc.Client) goidc.TokenOptions {
+				return goidc.NewJWTTokenOptions("random_key_id", 600)
+			},
+		},
+	}
+	client := &goidc.Client{
+		ClientMetaInfo: goidc.ClientMetaInfo{
+			SubIdentifierType: goidc.SubIdentifierPairwise,
+		},
+	}
+	grantInfo := goidc.GrantInfo{}
+
+	// When.
+	opts := ctx.TokenOptions(grantInfo, client)
+
+	// Then.
+	if opts.Format != goidc.TokenFormatOpaque {
+		t.Errorf("got %s, want %s", opts.Format, goidc.TokenFormatOpaque)
+	}
+}
+
+func TestTokenOptions_JWTIsAllowedForPairwiseSubjectWhenClientCredentials(t *testing.T) {
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{
+			TokenOptionsFunc: func(gi goidc.GrantInfo, c *goidc.Client) goidc.TokenOptions {
+				return goidc.NewJWTTokenOptions("random_key_id", 600)
+			},
+		},
+	}
+	client := &goidc.Client{
+		ClientMetaInfo: goidc.ClientMetaInfo{
+			SubIdentifierType: goidc.SubIdentifierPairwise,
+		},
+	}
+	grantInfo := goidc.GrantInfo{
+		GrantType: goidc.GrantClientCredentials,
+	}
+
+	// When.
+	opts := ctx.TokenOptions(grantInfo, client)
+
+	// Then.
+	if opts.Format != goidc.TokenFormatJWT {
+		t.Errorf("got %s, want %s", opts.Format, goidc.TokenFormatJWT)
+	}
+}
+
+func TestHandleGrant(t *testing.T) {
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
+	grantInfo := goidc.GrantInfo{}
+
+	// When.
+	err := ctx.HandleGrant(&grantInfo)
+
+	// Then.
+	if err != nil {
+		t.Error("the default behavior is to return nil")
+	}
+
+	// Given.
+	ctx.HandleGrantFunc = func(r *http.Request, gi *goidc.GrantInfo) error {
+		return errors.New("error")
+	}
+
+	// When.
+	err = ctx.HandleGrant(&grantInfo)
+
+	// Then.
+	if err == nil {
+		t.Error("an error should be returned")
+	}
+}
+
+func TestHTTPClient(t *testing.T) {
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{},
+	}
+
+	// When.
+	httpClient := ctx.HTTPClient()
+
+	// Then.
+	if httpClient != http.DefaultClient {
+		t.Error("the default behavior is to return the default http client")
+	}
+
+	// Given.
+	ctx.HTTPClientFunc = func(ctx context.Context) *http.Client {
+		return &http.Client{}
+	}
+
+	// When.
+	httpClient = ctx.HTTPClient()
+
+	// Then.
+	if httpClient == http.DefaultClient {
+		t.Error("a different client should be returned")
 	}
 }

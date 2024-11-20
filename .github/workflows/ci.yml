@@ -33,7 +33,7 @@ jobs:
 
       - name: Quality Gate
         env:
-            TEST_COVERAGE_THRESHOLD: 55
+            TEST_COVERAGE_THRESHOLD: 60
         run: |
               echo "Quality Gate: checking test coverage is above threshold ..."
               echo "Threshold             : $TEST_COVERAGE_THRESHOLD %"

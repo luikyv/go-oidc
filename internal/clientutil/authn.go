@@ -371,8 +371,7 @@ func jwkMatchingCert(
 ) {
 	jwks, err := c.FetchPublicJWKS(ctx.HTTPClient())
 	if err != nil {
-		return jose.JSONWebKey{}, goidc.WrapError(goidc.ErrorCodeInternalError,
-			"could not load the client JWKS", err)
+		return jose.JSONWebKey{}, fmt.Errorf("could not load the client JWKS: %w", err)
 	}
 
 	for _, jwk := range jwks.Keys {
@@ -440,8 +439,7 @@ func extractID(
 
 	assertion := ctx.Request.PostFormValue(assertionFormPostParam)
 	if assertion != "" {
-		assertionID, err := assertionClientID(assertion,
-			ctx.ClientAuthnSigAlgs())
+		assertionID, err := assertionClientID(assertion, ctx.ClientAuthnSigAlgs())
 		if err != nil {
 			return "", err
 		}

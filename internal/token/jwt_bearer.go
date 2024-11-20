@@ -2,6 +2,7 @@ package token
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"sync"
@@ -59,8 +60,7 @@ func generateJWTBearerGrant(
 
 	token, err := Make(ctx, grantInfo, client)
 	if err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
-			"could not generate an access token for the jwt bearer grant", err)
+		return response{}, fmt.Errorf("could not generate an access token for the jwt bearer grant: %w", err)
 	}
 
 	grantSession, err := generateJWTBearerGrantSession(
@@ -84,8 +84,7 @@ func generateJWTBearerGrant(
 	if strutil.ContainsOpenID(grantInfo.ActiveScopes) {
 		tokenResp.IDToken, err = makeIDToken(ctx, client, newIDTokenOptions(grantInfo))
 		if err != nil {
-			return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
-				"could not generate access id token for the authorization code grant", err)
+			return response{}, fmt.Errorf("could not generate access id token for the authorization code grant: %w", err)
 		}
 	}
 
