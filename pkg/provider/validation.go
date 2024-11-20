@@ -6,22 +6,6 @@ import (
 	"github.com/luikyv/go-oidc/internal/oidc"
 )
 
-func validateJAREnc(config *oidc.Configuration) error {
-	if config.JAREncIsEnabled && !config.JARIsEnabled {
-		return errors.New("JAR must be enabled if JAR encryption is enabled")
-	}
-
-	return nil
-}
-
-func validateJARMEnc(config *oidc.Configuration) error {
-	if config.JARMEncIsEnabled && !config.JARMIsEnabled {
-		return errors.New("JARM must be enabled if JARM encryption is enabled")
-	}
-
-	return nil
-}
-
 func validateTokenBinding(config *oidc.Configuration) error {
 	if config.TokenBindingIsRequired &&
 		!config.DPoPIsEnabled &&

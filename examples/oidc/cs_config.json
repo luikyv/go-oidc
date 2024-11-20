@@ -9,6 +9,7 @@
     "client2": {
         "client_name": "client_two"
     },
+    "browser_verbose": true,
     "browser": [
         {
             "match": "https://auth.localhost*/authorize*",

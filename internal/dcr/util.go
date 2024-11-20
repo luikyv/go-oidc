@@ -105,11 +105,7 @@ func remove(
 		return err
 	}
 
-	if err := ctx.DeleteClient(id); err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInternalError,
-			"could not delete the client", err)
-	}
-	return nil
+	return ctx.DeleteClient(id)
 }
 
 func modifyAndSaveClient(
@@ -125,8 +121,7 @@ func modifyAndSaveClient(
 	secret := setSecret(ctx, client)
 
 	if err := ctx.SaveClient(client); err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
-			"could not store the client", err)
+		return response{}, err
 	}
 
 	return response{

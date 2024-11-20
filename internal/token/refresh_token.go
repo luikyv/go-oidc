@@ -1,6 +1,7 @@
 package token
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/luikyv/go-oidc/internal/clientutil"
@@ -45,8 +46,7 @@ func generateRefreshTokenGrant(
 
 	token, err := Make(ctx, grantSession.GrantInfo, client)
 	if err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
-			"could not generate token during refresh token grant", err)
+		return response{}, fmt.Errorf("could not generate token during refresh token grant: %w", err)
 	}
 
 	if err := updateRefreshTokenGrantSession(ctx, grantSession, token); err != nil {
@@ -71,8 +71,7 @@ func generateRefreshTokenGrant(
 			newIDTokenOptions(grantSession.GrantInfo),
 		)
 		if err != nil {
-			return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
-				"could not generate id token during refresh token grant", err)
+			return response{}, fmt.Errorf("could not generate id token during refresh token grant: %w", err)
 		}
 	}
 

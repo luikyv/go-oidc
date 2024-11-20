@@ -152,6 +152,9 @@ func TestGenerateGrant_RefreshTokenGrant_AuthDetails_ClientRequestsSubset(t *tes
 	ctx, client, grantSession := setUpRefreshTokenGrant(t)
 	ctx.AuthDetailsIsEnabled = true
 	ctx.AuthDetailTypes = []string{"type1", "type2"}
+	ctx.CompareAuthDetailsFunc = func(granted, requested []goidc.AuthorizationDetail) error {
+		return nil
+	}
 	authDetails := []goidc.AuthorizationDetail{
 		{
 			"type":         "type1",

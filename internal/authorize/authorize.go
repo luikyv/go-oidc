@@ -2,6 +2,7 @@ package authorize
 
 import (
 	"errors"
+	"slices"
 	"strings"
 
 	"github.com/go-jose/go-jose/v4/jwt"
@@ -21,6 +22,13 @@ func initAuth(ctx oidc.Context, req request) error {
 	c, err := ctx.Client(req.ClientID)
 	if err != nil {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client_id")
+	}
+
+	// Check that the client is allowed to call the authorization endpoint.
+	if !slices.ContainsFunc(c.GrantTypes, func(gt goidc.GrantType) bool {
+		return gt == goidc.GrantAuthorizationCode || gt == goidc.GrantImplicit
+	}) {
+		return goidc.NewError(goidc.ErrorCodeInvalidClient, "client not allowed")
 	}
 
 	if err := initAuthNoRedirect(ctx, c, req); err != nil {
@@ -162,10 +170,8 @@ func authnSessionWithPAR(
 
 	// For OIDC, the parameters sent in the authorization endpoint are merged
 	// with the ones sent during PAR.
-	session.AuthorizationParameters = mergeParams(
-		session.AuthorizationParameters,
-		req.AuthorizationParameters,
-	)
+	session.AuthorizationParameters = mergeParams(session.AuthorizationParameters,
+		req.AuthorizationParameters)
 	return session, nil
 }
 
@@ -197,10 +203,8 @@ func authnSessionWithJAR(
 	}
 
 	session := newAuthnSession(jar.AuthorizationParameters, client)
-	session.AuthorizationParameters = mergeParams(
-		session.AuthorizationParameters,
-		req.AuthorizationParameters,
-	)
+	session.AuthorizationParameters = mergeParams(session.AuthorizationParameters,
+		req.AuthorizationParameters)
 	return session, nil
 }
 

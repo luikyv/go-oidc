@@ -44,7 +44,7 @@ func New(
 	error,
 ) {
 
-	p := Provider{
+	op := Provider{
 		config: &oidc.Configuration{
 			Profile:         profile,
 			Host:            issuer,
@@ -53,61 +53,61 @@ func New(
 	}
 
 	for _, opt := range opts {
-		if err := opt(p); err != nil {
+		if err := opt(op); err != nil {
 			return Provider{}, err
 		}
 	}
 
-	if err := p.setDefaults(); err != nil {
+	if err := op.setDefaults(); err != nil {
 		return Provider{}, err
 	}
 
-	if err := p.validate(); err != nil {
+	if err := op.validate(); err != nil {
 		return Provider{}, err
 	}
 
-	return p, nil
+	return op, nil
 }
 
 // Handler returns an HTTP handler with all the logic defined for the openid
 // provider.
 // This may be used to add the oidc logic to a HTTP server.
 //
-//	server := http.NewServeMux()
-//	server.Handle("/", op.Handler())
-func (p Provider) Handler() http.Handler {
+//	server := httop.NewServeMux()
+//	server.Handle("/", oop.Handler())
+func (op Provider) Handler() http.Handler {
 
 	server := http.NewServeMux()
 
-	discovery.RegisterHandlers(server, p.config)
-	token.RegisterHandlers(server, p.config)
-	authorize.RegisterHandlers(server, p.config)
-	userinfo.RegisterHandlers(server, p.config)
-	dcr.RegisterHandlers(server, p.config)
+	discovery.RegisterHandlers(server, op.config)
+	token.RegisterHandlers(server, op.config)
+	authorize.RegisterHandlers(server, op.config)
+	userinfo.RegisterHandlers(server, op.config)
+	dcr.RegisterHandlers(server, op.config)
 
 	handler := goidc.CacheControlMiddleware(server)
 	return handler
 }
 
-func (p Provider) Run(
+func (op Provider) Run(
 	address string,
 	middlewares ...goidc.MiddlewareFunc,
 ) error {
-	handler := p.Handler()
+	handler := op.Handler()
 	for _, middleware := range middlewares {
 		handler = middleware(handler)
 	}
 	return http.ListenAndServe(address, handler)
 }
 
-func (p Provider) TokenInfo(
+func (op Provider) TokenInfo(
 	ctx context.Context,
 	accessToken string,
 ) (
 	goidc.TokenInfo,
 	error,
 ) {
-	oidcCtx := oidc.FromContext(ctx, p.config)
+	oidcCtx := oidc.FromContext(ctx, op.config)
 	return token.IntrospectionInfo(oidcCtx, accessToken)
 }
 
@@ -117,14 +117,14 @@ func (p Provider) TokenInfo(
 // if required.
 // If the token is valid and PoP validation (if any) is successful, the function
 // returns token information; otherwise, it returns an appropriate error.
-func (p Provider) TokenInfoFromRequest(
+func (op Provider) TokenInfoFromRequest(
 	w http.ResponseWriter,
 	r *http.Request,
 ) (
 	goidc.TokenInfo,
 	error,
 ) {
-	ctx := oidc.NewContext(w, r, p.config)
+	ctx := oidc.NewContext(w, r, op.config)
 
 	accessToken, _, ok := ctx.AuthorizationToken()
 	if !ok {
@@ -149,28 +149,28 @@ func (p Provider) TokenInfoFromRequest(
 // Client retrieves a client based on its ID.
 // It first checks if the client is a static client configured within the provider.
 // If no matching static client is found, fallback to the ClientManager.
-func (p Provider) Client(
+func (op Provider) Client(
 	ctx context.Context,
 	id string,
 ) (
 	*goidc.Client,
 	error,
 ) {
-	for _, staticClient := range p.config.StaticClients {
+	for _, staticClient := range op.config.StaticClients {
 		if staticClient.ID == id {
 			return staticClient, nil
 		}
 	}
 
-	return p.config.ClientManager.Client(ctx, id)
+	return op.config.ClientManager.Client(ctx, id)
 }
 
-func (p Provider) SaveAuthnSession(ctx context.Context, as *goidc.AuthnSession) error {
-	return p.config.AuthnSessionManager.Save(ctx, as)
+func (op Provider) SaveAuthnSession(ctx context.Context, as *goidc.AuthnSession) error {
+	return op.config.AuthnSessionManager.Save(ctx, as)
 }
 
-func (p Provider) AuthnSessionByCIBAAuthID(ctx context.Context, id string) (*goidc.AuthnSession, error) {
-	return p.config.AuthnSessionManager.SessionByCIBAAuthID(ctx, id)
+func (op Provider) AuthnSessionByCIBAAuthID(ctx context.Context, id string) (*goidc.AuthnSession, error) {
+	return op.config.AuthnSessionManager.SessionByCIBAAuthID(ctx, id)
 }
 
 // NotifyCIBASuccess notifies a client that the user has granted access.
@@ -180,8 +180,8 @@ func (p Provider) AuthnSessionByCIBAAuthID(ctx context.Context, id string) (*goi
 //     There is no need to call this function for this mode.
 //   - "ping": A ping notification is sent to the client.
 //   - "push": The token response is sent directly to the client's notification endpoint.
-func (p Provider) NotifyCIBASuccess(ctx context.Context, authReqID string) error {
-	oidcCtx := oidc.FromContext(ctx, p.config)
+func (op Provider) NotifyCIBASuccess(ctx context.Context, authReqID string) error {
+	oidcCtx := oidc.FromContext(ctx, op.config)
 	return token.NotifyCIBAGrant(oidcCtx, authReqID)
 }
 
@@ -192,167 +192,160 @@ func (p Provider) NotifyCIBASuccess(ctx context.Context, authReqID string) error
 //   - "ping": A ping notification is sent to the client.
 //   - "push": The token failure response is sent directly to the client's
 //     notification endpoint.
-func (p Provider) NotifyCIBAFailure(ctx context.Context, authReqID string, err goidc.Error) error {
-	oidcCtx := oidc.FromContext(ctx, p.config)
+func (op Provider) NotifyCIBAFailure(ctx context.Context, authReqID string, err goidc.Error) error {
+	oidcCtx := oidc.FromContext(ctx, op.config)
 	return token.NotifyCIBAGrantFailure(oidcCtx, authReqID, err)
 }
 
-func (p Provider) setDefaults() error {
-	p.config.UserDefaultSigAlg = nonZeroOrDefault(p.config.UserDefaultSigAlg,
+func (op Provider) setDefaults() error {
+	op.config.UserDefaultSigAlg = nonZeroOrDefault(op.config.UserDefaultSigAlg,
 		defaultUserInfoSigAlg)
 
-	p.config.UserSigAlgs = nonZeroOrDefault(p.config.UserSigAlgs,
+	op.config.UserSigAlgs = nonZeroOrDefault(op.config.UserSigAlgs,
 		[]jose.SignatureAlgorithm{defaultUserInfoSigAlg})
 
-	p.config.Scopes = nonZeroOrDefault(p.config.Scopes,
+	op.config.Scopes = nonZeroOrDefault(op.config.Scopes,
 		[]goidc.Scope{goidc.ScopeOpenID})
 
-	p.config.ClientManager = nonZeroOrDefault(p.config.ClientManager,
+	op.config.ClientManager = nonZeroOrDefault(op.config.ClientManager,
 		goidc.ClientManager(storage.NewClientManager()))
 
-	p.config.AuthnSessionManager = nonZeroOrDefault(p.config.AuthnSessionManager,
+	op.config.AuthnSessionManager = nonZeroOrDefault(op.config.AuthnSessionManager,
 		goidc.AuthnSessionManager(storage.NewAuthnSessionManager()))
 
-	p.config.GrantSessionManager = nonZeroOrDefault(p.config.GrantSessionManager,
+	op.config.GrantSessionManager = nonZeroOrDefault(op.config.GrantSessionManager,
 		goidc.GrantSessionManager(storage.NewGrantSessionManager()))
 
-	p.config.TokenOptionsFunc = nonZeroOrDefault(p.config.TokenOptionsFunc,
+	op.config.TokenOptionsFunc = nonZeroOrDefault(op.config.TokenOptionsFunc,
 		defaultTokenOptionsFunc())
 
-	p.config.ResponseModes = []goidc.ResponseMode{goidc.ResponseModeQuery,
+	op.config.ResponseModes = []goidc.ResponseMode{goidc.ResponseModeQuery,
 		goidc.ResponseModeFragment, goidc.ResponseModeFormPost}
 
-	p.config.DefaultSubIdentifierType = nonZeroOrDefault(p.config.DefaultSubIdentifierType,
+	op.config.DefaultSubIdentifierType = nonZeroOrDefault(op.config.DefaultSubIdentifierType,
 		goidc.SubIdentifierPublic)
 
-	p.config.SubIdentifierTypes = nonZeroOrDefault(p.config.SubIdentifierTypes,
+	op.config.SubIdentifierTypes = nonZeroOrDefault(op.config.SubIdentifierTypes,
 		[]goidc.SubIdentifierType{goidc.SubIdentifierPublic})
 
-	p.config.ClaimTypes = nonZeroOrDefault(p.config.ClaimTypes,
+	op.config.ClaimTypes = nonZeroOrDefault(op.config.ClaimTypes,
 		[]goidc.ClaimType{goidc.ClaimTypeNormal})
 
-	p.config.AuthnSessionTimeoutSecs = nonZeroOrDefault(p.config.AuthnSessionTimeoutSecs,
+	op.config.AuthnSessionTimeoutSecs = nonZeroOrDefault(op.config.AuthnSessionTimeoutSecs,
 		defaultAuthnSessionTimeoutSecs)
 
-	p.config.IDTokenLifetimeSecs = nonZeroOrDefault(p.config.IDTokenLifetimeSecs,
+	op.config.IDTokenLifetimeSecs = nonZeroOrDefault(op.config.IDTokenLifetimeSecs,
 		defaultIDTokenLifetimeSecs)
 
-	p.config.EndpointWellKnown = nonZeroOrDefault(p.config.EndpointWellKnown,
+	op.config.EndpointWellKnown = nonZeroOrDefault(op.config.EndpointWellKnown,
 		defaultEndpointWellKnown)
 
-	p.config.EndpointJWKS = nonZeroOrDefault(p.config.EndpointJWKS,
+	op.config.EndpointJWKS = nonZeroOrDefault(op.config.EndpointJWKS,
 		defaultEndpointJSONWebKeySet)
 
-	p.config.EndpointToken = nonZeroOrDefault(p.config.EndpointToken,
+	op.config.EndpointToken = nonZeroOrDefault(op.config.EndpointToken,
 		defaultEndpointToken)
 
-	p.config.EndpointAuthorize = nonZeroOrDefault(p.config.EndpointAuthorize,
+	op.config.EndpointAuthorize = nonZeroOrDefault(op.config.EndpointAuthorize,
 		defaultEndpointAuthorize)
 
-	p.config.EndpointUserInfo = nonZeroOrDefault(p.config.EndpointUserInfo,
+	op.config.EndpointUserInfo = nonZeroOrDefault(op.config.EndpointUserInfo,
 		defaultEndpointUserInfo)
 
-	p.config.JWTLifetimeSecs = nonZeroOrDefault(p.config.JWTLifetimeSecs,
+	op.config.JWTLifetimeSecs = nonZeroOrDefault(op.config.JWTLifetimeSecs,
 		defaultJWTLifetimeSecs)
 
-	if slices.Contains(p.config.GrantTypes, goidc.GrantAuthorizationCode) {
-		p.config.ResponseTypes = append(p.config.ResponseTypes, goidc.ResponseTypeCode)
+	if slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
+		op.config.ResponseTypes = append(op.config.ResponseTypes, goidc.ResponseTypeCode)
 	}
 
-	if slices.Contains(p.config.GrantTypes, goidc.GrantImplicit) {
-		p.config.ResponseTypes = append(p.config.ResponseTypes, goidc.ResponseTypeToken,
+	if slices.Contains(op.config.GrantTypes, goidc.GrantImplicit) {
+		op.config.ResponseTypes = append(op.config.ResponseTypes, goidc.ResponseTypeToken,
 			goidc.ResponseTypeIDToken, goidc.ResponseTypeIDTokenAndToken)
 	}
 
-	if slices.Contains(p.config.GrantTypes, goidc.GrantAuthorizationCode) &&
-		slices.Contains(p.config.GrantTypes, goidc.GrantImplicit) {
-		p.config.ResponseTypes = append(p.config.ResponseTypes, goidc.ResponseTypeCodeAndIDToken,
+	if slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) &&
+		slices.Contains(op.config.GrantTypes, goidc.GrantImplicit) {
+		op.config.ResponseTypes = append(op.config.ResponseTypes, goidc.ResponseTypeCodeAndIDToken,
 			goidc.ResponseTypeCodeAndToken, goidc.ResponseTypeCodeAndIDTokenAndToken)
 	}
 
-	authnMethods := append(p.config.TokenAuthnMethods,
-		p.config.TokenIntrospectionAuthnMethods...)
+	authnMethods := append(op.config.TokenAuthnMethods,
+		op.config.TokenIntrospectionAuthnMethods...)
 	authnMethods = append(authnMethods,
-		p.config.TokenRevocationAuthnMethods...)
+		op.config.TokenRevocationAuthnMethods...)
 	if slices.Contains(authnMethods, goidc.ClientAuthnPrivateKeyJWT) {
-		p.config.PrivateKeyJWTSigAlgs = nonZeroOrDefault(p.config.PrivateKeyJWTSigAlgs,
+		op.config.PrivateKeyJWTSigAlgs = nonZeroOrDefault(op.config.PrivateKeyJWTSigAlgs,
 			[]jose.SignatureAlgorithm{defaultPrivateKeyJWTSigAlg})
 	}
 	if slices.Contains(authnMethods, goidc.ClientAuthnSecretJWT) {
-		p.config.ClientSecretJWTSigAlgs = nonZeroOrDefault(p.config.ClientSecretJWTSigAlgs,
+		op.config.ClientSecretJWTSigAlgs = nonZeroOrDefault(op.config.ClientSecretJWTSigAlgs,
 			[]jose.SignatureAlgorithm{defaultSecretJWTSigAlg})
 	}
 
-	if p.config.DCRIsEnabled {
-		p.config.EndpointDCR = nonZeroOrDefault(p.config.EndpointDCR,
+	if op.config.DCRIsEnabled {
+		op.config.EndpointDCR = nonZeroOrDefault(op.config.EndpointDCR,
 			defaultEndpointDynamicClient)
 	}
 
-	if p.config.PARIsEnabled {
-		p.config.EndpointPushedAuthorization = nonZeroOrDefault(p.config.EndpointPushedAuthorization,
+	if op.config.PARIsEnabled {
+		op.config.EndpointPushedAuthorization = nonZeroOrDefault(op.config.EndpointPushedAuthorization,
 			defaultEndpointPushedAuthorizationRequest)
 	}
 
-	if p.config.JAREncIsEnabled {
-		p.config.JARContentEncAlgs = nonZeroOrDefault(p.config.JARContentEncAlgs,
+	if op.config.JAREncIsEnabled {
+		op.config.JARContentEncAlgs = nonZeroOrDefault(op.config.JARContentEncAlgs,
 			[]jose.ContentEncryption{jose.A128CBC_HS256})
 	}
 
-	if p.config.JARMIsEnabled {
-		p.config.JARMLifetimeSecs = nonZeroOrDefault(p.config.JARMLifetimeSecs,
+	if op.config.JARMIsEnabled {
+		op.config.JARMLifetimeSecs = nonZeroOrDefault(op.config.JARMLifetimeSecs,
 			defaultJWTLifetimeSecs)
-		p.config.ResponseModes = append(p.config.ResponseModes, goidc.ResponseModeJWT,
+		op.config.ResponseModes = append(op.config.ResponseModes, goidc.ResponseModeJWT,
 			goidc.ResponseModeQueryJWT, goidc.ResponseModeFragmentJWT, goidc.ResponseModeFormPostJWT)
 	}
 
-	if p.config.JARMEncIsEnabled {
-		p.config.JARMDefaultContentEncAlg = nonZeroOrDefault(p.config.JARMDefaultContentEncAlg,
+	if op.config.JARMEncIsEnabled {
+		op.config.JARMDefaultContentEncAlg = nonZeroOrDefault(op.config.JARMDefaultContentEncAlg,
 			jose.A128CBC_HS256)
-		p.config.JARMContentEncAlgs = nonZeroOrDefault(p.config.JARMContentEncAlgs,
+		op.config.JARMContentEncAlgs = nonZeroOrDefault(op.config.JARMContentEncAlgs,
 			[]jose.ContentEncryption{jose.A128CBC_HS256})
 	}
 
-	if p.config.TokenIntrospectionIsEnabled {
-		p.config.EndpointIntrospection = nonZeroOrDefault(p.config.EndpointIntrospection,
+	if op.config.TokenIntrospectionIsEnabled {
+		op.config.EndpointIntrospection = nonZeroOrDefault(op.config.EndpointIntrospection,
 			defaultEndpointTokenIntrospection)
 	}
 
-	if p.config.TokenRevocationIsEnabled {
-		p.config.EndpointTokenRevocation = nonZeroOrDefault(p.config.EndpointTokenRevocation,
+	if op.config.TokenRevocationIsEnabled {
+		op.config.EndpointTokenRevocation = nonZeroOrDefault(op.config.EndpointTokenRevocation,
 			defaultEndpointTokenRevocation)
 	}
 
-	if p.config.UserEncIsEnabled {
-		p.config.UserDefaultContentEncAlg = nonZeroOrDefault(p.config.UserDefaultContentEncAlg,
+	if op.config.UserEncIsEnabled {
+		op.config.UserDefaultContentEncAlg = nonZeroOrDefault(op.config.UserDefaultContentEncAlg,
 			jose.A128CBC_HS256)
-		p.config.UserContentEncAlgs = nonZeroOrDefault(p.config.UserContentEncAlgs,
+		op.config.UserContentEncAlgs = nonZeroOrDefault(op.config.UserContentEncAlgs,
 			[]jose.ContentEncryption{jose.A128CBC_HS256})
 	}
 
-	if slices.Contains(p.config.SubIdentifierTypes, goidc.SubIdentifierPairwise) {
-		p.config.GeneratePairwiseSubIDFunc = nonZeroOrDefault(p.config.GeneratePairwiseSubIDFunc,
-			defaultGeneratePairwiseSubIDFunc())
-	}
-
-	if p.config.CIBAIsEnabled {
-		p.config.EndpointCIBA = nonZeroOrDefault(p.config.EndpointCIBA,
+	if op.config.CIBAIsEnabled {
+		op.config.EndpointCIBA = nonZeroOrDefault(op.config.EndpointCIBA,
 			defaultEndpointCIBA)
 	}
 
 	return nil
 }
 
-func (p Provider) validate() error {
+func (op Provider) validate() error {
 	return runValidations(
-		p.config,
-		validateJAREnc,
-		validateJARMEnc,
+		op.config,
 		validateTokenBinding,
 	)
 }
 
-// nonZeroOrDefault returns the first argument `s1“ if it is non-nil and non-zero.
-// Otherwise, it returns the second argument `s2` as the default value.
+// nonZeroOrDefault returns the first argument "s1" if it is non-nil and non-zero.
+// Otherwise, it returns the second argument "s2" as the default value.
 //
 // Example:
 //

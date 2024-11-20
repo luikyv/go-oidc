@@ -92,6 +92,9 @@ func TestGenerateGrant_CIBAGrant(t *testing.T) {
 	}
 }
 
+// TestGenerateGrant_CIBAGrant_AuthPending validates that when a CIBA poll request
+// is made to the token endpoint for an ongoing authentication process, the
+// "authorization_pending" error is returned as expected.
 func TestGenerateGrant_CIBAGrant_AuthPending(t *testing.T) {
 
 	// Given.
@@ -128,6 +131,10 @@ func TestGenerateGrant_CIBAGrant_AuthPending(t *testing.T) {
 	}
 }
 
+// TestGenerateGrant_CIBAGrant_InvalidAuthSession ensures that when a CIBA poll
+// request is made to the token endpoint with an invalid or unauthorized
+// authentication session, the "access_denied" error is returned. This verifies
+// that a failed authentication process result in a rejected request.
 func TestGenerateGrant_CIBAGrant_InvalidAuthSession(t *testing.T) {
 
 	// Given.
@@ -164,6 +171,9 @@ func TestGenerateGrant_CIBAGrant_InvalidAuthSession(t *testing.T) {
 	}
 }
 
+// TestGenerateGrant_CIBAGrant_MTLSBinding verifies that a successful CIBA request
+// to the token endpoint when mTLS is enabled results in a token bound to the
+// client's certificate.
 func TestGenerateGrant_CIBAGrant_MTLSBinding(t *testing.T) {
 
 	// Given.

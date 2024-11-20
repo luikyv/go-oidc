@@ -133,8 +133,8 @@ func (ctx Context) CheckJTI(jti string) error {
 
 func (ctx Context) RenderError(err error) error {
 	if ctx.RenderErrorFunc == nil {
-		// No need to call handleError here, since this error will end up being
-		// passed to WriteError which already calls handleError.
+		// No need to notify error here, since this error will end up being
+		// passed to WriteError which already calls it.
 		return err
 	}
 
@@ -198,7 +198,7 @@ func (ctx Context) CompareAuthDetails(
 	requested []goidc.AuthorizationDetail,
 ) error {
 	if ctx.CompareAuthDetailsFunc == nil {
-		return nil
+		return errors.New("auth details comparing function is not defined")
 	}
 	return ctx.CompareAuthDetailsFunc(granted, requested)
 }
@@ -220,10 +220,7 @@ func (ctx Context) ValidateBackAuth(session *goidc.AuthnSession) error {
 //---------------------------------------- CRUD ----------------------------------------//
 
 func (ctx Context) SaveClient(client *goidc.Client) error {
-	if err := ctx.ClientManager.Save(ctx.Context(), client); err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInternalError, "internal error", err)
-	}
-	return nil
+	return ctx.ClientManager.Save(ctx.Context(), client)
 }
 
 func (ctx Context) Client(id string) (*goidc.Client, error) {
@@ -279,8 +276,7 @@ func (ctx Context) SaveAuthnSession(session *goidc.AuthnSession) error {
 	}
 
 	if numberOfIndexes != 1 {
-		return goidc.NewError(goidc.ErrorCodeInternalError,
-			"only one index must be set for the authn session")
+		return errors.New("only one index must be set for the authn session")
 	}
 
 	return ctx.AuthnSessionManager.Save(ctx.Context(), session)
@@ -358,28 +354,6 @@ func (ctx Context) Header(name string) (string, bool) {
 
 func (ctx Context) RequestMethod() string {
 	return ctx.Request.Method
-}
-
-func (ctx Context) FormParam(param string) string {
-
-	if err := ctx.Request.ParseForm(); err != nil {
-		return ""
-	}
-
-	return ctx.Request.PostFormValue(param)
-}
-
-func (ctx Context) FormData() map[string]any {
-
-	if err := ctx.Request.ParseForm(); err != nil {
-		return map[string]any{}
-	}
-
-	formData := make(map[string]any)
-	for param, values := range ctx.Request.PostForm {
-		formData[param] = values[0]
-	}
-	return formData
 }
 
 func (ctx Context) WriteStatus(status int) {
@@ -471,13 +445,7 @@ func (ctx Context) RenderHTML(
 }
 
 func (ctx Context) PrivateJWKS() (jose.JSONWebKeySet, error) {
-	jwks, err := ctx.PrivateJWKSFunc(ctx)
-	if err != nil {
-		return jose.JSONWebKeySet{}, goidc.WrapError(goidc.ErrorCodeInternalError,
-			"internal error fetching the server jwks", err)
-	}
-
-	return jwks, nil
+	return ctx.PrivateJWKSFunc(ctx)
 }
 
 func (ctx Context) SigAlgs() ([]jose.SignatureAlgorithm, error) {
@@ -527,8 +495,7 @@ func (ctx Context) PrivateKey(keyID string) (jose.JSONWebKey, error) {
 
 	keys := jwks.Key(keyID)
 	if len(keys) == 0 {
-		return jose.JSONWebKey{}, goidc.NewError(goidc.ErrorCodeInternalError,
-			fmt.Sprintf("could not find jwk matching id %s", keyID))
+		return jose.JSONWebKey{}, fmt.Errorf("could not find jwk matching id %s", keyID)
 	}
 	return keys[0], nil
 }
@@ -584,8 +551,7 @@ func (ctx Context) privateKeyByAlg(
 		}
 	}
 
-	return jose.JSONWebKey{}, goidc.NewError(goidc.ErrorCodeInternalError,
-		fmt.Sprintf("could not find jwk matching %s", alg))
+	return jose.JSONWebKey{}, fmt.Errorf("could not find jwk matching %s", alg)
 }
 
 func (ctx Context) ShouldIssueRefreshToken(
@@ -627,14 +593,17 @@ func shouldSwitchToOpaque(
 	opts goidc.TokenOptions,
 ) bool {
 
-	// Only switch to opaque if the token is of type JWT and the grant type is
-	// not client credentials.
-	return opts.Format == goidc.TokenFormatJWT &&
-		grantInfo.GrantType != goidc.GrantClientCredentials &&
-		// Use an opaque token format if the subject identifier type is pairwise.
-		// This prevents potential information leakage that could occur if the JWT
-		// token was decoded by clients.
-		ctx.shouldGeneratePairwiseSub(client)
+	// There is no need to switch if the token is already opaque.
+	if opts.Format == goidc.TokenFormatOpaque {
+		return false
+	}
+
+	// Use an opaque token format if the subject identifier type is pairwise.
+	// This prevents potential information leakage that could occur if the JWT
+	// token was decoded by clients.
+	return ctx.shouldGeneratePairwiseSub(client) &&
+		// The pairwise subject type doesn't apply for client credentials.
+		grantInfo.GrantType != goidc.GrantClientCredentials
 }
 
 func (ctx Context) shouldGeneratePairwiseSub(client *goidc.Client) bool {
@@ -647,17 +616,7 @@ func (ctx Context) HandleGrant(grantInfo *goidc.GrantInfo) error {
 		return nil
 	}
 
-	err := ctx.HandleGrantFunc(ctx.Request, grantInfo)
-	if err == nil {
-		return nil
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		return goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", err)
-	}
-
-	return oidcErr
+	return ctx.HandleGrantFunc(ctx.Request, grantInfo)
 }
 
 func (ctx Context) HandleJWTBearerGrantAssertion(assertion string) (goidc.JWTBearerGrantInfo, error) {
@@ -685,11 +644,7 @@ func (ctx Context) ExportableSubject(
 	string,
 	error,
 ) {
-	if ctx.GeneratePairwiseSubIDFunc == nil {
-		return sub, nil
-	}
-
-	if !ctx.shouldGeneratePairwiseSub(client) {
+	if ctx.GeneratePairwiseSubIDFunc == nil || !ctx.shouldGeneratePairwiseSub(client) {
 		return sub, nil
 	}
 

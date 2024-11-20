@@ -975,7 +975,7 @@ func WithJWTBearerGrantClientAuthnRequired() ProviderOption {
 // WithSubIdentifierTypes sets de subject identifier types available for clients.
 //
 // If [goidc.SubIdentifierPairwise] is informed, the default behavior for
-// generating subjects is defined at [defaultGeneratePairwiseSubIDFunc].
+// generating pairwise subjects is to keep the value as is.
 // This can be overriden with [WithGeneratePairwiseSubIDFunc].
 // Also, only opaque tokens are issued when pairwise IDs are applied to avoid
 // information leakage.

@@ -75,8 +75,7 @@ func makeIDToken(
 	idToken, err := jwtutil.Sign(claims, jwk,
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
 	if err != nil {
-		return "", goidc.WrapError(goidc.ErrorCodeInternalError,
-			"could not sign the id token", err)
+		return "", fmt.Errorf("could not sign the id token: %w", err)
 	}
 
 	return idToken, nil
@@ -238,8 +237,7 @@ func makeJWTToken(
 	accessToken, err := jwtutil.Sign(claims, privateJWK,
 		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", privateJWK.KeyID))
 	if err != nil {
-		return Token{}, goidc.WrapError(goidc.ErrorCodeInternalError,
-			"could not sign the access token", err)
+		return Token{}, fmt.Errorf("could not sign the access token: %w", err)
 	}
 
 	return Token{

@@ -49,7 +49,7 @@ func Random(length int) string {
 func NormalizeURL(inputURL string) (string, error) {
 	parsedURL, err := url.Parse(inputURL)
 	if err != nil {
-		return "", fmt.Errorf("invalid url: %v", err)
+		return "", fmt.Errorf("invalid url: %w", err)
 	}
 
 	parsedURL.Scheme = strings.ToLower(parsedURL.Scheme)

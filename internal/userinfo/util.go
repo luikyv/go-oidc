@@ -1,6 +1,8 @@
 package userinfo
 
 import (
+	"fmt"
+
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/jwtutil"
@@ -34,8 +36,7 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 
 	client, err := ctx.Client(grantSession.ClientID)
 	if err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInternalError,
-			"could not load the client", err)
+		return response{}, err
 	}
 
 	resp, err := userInfoResponse(ctx, client, grantSession)
@@ -111,7 +112,7 @@ func signUserInfoClaims(
 	if ctx.UserInfoSigAlgsContainsNone() && c.UserInfoSigAlg == goidc.NoneSignatureAlgorithm {
 		unsignedJWT, err := jwtutil.Unsigned(claims)
 		if err != nil {
-			return "", goidc.WrapError(goidc.ErrorCodeInternalError, "internal error signing the user info", err)
+			return "", fmt.Errorf("internal error signing the user info: %w", err)
 		}
 		return unsignedJWT, nil
 	}
@@ -124,8 +125,7 @@ func signUserInfoClaims(
 	jws, err := jwtutil.Sign(claims, jwk,
 		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
 	if err != nil {
-		return "", goidc.WrapError(goidc.ErrorCodeInternalError,
-			"could not sign the user info claims", err)
+		return "", fmt.Errorf("could not sign the user info claims: %w", err)
 	}
 
 	return jws, nil
@@ -151,8 +151,7 @@ func encryptUserInfoJWT(
 	}
 	userInfoJWE, err := jwtutil.Encrypt(userInfoJWT, jwk, contentEncAlg)
 	if err != nil {
-		return "", goidc.WrapError(goidc.ErrorCodeInternalError,
-			"could not encrypt the user info response", err)
+		return "", fmt.Errorf("could not encrypt the user info response: %w", err)
 	}
 
 	return userInfoJWE, nil
