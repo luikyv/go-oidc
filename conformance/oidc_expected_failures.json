@@ -1,0 +1,11 @@
+[
+    {
+        "test-name": "oidcc-userinfo-post-body",
+        "variant": "*",
+        "configuration-filename": "*",
+        "current-block": "",
+        "condition": "UserInfoEndpointWithAccessTokenInBodyNotSupported",
+        "expected-result": "warning",
+        "comment": "warning is expected as access tokens are only expected in headers"
+    }
+]
