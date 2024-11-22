@@ -1,0 +1,103 @@
+name: Conformance Suite Tests
+on:
+    push:
+      branches: [main]
+    pull_request:
+      branches: [main]
+    workflow_dispatch:  # Allow manual triggering of this workflow.
+
+jobs:
+
+  run-tests:
+    runs-on: ubuntu-latest
+    env:
+      CS_VERSION: "v5.1.22"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [oidc, fapi2, fapiciba]
+
+    steps:
+        - uses: actions/checkout@v4
+
+        - uses: actions/setup-go@v4
+          with:
+            go-version: '1.22.x'
+
+        - uses: actions/setup-python@v4
+          with:
+            python-version: '3.x'
+
+        - name: Set Up Dependencies
+          run: |
+            echo "Downloading Go dependencies"
+            go mod download
+
+            echo "Installing Python httpx"
+            python3 -m pip install httpx
+
+        - name: Cache Conformance Suite Repository
+          uses: actions/cache@v3
+          id: cache-cs
+          with:
+            path: ./conformance/suite
+            key: cs-${{ env.CS_VERSION }}
+
+        - name: Set Up Conformance Suite
+          if: steps.cache-cs.outputs.cache-hit != 'true'
+          run: |
+            git clone --branch "release-$CS_VERSION" --single-branch --depth=1 https://gitlab.com/openid/conformance-suite.git conformance/suite
+            docker compose -f ./conformance/suite/builder-compose.yml run builder
+
+        - name: Run Conformance Suite
+          id: cs-server
+          run: |
+            docker compose up -d
+            echo "Wait for the conformance suite to be ready"
+            timeout 60 bash -c '
+            while [ "$(curl -skf -o /dev/null -w ''%{http_code}'' https://localhost:8443/api/runner/available)" != "200" ]; do
+              echo "Conformance suite not ready, sleeping for 2 seconds"
+              sleep 2
+            done
+            echo "Conformance suite is ready"
+            ' || {
+              echo "Timeout reached before the conformance suite is ready"
+              exit 1
+            }
+
+        - name: Start Auth Server
+          run: |
+            echo "Run the server on background"
+            sudo go run examples/${{ matrix.profile }}/main.go &
+
+            echo "Waiting for the auth server to be ready"
+            timeout 30 bash -c '
+              while [ "$(curl -skf -o /dev/null -w "%{http_code}" https://auth.localhost/.well-known/openid-configuration)" != "200" ]; do
+                echo "Auth server not ready, sleeping for 2 seconds"
+                sleep 2
+              done
+              echo "Auth server is ready"
+            ' || {
+                echo "Timeout reached before the auth server was ready"
+                exit 1
+            }
+
+        - name: Run Tests
+          run: |
+            make cs-${{ matrix.profile }}-tests
+
+        - name: Upload Test Logs
+          uses: actions/upload-artifact@v4
+          if: always()
+          with:
+            name: ${{ matrix.profile }}
+            path: conformance/*.zip
+
+  all-tests-succeeded:
+    runs-on: ubuntu-latest
+    needs: run-tests
+    if: success()
+    steps:
+      - name: Test plans passed
+        run: echo "All test plans passed successfully!"
