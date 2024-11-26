@@ -105,35 +105,13 @@ func signedRequestObjectFromEncrypted(
 	if client.JARContentEncAlg != "" {
 		contentEncAlgs = []jose.ContentEncryption{client.JARContentEncAlg}
 	}
-	encryptedReqObject, err := jose.ParseEncrypted(
-		reqObject,
-		ctx.JARKeyEncAlgs,
-		contentEncAlgs,
-	)
+	jws, err := ctx.Decrypt(reqObject, ctx.JARKeyEncAlgs, contentEncAlgs)
 	if err != nil {
 		return "", goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
 			"could not parse the encrypted request object", err)
 	}
 
-	keyID := encryptedReqObject.Header.KeyID
-	if keyID == "" {
-		return "", goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
-			"invalid jwe key ID")
-	}
-
-	jwk, err := ctx.PrivateKey(keyID)
-	if err != nil || jwk.Use != string(goidc.KeyUsageEncryption) {
-		return "", goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
-			"invalid jwk used for encryption", err)
-	}
-
-	decryptedReqObject, err := encryptedReqObject.Decrypt(jwk.Key)
-	if err != nil {
-		return "", goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
-			"could not decrypt the request object", err)
-	}
-
-	return string(decryptedReqObject), nil
+	return jws, nil
 }
 
 func jarFromUnsignedRequestObject(

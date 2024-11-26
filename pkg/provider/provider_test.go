@@ -14,7 +14,7 @@ import (
 func TestNew(t *testing.T) {
 	// Given.
 	issuer := "https://example.com"
-	var jwksFunc goidc.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
+	var jwksFunc goidc.JWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
 		return jose.JSONWebKeySet{}, nil
 	}
 
@@ -56,7 +56,7 @@ func TestNew(t *testing.T) {
 			"ClientManager",
 			"AuthnSessionManager",
 			"GrantSessionManager",
-			"PrivateJWKSFunc",
+			"JWKSFunc",
 			"TokenOptionsFunc",
 		),
 		cmpopts.IgnoreFields(
@@ -71,7 +71,7 @@ func TestNew(t *testing.T) {
 func TestNew_WithOptions(t *testing.T) {
 	// Given.
 	issuer := "https://example.com"
-	var jwksFunc goidc.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
+	var jwksFunc goidc.JWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
 		return jose.JSONWebKeySet{}, nil
 	}
 
@@ -172,7 +172,7 @@ func TestNew_WithOptions(t *testing.T) {
 			"ClientManager",
 			"AuthnSessionManager",
 			"GrantSessionManager",
-			"PrivateJWKSFunc",
+			"JWKSFunc",
 			"TokenOptionsFunc",
 		),
 		cmpopts.IgnoreFields(

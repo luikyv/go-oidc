@@ -28,6 +28,17 @@ type Provider struct {
 // the profile selected, the server may modify its operations to meet specific
 // requirements dictated by the corresponding standards or protocols.
 //
+// The "jwksFunc" parameter provides the server's JSON Web Key Set (JWKS),
+// used for signing, decryption, and exposure via the JWKS endpoint.
+// Typically, it should return both private and public key material.
+// If private keys are unavailable or granular control over signing is required,
+// "jwksFunc" can be configured to return only public key material. In such cases,
+// the [WithSignFunc] option must be provided to handle signing operations.
+// Similarly, if server-side encryption (e.g., JAR encryption) is enabled,
+// the [WithDecryptionFunc] option must also be configured for decryption support.
+// For operations like signature verification, only the public key material is
+// needed, which can be retrieved using "jwksFunc".
+//
 // Default Settings:
 //   - All clients and sessions are stored in memory.
 //   - ID tokens and user info responses are signed using RS256.
@@ -37,7 +48,7 @@ type Provider struct {
 func New(
 	profile goidc.Profile,
 	issuer string,
-	privateJWKSFunc goidc.PrivateJWKSFunc,
+	jwksFunc goidc.JWKSFunc,
 	opts ...ProviderOption,
 ) (
 	Provider,
@@ -46,9 +57,9 @@ func New(
 
 	op := Provider{
 		config: &oidc.Configuration{
-			Profile:         profile,
-			Host:            issuer,
-			PrivateJWKSFunc: privateJWKSFunc,
+			Profile:  profile,
+			Host:     issuer,
+			JWKSFunc: jwksFunc,
 		},
 	}
 

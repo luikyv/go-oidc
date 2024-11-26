@@ -14,9 +14,17 @@ type Configuration struct {
 	// Host is the domain where the server runs. This value will be used as the
 	// authorization server issuer.
 	Host string
-	// PrivateJWKSFunc fetches the server JWKS with private and public information.
-	// When exposing it, the private information is removed.
-	PrivateJWKSFunc         goidc.PrivateJWKSFunc
+
+	// JWKSFunc retrieves the server's JWKS.
+	// The returned JWKS must include private keys if SignFunc or DecryptFunc
+	// (when server-side encryption is enabled) are not provided.
+	// When exposing it at the jwks endpoint, any private information is removed.
+	JWKSFunc goidc.JWKSFunc
+	// SignFunc performs signing operations for the server.
+	SignFunc goidc.SignFunc
+	// DecryptFunc handles decryption when server-side encryption is enabled.
+	DecryptFunc goidc.DecryptFunc
+
 	HandleGrantFunc         goidc.HandleGrantFunc
 	TokenOptionsFunc        goidc.TokenOptionsFunc
 	Policies                []goidc.AuthnPolicy

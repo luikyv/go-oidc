@@ -591,7 +591,7 @@ func validateIDTokenHintAsOptional(
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid id token hint")
 	}
 
-	publicKey, err := ctx.PublicKey(parsedIDToken.Headers[0].KeyID)
+	publicKey, err := ctx.PublicJWK(parsedIDToken.Headers[0].KeyID)
 	if err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid id token hint", err)
 	}

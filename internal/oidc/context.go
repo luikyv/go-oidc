@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -444,114 +445,9 @@ func (ctx Context) RenderHTML(
 	return tmpl.Execute(ctx.Response, params)
 }
 
-func (ctx Context) PrivateJWKS() (jose.JSONWebKeySet, error) {
-	return ctx.PrivateJWKSFunc(ctx)
-}
-
-func (ctx Context) SigAlgs() ([]jose.SignatureAlgorithm, error) {
-	jwks, err := ctx.PrivateJWKS()
-	if err != nil {
-		return nil, err
-	}
-
-	var algorithms []jose.SignatureAlgorithm
-	for _, jwk := range jwks.Keys {
-		if jwk.Use == string(goidc.KeyUsageSignature) {
-			algorithms = append(algorithms, jose.SignatureAlgorithm(jwk.Algorithm))
-		}
-	}
-
-	return algorithms, nil
-}
-
-func (ctx Context) PublicKeys() (jose.JSONWebKeySet, error) {
-	jwks, err := ctx.PrivateJWKS()
-	if err != nil {
-		return jose.JSONWebKeySet{}, err
-	}
-
-	publicKeys := []jose.JSONWebKey{}
-	for _, privateKey := range jwks.Keys {
-		publicKeys = append(publicKeys, privateKey.Public())
-	}
-
-	return jose.JSONWebKeySet{Keys: publicKeys}, nil
-}
-
-func (ctx Context) PublicKey(keyID string) (jose.JSONWebKey, error) {
-	key, err := ctx.PrivateKey(keyID)
-	if err != nil {
-		return jose.JSONWebKey{}, err
-	}
-
-	return key.Public(), nil
-}
-
-func (ctx Context) PrivateKey(keyID string) (jose.JSONWebKey, error) {
-	jwks, err := ctx.PrivateJWKS()
-	if err != nil {
-		return jose.JSONWebKey{}, err
-	}
-
-	keys := jwks.Key(keyID)
-	if len(keys) == 0 {
-		return jose.JSONWebKey{}, fmt.Errorf("could not find jwk matching id %s", keyID)
-	}
-	return keys[0], nil
-}
-
-func (ctx Context) UserInfoSigKeyForClient(c *goidc.Client) (jose.JSONWebKey, error) {
-	if c.UserInfoSigAlg == "" {
-		return ctx.UserSigKey()
-	}
-
-	return ctx.privateKeyByAlg(c.UserInfoSigAlg)
-}
-
-func (ctx Context) IDTokenSigKeyForClient(c *goidc.Client) (jose.JSONWebKey, error) {
-	if c.IDTokenSigAlg == "" {
-		return ctx.UserSigKey()
-	}
-
-	return ctx.privateKeyByAlg(c.IDTokenSigAlg)
-}
-
-func (ctx Context) UserSigKey() (jose.JSONWebKey, error) {
-	return ctx.privateKeyByAlg(ctx.UserDefaultSigAlg)
-}
-
+// TODO: Do I need this?
 func (ctx Context) UserInfoSigAlgsContainsNone() bool {
 	return slices.Contains(ctx.UserSigAlgs, goidc.NoneSignatureAlgorithm)
-}
-
-func (ctx Context) JARMSigKeyForClient(c *goidc.Client) (jose.JSONWebKey, error) {
-	if c.JARMSigAlg == "" {
-		return ctx.privateKeyByAlg(ctx.JARMDefaultSigAlg)
-	}
-
-	return ctx.privateKeyByAlg(c.JARMSigAlg)
-}
-
-// privateKeyByAlg tries to find a key that matches the signature algorithm from
-// the server JWKS.
-func (ctx Context) privateKeyByAlg(
-	alg jose.SignatureAlgorithm,
-) (
-	jose.JSONWebKey,
-	error,
-) {
-	jwks, err := ctx.PrivateJWKS()
-	if err != nil {
-		return jose.JSONWebKey{}, err
-	}
-
-	for _, jwk := range jwks.Keys {
-		if jwk.Algorithm == string(alg) {
-			return jwk, nil
-		}
-	}
-
-	return jose.JSONWebKey{}, fmt.Errorf("could not find jwk matching %s", alg)
 }
 
 func (ctx Context) ShouldIssueRefreshToken(
@@ -632,6 +528,7 @@ func (ctx Context) HTTPClient() *http.Client {
 	return ctx.HTTPClientFunc(ctx)
 }
 
+// TODO.
 // ExportableSubject returns a subject identifier for the given client based on
 // its subject identifier type.
 // If the subject identifier type is "public", it returns the provided subject.
@@ -640,12 +537,9 @@ func (ctx Context) HTTPClient() *http.Client {
 func (ctx Context) ExportableSubject(
 	sub string,
 	client *goidc.Client,
-) (
-	string,
-	error,
-) {
+) string {
 	if ctx.GeneratePairwiseSubIDFunc == nil || !ctx.shouldGeneratePairwiseSub(client) {
-		return sub, nil
+		return sub
 	}
 
 	return ctx.GeneratePairwiseSubIDFunc(ctx, sub, client)
@@ -674,4 +568,148 @@ func (ctx Context) Err() error {
 
 func (ctx Context) Value(key any) any {
 	return ctx.Context().Value(key)
+}
+
+//---------------------------------------- Key Management ----------------------------------------//
+
+func (ctx Context) JWKS() (jose.JSONWebKeySet, error) {
+	return ctx.JWKSFunc(ctx)
+}
+
+func (ctx Context) PublicJWKS() (jose.JSONWebKeySet, error) {
+	jwks, err := ctx.JWKS()
+	if err != nil {
+		return jose.JSONWebKeySet{}, err
+	}
+
+	publicKeys := []jose.JSONWebKey{}
+	for _, jwk := range jwks.Keys {
+		publicKeys = append(publicKeys, jwk.Public())
+	}
+
+	return jose.JSONWebKeySet{Keys: publicKeys}, nil
+}
+
+func (ctx Context) SigAlgs() ([]jose.SignatureAlgorithm, error) {
+	jwks, err := ctx.JWKS()
+	if err != nil {
+		return nil, err
+	}
+
+	var algorithms []jose.SignatureAlgorithm
+	for _, jwk := range jwks.Keys {
+		if jwk.Use == string(goidc.KeyUsageSignature) {
+			algorithms = append(algorithms, jose.SignatureAlgorithm(jwk.Algorithm))
+		}
+	}
+
+	return algorithms, nil
+}
+
+func (ctx Context) Sign(
+	claims map[string]any,
+	opts goidc.SignatureOptions,
+) (
+	string,
+	error,
+) {
+	if ctx.SignFunc != nil {
+		return ctx.SignFunc(ctx, claims, opts)
+	}
+
+	jwk, err := ctx.jwkByAlg(opts.Algorithm)
+	if err != nil {
+		return "", err
+	}
+
+	signedJWT, err := jwtutil.Sign(claims, jwk,
+		(&jose.SignerOptions{}).WithType(jose.ContentType(opts.JWTType)).WithHeader("kid", jwk.KeyID))
+	if err != nil {
+		return "", fmt.Errorf("could not sign the payload: %w", err)
+	}
+
+	return signedJWT, nil
+}
+
+func (ctx Context) Decrypt(
+	jwe string,
+	keyAlgs []jose.KeyAlgorithm,
+	contentAlgs []jose.ContentEncryption,
+) (
+	string,
+	error,
+) {
+	parseJWE, err := jose.ParseEncrypted(jwe, keyAlgs, contentAlgs)
+	if err != nil {
+		return "", fmt.Errorf("could not parse the jwe: %w", err)
+	}
+
+	keyID := parseJWE.Header.KeyID
+	if keyID == "" {
+		return "", errors.New("invalid jwe key ID")
+	}
+
+	if ctx.DecryptFunc != nil {
+		return ctx.DecryptFunc(ctx, jwe, goidc.DecryptionOptions{
+			KeyID:            keyID,
+			KeyAlgorithm:     jose.KeyAlgorithm(parseJWE.Header.Algorithm),
+			ContentAlgorithm: jose.ContentEncryption(parseJWE.Header.ExtraHeaders["enc"].(string)),
+		})
+	}
+
+	jwk, err := ctx.JWK(keyID)
+	if err != nil || jwk.Use != string(goidc.KeyUsageEncryption) {
+		return "", errors.New("invalid jwk used for encryption")
+	}
+
+	jws, err := parseJWE.Decrypt(jwk.Key)
+	if err != nil {
+		return "", fmt.Errorf("could not decrypt the jwe: %w", err)
+	}
+
+	return string(jws), nil
+}
+
+func (ctx Context) PublicJWK(keyID string) (jose.JSONWebKey, error) {
+	key, err := ctx.JWK(keyID)
+	if err != nil {
+		return jose.JSONWebKey{}, err
+	}
+
+	return key.Public(), nil
+}
+
+func (ctx Context) JWK(keyID string) (jose.JSONWebKey, error) {
+	jwks, err := ctx.JWKS()
+	if err != nil {
+		return jose.JSONWebKey{}, err
+	}
+
+	keys := jwks.Key(keyID)
+	if len(keys) == 0 {
+		return jose.JSONWebKey{}, fmt.Errorf("could not find jwk matching id %s", keyID)
+	}
+	return keys[0], nil
+}
+
+// jwkByAlg tries to find a key that matches the signature algorithm from
+// the server JWKS.
+func (ctx Context) jwkByAlg(
+	alg jose.SignatureAlgorithm,
+) (
+	jose.JSONWebKey,
+	error,
+) {
+	jwks, err := ctx.JWKS()
+	if err != nil {
+		return jose.JSONWebKey{}, err
+	}
+
+	for _, jwk := range jwks.Keys {
+		if jwk.Algorithm == string(alg) {
+			return jwk, nil
+		}
+	}
+
+	return jose.JSONWebKey{}, fmt.Errorf("could not find jwk matching %s", alg)
 }

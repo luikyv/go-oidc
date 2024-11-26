@@ -31,7 +31,7 @@ func TestOIDCConfig(t *testing.T) {
 		Scopes: []goidc.Scope{
 			goidc.ScopeOpenID, goidc.ScopeEmail,
 		},
-		PrivateJWKSFunc: func(ctx context.Context) (jose.JSONWebKeySet, error) {
+		JWKSFunc: func(ctx context.Context) (jose.JSONWebKeySet, error) {
 			return jose.JSONWebKeySet{
 				Keys: []jose.JSONWebKey{tokenKey, userInfoKey},
 			}, nil
@@ -127,7 +127,7 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		Scopes: []goidc.Scope{
 			goidc.ScopeOpenID, goidc.ScopeEmail,
 		},
-		PrivateJWKSFunc: func(ctx context.Context) (jose.JSONWebKeySet, error) {
+		JWKSFunc: func(ctx context.Context) (jose.JSONWebKeySet, error) {
 			return jose.JSONWebKeySet{
 				Keys: []jose.JSONWebKey{tokenKey, userInfoKey, jarmKey},
 			}, nil

@@ -3,7 +3,6 @@ package userinfo
 import (
 	"fmt"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -49,17 +48,13 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 
 func userInfoResponse(
 	ctx oidc.Context,
-	c *goidc.Client,
+	client *goidc.Client,
 	grantSession *goidc.GrantSession,
 ) (
 	response,
 	error,
 ) {
-	sub, err := ctx.ExportableSubject(grantSession.Subject, c)
-	if err != nil {
-		return response{}, err
-	}
-
+	sub := ctx.ExportableSubject(grantSession.Subject, client)
 	userInfoClaims := map[string]any{
 		goidc.ClaimSubject: sub,
 	}
@@ -69,29 +64,29 @@ func userInfoResponse(
 
 	// If the client doesn't require the user info to be signed,
 	// we'll just return the claims as a JSON object.
-	if c.UserInfoSigAlg == "" {
+	if client.UserInfoSigAlg == "" {
 		return response{
 			claims: userInfoClaims,
 		}, nil
 	}
 
 	userInfoClaims[goidc.ClaimIssuer] = ctx.Host
-	userInfoClaims[goidc.ClaimAudience] = c.ID
+	userInfoClaims[goidc.ClaimAudience] = client.ID
 
-	jwtUserInfoClaims, err := signUserInfoClaims(ctx, c, userInfoClaims)
+	jwtUserInfoClaims, err := signUserInfoClaims(ctx, client, userInfoClaims)
 	if err != nil {
 		return response{}, err
 	}
 
 	// If the client doesn't require the user info to be encrypted,
 	// we'll just return the claims as a signed JWT.
-	if !ctx.UserEncIsEnabled || c.UserInfoKeyEncAlg == "" {
+	if !ctx.UserEncIsEnabled || client.UserInfoKeyEncAlg == "" {
 		return response{
 			jwtClaims: jwtUserInfoClaims,
 		}, nil
 	}
 
-	jwtUserInfoClaims, err = encryptUserInfoJWT(ctx, c, jwtUserInfoClaims)
+	jwtUserInfoClaims, err = encryptUserInfoJWT(ctx, client, jwtUserInfoClaims)
 	if err != nil {
 		return response{}, err
 	}
@@ -102,14 +97,14 @@ func userInfoResponse(
 
 func signUserInfoClaims(
 	ctx oidc.Context,
-	c *goidc.Client,
+	client *goidc.Client,
 	claims map[string]any,
 ) (
 	string,
 	error,
 ) {
 
-	if ctx.UserInfoSigAlgsContainsNone() && c.UserInfoSigAlg == goidc.NoneSignatureAlgorithm {
+	if ctx.UserInfoSigAlgsContainsNone() && client.UserInfoSigAlg == goidc.NoneSignatureAlgorithm {
 		unsignedJWT, err := jwtutil.Unsigned(claims)
 		if err != nil {
 			return "", fmt.Errorf("internal error signing the user info: %w", err)
@@ -117,13 +112,15 @@ func signUserInfoClaims(
 		return unsignedJWT, nil
 	}
 
-	jwk, err := ctx.UserInfoSigKeyForClient(c)
-	if err != nil {
-		return "", err
+	sigOpts := goidc.SignatureOptions{
+		Algorithm: ctx.UserDefaultSigAlg,
+		JWTType:   goidc.JWTTypeBasic,
+	}
+	if client.UserInfoSigAlg != "" {
+		sigOpts.Algorithm = client.UserInfoSigAlg
 	}
 
-	jws, err := jwtutil.Sign(claims, jwk,
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
+	jws, err := ctx.Sign(claims, sigOpts)
 	if err != nil {
 		return "", fmt.Errorf("could not sign the user info claims: %w", err)
 	}

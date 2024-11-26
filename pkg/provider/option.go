@@ -1000,6 +1000,20 @@ func WithGeneratePairwiseSubIDFunc(
 	}
 }
 
+func WithSignFunc(f goidc.SignFunc) ProviderOption {
+	return func(p Provider) error {
+		p.config.SignFunc = f
+		return nil
+	}
+}
+
+func WithDecryptFunc(f goidc.DecryptFunc) ProviderOption {
+	return func(p Provider) error {
+		p.config.DecryptFunc = f
+		return nil
+	}
+}
+
 // appendIfNotIn adds 'value' to the beginning of 'values' if it is not already
 // present.
 func appendIfNotIn[T comparable](values []T, value T) []T {

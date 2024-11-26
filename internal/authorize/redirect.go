@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -121,7 +120,7 @@ func createJARMResponse(
 
 func signJARMResponse(
 	ctx oidc.Context,
-	c *goidc.Client,
+	client *goidc.Client,
 	redirectParams response,
 ) (
 	string,
@@ -130,7 +129,7 @@ func signJARMResponse(
 	createdAtTimestamp := timeutil.TimestampNow()
 	claims := map[string]any{
 		goidc.ClaimIssuer:   ctx.Host,
-		goidc.ClaimAudience: c.ID,
+		goidc.ClaimAudience: client.ID,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JARMLifetimeSecs,
 	}
@@ -138,36 +137,35 @@ func signJARMResponse(
 		claims[k] = v
 	}
 
-	jwk, err := ctx.JARMSigKeyForClient(c)
-	if err != nil {
-		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest,
-			"the jarm signing algorithm defined for the client is not available", err)
+	sigOpts := goidc.SignatureOptions{
+		JWTType:   goidc.JWTTypeBasic,
+		Algorithm: ctx.JARMDefaultSigAlg,
 	}
-
-	resp, err := jwtutil.Sign(claims, jwk,
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
+	if client.JARMSigAlg != "" {
+		sigOpts.Algorithm = client.JARMSigAlg
+	}
+	resp, err := ctx.Sign(claims, sigOpts)
 	if err != nil {
 		return "", fmt.Errorf("could not sign the response object: %w", err)
 	}
-
 	return resp, nil
 }
 
 func encryptJARMResponse(
 	ctx oidc.Context,
 	responseJWT string,
-	c *goidc.Client,
+	client *goidc.Client,
 ) (
 	string,
 	error,
 ) {
-	jwk, err := clientutil.JWKByAlg(ctx, c, string(c.JARMKeyEncAlg))
+	jwk, err := clientutil.JWKByAlg(ctx, client, string(client.JARMKeyEncAlg))
 	if err != nil {
 		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"could not fetch the client encryption jwk for jarm", err)
 	}
 
-	contentEncAlg := c.JARMContentEncAlg
+	contentEncAlg := client.JARMContentEncAlg
 	if contentEncAlg == "" {
 		contentEncAlg = ctx.JARMDefaultContentEncAlg
 	}

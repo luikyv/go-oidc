@@ -96,7 +96,7 @@ func Client(id string, jwksFilepath string) *goidc.Client {
 	}
 }
 
-func PrivateJWKSFunc(filename string) goidc.PrivateJWKSFunc {
+func PrivateJWKSFunc(filename string) goidc.JWKSFunc {
 	jwksFile, err := os.Open(filename)
 	if err != nil {
 		log.Fatal(err)
@@ -178,9 +178,9 @@ func ValidateInitialTokenFunc(r *http.Request, s string) error {
 	return nil
 }
 
-func TokenOptionsFunc(keyID string) goidc.TokenOptionsFunc {
+func TokenOptionsFunc(alg jose.SignatureAlgorithm) goidc.TokenOptionsFunc {
 	return func(grantInfo goidc.GrantInfo, _ *goidc.Client) goidc.TokenOptions {
-		opts := goidc.NewJWTTokenOptions(keyID, 600)
+		opts := goidc.NewJWTTokenOptions(alg, 600)
 		return opts
 	}
 }

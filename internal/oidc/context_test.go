@@ -11,8 +11,10 @@ import (
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -473,7 +475,7 @@ func TestSigAlgs(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
+	ctx.JWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
 		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey, encryptionKey}}, nil
 	}
 
@@ -497,12 +499,12 @@ func TestPublicKeys_HappyPath(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
+	ctx.JWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
 		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
 	}
 
 	// When.
-	publicJWKS, err := ctx.PublicKeys()
+	publicJWKS, err := ctx.PublicJWKS()
 
 	// Then.
 	if err != nil {
@@ -530,12 +532,12 @@ func TestPublicKey_HappyPath(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
+	ctx.JWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
 		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
 	}
 
 	// When.
-	publicJWK, err := ctx.PublicKey("signing_key")
+	publicJWK, err := ctx.PublicJWK("signing_key")
 
 	// Then.
 	if err != nil {
@@ -558,12 +560,12 @@ func TestPrivateKey_HappyPath(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
+	ctx.JWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
 		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
 	}
 
 	// When.
-	privateJWK, err := ctx.PrivateKey("signing_key")
+	privateJWK, err := ctx.JWK("signing_key")
 
 	// Then.
 	if err != nil {
@@ -584,12 +586,12 @@ func TestPrivateKey_KeyDoesntExist(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
+	ctx.JWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
 		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{}}, nil
 	}
 
 	// When.
-	_, err := ctx.PrivateKey("signing_key")
+	_, err := ctx.JWK("signing_key")
 
 	// Then.
 	if err == nil {
@@ -597,199 +599,13 @@ func TestPrivateKey_KeyDoesntExist(t *testing.T) {
 	}
 }
 
-func TestUserInfoSigKeyForClient(t *testing.T) {
-	// Given.
-	keyID := "signing_key"
-	signingKey := oidctest.PrivatePS256JWK(t, keyID, goidc.KeyUsageSignature)
-
-	ctx := oidc.Context{
-		Configuration: &oidc.Configuration{},
-	}
-	ctx.UserDefaultSigAlg = jose.SignatureAlgorithm(signingKey.Algorithm)
-	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
-		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
-	}
-
-	client := &goidc.Client{}
-
-	// When.
-	jwk, err := ctx.UserInfoSigKeyForClient(client)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("the key should be found")
-	}
-
-	if jwk.KeyID != keyID {
-		t.Errorf("KeyID = %s, want %s", jwk.KeyID, keyID)
-	}
-}
-
-func TestUserInfoSigKeyForClient_ClientWithDefaultAlgorithm(t *testing.T) {
-	// Given.
-	defaultKey := oidctest.PrivatePS256JWK(t, "default_key", goidc.KeyUsageSignature)
-	alternativeKey := oidctest.PrivateRS256JWK(t, "alternative_key", goidc.KeyUsageSignature)
-
-	ctx := oidc.Context{
-		Configuration: &oidc.Configuration{},
-	}
-	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
-		return jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{defaultKey, alternativeKey},
-		}, nil
-	}
-	ctx.UserDefaultSigAlg = jose.SignatureAlgorithm(defaultKey.Algorithm)
-	ctx.UserSigAlgs = []jose.SignatureAlgorithm{
-		jose.SignatureAlgorithm(defaultKey.Algorithm),
-		jose.SignatureAlgorithm(alternativeKey.Algorithm),
-	}
-
-	client := &goidc.Client{}
-	client.UserInfoSigAlg = jose.RS256
-
-	// When.
-	jwk, err := ctx.UserInfoSigKeyForClient(client)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("the key should be found")
-	}
-
-	if jwk.KeyID != alternativeKey.KeyID {
-		t.Errorf("KeyID = %s, want %s", jwk.KeyID, alternativeKey.KeyID)
-	}
-}
-
-func TestIDTokenSigKeyForClient(t *testing.T) {
-	// Given.
-	signingKey := oidctest.PrivatePS256JWK(t, "signing_key", goidc.KeyUsageSignature)
-
-	ctx := oidc.Context{
-		Configuration: &oidc.Configuration{},
-	}
-	ctx.UserDefaultSigAlg = jose.SignatureAlgorithm(signingKey.Algorithm)
-	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
-		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
-	}
-
-	client := &goidc.Client{}
-
-	// When.
-	jwk, err := ctx.IDTokenSigKeyForClient(client)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("the key should be found")
-	}
-
-	if jwk.KeyID != signingKey.KeyID {
-		t.Errorf("KeyID = %s, want %s", jwk.KeyID, signingKey.KeyID)
-	}
-}
-
-func TestIDTokenSigKeyForClient_ClientWithDefaultAlgorithm(t *testing.T) {
-	// Given.
-	defaultKey := oidctest.PrivatePS256JWK(t, "default_key", goidc.KeyUsageSignature)
-	alternativeKey := oidctest.PrivateRS256JWK(t, "alternative_key", goidc.KeyUsageSignature)
-
-	ctx := oidc.Context{
-		Configuration: &oidc.Configuration{},
-	}
-	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
-		return jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{defaultKey, alternativeKey},
-		}, nil
-	}
-	ctx.UserDefaultSigAlg = jose.SignatureAlgorithm(defaultKey.Algorithm)
-	ctx.UserSigAlgs = []jose.SignatureAlgorithm{
-		jose.SignatureAlgorithm(defaultKey.Algorithm),
-		jose.SignatureAlgorithm(alternativeKey.Algorithm),
-	}
-
-	client := &goidc.Client{}
-	client.IDTokenSigAlg = jose.RS256
-
-	// When.
-	jwk, err := ctx.IDTokenSigKeyForClient(client)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("the key should be found")
-	}
-
-	if jwk.KeyID != alternativeKey.KeyID {
-		t.Errorf("KeyID = %s, want %s", jwk.KeyID, alternativeKey.KeyID)
-	}
-}
-
-func TestJARMSigKeyForClient_HappyPath(t *testing.T) {
-	// Given.
-	signingKey := oidctest.PrivatePS256JWK(t, "signing_key", goidc.KeyUsageSignature)
-
-	ctx := oidc.Context{
-		Configuration: &oidc.Configuration{},
-	}
-	ctx.JARMDefaultSigAlg = jose.SignatureAlgorithm(signingKey.Algorithm)
-	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
-		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
-	}
-
-	client := &goidc.Client{}
-
-	// When.
-	jwk, err := ctx.JARMSigKeyForClient(client)
-
-	// Then.
-	if err != nil {
-		t.Fatal("the key should be found", err)
-	}
-
-	if jwk.KeyID != signingKey.KeyID {
-		t.Errorf("KeyID = %s, want %s", jwk.KeyID, signingKey.KeyID)
-	}
-}
-
-func TestJARMSigKeyForClient_ClientWithDefaultAlgorithm(t *testing.T) {
-	// Given.
-	defaultKey := oidctest.PrivatePS256JWK(t, "default_key", goidc.KeyUsageSignature)
-	alternativeKey := oidctest.PrivateRS256JWK(t, "alternative_key", goidc.KeyUsageSignature)
-
-	ctx := oidc.Context{
-		Configuration: &oidc.Configuration{},
-	}
-	ctx.PrivateJWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
-		return jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{defaultKey, alternativeKey},
-		}, nil
-	}
-	ctx.JARMSigAlgs = []jose.SignatureAlgorithm{
-		jose.SignatureAlgorithm(defaultKey.Algorithm),
-		jose.SignatureAlgorithm(alternativeKey.Algorithm),
-	}
-
-	client := &goidc.Client{}
-	client.JARMSigAlg = jose.RS256
-
-	// When.
-	jwk, err := ctx.JARMSigKeyForClient(client)
-
-	// Then.
-	if err != nil {
-		t.Fatal("the key should be found", err)
-	}
-
-	if jwk.KeyID != alternativeKey.KeyID {
-		t.Errorf("KeyID = %s, want %s", jwk.KeyID, alternativeKey.KeyID)
-	}
-}
-
 func TestExportableSubject(t *testing.T) {
 	// Given.
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{
-			GeneratePairwiseSubIDFunc: func(ctx context.Context, sub string, client *goidc.Client) (string, error) {
+			GeneratePairwiseSubIDFunc: func(ctx context.Context, sub string, client *goidc.Client) string {
 				parseURL, _ := url.Parse(client.SectorIdentifierURI)
-				return parseURL.Hostname() + "_" + sub, nil
+				return parseURL.Hostname() + "_" + sub
 			},
 		},
 	}
@@ -801,13 +617,9 @@ func TestExportableSubject(t *testing.T) {
 	}
 
 	// When.
-	sub, err := ctx.ExportableSubject("random_sub", client)
+	sub := ctx.ExportableSubject("random_sub", client)
 
 	// Then.
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	if sub != "example.com_random_sub" {
 		t.Errorf("got %s, want = %s", sub, "example.com_random_sub")
 	}
@@ -818,9 +630,9 @@ func TestExportableSubject_PairwiseAsDefault(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{
 			DefaultSubIdentifierType: goidc.SubIdentifierPairwise,
-			GeneratePairwiseSubIDFunc: func(ctx context.Context, sub string, client *goidc.Client) (string, error) {
+			GeneratePairwiseSubIDFunc: func(ctx context.Context, sub string, client *goidc.Client) string {
 				parseURL, _ := url.Parse(client.SectorIdentifierURI)
-				return parseURL.Hostname() + "_" + sub, nil
+				return parseURL.Hostname() + "_" + sub
 			},
 		},
 	}
@@ -831,13 +643,9 @@ func TestExportableSubject_PairwiseAsDefault(t *testing.T) {
 	}
 
 	// When.
-	sub, err := ctx.ExportableSubject("random_sub", client)
+	sub := ctx.ExportableSubject("random_sub", client)
 
 	// Then.
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	if sub != "example.com_random_sub" {
 		t.Errorf("got %s, want = %s", sub, "example.com_random_sub")
 	}
@@ -1326,5 +1134,132 @@ func TestHTTPClient(t *testing.T) {
 	// Then.
 	if httpClient == http.DefaultClient {
 		t.Error("a different client should be returned")
+	}
+}
+
+func TestSign(t *testing.T) {
+	// Given.
+	signingKey := oidctest.PrivatePS256JWK(t, "signing_key", goidc.KeyUsageSignature)
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{
+			JWKSFunc: func(ctx context.Context) (jose.JSONWebKeySet, error) {
+				return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
+			},
+		},
+	}
+
+	claims := map[string]any{
+		goidc.ClaimSubject: "random@email.com",
+	}
+	opts := goidc.SignatureOptions{
+		Algorithm: jose.PS256,
+		JWTType:   goidc.JWTTypeBasic,
+	}
+
+	// When.
+	jws, err := ctx.Sign(claims, opts)
+
+	// Then.
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	parsedJWS, err := jwt.ParseSigned(jws, []jose.SignatureAlgorithm{jose.PS256})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var got map[string]any
+	if err := parsedJWS.Claims(signingKey.Public(), &got); err != nil {
+		t.Fatal(err)
+	}
+
+	if diff := cmp.Diff(got, claims); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestSign_WithSignFunc(t *testing.T) {
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{
+			SignFunc: func(ctx context.Context, claims map[string]any, opts goidc.SignatureOptions) (string, error) {
+				return "random_jws", nil
+			},
+		},
+	}
+
+	claims := map[string]any{
+		goidc.ClaimSubject: "random@email.com",
+	}
+	opts := goidc.SignatureOptions{
+		Algorithm: jose.PS256,
+		JWTType:   goidc.JWTTypeBasic,
+	}
+
+	// When.
+	_, err := ctx.Sign(claims, opts)
+
+	// Then.
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDecrypt(t *testing.T) {
+	// Given.
+	encKey := oidctest.PrivateRSAOAEP256JWK(t, "enc_key")
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{
+			JWKSFunc: func(ctx context.Context) (jose.JSONWebKeySet, error) {
+				return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{encKey}}, nil
+			},
+		},
+	}
+
+	jwe, err := jwtutil.Encrypt("random_jws", encKey.Public(), jose.A128CBC_HS256)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// When.
+	jws, err := ctx.Decrypt(jwe, []jose.KeyAlgorithm{jose.RSA_OAEP_256}, []jose.ContentEncryption{jose.A128CBC_HS256})
+
+	// Then.
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if jws != "random_jws" {
+		t.Errorf("got %s, want random_jws", jws)
+	}
+}
+
+func TestDecrypt_WithDecryptFunc(t *testing.T) {
+	// Given.
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{
+			DecryptFunc: func(ctx context.Context, jwe string, opts goidc.DecryptionOptions) (string, error) {
+				return "random_jws", nil
+			},
+		},
+	}
+
+	encKey := oidctest.PrivateRSAOAEP256JWK(t, "enc_key")
+	jwe, err := jwtutil.Encrypt("random_jws", encKey.Public(), jose.A128CBC_HS256)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// When.
+	jws, err := ctx.Decrypt(jwe, []jose.KeyAlgorithm{jose.RSA_OAEP_256}, []jose.ContentEncryption{jose.A128CBC_HS256})
+
+	// Then.
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if jws != "random_jws" {
+		t.Errorf("got %s, want random_jws", jws)
 	}
 }

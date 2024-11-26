@@ -72,7 +72,7 @@ func NewContext(t testing.TB) oidc.Context {
 		GrantSessionManager: storage.NewGrantSessionManager(),
 
 		Scopes: []goidc.Scope{goidc.ScopeOpenID, Scope1, Scope2},
-		PrivateJWKSFunc: func(ctx context.Context) (jose.JSONWebKeySet, error) {
+		JWKSFunc: func(ctx context.Context) (jose.JSONWebKeySet, error) {
 			return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jwk}}, nil
 		},
 		GrantTypes: []goidc.GrantType{
@@ -101,9 +101,9 @@ func NewContext(t testing.TB) oidc.Context {
 			client *goidc.Client,
 		) goidc.TokenOptions {
 			return goidc.TokenOptions{
-				JWTSignatureKeyID: keyID,
-				LifetimeSecs:      60,
-				Format:            goidc.TokenFormatJWT,
+				JWTSigAlg:    jose.SignatureAlgorithm(jwk.Algorithm),
+				LifetimeSecs: 60,
+				Format:       goidc.TokenFormatJWT,
 			}
 		},
 		AuthnSessionTimeoutSecs: 60,
@@ -153,7 +153,7 @@ func NewContext(t testing.TB) oidc.Context {
 func PrivateJWKS(t testing.TB, ctx oidc.Context) jose.JSONWebKeySet {
 	t.Helper()
 
-	jwks, err := ctx.PrivateJWKS()
+	jwks, err := ctx.JWKS()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,12 +224,19 @@ func PrivateRSAOAEPJWK(
 	return jwk
 }
 
+func PrivateRSAOAEP256JWK(
+	t *testing.T,
+	keyID string,
+) jose.JSONWebKey {
+	return privateRSAJWK(t, keyID, string(jose.RSA_OAEP_256), goidc.KeyUsageEncryption)
+}
+
 func PrivateRS256JWK(
 	t *testing.T,
 	keyID string,
 	usage goidc.KeyUsage,
 ) jose.JSONWebKey {
-	return privateRSAJWK(t, keyID, jose.RS256, usage)
+	return privateRSAJWK(t, keyID, string(jose.RS256), usage)
 }
 
 func PrivatePS256JWK(
@@ -237,13 +244,13 @@ func PrivatePS256JWK(
 	keyID string,
 	usage goidc.KeyUsage,
 ) jose.JSONWebKey {
-	return privateRSAJWK(t, keyID, jose.PS256, usage)
+	return privateRSAJWK(t, keyID, string(jose.PS256), usage)
 }
 
 func privateRSAJWK(
 	t testing.TB,
 	keyID string,
-	alg jose.SignatureAlgorithm,
+	alg string,
 	usage goidc.KeyUsage,
 ) jose.JSONWebKey {
 	t.Helper()

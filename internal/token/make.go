@@ -63,17 +63,15 @@ func makeIDToken(
 		return makeUnsignedIDToken(ctx, client, opts)
 	}
 
-	jwk, err := ctx.IDTokenSigKeyForClient(client)
-	if err != nil {
-		return "", err
+	sigOpts := goidc.SignatureOptions{
+		JWTType:   goidc.JWTTypeBasic,
+		Algorithm: ctx.UserDefaultSigAlg,
 	}
-
-	claims, err := idTokenClaims(ctx, client, opts, jose.SignatureAlgorithm(jwk.Algorithm))
-	if err != nil {
-		return "", err
+	if client.IDTokenSigAlg != "" {
+		sigOpts.Algorithm = client.IDTokenSigAlg
 	}
-	idToken, err := jwtutil.Sign(claims, jwk,
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID))
+	claims := idTokenClaims(ctx, client, opts, sigOpts.Algorithm)
+	idToken, err := ctx.Sign(claims, sigOpts)
 	if err != nil {
 		return "", fmt.Errorf("could not sign the id token: %w", err)
 	}
@@ -89,10 +87,7 @@ func makeUnsignedIDToken(
 	string,
 	error,
 ) {
-	claims, err := idTokenClaims(ctx, client, opts, goidc.NoneSignatureAlgorithm)
-	if err != nil {
-		return "", err
-	}
+	claims := idTokenClaims(ctx, client, opts, goidc.NoneSignatureAlgorithm)
 	return jwtutil.Unsigned(claims)
 }
 
@@ -101,24 +96,15 @@ func idTokenClaims(
 	client *goidc.Client,
 	opts IDTokenOptions,
 	sigAlg jose.SignatureAlgorithm,
-) (
-	map[string]any,
-	error,
-) {
+) map[string]any {
 	now := timeutil.TimestampNow()
 
 	claims := map[string]any{
+		goidc.ClaimSubject:  ctx.ExportableSubject(opts.Subject, client),
 		goidc.ClaimIssuer:   ctx.Host,
 		goidc.ClaimIssuedAt: now,
 		goidc.ClaimExpiry:   now + ctx.IDTokenLifetimeSecs,
 	}
-
-	sub, err := ctx.ExportableSubject(opts.Subject, client)
-	if err != nil {
-		return nil, err
-	}
-
-	claims[goidc.ClaimSubject] = sub
 
 	// Avoid an empty client ID claim for anonymous clients.
 	if client.ID != "" {
@@ -149,7 +135,7 @@ func idTokenClaims(
 		claims[k] = v
 	}
 
-	return claims, nil
+	return claims
 }
 
 func encryptIDToken(
@@ -187,11 +173,6 @@ func makeJWTToken(
 	Token,
 	error,
 ) {
-	privateJWK, err := ctx.PrivateKey(opts.JWTSignatureKeyID)
-	if err != nil {
-		return Token{}, fmt.Errorf("could not find key with id %s: %w", opts.JWTSignatureKeyID, err)
-	}
-
 	jwtID := uuid.NewString()
 	timestampNow := timeutil.TimestampNow()
 	claims := map[string]any{
@@ -232,10 +213,10 @@ func makeJWTToken(
 		claims[k] = v
 	}
 
-	// RFC9068. "...This specification registers the "application/at+jwt" media type,
-	// which can be used to indicate that the content is a JWT access token."
-	accessToken, err := jwtutil.Sign(claims, privateJWK,
-		(&jose.SignerOptions{}).WithType("at+jwt").WithHeader("kid", privateJWK.KeyID))
+	accessToken, err := ctx.Sign(claims, goidc.SignatureOptions{
+		Algorithm: opts.JWTSigAlg,
+		JWTType:   goidc.JWTTypeAccessToken,
+	})
 	if err != nil {
 		return Token{}, fmt.Errorf("could not sign the access token: %w", err)
 	}
