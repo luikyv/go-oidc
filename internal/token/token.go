@@ -56,7 +56,7 @@ func validClaims(
 	}
 
 	keyID := parsedToken.Headers[0].KeyID
-	publicKey, err := ctx.PublicKey(keyID)
+	publicKey, err := ctx.PublicJWK(keyID)
 	if err != nil || publicKey.Use != string(goidc.KeyUsageSignature) {
 		return nil, goidc.WrapError(goidc.ErrorCodeAccessDenied, "invalid token", err)
 	}

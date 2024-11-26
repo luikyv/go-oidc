@@ -11,7 +11,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 )
 
-type PrivateJWKSFunc func(context.Context) (jose.JSONWebKeySet, error)
+type JWKSFunc func(context.Context) (jose.JSONWebKeySet, error)
 
 // RefreshTokenLength has an unusual value so to avoid refresh tokens and
 // opaque access token to be confused.
@@ -353,20 +353,20 @@ type TokenOptionsFunc func(GrantInfo, *Client) TokenOptions
 
 // TokenOptions defines a template for generating access tokens.
 type TokenOptions struct {
-	Format            TokenFormat
-	LifetimeSecs      int
-	JWTSignatureKeyID string
-	OpaqueLength      int
+	Format       TokenFormat
+	LifetimeSecs int
+	JWTSigAlg    jose.SignatureAlgorithm
+	OpaqueLength int
 }
 
 func NewJWTTokenOptions(
-	sigKeyID string,
+	alg jose.SignatureAlgorithm,
 	lifetimeSecs int,
 ) TokenOptions {
 	return TokenOptions{
-		Format:            TokenFormatJWT,
-		LifetimeSecs:      lifetimeSecs,
-		JWTSignatureKeyID: sigKeyID,
+		Format:       TokenFormatJWT,
+		JWTSigAlg:    alg,
+		LifetimeSecs: lifetimeSecs,
 	}
 }
 
@@ -642,7 +642,7 @@ type IsClientAllowedFunc func(*Client) bool
 // are consistent with the granted ones.
 type CompareAuthDetailsFunc func(granted, requested []AuthorizationDetail) error
 
-type GeneratePairwiseSubIDFunc func(ctx context.Context, sub string, client *Client) (string, error)
+type GeneratePairwiseSubIDFunc func(ctx context.Context, sub string, client *Client) string
 
 type CIBATokenDeliveryMode string
 
@@ -670,3 +670,25 @@ type InitBackAuthFunc func(context.Context, *AuthnSession) error
 // If an error other than [ErrorCodeAuthPending] or [ErrorCodeSlowDown] is
 // returned, the session will be terminated.
 type ValidateBackAuthFunc func(context.Context, *AuthnSession) error
+
+type SignatureOptions struct {
+	Algorithm jose.SignatureAlgorithm
+	JWTType   JWTType
+}
+
+type JWTType string
+
+const (
+	JWTTypeBasic       JWTType = "JWT"
+	JWTTypeAccessToken JWTType = "at+jwt"
+)
+
+type SignFunc func(ctx context.Context, claims map[string]any, opts SignatureOptions) (string, error)
+
+type DecryptionOptions struct {
+	KeyID            string
+	KeyAlgorithm     jose.KeyAlgorithm
+	ContentAlgorithm jose.ContentEncryption
+}
+
+type DecryptFunc func(ctx context.Context, jwe string, opts DecryptionOptions) (string, error)

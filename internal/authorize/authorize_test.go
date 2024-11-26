@@ -339,19 +339,17 @@ func TestInitAuth_ResourceIndicator(t *testing.T) {
 }
 
 func TestInitAuth_IDTokenHint(t *testing.T) {
+	// Given.
 	ctx, client := setUpAuth(t)
 
-	key, err := ctx.UserSigKey()
-	if err != nil {
-		t.Fatalf("could not find key to sign the id token: %s", ctx.UserDefaultSigAlg)
-	}
-
-	idToken, err := jwtutil.Sign(
+	idToken, err := ctx.Sign(
 		map[string]any{
 			goidc.ClaimSubject: "random_user",
 		},
-		key,
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", key.KeyID),
+		goidc.SignatureOptions{
+			Algorithm: ctx.UserDefaultSigAlg,
+			JWTType:   goidc.JWTTypeBasic,
+		},
 	)
 	if err != nil {
 		t.Fatalf("could not sign the id token: %v", err)

@@ -26,7 +26,7 @@ func handleWellKnown(ctx oidc.Context) {
 }
 
 func handleJWKS(ctx oidc.Context) {
-	jwks, err := ctx.PublicKeys()
+	jwks, err := ctx.PublicJWKS()
 	if err != nil {
 		ctx.WriteError(err)
 		return

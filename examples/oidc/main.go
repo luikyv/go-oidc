@@ -26,7 +26,6 @@ func main() {
 	serverCertFilePath := filepath.Join(sourceDir, "../keys/server.cert")
 	serverCertKeyFilePath := filepath.Join(sourceDir, "../keys/server.key")
 
-	serverKeyID := "rs256_key"
 	// Create and configure the OpenID provider.
 	op, err := provider.New(
 		goidc.ProfileOpenID,
@@ -53,7 +52,7 @@ func main() {
 		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
 		provider.WithACRs(authutil.ACRs[0], authutil.ACRs...),
 		provider.WithDCR(authutil.DCRFunc, authutil.ValidateInitialTokenFunc),
-		provider.WithTokenOptions(authutil.TokenOptionsFunc(serverKeyID)),
+		provider.WithTokenOptions(authutil.TokenOptionsFunc(jose.RS256)),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithPolicy(authutil.Policy(templatesDirPath)),
 		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
