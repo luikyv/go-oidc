@@ -96,7 +96,7 @@ func initAuthnSession(
 	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.AuthnSessionTimeoutSecs
 	if session.IDTokenHint != "" {
 		// The ID token hint was already validated.
-		idToken, _ := jwt.ParseSigned(session.IDTokenHint, ctx.UserSigAlgs)
+		idToken, _ := jwt.ParseSigned(session.IDTokenHint, ctx.IDTokenSigAlgs)
 		_ = idToken.UnsafeClaimsWithoutVerification(&session.IDTokenHintClaims)
 	}
 	return session, nil

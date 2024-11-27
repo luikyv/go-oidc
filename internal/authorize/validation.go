@@ -582,7 +582,7 @@ func validateIDTokenHintAsOptional(
 		return nil
 	}
 
-	parsedIDToken, err := jwt.ParseSigned(params.IDTokenHint, ctx.UserSigAlgs)
+	parsedIDToken, err := jwt.ParseSigned(params.IDTokenHint, ctx.IDTokenSigAlgs)
 	if err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid id token hint", err)
 	}

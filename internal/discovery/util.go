@@ -21,8 +21,8 @@ func oidcConfig(ctx oidc.Context) openIDConfiguration {
 		UserClaimsSupported:          ctx.Claims,
 		ClaimTypesSupported:          ctx.ClaimTypes,
 		SubIdentifierTypes:           ctx.SubIdentifierTypes,
-		IDTokenSigAlgs:               ctx.UserSigAlgs,
-		UserInfoSigAlgs:              ctx.UserSigAlgs,
+		IDTokenSigAlgs:               ctx.IDTokenSigAlgs,
+		UserInfoSigAlgs:              ctx.UserInfoSigAlgs,
 		Scopes:                       scopes,
 		TokenAuthnMethods:            ctx.TokenAuthnMethods,
 		TokenAuthnSigAlgs:            ctx.TokenAuthnSigAlgs(),
@@ -108,11 +108,14 @@ func oidcConfig(ctx oidc.Context) openIDConfiguration {
 		}
 	}
 
-	if ctx.UserEncIsEnabled {
-		config.IDTokenKeyEncAlgs = ctx.UserKeyEncAlgs
-		config.IDTokenContentEncAlgs = ctx.UserContentEncAlgs
-		config.UserInfoKeyEncAlgs = ctx.UserKeyEncAlgs
-		config.UserInfoContentEncAlgs = ctx.UserContentEncAlgs
+	if ctx.UserInfoEncIsEnabled {
+		config.UserInfoKeyEncAlgs = ctx.UserInfoKeyEncAlgs
+		config.UserInfoContentEncAlgs = ctx.UserInfoContentEncAlgs
+	}
+
+	if ctx.IDTokenEncIsEnabled {
+		config.IDTokenKeyEncAlgs = ctx.IDTokenKeyEncAlgs
+		config.IDTokenContentEncAlgs = ctx.IDTokenContentEncAlgs
 	}
 
 	if ctx.PKCEIsEnabled {

@@ -385,7 +385,7 @@ func validateIDTokenSigAlg(
 		return nil
 	}
 
-	if !slices.Contains(ctx.UserSigAlgs, meta.IDTokenSigAlg) {
+	if !slices.Contains(ctx.IDTokenSigAlgs, meta.IDTokenSigAlg) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"id_token_signed_response_alg not supported")
 	}
@@ -400,7 +400,7 @@ func validateUserInfoSigAlg(
 		return nil
 	}
 
-	if !slices.Contains(ctx.UserSigAlgs, meta.UserInfoSigAlg) {
+	if !slices.Contains(ctx.UserInfoSigAlgs, meta.UserInfoSigAlg) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"id_token_signed_response_alg not supported")
 	}
@@ -551,12 +551,12 @@ func validateIDTokenEncAlgs(
 	ctx oidc.Context,
 	meta *goidc.ClientMetaInfo,
 ) error {
-	if !ctx.UserEncIsEnabled {
+	if !ctx.IDTokenEncIsEnabled {
 		return nil
 	}
 
 	if meta.IDTokenKeyEncAlg != "" &&
-		!slices.Contains(ctx.UserKeyEncAlgs, meta.IDTokenKeyEncAlg) {
+		!slices.Contains(ctx.IDTokenKeyEncAlgs, meta.IDTokenKeyEncAlg) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"id_token_encrypted_response_alg not supported")
 	}
@@ -567,7 +567,7 @@ func validateIDTokenEncAlgs(
 	}
 
 	if meta.IDTokenContentEncAlg != "" &&
-		!slices.Contains(ctx.UserContentEncAlgs, meta.IDTokenContentEncAlg) {
+		!slices.Contains(ctx.IDTokenContentEncAlgs, meta.IDTokenContentEncAlg) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"id_token_encrypted_response_enc not supported")
 	}
@@ -579,12 +579,12 @@ func validateUserInfoEncAlgs(
 	ctx oidc.Context,
 	meta *goidc.ClientMetaInfo,
 ) error {
-	if !ctx.UserEncIsEnabled {
+	if !ctx.UserInfoEncIsEnabled {
 		return nil
 	}
 
 	if meta.UserInfoKeyEncAlg != "" &&
-		!slices.Contains(ctx.UserKeyEncAlgs, meta.UserInfoKeyEncAlg) {
+		!slices.Contains(ctx.UserInfoKeyEncAlgs, meta.UserInfoKeyEncAlg) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"userinfo_encrypted_response_alg not supported")
 	}
@@ -595,7 +595,7 @@ func validateUserInfoEncAlgs(
 	}
 
 	if meta.UserInfoContentEncAlg != "" &&
-		!slices.Contains(ctx.UserContentEncAlgs, meta.UserInfoContentEncAlg) {
+		!slices.Contains(ctx.UserInfoContentEncAlgs, meta.UserInfoContentEncAlg) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"userinfo_encrypted_response_enc not supported")
 	}

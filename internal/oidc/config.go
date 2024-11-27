@@ -70,12 +70,19 @@ type Configuration struct {
 	EndpointTokenRevocation     string
 	EndpointPrefix              string
 
-	UserDefaultSigAlg        jose.SignatureAlgorithm
-	UserSigAlgs              []jose.SignatureAlgorithm
-	UserEncIsEnabled         bool
-	UserKeyEncAlgs           []jose.KeyAlgorithm
-	UserDefaultContentEncAlg jose.ContentEncryption
-	UserContentEncAlgs       []jose.ContentEncryption
+	UserInfoDefaultSigAlg        jose.SignatureAlgorithm
+	UserInfoSigAlgs              []jose.SignatureAlgorithm
+	UserInfoEncIsEnabled         bool
+	UserInfoKeyEncAlgs           []jose.KeyAlgorithm
+	UserInfoDefaultContentEncAlg jose.ContentEncryption
+	UserInfoContentEncAlgs       []jose.ContentEncryption
+
+	IDTokenDefaultSigAlg        jose.SignatureAlgorithm
+	IDTokenSigAlgs              []jose.SignatureAlgorithm
+	IDTokenEncIsEnabled         bool
+	IDTokenKeyEncAlgs           []jose.KeyAlgorithm
+	IDTokenDefaultContentEncAlg jose.ContentEncryption
+	IDTokenContentEncAlgs       []jose.ContentEncryption
 	// IDTokenLifetimeSecs defines the expiry time of ID tokens.
 	IDTokenLifetimeSecs int
 

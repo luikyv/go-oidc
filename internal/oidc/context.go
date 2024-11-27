@@ -445,9 +445,12 @@ func (ctx Context) RenderHTML(
 	return tmpl.Execute(ctx.Response, params)
 }
 
-// TODO: Do I need this?
 func (ctx Context) UserInfoSigAlgsContainsNone() bool {
-	return slices.Contains(ctx.UserSigAlgs, goidc.NoneSignatureAlgorithm)
+	return slices.Contains(ctx.UserInfoSigAlgs, goidc.NoneSignatureAlgorithm)
+}
+
+func (ctx Context) IDTokenSigAlgsContainsNone() bool {
+	return slices.Contains(ctx.IDTokenSigAlgs, goidc.NoneSignatureAlgorithm)
 }
 
 func (ctx Context) ShouldIssueRefreshToken(
