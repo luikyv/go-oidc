@@ -163,7 +163,7 @@ func authnSessionWithPAR(
 		return nil, err
 	}
 
-	// For FAPI 2.0, only the parameters sent during PAR are considered.
+	// For FAPI, only the parameters sent during PAR are considered.
 	if ctx.Profile == goidc.ProfileFAPI2 {
 		return session, nil
 	}
@@ -203,6 +203,13 @@ func authnSessionWithJAR(
 	}
 
 	session := newAuthnSession(jar.AuthorizationParameters, client)
+	// For FAPI, only the parameters sent inside the JAR are considered.
+	if ctx.Profile == goidc.ProfileFAPI2 {
+		return session, nil
+	}
+
+	// For OIDC, the parameters sent in the authorization endpoint are merged
+	// with the ones sent inside the JAR.
 	session.AuthorizationParameters = mergeParams(session.AuthorizationParameters,
 		req.AuthorizationParameters)
 	return session, nil

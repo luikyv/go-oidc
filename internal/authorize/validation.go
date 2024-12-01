@@ -26,10 +26,6 @@ func validateRequest(
 
 // validateRequestWithPAR validates the parameters in an authorization request
 // that includes a Pushed Authorization Request (PAR).
-// In FAPI 2.0, all required parameters have already been sent and validated
-// during the PAR stage.
-// In OIDC, the parameters sent during PAR are merged with the query parameters
-// from the authorization request, and then the combined parameters must be validated.
 func validateRequestWithPAR(
 	ctx oidc.Context,
 	req request,
@@ -54,10 +50,6 @@ func validateRequestWithPAR(
 
 // validateRequestWithJAR validates the parameters in an authorization request
 // that includes a JWT Authorization Request (JAR).
-// In OpenID Connect, the parameters inside the JAR are merged with the query
-// parameters from the authorization request, and the combined parameters are
-// then validated.
-// This behavior does not apply to FAPI 2.0, as PAR is mandatory.
 func validateRequestWithJAR(
 	ctx oidc.Context,
 	req request,
