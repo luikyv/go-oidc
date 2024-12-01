@@ -117,8 +117,8 @@ func initBackAuthFunc() goidc.InitBackAuthFunc {
 func validateBackAuthFunc() goidc.ValidateBackAuthFunc {
 	return func(ctx context.Context, as *goidc.AuthnSession) error {
 		if as.StoredParameter("error") == true {
-			return goidc.NewErrorWithStatus(goidc.ErrorCodeAccessDenied,
-				"access denied", http.StatusBadRequest)
+			return goidc.NewError(goidc.ErrorCodeAccessDenied,
+				"access denied").WithStatusCode(http.StatusBadRequest)
 		}
 
 		if as.StoredParameter("ready") != true {

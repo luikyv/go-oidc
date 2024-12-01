@@ -28,6 +28,7 @@ func redirectError(
 		errorCode:        redirectErr.code,
 		errorDescription: redirectErr.desc,
 		state:            redirectErr.State,
+		errorURI:         ctx.ErrorURI,
 	}
 	return redirectResponse(
 		ctx,

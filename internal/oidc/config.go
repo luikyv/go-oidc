@@ -189,4 +189,6 @@ type Configuration struct {
 
 	JWTBearerGrantClientAuthnIsRequired bool
 	HandleJWTBearerGrantAssertionFunc   goidc.HandleJWTBearerGrantAssertionFunc
+
+	ErrorURI string
 }

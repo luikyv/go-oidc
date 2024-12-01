@@ -51,6 +51,7 @@ func (c ErrorCode) StatusCode() int {
 type Error struct {
 	Code        ErrorCode `json:"error,omitempty"`
 	Description string    `json:"error_description,omitempty"`
+	URI         string    `json:"error_uri,omitempty"`
 	statusCode  int       `json:"-"`
 	wrapped     error     `json:"-"`
 }
@@ -62,12 +63,14 @@ func NewError(code ErrorCode, desc string) Error {
 	}
 }
 
-func NewErrorWithStatus(code ErrorCode, desc string, status int) Error {
-	return Error{
-		Code:        code,
-		Description: desc,
-		statusCode:  status,
-	}
+func (err Error) WithURI(uri string) Error {
+	err.URI = uri
+	return err
+}
+
+func (err Error) WithStatusCode(status int) Error {
+	err.statusCode = status
+	return err
 }
 
 func (err Error) Error() string {

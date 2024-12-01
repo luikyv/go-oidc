@@ -1057,6 +1057,13 @@ func WithDecryptFunc(f goidc.DecryptFunc) ProviderOption {
 	}
 }
 
+func WithErrorURI(uri string) ProviderOption {
+	return func(p Provider) error {
+		p.config.ErrorURI = uri
+		return nil
+	}
+}
+
 // appendIfNotIn adds 'value' to the beginning of 'values' if it is not already
 // present.
 func appendIfNotIn[T comparable](values []T, value T) []T {
