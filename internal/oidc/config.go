@@ -125,9 +125,12 @@ type Configuration struct {
 	JARMDefaultContentEncAlg jose.ContentEncryption
 	JARMContentEncAlgs       []jose.ContentEncryption
 
-	JARIsEnabled                        bool
-	JARIsRequired                       bool
-	JARSigAlgs                          []jose.SignatureAlgorithm
+	JARIsEnabled  bool
+	JARIsRequired bool
+	JARSigAlgs    []jose.SignatureAlgorithm
+	// JARByReferenceIsEnabled determines whether Request Objects can be provided
+	// by reference using the "request_uri" parameter. When enabled, the authorization
+	// server retrieves the request object from the specified URI.
 	JARByReferenceIsEnabled             bool
 	JARRequestURIRegistrationIsRequired bool
 	JAREncIsEnabled                     bool

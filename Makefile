@@ -28,6 +28,15 @@ run-cs:
 cs-oidc-tests:
 	@python3 conformance/suite/scripts/run-test-plan.py \
 		oidcc-basic-certification-test-plan[server_metadata=discovery][client_registration=dynamic_client] ./conformance/oidc_config.json \
+		oidcc-dynamic-certification-test-plan[response_type=code] ./conformance/oidc_config.json \
+		oidcc-dynamic-certification-test-plan[response_type=id_token] ./conformance/oidc_config.json \
+		oidcc-dynamic-certification-test-plan[response_type=id_token\ token] ./conformance/oidc_config.json \
+		oidcc-dynamic-certification-test-plan[response_type=code\ id_token] ./conformance/oidc_config.json \
+		oidcc-dynamic-certification-test-plan[response_type=code\ token] ./conformance/oidc_config.json \
+		oidcc-dynamic-certification-test-plan[response_type=code\ id_token\ token] ./conformance/oidc_config.json \
+		oidcc-formpost-basic-certification-test-plan[server_metadata=discovery][client_registration=dynamic_client] ./conformance/oidc_config.json \
+		oidcc-formpost-hybrid-certification-test-plan[server_metadata=discovery][client_registration=dynamic_client] ./conformance/oidc_config.json \
+		oidcc-formpost-implicit-certification-test-plan[server_metadata=discovery][client_registration=dynamic_client] ./conformance/oidc_config.json \
 		--expected-failures-file ./conformance/oidc_expected_failures.json \
 		--export-dir ./conformance
 
@@ -40,6 +49,6 @@ cs-fapi2-tests:
 
 cs-fapiciba-tests:
 	@python3 conformance/suite/scripts/run-test-plan.py \
-		fapi-ciba-id1-test-plan[client_auth_type=private_key_jwt][ciba_mode=poll][fapi_profile=plain_fapi][client_registration=dynamic_client] ./conformance/fapi_ciba_config.json \
-		fapi-ciba-id1-test-plan[client_auth_type=private_key_jwt][ciba_mode=ping][fapi_profile=plain_fapi][client_registration=dynamic_client] ./conformance/fapi_ciba_config.json \
+		fapi-ciba-id1-test-plan[client_auth_type=private_key_jwt][ciba_mode=poll][fapi_profile=plain_fapi][client_registration=dynamic_client] ./conformance/fapiciba_config.json \
+		fapi-ciba-id1-test-plan[client_auth_type=private_key_jwt][ciba_mode=ping][fapi_profile=plain_fapi][client_registration=dynamic_client] ./conformance/fapiciba_config.json \
 		--export-dir ./conformance

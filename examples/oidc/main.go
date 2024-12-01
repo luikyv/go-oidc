@@ -59,6 +59,7 @@ func main() {
 		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
 		provider.WithRenderErrorFunc(authutil.RenderError(templatesDirPath)),
 		provider.WithDisplayValues(authutil.DisplayValues[0], authutil.DisplayValues...),
+		provider.WithSubIdentifierTypes(goidc.SubIdentifierPublic, goidc.SubIdentifierPairwise),
 	)
 	if err != nil {
 		log.Fatal(err)

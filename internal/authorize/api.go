@@ -35,7 +35,15 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 		oidc.Handler(config, handlerCallback),
 	)
 	router.HandleFunc(
+		"GET "+config.EndpointPrefix+config.EndpointAuthorize+"/{callback}",
+		oidc.Handler(config, handlerCallback),
+	)
+	router.HandleFunc(
 		"POST "+config.EndpointPrefix+config.EndpointAuthorize+"/{callback}/{callback_path...}",
+		oidc.Handler(config, handlerCallback),
+	)
+	router.HandleFunc(
+		"GET "+config.EndpointPrefix+config.EndpointAuthorize+"/{callback}/{callback_path...}",
 		oidc.Handler(config, handlerCallback),
 	)
 }

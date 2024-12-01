@@ -284,6 +284,73 @@
                     ]
                 }
             ]
+        },
+        "oidcc-registration-logo-uri": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect logo is required",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Login Form", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "oidcc-registration-policy-uri": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect policy is required",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Login Form", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "oidcc-registration-tos-uri": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect terms of service",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Login Form", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "oidcc-ensure-request-without-nonce-fails": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for response type missing",
+                            "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback*",
+                            "commands": [
+                                ["wait", "id", "submission_complete", 10]
+                            ]
+                        }
+                    ]
+                }
+            ]
         }
     }
 }

@@ -7,5 +7,14 @@
         "condition": "UserInfoEndpointWithAccessTokenInBodyNotSupported",
         "expected-result": "warning",
         "comment": "warning is expected as access tokens are only expected in headers"
+    },
+    {
+        "test-name": "oidcc-server-rotate-keys",
+        "variant": "*",
+        "configuration-filename": "*",
+        "current-block": "",
+        "condition": "VerifyNewJwksHasNewSigningKey",
+        "expected-result": "failure",
+        "comment": "CI can't trigger key rotation"
     }
 ]

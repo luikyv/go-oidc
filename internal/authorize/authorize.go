@@ -188,7 +188,7 @@ func authnSessionWithJAR(
 	switch {
 	case req.RequestObject != "":
 		jar, err = jarFromRequestObject(ctx, req.RequestObject, client)
-	case req.RequestURI != "":
+	case ctx.JARByReferenceIsEnabled && req.RequestURI != "":
 		jar, err = jarFromRequestURI(ctx, req.RequestURI, client)
 	default:
 		err = goidc.NewError(goidc.ErrorCodeInvalidRequest,

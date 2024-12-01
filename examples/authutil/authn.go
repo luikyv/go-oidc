@@ -30,6 +30,17 @@ func Policy(templatesDir string) goidc.AuthnPolicy {
 		func(r *http.Request, c *goidc.Client, as *goidc.AuthnSession) bool {
 			// The flow starts at the login step.
 			as.StoreParameter(paramStepID, stepIDLoadUser)
+
+			if c.LogoURI != "" {
+				as.StoreParameter(paramLogoURI, c.LogoURI)
+			}
+			if c.PolicyURI != "" {
+				as.StoreParameter(paramPolicyURI, c.PolicyURI)
+			}
+			if c.TermsOfServiceURI != "" {
+				as.StoreParameter(paramTermsOfServiceURI, c.TermsOfServiceURI)
+			}
+
 			return true
 		},
 		authenticator.authenticate,
@@ -44,8 +55,11 @@ const (
 	stepIDConsent       string = "step_consent"
 	stepIDFinishFlow    string = "step_finish_flow"
 
-	paramAuthTime      string = "auth_time"
-	paramUserSessionID string = "user_session_id"
+	paramAuthTime          string = "auth_time"
+	paramUserSessionID     string = "user_session_id"
+	paramLogoURI           string = "logo_uri"
+	paramPolicyURI         string = "policy_uri"
+	paramTermsOfServiceURI string = "tos_uri"
 
 	usernameFormParam string = "username"
 	passwordFormParam string = "password"
@@ -60,11 +74,14 @@ const (
 var userSessionStore = map[string]userSession{}
 
 type authnPage struct {
-	Subject    string
-	BaseURL    string
-	CallbackID string
-	Error      string
-	Session    map[string]any
+	Subject           string
+	BaseURL           string
+	CallbackID        string
+	LogoURI           string
+	PolicyURI         string
+	TermsOfServiceURI string
+	Error             string
+	Session           map[string]any
 }
 
 type userSession struct {
@@ -188,11 +205,7 @@ func (a authenticator) login(
 
 	isLogin := r.PostFormValue(loginFormParam)
 	if isLogin == "" {
-		return a.executeTemplate(w, "login.html", authnPage{
-			BaseURL:    Issuer,
-			CallbackID: as.CallbackID,
-			Session:    sessionToMap(as),
-		})
+		return a.renderPage(w, "login.html", as)
 	}
 
 	if isLogin != "true" {
@@ -202,12 +215,7 @@ func (a authenticator) login(
 	username := r.PostFormValue(usernameFormParam)
 	password := r.PostFormValue(passwordFormParam)
 	if password != correctPassword {
-		return a.executeTemplate(w, "login.html", authnPage{
-			BaseURL:    Issuer,
-			CallbackID: as.CallbackID,
-			Error:      fmt.Sprintf("invalid password, try '%s'", correctPassword),
-			Session:    sessionToMap(as),
-		})
+		return a.renderError(w, "login.html", as, fmt.Sprintf("invalid password, try '%s'", correctPassword))
 	}
 
 	as.SetUserID(username)
@@ -254,12 +262,7 @@ func (a authenticator) grantConsent(
 
 	isConsented := r.PostFormValue(consentFormParam)
 	if isConsented == "" {
-		return a.executeTemplate(w, "consent.html", authnPage{
-			Subject:    as.Subject,
-			BaseURL:    Issuer,
-			CallbackID: as.CallbackID,
-			Session:    sessionToMap(as),
-		})
+		return a.renderPage(w, "consent.html", as)
 	}
 
 	if isConsented != "true" {
@@ -396,14 +399,75 @@ func (a authenticator) finishFlow(
 	return goidc.StatusSuccess, nil
 }
 
-func (a authenticator) executeTemplate(
+func (a authenticator) renderPage(
 	w http.ResponseWriter,
 	templateName string,
-	params authnPage,
+	as *goidc.AuthnSession,
 ) (
 	goidc.AuthnStatus,
 	error,
 ) {
+
+	params := authnPage{
+		Subject:    as.Subject,
+		BaseURL:    Issuer,
+		CallbackID: as.CallbackID,
+		Session:    sessionToMap(as),
+	}
+
+	logoURI := as.StoredParameter(paramLogoURI)
+	if logoURI != nil {
+		params.LogoURI = logoURI.(string)
+	}
+
+	policyURI := as.StoredParameter(paramPolicyURI)
+	if policyURI != nil {
+		params.PolicyURI = policyURI.(string)
+	}
+
+	termsOfService := as.StoredParameter(paramTermsOfServiceURI)
+	if termsOfService != nil {
+		params.TermsOfServiceURI = termsOfService.(string)
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = a.tmpl.ExecuteTemplate(w, templateName, params)
+	return goidc.StatusInProgress, nil
+}
+
+func (a authenticator) renderError(
+	w http.ResponseWriter,
+	templateName string,
+	as *goidc.AuthnSession,
+	err string,
+) (
+	goidc.AuthnStatus,
+	error,
+) {
+
+	params := authnPage{
+		Subject:    as.Subject,
+		BaseURL:    Issuer,
+		CallbackID: as.CallbackID,
+		Session:    sessionToMap(as),
+		Error:      err,
+	}
+
+	logoURI := as.StoredParameter(paramLogoURI)
+	if logoURI != nil {
+		params.LogoURI = logoURI.(string)
+	}
+
+	policyURI := as.StoredParameter(paramPolicyURI)
+	if policyURI != nil {
+		params.PolicyURI = policyURI.(string)
+	}
+
+	termsOfService := as.StoredParameter(paramTermsOfServiceURI)
+	if termsOfService != nil {
+		params.TermsOfServiceURI = termsOfService.(string)
+	}
+
 	w.WriteHeader(http.StatusOK)
 	_ = a.tmpl.ExecuteTemplate(w, templateName, params)
 	return goidc.StatusInProgress, nil
