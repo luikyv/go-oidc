@@ -64,8 +64,8 @@ func TestValidateRequest_InvalidResponseType(t *testing.T) {
 		t.Fatalf("the error should be redirected")
 	}
 
-	if redirectErr.code != goidc.ErrorCodeInvalidRequest {
-		t.Errorf("code = %s, want %s", redirectErr.code, goidc.ErrorCodeInvalidRequest)
+	if redirectErr.Code != goidc.ErrorCodeInvalidRequest {
+		t.Errorf("code = %s, want %s", redirectErr.Code, goidc.ErrorCodeInvalidRequest)
 	}
 }
 
@@ -98,8 +98,8 @@ func TestValidateRequest_InvalidScope(t *testing.T) {
 		t.Fatalf("the error should be redirected")
 	}
 
-	if redirectErr.code != goidc.ErrorCodeInvalidScope {
-		t.Errorf("code = %s, want %s", redirectErr.code, goidc.ErrorCodeInvalidScope)
+	if redirectErr.Code != goidc.ErrorCodeInvalidScope {
+		t.Errorf("code = %s, want %s", redirectErr.Code, goidc.ErrorCodeInvalidScope)
 	}
 }
 
@@ -191,8 +191,8 @@ func TestValidateRequest_ResourceIndicator_InvalidResource(t *testing.T) {
 		t.Fatalf("the error should be redirected")
 	}
 
-	if redirectErr.code != goidc.ErrorCodeInvalidTarget {
-		t.Errorf("code = %s, want %s", redirectErr.code, goidc.ErrorCodeInvalidTarget)
+	if redirectErr.Code != goidc.ErrorCodeInvalidTarget {
+		t.Errorf("code = %s, want %s", redirectErr.Code, goidc.ErrorCodeInvalidTarget)
 	}
 }
 

@@ -164,7 +164,7 @@ func authnSessionWithPAR(
 	}
 
 	// For FAPI, only the parameters sent during PAR are considered.
-	if ctx.Profile == goidc.ProfileFAPI2 {
+	if ctx.Profile.IsFAPI() {
 		return session, nil
 	}
 
@@ -204,7 +204,7 @@ func authnSessionWithJAR(
 
 	session := newAuthnSession(jar.AuthorizationParameters, client)
 	// For FAPI, only the parameters sent inside the JAR are considered.
-	if ctx.Profile == goidc.ProfileFAPI2 {
+	if ctx.Profile.IsFAPI() {
 		return session, nil
 	}
 
@@ -255,7 +255,7 @@ func finishFlowWithFailure(
 	err error,
 ) error {
 	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-		return redirectionErrorf(goidc.ErrorCodeInternalError,
+		return wrapRedirectionError(goidc.ErrorCodeInternalError,
 			"internal error", session.AuthorizationParameters, err)
 	}
 
@@ -292,7 +292,7 @@ func finishFlowSuccessfully(
 
 	client, err := ctx.Client(session.ClientID)
 	if err != nil {
-		return redirectionErrorf(goidc.ErrorCodeInternalError,
+		return wrapRedirectionError(goidc.ErrorCodeInternalError,
 			"could not load the client", session.AuthorizationParameters, err)
 	}
 
@@ -312,7 +312,7 @@ func finishFlowSuccessfully(
 
 		token, err := token.Make(ctx, grantInfo, client)
 		if err != nil {
-			return redirectionErrorf(goidc.ErrorCodeInternalError,
+			return wrapRedirectionError(goidc.ErrorCodeInternalError,
 				"could not generate the access token", session.AuthorizationParameters, err)
 		}
 
@@ -335,7 +335,7 @@ func finishFlowSuccessfully(
 
 		redirectParams.idToken, err = token.MakeIDToken(ctx, client, idTokenOptions)
 		if err != nil {
-			return redirectionErrorf(goidc.ErrorCodeInternalError,
+			return wrapRedirectionError(goidc.ErrorCodeInternalError,
 				"could not generate the id token", session.AuthorizationParameters, err)
 		}
 	}

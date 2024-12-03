@@ -1,7 +1,6 @@
 package authorize
 
 import (
-	"errors"
 	"slices"
 	"time"
 
@@ -274,11 +273,6 @@ func validateCIBARequest(
 	}
 
 	if err := validateParamsAsOptionals(ctx, req.AuthorizationParameters, client); err != nil {
-		// Convert the redirection error to a standard one.
-		var redirectErr redirectionError
-		if errors.As(err, &redirectErr) {
-			return goidc.WrapError(redirectErr.code, redirectErr.desc, redirectErr)
-		}
 		return err
 	}
 

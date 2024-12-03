@@ -1,7 +1,6 @@
 package authorize
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -126,7 +125,8 @@ func jarFromUnsignedRequestObject(
 	jarAlgorithms := jarAlgorithms(ctx, c)
 	parsedJWT, err := jwt.ParseSigned(reqObject, jarAlgorithms)
 	if err != nil {
-		return request{}, fmt.Errorf("failed to parse JWT: %w", err)
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
+			"could not parse the request object", err)
 	}
 
 	var jarReq request
@@ -192,7 +192,7 @@ func validateClaims(
 	client *goidc.Client,
 ) error {
 
-	if ctx.Profile == goidc.ProfileFAPI2 {
+	if ctx.Profile.IsFAPI() {
 
 		if claims.NotBefore == nil {
 			return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
@@ -200,7 +200,7 @@ func validateClaims(
 		}
 
 		if claims.NotBefore.Time().Before(timeutil.Now().Add(-1 * time.Hour)) {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest,
+			return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
 				"claim 'nbf' is too far in the past")
 		}
 
@@ -210,7 +210,7 @@ func validateClaims(
 		}
 
 		if claims.Expiry.Time().After(timeutil.Now().Add(1 * time.Hour)) {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest,
+			return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
 				"claim 'exp' is too far in the future")
 		}
 	}

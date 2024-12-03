@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: [oidc, fapi2, fapiciba]
+        profile: [oidc, fapi2, fapi1, fapiciba]
 
     steps:
         - uses: actions/checkout@v4

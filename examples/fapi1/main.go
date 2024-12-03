@@ -35,10 +35,11 @@ func main() {
 
 	// Create and configure the OpenID provider.
 	op, err := provider.New(
-		goidc.ProfileFAPI2,
+		goidc.ProfileFAPI1,
 		authutil.Issuer,
 		authutil.PrivateJWKSFunc(serverJWKSFilePath),
 		provider.WithScopes(authutil.Scopes...),
+		provider.WithOpenIDScopeRequired(),
 		provider.WithIDTokenSignatureAlgs(jose.PS256),
 		provider.WithUserInfoSignatureAlgs(jose.PS256),
 		provider.WithPAR(10),
@@ -50,6 +51,7 @@ func main() {
 		provider.WithClaimsParameter(),
 		provider.WithPKCE(goidc.CodeChallengeMethodSHA256),
 		provider.WithAuthorizationCodeGrant(),
+		provider.WithImplicitGrant(),
 		provider.WithRefreshTokenGrant(authutil.IssueRefreshToken, 6000),
 		provider.WithTLSCertTokenBinding(),
 		provider.WithTokenBindingRequired(),

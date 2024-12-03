@@ -5,7 +5,7 @@
     },
     "client": {
         "client_name": "client_one",
-        "client_id": "client_one",
+        "client_id": "mtls_client_one",
         "scope": "openid email",
         "jwks": {
             "keys": [
@@ -32,7 +32,7 @@
     },
     "client2": {
         "client_name": "client two",
-        "client_id": "client_two",
+        "client_id": "mtls_client_two",
         "scope": "openid email",
         "jwks": {
             "keys": [
