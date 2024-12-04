@@ -5,9 +5,11 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
-  - repo: https://github.com/dnephin/pre-commit-golang
-    rev: v0.5.0
+      - id: check-json
+      - id: check-added-large-files
+      - id: no-commit-to-branch
+        args: [--branch, main]
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v1.62.2
     hooks:
-      - id: go-fmt
       - id: golangci-lint
-      - id: go-mod-tidy

@@ -80,7 +80,7 @@ func userInfoResponse(
 
 	// If the client doesn't require the user info to be encrypted,
 	// we'll just return the claims as a signed JWT.
-	if !ctx.UserEncIsEnabled || client.UserInfoKeyEncAlg == "" {
+	if !ctx.UserInfoEncIsEnabled || client.UserInfoKeyEncAlg == "" {
 		return response{
 			jwtClaims: jwtUserInfoClaims,
 		}, nil
@@ -113,7 +113,7 @@ func signUserInfoClaims(
 	}
 
 	sigOpts := goidc.SignatureOptions{
-		Algorithm: ctx.UserDefaultSigAlg,
+		Algorithm: ctx.UserInfoDefaultSigAlg,
 		JWTType:   goidc.JWTTypeBasic,
 	}
 	if client.UserInfoSigAlg != "" {
@@ -144,7 +144,7 @@ func encryptUserInfoJWT(
 
 	contentEncAlg := c.UserInfoContentEncAlg
 	if contentEncAlg == "" {
-		contentEncAlg = ctx.UserDefaultContentEncAlg
+		contentEncAlg = ctx.UserInfoDefaultContentEncAlg
 	}
 	userInfoJWE, err := jwtutil.Encrypt(userInfoJWT, jwk, contentEncAlg)
 	if err != nil {

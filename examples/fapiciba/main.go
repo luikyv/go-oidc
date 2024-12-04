@@ -33,7 +33,8 @@ func main() {
 		authutil.Issuer,
 		authutil.PrivateJWKSFunc(serverJWKSFilePath),
 		provider.WithScopes(authutil.Scopes...),
-		provider.WithUserSignatureAlgs(jose.PS256),
+		provider.WithIDTokenSignatureAlgs(jose.PS256),
+		provider.WithUserInfoSignatureAlgs(jose.PS256),
 		provider.WithCIBAGrant(initBackAuthFunc(), validateBackAuthFunc(),
 			goidc.CIBATokenDeliveryModePoll, goidc.CIBATokenDeliveryModePing, goidc.CIBATokenDeliveryModePush),
 		provider.WithCIBAJAR(jose.PS256),
@@ -116,8 +117,8 @@ func initBackAuthFunc() goidc.InitBackAuthFunc {
 func validateBackAuthFunc() goidc.ValidateBackAuthFunc {
 	return func(ctx context.Context, as *goidc.AuthnSession) error {
 		if as.StoredParameter("error") == true {
-			return goidc.NewErrorWithStatus(goidc.ErrorCodeAccessDenied,
-				"access denied", http.StatusBadRequest)
+			return goidc.NewError(goidc.ErrorCodeAccessDenied,
+				"access denied").WithStatusCode(http.StatusBadRequest)
 		}
 
 		if as.StoredParameter("ready") != true {

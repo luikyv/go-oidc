@@ -75,16 +75,18 @@ func (c *Client) fetchJWKS(httpClient *http.Client) (json.RawMessage, error) {
 }
 
 type ClientMetaInfo struct {
-	Name            string          `json:"client_name,omitempty"`
-	ApplicationType ApplicationType `json:"application_type,omitempty"`
-	LogoURI         string          `json:"logo_uri,omitempty"`
-	Contacts        []string        `json:"contacts,omitempty"`
-	RedirectURIs    []string        `json:"redirect_uris,omitempty"`
-	RequestURIs     []string        `json:"request_uris,omitempty"`
-	GrantTypes      []GrantType     `json:"grant_types"`
-	ResponseTypes   []ResponseType  `json:"response_types"`
-	PublicJWKSURI   string          `json:"jwks_uri,omitempty"`
-	PublicJWKS      json.RawMessage `json:"jwks,omitempty"`
+	Name              string          `json:"client_name,omitempty"`
+	ApplicationType   ApplicationType `json:"application_type,omitempty"`
+	LogoURI           string          `json:"logo_uri,omitempty"`
+	Contacts          []string        `json:"contacts,omitempty"`
+	PolicyURI         string          `json:"policy_uri,omitempty"`
+	TermsOfServiceURI string          `json:"tos_uri,omitempty"`
+	RedirectURIs      []string        `json:"redirect_uris,omitempty"`
+	RequestURIs       []string        `json:"request_uris,omitempty"`
+	GrantTypes        []GrantType     `json:"grant_types"`
+	ResponseTypes     []ResponseType  `json:"response_types"`
+	PublicJWKSURI     string          `json:"jwks_uri,omitempty"`
+	PublicJWKS        json.RawMessage `json:"jwks,omitempty"`
 	// ScopeIDs contains the scopes available to the client separeted by spaces.
 	ScopeIDs              string                  `json:"scope,omitempty"`
 	SubIdentifierType     SubIdentifierType       `json:"subject_type,omitempty"`

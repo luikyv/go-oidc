@@ -15,7 +15,7 @@ func TestOIDCConfig(t *testing.T) {
 	// Given.
 	tokenKey := oidctest.PrivateRS256JWK(t, "token_signature_key",
 		goidc.KeyUsageSignature)
-	userInfoKey := oidctest.PrivateRS256JWK(t, "user_info_signature_key",
+	userKey := oidctest.PrivateRS256JWK(t, "user_signature_key",
 		goidc.KeyUsageSignature)
 	config := &oidc.Configuration{
 		Host:                        "https://example.com",
@@ -33,7 +33,7 @@ func TestOIDCConfig(t *testing.T) {
 		},
 		JWKSFunc: func(ctx context.Context) (jose.JSONWebKeySet, error) {
 			return jose.JSONWebKeySet{
-				Keys: []jose.JSONWebKey{tokenKey, userInfoKey},
+				Keys: []jose.JSONWebKey{tokenKey, userKey},
 			}, nil
 		},
 		GrantTypes:    []goidc.GrantType{goidc.GrantAuthorizationCode},
@@ -48,8 +48,10 @@ func TestOIDCConfig(t *testing.T) {
 		ClaimsParamIsEnabled:     true,
 		ACRs:                     []goidc.ACR{"0"},
 		DisplayValues:            []goidc.DisplayValue{goidc.DisplayValuePage},
-		UserDefaultSigAlg:        jose.SignatureAlgorithm(userInfoKey.Algorithm),
-		UserSigAlgs:              []jose.SignatureAlgorithm{jose.SignatureAlgorithm(userInfoKey.Algorithm)},
+		UserInfoDefaultSigAlg:    jose.SignatureAlgorithm(userKey.Algorithm),
+		UserInfoSigAlgs:          []jose.SignatureAlgorithm{jose.SignatureAlgorithm(userKey.Algorithm)},
+		IDTokenDefaultSigAlg:     jose.SignatureAlgorithm(userKey.Algorithm),
+		IDTokenSigAlgs:           []jose.SignatureAlgorithm{jose.SignatureAlgorithm(userKey.Algorithm)},
 		DCRIsEnabled:             true,
 		TokenAuthnMethods: []goidc.ClientAuthnType{
 			goidc.ClientAuthnNone,
@@ -81,10 +83,10 @@ func TestOIDCConfig(t *testing.T) {
 		},
 		GrantTypes: ctx.GrantTypes,
 		UserInfoSigAlgs: []jose.SignatureAlgorithm{
-			jose.SignatureAlgorithm(userInfoKey.Algorithm),
+			jose.SignatureAlgorithm(userKey.Algorithm),
 		},
 		IDTokenSigAlgs: []jose.SignatureAlgorithm{
-			jose.SignatureAlgorithm(userInfoKey.Algorithm),
+			jose.SignatureAlgorithm(userKey.Algorithm),
 		},
 		ResponseTypes:                ctx.ResponseTypes,
 		ResponseModes:                ctx.ResponseModes,
@@ -144,8 +146,10 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		ClaimsParamIsEnabled:     true,
 		ACRs:                     []goidc.ACR{"0"},
 		DisplayValues:            []goidc.DisplayValue{goidc.DisplayValuePage},
-		UserDefaultSigAlg:        jose.SignatureAlgorithm(userInfoKey.Algorithm),
-		UserSigAlgs:              []jose.SignatureAlgorithm{jose.SignatureAlgorithm(userInfoKey.Algorithm)},
+		UserInfoDefaultSigAlg:    jose.SignatureAlgorithm(userInfoKey.Algorithm),
+		UserInfoSigAlgs:          []jose.SignatureAlgorithm{jose.SignatureAlgorithm(userInfoKey.Algorithm)},
+		IDTokenDefaultSigAlg:     jose.SignatureAlgorithm(userInfoKey.Algorithm),
+		IDTokenSigAlgs:           []jose.SignatureAlgorithm{jose.SignatureAlgorithm(userInfoKey.Algorithm)},
 		DCRIsEnabled:             true,
 		TokenAuthnMethods: []goidc.ClientAuthnType{
 			goidc.ClientAuthnNone,

@@ -28,7 +28,7 @@ func MakeIDToken(
 	}
 
 	// If encryption is disabled, just return the signed ID token.
-	if !ctx.UserEncIsEnabled || client.IDTokenKeyEncAlg == "" {
+	if !ctx.IDTokenEncIsEnabled || client.IDTokenKeyEncAlg == "" {
 		return idToken, nil
 	}
 
@@ -59,13 +59,13 @@ func makeIDToken(
 	string,
 	error,
 ) {
-	if ctx.UserInfoSigAlgsContainsNone() && client.IDTokenSigAlg == goidc.NoneSignatureAlgorithm {
+	if ctx.IDTokenSigAlgsContainsNone() && client.IDTokenSigAlg == goidc.NoneSignatureAlgorithm {
 		return makeUnsignedIDToken(ctx, client, opts)
 	}
 
 	sigOpts := goidc.SignatureOptions{
 		JWTType:   goidc.JWTTypeBasic,
-		Algorithm: ctx.UserDefaultSigAlg,
+		Algorithm: ctx.IDTokenDefaultSigAlg,
 	}
 	if client.IDTokenSigAlg != "" {
 		sigOpts.Algorithm = client.IDTokenSigAlg
@@ -154,7 +154,7 @@ func encryptIDToken(
 
 	contentEncAlg := c.IDTokenContentEncAlg
 	if contentEncAlg == "" {
-		contentEncAlg = ctx.UserDefaultContentEncAlg
+		contentEncAlg = ctx.IDTokenDefaultContentEncAlg
 	}
 	encIDToken, err := jwtutil.Encrypt(userInfoJWT, jwk, contentEncAlg)
 	if err != nil {

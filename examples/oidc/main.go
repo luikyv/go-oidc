@@ -32,7 +32,8 @@ func main() {
 		authutil.Issuer,
 		authutil.PrivateJWKSFunc(jwksFilePath),
 		provider.WithScopes(authutil.Scopes...),
-		provider.WithUserSignatureAlgs(jose.RS256, goidc.NoneSignatureAlgorithm),
+		provider.WithIDTokenSignatureAlgs(jose.RS256, goidc.NoneSignatureAlgorithm),
+		provider.WithUserInfoSignatureAlgs(jose.RS256, goidc.NoneSignatureAlgorithm),
 		provider.WithPAR(10),
 		provider.WithJAR(jose.RS256, goidc.NoneSignatureAlgorithm),
 		provider.WithJARByReference(false),
@@ -58,6 +59,7 @@ func main() {
 		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
 		provider.WithRenderErrorFunc(authutil.RenderError(templatesDirPath)),
 		provider.WithDisplayValues(authutil.DisplayValues[0], authutil.DisplayValues...),
+		provider.WithSubIdentifierTypes(goidc.SubIdentifierPublic, goidc.SubIdentifierPairwise),
 	)
 	if err != nil {
 		log.Fatal(err)

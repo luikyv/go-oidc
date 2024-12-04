@@ -410,15 +410,10 @@ func (ctx Context) WriteError(err error) {
 
 	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
-		if err := ctx.Write(map[string]any{
-			"error":             goidc.ErrorCodeInternalError,
-			"error_description": "internal error",
-		}, http.StatusInternalServerError); err != nil {
-			ctx.Response.WriteHeader(http.StatusInternalServerError)
-		}
-		return
+		oidcErr = goidc.NewError(goidc.ErrorCodeInternalError, "internal error")
 	}
 
+	oidcErr = oidcErr.WithURI(ctx.ErrorURI)
 	if err := ctx.Write(oidcErr, oidcErr.StatusCode()); err != nil {
 		ctx.Response.WriteHeader(http.StatusInternalServerError)
 	}
@@ -445,9 +440,12 @@ func (ctx Context) RenderHTML(
 	return tmpl.Execute(ctx.Response, params)
 }
 
-// TODO: Do I need this?
 func (ctx Context) UserInfoSigAlgsContainsNone() bool {
-	return slices.Contains(ctx.UserSigAlgs, goidc.NoneSignatureAlgorithm)
+	return slices.Contains(ctx.UserInfoSigAlgs, goidc.NoneSignatureAlgorithm)
+}
+
+func (ctx Context) IDTokenSigAlgsContainsNone() bool {
+	return slices.Contains(ctx.IDTokenSigAlgs, goidc.NoneSignatureAlgorithm)
 }
 
 func (ctx Context) ShouldIssueRefreshToken(

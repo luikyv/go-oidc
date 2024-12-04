@@ -1,24 +1,24 @@
 package authorize
 
 import (
-	"fmt"
+	"encoding/json"
 
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
+type oidcErrorAlias = goidc.Error
+
 type redirectionError struct {
-	code    goidc.ErrorCode
-	desc    string
-	wrapped error
+	oidcErrorAlias
 	goidc.AuthorizationParameters
 }
 
-func (err redirectionError) Error() string {
-	return fmt.Sprintf("%s %s", err.code, err.desc)
+func (err redirectionError) MarshalJSON() ([]byte, error) {
+	return json.Marshal(err.oidcErrorAlias)
 }
 
 func (err redirectionError) Unwrap() error {
-	return err.wrapped
+	return err.oidcErrorAlias
 }
 
 func newRedirectionError(
@@ -27,22 +27,19 @@ func newRedirectionError(
 	params goidc.AuthorizationParameters,
 ) error {
 	return redirectionError{
-		code:                    code,
-		desc:                    desc,
+		oidcErrorAlias:          goidc.NewError(code, desc),
 		AuthorizationParameters: params,
 	}
 }
 
-func redirectionErrorf(
+func wrapRedirectionError(
 	code goidc.ErrorCode,
 	desc string,
 	params goidc.AuthorizationParameters,
 	err error,
 ) error {
 	return redirectionError{
-		code:                    code,
-		desc:                    desc,
+		oidcErrorAlias:          goidc.WrapError(code, desc, err),
 		AuthorizationParameters: params,
-		wrapped:                 err,
 	}
 }

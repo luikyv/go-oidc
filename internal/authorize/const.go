@@ -15,28 +15,36 @@ const (
 	formPostResponseTemplate string = `
 	<html>
 	<body onload="javascript:document.forms[0].submit()">
-		<form id="form" method="post" action="{{ .redirect_uri }}">
-			<input type="hidden" name="code" value="{{ .code }}"/>
-			<input type="hidden" name="state" value="{{ .state }}"/>
-			<input type="hidden" name="access_token" value="{{ .access_token }}"/>
-			<input type="hidden" name="token_type" value="{{ .token_type }}"/>
-			<input type="hidden" name="id_token" value="{{ .id_token }}"/>
-			<input type="hidden" name="response" value="{{ .response }}"/>
-			<input type="hidden" name="error" value="{{ .error }}"/>
-			<input type="hidden" name="error_description" value="{{ .error_description }}"/>
-		</form>
+	  <form id="auth-response" method="post" action="{{ .redirect_uri }}">
+	  	{{ if .iss }}
+	    <input type="hidden" name="iss" value="{{ .iss }}"/>
+		{{ end }}
+	    {{ if .code }}
+	    <input type="hidden" name="code" value="{{ .code }}"/>
+		{{ end }}
+	    {{ if .state }}
+		<input type="hidden" name="state" value="{{ .state }}"/>
+		{{ end }}
+	    {{ if .access_token }}
+		<input type="hidden" name="access_token" value="{{ .access_token }}"/>
+		{{ end }}
+	    {{ if .token_type }}
+		<input type="hidden" name="token_type" value="{{ .token_type }}"/>
+		{{ end }}
+	    {{ if .id_token }}
+		<input type="hidden" name="id_token" value="{{ .id_token }}"/>
+		{{ end }}
+	    {{ if .response }}
+		<input type="hidden" name="response" value="{{ .response }}"/>
+		{{ end }}
+	    {{ if .error }}
+		<input type="hidden" name="error" value="{{ .error }}"/>
+		{{ end }}
+	    {{ if .error_description }}
+		<input type="hidden" name="error_description" value="{{ .error_description }}"/>
+		{{ end }}
+	  </form>
 	</body>
-
-	<script>
-		var form = document.getElementByID('form');
-		form.addEventListener('formdata', function(event) {
-			let formData = event.formData;
-			for (let [name, value] of Array.from(formData.entries())) {
-				if (value === '') formData.delete(name);
-			}
-		});
-	</script>
-
 	</html>
 `
 )

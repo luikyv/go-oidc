@@ -90,7 +90,7 @@ func TestHandleUserInfoRequest_SignedResponse(t *testing.T) {
 func TestHandleUserInfoRequest_UnsignedResponse(t *testing.T) {
 	// Given.
 	ctx, client, _ := setUp(t)
-	ctx.UserSigAlgs = append(ctx.UserSigAlgs, goidc.NoneSignatureAlgorithm)
+	ctx.UserInfoSigAlgs = append(ctx.UserInfoSigAlgs, goidc.NoneSignatureAlgorithm)
 
 	client.UserInfoSigAlg = goidc.NoneSignatureAlgorithm
 

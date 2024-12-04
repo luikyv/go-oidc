@@ -1,5 +1,5 @@
-// Example fapi2 demonstrates the implementation of an Authorization Server
-// that complies with the FAPI 2.0 specifications.
+// Example fapi1 demonstrates the implementation of an Authorization Server
+// that complies with the FAPI 1.0 specifications.
 package main
 
 import (
@@ -35,25 +35,25 @@ func main() {
 
 	// Create and configure the OpenID provider.
 	op, err := provider.New(
-		goidc.ProfileFAPI2,
+		goidc.ProfileFAPI1,
 		authutil.Issuer,
 		authutil.PrivateJWKSFunc(serverJWKSFilePath),
 		provider.WithScopes(authutil.Scopes...),
+		provider.WithOpenIDScopeRequired(),
 		provider.WithIDTokenSignatureAlgs(jose.PS256),
 		provider.WithUserInfoSignatureAlgs(jose.PS256),
-		provider.WithPARRequired(10),
+		provider.WithPAR(10),
 		provider.WithMTLS(authutil.MTLSHost, authutil.ClientCertFunc),
-		provider.WithJAR(jose.PS256),
+		provider.WithJARRequired(jose.PS256),
 		provider.WithJARM(jose.PS256),
 		provider.WithTokenAuthnMethods(goidc.ClientAuthnPrivateKeyJWT, goidc.ClientAuthnTLS),
 		provider.WithPrivateKeyJWTSignatureAlgs(jose.PS256),
-		provider.WithIssuerResponseParameter(),
 		provider.WithClaimsParameter(),
-		provider.WithPKCERequired(goidc.CodeChallengeMethodSHA256),
+		provider.WithPKCE(goidc.CodeChallengeMethodSHA256),
 		provider.WithAuthorizationCodeGrant(),
+		provider.WithImplicitGrant(),
 		provider.WithRefreshTokenGrant(authutil.IssueRefreshToken, 6000),
 		provider.WithTLSCertTokenBinding(),
-		provider.WithDPoP(jose.PS256, jose.ES256),
 		provider.WithTokenBindingRequired(),
 		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
 		provider.WithACRs(authutil.ACRs[0], authutil.ACRs...),
@@ -76,6 +76,7 @@ func main() {
 	// Set up the server.
 	mux := http.NewServeMux()
 	handler := op.Handler()
+	handler = authutil.FAPIIDMiddleware(handler)
 
 	hostURL, _ := url.Parse(authutil.Issuer)
 	mux.Handle(hostURL.Hostname()+"/", handler)

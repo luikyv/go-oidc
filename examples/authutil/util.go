@@ -84,9 +84,11 @@ func Client(id string, jwksFilepath string) *goidc.Client {
 			GrantTypes: []goidc.GrantType{
 				goidc.GrantAuthorizationCode,
 				goidc.GrantRefreshToken,
+				goidc.GrantImplicit,
 			},
 			ResponseTypes: []goidc.ResponseType{
 				goidc.ResponseTypeCode,
+				goidc.ResponseTypeCodeAndIDToken,
 			},
 			RedirectURIs: []string{
 				"https://localhost.emobix.co.uk:8443/test/a/goidc/callback",

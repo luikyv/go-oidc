@@ -1,7 +1,6 @@
 package authorize
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -125,7 +125,8 @@ func jarFromUnsignedRequestObject(
 	jarAlgorithms := jarAlgorithms(ctx, c)
 	parsedJWT, err := jwt.ParseSigned(reqObject, jarAlgorithms)
 	if err != nil {
-		return request{}, fmt.Errorf("failed to parse JWT: %w", err)
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
+			"could not parse the request object", err)
 	}
 
 	var jarReq request
@@ -152,13 +153,12 @@ func jarFromSignedRequestObject(
 			"invalid request object", err)
 	}
 
-	// Verify that the assertion indicates the key ID.
-	if len(parsedToken.Headers) != 1 || parsedToken.Headers[0].KeyID == "" {
-		return request{}, goidc.NewError(goidc.ErrorCodeInvalidResquestObject, "invalid kid header")
+	if len(parsedToken.Headers) != 1 {
+		return request{}, goidc.NewError(goidc.ErrorCodeInvalidResquestObject, "invalid header")
 	}
 
 	// Verify that the key ID belongs to the client.
-	jwk, err := clientutil.JWKByKeyID(ctx, c, parsedToken.Headers[0].KeyID)
+	jwk, err := clientutil.JWKMatchingHeader(ctx, c, parsedToken.Headers[0])
 	if err != nil {
 		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
 			"could not fetch the client public key", err)
@@ -192,15 +192,27 @@ func validateClaims(
 	client *goidc.Client,
 ) error {
 
-	// The claim 'nbf' is required for FAPI 2.0.
-	if ctx.Profile == goidc.ProfileFAPI2 && claims.NotBefore == nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
-			"claim 'nbf' is required in the request object")
-	}
+	if ctx.Profile.IsFAPI() {
 
-	if claims.Expiry == nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
-			"claim 'exp' is required in the request object")
+		if claims.NotBefore == nil {
+			return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
+				"claim 'nbf' is required in the request object")
+		}
+
+		if claims.NotBefore.Time().Before(timeutil.Now().Add(-1 * time.Hour)) {
+			return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
+				"claim 'nbf' is too far in the past")
+		}
+
+		if claims.Expiry == nil {
+			return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
+				"claim 'exp' is required in the request object")
+		}
+
+		if claims.Expiry.Time().After(timeutil.Now().Add(1 * time.Hour)) {
+			return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
+				"claim 'exp' is too far in the future")
+		}
 	}
 
 	if claims.ID != "" {

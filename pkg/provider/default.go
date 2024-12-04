@@ -11,7 +11,7 @@ const (
 	defaultTokenLifetimeSecs       = 300
 	defaultJWTLifetimeSecs         = 600
 
-	defaultUserInfoSigAlg      = jose.RS256
+	defaultIDTokenSigAlg       = jose.RS256
 	defaultPrivateKeyJWTSigAlg = jose.RS256
 	defaultSecretJWTSigAlg     = jose.HS256
 

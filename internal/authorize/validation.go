@@ -1,7 +1,6 @@
 package authorize
 
 import (
-	"errors"
 	"net/url"
 	"slices"
 	"strings"
@@ -15,7 +14,6 @@ import (
 )
 
 // validateRequest validates the parameters sent in an authorization request.
-// This behavior does not apply to FAPI 2.0, as PAR is mandatory.
 func validateRequest(
 	ctx oidc.Context,
 	req request,
@@ -26,10 +24,6 @@ func validateRequest(
 
 // validateRequestWithPAR validates the parameters in an authorization request
 // that includes a Pushed Authorization Request (PAR).
-// In FAPI 2.0, all required parameters have already been sent and validated
-// during the PAR stage.
-// In OIDC, the parameters sent during PAR are merged with the query parameters
-// from the authorization request, and then the combined parameters must be validated.
 func validateRequestWithPAR(
 	ctx oidc.Context,
 	req request,
@@ -54,23 +48,25 @@ func validateRequestWithPAR(
 
 // validateRequestWithJAR validates the parameters in an authorization request
 // that includes a JWT Authorization Request (JAR).
-// In OpenID Connect, the parameters inside the JAR are merged with the query
-// parameters from the authorization request, and the combined parameters are
-// then validated.
-// This behavior does not apply to FAPI 2.0, as PAR is mandatory.
 func validateRequestWithJAR(
 	ctx oidc.Context,
 	req request,
 	jar request,
-	c *goidc.Client,
+	client *goidc.Client,
 ) error {
-	if jar.ClientID != c.ID {
+	if jar.ClientID != client.ID {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient,
 			"invalid client_id")
 	}
 
+	if ctx.Profile.IsFAPI() {
+		if err := validateParams(ctx, jar.AuthorizationParameters, client); err != nil {
+			return err
+		}
+	}
+
 	if err := validateInWithOutParams(ctx, jar.AuthorizationParameters,
-		req.AuthorizationParameters, c); err != nil {
+		req.AuthorizationParameters, client); err != nil {
 		return err
 	}
 
@@ -91,7 +87,7 @@ func validateRequestWithJAR(
 
 // validatePushedRequestWithJAR validates the parameters sent in a Pushed
 // Authorization Request (PAR) that also includes a JWT Authorization Request (JAR).
-// For FAPI 2.0, all required authorization request parameters must be present
+// For FAPI, all required authorization request parameters must be present
 // within the JAR.
 // For OIDC, the JAR parameters are optional, as additional parameters can be
 // supplied later at the authorization endpoint, where they will be merged.
@@ -129,7 +125,7 @@ func validatePushedRequestWithJAR(
 
 // validatePushedRequest validates the parameters sent in a Pushed Authorization
 // Request (PAR).
-// In the context of FAPI 2.0, all required parameters for the authorization
+// In the context of FAPI, all required parameters for the authorization
 // request must be included during PAR.
 // For OpenID Connect, however, the parameters sent during the PAR are considered
 // optional, as any missing parameters can be provided later at the authorization
@@ -149,19 +145,20 @@ func validatePushedRequest(
 		c.RedirectURIs = append(c.RedirectURIs, req.RedirectURI)
 	}
 
-	var err error
-	if ctx.Profile == goidc.ProfileFAPI2 {
-		err = validateParams(ctx, req.AuthorizationParameters, c)
-	} else {
-		err = validateParamsAsOptionals(ctx, req.AuthorizationParameters, c)
-	}
-	if err != nil {
-		// Convert the redirection error to a standard one.
-		var redirectErr redirectionError
-		if errors.As(err, &redirectErr) {
-			return goidc.WrapError(redirectErr.code, redirectErr.desc, redirectErr)
+	if ctx.Profile.IsFAPI() {
+		if err := validateParams(ctx, req.AuthorizationParameters, c); err != nil {
+			return err
 		}
-		return err
+	} else {
+		if err := validateParamsAsOptionals(ctx, req.AuthorizationParameters, c); err != nil {
+			return err
+		}
+	}
+
+	if ctx.Profile == goidc.ProfileFAPI1 {
+		if ctx.PKCEIsEnabled && req.AuthorizationParameters.CodeChallenge == "" {
+			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "code_challenge is required")
+		}
 	}
 
 	if err := validateCodeBindingDPoP(ctx, req.AuthorizationParameters); err != nil {
@@ -251,7 +248,7 @@ func validateParams(
 	}
 
 	if ctx.OpenIDIsRequired && !strutil.ContainsOpenID(params.Scopes) {
-		return newRedirectionError(goidc.ErrorCodeInvalidScope,
+		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
 			"scope openid is required", params)
 	}
 
@@ -268,6 +265,33 @@ func validateParams(
 
 	if err := validatePKCE(ctx, params, c); err != nil {
 		return err
+	}
+
+	if ctx.Profile == goidc.ProfileFAPI1 {
+		if !slices.Contains([]goidc.ResponseType{
+			goidc.ResponseTypeCode,
+			goidc.ResponseTypeCodeAndIDToken,
+		}, params.ResponseType) {
+			return newRedirectionError(goidc.ErrorCodeInvalidRequest,
+				"response_type not supported", params)
+		}
+
+		if params.ResponseType == goidc.ResponseTypeCode && params.ResponseMode != goidc.ResponseModeJWT {
+			return newRedirectionError(goidc.ErrorCodeInvalidRequest,
+				"response_type code without jwt response_mode is not allowed", params)
+		}
+
+		if strutil.ContainsOpenID(params.Scopes) && params.Nonce == "" {
+			return newRedirectionError(goidc.ErrorCodeInvalidRequest,
+				"nonce is required", params)
+		}
+	}
+
+	if ctx.Profile == goidc.ProfileFAPI2 {
+		if params.ResponseType != goidc.ResponseTypeCode {
+			return newRedirectionError(goidc.ErrorCodeInvalidRequest,
+				"response_type not allowed", params)
+		}
 	}
 
 	return nil
@@ -582,7 +606,7 @@ func validateIDTokenHintAsOptional(
 		return nil
 	}
 
-	parsedIDToken, err := jwt.ParseSigned(params.IDTokenHint, ctx.UserSigAlgs)
+	parsedIDToken, err := jwt.ParseSigned(params.IDTokenHint, ctx.IDTokenSigAlgs)
 	if err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid id token hint", err)
 	}

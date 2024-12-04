@@ -43,7 +43,7 @@ type Provider struct {
 //   - All clients and sessions are stored in memory.
 //   - ID tokens and user info responses are signed using RS256.
 //     Ensure a JWK supporting RS256 is available in the server's JWKS.
-//     This algorithm can be overridden with the [WithUserSignatureAlgs] option.
+//     This algorithm can be overridden with the [WithUserInfoSignatureAlgs] option.
 //   - Access tokens are issued as opaque tokens.
 func New(
 	profile goidc.Profile,
@@ -209,11 +209,11 @@ func (op Provider) NotifyCIBAFailure(ctx context.Context, authReqID string, err 
 }
 
 func (op Provider) setDefaults() error {
-	op.config.UserDefaultSigAlg = nonZeroOrDefault(op.config.UserDefaultSigAlg,
-		defaultUserInfoSigAlg)
+	op.config.IDTokenDefaultSigAlg = nonZeroOrDefault(op.config.IDTokenDefaultSigAlg,
+		defaultIDTokenSigAlg)
 
-	op.config.UserSigAlgs = nonZeroOrDefault(op.config.UserSigAlgs,
-		[]jose.SignatureAlgorithm{defaultUserInfoSigAlg})
+	op.config.IDTokenSigAlgs = nonZeroOrDefault(op.config.IDTokenSigAlgs,
+		[]jose.SignatureAlgorithm{defaultIDTokenSigAlg})
 
 	op.config.Scopes = nonZeroOrDefault(op.config.Scopes,
 		[]goidc.Scope{goidc.ScopeOpenID})
@@ -333,10 +333,17 @@ func (op Provider) setDefaults() error {
 			defaultEndpointTokenRevocation)
 	}
 
-	if op.config.UserEncIsEnabled {
-		op.config.UserDefaultContentEncAlg = nonZeroOrDefault(op.config.UserDefaultContentEncAlg,
+	if op.config.IDTokenEncIsEnabled {
+		op.config.IDTokenDefaultContentEncAlg = nonZeroOrDefault(op.config.IDTokenDefaultContentEncAlg,
 			jose.A128CBC_HS256)
-		op.config.UserContentEncAlgs = nonZeroOrDefault(op.config.UserContentEncAlgs,
+		op.config.IDTokenContentEncAlgs = nonZeroOrDefault(op.config.IDTokenContentEncAlgs,
+			[]jose.ContentEncryption{jose.A128CBC_HS256})
+	}
+
+	if op.config.UserInfoEncIsEnabled {
+		op.config.UserInfoDefaultContentEncAlg = nonZeroOrDefault(op.config.UserInfoDefaultContentEncAlg,
+			jose.A128CBC_HS256)
+		op.config.UserInfoContentEncAlgs = nonZeroOrDefault(op.config.UserInfoContentEncAlgs,
 			[]jose.ContentEncryption{jose.A128CBC_HS256})
 	}
 

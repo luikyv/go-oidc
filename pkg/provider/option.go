@@ -179,16 +179,62 @@ func WithClaimTypes(
 	}
 }
 
-// WithUserSignatureAlgs set the algorithms available to sign the user info
-// endpoint response and ID tokens.
-func WithUserSignatureAlgs(
+// WithUserInfoSignatureAlgs set the algorithms available to sign the user info
+// endpoint response.
+func WithUserInfoSignatureAlgs(
 	defaultAlg jose.SignatureAlgorithm,
 	algs ...jose.SignatureAlgorithm,
 ) ProviderOption {
 	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p Provider) error {
-		p.config.UserDefaultSigAlg = defaultAlg
-		p.config.UserSigAlgs = algs
+		p.config.UserInfoDefaultSigAlg = defaultAlg
+		p.config.UserInfoSigAlgs = algs
+		return nil
+	}
+}
+
+// WithUserInfoEncryption allows encryption of the user info endpoint response.
+// The default content encryption algorithm is A128CBC-HS256.
+// To make available more content encryption algorithms, see
+// [WithUserInfoContentEncryptionAlgs].
+// Clients can choose the encryption algorithms for user info by informing the
+// attributes "userinfo_signed_response_alg" and "userinfo_encrypted_response_alg".
+func WithUserInfoEncryption(
+	keyEncAlg jose.KeyAlgorithm,
+	keyEncAlgs ...jose.KeyAlgorithm,
+) ProviderOption {
+	keyEncAlgs = appendIfNotIn(keyEncAlgs, keyEncAlg)
+	return func(p Provider) error {
+		p.config.UserInfoEncIsEnabled = true
+		p.config.UserInfoKeyEncAlgs = keyEncAlgs
+		return nil
+	}
+}
+
+// WithUserInfoContentEncryptionAlgs overrides the default content encryption
+// algorithm which is A128CBC-HS256.
+// To enabled encryption of user information, see [WithUserInfoEncryption].
+func WithUserInfoContentEncryptionAlgs(
+	defaultAlg jose.ContentEncryption,
+	algs ...jose.ContentEncryption,
+) ProviderOption {
+	algs = appendIfNotIn(algs, defaultAlg)
+	return func(p Provider) error {
+		p.config.UserInfoDefaultContentEncAlg = defaultAlg
+		p.config.UserInfoContentEncAlgs = algs
+		return nil
+	}
+}
+
+// WithUserSignatureAlgs set the algorithms available to sign ID tokens.
+func WithIDTokenSignatureAlgs(
+	defaultAlg jose.SignatureAlgorithm,
+	algs ...jose.SignatureAlgorithm,
+) ProviderOption {
+	algs = appendIfNotIn(algs, defaultAlg)
+	return func(p Provider) error {
+		p.config.IDTokenDefaultSigAlg = defaultAlg
+		p.config.IDTokenSigAlgs = algs
 		return nil
 	}
 }
@@ -203,38 +249,35 @@ func WithIDTokenLifetime(secs int) ProviderOption {
 	}
 }
 
-// WithUserInfoEncryption allows encryption of ID tokens and of the user info
-// endpoint response.
+// WithIDTokenEncryption allows encryption of ID tokens.
 // The default content encryption algorithm is A128CBC-HS256.
 // To make available more content encryption algorithms, see
-// [WithUserInfoContentEncryptionAlgs].
+// [WithIDTokenContentEncryptionAlgs].
 // Clients can choose the encryption algorithms for ID tokens by informing the
 // attributes "id_token_encrypted_response_alg" and "id_token_encrypted_response_enc".
-// As for the encryption of the userinfo endpoint response, the attributes are
-// "userinfo_signed_response_alg" and "userinfo_encrypted_response_alg".
-func WithUserInfoEncryption(
+func WithIDTokenEncryption(
 	keyEncAlg jose.KeyAlgorithm,
 	keyEncAlgs ...jose.KeyAlgorithm,
 ) ProviderOption {
 	keyEncAlgs = appendIfNotIn(keyEncAlgs, keyEncAlg)
 	return func(p Provider) error {
-		p.config.UserEncIsEnabled = true
-		p.config.UserKeyEncAlgs = keyEncAlgs
+		p.config.IDTokenEncIsEnabled = true
+		p.config.IDTokenKeyEncAlgs = keyEncAlgs
 		return nil
 	}
 }
 
-// WithUserInfoContentEncryptionAlgs overrides the default content encryption
+// WithIDTokenContentEncryptionAlgs overrides the default content encryption
 // algorithm which is A128CBC-HS256.
-// To enabled encryption of user information, see [WithUserInfoEncryption].
-func WithUserInfoContentEncryptionAlgs(
+// To enabled encryption of ID tokens, see [WithIDTokenEncryption].
+func WithIDTokenContentEncryptionAlgs(
 	defaultAlg jose.ContentEncryption,
 	algs ...jose.ContentEncryption,
 ) ProviderOption {
 	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p Provider) error {
-		p.config.UserDefaultContentEncAlg = defaultAlg
-		p.config.UserContentEncAlgs = algs
+		p.config.IDTokenDefaultContentEncAlg = defaultAlg
+		p.config.IDTokenContentEncAlgs = algs
 		return nil
 	}
 }
@@ -1010,6 +1053,13 @@ func WithSignFunc(f goidc.SignFunc) ProviderOption {
 func WithDecryptFunc(f goidc.DecryptFunc) ProviderOption {
 	return func(p Provider) error {
 		p.config.DecryptFunc = f
+		return nil
+	}
+}
+
+func WithErrorURI(uri string) ProviderOption {
+	return func(p Provider) error {
+		p.config.ErrorURI = uri
 		return nil
 	}
 }

@@ -118,6 +118,7 @@ type response struct {
 	state             string
 	errorCode         goidc.ErrorCode
 	errorDescription  string
+	errorURI          string
 }
 
 func (resp response) parameters() map[string]string {
@@ -151,6 +152,9 @@ func (resp response) parameters() map[string]string {
 	}
 	if resp.errorDescription != "" {
 		params["error_description"] = resp.errorDescription
+	}
+	if resp.errorURI != "" {
+		params["error_uri"] = resp.errorURI
 	}
 
 	return params

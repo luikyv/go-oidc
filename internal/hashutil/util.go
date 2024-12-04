@@ -29,6 +29,7 @@ func BCryptHash(s string) string {
 	return string(hashedS)
 }
 
+// TODO: How to handle the none algorithm?
 func HalfHash(claim string, alg jose.SignatureAlgorithm) string {
 	var hash hash.Hash
 	switch alg {

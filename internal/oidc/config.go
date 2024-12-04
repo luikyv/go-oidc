@@ -70,12 +70,19 @@ type Configuration struct {
 	EndpointTokenRevocation     string
 	EndpointPrefix              string
 
-	UserDefaultSigAlg        jose.SignatureAlgorithm
-	UserSigAlgs              []jose.SignatureAlgorithm
-	UserEncIsEnabled         bool
-	UserKeyEncAlgs           []jose.KeyAlgorithm
-	UserDefaultContentEncAlg jose.ContentEncryption
-	UserContentEncAlgs       []jose.ContentEncryption
+	UserInfoDefaultSigAlg        jose.SignatureAlgorithm
+	UserInfoSigAlgs              []jose.SignatureAlgorithm
+	UserInfoEncIsEnabled         bool
+	UserInfoKeyEncAlgs           []jose.KeyAlgorithm
+	UserInfoDefaultContentEncAlg jose.ContentEncryption
+	UserInfoContentEncAlgs       []jose.ContentEncryption
+
+	IDTokenDefaultSigAlg        jose.SignatureAlgorithm
+	IDTokenSigAlgs              []jose.SignatureAlgorithm
+	IDTokenEncIsEnabled         bool
+	IDTokenKeyEncAlgs           []jose.KeyAlgorithm
+	IDTokenDefaultContentEncAlg jose.ContentEncryption
+	IDTokenContentEncAlgs       []jose.ContentEncryption
 	// IDTokenLifetimeSecs defines the expiry time of ID tokens.
 	IDTokenLifetimeSecs int
 
@@ -118,9 +125,12 @@ type Configuration struct {
 	JARMDefaultContentEncAlg jose.ContentEncryption
 	JARMContentEncAlgs       []jose.ContentEncryption
 
-	JARIsEnabled                        bool
-	JARIsRequired                       bool
-	JARSigAlgs                          []jose.SignatureAlgorithm
+	JARIsEnabled  bool
+	JARIsRequired bool
+	JARSigAlgs    []jose.SignatureAlgorithm
+	// JARByReferenceIsEnabled determines whether Request Objects can be provided
+	// by reference using the "request_uri" parameter. When enabled, the authorization
+	// server retrieves the request object from the specified URI.
 	JARByReferenceIsEnabled             bool
 	JARRequestURIRegistrationIsRequired bool
 	JAREncIsEnabled                     bool
@@ -179,4 +189,6 @@ type Configuration struct {
 
 	JWTBearerGrantClientAuthnIsRequired bool
 	HandleJWTBearerGrantAssertionFunc   goidc.HandleJWTBearerGrantAssertionFunc
+
+	ErrorURI string
 }

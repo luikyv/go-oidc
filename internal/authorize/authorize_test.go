@@ -347,7 +347,7 @@ func TestInitAuth_IDTokenHint(t *testing.T) {
 			goidc.ClaimSubject: "random_user",
 		},
 		goidc.SignatureOptions{
-			Algorithm: ctx.UserDefaultSigAlg,
+			Algorithm: ctx.IDTokenDefaultSigAlg,
 			JWTType:   goidc.JWTTypeBasic,
 		},
 	)

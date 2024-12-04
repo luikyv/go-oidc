@@ -58,7 +58,7 @@ func TestMakeIDToken(t *testing.T) {
 func TestMakeIDToken_Unsigned(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.UserSigAlgs = append(ctx.UserSigAlgs, goidc.NoneSignatureAlgorithm)
+	ctx.IDTokenSigAlgs = append(ctx.IDTokenSigAlgs, goidc.NoneSignatureAlgorithm)
 
 	client, _ := oidctest.NewClient(t)
 	client.IDTokenSigAlg = goidc.NoneSignatureAlgorithm

@@ -340,14 +340,14 @@ func TestWithClaimTypes(t *testing.T) {
 	}
 }
 
-func TestWithUserSignatureAlgs(t *testing.T) {
+func TestWithUserInfoSignatureAlgs(t *testing.T) {
 	// Given.
 	p := Provider{
 		config: &oidc.Configuration{},
 	}
 
 	// When.
-	err := WithUserSignatureAlgs(jose.RS256)(p)
+	err := WithUserInfoSignatureAlgs(jose.RS256)(p)
 
 	// Then.
 	if err != nil {
@@ -356,8 +356,33 @@ func TestWithUserSignatureAlgs(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			UserDefaultSigAlg: jose.RS256,
-			UserSigAlgs:       []jose.SignatureAlgorithm{jose.RS256},
+			UserInfoDefaultSigAlg: jose.RS256,
+			UserInfoSigAlgs:       []jose.SignatureAlgorithm{jose.RS256},
+		},
+	}
+	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithIDTokenSignatureAlgs(t *testing.T) {
+	// Given.
+	p := Provider{
+		config: &oidc.Configuration{},
+	}
+
+	// When.
+	err := WithIDTokenSignatureAlgs(jose.RS256)(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := Provider{
+		config: &oidc.Configuration{
+			IDTokenDefaultSigAlg: jose.RS256,
+			IDTokenSigAlgs:       []jose.SignatureAlgorithm{jose.RS256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -405,8 +430,8 @@ func TestWithUserInfoEncryption(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			UserEncIsEnabled: true,
-			UserKeyEncAlgs:   []jose.KeyAlgorithm{jose.RSA_OAEP},
+			UserInfoEncIsEnabled: true,
+			UserInfoKeyEncAlgs:   []jose.KeyAlgorithm{jose.RSA_OAEP},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -414,14 +439,14 @@ func TestWithUserInfoEncryption(t *testing.T) {
 	}
 }
 
-func TestWithUserInfoEncryption_NoAlgInformed(t *testing.T) {
+func TestWithIDTokenEncryption(t *testing.T) {
 	// Given.
 	p := Provider{
 		config: &oidc.Configuration{},
 	}
 
 	// When.
-	err := WithUserInfoEncryption(jose.RSA_OAEP_256)(p)
+	err := WithIDTokenEncryption(jose.RSA_OAEP)(p)
 
 	// Then.
 	if err != nil {
@@ -430,8 +455,8 @@ func TestWithUserInfoEncryption_NoAlgInformed(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			UserEncIsEnabled: true,
-			UserKeyEncAlgs:   []jose.KeyAlgorithm{jose.RSA_OAEP_256},
+			IDTokenEncIsEnabled: true,
+			IDTokenKeyEncAlgs:   []jose.KeyAlgorithm{jose.RSA_OAEP},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -455,8 +480,33 @@ func TestWithUserInfoContentEncryptionAlgs(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			UserDefaultContentEncAlg: jose.A128GCM,
-			UserContentEncAlgs:       []jose.ContentEncryption{jose.A128GCM},
+			UserInfoDefaultContentEncAlg: jose.A128GCM,
+			UserInfoContentEncAlgs:       []jose.ContentEncryption{jose.A128GCM},
+		},
+	}
+	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithIDTokenContentEncryptionAlgs(t *testing.T) {
+	// Given.
+	p := Provider{
+		config: &oidc.Configuration{},
+	}
+
+	// When.
+	err := WithIDTokenContentEncryptionAlgs(jose.A128GCM)(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := Provider{
+		config: &oidc.Configuration{
+			IDTokenDefaultContentEncAlg: jose.A128GCM,
+			IDTokenContentEncAlgs:       []jose.ContentEncryption{jose.A128GCM},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
