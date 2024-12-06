@@ -5,10 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/clientutil"
-	"github.com/luikyv/go-oidc/internal/jwtutil"
+	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -77,7 +76,7 @@ func jarFromRequestObject(
 	request,
 	error,
 ) {
-	if ctx.JAREncIsEnabled && jwtutil.IsJWE(reqObject) {
+	if ctx.JAREncIsEnabled && joseutil.IsJWE(reqObject) {
 		signedReqObject, err := signedRequestObjectFromEncrypted(ctx, reqObject, c)
 		if err != nil {
 			return request{}, err
@@ -85,7 +84,7 @@ func jarFromRequestObject(
 		reqObject = signedReqObject
 	}
 
-	if jwtutil.IsUnsignedJWT(reqObject) {
+	if joseutil.IsUnsignedJWT(reqObject) {
 		return jarFromUnsignedRequestObject(ctx, reqObject, c)
 	}
 
@@ -103,9 +102,9 @@ func signedRequestObjectFromEncrypted(
 
 	contentEncAlgs := ctx.JARContentEncAlgs
 	if client.JARContentEncAlg != "" {
-		contentEncAlgs = []jose.ContentEncryption{client.JARContentEncAlg}
+		contentEncAlgs = []goidc.ContentEncryptionAlgorithm{client.JARContentEncAlg}
 	}
-	jws, err := ctx.Decrypt(reqObject, ctx.JARKeyEncAlgs, contentEncAlgs)
+	jws, err := joseutil.Decrypt(ctx, reqObject, ctx.JARKeyEncAlgs, contentEncAlgs)
 	if err != nil {
 		return "", goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
 			"could not parse the encrypted request object", err)
@@ -178,10 +177,10 @@ func jarFromSignedRequestObject(
 	return jarReq, nil
 }
 
-func jarAlgorithms(ctx oidc.Context, client *goidc.Client) []jose.SignatureAlgorithm {
+func jarAlgorithms(ctx oidc.Context, client *goidc.Client) []goidc.SignatureAlgorithm {
 	jarAlgorithms := ctx.JARSigAlgs
 	if client.JARSigAlg != "" {
-		jarAlgorithms = []jose.SignatureAlgorithm{client.JARSigAlg}
+		jarAlgorithms = []goidc.SignatureAlgorithm{client.JARSigAlg}
 	}
 	return jarAlgorithms
 }

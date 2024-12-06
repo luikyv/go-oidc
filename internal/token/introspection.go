@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/clientutil"
-	"github.com/luikyv/go-oidc/internal/jwtutil"
+	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -62,7 +62,7 @@ func IntrospectionInfo(
 	error,
 ) {
 
-	if jwtutil.IsJWS(accessToken) {
+	if joseutil.IsJWS(accessToken) {
 		return jwtTokenInfo(ctx, accessToken)
 	}
 

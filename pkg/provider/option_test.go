@@ -7,7 +7,6 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/google/go-cmp/cmp"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
@@ -347,7 +346,7 @@ func TestWithUserInfoSignatureAlgs(t *testing.T) {
 	}
 
 	// When.
-	err := WithUserInfoSignatureAlgs(jose.RS256)(p)
+	err := WithUserInfoSignatureAlgs(goidc.RS256)(p)
 
 	// Then.
 	if err != nil {
@@ -356,8 +355,8 @@ func TestWithUserInfoSignatureAlgs(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			UserInfoDefaultSigAlg: jose.RS256,
-			UserInfoSigAlgs:       []jose.SignatureAlgorithm{jose.RS256},
+			UserInfoDefaultSigAlg: goidc.RS256,
+			UserInfoSigAlgs:       []goidc.SignatureAlgorithm{goidc.RS256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -372,7 +371,7 @@ func TestWithIDTokenSignatureAlgs(t *testing.T) {
 	}
 
 	// When.
-	err := WithIDTokenSignatureAlgs(jose.RS256)(p)
+	err := WithIDTokenSignatureAlgs(goidc.RS256)(p)
 
 	// Then.
 	if err != nil {
@@ -381,8 +380,8 @@ func TestWithIDTokenSignatureAlgs(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			IDTokenDefaultSigAlg: jose.RS256,
-			IDTokenSigAlgs:       []jose.SignatureAlgorithm{jose.RS256},
+			IDTokenDefaultSigAlg: goidc.RS256,
+			IDTokenSigAlgs:       []goidc.SignatureAlgorithm{goidc.RS256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -421,7 +420,7 @@ func TestWithUserInfoEncryption(t *testing.T) {
 	}
 
 	// When.
-	err := WithUserInfoEncryption(jose.RSA_OAEP)(p)
+	err := WithUserInfoEncryption(goidc.RSA_OAEP)(p)
 
 	// Then.
 	if err != nil {
@@ -431,7 +430,7 @@ func TestWithUserInfoEncryption(t *testing.T) {
 	want := Provider{
 		config: &oidc.Configuration{
 			UserInfoEncIsEnabled: true,
-			UserInfoKeyEncAlgs:   []jose.KeyAlgorithm{jose.RSA_OAEP},
+			UserInfoKeyEncAlgs:   []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -446,7 +445,7 @@ func TestWithIDTokenEncryption(t *testing.T) {
 	}
 
 	// When.
-	err := WithIDTokenEncryption(jose.RSA_OAEP)(p)
+	err := WithIDTokenEncryption(goidc.RSA_OAEP)(p)
 
 	// Then.
 	if err != nil {
@@ -456,7 +455,7 @@ func TestWithIDTokenEncryption(t *testing.T) {
 	want := Provider{
 		config: &oidc.Configuration{
 			IDTokenEncIsEnabled: true,
-			IDTokenKeyEncAlgs:   []jose.KeyAlgorithm{jose.RSA_OAEP},
+			IDTokenKeyEncAlgs:   []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -471,7 +470,7 @@ func TestWithUserInfoContentEncryptionAlgs(t *testing.T) {
 	}
 
 	// When.
-	err := WithUserInfoContentEncryptionAlgs(jose.A128GCM)(p)
+	err := WithUserInfoContentEncryptionAlgs(goidc.A128GCM)(p)
 
 	// Then.
 	if err != nil {
@@ -480,8 +479,8 @@ func TestWithUserInfoContentEncryptionAlgs(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			UserInfoDefaultContentEncAlg: jose.A128GCM,
-			UserInfoContentEncAlgs:       []jose.ContentEncryption{jose.A128GCM},
+			UserInfoDefaultContentEncAlg: goidc.A128GCM,
+			UserInfoContentEncAlgs:       []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -496,7 +495,7 @@ func TestWithIDTokenContentEncryptionAlgs(t *testing.T) {
 	}
 
 	// When.
-	err := WithIDTokenContentEncryptionAlgs(jose.A128GCM)(p)
+	err := WithIDTokenContentEncryptionAlgs(goidc.A128GCM)(p)
 
 	// Then.
 	if err != nil {
@@ -505,8 +504,8 @@ func TestWithIDTokenContentEncryptionAlgs(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			IDTokenDefaultContentEncAlg: jose.A128GCM,
-			IDTokenContentEncAlgs:       []jose.ContentEncryption{jose.A128GCM},
+			IDTokenDefaultContentEncAlg: goidc.A128GCM,
+			IDTokenContentEncAlgs:       []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -854,7 +853,7 @@ func TestWithJAR(t *testing.T) {
 	}
 
 	// When.
-	err := WithJAR(jose.PS256)(p)
+	err := WithJAR(goidc.PS256)(p)
 
 	// Then.
 	if err != nil {
@@ -864,7 +863,7 @@ func TestWithJAR(t *testing.T) {
 	want := Provider{
 		config: &oidc.Configuration{
 			JARIsEnabled: true,
-			JARSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
+			JARSigAlgs:   []goidc.SignatureAlgorithm{goidc.PS256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -879,7 +878,7 @@ func TestWithJAR_NoAlgInformed(t *testing.T) {
 	}
 
 	// When.
-	err := WithJAR(jose.RS256)(p)
+	err := WithJAR(goidc.RS256)(p)
 
 	// Then.
 	if err != nil {
@@ -889,7 +888,7 @@ func TestWithJAR_NoAlgInformed(t *testing.T) {
 	want := Provider{
 		config: &oidc.Configuration{
 			JARIsEnabled: true,
-			JARSigAlgs:   []jose.SignatureAlgorithm{jose.RS256},
+			JARSigAlgs:   []goidc.SignatureAlgorithm{goidc.RS256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -904,7 +903,7 @@ func TestWithJARRequired(t *testing.T) {
 	}
 
 	// When.
-	err := WithJARRequired(jose.PS256)(p)
+	err := WithJARRequired(goidc.PS256)(p)
 
 	// Then.
 	if err != nil {
@@ -915,7 +914,7 @@ func TestWithJARRequired(t *testing.T) {
 		config: &oidc.Configuration{
 			JARIsEnabled:  true,
 			JARIsRequired: true,
-			JARSigAlgs:    []jose.SignatureAlgorithm{jose.PS256},
+			JARSigAlgs:    []goidc.SignatureAlgorithm{goidc.PS256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -930,7 +929,7 @@ func TestWithJAREncryption(t *testing.T) {
 	}
 
 	// When.
-	err := WithJAREncryption(jose.RSA_OAEP_256)(p)
+	err := WithJAREncryption(goidc.RSA_OAEP_256)(p)
 
 	// Then.
 	if err != nil {
@@ -940,7 +939,7 @@ func TestWithJAREncryption(t *testing.T) {
 	want := Provider{
 		config: &oidc.Configuration{
 			JAREncIsEnabled: true,
-			JARKeyEncAlgs:   []jose.KeyAlgorithm{jose.RSA_OAEP_256},
+			JARKeyEncAlgs:   []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP_256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -955,7 +954,7 @@ func TestWithJARContentEncryptionAlgs(t *testing.T) {
 	}
 
 	// When.
-	err := WithJARContentEncryptionAlgs(jose.A128GCM)(p)
+	err := WithJARContentEncryptionAlgs(goidc.A128GCM)(p)
 
 	// Then.
 	if err != nil {
@@ -964,7 +963,7 @@ func TestWithJARContentEncryptionAlgs(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			JARContentEncAlgs: []jose.ContentEncryption{jose.A128GCM},
+			JARContentEncAlgs: []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -979,7 +978,7 @@ func TestWithJARM(t *testing.T) {
 	}
 
 	// When.
-	err := WithJARM(jose.RS256)(p)
+	err := WithJARM(goidc.RS256)(p)
 
 	// Then.
 	if err != nil {
@@ -989,8 +988,8 @@ func TestWithJARM(t *testing.T) {
 	want := Provider{
 		config: &oidc.Configuration{
 			JARMIsEnabled:     true,
-			JARMDefaultSigAlg: jose.RS256,
-			JARMSigAlgs:       []jose.SignatureAlgorithm{jose.RS256},
+			JARMDefaultSigAlg: goidc.RS256,
+			JARMSigAlgs:       []goidc.SignatureAlgorithm{goidc.RS256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1005,7 +1004,7 @@ func TestWithJARMEncryption(t *testing.T) {
 	}
 
 	// When.
-	err := WithJARMEncryption(jose.RSA_OAEP)(p)
+	err := WithJARMEncryption(goidc.RSA_OAEP)(p)
 
 	// Then.
 	if err != nil {
@@ -1015,7 +1014,7 @@ func TestWithJARMEncryption(t *testing.T) {
 	want := Provider{
 		config: &oidc.Configuration{
 			JARMEncIsEnabled: true,
-			JARMKeyEncAlgs:   []jose.KeyAlgorithm{jose.RSA_OAEP},
+			JARMKeyEncAlgs:   []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1030,7 +1029,7 @@ func TestWithJARMEncryption_NoAlgInformed(t *testing.T) {
 	}
 
 	// When.
-	err := WithJARMEncryption(jose.RSA_OAEP_256)(p)
+	err := WithJARMEncryption(goidc.RSA_OAEP_256)(p)
 
 	// Then.
 	if err != nil {
@@ -1040,7 +1039,7 @@ func TestWithJARMEncryption_NoAlgInformed(t *testing.T) {
 	want := Provider{
 		config: &oidc.Configuration{
 			JARMEncIsEnabled: true,
-			JARMKeyEncAlgs:   []jose.KeyAlgorithm{jose.RSA_OAEP_256},
+			JARMKeyEncAlgs:   []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP_256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1055,7 +1054,7 @@ func TestWithJARMContentEncryptionAlgs(t *testing.T) {
 	}
 
 	// When.
-	err := WithJARMContentEncryptionAlgs(jose.A128GCM)(p)
+	err := WithJARMContentEncryptionAlgs(goidc.A128GCM)(p)
 
 	// Then.
 	if err != nil {
@@ -1064,8 +1063,8 @@ func TestWithJARMContentEncryptionAlgs(t *testing.T) {
 
 	want := Provider{
 		config: &oidc.Configuration{
-			JARMDefaultContentEncAlg: jose.A128GCM,
-			JARMContentEncAlgs:       []jose.ContentEncryption{jose.A128GCM},
+			JARMDefaultContentEncAlg: goidc.A128GCM,
+			JARMContentEncAlgs:       []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1238,7 +1237,7 @@ func TestWithDPoP(t *testing.T) {
 	}
 
 	// When.
-	err := WithDPoP(jose.PS256)(p)
+	err := WithDPoP(goidc.PS256)(p)
 
 	// Then.
 	if err != nil {
@@ -1248,7 +1247,7 @@ func TestWithDPoP(t *testing.T) {
 	want := Provider{
 		config: &oidc.Configuration{
 			DPoPIsEnabled: true,
-			DPoPSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
+			DPoPSigAlgs:   []goidc.SignatureAlgorithm{goidc.PS256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1263,7 +1262,7 @@ func TestWithDPoP_NoAlgInformed(t *testing.T) {
 	}
 
 	// When.
-	err := WithDPoP(jose.RS256)(p)
+	err := WithDPoP(goidc.RS256)(p)
 
 	// Then.
 	if err != nil {
@@ -1273,7 +1272,7 @@ func TestWithDPoP_NoAlgInformed(t *testing.T) {
 	want := Provider{
 		config: &oidc.Configuration{
 			DPoPIsEnabled: true,
-			DPoPSigAlgs:   []jose.SignatureAlgorithm{jose.RS256},
+			DPoPSigAlgs:   []goidc.SignatureAlgorithm{goidc.RS256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1288,7 +1287,7 @@ func TestWithDPoPRequired(t *testing.T) {
 	}
 
 	// When.
-	err := WithDPoPRequired(jose.PS256)(p)
+	err := WithDPoPRequired(goidc.PS256)(p)
 
 	// Then.
 	if err != nil {
@@ -1299,7 +1298,7 @@ func TestWithDPoPRequired(t *testing.T) {
 		config: &oidc.Configuration{
 			DPoPIsEnabled:  true,
 			DPoPIsRequired: true,
-			DPoPSigAlgs:    []jose.SignatureAlgorithm{jose.PS256},
+			DPoPSigAlgs:    []goidc.SignatureAlgorithm{goidc.PS256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {

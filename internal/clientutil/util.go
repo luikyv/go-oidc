@@ -1,11 +1,9 @@
 package clientutil
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -45,26 +43,25 @@ func AreScopesAllowed(
 	return true
 }
 
-func JWKByKeyID(ctx oidc.Context, c *goidc.Client, keyID string) (jose.JSONWebKey, error) {
+func JWKByKeyID(ctx oidc.Context, c *goidc.Client, keyID string) (goidc.JSONWebKey, error) {
 	jwks, err := c.FetchPublicJWKS(ctx.HTTPClient())
 	if err != nil {
-		return jose.JSONWebKey{},
+		return goidc.JSONWebKey{},
 			fmt.Errorf("could not find the jwk by key id: %w", err)
 	}
 
-	keys := jwks.Key(keyID)
-	if len(keys) == 0 {
-		return jose.JSONWebKey{}, errors.New("invalid key ID")
+	key, err := jwks.Key(keyID)
+	if err != nil {
+		return goidc.JSONWebKey{}, err
 	}
-
-	return keys[0], nil
+	return key, nil
 }
 
 // JWKByAlg returns a client JWK based on the algorithm.
-func JWKByAlg(ctx oidc.Context, c *goidc.Client, alg string) (jose.JSONWebKey, error) {
+func JWKByAlg(ctx oidc.Context, c *goidc.Client, alg string) (goidc.JSONWebKey, error) {
 	jwks, err := c.FetchPublicJWKS(ctx.HTTPClient())
 	if err != nil {
-		return jose.JSONWebKey{},
+		return goidc.JSONWebKey{},
 			fmt.Errorf("could not find the jwk by algorithm: %w", err)
 	}
 
@@ -74,5 +71,5 @@ func JWKByAlg(ctx oidc.Context, c *goidc.Client, alg string) (jose.JSONWebKey, e
 		}
 	}
 
-	return jose.JSONWebKey{}, fmt.Errorf("invalid key algorithm: %s", alg)
+	return goidc.JSONWebKey{}, fmt.Errorf("invalid key algorithm: %s", alg)
 }

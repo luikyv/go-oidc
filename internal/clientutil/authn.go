@@ -201,7 +201,7 @@ func privateKeyJWTSigAlgs(
 	ctx oidc.Context,
 	client *goidc.Client,
 	authnCtx AuthnContext,
-) []jose.SignatureAlgorithm {
+) []goidc.SignatureAlgorithm {
 	return authnSigAlgs(client, authnCtx, ctx.PrivateKeyJWTSigAlgs)
 }
 
@@ -210,13 +210,13 @@ func JWKMatchingHeader(
 	c *goidc.Client,
 	header jose.Header,
 ) (
-	jose.JSONWebKey,
+	goidc.JSONWebKey,
 	error,
 ) {
 	if header.KeyID != "" {
 		jwk, err := JWKByKeyID(ctx, c, header.KeyID)
 		if err != nil {
-			return jose.JSONWebKey{},
+			return goidc.JSONWebKey{},
 				fmt.Errorf("could not find the jwk used to sign the assertion that matches the 'kid' header: %w", err)
 		}
 		return jwk, nil
@@ -224,7 +224,7 @@ func JWKMatchingHeader(
 
 	jwk, err := JWKByAlg(ctx, c, header.Algorithm)
 	if err != nil {
-		return jose.JSONWebKey{}, fmt.Errorf("could not find the jwk used to sign the assertion that matches the 'alg' header: %w", err)
+		return goidc.JSONWebKey{}, fmt.Errorf("could not find the jwk used to sign the assertion that matches the 'alg' header: %w", err)
 	}
 	return jwk, nil
 }
@@ -259,22 +259,22 @@ func secretJWTSigAlgs(
 	ctx oidc.Context,
 	client *goidc.Client,
 	authnCtx AuthnContext,
-) []jose.SignatureAlgorithm {
+) []goidc.SignatureAlgorithm {
 	return authnSigAlgs(client, authnCtx, ctx.ClientSecretJWTSigAlgs)
 }
 
 func authnSigAlgs(
 	client *goidc.Client,
 	authnCtx AuthnContext,
-	defaultAlgs []jose.SignatureAlgorithm,
-) []jose.SignatureAlgorithm {
+	defaultAlgs []goidc.SignatureAlgorithm,
+) []goidc.SignatureAlgorithm {
 	switch {
 	case authnCtx == TokenAuthnContext && client.TokenAuthnSigAlg != "":
-		return []jose.SignatureAlgorithm{client.TokenAuthnSigAlg}
+		return []goidc.SignatureAlgorithm{client.TokenAuthnSigAlg}
 	case authnCtx == TokenIntrospectionAuthnContext && client.TokenIntrospectionAuthnMethod != "":
-		return []jose.SignatureAlgorithm{client.TokenIntrospectionAuthnSigAlg}
+		return []goidc.SignatureAlgorithm{client.TokenIntrospectionAuthnSigAlg}
 	case authnCtx == TokenRevocationAuthnContext && client.TokenRevocationAuthnSigAlg != "":
-		return []jose.SignatureAlgorithm{client.TokenRevocationAuthnSigAlg}
+		return []goidc.SignatureAlgorithm{client.TokenRevocationAuthnSigAlg}
 	default:
 		return defaultAlgs
 	}
@@ -366,12 +366,12 @@ func jwkMatchingCert(
 	c *goidc.Client,
 	cert *x509.Certificate,
 ) (
-	jose.JSONWebKey,
+	goidc.JSONWebKey,
 	error,
 ) {
 	jwks, err := c.FetchPublicJWKS(ctx.HTTPClient())
 	if err != nil {
-		return jose.JSONWebKey{}, fmt.Errorf("could not load the client JWKS: %w", err)
+		return goidc.JSONWebKey{}, fmt.Errorf("could not load the client JWKS: %w", err)
 	}
 
 	for _, jwk := range jwks.Keys {
@@ -381,7 +381,7 @@ func jwkMatchingCert(
 		}
 	}
 
-	return jose.JSONWebKey{}, goidc.NewError(goidc.ErrorCodeInvalidClient,
+	return goidc.JSONWebKey{}, goidc.NewError(goidc.ErrorCodeInvalidClient,
 		"could not find a JWK matching the client certificate")
 }
 
@@ -460,7 +460,7 @@ func extractID(
 
 func assertionClientID(
 	assertion string,
-	sigAlgs []jose.SignatureAlgorithm,
+	sigAlgs []goidc.SignatureAlgorithm,
 ) (
 	string,
 	error,

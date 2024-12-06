@@ -20,7 +20,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -63,7 +62,7 @@ func ClientPrivateKeyJWT(id, jwksFilepath string) *goidc.Client {
 func Client(id string, jwksFilepath string) *goidc.Client {
 	// Extract the public client JWKS.
 	jwks := privateJWKS(jwksFilepath)
-	var publicKeys []jose.JSONWebKey
+	var publicKeys []goidc.JSONWebKey
 	for _, key := range jwks.Keys {
 		publicKeys = append(publicKeys, key.Public())
 	}
@@ -110,17 +109,17 @@ func PrivateJWKSFunc(filename string) goidc.JWKSFunc {
 		log.Fatal(err)
 	}
 
-	var jwks jose.JSONWebKeySet
+	var jwks goidc.JSONWebKeySet
 	if err := json.Unmarshal(jwksBytes, &jwks); err != nil {
 		log.Fatal(err)
 	}
 
-	return func(ctx context.Context) (jose.JSONWebKeySet, error) {
+	return func(ctx context.Context) (goidc.JSONWebKeySet, error) {
 		return jwks, nil
 	}
 }
 
-func privateJWKS(filename string) jose.JSONWebKeySet {
+func privateJWKS(filename string) goidc.JSONWebKeySet {
 	jwksFile, err := os.Open(filename)
 	if err != nil {
 		log.Fatal(err)
@@ -132,7 +131,7 @@ func privateJWKS(filename string) jose.JSONWebKeySet {
 		log.Fatal(err)
 	}
 
-	var jwks jose.JSONWebKeySet
+	var jwks goidc.JSONWebKeySet
 	if err := json.Unmarshal(jwksBytes, &jwks); err != nil {
 		log.Fatal(err)
 	}
@@ -180,7 +179,7 @@ func ValidateInitialTokenFunc(r *http.Request, s string) error {
 	return nil
 }
 
-func TokenOptionsFunc(alg jose.SignatureAlgorithm) goidc.TokenOptionsFunc {
+func TokenOptionsFunc(alg goidc.SignatureAlgorithm) goidc.TokenOptionsFunc {
 	return func(grantInfo goidc.GrantInfo, _ *goidc.Client) goidc.TokenOptions {
 		opts := goidc.NewJWTTokenOptions(alg, 600)
 		return opts

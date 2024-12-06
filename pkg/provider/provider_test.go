@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -14,8 +13,8 @@ import (
 func TestNew(t *testing.T) {
 	// Given.
 	issuer := "https://example.com"
-	var jwksFunc goidc.JWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
-		return jose.JSONWebKeySet{}, nil
+	var jwksFunc goidc.JWKSFunc = func(ctx context.Context) (goidc.JSONWebKeySet, error) {
+		return goidc.JSONWebKeySet{}, nil
 	}
 
 	// When.
@@ -46,8 +45,8 @@ func TestNew(t *testing.T) {
 			EndpointToken:            defaultEndpointToken,
 			EndpointAuthorize:        defaultEndpointAuthorize,
 			EndpointUserInfo:         defaultEndpointUserInfo,
-			IDTokenDefaultSigAlg:     jose.RS256,
-			IDTokenSigAlgs:           []jose.SignatureAlgorithm{jose.RS256},
+			IDTokenDefaultSigAlg:     goidc.RS256,
+			IDTokenSigAlgs:           []goidc.SignatureAlgorithm{goidc.RS256},
 			IDTokenLifetimeSecs:      defaultIDTokenLifetimeSecs,
 			JWTLifetimeSecs:          defaultJWTLifetimeSecs,
 		},
@@ -71,8 +70,8 @@ func TestNew(t *testing.T) {
 func TestNew_WithOptions(t *testing.T) {
 	// Given.
 	issuer := "https://example.com"
-	var jwksFunc goidc.JWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
-		return jose.JSONWebKeySet{}, nil
+	var jwksFunc goidc.JWKSFunc = func(ctx context.Context) (goidc.JSONWebKeySet, error) {
+		return goidc.JSONWebKeySet{}, nil
 	}
 
 	// When.
@@ -85,14 +84,14 @@ func TestNew_WithOptions(t *testing.T) {
 		WithTokenAuthnMethods(goidc.ClientAuthnPrivateKeyJWT, goidc.ClientAuthnSecretJWT),
 		WithDCR(nil, nil),
 		WithPAR(0),
-		WithJAR(jose.RS256),
-		WithJAREncryption(jose.RSA_OAEP),
-		WithJARM(jose.RS256),
+		WithJAR(goidc.RS256),
+		WithJAREncryption(goidc.RSA_OAEP),
+		WithJARM(goidc.RS256),
 		WithTokenIntrospection(nil, goidc.ClientAuthnPrivateKeyJWT),
 		WithTokenRevocation(nil, goidc.ClientAuthnPrivateKeyJWT),
 		WithCIBAGrant(nil, nil, goidc.CIBATokenDeliveryModePoll),
-		WithUserInfoSignatureAlgs(jose.PS256),
-		WithUserInfoEncryption(jose.RSA_OAEP),
+		WithUserInfoSignatureAlgs(goidc.PS256),
+		WithUserInfoEncryption(goidc.RSA_OAEP),
 	)
 
 	// Then.
@@ -115,10 +114,10 @@ func TestNew_WithOptions(t *testing.T) {
 			EndpointToken:            defaultEndpointToken,
 			EndpointAuthorize:        defaultEndpointAuthorize,
 			EndpointUserInfo:         defaultEndpointUserInfo,
-			UserInfoDefaultSigAlg:    jose.PS256,
-			UserInfoSigAlgs:          []jose.SignatureAlgorithm{jose.PS256},
-			IDTokenDefaultSigAlg:     jose.RS256,
-			IDTokenSigAlgs:           []jose.SignatureAlgorithm{jose.RS256},
+			UserInfoDefaultSigAlg:    goidc.PS256,
+			UserInfoSigAlgs:          []goidc.SignatureAlgorithm{goidc.PS256},
+			IDTokenDefaultSigAlg:     goidc.RS256,
+			IDTokenSigAlgs:           []goidc.SignatureAlgorithm{goidc.RS256},
 			IDTokenLifetimeSecs:      defaultIDTokenLifetimeSecs,
 			JWTLifetimeSecs:          defaultJWTLifetimeSecs,
 			GrantTypes: []goidc.GrantType{
@@ -130,20 +129,20 @@ func TestNew_WithOptions(t *testing.T) {
 				goidc.ResponseTypeIDToken, goidc.ResponseTypeIDTokenAndToken, goidc.ResponseTypeCodeAndIDToken,
 				goidc.ResponseTypeCodeAndToken, goidc.ResponseTypeCodeAndIDTokenAndToken},
 			TokenAuthnMethods:           []goidc.ClientAuthnType{goidc.ClientAuthnPrivateKeyJWT, goidc.ClientAuthnSecretJWT},
-			PrivateKeyJWTSigAlgs:        []jose.SignatureAlgorithm{jose.RS256},
-			ClientSecretJWTSigAlgs:      []jose.SignatureAlgorithm{jose.HS256},
+			PrivateKeyJWTSigAlgs:        []goidc.SignatureAlgorithm{goidc.RS256},
+			ClientSecretJWTSigAlgs:      []goidc.SignatureAlgorithm{goidc.HS256},
 			DCRIsEnabled:                true,
 			EndpointDCR:                 defaultEndpointDynamicClient,
 			PARIsEnabled:                true,
 			EndpointPushedAuthorization: defaultEndpointPushedAuthorizationRequest,
 			JARIsEnabled:                true,
-			JARSigAlgs:                  []jose.SignatureAlgorithm{jose.RS256},
+			JARSigAlgs:                  []goidc.SignatureAlgorithm{goidc.RS256},
 			JAREncIsEnabled:             true,
-			JARKeyEncAlgs:               []jose.KeyAlgorithm{jose.RSA_OAEP},
-			JARContentEncAlgs:           []jose.ContentEncryption{jose.A128CBC_HS256},
+			JARKeyEncAlgs:               []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+			JARContentEncAlgs:           []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256},
 			JARMIsEnabled:               true,
-			JARMDefaultSigAlg:           jose.RS256,
-			JARMSigAlgs:                 []jose.SignatureAlgorithm{jose.RS256},
+			JARMDefaultSigAlg:           goidc.RS256,
+			JARMSigAlgs:                 []goidc.SignatureAlgorithm{goidc.RS256},
 			ResponseModes: []goidc.ResponseMode{
 				goidc.ResponseModeQuery,
 				goidc.ResponseModeFragment,
@@ -166,9 +165,9 @@ func TestNew_WithOptions(t *testing.T) {
 			CIBADefaultSessionLifetimeSecs: 60,
 			CIBAPollingIntervalSecs:        5,
 			UserInfoEncIsEnabled:           true,
-			UserInfoKeyEncAlgs:             []jose.KeyAlgorithm{jose.RSA_OAEP},
-			UserInfoDefaultContentEncAlg:   jose.A128CBC_HS256,
-			UserInfoContentEncAlgs:         []jose.ContentEncryption{jose.A128CBC_HS256},
+			UserInfoKeyEncAlgs:             []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+			UserInfoDefaultContentEncAlg:   goidc.A128CBC_HS256,
+			UserInfoContentEncAlgs:         []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256},
 		},
 		cmpopts.IgnoreFields(
 			oidc.Configuration{},

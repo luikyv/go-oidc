@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/luikyv/go-oidc/internal/clientutil"
-	"github.com/luikyv/go-oidc/internal/jwtutil"
+	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/token"
@@ -104,23 +104,16 @@ func signUserInfoClaims(
 	error,
 ) {
 
-	if ctx.UserInfoSigAlgsContainsNone() && client.UserInfoSigAlg == goidc.NoneSignatureAlgorithm {
-		unsignedJWT, err := jwtutil.Unsigned(claims)
-		if err != nil {
-			return "", fmt.Errorf("internal error signing the user info: %w", err)
-		}
-		return unsignedJWT, nil
+	if ctx.UserInfoSigAlgsContainsNone() && client.UserInfoSigAlg == goidc.None {
+		return joseutil.Unsigned(claims), nil
 	}
 
-	sigOpts := goidc.SignatureOptions{
-		Algorithm: ctx.UserInfoDefaultSigAlg,
-		JWTType:   goidc.JWTTypeBasic,
-	}
+	alg := ctx.UserInfoDefaultSigAlg
 	if client.UserInfoSigAlg != "" {
-		sigOpts.Algorithm = client.UserInfoSigAlg
+		alg = client.UserInfoSigAlg
 	}
 
-	jws, err := ctx.Sign(claims, sigOpts)
+	jws, err := joseutil.Sign(ctx, claims, alg, nil)
 	if err != nil {
 		return "", fmt.Errorf("could not sign the user info claims: %w", err)
 	}
@@ -146,7 +139,7 @@ func encryptUserInfoJWT(
 	if contentEncAlg == "" {
 		contentEncAlg = ctx.UserInfoDefaultContentEncAlg
 	}
-	userInfoJWE, err := jwtutil.Encrypt(userInfoJWT, jwk, contentEncAlg)
+	userInfoJWE, err := joseutil.Encrypt(userInfoJWT, jwk, contentEncAlg)
 	if err != nil {
 		return "", fmt.Errorf("could not encrypt the user info response: %w", err)
 	}

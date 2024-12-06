@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikyv/go-oidc/internal/jwtutil"
+	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -14,7 +14,7 @@ import (
 // If it's a JWT, the ID is the the "jti" claim. Otherwise, the token is
 // considered opaque and its ID is the token itself.
 func ExtractID(ctx oidc.Context, token string) (string, error) {
-	if !jwtutil.IsJWS(token) {
+	if !joseutil.IsJWS(token) {
 		return token, nil
 	}
 

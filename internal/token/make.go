@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/hashutil"
-	"github.com/luikyv/go-oidc/internal/jwtutil"
+	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -59,19 +59,16 @@ func makeIDToken(
 	string,
 	error,
 ) {
-	if ctx.IDTokenSigAlgsContainsNone() && client.IDTokenSigAlg == goidc.NoneSignatureAlgorithm {
-		return makeUnsignedIDToken(ctx, client, opts)
+	if ctx.IDTokenSigAlgsContainsNone() && client.IDTokenSigAlg == goidc.None {
+		return makeUnsignedIDToken(ctx, client, opts), nil
 	}
 
-	sigOpts := goidc.SignatureOptions{
-		JWTType:   goidc.JWTTypeBasic,
-		Algorithm: ctx.IDTokenDefaultSigAlg,
-	}
+	alg := ctx.IDTokenDefaultSigAlg
 	if client.IDTokenSigAlg != "" {
-		sigOpts.Algorithm = client.IDTokenSigAlg
+		alg = client.IDTokenSigAlg
 	}
-	claims := idTokenClaims(ctx, client, opts, sigOpts.Algorithm)
-	idToken, err := ctx.Sign(claims, sigOpts)
+	claims := idTokenClaims(ctx, client, opts, alg)
+	idToken, err := joseutil.Sign(ctx, claims, alg, nil)
 	if err != nil {
 		return "", fmt.Errorf("could not sign the id token: %w", err)
 	}
@@ -79,23 +76,16 @@ func makeIDToken(
 	return idToken, nil
 }
 
-func makeUnsignedIDToken(
-	ctx oidc.Context,
-	client *goidc.Client,
-	opts IDTokenOptions,
-) (
-	string,
-	error,
-) {
-	claims := idTokenClaims(ctx, client, opts, goidc.NoneSignatureAlgorithm)
-	return jwtutil.Unsigned(claims)
+func makeUnsignedIDToken(ctx oidc.Context, client *goidc.Client, opts IDTokenOptions) string {
+	claims := idTokenClaims(ctx, client, opts, goidc.None)
+	return joseutil.Unsigned(claims)
 }
 
 func idTokenClaims(
 	ctx oidc.Context,
 	client *goidc.Client,
 	opts IDTokenOptions,
-	sigAlg jose.SignatureAlgorithm,
+	sigAlg goidc.SignatureAlgorithm,
 ) map[string]any {
 	now := timeutil.TimestampNow()
 
@@ -156,7 +146,7 @@ func encryptIDToken(
 	if contentEncAlg == "" {
 		contentEncAlg = ctx.IDTokenDefaultContentEncAlg
 	}
-	encIDToken, err := jwtutil.Encrypt(userInfoJWT, jwk, contentEncAlg)
+	encIDToken, err := joseutil.Encrypt(userInfoJWT, jwk, contentEncAlg)
 	if err != nil {
 		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"could not encrypt the id token", err)
@@ -213,10 +203,7 @@ func makeJWTToken(
 		claims[k] = v
 	}
 
-	accessToken, err := ctx.Sign(claims, goidc.SignatureOptions{
-		Algorithm: opts.JWTSigAlg,
-		JWTType:   goidc.JWTTypeAccessToken,
-	})
+	accessToken, err := joseutil.Sign(ctx, claims, opts.JWTSigAlg, (&jose.SignerOptions{}).WithType("at+jwt"))
 	if err != nil {
 		return Token{}, fmt.Errorf("could not sign the access token: %w", err)
 	}

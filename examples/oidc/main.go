@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/examples/authutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/luikyv/go-oidc/pkg/provider"
@@ -32,18 +31,18 @@ func main() {
 		authutil.Issuer,
 		authutil.PrivateJWKSFunc(jwksFilePath),
 		provider.WithScopes(authutil.Scopes...),
-		provider.WithIDTokenSignatureAlgs(jose.RS256, goidc.NoneSignatureAlgorithm),
-		provider.WithUserInfoSignatureAlgs(jose.RS256, goidc.NoneSignatureAlgorithm),
+		provider.WithIDTokenSignatureAlgs(goidc.RS256, goidc.None),
+		provider.WithUserInfoSignatureAlgs(goidc.RS256, goidc.None),
 		provider.WithPAR(10),
-		provider.WithJAR(jose.RS256, goidc.NoneSignatureAlgorithm),
+		provider.WithJAR(goidc.RS256, goidc.None),
 		provider.WithJARByReference(false),
-		provider.WithJARM(jose.RS256),
+		provider.WithJARM(goidc.RS256),
 		provider.WithTokenAuthnMethods(
 			goidc.ClientAuthnSecretBasic,
 			goidc.ClientAuthnSecretPost,
 			goidc.ClientAuthnPrivateKeyJWT,
 		),
-		provider.WithPrivateKeyJWTSignatureAlgs(jose.RS256),
+		provider.WithPrivateKeyJWTSignatureAlgs(goidc.RS256),
 		provider.WithIssuerResponseParameter(),
 		provider.WithClaimsParameter(),
 		provider.WithPKCE(goidc.CodeChallengeMethodSHA256),
@@ -53,7 +52,7 @@ func main() {
 		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
 		provider.WithACRs(authutil.ACRs[0], authutil.ACRs...),
 		provider.WithDCR(authutil.DCRFunc, authutil.ValidateInitialTokenFunc),
-		provider.WithTokenOptions(authutil.TokenOptionsFunc(jose.RS256)),
+		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.RS256)),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithPolicy(authutil.Policy(templatesDirPath)),
 		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),

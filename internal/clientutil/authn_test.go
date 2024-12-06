@@ -10,7 +10,6 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/clientutil"
-	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -255,7 +254,7 @@ func TestAuthenticated_PrivateKeyJWT(t *testing.T) {
 	}
 
 	ctx.Request.PostForm = map[string][]string{
-		"client_assertion":      {signAssertion(t, claims, jwk)},
+		"client_assertion":      {oidctest.Sign(t, claims, jwk)},
 		"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
 	}
 
@@ -273,7 +272,7 @@ func TestAuthenticated_PrivateKeyJWT_ClientInformedSigningAlgorithms(t *testing.
 
 	// Given.
 	ctx, client, jwk := setUpPrivateKeyJWTAuthn(t)
-	client.TokenAuthnSigAlg = jose.SignatureAlgorithm(jwk.Algorithm)
+	client.TokenAuthnSigAlg = goidc.SignatureAlgorithm(jwk.Algorithm)
 	createdAtTimestamp := timeutil.TimestampNow()
 	claims := map[string]any{
 		goidc.ClaimIssuer:   client.ID,
@@ -285,7 +284,7 @@ func TestAuthenticated_PrivateKeyJWT_ClientInformedSigningAlgorithms(t *testing.
 	}
 
 	ctx.Request.PostForm = map[string][]string{
-		"client_assertion":      {signAssertion(t, claims, jwk)},
+		"client_assertion":      {oidctest.Sign(t, claims, jwk)},
 		"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
 	}
 
@@ -306,7 +305,7 @@ func TestAuthenticated_PrivateKeyJWT_ClientInformedSigningAlgorithms_InvalidSign
 	// Given the client must sign assertions with PS256 and the signing JWK uses
 	// RS256.
 	ctx, client, jwk := setUpPrivateKeyJWTAuthn(t)
-	client.TokenAuthnSigAlg = jose.PS256
+	client.TokenAuthnSigAlg = goidc.PS256
 	createdAtTimestamp := timeutil.TimestampNow()
 	claims := map[string]any{
 		goidc.ClaimIssuer:   client.ID,
@@ -317,7 +316,7 @@ func TestAuthenticated_PrivateKeyJWT_ClientInformedSigningAlgorithms_InvalidSign
 	}
 
 	ctx.Request.PostForm = map[string][]string{
-		"client_assertion":      {signAssertion(t, claims, jwk)},
+		"client_assertion":      {oidctest.Sign(t, claims, jwk)},
 		"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
 	}
 
@@ -352,7 +351,7 @@ func TestAuthenticated_PrivateKeyJWT_InvalidAudienceClaim(t *testing.T) {
 	}
 
 	ctx.Request.PostForm = map[string][]string{
-		"client_assertion":      {signAssertion(t, claims, jwk)},
+		"client_assertion":      {oidctest.Sign(t, claims, jwk)},
 		"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
 	}
 
@@ -387,7 +386,7 @@ func TestAuthenticated_PrivateKeyJWT_InvalidExpiryClaim(t *testing.T) {
 	}
 
 	ctx.Request.PostForm = map[string][]string{
-		"client_assertion":      {signAssertion(t, claims, jwk)},
+		"client_assertion":      {oidctest.Sign(t, claims, jwk)},
 		"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
 	}
 
@@ -425,7 +424,7 @@ func TestAuthenticated_PrivateKeyJWT_CannotIdentifyJWK(t *testing.T) {
 	}
 
 	ctx.Request.PostForm = map[string][]string{
-		"client_assertion":      {signAssertion(t, claims, jwk)},
+		"client_assertion":      {oidctest.Sign(t, claims, jwk)},
 		"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
 	}
 
@@ -465,7 +464,7 @@ func TestAuthenticated_PrivateKeyJWT_InvalidSigningKey(t *testing.T) {
 	invalidJWK := oidctest.PrivateRS256JWK(t, jwk.KeyID, goidc.KeyUsageSignature)
 	ctx.Request.PostForm = map[string][]string{
 		"client_assertion": {
-			signAssertion(t, claims, invalidJWK),
+			oidctest.Sign(t, claims, invalidJWK),
 		},
 		"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
 	}
@@ -531,7 +530,7 @@ func TestAuthenticated_PrivateKeyJWT_InvalidAssertionType(t *testing.T) {
 	}
 
 	ctx.Request.PostForm = map[string][]string{
-		"client_assertion":      {signAssertion(t, claims, jwk)},
+		"client_assertion":      {oidctest.Sign(t, claims, jwk)},
 		"client_assertion_type": {"invalid_assertion_type"},
 	}
 
@@ -567,7 +566,7 @@ func TestAuthenticated_ClientSecretJWT(t *testing.T) {
 		goidc.ClaimTokenID:  "random_jti",
 	}
 	signer, _ := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.HS256, Key: []byte(secret)},
+		jose.SigningKey{Algorithm: goidc.HS256, Key: []byte(secret)},
 		(&jose.SignerOptions{}).WithType("jwt"),
 	)
 	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
@@ -603,7 +602,7 @@ func TestAuthenticated_DifferentClientIDs(t *testing.T) {
 
 	ctx := oidctest.NewContext(t)
 	_ = ctx.SaveClient(c)
-	ctx.PrivateKeyJWTSigAlgs = []jose.SignatureAlgorithm{jose.PS256}
+	ctx.PrivateKeyJWTSigAlgs = []goidc.SignatureAlgorithm{goidc.PS256}
 
 	ctx.Request.PostForm = map[string][]string{
 		"client_id": {c.ID},
@@ -746,12 +745,12 @@ func setUpSecretAuthn(t *testing.T, secretAuthnMethod goidc.ClientAuthnType) (
 func setUpPrivateKeyJWTAuthn(t *testing.T) (
 	ctx oidc.Context,
 	client *goidc.Client,
-	jwk jose.JSONWebKey,
+	jwk goidc.JSONWebKey,
 ) {
 	t.Helper()
 
 	ctx = oidctest.NewContext(t)
-	ctx.PrivateKeyJWTSigAlgs = []jose.SignatureAlgorithm{jose.RS256, jose.PS256}
+	ctx.PrivateKeyJWTSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256, goidc.PS256}
 	ctx.JWTLifetimeSecs = 60
 
 	jwk = oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
@@ -777,7 +776,7 @@ func setUpClientSecretJWTAuthn(t *testing.T) (
 	t.Helper()
 
 	ctx = oidctest.NewContext(t)
-	ctx.ClientSecretJWTSigAlgs = []jose.SignatureAlgorithm{jose.HS256}
+	ctx.ClientSecretJWTSigAlgs = []goidc.SignatureAlgorithm{goidc.HS256}
 	ctx.JWTLifetimeSecs = 60
 
 	secret = "random_password12345678910111213"
@@ -793,18 +792,6 @@ func setUpClientSecretJWTAuthn(t *testing.T) (
 	}
 
 	return ctx, client, secret
-}
-
-func signAssertion(t *testing.T, claims map[string]any, jwk jose.JSONWebKey) string {
-	t.Helper()
-
-	opts := (&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", jwk.KeyID)
-	assertion, err := jwtutil.Sign(claims, jwk, opts)
-	if err != nil {
-		t.Fatalf("could not sign the claims: %v", err)
-	}
-
-	return assertion
 }
 
 func setUpTLSAuthn(t *testing.T) (

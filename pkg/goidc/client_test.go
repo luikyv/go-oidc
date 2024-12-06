@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -20,8 +19,8 @@ func TestFetchPublicJWKS(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		numberOfCalls++
 		jwk := privatePs256JWK("random_key_id")
-		if err := json.NewEncoder(w).Encode(jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{jwk},
+		if err := json.NewEncoder(w).Encode(goidc.JSONWebKeySet{
+			Keys: []goidc.JSONWebKey{jwk},
 		}); err != nil {
 			t.Fatal(err)
 		}
@@ -52,12 +51,12 @@ func TestFetchPublicJWKS(t *testing.T) {
 	}
 }
 
-func privatePs256JWK(keyID string) jose.JSONWebKey {
+func privatePs256JWK(keyID string) goidc.JSONWebKey {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	return jose.JSONWebKey{
+	return goidc.JSONWebKey{
 		Key:       privateKey,
 		KeyID:     keyID,
-		Algorithm: string(jose.PS256),
+		Algorithm: string(goidc.PS256),
 		Use:       string(goidc.KeyUsageSignature),
 	}
 }

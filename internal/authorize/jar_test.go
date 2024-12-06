@@ -5,9 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/google/go-cmp/cmp"
-	"github.com/luikyv/go-oidc/internal/jwtutil"
+	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -22,8 +21,8 @@ func TestJARFromRequestObject(t *testing.T) {
 		Configuration: &oidc.Configuration{
 			Host:         "https://server.example.com",
 			JARIsEnabled: true,
-			JARSigAlgs: []jose.SignatureAlgorithm{
-				jose.SignatureAlgorithm(privateJWK.Algorithm),
+			JARSigAlgs: []goidc.SignatureAlgorithm{
+				goidc.SignatureAlgorithm(privateJWK.Algorithm),
 			},
 		},
 		Request: &http.Request{Method: http.MethodPost},
@@ -55,11 +54,7 @@ func TestJARFromRequestObject(t *testing.T) {
 			},
 		},
 	}
-	requestObject, _ := jwtutil.Sign(
-		claims,
-		privateJWK,
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
-	)
+	requestObject := oidctest.Sign(t, claims, privateJWK)
 
 	// When.
 	jar, err := jarFromRequestObject(ctx, requestObject, client)
@@ -98,8 +93,8 @@ func TestJARFromRequestObject_JARByReference(t *testing.T) {
 		Configuration: &oidc.Configuration{
 			Host:         "https://server.example.com",
 			JARIsEnabled: true,
-			JARSigAlgs: []jose.SignatureAlgorithm{
-				jose.SignatureAlgorithm(privateJWK.Algorithm),
+			JARSigAlgs: []goidc.SignatureAlgorithm{
+				goidc.SignatureAlgorithm(privateJWK.Algorithm),
 			},
 			JARByReferenceIsEnabled: true,
 		},
@@ -132,11 +127,7 @@ func TestJARFromRequestObject_JARByReference(t *testing.T) {
 			},
 		},
 	}
-	requestObject, _ := jwtutil.Sign(
-		claims,
-		privateJWK,
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
-	)
+	requestObject := oidctest.Sign(t, claims, privateJWK)
 
 	// Mock the http request to return a JWKS with a random key.
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -181,8 +172,8 @@ func TestJARFromRequestObject_Unsigned(t *testing.T) {
 		Configuration: &oidc.Configuration{
 			Host:         "https://server.example.com",
 			JARIsEnabled: true,
-			JARSigAlgs: []jose.SignatureAlgorithm{
-				goidc.NoneSignatureAlgorithm,
+			JARSigAlgs: []goidc.SignatureAlgorithm{
+				goidc.None,
 			},
 		},
 		Request: &http.Request{Method: http.MethodPost},
@@ -190,7 +181,7 @@ func TestJARFromRequestObject_Unsigned(t *testing.T) {
 
 	client := &goidc.Client{
 		ClientMetaInfo: goidc.ClientMetaInfo{
-			JARSigAlg: goidc.NoneSignatureAlgorithm,
+			JARSigAlg: goidc.None,
 		},
 	}
 
@@ -209,7 +200,7 @@ func TestJARFromRequestObject_Unsigned(t *testing.T) {
 			},
 		},
 	}
-	requestObject, _ := jwtutil.Unsigned(claims)
+	requestObject := joseutil.Unsigned(claims)
 
 	// When.
 	jar, err := jarFromRequestObject(ctx, requestObject, client)

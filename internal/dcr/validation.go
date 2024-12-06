@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"slices"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -667,7 +666,7 @@ func validatePublicJWKS(
 		return nil
 	}
 
-	var jwks jose.JSONWebKeySet
+	var jwks goidc.JSONWebKeySet
 	if err := json.Unmarshal(meta.PublicJWKS, &jwks); err != nil {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "invalid jwks")
 	}
