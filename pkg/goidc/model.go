@@ -7,11 +7,9 @@ import (
 	"net/http"
 	"slices"
 	"strings"
-
-	"github.com/go-jose/go-jose/v4"
 )
 
-type JWKSFunc func(context.Context) (jose.JSONWebKeySet, error)
+type JWKSFunc func(context.Context) (JSONWebKeySet, error)
 
 // RefreshTokenLength has an unusual value so to avoid refresh tokens and
 // opaque access token to be confused.
@@ -20,8 +18,6 @@ type JWKSFunc func(context.Context) (jose.JSONWebKeySet, error)
 const RefreshTokenLength int = 99
 
 const DefaultOpaqueTokenLength int = 50
-
-const NoneSignatureAlgorithm jose.SignatureAlgorithm = "none"
 
 type Profile string
 
@@ -360,12 +356,12 @@ type TokenOptionsFunc func(GrantInfo, *Client) TokenOptions
 type TokenOptions struct {
 	Format       TokenFormat
 	LifetimeSecs int
-	JWTSigAlg    jose.SignatureAlgorithm
+	JWTSigAlg    SignatureAlgorithm
 	OpaqueLength int
 }
 
 func NewJWTTokenOptions(
-	alg jose.SignatureAlgorithm,
+	alg SignatureAlgorithm,
 	lifetimeSecs int,
 ) TokenOptions {
 	return TokenOptions{
@@ -675,25 +671,3 @@ type InitBackAuthFunc func(context.Context, *AuthnSession) error
 // If an error other than [ErrorCodeAuthPending] or [ErrorCodeSlowDown] is
 // returned, the session will be terminated.
 type ValidateBackAuthFunc func(context.Context, *AuthnSession) error
-
-type SignatureOptions struct {
-	Algorithm jose.SignatureAlgorithm
-	JWTType   JWTType
-}
-
-type JWTType string
-
-const (
-	JWTTypeBasic       JWTType = "JWT"
-	JWTTypeAccessToken JWTType = "at+jwt"
-)
-
-type SignFunc func(ctx context.Context, claims map[string]any, opts SignatureOptions) (string, error)
-
-type DecryptionOptions struct {
-	KeyID            string
-	KeyAlgorithm     jose.KeyAlgorithm
-	ContentAlgorithm jose.ContentEncryption
-}
-
-type DecryptFunc func(ctx context.Context, jwe string, opts DecryptionOptions) (string, error)

@@ -1,7 +1,6 @@
 package oidc
 
 import (
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -19,11 +18,9 @@ type Configuration struct {
 	// The returned JWKS must include private keys if SignFunc or DecryptFunc
 	// (when server-side encryption is enabled) are not provided.
 	// When exposing it at the jwks endpoint, any private information is removed.
-	JWKSFunc goidc.JWKSFunc
-	// SignFunc performs signing operations for the server.
-	SignFunc goidc.SignFunc
-	// DecryptFunc handles decryption when server-side encryption is enabled.
-	DecryptFunc goidc.DecryptFunc
+	JWKSFunc      goidc.JWKSFunc
+	SignerFunc    goidc.SignerFunc
+	DecrypterFunc goidc.DecrypterFunc
 
 	HandleGrantFunc         goidc.HandleGrantFunc
 	TokenOptionsFunc        goidc.TokenOptionsFunc
@@ -70,19 +67,19 @@ type Configuration struct {
 	EndpointTokenRevocation     string
 	EndpointPrefix              string
 
-	UserInfoDefaultSigAlg        jose.SignatureAlgorithm
-	UserInfoSigAlgs              []jose.SignatureAlgorithm
+	UserInfoDefaultSigAlg        goidc.SignatureAlgorithm
+	UserInfoSigAlgs              []goidc.SignatureAlgorithm
 	UserInfoEncIsEnabled         bool
-	UserInfoKeyEncAlgs           []jose.KeyAlgorithm
-	UserInfoDefaultContentEncAlg jose.ContentEncryption
-	UserInfoContentEncAlgs       []jose.ContentEncryption
+	UserInfoKeyEncAlgs           []goidc.KeyEncryptionAlgorithm
+	UserInfoDefaultContentEncAlg goidc.ContentEncryptionAlgorithm
+	UserInfoContentEncAlgs       []goidc.ContentEncryptionAlgorithm
 
-	IDTokenDefaultSigAlg        jose.SignatureAlgorithm
-	IDTokenSigAlgs              []jose.SignatureAlgorithm
+	IDTokenDefaultSigAlg        goidc.SignatureAlgorithm
+	IDTokenSigAlgs              []goidc.SignatureAlgorithm
 	IDTokenEncIsEnabled         bool
-	IDTokenKeyEncAlgs           []jose.KeyAlgorithm
-	IDTokenDefaultContentEncAlg jose.ContentEncryption
-	IDTokenContentEncAlgs       []jose.ContentEncryption
+	IDTokenKeyEncAlgs           []goidc.KeyEncryptionAlgorithm
+	IDTokenDefaultContentEncAlg goidc.ContentEncryptionAlgorithm
+	IDTokenContentEncAlgs       []goidc.ContentEncryptionAlgorithm
 	// IDTokenLifetimeSecs defines the expiry time of ID tokens.
 	IDTokenLifetimeSecs int
 
@@ -90,10 +87,10 @@ type Configuration struct {
 
 	// PrivateKeyJWTSigAlgs contains algorithms accepted for signing
 	// client assertions during private_key_jwt.
-	PrivateKeyJWTSigAlgs []jose.SignatureAlgorithm
+	PrivateKeyJWTSigAlgs []goidc.SignatureAlgorithm
 	// ClientSecretJWTSigAlgs constains algorithms accepted for
 	// signing client assertions during client_secret_jwt.
-	ClientSecretJWTSigAlgs []jose.SignatureAlgorithm
+	ClientSecretJWTSigAlgs []goidc.SignatureAlgorithm
 
 	JWTLifetimeSecs   int
 	JWTLeewayTimeSecs int
@@ -116,26 +113,26 @@ type Configuration struct {
 	RefreshTokenLifetimeSecs      int
 
 	JARMIsEnabled     bool
-	JARMDefaultSigAlg jose.SignatureAlgorithm
-	JARMSigAlgs       []jose.SignatureAlgorithm
+	JARMDefaultSigAlg goidc.SignatureAlgorithm
+	JARMSigAlgs       []goidc.SignatureAlgorithm
 	// JARMLifetimeSecs defines how long response objects are valid for.
 	JARMLifetimeSecs         int
 	JARMEncIsEnabled         bool
-	JARMKeyEncAlgs           []jose.KeyAlgorithm
-	JARMDefaultContentEncAlg jose.ContentEncryption
-	JARMContentEncAlgs       []jose.ContentEncryption
+	JARMKeyEncAlgs           []goidc.KeyEncryptionAlgorithm
+	JARMDefaultContentEncAlg goidc.ContentEncryptionAlgorithm
+	JARMContentEncAlgs       []goidc.ContentEncryptionAlgorithm
 
 	JARIsEnabled  bool
 	JARIsRequired bool
-	JARSigAlgs    []jose.SignatureAlgorithm
+	JARSigAlgs    []goidc.SignatureAlgorithm
 	// JARByReferenceIsEnabled determines whether Request Objects can be provided
 	// by reference using the "request_uri" parameter. When enabled, the authorization
 	// server retrieves the request object from the specified URI.
 	JARByReferenceIsEnabled             bool
 	JARRequestURIRegistrationIsRequired bool
 	JAREncIsEnabled                     bool
-	JARKeyEncAlgs                       []jose.KeyAlgorithm
-	JARContentEncAlgs                   []jose.ContentEncryption
+	JARKeyEncAlgs                       []goidc.KeyEncryptionAlgorithm
+	JARContentEncAlgs                   []goidc.ContentEncryptionAlgorithm
 
 	// PARIsEnabled allows client to push authorization requests.
 	PARIsEnabled bool
@@ -157,7 +154,7 @@ type Configuration struct {
 
 	CIBAJARIsEnabled  bool
 	CIBAJARIsRequired bool
-	CIBAJARSigAlgs    []jose.SignatureAlgorithm
+	CIBAJARSigAlgs    []goidc.SignatureAlgorithm
 
 	MTLSIsEnabled              bool
 	MTLSHost                   string
@@ -167,7 +164,7 @@ type Configuration struct {
 
 	DPoPIsEnabled  bool
 	DPoPIsRequired bool
-	DPoPSigAlgs    []jose.SignatureAlgorithm
+	DPoPSigAlgs    []goidc.SignatureAlgorithm
 
 	PKCEIsEnabled              bool
 	PKCEIsRequired             bool

@@ -58,10 +58,10 @@ func TestMakeIDToken(t *testing.T) {
 func TestMakeIDToken_Unsigned(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.IDTokenSigAlgs = append(ctx.IDTokenSigAlgs, goidc.NoneSignatureAlgorithm)
+	ctx.IDTokenSigAlgs = append(ctx.IDTokenSigAlgs, goidc.None)
 
 	client, _ := oidctest.NewClient(t)
-	client.IDTokenSigAlg = goidc.NoneSignatureAlgorithm
+	client.IDTokenSigAlg = goidc.None
 	idTokenOptions := token.IDTokenOptions{
 		Subject: "random_subject",
 		AdditionalIDTokenClaims: map[string]any{
@@ -77,7 +77,7 @@ func TestMakeIDToken_Unsigned(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	claims, err := oidctest.UnsafeClaims(idToken, goidc.NoneSignatureAlgorithm)
+	claims, err := oidctest.UnsafeClaims(idToken, goidc.None)
 	if err != nil {
 		t.Fatalf("error parsing claims: %v", err)
 	}

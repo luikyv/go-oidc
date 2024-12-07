@@ -12,8 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-jose/go-jose/v4"
-	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -53,7 +51,7 @@ func Handler(
 	}
 }
 
-func (ctx Context) TokenAuthnSigAlgs() []jose.SignatureAlgorithm {
+func (ctx Context) TokenAuthnSigAlgs() []goidc.SignatureAlgorithm {
 	return ctx.clientAuthnSigAlgs(ctx.TokenAuthnMethods)
 }
 
@@ -65,7 +63,7 @@ func (ctx Context) IsClientAllowedTokenIntrospection(c *goidc.Client) bool {
 	return ctx.IsClientAllowedTokenIntrospectionFunc(c)
 }
 
-func (ctx Context) TokenIntrospectionAuthnSigAlgs() []jose.SignatureAlgorithm {
+func (ctx Context) TokenIntrospectionAuthnSigAlgs() []goidc.SignatureAlgorithm {
 	return ctx.clientAuthnSigAlgs(ctx.TokenIntrospectionAuthnMethods)
 }
 
@@ -77,16 +75,16 @@ func (ctx Context) IsClientAllowedTokenRevocation(c *goidc.Client) bool {
 	return ctx.IsClientAllowedTokenRevocationFunc(c)
 }
 
-func (ctx Context) TokenRevocationAuthnSigAlgs() []jose.SignatureAlgorithm {
+func (ctx Context) TokenRevocationAuthnSigAlgs() []goidc.SignatureAlgorithm {
 	return ctx.clientAuthnSigAlgs(ctx.TokenRevocationAuthnMethods)
 }
 
-func (ctx Context) ClientAuthnSigAlgs() []jose.SignatureAlgorithm {
+func (ctx Context) ClientAuthnSigAlgs() []goidc.SignatureAlgorithm {
 	return append(ctx.PrivateKeyJWTSigAlgs, ctx.ClientSecretJWTSigAlgs...)
 }
 
-func (ctx Context) clientAuthnSigAlgs(methods []goidc.ClientAuthnType) []jose.SignatureAlgorithm {
-	var sigAlgs []jose.SignatureAlgorithm
+func (ctx Context) clientAuthnSigAlgs(methods []goidc.ClientAuthnType) []goidc.SignatureAlgorithm {
+	var sigAlgs []goidc.SignatureAlgorithm
 
 	if slices.Contains(methods, goidc.ClientAuthnPrivateKeyJWT) {
 		sigAlgs = append(sigAlgs, ctx.PrivateKeyJWTSigAlgs...)
@@ -423,7 +421,7 @@ func (ctx Context) Redirect(redirectURL string) {
 	http.Redirect(ctx.Response, ctx.Request, redirectURL, http.StatusSeeOther)
 }
 
-func (ctx Context) RenderHTML(
+func (ctx Context) WriteHTML(
 	html string,
 	params any,
 ) error {
@@ -441,11 +439,11 @@ func (ctx Context) RenderHTML(
 }
 
 func (ctx Context) UserInfoSigAlgsContainsNone() bool {
-	return slices.Contains(ctx.UserInfoSigAlgs, goidc.NoneSignatureAlgorithm)
+	return slices.Contains(ctx.UserInfoSigAlgs, goidc.None)
 }
 
 func (ctx Context) IDTokenSigAlgsContainsNone() bool {
-	return slices.Contains(ctx.IDTokenSigAlgs, goidc.NoneSignatureAlgorithm)
+	return slices.Contains(ctx.IDTokenSigAlgs, goidc.None)
 }
 
 func (ctx Context) ShouldIssueRefreshToken(
@@ -570,137 +568,72 @@ func (ctx Context) Value(key any) any {
 
 //---------------------------------------- Key Management ----------------------------------------//
 
-func (ctx Context) JWKS() (jose.JSONWebKeySet, error) {
+func (ctx Context) JWKS() (goidc.JSONWebKeySet, error) {
 	return ctx.JWKSFunc(ctx)
 }
 
-func (ctx Context) PublicJWKS() (jose.JSONWebKeySet, error) {
+func (ctx Context) PublicJWKS() (goidc.JSONWebKeySet, error) {
 	jwks, err := ctx.JWKS()
 	if err != nil {
-		return jose.JSONWebKeySet{}, err
+		return goidc.JSONWebKeySet{}, err
 	}
 
-	publicKeys := []jose.JSONWebKey{}
+	publicKeys := []goidc.JSONWebKey{}
 	for _, jwk := range jwks.Keys {
 		publicKeys = append(publicKeys, jwk.Public())
 	}
 
-	return jose.JSONWebKeySet{Keys: publicKeys}, nil
+	return goidc.JSONWebKeySet{Keys: publicKeys}, nil
 }
 
-func (ctx Context) SigAlgs() ([]jose.SignatureAlgorithm, error) {
+func (ctx Context) SigAlgs() ([]goidc.SignatureAlgorithm, error) {
 	jwks, err := ctx.JWKS()
 	if err != nil {
 		return nil, err
 	}
 
-	var algorithms []jose.SignatureAlgorithm
+	var algorithms []goidc.SignatureAlgorithm
 	for _, jwk := range jwks.Keys {
 		if jwk.Use == string(goidc.KeyUsageSignature) {
-			algorithms = append(algorithms, jose.SignatureAlgorithm(jwk.Algorithm))
+			algorithms = append(algorithms, goidc.SignatureAlgorithm(jwk.Algorithm))
 		}
 	}
 
 	return algorithms, nil
 }
 
-func (ctx Context) Sign(
-	claims map[string]any,
-	opts goidc.SignatureOptions,
-) (
-	string,
-	error,
-) {
-	if ctx.SignFunc != nil {
-		return ctx.SignFunc(ctx, claims, opts)
-	}
-
-	jwk, err := ctx.jwkByAlg(opts.Algorithm)
-	if err != nil {
-		return "", err
-	}
-
-	signedJWT, err := jwtutil.Sign(claims, jwk,
-		(&jose.SignerOptions{}).WithType(jose.ContentType(opts.JWTType)).WithHeader("kid", jwk.KeyID))
-	if err != nil {
-		return "", fmt.Errorf("could not sign the payload: %w", err)
-	}
-
-	return signedJWT, nil
-}
-
-func (ctx Context) Decrypt(
-	jwe string,
-	keyAlgs []jose.KeyAlgorithm,
-	contentAlgs []jose.ContentEncryption,
-) (
-	string,
-	error,
-) {
-	parseJWE, err := jose.ParseEncrypted(jwe, keyAlgs, contentAlgs)
-	if err != nil {
-		return "", fmt.Errorf("could not parse the jwe: %w", err)
-	}
-
-	keyID := parseJWE.Header.KeyID
-	if keyID == "" {
-		return "", errors.New("invalid jwe key ID")
-	}
-
-	if ctx.DecryptFunc != nil {
-		return ctx.DecryptFunc(ctx, jwe, goidc.DecryptionOptions{
-			KeyID:            keyID,
-			KeyAlgorithm:     jose.KeyAlgorithm(parseJWE.Header.Algorithm),
-			ContentAlgorithm: jose.ContentEncryption(parseJWE.Header.ExtraHeaders["enc"].(string)),
-		})
-	}
-
-	jwk, err := ctx.JWK(keyID)
-	if err != nil || jwk.Use != string(goidc.KeyUsageEncryption) {
-		return "", errors.New("invalid jwk used for encryption")
-	}
-
-	jws, err := parseJWE.Decrypt(jwk.Key)
-	if err != nil {
-		return "", fmt.Errorf("could not decrypt the jwe: %w", err)
-	}
-
-	return string(jws), nil
-}
-
-func (ctx Context) PublicJWK(keyID string) (jose.JSONWebKey, error) {
+func (ctx Context) PublicJWK(keyID string) (goidc.JSONWebKey, error) {
 	key, err := ctx.JWK(keyID)
 	if err != nil {
-		return jose.JSONWebKey{}, err
+		return goidc.JSONWebKey{}, err
 	}
 
 	return key.Public(), nil
 }
 
-func (ctx Context) JWK(keyID string) (jose.JSONWebKey, error) {
+func (ctx Context) JWK(keyID string) (goidc.JSONWebKey, error) {
 	jwks, err := ctx.JWKS()
 	if err != nil {
-		return jose.JSONWebKey{}, err
+		return goidc.JSONWebKey{}, err
 	}
 
-	keys := jwks.Key(keyID)
-	if len(keys) == 0 {
-		return jose.JSONWebKey{}, fmt.Errorf("could not find jwk matching id %s", keyID)
+	key, err := jwks.Key(keyID)
+	if err != nil {
+		return goidc.JSONWebKey{}, err
 	}
-	return keys[0], nil
+	return key, nil
 }
 
-// jwkByAlg tries to find a key that matches the signature algorithm from
-// the server JWKS.
-func (ctx Context) jwkByAlg(
-	alg jose.SignatureAlgorithm,
+// JWKByAlg searches a key that matches the signature algorithm from the JWKS.
+func (ctx Context) JWKByAlg(
+	alg goidc.SignatureAlgorithm,
 ) (
-	jose.JSONWebKey,
+	goidc.JSONWebKey,
 	error,
 ) {
 	jwks, err := ctx.JWKS()
 	if err != nil {
-		return jose.JSONWebKey{}, err
+		return goidc.JSONWebKey{}, err
 	}
 
 	for _, jwk := range jwks.Keys {
@@ -709,5 +642,5 @@ func (ctx Context) jwkByAlg(
 		}
 	}
 
-	return jose.JSONWebKey{}, fmt.Errorf("could not find jwk matching %s", alg)
+	return goidc.JSONWebKey{}, fmt.Errorf("could not find jwk matching %s", alg)
 }

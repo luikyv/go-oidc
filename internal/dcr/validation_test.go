@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -339,7 +338,7 @@ func TestValidateRequest(t *testing.T) {
 			func(c *goidc.Client) {
 				c.GrantTypes = append(c.GrantTypes, goidc.GrantCIBA)
 				c.CIBATokenDeliveryMode = goidc.CIBATokenDeliveryModePoll
-				c.CIBAJARSigAlg = jose.RS256
+				c.CIBAJARSigAlg = goidc.RS256
 			},
 			func(ctx oidc.Context) {
 				ctx.CIBAIsEnabled = true
@@ -350,7 +349,7 @@ func TestValidateRequest(t *testing.T) {
 					goidc.CIBATokenDeliveryModePush,
 				}
 				ctx.CIBAJARIsEnabled = true
-				ctx.CIBAJARSigAlgs = append(ctx.CIBAJARSigAlgs, jose.RS256)
+				ctx.CIBAJARSigAlgs = append(ctx.CIBAJARSigAlgs, goidc.RS256)
 			},
 			true,
 		},
@@ -359,7 +358,7 @@ func TestValidateRequest(t *testing.T) {
 			func(c *goidc.Client) {
 				c.GrantTypes = append(c.GrantTypes, goidc.GrantCIBA)
 				c.CIBATokenDeliveryMode = goidc.CIBATokenDeliveryModePoll
-				c.CIBAJARSigAlg = jose.PS256
+				c.CIBAJARSigAlg = goidc.PS256
 			},
 			func(ctx oidc.Context) {
 				ctx.CIBAIsEnabled = true
@@ -370,7 +369,7 @@ func TestValidateRequest(t *testing.T) {
 					goidc.CIBATokenDeliveryModePush,
 				}
 				ctx.CIBAJARIsEnabled = true
-				ctx.CIBAJARSigAlgs = append(ctx.CIBAJARSigAlgs, jose.RS256)
+				ctx.CIBAJARSigAlgs = append(ctx.CIBAJARSigAlgs, goidc.RS256)
 			},
 			false,
 		},

@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/google/go-cmp/cmp"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
@@ -31,9 +30,9 @@ func TestOIDCConfig(t *testing.T) {
 		Scopes: []goidc.Scope{
 			goidc.ScopeOpenID, goidc.ScopeEmail,
 		},
-		JWKSFunc: func(ctx context.Context) (jose.JSONWebKeySet, error) {
-			return jose.JSONWebKeySet{
-				Keys: []jose.JSONWebKey{tokenKey, userKey},
+		JWKSFunc: func(ctx context.Context) (goidc.JSONWebKeySet, error) {
+			return goidc.JSONWebKeySet{
+				Keys: []goidc.JSONWebKey{tokenKey, userKey},
 			}, nil
 		},
 		GrantTypes:    []goidc.GrantType{goidc.GrantAuthorizationCode},
@@ -48,18 +47,18 @@ func TestOIDCConfig(t *testing.T) {
 		ClaimsParamIsEnabled:     true,
 		ACRs:                     []goidc.ACR{"0"},
 		DisplayValues:            []goidc.DisplayValue{goidc.DisplayValuePage},
-		UserInfoDefaultSigAlg:    jose.SignatureAlgorithm(userKey.Algorithm),
-		UserInfoSigAlgs:          []jose.SignatureAlgorithm{jose.SignatureAlgorithm(userKey.Algorithm)},
-		IDTokenDefaultSigAlg:     jose.SignatureAlgorithm(userKey.Algorithm),
-		IDTokenSigAlgs:           []jose.SignatureAlgorithm{jose.SignatureAlgorithm(userKey.Algorithm)},
+		UserInfoDefaultSigAlg:    goidc.SignatureAlgorithm(userKey.Algorithm),
+		UserInfoSigAlgs:          []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(userKey.Algorithm)},
+		IDTokenDefaultSigAlg:     goidc.SignatureAlgorithm(userKey.Algorithm),
+		IDTokenSigAlgs:           []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(userKey.Algorithm)},
 		DCRIsEnabled:             true,
 		TokenAuthnMethods: []goidc.ClientAuthnType{
 			goidc.ClientAuthnNone,
 			goidc.ClientAuthnPrivateKeyJWT,
 			goidc.ClientAuthnSecretJWT,
 		},
-		PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
-		ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
+		PrivateKeyJWTSigAlgs:   []goidc.SignatureAlgorithm{goidc.PS256},
+		ClientSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
 		AuthDetailsIsEnabled:   true,
 		AuthDetailTypes:        []string{"detail_type"},
 	}
@@ -78,15 +77,15 @@ func TestOIDCConfig(t *testing.T) {
 		JWKSEndpoint:               ctx.Host + ctx.EndpointJWKS,
 		Scopes:                     []string{"openid", "email"},
 		TokenAuthnMethods:          ctx.TokenAuthnMethods,
-		TokenAuthnSigAlgs: []jose.SignatureAlgorithm{
-			jose.PS256, jose.HS256,
+		TokenAuthnSigAlgs: []goidc.SignatureAlgorithm{
+			goidc.PS256, goidc.HS256,
 		},
 		GrantTypes: ctx.GrantTypes,
-		UserInfoSigAlgs: []jose.SignatureAlgorithm{
-			jose.SignatureAlgorithm(userKey.Algorithm),
+		UserInfoSigAlgs: []goidc.SignatureAlgorithm{
+			goidc.SignatureAlgorithm(userKey.Algorithm),
 		},
-		IDTokenSigAlgs: []jose.SignatureAlgorithm{
-			jose.SignatureAlgorithm(userKey.Algorithm),
+		IDTokenSigAlgs: []goidc.SignatureAlgorithm{
+			goidc.SignatureAlgorithm(userKey.Algorithm),
 		},
 		ResponseTypes:                ctx.ResponseTypes,
 		ResponseModes:                ctx.ResponseModes,
@@ -129,9 +128,9 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		Scopes: []goidc.Scope{
 			goidc.ScopeOpenID, goidc.ScopeEmail,
 		},
-		JWKSFunc: func(ctx context.Context) (jose.JSONWebKeySet, error) {
-			return jose.JSONWebKeySet{
-				Keys: []jose.JSONWebKey{tokenKey, userInfoKey, jarmKey},
+		JWKSFunc: func(ctx context.Context) (goidc.JSONWebKeySet, error) {
+			return goidc.JSONWebKeySet{
+				Keys: []goidc.JSONWebKey{tokenKey, userInfoKey, jarmKey},
 			}, nil
 		},
 		GrantTypes:    []goidc.GrantType{goidc.GrantAuthorizationCode},
@@ -146,10 +145,10 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		ClaimsParamIsEnabled:     true,
 		ACRs:                     []goidc.ACR{"0"},
 		DisplayValues:            []goidc.DisplayValue{goidc.DisplayValuePage},
-		UserInfoDefaultSigAlg:    jose.SignatureAlgorithm(userInfoKey.Algorithm),
-		UserInfoSigAlgs:          []jose.SignatureAlgorithm{jose.SignatureAlgorithm(userInfoKey.Algorithm)},
-		IDTokenDefaultSigAlg:     jose.SignatureAlgorithm(userInfoKey.Algorithm),
-		IDTokenSigAlgs:           []jose.SignatureAlgorithm{jose.SignatureAlgorithm(userInfoKey.Algorithm)},
+		UserInfoDefaultSigAlg:    goidc.SignatureAlgorithm(userInfoKey.Algorithm),
+		UserInfoSigAlgs:          []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(userInfoKey.Algorithm)},
+		IDTokenDefaultSigAlg:     goidc.SignatureAlgorithm(userInfoKey.Algorithm),
+		IDTokenSigAlgs:           []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(userInfoKey.Algorithm)},
 		DCRIsEnabled:             true,
 		TokenAuthnMethods: []goidc.ClientAuthnType{
 			goidc.ClientAuthnNone,
@@ -159,19 +158,19 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		TokenRevocationAuthnMethods: []goidc.ClientAuthnType{
 			goidc.ClientAuthnPrivateKeyJWT,
 		},
-		PrivateKeyJWTSigAlgs:           []jose.SignatureAlgorithm{jose.PS256},
-		ClientSecretJWTSigAlgs:         []jose.SignatureAlgorithm{jose.HS256},
+		PrivateKeyJWTSigAlgs:           []goidc.SignatureAlgorithm{goidc.PS256},
+		ClientSecretJWTSigAlgs:         []goidc.SignatureAlgorithm{goidc.HS256},
 		AuthDetailsIsEnabled:           true,
 		AuthDetailTypes:                []string{"detail_type"},
 		PARIsEnabled:                   true,
 		JARIsEnabled:                   true,
 		JARIsRequired:                  true,
-		JARSigAlgs:                     []jose.SignatureAlgorithm{jose.PS256},
+		JARSigAlgs:                     []goidc.SignatureAlgorithm{goidc.PS256},
 		JARMIsEnabled:                  true,
-		JARMDefaultSigAlg:              jose.SignatureAlgorithm(jarmKey.Algorithm),
-		JARMSigAlgs:                    []jose.SignatureAlgorithm{jose.SignatureAlgorithm(jarmKey.Algorithm)},
+		JARMDefaultSigAlg:              goidc.SignatureAlgorithm(jarmKey.Algorithm),
+		JARMSigAlgs:                    []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(jarmKey.Algorithm)},
 		DPoPIsEnabled:                  true,
-		DPoPSigAlgs:                    []jose.SignatureAlgorithm{jose.PS256},
+		DPoPSigAlgs:                    []goidc.SignatureAlgorithm{goidc.PS256},
 		TokenIntrospectionIsEnabled:    true,
 		TokenIntrospectionAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnSecretJWT},
 		TokenRevocationIsEnabled:       true,
@@ -194,23 +193,23 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		TokenRevocationEndpoint:    ctx.Host + ctx.EndpointTokenRevocation,
 		Scopes:                     []string{"openid", "email"},
 		TokenAuthnMethods:          ctx.TokenAuthnMethods,
-		TokenAuthnSigAlgs: []jose.SignatureAlgorithm{
-			jose.PS256, jose.HS256,
+		TokenAuthnSigAlgs: []goidc.SignatureAlgorithm{
+			goidc.PS256, goidc.HS256,
 		},
 		TokenIntrospectionAuthnMethods: ctx.TokenIntrospectionAuthnMethods,
-		TokenIntrospectionAuthnSigAlgs: []jose.SignatureAlgorithm{
-			jose.HS256,
+		TokenIntrospectionAuthnSigAlgs: []goidc.SignatureAlgorithm{
+			goidc.HS256,
 		},
 		TokenRevocationAuthnMethods: ctx.TokenRevocationAuthnMethods,
-		TokenRevocationAuthnSigAlgs: []jose.SignatureAlgorithm{
-			jose.PS256,
+		TokenRevocationAuthnSigAlgs: []goidc.SignatureAlgorithm{
+			goidc.PS256,
 		},
 		GrantTypes: ctx.GrantTypes,
-		UserInfoSigAlgs: []jose.SignatureAlgorithm{
-			jose.SignatureAlgorithm(userInfoKey.Algorithm),
+		UserInfoSigAlgs: []goidc.SignatureAlgorithm{
+			goidc.SignatureAlgorithm(userInfoKey.Algorithm),
 		},
-		IDTokenSigAlgs: []jose.SignatureAlgorithm{
-			jose.SignatureAlgorithm(userInfoKey.Algorithm),
+		IDTokenSigAlgs: []goidc.SignatureAlgorithm{
+			goidc.SignatureAlgorithm(userInfoKey.Algorithm),
 		},
 		ResponseTypes:                ctx.ResponseTypes,
 		ResponseModes:                ctx.ResponseModes,
@@ -228,8 +227,8 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		JARIsEnabled:  true,
 		JARIsRequired: true,
 		JARAlgs:       ctx.JARSigAlgs,
-		JARMAlgs: []jose.SignatureAlgorithm{
-			jose.SignatureAlgorithm(jarmKey.Algorithm),
+		JARMAlgs: []goidc.SignatureAlgorithm{
+			goidc.SignatureAlgorithm(jarmKey.Algorithm),
 		},
 		DPoPSigAlgs: ctx.DPoPSigAlgs,
 	}

@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/luikyv/go-oidc/internal/oidctest"
@@ -86,7 +85,7 @@ func TestGenerateGrantWithDPoP(t *testing.T) {
 	ctx.Host = "https://example.com"
 	ctx.DPoPIsEnabled = true
 	ctx.JWTLifetimeSecs = 9999999999999
-	ctx.DPoPSigAlgs = []jose.SignatureAlgorithm{jose.ES256}
+	ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
 	ctx.Request.Header.Set(goidc.HeaderDPoP, "eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiYVRtMk95eXFmaHFfZk5GOVVuZXlrZG0yX0dCZnpZVldDNEI1Wlo1SzNGUSIsInkiOiI4eFRhUERFTVRtNXM1d1MzYmFvVVNNcU01R0VJWDFINzMwX1hqV2lRaGxRIn19.eyJqdGkiOiItQndDM0VTYzZhY2MybFRjIiwiaHRtIjoiUE9TVCIsImh0dSI6Imh0dHBzOi8vZXhhbXBsZS5jb20vdG9rZW4iLCJpYXQiOjE1NjIyNjUyOTZ9.AzzSCVYIimNZyJQefZq7cF252PukDvRrxMqrrcH6FFlHLvpXyk9j8ybtS36GHlnyH_uuy2djQphfyHGeDfxidQ")
 	ctx.Request.Method = http.MethodPost
 	ctx.Request.RequestURI = "/token"

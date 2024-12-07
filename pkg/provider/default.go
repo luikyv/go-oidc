@@ -1,7 +1,6 @@
 package provider
 
 import (
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -11,9 +10,9 @@ const (
 	defaultTokenLifetimeSecs       = 300
 	defaultJWTLifetimeSecs         = 600
 
-	defaultIDTokenSigAlg       = jose.RS256
-	defaultPrivateKeyJWTSigAlg = jose.RS256
-	defaultSecretJWTSigAlg     = jose.HS256
+	defaultIDTokenSigAlg       = goidc.RS256
+	defaultPrivateKeyJWTSigAlg = goidc.RS256
+	defaultSecretJWTSigAlg     = goidc.HS256
 
 	defaultEndpointWellKnown                  = "/.well-known/openid-configuration"
 	defaultEndpointJSONWebKeySet              = "/jwks"

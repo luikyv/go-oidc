@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -29,7 +28,7 @@ func TestValidateJWT(t *testing.T) {
 				Configuration: &oidc.Configuration{
 					Host:            "https://server.example.com",
 					DPoPIsEnabled:   true,
-					DPoPSigAlgs:     []jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256},
+					DPoPSigAlgs:     []goidc.SignatureAlgorithm{goidc.RS256, goidc.PS256, goidc.ES256},
 					JWTLifetimeSecs: 99999999999,
 				},
 				Request: httptest.NewRequest(http.MethodPost, "/token", nil),
@@ -46,7 +45,7 @@ func TestValidateJWT(t *testing.T) {
 				Configuration: &oidc.Configuration{
 					Host:            "https://resource.example.org",
 					DPoPIsEnabled:   true,
-					DPoPSigAlgs:     []jose.SignatureAlgorithm{jose.RS256, jose.PS256, jose.ES256},
+					DPoPSigAlgs:     []goidc.SignatureAlgorithm{goidc.RS256, goidc.PS256, goidc.ES256},
 					JWTLifetimeSecs: 99999999999,
 				},
 				Request: httptest.NewRequest(http.MethodGet, "/protectedresource", nil),
@@ -74,7 +73,7 @@ func TestValidateJWT(t *testing.T) {
 
 func TestJWKThumbprint(t *testing.T) {
 	// Given.
-	dpopSigningAlgorithms := []jose.SignatureAlgorithm{jose.ES256}
+	dpopSigningAlgorithms := []goidc.SignatureAlgorithm{goidc.ES256}
 	testCases := []struct {
 		dpopJWT  string
 		expected string

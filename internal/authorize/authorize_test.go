@@ -9,11 +9,10 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
-	"github.com/luikyv/go-oidc/internal/jwtutil"
+	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -121,7 +120,7 @@ func TestInitAuth_JAR(t *testing.T) {
 	// Given.
 	ctx, client := setUpAuth(t)
 	ctx.JARIsEnabled = true
-	ctx.JARSigAlgs = []jose.SignatureAlgorithm{jose.RS256}
+	ctx.JARSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
 
 	privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
 	publicJWK := privateJWK.Public()
@@ -138,11 +137,7 @@ func TestInitAuth_JAR(t *testing.T) {
 		"scope":             client.ScopeIDs,
 		"response_type":     goidc.ResponseTypeCode,
 	}
-	requestObject, _ := jwtutil.Sign(
-		claims,
-		privateJWK,
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
-	)
+	requestObject := oidctest.Sign(t, claims, privateJWK)
 
 	req := request{
 		ClientID: client.ID,
@@ -205,7 +200,7 @@ func TestInitAuth_JARM(t *testing.T) {
 	ctx, client := setUpAuth(t)
 	ctx.JARMIsEnabled = true
 	ctx.JARMLifetimeSecs = 60
-	ctx.JARMDefaultSigAlg = jose.SignatureAlgorithm(oidctest.PrivateJWKS(t, ctx).Keys[0].Algorithm)
+	ctx.JARMDefaultSigAlg = goidc.SignatureAlgorithm(oidctest.PrivateJWKS(t, ctx).Keys[0].Algorithm)
 	ctx.ResponseModes = append(ctx.ResponseModes, goidc.ResponseModeJWT)
 
 	req := request{
@@ -342,14 +337,13 @@ func TestInitAuth_IDTokenHint(t *testing.T) {
 	// Given.
 	ctx, client := setUpAuth(t)
 
-	idToken, err := ctx.Sign(
+	idToken, err := joseutil.Sign(
+		ctx,
 		map[string]any{
 			goidc.ClaimSubject: "random_user",
 		},
-		goidc.SignatureOptions{
-			Algorithm: ctx.IDTokenDefaultSigAlg,
-			JWTType:   goidc.JWTTypeBasic,
-		},
+		ctx.IDTokenDefaultSigAlg,
+		nil,
 	)
 	if err != nil {
 		t.Fatalf("could not sign the id token: %v", err)

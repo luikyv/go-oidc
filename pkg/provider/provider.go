@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/authorize"
 	"github.com/luikyv/go-oidc/internal/dcr"
 	"github.com/luikyv/go-oidc/internal/discovery"
@@ -213,7 +212,7 @@ func (op Provider) setDefaults() error {
 		defaultIDTokenSigAlg)
 
 	op.config.IDTokenSigAlgs = nonZeroOrDefault(op.config.IDTokenSigAlgs,
-		[]jose.SignatureAlgorithm{defaultIDTokenSigAlg})
+		[]goidc.SignatureAlgorithm{defaultIDTokenSigAlg})
 
 	op.config.Scopes = nonZeroOrDefault(op.config.Scopes,
 		[]goidc.Scope{goidc.ScopeOpenID})
@@ -287,11 +286,11 @@ func (op Provider) setDefaults() error {
 		op.config.TokenRevocationAuthnMethods...)
 	if slices.Contains(authnMethods, goidc.ClientAuthnPrivateKeyJWT) {
 		op.config.PrivateKeyJWTSigAlgs = nonZeroOrDefault(op.config.PrivateKeyJWTSigAlgs,
-			[]jose.SignatureAlgorithm{defaultPrivateKeyJWTSigAlg})
+			[]goidc.SignatureAlgorithm{defaultPrivateKeyJWTSigAlg})
 	}
 	if slices.Contains(authnMethods, goidc.ClientAuthnSecretJWT) {
 		op.config.ClientSecretJWTSigAlgs = nonZeroOrDefault(op.config.ClientSecretJWTSigAlgs,
-			[]jose.SignatureAlgorithm{defaultSecretJWTSigAlg})
+			[]goidc.SignatureAlgorithm{defaultSecretJWTSigAlg})
 	}
 
 	if op.config.DCRIsEnabled {
@@ -306,7 +305,7 @@ func (op Provider) setDefaults() error {
 
 	if op.config.JAREncIsEnabled {
 		op.config.JARContentEncAlgs = nonZeroOrDefault(op.config.JARContentEncAlgs,
-			[]jose.ContentEncryption{jose.A128CBC_HS256})
+			[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
 	}
 
 	if op.config.JARMIsEnabled {
@@ -318,9 +317,9 @@ func (op Provider) setDefaults() error {
 
 	if op.config.JARMEncIsEnabled {
 		op.config.JARMDefaultContentEncAlg = nonZeroOrDefault(op.config.JARMDefaultContentEncAlg,
-			jose.A128CBC_HS256)
+			goidc.A128CBC_HS256)
 		op.config.JARMContentEncAlgs = nonZeroOrDefault(op.config.JARMContentEncAlgs,
-			[]jose.ContentEncryption{jose.A128CBC_HS256})
+			[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
 	}
 
 	if op.config.TokenIntrospectionIsEnabled {
@@ -335,16 +334,16 @@ func (op Provider) setDefaults() error {
 
 	if op.config.IDTokenEncIsEnabled {
 		op.config.IDTokenDefaultContentEncAlg = nonZeroOrDefault(op.config.IDTokenDefaultContentEncAlg,
-			jose.A128CBC_HS256)
+			goidc.A128CBC_HS256)
 		op.config.IDTokenContentEncAlgs = nonZeroOrDefault(op.config.IDTokenContentEncAlgs,
-			[]jose.ContentEncryption{jose.A128CBC_HS256})
+			[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
 	}
 
 	if op.config.UserInfoEncIsEnabled {
 		op.config.UserInfoDefaultContentEncAlg = nonZeroOrDefault(op.config.UserInfoDefaultContentEncAlg,
-			jose.A128CBC_HS256)
+			goidc.A128CBC_HS256)
 		op.config.UserInfoContentEncAlgs = nonZeroOrDefault(op.config.UserInfoContentEncAlgs,
-			[]jose.ContentEncryption{jose.A128CBC_HS256})
+			[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
 	}
 
 	if op.config.CIBAIsEnabled {

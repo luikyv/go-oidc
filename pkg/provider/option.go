@@ -5,7 +5,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -50,7 +49,7 @@ func WithGrantSessionStorage(
 //
 //	op, err := provider.New(
 //		"http://example.com",
-//		jose.JSONWebKeySet{},
+//		goidc.JSONWebKeySet{},
 //		provider.WithPathPrefix("/auth"),
 //	)
 //	server := http.NewServeMux()
@@ -182,8 +181,8 @@ func WithClaimTypes(
 // WithUserInfoSignatureAlgs set the algorithms available to sign the user info
 // endpoint response.
 func WithUserInfoSignatureAlgs(
-	defaultAlg jose.SignatureAlgorithm,
-	algs ...jose.SignatureAlgorithm,
+	defaultAlg goidc.SignatureAlgorithm,
+	algs ...goidc.SignatureAlgorithm,
 ) ProviderOption {
 	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p Provider) error {
@@ -200,8 +199,8 @@ func WithUserInfoSignatureAlgs(
 // Clients can choose the encryption algorithms for user info by informing the
 // attributes "userinfo_signed_response_alg" and "userinfo_encrypted_response_alg".
 func WithUserInfoEncryption(
-	keyEncAlg jose.KeyAlgorithm,
-	keyEncAlgs ...jose.KeyAlgorithm,
+	keyEncAlg goidc.KeyEncryptionAlgorithm,
+	keyEncAlgs ...goidc.KeyEncryptionAlgorithm,
 ) ProviderOption {
 	keyEncAlgs = appendIfNotIn(keyEncAlgs, keyEncAlg)
 	return func(p Provider) error {
@@ -215,8 +214,8 @@ func WithUserInfoEncryption(
 // algorithm which is A128CBC-HS256.
 // To enabled encryption of user information, see [WithUserInfoEncryption].
 func WithUserInfoContentEncryptionAlgs(
-	defaultAlg jose.ContentEncryption,
-	algs ...jose.ContentEncryption,
+	defaultAlg goidc.ContentEncryptionAlgorithm,
+	algs ...goidc.ContentEncryptionAlgorithm,
 ) ProviderOption {
 	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p Provider) error {
@@ -228,8 +227,8 @@ func WithUserInfoContentEncryptionAlgs(
 
 // WithUserSignatureAlgs set the algorithms available to sign ID tokens.
 func WithIDTokenSignatureAlgs(
-	defaultAlg jose.SignatureAlgorithm,
-	algs ...jose.SignatureAlgorithm,
+	defaultAlg goidc.SignatureAlgorithm,
+	algs ...goidc.SignatureAlgorithm,
 ) ProviderOption {
 	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p Provider) error {
@@ -256,8 +255,8 @@ func WithIDTokenLifetime(secs int) ProviderOption {
 // Clients can choose the encryption algorithms for ID tokens by informing the
 // attributes "id_token_encrypted_response_alg" and "id_token_encrypted_response_enc".
 func WithIDTokenEncryption(
-	keyEncAlg jose.KeyAlgorithm,
-	keyEncAlgs ...jose.KeyAlgorithm,
+	keyEncAlg goidc.KeyEncryptionAlgorithm,
+	keyEncAlgs ...goidc.KeyEncryptionAlgorithm,
 ) ProviderOption {
 	keyEncAlgs = appendIfNotIn(keyEncAlgs, keyEncAlg)
 	return func(p Provider) error {
@@ -271,8 +270,8 @@ func WithIDTokenEncryption(
 // algorithm which is A128CBC-HS256.
 // To enabled encryption of ID tokens, see [WithIDTokenEncryption].
 func WithIDTokenContentEncryptionAlgs(
-	defaultAlg jose.ContentEncryption,
-	algs ...jose.ContentEncryption,
+	defaultAlg goidc.ContentEncryptionAlgorithm,
+	algs ...goidc.ContentEncryptionAlgorithm,
 ) ProviderOption {
 	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p Provider) error {
@@ -363,8 +362,8 @@ func WithCIBAGrant(
 }
 
 func WithCIBAJAR(
-	alg jose.SignatureAlgorithm,
-	algs ...jose.SignatureAlgorithm,
+	alg goidc.SignatureAlgorithm,
+	algs ...goidc.SignatureAlgorithm,
 ) ProviderOption {
 	algs = appendIfNotIn(algs, alg)
 	return func(p Provider) error {
@@ -375,8 +374,8 @@ func WithCIBAJAR(
 }
 
 func WithCIBAJARRequired(
-	alg jose.SignatureAlgorithm,
-	algs ...jose.SignatureAlgorithm,
+	alg goidc.SignatureAlgorithm,
+	algs ...goidc.SignatureAlgorithm,
 ) ProviderOption {
 	return func(p Provider) error {
 		p.config.CIBAJARIsRequired = true
@@ -507,8 +506,8 @@ func WithUnregisteredRedirectURIsForPAR() ProviderOption {
 // By default, the max difference between "iat" and "exp" of request objects is
 // set to [defaultJWTLifetimeSecs].
 func WithJAR(
-	alg jose.SignatureAlgorithm,
-	algs ...jose.SignatureAlgorithm,
+	alg goidc.SignatureAlgorithm,
+	algs ...goidc.SignatureAlgorithm,
 ) ProviderOption {
 	algs = appendIfNotIn(algs, alg)
 	return func(p Provider) error {
@@ -522,8 +521,8 @@ func WithJAR(
 // signed JWTs.
 // For more info, see [WithJAR].
 func WithJARRequired(
-	alg jose.SignatureAlgorithm,
-	algs ...jose.SignatureAlgorithm,
+	alg goidc.SignatureAlgorithm,
+	algs ...goidc.SignatureAlgorithm,
 ) ProviderOption {
 	return func(p Provider) error {
 		p.config.JARIsRequired = true
@@ -543,8 +542,8 @@ func WithJARByReference(requireReqURIRegistration bool) ProviderOption {
 // encrypted JWTs.
 // To enable JAR, see [WithJAR].
 func WithJAREncryption(
-	alg jose.KeyAlgorithm,
-	algs ...jose.KeyAlgorithm,
+	alg goidc.KeyEncryptionAlgorithm,
+	algs ...goidc.KeyEncryptionAlgorithm,
 ) ProviderOption {
 	algs = appendIfNotIn(algs, alg)
 	return func(p Provider) error {
@@ -558,8 +557,8 @@ func WithJAREncryption(
 // algorithm for request objects which is A128CBC-HS256.
 // To enable JAR encryption, see [WithJAREncryption].
 func WithJARContentEncryptionAlgs(
-	alg jose.ContentEncryption,
-	algs ...jose.ContentEncryption,
+	alg goidc.ContentEncryptionAlgorithm,
+	algs ...goidc.ContentEncryptionAlgorithm,
 ) ProviderOption {
 	algs = appendIfNotIn(algs, alg)
 	return func(p Provider) error {
@@ -575,12 +574,12 @@ func WithJARContentEncryptionAlgs(
 // "authorization_signed_response_alg".
 // By default, the lifetime of a response object is [defaultJWTLifetimeSecs].
 func WithJARM(
-	defaultAlg jose.SignatureAlgorithm,
-	algs ...jose.SignatureAlgorithm,
+	defaultAlg goidc.SignatureAlgorithm,
+	algs ...goidc.SignatureAlgorithm,
 ) ProviderOption {
 	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p Provider) error {
-		if slices.Contains(algs, goidc.NoneSignatureAlgorithm) {
+		if slices.Contains(algs, goidc.None) {
 			return errors.New("'none' algorithm is not allowed for JARM")
 		}
 		p.config.JARMIsEnabled = true
@@ -597,8 +596,8 @@ func WithJARM(
 // "authorization_encrypted_response_al" and "authorization_encrypted_response_enc".
 // To enabled JARM, see [WithJARM].
 func WithJARMEncryption(
-	alg jose.KeyAlgorithm,
-	algs ...jose.KeyAlgorithm,
+	alg goidc.KeyEncryptionAlgorithm,
+	algs ...goidc.KeyEncryptionAlgorithm,
 ) ProviderOption {
 	algs = appendIfNotIn(algs, alg)
 	return func(p Provider) error {
@@ -612,8 +611,8 @@ func WithJARMEncryption(
 // algorithm which is A128CBC-HS256.
 // To enabled JARM encryption, see [WithJARM].
 func WithJARMContentEncryptionAlgs(
-	defaultAlg jose.ContentEncryption,
-	algs ...jose.ContentEncryption,
+	defaultAlg goidc.ContentEncryptionAlgorithm,
+	algs ...goidc.ContentEncryptionAlgorithm,
 ) ProviderOption {
 	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p Provider) error {
@@ -626,14 +625,14 @@ func WithJARMContentEncryptionAlgs(
 // WithPrivateKeyJWTSignatureAlgs sets the signature algorithms for private key JWT
 // authentication.
 func WithPrivateKeyJWTSignatureAlgs(
-	alg jose.SignatureAlgorithm,
-	algs ...jose.SignatureAlgorithm,
+	alg goidc.SignatureAlgorithm,
+	algs ...goidc.SignatureAlgorithm,
 ) ProviderOption {
 	algs = appendIfNotIn(algs, alg)
 
 	return func(p Provider) error {
 
-		if slices.Contains(algs, goidc.NoneSignatureAlgorithm) {
+		if slices.Contains(algs, goidc.None) {
 			return errors.New("'none' algorithm is not allowed for private_key_jwt")
 		}
 
@@ -651,13 +650,13 @@ func WithPrivateKeyJWTSignatureAlgs(
 // WithSecretJWTSignatureAlgs sets the signature algorithms for private key JWT
 // authentication.
 func WithSecretJWTSignatureAlgs(
-	alg jose.SignatureAlgorithm,
-	algs ...jose.SignatureAlgorithm,
+	alg goidc.SignatureAlgorithm,
+	algs ...goidc.SignatureAlgorithm,
 ) ProviderOption {
 	algs = appendIfNotIn(algs, alg)
 	return func(p Provider) error {
 
-		if slices.Contains(algs, goidc.NoneSignatureAlgorithm) {
+		if slices.Contains(algs, goidc.None) {
 			return errors.New("'none' algorithm is not allowed for client_secret_jwt")
 		}
 
@@ -763,12 +762,12 @@ func WithTLSCertTokenBindingRequired() ProviderOption {
 // By default, the max difference between the claims "iat" and "exp" of DPoP
 // JWTs is set to [defaultJWTLifetimeSecs]
 func WithDPoP(
-	alg jose.SignatureAlgorithm,
-	algs ...jose.SignatureAlgorithm,
+	alg goidc.SignatureAlgorithm,
+	algs ...goidc.SignatureAlgorithm,
 ) ProviderOption {
 	algs = appendIfNotIn(algs, alg)
 	return func(p Provider) error {
-		if slices.Contains(algs, goidc.NoneSignatureAlgorithm) {
+		if slices.Contains(algs, goidc.None) {
 			return errors.New("'none' algorithm is not allowed for DPoP")
 		}
 		p.config.DPoPIsEnabled = true
@@ -780,8 +779,8 @@ func WithDPoP(
 // WithDPoPRequired makes DPoP required.
 // For more information, see [WithDPoP].
 func WithDPoPRequired(
-	sigAlg jose.SignatureAlgorithm,
-	sigAlgs ...jose.SignatureAlgorithm,
+	sigAlg goidc.SignatureAlgorithm,
+	sigAlgs ...goidc.SignatureAlgorithm,
 ) ProviderOption {
 	return func(p Provider) error {
 		p.config.DPoPIsRequired = true
@@ -1043,16 +1042,16 @@ func WithGeneratePairwiseSubIDFunc(
 	}
 }
 
-func WithSignFunc(f goidc.SignFunc) ProviderOption {
+func WithSignFunc(f goidc.SignerFunc) ProviderOption {
 	return func(p Provider) error {
-		p.config.SignFunc = f
+		p.config.SignerFunc = f
 		return nil
 	}
 }
 
-func WithDecryptFunc(f goidc.DecryptFunc) ProviderOption {
+func WithDecryptFunc(f goidc.DecrypterFunc) ProviderOption {
 	return func(p Provider) error {
-		p.config.DecryptFunc = f
+		p.config.DecrypterFunc = f
 		return nil
 	}
 }

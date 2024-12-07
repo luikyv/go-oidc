@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/examples/authutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/luikyv/go-oidc/pkg/provider"
@@ -40,14 +39,14 @@ func main() {
 		authutil.PrivateJWKSFunc(serverJWKSFilePath),
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithOpenIDScopeRequired(),
-		provider.WithIDTokenSignatureAlgs(jose.PS256),
-		provider.WithUserInfoSignatureAlgs(jose.PS256),
+		provider.WithIDTokenSignatureAlgs(goidc.PS256),
+		provider.WithUserInfoSignatureAlgs(goidc.PS256),
 		provider.WithPAR(10),
 		provider.WithMTLS(authutil.MTLSHost, authutil.ClientCertFunc),
-		provider.WithJARRequired(jose.PS256),
-		provider.WithJARM(jose.PS256),
+		provider.WithJARRequired(goidc.PS256),
+		provider.WithJARM(goidc.PS256),
 		provider.WithTokenAuthnMethods(goidc.ClientAuthnPrivateKeyJWT, goidc.ClientAuthnTLS),
-		provider.WithPrivateKeyJWTSignatureAlgs(jose.PS256),
+		provider.WithPrivateKeyJWTSignatureAlgs(goidc.PS256),
 		provider.WithClaimsParameter(),
 		provider.WithPKCE(goidc.CodeChallengeMethodSHA256),
 		provider.WithAuthorizationCodeGrant(),
@@ -57,7 +56,7 @@ func main() {
 		provider.WithTokenBindingRequired(),
 		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
 		provider.WithACRs(authutil.ACRs[0], authutil.ACRs...),
-		provider.WithTokenOptions(authutil.TokenOptionsFunc(jose.PS256)),
+		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.PS256)),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithPolicy(authutil.Policy(templatesDirPath)),
 		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),

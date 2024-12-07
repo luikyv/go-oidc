@@ -6,7 +6,7 @@ import (
 	"net/url"
 
 	"github.com/luikyv/go-oidc/internal/clientutil"
-	"github.com/luikyv/go-oidc/internal/jwtutil"
+	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -65,7 +65,7 @@ func redirectResponse(
 		ctx.Redirect(redirectURL)
 	case goidc.ResponseModeFormPost, goidc.ResponseModeFormPostJWT:
 		redirectParamsMap["redirect_uri"] = params.RedirectURI
-		if err := ctx.RenderHTML(formPostResponseTemplate, redirectParamsMap); err != nil {
+		if err := ctx.WriteHTML(formPostResponseTemplate, redirectParamsMap); err != nil {
 			return fmt.Errorf("could not render the html for the form_post response mode: %w", err)
 		}
 	default:
@@ -138,14 +138,11 @@ func signJARMResponse(
 		claims[k] = v
 	}
 
-	sigOpts := goidc.SignatureOptions{
-		JWTType:   goidc.JWTTypeBasic,
-		Algorithm: ctx.JARMDefaultSigAlg,
-	}
+	alg := ctx.JARMDefaultSigAlg
 	if client.JARMSigAlg != "" {
-		sigOpts.Algorithm = client.JARMSigAlg
+		alg = client.JARMSigAlg
 	}
-	resp, err := ctx.Sign(claims, sigOpts)
+	resp, err := joseutil.Sign(ctx, claims, alg, nil)
 	if err != nil {
 		return "", fmt.Errorf("could not sign the response object: %w", err)
 	}
@@ -170,7 +167,7 @@ func encryptJARMResponse(
 	if contentEncAlg == "" {
 		contentEncAlg = ctx.JARMDefaultContentEncAlg
 	}
-	jwe, err := jwtutil.Encrypt(responseJWT, jwk, contentEncAlg)
+	jwe, err := joseutil.Encrypt(responseJWT, jwk, contentEncAlg)
 	if err != nil {
 		return "", err
 	}

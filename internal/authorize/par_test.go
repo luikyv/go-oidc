@@ -5,10 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -73,10 +71,10 @@ func TestPushAuth_WithJAR(t *testing.T) {
 	// Given.
 	ctx, client := setUpPAR(t)
 	ctx.JARIsEnabled = true
-	ctx.JARSigAlgs = []jose.SignatureAlgorithm{jose.RS256}
+	ctx.JARSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
 
 	privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
-	jwks, _ := json.Marshal(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{privateJWK.Public()}})
+	jwks, _ := json.Marshal(goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{privateJWK.Public()}})
 	client.PublicJWKS = jwks
 
 	now := timeutil.TimestampNow()
@@ -90,14 +88,7 @@ func TestPushAuth_WithJAR(t *testing.T) {
 		"scope":             client.ScopeIDs,
 		"response_type":     goidc.ResponseTypeCode,
 	}
-	requestObject, err := jwtutil.Sign(
-		claims,
-		privateJWK,
-		(&jose.SignerOptions{}).WithType("jwt").WithHeader("kid", privateJWK.KeyID),
-	)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	requestObject := oidctest.Sign(t, claims, privateJWK)
 
 	req := request{
 		ClientID: client.ID,

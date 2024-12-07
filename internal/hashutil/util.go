@@ -1,12 +1,11 @@
 package hashutil
 
 import (
+	"crypto"
 	"crypto/sha256"
-	"crypto/sha512"
 	"encoding/base64"
-	"hash"
 
-	"github.com/go-jose/go-jose/v4"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -30,18 +29,20 @@ func BCryptHash(s string) string {
 }
 
 // TODO: How to handle the none algorithm?
-func HalfHash(claim string, alg jose.SignatureAlgorithm) string {
-	var hash hash.Hash
-	switch alg {
-	case jose.RS384, jose.ES384, jose.PS384, jose.HS384:
-		hash = sha512.New384()
-	case jose.RS512, jose.ES512, jose.PS512, jose.HS512:
-		hash = sha512.New()
-	default:
-		hash = sha256.New()
-	}
-
-	hash.Write([]byte(claim))
-	halfHashedClaim := hash.Sum(nil)[:hash.Size()/2]
+func HalfHash(claim string, alg goidc.SignatureAlgorithm) string {
+	h := HashAlg(alg).New()
+	h.Write([]byte(claim))
+	halfHashedClaim := h.Sum(nil)[:h.Size()/2]
 	return base64.RawURLEncoding.EncodeToString(halfHashedClaim)
+}
+
+func HashAlg(alg goidc.SignatureAlgorithm) crypto.Hash {
+	switch alg {
+	case goidc.RS512, goidc.ES512, goidc.PS512, goidc.HS512:
+		return crypto.SHA512
+	case goidc.RS384, goidc.ES384, goidc.PS384, goidc.HS384:
+		return crypto.SHA384
+	default:
+		return crypto.SHA256
+	}
 }

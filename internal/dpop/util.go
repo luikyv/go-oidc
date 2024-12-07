@@ -7,7 +7,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -29,7 +28,7 @@ type Claims struct {
 }
 
 // JWKThumbprint generates a JWK thumbprint for a valid DPoP JWT.
-func JWKThumbprint(dpopJWT string, algs []jose.SignatureAlgorithm) string {
+func JWKThumbprint(dpopJWT string, algs []goidc.SignatureAlgorithm) string {
 	// TODO: handle the error
 	parsedDPoPJWT, _ := jwt.ParseSigned(dpopJWT, algs)
 	jkt, _ := parsedDPoPJWT.Headers[0].JSONWebKey.Thumbprint(crypto.SHA256)

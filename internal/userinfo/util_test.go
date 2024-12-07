@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/google/go-cmp/cmp"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
@@ -45,7 +44,7 @@ func TestHandleUserInfoRequest(t *testing.T) {
 func TestHandleUserInfoRequest_SignedResponse(t *testing.T) {
 	// Given.
 	ctx, client, _ := setUp(t)
-	client.UserInfoSigAlg = jose.SignatureAlgorithm(oidctest.PrivateJWKS(t, ctx).Keys[0].Algorithm)
+	client.UserInfoSigAlg = goidc.SignatureAlgorithm(oidctest.PrivateJWKS(t, ctx).Keys[0].Algorithm)
 
 	// When.
 	resp, err := handleUserInfoRequest(ctx)
@@ -90,9 +89,9 @@ func TestHandleUserInfoRequest_SignedResponse(t *testing.T) {
 func TestHandleUserInfoRequest_UnsignedResponse(t *testing.T) {
 	// Given.
 	ctx, client, _ := setUp(t)
-	ctx.UserInfoSigAlgs = append(ctx.UserInfoSigAlgs, goidc.NoneSignatureAlgorithm)
+	ctx.UserInfoSigAlgs = append(ctx.UserInfoSigAlgs, goidc.None)
 
-	client.UserInfoSigAlg = goidc.NoneSignatureAlgorithm
+	client.UserInfoSigAlg = goidc.None
 
 	// When.
 	resp, err := handleUserInfoRequest(ctx)
@@ -115,7 +114,7 @@ func TestHandleUserInfoRequest_UnsignedResponse(t *testing.T) {
 		t.Fatalf("the user info response must be a jwt")
 	}
 
-	claims, err := oidctest.UnsafeClaims(resp.jwtClaims, goidc.NoneSignatureAlgorithm)
+	claims, err := oidctest.UnsafeClaims(resp.jwtClaims, goidc.None)
 	if err != nil {
 		t.Fatalf("error parsing claims: %v", err)
 	}

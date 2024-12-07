@@ -10,11 +10,8 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/go-jose/go-jose/v4"
-	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/luikyv/go-oidc/internal/jwtutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -25,7 +22,7 @@ func TestTokenAuthnSigAlgs(t *testing.T) {
 	// Given.
 	testCases := []struct {
 		ctx     oidc.Context
-		sigAlgs []jose.SignatureAlgorithm
+		sigAlgs []goidc.SignatureAlgorithm
 	}{
 		{
 			ctx: oidc.Context{
@@ -41,10 +38,10 @@ func TestTokenAuthnSigAlgs(t *testing.T) {
 					TokenAuthnMethods: []goidc.ClientAuthnType{
 						goidc.ClientAuthnPrivateKeyJWT,
 					},
-					PrivateKeyJWTSigAlgs: []jose.SignatureAlgorithm{jose.PS256},
+					PrivateKeyJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
 				},
 			},
-			sigAlgs: []jose.SignatureAlgorithm{jose.PS256},
+			sigAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
 		},
 		{
 			ctx: oidc.Context{
@@ -52,10 +49,10 @@ func TestTokenAuthnSigAlgs(t *testing.T) {
 					TokenAuthnMethods: []goidc.ClientAuthnType{
 						goidc.ClientAuthnSecretJWT,
 					},
-					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
+					ClientSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
 				},
 			},
-			sigAlgs: []jose.SignatureAlgorithm{jose.HS256},
+			sigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
 		},
 		{
 			ctx: oidc.Context{
@@ -64,11 +61,11 @@ func TestTokenAuthnSigAlgs(t *testing.T) {
 						goidc.ClientAuthnPrivateKeyJWT,
 						goidc.ClientAuthnSecretJWT,
 					},
-					PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
-					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
+					PrivateKeyJWTSigAlgs:   []goidc.SignatureAlgorithm{goidc.PS256},
+					ClientSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
 				},
 			},
-			sigAlgs: []jose.SignatureAlgorithm{jose.PS256, jose.HS256},
+			sigAlgs: []goidc.SignatureAlgorithm{goidc.PS256, goidc.HS256},
 		},
 	}
 
@@ -93,13 +90,13 @@ func TestIntrospectionClientAuthnSigAlgs(t *testing.T) {
 	// Given.
 	testCases := []struct {
 		ctx     oidc.Context
-		sigAlgs []jose.SignatureAlgorithm
+		sigAlgs []goidc.SignatureAlgorithm
 	}{
 		{
 			ctx: oidc.Context{
 				Configuration: &oidc.Configuration{
-					PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
-					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
+					PrivateKeyJWTSigAlgs:   []goidc.SignatureAlgorithm{goidc.PS256},
+					ClientSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
 				},
 			},
 			sigAlgs: nil,
@@ -107,39 +104,39 @@ func TestIntrospectionClientAuthnSigAlgs(t *testing.T) {
 		{
 			ctx: oidc.Context{
 				Configuration: &oidc.Configuration{
-					PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
-					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
+					PrivateKeyJWTSigAlgs:   []goidc.SignatureAlgorithm{goidc.PS256},
+					ClientSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
 					TokenIntrospectionAuthnMethods: []goidc.ClientAuthnType{
 						goidc.ClientAuthnPrivateKeyJWT,
 					},
 				},
 			},
-			sigAlgs: []jose.SignatureAlgorithm{jose.PS256},
+			sigAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
 		},
 		{
 			ctx: oidc.Context{
 				Configuration: &oidc.Configuration{
-					PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
-					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
+					PrivateKeyJWTSigAlgs:   []goidc.SignatureAlgorithm{goidc.PS256},
+					ClientSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
 					TokenIntrospectionAuthnMethods: []goidc.ClientAuthnType{
 						goidc.ClientAuthnSecretJWT,
 					},
 				},
 			},
-			sigAlgs: []jose.SignatureAlgorithm{jose.HS256},
+			sigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
 		},
 		{
 			ctx: oidc.Context{
 				Configuration: &oidc.Configuration{
-					PrivateKeyJWTSigAlgs:   []jose.SignatureAlgorithm{jose.PS256},
-					ClientSecretJWTSigAlgs: []jose.SignatureAlgorithm{jose.HS256},
+					PrivateKeyJWTSigAlgs:   []goidc.SignatureAlgorithm{goidc.PS256},
+					ClientSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
 					TokenIntrospectionAuthnMethods: []goidc.ClientAuthnType{
 						goidc.ClientAuthnPrivateKeyJWT,
 						goidc.ClientAuthnSecretJWT,
 					},
 				},
 			},
-			sigAlgs: []jose.SignatureAlgorithm{jose.PS256, jose.HS256},
+			sigAlgs: []goidc.SignatureAlgorithm{goidc.PS256, goidc.HS256},
 		},
 	}
 
@@ -475,8 +472,8 @@ func TestSigAlgs(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.JWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
-		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey, encryptionKey}}, nil
+	ctx.JWKSFunc = func(ctx context.Context) (goidc.JSONWebKeySet, error) {
+		return goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey, encryptionKey}}, nil
 	}
 
 	// When.
@@ -487,7 +484,7 @@ func TestSigAlgs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want := []jose.SignatureAlgorithm{jose.PS256}
+	want := []goidc.SignatureAlgorithm{goidc.PS256}
 	if !cmp.Equal(algs, want) {
 		t.Errorf("SignatureAlgorithms() = %s, want %s", algs, want)
 	}
@@ -499,8 +496,8 @@ func TestPublicKeys_HappyPath(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.JWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
-		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
+	ctx.JWKSFunc = func(ctx context.Context) (goidc.JSONWebKeySet, error) {
+		return goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}, nil
 	}
 
 	// When.
@@ -532,8 +529,8 @@ func TestPublicKey_HappyPath(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.JWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
-		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
+	ctx.JWKSFunc = func(ctx context.Context) (goidc.JSONWebKeySet, error) {
+		return goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}, nil
 	}
 
 	// When.
@@ -560,8 +557,8 @@ func TestPrivateKey_HappyPath(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.JWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
-		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
+	ctx.JWKSFunc = func(ctx context.Context) (goidc.JSONWebKeySet, error) {
+		return goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}, nil
 	}
 
 	// When.
@@ -586,8 +583,8 @@ func TestPrivateKey_KeyDoesntExist(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.JWKSFunc = func(ctx context.Context) (jose.JSONWebKeySet, error) {
-		return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{}}, nil
+	ctx.JWKSFunc = func(ctx context.Context) (goidc.JSONWebKeySet, error) {
+		return goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{}}, nil
 	}
 
 	// When.
@@ -1134,132 +1131,5 @@ func TestHTTPClient(t *testing.T) {
 	// Then.
 	if httpClient == http.DefaultClient {
 		t.Error("a different client should be returned")
-	}
-}
-
-func TestSign(t *testing.T) {
-	// Given.
-	signingKey := oidctest.PrivatePS256JWK(t, "signing_key", goidc.KeyUsageSignature)
-	ctx := oidc.Context{
-		Configuration: &oidc.Configuration{
-			JWKSFunc: func(ctx context.Context) (jose.JSONWebKeySet, error) {
-				return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{signingKey}}, nil
-			},
-		},
-	}
-
-	claims := map[string]any{
-		goidc.ClaimSubject: "random@email.com",
-	}
-	opts := goidc.SignatureOptions{
-		Algorithm: jose.PS256,
-		JWTType:   goidc.JWTTypeBasic,
-	}
-
-	// When.
-	jws, err := ctx.Sign(claims, opts)
-
-	// Then.
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	parsedJWS, err := jwt.ParseSigned(jws, []jose.SignatureAlgorithm{jose.PS256})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var got map[string]any
-	if err := parsedJWS.Claims(signingKey.Public(), &got); err != nil {
-		t.Fatal(err)
-	}
-
-	if diff := cmp.Diff(got, claims); diff != "" {
-		t.Error(diff)
-	}
-}
-
-func TestSign_WithSignFunc(t *testing.T) {
-	// Given.
-	ctx := oidc.Context{
-		Configuration: &oidc.Configuration{
-			SignFunc: func(ctx context.Context, claims map[string]any, opts goidc.SignatureOptions) (string, error) {
-				return "random_jws", nil
-			},
-		},
-	}
-
-	claims := map[string]any{
-		goidc.ClaimSubject: "random@email.com",
-	}
-	opts := goidc.SignatureOptions{
-		Algorithm: jose.PS256,
-		JWTType:   goidc.JWTTypeBasic,
-	}
-
-	// When.
-	_, err := ctx.Sign(claims, opts)
-
-	// Then.
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestDecrypt(t *testing.T) {
-	// Given.
-	encKey := oidctest.PrivateRSAOAEP256JWK(t, "enc_key")
-	ctx := oidc.Context{
-		Configuration: &oidc.Configuration{
-			JWKSFunc: func(ctx context.Context) (jose.JSONWebKeySet, error) {
-				return jose.JSONWebKeySet{Keys: []jose.JSONWebKey{encKey}}, nil
-			},
-		},
-	}
-
-	jwe, err := jwtutil.Encrypt("random_jws", encKey.Public(), jose.A128CBC_HS256)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// When.
-	jws, err := ctx.Decrypt(jwe, []jose.KeyAlgorithm{jose.RSA_OAEP_256}, []jose.ContentEncryption{jose.A128CBC_HS256})
-
-	// Then.
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if jws != "random_jws" {
-		t.Errorf("got %s, want random_jws", jws)
-	}
-}
-
-func TestDecrypt_WithDecryptFunc(t *testing.T) {
-	// Given.
-	ctx := oidc.Context{
-		Configuration: &oidc.Configuration{
-			DecryptFunc: func(ctx context.Context, jwe string, opts goidc.DecryptionOptions) (string, error) {
-				return "random_jws", nil
-			},
-		},
-	}
-
-	encKey := oidctest.PrivateRSAOAEP256JWK(t, "enc_key")
-	jwe, err := jwtutil.Encrypt("random_jws", encKey.Public(), jose.A128CBC_HS256)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// When.
-	jws, err := ctx.Decrypt(jwe, []jose.KeyAlgorithm{jose.RSA_OAEP_256}, []jose.ContentEncryption{jose.A128CBC_HS256})
-
-	// Then.
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if jws != "random_jws" {
-		t.Errorf("got %s, want random_jws", jws)
 	}
 }

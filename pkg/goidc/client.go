@@ -6,8 +6,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-
-	"github.com/go-jose/go-jose/v4"
 )
 
 // ClientManager gathers all the logic needed to manage clients.
@@ -40,8 +38,8 @@ func (c *Client) IsPublic() bool {
 // attribute or using jwks_uri.
 //
 // This function also caches the keys if they are fetched from jwks_uri.
-func (c *Client) FetchPublicJWKS(httpClient *http.Client) (jose.JSONWebKeySet, error) {
-	var jwks jose.JSONWebKeySet
+func (c *Client) FetchPublicJWKS(httpClient *http.Client) (JSONWebKeySet, error) {
+	var jwks JSONWebKeySet
 
 	if c.PublicJWKS != nil {
 		err := json.Unmarshal(c.PublicJWKS, &jwks)
@@ -49,13 +47,13 @@ func (c *Client) FetchPublicJWKS(httpClient *http.Client) (jose.JSONWebKeySet, e
 	}
 
 	if c.PublicJWKSURI == "" {
-		return jose.JSONWebKeySet{},
+		return JSONWebKeySet{},
 			errors.New("the client jwks was informed neither by value nor by reference")
 	}
 
 	rawJWKS, err := c.fetchJWKS(httpClient)
 	if err != nil {
-		return jose.JSONWebKeySet{}, err
+		return JSONWebKeySet{}, err
 	}
 	// Cache the client JWKS.
 	c.PublicJWKS = rawJWKS
@@ -88,43 +86,43 @@ type ClientMetaInfo struct {
 	PublicJWKSURI     string          `json:"jwks_uri,omitempty"`
 	PublicJWKS        json.RawMessage `json:"jwks,omitempty"`
 	// ScopeIDs contains the scopes available to the client separeted by spaces.
-	ScopeIDs              string                  `json:"scope,omitempty"`
-	SubIdentifierType     SubIdentifierType       `json:"subject_type,omitempty"`
-	SectorIdentifierURI   string                  `json:"sector_identifier_uri,omitempty"`
-	IDTokenSigAlg         jose.SignatureAlgorithm `json:"id_token_signed_response_alg,omitempty"`
-	IDTokenKeyEncAlg      jose.KeyAlgorithm       `json:"id_token_encrypted_response_alg,omitempty"`
-	IDTokenContentEncAlg  jose.ContentEncryption  `json:"id_token_encrypted_response_enc,omitempty"`
-	UserInfoSigAlg        jose.SignatureAlgorithm `json:"userinfo_signed_response_alg,omitempty"`
-	UserInfoKeyEncAlg     jose.KeyAlgorithm       `json:"userinfo_encrypted_response_alg,omitempty"`
-	UserInfoContentEncAlg jose.ContentEncryption  `json:"userinfo_encrypted_response_enc,omitempty"`
-	JARIsRequired         bool                    `json:"require_signed_request_object,omitempty"`
+	ScopeIDs              string                     `json:"scope,omitempty"`
+	SubIdentifierType     SubIdentifierType          `json:"subject_type,omitempty"`
+	SectorIdentifierURI   string                     `json:"sector_identifier_uri,omitempty"`
+	IDTokenSigAlg         SignatureAlgorithm         `json:"id_token_signed_response_alg,omitempty"`
+	IDTokenKeyEncAlg      KeyEncryptionAlgorithm     `json:"id_token_encrypted_response_alg,omitempty"`
+	IDTokenContentEncAlg  ContentEncryptionAlgorithm `json:"id_token_encrypted_response_enc,omitempty"`
+	UserInfoSigAlg        SignatureAlgorithm         `json:"userinfo_signed_response_alg,omitempty"`
+	UserInfoKeyEncAlg     KeyEncryptionAlgorithm     `json:"userinfo_encrypted_response_alg,omitempty"`
+	UserInfoContentEncAlg ContentEncryptionAlgorithm `json:"userinfo_encrypted_response_enc,omitempty"`
+	JARIsRequired         bool                       `json:"require_signed_request_object,omitempty"`
 	// TODO: Is JAR required if this is informed?
-	JARSigAlg                     jose.SignatureAlgorithm `json:"request_object_signing_alg,omitempty"`
-	JARKeyEncAlg                  jose.KeyAlgorithm       `json:"request_object_encryption_alg,omitempty"`
-	JARContentEncAlg              jose.ContentEncryption  `json:"request_object_encryption_enc,omitempty"`
-	JARMSigAlg                    jose.SignatureAlgorithm `json:"authorization_signed_response_alg,omitempty"`
-	JARMKeyEncAlg                 jose.KeyAlgorithm       `json:"authorization_encrypted_response_alg,omitempty"`
-	JARMContentEncAlg             jose.ContentEncryption  `json:"authorization_encrypted_response_enc,omitempty"`
-	TokenAuthnMethod              ClientAuthnType         `json:"token_endpoint_auth_method"`
-	TokenAuthnSigAlg              jose.SignatureAlgorithm `json:"token_endpoint_auth_signing_alg,omitempty"`
-	TokenIntrospectionAuthnMethod ClientAuthnType         `json:"introspection_endpoint_auth_method,omitempty"`
-	TokenIntrospectionAuthnSigAlg jose.SignatureAlgorithm `json:"introspection_endpoint_auth_signing_alg,omitempty"`
-	TokenRevocationAuthnMethod    ClientAuthnType         `json:"revocation_endpoint_auth_method,omitempty"`
-	TokenRevocationAuthnSigAlg    jose.SignatureAlgorithm `json:"revocation_endpoint_auth_signing_alg,omitempty"`
-	DPoPTokenBindingIsRequired    bool                    `json:"dpop_bound_access_tokens,omitempty"`
-	TLSSubDistinguishedName       string                  `json:"tls_client_auth_subject_dn,omitempty"`
+	JARSigAlg                     SignatureAlgorithm         `json:"request_object_signing_alg,omitempty"`
+	JARKeyEncAlg                  KeyEncryptionAlgorithm     `json:"request_object_encryption_alg,omitempty"`
+	JARContentEncAlg              ContentEncryptionAlgorithm `json:"request_object_encryption_enc,omitempty"`
+	JARMSigAlg                    SignatureAlgorithm         `json:"authorization_signed_response_alg,omitempty"`
+	JARMKeyEncAlg                 KeyEncryptionAlgorithm     `json:"authorization_encrypted_response_alg,omitempty"`
+	JARMContentEncAlg             ContentEncryptionAlgorithm `json:"authorization_encrypted_response_enc,omitempty"`
+	TokenAuthnMethod              ClientAuthnType            `json:"token_endpoint_auth_method"`
+	TokenAuthnSigAlg              SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg,omitempty"`
+	TokenIntrospectionAuthnMethod ClientAuthnType            `json:"introspection_endpoint_auth_method,omitempty"`
+	TokenIntrospectionAuthnSigAlg SignatureAlgorithm         `json:"introspection_endpoint_auth_signing_alg,omitempty"`
+	TokenRevocationAuthnMethod    ClientAuthnType            `json:"revocation_endpoint_auth_method,omitempty"`
+	TokenRevocationAuthnSigAlg    SignatureAlgorithm         `json:"revocation_endpoint_auth_signing_alg,omitempty"`
+	DPoPTokenBindingIsRequired    bool                       `json:"dpop_bound_access_tokens,omitempty"`
+	TLSSubDistinguishedName       string                     `json:"tls_client_auth_subject_dn,omitempty"`
 	// TLSSubAlternativeName represents a DNS name.
-	TLSSubAlternativeName     string                  `json:"tls_client_auth_san_dns,omitempty"`
-	TLSSubAlternativeNameIp   string                  `json:"tls_client_auth_san_ip,omitempty"`
-	TLSTokenBindingIsRequired bool                    `json:"tls_client_certificate_bound_access_tokens,omitempty"`
-	AuthDetailTypes           []string                `json:"authorization_data_types,omitempty"`
-	DefaultMaxAgeSecs         *int                    `json:"default_max_age,omitempty"`
-	DefaultACRValues          string                  `json:"default_acr_values,omitempty"`
-	PARIsRequired             bool                    `json:"require_pushed_authorization_requests,omitempty"`
-	CIBATokenDeliveryMode     CIBATokenDeliveryMode   `json:"backchannel_token_delivery_mode,omitempty"`
-	CIBANotificationEndpoint  string                  `json:"backchannel_client_notification_endpoint,omitempty"`
-	CIBAJARSigAlg             jose.SignatureAlgorithm `json:"backchannel_authentication_request_signing_alg,omitempty"`
-	CIBAUserCodeIsEnabled     bool                    `json:"backchannel_user_code_parameter,omitempty"`
+	TLSSubAlternativeName     string                `json:"tls_client_auth_san_dns,omitempty"`
+	TLSSubAlternativeNameIp   string                `json:"tls_client_auth_san_ip,omitempty"`
+	TLSTokenBindingIsRequired bool                  `json:"tls_client_certificate_bound_access_tokens,omitempty"`
+	AuthDetailTypes           []string              `json:"authorization_data_types,omitempty"`
+	DefaultMaxAgeSecs         *int                  `json:"default_max_age,omitempty"`
+	DefaultACRValues          string                `json:"default_acr_values,omitempty"`
+	PARIsRequired             bool                  `json:"require_pushed_authorization_requests,omitempty"`
+	CIBATokenDeliveryMode     CIBATokenDeliveryMode `json:"backchannel_token_delivery_mode,omitempty"`
+	CIBANotificationEndpoint  string                `json:"backchannel_client_notification_endpoint,omitempty"`
+	CIBAJARSigAlg             SignatureAlgorithm    `json:"backchannel_authentication_request_signing_alg,omitempty"`
+	CIBAUserCodeIsEnabled     bool                  `json:"backchannel_user_code_parameter,omitempty"`
 	// CustomAttributes holds any additional dynamic attributes a client may
 	// provide during registration.
 	// These attributes allow clients to extend their metadata beyond the

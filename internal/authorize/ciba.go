@@ -4,7 +4,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/dpop"
@@ -230,9 +229,9 @@ func validateCIBAJARClaims(
 	return nil
 }
 
-func cibaJARAlgorithms(ctx oidc.Context, client *goidc.Client) []jose.SignatureAlgorithm {
+func cibaJARAlgorithms(ctx oidc.Context, client *goidc.Client) []goidc.SignatureAlgorithm {
 	if client.CIBAJARSigAlg != "" {
-		return []jose.SignatureAlgorithm{client.CIBAJARSigAlg}
+		return []goidc.SignatureAlgorithm{client.CIBAJARSigAlg}
 	}
 	return ctx.CIBAJARSigAlgs
 }
