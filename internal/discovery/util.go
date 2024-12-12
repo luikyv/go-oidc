@@ -4,12 +4,12 @@ import (
 	"github.com/luikyv/go-oidc/internal/oidc"
 )
 
-func oidcConfig(ctx oidc.Context) openIDConfiguration {
+func NewOIDCConfig(ctx oidc.Context) OpenIDConfiguration {
 	var scopes []string
 	for _, scope := range ctx.Scopes {
 		scopes = append(scopes, scope.ID)
 	}
-	config := openIDConfiguration{
+	config := OpenIDConfiguration{
 		Issuer:                       ctx.Host,
 		AuthorizationEndpoint:        ctx.BaseURL() + ctx.EndpointAuthorize,
 		TokenEndpoint:                ctx.BaseURL() + ctx.EndpointToken,

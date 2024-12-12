@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -229,6 +230,10 @@ func (ctx Context) Client(id string) (*goidc.Client, error) {
 		}
 	}
 
+	if ctx.OpenIDFedIsEnabled && strutil.IsURL(id) {
+		return ctx.OpenIDFedClientFunc(ctx, id)
+	}
+
 	return ctx.ClientManager.Client(ctx.Context(), id)
 }
 
@@ -385,6 +390,10 @@ func (ctx Context) Write(obj any, status int) error {
 }
 
 func (ctx Context) WriteJWT(token string, status int) error {
+	return ctx.WriteJWTWithType(token, status, "application/jwt")
+}
+
+func (ctx Context) WriteJWTWithType(token string, status int, contentType string) error {
 	// Check if the request was terminated before writing anything.
 	select {
 	case <-ctx.Context().Done():
@@ -392,7 +401,7 @@ func (ctx Context) WriteJWT(token string, status int) error {
 	default:
 	}
 
-	ctx.Response.Header().Set("Content-Type", "application/jwt")
+	ctx.Response.Header().Set("Content-Type", contentType)
 	ctx.Response.WriteHeader(status)
 
 	if _, err := ctx.Response.Write([]byte(token)); err != nil {

@@ -19,7 +19,7 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 }
 
 func handleWellKnown(ctx oidc.Context) {
-	openidConfig := oidcConfig(ctx)
+	openidConfig := NewOIDCConfig(ctx)
 	if err := ctx.Write(openidConfig, http.StatusOK); err != nil {
 		ctx.WriteError(err)
 	}
