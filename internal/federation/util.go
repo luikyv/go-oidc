@@ -44,7 +44,7 @@ func Client(ctx oidc.Context, id string) (*goidc.Client, error) {
 	return &goidc.Client{
 		ID:             id,
 		ClientMetaInfo: clientStatement.Metadata.OpenIDClient.ClientMetaInfo,
-	}, errors.ErrUnsupported
+	}, nil
 }
 
 func resolveTrustChain(
