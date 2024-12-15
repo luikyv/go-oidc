@@ -71,3 +71,12 @@ func NormalizeURL(inputURL string) (string, error) {
 
 	return parsedURL.String(), nil
 }
+
+func IsURL(str string) bool {
+	parsedURL, err := url.ParseRequestURI(str)
+	if err != nil {
+		return false
+	}
+
+	return parsedURL.Scheme != "" && parsedURL.Host != ""
+}

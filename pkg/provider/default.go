@@ -14,6 +14,9 @@ const (
 	defaultPrivateKeyJWTSigAlg = goidc.RS256
 	defaultSecretJWTSigAlg     = goidc.HS256
 
+	defaultOpenIDFedStatementSigAlg    = goidc.RS256
+	defaultOpenIDFedTrustChainMaxDepth = 5
+
 	defaultEndpointWellKnown                  = "/.well-known/openid-configuration"
 	defaultEndpointJSONWebKeySet              = "/jwks"
 	defaultEndpointPushedAuthorizationRequest = "/par"
@@ -24,6 +27,7 @@ const (
 	defaultEndpointTokenIntrospection         = "/introspect"
 	defaultEndpointTokenRevocation            = "/revoke"
 	defaultEndpointCIBA                       = "/bc-authorize"
+	defaultEndpointOpenIDFederation           = "/.well-known/openid-federation"
 )
 
 func defaultTokenOptionsFunc() goidc.TokenOptionsFunc {

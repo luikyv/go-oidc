@@ -4,7 +4,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-type openIDConfiguration struct {
+type OpenIDConfiguration struct {
 	Issuer                              string                             `json:"issuer"`
 	ClientRegistrationEndpoint          string                             `json:"registration_endpoint,omitempty"`
 	AuthorizationEndpoint               string                             `json:"authorization_endpoint"`

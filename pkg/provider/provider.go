@@ -10,6 +10,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/authorize"
 	"github.com/luikyv/go-oidc/internal/dcr"
 	"github.com/luikyv/go-oidc/internal/discovery"
+	"github.com/luikyv/go-oidc/internal/federation"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/storage"
 	"github.com/luikyv/go-oidc/internal/token"
@@ -88,9 +89,9 @@ func (op *Provider) WithOptions(opts ...ProviderOption) (*Provider, error) {
 // provider.
 // This may be used to add the oidc logic to a HTTP server.
 //
-//	server := http.NewServeMux()
+//	server := httop.NewServeMux()
 //	server.Handle("/", op.Handler())
-func (op *Provider) Handler() http.Handler {
+func (op Provider) Handler() http.Handler {
 
 	server := http.NewServeMux()
 
@@ -357,6 +358,16 @@ func (op *Provider) setDefaults() error {
 	if op.config.CIBAIsEnabled {
 		op.config.EndpointCIBA = nonZeroOrDefault(op.config.EndpointCIBA,
 			defaultEndpointCIBA)
+	}
+
+	if op.config.OpenIDFedIsEnabled {
+		op.config.OpenIDFedEndpoint = nonZeroOrDefault(op.config.OpenIDFedEndpoint,
+			defaultEndpointOpenIDFederation)
+		op.config.OpenIDFedClientFunc = federation.Client
+		op.config.OpenIDFedEntityStatementSigAlgs = nonZeroOrDefault(op.config.OpenIDFedEntityStatementSigAlgs,
+			[]goidc.SignatureAlgorithm{defaultOpenIDFedStatementSigAlg})
+		op.config.OpenIDFedTrustChainMaxDepth = nonZeroOrDefault(op.config.OpenIDFedTrustChainMaxDepth,
+			defaultOpenIDFedTrustChainMaxDepth)
 	}
 
 	return nil
