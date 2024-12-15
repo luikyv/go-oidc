@@ -32,17 +32,17 @@ type Provider struct {
 // Typically, it should return both private and public key material.
 // If private keys are unavailable or granular control over signing is required,
 // "jwksFunc" can be configured to return only public key material. In such cases,
-// the [WithSignFunc] option must be provided to handle signing operations.
+// the [WithSignerFunc] option must be provided to handle signing operations.
 // Similarly, if server-side encryption (e.g., JAR encryption) is enabled,
-// the [WithDecryptionFunc] option must also be configured for decryption support.
+// the [WithDecrypterFunc] option must also be configured for decryption support.
 // For operations like signature verification, only the public key material is
 // needed, which can be retrieved using "jwksFunc".
 //
 // Default Settings:
 //   - All clients and sessions are stored in memory.
-//   - ID tokens and user info responses are signed using RS256.
-//     Ensure a JWK supporting RS256 is available in the server's JWKS.
-//     This algorithm can be overridden with the [WithUserInfoSignatureAlgs] option.
+//   - ID tokens are signed using RS256. Ensure a JWK supporting RS256 is
+//     available in the server's JWKS.
+//     This algorithm can be overridden with [WithIDTokenSignatureAlgs].
 //   - Access tokens are issued as opaque tokens.
 func New(
 	profile goidc.Profile,

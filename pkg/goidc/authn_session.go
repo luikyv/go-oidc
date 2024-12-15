@@ -13,15 +13,15 @@ type AuthnSessionManager interface {
 	SessionByCallbackID(ctx context.Context, callbackID string) (*AuthnSession, error)
 	// SessionByAuthCode fetches an authn session by the code created during the
 	// authorization code flow.
-	// If authorization code is not enalbed, this function can be left empty.
+	// If authorization code is not enabled, this function can be left empty.
 	SessionByAuthCode(ctx context.Context, authorizationCode string) (*AuthnSession, error)
 	// SessionByPushedAuthReqID fetches an authn session by the request URI created
 	// during PAR.
-	// If PAR is not enalbed, this function can be left empty.
+	// If PAR is not enabled, this function can be left empty.
 	SessionByPushedAuthReqID(ctx context.Context, id string) (*AuthnSession, error)
 	// SessionByCIBAAuthID fetches an authn session by the auth request ID created
 	// during CIBA.
-	// If CIBA is not enalbed, this function can be left empty.
+	// If CIBA is not enabled, this function can be left empty.
 	SessionByCIBAAuthID(ctx context.Context, id string) (*AuthnSession, error)
 	Delete(ctx context.Context, id string) error
 }
