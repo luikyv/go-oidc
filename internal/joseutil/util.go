@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -39,7 +40,17 @@ func Sign(
 	}
 
 	opts = fillOptions(opts, keyID, string(alg))
-	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: alg, Key: key}, opts)
+	signer, err := jose.NewSigner(
+		jose.SigningKey{
+			Algorithm: alg,
+			Key: opaqueSigner{
+				id:     keyID,
+				alg:    alg,
+				signer: key,
+			},
+		},
+		opts,
+	)
 	if err != nil {
 		return "", err
 	}
@@ -50,6 +61,32 @@ func Sign(
 	}
 
 	return jws, nil
+}
+
+type opaqueSigner struct {
+	id     string
+	alg    goidc.SignatureAlgorithm
+	signer crypto.Signer
+}
+
+func (s opaqueSigner) Public() *jose.JSONWebKey {
+	return &jose.JSONWebKey{
+		KeyID:     s.id,
+		Key:       s.signer.Public(),
+		Algorithm: string(s.alg),
+	}
+}
+
+func (s opaqueSigner) Algs() []jose.SignatureAlgorithm {
+	return []jose.SignatureAlgorithm{s.alg}
+}
+
+func (s opaqueSigner) SignPayload(payload []byte, alg jose.SignatureAlgorithm) ([]byte, error) {
+	h := hashutil.HashAlg(alg)
+	hasher := h.New()
+	hasher.Write(payload)
+	digest := hasher.Sum(nil)
+	return s.signer.Sign(rand.Reader, digest, h)
 }
 
 func SignWithJWK(
