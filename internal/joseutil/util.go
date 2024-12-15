@@ -25,32 +25,20 @@ func Sign(
 	string,
 	error,
 ) {
-	var kid string
-	var key any
-	if ctx.SignerFunc != nil {
-		signerID, signer, err := ctx.SignerFunc(ctx, alg)
-		if err != nil {
-			return "", fmt.Errorf("could not load the signer: %w", err)
-		}
-		kid = signerID
-		key = signer
-	} else {
+	if ctx.SignerFunc == nil {
 		jwk, err := ctx.JWKByAlg(alg)
 		if err != nil {
 			return "", fmt.Errorf("could not load the signing jwk: %w", err)
 		}
-		kid = jwk.KeyID
-		key = jwk
+		return SignWithJWK(claims, jwk, opts)
 	}
 
-	if opts == nil {
-		opts = &jose.SignerOptions{}
-	}
-	opts = opts.WithHeader("kid", kid).WithHeader("alg", alg)
-	if _, ok := opts.ExtraHeaders[jose.HeaderType]; !ok {
-		opts = opts.WithType("JWT")
+	keyID, key, err := ctx.SignerFunc(ctx, alg)
+	if err != nil {
+		return "", fmt.Errorf("could not load the signer: %w", err)
 	}
 
+	opts = fillOptions(opts, keyID, string(alg))
 	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: alg, Key: key}, opts)
 	if err != nil {
 		return "", err
@@ -62,6 +50,47 @@ func Sign(
 	}
 
 	return jws, nil
+}
+
+func SignWithJWK(
+	claims any,
+	jwk goidc.JSONWebKey,
+	opts *jose.SignerOptions,
+) (
+	string,
+	error,
+) {
+	opts = fillOptions(opts, jwk.KeyID, jwk.Algorithm)
+	signer, err := jose.NewSigner(
+		jose.SigningKey{
+			Algorithm: jose.SignatureAlgorithm(jwk.Algorithm),
+			Key:       jwk,
+		},
+		opts,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	jws, err := jwt.Signed(signer).Claims(claims).Serialize()
+	if err != nil {
+		return "", err
+	}
+
+	return jws, nil
+}
+
+func fillOptions(opts *jose.SignerOptions, kid, alg string) *jose.SignerOptions {
+	if opts == nil {
+		opts = &jose.SignerOptions{}
+	}
+	opts = opts.WithHeader("kid", kid).WithHeader("alg", alg)
+	// If the "typ" header was not informed, default to JWT.
+	if _, ok := opts.ExtraHeaders[jose.HeaderType]; !ok {
+		opts = opts.WithType("JWT")
+	}
+
+	return opts
 }
 
 func Decrypt(

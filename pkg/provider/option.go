@@ -49,7 +49,7 @@ func WithGrantSessionStorage(
 //
 //	op, err := provider.New(
 //		"http://example.com",
-//		goidc.JSONWebKeySet{},
+//		jwksFunc,
 //		provider.WithPathPrefix("/auth"),
 //	)
 //	server := http.NewServeMux()
