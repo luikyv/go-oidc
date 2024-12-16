@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
@@ -81,7 +80,7 @@ func generateAuthorizationCodeGrant(
 	}
 
 	if ctx.ResourceIndicatorsIsEnabled &&
-		!cmp.Equal(grantInfo.ActiveResources, session.Resources) {
+		!compareSlices(grantInfo.ActiveResources, session.Resources) {
 		tokenResp.Resources = grantInfo.ActiveResources
 	}
 
@@ -241,4 +240,18 @@ func authorizationCodeGrantInfo(
 	}
 
 	return grantInfo, nil
+}
+
+func compareSlices(s1, s2 []string) bool {
+	if len(s1) != len(s2) {
+		return false
+	}
+
+	for _, s := range s1 {
+		if !slices.Contains(s2, s) {
+			return false
+		}
+	}
+
+	return true
 }

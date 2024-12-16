@@ -68,7 +68,7 @@ func TestSign_WithSignerFunc(t *testing.T) {
 	}
 
 	// When.
-	jws, err := joseutil.Sign(ctx, claims, goidc.PS256, nil)
+	jws, err := joseutil.Sign(ctx, claims, goidc.RS256, nil)
 
 	// Then.
 	if err != nil {
@@ -77,7 +77,7 @@ func TestSign_WithSignerFunc(t *testing.T) {
 
 	parsedJWS, err := jwt.ParseSigned(
 		jws,
-		[]goidc.SignatureAlgorithm{goidc.PS256},
+		[]goidc.SignatureAlgorithm{goidc.RS256},
 	)
 	if err != nil {
 		t.Fatalf("the jws is not valid: %v", err)
