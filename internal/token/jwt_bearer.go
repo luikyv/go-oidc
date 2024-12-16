@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
@@ -93,7 +92,7 @@ func generateJWTBearerGrant(
 	}
 
 	if ctx.ResourceIndicatorsIsEnabled &&
-		!cmp.Equal(grantInfo.ActiveResources, req.resources) {
+		!compareSlices(grantInfo.ActiveResources, req.resources) {
 		tokenResp.Resources = grantInfo.ActiveResources
 	}
 

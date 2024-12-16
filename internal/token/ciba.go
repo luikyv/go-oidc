@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"slices"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
@@ -93,7 +92,7 @@ func NotifyCIBAGrant(
 	}
 
 	if ctx.ResourceIndicatorsIsEnabled &&
-		!cmp.Equal(grantInfo.ActiveResources, session.Resources) {
+		!compareSlices(grantInfo.ActiveResources, session.Resources) {
 		resp.Resources = grantInfo.ActiveResources
 	}
 
@@ -224,7 +223,7 @@ func generateCIBAGrant(ctx oidc.Context, req request) (response, error) {
 	}
 
 	if ctx.ResourceIndicatorsIsEnabled &&
-		!cmp.Equal(grantInfo.ActiveResources, session.Resources) {
+		!compareSlices(grantInfo.ActiveResources, session.Resources) {
 		resp.Resources = grantInfo.ActiveResources
 	}
 
