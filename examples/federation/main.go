@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	clientID      = "fed-client.localhost"
-	trustAnchorID = "fed-trust-anchor.localhost"
+	clientID      = "https://fed-client.localhost"
+	trustAnchorID = "https://fed-trust-anchor.localhost"
 )
 
 func main() {
@@ -42,7 +42,7 @@ func main() {
 		authutil.PrivateJWKSFunc(jwksFilePath),
 		provider.WithOpenIDFederation(
 			jwks,
-			[]string{"https://" + trustAnchorID},
+			[]string{trustAnchorID},
 			[]string{"https://intermediate-authority"},
 		),
 		provider.WithScopes(authutil.Scopes...),
@@ -124,7 +124,8 @@ func main() {
 		}
 	`), &clientOpenIDFedJWKS)
 
-	mux.HandleFunc("GET "+clientID+"/.well-known/openid-federation", func(w http.ResponseWriter, r *http.Request) {
+	clientHost, _ := url.Parse(clientID)
+	mux.HandleFunc("GET "+clientHost.Hostname()+"/.well-known/openid-federation", func(w http.ResponseWriter, r *http.Request) {
 		var publicJWKS jose.JSONWebKeySet
 		for _, jwk := range clientOpenIDFedJWKS.Keys {
 			publicJWKS.Keys = append(publicJWKS.Keys, jwk.Public())
@@ -134,8 +135,8 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 
 		claims := map[string]any{
-			"iss": "https://" + clientID,
-			"sub": "https://" + clientID,
+			"iss": clientID,
+			"sub": clientID,
 			"iat": timeutil.TimestampNow(),
 			"exp": timeutil.TimestampNow() + 600,
 			"metadata": map[string]any{
@@ -144,7 +145,7 @@ func main() {
 				"openid_relying_party": client.ClientMetaInfo,
 			},
 			"jwks":            publicJWKS,
-			"authority_hints": []string{"https://" + trustAnchorID},
+			"authority_hints": []string{trustAnchorID},
 		}
 
 		opts := (&jose.SignerOptions{})
@@ -182,85 +183,80 @@ func main() {
 		}
 	`), &trustAnchorJWKS)
 
-	mux.HandleFunc(
-		"GET "+trustAnchorID+"/.well-known/openid-federation",
-		func(w http.ResponseWriter, r *http.Request) {
-			var publicJWKS jose.JSONWebKeySet
-			for _, jwk := range trustAnchorJWKS.Keys {
-				publicJWKS.Keys = append(publicJWKS.Keys, jwk.Public())
-			}
+	trustAnchorHost, _ := url.Parse(trustAnchorID)
+	mux.HandleFunc("GET "+trustAnchorHost.Hostname()+"/.well-known/openid-federation", func(w http.ResponseWriter, r *http.Request) {
+		var publicJWKS jose.JSONWebKeySet
+		for _, jwk := range trustAnchorJWKS.Keys {
+			publicJWKS.Keys = append(publicJWKS.Keys, jwk.Public())
+		}
 
-			w.Header().Set("Content-Type", "application/entity-statement+jwt")
-			w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/entity-statement+jwt")
+		w.WriteHeader(http.StatusOK)
 
-			claims := map[string]any{
-				"iss": "https://" + trustAnchorID,
-				"sub": "https://" + trustAnchorID,
-				"iat": timeutil.TimestampNow(),
-				"exp": timeutil.TimestampNow() + 600,
-				"metadata": map[string]any{
-					"federation_entity": map[string]any{
-						"federation_fetch_endpoint": "https://" + trustAnchorID + "/fetch",
-					},
-					"openid_provider":      map[string]any{},
-					"openid_relying_party": map[string]any{},
+		claims := map[string]any{
+			"iss": trustAnchorID,
+			"sub": trustAnchorID,
+			"iat": timeutil.TimestampNow(),
+			"exp": timeutil.TimestampNow() + 600,
+			"metadata": map[string]any{
+				"federation_entity": map[string]any{
+					"federation_fetch_endpoint": trustAnchorID + "/fetch",
 				},
-				"jwks":            publicJWKS,
-				"authority_hints": []string{"https://" + trustAnchorID},
-			}
+				"openid_provider":      map[string]any{},
+				"openid_relying_party": map[string]any{},
+			},
+			"jwks":            publicJWKS,
+			"authority_hints": []string{trustAnchorID},
+		}
 
-			opts := (&jose.SignerOptions{})
-			opts = opts.WithHeader("kid", "inskvmBn2eANKit1dw-OC_oJHlqQZblzkrT79iVvBAk")
-			opts = opts.WithHeader("alg", "RS256")
-			opts = opts.WithHeader("typ", "entity-statement+jwt")
-			signer, _ := jose.NewSigner(jose.SigningKey{
-				Algorithm: "RS256",
-				Key:       trustAnchorJWKS.Key("inskvmBn2eANKit1dw-OC_oJHlqQZblzkrT79iVvBAk")[0],
-			}, opts)
-			jws, _ := jwt.Signed(signer).Claims(claims).Serialize()
+		opts := (&jose.SignerOptions{})
+		opts = opts.WithHeader("kid", "inskvmBn2eANKit1dw-OC_oJHlqQZblzkrT79iVvBAk")
+		opts = opts.WithHeader("alg", "RS256")
+		opts = opts.WithHeader("typ", "entity-statement+jwt")
+		signer, _ := jose.NewSigner(jose.SigningKey{
+			Algorithm: "RS256",
+			Key:       trustAnchorJWKS.Key("inskvmBn2eANKit1dw-OC_oJHlqQZblzkrT79iVvBAk")[0],
+		}, opts)
+		jws, _ := jwt.Signed(signer).Claims(claims).Serialize()
 
-			_, _ = w.Write([]byte(jws))
-		},
-	)
+		_, _ = w.Write([]byte(jws))
+	})
 
-	mux.HandleFunc(
-		"GET "+trustAnchorID+"/fetch",
-		func(w http.ResponseWriter, r *http.Request) {
-			var publicJWKS jose.JSONWebKeySet
-			for _, jwk := range clientOpenIDFedJWKS.Keys {
-				publicJWKS.Keys = append(publicJWKS.Keys, jwk.Public())
-			}
+	mux.HandleFunc("GET "+trustAnchorHost.Hostname()+"/fetch", func(w http.ResponseWriter, r *http.Request) {
+		var publicJWKS jose.JSONWebKeySet
+		for _, jwk := range clientOpenIDFedJWKS.Keys {
+			publicJWKS.Keys = append(publicJWKS.Keys, jwk.Public())
+		}
 
-			w.Header().Set("Content-Type", "application/entity-statement+jwt")
-			w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/entity-statement+jwt")
+		w.WriteHeader(http.StatusOK)
 
-			claims := map[string]any{
-				"iss":             "https://" + trustAnchorID,
-				"sub":             "https://" + clientID,
-				"iat":             timeutil.TimestampNow(),
-				"exp":             timeutil.TimestampNow() + 600,
-				"metadata_policy": map[string]any{},
-				"metadata": map[string]any{
-					"federation_entity":    map[string]any{},
-					"openid_provider":      map[string]any{},
-					"openid_relying_party": client.ClientMetaInfo,
-				},
-				"jwks": publicJWKS,
-			}
+		claims := map[string]any{
+			"iss":             trustAnchorID,
+			"sub":             clientID,
+			"iat":             timeutil.TimestampNow(),
+			"exp":             timeutil.TimestampNow() + 600,
+			"metadata_policy": map[string]any{},
+			"metadata": map[string]any{
+				"federation_entity":    map[string]any{},
+				"openid_provider":      map[string]any{},
+				"openid_relying_party": client.ClientMetaInfo,
+			},
+			"jwks": publicJWKS,
+		}
 
-			opts := (&jose.SignerOptions{})
-			opts = opts.WithHeader("kid", "inskvmBn2eANKit1dw-OC_oJHlqQZblzkrT79iVvBAk")
-			opts = opts.WithHeader("alg", "RS256")
-			opts = opts.WithHeader("typ", "entity-statement+jwt")
-			signer, _ := jose.NewSigner(jose.SigningKey{
-				Algorithm: "RS256",
-				Key:       trustAnchorJWKS.Key("inskvmBn2eANKit1dw-OC_oJHlqQZblzkrT79iVvBAk")[0],
-			}, opts)
-			jws, _ := jwt.Signed(signer).Claims(claims).Serialize()
+		opts := (&jose.SignerOptions{})
+		opts = opts.WithHeader("kid", "inskvmBn2eANKit1dw-OC_oJHlqQZblzkrT79iVvBAk")
+		opts = opts.WithHeader("alg", "RS256")
+		opts = opts.WithHeader("typ", "entity-statement+jwt")
+		signer, _ := jose.NewSigner(jose.SigningKey{
+			Algorithm: "RS256",
+			Key:       trustAnchorJWKS.Key("inskvmBn2eANKit1dw-OC_oJHlqQZblzkrT79iVvBAk")[0],
+		}, opts)
+		jws, _ := jwt.Signed(signer).Claims(claims).Serialize()
 
-			_, _ = w.Write([]byte(jws))
-		},
-	)
+		_, _ = w.Write([]byte(jws))
+	})
 
 	jarOpts := (&jose.SignerOptions{})
 	jarOpts = jarOpts.WithHeader("kid", clientJWKS.Keys[0].KeyID)
@@ -271,17 +267,17 @@ func main() {
 		Key:       clientJWKS.Keys[0].Key,
 	}, jarOpts)
 	jar, _ := jwt.Signed(signer).Claims(map[string]any{
-		"iss":           "https://" + clientID,
+		"iss":           clientID,
 		"aud":           authutil.Issuer,
 		"iat":           timeutil.TimestampNow(),
 		"exp":           timeutil.TimestampNow() + 600,
-		"client_id":     "https://" + clientID,
+		"client_id":     clientID,
 		"redirect_uri":  "http://localhost/callback",
 		"scope":         "openid",
 		"response_type": "code id_token",
 		"nonce":         "random_nonce",
 	}).Serialize()
-	log.Printf("%s/authorize?client_id=https://%s&response_type=code id_token&scope=openid&request=%s\n", authutil.Issuer, clientID, jar)
+	log.Printf("%s/authorize?client_id=%s&response_type=code id_token&scope=openid&request=%s\n", authutil.Issuer, clientID, jar)
 
 	if err := http.ListenAndServeTLS(authutil.Port, serverCertFilePath, serverCertKeyFilePath, mux); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
