@@ -101,10 +101,7 @@ func (op Provider) Handler() http.Handler {
 	return handler
 }
 
-func (op Provider) Run(
-	address string,
-	middlewares ...goidc.MiddlewareFunc,
-) error {
+func (op Provider) Run(address string, middlewares ...goidc.MiddlewareFunc) error {
 	handler := op.Handler()
 	for _, middleware := range middlewares {
 		handler = middleware(handler)
@@ -112,15 +109,9 @@ func (op Provider) Run(
 	return http.ListenAndServe(address, handler)
 }
 
-func (op Provider) TokenInfo(
-	ctx context.Context,
-	accessToken string,
-) (
-	goidc.TokenInfo,
-	error,
-) {
+func (op Provider) TokenInfo(ctx context.Context, tkn string) (goidc.TokenInfo, error) {
 	oidcCtx := oidc.FromContext(ctx, op.config)
-	return token.IntrospectionInfo(oidcCtx, accessToken)
+	return token.IntrospectionInfo(oidcCtx, tkn)
 }
 
 // TokenInfoFromRequest processes a request to retrieve information about an access token.
@@ -161,13 +152,7 @@ func (op Provider) TokenInfoFromRequest(
 // Client retrieves a client based on its ID.
 // It first checks if the client is a static client configured within the provider.
 // If no matching static client is found, fallback to the ClientManager.
-func (op Provider) Client(
-	ctx context.Context,
-	id string,
-) (
-	*goidc.Client,
-	error,
-) {
+func (op Provider) Client(ctx context.Context, id string) (*goidc.Client, error) {
 	for _, staticClient := range op.config.StaticClients {
 		if staticClient.ID == id {
 			return staticClient, nil
@@ -361,6 +346,8 @@ func (op Provider) setDefaults() error {
 			[]goidc.SignatureAlgorithm{defaultOpenIDFedStatementSigAlg})
 		op.config.OpenIDFedTrustChainMaxDepth = nonZeroOrDefault(op.config.OpenIDFedTrustChainMaxDepth,
 			defaultOpenIDFedTrustChainMaxDepth)
+		op.config.OpenIDFedClientRegTypes = nonZeroOrDefault(op.config.OpenIDFedClientRegTypes,
+			[]goidc.ClientRegistrationType{defaultOpenIDFedRegType})
 	}
 
 	return nil

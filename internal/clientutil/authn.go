@@ -39,13 +39,7 @@ const (
 // if the client is authenticated according to its authentication method.
 // This function always returns in case of error an instance of [goidc.Error]
 // with error code as [goidc.ErrorCodeInvalidClient].
-func Authenticated(
-	ctx oidc.Context,
-	authnCtx AuthnContext,
-) (
-	*goidc.Client,
-	error,
-) {
+func Authenticated(ctx oidc.Context, authnCtx AuthnContext) (*goidc.Client, error) {
 	id, err := extractID(ctx)
 	if err != nil {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClient,
@@ -66,11 +60,7 @@ func Authenticated(
 	return client, nil
 }
 
-func authenticate(
-	ctx oidc.Context,
-	client *goidc.Client,
-	authnCtx AuthnContext,
-) error {
+func authenticate(ctx oidc.Context, client *goidc.Client, authnCtx AuthnContext) error {
 
 	method := authnMethod(client, authnCtx)
 	switch method {

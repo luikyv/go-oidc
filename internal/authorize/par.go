@@ -73,7 +73,7 @@ func simplePushedAuthnSession(
 	*goidc.AuthnSession,
 	error,
 ) {
-	if err := validatePushedRequest(ctx, req, client); err != nil {
+	if err := validateSimplePushedRequest(ctx, req, client); err != nil {
 		return nil, err
 	}
 

@@ -25,11 +25,11 @@ func TestMetadataPolicy_Apply(t *testing.T) {
 	policy := metadataPolicy{
 		OpenIDClient: &openIDClientMetadataPolicy{},
 	}
-	statement := openIDEntityStatement{
+	statement := entityStatement{
 		Metadata: struct {
-			OpenIDAuthority *openIDAuthority "json:\"federation_entity,omitempty\""
-			OpenIDProvider  *openIDProvider  "json:\"openid_provider,omitempty\""
-			OpenIDClient    *openIDClient    "json:\"openid_relying_party,omitempty\""
+			FederationAuthority *federationAuthority "json:\"federation_entity,omitempty\""
+			OpenIDProvider      *openIDProvider      "json:\"openid_provider,omitempty\""
+			OpenIDClient        *openIDClient        "json:\"openid_relying_party,omitempty\""
 		}{
 			OpenIDClient: &openIDClient{},
 		},
