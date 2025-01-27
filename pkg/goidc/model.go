@@ -673,3 +673,10 @@ type InitBackAuthFunc func(context.Context, *AuthnSession) error
 // If an error other than [ErrorCodeAuthPending] or [ErrorCodeSlowDown] is
 // returned, the session will be terminated.
 type ValidateBackAuthFunc func(context.Context, *AuthnSession) error
+
+type ClientRegistrationType string
+
+const (
+	ClientRegistrationTypeAutomatic ClientRegistrationType = "automatic"
+	ClientRegistrationTypeExplicit  ClientRegistrationType = "explicit"
+)

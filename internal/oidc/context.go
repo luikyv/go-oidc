@@ -12,7 +12,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/strutil"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -43,10 +46,7 @@ func FromContext(ctx context.Context, config *Configuration) Context {
 	}
 }
 
-func Handler(
-	config *Configuration,
-	exec func(ctx Context),
-) http.HandlerFunc {
+func Handler(config *Configuration, exec func(ctx Context)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		exec(NewContext(w, r, config))
 	}
@@ -224,17 +224,53 @@ func (ctx Context) SaveClient(client *goidc.Client) error {
 }
 
 func (ctx Context) Client(id string) (*goidc.Client, error) {
-	for _, staticClient := range ctx.StaticClients {
-		if staticClient.ID == id {
-			return staticClient, nil
-		}
+	if client := ctx.staticClient(id); client != nil {
+		return client, nil
 	}
 
 	if ctx.OpenIDFedIsEnabled && strutil.IsURL(id) {
-		return ctx.OpenIDFedClientFunc(ctx, id)
+		return ctx.federationClient(id)
 	}
 
-	return ctx.ClientManager.Client(ctx.Context(), id)
+	client, err := ctx.ClientManager.Client(ctx.Context(), id)
+	if err != nil {
+		return nil, err
+	}
+	if isExpired(client) {
+		return nil, errors.New("client information has expired")
+	}
+
+	return client, nil
+}
+
+func (ctx Context) staticClient(id string) *goidc.Client {
+	for _, c := range ctx.StaticClients {
+		if c.ID == id {
+			return c
+		}
+	}
+	return nil
+}
+
+func (ctx Context) federationClient(id string) (*goidc.Client, error) {
+	client, err := ctx.ClientManager.Client(ctx.Context(), id)
+	if err == nil && !isExpired(client) {
+		return client, nil
+	}
+
+	client, err = ctx.OpenIDFedClientFunc(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := ctx.SaveClient(client); err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
+func isExpired(client *goidc.Client) bool {
+	return client.ExpiresAt != nil && timeutil.TimestampNow() > *client.ExpiresAt
 }
 
 func (ctx Context) DeleteClient(id string) error {
@@ -242,10 +278,7 @@ func (ctx Context) DeleteClient(id string) error {
 }
 
 func (ctx Context) SaveGrantSession(session *goidc.GrantSession) error {
-	return ctx.GrantSessionManager.Save(
-		ctx.Context(),
-		session,
-	)
+	return ctx.GrantSessionManager.Save(ctx.Context(), session)
 }
 
 func (ctx Context) GrantSessionByTokenID(id string) (*goidc.GrantSession, error) {
@@ -595,6 +628,15 @@ func (ctx Context) PublicJWKS() (goidc.JSONWebKeySet, error) {
 	return goidc.JSONWebKeySet{Keys: publicKeys}, nil
 }
 
+func (ctx Context) PublicOpenIDFedJWKS() (goidc.JSONWebKeySet, error) {
+	publicKeys := []goidc.JSONWebKey{}
+	for _, jwk := range ctx.OpenIDFedJWKS.Keys {
+		publicKeys = append(publicKeys, jwk.Public())
+	}
+
+	return goidc.JSONWebKeySet{Keys: publicKeys}, nil
+}
+
 func (ctx Context) SigAlgs() ([]goidc.SignatureAlgorithm, error) {
 	jwks, err := ctx.JWKS()
 	if err != nil {
@@ -634,12 +676,7 @@ func (ctx Context) JWK(keyID string) (goidc.JSONWebKey, error) {
 }
 
 // JWKByAlg searches a key that matches the signature algorithm from the JWKS.
-func (ctx Context) JWKByAlg(
-	alg goidc.SignatureAlgorithm,
-) (
-	goidc.JSONWebKey,
-	error,
-) {
+func (ctx Context) JWKByAlg(alg goidc.SignatureAlgorithm) (goidc.JSONWebKey, error) {
 	jwks, err := ctx.JWKS()
 	if err != nil {
 		return goidc.JSONWebKey{}, err
@@ -652,4 +689,29 @@ func (ctx Context) JWKByAlg(
 	}
 
 	return goidc.JSONWebKey{}, fmt.Errorf("could not find jwk matching %s", alg)
+}
+
+// TODO: Improve this. signer func, jwks func, ...
+func (ctx Context) OpenIDFedSign(claims any, opts *jose.SignerOptions) (string, error) {
+	key := ctx.OpenIDFedJWKS.Keys[0]
+
+	if opts == nil {
+		opts = &jose.SignerOptions{}
+	}
+	opts = opts.WithHeader("kid", key.KeyID).WithHeader("alg", key.Algorithm)
+	if _, ok := opts.ExtraHeaders[jose.HeaderType]; !ok {
+		opts = opts.WithType("JWT")
+	}
+
+	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.SignatureAlgorithm(key.Algorithm), Key: key}, opts)
+	if err != nil {
+		return "", err
+	}
+
+	jws, err := jwt.Signed(signer).Claims(claims).Serialize()
+	if err != nil {
+		return "", err
+	}
+
+	return jws, nil
 }

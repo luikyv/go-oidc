@@ -26,7 +26,9 @@ type Client struct {
 	HashedSecret string `json:"hashed_secret,omitempty"`
 	// HashedRegistrationAccessToken is the hash of the registration access token
 	// generated during dynamic client registration.
-	HashedRegistrationAccessToken string `json:"hashed_registration_access_token,omitempty"`
+	HashedRegistrationAccessToken string                 `json:"hashed_registration_access_token,omitempty"`
+	RegistrationType              ClientRegistrationType `json:"registration_type,omitempty"`
+	ExpiresAt                     *int                   `json:"expires_at,omitempty"`
 	ClientMetaInfo
 }
 
@@ -84,7 +86,8 @@ type ClientMetaInfo struct {
 	GrantTypes        []GrantType     `json:"grant_types"`
 	ResponseTypes     []ResponseType  `json:"response_types"`
 	PublicJWKSURI     string          `json:"jwks_uri,omitempty"`
-	PublicJWKS        json.RawMessage `json:"jwks,omitempty"`
+	// TODO: Try to find a better way. Maybe a struct with the way fields?
+	PublicJWKS json.RawMessage `json:"jwks,omitempty"`
 	// ScopeIDs contains the scopes available to the client separeted by spaces.
 	ScopeIDs              string                     `json:"scope,omitempty"`
 	SubIdentifierType     SubIdentifierType          `json:"subject_type,omitempty"`

@@ -8,7 +8,7 @@ import (
 	"slices"
 )
 
-type metadataPolicyPrimitiveOps[T comparable] struct {
+type metadataPolicyPrimitiveOps[T any] struct {
 	Value     primitiveOperatorValue[T]     `json:"value"`
 	Default   primitiveOperatorDefault[T]   `json:"default"`
 	OneOf     primitiveOperatorOneOf[T]     `json:"one_of"`
@@ -69,7 +69,7 @@ func (ops metadataPolicyPrimitiveOps[T]) apply(field T) (T, error) {
 	return field, nil
 }
 
-type metadataPolicySliceOps[T comparable] struct {
+type metadataPolicySliceOps[T any] struct {
 	Value      sliceOperatorValue[T]      `json:"value"`
 	Add        sliceOperatorAdd[T]        `json:"add"`
 	Default    sliceOperatorDefault[T]    `json:"default"`
@@ -152,7 +152,7 @@ func (ops metadataPolicySliceOps[T]) apply(field []T) ([]T, error) {
 	return field, nil
 }
 
-type primitiveOperatorValue[T comparable] struct {
+type primitiveOperatorValue[T any] struct {
 	isSet bool
 	value T
 }
@@ -197,7 +197,7 @@ func (op primitiveOperatorValue[T]) apply(field T) (T, error) {
 	return op.value, nil
 }
 
-type primitiveOperatorDefault[T comparable] struct {
+type primitiveOperatorDefault[T any] struct {
 	value T
 }
 
@@ -212,12 +212,12 @@ func (p *primitiveOperatorDefault[T]) UnmarshalJSON(data []byte) error {
 }
 
 func (highOp primitiveOperatorDefault[T]) merge(lowOp primitiveOperatorDefault[T]) (primitiveOperatorDefault[T], error) {
-	var defaultT T
-	if lowOp.value == defaultT {
+	var zeroValue T
+	if reflect.DeepEqual(lowOp.value, zeroValue) {
 		return highOp, nil
 	}
 
-	if highOp.value == defaultT {
+	if reflect.DeepEqual(highOp.value, zeroValue) {
 		return lowOp, nil
 	}
 
@@ -229,19 +229,19 @@ func (highOp primitiveOperatorDefault[T]) merge(lowOp primitiveOperatorDefault[T
 }
 
 func (op primitiveOperatorDefault[T]) apply(field T) (T, error) {
-	var defaultT T
-	if op.value == defaultT {
+	var zeroValue T
+	if reflect.DeepEqual(op.value, zeroValue) {
 		return field, nil
 	}
 
-	if field == defaultT {
+	if reflect.DeepEqual(field, zeroValue) {
 		return op.value, nil
 	}
 
 	return field, nil
 }
 
-type primitiveOperatorOneOf[T comparable] []T
+type primitiveOperatorOneOf[T any] []T
 
 func (highOp primitiveOperatorOneOf[T]) merge(lowOp primitiveOperatorOneOf[T]) (primitiveOperatorOneOf[T], error) {
 	if len(lowOp) == 0 {
@@ -279,7 +279,7 @@ func (op primitiveOperatorOneOf[T]) apply(field T) (T, error) {
 	return field, nil
 }
 
-type sliceOperatorValue[T comparable] struct {
+type sliceOperatorValue[T any] struct {
 	isSet bool
 	value []T
 }
@@ -324,7 +324,7 @@ func (op sliceOperatorValue[T]) apply(field []T) ([]T, error) {
 	return op.value, nil
 }
 
-type sliceOperatorAdd[T comparable] []T
+type sliceOperatorAdd[T any] []T
 
 func (highOp sliceOperatorAdd[T]) merge(lowOp sliceOperatorAdd[T]) (sliceOperatorAdd[T], error) {
 	if len(lowOp) == 0 {
@@ -350,7 +350,7 @@ func (op sliceOperatorAdd[T]) apply(field []T) ([]T, error) {
 	return field, nil
 }
 
-type sliceOperatorDefault[T comparable] []T
+type sliceOperatorDefault[T any] []T
 
 func (highOp sliceOperatorDefault[T]) merge(lowOp sliceOperatorDefault[T]) (sliceOperatorDefault[T], error) {
 	if len(lowOp) == 0 {
@@ -380,7 +380,7 @@ func (op sliceOperatorDefault[T]) apply(field []T) ([]T, error) {
 	return field, nil
 }
 
-type sliceOperatorSubsetOf[T comparable] []T
+type sliceOperatorSubsetOf[T any] []T
 
 func (highOp sliceOperatorSubsetOf[T]) merge(lowOp sliceOperatorSubsetOf[T]) (sliceOperatorSubsetOf[T], error) {
 	if len(lowOp) == 0 {
@@ -420,7 +420,7 @@ func (op sliceOperatorSubsetOf[T]) apply(field []T) ([]T, error) {
 	return subSet, nil
 }
 
-type sliceOperatorSupersetOf[T comparable] []T
+type sliceOperatorSupersetOf[T any] []T
 
 func (highOp sliceOperatorSupersetOf[T]) merge(lowOp sliceOperatorSupersetOf[T]) (sliceOperatorSupersetOf[T], error) {
 	if len(lowOp) == 0 {
@@ -450,23 +450,23 @@ func (op sliceOperatorSupersetOf[T]) apply(field []T) ([]T, error) {
 	return field, nil
 }
 
-type primitiveOperatorEssential[T comparable] bool
+type primitiveOperatorEssential[T any] bool
 
 func (highOp primitiveOperatorEssential[T]) merge(lowOp primitiveOperatorEssential[T]) (primitiveOperatorEssential[T], error) {
 	return highOp || lowOp, nil
 }
 
 func (op primitiveOperatorEssential[T]) apply(field T) (T, error) {
-	var defaultT T
+	var zeroValue T
 	isEssential := bool(op)
-	if isEssential && field == defaultT {
-		return defaultT, fmt.Errorf("field %v is essential by was not informed", field)
+	if isEssential && reflect.DeepEqual(field, zeroValue) {
+		return zeroValue, fmt.Errorf("field %v is essential by was not informed", field)
 	}
 
 	return field, nil
 }
 
-type sliceOperatorEssential[T comparable] bool
+type sliceOperatorEssential[T any] bool
 
 func (highOp sliceOperatorEssential[T]) merge(lowOp sliceOperatorEssential[T]) (sliceOperatorEssential[T], error) {
 	return highOp || lowOp, nil
@@ -481,7 +481,7 @@ func (op sliceOperatorEssential[T]) apply(field []T) ([]T, error) {
 	return field, nil
 }
 
-func compareSlices[T comparable](x, y []T) bool {
+func compareSlices[T any](x, y []T) bool {
 	if len(x) != len(y) {
 		return false
 	}

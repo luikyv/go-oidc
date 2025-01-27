@@ -14,11 +14,11 @@ import (
 )
 
 // validateRequest validates the parameters sent in an authorization request.
-func validateRequest(
-	ctx oidc.Context,
-	req request,
-	c *goidc.Client,
-) error {
+func validateRequest(ctx oidc.Context, req request, c *goidc.Client) error {
+	if c.RegistrationType == goidc.ClientRegistrationTypeAutomatic {
+		return goidc.NewError(goidc.ErrorCodeAccessDenied,
+			"asymmetric cryptography myst be used to authenticate requests when using automatic registration")
+	}
 	return validateParams(ctx, req.AuthorizationParameters, c)
 }
 
@@ -120,6 +120,16 @@ func validatePushedRequestWithJAR(
 	// "...It MUST contain all the parameters (including extension parameters)
 	// used to process the OAuth 2.0 [RFC6749] authorization request..."
 	req.AuthorizationParameters = jar.AuthorizationParameters
+	return validatePushedRequest(ctx, req, c)
+}
+
+func validateSimplePushedRequest(ctx oidc.Context, req request, c *goidc.Client) error {
+	if c.RegistrationType == goidc.ClientRegistrationTypeAutomatic {
+		if c.TokenAuthnMethod != goidc.ClientAuthnPrivateKeyJWT && c.TokenAuthnMethod != goidc.ClientAuthnSelfSignedTLS {
+			return goidc.NewError(goidc.ErrorCodeAccessDenied,
+				"asymmetric cryptography myst be used to authenticate requests when using automatic registration")
+		}
+	}
 	return validatePushedRequest(ctx, req, c)
 }
 

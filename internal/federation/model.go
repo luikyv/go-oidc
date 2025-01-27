@@ -6,7 +6,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-type openIDEntityStatement struct {
+type entityStatement struct {
 	Issuer         string             `json:"iss"`
 	Subject        string             `json:"sub"`
 	IssuedAt       int                `json:"iat"`
@@ -14,19 +14,20 @@ type openIDEntityStatement struct {
 	JWKS           jose.JSONWebKeySet `json:"jwks"`
 	AuthorityHints []string           `json:"authority_hints,omitempty"`
 	Metadata       struct {
-		OpenIDAuthority *openIDAuthority `json:"federation_entity,omitempty"`
-		OpenIDProvider  *openIDProvider  `json:"openid_provider,omitempty"`
-		OpenIDClient    *openIDClient    `json:"openid_relying_party,omitempty"`
+		FederationAuthority *federationAuthority `json:"federation_entity,omitempty"`
+		OpenIDProvider      *openIDProvider      `json:"openid_provider,omitempty"`
+		OpenIDClient        *openIDClient        `json:"openid_relying_party,omitempty"`
 	} `json:"metadata"`
 	MetadataPolicy *metadataPolicy `json:"metadata_policy,omitempty"`
 	signed         string          `json:"-"`
 }
 
-func (s openIDEntityStatement) Signed() string {
+func (s entityStatement) Signed() string {
 	return s.signed
 }
 
 type openIDProvider struct {
+	ClientRegistrationTypes []goidc.ClientRegistrationType `json:"client_registration_types_supported"`
 	discovery.OpenIDConfiguration
 }
 
@@ -34,7 +35,7 @@ type openIDClient struct {
 	goidc.ClientMetaInfo
 }
 
-type openIDAuthority struct {
+type federationAuthority struct {
 	FetchEndpoint    string `json:"federation_fetch_endpoint"`
 	ListEndpoint     string `json:"federation_list_endpoint"`
 	ResolveEndpoint  string `json:"federation_resolve_endpoint"`

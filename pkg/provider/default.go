@@ -16,6 +16,7 @@ const (
 
 	defaultOpenIDFedStatementSigAlg    = goidc.RS256
 	defaultOpenIDFedTrustChainMaxDepth = 5
+	defaultOpenIDFedRegType            = goidc.ClientRegistrationTypeAutomatic
 
 	defaultEndpointWellKnown                  = "/.well-known/openid-configuration"
 	defaultEndpointJSONWebKeySet              = "/jwks"

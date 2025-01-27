@@ -113,10 +113,10 @@ func (op *Provider) Run(address string, middlewares ...goidc.MiddlewareFunc) err
 	return http.ListenAndServe(address, handler)
 }
 
-func (op *Provider) TokenInfo(ctx context.Context, accessToken string) (goidc.TokenInfo, error,
+func (op *Provider) TokenInfo(ctx context.Context, tkn string) (goidc.TokenInfo, error,
 ) {
 	oidcCtx := oidc.FromContext(ctx, &op.config)
-	return token.IntrospectionInfo(oidcCtx, accessToken)
+	return token.IntrospectionInfo(oidcCtx, tkn)
 }
 
 // TokenInfoFromRequest processes a request to retrieve information about an access token.
@@ -368,6 +368,8 @@ func (op *Provider) setDefaults() error {
 			[]goidc.SignatureAlgorithm{defaultOpenIDFedStatementSigAlg})
 		op.config.OpenIDFedTrustChainMaxDepth = nonZeroOrDefault(op.config.OpenIDFedTrustChainMaxDepth,
 			defaultOpenIDFedTrustChainMaxDepth)
+		op.config.OpenIDFedClientRegTypes = nonZeroOrDefault(op.config.OpenIDFedClientRegTypes,
+			[]goidc.ClientRegistrationType{defaultOpenIDFedRegType})
 	}
 
 	return nil

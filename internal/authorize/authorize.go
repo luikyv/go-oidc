@@ -21,7 +21,7 @@ func initAuth(ctx oidc.Context, req request) error {
 
 	c, err := ctx.Client(req.ClientID)
 	if err != nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client_id")
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client_id", err)
 	}
 
 	// Check that the client is allowed to call the authorization endpoint.

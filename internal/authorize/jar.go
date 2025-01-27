@@ -185,11 +185,7 @@ func jarAlgorithms(ctx oidc.Context, client *goidc.Client) []goidc.SignatureAlgo
 	return jarAlgorithms
 }
 
-func validateClaims(
-	ctx oidc.Context,
-	claims jwt.Claims,
-	client *goidc.Client,
-) error {
+func validateClaims(ctx oidc.Context, claims jwt.Claims, client *goidc.Client) error {
 
 	if ctx.Profile.IsFAPI() {
 

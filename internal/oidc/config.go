@@ -197,4 +197,5 @@ type Configuration struct {
 	OpenIDFedEntityStatementSigAlgs []goidc.SignatureAlgorithm
 	OpenIDFedTrustChainMaxDepth     int
 	OpenIDFedClientFunc             func(Context, string) (*goidc.Client, error)
+	OpenIDFedClientRegTypes         []goidc.ClientRegistrationType
 }
