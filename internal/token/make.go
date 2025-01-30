@@ -203,6 +203,16 @@ func makeJWTToken(
 		claims[k] = v
 	}
 
+	if opts.JWTSigAlg == goidc.None {
+		return Token{
+			ID:           jwtID,
+			Format:       goidc.TokenFormatJWT,
+			Value:        joseutil.Unsigned(claims),
+			Type:         tokenType,
+			LifetimeSecs: opts.LifetimeSecs,
+		}, nil
+	}
+
 	accessToken, err := joseutil.Sign(ctx, claims, opts.JWTSigAlg, (&jose.SignerOptions{}).WithType("at+jwt"))
 	if err != nil {
 		return Token{}, fmt.Errorf("could not sign the access token: %w", err)
