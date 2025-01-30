@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/internal/token"
@@ -227,5 +228,40 @@ func TestMakeToken_OpaqueToken(t *testing.T) {
 
 	if token.ID != token.Value {
 		t.Errorf("ID = %s, want %s", token.ID, token.Value)
+	}
+}
+
+func TestMakeToken_UnsignedJWTToken(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.TokenOptionsFunc = func(
+		grantInfo goidc.GrantInfo,
+		client *goidc.Client,
+	) goidc.TokenOptions {
+		return goidc.NewJWTTokenOptions(goidc.None, 60)
+	}
+	client, _ := oidctest.NewClient(t)
+	grantInfo := goidc.GrantInfo{
+		Subject:  "random_subject",
+		ClientID: client.ID,
+		AdditionalTokenClaims: map[string]any{
+			"random_claim": "random_value",
+		},
+	}
+
+	// When.
+	token, err := token.Make(ctx, grantInfo, client)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if token.Format != goidc.TokenFormatJWT {
+		t.Errorf("Format = %s, want %s", token.Format, goidc.TokenFormatJWT)
+	}
+
+	if !joseutil.IsUnsignedJWT(token.Value) {
+		t.Errorf("got %s, want unsigned", token.Value)
 	}
 }

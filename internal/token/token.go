@@ -32,13 +32,7 @@ func ExtractID(ctx oidc.Context, token string) (string, error) {
 }
 
 // validClaims verifies a token and returns its claims.
-func validClaims(
-	ctx oidc.Context,
-	token string,
-) (
-	map[string]any,
-	error,
-) {
+func validClaims(ctx oidc.Context, token string) (map[string]any, error) {
 	algs, err := ctx.SigAlgs()
 	if err != nil {
 		return nil, err
@@ -77,13 +71,7 @@ func validClaims(
 	return rawClaims, nil
 }
 
-func generateGrant(
-	ctx oidc.Context,
-	req request,
-) (
-	tokenResp response,
-	err error,
-) {
+func generateGrant(ctx oidc.Context, req request) (tokenResp response, err error) {
 
 	if !slices.Contains(ctx.GrantTypes, req.grantType) {
 		return response{}, goidc.NewError(goidc.ErrorCodeUnsupportedGrantType,
