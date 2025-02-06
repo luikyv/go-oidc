@@ -105,7 +105,7 @@ func setUpIntrospection(t *testing.T) (ctx oidc.Context, client *goidc.Client) {
 
 	ctx = oidctest.NewContext(t)
 	ctx.TokenIntrospectionIsEnabled = true
-	ctx.IsClientAllowedTokenIntrospectionFunc = func(c *goidc.Client) bool {
+	ctx.IsClientAllowedTokenIntrospectionFunc = func(_ *goidc.Client, _ goidc.TokenInfo) bool {
 		return true
 	}
 

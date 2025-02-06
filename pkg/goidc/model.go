@@ -638,6 +638,8 @@ type JWTBearerGrantInfo struct {
 
 type IsClientAllowedFunc func(*Client) bool
 
+type IsClientAllowedTokenInstrospectionFunc func(*Client, TokenInfo) bool
+
 // CompareAuthDetailsFunc defines a function used in authorization_code and
 // refresh_token grant types to validate that the requested authorization details
 // are consistent with the granted ones.

@@ -191,8 +191,7 @@ func (op Provider) NotifyCIBAFailure(ctx context.Context, authReqID string, err 
 // MakeToken generates a new access token based on the provided grant information
 // and stores the corresponding grant session.
 //
-// This method is intended for scenarios where a token is required for the provider itself,
-// rather than for a specific client.
+// This method is intended for scenarios where a token is required for the provider itself.
 func (op Provider) MakeToken(ctx context.Context, gi goidc.GrantInfo) (string, error) {
 	oidcCtx := oidc.FromContext(ctx, op.config)
 	client := &goidc.Client{

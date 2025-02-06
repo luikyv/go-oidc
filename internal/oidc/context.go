@@ -55,12 +55,12 @@ func (ctx Context) TokenAuthnSigAlgs() []goidc.SignatureAlgorithm {
 	return ctx.clientAuthnSigAlgs(ctx.TokenAuthnMethods)
 }
 
-func (ctx Context) IsClientAllowedTokenIntrospection(c *goidc.Client) bool {
+func (ctx Context) IsClientAllowedTokenIntrospection(c *goidc.Client, info goidc.TokenInfo) bool {
 	if ctx.IsClientAllowedTokenIntrospectionFunc == nil {
 		return false
 	}
 
-	return ctx.IsClientAllowedTokenIntrospectionFunc(c)
+	return ctx.IsClientAllowedTokenIntrospectionFunc(c, info)
 }
 
 func (ctx Context) TokenIntrospectionAuthnSigAlgs() []goidc.SignatureAlgorithm {
