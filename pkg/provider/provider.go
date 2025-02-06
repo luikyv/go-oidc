@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"reflect"
 	"slices"
@@ -99,10 +100,7 @@ func (op Provider) Handler() http.Handler {
 	return handler
 }
 
-func (op Provider) Run(
-	address string,
-	middlewares ...goidc.MiddlewareFunc,
-) error {
+func (op Provider) Run(address string, middlewares ...goidc.MiddlewareFunc) error {
 	handler := op.Handler()
 	for _, middleware := range middlewares {
 		handler = middleware(handler)
@@ -110,12 +108,7 @@ func (op Provider) Run(
 	return http.ListenAndServe(address, handler)
 }
 
-func (op Provider) TokenInfo(
-	ctx context.Context,
-	accessToken string,
-) (
-	goidc.TokenInfo,
-	error,
+func (op Provider) TokenInfo(ctx context.Context, accessToken string) (goidc.TokenInfo, error,
 ) {
 	oidcCtx := oidc.FromContext(ctx, op.config)
 	return token.IntrospectionInfo(oidcCtx, accessToken)
@@ -127,13 +120,7 @@ func (op Provider) TokenInfo(
 // if required.
 // If the token is valid and PoP validation (if any) is successful, the function
 // returns token information; otherwise, it returns an appropriate error.
-func (op Provider) TokenInfoFromRequest(
-	w http.ResponseWriter,
-	r *http.Request,
-) (
-	goidc.TokenInfo,
-	error,
-) {
+func (op Provider) TokenInfoFromRequest(w http.ResponseWriter, r *http.Request) (goidc.TokenInfo, error) {
 	ctx := oidc.NewContext(w, r, op.config)
 
 	accessToken, _, ok := ctx.AuthorizationToken()
@@ -159,13 +146,7 @@ func (op Provider) TokenInfoFromRequest(
 // Client retrieves a client based on its ID.
 // It first checks if the client is a static client configured within the provider.
 // If no matching static client is found, fallback to the ClientManager.
-func (op Provider) Client(
-	ctx context.Context,
-	id string,
-) (
-	*goidc.Client,
-	error,
-) {
+func (op Provider) Client(ctx context.Context, id string) (*goidc.Client, error) {
 	for _, staticClient := range op.config.StaticClients {
 		if staticClient.ID == id {
 			return staticClient, nil
@@ -205,6 +186,30 @@ func (op Provider) NotifyCIBASuccess(ctx context.Context, authReqID string) erro
 func (op Provider) NotifyCIBAFailure(ctx context.Context, authReqID string, err goidc.Error) error {
 	oidcCtx := oidc.FromContext(ctx, op.config)
 	return token.NotifyCIBAGrantFailure(oidcCtx, authReqID, err)
+}
+
+// MakeToken generates a new access token based on the provided grant information
+// and stores the corresponding grant session.
+//
+// This method is intended for scenarios where a token is required for the provider itself,
+// rather than for a specific client.
+func (op Provider) MakeToken(ctx context.Context, gi goidc.GrantInfo) (string, error) {
+	oidcCtx := oidc.FromContext(ctx, op.config)
+	client := &goidc.Client{
+		ID: gi.ClientID,
+	}
+
+	tkn, err := token.Make(oidcCtx, gi, client)
+	if err != nil {
+		return "", fmt.Errorf("could not generate a token: %w", err)
+	}
+
+	grantSession := token.NewGrantSession(gi, tkn)
+	if err := oidcCtx.SaveGrantSession(grantSession); err != nil {
+		return "", fmt.Errorf("could not store the grant session: %w", err)
+	}
+
+	return tkn.Value, nil
 }
 
 func (op Provider) setDefaults() error {

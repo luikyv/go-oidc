@@ -35,14 +35,7 @@ func MakeIDToken(
 	return encryptIDToken(ctx, client, idToken)
 }
 
-func Make(
-	ctx oidc.Context,
-	grantInfo goidc.GrantInfo,
-	client *goidc.Client,
-) (
-	Token,
-	error,
-) {
+func Make(ctx oidc.Context, grantInfo goidc.GrantInfo, client *goidc.Client) (Token, error) {
 	opts := ctx.TokenOptions(grantInfo, client)
 	if opts.Format == goidc.TokenFormatJWT {
 		return makeJWTToken(ctx, grantInfo, opts)
@@ -51,14 +44,7 @@ func Make(
 	}
 }
 
-func makeIDToken(
-	ctx oidc.Context,
-	client *goidc.Client,
-	opts IDTokenOptions,
-) (
-	string,
-	error,
-) {
+func makeIDToken(ctx oidc.Context, client *goidc.Client, opts IDTokenOptions) (string, error) {
 	if ctx.IDTokenSigAlgsContainsNone() && client.IDTokenSigAlg == goidc.None {
 		return makeUnsignedIDToken(ctx, client, opts), nil
 	}
