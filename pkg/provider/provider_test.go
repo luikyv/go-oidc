@@ -7,6 +7,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/oidctest"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -184,4 +186,94 @@ func TestNew_WithOptions(t *testing.T) {
 	); diff != "" {
 		t.Error(diff)
 	}
+}
+
+func TestMakeToken(t *testing.T) {
+	// Given.
+	issuer := "https://example.com"
+	jwk := oidctest.PrivateRS256JWK(t, "test_key", goidc.KeyUsageSignature)
+	op, _ := New(
+		goidc.ProfileOpenID,
+		issuer,
+		func(ctx context.Context) (goidc.JSONWebKeySet, error) {
+			return goidc.JSONWebKeySet{
+				Keys: []goidc.JSONWebKey{jwk},
+			}, nil
+		},
+		WithTokenOptions(func(gi goidc.GrantInfo, c *goidc.Client) goidc.TokenOptions {
+			return goidc.NewJWTTokenOptions(goidc.RS256, 60)
+		}),
+	)
+
+	ctx := context.Background()
+	oidcCtx := oidc.FromContext(ctx, op.config)
+	grantInfo := goidc.GrantInfo{
+		GrantType:     goidc.GrantClientCredentials,
+		ClientID:      issuer,
+		Subject:       issuer,
+		ActiveScopes:  "openid",
+		GrantedScopes: "openid",
+	}
+
+	// When.
+	tkn, err := op.MakeToken(ctx, grantInfo)
+
+	// Then.
+	if err != nil {
+		t.Error(err)
+	}
+
+	grantSessions := oidctest.GrantSessions(t, oidcCtx)
+	if len(grantSessions) != 1 {
+		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
+	}
+	grantSession := grantSessions[0]
+	wantedSession := goidc.GrantSession{
+		ID:                          grantSession.ID,
+		TokenID:                     grantSession.TokenID,
+		LastTokenExpiresAtTimestamp: grantSession.LastTokenExpiresAtTimestamp,
+		CreatedAtTimestamp:          grantSession.CreatedAtTimestamp,
+		ExpiresAtTimestamp:          grantSession.ExpiresAtTimestamp,
+		GrantInfo: goidc.GrantInfo{
+			GrantType:     goidc.GrantClientCredentials,
+			Subject:       issuer,
+			ClientID:      issuer,
+			ActiveScopes:  "openid",
+			GrantedScopes: "openid",
+		},
+	}
+	if diff := cmp.Diff(
+		*grantSession,
+		wantedSession,
+		cmpopts.EquateApprox(0, 1),
+		cmpopts.EquateEmpty(),
+	); diff != "" {
+		t.Error(diff)
+	}
+
+	claims, err := oidctest.SafeClaims(tkn, jwk)
+	if err != nil {
+		t.Fatalf("error parsing claims: %v", err)
+	}
+
+	now := timeutil.TimestampNow()
+	wantedClaims := map[string]any{
+		"iss":       issuer,
+		"sub":       issuer,
+		"client_id": issuer,
+		"scope":     grantInfo.GrantedScopes,
+		"exp":       float64(now + 60),
+		"iat":       float64(now),
+	}
+	if diff := cmp.Diff(
+		claims,
+		wantedClaims,
+		cmpopts.IgnoreMapEntries(func(k string, _ any) bool {
+			return k == "jti"
+		}),
+		cmpopts.EquateApprox(0, 1),
+	); diff != "" {
+		t.Error(diff)
+	}
+
 }

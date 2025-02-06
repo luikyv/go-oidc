@@ -49,13 +49,7 @@ func generateAuthorizationCodeGrant(
 		return response{}, err
 	}
 
-	grantSession, err := generateAuthorizationCodeGrantSession(
-		ctx,
-		client,
-		grantInfo,
-		token,
-		session.AuthCode,
-	)
+	grantSession, err := generateAuthorizationCodeGrantSession(ctx, client, grantInfo, token, session.AuthCode)
 	if err != nil {
 		return response{}, err
 	}

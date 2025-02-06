@@ -102,7 +102,7 @@ type Configuration struct {
 
 	TokenIntrospectionIsEnabled           bool
 	TokenIntrospectionAuthnMethods        []goidc.ClientAuthnType
-	IsClientAllowedTokenIntrospectionFunc goidc.IsClientAllowedFunc
+	IsClientAllowedTokenIntrospectionFunc goidc.IsClientAllowedTokenInstrospectionFunc
 
 	TokenRevocationIsEnabled           bool
 	TokenRevocationAuthnMethods        []goidc.ClientAuthnType

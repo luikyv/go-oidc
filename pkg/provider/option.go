@@ -810,10 +810,8 @@ func WithTokenAuthnMethods(
 }
 
 // WithTokenIntrospection allows authorized clients to introspect tokens.
-// A client can only introspect tokens if it has the grant type
-// [goidc.GrantIntrospection].
 func WithTokenIntrospection(
-	f goidc.IsClientAllowedFunc,
+	f goidc.IsClientAllowedTokenInstrospectionFunc,
 	method goidc.ClientAuthnType,
 	methods ...goidc.ClientAuthnType,
 ) ProviderOption {

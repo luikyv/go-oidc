@@ -654,19 +654,20 @@ func TestIsClientAllowedTokenIntrospection(t *testing.T) {
 		Configuration: &oidc.Configuration{},
 	}
 	client := &goidc.Client{}
+	info := goidc.TokenInfo{}
 	// When.
-	isAllowed := ctx.IsClientAllowedTokenIntrospection(client)
+	isAllowed := ctx.IsClientAllowedTokenIntrospection(client, info)
 	// Then.
 	if isAllowed {
 		t.Error("the default behavior should be to not allow introspection")
 	}
 
 	// Given.
-	ctx.IsClientAllowedTokenIntrospectionFunc = func(c *goidc.Client) bool {
+	ctx.IsClientAllowedTokenIntrospectionFunc = func(c *goidc.Client, _ goidc.TokenInfo) bool {
 		return true
 	}
 	// When.
-	isAllowed = ctx.IsClientAllowedTokenIntrospection(client)
+	isAllowed = ctx.IsClientAllowedTokenIntrospection(client, info)
 	// Then.
 	if !isAllowed {
 		t.Errorf("got %t, want %t", isAllowed, true)
