@@ -63,6 +63,10 @@ func New(
 		},
 	}
 
+	return op.WithOptions(opts...)
+}
+
+func (op Provider) WithOptions(opts ...ProviderOption) (Provider, error) {
 	for _, opt := range opts {
 		if err := opt(op); err != nil {
 			return Provider{}, err
