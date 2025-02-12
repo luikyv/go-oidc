@@ -161,15 +161,15 @@ func ClientCACertPool(clientCertFiles ...string) *x509.CertPool {
 	return caPool
 }
 
-func DCRFunc(r *http.Request, clientInfo *goidc.ClientMetaInfo) error {
+func DCRFunc(r *http.Request, _ string, meta *goidc.ClientMetaInfo) error {
 	var s []string
 	for _, scope := range Scopes {
 		s = append(s, scope.ID)
 	}
-	clientInfo.ScopeIDs = strings.Join(s, " ")
+	meta.ScopeIDs = strings.Join(s, " ")
 
-	if !slices.Contains(clientInfo.GrantTypes, goidc.GrantRefreshToken) {
-		clientInfo.GrantTypes = append(clientInfo.GrantTypes, goidc.GrantRefreshToken)
+	if !slices.Contains(meta.GrantTypes, goidc.GrantRefreshToken) {
+		meta.GrantTypes = append(meta.GrantTypes, goidc.GrantRefreshToken)
 	}
 
 	return nil

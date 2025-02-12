@@ -161,14 +161,14 @@ func TestHandleDynamicClient(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.HandleDynamicClientFunc = func(r *http.Request, clientInfo *goidc.ClientMetaInfo) error {
-		clientInfo.TokenAuthnMethod = goidc.ClientAuthnNone
+	ctx.HandleDynamicClientFunc = func(r *http.Request, id string, meta *goidc.ClientMetaInfo) error {
+		meta.TokenAuthnMethod = goidc.ClientAuthnNone
 		return nil
 	}
 	clientInfo := &goidc.ClientMetaInfo{}
 
 	// When.
-	err := ctx.HandleDynamicClient(clientInfo)
+	err := ctx.HandleDynamicClient("random_id", clientInfo)
 
 	// Then.
 	if err != nil {
@@ -187,7 +187,7 @@ func TestHandleDynamicClient_HandlerIsNil(t *testing.T) {
 	}
 	clientInfo := &goidc.ClientMetaInfo{}
 	// When.
-	err := ctx.HandleDynamicClient(clientInfo)
+	err := ctx.HandleDynamicClient("random_id", clientInfo)
 	// Then.
 	if err != nil {
 		t.Errorf("no error was expected: %v", err)

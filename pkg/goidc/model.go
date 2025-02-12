@@ -274,7 +274,7 @@ type MiddlewareFunc func(next http.Handler) http.Handler
 // HandleDynamicClientFunc defines a function that will be executed during DCR
 // and DCM.
 // It can be used to modify the client and perform custom validations.
-type HandleDynamicClientFunc func(*http.Request, *ClientMetaInfo) error
+type HandleDynamicClientFunc func(r *http.Request, id string, meta *ClientMetaInfo) error
 
 type ValidateInitialAccessTokenFunc func(*http.Request, string) error
 
