@@ -18,7 +18,7 @@ import (
 )
 
 type Provider struct {
-	config *oidc.Configuration
+	config oidc.Configuration
 }
 
 // New creates a new openid provider.
@@ -51,12 +51,12 @@ func New(
 	jwksFunc goidc.JWKSFunc,
 	opts ...ProviderOption,
 ) (
-	Provider,
+	*Provider,
 	error,
 ) {
 
-	op := Provider{
-		config: &oidc.Configuration{
+	op := &Provider{
+		config: oidc.Configuration{
 			Profile:  profile,
 			Host:     issuer,
 			JWKSFunc: jwksFunc,
@@ -66,19 +66,19 @@ func New(
 	return op.WithOptions(opts...)
 }
 
-func (op Provider) WithOptions(opts ...ProviderOption) (Provider, error) {
+func (op *Provider) WithOptions(opts ...ProviderOption) (*Provider, error) {
 	for _, opt := range opts {
 		if err := opt(op); err != nil {
-			return Provider{}, err
+			return nil, err
 		}
 	}
 
 	if err := op.setDefaults(); err != nil {
-		return Provider{}, err
+		return nil, err
 	}
 
 	if err := op.validate(); err != nil {
-		return Provider{}, err
+		return nil, err
 	}
 
 	return op, nil
@@ -88,23 +88,23 @@ func (op Provider) WithOptions(opts ...ProviderOption) (Provider, error) {
 // provider.
 // This may be used to add the oidc logic to a HTTP server.
 //
-//	server := httop.NewServeMux()
-//	server.Handle("/", oop.Handler())
-func (op Provider) Handler() http.Handler {
+//	server := http.NewServeMux()
+//	server.Handle("/", op.Handler())
+func (op *Provider) Handler() http.Handler {
 
 	server := http.NewServeMux()
 
-	discovery.RegisterHandlers(server, op.config)
-	token.RegisterHandlers(server, op.config)
-	authorize.RegisterHandlers(server, op.config)
-	userinfo.RegisterHandlers(server, op.config)
-	dcr.RegisterHandlers(server, op.config)
+	discovery.RegisterHandlers(server, &op.config)
+	token.RegisterHandlers(server, &op.config)
+	authorize.RegisterHandlers(server, &op.config)
+	userinfo.RegisterHandlers(server, &op.config)
+	dcr.RegisterHandlers(server, &op.config)
 
 	handler := goidc.CacheControlMiddleware(server)
 	return handler
 }
 
-func (op Provider) Run(address string, middlewares ...goidc.MiddlewareFunc) error {
+func (op *Provider) Run(address string, middlewares ...goidc.MiddlewareFunc) error {
 	handler := op.Handler()
 	for _, middleware := range middlewares {
 		handler = middleware(handler)
@@ -112,9 +112,9 @@ func (op Provider) Run(address string, middlewares ...goidc.MiddlewareFunc) erro
 	return http.ListenAndServe(address, handler)
 }
 
-func (op Provider) TokenInfo(ctx context.Context, accessToken string) (goidc.TokenInfo, error,
+func (op *Provider) TokenInfo(ctx context.Context, accessToken string) (goidc.TokenInfo, error,
 ) {
-	oidcCtx := oidc.FromContext(ctx, op.config)
+	oidcCtx := oidc.FromContext(ctx, &op.config)
 	return token.IntrospectionInfo(oidcCtx, accessToken)
 }
 
@@ -124,8 +124,8 @@ func (op Provider) TokenInfo(ctx context.Context, accessToken string) (goidc.Tok
 // if required.
 // If the token is valid and PoP validation (if any) is successful, the function
 // returns token information; otherwise, it returns an appropriate error.
-func (op Provider) TokenInfoFromRequest(w http.ResponseWriter, r *http.Request) (goidc.TokenInfo, error) {
-	ctx := oidc.NewContext(w, r, op.config)
+func (op *Provider) TokenInfoFromRequest(w http.ResponseWriter, r *http.Request) (goidc.TokenInfo, error) {
+	ctx := oidc.NewContext(w, r, &op.config)
 
 	accessToken, _, ok := ctx.AuthorizationToken()
 	if !ok {
@@ -160,11 +160,11 @@ func (op Provider) Client(ctx context.Context, id string) (*goidc.Client, error)
 	return op.config.ClientManager.Client(ctx, id)
 }
 
-func (op Provider) SaveAuthnSession(ctx context.Context, as *goidc.AuthnSession) error {
+func (op *Provider) SaveAuthnSession(ctx context.Context, as *goidc.AuthnSession) error {
 	return op.config.AuthnSessionManager.Save(ctx, as)
 }
 
-func (op Provider) AuthnSessionByCIBAAuthID(ctx context.Context, id string) (*goidc.AuthnSession, error) {
+func (op *Provider) AuthnSessionByCIBAAuthID(ctx context.Context, id string) (*goidc.AuthnSession, error) {
 	return op.config.AuthnSessionManager.SessionByCIBAAuthID(ctx, id)
 }
 
@@ -175,8 +175,8 @@ func (op Provider) AuthnSessionByCIBAAuthID(ctx context.Context, id string) (*go
 //     There is no need to call this function for this mode.
 //   - "ping": A ping notification is sent to the client.
 //   - "push": The token response is sent directly to the client's notification endpoint.
-func (op Provider) NotifyCIBASuccess(ctx context.Context, authReqID string) error {
-	oidcCtx := oidc.FromContext(ctx, op.config)
+func (op *Provider) NotifyCIBASuccess(ctx context.Context, authReqID string) error {
+	oidcCtx := oidc.FromContext(ctx, &op.config)
 	return token.NotifyCIBAGrant(oidcCtx, authReqID)
 }
 
@@ -187,8 +187,8 @@ func (op Provider) NotifyCIBASuccess(ctx context.Context, authReqID string) erro
 //   - "ping": A ping notification is sent to the client.
 //   - "push": The token failure response is sent directly to the client's
 //     notification endpoint.
-func (op Provider) NotifyCIBAFailure(ctx context.Context, authReqID string, err goidc.Error) error {
-	oidcCtx := oidc.FromContext(ctx, op.config)
+func (op *Provider) NotifyCIBAFailure(ctx context.Context, authReqID string, err goidc.Error) error {
+	oidcCtx := oidc.FromContext(ctx, &op.config)
 	return token.NotifyCIBAGrantFailure(oidcCtx, authReqID, err)
 }
 
@@ -196,8 +196,8 @@ func (op Provider) NotifyCIBAFailure(ctx context.Context, authReqID string, err 
 // and stores the corresponding grant session.
 //
 // This method is intended for scenarios where a token is required for the provider itself.
-func (op Provider) MakeToken(ctx context.Context, gi goidc.GrantInfo) (string, error) {
-	oidcCtx := oidc.FromContext(ctx, op.config)
+func (op *Provider) MakeToken(ctx context.Context, gi goidc.GrantInfo) (string, error) {
+	oidcCtx := oidc.FromContext(ctx, &op.config)
 	client := &goidc.Client{
 		ID: gi.ClientID,
 	}
@@ -215,7 +215,7 @@ func (op Provider) MakeToken(ctx context.Context, gi goidc.GrantInfo) (string, e
 	return tkn.Value, nil
 }
 
-func (op Provider) setDefaults() error {
+func (op *Provider) setDefaults() error {
 	op.config.IDTokenDefaultSigAlg = nonZeroOrDefault(op.config.IDTokenDefaultSigAlg,
 		defaultIDTokenSigAlg)
 

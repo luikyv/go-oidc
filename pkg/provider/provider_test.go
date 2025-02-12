@@ -28,7 +28,7 @@ func TestNew(t *testing.T) {
 	}
 
 	if diff := cmp.Diff(
-		*op.config,
+		op.config,
 		oidc.Configuration{
 			Profile: goidc.ProfileOpenID,
 			Host:    issuer,
@@ -102,7 +102,7 @@ func TestNew_WithOptions(t *testing.T) {
 	}
 
 	if diff := cmp.Diff(
-		*op.config,
+		op.config,
 		oidc.Configuration{
 			Profile:                  goidc.ProfileOpenID,
 			Host:                     issuer,
@@ -206,7 +206,7 @@ func TestMakeToken(t *testing.T) {
 	)
 
 	ctx := context.Background()
-	oidcCtx := oidc.FromContext(ctx, op.config)
+	oidcCtx := oidc.FromContext(ctx, &op.config)
 	grantInfo := goidc.GrantInfo{
 		GrantType:     goidc.GrantClientCredentials,
 		ClientID:      issuer,
