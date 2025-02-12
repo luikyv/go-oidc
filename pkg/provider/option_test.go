@@ -16,8 +16,8 @@ import (
 
 func TestWithClientStorage(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 	st := storage.NewClientManager()
 
@@ -36,8 +36,8 @@ func TestWithClientStorage(t *testing.T) {
 
 func TestWithAuthnSessionStorage(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 	st := storage.NewAuthnSessionManager()
 
@@ -56,8 +56,8 @@ func TestWithAuthnSessionStorage(t *testing.T) {
 
 func TestWithGrantSessionStorage(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 	st := storage.NewGrantSessionManager()
 
@@ -76,8 +76,8 @@ func TestWithGrantSessionStorage(t *testing.T) {
 
 func TestWithPathPrefix(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -88,8 +88,8 @@ func TestWithPathPrefix(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			EndpointPrefix: "/auth",
 		},
 	}
@@ -100,8 +100,8 @@ func TestWithPathPrefix(t *testing.T) {
 
 func TestWithJWKSEndpoint(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -112,8 +112,8 @@ func TestWithJWKSEndpoint(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			EndpointJWKS: "/jwks",
 		},
 	}
@@ -124,8 +124,8 @@ func TestWithJWKSEndpoint(t *testing.T) {
 
 func TestWithTokenEndpoint(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -136,8 +136,8 @@ func TestWithTokenEndpoint(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			EndpointToken: "/token",
 		},
 	}
@@ -148,8 +148,8 @@ func TestWithTokenEndpoint(t *testing.T) {
 
 func TestWithAuthorizeEndpoint(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -160,8 +160,8 @@ func TestWithAuthorizeEndpoint(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			EndpointAuthorize: "/authorize",
 		},
 	}
@@ -172,8 +172,8 @@ func TestWithAuthorizeEndpoint(t *testing.T) {
 
 func TestWithPAREndpoint(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -184,8 +184,8 @@ func TestWithPAREndpoint(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			EndpointPushedAuthorization: "/par",
 		},
 	}
@@ -196,8 +196,8 @@ func TestWithPAREndpoint(t *testing.T) {
 
 func TestWithDCREndpoint(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -208,8 +208,8 @@ func TestWithDCREndpoint(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			EndpointDCR: "/register",
 		},
 	}
@@ -220,8 +220,8 @@ func TestWithDCREndpoint(t *testing.T) {
 
 func TestWithUserInfoEndpoint(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -232,8 +232,8 @@ func TestWithUserInfoEndpoint(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			EndpointUserInfo: "/userinfo",
 		},
 	}
@@ -244,8 +244,8 @@ func TestWithUserInfoEndpoint(t *testing.T) {
 
 func TestWithIntrospectionEndpoint(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -256,8 +256,8 @@ func TestWithIntrospectionEndpoint(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			EndpointIntrospection: "/introspect",
 		},
 	}
@@ -268,8 +268,8 @@ func TestWithIntrospectionEndpoint(t *testing.T) {
 
 func TestWithTokenRevocationEndpoint(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -280,8 +280,8 @@ func TestWithTokenRevocationEndpoint(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			EndpointTokenRevocation: "/revoke",
 		},
 	}
@@ -292,8 +292,8 @@ func TestWithTokenRevocationEndpoint(t *testing.T) {
 
 func TestWithClaims(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -304,8 +304,8 @@ func TestWithClaims(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			Claims:     []string{"claim_one", "claim_two"},
 			ClaimTypes: []goidc.ClaimType{goidc.ClaimTypeNormal},
 		},
@@ -317,8 +317,8 @@ func TestWithClaims(t *testing.T) {
 
 func TestWithClaimTypes(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -329,8 +329,8 @@ func TestWithClaimTypes(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			ClaimTypes: []goidc.ClaimType{goidc.ClaimTypeDistributed},
 		},
 	}
@@ -341,8 +341,8 @@ func TestWithClaimTypes(t *testing.T) {
 
 func TestWithUserInfoSignatureAlgs(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -353,8 +353,8 @@ func TestWithUserInfoSignatureAlgs(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			UserInfoDefaultSigAlg: goidc.RS256,
 			UserInfoSigAlgs:       []goidc.SignatureAlgorithm{goidc.RS256},
 		},
@@ -366,8 +366,8 @@ func TestWithUserInfoSignatureAlgs(t *testing.T) {
 
 func TestWithIDTokenSignatureAlgs(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -378,8 +378,8 @@ func TestWithIDTokenSignatureAlgs(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			IDTokenDefaultSigAlg: goidc.RS256,
 			IDTokenSigAlgs:       []goidc.SignatureAlgorithm{goidc.RS256},
 		},
@@ -391,8 +391,8 @@ func TestWithIDTokenSignatureAlgs(t *testing.T) {
 
 func TestWithIDTokenLifetime(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -403,8 +403,8 @@ func TestWithIDTokenLifetime(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			IDTokenLifetimeSecs: 60,
 		},
 	}
@@ -415,8 +415,8 @@ func TestWithIDTokenLifetime(t *testing.T) {
 
 func TestWithUserInfoEncryption(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -427,8 +427,8 @@ func TestWithUserInfoEncryption(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			UserInfoEncIsEnabled: true,
 			UserInfoKeyEncAlgs:   []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
 		},
@@ -440,8 +440,8 @@ func TestWithUserInfoEncryption(t *testing.T) {
 
 func TestWithIDTokenEncryption(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -452,8 +452,8 @@ func TestWithIDTokenEncryption(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			IDTokenEncIsEnabled: true,
 			IDTokenKeyEncAlgs:   []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
 		},
@@ -465,8 +465,8 @@ func TestWithIDTokenEncryption(t *testing.T) {
 
 func TestWithUserInfoContentEncryptionAlgs(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -477,8 +477,8 @@ func TestWithUserInfoContentEncryptionAlgs(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			UserInfoDefaultContentEncAlg: goidc.A128GCM,
 			UserInfoContentEncAlgs:       []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
 		},
@@ -490,8 +490,8 @@ func TestWithUserInfoContentEncryptionAlgs(t *testing.T) {
 
 func TestWithIDTokenContentEncryptionAlgs(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -502,8 +502,8 @@ func TestWithIDTokenContentEncryptionAlgs(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			IDTokenDefaultContentEncAlg: goidc.A128GCM,
 			IDTokenContentEncAlgs:       []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
 		},
@@ -515,8 +515,8 @@ func TestWithIDTokenContentEncryptionAlgs(t *testing.T) {
 
 func TestWithDCR(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 	var handleDCRFunc goidc.HandleDynamicClientFunc = func(
 		r *http.Request,
@@ -554,8 +554,8 @@ func TestWithDCR(t *testing.T) {
 
 func TestWithDCRTokenRotation(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -566,8 +566,8 @@ func TestWithDCRTokenRotation(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			DCRTokenRotationIsEnabled: true,
 		},
 	}
@@ -578,8 +578,8 @@ func TestWithDCRTokenRotation(t *testing.T) {
 
 func TestWithClientCredentialsGrant(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -590,8 +590,8 @@ func TestWithClientCredentialsGrant(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			GrantTypes: []goidc.GrantType{goidc.GrantClientCredentials},
 		},
 	}
@@ -606,8 +606,8 @@ func TestWithClientCredentialsGrant(t *testing.T) {
 
 func TestWithRefreshTokenGrant(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 	var shouldIssueRefreshTokenFunc goidc.ShouldIssueRefreshTokenFunc = func(
 		c *goidc.Client,
@@ -635,8 +635,8 @@ func TestWithRefreshTokenGrant(t *testing.T) {
 
 func TestWithRefreshTokenRotation(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -647,8 +647,8 @@ func TestWithRefreshTokenRotation(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			RefreshTokenRotationIsEnabled: true,
 		},
 	}
@@ -659,8 +659,8 @@ func TestWithRefreshTokenRotation(t *testing.T) {
 
 func TestWithOpenIDScopeRequired(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -671,8 +671,8 @@ func TestWithOpenIDScopeRequired(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			OpenIDIsRequired: true,
 		},
 	}
@@ -683,8 +683,8 @@ func TestWithOpenIDScopeRequired(t *testing.T) {
 
 func TestWithTokenOptions(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 	var tokenOpts goidc.TokenOptionsFunc = func(
 		grantInfo goidc.GrantInfo,
@@ -708,8 +708,8 @@ func TestWithTokenOptions(t *testing.T) {
 
 func TestWithHandleGrantFunc(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 	var grantHandler goidc.HandleGrantFunc = func(r *http.Request, gi *goidc.GrantInfo) error {
 		return nil
@@ -730,8 +730,8 @@ func TestWithHandleGrantFunc(t *testing.T) {
 
 func TestWithImplicitGrant(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -742,8 +742,8 @@ func TestWithImplicitGrant(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			GrantTypes: []goidc.GrantType{goidc.GrantImplicit},
 		},
 	}
@@ -754,8 +754,8 @@ func TestWithImplicitGrant(t *testing.T) {
 
 func TestWithScopes(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When
@@ -773,8 +773,8 @@ func TestWithScopes(t *testing.T) {
 
 func TestWithPAR(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -785,8 +785,8 @@ func TestWithPAR(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			PARIsEnabled:    true,
 			PARLifetimeSecs: 60,
 		},
@@ -798,8 +798,8 @@ func TestWithPAR(t *testing.T) {
 
 func TestWithPARRequired(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -810,8 +810,8 @@ func TestWithPARRequired(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			PARIsEnabled:    true,
 			PARIsRequired:   true,
 			PARLifetimeSecs: 60,
@@ -824,8 +824,8 @@ func TestWithPARRequired(t *testing.T) {
 
 func TestWithUnregisteredRedirectURIsForPAR(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -836,8 +836,8 @@ func TestWithUnregisteredRedirectURIsForPAR(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			PARAllowUnregisteredRedirectURI: true,
 		},
 	}
@@ -848,8 +848,8 @@ func TestWithUnregisteredRedirectURIsForPAR(t *testing.T) {
 
 func TestWithJAR(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -860,8 +860,8 @@ func TestWithJAR(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			JARIsEnabled: true,
 			JARSigAlgs:   []goidc.SignatureAlgorithm{goidc.PS256},
 		},
@@ -873,8 +873,8 @@ func TestWithJAR(t *testing.T) {
 
 func TestWithJAR_NoAlgInformed(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -885,8 +885,8 @@ func TestWithJAR_NoAlgInformed(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			JARIsEnabled: true,
 			JARSigAlgs:   []goidc.SignatureAlgorithm{goidc.RS256},
 		},
@@ -898,8 +898,8 @@ func TestWithJAR_NoAlgInformed(t *testing.T) {
 
 func TestWithJARRequired(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -910,8 +910,8 @@ func TestWithJARRequired(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			JARIsEnabled:  true,
 			JARIsRequired: true,
 			JARSigAlgs:    []goidc.SignatureAlgorithm{goidc.PS256},
@@ -924,8 +924,8 @@ func TestWithJARRequired(t *testing.T) {
 
 func TestWithJAREncryption(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -936,8 +936,8 @@ func TestWithJAREncryption(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			JAREncIsEnabled: true,
 			JARKeyEncAlgs:   []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP_256},
 		},
@@ -949,8 +949,8 @@ func TestWithJAREncryption(t *testing.T) {
 
 func TestWithJARContentEncryptionAlgs(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -961,8 +961,8 @@ func TestWithJARContentEncryptionAlgs(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			JARContentEncAlgs: []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
 		},
 	}
@@ -973,8 +973,8 @@ func TestWithJARContentEncryptionAlgs(t *testing.T) {
 
 func TestWithJARM(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -985,8 +985,8 @@ func TestWithJARM(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			JARMIsEnabled:     true,
 			JARMDefaultSigAlg: goidc.RS256,
 			JARMSigAlgs:       []goidc.SignatureAlgorithm{goidc.RS256},
@@ -999,8 +999,8 @@ func TestWithJARM(t *testing.T) {
 
 func TestWithJARMEncryption(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1011,8 +1011,8 @@ func TestWithJARMEncryption(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			JARMEncIsEnabled: true,
 			JARMKeyEncAlgs:   []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
 		},
@@ -1024,8 +1024,8 @@ func TestWithJARMEncryption(t *testing.T) {
 
 func TestWithJARMEncryption_NoAlgInformed(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1036,8 +1036,8 @@ func TestWithJARMEncryption_NoAlgInformed(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			JARMEncIsEnabled: true,
 			JARMKeyEncAlgs:   []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP_256},
 		},
@@ -1049,8 +1049,8 @@ func TestWithJARMEncryption_NoAlgInformed(t *testing.T) {
 
 func TestWithJARMContentEncryptionAlgs(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1061,8 +1061,8 @@ func TestWithJARMContentEncryptionAlgs(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			JARMDefaultContentEncAlg: goidc.A128GCM,
 			JARMContentEncAlgs:       []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
 		},
@@ -1074,8 +1074,8 @@ func TestWithJARMContentEncryptionAlgs(t *testing.T) {
 
 func TestWithAssertionLifetime(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1086,8 +1086,8 @@ func TestWithAssertionLifetime(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			JWTLifetimeSecs: 60,
 		},
 	}
@@ -1098,8 +1098,8 @@ func TestWithAssertionLifetime(t *testing.T) {
 
 func TestWithIssuerResponseParameter(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1110,8 +1110,8 @@ func TestWithIssuerResponseParameter(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			IssuerRespParamIsEnabled: true,
 		},
 	}
@@ -1122,8 +1122,8 @@ func TestWithIssuerResponseParameter(t *testing.T) {
 
 func TestWithAuthorizationDetails(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 	var compareDetailsFunc goidc.CompareAuthDetailsFunc = func(
 		granted, requested []goidc.AuthorizationDetail,
@@ -1155,8 +1155,8 @@ func TestWithAuthorizationDetails(t *testing.T) {
 
 func TestWithMTLS(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 	var clientCertFunc goidc.ClientCertFunc = func(
 		r *http.Request,
@@ -1183,8 +1183,8 @@ func TestWithMTLS(t *testing.T) {
 
 func TestWithTLSCertTokenBinding(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1195,8 +1195,8 @@ func TestWithTLSCertTokenBinding(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			MTLSTokenBindingIsEnabled: true,
 		},
 	}
@@ -1207,8 +1207,8 @@ func TestWithTLSCertTokenBinding(t *testing.T) {
 
 func TestWithTLSCertTokenBindingRequired(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1219,8 +1219,8 @@ func TestWithTLSCertTokenBindingRequired(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			MTLSTokenBindingIsEnabled:  true,
 			MTLSTokenBindingIsRequired: true,
 		},
@@ -1232,8 +1232,8 @@ func TestWithTLSCertTokenBindingRequired(t *testing.T) {
 
 func TestWithDPoP(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1244,8 +1244,8 @@ func TestWithDPoP(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			DPoPIsEnabled: true,
 			DPoPSigAlgs:   []goidc.SignatureAlgorithm{goidc.PS256},
 		},
@@ -1257,8 +1257,8 @@ func TestWithDPoP(t *testing.T) {
 
 func TestWithDPoP_NoAlgInformed(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1269,8 +1269,8 @@ func TestWithDPoP_NoAlgInformed(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			DPoPIsEnabled: true,
 			DPoPSigAlgs:   []goidc.SignatureAlgorithm{goidc.RS256},
 		},
@@ -1282,8 +1282,8 @@ func TestWithDPoP_NoAlgInformed(t *testing.T) {
 
 func TestWithDPoPRequired(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1294,8 +1294,8 @@ func TestWithDPoPRequired(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			DPoPIsEnabled:  true,
 			DPoPIsRequired: true,
 			DPoPSigAlgs:    []goidc.SignatureAlgorithm{goidc.PS256},
@@ -1308,8 +1308,8 @@ func TestWithDPoPRequired(t *testing.T) {
 
 func TestWithTokenBindingRequired(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1320,8 +1320,8 @@ func TestWithTokenBindingRequired(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			TokenBindingIsRequired: true,
 		},
 	}
@@ -1332,8 +1332,8 @@ func TestWithTokenBindingRequired(t *testing.T) {
 
 func TestWithIntrospection(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1347,8 +1347,8 @@ func TestWithIntrospection(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			TokenIntrospectionIsEnabled:    true,
 			TokenIntrospectionAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnSecretPost},
 		},
@@ -1360,8 +1360,8 @@ func TestWithIntrospection(t *testing.T) {
 
 func TestWithTokenRevocation(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1372,8 +1372,8 @@ func TestWithTokenRevocation(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			TokenRevocationIsEnabled:    true,
 			TokenRevocationAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnNone},
 		},
@@ -1385,8 +1385,8 @@ func TestWithTokenRevocation(t *testing.T) {
 
 func TestWithPKCE(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1397,8 +1397,8 @@ func TestWithPKCE(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			PKCEIsEnabled:              true,
 			PKCEDefaultChallengeMethod: goidc.CodeChallengeMethodPlain,
 			PKCEChallengeMethods:       []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodPlain},
@@ -1411,8 +1411,8 @@ func TestWithPKCE(t *testing.T) {
 
 func TestWithPKCE_NoMethodInformed(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1423,8 +1423,8 @@ func TestWithPKCE_NoMethodInformed(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			PKCEIsEnabled:              true,
 			PKCEDefaultChallengeMethod: goidc.CodeChallengeMethodSHA256,
 			PKCEChallengeMethods:       []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodSHA256},
@@ -1437,8 +1437,8 @@ func TestWithPKCE_NoMethodInformed(t *testing.T) {
 
 func TestWithPKCERequired(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1449,8 +1449,8 @@ func TestWithPKCERequired(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			PKCEIsEnabled:              true,
 			PKCEIsRequired:             true,
 			PKCEDefaultChallengeMethod: goidc.CodeChallengeMethodPlain,
@@ -1464,8 +1464,8 @@ func TestWithPKCERequired(t *testing.T) {
 
 func TestWithACRs(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1476,8 +1476,8 @@ func TestWithACRs(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			ACRs: []goidc.ACR{"0"},
 		},
 	}
@@ -1488,8 +1488,8 @@ func TestWithACRs(t *testing.T) {
 
 func TestWithDisplayValues(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1500,8 +1500,8 @@ func TestWithDisplayValues(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			DisplayValues: []goidc.DisplayValue{goidc.DisplayValuePage},
 		},
 	}
@@ -1512,8 +1512,8 @@ func TestWithDisplayValues(t *testing.T) {
 
 func TestWithAuthenticationSessionTimeout(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1524,8 +1524,8 @@ func TestWithAuthenticationSessionTimeout(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			AuthnSessionTimeoutSecs: 10,
 		},
 	}
@@ -1536,8 +1536,8 @@ func TestWithAuthenticationSessionTimeout(t *testing.T) {
 
 func TestWithStaticClient(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 	c, _ := oidctest.NewClient(t)
 
@@ -1549,8 +1549,8 @@ func TestWithStaticClient(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			StaticClients: []*goidc.Client{c},
 		},
 	}
@@ -1561,8 +1561,8 @@ func TestWithStaticClient(t *testing.T) {
 
 func TestWithPolicy(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 	policy := goidc.AuthnPolicy{
 		ID: "policy_id",
@@ -1576,8 +1576,8 @@ func TestWithPolicy(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			Policies: []goidc.AuthnPolicy{policy},
 		},
 	}
@@ -1588,8 +1588,8 @@ func TestWithPolicy(t *testing.T) {
 
 func TestWithRenderErrorFunc(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 	var renderFunc goidc.RenderErrorFunc = func(
 		w http.ResponseWriter,
@@ -1614,8 +1614,8 @@ func TestWithRenderErrorFunc(t *testing.T) {
 
 func TestWithNotifyErrorFunc(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 	var handleErrorFunc goidc.NotifyErrorFunc = func(
 		ctx context.Context,
@@ -1638,8 +1638,8 @@ func TestWithNotifyErrorFunc(t *testing.T) {
 
 func TestWithCheckJTIFunc(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 	var checkJTIFunc goidc.CheckJTIFunc = func(ctx context.Context, s string) error {
 		return nil
@@ -1660,8 +1660,8 @@ func TestWithCheckJTIFunc(t *testing.T) {
 
 func TestWithResourceIndicators(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1672,8 +1672,8 @@ func TestWithResourceIndicators(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			ResourceIndicatorsIsEnabled: true,
 			Resources:                   []string{"https://resource.com"},
 		},
@@ -1685,8 +1685,8 @@ func TestWithResourceIndicators(t *testing.T) {
 
 func TestWithResourceIndicatorsRequired(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1697,8 +1697,8 @@ func TestWithResourceIndicatorsRequired(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := Provider{
-		config: &oidc.Configuration{
+	want := &Provider{
+		config: oidc.Configuration{
 			ResourceIndicatorsIsEnabled:  true,
 			ResourceIndicatorsIsRequired: true,
 			Resources:                    []string{"https://resource.com"},
@@ -1711,8 +1711,8 @@ func TestWithResourceIndicatorsRequired(t *testing.T) {
 
 func TestWithHTTPClientFunc(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
@@ -1732,8 +1732,8 @@ func TestWithHTTPClientFunc(t *testing.T) {
 
 func TestJWTBearerGrant(t *testing.T) {
 	// Given.
-	p := Provider{
-		config: &oidc.Configuration{},
+	p := &Provider{
+		config: oidc.Configuration{},
 	}
 
 	// When.
