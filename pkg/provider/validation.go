@@ -6,7 +6,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/oidc"
 )
 
-func validateTokenBinding(config *oidc.Configuration) error {
+func validateTokenBinding(config oidc.Configuration) error {
 	if config.TokenBindingIsRequired &&
 		!config.DPoPIsEnabled &&
 		!config.MTLSTokenBindingIsEnabled {
@@ -17,8 +17,8 @@ func validateTokenBinding(config *oidc.Configuration) error {
 }
 
 func runValidations(
-	config *oidc.Configuration,
-	validators ...func(*oidc.Configuration) error,
+	config oidc.Configuration,
+	validators ...func(oidc.Configuration) error,
 ) error {
 	for _, validator := range validators {
 		if err := validator(config); err != nil {

@@ -40,23 +40,22 @@ go get github.com/luikyv/go-oidc@latest
 Once installed, you can instantiate an openid provider and run it as shown below.
 ```go
 key, _ := rsa.GenerateKey(rand.Reader, 2048)
-jwk := goidc.JSONWebKey{
-  KeyID:     "server_key",
-  Key:       key,
-  Algorithm: string(goidc.RS256),
-  Use:       string(goidc.KeyUsageSignature),
+jwks := goidc.JSONWebKeySet{
+  Keys: []goidc.JSONWebKey{{
+    KeyID:     "key_id",
+    Key:       key,
+    Algorithm: "RS256",
+  }},
 }
 
 op, _ := provider.New(
   goidc.ProfileOpenID,
   "http://localhost",
   func(_ context.Context) (goidc.JSONWebKeySet, error) {
-    return goidc.JSONWebKeySet{
-      Keys: []goidc.JSONWebKey{jwk},
-    }, nil
+    return jwks, nil
   },
 )
-op.Run(":80")
+_ = op.Run(":80")
 ```
 
 You can then check the default configurations by accessing http://localhost/.well-known/openid-configuration.

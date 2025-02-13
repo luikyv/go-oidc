@@ -28,7 +28,8 @@ func create(
 		return response{}, err
 	}
 
-	if err := ctx.HandleDynamicClient(meta); err != nil {
+	id := clientID()
+	if err := ctx.HandleDynamicClient(id, meta); err != nil {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata,
 			"invalid metadata", err)
 	}
@@ -38,6 +39,7 @@ func create(
 	}
 
 	client := &goidc.Client{
+		ID:             id,
 		ClientMetaInfo: *meta,
 	}
 	return modifyAndSaveClient(ctx, client)
@@ -45,8 +47,7 @@ func create(
 
 func update(
 	ctx oidc.Context,
-	id string,
-	regToken string,
+	id, regToken string,
 	meta *goidc.ClientMetaInfo,
 ) (
 	response,
@@ -61,7 +62,7 @@ func update(
 		return response{}, err
 	}
 
-	if err := ctx.HandleDynamicClient(meta); err != nil {
+	if err := ctx.HandleDynamicClient(id, meta); err != nil {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata,
 			"invalid metadata", err)
 	}
@@ -74,14 +75,7 @@ func update(
 	return modifyAndSaveClient(ctx, client)
 }
 
-func fetch(
-	ctx oidc.Context,
-	id string,
-	regToken string,
-) (
-	response,
-	error,
-) {
+func fetch(ctx oidc.Context, id, regToken string) (response, error) {
 
 	client, err := protected(ctx, id, regToken)
 	if err != nil {
@@ -95,11 +89,7 @@ func fetch(
 	}, nil
 }
 
-func remove(
-	ctx oidc.Context,
-	id string,
-	regToken string,
-) error {
+func remove(ctx oidc.Context, id, regToken string) error {
 	_, err := protected(ctx, id, regToken)
 	if err != nil {
 		return err
@@ -108,13 +98,7 @@ func remove(
 	return ctx.DeleteClient(id)
 }
 
-func modifyAndSaveClient(
-	ctx oidc.Context,
-	client *goidc.Client,
-) (
-	response,
-	error,
-) {
+func modifyAndSaveClient(ctx oidc.Context, client *goidc.Client) (response, error) {
 
 	id := setID(ctx, client)
 	regToken := setRegistrationToken(ctx, client)
@@ -213,14 +197,7 @@ func registrationURI(ctx oidc.Context, id string) string {
 
 // protected returns a client corresponding to the id informed if the
 // the registration access token is valid.
-func protected(
-	ctx oidc.Context,
-	id string,
-	regToken string,
-) (
-	*goidc.Client,
-	error,
-) {
+func protected(ctx oidc.Context, id, regToken string) (*goidc.Client, error) {
 	c, err := ctx.Client(id)
 	if err != nil {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest,

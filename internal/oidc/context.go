@@ -114,12 +114,12 @@ func (ctx Context) ValidateInitalAccessToken(token string) error {
 	return ctx.ValidateInitialAccessTokenFunc(ctx.Request, token)
 }
 
-func (ctx Context) HandleDynamicClient(c *goidc.ClientMetaInfo) error {
+func (ctx Context) HandleDynamicClient(id string, c *goidc.ClientMetaInfo) error {
 	if ctx.HandleDynamicClientFunc == nil {
 		return nil
 	}
 
-	return ctx.HandleDynamicClientFunc(ctx.Request, c)
+	return ctx.HandleDynamicClientFunc(ctx.Request, id, c)
 }
 
 func (ctx Context) CheckJTI(jti string) error {

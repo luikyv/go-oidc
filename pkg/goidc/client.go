@@ -26,7 +26,7 @@ type Client struct {
 	HashedSecret string `json:"hashed_secret,omitempty"`
 	// HashedRegistrationAccessToken is the hash of the registration access token
 	// generated during dynamic client registration.
-	HashedRegistrationAccessToken string `json:"hashed_registration_access_token"`
+	HashedRegistrationAccessToken string `json:"hashed_registration_access_token,omitempty"`
 	ClientMetaInfo
 }
 

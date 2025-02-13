@@ -27,10 +27,12 @@ func main() {
 	serverCertKeyFilePath := filepath.Join(sourceDir, "../keys/server.key")
 
 	// Create and configure the OpenID provider.
-	op, err := provider.New(
+	op, _ := provider.New(
 		goidc.ProfileFAPI2,
 		authutil.Issuer,
 		authutil.PrivateJWKSFunc(serverJWKSFilePath),
+	)
+	op, _ = op.WithOptions(
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithIDTokenSignatureAlgs(goidc.PS256),
 		provider.WithUserInfoSignatureAlgs(goidc.PS256),
@@ -51,9 +53,6 @@ func main() {
 		provider.WithCheckJTIFunc(authutil.CheckJTIFunc()),
 		provider.WithDCR(authutil.DCRFunc, authutil.ValidateInitialTokenFunc),
 	)
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	// Set up the server.
 	mux := http.NewServeMux()
@@ -128,7 +127,7 @@ func validateBackAuthFunc() goidc.ValidateBackAuthFunc {
 	}
 }
 
-func cibaActionHandler(op provider.Provider) http.HandlerFunc {
+func cibaActionHandler(op *provider.Provider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		authReqID := r.URL.Query().Get("token")
 		authnSession, _ := op.AuthnSessionByCIBAAuthID(r.Context(), authReqID)
