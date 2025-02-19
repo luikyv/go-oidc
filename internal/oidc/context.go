@@ -463,10 +463,7 @@ func (ctx Context) Redirect(redirectURL string) {
 	http.Redirect(ctx.Response, ctx.Request, redirectURL, http.StatusSeeOther)
 }
 
-func (ctx Context) WriteHTML(
-	html string,
-	params any,
-) error {
+func (ctx Context) WriteHTML(html string, params any) error {
 	// Check if the request was terminated before writing anything.
 	select {
 	case <-ctx.Context().Done():
@@ -488,10 +485,7 @@ func (ctx Context) IDTokenSigAlgsContainsNone() bool {
 	return slices.Contains(ctx.IDTokenSigAlgs, goidc.None)
 }
 
-func (ctx Context) ShouldIssueRefreshToken(
-	client *goidc.Client,
-	grantInfo goidc.GrantInfo,
-) bool {
+func (ctx Context) ShouldIssueRefreshToken(client *goidc.Client, grantInfo goidc.GrantInfo) bool {
 	if ctx.ShouldIssueRefreshTokenFunc == nil ||
 		!slices.Contains(client.GrantTypes, goidc.GrantRefreshToken) ||
 		grantInfo.GrantType == goidc.GrantClientCredentials {
@@ -501,10 +495,7 @@ func (ctx Context) ShouldIssueRefreshToken(
 	return ctx.ShouldIssueRefreshTokenFunc(client, grantInfo)
 }
 
-func (ctx Context) TokenOptions(
-	grantInfo goidc.GrantInfo,
-	client *goidc.Client,
-) goidc.TokenOptions {
+func (ctx Context) TokenOptions(grantInfo goidc.GrantInfo, client *goidc.Client) goidc.TokenOptions {
 
 	opts := ctx.TokenOptionsFunc(grantInfo, client)
 
@@ -572,10 +563,7 @@ func (ctx Context) HTTPClient() *http.Client {
 // If the subject identifier type is "public", it returns the provided subject.
 // If the subject identifier type is "pairwise", it generates a pairwise
 // identifier using the sector URI or a redirect URI.
-func (ctx Context) ExportableSubject(
-	sub string,
-	client *goidc.Client,
-) string {
+func (ctx Context) ExportableSubject(sub string, client *goidc.Client) string {
 	if ctx.GeneratePairwiseSubIDFunc == nil || !ctx.shouldGeneratePairwiseSub(client) {
 		return sub
 	}

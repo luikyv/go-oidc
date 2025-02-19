@@ -1,7 +1,10 @@
 package main
 
 import (
+	"context"
+	"crypto/tls"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -59,7 +62,7 @@ func main() {
 		provider.WithJAR(jose.RS256),
 		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.RS256)),
-		provider.WithHTTPClientFunc(authutil.HTTPClient),
+		provider.WithHTTPClientFunc(httpClientFunc()),
 		provider.WithPolicy(authutil.Policy(templatesDirPath)),
 		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
 		provider.WithRenderErrorFunc(authutil.RenderError(templatesDirPath)),
@@ -281,5 +284,26 @@ func main() {
 
 	if err := http.ListenAndServeTLS(authutil.Port, serverCertFilePath, serverCertKeyFilePath, mux); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
+	}
+}
+
+func httpClientFunc() goidc.HTTPClientFunc {
+	trustAnchorIDURL, _ := url.Parse(trustAnchorID)
+	clientIDURL, _ := url.Parse(clientID)
+	return func(ctx context.Context) *http.Client {
+		return &http.Client{
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				Dial: func(network, addr string) (net.Conn, error) {
+					if addr == clientIDURL.Hostname()+":443" || addr == trustAnchorIDURL.Hostname()+":443" {
+						addr = "127.0.0.1:443"
+					}
+					return net.Dial(network, addr)
+				},
+			},
+		}
 	}
 }

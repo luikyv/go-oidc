@@ -1,6 +1,9 @@
 package federation
 
 import (
+	"encoding/json"
+	"reflect"
+	"slices"
 	"strings"
 
 	"github.com/luikyv/go-oidc/internal/strutil"
@@ -101,7 +104,60 @@ type openIDClientMetadataPolicy struct {
 	CIBANotificationEndpoint      metadataOperators[string]                           `json:"backchannel_client_notification_endpoint,omitempty"`
 	CIBAJARSigAlg                 metadataOperators[goidc.SignatureAlgorithm]         `json:"backchannel_authentication_request_signing_alg,omitempty"`
 	CIBAUserCodeIsEnabled         metadataOperators[bool]                             `json:"backchannel_user_code_parameter,omitempty"`
-	// TODO: CustomAttributes.
+	CustomAttributes              map[string]metadataOperators[any]                   `json:"custom_attributes,omitempty"`
+}
+
+func (policy *openIDClientMetadataPolicy) setCustomAttribute(att string, value metadataOperators[any]) {
+	if policy.CustomAttributes == nil {
+		policy.CustomAttributes = map[string]metadataOperators[any]{}
+	}
+	policy.CustomAttributes[att] = value
+}
+
+func (policy *openIDClientMetadataPolicy) customAttribute(att string) metadataOperators[any] {
+	return policy.CustomAttributes[att]
+}
+
+func (policy *openIDClientMetadataPolicy) UnmarshalJSON(data []byte) error {
+	// Unmarshal into a map to capture all keys.
+	var allFields map[string]metadataOperators[any]
+	if err := json.Unmarshal(data, &allFields); err != nil {
+		return err
+	}
+
+	type alias openIDClientMetadataPolicy
+	var info alias
+	if err := json.Unmarshal(data, &info); err != nil {
+		return err
+	}
+
+	info.CustomAttributes = make(map[string]metadataOperators[any])
+	knownKeys := jsonKeys(info)
+	for key, value := range allFields {
+		if !slices.Contains(knownKeys, key) {
+			info.CustomAttributes[key] = value
+		}
+	}
+
+	*policy = openIDClientMetadataPolicy(info)
+	return nil
+}
+
+// jsonKeys returns a slice of JSON field names for a given struct.
+func jsonKeys(v any) []string {
+	var keys []string
+	val := reflect.ValueOf(v)
+	typ := val.Type()
+
+	for i := 0; i < val.NumField(); i++ {
+		field := typ.Field(i)
+		tag := field.Tag.Get("json")
+
+		if tag != "" && tag != "-" {
+			keys = append(keys, strings.Split(tag, ",")[0])
+		}
+	}
+	return keys
 }
 
 func (p openIDClientMetadataPolicy) validate() error {
@@ -291,6 +347,12 @@ func (p openIDClientMetadataPolicy) validate() error {
 
 	if err := p.CIBAUserCodeIsEnabled.validate(); err != nil {
 		return err
+	}
+
+	for _, ops := range p.CustomAttributes {
+		if err := ops.validate(); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -579,6 +641,14 @@ func (high openIDClientMetadataPolicy) merge(low openIDClientMetadataPolicy) (op
 	}
 	high.CIBAUserCodeIsEnabled = opCIBAUserCodeIsEnabled
 
+	for att, lowOps := range low.CustomAttributes {
+		ops, err := high.customAttribute(att).merge(lowOps)
+		if err != nil {
+			return openIDClientMetadataPolicy{}, err
+		}
+		high.setCustomAttribute(att, ops)
+	}
+
 	return high, nil
 }
 
@@ -865,6 +935,14 @@ func (policy openIDClientMetadataPolicy) apply(client openIDClient) (openIDClien
 		return openIDClient{}, err
 	}
 	client.CIBAUserCodeIsEnabled = cibaUserCodeIsEnabled
+
+	for att, ops := range policy.CustomAttributes {
+		attValue, err := ops.apply(client.Attribute(att))
+		if err != nil {
+			return openIDClient{}, err
+		}
+		client.SetAttribute(att, attValue)
+	}
 
 	return client, nil
 }
