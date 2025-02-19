@@ -1065,7 +1065,7 @@ func WithOpenIDFederation(
 	jwks goidc.JSONWebKeySet,
 	trustedAuthorities, authorityHints []string,
 ) ProviderOption {
-	return func(p Provider) error {
+	return func(p *Provider) error {
 		p.config.OpenIDFedIsEnabled = true
 		p.config.OpenIDFedJWKS = jwks
 		p.config.OpenIDFedTrustedAuthorities = trustedAuthorities

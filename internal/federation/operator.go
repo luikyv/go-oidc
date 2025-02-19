@@ -1,493 +1,537 @@
 package federation
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
 	"reflect"
 	"slices"
 )
 
-type metadataPolicyPrimitiveOps[T any] struct {
-	Value     primitiveOperatorValue[T]     `json:"value"`
-	Default   primitiveOperatorDefault[T]   `json:"default"`
-	OneOf     primitiveOperatorOneOf[T]     `json:"one_of"`
-	Essential primitiveOperatorEssential[T] `json:"essential"`
+type metadataOperators[T any] struct {
+	Value      nullable[T] `json:"value"`
+	Add        T           `json:"add"`
+	Default    T           `json:"default"`
+	OneOf      []T         `json:"one_of"`
+	SubsetOf   T           `json:"subset_of"`
+	SupersetOf T           `json:"superset_of"`
+	Essential  bool        `json:"essential"`
 }
 
-func (highOps metadataPolicyPrimitiveOps[T]) merge(lowOps metadataPolicyPrimitiveOps[T]) (metadataPolicyPrimitiveOps[T], error) {
-	valueOp, err := highOps.Value.merge(lowOps.Value)
-	if err != nil {
-		return metadataPolicyPrimitiveOps[T]{}, err
+func (ops metadataOperators[T]) validate() error {
+	// TODO: Comment that this is the reverse order of application.
+	if err := ops.validateSupersetOf(); err != nil {
+		return err
 	}
-	highOps.Value = valueOp
 
-	defaultOp, err := highOps.Default.merge(lowOps.Default)
-	if err != nil {
-		return metadataPolicyPrimitiveOps[T]{}, err
+	if err := ops.validateSubsetOf(); err != nil {
+		return err
 	}
-	highOps.Default = defaultOp
 
-	oneOfOp, err := highOps.OneOf.merge(lowOps.OneOf)
-	if err != nil {
-		return metadataPolicyPrimitiveOps[T]{}, err
+	if err := ops.validateOneOf(); err != nil {
+		return err
 	}
-	highOps.OneOf = oneOfOp
 
-	essentialOp, err := highOps.Essential.merge(lowOps.Essential)
-	if err != nil {
-		return metadataPolicyPrimitiveOps[T]{}, err
+	if err := ops.validateOneOf(); err != nil {
+		return err
 	}
-	highOps.Essential = essentialOp
 
-	return highOps, nil
+	if err := ops.validateDefault(); err != nil {
+		return err
+	}
+
+	if err := ops.validateAdd(); err != nil {
+		return err
+	}
+
+	if err := ops.validateValue(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (ops metadataPolicyPrimitiveOps[T]) apply(field T) (T, error) {
-	var defaultT T
-
-	field, err := ops.Value.apply(field)
-	if err != nil {
-		return defaultT, err
-	}
-
-	field, err = ops.Default.apply(field)
-	if err != nil {
-		return defaultT, err
-	}
-
-	field, err = ops.OneOf.apply(field)
-	if err != nil {
-		return defaultT, err
-	}
-
-	field, err = ops.Essential.apply(field)
-	if err != nil {
-		return defaultT, err
-	}
-
-	return field, nil
-}
-
-type metadataPolicySliceOps[T any] struct {
-	Value      sliceOperatorValue[T]      `json:"value"`
-	Add        sliceOperatorAdd[T]        `json:"add"`
-	Default    sliceOperatorDefault[T]    `json:"default"`
-	SubsetOf   sliceOperatorSubsetOf[T]   `json:"subset_of"`
-	SupersetOf sliceOperatorSupersetOf[T] `json:"superset_of"`
-	Essential  sliceOperatorEssential[T]  `json:"essential"`
-}
-
-func (highOps metadataPolicySliceOps[T]) merge(lowOps metadataPolicySliceOps[T]) (metadataPolicySliceOps[T], error) {
-	valueOp, err := highOps.Value.merge(lowOps.Value)
-	if err != nil {
-		return metadataPolicySliceOps[T]{}, err
-	}
-	highOps.Value = valueOp
-
-	addOp, err := highOps.Add.merge(lowOps.Add)
-	if err != nil {
-		return metadataPolicySliceOps[T]{}, err
-	}
-	highOps.Add = addOp
-
-	defaultOp, err := highOps.Default.merge(lowOps.Default)
-	if err != nil {
-		return metadataPolicySliceOps[T]{}, err
-	}
-	highOps.Default = defaultOp
-
-	subsetOf, err := highOps.SubsetOf.merge(lowOps.SubsetOf)
-	if err != nil {
-		return metadataPolicySliceOps[T]{}, err
-	}
-	highOps.SubsetOf = subsetOf
-
-	supersetOf, err := highOps.SupersetOf.merge(lowOps.SupersetOf)
-	if err != nil {
-		return metadataPolicySliceOps[T]{}, err
-	}
-	highOps.SupersetOf = supersetOf
-
-	essentialOp, err := highOps.Essential.merge(lowOps.Essential)
-	if err != nil {
-		return metadataPolicySliceOps[T]{}, err
-	}
-	highOps.Essential = essentialOp
-
-	return highOps, nil
-}
-
-func (ops metadataPolicySliceOps[T]) apply(field []T) ([]T, error) {
-	field, err := ops.Value.apply(field)
-	if err != nil {
-		return nil, err
-	}
-
-	field, err = ops.Add.apply(field)
-	if err != nil {
-		return nil, err
-	}
-
-	field, err = ops.Default.apply(field)
-	if err != nil {
-		return nil, err
-	}
-
-	field, err = ops.SubsetOf.apply(field)
-	if err != nil {
-		return nil, err
-	}
-
-	field, err = ops.SupersetOf.apply(field)
-	if err != nil {
-		return nil, err
-	}
-
-	field, err = ops.Essential.apply(field)
-	if err != nil {
-		return nil, err
-	}
-
-	return field, nil
-}
-
-type primitiveOperatorValue[T any] struct {
-	isSet bool
-	value T
-}
-
-func (p *primitiveOperatorValue[T]) UnmarshalJSON(data []byte) error {
-	if string(data) == "null" {
-		p.isSet = true
+func (ops metadataOperators[T]) validateValue() error {
+	if !ops.isValueSet() {
 		return nil
 	}
 
-	var t T
-	if err := json.Unmarshal(data, &t); err != nil {
-		return err
+	if ops.isAddSet() || ops.isDefaultSet() || ops.isOneOfSet() || ops.isSubsetOfSet() || ops.isSupersetOfSet() {
+		return errors.New("")
 	}
 
-	p.isSet = true
-	p.value = t
 	return nil
 }
 
-func (highOp primitiveOperatorValue[T]) merge(lowOp primitiveOperatorValue[T]) (primitiveOperatorValue[T], error) {
-	if !lowOp.isSet {
-		return highOp, nil
+func (ops metadataOperators[T]) validateAdd() error {
+	if !ops.isAddSet() {
+		return nil
 	}
 
-	if !highOp.isSet {
-		return lowOp, nil
+	if !isSlice(ops.Add) {
+		return errors.New("")
 	}
 
-	if !reflect.DeepEqual(highOp.value, lowOp.value) {
-		return primitiveOperatorValue[T]{}, errors.New("operator 'value' was informed by both policies but the values are different")
+	if ops.isOneOfSet() {
+		return errors.New("")
 	}
 
-	return highOp, nil
-}
-
-func (op primitiveOperatorValue[T]) apply(field T) (T, error) {
-	if !op.isSet {
-		return field, nil
+	if ops.isSubsetOfSet() && !isSubset(ops.Add, ops.SubsetOf) {
+		return errors.New("")
 	}
 
-	return op.value, nil
-}
-
-type primitiveOperatorDefault[T any] struct {
-	value T
-}
-
-func (p *primitiveOperatorDefault[T]) UnmarshalJSON(data []byte) error {
-	var t T
-	if err := json.Unmarshal(data, &t); err != nil {
-		return err
+	if ops.isSupersetOfSet() && !isSuperset(ops.Add, ops.SupersetOf) {
+		return errors.New("")
 	}
 
-	p.value = t
 	return nil
 }
 
-func (highOp primitiveOperatorDefault[T]) merge(lowOp primitiveOperatorDefault[T]) (primitiveOperatorDefault[T], error) {
-	var zeroValue T
-	if reflect.DeepEqual(lowOp.value, zeroValue) {
-		return highOp, nil
+func (ops metadataOperators[T]) validateDefault() error {
+	if !ops.isDefaultSet() {
+		return nil
 	}
 
-	if reflect.DeepEqual(highOp.value, zeroValue) {
-		return lowOp, nil
+	if ops.isOneOfSet() && !deepContains(ops.OneOf, ops.Default) {
+		return errors.New("")
 	}
 
-	if !reflect.DeepEqual(highOp.value, lowOp.value) {
-		return primitiveOperatorDefault[T]{}, errors.New("operator 'default' was informed by both policies but the values are different")
+	if ops.isSubsetOfSet() && !isSubset(ops.Default, ops.SubsetOf) {
+		return errors.New("")
 	}
 
-	return highOp, nil
+	if ops.isSupersetOfSet() && !isSuperset(ops.Default, ops.SupersetOf) {
+		return errors.New("")
+	}
+
+	return nil
 }
 
-func (op primitiveOperatorDefault[T]) apply(field T) (T, error) {
-	var zeroValue T
-	if reflect.DeepEqual(op.value, zeroValue) {
-		return field, nil
+func (ops metadataOperators[T]) validateOneOf() error {
+	if !ops.isOneOfSet() {
+		return nil
 	}
 
-	if reflect.DeepEqual(field, zeroValue) {
-		return op.value, nil
+	if ops.isSubsetOfSet() || ops.isSupersetOfSet() {
+		return errors.New("")
 	}
 
-	return field, nil
+	return nil
 }
 
-type primitiveOperatorOneOf[T any] []T
-
-func (highOp primitiveOperatorOneOf[T]) merge(lowOp primitiveOperatorOneOf[T]) (primitiveOperatorOneOf[T], error) {
-	if len(lowOp) == 0 {
-		return highOp, nil
+func (ops metadataOperators[T]) validateSubsetOf() error {
+	if !ops.isSubsetOfSet() {
+		return nil
 	}
 
-	if len(highOp) == 0 {
-		return lowOp, nil
+	if !isSlice(ops.SubsetOf) {
+		return errors.New("")
 	}
 
-	var oneOf []T
-	for _, value := range lowOp {
-		if deepContains(highOp, value) {
-			oneOf = append(oneOf, value)
-		}
+	if ops.isSupersetOfSet() && !isSuperset(ops.SubsetOf, ops.SupersetOf) {
+		return errors.New("")
 	}
 
+	return nil
+}
+
+func (ops metadataOperators[T]) validateSupersetOf() error {
+	if !ops.isSupersetOfSet() {
+		return nil
+	}
+
+	if !isSlice(ops.SupersetOf) {
+		return errors.New("")
+	}
+
+	return nil
+}
+
+func (ops metadataOperators[T]) apply(value T) (T, error) {
+	var zero T
+	var err error
+
+	value, err = ops.applyValue(value)
+	if err != nil {
+		return zero, err
+	}
+
+	value, err = ops.applyAdd(value)
+	if err != nil {
+		return zero, err
+	}
+
+	value, err = ops.applyDefault(value)
+	if err != nil {
+		return zero, err
+	}
+
+	value, err = ops.applyOneOf(value)
+	if err != nil {
+		return zero, err
+	}
+
+	value, err = ops.applySubsetOf(value)
+	if err != nil {
+		return zero, err
+	}
+
+	value, err = ops.applySupersetOf(value)
+	if err != nil {
+		return zero, err
+	}
+
+	value, err = ops.applyEssential(value)
+	if err != nil {
+		return zero, err
+	}
+
+	return value, nil
+}
+
+func (ops metadataOperators[T]) applyValue(value T) (T, error) {
+	if !ops.isValueSet() {
+		return value, nil
+	}
+
+	return ops.Value.Value, nil
+}
+
+func (ops metadataOperators[T]) applyAdd(value T) (T, error) {
+	if !ops.isAddSet() {
+		return value, nil
+	}
+
+	return mergeSlices(value, ops.Add), nil
+}
+
+func (ops metadataOperators[T]) applyDefault(value T) (T, error) {
+	if !ops.isDefaultSet() {
+		return value, nil
+	}
+
+	var zero T
+	if reflect.DeepEqual(value, zero) {
+		return ops.Default, nil
+	}
+	return value, nil
+}
+
+func (ops metadataOperators[T]) applyOneOf(value T) (T, error) {
+	if !ops.isOneOfSet() {
+		return value, nil
+	}
+
+	var zero T
+	if !deepContains(ops.OneOf, value) {
+		return zero, errors.New("")
+	}
+
+	return value, nil
+}
+
+func (ops metadataOperators[T]) applySubsetOf(value T) (T, error) {
+	if !ops.isSubsetOfSet() {
+		return value, nil
+	}
+
+	var zero T
+	if !isSubset(value, ops.SubsetOf) {
+		return zero, errors.New("")
+	}
+
+	return value, nil
+}
+
+func (ops metadataOperators[T]) applySupersetOf(value T) (T, error) {
+	if !ops.isSupersetOfSet() {
+		return value, nil
+	}
+
+	var zero T
+	if !isSuperset(value, ops.SupersetOf) {
+		return zero, errors.New("")
+	}
+
+	return value, nil
+}
+
+func (ops metadataOperators[T]) applyEssential(value T) (T, error) {
+	if !ops.Essential {
+		return value, nil
+	}
+
+	var zero T
+	if reflect.DeepEqual(value, zero) {
+		return zero, errors.New("")
+	}
+
+	return value, nil
+}
+
+func (highOps metadataOperators[T]) merge(lowOps metadataOperators[T]) (metadataOperators[T], error) {
+	var err error
+
+	highOps.Value, err = highOps.mergeValue(lowOps)
+	if err != nil {
+		return metadataOperators[T]{}, err
+	}
+
+	highOps.Add, err = highOps.mergeAdd(lowOps)
+	if err != nil {
+		return metadataOperators[T]{}, err
+	}
+
+	highOps.Default, err = highOps.mergeDefault(lowOps)
+	if err != nil {
+		return metadataOperators[T]{}, err
+	}
+
+	highOps.OneOf, err = highOps.mergeOneOf(lowOps)
+	if err != nil {
+		return metadataOperators[T]{}, err
+	}
+
+	highOps.SubsetOf, err = highOps.mergeSubsetOf(lowOps)
+	if err != nil {
+		return metadataOperators[T]{}, err
+	}
+
+	highOps.SupersetOf, err = highOps.mergeSupersetOf(lowOps)
+	if err != nil {
+		return metadataOperators[T]{}, err
+	}
+
+	highOps.Essential, err = highOps.mergeEssential(lowOps)
+	if err != nil {
+		return metadataOperators[T]{}, err
+	}
+
+	if err := highOps.validate(); err != nil {
+		return metadataOperators[T]{}, err
+	}
+
+	return highOps, nil
+}
+
+func (highOps metadataOperators[T]) mergeValue(lowOps metadataOperators[T]) (nullable[T], error) {
+	if !highOps.isValueSet() {
+		return lowOps.Value, nil
+	}
+
+	if !lowOps.isValueSet() {
+		return highOps.Value, nil
+	}
+
+	if !compare(highOps.Value.Value, lowOps.Value.Value) {
+		return nullable[T]{}, errors.New("")
+	}
+
+	return highOps.Value, nil
+}
+
+func (highOps metadataOperators[T]) mergeAdd(lowOps metadataOperators[T]) (T, error) {
+	if !highOps.isAddSet() {
+		return lowOps.Add, nil
+	}
+
+	if !lowOps.isAddSet() {
+		return highOps.Add, nil
+	}
+
+	return mergeSlices(highOps.Add, lowOps.Add), nil
+}
+
+func (highOps metadataOperators[T]) mergeDefault(lowOps metadataOperators[T]) (T, error) {
+	if !highOps.isDefaultSet() {
+		return lowOps.Default, nil
+	}
+
+	if !lowOps.isDefaultSet() {
+		return highOps.Default, nil
+	}
+
+	if !compare(highOps.Default, lowOps.Default) {
+		var zero T
+		return zero, errors.New("")
+	}
+
+	return highOps.Default, nil
+}
+
+func (highOps metadataOperators[T]) mergeOneOf(lowOps metadataOperators[T]) ([]T, error) {
+	if !highOps.isOneOfSet() {
+		return lowOps.OneOf, nil
+	}
+
+	if !lowOps.isOneOfSet() {
+		return highOps.OneOf, nil
+	}
+
+	oneOf := intersectSlices(highOps.OneOf, lowOps.OneOf)
 	if len(oneOf) == 0 {
-		return nil, errors.New("operator 'oneOf' was informed by both policies but the values have no intersection")
+		return nil, errors.New("")
 	}
 
 	return oneOf, nil
 }
 
-func (op primitiveOperatorOneOf[T]) apply(field T) (T, error) {
-	if len(op) == 0 {
-		return field, nil
+func (highOps metadataOperators[T]) mergeSubsetOf(lowOps metadataOperators[T]) (T, error) {
+	if !highOps.isSubsetOfSet() {
+		return lowOps.SubsetOf, nil
 	}
 
-	if !deepContains(op, field) {
-		var defaultT T
-		return defaultT, fmt.Errorf("field %v is not one of %v", field, op)
+	if !lowOps.isSubsetOfSet() {
+		return highOps.SubsetOf, nil
 	}
 
-	return field, nil
-}
-
-type sliceOperatorValue[T any] struct {
-	isSet bool
-	value []T
-}
-
-func (p *sliceOperatorValue[T]) UnmarshalJSON(data []byte) error {
-	if string(data) == "null" {
-		p.isSet = true
-		return nil
-	}
-
-	var t []T
-	if err := json.Unmarshal(data, &t); err != nil {
-		return err
-	}
-
-	p.isSet = true
-	p.value = t
-	return nil
-}
-
-func (highOp sliceOperatorValue[T]) merge(lowOp sliceOperatorValue[T]) (sliceOperatorValue[T], error) {
-	if !lowOp.isSet {
-		return highOp, nil
-	}
-
-	if !highOp.isSet {
-		return lowOp, nil
-	}
-
-	if !compareSlices(highOp.value, lowOp.value) {
-		return sliceOperatorValue[T]{}, errors.New("operator 'value' was informed by both policies but the values are different")
-	}
-
-	return highOp, nil
-}
-
-func (op sliceOperatorValue[T]) apply(field []T) ([]T, error) {
-	if !op.isSet {
-		return field, nil
-	}
-
-	return op.value, nil
-}
-
-type sliceOperatorAdd[T any] []T
-
-func (highOp sliceOperatorAdd[T]) merge(lowOp sliceOperatorAdd[T]) (sliceOperatorAdd[T], error) {
-	if len(lowOp) == 0 {
-		return highOp, nil
-	}
-
-	for _, value := range lowOp {
-		if !deepContains(highOp, value) {
-			highOp = append(highOp, value)
-		}
-	}
-
-	return highOp, nil
-}
-
-func (op sliceOperatorAdd[T]) apply(field []T) ([]T, error) {
-	for _, value := range op {
-		if !deepContains(field, value) {
-			field = append(field, value)
-		}
-	}
-
-	return field, nil
-}
-
-type sliceOperatorDefault[T any] []T
-
-func (highOp sliceOperatorDefault[T]) merge(lowOp sliceOperatorDefault[T]) (sliceOperatorDefault[T], error) {
-	if len(lowOp) == 0 {
-		return highOp, nil
-	}
-
-	if len(highOp) == 0 {
-		return lowOp, nil
-	}
-
-	if !compareSlices(highOp, lowOp) {
-		return sliceOperatorDefault[T]{}, errors.New("operator 'default' was informed by both policies but the values are different")
-	}
-
-	return highOp, nil
-}
-
-func (op sliceOperatorDefault[T]) apply(field []T) ([]T, error) {
-	if len(op) == 0 {
-		return field, nil
-	}
-
-	if len(field) == 0 {
-		return op, nil
-	}
-
-	return field, nil
-}
-
-type sliceOperatorSubsetOf[T any] []T
-
-func (highOp sliceOperatorSubsetOf[T]) merge(lowOp sliceOperatorSubsetOf[T]) (sliceOperatorSubsetOf[T], error) {
-	if len(lowOp) == 0 {
-		return highOp, nil
-	}
-
-	if len(highOp) == 0 {
-		return lowOp, nil
-	}
-
-	var subsetOf []T
-	for _, value := range lowOp {
-		if deepContains(highOp, value) {
-			subsetOf = append(subsetOf, value)
-		}
-	}
-
-	if len(subsetOf) == 0 {
-		return nil, errors.New("operator 'subsetOf' was informed by both policies but the values have no intersection")
+	subsetOf := intersectSlices(highOps.SubsetOf, lowOps.SubsetOf)
+	var zero T
+	// NOTE: This won't work if len(subsetOf) == 0.
+	if reflect.DeepEqual(subsetOf, zero) {
+		return zero, errors.New("")
 	}
 
 	return subsetOf, nil
 }
 
-func (op sliceOperatorSubsetOf[T]) apply(field []T) ([]T, error) {
-	if len(op) == 0 {
-		return field, nil
+func (highOps metadataOperators[T]) mergeSupersetOf(lowOps metadataOperators[T]) (T, error) {
+	if !highOps.isSupersetOfSet() {
+		return lowOps.SupersetOf, nil
 	}
 
-	var subSet []T
-	for _, e := range field {
-		if deepContains(op, e) {
-			subSet = append(subSet, e)
+	if !lowOps.isSupersetOfSet() {
+		return highOps.SupersetOf, nil
+	}
+
+	return mergeSlices(highOps.SupersetOf, lowOps.SupersetOf), nil
+}
+
+func (highOps metadataOperators[T]) mergeEssential(lowOps metadataOperators[T]) (bool, error) {
+	return highOps.Essential || lowOps.Essential, nil
+}
+
+func (ops metadataOperators[T]) isValueSet() bool {
+	return ops.Value.Set
+}
+
+func (ops metadataOperators[T]) isAddSet() bool {
+	var zero T
+	return !reflect.DeepEqual(ops.Add, zero)
+}
+
+func (ops metadataOperators[T]) isDefaultSet() bool {
+	var zero T
+	return !reflect.DeepEqual(ops.Default, zero)
+}
+
+func (ops metadataOperators[T]) isOneOfSet() bool {
+	return ops.OneOf != nil
+}
+
+func (ops metadataOperators[T]) isSubsetOfSet() bool {
+	var zero T
+	return !reflect.DeepEqual(ops.SubsetOf, zero)
+}
+
+func (ops metadataOperators[T]) isSupersetOfSet() bool {
+	var zero T
+	return !reflect.DeepEqual(ops.SupersetOf, zero)
+}
+
+type nullable[T any] struct {
+	Set   bool
+	Value T
+}
+
+// mergeSlices merges two slices and removes duplicates, using the provided signature.
+func mergeSlices[T any](slice1, slice2 T) T {
+
+	if !isSlice(slice1) || !isSlice(slice2) {
+		// TODO: Shouldn't panic.
+		panic("mergeSlices: both arguments must be slices")
+	}
+
+	v1 := reflect.ValueOf(slice1)
+	v2 := reflect.ValueOf(slice2)
+	result := reflect.MakeSlice(v1.Type(), 0, v1.Len()+v2.Len())
+	// Use a map to track unique elements.
+	unique := make(map[interface{}]struct{})
+
+	for i := 0; i < v1.Len(); i++ {
+		elem := v1.Index(i).Interface()
+		if _, exists := unique[elem]; !exists {
+			unique[elem] = struct{}{}
+			result = reflect.Append(result, v1.Index(i))
 		}
 	}
 
-	return subSet, nil
-}
-
-type sliceOperatorSupersetOf[T any] []T
-
-func (highOp sliceOperatorSupersetOf[T]) merge(lowOp sliceOperatorSupersetOf[T]) (sliceOperatorSupersetOf[T], error) {
-	if len(lowOp) == 0 {
-		return highOp, nil
-	}
-
-	for _, value := range lowOp {
-		if !deepContains(highOp, value) {
-			highOp = append(highOp, value)
+	for i := 0; i < v2.Len(); i++ {
+		elem := v2.Index(i).Interface()
+		if _, exists := unique[elem]; !exists {
+			unique[elem] = struct{}{}
+			result = reflect.Append(result, v2.Index(i))
 		}
 	}
 
-	return highOp, nil
+	return result.Interface().(T)
 }
 
-func (op sliceOperatorSupersetOf[T]) apply(field []T) ([]T, error) {
-	if len(op) == 0 {
-		return field, nil
+func intersectSlices[T any](slice1, slice2 T) T {
+
+	if !isSlice(slice1) || !isSlice(slice2) {
+		// TODO: Shouldn't panic.
+		panic("intersectSlices: both arguments must be slices")
 	}
 
-	for _, e := range op {
-		if !deepContains(field, e) {
-			return nil, fmt.Errorf("field %v is not a super set of %v", field, op)
+	v1 := reflect.ValueOf(slice1)
+	v2 := reflect.ValueOf(slice2)
+	result := reflect.MakeSlice(v1.Type(), 0, 0)
+	// Use a map to track unique elements.
+	unique := make(map[interface{}]struct{})
+
+	for i := 0; i < v1.Len(); i++ {
+		elem := v1.Index(i).Interface()
+		if _, exists := unique[elem]; !exists {
+			unique[elem] = struct{}{}
 		}
 	}
 
-	return field, nil
-}
-
-type primitiveOperatorEssential[T any] bool
-
-func (highOp primitiveOperatorEssential[T]) merge(lowOp primitiveOperatorEssential[T]) (primitiveOperatorEssential[T], error) {
-	return highOp || lowOp, nil
-}
-
-func (op primitiveOperatorEssential[T]) apply(field T) (T, error) {
-	var zeroValue T
-	isEssential := bool(op)
-	if isEssential && reflect.DeepEqual(field, zeroValue) {
-		return zeroValue, fmt.Errorf("field %v is essential by was not informed", field)
+	for i := 0; i < v2.Len(); i++ {
+		elem := v2.Index(i).Interface()
+		if _, exists := unique[elem]; exists {
+			unique[elem] = struct{}{}
+			result = reflect.Append(result, v2.Index(i))
+		}
 	}
 
-	return field, nil
-}
-
-type sliceOperatorEssential[T any] bool
-
-func (highOp sliceOperatorEssential[T]) merge(lowOp sliceOperatorEssential[T]) (sliceOperatorEssential[T], error) {
-	return highOp || lowOp, nil
-}
-
-func (op sliceOperatorEssential[T]) apply(field []T) ([]T, error) {
-	isEssential := bool(op)
-	if isEssential && field == nil {
-		return nil, fmt.Errorf("field %v is essential by was not informed", field)
+	if result.Len() == 0 {
+		var zero T
+		return zero
 	}
 
-	return field, nil
+	return result.Interface().(T)
 }
 
-func compareSlices[T any](x, y []T) bool {
-	if len(x) != len(y) {
+func isSuperset[T any](slice1, slice2 T) bool {
+	return isSubset(slice2, slice1)
+}
+
+func isSubset[T any](slice1, slice2 T) bool {
+	if !isSlice(slice1) || !isSlice(slice2) {
 		return false
 	}
 
-	for _, e := range y {
-		if !deepContains(x, e) {
+	v1 := reflect.ValueOf(slice1)
+	v2 := reflect.ValueOf(slice2)
+
+	// Use a map to track elements in slice2.
+	set := make(map[interface{}]struct{})
+	for i := 0; i < v2.Len(); i++ {
+		set[v2.Index(i).Interface()] = struct{}{}
+	}
+
+	// Check if all elements of slice1 are in slice2.
+	for i := 0; i < v1.Len(); i++ {
+		if _, exists := set[v1.Index(i).Interface()]; !exists {
 			return false
 		}
 	}
@@ -495,8 +539,41 @@ func compareSlices[T any](x, y []T) bool {
 	return true
 }
 
+func isSlice(v any) bool {
+	return reflect.ValueOf(v).Kind() == reflect.Slice
+}
+
 func deepContains[T any](s []T, e T) bool {
 	return slices.ContainsFunc(s, func(se T) bool {
 		return reflect.DeepEqual(se, e)
 	})
+}
+
+func compare(x, y any) bool {
+	if isSlice(x) && isSlice(y) {
+		return compareSlices(x, y)
+	}
+
+	return reflect.DeepEqual(x, y)
+}
+
+func compareSlices(x, y any) bool {
+	vx, vy := reflect.ValueOf(x), reflect.ValueOf(y)
+	if vx.Len() != vy.Len() {
+		return false
+	}
+
+	match := make(map[any]struct{})
+	for i := 0; i < vx.Len(); i++ {
+		match[vx.Index(i).Interface()] = struct{}{}
+	}
+
+	for i := 0; i < vy.Len(); i++ {
+		val := vy.Index(i).Interface()
+		if _, ok := match[val]; !ok {
+			return false
+		}
+	}
+
+	return true
 }
