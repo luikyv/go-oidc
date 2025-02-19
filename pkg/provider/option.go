@@ -1074,11 +1074,10 @@ func WithOpenIDFederation(
 	}
 }
 
-// appendIfNotIn adds 'value' to the beginning of 'values' if it is not already
-// present.
+// appendIfNotIn adds 'value' to the beginning of 'values' if it is not already present.
 func appendIfNotIn[T comparable](values []T, value T) []T {
 	if !slices.Contains(values, value) {
-		return append([]T{value}, values...) // Prepend value if not found
+		return append([]T{value}, values...) // Prepend value if not found.
 	}
 	return values
 }

@@ -233,7 +233,11 @@ func parseEntityStatement(
 		return entityStatement{}, fmt.Errorf("invalid entity statement: %w", err)
 	}
 
-	// TODO: Add validations for metadata policy, ...
+	if statement.MetadataPolicy != nil {
+		if err := statement.MetadataPolicy.validate(); err != nil {
+			return entityStatement{}, fmt.Errorf("invalid entity statement metadata policy: %w", err)
+		}
+	}
 
 	statement.signed = signedStatement
 	return statement, nil

@@ -2,6 +2,7 @@ package federation
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"slices"
 )
@@ -55,7 +56,7 @@ func (ops metadataOperators[T]) validateValue() error {
 	}
 
 	if ops.isAddSet() || ops.isDefaultSet() || ops.isOneOfSet() || ops.isSubsetOfSet() || ops.isSupersetOfSet() {
-		return errors.New("")
+		return errors.New("operator 'value' cannot be combined with other operators than 'essential'")
 	}
 
 	return nil
@@ -67,19 +68,19 @@ func (ops metadataOperators[T]) validateAdd() error {
 	}
 
 	if !isSlice(ops.Add) {
-		return errors.New("")
+		return fmt.Errorf("operator 'add' must be an array, but found %v", ops.Add)
 	}
 
 	if ops.isOneOfSet() {
-		return errors.New("")
+		return errors.New("operator 'add' cannot be combined with 'oneOf'")
 	}
 
 	if ops.isSubsetOfSet() && !isSubset(ops.Add, ops.SubsetOf) {
-		return errors.New("")
+		return fmt.Errorf("operator 'add' must be a subset of 'subsetOf'. add: %v, subsetOf: %v", ops.Add, ops.SubsetOf)
 	}
 
 	if ops.isSupersetOfSet() && !isSuperset(ops.Add, ops.SupersetOf) {
-		return errors.New("")
+		return fmt.Errorf("operator 'add' must be a superset of 'supersetOf'. add: %v, supersetOf: %v", ops.Add, ops.SubsetOf)
 	}
 
 	return nil
@@ -91,15 +92,15 @@ func (ops metadataOperators[T]) validateDefault() error {
 	}
 
 	if ops.isOneOfSet() && !deepContains(ops.OneOf, ops.Default) {
-		return errors.New("")
+		return fmt.Errorf("operator 'default' must be among the values of 'oneOf'. default: %v, oneOf: %v", ops.Default, ops.OneOf)
 	}
 
 	if ops.isSubsetOfSet() && !isSubset(ops.Default, ops.SubsetOf) {
-		return errors.New("")
+		return fmt.Errorf("operator 'default' must be a subset of 'subsetOf'. default: %v, subsetOf: %v", ops.Default, ops.SubsetOf)
 	}
 
 	if ops.isSupersetOfSet() && !isSuperset(ops.Default, ops.SupersetOf) {
-		return errors.New("")
+		return fmt.Errorf("operator 'default' must be a superset of 'supersetOf'. default: %v, superset: %v", ops.Default, ops.SupersetOf)
 	}
 
 	return nil
@@ -111,7 +112,7 @@ func (ops metadataOperators[T]) validateOneOf() error {
 	}
 
 	if ops.isSubsetOfSet() || ops.isSupersetOfSet() {
-		return errors.New("")
+		return errors.New("operator 'oneOf' cannot be combined with 'subsetOf' or 'supersetOf'")
 	}
 
 	return nil
@@ -123,11 +124,11 @@ func (ops metadataOperators[T]) validateSubsetOf() error {
 	}
 
 	if !isSlice(ops.SubsetOf) {
-		return errors.New("")
+		return fmt.Errorf("operator 'subsetOf' must be an array, but found %v", ops.SubsetOf)
 	}
 
 	if ops.isSupersetOfSet() && !isSuperset(ops.SubsetOf, ops.SupersetOf) {
-		return errors.New("")
+		return fmt.Errorf("operator 'subsetOf' must be a superset of 'supersetOf'. subsetOf: %v, supersetOf: %v", ops.SubsetOf, ops.SupersetOf)
 	}
 
 	return nil
@@ -139,7 +140,7 @@ func (ops metadataOperators[T]) validateSupersetOf() error {
 	}
 
 	if !isSlice(ops.SupersetOf) {
-		return errors.New("")
+		return fmt.Errorf("operator 'supersetOf' must be an array, but found %v", ops.SupersetOf)
 	}
 
 	return nil
@@ -222,7 +223,7 @@ func (ops metadataOperators[T]) applyOneOf(value T) (T, error) {
 
 	var zero T
 	if !deepContains(ops.OneOf, value) {
-		return zero, errors.New("")
+		return zero, fmt.Errorf("value is not one of the values in 'oneOf'. value: %v, oneOf: %v", value, ops.OneOf)
 	}
 
 	return value, nil
@@ -235,7 +236,7 @@ func (ops metadataOperators[T]) applySubsetOf(value T) (T, error) {
 
 	var zero T
 	if !isSubset(value, ops.SubsetOf) {
-		return zero, errors.New("")
+		return zero, fmt.Errorf("value is not a subset of the values in 'subsetOf'. value: %v, subsetOf: %v", value, ops.SubsetOf)
 	}
 
 	return value, nil
@@ -248,7 +249,7 @@ func (ops metadataOperators[T]) applySupersetOf(value T) (T, error) {
 
 	var zero T
 	if !isSuperset(value, ops.SupersetOf) {
-		return zero, errors.New("")
+		return zero, fmt.Errorf("value is not a superset of the values in 'supersetOf'. value: %v, supersetOf: %v", value, ops.SupersetOf)
 	}
 
 	return value, nil
@@ -261,7 +262,7 @@ func (ops metadataOperators[T]) applyEssential(value T) (T, error) {
 
 	var zero T
 	if reflect.DeepEqual(value, zero) {
-		return zero, errors.New("")
+		return zero, errors.New("value is essential but is not present")
 	}
 
 	return value, nil
@@ -322,7 +323,7 @@ func (highOps metadataOperators[T]) mergeValue(lowOps metadataOperators[T]) (nul
 	}
 
 	if !compare(highOps.Value.Value, lowOps.Value.Value) {
-		return nullable[T]{}, errors.New("")
+		return nullable[T]{}, fmt.Errorf("cannot merge operator 'value' with mismatch %v, %v", highOps.Value.Value, lowOps.Value.Value)
 	}
 
 	return highOps.Value, nil
@@ -351,7 +352,7 @@ func (highOps metadataOperators[T]) mergeDefault(lowOps metadataOperators[T]) (T
 
 	if !compare(highOps.Default, lowOps.Default) {
 		var zero T
-		return zero, errors.New("")
+		return zero, fmt.Errorf("cannot merge operator 'default' with mismatch %v, %v", highOps.Default, lowOps.Default)
 	}
 
 	return highOps.Default, nil
@@ -368,7 +369,7 @@ func (highOps metadataOperators[T]) mergeOneOf(lowOps metadataOperators[T]) ([]T
 
 	oneOf := intersectSlices(highOps.OneOf, lowOps.OneOf)
 	if len(oneOf) == 0 {
-		return nil, errors.New("")
+		return nil, fmt.Errorf("cannot merge operator 'oneOf' %v, %v", highOps.OneOf, lowOps.OneOf)
 	}
 
 	return oneOf, nil
@@ -387,7 +388,7 @@ func (highOps metadataOperators[T]) mergeSubsetOf(lowOps metadataOperators[T]) (
 	var zero T
 	// NOTE: This won't work if len(subsetOf) == 0.
 	if reflect.DeepEqual(subsetOf, zero) {
-		return zero, errors.New("")
+		return zero, fmt.Errorf("cannot merge operator 'subsetOf' %v, %v", highOps.SubsetOf, lowOps.SubsetOf)
 	}
 
 	return subsetOf, nil
@@ -442,7 +443,7 @@ type nullable[T any] struct {
 	Value T
 }
 
-// mergeSlices merges two slices and removes duplicates, using the provided signature.
+// mergeSlices merges two slices and removes duplicates.
 func mergeSlices[T any](slice1, slice2 T) T {
 
 	if !isSlice(slice1) || !isSlice(slice2) {
@@ -511,27 +512,27 @@ func intersectSlices[T any](slice1, slice2 T) T {
 	return result.Interface().(T)
 }
 
-func isSuperset[T any](slice1, slice2 T) bool {
-	return isSubset(slice2, slice1)
+func isSuperset[T any](superset, subset T) bool {
+	return isSubset(subset, superset)
 }
 
-func isSubset[T any](slice1, slice2 T) bool {
-	if !isSlice(slice1) || !isSlice(slice2) {
+func isSubset[T any](subset, superset T) bool {
+	if !isSlice(subset) || !isSlice(superset) {
 		return false
 	}
 
-	v1 := reflect.ValueOf(slice1)
-	v2 := reflect.ValueOf(slice2)
+	subsetV := reflect.ValueOf(subset)
+	supersetV := reflect.ValueOf(superset)
 
-	// Use a map to track elements in slice2.
+	// Use a map to track elements in superset.
 	set := make(map[interface{}]struct{})
-	for i := 0; i < v2.Len(); i++ {
-		set[v2.Index(i).Interface()] = struct{}{}
+	for i := 0; i < supersetV.Len(); i++ {
+		set[supersetV.Index(i).Interface()] = struct{}{}
 	}
 
 	// Check if all elements of slice1 are in slice2.
-	for i := 0; i < v1.Len(); i++ {
-		if _, exists := set[v1.Index(i).Interface()]; !exists {
+	for i := 0; i < subsetV.Len(); i++ {
+		if _, exists := set[subsetV.Index(i).Interface()]; !exists {
 			return false
 		}
 	}

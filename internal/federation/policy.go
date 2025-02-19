@@ -11,6 +11,16 @@ type metadataPolicy struct {
 	OpenIDClient *openIDClientMetadataPolicy `json:"openid_relying_party,omitempty"`
 }
 
+func (policy metadataPolicy) validate() error {
+	if policy.OpenIDClient != nil {
+		if err := policy.OpenIDClient.validate(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (highPolicy metadataPolicy) merge(lowPolicy metadataPolicy) (metadataPolicy, error) {
 	if lowPolicy.OpenIDClient != nil {
 		var highOpenIDClient openIDClientMetadataPolicy
@@ -92,6 +102,198 @@ type openIDClientMetadataPolicy struct {
 	CIBAJARSigAlg                 metadataOperators[goidc.SignatureAlgorithm]         `json:"backchannel_authentication_request_signing_alg,omitempty"`
 	CIBAUserCodeIsEnabled         metadataOperators[bool]                             `json:"backchannel_user_code_parameter,omitempty"`
 	// TODO: CustomAttributes.
+}
+
+func (p openIDClientMetadataPolicy) validate() error {
+	if err := p.Name.validate(); err != nil {
+		return err
+	}
+
+	if err := p.ApplicationType.validate(); err != nil {
+		return err
+	}
+
+	if err := p.LogoURI.validate(); err != nil {
+		return err
+	}
+
+	if err := p.Contacts.validate(); err != nil {
+		return err
+	}
+
+	if err := p.PolicyURI.validate(); err != nil {
+		return err
+	}
+
+	if err := p.TermsOfServiceURI.validate(); err != nil {
+		return err
+	}
+
+	if err := p.RedirectURIs.validate(); err != nil {
+		return err
+	}
+
+	if err := p.RequestURIs.validate(); err != nil {
+		return err
+	}
+
+	if err := p.GrantTypes.validate(); err != nil {
+		return err
+	}
+
+	if err := p.ResponseTypes.validate(); err != nil {
+		return err
+	}
+
+	if err := p.PublicJWKSURI.validate(); err != nil {
+		return err
+	}
+
+	if err := p.PublicJWKS.validate(); err != nil {
+		return err
+	}
+
+	if err := p.ScopeIDs.validate(); err != nil {
+		return err
+	}
+
+	if err := p.SubIdentifierType.validate(); err != nil {
+		return err
+	}
+
+	if err := p.SectorIdentifierURI.validate(); err != nil {
+		return err
+	}
+
+	if err := p.IDTokenSigAlg.validate(); err != nil {
+		return err
+	}
+
+	if err := p.IDTokenKeyEncAlg.validate(); err != nil {
+		return err
+	}
+
+	if err := p.IDTokenContentEncAlg.validate(); err != nil {
+		return err
+	}
+
+	if err := p.UserInfoSigAlg.validate(); err != nil {
+		return err
+	}
+
+	if err := p.UserInfoKeyEncAlg.validate(); err != nil {
+		return err
+	}
+
+	if err := p.UserInfoContentEncAlg.validate(); err != nil {
+		return err
+	}
+
+	if err := p.JARIsRequired.validate(); err != nil {
+		return err
+	}
+
+	if err := p.JARSigAlg.validate(); err != nil {
+		return err
+	}
+
+	if err := p.JARKeyEncAlg.validate(); err != nil {
+		return err
+	}
+
+	if err := p.JARContentEncAlg.validate(); err != nil {
+		return err
+	}
+
+	if err := p.JARMSigAlg.validate(); err != nil {
+		return err
+	}
+
+	if err := p.JARMKeyEncAlg.validate(); err != nil {
+		return err
+	}
+
+	if err := p.JARMContentEncAlg.validate(); err != nil {
+		return err
+	}
+
+	if err := p.TokenAuthnMethod.validate(); err != nil {
+		return err
+	}
+
+	if err := p.TokenAuthnSigAlg.validate(); err != nil {
+		return err
+	}
+
+	if err := p.TokenIntrospectionAuthnMethod.validate(); err != nil {
+		return err
+	}
+
+	if err := p.TokenIntrospectionAuthnSigAlg.validate(); err != nil {
+		return err
+	}
+
+	if err := p.TokenRevocationAuthnMethod.validate(); err != nil {
+		return err
+	}
+
+	if err := p.TokenRevocationAuthnSigAlg.validate(); err != nil {
+		return err
+	}
+
+	if err := p.DPoPTokenBindingIsRequired.validate(); err != nil {
+		return err
+	}
+
+	if err := p.TLSSubDistinguishedName.validate(); err != nil {
+		return err
+	}
+
+	if err := p.TLSSubAlternativeName.validate(); err != nil {
+		return err
+	}
+
+	if err := p.TLSSubAlternativeNameIp.validate(); err != nil {
+		return err
+	}
+
+	if err := p.TLSTokenBindingIsRequired.validate(); err != nil {
+		return err
+	}
+
+	if err := p.AuthDetailTypes.validate(); err != nil {
+		return err
+	}
+
+	if err := p.DefaultMaxAgeSecs.validate(); err != nil {
+		return err
+	}
+
+	if err := p.DefaultACRValues.validate(); err != nil {
+		return err
+	}
+
+	if err := p.PARIsRequired.validate(); err != nil {
+		return err
+	}
+
+	if err := p.CIBATokenDeliveryMode.validate(); err != nil {
+		return err
+	}
+
+	if err := p.CIBANotificationEndpoint.validate(); err != nil {
+		return err
+	}
+
+	if err := p.CIBAJARSigAlg.validate(); err != nil {
+		return err
+	}
+
+	if err := p.CIBAUserCodeIsEnabled.validate(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (high openIDClientMetadataPolicy) merge(low openIDClientMetadataPolicy) (openIDClientMetadataPolicy, error) {

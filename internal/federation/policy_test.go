@@ -4,12 +4,29 @@ import (
 	"testing"
 )
 
+func TestMetadataPolicy_Validate(t *testing.T) {
+	// Given.
+	policy := metadataPolicy{
+		OpenIDClient: &openIDClientMetadataPolicy{},
+	}
+
+	// When.
+	err := policy.validate()
+
+	// Then.
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestMetadataPolicy_Merge(t *testing.T) {
 	// Given.
 	highPolicy := metadataPolicy{
 		OpenIDClient: &openIDClientMetadataPolicy{},
 	}
-	lowPolicy := metadataPolicy{}
+	lowPolicy := metadataPolicy{
+		OpenIDClient: &openIDClientMetadataPolicy{},
+	}
 
 	// When.
 	_, err := highPolicy.merge(lowPolicy)
