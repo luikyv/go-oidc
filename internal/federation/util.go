@@ -16,8 +16,6 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-// TODO: Improve error messages.
-// TODO: Make a config for the algs used to validate the statements.
 func Client(ctx oidc.Context, id string) (*goidc.Client, error) {
 
 	clientStatement, err := fetchEntityConfiguration(ctx, id)
@@ -31,7 +29,7 @@ func Client(ctx oidc.Context, id string) (*goidc.Client, error) {
 
 	trustChain, err := resolveTrustChain(ctx, clientStatement)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not resolve the trust chain for client %s: %w", id, err)
 	}
 
 	clientStatement, err = applyTrustChain(ctx, clientStatement, trustChain)
