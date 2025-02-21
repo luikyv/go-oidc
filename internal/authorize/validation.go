@@ -17,7 +17,7 @@ import (
 func validateRequest(ctx oidc.Context, req request, c *goidc.Client) error {
 	if c.RegistrationType == goidc.ClientRegistrationTypeAutomatic {
 		return goidc.NewError(goidc.ErrorCodeAccessDenied,
-			"asymmetric cryptography myst be used to authenticate requests when using automatic registration")
+			"asymmetric cryptography must be used to authenticate requests when using automatic registration")
 	}
 	return validateParams(ctx, req.AuthorizationParameters, c)
 }
@@ -127,7 +127,7 @@ func validateSimplePushedRequest(ctx oidc.Context, req request, c *goidc.Client)
 	if c.RegistrationType == goidc.ClientRegistrationTypeAutomatic {
 		if c.TokenAuthnMethod != goidc.ClientAuthnPrivateKeyJWT && c.TokenAuthnMethod != goidc.ClientAuthnSelfSignedTLS {
 			return goidc.NewError(goidc.ErrorCodeAccessDenied,
-				"asymmetric cryptography myst be used to authenticate requests when using automatic registration")
+				"asymmetric cryptography must be used to authenticate requests when using automatic registration")
 		}
 	}
 	return validatePushedRequest(ctx, req, c)
