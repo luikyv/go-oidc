@@ -188,4 +188,14 @@ type Configuration struct {
 	HandleJWTBearerGrantAssertionFunc   goidc.HandleJWTBearerGrantAssertionFunc
 
 	ErrorURI string
+
+	OpenIDFedIsEnabled              bool
+	OpenIDFedEndpoint               string
+	OpenIDFedJWKS                   goidc.JSONWebKeySet
+	OpenIDFedAuthorityHints         []string
+	OpenIDFedTrustedAuthorities     []string
+	OpenIDFedEntityStatementSigAlgs []goidc.SignatureAlgorithm
+	OpenIDFedTrustChainMaxDepth     int
+	OpenIDFedClientFunc             func(Context, string) (*goidc.Client, error)
+	OpenIDFedClientRegTypes         []goidc.ClientRegistrationType
 }

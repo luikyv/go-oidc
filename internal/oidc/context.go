@@ -12,6 +12,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/luikyv/go-oidc/internal/strutil"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -42,10 +46,7 @@ func FromContext(ctx context.Context, config *Configuration) Context {
 	}
 }
 
-func Handler(
-	config *Configuration,
-	exec func(ctx Context),
-) http.HandlerFunc {
+func Handler(config *Configuration, exec func(ctx Context)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		exec(NewContext(w, r, config))
 	}
@@ -223,13 +224,53 @@ func (ctx Context) SaveClient(client *goidc.Client) error {
 }
 
 func (ctx Context) Client(id string) (*goidc.Client, error) {
-	for _, staticClient := range ctx.StaticClients {
-		if staticClient.ID == id {
-			return staticClient, nil
-		}
+	if client := ctx.staticClient(id); client != nil {
+		return client, nil
 	}
 
-	return ctx.ClientManager.Client(ctx.Context(), id)
+	if ctx.OpenIDFedIsEnabled && strutil.IsURL(id) {
+		return ctx.federationClient(id)
+	}
+
+	client, err := ctx.ClientManager.Client(ctx.Context(), id)
+	if err != nil {
+		return nil, err
+	}
+	if isExpired(client) {
+		return nil, errors.New("client information has expired")
+	}
+
+	return client, nil
+}
+
+func (ctx Context) staticClient(id string) *goidc.Client {
+	for _, c := range ctx.StaticClients {
+		if c.ID == id {
+			return c
+		}
+	}
+	return nil
+}
+
+func (ctx Context) federationClient(id string) (*goidc.Client, error) {
+	client, err := ctx.ClientManager.Client(ctx.Context(), id)
+	if err == nil && !isExpired(client) {
+		return client, nil
+	}
+
+	client, err = ctx.OpenIDFedClientFunc(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := ctx.SaveClient(client); err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
+func isExpired(client *goidc.Client) bool {
+	return client.ExpiresAt != nil && timeutil.TimestampNow() > *client.ExpiresAt
 }
 
 func (ctx Context) DeleteClient(id string) error {
@@ -237,10 +278,7 @@ func (ctx Context) DeleteClient(id string) error {
 }
 
 func (ctx Context) SaveGrantSession(session *goidc.GrantSession) error {
-	return ctx.GrantSessionManager.Save(
-		ctx.Context(),
-		session,
-	)
+	return ctx.GrantSessionManager.Save(ctx.Context(), session)
 }
 
 func (ctx Context) GrantSessionByTokenID(id string) (*goidc.GrantSession, error) {
@@ -385,6 +423,10 @@ func (ctx Context) Write(obj any, status int) error {
 }
 
 func (ctx Context) WriteJWT(token string, status int) error {
+	return ctx.WriteJWTWithType(token, status, "application/jwt")
+}
+
+func (ctx Context) WriteJWTWithType(token string, status int, contentType string) error {
 	// Check if the request was terminated before writing anything.
 	select {
 	case <-ctx.Context().Done():
@@ -392,7 +434,7 @@ func (ctx Context) WriteJWT(token string, status int) error {
 	default:
 	}
 
-	ctx.Response.Header().Set("Content-Type", "application/jwt")
+	ctx.Response.Header().Set("Content-Type", contentType)
 	ctx.Response.WriteHeader(status)
 
 	if _, err := ctx.Response.Write([]byte(token)); err != nil {
@@ -421,10 +463,7 @@ func (ctx Context) Redirect(redirectURL string) {
 	http.Redirect(ctx.Response, ctx.Request, redirectURL, http.StatusSeeOther)
 }
 
-func (ctx Context) WriteHTML(
-	html string,
-	params any,
-) error {
+func (ctx Context) WriteHTML(html string, params any) error {
 	// Check if the request was terminated before writing anything.
 	select {
 	case <-ctx.Context().Done():
@@ -446,10 +485,7 @@ func (ctx Context) IDTokenSigAlgsContainsNone() bool {
 	return slices.Contains(ctx.IDTokenSigAlgs, goidc.None)
 }
 
-func (ctx Context) ShouldIssueRefreshToken(
-	client *goidc.Client,
-	grantInfo goidc.GrantInfo,
-) bool {
+func (ctx Context) ShouldIssueRefreshToken(client *goidc.Client, grantInfo goidc.GrantInfo) bool {
 	if ctx.ShouldIssueRefreshTokenFunc == nil ||
 		!slices.Contains(client.GrantTypes, goidc.GrantRefreshToken) ||
 		grantInfo.GrantType == goidc.GrantClientCredentials {
@@ -459,10 +495,7 @@ func (ctx Context) ShouldIssueRefreshToken(
 	return ctx.ShouldIssueRefreshTokenFunc(client, grantInfo)
 }
 
-func (ctx Context) TokenOptions(
-	grantInfo goidc.GrantInfo,
-	client *goidc.Client,
-) goidc.TokenOptions {
+func (ctx Context) TokenOptions(grantInfo goidc.GrantInfo, client *goidc.Client) goidc.TokenOptions {
 
 	opts := ctx.TokenOptionsFunc(grantInfo, client)
 
@@ -530,10 +563,7 @@ func (ctx Context) HTTPClient() *http.Client {
 // If the subject identifier type is "public", it returns the provided subject.
 // If the subject identifier type is "pairwise", it generates a pairwise
 // identifier using the sector URI or a redirect URI.
-func (ctx Context) ExportableSubject(
-	sub string,
-	client *goidc.Client,
-) string {
+func (ctx Context) ExportableSubject(sub string, client *goidc.Client) string {
 	if ctx.GeneratePairwiseSubIDFunc == nil || !ctx.shouldGeneratePairwiseSub(client) {
 		return sub
 	}
@@ -586,6 +616,15 @@ func (ctx Context) PublicJWKS() (goidc.JSONWebKeySet, error) {
 	return goidc.JSONWebKeySet{Keys: publicKeys}, nil
 }
 
+func (ctx Context) PublicOpenIDFedJWKS() (goidc.JSONWebKeySet, error) {
+	publicKeys := []goidc.JSONWebKey{}
+	for _, jwk := range ctx.OpenIDFedJWKS.Keys {
+		publicKeys = append(publicKeys, jwk.Public())
+	}
+
+	return goidc.JSONWebKeySet{Keys: publicKeys}, nil
+}
+
 func (ctx Context) SigAlgs() ([]goidc.SignatureAlgorithm, error) {
 	jwks, err := ctx.JWKS()
 	if err != nil {
@@ -625,12 +664,7 @@ func (ctx Context) JWK(keyID string) (goidc.JSONWebKey, error) {
 }
 
 // JWKByAlg searches a key that matches the signature algorithm from the JWKS.
-func (ctx Context) JWKByAlg(
-	alg goidc.SignatureAlgorithm,
-) (
-	goidc.JSONWebKey,
-	error,
-) {
+func (ctx Context) JWKByAlg(alg goidc.SignatureAlgorithm) (goidc.JSONWebKey, error) {
 	jwks, err := ctx.JWKS()
 	if err != nil {
 		return goidc.JSONWebKey{}, err
@@ -643,4 +677,29 @@ func (ctx Context) JWKByAlg(
 	}
 
 	return goidc.JSONWebKey{}, fmt.Errorf("could not find jwk matching %s", alg)
+}
+
+// TODO: Improve this. signer func, jwks func, ...
+func (ctx Context) OpenIDFedSign(claims any, opts *jose.SignerOptions) (string, error) {
+	key := ctx.OpenIDFedJWKS.Keys[0]
+
+	if opts == nil {
+		opts = &jose.SignerOptions{}
+	}
+	opts = opts.WithHeader("kid", key.KeyID).WithHeader("alg", key.Algorithm)
+	if _, ok := opts.ExtraHeaders[jose.HeaderType]; !ok {
+		opts = opts.WithType("JWT")
+	}
+
+	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.SignatureAlgorithm(key.Algorithm), Key: key}, opts)
+	if err != nil {
+		return "", err
+	}
+
+	jws, err := jwt.Signed(signer).Claims(claims).Serialize()
+	if err != nil {
+		return "", err
+	}
+
+	return jws, nil
 }

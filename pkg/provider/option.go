@@ -1061,11 +1061,23 @@ func WithErrorURI(uri string) ProviderOption {
 	}
 }
 
-// appendIfNotIn adds 'value' to the beginning of 'values' if it is not already
-// present.
+func WithOpenIDFederation(
+	jwks goidc.JSONWebKeySet,
+	trustedAuthorities, authorityHints []string,
+) ProviderOption {
+	return func(p *Provider) error {
+		p.config.OpenIDFedIsEnabled = true
+		p.config.OpenIDFedJWKS = jwks
+		p.config.OpenIDFedTrustedAuthorities = trustedAuthorities
+		p.config.OpenIDFedAuthorityHints = authorityHints
+		return nil
+	}
+}
+
+// appendIfNotIn adds 'value' to the beginning of 'values' if it is not already present.
 func appendIfNotIn[T comparable](values []T, value T) []T {
 	if !slices.Contains(values, value) {
-		return append([]T{value}, values...) // Prepend value if not found
+		return append([]T{value}, values...) // Prepend value if not found.
 	}
 	return values
 }

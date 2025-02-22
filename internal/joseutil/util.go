@@ -17,6 +17,38 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
+func Sign2(
+	claims map[string]any,
+	kid string,
+	key any,
+	alg goidc.SignatureAlgorithm,
+	opts *jose.SignerOptions,
+) (
+	string,
+	error,
+) {
+
+	if opts == nil {
+		opts = &jose.SignerOptions{}
+	}
+	opts = opts.WithHeader("kid", kid).WithHeader("alg", alg)
+	if _, ok := opts.ExtraHeaders[jose.HeaderType]; !ok {
+		opts = opts.WithType("JWT")
+	}
+
+	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: alg, Key: key}, opts)
+	if err != nil {
+		return "", err
+	}
+
+	jws, err := jwt.Signed(signer).Claims(claims).Serialize()
+	if err != nil {
+		return "", err
+	}
+
+	return jws, nil
+}
+
 func Sign(
 	ctx oidc.Context,
 	claims map[string]any,

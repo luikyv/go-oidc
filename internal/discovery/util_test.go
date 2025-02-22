@@ -65,10 +65,10 @@ func TestOIDCConfig(t *testing.T) {
 	ctx := oidc.Context{Configuration: config}
 
 	// When.
-	got := oidcConfig(ctx)
+	got := NewOIDCConfig(ctx)
 
 	// Then.
-	want := openIDConfiguration{
+	want := OpenIDConfiguration{
 		Issuer:                     ctx.Host,
 		ClientRegistrationEndpoint: ctx.Host + ctx.EndpointDCR,
 		AuthorizationEndpoint:      ctx.Host + ctx.EndpointAuthorize,
@@ -178,10 +178,10 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 	ctx := oidc.Context{Configuration: config}
 
 	// When.
-	got := oidcConfig(ctx)
+	got := NewOIDCConfig(ctx)
 
 	// Then.
-	want := openIDConfiguration{
+	want := OpenIDConfiguration{
 		Issuer:                     ctx.Host,
 		ClientRegistrationEndpoint: ctx.Host + ctx.EndpointDCR,
 		AuthorizationEndpoint:      ctx.Host + ctx.EndpointAuthorize,
