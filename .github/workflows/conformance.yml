@@ -41,14 +41,14 @@ jobs:
           uses: actions/cache@v3
           id: cache-cs
           with:
-            path: ./conformance/suite
+            path: ./conformance-suite
             key: cs-${{ env.CS_VERSION }}
 
         - name: Set Up Conformance Suite
           if: steps.cache-cs.outputs.cache-hit != 'true'
           run: |
-            git clone --branch "release-$CS_VERSION" --single-branch --depth=1 https://gitlab.com/openid/conformance-suite.git conformance/suite
-            docker compose -f ./conformance/suite/builder-compose.yml run builder
+            git clone --branch "release-$CS_VERSION" --single-branch --depth=1 https://gitlab.com/openid/conformance-suite.git
+            docker compose -f ./conformance-suite/builder-compose.yml run builder
 
         - name: Run Conformance Suite
           id: cs-server
@@ -92,7 +92,7 @@ jobs:
           if: always()
           with:
             name: ${{ matrix.profile }}
-            path: conformance/*.zip
+            path: examples/${{ matrix.profile }}/*.zip
 
   all-tests-succeeded:
     runs-on: ubuntu-latest
