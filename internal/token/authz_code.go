@@ -11,13 +11,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func generateAuthorizationCodeGrant(
-	ctx oidc.Context,
-	req request,
-) (
-	response,
-	error,
-) {
+func generateAuthorizationCodeGrant(ctx oidc.Context, req request) (response, error) {
 
 	if req.authorizationCode == "" {
 		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest,
