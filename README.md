@@ -1,8 +1,9 @@
 # go-oidc - A Configurable OpenID Provider built in Go.
 [![Go Reference](https://pkg.go.dev/badge/github.com/luikyv/go-oidc.svg)](https://pkg.go.dev/github.com/luikyv/go-oidc)
 [![Go Report Card](https://goreportcard.com/badge/github.com/luikyv/go-oidc)](https://goreportcard.com/report/github.com/luikyv/go-oidc)
+[![License](https://img.shields.io/github/license/luikyv/go-oidc)](LICENSE)
 
-`go-oidc` is a client module that provides a configurable Authorization Server with support for OpenID Connect and other standards.
+`go-oidc` is a Go module that provides a configurable Authorization Server with support for OpenID Connect and other standards.
 
 This library implements the following specifications:
 * [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html)
@@ -59,3 +60,103 @@ _ = op.Run(":80")
 ```
 
 You can then check the default configurations by accessing http://localhost/.well-known/openid-configuration.
+
+## Documentation
+
+### Running the Provider
+
+After instantiating a new provider, the simplest way to run it is
+```go
+op.Run(":80")
+```
+For more flexibility, the provider can create an HTTP handler with all endpoints configured.
+The example below demonstrates running the provider under TLS:
+
+```go
+mux := http.NewServeMux()
+mux.Handle("/", op.Handler())
+
+server := &http.Server{
+	Addr:    ":443",
+	Handler: mux,
+}
+_ := server.ListenAndServeTLS(certFilePath, certKeyFilePath)
+```
+
+### Entities
+go-oidc revolves around three entities which are:
+
+- `goidc.Client` is the entity that interacts with the authorization server to request tokens and access protected resources.
+- `goidc.AuthnSession` is a short-lived session that stores information about authorization requests.
+  It can be used to implement more sophisticated user authentication flows by allowing interactions during the authentication process.
+- `goidc.GrantSession` represents the access granted to a client by an entity (either a user or the client itself).
+  It holds information about the token issued and the entity who granted access.
+
+`goidc.Client`, `goidc.AuthnSession` and `goidc.GrantSession` are managed by implementations of `goidc.ClientManager`, `goidc.AuthnSessionManager` and `goidc.GrantSessionManager` respectively.
+
+By default, `provider.Provider` uses an in-memory implementation of these interfaces, meaning all stored entities are lost when the server shuts down.
+
+It is highly recommended to replace the default storage with custom implementations to ensure persistence.
+For more details, see `WithClientStorage`, `WithAuthnSessionStorage` and `WithGrantSessionStorage`.
+
+### Authentication Policies
+
+For authorization requests (when grant types such as implicit and authorization_code are enabled), users are authenticated with an available `goidc.AuthnPolicy`.
+The policy is responsible for interacting with the user and modifing the `goidc.AuthnSession` to define how access and ID tokens are issued and with what information.
+
+The policy below has a setup function that returns true for all requests which means its authentication function will execute for all requests.
+The authentication in its turn function renders an HTML page to collect the username. Once the user is identified, it completes the flow successfully.
+```go
+policy := NewPolicy(
+  "main_policy",
+  func(_ *http.Request, _ *Client, _ *AuthnSession) bool {
+    return true
+  },
+  func(r http.ResponseWriter, w *http.Request, as *AuthnSession) (AuthnStatus, error) {
+    username := r.PostFormValue("username")
+    if username == "" {
+      renderHTMLPage(w)
+      return goidc.StatusInProgress, nil
+    }
+
+    if username == "banned_user" {
+      return goidc.StatusFailure, errors.New("the user is banned")
+    }
+
+    as.Subject = username
+    return goidc.StatusSuccess, nil
+  },
+)
+
+op, err := provider.New(
+  ...,
+  provider.WithAuthorizationCodeGrant(),
+  provider.WithPolicy(policy),
+  ...,
+)
+```
+If the authentication function returns either `goidc.StatusFailure` or an error, the flow is stopped, and the grant is denied.
+
+Alternatively, the authentication function can return `goidc.StatusInProgress`, which pauses the flow to await user interaction.
+This interaction could involve, for example, displaying an HTML page for further user input.
+
+For a more complex example of `goidc.AuthnPolicy`, check out the examples folder.
+
+### Scopes
+
+go-oidc provides two functions for creating scopes.
+
+`goidc.NewScope` creates a simple scope.
+```go
+scope := goidc.NewScope("openid")
+```
+
+Whereas `goidc.NewDynamicScope` creates a more complex scope where validation logic goes beyond simple string matching.
+```go
+dynamicScope := goidc.NewDynamicScope("payment", func(requestedScope string) bool {
+	return strings.HasPrefix(requestedScope, "payment:")
+})
+// This results in true.
+dynamicScope.Matches("payment:30")
+```
+Note that this dynamic scope  will appear as "payment" under "scopes_supported" in the /.well-known/openid-configuration endpoint response.
