@@ -148,7 +148,6 @@ op, err := provider.New(
 )
 ```
 
-
 Alternatively, the authentication function can return `goidc.StatusInProgress`, which pauses the flow to await user interaction.
 This interaction could involve, for example, displaying an HTML page for further user input.
 
@@ -172,3 +171,7 @@ dynamicScope := goidc.NewDynamicScope("payment", func(requestedScope string) boo
 dynamicScope.Matches("payment:30")
 ```
 Note that this dynamic scope  will appear as "payment" under "scopes_supported" in the /.well-known/openid-configuration endpoint response.
+
+### Dynamic Client Registration (DCR)
+
+## MTLS

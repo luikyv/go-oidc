@@ -63,4 +63,4 @@ cs-fapiciba-tests:
 	@python3 conformance-suite/scripts/run-test-plan.py \
 		fapi-ciba-id1-test-plan[client_auth_type=private_key_jwt][ciba_mode=poll][fapi_profile=plain_fapi][client_registration=dynamic_client] ./examples/fapiciba/config.json \
 		fapi-ciba-id1-test-plan[client_auth_type=private_key_jwt][ciba_mode=ping][fapi_profile=plain_fapi][client_registration=dynamic_client] ./examples/fapiciba/config.json \
-		--export-dir ./exemples/fapiciba/
+		--export-dir ./examples/fapiciba/
