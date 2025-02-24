@@ -282,9 +282,10 @@ func WithIDTokenContentEncryptionAlgs(
 }
 
 // WithDCR allows clients to be registered dynamically.
-// handler is executed during registration and update of the client to
+// handleFunc is executed during registration and update of the client to
 // perform custom validations (e.g. validate the initial access token) or set
 // default values (e.g. set the default scopes).
+// validateTokenFunc validates the initial access token if not nil.
 // To make registration access tokens rotate, see [WithDCRTokenRotation].
 func WithDCR(
 	handleFunc goidc.HandleDynamicClientFunc,
@@ -722,13 +723,7 @@ func WithAuthorizationDetails(
 }
 
 // WithMTLS allows requests to be established with mutual TLS.
-// The default logic to extract the client certificate is using the header
-// [goidc.HeaderClientCert]. For more info, see [defaultClientCertFunc].
-// The client certificate logic can be overridden with [WithClientCertFunc].
-func WithMTLS(
-	host string,
-	clientCertFunc goidc.ClientCertFunc,
-) ProviderOption {
+func WithMTLS(host string, clientCertFunc goidc.ClientCertFunc) ProviderOption {
 	return func(p *Provider) error {
 		p.config.MTLSIsEnabled = true
 		p.config.MTLSHost = host

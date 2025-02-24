@@ -267,6 +267,9 @@ const (
 	ACRMaceIncommonIAPBronze ACR = "urn:mace:incommon:iap:bronze"
 )
 
+// ClientCertFunc fetches the client certificate during mTLS connections.
+// It may be executed multiple times during a single request to the provider.
+// Consider caching the certificate to avoid redundant computations.
 type ClientCertFunc func(*http.Request) (*x509.Certificate, error)
 
 type MiddlewareFunc func(next http.Handler) http.Handler

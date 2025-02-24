@@ -120,11 +120,11 @@ If the authentication function returns either `goidc.StatusFailure` or an error,
 policy := NewPolicy(
   "main_policy",
   // Setup function.
-  func(_ *http.Request, _ *Client, _ *AuthnSession) bool {
+  func(_ *http.Request, _ *goidc.Client, _ *goidc.AuthnSession) bool {
     return true
   },
   // Authentication function.
-  func(r http.ResponseWriter, w *http.Request, as *AuthnSession) (AuthnStatus, error) {
+  func(r http.ResponseWriter, w *http.Request, as *goidc.AuthnSession) (AuthnStatus, error) {
     username := r.PostFormValue("username")
     if username == "" {
       renderHTMLPage(w)
@@ -172,6 +172,67 @@ dynamicScope.Matches("payment:30")
 ```
 Note that this dynamic scope  will appear as "payment" under "scopes_supported" in the /.well-known/openid-configuration endpoint response.
 
+The example below shows how to add the scopes to the `provider.Provider`.
+```go
+op, _ := provider.New(
+  ...,
+  provider.WithScopes(goidc.ScopeOpenID, goidc.ScopeOfflineAccess)
+  ...,
+)
+```
+
 ### Dynamic Client Registration (DCR)
 
-## MTLS
+Dynamic Client Registration (DCR) enables clients to be created and managed dynamically. This feature can be activated by adding the following option to the provider:
+```go
+op, _ := provider.New(
+  ...,
+  provider.WithDCR(
+    // Function to add custom logic during DCR.
+    func(r *http.Request, id string, meta *goidc.ClientMetaInfo) error {
+      return nil
+    },
+    // Function to validate the initial access token.
+    func(r *http.Request, initialToken string) error {
+      return nil
+    },
+  ),
+  ...,
+)
+```
+
+`goidc.HandleDynamicClientFunc` is executed first during requests to the DCR endpoint and also for every request to update an existing client.
+By default, the DCR endpoint is `/register`, and the Dynamic Client Management (DCM) endpoint is `/register/{client_id}`.
+
+### Mutual TLS (mTLS)
+
+Mutual TLS (mTLS) is a security protocol that ensures both the client and server authenticate each other using TLS certificates. To enable it, configure your provider as follows:
+```go
+op, _ := provider.New(
+  ...,
+  provider.WithMTLS(
+    // mTLS host.
+    "https://matls-go-oidc.com",
+    // Function to fetch the client certificate.
+    func(r *http.Request) (*x509.Certificate, error) {
+      ...
+    }
+  ),
+  ...,
+)
+```
+
+An mTLS host must be specified. All endpoints enabled for the provider will be listed under `mtls_endpoint_aliases` in the response of GET `/.well-known/openid-configuration`, using the provided mTLS host.
+```json
+{
+  ...,
+  "mtls_endpoint_aliases": {
+    ...,
+    "token_endpoint": "https://matls-go-oidc.com/token",
+    ...,
+  },
+  ...,
+}
+```
+
+Keep in mind that `goidc.ClientCertFunc` may be executed multiple times during a single request to the provider. If performance is a concern, consider caching the certificate to avoid redundant computations.

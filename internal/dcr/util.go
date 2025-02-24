@@ -10,14 +10,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func create(
-	ctx oidc.Context,
-	initialToken string,
-	meta *goidc.ClientMetaInfo,
-) (
-	response,
-	error,
-) {
+func create(ctx oidc.Context, initialToken string, meta *goidc.ClientMetaInfo) (response, error) {
 
 	if err := ctx.ValidateInitalAccessToken(initialToken); err != nil {
 		return response{}, goidc.WrapError(goidc.ErrorCodeAccessDenied,
