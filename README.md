@@ -97,21 +97,33 @@ go-oidc revolves around three entities which are:
 By default, `provider.Provider` uses an in-memory implementation of these interfaces, meaning all stored entities are lost when the server shuts down.
 
 It is highly recommended to replace the default storage with custom implementations to ensure persistence.
-For more details, see `WithClientStorage`, `WithAuthnSessionStorage` and `WithGrantSessionStorage`.
+For more details, see `provider.WithClientStorage`, `provider.WithAuthnSessionStorage` and `provider.WithGrantSessionStorage`.
 
 ### Authentication Policies
 
-For authorization requests (when grant types such as implicit and authorization_code are enabled), users are authenticated with an available `goidc.AuthnPolicy`.
+For authorization requests (when grant types such as implicit and authorization_code are enabled) which start by default at `/authorize`, users are authenticated with an available `goidc.AuthnPolicy`.
 The policy is responsible for interacting with the user and modifing the `goidc.AuthnSession` to define how access and ID tokens are issued and with what information.
 
-The policy below has a setup function that returns true for all requests which means its authentication function will execute for all requests.
-The authentication in its turn function renders an HTML page to collect the username. Once the user is identified, it completes the flow successfully.
+The policy below includes a setup function that always returns `true`, meaning the authentication function will execute for all requests.
+If the setup function were to return `false`, the authentication function would not be evaluated.
+
+The authentication function renders an HTML page to collect the username and returns `goidc.StatusInProgress`, pausing the flow while awaiting user interaction.
+
+Authentication resumes when a request is made to `/authorize/{callback_id}`.
+For example, the HTML page could submit a form via `POST /authorize/{callback_id}` to continue the authentication process.
+
+The **callback ID** is pre-populated in the authentication session and can be accessed via `goidc.AuthnSession.CallbackID`.
+Once the user is identified, the authentication process completes successfully by returning `goidc.StatusSuccess`.
+
+If the authentication function returns either `goidc.StatusFailure` or an error, the flow is stopped, and the grant is denied.
 ```go
 policy := NewPolicy(
   "main_policy",
+  // Setup function.
   func(_ *http.Request, _ *Client, _ *AuthnSession) bool {
     return true
   },
+  // Authentication function.
   func(r http.ResponseWriter, w *http.Request, as *AuthnSession) (AuthnStatus, error) {
     username := r.PostFormValue("username")
     if username == "" {
@@ -135,7 +147,7 @@ op, err := provider.New(
   ...,
 )
 ```
-If the authentication function returns either `goidc.StatusFailure` or an error, the flow is stopped, and the grant is denied.
+
 
 Alternatively, the authentication function can return `goidc.StatusInProgress`, which pauses the flow to await user interaction.
 This interaction could involve, for example, displaying an HTML page for further user input.
