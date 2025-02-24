@@ -83,7 +83,7 @@ server := &http.Server{
 _ := server.ListenAndServeTLS(certFilePath, certKeyFilePath)
 ```
 
-### Entities
+### Storage
 go-oidc revolves around three entities which are:
 
 - `goidc.Client` is the entity that interacts with the authorization server to request tokens and access protected resources.
@@ -102,7 +102,8 @@ For more details, see `provider.WithClientStorage`, `provider.WithAuthnSessionSt
 ### Authentication Policies
 
 For authorization requests (when grant types such as implicit and authorization_code are enabled) which start by default at `/authorize`, users are authenticated with an available `goidc.AuthnPolicy`.
-The policy is responsible for interacting with the user and modifing the `goidc.AuthnSession` to define how access and ID tokens are issued and with what information.
+
+The policy manages user interactions and modifies the `goidc.AuthnSession` to determine how access and ID tokens are issued, including the information they contain. Refer to the fields of `goidc.AuthnSession` for details on what can be modified and how.
 
 The policy below includes a setup function that always returns `true`, meaning the authentication function will execute for all requests.
 If the setup function were to return `false`, the authentication function would not be evaluated.
@@ -148,10 +149,7 @@ op, err := provider.New(
 )
 ```
 
-Alternatively, the authentication function can return `goidc.StatusInProgress`, which pauses the flow to await user interaction.
-This interaction could involve, for example, displaying an HTML page for further user input.
-
-For a more complex example of `goidc.AuthnPolicy`, check out the examples folder.
+For a more complex example of a `goidc.AuthnPolicy`, check out the examples folder.
 
 ### Scopes
 
@@ -222,7 +220,7 @@ op, _ := provider.New(
 )
 ```
 
-An mTLS host must be specified. All endpoints enabled for the provider will be listed under `mtls_endpoint_aliases` in the response of GET `/.well-known/openid-configuration`, using the provided mTLS host.
+All endpoints enabled for the provider will be listed under `mtls_endpoint_aliases` in the response of GET `/.well-known/openid-configuration`, using the provided mTLS host.
 ```json
 {
   ...,
@@ -236,3 +234,105 @@ An mTLS host must be specified. All endpoints enabled for the provider will be l
 ```
 
 Keep in mind that `goidc.ClientCertFunc` may be executed multiple times during a single request to the provider. If performance is a concern, consider caching the certificate to avoid redundant computations.
+
+### JWT-Secured Authorization Request (JAR)
+
+JAR, as defined in [RFC 9101](https://www.rfc-editor.org/rfc/rfc9101.html), allows clients to send authorization requests as signed and optionally encrypted JWTs (request objects) instead of URL query parameters.
+```go
+op, _ := provider.New(
+  ...,
+  provider.WithJAR(goidc.RS256, goidc.PS256),
+  ...,
+)
+```
+
+This configures the supported signing algorithms, reflected in `/.well-known/openid-configuration`:
+```json
+{
+  ...,
+  "request_parameter_supported": true,
+  "request_object_signing_alg_values_supported": ["RS256", "PS256"],
+  ...,
+}
+```
+
+To enable JAR encryption:
+```go
+op, _ := provider.New(
+  ...,
+  provider.WithJAR(goidc.RS256, goidc.PS256),
+  provider.WithJAREncryption(goidc.RSA_OAEP_256)
+  ...,
+)
+```
+
+which would result in the metadata below
+```json
+{
+  ...,
+  "request_parameter_supported": true,
+  "request_object_signing_alg_values_supported": ["RS256", "PS256"],
+  "request_object_encryption_alg_values_supported": ["RSA_OAEP_256"],
+  "request_object_encryption_enc_values_supported": ["A128CBC_HS256"],
+  ...,
+}
+```
+
+To customize JAR content encryption algorithms, use `provider.WithJARContentEncryptionAlgs`.
+
+### JWT-Secured Authorization Response Mode (JARM)
+
+[JARM](https://openid.net/specs/oauth-v2-jarm.html) enhances OAuth 2.0 by returning authorization responses as signed and optionally encrypted JWTs. For this, it defines new response modes: `jwt`, `query.jwt`, `fragment.jwt` and `form_post.jwt`.
+```go
+op, _ := provider.New(
+  ...,
+  provider.WithJARM(goidc.RS256, goidc.PS256),
+  ...,
+)
+```
+
+By including the option `provider.WithJARM`, the well known metadata is displayed as follows
+```json
+{
+  ...,
+  "authorization_signing_alg_values_supported": ["RS256", "PS256"],
+  "response_modes_supported": [
+    "jwt",
+    "query.jwt",
+    "fragment.jwt",
+    "form_post.jwt",
+    ...,
+  ],
+  ...,
+}
+```
+
+To enable JARM encryption:
+```go
+op, _ := provider.New(
+  ...,
+  provider.WithJAM(goidc.RS256, goidc.PS256),
+  provider.WithJARMEncryption(goidc.RSA_OAEP_256)
+  ...,
+)
+```
+
+which would result in the metadata below
+```json
+{
+  ...,
+  "authorization_signing_alg_values_supported": ["RS256", "PS256"],
+  "response_modes_supported": [
+    ...,
+    "query.jwt",
+    "fragment.jwt",
+    "form_post.jwt",
+    ...,
+  ],
+  "authorization_encryption_alg_values_supported": ["RSA_OAEP_256"],
+  "authorization_encryption_enc_values_supported": ["A128CBC_HS256"],
+  ...,
+}
+```
+
+To customize JARM content encryption algorithms, use `provider.WithJARMContentEncryptionAlgs`.

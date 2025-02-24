@@ -411,6 +411,10 @@ func TestGenerateGrant_AuthorizationCodeGrant_PKCE(t *testing.T) {
 	}
 }
 
+// TestGenerateGrant_AuthorizationCodeGrant_PKCEDowngradeIsMitigated verifies that an
+// authorization code grant request fails when a code_verifier is provided, but no
+// code_challenge was used during authorization. This ensures that a PKCE downgrade attack
+// is properly mitigated.
 func TestGenerateGrant_AuthorizationCodeGrant_PKCEDowngradeIsMitigated(t *testing.T) {
 
 	// Given.

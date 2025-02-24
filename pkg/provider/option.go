@@ -506,10 +506,7 @@ func WithUnregisteredRedirectURIsForPAR() ProviderOption {
 // "request_object_signing_alg".
 // By default, the max difference between "iat" and "exp" of request objects is
 // set to [defaultJWTLifetimeSecs].
-func WithJAR(
-	alg goidc.SignatureAlgorithm,
-	algs ...goidc.SignatureAlgorithm,
-) ProviderOption {
+func WithJAR(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) ProviderOption {
 	algs = appendIfNotIn(algs, alg)
 	return func(p *Provider) error {
 		p.config.JARIsEnabled = true
@@ -521,10 +518,7 @@ func WithJAR(
 // WithJARRequired requires authorization requests to be securely sent as
 // signed JWTs.
 // For more info, see [WithJAR].
-func WithJARRequired(
-	alg goidc.SignatureAlgorithm,
-	algs ...goidc.SignatureAlgorithm,
-) ProviderOption {
+func WithJARRequired(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) ProviderOption {
 	return func(p *Provider) error {
 		p.config.JARIsRequired = true
 		return WithJAR(alg, algs...)(p)
@@ -542,10 +536,7 @@ func WithJARByReference(requireReqURIRegistration bool) ProviderOption {
 // WithJAREncryption allows authorization requests to be securely sent as
 // encrypted JWTs.
 // To enable JAR, see [WithJAR].
-func WithJAREncryption(
-	alg goidc.KeyEncryptionAlgorithm,
-	algs ...goidc.KeyEncryptionAlgorithm,
-) ProviderOption {
+func WithJAREncryption(alg goidc.KeyEncryptionAlgorithm, algs ...goidc.KeyEncryptionAlgorithm) ProviderOption {
 	algs = appendIfNotIn(algs, alg)
 	return func(p *Provider) error {
 		p.config.JAREncIsEnabled = true
@@ -596,10 +587,7 @@ func WithJARM(
 // Clients can choose the encryption algorithms by setting the attributes
 // "authorization_encrypted_response_al" and "authorization_encrypted_response_enc".
 // To enabled JARM, see [WithJARM].
-func WithJARMEncryption(
-	alg goidc.KeyEncryptionAlgorithm,
-	algs ...goidc.KeyEncryptionAlgorithm,
-) ProviderOption {
+func WithJARMEncryption(alg goidc.KeyEncryptionAlgorithm, algs ...goidc.KeyEncryptionAlgorithm) ProviderOption {
 	algs = appendIfNotIn(algs, alg)
 	return func(p *Provider) error {
 		p.config.JARMEncIsEnabled = true
