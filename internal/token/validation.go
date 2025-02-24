@@ -204,7 +204,7 @@ func validatePkce(ctx oidc.Context, req request, _ *goidc.Client, session *goidc
 		// RFC 9700. "...a token request containing a code_verifier parameter is
 		// accepted only if a code_challenge parameter was present in the authorization request..."
 		if req.codeVerifier != "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid code verifier")
+			return goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid code verifier")
 		}
 		return nil
 	}
@@ -218,7 +218,7 @@ func validatePkce(ctx oidc.Context, req request, _ *goidc.Client, session *goidc
 	// of 128 characters."
 	codeVerifierLengh := len(req.codeVerifier)
 	if codeVerifierLengh < 43 || codeVerifierLengh > 128 {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid code verifier")
+		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid code verifier")
 	}
 
 	if !isPKCEValid(req.codeVerifier, session.CodeChallenge, codeChallengeMethod) {
