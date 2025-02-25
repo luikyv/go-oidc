@@ -638,21 +638,11 @@ func validateIDTokenHintAsOptional(
 }
 
 func isRedirectURIAllowed(c *goidc.Client, redirectURI string) bool {
-	for _, ru := range c.RedirectURIs {
-		if redirectURI == ru {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(c.RedirectURIs, redirectURI)
 }
 
 func isRequestURIAllowed(c *goidc.Client, requestURI string) bool {
-	for _, ru := range c.RequestURIs {
-		if requestURI == ru {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(c.RequestURIs, requestURI)
 }
 
 func isAuthDetailTypeAllowed(c *goidc.Client, authDetailType string) bool {

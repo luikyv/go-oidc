@@ -194,42 +194,41 @@ func containsAllScopes(availableScopes string, requestedScopes string) bool {
 	return true
 }
 
-func validatePkce(
-	ctx oidc.Context,
-	req request,
-	_ *goidc.Client,
-	session *goidc.AuthnSession,
-) error {
+func validatePkce(ctx oidc.Context, req request, _ *goidc.Client, session *goidc.AuthnSession) error {
 
 	if !ctx.PKCEIsEnabled {
 		return nil
 	}
 
-	// RFC 7636. "...with a minimum length of 43 characters and a maximum length
-	// of 128 characters."
-	codeVerifierLengh := len(req.codeVerifier)
-	if req.codeVerifier != "" && (codeVerifierLengh < 43 || codeVerifierLengh > 128) {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid code verifier")
+	if session.CodeChallenge == "" {
+		// RFC 9700. "...a token request containing a code_verifier parameter is
+		// accepted only if a code_challenge parameter was present in the authorization request..."
+		if req.codeVerifier != "" {
+			return goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid code_verifier")
+		}
+		return nil
 	}
 
 	codeChallengeMethod := session.CodeChallengeMethod
 	if codeChallengeMethod == "" {
 		codeChallengeMethod = ctx.PKCEDefaultChallengeMethod
 	}
-	// In the case PKCE is enabled, if the session was created with a code
-	// challenge, the token request must contain the right code verifier.
-	if session.CodeChallenge != "" && req.codeVerifier == "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "code_verifier cannot be empty")
+
+	// RFC 7636. "...with a minimum length of 43 characters and a maximum length
+	// of 128 characters."
+	codeVerifierLengh := len(req.codeVerifier)
+	if codeVerifierLengh < 43 || codeVerifierLengh > 128 {
+		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid code_verifier")
 	}
-	if session.CodeChallenge != "" &&
-		!isPKCEValid(req.codeVerifier, session.CodeChallenge, codeChallengeMethod) {
+
+	if !isPKCEValid(req.codeVerifier, session.CodeChallenge, codeChallengeMethod) {
 		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid code_verifier")
 	}
 
 	return nil
 }
 
-func isPKCEValid(codeVerifier string, codeChallenge string, codeChallengeMethod goidc.CodeChallengeMethod) bool {
+func isPKCEValid(codeVerifier, codeChallenge string, codeChallengeMethod goidc.CodeChallengeMethod) bool {
 	switch codeChallengeMethod {
 	case goidc.CodeChallengeMethodPlain:
 		return codeChallenge == codeVerifier

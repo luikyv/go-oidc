@@ -378,6 +378,72 @@ func TestGenerateGrant_AuthorizationCodeGrant_CodeReuseInvalidatesGrant(t *testi
 	}
 }
 
+func TestGenerateGrant_AuthorizationCodeGrant_PKCE(t *testing.T) {
+
+	// Given.
+	ctx, client, session := setUpAuthzCodeGrant(t)
+	ctx.PKCEIsEnabled = true
+	ctx.PKCEChallengeMethods = []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodSHA256}
+	ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodSHA256
+	session.CodeChallenge = "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ"
+	if err := ctx.SaveAuthnSession(session); err != nil {
+		t.Errorf("error while saving the session: %v", err)
+	}
+
+	req := request{
+		grantType:         goidc.GrantAuthorizationCode,
+		redirectURI:       client.RedirectURIs[0],
+		authorizationCode: session.AuthCode,
+		codeVerifier:      "4ea55634198fb6a0c120d46b26359cf50ccea86fd03302b9bca9fa98",
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("error generating the authorization code grant: %v", err)
+	}
+
+	grantSessions := oidctest.GrantSessions(t, ctx)
+	if len(grantSessions) != 1 {
+		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
+	}
+}
+
+// TestGenerateGrant_AuthorizationCodeGrant_PKCEDowngradeIsMitigated verifies that an
+// authorization code grant request fails when a code_verifier is provided, but no
+// code_challenge was used during authorization. This ensures that a PKCE downgrade attack
+// is properly mitigated.
+func TestGenerateGrant_AuthorizationCodeGrant_PKCEDowngradeIsMitigated(t *testing.T) {
+
+	// Given.
+	ctx, client, session := setUpAuthzCodeGrant(t)
+	ctx.PKCEIsEnabled = true
+	ctx.PKCEChallengeMethods = []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodSHA256}
+	ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodSHA256
+
+	req := request{
+		grantType:         goidc.GrantAuthorizationCode,
+		redirectURI:       client.RedirectURIs[0],
+		authorizationCode: session.AuthCode,
+		codeVerifier:      "4ea55634198fb6a0c120d46b26359cf50ccea86fd03302b9bca9fa98",
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatalf("informing a code_verifier should result in failure if the session was not created with a code_challenge: %v", err)
+	}
+
+	authnSessions := oidctest.AuthnSessions(t, ctx)
+	if len(authnSessions) != 0 {
+		t.Errorf("len(authnSessions) = %d, want 0", len(authnSessions))
+	}
+}
+
 func TestIsPkceValid(t *testing.T) {
 	testCases := []struct {
 		codeVerifier        string
@@ -483,11 +549,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_MTLSBinding(t *testing.T) {
 	}
 }
 
-func setUpAuthzCodeGrant(t testing.TB) (
-	ctx oidc.Context,
-	client *goidc.Client,
-	session *goidc.AuthnSession,
-) {
+func setUpAuthzCodeGrant(t testing.TB) (ctx oidc.Context, client *goidc.Client, session *goidc.AuthnSession) {
 	t.Helper()
 
 	ctx = oidctest.NewContext(t)
