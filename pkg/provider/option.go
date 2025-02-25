@@ -180,10 +180,7 @@ func WithClaimTypes(
 
 // WithUserInfoSignatureAlgs set the algorithms available to sign the user info
 // endpoint response.
-func WithUserInfoSignatureAlgs(
-	defaultAlg goidc.SignatureAlgorithm,
-	algs ...goidc.SignatureAlgorithm,
-) ProviderOption {
+func WithUserInfoSignatureAlgs(defaultAlg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) ProviderOption {
 	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p *Provider) error {
 		p.config.UserInfoDefaultSigAlg = defaultAlg
@@ -198,10 +195,7 @@ func WithUserInfoSignatureAlgs(
 // [WithUserInfoContentEncryptionAlgs].
 // Clients can choose the encryption algorithms for user info by informing the
 // attributes "userinfo_signed_response_alg" and "userinfo_encrypted_response_alg".
-func WithUserInfoEncryption(
-	keyEncAlg goidc.KeyEncryptionAlgorithm,
-	keyEncAlgs ...goidc.KeyEncryptionAlgorithm,
-) ProviderOption {
+func WithUserInfoEncryption(keyEncAlg goidc.KeyEncryptionAlgorithm, keyEncAlgs ...goidc.KeyEncryptionAlgorithm) ProviderOption {
 	keyEncAlgs = appendIfNotIn(keyEncAlgs, keyEncAlg)
 	return func(p *Provider) error {
 		p.config.UserInfoEncIsEnabled = true
@@ -213,10 +207,7 @@ func WithUserInfoEncryption(
 // WithUserInfoContentEncryptionAlgs overrides the default content encryption
 // algorithm which is A128CBC-HS256.
 // To enabled encryption of user information, see [WithUserInfoEncryption].
-func WithUserInfoContentEncryptionAlgs(
-	defaultAlg goidc.ContentEncryptionAlgorithm,
-	algs ...goidc.ContentEncryptionAlgorithm,
-) ProviderOption {
+func WithUserInfoContentEncryptionAlgs(defaultAlg goidc.ContentEncryptionAlgorithm, algs ...goidc.ContentEncryptionAlgorithm) ProviderOption {
 	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p *Provider) error {
 		p.config.UserInfoDefaultContentEncAlg = defaultAlg
@@ -226,10 +217,7 @@ func WithUserInfoContentEncryptionAlgs(
 }
 
 // WithUserSignatureAlgs set the algorithms available to sign ID tokens.
-func WithIDTokenSignatureAlgs(
-	defaultAlg goidc.SignatureAlgorithm,
-	algs ...goidc.SignatureAlgorithm,
-) ProviderOption {
+func WithIDTokenSignatureAlgs(defaultAlg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) ProviderOption {
 	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p *Provider) error {
 		p.config.IDTokenDefaultSigAlg = defaultAlg
@@ -548,10 +536,7 @@ func WithJAREncryption(alg goidc.KeyEncryptionAlgorithm, algs ...goidc.KeyEncryp
 // WithJARContentEncryptionAlgs overrides the default content encryption
 // algorithm for request objects which is A128CBC-HS256.
 // To enable JAR encryption, see [WithJAREncryption].
-func WithJARContentEncryptionAlgs(
-	alg goidc.ContentEncryptionAlgorithm,
-	algs ...goidc.ContentEncryptionAlgorithm,
-) ProviderOption {
+func WithJARContentEncryptionAlgs(alg goidc.ContentEncryptionAlgorithm, algs ...goidc.ContentEncryptionAlgorithm) ProviderOption {
 	algs = appendIfNotIn(algs, alg)
 	return func(p *Provider) error {
 		p.config.JARContentEncAlgs = algs
@@ -565,10 +550,7 @@ func WithJARContentEncryptionAlgs(
 // Clients can choose the algorithm by setting the attribute
 // "authorization_signed_response_alg".
 // By default, the lifetime of a response object is [defaultJWTLifetimeSecs].
-func WithJARM(
-	defaultAlg goidc.SignatureAlgorithm,
-	algs ...goidc.SignatureAlgorithm,
-) ProviderOption {
+func WithJARM(defaultAlg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) ProviderOption {
 	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p *Provider) error {
 		if slices.Contains(algs, goidc.None) {
@@ -599,10 +581,7 @@ func WithJARMEncryption(alg goidc.KeyEncryptionAlgorithm, algs ...goidc.KeyEncry
 // WithJARMContentEncryptionAlgs overrides the default content encryption
 // algorithm which is A128CBC-HS256.
 // To enabled JARM encryption, see [WithJARM].
-func WithJARMContentEncryptionAlgs(
-	defaultAlg goidc.ContentEncryptionAlgorithm,
-	algs ...goidc.ContentEncryptionAlgorithm,
-) ProviderOption {
+func WithJARMContentEncryptionAlgs(defaultAlg goidc.ContentEncryptionAlgorithm, algs ...goidc.ContentEncryptionAlgorithm) ProviderOption {
 	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p *Provider) error {
 		p.config.JARMDefaultContentEncAlg = defaultAlg
@@ -613,10 +592,7 @@ func WithJARMContentEncryptionAlgs(
 
 // WithPrivateKeyJWTSignatureAlgs sets the signature algorithms for private key JWT
 // authentication.
-func WithPrivateKeyJWTSignatureAlgs(
-	alg goidc.SignatureAlgorithm,
-	algs ...goidc.SignatureAlgorithm,
-) ProviderOption {
+func WithPrivateKeyJWTSignatureAlgs(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) ProviderOption {
 	algs = appendIfNotIn(algs, alg)
 
 	return func(p *Provider) error {
@@ -638,10 +614,7 @@ func WithPrivateKeyJWTSignatureAlgs(
 
 // WithSecretJWTSignatureAlgs sets the signature algorithms for private key JWT
 // authentication.
-func WithSecretJWTSignatureAlgs(
-	alg goidc.SignatureAlgorithm,
-	algs ...goidc.SignatureAlgorithm,
-) ProviderOption {
+func WithSecretJWTSignatureAlgs(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) ProviderOption {
 	algs = appendIfNotIn(algs, alg)
 	return func(p *Provider) error {
 
@@ -744,10 +717,7 @@ func WithTLSCertTokenBindingRequired() ProviderOption {
 // It requires tokens to be bound to a cryptographic key generated by the client.
 // By default, the max difference between the claims "iat" and "exp" of DPoP
 // JWTs is set to [defaultJWTLifetimeSecs]
-func WithDPoP(
-	alg goidc.SignatureAlgorithm,
-	algs ...goidc.SignatureAlgorithm,
-) ProviderOption {
+func WithDPoP(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) ProviderOption {
 	algs = appendIfNotIn(algs, alg)
 	return func(p *Provider) error {
 		if slices.Contains(algs, goidc.None) {
@@ -761,13 +731,10 @@ func WithDPoP(
 
 // WithDPoPRequired makes DPoP required.
 // For more information, see [WithDPoP].
-func WithDPoPRequired(
-	sigAlg goidc.SignatureAlgorithm,
-	sigAlgs ...goidc.SignatureAlgorithm,
-) ProviderOption {
+func WithDPoPRequired(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) ProviderOption {
 	return func(p *Provider) error {
 		p.config.DPoPIsRequired = true
-		return WithDPoP(sigAlg, sigAlgs...)(p)
+		return WithDPoP(alg, algs...)(p)
 	}
 }
 
@@ -781,10 +748,7 @@ func WithTokenBindingRequired() ProviderOption {
 	}
 }
 
-func WithTokenAuthnMethods(
-	method goidc.ClientAuthnType,
-	methods ...goidc.ClientAuthnType,
-) ProviderOption {
+func WithTokenAuthnMethods(method goidc.ClientAuthnType, methods ...goidc.ClientAuthnType) ProviderOption {
 	methods = appendIfNotIn(methods, method)
 	return func(p *Provider) error {
 		p.config.TokenAuthnMethods = methods
@@ -826,10 +790,7 @@ func WithTokenRevocation(
 
 // WithPKCE makes proof key for code exchange available to clients.
 // The first code challenged informed is used as the default.
-func WithPKCE(
-	defaultMethod goidc.CodeChallengeMethod,
-	methods ...goidc.CodeChallengeMethod,
-) ProviderOption {
+func WithPKCE(defaultMethod goidc.CodeChallengeMethod, methods ...goidc.CodeChallengeMethod) ProviderOption {
 	methods = appendIfNotIn(methods, defaultMethod)
 	return func(p *Provider) error {
 		p.config.PKCEIsEnabled = true
@@ -841,10 +802,7 @@ func WithPKCE(
 
 // WithPKCERequired makes proof key for code exchange required.
 // For more info, see [WithPKCE].
-func WithPKCERequired(
-	method goidc.CodeChallengeMethod,
-	methods ...goidc.CodeChallengeMethod,
-) ProviderOption {
+func WithPKCERequired(method goidc.CodeChallengeMethod, methods ...goidc.CodeChallengeMethod) ProviderOption {
 	return func(p *Provider) error {
 		p.config.PKCEIsRequired = true
 		return WithPKCE(method, methods...)(p)
@@ -853,10 +811,7 @@ func WithPKCERequired(
 
 // WithACRs makes available authentication context references.
 // These values will be published as are in the well know endpoint response.
-func WithACRs(
-	value goidc.ACR,
-	values ...goidc.ACR,
-) ProviderOption {
+func WithACRs(value goidc.ACR, values ...goidc.ACR) ProviderOption {
 	values = appendIfNotIn(values, value)
 	return func(p *Provider) error {
 		p.config.ACRs = values
@@ -867,10 +822,7 @@ func WithACRs(
 // WithDisplayValues makes available display values during requests to the
 // authorization endpoint.
 // These values will be published as are in the well known endpoint response.
-func WithDisplayValues(
-	value goidc.DisplayValue,
-	values ...goidc.DisplayValue,
-) ProviderOption {
+func WithDisplayValues(value goidc.DisplayValue, values ...goidc.DisplayValue) ProviderOption {
 	values = appendIfNotIn(values, value)
 	return func(p *Provider) error {
 		p.config.DisplayValues = values
@@ -940,10 +892,7 @@ func WithCheckJTIFunc(f goidc.CheckJTIFunc) ProviderOption {
 
 // WithResourceIndicators enables client to indicate which resources they intend
 // to access.
-func WithResourceIndicators(
-	resource string,
-	resources ...string,
-) ProviderOption {
+func WithResourceIndicators(resource string, resources ...string) ProviderOption {
 	resources = appendIfNotIn(resources, resource)
 	return func(p *Provider) error {
 		p.config.ResourceIndicatorsIsEnabled = true
@@ -954,10 +903,7 @@ func WithResourceIndicators(
 
 // WithResourceIndicatorsRequired makes resource indicators required.
 // For more info, see [WithResourceIndicators].
-func WithResourceIndicatorsRequired(
-	resource string,
-	resources ...string,
-) ProviderOption {
+func WithResourceIndicatorsRequired(resource string, resources ...string) ProviderOption {
 	return func(p *Provider) error {
 		p.config.ResourceIndicatorsIsRequired = true
 		return WithResourceIndicators(resource, resources...)(p)
@@ -975,9 +921,7 @@ func WithHTTPClientFunc(f goidc.HTTPClientFunc) ProviderOption {
 }
 
 // WithJWTBearerGrant enables the JWT bearer grant type.
-func WithJWTBearerGrant(
-	f goidc.HandleJWTBearerGrantAssertionFunc,
-) ProviderOption {
+func WithJWTBearerGrant(f goidc.HandleJWTBearerGrantAssertionFunc) ProviderOption {
 	return func(p *Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes,
 			goidc.GrantJWTBearer)
@@ -1002,10 +946,7 @@ func WithJWTBearerGrantClientAuthnRequired() ProviderOption {
 // This can be overriden with [WithGeneratePairwiseSubIDFunc].
 // Also, only opaque tokens are issued when pairwise IDs are applied to avoid
 // information leakage.
-func WithSubIdentifierTypes(
-	defaultIDType goidc.SubIdentifierType,
-	idTypes ...goidc.SubIdentifierType,
-) ProviderOption {
+func WithSubIdentifierTypes(defaultIDType goidc.SubIdentifierType, idTypes ...goidc.SubIdentifierType) ProviderOption {
 	idTypes = appendIfNotIn(idTypes, defaultIDType)
 	return func(p *Provider) error {
 		p.config.DefaultSubIdentifierType = defaultIDType
@@ -1014,23 +955,27 @@ func WithSubIdentifierTypes(
 	}
 }
 
-func WithGeneratePairwiseSubIDFunc(
-	f goidc.GeneratePairwiseSubIDFunc,
-) ProviderOption {
+func WithGeneratePairwiseSubIDFunc(f goidc.GeneratePairwiseSubIDFunc) ProviderOption {
 	return func(p *Provider) error {
 		p.config.GeneratePairwiseSubIDFunc = f
 		return nil
 	}
 }
 
-func WithSignFunc(f goidc.SignerFunc) ProviderOption {
+// WithSignerFunc sets a custom signing function.
+// This is required when the JWKS function returns only public keys and signing
+// operations need to be handled separately.
+func WithSignerFunc(f goidc.SignerFunc) ProviderOption {
 	return func(p *Provider) error {
 		p.config.SignerFunc = f
 		return nil
 	}
 }
 
-func WithDecryptFunc(f goidc.DecrypterFunc) ProviderOption {
+// WithDecrypterFunc sets a custom decryption function.
+// This is required when the JWKS function returns only public keys and
+// server-side encryption (e.g., JAR encryption) is enabled.
+func WithDecrypterFunc(f goidc.DecrypterFunc) ProviderOption {
 	return func(p *Provider) error {
 		p.config.DecrypterFunc = f
 		return nil
@@ -1044,10 +989,7 @@ func WithErrorURI(uri string) ProviderOption {
 	}
 }
 
-func WithOpenIDFederation(
-	jwks goidc.JSONWebKeySet,
-	trustedAuthorities, authorityHints []string,
-) ProviderOption {
+func WithOpenIDFederation(jwks goidc.JSONWebKeySet, trustedAuthorities, authorityHints []string) ProviderOption {
 	return func(p *Provider) error {
 		p.config.OpenIDFedIsEnabled = true
 		p.config.OpenIDFedJWKS = jwks

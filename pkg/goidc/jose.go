@@ -61,6 +61,8 @@ func (jwks JSONWebKeySet) Key(kid string) (JSONWebKey, error) {
 	return JSONWebKey{}, fmt.Errorf("could not find jwk with id: %s", kid)
 }
 
-type SignerFunc func(ctx context.Context, alg SignatureAlgorithm) (keyID string, signer crypto.Signer, err error)
+// SignerFunc defines a function type for handling signing operations.
+type SignerFunc func(ctx context.Context, alg SignatureAlgorithm) (kid string, signer crypto.Signer, err error)
 
+// DecrypterFunc defines a function type for handling decryption operations.
 type DecrypterFunc func(ctx context.Context, kid string, alg KeyEncryptionAlgorithm) (crypto.Decrypter, error)

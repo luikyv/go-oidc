@@ -118,7 +118,7 @@ Once the user is identified, the authentication process completes successfully b
 
 If the authentication function returns either `goidc.StatusFailure` or an error, the flow is stopped, and the grant is denied.
 ```go
-policy := NewPolicy(
+policy := goidc.NewPolicy(
   "main_policy",
   // Setup function.
   func(_ *http.Request, _ *goidc.Client, _ *goidc.AuthnSession) bool {
@@ -151,6 +151,85 @@ op, err := provider.New(
 
 For a more complex example of a `goidc.AuthnPolicy`, check out the examples folder.
 
+### Signing and Encryption
+
+When instantiating a new `provider.Provider`, a JWKS function must be informed. This function returns the keys that will be used as the authorization server's JSON Web Key Set (JWKS) for signing and encryption. Typically, it should return both private and public key material.
+The algorithms configured for the provider must have a corresponding JWK in the JWKS. Otherwise, an error will occur.
+```go
+key, _ := rsa.GenerateKey(rand.Reader, 2048)
+// JWKS with private and public information.
+jwks := goidc.JSONWebKeySet{
+  Keys: []goidc.JSONWebKey{{
+    KeyID:     "key_id",
+    Key:       key,
+    Algorithm: "RS256",
+  }},
+}
+
+op, _ := provider.New(
+  goidc.ProfileOpenID,
+  "http://localhost",
+  // JWKS function.
+  func(_ context.Context) (goidc.JSONWebKeySet, error) {
+    return jwks, nil
+  },
+)
+```
+
+If direct access to private keys is unavailable for the provider or granular control over signing is required, the JWKS function can be configured to return only public key material. In such cases, the `provider.WithSignerFunc` option must be added to handle signing operations.
+```go
+key, _ := rsa.GenerateKey(rand.Reader, 2048)
+// JWKS with public information only.
+jwks := goidc.JSONWebKeySet{
+  Keys: []goidc.JSONWebKey{{
+    KeyID:     "key_id",
+    Key:       key.Public(),
+    Algorithm: "RS256",
+  }},
+}
+
+op, _ := provider.New(
+  goidc.ProfileOpenID,
+  "http://localhost",
+  // JWKS function.
+  func(_ context.Context) (goidc.JSONWebKeySet, error) {
+    return jwks, nil
+  },
+  provider.WithSignerFunc(func(_ context.Context, _ goidc.SignatureAlgorithm) (kid string, signer crypto.Signer, err error) {
+    return "key_id", key, nil
+  }),
+)
+```
+
+Similarly, if server-side encryption (e.g., JAR encryption) is enabled, the `provider.WithDecrypterFunc` option must also be configured for decryption support.
+
+For operations like signature verification, only the public key material is needed, which can be retrieved directly using the JWKS function.
+
+### Tokens
+
+By default, ID tokens are signed using the **RS256** algorithm, so a corresponding JWK with this algorithm must be present in the server's JWKS. To modify this behavior, you can use the `provider.WithIDTokenSignatureAlgs` option to specify a default algorithm and additional signing algorithms.
+
+Regarding access tokens, the default behavior is to issue opaque tokens. However, this can be customized by providing a function that returns `goidc.TokenOptions`.
+You can create `goidc.TokenOptions` easily using:
+- `goidc.NewJWTTokenOptions`
+- `goidc.NewOpaqueTokenOptions`
+
+Here is an example of how to configure the token options:
+```go
+op, _ := provider.New(
+  ...,
+  provider.WithTokenOptions(func(_ goidc.GrantInfo, _ *goidc.Client) goidc.TokenOptions {
+    // All tokens are issued as JWTs with a lifetime of 600 seconds.
+		return goidc.NewJWTTokenOptions(goidc.RS256, 600)
+	}),
+  ...,
+)
+```
+
+Refresh tokens are always **opaque** and have a fixed length of 99 characters.
+
+In go-oidc, refresh and access tokens are differentiated by their length. That being said, never issue opaque access tokens with a length of 99 characters.
+
 ### Scopes
 
 go-oidc provides two functions for creating scopes.
@@ -168,7 +247,7 @@ dynamicScope := goidc.NewDynamicScope("payment", func(requestedScope string) boo
 // This results in true.
 dynamicScope.Matches("payment:30")
 ```
-Note that this dynamic scope  will appear as "payment" under "scopes_supported" in the /.well-known/openid-configuration endpoint response.
+Note that this dynamic scope  will appear as "payment" under "scopes_supported" in the `/.well-known/openid-configuration` endpoint response.
 
 The example below shows how to add the scopes to the `provider.Provider`.
 ```go
@@ -223,13 +302,11 @@ op, _ := provider.New(
 All endpoints enabled for the provider will be listed under `mtls_endpoint_aliases` in the response of GET `/.well-known/openid-configuration`, using the provided mTLS host.
 ```json
 {
-  ...,
+  "...": "...",
   "mtls_endpoint_aliases": {
-    ...,
+    "...": "...",
     "token_endpoint": "https://matls-go-oidc.com/token",
-    ...,
-  },
-  ...,
+  }
 }
 ```
 
@@ -249,10 +326,9 @@ op, _ := provider.New(
 This configures the supported signing algorithms, reflected in `/.well-known/openid-configuration`:
 ```json
 {
-  ...,
+  "...": "...",
   "request_parameter_supported": true,
-  "request_object_signing_alg_values_supported": ["RS256", "PS256"],
-  ...,
+  "request_object_signing_alg_values_supported": ["RS256", "PS256"]
 }
 ```
 
@@ -269,12 +345,11 @@ op, _ := provider.New(
 which would result in the metadata below
 ```json
 {
-  ...,
+  "...": "...",
   "request_parameter_supported": true,
   "request_object_signing_alg_values_supported": ["RS256", "PS256"],
   "request_object_encryption_alg_values_supported": ["RSA_OAEP_256"],
-  "request_object_encryption_enc_values_supported": ["A128CBC_HS256"],
-  ...,
+  "request_object_encryption_enc_values_supported": ["A128CBC_HS256"]
 }
 ```
 
@@ -294,16 +369,15 @@ op, _ := provider.New(
 By including the option `provider.WithJARM`, the well known metadata is displayed as follows
 ```json
 {
-  ...,
+  "...": "...",
   "authorization_signing_alg_values_supported": ["RS256", "PS256"],
   "response_modes_supported": [
+    "...",
     "jwt",
     "query.jwt",
     "fragment.jwt",
     "form_post.jwt",
-    ...,
-  ],
-  ...,
+  ]
 }
 ```
 
@@ -320,18 +394,17 @@ op, _ := provider.New(
 which would result in the metadata below
 ```json
 {
-  ...,
+  "...": "...",
   "authorization_signing_alg_values_supported": ["RS256", "PS256"],
   "response_modes_supported": [
-    ...,
+    "...",
+    "jwt",
     "query.jwt",
     "fragment.jwt",
     "form_post.jwt",
-    ...,
   ],
   "authorization_encryption_alg_values_supported": ["RSA_OAEP_256"],
-  "authorization_encryption_enc_values_supported": ["A128CBC_HS256"],
-  ...,
+  "authorization_encryption_enc_values_supported": ["A128CBC_HS256"]
 }
 ```
 
