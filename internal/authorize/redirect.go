@@ -12,11 +12,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func redirectError(
-	ctx oidc.Context,
-	err error,
-	c *goidc.Client,
-) error {
+func redirectError(ctx oidc.Context, err error, c *goidc.Client) error {
 	var redirectErr redirectionError
 	if !errors.As(err, &redirectErr) {
 		return err
@@ -142,7 +138,7 @@ func signJARMResponse(
 	if client.JARMSigAlg != "" {
 		alg = client.JARMSigAlg
 	}
-	resp, err := joseutil.Sign(ctx, claims, alg, nil)
+	resp, err := ctx.Sign(claims, alg, nil)
 	if err != nil {
 		return "", fmt.Errorf("could not sign the response object: %w", err)
 	}

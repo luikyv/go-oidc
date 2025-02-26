@@ -54,7 +54,7 @@ func makeIDToken(ctx oidc.Context, client *goidc.Client, opts IDTokenOptions) (s
 		alg = client.IDTokenSigAlg
 	}
 	claims := idTokenClaims(ctx, client, opts, alg)
-	idToken, err := joseutil.Sign(ctx, claims, alg, nil)
+	idToken, err := ctx.Sign(claims, alg, nil)
 	if err != nil {
 		return "", fmt.Errorf("could not sign the id token: %w", err)
 	}
@@ -199,7 +199,7 @@ func makeJWTToken(
 		}, nil
 	}
 
-	accessToken, err := joseutil.Sign(ctx, claims, opts.JWTSigAlg, (&jose.SignerOptions{}).WithType("at+jwt"))
+	accessToken, err := ctx.Sign(claims, opts.JWTSigAlg, (&jose.SignerOptions{}).WithType("at+jwt"))
 	if err != nil {
 		return Token{}, fmt.Errorf("could not sign the access token: %w", err)
 	}

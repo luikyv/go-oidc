@@ -2,6 +2,9 @@ package oidc_test
 
 import (
 	"context"
+	"crypto"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"errors"
 	"fmt"
@@ -10,8 +13,10 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -1132,5 +1137,109 @@ func TestHTTPClient(t *testing.T) {
 	// Then.
 	if httpClient == http.DefaultClient {
 		t.Error("a different client should be returned")
+	}
+}
+
+func TestSign(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	jwks, _ := ctx.JWKS()
+	jwk := jwks.Keys[0]
+	claims := map[string]any{
+		"claim": "value",
+	}
+
+	// When.
+	jws, err := ctx.Sign(claims, goidc.SignatureAlgorithm(jwk.Algorithm), nil)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error signing the claims: %v", err)
+	}
+
+	parsedJWS, err := jwt.ParseSigned(jws, []goidc.SignatureAlgorithm{goidc.PS256})
+	if err != nil {
+		t.Fatalf("the jws is not valid: %v", err)
+	}
+
+	var parsedClaims map[string]any
+	err = parsedJWS.Claims(jwk.Public().Key, &parsedClaims)
+	if err != nil {
+		t.Fatalf("the jws is not valid: %v", err)
+	}
+
+	if parsedClaims["claim"] != "value" {
+		t.Errorf("claim = %v, want %s", parsedClaims["claim"], "value")
+	}
+}
+
+func TestSign_WithSignerFunc(t *testing.T) {
+	// Given.
+	signingKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{
+			SignerFunc: func(ctx context.Context, alg goidc.SignatureAlgorithm) (keyID string, signer crypto.Signer, err error) {
+				return "random_key_id", signingKey, nil
+			},
+		},
+	}
+
+	claims := map[string]any{
+		goidc.ClaimSubject: "random@email.com",
+	}
+
+	// When.
+	jws, err := ctx.Sign(claims, goidc.RS256, nil)
+
+	// Then.
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	parsedJWS, err := jwt.ParseSigned(
+		jws,
+		[]goidc.SignatureAlgorithm{goidc.RS256},
+	)
+	if err != nil {
+		t.Fatalf("the jws is not valid: %v", err)
+	}
+
+	var parsedClaims map[string]any
+	err = parsedJWS.Claims(signingKey.Public(), &parsedClaims)
+	if err != nil {
+		t.Fatalf("the jws is not valid: %v", err)
+	}
+
+	if parsedClaims[goidc.ClaimSubject] != "random@email.com" {
+		t.Errorf("claim = %v, want %s", parsedClaims[goidc.ClaimSubject], "random@email.com")
+	}
+}
+
+func TestDecrypt_WithDecrypterFunc(t *testing.T) {
+	// Given.
+	encKey := oidctest.PrivateRSAOAEP256JWK(t, "enc_key")
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{
+			DecrypterFunc: func(ctx context.Context, kid string, alg goidc.KeyEncryptionAlgorithm) (crypto.Decrypter, error) {
+				return encKey.Key.(crypto.Decrypter), nil
+			},
+		},
+	}
+
+	jwe, err := joseutil.Encrypt("random_jws", encKey.Public(), goidc.A128CBC_HS256)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// When.
+	jws, err := ctx.Decrypt(jwe, []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP_256}, []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
+
+	// Then.
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if jws != "random_jws" {
+		t.Errorf("got %s, want random_jws", jws)
 	}
 }

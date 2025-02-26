@@ -12,7 +12,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
-	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -337,14 +336,9 @@ func TestInitAuth_IDTokenHint(t *testing.T) {
 	// Given.
 	ctx, client := setUpAuth(t)
 
-	idToken, err := joseutil.Sign(
-		ctx,
-		map[string]any{
-			goidc.ClaimSubject: "random_user",
-		},
-		ctx.IDTokenDefaultSigAlg,
-		nil,
-	)
+	idToken, err := ctx.Sign(map[string]any{
+		goidc.ClaimSubject: "random_user",
+	}, ctx.IDTokenDefaultSigAlg, nil)
 	if err != nil {
 		t.Fatalf("could not sign the id token: %v", err)
 	}
