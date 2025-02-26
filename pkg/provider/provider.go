@@ -100,6 +100,7 @@ func (op Provider) Handler() http.Handler {
 	authorize.RegisterHandlers(server, &op.config)
 	userinfo.RegisterHandlers(server, &op.config)
 	dcr.RegisterHandlers(server, &op.config)
+	federation.RegisterHandlers(server, &op.config)
 
 	handler := goidc.CacheControlMiddleware(server)
 	return handler

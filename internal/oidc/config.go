@@ -191,7 +191,8 @@ type Configuration struct {
 
 	OpenIDFedIsEnabled              bool
 	OpenIDFedEndpoint               string
-	OpenIDFedJWKS                   goidc.JSONWebKeySet
+	OpenIDFedJWKSFunc               goidc.JWKSFunc
+	OpenIDFedSignerFunc             goidc.SignerFunc
 	OpenIDFedAuthorityHints         []string
 	OpenIDFedTrustedAuthorities     []string
 	OpenIDFedEntityStatementSigAlgs []goidc.SignatureAlgorithm

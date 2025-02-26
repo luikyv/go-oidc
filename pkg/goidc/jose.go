@@ -61,6 +61,26 @@ func (jwks JSONWebKeySet) Key(kid string) (JSONWebKey, error) {
 	return JSONWebKey{}, fmt.Errorf("could not find jwk with id: %s", kid)
 }
 
+func (jwks JSONWebKeySet) Public() JSONWebKeySet {
+	publicKeys := []JSONWebKey{}
+	for _, jwk := range jwks.Keys {
+		jwk.Key = jwk.Public().Key
+		publicKeys = append(publicKeys, jwk)
+	}
+
+	return JSONWebKeySet{Keys: publicKeys}
+}
+
+func (jwks JSONWebKeySet) KeyByAlg(alg string) (JSONWebKey, error) {
+	for _, jwk := range jwks.Keys {
+		if jwk.Algorithm == alg {
+			return jwk, nil
+		}
+	}
+
+	return JSONWebKey{}, fmt.Errorf("could not find jwk matching the algorithm %s", alg)
+}
+
 // SignerFunc defines a function type for handling signing operations.
 type SignerFunc func(ctx context.Context, alg SignatureAlgorithm) (kid string, signer crypto.Signer, err error)
 

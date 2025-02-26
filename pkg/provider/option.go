@@ -989,12 +989,19 @@ func WithErrorURI(uri string) ProviderOption {
 	}
 }
 
-func WithOpenIDFederation(jwks goidc.JSONWebKeySet, trustedAuthorities, authorityHints []string) ProviderOption {
+func WithOpenIDFederation(jwks goidc.JWKSFunc, trustedAuthorities, authorityHints []string) ProviderOption {
 	return func(p *Provider) error {
 		p.config.OpenIDFedIsEnabled = true
-		p.config.OpenIDFedJWKS = jwks
+		p.config.OpenIDFedJWKSFunc = jwks
 		p.config.OpenIDFedTrustedAuthorities = trustedAuthorities
 		p.config.OpenIDFedAuthorityHints = authorityHints
+		return nil
+	}
+}
+
+func WithOpenIDFerationSignerFunc(f goidc.SignerFunc) ProviderOption {
+	return func(p *Provider) error {
+		p.config.OpenIDFedSignerFunc = f
 		return nil
 	}
 }

@@ -608,21 +608,20 @@ func (ctx Context) PublicJWKS() (goidc.JSONWebKeySet, error) {
 		return goidc.JSONWebKeySet{}, err
 	}
 
-	publicKeys := []goidc.JSONWebKey{}
-	for _, jwk := range jwks.Keys {
-		publicKeys = append(publicKeys, jwk.Public())
-	}
+	return jwks.Public(), nil
+}
 
-	return goidc.JSONWebKeySet{Keys: publicKeys}, nil
+func (ctx Context) OpenIDFedJWKS() (goidc.JSONWebKeySet, error) {
+	return ctx.OpenIDFedJWKSFunc(ctx)
 }
 
 func (ctx Context) PublicOpenIDFedJWKS() (goidc.JSONWebKeySet, error) {
-	publicKeys := []goidc.JSONWebKey{}
-	for _, jwk := range ctx.OpenIDFedJWKS.Keys {
-		publicKeys = append(publicKeys, jwk.Public())
+	jwks, err := ctx.OpenIDFedJWKS()
+	if err != nil {
+		return goidc.JSONWebKeySet{}, err
 	}
 
-	return goidc.JSONWebKeySet{Keys: publicKeys}, nil
+	return jwks.Public(), nil
 }
 
 func (ctx Context) SigAlgs() ([]goidc.SignatureAlgorithm, error) {
@@ -656,11 +655,7 @@ func (ctx Context) JWK(kid string) (goidc.JSONWebKey, error) {
 		return goidc.JSONWebKey{}, err
 	}
 
-	key, err := jwks.Key(kid)
-	if err != nil {
-		return goidc.JSONWebKey{}, err
-	}
-	return key, nil
+	return jwks.Key(kid)
 }
 
 // JWKByAlg searches a key that matches the signature algorithm from the JWKS.
@@ -670,13 +665,7 @@ func (ctx Context) JWKByAlg(alg goidc.SignatureAlgorithm) (goidc.JSONWebKey, err
 		return goidc.JSONWebKey{}, err
 	}
 
-	for _, jwk := range jwks.Keys {
-		if jwk.Algorithm == string(alg) {
-			return jwk, nil
-		}
-	}
-
-	return goidc.JSONWebKey{}, fmt.Errorf("could not find jwk matching %s", alg)
+	return jwks.KeyByAlg(string(alg))
 }
 
 func (ctx Context) Sign(claims any, alg goidc.SignatureAlgorithm, opts *jose.SignerOptions) (string, error) {
@@ -746,11 +735,32 @@ func (ctx Context) Decrypt(
 	return string(jws), nil
 }
 
-// TODO: Improve this. signer func, jwks func, ...
 func (ctx Context) OpenIDFedSign(claims any, opts *jose.SignerOptions) (string, error) {
-	jwk := ctx.OpenIDFedJWKS.Keys[0]
+
+	jwks, err := ctx.OpenIDFedJWKS()
+	if err != nil {
+		return "", fmt.Errorf("could not load the signing jwk: %w", err)
+	}
+	jwk := jwks.Keys[0]
+
+	if ctx.OpenIDFedSignerFunc == nil {
+		return joseutil.Sign(claims, jose.SigningKey{
+			Algorithm: jose.SignatureAlgorithm(jwk.Algorithm),
+			Key:       jwk,
+		}, opts)
+	}
+
+	keyID, key, err := ctx.OpenIDFedSignerFunc(ctx, goidc.SignatureAlgorithm(jwk.Algorithm))
+	if err != nil {
+		return "", fmt.Errorf("could not load the signer: %w", err)
+	}
+
 	return joseutil.Sign(claims, jose.SigningKey{
-		Algorithm: jose.SignatureAlgorithm(jwk.Algorithm),
-		Key:       jwk,
+		Algorithm: goidc.SignatureAlgorithm(jwk.Algorithm),
+		Key: joseutil.OpaqueSigner{
+			ID:        keyID,
+			Algorithm: goidc.SignatureAlgorithm(jwk.Algorithm),
+			Signer:    key,
+		},
 	}, opts)
 }
