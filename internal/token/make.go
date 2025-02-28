@@ -14,15 +14,8 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func MakeIDToken(
-	ctx oidc.Context,
-	client *goidc.Client,
-	idTokenOpts IDTokenOptions,
-) (
-	string,
-	error,
-) {
-	idToken, err := makeIDToken(ctx, client, idTokenOpts)
+func MakeIDToken(ctx oidc.Context, client *goidc.Client, ops IDTokenOptions) (string, error) {
+	idToken, err := makeIDToken(ctx, client, ops)
 	if err != nil {
 		return "", err
 	}
@@ -54,7 +47,7 @@ func makeIDToken(ctx oidc.Context, client *goidc.Client, opts IDTokenOptions) (s
 		alg = client.IDTokenSigAlg
 	}
 	claims := idTokenClaims(ctx, client, opts, alg)
-	idToken, err := joseutil.Sign(ctx, claims, alg, nil)
+	idToken, err := ctx.Sign(claims, alg, nil)
 	if err != nil {
 		return "", fmt.Errorf("could not sign the id token: %w", err)
 	}
@@ -199,7 +192,7 @@ func makeJWTToken(
 		}, nil
 	}
 
-	accessToken, err := joseutil.Sign(ctx, claims, opts.JWTSigAlg, (&jose.SignerOptions{}).WithType("at+jwt"))
+	accessToken, err := ctx.Sign(claims, opts.JWTSigAlg, (&jose.SignerOptions{}).WithType("at+jwt"))
 	if err != nil {
 		return Token{}, fmt.Errorf("could not sign the access token: %w", err)
 	}
@@ -213,14 +206,7 @@ func makeJWTToken(
 	}, nil
 }
 
-func makeOpaqueToken(
-	_ oidc.Context,
-	grantInfo goidc.GrantInfo,
-	opts goidc.TokenOptions,
-) (
-	Token,
-	error,
-) {
+func makeOpaqueToken(_ oidc.Context, grantInfo goidc.GrantInfo, opts goidc.TokenOptions) (Token, error) {
 	accessToken := strutil.Random(opts.OpaqueLength)
 	tokenType := goidc.TokenTypeBearer
 	if grantInfo.JWKThumbprint != "" {
@@ -228,10 +214,14 @@ func makeOpaqueToken(
 	}
 
 	return Token{
-		ID:           accessToken,
+		ID:           opaqueTokenID(accessToken),
 		Format:       goidc.TokenFormatOpaque,
 		Value:        accessToken,
 		Type:         tokenType,
 		LifetimeSecs: opts.LifetimeSecs,
 	}, nil
+}
+
+func opaqueTokenID(tkn string) string {
+	return hashutil.Thumbprint(tkn)
 }

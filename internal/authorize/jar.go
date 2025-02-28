@@ -104,7 +104,7 @@ func signedRequestObjectFromEncrypted(
 	if client.JARContentEncAlg != "" {
 		contentEncAlgs = []goidc.ContentEncryptionAlgorithm{client.JARContentEncAlg}
 	}
-	jws, err := joseutil.Decrypt(ctx, reqObject, ctx.JARKeyEncAlgs, contentEncAlgs)
+	jws, err := ctx.Decrypt(reqObject, ctx.JARKeyEncAlgs, contentEncAlgs)
 	if err != nil {
 		return "", goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
 			"could not parse the encrypted request object", err)

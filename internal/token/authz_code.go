@@ -11,7 +11,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func generateAuthorizationCodeGrant(ctx oidc.Context, req request) (response, error) {
+func generateAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 
 	if req.authorizationCode == "" {
 		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest,
@@ -43,54 +43,19 @@ func generateAuthorizationCodeGrant(ctx oidc.Context, req request) (response, er
 		return response{}, err
 	}
 
-	grantSession, err := generateAuthorizationCodeGrantSession(ctx, client, grantInfo, token, session.AuthCode)
-	if err != nil {
-		return response{}, err
-	}
-
-	tokenResp := response{
-		AccessToken:          token.Value,
-		ExpiresIn:            token.LifetimeSecs,
-		TokenType:            token.Type,
-		RefreshToken:         grantSession.RefreshToken,
-		AuthorizationDetails: grantInfo.ActiveAuthDetails,
-	}
-
-	if strutil.ContainsOpenID(grantInfo.ActiveScopes) {
-		tokenResp.IDToken, err = MakeIDToken(ctx, client, newIDTokenOptions(grantInfo))
-		if err != nil {
-			return response{}, fmt.Errorf("could not generate id token for the authorization code grant: %w", err)
-		}
-	}
-
-	if grantInfo.ActiveScopes != session.Scopes {
-		tokenResp.Scopes = grantInfo.ActiveScopes
-	}
-
-	if ctx.ResourceIndicatorsIsEnabled &&
-		!compareSlices(grantInfo.ActiveResources, session.Resources) {
-		tokenResp.Resources = grantInfo.ActiveResources
-	}
-
-	return tokenResp, nil
+	return generateAuthCodeGrantSession(ctx, client, grantInfo, session, token)
 }
 
 // authnSession fetches an authentication session by searching for the
 // authorization code. If the session is found, it is deleted to prevent reuse
 // of the code.
-func authnSession(
-	ctx oidc.Context,
-	authzCode string,
-) (
-	*goidc.AuthnSession,
-	error,
-) {
-	session, err := ctx.AuthnSessionByAuthCode(authzCode)
+func authnSession(ctx oidc.Context, authCode string) (*goidc.AuthnSession, error) {
+	session, err := ctx.AuthnSessionByAuthCode(authCode)
 	if err != nil {
 		// Invalidate any grant associated with the authorization code.
 		// This ensures that even if the code is compromised, the access token
 		// that it generated cannot be misused by a malicious client.
-		_ = ctx.DeleteGrantSessionByAuthorizationCode(authzCode)
+		_ = ctx.DeleteGrantSessionByAuthorizationCode(authCode)
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidGrant,
 			"invalid authorization code", err)
 	}
@@ -102,29 +67,54 @@ func authnSession(
 	return session, nil
 }
 
-func generateAuthorizationCodeGrantSession(
+func generateAuthCodeGrantSession(
 	ctx oidc.Context,
 	client *goidc.Client,
 	grantInfo goidc.GrantInfo,
+	authnSession *goidc.AuthnSession,
 	token Token,
-	code string,
 ) (
-	*goidc.GrantSession,
+	response,
 	error,
 ) {
 
 	grantSession := NewGrantSession(grantInfo, token)
-	grantSession.AuthorizationCode = code
+	grantSession.AuthCode = authnSession.AuthCode
+	var refreshTkn string
 	if ctx.ShouldIssueRefreshToken(client, grantInfo) {
-		grantSession.RefreshToken = refreshToken()
+		refreshTkn, grantSession.RefreshTokenID = refreshTokenAndID()
 		grantSession.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return nil, err
+		return response{}, err
 	}
 
-	return grantSession, nil
+	tokenResp := response{
+		AccessToken:          token.Value,
+		ExpiresIn:            token.LifetimeSecs,
+		TokenType:            token.Type,
+		RefreshToken:         refreshTkn,
+		AuthorizationDetails: grantInfo.ActiveAuthDetails,
+	}
+
+	if strutil.ContainsOpenID(grantInfo.ActiveScopes) {
+		var err error
+		tokenResp.IDToken, err = MakeIDToken(ctx, client, newIDTokenOptions(grantInfo))
+		if err != nil {
+			return response{}, fmt.Errorf("could not generate id token for the authorization code grant: %w", err)
+		}
+	}
+
+	if grantInfo.ActiveScopes != authnSession.Scopes {
+		tokenResp.Scopes = grantInfo.ActiveScopes
+	}
+
+	if ctx.ResourceIndicatorsIsEnabled && !compareSlices(grantInfo.ActiveResources, authnSession.Resources) {
+		tokenResp.Resources = grantInfo.ActiveResources
+	}
+
+	return tokenResp, nil
 }
 
 func validateAuthCodeGrantRequest(

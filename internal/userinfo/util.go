@@ -113,7 +113,7 @@ func signUserInfoClaims(
 		alg = client.UserInfoSigAlg
 	}
 
-	jws, err := joseutil.Sign(ctx, claims, alg, nil)
+	jws, err := ctx.Sign(claims, alg, nil)
 	if err != nil {
 		return "", fmt.Errorf("could not sign the user info claims: %w", err)
 	}

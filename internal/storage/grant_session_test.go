@@ -53,18 +53,18 @@ func TestGetGrantSessionByTokenID_HappyPath(t *testing.T) {
 	}
 }
 
-func TestGrantSessionByRefreshToken(t *testing.T) {
+func TestGrantSessionByRefreshTokenID(t *testing.T) {
 	// Given.
 	manager := storage.NewGrantSessionManager()
 	sessionID := "random_session_id"
-	refreshToken := "random_refresh_token"
+	refreshTokenID := "random_refresh_token_id"
 	manager.Sessions[sessionID] = &goidc.GrantSession{
-		ID:           sessionID,
-		RefreshToken: refreshToken,
+		ID:             sessionID,
+		RefreshTokenID: refreshTokenID,
 	}
 
 	// When.
-	session, err := manager.SessionByRefreshToken(context.Background(), refreshToken)
+	session, err := manager.SessionByRefreshTokenID(context.Background(), refreshTokenID)
 
 	// Then.
 	if err != nil {

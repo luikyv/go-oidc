@@ -5,10 +5,15 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
+)
+
+const (
+	testRefreshToken string = "random_refresh_token"
 )
 
 func TestGenerateGrant_RefreshTokenGrant(t *testing.T) {
@@ -18,7 +23,7 @@ func TestGenerateGrant_RefreshTokenGrant(t *testing.T) {
 
 	req := request{
 		grantType:    goidc.GrantRefreshToken,
-		refreshToken: grantSession.RefreshToken,
+		refreshToken: testRefreshToken,
 	}
 
 	// When.
@@ -89,7 +94,7 @@ func TestGenerateGrant_RefreshTokenGrant_AuthDetails(t *testing.T) {
 
 	req := request{
 		grantType:    goidc.GrantRefreshToken,
-		refreshToken: grantSession.RefreshToken,
+		refreshToken: testRefreshToken,
 	}
 
 	// When.
@@ -176,7 +181,7 @@ func TestGenerateGrant_RefreshTokenGrant_AuthDetails_ClientRequestsSubset(t *tes
 	}
 	req := request{
 		grantType:    goidc.GrantRefreshToken,
-		refreshToken: grantSession.RefreshToken,
+		refreshToken: testRefreshToken,
 		authDetails:  authDetailsSubSet,
 	}
 
@@ -234,7 +239,7 @@ func TestGenerateGrant_ExpiredRefreshToken(t *testing.T) {
 
 	req := request{
 		grantType:    goidc.GrantRefreshToken,
-		refreshToken: grantSession.RefreshToken,
+		refreshToken: testRefreshToken,
 	}
 
 	// Then
@@ -246,11 +251,7 @@ func TestGenerateGrant_ExpiredRefreshToken(t *testing.T) {
 	}
 }
 
-func setUpRefreshTokenGrant(t testing.TB) (
-	ctx oidc.Context,
-	client *goidc.Client,
-	grantSession *goidc.GrantSession,
-) {
+func setUpRefreshTokenGrant(t testing.TB) (ctx oidc.Context, client *goidc.Client, grantSession *goidc.GrantSession) {
 	t.Helper()
 
 	ctx = oidctest.NewContext(t)
@@ -266,7 +267,7 @@ func setUpRefreshTokenGrant(t testing.TB) (
 
 	now := timeutil.TimestampNow()
 	grantSession = &goidc.GrantSession{
-		RefreshToken:       "random_refresh_token",
+		RefreshTokenID:     hashutil.Thumbprint(testRefreshToken),
 		ExpiresAtTimestamp: now + 600,
 		GrantInfo: goidc.GrantInfo{
 			ActiveScopes:  client.ScopeIDs,

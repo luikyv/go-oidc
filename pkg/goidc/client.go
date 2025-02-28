@@ -24,11 +24,11 @@ type Client struct {
 	// HashedSecret is the hash of the client secret for the client_secret_basic
 	// and client_secret_post authentication methods.
 	HashedSecret string `json:"hashed_secret,omitempty"`
-	// HashedRegistrationAccessToken is the hash of the registration access token
+	// HashedRegistrationToken is the thumbprint of the registration access token
 	// generated during dynamic client registration.
-	HashedRegistrationAccessToken string                 `json:"hashed_registration_access_token,omitempty"`
-	RegistrationType              ClientRegistrationType `json:"registration_type,omitempty"`
-	ExpiresAt                     *int                   `json:"expires_at,omitempty"`
+	HashedRegistrationToken string                 `json:"hashed_registration_token,omitempty"`
+	RegistrationType        ClientRegistrationType `json:"registration_type,omitempty"`
+	ExpiresAt               *int                   `json:"expires_at,omitempty"`
 	ClientMetaInfo
 }
 

@@ -45,13 +45,7 @@ func Client(ctx oidc.Context, id string) (*goidc.Client, error) {
 	}, nil
 }
 
-func resolveTrustChain(
-	ctx oidc.Context,
-	entityConfig entityStatement,
-) (
-	[]entityStatement,
-	error,
-) {
+func resolveTrustChain(ctx oidc.Context, entityConfig entityStatement) ([]entityStatement, error) {
 
 	var errs error
 	for _, authorityID := range entityConfig.AuthorityHints {

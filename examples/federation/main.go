@@ -44,7 +44,9 @@ func main() {
 		authutil.Issuer,
 		authutil.PrivateJWKSFunc(jwksFilePath),
 		provider.WithOpenIDFederation(
-			jwks,
+			func(ctx context.Context) (goidc.JSONWebKeySet, error) {
+				return jwks, nil
+			},
 			[]string{trustAnchorID},
 			[]string{"https://intermediate-authority"},
 		),

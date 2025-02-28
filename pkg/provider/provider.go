@@ -64,25 +64,25 @@ func New(
 		},
 	}
 
-	return op.WithOptions(opts...)
-}
-
-func (op *Provider) WithOptions(opts ...ProviderOption) (*Provider, error) {
-	for _, opt := range opts {
-		if err := opt(op); err != nil {
-			return nil, err
-		}
-	}
-
-	if err := op.setDefaults(); err != nil {
-		return nil, err
-	}
-
-	if err := op.validate(); err != nil {
+	if err := op.WithOptions(opts...); err != nil {
 		return nil, err
 	}
 
 	return op, nil
+}
+
+func (op *Provider) WithOptions(opts ...ProviderOption) error {
+	for _, opt := range opts {
+		if err := opt(op); err != nil {
+			return err
+		}
+	}
+
+	if err := op.setDefaults(); err != nil {
+		return err
+	}
+
+	return op.validate()
 }
 
 // Handler returns an HTTP handler with all the logic defined for the openid
@@ -100,6 +100,7 @@ func (op Provider) Handler() http.Handler {
 	authorize.RegisterHandlers(server, &op.config)
 	userinfo.RegisterHandlers(server, &op.config)
 	dcr.RegisterHandlers(server, &op.config)
+	federation.RegisterHandlers(server, &op.config)
 
 	handler := goidc.CacheControlMiddleware(server)
 	return handler

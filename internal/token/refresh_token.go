@@ -13,16 +13,9 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func generateRefreshTokenGrant(
-	ctx oidc.Context,
-	req request,
-) (
-	response,
-	error,
-) {
+func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) {
 	if req.refreshToken == "" {
-		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"invalid refresh token")
+		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid refresh token")
 	}
 
 	client, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
@@ -30,10 +23,10 @@ func generateRefreshTokenGrant(
 		return response{}, err
 	}
 
-	grantSession, err := ctx.GrantSessionByRefreshToken(req.refreshToken)
+	id := refreshTokenID(req.refreshToken)
+	grantSession, err := ctx.GrantSessionByRefreshTokenID(id)
 	if err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest,
-			"invalid refresh_token", err)
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid refresh_token", err)
 	}
 
 	if err = validateRefreshTokenGrantRequest(ctx, req, client, grantSession); err != nil {
@@ -49,40 +42,10 @@ func generateRefreshTokenGrant(
 		return response{}, fmt.Errorf("could not generate token during refresh token grant: %w", err)
 	}
 
-	if err := updateRefreshTokenGrantSession(ctx, grantSession, token); err != nil {
-		return response{}, err
-	}
-
-	tokenResp := response{
-		AccessToken:          token.Value,
-		ExpiresIn:            token.LifetimeSecs,
-		TokenType:            token.Type,
-		AuthorizationDetails: grantSession.ActiveAuthDetails,
-	}
-
-	if ctx.RefreshTokenRotationIsEnabled {
-		tokenResp.RefreshToken = grantSession.RefreshToken
-	}
-
-	if strutil.ContainsOpenID(grantSession.ActiveScopes) {
-		tokenResp.IDToken, err = MakeIDToken(
-			ctx,
-			client,
-			newIDTokenOptions(grantSession.GrantInfo),
-		)
-		if err != nil {
-			return response{}, fmt.Errorf("could not generate id token during refresh token grant: %w", err)
-		}
-	}
-
-	return tokenResp, nil
+	return updateRefreshTokenGrantSession(ctx, grantSession, client, token)
 }
 
-func updateRefreshTokenGrantInfo(
-	ctx oidc.Context,
-	grantInfo *goidc.GrantInfo,
-	req request,
-) error {
+func updateRefreshTokenGrantInfo(ctx oidc.Context, grantInfo *goidc.GrantInfo, req request) error {
 
 	grantInfo.GrantType = goidc.GrantRefreshToken
 
@@ -118,24 +81,44 @@ func updateRefreshTokenGrantInfo(
 func updateRefreshTokenGrantSession(
 	ctx oidc.Context,
 	grantSession *goidc.GrantSession,
+	client *goidc.Client,
 	token Token,
-) error {
+) (
+	response,
+	error,
+) {
 
 	grantSession.LastTokenExpiresAtTimestamp = timeutil.TimestampNow() + token.LifetimeSecs
 	grantSession.TokenID = token.ID
 
+	var refreshTkn string
 	if ctx.RefreshTokenRotationIsEnabled {
-		grantSession.RefreshToken = refreshToken()
+		refreshTkn, grantSession.RefreshTokenID = refreshTokenAndID()
 	}
 
 	updatePoPForRefreshedToken(ctx, &grantSession.GrantInfo)
 
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInternalError,
-			"could not store the grant session", err)
+		return response{}, err
 	}
 
-	return nil
+	tokenResp := response{
+		AccessToken:          token.Value,
+		ExpiresIn:            token.LifetimeSecs,
+		TokenType:            token.Type,
+		AuthorizationDetails: grantSession.ActiveAuthDetails,
+		RefreshToken:         refreshTkn,
+	}
+
+	if strutil.ContainsOpenID(grantSession.ActiveScopes) {
+		var err error
+		tokenResp.IDToken, err = MakeIDToken(ctx, client, newIDTokenOptions(grantSession.GrantInfo))
+		if err != nil {
+			return response{}, fmt.Errorf("could not generate id token during refresh token grant: %w", err)
+		}
+	}
+
+	return tokenResp, nil
 }
 
 // updatePoPForRefreshedToken updates the token binding mechanisms used when
@@ -255,6 +238,11 @@ func validateRefreshTokenPoP(
 	return ValidatePoP(ctx, "", cnf)
 }
 
-func refreshToken() string {
-	return strutil.Random(goidc.RefreshTokenLength)
+func refreshTokenAndID() (string, string) {
+	tkn := strutil.Random(goidc.RefreshTokenLength)
+	return tkn, refreshTokenID(tkn)
+}
+
+func refreshTokenID(refreshTkn string) string {
+	return hashutil.Thumbprint(refreshTkn)
 }

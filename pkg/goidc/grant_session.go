@@ -11,13 +11,13 @@ import (
 type GrantSessionManager interface {
 	Save(context.Context, *GrantSession) error
 	SessionByTokenID(context.Context, string) (*GrantSession, error)
-	SessionByRefreshToken(context.Context, string) (*GrantSession, error)
-	Delete(ctx context.Context, id string) error
-	// DeleteByAuthorizationCode deletes a grant session associated with the
+	SessionByRefreshTokenID(context.Context, string) (*GrantSession, error)
+	Delete(context.Context, string) error
+	// DeleteByAuthCode deletes a grant session associated with the
 	// provided authorization code. This function is a security measure to prevent
 	// the reuse of authorization codes, mitigating potential replay attacks.
 	// It is an optional, but recommended, behavior to enhance security.
-	DeleteByAuthorizationCode(context.Context, string) error
+	DeleteByAuthCode(context.Context, string) error
 }
 
 // GrantSession represents the granted access an entity (a user or the client
@@ -27,8 +27,12 @@ type GrantSessionManager interface {
 type GrantSession struct {
 	ID string `json:"id"`
 	// TokenID is the id of the token issued for this grant.
-	TokenID      string `json:"token_id"`
-	RefreshToken string `json:"refresh_token,omitempty"`
+	// - For JWTs, it corresponds to the "jti" claim.
+	// - For opaque tokens, it is the token's thumbprint.
+	TokenID string `json:"token_id"`
+	// RefreshTokenID, if present, is the id of the refresh token issued for this grant.
+	// It stores the thumbprint of the refresh token.
+	RefreshTokenID string `json:"refresh_token_id,omitempty"`
 	// LastTokenExpiresAtTimestamp indicates the timestamp when the last issued
 	// token for this grant will expire.
 	LastTokenExpiresAtTimestamp int `json:"last_token_expires_at"`
@@ -39,9 +43,9 @@ type GrantSession struct {
 	// will be later than LastTokenExpiresAtTimestamp.
 	// Otherwise, ExpiresAtTimestamp and LastTokenExpiresAtTimestamp will match.
 	ExpiresAtTimestamp int `json:"expires_at"`
-	// AuthorizationCode is the authorization code used to generate this grant
+	// AuthCode is the authorization code used to generate this grant
 	// session in case of authorization code grant type.
-	AuthorizationCode string `json:"authorization_code,omitempty"`
+	AuthCode string `json:"authorization_code,omitempty"`
 	GrantInfo
 }
 

@@ -363,10 +363,7 @@ type TokenOptions struct {
 	OpaqueLength int
 }
 
-func NewJWTTokenOptions(
-	alg SignatureAlgorithm,
-	lifetimeSecs int,
-) TokenOptions {
+func NewJWTTokenOptions(alg SignatureAlgorithm, lifetimeSecs int) TokenOptions {
 	return TokenOptions{
 		Format:       TokenFormatJWT,
 		JWTSigAlg:    alg,
@@ -374,14 +371,11 @@ func NewJWTTokenOptions(
 	}
 }
 
-func NewOpaqueTokenOptions(
-	tokenLength int,
-	lifetimeSecs int,
-) TokenOptions {
+func NewOpaqueTokenOptions(length int, lifetimeSecs int) TokenOptions {
 	return TokenOptions{
 		Format:       TokenFormatOpaque,
 		LifetimeSecs: lifetimeSecs,
-		OpaqueLength: tokenLength,
+		OpaqueLength: length,
 	}
 }
 
@@ -414,11 +408,7 @@ type AuthnPolicy struct {
 
 // NewPolicy creates a policy that will be selected based on setUpFunc and that
 // authenticates users with authnFunc.
-func NewPolicy(
-	id string,
-	setUpFunc SetUpAuthnFunc,
-	authnFunc AuthnFunc,
-) AuthnPolicy {
+func NewPolicy(id string, setUpFunc SetUpAuthnFunc, authnFunc AuthnFunc) AuthnPolicy {
 	return AuthnPolicy{
 		ID:           id,
 		Authenticate: authnFunc,

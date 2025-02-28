@@ -19,10 +19,7 @@ func NewGrantSessionManager() *GrantSessionManager {
 	}
 }
 
-func (m *GrantSessionManager) Save(
-	_ context.Context,
-	grantSession *goidc.GrantSession,
-) error {
+func (m *GrantSessionManager) Save(_ context.Context, grantSession *goidc.GrantSession) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -30,13 +27,7 @@ func (m *GrantSessionManager) Save(
 	return nil
 }
 
-func (m *GrantSessionManager) SessionByTokenID(
-	_ context.Context,
-	tokenID string,
-) (
-	*goidc.GrantSession,
-	error,
-) {
+func (m *GrantSessionManager) SessionByTokenID(_ context.Context, tokenID string) (*goidc.GrantSession, error) {
 	grantSession, exists := m.firstSession(func(t *goidc.GrantSession) bool {
 		return t.TokenID == tokenID
 	})
@@ -47,9 +38,9 @@ func (m *GrantSessionManager) SessionByTokenID(
 	return grantSession, nil
 }
 
-func (m *GrantSessionManager) SessionByRefreshToken(_ context.Context, refreshToken string) (*goidc.GrantSession, error) {
+func (m *GrantSessionManager) SessionByRefreshTokenID(_ context.Context, id string) (*goidc.GrantSession, error) {
 	grantSession, exists := m.firstSession(func(t *goidc.GrantSession) bool {
-		return t.RefreshToken == refreshToken
+		return t.RefreshTokenID == id
 	})
 	if !exists {
 		return nil, errors.New("entity not found")
@@ -66,12 +57,9 @@ func (m *GrantSessionManager) Delete(_ context.Context, id string) error {
 	return nil
 }
 
-func (m *GrantSessionManager) DeleteByAuthorizationCode(
-	ctx context.Context,
-	code string,
-) error {
+func (m *GrantSessionManager) DeleteByAuthCode(ctx context.Context, code string) error {
 	grantSession, exists := m.firstSession(func(t *goidc.GrantSession) bool {
-		return t.AuthorizationCode == code
+		return t.AuthCode == code
 	})
 
 	if !exists {

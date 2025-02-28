@@ -10,12 +10,12 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-// ExtractID returns the ID of a token.
+// ExtractID returns the ID of an access token.
 // If it's a JWT, the ID is the the "jti" claim. Otherwise, the token is
-// considered opaque and its ID is the token itself.
+// considered opaque and its ID is the thumbprint of the token.
 func ExtractID(ctx oidc.Context, token string) (string, error) {
 	if !joseutil.IsJWS(token) {
-		return token, nil
+		return opaqueTokenID(token), nil
 	}
 
 	claims, err := validClaims(ctx, token)
@@ -82,7 +82,7 @@ func generateGrant(ctx oidc.Context, req request) (tokenResp response, err error
 	case goidc.GrantClientCredentials:
 		return generateClientCredentialsGrant(ctx, req)
 	case goidc.GrantAuthorizationCode:
-		return generateAuthorizationCodeGrant(ctx, req)
+		return generateAuthCodeGrant(ctx, req)
 	case goidc.GrantRefreshToken:
 		return generateRefreshTokenGrant(ctx, req)
 	case goidc.GrantJWTBearer:

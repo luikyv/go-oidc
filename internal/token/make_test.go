@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -203,10 +204,7 @@ func TestMakeToken_JWTToken(t *testing.T) {
 func TestMakeToken_OpaqueToken(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.TokenOptionsFunc = func(
-		grantInfo goidc.GrantInfo,
-		client *goidc.Client,
-	) goidc.TokenOptions {
+	ctx.TokenOptionsFunc = func(grantInfo goidc.GrantInfo, client *goidc.Client) goidc.TokenOptions {
 		return goidc.NewOpaqueTokenOptions(10, 60)
 	}
 	grantInfo := goidc.GrantInfo{
@@ -226,8 +224,8 @@ func TestMakeToken_OpaqueToken(t *testing.T) {
 		t.Errorf("Format = %s, want %s", token.Format, goidc.TokenFormatOpaque)
 	}
 
-	if token.ID != token.Value {
-		t.Errorf("ID = %s, want %s", token.ID, token.Value)
+	if token.ID != hashutil.Thumbprint(token.Value) {
+		t.Errorf("ID = %s, want %s", token.ID, hashutil.Thumbprint(token.Value))
 	}
 }
 

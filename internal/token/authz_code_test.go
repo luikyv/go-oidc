@@ -48,7 +48,7 @@ func TestGenerateGrant_AuthorizationCodeGrant(t *testing.T) {
 		LastTokenExpiresAtTimestamp: grantSession.LastTokenExpiresAtTimestamp,
 		CreatedAtTimestamp:          grantSession.CreatedAtTimestamp,
 		ExpiresAtTimestamp:          grantSession.ExpiresAtTimestamp,
-		AuthorizationCode:           session.AuthCode,
+		AuthCode:                    session.AuthCode,
 		GrantInfo: goidc.GrantInfo{
 			GrantType:     goidc.GrantAuthorizationCode,
 			Subject:       session.Subject,
@@ -140,7 +140,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails(t *testing.T) {
 		LastTokenExpiresAtTimestamp: grantSession.LastTokenExpiresAtTimestamp,
 		CreatedAtTimestamp:          grantSession.CreatedAtTimestamp,
 		ExpiresAtTimestamp:          grantSession.ExpiresAtTimestamp,
-		AuthorizationCode:           session.AuthCode,
+		AuthCode:                    session.AuthCode,
 		GrantInfo: goidc.GrantInfo{
 			GrantType:          goidc.GrantAuthorizationCode,
 			Subject:            session.Subject,
@@ -345,8 +345,8 @@ func TestGenerateGrant_AuthorizationCodeGrant_CodeReuseInvalidatesGrant(t *testi
 	ctx, client, session := setUpAuthzCodeGrant(t)
 	_ = ctx.DeleteAuthnSession(session.ID)
 	_ = ctx.SaveGrantSession(&goidc.GrantSession{
-		ID:                "random_id",
-		AuthorizationCode: session.AuthCode,
+		ID:       "random_id",
+		AuthCode: session.AuthCode,
 	})
 
 	req := request{

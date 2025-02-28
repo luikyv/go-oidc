@@ -3,10 +3,10 @@ package dcr
 import (
 	"testing"
 
+	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func TestCreate(t *testing.T) {
@@ -142,21 +142,14 @@ func TestDeleteClient_InvalidToken(t *testing.T) {
 	}
 }
 
-func setUp(t *testing.T) (
-	ctx oidc.Context,
-	client *goidc.Client,
-	regToken string,
-) {
+func setUp(t *testing.T) (ctx oidc.Context, client *goidc.Client, regToken string) {
 	t.Helper()
 
 	ctx = oidctest.NewContext(t)
 
 	regToken = "registration_token"
-	hashedToken, _ := bcrypt.GenerateFromPassword([]byte(regToken), bcrypt.DefaultCost)
-
 	client, _ = oidctest.NewClient(t)
-	client.HashedRegistrationAccessToken = string(hashedToken)
-	client.HashedRegistrationAccessToken = string(hashedToken)
+	client.HashedRegistrationToken = hashutil.Thumbprint(regToken)
 	if err := ctx.SaveClient(client); err != nil {
 		t.Fatalf("unexpected error creating the client: %v", err)
 	}

@@ -32,7 +32,7 @@ func main() {
 		authutil.Issuer,
 		authutil.PrivateJWKSFunc(serverJWKSFilePath),
 	)
-	op, _ = op.WithOptions(
+	_ = op.WithOptions(
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithIDTokenSignatureAlgs(goidc.PS256),
 		provider.WithUserInfoSignatureAlgs(goidc.PS256),

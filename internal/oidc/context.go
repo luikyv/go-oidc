@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -285,8 +285,8 @@ func (ctx Context) GrantSessionByTokenID(id string) (*goidc.GrantSession, error)
 	return ctx.GrantSessionManager.SessionByTokenID(ctx.Context(), id)
 }
 
-func (ctx Context) GrantSessionByRefreshToken(token string) (*goidc.GrantSession, error) {
-	return ctx.GrantSessionManager.SessionByRefreshToken(ctx.Context(), token)
+func (ctx Context) GrantSessionByRefreshTokenID(id string) (*goidc.GrantSession, error) {
+	return ctx.GrantSessionManager.SessionByRefreshTokenID(ctx.Context(), id)
 }
 
 func (ctx Context) DeleteGrantSession(id string) error {
@@ -294,7 +294,7 @@ func (ctx Context) DeleteGrantSession(id string) error {
 }
 
 func (ctx Context) DeleteGrantSessionByAuthorizationCode(code string) error {
-	return ctx.GrantSessionManager.DeleteByAuthorizationCode(ctx.Context(), code)
+	return ctx.GrantSessionManager.DeleteByAuthCode(ctx.Context(), code)
 }
 
 func (ctx Context) SaveAuthnSession(session *goidc.AuthnSession) error {
@@ -608,21 +608,20 @@ func (ctx Context) PublicJWKS() (goidc.JSONWebKeySet, error) {
 		return goidc.JSONWebKeySet{}, err
 	}
 
-	publicKeys := []goidc.JSONWebKey{}
-	for _, jwk := range jwks.Keys {
-		publicKeys = append(publicKeys, jwk.Public())
-	}
+	return jwks.Public(), nil
+}
 
-	return goidc.JSONWebKeySet{Keys: publicKeys}, nil
+func (ctx Context) OpenIDFedJWKS() (goidc.JSONWebKeySet, error) {
+	return ctx.OpenIDFedJWKSFunc(ctx)
 }
 
 func (ctx Context) PublicOpenIDFedJWKS() (goidc.JSONWebKeySet, error) {
-	publicKeys := []goidc.JSONWebKey{}
-	for _, jwk := range ctx.OpenIDFedJWKS.Keys {
-		publicKeys = append(publicKeys, jwk.Public())
+	jwks, err := ctx.OpenIDFedJWKS()
+	if err != nil {
+		return goidc.JSONWebKeySet{}, err
 	}
 
-	return goidc.JSONWebKeySet{Keys: publicKeys}, nil
+	return jwks.Public(), nil
 }
 
 func (ctx Context) SigAlgs() ([]goidc.SignatureAlgorithm, error) {
@@ -641,8 +640,8 @@ func (ctx Context) SigAlgs() ([]goidc.SignatureAlgorithm, error) {
 	return algorithms, nil
 }
 
-func (ctx Context) PublicJWK(keyID string) (goidc.JSONWebKey, error) {
-	key, err := ctx.JWK(keyID)
+func (ctx Context) PublicJWK(kid string) (goidc.JSONWebKey, error) {
+	key, err := ctx.JWK(kid)
 	if err != nil {
 		return goidc.JSONWebKey{}, err
 	}
@@ -650,17 +649,13 @@ func (ctx Context) PublicJWK(keyID string) (goidc.JSONWebKey, error) {
 	return key.Public(), nil
 }
 
-func (ctx Context) JWK(keyID string) (goidc.JSONWebKey, error) {
+func (ctx Context) JWK(kid string) (goidc.JSONWebKey, error) {
 	jwks, err := ctx.JWKS()
 	if err != nil {
 		return goidc.JSONWebKey{}, err
 	}
 
-	key, err := jwks.Key(keyID)
-	if err != nil {
-		return goidc.JSONWebKey{}, err
-	}
-	return key, nil
+	return jwks.Key(kid)
 }
 
 // JWKByAlg searches a key that matches the signature algorithm from the JWKS.
@@ -670,36 +665,102 @@ func (ctx Context) JWKByAlg(alg goidc.SignatureAlgorithm) (goidc.JSONWebKey, err
 		return goidc.JSONWebKey{}, err
 	}
 
-	for _, jwk := range jwks.Keys {
-		if jwk.Algorithm == string(alg) {
-			return jwk, nil
-		}
-	}
-
-	return goidc.JSONWebKey{}, fmt.Errorf("could not find jwk matching %s", alg)
+	return jwks.KeyByAlg(string(alg))
 }
 
-// TODO: Improve this. signer func, jwks func, ...
+func (ctx Context) Sign(claims any, alg goidc.SignatureAlgorithm, opts *jose.SignerOptions) (string, error) {
+
+	if ctx.SignerFunc == nil {
+		jwk, err := ctx.JWKByAlg(alg)
+		if err != nil {
+			return "", fmt.Errorf("could not load the signing jwk: %w", err)
+		}
+		return joseutil.Sign(claims, jose.SigningKey{Algorithm: alg, Key: jwk}, opts)
+	}
+
+	keyID, key, err := ctx.SignerFunc(ctx, alg)
+	if err != nil {
+		return "", fmt.Errorf("could not load the signer: %w", err)
+	}
+
+	return joseutil.Sign(claims, jose.SigningKey{
+		Algorithm: alg,
+		Key: joseutil.OpaqueSigner{
+			ID:        keyID,
+			Algorithm: alg,
+			Signer:    key,
+		},
+	}, opts)
+}
+
+func (ctx Context) Decrypt(
+	jwe string,
+	keyAlgs []goidc.KeyEncryptionAlgorithm,
+	cntAlgs []goidc.ContentEncryptionAlgorithm,
+) (
+	string,
+	error,
+) {
+	parseJWE, err := jose.ParseEncrypted(jwe, keyAlgs, cntAlgs)
+	if err != nil {
+		return "", fmt.Errorf("could not parse the jwe: %w", err)
+	}
+
+	keyID := parseJWE.Header.KeyID
+	if keyID == "" {
+		return "", errors.New("invalid jwe key ID")
+	}
+
+	var key any
+	if ctx.DecrypterFunc != nil {
+		alg := goidc.KeyEncryptionAlgorithm(parseJWE.Header.Algorithm)
+		decrypter, err := ctx.DecrypterFunc(ctx, keyID, alg)
+		if err != nil {
+			return "", fmt.Errorf("could not load the decrypter: %w", err)
+		}
+		key = joseutil.OpaqueDecrypter{Algorithm: alg, Decrypter: decrypter}
+	} else {
+		jwk, err := ctx.JWK(keyID)
+		if err != nil || jwk.Use != string(goidc.KeyUsageEncryption) {
+			return "", errors.New("invalid jwk used for encryption")
+		}
+		key = jwk
+	}
+
+	jws, err := parseJWE.Decrypt(key)
+	if err != nil {
+		return "", fmt.Errorf("could not decrypt the jwe: %w", err)
+	}
+
+	return string(jws), nil
+}
+
 func (ctx Context) OpenIDFedSign(claims any, opts *jose.SignerOptions) (string, error) {
-	key := ctx.OpenIDFedJWKS.Keys[0]
 
-	if opts == nil {
-		opts = &jose.SignerOptions{}
-	}
-	opts = opts.WithHeader("kid", key.KeyID).WithHeader("alg", key.Algorithm)
-	if _, ok := opts.ExtraHeaders[jose.HeaderType]; !ok {
-		opts = opts.WithType("JWT")
-	}
-
-	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.SignatureAlgorithm(key.Algorithm), Key: key}, opts)
+	jwks, err := ctx.OpenIDFedJWKS()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("could not load the signing jwk: %w", err)
+	}
+	jwk := jwks.Keys[0]
+
+	if ctx.OpenIDFedSignerFunc == nil {
+		return joseutil.Sign(claims, jose.SigningKey{
+			Algorithm: jose.SignatureAlgorithm(jwk.Algorithm),
+			Key:       jwk,
+		}, opts)
 	}
 
-	jws, err := jwt.Signed(signer).Claims(claims).Serialize()
+	keyID, key, err := ctx.OpenIDFedSignerFunc(ctx, goidc.SignatureAlgorithm(jwk.Algorithm))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("could not load the signer: %w", err)
 	}
 
-	return jws, nil
+	return joseutil.Sign(claims, jose.SigningKey{
+		Algorithm: goidc.SignatureAlgorithm(jwk.Algorithm),
+		Key: joseutil.OpaqueSigner{
+			ID:        keyID,
+			Algorithm: goidc.SignatureAlgorithm(jwk.Algorithm),
+			Signer:    key,
+		},
+	}, opts)
 }
