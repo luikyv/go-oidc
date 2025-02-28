@@ -14,15 +14,8 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func MakeIDToken(
-	ctx oidc.Context,
-	client *goidc.Client,
-	idTokenOpts IDTokenOptions,
-) (
-	string,
-	error,
-) {
-	idToken, err := makeIDToken(ctx, client, idTokenOpts)
+func MakeIDToken(ctx oidc.Context, client *goidc.Client, ops IDTokenOptions) (string, error) {
+	idToken, err := makeIDToken(ctx, client, ops)
 	if err != nil {
 		return "", err
 	}
@@ -213,14 +206,7 @@ func makeJWTToken(
 	}, nil
 }
 
-func makeOpaqueToken(
-	_ oidc.Context,
-	grantInfo goidc.GrantInfo,
-	opts goidc.TokenOptions,
-) (
-	Token,
-	error,
-) {
+func makeOpaqueToken(_ oidc.Context, grantInfo goidc.GrantInfo, opts goidc.TokenOptions) (Token, error) {
 	accessToken := strutil.Random(opts.OpaqueLength)
 	tokenType := goidc.TokenTypeBearer
 	if grantInfo.JWKThumbprint != "" {
@@ -228,10 +214,14 @@ func makeOpaqueToken(
 	}
 
 	return Token{
-		ID:           accessToken,
+		ID:           opaqueTokenID(accessToken),
 		Format:       goidc.TokenFormatOpaque,
 		Value:        accessToken,
 		Type:         tokenType,
 		LifetimeSecs: opts.LifetimeSecs,
 	}, nil
+}
+
+func opaqueTokenID(tkn string) string {
+	return hashutil.Thumbprint(tkn)
 }

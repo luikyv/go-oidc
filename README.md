@@ -84,20 +84,41 @@ _ := server.ListenAndServeTLS(certFilePath, certKeyFilePath)
 ```
 
 ### Storage
-go-oidc revolves around three entities which are:
+go-oidc revolves around three entities: `goidc.Client`, `goidc.AuthnSession` and `goidc.GrantSession`.
 
-- `goidc.Client` is the entity that interacts with the authorization server to request tokens and access protected resources.
-- `goidc.AuthnSession` is a short-lived session that stores information about authorization requests.
-  It can be used to implement more sophisticated user authentication flows by allowing interactions during the authentication process.
-- `goidc.GrantSession` represents the access granted to a client by an entity (either a user or the client itself).
-  It holds information about the token issued and the entity who granted access.
-
-`goidc.Client`, `goidc.AuthnSession` and `goidc.GrantSession` are managed by implementations of `goidc.ClientManager`, `goidc.AuthnSessionManager` and `goidc.GrantSessionManager` respectively.
+These entities are managed by implementations of `goidc.ClientManager`, `goidc.AuthnSessionManager` and `goidc.GrantSessionManager` respectively.
 
 By default, `provider.Provider` uses an in-memory implementation of these interfaces, meaning all stored entities are lost when the server shuts down.
 
 It is highly recommended to replace the default storage with custom implementations to ensure persistence.
 For more details, see `provider.WithClientStorage`, `provider.WithAuthnSessionStorage` and `provider.WithGrantSessionStorage`.
+
+#### Client
+`goidc.Client` is the entity that interacts with the authorization server to request tokens and access protected resources.
+
+It is always identified and queried by its ID.
+
+#### Authentication Session
+`goidc.AuthnSession` is a short-lived session that stores information about authorization requests.
+
+It enables more advanced authentication flows by allowing interactions during the authentication process.
+
+At any given time, `goidc.AuthnSession` will always have an ID and exactly one of the following identifiers, which serve as indexes for lookup operations:
+- Pushed Authorization Request ID – Created when the client submits a `POST /par` request. See [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).
+- Callback ID – Used when the authentication policy is still in progress.
+- Authorization Code – Set for the `authorization_code` grant type and when the authentication policy completes successfully, allowing the client to exchange it for a token.
+- Authentication Request ID – Used for Client-Initiated Backchannel Authentication. See [CIBA](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0-final.html).
+
+#### Grant Session
+`goidc.GrantSession` represents the access granted to a client by an entity, which can be either a user or the client itself.
+
+It holds information about the token issued and the entity who granted access.
+
+At any given time, `goidc.GrantSession` will always have an ID and a token ID for the currently active token. Additionally, it may contain the following identifiers, which serve as indexes for lookup and deletion operations:
+- Refresh Token ID - Present when the grant allows issuing a refresh token. This is a hashed representation of the token, ensuring the raw value is never stored.
+- Authorization Code - Set when using the authorization_code grant type.
+
+After each refresh token request, the token ID is updated. The refresh token id is updated only if refresh token rotation is enabled.
 
 ### Authentication Policies
 
@@ -219,16 +240,14 @@ Here is an example of how to configure the token options:
 op, _ := provider.New(
   ...,
   provider.WithTokenOptions(func(_ goidc.GrantInfo, _ *goidc.Client) goidc.TokenOptions {
-    // All tokens are issued as JWTs with a lifetime of 600 seconds.
-		return goidc.NewJWTTokenOptions(goidc.RS256, 600)
+    // Access tokens are issued as JWTs with a lifetime of 600 seconds.
+    return goidc.NewJWTTokenOptions(goidc.RS256, 600)
 	}),
   ...,
 )
 ```
 
-Refresh tokens are always **opaque** and have a fixed length of 99 characters.
-
-In go-oidc, refresh and access tokens are differentiated by their length. That being said, never issue opaque access tokens with a length of 99 characters.
+In go-oidc, refresh tokens are always **opaque** and have a fixed length of 99 characters. Also, refresh and opaque access tokens are differentiated by their length. That being said, never issue opaque tokens with a length of 99 characters.
 
 ### Scopes
 

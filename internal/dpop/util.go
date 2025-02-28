@@ -106,8 +106,7 @@ func ValidateJWT(
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid htu claim")
 	}
 
-	if opts.AccessToken != "" &&
-		dpopClaims.AccessTokenHash != hashutil.Thumbprint(opts.AccessToken) {
+	if opts.AccessToken != "" && dpopClaims.AccessTokenHash != hashutil.Thumbprint(opts.AccessToken) {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid ath claim")
 	}
 

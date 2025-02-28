@@ -18,10 +18,7 @@ func Thumbprint(s string) string {
 }
 
 func BCryptHash(s string) string {
-	hashedS, err := bcrypt.GenerateFromPassword(
-		[]byte(s),
-		bcrypt.DefaultCost,
-	)
+	hashedS, err := bcrypt.GenerateFromPassword([]byte(s), bcrypt.DefaultCost)
 	if err != nil {
 		panic(err)
 	}

@@ -7,7 +7,6 @@ import (
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func create(ctx oidc.Context, initialToken string, meta *goidc.ClientMetaInfo) (response, error) {
@@ -127,12 +126,12 @@ func setID(_ oidc.Context, client *goidc.Client) string {
 func setRegistrationToken(ctx oidc.Context, client *goidc.Client) string {
 	// Generate a new registration token only if the client does not have one
 	// or if token rotation is enabled.
-	if client.HashedRegistrationAccessToken != "" && !ctx.DCRTokenRotationIsEnabled {
+	if client.HashedRegistrationToken != "" && !ctx.DCRTokenRotationIsEnabled {
 		return ""
 	}
 
 	regToken, hashedRegToken := registrationAccessTokenAndHash()
-	client.HashedRegistrationAccessToken = hashedRegToken
+	client.HashedRegistrationToken = hashedRegToken
 	return regToken
 }
 
@@ -160,9 +159,7 @@ func setSecret(ctx oidc.Context, client *goidc.Client) string {
 	}
 
 	// Check for client authentication using secret JWT.
-	if slices.ContainsFunc(authnMethods, func(method goidc.ClientAuthnType) bool {
-		return method == goidc.ClientAuthnSecretJWT
-	}) {
+	if slices.Contains(authnMethods, goidc.ClientAuthnSecretJWT) {
 		// Use existing secret or generate a new one if not already set.
 		if secret == "" {
 			secret = clientSecret()
@@ -220,14 +217,10 @@ func clientSecret() string {
 
 func registrationAccessTokenAndHash() (string, string) {
 	token := strutil.Random(registrationAccessTokenLength)
-	hashedToken := hashutil.BCryptHash(token)
+	hashedToken := hashutil.Thumbprint(token)
 	return token, hashedToken
 }
 
 func isRegistrationAccessTokenValid(c *goidc.Client, token string) bool {
-	err := bcrypt.CompareHashAndPassword(
-		[]byte(c.HashedRegistrationAccessToken),
-		[]byte(token),
-	)
-	return err == nil
+	return hashutil.Thumbprint(token) == c.HashedRegistrationToken
 }

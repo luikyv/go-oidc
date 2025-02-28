@@ -285,8 +285,8 @@ func (ctx Context) GrantSessionByTokenID(id string) (*goidc.GrantSession, error)
 	return ctx.GrantSessionManager.SessionByTokenID(ctx.Context(), id)
 }
 
-func (ctx Context) GrantSessionByRefreshToken(token string) (*goidc.GrantSession, error) {
-	return ctx.GrantSessionManager.SessionByRefreshToken(ctx.Context(), token)
+func (ctx Context) GrantSessionByRefreshTokenID(id string) (*goidc.GrantSession, error) {
+	return ctx.GrantSessionManager.SessionByRefreshTokenID(ctx.Context(), id)
 }
 
 func (ctx Context) DeleteGrantSession(id string) error {
@@ -294,7 +294,7 @@ func (ctx Context) DeleteGrantSession(id string) error {
 }
 
 func (ctx Context) DeleteGrantSessionByAuthorizationCode(code string) error {
-	return ctx.GrantSessionManager.DeleteByAuthorizationCode(ctx.Context(), code)
+	return ctx.GrantSessionManager.DeleteByAuthCode(ctx.Context(), code)
 }
 
 func (ctx Context) SaveAuthnSession(session *goidc.AuthnSession) error {

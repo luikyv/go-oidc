@@ -64,8 +64,11 @@ func (jwks JSONWebKeySet) Key(kid string) (JSONWebKey, error) {
 func (jwks JSONWebKeySet) Public() JSONWebKeySet {
 	publicKeys := []JSONWebKey{}
 	for _, jwk := range jwks.Keys {
-		jwk.Key = jwk.Public().Key
-		publicKeys = append(publicKeys, jwk)
+		publicKey := jwk.Public()
+		// A JWK that cannot be made public is returned as the zero value.
+		if publicKey.Key != nil {
+			publicKeys = append(publicKeys, publicKey)
+		}
 	}
 
 	return JSONWebKeySet{Keys: publicKeys}
