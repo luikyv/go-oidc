@@ -32,7 +32,7 @@ func NewClient(t testing.TB) (client *goidc.Client, secret string) {
 	client = &goidc.Client{
 		ID:           "test_client",
 		HashedSecret: string(hashedSecret),
-		ClientMetaInfo: goidc.ClientMetaInfo{
+		ClientMeta: goidc.ClientMeta{
 			TokenAuthnMethod: goidc.ClientAuthnSecretPost,
 			RedirectURIs:     []string{"https://example.com/callback"},
 			ScopeIDs:         fmt.Sprintf("%s %s %s", Scope1.ID, Scope2.ID, goidc.ScopeOpenID.ID),

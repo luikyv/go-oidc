@@ -17,7 +17,7 @@ func TestAreScopesAllowed(t *testing.T) {
 	}
 
 	client := &goidc.Client{
-		ClientMetaInfo: goidc.ClientMetaInfo{
+		ClientMeta: goidc.ClientMeta{
 			ScopeIDs: "scope1 scope2 scope3",
 		},
 	}

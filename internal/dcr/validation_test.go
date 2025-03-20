@@ -439,7 +439,7 @@ func TestValidateRequest(t *testing.T) {
 			testCase.modifiedClientFunc(client)
 
 			// When.
-			err := validate(ctx, &client.ClientMetaInfo)
+			err := validate(ctx, &client.ClientMeta)
 
 			// Then.
 			isValid := err == nil

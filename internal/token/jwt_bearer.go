@@ -187,7 +187,7 @@ func makeAnonymousClient(ctx oidc.Context) *goidc.Client {
 		}
 
 		anonymousClient = &goidc.Client{
-			ClientMetaInfo: goidc.ClientMetaInfo{
+			ClientMeta: goidc.ClientMeta{
 				GrantTypes: []goidc.GrantType{
 					goidc.GrantJWTBearer,
 				},

@@ -99,7 +99,7 @@ func main() {
 		}
 	`), &clientJWKS)
 	client := goidc.Client{
-		ClientMetaInfo: goidc.ClientMetaInfo{
+		ClientMeta: goidc.ClientMeta{
 			GrantTypes:    []goidc.GrantType{goidc.GrantAuthorizationCode, goidc.GrantImplicit},
 			RedirectURIs:  []string{"http://localhost/callback"},
 			ScopeIDs:      "openid",
@@ -147,7 +147,7 @@ func main() {
 			"metadata": map[string]any{
 				"federation_entity":    map[string]any{},
 				"openid_provider":      map[string]any{},
-				"openid_relying_party": client.ClientMetaInfo,
+				"openid_relying_party": client.ClientMeta,
 			},
 			"jwks":            publicJWKS,
 			"authority_hints": []string{trustAnchorID},
@@ -245,7 +245,7 @@ func main() {
 			"metadata": map[string]any{
 				"federation_entity":    map[string]any{},
 				"openid_provider":      map[string]any{},
-				"openid_relying_party": client.ClientMetaInfo,
+				"openid_relying_party": client.ClientMeta,
 			},
 			"jwks": publicJWKS,
 		}

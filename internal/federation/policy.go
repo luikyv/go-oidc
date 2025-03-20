@@ -104,6 +104,9 @@ type openIDClientMetadataPolicy struct {
 	CIBANotificationEndpoint      metadataOperators[string]                           `json:"backchannel_client_notification_endpoint,omitempty"`
 	CIBAJARSigAlg                 metadataOperators[goidc.SignatureAlgorithm]         `json:"backchannel_authentication_request_signing_alg,omitempty"`
 	CIBAUserCodeIsEnabled         metadataOperators[bool]                             `json:"backchannel_user_code_parameter,omitempty"`
+	PublicSignedJWKSURI           metadataOperators[string]                           `json:"signed_jwks_uri,omitempty"`
+	OrganizationName              metadataOperators[string]                           `json:"organization_name,omitempty"`
+	ClientRegistrationTypes       metadataOperators[[]goidc.ClientRegistrationType]   `json:"client_registration_types,omitempty"`
 	CustomAttributes              map[string]metadataOperators[any]                   `json:"custom_attributes,omitempty"`
 }
 
@@ -346,6 +349,18 @@ func (p openIDClientMetadataPolicy) validate() error {
 	}
 
 	if err := p.CIBAUserCodeIsEnabled.validate(); err != nil {
+		return err
+	}
+
+	if err := p.PublicSignedJWKSURI.validate(); err != nil {
+		return err
+	}
+
+	if err := p.OrganizationName.validate(); err != nil {
+		return err
+	}
+
+	if err := p.ClientRegistrationTypes.validate(); err != nil {
 		return err
 	}
 
@@ -640,6 +655,24 @@ func (high openIDClientMetadataPolicy) merge(low openIDClientMetadataPolicy) (op
 		return openIDClientMetadataPolicy{}, err
 	}
 	high.CIBAUserCodeIsEnabled = opCIBAUserCodeIsEnabled
+
+	opPublicSignedJWKSURI, err := high.PublicSignedJWKSURI.merge(low.PublicSignedJWKSURI)
+	if err != nil {
+		return openIDClientMetadataPolicy{}, err
+	}
+	high.PublicSignedJWKSURI = opPublicSignedJWKSURI
+
+	opOrganizationName, err := high.OrganizationName.merge(low.OrganizationName)
+	if err != nil {
+		return openIDClientMetadataPolicy{}, err
+	}
+	high.OrganizationName = opOrganizationName
+
+	opClientRegistrationTypes, err := high.ClientRegistrationTypes.merge(low.ClientRegistrationTypes)
+	if err != nil {
+		return openIDClientMetadataPolicy{}, err
+	}
+	high.ClientRegistrationTypes = opClientRegistrationTypes
 
 	for att, lowOps := range low.CustomAttributes {
 		ops, err := high.customAttribute(att).merge(lowOps)
@@ -936,12 +969,30 @@ func (policy openIDClientMetadataPolicy) apply(client openIDClient) (openIDClien
 	}
 	client.CIBAUserCodeIsEnabled = cibaUserCodeIsEnabled
 
+	publicSignedJWKSURI, err := policy.PublicSignedJWKSURI.apply(client.PublicSignedJWKSURI)
+	if err != nil {
+		return openIDClient{}, err
+	}
+	client.PublicSignedJWKSURI = publicSignedJWKSURI
+
+	organizationName, err := policy.OrganizationName.apply(client.OrganizationName)
+	if err != nil {
+		return openIDClient{}, err
+	}
+	client.OrganizationName = organizationName
+
+	clientRegistrationTypes, err := policy.ClientRegistrationTypes.apply(client.ClientRegistrationTypes)
+	if err != nil {
+		return openIDClient{}, err
+	}
+	client.ClientRegistrationTypes = clientRegistrationTypes
+
 	for att, ops := range policy.CustomAttributes {
-		attValue, err := ops.apply(client.Attribute(att))
+		attValue, err := ops.apply(client.CustomAttribute(att))
 		if err != nil {
 			return openIDClient{}, err
 		}
-		client.SetAttribute(att, attValue)
+		client.SetCustomAttribute(att, attValue)
 	}
 
 	return client, nil

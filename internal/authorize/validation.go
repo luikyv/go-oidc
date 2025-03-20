@@ -15,7 +15,7 @@ import (
 
 // validateRequest validates the parameters sent in an authorization request.
 func validateRequest(ctx oidc.Context, req request, c *goidc.Client) error {
-	if c.RegistrationType == goidc.ClientRegistrationTypeAutomatic {
+	if c.IsFederated && c.RegistrationType == goidc.ClientRegistrationTypeAutomatic {
 		return goidc.NewError(goidc.ErrorCodeAccessDenied,
 			"asymmetric cryptography must be used to authenticate requests when using automatic registration")
 	}
@@ -124,7 +124,7 @@ func validatePushedRequestWithJAR(
 }
 
 func validateSimplePushedRequest(ctx oidc.Context, req request, c *goidc.Client) error {
-	if c.RegistrationType == goidc.ClientRegistrationTypeAutomatic {
+	if c.IsFederated && c.RegistrationType == goidc.ClientRegistrationTypeAutomatic {
 		if c.TokenAuthnMethod != goidc.ClientAuthnPrivateKeyJWT && c.TokenAuthnMethod != goidc.ClientAuthnSelfSignedTLS {
 			return goidc.NewError(goidc.ErrorCodeAccessDenied,
 				"asymmetric cryptography must be used to authenticate requests when using automatic registration")
@@ -232,11 +232,7 @@ func validateInWithOutParams(
 }
 
 // validateParams validates the parameters of an authorization request.
-func validateParams(
-	ctx oidc.Context,
-	params goidc.AuthorizationParameters,
-	c *goidc.Client,
-) error {
+func validateParams(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) error {
 
 	if params.RedirectURI == "" {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest,

@@ -27,7 +27,7 @@ func TestFetchPublicJWKS(t *testing.T) {
 	}))
 
 	client := goidc.Client{
-		ClientMetaInfo: goidc.ClientMetaInfo{
+		ClientMeta: goidc.ClientMeta{
 			PublicJWKSURI: server.URL,
 			PublicJWKS:    nil,
 		},

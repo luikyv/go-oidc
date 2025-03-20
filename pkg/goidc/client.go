@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 )
@@ -26,10 +27,13 @@ type Client struct {
 	HashedSecret string `json:"hashed_secret,omitempty"`
 	// HashedRegistrationToken is the thumbprint of the registration access token
 	// generated during dynamic client registration.
-	HashedRegistrationToken string                 `json:"hashed_registration_token,omitempty"`
-	RegistrationType        ClientRegistrationType `json:"registration_type,omitempty"`
-	ExpiresAt               *int                   `json:"expires_at,omitempty"`
-	ClientMetaInfo
+	HashedRegistrationToken string `json:"hashed_registration_token,omitempty"`
+	ExpiresAt               *int   `json:"expires_at,omitempty"`
+
+	IsFederated      bool                   `json:"is_federated"`
+	RegistrationType ClientRegistrationType `json:"registration_type,omitempty"`
+	TrustMarks       []string               `json:"trust_mark_ids,omitempty"`
+	ClientMeta
 }
 
 func (c *Client) IsPublic() bool {
@@ -48,9 +52,12 @@ func (c *Client) FetchPublicJWKS(httpClient *http.Client) (JSONWebKeySet, error)
 		return jwks, err
 	}
 
+	if c.PublicSignedJWKSURI != "" {
+		return c.fetchSignedJWKS(httpClient)
+	}
+
 	if c.PublicJWKSURI == "" {
-		return JSONWebKeySet{},
-			errors.New("the client jwks was informed neither by value nor by reference")
+		return JSONWebKeySet{}, errors.New("the client jwks was informed neither by value nor by reference")
 	}
 
 	rawJWKS, err := c.fetchJWKS(httpClient)
@@ -64,17 +71,31 @@ func (c *Client) FetchPublicJWKS(httpClient *http.Client) (JSONWebKeySet, error)
 	return jwks, err
 }
 
-func (c *Client) fetchJWKS(httpClient *http.Client) (json.RawMessage, error) {
+func (c *Client) fetchJWKS(httpClient *http.Client) ([]byte, error) {
 	resp, err := httpClient.Get(c.PublicJWKSURI)
-	if err != nil || resp.StatusCode != http.StatusOK {
-		return nil, WrapError(ErrorCodeInvalidClientMetadata, "could not fetch client jwks", err)
+	if err != nil {
+		return nil, WrapError(ErrorCodeInvalidClientMetadata, "could not fetch the client jwks", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, WrapError(ErrorCodeInvalidClientMetadata, fmt.Sprintf("fetching the client jwks resulted in %d", resp.StatusCode), err)
 	}
 
-	defer resp.Body.Close()
+	var jwks map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&jwks); err != nil {
+		return nil, WrapError(ErrorCodeInvalidClientMetadata, "could not parse the client jwks", err)
+	}
+
 	return io.ReadAll(resp.Body)
 }
 
-type ClientMetaInfo struct {
+// TODO.
+func (c *Client) fetchSignedJWKS(httpClient *http.Client) (JSONWebKeySet, error) {
+	return JSONWebKeySet{}, errors.ErrUnsupported
+}
+
+type ClientMeta struct {
 	Name              string          `json:"client_name,omitempty"`
 	ApplicationType   ApplicationType `json:"application_type,omitempty"`
 	LogoURI           string          `json:"logo_uri,omitempty"`
@@ -86,8 +107,7 @@ type ClientMetaInfo struct {
 	GrantTypes        []GrantType     `json:"grant_types"`
 	ResponseTypes     []ResponseType  `json:"response_types"`
 	PublicJWKSURI     string          `json:"jwks_uri,omitempty"`
-	// TODO: Try to find a better way. Maybe a struct with the way fields?
-	PublicJWKS json.RawMessage `json:"jwks,omitempty"`
+	PublicJWKS        json.RawMessage `json:"jwks,omitempty"`
 	// ScopeIDs contains the scopes available to the client separeted by spaces.
 	ScopeIDs              string                     `json:"scope,omitempty"`
 	SubIdentifierType     SubIdentifierType          `json:"subject_type,omitempty"`
@@ -126,24 +146,26 @@ type ClientMetaInfo struct {
 	CIBANotificationEndpoint  string                `json:"backchannel_client_notification_endpoint,omitempty"`
 	CIBAJARSigAlg             SignatureAlgorithm    `json:"backchannel_authentication_request_signing_alg,omitempty"`
 	CIBAUserCodeIsEnabled     bool                  `json:"backchannel_user_code_parameter,omitempty"`
+	PublicSignedJWKSURI       string                `json:"signed_jwks_uri,omitempty"`
+	OrganizationName          string                `json:"organization_name,omitempty"`
 	// CustomAttributes holds any additional dynamic attributes a client may
 	// provide during registration.
 	// These attributes allow clients to extend their metadata beyond the
 	// predefined fields (e.g., client_name, logo_uri).
 	// During DCR, any attributes that are not explicitly defined in the struct
 	// will be captured here.
-	// These additional fields are **flattened** in the DCR response, meaning
+	// These additional fields are flattened in the DCR response, meaning
 	// they are merged directly into the JSON response alongside standard fields.
 	CustomAttributes map[string]any `json:"custom_attributes,omitempty"`
 }
 
-func (c *ClientMetaInfo) SetAttribute(key string, value any) {
+func (c *ClientMeta) SetCustomAttribute(key string, value any) {
 	if c.CustomAttributes == nil {
 		c.CustomAttributes = make(map[string]any)
 	}
 	c.CustomAttributes[key] = value
 }
 
-func (c *ClientMetaInfo) Attribute(key string) any {
+func (c *ClientMeta) CustomAttribute(key string) any {
 	return c.CustomAttributes[key]
 }

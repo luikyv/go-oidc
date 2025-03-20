@@ -81,13 +81,7 @@ func (m *AuthnSessionManager) SessionByPushedAuthReqID(
 	return session, nil
 }
 
-func (m *AuthnSessionManager) SessionByCIBAAuthID(
-	_ context.Context,
-	id string,
-) (
-	*goidc.AuthnSession,
-	error,
-) {
+func (m *AuthnSessionManager) SessionByCIBAAuthID(_ context.Context, id string) (*goidc.AuthnSession, error) {
 	session, exists := m.firstSession(func(s *goidc.AuthnSession) bool {
 		return s.CIBAAuthID == id
 	})
@@ -106,12 +100,7 @@ func (m *AuthnSessionManager) Delete(_ context.Context, id string) error {
 	return nil
 }
 
-func (m *AuthnSessionManager) firstSession(
-	condition func(*goidc.AuthnSession) bool,
-) (
-	*goidc.AuthnSession,
-	bool,
-) {
+func (m *AuthnSessionManager) firstSession(condition func(*goidc.AuthnSession) bool) (*goidc.AuthnSession, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -123,3 +112,5 @@ func (m *AuthnSessionManager) firstSession(
 
 	return findFirst(sessions, condition)
 }
+
+var _ goidc.AuthnSessionManager = NewAuthnSessionManager()
