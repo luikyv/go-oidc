@@ -41,15 +41,17 @@ func Client(ctx oidc.Context, id string) (*goidc.Client, error) {
 	}, nil
 }
 
+// buildAndResolveTrustChain builds a trust chain and then resolves it to obtain
+// the final entity statement for the given entity ID.
 func buildAndResolveTrustChain(ctx oidc.Context, id string) (entityStatement, trustChain, error) {
 	chain, err := buildTrustChain(ctx, id)
 	if err != nil {
-		return entityStatement{}, nil, fmt.Errorf("could not resolve the trust chain for client %s: %w", id, err)
+		return entityStatement{}, nil, fmt.Errorf("could not build the trust chain for client %s: %w", id, err)
 	}
 
 	config, err := resolveTrustChain(ctx, chain)
 	if err != nil {
-		return entityStatement{}, nil, err
+		return entityStatement{}, nil, fmt.Errorf("could not resolve the trust chain for client %s: %w", id, err)
 	}
 
 	return config, chain, nil
@@ -269,6 +271,7 @@ func parseEntityStatement(
 	return statement, nil
 }
 
+// resolveTrustChain processes a trust chain to determine the final entity statement.
 func resolveTrustChain(_ oidc.Context, chain trustChain) (entityStatement, error) {
 
 	config := chain.entityConfig()
@@ -363,6 +366,8 @@ func validateTrustMark(ctx oidc.Context, config entityStatement, requiredTrustMa
 		return fmt.Errorf("the entity %s is not allowed to issue trust marks for %s", trustMarkClaims.Issuer, requiredTrustMarkID)
 	}
 
+	// If the trust mark id appears in the trust_mark_owners claim of the trust anchor's
+	// entity configuration, verify that the trust mark contains a valid delegation.
 	if trustMarkOwner, ok := chain.authorityConfig().TrustMarkOwners[requiredTrustMarkID]; ok {
 		if trustMarkClaims.Delegation == "" {
 			return fmt.Errorf("the claim 'delegation' is required in trust mark %s", requiredTrustMarkID)

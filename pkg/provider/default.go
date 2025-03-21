@@ -14,7 +14,7 @@ const (
 	defaultPrivateKeyJWTSigAlg = goidc.RS256
 	defaultSecretJWTSigAlg     = goidc.HS256
 
-	defaultOpenIDFedStatementSigAlg    = goidc.RS256
+	defaultOpenIDFedSigAlg             = goidc.RS256
 	defaultOpenIDFedTrustChainMaxDepth = 5
 	defaultOpenIDFedRegType            = goidc.ClientRegistrationTypeAutomatic
 
