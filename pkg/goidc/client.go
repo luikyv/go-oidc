@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 )
 
@@ -32,7 +31,7 @@ type Client struct {
 
 	IsFederated      bool                   `json:"is_federated"`
 	RegistrationType ClientRegistrationType `json:"registration_type,omitempty"`
-	TrustMarks       []string               `json:"trust_mark_ids,omitempty"`
+	TrustMarkIDs     []string               `json:"trust_mark_ids,omitempty"`
 	ClientMeta
 }
 
@@ -45,11 +44,8 @@ func (c *Client) IsPublic() bool {
 //
 // This function also caches the keys if they are fetched from jwks_uri.
 func (c *Client) FetchPublicJWKS(httpClient *http.Client) (JSONWebKeySet, error) {
-	var jwks JSONWebKeySet
-
-	if c.PublicJWKS != nil {
-		err := json.Unmarshal(c.PublicJWKS, &jwks)
-		return jwks, err
+	if c.PublicJWKS.Keys != nil {
+		return c.PublicJWKS, nil
 	}
 
 	if c.PublicSignedJWKSURI != "" {
@@ -60,38 +56,37 @@ func (c *Client) FetchPublicJWKS(httpClient *http.Client) (JSONWebKeySet, error)
 		return JSONWebKeySet{}, errors.New("the client jwks was informed neither by value nor by reference")
 	}
 
-	rawJWKS, err := c.fetchJWKS(httpClient)
+	jwks, err := c.fetchJWKS(httpClient)
 	if err != nil {
 		return JSONWebKeySet{}, err
 	}
 	// Cache the client JWKS.
-	c.PublicJWKS = rawJWKS
+	c.PublicJWKS = jwks
 
-	err = json.Unmarshal(c.PublicJWKS, &jwks)
 	return jwks, err
 }
 
-func (c *Client) fetchJWKS(httpClient *http.Client) ([]byte, error) {
+func (c *Client) fetchJWKS(httpClient *http.Client) (JSONWebKeySet, error) {
 	resp, err := httpClient.Get(c.PublicJWKSURI)
 	if err != nil {
-		return nil, WrapError(ErrorCodeInvalidClientMetadata, "could not fetch the client jwks", err)
+		return JSONWebKeySet{}, WrapError(ErrorCodeInvalidClientMetadata, "could not fetch the client jwks", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, WrapError(ErrorCodeInvalidClientMetadata, fmt.Sprintf("fetching the client jwks resulted in %d", resp.StatusCode), err)
+		return JSONWebKeySet{}, WrapError(ErrorCodeInvalidClientMetadata, fmt.Sprintf("fetching the client jwks resulted in %d", resp.StatusCode), err)
 	}
 
-	var jwks map[string]any
+	var jwks JSONWebKeySet
 	if err := json.NewDecoder(resp.Body).Decode(&jwks); err != nil {
-		return nil, WrapError(ErrorCodeInvalidClientMetadata, "could not parse the client jwks", err)
+		return JSONWebKeySet{}, WrapError(ErrorCodeInvalidClientMetadata, "could not parse the client jwks", err)
 	}
 
-	return io.ReadAll(resp.Body)
+	return jwks, nil
 }
 
 // TODO.
-func (c *Client) fetchSignedJWKS(httpClient *http.Client) (JSONWebKeySet, error) {
+func (c *Client) fetchSignedJWKS(_ *http.Client) (JSONWebKeySet, error) {
 	return JSONWebKeySet{}, errors.ErrUnsupported
 }
 
@@ -107,7 +102,7 @@ type ClientMeta struct {
 	GrantTypes        []GrantType     `json:"grant_types"`
 	ResponseTypes     []ResponseType  `json:"response_types"`
 	PublicJWKSURI     string          `json:"jwks_uri,omitempty"`
-	PublicJWKS        json.RawMessage `json:"jwks,omitempty"`
+	PublicJWKS        JSONWebKeySet   `json:"jwks,omitempty"`
 	// ScopeIDs contains the scopes available to the client separeted by spaces.
 	ScopeIDs              string                     `json:"scope,omitempty"`
 	SubIdentifierType     SubIdentifierType          `json:"subject_type,omitempty"`

@@ -413,7 +413,7 @@ func TestAuthenticated_PrivateKeyJWT_InvalidExpiryClaim(t *testing.T) {
 func TestAuthenticated_PrivateKeyJWT_CannotIdentifyJWK(t *testing.T) {
 	// Given.
 	ctx, client, jwk := setUpPrivateKeyJWTAuthn(t)
-	client.PublicJWKS = nil
+	client.PublicJWKS = goidc.JSONWebKeySet{}
 	createdAtTimestamp := timeutil.TimestampNow()
 	claims := map[string]any{
 		goidc.ClaimIssuer:   client.ID,
@@ -758,7 +758,9 @@ func setUpPrivateKeyJWTAuthn(t *testing.T) (
 		ID: "random_client_id",
 		ClientMeta: goidc.ClientMeta{
 			TokenAuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
-			PublicJWKS:       oidctest.RawJWKS(jwk.Public()),
+			PublicJWKS: goidc.JSONWebKeySet{
+				Keys: []goidc.JSONWebKey{jwk.Public()},
+			},
 		},
 	}
 	if err := ctx.SaveClient(client); err != nil {

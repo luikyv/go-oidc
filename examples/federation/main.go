@@ -14,7 +14,6 @@ import (
 	"github.com/go-jose/go-jose/v4/json"
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/examples/authutil"
-	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/luikyv/go-oidc/pkg/provider"
@@ -104,7 +103,9 @@ func main() {
 			RedirectURIs:  []string{"http://localhost/callback"},
 			ScopeIDs:      "openid",
 			ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCodeAndIDToken},
-			PublicJWKS:    oidctest.RawJWKS(clientJWKS.Keys[0].Public()),
+			PublicJWKS: goidc.JSONWebKeySet{
+				Keys: []goidc.JSONWebKey{clientJWKS.Keys[0].Public()},
+			},
 		},
 	}
 	var clientOpenIDFedJWKS jose.JSONWebKeySet

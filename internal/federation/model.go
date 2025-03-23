@@ -54,9 +54,16 @@ func (s entityStatement) Signed() string {
 	return s.signed
 }
 
+// trustChain represents a sequence of entity statements forming a trust chain.
+// A trust chain begins with an entity configuration that is the subject of the trust chain.
+// The trust chain has zero or more subordinate statements issued by intermediates
+// about their immediate subordinates, and includes the subordinate statement issued
+// by the trust anchor about the top-most Intermediate (if there are intermediates)
+// or the trust chain subject (if there are no intermediates).
+// The trust chain always ends with the Entity Configuration of the trust anchor.
 type trustChain []entityStatement
 
-func (tc trustChain) entityConfig() entityStatement {
+func (tc trustChain) subjectConfig() entityStatement {
 	return tc[0]
 }
 

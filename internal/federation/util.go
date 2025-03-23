@@ -35,7 +35,7 @@ func Client(ctx oidc.Context, id string) (*goidc.Client, error) {
 		ID:               id,
 		IsFederated:      true,
 		RegistrationType: goidc.ClientRegistrationTypeAutomatic,
-		TrustMarks:       trustMarks,
+		TrustMarkIDs:     trustMarks,
 		ExpiresAt:        &clientConfig.ExpiresAt,
 		ClientMeta:       clientConfig.Metadata.OpenIDClient.ClientMeta,
 	}, nil
@@ -79,7 +79,7 @@ func buildTrustChainFromConfig(ctx oidc.Context, entityConfig entityStatement) (
 	var errs error
 	for _, authorityID := range entityConfig.AuthorityHints {
 
-		authorityConfig, err := fetchEntityConfiguration(ctx, authorityID)
+		authorityConfig, err := fetchAuthorityConfiguration(ctx, authorityID)
 		if err != nil {
 			return nil, err
 		}
@@ -156,6 +156,20 @@ func fetchSubordinateStatement(ctx oidc.Context, sub string, authority entitySta
 	}
 
 	return parseEntityStatement(ctx, signedStatement, sub, authority.Issuer, authority.JWKS)
+}
+
+func fetchAuthorityConfiguration(ctx oidc.Context, id string) (entityStatement, error) {
+
+	config, err := fetchEntityConfiguration(ctx, id)
+	if err != nil {
+		return entityStatement{}, err
+	}
+
+	if config.Metadata.FederationAuthority == nil {
+		return entityStatement{}, fmt.Errorf("the entity %s is not a federation authority", id)
+	}
+
+	return config, nil
 }
 
 // fetchEntityConfiguration fetches an entity's configuration.
@@ -274,7 +288,7 @@ func parseEntityStatement(
 // resolveTrustChain processes a trust chain to determine the final entity statement.
 func resolveTrustChain(_ oidc.Context, chain trustChain) (entityStatement, error) {
 
-	config := chain.entityConfig()
+	config := chain.subjectConfig()
 	var policy metadataPolicy
 	for _, authority := range chain[1:] {
 

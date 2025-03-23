@@ -29,7 +29,7 @@ func TestFetchPublicJWKS(t *testing.T) {
 	client := goidc.Client{
 		ClientMeta: goidc.ClientMeta{
 			PublicJWKSURI: server.URL,
-			PublicJWKS:    nil,
+			PublicJWKS:    goidc.JSONWebKeySet{},
 		},
 	}
 
@@ -45,7 +45,7 @@ func TestFetchPublicJWKS(t *testing.T) {
 			t.Errorf("number of requests = %d, want 1. attempt %d", numberOfCalls, i+1)
 		}
 
-		if client.PublicJWKS == nil {
+		if client.PublicJWKS.Keys == nil {
 			t.Errorf("the jwks was not cached. attempt %d", i+1)
 		}
 	}

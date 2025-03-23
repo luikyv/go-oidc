@@ -68,7 +68,7 @@ type openIDClientMetadataPolicy struct {
 	GrantTypes                    metadataOperators[[]goidc.GrantType]                `json:"grant_types"`
 	ResponseTypes                 metadataOperators[[]goidc.ResponseType]             `json:"response_types"`
 	PublicJWKSURI                 metadataOperators[string]                           `json:"jwks_uri,omitempty"`
-	PublicJWKS                    metadataOperators[string]                           `json:"jwks,omitempty"`
+	PublicJWKS                    metadataOperators[goidc.JSONWebKeySet]              `json:"jwks,omitempty"`
 	ScopeIDs                      metadataOperators[[]string]                         `json:"scope,omitempty"`
 	SubIdentifierType             metadataOperators[goidc.SubIdentifierType]          `json:"subject_type,omitempty"`
 	SectorIdentifierURI           metadataOperators[string]                           `json:"sector_identifier_uri,omitempty"`
@@ -752,11 +752,11 @@ func (policy openIDClientMetadataPolicy) apply(client openIDClient) (openIDClien
 	}
 	client.PublicJWKSURI = publicJWKSURI
 
-	publicJWKS, err := policy.PublicJWKS.apply(string(client.PublicJWKS))
+	publicJWKS, err := policy.PublicJWKS.apply(client.PublicJWKS)
 	if err != nil {
 		return openIDClient{}, err
 	}
-	client.PublicJWKS = []byte(publicJWKS)
+	client.PublicJWKS = publicJWKS
 
 	scopesIDs := strutil.SplitWithSpaces(client.ScopeIDs)
 	scopeIDs, err := policy.ScopeIDs.apply(scopesIDs)

@@ -30,7 +30,9 @@ func TestJARFromRequestObject(t *testing.T) {
 
 	client := &goidc.Client{
 		ClientMeta: goidc.ClientMeta{
-			PublicJWKS: oidctest.RawJWKS(privateJWK.Public()),
+			PublicJWKS: goidc.JSONWebKeySet{
+				Keys: []goidc.JSONWebKey{privateJWK.Public()},
+			},
 		},
 	}
 
@@ -103,7 +105,9 @@ func TestJARFromRequestObject_JARByReference(t *testing.T) {
 
 	client := &goidc.Client{
 		ClientMeta: goidc.ClientMeta{
-			PublicJWKS: oidctest.RawJWKS(privateJWK.Public()),
+			PublicJWKS: goidc.JSONWebKeySet{
+				Keys: []goidc.JSONWebKey{privateJWK.Public()},
+			},
 		},
 	}
 

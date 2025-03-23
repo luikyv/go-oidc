@@ -67,7 +67,6 @@ func Client(id string, jwksFilepath string) *goidc.Client {
 		publicKeys = append(publicKeys, key.Public())
 	}
 	jwks.Keys = publicKeys
-	jwksBytes, _ := json.Marshal(jwks)
 
 	// Extract scopes IDs.
 	var scopesIDs []string
@@ -79,7 +78,7 @@ func Client(id string, jwksFilepath string) *goidc.Client {
 		ID: id,
 		ClientMeta: goidc.ClientMeta{
 			ScopeIDs:   strings.Join(scopesIDs, " "),
-			PublicJWKS: jwksBytes,
+			PublicJWKS: jwks,
 			GrantTypes: []goidc.GrantType{
 				goidc.GrantAuthorizationCode,
 				goidc.GrantRefreshToken,

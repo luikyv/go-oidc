@@ -1,7 +1,6 @@
 package authorize
 
 import (
-	"encoding/json"
 	"errors"
 	"testing"
 
@@ -74,8 +73,9 @@ func TestPushAuth_WithJAR(t *testing.T) {
 	ctx.JARSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
 
 	privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
-	jwks, _ := json.Marshal(goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{privateJWK.Public()}})
-	client.PublicJWKS = jwks
+	client.PublicJWKS = goidc.JSONWebKeySet{
+		Keys: []goidc.JSONWebKey{privateJWK.Public()},
+	}
 
 	now := timeutil.TimestampNow()
 	claims := map[string]any{

@@ -405,7 +405,7 @@ func validatePrivateKeyJWT(ctx oidc.Context, meta *goidc.ClientMeta) error {
 			"revocation_endpoint_auth_signing_alg not supported for private_key_jwt")
 	}
 
-	if meta.PublicJWKS == nil && meta.PublicJWKSURI == "" {
+	if meta.PublicJWKS.Keys == nil && meta.PublicJWKSURI == "" {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"the jwks is required for private_key_jwt")
 	}
@@ -442,7 +442,7 @@ func validateSelfSignedTLSAuthn(ctx oidc.Context, meta *goidc.ClientMeta) error 
 		return nil
 	}
 
-	if meta.PublicJWKSURI == "" && meta.PublicJWKS == nil {
+	if meta.PublicJWKSURI == "" && meta.PublicJWKS.Keys == nil {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"jwks is required when authenticating with self signed certificates")
 	}
@@ -578,16 +578,7 @@ func validateJAREncAlgs(ctx oidc.Context, meta *goidc.ClientMeta) error {
 }
 
 func validatePublicJWKS(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	if meta.PublicJWKS == nil {
-		return nil
-	}
-
-	var jwks goidc.JSONWebKeySet
-	if err := json.Unmarshal(meta.PublicJWKS, &jwks); err != nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "invalid jwks")
-	}
-
-	for _, jwk := range jwks.Keys {
+	for _, jwk := range meta.PublicJWKS.Keys {
 		if !jwk.IsPublic() || !jwk.Valid() {
 			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 				fmt.Sprintf("the key with ID: %s jwks is invalid", jwk.KeyID))
