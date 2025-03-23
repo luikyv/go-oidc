@@ -19,10 +19,7 @@ func NewClientManager() *ClientManager {
 	}
 }
 
-func (m *ClientManager) Save(
-	_ context.Context,
-	c *goidc.Client,
-) error {
+func (m *ClientManager) Save(_ context.Context, c *goidc.Client) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -30,13 +27,7 @@ func (m *ClientManager) Save(
 	return nil
 }
 
-func (m *ClientManager) Client(
-	_ context.Context,
-	id string,
-) (
-	*goidc.Client,
-	error,
-) {
+func (m *ClientManager) Client(_ context.Context, id string) (*goidc.Client, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -48,19 +39,18 @@ func (m *ClientManager) Client(
 	// Make sure the content of jwks_uri is cleared from jwks when fetching the
 	// client from the in memory storaged.
 	if c.PublicJWKSURI != "" {
-		c.PublicJWKS = nil
+		c.PublicJWKS = goidc.JSONWebKeySet{}
 	}
 
 	return c, nil
 }
 
-func (m *ClientManager) Delete(
-	_ context.Context,
-	id string,
-) error {
+func (m *ClientManager) Delete(_ context.Context, id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	delete(m.Clients, id)
 	return nil
 }
+
+var _ goidc.ClientManager = NewClientManager()

@@ -69,12 +69,7 @@ func (m *GrantSessionManager) DeleteByAuthCode(ctx context.Context, code string)
 	return m.Delete(ctx, grantSession.ID)
 }
 
-func (m *GrantSessionManager) firstSession(
-	condition func(*goidc.GrantSession) bool,
-) (
-	*goidc.GrantSession,
-	bool,
-) {
+func (m *GrantSessionManager) firstSession(condition func(*goidc.GrantSession) bool) (*goidc.GrantSession, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -86,3 +81,5 @@ func (m *GrantSessionManager) firstSession(
 
 	return findFirst(grantSessions, condition)
 }
+
+var _ goidc.GrantSessionManager = NewGrantSessionManager()

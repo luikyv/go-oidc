@@ -115,7 +115,7 @@ func (ctx Context) ValidateInitalAccessToken(token string) error {
 	return ctx.ValidateInitialAccessTokenFunc(ctx.Request, token)
 }
 
-func (ctx Context) HandleDynamicClient(id string, c *goidc.ClientMetaInfo) error {
+func (ctx Context) HandleDynamicClient(id string, c *goidc.ClientMeta) error {
 	if ctx.HandleDynamicClientFunc == nil {
 		return nil
 	}
@@ -215,6 +215,14 @@ func (ctx Context) ValidateBackAuth(session *goidc.AuthnSession) error {
 		return errors.New("ciba validate back auth function is not set")
 	}
 	return ctx.ValidateBackAuthFunc(ctx, session)
+}
+
+func (ctx Context) OpenIDFedRequiredTrustMarks() []string {
+	if ctx.OpenIDFedRequiredTrustMarksFunc == nil {
+		return nil
+	}
+
+	return ctx.OpenIDFedRequiredTrustMarksFunc(ctx)
 }
 
 //---------------------------------------- CRUD ----------------------------------------//
@@ -741,6 +749,7 @@ func (ctx Context) OpenIDFedSign(claims any, opts *jose.SignerOptions) (string, 
 	if err != nil {
 		return "", fmt.Errorf("could not load the signing jwk: %w", err)
 	}
+	// TODO: Add config to pick the algorithm to find the right key.
 	jwk := jwks.Keys[0]
 
 	if ctx.OpenIDFedSignerFunc == nil {

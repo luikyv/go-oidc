@@ -1006,6 +1006,13 @@ func WithOpenIDFerationSignerFunc(f goidc.SignerFunc) ProviderOption {
 	}
 }
 
+func WithOpenIDFerationRequiredTrustMarksFunc(f goidc.RequiredTrustMarksFunc) ProviderOption {
+	return func(p *Provider) error {
+		p.config.OpenIDFedRequiredTrustMarksFunc = f
+		return nil
+	}
+}
+
 // appendIfNotIn adds 'value' to the beginning of 'values' if it is not already present.
 func appendIfNotIn[T comparable](values []T, value T) []T {
 	if !slices.Contains(values, value) {

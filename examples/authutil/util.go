@@ -67,7 +67,6 @@ func Client(id string, jwksFilepath string) *goidc.Client {
 		publicKeys = append(publicKeys, key.Public())
 	}
 	jwks.Keys = publicKeys
-	jwksBytes, _ := json.Marshal(jwks)
 
 	// Extract scopes IDs.
 	var scopesIDs []string
@@ -77,9 +76,9 @@ func Client(id string, jwksFilepath string) *goidc.Client {
 
 	return &goidc.Client{
 		ID: id,
-		ClientMetaInfo: goidc.ClientMetaInfo{
+		ClientMeta: goidc.ClientMeta{
 			ScopeIDs:   strings.Join(scopesIDs, " "),
-			PublicJWKS: jwksBytes,
+			PublicJWKS: jwks,
 			GrantTypes: []goidc.GrantType{
 				goidc.GrantAuthorizationCode,
 				goidc.GrantRefreshToken,
@@ -161,7 +160,7 @@ func ClientCACertPool(clientCertFiles ...string) *x509.CertPool {
 	return caPool
 }
 
-func DCRFunc(r *http.Request, _ string, meta *goidc.ClientMetaInfo) error {
+func DCRFunc(r *http.Request, _ string, meta *goidc.ClientMeta) error {
 	var s []string
 	for _, scope := range Scopes {
 		s = append(s, scope.ID)

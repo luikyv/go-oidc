@@ -10,7 +10,7 @@ import (
 )
 
 type request struct {
-	*goidc.ClientMetaInfo
+	*goidc.ClientMeta
 }
 
 func (r *request) UnmarshalJSON(data []byte) error {
@@ -20,7 +20,7 @@ func (r *request) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	var info goidc.ClientMetaInfo
+	var info goidc.ClientMeta
 	if err := json.Unmarshal(data, &info); err != nil {
 		return err
 	}
@@ -33,7 +33,7 @@ func (r *request) UnmarshalJSON(data []byte) error {
 		}
 	}
 
-	r.ClientMetaInfo = &info
+	r.ClientMeta = &info
 
 	return nil
 }
@@ -60,7 +60,7 @@ type response struct {
 	Secret            string `json:"client_secret,omitempty"`
 	RegistrationToken string `json:"registration_access_token,omitempty"`
 	RegistrationURI   string `json:"registration_client_uri"`
-	*goidc.ClientMetaInfo
+	*goidc.ClientMeta
 }
 
 func (resp response) MarshalJSON() ([]byte, error) {

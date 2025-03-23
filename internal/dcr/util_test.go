@@ -15,7 +15,7 @@ func TestCreate(t *testing.T) {
 	ctx := oidctest.NewContext(t)
 
 	// When.
-	resp, err := create(ctx, "", &c.ClientMetaInfo)
+	resp, err := create(ctx, "", &c.ClientMeta)
 
 	// Then.
 	if err != nil {
@@ -43,7 +43,7 @@ func TestUpdate(t *testing.T) {
 	ctx.DCRTokenRotationIsEnabled = false
 
 	// When.
-	resp, err := update(ctx, client.ID, regToken, &client.ClientMetaInfo)
+	resp, err := update(ctx, client.ID, regToken, &client.ClientMeta)
 
 	// Then.
 	if err != nil {
@@ -65,7 +65,7 @@ func TestUpdate_TokenRotation(t *testing.T) {
 	ctx.DCRTokenRotationIsEnabled = true
 
 	// When.
-	resp, err := update(ctx, client.ID, regToken, &client.ClientMetaInfo)
+	resp, err := update(ctx, client.ID, regToken, &client.ClientMeta)
 
 	// Then.
 	if err != nil {

@@ -55,7 +55,7 @@ func TestValidateRequest(t *testing.T) {
 			"jwks_jwks_uri_is_required_for_private_key_jwt",
 			func(c *goidc.Client) {
 				c.TokenAuthnMethod = goidc.ClientAuthnPrivateKeyJWT
-				c.PublicJWKS = nil
+				c.PublicJWKS = goidc.JSONWebKeySet{}
 				c.PublicJWKSURI = ""
 			},
 			func(ctx oidc.Context) {},
@@ -65,7 +65,7 @@ func TestValidateRequest(t *testing.T) {
 			"jwks_jwks_uri_is_required_for_self_signed_tls",
 			func(c *goidc.Client) {
 				c.TokenAuthnMethod = goidc.ClientAuthnSelfSignedTLS
-				c.PublicJWKS = nil
+				c.PublicJWKS = goidc.JSONWebKeySet{}
 				c.PublicJWKSURI = ""
 			},
 			func(ctx oidc.Context) {},
@@ -439,7 +439,7 @@ func TestValidateRequest(t *testing.T) {
 			testCase.modifiedClientFunc(client)
 
 			// When.
-			err := validate(ctx, &client.ClientMetaInfo)
+			err := validate(ctx, &client.ClientMeta)
 
 			// Then.
 			isValid := err == nil

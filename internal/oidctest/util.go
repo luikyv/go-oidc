@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/storage"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -32,7 +33,7 @@ func NewClient(t testing.TB) (client *goidc.Client, secret string) {
 	client = &goidc.Client{
 		ID:           "test_client",
 		HashedSecret: string(hashedSecret),
-		ClientMetaInfo: goidc.ClientMetaInfo{
+		ClientMeta: goidc.ClientMeta{
 			TokenAuthnMethod: goidc.ClientAuthnSecretPost,
 			RedirectURIs:     []string{"https://example.com/callback"},
 			ScopeIDs:         fmt.Sprintf("%s %s %s", Scope1.ID, Scope2.ID, goidc.ScopeOpenID.ID),
@@ -306,19 +307,11 @@ func UnsafeClaims(jws string, algs ...goidc.SignatureAlgorithm) (map[string]any,
 
 func Sign(t testing.TB, claims map[string]any, jwk goidc.JSONWebKey) string {
 	t.Helper()
+	return SignWithOptions(t, claims, jwk, nil)
+}
 
-	opts := &jose.SignerOptions{}
-	opts = opts.WithHeader("kid", jwk.KeyID).WithHeader("alg", jwk.Algorithm).WithType("JWT")
-
-	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: goidc.SignatureAlgorithm(jwk.Algorithm), Key: jwk}, opts)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	jws, err := jwt.Signed(signer).Claims(claims).Serialize()
-	if err != nil {
-		t.Fatal(err)
-	}
-
+func SignWithOptions(t testing.TB, claims map[string]any, jwk goidc.JSONWebKey, opts *jose.SignerOptions) string {
+	t.Helper()
+	jws, _ := joseutil.Sign(claims, jose.SigningKey{Algorithm: goidc.SignatureAlgorithm(jwk.Algorithm), Key: jwk}, opts)
 	return jws
 }

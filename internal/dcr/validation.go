@@ -12,10 +12,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func validate(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validate(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	return runValidations(
 		ctx, meta,
 		validateTokenAuthnMethod,
@@ -58,10 +55,10 @@ func validate(
 
 func runValidations(
 	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
+	meta *goidc.ClientMeta,
 	validations ...func(
 		ctx oidc.Context,
-		meta *goidc.ClientMetaInfo,
+		meta *goidc.ClientMeta,
 	) error,
 ) error {
 	for _, validation := range validations {
@@ -72,10 +69,7 @@ func runValidations(
 	return nil
 }
 
-func validateGrantTypes(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateGrantTypes(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	for _, gt := range meta.GrantTypes {
 		if !slices.Contains(ctx.GrantTypes, gt) {
 			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
@@ -86,10 +80,7 @@ func validateGrantTypes(
 	return nil
 }
 
-func validateClientCredentialsGrantType(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateClientCredentialsGrantType(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if slices.Contains(meta.GrantTypes, goidc.GrantClientCredentials) &&
 		meta.TokenAuthnMethod == goidc.ClientAuthnNone {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
@@ -99,10 +90,7 @@ func validateClientCredentialsGrantType(
 	return nil
 }
 
-func validateRedirectURIS(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateRedirectURIS(ctx oidc.Context, meta *goidc.ClientMeta) error {
 
 	for _, ru := range meta.RedirectURIs {
 		if parsedRU, err := url.Parse(ru); err != nil ||
@@ -117,10 +105,7 @@ func validateRedirectURIS(
 	return nil
 }
 
-func validateRequestURIS(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateRequestURIS(ctx oidc.Context, meta *goidc.ClientMeta) error {
 
 	if !ctx.JARByReferenceIsEnabled {
 		return nil
@@ -135,10 +120,7 @@ func validateRequestURIS(
 	return nil
 }
 
-func validateResponseTypes(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateResponseTypes(ctx oidc.Context, meta *goidc.ClientMeta) error {
 
 	for _, rt := range meta.ResponseTypes {
 		if !slices.Contains(ctx.ResponseTypes, rt) {
@@ -150,10 +132,7 @@ func validateResponseTypes(
 	return nil
 }
 
-func validateImplicitResponseTypes(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateImplicitResponseTypes(ctx oidc.Context, meta *goidc.ClientMeta) error {
 
 	if slices.Contains(meta.GrantTypes, goidc.GrantImplicit) {
 		return nil
@@ -169,10 +148,7 @@ func validateImplicitResponseTypes(
 	return nil
 }
 
-func validateResponseTypeCode(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateResponseTypeCode(ctx oidc.Context, meta *goidc.ClientMeta) error {
 
 	if slices.Contains(meta.GrantTypes, goidc.GrantAuthorizationCode) {
 		return nil
@@ -188,10 +164,7 @@ func validateResponseTypeCode(
 	return nil
 }
 
-func validateTokenAuthnMethod(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateTokenAuthnMethod(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if meta.TokenAuthnMethod == "" {
 		return nil
 	}
@@ -203,10 +176,7 @@ func validateTokenAuthnMethod(
 	return nil
 }
 
-func validateTokenIntrospection(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateTokenIntrospection(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if meta.TokenIntrospectionAuthnMethod == "" {
 		return nil
 	}
@@ -218,10 +188,7 @@ func validateTokenIntrospection(
 	return nil
 }
 
-func validateTokenRevocation(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateTokenRevocation(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if meta.TokenRevocationAuthnMethod == "" {
 		return nil
 	}
@@ -233,10 +200,7 @@ func validateTokenRevocation(
 	return nil
 }
 
-func validateOpenIDScopeIfRequired(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateOpenIDScopeIfRequired(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if !ctx.OpenIDIsRequired {
 		return nil
 	}
@@ -249,10 +213,7 @@ func validateOpenIDScopeIfRequired(
 	return nil
 }
 
-func validateSubjectIdentifierType(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateSubjectIdentifierType(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if meta.SubIdentifierType == "" {
 		return nil
 	}
@@ -264,10 +225,7 @@ func validateSubjectIdentifierType(
 	return nil
 }
 
-func validateSubIdentifierPairwise(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateSubIdentifierPairwise(ctx oidc.Context, meta *goidc.ClientMeta) error {
 
 	isPairwise := meta.SubIdentifierType == "" && ctx.DefaultSubIdentifierType == goidc.SubIdentifierPairwise
 	isPairwise = isPairwise || meta.SubIdentifierType == goidc.SubIdentifierPairwise
@@ -325,10 +283,7 @@ func validateSubIdentifierPairwise(
 	return nil
 }
 
-func validateSectorIdentifierURI(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateSectorIdentifierURI(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if meta.SectorIdentifierURI == "" {
 		return nil
 	}
@@ -376,10 +331,7 @@ func validateSectorIdentifierURI(
 	return nil
 }
 
-func validateIDTokenSigAlg(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateIDTokenSigAlg(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if meta.IDTokenSigAlg == "" {
 		return nil
 	}
@@ -391,10 +343,7 @@ func validateIDTokenSigAlg(
 	return nil
 }
 
-func validateUserInfoSigAlg(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateUserInfoSigAlg(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if meta.UserInfoSigAlg == "" {
 		return nil
 	}
@@ -406,10 +355,7 @@ func validateUserInfoSigAlg(
 	return nil
 }
 
-func validateJARSigAlg(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateJARSigAlg(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if !ctx.JARIsEnabled || meta.JARSigAlg == "" {
 		return nil
 	}
@@ -421,10 +367,7 @@ func validateJARSigAlg(
 	return nil
 }
 
-func validateJARMSigAlg(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateJARMSigAlg(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if !ctx.JARMIsEnabled || meta.JARMSigAlg == "" {
 		return nil
 	}
@@ -436,10 +379,7 @@ func validateJARMSigAlg(
 	return nil
 }
 
-func validatePrivateKeyJWT(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validatePrivateKeyJWT(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if !slices.Contains(authnMethods(ctx, meta), goidc.ClientAuthnPrivateKeyJWT) {
 		return nil
 	}
@@ -465,7 +405,7 @@ func validatePrivateKeyJWT(
 			"revocation_endpoint_auth_signing_alg not supported for private_key_jwt")
 	}
 
-	if meta.PublicJWKS == nil && meta.PublicJWKSURI == "" {
+	if meta.PublicJWKS.Keys == nil && meta.PublicJWKSURI == "" {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"the jwks is required for private_key_jwt")
 	}
@@ -473,10 +413,7 @@ func validatePrivateKeyJWT(
 	return nil
 }
 
-func validateSecretJWT(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateSecretJWT(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if meta.TokenAuthnMethod == goidc.ClientAuthnSecretJWT &&
 		meta.TokenAuthnSigAlg != "" &&
 		!slices.Contains(ctx.ClientSecretJWTSigAlgs, meta.TokenAuthnSigAlg) {
@@ -500,15 +437,12 @@ func validateSecretJWT(
 	return nil
 }
 
-func validateSelfSignedTLSAuthn(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateSelfSignedTLSAuthn(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if !slices.Contains(authnMethods(ctx, meta), goidc.ClientAuthnSelfSignedTLS) {
 		return nil
 	}
 
-	if meta.PublicJWKSURI == "" && meta.PublicJWKS == nil {
+	if meta.PublicJWKSURI == "" && meta.PublicJWKS.Keys == nil {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"jwks is required when authenticating with self signed certificates")
 	}
@@ -516,10 +450,7 @@ func validateSelfSignedTLSAuthn(
 	return nil
 }
 
-func validateTLSAuthn(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateTLSAuthn(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if !slices.Contains(authnMethods(ctx, meta), goidc.ClientAuthnTLS) {
 		return nil
 	}
@@ -546,10 +477,7 @@ func validateTLSAuthn(
 	return nil
 }
 
-func validateIDTokenEncAlgs(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateIDTokenEncAlgs(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if !ctx.IDTokenEncIsEnabled {
 		return nil
 	}
@@ -574,10 +502,7 @@ func validateIDTokenEncAlgs(
 	return nil
 }
 
-func validateUserInfoEncAlgs(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateUserInfoEncAlgs(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if !ctx.UserInfoEncIsEnabled {
 		return nil
 	}
@@ -602,10 +527,7 @@ func validateUserInfoEncAlgs(
 	return nil
 }
 
-func validateJARMEncAlgs(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateJARMEncAlgs(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if !ctx.JARMIsEnabled {
 		return nil
 	}
@@ -630,10 +552,7 @@ func validateJARMEncAlgs(
 	return nil
 }
 
-func validateJAREncAlgs(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateJAREncAlgs(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if !ctx.JAREncIsEnabled {
 		return nil
 	}
@@ -658,20 +577,8 @@ func validateJAREncAlgs(
 	return nil
 }
 
-func validatePublicJWKS(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
-	if meta.PublicJWKS == nil {
-		return nil
-	}
-
-	var jwks goidc.JSONWebKeySet
-	if err := json.Unmarshal(meta.PublicJWKS, &jwks); err != nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "invalid jwks")
-	}
-
-	for _, jwk := range jwks.Keys {
+func validatePublicJWKS(ctx oidc.Context, meta *goidc.ClientMeta) error {
+	for _, jwk := range meta.PublicJWKS.Keys {
 		if !jwk.IsPublic() || !jwk.Valid() {
 			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 				fmt.Sprintf("the key with ID: %s jwks is invalid", jwk.KeyID))
@@ -680,18 +587,12 @@ func validatePublicJWKS(
 	return nil
 }
 
-func validatePublicJWKSURI(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validatePublicJWKSURI(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	// TODO: validate the client jwks uri.
 	return nil
 }
 
-func validateAuthorizationDetailTypes(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateAuthorizationDetailTypes(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if !ctx.AuthDetailsIsEnabled || meta.AuthDetailTypes == nil {
 		return nil
 	}
@@ -706,10 +607,7 @@ func validateAuthorizationDetailTypes(
 	return nil
 }
 
-func validateScopes(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateScopes(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	for _, requestedScope := range strutil.SplitWithSpaces(meta.ScopeIDs) {
 		if err := validateScope(ctx, requestedScope); err != nil {
 			return err
@@ -731,7 +629,7 @@ func validateScope(ctx oidc.Context, requestedScope string) error {
 
 func validateCIBAGrant(
 	_ oidc.Context,
-	meta *goidc.ClientMetaInfo,
+	meta *goidc.ClientMeta,
 ) error {
 	if !slices.Contains(meta.GrantTypes, goidc.GrantCIBA) {
 		return nil
@@ -745,10 +643,7 @@ func validateCIBAGrant(
 	return nil
 }
 
-func validateCIBATokenDeliveryModes(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateCIBATokenDeliveryModes(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if !slices.Contains(meta.GrantTypes, goidc.GrantCIBA) {
 		return nil
 	}
@@ -766,10 +661,7 @@ func validateCIBATokenDeliveryModes(
 	return nil
 }
 
-func validateCIBATokenNotificationEndpoint(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateCIBATokenNotificationEndpoint(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if !slices.Contains(meta.GrantTypes, goidc.GrantCIBA) {
 		return nil
 	}
@@ -805,10 +697,7 @@ func validateURL(field, s string) error {
 	return nil
 }
 
-func validateCIBAUserCodeParam(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateCIBAUserCodeParam(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if !slices.Contains(meta.GrantTypes, goidc.GrantCIBA) {
 		return nil
 	}
@@ -821,10 +710,7 @@ func validateCIBAUserCodeParam(
 	return nil
 }
 
-func validateCIBAJARAlgs(
-	ctx oidc.Context,
-	meta *goidc.ClientMetaInfo,
-) error {
+func validateCIBAJARAlgs(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if !ctx.CIBAJARIsEnabled || meta.CIBAJARSigAlg == "" {
 		return nil
 	}

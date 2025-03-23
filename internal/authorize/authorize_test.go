@@ -123,7 +123,9 @@ func TestInitAuth_JAR(t *testing.T) {
 
 	privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
 	publicJWK := privateJWK.Public()
-	client.PublicJWKS = oidctest.RawJWKS(publicJWK)
+	client.PublicJWKS = goidc.JSONWebKeySet{
+		Keys: []goidc.JSONWebKey{publicJWK},
+	}
 
 	now := timeutil.TimestampNow()
 	claims := map[string]any{

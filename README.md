@@ -175,7 +175,9 @@ For a more complex example of a `goidc.AuthnPolicy`, check out the examples fold
 ### Signing and Encryption
 
 When instantiating a new `provider.Provider`, a JWKS function must be informed. This function returns the keys that will be used as the authorization server's JSON Web Key Set (JWKS) for signing and encryption. Typically, it should return both private and public key material.
+
 The algorithms configured for the provider must have a corresponding JWK in the JWKS. Otherwise, an error will occur.
+
 ```go
 key, _ := rsa.GenerateKey(rand.Reader, 2048)
 // JWKS with private and public information.
@@ -242,7 +244,7 @@ op, _ := provider.New(
   provider.WithTokenOptions(func(_ goidc.GrantInfo, _ *goidc.Client) goidc.TokenOptions {
     // Access tokens are issued as JWTs with a lifetime of 600 seconds.
     return goidc.NewJWTTokenOptions(goidc.RS256, 600)
-	}),
+  }),
   ...,
 )
 ```
@@ -260,11 +262,11 @@ scope := goidc.NewScope("openid")
 
 Whereas `goidc.NewDynamicScope` creates a more complex scope where validation logic goes beyond simple string matching.
 ```go
-dynamicScope := goidc.NewDynamicScope("payment", func(requestedScope string) bool {
+paymentScope := goidc.NewDynamicScope("payment", func(requestedScope string) bool {
 	return strings.HasPrefix(requestedScope, "payment:")
 })
 // This results in true.
-dynamicScope.Matches("payment:30")
+paymentScope.Matches("payment:30")
 ```
 Note that this dynamic scope  will appear as "payment" under "scopes_supported" in the `/.well-known/openid-configuration` endpoint response.
 

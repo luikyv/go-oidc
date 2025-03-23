@@ -24,7 +24,7 @@ func TestAuthenticated_ClientNotFound(t *testing.T) {
 
 	c := &goidc.Client{
 		ID: "random_client_id",
-		ClientMetaInfo: goidc.ClientMetaInfo{
+		ClientMeta: goidc.ClientMeta{
 			TokenAuthnMethod: goidc.ClientAuthnNone,
 		},
 	}
@@ -55,7 +55,7 @@ func TestAuthenticated_NoneAuthn(t *testing.T) {
 
 	c := &goidc.Client{
 		ID: "random_client_id",
-		ClientMetaInfo: goidc.ClientMetaInfo{
+		ClientMeta: goidc.ClientMeta{
 			TokenAuthnMethod: goidc.ClientAuthnNone,
 		},
 	}
@@ -413,7 +413,7 @@ func TestAuthenticated_PrivateKeyJWT_InvalidExpiryClaim(t *testing.T) {
 func TestAuthenticated_PrivateKeyJWT_CannotIdentifyJWK(t *testing.T) {
 	// Given.
 	ctx, client, jwk := setUpPrivateKeyJWTAuthn(t)
-	client.PublicJWKS = nil
+	client.PublicJWKS = goidc.JSONWebKeySet{}
 	createdAtTimestamp := timeutil.TimestampNow()
 	claims := map[string]any{
 		goidc.ClaimIssuer:   client.ID,
@@ -595,7 +595,7 @@ func TestAuthenticated_DifferentClientIDs(t *testing.T) {
 	// When.
 	c := &goidc.Client{
 		ID: "random_client_id",
-		ClientMetaInfo: goidc.ClientMetaInfo{
+		ClientMeta: goidc.ClientMeta{
 			TokenAuthnMethod: goidc.ClientAuthnNone,
 		},
 	}
@@ -730,7 +730,7 @@ func setUpSecretAuthn(t *testing.T, secretAuthnMethod goidc.ClientAuthnType) (
 	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(secret), 0)
 	client = &goidc.Client{
 		ID: "random_client_id",
-		ClientMetaInfo: goidc.ClientMetaInfo{
+		ClientMeta: goidc.ClientMeta{
 			TokenAuthnMethod: secretAuthnMethod,
 		},
 		HashedSecret: string(hashedClientSecret),
@@ -756,9 +756,11 @@ func setUpPrivateKeyJWTAuthn(t *testing.T) (
 	jwk = oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
 	client = &goidc.Client{
 		ID: "random_client_id",
-		ClientMetaInfo: goidc.ClientMetaInfo{
+		ClientMeta: goidc.ClientMeta{
 			TokenAuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
-			PublicJWKS:       oidctest.RawJWKS(jwk.Public()),
+			PublicJWKS: goidc.JSONWebKeySet{
+				Keys: []goidc.JSONWebKey{jwk.Public()},
+			},
 		},
 	}
 	if err := ctx.SaveClient(client); err != nil {
@@ -783,7 +785,7 @@ func setUpClientSecretJWTAuthn(t *testing.T) (
 	client = &goidc.Client{
 		ID:     "random_client_id",
 		Secret: secret,
-		ClientMetaInfo: goidc.ClientMetaInfo{
+		ClientMeta: goidc.ClientMeta{
 			TokenAuthnMethod: goidc.ClientAuthnSecretJWT,
 		},
 	}
@@ -812,7 +814,7 @@ func setUpTLSAuthn(t *testing.T) (
 
 	client = &goidc.Client{
 		ID: "random_client_id",
-		ClientMetaInfo: goidc.ClientMetaInfo{
+		ClientMeta: goidc.ClientMeta{
 			TokenAuthnMethod: goidc.ClientAuthnTLS,
 		},
 	}

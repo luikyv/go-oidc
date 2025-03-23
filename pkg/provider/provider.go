@@ -366,11 +366,13 @@ func (op *Provider) setDefaults() error {
 			defaultEndpointOpenIDFederation)
 		op.config.OpenIDFedClientFunc = federation.Client
 		op.config.OpenIDFedEntityStatementSigAlgs = nonZeroOrDefault(op.config.OpenIDFedEntityStatementSigAlgs,
-			[]goidc.SignatureAlgorithm{defaultOpenIDFedStatementSigAlg})
+			[]goidc.SignatureAlgorithm{defaultOpenIDFedSigAlg})
 		op.config.OpenIDFedTrustChainMaxDepth = nonZeroOrDefault(op.config.OpenIDFedTrustChainMaxDepth,
 			defaultOpenIDFedTrustChainMaxDepth)
 		op.config.OpenIDFedClientRegTypes = nonZeroOrDefault(op.config.OpenIDFedClientRegTypes,
 			[]goidc.ClientRegistrationType{defaultOpenIDFedRegType})
+		op.config.OpenIDFedTrustMarkSigAlgs = nonZeroOrDefault(op.config.OpenIDFedTrustMarkSigAlgs,
+			[]goidc.SignatureAlgorithm{defaultOpenIDFedSigAlg})
 	}
 
 	return nil

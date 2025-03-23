@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -166,11 +167,11 @@ func TestHandleDynamicClient(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.HandleDynamicClientFunc = func(r *http.Request, id string, meta *goidc.ClientMetaInfo) error {
+	ctx.HandleDynamicClientFunc = func(r *http.Request, id string, meta *goidc.ClientMeta) error {
 		meta.TokenAuthnMethod = goidc.ClientAuthnNone
 		return nil
 	}
-	clientInfo := &goidc.ClientMetaInfo{}
+	clientInfo := &goidc.ClientMeta{}
 
 	// When.
 	err := ctx.HandleDynamicClient("random_id", clientInfo)
@@ -190,7 +191,7 @@ func TestHandleDynamicClient_HandlerIsNil(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	clientInfo := &goidc.ClientMetaInfo{}
+	clientInfo := &goidc.ClientMeta{}
 	// When.
 	err := ctx.HandleDynamicClient("random_id", clientInfo)
 	// Then.
@@ -612,7 +613,7 @@ func TestExportableSubject(t *testing.T) {
 		},
 	}
 	client := &goidc.Client{
-		ClientMetaInfo: goidc.ClientMetaInfo{
+		ClientMeta: goidc.ClientMeta{
 			SubIdentifierType:   goidc.SubIdentifierPairwise,
 			SectorIdentifierURI: "https://example.com",
 		},
@@ -639,7 +640,7 @@ func TestExportableSubject_PairwiseAsDefault(t *testing.T) {
 		},
 	}
 	client := &goidc.Client{
-		ClientMetaInfo: goidc.ClientMetaInfo{
+		ClientMeta: goidc.ClientMeta{
 			SectorIdentifierURI: "https://example.com",
 		},
 	}
@@ -919,7 +920,7 @@ func TestShouldIssueRefreshToken_RefreshTokenNotAllowed(t *testing.T) {
 		},
 	}
 	client := &goidc.Client{
-		ClientMetaInfo: goidc.ClientMetaInfo{
+		ClientMeta: goidc.ClientMeta{
 			GrantTypes: []goidc.GrantType{goidc.GrantAuthorizationCode},
 		},
 	}
@@ -947,7 +948,7 @@ func TestShouldIssueRefreshToken_ClientCredentialsGrant(t *testing.T) {
 		},
 	}
 	client := &goidc.Client{
-		ClientMetaInfo: goidc.ClientMetaInfo{
+		ClientMeta: goidc.ClientMeta{
 			GrantTypes: []goidc.GrantType{goidc.GrantRefreshToken, goidc.GrantClientCredentials},
 		},
 	}
@@ -1041,7 +1042,7 @@ func TestTokenOptions_JWTNotAllowedWhenPairwiseSubject(t *testing.T) {
 		},
 	}
 	client := &goidc.Client{
-		ClientMetaInfo: goidc.ClientMetaInfo{
+		ClientMeta: goidc.ClientMeta{
 			SubIdentifierType: goidc.SubIdentifierPairwise,
 		},
 	}
@@ -1066,7 +1067,7 @@ func TestTokenOptions_JWTIsAllowedForPairwiseSubjectWhenClientCredentials(t *tes
 		},
 	}
 	client := &goidc.Client{
-		ClientMetaInfo: goidc.ClientMetaInfo{
+		ClientMeta: goidc.ClientMeta{
 			SubIdentifierType: goidc.SubIdentifierPairwise,
 		},
 	}
@@ -1179,7 +1180,7 @@ func TestSign_WithSignerFunc(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{
 			SignerFunc: func(ctx context.Context, alg goidc.SignatureAlgorithm) (keyID string, signer crypto.Signer, err error) {
-				return "random_key_id", signingKey, nil
+				return "random_key_id", testSigner{signer: signingKey}, nil
 			},
 		},
 	}
@@ -1215,6 +1216,17 @@ func TestSign_WithSignerFunc(t *testing.T) {
 	}
 }
 
+type testSigner struct {
+	signer *rsa.PrivateKey
+}
+
+func (s testSigner) Public() crypto.PublicKey {
+	return s.signer.PublicKey
+}
+
+func (s testSigner) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) (signature []byte, err error) {
+	return s.signer.Sign(rand, digest, opts)
+}
 func TestDecrypt_WithDecrypterFunc(t *testing.T) {
 	// Given.
 	encKey := oidctest.PrivateRSAOAEP256JWK(t, "enc_key")

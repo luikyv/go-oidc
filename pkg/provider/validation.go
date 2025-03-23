@@ -16,10 +16,7 @@ func validateTokenBinding(config oidc.Configuration) error {
 	return nil
 }
 
-func runValidations(
-	config oidc.Configuration,
-	validators ...func(oidc.Configuration) error,
-) error {
+func runValidations(config oidc.Configuration, validators ...func(oidc.Configuration) error) error {
 	for _, validator := range validators {
 		if err := validator(config); err != nil {
 			return err

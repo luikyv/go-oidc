@@ -29,8 +29,10 @@ func TestJARFromRequestObject(t *testing.T) {
 	}
 
 	client := &goidc.Client{
-		ClientMetaInfo: goidc.ClientMetaInfo{
-			PublicJWKS: oidctest.RawJWKS(privateJWK.Public()),
+		ClientMeta: goidc.ClientMeta{
+			PublicJWKS: goidc.JSONWebKeySet{
+				Keys: []goidc.JSONWebKey{privateJWK.Public()},
+			},
 		},
 	}
 
@@ -102,8 +104,10 @@ func TestJARFromRequestObject_JARByReference(t *testing.T) {
 	}
 
 	client := &goidc.Client{
-		ClientMetaInfo: goidc.ClientMetaInfo{
-			PublicJWKS: oidctest.RawJWKS(privateJWK.Public()),
+		ClientMeta: goidc.ClientMeta{
+			PublicJWKS: goidc.JSONWebKeySet{
+				Keys: []goidc.JSONWebKey{privateJWK.Public()},
+			},
 		},
 	}
 
@@ -180,7 +184,7 @@ func TestJARFromRequestObject_Unsigned(t *testing.T) {
 	}
 
 	client := &goidc.Client{
-		ClientMetaInfo: goidc.ClientMetaInfo{
+		ClientMeta: goidc.ClientMeta{
 			JARSigAlg: goidc.None,
 		},
 	}

@@ -2,7 +2,6 @@ package authorize
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"testing"
 
@@ -186,8 +185,9 @@ func TestInitBackAuth_WithJAR(t *testing.T) {
 	ctx.CIBAJARSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
 
 	privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
-	jwks, _ := json.Marshal(goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{privateJWK.Public()}})
-	client.PublicJWKS = jwks
+	client.PublicJWKS = goidc.JSONWebKeySet{
+		Keys: []goidc.JSONWebKey{privateJWK.Public()},
+	}
 
 	now := timeutil.TimestampNow()
 	claims := map[string]any{

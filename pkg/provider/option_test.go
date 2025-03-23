@@ -521,7 +521,7 @@ func TestWithDCR(t *testing.T) {
 	var handleDCRFunc goidc.HandleDynamicClientFunc = func(
 		r *http.Request,
 		_ string,
-		c *goidc.ClientMetaInfo,
+		c *goidc.ClientMeta,
 	) error {
 		return nil
 	}
