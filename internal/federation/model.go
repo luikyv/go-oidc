@@ -38,7 +38,7 @@ type entityStatement struct {
 	// trusted to represent the accreditation authority for trust marks with that identifier.
 	// If the array following a Trust Mark identifier is empty, anyone may issue
 	// trust marks with that identifier.
-	TrustMarkIssuers map[string][]string `json:"trust_mark_issuers"`
+	TrustMarkIssuers map[string][]string `json:"trust_mark_issuers,omitempty"`
 	// TrustMarkOwners is used when a trust mark identifier is owned by an entity
 	// different from the trust mark issuer, then that knowledge must be expressed in this claim.
 	TrustMarkOwners map[string]struct {
@@ -46,7 +46,7 @@ type entityStatement struct {
 		Subject string `json:"sub"`
 		// JWKS is the owner's federation entity keys used for signing.
 		JWKS jose.JSONWebKeySet `json:"jwks"`
-	} `json:"trust_mark_owners"`
+	} `json:"trust_mark_owners,omitempty"`
 	signed string `json:"-"`
 }
 
@@ -69,6 +69,31 @@ func (tc trustChain) subjectConfig() entityStatement {
 
 func (tc trustChain) authorityConfig() entityStatement {
 	return tc[len(tc)-1]
+}
+
+// resolve processes a trust chain to determine the final entity statement.
+func (chain trustChain) resolve() (entityStatement, error) {
+
+	config := chain.subjectConfig()
+	var policy metadataPolicy
+	for _, authority := range chain[1:] {
+
+		if authority.ExpiresAt < config.ExpiresAt {
+			config.ExpiresAt = authority.ExpiresAt
+		}
+
+		if authority.MetadataPolicy == nil {
+			continue
+		}
+
+		var err error
+		policy, err = authority.MetadataPolicy.merge(policy)
+		if err != nil {
+			return entityStatement{}, err
+		}
+	}
+
+	return policy.apply(config)
 }
 
 type openIDProvider struct {

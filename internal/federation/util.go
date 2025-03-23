@@ -46,12 +46,12 @@ func Client(ctx oidc.Context, id string) (*goidc.Client, error) {
 func buildAndResolveTrustChain(ctx oidc.Context, id string) (entityStatement, trustChain, error) {
 	chain, err := buildTrustChain(ctx, id)
 	if err != nil {
-		return entityStatement{}, nil, fmt.Errorf("could not build the trust chain for client %s: %w", id, err)
+		return entityStatement{}, nil, err
 	}
 
-	config, err := resolveTrustChain(ctx, chain)
+	config, err := chain.resolve()
 	if err != nil {
-		return entityStatement{}, nil, fmt.Errorf("could not resolve the trust chain for client %s: %w", id, err)
+		return entityStatement{}, nil, err
 	}
 
 	return config, chain, nil
@@ -76,6 +76,10 @@ func buildTrustChain(ctx oidc.Context, id string) (trustChain, error) {
 }
 
 func buildTrustChainFromConfig(ctx oidc.Context, entityConfig entityStatement) (trustChain, error) {
+	if entityConfig.AuthorityHints == nil {
+		return nil, fmt.Errorf("could not build trust chain for entity %s with no authority hints", entityConfig.Subject)
+	}
+
 	var errs error
 	for _, authorityID := range entityConfig.AuthorityHints {
 
@@ -91,7 +95,7 @@ func buildTrustChainFromConfig(ctx oidc.Context, entityConfig entityStatement) (
 		errs = errors.Join(errs, err)
 	}
 
-	return nil, fmt.Errorf("could not resolve trust chain for entity %s: %w", entityConfig.Subject, errs)
+	return nil, fmt.Errorf("could not build trust chain for entity %s: %w", entityConfig.Subject, errs)
 }
 
 func buildTrustChainBranch(ctx oidc.Context, entityConfig entityStatement, authorityConfig entityStatement) (trustChain, error) {
@@ -127,7 +131,7 @@ func buildTrustChainBranch(ctx oidc.Context, entityConfig entityStatement, autho
 func fetchSubordinateStatement(ctx oidc.Context, sub string, authority entityStatement) (entityStatement, error) {
 	uri, err := url.Parse(authority.Metadata.FederationAuthority.FetchEndpoint)
 	if err != nil {
-		return entityStatement{}, fmt.Errorf("federation_fetch_endpoint of %s is not a valid uri: %w", authority.Issuer, err)
+		return entityStatement{}, fmt.Errorf("'federation_fetch_endpoint' of %s is not a valid uri: %w", authority.Issuer, err)
 	}
 	params := uri.Query()
 	params.Add("sub", sub)
@@ -191,7 +195,7 @@ func fetchEntityConfiguration(ctx oidc.Context, id string) (entityStatement, err
 	}
 
 	if entityConfig.MetadataPolicy != nil {
-		return entityStatement{}, fmt.Errorf("the entity configuration for %s cannot have 'metadata_policy': %w", id, err)
+		return entityStatement{}, fmt.Errorf("the entity configuration for %s cannot have 'metadata_policy'", id)
 	}
 
 	return parseEntityConfiguration(ctx, signedStatement, id, entityConfig.JWKS)
@@ -261,11 +265,11 @@ func parseEntityStatement(
 	}
 
 	if claims.IssuedAt == nil {
-		return entityStatement{}, fmt.Errorf("invalid 'iat' claim in the entity statement: %w", err)
+		return entityStatement{}, fmt.Errorf("invalid 'iat' claim in the entity statement")
 	}
 
 	if claims.Expiry == nil {
-		return entityStatement{}, fmt.Errorf("invalid 'exp' claim in the entity statement: %w", err)
+		return entityStatement{}, fmt.Errorf("invalid 'exp' claim in the entity statement")
 	}
 
 	if err := claims.Validate(jwt.Expected{
@@ -283,31 +287,6 @@ func parseEntityStatement(
 
 	statement.signed = signedStatement
 	return statement, nil
-}
-
-// resolveTrustChain processes a trust chain to determine the final entity statement.
-func resolveTrustChain(_ oidc.Context, chain trustChain) (entityStatement, error) {
-
-	config := chain.subjectConfig()
-	var policy metadataPolicy
-	for _, authority := range chain[1:] {
-
-		if authority.ExpiresAt < config.ExpiresAt {
-			config.ExpiresAt = authority.ExpiresAt
-		}
-
-		if authority.MetadataPolicy == nil {
-			continue
-		}
-
-		var err error
-		policy, err = authority.MetadataPolicy.merge(policy)
-		if err != nil {
-			return entityStatement{}, err
-		}
-	}
-
-	return policy.apply(config)
 }
 
 func extractRequiredTrustMarks(ctx oidc.Context, config entityStatement) ([]string, error) {
@@ -344,28 +323,28 @@ func validateTrustMark(ctx oidc.Context, config entityStatement, requiredTrustMa
 		return errors.New("invalid trust mark 'typ' header")
 	}
 
-	var trustMarkClaims trustMark
-	if err := parsedTrustMark.UnsafeClaimsWithoutVerification(&trustMarkClaims); err != nil {
+	var mark trustMark
+	if err := parsedTrustMark.UnsafeClaimsWithoutVerification(&mark); err != nil {
 		return fmt.Errorf("could not parse the trust mark for %s: %w", requiredTrustMarkID, err)
 	}
 
-	trustMarkIssuer, chain, err := buildAndResolveTrustChain(ctx, trustMarkClaims.Issuer)
+	trustMarkIssuer, chain, err := buildAndResolveTrustChain(ctx, mark.Issuer)
 	if err != nil {
-		return fmt.Errorf("could not resolve the trust chain for trust mark issuer %s: %w", trustMarkClaims.Issuer, err)
+		return fmt.Errorf("could not resolve the trust chain for trust mark issuer %s: %w", mark.Issuer, err)
 	}
 
-	var mark trustMark
+	// var mark trustMark
 	var claims jwt.Claims
-	if err := parsedTrustMark.Claims(trustMarkIssuer.JWKS, &mark, &claims); err != nil {
+	if err := parsedTrustMark.Claims(trustMarkIssuer.JWKS, &claims); err != nil {
 		return fmt.Errorf("invalid trust mark signature: %w", err)
 	}
 
 	if claims.IssuedAt == nil {
-		return fmt.Errorf("invalid 'iat' claim in the trust mark: %w", err)
+		return fmt.Errorf("invalid 'iat' claim in the trust mark: %s", requiredTrustMarkID)
 	}
 
-	if claims.Expiry == nil {
-		return fmt.Errorf("invalid 'exp' claim in the trust mark: %w", err)
+	if mark.ID != requiredTrustMarkID {
+		return fmt.Errorf("invalid 'trust_mark_id' claim in the trust mark: %s", requiredTrustMarkID)
 	}
 
 	if err := claims.Validate(jwt.Expected{
@@ -377,17 +356,17 @@ func validateTrustMark(ctx oidc.Context, config entityStatement, requiredTrustMa
 
 	trustMarkIssuers := chain.authorityConfig().TrustMarkIssuers[requiredTrustMarkID]
 	if len(trustMarkIssuers) != 0 && !slices.Contains(trustMarkIssuers, trustMarkIssuer.Issuer) {
-		return fmt.Errorf("the entity %s is not allowed to issue trust marks for %s", trustMarkClaims.Issuer, requiredTrustMarkID)
+		return fmt.Errorf("the entity %s is not allowed to issue trust marks for %s", mark.Issuer, requiredTrustMarkID)
 	}
 
 	// If the trust mark id appears in the trust_mark_owners claim of the trust anchor's
 	// entity configuration, verify that the trust mark contains a valid delegation.
 	if trustMarkOwner, ok := chain.authorityConfig().TrustMarkOwners[requiredTrustMarkID]; ok {
-		if trustMarkClaims.Delegation == "" {
+		if mark.Delegation == "" {
 			return fmt.Errorf("the claim 'delegation' is required in trust mark %s", requiredTrustMarkID)
 		}
 
-		parsedTrustMarkDelegation, err := jwt.ParseSigned(trustMarkClaims.Delegation, ctx.OpenIDFedTrustMarkSigAlgs)
+		parsedTrustMarkDelegation, err := jwt.ParseSigned(mark.Delegation, ctx.OpenIDFedTrustMarkSigAlgs)
 		if err != nil {
 			return fmt.Errorf("could not parse the entity statement: %w", err)
 		}
@@ -403,16 +382,16 @@ func validateTrustMark(ctx oidc.Context, config entityStatement, requiredTrustMa
 		}
 
 		if claims.IssuedAt == nil {
-			return fmt.Errorf("invalid 'iat' claim in the trust mark delegation: %w", err)
+			return errors.New("invalid 'iat' claim in the trust mark delegation")
 		}
 
 		if claims.Expiry == nil {
-			return fmt.Errorf("invalid 'exp' claim in the trust mark delegation: %w", err)
+			return errors.New("invalid 'exp' claim in the trust mark delegation")
 		}
 
 		if err := claims.Validate(jwt.Expected{
 			Issuer:  trustMarkOwner.Subject,
-			Subject: trustMarkClaims.Issuer,
+			Subject: mark.Issuer,
 		}); err != nil {
 			return fmt.Errorf("invalid trust mark delegation: %w", err)
 		}
