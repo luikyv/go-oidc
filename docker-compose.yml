@@ -48,3 +48,4 @@ services:
       # docker host where the authorization server is running.
       - auth.localhost:host-gateway
       - matls-auth.localhost:host-gateway
+      - fed-trust-anchor.localhost:host-gateway

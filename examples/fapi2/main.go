@@ -33,6 +33,10 @@ func main() {
 	serverCertKeyFilePath := filepath.Join(sourceDir, "../keys/server.key")
 
 	// Create and configure the OpenID provider.
+	clientOne, _ := authutil.ClientPrivateKeyJWT("client_one", clientOneJWKSFilePath)
+	clientTwo, _ := authutil.ClientPrivateKeyJWT("client_two", clientTwoJWKSFilePath)
+	mtlsClientOne, _ := authutil.ClientMTLS("mtls_client_one", "client_one", clientOneJWKSFilePath)
+	mtlsClientTwo, _ := authutil.ClientMTLS("mtls_client_two", "client_two", clientTwoJWKSFilePath)
 	op, err := provider.New(
 		goidc.ProfileFAPI2,
 		authutil.Issuer,
@@ -60,10 +64,10 @@ func main() {
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithPolicy(authutil.Policy(templatesDirPath)),
 		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
-		provider.WithStaticClient(authutil.ClientPrivateKeyJWT("client_one", clientOneJWKSFilePath)),
-		provider.WithStaticClient(authutil.ClientPrivateKeyJWT("client_two", clientTwoJWKSFilePath)),
-		provider.WithStaticClient(authutil.ClientMTLS("mtls_client_one", "client_one", clientOneJWKSFilePath)),
-		provider.WithStaticClient(authutil.ClientMTLS("mtls_client_two", "client_two", clientTwoJWKSFilePath)),
+		provider.WithStaticClient(clientOne),
+		provider.WithStaticClient(clientTwo),
+		provider.WithStaticClient(mtlsClientOne),
+		provider.WithStaticClient(mtlsClientTwo),
 		provider.WithRenderErrorFunc(authutil.RenderError(templatesDirPath)),
 		provider.WithCheckJTIFunc(authutil.CheckJTIFunc()),
 		provider.WithJWTLeewayTime(30),

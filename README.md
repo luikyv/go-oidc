@@ -24,6 +24,7 @@ This library implements the following specifications:
 * [`RFC 7662` - OAuth 2.0 Token Introspection](https://www.rfc-editor.org/rfc/rfc7662.html)
 * [`RFC 7009` - OAuth 2.0 Token Revocation](https://www.rfc-editor.org/rfc/rfc7009.html)
 * [OpenID Connect Client-Initiated Backchannel Authentication Flow - Core 1.0 (CIBA)](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0-final.html)
+* [OpenID Federation 1.0 - draft 42](https://openid.net/specs/openid-federation-1_0.html)
 
 ## Certification
 Luiky Vasconcelos has certified that [go-oidc](https://pkg.go.dev/github.com/luikyv/go-oidc) conforms to the following profile of the OpenID Connect™ protocol.
