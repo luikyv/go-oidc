@@ -1,15 +1,16 @@
-CS_VERSION = v5.1.22
+CS_VERSION = v5.1.30
 
 setup-dev:
+	@make setup-cs
+	@go install golang.org/x/pkgsite/cmd/pkgsite@latest
+	@python3 -m pip install httpx
+
+setup-cs:
 	@if [ ! -d "conformance-suite" ]; then \
 	  echo "Cloning conformance-suite repository..."; \
 	  git clone --branch "release-$(CS_VERSION)" --single-branch --depth=1 https://gitlab.com/openid/conformance-suite.git; \
 	  docker compose -f ./conformance-suite/builder-compose.yml run builder; \
 	fi
-
-	@go install golang.org/x/pkgsite/cmd/pkgsite@latest
-
-	@python3 -m pip install httpx
 
 test:
 	@go test ./pkg/... ./internal/...

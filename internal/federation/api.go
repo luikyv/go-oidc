@@ -23,7 +23,7 @@ func handleFetchStatement(ctx oidc.Context) {
 		return
 	}
 
-	if err := ctx.WriteJWTWithType(statement, http.StatusOK, entityStatementJWTType); err != nil {
+	if err := ctx.WriteJWTWithType(statement, http.StatusOK, entityStatementJWTContentType); err != nil {
 		ctx.WriteError(err)
 	}
 }

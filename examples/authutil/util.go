@@ -45,28 +45,23 @@ var (
 	DisplayValues = []goidc.DisplayValue{goidc.DisplayValuePage, goidc.DisplayValuePopUp}
 )
 
-func ClientMTLS(id, cn, jwksFilepath string) *goidc.Client {
-	client := Client(id, jwksFilepath)
+func ClientMTLS(id, cn, jwksFilepath string) (*goidc.Client, goidc.JSONWebKeySet) {
+	client, jwks := Client(id, jwksFilepath)
 	client.TokenAuthnMethod = goidc.ClientAuthnTLS
 	client.TLSSubDistinguishedName = "CN=" + cn
 
-	return client
+	return client, jwks
 }
 
-func ClientPrivateKeyJWT(id, jwksFilepath string) *goidc.Client {
-	client := Client(id, jwksFilepath)
+func ClientPrivateKeyJWT(id, jwksFilepath string) (*goidc.Client, goidc.JSONWebKeySet) {
+	client, jwks := Client(id, jwksFilepath)
 	client.TokenAuthnMethod = goidc.ClientAuthnPrivateKeyJWT
-	return client
+	return client, jwks
 }
 
-func Client(id string, jwksFilepath string) *goidc.Client {
+func Client(id string, jwksFilepath string) (*goidc.Client, goidc.JSONWebKeySet) {
 	// Extract the public client JWKS.
 	jwks := privateJWKS(jwksFilepath)
-	var publicKeys []goidc.JSONWebKey
-	for _, key := range jwks.Keys {
-		publicKeys = append(publicKeys, key.Public())
-	}
-	jwks.Keys = publicKeys
 
 	// Extract scopes IDs.
 	var scopesIDs []string
@@ -78,7 +73,7 @@ func Client(id string, jwksFilepath string) *goidc.Client {
 		ID: id,
 		ClientMeta: goidc.ClientMeta{
 			ScopeIDs:   strings.Join(scopesIDs, " "),
-			PublicJWKS: jwks,
+			PublicJWKS: jwks.Public(),
 			GrantTypes: []goidc.GrantType{
 				goidc.GrantAuthorizationCode,
 				goidc.GrantRefreshToken,
@@ -89,11 +84,12 @@ func Client(id string, jwksFilepath string) *goidc.Client {
 				goidc.ResponseTypeCodeAndIDToken,
 			},
 			RedirectURIs: []string{
+				"http://localhost/callback",
 				"https://localhost.emobix.co.uk:8443/test/a/goidc/callback",
 				"https://localhost.emobix.co.uk:8443/test/a/goidc/callback?dummy1=lorem&dummy2=ipsum",
 			},
 		},
-	}
+	}, jwks
 }
 
 func PrivateJWKSFunc(filename string) goidc.JWKSFunc {
