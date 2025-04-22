@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -23,7 +21,7 @@ import (
 const (
 	TrustAnchorFedID = "https://fed-trust-anchor.localhost"
 
-	OPFedID   = "https://auth.localhost"
+	OPFedID   = "https://ec2-50-19-156-19.compute-1.amazonaws.com"
 	OPFedJWKS = `
 		{
 			"keys": [
@@ -45,7 +43,7 @@ const (
 		}
 	`
 
-	ClientFedID   = "https://fed-client.localhost"
+	ClientFedID   = "https://50.19.156.19"
 	ClientFedJWKS = `
 		{
 			"keys": [
@@ -118,7 +116,7 @@ func main() {
 		provider.WithJAR(goidc.RS256, goidc.PS256),
 		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.RS256)),
-		provider.WithHTTPClientFunc(httpClientFunc()),
+		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithPolicy(authutil.Policy(templatesDirPath)),
 		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
 		provider.WithRenderErrorFunc(authutil.RenderError(templatesDirPath)),
@@ -162,28 +160,6 @@ func main() {
 	log.Println(authReqURL(clientJWKS))
 	if err := http.ListenAndServeTLS(authutil.Port, serverCertFilePath, serverCertKeyFilePath, mux); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
-	}
-}
-
-func httpClientFunc() goidc.HTTPClientFunc {
-	trustAnchorIDURL, _ := url.Parse(TrustAnchorFedID)
-	clientIDURL, _ := url.Parse(ClientFedID)
-	return func(ctx context.Context) *http.Client {
-		return &http.Client{
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				return http.ErrUseLastResponse
-			},
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-				Dial: func(network, addr string) (net.Conn, error) {
-					// Forward requests to localhost.
-					if addr == clientIDURL.Hostname()+":443" || addr == trustAnchorIDURL.Hostname()+":443" {
-						addr = "127.0.0.1:443"
-					}
-					return net.Dial(network, addr)
-				},
-			},
-		}
 	}
 }
 
