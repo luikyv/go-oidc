@@ -128,6 +128,7 @@ func main() {
 			[]string{TrustAnchorFedID},
 			[]string{TrustAnchorFedID},
 		),
+		provider.WithOpenIDFederationSignatureAlgs(goidc.RS256, goidc.ES256),
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithIDTokenSignatureAlgs(goidc.RS256),
 		provider.WithTokenAuthnMethods(

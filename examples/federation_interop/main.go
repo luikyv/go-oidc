@@ -26,18 +26,14 @@ const (
 		{
 			"keys": [
 				{
-					"p": "46PyozYJwEv280wQj2dR9riqweBLLqXaA1aLwEvZpZL_srNvipRsdnNvX3Vl3FIS4mXZcrAwi2xnA-Coe0-c8k9FbJpt3cMUTO9cfvYQ3atbNzTqyBuredj4-OutW7CSxFpPDbIfmSNifi4rzb4rAKMIvmU_CcDl4vyFpBEFBBE",
-					"kty": "RSA",
-					"q": "r7eIJ5DxlLlLmsM1F1MXW5O0yKLJTBiW_zxKG0GpjC4OlJWYUf4ETrIAnkHKLUnSAh3hUaKNfkX1lUqnlKXwBoravi8NTGR0SHDIRDCa-cTp6NUbQ2yKRg_eMm2EI1T_5YKNYiB2edkFjA5UulwMa5tOBs8uaCognZP3WX0L9sE",
-					"d": "EaZlBbzQ324H-4512YsZ-RCmA8ptHkNtP6nY9pjLVufKGuDp44d0klUvteUQNKAdwbS3dm-I1-eAhFO0YDoZZobyl3tRxBoGbp4pWziVzHr3pro89xiZ1QFnniFaCRFpos5T3LfWpS909xkhjOC7SR_0QJXIU-9f5ry1jcnC-pRJFkFaztdxaZwl9_hnbG2AamjQU9BeAhr4km2axuk7ObttCx5ExMgAMauWWcJTn_Rye3F5u0VouCu2LGwGSf2YIY7I1tEBVSncDDYqC1dgF3S5qIrFxhxTF8pbK1Cqgr7lu6G1MNJEsXSAcZFV16iERiUdl_LxOCSI4W9GGNAkAQ",
-					"e": "AQAB",
+					"kty": "EC",
+					"d": "YXKf56d43zlKJwkyjN6HQkT4AxHb3x5jRee8rfQJGpw",
 					"use": "sig",
-					"kid": "AnXYaDOohNaXNckR0GYLCS3AXs6woEV0dVYgXJdQySU",
-					"qi": "LB_QKVCsDAlAmqwMIb23mFj85Yf28Q-T4kD-KLp6JGv6Z5Tk8fCYRSLxUR1vuoLJvx_5ROXfIW5mqV4bVoxrkrnmjX8y1NHsd7VMaetA2U1v0MW6JewmGTxq6mL4sFgVyKlTyEDsh66gXrKQCRQyL5Y4tmPIRppxAS0ZPgXJswI",
-					"dp": "YF8LHL-G10sRrCSaqitCjuHVIKj1CzWZm2orVeiGpssZxyyh3xhA5tCt6MrJqcFxTzlxGlWu54eoAQM-MJ4ewpJ-wKCMPKMW2A9JqFJCB6ZAwpl7f-X-7WHG3ZLg3H1fVRMqfpDXQbyyONsRHlQQ3n8m93vjeRyZ9kOTzEaMShE",
-					"alg": "RS256",
-					"dq": "Ssn9A4onqLttOIPZdwIAsROfIL5YmzDkI-KPUCaUeXuo7Qj2-f756lzM8o7h9IC1B_2bx1k-i_5O1qodxaETFlXHYKc6K8edzq9iLdPaQnDTdiwuHHZ4K_XZBvGiCj_FYvQ8JQXYJ2h9ee0nluJSzwIdJbzM7bzwgOFXqBkXHIE",
-					"n": "nEBGIkxgARGUyTSB4oBG9xCrrFSL3iE_6HQ2YEOReFhI2YwLFMKfenECxO212TYzcyKWHpqM3KLR5e8Ub0v17JPnvUGketKu7kfbh910ZoX4Pk90ngSqd_fcS_jzh-rKuAlcH83EWW3MbMs3x13kVKCAYbnVP6cNmBJoLIQf03DhAmpVfJuNfhG_RZxtdPiVWNSEntZvjl-sjQgt8QkhMFLyncOPoclLpz7RduQlfZqg8Lnfs8fBM4j6I0MnXunk8Fuo0cZqypZsS9olclBAqVJWwT8UT75H4mO0EZI_IZANTNklQCdC3tjE55lf62gk_u6AOAICS38nlmgoIGtm0Q"
+					"crv": "P-256",
+					"kid": "nY_XVvKp4QD6MpStDMulpmpMGgemytcspMR-Xwwvy5c",
+					"x": "zYH3xU7ODP-eD_gKPifdIoVorJivCp2Boo0ptzcU8OQ",
+					"y": "FNycPxscW7vVipjEaSPVGroEzX0_ZPC5N8y1O8aubug",
+					"alg": "ES256"
 				}
 			]
 		}
@@ -48,18 +44,14 @@ const (
 		{
 			"keys": [
 				{
-					"p": "_j6sFKtYLlGDcJ7ePg_nYah0-R2_6MCGuXtcf_fKzT3_pXXhaph6QDGskaTO7hGSLsjdq_gafhRT9eKmTGoVoOnhWQ2GQpufivnTRgdnjnVG1U6hEoXDHkdlVizmPNgmdNkBHKQm0CheZtPhDZknpM9aCf9bv3UDNboJmHV4Yhs",
-					"kty": "RSA",
-					"q": "qXd5PfdVGLKSmBQO0rR0j0I5dyRpcq6br3gJ86oMLcGZ2Sxj2yq-HSfSVrex8AusTqMYEmPNPuYMu4Y9w3J3k6hjfAFJWZRp-9lHH09kd7i-nJDXsDDHPmuK6Iw9aOi1ojHf63k8WGvNw-rA6fXNAa71NDQwI9f53fdbLNROdfU",
-					"d": "kDFphWmbIiFthvMMvlCx_h04jbvheiFa-WOQe0rgdB4VaIMCWjn0MRzKRwEfBrSTEu1T1e5_6NoEiKOzlAcsOSNrd3cR7fpCvnsXr2HEfvWcD6RQMs2qT8Yu9UofKYtg4kMSzJvq6WBFudBgBoBGX7XJbfM-oCDTCVzI1kJmVrTV4WshY3pEbKrebipMMtQFGXTuWUVft462y9EV5RfitEp3FrLPGm6jGxJt3L7F8VILYbU8WcHwcHnv55ZUoQU8WGB9PXJBC_AhZHv3dR8UXnws5VihhI71JV5-FFpVYX6GkzumGC4hba5iZ3NbJzOFqEuMQ5xTBzZ_szB7bayBoQ",
-					"e": "AQAB",
+					"kty": "EC",
+					"d": "KiNS6fScsAuphhFQbPKw5YjXu1Nvz7gi47at_f8KSow",
 					"use": "sig",
-					"kid": "ZcwjzcDikHYiP4ZutjyAQa73p-_9yAC0-BAiKt0Rq2M",
-					"qi": "5qLSd781xbQYKs_TIr-hmD954BAAZty6_uawe4kyhmhRdRTjkbIXFWi527exr95OUe5bI5DPr_-0QFW1olsgvIQ_fvJLCq_UI4CRIHwr_gvZL1MlbbeKCeTMjkIagUrtl4Av_a0o3b6FkPI5RREfUvG3gT4YtT53CPbVxkb-aoE",
-					"dp": "Mr0hLHLRg1TjLVuXML2NyLCMv5aPUQzzFhsnZ6Z1A6bG2SeAV_ycESmYrew9G8fH66xMiOBXsSevZdfYplFZhaaHQXVwgOR734lh_4zEvupqu3EYthCZ0vYepCcLv8LHUfRow2WDFXGo_U51kHgrMDntVyduEPRyMouxFIsE_lc",
-					"alg": "RS256",
-					"dq": "LbBVUryNB8SVO0UlHe-jAUCkh5ecilvDA5LEdBojgG6S0Pdj0KH8cZXb4p9R7Nro0KauBb88hbm2MxSlMD17OacLc1JReUJHNKxGvY1FE_YOBd4TGKB-BzktUTcGE3OyDJGPwkeEWn5uEmUHL8yiQdLuru1nETLYXdyjizmOEcU",
-					"n": "qE4HJMygndknDFl0H94UYlVFxZ-qdP0DmvUe6EnOWleMChsBLD7gMIQqHAc_4p4XRM_dlRoyjSrKoYMzoRFrADxHGl1h51yrCOiFG9GfFtMhmWW_Egb0HZ63Htg1MoLiK8BpHp1sjjsMiedHP7R7gR9RqpjHPfNI3myF8z-dfGtFcJevT-nX_9VgvHMH4_c7soA5SEnAYg0L3BxARFzFG3119Uc2wj5H1k1S-V391GdFr85qJtzcRDIdurJBnEqEWX_R21xS61eELtgQ1NRrkbpuXCsnoGuobDGIZcJbtVCgx70Xc6bdDm-cFLjGmjPBjpnkRLFAF1KRxs4osUY61w"
+					"crv": "P-256",
+					"kid": "cW6BPniOmyVMvwIlTlh2SanDl3KmferQuT8LS7CIB9U",
+					"x": "1Mlnn7kLJJgWELLdF-pqw2j6CGYRY0lJbu8m4i-esdM",
+					"y": "QCezZwp5knqiRivSjDNPfPNHR79KAvFQbPcE4rKvnLo",
+					"alg": "ES256"
 				}
 			]
 		}
@@ -102,6 +94,7 @@ func main() {
 			[]string{TrustAnchorFedID},
 			[]string{TrustAnchorFedID},
 		),
+		provider.WithOpenIDFederationSignatureAlgs(goidc.RS256, goidc.ES256),
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithIDTokenSignatureAlgs(goidc.RS256),
 		provider.WithTokenAuthnMethods(
