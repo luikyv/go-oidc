@@ -166,8 +166,6 @@ func main() {
 			"iat": timeutil.TimestampNow(),
 			"exp": timeutil.TimestampNow() + 600,
 			"metadata": map[string]any{
-				"federation_entity":    map[string]any{},
-				"openid_provider":      map[string]any{},
 				"openid_relying_party": client.ClientMeta,
 			},
 			"jwks":            clientFedJWKS.Public(),
