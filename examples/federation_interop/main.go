@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	TrustAnchorFedID = "https://fed-trust-anchor.localhost"
+	TrustAnchorFedID = "https://federation.pr-2721.ci.raidiam.io/federation_entity/5d0acc74-a8ea-4f9e-8238-3b4b22166e9a"
 
 	OPFedID   = "https://ec2-50-19-156-19.compute-1.amazonaws.com"
 	OPFedJWKS = `
