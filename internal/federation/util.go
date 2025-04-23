@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
 	"slices"
@@ -212,7 +213,7 @@ func fetchEntityStatement(ctx oidc.Context, uri string) (string, error) {
 		return "", fmt.Errorf("fetching the entity statement resulted in status %d", resp.StatusCode)
 	}
 
-	if resp.Header.Get("Content-Type") != entityStatementJWTContentType {
+	if mediaType, _, _ := mime.ParseMediaType(resp.Header.Get("Content-Type")); mediaType != entityStatementJWTContentType {
 		return "", fmt.Errorf("fetching the entity statement resulted in content type %s which is invalid", resp.Header.Get("Content-Type"))
 	}
 
