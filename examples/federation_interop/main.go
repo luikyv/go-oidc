@@ -92,7 +92,7 @@ func main() {
 				return opFedJWKS, nil
 			},
 			[]string{TrustAnchorFedID},
-			[]string{TrustAnchorFedID},
+			[]string{"https://authority.pr-2721.ci.raidiam.io/authority/0535f73a-57e0-46aa-b07d-f88e39c4bb70", TrustAnchorFedID},
 		),
 		provider.WithOpenIDFederationSignatureAlgs(goidc.RS256, goidc.ES256),
 		provider.WithScopes(authutil.Scopes...),
