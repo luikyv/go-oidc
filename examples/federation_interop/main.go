@@ -26,14 +26,10 @@ const (
 		{
 			"keys": [
 				{
-					"kty": "EC",
-					"d": "YXKf56d43zlKJwkyjN6HQkT4AxHb3x5jRee8rfQJGpw",
-					"use": "sig",
-					"crv": "P-256",
-					"kid": "nY_XVvKp4QD6MpStDMulpmpMGgemytcspMR-Xwwvy5c",
-					"x": "zYH3xU7ODP-eD_gKPifdIoVorJivCp2Boo0ptzcU8OQ",
-					"y": "FNycPxscW7vVipjEaSPVGroEzX0_ZPC5N8y1O8aubug",
-					"alg": "ES256"
+					"e": "AQAB",
+					"kid": "7GIzGiS15jp-WVQLbwv9KKdUY5gRSREI4J8yvBMCZA0",
+					"kty": "RSA",
+					"n": "3ZvXi_KGOA1oh9BvEU1bUC3orN5yLU3rUJsyxr-rcghKj9PBBOESlnCtCfBP0_CRgE8ealprguJ6rhLemFkLMt1lbRAJWkB8wYlicIR1eVS1lvnPaN81eqCKkk3ckdKQn7r0JqUOUctv075-WAA51BW6H3GTQx6C5mFf2nkpp-kfH-7GreKgd8dLpMjVJD0mBN2FAWmLMpLpNoYbUqIPGtT7eA9WLZVtccYkqq1yer1fXC1rgvWVKLM0ub3Pfuj9EiiSoOhuYtqCp5Bt17slbRhHFlZxG3KHI0DAJ-4jIA-f3KCwUudoKFVeHksEo5izDmenKdGsEtxI_U5xC6omsw"
 				}
 			]
 		}
