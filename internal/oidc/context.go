@@ -278,7 +278,7 @@ func (ctx Context) federationClient(id string) (*goidc.Client, error) {
 }
 
 func isExpired(client *goidc.Client) bool {
-	return client.ExpiresAt != nil && timeutil.TimestampNow() > *client.ExpiresAt
+	return client.ExpiresAtTimestamp != 0 && timeutil.TimestampNow() > client.ExpiresAtTimestamp
 }
 
 func (ctx Context) DeleteClient(id string) error {

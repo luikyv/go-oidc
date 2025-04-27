@@ -11,17 +11,25 @@ import (
 type GrantSessionManager struct {
 	Sessions map[string]*goidc.GrantSession
 	mu       sync.RWMutex
+	maxSize  int
 }
 
-func NewGrantSessionManager() *GrantSessionManager {
+func NewGrantSessionManager(maxSize int) *GrantSessionManager {
 	return &GrantSessionManager{
 		Sessions: make(map[string]*goidc.GrantSession),
+		maxSize:  maxSize,
 	}
 }
 
 func (m *GrantSessionManager) Save(_ context.Context, grantSession *goidc.GrantSession) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	if len(m.Sessions) >= m.maxSize {
+		removeOldest(m.Sessions, func(gs *goidc.GrantSession) int {
+			return gs.CreatedAtTimestamp
+		})
+	}
 
 	m.Sessions[grantSession.ID] = grantSession
 	return nil
@@ -82,4 +90,4 @@ func (m *GrantSessionManager) firstSession(condition func(*goidc.GrantSession) b
 	return findFirst(grantSessions, condition)
 }
 
-var _ goidc.GrantSessionManager = NewGrantSessionManager()
+var _ goidc.GrantSessionManager = NewGrantSessionManager(0)

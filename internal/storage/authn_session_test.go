@@ -10,7 +10,7 @@ import (
 
 func TestSaveAuthnSession(t *testing.T) {
 	// Given.
-	manager := storage.NewAuthnSessionManager()
+	manager := storage.NewAuthnSessionManager(1)
 	session := &goidc.AuthnSession{
 		ID: "random_session_id",
 	}
@@ -32,7 +32,7 @@ func TestSaveAuthnSession(t *testing.T) {
 
 func TestAuthnSessionByCallbackID(t *testing.T) {
 	// Given.
-	manager := storage.NewAuthnSessionManager()
+	manager := storage.NewAuthnSessionManager(1)
 	sessionID := "random_session_id"
 	callbackID := "random_callback_id"
 	manager.Sessions[sessionID] = &goidc.AuthnSession{
@@ -55,7 +55,7 @@ func TestAuthnSessionByCallbackID(t *testing.T) {
 
 func TestAuthnSessionByAuthorizationCode(t *testing.T) {
 	// Given.
-	manager := storage.NewAuthnSessionManager()
+	manager := storage.NewAuthnSessionManager(1)
 	sessionID := "random_session_id"
 	authorizationCode := "random_authorization_code"
 	manager.Sessions[sessionID] = &goidc.AuthnSession{
@@ -78,7 +78,7 @@ func TestAuthnSessionByAuthorizationCode(t *testing.T) {
 
 func TestAuthnSessionByReferenceID(t *testing.T) {
 	// Given.
-	manager := storage.NewAuthnSessionManager()
+	manager := storage.NewAuthnSessionManager(1)
 	sessionID := "random_session_id"
 	requestURI := "random_request_uri"
 	manager.Sessions[sessionID] = &goidc.AuthnSession{
@@ -101,7 +101,7 @@ func TestAuthnSessionByReferenceID(t *testing.T) {
 
 func TestDeleteAuthnSession(t *testing.T) {
 	// Given.
-	manager := storage.NewAuthnSessionManager()
+	manager := storage.NewAuthnSessionManager(1)
 	sessionID := "random_session_id"
 	manager.Sessions[sessionID] = &goidc.AuthnSession{
 		ID: sessionID,
@@ -122,7 +122,7 @@ func TestDeleteAuthnSession(t *testing.T) {
 
 func TestDeleteAuthnSession_SessionDoesNotExist(t *testing.T) {
 	// Given.
-	manager := storage.NewAuthnSessionManager()
+	manager := storage.NewAuthnSessionManager(1)
 	sessionID := "random_session_id"
 
 	// When.

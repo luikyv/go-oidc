@@ -93,17 +93,28 @@ func (op *Provider) WithOptions(opts ...ProviderOption) error {
 //	server.Handle("/", op.Handler())
 func (op Provider) Handler() http.Handler {
 
-	server := http.NewServeMux()
+	mux := http.NewServeMux()
 
-	discovery.RegisterHandlers(server, &op.config)
-	token.RegisterHandlers(server, &op.config)
-	authorize.RegisterHandlers(server, &op.config)
-	userinfo.RegisterHandlers(server, &op.config)
-	dcr.RegisterHandlers(server, &op.config)
-	federation.RegisterHandlers(server, &op.config)
+	discovery.RegisterHandlers(mux, &op.config)
+	token.RegisterHandlers(mux, &op.config)
+	authorize.RegisterHandlers(mux, &op.config)
+	userinfo.RegisterHandlers(mux, &op.config)
+	dcr.RegisterHandlers(mux, &op.config)
+	federation.RegisterHandlers(mux, &op.config)
 
-	handler := goidc.CacheControlMiddleware(server)
+	handler := goidc.CacheControlMiddleware(mux)
 	return handler
+}
+
+func (op Provider) RegisterRoutes(mux *http.ServeMux) {
+	discovery.RegisterHandlers(mux, &op.config)
+	token.RegisterHandlers(mux, &op.config)
+	authorize.RegisterHandlers(mux, &op.config)
+	userinfo.RegisterHandlers(mux, &op.config)
+	dcr.RegisterHandlers(mux, &op.config)
+	federation.RegisterHandlers(mux, &op.config)
+	// TODO
+	// handler := goidc.CacheControlMiddleware(mux)
 }
 
 func (op *Provider) Run(address string, middlewares ...goidc.MiddlewareFunc) error {
@@ -228,13 +239,13 @@ func (op *Provider) setDefaults() error {
 		[]goidc.Scope{goidc.ScopeOpenID})
 
 	op.config.ClientManager = nonZeroOrDefault(op.config.ClientManager,
-		goidc.ClientManager(storage.NewClientManager()))
+		goidc.ClientManager(storage.NewClientManager(defaultStorageMaxSize)))
 
 	op.config.AuthnSessionManager = nonZeroOrDefault(op.config.AuthnSessionManager,
-		goidc.AuthnSessionManager(storage.NewAuthnSessionManager()))
+		goidc.AuthnSessionManager(storage.NewAuthnSessionManager(defaultStorageMaxSize)))
 
 	op.config.GrantSessionManager = nonZeroOrDefault(op.config.GrantSessionManager,
-		goidc.GrantSessionManager(storage.NewGrantSessionManager()))
+		goidc.GrantSessionManager(storage.NewGrantSessionManager(defaultStorageMaxSize)))
 
 	op.config.TokenOptionsFunc = nonZeroOrDefault(op.config.TokenOptionsFunc,
 		defaultTokenOptionsFunc())

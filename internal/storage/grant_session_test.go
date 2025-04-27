@@ -10,7 +10,7 @@ import (
 
 func TestSaveGrantSession(t *testing.T) {
 	// Given.
-	manager := storage.NewGrantSessionManager()
+	manager := storage.NewGrantSessionManager(1)
 	session := &goidc.GrantSession{
 		ID: "random_session_id",
 	}
@@ -32,7 +32,7 @@ func TestSaveGrantSession(t *testing.T) {
 
 func TestGetGrantSessionByTokenID_HappyPath(t *testing.T) {
 	// Given.
-	manager := storage.NewGrantSessionManager()
+	manager := storage.NewGrantSessionManager(1)
 	sessionID := "random_session_id"
 	tokenID := "random_token_id"
 	manager.Sessions[sessionID] = &goidc.GrantSession{
@@ -55,7 +55,7 @@ func TestGetGrantSessionByTokenID_HappyPath(t *testing.T) {
 
 func TestGrantSessionByRefreshTokenID(t *testing.T) {
 	// Given.
-	manager := storage.NewGrantSessionManager()
+	manager := storage.NewGrantSessionManager(1)
 	sessionID := "random_session_id"
 	refreshTokenID := "random_refresh_token_id"
 	manager.Sessions[sessionID] = &goidc.GrantSession{
@@ -78,7 +78,7 @@ func TestGrantSessionByRefreshTokenID(t *testing.T) {
 
 func TestDeleteGrantSession(t *testing.T) {
 	// Given.
-	manager := storage.NewGrantSessionManager()
+	manager := storage.NewGrantSessionManager(1)
 	sessionID := "random_session_id"
 	manager.Sessions[sessionID] = &goidc.GrantSession{
 		ID: sessionID,
@@ -99,7 +99,7 @@ func TestDeleteGrantSession(t *testing.T) {
 
 func TestDeleteAuthnGrantSession(t *testing.T) {
 	// Given.
-	manager := storage.NewGrantSessionManager()
+	manager := storage.NewGrantSessionManager(1)
 	sessionID := "random_session_id"
 
 	// When.

@@ -5,6 +5,8 @@ import (
 )
 
 const (
+	defaultStorageMaxSize = 100
+
 	defaultAuthnSessionTimeoutSecs = 1800 // 30 minutes.
 	defaultIDTokenLifetimeSecs     = 600
 	defaultTokenLifetimeSecs       = 300

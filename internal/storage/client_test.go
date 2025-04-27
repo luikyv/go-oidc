@@ -10,7 +10,7 @@ import (
 
 func TestCreateOrUpdateClient_HappyPath(t *testing.T) {
 	// Given.
-	manager := storage.NewClientManager()
+	manager := storage.NewClientManager(1)
 	client := &goidc.Client{
 		ID: "random_client_id",
 	}
@@ -30,7 +30,7 @@ func TestCreateOrUpdateClient_HappyPath(t *testing.T) {
 
 func TestClient(t *testing.T) {
 	// Given.
-	manager := storage.NewClientManager()
+	manager := storage.NewClientManager(1)
 	clientID := "random_client_id"
 	manager.Clients[clientID] = &goidc.Client{
 		ID: clientID,
@@ -51,7 +51,7 @@ func TestClient(t *testing.T) {
 
 func TestClient_ClientDoesNotExist(t *testing.T) {
 	// Given.
-	manager := storage.NewClientManager()
+	manager := storage.NewClientManager(1)
 	clientID := "random_client_id"
 
 	// When.
@@ -65,7 +65,7 @@ func TestClient_ClientDoesNotExist(t *testing.T) {
 
 func TestDeleteClient(t *testing.T) {
 	// Given.
-	manager := storage.NewClientManager()
+	manager := storage.NewClientManager(1)
 	clientID := "random_client_id"
 	manager.Clients[clientID] = &goidc.Client{
 		ID: clientID,
@@ -86,7 +86,7 @@ func TestDeleteClient(t *testing.T) {
 
 func TestDeleteClient_ClientDoesNotExist(t *testing.T) {
 	// Given.
-	manager := storage.NewClientManager()
+	manager := storage.NewClientManager(1)
 	clientID := "random_client_id"
 
 	// When.

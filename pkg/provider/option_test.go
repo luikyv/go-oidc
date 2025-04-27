@@ -19,7 +19,7 @@ func TestWithClientStorage(t *testing.T) {
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
-	st := storage.NewClientManager()
+	st := storage.NewClientManager(1)
 
 	// When.
 	err := WithClientStorage(st)(p)
@@ -39,7 +39,7 @@ func TestWithAuthnSessionStorage(t *testing.T) {
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
-	st := storage.NewAuthnSessionManager()
+	st := storage.NewAuthnSessionManager(1)
 
 	// When.
 	err := WithAuthnSessionStorage(st)(p)
@@ -59,7 +59,7 @@ func TestWithGrantSessionStorage(t *testing.T) {
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
-	st := storage.NewGrantSessionManager()
+	st := storage.NewGrantSessionManager(1)
 
 	// When.
 	err := WithGrantSessionStorage(st)(p)

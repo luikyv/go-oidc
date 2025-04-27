@@ -6,6 +6,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -31,8 +32,9 @@ func create(ctx oidc.Context, initialToken string, meta *goidc.ClientMeta) (resp
 	}
 
 	client := &goidc.Client{
-		ID:         id,
-		ClientMeta: *meta,
+		ID:                 id,
+		CreatedAtTimestamp: timeutil.TimestampNow(),
+		ClientMeta:         *meta,
 	}
 	return modifyAndSaveClient(ctx, client)
 }
