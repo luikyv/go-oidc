@@ -14,8 +14,6 @@ import (
 )
 
 const (
-	TrustAnchorFedID = "https://federation.pr-2721.ci.raidiam.io/federation_entity/5d0acc74-a8ea-4f9e-8238-3b4b22166e9a"
-
 	OPFedID = "https://oidfed.luikyv.com"
 	// OPFedID   = "https://auth.localhost"
 	OPFedJWKS = `
@@ -59,8 +57,14 @@ func main() {
 			func(ctx context.Context) (goidc.JSONWebKeySet, error) {
 				return opFedJWKS, nil
 			},
-			[]string{TrustAnchorFedID},
-			[]string{"https://authority.pr-2721.ci.raidiam.io/authority/0535f73a-57e0-46aa-b07d-f88e39c4bb70", TrustAnchorFedID},
+			[]string{
+				"https://federation.pr-2721.ci.raidiam.io/federation_entity/5d0acc74-a8ea-4f9e-8238-3b4b22166e9a",
+				"https://ta.oidfed.data.kit.edu",
+			},
+			[]string{
+				"https://authority.pr-2721.ci.raidiam.io/authority/0535f73a-57e0-46aa-b07d-f88e39c4bb70",
+				"https://green.oidfed.data.kit.edu",
+			},
 		),
 		provider.WithOpenIDFederationSignatureAlgs(goidc.RS256, goidc.ES256),
 		provider.WithScopes(authutil.Scopes...),
