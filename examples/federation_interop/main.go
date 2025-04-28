@@ -69,8 +69,8 @@ func main() {
 
 	templatesDirPath := filepath.Join(workingDir, "../templates")
 	jwksFilePath := filepath.Join(workingDir, "../keys/server.jwks")
-	serverCertFilePath := filepath.Join(workingDir, "../keys/7GIzGiS15jp-WVQLbwv9KKdUY5gRSREI4J8yvBMCZA0.pem")
-	serverCertKeyFilePath := filepath.Join(workingDir, "../keys/6a81a0b2-a6f7-479d-9f8e-76add4dd629f-resource_server_signing.key")
+	serverCertFilePath := filepath.Join(workingDir, "../keys/server.crt")
+	serverCertKeyFilePath := filepath.Join(workingDir, "../keys/server.key")
 	clientJWKSFilePath := filepath.Join(workingDir, "../keys/client_one.jwks")
 
 	// Set up federation JWKS's.
