@@ -66,7 +66,7 @@ func main() {
 				"https://green.oidfed.data.kit.edu",
 			},
 		),
-		provider.WithOpenIDFederationSignatureAlgs(goidc.RS256, goidc.ES256),
+		provider.WithOpenIDFederationSignatureAlgs(goidc.RS256, goidc.ES256, goidc.PS256),
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithIDTokenSignatureAlgs(goidc.RS256),
 		provider.WithTokenAuthnMethods(
