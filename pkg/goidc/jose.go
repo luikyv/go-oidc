@@ -3,6 +3,8 @@ package goidc
 import (
 	"context"
 	"crypto"
+	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/go-jose/go-jose/v4"
@@ -49,6 +51,30 @@ type JSONWebKey = jose.JSONWebKey
 
 type JSONWebKeySet struct {
 	Keys []JSONWebKey `json:"keys"`
+}
+
+func (s *JSONWebKeySet) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Keys []json.RawMessage `json:"keys"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	var validKeys []JSONWebKey
+	for _, rawKey := range raw.Keys {
+		var key JSONWebKey
+		if err := json.Unmarshal(rawKey, &key); err == nil {
+			validKeys = append(validKeys, key)
+		}
+	}
+
+	if len(validKeys) == 0 {
+		return errors.New("no valid keys found in jwks")
+	}
+
+	s.Keys = validKeys
+	return nil
 }
 
 func (jwks JSONWebKeySet) Key(kid string) (JSONWebKey, error) {
