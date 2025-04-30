@@ -1,7 +1,6 @@
 package federation
 
 import (
-	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/discovery"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -15,12 +14,12 @@ const (
 )
 
 type entityStatement struct {
-	Issuer         string             `json:"iss"`
-	Subject        string             `json:"sub"`
-	IssuedAt       int                `json:"iat"`
-	ExpiresAt      int                `json:"exp"`
-	JWKS           jose.JSONWebKeySet `json:"jwks"`
-	AuthorityHints []string           `json:"authority_hints,omitempty"`
+	Issuer         string              `json:"iss"`
+	Subject        string              `json:"sub"`
+	IssuedAt       int                 `json:"iat"`
+	ExpiresAt      int                 `json:"exp"`
+	JWKS           goidc.JSONWebKeySet `json:"jwks"`
+	AuthorityHints []string            `json:"authority_hints,omitempty"`
 	Metadata       struct {
 		FederationAuthority *federationAuthority `json:"federation_entity,omitempty"`
 		OpenIDProvider      *openIDProvider      `json:"openid_provider,omitempty"`
@@ -45,7 +44,7 @@ type entityStatement struct {
 		// Subject is the identifier of the trust mark owner.
 		Subject string `json:"sub"`
 		// JWKS is the owner's federation entity keys used for signing.
-		JWKS jose.JSONWebKeySet `json:"jwks"`
+		JWKS goidc.JSONWebKeySet `json:"jwks"`
 	} `json:"trust_mark_owners,omitempty"`
 	signed string `json:"-"`
 }

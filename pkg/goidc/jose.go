@@ -77,6 +77,12 @@ func (s *JSONWebKeySet) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (jwks JSONWebKeySet) ToJOSE() jose.JSONWebKeySet {
+	return jose.JSONWebKeySet{
+		Keys: jwks.Keys,
+	}
+}
+
 func (jwks JSONWebKeySet) Key(kid string) (JSONWebKey, error) {
 	for _, key := range jwks.Keys {
 		if key.KeyID == kid {
