@@ -95,7 +95,7 @@ func main() {
 
 	templatesDirPath := filepath.Join(workingDir, "../templates")
 	jwksFilePath := filepath.Join(workingDir, "../keys/server.jwks")
-	serverCertFilePath := filepath.Join(workingDir, "../keys/server.cert")
+	serverCertFilePath := filepath.Join(workingDir, "../keys/server.crt")
 	serverCertKeyFilePath := filepath.Join(workingDir, "../keys/server.key")
 	clientJWKSFilePath := filepath.Join(workingDir, "../keys/client_one.jwks")
 
