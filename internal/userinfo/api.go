@@ -4,17 +4,18 @@ import (
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
-	router.HandleFunc(
+	router.Handle(
 		"POST "+config.EndpointPrefix+config.EndpointUserInfo,
-		oidc.Handler(config, handle),
+		goidc.CacheControlMiddleware(oidc.Handler(config, handle)),
 	)
 
-	router.HandleFunc(
+	router.Handle(
 		"GET "+config.EndpointPrefix+config.EndpointUserInfo,
-		oidc.Handler(config, handle),
+		goidc.CacheControlMiddleware(oidc.Handler(config, handle)),
 	)
 }
 

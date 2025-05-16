@@ -4,47 +4,48 @@ import (
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 	if config.PARIsEnabled {
-		router.HandleFunc(
+		router.Handle(
 			"POST "+config.EndpointPrefix+config.EndpointPushedAuthorization,
-			oidc.Handler(config, handlerPush),
+			goidc.CacheControlMiddleware(oidc.Handler(config, handlerPush)),
 		)
 	}
 
 	if config.CIBAIsEnabled {
-		router.HandleFunc(
+		router.Handle(
 			"POST "+config.EndpointPrefix+config.EndpointCIBA,
-			oidc.Handler(config, handlerCIBA),
+			goidc.CacheControlMiddleware(oidc.Handler(config, handlerCIBA)),
 		)
 	}
 
-	router.HandleFunc(
+	router.Handle(
 		"GET "+config.EndpointPrefix+config.EndpointAuthorize,
-		oidc.Handler(config, handler),
+		goidc.CacheControlMiddleware(oidc.Handler(config, handler)),
 	)
-	router.HandleFunc(
+	router.Handle(
 		"POST "+config.EndpointPrefix+config.EndpointAuthorize,
-		oidc.Handler(config, handler),
+		goidc.CacheControlMiddleware(oidc.Handler(config, handler)),
 	)
 
-	router.HandleFunc(
+	router.Handle(
 		"POST "+config.EndpointPrefix+config.EndpointAuthorize+"/{callback}",
-		oidc.Handler(config, handlerCallback),
+		goidc.CacheControlMiddleware(oidc.Handler(config, handlerCallback)),
 	)
-	router.HandleFunc(
+	router.Handle(
 		"GET "+config.EndpointPrefix+config.EndpointAuthorize+"/{callback}",
-		oidc.Handler(config, handlerCallback),
+		goidc.CacheControlMiddleware(oidc.Handler(config, handlerCallback)),
 	)
-	router.HandleFunc(
+	router.Handle(
 		"POST "+config.EndpointPrefix+config.EndpointAuthorize+"/{callback}/{callback_path...}",
-		oidc.Handler(config, handlerCallback),
+		goidc.CacheControlMiddleware(oidc.Handler(config, handlerCallback)),
 	)
-	router.HandleFunc(
+	router.Handle(
 		"GET "+config.EndpointPrefix+config.EndpointAuthorize+"/{callback}/{callback_path...}",
-		oidc.Handler(config, handlerCallback),
+		goidc.CacheControlMiddleware(oidc.Handler(config, handlerCallback)),
 	)
 }
 

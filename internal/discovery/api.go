@@ -4,17 +4,18 @@ import (
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
-	router.HandleFunc(
+	router.Handle(
 		"GET "+config.EndpointPrefix+config.EndpointJWKS,
-		oidc.Handler(config, handleJWKS),
+		goidc.CacheControlMiddleware(oidc.Handler(config, handleJWKS)),
 	)
 
-	router.HandleFunc(
+	router.Handle(
 		"GET "+config.EndpointPrefix+config.EndpointWellKnown,
-		oidc.Handler(config, handleWellKnown),
+		goidc.CacheControlMiddleware(oidc.Handler(config, handleWellKnown)),
 	)
 }
 

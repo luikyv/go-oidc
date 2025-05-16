@@ -92,9 +92,7 @@ func (op *Provider) WithOptions(opts ...ProviderOption) error {
 //	server := httop.NewServeMux()
 //	server.Handle("/", op.Handler())
 func (op Provider) Handler() http.Handler {
-
 	mux := http.NewServeMux()
-
 	discovery.RegisterHandlers(mux, &op.config)
 	token.RegisterHandlers(mux, &op.config)
 	authorize.RegisterHandlers(mux, &op.config)
@@ -102,8 +100,7 @@ func (op Provider) Handler() http.Handler {
 	dcr.RegisterHandlers(mux, &op.config)
 	federation.RegisterHandlers(mux, &op.config)
 
-	handler := goidc.CacheControlMiddleware(mux)
-	return handler
+	return mux
 }
 
 func (op Provider) RegisterRoutes(mux *http.ServeMux) {
@@ -113,8 +110,6 @@ func (op Provider) RegisterRoutes(mux *http.ServeMux) {
 	userinfo.RegisterHandlers(mux, &op.config)
 	dcr.RegisterHandlers(mux, &op.config)
 	federation.RegisterHandlers(mux, &op.config)
-	// TODO
-	// handler := goidc.CacheControlMiddleware(mux)
 }
 
 func (op *Provider) Run(address string, middlewares ...goidc.MiddlewareFunc) error {
