@@ -95,7 +95,7 @@ func main() {
 
 	templatesDirPath := filepath.Join(workingDir, "../templates")
 	jwksFilePath := filepath.Join(workingDir, "../keys/server.jwks")
-	serverCertFilePath := filepath.Join(workingDir, "../keys/server.cert")
+	serverCertFilePath := filepath.Join(workingDir, "../keys/server.crt")
 	serverCertKeyFilePath := filepath.Join(workingDir, "../keys/server.key")
 	clientJWKSFilePath := filepath.Join(workingDir, "../keys/client_one.jwks")
 
@@ -128,6 +128,7 @@ func main() {
 			[]string{TrustAnchorFedID},
 			[]string{TrustAnchorFedID},
 		),
+		provider.WithOpenIDFederationSignatureAlgs(goidc.RS256, goidc.ES256),
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithIDTokenSignatureAlgs(goidc.RS256),
 		provider.WithTokenAuthnMethods(
@@ -166,8 +167,6 @@ func main() {
 			"iat": timeutil.TimestampNow(),
 			"exp": timeutil.TimestampNow() + 600,
 			"metadata": map[string]any{
-				"federation_entity":    map[string]any{},
-				"openid_provider":      map[string]any{},
 				"openid_relying_party": client.ClientMeta,
 			},
 			"jwks":            clientFedJWKS.Public(),

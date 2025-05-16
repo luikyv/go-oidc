@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
 	"slices"
@@ -32,12 +33,13 @@ func Client(ctx oidc.Context, id string) (*goidc.Client, error) {
 	}
 
 	return &goidc.Client{
-		ID:               id,
-		IsFederated:      true,
-		RegistrationType: goidc.ClientRegistrationTypeAutomatic,
-		TrustMarkIDs:     trustMarks,
-		ExpiresAt:        &clientConfig.ExpiresAt,
-		ClientMeta:       clientConfig.Metadata.OpenIDClient.ClientMeta,
+		ID:                 id,
+		IsFederated:        true,
+		RegistrationType:   goidc.ClientRegistrationTypeAutomatic,
+		TrustMarkIDs:       trustMarks,
+		CreatedAtTimestamp: timeutil.TimestampNow(),
+		ExpiresAtTimestamp: clientConfig.ExpiresAt,
+		ClientMeta:         clientConfig.Metadata.OpenIDClient.ClientMeta,
 	}, nil
 }
 
@@ -212,7 +214,7 @@ func fetchEntityStatement(ctx oidc.Context, uri string) (string, error) {
 		return "", fmt.Errorf("fetching the entity statement resulted in status %d", resp.StatusCode)
 	}
 
-	if resp.Header.Get("Content-Type") != entityStatementJWTContentType {
+	if mediaType, _, _ := mime.ParseMediaType(resp.Header.Get("Content-Type")); mediaType != entityStatementJWTContentType {
 		return "", fmt.Errorf("fetching the entity statement resulted in content type %s which is invalid", resp.Header.Get("Content-Type"))
 	}
 
@@ -227,7 +229,7 @@ func fetchEntityStatement(ctx oidc.Context, uri string) (string, error) {
 func parseEntityConfiguration(
 	ctx oidc.Context,
 	signedStatement, entityID string,
-	jwks jose.JSONWebKeySet,
+	jwks goidc.JSONWebKeySet,
 ) (
 	entityStatement,
 	error,
@@ -238,7 +240,7 @@ func parseEntityConfiguration(
 func parseEntityStatement(
 	ctx oidc.Context,
 	signedStatement, entityID, authorityID string,
-	jwks jose.JSONWebKeySet,
+	jwks goidc.JSONWebKeySet,
 ) (
 	entityStatement,
 	error,
@@ -260,7 +262,7 @@ func parseEntityStatement(
 
 	var statement entityStatement
 	var claims jwt.Claims
-	if err := parsedStatement.Claims(jwks, &claims, &statement); err != nil {
+	if err := parsedStatement.Claims(jwks.ToJOSE(), &claims, &statement); err != nil {
 		return entityStatement{}, fmt.Errorf("invalid entity statement signature: %w", err)
 	}
 
@@ -335,7 +337,7 @@ func validateTrustMark(ctx oidc.Context, config entityStatement, requiredTrustMa
 
 	// var mark trustMark
 	var claims jwt.Claims
-	if err := parsedTrustMark.Claims(trustMarkIssuer.JWKS, &claims); err != nil {
+	if err := parsedTrustMark.Claims(trustMarkIssuer.JWKS.ToJOSE(), &claims); err != nil {
 		return fmt.Errorf("invalid trust mark signature: %w", err)
 	}
 
@@ -377,7 +379,7 @@ func validateTrustMark(ctx oidc.Context, config entityStatement, requiredTrustMa
 
 		var markDelegation trustMark
 		var claims jwt.Claims
-		if err := parsedTrustMark.Claims(trustMarkOwner.JWKS, &markDelegation, &claims); err != nil {
+		if err := parsedTrustMark.Claims(trustMarkOwner.JWKS.ToJOSE(), &markDelegation, &claims); err != nil {
 			return fmt.Errorf("invalid trust mark delegation signature: %w", err)
 		}
 
@@ -412,7 +414,7 @@ func newEntityStatement(ctx oidc.Context) (string, error) {
 		Subject:        ctx.Host,
 		IssuedAt:       timeutil.TimestampNow(),
 		ExpiresAt:      now + 600,
-		JWKS:           jose.JSONWebKeySet(publicJWKS),
+		JWKS:           publicJWKS,
 		AuthorityHints: ctx.OpenIDFedAuthorityHints,
 	}
 	statement.Metadata.OpenIDProvider = &openIDProvider{

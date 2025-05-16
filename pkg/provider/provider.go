@@ -92,18 +92,24 @@ func (op *Provider) WithOptions(opts ...ProviderOption) error {
 //	server := httop.NewServeMux()
 //	server.Handle("/", op.Handler())
 func (op Provider) Handler() http.Handler {
+	mux := http.NewServeMux()
+	discovery.RegisterHandlers(mux, &op.config)
+	token.RegisterHandlers(mux, &op.config)
+	authorize.RegisterHandlers(mux, &op.config)
+	userinfo.RegisterHandlers(mux, &op.config)
+	dcr.RegisterHandlers(mux, &op.config)
+	federation.RegisterHandlers(mux, &op.config)
 
-	server := http.NewServeMux()
+	return mux
+}
 
-	discovery.RegisterHandlers(server, &op.config)
-	token.RegisterHandlers(server, &op.config)
-	authorize.RegisterHandlers(server, &op.config)
-	userinfo.RegisterHandlers(server, &op.config)
-	dcr.RegisterHandlers(server, &op.config)
-	federation.RegisterHandlers(server, &op.config)
-
-	handler := goidc.CacheControlMiddleware(server)
-	return handler
+func (op Provider) RegisterRoutes(mux *http.ServeMux) {
+	discovery.RegisterHandlers(mux, &op.config)
+	token.RegisterHandlers(mux, &op.config)
+	authorize.RegisterHandlers(mux, &op.config)
+	userinfo.RegisterHandlers(mux, &op.config)
+	dcr.RegisterHandlers(mux, &op.config)
+	federation.RegisterHandlers(mux, &op.config)
 }
 
 func (op *Provider) Run(address string, middlewares ...goidc.MiddlewareFunc) error {
@@ -228,13 +234,13 @@ func (op *Provider) setDefaults() error {
 		[]goidc.Scope{goidc.ScopeOpenID})
 
 	op.config.ClientManager = nonZeroOrDefault(op.config.ClientManager,
-		goidc.ClientManager(storage.NewClientManager()))
+		goidc.ClientManager(storage.NewClientManager(defaultStorageMaxSize)))
 
 	op.config.AuthnSessionManager = nonZeroOrDefault(op.config.AuthnSessionManager,
-		goidc.AuthnSessionManager(storage.NewAuthnSessionManager()))
+		goidc.AuthnSessionManager(storage.NewAuthnSessionManager(defaultStorageMaxSize)))
 
 	op.config.GrantSessionManager = nonZeroOrDefault(op.config.GrantSessionManager,
-		goidc.GrantSessionManager(storage.NewGrantSessionManager()))
+		goidc.GrantSessionManager(storage.NewGrantSessionManager(defaultStorageMaxSize)))
 
 	op.config.TokenOptionsFunc = nonZeroOrDefault(op.config.TokenOptionsFunc,
 		defaultTokenOptionsFunc())
@@ -367,12 +373,12 @@ func (op *Provider) setDefaults() error {
 		op.config.OpenIDFedClientFunc = federation.Client
 		op.config.OpenIDFedEntityStatementSigAlgs = nonZeroOrDefault(op.config.OpenIDFedEntityStatementSigAlgs,
 			[]goidc.SignatureAlgorithm{defaultOpenIDFedSigAlg})
+		op.config.OpenIDFedTrustMarkSigAlgs = nonZeroOrDefault(op.config.OpenIDFedTrustMarkSigAlgs,
+			op.config.OpenIDFedEntityStatementSigAlgs)
 		op.config.OpenIDFedTrustChainMaxDepth = nonZeroOrDefault(op.config.OpenIDFedTrustChainMaxDepth,
 			defaultOpenIDFedTrustChainMaxDepth)
 		op.config.OpenIDFedClientRegTypes = nonZeroOrDefault(op.config.OpenIDFedClientRegTypes,
 			[]goidc.ClientRegistrationType{defaultOpenIDFedRegType})
-		op.config.OpenIDFedTrustMarkSigAlgs = nonZeroOrDefault(op.config.OpenIDFedTrustMarkSigAlgs,
-			[]goidc.SignatureAlgorithm{defaultOpenIDFedSigAlg})
 	}
 
 	return nil

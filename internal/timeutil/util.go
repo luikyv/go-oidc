@@ -6,7 +6,7 @@ package timeutil
 import "time"
 
 func TimestampNow() int {
-	return int(time.Now().Unix())
+	return int(Now().Unix())
 }
 
 func Timestamp(t time.Time) int {

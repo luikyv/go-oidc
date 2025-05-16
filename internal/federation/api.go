@@ -4,15 +4,16 @@ import (
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
 	if !config.OpenIDFedIsEnabled {
 		return
 	}
-	router.HandleFunc(
+	router.Handle(
 		"GET "+config.EndpointPrefix+config.OpenIDFedEndpoint,
-		oidc.Handler(config, handleFetchStatement),
+		goidc.CacheControlMiddleware(oidc.Handler(config, handleFetchStatement)),
 	)
 }
 

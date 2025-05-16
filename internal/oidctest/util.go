@@ -68,9 +68,9 @@ func NewContext(t testing.TB) oidc.Context {
 		Profile: goidc.ProfileOpenID,
 		Host:    "https://example.com",
 
-		ClientManager:       storage.NewClientManager(),
-		AuthnSessionManager: storage.NewAuthnSessionManager(),
-		GrantSessionManager: storage.NewGrantSessionManager(),
+		ClientManager:       storage.NewClientManager(100),
+		AuthnSessionManager: storage.NewAuthnSessionManager(100),
+		GrantSessionManager: storage.NewGrantSessionManager(100),
 
 		Scopes: []goidc.Scope{goidc.ScopeOpenID, Scope1, Scope2},
 		JWKSFunc: func(ctx context.Context) (goidc.JSONWebKeySet, error) {

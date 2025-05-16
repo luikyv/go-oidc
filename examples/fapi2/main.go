@@ -29,7 +29,7 @@ func main() {
 	clientTwoCertFilePath := filepath.Join(sourceDir, "../keys/client_two.cert")
 
 	serverJWKSFilePath := filepath.Join(sourceDir, "../keys/server.jwks")
-	serverCertFilePath := filepath.Join(sourceDir, "../keys/server.cert")
+	serverCertFilePath := filepath.Join(sourceDir, "../keys/server.crt")
 	serverCertKeyFilePath := filepath.Join(sourceDir, "../keys/server.key")
 
 	// Create and configure the OpenID provider.

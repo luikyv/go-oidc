@@ -27,7 +27,8 @@ type Client struct {
 	// HashedRegistrationToken is the thumbprint of the registration access token
 	// generated during dynamic client registration.
 	HashedRegistrationToken string `json:"hashed_registration_token,omitempty"`
-	ExpiresAt               *int   `json:"expires_at,omitempty"`
+	CreatedAtTimestamp      int    `json:"created_at,omitempty"`
+	ExpiresAtTimestamp      int    `json:"expires_at,omitempty"`
 
 	IsFederated      bool                   `json:"is_federated"`
 	RegistrationType ClientRegistrationType `json:"registration_type,omitempty"`

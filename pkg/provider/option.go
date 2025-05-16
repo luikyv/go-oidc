@@ -999,6 +999,14 @@ func WithOpenIDFederation(jwks goidc.JWKSFunc, trustedAuthorities, authorityHint
 	}
 }
 
+func WithOpenIDFederationSignatureAlgs(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) ProviderOption {
+	algs = appendIfNotIn(algs, alg)
+	return func(p *Provider) error {
+		p.config.OpenIDFedEntityStatementSigAlgs = algs
+		return nil
+	}
+}
+
 func WithOpenIDFerationSignerFunc(f goidc.SignerFunc) ProviderOption {
 	return func(p *Provider) error {
 		p.config.OpenIDFedSignerFunc = f
