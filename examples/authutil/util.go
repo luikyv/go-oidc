@@ -69,11 +69,12 @@ func Client(id string, jwksFilepath string) (*goidc.Client, goidc.JSONWebKeySet)
 		scopesIDs = append(scopesIDs, scope.ID)
 	}
 
+	publicJWKS := jwks.Public()
 	return &goidc.Client{
 		ID: id,
 		ClientMeta: goidc.ClientMeta{
 			ScopeIDs:   strings.Join(scopesIDs, " "),
-			PublicJWKS: jwks.Public(),
+			PublicJWKS: &publicJWKS,
 			GrantTypes: []goidc.GrantType{
 				goidc.GrantAuthorizationCode,
 				goidc.GrantRefreshToken,
