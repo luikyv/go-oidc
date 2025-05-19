@@ -23,8 +23,7 @@ func create(ctx oidc.Context, initialToken string, meta *goidc.ClientMeta) (resp
 
 	id := clientID()
 	if err := ctx.HandleDynamicClient(id, meta); err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata,
-			"invalid metadata", err)
+		return response{}, err
 	}
 
 	if err := validate(ctx, meta); err != nil {

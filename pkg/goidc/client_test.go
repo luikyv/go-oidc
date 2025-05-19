@@ -29,11 +29,11 @@ func TestFetchPublicJWKS(t *testing.T) {
 	client := goidc.Client{
 		ClientMeta: goidc.ClientMeta{
 			PublicJWKSURI: server.URL,
-			PublicJWKS:    goidc.JSONWebKeySet{},
+			PublicJWKS:    nil,
 		},
 	}
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		// When.
 		_, err := client.FetchPublicJWKS(http.DefaultClient)
 		// Then.

@@ -28,6 +28,6 @@ func TestAuthorizationDetails(t *testing.T) {
 		authDetails.Actions(),
 		[]string{"random_action"},
 	); diff != "" {
-		t.Errorf(diff)
+		t.Error(diff)
 	}
 }

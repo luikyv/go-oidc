@@ -73,7 +73,7 @@ func TestPushAuth_WithJAR(t *testing.T) {
 	ctx.JARSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
 
 	privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
-	client.PublicJWKS = goidc.JSONWebKeySet{
+	client.PublicJWKS = &goidc.JSONWebKeySet{
 		Keys: []goidc.JSONWebKey{privateJWK.Public()},
 	}
 

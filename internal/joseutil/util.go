@@ -58,7 +58,16 @@ func (s OpaqueSigner) SignPayload(payload []byte, alg jose.SignatureAlgorithm) (
 	hasher := h.New()
 	hasher.Write(payload)
 	digest := hasher.Sum(nil)
-	return s.Signer.Sign(rand.Reader, digest, h)
+
+	var opts crypto.SignerOpts = h
+	if alg == jose.PS256 || alg == jose.PS384 || alg == jose.PS512 {
+		opts = &rsa.PSSOptions{
+			SaltLength: rsa.PSSSaltLengthEqualsHash,
+			Hash:       h,
+		}
+	}
+
+	return s.Signer.Sign(rand.Reader, digest, opts)
 }
 
 type OpaqueDecrypter struct {

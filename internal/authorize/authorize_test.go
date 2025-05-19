@@ -123,7 +123,7 @@ func TestInitAuth_JAR(t *testing.T) {
 
 	privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
 	publicJWK := privateJWK.Public()
-	client.PublicJWKS = goidc.JSONWebKeySet{
+	client.PublicJWKS = &goidc.JSONWebKeySet{
 		Keys: []goidc.JSONWebKey{publicJWK},
 	}
 
