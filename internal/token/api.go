@@ -7,23 +7,23 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
+func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlewares ...goidc.MiddlewareFunc) {
 	router.Handle(
 		"POST "+config.EndpointPrefix+config.EndpointToken,
-		goidc.CacheControlMiddleware(oidc.Handler(config, handleCreate)),
+		goidc.ApplyMiddlewares(oidc.Handler(config, handleCreate), middlewares...),
 	)
 
 	if config.TokenIntrospectionIsEnabled {
 		router.Handle(
 			"POST "+config.EndpointPrefix+config.EndpointIntrospection,
-			goidc.CacheControlMiddleware(oidc.Handler(config, handleIntrospection)),
+			goidc.ApplyMiddlewares(oidc.Handler(config, handleIntrospection), middlewares...),
 		)
 	}
 
 	if config.TokenRevocationIsEnabled {
 		router.Handle(
 			"POST "+config.EndpointPrefix+config.EndpointTokenRevocation,
-			goidc.CacheControlMiddleware(oidc.Handler(config, handleRevocation)),
+			goidc.ApplyMiddlewares(oidc.Handler(config, handleRevocation), middlewares...),
 		)
 	}
 }

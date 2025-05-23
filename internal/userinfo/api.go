@@ -7,15 +7,15 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
+func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlewares ...goidc.MiddlewareFunc) {
 	router.Handle(
 		"POST "+config.EndpointPrefix+config.EndpointUserInfo,
-		goidc.CacheControlMiddleware(oidc.Handler(config, handle)),
+		goidc.ApplyMiddlewares(oidc.Handler(config, handle), middlewares...),
 	)
 
 	router.Handle(
 		"GET "+config.EndpointPrefix+config.EndpointUserInfo,
-		goidc.CacheControlMiddleware(oidc.Handler(config, handle)),
+		goidc.ApplyMiddlewares(oidc.Handler(config, handle), middlewares...),
 	)
 }
 

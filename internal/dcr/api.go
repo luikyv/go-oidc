@@ -8,26 +8,26 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
+func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlewares ...goidc.MiddlewareFunc) {
 	if config.DCRIsEnabled {
 		router.Handle(
 			"POST "+config.EndpointPrefix+config.EndpointDCR,
-			goidc.CacheControlMiddleware(oidc.Handler(config, handleCreate)),
+			goidc.ApplyMiddlewares(oidc.Handler(config, handleCreate), middlewares...),
 		)
 
 		router.Handle(
 			"PUT "+config.EndpointPrefix+config.EndpointDCR+"/{client_id}",
-			goidc.CacheControlMiddleware(oidc.Handler(config, handleUpdate)),
+			goidc.ApplyMiddlewares(oidc.Handler(config, handleUpdate), middlewares...),
 		)
 
 		router.Handle(
 			"GET "+config.EndpointPrefix+config.EndpointDCR+"/{client_id}",
-			goidc.CacheControlMiddleware(oidc.Handler(config, handleGet)),
+			goidc.ApplyMiddlewares(oidc.Handler(config, handleGet), middlewares...),
 		)
 
 		router.Handle(
 			"DELETE "+config.EndpointPrefix+config.EndpointDCR+"/{client_id}",
-			goidc.CacheControlMiddleware(oidc.Handler(config, handleDelete)),
+			goidc.ApplyMiddlewares(oidc.Handler(config, handleDelete), middlewares...),
 		)
 	}
 }
