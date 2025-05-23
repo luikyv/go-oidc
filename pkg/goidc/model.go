@@ -274,6 +274,13 @@ type ClientCertFunc func(*http.Request) (*x509.Certificate, error)
 
 type MiddlewareFunc func(next http.Handler) http.Handler
 
+func ApplyMiddlewares(h http.Handler, middlewares ...MiddlewareFunc) http.Handler {
+	for _, m := range middlewares {
+		h = m(h)
+	}
+	return h
+}
+
 // HandleDynamicClientFunc defines a function that will be executed during DCR
 // and DCM.
 // It can be used to modify the client and perform custom validations.

@@ -91,32 +91,24 @@ func (op *Provider) WithOptions(opts ...ProviderOption) error {
 //
 //	server := httop.NewServeMux()
 //	server.Handle("/", op.Handler())
-func (op Provider) Handler() http.Handler {
+func (op Provider) Handler(middlewares ...goidc.MiddlewareFunc) http.Handler {
 	mux := http.NewServeMux()
-	discovery.RegisterHandlers(mux, &op.config)
-	token.RegisterHandlers(mux, &op.config)
-	authorize.RegisterHandlers(mux, &op.config)
-	userinfo.RegisterHandlers(mux, &op.config)
-	dcr.RegisterHandlers(mux, &op.config)
-	federation.RegisterHandlers(mux, &op.config)
-
+	op.RegisterRoutes(mux, middlewares...)
 	return mux
 }
 
-func (op Provider) RegisterRoutes(mux *http.ServeMux) {
-	discovery.RegisterHandlers(mux, &op.config)
-	token.RegisterHandlers(mux, &op.config)
-	authorize.RegisterHandlers(mux, &op.config)
-	userinfo.RegisterHandlers(mux, &op.config)
-	dcr.RegisterHandlers(mux, &op.config)
-	federation.RegisterHandlers(mux, &op.config)
+func (op Provider) RegisterRoutes(mux *http.ServeMux, middlewares ...goidc.MiddlewareFunc) {
+	middlewares = append(middlewares, goidc.CacheControlMiddleware)
+	discovery.RegisterHandlers(mux, &op.config, middlewares...)
+	token.RegisterHandlers(mux, &op.config, middlewares...)
+	authorize.RegisterHandlers(mux, &op.config, middlewares...)
+	userinfo.RegisterHandlers(mux, &op.config, middlewares...)
+	dcr.RegisterHandlers(mux, &op.config, middlewares...)
+	federation.RegisterHandlers(mux, &op.config, middlewares...)
 }
 
 func (op *Provider) Run(address string, middlewares ...goidc.MiddlewareFunc) error {
-	handler := op.Handler()
-	for _, middleware := range middlewares {
-		handler = middleware(handler)
-	}
+	handler := op.Handler(middlewares...)
 	return http.ListenAndServe(address, handler)
 }
 

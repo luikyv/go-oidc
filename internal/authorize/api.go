@@ -7,45 +7,45 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration) {
+func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlewares ...goidc.MiddlewareFunc) {
 	if config.PARIsEnabled {
 		router.Handle(
 			"POST "+config.EndpointPrefix+config.EndpointPushedAuthorization,
-			goidc.CacheControlMiddleware(oidc.Handler(config, handlerPush)),
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerPush), middlewares...),
 		)
 	}
 
 	if config.CIBAIsEnabled {
 		router.Handle(
 			"POST "+config.EndpointPrefix+config.EndpointCIBA,
-			goidc.CacheControlMiddleware(oidc.Handler(config, handlerCIBA)),
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerCIBA), middlewares...),
 		)
 	}
 
 	router.Handle(
 		"GET "+config.EndpointPrefix+config.EndpointAuthorize,
-		goidc.CacheControlMiddleware(oidc.Handler(config, handler)),
+		goidc.ApplyMiddlewares(oidc.Handler(config, handler), middlewares...),
 	)
 	router.Handle(
 		"POST "+config.EndpointPrefix+config.EndpointAuthorize,
-		goidc.CacheControlMiddleware(oidc.Handler(config, handler)),
+		goidc.ApplyMiddlewares(oidc.Handler(config, handler), middlewares...),
 	)
 
 	router.Handle(
 		"POST "+config.EndpointPrefix+config.EndpointAuthorize+"/{callback}",
-		goidc.CacheControlMiddleware(oidc.Handler(config, handlerCallback)),
+		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...),
 	)
 	router.Handle(
 		"GET "+config.EndpointPrefix+config.EndpointAuthorize+"/{callback}",
-		goidc.CacheControlMiddleware(oidc.Handler(config, handlerCallback)),
+		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...),
 	)
 	router.Handle(
 		"POST "+config.EndpointPrefix+config.EndpointAuthorize+"/{callback}/{callback_path...}",
-		goidc.CacheControlMiddleware(oidc.Handler(config, handlerCallback)),
+		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...),
 	)
 	router.Handle(
 		"GET "+config.EndpointPrefix+config.EndpointAuthorize+"/{callback}/{callback_path...}",
-		goidc.CacheControlMiddleware(oidc.Handler(config, handlerCallback)),
+		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...),
 	)
 }
 
