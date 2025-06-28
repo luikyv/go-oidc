@@ -579,6 +579,14 @@ func (ctx Context) ExportableSubject(sub string, client *goidc.Client) string {
 	return ctx.GeneratePairwiseSubIDFunc(ctx, sub, client)
 }
 
+func (ctx Context) HandlePARSession(as *goidc.AuthnSession, client *goidc.Client) error {
+	if ctx.HandlePARSessionFunc == nil {
+		return nil
+	}
+
+	return ctx.HandlePARSessionFunc(ctx.Request, as, client)
+}
+
 //---------------------------------------- context.Context ----------------------------------------//
 
 func (ctx Context) Context() context.Context {
@@ -640,7 +648,7 @@ func (ctx Context) SigAlgs() ([]goidc.SignatureAlgorithm, error) {
 
 	var algorithms []goidc.SignatureAlgorithm
 	for _, jwk := range jwks.Keys {
-		if jwk.Use == string(goidc.KeyUsageSignature) {
+		if inferKeyUsage(jwk) == goidc.KeyUsageSignature {
 			algorithms = append(algorithms, goidc.SignatureAlgorithm(jwk.Algorithm))
 		}
 	}
@@ -729,7 +737,7 @@ func (ctx Context) Decrypt(
 		key = joseutil.OpaqueDecrypter{Algorithm: alg, Decrypter: decrypter}
 	} else {
 		jwk, err := ctx.JWK(keyID)
-		if err != nil || jwk.Use != string(goidc.KeyUsageEncryption) {
+		if err != nil || inferKeyUsage(jwk) != goidc.KeyUsageEncryption {
 			return "", errors.New("invalid jwk used for encryption")
 		}
 		key = jwk
@@ -772,4 +780,19 @@ func (ctx Context) OpenIDFedSign(claims any, opts *jose.SignerOptions) (string, 
 			Signer:    key,
 		},
 	}, opts)
+}
+
+func inferKeyUsage(key goidc.JSONWebKey) goidc.KeyUsage {
+	if key.Use != "" {
+		return goidc.KeyUsage(key.Use)
+	}
+
+	switch key.Algorithm {
+	case "RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "PS256", "PS384", "PS512", "HS256", "HS384", "HS512":
+		return goidc.KeyUsageSignature
+	case "RSA1_5", "RSA_OAEP", "RSA_OAEP_256":
+		return goidc.KeyUsageEncryption
+	default:
+		return ""
+	}
 }

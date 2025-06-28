@@ -779,7 +779,7 @@ func TestWithPAR(t *testing.T) {
 	}
 
 	// When.
-	err := WithPAR(60)(p)
+	err := WithPAR(nil, 60)(p)
 
 	// Then.
 	if err != nil {
@@ -804,7 +804,7 @@ func TestWithPARRequired(t *testing.T) {
 	}
 
 	// When.
-	err := WithPARRequired(60)(p)
+	err := WithPARRequired(nil, 60)(p)
 
 	// Then.
 	if err != nil {
@@ -1560,7 +1560,7 @@ func TestWithStaticClient(t *testing.T) {
 	}
 }
 
-func TestWithPolicy(t *testing.T) {
+func TestWithPolicies(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -1570,7 +1570,7 @@ func TestWithPolicy(t *testing.T) {
 	}
 
 	// When.
-	err := WithPolicy(policy)(p)
+	err := WithPolicies(policy)(p)
 
 	// Then.
 	if err != nil {

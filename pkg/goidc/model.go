@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"slices"
 	"strings"
@@ -400,8 +401,53 @@ func NewOpaqueTokenOptions(length int, lifetimeSecs int) TokenOptions {
 // The flow can be resumed at the callback endpoint with the session callback ID.
 type AuthnFunc func(http.ResponseWriter, *http.Request, *AuthnSession) (AuthnStatus, error)
 
+type AuthnStep struct {
+	ID        string
+	AuthnFunc AuthnFunc
+}
+
+func NewAuthnStep(id string, authnFunc AuthnFunc) AuthnStep {
+	return AuthnStep{
+		ID:        id,
+		AuthnFunc: authnFunc,
+	}
+}
+
+type authnSteps []AuthnStep
+
+func (steps authnSteps) Authenticate(w http.ResponseWriter, r *http.Request, as *AuthnSession) (AuthnStatus, error) {
+	// Initialize the step ID with the first step if not set.
+	if as.StepID == "" {
+		as.StepID = steps[0].ID
+	}
+
+	for idx, step := range steps {
+		if as.StepID != step.ID {
+			continue
+		}
+
+		// Execute the step function and early return if it ends in progress or failure.
+		if status, err := step.AuthnFunc(w, r, as); status != StatusSuccess || err != nil {
+			return status, err
+		}
+
+		// The current step succeeded, update the step ID to the next step.
+		nextIdx := idx + 1
+		// Return success if the current step is the last step.
+		if nextIdx == len(steps) {
+			return StatusSuccess, nil
+		}
+
+		// Update the step ID to the next step.
+		// Note that the next value of step.ID will match the updated as.StepID.
+		as.StepID = steps[nextIdx].ID
+	}
+
+	return StatusFailure, errors.New("invalid policy, access denied")
+}
+
 // SetUpAuthnFunc is responsible for initiating the authentication session.
-// It returns true when the policy is ready to executed and false for when the
+// It returns true when the policy is ready to execute and false for when the
 // policy should be skipped.
 type SetUpAuthnFunc func(*http.Request, *Client, *AuthnSession) bool
 
@@ -413,7 +459,7 @@ type AuthnPolicy struct {
 	Authenticate AuthnFunc
 }
 
-// NewPolicy creates a policy that will be selected based on setUpFunc and that
+// NewPolicy creates an authentication policy that will be selected based on setUpFunc and that
 // authenticates users with authnFunc.
 func NewPolicy(id string, setUpFunc SetUpAuthnFunc, authnFunc AuthnFunc) AuthnPolicy {
 	return AuthnPolicy{
@@ -421,6 +467,13 @@ func NewPolicy(id string, setUpFunc SetUpAuthnFunc, authnFunc AuthnFunc) AuthnPo
 		Authenticate: authnFunc,
 		SetUp:        setUpFunc,
 	}
+}
+
+// NewPolicyWithSteps creates an authentication policy composed of a sequence of steps.
+// When a step succeeds, the session is updated to point to the next step.
+// Once the final step succeeds, the authentication flow completes with success.
+func NewPolicyWithSteps(id string, setUpFunc SetUpAuthnFunc, steps ...AuthnStep) AuthnPolicy {
+	return NewPolicy(id, setUpFunc, authnSteps(steps).Authenticate)
 }
 
 type TokenConfirmation struct {
@@ -623,13 +676,7 @@ func (d AuthorizationDetail) string(key string) string {
 	return s
 }
 
-type HandleJWTBearerGrantAssertionFunc func(
-	r *http.Request,
-	assertion string,
-) (
-	JWTBearerGrantInfo,
-	error,
-)
+type HandleJWTBearerGrantAssertionFunc func(r *http.Request, assertion string) (JWTBearerGrantInfo, error)
 
 type JWTBearerGrantInfo struct {
 	Subject string
@@ -682,3 +729,5 @@ const (
 )
 
 type RequiredTrustMarksFunc func(context.Context) []string
+
+type HandleSessionFunc func(*http.Request, *AuthnSession, *Client) error

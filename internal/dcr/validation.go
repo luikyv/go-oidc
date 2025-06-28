@@ -298,7 +298,7 @@ func validateSectorIdentifierURI(ctx oidc.Context, meta *goidc.ClientMeta) error
 		return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata,
 			"could not fetch the sector_identifier_uri", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var uris []string
 	if err := json.NewDecoder(resp.Body).Decode(&uris); err != nil {

@@ -134,7 +134,7 @@ func sendClientNotification(
 	if err != nil {
 		return err
 	}
-	defer notificationResp.Body.Close()
+	defer func() { _ = notificationResp.Body.Close() }()
 
 	if !slices.Contains([]int{http.StatusNoContent, http.StatusOK}, notificationResp.StatusCode) {
 		return fmt.Errorf("sending notification resulted in status %d", notificationResp.StatusCode)

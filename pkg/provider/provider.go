@@ -50,7 +50,7 @@ func New(
 	profile goidc.Profile,
 	issuer string,
 	jwksFunc goidc.JWKSFunc,
-	opts ...ProviderOption,
+	opts ...Option,
 ) (
 	*Provider,
 	error,
@@ -71,7 +71,7 @@ func New(
 	return op, nil
 }
 
-func (op *Provider) WithOptions(opts ...ProviderOption) error {
+func (op *Provider) WithOptions(opts ...Option) error {
 	for _, opt := range opts {
 		if err := opt(op); err != nil {
 			return err
@@ -89,7 +89,7 @@ func (op *Provider) WithOptions(opts ...ProviderOption) error {
 // provider.
 // This may be used to add the oidc logic to a HTTP server.
 //
-//	server := httop.NewServeMux()
+//	server := http.NewServeMux()
 //	server.Handle("/", op.Handler())
 func (op Provider) Handler(middlewares ...goidc.MiddlewareFunc) http.Handler {
 	mux := http.NewServeMux()
@@ -195,12 +195,10 @@ func (op *Provider) NotifyCIBAFailure(ctx context.Context, authReqID string, err
 // MakeToken generates a new access token based on the provided grant information
 // and stores the corresponding grant session.
 //
-// This method is intended for scenarios where a token is required for the provider itself.
+// This function is intended for scenarios where a token is required for the provider itself.
 func (op *Provider) MakeToken(ctx context.Context, gi goidc.GrantInfo) (string, error) {
 	oidcCtx := oidc.FromContext(ctx, &op.config)
-	client := &goidc.Client{
-		ID: gi.ClientID,
-	}
+	client := &goidc.Client{ID: gi.ClientID}
 
 	tkn, err := token.Make(oidcCtx, gi, client)
 	if err != nil {

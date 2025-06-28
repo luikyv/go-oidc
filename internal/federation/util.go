@@ -208,7 +208,7 @@ func fetchEntityStatement(ctx oidc.Context, uri string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("could not fetch the entity statement: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("fetching the entity statement resulted in status %d", resp.StatusCode)

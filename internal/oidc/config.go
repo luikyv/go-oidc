@@ -138,8 +138,9 @@ type Configuration struct {
 	PARIsEnabled bool
 	// PARIsRequired indicates that authorization requests can only be made if
 	// they were pushed.
-	PARIsRequired   bool
-	PARLifetimeSecs int
+	PARIsRequired        bool
+	HandlePARSessionFunc goidc.HandleSessionFunc
+	PARLifetimeSecs      int
 	// PARAllowUnregisteredRedirectURI indicates whether the redirect URIs
 	// informed during PAR must be previously registered or not.
 	PARAllowUnregisteredRedirectURI bool

@@ -166,7 +166,7 @@ func validatePushedRequest(
 	}
 
 	if ctx.Profile == goidc.ProfileFAPI1 {
-		if ctx.PKCEIsEnabled && req.AuthorizationParameters.CodeChallenge == "" {
+		if ctx.PKCEIsEnabled && req.CodeChallenge == "" {
 			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "code_challenge is required")
 		}
 	}

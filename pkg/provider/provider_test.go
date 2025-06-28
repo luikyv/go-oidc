@@ -85,7 +85,7 @@ func TestNew_WithOptions(t *testing.T) {
 		WithImplicitGrant(),
 		WithTokenAuthnMethods(goidc.ClientAuthnPrivateKeyJWT, goidc.ClientAuthnSecretJWT),
 		WithDCR(nil, nil),
-		WithPAR(0),
+		WithPAR(nil, 0),
 		WithJAR(goidc.RS256),
 		WithJAREncryption(goidc.RSA_OAEP),
 		WithJARM(goidc.RS256),
