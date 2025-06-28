@@ -98,7 +98,7 @@ func PrivateJWKSFunc(filename string) goidc.JWKSFunc {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer jwksFile.Close()
+	defer func() { _ = jwksFile.Close() }()
 
 	jwksBytes, err := io.ReadAll(jwksFile)
 	if err != nil {
@@ -120,7 +120,7 @@ func privateJWKS(filename string) goidc.JSONWebKeySet {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer jwksFile.Close()
+	defer func() { _ = jwksFile.Close() }()
 
 	jwksBytes, err := io.ReadAll(jwksFile)
 	if err != nil {
@@ -144,7 +144,7 @@ func ClientCACertPool(clientCertFiles ...string) *x509.CertPool {
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer clientOneCert.Close()
+		defer func() { _ = clientOneCert.Close() }()
 
 		clientCertBytes, err := io.ReadAll(clientOneCert)
 		if err != nil {

@@ -52,7 +52,7 @@ func jarFromRequestURI(
 		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"invalid request uri", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest,

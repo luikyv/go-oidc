@@ -10,13 +10,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func pushAuth(
-	ctx oidc.Context,
-	req request,
-) (
-	pushedResponse,
-	error,
-) {
+func pushAuth(ctx oidc.Context, req request) (pushedResponse, error) {
 
 	c, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
 	if err != nil {
@@ -28,9 +22,14 @@ func pushAuth(
 		return pushedResponse{}, err
 	}
 
+	if err := ctx.HandlePARSession(session, c); err != nil {
+		return pushedResponse{}, err
+	}
+
 	if err := ctx.SaveAuthnSession(session); err != nil {
 		return pushedResponse{}, err
 	}
+
 	return pushedResponse{
 		RequestURI: session.PushedAuthReqID,
 		ExpiresIn:  ctx.PARLifetimeSecs,
@@ -38,14 +37,7 @@ func pushAuth(
 }
 
 // pushedAuthnSession builds a new authentication session and saves it.
-func pushedAuthnSession(
-	ctx oidc.Context,
-	req request,
-	client *goidc.Client,
-) (
-	*goidc.AuthnSession,
-	error,
-) {
+func pushedAuthnSession(ctx oidc.Context, req request, client *goidc.Client) (*goidc.AuthnSession, error) {
 	var session *goidc.AuthnSession
 	var err error
 	if shouldUseJARDuringPAR(ctx, req.AuthorizationParameters, client) {
@@ -65,14 +57,7 @@ func pushedAuthnSession(
 	return session, nil
 }
 
-func simplePushedAuthnSession(
-	ctx oidc.Context,
-	req request,
-	client *goidc.Client,
-) (
-	*goidc.AuthnSession,
-	error,
-) {
+func simplePushedAuthnSession(ctx oidc.Context, req request, client *goidc.Client) (*goidc.AuthnSession, error) {
 	if err := validateSimplePushedRequest(ctx, req, client); err != nil {
 		return nil, err
 	}
@@ -81,14 +66,7 @@ func simplePushedAuthnSession(
 	return session, nil
 }
 
-func pushedAuthnSessionWithJAR(
-	ctx oidc.Context,
-	req request,
-	client *goidc.Client,
-) (
-	*goidc.AuthnSession,
-	error,
-) {
+func pushedAuthnSessionWithJAR(ctx oidc.Context, req request, client *goidc.Client) (*goidc.AuthnSession, error) {
 
 	if req.RequestObject == "" {
 		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest,

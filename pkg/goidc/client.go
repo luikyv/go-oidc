@@ -72,7 +72,7 @@ func (c *Client) fetchJWKS(httpClient *http.Client) (*JSONWebKeySet, error) {
 	if err != nil {
 		return nil, WrapError(ErrorCodeInvalidClientMetadata, "could not fetch the client jwks", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, WrapError(ErrorCodeInvalidClientMetadata, fmt.Sprintf("fetching the client jwks resulted in %d", resp.StatusCode), err)

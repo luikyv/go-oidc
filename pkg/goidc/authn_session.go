@@ -50,6 +50,9 @@ type AuthnSession struct {
 	// PolicyID is the id of the autentication policy used to authenticate
 	// the user.
 	PolicyID string `json:"policy_id,omitempty"`
+	// StepID is the identifier of the current step in a multi-step
+	// authentication policy. It is used only when such a policy is in effect.
+	StepID string `json:"step_id,omitempty"`
 
 	// GrantedScopes is the scopes the client will be granted access once the
 	// access token is generated.
