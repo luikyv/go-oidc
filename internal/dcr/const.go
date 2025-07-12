@@ -1,7 +1,6 @@
 package dcr
 
 const (
-	idLength int = 30
 	// secretLength must be at least 64 characters, so that it can be also
 	// used for symmetric encryption during, for instance, authentication with
 	// client_secret_jwt.

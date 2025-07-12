@@ -123,6 +123,14 @@ func (ctx Context) HandleDynamicClient(id string, c *goidc.ClientMeta) error {
 	return ctx.HandleDynamicClientFunc(ctx.Request, id, c)
 }
 
+func (ctx Context) ClientID() string {
+	if ctx.ClientIDFunc == nil {
+		return "dc-" + strutil.Random(30)
+	}
+
+	return ctx.ClientIDFunc(ctx)
+}
+
 func (ctx Context) CheckJTI(jti string) error {
 	if ctx.CheckJTIFunc == nil {
 		return nil

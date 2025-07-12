@@ -289,6 +289,8 @@ type HandleDynamicClientFunc func(r *http.Request, id string, meta *ClientMeta) 
 
 type ValidateInitialAccessTokenFunc func(*http.Request, string) error
 
+type ClientIDFunc func(context.Context) string
+
 // RenderErrorFunc defines a function that will be called when errors
 // during the authorization request cannot be handled.
 type RenderErrorFunc func(http.ResponseWriter, *http.Request, error) error
