@@ -518,17 +518,10 @@ func TestWithDCR(t *testing.T) {
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
-	var handleDCRFunc goidc.HandleDynamicClientFunc = func(
-		r *http.Request,
-		_ string,
-		c *goidc.ClientMeta,
-	) error {
+	var handleDCRFunc goidc.HandleDynamicClientFunc = func(*http.Request, string, *goidc.ClientMeta) error {
 		return nil
 	}
-	var validateInitialTokenFunc goidc.ValidateInitialAccessTokenFunc = func(
-		r *http.Request,
-		s string,
-	) error {
+	var validateInitialTokenFunc goidc.ValidateInitialAccessTokenFunc = func(*http.Request, string) error {
 		return nil
 	}
 
@@ -574,6 +567,27 @@ func TestWithDCRTokenRotation(t *testing.T) {
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
+	}
+}
+
+func TestWithClientIDFunc(t *testing.T) {
+	// Given.
+	op := &Provider{
+		config: oidc.Configuration{},
+	}
+
+	// When.
+	err := WithClientIDFunc(func(context.Context) string {
+		return "client_id"
+	})(op)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if op.config.ClientIDFunc == nil {
+		t.Error("ClientIDFunc cannot be nil")
 	}
 }
 

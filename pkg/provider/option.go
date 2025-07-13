@@ -281,6 +281,13 @@ func WithDCR(
 	}
 }
 
+func WithClientIDFunc(f goidc.ClientIDFunc) Option {
+	return func(p *Provider) error {
+		p.config.ClientIDFunc = f
+		return nil
+	}
+}
+
 // WithDCRTokenRotation makes the registration access token rotate during client
 // update requests.
 // To enable dynamic client registration, see [WithDCR].

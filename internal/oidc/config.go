@@ -99,6 +99,7 @@ type Configuration struct {
 	DCRTokenRotationIsEnabled      bool
 	HandleDynamicClientFunc        goidc.HandleDynamicClientFunc
 	ValidateInitialAccessTokenFunc goidc.ValidateInitialAccessTokenFunc
+	ClientIDFunc                   goidc.ClientIDFunc
 
 	TokenIntrospectionIsEnabled           bool
 	TokenIntrospectionAuthnMethods        []goidc.ClientAuthnType

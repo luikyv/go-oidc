@@ -21,7 +21,7 @@ func create(ctx oidc.Context, initialToken string, meta *goidc.ClientMeta) (resp
 		return response{}, err
 	}
 
-	id := clientID()
+	id := ctx.ClientID()
 	if err := ctx.HandleDynamicClient(id, meta); err != nil {
 		return response{}, err
 	}
@@ -38,14 +38,7 @@ func create(ctx oidc.Context, initialToken string, meta *goidc.ClientMeta) (resp
 	return modifyAndSaveClient(ctx, client)
 }
 
-func update(
-	ctx oidc.Context,
-	id, regToken string,
-	meta *goidc.ClientMeta,
-) (
-	response,
-	error,
-) {
+func update(ctx oidc.Context, id, regToken string, meta *goidc.ClientMeta) (response, error) {
 	client, err := protected(ctx, id, regToken)
 	if err != nil {
 		return response{}, err
@@ -76,9 +69,10 @@ func fetch(ctx oidc.Context, id, regToken string) (response, error) {
 	}
 
 	return response{
-		ID:              client.ID,
-		RegistrationURI: registrationURI(ctx, client.ID),
-		ClientMeta:      &client.ClientMeta,
+		ID:                client.ID,
+		RegistrationURI:   registrationURI(ctx, client.ID),
+		ClientMeta:        &client.ClientMeta,
+		RegistrationToken: regToken,
 	}, nil
 }
 
@@ -113,9 +107,9 @@ func modifyAndSaveClient(ctx oidc.Context, client *goidc.Client) (response, erro
 // setID assigns a unique ID to the client if it doesn't already have one.
 // If the client already has an ID, it returns the existing ID.
 // Otherwise, it generates a new ID and returns it.
-func setID(_ oidc.Context, client *goidc.Client) string {
+func setID(ctx oidc.Context, client *goidc.Client) string {
 	if client.ID == "" {
-		client.ID = clientID()
+		client.ID = ctx.ClientID()
 	}
 	return client.ID
 }
@@ -200,10 +194,6 @@ func protected(ctx oidc.Context, id, regToken string) (*goidc.Client, error) {
 	}
 
 	return c, nil
-}
-
-func clientID() string {
-	return "dc-" + strutil.Random(idLength)
 }
 
 func clientSecretAndHash() (string, string) {
