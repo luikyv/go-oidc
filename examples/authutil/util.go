@@ -25,8 +25,8 @@ import (
 
 const (
 	Port                     string = ":443"
-	Issuer                   string = "https://auth.localhost"
-	MTLSHost                 string = "https://matls-auth.localhost"
+	Issuer                   string = "https://goidc.luikyv.com"
+	MTLSHost                 string = "https://matls-goidc.luikyv.com"
 	headerClientCert         string = "X-Client-Cert"
 	headerXFAPIInteractionID        = "X-FAPI-Interaction-ID"
 )

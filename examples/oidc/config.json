@@ -1,7 +1,7 @@
 {
     "alias": "goidc",
     "server": {
-        "discoveryUrl": "https://auth.localhost/.well-known/openid-configuration"
+        "discoveryUrl": "https://goidc.luikyv.com/.well-known/openid-configuration"
     },
     "client": {
         "client_name": "client_one"
@@ -12,12 +12,12 @@
     "browser_verbose": true,
     "browser": [
         {
-            "match": "https://auth.localhost*/authorize*",
+            "match": "https://goidc.luikyv.com*/authorize*",
             "tasks": [
                 {
                     "task": "Login",
                     "optional": true,
-                    "match": "https://auth.localhost*/authorize/*/login",
+                    "match": "https://goidc.luikyv.com*/authorize/*/login",
                     "commands": [
                         ["text", "id", "username", "random@gmail.com"],
                         ["text", "id", "password", "pass"],
@@ -26,7 +26,7 @@
                 },
                 {
                     "task": "Consent",
-                    "match": "https://auth.localhost*/authorize/*/consent",
+                    "match": "https://goidc.luikyv.com*/authorize/*/consent",
                     "commands": [
                         ["click", "id", "submit_button"]
                     ]
@@ -45,12 +45,12 @@
         "oidcc-ensure-redirect-uri-in-authorization-request": {
             "browser": [
                 {
-                    "match": "https://auth.localhost*/authorize*",
+                    "match": "https://goidc.luikyv.com*/authorize*",
                     "tasks": [
                         {
                             "task": "Expect redirect_uri is required",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize*",
+                            "match": "https://goidc.luikyv.com*/authorize*",
                             "commands": [
                                 ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
@@ -62,12 +62,12 @@
         "oidcc-redirect-uri-query-mismatch": {
             "browser": [
                 {
-                    "match": "https://auth.localhost*/authorize*",
+                    "match": "https://goidc.luikyv.com*/authorize*",
                     "tasks": [
                         {
                             "task": "Expect redirect_uri is invalid",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize*",
+                            "match": "https://goidc.luikyv.com*/authorize*",
                             "commands": [
                                 ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
@@ -79,12 +79,12 @@
         "oidcc-redirect-uri-query-added": {
             "browser": [
                 {
-                    "match": "https://auth.localhost*/authorize*",
+                    "match": "https://goidc.luikyv.com*/authorize*",
                     "tasks": [
                         {
                             "task": "Expect redirect_uri is invalid",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize*",
+                            "match": "https://goidc.luikyv.com*/authorize*",
                             "commands": [
                                 ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
@@ -96,7 +96,7 @@
         "oidcc-response-type-missing": {
             "browser": [
                 {
-                    "match": "https://auth.localhost*/authorize*",
+                    "match": "https://goidc.luikyv.com*/authorize*",
                     "tasks": [
                         {
                             "task": "Expect error for response type missing",
@@ -112,12 +112,12 @@
         "oidcc-prompt-login": {
             "browser": [
                 {
-                    "match": "https://auth.localhost*/authorize*prompt=login",
+                    "match": "https://goidc.luikyv.com*/authorize*prompt=login",
                     "tasks": [
                         {
                             "task": "Login and upload login form",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize/*/login",
+                            "match": "https://goidc.luikyv.com*/authorize/*/login",
                             "commands": [
                                 ["wait",  "xpath", "//*", 10, "Login Form", "update-image-placeholder"],
                                 ["text", "id", "username", "random@gmail.com"],
@@ -127,7 +127,7 @@
                         },
                         {
                             "task": "Consent",
-                            "match": "https://auth.localhost*/authorize/*/consent",
+                            "match": "https://goidc.luikyv.com*/authorize/*/consent",
                             "commands": [
                                 ["click", "id", "submit_button"]
                             ]
@@ -142,12 +142,12 @@
                     ]
                 },
                 {
-                    "match": "https://auth.localhost*/authorize*",
+                    "match": "https://goidc.luikyv.com*/authorize*",
                     "tasks": [
                         {
                             "task": "Login",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize/*/login",
+                            "match": "https://goidc.luikyv.com*/authorize/*/login",
                             "commands": [
                                 ["text", "id", "username", "random@gmail.com"],
                                 ["text", "id", "password", "pass"],
@@ -156,7 +156,7 @@
                         },
                         {
                             "task": "Consent",
-                            "match": "https://auth.localhost*/authorize/*/consent",
+                            "match": "https://goidc.luikyv.com*/authorize/*/consent",
                             "commands": [
                                 ["click", "id", "submit_button"]
                             ]
@@ -175,7 +175,7 @@
         "oidcc-prompt-none-not-logged-in": {
             "browser": [
                 {
-                    "match": "https://auth.localhost*/authorize*",
+                    "match": "https://goidc.luikyv.com*/authorize*",
                     "tasks": [
                         {
                             "task": "Expect prompt none cannot be used for user not logged in",
@@ -191,12 +191,12 @@
         "oidcc-ensure-registered-redirect-uri": {
             "browser": [
                 {
-                    "match": "https://auth.localhost*/authorize*",
+                    "match": "https://goidc.luikyv.com*/authorize*",
                     "tasks": [
                         {
                             "task": "Expect redirect_uri is missing",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize*",
+                            "match": "https://goidc.luikyv.com*/authorize*",
                             "commands": [
                                 ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
@@ -208,12 +208,12 @@
         "oidcc-ensure-request-object-with-redirect-uri": {
             "browser": [
                 {
-                    "match": "https://auth.localhost*/authorize*",
+                    "match": "https://goidc.luikyv.com*/authorize*",
                     "tasks": [
                         {
                             "task": "Expect invalid redirect_uri",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize*",
+                            "match": "https://goidc.luikyv.com*/authorize*",
                             "commands": [
                                 ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
@@ -225,12 +225,12 @@
         "oidcc-max-age-1": {
             "browser": [
                 {
-                    "match": "https://auth.localhost*/authorize*max_age=1",
+                    "match": "https://goidc.luikyv.com*/authorize*max_age=1",
                     "tasks": [
                         {
                             "task": "Login and upload login form",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize/*/login",
+                            "match": "https://goidc.luikyv.com*/authorize/*/login",
                             "commands": [
                                 ["wait",  "xpath", "//*", 10, "Login Form", "update-image-placeholder"],
                                 ["text", "id", "username", "random@gmail.com"],
@@ -240,7 +240,7 @@
                         },
                         {
                             "task": "Consent",
-                            "match": "https://auth.localhost*/authorize/*/consent",
+                            "match": "https://goidc.luikyv.com*/authorize/*/consent",
                             "commands": [
                                 ["click", "id", "submit_button"]
                             ]
@@ -255,12 +255,12 @@
                     ]
                 },
                 {
-                    "match": "https://auth.localhost*/authorize*",
+                    "match": "https://goidc.luikyv.com*/authorize*",
                     "tasks": [
                         {
                             "task": "Login",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize/*/login",
+                            "match": "https://goidc.luikyv.com*/authorize/*/login",
                             "commands": [
                                 ["text", "id", "username", "random@gmail.com"],
                                 ["text", "id", "password", "pass"],
@@ -269,7 +269,7 @@
                         },
                         {
                             "task": "Consent",
-                            "match": "https://auth.localhost*/authorize/*/consent",
+                            "match": "https://goidc.luikyv.com*/authorize/*/consent",
                             "commands": [
                                 ["click", "id", "submit_button"]
                             ]
@@ -288,12 +288,12 @@
         "oidcc-registration-logo-uri": {
             "browser": [
                 {
-                    "match": "https://auth.localhost*/authorize*",
+                    "match": "https://goidc.luikyv.com*/authorize*",
                     "tasks": [
                         {
                             "task": "Expect logo is required",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize*",
+                            "match": "https://goidc.luikyv.com*/authorize*",
                             "commands": [
                                 ["wait",  "xpath", "//*", 10, "Login Form", "update-image-placeholder"]
                             ]
@@ -305,12 +305,12 @@
         "oidcc-registration-policy-uri": {
             "browser": [
                 {
-                    "match": "https://auth.localhost*/authorize*",
+                    "match": "https://goidc.luikyv.com*/authorize*",
                     "tasks": [
                         {
                             "task": "Expect policy is required",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize*",
+                            "match": "https://goidc.luikyv.com*/authorize*",
                             "commands": [
                                 ["wait",  "xpath", "//*", 10, "Login Form", "update-image-placeholder"]
                             ]
@@ -322,12 +322,12 @@
         "oidcc-registration-tos-uri": {
             "browser": [
                 {
-                    "match": "https://auth.localhost*/authorize*",
+                    "match": "https://goidc.luikyv.com*/authorize*",
                     "tasks": [
                         {
                             "task": "Expect terms of service",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize*",
+                            "match": "https://goidc.luikyv.com*/authorize*",
                             "commands": [
                                 ["wait",  "xpath", "//*", 10, "Login Form", "update-image-placeholder"]
                             ]
@@ -339,7 +339,7 @@
         "oidcc-ensure-request-without-nonce-fails": {
             "browser": [
                 {
-                    "match": "https://auth.localhost*/authorize*",
+                    "match": "https://goidc.luikyv.com*/authorize*",
                     "tasks": [
                         {
                             "task": "Expect error for response type missing",

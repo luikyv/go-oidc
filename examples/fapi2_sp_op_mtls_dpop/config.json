@@ -1,7 +1,7 @@
 {
     "alias": "goidc",
     "server": {
-        "discoveryUrl": "https://auth.localhost/.well-known/openid-configuration"
+        "discoveryUrl": "https://goidc.luikyv.com/.well-known/openid-configuration"
     },
     "client": {
         "client_name": "client_one",
@@ -60,16 +60,16 @@
         "key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDZhiNMqG7QzHmH\nrtfIdJpvXv18kFFOiosN3EHqPlkLEHegGpCL/5WZQi0jcYt94WYKZ4rdiKtkPeQf\n7Y9oHrcE3eODWhml7ls2gCp0V9v89JmCVUHLKTi890dJG10Ha1O7lj9dH4JYB9EP\n1WNPXKM7orZIQmixU9iZlOeh3en/5JoDK+9fRa3z8dAO5q2UOZMpDlmrD0kpa360\nJF/zMWIwXeIAH4DaIuvqpg3lgdbrFzvtCyniXa0VVgtKKCvc6s5Tv967ylO2DPlS\nEAM6h0MXRui7VeIHKZf2JJbahowordIANCUnsIdRY2a/xartgk6jYOisbBRyboJd\nXR/xbHwtAgMBAAECggEANlVtJ87Cr2ED0kJ4H9gQY1VE2AJsbMPqa/HifRJJx5u7\nZcB87ptO0NNY1wubnjvY8yxd4Wwr84QKIXeDZKyXZp3OIJc25N2e5wQolpsDljG6\nznVhU8/eHkVeBwLQv/OtHKQw+5/NPRPmwp+4iLBJDbJc+buszu50ohgxq5r0wjfv\nz6Wdu0jiJFPNh9ydUcTJTi1Y7EIJEq+9vrx6ysfOxksTnkLfdmxv/NYcNMP9/rkB\nGOBc2T2OZoh3+ASQ7025iLqbRifvnaGMKv9GbrDasNwIbutfo1ApRfdFtiCG7Jqi\ncFu0EeVLJRP2YdkqISGayaXTWLW5kXi5WWDdrh2tgQKBgQD1AcaT9za/VOGxAesg\nY1btKkfJNcRRphqL/aR8ofb5v1yrNse/eu69MDAxbOdD+Lx3BbUv0SdrTBuifTDA\nxin/dNz0bMMdEY9WEoYqRON8OvckK+E640n4ODjp8IXfIrQbJBe8VVR11TeFsrua\nFWXahzaYAr05ZOBUSx4npt/kHQKBgQDjSK8+DgjHka1qBrmaCinBQOJqJn3lVHNw\niBzXiZxXpO0qwVwLajb9sqPCV2KDpCWqAe30aY/22HpEwyMg1wg7JMGjBGILbMTL\nnjDHwgNWPNH73779K/IxdUmawG6g3srocvzYNFQLkWQXgbVmaaVaYYcI99urvmuz\nPvfkgktbUQKBgFUVW8ewtzN0n7ffqa6isOJFp45JfLa6D0gEOmYJvQH4IY9Xw8BM\nSbIrlODlJ97j91cCBWzonl7VnFcuUIrxhk4vYDgFuTBUE8nZPvxY1gMjWwYVsu7H\nVb28kI81NthJbfBq9U8y9tTAybpFWn7k5W0hPaVGdj4DOSAswfkVK3VFAoGBAKAI\nMKPv+8yRTVpHS+4jU80n44Q8gA62jOXiYPR+h1/K19dv+GBtNDUj0FxpbQslzANN\ngn/CyERVnpnGEHjyD3Cda95dmq9SsapxQwWUHQdeobfIjlDy3YBnhiD5d6u704Ei\nXdfZ2IegoqpOgSyQHIZr/0mYQ8tEs86s+pyiBW9RAoGAEy1Mb9WB3nmyi5BnRRr4\n3FYVFyserFJCbNM+1u1K2iJTAsE8IEjvStAyYLJRihCz7lWbSmX9EZiFY8yxm+35\ntlygv2ELxz97fCsaub+ZHWas+fmI6aQ39fn5OeLtrX/suGukrIInB3s8J74h5kXI\nUZAQoSAWEgyu5FHEhEnj0XE=\n-----END PRIVATE KEY-----\n"
     },
     "resource": {
-        "resourceUrl": "https://auth.localhost/userinfo"
+        "resourceUrl": "https://goidc.luikyv.com/userinfo"
     },
     "browser": [
         {
-            "match": "https://auth.localhost*/authorize*",
+            "match": "https://goidc.luikyv.com*/authorize*",
             "tasks": [
                 {
                     "task": "Login",
                     "optional": true,
-                    "match": "https://auth.localhost*/authorize/*/login",
+                    "match": "https://goidc.luikyv.com*/authorize/*/login",
                     "commands": [
                         ["text", "id", "username", "random@gmail.com"],
                         ["text", "id", "password", "pass"],
@@ -78,7 +78,7 @@
                 },
                 {
                     "task": "Consent",
-                    "match": "https://auth.localhost*/authorize/*/consent",
+                    "match": "https://goidc.luikyv.com*/authorize/*/consent",
                     "commands": [
                         ["click", "id", "submit_button"]
                     ]
@@ -97,12 +97,12 @@
         "fapi2-security-profile-final-user-rejects-authentication": {
             "browser": [
                 {
-                    "match": "https://auth.localhost*/authorize*",
+                    "match": "https://goidc.luikyv.com*/authorize*",
                     "tasks": [
                         {
                             "task": "Login",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize/*/login",
+                            "match": "https://goidc.luikyv.com*/authorize/*/login",
                             "commands": [
                                 ["click", "id", "cancel_button"]
                             ]
@@ -121,12 +121,12 @@
         "fapi2-security-profile-final-par-attempt-reuse-request_uri": {
             "browser": [
                 {
-                    "match": "https://auth.localhost*/authorize*",
+                    "match": "https://goidc.luikyv.com*/authorize*",
                     "tasks": [
                         {
                             "task": "Login",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize/*/login",
+                            "match": "https://goidc.luikyv.com*/authorize/*/login",
                             "commands": [
                                 ["text", "id", "username", "random@gmail.com"],
                                 ["text", "id", "password", "pass"],
@@ -136,7 +136,7 @@
                         {
                             "task": "Consent",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize/*/consent",
+                            "match": "https://goidc.luikyv.com*/authorize/*/consent",
                             "commands": [
                                 ["click", "id", "submit_button"]
                             ]
@@ -152,7 +152,7 @@
                         {
                             "task": "Expect invalid request_uri",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize*",
+                            "match": "https://goidc.luikyv.com*/authorize*",
                             "commands": [
                                 ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
@@ -164,12 +164,12 @@
         "fapi2-security-profile-final-ensure-unsigned-authorization-request-without-using-par-fails": {
             "browser": [
                 {
-                    "match": "https://auth.localhost*/authorize*",
+                    "match": "https://goidc.luikyv.com*/authorize*",
                     "tasks": [
                         {
                             "task": "Expect request_uri is required",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize*",
+                            "match": "https://goidc.luikyv.com*/authorize*",
                             "commands": [
                                 ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
@@ -182,12 +182,12 @@
         "fapi2-security-profile-final-par-attempt-to-use-expired-request_uri": {
             "browser": [
                 {
-                    "match": "https://auth.localhost*/authorize*",
+                    "match": "https://goidc.luikyv.com*/authorize*",
                     "tasks": [
                         {
                             "task": "Expect request_uri is expired",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize*",
+                            "match": "https://goidc.luikyv.com*/authorize*",
                             "commands": [
                                 ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
@@ -200,12 +200,12 @@
         "fapi2-security-profile-final-par-attempt-to-use-request_uri-for-different-client": {
             "browser": [
                 {
-                    "match": "https://auth.localhost*/authorize*",
+                    "match": "https://goidc.luikyv.com*/authorize*",
                     "tasks": [
                         {
                             "task": "Expect request_uri is invalid",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize*",
+                            "match": "https://goidc.luikyv.com*/authorize*",
                             "commands": [
                                 ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
@@ -218,12 +218,12 @@
         "fapi2-security-profile-final-ensure-registered-redirect-uri": {
             "browser": [
                 {
-                    "match": "https://auth.localhost*/authorize*",
+                    "match": "https://goidc.luikyv.com*/authorize*",
                     "tasks": [
                         {
                             "task": "Expect redirect_uri is invalid",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize*",
+                            "match": "https://goidc.luikyv.com*/authorize*",
                             "commands": [
                                 ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
@@ -237,23 +237,23 @@
             "browser": [
                 {
                     "comment": "Do nothing",
-                    "match": "https://auth.localhost*/authorize*",
+                    "match": "https://goidc.luikyv.com*/authorize*",
                     "match-limit": 1,
                     "tasks": [
                         {
                             "task": "Show Login Page",
-                            "match": "https://auth.localhost*/authorize*",
+                            "match": "https://goidc.luikyv.com*/authorize*",
                             "commands": []
                         }
                     ]
                 },
                 {
-                    "match": "https://auth.localhost*/authorize*",
+                    "match": "https://goidc.luikyv.com*/authorize*",
                     "tasks": [
                         {
                             "task": "Login",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize/*/login",
+                            "match": "https://goidc.luikyv.com*/authorize/*/login",
                             "commands": [
                                 [
                                     "text",
@@ -276,7 +276,7 @@
                         },
                         {
                             "task": "Consent",
-                            "match": "https://auth.localhost*/authorize/*/consent",
+                            "match": "https://goidc.luikyv.com*/authorize/*/consent",
                             "commands": [
                                 [
                                     "click",
