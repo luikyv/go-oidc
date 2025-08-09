@@ -5,25 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
-	"path/filepath"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/luikyv/go-oidc/examples/ui"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func Policy(templatesDir string) goidc.AuthnPolicy {
-
-	loginTemplate := filepath.Join(templatesDir, "/login.html")
-	consentTemplate := filepath.Join(templatesDir, "/consent.html")
-	tmpl, err := template.ParseFiles(loginTemplate, consentTemplate)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+func Policy() goidc.AuthnPolicy {
+	tmpl := template.Must(template.ParseFS(ui.FS, "*.html"))
 	authenticator := authenticator{tmpl: tmpl}
 	return goidc.NewPolicy(
 		"main",

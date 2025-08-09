@@ -158,22 +158,24 @@ func (ctx Context) NotifyError(err error) {
 	ctx.NotifyErrorFunc(ctx, err)
 }
 
-// AssertionAudiences returns the host names trusted by the server to validate
-// assertions.
-func (ctx Context) AssertionAudiences() []string {
-	audiences := []string{
-		ctx.Host,
-		ctx.BaseURL() + ctx.EndpointToken,
-		ctx.Host + ctx.Request.RequestURI,
-	}
-	if ctx.MTLSIsEnabled {
-		audiences = append(
-			audiences,
-			ctx.MTLSBaseURL()+ctx.EndpointToken,
-			ctx.MTLSHost+ctx.Request.RequestURI,
-		)
-	}
-	return audiences
+func (ctx Context) Issuer() string {
+	return ctx.Host
+}
+
+func (ctx Context) TokenURL() string {
+	return ctx.BaseURL() + ctx.EndpointToken
+}
+
+func (ctx Context) TokenMTLSURL() string {
+	return ctx.MTLSBaseURL() + ctx.EndpointToken
+}
+
+func (ctx Context) RequestURL() string {
+	return ctx.Host + ctx.Request.RequestURI
+}
+
+func (ctx Context) RequestMTLSURL() string {
+	return ctx.MTLSHost + ctx.Request.RequestURI
 }
 
 func (ctx Context) Policy(id string) goidc.AuthnPolicy {
@@ -315,10 +317,7 @@ func (ctx Context) DeleteGrantSessionByAuthorizationCode(code string) error {
 
 func (ctx Context) SaveAuthnSession(session *goidc.AuthnSession) error {
 	numberOfIndexes := 0
-	if session.CallbackID != "" {
-		numberOfIndexes++
-	}
-	if session.PushedAuthReqID != "" {
+	if session.CallbackID != "" || session.PushedAuthReqID != "" {
 		numberOfIndexes++
 	}
 	if session.AuthCode != "" {
@@ -329,7 +328,7 @@ func (ctx Context) SaveAuthnSession(session *goidc.AuthnSession) error {
 	}
 
 	if numberOfIndexes != 1 {
-		return errors.New("only one index must be set for the authn session")
+		return errors.New("invalid authn session indexing")
 	}
 
 	return ctx.AuthnSessionManager.Save(ctx.Context(), session)

@@ -3,6 +3,7 @@ package authorize
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 
 	"github.com/luikyv/go-oidc/internal/clientutil"
@@ -63,6 +64,10 @@ func redirectResponse(
 		redirectParamsMap["redirect_uri"] = params.RedirectURI
 		if err := ctx.WriteHTML(formPostResponseTemplate, redirectParamsMap); err != nil {
 			return fmt.Errorf("could not render the html for the form_post response mode: %w", err)
+		}
+	case goidc.ResponseModeJSON, goidc.ResponseModeJSONJWT:
+		if err := ctx.Write(redirectParamsMap, http.StatusOK); err != nil {
+			return fmt.Errorf("could not write the json response: %w", err)
 		}
 	default:
 		redirectURL := urlWithQueryParams(params.RedirectURI, redirectParamsMap)

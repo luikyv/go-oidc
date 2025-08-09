@@ -8,8 +8,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"path/filepath"
-	"runtime"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/json"
@@ -89,16 +87,6 @@ const (
 )
 
 func main() {
-	// Get the path to the source file.
-	_, filename, _, _ := runtime.Caller(0)
-	workingDir := filepath.Dir(filename)
-
-	templatesDirPath := filepath.Join(workingDir, "../templates")
-	jwksFilePath := filepath.Join(workingDir, "../keys/server.jwks")
-	serverCertFilePath := filepath.Join(workingDir, "../keys/server.crt")
-	serverCertKeyFilePath := filepath.Join(workingDir, "../keys/server.key")
-	clientJWKSFilePath := filepath.Join(workingDir, "../keys/client_one.jwks")
-
 	// Set up federation JWKS's.
 	var opFedJWKS goidc.JSONWebKeySet
 	_ = json.Unmarshal([]byte(OPFedJWKS), &opFedJWKS)
@@ -115,12 +103,12 @@ func main() {
 	trustAnchorFedURL, _ := url.Parse(TrustAnchorFedID)
 
 	// Create and configure the openid provider and a client.
-	client, clientJWKS := authutil.ClientPrivateKeyJWT("client_one", clientJWKSFilePath)
+	client, clientJWKS := authutil.ClientPrivateKeyJWT("client_one")
 
 	op, err := provider.New(
 		goidc.ProfileOpenID,
 		OPFedID,
-		authutil.PrivateJWKSFunc(jwksFilePath),
+		authutil.PrivateJWKSFunc(),
 		provider.WithOpenIDFederation(
 			func(ctx context.Context) (goidc.JSONWebKeySet, error) {
 				return opFedJWKS, nil
@@ -144,9 +132,9 @@ func main() {
 		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.RS256)),
 		provider.WithHTTPClientFunc(httpClientFunc()),
-		provider.WithPolicies(authutil.Policy(templatesDirPath)),
+		provider.WithPolicies(authutil.Policy()),
 		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
-		provider.WithRenderErrorFunc(authutil.RenderError(templatesDirPath)),
+		provider.WithRenderErrorFunc(authutil.RenderError()),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -260,7 +248,14 @@ func main() {
 	})
 
 	log.Println(authReqURL(clientJWKS))
-	if err := http.ListenAndServeTLS(authutil.Port, serverCertFilePath, serverCertKeyFilePath, mux); err != nil && err != http.ErrServerClosed {
+	server := &http.Server{
+		Addr:    authutil.Port,
+		Handler: mux,
+		TLSConfig: &tls.Config{
+			Certificates: []tls.Certificate{authutil.ServerCert()},
+		},
+	}
+	if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
 }

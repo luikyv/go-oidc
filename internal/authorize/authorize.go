@@ -2,6 +2,7 @@ package authorize
 
 import (
 	"errors"
+	"net/http"
 	"slices"
 	"strings"
 
@@ -31,19 +32,16 @@ func initAuth(ctx oidc.Context, req request) error {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient, "client not allowed")
 	}
 
-	if err := initAuthNoRedirect(ctx, c, req); err != nil {
+	as, err := initAuthnSession(ctx, req, c)
+	if err != nil {
+		return redirectError(ctx, err, c)
+	}
+
+	if err := authenticate(ctx, as); err != nil {
 		return redirectError(ctx, err, c)
 	}
 
 	return nil
-}
-
-func initAuthNoRedirect(ctx oidc.Context, client *goidc.Client, req request) error {
-	session, err := initAuthnSession(ctx, req, client)
-	if err != nil {
-		return err
-	}
-	return authenticate(ctx, session)
 }
 
 func continueAuth(ctx oidc.Context, callbackID string) error {
@@ -57,6 +55,10 @@ func continueAuth(ctx oidc.Context, callbackID string) error {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "session timeout")
 	}
 
+	if session.ResponseMode.IsJSON() && ctx.RequestMethod() != http.MethodPost {
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid request method for json response mode")
+	}
+
 	if oauthErr := authenticate(ctx, session); oauthErr != nil {
 		client, err := ctx.Client(session.ClientID)
 		if err != nil {
@@ -68,14 +70,7 @@ func continueAuth(ctx oidc.Context, callbackID string) error {
 	return nil
 }
 
-func initAuthnSession(
-	ctx oidc.Context,
-	req request,
-	client *goidc.Client,
-) (
-	*goidc.AuthnSession,
-	error,
-) {
+func initAuthnSession(ctx oidc.Context, req request, client *goidc.Client) (*goidc.AuthnSession, error) {
 	session, err := authnSession(ctx, req, client)
 	if err != nil {
 		return nil, err
@@ -92,7 +87,6 @@ func initAuthnSession(
 	}
 	session.PolicyID = policy.ID
 	session.CallbackID = callbackID()
-	session.PushedAuthReqID = ""
 	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.AuthnSessionTimeoutSecs
 	if session.IDTokenHint != "" {
 		// The ID token hint was already validated.
@@ -102,14 +96,7 @@ func initAuthnSession(
 	return session, nil
 }
 
-func authnSession(
-	ctx oidc.Context,
-	req request,
-	client *goidc.Client,
-) (
-	*goidc.AuthnSession,
-	error,
-) {
+func authnSession(ctx oidc.Context, req request, client *goidc.Client) (*goidc.AuthnSession, error) {
 
 	if shouldUsePAR(ctx, req.AuthorizationParameters, client) {
 		return authnSessionWithPAR(ctx, req, client)
@@ -124,25 +111,14 @@ func authnSession(
 	return simpleAuthnSession(ctx, req, client)
 }
 
-func shouldUsePAR(
-	ctx oidc.Context,
-	req goidc.AuthorizationParameters,
-	c *goidc.Client,
-) bool {
+func shouldUsePAR(ctx oidc.Context, req goidc.AuthorizationParameters, c *goidc.Client) bool {
 	if !ctx.PARIsEnabled {
 		return false
 	}
 	return ctx.PARIsRequired || c.PARIsRequired || strings.HasPrefix(req.RequestURI, parRequestURIPrefix)
 }
 
-func authnSessionWithPAR(
-	ctx oidc.Context,
-	req request,
-	client *goidc.Client,
-) (
-	*goidc.AuthnSession,
-	error,
-) {
+func authnSessionWithPAR(ctx oidc.Context, req request, client *goidc.Client) (*goidc.AuthnSession, error) {
 
 	if req.RequestURI == "" {
 		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest,
@@ -175,14 +151,7 @@ func authnSessionWithPAR(
 	return session, nil
 }
 
-func authnSessionWithJAR(
-	ctx oidc.Context,
-	req request,
-	client *goidc.Client,
-) (
-	*goidc.AuthnSession,
-	error,
-) {
+func authnSessionWithJAR(ctx oidc.Context, req request, client *goidc.Client) (*goidc.AuthnSession, error) {
 	var jar request
 	var err error
 	switch {
@@ -215,14 +184,7 @@ func authnSessionWithJAR(
 	return session, nil
 }
 
-func simpleAuthnSession(
-	ctx oidc.Context,
-	req request,
-	client *goidc.Client,
-) (
-	*goidc.AuthnSession,
-	error,
-) {
+func simpleAuthnSession(ctx oidc.Context, req request, client *goidc.Client) (*goidc.AuthnSession, error) {
 	if err := validateRequest(ctx, req, client); err != nil {
 		return nil, err
 	}
@@ -249,11 +211,7 @@ func authenticate(ctx oidc.Context, session *goidc.AuthnSession) error {
 	}
 }
 
-func finishFlowWithFailure(
-	ctx oidc.Context,
-	session *goidc.AuthnSession,
-	err error,
-) error {
+func finishFlowWithFailure(ctx oidc.Context, session *goidc.AuthnSession, err error) error {
 	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
 		return wrapRedirectionError(goidc.ErrorCodeInternalError,
 			"internal error", session.AuthorizationParameters, err)
@@ -274,10 +232,7 @@ func finishFlowWithFailure(
 		"access denied", session.AuthorizationParameters)
 }
 
-func stopFlowInProgress(
-	ctx oidc.Context,
-	session *goidc.AuthnSession,
-) error {
+func stopFlowInProgress(ctx oidc.Context, session *goidc.AuthnSession) error {
 	if err := ctx.SaveAuthnSession(session); err != nil {
 		return err
 	}
@@ -285,10 +240,7 @@ func stopFlowInProgress(
 	return nil
 }
 
-func finishFlowSuccessfully(
-	ctx oidc.Context,
-	session *goidc.AuthnSession,
-) error {
+func finishFlowSuccessfully(ctx oidc.Context, session *goidc.AuthnSession) error {
 
 	client, err := ctx.Client(session.ClientID)
 	if err != nil {
@@ -343,10 +295,7 @@ func finishFlowSuccessfully(
 	return redirectResponse(ctx, client, session.AuthorizationParameters, redirectParams)
 }
 
-func authorizeAuthnSession(
-	ctx oidc.Context,
-	session *goidc.AuthnSession,
-) error {
+func authorizeAuthnSession(ctx oidc.Context, session *goidc.AuthnSession) error {
 
 	if !session.ResponseType.Contains(goidc.ResponseTypeCode) {
 		// The client didn't request an authorization code to later exchange it
@@ -358,6 +307,8 @@ func authorizeAuthnSession(
 	session.ExpiresAtTimestamp = timeutil.TimestampNow() + authorizationCodeLifetimeSecs
 	// Make sure the session won't be reached anymore from the callback endpoint.
 	session.CallbackID = ""
+	// Make sure the session won't be reached anymore with the request URI.
+	session.PushedAuthReqID = ""
 
 	if err := ctx.SaveAuthnSession(session); err != nil {
 		return err
@@ -366,11 +317,7 @@ func authorizeAuthnSession(
 	return nil
 }
 
-func generateImplicitGrantSession(
-	ctx oidc.Context,
-	grantInfo goidc.GrantInfo,
-	accessToken token.Token,
-) error {
+func generateImplicitGrantSession(ctx oidc.Context, grantInfo goidc.GrantInfo, accessToken token.Token) error {
 
 	grantSession := token.NewGrantSession(grantInfo, accessToken)
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
@@ -380,13 +327,7 @@ func generateImplicitGrantSession(
 	return nil
 }
 
-func implicitGrantInfo(
-	ctx oidc.Context,
-	session *goidc.AuthnSession,
-) (
-	goidc.GrantInfo,
-	error,
-) {
+func implicitGrantInfo(ctx oidc.Context, session *goidc.AuthnSession) (goidc.GrantInfo, error) {
 	grantInfo := goidc.GrantInfo{
 		GrantType:                goidc.GrantImplicit,
 		Subject:                  session.Subject,
@@ -406,11 +347,7 @@ func implicitGrantInfo(
 	return grantInfo, nil
 }
 
-func setPoPForImplicitGrant(
-	ctx oidc.Context,
-	grantInfo *goidc.GrantInfo,
-	session *goidc.AuthnSession,
-) {
+func setPoPForImplicitGrant(ctx oidc.Context, grantInfo *goidc.GrantInfo, session *goidc.AuthnSession) {
 	if !ctx.DPoPIsEnabled {
 		return
 	}

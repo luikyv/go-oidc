@@ -11,12 +11,29 @@ jobs:
   run-tests:
     runs-on: ubuntu-latest
     env:
-      CS_VERSION: "v5.1.22"
+      CS_VERSION: "v5.1.35"
 
     strategy:
       fail-fast: false
       matrix:
-        profile: [oidc, fapi2, fapi1, fapiciba]
+        profile: [
+          oidc,
+          fapi2-sp-op-mtls-mtls,
+          fapi2-sp-op-mtls-dpop,
+          fapi2-sp-op-private-key-mtls,
+          fapi2-ms-op-jar,
+          fapi2-ms-op-jarm,
+          fapi2-sp-op-private-key-dpop,
+          fapi1-op-mtls,
+          fapi1-op-mtls-jarm,
+          fapi1-op-mtls-par,
+          fapi1-op-mtls-par-jarm,
+          fapi1-op-private-key,
+          fapi1-op-private-key-jarm,
+          fapi1-op-private-key-par,
+          fapi1-op-private-key-par-jarm,
+          fapiciba
+        ]
 
     steps:
         - uses: actions/checkout@v4
@@ -34,8 +51,9 @@ jobs:
             echo "Downloading Go dependencies"
             go mod download
 
-            echo "Installing Python httpx"
-            python3 -m pip install httpx
+            profile="${{ matrix.profile }}"
+            profile="${profile//-/_}"
+            echo "PROFILE_FOLDER=$profile" >> $GITHUB_ENV
 
         - name: Cache Conformance Suite Repository
           uses: actions/cache@v3
@@ -49,6 +67,9 @@ jobs:
           run: |
             git clone --branch "release-$CS_VERSION" --single-branch --depth=1 https://gitlab.com/openid/conformance-suite.git
             docker compose -f ./conformance-suite/builder-compose.yml run builder
+
+            python3 -m venv conformance-suite/venv
+            conformance-suite/venv/bin/pip install -r conformance-suite/scripts/requirements.txt
 
         - name: Run Conformance Suite
           id: cs-server
@@ -69,10 +90,11 @@ jobs:
         - name: Start Auth Server
           run: |
             echo "Run the server on background"
-            sudo go run examples/${{ matrix.profile }}/main.go &
+
+            sudo go run examples/${{ env.PROFILE_FOLDER }}/main.go &
 
             echo "Waiting for the auth server to be ready"
-            timeout 30 bash -c '
+            timeout 60 bash -c '
               while [ "$(curl -skf -o /dev/null -w "%{http_code}" https://auth.localhost/.well-known/openid-configuration)" != "200" ]; do
                 echo "Auth server not ready, sleeping for 2 seconds"
                 sleep 2
@@ -92,7 +114,7 @@ jobs:
           if: always()
           with:
             name: ${{ matrix.profile }}
-            path: examples/${{ matrix.profile }}/*.zip
+            path: examples/${{ env.PROFILE_FOLDER }}/*.zip
 
   all-tests-succeeded:
     runs-on: ubuntu-latest

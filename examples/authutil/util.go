@@ -11,16 +11,15 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"io"
 	"log"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/luikyv/go-oidc/examples/keys"
+	"github.com/luikyv/go-oidc/examples/ui"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -45,23 +44,23 @@ var (
 	DisplayValues = []goidc.DisplayValue{goidc.DisplayValuePage, goidc.DisplayValuePopUp}
 )
 
-func ClientMTLS(id, cn, jwksFilepath string) (*goidc.Client, goidc.JSONWebKeySet) {
-	client, jwks := Client(id, jwksFilepath)
+func ClientMTLS(id string) (*goidc.Client, goidc.JSONWebKeySet) {
+	client, jwks := Client(id)
 	client.TokenAuthnMethod = goidc.ClientAuthnTLS
-	client.TLSSubDistinguishedName = "CN=" + cn
+	client.TLSSubDistinguishedName = "CN=" + id
 
 	return client, jwks
 }
 
-func ClientPrivateKeyJWT(id, jwksFilepath string) (*goidc.Client, goidc.JSONWebKeySet) {
-	client, jwks := Client(id, jwksFilepath)
+func ClientPrivateKeyJWT(id string) (*goidc.Client, goidc.JSONWebKeySet) {
+	client, jwks := Client(id)
 	client.TokenAuthnMethod = goidc.ClientAuthnPrivateKeyJWT
 	return client, jwks
 }
 
-func Client(id string, jwksFilepath string) (*goidc.Client, goidc.JSONWebKeySet) {
+func Client(id string) (*goidc.Client, goidc.JSONWebKeySet) {
 	// Extract the public client JWKS.
-	jwks := privateJWKS(jwksFilepath)
+	jwks := privateJWKS(id)
 
 	// Extract scopes IDs.
 	var scopesIDs []string
@@ -93,14 +92,8 @@ func Client(id string, jwksFilepath string) (*goidc.Client, goidc.JSONWebKeySet)
 	}, jwks
 }
 
-func PrivateJWKSFunc(filename string) goidc.JWKSFunc {
-	jwksFile, err := os.Open(filename)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer func() { _ = jwksFile.Close() }()
-
-	jwksBytes, err := io.ReadAll(jwksFile)
+func PrivateJWKSFunc() goidc.JWKSFunc {
+	jwksBytes, err := keys.FS.ReadFile("server.jwks")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -115,14 +108,8 @@ func PrivateJWKSFunc(filename string) goidc.JWKSFunc {
 	}
 }
 
-func privateJWKS(filename string) goidc.JSONWebKeySet {
-	jwksFile, err := os.Open(filename)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer func() { _ = jwksFile.Close() }()
-
-	jwksBytes, err := io.ReadAll(jwksFile)
+func privateJWKS(clientID string) goidc.JSONWebKeySet {
+	jwksBytes, err := keys.FS.ReadFile(clientID + ".jwks")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -135,24 +122,40 @@ func privateJWKS(filename string) goidc.JSONWebKeySet {
 	return jwks
 }
 
-func ClientCACertPool(clientCertFiles ...string) *x509.CertPool {
+func ServerCert() tls.Certificate {
+	certBytes, err := keys.FS.ReadFile("server.crt")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	keyBytes, err := keys.FS.ReadFile("server.key")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	tlsCert, err := tls.X509KeyPair(certBytes, keyBytes)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return tlsCert
+}
+
+func ClientCACertPool() *x509.CertPool {
 
 	caPool := x509.NewCertPool()
 
-	for _, clientOneCert := range clientCertFiles {
-		clientOneCert, err := os.Open(clientOneCert)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer func() { _ = clientOneCert.Close() }()
-
-		clientCertBytes, err := io.ReadAll(clientOneCert)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		caPool.AppendCertsFromPEM(clientCertBytes)
+	clientOneCert, err := keys.FS.ReadFile("client_one.crt")
+	if err != nil {
+		log.Fatal(err)
 	}
+	caPool.AppendCertsFromPEM(clientOneCert)
+
+	clientTwoCert, err := keys.FS.ReadFile("client_two.crt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	caPool.AppendCertsFromPEM(clientTwoCert)
 
 	return caPool
 }
@@ -226,16 +229,11 @@ func ErrorLoggingFunc(ctx context.Context, err error) {
 	log.Printf("error: %s\n", err.Error())
 }
 
-func RenderError(templatesDir string) goidc.RenderErrorFunc {
-	errorTemplate := filepath.Join(templatesDir, "/error.html")
-	tmpl, err := template.ParseFiles(errorTemplate)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+func RenderError() goidc.RenderErrorFunc {
+	tmpl := template.Must(template.ParseFS(ui.FS, "*.html"))
 	return func(w http.ResponseWriter, r *http.Request, err error) error {
 		w.WriteHeader(http.StatusOK)
-		_ = tmpl.Execute(w, authnPage{
+		_ = tmpl.ExecuteTemplate(w, "error.html", authnPage{
 			Error: err.Error(),
 		})
 		return nil
@@ -257,23 +255,18 @@ func CheckJTIFunc() goidc.CheckJTIFunc {
 
 func ClientCertMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		clientCerts := r.TLS.PeerCertificates
-		if len(clientCerts) == 0 {
+		if len(r.TLS.PeerCertificates) == 0 {
 			next.ServeHTTP(w, r)
 			return
 		}
 
 		pemBlock := &pem.Block{
 			Type:  "CERTIFICATE",
-			Bytes: clientCerts[0].Raw,
+			Bytes: r.TLS.PeerCertificates[0].Raw,
 		}
-		// Convert the PEM block to a string
 		pemBytes := pem.EncodeToMemory(pemBlock)
 
-		// URL encode the PEM string
 		encodedPem := url.QueryEscape(string(pemBytes))
-
-		// Transmit the client certificate in a header.
 		r.Header.Set(headerClientCert, encodedPem)
 
 		next.ServeHTTP(w, r)

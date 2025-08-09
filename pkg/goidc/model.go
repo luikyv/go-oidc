@@ -73,20 +73,28 @@ const (
 	ResponseModeFragmentJWT ResponseMode = "fragment.jwt"
 	ResponseModeFormPostJWT ResponseMode = "form_post.jwt"
 	ResponseModeJWT         ResponseMode = "jwt"
+	// Redirectless response modes. These are not part of the official specification,
+	// so use them with caution and only in controlled or experimental environments.
+	ResponseModeJSON    ResponseMode = "json"
+	ResponseModeJSONJWT ResponseMode = "json.jwt"
 )
 
 func (rm ResponseMode) IsJARM() bool {
 	return rm == ResponseModeQueryJWT || rm == ResponseModeFragmentJWT ||
-		rm == ResponseModeFormPostJWT || rm == ResponseModeJWT
+		rm == ResponseModeFormPostJWT || rm == ResponseModeJWT || rm == ResponseModeJSONJWT
 }
 
 func (rm ResponseMode) IsPlain() bool {
 	return rm == ResponseModeQuery || rm == ResponseModeFragment ||
-		rm == ResponseModeFormPost
+		rm == ResponseModeFormPost || rm == ResponseModeJSON
 }
 
 func (rm ResponseMode) IsQuery() bool {
 	return rm == ResponseModeQuery || rm == ResponseModeQueryJWT
+}
+
+func (rm ResponseMode) IsJSON() bool {
+	return rm == ResponseModeJSON || rm == ResponseModeJSONJWT
 }
 
 type ClientAuthnType string

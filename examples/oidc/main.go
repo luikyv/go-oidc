@@ -3,11 +3,10 @@
 package main
 
 import (
+	"crypto/tls"
 	"log"
 	"net/http"
 	"net/url"
-	"path/filepath"
-	"runtime"
 
 	"github.com/luikyv/go-oidc/examples/authutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -15,21 +14,10 @@ import (
 )
 
 func main() {
-	// Get the file path of the source file.
-	_, filename, _, _ := runtime.Caller(0)
-	sourceDir := filepath.Dir(filename)
-
-	templatesDirPath := filepath.Join(sourceDir, "../templates")
-
-	jwksFilePath := filepath.Join(sourceDir, "../keys/server.jwks")
-	serverCertFilePath := filepath.Join(sourceDir, "../keys/server.crt")
-	serverCertKeyFilePath := filepath.Join(sourceDir, "../keys/server.key")
-
-	// Create and configure the OpenID provider.
 	op, err := provider.New(
 		goidc.ProfileOpenID,
 		authutil.Issuer,
-		authutil.PrivateJWKSFunc(jwksFilePath),
+		authutil.PrivateJWKSFunc(),
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithIDTokenSignatureAlgs(goidc.RS256, goidc.None),
 		provider.WithUserInfoSignatureAlgs(goidc.RS256, goidc.None),
@@ -54,9 +42,9 @@ func main() {
 		provider.WithDCR(authutil.DCRFunc, authutil.ValidateInitialTokenFunc),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.RS256)),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
-		provider.WithPolicies(authutil.Policy(templatesDirPath)),
+		provider.WithPolicies(authutil.Policy()),
 		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
-		provider.WithRenderErrorFunc(authutil.RenderError(templatesDirPath)),
+		provider.WithRenderErrorFunc(authutil.RenderError()),
 		provider.WithDisplayValues(authutil.DisplayValues[0], authutil.DisplayValues...),
 		provider.WithSubIdentifierTypes(goidc.SubIdentifierPublic, goidc.SubIdentifierPairwise),
 	)
@@ -74,11 +62,11 @@ func main() {
 	server := &http.Server{
 		Addr:    authutil.Port,
 		Handler: mux,
+		TLSConfig: &tls.Config{
+			Certificates: []tls.Certificate{authutil.ServerCert()},
+		},
 	}
-	if err := server.ListenAndServeTLS(
-		serverCertFilePath,
-		serverCertKeyFilePath,
-	); err != nil && err != http.ErrServerClosed {
+	if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
 }

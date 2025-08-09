@@ -93,6 +93,7 @@ func (c *Client) fetchSignedJWKS(_ *http.Client) (*JSONWebKeySet, error) {
 
 type ClientMeta struct {
 	Name              string          `json:"client_name,omitempty"`
+	SecretExpiresAt   *int            `json:"client_secret_expires_at,omitempty"`
 	ApplicationType   ApplicationType `json:"application_type,omitempty"`
 	LogoURI           string          `json:"logo_uri,omitempty"`
 	Contacts          []string        `json:"contacts,omitempty"`
