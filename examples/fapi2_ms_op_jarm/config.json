@@ -28,8 +28,8 @@
         "dpop_signing_alg": "PS256"
     },
     "mtls": {
-        "cert": "-----BEGIN CERTIFICATE-----\nMIICqDCCAZCgAwIBAgIGAZIasmwZMA0GCSqGSIb3DQEBCwUAMBUxEzARBgNVBAMM\nCmNsaWVudF9vbmUwHhcNMjQwOTIyMTcwNTUzWhcNMjUwNzE5MTcwNTUzWjAVMRMw\nEQYDVQQDDApjbGllbnRfb25lMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKC\nAQEAxDKHQ767NSSmLD7VN511NZ4n8d/B0I1EoYLFHJBMrIJMsFhEkF5DmqKTEW+I\naOJOA10h65mB9z99MOKqcnoK83M3n5H68ehhUfaA+WMdq8DXLZYXbYDvBa1x+GFC\ng09K63Zh4M/2f8EEEqP08MgsLGiemWPmLRhJMci2SnA63wmZY4uDu73OZiQ95pD4\nub9L5XF9+PWnAbpGC5XcPergE2/BOLPa0rdfz+IkFLfSvcuQboZGUC2j5oKePGwK\nMAVJRkxYvJzvZyDh6aJ9nU3FOwB7LN+hyDGIvhGYjlXQbRQIqxa5TxCb5cCYyHl2\nFfVZCuRrsdQPA0CS0tcTpcwAOQIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQAJ10kA\nZQAKHx+9YbjMcOdgwhN8mT81ZHdfVpmRwCRe/6uNJJ679aDssZmvN4uERWqAi7AH\nZMk/ApLCsu+n6M9OacgK8PFeTXKKfj1joAUengF0iGnGY+WQv/ZrL4p+avGy2c8S\nUxf1AaonGZRb/2SMZWD6c2TmGcJjDcqYFUCyKOEVR3YMSnt5JFuW3EdQXJFDSmy0\nxunw74T2D+wMPpOPXeWjYbb7BEKmE4fWFmpdR2BBCUAij5BYhEXx2TCssK2ozLyn\nNvZZxWgYOZl5t8NamjqkaOhZ3mnfKyqeNwUOosKJRVKIuRdirhi9nclq4m8Sf+Bv\nVJnq9YkR60hJ9z5J\n-----END CERTIFICATE-----",
-        "key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDEModDvrs1JKYs\nPtU3nXU1nifx38HQjUShgsUckEysgkywWESQXkOaopMRb4ho4k4DXSHrmYH3P30w\n4qpyegrzczefkfrx6GFR9oD5Yx2rwNctlhdtgO8FrXH4YUKDT0rrdmHgz/Z/wQQS\no/TwyCwsaJ6ZY+YtGEkxyLZKcDrfCZlji4O7vc5mJD3mkPi5v0vlcX349acBukYL\nldw96uATb8E4s9rSt1/P4iQUt9K9y5BuhkZQLaPmgp48bAowBUlGTFi8nO9nIOHp\non2dTcU7AHss36HIMYi+EZiOVdBtFAirFrlPEJvlwJjIeXYV9VkK5Gux1A8DQJLS\n1xOlzAA5AgMBAAECggEAZoD/qqU7qcg8CWHKhAP/+MNomzYMTKmB8eAgm4vIg1iQ\nOJHlQIf/SgsmSzW6TxHtMFS4JB9Ph53kCmZiJu0cS5UmunfKZBjEv83KFIF0PwfB\nZE/Gba+vMYgsw1gNKA2FVv/Co3IDlzuApTyD/EiYy5rdQcavu1+03g2/L6TzHRM7\nXayQAwnYDLykiOAFOwZND5AjSgo44xhIUbD0YJtoxbRpT01T8E0c8O8lS4LMdnEc\nEfw3+llUlQ4Gj+pdAFFQ7vD5laeXRrM1dw25F9pba6ZO9sonU11cYWZ3uYC4aXrP\nE3jM3ToWDREWEwGYiaqc5luvkJMHAz4z4hgwm7PfAQKBgQD4rtyXuDyvYYJfUDbV\nAeYbNsEffmKscqPV0IefzbcUAmOPX9Wx0v3PEHSM4hT15z6YAS6yeQ4PgDiynDRd\nE4GMH1KNB18cUQ6xOt5kTPhR74XMwn9PSRAU5LeGrLUuuja1CBJ6X0Ox6Xefaovh\nXPJvdKwxpt2yy4ClYewhqOG2mwKBgQDJ+FUZmCBCvLOvLJGKZPsagfg+OShAFPDK\nWq/s4A3s1fkueEelbYiosAaLwO5JglocSrVKOJvhF44j3ZQrmJRbiQ4RhSSbO8tm\ncA7dOENcwp0shfEVgXz37PMA5QiSjK4CqaghlU+kEgDvhucI6kYX3/b8dptEmsLd\naLFihu4nuwKBgEr4BB5k9z5z6ear+uu6F9GKbyv8YOjV4pg5tjkxvgh1M+hsHrLu\nBX/f2RMDsQf0v4T5jkdVgSyhHfaSaqLIl5xTcQJ8/2o88W3ybkrUfWPODosM825G\ne2ehD8a02CYPEyD+HvvvLiw7UsmnSCYXbCq3hJWvVVRqTw0MeTAohmsTAoGBAL21\nKooN4E+PW9+wp0wtKcduSTR5D5uRj9Mid5ixo6LQIWxKwlFan0CDhsKCh9A4RlfI\nvJxoq9I0A+kgWerROJj6FWLTgtzkv1sK6otUK8HXcza84QRoSm+9+0rd1r2AsnoB\nzdEtpE7iMkrKlfxDwW7vidj9tz4rd9nsWqHHR6+9AoGBAMF8HP1eEw0Nr1FkJk9+\nGF1rl0waly1M+hPAnZXLu8NTKe8RcLWZ6V9stB6DK3UkBspg10qsUC6SFYZrqn3Q\nSqZ8UI4q4/ZerkhFonh2gbALs0gW71cdodloZmi5dM2NaOTG89+mywBwa5wQv3Iq\nK4EVYrT0ZROGQFfsKJOQDdph\n-----END PRIVATE KEY-----"
+        "cert": "-----BEGIN CERTIFICATE-----\nMIIDCzCCAfOgAwIBAgIUGJ4MFKUAUQCing0DmwavJofFAYkwDQYJKoZIhvcNAQEL\nBQAwFTETMBEGA1UEAwwKY2xpZW50X29uZTAeFw0yNTA4MDcyMDE3MzhaFw0yNjA4\nMDcyMDE3MzhaMBUxEzARBgNVBAMMCmNsaWVudF9vbmUwggEiMA0GCSqGSIb3DQEB\nAQUAA4IBDwAwggEKAoIBAQCtZjP/2UIYyXa49wDxWl3WGQ4AwdXzh8bIv87Hxdtq\nUWKs90ZGJDAWRIe07PxBl3UXstswibeXVupby28VRmkl50ZEZFDTWj7gCcfx4/dd\nS50qCLOfACUu51FC2a06TuiRFWvfRccxAu2lLRTq7YDehs/3gbKYuRCeeTv+1EAt\nbniWhJc7fO2EstLGHBMn1JDpo3UvPzWYQ/b0jleF6AZMTpjPK8NyON7Pc2sYOVrf\niV6Sb8HX8OpY+Ll0avS8kKkZdlXRfczCUgDBtL2rWumqpIdVO8WHrXg0Mg/GIo5L\nMgiNsXIgYQw9PtD1Zh5S7hqHbrfM6Y4m7c72/aKGQCcXAgMBAAGjUzBRMB0GA1Ud\nDgQWBBRfYCtGa0awiy6/JDUZKGxPhpPG6jAfBgNVHSMEGDAWgBRfYCtGa0awiy6/\nJDUZKGxPhpPG6jAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQBl\nATFasgyq/BGFREycgOMCYIqbk7YbyWAxwEOu8oPfWVFQnYP1Uasj6u1BVu3DUMY6\ng8TMnLGhiYO2/Zp+I0vxAqX9hu1OOxs7C8hgr4U8NqbwLdSkMt62QTWRpzHXgjGl\nt+oNwMC5tJ7MYq7AY3P+20S7DhoCLASjUHCYtG1PAMa2Fz2MAId5373nFJutucdV\nVta0hPCxKkLXX8nh0LdAK6v/bsfYwGtEZ6Y76xQvcH4a5ouot+/j5DL6keRRb+xc\nmJgJuTTrtEC3T0n+GJlIDU52hEkIOGmA9NHMRcX22L+G6puGBCL9odbqs+n4iMjm\nF3VKgQ5Ukn509x5x4Ln+\n-----END CERTIFICATE-----\n",
+        "key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCtZjP/2UIYyXa4\n9wDxWl3WGQ4AwdXzh8bIv87HxdtqUWKs90ZGJDAWRIe07PxBl3UXstswibeXVupb\ny28VRmkl50ZEZFDTWj7gCcfx4/ddS50qCLOfACUu51FC2a06TuiRFWvfRccxAu2l\nLRTq7YDehs/3gbKYuRCeeTv+1EAtbniWhJc7fO2EstLGHBMn1JDpo3UvPzWYQ/b0\njleF6AZMTpjPK8NyON7Pc2sYOVrfiV6Sb8HX8OpY+Ll0avS8kKkZdlXRfczCUgDB\ntL2rWumqpIdVO8WHrXg0Mg/GIo5LMgiNsXIgYQw9PtD1Zh5S7hqHbrfM6Y4m7c72\n/aKGQCcXAgMBAAECggEANgvUC1vhUS6CNbavcYrUEqZuiefg0u4wFGRMhFH0SNgj\nJHxSSAyBfH9RuR/gpGUb1w4laaSTN7WciI4JCp2OqoTCjxChbK8FR/lke82tTUQD\nMZXSvq1h6ZOp7WdBqhnsPURrAgWSx4D9J228xljOwQ1OBvxC+X09Y9evzobDliUD\njgZMQG2cyO8ZCDz5LS31BjaS1+IkV7QNJvwIe+afeyArTFUOksFkAxS/KZxfD+zR\ngor4RIsYz9pVDPcYJKXiGuQ85c9VmRZ9zv1W8/WVf744tyeevxUzJsoUIzc82Dst\n4TdwQbkGQzfgPwdgR2TUm9F/gsZwr37jjsBnMv6qiQKBgQDq0p/gDkHO3ZRCpJku\nJsM45Mp53860IP8kaDI0rF4fjV5EpAiyP/FJDK0oPvw5PHezQsBX1iRSNWhMM1C3\n9jXcfUEv2poLBjbwHlpoINfoKk9wzMw4aQCXxX2XlVRGVcf472RP5DdkqRaq79TH\nLbY3BamIuMmLWrkVgbT5yeEm7QKBgQC9CXzktd+uMUQPezSzErL/QxnpWHm9QpPa\nkY78o6Kl6zH35gDuFTeli7j2DtIe/SqKZYXyV0dB3cTtJOCssVMuwSYf4rWlFJIv\n41EJKifaC4vPuFFmQq6Awo58DzoIwHB9Hy5MSrWXiMAmCRTggPRQVJbo+AC8mrVL\nQ9TSjTNhkwKBgAoFlTctxJc8k7BIcBUtKFXMRevvplW/tsPqAoKG/LliAizxx0E8\nQ2L3vIgkMAWNVBp9ddIJ3KD5kIr4AbDoPCI94kNVlA92Y2/aC8e35x8Mdzl8NBcQ\nPCs+DX8jq2YZESDJrsFOHyMXqFUBSVZ61/T/M94W7Nsasx183KlweUB9AoGAb6Fj\ntHfGcEo9g9rg4wKe22iXq5mIwn/HaiHcy0oiaVJ7foW/dNjotITPI9batFwSPAn5\n0IND3ByHBvdpCfHpSknbJqctVx/PuCHHn97aC8QXuwGAaB/mhrjdhVtEjRh/FRRN\ntdXEaIjj11IzluPv4mQhfc++N6IwfxK+YdvqRKsCgYBkL/191dzNLe2danTF1HzS\nuXycB/z0ysCK2oXssJK5boXsENAUubPb4YR3X5wr0UCcipoDRoSMHQXSCQSKEBS2\n5nH+Noc53nmimEB90zrSpFA2J3lVX6LpncsVT9UfCly3CujepCsJ7HoEg8nY3bvl\n16WMgwfG9pppaXHGMs6aoA==\n-----END PRIVATE KEY-----\n"
     },
     "client2": {
         "client_name": "client two",
@@ -56,8 +56,8 @@
         "dpop_signing_alg": "ES256"
     },
     "mtls2": {
-        "cert": "-----BEGIN CERTIFICATE-----\nMIICqDCCAZCgAwIBAgIGAZIas13DMA0GCSqGSIb3DQEBCwUAMBUxEzARBgNVBAMM\nCmNsaWVudF90d28wHhcNMjQwOTIyMTcwNjU1WhcNMjUwNzE5MTcwNjU1WjAVMRMw\nEQYDVQQDDApjbGllbnRfdHdvMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKC\nAQEAsSfqkTVsCg62HTvblCPYc3l/NjST3/qeMcLA8h4LF44u7NaRX16rP81MLCYw\nyCOKDcRVatT9D3pax8S5z0scVHBhcK559qQPHmUq6UyyTubqZvLw2TeIjH8ShcP5\nmv4jsgAcvArCogoEkX0efqJ8e7BDvsBZH2H4FRUHTN1HIWObm67jtNcfru7hY5XU\nFprZopYJfmP9LynPvmKtyIuE4S1FFTDhxwQ/hCpC3MZdKOAE1QQlSpSCsyr6iT+/\n6j9FQbs0SEwte2TcNMKeSt/ziJOsMHYp9P/tbmGMmgqd0qHB1OOIfe4o3pK+fORk\nOyvZ6ZMLbOeYUf4u6tu4MrKRzwIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQBW0ELm\nRDzdOzARkf1z7BNJQIX9gDwYmJnt6WcHS676W+JzEh5Eaa6Incfo+AprqNifMQm7\nkioQ3aINT8sfFDIcBcmCOlqHB/8vzVcO/HXiFkOy8pWI4FbeBrJz9Hmacr//EfAd\nM9Ja84Sp/9p7BOFRkeHgpZnnzaKgSLjv/OtRHpBj73an/5A9Ur3sNyZvDqm7OdBa\nEk3OcGajw39e1TnWbSOBAAs81I+6CfGC5kLSkY26g53AuRqI5YwDgHWmTbNoV+Oc\nBDLwvGzlIyLweeHjOLwhuwUrZQNWNTbCfc+B+cAXsojJb8mfNk3vO94PEjmax02v\nrpGpCKlYTBG5n356\n-----END CERTIFICATE-----",
-        "key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCxJ+qRNWwKDrYd\nO9uUI9hzeX82NJPf+p4xwsDyHgsXji7s1pFfXqs/zUwsJjDII4oNxFVq1P0PelrH\nxLnPSxxUcGFwrnn2pA8eZSrpTLJO5upm8vDZN4iMfxKFw/ma/iOyABy8CsKiCgSR\nfR5+onx7sEO+wFkfYfgVFQdM3UchY5ubruO01x+u7uFjldQWmtmilgl+Y/0vKc++\nYq3Ii4ThLUUVMOHHBD+EKkLcxl0o4ATVBCVKlIKzKvqJP7/qP0VBuzRITC17ZNw0\nwp5K3/OIk6wwdin0/+1uYYyaCp3SocHU44h97ijekr585GQ7K9npkwts55hR/i7q\n27gyspHPAgMBAAECggEAJ22U3UCgjRR9H8CEvFHGCN1PnMbS6pSixLxtqPVazqFM\nfFW9ARbW0lpky6asUL7oKOw7fo1szRcUQUXdfO9gnMJuTV/nsScOXltx037IaJso\nLEWBqTac43gcrTzSvtY1J5ayzn8ullXYcnEAanrLbdPrH/c7Xqq1Rivp9geBn0Jm\n8z04LGgaLwH199zmWQTglzcAZV2gaL4slB7MadP9irg9dNE1I9eaymitzYhV/qFN\nXDaQcn7UD3g48OExk6qwve5541B/Ptff5jQnGfJsVLoTyzhjTHNdZvJPln1WMfcp\nNdeT7rTXmeyoDfBcGCrkmDXMHYgklLcjRARKAeneoQKBgQDm167aZsr3SXfk283L\nXLCJBz16Ojk7ilntLpqyvkgYRJ/04dL5/2Hgsi5u4ebjhXKkQ77dRX+WhP5K9VmB\nPmOc0hi9vzuRF7QCUt+OApvJYyuLn8fFZPdXDKg3xuKqGr8uKgDgH3zUX/pEDOeW\nwZZqP/mj9hHV8XS8PfSTJuqbGQKBgQDEdmvhZnlHsB/hgTy1vwTJ6xHw4QDHN/M1\nran+eBdG3T/FAIb5xNAh6vNdXbfaZefQTl4ESgj6ZDoWcVtEcrUA2PRuAl8E72mv\nnjWH36KVpNIFcYrcPwqORIYknZLubhyUfgvNJqba/hUFZXwVG/LvWEK7MdHTa/M2\nCKH1O7uZJwKBgBvqFv3YElEm9DWbkt41ni9jzb5bDhKyHz+8M/7LXcJ5gfJF4JJU\nnIxkX5MPBDGdMIjGnGz7e3tDJ9D+rE0hs0ACc/V2C4j3GdByHxB4JkiLEnf24Vxw\nYiyHnkvoY/5374hwkdyIUjsIRCY4fUTQshS1GcYG+o8pfJlK0Kl+uj35AoGAIYkh\nYylt3GnZF1JLPa7sr1b8CgUub9NCJdCOKwzu1D7iKsurPql06cVEY5Si1Jn+lxU5\ngTvuCmffboNNFAMMmKdwGfM3qwz/GmZENvxasXagDyPRk0UDlUNnLorjUOXk5Qgb\nFZracplal0A6jRPnRSnowjF/4roTmw6gLs9Sd5MCgYACQCpbzo7xHnKY0ZtsaO4Y\nCHTn4ehiPcIUruKynOOLE+rre5QYV/pVNsKEsuhsZXMWV5uovh98z+L4eLZ47M+R\nTBd1zO3z0oRR8WV1FMze7icfWKeR2NAL1CsXpA/p7w+B/T5Id23h/4Zqb4cR+Rnk\nHsU2QZ+/eqU/qOZ/WJQriQ==\n-----END PRIVATE KEY-----"
+        "cert": "-----BEGIN CERTIFICATE-----\nMIIDCzCCAfOgAwIBAgIUeBrl3yI/bD5Vu4n4sid7rDWaZrcwDQYJKoZIhvcNAQEL\nBQAwFTETMBEGA1UEAwwKY2xpZW50X3R3bzAeFw0yNTA4MDcyMDE3MzhaFw0yNjA4\nMDcyMDE3MzhaMBUxEzARBgNVBAMMCmNsaWVudF90d28wggEiMA0GCSqGSIb3DQEB\nAQUAA4IBDwAwggEKAoIBAQDZhiNMqG7QzHmHrtfIdJpvXv18kFFOiosN3EHqPlkL\nEHegGpCL/5WZQi0jcYt94WYKZ4rdiKtkPeQf7Y9oHrcE3eODWhml7ls2gCp0V9v8\n9JmCVUHLKTi890dJG10Ha1O7lj9dH4JYB9EP1WNPXKM7orZIQmixU9iZlOeh3en/\n5JoDK+9fRa3z8dAO5q2UOZMpDlmrD0kpa360JF/zMWIwXeIAH4DaIuvqpg3lgdbr\nFzvtCyniXa0VVgtKKCvc6s5Tv967ylO2DPlSEAM6h0MXRui7VeIHKZf2JJbahowo\nrdIANCUnsIdRY2a/xartgk6jYOisbBRyboJdXR/xbHwtAgMBAAGjUzBRMB0GA1Ud\nDgQWBBQqzpKXqmet9fA/MumaeTa70o2M7TAfBgNVHSMEGDAWgBQqzpKXqmet9fA/\nMumaeTa70o2M7TAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQC/\nqwGUSdfYhGsnmwmBt9pwI727oOV/umvZboTmQMhRpvqjWTTdg1a11rPRZ22nYbQl\nomQB6YFne6ykiajIRTFa8pfNjSw3AIBVYZsK8+YnZYeQw/GhYE5XnDGH5MVVWMZI\n6tmZVk2pB0n4mZKNY1cf66Rd4YILp6N2MA5L5GpIymJpzA/acaJdGzgsNuslVfOq\nE2XzeqS+Zlu1rxK3gSKCHOUdwLGFXBd4srmdKctimTXJ74STeC0CTDVy9SC9hfsd\nN9wFMZQO1AXyYZGoMZ7Pjx7HCPywwic1PLDvBocYqbC7vU+5HZhQaZ16UYnWL5S4\nXz77yw7eKG7XXwy0IZAA\n-----END CERTIFICATE-----\n",
+        "key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDZhiNMqG7QzHmH\nrtfIdJpvXv18kFFOiosN3EHqPlkLEHegGpCL/5WZQi0jcYt94WYKZ4rdiKtkPeQf\n7Y9oHrcE3eODWhml7ls2gCp0V9v89JmCVUHLKTi890dJG10Ha1O7lj9dH4JYB9EP\n1WNPXKM7orZIQmixU9iZlOeh3en/5JoDK+9fRa3z8dAO5q2UOZMpDlmrD0kpa360\nJF/zMWIwXeIAH4DaIuvqpg3lgdbrFzvtCyniXa0VVgtKKCvc6s5Tv967ylO2DPlS\nEAM6h0MXRui7VeIHKZf2JJbahowordIANCUnsIdRY2a/xartgk6jYOisbBRyboJd\nXR/xbHwtAgMBAAECggEANlVtJ87Cr2ED0kJ4H9gQY1VE2AJsbMPqa/HifRJJx5u7\nZcB87ptO0NNY1wubnjvY8yxd4Wwr84QKIXeDZKyXZp3OIJc25N2e5wQolpsDljG6\nznVhU8/eHkVeBwLQv/OtHKQw+5/NPRPmwp+4iLBJDbJc+buszu50ohgxq5r0wjfv\nz6Wdu0jiJFPNh9ydUcTJTi1Y7EIJEq+9vrx6ysfOxksTnkLfdmxv/NYcNMP9/rkB\nGOBc2T2OZoh3+ASQ7025iLqbRifvnaGMKv9GbrDasNwIbutfo1ApRfdFtiCG7Jqi\ncFu0EeVLJRP2YdkqISGayaXTWLW5kXi5WWDdrh2tgQKBgQD1AcaT9za/VOGxAesg\nY1btKkfJNcRRphqL/aR8ofb5v1yrNse/eu69MDAxbOdD+Lx3BbUv0SdrTBuifTDA\nxin/dNz0bMMdEY9WEoYqRON8OvckK+E640n4ODjp8IXfIrQbJBe8VVR11TeFsrua\nFWXahzaYAr05ZOBUSx4npt/kHQKBgQDjSK8+DgjHka1qBrmaCinBQOJqJn3lVHNw\niBzXiZxXpO0qwVwLajb9sqPCV2KDpCWqAe30aY/22HpEwyMg1wg7JMGjBGILbMTL\nnjDHwgNWPNH73779K/IxdUmawG6g3srocvzYNFQLkWQXgbVmaaVaYYcI99urvmuz\nPvfkgktbUQKBgFUVW8ewtzN0n7ffqa6isOJFp45JfLa6D0gEOmYJvQH4IY9Xw8BM\nSbIrlODlJ97j91cCBWzonl7VnFcuUIrxhk4vYDgFuTBUE8nZPvxY1gMjWwYVsu7H\nVb28kI81NthJbfBq9U8y9tTAybpFWn7k5W0hPaVGdj4DOSAswfkVK3VFAoGBAKAI\nMKPv+8yRTVpHS+4jU80n44Q8gA62jOXiYPR+h1/K19dv+GBtNDUj0FxpbQslzANN\ngn/CyERVnpnGEHjyD3Cda95dmq9SsapxQwWUHQdeobfIjlDy3YBnhiD5d6u704Ei\nXdfZ2IegoqpOgSyQHIZr/0mYQ8tEs86s+pyiBW9RAoGAEy1Mb9WB3nmyi5BnRRr4\n3FYVFyserFJCbNM+1u1K2iJTAsE8IEjvStAyYLJRihCz7lWbSmX9EZiFY8yxm+35\ntlygv2ELxz97fCsaub+ZHWas+fmI6aQ39fn5OeLtrX/suGukrIInB3s8J74h5kXI\nUZAQoSAWEgyu5FHEhEnj0XE=\n-----END PRIVATE KEY-----\n"
     },
     "resource": {
         "resourceUrl": "https://auth.localhost/userinfo"
@@ -94,7 +94,7 @@
         }
     ],
     "override": {
-        "fapi2-security-profile-id2-user-rejects-authentication": {
+        "fapi2-security-profile-final-user-rejects-authentication": {
             "browser": [
                 {
                     "match": "https://auth.localhost*/authorize*",
@@ -118,7 +118,7 @@
                 }
             ]
         },
-        "fapi2-security-profile-id2-par-attempt-reuse-request_uri": {
+        "fapi2-security-profile-final-par-attempt-reuse-request_uri": {
             "browser": [
                 {
                     "match": "https://auth.localhost*/authorize*",
@@ -161,7 +161,7 @@
                 }
             ]
         },
-        "fapi2-security-profile-id2-ensure-unsigned-authorization-request-without-using-par-fails": {
+        "fapi2-security-profile-final-ensure-unsigned-authorization-request-without-using-par-fails": {
             "browser": [
                 {
                     "match": "https://auth.localhost*/authorize*",
@@ -179,7 +179,7 @@
                 }
             ]
         },
-        "fapi2-security-profile-id2-par-attempt-to-use-expired-request_uri": {
+        "fapi2-security-profile-final-par-attempt-to-use-expired-request_uri": {
             "browser": [
                 {
                     "match": "https://auth.localhost*/authorize*",
@@ -197,7 +197,7 @@
                 }
             ]
         },
-        "fapi2-security-profile-id2-par-attempt-to-use-request_uri-for-different-client": {
+        "fapi2-security-profile-final-par-attempt-to-use-request_uri-for-different-client": {
             "browser": [
                 {
                     "match": "https://auth.localhost*/authorize*",
@@ -215,7 +215,7 @@
                 }
             ]
         },
-        "fapi2-security-profile-id2-ensure-registered-redirect-uri": {
+        "fapi2-security-profile-final-ensure-registered-redirect-uri": {
             "browser": [
                 {
                     "match": "https://auth.localhost*/authorize*",
@@ -230,6 +230,74 @@
                         }
                     ]
 
+                }
+            ]
+        },
+        "fapi2-security-profile-final-par-ensure-reused-request-uri-prior-to-auth-completion-succeeds": {
+            "browser": [
+                {
+                    "comment": "Do nothing",
+                    "match": "https://auth.localhost*/authorize*",
+                    "match-limit": 1,
+                    "tasks": [
+                        {
+                            "task": "Show Login Page",
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": []
+                        }
+                    ]
+                },
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Login",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize/*/login",
+                            "commands": [
+                                [
+                                    "text",
+                                    "id",
+                                    "username",
+                                    "random@gmail.com"
+                                ],
+                                [
+                                    "text",
+                                    "id",
+                                    "password",
+                                    "pass"
+                                ],
+                                [
+                                    "click",
+                                    "id",
+                                    "submit_button"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Consent",
+                            "match": "https://auth.localhost*/authorize/*/consent",
+                            "commands": [
+                                [
+                                    "click",
+                                    "id",
+                                    "submit_button"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Verify complete",
+                            "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback*",
+                            "commands": [
+                                [
+                                    "wait",
+                                    "id",
+                                    "submission_complete",
+                                    10
+                                ]
+                            ]
+                        }
+                    ]
                 }
             ]
         }

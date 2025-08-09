@@ -8,8 +8,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"path/filepath"
-	"runtime"
 
 	"github.com/luikyv/go-oidc/examples/authutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -18,20 +16,7 @@ import (
 )
 
 func main() {
-	// Get the file path of the source file.
-	_, filename, _, _ := runtime.Caller(0)
-	sourceDir := filepath.Dir(filename)
-
-	serverJWKSFilePath := filepath.Join(sourceDir, "../keys/server.jwks")
-	serverCertFilePath := filepath.Join(sourceDir, "../keys/server.crt")
-	serverCertKeyFilePath := filepath.Join(sourceDir, "../keys/server.key")
-
-	// Create and configure the OpenID provider.
-	op, _ := provider.New(
-		goidc.ProfileFAPI2,
-		authutil.Issuer,
-		authutil.PrivateJWKSFunc(serverJWKSFilePath),
-	)
+	op, _ := provider.New(goidc.ProfileFAPI1, authutil.Issuer, authutil.PrivateJWKSFunc())
 	_ = op.WithOptions(
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithIDTokenSignatureAlgs(goidc.PS256),
@@ -71,7 +56,8 @@ func main() {
 		Addr:    authutil.Port,
 		Handler: mux,
 		TLSConfig: &tls.Config{
-			ClientAuth: tls.RequestClientCert,
+			ClientAuth:   tls.RequestClientCert,
+			Certificates: []tls.Certificate{authutil.ServerCert()},
 			CipherSuites: []uint16{
 				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
@@ -80,10 +66,7 @@ func main() {
 			},
 		},
 	}
-	if err := server.ListenAndServeTLS(
-		serverCertFilePath,
-		serverCertKeyFilePath,
-	); err != nil && err != http.ErrServerClosed {
+	if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
 }

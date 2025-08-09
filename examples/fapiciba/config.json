@@ -10,7 +10,7 @@
         "hint_value": "random@gmail.com"
     },
     "client2": {
-        "client_name": "client two",
+        "client_name": "client_two",
         "scope": "openid email",
         "acr_value": "urn:mace:incommon:iap:silver"
     },

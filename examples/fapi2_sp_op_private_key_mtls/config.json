@@ -1,0 +1,305 @@
+{
+    "alias": "goidc",
+    "server": {
+        "discoveryUrl": "https://auth.localhost/.well-known/openid-configuration"
+    },
+    "client": {
+        "client_name": "client_one",
+        "client_id": "client_one",
+        "scope": "openid email",
+        "jwks": {
+            "keys": [
+                {
+                    "p": "-K7cl7g8r2GCX1A21QHmGzbBH35irHKj1dCHn823FAJjj1_VsdL9zxB0jOIU9ec-mAEusnkOD4A4spw0XROBjB9SjQdfHFEOsTreZEz4Ue-FzMJ_T0kQFOS3hqy1Lro2tQgSel9Dsel3n2qL4Vzyb3SsMabdssuApWHsIajhtps",
+                    "kty": "RSA",
+                    "q": "yfhVGZggQryzryyRimT7GoH4PjkoQBTwylqv7OAN7NX5LnhHpW2IqLAGi8DuSYJaHEq1Sjib4ReOI92UK5iUW4kOEYUkmzvLZnAO3ThDXMKdLIXxFYF89-zzAOUIkoyuAqmoIZVPpBIA74bnCOpGF9_2_HabRJrC3WixYobuJ7s",
+                    "d": "ZoD_qqU7qcg8CWHKhAP_-MNomzYMTKmB8eAgm4vIg1iQOJHlQIf_SgsmSzW6TxHtMFS4JB9Ph53kCmZiJu0cS5UmunfKZBjEv83KFIF0PwfBZE_Gba-vMYgsw1gNKA2FVv_Co3IDlzuApTyD_EiYy5rdQcavu1-03g2_L6TzHRM7XayQAwnYDLykiOAFOwZND5AjSgo44xhIUbD0YJtoxbRpT01T8E0c8O8lS4LMdnEcEfw3-llUlQ4Gj-pdAFFQ7vD5laeXRrM1dw25F9pba6ZO9sonU11cYWZ3uYC4aXrPE3jM3ToWDREWEwGYiaqc5luvkJMHAz4z4hgwm7PfAQ",
+                    "e": "AQAB",
+                    "use": "sig",
+                    "kid": "client_one",
+                    "qi": "wXwc_V4TDQ2vUWQmT34YXWuXTBqXLUz6E8Cdlcu7w1Mp7xFwtZnpX2y0HoMrdSQGymDXSqxQLpIVhmuqfdBKpnxQjirj9l6uSEWieHaBsAuzSBbvVx2h2WhmaLl0zY1o5Mbz36bLAHBrnBC_ciorgRVitPRlE4ZAV-wok5AN2mE",
+                    "dp": "SvgEHmT3PnPp5qv667oX0YpvK_xg6NXimDm2OTG-CHUz6Gwesu4Ff9_ZEwOxB_S_hPmOR1WBLKEd9pJqosiXnFNxAnz_ajzxbfJuStR9Y84OiwzzbkZ7Z6EPxrTYJg8TIP4e--8uLDtSyadIJhdsKreEla9VVGpPDQx5MCiGaxM",
+                    "alg": "PS256",
+                    "dq": "vbUqig3gT49b37CnTC0px25JNHkPm5GP0yJ3mLGjotAhbErCUVqfQIOGwoKH0DhGV8i8nGir0jQD6SBZ6tE4mPoVYtOC3OS_Wwrqi1QrwddzNrzhBGhKb737St3WvYCyegHN0S2kTuIySsqV_EPBbu-J2P23Pit32exaocdHr70",
+                    "n": "xDKHQ767NSSmLD7VN511NZ4n8d_B0I1EoYLFHJBMrIJMsFhEkF5DmqKTEW-IaOJOA10h65mB9z99MOKqcnoK83M3n5H68ehhUfaA-WMdq8DXLZYXbYDvBa1x-GFCg09K63Zh4M_2f8EEEqP08MgsLGiemWPmLRhJMci2SnA63wmZY4uDu73OZiQ95pD4ub9L5XF9-PWnAbpGC5XcPergE2_BOLPa0rdfz-IkFLfSvcuQboZGUC2j5oKePGwKMAVJRkxYvJzvZyDh6aJ9nU3FOwB7LN-hyDGIvhGYjlXQbRQIqxa5TxCb5cCYyHl2FfVZCuRrsdQPA0CS0tcTpcwAOQ"
+                }
+            ]
+        },
+        "dpop_signing_alg": "PS256"
+    },
+    "mtls": {
+        "cert": "-----BEGIN CERTIFICATE-----\nMIIDCzCCAfOgAwIBAgIUGJ4MFKUAUQCing0DmwavJofFAYkwDQYJKoZIhvcNAQEL\nBQAwFTETMBEGA1UEAwwKY2xpZW50X29uZTAeFw0yNTA4MDcyMDE3MzhaFw0yNjA4\nMDcyMDE3MzhaMBUxEzARBgNVBAMMCmNsaWVudF9vbmUwggEiMA0GCSqGSIb3DQEB\nAQUAA4IBDwAwggEKAoIBAQCtZjP/2UIYyXa49wDxWl3WGQ4AwdXzh8bIv87Hxdtq\nUWKs90ZGJDAWRIe07PxBl3UXstswibeXVupby28VRmkl50ZEZFDTWj7gCcfx4/dd\nS50qCLOfACUu51FC2a06TuiRFWvfRccxAu2lLRTq7YDehs/3gbKYuRCeeTv+1EAt\nbniWhJc7fO2EstLGHBMn1JDpo3UvPzWYQ/b0jleF6AZMTpjPK8NyON7Pc2sYOVrf\niV6Sb8HX8OpY+Ll0avS8kKkZdlXRfczCUgDBtL2rWumqpIdVO8WHrXg0Mg/GIo5L\nMgiNsXIgYQw9PtD1Zh5S7hqHbrfM6Y4m7c72/aKGQCcXAgMBAAGjUzBRMB0GA1Ud\nDgQWBBRfYCtGa0awiy6/JDUZKGxPhpPG6jAfBgNVHSMEGDAWgBRfYCtGa0awiy6/\nJDUZKGxPhpPG6jAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQBl\nATFasgyq/BGFREycgOMCYIqbk7YbyWAxwEOu8oPfWVFQnYP1Uasj6u1BVu3DUMY6\ng8TMnLGhiYO2/Zp+I0vxAqX9hu1OOxs7C8hgr4U8NqbwLdSkMt62QTWRpzHXgjGl\nt+oNwMC5tJ7MYq7AY3P+20S7DhoCLASjUHCYtG1PAMa2Fz2MAId5373nFJutucdV\nVta0hPCxKkLXX8nh0LdAK6v/bsfYwGtEZ6Y76xQvcH4a5ouot+/j5DL6keRRb+xc\nmJgJuTTrtEC3T0n+GJlIDU52hEkIOGmA9NHMRcX22L+G6puGBCL9odbqs+n4iMjm\nF3VKgQ5Ukn509x5x4Ln+\n-----END CERTIFICATE-----\n",
+        "key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCtZjP/2UIYyXa4\n9wDxWl3WGQ4AwdXzh8bIv87HxdtqUWKs90ZGJDAWRIe07PxBl3UXstswibeXVupb\ny28VRmkl50ZEZFDTWj7gCcfx4/ddS50qCLOfACUu51FC2a06TuiRFWvfRccxAu2l\nLRTq7YDehs/3gbKYuRCeeTv+1EAtbniWhJc7fO2EstLGHBMn1JDpo3UvPzWYQ/b0\njleF6AZMTpjPK8NyON7Pc2sYOVrfiV6Sb8HX8OpY+Ll0avS8kKkZdlXRfczCUgDB\ntL2rWumqpIdVO8WHrXg0Mg/GIo5LMgiNsXIgYQw9PtD1Zh5S7hqHbrfM6Y4m7c72\n/aKGQCcXAgMBAAECggEANgvUC1vhUS6CNbavcYrUEqZuiefg0u4wFGRMhFH0SNgj\nJHxSSAyBfH9RuR/gpGUb1w4laaSTN7WciI4JCp2OqoTCjxChbK8FR/lke82tTUQD\nMZXSvq1h6ZOp7WdBqhnsPURrAgWSx4D9J228xljOwQ1OBvxC+X09Y9evzobDliUD\njgZMQG2cyO8ZCDz5LS31BjaS1+IkV7QNJvwIe+afeyArTFUOksFkAxS/KZxfD+zR\ngor4RIsYz9pVDPcYJKXiGuQ85c9VmRZ9zv1W8/WVf744tyeevxUzJsoUIzc82Dst\n4TdwQbkGQzfgPwdgR2TUm9F/gsZwr37jjsBnMv6qiQKBgQDq0p/gDkHO3ZRCpJku\nJsM45Mp53860IP8kaDI0rF4fjV5EpAiyP/FJDK0oPvw5PHezQsBX1iRSNWhMM1C3\n9jXcfUEv2poLBjbwHlpoINfoKk9wzMw4aQCXxX2XlVRGVcf472RP5DdkqRaq79TH\nLbY3BamIuMmLWrkVgbT5yeEm7QKBgQC9CXzktd+uMUQPezSzErL/QxnpWHm9QpPa\nkY78o6Kl6zH35gDuFTeli7j2DtIe/SqKZYXyV0dB3cTtJOCssVMuwSYf4rWlFJIv\n41EJKifaC4vPuFFmQq6Awo58DzoIwHB9Hy5MSrWXiMAmCRTggPRQVJbo+AC8mrVL\nQ9TSjTNhkwKBgAoFlTctxJc8k7BIcBUtKFXMRevvplW/tsPqAoKG/LliAizxx0E8\nQ2L3vIgkMAWNVBp9ddIJ3KD5kIr4AbDoPCI94kNVlA92Y2/aC8e35x8Mdzl8NBcQ\nPCs+DX8jq2YZESDJrsFOHyMXqFUBSVZ61/T/M94W7Nsasx183KlweUB9AoGAb6Fj\ntHfGcEo9g9rg4wKe22iXq5mIwn/HaiHcy0oiaVJ7foW/dNjotITPI9batFwSPAn5\n0IND3ByHBvdpCfHpSknbJqctVx/PuCHHn97aC8QXuwGAaB/mhrjdhVtEjRh/FRRN\ntdXEaIjj11IzluPv4mQhfc++N6IwfxK+YdvqRKsCgYBkL/191dzNLe2danTF1HzS\nuXycB/z0ysCK2oXssJK5boXsENAUubPb4YR3X5wr0UCcipoDRoSMHQXSCQSKEBS2\n5nH+Noc53nmimEB90zrSpFA2J3lVX6LpncsVT9UfCly3CujepCsJ7HoEg8nY3bvl\n16WMgwfG9pppaXHGMs6aoA==\n-----END PRIVATE KEY-----\n"
+    },
+    "client2": {
+        "client_name": "client two",
+        "client_id": "client_two",
+        "scope": "openid email",
+        "jwks": {
+            "keys": [
+                {
+                    "p": "5teu2mbK90l35NvNy1ywiQc9ejo5O4pZ7S6asr5IGESf9OHS-f9h4LIubuHm44VypEO-3UV_loT-SvVZgT5jnNIYvb87kRe0AlLfjgKbyWMri5_HxWT3VwyoN8biqhq_LioA4B981F_6RAznlsGWaj_5o_YR1fF0vD30kybqmxk",
+                    "kty": "RSA",
+                    "q": "xHZr4WZ5R7Af4YE8tb8EyesR8OEAxzfzNa2p_ngXRt0_xQCG-cTQIerzXV232mXn0E5eBEoI-mQ6FnFbRHK1ANj0bgJfBO9pr541h9-ilaTSBXGK3D8KjkSGJJ2S7m4clH4LzSam2v4VBWV8FRvy71hCuzHR02vzNgih9Tu7mSc",
+                    "d": "J22U3UCgjRR9H8CEvFHGCN1PnMbS6pSixLxtqPVazqFMfFW9ARbW0lpky6asUL7oKOw7fo1szRcUQUXdfO9gnMJuTV_nsScOXltx037IaJsoLEWBqTac43gcrTzSvtY1J5ayzn8ullXYcnEAanrLbdPrH_c7Xqq1Rivp9geBn0Jm8z04LGgaLwH199zmWQTglzcAZV2gaL4slB7MadP9irg9dNE1I9eaymitzYhV_qFNXDaQcn7UD3g48OExk6qwve5541B_Ptff5jQnGfJsVLoTyzhjTHNdZvJPln1WMfcpNdeT7rTXmeyoDfBcGCrkmDXMHYgklLcjRARKAeneoQ",
+                    "e": "AQAB",
+                    "use": "sig",
+                    "kid": "client_two",
+                    "qi": "AkAqW86O8R5ymNGbbGjuGAh05-HoYj3CFK7ispzjixPq63uUGFf6VTbChLLobGVzFlebqL4ffM_i-Hi2eOzPkUwXdczt89KEUfFldRTM3u4nH1inkdjQC9QrF6QP6e8Pgf0-SHdt4f-Gam-HEfkZ5B7FNkGfv3qlP6jmf1iUK4k",
+                    "dp": "G-oW_dgSUSb0NZuS3jWeL2PNvlsOErIfP7wz_stdwnmB8kXgklScjGRfkw8EMZ0wiMacbPt7e0Mn0P6sTSGzQAJz9XYLiPcZ0HIfEHgmSIsSd_bhXHBiLIeeS-hj_nfviHCR3IhSOwhEJjh9RNCyFLUZxgb6jyl8mUrQqX66Pfk",
+                    "alg": "PS256",
+                    "dq": "IYkhYylt3GnZF1JLPa7sr1b8CgUub9NCJdCOKwzu1D7iKsurPql06cVEY5Si1Jn-lxU5gTvuCmffboNNFAMMmKdwGfM3qwz_GmZENvxasXagDyPRk0UDlUNnLorjUOXk5QgbFZracplal0A6jRPnRSnowjF_4roTmw6gLs9Sd5M",
+                    "n": "sSfqkTVsCg62HTvblCPYc3l_NjST3_qeMcLA8h4LF44u7NaRX16rP81MLCYwyCOKDcRVatT9D3pax8S5z0scVHBhcK559qQPHmUq6UyyTubqZvLw2TeIjH8ShcP5mv4jsgAcvArCogoEkX0efqJ8e7BDvsBZH2H4FRUHTN1HIWObm67jtNcfru7hY5XUFprZopYJfmP9LynPvmKtyIuE4S1FFTDhxwQ_hCpC3MZdKOAE1QQlSpSCsyr6iT-_6j9FQbs0SEwte2TcNMKeSt_ziJOsMHYp9P_tbmGMmgqd0qHB1OOIfe4o3pK-fORkOyvZ6ZMLbOeYUf4u6tu4MrKRzw"
+                }
+            ]
+        },
+        "dpop_signing_alg": "ES256"
+    },
+    "mtls2": {
+        "cert": "-----BEGIN CERTIFICATE-----\nMIIDCzCCAfOgAwIBAgIUeBrl3yI/bD5Vu4n4sid7rDWaZrcwDQYJKoZIhvcNAQEL\nBQAwFTETMBEGA1UEAwwKY2xpZW50X3R3bzAeFw0yNTA4MDcyMDE3MzhaFw0yNjA4\nMDcyMDE3MzhaMBUxEzARBgNVBAMMCmNsaWVudF90d28wggEiMA0GCSqGSIb3DQEB\nAQUAA4IBDwAwggEKAoIBAQDZhiNMqG7QzHmHrtfIdJpvXv18kFFOiosN3EHqPlkL\nEHegGpCL/5WZQi0jcYt94WYKZ4rdiKtkPeQf7Y9oHrcE3eODWhml7ls2gCp0V9v8\n9JmCVUHLKTi890dJG10Ha1O7lj9dH4JYB9EP1WNPXKM7orZIQmixU9iZlOeh3en/\n5JoDK+9fRa3z8dAO5q2UOZMpDlmrD0kpa360JF/zMWIwXeIAH4DaIuvqpg3lgdbr\nFzvtCyniXa0VVgtKKCvc6s5Tv967ylO2DPlSEAM6h0MXRui7VeIHKZf2JJbahowo\nrdIANCUnsIdRY2a/xartgk6jYOisbBRyboJdXR/xbHwtAgMBAAGjUzBRMB0GA1Ud\nDgQWBBQqzpKXqmet9fA/MumaeTa70o2M7TAfBgNVHSMEGDAWgBQqzpKXqmet9fA/\nMumaeTa70o2M7TAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQC/\nqwGUSdfYhGsnmwmBt9pwI727oOV/umvZboTmQMhRpvqjWTTdg1a11rPRZ22nYbQl\nomQB6YFne6ykiajIRTFa8pfNjSw3AIBVYZsK8+YnZYeQw/GhYE5XnDGH5MVVWMZI\n6tmZVk2pB0n4mZKNY1cf66Rd4YILp6N2MA5L5GpIymJpzA/acaJdGzgsNuslVfOq\nE2XzeqS+Zlu1rxK3gSKCHOUdwLGFXBd4srmdKctimTXJ74STeC0CTDVy9SC9hfsd\nN9wFMZQO1AXyYZGoMZ7Pjx7HCPywwic1PLDvBocYqbC7vU+5HZhQaZ16UYnWL5S4\nXz77yw7eKG7XXwy0IZAA\n-----END CERTIFICATE-----\n",
+        "key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDZhiNMqG7QzHmH\nrtfIdJpvXv18kFFOiosN3EHqPlkLEHegGpCL/5WZQi0jcYt94WYKZ4rdiKtkPeQf\n7Y9oHrcE3eODWhml7ls2gCp0V9v89JmCVUHLKTi890dJG10Ha1O7lj9dH4JYB9EP\n1WNPXKM7orZIQmixU9iZlOeh3en/5JoDK+9fRa3z8dAO5q2UOZMpDlmrD0kpa360\nJF/zMWIwXeIAH4DaIuvqpg3lgdbrFzvtCyniXa0VVgtKKCvc6s5Tv967ylO2DPlS\nEAM6h0MXRui7VeIHKZf2JJbahowordIANCUnsIdRY2a/xartgk6jYOisbBRyboJd\nXR/xbHwtAgMBAAECggEANlVtJ87Cr2ED0kJ4H9gQY1VE2AJsbMPqa/HifRJJx5u7\nZcB87ptO0NNY1wubnjvY8yxd4Wwr84QKIXeDZKyXZp3OIJc25N2e5wQolpsDljG6\nznVhU8/eHkVeBwLQv/OtHKQw+5/NPRPmwp+4iLBJDbJc+buszu50ohgxq5r0wjfv\nz6Wdu0jiJFPNh9ydUcTJTi1Y7EIJEq+9vrx6ysfOxksTnkLfdmxv/NYcNMP9/rkB\nGOBc2T2OZoh3+ASQ7025iLqbRifvnaGMKv9GbrDasNwIbutfo1ApRfdFtiCG7Jqi\ncFu0EeVLJRP2YdkqISGayaXTWLW5kXi5WWDdrh2tgQKBgQD1AcaT9za/VOGxAesg\nY1btKkfJNcRRphqL/aR8ofb5v1yrNse/eu69MDAxbOdD+Lx3BbUv0SdrTBuifTDA\nxin/dNz0bMMdEY9WEoYqRON8OvckK+E640n4ODjp8IXfIrQbJBe8VVR11TeFsrua\nFWXahzaYAr05ZOBUSx4npt/kHQKBgQDjSK8+DgjHka1qBrmaCinBQOJqJn3lVHNw\niBzXiZxXpO0qwVwLajb9sqPCV2KDpCWqAe30aY/22HpEwyMg1wg7JMGjBGILbMTL\nnjDHwgNWPNH73779K/IxdUmawG6g3srocvzYNFQLkWQXgbVmaaVaYYcI99urvmuz\nPvfkgktbUQKBgFUVW8ewtzN0n7ffqa6isOJFp45JfLa6D0gEOmYJvQH4IY9Xw8BM\nSbIrlODlJ97j91cCBWzonl7VnFcuUIrxhk4vYDgFuTBUE8nZPvxY1gMjWwYVsu7H\nVb28kI81NthJbfBq9U8y9tTAybpFWn7k5W0hPaVGdj4DOSAswfkVK3VFAoGBAKAI\nMKPv+8yRTVpHS+4jU80n44Q8gA62jOXiYPR+h1/K19dv+GBtNDUj0FxpbQslzANN\ngn/CyERVnpnGEHjyD3Cda95dmq9SsapxQwWUHQdeobfIjlDy3YBnhiD5d6u704Ei\nXdfZ2IegoqpOgSyQHIZr/0mYQ8tEs86s+pyiBW9RAoGAEy1Mb9WB3nmyi5BnRRr4\n3FYVFyserFJCbNM+1u1K2iJTAsE8IEjvStAyYLJRihCz7lWbSmX9EZiFY8yxm+35\ntlygv2ELxz97fCsaub+ZHWas+fmI6aQ39fn5OeLtrX/suGukrIInB3s8J74h5kXI\nUZAQoSAWEgyu5FHEhEnj0XE=\n-----END PRIVATE KEY-----\n"
+    },
+    "resource": {
+        "resourceUrl": "https://auth.localhost/userinfo"
+    },
+    "browser": [
+        {
+            "match": "https://auth.localhost*/authorize*",
+            "tasks": [
+                {
+                    "task": "Login",
+                    "optional": true,
+                    "match": "https://auth.localhost*/authorize/*/login",
+                    "commands": [
+                        ["text", "id", "username", "random@gmail.com"],
+                        ["text", "id", "password", "pass"],
+                        ["click", "id", "submit_button"]
+                    ]
+                },
+                {
+                    "task": "Consent",
+                    "match": "https://auth.localhost*/authorize/*/consent",
+                    "commands": [
+                        ["click", "id", "submit_button"]
+                    ]
+                },
+                {
+                    "task": "Verify complete",
+                    "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback*",
+                    "commands": [
+                        ["wait", "id", "submission_complete", 10]
+                    ]
+                }
+            ]
+        }
+    ],
+    "override": {
+        "fapi2-security-profile-final-user-rejects-authentication": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Login",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize/*/login",
+                            "commands": [
+                                ["click", "id", "cancel_button"]
+                            ]
+                        },
+                        {
+                            "task": "Verify complete",
+                            "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback*",
+                            "commands": [
+                                ["wait", "id", "submission_complete", 10]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "fapi2-security-profile-final-par-attempt-reuse-request_uri": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Login",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize/*/login",
+                            "commands": [
+                                ["text", "id", "username", "random@gmail.com"],
+                                ["text", "id", "password", "pass"],
+                                ["click", "id", "submit_button"]
+                            ]
+                        },
+                        {
+                            "task": "Consent",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize/*/consent",
+                            "commands": [
+                                ["click", "id", "submit_button"]
+                            ]
+                        },
+                        {
+                            "task": "Verify complete",
+                            "optional": true,
+                            "match": "https://localhost.emobix.co.uk:8443/*/callback*",
+                            "commands": [
+                                ["wait", "id", "submission_complete", 5]
+                            ]
+                        },
+                        {
+                            "task": "Expect invalid request_uri",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "fapi2-security-profile-final-ensure-unsigned-authorization-request-without-using-par-fails": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect request_uri is required",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+
+                }
+            ]
+        },
+        "fapi2-security-profile-final-par-attempt-to-use-expired-request_uri": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect request_uri is expired",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+
+                }
+            ]
+        },
+        "fapi2-security-profile-final-par-attempt-to-use-request_uri-for-different-client": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect request_uri is invalid",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+
+                }
+            ]
+        },
+        "fapi2-security-profile-final-ensure-registered-redirect-uri": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect redirect_uri is invalid",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+
+                }
+            ]
+        },
+        "fapi2-security-profile-final-par-ensure-reused-request-uri-prior-to-auth-completion-succeeds": {
+            "browser": [
+                {
+                    "comment": "Do nothing",
+                    "match": "https://auth.localhost*/authorize*",
+                    "match-limit": 1,
+                    "tasks": [
+                        {
+                            "task": "Show Login Page",
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": []
+                        }
+                    ]
+                },
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Login",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize/*/login",
+                            "commands": [
+                                [
+                                    "text",
+                                    "id",
+                                    "username",
+                                    "random@gmail.com"
+                                ],
+                                [
+                                    "text",
+                                    "id",
+                                    "password",
+                                    "pass"
+                                ],
+                                [
+                                    "click",
+                                    "id",
+                                    "submit_button"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Consent",
+                            "match": "https://auth.localhost*/authorize/*/consent",
+                            "commands": [
+                                [
+                                    "click",
+                                    "id",
+                                    "submit_button"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Verify complete",
+                            "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback*",
+                            "commands": [
+                                [
+                                    "wait",
+                                    "id",
+                                    "submission_complete",
+                                    10
+                                ]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}

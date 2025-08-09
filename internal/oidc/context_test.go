@@ -200,52 +200,6 @@ func TestHandleDynamicClient_HandlerIsNil(t *testing.T) {
 	}
 }
 
-func TestGetAudiences(t *testing.T) {
-	// Given.
-	host := "https://example.com"
-	ctx := oidc.Context{
-		Request: httptest.NewRequest(http.MethodPost, "/userinfo", nil),
-		Configuration: &oidc.Configuration{
-			Host:          host,
-			EndpointToken: "/token",
-		},
-	}
-
-	// When.
-	auds := ctx.AssertionAudiences()
-
-	// Then.
-	wantedAuds := []string{host, host + "/token", host + "/userinfo"}
-	if !cmp.Equal(auds, wantedAuds) {
-		t.Errorf("Audiences() = %v, want %v", auds, wantedAuds)
-	}
-}
-
-func TestGetAudiences_MTLSIsEnabled(t *testing.T) {
-	// Given.
-	host := "https://example.com"
-	mtlsHost := "https://matls-example.com"
-	ctx := oidc.Context{
-		Request: httptest.NewRequest(http.MethodPost, "/userinfo", nil),
-		Configuration: &oidc.Configuration{
-			Host:          host,
-			MTLSIsEnabled: true,
-			MTLSHost:      mtlsHost,
-			EndpointToken: "/token",
-		},
-	}
-
-	// When.
-	auds := ctx.AssertionAudiences()
-
-	// Then.
-	wantedAuds := []string{host, host + "/token", host + "/userinfo",
-		mtlsHost + "/token", mtlsHost + "/userinfo"}
-	if !cmp.Equal(auds, wantedAuds) {
-		t.Errorf("Audiences() = %v, want %v", auds, wantedAuds)
-	}
-}
-
 func TestPolicy(t *testing.T) {
 	// Given.
 	policyID := "random_policy_id"

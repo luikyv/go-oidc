@@ -5,7 +5,7 @@ services:
   # on localhost.
   # The auth server is expected to be running under the domain "auth.localhost".
   mongodb:
-    image: mongo:5.0.24
+    image: mongo:6.0.13
   httpd:
     build:
       context: ./conformance-suite/httpd

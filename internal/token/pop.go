@@ -10,11 +10,7 @@ import (
 // ValidatePoP validates that the context contains the information required to
 // prove the client's possession of the token.
 // If token is omitted, the validation of the claim 'ath' of DPoP JWTs is skipped.
-func ValidatePoP(
-	ctx oidc.Context,
-	token string,
-	cnf goidc.TokenConfirmation,
-) error {
+func ValidatePoP(ctx oidc.Context, token string, cnf goidc.TokenConfirmation) error {
 	if err := validateDPoP(ctx, token, cnf); err != nil {
 		return err
 	}
@@ -25,11 +21,7 @@ func ValidatePoP(
 // validateDPoP validates that the context contains the information required to
 // prove the client's possession of the access token with DPoP if applicable.
 // If token is omitted, the validation of the claim 'ath' of DPoP JWTs is skipped.
-func validateDPoP(
-	ctx oidc.Context,
-	token string,
-	confirmation goidc.TokenConfirmation,
-) error {
+func validateDPoP(ctx oidc.Context, token string, confirmation goidc.TokenConfirmation) error {
 
 	if confirmation.JWKThumbprint == "" {
 		return nil
@@ -50,10 +42,7 @@ func validateDPoP(
 // validateDPoP validates that the context contains the information required to
 // prove the client's possession of the access token with TLS binding if
 // applicable.
-func validateTLSPoP(
-	ctx oidc.Context,
-	confirmation goidc.TokenConfirmation,
-) error {
+func validateTLSPoP(ctx oidc.Context, confirmation goidc.TokenConfirmation) error {
 	if confirmation.ClientCertThumbprint == "" {
 		return nil
 	}

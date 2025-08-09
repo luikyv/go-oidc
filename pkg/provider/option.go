@@ -351,10 +351,7 @@ func WithCIBAGrant(
 	}
 }
 
-func WithCIBAJAR(
-	alg goidc.SignatureAlgorithm,
-	algs ...goidc.SignatureAlgorithm,
-) Option {
+func WithCIBAJAR(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) Option {
 	algs = appendIfNotIn(algs, alg)
 	return func(p *Provider) error {
 		p.config.CIBAJARIsEnabled = true
@@ -363,10 +360,7 @@ func WithCIBAJAR(
 	}
 }
 
-func WithCIBAJARRequired(
-	alg goidc.SignatureAlgorithm,
-	algs ...goidc.SignatureAlgorithm,
-) Option {
+func WithCIBAJARRequired(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) Option {
 	return func(p *Provider) error {
 		p.config.CIBAJARIsRequired = true
 		return WithJAR(alg, algs...)(p)

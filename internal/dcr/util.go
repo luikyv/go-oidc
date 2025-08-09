@@ -150,6 +150,8 @@ func setSecret(ctx oidc.Context, client *goidc.Client) string {
 	if slices.ContainsFunc(authnMethods, func(method goidc.ClientAuthnType) bool {
 		return method == goidc.ClientAuthnSecretBasic || method == goidc.ClientAuthnSecretPost
 	}) {
+		secretExpiresAt := 0
+		client.SecretExpiresAt = &secretExpiresAt
 		secret, client.HashedSecret = clientSecretAndHash()
 	}
 
