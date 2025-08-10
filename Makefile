@@ -159,3 +159,9 @@ cs-fapiciba-tests:
 		fapi-ciba-id1-test-plan[client_auth_type=private_key_jwt][ciba_mode=ping][fapi_profile=plain_fapi][client_registration=dynamic_client] ./examples/fapiciba/config.json \
 		--export-dir ./examples/fapiciba \
 		--verbose
+
+rotate-keys:
+	@tmp=$$(mktemp) && \
+	mv examples/keys/server.jwks "$$tmp" && \
+	mv examples/keys/server_rotate.jwks examples/keys/server.jwks && \
+	mv "$$tmp" examples/keys/server_rotate.jwks
