@@ -1,5 +1,6 @@
 {
     "alias": "goidc",
+    "description": "go-oidc v0.11.0",
     "server": {
         "discoveryUrl": "https://goidc.luikyv.com/.well-known/openid-configuration"
     },
