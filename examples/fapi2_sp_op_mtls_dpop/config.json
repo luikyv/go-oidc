@@ -85,7 +85,7 @@
                 },
                 {
                     "task": "Verify complete",
-                    "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback*",
+                    "match": "https://www.certification.openid.net/test/a/goidc/callback*",
                     "commands": [
                         ["wait", "id", "submission_complete", 10]
                     ]
@@ -109,7 +109,7 @@
                         },
                         {
                             "task": "Verify complete",
-                            "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback*",
+                            "match": "https://www.certification.openid.net/test/a/goidc/callback*",
                             "commands": [
                                 ["wait", "id", "submission_complete", 10]
                             ]
@@ -144,7 +144,7 @@
                         {
                             "task": "Verify complete",
                             "optional": true,
-                            "match": "https://localhost.emobix.co.uk:8443/*/callback*",
+                            "match": "https://www.certification.openid.net/*/callback*",
                             "commands": [
                                 ["wait", "id", "submission_complete", 5]
                             ]
@@ -287,7 +287,7 @@
                         },
                         {
                             "task": "Verify complete",
-                            "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback*",
+                            "match": "https://www.certification.openid.net/test/a/goidc/callback*",
                             "commands": [
                                 [
                                     "wait",

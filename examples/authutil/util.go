@@ -87,6 +87,8 @@ func Client(id string) (*goidc.Client, goidc.JSONWebKeySet) {
 				"http://localhost/callback",
 				"https://localhost.emobix.co.uk:8443/test/a/goidc/callback",
 				"https://localhost.emobix.co.uk:8443/test/a/goidc/callback?dummy1=lorem&dummy2=ipsum",
+				"https://www.certification.openid.net/test/a/goidc/callback",
+				"https://www.certification.openid.net/test/a/goidc/callback?dummy1=lorem&dummy2=ipsum",
 			},
 		},
 	}, jwks

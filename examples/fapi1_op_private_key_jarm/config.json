@@ -101,7 +101,7 @@
                 },
                 {
                     "task": "Verify complete",
-                    "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback*",
+                    "match": "https://www.certification.openid.net/test/a/goidc/callback*",
                     "commands": [
                         [
                             "wait",
@@ -134,7 +134,7 @@
                         },
                         {
                             "task": "Verify complete",
-                            "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback*",
+                            "match": "https://www.certification.openid.net/test/a/goidc/callback*",
                             "commands": [
                                 [
                                     "wait",
@@ -155,7 +155,7 @@
                     "tasks": [
                         {
                             "task": "Expect error invalid response mode",
-                            "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback*",
+                            "match": "https://www.certification.openid.net/test/a/goidc/callback*",
                             "commands": [
                                 [
                                     "wait",
@@ -248,7 +248,7 @@
                     "tasks": [
                         {
                             "task": "Expect error for scope missing",
-                            "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback*",
+                            "match": "https://www.certification.openid.net/test/a/goidc/callback*",
                             "commands": [
                                 [
                                     "wait",
@@ -269,7 +269,7 @@
                     "tasks": [
                         {
                             "task": "Expect error for nonce missing",
-                            "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback*",
+                            "match": "https://www.certification.openid.net/test/a/goidc/callback*",
                             "commands": [
                                 [
                                     "wait",
@@ -554,7 +554,7 @@
                     "tasks": [
                         {
                             "task": "Expect error for invalid response type",
-                            "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback*",
+                            "match": "https://www.certification.openid.net/test/a/goidc/callback*",
                             "commands": [
                                 [
                                     "wait",
@@ -612,7 +612,7 @@
                         {
                             "task": "Verify complete",
                             "optional": true,
-                            "match": "https://localhost.emobix.co.uk:8443/*/callback*",
+                            "match": "https://www.certification.openid.net/*/callback*",
                             "commands": [
                                 [
                                     "wait",
@@ -743,7 +743,7 @@
                         },
                         {
                             "task": "Verify complete",
-                            "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback*",
+                            "match": "https://www.certification.openid.net/test/a/goidc/callback*",
                             "commands": [
                                 [
                                     "wait",
