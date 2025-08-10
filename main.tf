@@ -16,11 +16,11 @@ variable "region"        {
     type = string
     default = "us-east-1"
 }
-variable "goidc_domain"  {
+variable "go_oidc_domain"  {
     type = string
     default = "goidc.luikyv.com"
 }
-variable "goidc_matls_domain"  {
+variable "go_oidc_matls_domain"  {
     type = string
     default = "matls-goidc.luikyv.com"
 }
@@ -57,7 +57,7 @@ data "aws_ec2_managed_prefix_list" "eic" {
 
 ######################### Resources #########################
 
-resource "aws_security_group" "goidc" {
+resource "aws_security_group" "go_oidc" {
   name        = "go-oidc-sg"
   description = "Allow HTTPS only"
   vpc_id      = data.aws_vpc.default.id
@@ -87,10 +87,10 @@ resource "aws_security_group" "goidc" {
   tags = { Name = "go-oidc-certification" }
 }
 
-resource "aws_instance" "goidc" {
+resource "aws_instance" "go_oidc" {
   ami                    = data.aws_ami.al2023.id
   instance_type          = "t3.micro"
-  vpc_security_group_ids = [aws_security_group.goidc.id]
+  vpc_security_group_ids = [aws_security_group.go_oidc.id]
   associate_public_ip_address = true
 
   root_block_device {
@@ -115,11 +115,11 @@ resource "aws_instance" "goidc" {
 
 resource "aws_eip" "ip" {
   domain   = "vpc"
-  instance = aws_instance.goidc.id
+  instance = aws_instance.go_oidc.id
   tags = { Name = "go-oidc-certification" }
 }
 
-resource "aws_route53_record" "goidc" {
+resource "aws_route53_record" "go_oidc" {
   zone_id = data.aws_route53_zone.luikyv.zone_id
   name    = "goidc.luikyv.com"
   type    = "A"
@@ -127,7 +127,7 @@ resource "aws_route53_record" "goidc" {
   records = [aws_eip.ip.public_ip]
 }
 
-resource "aws_route53_record" "goidc_matls" {
+resource "aws_route53_record" "go_oidc_matls" {
   zone_id = data.aws_route53_zone.luikyv.zone_id
   name    = "matls-goidc.luikyv.com"
   type    = "A"
@@ -140,5 +140,5 @@ resource "aws_route53_record" "goidc_matls" {
 output "public_ip" { value = aws_eip.ip.public_ip }
 
 output "urls" {
-  value = ["https://${var.goidc_domain}", "https://${var.goidc_matls_domain}"]
+  value = ["https://${var.go_oidc_domain}", "https://${var.go_oidc_matls_domain}"]
 }
