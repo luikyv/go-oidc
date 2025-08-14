@@ -15,7 +15,7 @@ import (
 // considered opaque and its ID is the thumbprint of the token.
 func ExtractID(ctx oidc.Context, token string) (string, error) {
 	if !joseutil.IsJWS(token) {
-		return opaqueTokenID(token), nil
+		return token, nil
 	}
 
 	claims, err := validClaims(ctx, token)

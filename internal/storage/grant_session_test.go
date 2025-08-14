@@ -57,14 +57,14 @@ func TestGrantSessionByRefreshTokenID(t *testing.T) {
 	// Given.
 	manager := storage.NewGrantSessionManager(1)
 	sessionID := "random_session_id"
-	refreshTokenID := "random_refresh_token_id"
+	refreshToken := "random_refresh_token"
 	manager.Sessions[sessionID] = &goidc.GrantSession{
-		ID:             sessionID,
-		RefreshTokenID: refreshTokenID,
+		ID:           sessionID,
+		RefreshToken: refreshToken,
 	}
 
 	// When.
-	session, err := manager.SessionByRefreshTokenID(context.Background(), refreshTokenID)
+	session, err := manager.SessionByRefreshToken(context.Background(), refreshToken)
 
 	// Then.
 	if err != nil {

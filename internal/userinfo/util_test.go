@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -201,7 +200,7 @@ func setUp(t *testing.T) (oidc.Context, *goidc.Client, *goidc.GrantSession) {
 	token := "opaque_token"
 	now := timeutil.TimestampNow()
 	grantSession := &goidc.GrantSession{
-		TokenID:                     hashutil.Thumbprint(token),
+		TokenID:                     token,
 		CreatedAtTimestamp:          now,
 		ExpiresAtTimestamp:          now + 60,
 		LastTokenExpiresAtTimestamp: now + 60,

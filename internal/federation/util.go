@@ -33,13 +33,13 @@ func Client(ctx oidc.Context, id string) (*goidc.Client, error) {
 	}
 
 	return &goidc.Client{
-		ID:                 id,
-		IsFederated:        true,
-		RegistrationType:   goidc.ClientRegistrationTypeAutomatic,
-		TrustMarkIDs:       trustMarks,
-		CreatedAtTimestamp: timeutil.TimestampNow(),
-		ExpiresAtTimestamp: clientConfig.ExpiresAt,
-		ClientMeta:         clientConfig.Metadata.OpenIDClient.ClientMeta,
+		ID:                         id,
+		IsFederated:                true,
+		FederationRegistrationType: goidc.ClientRegistrationTypeAutomatic,
+		FederationTrustMarkIDs:     trustMarks,
+		CreatedAtTimestamp:         timeutil.TimestampNow(),
+		ExpiresAtTimestamp:         clientConfig.ExpiresAt,
+		ClientMeta:                 clientConfig.Metadata.OpenIDClient.ClientMeta,
 	}, nil
 }
 

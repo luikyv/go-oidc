@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -267,7 +266,7 @@ func setUpRefreshTokenGrant(t testing.TB) (ctx oidc.Context, client *goidc.Clien
 
 	now := timeutil.TimestampNow()
 	grantSession = &goidc.GrantSession{
-		RefreshTokenID:     hashutil.Thumbprint(testRefreshToken),
+		RefreshToken:       testRefreshToken,
 		ExpiresAtTimestamp: now + 600,
 		GrantInfo: goidc.GrantInfo{
 			ActiveScopes:  client.ScopeIDs,

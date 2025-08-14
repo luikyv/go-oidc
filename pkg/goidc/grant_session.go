@@ -11,7 +11,7 @@ import (
 type GrantSessionManager interface {
 	Save(context.Context, *GrantSession) error
 	SessionByTokenID(context.Context, string) (*GrantSession, error)
-	SessionByRefreshTokenID(context.Context, string) (*GrantSession, error)
+	SessionByRefreshToken(context.Context, string) (*GrantSession, error)
 	Delete(context.Context, string) error
 	// DeleteByAuthCode deletes a grant session associated with the
 	// provided authorization code. This function is a security measure to prevent
@@ -28,11 +28,12 @@ type GrantSession struct {
 	ID string `json:"id"`
 	// TokenID is the id of the token issued for this grant.
 	// - For JWTs, it corresponds to the "jti" claim.
-	// - For opaque tokens, it is the token's thumbprint.
+	// - For opaque tokens, it is the token itself.
+	// Note: For security reasons, it is strongly recommended to hash or encrypt this value before storing it in a database.
 	TokenID string `json:"token_id"`
-	// RefreshTokenID, if present, is the id of the refresh token issued for this grant.
-	// It stores the thumbprint of the refresh token.
-	RefreshTokenID string `json:"refresh_token_id,omitempty"`
+	// RefreshToken, if present, is the plain text refresh token issued for this grant.
+	// Note: For security reasons, it is strongly recommended to hash or encrypt this value before storing it in a database.
+	RefreshToken string `json:"refresh_token,omitempty"`
 	// LastTokenExpiresAtTimestamp indicates the timestamp when the last issued
 	// token for this grant will expire.
 	LastTokenExpiresAtTimestamp int `json:"last_token_expires_at"`

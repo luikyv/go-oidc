@@ -20,10 +20,7 @@ import (
 //   - "poll": No notification is sent, and no additional processing occurs.
 //   - "ping": A ping notification is sent to the client.
 //   - "push": The token response is sent directly to the client's notification endpoint.
-func NotifyCIBAGrant(
-	ctx oidc.Context,
-	authReqID string,
-) error {
+func NotifyCIBAGrant(ctx oidc.Context, authReqID string) error {
 	session, err := ctx.AuthnSessionByAuthReqID(authReqID)
 	if err != nil {
 		return err
@@ -80,11 +77,7 @@ func NotifyCIBAGrant(
 //   - "ping": A ping notification is sent to the client.
 //   - "push": The token failure response is sent directly to the client's
 //     notification endpoint.
-func NotifyCIBAGrantFailure(
-	ctx oidc.Context,
-	authReqID string,
-	goidcErr goidc.Error,
-) error {
+func NotifyCIBAGrantFailure(ctx oidc.Context, authReqID string, goidcErr goidc.Error) error {
 	session, err := ctx.AuthnSessionByAuthReqID(authReqID)
 	if err != nil {
 		return err
@@ -174,13 +167,7 @@ func generateCIBAGrant(ctx oidc.Context, req request) (response, error) {
 	return generateCIBAGrantSession(ctx, client, grantInfo, token, session)
 }
 
-func cibaPushedGrantInfo(
-	ctx oidc.Context,
-	session *goidc.AuthnSession,
-) (
-	goidc.GrantInfo,
-	error,
-) {
+func cibaPushedGrantInfo(ctx oidc.Context, session *goidc.AuthnSession) (goidc.GrantInfo, error) {
 
 	grantInfo := goidc.GrantInfo{
 		GrantType:                goidc.GrantCIBA,
@@ -213,14 +200,7 @@ func cibaPushedGrantInfo(
 	return grantInfo, nil
 }
 
-func cibaGrantInfo(
-	ctx oidc.Context,
-	req request,
-	session *goidc.AuthnSession,
-) (
-	goidc.GrantInfo,
-	error,
-) {
+func cibaGrantInfo(ctx oidc.Context, req request, session *goidc.AuthnSession) (goidc.GrantInfo, error) {
 
 	grantInfo := goidc.GrantInfo{
 		GrantType:                goidc.GrantCIBA,
@@ -278,7 +258,8 @@ func generateCIBAGrantSession(
 
 	var refreshTkn string
 	if ctx.ShouldIssueRefreshToken(client, grantInfo) {
-		refreshTkn, grantSession.RefreshTokenID = refreshTokenAndID()
+		refreshTkn = newRefreshToken()
+		grantSession.RefreshToken = refreshTkn
 		grantSession.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
 
