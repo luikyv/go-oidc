@@ -28,7 +28,8 @@ This library implements the following specifications:
 
 ## Certification
 Luiky Vasconcelos has certified that [go-oidc](https://pkg.go.dev/github.com/luikyv/go-oidc) conforms to the following profile of the OpenID Connect™ protocol.
-* Basic OP
+* Basic OP,	Implicit OP, Hybrid OP, Config OP and Dynamic OP
+* FAPI 1.0
 * FAPI 2.0
 
 [<img src="http://openid.net/wordpress-content/uploads/2016/04/oid-l-certification-mark-l-rgb-150dpi-90mm.png" alt="OpenID Certification" width="200"/>](https://openid.net/certification/)
