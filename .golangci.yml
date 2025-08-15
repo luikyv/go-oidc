@@ -7,7 +7,6 @@ linters:
     - bodyclose
     - canonicalheader
     - copyloopvar
-    - cyclop
     - decorder
     - dogsled
     - errchkjson

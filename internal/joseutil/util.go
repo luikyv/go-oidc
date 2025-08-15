@@ -156,9 +156,6 @@ func IsJWS(token string) bool {
 }
 
 func IsJWE(token string) bool {
-	isJWS, _ := regexp.MatchString(
-		"(^[\\w-]+\\.[\\w-]+\\.[\\w-]+\\.[\\w-]+\\.[\\w-]+$)",
-		token,
-	)
+	isJWS, _ := regexp.MatchString("(^[\\w-]+\\.[\\w-]+\\.[\\w-]+\\.[\\w-]+\\.[\\w-]+$)", token)
 	return isJWS
 }

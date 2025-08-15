@@ -100,14 +100,7 @@ func responseMode(params goidc.AuthorizationParameters) goidc.ResponseMode {
 	return params.ResponseMode
 }
 
-func createJARMResponse(
-	ctx oidc.Context,
-	c *goidc.Client,
-	redirectParams response,
-) (
-	string,
-	error,
-) {
+func createJARMResponse(ctx oidc.Context, c *goidc.Client, redirectParams response) (string, error) {
 	responseJWT, err := signJARMResponse(ctx, c, redirectParams)
 	if err != nil {
 		return "", err
@@ -120,14 +113,7 @@ func createJARMResponse(
 	return encryptJARMResponse(ctx, responseJWT, c)
 }
 
-func signJARMResponse(
-	ctx oidc.Context,
-	client *goidc.Client,
-	redirectParams response,
-) (
-	string,
-	error,
-) {
+func signJARMResponse(ctx oidc.Context, client *goidc.Client, redirectParams response) (string, error) {
 	createdAtTimestamp := timeutil.TimestampNow()
 	claims := map[string]any{
 		goidc.ClaimIssuer:   ctx.Host,
@@ -150,14 +136,7 @@ func signJARMResponse(
 	return resp, nil
 }
 
-func encryptJARMResponse(
-	ctx oidc.Context,
-	responseJWT string,
-	client *goidc.Client,
-) (
-	string,
-	error,
-) {
+func encryptJARMResponse(ctx oidc.Context, responseJWT string, client *goidc.Client) (string, error) {
 	jwk, err := clientutil.JWKByAlg(ctx, client, string(client.JARMKeyEncAlg))
 	if err != nil {
 		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest,
