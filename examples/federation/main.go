@@ -272,7 +272,7 @@ func httpClientFunc() goidc.HTTPClientFunc {
 				return http.ErrUseLastResponse
 			},
 			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
 				Dial: func(network, addr string) (net.Conn, error) {
 					// Forward requests to localhost.
 					if addr == clientIDURL.Hostname()+":443" || addr == trustAnchorIDURL.Hostname()+":443" {

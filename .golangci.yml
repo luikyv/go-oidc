@@ -44,9 +44,6 @@ linters:
           - dupl
           - gosec
           - goconst
-      - path: examples/
-        linters:
-          - cyclop
 formatters:
   enable:
     - gofmt
