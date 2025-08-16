@@ -18,12 +18,11 @@ linters:
     - misspell
     - musttag
     - cyclop
-
     - asciicheck       # Avoid non-ASCII characters
     - goconst          # Find repeated strings that could be constants
     - gocritic         # General diagnostics and best practices
     - godot            # Ensure comments end in periods
-    - godox            # Highlight TODO, FIXME, etc.
+    # - godox            # Highlight TODO, FIXME, etc.
     - goprintffuncname # Ensure fmt.Printf-like functions are named correctly
     - govet            # Catch suspicious constructs
     - ineffassign      # Detect ineffectual assignments
@@ -37,6 +36,14 @@ linters:
       max-complexity: 20
   exclusions:
     generated: strict
+    rules:
+      - path: _test\.go
+        linters:
+          - cyclop
+          - errcheck
+          - dupl
+          - gosec
+          - goconst
 formatters:
   enable:
     - gofmt

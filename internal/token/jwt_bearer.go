@@ -182,7 +182,7 @@ func makeAnonymousClient(ctx oidc.Context) *goidc.Client {
 
 	once.Do(func() {
 		// Extract scopes IDs.
-		var scopesIDs []string
+		scopesIDs := make([]string, len(ctx.Scopes))
 		for _, scope := range ctx.Scopes {
 			scopesIDs = append(scopesIDs, scope.ID)
 		}

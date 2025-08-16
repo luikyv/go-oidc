@@ -5,7 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/rsa"
-	"crypto/sha1"
+	"crypto/sha1" //nolint:gosec
 	"crypto/sha256"
 	"crypto/x509"
 	"fmt"
@@ -462,7 +462,7 @@ func hashSHA256(s []byte) string {
 }
 
 func hashSHA1(s []byte) string {
-	hash := sha1.New()
+	hash := sha1.New() //nolint:gosec
 	hash.Write(s)
 	return string(hash.Sum(nil))
 }

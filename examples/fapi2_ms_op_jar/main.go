@@ -67,6 +67,7 @@ func main() {
 				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 			},
+			MinVersion: tls.VersionTLS12,
 		},
 	}
 	if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {

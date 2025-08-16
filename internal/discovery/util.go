@@ -5,7 +5,7 @@ import (
 )
 
 func NewOIDCConfig(ctx oidc.Context) OpenIDConfiguration {
-	var scopes []string
+	scopes := make([]string, len(ctx.Scopes))
 	for _, scope := range ctx.Scopes {
 		scopes = append(scopes, scope.ID)
 	}

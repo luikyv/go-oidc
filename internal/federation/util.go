@@ -292,8 +292,9 @@ func parseEntityStatement(
 }
 
 func extractRequiredTrustMarks(ctx oidc.Context, config entityStatement) ([]string, error) {
-	var trustMarks []string
-	for _, requiredTrustMark := range ctx.OpenIDFedRequiredTrustMarks() {
+	requiredTrustMarks := ctx.OpenIDFedRequiredTrustMarks()
+	trustMarks := make([]string, len(requiredTrustMarks))
+	for _, requiredTrustMark := range requiredTrustMarks {
 		if err := validateTrustMark(ctx, config, requiredTrustMark); err != nil {
 			return nil, err
 		}

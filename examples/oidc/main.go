@@ -66,6 +66,7 @@ func main() {
 		ReadHeaderTimeout: 5 * time.Second,
 		TLSConfig: &tls.Config{
 			Certificates: []tls.Certificate{authutil.ServerCert()},
+			MinVersion:   tls.VersionTLS12,
 		},
 	}
 	if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {

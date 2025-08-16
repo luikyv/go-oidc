@@ -28,7 +28,7 @@ const (
 	Issuer                   string = "https://auth.localhost"
 	MTLSHost                 string = "https://matls-auth.localhost"
 	headerClientCert         string = "X-Client-Cert"
-	headerXFAPIInteractionID        = "X-FAPI-Interaction-Id"
+	headerXFAPIInteractionID        = "X-Fapi-Interaction-Id"
 )
 
 var (
@@ -63,7 +63,7 @@ func Client(id string) (*goidc.Client, goidc.JSONWebKeySet) {
 	jwks := privateJWKS(id)
 
 	// Extract scopes IDs.
-	var scopesIDs []string
+	scopesIDs := make([]string, len(Scopes))
 	for _, scope := range Scopes {
 		scopesIDs = append(scopesIDs, scope.ID)
 	}
@@ -161,7 +161,7 @@ func ClientCACertPool() *x509.CertPool {
 }
 
 func DCRFunc(r *http.Request, _ string, meta *goidc.ClientMeta) error {
-	var s []string
+	s := make([]string, len(Scopes))
 	for _, scope := range Scopes {
 		s = append(s, scope.ID)
 	}
