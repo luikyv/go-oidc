@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/luikyv/go-oidc/examples/authutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -53,8 +54,9 @@ func main() {
 	mux.Handle(mtlsHostURL.Hostname()+"/", handler)
 
 	server := &http.Server{
-		Addr:    authutil.Port,
-		Handler: mux,
+		Addr:              authutil.Port,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
 		TLSConfig: &tls.Config{
 			ClientAuth:   tls.RequestClientCert,
 			Certificates: []tls.Certificate{authutil.ServerCert()},

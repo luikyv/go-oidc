@@ -466,8 +466,14 @@ func (a authenticator) renderError(
 }
 
 func sessionToMap(as *goidc.AuthnSession) map[string]any {
-	data, _ := json.Marshal(as)
+	data, err := json.Marshal(as)
+	if err != nil {
+		panic(err)
+	}
+
 	var m map[string]any
-	_ = json.Unmarshal(data, &m)
+	if err := json.Unmarshal(data, &m); err != nil {
+		panic(err)
+	}
 	return m
 }

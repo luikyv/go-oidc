@@ -17,6 +17,24 @@ linters:
     - loggercheck
     - misspell
     - musttag
+    - cyclop
+
+    - asciicheck       # Avoid non-ASCII characters
+    - goconst          # Find repeated strings that could be constants
+    - gocritic         # General diagnostics and best practices
+    - godot            # Ensure comments end in periods
+    - godox            # Highlight TODO, FIXME, etc.
+    - goprintffuncname # Ensure fmt.Printf-like functions are named correctly
+    - govet            # Catch suspicious constructs
+    - ineffassign      # Detect ineffectual assignments
+    - nolintlint       # Catch incorrect //nolint usage
+    - prealloc         # Detect slice preallocation opportunities
+    - staticcheck      # Deep static analysis
+    - unconvert        # Remove redundant type conversions
+    - unused           # Find unused vars, funcs, etc.
+  settings:
+    cyclop:
+      max-complexity: 20
   exclusions:
     generated: strict
 formatters:

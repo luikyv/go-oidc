@@ -130,10 +130,16 @@ func Unsigned(claims map[string]any) string {
 		"alg": goidc.None,
 		"typ": "JWT",
 	}
-	headerJSON, _ := json.Marshal(header)
+	headerJSON, err := json.Marshal(header)
+	if err != nil {
+		panic(err)
+	}
 	headerB64 := base64.RawURLEncoding.EncodeToString(headerJSON)
 
-	claimsJSON, _ := json.Marshal(claims)
+	claimsJSON, err := json.Marshal(claims)
+	if err != nil {
+		panic(err)
+	}
 	claimsB64 := base64.RawURLEncoding.EncodeToString(claimsJSON)
 
 	return headerB64 + "." + claimsB64 + "."

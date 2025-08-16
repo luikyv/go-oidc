@@ -23,7 +23,7 @@ func ExtractID(ctx oidc.Context, token string) (string, error) {
 		return "", err
 	}
 
-	tokenID := claims[string(goidc.ClaimTokenID)]
+	tokenID := claims[goidc.ClaimTokenID]
 	if tokenID == nil {
 		return "", goidc.NewError(goidc.ErrorCodeAccessDenied, "invalid token")
 	}

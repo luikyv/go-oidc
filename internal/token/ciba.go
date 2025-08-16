@@ -117,9 +117,16 @@ func sendClientNotification(
 	session *goidc.AuthnSession,
 	resp any,
 ) error {
-	body, _ := json.Marshal(resp)
-	req, _ := http.NewRequest(http.MethodPost, client.CIBANotificationEndpoint,
-		bytes.NewBuffer(body))
+	body, err := json.Marshal(resp)
+	if err != nil {
+		return fmt.Errorf("could not marshal response: %w", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, client.CIBANotificationEndpoint, bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("could not create request: %w", err)
+	}
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+session.ClientNotificationToken)
 
@@ -127,7 +134,8 @@ func sendClientNotification(
 	if err != nil {
 		return err
 	}
-	defer func() { _ = notificationResp.Body.Close() }()
+	//nolint:errcheck
+	defer notificationResp.Body.Close()
 
 	if !slices.Contains([]int{http.StatusNoContent, http.StatusOK}, notificationResp.StatusCode) {
 		return fmt.Errorf("sending notification resulted in status %d", notificationResp.StatusCode)

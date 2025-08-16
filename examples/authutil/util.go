@@ -28,7 +28,7 @@ const (
 	Issuer                   string = "https://auth.localhost"
 	MTLSHost                 string = "https://matls-auth.localhost"
 	headerClientCert         string = "X-Client-Cert"
-	headerXFAPIInteractionID        = "X-FAPI-Interaction-ID"
+	headerXFAPIInteractionID        = "X-FAPI-Interaction-Id"
 )
 
 var (

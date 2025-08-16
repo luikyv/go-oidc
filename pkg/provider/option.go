@@ -939,7 +939,7 @@ func WithJWTBearerGrantClientAuthnRequired() Option {
 //
 // If [goidc.SubIdentifierPairwise] is informed, the default behavior for
 // generating pairwise subjects is to keep the value as is.
-// This can be overriden with [WithGeneratePairwiseSubIDFunc].
+// This can be overridden with [WithGeneratePairwiseSubIDFunc].
 // Also, only opaque tokens are issued when pairwise IDs are applied to avoid
 // information leakage.
 func WithSubIdentifierTypes(defaultIDType goidc.SubIdentifierType, idTypes ...goidc.SubIdentifierType) Option {

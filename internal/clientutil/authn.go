@@ -115,8 +115,7 @@ func authenticateSecretPost(ctx oidc.Context, c *goidc.Client) error {
 func authenticateSecretBasic(ctx oidc.Context, c *goidc.Client) error {
 	id, secret, ok := ctx.Request.BasicAuth()
 	if !ok {
-		return goidc.NewError(goidc.ErrorCodeInvalidClient,
-			"client basic authentication not informed")
+		return goidc.NewError(goidc.ErrorCodeInvalidClient, "client basic authentication not informed")
 	}
 
 	if c.ID != id {
@@ -147,10 +146,8 @@ func authenticatePrivateKeyJWT(ctx oidc.Context, client *goidc.Client, authnCtx 
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "could not parse the client assertion", err)
 	}
 
-	// Verify that the assertion has only one header.
 	if len(parsedAssertion.Headers) != 1 {
-		return goidc.NewError(goidc.ErrorCodeInvalidClient,
-			"invalid client assertion header")
+		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client assertion header")
 	}
 
 	jwk, err := JWKMatchingHeader(ctx, client, parsedAssertion.Headers[0])
@@ -178,8 +175,7 @@ func JWKMatchingHeader(ctx oidc.Context, c *goidc.Client, header jose.Header) (g
 	if header.KeyID != "" {
 		jwk, err := JWKByKeyID(ctx, c, header.KeyID)
 		if err != nil {
-			return goidc.JSONWebKey{},
-				fmt.Errorf("could not find the jwk used to sign the assertion that matches the 'kid' header: %w", err)
+			return goidc.JSONWebKey{}, fmt.Errorf("could not find the jwk used to sign the assertion that matches the 'kid' header: %w", err)
 		}
 		return jwk, nil
 	}
@@ -244,7 +240,7 @@ func assertion(ctx oidc.Context) (string, error) {
 	return assertion, nil
 }
 
-func areClaimsValid(ctx oidc.Context, claims jwt.Claims, client *goidc.Client, authnCtx AuthnContext) error {
+func areClaimsValid(ctx oidc.Context, claims jwt.Claims, client *goidc.Client, _ AuthnContext) error {
 
 	if claims.Expiry == nil {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient, "claim 'exp' is missing in the client assertion")
@@ -293,8 +289,7 @@ func authenticateSelfSignedTLSCert(ctx oidc.Context, c *goidc.Client) error {
 
 	cert, err := ctx.ClientCert()
 	if err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidClient,
-			"invalid client certificate", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client certificate", err)
 	}
 
 	jwk, err := jwkMatchingCert(ctx, c, cert)
@@ -303,49 +298,35 @@ func authenticateSelfSignedTLSCert(ctx oidc.Context, c *goidc.Client) error {
 	}
 
 	if !comparePublicKeys(jwk.Key, cert.PublicKey) {
-		return goidc.NewError(goidc.ErrorCodeInvalidClient,
-			"the public key in the client certificate and ")
+		return goidc.NewError(goidc.ErrorCodeInvalidClient, "the public key in the client certificate and ")
 	}
 
 	return nil
 }
 
-func jwkMatchingCert(
-	ctx oidc.Context,
-	c *goidc.Client,
-	cert *x509.Certificate,
-) (
-	goidc.JSONWebKey,
-	error,
-) {
+func jwkMatchingCert(ctx oidc.Context, c *goidc.Client, cert *x509.Certificate) (goidc.JSONWebKey, error) {
 	jwks, err := c.FetchPublicJWKS(ctx.HTTPClient())
 	if err != nil {
 		return goidc.JSONWebKey{}, fmt.Errorf("could not load the client JWKS: %w", err)
 	}
 
 	for _, jwk := range jwks.Keys {
-		if string(jwk.CertificateThumbprintSHA256) == hashSHA256(cert.Raw) ||
-			string(jwk.CertificateThumbprintSHA1) == hashSHA1(cert.Raw) {
+		if string(jwk.CertificateThumbprintSHA256) == hashSHA256(cert.Raw) || string(jwk.CertificateThumbprintSHA1) == hashSHA1(cert.Raw) {
 			return jwk, nil
 		}
 	}
 
-	return goidc.JSONWebKey{}, goidc.NewError(goidc.ErrorCodeInvalidClient,
-		"could not find a JWK matching the client certificate")
+	return goidc.JSONWebKey{}, goidc.NewError(goidc.ErrorCodeInvalidClient, "could not find a JWK matching the client certificate")
 }
 
-func authenticateTLSCert(
-	ctx oidc.Context,
-	c *goidc.Client,
-) error {
+func authenticateTLSCert(ctx oidc.Context, c *goidc.Client) error {
 	if c.ID != ctx.Request.PostFormValue(idFormPostParam) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client id")
 	}
 
 	cert, err := ctx.ClientCert()
 	if err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidClient,
-			"invalid client certificate", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client certificate", err)
 	}
 
 	switch {
@@ -368,12 +349,7 @@ func authenticateTLSCert(
 // It looks to all places where an ID can be informed such as the basic
 // authentication header and the post form field 'client_id'.
 // If different client IDs are found in the request, it returns an error.
-func extractID(
-	ctx oidc.Context,
-) (
-	string,
-	error,
-) {
+func extractID(ctx oidc.Context) (string, error) {
 	ids := []string{}
 
 	postID := ctx.Request.PostFormValue(idFormPostParam)
@@ -451,7 +427,7 @@ func allEquals[T comparable](values []T) bool {
 }
 
 // Return true if all the elements in the slice respect the condition.
-func all[T interface{}](slice []T, condition func(T) bool) bool {
+func all[T any](slice []T, condition func(T) bool) bool {
 	for _, element := range slice {
 		if !condition(element) {
 			return false
@@ -481,12 +457,12 @@ func comparePublicKeys(k1 any, k2 any) bool {
 
 func hashSHA256(s []byte) string {
 	hash := sha256.New()
-	hash.Write([]byte(s))
+	hash.Write(s)
 	return string(hash.Sum(nil))
 }
 
 func hashSHA1(s []byte) string {
 	hash := sha1.New()
-	hash.Write([]byte(s))
+	hash.Write(s)
 	return string(hash.Sum(nil))
 }

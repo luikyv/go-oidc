@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/json"
@@ -249,8 +250,9 @@ func main() {
 
 	log.Println(authReqURL(clientJWKS))
 	server := &http.Server{
-		Addr:    authutil.Port,
-		Handler: mux,
+		Addr:              authutil.Port,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
 		TLSConfig: &tls.Config{
 			Certificates: []tls.Certificate{authutil.ServerCert()},
 		},
