@@ -124,13 +124,13 @@ func (policy *openIDClientMetadataPolicy) customAttribute(att string) metadataOp
 func (policy *openIDClientMetadataPolicy) UnmarshalJSON(data []byte) error {
 	// Unmarshal into a map to capture all keys.
 	var allFields map[string]metadataOperators[any]
-	if err := json.Unmarshal(data, &allFields); err != nil {
+	if err := json.Unmarshal(data, &allFields); err != nil { //nolint:musttag
 		return err
 	}
 
 	type alias openIDClientMetadataPolicy
 	var info alias
-	if err := json.Unmarshal(data, &info); err != nil {
+	if err := json.Unmarshal(data, &info); err != nil { //nolint:musttag
 		return err
 	}
 

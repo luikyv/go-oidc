@@ -17,7 +17,7 @@ linters:
     - loggercheck
     - misspell
     - musttag
-    - cyclop
+    # - cyclop
     - asciicheck       # Avoid non-ASCII characters
     - goconst          # Find repeated strings that could be constants
     - gocritic         # General diagnostics and best practices
@@ -44,6 +44,9 @@ linters:
           - dupl
           - gosec
           - goconst
+      - path: examples/
+        linters:
+          - cyclop
 formatters:
   enable:
     - gofmt

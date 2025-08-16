@@ -138,7 +138,7 @@ func NewContext(t testing.TB) oidc.Context {
 		HTTPClientFunc: func(_ context.Context) *http.Client {
 			return &http.Client{
 				Transport: &http.Transport{
-					TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+					TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
 				},
 			}
 		},

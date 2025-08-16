@@ -2,6 +2,7 @@ package dcr
 
 import (
 	"encoding/json"
+	"maps"
 	"reflect"
 	"slices"
 	"strings"
@@ -79,9 +80,7 @@ func (resp response) MarshalJSON() ([]byte, error) {
 
 	// Inline the custom attributes.
 	delete(rawValues, "custom_attributes")
-	for k, v := range resp.CustomAttributes {
-		rawValues[k] = v
-	}
+	maps.Copy(rawValues, resp.CustomAttributes)
 
 	return json.Marshal(rawValues)
 }
