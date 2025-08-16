@@ -294,11 +294,11 @@ func parseEntityStatement(
 func extractRequiredTrustMarks(ctx oidc.Context, config entityStatement) ([]string, error) {
 	requiredTrustMarks := ctx.OpenIDFedRequiredTrustMarks()
 	trustMarks := make([]string, len(requiredTrustMarks))
-	for _, requiredTrustMark := range requiredTrustMarks {
+	for i, requiredTrustMark := range requiredTrustMarks {
 		if err := validateTrustMark(ctx, config, requiredTrustMark); err != nil {
 			return nil, err
 		}
-		trustMarks = append(trustMarks, requiredTrustMark)
+		trustMarks[i] = requiredTrustMark
 	}
 	return trustMarks, nil
 }

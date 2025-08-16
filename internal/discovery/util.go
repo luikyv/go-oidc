@@ -6,8 +6,8 @@ import (
 
 func NewOIDCConfig(ctx oidc.Context) OpenIDConfiguration {
 	scopes := make([]string, len(ctx.Scopes))
-	for _, scope := range ctx.Scopes {
-		scopes = append(scopes, scope.ID)
+	for i, scope := range ctx.Scopes {
+		scopes[i] = scope.ID
 	}
 	config := OpenIDConfiguration{
 		Issuer:                       ctx.Host,

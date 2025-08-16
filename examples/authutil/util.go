@@ -64,8 +64,8 @@ func Client(id string) (*goidc.Client, goidc.JSONWebKeySet) {
 
 	// Extract scopes IDs.
 	scopesIDs := make([]string, len(Scopes))
-	for _, scope := range Scopes {
-		scopesIDs = append(scopesIDs, scope.ID)
+	for i, scope := range Scopes {
+		scopesIDs[i] = scope.ID
 	}
 
 	publicJWKS := jwks.Public()
@@ -162,8 +162,8 @@ func ClientCACertPool() *x509.CertPool {
 
 func DCRFunc(r *http.Request, _ string, meta *goidc.ClientMeta) error {
 	s := make([]string, len(Scopes))
-	for _, scope := range Scopes {
-		s = append(s, scope.ID)
+	for i, scope := range Scopes {
+		s[i] = scope.ID
 	}
 	meta.ScopeIDs = strings.Join(s, " ")
 
