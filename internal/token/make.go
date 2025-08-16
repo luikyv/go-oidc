@@ -214,14 +214,10 @@ func makeOpaqueToken(_ oidc.Context, grantInfo goidc.GrantInfo, opts goidc.Token
 	}
 
 	return Token{
-		ID:           opaqueTokenID(accessToken),
+		ID:           accessToken,
 		Format:       goidc.TokenFormatOpaque,
 		Value:        accessToken,
 		Type:         tokenType,
 		LifetimeSecs: opts.LifetimeSecs,
 	}, nil
-}
-
-func opaqueTokenID(tkn string) string {
-	return hashutil.Thumbprint(tkn)
 }

@@ -12,10 +12,8 @@ import (
 
 func TestOIDCConfig(t *testing.T) {
 	// Given.
-	tokenKey := oidctest.PrivateRS256JWK(t, "token_signature_key",
-		goidc.KeyUsageSignature)
-	userKey := oidctest.PrivateRS256JWK(t, "user_signature_key",
-		goidc.KeyUsageSignature)
+	tokenKey := oidctest.PrivateRS256JWK(t, "token_signature_key", goidc.KeyUsageSignature)
+	userKey := oidctest.PrivateRS256JWK(t, "user_signature_key", goidc.KeyUsageSignature)
 	config := &oidc.Configuration{
 		Host:                        "https://example.com",
 		EndpointWellKnown:           "/.well-known/openid-configuration",

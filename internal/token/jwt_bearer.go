@@ -139,7 +139,8 @@ func generateJWTBearerGrantSession(
 	grantSession := NewGrantSession(grantInfo, token)
 	var refreshTkn string
 	if ctx.ShouldIssueRefreshToken(client, grantInfo) {
-		refreshTkn, grantSession.RefreshTokenID = refreshTokenAndID()
+		refreshTkn = newRefreshToken()
+		grantSession.RefreshToken = refreshTkn
 		grantSession.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
 
@@ -181,9 +182,9 @@ func makeAnonymousClient(ctx oidc.Context) *goidc.Client {
 
 	once.Do(func() {
 		// Extract scopes IDs.
-		var scopesIDs []string
-		for _, scope := range ctx.Scopes {
-			scopesIDs = append(scopesIDs, scope.ID)
+		scopesIDs := make([]string, len(ctx.Scopes))
+		for i, scope := range ctx.Scopes {
+			scopesIDs[i] = scope.ID
 		}
 
 		anonymousClient = &goidc.Client{

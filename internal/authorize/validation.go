@@ -15,7 +15,7 @@ import (
 
 // validateRequest validates the parameters sent in an authorization request.
 func validateRequest(ctx oidc.Context, req request, c *goidc.Client) error {
-	if c.IsFederated && c.RegistrationType == goidc.ClientRegistrationTypeAutomatic {
+	if c.IsFederated && c.FederationRegistrationType == goidc.ClientRegistrationTypeAutomatic {
 		return goidc.NewError(goidc.ErrorCodeAccessDenied,
 			"asymmetric cryptography must be used to authenticate requests when using automatic registration")
 	}
@@ -24,39 +24,27 @@ func validateRequest(ctx oidc.Context, req request, c *goidc.Client) error {
 
 // validateRequestWithPAR validates the parameters in an authorization request
 // that includes a Pushed Authorization Request (PAR).
-func validateRequestWithPAR(
-	ctx oidc.Context,
-	req request,
-	session *goidc.AuthnSession,
-	c *goidc.Client,
-) error {
-	if session.ClientID != req.ClientID {
+func validateRequestWithPAR(ctx oidc.Context, req request, as *goidc.AuthnSession, c *goidc.Client) error {
+	if as.ClientID != req.ClientID {
 		return goidc.NewError(goidc.ErrorCodeAccessDenied, "invalid client")
 	}
 
-	if session.IsExpired() {
+	if as.IsExpired() {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "the request_uri is expired")
 	}
 
-	if ctx.PARAllowUnregisteredRedirectURI && session.RedirectURI != "" {
-		c.RedirectURIs = append(c.RedirectURIs, session.RedirectURI)
+	if ctx.PARAllowUnregisteredRedirectURI && as.RedirectURI != "" {
+		c.RedirectURIs = append(c.RedirectURIs, as.RedirectURI)
 	}
 
-	return validateInWithOutParams(ctx, session.AuthorizationParameters,
-		req.AuthorizationParameters, c)
+	return validateInWithOutParams(ctx, as.AuthorizationParameters, req.AuthorizationParameters, c)
 }
 
 // validateRequestWithJAR validates the parameters in an authorization request
 // that includes a JWT Authorization Request (JAR).
-func validateRequestWithJAR(
-	ctx oidc.Context,
-	req request,
-	jar request,
-	client *goidc.Client,
-) error {
+func validateRequestWithJAR(ctx oidc.Context, req request, jar request, client *goidc.Client) error {
 	if jar.ClientID != client.ID {
-		return goidc.NewError(goidc.ErrorCodeInvalidClient,
-			"invalid client_id")
+		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client_id")
 	}
 
 	if ctx.Profile.IsFAPI() {
@@ -70,16 +58,13 @@ func validateRequestWithJAR(
 		return err
 	}
 
-	mergedParams := mergeParams(jar.AuthorizationParameters,
-		req.AuthorizationParameters)
+	mergedParams := mergeParams(jar.AuthorizationParameters, req.AuthorizationParameters)
 	if jar.RequestURI != "" {
-		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
-			"request_uri is not allowed inside the request object", mergedParams)
+		return newRedirectionError(goidc.ErrorCodeInvalidRequest, "request_uri is not allowed inside the request object", mergedParams)
 	}
 
 	if jar.RequestObject != "" {
-		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
-			"request is not allowed inside the request object", mergedParams)
+		return newRedirectionError(goidc.ErrorCodeInvalidRequest, "request is not allowed inside the request object", mergedParams)
 	}
 
 	return nil
@@ -92,25 +77,17 @@ func validateRequestWithJAR(
 // For OIDC, the JAR parameters are optional, as additional parameters can be
 // supplied later at the authorization endpoint, where they will be merged.
 // For both cases, any parameters outside the JAR are ignored.
-func validatePushedRequestWithJAR(
-	ctx oidc.Context,
-	req request,
-	jar request,
-	c *goidc.Client,
-) error {
+func validatePushedRequestWithJAR(ctx oidc.Context, req request, jar request, c *goidc.Client) error {
 	if req.RequestURI != "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"request_uri is not allowed during PAR")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "request_uri is not allowed during PAR")
 	}
 
 	if jar.ClientID != c.ID {
-		return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
-			"invalid client_id")
+		return goidc.NewError(goidc.ErrorCodeInvalidResquestObject, "invalid client_id")
 	}
 
 	if jar.RequestObject != "" || jar.RequestURI != "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidResquestObject,
-			"request object is not allowed inside JAR")
+		return goidc.NewError(goidc.ErrorCodeInvalidResquestObject, "request object is not allowed inside JAR")
 	}
 
 	// The PAR RFC says:
@@ -124,7 +101,7 @@ func validatePushedRequestWithJAR(
 }
 
 func validateSimplePushedRequest(ctx oidc.Context, req request, c *goidc.Client) error {
-	if c.IsFederated && c.RegistrationType == goidc.ClientRegistrationTypeAutomatic {
+	if c.IsFederated && c.FederationRegistrationType == goidc.ClientRegistrationTypeAutomatic {
 		if c.TokenAuthnMethod != goidc.ClientAuthnPrivateKeyJWT && c.TokenAuthnMethod != goidc.ClientAuthnSelfSignedTLS {
 			return goidc.NewError(goidc.ErrorCodeAccessDenied,
 				"asymmetric cryptography must be used to authenticate requests when using automatic registration")
@@ -140,15 +117,10 @@ func validateSimplePushedRequest(ctx oidc.Context, req request, c *goidc.Client)
 // For OpenID Connect, however, the parameters sent during the PAR are considered
 // optional, as any missing parameters can be provided later at the authorization
 // endpoint, where they will be merged.
-func validatePushedRequest(
-	ctx oidc.Context,
-	req request,
-	c *goidc.Client,
-) error {
+func validatePushedRequest(ctx oidc.Context, req request, c *goidc.Client) error {
 
 	if req.RequestURI != "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"request_uri is not allowed during PAR")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "request_uri is not allowed during PAR")
 	}
 
 	if ctx.PARAllowUnregisteredRedirectURI && req.RedirectURI != "" {
@@ -184,12 +156,7 @@ func validatePushedRequest(
 // sent during PAR or inside a request object during JAR, and outter parameters,
 // those sent during the authorization request as query parameters.
 // The inner parameters take priority over the outter ones.
-func validateInWithOutParams(
-	ctx oidc.Context,
-	inParams goidc.AuthorizationParameters,
-	outParams goidc.AuthorizationParameters,
-	c *goidc.Client,
-) error {
+func validateInWithOutParams(ctx oidc.Context, inParams goidc.AuthorizationParameters, outParams goidc.AuthorizationParameters, c *goidc.Client) error {
 
 	// Always validate the redirect URI first before other validations.
 	// If the redirect URI is invalid, we cannot safely redirect the error, even
@@ -213,18 +180,15 @@ func validateInWithOutParams(
 	// even if they are among the inner parameters.
 	if ctx.Profile == goidc.ProfileOpenID && strutil.ContainsOpenID(mergedParams.Scopes) {
 		if outParams.ResponseType == "" {
-			return newRedirectionError(goidc.ErrorCodeInvalidRequest,
-				"invalid response_type", mergedParams)
+			return newRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid response_type", mergedParams)
 		}
 
 		if inParams.ResponseType != "" && inParams.ResponseType != outParams.ResponseType {
-			return newRedirectionError(goidc.ErrorCodeInvalidRequest,
-				"invalid response_type", mergedParams)
+			return newRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid response_type", mergedParams)
 		}
 
 		if strutil.ContainsOpenID(inParams.Scopes) && !strutil.ContainsOpenID(outParams.Scopes) {
-			return newRedirectionError(goidc.ErrorCodeInvalidScope,
-				"scope openid is required", mergedParams)
+			return newRedirectionError(goidc.ErrorCodeInvalidScope, "scope openid is required", mergedParams)
 		}
 	}
 
@@ -235,8 +199,7 @@ func validateInWithOutParams(
 func validateParams(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) error {
 
 	if params.RedirectURI == "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"redirect_uri is required")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "redirect_uri is required")
 	}
 
 	if err := validateParamsAsOptionals(ctx, params, c); err != nil {
@@ -244,29 +207,23 @@ func validateParams(ctx oidc.Context, params goidc.AuthorizationParameters, c *g
 	}
 
 	if params.ResponseType == "" {
-		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
-			"response_type is required", params)
+		return newRedirectionError(goidc.ErrorCodeInvalidRequest, "response_type is required", params)
 	}
 
 	if ctx.ResourceIndicatorsIsRequired && params.Resources == nil {
-		return newRedirectionError(goidc.ErrorCodeInvalidTarget,
-			"the resources parameter is required", params)
+		return newRedirectionError(goidc.ErrorCodeInvalidTarget, "the resources parameter is required", params)
 	}
 
 	if ctx.OpenIDIsRequired && !strutil.ContainsOpenID(params.Scopes) {
-		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
-			"scope openid is required", params)
+		return newRedirectionError(goidc.ErrorCodeInvalidRequest, "scope openid is required", params)
 	}
 
-	if params.ResponseType.Contains(goidc.ResponseTypeIDToken) &&
-		!strutil.ContainsOpenID(params.Scopes) {
-		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
-			"cannot request id_token without the scope openid", params)
+	if params.ResponseType.Contains(goidc.ResponseTypeIDToken) && !strutil.ContainsOpenID(params.Scopes) {
+		return newRedirectionError(goidc.ErrorCodeInvalidRequest, "cannot request id_token without the scope openid", params)
 	}
 
 	if params.ResponseType.Contains(goidc.ResponseTypeIDToken) && params.Nonce == "" {
-		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
-			"nonce is required when response type id_token is requested", params)
+		return newRedirectionError(goidc.ErrorCodeInvalidRequest, "nonce is required when response type id_token is requested", params)
 	}
 
 	if err := validatePKCE(ctx, params, c); err != nil {
@@ -308,11 +265,7 @@ func validateParams(ctx oidc.Context, params goidc.AuthorizationParameters, c *g
 // This validation is meant to be shared during PAR and authorization requests.
 // The redirect URI is ALWAYS validated before any other validations, since
 // it determines when or not to redirect errors.
-func validateParamsAsOptionals(
-	ctx oidc.Context,
-	params goidc.AuthorizationParameters,
-	c *goidc.Client,
-) error {
+func validateParamsAsOptionals(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) error {
 
 	if err := validateRedirectURIAsOptional(ctx, params, c); err != nil {
 		return err
@@ -366,89 +319,63 @@ func validateParamsAsOptionals(
 	return nil
 }
 
-func validateRedirectURIAsOptional(
-	_ oidc.Context,
-	params goidc.AuthorizationParameters,
-	c *goidc.Client,
-) error {
+func validateRedirectURIAsOptional(_ oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) error {
 	if params.RedirectURI == "" {
 		return nil
 	}
 
 	if !isRedirectURIAllowed(c, params.RedirectURI) {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"invalid redirect_uri")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid redirect_uri")
 	}
 
 	return nil
 }
 
-func validateRequestURIAsOptional(
-	ctx oidc.Context,
-	params goidc.AuthorizationParameters,
-	client *goidc.Client,
-) error {
+func validateRequestURIAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, client *goidc.Client) error {
 	if params.RequestURI == "" || strings.HasPrefix(params.RequestURI, parRequestURIPrefix) {
 		return nil
 	}
 
 	if !ctx.JARByReferenceIsEnabled {
-		return goidc.NewError(goidc.ErrorCodeRequestURINotSupported,
-			"request_uri is not supported")
+		return goidc.NewError(goidc.ErrorCodeRequestURINotSupported, "request_uri is not supported")
 	}
 
 	if ctx.JARRequestURIRegistrationIsRequired && !isRequestURIAllowed(client, params.RequestURI) {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"request_uri not allowed")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "request_uri not allowed")
 	}
 
 	if parsedURI, err := url.Parse(params.RequestURI); err != nil || parsedURI.Scheme != "https" {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"invalid request_uri")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid request_uri")
 	}
 
 	return nil
 }
 
-func validateCodeChallengeMethodAsOptional(
-	ctx oidc.Context,
-	params goidc.AuthorizationParameters,
-	_ *goidc.Client,
-) error {
+func validateCodeChallengeMethodAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, _ *goidc.Client) error {
 	if params.CodeChallengeMethod == "" {
 		return nil
 	}
 
 	if !slices.Contains(ctx.PKCEChallengeMethods, params.CodeChallengeMethod) {
-		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
-			"invalid code_challenge_method", params)
+		return newRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid code_challenge_method", params)
 	}
 
 	return nil
 }
 
-func validateDisplayValueAsOptional(
-	ctx oidc.Context,
-	params goidc.AuthorizationParameters,
-	_ *goidc.Client,
-) error {
+func validateDisplayValueAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, _ *goidc.Client) error {
 	if params.Display == "" {
 		return nil
 	}
 
 	if !slices.Contains(ctx.DisplayValues, params.Display) {
-		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
-			"invalid display value", params)
+		return newRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid display value", params)
 	}
 
 	return nil
 }
 
-func validateScopesAsOptional(
-	ctx oidc.Context,
-	params goidc.AuthorizationParameters,
-	c *goidc.Client,
-) error {
+func validateScopesAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) error {
 
 	if params.Scopes == "" {
 		return nil
@@ -465,108 +392,80 @@ func validateScopesAsOptional(
 	return nil
 }
 
-func validatePKCE(
-	ctx oidc.Context,
-	params goidc.AuthorizationParameters,
-	c *goidc.Client,
-) error {
-	if ctx.PKCEIsEnabled && c.TokenAuthnMethod == goidc.ClientAuthnNone && params.CodeChallenge == "" {
-		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
-			"pkce is required for public clients", params)
+func validatePKCE(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) error {
+	if ctx.PKCEIsEnabled && c.IsPublic() && params.CodeChallenge == "" {
+		return newRedirectionError(goidc.ErrorCodeInvalidRequest, "pkce is required for public clients", params)
 	}
 
 	if ctx.PKCEIsRequired && params.CodeChallenge == "" {
-		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
-			"code_challenge is required", params)
+		return newRedirectionError(goidc.ErrorCodeInvalidRequest, "code_challenge is required", params)
 	}
 	return nil
 }
 
-func validateResponseTypeAsOptional(
-	_ oidc.Context,
-	params goidc.AuthorizationParameters,
-	c *goidc.Client,
-) error {
+func validateResponseTypeAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) error {
 
 	if params.ResponseType == "" {
 		return nil
 	}
 
+	if !slices.Contains(ctx.ResponseTypes, params.ResponseType) {
+		return newRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid response_type", params)
+	}
+
 	if !slices.Contains(c.ResponseTypes, params.ResponseType) {
-		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
-			"invalid response_type", params)
+		return newRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid response_type", params)
 	}
 
-	if params.ResponseType.Contains(goidc.ResponseTypeCode) &&
-		!slices.Contains(c.GrantTypes, goidc.GrantAuthorizationCode) {
-		return newRedirectionError(goidc.ErrorCodeInvalidGrant,
-			"response type code is not allowed", params)
+	if params.ResponseType.Contains(goidc.ResponseTypeCode) && !slices.Contains(c.GrantTypes, goidc.GrantAuthorizationCode) {
+		return newRedirectionError(goidc.ErrorCodeInvalidGrant, "response type code is not allowed", params)
 	}
 
-	if params.ResponseType.IsImplicit() &&
-		!slices.Contains(c.GrantTypes, goidc.GrantImplicit) {
-		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
-			"implicit response type is not allowed", params)
+	if params.ResponseType.IsImplicit() && !slices.Contains(c.GrantTypes, goidc.GrantImplicit) {
+		return newRedirectionError(goidc.ErrorCodeInvalidRequest, "implicit response type is not allowed", params)
 	}
 
 	return nil
 }
 
-func validateResponseModeAsOptional(
-	ctx oidc.Context,
-	params goidc.AuthorizationParameters,
-	c *goidc.Client,
-) error {
+func validateResponseModeAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) error {
 
 	if params.ResponseMode == "" {
 		return nil
 	}
 
 	if !slices.Contains(ctx.ResponseModes, params.ResponseMode) {
-		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
-			"invalid response_mode", params)
+		return newRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid response_mode", params)
 	}
 
 	if params.ResponseMode.IsQuery() && params.ResponseType.IsImplicit() {
-		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
-			"invalid response_mode for the chosen response_type", params)
+		return newRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid response_mode for the chosen response_type", params)
 	}
 
 	// If the client has defined a signature algorithm for JARM, then JARM is required.
 	if c.JARMSigAlg != "" && params.ResponseMode.IsPlain() {
-		return newRedirectionError(goidc.ErrorCodeInvalidRequest,
-			"invalid response_mode", params)
+		return newRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid response_mode", params)
 	}
 
 	return nil
 }
 
-func validateAuthorizationDetailsAsOptional(
-	ctx oidc.Context,
-	params goidc.AuthorizationParameters,
-	c *goidc.Client,
-) error {
+func validateAuthorizationDetailsAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) error {
 	if !ctx.AuthDetailsIsEnabled || params.AuthDetails == nil {
 		return nil
 	}
 
 	for _, authDetail := range params.AuthDetails {
 		authDetailType := authDetail.Type()
-		if !slices.Contains(ctx.AuthDetailTypes, authDetailType) ||
-			!isAuthDetailTypeAllowed(c, authDetailType) {
-			return newRedirectionError(goidc.ErrorCodeInvalidAuthDetails,
-				"invalid authorization detail type", params)
+		if !slices.Contains(ctx.AuthDetailTypes, authDetailType) || !isAuthDetailTypeAllowed(c, authDetailType) {
+			return newRedirectionError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization detail type", params)
 		}
 	}
 
 	return nil
 }
 
-func validateACRValuesAsOptional(
-	ctx oidc.Context,
-	params goidc.AuthorizationParameters,
-	_ *goidc.Client,
-) error {
+func validateACRValuesAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, _ *goidc.Client) error {
 
 	if params.ACRValues == "" {
 		return nil
@@ -574,19 +473,14 @@ func validateACRValuesAsOptional(
 
 	for _, acr := range strutil.SplitWithSpaces(params.ACRValues) {
 		if !slices.Contains(ctx.ACRs, goidc.ACR(acr)) {
-			return newRedirectionError(goidc.ErrorCodeInvalidRequest,
-				"invalid acr value", params)
+			return newRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid acr value", params)
 		}
 	}
 
 	return nil
 }
 
-func validateResourcesAsOptional(
-	ctx oidc.Context,
-	params goidc.AuthorizationParameters,
-	_ *goidc.Client,
-) error {
+func validateResourcesAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, _ *goidc.Client) error {
 
 	if !ctx.ResourceIndicatorsIsEnabled || params.Resources == nil {
 		return nil
@@ -594,19 +488,14 @@ func validateResourcesAsOptional(
 
 	for _, resource := range params.Resources {
 		if !slices.Contains(ctx.Resources, resource) {
-			return newRedirectionError(goidc.ErrorCodeInvalidTarget,
-				"the resource "+resource+" is invalid", params)
+			return newRedirectionError(goidc.ErrorCodeInvalidTarget, "the resource "+resource+" is invalid", params)
 		}
 	}
 
 	return nil
 }
 
-func validateIDTokenHintAsOptional(
-	ctx oidc.Context,
-	params goidc.AuthorizationParameters,
-	_ *goidc.Client,
-) error {
+func validateIDTokenHintAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, _ *goidc.Client) error {
 
 	if params.IDTokenHint == "" {
 		return nil
@@ -651,10 +540,7 @@ func isAuthDetailTypeAllowed(c *goidc.Client, authDetailType string) bool {
 	return slices.Contains(c.AuthDetailTypes, authDetailType)
 }
 
-func validateCodeBindingDPoP(
-	ctx oidc.Context,
-	params goidc.AuthorizationParameters,
-) error {
+func validateCodeBindingDPoP(ctx oidc.Context, params goidc.AuthorizationParameters) error {
 
 	if !ctx.DPoPIsEnabled {
 		return nil

@@ -28,7 +28,7 @@ const (
 	Issuer                   string = "https://auth.localhost"
 	MTLSHost                 string = "https://matls-auth.localhost"
 	headerClientCert         string = "X-Client-Cert"
-	headerXFAPIInteractionID        = "X-FAPI-Interaction-ID"
+	headerXFAPIInteractionID        = "X-Fapi-Interaction-Id"
 )
 
 var (
@@ -63,9 +63,9 @@ func Client(id string) (*goidc.Client, goidc.JSONWebKeySet) {
 	jwks := privateJWKS(id)
 
 	// Extract scopes IDs.
-	var scopesIDs []string
-	for _, scope := range Scopes {
-		scopesIDs = append(scopesIDs, scope.ID)
+	scopesIDs := make([]string, len(Scopes))
+	for i, scope := range Scopes {
+		scopesIDs[i] = scope.ID
 	}
 
 	publicJWKS := jwks.Public()
@@ -161,9 +161,9 @@ func ClientCACertPool() *x509.CertPool {
 }
 
 func DCRFunc(r *http.Request, _ string, meta *goidc.ClientMeta) error {
-	var s []string
-	for _, scope := range Scopes {
-		s = append(s, scope.ID)
+	s := make([]string, len(Scopes))
+	for i, scope := range Scopes {
+		s[i] = scope.ID
 	}
 	meta.ScopeIDs = strings.Join(s, " ")
 
@@ -220,7 +220,7 @@ func HTTPClient(_ context.Context) *http.Client {
 			return http.ErrUseLastResponse
 		},
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
 		},
 	}
 }

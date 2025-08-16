@@ -33,13 +33,13 @@ func Client(ctx oidc.Context, id string) (*goidc.Client, error) {
 	}
 
 	return &goidc.Client{
-		ID:                 id,
-		IsFederated:        true,
-		RegistrationType:   goidc.ClientRegistrationTypeAutomatic,
-		TrustMarkIDs:       trustMarks,
-		CreatedAtTimestamp: timeutil.TimestampNow(),
-		ExpiresAtTimestamp: clientConfig.ExpiresAt,
-		ClientMeta:         clientConfig.Metadata.OpenIDClient.ClientMeta,
+		ID:                         id,
+		IsFederated:                true,
+		FederationRegistrationType: goidc.ClientRegistrationTypeAutomatic,
+		FederationTrustMarkIDs:     trustMarks,
+		CreatedAtTimestamp:         timeutil.TimestampNow(),
+		ExpiresAtTimestamp:         clientConfig.ExpiresAt,
+		ClientMeta:                 clientConfig.Metadata.OpenIDClient.ClientMeta,
 	}, nil
 }
 
@@ -292,12 +292,13 @@ func parseEntityStatement(
 }
 
 func extractRequiredTrustMarks(ctx oidc.Context, config entityStatement) ([]string, error) {
-	var trustMarks []string
-	for _, requiredTrustMark := range ctx.OpenIDFedRequiredTrustMarks() {
+	requiredTrustMarks := ctx.OpenIDFedRequiredTrustMarks()
+	trustMarks := make([]string, len(requiredTrustMarks))
+	for i, requiredTrustMark := range requiredTrustMarks {
 		if err := validateTrustMark(ctx, config, requiredTrustMark); err != nil {
 			return nil, err
 		}
-		trustMarks = append(trustMarks, requiredTrustMark)
+		trustMarks[i] = requiredTrustMark
 	}
 	return trustMarks, nil
 }

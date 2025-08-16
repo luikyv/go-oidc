@@ -6,40 +6,41 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-type oidcErrorAlias = goidc.Error
-
 type redirectionError struct {
-	oidcErrorAlias
 	goidc.AuthorizationParameters
+	err goidc.Error
 }
 
-func (err redirectionError) MarshalJSON() ([]byte, error) {
-	return json.Marshal(err.oidcErrorAlias)
+func (err redirectionError) Error() string {
+	return err.err.Error()
 }
 
 func (err redirectionError) Unwrap() error {
-	return err.oidcErrorAlias
+	return err.err
 }
 
-func newRedirectionError(
-	code goidc.ErrorCode,
-	desc string,
-	params goidc.AuthorizationParameters,
-) error {
+func (err redirectionError) MarshalJSON() ([]byte, error) {
+	return json.Marshal(err.err)
+}
+
+func (err redirectionError) Code() goidc.ErrorCode {
+	return err.err.Code
+}
+
+func (err redirectionError) Description() string {
+	return err.err.Description
+}
+
+func newRedirectionError(code goidc.ErrorCode, desc string, params goidc.AuthorizationParameters) error {
 	return redirectionError{
-		oidcErrorAlias:          goidc.NewError(code, desc),
+		err:                     goidc.NewError(code, desc),
 		AuthorizationParameters: params,
 	}
 }
 
-func wrapRedirectionError(
-	code goidc.ErrorCode,
-	desc string,
-	params goidc.AuthorizationParameters,
-	err error,
-) error {
+func wrapRedirectionError(code goidc.ErrorCode, desc string, params goidc.AuthorizationParameters, err error) error {
 	return redirectionError{
-		oidcErrorAlias:          goidc.WrapError(code, desc, err),
+		err:                     goidc.WrapError(code, desc, err),
 		AuthorizationParameters: params,
 	}
 }

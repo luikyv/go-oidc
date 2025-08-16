@@ -30,7 +30,7 @@ This library implements the following specifications:
 * [OpenID Federation 1.0 - draft 42](https://openid.net/specs/openid-federation-1_0.html)
 
 ## Certification
-Luiky Vasconcelos has certified that [go-oidc](https://pkg.go.dev/github.com/luikyv/go-oidc) conforms to the following profile of the OpenID Connect™ protocol.
+Luiky Vasconcelos has certified that [go-oidc](https://pkg.go.dev/github.com/luikyv/go-oidc) conforms to the following profiles of the OpenID Connect™ protocol.
 * Basic OP,	Implicit OP, Hybrid OP, Config OP and Dynamic OP
 * FAPI 1.0
 * FAPI 2.0

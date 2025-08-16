@@ -8,11 +8,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func AreScopesAllowed(
-	c *goidc.Client,
-	availableScopes []goidc.Scope,
-	requestedScopes string,
-) bool {
+func AreScopesAllowed(c *goidc.Client, availableScopes []goidc.Scope, requestedScopes string) bool {
 	if requestedScopes == "" {
 		return true
 	}

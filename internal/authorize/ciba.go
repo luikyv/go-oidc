@@ -47,14 +47,7 @@ func initBackAuth(ctx oidc.Context, req request) (cibaResponse, error) {
 	return resp, nil
 }
 
-func cibaAuthnSession(
-	ctx oidc.Context,
-	req request,
-	client *goidc.Client,
-) (
-	*goidc.AuthnSession,
-	error,
-) {
+func cibaAuthnSession(ctx oidc.Context, req request, client *goidc.Client) (*goidc.AuthnSession, error) {
 	var session *goidc.AuthnSession
 	var err error
 	if shouldUseJARDuringCIBA(ctx, req.AuthorizationParameters, client) {
@@ -83,25 +76,14 @@ func cibaAuthnSession(
 	return session, nil
 }
 
-func shouldUseJARDuringCIBA(
-	ctx oidc.Context,
-	req goidc.AuthorizationParameters,
-	c *goidc.Client,
-) bool {
+func shouldUseJARDuringCIBA(ctx oidc.Context, req goidc.AuthorizationParameters, c *goidc.Client) bool {
 	if !ctx.CIBAJARIsEnabled {
 		return false
 	}
 	return ctx.CIBAJARIsRequired || c.CIBAJARSigAlg != "" || req.RequestObject != ""
 }
 
-func simpleCIBAAuthnSession(
-	ctx oidc.Context,
-	req request,
-	client *goidc.Client,
-) (
-	*goidc.AuthnSession,
-	error,
-) {
+func simpleCIBAAuthnSession(ctx oidc.Context, req request, client *goidc.Client) (*goidc.AuthnSession, error) {
 	if err := validateCIBARequest(ctx, req, client); err != nil {
 		return nil, err
 	}
@@ -110,18 +92,10 @@ func simpleCIBAAuthnSession(
 	return session, nil
 }
 
-func cibaAuthnSessionWithJAR(
-	ctx oidc.Context,
-	req request,
-	client *goidc.Client,
-) (
-	*goidc.AuthnSession,
-	error,
-) {
+func cibaAuthnSessionWithJAR(ctx oidc.Context, req request, client *goidc.Client) (*goidc.AuthnSession, error) {
 
 	if req.RequestObject == "" {
-		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"request object is required")
+		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "request object is required")
 	}
 
 	jar, err := cibaJARFromRequestObject(ctx, req.RequestObject, client)
@@ -137,19 +111,11 @@ func cibaAuthnSessionWithJAR(
 	return session, nil
 }
 
-func cibaJARFromRequestObject(
-	ctx oidc.Context,
-	reqObject string,
-	c *goidc.Client,
-) (
-	request,
-	error,
-) {
+func cibaJARFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client) (request, error) {
 	jarAlgorithms := cibaJARAlgorithms(ctx, c)
 	parsedToken, err := jwt.ParseSigned(reqObject, jarAlgorithms)
 	if err != nil {
-		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest,
-			"invalid request object", err)
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request object", err)
 	}
 
 	// Verify that the assertion indicates the key ID.
@@ -160,15 +126,13 @@ func cibaJARFromRequestObject(
 	// Verify that the key ID belongs to the client.
 	jwk, err := clientutil.JWKByKeyID(ctx, c, parsedToken.Headers[0].KeyID)
 	if err != nil {
-		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest,
-			"could not fetch the client public key", err)
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not fetch the client public key", err)
 	}
 
 	var claims jwt.Claims
 	var jarReq request
 	if err := parsedToken.Claims(jwk.Key, &claims, &jarReq); err != nil {
-		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest,
-			"could not extract claims from the request object", err)
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not extract claims from the request object", err)
 	}
 
 	if err := validateCIBAJARClaims(ctx, claims, c); err != nil {
@@ -178,52 +142,40 @@ func cibaJARFromRequestObject(
 	return jarReq, nil
 }
 
-func validateCIBAJARClaims(
-	ctx oidc.Context,
-	claims jwt.Claims,
-	client *goidc.Client,
-) error {
+func validateCIBAJARClaims(ctx oidc.Context, claims jwt.Claims, client *goidc.Client) error {
 	if claims.IssuedAt == nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"claim 'iat' is required in the request object")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "claim 'iat' is required in the request object")
 	}
 
 	if claims.NotBefore == nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"claim 'nbf' is required in the request object")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "claim 'nbf' is required in the request object")
 	}
 
 	if claims.NotBefore.Time().Before(timeutil.Now().Add(-1 * time.Hour)) {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"claim 'nbf' is too far in the past")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "claim 'nbf' is too far in the past")
 	}
 
 	if claims.Expiry == nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"claim 'exp' is required in the request object")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "claim 'exp' is required in the request object")
 	}
 
 	if claims.Expiry.Time().After(timeutil.Now().Add(1 * time.Hour)) {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"claim 'exp' is too far in the future")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "claim 'exp' is too far in the future")
 	}
 
 	if claims.ID == "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"claim 'jti' is required in the request object")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "claim 'jti' is required in the request object")
 	}
 
 	if err := ctx.CheckJTI(claims.ID); err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidRequest,
-			"invalid jti claim", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid jti claim", err)
 	}
 
 	if err := claims.ValidateWithLeeway(jwt.Expected{
 		Issuer:      client.ID,
 		AnyAudience: []string{ctx.Host},
 	}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second); err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidRequest,
-			"the request object contains invalid claims", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "the request object contains invalid claims", err)
 	}
 
 	return nil
@@ -236,35 +188,26 @@ func cibaJARAlgorithms(ctx oidc.Context, client *goidc.Client) []goidc.Signature
 	return ctx.CIBAJARSigAlgs
 }
 
-func validateCIBARequest(
-	ctx oidc.Context,
-	req request,
-	client *goidc.Client,
-) error {
+func validateCIBARequest(ctx oidc.Context, req request, client *goidc.Client) error {
 
 	if !slices.Contains(client.GrantTypes, goidc.GrantCIBA) {
-		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient,
-			"grant ciba not allowed")
+		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "grant ciba not allowed")
 	}
 
 	if ctx.OpenIDIsRequired && !strutil.ContainsOpenID(req.Scopes) {
-		return goidc.NewError(goidc.ErrorCodeInvalidScope,
-			"scope openid is required")
+		return goidc.NewError(goidc.ErrorCodeInvalidScope, "scope openid is required")
 	}
 
 	if req.ClientNotificationToken == "" && client.CIBATokenDeliveryMode.IsNotificationMode() {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"client_notification_token is required")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "client_notification_token is required")
 	}
 
 	if len(req.ClientNotificationToken) > 1024 {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"client_notification_token is too long")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "client_notification_token is too long")
 	}
 
 	if req.UserCode != "" && (!ctx.CIBAUserCodeIsEnabled || !client.CIBAUserCodeIsEnabled) {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"user_code is not allowed")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "user_code is not allowed")
 	}
 
 	if err := validateCIBAHints(ctx, req, client); err != nil {
@@ -286,11 +229,7 @@ func validateCIBARequest(
 	return nil
 }
 
-func validateCIBAHints(
-	_ oidc.Context,
-	req request,
-	_ *goidc.Client,
-) error {
+func validateCIBAHints(_ oidc.Context, req request, _ *goidc.Client) error {
 	numberOfHints := 0
 
 	if req.LoginHint != "" {
@@ -306,8 +245,7 @@ func validateCIBAHints(
 	}
 
 	if numberOfHints != 1 {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"only one hint parameter must be informed")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "only one hint parameter must be informed")
 	}
 
 	return nil

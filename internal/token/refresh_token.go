@@ -23,8 +23,7 @@ func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) 
 		return response{}, err
 	}
 
-	id := refreshTokenID(req.refreshToken)
-	grantSession, err := ctx.GrantSessionByRefreshTokenID(id)
+	grantSession, err := ctx.GrantSessionByRefreshToken(req.refreshToken)
 	if err != nil {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid refresh_token", err)
 	}
@@ -91,9 +90,10 @@ func updateRefreshTokenGrantSession(
 	grantSession.LastTokenExpiresAtTimestamp = timeutil.TimestampNow() + token.LifetimeSecs
 	grantSession.TokenID = token.ID
 
-	var refreshTkn string
+	var refreshToken string
 	if ctx.RefreshTokenRotationIsEnabled {
-		refreshTkn, grantSession.RefreshTokenID = refreshTokenAndID()
+		refreshToken = newRefreshToken()
+		grantSession.RefreshToken = refreshToken
 	}
 
 	updatePoPForRefreshedToken(ctx, &grantSession.GrantInfo)
@@ -107,7 +107,7 @@ func updateRefreshTokenGrantSession(
 		ExpiresIn:            token.LifetimeSecs,
 		TokenType:            token.Type,
 		AuthorizationDetails: grantSession.ActiveAuthDetails,
-		RefreshToken:         refreshTkn,
+		RefreshToken:         refreshToken,
 	}
 
 	if strutil.ContainsOpenID(grantSession.ActiveScopes) {
@@ -238,11 +238,6 @@ func validateRefreshTokenPoP(
 	return ValidatePoP(ctx, "", cnf)
 }
 
-func refreshTokenAndID() (string, string) {
-	tkn := strutil.Random(goidc.RefreshTokenLength)
-	return tkn, refreshTokenID(tkn)
-}
-
-func refreshTokenID(refreshTkn string) string {
-	return hashutil.Thumbprint(refreshTkn)
+func newRefreshToken() string {
+	return strutil.Random(goidc.RefreshTokenLength)
 }
