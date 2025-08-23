@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/json"
@@ -249,10 +250,12 @@ func main() {
 
 	log.Println(authReqURL(clientJWKS))
 	server := &http.Server{
-		Addr:    authutil.Port,
-		Handler: mux,
+		Addr:              authutil.Port,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
 		TLSConfig: &tls.Config{
 			Certificates: []tls.Certificate{authutil.ServerCert()},
+			MinVersion:   tls.VersionTLS12,
 		},
 	}
 	if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
@@ -269,7 +272,7 @@ func httpClientFunc() goidc.HTTPClientFunc {
 				return http.ErrUseLastResponse
 			},
 			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
 				Dial: func(network, addr string) (net.Conn, error) {
 					// Forward requests to localhost.
 					if addr == clientIDURL.Hostname()+":443" || addr == trustAnchorIDURL.Hostname()+":443" {

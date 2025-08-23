@@ -1,6 +1,7 @@
 package dcr
 
 import (
+	"crypto/subtle"
 	"slices"
 
 	"github.com/luikyv/go-oidc/internal/hashutil"
@@ -121,13 +122,12 @@ func setID(ctx oidc.Context, client *goidc.Client) string {
 func setRegistrationToken(ctx oidc.Context, client *goidc.Client) string {
 	// Generate a new registration token only if the client does not have one
 	// or if token rotation is enabled.
-	if client.HashedRegistrationToken != "" && !ctx.DCRTokenRotationIsEnabled {
+	if client.RegistrationToken != "" && !ctx.DCRTokenRotationIsEnabled {
 		return ""
 	}
 
-	regToken, hashedRegToken := registrationAccessTokenAndHash()
-	client.HashedRegistrationToken = hashedRegToken
-	return regToken
+	client.RegistrationToken = newRegistrationAccessToken()
+	return client.RegistrationToken
 }
 
 // setSecret configures the client's secret based on its authentication methods.
@@ -208,12 +208,10 @@ func clientSecret() string {
 	return strutil.Random(secretLength)
 }
 
-func registrationAccessTokenAndHash() (string, string) {
-	token := strutil.Random(registrationAccessTokenLength)
-	hashedToken := hashutil.Thumbprint(token)
-	return token, hashedToken
+func newRegistrationAccessToken() string {
+	return strutil.Random(registrationAccessTokenLength)
 }
 
 func isRegistrationAccessTokenValid(c *goidc.Client, token string) bool {
-	return hashutil.Thumbprint(token) == c.HashedRegistrationToken
+	return subtle.ConstantTimeCompare([]byte(token), []byte(c.RegistrationToken)) == 1
 }

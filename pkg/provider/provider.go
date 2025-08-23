@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"reflect"
 	"slices"
+	"time"
 
 	"github.com/luikyv/go-oidc/internal/authorize"
 	"github.com/luikyv/go-oidc/internal/dcr"
@@ -46,15 +47,7 @@ type Provider struct {
 //     available in the server's JWKS.
 //     This algorithm can be overridden with [WithIDTokenSignatureAlgs].
 //   - Access tokens are issued as opaque tokens.
-func New(
-	profile goidc.Profile,
-	issuer string,
-	jwksFunc goidc.JWKSFunc,
-	opts ...Option,
-) (
-	*Provider,
-	error,
-) {
+func New(profile goidc.Profile, issuer string, jwksFunc goidc.JWKSFunc, opts ...Option) (*Provider, error) {
 
 	op := &Provider{
 		config: oidc.Configuration{
@@ -85,12 +78,11 @@ func (op *Provider) WithOptions(opts ...Option) error {
 	return op.validate()
 }
 
-// Handler returns an HTTP handler with all the logic defined for the openid
-// provider.
+// Handler returns an HTTP handler with all the logic defined for the openid provider.
 // This may be used to add the oidc logic to a HTTP server.
 //
-//	server := http.NewServeMux()
-//	server.Handle("/", op.Handler())
+//	mux := http.NewServeMux()
+//	mux.Handle("/", op.Handler())
 func (op Provider) Handler(middlewares ...goidc.MiddlewareFunc) http.Handler {
 	mux := http.NewServeMux()
 	op.RegisterRoutes(mux, middlewares...)
@@ -108,20 +100,22 @@ func (op Provider) RegisterRoutes(mux *http.ServeMux, middlewares ...goidc.Middl
 }
 
 func (op *Provider) Run(address string, middlewares ...goidc.MiddlewareFunc) error {
-	handler := op.Handler(middlewares...)
-	return http.ListenAndServe(address, handler)
+	server := &http.Server{
+		Addr:        address,
+		Handler:     op.Handler(middlewares...),
+		ReadTimeout: 5 * time.Second,
+	}
+	return server.ListenAndServe()
 }
 
-func (op *Provider) TokenInfo(ctx context.Context, tkn string) (goidc.TokenInfo, error,
-) {
+func (op *Provider) TokenInfo(ctx context.Context, tkn string) (goidc.TokenInfo, error) {
 	oidcCtx := oidc.FromContext(ctx, &op.config)
 	return token.IntrospectionInfo(oidcCtx, tkn)
 }
 
 // TokenInfoFromRequest processes a request to retrieve information about an access token.
 // It extracts the access token from the request, performs introspection to validate
-// and gather information about the token, and checks for Proof of Possession (PoP)
-// if required.
+// and gather information about the token, and checks for Proof of Possession (PoP) if required.
 // If the token is valid and PoP validation (if any) is successful, the function
 // returns token information; otherwise, it returns an appropriate error.
 func (op *Provider) TokenInfoFromRequest(w http.ResponseWriter, r *http.Request) (goidc.TokenInfo, error) {
@@ -214,62 +208,43 @@ func (op *Provider) MakeToken(ctx context.Context, gi goidc.GrantInfo) (string, 
 }
 
 func (op *Provider) setDefaults() error {
-	op.config.IDTokenDefaultSigAlg = nonZeroOrDefault(op.config.IDTokenDefaultSigAlg,
-		defaultIDTokenSigAlg)
+	op.config.IDTokenDefaultSigAlg = nonZeroOrDefault(op.config.IDTokenDefaultSigAlg, defaultIDTokenSigAlg)
 
-	op.config.IDTokenSigAlgs = nonZeroOrDefault(op.config.IDTokenSigAlgs,
-		[]goidc.SignatureAlgorithm{defaultIDTokenSigAlg})
+	op.config.IDTokenSigAlgs = nonZeroOrDefault(op.config.IDTokenSigAlgs, []goidc.SignatureAlgorithm{defaultIDTokenSigAlg})
 
-	op.config.Scopes = nonZeroOrDefault(op.config.Scopes,
-		[]goidc.Scope{goidc.ScopeOpenID})
+	op.config.Scopes = nonZeroOrDefault(op.config.Scopes, []goidc.Scope{goidc.ScopeOpenID})
 
-	op.config.ClientManager = nonZeroOrDefault(op.config.ClientManager,
-		goidc.ClientManager(storage.NewClientManager(defaultStorageMaxSize)))
+	op.config.ClientManager = nonZeroOrDefault(op.config.ClientManager, goidc.ClientManager(storage.NewClientManager(defaultStorageMaxSize)))
 
-	op.config.AuthnSessionManager = nonZeroOrDefault(op.config.AuthnSessionManager,
-		goidc.AuthnSessionManager(storage.NewAuthnSessionManager(defaultStorageMaxSize)))
+	op.config.AuthnSessionManager = nonZeroOrDefault(op.config.AuthnSessionManager, goidc.AuthnSessionManager(storage.NewAuthnSessionManager(defaultStorageMaxSize)))
 
-	op.config.GrantSessionManager = nonZeroOrDefault(op.config.GrantSessionManager,
-		goidc.GrantSessionManager(storage.NewGrantSessionManager(defaultStorageMaxSize)))
+	op.config.GrantSessionManager = nonZeroOrDefault(op.config.GrantSessionManager, goidc.GrantSessionManager(storage.NewGrantSessionManager(defaultStorageMaxSize)))
 
-	op.config.TokenOptionsFunc = nonZeroOrDefault(op.config.TokenOptionsFunc,
-		defaultTokenOptionsFunc())
+	op.config.TokenOptionsFunc = nonZeroOrDefault(op.config.TokenOptionsFunc, defaultTokenOptionsFunc())
 
-	op.config.ResponseModes = []goidc.ResponseMode{goidc.ResponseModeQuery,
-		goidc.ResponseModeFragment, goidc.ResponseModeFormPost}
+	op.config.ResponseModes = []goidc.ResponseMode{goidc.ResponseModeQuery, goidc.ResponseModeFragment, goidc.ResponseModeFormPost}
 
-	op.config.DefaultSubIdentifierType = nonZeroOrDefault(op.config.DefaultSubIdentifierType,
-		goidc.SubIdentifierPublic)
+	op.config.DefaultSubIdentifierType = nonZeroOrDefault(op.config.DefaultSubIdentifierType, goidc.SubIdentifierPublic)
 
-	op.config.SubIdentifierTypes = nonZeroOrDefault(op.config.SubIdentifierTypes,
-		[]goidc.SubIdentifierType{goidc.SubIdentifierPublic})
+	op.config.SubIdentifierTypes = nonZeroOrDefault(op.config.SubIdentifierTypes, []goidc.SubIdentifierType{goidc.SubIdentifierPublic})
 
-	op.config.ClaimTypes = nonZeroOrDefault(op.config.ClaimTypes,
-		[]goidc.ClaimType{goidc.ClaimTypeNormal})
+	op.config.ClaimTypes = nonZeroOrDefault(op.config.ClaimTypes, []goidc.ClaimType{goidc.ClaimTypeNormal})
 
-	op.config.AuthnSessionTimeoutSecs = nonZeroOrDefault(op.config.AuthnSessionTimeoutSecs,
-		defaultAuthnSessionTimeoutSecs)
+	op.config.AuthnSessionTimeoutSecs = nonZeroOrDefault(op.config.AuthnSessionTimeoutSecs, defaultAuthnSessionTimeoutSecs)
 
-	op.config.IDTokenLifetimeSecs = nonZeroOrDefault(op.config.IDTokenLifetimeSecs,
-		defaultIDTokenLifetimeSecs)
+	op.config.IDTokenLifetimeSecs = nonZeroOrDefault(op.config.IDTokenLifetimeSecs, defaultIDTokenLifetimeSecs)
 
-	op.config.EndpointWellKnown = nonZeroOrDefault(op.config.EndpointWellKnown,
-		defaultEndpointWellKnown)
+	op.config.EndpointWellKnown = nonZeroOrDefault(op.config.EndpointWellKnown, defaultEndpointWellKnown)
 
-	op.config.EndpointJWKS = nonZeroOrDefault(op.config.EndpointJWKS,
-		defaultEndpointJSONWebKeySet)
+	op.config.EndpointJWKS = nonZeroOrDefault(op.config.EndpointJWKS, defaultEndpointJSONWebKeySet)
 
-	op.config.EndpointToken = nonZeroOrDefault(op.config.EndpointToken,
-		defaultEndpointToken)
+	op.config.EndpointToken = nonZeroOrDefault(op.config.EndpointToken, defaultEndpointToken)
 
-	op.config.EndpointAuthorize = nonZeroOrDefault(op.config.EndpointAuthorize,
-		defaultEndpointAuthorize)
+	op.config.EndpointAuthorize = nonZeroOrDefault(op.config.EndpointAuthorize, defaultEndpointAuthorize)
 
-	op.config.EndpointUserInfo = nonZeroOrDefault(op.config.EndpointUserInfo,
-		defaultEndpointUserInfo)
+	op.config.EndpointUserInfo = nonZeroOrDefault(op.config.EndpointUserInfo, defaultEndpointUserInfo)
 
-	op.config.JWTLifetimeSecs = nonZeroOrDefault(op.config.JWTLifetimeSecs,
-		defaultJWTLifetimeSecs)
+	op.config.JWTLifetimeSecs = nonZeroOrDefault(op.config.JWTLifetimeSecs, defaultJWTLifetimeSecs)
 
 	if slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
 		op.config.ResponseTypes = append(op.config.ResponseTypes, goidc.ResponseTypeCode)
@@ -280,23 +255,19 @@ func (op *Provider) setDefaults() error {
 			goidc.ResponseTypeIDToken, goidc.ResponseTypeIDTokenAndToken)
 	}
 
-	if slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) &&
-		slices.Contains(op.config.GrantTypes, goidc.GrantImplicit) {
+	if slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) && slices.Contains(op.config.GrantTypes, goidc.GrantImplicit) {
 		op.config.ResponseTypes = append(op.config.ResponseTypes, goidc.ResponseTypeCodeAndIDToken,
 			goidc.ResponseTypeCodeAndToken, goidc.ResponseTypeCodeAndIDTokenAndToken)
 	}
 
-	authnMethods := append(op.config.TokenAuthnMethods,
-		op.config.TokenIntrospectionAuthnMethods...)
-	authnMethods = append(authnMethods,
-		op.config.TokenRevocationAuthnMethods...)
+	authnMethods := op.config.TokenAuthnMethods
+	authnMethods = append(authnMethods, op.config.TokenIntrospectionAuthnMethods...)
+	authnMethods = append(authnMethods, op.config.TokenRevocationAuthnMethods...)
 	if slices.Contains(authnMethods, goidc.ClientAuthnPrivateKeyJWT) {
-		op.config.PrivateKeyJWTSigAlgs = nonZeroOrDefault(op.config.PrivateKeyJWTSigAlgs,
-			[]goidc.SignatureAlgorithm{defaultPrivateKeyJWTSigAlg})
+		op.config.PrivateKeyJWTSigAlgs = nonZeroOrDefault(op.config.PrivateKeyJWTSigAlgs, []goidc.SignatureAlgorithm{defaultPrivateKeyJWTSigAlg})
 	}
 	if slices.Contains(authnMethods, goidc.ClientAuthnSecretJWT) {
-		op.config.ClientSecretJWTSigAlgs = nonZeroOrDefault(op.config.ClientSecretJWTSigAlgs,
-			[]goidc.SignatureAlgorithm{defaultSecretJWTSigAlg})
+		op.config.ClientSecretJWTSigAlgs = nonZeroOrDefault(op.config.ClientSecretJWTSigAlgs, []goidc.SignatureAlgorithm{defaultSecretJWTSigAlg})
 	}
 
 	if op.config.DCRIsEnabled {
@@ -315,70 +286,53 @@ func (op *Provider) setDefaults() error {
 	}
 
 	if op.config.JARMIsEnabled {
-		op.config.JARMLifetimeSecs = nonZeroOrDefault(op.config.JARMLifetimeSecs,
-			defaultJWTLifetimeSecs)
+		op.config.JARMLifetimeSecs = nonZeroOrDefault(op.config.JARMLifetimeSecs, defaultJWTLifetimeSecs)
 		op.config.ResponseModes = append(op.config.ResponseModes, goidc.ResponseModeJWT,
 			goidc.ResponseModeQueryJWT, goidc.ResponseModeFragmentJWT, goidc.ResponseModeFormPostJWT)
 	}
 
 	if op.config.JARMEncIsEnabled {
-		op.config.JARMDefaultContentEncAlg = nonZeroOrDefault(op.config.JARMDefaultContentEncAlg,
-			goidc.A128CBC_HS256)
+		op.config.JARMDefaultContentEncAlg = nonZeroOrDefault(op.config.JARMDefaultContentEncAlg, goidc.A128CBC_HS256)
 		op.config.JARMContentEncAlgs = nonZeroOrDefault(op.config.JARMContentEncAlgs,
 			[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
 	}
 
 	if op.config.TokenIntrospectionIsEnabled {
-		op.config.EndpointIntrospection = nonZeroOrDefault(op.config.EndpointIntrospection,
-			defaultEndpointTokenIntrospection)
+		op.config.EndpointIntrospection = nonZeroOrDefault(op.config.EndpointIntrospection, defaultEndpointTokenIntrospection)
 	}
 
 	if op.config.TokenRevocationIsEnabled {
-		op.config.EndpointTokenRevocation = nonZeroOrDefault(op.config.EndpointTokenRevocation,
-			defaultEndpointTokenRevocation)
+		op.config.EndpointTokenRevocation = nonZeroOrDefault(op.config.EndpointTokenRevocation, defaultEndpointTokenRevocation)
 	}
 
 	if op.config.IDTokenEncIsEnabled {
-		op.config.IDTokenDefaultContentEncAlg = nonZeroOrDefault(op.config.IDTokenDefaultContentEncAlg,
-			goidc.A128CBC_HS256)
-		op.config.IDTokenContentEncAlgs = nonZeroOrDefault(op.config.IDTokenContentEncAlgs,
-			[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
+		op.config.IDTokenDefaultContentEncAlg = nonZeroOrDefault(op.config.IDTokenDefaultContentEncAlg, goidc.A128CBC_HS256)
+		op.config.IDTokenContentEncAlgs = nonZeroOrDefault(op.config.IDTokenContentEncAlgs, []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
 	}
 
 	if op.config.UserInfoEncIsEnabled {
-		op.config.UserInfoDefaultContentEncAlg = nonZeroOrDefault(op.config.UserInfoDefaultContentEncAlg,
-			goidc.A128CBC_HS256)
-		op.config.UserInfoContentEncAlgs = nonZeroOrDefault(op.config.UserInfoContentEncAlgs,
-			[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
+		op.config.UserInfoDefaultContentEncAlg = nonZeroOrDefault(op.config.UserInfoDefaultContentEncAlg, goidc.A128CBC_HS256)
+		op.config.UserInfoContentEncAlgs = nonZeroOrDefault(op.config.UserInfoContentEncAlgs, []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
 	}
 
 	if op.config.CIBAIsEnabled {
-		op.config.EndpointCIBA = nonZeroOrDefault(op.config.EndpointCIBA,
-			defaultEndpointCIBA)
+		op.config.EndpointCIBA = nonZeroOrDefault(op.config.EndpointCIBA, defaultEndpointCIBA)
 	}
 
 	if op.config.OpenIDFedIsEnabled {
-		op.config.OpenIDFedEndpoint = nonZeroOrDefault(op.config.OpenIDFedEndpoint,
-			defaultEndpointOpenIDFederation)
+		op.config.OpenIDFedEndpoint = nonZeroOrDefault(op.config.OpenIDFedEndpoint, defaultEndpointOpenIDFederation)
 		op.config.OpenIDFedClientFunc = federation.Client
-		op.config.OpenIDFedEntityStatementSigAlgs = nonZeroOrDefault(op.config.OpenIDFedEntityStatementSigAlgs,
-			[]goidc.SignatureAlgorithm{defaultOpenIDFedSigAlg})
-		op.config.OpenIDFedTrustMarkSigAlgs = nonZeroOrDefault(op.config.OpenIDFedTrustMarkSigAlgs,
-			op.config.OpenIDFedEntityStatementSigAlgs)
-		op.config.OpenIDFedTrustChainMaxDepth = nonZeroOrDefault(op.config.OpenIDFedTrustChainMaxDepth,
-			defaultOpenIDFedTrustChainMaxDepth)
-		op.config.OpenIDFedClientRegTypes = nonZeroOrDefault(op.config.OpenIDFedClientRegTypes,
-			[]goidc.ClientRegistrationType{defaultOpenIDFedRegType})
+		op.config.OpenIDFedEntityStatementSigAlgs = nonZeroOrDefault(op.config.OpenIDFedEntityStatementSigAlgs, []goidc.SignatureAlgorithm{defaultOpenIDFedSigAlg})
+		op.config.OpenIDFedTrustMarkSigAlgs = nonZeroOrDefault(op.config.OpenIDFedTrustMarkSigAlgs, op.config.OpenIDFedEntityStatementSigAlgs)
+		op.config.OpenIDFedTrustChainMaxDepth = nonZeroOrDefault(op.config.OpenIDFedTrustChainMaxDepth, defaultOpenIDFedTrustChainMaxDepth)
+		op.config.OpenIDFedClientRegTypes = nonZeroOrDefault(op.config.OpenIDFedClientRegTypes, []goidc.ClientRegistrationType{defaultOpenIDFedRegType})
 	}
 
 	return nil
 }
 
 func (op Provider) validate() error {
-	return runValidations(
-		op.config,
-		validateTokenBinding,
-	)
+	return runValidations(op.config, validateTokenBinding)
 }
 
 // nonZeroOrDefault returns the first argument "s1" if it is non-nil and non-zero.

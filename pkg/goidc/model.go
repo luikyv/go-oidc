@@ -39,7 +39,7 @@ const (
 	GrantAuthorizationCode GrantType = "authorization_code"
 	GrantRefreshToken      GrantType = "refresh_token"
 	GrantImplicit          GrantType = "implicit"
-	GrantJWTBearer         GrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+	GrantJWTBearer         GrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer" //nolint:gosec
 	GrantCIBA              GrantType = "urn:openid:params:grant-type:ciba"
 )
 
@@ -112,7 +112,7 @@ const (
 type ClientAssertionType string
 
 const (
-	AssertionTypeJWTBearer ClientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+	AssertionTypeJWTBearer ClientAssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer" //nolint:gosec
 )
 
 type TokenType string
@@ -159,7 +159,7 @@ const (
 	ClaimAccessTokenHash     string = "at_hash"
 	ClaimAuthzCodeHash       string = "c_hash"
 	ClaimStateHash           string = "s_hash"
-	ClaimRefreshTokenHash    string = "urn:openid:params:jwt:claim:rt_hash"
+	ClaimRefreshTokenHash    string = "urn:openid:params:jwt:claim:rt_hash" //nolint:gosec
 	ClaimAuthReqID           string = "urn:openid:params:jwt:claim:auth_req_id"
 )
 

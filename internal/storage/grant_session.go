@@ -46,9 +46,9 @@ func (m *GrantSessionManager) SessionByTokenID(_ context.Context, tokenID string
 	return grantSession, nil
 }
 
-func (m *GrantSessionManager) SessionByRefreshTokenID(_ context.Context, id string) (*goidc.GrantSession, error) {
+func (m *GrantSessionManager) SessionByRefreshToken(_ context.Context, tkn string) (*goidc.GrantSession, error) {
 	grantSession, exists := m.firstSession(func(t *goidc.GrantSession) bool {
-		return t.RefreshTokenID == id
+		return t.RefreshToken == tkn
 	})
 	if !exists {
 		return nil, errors.New("entity not found")

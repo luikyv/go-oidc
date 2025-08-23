@@ -82,7 +82,8 @@ func generateAuthCodeGrantSession(
 	grantSession.AuthCode = authnSession.AuthCode
 	var refreshTkn string
 	if ctx.ShouldIssueRefreshToken(client, grantInfo) {
-		refreshTkn, grantSession.RefreshTokenID = refreshTokenAndID()
+		refreshTkn = newRefreshToken()
+		grantSession.RefreshToken = refreshTkn
 		grantSession.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
 

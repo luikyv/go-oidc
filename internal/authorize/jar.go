@@ -13,22 +13,14 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func shouldUseJARDuringPAR(
-	ctx oidc.Context,
-	req goidc.AuthorizationParameters,
-	c *goidc.Client,
-) bool {
+func shouldUseJARDuringPAR(ctx oidc.Context, req goidc.AuthorizationParameters, c *goidc.Client) bool {
 	if !ctx.JARIsEnabled {
 		return false
 	}
 	return ctx.JARIsRequired || c.JARIsRequired || req.RequestObject != ""
 }
 
-func shouldUseJAR(
-	ctx oidc.Context,
-	req goidc.AuthorizationParameters,
-	c *goidc.Client,
-) bool {
+func shouldUseJAR(ctx oidc.Context, req goidc.AuthorizationParameters, c *goidc.Client) bool {
 	if !ctx.JARIsEnabled {
 		return false
 	}
@@ -38,14 +30,7 @@ func shouldUseJAR(
 	return ctx.JARIsRequired || c.JARIsRequired || jarWasInformed
 }
 
-func jarFromRequestURI(
-	ctx oidc.Context,
-	reqURI string,
-	client *goidc.Client,
-) (
-	request,
-	error,
-) {
+func jarFromRequestURI(ctx oidc.Context, reqURI string, client *goidc.Client) (request, error) {
 	httpClient := ctx.HTTPClient()
 	resp, err := httpClient.Get(reqURI)
 	if err != nil {
@@ -68,14 +53,7 @@ func jarFromRequestURI(
 	return jarFromRequestObject(ctx, string(reqObject), client)
 }
 
-func jarFromRequestObject(
-	ctx oidc.Context,
-	reqObject string,
-	c *goidc.Client,
-) (
-	request,
-	error,
-) {
+func jarFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client) (request, error) {
 	if ctx.JAREncIsEnabled && joseutil.IsJWE(reqObject) {
 		signedReqObject, err := signedRequestObjectFromEncrypted(ctx, reqObject, c)
 		if err != nil {
@@ -91,14 +69,7 @@ func jarFromRequestObject(
 	return jarFromSignedRequestObject(ctx, reqObject, c)
 }
 
-func signedRequestObjectFromEncrypted(
-	ctx oidc.Context,
-	reqObject string,
-	client *goidc.Client,
-) (
-	string,
-	error,
-) {
+func signedRequestObjectFromEncrypted(ctx oidc.Context, reqObject string, client *goidc.Client) (string, error) {
 
 	contentEncAlgs := ctx.JARContentEncAlgs
 	if client.JARContentEncAlg != "" {
@@ -113,14 +84,7 @@ func signedRequestObjectFromEncrypted(
 	return jws, nil
 }
 
-func jarFromUnsignedRequestObject(
-	ctx oidc.Context,
-	reqObject string,
-	c *goidc.Client,
-) (
-	request,
-	error,
-) {
+func jarFromUnsignedRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client) (request, error) {
 	jarAlgorithms := jarAlgorithms(ctx, c)
 	parsedJWT, err := jwt.ParseSigned(reqObject, jarAlgorithms)
 	if err != nil {
@@ -137,14 +101,7 @@ func jarFromUnsignedRequestObject(
 	return jarReq, nil
 }
 
-func jarFromSignedRequestObject(
-	ctx oidc.Context,
-	reqObject string,
-	c *goidc.Client,
-) (
-	request,
-	error,
-) {
+func jarFromSignedRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client) (request, error) {
 	jarAlgorithms := jarAlgorithms(ctx, c)
 	parsedToken, err := jwt.ParseSigned(reqObject, jarAlgorithms)
 	if err != nil {

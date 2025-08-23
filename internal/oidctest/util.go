@@ -138,7 +138,7 @@ func NewContext(t testing.TB) oidc.Context {
 		HTTPClientFunc: func(_ context.Context) *http.Client {
 			return &http.Client{
 				Transport: &http.Transport{
-					TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+					TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
 				},
 			}
 		},
@@ -199,10 +199,7 @@ func Clients(t *testing.T, ctx oidc.Context) []*goidc.Client {
 	return clients
 }
 
-func PrivateRSAOAEPJWK(
-	t *testing.T,
-	keyID string,
-) goidc.JSONWebKey {
+func PrivateRSAOAEPJWK(t *testing.T, keyID string) goidc.JSONWebKey {
 	t.Helper()
 
 	jwkStr := `
@@ -227,35 +224,19 @@ func PrivateRSAOAEPJWK(
 	return jwk
 }
 
-func PrivateRSAOAEP256JWK(
-	t *testing.T,
-	keyID string,
-) goidc.JSONWebKey {
+func PrivateRSAOAEP256JWK(t *testing.T, keyID string) goidc.JSONWebKey {
 	return privateRSAJWK(t, keyID, string(goidc.RSA_OAEP_256), goidc.KeyUsageEncryption)
 }
 
-func PrivateRS256JWK(
-	t *testing.T,
-	keyID string,
-	usage goidc.KeyUsage,
-) goidc.JSONWebKey {
+func PrivateRS256JWK(t *testing.T, keyID string, usage goidc.KeyUsage) goidc.JSONWebKey {
 	return privateRSAJWK(t, keyID, string(goidc.RS256), usage)
 }
 
-func PrivatePS256JWK(
-	t testing.TB,
-	keyID string,
-	usage goidc.KeyUsage,
-) goidc.JSONWebKey {
+func PrivatePS256JWK(t testing.TB, keyID string, usage goidc.KeyUsage) goidc.JSONWebKey {
 	return privateRSAJWK(t, keyID, string(goidc.PS256), usage)
 }
 
-func privateRSAJWK(
-	t testing.TB,
-	keyID string,
-	alg string,
-	usage goidc.KeyUsage,
-) goidc.JSONWebKey {
+func privateRSAJWK(t testing.TB, keyID string, alg string, usage goidc.KeyUsage) goidc.JSONWebKey {
 	t.Helper()
 
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -265,14 +246,9 @@ func privateRSAJWK(
 	return goidc.JSONWebKey{
 		Key:       privateKey,
 		KeyID:     keyID,
-		Algorithm: string(alg),
+		Algorithm: alg,
 		Use:       string(usage),
 	}
-}
-
-func RawJWKS(jwk goidc.JSONWebKey) []byte {
-	jwks, _ := json.Marshal(goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{jwk}})
-	return jwks
 }
 
 func SafeClaims(jws string, jwk goidc.JSONWebKey) (map[string]any, error) {

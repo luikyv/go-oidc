@@ -303,8 +303,8 @@ func (ctx Context) GrantSessionByTokenID(id string) (*goidc.GrantSession, error)
 	return ctx.GrantSessionManager.SessionByTokenID(ctx.Context(), id)
 }
 
-func (ctx Context) GrantSessionByRefreshTokenID(id string) (*goidc.GrantSession, error) {
-	return ctx.GrantSessionManager.SessionByRefreshTokenID(ctx.Context(), id)
+func (ctx Context) GrantSessionByRefreshToken(id string) (*goidc.GrantSession, error) {
+	return ctx.GrantSessionManager.SessionByRefreshToken(ctx.Context(), id)
 }
 
 func (ctx Context) DeleteGrantSession(id string) error {

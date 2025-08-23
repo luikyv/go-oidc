@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/strutil"
@@ -18,7 +17,7 @@ func TestIntrospect_OpaqueToken(t *testing.T) {
 
 	accessToken := "opaque_token"
 	grantSession := &goidc.GrantSession{
-		TokenID:                     opaqueTokenID(accessToken),
+		TokenID:                     accessToken,
 		LastTokenExpiresAtTimestamp: timeutil.TimestampNow() + 60,
 		GrantInfo: goidc.GrantInfo{
 			ActiveScopes: goidc.ScopeOpenID.ID,
@@ -63,7 +62,7 @@ func TestIntrospect_RefreshToken(t *testing.T) {
 	expiryTime := timeutil.TimestampNow() + 60
 	refreshToken := strutil.Random(goidc.RefreshTokenLength)
 	grantSession := &goidc.GrantSession{
-		RefreshTokenID:     hashutil.Thumbprint(refreshToken),
+		RefreshToken:       refreshToken,
 		ExpiresAtTimestamp: expiryTime,
 		GrantInfo: goidc.GrantInfo{
 			ClientID:      client.ID,

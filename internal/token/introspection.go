@@ -57,8 +57,7 @@ func IntrospectionInfo(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
 }
 
 func refreshTokenInfo(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
-	id := refreshTokenID(tkn)
-	grantSession, err := ctx.GrantSessionByRefreshTokenID(id)
+	grantSession, err := ctx.GrantSessionByRefreshToken(tkn)
 	if err != nil {
 		return goidc.TokenInfo{}, fmt.Errorf("token not found: %w", err)
 	}

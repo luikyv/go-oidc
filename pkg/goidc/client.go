@@ -24,15 +24,16 @@ type Client struct {
 	// HashedSecret is the hash of the client secret for the client_secret_basic
 	// and client_secret_post authentication methods.
 	HashedSecret string `json:"hashed_secret,omitempty"`
-	// HashedRegistrationToken is the thumbprint of the registration access token
-	// generated during dynamic client registration.
-	HashedRegistrationToken string `json:"hashed_registration_token,omitempty"`
-	CreatedAtTimestamp      int    `json:"created_at,omitempty"`
-	ExpiresAtTimestamp      int    `json:"expires_at,omitempty"`
+	// RegistrationToken is the plain text registration access token generated during
+	// dynamic client registration.
+	// Note: For security reasons, it is strongly recommended to hash or encrypt this value before storing it in a database.
+	RegistrationToken  string `json:"registration_token,omitempty"`
+	CreatedAtTimestamp int    `json:"created_at,omitempty"`
+	ExpiresAtTimestamp int    `json:"expires_at,omitempty"`
 
-	IsFederated      bool                   `json:"is_federated"`
-	RegistrationType ClientRegistrationType `json:"registration_type,omitempty"`
-	TrustMarkIDs     []string               `json:"trust_mark_ids,omitempty"`
+	IsFederated                bool                   `json:"is_federated"`
+	FederationRegistrationType ClientRegistrationType `json:"federation_registration_type,omitempty"`
+	FederationTrustMarkIDs     []string               `json:"federation_trust_mark_ids,omitempty"`
 	ClientMeta
 }
 

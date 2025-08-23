@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/luikyv/go-oidc/examples/authutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -60,10 +61,12 @@ func main() {
 	mux.Handle(hostURL.Hostname()+"/", handler)
 
 	server := &http.Server{
-		Addr:    authutil.Port,
-		Handler: mux,
+		Addr:              authutil.Port,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
 		TLSConfig: &tls.Config{
 			Certificates: []tls.Certificate{authutil.ServerCert()},
+			MinVersion:   tls.VersionTLS12,
 		},
 	}
 	if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
