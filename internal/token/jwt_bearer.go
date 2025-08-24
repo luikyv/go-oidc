@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"sync"
 
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -14,19 +13,13 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-var (
-	once            sync.Once
-	anonymousClient *goidc.Client
-)
-
 func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
 
 	client, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
 	// Return an error for client authentication only if authentication is
 	// required or if the error is unrelated to client identification, such as
 	// when the client provides invalid credentials.
-	if err != nil &&
-		(ctx.JWTBearerGrantClientAuthnIsRequired || !errors.Is(err, clientutil.ErrClientNotIdentified)) {
+	if err != nil && (ctx.JWTBearerGrantClientAuthnIsRequired || !errors.Is(err, clientutil.ErrClientNotIdentified)) {
 		return response{}, err
 	}
 
@@ -42,8 +35,7 @@ func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
 
 	info, err := ctx.HandleJWTBearerGrantAssertion(req.assertion)
 	if err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant,
-			"invalid assertion", err)
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid assertion", err)
 	}
 
 	grantInfo, err := jwtBearerGrantInfo(ctx, req, info, client)
@@ -61,8 +53,7 @@ func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
 
 func validateJWTBearerGrantRequest(ctx oidc.Context, req request, client *goidc.Client) error {
 	if !slices.Contains(ctx.GrantTypes, goidc.GrantJWTBearer) {
-		return goidc.NewError(goidc.ErrorCodeUnsupportedGrantType,
-			"unsupported grant type")
+		return goidc.NewError(goidc.ErrorCodeUnsupportedGrantType, "unsupported grant type")
 	}
 
 	if !slices.Contains(client.GrantTypes, goidc.GrantJWTBearer) {
@@ -180,22 +171,17 @@ func generateJWTBearerGrantSession(
 // grant for requests where a specific client is not identified.
 func makeAnonymousClient(ctx oidc.Context) *goidc.Client {
 
-	once.Do(func() {
-		// Extract scopes IDs.
-		scopesIDs := make([]string, len(ctx.Scopes))
-		for i, scope := range ctx.Scopes {
-			scopesIDs[i] = scope.ID
-		}
+	scopesIDs := make([]string, len(ctx.Scopes))
+	for i, scope := range ctx.Scopes {
+		scopesIDs[i] = scope.ID
+	}
 
-		anonymousClient = &goidc.Client{
-			ClientMeta: goidc.ClientMeta{
-				GrantTypes: []goidc.GrantType{
-					goidc.GrantJWTBearer,
-				},
-				ScopeIDs: strings.Join(scopesIDs, " "),
+	return &goidc.Client{
+		ClientMeta: goidc.ClientMeta{
+			GrantTypes: []goidc.GrantType{
+				goidc.GrantJWTBearer,
 			},
-		}
-	})
-
-	return anonymousClient
+			ScopeIDs: strings.Join(scopesIDs, " "),
+		},
+	}
 }
