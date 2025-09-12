@@ -74,8 +74,7 @@ func validClaims(ctx oidc.Context, token string) (map[string]any, error) {
 func generateGrant(ctx oidc.Context, req request) (tokenResp response, err error) {
 
 	if !slices.Contains(ctx.GrantTypes, req.grantType) {
-		return response{}, goidc.NewError(goidc.ErrorCodeUnsupportedGrantType,
-			"unsupported grant type")
+		return response{}, goidc.NewError(goidc.ErrorCodeUnsupportedGrantType, "unsupported grant type")
 	}
 
 	switch req.grantType {
@@ -90,7 +89,6 @@ func generateGrant(ctx oidc.Context, req request) (tokenResp response, err error
 	case goidc.GrantCIBA:
 		return generateCIBAGrant(ctx, req)
 	default:
-		return response{}, goidc.NewError(goidc.ErrorCodeUnsupportedGrantType,
-			"unsupported grant type")
+		return response{}, goidc.NewError(goidc.ErrorCodeUnsupportedGrantType, "unsupported grant type")
 	}
 }

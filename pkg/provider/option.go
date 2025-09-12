@@ -667,14 +667,14 @@ func WithClaimsParameter() Option {
 // WithAuthorizationDetails allows clients to make rich authorization requests.
 func WithAuthorizationDetails(
 	compareDetailsFunc goidc.CompareAuthDetailsFunc,
-	authType string,
-	authTypes ...string,
+	authDetailType string,
+	authDetailTypes ...string,
 ) Option {
-	authTypes = appendIfNotIn(authTypes, authType)
+	authDetailTypes = appendIfNotIn(authDetailTypes, authDetailType)
 	return func(p *Provider) error {
 		p.config.AuthDetailsIsEnabled = true
 		p.config.CompareAuthDetailsFunc = compareDetailsFunc
-		p.config.AuthDetailTypes = authTypes
+		p.config.AuthDetailTypes = authDetailTypes
 		return nil
 	}
 }
