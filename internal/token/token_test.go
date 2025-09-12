@@ -92,7 +92,7 @@ func TestGenerateGrantWithDPoP(t *testing.T) {
 
 	req := request{
 		grantType: goidc.GrantClientCredentials,
-		scopes:    client.ScopeIDs,
+		scopes:    "scope1",
 	}
 
 	// When.
@@ -113,7 +113,7 @@ func TestGenerateGrantWithDPoP(t *testing.T) {
 		"iss":       ctx.Host,
 		"sub":       client.ID,
 		"client_id": client.ID,
-		"scope":     req.scopes,
+		"scope":     "scope1",
 		"exp":       float64(now + 60),
 		"iat":       float64(now),
 		"cnf": map[string]any{

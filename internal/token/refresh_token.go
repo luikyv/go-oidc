@@ -106,6 +106,7 @@ func updateRefreshTokenGrantSession(
 		AccessToken:          token.Value,
 		ExpiresIn:            token.LifetimeSecs,
 		TokenType:            token.Type,
+		Scopes:               grantSession.ActiveScopes,
 		AuthorizationDetails: grantSession.ActiveAuthDetails,
 		RefreshToken:         refreshToken,
 	}

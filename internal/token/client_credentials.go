@@ -3,6 +3,7 @@ package token
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -39,23 +40,13 @@ func generateClientCredentialsGrant(ctx oidc.Context, req request) (response, er
 		ExpiresIn:            token.LifetimeSecs,
 		TokenType:            token.Type,
 		AuthorizationDetails: grantInfo.ActiveAuthDetails,
-	}
-
-	if req.scopes != grantInfo.ActiveScopes {
-		tokenResp.Scopes = grantInfo.ActiveScopes
+		Scopes:               grantInfo.ActiveScopes,
 	}
 
 	return tokenResp, nil
 }
 
-func generateClientCredentialsGrantSession(
-	ctx oidc.Context,
-	grantInfo goidc.GrantInfo,
-	token Token,
-) (
-	*goidc.GrantSession,
-	error,
-) {
+func generateClientCredentialsGrantSession(ctx oidc.Context, grantInfo goidc.GrantInfo, token Token) (*goidc.GrantSession, error) {
 
 	grantSession := NewGrantSession(grantInfo, token)
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
@@ -64,11 +55,7 @@ func generateClientCredentialsGrantSession(
 	return grantSession, nil
 }
 
-func validateClientCredentialsGrantRequest(
-	ctx oidc.Context,
-	req request,
-	c *goidc.Client,
-) error {
+func validateClientCredentialsGrantRequest(ctx oidc.Context, req request, c *goidc.Client) error {
 
 	if !slices.Contains(c.GrantTypes, goidc.GrantClientCredentials) {
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
@@ -93,19 +80,18 @@ func validateClientCredentialsGrantRequest(
 	return nil
 }
 
-func clientCredentialsGrantInfo(
-	ctx oidc.Context,
-	client *goidc.Client,
-	req request,
-) (
-	goidc.GrantInfo,
-	error,
-) {
+func clientCredentialsGrantInfo(ctx oidc.Context, client *goidc.Client, req request) (goidc.GrantInfo, error) {
+	scopes := []string{}
+	for s := range strings.SplitSeq(req.scopes, " ") {
+		if s != goidc.ScopeOpenID.ID {
+			scopes = append(scopes, s)
+		}
+	}
 
 	grantInfo := goidc.GrantInfo{
 		GrantType:     goidc.GrantClientCredentials,
-		ActiveScopes:  req.scopes,
-		GrantedScopes: req.scopes,
+		ActiveScopes:  strings.Join(scopes, " "),
+		GrantedScopes: strings.Join(scopes, " "),
 		Subject:       client.ID,
 		ClientID:      client.ID,
 	}
