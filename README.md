@@ -28,6 +28,7 @@ This library implements the following specifications:
 * [FAPI 2.0 Security Profile](https://openid.net/specs/fapi-security-profile-2_0-final.html)
 * [OpenID Connect Client-Initiated Backchannel Authentication Flow - Core 1.0 (CIBA)](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0-final.html)
 * [OpenID Federation 1.0 - draft 42](https://openid.net/specs/openid-federation-1_0.html)
+* [`RFC 8628` - OAuth 2.0 Device Authorization Grant](https://www.rfc-editor.org/rfc/rfc8628.html)
 
 ## Certification
 Luiky Vasconcelos has certified that [go-oidc](https://pkg.go.dev/github.com/luikyv/go-oidc) conforms to the following profiles of the OpenID Connect™ protocol.
@@ -435,3 +436,94 @@ which would result in the metadata below
 ```
 
 To customize JARM content encryption algorithms, use `provider.WithJARMContentEncryptionAlgs`.
+
+### Device Authorization Grant
+
+Or `Device Code Flow`, as defined in [RFC 8628](https://www.rfc-editor.org/rfc/rfc8628.html), allows clients to obtain user authorization on devices with limited input capabilities. To enable it, configure your provider as follows:
+
+```go
+op, _ := provider.New(
+  ...,
+  provider.WithDeviceAuthorizationGrant(userCodeHandler),
+  ...,
+)
+```
+
+where `userCodeHandler` is a function that should render and interface for the user to input the
+`user_code` received from the authorization server.
+
+Device authorization endpoint and device grant support will be reflected in `/.well-known/openid-configuration` as follows:
+
+```json
+{
+  "...": "...",
+  "device_authorization_endpoint": "http://localhost/device_authorization",
+  "grant_types_supported": [
+    "...",
+    "urn:ietf:params:oauth:grant-type:device_code"
+  ]
+}
+```
+
+#### Optional Configuration Parameters
+
+
+```go
+op, _ := provider.New(
+  ...,
+  provider.WithDeviceAuthorizationLifetime(seconds),
+  provider.WithDeviceAuthorizationPollingInterval(seconds),
+  provider.WithDeviceAuthorizationVerificationURIComplete(),
+  provider.WithGenerateDeviceCodeFunc(goidc.GenerateDeviceCodeFunc),
+  provider.WithGenerateUserCodeFunc(goidc.GenerateUserCodeFunc),
+  ...,
+)
+```
+
+Enabling the `VerificationURIComplete` option will add the `verification_uri_complete` field to the
+response of the device authorization endpoint. This field contains a URL that includes the
+`user_code` as a query parameter, allowing users to directly access the verification page without
+manually entering the code.
+
+#### Testing the device code flow
+
+```go
+package main
+
+import (
+ "context"
+ "fmt"
+ "log"
+
+ "golang.org/x/oauth2"
+)
+
+func main() {
+ issuer := "http://localhost"
+ config := oauth2.Config{
+  ClientID: "device_client_id",
+  Endpoint: oauth2.Endpoint{
+   DeviceAuthURL: issuer + "/device_authorization",
+   TokenURL:      issuer + "/token",
+  },
+ }
+
+ ctx := context.Background()
+ response, err := config.DeviceAuth(ctx)
+ if err != nil {
+  log.Fatalf("failed to start device authorization: %v", err)
+ }
+
+ if response.VerificationURIComplete != "" {
+  fmt.Printf("please open the following link: %s\n", response.VerificationURIComplete)
+ } else {
+  fmt.Printf("please enter code %s at %s\n", response.UserCode, response.VerificationURI)
+ }
+
+ token, err := config.DeviceAccessToken(ctx, response)
+ if err != nil {
+  log.Fatalf("failed to get token: %v", err)
+ }
+ fmt.Println(token)
+}
+```

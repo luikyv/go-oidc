@@ -12,7 +12,12 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-const charset string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const (
+	charset string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	// https://datatracker.ietf.org/doc/html/rfc8628#section-6.1
+	userCodeCharset string = "BCDFGHJKLMNPQRSTVWXZ"
+	userCodeLength  int    = 8
+)
 
 func ContainsOpenID(scopes string) bool {
 	return slices.Contains(SplitWithSpaces(scopes), goidc.ScopeOpenID.ID)
@@ -41,6 +46,21 @@ func Random(length int) string {
 			panic(err)
 		}
 		result.WriteByte(charset[n.Int64()])
+	}
+
+	return result.String()
+}
+
+func RandomUserCode() string {
+	result := strings.Builder{}
+	charsetLength := big.NewInt(int64(len(userCodeCharset)))
+
+	for range userCodeLength {
+		n, err := rand.Int(rand.Reader, charsetLength)
+		if err != nil {
+			panic(err)
+		}
+		result.WriteByte(userCodeCharset[n.Int64()])
 	}
 
 	return result.String()

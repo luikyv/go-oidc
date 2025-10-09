@@ -16,6 +16,15 @@ func validateTokenBinding(config oidc.Configuration) error {
 	return nil
 }
 
+func validateDeviceCodeHandlers(config oidc.Configuration) error {
+	if config.DeviceAuthorizationIsEnabled {
+		if config.HandleUserCodeFunc == nil {
+			return errors.New("HandleUserCodeFunc must be provided when Device Authorization is enabled")
+		}
+	}
+	return nil
+}
+
 func runValidations(config oidc.Configuration, validators ...func(oidc.Configuration) error) error {
 	for _, validator := range validators {
 		if err := validator(config); err != nil {

@@ -47,3 +47,56 @@ func TestAreScopesAllowed(t *testing.T) {
 		)
 	}
 }
+
+func TestIsGrantAllowed(t *testing.T) {
+	type testCase struct {
+		name      string
+		client    *goidc.Client
+		requested []goidc.GrantType
+		want      bool
+	}
+
+	testCases := []testCase{
+		{
+			name: "allowed one",
+			client: &goidc.Client{ClientMeta: goidc.ClientMeta{
+				GrantTypes: []goidc.GrantType{goidc.GrantAuthorizationCode, goidc.GrantRefreshToken},
+			}},
+			requested: []goidc.GrantType{goidc.GrantAuthorizationCode},
+			want:      true,
+		},
+		{
+			name: "allowed multiple",
+			client: &goidc.Client{ClientMeta: goidc.ClientMeta{
+				GrantTypes: []goidc.GrantType{goidc.GrantAuthorizationCode, goidc.GrantRefreshToken},
+			}},
+			requested: []goidc.GrantType{goidc.GrantAuthorizationCode, goidc.GrantRefreshToken},
+			want:      true,
+		},
+		{
+			name: "not allowed one",
+			client: &goidc.Client{ClientMeta: goidc.ClientMeta{
+				GrantTypes: []goidc.GrantType{goidc.GrantAuthorizationCode, goidc.GrantRefreshToken},
+			}},
+			requested: []goidc.GrantType{goidc.GrantClientCredentials},
+			want:      false,
+		},
+		{
+			name: "not allowed multiple",
+			client: &goidc.Client{ClientMeta: goidc.ClientMeta{
+				GrantTypes: []goidc.GrantType{goidc.GrantAuthorizationCode, goidc.GrantRefreshToken},
+			}},
+			requested: []goidc.GrantType{goidc.GrantClientCredentials, goidc.GrantJWTBearer},
+			want:      false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := clientutil.IsGrantAllowed(tc.client, tc.requested...)
+			if got != tc.want {
+				t.Errorf("IsGrantAllowed() = %t, want %t", got, tc.want)
+			}
+		})
+	}
+}

@@ -18,6 +18,7 @@ type GrantSessionManager interface {
 	// the reuse of authorization codes, mitigating potential replay attacks.
 	// It is an optional, but recommended, behavior to enhance security.
 	DeleteByAuthCode(context.Context, string) error
+	DeleteByDeviceCode(context.Context, string) error
 }
 
 // GrantSession represents the granted access an entity (a user or the client
@@ -46,7 +47,8 @@ type GrantSession struct {
 	ExpiresAtTimestamp int `json:"expires_at"`
 	// AuthCode is the authorization code used to generate this grant
 	// session in case of authorization code grant type.
-	AuthCode string `json:"authorization_code,omitempty"`
+	AuthCode   string `json:"authorization_code,omitempty"`
+	DeviceCode string `json:"device_code,omitempty"`
 	GrantInfo
 }
 

@@ -88,6 +88,8 @@ func generateGrant(ctx oidc.Context, req request) (tokenResp response, err error
 		return generateJWTBearerGrant(ctx, req)
 	case goidc.GrantCIBA:
 		return generateCIBAGrant(ctx, req)
+	case goidc.GrantDeviceCode:
+		return generateDeviceCodeGrant(ctx, req)
 	default:
 		return response{}, goidc.NewError(goidc.ErrorCodeUnsupportedGrantType, "unsupported grant type")
 	}

@@ -112,7 +112,7 @@
         }
 
         // Make sure the URL on the browser indicates this page is for the consent step.
-        window.history.pushState({}, '', "{{ .BaseURL }}/authorize/{{ .CallbackID }}/consent");
+        window.history.pushState({}, '', "{{ .BaseURL }}/{{ .Endpoint }}/{{ .CallbackID }}/consent");
     </script>
 </head>
 <body>
@@ -123,11 +123,11 @@
         <h1>go-oidc</h1>
         <h2>Consent Form</h2>
         <p>User: {{ .Subject }}</p>
-        <form action="{{ .BaseURL }}/authorize/{{ .CallbackID }}/consent" method="POST">
+        <form action="{{ .BaseURL }}/{{ .Endpoint }}/{{ .CallbackID }}/consent" method="POST">
             <input type="hidden" id="consentTrue" name="consent" value="true">
             <button type="submit" id="submit_button" class="consent-button">Consent</button>
         </form>
-        <form action="{{ .BaseURL }}/authorize/{{ .CallbackID }}/consent" method="POST">
+        <form action="{{ .BaseURL }}/{{ .Endpoint }}/{{ .CallbackID }}/consent" method="POST">
             <input type="hidden" id="consentFalse" name="consent" value="false">
             <button type="submit" class="cancel-button">Deny</button>
         </form>
@@ -158,7 +158,7 @@
     <script>
 
 
-        window.history.pushState({}, '', "{{ .BaseURL }}/authorize/{{ .CallbackID }}/consent");
+        window.history.pushState({}, '', "{{ .BaseURL }}/{{ .Endpoint }}/{{ .CallbackID }}/consent");
     </script>
 </body>
 </html>

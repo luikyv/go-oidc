@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -31,6 +32,8 @@ const (
 	defaultEndpointTokenRevocation            = "/revoke"
 	defaultEndpointCIBA                       = "/bc-authorize"
 	defaultEndpointOpenIDFederation           = "/.well-known/openid-federation"
+	defaultEndpointDeviceAuthorization        = "/device_authorization"
+	defaultEndpointDevice                     = "/device"
 )
 
 func defaultTokenOptionsFunc() goidc.TokenOptionsFunc {
@@ -39,5 +42,17 @@ func defaultTokenOptionsFunc() goidc.TokenOptionsFunc {
 			goidc.DefaultOpaqueTokenLength,
 			defaultTokenLifetimeSecs,
 		)
+	}
+}
+
+func defaultGenerateDeviceCodeFunc() goidc.GenerateDeviceCodeFunc {
+	return func() (string, error) {
+		return strutil.Random(32), nil
+	}
+}
+
+func defaultGenerateUserCodeFunc() goidc.GenerateUserCodeFunc {
+	return func() (string, error) {
+		return strutil.RandomUserCode(), nil
 	}
 }

@@ -68,6 +68,7 @@ var userSessionStore = map[string]userSession{}
 type authnPage struct {
 	Subject           string
 	BaseURL           string
+	Endpoint          string
 	CallbackID        string
 	LogoURI           string
 	PolicyURI         string
@@ -124,7 +125,7 @@ func (a authenticator) authenticate(
 	}
 
 	if as.StoredParameter(paramStepID) == stepIDFinishFlow {
-		return a.finishFlow(as)
+		return a.finishFlow(w, as)
 	}
 
 	return goidc.StatusFailure, errors.New("access denied")
@@ -265,6 +266,7 @@ func (a authenticator) grantConsent(
 }
 
 func (a authenticator) finishFlow(
+	w http.ResponseWriter,
 	as *goidc.AuthnSession,
 ) (
 	goidc.AuthnStatus,
@@ -388,6 +390,10 @@ func (a authenticator) finishFlow(
 		setClaimFunc(goidc.ClaimFamilyName, "Doe")
 	}
 
+	if as.IsDeviceFlow() {
+		_ = a.tmpl.ExecuteTemplate(w, "device_success.html", nil)
+	}
+
 	return goidc.StatusSuccess, nil
 }
 
@@ -399,11 +405,17 @@ func (a authenticator) renderPage(
 	goidc.AuthnStatus,
 	error,
 ) {
-
+	endpoint := "authorize"
+	callbackID := as.CallbackID
+	if as.IsDeviceFlow() {
+		endpoint = "device"
+		callbackID = as.DeviceCallbackID
+	}
 	params := authnPage{
 		Subject:    as.Subject,
 		BaseURL:    Issuer,
-		CallbackID: as.CallbackID,
+		Endpoint:   endpoint,
+		CallbackID: callbackID,
 		Session:    sessionToMap(as),
 	}
 
@@ -436,11 +448,17 @@ func (a authenticator) renderError(
 	goidc.AuthnStatus,
 	error,
 ) {
-
+	endpoint := "authorize"
+	callbackID := as.CallbackID
+	if as.IsDeviceFlow() {
+		endpoint = "device"
+		callbackID = as.DeviceCallbackID
+	}
 	params := authnPage{
 		Subject:    as.Subject,
 		BaseURL:    Issuer,
-		CallbackID: as.CallbackID,
+		Endpoint:   endpoint,
+		CallbackID: callbackID,
 		Session:    sessionToMap(as),
 		Error:      err,
 	}
