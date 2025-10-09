@@ -22,6 +22,7 @@ func TestNewRequest(t *testing.T) {
 	params.Set("redirect_uri", "https://example.com")
 	params.Set("refresh_token", "random_refresh_token")
 	params.Set("code_verifier", "random_code_verifier")
+	params.Set("device_code", "random_device_code")
 
 	req := httptest.NewRequest(http.MethodPost, "/token", bytes.NewBufferString(params.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -37,6 +38,8 @@ func TestNewRequest(t *testing.T) {
 		redirectURI:       "https://example.com",
 		refreshToken:      "random_refresh_token",
 		codeVerifier:      "random_code_verifier",
+		clientID:          "random_client_id",
+		deviceCode:        "random_device_code",
 	}
 	if diff := cmp.Diff(tokenReq, want, cmp.AllowUnexported(request{})); diff != "" {
 		t.Error(diff)

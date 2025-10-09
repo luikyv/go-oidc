@@ -123,6 +123,7 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		EndpointUserInfo:            "/userinfo",
 		EndpointIntrospection:       "/introspect",
 		EndpointTokenRevocation:     "/revoke",
+		EndpointDeviceAuthorization: "/device",
 		Scopes: []goidc.Scope{
 			goidc.ScopeOpenID, goidc.ScopeEmail,
 		},
@@ -172,6 +173,7 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		TokenIntrospectionIsEnabled:    true,
 		TokenIntrospectionAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnSecretJWT},
 		TokenRevocationIsEnabled:       true,
+		DeviceAuthorizationIsEnabled:   true,
 	}
 	ctx := oidc.Context{Configuration: config}
 
@@ -180,17 +182,18 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 
 	// Then.
 	want := OpenIDConfiguration{
-		Issuer:                     ctx.Host,
-		ClientRegistrationEndpoint: ctx.Host + ctx.EndpointDCR,
-		AuthorizationEndpoint:      ctx.Host + ctx.EndpointAuthorize,
-		TokenEndpoint:              ctx.Host + ctx.EndpointToken,
-		UserinfoEndpoint:           ctx.Host + ctx.EndpointUserInfo,
-		JWKSEndpoint:               ctx.Host + ctx.EndpointJWKS,
-		PAREndpoint:                ctx.Host + ctx.EndpointPushedAuthorization,
-		TokenIntrospectionEndpoint: ctx.Host + ctx.EndpointIntrospection,
-		TokenRevocationEndpoint:    ctx.Host + ctx.EndpointTokenRevocation,
-		Scopes:                     []string{"openid", "email"},
-		TokenAuthnMethods:          ctx.TokenAuthnMethods,
+		Issuer:                      ctx.Host,
+		ClientRegistrationEndpoint:  ctx.Host + ctx.EndpointDCR,
+		AuthorizationEndpoint:       ctx.Host + ctx.EndpointAuthorize,
+		TokenEndpoint:               ctx.Host + ctx.EndpointToken,
+		UserinfoEndpoint:            ctx.Host + ctx.EndpointUserInfo,
+		JWKSEndpoint:                ctx.Host + ctx.EndpointJWKS,
+		PAREndpoint:                 ctx.Host + ctx.EndpointPushedAuthorization,
+		TokenIntrospectionEndpoint:  ctx.Host + ctx.EndpointIntrospection,
+		TokenRevocationEndpoint:     ctx.Host + ctx.EndpointTokenRevocation,
+		DeviceAuthorizationEndpoint: ctx.Host + ctx.EndpointDeviceAuthorization,
+		Scopes:                      []string{"openid", "email"},
+		TokenAuthnMethods:           ctx.TokenAuthnMethods,
 		TokenAuthnSigAlgs: []goidc.SignatureAlgorithm{
 			goidc.PS256, goidc.HS256,
 		},

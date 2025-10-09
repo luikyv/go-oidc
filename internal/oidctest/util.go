@@ -42,6 +42,7 @@ func NewClient(t testing.TB) (client *goidc.Client, secret string) {
 				goidc.GrantImplicit,
 				goidc.GrantRefreshToken,
 				goidc.GrantClientCredentials,
+				goidc.GrantDeviceCode,
 			},
 			ResponseTypes: []goidc.ResponseType{
 				goidc.ResponseTypeCode,
@@ -82,6 +83,7 @@ func NewContext(t testing.TB) oidc.Context {
 			goidc.GrantImplicit,
 			goidc.GrantRefreshToken,
 			goidc.GrantJWTBearer,
+			goidc.GrantDeviceCode,
 		},
 		ResponseTypes: []goidc.ResponseType{
 			goidc.ResponseTypeCode,
@@ -129,6 +131,8 @@ func NewContext(t testing.TB) oidc.Context {
 		EndpointDCR:                 "/register",
 		EndpointUserInfo:            "/userinfo",
 		EndpointIntrospection:       "/introspect",
+		EndpointDeviceAuthorization: "/device_authorization",
+		EndpointDevice:              "/device",
 		JWTLifetimeSecs:             600,
 		IDTokenLifetimeSecs:         60,
 		DefaultSubIdentifierType:    goidc.SubIdentifierPublic,

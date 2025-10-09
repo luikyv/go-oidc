@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>goidc</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            margin: 0;
+        }
+        .login-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        .login-container h1 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            text-align: center;
+        }
+        .login-container label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .login-container input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        .login-container ul {
+            margin-bottom: 15px;
+            padding-left: 20px;
+        }
+        .login-container ul li {
+            margin-bottom: 10px;
+        }
+        .login-container button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .login-container button:hover {
+            background-color: #0056b3;
+        }
+        .login-container .cancel-button {
+            background-color: #ccc;
+            color: #000;
+        }
+        .login-container .cancel-button:hover {
+            background-color: #999;
+        }
+    </style>
+    <script>
+        window.history.pushState({}, '', "{{ .BaseURL }}/{{ .Endpoint }}");
+    </script>
+</head>
+<body>
+    <div class="login-container">
+        <h1>go-oidc</h1>
+        <h2>Device Login Form</h2>
+
+        <!-- Login Form -->
+        <form action="{{ .BaseURL }}/{{ .Endpoint }}" method="POST">
+            <label for="usercode">Code:</label>
+            <input type="text" id="usercode" name="user_code" required>
+            <button type="submit" id="submit_button">Login</button>
+        </form>
+
+    </div>
+</body>
+</html>

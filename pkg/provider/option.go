@@ -1016,6 +1016,50 @@ func WithOpenIDFerationRequiredTrustMarksFunc(f goidc.RequiredTrustMarksFunc) Op
 	}
 }
 
+func WithDeviceAuthorizationGrant(userCodeHandler goidc.HandleUserCodeFunc) Option {
+	return func(p *Provider) error {
+		p.config.DeviceAuthorizationIsEnabled = true
+		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantDeviceCode)
+		p.config.HandleUserCodeFunc = userCodeHandler
+		return nil
+	}
+}
+
+func WithDeviceAuthorizationLifetime(secs int) Option {
+	return func(p *Provider) error {
+		p.config.DeviceAuthorizationLifetimeSecs = secs
+		return nil
+	}
+}
+
+func WithDeviceAuthorizationPollingInterval(secs int) Option {
+	return func(p *Provider) error {
+		p.config.DeviceAuthorizationPollingIntervalSecs = secs
+		return nil
+	}
+}
+
+func WithDeviceAuthorizationVerificationURIComplete() Option {
+	return func(p *Provider) error {
+		p.config.DeviceAuthorizationEnableVerificationURIComplete = true
+		return nil
+	}
+}
+
+func WithGenerateDeviceCodeFunc(f goidc.GenerateDeviceCodeFunc) Option {
+	return func(p *Provider) error {
+		p.config.GenerateDeviceCodeFunc = f
+		return nil
+	}
+}
+
+func WithGenerateUserCodeFunc(f goidc.GenerateUserCodeFunc) Option {
+	return func(p *Provider) error {
+		p.config.GenerateUserCodeFunc = f
+		return nil
+	}
+}
+
 // appendIfNotIn adds 'value' to the beginning of 'values' if it is not already present.
 func appendIfNotIn[T comparable](values []T, value T) []T {
 	if !slices.Contains(values, value) {

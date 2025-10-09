@@ -41,6 +41,7 @@ const (
 	GrantImplicit          GrantType = "implicit"
 	GrantJWTBearer         GrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer" //nolint:gosec
 	GrantCIBA              GrantType = "urn:openid:params:grant-type:ciba"
+	GrantDeviceCode        GrantType = "urn:ietf:params:oauth:grant-type:device_code"
 )
 
 type ResponseType string
@@ -741,3 +742,9 @@ const (
 type RequiredTrustMarksFunc func(context.Context) []string
 
 type HandleSessionFunc func(*http.Request, *AuthnSession, *Client) error
+
+type (
+	GenerateDeviceCodeFunc func() (string, error)
+	GenerateUserCodeFunc   func() (string, error)
+	HandleUserCodeFunc     func(http.ResponseWriter, *http.Request) error
+)

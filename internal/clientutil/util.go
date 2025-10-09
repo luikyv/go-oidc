@@ -2,6 +2,7 @@ package clientutil
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -37,6 +38,14 @@ func AreScopesAllowed(c *goidc.Client, availableScopes []goidc.Scope, requestedS
 	}
 
 	return true
+}
+
+// TODO: using IsGrantAllowed instead of AreGrantsAllowed, even though the function
+// is variadic to denote that this is at-least-one  matching
+func IsGrantAllowed(c *goidc.Client, grants ...goidc.GrantType) bool {
+	return slices.ContainsFunc(c.GrantTypes, func(gt goidc.GrantType) bool {
+		return slices.Contains(grants, gt)
+	})
 }
 
 func JWKByKeyID(ctx oidc.Context, c *goidc.Client, keyID string) (goidc.JSONWebKey, error) {

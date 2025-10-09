@@ -328,11 +328,23 @@ func (op *Provider) setDefaults() error {
 		op.config.OpenIDFedClientRegTypes = nonZeroOrDefault(op.config.OpenIDFedClientRegTypes, []goidc.ClientRegistrationType{defaultOpenIDFedRegType})
 	}
 
+	if op.config.DeviceAuthorizationIsEnabled {
+		op.config.EndpointDeviceAuthorization = nonZeroOrDefault(op.config.EndpointDeviceAuthorization, defaultEndpointDeviceAuthorization)
+		op.config.EndpointDevice = nonZeroOrDefault(op.config.EndpointDevice, defaultEndpointDevice)
+		// deafult to the authn session timeout
+		op.config.DeviceAuthorizationLifetimeSecs = nonZeroOrDefault(op.config.DeviceAuthorizationLifetimeSecs, int(defaultAuthnSessionTimeoutSecs))
+		op.config.GenerateDeviceCodeFunc = nonZeroOrDefault(op.config.GenerateDeviceCodeFunc, defaultGenerateDeviceCodeFunc())
+		op.config.GenerateUserCodeFunc = nonZeroOrDefault(op.config.GenerateUserCodeFunc, defaultGenerateUserCodeFunc())
+	}
+
 	return nil
 }
 
 func (op Provider) validate() error {
-	return runValidations(op.config, validateTokenBinding)
+	return runValidations(op.config,
+		validateTokenBinding,
+		validateDeviceCodeHandlers,
+	)
 }
 
 // nonZeroOrDefault returns the first argument "s1" if it is non-nil and non-zero.

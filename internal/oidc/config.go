@@ -65,7 +65,11 @@ type Configuration struct {
 	EndpointUserInfo            string
 	EndpointIntrospection       string
 	EndpointTokenRevocation     string
-	EndpointPrefix              string
+	EndpointDeviceAuthorization string
+	// TODO: everything here that starts with EndpointXXX is used for discovery
+	// maybe EndpointDevice should be part of DeviceAuthorization config namespace
+	EndpointDevice string
+	EndpointPrefix string
 
 	UserInfoDefaultSigAlg        goidc.SignatureAlgorithm
 	UserInfoSigAlgs              []goidc.SignatureAlgorithm
@@ -203,4 +207,12 @@ type Configuration struct {
 	OpenIDFedClientRegTypes         []goidc.ClientRegistrationType
 	OpenIDFedRequiredTrustMarksFunc goidc.RequiredTrustMarksFunc
 	OpenIDFedTrustMarkSigAlgs       []goidc.SignatureAlgorithm
+
+	DeviceAuthorizationIsEnabled                     bool
+	DeviceAuthorizationEnableVerificationURIComplete bool
+	DeviceAuthorizationLifetimeSecs                  int
+	DeviceAuthorizationPollingIntervalSecs           int
+	GenerateDeviceCodeFunc                           goidc.GenerateDeviceCodeFunc
+	GenerateUserCodeFunc                             goidc.GenerateUserCodeFunc
+	HandleUserCodeFunc                               goidc.HandleUserCodeFunc
 }

@@ -139,7 +139,7 @@
         }
 
         // Make sure the URL on the browser indicates this page is for the login step.
-        window.history.pushState({}, '', "{{ .BaseURL }}/authorize/{{ .CallbackID }}/login");
+        window.history.pushState({}, '', "{{ .BaseURL }}/{{ .Endpoint }}/{{ .CallbackID }}/login");
         window.onload = showError;
     </script>
 </head>
@@ -153,7 +153,7 @@
         <div id="error-message" class="error-message"></div>
 
         <!-- Login Form -->
-        <form action="{{ .BaseURL }}/authorize/{{ .CallbackID }}/login" method="POST">
+        <form action="{{ .BaseURL }}/{{ .Endpoint }}/{{ .CallbackID }}/login" method="POST">
             <input type="hidden" id="loginTrue" name="login" value="true">
             <label for="username">User:</label>
             <input type="text" id="username" name="username" required>
@@ -163,7 +163,7 @@
         </form>
 
         <!-- Deny Button -->
-        <form action="{{ .BaseURL }}/authorize/{{ .CallbackID }}/login" method="POST">
+        <form action="{{ .BaseURL }}/{{ .Endpoint }}/{{ .CallbackID }}/login" method="POST">
             <input type="hidden" id="loginFalse" name="login" value="false">
             <button type="submit" id="cancel_button" class="cancel-button">Deny</button>
         </form>

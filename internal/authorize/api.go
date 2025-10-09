@@ -22,6 +22,40 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 		)
 	}
 
+	if config.DeviceAuthorizationIsEnabled {
+		// initialize device authorization
+		router.Handle(
+			"POST "+config.EndpointPrefix+config.EndpointDeviceAuthorization,
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDeviceAuth), middlewares...),
+		)
+		// user code handling and verification
+		router.Handle(
+			"GET "+config.EndpointPrefix+config.EndpointDevice,
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDevice), middlewares...),
+		)
+		router.Handle(
+			"POST "+config.EndpointPrefix+config.EndpointDevice,
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDevice), middlewares...),
+		)
+		// run policy handlers
+		router.Handle(
+			"POST "+config.EndpointPrefix+config.EndpointDevice+"/{callback}",
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDeviceCallback), middlewares...),
+		)
+		router.Handle(
+			"GET "+config.EndpointPrefix+config.EndpointDevice+"/{callback}",
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDeviceCallback), middlewares...),
+		)
+		router.Handle(
+			"POST "+config.EndpointPrefix+config.EndpointDevice+"/{callback}/{callback_path...}",
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDeviceCallback), middlewares...),
+		)
+		router.Handle(
+			"GET "+config.EndpointPrefix+config.EndpointDevice+"/{callback}/{callback_path...}",
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDeviceCallback), middlewares...),
+		)
+	}
+
 	router.Handle(
 		"GET "+config.EndpointPrefix+config.EndpointAuthorize,
 		goidc.ApplyMiddlewares(oidc.Handler(config, handler), middlewares...),
@@ -105,6 +139,51 @@ func handlerCIBA(ctx oidc.Context) {
 	}
 
 	if err := ctx.Write(resp, http.StatusOK); err != nil {
+		ctx.WriteError(err)
+	}
+}
+
+func handlerDeviceAuth(ctx oidc.Context) {
+	req := newFormRequest(ctx.Request)
+	resp, err := initDeviceAuth(ctx, req)
+	if err != nil {
+		ctx.WriteError(err)
+		return
+	}
+
+	if err := ctx.Write(resp, http.StatusOK); err != nil {
+		ctx.WriteError(err)
+	}
+}
+
+func handlerDevice(ctx oidc.Context) {
+	var req request
+	if ctx.Request.Method == http.MethodPost {
+		req = newFormRequest(ctx.Request)
+	} else {
+		req = newRequest(ctx.Request)
+	}
+
+	err := startDeviceAuth(ctx, req)
+	if err == nil {
+		return
+	}
+
+	err = ctx.RenderError(err)
+	if err != nil {
+		ctx.WriteError(err)
+	}
+}
+
+func handlerDeviceCallback(ctx oidc.Context) {
+	callbackID := ctx.Request.PathValue("callback")
+	err := continueDeviceAuth(ctx, callbackID)
+	if err == nil {
+		return
+	}
+
+	err = ctx.RenderError(err)
+	if err != nil {
 		ctx.WriteError(err)
 	}
 }

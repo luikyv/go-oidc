@@ -315,6 +315,10 @@ func (ctx Context) DeleteGrantSessionByAuthorizationCode(code string) error {
 	return ctx.GrantSessionManager.DeleteByAuthCode(ctx.Context(), code)
 }
 
+func (ctx Context) DeleteGrantSessionByDeviceCode(code string) error {
+	return ctx.GrantSessionManager.DeleteByDeviceCode(ctx.Context(), code)
+}
+
 func (ctx Context) SaveAuthnSession(session *goidc.AuthnSession) error {
 	numberOfIndexes := 0
 	if session.CallbackID != "" || session.PushedAuthReqID != "" {
@@ -324,6 +328,10 @@ func (ctx Context) SaveAuthnSession(session *goidc.AuthnSession) error {
 		numberOfIndexes++
 	}
 	if session.CIBAAuthID != "" {
+		numberOfIndexes++
+	}
+	// TODO: deviceCode is the main index. we shouldn't index userCode or deviceCallbackID, right?
+	if session.DeviceCode != "" {
 		numberOfIndexes++
 	}
 
@@ -348,6 +356,18 @@ func (ctx Context) AuthnSessionByRequestURI(uri string) (*goidc.AuthnSession, er
 
 func (ctx Context) AuthnSessionByAuthReqID(id string) (*goidc.AuthnSession, error) {
 	return ctx.AuthnSessionManager.SessionByCIBAAuthID(ctx.Context(), id)
+}
+
+func (ctx Context) AuthnSessionByDeviceCode(code string) (*goidc.AuthnSession, error) {
+	return ctx.AuthnSessionManager.SessionByDeviceCode(ctx.Context(), code)
+}
+
+func (ctx Context) AuthnSessionByUserCode(code string) (*goidc.AuthnSession, error) {
+	return ctx.AuthnSessionManager.SessionByUserCode(ctx.Context(), code)
+}
+
+func (ctx Context) AuthnSessionByDeviceCallbackID(id string) (*goidc.AuthnSession, error) {
+	return ctx.AuthnSessionManager.SessionByDeviceCallbackID(ctx.Context(), id)
 }
 
 func (ctx Context) DeleteAuthnSession(id string) error {

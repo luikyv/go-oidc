@@ -23,6 +23,16 @@ type AuthnSessionManager interface {
 	// during CIBA.
 	// If CIBA is not enabled, this function can be left empty.
 	SessionByCIBAAuthID(ctx context.Context, id string) (*AuthnSession, error)
+	// SessionByDeviceCode fetches an authn session by the device code created
+	// during the device authorization flow. used by the token endpoint.
+	// used by the token endpoint when polled by the client.
+	SessionByDeviceCode(ctx context.Context, deviceCode string) (*AuthnSession, error)
+	// SessionByUserCode fetches an authn session by the user code created
+	// during the device authorization flow. used by the device verification
+	// used by the device endpoint after the user enters the user code.
+	SessionByUserCode(ctx context.Context, userCode string) (*AuthnSession, error)
+	// SessionByDeviceCallbackID fetches an authn session by the callback ID
+	SessionByDeviceCallbackID(ctx context.Context, callbackID string) (*AuthnSession, error)
 	Delete(ctx context.Context, id string) error
 }
 
@@ -66,6 +76,13 @@ type AuthnSession struct {
 	// ClientCertThumbprint contains the thumbprint of the certificate used by
 	// the client to generate the token.
 	ClientCertThumbprint string `json:"client_cert_thumbprint,omitempty"`
+
+	// device authorization fields
+	DeviceCode           string `json:"device_code,omitempty"`
+	UserCode             string `json:"user_code,omitempty"`
+	DeviceCallbackID     string `json:"device_callback_id,omitempty"`
+	AuthorizationPending bool   `json:"authorization_pending,omitempty"`
+	Authorized           bool   `json:"authorized,omitempty"`
 
 	// Storage allows storing additional information between interactions.
 	Storage                  map[string]any `json:"store,omitempty"`
@@ -159,4 +176,9 @@ func (s *AuthnSession) GrantResources(resources []string) {
 
 func (s *AuthnSession) IsExpired() bool {
 	return timeutil.TimestampNow() >= s.ExpiresAtTimestamp
+}
+
+// IsDeviceFlow returns true if the authentication session is part of a device flow
+func (s *AuthnSession) IsDeviceFlow() bool {
+	return s.DeviceCode != ""
 }

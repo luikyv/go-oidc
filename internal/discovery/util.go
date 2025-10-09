@@ -132,5 +132,9 @@ func NewOIDCConfig(ctx oidc.Context) OpenIDConfiguration {
 		}
 	}
 
+	if ctx.DeviceAuthorizationIsEnabled {
+		config.DeviceAuthorizationEndpoint = ctx.BaseURL() + ctx.EndpointDeviceAuthorization
+	}
+
 	return config
 }

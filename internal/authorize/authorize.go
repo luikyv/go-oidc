@@ -203,10 +203,16 @@ func authenticate(ctx oidc.Context, session *goidc.AuthnSession) error {
 	policy := ctx.Policy(session.PolicyID)
 	switch status, err := policy.Authenticate(ctx.Response, ctx.Request, session); status {
 	case goidc.StatusSuccess:
+		if session.DeviceCode != "" {
+			return finishDeviceFlowSuccessfully(ctx, session)
+		}
 		return finishFlowSuccessfully(ctx, session)
 	case goidc.StatusInProgress:
 		return stopFlowInProgress(ctx, session)
 	default:
+		if session.DeviceCode != "" {
+			return finishDeviceFlowWithFailure(ctx, session, err)
+		}
 		return finishFlowWithFailure(ctx, session, err)
 	}
 }
