@@ -91,7 +91,7 @@ func (a authenticator) authenticate(
 	r *http.Request,
 	as *goidc.AuthnSession,
 ) (
-	goidc.AuthnStatus,
+	goidc.Status,
 	error,
 ) {
 
@@ -134,7 +134,7 @@ func (a authenticator) loadUser(
 	r *http.Request,
 	as *goidc.AuthnSession,
 ) (
-	goidc.AuthnStatus,
+	goidc.Status,
 	error,
 ) {
 
@@ -165,7 +165,7 @@ func (a authenticator) login(
 	r *http.Request,
 	as *goidc.AuthnSession,
 ) (
-	goidc.AuthnStatus,
+	goidc.Status,
 	error,
 ) {
 
@@ -219,7 +219,7 @@ func (a authenticator) createUserSession(
 	w http.ResponseWriter,
 	as *goidc.AuthnSession,
 ) (
-	goidc.AuthnStatus,
+	goidc.Status,
 	error,
 ) {
 	sessionID := uuid.NewString()
@@ -246,7 +246,7 @@ func (a authenticator) grantConsent(
 	r *http.Request,
 	as *goidc.AuthnSession,
 ) (
-	goidc.AuthnStatus,
+	goidc.Status,
 	error,
 ) {
 
@@ -267,7 +267,7 @@ func (a authenticator) grantConsent(
 func (a authenticator) finishFlow(
 	as *goidc.AuthnSession,
 ) (
-	goidc.AuthnStatus,
+	goidc.Status,
 	error,
 ) {
 	as.GrantScopes(as.Scopes)
@@ -396,7 +396,7 @@ func (a authenticator) renderPage(
 	templateName string,
 	as *goidc.AuthnSession,
 ) (
-	goidc.AuthnStatus,
+	goidc.Status,
 	error,
 ) {
 
@@ -433,7 +433,7 @@ func (a authenticator) renderError(
 	as *goidc.AuthnSession,
 	err string,
 ) (
-	goidc.AuthnStatus,
+	goidc.Status,
 	error,
 ) {
 

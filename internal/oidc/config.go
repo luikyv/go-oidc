@@ -65,6 +65,7 @@ type Configuration struct {
 	EndpointUserInfo            string
 	EndpointIntrospection       string
 	EndpointTokenRevocation     string
+	EndpointLogout              string
 	EndpointPrefix              string
 
 	UserInfoDefaultSigAlg        goidc.SignatureAlgorithm
@@ -203,4 +204,10 @@ type Configuration struct {
 	OpenIDFedClientRegTypes         []goidc.ClientRegistrationType
 	OpenIDFedRequiredTrustMarksFunc goidc.RequiredTrustMarksFunc
 	OpenIDFedTrustMarkSigAlgs       []goidc.SignatureAlgorithm
+
+	LogoutIsEnabled              bool
+	LogoutSessionManager         goidc.LogoutSessionManager
+	LogoutSessionTimeoutSecs     int
+	LogoutPolicies               []goidc.LogoutPolicy
+	LogoutDefaultRedirectURIFunc goidc.DefaultRedirectURIFunc
 }

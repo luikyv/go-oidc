@@ -289,3 +289,15 @@ func FAPIIDMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+func LogoutPolicy() goidc.LogoutPolicy {
+	return goidc.NewLogoutPolicy(
+		"main",
+		func(r *http.Request, ls *goidc.LogoutSession) bool {
+			return true
+		},
+		func(w http.ResponseWriter, r *http.Request, ls *goidc.LogoutSession) (goidc.Status, error) {
+			return goidc.StatusSuccess, nil
+		},
+	)
+}

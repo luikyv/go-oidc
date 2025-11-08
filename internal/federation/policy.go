@@ -107,6 +107,7 @@ type openIDClientMetadataPolicy struct {
 	PublicSignedJWKSURI           metadataOperators[string]                           `json:"signed_jwks_uri,omitempty"`
 	OrganizationName              metadataOperators[string]                           `json:"organization_name,omitempty"`
 	ClientRegistrationTypes       metadataOperators[[]goidc.ClientRegistrationType]   `json:"client_registration_types,omitempty"`
+	PostLogoutRedirectURIs        metadataOperators[[]string]                         `json:"post_logout_redirect_uris,omitempty"`
 	CustomAttributes              map[string]metadataOperators[any]                   `json:"custom_attributes,omitempty"`
 }
 
@@ -361,6 +362,10 @@ func (p openIDClientMetadataPolicy) validate() error {
 	}
 
 	if err := p.ClientRegistrationTypes.validate(); err != nil {
+		return err
+	}
+
+	if err := p.PostLogoutRedirectURIs.validate(); err != nil {
 		return err
 	}
 
@@ -674,6 +679,12 @@ func (high openIDClientMetadataPolicy) merge(low openIDClientMetadataPolicy) (op
 	}
 	high.ClientRegistrationTypes = opClientRegistrationTypes
 
+	opPostLogoutRedirectURIs, err := high.PostLogoutRedirectURIs.merge(low.PostLogoutRedirectURIs)
+	if err != nil {
+		return openIDClientMetadataPolicy{}, err
+	}
+	high.PostLogoutRedirectURIs = opPostLogoutRedirectURIs
+
 	for att, lowOps := range low.CustomAttributes {
 		ops, err := high.customAttribute(att).merge(lowOps)
 		if err != nil {
@@ -986,6 +997,12 @@ func (policy openIDClientMetadataPolicy) apply(client openIDClient) (openIDClien
 		return openIDClient{}, err
 	}
 	client.ClientRegistrationTypes = clientRegistrationTypes
+
+	postLogoutRedirectURIs, err := policy.PostLogoutRedirectURIs.apply(client.PostLogoutRedirectURIs)
+	if err != nil {
+		return openIDClient{}, err
+	}
+	client.PostLogoutRedirectURIs = postLogoutRedirectURIs
 
 	for att, ops := range policy.CustomAttributes {
 		attValue, err := ops.apply(client.CustomAttribute(att))

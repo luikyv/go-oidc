@@ -7,10 +7,11 @@ import (
 const (
 	defaultStorageMaxSize = 100
 
-	defaultAuthnSessionTimeoutSecs = 1800 // 30 minutes.
-	defaultIDTokenLifetimeSecs     = 600
-	defaultTokenLifetimeSecs       = 300
-	defaultJWTLifetimeSecs         = 600
+	defaultAuthnSessionTimeoutSecs  = 1800 // 30 minutes.
+	defaultIDTokenLifetimeSecs      = 600
+	defaultTokenLifetimeSecs        = 300
+	defaultJWTLifetimeSecs          = 600
+	defaultLogoutSessionTimeoutSecs = 1800 // 30 minutes.
 
 	defaultIDTokenSigAlg       = goidc.RS256
 	defaultPrivateKeyJWTSigAlg = goidc.RS256
@@ -31,6 +32,7 @@ const (
 	defaultEndpointTokenRevocation            = "/revoke"
 	defaultEndpointCIBA                       = "/bc-authorize"
 	defaultEndpointOpenIDFederation           = "/.well-known/openid-federation"
+	defaultEndpointEndSession                 = "/logout"
 )
 
 func defaultTokenOptionsFunc() goidc.TokenOptionsFunc {

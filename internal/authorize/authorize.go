@@ -78,8 +78,7 @@ func initAuthnSession(ctx oidc.Context, req request, client *goidc.Client) (*goi
 
 	policy, ok := ctx.AvailablePolicy(client, session)
 	if !ok {
-		return nil, newRedirectionError(goidc.ErrorCodeInvalidRequest,
-			"no policy available", session.AuthorizationParameters)
+		return nil, newRedirectionError(goidc.ErrorCodeInvalidRequest, "no policy available", session.AuthorizationParameters)
 	}
 
 	if session.Nonce != "" {
@@ -179,8 +178,7 @@ func authnSessionWithJAR(ctx oidc.Context, req request, client *goidc.Client) (*
 
 	// For OIDC, the parameters sent in the authorization endpoint are merged
 	// with the ones sent inside the JAR.
-	session.AuthorizationParameters = mergeParams(session.AuthorizationParameters,
-		req.AuthorizationParameters)
+	session.AuthorizationParameters = mergeParams(session.AuthorizationParameters, req.AuthorizationParameters)
 	return session, nil
 }
 
@@ -213,23 +211,19 @@ func authenticate(ctx oidc.Context, session *goidc.AuthnSession) error {
 
 func finishFlowWithFailure(ctx oidc.Context, session *goidc.AuthnSession, err error) error {
 	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-		return wrapRedirectionError(goidc.ErrorCodeInternalError,
-			"internal error", session.AuthorizationParameters, err)
+		return wrapRedirectionError(goidc.ErrorCodeInternalError, "internal error", session.AuthorizationParameters, err)
 	}
 
 	var oidcErr goidc.Error
 	if errors.As(err, &oidcErr) {
-		return newRedirectionError(oidcErr.Code,
-			oidcErr.Description, session.AuthorizationParameters)
+		return newRedirectionError(oidcErr.Code, oidcErr.Description, session.AuthorizationParameters)
 	}
 
 	if err != nil {
-		return newRedirectionError(goidc.ErrorCodeAccessDenied,
-			err.Error(), session.AuthorizationParameters)
+		return newRedirectionError(goidc.ErrorCodeAccessDenied, err.Error(), session.AuthorizationParameters)
 	}
 
-	return newRedirectionError(goidc.ErrorCodeAccessDenied,
-		"access denied", session.AuthorizationParameters)
+	return newRedirectionError(goidc.ErrorCodeAccessDenied, "access denied", session.AuthorizationParameters)
 }
 
 func stopFlowInProgress(ctx oidc.Context, session *goidc.AuthnSession) error {
@@ -244,8 +238,7 @@ func finishFlowSuccessfully(ctx oidc.Context, session *goidc.AuthnSession) error
 
 	client, err := ctx.Client(session.ClientID)
 	if err != nil {
-		return wrapRedirectionError(goidc.ErrorCodeInternalError,
-			"could not load the client", session.AuthorizationParameters, err)
+		return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not load the client", session.AuthorizationParameters, err)
 	}
 
 	if err := authorizeAuthnSession(ctx, session); err != nil {

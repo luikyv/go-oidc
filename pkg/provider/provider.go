@@ -328,6 +328,12 @@ func (op *Provider) setDefaults() error {
 		op.config.OpenIDFedClientRegTypes = nonZeroOrDefault(op.config.OpenIDFedClientRegTypes, []goidc.ClientRegistrationType{defaultOpenIDFedRegType})
 	}
 
+	if op.config.LogoutIsEnabled {
+		op.config.LogoutSessionManager = nonZeroOrDefault(op.config.LogoutSessionManager, goidc.LogoutSessionManager(storage.NewLogoutSessionManager(defaultStorageMaxSize)))
+		op.config.EndpointLogout = nonZeroOrDefault(op.config.EndpointLogout, defaultEndpointEndSession)
+		op.config.LogoutSessionTimeoutSecs = nonZeroOrDefault(op.config.LogoutSessionTimeoutSecs, defaultLogoutSessionTimeoutSecs)
+	}
+
 	return nil
 }
 
