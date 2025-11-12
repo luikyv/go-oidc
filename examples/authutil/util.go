@@ -291,12 +291,21 @@ func FAPIIDMiddleware(next http.Handler) http.Handler {
 }
 
 func LogoutPolicy() goidc.LogoutPolicy {
+	tmpl := template.Must(template.ParseFS(ui.FS, "logout.html"))
 	return goidc.NewLogoutPolicy(
 		"main",
 		func(r *http.Request, ls *goidc.LogoutSession) bool {
 			return true
 		},
 		func(w http.ResponseWriter, r *http.Request, ls *goidc.LogoutSession) (goidc.Status, error) {
+			logout := r.PostFormValue("logout")
+			if logout == "" {
+				if err := tmpl.ExecuteTemplate(w, "logout.html", nil); err != nil {
+					return goidc.StatusFailure, err
+				}
+				return goidc.StatusInProgress, nil
+			}
+
 			return goidc.StatusSuccess, nil
 		},
 	)

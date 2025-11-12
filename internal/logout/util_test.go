@@ -1,4 +1,4 @@
-package endsession
+package logout
 
 import (
 	"context"

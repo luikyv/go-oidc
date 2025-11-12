@@ -1,9 +1,13 @@
 package goidc
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 )
+
+// TODO: Find a better way to handle logout cancellation.
+var ErrLogoutCancelled = errors.New("logout cancelled by user")
 
 type ErrorCode string
 

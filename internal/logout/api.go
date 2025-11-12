@@ -1,4 +1,4 @@
-package endsession
+package logout
 
 import (
 	"net/http"
@@ -8,6 +8,10 @@ import (
 )
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlewares ...goidc.MiddlewareFunc) {
+	if !config.LogoutIsEnabled {
+		return
+	}
+
 	router.Handle(
 		"GET "+config.EndpointPrefix+config.EndpointLogout,
 		goidc.ApplyMiddlewares(oidc.Handler(config, handle), middlewares...),

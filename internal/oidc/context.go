@@ -26,11 +26,7 @@ type Context struct {
 	*Configuration
 }
 
-func NewContext(
-	w http.ResponseWriter,
-	r *http.Request,
-	config *Configuration,
-) Context {
+func NewContext(w http.ResponseWriter, r *http.Request, config *Configuration) Context {
 	return Context{
 		Configuration: config,
 		Response:      w,

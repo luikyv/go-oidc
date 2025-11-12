@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>goidc – Logout</title>
+  <style>
+    body {
+      display: flex; justify-content: center; align-items: center;
+      height: 100vh; background-color: #f0f0f0; font-family: Arial, sans-serif; margin: 0;
+    }
+    .logout-container {
+      background-color: #fff; padding: 20px; border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px;
+    }
+    .logout-container h1 { margin-bottom: 10px; font-size: 24px; text-align: center; }
+    .logout-container h2 { margin: 0 0 16px; font-size: 18px; text-align: center; color: #444; }
+    .logout-container p { margin: 0 0 18px; text-align: center; line-height: 1.4; }
+    .logout-actions {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;
+    }
+    .logout-container button, .logout-container a.button-link {
+      width: 100%; padding: 10px; text-align: center; background-color: #007bff;
+      border: none; border-radius: 5px; color: #fff; font-size: 16px;
+      cursor: pointer; text-decoration: none; display: inline-block;
+    }
+    .logout-container button:hover, .logout-container a.button-link:hover { background-color: #0056b3; }
+    .logout-container .cancel-button { background-color: #ccc; color: #000; }
+    .logout-container .cancel-button:hover { background-color: #999; }
+    .hidden { display: none; }
+    .toggle-button {
+      background-color: #007bff; color: white; border: none; padding: 10px; cursor: pointer;
+      width: 100%; border-radius: 5px; margin-top: 10px;
+    }
+    .toggle-button:hover { background-color: #0056b3; }
+    .logout-info {
+      margin-top: 15px; word-wrap: break-word; word-break: break-all; max-height: 250px; overflow-y: auto;
+      background-color: #f9f9f9; padding: 10px; border-radius: 5px; border: 1px solid #ddd;
+    }
+    .logout-info h3 { font-size: 16px; margin-bottom: 10px; }
+    .logout-info ul { list-style-type: none; padding-left: 0; margin: 0; }
+    .logout-info ul li { margin-bottom: 5px; }
+    .meta { text-align: center; font-size: 12px; color: #777; margin-top: 12px; }
+  </style>
+  <script>
+    function toggleLogoutInfo() {
+      document.getElementById('logout-info').classList.toggle('hidden');
+    }
+    // Reflect logout step in URL
+    window.history.pushState({}, '', "{{ .BaseURL }}/logout/{{ .CallbackID }}");
+  </script>
+</head>
+<body>
+  <div class="logout-container">
+    <h1>go-oidc</h1>
+    <h2>Logout</h2>
+
+    <p>Do you really want to logout?</p>
+
+    <div class="logout-actions">
+      <form action="{{ .BaseURL }}/logout/{{ .CallbackID }}" method="POST">
+        <input type="hidden" name="logout" value="true">
+        <button type="submit" id="confirm_button">Confirm</button>
+      </form>
+
+      <form action="{{ .BaseURL }}/logout/{{ .CallbackID }}" method="POST">
+        <input type="hidden" name="logout" value="false">
+        <button type="submit" id="cancel_button" class="cancel-button">Cancel</button>
+      </form>
+    </div>
+
+    <button type="button" class="toggle-button" onclick="toggleLogoutInfo()">Toggle Logout Session Info</button>
+    <div id="logout-info" class="logout-info hidden">
+      <h3>Logout Session Info</h3>
+      <ul>
+        {{ range $key, $value := .Session }}
+        <li><strong>{{ $key }}:</strong> {{ $value }}</li>
+        {{ end }}
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

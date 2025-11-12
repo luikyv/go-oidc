@@ -111,12 +111,7 @@ func NotifyCIBAGrantFailure(ctx oidc.Context, authReqID string, goidcErr goidc.E
 }
 
 // sendClientNotification sends a payload to the client notification endpoint.
-func sendClientNotification(
-	ctx oidc.Context,
-	client *goidc.Client,
-	session *goidc.AuthnSession,
-	resp any,
-) error {
+func sendClientNotification(ctx oidc.Context, client *goidc.Client, session *goidc.AuthnSession, resp any) error {
 	body, err := json.Marshal(resp)
 	if err != nil {
 		return fmt.Errorf("could not marshal response: %w", err)
@@ -307,48 +302,40 @@ func generateCIBAGrantSession(
 	return resp, nil
 }
 
-func validateCIBAGrantRequest(
-	ctx oidc.Context,
-	req request,
-	client *goidc.Client,
-	session *goidc.AuthnSession,
-) error {
-	if !slices.Contains(client.GrantTypes, goidc.GrantCIBA) {
+func validateCIBAGrantRequest(ctx oidc.Context, req request, c *goidc.Client, as *goidc.AuthnSession) error {
+	if !slices.Contains(c.GrantTypes, goidc.GrantCIBA) {
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
 	}
 
-	if client.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePush {
-		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient,
-			"the client is not authorized as it is configured in push mode")
+	if c.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePush {
+		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "the client is not authorized as it is configured in push mode")
 	}
 
-	if client.ID != session.ClientID {
-		return goidc.NewError(goidc.ErrorCodeInvalidGrant,
-			"the authorization request id was not issued to the client")
+	if c.ID != as.ClientID {
+		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "the authorization request id was not issued to the client")
 	}
 
-	if session.IsExpired() {
-		return goidc.NewError(goidc.ErrorCodeExpiredToken,
-			"the authorization request id is expired")
+	if as.IsExpired() {
+		return goidc.NewError(goidc.ErrorCodeExpiredToken, "the authorization request id is expired")
 	}
 
-	if err := ValidateBinding(ctx, client, nil); err != nil {
+	if err := ValidateBinding(ctx, c, nil); err != nil {
 		return err
 	}
 
-	if err := validateBackAuth(ctx, session); err != nil {
+	if err := validateBackAuth(ctx, as); err != nil {
 		return err
 	}
 
-	if err := validateResources(ctx, session.GrantedResources, req); err != nil {
+	if err := validateResources(ctx, as.GrantedResources, req); err != nil {
 		return err
 	}
 
-	if err := validateAuthDetails(ctx, session.GrantedAuthDetails, req); err != nil {
+	if err := validateAuthDetails(ctx, as.GrantedAuthDetails, req); err != nil {
 		return err
 	}
 
-	if err := validateScopes(ctx, req, session); err != nil {
+	if err := validateScopes(ctx, req, as); err != nil {
 		return err
 	}
 

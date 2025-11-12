@@ -940,7 +940,7 @@ func WithJWTBearerGrantClientAuthnRequired() Option {
 // generating pairwise subjects is to keep the value as is.
 // This can be overridden with [WithGeneratePairwiseSubIDFunc].
 // Also, only opaque tokens are issued when pairwise IDs are applied to avoid
-// information leakage.
+// information leakage since the sub value is part of the token payload.
 func WithSubIdentifierTypes(defaultIDType goidc.SubIdentifierType, idTypes ...goidc.SubIdentifierType) Option {
 	idTypes = appendIfNotIn(idTypes, defaultIDType)
 	return func(p *Provider) error {
@@ -1017,11 +1017,11 @@ func WithOpenIDFerationRequiredTrustMarksFunc(f goidc.RequiredTrustMarksFunc) Op
 }
 
 // WithLogout enables the [OpenID Connect RP-initiated logout flow](https://openid.net/specs/openid-connect-rpinitiated-1_0.html).
-// The default redirect URI is used to redirect the user after the logout flow is completed
-// when the client does not provide a post_logout_redirect_uri and
+// The default redirect URI is used to redirect the user after the logout flow is
+// completed when the client does not provide a post_logout_redirect_uri and
 // the logout policies are used to determine the logout flow to be executed.
-// By default, the logout sessions are stored in memory and are not persisted. See [WithLogoutSessionManager]
-// to change the storage mechanism.
+// By default, the logout sessions are stored in memory and are not persisted.
+// See [WithLogoutSessionManager] to change the storage mechanism.
 // The default logout session timeout is [defaultLogoutSessionTimeoutSecs].
 func WithLogout(defaultRedirectURIFunc goidc.DefaultRedirectURIFunc, logoutPolicies ...goidc.LogoutPolicy) Option {
 	return func(p *Provider) error {

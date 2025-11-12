@@ -86,14 +86,7 @@ type authenticator struct {
 	tmpl *template.Template
 }
 
-func (a authenticator) authenticate(
-	w http.ResponseWriter,
-	r *http.Request,
-	as *goidc.AuthnSession,
-) (
-	goidc.Status,
-	error,
-) {
+func (a authenticator) authenticate(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) {
 
 	if as.StoredParameter(paramStepID) == stepIDLoadUser {
 		if status, err := a.loadUser(r, as); status != goidc.StatusSuccess {
@@ -130,13 +123,7 @@ func (a authenticator) authenticate(
 	return goidc.StatusFailure, errors.New("access denied")
 }
 
-func (a authenticator) loadUser(
-	r *http.Request,
-	as *goidc.AuthnSession,
-) (
-	goidc.Status,
-	error,
-) {
+func (a authenticator) loadUser(r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) {
 
 	// Never do this in production, it's just an example.
 	if as.IDTokenHintClaims != nil {
@@ -160,20 +147,12 @@ func (a authenticator) loadUser(
 	return goidc.StatusSuccess, nil
 }
 
-func (a authenticator) login(
-	w http.ResponseWriter,
-	r *http.Request,
-	as *goidc.AuthnSession,
-) (
-	goidc.Status,
-	error,
-) {
+func (a authenticator) login(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) {
 
 	// If the user is unknown and the client requested no prompt for credentials,
 	// return a login-required error.
 	if as.Subject == "" && as.Prompt == goidc.PromptTypeNone {
-		return goidc.StatusFailure, goidc.NewError(goidc.ErrorCodeLoginRequired,
-			"user not logged in, cannot use prompt none")
+		return goidc.StatusFailure, goidc.NewError(goidc.ErrorCodeLoginRequired, "user not logged in, cannot use prompt none")
 	}
 
 	// Determine if authentication is required.
@@ -215,13 +194,7 @@ func (a authenticator) login(
 	return goidc.StatusSuccess, nil
 }
 
-func (a authenticator) createUserSession(
-	w http.ResponseWriter,
-	as *goidc.AuthnSession,
-) (
-	goidc.Status,
-	error,
-) {
+func (a authenticator) createUserSession(w http.ResponseWriter, as *goidc.AuthnSession) (goidc.Status, error) {
 	sessionID := uuid.NewString()
 	if id := as.StoredParameter(paramUserSessionID); id != nil {
 		sessionID = id.(string)
@@ -241,14 +214,7 @@ func (a authenticator) createUserSession(
 	return goidc.StatusSuccess, nil
 }
 
-func (a authenticator) grantConsent(
-	w http.ResponseWriter,
-	r *http.Request,
-	as *goidc.AuthnSession,
-) (
-	goidc.Status,
-	error,
-) {
+func (a authenticator) grantConsent(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) {
 
 	_ = r.ParseForm()
 
@@ -264,12 +230,7 @@ func (a authenticator) grantConsent(
 	return goidc.StatusSuccess, nil
 }
 
-func (a authenticator) finishFlow(
-	as *goidc.AuthnSession,
-) (
-	goidc.Status,
-	error,
-) {
+func (a authenticator) finishFlow(as *goidc.AuthnSession) (goidc.Status, error) {
 	as.GrantScopes(as.Scopes)
 	as.GrantResources(as.Resources)
 	as.GrantAuthorizationDetails(as.AuthDetails)
@@ -391,14 +352,7 @@ func (a authenticator) finishFlow(
 	return goidc.StatusSuccess, nil
 }
 
-func (a authenticator) renderPage(
-	w http.ResponseWriter,
-	templateName string,
-	as *goidc.AuthnSession,
-) (
-	goidc.Status,
-	error,
-) {
+func (a authenticator) renderPage(w http.ResponseWriter, tmplName string, as *goidc.AuthnSession) (goidc.Status, error) {
 
 	params := authnPage{
 		Subject:    as.Subject,
@@ -423,19 +377,11 @@ func (a authenticator) renderPage(
 	}
 
 	w.WriteHeader(http.StatusOK)
-	_ = a.tmpl.ExecuteTemplate(w, templateName, params)
+	_ = a.tmpl.ExecuteTemplate(w, tmplName, params)
 	return goidc.StatusInProgress, nil
 }
 
-func (a authenticator) renderError(
-	w http.ResponseWriter,
-	templateName string,
-	as *goidc.AuthnSession,
-	err string,
-) (
-	goidc.Status,
-	error,
-) {
+func (a authenticator) renderError(w http.ResponseWriter, tmplName string, as *goidc.AuthnSession, err string) (goidc.Status, error) {
 
 	params := authnPage{
 		Subject:    as.Subject,
@@ -461,7 +407,7 @@ func (a authenticator) renderError(
 	}
 
 	w.WriteHeader(http.StatusOK)
-	_ = a.tmpl.ExecuteTemplate(w, templateName, params)
+	_ = a.tmpl.ExecuteTemplate(w, tmplName, params)
 	return goidc.StatusInProgress, nil
 }
 
