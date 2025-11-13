@@ -13,11 +13,16 @@ import (
 )
 
 func initLogout(ctx oidc.Context, req request) error {
-	if err := validateRequest(ctx, req); err != nil {
+	c, err := fetchClient(ctx, req)
+	if err != nil {
 		return err
 	}
 
-	session, err := initLogoutSession(ctx, req)
+	if err := validateRequest(ctx, req, c); err != nil {
+		return err
+	}
+
+	session, err := initLogoutSession(ctx, req, c)
 	if err != nil {
 		return err
 	}
@@ -26,6 +31,39 @@ func initLogout(ctx oidc.Context, req request) error {
 		return err
 	}
 	return logout(ctx, session)
+}
+
+// fetchClient retrieves the client based on the request parameters.
+// If the client cannot be determined, it returns an empty client.
+func fetchClient(ctx oidc.Context, req request) (*goidc.Client, error) {
+	if req.ClientID != "" {
+		return ctx.Client(req.ClientID)
+	}
+
+	if req.IDTokenHint != "" {
+		return fetchClientFromIDTokenHint(ctx, req.IDTokenHint)
+	}
+
+	return &goidc.Client{}, nil
+}
+
+// fetchClientFromIDTokenHint retrieves the client based on the provided ID token hint.
+// If the client cannot be determined, it returns an empty client.
+func fetchClientFromIDTokenHint(ctx oidc.Context, idTokenHint string) (*goidc.Client, error) {
+	idToken, err := jwt.ParseSigned(idTokenHint, ctx.IDTokenSigAlgs)
+	if err != nil {
+		return &goidc.Client{}, nil
+	}
+
+	var claims struct {
+		ClientID string `json:"aud"`
+	}
+	_ = idToken.UnsafeClaimsWithoutVerification(&claims)
+	if claims.ClientID == "" {
+		return &goidc.Client{}, nil
+	}
+
+	return ctx.Client(claims.ClientID)
 }
 
 func continueLogout(ctx oidc.Context, callbackID string) error {
@@ -53,17 +91,24 @@ func logout(ctx oidc.Context, session *goidc.LogoutSession) error {
 	}
 }
 
-func finishLogoutSuccessfully(ctx oidc.Context, session *goidc.LogoutSession) error {
-	if err := ctx.DeleteLogoutSession(session.ID); err != nil {
+func finishLogoutSuccessfully(ctx oidc.Context, ls *goidc.LogoutSession) error {
+	if err := ctx.DeleteLogoutSession(ls.ID); err != nil {
 		return err
 	}
 
-	redirectTo := ctx.DefaultLogoutRedirectURI(session)
-	if session.PostLogoutRedirectURI != "" {
-		redirectTo = session.PostLogoutRedirectURI
+	if ls.PostLogoutRedirectURI != "" {
+		params := make(map[string]string)
+		if ls.State != "" {
+			params["state"] = ls.State
+		}
+		ctx.Redirect(strutil.URLWithQueryParams(ls.PostLogoutRedirectURI, params))
+		return nil
 	}
 
-	ctx.Redirect(redirectTo)
+	if err := ctx.HandleDefaultPostLogout(ls); err != nil {
+		return ctx.RenderError(err)
+	}
+
 	return nil
 }
 
@@ -79,46 +124,33 @@ func finishLogoutWithFailure(ctx oidc.Context, session *goidc.LogoutSession, err
 	return goidc.NewError(goidc.ErrorCodeInternalError, "internal error")
 }
 
-func validateRequest(ctx oidc.Context, req request) error {
-
-	if err := validatePostLogoutRedirectURI(ctx, req); err != nil {
+func validateRequest(ctx oidc.Context, req request, c *goidc.Client) error {
+	if err := validateIDTokenHint(ctx, req, c); err != nil {
 		return err
 	}
 
-	if err := validateIDTokenHint(ctx, req); err != nil {
-		return err
-	}
-
-	return nil
+	return validatePostLogoutRedirectURI(ctx, req, c)
 }
 
-func validatePostLogoutRedirectURI(ctx oidc.Context, req request) error {
+func validatePostLogoutRedirectURI(_ oidc.Context, req request, c *goidc.Client) error {
 	if req.PostLogoutRedirectURI == "" {
 		return nil
 	}
 
-	if req.ClientID == "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "client_id is required when post_logout_redirect_uri is provided")
-	}
-
-	c, err := ctx.Client(req.ClientID)
-	if err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid client_id", err)
-	}
-
 	if !slices.Contains(c.PostLogoutRedirectURIs, req.PostLogoutRedirectURI) {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "post_logout_redirect_uri not allowed for the client")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "post_logout_redirect_uri not allowed")
 	}
 
 	return nil
 }
 
-func validateIDTokenHint(ctx oidc.Context, req request) error {
+func validateIDTokenHint(ctx oidc.Context, req request, _ *goidc.Client) error {
 
 	if req.IDTokenHint == "" {
 		return nil
 	}
 
+	// TODO: What if the id token is signed with "none" alg? joseutil.IsUnsignedJWT
 	parsedIDToken, err := jwt.ParseSigned(req.IDTokenHint, ctx.IDTokenSigAlgs)
 	if err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid id token hint", err)
@@ -153,10 +185,10 @@ func validateIDTokenHint(ctx oidc.Context, req request) error {
 	return nil
 }
 
-func initLogoutSession(ctx oidc.Context, req request) (*goidc.LogoutSession, error) {
+func initLogoutSession(ctx oidc.Context, req request, c *goidc.Client) (*goidc.LogoutSession, error) {
 	session := &goidc.LogoutSession{
 		ID:                 uuid.NewString(),
-		ClientID:           req.ClientID,
+		ClientID:           c.ID,
 		CallbackID:         callbackID(),
 		ExpiresAtTimestamp: timeutil.TimestampNow() + ctx.LogoutSessionTimeoutSecs,
 		CreatedAtTimestamp: timeutil.TimestampNow(),

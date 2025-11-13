@@ -241,12 +241,12 @@ func (ctx Context) OpenIDFedRequiredTrustMarks() []string {
 	return ctx.OpenIDFedRequiredTrustMarksFunc(ctx)
 }
 
-func (ctx Context) DefaultLogoutRedirectURI(session *goidc.LogoutSession) string {
-	if ctx.LogoutDefaultRedirectURIFunc == nil {
-		return ""
+func (ctx Context) HandleDefaultPostLogout(session *goidc.LogoutSession) error {
+	if ctx.HandleDefaultPostLogoutFunc == nil {
+		return errors.New("default post logout handler function is not defined")
 	}
 
-	return ctx.LogoutDefaultRedirectURIFunc(ctx.Context(), session)
+	return ctx.HandleDefaultPostLogoutFunc(ctx.Response, ctx.Request, session)
 }
 
 //---------------------------------------- CRUD ----------------------------------------//

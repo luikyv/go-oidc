@@ -1,7 +1,6 @@
 package logout
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"testing"
@@ -341,8 +340,9 @@ func setUp(t *testing.T) (oidc.Context, *goidc.Client) {
 
 	ctx := oidctest.NewContext(t)
 	ctx.LogoutSessionManager = storage.NewLogoutSessionManager(100)
-	ctx.LogoutDefaultRedirectURIFunc = func(ctx context.Context, session *goidc.LogoutSession) string {
-		return "https://as.example.com/home"
+	ctx.HandleDefaultPostLogoutFunc = func(w http.ResponseWriter, r *http.Request, session *goidc.LogoutSession) error {
+		http.Redirect(ctx.Response, ctx.Request, "https://as.example.com/home", http.StatusSeeOther)
+		return nil
 	}
 	ctx.LogoutPolicies = []goidc.LogoutPolicy{
 		{

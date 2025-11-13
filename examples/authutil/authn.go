@@ -174,12 +174,12 @@ func (a authenticator) login(w http.ResponseWriter, r *http.Request, as *goidc.A
 
 	_ = r.ParseForm()
 
-	isLogin := r.PostFormValue(loginFormParam)
-	if isLogin == "" {
+	login := r.PostFormValue(loginFormParam)
+	if login == "" {
 		return a.renderPage(w, "login.html", as)
 	}
 
-	if isLogin != "true" {
+	if !isTrue(login) {
 		return goidc.StatusFailure, errors.New("consent not granted")
 	}
 
@@ -218,12 +218,12 @@ func (a authenticator) grantConsent(w http.ResponseWriter, r *http.Request, as *
 
 	_ = r.ParseForm()
 
-	isConsented := r.PostFormValue(consentFormParam)
-	if isConsented == "" {
+	consented := r.PostFormValue(consentFormParam)
+	if consented == "" {
 		return a.renderPage(w, "consent.html", as)
 	}
 
-	if isConsented != "true" {
+	if !isTrue(consented) {
 		return goidc.StatusFailure, errors.New("consent not granted")
 	}
 
@@ -358,7 +358,7 @@ func (a authenticator) renderPage(w http.ResponseWriter, tmplName string, as *go
 		Subject:    as.Subject,
 		BaseURL:    Issuer,
 		CallbackID: as.CallbackID,
-		Session:    sessionToMap(as),
+		Session:    mapify(as),
 	}
 
 	logoURI := as.StoredParameter(paramLogoURI)
@@ -387,7 +387,7 @@ func (a authenticator) renderError(w http.ResponseWriter, tmplName string, as *g
 		Subject:    as.Subject,
 		BaseURL:    Issuer,
 		CallbackID: as.CallbackID,
-		Session:    sessionToMap(as),
+		Session:    mapify(as),
 		Error:      err,
 	}
 
@@ -411,7 +411,7 @@ func (a authenticator) renderError(w http.ResponseWriter, tmplName string, as *g
 	return goidc.StatusInProgress, nil
 }
 
-func sessionToMap(as *goidc.AuthnSession) map[string]any {
+func mapify(as any) map[string]any {
 	data, err := json.Marshal(as)
 	if err != nil {
 		panic(err)

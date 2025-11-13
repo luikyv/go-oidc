@@ -59,6 +59,7 @@ cs-oidc-tests:
 		oidcc-formpost-basic-certification-test-plan[server_metadata=discovery][client_registration=dynamic_client] ./examples/oidc/config.json \
 		oidcc-formpost-hybrid-certification-test-plan[server_metadata=discovery][client_registration=dynamic_client] ./examples/oidc/config.json \
 		oidcc-formpost-implicit-certification-test-plan[server_metadata=discovery][client_registration=dynamic_client] ./examples/oidc/config.json \
+		oidcc-rp-initiated-logout-certification-test-plan[response_type=code\ id_token][client_registration=dynamic_client] ./examples/oidc/config.json \
 		--expected-failures-file ./examples/oidc/expected_failures.json \
 		--export-dir ./examples/oidc \
 		--verbose

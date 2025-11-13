@@ -1017,16 +1017,16 @@ func WithOpenIDFerationRequiredTrustMarksFunc(f goidc.RequiredTrustMarksFunc) Op
 }
 
 // WithLogout enables the [OpenID Connect RP-initiated logout flow](https://openid.net/specs/openid-connect-rpinitiated-1_0.html).
-// The default redirect URI is used to redirect the user after the logout flow is
+// The default logout function is used to handle the logout when the flow is
 // completed when the client does not provide a post_logout_redirect_uri and
 // the logout policies are used to determine the logout flow to be executed.
 // By default, the logout sessions are stored in memory and are not persisted.
 // See [WithLogoutSessionManager] to change the storage mechanism.
 // The default logout session timeout is [defaultLogoutSessionTimeoutSecs].
-func WithLogout(defaultRedirectURIFunc goidc.DefaultRedirectURIFunc, logoutPolicies ...goidc.LogoutPolicy) Option {
+func WithLogout(handleFunc goidc.HandleDefaultPostLogoutFunc, logoutPolicies ...goidc.LogoutPolicy) Option {
 	return func(p *Provider) error {
 		p.config.LogoutIsEnabled = true
-		p.config.LogoutDefaultRedirectURIFunc = defaultRedirectURIFunc
+		p.config.HandleDefaultPostLogoutFunc = handleFunc
 		p.config.LogoutPolicies = logoutPolicies
 		return nil
 	}

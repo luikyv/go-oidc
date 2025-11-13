@@ -47,37 +47,55 @@
       document.getElementById('logout-info').classList.toggle('hidden');
     }
     // Reflect logout step in URL
+    {{ if .IsLoggedOut }}
+    window.history.pushState({}, '', "{{ .BaseURL }}/post-logout");
+    {{ else }}
     window.history.pushState({}, '', "{{ .BaseURL }}/logout/{{ .CallbackID }}");
+    {{ end }}
   </script>
 </head>
 <body>
-  <div class="logout-container">
-    <h1>go-oidc</h1>
-    <h2>Logout</h2>
 
-    <p>Do you really want to logout?</p>
+  {{ if .IsLoggedOut }}
 
-    <div class="logout-actions">
-      <form action="{{ .BaseURL }}/logout/{{ .CallbackID }}" method="POST">
-        <input type="hidden" name="logout" value="true">
-        <button type="submit" id="confirm_button">Confirm</button>
-      </form>
-
-      <form action="{{ .BaseURL }}/logout/{{ .CallbackID }}" method="POST">
-        <input type="hidden" name="logout" value="false">
-        <button type="submit" id="cancel_button" class="cancel-button">Cancel</button>
-      </form>
+    <div id="post-logout" class="logout-container">
+      <h1>go-oidc</h1>
+      <h2>Logout</h2>
+      <p>You have been logged out.</p>
     </div>
 
-    <button type="button" class="toggle-button" onclick="toggleLogoutInfo()">Toggle Logout Session Info</button>
-    <div id="logout-info" class="logout-info hidden">
-      <h3>Logout Session Info</h3>
-      <ul>
-        {{ range $key, $value := .Session }}
-        <li><strong>{{ $key }}:</strong> {{ $value }}</li>
-        {{ end }}
-      </ul>
+  {{ else }}
+
+    <div class="logout-container">
+      <h1>go-oidc</h1>
+      <h2>Logout</h2>
+
+      <p>Do you really want to logout?</p>
+
+      <div class="logout-actions">
+        <form action="{{ .BaseURL }}/logout/{{ .CallbackID }}" method="POST">
+          <input type="hidden" name="logout" value="true">
+          <button type="submit" id="confirm_button">Confirm</button>
+        </form>
+
+        <form action="{{ .BaseURL }}/logout/{{ .CallbackID }}" method="POST">
+          <input type="hidden" name="logout" value="false">
+          <button type="submit" id="cancel_button" class="cancel-button">Cancel</button>
+        </form>
+      </div>
+
+      <button type="button" class="toggle-button" onclick="toggleLogoutInfo()">Toggle Logout Session Info</button>
+      <div id="logout-info" class="logout-info hidden">
+        <h3>Logout Session Info</h3>
+        <ul>
+          {{ range $key, $value := .Session }}
+          <li><strong>{{ $key }}:</strong> {{ $value }}</li>
+          {{ end }}
+        </ul>
+      </div>
     </div>
-  </div>
+
+  {{ end }}
+
 </body>
 </html>

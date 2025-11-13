@@ -3,7 +3,6 @@
 package main
 
 import (
-	"context"
 	"crypto/tls"
 	"log"
 	"net/http"
@@ -49,7 +48,7 @@ func main() {
 		provider.WithRenderErrorFunc(authutil.RenderError()),
 		provider.WithDisplayValues(authutil.DisplayValues[0], authutil.DisplayValues...),
 		provider.WithSubIdentifierTypes(goidc.SubIdentifierPublic, goidc.SubIdentifierPairwise),
-		provider.WithLogout(func(ctx context.Context, ls *goidc.LogoutSession) string { return "/post-logout" }),
+		provider.WithLogout(authutil.HandleLogout(), authutil.LogoutPolicy()),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -61,7 +60,6 @@ func main() {
 
 	hostURL, _ := url.Parse(authutil.Issuer)
 	mux.Handle(hostURL.Hostname()+"/", handler)
-	mux.Handle("/post-logout", postLogoutHandler())
 
 	server := &http.Server{
 		Addr:              authutil.Port,
@@ -75,10 +73,4 @@ func main() {
 	if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
-}
-
-func postLogoutHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-	})
 }

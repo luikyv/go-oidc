@@ -748,7 +748,7 @@ type LogoutParameters struct {
 	LogoutHint            string `json:"logout_hint,omitempty"`
 }
 
-type DefaultRedirectURIFunc func(context.Context, *LogoutSession) string
+type HandleDefaultPostLogoutFunc func(http.ResponseWriter, *http.Request, *LogoutSession) error
 
 type SetUpLogoutFunc func(*http.Request, *LogoutSession) bool
 

@@ -4,11 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -53,7 +53,7 @@ func redirectResponse(ctx oidc.Context, c *goidc.Client, params goidc.Authorizat
 	redirectParamsMap := redirectParams.parameters()
 	switch responseMode {
 	case goidc.ResponseModeFragment, goidc.ResponseModeFragmentJWT:
-		redirectURL := urlWithFragmentParams(params.RedirectURI, redirectParamsMap)
+		redirectURL := strutil.URLWithFragmentParams(params.RedirectURI, redirectParamsMap)
 		ctx.Redirect(redirectURL)
 	case goidc.ResponseModeFormPost, goidc.ResponseModeFormPostJWT:
 		redirectParamsMap["redirect_uri"] = params.RedirectURI
@@ -65,7 +65,7 @@ func redirectResponse(ctx oidc.Context, c *goidc.Client, params goidc.Authorizat
 			return fmt.Errorf("could not write the json response: %w", err)
 		}
 	default:
-		redirectURL := urlWithQueryParams(params.RedirectURI, redirectParamsMap)
+		redirectURL := strutil.URLWithQueryParams(params.RedirectURI, redirectParamsMap)
 		ctx.Redirect(redirectURL)
 	}
 
@@ -148,30 +148,4 @@ func encryptJARMResponse(ctx oidc.Context, responseJWT string, client *goidc.Cli
 	}
 
 	return jwe, nil
-}
-
-func urlWithQueryParams(redirectURI string, params map[string]string) string {
-	if len(params) == 0 {
-		return redirectURI
-	}
-
-	parsedURL, _ := url.Parse(redirectURI)
-	query := parsedURL.Query()
-	for param, value := range params {
-		query.Set(param, value)
-	}
-	parsedURL.RawQuery = query.Encode()
-	return parsedURL.String()
-}
-
-func urlWithFragmentParams(redirectURI string, params map[string]string) string {
-	if len(params) == 0 {
-		return redirectURI
-	}
-
-	urlParams := url.Values{}
-	for param, value := range params {
-		urlParams.Set(param, value)
-	}
-	return fmt.Sprintf("%s#%s", redirectURI, urlParams.Encode())
 }

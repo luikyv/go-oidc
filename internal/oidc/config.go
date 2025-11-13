@@ -205,9 +205,9 @@ type Configuration struct {
 	OpenIDFedRequiredTrustMarksFunc goidc.RequiredTrustMarksFunc
 	OpenIDFedTrustMarkSigAlgs       []goidc.SignatureAlgorithm
 
-	LogoutIsEnabled              bool
-	LogoutSessionManager         goidc.LogoutSessionManager
-	LogoutSessionTimeoutSecs     int
-	LogoutPolicies               []goidc.LogoutPolicy
-	LogoutDefaultRedirectURIFunc goidc.DefaultRedirectURIFunc
+	LogoutIsEnabled             bool
+	LogoutSessionManager        goidc.LogoutSessionManager
+	LogoutSessionTimeoutSecs    int
+	LogoutPolicies              []goidc.LogoutPolicy
+	HandleDefaultPostLogoutFunc goidc.HandleDefaultPostLogoutFunc
 }
