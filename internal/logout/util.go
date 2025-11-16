@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/uuid"
+	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -148,6 +149,10 @@ func validateIDTokenHint(ctx oidc.Context, req request, _ *goidc.Client) error {
 
 	if req.IDTokenHint == "" {
 		return nil
+	}
+
+	if !joseutil.IsJWS(req.IDTokenHint) {
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid id token hint")
 	}
 
 	// TODO: What if the id token is signed with "none" alg? joseutil.IsUnsignedJWT

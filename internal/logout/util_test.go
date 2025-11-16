@@ -181,6 +181,42 @@ func TestInitLogout_WithIDTokenHint(t *testing.T) {
 	}
 }
 
+func TestInitLogout_WithInvalidIDTokenHintAlg(t *testing.T) {
+	// Given.
+	ctx, client := setUp(t)
+	ctx.IDTokenSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
+	idToken, err := ctx.Sign(map[string]any{
+		goidc.ClaimIssuer:   ctx.Issuer(),
+		goidc.ClaimAudience: client.ID,
+		goidc.ClaimSubject:  "random_user",
+		goidc.ClaimIssuedAt: timeutil.TimestampNow(),
+		goidc.ClaimExpiry:   timeutil.TimestampNow() + 60,
+	}, ctx.IDTokenDefaultSigAlg, nil)
+	if err != nil {
+		t.Fatalf("could not sign the id token: %v", err)
+	}
+
+	req := request{
+		ClientID: client.ID,
+		LogoutParameters: goidc.LogoutParameters{
+			IDTokenHint: idToken,
+		},
+	}
+
+	// When.
+	err = initLogout(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Errorf("expected error, got nil")
+	}
+
+	sessions := logoutSessions(t, ctx)
+	if len(sessions) != 0 {
+		t.Errorf("expected no logout sessions, got %d", len(sessions))
+	}
+}
+
 func TestInitLogout_WithInvalidIDTokenHint(t *testing.T) {
 	// Given.
 	ctx, client := setUp(t)
@@ -206,7 +242,42 @@ func TestInitLogout_WithInvalidIDTokenHint(t *testing.T) {
 	}
 }
 
-func TestInitLogout_WithIDTokenHintIssuer(t *testing.T) {
+func TestInitLogout_WithExpiredIDTokenHint(t *testing.T) {
+	// Given.
+	ctx, client := setUp(t)
+	idToken, err := ctx.Sign(map[string]any{
+		goidc.ClaimIssuer:   ctx.Issuer(),
+		goidc.ClaimAudience: client.ID,
+		goidc.ClaimSubject:  "random_user",
+		goidc.ClaimIssuedAt: timeutil.TimestampNow(),
+		goidc.ClaimExpiry:   timeutil.TimestampNow() - 60,
+	}, ctx.IDTokenDefaultSigAlg, nil)
+	if err != nil {
+		t.Fatalf("could not sign the id token: %v", err)
+	}
+
+	req := request{
+		ClientID: client.ID,
+		LogoutParameters: goidc.LogoutParameters{
+			IDTokenHint: idToken,
+		},
+	}
+
+	// When.
+	err = initLogout(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Errorf("expected error, got nil")
+	}
+
+	sessions := logoutSessions(t, ctx)
+	if len(sessions) != 0 {
+		t.Errorf("expected no logout sessions, got %d", len(sessions))
+	}
+}
+
+func TestInitLogout_WithInvalidIDTokenHintIssuer(t *testing.T) {
 	// Given.
 	ctx, client := setUp(t)
 	idToken, err := ctx.Sign(map[string]any{
