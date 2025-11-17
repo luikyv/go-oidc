@@ -940,7 +940,7 @@ func WithJWTBearerGrantClientAuthnRequired() Option {
 // generating pairwise subjects is to keep the value as is.
 // This can be overridden with [WithGeneratePairwiseSubIDFunc].
 // Also, only opaque tokens are issued when pairwise IDs are applied to avoid
-// information leakage.
+// information leakage since the sub value is part of the token payload.
 func WithSubIdentifierTypes(defaultIDType goidc.SubIdentifierType, idTypes ...goidc.SubIdentifierType) Option {
 	idTypes = appendIfNotIn(idTypes, defaultIDType)
 	return func(p *Provider) error {
@@ -1012,6 +1012,49 @@ func WithOpenIDFerationSignerFunc(f goidc.SignerFunc) Option {
 func WithOpenIDFerationRequiredTrustMarksFunc(f goidc.RequiredTrustMarksFunc) Option {
 	return func(p *Provider) error {
 		p.config.OpenIDFedRequiredTrustMarksFunc = f
+		return nil
+	}
+}
+
+// WithLogout enables the [OpenID Connect RP-initiated logout flow](https://openid.net/specs/openid-connect-rpinitiated-1_0.html).
+// The default logout function is used to handle the logout when the flow is
+// completed when the client does not provide a post_logout_redirect_uri and
+// the logout policies are used to determine the logout flow to be executed.
+// By default, the logout sessions are stored in memory and are not persisted.
+// See [WithLogoutSessionManager] to change the storage mechanism.
+// The default logout session timeout is [defaultLogoutSessionTimeoutSecs].
+func WithLogout(handleFunc goidc.HandleDefaultPostLogoutFunc, logoutPolicies ...goidc.LogoutPolicy) Option {
+	return func(p *Provider) error {
+		p.config.LogoutIsEnabled = true
+		p.config.HandleDefaultPostLogoutFunc = handleFunc
+		p.config.LogoutPolicies = logoutPolicies
+		return nil
+	}
+}
+
+// WithLogoutSessionManager sets the logout session manager.
+// For more information, see [WithLogout].
+func WithLogoutSessionManager(manager goidc.LogoutSessionManager) Option {
+	return func(p *Provider) error {
+		p.config.LogoutSessionManager = manager
+		return nil
+	}
+}
+
+// WithLogoutSessionTimeoutSecs sets the logout session timeout.
+// For more information, see [WithLogout].
+func WithLogoutSessionTimeoutSecs(secs int) Option {
+	return func(p *Provider) error {
+		p.config.LogoutSessionTimeoutSecs = secs
+		return nil
+	}
+}
+
+// WithLogoutEndpoint sets the logout endpoint.
+// For more information, see [WithLogout].
+func WithLogoutEndpoint(endpoint string) Option {
+	return func(p *Provider) error {
+		p.config.EndpointLogout = endpoint
 		return nil
 	}
 }

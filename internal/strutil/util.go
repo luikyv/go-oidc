@@ -80,3 +80,29 @@ func IsURL(str string) bool {
 
 	return parsedURL.Scheme != "" && parsedURL.Host != ""
 }
+
+func URLWithQueryParams(redirectURI string, params map[string]string) string {
+	if len(params) == 0 {
+		return redirectURI
+	}
+
+	parsedURL, _ := url.Parse(redirectURI)
+	query := parsedURL.Query()
+	for param, value := range params {
+		query.Set(param, value)
+	}
+	parsedURL.RawQuery = query.Encode()
+	return parsedURL.String()
+}
+
+func URLWithFragmentParams(redirectURI string, params map[string]string) string {
+	if len(params) == 0 {
+		return redirectURI
+	}
+
+	urlParams := url.Values{}
+	for param, value := range params {
+		urlParams.Set(param, value)
+	}
+	return fmt.Sprintf("%s#%s", redirectURI, urlParams.Encode())
+}

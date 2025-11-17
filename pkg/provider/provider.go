@@ -12,6 +12,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/dcr"
 	"github.com/luikyv/go-oidc/internal/discovery"
 	"github.com/luikyv/go-oidc/internal/federation"
+	"github.com/luikyv/go-oidc/internal/logout"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/storage"
 	"github.com/luikyv/go-oidc/internal/token"
@@ -90,6 +91,7 @@ func (op Provider) Handler(middlewares ...goidc.MiddlewareFunc) http.Handler {
 }
 
 func (op Provider) RegisterRoutes(mux *http.ServeMux, middlewares ...goidc.MiddlewareFunc) {
+	// TODO: Review the, "IsEnabled" checks.
 	middlewares = append(middlewares, goidc.CacheControlMiddleware)
 	discovery.RegisterHandlers(mux, &op.config, middlewares...)
 	token.RegisterHandlers(mux, &op.config, middlewares...)
@@ -97,6 +99,7 @@ func (op Provider) RegisterRoutes(mux *http.ServeMux, middlewares ...goidc.Middl
 	userinfo.RegisterHandlers(mux, &op.config, middlewares...)
 	dcr.RegisterHandlers(mux, &op.config, middlewares...)
 	federation.RegisterHandlers(mux, &op.config, middlewares...)
+	logout.RegisterHandlers(mux, &op.config, middlewares...)
 }
 
 func (op *Provider) Run(address string, middlewares ...goidc.MiddlewareFunc) error {
@@ -177,7 +180,6 @@ func (op *Provider) NotifyCIBASuccess(ctx context.Context, authReqID string) err
 // NotifyCIBAGrantFailure notifies a client that the user has denied access.
 // The behavior varies based on the client's token delivery mode:
 //   - "poll": No notification is sent, and no additional processing occurs.
-//     There is no need to call this function for this mode.
 //   - "ping": A ping notification is sent to the client.
 //   - "push": The token failure response is sent directly to the client's
 //     notification endpoint.
@@ -326,6 +328,12 @@ func (op *Provider) setDefaults() error {
 		op.config.OpenIDFedTrustMarkSigAlgs = nonZeroOrDefault(op.config.OpenIDFedTrustMarkSigAlgs, op.config.OpenIDFedEntityStatementSigAlgs)
 		op.config.OpenIDFedTrustChainMaxDepth = nonZeroOrDefault(op.config.OpenIDFedTrustChainMaxDepth, defaultOpenIDFedTrustChainMaxDepth)
 		op.config.OpenIDFedClientRegTypes = nonZeroOrDefault(op.config.OpenIDFedClientRegTypes, []goidc.ClientRegistrationType{defaultOpenIDFedRegType})
+	}
+
+	if op.config.LogoutIsEnabled {
+		op.config.LogoutSessionManager = nonZeroOrDefault(op.config.LogoutSessionManager, goidc.LogoutSessionManager(storage.NewLogoutSessionManager(defaultStorageMaxSize)))
+		op.config.EndpointLogout = nonZeroOrDefault(op.config.EndpointLogout, defaultEndpointEndSession)
+		op.config.LogoutSessionTimeoutSecs = nonZeroOrDefault(op.config.LogoutSessionTimeoutSecs, defaultLogoutSessionTimeoutSecs)
 	}
 
 	return nil

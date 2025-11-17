@@ -61,6 +61,7 @@ type OpenIDConfiguration struct {
 	ACRs                    []goidc.ACR                 `json:"acr_values_supported,omitempty"`
 	DisplayValues           []goidc.DisplayValue        `json:"display_values_supported,omitempty"`
 	CodeChallengeMethods    []goidc.CodeChallengeMethod `json:"code_challenge_methods_supported,omitempty"`
+	EndSessionEndpoint      string                      `json:"end_session_endpoint,omitempty"`
 }
 
 type openIDMTLSConfiguration struct {

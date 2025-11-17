@@ -86,14 +86,7 @@ type authenticator struct {
 	tmpl *template.Template
 }
 
-func (a authenticator) authenticate(
-	w http.ResponseWriter,
-	r *http.Request,
-	as *goidc.AuthnSession,
-) (
-	goidc.AuthnStatus,
-	error,
-) {
+func (a authenticator) authenticate(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) {
 
 	if as.StoredParameter(paramStepID) == stepIDLoadUser {
 		if status, err := a.loadUser(r, as); status != goidc.StatusSuccess {
@@ -130,13 +123,7 @@ func (a authenticator) authenticate(
 	return goidc.StatusFailure, errors.New("access denied")
 }
 
-func (a authenticator) loadUser(
-	r *http.Request,
-	as *goidc.AuthnSession,
-) (
-	goidc.AuthnStatus,
-	error,
-) {
+func (a authenticator) loadUser(r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) {
 
 	// Never do this in production, it's just an example.
 	if as.IDTokenHintClaims != nil {
@@ -160,20 +147,12 @@ func (a authenticator) loadUser(
 	return goidc.StatusSuccess, nil
 }
 
-func (a authenticator) login(
-	w http.ResponseWriter,
-	r *http.Request,
-	as *goidc.AuthnSession,
-) (
-	goidc.AuthnStatus,
-	error,
-) {
+func (a authenticator) login(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) {
 
 	// If the user is unknown and the client requested no prompt for credentials,
 	// return a login-required error.
 	if as.Subject == "" && as.Prompt == goidc.PromptTypeNone {
-		return goidc.StatusFailure, goidc.NewError(goidc.ErrorCodeLoginRequired,
-			"user not logged in, cannot use prompt none")
+		return goidc.StatusFailure, goidc.NewError(goidc.ErrorCodeLoginRequired, "user not logged in, cannot use prompt none")
 	}
 
 	// Determine if authentication is required.
@@ -195,12 +174,12 @@ func (a authenticator) login(
 
 	_ = r.ParseForm()
 
-	isLogin := r.PostFormValue(loginFormParam)
-	if isLogin == "" {
+	login := r.PostFormValue(loginFormParam)
+	if login == "" {
 		return a.renderPage(w, "login.html", as)
 	}
 
-	if isLogin != "true" {
+	if !isTrue(login) {
 		return goidc.StatusFailure, errors.New("consent not granted")
 	}
 
@@ -215,13 +194,7 @@ func (a authenticator) login(
 	return goidc.StatusSuccess, nil
 }
 
-func (a authenticator) createUserSession(
-	w http.ResponseWriter,
-	as *goidc.AuthnSession,
-) (
-	goidc.AuthnStatus,
-	error,
-) {
+func (a authenticator) createUserSession(w http.ResponseWriter, as *goidc.AuthnSession) (goidc.Status, error) {
 	sessionID := uuid.NewString()
 	if id := as.StoredParameter(paramUserSessionID); id != nil {
 		sessionID = id.(string)
@@ -241,35 +214,23 @@ func (a authenticator) createUserSession(
 	return goidc.StatusSuccess, nil
 }
 
-func (a authenticator) grantConsent(
-	w http.ResponseWriter,
-	r *http.Request,
-	as *goidc.AuthnSession,
-) (
-	goidc.AuthnStatus,
-	error,
-) {
+func (a authenticator) grantConsent(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) {
 
 	_ = r.ParseForm()
 
-	isConsented := r.PostFormValue(consentFormParam)
-	if isConsented == "" {
+	consented := r.PostFormValue(consentFormParam)
+	if consented == "" {
 		return a.renderPage(w, "consent.html", as)
 	}
 
-	if isConsented != "true" {
+	if !isTrue(consented) {
 		return goidc.StatusFailure, errors.New("consent not granted")
 	}
 
 	return goidc.StatusSuccess, nil
 }
 
-func (a authenticator) finishFlow(
-	as *goidc.AuthnSession,
-) (
-	goidc.AuthnStatus,
-	error,
-) {
+func (a authenticator) finishFlow(as *goidc.AuthnSession) (goidc.Status, error) {
 	as.GrantScopes(as.Scopes)
 	as.GrantResources(as.Resources)
 	as.GrantAuthorizationDetails(as.AuthDetails)
@@ -391,20 +352,13 @@ func (a authenticator) finishFlow(
 	return goidc.StatusSuccess, nil
 }
 
-func (a authenticator) renderPage(
-	w http.ResponseWriter,
-	templateName string,
-	as *goidc.AuthnSession,
-) (
-	goidc.AuthnStatus,
-	error,
-) {
+func (a authenticator) renderPage(w http.ResponseWriter, tmplName string, as *goidc.AuthnSession) (goidc.Status, error) {
 
 	params := authnPage{
 		Subject:    as.Subject,
 		BaseURL:    Issuer,
 		CallbackID: as.CallbackID,
-		Session:    sessionToMap(as),
+		Session:    mapify(as),
 	}
 
 	logoURI := as.StoredParameter(paramLogoURI)
@@ -423,25 +377,17 @@ func (a authenticator) renderPage(
 	}
 
 	w.WriteHeader(http.StatusOK)
-	_ = a.tmpl.ExecuteTemplate(w, templateName, params)
+	_ = a.tmpl.ExecuteTemplate(w, tmplName, params)
 	return goidc.StatusInProgress, nil
 }
 
-func (a authenticator) renderError(
-	w http.ResponseWriter,
-	templateName string,
-	as *goidc.AuthnSession,
-	err string,
-) (
-	goidc.AuthnStatus,
-	error,
-) {
+func (a authenticator) renderError(w http.ResponseWriter, tmplName string, as *goidc.AuthnSession, err string) (goidc.Status, error) {
 
 	params := authnPage{
 		Subject:    as.Subject,
 		BaseURL:    Issuer,
 		CallbackID: as.CallbackID,
-		Session:    sessionToMap(as),
+		Session:    mapify(as),
 		Error:      err,
 	}
 
@@ -461,11 +407,11 @@ func (a authenticator) renderError(
 	}
 
 	w.WriteHeader(http.StatusOK)
-	_ = a.tmpl.ExecuteTemplate(w, templateName, params)
+	_ = a.tmpl.ExecuteTemplate(w, tmplName, params)
 	return goidc.StatusInProgress, nil
 }
 
-func sessionToMap(as *goidc.AuthnSession) map[string]any {
+func mapify(as any) map[string]any {
 	data, err := json.Marshal(as)
 	if err != nil {
 		panic(err)

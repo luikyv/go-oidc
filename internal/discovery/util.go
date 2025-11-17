@@ -132,5 +132,9 @@ func NewOIDCConfig(ctx oidc.Context) OpenIDConfiguration {
 		}
 	}
 
+	if ctx.LogoutIsEnabled {
+		config.EndSessionEndpoint = ctx.BaseURL() + ctx.EndpointLogout
+	}
+
 	return config
 }

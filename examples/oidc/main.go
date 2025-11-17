@@ -48,6 +48,7 @@ func main() {
 		provider.WithRenderErrorFunc(authutil.RenderError()),
 		provider.WithDisplayValues(authutil.DisplayValues[0], authutil.DisplayValues...),
 		provider.WithSubIdentifierTypes(goidc.SubIdentifierPublic, goidc.SubIdentifierPairwise),
+		provider.WithLogout(authutil.HandleLogout(), authutil.LogoutPolicy()),
 	)
 	if err != nil {
 		log.Fatal(err)

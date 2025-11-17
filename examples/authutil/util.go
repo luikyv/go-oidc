@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"slices"
@@ -42,6 +43,10 @@ var (
 	}
 	ACRs          = []goidc.ACR{goidc.ACRMaceIncommonIAPBronze, goidc.ACRMaceIncommonIAPSilver}
 	DisplayValues = []goidc.DisplayValue{goidc.DisplayValuePage, goidc.DisplayValuePopUp}
+)
+
+var (
+	errLogoutCancelled error = errors.New("logout cancelled by the user")
 )
 
 func ClientMTLS(id string) (*goidc.Client, goidc.JSONWebKeySet) {
@@ -288,4 +293,64 @@ func FAPIIDMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+type LogoutPage struct {
+	BaseURL     string
+	CallbackID  string
+	IsLoggedOut bool
+	Session     map[string]any
+}
+
+func LogoutPolicy() goidc.LogoutPolicy {
+
+	tmpl := template.Must(template.ParseFS(ui.FS, "logout.html"))
+	return goidc.NewLogoutPolicy(
+		"main",
+		func(r *http.Request, ls *goidc.LogoutSession) bool {
+			return true
+		},
+		func(w http.ResponseWriter, r *http.Request, ls *goidc.LogoutSession) (goidc.Status, error) {
+			logout := r.PostFormValue("logout")
+			if logout == "" {
+				slog.Debug("rendering logout page")
+				if err := tmpl.ExecuteTemplate(w, "logout.html", LogoutPage{
+					BaseURL:    Issuer,
+					CallbackID: ls.CallbackID,
+					Session:    mapify(ls),
+				}); err != nil {
+					return goidc.StatusFailure, err
+				}
+				return goidc.StatusInProgress, nil
+			}
+
+			if !isTrue(logout) {
+				slog.Debug("user cancelled logout", "logout", logout)
+				return goidc.StatusFailure, errLogoutCancelled
+			}
+
+			cookie, err := r.Cookie(cookieUserSessionID)
+			if err != nil {
+				slog.Debug("the session cookie was not found", "error", err)
+				return goidc.StatusSuccess, nil
+			}
+
+			delete(userSessionStore, cookie.Value)
+			return goidc.StatusSuccess, nil
+		},
+	)
+}
+
+func HandleLogout() goidc.HandleDefaultPostLogoutFunc {
+	tmpl := template.Must(template.ParseFS(ui.FS, "logout.html"))
+	return func(w http.ResponseWriter, r *http.Request, ls *goidc.LogoutSession) error {
+		if err := tmpl.ExecuteTemplate(w, "logout.html", LogoutPage{IsLoggedOut: true}); err != nil {
+			return fmt.Errorf("could not execute logout template: %w", err)
+		}
+		return nil
+	}
+}
+
+func isTrue(s string) bool {
+	return s == "true"
 }

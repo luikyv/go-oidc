@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/clientutil"
@@ -495,7 +496,7 @@ func validateResourcesAsOptional(ctx oidc.Context, params goidc.AuthorizationPar
 	return nil
 }
 
-func validateIDTokenHintAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, _ *goidc.Client) error {
+func validateIDTokenHintAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) error {
 
 	if params.IDTokenHint == "" {
 		return nil
@@ -515,7 +516,15 @@ func validateIDTokenHintAsOptional(ctx oidc.Context, params goidc.AuthorizationP
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid id token hint", err)
 	}
 
-	if err := parsedIDToken.Claims(publicKey); err != nil {
+	var claims jwt.Claims
+	if err := parsedIDToken.Claims(publicKey.Key, &claims); err != nil {
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid id token hint", err)
+	}
+
+	if err := claims.ValidateWithLeeway(jwt.Expected{
+		Issuer:      ctx.Issuer(),
+		AnyAudience: []string{c.ID},
+	}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second); err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid id token hint", err)
 	}
 

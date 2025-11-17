@@ -73,11 +73,10 @@ func handler(ctx oidc.Context) {
 
 	err := initAuth(ctx, req)
 	if err != nil {
-		err = ctx.RenderError(err)
-	}
-
-	if err != nil {
-		ctx.WriteError(err)
+		if err := ctx.RenderError(err); err != nil {
+			ctx.WriteError(err)
+		}
+		return
 	}
 }
 

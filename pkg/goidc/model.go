@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/http"
 	"slices"
 	"strings"
@@ -201,12 +202,12 @@ const (
 	HeaderDPoP string = "DPoP"
 )
 
-type AuthnStatus string
+type Status string
 
 const (
-	StatusSuccess    AuthnStatus = "success"
-	StatusInProgress AuthnStatus = "in_progress"
-	StatusFailure    AuthnStatus = "failure"
+	StatusSuccess    Status = "success"
+	StatusInProgress Status = "in_progress"
+	StatusFailure    Status = "failure"
 )
 
 type TokenFormat string
@@ -409,7 +410,7 @@ func NewOpaqueTokenOptions(length int, lifetimeSecs int) TokenOptions {
 // with the user via the user agent can happen, e.g. an HTML page is rendered to
 // to gather user credentials.
 // The flow can be resumed at the callback endpoint with the session callback ID.
-type AuthnFunc func(http.ResponseWriter, *http.Request, *AuthnSession) (AuthnStatus, error)
+type AuthnFunc func(http.ResponseWriter, *http.Request, *AuthnSession) (Status, error)
 
 type AuthnStep struct {
 	ID        string
@@ -425,7 +426,7 @@ func NewAuthnStep(id string, authnFunc AuthnFunc) AuthnStep {
 
 type authnSteps []AuthnStep
 
-func (steps authnSteps) Authenticate(w http.ResponseWriter, r *http.Request, as *AuthnSession) (AuthnStatus, error) {
+func (steps authnSteps) Authenticate(w http.ResponseWriter, r *http.Request, as *AuthnSession) (Status, error) {
 	// Initialize the step ID with the first step if not set.
 	if as.StepID == "" {
 		as.StepID = steps[0].ID
@@ -518,11 +519,8 @@ func (ti TokenInfo) MarshalJSON() ([]byte, error) {
 	if err := json.Unmarshal(attributesBytes, &rawValues); err != nil {
 		return nil, err
 	}
-
 	// Inline the additional claims.
-	for k, v := range ti.AdditionalTokenClaims {
-		rawValues[k] = v
-	}
+	maps.Copy(rawValues, ti.AdditionalTokenClaims)
 
 	return json.Marshal(rawValues)
 }
@@ -741,3 +739,75 @@ const (
 type RequiredTrustMarksFunc func(context.Context) []string
 
 type HandleSessionFunc func(*http.Request, *AuthnSession, *Client) error
+
+type LogoutParameters struct {
+	IDTokenHint           string `json:"id_token_hint,omitempty"`
+	PostLogoutRedirectURI string `json:"post_logout_redirect_uri,omitempty"`
+	State                 string `json:"state,omitempty"`
+	UILocales             string `json:"ui_locales,omitempty"`
+	LogoutHint            string `json:"logout_hint,omitempty"`
+}
+
+type HandleDefaultPostLogoutFunc func(http.ResponseWriter, *http.Request, *LogoutSession) error
+
+type SetUpLogoutFunc func(*http.Request, *LogoutSession) bool
+
+type LogoutFunc func(http.ResponseWriter, *http.Request, *LogoutSession) (Status, error)
+
+// LogoutPolicy holds information on how to set up a logout session and
+// validate a logout request.
+type LogoutPolicy struct {
+	ID     string
+	SetUp  SetUpLogoutFunc
+	Logout LogoutFunc
+}
+
+func NewLogoutPolicy(id string, setUpFunc SetUpLogoutFunc, logoutFunc LogoutFunc) LogoutPolicy {
+	return LogoutPolicy{
+		ID:     id,
+		SetUp:  setUpFunc,
+		Logout: logoutFunc,
+	}
+}
+
+func NewLogoutPolicyWithSteps(id string, setUpFunc SetUpLogoutFunc, steps ...LogoutStep) LogoutPolicy {
+	return NewLogoutPolicy(id, setUpFunc, logoutSteps(steps).Logout)
+}
+
+type LogoutStep struct {
+	ID     string
+	Logout LogoutFunc
+}
+
+type logoutSteps []LogoutStep
+
+func (steps logoutSteps) Logout(w http.ResponseWriter, r *http.Request, ls *LogoutSession) (Status, error) {
+	// Initialize the step ID with the first step if not set.
+	if ls.StepID == "" {
+		ls.StepID = steps[0].ID
+	}
+
+	for idx, step := range steps {
+		if ls.StepID != step.ID {
+			continue
+		}
+
+		// Execute the step function and early return if it ends in progress or failure.
+		if status, err := step.Logout(w, r, ls); status != StatusSuccess || err != nil {
+			return status, err
+		}
+
+		// The current step succeeded, update the step ID to the next step.
+		nextIdx := idx + 1
+		// Return success if the current step is the last step.
+		if nextIdx == len(steps) {
+			return StatusSuccess, nil
+		}
+
+		// Update the step ID to the next step.
+		// Note that the next value of step.ID will match the updated as.StepID.
+		ls.StepID = steps[nextIdx].ID
+	}
+
+	return StatusFailure, errors.New("invalid policy, access denied")
+}

@@ -26,11 +26,7 @@ type Context struct {
 	*Configuration
 }
 
-func NewContext(
-	w http.ResponseWriter,
-	r *http.Request,
-	config *Configuration,
-) Context {
+func NewContext(w http.ResponseWriter, r *http.Request, config *Configuration) Context {
 	return Context{
 		Configuration: config,
 		Response:      w,
@@ -187,15 +183,18 @@ func (ctx Context) Policy(id string) goidc.AuthnPolicy {
 	return goidc.AuthnPolicy{}
 }
 
-func (ctx Context) AvailablePolicy(
-	client *goidc.Client,
-	session *goidc.AuthnSession,
-) (
-	policy goidc.AuthnPolicy,
-	ok bool,
-) {
+func (ctx Context) LogoutPolicy(id string) goidc.LogoutPolicy {
+	for _, policy := range ctx.LogoutPolicies {
+		if policy.ID == id {
+			return policy
+		}
+	}
+	return goidc.LogoutPolicy{}
+}
+
+func (ctx Context) AvailablePolicy(c *goidc.Client, as *goidc.AuthnSession) (policy goidc.AuthnPolicy, ok bool) {
 	for _, policy = range ctx.Policies {
-		if ok = policy.SetUp(ctx.Request, client, session); ok {
+		if ok = policy.SetUp(ctx.Request, c, as); ok {
 			return policy, true
 		}
 	}
@@ -203,10 +202,17 @@ func (ctx Context) AvailablePolicy(
 	return goidc.AuthnPolicy{}, false
 }
 
-func (ctx Context) CompareAuthDetails(
-	granted []goidc.AuthorizationDetail,
-	requested []goidc.AuthorizationDetail,
-) error {
+func (ctx Context) AvailableLogoutPolicy(ls *goidc.LogoutSession) (policy goidc.LogoutPolicy, ok bool) {
+	for _, policy = range ctx.LogoutPolicies {
+		if ok = policy.SetUp(ctx.Request, ls); ok {
+			return policy, true
+		}
+	}
+
+	return goidc.LogoutPolicy{}, false
+}
+
+func (ctx Context) CompareAuthDetails(granted, requested []goidc.AuthorizationDetail) error {
 	if ctx.CompareAuthDetailsFunc == nil {
 		return errors.New("auth details comparing function is not defined")
 	}
@@ -233,6 +239,14 @@ func (ctx Context) OpenIDFedRequiredTrustMarks() []string {
 	}
 
 	return ctx.OpenIDFedRequiredTrustMarksFunc(ctx)
+}
+
+func (ctx Context) HandleDefaultPostLogout(session *goidc.LogoutSession) error {
+	if ctx.HandleDefaultPostLogoutFunc == nil {
+		return errors.New("default post logout handler function is not defined")
+	}
+
+	return ctx.HandleDefaultPostLogoutFunc(ctx.Response, ctx.Request, session)
 }
 
 //---------------------------------------- CRUD ----------------------------------------//
@@ -352,6 +366,18 @@ func (ctx Context) AuthnSessionByAuthReqID(id string) (*goidc.AuthnSession, erro
 
 func (ctx Context) DeleteAuthnSession(id string) error {
 	return ctx.AuthnSessionManager.Delete(ctx.Context(), id)
+}
+
+func (ctx Context) SaveLogoutSession(session *goidc.LogoutSession) error {
+	return ctx.LogoutSessionManager.Save(ctx.Context(), session)
+}
+
+func (ctx Context) LogoutSessionByCallbackID(id string) (*goidc.LogoutSession, error) {
+	return ctx.LogoutSessionManager.SessionByCallbackID(ctx.Context(), id)
+}
+
+func (ctx Context) DeleteLogoutSession(id string) error {
+	return ctx.LogoutSessionManager.Delete(ctx.Context(), id)
 }
 
 //---------------------------------------- HTTP Utils ----------------------------------------//

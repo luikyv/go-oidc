@@ -225,10 +225,7 @@ type cibaResponse struct {
 }
 
 // TODO: Should ask the expiry?
-func newAuthnSession(
-	authParams goidc.AuthorizationParameters,
-	client *goidc.Client,
-) *goidc.AuthnSession {
+func newAuthnSession(authParams goidc.AuthorizationParameters, client *goidc.Client) *goidc.AuthnSession {
 	return &goidc.AuthnSession{
 		ID:                       uuid.NewString(),
 		ClientID:                 client.ID,

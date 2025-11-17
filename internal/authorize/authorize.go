@@ -78,8 +78,7 @@ func initAuthnSession(ctx oidc.Context, req request, client *goidc.Client) (*goi
 
 	policy, ok := ctx.AvailablePolicy(client, session)
 	if !ok {
-		return nil, newRedirectionError(goidc.ErrorCodeInvalidRequest,
-			"no policy available", session.AuthorizationParameters)
+		return nil, newRedirectionError(goidc.ErrorCodeInvalidRequest, "no policy available", session.AuthorizationParameters)
 	}
 
 	if session.Nonce != "" {
@@ -179,8 +178,7 @@ func authnSessionWithJAR(ctx oidc.Context, req request, client *goidc.Client) (*
 
 	// For OIDC, the parameters sent in the authorization endpoint are merged
 	// with the ones sent inside the JAR.
-	session.AuthorizationParameters = mergeParams(session.AuthorizationParameters,
-		req.AuthorizationParameters)
+	session.AuthorizationParameters = mergeParams(session.AuthorizationParameters, req.AuthorizationParameters)
 	return session, nil
 }
 
@@ -205,7 +203,8 @@ func authenticate(ctx oidc.Context, session *goidc.AuthnSession) error {
 	case goidc.StatusSuccess:
 		return finishFlowSuccessfully(ctx, session)
 	case goidc.StatusInProgress:
-		return stopFlowInProgress(ctx, session)
+		// TODO: Avoid saving if nothing changed.
+		return ctx.SaveAuthnSession(session)
 	default:
 		return finishFlowWithFailure(ctx, session, err)
 	}
@@ -213,39 +212,26 @@ func authenticate(ctx oidc.Context, session *goidc.AuthnSession) error {
 
 func finishFlowWithFailure(ctx oidc.Context, session *goidc.AuthnSession, err error) error {
 	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-		return wrapRedirectionError(goidc.ErrorCodeInternalError,
-			"internal error", session.AuthorizationParameters, err)
+		return wrapRedirectionError(goidc.ErrorCodeInternalError, "internal error", session.AuthorizationParameters, err)
 	}
 
 	var oidcErr goidc.Error
 	if errors.As(err, &oidcErr) {
-		return newRedirectionError(oidcErr.Code,
-			oidcErr.Description, session.AuthorizationParameters)
+		return newRedirectionError(oidcErr.Code, oidcErr.Description, session.AuthorizationParameters)
 	}
 
 	if err != nil {
-		return newRedirectionError(goidc.ErrorCodeAccessDenied,
-			err.Error(), session.AuthorizationParameters)
+		return newRedirectionError(goidc.ErrorCodeAccessDenied, err.Error(), session.AuthorizationParameters)
 	}
 
-	return newRedirectionError(goidc.ErrorCodeAccessDenied,
-		"access denied", session.AuthorizationParameters)
-}
-
-func stopFlowInProgress(ctx oidc.Context, session *goidc.AuthnSession) error {
-	if err := ctx.SaveAuthnSession(session); err != nil {
-		return err
-	}
-
-	return nil
+	return newRedirectionError(goidc.ErrorCodeAccessDenied, "access denied", session.AuthorizationParameters)
 }
 
 func finishFlowSuccessfully(ctx oidc.Context, session *goidc.AuthnSession) error {
 
 	client, err := ctx.Client(session.ClientID)
 	if err != nil {
-		return wrapRedirectionError(goidc.ErrorCodeInternalError,
-			"could not load the client", session.AuthorizationParameters, err)
+		return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not load the client", session.AuthorizationParameters, err)
 	}
 
 	if err := authorizeAuthnSession(ctx, session); err != nil {
@@ -264,8 +250,7 @@ func finishFlowSuccessfully(ctx oidc.Context, session *goidc.AuthnSession) error
 
 		token, err := token.Make(ctx, grantInfo, client)
 		if err != nil {
-			return wrapRedirectionError(goidc.ErrorCodeInternalError,
-				"could not generate the access token", session.AuthorizationParameters, err)
+			return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not generate the access token", session.AuthorizationParameters, err)
 		}
 
 		redirectParams.accessToken = token.Value
@@ -275,20 +260,16 @@ func finishFlowSuccessfully(ctx oidc.Context, session *goidc.AuthnSession) error
 		}
 	}
 
-	if strutil.ContainsOpenID(session.GrantedScopes) &&
-		session.ResponseType.Contains(goidc.ResponseTypeIDToken) {
-		idTokenOptions := token.IDTokenOptions{
+	if strutil.ContainsOpenID(session.GrantedScopes) && session.ResponseType.Contains(goidc.ResponseTypeIDToken) {
+		redirectParams.idToken, err = token.MakeIDToken(ctx, client, token.IDTokenOptions{
 			Subject:                 session.Subject,
 			AdditionalIDTokenClaims: session.AdditionalIDTokenClaims,
 			AccessToken:             redirectParams.accessToken,
 			AuthorizationCode:       session.AuthCode,
 			State:                   session.State,
-		}
-
-		redirectParams.idToken, err = token.MakeIDToken(ctx, client, idTokenOptions)
+		})
 		if err != nil {
-			return wrapRedirectionError(goidc.ErrorCodeInternalError,
-				"could not generate the id token", session.AuthorizationParameters, err)
+			return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not generate the id token", session.AuthorizationParameters, err)
 		}
 	}
 

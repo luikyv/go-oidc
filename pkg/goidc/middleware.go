@@ -5,7 +5,6 @@ import (
 )
 
 func CacheControlMiddleware(next http.Handler) http.Handler {
-	// TODO: Skip for the auth endpoint.
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Avoid caching.
 		w.Header().Set("Cache-Control", "no-cache, no-store")

@@ -28,6 +28,7 @@ This library implements the following specifications:
 * [FAPI 2.0 Security Profile](https://openid.net/specs/fapi-security-profile-2_0-final.html)
 * [OpenID Connect Client-Initiated Backchannel Authentication Flow - Core 1.0 (CIBA)](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0-final.html)
 * [OpenID Federation 1.0 - draft 42](https://openid.net/specs/openid-federation-1_0.html)
+* [OpenID Connect RP-Initiated Logout 1.0](https://openid.net/specs/openid-connect-rpinitiated-1_0.html)
 
 ## Certification
 Luiky Vasconcelos has certified that [go-oidc](https://pkg.go.dev/github.com/luikyv/go-oidc) conforms to the following profiles of the OpenID Connect™ protocol.
@@ -151,7 +152,7 @@ policy := goidc.NewPolicy(
     return true
   },
   // Authentication function.
-  func(r http.ResponseWriter, w *http.Request, as *goidc.AuthnSession) (AuthnStatus, error) {
+  func(r http.ResponseWriter, w *http.Request, as *goidc.AuthnSession) (goidc.Status, error) {
     username := r.PostFormValue("username")
     if username == "" {
       renderHTMLPage(w)

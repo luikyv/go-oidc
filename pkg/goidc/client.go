@@ -146,6 +146,7 @@ type ClientMeta struct {
 	CIBAUserCodeIsEnabled     bool                  `json:"backchannel_user_code_parameter,omitempty"`
 	PublicSignedJWKSURI       string                `json:"signed_jwks_uri,omitempty"`
 	OrganizationName          string                `json:"organization_name,omitempty"`
+	PostLogoutRedirectURIs    []string              `json:"post_logout_redirect_uris,omitempty"`
 	// CustomAttributes holds any additional dynamic attributes a client may
 	// provide during registration.
 	// These attributes allow clients to extend their metadata beyond the
