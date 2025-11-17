@@ -114,15 +114,15 @@ func finishLogoutSuccessfully(ctx oidc.Context, ls *goidc.LogoutSession) error {
 }
 
 func finishLogoutWithFailure(ctx oidc.Context, session *goidc.LogoutSession, err error) error {
-	if err := ctx.DeleteLogoutSession(session.ID); err != nil {
-		return err
+	if deleteErr := ctx.DeleteLogoutSession(session.ID); deleteErr != nil {
+		return goidc.WrapError(goidc.ErrorCodeInternalError, "failed to logout", deleteErr)
 	}
 
 	if err != nil {
 		return err
 	}
 
-	return goidc.NewError(goidc.ErrorCodeInternalError, "internal error")
+	return goidc.NewError(goidc.ErrorCodeInternalError, "failed to logout")
 }
 
 func validateRequest(ctx oidc.Context, req request, c *goidc.Client) error {
