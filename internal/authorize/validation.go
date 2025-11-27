@@ -414,7 +414,7 @@ func validateResponseTypeAsOptional(ctx oidc.Context, params goidc.Authorization
 		return newRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid response_type", params)
 	}
 
-	if !slices.Contains(c.ResponseTypes, params.ResponseType) {
+	if !slices.Contains(ctx.ResponseTypes, params.ResponseType) {
 		return newRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid response_type", params)
 	}
 
