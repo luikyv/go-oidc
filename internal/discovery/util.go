@@ -11,10 +11,10 @@ func NewOIDCConfig(ctx oidc.Context) OpenIDConfiguration {
 	}
 	config := OpenIDConfiguration{
 		Issuer:                       ctx.Host,
-		AuthorizationEndpoint:        ctx.BaseURL() + ctx.EndpointAuthorize,
-		TokenEndpoint:                ctx.BaseURL() + ctx.EndpointToken,
-		UserinfoEndpoint:             ctx.BaseURL() + ctx.EndpointUserInfo,
-		JWKSEndpoint:                 ctx.BaseURL() + ctx.EndpointJWKS,
+		AuthorizationEndpoint:        ctx.BaseURL() + ctx.AuthorizationEndpoint,
+		TokenEndpoint:                ctx.BaseURL() + ctx.TokenEndpoint,
+		UserinfoEndpoint:             ctx.BaseURL() + ctx.UserInfoEndpoint,
+		JWKSEndpoint:                 ctx.BaseURL() + ctx.JWKSEndpoint,
 		ResponseTypes:                ctx.ResponseTypes,
 		ResponseModes:                ctx.ResponseModes,
 		GrantTypes:                   ctx.GrantTypes,
@@ -36,11 +36,11 @@ func NewOIDCConfig(ctx oidc.Context) OpenIDConfiguration {
 
 	if ctx.PARIsEnabled {
 		config.PARIsRequired = ctx.PARIsRequired
-		config.PAREndpoint = ctx.BaseURL() + ctx.EndpointPushedAuthorization
+		config.PAREndpoint = ctx.BaseURL() + ctx.PAREndpoint
 	}
 
 	if ctx.DCRIsEnabled {
-		config.ClientRegistrationEndpoint = ctx.BaseURL() + ctx.EndpointDCR
+		config.ClientRegistrationEndpoint = ctx.BaseURL() + ctx.DCREndpoint
 	}
 
 	if ctx.JARIsEnabled {
@@ -68,13 +68,13 @@ func NewOIDCConfig(ctx oidc.Context) OpenIDConfiguration {
 	}
 
 	if ctx.TokenIntrospectionIsEnabled {
-		config.TokenIntrospectionEndpoint = ctx.BaseURL() + ctx.EndpointIntrospection
+		config.TokenIntrospectionEndpoint = ctx.BaseURL() + ctx.IntrospectionEndpoint
 		config.TokenIntrospectionAuthnMethods = ctx.TokenIntrospectionAuthnMethods
 		config.TokenIntrospectionAuthnSigAlgs = ctx.TokenIntrospectionAuthnSigAlgs()
 	}
 
 	if ctx.TokenRevocationIsEnabled {
-		config.TokenRevocationEndpoint = ctx.BaseURL() + ctx.EndpointTokenRevocation
+		config.TokenRevocationEndpoint = ctx.BaseURL() + ctx.TokenRevocationEndpoint
 		config.TokenRevocationAuthnMethods = ctx.TokenRevocationAuthnMethods
 		config.TokenRevocationAuthnSigAlgs = ctx.TokenRevocationAuthnSigAlgs()
 	}
@@ -83,28 +83,28 @@ func NewOIDCConfig(ctx oidc.Context) OpenIDConfiguration {
 		config.TLSBoundTokensIsEnabled = ctx.MTLSTokenBindingIsEnabled
 
 		config.MTLSConfig = &openIDMTLSConfiguration{
-			TokenEndpoint:    ctx.MTLSBaseURL() + ctx.EndpointToken,
-			UserinfoEndpoint: ctx.MTLSBaseURL() + ctx.EndpointUserInfo,
+			TokenEndpoint:    ctx.MTLSBaseURL() + ctx.TokenEndpoint,
+			UserinfoEndpoint: ctx.MTLSBaseURL() + ctx.UserInfoEndpoint,
 		}
 
 		if ctx.PARIsEnabled {
-			config.MTLSConfig.ParEndpoint = ctx.MTLSBaseURL() + ctx.EndpointPushedAuthorization
+			config.MTLSConfig.ParEndpoint = ctx.MTLSBaseURL() + ctx.PAREndpoint
 		}
 
 		if ctx.DCRIsEnabled {
-			config.MTLSConfig.ClientRegistrationEndpoint = ctx.MTLSBaseURL() + ctx.EndpointDCR
+			config.MTLSConfig.ClientRegistrationEndpoint = ctx.MTLSBaseURL() + ctx.DCREndpoint
 		}
 
 		if ctx.TokenIntrospectionIsEnabled {
-			config.MTLSConfig.TokenIntrospectionEndpoint = ctx.MTLSBaseURL() + ctx.EndpointIntrospection
+			config.MTLSConfig.TokenIntrospectionEndpoint = ctx.MTLSBaseURL() + ctx.IntrospectionEndpoint
 		}
 
 		if ctx.TokenRevocationIsEnabled {
-			config.MTLSConfig.TokenRevocationEndpoint = ctx.MTLSBaseURL() + ctx.EndpointTokenRevocation
+			config.MTLSConfig.TokenRevocationEndpoint = ctx.MTLSBaseURL() + ctx.TokenRevocationEndpoint
 		}
 
 		if ctx.CIBAIsEnabled {
-			config.MTLSConfig.CIBAEndpoint = ctx.MTLSBaseURL() + ctx.EndpointCIBA
+			config.MTLSConfig.CIBAEndpoint = ctx.MTLSBaseURL() + ctx.CIBAEndpoint
 		}
 	}
 
@@ -123,7 +123,7 @@ func NewOIDCConfig(ctx oidc.Context) OpenIDConfiguration {
 	}
 
 	if ctx.CIBAIsEnabled {
-		config.CIBAEndpoint = ctx.BaseURL() + ctx.EndpointCIBA
+		config.CIBAEndpoint = ctx.BaseURL() + ctx.CIBAEndpoint
 		config.CIBATokenDeliveryModes = ctx.CIBATokenDeliveryModels
 		config.CIBAUserCodeIsEnabled = ctx.CIBAUserCodeIsEnabled
 
@@ -133,7 +133,7 @@ func NewOIDCConfig(ctx oidc.Context) OpenIDConfiguration {
 	}
 
 	if ctx.LogoutIsEnabled {
-		config.EndSessionEndpoint = ctx.BaseURL() + ctx.EndpointLogout
+		config.EndSessionEndpoint = ctx.BaseURL() + ctx.LogoutEndpoint
 	}
 
 	return config

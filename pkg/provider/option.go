@@ -59,7 +59,7 @@ func WithPathPrefix(prefix string) Option {
 // [defaultEndpointJSONWebKeySet].
 func WithJWKSEndpoint(endpoint string) Option {
 	return func(p *Provider) error {
-		p.config.EndpointJWKS = endpoint
+		p.config.JWKSEndpoint = endpoint
 		return nil
 	}
 }
@@ -68,7 +68,7 @@ func WithJWKSEndpoint(endpoint string) Option {
 // endpoint which is [defaultEndpointToken].
 func WithTokenEndpoint(endpoint string) Option {
 	return func(p *Provider) error {
-		p.config.EndpointToken = endpoint
+		p.config.TokenEndpoint = endpoint
 		return nil
 	}
 }
@@ -77,7 +77,7 @@ func WithTokenEndpoint(endpoint string) Option {
 // which is [defaultEndpointAuthorize].
 func WithAuthorizeEndpoint(endpoint string) Option {
 	return func(p *Provider) error {
-		p.config.EndpointAuthorize = endpoint
+		p.config.AuthorizationEndpoint = endpoint
 		return nil
 	}
 }
@@ -87,7 +87,7 @@ func WithAuthorizeEndpoint(endpoint string) Option {
 // To enable pushed authorization request, see [WithPAR].
 func WithPAREndpoint(endpoint string) Option {
 	return func(p *Provider) error {
-		p.config.EndpointPushedAuthorization = endpoint
+		p.config.PAREndpoint = endpoint
 		return nil
 	}
 }
@@ -97,7 +97,7 @@ func WithPAREndpoint(endpoint string) Option {
 // To enable dynamic client registration, see [WithDCR].
 func WithDCREndpoint(endpoint string) Option {
 	return func(p *Provider) error {
-		p.config.EndpointDCR = endpoint
+		p.config.DCREndpoint = endpoint
 		return nil
 	}
 }
@@ -106,7 +106,7 @@ func WithDCREndpoint(endpoint string) Option {
 // which is [defaultEndpointUserInfo].
 func WithUserInfoEndpoint(endpoint string) Option {
 	return func(p *Provider) error {
-		p.config.EndpointUserInfo = endpoint
+		p.config.UserInfoEndpoint = endpoint
 		return nil
 	}
 }
@@ -116,7 +116,7 @@ func WithUserInfoEndpoint(endpoint string) Option {
 // To enable token introspection, see [WithTokenIntrospection].
 func WithTokenIntrospectionEndpoint(endpoint string) Option {
 	return func(p *Provider) error {
-		p.config.EndpointIntrospection = endpoint
+		p.config.IntrospectionEndpoint = endpoint
 		return nil
 	}
 }
@@ -126,7 +126,7 @@ func WithTokenIntrospectionEndpoint(endpoint string) Option {
 // To enable token revocation, see [WithTokenRevocation].
 func WithTokenRevocationEndpoint(endpoint string) Option {
 	return func(p *Provider) error {
-		p.config.EndpointTokenRevocation = endpoint
+		p.config.TokenRevocationEndpoint = endpoint
 		return nil
 	}
 }
@@ -135,7 +135,7 @@ func WithTokenRevocationEndpoint(endpoint string) Option {
 // [defaultEndpointCIBA].
 func WithCIBAEndpoint(endpoint string) Option {
 	return func(p *Provider) error {
-		p.config.EndpointCIBA = endpoint
+		p.config.CIBAEndpoint = endpoint
 		return nil
 	}
 }
@@ -1054,7 +1054,7 @@ func WithLogoutSessionTimeoutSecs(secs int) Option {
 // For more information, see [WithLogout].
 func WithLogoutEndpoint(endpoint string) Option {
 	return func(p *Provider) error {
-		p.config.EndpointLogout = endpoint
+		p.config.LogoutEndpoint = endpoint
 		return nil
 	}
 }

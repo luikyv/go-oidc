@@ -23,7 +23,6 @@ type Configuration struct {
 	DecrypterFunc goidc.DecrypterFunc
 
 	HandleGrantFunc         goidc.HandleGrantFunc
-	TokenOptionsFunc        goidc.TokenOptionsFunc
 	Policies                []goidc.AuthnPolicy
 	Scopes                  []goidc.Scope
 	OpenIDIsRequired        bool
@@ -49,25 +48,22 @@ type Configuration struct {
 	// the "claims" parameter.
 	// This will be published in the /.well-known/openid-configuration endpoint.
 	ClaimsParamIsEnabled bool
+	RenderErrorFunc      goidc.RenderErrorFunc
+	NotifyErrorFunc      goidc.NotifyErrorFunc
+
+	TokenAuthnMethods []goidc.ClientAuthnType
+	TokenEndpoint     string
+	TokenOptionsFunc  goidc.TokenOptionsFunc
 	// TokenBindingIsRequired indicates that at least one mechanism of sender
 	// contraining tokens is required, either DPoP or client TLS.
 	TokenBindingIsRequired bool
-	RenderErrorFunc        goidc.RenderErrorFunc
-	NotifyErrorFunc        goidc.NotifyErrorFunc
 
-	EndpointWellKnown           string
-	EndpointJWKS                string
-	EndpointToken               string
-	EndpointAuthorize           string
-	EndpointPushedAuthorization string
-	EndpointCIBA                string
-	EndpointDCR                 string
-	EndpointUserInfo            string
-	EndpointIntrospection       string
-	EndpointTokenRevocation     string
-	EndpointLogout              string
-	EndpointPrefix              string
+	WellKnownEndpoint     string
+	JWKSEndpoint          string
+	AuthorizationEndpoint string
+	EndpointPrefix        string
 
+	UserInfoEndpoint             string
 	UserInfoDefaultSigAlg        goidc.SignatureAlgorithm
 	UserInfoSigAlgs              []goidc.SignatureAlgorithm
 	UserInfoEncIsEnabled         bool
@@ -84,8 +80,6 @@ type Configuration struct {
 	// IDTokenLifetimeSecs defines the expiry time of ID tokens.
 	IDTokenLifetimeSecs int
 
-	TokenAuthnMethods []goidc.ClientAuthnType
-
 	// PrivateKeyJWTSigAlgs contains algorithms accepted for signing
 	// client assertions during private_key_jwt.
 	PrivateKeyJWTSigAlgs []goidc.SignatureAlgorithm
@@ -97,16 +91,19 @@ type Configuration struct {
 	JWTLeewayTimeSecs int
 
 	DCRIsEnabled                   bool
+	DCREndpoint                    string
 	DCRTokenRotationIsEnabled      bool
 	HandleDynamicClientFunc        goidc.HandleDynamicClientFunc
 	ValidateInitialAccessTokenFunc goidc.ValidateInitialAccessTokenFunc
 	ClientIDFunc                   goidc.ClientIDFunc
 
 	TokenIntrospectionIsEnabled           bool
+	IntrospectionEndpoint                 string
 	TokenIntrospectionAuthnMethods        []goidc.ClientAuthnType
 	IsClientAllowedTokenIntrospectionFunc goidc.IsClientAllowedTokenInstrospectionFunc
 
 	TokenRevocationIsEnabled           bool
+	TokenRevocationEndpoint            string
 	TokenRevocationAuthnMethods        []goidc.ClientAuthnType
 	IsClientAllowedTokenRevocationFunc goidc.IsClientAllowedFunc
 
@@ -141,6 +138,7 @@ type Configuration struct {
 	// PARIsRequired indicates that authorization requests can only be made if
 	// they were pushed.
 	PARIsRequired        bool
+	PAREndpoint          string
 	HandlePARSessionFunc goidc.HandleSessionFunc
 	PARLifetimeSecs      int
 	// PARAllowUnregisteredRedirectURI indicates whether the redirect URIs
@@ -148,6 +146,7 @@ type Configuration struct {
 	PARAllowUnregisteredRedirectURI bool
 
 	CIBAIsEnabled                  bool
+	CIBAEndpoint                   string
 	CIBATokenDeliveryModels        []goidc.CIBATokenDeliveryMode
 	InitBackAuthFunc               goidc.InitBackAuthFunc
 	ValidateBackAuthFunc           goidc.ValidateBackAuthFunc
@@ -206,6 +205,7 @@ type Configuration struct {
 	OpenIDFedTrustMarkSigAlgs       []goidc.SignatureAlgorithm
 
 	LogoutIsEnabled             bool
+	LogoutEndpoint              string
 	LogoutSessionManager        goidc.LogoutSessionManager
 	LogoutSessionTimeoutSecs    int
 	LogoutPolicies              []goidc.LogoutPolicy

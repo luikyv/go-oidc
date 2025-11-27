@@ -184,7 +184,7 @@ func ValidateInitialTokenFunc(r *http.Request, s string) error {
 }
 
 func TokenOptionsFunc(alg goidc.SignatureAlgorithm) goidc.TokenOptionsFunc {
-	return func(grantInfo goidc.GrantInfo, _ *goidc.Client) goidc.TokenOptions {
+	return func(_ context.Context, grantInfo goidc.GrantInfo, _ *goidc.Client) goidc.TokenOptions {
 		opts := goidc.NewJWTTokenOptions(alg, 600)
 		return opts
 	}
@@ -215,8 +215,8 @@ func ClientCertFunc(r *http.Request) (*x509.Certificate, error) {
 	return clientCert, nil
 }
 
-func IssueRefreshToken(client *goidc.Client, grantInfo goidc.GrantInfo) bool {
-	return slices.Contains(client.GrantTypes, goidc.GrantRefreshToken)
+func IssueRefreshToken(_ context.Context, client *goidc.Client, grantInfo goidc.GrantInfo) bool {
+	return true
 }
 
 func HTTPClient(_ context.Context) *http.Client {

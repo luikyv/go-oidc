@@ -10,41 +10,41 @@ import (
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlewares ...goidc.MiddlewareFunc) {
 	if config.PARIsEnabled {
 		router.Handle(
-			"POST "+config.EndpointPrefix+config.EndpointPushedAuthorization,
+			"POST "+config.EndpointPrefix+config.PAREndpoint,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handlerPush), middlewares...),
 		)
 	}
 
 	if config.CIBAIsEnabled {
 		router.Handle(
-			"POST "+config.EndpointPrefix+config.EndpointCIBA,
+			"POST "+config.EndpointPrefix+config.CIBAEndpoint,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handlerCIBA), middlewares...),
 		)
 	}
 
 	router.Handle(
-		"GET "+config.EndpointPrefix+config.EndpointAuthorize,
+		"GET "+config.EndpointPrefix+config.AuthorizationEndpoint,
 		goidc.ApplyMiddlewares(oidc.Handler(config, handler), middlewares...),
 	)
 	router.Handle(
-		"POST "+config.EndpointPrefix+config.EndpointAuthorize,
+		"POST "+config.EndpointPrefix+config.AuthorizationEndpoint,
 		goidc.ApplyMiddlewares(oidc.Handler(config, handler), middlewares...),
 	)
 
 	router.Handle(
-		"POST "+config.EndpointPrefix+config.EndpointAuthorize+"/{callback}",
+		"POST "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}",
 		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...),
 	)
 	router.Handle(
-		"GET "+config.EndpointPrefix+config.EndpointAuthorize+"/{callback}",
+		"GET "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}",
 		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...),
 	)
 	router.Handle(
-		"POST "+config.EndpointPrefix+config.EndpointAuthorize+"/{callback}/{callback_path...}",
+		"POST "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}/{callback_path...}",
 		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...),
 	)
 	router.Handle(
-		"GET "+config.EndpointPrefix+config.EndpointAuthorize+"/{callback}/{callback_path...}",
+		"GET "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}/{callback_path...}",
 		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...),
 	)
 }

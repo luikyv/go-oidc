@@ -9,20 +9,20 @@ import (
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlewares ...goidc.MiddlewareFunc) {
 	router.Handle(
-		"POST "+config.EndpointPrefix+config.EndpointToken,
+		"POST "+config.EndpointPrefix+config.TokenEndpoint,
 		goidc.ApplyMiddlewares(oidc.Handler(config, handleCreate), middlewares...),
 	)
 
 	if config.TokenIntrospectionIsEnabled {
 		router.Handle(
-			"POST "+config.EndpointPrefix+config.EndpointIntrospection,
+			"POST "+config.EndpointPrefix+config.IntrospectionEndpoint,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleIntrospection), middlewares...),
 		)
 	}
 
 	if config.TokenRevocationIsEnabled {
 		router.Handle(
-			"POST "+config.EndpointPrefix+config.EndpointTokenRevocation,
+			"POST "+config.EndpointPrefix+config.TokenRevocationEndpoint,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleRevocation), middlewares...),
 		)
 	}

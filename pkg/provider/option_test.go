@@ -115,7 +115,7 @@ func TestWithJWKSEndpoint(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			EndpointJWKS: "/jwks",
+			JWKSEndpoint: "/jwks",
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -139,7 +139,7 @@ func TestWithTokenEndpoint(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			EndpointToken: "/token",
+			TokenEndpoint: "/token",
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -163,7 +163,7 @@ func TestWithAuthorizeEndpoint(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			EndpointAuthorize: "/authorize",
+			AuthorizationEndpoint: "/authorize",
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -187,7 +187,7 @@ func TestWithPAREndpoint(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			EndpointPushedAuthorization: "/par",
+			PAREndpoint: "/par",
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -211,7 +211,7 @@ func TestWithDCREndpoint(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			EndpointDCR: "/register",
+			DCREndpoint: "/register",
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -235,7 +235,7 @@ func TestWithUserInfoEndpoint(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			EndpointUserInfo: "/userinfo",
+			UserInfoEndpoint: "/userinfo",
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -259,7 +259,7 @@ func TestWithIntrospectionEndpoint(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			EndpointIntrospection: "/introspect",
+			IntrospectionEndpoint: "/introspect",
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -283,7 +283,7 @@ func TestWithTokenRevocationEndpoint(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			EndpointTokenRevocation: "/revoke",
+			TokenRevocationEndpoint: "/revoke",
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -626,6 +626,7 @@ func TestWithRefreshTokenGrant(t *testing.T) {
 		config: oidc.Configuration{},
 	}
 	var shouldIssueRefreshTokenFunc goidc.ShouldIssueRefreshTokenFunc = func(
+		ctx context.Context,
 		c *goidc.Client,
 		gi goidc.GrantInfo,
 	) bool {
@@ -703,6 +704,7 @@ func TestWithTokenOptions(t *testing.T) {
 		config: oidc.Configuration{},
 	}
 	var tokenOpts goidc.TokenOptionsFunc = func(
+		_ context.Context,
 		grantInfo goidc.GrantInfo,
 		client *goidc.Client,
 	) goidc.TokenOptions {

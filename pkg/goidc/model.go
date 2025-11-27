@@ -285,8 +285,8 @@ type ClientCertFunc func(*http.Request) (*x509.Certificate, error)
 type MiddlewareFunc func(next http.Handler) http.Handler
 
 func ApplyMiddlewares(h http.Handler, middlewares ...MiddlewareFunc) http.Handler {
-	for _, m := range middlewares {
-		h = m(h)
+	for _, middleware := range middlewares {
+		h = middleware(h)
 	}
 	return h
 }
@@ -349,10 +349,7 @@ func NewScope(scope string) Scope {
 //
 //	// This results in true.
 //	dynamicScope.Matches("payment:30")
-func NewDynamicScope(
-	scope string,
-	matchingFunc MatchScopeFunc,
-) Scope {
+func NewDynamicScope(scope string, matchingFunc MatchScopeFunc) Scope {
 	return Scope{
 		ID:      scope,
 		Matches: matchingFunc,
@@ -366,13 +363,13 @@ type CheckJTIFunc func(context.Context, string) error
 // requests.
 // Note: Make sure to not enable automatic redirect-following, as some profiles
 // require this behavior is disabled.
-type HTTPClientFunc func(ctx context.Context) *http.Client
+type HTTPClientFunc func(context.Context) *http.Client
 
-type ShouldIssueRefreshTokenFunc func(*Client, GrantInfo) bool
+type ShouldIssueRefreshTokenFunc func(context.Context, *Client, GrantInfo) bool
 
 // TokenOptionsFunc defines a function that returns token configuration and is
 // executed when issuing access tokens.
-type TokenOptionsFunc func(GrantInfo, *Client) TokenOptions
+type TokenOptionsFunc func(context.Context, GrantInfo, *Client) TokenOptions
 
 // TokenOptions defines a template for generating access tokens.
 type TokenOptions struct {

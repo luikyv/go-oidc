@@ -203,7 +203,7 @@ func TestMakeToken_JWTToken(t *testing.T) {
 func TestMakeToken_OpaqueToken(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.TokenOptionsFunc = func(grantInfo goidc.GrantInfo, client *goidc.Client) goidc.TokenOptions {
+	ctx.TokenOptionsFunc = func(_ context.Context, grantInfo goidc.GrantInfo, client *goidc.Client) goidc.TokenOptions {
 		return goidc.NewOpaqueTokenOptions(10, 60)
 	}
 	grantInfo := goidc.GrantInfo{
@@ -232,6 +232,7 @@ func TestMakeToken_UnsignedJWTToken(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	ctx.TokenOptionsFunc = func(
+		_ context.Context,
 		grantInfo goidc.GrantInfo,
 		client *goidc.Client,
 	) goidc.TokenOptions {

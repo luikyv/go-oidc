@@ -179,7 +179,7 @@ func authnMethods(ctx oidc.Context, meta *goidc.ClientMeta) []goidc.ClientAuthnT
 }
 
 func registrationURI(ctx oidc.Context, id string) string {
-	return ctx.BaseURL() + ctx.EndpointDCR + "/" + id
+	return ctx.BaseURL() + ctx.DCREndpoint + "/" + id
 }
 
 // protected returns a client corresponding to the id informed if the
