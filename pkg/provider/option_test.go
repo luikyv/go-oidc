@@ -1087,6 +1087,176 @@ func TestWithJARMContentEncryptionAlgs(t *testing.T) {
 	}
 }
 
+func TestWithSecretJWTSignatureAlgs(t *testing.T) {
+	testCases := []struct {
+		name          string
+		alg           goidc.SignatureAlgorithm
+		algs          []goidc.SignatureAlgorithm
+		shouldError   bool
+		expectedAlgs  []goidc.SignatureAlgorithm
+		errorContains string
+	}{
+		{
+			name:         "valid single HS256 algorithm",
+			alg:          goidc.HS256,
+			algs:         []goidc.SignatureAlgorithm{},
+			shouldError:  false,
+			expectedAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
+		},
+		{
+			name:         "valid multiple HS algorithms",
+			alg:          goidc.HS256,
+			algs:         []goidc.SignatureAlgorithm{goidc.HS384, goidc.HS512},
+			shouldError:  false,
+			expectedAlgs: []goidc.SignatureAlgorithm{goidc.HS256, goidc.HS384, goidc.HS512},
+		},
+		{
+			name:          "invalid asymmetric algorithm RS256",
+			alg:           goidc.RS256,
+			algs:          []goidc.SignatureAlgorithm{},
+			shouldError:   true,
+			errorContains: "asymmetric algorithms are not allowed",
+		},
+		{
+			name:          "invalid asymmetric algorithm PS256",
+			alg:           goidc.PS256,
+			algs:          []goidc.SignatureAlgorithm{},
+			shouldError:   true,
+			errorContains: "asymmetric algorithms are not allowed",
+		},
+		{
+			name:          "invalid none algorithm",
+			alg:           goidc.None,
+			algs:          []goidc.SignatureAlgorithm{},
+			shouldError:   true,
+			errorContains: "'none' algorithm is not allowed",
+		},
+		{
+			name:          "mix of valid and invalid algorithms",
+			alg:           goidc.HS256,
+			algs:          []goidc.SignatureAlgorithm{goidc.RS256},
+			shouldError:   true,
+			errorContains: "asymmetric algorithms are not allowed",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Given.
+			p := &Provider{
+				config: oidc.Configuration{},
+			}
+
+			// When.
+			err := WithSecretJWTSignatureAlgs(tc.alg, tc.algs...)(p)
+
+			// Then.
+			if tc.shouldError {
+				if err == nil {
+					t.Error("expected an error but got none")
+				} else if tc.errorContains != "" && !contains(err.Error(), tc.errorContains) {
+					t.Errorf("expected error to contain %q, got: %v", tc.errorContains, err)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if diff := cmp.Diff(p.config.ClientSecretJWTSigAlgs, tc.expectedAlgs); diff != "" {
+					t.Error(diff)
+				}
+			}
+		})
+	}
+}
+
+func TestWithPrivateKeyJWTSignatureAlgs(t *testing.T) {
+	testCases := []struct {
+		name          string
+		alg           goidc.SignatureAlgorithm
+		algs          []goidc.SignatureAlgorithm
+		shouldError   bool
+		expectedAlgs  []goidc.SignatureAlgorithm
+		errorContains string
+	}{
+		{
+			name:         "valid single RS256 algorithm",
+			alg:          goidc.RS256,
+			algs:         []goidc.SignatureAlgorithm{},
+			shouldError:  false,
+			expectedAlgs: []goidc.SignatureAlgorithm{goidc.RS256},
+		},
+		{
+			name:         "valid multiple asymmetric algorithms",
+			alg:          goidc.RS256,
+			algs:         []goidc.SignatureAlgorithm{goidc.PS256, goidc.ES256},
+			shouldError:  false,
+			expectedAlgs: []goidc.SignatureAlgorithm{goidc.RS256, goidc.PS256, goidc.ES256},
+		},
+		{
+			name:          "invalid symetric algorithm HS256",
+			alg:           goidc.HS256,
+			algs:          []goidc.SignatureAlgorithm{},
+			shouldError:   true,
+			errorContains: "symetric algorithms are not allowed",
+		},
+		{
+			name:          "invalid none algorithm",
+			alg:           goidc.None,
+			algs:          []goidc.SignatureAlgorithm{},
+			shouldError:   true,
+			errorContains: "'none' algorithm is not allowed",
+		},
+		{
+			name:          "mix of valid and invalid algorithms",
+			alg:           goidc.RS256,
+			algs:          []goidc.SignatureAlgorithm{goidc.HS256},
+			shouldError:   true,
+			errorContains: "symetric algorithms are not allowed",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Given.
+			p := &Provider{
+				config: oidc.Configuration{},
+			}
+
+			// When.
+			err := WithPrivateKeyJWTSignatureAlgs(tc.alg, tc.algs...)(p)
+
+			// Then.
+			if tc.shouldError {
+				if err == nil {
+					t.Error("expected an error but got none")
+				} else if tc.errorContains != "" && !contains(err.Error(), tc.errorContains) {
+					t.Errorf("expected error to contain %q, got: %v", tc.errorContains, err)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if diff := cmp.Diff(p.config.PrivateKeyJWTSigAlgs, tc.expectedAlgs); diff != "" {
+					t.Error(diff)
+				}
+			}
+		})
+	}
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && containsHelper(s, substr))
+}
+
+func containsHelper(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
 func TestWithAssertionLifetime(t *testing.T) {
 	// Given.
 	p := &Provider{
