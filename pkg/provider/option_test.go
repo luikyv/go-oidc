@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -1154,7 +1155,7 @@ func TestWithSecretJWTSignatureAlgs(t *testing.T) {
 			if tc.shouldError {
 				if err == nil {
 					t.Error("expected an error but got none")
-				} else if tc.errorContains != "" && !contains(err.Error(), tc.errorContains) {
+				} else if tc.errorContains != "" && !strings.Contains(err.Error(), tc.errorContains) {
 					t.Errorf("expected error to contain %q, got: %v", tc.errorContains, err)
 				}
 			} else {
@@ -1229,7 +1230,7 @@ func TestWithPrivateKeyJWTSignatureAlgs(t *testing.T) {
 			if tc.shouldError {
 				if err == nil {
 					t.Error("expected an error but got none")
-				} else if tc.errorContains != "" && !contains(err.Error(), tc.errorContains) {
+				} else if tc.errorContains != "" && !strings.Contains(err.Error(), tc.errorContains) {
 					t.Errorf("expected error to contain %q, got: %v", tc.errorContains, err)
 				}
 			} else {
@@ -1242,19 +1243,6 @@ func TestWithPrivateKeyJWTSignatureAlgs(t *testing.T) {
 			}
 		})
 	}
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && containsHelper(s, substr))
-}
-
-func containsHelper(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
 
 func TestWithAssertionLifetime(t *testing.T) {
