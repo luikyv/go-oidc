@@ -618,7 +618,7 @@ func WithSecretJWTSignatureAlgs(alg goidc.SignatureAlgorithm, algs ...goidc.Sign
 			return errors.New("'none' algorithm is not allowed for client_secret_jwt")
 		}
 
-		for _, a := range alg {
+		for _, a := range algs {
 			if !strings.HasPrefix(string(a), "HS") {
 				return errors.New("asymmetric algorithms are not allowed for client_secret_jwt authentication")
 			}
