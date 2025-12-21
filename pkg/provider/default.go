@@ -1,6 +1,8 @@
 package provider
 
 import (
+	"context"
+
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -36,10 +38,7 @@ const (
 )
 
 func defaultTokenOptionsFunc() goidc.TokenOptionsFunc {
-	return func(grantInfo goidc.GrantInfo, _ *goidc.Client) goidc.TokenOptions {
-		return goidc.NewOpaqueTokenOptions(
-			goidc.DefaultOpaqueTokenLength,
-			defaultTokenLifetimeSecs,
-		)
+	return func(_ context.Context, grantInfo goidc.GrantInfo, _ *goidc.Client) goidc.TokenOptions {
+		return goidc.NewOpaqueTokenOptions(goidc.DefaultOpaqueTokenLength, defaultTokenLifetimeSecs)
 	}
 }

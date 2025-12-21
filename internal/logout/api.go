@@ -13,28 +13,28 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 	}
 
 	router.Handle(
-		"GET "+config.EndpointPrefix+config.EndpointLogout,
+		"GET "+config.EndpointPrefix+config.LogoutEndpoint,
 		goidc.ApplyMiddlewares(oidc.Handler(config, handle), middlewares...),
 	)
 	router.Handle(
-		"POST "+config.EndpointPrefix+config.EndpointLogout,
+		"POST "+config.EndpointPrefix+config.LogoutEndpoint,
 		goidc.ApplyMiddlewares(oidc.Handler(config, handle), middlewares...),
 	)
 
 	router.Handle(
-		"POST "+config.EndpointPrefix+config.EndpointLogout+"/{callback}",
+		"POST "+config.EndpointPrefix+config.LogoutEndpoint+"/{callback}",
 		goidc.ApplyMiddlewares(oidc.Handler(config, handleCallback), middlewares...),
 	)
 	router.Handle(
-		"GET "+config.EndpointPrefix+config.EndpointLogout+"/{callback}",
+		"GET "+config.EndpointPrefix+config.LogoutEndpoint+"/{callback}",
 		goidc.ApplyMiddlewares(oidc.Handler(config, handleCallback), middlewares...),
 	)
 	router.Handle(
-		"POST "+config.EndpointPrefix+config.EndpointLogout+"/{callback}/{callback_path...}",
+		"POST "+config.EndpointPrefix+config.LogoutEndpoint+"/{callback}/{callback_path...}",
 		goidc.ApplyMiddlewares(oidc.Handler(config, handleCallback), middlewares...),
 	)
 	router.Handle(
-		"GET "+config.EndpointPrefix+config.EndpointLogout+"/{callback}/{callback_path...}",
+		"GET "+config.EndpointPrefix+config.LogoutEndpoint+"/{callback}/{callback_path...}",
 		goidc.ApplyMiddlewares(oidc.Handler(config, handleCallback), middlewares...),
 	)
 }

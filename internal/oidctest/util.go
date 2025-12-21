@@ -98,6 +98,7 @@ func NewContext(t testing.TB) oidc.Context {
 			goidc.ResponseModeFormPost,
 		},
 		TokenOptionsFunc: func(
+			_ context.Context,
 			grantInfo goidc.GrantInfo,
 			client *goidc.Client,
 		) goidc.TokenOptions {
@@ -117,21 +118,21 @@ func NewContext(t testing.TB) oidc.Context {
 			goidc.ClientAuthnSelfSignedTLS,
 			goidc.ClientAuthnTLS,
 		},
-		UserInfoDefaultSigAlg:       goidc.SignatureAlgorithm(jwk.Algorithm),
-		UserInfoSigAlgs:             []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(jwk.Algorithm)},
-		IDTokenDefaultSigAlg:        goidc.SignatureAlgorithm(jwk.Algorithm),
-		IDTokenSigAlgs:              []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(jwk.Algorithm)},
-		EndpointWellKnown:           "/.well-known/openid-configuration",
-		EndpointJWKS:                "/jwks",
-		EndpointToken:               "/token",
-		EndpointAuthorize:           "/authorize",
-		EndpointPushedAuthorization: "/par",
-		EndpointDCR:                 "/register",
-		EndpointUserInfo:            "/userinfo",
-		EndpointIntrospection:       "/introspect",
-		JWTLifetimeSecs:             600,
-		IDTokenLifetimeSecs:         60,
-		DefaultSubIdentifierType:    goidc.SubIdentifierPublic,
+		UserInfoDefaultSigAlg:    goidc.SignatureAlgorithm(jwk.Algorithm),
+		UserInfoSigAlgs:          []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(jwk.Algorithm)},
+		IDTokenDefaultSigAlg:     goidc.SignatureAlgorithm(jwk.Algorithm),
+		IDTokenSigAlgs:           []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(jwk.Algorithm)},
+		WellKnownEndpoint:        "/.well-known/openid-configuration",
+		JWKSEndpoint:             "/jwks",
+		TokenEndpoint:            "/token",
+		AuthorizationEndpoint:    "/authorize",
+		PAREndpoint:              "/par",
+		DCREndpoint:              "/register",
+		UserInfoEndpoint:         "/userinfo",
+		IntrospectionEndpoint:    "/introspect",
+		JWTLifetimeSecs:          600,
+		IDTokenLifetimeSecs:      60,
+		DefaultSubIdentifierType: goidc.SubIdentifierPublic,
 		SubIdentifierTypes: []goidc.SubIdentifierType{
 			goidc.SubIdentifierPublic,
 		},
@@ -144,7 +145,7 @@ func NewContext(t testing.TB) oidc.Context {
 		},
 	}
 
-	ctx := oidc.NewContext(
+	ctx := oidc.NewHTTPContext(
 		httptest.NewRecorder(),
 		httptest.NewRequest(http.MethodGet, "/auth", nil),
 		config,

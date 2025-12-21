@@ -26,7 +26,7 @@ type Context struct {
 	*Configuration
 }
 
-func NewContext(w http.ResponseWriter, r *http.Request, config *Configuration) Context {
+func NewHTTPContext(w http.ResponseWriter, r *http.Request, config *Configuration) Context {
 	return Context{
 		Configuration: config,
 		Response:      w,
@@ -34,8 +34,7 @@ func NewContext(w http.ResponseWriter, r *http.Request, config *Configuration) C
 	}
 }
 
-// TODO: Rename this.
-func FromContext(ctx context.Context, config *Configuration) Context {
+func NewContext(ctx context.Context, config *Configuration) Context {
 	return Context{
 		context:       ctx,
 		Configuration: config,
@@ -44,7 +43,7 @@ func FromContext(ctx context.Context, config *Configuration) Context {
 
 func Handler(config *Configuration, exec func(ctx Context)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		exec(NewContext(w, r, config))
+		exec(NewHTTPContext(w, r, config))
 	}
 }
 
@@ -159,11 +158,11 @@ func (ctx Context) Issuer() string {
 }
 
 func (ctx Context) TokenURL() string {
-	return ctx.BaseURL() + ctx.EndpointToken
+	return ctx.BaseURL() + ctx.TokenEndpoint
 }
 
 func (ctx Context) TokenMTLSURL() string {
-	return ctx.MTLSBaseURL() + ctx.EndpointToken
+	return ctx.MTLSBaseURL() + ctx.TokenEndpoint
 }
 
 func (ctx Context) RequestURL() string {
@@ -533,12 +532,12 @@ func (ctx Context) ShouldIssueRefreshToken(client *goidc.Client, grantInfo goidc
 		return false
 	}
 
-	return ctx.ShouldIssueRefreshTokenFunc(client, grantInfo)
+	return ctx.ShouldIssueRefreshTokenFunc(ctx.Context(), client, grantInfo)
 }
 
 func (ctx Context) TokenOptions(grantInfo goidc.GrantInfo, client *goidc.Client) goidc.TokenOptions {
 
-	opts := ctx.TokenOptionsFunc(grantInfo, client)
+	opts := ctx.TokenOptionsFunc(ctx.Context(), grantInfo, client)
 
 	if shouldSwitchToOpaque(ctx, grantInfo, client, opts) {
 		opts = goidc.NewOpaqueTokenOptions(goidc.DefaultOpaqueTokenLength, opts.LifetimeSecs)

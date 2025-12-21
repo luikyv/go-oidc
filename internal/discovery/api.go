@@ -9,12 +9,12 @@ import (
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlewares ...goidc.MiddlewareFunc) {
 	router.Handle(
-		"GET "+config.EndpointPrefix+config.EndpointJWKS,
+		"GET "+config.EndpointPrefix+config.JWKSEndpoint,
 		goidc.ApplyMiddlewares(oidc.Handler(config, handleJWKS), middlewares...),
 	)
 
 	router.Handle(
-		"GET "+config.EndpointPrefix+config.EndpointWellKnown,
+		"GET "+config.EndpointPrefix+config.WellKnownEndpoint,
 		goidc.ApplyMiddlewares(oidc.Handler(config, handleWellKnown), middlewares...),
 	)
 }

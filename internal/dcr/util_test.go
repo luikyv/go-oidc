@@ -25,7 +25,7 @@ func TestCreate(t *testing.T) {
 		t.Errorf("the client id in the response cannot be empty")
 	}
 
-	expectedRegURI := ctx.BaseURL() + ctx.EndpointDCR + "/" + resp.ID
+	expectedRegURI := ctx.BaseURL() + ctx.DCREndpoint + "/" + resp.ID
 	if resp.RegistrationURI != expectedRegURI {
 		t.Errorf("RegistrationURI = %s, want %s", resp.RegistrationURI, expectedRegURI)
 	}

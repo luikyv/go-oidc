@@ -112,7 +112,7 @@ func (op *Provider) Run(address string, middlewares ...goidc.MiddlewareFunc) err
 }
 
 func (op *Provider) TokenInfo(ctx context.Context, tkn string) (goidc.TokenInfo, error) {
-	oidcCtx := oidc.FromContext(ctx, &op.config)
+	oidcCtx := oidc.NewContext(ctx, &op.config)
 	return token.IntrospectionInfo(oidcCtx, tkn)
 }
 
@@ -122,7 +122,7 @@ func (op *Provider) TokenInfo(ctx context.Context, tkn string) (goidc.TokenInfo,
 // If the token is valid and PoP validation (if any) is successful, the function
 // returns token information; otherwise, it returns an appropriate error.
 func (op *Provider) TokenInfoFromRequest(w http.ResponseWriter, r *http.Request) (goidc.TokenInfo, error) {
-	ctx := oidc.NewContext(w, r, &op.config)
+	ctx := oidc.NewHTTPContext(w, r, &op.config)
 
 	accessToken, _, ok := ctx.AuthorizationToken()
 	if !ok {
@@ -144,10 +144,14 @@ func (op *Provider) TokenInfoFromRequest(w http.ResponseWriter, r *http.Request)
 	return info, nil
 }
 
+func (op *Provider) SaveClient(ctx context.Context, client *goidc.Client) error {
+	return op.config.ClientManager.Save(ctx, client)
+}
+
 // Client retrieves a client based on its ID.
 // It first checks if the client is a static client configured within the provider.
 // If no matching static client is found, fallback to the ClientManager.
-func (op Provider) Client(ctx context.Context, id string) (*goidc.Client, error) {
+func (op *Provider) Client(ctx context.Context, id string) (*goidc.Client, error) {
 	for _, staticClient := range op.config.StaticClients {
 		if staticClient.ID == id {
 			return staticClient, nil
@@ -157,12 +161,64 @@ func (op Provider) Client(ctx context.Context, id string) (*goidc.Client, error)
 	return op.config.ClientManager.Client(ctx, id)
 }
 
+func (op *Provider) DeleteClient(ctx context.Context, id string) error {
+	return op.config.ClientManager.Delete(ctx, id)
+}
+
 func (op *Provider) SaveAuthnSession(ctx context.Context, as *goidc.AuthnSession) error {
 	return op.config.AuthnSessionManager.Save(ctx, as)
 }
 
+func (op *Provider) AuthnSessionByCallbackID(ctx context.Context, callbackID string) (*goidc.AuthnSession, error) {
+	return op.config.AuthnSessionManager.SessionByCallbackID(ctx, callbackID)
+}
+
+func (op *Provider) AuthnSessionByAuthCode(ctx context.Context, authCode string) (*goidc.AuthnSession, error) {
+	return op.config.AuthnSessionManager.SessionByAuthCode(ctx, authCode)
+}
+
+func (op *Provider) AuthnSessionByPushedAuthReqID(ctx context.Context, id string) (*goidc.AuthnSession, error) {
+	return op.config.AuthnSessionManager.SessionByPushedAuthReqID(ctx, id)
+}
+
 func (op *Provider) AuthnSessionByCIBAAuthID(ctx context.Context, id string) (*goidc.AuthnSession, error) {
 	return op.config.AuthnSessionManager.SessionByCIBAAuthID(ctx, id)
+}
+
+func (op *Provider) DeleteAuthnSession(ctx context.Context, id string) error {
+	return op.config.AuthnSessionManager.Delete(ctx, id)
+}
+
+func (op *Provider) SaveGrantSession(ctx context.Context, gs *goidc.GrantSession) error {
+	return op.config.GrantSessionManager.Save(ctx, gs)
+}
+
+func (op *Provider) GrantSessionByTokenID(ctx context.Context, id string) (*goidc.GrantSession, error) {
+	return op.config.GrantSessionManager.SessionByTokenID(ctx, id)
+}
+
+func (op *Provider) GrantSessionByRefreshToken(ctx context.Context, id string) (*goidc.GrantSession, error) {
+	return op.config.GrantSessionManager.SessionByRefreshToken(ctx, id)
+}
+
+func (op *Provider) DeleteGrantSession(ctx context.Context, id string) error {
+	return op.config.GrantSessionManager.Delete(ctx, id)
+}
+
+func (op *Provider) DeleteGrantSessionByAuthCode(ctx context.Context, id string) error {
+	return op.config.GrantSessionManager.DeleteByAuthCode(ctx, id)
+}
+
+func (op *Provider) SaveLogoutSession(ctx context.Context, session *goidc.LogoutSession) error {
+	return op.config.LogoutSessionManager.Save(ctx, session)
+}
+
+func (op *Provider) LogoutSessionByCallbackID(ctx context.Context, callbackID string) (*goidc.LogoutSession, error) {
+	return op.config.LogoutSessionManager.SessionByCallbackID(ctx, callbackID)
+}
+
+func (op *Provider) DeleteLogoutSession(ctx context.Context, id string) error {
+	return op.config.LogoutSessionManager.Delete(ctx, id)
 }
 
 // NotifyCIBASuccess notifies a client that the user has granted access.
@@ -173,7 +229,7 @@ func (op *Provider) AuthnSessionByCIBAAuthID(ctx context.Context, id string) (*g
 //   - "ping": A ping notification is sent to the client.
 //   - "push": The token response is sent directly to the client's notification endpoint.
 func (op *Provider) NotifyCIBASuccess(ctx context.Context, authReqID string) error {
-	oidcCtx := oidc.FromContext(ctx, &op.config)
+	oidcCtx := oidc.NewContext(ctx, &op.config)
 	return token.NotifyCIBAGrant(oidcCtx, authReqID)
 }
 
@@ -184,7 +240,7 @@ func (op *Provider) NotifyCIBASuccess(ctx context.Context, authReqID string) err
 //   - "push": The token failure response is sent directly to the client's
 //     notification endpoint.
 func (op *Provider) NotifyCIBAFailure(ctx context.Context, authReqID string, err goidc.Error) error {
-	oidcCtx := oidc.FromContext(ctx, &op.config)
+	oidcCtx := oidc.NewContext(ctx, &op.config)
 	return token.NotifyCIBAGrantFailure(oidcCtx, authReqID, err)
 }
 
@@ -193,7 +249,7 @@ func (op *Provider) NotifyCIBAFailure(ctx context.Context, authReqID string, err
 //
 // This function is intended for scenarios where a token is required for the provider itself.
 func (op *Provider) MakeToken(ctx context.Context, gi goidc.GrantInfo) (string, error) {
-	oidcCtx := oidc.FromContext(ctx, &op.config)
+	oidcCtx := oidc.NewContext(ctx, &op.config)
 	client := &goidc.Client{ID: gi.ClientID}
 
 	tkn, err := token.Make(oidcCtx, gi, client)
@@ -236,15 +292,15 @@ func (op *Provider) setDefaults() error {
 
 	op.config.IDTokenLifetimeSecs = nonZeroOrDefault(op.config.IDTokenLifetimeSecs, defaultIDTokenLifetimeSecs)
 
-	op.config.EndpointWellKnown = nonZeroOrDefault(op.config.EndpointWellKnown, defaultEndpointWellKnown)
+	op.config.WellKnownEndpoint = nonZeroOrDefault(op.config.WellKnownEndpoint, defaultEndpointWellKnown)
 
-	op.config.EndpointJWKS = nonZeroOrDefault(op.config.EndpointJWKS, defaultEndpointJSONWebKeySet)
+	op.config.JWKSEndpoint = nonZeroOrDefault(op.config.JWKSEndpoint, defaultEndpointJSONWebKeySet)
 
-	op.config.EndpointToken = nonZeroOrDefault(op.config.EndpointToken, defaultEndpointToken)
+	op.config.TokenEndpoint = nonZeroOrDefault(op.config.TokenEndpoint, defaultEndpointToken)
 
-	op.config.EndpointAuthorize = nonZeroOrDefault(op.config.EndpointAuthorize, defaultEndpointAuthorize)
+	op.config.AuthorizationEndpoint = nonZeroOrDefault(op.config.AuthorizationEndpoint, defaultEndpointAuthorize)
 
-	op.config.EndpointUserInfo = nonZeroOrDefault(op.config.EndpointUserInfo, defaultEndpointUserInfo)
+	op.config.UserInfoEndpoint = nonZeroOrDefault(op.config.UserInfoEndpoint, defaultEndpointUserInfo)
 
 	op.config.JWTLifetimeSecs = nonZeroOrDefault(op.config.JWTLifetimeSecs, defaultJWTLifetimeSecs)
 
@@ -273,18 +329,15 @@ func (op *Provider) setDefaults() error {
 	}
 
 	if op.config.DCRIsEnabled {
-		op.config.EndpointDCR = nonZeroOrDefault(op.config.EndpointDCR,
-			defaultEndpointDynamicClient)
+		op.config.DCREndpoint = nonZeroOrDefault(op.config.DCREndpoint, defaultEndpointDynamicClient)
 	}
 
 	if op.config.PARIsEnabled {
-		op.config.EndpointPushedAuthorization = nonZeroOrDefault(op.config.EndpointPushedAuthorization,
-			defaultEndpointPushedAuthorizationRequest)
+		op.config.PAREndpoint = nonZeroOrDefault(op.config.PAREndpoint, defaultEndpointPushedAuthorizationRequest)
 	}
 
 	if op.config.JAREncIsEnabled {
-		op.config.JARContentEncAlgs = nonZeroOrDefault(op.config.JARContentEncAlgs,
-			[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
+		op.config.JARContentEncAlgs = nonZeroOrDefault(op.config.JARContentEncAlgs, []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
 	}
 
 	if op.config.JARMIsEnabled {
@@ -300,11 +353,11 @@ func (op *Provider) setDefaults() error {
 	}
 
 	if op.config.TokenIntrospectionIsEnabled {
-		op.config.EndpointIntrospection = nonZeroOrDefault(op.config.EndpointIntrospection, defaultEndpointTokenIntrospection)
+		op.config.IntrospectionEndpoint = nonZeroOrDefault(op.config.IntrospectionEndpoint, defaultEndpointTokenIntrospection)
 	}
 
 	if op.config.TokenRevocationIsEnabled {
-		op.config.EndpointTokenRevocation = nonZeroOrDefault(op.config.EndpointTokenRevocation, defaultEndpointTokenRevocation)
+		op.config.TokenRevocationEndpoint = nonZeroOrDefault(op.config.TokenRevocationEndpoint, defaultEndpointTokenRevocation)
 	}
 
 	if op.config.IDTokenEncIsEnabled {
@@ -318,7 +371,7 @@ func (op *Provider) setDefaults() error {
 	}
 
 	if op.config.CIBAIsEnabled {
-		op.config.EndpointCIBA = nonZeroOrDefault(op.config.EndpointCIBA, defaultEndpointCIBA)
+		op.config.CIBAEndpoint = nonZeroOrDefault(op.config.CIBAEndpoint, defaultEndpointCIBA)
 	}
 
 	if op.config.OpenIDFedIsEnabled {
@@ -332,7 +385,7 @@ func (op *Provider) setDefaults() error {
 
 	if op.config.LogoutIsEnabled {
 		op.config.LogoutSessionManager = nonZeroOrDefault(op.config.LogoutSessionManager, goidc.LogoutSessionManager(storage.NewLogoutSessionManager(defaultStorageMaxSize)))
-		op.config.EndpointLogout = nonZeroOrDefault(op.config.EndpointLogout, defaultEndpointEndSession)
+		op.config.LogoutEndpoint = nonZeroOrDefault(op.config.LogoutEndpoint, defaultEndpointEndSession)
 		op.config.LogoutSessionTimeoutSecs = nonZeroOrDefault(op.config.LogoutSessionTimeoutSecs, defaultLogoutSessionTimeoutSecs)
 	}
 

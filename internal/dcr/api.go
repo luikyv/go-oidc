@@ -11,22 +11,22 @@ import (
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlewares ...goidc.MiddlewareFunc) {
 	if config.DCRIsEnabled {
 		router.Handle(
-			"POST "+config.EndpointPrefix+config.EndpointDCR,
+			"POST "+config.EndpointPrefix+config.DCREndpoint,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleCreate), middlewares...),
 		)
 
 		router.Handle(
-			"PUT "+config.EndpointPrefix+config.EndpointDCR+"/{client_id}",
+			"PUT "+config.EndpointPrefix+config.DCREndpoint+"/{client_id}",
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleUpdate), middlewares...),
 		)
 
 		router.Handle(
-			"GET "+config.EndpointPrefix+config.EndpointDCR+"/{client_id}",
+			"GET "+config.EndpointPrefix+config.DCREndpoint+"/{client_id}",
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleGet), middlewares...),
 		)
 
 		router.Handle(
-			"DELETE "+config.EndpointPrefix+config.EndpointDCR+"/{client_id}",
+			"DELETE "+config.EndpointPrefix+config.DCREndpoint+"/{client_id}",
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleDelete), middlewares...),
 		)
 	}
