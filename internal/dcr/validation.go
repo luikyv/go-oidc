@@ -91,12 +91,21 @@ func validateClientCredentialsGrantType(ctx oidc.Context, meta *goidc.ClientMeta
 }
 
 func validateRedirectURIS(ctx oidc.Context, meta *goidc.ClientMeta) error {
-
 	for _, ru := range meta.RedirectURIs {
-		if parsedRU, err := url.Parse(ru); err != nil ||
-			parsedRU.Scheme != "https" ||
-			parsedRU.Host == "" ||
-			parsedRU.Fragment != "" {
+		parsedRU, err := url.Parse(ru)
+		if err != nil || parsedRU.Fragment != "" {
+			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
+				fmt.Sprintf("invalid redirect uri %s", ru))
+		}
+
+		// RFC 8252: Native apps can use http loopback or private-use URI schemes.
+		if meta.ApplicationType == goidc.ApplicationTypeNative {
+			if strutil.IsLoopbackURL(parsedRU) || strutil.IsPrivateUseScheme(parsedRU) {
+				continue
+			}
+		}
+
+		if parsedRU.Scheme != "https" || parsedRU.Host == "" {
 			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 				fmt.Sprintf("invalid redirect uri %s", ru))
 		}

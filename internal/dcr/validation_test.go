@@ -427,6 +427,52 @@ func TestValidateRequest(t *testing.T) {
 			},
 			false,
 		},
+		// RFC 8252 - OAuth 2.0 for Native Apps tests
+		{
+			"rfc8252_native_app_loopback_ipv4",
+			func(c *goidc.Client) {
+				c.ApplicationType = goidc.ApplicationTypeNative
+				c.RedirectURIs = []string{"http://127.0.0.1/callback"}
+			},
+			func(ctx oidc.Context) {},
+			true,
+		},
+		{
+			"rfc8252_native_app_loopback_ipv6",
+			func(c *goidc.Client) {
+				c.ApplicationType = goidc.ApplicationTypeNative
+				c.RedirectURIs = []string{"http://[::1]/callback"}
+			},
+			func(ctx oidc.Context) {},
+			true,
+		},
+		{
+			"rfc8252_native_app_private_use_uri_scheme",
+			func(c *goidc.Client) {
+				c.ApplicationType = goidc.ApplicationTypeNative
+				c.RedirectURIs = []string{"com.example.app://callback"}
+			},
+			func(ctx oidc.Context) {},
+			true,
+		},
+		{
+			"rfc8252_web_app_loopback_rejected",
+			func(c *goidc.Client) {
+				c.ApplicationType = goidc.ApplicationTypeWeb
+				c.RedirectURIs = []string{"http://127.0.0.1/callback"}
+			},
+			func(ctx oidc.Context) {},
+			false,
+		},
+		{
+			"rfc8252_native_app_non_loopback_http_rejected",
+			func(c *goidc.Client) {
+				c.ApplicationType = goidc.ApplicationTypeNative
+				c.RedirectURIs = []string{"http://example.com/callback"}
+			},
+			func(ctx oidc.Context) {},
+			false,
+		},
 	}
 
 	for _, testCase := range testCases {

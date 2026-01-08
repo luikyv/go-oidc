@@ -350,3 +350,109 @@ func TestValidatePushedRequest_RedirectURIIsRequiredForFAPI2_RedirectURINotInfor
 		t.Error("the redirect uri was not informed")
 	}
 }
+
+// RFC 8252 - OAuth 2.0 for Native Apps tests
+
+func TestIsRedirectURIAllowed_ExactMatch(t *testing.T) {
+	// Given.
+	client, _ := oidctest.NewClient(t)
+	client.RedirectURIs = []string{"https://example.com/callback"}
+
+	// When.
+	allowed := isRedirectURIAllowed(client, "https://example.com/callback")
+
+	// Then.
+	if !allowed {
+		t.Error("exact match should be allowed")
+	}
+}
+
+func TestIsRedirectURIAllowed_LoopbackIPv4WithPort(t *testing.T) {
+	// Given.
+	client, _ := oidctest.NewClient(t)
+	client.ApplicationType = goidc.ApplicationTypeNative
+	client.RedirectURIs = []string{"http://127.0.0.1/callback"}
+
+	// When.
+	allowed := isRedirectURIAllowed(client, "http://127.0.0.1:8080/callback")
+
+	// Then.
+	if !allowed {
+		t.Error("loopback IPv4 with port should be allowed for native apps")
+	}
+}
+
+func TestIsRedirectURIAllowed_LoopbackIPv6WithPort(t *testing.T) {
+	// Given.
+	client, _ := oidctest.NewClient(t)
+	client.ApplicationType = goidc.ApplicationTypeNative
+	client.RedirectURIs = []string{"http://[::1]/callback"}
+
+	// When.
+	allowed := isRedirectURIAllowed(client, "http://[::1]:9000/callback")
+
+	// Then.
+	if !allowed {
+		t.Error("loopback IPv6 with port should be allowed for native apps")
+	}
+}
+
+func TestIsRedirectURIAllowed_LoopbackNotRegistered(t *testing.T) {
+	// Given.
+	client, _ := oidctest.NewClient(t)
+	client.ApplicationType = goidc.ApplicationTypeNative
+	client.RedirectURIs = []string{"https://example.com/callback"}
+
+	// When.
+	allowed := isRedirectURIAllowed(client, "http://127.0.0.1:8080/callback")
+
+	// Then.
+	if allowed {
+		t.Error("loopback should not be allowed if base URI is not registered")
+	}
+}
+
+func TestIsRedirectURIAllowed_LoopbackNonNativeApp(t *testing.T) {
+	// Given.
+	client, _ := oidctest.NewClient(t)
+	client.ApplicationType = goidc.ApplicationTypeWeb
+	client.RedirectURIs = []string{"http://127.0.0.1/callback"}
+
+	// When.
+	allowed := isRedirectURIAllowed(client, "http://127.0.0.1:8080/callback")
+
+	// Then.
+	if allowed {
+		t.Error("loopback with port should not be allowed for web apps")
+	}
+}
+
+func TestIsRedirectURIAllowed_PrivateScheme(t *testing.T) {
+	// Given.
+	client, _ := oidctest.NewClient(t)
+	client.ApplicationType = goidc.ApplicationTypeNative
+	client.RedirectURIs = []string{"com.example.app://callback"}
+
+	// When.
+	allowed := isRedirectURIAllowed(client, "com.example.app://callback")
+
+	// Then.
+	if !allowed {
+		t.Error("private-use URI scheme should be allowed for native apps")
+	}
+}
+
+func TestIsRedirectURIAllowed_InvalidURI(t *testing.T) {
+	// Given.
+	client, _ := oidctest.NewClient(t)
+	client.ApplicationType = goidc.ApplicationTypeNative
+	client.RedirectURIs = []string{"http://127.0.0.1/callback"}
+
+	// When.
+	allowed := isRedirectURIAllowed(client, "://invalid")
+
+	// Then.
+	if allowed {
+		t.Error("invalid URI should not be allowed")
+	}
+}
