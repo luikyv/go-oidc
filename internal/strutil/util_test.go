@@ -2,6 +2,7 @@ package strutil_test
 
 import (
 	"fmt"
+	"net/url"
 	"testing"
 
 	"github.com/luikyv/go-oidc/internal/strutil"
@@ -122,4 +123,40 @@ func TestGetURLWithFragmentParams(t *testing.T) {
 		)
 	}
 
+}
+
+func TestIsLoopbackURL(t *testing.T) {
+	testCases := []struct {
+		rawURL string
+		want   bool
+	}{
+		// IPv4 loopback.
+		{"http://127.0.0.1/callback", true},
+		{"http://127.0.0.1:8080/callback", true},
+		{"http://127.255.255.255/callback", true},
+		// IPv6 loopback.
+		{"http://[::1]/callback", true},
+		{"http://[::1]:9000/callback", true},
+		// Non-loopback IPv6 that starts with ::1 prefix (regression test).
+		{"http://[::1:5]/callback", false},
+		{"http://[::1:0:0:0:0:0:0]/callback", false},
+		// Non-loopback addresses.
+		{"http://localhost/callback", false}, // RFC 8252 7.3 specifies that the IP literal is used, not localhost
+		{"http://example.com/callback", false},
+		{"https://127.0.0.1/callback", false}, // https, not http
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.rawURL, func(t *testing.T) {
+			u, err := url.Parse(tc.rawURL)
+			if err != nil {
+				t.Fatalf("failed to parse URL: %v", err)
+			}
+
+			got := strutil.IsLoopbackURL(u)
+			if got != tc.want {
+				t.Errorf("IsLoopbackURL(%q) = %v, want %v", tc.rawURL, got, tc.want)
+			}
+		})
+	}
 }

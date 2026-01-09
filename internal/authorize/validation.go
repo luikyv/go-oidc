@@ -532,7 +532,31 @@ func validateIDTokenHintAsOptional(ctx oidc.Context, params goidc.AuthorizationP
 }
 
 func isRedirectURIAllowed(c *goidc.Client, redirectURI string) bool {
-	return slices.Contains(c.RedirectURIs, redirectURI)
+	if slices.Contains(c.RedirectURIs, redirectURI) {
+		return true
+	}
+
+	// RFC 8252: Native apps can use loopback interface on any port.
+	if c.ApplicationType == goidc.ApplicationTypeNative {
+		u, err := url.Parse(redirectURI)
+		if err != nil {
+			return false
+		}
+
+		if strutil.IsLoopbackURL(u) {
+			host := u.Hostname()
+			// Strip the port for comparison, preserving brackets for IPv6
+			if strings.Contains(host, ":") {
+				host = "[" + host + "]"
+			}
+			redirectURIWithoutPort := u.Scheme + "://" + host + u.Path
+			if slices.Contains(c.RedirectURIs, redirectURIWithoutPort) {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func isRequestURIAllowed(c *goidc.Client, requestURI string) bool {

@@ -81,6 +81,17 @@ func IsURL(str string) bool {
 	return parsedURL.Scheme != "" && parsedURL.Host != ""
 }
 
+// IsLoopbackURL checks if the URL uses a loopback address.
+func IsLoopbackURL(u *url.URL) bool {
+	host := u.Hostname()
+	return u.Scheme == "http" && (strings.HasPrefix(host, "127.") || host == "::1")
+}
+
+// IsPrivateUseScheme checks for reverse domain name URI schemes (e.g., com.example.app).
+func IsPrivateUseScheme(u *url.URL) bool {
+	return strings.Contains(u.Scheme, ".")
+}
+
 func URLWithQueryParams(redirectURI string, params map[string]string) string {
 	if len(params) == 0 {
 		return redirectURI
