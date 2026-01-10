@@ -351,108 +351,217 @@ func TestValidatePushedRequest_RedirectURIIsRequiredForFAPI2_RedirectURINotInfor
 	}
 }
 
-// RFC 8252 - OAuth 2.0 for Native Apps tests
-
-func TestIsRedirectURIAllowed_ExactMatch(t *testing.T) {
+func TestValidateRequest_RedirectURI_ExactMatch(t *testing.T) {
 	// Given.
+	ctx := oidctest.NewContext(t)
 	client, _ := oidctest.NewClient(t)
 	client.RedirectURIs = []string{"https://example.com/callback"}
 
+	req := request{
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  "https://example.com/callback",
+			ResponseType: goidc.ResponseTypeCode,
+			ResponseMode: goidc.ResponseModeQuery,
+			Scopes:       client.ScopeIDs,
+			State:        "random_state",
+			Nonce:        "random_nonce",
+		},
+	}
+
 	// When.
-	allowed := isRedirectURIAllowed(client, "https://example.com/callback")
+	err := validateRequest(ctx, req, client)
 
 	// Then.
-	if !allowed {
-		t.Error("exact match should be allowed")
+	if err != nil {
+		t.Errorf("exact match should be allowed: %v", err)
 	}
 }
 
-func TestIsRedirectURIAllowed_LoopbackIPv4WithPort(t *testing.T) {
+func TestValidateRequest_RedirectURI_LoopbackIPv4WithPort(t *testing.T) {
 	// Given.
+	ctx := oidctest.NewContext(t)
 	client, _ := oidctest.NewClient(t)
 	client.ApplicationType = goidc.ApplicationTypeNative
 	client.RedirectURIs = []string{"http://127.0.0.1/callback"}
 
+	req := request{
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  "http://127.0.0.1:8080/callback",
+			ResponseType: goidc.ResponseTypeCode,
+			ResponseMode: goidc.ResponseModeQuery,
+			Scopes:       client.ScopeIDs,
+			State:        "random_state",
+			Nonce:        "random_nonce",
+		},
+	}
+
 	// When.
-	allowed := isRedirectURIAllowed(client, "http://127.0.0.1:8080/callback")
+	err := validateRequest(ctx, req, client)
 
 	// Then.
-	if !allowed {
-		t.Error("loopback IPv4 with port should be allowed for native apps")
+	if err != nil {
+		t.Errorf("loopback IPv4 with port should be allowed for native apps: %v", err)
 	}
 }
 
-func TestIsRedirectURIAllowed_LoopbackIPv6WithPort(t *testing.T) {
+func TestValidateRequest_RedirectURI_LoopbackIPv6WithPort(t *testing.T) {
 	// Given.
+	ctx := oidctest.NewContext(t)
 	client, _ := oidctest.NewClient(t)
 	client.ApplicationType = goidc.ApplicationTypeNative
 	client.RedirectURIs = []string{"http://[::1]/callback"}
 
+	req := request{
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  "http://[::1]:9000/callback",
+			ResponseType: goidc.ResponseTypeCode,
+			ResponseMode: goidc.ResponseModeQuery,
+			Scopes:       client.ScopeIDs,
+			State:        "random_state",
+			Nonce:        "random_nonce",
+		},
+	}
+
 	// When.
-	allowed := isRedirectURIAllowed(client, "http://[::1]:9000/callback")
+	err := validateRequest(ctx, req, client)
 
 	// Then.
-	if !allowed {
-		t.Error("loopback IPv6 with port should be allowed for native apps")
+	if err != nil {
+		t.Errorf("loopback IPv6 with port should be allowed for native apps: %v", err)
 	}
 }
 
-func TestIsRedirectURIAllowed_LoopbackNotRegistered(t *testing.T) {
+func TestValidateRequest_RedirectURI_LoopbackNotRegistered(t *testing.T) {
 	// Given.
+	ctx := oidctest.NewContext(t)
 	client, _ := oidctest.NewClient(t)
 	client.ApplicationType = goidc.ApplicationTypeNative
 	client.RedirectURIs = []string{"https://example.com/callback"}
 
+	req := request{
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  "http://127.0.0.1:8080/callback",
+			ResponseType: goidc.ResponseTypeCode,
+			ResponseMode: goidc.ResponseModeQuery,
+			Scopes:       client.ScopeIDs,
+			State:        "random_state",
+			Nonce:        "random_nonce",
+		},
+	}
+
 	// When.
-	allowed := isRedirectURIAllowed(client, "http://127.0.0.1:8080/callback")
+	err := validateRequest(ctx, req, client)
 
 	// Then.
-	if allowed {
+	if err == nil {
 		t.Error("loopback should not be allowed if base URI is not registered")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("the error should be an OIDC error")
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeInvalidRequest {
+		t.Errorf("code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRequest)
 	}
 }
 
-func TestIsRedirectURIAllowed_LoopbackNonNativeApp(t *testing.T) {
+func TestValidateRequest_RedirectURI_LoopbackNonNativeApp(t *testing.T) {
 	// Given.
+	ctx := oidctest.NewContext(t)
 	client, _ := oidctest.NewClient(t)
 	client.ApplicationType = goidc.ApplicationTypeWeb
 	client.RedirectURIs = []string{"http://127.0.0.1/callback"}
 
+	req := request{
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  "http://127.0.0.1:8080/callback",
+			ResponseType: goidc.ResponseTypeCode,
+			ResponseMode: goidc.ResponseModeQuery,
+			Scopes:       client.ScopeIDs,
+			State:        "random_state",
+			Nonce:        "random_nonce",
+		},
+	}
+
 	// When.
-	allowed := isRedirectURIAllowed(client, "http://127.0.0.1:8080/callback")
+	err := validateRequest(ctx, req, client)
 
 	// Then.
-	if allowed {
+	if err == nil {
 		t.Error("loopback with port should not be allowed for web apps")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("the error should be an OIDC error")
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeInvalidRequest {
+		t.Errorf("code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRequest)
 	}
 }
 
-func TestIsRedirectURIAllowed_PrivateScheme(t *testing.T) {
+func TestValidateRequest_RedirectURI_PrivateScheme(t *testing.T) {
 	// Given.
+	ctx := oidctest.NewContext(t)
 	client, _ := oidctest.NewClient(t)
 	client.ApplicationType = goidc.ApplicationTypeNative
 	client.RedirectURIs = []string{"com.example.app://callback"}
 
+	req := request{
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  "com.example.app://callback",
+			ResponseType: goidc.ResponseTypeCode,
+			ResponseMode: goidc.ResponseModeQuery,
+			Scopes:       client.ScopeIDs,
+			State:        "random_state",
+			Nonce:        "random_nonce",
+		},
+	}
+
 	// When.
-	allowed := isRedirectURIAllowed(client, "com.example.app://callback")
+	err := validateRequest(ctx, req, client)
 
 	// Then.
-	if !allowed {
-		t.Error("private-use URI scheme should be allowed for native apps")
+	if err != nil {
+		t.Errorf("private-use URI scheme should be allowed for native apps: %v", err)
 	}
 }
 
-func TestIsRedirectURIAllowed_InvalidURI(t *testing.T) {
+func TestValidateRequest_RedirectURI_InvalidURI(t *testing.T) {
 	// Given.
+	ctx := oidctest.NewContext(t)
 	client, _ := oidctest.NewClient(t)
 	client.ApplicationType = goidc.ApplicationTypeNative
 	client.RedirectURIs = []string{"http://127.0.0.1/callback"}
 
+	req := request{
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  "://invalid",
+			ResponseType: goidc.ResponseTypeCode,
+			ResponseMode: goidc.ResponseModeQuery,
+			Scopes:       client.ScopeIDs,
+			State:        "random_state",
+			Nonce:        "random_nonce",
+		},
+	}
+
 	// When.
-	allowed := isRedirectURIAllowed(client, "://invalid")
+	err := validateRequest(ctx, req, client)
 
 	// Then.
-	if allowed {
+	if err == nil {
 		t.Error("invalid URI should not be allowed")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("the error should be an OIDC error")
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeInvalidRequest {
+		t.Errorf("code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRequest)
 	}
 }

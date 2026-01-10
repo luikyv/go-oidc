@@ -5,7 +5,6 @@ import (
 	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -49,7 +48,7 @@ func pushedAuthnSession(ctx oidc.Context, req request, client *goidc.Client) (*g
 		return nil, err
 	}
 
-	session.PushedAuthReqID = requestURI()
+	session.PushedAuthReqID = parRequestURIPrefix + ctx.PARID()
 	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.PARLifetimeSecs
 
 	setPoPForPAR(ctx, session)
@@ -62,7 +61,7 @@ func simplePushedAuthnSession(ctx oidc.Context, req request, client *goidc.Clien
 		return nil, err
 	}
 
-	session := newAuthnSession(req.AuthorizationParameters, client)
+	session := newAuthnSession(ctx, req.AuthorizationParameters, client)
 	return session, nil
 }
 
@@ -82,12 +81,8 @@ func pushedAuthnSessionWithJAR(ctx oidc.Context, req request, client *goidc.Clie
 		return nil, err
 	}
 
-	session := newAuthnSession(jar.AuthorizationParameters, client)
+	session := newAuthnSession(ctx, jar.AuthorizationParameters, client)
 	return session, nil
-}
-
-func requestURI() string {
-	return parRequestURIPrefix + strutil.Random(parRequestURILength)
 }
 
 func setPoPForPAR(ctx oidc.Context, session *goidc.AuthnSession) {

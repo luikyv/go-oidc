@@ -22,16 +22,18 @@ type Configuration struct {
 	SignerFunc    goidc.SignerFunc
 	DecrypterFunc goidc.DecrypterFunc
 
-	HandleGrantFunc         goidc.HandleGrantFunc
-	Policies                []goidc.AuthnPolicy
-	Scopes                  []goidc.Scope
-	OpenIDIsRequired        bool
-	GrantTypes              []goidc.GrantType
-	ResponseTypes           []goidc.ResponseType
-	ResponseModes           []goidc.ResponseMode
-	AuthnSessionTimeoutSecs int
-	ACRs                    []goidc.ACR
-	DisplayValues           []goidc.DisplayValue
+	HandleGrantFunc            goidc.HandleGrantFunc
+	Policies                   []goidc.AuthnPolicy
+	Scopes                     []goidc.Scope
+	OpenIDIsRequired           bool
+	GrantTypes                 []goidc.GrantType
+	ResponseTypes              []goidc.ResponseType
+	ResponseModes              []goidc.ResponseMode
+	AuthnSessionTimeoutSecs    int
+	AuthnSessionGenerateIDFunc goidc.GenerateIDFunc
+	GrantSessionIDFunc         goidc.GenerateIDFunc
+	ACRs                       []goidc.ACR
+	DisplayValues              []goidc.DisplayValue
 	// Claims defines the user claims that can be returned in the userinfo
 	// endpoint or in ID tokens.
 	// This will be published in the /.well-known/openid-configuration endpoint.
@@ -47,9 +49,11 @@ type Configuration struct {
 	// ClaimsParamIsEnabled informs the clients whether the server accepts
 	// the "claims" parameter.
 	// This will be published in the /.well-known/openid-configuration endpoint.
-	ClaimsParamIsEnabled bool
-	RenderErrorFunc      goidc.RenderErrorFunc
-	NotifyErrorFunc      goidc.NotifyErrorFunc
+	ClaimsParamIsEnabled  bool
+	RenderErrorFunc       goidc.RenderErrorFunc
+	NotifyErrorFunc       goidc.NotifyErrorFunc
+	AuthorizationCodeFunc goidc.GenerateIDFunc
+	CallbackIDFunc        goidc.GenerateIDFunc
 
 	TokenAuthnMethods []goidc.ClientAuthnType
 	TokenEndpoint     string
@@ -89,6 +93,7 @@ type Configuration struct {
 
 	JWTLifetimeSecs   int
 	JWTLeewayTimeSecs int
+	JWTIDFunc         goidc.GenerateIDFunc
 
 	DCRIsEnabled                   bool
 	DCREndpoint                    string
@@ -144,6 +149,7 @@ type Configuration struct {
 	// PARAllowUnregisteredRedirectURI indicates whether the redirect URIs
 	// informed during PAR must be previously registered or not.
 	PARAllowUnregisteredRedirectURI bool
+	PARIDFunc                       goidc.GenerateIDFunc
 
 	CIBAIsEnabled                  bool
 	CIBAEndpoint                   string
@@ -153,6 +159,7 @@ type Configuration struct {
 	CIBAUserCodeIsEnabled          bool
 	CIBADefaultSessionLifetimeSecs int
 	CIBAPollingIntervalSecs        int
+	CIBAAuthReqIDFunc              goidc.GenerateIDFunc
 
 	CIBAJARIsEnabled  bool
 	CIBAJARIsRequired bool
@@ -209,5 +216,6 @@ type Configuration struct {
 	LogoutSessionManager        goidc.LogoutSessionManager
 	LogoutSessionTimeoutSecs    int
 	LogoutPolicies              []goidc.LogoutPolicy
+	LogoutSessionIDFunc         goidc.GenerateIDFunc
 	HandleDefaultPostLogoutFunc goidc.HandleDefaultPostLogoutFunc
 }

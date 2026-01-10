@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/dpop"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -108,10 +108,10 @@ type bindindValidationsOptions struct {
 	dpop              dpop.ValidationOptions
 }
 
-func NewGrantSession(grantInfo goidc.GrantInfo, token Token) *goidc.GrantSession {
+func NewGrantSession(ctx oidc.Context, grantInfo goidc.GrantInfo, token Token) *goidc.GrantSession {
 	timestampNow := timeutil.TimestampNow()
 	return &goidc.GrantSession{
-		ID:                          uuid.New().String(),
+		ID:                          ctx.GrantSessionID(),
 		TokenID:                     token.ID,
 		CreatedAtTimestamp:          timestampNow,
 		LastTokenExpiresAtTimestamp: timestampNow + token.LifetimeSecs,

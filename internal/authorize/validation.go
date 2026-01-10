@@ -17,8 +17,7 @@ import (
 // validateRequest validates the parameters sent in an authorization request.
 func validateRequest(ctx oidc.Context, req request, c *goidc.Client) error {
 	if c.IsFederated && c.FederationRegistrationType == goidc.ClientRegistrationTypeAutomatic {
-		return goidc.NewError(goidc.ErrorCodeAccessDenied,
-			"asymmetric cryptography must be used to authenticate requests when using automatic registration")
+		return goidc.NewError(goidc.ErrorCodeAccessDenied, "asymmetric cryptography must be used to authenticate requests when using automatic registration")
 	}
 	return validateParams(ctx, req.AuthorizationParameters, c)
 }
@@ -325,8 +324,23 @@ func validateRedirectURIAsOptional(_ oidc.Context, params goidc.AuthorizationPar
 		return nil
 	}
 
-	if !isRedirectURIAllowed(c, params.RedirectURI) {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid redirect_uri")
+	parsedURI, err := url.Parse(params.RedirectURI)
+	if err != nil {
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "could not parse the redirect_uri")
+	}
+
+	// RFC 8252: Native apps can use loopback interface on any port.
+	if host := parsedURI.Hostname(); c.ApplicationType == goidc.ApplicationTypeNative {
+		if strings.HasPrefix(parsedURI.Host, "127.") {
+			parsedURI.Host = host
+		}
+		if host == "::1" {
+			parsedURI.Host = "[::1]"
+		}
+	}
+
+	if !slices.Contains(c.RedirectURIs, parsedURI.String()) {
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "redirect_uri not allowed")
 	}
 
 	return nil
@@ -529,34 +543,6 @@ func validateIDTokenHintAsOptional(ctx oidc.Context, params goidc.AuthorizationP
 	}
 
 	return nil
-}
-
-func isRedirectURIAllowed(c *goidc.Client, redirectURI string) bool {
-	if slices.Contains(c.RedirectURIs, redirectURI) {
-		return true
-	}
-
-	// RFC 8252: Native apps can use loopback interface on any port.
-	if c.ApplicationType == goidc.ApplicationTypeNative {
-		u, err := url.Parse(redirectURI)
-		if err != nil {
-			return false
-		}
-
-		if strutil.IsLoopbackURL(u) {
-			host := u.Hostname()
-			// Strip the port for comparison, preserving brackets for IPv6
-			if strings.Contains(host, ":") {
-				host = "[" + host + "]"
-			}
-			redirectURIWithoutPort := u.Scheme + "://" + host + u.Path
-			if slices.Contains(c.RedirectURIs, redirectURIWithoutPort) {
-				return true
-			}
-		}
-	}
-
-	return false
 }
 
 func isRequestURIAllowed(c *goidc.Client, requestURI string) bool {

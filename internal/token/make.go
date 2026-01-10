@@ -2,9 +2,9 @@ package token
 
 import (
 	"fmt"
+	"maps"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/clientutil"
 	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/joseutil"
@@ -100,21 +100,12 @@ func idTokenClaims(
 		claims[goidc.ClaimAuthReqID] = hashutil.HalfHash(opts.AuthReqID, sigAlg)
 	}
 
-	for k, v := range opts.AdditionalIDTokenClaims {
-		claims[k] = v
-	}
+	maps.Copy(claims, opts.AdditionalIDTokenClaims)
 
 	return claims
 }
 
-func encryptIDToken(
-	ctx oidc.Context,
-	c *goidc.Client,
-	userInfoJWT string,
-) (
-	string,
-	error,
-) {
+func encryptIDToken(ctx oidc.Context, c *goidc.Client, userInfoJWT string) (string, error) {
 	jwk, err := clientutil.JWKByAlg(ctx, c, string(c.IDTokenKeyEncAlg))
 	if err != nil {
 		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest,
@@ -134,15 +125,8 @@ func encryptIDToken(
 	return encIDToken, nil
 }
 
-func makeJWTToken(
-	ctx oidc.Context,
-	grantInfo goidc.GrantInfo,
-	opts goidc.TokenOptions,
-) (
-	Token,
-	error,
-) {
-	jwtID := uuid.NewString()
+func makeJWTToken(ctx oidc.Context, grantInfo goidc.GrantInfo, opts goidc.TokenOptions) (Token, error) {
+	jwtID := ctx.JWTID()
 	timestampNow := timeutil.TimestampNow()
 	claims := map[string]any{
 		goidc.ClaimTokenID:  jwtID,

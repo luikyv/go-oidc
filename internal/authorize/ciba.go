@@ -59,7 +59,7 @@ func cibaAuthnSession(ctx oidc.Context, req request, client *goidc.Client) (*goi
 		return nil, err
 	}
 
-	session.CIBAAuthID = cibaAuthReqID()
+	session.CIBAAuthID = ctx.CIBAAuthReqID()
 	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.CIBADefaultSessionLifetimeSecs
 	if session.IDTokenHint != "" {
 		// The ID token hint was already validated.
@@ -88,7 +88,7 @@ func simpleCIBAAuthnSession(ctx oidc.Context, req request, client *goidc.Client)
 		return nil, err
 	}
 
-	session := newAuthnSession(req.AuthorizationParameters, client)
+	session := newAuthnSession(ctx, req.AuthorizationParameters, client)
 	return session, nil
 }
 
@@ -107,7 +107,7 @@ func cibaAuthnSessionWithJAR(ctx oidc.Context, req request, client *goidc.Client
 		return nil, err
 	}
 
-	session := newAuthnSession(jar.AuthorizationParameters, client)
+	session := newAuthnSession(ctx, jar.AuthorizationParameters, client)
 	return session, nil
 }
 
@@ -261,8 +261,4 @@ func setPoPForCIBAPushMode(ctx oidc.Context, session *goidc.AuthnSession) {
 	if ctx.MTLSTokenBindingIsEnabled && err == nil {
 		session.ClientCertThumbprint = hashutil.Thumbprint(string(clientCert.Raw))
 	}
-}
-
-func cibaAuthReqID() string {
-	return strutil.Random(cibaAuthReqIDLength)
 }

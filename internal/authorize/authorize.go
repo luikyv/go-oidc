@@ -85,7 +85,7 @@ func initAuthnSession(ctx oidc.Context, req request, client *goidc.Client) (*goi
 		session.SetIDTokenClaim(goidc.ClaimNonce, session.Nonce)
 	}
 	session.PolicyID = policy.ID
-	session.CallbackID = callbackID()
+	session.CallbackID = ctx.CallbackID()
 	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.AuthnSessionTimeoutSecs
 	if session.IDTokenHint != "" {
 		// The ID token hint was already validated.
@@ -170,7 +170,7 @@ func authnSessionWithJAR(ctx oidc.Context, req request, client *goidc.Client) (*
 		return nil, err
 	}
 
-	session := newAuthnSession(jar.AuthorizationParameters, client)
+	session := newAuthnSession(ctx, jar.AuthorizationParameters, client)
 	// For FAPI, only the parameters sent inside the JAR are considered.
 	if ctx.Profile.IsFAPI() {
 		return session, nil
@@ -186,15 +186,7 @@ func simpleAuthnSession(ctx oidc.Context, req request, client *goidc.Client) (*g
 	if err := validateRequest(ctx, req, client); err != nil {
 		return nil, err
 	}
-	return newAuthnSession(req.AuthorizationParameters, client), nil
-}
-
-func authorizationCode() string {
-	return strutil.Random(authorizationCodeLength)
-}
-
-func callbackID() string {
-	return strutil.Random(callbackIDLength)
+	return newAuthnSession(ctx, req.AuthorizationParameters, client), nil
 }
 
 func authenticate(ctx oidc.Context, session *goidc.AuthnSession) error {
@@ -284,7 +276,7 @@ func authorizeAuthnSession(ctx oidc.Context, session *goidc.AuthnSession) error 
 		return ctx.DeleteAuthnSession(session.ID)
 	}
 
-	session.AuthCode = authorizationCode()
+	session.AuthCode = ctx.AuthorizationCode()
 	session.ExpiresAtTimestamp = timeutil.TimestampNow() + authorizationCodeLifetimeSecs
 	// Make sure the session won't be reached anymore from the callback endpoint.
 	session.CallbackID = ""
@@ -300,7 +292,7 @@ func authorizeAuthnSession(ctx oidc.Context, session *goidc.AuthnSession) error 
 
 func generateImplicitGrantSession(ctx oidc.Context, grantInfo goidc.GrantInfo, accessToken token.Token) error {
 
-	grantSession := token.NewGrantSession(grantInfo, accessToken)
+	grantSession := token.NewGrantSession(ctx, grantInfo, accessToken)
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
 		return err
 	}

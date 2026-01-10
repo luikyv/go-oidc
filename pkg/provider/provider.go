@@ -20,6 +20,62 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
+type TenantProvider struct {
+	tenantFunc           func(context.Context) (*Provider, error)
+	tenantMiddlewareFunc func(context.Context) ([]goidc.MiddlewareFunc, error)
+}
+
+func NewTenant(tenantFunc func(context.Context) (*Provider, error)) (*TenantProvider, error) {
+	return &TenantProvider{
+		tenantFunc: tenantFunc,
+	}, nil
+}
+
+func (tp *TenantProvider) Issuer(ctx context.Context) (string, error) {
+	op, err := tp.Tenant(ctx)
+	if err != nil {
+		return "", err
+	}
+	return op.Issuer(), nil
+}
+
+func (tp *TenantProvider) Handler(middlewares ...goidc.MiddlewareFunc) http.Handler {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tenantProvider, err := tp.Tenant(r.Context())
+		if err != nil {
+			http.Error(w, "could not retrieve tenant provider: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		tenantMiddlewares, err := tp.TenantMiddlewares(r.Context())
+		if err != nil {
+			http.Error(w, "could not set up tenant provider: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		tenantProvider.Handler(tenantMiddlewares...).ServeHTTP(w, r)
+	})
+
+	return goidc.ApplyMiddlewares(h, middlewares...)
+}
+
+func (tp *TenantProvider) Tenant(ctx context.Context) (*Provider, error) {
+	op, err := tp.tenantFunc(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve tenant provider: %w", err)
+	}
+	return op, nil
+}
+
+func (tp *TenantProvider) TenantMiddlewares(ctx context.Context) ([]goidc.MiddlewareFunc, error) {
+	if tp.tenantMiddlewareFunc == nil {
+		return []goidc.MiddlewareFunc{}, nil
+	}
+	middlewares, err := tp.tenantMiddlewareFunc(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve tenant middlewares: %w", err)
+	}
+	return middlewares, nil
+}
+
 type Provider struct {
 	config oidc.Configuration
 }
@@ -79,12 +135,16 @@ func (op *Provider) WithOptions(opts ...Option) error {
 	return op.validate()
 }
 
+func (op *Provider) Issuer() string {
+	return op.config.Host
+}
+
 // Handler returns an HTTP handler with all the logic defined for the openid provider.
 // This may be used to add the oidc logic to a HTTP server.
 //
 //	mux := http.NewServeMux()
 //	mux.Handle("/", op.Handler())
-func (op Provider) Handler(middlewares ...goidc.MiddlewareFunc) http.Handler {
+func (op *Provider) Handler(middlewares ...goidc.MiddlewareFunc) http.Handler {
 	mux := http.NewServeMux()
 	op.RegisterRoutes(mux, middlewares...)
 	return mux
@@ -257,7 +317,7 @@ func (op *Provider) MakeToken(ctx context.Context, gi goidc.GrantInfo) (string, 
 		return "", fmt.Errorf("could not generate a token: %w", err)
 	}
 
-	grantSession := token.NewGrantSession(gi, tkn)
+	grantSession := token.NewGrantSession(oidcCtx, gi, tkn)
 	if err := oidcCtx.SaveGrantSession(grantSession); err != nil {
 		return "", fmt.Errorf("could not store the grant session: %w", err)
 	}
@@ -392,7 +452,7 @@ func (op *Provider) setDefaults() error {
 	return nil
 }
 
-func (op Provider) validate() error {
+func (op *Provider) validate() error {
 	return runValidations(op.config, validateTokenBinding)
 }
 
