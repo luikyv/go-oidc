@@ -331,12 +331,10 @@ func validateRedirectURIAsOptional(_ oidc.Context, params goidc.AuthorizationPar
 
 	// RFC 8252: Native apps can use loopback interface on any port.
 	if host := parsedURI.Hostname(); c.ApplicationType == goidc.ApplicationTypeNative {
-		if strings.HasPrefix(parsedURI.Host, "127.") {
-			parsedURI.Host = host
-		}
 		if host == "::1" {
-			parsedURI.Host = "[::1]"
+			host = "[::1]"
 		}
+		parsedURI.Host = host
 	}
 
 	if !slices.Contains(c.RedirectURIs, parsedURI.String()) {

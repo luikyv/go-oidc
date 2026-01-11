@@ -18,7 +18,6 @@ linters:
     - misspell
     - musttag
     - asciicheck       # Avoid non-ASCII characters
-    - goconst          # Find repeated strings that could be constants
     - gocritic         # General diagnostics and best practices
     - godot            # Ensure comments end in periods
     # - godox            # Highlight TODO, FIXME, etc.

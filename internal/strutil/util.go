@@ -57,8 +57,7 @@ func NormalizeURL(inputURL string) (string, error) {
 	parsedURL.Host = strings.TrimSuffix(parsedURL.Host, ":")
 
 	// Remove the port if it's the default for the scheme.
-	if (parsedURL.Scheme == "http" && parsedURL.Port() == "80") ||
-		(parsedURL.Scheme == "https" && parsedURL.Port() == "443") {
+	if (parsedURL.Scheme == "http" && parsedURL.Port() == "80") || (parsedURL.Scheme == "https" && parsedURL.Port() == "443") {
 		parsedURL.Host = parsedURL.Hostname()
 	}
 

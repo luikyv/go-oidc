@@ -122,10 +122,10 @@ At any given time, `goidc.AuthnSession` will always have an ID and exactly one o
 It holds information about the token issued and the entity who granted access.
 
 At any given time, `goidc.GrantSession` will always have an ID and a token ID for the currently active token. Additionally, it may contain the following identifiers, which serve as indexes for lookup and deletion operations:
-- Refresh Token ID - Present when the grant allows issuing a refresh token. This is a hashed representation of the token, ensuring the raw value is never stored.
+- Refresh Token - Present when the grant allows issuing a refresh token.
 - Authorization Code - Set when using the authorization_code grant type.
 
-After each refresh token request, the token ID is updated. The refresh token id is updated only if refresh token rotation is enabled.
+After each refresh token request, the token ID is updated. The refresh token is updated only if refresh token rotation is enabled.
 
 ### Authentication Policies
 

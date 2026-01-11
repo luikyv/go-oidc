@@ -93,10 +93,6 @@ func validateRedirectURIS(ctx oidc.Context, meta *goidc.ClientMeta) error {
 			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "redirect uri cannot contain a fragment")
 		}
 
-		if parsedURI.Scheme == "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "invalid redirect uri")
-		}
-
 		switch meta.ApplicationType {
 		case goidc.ApplicationTypeNative:
 			// RFC 8252: Native apps can use http loopback or private-use URI schemes.
@@ -706,13 +702,11 @@ func validateCIBATokenNotificationEndpoint(ctx oidc.Context, meta *goidc.ClientM
 func validateURL(field, s string) error {
 	parsedRU, err := url.Parse(s)
 	if err != nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-			fmt.Sprintf("could not parse %s", field))
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, fmt.Sprintf("could not parse %s", field))
 	}
 
 	if parsedRU.Scheme != "https" || parsedRU.Host == "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-			fmt.Sprintf("%s with value %s is invalid", field, s))
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, fmt.Sprintf("%s with value %s is invalid", field, s))
 	}
 
 	return nil

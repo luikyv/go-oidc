@@ -3,9 +3,7 @@
 package main
 
 import (
-	"context"
 	"crypto/tls"
-	"errors"
 	"log"
 	"net/http"
 	"time"
@@ -14,10 +12,6 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/luikyv/go-oidc/pkg/provider"
 )
-
-type CtxKey string
-
-const TenantCtxKey CtxKey = "tenant"
 
 func main() {
 	tenant1, err := provider.New(
@@ -37,6 +31,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	tenant1Handler := tenant1.Handler()
 
 	tenant2, err := provider.New(
 		goidc.ProfileOpenID,
@@ -56,24 +51,22 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	tenant2Handler := tenant2.Handler()
 
-	tenantProvider, err := provider.NewTenant(func(ctx context.Context) (*provider.Provider, error) {
-		switch ctx.Value(TenantCtxKey).(string) {
-		case "https://auth1.localhost":
-			return tenant1, nil
-		case "https://auth2.localhost":
-			return tenant2, nil
+	tenantHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Host {
+		case "auth1.localhost":
+			tenant1Handler.ServeHTTP(w, r)
+		case "auth2.localhost":
+			tenant2Handler.ServeHTTP(w, r)
 		default:
-			return nil, errors.New("invalid tenant")
+			http.Error(w, "invalid tenant", http.StatusNotFound)
 		}
 	})
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	// Set up the server.
 	mux := http.NewServeMux()
-	mux.Handle("/", TenantMiddleware(tenantProvider.Handler()))
+	mux.Handle("/", tenantHandler)
 
 	server := &http.Server{
 		Addr:              authutil.Port,
@@ -87,12 +80,4 @@ func main() {
 	if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
-}
-
-func TenantMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		ctx = context.WithValue(ctx, TenantCtxKey, "https://"+r.Host)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
 }
