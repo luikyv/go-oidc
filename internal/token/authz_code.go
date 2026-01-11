@@ -41,7 +41,7 @@ func generateAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 		return response{}, err
 	}
 
-	grantSession := NewGrantSession(grantInfo, token)
+	grantSession := NewGrantSession(ctx, grantInfo, token)
 	grantSession.AuthCode = as.AuthCode
 	var refreshTkn string
 	if ctx.ShouldIssueRefreshToken(client, grantInfo) {

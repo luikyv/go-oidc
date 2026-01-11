@@ -6,10 +6,6 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-const (
-	callbackIDLength = 30
-)
-
 type request struct {
 	ClientID string
 	goidc.LogoutParameters

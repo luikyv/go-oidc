@@ -37,6 +37,13 @@ func WithGrantSessionStorage(storage goidc.GrantSessionManager) Option {
 	}
 }
 
+func WithGrantSessionIDFunc(f goidc.GenerateIDFunc) Option {
+	return func(p *Provider) error {
+		p.config.GrantSessionIDFunc = f
+		return nil
+	}
+}
+
 // WithPathPrefix defines a shared prefix for all endpoints.
 // When using the provider http handler directly, the path prefix must be added
 // to the router.
@@ -388,6 +395,13 @@ func WithCIBALifetime(secs int) Option {
 	}
 }
 
+func WithCIBAAuthReqIDFunc(f goidc.GenerateIDFunc) Option {
+	return func(p *Provider) error {
+		p.config.CIBAAuthReqIDFunc = f
+		return nil
+	}
+}
+
 // WithOpenIDScopeRequired forces the openid scope to be informed in all
 // the authorization requests.
 func WithOpenIDScopeRequired() Option {
@@ -475,12 +489,19 @@ func WithPARRequired(handleFunc goidc.HandleSessionFunc, lifetimeSecs int) Optio
 	}
 }
 
-// WithUnregisteredRedirectURIsForPAR allows clients to inform unregistered
+// WithPARUnregisteredRedirectURIs allows clients to inform unregistered
 // redirect URIs during requests to pushed authorization endpoint.
 // To enable pushed authorization request, see [WithPAR].
-func WithUnregisteredRedirectURIsForPAR() Option {
+func WithPARUnregisteredRedirectURIs() Option {
 	return func(p *Provider) error {
 		p.config.PARAllowUnregisteredRedirectURI = true
+		return nil
+	}
+}
+
+func WithPARIDFunc(f goidc.GenerateIDFunc) Option {
+	return func(p *Provider) error {
+		p.config.PARIDFunc = f
 		return nil
 	}
 }
@@ -825,12 +846,19 @@ func WithDisplayValues(value goidc.DisplayValue, values ...goidc.DisplayValue) O
 	}
 }
 
-// WithAuthenticationSessionTimeout sets the user authentication session lifetime.
+// WithAuthnSessionTimeout sets the user authentication session lifetime.
 // This defines how long an authorization request may last.
 // The default is [defaultAuthnSessionTimeoutSecs].
-func WithAuthenticationSessionTimeout(secs int) Option {
+func WithAuthnSessionTimeout(secs int) Option {
 	return func(p *Provider) error {
 		p.config.AuthnSessionTimeoutSecs = secs
+		return nil
+	}
+}
+
+func WithAuthnSessionIDFunc(f goidc.GenerateIDFunc) Option {
+	return func(p *Provider) error {
+		p.config.AuthnSessionGenerateIDFunc = f
 		return nil
 	}
 }
@@ -1055,6 +1083,34 @@ func WithLogoutSessionTimeoutSecs(secs int) Option {
 func WithLogoutEndpoint(endpoint string) Option {
 	return func(p *Provider) error {
 		p.config.LogoutEndpoint = endpoint
+		return nil
+	}
+}
+
+func WithLogoutSessionIDFunc(f goidc.GenerateIDFunc) Option {
+	return func(p *Provider) error {
+		p.config.LogoutSessionIDFunc = f
+		return nil
+	}
+}
+
+func WithJWTIDFunc(f goidc.GenerateIDFunc) Option {
+	return func(p *Provider) error {
+		p.config.JWTIDFunc = f
+		return nil
+	}
+}
+
+func WithAuthorizationCodeFunc(f goidc.GenerateIDFunc) Option {
+	return func(p *Provider) error {
+		p.config.AuthorizationCodeFunc = f
+		return nil
+	}
+}
+
+func WithCallbackIDFunc(f goidc.GenerateIDFunc) Option {
+	return func(p *Provider) error {
+		p.config.CallbackIDFunc = f
 		return nil
 	}
 }

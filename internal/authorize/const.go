@@ -1,11 +1,7 @@
 package authorize
 
 const (
-	callbackIDLength              int    = 30
 	parRequestURIPrefix           string = "urn:ietf:params:oauth:request_uri:"
-	parRequestURILength           int    = 30
-	cibaAuthReqIDLength           int    = 50
-	authorizationCodeLength       int    = 30
 	authorizationCodeLifetimeSecs int    = 60 // TODO: Make it a config.
 	// formPostResponseTemplate is a HTML document intended to be used as the
 	// response mode "form_post".

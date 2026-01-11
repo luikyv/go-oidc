@@ -48,7 +48,7 @@ func generateClientCredentialsGrant(ctx oidc.Context, req request) (response, er
 
 func generateClientCredentialsGrantSession(ctx oidc.Context, grantInfo goidc.GrantInfo, token Token) (*goidc.GrantSession, error) {
 
-	grantSession := NewGrantSession(grantInfo, token)
+	grantSession := NewGrantSession(ctx, grantInfo, token)
 	if err := ctx.SaveGrantSession(grantSession); err != nil {
 		return nil, err
 	}

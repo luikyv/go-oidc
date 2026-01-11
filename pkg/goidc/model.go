@@ -808,3 +808,5 @@ func (steps logoutSteps) Logout(w http.ResponseWriter, r *http.Request, ls *Logo
 
 	return StatusFailure, errors.New("invalid policy, access denied")
 }
+
+type GenerateIDFunc func(context.Context) string

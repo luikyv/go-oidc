@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/google/uuid"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -225,11 +225,11 @@ type cibaResponse struct {
 }
 
 // TODO: Should ask the expiry?
-func newAuthnSession(authParams goidc.AuthorizationParameters, client *goidc.Client) *goidc.AuthnSession {
+func newAuthnSession(ctx oidc.Context, params goidc.AuthorizationParameters, client *goidc.Client) *goidc.AuthnSession {
 	return &goidc.AuthnSession{
-		ID:                       uuid.NewString(),
+		ID:                       ctx.AuthnSessionID(),
 		ClientID:                 client.ID,
-		AuthorizationParameters:  authParams,
+		AuthorizationParameters:  params,
 		CreatedAtTimestamp:       timeutil.TimestampNow(),
 		Storage:                  make(map[string]any),
 		AdditionalTokenClaims:    make(map[string]any),

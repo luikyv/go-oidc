@@ -35,7 +35,7 @@ func Random(length int) string {
 	result := strings.Builder{}
 	charsetLength := big.NewInt(int64(len(charset)))
 
-	for i := 0; i < length; i++ {
+	for range length {
 		n, err := rand.Int(rand.Reader, charsetLength)
 		if err != nil {
 			panic(err)
@@ -56,13 +56,12 @@ func NormalizeURL(inputURL string) (string, error) {
 	parsedURL.Host = strings.ToLower(parsedURL.Host)
 	parsedURL.Host = strings.TrimSuffix(parsedURL.Host, ":")
 
-	// Remove the port if it's the default for the scheme
-	if (parsedURL.Scheme == "http" && parsedURL.Port() == "80") ||
-		(parsedURL.Scheme == "https" && parsedURL.Port() == "443") {
+	// Remove the port if it's the default for the scheme.
+	if (parsedURL.Scheme == "http" && parsedURL.Port() == "80") || (parsedURL.Scheme == "https" && parsedURL.Port() == "443") {
 		parsedURL.Host = parsedURL.Hostname()
 	}
 
-	// Remove the trailing slash if present in the path
+	// Remove the trailing slash if present in the path.
 	parsedURL.Path = strings.TrimSuffix(parsedURL.Path, "/")
 
 	// Remove query and fragment
@@ -79,17 +78,6 @@ func IsURL(str string) bool {
 	}
 
 	return parsedURL.Scheme != "" && parsedURL.Host != ""
-}
-
-// IsLoopbackURL checks if the URL uses a loopback address.
-func IsLoopbackURL(u *url.URL) bool {
-	host := u.Hostname()
-	return u.Scheme == "http" && (strings.HasPrefix(host, "127.") || host == "::1")
-}
-
-// IsPrivateUseScheme checks for reverse domain name URI schemes (e.g., com.example.app).
-func IsPrivateUseScheme(u *url.URL) bool {
-	return strings.Contains(u.Scheme, ".")
 }
 
 func URLWithQueryParams(redirectURI string, params map[string]string) string {

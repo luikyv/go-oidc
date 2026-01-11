@@ -847,7 +847,7 @@ func TestWithUnregisteredRedirectURIsForPAR(t *testing.T) {
 	}
 
 	// When.
-	err := WithUnregisteredRedirectURIsForPAR()(p)
+	err := WithPARUnregisteredRedirectURIs()(p)
 
 	// Then.
 	if err != nil {
@@ -1692,7 +1692,7 @@ func TestWithAuthenticationSessionTimeout(t *testing.T) {
 	}
 
 	// When.
-	err := WithAuthenticationSessionTimeout(10)(p)
+	err := WithAuthnSessionTimeout(10)(p)
 
 	// Then.
 	if err != nil {

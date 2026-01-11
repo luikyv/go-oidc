@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
@@ -192,9 +191,9 @@ func validateIDTokenHint(ctx oidc.Context, req request, _ *goidc.Client) error {
 
 func initLogoutSession(ctx oidc.Context, req request, c *goidc.Client) (*goidc.LogoutSession, error) {
 	session := &goidc.LogoutSession{
-		ID:                 uuid.NewString(),
+		ID:                 ctx.LogoutSessionID(),
 		ClientID:           c.ID,
-		CallbackID:         callbackID(),
+		CallbackID:         ctx.CallbackID(),
 		ExpiresAtTimestamp: timeutil.TimestampNow() + ctx.LogoutSessionTimeoutSecs,
 		CreatedAtTimestamp: timeutil.TimestampNow(),
 		LogoutParameters:   req.LogoutParameters,
@@ -213,8 +212,4 @@ func initLogoutSession(ctx oidc.Context, req request, c *goidc.Client) (*goidc.L
 	}
 	return session, nil
 
-}
-
-func callbackID() string {
-	return strutil.Random(callbackIDLength)
 }

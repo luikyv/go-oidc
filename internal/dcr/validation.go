@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strings"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
@@ -53,14 +54,7 @@ func validate(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	)
 }
 
-func runValidations(
-	ctx oidc.Context,
-	meta *goidc.ClientMeta,
-	validations ...func(
-		ctx oidc.Context,
-		meta *goidc.ClientMeta,
-	) error,
-) error {
+func runValidations(ctx oidc.Context, meta *goidc.ClientMeta, validations ...func(ctx oidc.Context, meta *goidc.ClientMeta) error) error {
 	for _, validation := range validations {
 		if err := validation(ctx, meta); err != nil {
 			return err
@@ -81,36 +75,47 @@ func validateGrantTypes(ctx oidc.Context, meta *goidc.ClientMeta) error {
 }
 
 func validateClientCredentialsGrantType(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	if slices.Contains(meta.GrantTypes, goidc.GrantClientCredentials) &&
-		meta.TokenAuthnMethod == goidc.ClientAuthnNone {
-		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-			"client_credentials grant type not allowed for a client with no authentication")
+	if slices.Contains(meta.GrantTypes, goidc.GrantClientCredentials) && meta.TokenAuthnMethod == goidc.ClientAuthnNone {
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "client_credentials grant type not allowed for a client with no authentication")
 	}
 
 	return nil
 }
 
 func validateRedirectURIS(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	for _, ru := range meta.RedirectURIs {
-		parsedRU, err := url.Parse(ru)
-		if err != nil || parsedRU.Fragment != "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-				fmt.Sprintf("invalid redirect uri %s", ru))
+	for _, uri := range meta.RedirectURIs {
+		parsedURI, err := url.Parse(uri)
+		if err != nil {
+			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "invalid redirect uri")
 		}
 
-		// RFC 8252: Native apps can use http loopback or private-use URI schemes.
-		if meta.ApplicationType == goidc.ApplicationTypeNative {
-			if strutil.IsLoopbackURL(parsedRU) || strutil.IsPrivateUseScheme(parsedRU) {
-				continue
+		if parsedURI.Fragment != "" {
+			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "redirect uri cannot contain a fragment")
+		}
+
+		switch meta.ApplicationType {
+		case goidc.ApplicationTypeNative:
+			// RFC 8252: Native apps can use http loopback or private-use URI schemes.
+			switch parsedURI.Scheme {
+			case "http": // Loopback interface redirection.
+				if !strings.HasPrefix(parsedURI.Host, "127.") && parsedURI.Hostname() != "::1" {
+					return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "http redirect uris for native apps must use loopback addresses")
+				}
+			case "https": // Claimed HTTPS URI Redirection.
+				if strings.HasPrefix(parsedURI.Host, "127.") || parsedURI.Hostname() == "::1" {
+					return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "https redirect uris for native apps must not use loopback addresses")
+				}
+			default: // Private-use URI Scheme Redirection.
+				if !strings.Contains(parsedURI.Scheme, ".") {
+					return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "custom uri schemes must use reverse domain name based scheme")
+				}
+			}
+		default: // Default as web application type.
+			if parsedURI.Scheme != "https" {
+				return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "invalid redirect uri scheme")
 			}
 		}
-
-		if parsedRU.Scheme != "https" || parsedRU.Host == "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-				fmt.Sprintf("invalid redirect uri %s", ru))
-		}
 	}
-
 	return nil
 }
 
@@ -697,13 +702,11 @@ func validateCIBATokenNotificationEndpoint(ctx oidc.Context, meta *goidc.ClientM
 func validateURL(field, s string) error {
 	parsedRU, err := url.Parse(s)
 	if err != nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-			fmt.Sprintf("could not parse %s", field))
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, fmt.Sprintf("could not parse %s", field))
 	}
 
 	if parsedRU.Scheme != "https" || parsedRU.Host == "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-			fmt.Sprintf("%s with value %s is invalid", field, s))
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, fmt.Sprintf("%s with value %s is invalid", field, s))
 	}
 
 	return nil

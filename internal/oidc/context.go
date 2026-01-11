@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -246,6 +247,70 @@ func (ctx Context) HandleDefaultPostLogout(session *goidc.LogoutSession) error {
 	}
 
 	return ctx.HandleDefaultPostLogoutFunc(ctx.Response, ctx.Request, session)
+}
+
+func (ctx Context) LogoutSessionID() string {
+	if ctx.LogoutSessionIDFunc == nil {
+		return uuid.NewString()
+	}
+
+	return ctx.LogoutSessionIDFunc(ctx.Context())
+}
+
+func (ctx Context) AuthnSessionID() string {
+	if ctx.AuthnSessionGenerateIDFunc == nil {
+		return uuid.NewString()
+	}
+
+	return ctx.AuthnSessionGenerateIDFunc(ctx.Context())
+}
+
+func (ctx Context) GrantSessionID() string {
+	if ctx.GrantSessionIDFunc == nil {
+		return uuid.NewString()
+	}
+
+	return ctx.GrantSessionIDFunc(ctx.Context())
+}
+
+func (ctx Context) JWTID() string {
+	if ctx.JWTIDFunc == nil {
+		return uuid.NewString()
+	}
+
+	return ctx.JWTIDFunc(ctx.Context())
+}
+
+func (ctx Context) AuthorizationCode() string {
+	if ctx.AuthorizationCodeFunc == nil {
+		return strutil.Random(30)
+	}
+
+	return ctx.AuthorizationCodeFunc(ctx.Context())
+}
+
+func (ctx Context) CallbackID() string {
+	if ctx.CallbackIDFunc == nil {
+		return strutil.Random(30)
+	}
+
+	return ctx.CallbackIDFunc(ctx.Context())
+}
+
+func (ctx Context) CIBAAuthReqID() string {
+	if ctx.CIBAAuthReqIDFunc == nil {
+		return strutil.Random(50)
+	}
+
+	return ctx.CIBAAuthReqIDFunc(ctx.Context())
+}
+
+func (ctx Context) PARID() string {
+	if ctx.PARIDFunc == nil {
+		return strutil.Random(30)
+	}
+
+	return ctx.PARIDFunc(ctx.Context())
 }
 
 //---------------------------------------- CRUD ----------------------------------------//

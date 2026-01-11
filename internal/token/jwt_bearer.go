@@ -127,7 +127,7 @@ func generateJWTBearerGrantSession(
 	error,
 ) {
 
-	grantSession := NewGrantSession(grantInfo, token)
+	grantSession := NewGrantSession(ctx, grantInfo, token)
 	var refreshTkn string
 	if ctx.ShouldIssueRefreshToken(client, grantInfo) {
 		refreshTkn = newRefreshToken()
