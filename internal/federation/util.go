@@ -69,7 +69,7 @@ func buildTrustChain(ctx oidc.Context, id string) (trustChain, error) {
 		return nil, err
 	}
 
-	chain, err := buildTrustChainFromConfig(ctx, entityConfig)
+	chain, err := buildTrustChainFromConfig(ctx, entityConfig, map[string]struct{}{})
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func buildTrustChain(ctx oidc.Context, id string) (trustChain, error) {
 	return append([]entityStatement{entityConfig}, chain...), nil
 }
 
-func buildTrustChainFromConfig(ctx oidc.Context, entityConfig entityStatement) (trustChain, error) {
+func buildTrustChainFromConfig(ctx oidc.Context, entityConfig entityStatement, entityMap map[string]struct{}) (trustChain, error) {
 	if entityConfig.AuthorityHints == nil {
 		return nil, fmt.Errorf("could not build trust chain for entity %s with no authority hints", entityConfig.Subject)
 	}
@@ -85,12 +85,17 @@ func buildTrustChainFromConfig(ctx oidc.Context, entityConfig entityStatement) (
 	var errs error
 	for _, authorityID := range entityConfig.AuthorityHints {
 
+		if _, exists := entityMap[authorityID]; exists {
+			return nil, ErrCircularDependency
+		}
+		entityMap[authorityID] = struct{}{}
+
 		authorityConfig, err := fetchAuthorityConfiguration(ctx, authorityID)
 		if err != nil {
 			return nil, err
 		}
 
-		chain, err := buildTrustChainBranch(ctx, entityConfig, authorityConfig)
+		chain, err := buildTrustChainBranch(ctx, entityConfig, authorityConfig, entityMap)
 		if err == nil {
 			return chain, nil
 		}
@@ -100,7 +105,7 @@ func buildTrustChainFromConfig(ctx oidc.Context, entityConfig entityStatement) (
 	return nil, fmt.Errorf("could not build trust chain for entity %s: %w", entityConfig.Subject, errs)
 }
 
-func buildTrustChainBranch(ctx oidc.Context, entityConfig entityStatement, authorityConfig entityStatement) (trustChain, error) {
+func buildTrustChainBranch(ctx oidc.Context, entityConfig entityStatement, authorityConfig entityStatement, entityMap map[string]struct{}) (trustChain, error) {
 	subordinateStatement, err := fetchSubordinateStatement(ctx, entityConfig.Subject, authorityConfig)
 	if err != nil {
 		return nil, err
@@ -115,7 +120,7 @@ func buildTrustChainBranch(ctx oidc.Context, entityConfig entityStatement, autho
 		return []entityStatement{subordinateStatement, authorityConfig}, nil
 	}
 
-	chain, err := buildTrustChainFromConfig(ctx, authorityConfig)
+	chain, err := buildTrustChainFromConfig(ctx, authorityConfig, entityMap)
 	if err != nil {
 		return nil, err
 	}
@@ -336,7 +341,6 @@ func validateTrustMark(ctx oidc.Context, config entityStatement, requiredTrustMa
 		return fmt.Errorf("could not resolve the trust chain for trust mark issuer %s: %w", mark.Issuer, err)
 	}
 
-	// var mark trustMark
 	var claims jwt.Claims
 	if err := parsedTrustMark.Claims(trustMarkIssuer.JWKS.ToJOSE(), &claims); err != nil {
 		return fmt.Errorf("invalid trust mark signature: %w", err)
