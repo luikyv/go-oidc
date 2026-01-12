@@ -7,6 +7,7 @@ import (
 	"crypto/rsa"
 	"errors"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"testing"
@@ -19,10 +20,11 @@ import (
 )
 
 const (
-	clientID               string = "https://client.testfed.com"
-	trustAnchorID          string = "https://trust-anchor.testfed.com"
-	trustMarkIssuerID      string = "https://trust-mark-issuer.testfed.com"
-	trustMarkCertification string = trustMarkIssuerID + "/certification"
+	clientID                string = "https://client.testfed.com"
+	intermediaryAuthorityID string = "https://intermediary-authority.testfed.com"
+	trustAnchorID           string = "https://trust-anchor.testfed.com"
+	trustMarkIssuerID       string = "https://trust-mark-issuer.testfed.com"
+	trustMarkCertification  string = trustMarkIssuerID + "/certification"
 )
 
 var (
@@ -30,6 +32,13 @@ var (
 	clientJWK    = goidc.JSONWebKey{
 		KeyID:     "client_key",
 		Key:       clientKey,
+		Algorithm: "RS256",
+	}
+
+	intermediaryAuthorityKey, _ = rsa.GenerateKey(rand.Reader, 2048)
+	intermediaryAuthorityJWK    = goidc.JSONWebKey{
+		KeyID:     "intermediary_authority_key",
+		Key:       intermediaryAuthorityKey,
 		Algorithm: "RS256",
 	}
 
@@ -194,10 +203,10 @@ func TestClient_InvalidTrustMarkID(t *testing.T) {
 func TestClient_InvalidMetadataPolicy(t *testing.T) {
 	// Given.
 	responses := map[string]func() *http.Response{
-		trustAnchorID + "/fetch?sub=" + url.QueryEscape(clientID): func() *http.Response {
+		intermediaryAuthorityID + "/fetch?sub=" + url.QueryEscape(clientID): func() *http.Response {
 			opts := (&jose.SignerOptions{}).WithType(entityStatementJWTType)
 			st := oidctest.SignWithOptions(t, map[string]any{
-				"iss": trustAnchorID,
+				"iss": intermediaryAuthorityID,
 				"sub": clientID,
 				"iat": timeutil.TimestampNow(),
 				"exp": timeutil.TimestampNow() + 600,
@@ -211,7 +220,7 @@ func TestClient_InvalidMetadataPolicy(t *testing.T) {
 						},
 					},
 				},
-			}, trustAnchorJWK, opts)
+			}, intermediaryAuthorityJWK, opts)
 			return &http.Response{
 				StatusCode: 200,
 				Header: http.Header{
@@ -232,6 +241,48 @@ func TestClient_InvalidMetadataPolicy(t *testing.T) {
 	}
 }
 
+func TestClient_CircularDependency(t *testing.T) {
+	// Given.
+	intermediaryAuthorityID := "https://intermediary-authority.testfed.com"
+	responses := map[string]func() *http.Response{
+		intermediaryAuthorityID + "/.well-known/openid-federation": func() *http.Response {
+			st := oidctest.SignWithOptions(t, map[string]any{
+				"iss": intermediaryAuthorityID,
+				"sub": intermediaryAuthorityID,
+				"iat": timeutil.TimestampNow(),
+				"exp": timeutil.TimestampNow() + 600,
+				"jwks": jose.JSONWebKeySet{
+					Keys: []jose.JSONWebKey{intermediaryAuthorityJWK.Public()},
+				},
+				"metadata": map[string]any{
+					"federation_entity": map[string]any{
+						"federation_fetch_endpoint": intermediaryAuthorityID + "/fetch",
+					},
+				},
+				"authority_hints": []string{intermediaryAuthorityID},
+			}, intermediaryAuthorityJWK, (&jose.SignerOptions{}).WithType(entityStatementJWTType))
+			return &http.Response{
+				StatusCode: 200,
+				Header:     http.Header{"Content-Type": []string{entityStatementJWTContentType}},
+				Body:       io.NopCloser(bytes.NewBufferString(st)),
+			}
+		},
+	}
+	ctx := setUp(t, responses)
+
+	// When.
+	_, err := Client(ctx, clientID)
+
+	// Then.
+	if err == nil {
+		t.Fatal("error is expected")
+	}
+
+	if !errors.Is(err, ErrCircularDependency) {
+		t.Fatalf("error due to circular dependency is expected, got %v", err)
+	}
+}
+
 func setUp(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Context {
 	t.Helper()
 
@@ -248,7 +299,7 @@ func setUp(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Co
 				"metadata": map[string]any{
 					"openid_relying_party": map[string]any{},
 				},
-				"authority_hints": []string{trustAnchorID},
+				"authority_hints": []string{intermediaryAuthorityID},
 				"trust_marks": []any{
 					map[string]any{
 						"id": trustMarkCertification,
@@ -261,6 +312,52 @@ func setUp(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Co
 					},
 				},
 			}, clientJWK, (&jose.SignerOptions{}).WithType(entityStatementJWTType))
+			return &http.Response{
+				StatusCode: 200,
+				Header: http.Header{
+					"Content-Type": []string{entityStatementJWTContentType},
+				},
+				Body: io.NopCloser(bytes.NewBufferString(st)),
+			}
+		},
+
+		intermediaryAuthorityID + "/.well-known/openid-federation": func() *http.Response {
+			opts := (&jose.SignerOptions{}).WithType(entityStatementJWTType)
+			st := oidctest.SignWithOptions(t, map[string]any{
+				"iss": intermediaryAuthorityID,
+				"sub": intermediaryAuthorityID,
+				"iat": timeutil.TimestampNow(),
+				"exp": timeutil.TimestampNow() + 600,
+				"jwks": jose.JSONWebKeySet{
+					Keys: []jose.JSONWebKey{intermediaryAuthorityJWK.Public()},
+				},
+				"metadata": map[string]any{
+					"federation_entity": map[string]any{
+						"federation_fetch_endpoint": intermediaryAuthorityID + "/fetch",
+					},
+				},
+				"authority_hints": []string{trustAnchorID},
+			}, intermediaryAuthorityJWK, opts)
+			return &http.Response{
+				StatusCode: 200,
+				Header: http.Header{
+					"Content-Type": []string{entityStatementJWTContentType},
+				},
+				Body: io.NopCloser(bytes.NewBufferString(st)),
+			}
+		},
+
+		intermediaryAuthorityID + "/fetch?sub=" + url.QueryEscape(clientID): func() *http.Response {
+			opts := (&jose.SignerOptions{}).WithType(entityStatementJWTType)
+			st := oidctest.SignWithOptions(t, map[string]any{
+				"iss": intermediaryAuthorityID,
+				"sub": clientID,
+				"iat": timeutil.TimestampNow(),
+				"exp": timeutil.TimestampNow() + 600,
+				"jwks": jose.JSONWebKeySet{
+					Keys: []jose.JSONWebKey{clientJWK.Public()},
+				},
+			}, intermediaryAuthorityJWK, opts)
 			return &http.Response{
 				StatusCode: 200,
 				Header: http.Header{
@@ -322,15 +419,15 @@ func setUp(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Co
 			}
 		},
 
-		trustAnchorID + "/fetch?sub=" + url.QueryEscape(clientID): func() *http.Response {
+		trustAnchorID + "/fetch?sub=" + url.QueryEscape(intermediaryAuthorityID): func() *http.Response {
 			opts := (&jose.SignerOptions{}).WithType(entityStatementJWTType)
 			st := oidctest.SignWithOptions(t, map[string]any{
 				"iss": trustAnchorID,
-				"sub": clientID,
+				"sub": intermediaryAuthorityID,
 				"iat": timeutil.TimestampNow(),
 				"exp": timeutil.TimestampNow() + 600,
 				"jwks": jose.JSONWebKeySet{
-					Keys: []jose.JSONWebKey{clientJWK.Public()},
+					Keys: []jose.JSONWebKey{intermediaryAuthorityJWK.Public()},
 				},
 			}, trustAnchorJWK, opts)
 			return &http.Response{
@@ -363,9 +460,7 @@ func setUp(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Co
 		},
 	}
 
-	for key, value := range overrideResps {
-		responses[key] = value
-	}
+	maps.Copy(responses, overrideResps)
 
 	ctx := oidctest.NewContext(t)
 	ctx.OpenIDFedIsEnabled = true
@@ -399,5 +494,4 @@ func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 		return f(), nil
 	}
 	return nil, errors.ErrUnsupported
-
 }
