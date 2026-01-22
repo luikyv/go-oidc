@@ -1012,16 +1012,37 @@ func WithErrorURI(uri string) Option {
 	}
 }
 
-func WithOpenIDFederation(jwks goidc.JWKSFunc, trustedAuthorities, authorityHints []string) Option {
+// WithOpenIDFederation enables OpenID Federation support, allowing the provider
+// to participate in a trust federation where trust relationships are established
+// through signed entity statements rather than pre-configured client registrations.
+//
+// Parameters:
+//   - jwksFunc: A function that returns the provider's Federation JWKS, used to sign
+//     the provider's entity configuration. This JWKS is separate from the provider's
+//     regular signing keys. See [WithSignerFunc] if the private keys are not available.
+//   - trustedAuthorities: A list of trust anchor entity IDs (URLs) that the provider
+//     accepts when resolving trust chains for federated clients.
+//   - authorityHints: A list of intermediate authority or trust anchor entity IDs
+//     that can attest this provider's entity configuration. These hints help relying
+//     parties discover a valid trust chain to the provider.
+//
+// Defaults:
+//   - Client registration type: [goidc.ClientRegistrationTypeAutomatic] (see [WithOpenIDFerationClientRegistrationTypes])
+//   - Entity configuration endpoint: [defaultEndpointOpenIDFederation] (see [WithOpenIDFerationRegistrationEndpoint])
+//   - Signature algorithm: [defaultOpenIDFedSigAlg] (see [WithOpenIDFederationSignatureAlgs])
+//   - Trust chain max depth: [defaultOpenIDFedTrustChainMaxDepth] (see [WithOpenIDFederationTrustChainMaxDepth])
+func WithOpenIDFederation(jwksFunc goidc.JWKSFunc, trustedAuthorities, authorityHints []string) Option {
 	return func(p *Provider) error {
 		p.config.OpenIDFedIsEnabled = true
-		p.config.OpenIDFedJWKSFunc = jwks
+		p.config.OpenIDFedJWKSFunc = jwksFunc
 		p.config.OpenIDFedTrustedAuthorities = trustedAuthorities
 		p.config.OpenIDFedAuthorityHints = authorityHints
 		return nil
 	}
 }
 
+// WithOpenIDFederationSignatureAlgs sets the signature algorithms accepted to parse entity statements and trust marks.
+// For more information, see [WithOpenIDFederation].
 func WithOpenIDFederationSignatureAlgs(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) Option {
 	algs = appendIfNotIn(algs, alg)
 	return func(p *Provider) error {
@@ -1030,6 +1051,8 @@ func WithOpenIDFederationSignatureAlgs(alg goidc.SignatureAlgorithm, algs ...goi
 	}
 }
 
+// WithOpenIDFerationSignerFunc sets a custom signing function for signing the provider's entity configuration.
+// For more information, see [WithOpenIDFederation].
 func WithOpenIDFerationSignerFunc(f goidc.SignerFunc) Option {
 	return func(p *Provider) error {
 		p.config.OpenIDFedSignerFunc = f
@@ -1037,9 +1060,39 @@ func WithOpenIDFerationSignerFunc(f goidc.SignerFunc) Option {
 	}
 }
 
+// WithOpenIDFerationRequiredTrustMarksFunc sets a custom function to determine the required trust marks for the OpenID Federation.
+// For more information, see [WithOpenIDFederation].
 func WithOpenIDFerationRequiredTrustMarksFunc(f goidc.RequiredTrustMarksFunc) Option {
 	return func(p *Provider) error {
 		p.config.OpenIDFedRequiredTrustMarksFunc = f
+		return nil
+	}
+}
+
+// WithOpenIDFerationClientRegistrationTypes sets the client registration types available for the OpenID Federation.
+// For more information, see [WithOpenIDFederation].
+func WithOpenIDFerationClientRegistrationTypes(typ goidc.ClientRegistrationType, types ...goidc.ClientRegistrationType) Option {
+	types = appendIfNotIn(types, typ)
+	return func(p *Provider) error {
+		p.config.OpenIDFedClientRegTypes = types
+		return nil
+	}
+}
+
+// WithOpenIDFerationRegistrationEndpoint sets the registration endpoint for the OpenID Federation.
+// For more information, see [WithOpenIDFederation].
+func WithOpenIDFerationRegistrationEndpoint(endpoint string) Option {
+	return func(p *Provider) error {
+		p.config.OpenIDFedRegistrationEndpoint = endpoint
+		return nil
+	}
+}
+
+// WithOpenIDFederationTrustChainMaxDepth sets the maximum depth of the trust chain for the OpenID Federation.
+// For more information, see [WithOpenIDFederation].
+func WithOpenIDFederationTrustChainMaxDepth(depth int) Option {
+	return func(p *Provider) error {
+		p.config.OpenIDFedTrustChainMaxDepth = depth
 		return nil
 	}
 }

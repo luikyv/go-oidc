@@ -1,8 +1,13 @@
 package goidc
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
+)
+
+var (
+	ErrClientNotFound = errors.New("client not found")
 )
 
 type ErrorCode string

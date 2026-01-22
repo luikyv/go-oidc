@@ -23,18 +23,19 @@ const (
 	defaultOpenIDFedTrustChainMaxDepth = 5
 	defaultOpenIDFedRegType            = goidc.ClientRegistrationTypeAutomatic
 
-	defaultEndpointWellKnown                  = "/.well-known/openid-configuration"
-	defaultEndpointJSONWebKeySet              = "/jwks"
-	defaultEndpointPushedAuthorizationRequest = "/par"
-	defaultEndpointAuthorize                  = "/authorize"
-	defaultEndpointToken                      = "/token"
-	defaultEndpointUserInfo                   = "/userinfo"
-	defaultEndpointDynamicClient              = "/register"
-	defaultEndpointTokenIntrospection         = "/introspect"
-	defaultEndpointTokenRevocation            = "/revoke"
-	defaultEndpointCIBA                       = "/bc-authorize"
-	defaultEndpointOpenIDFederation           = "/.well-known/openid-federation"
-	defaultEndpointEndSession                 = "/logout"
+	defaultEndpointWellKnown                    = "/.well-known/openid-configuration"
+	defaultEndpointJSONWebKeySet                = "/jwks"
+	defaultEndpointPushedAuthorizationRequest   = "/par"
+	defaultEndpointAuthorize                    = "/authorize"
+	defaultEndpointToken                        = "/token"
+	defaultEndpointUserInfo                     = "/userinfo"
+	defaultEndpointDynamicClient                = "/register"
+	defaultEndpointTokenIntrospection           = "/introspect"
+	defaultEndpointTokenRevocation              = "/revoke"
+	defaultEndpointCIBA                         = "/bc-authorize"
+	defaultEndpointOpenIDFederation             = "/.well-known/openid-federation"
+	defaultEndpointOpenIDFederationRegistration = "/federation/register"
+	defaultEndpointEndSession                   = "/logout"
 )
 
 func defaultTokenOptionsFunc() goidc.TokenOptionsFunc {

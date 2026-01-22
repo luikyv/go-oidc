@@ -32,6 +32,7 @@ type Client struct {
 	ExpiresAtTimestamp int    `json:"expires_at,omitempty"`
 
 	IsFederated                bool                   `json:"is_federated"`
+	TrustAnchor                string                 `json:"trust_anchor"`
 	FederationRegistrationType ClientRegistrationType `json:"federation_registration_type,omitempty"`
 	FederationTrustMarkIDs     []string               `json:"federation_trust_mark_ids,omitempty"`
 	ClientMeta

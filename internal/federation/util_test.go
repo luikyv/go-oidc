@@ -55,14 +55,21 @@ var (
 		Key:       trustMarkIssuerKey,
 		Algorithm: "RS256",
 	}
+
+	opKey, _ = rsa.GenerateKey(rand.Reader, 2048)
+	opJWK    = goidc.JSONWebKey{
+		KeyID:     "op_key",
+		Key:       opKey,
+		Algorithm: "RS256",
+	}
 )
 
-func TestClient(t *testing.T) {
+func TestRegisterClient(t *testing.T) {
 	// Given.
 	ctx := setUp(t, nil)
 
 	// When.
-	client, err := Client(ctx, clientID)
+	client, err := RegisterClient(ctx, clientID, ctx.OpenIDFedAuthorityHints)
 
 	// Then.
 	if err != nil {
@@ -78,15 +85,15 @@ func TestClient(t *testing.T) {
 	}
 }
 
-func TestClient_TrustMark(t *testing.T) {
+func TestRegisterClient_TrustMark(t *testing.T) {
 	// Given.
 	ctx := setUp(t, nil)
-	ctx.OpenIDFedRequiredTrustMarksFunc = func(ctx context.Context) []string {
+	ctx.OpenIDFedRequiredTrustMarksFunc = func(ctx context.Context, _ *goidc.Client) []string {
 		return []string{trustMarkCertification}
 	}
 
 	// When.
-	client, err := Client(ctx, clientID)
+	client, err := RegisterClient(ctx, clientID, ctx.OpenIDFedAuthorityHints)
 
 	// Then.
 	if err != nil {
@@ -98,7 +105,7 @@ func TestClient_TrustMark(t *testing.T) {
 	}
 }
 
-func TestClient_InvalidTrustMarkSignature(t *testing.T) {
+func TestRegisterClient_InvalidTrustMarkSignature(t *testing.T) {
 	// Given.
 	responses := map[string]func() *http.Response{
 		clientID + "/.well-known/openid-federation": func() *http.Response {
@@ -122,26 +129,26 @@ func TestClient_InvalidTrustMarkSignature(t *testing.T) {
 							"iss":           trustMarkIssuerID,
 							"sub":           clientID,
 							"iat":           timeutil.TimestampNow(),
-						}, clientJWK, (&jose.SignerOptions{}).WithType(trustMarkJWTType)),
+						}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeTrustMark)),
 					},
 				},
-			}, clientJWK, (&jose.SignerOptions{}).WithType(entityStatementJWTType))
+			}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
 			return &http.Response{
 				StatusCode: 200,
 				Header: http.Header{
-					"Content-Type": []string{entityStatementJWTContentType},
+					"Content-Type": []string{contentTypeEntityStatementJWT},
 				},
 				Body: io.NopCloser(bytes.NewBufferString(st)),
 			}
 		},
 	}
 	ctx := setUp(t, responses)
-	ctx.OpenIDFedRequiredTrustMarksFunc = func(ctx context.Context) []string {
+	ctx.OpenIDFedRequiredTrustMarksFunc = func(ctx context.Context, _ *goidc.Client) []string {
 		return []string{trustMarkCertification}
 	}
 
 	// When.
-	_, err := Client(ctx, clientID)
+	_, err := RegisterClient(ctx, clientID, ctx.OpenIDFedAuthorityHints)
 
 	// Then.
 	if err == nil {
@@ -149,7 +156,7 @@ func TestClient_InvalidTrustMarkSignature(t *testing.T) {
 	}
 }
 
-func TestClient_InvalidTrustMarkID(t *testing.T) {
+func TestRegisterClient_InvalidTrustMarkID(t *testing.T) {
 	// Given.
 	responses := map[string]func() *http.Response{
 		clientID + "/.well-known/openid-federation": func() *http.Response {
@@ -173,26 +180,26 @@ func TestClient_InvalidTrustMarkID(t *testing.T) {
 							"iss":           trustMarkIssuerID,
 							"sub":           clientID,
 							"iat":           timeutil.TimestampNow(),
-						}, trustMarkIssuerJWK, (&jose.SignerOptions{}).WithType(trustMarkJWTType)),
+						}, trustMarkIssuerJWK, (&jose.SignerOptions{}).WithType(jwtTypeTrustMark)),
 					},
 				},
-			}, clientJWK, (&jose.SignerOptions{}).WithType(entityStatementJWTType))
+			}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
 			return &http.Response{
 				StatusCode: 200,
 				Header: http.Header{
-					"Content-Type": []string{entityStatementJWTContentType},
+					"Content-Type": []string{contentTypeEntityStatementJWT},
 				},
 				Body: io.NopCloser(bytes.NewBufferString(st)),
 			}
 		},
 	}
 	ctx := setUp(t, responses)
-	ctx.OpenIDFedRequiredTrustMarksFunc = func(ctx context.Context) []string {
+	ctx.OpenIDFedRequiredTrustMarksFunc = func(ctx context.Context, _ *goidc.Client) []string {
 		return []string{trustMarkCertification}
 	}
 
 	// When.
-	_, err := Client(ctx, clientID)
+	_, err := RegisterClient(ctx, clientID, ctx.OpenIDFedAuthorityHints)
 
 	// Then.
 	if err == nil {
@@ -200,11 +207,11 @@ func TestClient_InvalidTrustMarkID(t *testing.T) {
 	}
 }
 
-func TestClient_InvalidMetadataPolicy(t *testing.T) {
+func TestRegisterClient_InvalidMetadataPolicy(t *testing.T) {
 	// Given.
 	responses := map[string]func() *http.Response{
 		intermediaryAuthorityID + "/fetch?sub=" + url.QueryEscape(clientID): func() *http.Response {
-			opts := (&jose.SignerOptions{}).WithType(entityStatementJWTType)
+			opts := (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement)
 			st := oidctest.SignWithOptions(t, map[string]any{
 				"iss": intermediaryAuthorityID,
 				"sub": clientID,
@@ -224,7 +231,7 @@ func TestClient_InvalidMetadataPolicy(t *testing.T) {
 			return &http.Response{
 				StatusCode: 200,
 				Header: http.Header{
-					"Content-Type": []string{entityStatementJWTContentType},
+					"Content-Type": []string{contentTypeEntityStatementJWT},
 				},
 				Body: io.NopCloser(bytes.NewBufferString(st)),
 			}
@@ -233,7 +240,7 @@ func TestClient_InvalidMetadataPolicy(t *testing.T) {
 	ctx := setUp(t, responses)
 
 	// When.
-	_, err := Client(ctx, clientID)
+	_, err := RegisterClient(ctx, clientID, ctx.OpenIDFedAuthorityHints)
 
 	// Then.
 	if err == nil {
@@ -241,7 +248,7 @@ func TestClient_InvalidMetadataPolicy(t *testing.T) {
 	}
 }
 
-func TestClient_CircularDependency(t *testing.T) {
+func TestRegisterClient_CircularDependency(t *testing.T) {
 	// Given.
 	intermediaryAuthorityID := "https://intermediary-authority.testfed.com"
 	responses := map[string]func() *http.Response{
@@ -260,10 +267,10 @@ func TestClient_CircularDependency(t *testing.T) {
 					},
 				},
 				"authority_hints": []string{intermediaryAuthorityID},
-			}, intermediaryAuthorityJWK, (&jose.SignerOptions{}).WithType(entityStatementJWTType))
+			}, intermediaryAuthorityJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
 			return &http.Response{
 				StatusCode: 200,
-				Header:     http.Header{"Content-Type": []string{entityStatementJWTContentType}},
+				Header:     http.Header{"Content-Type": []string{contentTypeEntityStatementJWT}},
 				Body:       io.NopCloser(bytes.NewBufferString(st)),
 			}
 		},
@@ -271,7 +278,7 @@ func TestClient_CircularDependency(t *testing.T) {
 	ctx := setUp(t, responses)
 
 	// When.
-	_, err := Client(ctx, clientID)
+	_, err := RegisterClient(ctx, clientID, ctx.OpenIDFedAuthorityHints)
 
 	// Then.
 	if err == nil {
@@ -281,6 +288,95 @@ func TestClient_CircularDependency(t *testing.T) {
 	if !errors.Is(err, ErrCircularDependency) {
 		t.Fatalf("error due to circular dependency is expected, got %v", err)
 	}
+}
+
+func TestExplicitRegistration_TrustChainProvided(t *testing.T) {
+	// Given.
+	ctx, chain := setUpWithChain(t, nil)
+	chainStatements := make([]string, len(chain))
+	for i, st := range chain {
+		chainStatements[i] = st.Signed()
+	}
+
+	// When.
+	st, err := registerClientFromChainStatements(ctx, chainStatements)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	claims, err := oidctest.SafeClaims(st, opJWK)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if claims["iss"] != ctx.Issuer() {
+		t.Errorf("claims.iss = %s, want %s", claims["iss"], ctx.Issuer())
+	}
+
+	if claims["sub"] != clientID {
+		t.Errorf("claims.sub = %s, want %s", claims["sub"], clientID)
+	}
+
+	if claims["trust_anchor"] != trustAnchorID {
+		t.Errorf("claims.trust_anchor = %s, want %s", claims["trust_anchor"], trustAnchorID)
+	}
+}
+
+func TestExplicitRegistration_EntityConfigurationProvided(t *testing.T) {
+	// Given.
+	ctx := setUp(t, nil)
+	entityConfig := oidctest.SignWithOptions(t, map[string]any{
+		"iss": clientID,
+		"sub": clientID,
+		"aud": ctx.Issuer(),
+		"iat": timeutil.TimestampNow(),
+		"exp": timeutil.TimestampNow() + 600,
+		"jwks": jose.JSONWebKeySet{
+			Keys: []jose.JSONWebKey{clientJWK.Public()},
+		},
+		"metadata": map[string]any{
+			"openid_relying_party": map[string]any{},
+		},
+		"authority_hints": []string{intermediaryAuthorityID},
+	}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+
+	// When.
+	st, err := registerClientWithEntityConfiguration(ctx, entityConfig)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	claims, err := oidctest.SafeClaims(st, opJWK)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if claims["iss"] != ctx.Issuer() {
+		t.Errorf("claims.iss = %s, want %s", claims["iss"], ctx.Issuer())
+	}
+
+	if claims["sub"] != clientID {
+		t.Errorf("claims.sub = %s, want %s", claims["sub"], clientID)
+	}
+
+	if claims["trust_anchor"] != trustAnchorID {
+		t.Errorf("claims.trust_anchor = %s, want %s", claims["trust_anchor"], trustAnchorID)
+	}
+}
+
+func setUpWithChain(t *testing.T, overrideResps map[string]func() *http.Response) (oidc.Context, trustChain) {
+	t.Helper()
+
+	ctx := setUp(t, overrideResps)
+	_, chain, err := buildAndResolveTrustChain(ctx, clientID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	return ctx, chain
 }
 
 func setUp(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Context {
@@ -308,21 +404,21 @@ func setUp(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Co
 							"iss":           trustMarkIssuerID,
 							"sub":           clientID,
 							"iat":           timeutil.TimestampNow(),
-						}, trustMarkIssuerJWK, (&jose.SignerOptions{}).WithType(trustMarkJWTType)),
+						}, trustMarkIssuerJWK, (&jose.SignerOptions{}).WithType(jwtTypeTrustMark)),
 					},
 				},
-			}, clientJWK, (&jose.SignerOptions{}).WithType(entityStatementJWTType))
+			}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
 			return &http.Response{
 				StatusCode: 200,
 				Header: http.Header{
-					"Content-Type": []string{entityStatementJWTContentType},
+					"Content-Type": []string{contentTypeEntityStatementJWT},
 				},
 				Body: io.NopCloser(bytes.NewBufferString(st)),
 			}
 		},
 
 		intermediaryAuthorityID + "/.well-known/openid-federation": func() *http.Response {
-			opts := (&jose.SignerOptions{}).WithType(entityStatementJWTType)
+			opts := (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement)
 			st := oidctest.SignWithOptions(t, map[string]any{
 				"iss": intermediaryAuthorityID,
 				"sub": intermediaryAuthorityID,
@@ -341,14 +437,14 @@ func setUp(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Co
 			return &http.Response{
 				StatusCode: 200,
 				Header: http.Header{
-					"Content-Type": []string{entityStatementJWTContentType},
+					"Content-Type": []string{contentTypeEntityStatementJWT},
 				},
 				Body: io.NopCloser(bytes.NewBufferString(st)),
 			}
 		},
 
 		intermediaryAuthorityID + "/fetch?sub=" + url.QueryEscape(clientID): func() *http.Response {
-			opts := (&jose.SignerOptions{}).WithType(entityStatementJWTType)
+			opts := (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement)
 			st := oidctest.SignWithOptions(t, map[string]any{
 				"iss": intermediaryAuthorityID,
 				"sub": clientID,
@@ -361,14 +457,14 @@ func setUp(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Co
 			return &http.Response{
 				StatusCode: 200,
 				Header: http.Header{
-					"Content-Type": []string{entityStatementJWTContentType},
+					"Content-Type": []string{contentTypeEntityStatementJWT},
 				},
 				Body: io.NopCloser(bytes.NewBufferString(st)),
 			}
 		},
 
 		trustAnchorID + "/.well-known/openid-federation": func() *http.Response {
-			opts := (&jose.SignerOptions{}).WithType(entityStatementJWTType)
+			opts := (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement)
 			st := oidctest.SignWithOptions(t, map[string]any{
 				"iss": trustAnchorID,
 				"sub": trustAnchorID,
@@ -389,14 +485,14 @@ func setUp(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Co
 			return &http.Response{
 				StatusCode: 200,
 				Header: http.Header{
-					"Content-Type": []string{entityStatementJWTContentType},
+					"Content-Type": []string{contentTypeEntityStatementJWT},
 				},
 				Body: io.NopCloser(bytes.NewBufferString(st)),
 			}
 		},
 
 		trustMarkIssuerID + "/.well-known/openid-federation": func() *http.Response {
-			opts := (&jose.SignerOptions{}).WithType(entityStatementJWTType)
+			opts := (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement)
 			st := oidctest.SignWithOptions(t, map[string]any{
 				"iss": trustMarkIssuerID,
 				"sub": trustMarkIssuerID,
@@ -413,14 +509,14 @@ func setUp(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Co
 			return &http.Response{
 				StatusCode: 200,
 				Header: http.Header{
-					"Content-Type": []string{entityStatementJWTContentType},
+					"Content-Type": []string{contentTypeEntityStatementJWT},
 				},
 				Body: io.NopCloser(bytes.NewBufferString(st)),
 			}
 		},
 
 		trustAnchorID + "/fetch?sub=" + url.QueryEscape(intermediaryAuthorityID): func() *http.Response {
-			opts := (&jose.SignerOptions{}).WithType(entityStatementJWTType)
+			opts := (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement)
 			st := oidctest.SignWithOptions(t, map[string]any{
 				"iss": trustAnchorID,
 				"sub": intermediaryAuthorityID,
@@ -433,14 +529,14 @@ func setUp(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Co
 			return &http.Response{
 				StatusCode: 200,
 				Header: http.Header{
-					"Content-Type": []string{entityStatementJWTContentType},
+					"Content-Type": []string{contentTypeEntityStatementJWT},
 				},
 				Body: io.NopCloser(bytes.NewBufferString(st)),
 			}
 		},
 
 		trustAnchorID + "/fetch?sub=" + url.QueryEscape(trustMarkIssuerID): func() *http.Response {
-			opts := (&jose.SignerOptions{}).WithType(entityStatementJWTType)
+			opts := (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement)
 			st := oidctest.SignWithOptions(t, map[string]any{
 				"iss": trustAnchorID,
 				"sub": trustMarkIssuerID,
@@ -453,7 +549,7 @@ func setUp(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Co
 			return &http.Response{
 				StatusCode: 200,
 				Header: http.Header{
-					"Content-Type": []string{entityStatementJWTContentType},
+					"Content-Type": []string{contentTypeEntityStatementJWT},
 				},
 				Body: io.NopCloser(bytes.NewBufferString(st)),
 			}
@@ -465,12 +561,14 @@ func setUp(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Co
 	ctx := oidctest.NewContext(t)
 	ctx.OpenIDFedIsEnabled = true
 	ctx.OpenIDFedEndpoint = "/.well-known/openid-federation"
-	ctx.OpenIDFedJWKSFunc = nil
+	ctx.OpenIDFedJWKSFunc = func(ctx context.Context) (goidc.JSONWebKeySet, error) {
+		return goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{opJWK}}, nil
+	}
 	ctx.OpenIDFedAuthorityHints = []string{trustAnchorID}
 	ctx.OpenIDFedTrustedAuthorities = []string{trustAnchorID}
 	ctx.OpenIDFedEntityStatementSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
 	ctx.OpenIDFedTrustChainMaxDepth = 5
-	ctx.OpenIDFedClientFunc = Client
+	ctx.OpenIDFedRegisterClientFunc = RegisterClient
 	ctx.OpenIDFedTrustMarkSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
 	ctx.HTTPClientFunc = func(ctx context.Context) *http.Client {
 		return &http.Client{

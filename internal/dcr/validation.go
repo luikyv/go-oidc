@@ -13,9 +13,8 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func validate(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	return runValidations(
-		ctx, meta,
+func Validate(ctx oidc.Context, meta *goidc.ClientMeta) error {
+	validations := []func(ctx oidc.Context, meta *goidc.ClientMeta) error{
 		validateTokenAuthnMethod,
 		validateTokenIntrospection,
 		validateTokenRevocation,
@@ -51,12 +50,10 @@ func validate(ctx oidc.Context, meta *goidc.ClientMeta) error {
 		validateCIBATokenNotificationEndpoint,
 		validateCIBAUserCodeParam,
 		validateCIBAJARAlgs,
-	)
-}
+	}
 
-func runValidations(ctx oidc.Context, meta *goidc.ClientMeta, validations ...func(ctx oidc.Context, meta *goidc.ClientMeta) error) error {
-	for _, validation := range validations {
-		if err := validation(ctx, meta); err != nil {
+	for _, v := range validations {
+		if err := v(ctx, meta); err != nil {
 			return err
 		}
 	}

@@ -380,11 +380,14 @@ func (op *Provider) setDefaults() error {
 
 	if op.config.OpenIDFedIsEnabled {
 		op.config.OpenIDFedEndpoint = nonZeroOrDefault(op.config.OpenIDFedEndpoint, defaultEndpointOpenIDFederation)
-		op.config.OpenIDFedClientFunc = federation.Client
+		op.config.OpenIDFedRegisterClientFunc = federation.RegisterClient
 		op.config.OpenIDFedEntityStatementSigAlgs = nonZeroOrDefault(op.config.OpenIDFedEntityStatementSigAlgs, []goidc.SignatureAlgorithm{defaultOpenIDFedSigAlg})
 		op.config.OpenIDFedTrustMarkSigAlgs = nonZeroOrDefault(op.config.OpenIDFedTrustMarkSigAlgs, op.config.OpenIDFedEntityStatementSigAlgs)
 		op.config.OpenIDFedTrustChainMaxDepth = nonZeroOrDefault(op.config.OpenIDFedTrustChainMaxDepth, defaultOpenIDFedTrustChainMaxDepth)
 		op.config.OpenIDFedClientRegTypes = nonZeroOrDefault(op.config.OpenIDFedClientRegTypes, []goidc.ClientRegistrationType{defaultOpenIDFedRegType})
+		if slices.Contains(op.config.OpenIDFedClientRegTypes, goidc.ClientRegistrationTypeExplicit) {
+			op.config.OpenIDFedRegistrationEndpoint = nonZeroOrDefault(op.config.OpenIDFedRegistrationEndpoint, defaultEndpointOpenIDFederationRegistration)
+		}
 	}
 
 	if op.config.LogoutIsEnabled {

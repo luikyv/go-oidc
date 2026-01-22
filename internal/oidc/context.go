@@ -233,12 +233,12 @@ func (ctx Context) ValidateBackAuth(session *goidc.AuthnSession) error {
 	return ctx.ValidateBackAuthFunc(ctx, session)
 }
 
-func (ctx Context) OpenIDFedRequiredTrustMarks() []string {
+func (ctx Context) OpenIDFedRequiredTrustMarks(client *goidc.Client) []string {
 	if ctx.OpenIDFedRequiredTrustMarksFunc == nil {
 		return nil
 	}
 
-	return ctx.OpenIDFedRequiredTrustMarksFunc(ctx)
+	return ctx.OpenIDFedRequiredTrustMarksFunc(ctx.Context(), client)
 }
 
 func (ctx Context) HandleDefaultPostLogout(session *goidc.LogoutSession) error {
@@ -328,15 +328,7 @@ func (ctx Context) Client(id string) (*goidc.Client, error) {
 		return ctx.federationClient(id)
 	}
 
-	client, err := ctx.ClientManager.Client(ctx.Context(), id)
-	if err != nil {
-		return nil, err
-	}
-	if isExpired(client) {
-		return nil, errors.New("client information has expired")
-	}
-
-	return client, nil
+	return ctx.ClientManager.Client(ctx.Context(), id)
 }
 
 func (ctx Context) staticClient(id string) *goidc.Client {
@@ -350,23 +342,16 @@ func (ctx Context) staticClient(id string) *goidc.Client {
 
 func (ctx Context) federationClient(id string) (*goidc.Client, error) {
 	client, err := ctx.ClientManager.Client(ctx.Context(), id)
-	if err == nil && !isExpired(client) {
-		return client, nil
-	}
-
-	client, err = ctx.OpenIDFedClientFunc(ctx, id)
-	if err != nil {
+	if err != nil && !errors.Is(err, goidc.ErrClientNotFound) {
 		return nil, err
 	}
 
-	if err := ctx.SaveClient(client); err != nil {
-		return nil, err
+	if client.ExpiresAtTimestamp != 0 && timeutil.TimestampNow() > client.ExpiresAtTimestamp {
+		// Refresh the federation client using the same trust anchor.
+		return ctx.OpenIDFedRegisterClientFunc(ctx, id, []string{client.TrustAnchor})
 	}
-	return client, nil
-}
 
-func isExpired(client *goidc.Client) bool {
-	return client.ExpiresAtTimestamp != 0 && timeutil.TimestampNow() > client.ExpiresAtTimestamp
+	return ctx.OpenIDFedRegisterClientFunc(ctx, id, ctx.OpenIDFedAuthorityHints)
 }
 
 func (ctx Context) DeleteClient(id string) error {

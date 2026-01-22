@@ -200,13 +200,14 @@ type Configuration struct {
 
 	OpenIDFedIsEnabled              bool
 	OpenIDFedEndpoint               string
+	OpenIDFedRegistrationEndpoint   string
 	OpenIDFedJWKSFunc               goidc.JWKSFunc
 	OpenIDFedSignerFunc             goidc.SignerFunc
 	OpenIDFedAuthorityHints         []string
 	OpenIDFedTrustedAuthorities     []string
 	OpenIDFedEntityStatementSigAlgs []goidc.SignatureAlgorithm
 	OpenIDFedTrustChainMaxDepth     int
-	OpenIDFedClientFunc             func(Context, string) (*goidc.Client, error)
+	OpenIDFedRegisterClientFunc     func(ctx Context, id string, hints []string) (*goidc.Client, error)
 	OpenIDFedClientRegTypes         []goidc.ClientRegistrationType
 	OpenIDFedRequiredTrustMarksFunc goidc.RequiredTrustMarksFunc
 	OpenIDFedTrustMarkSigAlgs       []goidc.SignatureAlgorithm
