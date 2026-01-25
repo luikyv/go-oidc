@@ -29,11 +29,11 @@ func RegisterClient(ctx oidc.Context, id string, hints []string) (*goidc.Client,
 
 func registerClient(ctx oidc.Context, clientConfig entityStatement, regType goidc.ClientRegistrationType) (*goidc.Client, error) {
 	if clientConfig.Metadata.OpenIDClient == nil {
-		return nil, errors.New("the entity is not an openid client")
+		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "the entity is not an openid client")
 	}
 
 	if err := dcr.Validate(ctx, &clientConfig.Metadata.OpenIDClient.ClientMeta); err != nil {
-		return nil, err
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid client metadata", err)
 	}
 
 	client := &goidc.Client{
@@ -94,14 +94,14 @@ func buildTrustChain(ctx oidc.Context, entityConfig entityStatement) (trustChain
 
 func buildTrustChainFromConfig(ctx oidc.Context, entityConfig entityStatement, entityMap map[string]struct{}) (trustChain, error) {
 	if entityConfig.AuthorityHints == nil {
-		return nil, fmt.Errorf("could not build trust chain for entity %s with no authority hints", entityConfig.Subject)
+		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("could not build trust chain for entity %s with no authority hints", entityConfig.Subject))
 	}
 
 	var errs error
 	for _, authorityID := range entityConfig.AuthorityHints {
 
 		if _, exists := entityMap[authorityID]; exists {
-			return nil, ErrCircularDependency
+			return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "circular dependency detected in trust chain for entity "+entityConfig.Subject, ErrCircularDependency)
 		}
 		entityMap[authorityID] = struct{}{}
 
@@ -117,7 +117,7 @@ func buildTrustChainFromConfig(ctx oidc.Context, entityConfig entityStatement, e
 		errs = errors.Join(errs, err)
 	}
 
-	return nil, fmt.Errorf("could not build trust chain for entity %s: %w", entityConfig.Subject, errs)
+	return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("could not build trust chain for entity %s", entityConfig.Subject), errs)
 }
 
 func buildTrustChainBranch(ctx oidc.Context, entityConfig entityStatement, authorityConfig entityStatement, entityMap map[string]struct{}) (trustChain, error) {
@@ -143,7 +143,7 @@ func buildTrustChainBranch(ctx oidc.Context, entityConfig entityStatement, autho
 
 	chain = append([]entityStatement{subordinateStatement}, chain...)
 	if len(chain) > ctx.OpenIDFedTrustChainMaxDepth {
-		return nil, errors.New("trust chain maximum depth reached")
+		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "trust chain maximum depth reached")
 	}
 	return chain, nil
 }
@@ -184,7 +184,7 @@ func registerClientWithEntityConfiguration(ctx oidc.Context, signedStatement str
 	}
 
 	if entityConfig.Audience != ctx.Issuer() {
-		return "", fmt.Errorf("the entity configuration has an invalid audience")
+		return "", goidc.NewError(goidc.ErrorCodeInvalidRequest, "the entity configuration has an invalid audience")
 	}
 
 	chain, err := buildTrustChain(ctx, entityConfig)
@@ -258,7 +258,7 @@ func fetchEntityConfiguration(ctx oidc.Context, id string) (entityStatement, err
 func fetchSubordinateStatement(ctx oidc.Context, sub string, authority entityStatement) (entityStatement, error) {
 	uri, err := url.Parse(authority.Metadata.FederationAuthority.FetchEndpoint)
 	if err != nil {
-		return entityStatement{}, fmt.Errorf("'federation_fetch_endpoint' of %s is not a valid uri: %w", authority.Issuer, err)
+		return entityStatement{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("'federation_fetch_endpoint' of %s is not a valid uri", authority.Issuer), err)
 	}
 	params := uri.Query()
 	params.Add("sub", sub)
@@ -275,21 +275,21 @@ func fetchSubordinateStatement(ctx oidc.Context, sub string, authority entitySta
 func fetchEntityStatement(ctx oidc.Context, uri string) (string, error) {
 	resp, err := ctx.HTTPClient().Get(uri)
 	if err != nil {
-		return "", fmt.Errorf("could not fetch the entity statement: %w", err)
+		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not fetch the entity statement", err)
 	}
 	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("fetching the entity statement resulted in status %d", resp.StatusCode)
+		return "", goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("fetching the entity statement resulted in status %d", resp.StatusCode))
 	}
 
 	if mediaType, _, _ := mime.ParseMediaType(resp.Header.Get("Content-Type")); mediaType != contentTypeEntityStatementJWT {
-		return "", fmt.Errorf("fetching the entity statement resulted in content type %s which is invalid", resp.Header.Get("Content-Type"))
+		return "", goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("fetching the entity statement resulted in content type %s which is invalid", resp.Header.Get("Content-Type")))
 	}
 
 	signedStatement, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("could not read the entity statement: %w", err)
+		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not read the entity statement", err)
 	}
 
 	return string(signedStatement), nil
@@ -301,12 +301,12 @@ func parseTrustChain(ctx oidc.Context, chainStatements []string) (trustChain, er
 	// 2. The first subordinate statement.
 	// 3. The trust anchor's entity configuration.
 	if len(chainStatements) < 3 {
-		return nil, errors.New("trust chain must have at least 3 statements")
+		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "trust chain must have at least 3 statements")
 	}
 
 	entityConfig, err := parseEntityConfiguration(ctx, chainStatements[0])
 	if err != nil {
-		return nil, fmt.Errorf("could not parse entity configuration: %w", err)
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not parse entity configuration", err)
 	}
 
 	chain := trustChain{entityConfig}
@@ -320,16 +320,16 @@ func parseTrustChain(ctx oidc.Context, chainStatements []string) (trustChain, er
 		// Get the next statement to determine the issuer's JWKS for signature verification.
 		nextStatementParsed, err := jwt.ParseSigned(chainStatements[i+1], ctx.OpenIDFedEntityStatementSigAlgs)
 		if err != nil {
-			return nil, fmt.Errorf("could not parse statement at index %d: %w", i+1, err)
+			return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("could not parse statement at index %d", i+1), err)
 		}
 		var nextStatementClaims entityStatement
 		if err := nextStatementParsed.UnsafeClaimsWithoutVerification(&nextStatementClaims); err != nil {
-			return nil, fmt.Errorf("could not parse claims at index %d: %w", i+1, err)
+			return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("could not parse claims at index %d", i+1), err)
 		}
 
 		subordinateStatement, err := parseSubordinateStatement(ctx, statement, prevStatement.Issuer, nextStatementClaims.Subject, nextStatementClaims.JWKS)
 		if err != nil {
-			return nil, fmt.Errorf("could not parse subordinate statement at index %d: %w", i, err)
+			return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("could not parse subordinate statement at index %d", i), err)
 		}
 
 		chain = append(chain, subordinateStatement)
@@ -337,28 +337,28 @@ func parseTrustChain(ctx oidc.Context, chainStatements []string) (trustChain, er
 
 	// Verify that the entity configuration was signed by JWKS provided by the first subordinate statement.
 	if _, err := parseEntityStatement(ctx, entityConfig.Signed(), entityConfig.Subject, entityConfig.Issuer, chain.firstSubordinateStatement().JWKS); err != nil {
-		return nil, fmt.Errorf("entity configuration signed with key not authorized by immediate superior: %w", err)
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "entity configuration signed with key not authorized by immediate superior", err)
 	}
 
 	trustAnchorConfig, err := parseAuthorityConfiguration(ctx, chainStatements[len(chainStatements)-1])
 	if err != nil {
-		return nil, fmt.Errorf("could not parse trust anchor configuration: %w", err)
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not parse trust anchor configuration", err)
 	}
 
 	// Verify that the trust anchor is trusted.
 	if !slices.Contains(ctx.OpenIDFedTrustedAuthorities, trustAnchorConfig.Issuer) {
-		return nil, fmt.Errorf("trust anchor %s is not trusted", trustAnchorConfig.Issuer)
+		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("trust anchor %s is not trusted", trustAnchorConfig.Issuer))
 	}
 
 	originalTrustAnchorConfig, err := fetchAuthorityConfiguration(ctx, trustAnchorConfig.Issuer)
 	if err != nil {
-		return nil, fmt.Errorf("could not fetch original trust anchor configuration: %w", err)
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not fetch original trust anchor configuration", err)
 	}
 
 	// Verify that the trust anchor's entity configuration was signed by the original trust anchor's JWKS.
 	_, err = parseEntityStatement(ctx, trustAnchorConfig.Signed(), trustAnchorConfig.Issuer, trustAnchorConfig.Issuer, originalTrustAnchorConfig.JWKS)
 	if err != nil {
-		return nil, fmt.Errorf("invalid trust anchor signature: %w", err)
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid trust anchor signature", err)
 	}
 
 	chain = append(chain, trustAnchorConfig)
@@ -372,7 +372,7 @@ func parseAuthorityConfiguration(ctx oidc.Context, signedStatement string) (enti
 	}
 
 	if config.Metadata.FederationAuthority == nil {
-		return entityStatement{}, fmt.Errorf("the entity %s is not a federation authority", config.Issuer)
+		return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("the entity %s is not a federation authority", config.Issuer))
 	}
 
 	return config, nil
@@ -381,16 +381,16 @@ func parseAuthorityConfiguration(ctx oidc.Context, signedStatement string) (enti
 func parseEntityConfiguration(ctx oidc.Context, signedStatement string) (entityStatement, error) {
 	parsedStatement, err := jwt.ParseSigned(signedStatement, ctx.OpenIDFedEntityStatementSigAlgs)
 	if err != nil {
-		return entityStatement{}, fmt.Errorf("could not parse the entity statement: %w", err)
+		return entityStatement{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not parse the entity statement", err)
 	}
 
 	var entityConfig entityStatement
 	if err := parsedStatement.UnsafeClaimsWithoutVerification(&entityConfig); err != nil {
-		return entityStatement{}, fmt.Errorf("could not parse the entity configuration: %w", err)
+		return entityStatement{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not parse the entity configuration", err)
 	}
 
 	if entityConfig.MetadataPolicy != nil {
-		return entityStatement{}, fmt.Errorf("the entity configuration for %s cannot have 'metadata_policy'", entityConfig.Issuer)
+		return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("the entity configuration for %s cannot have 'metadata_policy'", entityConfig.Issuer))
 	}
 
 	return parseEntityStatement(ctx, signedStatement, entityConfig.Issuer, entityConfig.Issuer, entityConfig.JWKS)
@@ -403,15 +403,15 @@ func parseSubordinateStatement(ctx oidc.Context, signedStatement, sub, iss strin
 	}
 
 	if len(subStatement.AuthorityHints) != 0 {
-		return entityStatement{}, errors.New("subordinate statements cannot have the claim 'authority_hints'")
+		return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "subordinate statements cannot have the claim 'authority_hints'")
 	}
 
 	if subStatement.TrustMarkIssuers != nil {
-		return entityStatement{}, errors.New("subordinate statements cannot have the claim 'trust_mark_issuers'")
+		return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "subordinate statements cannot have the claim 'trust_mark_issuers'")
 	}
 
 	if subStatement.TrustMarkOwners != nil {
-		return entityStatement{}, errors.New("subordinate statements cannot have the claim 'trust_mark_owners'")
+		return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "subordinate statements cannot have the claim 'trust_mark_owners'")
 	}
 
 	return subStatement, nil
@@ -420,43 +420,43 @@ func parseSubordinateStatement(ctx oidc.Context, signedStatement, sub, iss strin
 func parseEntityStatement(ctx oidc.Context, signedStatement, sub, iss string, jwks goidc.JSONWebKeySet) (entityStatement, error) {
 	parsedStatement, err := jwt.ParseSigned(signedStatement, ctx.OpenIDFedEntityStatementSigAlgs)
 	if err != nil {
-		return entityStatement{}, fmt.Errorf("could not parse the entity statement: %w", err)
+		return entityStatement{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not parse the entity statement", err)
 	}
 
 	if parsedStatement.Headers[0].ExtraHeaders["typ"] != jwtTypeEntityStatement {
-		return entityStatement{}, errors.New("invalid entity statement 'typ' header")
+		return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid entity statement 'typ' header")
 	}
 
 	// "...Entity Configurations and Subordinate Statements MUST NOT contain the
 	// trust_chain header parameter, as they are integral components of a Trust Chain..."
 	if parsedStatement.Headers[0].ExtraHeaders["trust_chain"] != nil {
-		return entityStatement{}, errors.New("entity statements must not contain the 'trust_chain' header")
+		return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "entity statements must not contain the 'trust_chain' header")
 	}
 
 	var statement entityStatement
 	var claims jwt.Claims
 	if err := parsedStatement.Claims(jwks.ToJOSE(), &claims, &statement); err != nil {
-		return entityStatement{}, fmt.Errorf("invalid entity statement signature: %w", err)
+		return entityStatement{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid entity statement signature", err)
 	}
 
 	if claims.IssuedAt == nil {
-		return entityStatement{}, fmt.Errorf("invalid 'iat' claim in the entity statement")
+		return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid 'iat' claim in the entity statement")
 	}
 
 	if claims.Expiry == nil {
-		return entityStatement{}, fmt.Errorf("invalid 'exp' claim in the entity statement")
+		return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid 'exp' claim in the entity statement")
 	}
 
 	if err := claims.Validate(jwt.Expected{
 		Issuer:  iss,
 		Subject: sub,
 	}); err != nil {
-		return entityStatement{}, fmt.Errorf("invalid entity statement: %w", err)
+		return entityStatement{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid entity statement", err)
 	}
 
 	if statement.MetadataPolicy != nil {
 		if err := statement.MetadataPolicy.validate(); err != nil {
-			return entityStatement{}, fmt.Errorf("invalid entity statement metadata policy: %w", err)
+			return entityStatement{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid entity statement metadata policy", err)
 		}
 	}
 
@@ -487,88 +487,88 @@ func validateTrustMark(ctx oidc.Context, config entityStatement, requiredTrustMa
 	}
 
 	if trustMarkJWS == "" {
-		return fmt.Errorf("entity %s does not have the trust mark %s", config.Issuer, requiredTrustMarkID)
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("entity %s does not have the trust mark %s", config.Issuer, requiredTrustMarkID))
 	}
 
 	parsedTrustMark, err := jwt.ParseSigned(trustMarkJWS, ctx.OpenIDFedTrustMarkSigAlgs)
 	if err != nil {
-		return fmt.Errorf("could not parse the trust mark for %s: %w", requiredTrustMarkID, err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("could not parse the trust mark for %s", requiredTrustMarkID), err)
 	}
 
 	if parsedTrustMark.Headers[0].ExtraHeaders["typ"] != jwtTypeTrustMark {
-		return errors.New("invalid trust mark 'typ' header")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid trust mark 'typ' header")
 	}
 
 	var mark trustMark
 	if err := parsedTrustMark.UnsafeClaimsWithoutVerification(&mark); err != nil {
-		return fmt.Errorf("could not parse the trust mark for %s: %w", requiredTrustMarkID, err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("could not parse the trust mark for %s", requiredTrustMarkID), err)
 	}
 
 	trustMarkIssuer, chain, err := buildAndResolveTrustChain(ctx, mark.Issuer)
 	if err != nil {
-		return fmt.Errorf("could not resolve the trust chain for trust mark issuer %s: %w", mark.Issuer, err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("could not resolve the trust chain for trust mark issuer %s", mark.Issuer), err)
 	}
 
 	var claims jwt.Claims
 	if err := parsedTrustMark.Claims(trustMarkIssuer.JWKS.ToJOSE(), &claims); err != nil {
-		return fmt.Errorf("invalid trust mark signature: %w", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid trust mark signature", err)
 	}
 
 	if claims.IssuedAt == nil {
-		return fmt.Errorf("invalid 'iat' claim in the trust mark: %s", requiredTrustMarkID)
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("invalid 'iat' claim in the trust mark: %s", requiredTrustMarkID))
 	}
 
 	if mark.ID != requiredTrustMarkID {
-		return fmt.Errorf("invalid 'trust_mark_id' claim in the trust mark: %s", requiredTrustMarkID)
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("invalid 'trust_mark_id' claim in the trust mark: %s", requiredTrustMarkID))
 	}
 
 	if err := claims.Validate(jwt.Expected{
 		Issuer:  trustMarkIssuer.Subject,
 		Subject: config.Subject,
 	}); err != nil {
-		return fmt.Errorf("invalid trust mark: %w", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid trust mark", err)
 	}
 
 	trustMarkIssuers := chain.authorityConfig().TrustMarkIssuers[requiredTrustMarkID]
 	if len(trustMarkIssuers) != 0 && !slices.Contains(trustMarkIssuers, trustMarkIssuer.Issuer) {
-		return fmt.Errorf("the entity %s is not allowed to issue trust marks for %s", mark.Issuer, requiredTrustMarkID)
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("the entity %s is not allowed to issue trust marks for %s", mark.Issuer, requiredTrustMarkID))
 	}
 
 	// If the trust mark id appears in the trust_mark_owners claim of the trust anchor's
 	// entity configuration, verify that the trust mark contains a valid delegation.
 	if trustMarkOwner, ok := chain.authorityConfig().TrustMarkOwners[requiredTrustMarkID]; ok {
 		if mark.Delegation == "" {
-			return fmt.Errorf("the claim 'delegation' is required in trust mark %s", requiredTrustMarkID)
+			return goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("the claim 'delegation' is required in trust mark %s", requiredTrustMarkID))
 		}
 
 		parsedTrustMarkDelegation, err := jwt.ParseSigned(mark.Delegation, ctx.OpenIDFedTrustMarkSigAlgs)
 		if err != nil {
-			return fmt.Errorf("could not parse the entity statement: %w", err)
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not parse the entity statement", err)
 		}
 
 		if parsedTrustMarkDelegation.Headers[0].ExtraHeaders["typ"] != jwtTypeTrustMarkDelegation {
-			return errors.New("invalid trust mark delegation 'typ' header")
+			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid trust mark delegation 'typ' header")
 		}
 
 		var markDelegation trustMark
 		var claims jwt.Claims
 		if err := parsedTrustMark.Claims(trustMarkOwner.JWKS.ToJOSE(), &markDelegation, &claims); err != nil {
-			return fmt.Errorf("invalid trust mark delegation signature: %w", err)
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid trust mark delegation signature", err)
 		}
 
 		if claims.IssuedAt == nil {
-			return errors.New("invalid 'iat' claim in the trust mark delegation")
+			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid 'iat' claim in the trust mark delegation")
 		}
 
 		if claims.Expiry == nil {
-			return errors.New("invalid 'exp' claim in the trust mark delegation")
+			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid 'exp' claim in the trust mark delegation")
 		}
 
 		if err := claims.Validate(jwt.Expected{
 			Issuer:  trustMarkOwner.Subject,
 			Subject: mark.Issuer,
 		}); err != nil {
-			return fmt.Errorf("invalid trust mark delegation: %w", err)
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid trust mark delegation", err)
 		}
 	}
 
