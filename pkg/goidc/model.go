@@ -733,7 +733,7 @@ const (
 	ClientRegistrationTypeExplicit  ClientRegistrationType = "explicit"
 )
 
-type RequiredTrustMarksFunc func(context.Context) []string
+type RequiredTrustMarksFunc func(context.Context, *Client) []string
 
 type HandleSessionFunc func(*http.Request, *AuthnSession, *Client) error
 

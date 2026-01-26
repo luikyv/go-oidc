@@ -129,8 +129,7 @@ func sendClientNotification(ctx oidc.Context, client *goidc.Client, session *goi
 	if err != nil {
 		return err
 	}
-	//nolint:errcheck
-	defer notificationResp.Body.Close()
+	defer notificationResp.Body.Close() //nolint:errcheck
 
 	if !slices.Contains([]int{http.StatusNoContent, http.StatusOK}, notificationResp.StatusCode) {
 		return fmt.Errorf("sending notification resulted in status %d", notificationResp.StatusCode)

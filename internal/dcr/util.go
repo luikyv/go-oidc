@@ -18,7 +18,7 @@ func create(ctx oidc.Context, initialToken string, meta *goidc.ClientMeta) (resp
 			"invalid token", err)
 	}
 
-	if err := validate(ctx, meta); err != nil {
+	if err := Validate(ctx, meta); err != nil {
 		return response{}, err
 	}
 
@@ -27,7 +27,7 @@ func create(ctx oidc.Context, initialToken string, meta *goidc.ClientMeta) (resp
 		return response{}, err
 	}
 
-	if err := validate(ctx, meta); err != nil {
+	if err := Validate(ctx, meta); err != nil {
 		return response{}, err
 	}
 
@@ -45,7 +45,7 @@ func update(ctx oidc.Context, id, regToken string, meta *goidc.ClientMeta) (resp
 		return response{}, err
 	}
 
-	if err := validate(ctx, meta); err != nil {
+	if err := Validate(ctx, meta); err != nil {
 		return response{}, err
 	}
 
@@ -54,7 +54,7 @@ func update(ctx oidc.Context, id, regToken string, meta *goidc.ClientMeta) (resp
 			"invalid metadata", err)
 	}
 
-	if err := validate(ctx, meta); err != nil {
+	if err := Validate(ctx, meta); err != nil {
 		return response{}, err
 	}
 

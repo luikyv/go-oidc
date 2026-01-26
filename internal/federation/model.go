@@ -6,15 +6,19 @@ import (
 )
 
 const (
-	entityStatementJWTType        = "entity-statement+jwt"
-	entityStatementJWTContentType = "application/entity-statement+jwt"
-	trustMarkJWTType              = "trust-mark+jwt"
-	trustMarkDelegationJWTType    = "trust-mark-delegation+jwt"
-	federationEndpointPath        = "/.well-known/openid-federation"
+	contentTypeEntityStatementJWT      = "application/entity-statement+jwt"
+	contentTypeTrustChain              = "application/trust-chain+json"
+	contentTypeExplicitRegistrationJWT = "application/explicit-registration-response+jwt"
+	jwtTypeEntityStatement             = "entity-statement+jwt"
+	jwtTypeTrustMark                   = "trust-mark+jwt"
+	jwtTypeTrustMarkDelegation         = "trust-mark-delegation+jwt"
+	jwtTypeExplicitRegistration        = "explicit-registration-response+jwt"
+	federationEndpointPath             = "/.well-known/openid-federation"
 )
 
 type entityStatement struct {
 	Issuer         string              `json:"iss"`
+	Audience       string              `json:"aud,omitempty"`
 	Subject        string              `json:"sub"`
 	IssuedAt       int                 `json:"iat"`
 	ExpiresAt      int                 `json:"exp"`
@@ -46,7 +50,10 @@ type entityStatement struct {
 		// JWKS is the owner's federation entity keys used for signing.
 		JWKS goidc.JSONWebKeySet `json:"jwks"`
 	} `json:"trust_mark_owners,omitempty"`
-	signed string `json:"-"`
+	// TrustAnchor is the identifier of the trust anchor in the trust chain.
+	// This claim is specific to explicit registration responses; it is not a general entity statement claim.
+	TrustAnchor string `json:"trust_anchor,omitempty"`
+	signed      string `json:"-"`
 }
 
 func (s entityStatement) Signed() string {
@@ -64,6 +71,10 @@ type trustChain []entityStatement
 
 func (tc trustChain) subjectConfig() entityStatement {
 	return tc[0]
+}
+
+func (tc trustChain) firstSubordinateStatement() entityStatement {
+	return tc[1]
 }
 
 func (tc trustChain) authorityConfig() entityStatement {
@@ -92,6 +103,7 @@ func (chain trustChain) resolve() (entityStatement, error) {
 		}
 	}
 
+	config.TrustAnchor = chain.authorityConfig().Subject
 	return policy.apply(config)
 }
 
