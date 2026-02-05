@@ -23,6 +23,8 @@ const (
 	defaultOpenIDFedTrustChainMaxDepth = 5
 	defaultOpenIDFedRegType            = goidc.ClientRegistrationTypeAutomatic
 
+	defaultSSFSigAlg = goidc.RS256
+
 	defaultEndpointWellKnown                    = "/.well-known/openid-configuration"
 	defaultEndpointJSONWebKeySet                = "/jwks"
 	defaultEndpointPushedAuthorizationRequest   = "/par"
@@ -36,6 +38,13 @@ const (
 	defaultEndpointOpenIDFederation             = "/.well-known/openid-federation"
 	defaultEndpointOpenIDFederationRegistration = "/federation/register"
 	defaultEndpointEndSession                   = "/logout"
+	defaultEndpointSSFJWKS                      = "/ssf/jwks"
+	defaultEndpointSSFConfiguration             = "/ssf/stream"
+	defaultEndpointSSFStatus                    = "/ssf/status"
+	defaultEndpointSSFAddSubject                = "/ssf/subject:add"
+	defaultEndpointSSFRemoveSubject             = "/ssf/subject:remove"
+	defaultEndpointSSFVerification              = "/ssf/verify"
+	defaultEndpointSSFPolling                   = "/ssf/poll"
 )
 
 func defaultTokenOptionsFunc() goidc.TokenOptionsFunc {

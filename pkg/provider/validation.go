@@ -7,9 +7,7 @@ import (
 )
 
 func validateTokenBinding(config oidc.Configuration) error {
-	if config.TokenBindingIsRequired &&
-		!config.DPoPIsEnabled &&
-		!config.MTLSTokenBindingIsEnabled {
+	if config.TokenBindingIsRequired && !config.DPoPIsEnabled && !config.MTLSTokenBindingIsEnabled {
 		return errors.New("if sender constraining tokens is required, at least one mechanism must be enabled, either DPoP or TLS")
 	}
 

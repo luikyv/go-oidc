@@ -37,8 +37,8 @@ func NewHTTPContext(w http.ResponseWriter, r *http.Request, config *Configuratio
 
 func NewContext(ctx context.Context, config *Configuration) Context {
 	return Context{
-		context:       ctx,
 		Configuration: config,
+		context:       ctx,
 	}
 }
 
@@ -452,11 +452,7 @@ func (ctx Context) BearerToken() (string, bool) {
 	return token, true
 }
 
-func (ctx Context) AuthorizationToken() (
-	token string,
-	tokenType goidc.TokenType,
-	ok bool,
-) {
+func (ctx Context) AuthorizationToken() (token string, tokenType goidc.TokenType, ok bool) {
 	tokenHeader, ok := ctx.Header("Authorization")
 	if !ok {
 		return "", "", false
@@ -713,7 +709,7 @@ func (ctx Context) OpenIDFedJWKS() (goidc.JSONWebKeySet, error) {
 	return ctx.OpenIDFedJWKSFunc(ctx)
 }
 
-func (ctx Context) PublicOpenIDFedJWKS() (goidc.JSONWebKeySet, error) {
+func (ctx Context) OpenIDFedPublicJWKS() (goidc.JSONWebKeySet, error) {
 	jwks, err := ctx.OpenIDFedJWKS()
 	if err != nil {
 		return goidc.JSONWebKeySet{}, err

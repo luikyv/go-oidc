@@ -308,8 +308,7 @@ func WithDCRTokenRotation() Option {
 // WithClientCredentialsGrant makes available the client credentials grant.
 func WithClientCredentialsGrant() Option {
 	return func(p *Provider) error {
-		p.config.GrantTypes = append(p.config.GrantTypes,
-			goidc.GrantClientCredentials)
+		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantClientCredentials)
 		return nil
 	}
 }
@@ -317,13 +316,9 @@ func WithClientCredentialsGrant() Option {
 // WithRefreshTokenGrant makes available the refresh token grant.
 // The default refresh token lifetime is [defaultRefreshTokenLifetimeSecs] and
 // the default logic to issue refresh token is [defaultIssueRefreshTokenFunc].
-func WithRefreshTokenGrant(
-	f goidc.ShouldIssueRefreshTokenFunc,
-	lifetimeSecs int,
-) Option {
+func WithRefreshTokenGrant(f goidc.ShouldIssueRefreshTokenFunc, lifetimeSecs int) Option {
 	return func(p *Provider) error {
-		p.config.GrantTypes = append(p.config.GrantTypes,
-			goidc.GrantRefreshToken)
+		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantRefreshToken)
 		p.config.ShouldIssueRefreshTokenFunc = f
 		p.config.RefreshTokenLifetimeSecs = lifetimeSecs
 		return nil
@@ -1164,6 +1159,143 @@ func WithAuthorizationCodeFunc(f goidc.GenerateIDFunc) Option {
 func WithCallbackIDFunc(f goidc.GenerateIDFunc) Option {
 	return func(p *Provider) error {
 		p.config.CallbackIDFunc = f
+		return nil
+	}
+}
+
+func WithSSF(jwksFunc goidc.JWKSFunc) Option {
+	return func(p *Provider) error {
+		p.config.SSFIsEnabled = true
+		p.config.SSFJWKSFunc = jwksFunc
+		return nil
+	}
+}
+
+func WithSSFEventStreamManager(manager goidc.SSFEventStreamManager) Option {
+	return func(p *Provider) error {
+		p.config.SSFEventStreamManager = manager
+		return nil
+	}
+}
+
+func WithSSFDeliveryMethods(method goidc.SSFDeliveryMethod, methods ...goidc.SSFDeliveryMethod) Option {
+	methods = appendIfNotIn(methods, method)
+	return func(p *Provider) error {
+		p.config.SSFDeliveryMethods = methods
+		return nil
+	}
+}
+
+func WithSSFEventPollManager(manager goidc.SSFEventPollManager) Option {
+	return func(p *Provider) error {
+		p.config.SSFEventPollManager = manager
+		return nil
+	}
+}
+
+func WithSSFEventStreamStatusManagement() Option {
+	return func(p *Provider) error {
+		p.config.SSFIsStatusManagementEnabled = true
+		return nil
+	}
+}
+
+func WithSSFStatusEndpoint(endpoint string) Option {
+	return func(p *Provider) error {
+		p.config.SSFStatusEndpoint = endpoint
+		return nil
+	}
+}
+
+func WithSSFEventStreamSubjectManagement() Option {
+	return func(p *Provider) error {
+		p.config.SSFIsSubjectManagementEnabled = true
+		return nil
+	}
+}
+
+func WithSSFAddSubjectEndpoint(endpoint string) Option {
+	return func(p *Provider) error {
+		p.config.SSFAddSubjectEndpoint = endpoint
+		return nil
+	}
+}
+
+func WithSSFRemoveSubjectEndpoint(endpoint string) Option {
+	return func(p *Provider) error {
+		p.config.SSFRemoveSubjectEndpoint = endpoint
+		return nil
+	}
+}
+
+func WithSSFEventStreamSubjectManager(manager goidc.SSFEventStreamSubjectManager) Option {
+	return func(p *Provider) error {
+		p.config.SSFEventStreamSubjectManager = manager
+		return nil
+	}
+}
+
+func WithSSFStreamVerification() Option {
+	return func(p *Provider) error {
+		p.config.SSFIsVerificationEnabled = true
+		return nil
+	}
+}
+
+func WithSSFDefaultSubjects(defaultSubjects goidc.SSFDefaultSubject) Option {
+	return func(p *Provider) error {
+		p.config.SSFDefaultSubjects = defaultSubjects
+		return nil
+	}
+}
+
+func WithSSFCriticalSubjectMembers(sub string, subs ...string) Option {
+	subs = appendIfNotIn(subs, sub)
+	return func(p *Provider) error {
+		p.config.SSFCriticalSubjectMembers = subs
+		return nil
+	}
+}
+
+func WithSSFAuthorizationSchemes(scheme goidc.SSFAuthorizationScheme, schemes ...goidc.SSFAuthorizationScheme) Option {
+	schemes = appendIfNotIn(schemes, scheme)
+	return func(p *Provider) error {
+		p.config.SSFAuthorizationSchemes = schemes
+		return nil
+	}
+}
+
+func WithSSFAuthenticatedReceiverFunc(f goidc.SSFAuthenticatedReceiverFunc) Option {
+	return func(p *Provider) error {
+		p.config.SSFAuthenticatedReceiverFunc = f
+		return nil
+	}
+}
+
+func WithSSFEventStreamVerificationManager(manager goidc.SSFEventStreamVerificationManager) Option {
+	return func(p *Provider) error {
+		p.config.SSFEventStreamVerificationManager = manager
+		return nil
+	}
+}
+
+func WithSSFHTTPClientFunc(f goidc.HTTPClientFunc) Option {
+	return func(p *Provider) error {
+		p.config.SSFHTTPClientFunc = f
+		return nil
+	}
+}
+
+func WithSSFMinVerificationInterval(interval int) Option {
+	return func(p *Provider) error {
+		p.config.SSFMinVerificationInterval = interval
+		return nil
+	}
+}
+
+func WithSSFInactivityTimeoutSecs(secs int) Option {
+	return func(p *Provider) error {
+		p.config.SSFInactivityTimeoutSecs = secs
 		return nil
 	}
 }
