@@ -65,54 +65,54 @@ type SSFEventStream struct {
 type SSFEventType string
 
 const (
-	// SSFEventTypeVerification [OpenID Shared Signals Framework Specification 1.0 §8.1.4.1]
-	SSFEventTypeVerification SSFEventType = "https://schemas.openid.net/secevent/ssf/event-type/verification"
-	// SSFEventTypeStreamUpdated [OpenID Shared Signals Framework Specification 1.0 §8.1.5]
-	SSFEventTypeStreamUpdated SSFEventType = "https://schemas.openid.net/secevent/ssf/event-type/stream-updated"
-	// SSFEventTypeCAEPSessionRevoked [OpenID Continuous Access Evaluation Profile 1.0 §3.1]
-	SSFEventTypeCAEPSessionRevoked SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/session-revoked"
-	// SSFEventTypeCAEPTokenClaimsChange [OpenID Continuous Access Evaluation Profile 1.0 §3.2]
-	SSFEventTypeCAEPTokenClaimsChange SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/token-claims-change"
-	// SSFEventTypeCAEPCredentialChange [OpenID Continuous Access Evaluation Profile 1.0 §3.3]
-	SSFEventTypeCAEPCredentialChange SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/credential-change"
-	// SSFEventTypeCAEPAssuranceLevelChange [OpenID Continuous Access Evaluation Profile 1.0 §3.4]
-	SSFEventTypeCAEPAssuranceLevelChange SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/assurance-level-change"
-	// SSFEventTypeCAEPDeviceComplianceChange [OpenID Continuous Access Evaluation Profile 1.0 §3.5]
-	SSFEventTypeCAEPDeviceComplianceChange SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/device-compliance-change"
+	// SSFEventTypeVerification [OpenID Shared Signals Framework Specification 1.0 §8.1.4.1].
+	SSFEventTypeVerification SSFEventType = "https://schemas.openid.net/secevent/ssf/event-type/verification" //nolint:gosec
+	// SSFEventTypeStreamUpdated [OpenID Shared Signals Framework Specification 1.0 §8.1.5].
+	SSFEventTypeStreamUpdated SSFEventType = "https://schemas.openid.net/secevent/ssf/event-type/stream-updated" //nolint:gosec
+	// SSFEventTypeCAEPSessionRevoked [OpenID Continuous Access Evaluation Profile 1.0 §3.1].
+	SSFEventTypeCAEPSessionRevoked SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/session-revoked" //nolint:gosec
+	// SSFEventTypeCAEPTokenClaimsChange [OpenID Continuous Access Evaluation Profile 1.0 §3.2].
+	SSFEventTypeCAEPTokenClaimsChange SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/token-claims-change" //nolint:gosec
+	// SSFEventTypeCAEPCredentialChange [OpenID Continuous Access Evaluation Profile 1.0 §3.3].
+	SSFEventTypeCAEPCredentialChange SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/credential-change" //nolint:gosec
+	// SSFEventTypeCAEPAssuranceLevelChange [OpenID Continuous Access Evaluation Profile 1.0 §3.4].
+	SSFEventTypeCAEPAssuranceLevelChange SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/assurance-level-change" //nolint:gosec
+	// SSFEventTypeCAEPDeviceComplianceChange [OpenID Continuous Access Evaluation Profile 1.0 §3.5].
+	SSFEventTypeCAEPDeviceComplianceChange SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/device-compliance-change" //nolint:gosec
 	// SSFEventTypeCAEPSessionEstablished [OpenID Continuous Access Evaluation Profile 1.0 §3.6]
-	SSFEventTypeCAEPSessionEstablished SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/session-established"
-	// SSFEventTypeCAEPSessionPresented [OpenID Continuous Access Evaluation Profile 1.0 §3.7]
-	SSFEventTypeCAEPSessionPresented SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/session-presented"
-	// SSFEventTypeCAEPRiskLevelChange [OpenID Continuous Access Evaluation Profile 1.0 §3.8]
-	SSFEventTypeCAEPRiskLevelChange SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/risk-level-change"
-	// SSFEventTypeRISCAccountCredentialChangeRequired [OpenID RISC Profile Specification 1.0 §2.1]
-	SSFEventTypeRISCAccountCredentialChangeRequired SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required"
-	// SSFEventTypeRISCAccountPurged [OpenID RISC Profile Specification 1.0 §2.2]
-	SSFEventTypeRISCAccountPurged SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/account-purged"
-	// SSFEventTypeRISCAccountDisabled [OpenID RISC Profile Specification 1.0 §2.3]
-	SSFEventTypeRISCAccountDisabled SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/account-disabled"
-	// SSFEventTypeRISCAccountEnabled [OpenID RISC Profile Specification 1.0 §2.4]
-	SSFEventTypeRISCAccountEnabled SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/account-enabled"
-	// SSFEventTypeRISCIdentifierChanged [OpenID RISC Profile Specification 1.0 §2.5]
-	SSFEventTypeRISCIdentifierChanged SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/identifier-changed"
-	// SSFEventTypeRISCIdentifierRecycled [OpenID RISC Profile Specification 1.0 §2.6]
-	SSFEventTypeRISCIdentifierRecycled SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/identifier-recycled"
-	// SSFEventTypeRISCIdentifierCompromised [OpenID RISC Profile Specification 1.0 §2.7]
-	SSFEventTypeRISCIdentifierCompromised SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/credential-compromise"
-	// SSFEventTypeRISCIdentifierOptIn [OpenID RISC Profile Specification 1.0 §2.8.1]
-	SSFEventTypeRISCIdentifierOptIn SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/opt-in"
-	// SSFEventTypeRISCIdentifierOptOutInitiated [OpenID RISC Profile Specification 1.0 §2.8.2]
-	SSFEventTypeRISCIdentifierOptOutInitiated SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/opt-out-initiated"
-	// SSFEventTypeRISCIdentifierOptOutCancelled [OpenID RISC Profile Specification 1.0 §2.8.3]
-	SSFEventTypeRISCIdentifierOptOutCancelled SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/opt-out-cancelled"
-	// SSFEventTypeRISCIdentifierOptOutEffective [OpenID RISC Profile Specification 1.0 §2.8.4]
-	SSFEventTypeRISCIdentifierOptOutEffective SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/opt-out-effective"
-	// SSFEventTypeRISCRecoveryActivated [OpenID RISC Profile Specification 1.0 §2.9]
-	SSFEventTypeRISCRecoveryActivated SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/recovery-activated"
-	// SSFEventTypeRISCRecoveryInformationChanged [OpenID RISC Profile Specification 1.0 §2.10]
-	SSFEventTypeRISCRecoveryInformationChanged SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/recovery-information-changed"
-	// SSFEventTypeRSSessionsRevoked [OpenID RISC Profile Specification 1.0 §2.11]
-	SSFEventTypeRSSessionsRevoked SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/sessions-revoked"
+	SSFEventTypeCAEPSessionEstablished SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/session-established" //nolint:gosec
+	// SSFEventTypeCAEPSessionPresented [OpenID Continuous Access Evaluation Profile 1.0 §3.7].
+	SSFEventTypeCAEPSessionPresented SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/session-presented" //nolint:gosec
+	// SSFEventTypeCAEPRiskLevelChange [OpenID Continuous Access Evaluation Profile 1.0 §3.8].
+	SSFEventTypeCAEPRiskLevelChange SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/risk-level-change" //nolint:gosec
+	// SSFEventTypeRISCAccountCredentialChangeRequired [OpenID RISC Profile Specification 1.0 §2.1].
+	SSFEventTypeRISCAccountCredentialChangeRequired SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/account-credential-change-required" //nolint:gosec
+	// SSFEventTypeRISCAccountPurged [OpenID RISC Profile Specification 1.0 §2.2].
+	SSFEventTypeRISCAccountPurged SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/account-purged" //nolint:gosec
+	// SSFEventTypeRISCAccountDisabled [OpenID RISC Profile Specification 1.0 §2.3].
+	SSFEventTypeRISCAccountDisabled SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/account-disabled" //nolint:gosec
+	// SSFEventTypeRISCAccountEnabled [OpenID RISC Profile Specification 1.0 §2.4].
+	SSFEventTypeRISCAccountEnabled SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/account-enabled" //nolint:gosec
+	// SSFEventTypeRISCIdentifierChanged [OpenID RISC Profile Specification 1.0 §2.5].
+	SSFEventTypeRISCIdentifierChanged SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/identifier-changed" //nolint:gosec
+	// SSFEventTypeRISCIdentifierRecycled [OpenID RISC Profile Specification 1.0 §2.6].
+	SSFEventTypeRISCIdentifierRecycled SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/identifier-recycled" //nolint:gosec
+	// SSFEventTypeRISCIdentifierCompromised [OpenID RISC Profile Specification 1.0 §2.7].
+	SSFEventTypeRISCIdentifierCompromised SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/credential-compromise" //nolint:gosec
+	// SSFEventTypeRISCIdentifierOptIn [OpenID RISC Profile Specification 1.0 §2.8.1].
+	SSFEventTypeRISCIdentifierOptIn SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/opt-in" //nolint:gosec
+	// SSFEventTypeRISCIdentifierOptOutInitiated [OpenID RISC Profile Specification 1.0 §2.8.2].
+	SSFEventTypeRISCIdentifierOptOutInitiated SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/opt-out-initiated" //nolint:gosec
+	// SSFEventTypeRISCIdentifierOptOutCancelled [OpenID RISC Profile Specification 1.0 §2.8.3].
+	SSFEventTypeRISCIdentifierOptOutCancelled SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/opt-out-cancelled" //nolint:gosec
+	// SSFEventTypeRISCIdentifierOptOutEffective [OpenID RISC Profile Specification 1.0 §2.8.4].
+	SSFEventTypeRISCIdentifierOptOutEffective SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/opt-out-effective" //nolint:gosec
+	// SSFEventTypeRISCRecoveryActivated [OpenID RISC Profile Specification 1.0 §2.9].
+	SSFEventTypeRISCRecoveryActivated SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/recovery-activated" //nolint:gosec
+	// SSFEventTypeRISCRecoveryInformationChanged [OpenID RISC Profile Specification 1.0 §2.10].
+	SSFEventTypeRISCRecoveryInformationChanged SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/recovery-information-changed" //nolint:gosec
+	// SSFEventTypeRSSessionsRevoked [OpenID RISC Profile Specification 1.0 §2.11].
+	SSFEventTypeRSSessionsRevoked SSFEventType = "https://schemas.openid.net/secevent/risc/event-type/sessions-revoked" //nolint:gosec
 )
 
 type SSFDeliveryMethod string

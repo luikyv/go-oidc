@@ -22,7 +22,7 @@ func PublishEvent(ctx oidc.Context, streamID string, event goidc.SSFEvent) error
 	}
 
 	// Return an error if the stream did not subscribe to the event type and the event is not a verification event.
-	if !slices.Contains(stream.EventsDelivered, event.Type) && !(ctx.SSFIsVerificationEnabled && event.Type == goidc.SSFEventTypeVerification) {
+	if !slices.Contains(stream.EventsDelivered, event.Type) && (!ctx.SSFIsVerificationEnabled || event.Type != goidc.SSFEventTypeVerification) {
 		return fmt.Errorf("stream did not subscribe to event type %s", event.Type)
 	}
 
@@ -68,7 +68,7 @@ func pushEvent(ctx oidc.Context, stream *goidc.SSFEventStream, event goidc.SSFEv
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("push failed with status %d", resp.StatusCode)

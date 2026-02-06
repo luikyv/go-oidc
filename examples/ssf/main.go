@@ -17,8 +17,10 @@ import (
 	"github.com/luikyv/go-oidc/pkg/provider"
 )
 
+type ctxKey string
+
 const (
-	ctxKeyClientID = "client_id"
+	ctxKeyClientID ctxKey = "client_id"
 )
 
 func main() {

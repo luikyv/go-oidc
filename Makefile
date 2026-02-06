@@ -166,7 +166,7 @@ cs-fapiciba-tests:
 
 cs-ssf-tests:
 	@conformance-suite/venv/bin/python3 conformance-suite/scripts/run-test-plan.py \
+		openid-ssf-transmitter-test-plan[client_auth_type=client_secret_post][ssf_server_metadata=discovery][server_metadata=discovery][ssf_auth_mode=dynamic][ssf_delivery_mode=push][ssf_profile=default][client_registration=static_client] ./examples/ssf/config.json \
 		openid-ssf-transmitter-test-plan[client_auth_type=client_secret_post][ssf_server_metadata=discovery][server_metadata=discovery][ssf_auth_mode=dynamic][ssf_delivery_mode=poll][ssf_profile=default][client_registration=static_client] ./examples/ssf/config.json \
-		--expected-failures-file ./examples/ssf/failures.json \
 		--export-dir ./examples/ssf \
 		--verbose
