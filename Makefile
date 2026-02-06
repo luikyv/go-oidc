@@ -1,4 +1,4 @@
-CS_VERSION = v5.1.35
+CS_VERSION = v5.1.39
 
 setup-dev:
 	@make setup-cs
