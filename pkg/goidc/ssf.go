@@ -66,11 +66,11 @@ type SSFEventType string
 
 const (
 	// SSFEventTypeVerification [OpenID Shared Signals Framework Specification 1.0 §8.1.4.1].
-	SSFEventTypeVerification SSFEventType = "https://schemas.openid.net/secevent/ssf/event-type/verification" //nolint:gosec
+	SSFEventTypeVerification SSFEventType = "https://schemas.openid.net/secevent/ssf/event-type/verification"
 	// SSFEventTypeStreamUpdated [OpenID Shared Signals Framework Specification 1.0 §8.1.5].
-	SSFEventTypeStreamUpdated SSFEventType = "https://schemas.openid.net/secevent/ssf/event-type/stream-updated" //nolint:gosec
+	SSFEventTypeStreamUpdated SSFEventType = "https://schemas.openid.net/secevent/ssf/event-type/stream-updated"
 	// SSFEventTypeCAEPSessionRevoked [OpenID Continuous Access Evaluation Profile 1.0 §3.1].
-	SSFEventTypeCAEPSessionRevoked SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/session-revoked" //nolint:gosec
+	SSFEventTypeCAEPSessionRevoked SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/session-revoked"
 	// SSFEventTypeCAEPTokenClaimsChange [OpenID Continuous Access Evaluation Profile 1.0 §3.2].
 	SSFEventTypeCAEPTokenClaimsChange SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/token-claims-change" //nolint:gosec
 	// SSFEventTypeCAEPCredentialChange [OpenID Continuous Access Evaluation Profile 1.0 §3.3].
@@ -79,7 +79,7 @@ const (
 	SSFEventTypeCAEPAssuranceLevelChange SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/assurance-level-change" //nolint:gosec
 	// SSFEventTypeCAEPDeviceComplianceChange [OpenID Continuous Access Evaluation Profile 1.0 §3.5].
 	SSFEventTypeCAEPDeviceComplianceChange SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/device-compliance-change" //nolint:gosec
-	// SSFEventTypeCAEPSessionEstablished [OpenID Continuous Access Evaluation Profile 1.0 §3.6]
+	// SSFEventTypeCAEPSessionEstablished [OpenID Continuous Access Evaluation Profile 1.0 §3.6].
 	SSFEventTypeCAEPSessionEstablished SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/session-established" //nolint:gosec
 	// SSFEventTypeCAEPSessionPresented [OpenID Continuous Access Evaluation Profile 1.0 §3.7].
 	SSFEventTypeCAEPSessionPresented SSFEventType = "https://schemas.openid.net/secevent/caep/event-type/session-presented" //nolint:gosec
