@@ -1,0 +1,11 @@
+[
+    {
+        "test-name": "openid-ssf-transmitter-events",
+        "variant": "*",
+        "configuration-filename": "*",
+        "current-block": "Verify verification event 3 received via POLL delivery mode with POLL_AND_ACKNOWLEDGE",
+        "condition": "OIDSSFCheckVerificationEventState",
+        "expected-result": "failure",
+        "comment": "cs is supposed to acknowledge the previous verification event or match the jti to the right state. This error is intermittent because the verification event is not always delivered in the same order during polling."
+    }
+]

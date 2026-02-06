@@ -60,7 +60,7 @@ cs-oidc-tests:
 		oidcc-formpost-hybrid-certification-test-plan[server_metadata=discovery][client_registration=dynamic_client] ./examples/oidc/config.json \
 		oidcc-formpost-implicit-certification-test-plan[server_metadata=discovery][client_registration=dynamic_client] ./examples/oidc/config.json \
 		oidcc-rp-initiated-logout-certification-test-plan[response_type=code\ id_token][client_registration=dynamic_client] ./examples/oidc/config.json \
-		--expected-failures-file ./examples/oidc/expected_failures.json \
+		--expected-failures-file ./examples/oidc/failures.json \
 		--export-dir ./examples/oidc \
 		--verbose
 
@@ -162,4 +162,11 @@ cs-fapiciba-tests:
 		fapi-ciba-id1-test-plan[client_auth_type=private_key_jwt][ciba_mode=poll][fapi_profile=plain_fapi][client_registration=dynamic_client] ./examples/fapiciba/config.json \
 		fapi-ciba-id1-test-plan[client_auth_type=private_key_jwt][ciba_mode=ping][fapi_profile=plain_fapi][client_registration=dynamic_client] ./examples/fapiciba/config.json \
 		--export-dir ./examples/fapiciba \
+		--verbose
+
+cs-ssf-tests:
+	@conformance-suite/venv/bin/python3 conformance-suite/scripts/run-test-plan.py \
+		openid-ssf-transmitter-test-plan[client_auth_type=client_secret_post][ssf_server_metadata=discovery][server_metadata=discovery][ssf_auth_mode=dynamic][ssf_delivery_mode=poll][ssf_profile=default][client_registration=static_client] ./examples/ssf/config.json \
+		--expected-failures-file ./examples/ssf/failures.json \
+		--export-dir ./examples/ssf \
 		--verbose

@@ -64,20 +64,21 @@ func ClientPrivateKeyJWT(id string) (*goidc.Client, goidc.JSONWebKeySet) {
 	return client, jwks
 }
 
-func ClientSecretPost(id, secret string) *goidc.Client {
-	client, _ := Client(id)
+func ClientSecretPost(id, secret string, scopes ...goidc.Scope) *goidc.Client {
+	client, _ := Client(id, scopes...)
 	client.TokenAuthnMethod = goidc.ClientAuthnSecretPost
 	client.HashedSecret = hashutil.BCryptHash(secret)
 	return client
 }
 
-func Client(id string) (*goidc.Client, goidc.JSONWebKeySet) {
+func Client(id string, scopes ...goidc.Scope) (*goidc.Client, goidc.JSONWebKeySet) {
 	// Extract the public client JWKS.
 	jwks := privateJWKS(id)
 
 	// Extract scopes IDs.
-	scopesIDs := make([]string, len(Scopes))
-	for i, scope := range Scopes {
+	scopes = append(scopes, Scopes...)
+	scopesIDs := make([]string, len(scopes))
+	for i, scope := range scopes {
 		scopesIDs[i] = scope.ID
 	}
 

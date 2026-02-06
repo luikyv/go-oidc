@@ -126,27 +126,27 @@ func (op *Provider) TokenInfo(ctx context.Context, tkn string) (goidc.TokenInfo,
 // and gather information about the token, and checks for Proof of Possession (PoP) if required.
 // If the token is valid and PoP validation (if any) is successful, the function
 // returns token information; otherwise, it returns an appropriate error.
-func (op *Provider) TokenInfoFromRequest(r *http.Request) (goidc.TokenInfo, error) {
+func (op *Provider) TokenInfoFromRequest(r *http.Request) (string, goidc.TokenInfo, error) {
 	ctx := oidc.NewHTTPContext(nil, r, &op.config)
 
 	accessToken, _, ok := ctx.AuthorizationToken()
 	if !ok {
-		return goidc.TokenInfo{}, goidc.NewError(goidc.ErrorCodeInvalidToken, "no token found")
+		return "", goidc.TokenInfo{}, goidc.NewError(goidc.ErrorCodeInvalidToken, "no token found")
 	}
 
 	info, err := token.IntrospectionInfo(ctx, accessToken)
 	if err != nil {
-		return goidc.TokenInfo{}, err
+		return "", goidc.TokenInfo{}, err
 	}
 
 	if info.Confirmation == nil {
-		return info, nil
+		return accessToken, info, nil
 	}
 
 	if err := token.ValidatePoP(ctx, accessToken, *info.Confirmation); err != nil {
-		return goidc.TokenInfo{}, err
+		return "", goidc.TokenInfo{}, err
 	}
-	return info, nil
+	return accessToken, info, nil
 }
 
 func (op *Provider) SaveClient(ctx context.Context, client *goidc.Client) error {
@@ -163,6 +163,7 @@ func (op *Provider) Client(ctx context.Context, id string) (*goidc.Client, error
 		}
 	}
 
+	// TODO: Federation missing.
 	return op.config.ClientManager.Client(ctx, id)
 }
 
@@ -270,9 +271,24 @@ func (op *Provider) MakeToken(ctx context.Context, gi goidc.GrantInfo) (string, 
 	return tkn.Value, nil
 }
 
+func (op *Provider) RevokeToken(ctx context.Context, tkn string) error {
+	oidcCtx := oidc.NewContext(ctx, &op.config)
+	info, err := token.IntrospectionInfo(oidcCtx, tkn)
+	if err != nil {
+		return err
+	}
+	_ = oidcCtx.DeleteGrantSession(info.GrantID)
+	return nil
+}
+
 func (p *Provider) PublishSSFEvent(ctx context.Context, streamID string, event goidc.SSFEvent) error {
 	oidcCtx := oidc.NewContext(ctx, &p.config)
 	return ssf.PublishEvent(oidcCtx, streamID, event)
+}
+
+func (op *Provider) PublishSSFVerificationEvent(ctx context.Context, streamID string, opts goidc.SSFStreamVerificationOptions) error {
+	oidcCtx := oidc.NewContext(ctx, &op.config)
+	return ssf.PublishEvent(oidcCtx, streamID, goidc.NewSSFVerificationEvent(streamID, opts))
 }
 
 func (op *Provider) setDefaults() error {
@@ -403,7 +419,7 @@ func (op *Provider) setDefaults() error {
 	}
 
 	if op.config.SSFIsEnabled {
-		ssfManager := storage.NewSSFManager(defaultStorageMaxSize)
+		ssfManager := ssf.NewEventManager(defaultStorageMaxSize)
 		op.config.SSFJWKSEndpoint = nonZeroOrDefault(op.config.SSFJWKSEndpoint, defaultEndpointSSFJWKS)
 		op.config.SSFConfigurationEndpoint = nonZeroOrDefault(op.config.SSFConfigurationEndpoint, defaultEndpointSSFConfiguration)
 		op.config.SSFEventStreamManager = nonZeroOrDefault(op.config.SSFEventStreamManager, goidc.SSFEventStreamManager(ssfManager))

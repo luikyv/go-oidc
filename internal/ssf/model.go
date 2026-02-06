@@ -43,8 +43,14 @@ type Configuration struct {
 type request struct {
 	ID              string               `json:"stream_id"`
 	EventsRequested []goidc.SSFEventType `json:"events_requested"`
-	Delivery        delivery             `json:"delivery"`
-	Description     string               `json:"description,omitempty"`
+	Delivery        requestDelivery      `json:"delivery"`
+	Description     *string              `json:"description,omitempty"`
+}
+
+type requestDelivery struct {
+	Method              goidc.SSFDeliveryMethod `json:"method"`
+	Endpoint            *string                 `json:"endpoint_url,omitempty"`
+	AuthorizationHeader *string                 `json:"authorization_header,omitempty"`
 }
 
 type response struct {
@@ -54,13 +60,13 @@ type response struct {
 	EventsSupported         []goidc.SSFEventType `json:"events_supported"`
 	EventsRequested         []goidc.SSFEventType `json:"events_requested"`
 	EventsDelivered         []goidc.SSFEventType `json:"events_delivered"`
-	Delivery                delivery             `json:"delivery"`
+	Delivery                responseDelivery     `json:"delivery"`
 	MinVerificationInterval int                  `json:"min_verification_interval,omitempty"`
 	Description             string               `json:"description,omitempty"`
 	InactivityTimeout       int                  `json:"inactivity_timeout,omitempty"`
 }
 
-type delivery struct {
+type responseDelivery struct {
 	Method              goidc.SSFDeliveryMethod `json:"method"`
 	Endpoint            string                  `json:"endpoint_url,omitempty"`
 	AuthorizationHeader string                  `json:"authorization_header,omitempty"`
@@ -88,7 +94,7 @@ type requestPollEvents struct {
 	MaxEvents         *int `json:"maxEvents,omitempty"`
 	ReturnImmediately bool `json:"returnImmediately,omitempty"`
 	// Acknowledgements is a list of JWT IDs of the events that have been acknowledged.
-	Acknowledgements []string `json:"acks,omitempty"`
+	Acknowledgements []string `json:"ack,omitempty"`
 	// Errors is a map of JWT IDs to errors of the events that have been delivered.
 	Errors map[string]goidc.SSFEventError `json:"setErrs,omitempty"`
 }

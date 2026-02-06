@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"reflect"
 	"slices"
 	"strings"
 
@@ -32,6 +33,10 @@ func PublishEvent(ctx oidc.Context, streamID string, event goidc.SSFEvent) error
 	// Ensure the event has a JWTID.
 	if event.JWTID == "" {
 		event.JWTID = ctx.SSFJWTID()
+	}
+
+	if event.Claims == nil {
+		event.Claims = make(map[string]any)
 	}
 
 	switch stream.DeliveryMethod {
@@ -101,6 +106,10 @@ func createStream(ctx oidc.Context, req request) (response, error) {
 		return response{}, err
 	}
 
+	if streams, _ := ctx.SSFEventStreams(receiver.ID); !ctx.SSFMultipleStreamsPerReceiverIsEnabled && len(streams) > 0 {
+		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "multiple streams per receiver are not allowed").WithStatusCode(http.StatusConflict)
+	}
+
 	// [SSF 1.0 §8.1.1.1] Default to poll delivery when unspecified.
 	if req.Delivery.Method == "" {
 		req.Delivery.Method = goidc.SSFDeliveryMethodPoll
@@ -110,20 +119,25 @@ func createStream(ctx oidc.Context, req request) (response, error) {
 	if len(audiences) == 0 {
 		audiences = []string{receiver.ID}
 	}
-	eventsSupported := eventsSupported(ctx, receiver)
 	stream := &goidc.SSFEventStream{
-		ID:                  ctx.SSFEventStreamID(),
-		ReceiverID:          receiver.ID,
-		Audiences:           audiences,
-		Status:              goidc.SSFEventStreamStatusEnabled,
-		EventsSupported:     eventsSupported,
-		EventsRequested:     req.EventsRequested,
-		EventsDelivered:     intersection(eventsSupported, req.EventsRequested),
-		DeliveryMethod:      req.Delivery.Method,
-		DeliveryEndpoint:    req.Delivery.Endpoint,
-		AuthorizationHeader: req.Delivery.AuthorizationHeader,
-		Description:         req.Description,
-		CreatedAtTimestamp:  timeutil.TimestampNow(),
+		ID:                 ctx.SSFEventStreamID(),
+		ReceiverID:         receiver.ID,
+		Audiences:          audiences,
+		Status:             goidc.SSFEventStreamStatusEnabled,
+		EventsSupported:    ctx.SSFEventsSupported,
+		EventsRequested:    req.EventsRequested,
+		EventsDelivered:    intersection(ctx.SSFEventsSupported, req.EventsRequested),
+		DeliveryMethod:     req.Delivery.Method,
+		CreatedAtTimestamp: timeutil.TimestampNow(),
+	}
+	if req.Delivery.Endpoint != nil {
+		stream.DeliveryEndpoint = *req.Delivery.Endpoint
+	}
+	if req.Delivery.AuthorizationHeader != nil {
+		stream.AuthorizationHeader = *req.Delivery.AuthorizationHeader
+	}
+	if req.Description != nil {
+		stream.Description = *req.Description
 	}
 	if err := validateStream(ctx, stream); err != nil {
 		return response{}, err
@@ -137,13 +151,9 @@ func createStream(ctx oidc.Context, req request) (response, error) {
 }
 
 func updateStream(ctx oidc.Context, req request) (response, error) {
-	receiver, err := ctx.SSFAuthenticatedReceiver()
+	stream, err := authorizedStream(ctx, req.ID)
 	if err != nil {
 		return response{}, err
-	}
-
-	if req.ID == "" {
-		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "stream_id is required")
 	}
 
 	// [SSF 1.0 §8.1.1.1] Default to poll delivery when unspecified.
@@ -151,21 +161,18 @@ func updateStream(ctx oidc.Context, req request) (response, error) {
 		req.Delivery.Method = goidc.SSFDeliveryMethodPoll
 	}
 
-	stream, err := ctx.SSFEventStream(req.ID)
-	if err != nil {
-		return response{}, err
-	}
-
-	if stream.ReceiverID != receiver.ID {
-		return response{}, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("stream not owned by receiver"))
-	}
-
 	stream.EventsRequested = req.EventsRequested
-	stream.EventsDelivered = intersection(eventsSupported(ctx, receiver), req.EventsRequested)
+	stream.EventsDelivered = intersection(ctx.SSFEventsSupported, req.EventsRequested)
 	stream.DeliveryMethod = req.Delivery.Method
-	stream.DeliveryEndpoint = req.Delivery.Endpoint
-	stream.AuthorizationHeader = req.Delivery.AuthorizationHeader
-	stream.Description = req.Description
+	if req.Delivery.Endpoint != nil {
+		stream.DeliveryEndpoint = *req.Delivery.Endpoint
+	}
+	if req.Delivery.AuthorizationHeader != nil {
+		stream.AuthorizationHeader = *req.Delivery.AuthorizationHeader
+	}
+	if req.Description != nil {
+		stream.Description = *req.Description
+	}
 	if err := validateStream(ctx, stream); err != nil {
 		return response{}, err
 	}
@@ -179,43 +186,30 @@ func updateStream(ctx oidc.Context, req request) (response, error) {
 }
 
 func patchStream(ctx oidc.Context, req request) (response, error) {
-	receiver, err := ctx.SSFAuthenticatedReceiver()
+	stream, err := authorizedStream(ctx, req.ID)
 	if err != nil {
 		return response{}, err
-	}
-
-	if req.ID == "" {
-		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "stream_id is required")
-	}
-
-	stream, err := ctx.SSFEventStream(req.ID)
-	if err != nil {
-		return response{}, err
-	}
-
-	if stream.ReceiverID != receiver.ID {
-		return response{}, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("stream not owned by receiver"))
 	}
 
 	if req.EventsRequested != nil {
 		stream.EventsRequested = req.EventsRequested
-		stream.EventsDelivered = intersection(eventsSupported(ctx, receiver), req.EventsRequested)
+		stream.EventsDelivered = intersection(ctx.SSFEventsSupported, req.EventsRequested)
 	}
 
 	if req.Delivery.Method != "" {
 		stream.DeliveryMethod = req.Delivery.Method
 	}
 
-	if req.Delivery.Endpoint != "" {
-		stream.DeliveryEndpoint = req.Delivery.Endpoint
+	if req.Delivery.Endpoint != nil {
+		stream.DeliveryEndpoint = *req.Delivery.Endpoint
 	}
 
-	if req.Delivery.AuthorizationHeader != "" {
-		stream.AuthorizationHeader = req.Delivery.AuthorizationHeader
+	if req.Delivery.AuthorizationHeader != nil {
+		stream.AuthorizationHeader = *req.Delivery.AuthorizationHeader
 	}
 
-	if req.Description != "" {
-		stream.Description = req.Description
+	if req.Description != nil {
+		stream.Description = *req.Description
 	}
 
 	if err := validateStream(ctx, stream); err != nil {
@@ -230,18 +224,9 @@ func patchStream(ctx oidc.Context, req request) (response, error) {
 }
 
 func fetchStream(ctx oidc.Context, id string) (response, error) {
-	receiver, err := ctx.SSFAuthenticatedReceiver()
+	stream, err := authorizedStream(ctx, id)
 	if err != nil {
 		return response{}, err
-	}
-
-	stream, err := ctx.SSFEventStream(id)
-	if err != nil {
-		return response{}, err
-	}
-
-	if stream.ReceiverID != receiver.ID {
-		return response{}, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("stream not owned by receiver"))
 	}
 
 	return toResponse(ctx, stream), nil
@@ -266,40 +251,18 @@ func fetchStreams(ctx oidc.Context) ([]response, error) {
 }
 
 func deleteStream(ctx oidc.Context, id string) error {
-	receiver, err := ctx.SSFAuthenticatedReceiver()
+	stream, err := authorizedStream(ctx, id)
 	if err != nil {
 		return err
 	}
 
-	stream, err := ctx.SSFEventStream(id)
-	if err != nil {
-		return err
-	}
-
-	if stream.ReceiverID != receiver.ID {
-		return goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("stream not owned by receiver"))
-	}
-
-	return ctx.SSFDeleteEventStream(id)
+	return ctx.SSFDeleteEventStream(stream.ID)
 }
 
 func fetchStreamStatus(ctx oidc.Context, id string) (responseStatus, error) {
-	receiver, err := ctx.SSFAuthenticatedReceiver()
+	stream, err := authorizedStream(ctx, id)
 	if err != nil {
 		return responseStatus{}, err
-	}
-
-	stream, err := ctx.SSFEventStream(id)
-	if err != nil {
-		return responseStatus{}, err
-	}
-
-	if stream.ReceiverID != receiver.ID {
-		return responseStatus{}, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("stream not owned by receiver"))
-	}
-
-	if !ctx.SSFIsEventStreamStatusReadAllowed(receiver) {
-		return responseStatus{}, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("receiver not allowed to fetch event stream status"))
 	}
 
 	return responseStatus{
@@ -310,26 +273,9 @@ func fetchStreamStatus(ctx oidc.Context, id string) (responseStatus, error) {
 }
 
 func updateStreamStatus(ctx oidc.Context, req requestStatus) (responseStatus, error) {
-	receiver, err := ctx.SSFAuthenticatedReceiver()
+	stream, err := authorizedStream(ctx, req.ID)
 	if err != nil {
 		return responseStatus{}, err
-	}
-
-	if !ctx.SSFIsEventStreamStatusWriteAllowed(receiver) {
-		return responseStatus{}, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("receiver not allowed to update event stream status"))
-	}
-
-	if req.ID == "" {
-		return responseStatus{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "stream_id is required")
-	}
-
-	stream, err := ctx.SSFEventStream(req.ID)
-	if err != nil {
-		return responseStatus{}, err
-	}
-
-	if stream.ReceiverID != receiver.ID {
-		return responseStatus{}, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("stream not owned by receiver"))
 	}
 
 	stream.Status = req.Status
@@ -346,7 +292,7 @@ func updateStreamStatus(ctx oidc.Context, req requestStatus) (responseStatus, er
 }
 
 func addSubject(ctx oidc.Context, req requestSubject) error {
-	_, _, err := receiverAndEventStream(ctx, req.StreamID)
+	stream, err := authorizedStream(ctx, req.StreamID)
 	if err != nil {
 		return err
 	}
@@ -359,14 +305,13 @@ func addSubject(ctx oidc.Context, req requestSubject) error {
 	if req.Verified != nil {
 		verified = *req.Verified
 	}
-	return ctx.SSFAddSubject(req.StreamID, req.Subject, goidc.SSFSubjectOptions{
+	return ctx.SSFAddSubject(stream.ID, req.Subject, goidc.SSFSubjectOptions{
 		Verified: verified,
 	})
 }
 
 func removeSubject(ctx oidc.Context, req requestSubject) error {
-	_, _, err := receiverAndEventStream(ctx, req.StreamID)
-	if err != nil {
+	if _, err := authorizedStream(ctx, req.StreamID); err != nil {
 		return err
 	}
 
@@ -594,7 +539,7 @@ func toResponse(ctx oidc.Context, stream *goidc.SSFEventStream) response {
 		EventsSupported: stream.EventsSupported,
 		EventsRequested: stream.EventsRequested,
 		EventsDelivered: stream.EventsDelivered,
-		Delivery: delivery{
+		Delivery: responseDelivery{
 			Method:   stream.DeliveryMethod,
 			Endpoint: deliveryEndpoint,
 		},
@@ -615,7 +560,7 @@ func intersection(a, b []goidc.SSFEventType) []goidc.SSFEventType {
 }
 
 func pollEvents(ctx oidc.Context, streamID string, req requestPollEvents) (responsePollEvents, error) {
-	_, stream, err := receiverAndEventStream(ctx, streamID)
+	stream, err := authorizedStream(ctx, streamID)
 	if err != nil {
 		return responsePollEvents{}, err
 	}
@@ -642,7 +587,9 @@ func pollEvents(ctx oidc.Context, streamID string, req requestPollEvents) (respo
 
 	// [RFC 8936 §2.2] If maxEvents is 0, no events should be returned.
 	if req.MaxEvents != nil && *req.MaxEvents == 0 {
-		return responsePollEvents{}, nil
+		return responsePollEvents{
+			SecurityEventTokens: make(map[string]string),
+		}, nil
 	}
 
 	events, err := ctx.SSFPollEvents(streamID, goidc.SSFPollOptions{
@@ -682,50 +629,114 @@ func signEvent(ctx oidc.Context, stream *goidc.SSFEventStream, event goidc.SSFEv
 	return ctx.SSFSign(token, opts)
 }
 
-func createVerificationEvent(ctx oidc.Context, req requestVerificationEvent) error {
-	_, stream, err := receiverAndEventStream(ctx, req.StreamID)
+func scheduleVerificationEvent(ctx oidc.Context, req requestVerificationEvent) error {
+	stream, err := authorizedStream(ctx, req.StreamID)
 	if err != nil {
 		return err
 	}
 
-	return ctx.SSFTriggerVerificationEvent(stream.ID, goidc.SSFStreamVerificationOptions{
+	if ctx.SSFMinVerificationInterval != 0 {
+		if stream.VerifiedAtTimestamp != 0 && stream.VerifiedAtTimestamp+ctx.SSFMinVerificationInterval > timeutil.TimestampNow() {
+			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "verification event cannot be triggered within the minimum verification interval").WithStatusCode(http.StatusTooManyRequests)
+		}
+		stream.VerifiedAtTimestamp = timeutil.TimestampNow()
+		if err := ctx.SSFUpdateEventStream(stream); err != nil {
+			return err
+		}
+	}
+
+	return ctx.SSFScheduleVerificationEvent(stream.ID, goidc.SSFStreamVerificationOptions{
 		State: req.State,
 	})
 }
 
-func eventsSupported(ctx oidc.Context, receiver goidc.SSFReceiver) []goidc.SSFEventType {
-	events := ctx.SSFEventsSupported
-	if receiver.EventsSupported != nil {
-		events = receiver.EventsSupported
-	}
-	return events
-}
-
-func receiverAndEventStream(ctx oidc.Context, id string) (goidc.SSFReceiver, *goidc.SSFEventStream, error) {
+func authorizedStream(ctx oidc.Context, id string) (*goidc.SSFEventStream, error) {
 	receiver, err := ctx.SSFAuthenticatedReceiver()
 	if err != nil {
-		return goidc.SSFReceiver{}, nil, err
+		return nil, err
+	}
+
+	if id == "" {
+		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "stream_id is required")
 	}
 
 	stream, err := ctx.SSFEventStream(id)
 	if err != nil {
-		return goidc.SSFReceiver{}, nil, err
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "stream not found", err).WithStatusCode(http.StatusNotFound)
 	}
 
 	if stream.ReceiverID != receiver.ID {
-		return goidc.SSFReceiver{}, nil, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("stream not owned by receiver"))
+		return nil, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("stream not owned by receiver"))
+	}
+
+	if stream.ExpiresAtTimestamp != 0 && stream.ExpiresAtTimestamp < timeutil.TimestampNow() {
+		if err := ctx.SSFHandleExpiredEventStream(stream); err != nil {
+			return nil, err
+		}
+		stream.ExpiresAtTimestamp = 0
+		if err := ctx.SSFUpdateEventStream(stream); err != nil {
+			return nil, err
+		}
 	}
 
 	if ctx.SSFInactivityTimeoutSecs != 0 {
 		stream.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.SSFInactivityTimeoutSecs
 		if err := ctx.SSFUpdateEventStream(stream); err != nil {
-			return goidc.SSFReceiver{}, nil, err
+			return nil, err
 		}
 	}
 
-	if stream.ExpiresAtTimestamp != 0 && stream.ExpiresAtTimestamp < timeutil.TimestampNow() {
-		return goidc.SSFReceiver{}, nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "stream has expired")
+	return stream, nil
+}
+
+// compareSubjects compares two [goidc.SSFSubject] according to the subject matching rules.
+// [SSF 1.0 §8.1.3.1].
+func compareSubjects(a, b *goidc.SSFSubject) bool {
+	// If either is nil, they match (undefined field matches anything).
+	if a == nil || b == nil {
+		return true
 	}
 
-	return receiver, stream, nil
+	// For simple subjects, two subjects match if they are exactly identical.
+	if a.Format != goidc.SSFSubjectFormatComplex && b.Format != goidc.SSFSubjectFormatComplex {
+		return reflect.DeepEqual(a, b)
+	}
+
+	// For complex subjects, two subjects match if, for all fields in the complex subject
+	// (i.e. user, group, device, etc.), at least one of the following statements is true:
+	// - Subject 1's field is not defined (nil).
+	// - Subject 2's field is not defined (nil).
+	// - Subject 1's field is identical to Subject 2's field.
+	if !compareSubjects(a.User, b.User) {
+		return false
+	}
+	if !compareSubjects(a.Tenant, b.Tenant) {
+		return false
+	}
+	if !compareSubjects(a.Device, b.Device) {
+		return false
+	}
+	if !compareSubjects(a.Session, b.Session) {
+		return false
+	}
+	if !compareSubjects(a.OrganizationalUnit, b.OrganizationalUnit) {
+		return false
+	}
+	if !compareSubjects(a.Application, b.Application) {
+		return false
+	}
+	if !compareSubjects(a.Group, b.Group) {
+		return false
+	}
+
+	// For each key present in both maps, values must be identical.
+	for key, aVal := range a.AdditionalProperties {
+		if bVal, exists := b.AdditionalProperties[key]; exists {
+			if !reflect.DeepEqual(aVal, bVal) {
+				return false
+			}
+		}
+	}
+
+	return true
 }

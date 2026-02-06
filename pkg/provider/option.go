@@ -314,8 +314,6 @@ func WithClientCredentialsGrant() Option {
 }
 
 // WithRefreshTokenGrant makes available the refresh token grant.
-// The default refresh token lifetime is [defaultRefreshTokenLifetimeSecs] and
-// the default logic to issue refresh token is [defaultIssueRefreshTokenFunc].
 func WithRefreshTokenGrant(f goidc.ShouldIssueRefreshTokenFunc, lifetimeSecs int) Option {
 	return func(p *Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantRefreshToken)
@@ -941,8 +939,7 @@ func WithHTTPClientFunc(f goidc.HTTPClientFunc) Option {
 // WithJWTBearerGrant enables the JWT bearer grant type.
 func WithJWTBearerGrant(f goidc.HandleJWTBearerGrantAssertionFunc) Option {
 	return func(p *Provider) error {
-		p.config.GrantTypes = append(p.config.GrantTypes,
-			goidc.GrantJWTBearer)
+		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantJWTBearer)
 		p.config.HandleJWTBearerGrantAssertionFunc = f
 		return nil
 	}
@@ -1163,14 +1160,51 @@ func WithCallbackIDFunc(f goidc.GenerateIDFunc) Option {
 	}
 }
 
-func WithSSF(jwksFunc goidc.JWKSFunc) Option {
+// WithSSF enables the Shared Signals Framework (SSF) support, allowing the provider
+// to act as an SSF transmitter that publishes security events to receivers (relying parties).
+// SSF enables real-time sharing of security-related signals such as session revocation,
+// credential changes, and other CAEP (Continuous Access Evaluation Protocol) events.
+//
+// Parameters:
+//   - jwksFunc: A function that returns the provider's SSF JWKS, used to sign
+//     Security Event Tokens (SETs). This JWKS is separate from the provider's
+//     regular signing keys.
+//   - receiverFunc: A function that authenticates incoming requests and returns
+//     the SSF receiver (relying party) information. This is called on every SSF
+//     API request to identify and authorize the receiver.
+//
+// Defaults:
+//   - Event stream manager: in-memory storage (see [WithSSFEventStreamManager])
+//   - Signature algorithm: [defaultSSFSigAlg]. The jwksFunc is supposed to have a key matching this algorithm.
+//     See [WithSSFSignatureAlgorithm] to change the default.
+//   - Status management: disabled (see [WithSSFEventStreamStatusManagement])
+//   - Subject management: disabled (see [WithSSFEventStreamSubjectManagement])
+//   - Verification: disabled (see [WithSSFEventStreamVerification])
+//
+// [OpenID Shared Signals Framework specification]: https://openid.net/specs/openid-sharedsignals-framework-1_0.html
+func WithSSF(jwksFunc goidc.JWKSFunc, receiverFunc goidc.SSFAuthenticatedReceiverFunc) Option {
 	return func(p *Provider) error {
 		p.config.SSFIsEnabled = true
 		p.config.SSFJWKSFunc = jwksFunc
+		p.config.SSFAuthenticatedReceiverFunc = receiverFunc
 		return nil
 	}
 }
 
+// WithSSFEventTypes sets the default event types supported by the SSF transmitter.
+// For more information, see [WithSSF].
+func WithSSFEventTypes(eventType goidc.SSFEventType, events ...goidc.SSFEventType) Option {
+	events = appendIfNotIn(events, eventType)
+	return func(p *Provider) error {
+		p.config.SSFEventsSupported = events
+		return nil
+	}
+}
+
+// WithSSFEventStreamManager replaces the default in-memory event stream storage.
+// The event stream manager is responsible for persisting event stream configurations
+// created by receivers.
+// For more information, see [WithSSF].
 func WithSSFEventStreamManager(manager goidc.SSFEventStreamManager) Option {
 	return func(p *Provider) error {
 		p.config.SSFEventStreamManager = manager
@@ -1178,6 +1212,20 @@ func WithSSFEventStreamManager(manager goidc.SSFEventStreamManager) Option {
 	}
 }
 
+// WithSSFSignatureAlgorithm sets the algorithm used to sign Security Event Tokens (SETs).
+// The default is [defaultSSFSigAlg].
+// For more information, see [WithSSF].
+func WithSSFSignatureAlgorithm(alg goidc.SignatureAlgorithm) Option {
+	return func(p *Provider) error {
+		p.config.SSFSignatureAlgorithm = alg
+		return nil
+	}
+}
+
+// WithSSFDeliveryMethods sets the delivery methods supported by the SSF transmitter.
+// Supported methods are push (transmitter pushes events to receiver) and poll
+// (receiver polls transmitter for events).
+// For more information, see [WithSSF].
 func WithSSFDeliveryMethods(method goidc.SSFDeliveryMethod, methods ...goidc.SSFDeliveryMethod) Option {
 	methods = appendIfNotIn(methods, method)
 	return func(p *Provider) error {
@@ -1186,6 +1234,10 @@ func WithSSFDeliveryMethods(method goidc.SSFDeliveryMethod, methods ...goidc.SSF
 	}
 }
 
+// WithSSFEventPollManager replaces the default in-memory poll event storage.
+// The poll manager is responsible for queuing events for receivers using the poll
+// delivery method and tracking acknowledgements.
+// For more information, see [WithSSF].
 func WithSSFEventPollManager(manager goidc.SSFEventPollManager) Option {
 	return func(p *Provider) error {
 		p.config.SSFEventPollManager = manager
@@ -1193,6 +1245,10 @@ func WithSSFEventPollManager(manager goidc.SSFEventPollManager) Option {
 	}
 }
 
+// WithSSFEventStreamStatusManagement enables the stream status management API,
+// allowing receivers to read and update the status of their event streams
+// (e.g., enabled, paused, disabled).
+// For more information, see [WithSSF].
 func WithSSFEventStreamStatusManagement() Option {
 	return func(p *Provider) error {
 		p.config.SSFIsStatusManagementEnabled = true
@@ -1200,13 +1256,10 @@ func WithSSFEventStreamStatusManagement() Option {
 	}
 }
 
-func WithSSFStatusEndpoint(endpoint string) Option {
-	return func(p *Provider) error {
-		p.config.SSFStatusEndpoint = endpoint
-		return nil
-	}
-}
-
+// WithSSFEventStreamSubjectManagement enables the subject management API,
+// allowing receivers to add or remove specific subjects they want to receive
+// events for on a given stream.
+// For more information, see [WithSSF].
 func WithSSFEventStreamSubjectManagement() Option {
 	return func(p *Provider) error {
 		p.config.SSFIsSubjectManagementEnabled = true
@@ -1214,20 +1267,9 @@ func WithSSFEventStreamSubjectManagement() Option {
 	}
 }
 
-func WithSSFAddSubjectEndpoint(endpoint string) Option {
-	return func(p *Provider) error {
-		p.config.SSFAddSubjectEndpoint = endpoint
-		return nil
-	}
-}
-
-func WithSSFRemoveSubjectEndpoint(endpoint string) Option {
-	return func(p *Provider) error {
-		p.config.SSFRemoveSubjectEndpoint = endpoint
-		return nil
-	}
-}
-
+// WithSSFEventStreamSubjectManager replaces the default in-memory subject storage.
+// The subject manager tracks which subjects a receiver has subscribed to on each stream.
+// For more information, see [WithSSFEventStreamSubjectManagement].
 func WithSSFEventStreamSubjectManager(manager goidc.SSFEventStreamSubjectManager) Option {
 	return func(p *Provider) error {
 		p.config.SSFEventStreamSubjectManager = manager
@@ -1235,13 +1277,68 @@ func WithSSFEventStreamSubjectManager(manager goidc.SSFEventStreamSubjectManager
 	}
 }
 
-func WithSSFStreamVerification() Option {
+// WithSSFStatusEndpoint overrides the default endpoint for stream status management.
+// For more information, see [WithSSFEventStreamStatusManagement].
+func WithSSFStatusEndpoint(endpoint string) Option {
+	return func(p *Provider) error {
+		p.config.SSFStatusEndpoint = endpoint
+		return nil
+	}
+}
+
+// WithSSFAddSubjectEndpoint overrides the default endpoint for adding subjects to a stream.
+// For more information, see [WithSSFEventStreamSubjectManagement].
+func WithSSFAddSubjectEndpoint(endpoint string) Option {
+	return func(p *Provider) error {
+		p.config.SSFAddSubjectEndpoint = endpoint
+		return nil
+	}
+}
+
+// WithSSFRemoveSubjectEndpoint overrides the default endpoint for removing subjects from a stream.
+// For more information, see [WithSSFEventStreamSubjectManagement].
+func WithSSFRemoveSubjectEndpoint(endpoint string) Option {
+	return func(p *Provider) error {
+		p.config.SSFRemoveSubjectEndpoint = endpoint
+		return nil
+	}
+}
+
+// WithSSFEventStreamVerification enables the verification API, allowing receivers
+// to request verification events to confirm the stream is working correctly.
+// The transmitter responds by sending a verification event with an optional state value.
+// For more information, see [WithSSF].
+func WithSSFEventStreamVerification() Option {
 	return func(p *Provider) error {
 		p.config.SSFIsVerificationEnabled = true
 		return nil
 	}
 }
 
+// WithSSFEventStreamVerificationManager replaces the default in-memory verification storage.
+// The verification manager tracks pending verification requests and their state.
+// For more information, see [WithSSFEventStreamVerification].
+func WithSSFEventStreamVerificationManager(manager goidc.SSFEventStreamVerificationManager) Option {
+	return func(p *Provider) error {
+		p.config.SSFEventStreamVerificationManager = manager
+		return nil
+	}
+}
+
+// WithSSFMinVerificationInterval sets the minimum interval (in seconds) between
+// verification requests from the same receiver. This prevents abuse of the verification endpoint.
+// For more information, see [WithSSFEventStreamVerification].
+func WithSSFMinVerificationInterval(secs int) Option {
+	return func(p *Provider) error {
+		p.config.SSFMinVerificationInterval = secs
+		return nil
+	}
+}
+
+// WithSSFDefaultSubjects indicates how subjects are handled when a stream is created.
+// Use [goidc.SSFDefaultSubjectAll] when automatically including all subjects by default, or
+// [goidc.SSFDefaultSubjectNone] when requiring explicit subject registration via the subject management API.
+// For more information, see [WithSSF].
 func WithSSFDefaultSubjects(defaultSubjects goidc.SSFDefaultSubject) Option {
 	return func(p *Provider) error {
 		p.config.SSFDefaultSubjects = defaultSubjects
@@ -1249,6 +1346,8 @@ func WithSSFDefaultSubjects(defaultSubjects goidc.SSFDefaultSubject) Option {
 	}
 }
 
+// WithSSFCriticalSubjectMembers sets the subject identifier members that must be processed by the receiver.
+// For more information, see [WithSSF].
 func WithSSFCriticalSubjectMembers(sub string, subs ...string) Option {
 	subs = appendIfNotIn(subs, sub)
 	return func(p *Provider) error {
@@ -1257,6 +1356,10 @@ func WithSSFCriticalSubjectMembers(sub string, subs ...string) Option {
 	}
 }
 
+// WithSSFAuthorizationSchemes sets the authorization schemes published in the SSF
+// configuration endpoint. This informs receivers how to authenticate when calling
+// the SSF APIs (e.g., Bearer tokens, OAuth 2.0).
+// For more information, see [WithSSF].
 func WithSSFAuthorizationSchemes(scheme goidc.SSFAuthorizationScheme, schemes ...goidc.SSFAuthorizationScheme) Option {
 	schemes = appendIfNotIn(schemes, scheme)
 	return func(p *Provider) error {
@@ -1265,20 +1368,9 @@ func WithSSFAuthorizationSchemes(scheme goidc.SSFAuthorizationScheme, schemes ..
 	}
 }
 
-func WithSSFAuthenticatedReceiverFunc(f goidc.SSFAuthenticatedReceiverFunc) Option {
-	return func(p *Provider) error {
-		p.config.SSFAuthenticatedReceiverFunc = f
-		return nil
-	}
-}
-
-func WithSSFEventStreamVerificationManager(manager goidc.SSFEventStreamVerificationManager) Option {
-	return func(p *Provider) error {
-		p.config.SSFEventStreamVerificationManager = manager
-		return nil
-	}
-}
-
+// WithSSFHTTPClientFunc sets a custom HTTP client factory for SSF push delivery.
+// This is used when the transmitter pushes events to receiver endpoints.
+// For more information, see [WithSSF].
 func WithSSFHTTPClientFunc(f goidc.HTTPClientFunc) Option {
 	return func(p *Provider) error {
 		p.config.SSFHTTPClientFunc = f
@@ -1286,16 +1378,24 @@ func WithSSFHTTPClientFunc(f goidc.HTTPClientFunc) Option {
 	}
 }
 
-func WithSSFMinVerificationInterval(interval int) Option {
+// WithSSFInactivityTimeoutSecs sets the inactivity timeout for event streams.
+// [SSF 1.0 §8.1.1] If a stream has no activity for this duration, the handleFunc
+// is called to handle the expired stream (e.g., pause or delete it).
+// For more information, see [WithSSF].
+func WithSSFInactivityTimeoutSecs(secs int, handleFunc goidc.SSFHandleExpiredEventStreamFunc) Option {
 	return func(p *Provider) error {
-		p.config.SSFMinVerificationInterval = interval
+		p.config.SSFInactivityTimeoutSecs = secs
+		p.config.SSFHandleExpiredEventStreamFunc = handleFunc
 		return nil
 	}
 }
 
-func WithSSFInactivityTimeoutSecs(secs int) Option {
+// WithSSFMultipleStreamsPerReceiver controls whether a single receiver
+// can create multiple event streams.
+// For more information, see [WithSSF].
+func WithSSFMultipleStreamsPerReceiver() Option {
 	return func(p *Provider) error {
-		p.config.SSFInactivityTimeoutSecs = secs
+		p.config.SSFMultipleStreamsPerReceiverIsEnabled = true
 		return nil
 	}
 }

@@ -30,6 +30,7 @@ This library implements the following specifications:
 * [OpenID Connect Client-Initiated Backchannel Authentication Flow - Core 1.0 (CIBA)](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0-final.html)
 * [OpenID Federation 1.0 - draft 42](https://openid.net/specs/openid-federation-1_0.html)
 * [OpenID Connect RP-Initiated Logout 1.0](https://openid.net/specs/openid-connect-rpinitiated-1_0.html)
+* [OpenID Shared Signals Framework Specification 1.0](https://openid.net/specs/openid-sharedsignals-framework-1_0.html)
 
 ## Certification
 Luiky Vasconcelos has certified that [go-oidc](https://pkg.go.dev/github.com/luikyv/go-oidc) conforms to the following profiles of the OpenID Connect™ protocol.
@@ -437,3 +438,61 @@ which would result in the metadata below
 ```
 
 To customize JARM content encryption algorithms, use `provider.WithJARMContentEncryptionAlgs`.
+
+### OpenID Shared Signals Framework Specification 1.0
+
+The [Shared Signals Framework (SSF)](https://openid.net/specs/openid-sharedsignals-framework-1_0.html) allows the provider to act as an SSF transmitter, publishing security events to receivers as signed JWTs called Security Event Tokens (SETs). go-oidc supports [CAEP](https://openid.net/specs/openid-caep-1_0.html) and [RISC](https://openid.net/specs/openid-risc-profile-specification-1_0.html) event types.
+
+```go
+op, _ := provider.New(
+  ...,
+  provider.WithSSF(
+    // JWKS for signing SETs.
+    func(_ context.Context) (goidc.JSONWebKeySet, error) {
+      return ssfJWKS, nil
+    },
+    // Identifies the receiver from the authenticated request.
+    func(ctx context.Context) (goidc.SSFReceiver, error) {
+      return goidc.SSFReceiver{ID: "receiver"}, nil
+    },
+  ),
+  provider.WithSSFEventTypes(goidc.SSFEventTypeCAEPSessionRevoked, goidc.SSFEventTypeCAEPCredentialChange),
+  provider.WithSSFDeliveryMethods(goidc.SSFDeliveryMethodPoll, goidc.SSFDeliveryMethodPush),
+  ...,
+)
+```
+
+The transmitter configuration is exposed at `GET /.well-known/ssf-configuration`:
+```json
+{
+  "issuer": "https://goidc.com",
+  "jwks_uri": "https://goidc.com/ssf/jwks",
+  "configuration_endpoint": "https://goidc.com/ssf/stream",
+  "delivery_methods_supported": ["urn:ietf:rfc:8935", "urn:ietf:rfc:8936"],
+  "...": "..."
+}
+```
+
+The stream management endpoint at `configuration_endpoint` allows receivers to create, update, fetch and delete event streams. Push delivery ([RFC 8935](https://datatracker.ietf.org/doc/html/rfc8935)) sends SETs to a receiver-provided endpoint, while poll delivery ([RFC 8936](https://datatracker.ietf.org/doc/html/rfc8936)) allows receivers to fetch pending events from `/ssf/poll`.
+
+To enable stream status management, subject management, and verification:
+```go
+provider.WithSSFEventStreamStatusManagement()   // Receivers can update stream status.
+provider.WithSSFEventStreamSubjectManagement()  // Receivers can add/remove subjects.
+provider.WithSSFEventStreamVerification()       // Receivers can request verification events.
+```
+
+To publish events to a stream:
+```go
+op.PublishSSFEvent(ctx, streamID, goidc.SSFEvent{
+  Type: goidc.SSFEventTypeCAEPSessionRevoked,
+  Subject: goidc.SSFSubject{
+    Format: goidc.SSFSubjectFormatEmail,
+    Email:  "user@example.com",
+  },
+})
+```
+
+By default, go-oidc uses in-memory storage. For production, replace with persistent implementations using `provider.WithSSFEventStreamManager`, `provider.WithSSFEventStreamSubjectManager`, `provider.WithSSFEventPollManager` and `provider.WithSSFEventStreamVerificationManager`.
+
+For a complete example, see `examples/ssf`.

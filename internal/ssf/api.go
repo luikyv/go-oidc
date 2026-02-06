@@ -261,7 +261,7 @@ func handleCreateVerificationEvent(ctx oidc.Context) {
 		return
 	}
 
-	if err := createVerificationEvent(ctx, req); err != nil {
+	if err := scheduleVerificationEvent(ctx, req); err != nil {
 		ctx.WriteError(err)
 		return
 	}

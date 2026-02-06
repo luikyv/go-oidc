@@ -1,0 +1,16 @@
+{
+    "alias": "go-oidc",
+    "ssf": {
+        "transmitter": {
+            "issuer": "https://auth.localhost"
+        }
+    },
+    "server": {
+        "discoveryUrl": "https://auth.localhost/.well-known/openid-configuration"
+    },
+    "client": {
+        "client_id": "client_one",
+        "client_secret": "ssf_secret",
+        "scope": "ssf.events"
+    }
+}
