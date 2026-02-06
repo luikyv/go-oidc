@@ -13,20 +13,17 @@ func revoke(ctx oidc.Context, req queryRequest) error {
 	}
 
 	if !ctx.IsClientAllowedTokenRevocation(client) {
-		return goidc.NewError(goidc.ErrorCodeAccessDenied,
-			"client not allowed to revoke tokens")
+		return goidc.NewError(goidc.ErrorCodeAccessDenied, "client not allowed to revoke tokens")
 	}
 
 	info, err := IntrospectionInfo(ctx, req.token)
-	// If the token was not found, is expired, etc., there's no point in
-	// revoking it.
+	// If the token was not found, is expired, etc., there's no point in revoking it.
 	if err != nil {
 		return nil
 	}
 
 	if client.ID != info.ClientID {
-		return goidc.NewError(goidc.ErrorCodeAccessDenied,
-			"token was not issued for this client")
+		return goidc.NewError(goidc.ErrorCodeAccessDenied, "token was not issued for this client")
 	}
 
 	_ = ctx.DeleteGrantSession(info.GrantID)

@@ -149,7 +149,7 @@ func buildTrustChainBranch(ctx oidc.Context, entityConfig entityStatement, autho
 }
 
 func newEntityConfiguration(ctx oidc.Context) (string, error) {
-	publicJWKS, err := ctx.PublicOpenIDFedJWKS()
+	publicJWKS, err := ctx.OpenIDFedPublicJWKS()
 	if err != nil {
 		return "", err
 	}
@@ -173,8 +173,8 @@ func newEntityConfiguration(ctx oidc.Context) (string, error) {
 	}
 	statement.Metadata.OpenIDProvider = openIDProviderMeta
 
-	ops := (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement)
-	return ctx.OpenIDFedSign(statement, ops)
+	opts := (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement)
+	return ctx.OpenIDFedSign(statement, opts)
 }
 
 func registerClientWithEntityConfiguration(ctx oidc.Context, signedStatement string) (string, error) {

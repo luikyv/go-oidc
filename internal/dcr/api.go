@@ -35,9 +35,7 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 func handleCreate(ctx oidc.Context) {
 	var req request
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
-		err = goidc.WrapError(goidc.ErrorCodeInvalidRequest,
-			"could not parse the request", err)
-		ctx.WriteError(err)
+		ctx.WriteError(goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not parse the request", err))
 		return
 	}
 
@@ -56,9 +54,7 @@ func handleCreate(ctx oidc.Context) {
 func handleUpdate(ctx oidc.Context) {
 	var req request
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
-		err = goidc.WrapError(goidc.ErrorCodeInvalidRequest,
-			"could not parse the request", err)
-		ctx.WriteError(err)
+		ctx.WriteError(goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not parse the request", err))
 		return
 	}
 

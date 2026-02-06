@@ -14,12 +14,7 @@ import (
 func create(ctx oidc.Context, initialToken string, meta *goidc.ClientMeta) (response, error) {
 
 	if err := ctx.ValidateInitalAccessToken(initialToken); err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeAccessDenied,
-			"invalid token", err)
-	}
-
-	if err := Validate(ctx, meta); err != nil {
-		return response{}, err
+		return response{}, goidc.WrapError(goidc.ErrorCodeAccessDenied, "invalid token", err)
 	}
 
 	id := ctx.ClientID()
@@ -45,13 +40,8 @@ func update(ctx oidc.Context, id, regToken string, meta *goidc.ClientMeta) (resp
 		return response{}, err
 	}
 
-	if err := Validate(ctx, meta); err != nil {
-		return response{}, err
-	}
-
 	if err := ctx.HandleDynamicClient(id, meta); err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata,
-			"invalid metadata", err)
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid metadata", err)
 	}
 
 	if err := Validate(ctx, meta); err != nil {
@@ -78,8 +68,7 @@ func fetch(ctx oidc.Context, id, regToken string) (response, error) {
 }
 
 func remove(ctx oidc.Context, id, regToken string) error {
-	_, err := protected(ctx, id, regToken)
-	if err != nil {
+	if _, err := protected(ctx, id, regToken); err != nil {
 		return err
 	}
 
@@ -187,8 +176,7 @@ func registrationURI(ctx oidc.Context, id string) string {
 func protected(ctx oidc.Context, id, regToken string) (*goidc.Client, error) {
 	c, err := ctx.Client(id)
 	if err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest,
-			"could not find the client", err)
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not find the client", err)
 	}
 
 	if !isRegistrationAccessTokenValid(c, regToken) {

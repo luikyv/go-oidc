@@ -17,6 +17,7 @@ type JWKSFunc func(context.Context) (JSONWebKeySet, error)
 // opaque access token to be confused.
 // This happens since a refresh token is identified by its length during
 // introspection.
+// TODO: Let the client generate the refresh token.
 const RefreshTokenLength int = 99
 
 const DefaultOpaqueTokenLength int = 50

@@ -34,8 +34,7 @@ type Configuration struct {
 	GrantSessionIDFunc         goidc.GenerateIDFunc
 	ACRs                       []goidc.ACR
 	DisplayValues              []goidc.DisplayValue
-	// Claims defines the user claims that can be returned in the userinfo
-	// endpoint or in ID tokens.
+	// Claims defines the user claims that can be returned in the userinfo endpoint or in ID tokens.
 	// This will be published in the /.well-known/openid-configuration endpoint.
 	Claims                    []string
 	ClaimTypes                []goidc.ClaimType
@@ -219,4 +218,36 @@ type Configuration struct {
 	LogoutPolicies              []goidc.LogoutPolicy
 	LogoutSessionIDFunc         goidc.GenerateIDFunc
 	HandleDefaultPostLogoutFunc goidc.HandleDefaultPostLogoutFunc
+
+	SSFIsEnabled                           bool
+	SSFJWKSEndpoint                        string
+	SSFEventsSupported                     []goidc.SSFEventType
+	SSFDeliveryMethods                     []goidc.SSFDeliveryMethod
+	SSFEventStreamManager                  goidc.SSFEventStreamManager
+	SSFConfigurationEndpoint               string
+	SSFPollingEndpoint                     string
+	SSFEventPollManager                    goidc.SSFEventPollManager
+	SSFIsStatusManagementEnabled           bool
+	SSFStatusEndpoint                      string
+	SSFIsSubjectManagementEnabled          bool
+	SSFEventStreamSubjectManager           goidc.SSFEventStreamSubjectManager
+	SSFAddSubjectEndpoint                  string
+	SSFRemoveSubjectEndpoint               string
+	SSFIsVerificationEnabled               bool
+	SSFEventStreamVerificationManager      goidc.SSFEventStreamVerificationManager
+	SSFVerificationEndpoint                string
+	SSFMinVerificationInterval             int
+	SSFCriticalSubjectMembers              []string
+	SSFAuthorizationSchemes                []goidc.SSFAuthorizationScheme
+	SSFDefaultSubjects                     goidc.SSFDefaultSubject
+	SSFJWKSFunc                            goidc.JWKSFunc
+	SSFSignerFunc                          goidc.SignerFunc
+	SSFSignatureAlgorithm                  goidc.SignatureAlgorithm
+	SSFAuthenticatedReceiverFunc           goidc.SSFAuthenticatedReceiverFunc
+	SSFEventStreamIDFunc                   goidc.GenerateIDFunc
+	SSFJWTIDFunc                           goidc.GenerateIDFunc
+	SSFHTTPClientFunc                      goidc.HTTPClientFunc
+	SSFInactivityTimeoutSecs               int
+	SSFHandleExpiredEventStreamFunc        goidc.SSFHandleExpiredEventStreamFunc
+	SSFMultipleStreamsPerReceiverIsEnabled bool
 }

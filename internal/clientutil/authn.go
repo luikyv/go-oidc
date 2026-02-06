@@ -42,19 +42,16 @@ const (
 func Authenticated(ctx oidc.Context, authnCtx AuthnContext) (*goidc.Client, error) {
 	id, err := extractID(ctx)
 	if err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClient,
-			"invalid client", err)
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client", err)
 	}
 
 	client, err := ctx.Client(id)
 	if err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClient,
-			"client not found", err)
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClient, "client not found", err)
 	}
 
 	if err := authenticate(ctx, client, authnCtx); err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClient,
-			"could not authenticate the client", err)
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClient, "could not authenticate the client", err)
 	}
 
 	return client, nil

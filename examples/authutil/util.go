@@ -21,6 +21,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/examples/keys"
 	"github.com/luikyv/go-oidc/examples/ui"
+	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -63,13 +64,21 @@ func ClientPrivateKeyJWT(id string) (*goidc.Client, goidc.JSONWebKeySet) {
 	return client, jwks
 }
 
-func Client(id string) (*goidc.Client, goidc.JSONWebKeySet) {
+func ClientSecretPost(id, secret string, scopes ...goidc.Scope) *goidc.Client {
+	client, _ := Client(id, scopes...)
+	client.TokenAuthnMethod = goidc.ClientAuthnSecretPost
+	client.HashedSecret = hashutil.BCryptHash(secret)
+	return client
+}
+
+func Client(id string, scopes ...goidc.Scope) (*goidc.Client, goidc.JSONWebKeySet) {
 	// Extract the public client JWKS.
 	jwks := privateJWKS(id)
 
 	// Extract scopes IDs.
-	scopesIDs := make([]string, len(Scopes))
-	for i, scope := range Scopes {
+	scopes = append(scopes, Scopes...)
+	scopesIDs := make([]string, len(scopes))
+	for i, scope := range scopes {
 		scopesIDs[i] = scope.ID
 	}
 
@@ -83,6 +92,7 @@ func Client(id string) (*goidc.Client, goidc.JSONWebKeySet) {
 				goidc.GrantAuthorizationCode,
 				goidc.GrantRefreshToken,
 				goidc.GrantImplicit,
+				goidc.GrantClientCredentials,
 			},
 			ResponseTypes: []goidc.ResponseType{
 				goidc.ResponseTypeCode,

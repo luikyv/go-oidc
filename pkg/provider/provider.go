@@ -14,6 +14,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/federation"
 	"github.com/luikyv/go-oidc/internal/logout"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/ssf"
 	"github.com/luikyv/go-oidc/internal/storage"
 	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/internal/userinfo"
@@ -95,7 +96,6 @@ func (op *Provider) Handler(middlewares ...goidc.MiddlewareFunc) http.Handler {
 }
 
 func (op Provider) RegisterRoutes(mux *http.ServeMux, middlewares ...goidc.MiddlewareFunc) {
-	// TODO: Review the, "IsEnabled" checks.
 	middlewares = append(middlewares, goidc.CacheControlMiddleware)
 	discovery.RegisterHandlers(mux, &op.config, middlewares...)
 	token.RegisterHandlers(mux, &op.config, middlewares...)
@@ -104,6 +104,7 @@ func (op Provider) RegisterRoutes(mux *http.ServeMux, middlewares ...goidc.Middl
 	dcr.RegisterHandlers(mux, &op.config, middlewares...)
 	federation.RegisterHandlers(mux, &op.config, middlewares...)
 	logout.RegisterHandlers(mux, &op.config, middlewares...)
+	ssf.RegisterHandlers(mux, &op.config, middlewares...)
 }
 
 func (op *Provider) Run(address string, middlewares ...goidc.MiddlewareFunc) error {
@@ -125,27 +126,27 @@ func (op *Provider) TokenInfo(ctx context.Context, tkn string) (goidc.TokenInfo,
 // and gather information about the token, and checks for Proof of Possession (PoP) if required.
 // If the token is valid and PoP validation (if any) is successful, the function
 // returns token information; otherwise, it returns an appropriate error.
-func (op *Provider) TokenInfoFromRequest(w http.ResponseWriter, r *http.Request) (goidc.TokenInfo, error) {
-	ctx := oidc.NewHTTPContext(w, r, &op.config)
+func (op *Provider) TokenInfoFromRequest(r *http.Request) (string, goidc.TokenInfo, error) {
+	ctx := oidc.NewHTTPContext(nil, r, &op.config)
 
 	accessToken, _, ok := ctx.AuthorizationToken()
 	if !ok {
-		return goidc.TokenInfo{}, goidc.NewError(goidc.ErrorCodeInvalidToken, "no token found")
+		return "", goidc.TokenInfo{}, goidc.NewError(goidc.ErrorCodeInvalidToken, "no token found")
 	}
 
 	info, err := token.IntrospectionInfo(ctx, accessToken)
 	if err != nil {
-		return goidc.TokenInfo{}, err
+		return "", goidc.TokenInfo{}, err
 	}
 
 	if info.Confirmation == nil {
-		return info, nil
+		return accessToken, info, nil
 	}
 
 	if err := token.ValidatePoP(ctx, accessToken, *info.Confirmation); err != nil {
-		return goidc.TokenInfo{}, err
+		return "", goidc.TokenInfo{}, err
 	}
-	return info, nil
+	return accessToken, info, nil
 }
 
 func (op *Provider) SaveClient(ctx context.Context, client *goidc.Client) error {
@@ -162,6 +163,7 @@ func (op *Provider) Client(ctx context.Context, id string) (*goidc.Client, error
 		}
 	}
 
+	// TODO: Federation missing.
 	return op.config.ClientManager.Client(ctx, id)
 }
 
@@ -267,6 +269,26 @@ func (op *Provider) MakeToken(ctx context.Context, gi goidc.GrantInfo) (string, 
 	}
 
 	return tkn.Value, nil
+}
+
+func (op *Provider) RevokeToken(ctx context.Context, tkn string) error {
+	oidcCtx := oidc.NewContext(ctx, &op.config)
+	info, err := token.IntrospectionInfo(oidcCtx, tkn)
+	if err != nil {
+		return err
+	}
+	_ = oidcCtx.DeleteGrantSession(info.GrantID)
+	return nil
+}
+
+func (p *Provider) PublishSSFEvent(ctx context.Context, streamID string, event goidc.SSFEvent) error {
+	oidcCtx := oidc.NewContext(ctx, &p.config)
+	return ssf.PublishEvent(oidcCtx, streamID, event)
+}
+
+func (op *Provider) PublishSSFVerificationEvent(ctx context.Context, streamID string, opts goidc.SSFStreamVerificationOptions) error {
+	oidcCtx := oidc.NewContext(ctx, &op.config)
+	return ssf.PublishEvent(oidcCtx, streamID, goidc.NewSSFVerificationEvent(streamID, opts))
 }
 
 func (op *Provider) setDefaults() error {
@@ -394,6 +416,33 @@ func (op *Provider) setDefaults() error {
 		op.config.LogoutSessionManager = nonZeroOrDefault(op.config.LogoutSessionManager, goidc.LogoutSessionManager(storage.NewLogoutSessionManager(defaultStorageMaxSize)))
 		op.config.LogoutEndpoint = nonZeroOrDefault(op.config.LogoutEndpoint, defaultEndpointEndSession)
 		op.config.LogoutSessionTimeoutSecs = nonZeroOrDefault(op.config.LogoutSessionTimeoutSecs, defaultLogoutSessionTimeoutSecs)
+	}
+
+	if op.config.SSFIsEnabled {
+		ssfManager := ssf.NewEventManager(defaultStorageMaxSize)
+		op.config.SSFJWKSEndpoint = nonZeroOrDefault(op.config.SSFJWKSEndpoint, defaultEndpointSSFJWKS)
+		op.config.SSFConfigurationEndpoint = nonZeroOrDefault(op.config.SSFConfigurationEndpoint, defaultEndpointSSFConfiguration)
+		op.config.SSFEventStreamManager = nonZeroOrDefault(op.config.SSFEventStreamManager, goidc.SSFEventStreamManager(ssfManager))
+		op.config.SSFSignatureAlgorithm = nonZeroOrDefault(op.config.SSFSignatureAlgorithm, defaultSSFSigAlg)
+		if op.config.SSFIsStatusManagementEnabled {
+			op.config.SSFIsStatusManagementEnabled = true
+			op.config.SSFStatusEndpoint = nonZeroOrDefault(op.config.SSFStatusEndpoint, defaultEndpointSSFStatus)
+			op.config.SSFEventStreamManager = nonZeroOrDefault(op.config.SSFEventStreamManager, goidc.SSFEventStreamManager(ssfManager))
+		}
+		if op.config.SSFIsSubjectManagementEnabled {
+			op.config.SSFIsSubjectManagementEnabled = true
+			op.config.SSFAddSubjectEndpoint = nonZeroOrDefault(op.config.SSFAddSubjectEndpoint, defaultEndpointSSFAddSubject)
+			op.config.SSFRemoveSubjectEndpoint = nonZeroOrDefault(op.config.SSFRemoveSubjectEndpoint, defaultEndpointSSFRemoveSubject)
+			op.config.SSFEventStreamSubjectManager = nonZeroOrDefault(op.config.SSFEventStreamSubjectManager, goidc.SSFEventStreamSubjectManager(ssfManager))
+		}
+		if slices.Contains(op.config.SSFDeliveryMethods, goidc.SSFDeliveryMethodPoll) {
+			op.config.SSFPollingEndpoint = nonZeroOrDefault(op.config.SSFPollingEndpoint, defaultEndpointSSFPolling)
+			op.config.SSFEventPollManager = nonZeroOrDefault(op.config.SSFEventPollManager, goidc.SSFEventPollManager(ssfManager))
+		}
+		if op.config.SSFIsVerificationEnabled {
+			op.config.SSFVerificationEndpoint = nonZeroOrDefault(op.config.SSFVerificationEndpoint, defaultEndpointSSFVerification)
+			op.config.SSFEventStreamVerificationManager = nonZeroOrDefault(op.config.SSFEventStreamVerificationManager, goidc.SSFEventStreamVerificationManager(ssfManager))
+		}
 	}
 
 	return nil
