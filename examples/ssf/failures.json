@@ -1,8 +1,16 @@
 [
     {
         "test-name": "openid-ssf-transmitter-events",
-        "variant": "*",
-        "configuration-filename": "*",
+        "variant": {
+            "client_auth_type": "client_secret_post",
+            "ssf_server_metadata": "discovery",
+            "server_metadata": "discovery",
+            "ssf_auth_mode": "dynamic",
+            "ssf_delivery_mode": "poll",
+            "ssf_profile": "default",
+            "client_registration": "static_client"
+        },
+        "configuration-filename": "./examples/ssf/config.json",
         "current-block": "Verify verification event 3 received via POLL delivery mode with POLL_AND_ACKNOWLEDGE",
         "condition": "OIDSSFCheckVerificationEventState",
         "expected-result": "failure",
