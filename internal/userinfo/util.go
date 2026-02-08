@@ -2,8 +2,6 @@ package userinfo
 
 import (
 	"fmt"
-	"maps"
-	"slices"
 
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/joseutil"
@@ -48,38 +46,47 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 	return resp, nil
 }
 
-func userInfoResponse(ctx oidc.Context, c *goidc.Client, grantSession *goidc.GrantSession) (response, error) {
-	sub := ctx.ExportableSubject(grantSession.Subject, c)
+func userInfoResponse(
+	ctx oidc.Context,
+	client *goidc.Client,
+	grantSession *goidc.GrantSession,
+) (
+	response,
+	error,
+) {
+	sub := ctx.ExportableSubject(grantSession.Subject, client)
 	userInfoClaims := map[string]any{
 		goidc.ClaimSubject: sub,
 	}
-	maps.Copy(userInfoClaims, grantSession.AdditionalUserInfoClaims)
+	for k, v := range grantSession.AdditionalUserInfoClaims {
+		userInfoClaims[k] = v
+	}
 
 	// If the client doesn't require the user info to be signed,
 	// we'll just return the claims as a JSON object.
-	if c.UserInfoSigAlg == "" {
+	if client.UserInfoSigAlg == "" {
 		return response{
 			claims: userInfoClaims,
 		}, nil
 	}
 
 	userInfoClaims[goidc.ClaimIssuer] = ctx.Issuer()
-	userInfoClaims[goidc.ClaimAudience] = c.ID
+	userInfoClaims[goidc.ClaimAudience] = client.ID
 
-	jwtUserInfoClaims, err := signUserInfoClaims(ctx, c, userInfoClaims)
+	jwtUserInfoClaims, err := signUserInfoClaims(ctx, client, userInfoClaims)
 	if err != nil {
 		return response{}, err
 	}
 
 	// If the client doesn't require the user info to be encrypted,
 	// we'll just return the claims as a signed JWT.
-	if !ctx.UserInfoEncIsEnabled || c.UserInfoKeyEncAlg == "" {
+	if !ctx.UserInfoEncIsEnabled || client.UserInfoKeyEncAlg == "" {
 		return response{
 			jwtClaims: jwtUserInfoClaims,
 		}, nil
 	}
 
-	jwtUserInfoClaims, err = encryptUserInfoJWT(ctx, c, jwtUserInfoClaims)
+	jwtUserInfoClaims, err = encryptUserInfoJWT(ctx, client, jwtUserInfoClaims)
 	if err != nil {
 		return response{}, err
 	}
@@ -88,15 +95,22 @@ func userInfoResponse(ctx oidc.Context, c *goidc.Client, grantSession *goidc.Gra
 	}, nil
 }
 
-func signUserInfoClaims(ctx oidc.Context, c *goidc.Client, claims map[string]any) (string, error) {
+func signUserInfoClaims(
+	ctx oidc.Context,
+	client *goidc.Client,
+	claims map[string]any,
+) (
+	string,
+	error,
+) {
 
-	if slices.Contains(ctx.UserInfoSigAlgs, goidc.None) && c.UserInfoSigAlg == goidc.None {
+	if ctx.UserInfoSigAlgsContainsNone() && client.UserInfoSigAlg == goidc.None {
 		return joseutil.Unsigned(claims), nil
 	}
 
 	alg := ctx.UserInfoDefaultSigAlg
-	if c.UserInfoSigAlg != "" {
-		alg = c.UserInfoSigAlg
+	if client.UserInfoSigAlg != "" {
+		alg = client.UserInfoSigAlg
 	}
 
 	jws, err := ctx.Sign(claims, alg, nil)
@@ -126,20 +140,24 @@ func encryptUserInfoJWT(ctx oidc.Context, c *goidc.Client, userInfoJWT string) (
 	return userInfoJWE, nil
 }
 
-func validateRequest(ctx oidc.Context, gs *goidc.GrantSession, tkn string) error {
-	if gs.HasLastTokenExpired() {
+func validateRequest(
+	ctx oidc.Context,
+	grantSession *goidc.GrantSession,
+	accessToken string,
+) error {
+	if grantSession.HasLastTokenExpired() {
 		return goidc.NewError(goidc.ErrorCodeAccessDenied, "token expired")
 	}
 
-	if !strutil.ContainsOpenID(gs.ActiveScopes) {
+	if !strutil.ContainsOpenID(grantSession.ActiveScopes) {
 		return goidc.NewError(goidc.ErrorCodeAccessDenied, "invalid scope")
 	}
 
 	confirmation := goidc.TokenConfirmation{
-		JWKThumbprint:        gs.JWKThumbprint,
-		ClientCertThumbprint: gs.ClientCertThumbprint,
+		JWKThumbprint:        grantSession.JWKThumbprint,
+		ClientCertThumbprint: grantSession.ClientCertThumbprint,
 	}
-	if err := token.ValidatePoP(ctx, tkn, confirmation); err != nil {
+	if err := token.ValidatePoP(ctx, accessToken, confirmation); err != nil {
 		return err
 	}
 

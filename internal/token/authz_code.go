@@ -44,7 +44,7 @@ func generateAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 	grantSession := NewGrantSession(ctx, grantInfo, token)
 	grantSession.AuthCode = as.AuthCode
 	var refreshTkn string
-	if shouldIssueRefreshToken(ctx, c, grantInfo) {
+	if ctx.ShouldIssueRefreshToken(c, grantInfo) {
 		refreshTkn = newRefreshToken()
 		grantSession.RefreshToken = refreshTkn
 		grantSession.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
@@ -186,9 +186,17 @@ func authCodeGrantInfo(ctx oidc.Context, req request, as *goidc.AuthnSession) (g
 	return grantInfo, nil
 }
 
+// TODO: compareSlices is not covering all cases. What if s1 has duplicates?
 func compareSlices(s1, s2 []string) bool {
-	c1, c2 := slices.Clone(s1), slices.Clone(s2)
-	slices.Sort(c1)
-	slices.Sort(c2)
-	return slices.Equal(c1, c2)
+	if len(s1) != len(s2) {
+		return false
+	}
+
+	for _, s := range s1 {
+		if !slices.Contains(s2, s) {
+			return false
+		}
+	}
+
+	return true
 }

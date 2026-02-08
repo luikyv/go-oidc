@@ -5,7 +5,9 @@ import (
 	"slices"
 
 	"github.com/luikyv/go-oidc/internal/client"
+	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -114,7 +116,7 @@ func setRegistrationToken(ctx oidc.Context, client *goidc.Client) string {
 		return ""
 	}
 
-	client.RegistrationToken = ctx.RegistrationAccessToken()
+	client.RegistrationToken = newRegistrationAccessToken()
 	return client.RegistrationToken
 }
 
@@ -126,22 +128,33 @@ func setRegistrationToken(ctx oidc.Context, client *goidc.Client) string {
 // If a new secret is generated, it returns the plain secret; otherwise, it
 // returns an empty string.
 func setSecret(ctx oidc.Context, c *goidc.Client) string {
+	var secret string
 	// Clear the client's secret and hashed secret to ensure it's only set when
 	// secret-based authentication is required.
 	c.Secret = ""
+	c.HashedSecret = ""
 	authnMethods := client.AuthnMethods(ctx, &c.ClientMeta)
 
 	// Check for client authentication methods that require a secret that must
 	// be store as a hash.
-	if slices.ContainsFunc(authnMethods, func(method goidc.AuthnMethod) bool {
-		return method == goidc.AuthnMethodSecretBasic || method == goidc.AuthnMethodSecretPost || method == goidc.AuthnMethodSecretJWT
+	if slices.ContainsFunc(authnMethods, func(method goidc.ClientAuthnType) bool {
+		return method == goidc.ClientAuthnSecretBasic || method == goidc.ClientAuthnSecretPost
 	}) {
 		secretExpiresAt := 0
 		c.SecretExpiresAt = &secretExpiresAt
-		c.Secret = ctx.ClientSecret()
+		secret, c.HashedSecret = clientSecretAndHash()
 	}
 
-	return c.Secret
+	// Check for client authentication using secret JWT.
+	if slices.Contains(authnMethods, goidc.ClientAuthnSecretJWT) {
+		// Use existing secret or generate a new one if not already set.
+		if secret == "" {
+			secret = clientSecret()
+		}
+		c.Secret = secret
+	}
+
+	return secret
 }
 
 func registrationURI(ctx oidc.Context, id string) string {
@@ -161,6 +174,20 @@ func protected(ctx oidc.Context, id, regToken string) (*goidc.Client, error) {
 	}
 
 	return c, nil
+}
+
+func clientSecretAndHash() (string, string) {
+	secret := clientSecret()
+	hashedSecret := hashutil.BCryptHash(secret)
+	return secret, hashedSecret
+}
+
+func clientSecret() string {
+	return strutil.Random(secretLength)
+}
+
+func newRegistrationAccessToken() string {
+	return strutil.Random(registrationAccessTokenLength)
 }
 
 func isRegistrationAccessTokenValid(c *goidc.Client, token string) bool {

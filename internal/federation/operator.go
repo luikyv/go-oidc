@@ -17,7 +17,7 @@ type metadataOperators[T any] struct {
 	Essential  bool        `json:"essential"`
 }
 
-func (ops metadataOperators[T]) Validate() error {
+func (ops metadataOperators[T]) validate() error {
 	// Operators are validated in the reverse order of application (see apply method).
 	// This ensures that operators applied later can rely on constraints from earlier ones.
 	if err := ops.validateEssential(); err != nil {
@@ -29,6 +29,10 @@ func (ops metadataOperators[T]) Validate() error {
 	}
 
 	if err := ops.validateSubsetOf(); err != nil {
+		return err
+	}
+
+	if err := ops.validateOneOf(); err != nil {
 		return err
 	}
 
@@ -81,7 +85,7 @@ func (ops metadataOperators[T]) validateAdd() error {
 	}
 
 	if ops.isSupersetOfSet() && !isSuperset(ops.Add, ops.SupersetOf) {
-		return fmt.Errorf("operator 'add' must be a superset of 'superset_of'. add: %v, superset_of: %v", ops.Add, ops.SupersetOf)
+		return fmt.Errorf("operator 'add' must be a superset of 'superset_of'. add: %v, superset_of: %v", ops.Add, ops.SubsetOf)
 	}
 
 	return nil
@@ -151,7 +155,7 @@ func (ops metadataOperators[T]) validateEssential() error {
 	return nil
 }
 
-func (ops metadataOperators[T]) Apply(value T) (T, error) {
+func (ops metadataOperators[T]) apply(value T) (T, error) {
 	var zero T
 	var err error
 
@@ -275,7 +279,7 @@ func (ops metadataOperators[T]) applyEssential(value T) (T, error) {
 	return value, nil
 }
 
-func (highOps metadataOperators[T]) Merge(lowOps metadataOperators[T]) (metadataOperators[T], error) {
+func (highOps metadataOperators[T]) merge(lowOps metadataOperators[T]) (metadataOperators[T], error) {
 	var err error
 
 	highOps.Value, err = highOps.mergeValue(lowOps)
@@ -389,6 +393,7 @@ func (highOps metadataOperators[T]) mergeSubsetOf(lowOps metadataOperators[T]) (
 
 	subsetOf := intersectSlices(highOps.SubsetOf, lowOps.SubsetOf)
 	var zero T
+	// NOTE: This won't work if len(subsetOf) == 0.
 	if reflect.DeepEqual(subsetOf, zero) {
 		return zero, fmt.Errorf("cannot merge operator 'subset_of' %v, %v", highOps.SubsetOf, lowOps.SubsetOf)
 	}

@@ -1,7 +1,6 @@
 package federation
 
 import (
-	"net/url"
 	"slices"
 	"strings"
 
@@ -13,7 +12,6 @@ const (
 	contentTypeTrustChain              = "application/trust-chain+json"
 	contentTypeExplicitRegistrationJWT = "application/explicit-registration-response+jwt"
 	contentTypeJWKSJWT                 = "application/jwk-set+jwt"
-	contentTypeTrustMarkJWT            = "application/trust-mark+jwt"
 	jwtTypeEntityStatement             = "entity-statement+jwt"
 	jwtTypeTrustMark                   = "trust-mark+jwt"
 	jwtTypeTrustMarkDelegation         = "trust-mark-delegation+jwt"
@@ -37,8 +35,11 @@ type entityStatement struct {
 	Constraints            *constraints        `json:"constraints,omitempty"`
 	Critical               []string            `json:"crit,omitempty"`
 	// SourceEndpoint is the endpoint from which the subordinate statement was fetched.
-	SourceEndpoint string          `json:"source_endpoint,omitempty"`
-	TrustMarks     []trustMarkInfo `json:"trust_marks,omitempty"`
+	SourceEndpoint string `json:"source_endpoint,omitempty"`
+	TrustMarks     []struct {
+		Type      string `json:"trust_mark_type"`
+		TrustMark string `json:"trust_mark"`
+	} `json:"trust_marks,omitempty"`
 	// TrustMarkIssuers may be used by a trust anchor to tell which combination
 	// of trust mark identifiers and issuers are trusted by the federation.
 	// It is a JSON object with member names that are trust mark identifiers and
@@ -57,22 +58,17 @@ type entityStatement struct {
 	} `json:"trust_mark_owners,omitempty"`
 	// TrustAnchor is the identifier of the trust anchor in the trust chain.
 	// This claim is specific to explicit registration responses, it is not a general entity statement claim.
-	TrustAnchor      string     `json:"trust_anchor,omitempty"`
-	trustChainHeader trustChain `json:"-"`
-	signed           string     `json:"-"`
+	TrustAnchor string `json:"trust_anchor,omitempty"`
+	signed      string `json:"-"`
 }
 
 func (s entityStatement) Signed() string {
 	return s.signed
 }
 
-func (s entityStatement) TrustChainHeader() trustChain {
-	return s.trustChainHeader
-}
-
 type constraints struct {
 	MaxPathLength     *int `json:"max_path_length,omitempty"`
-	NamingConstraints *struct {
+	NamingConstraints struct {
 		Permitted []string `json:"permitted,omitempty"`
 		Excluded  []string `json:"excluded,omitempty"`
 	} `json:"naming_constraints"`
@@ -110,16 +106,15 @@ func (chain trustChain) resolve() (entityStatement, error) {
 
 	config := chain.subjectConfig()
 	// [OpenID Fed 1.0 §6.1.4.2] The resolution must start by applying the metadata in the first sub statement to the subject config.
-	config.Metadata, err = chain.firstSubordinateStatement().Metadata.Merge(config.Metadata)
+	config.Metadata, err = chain.firstSubordinateStatement().Metadata.merge(config.Metadata)
 	if err != nil {
 		return entityStatement{}, err
 	}
 
 	var policy metadataPolicy
-	subStatements := chain.subordinateStatements()
 	// [OpenID Fed 1.0 §6.1.4.1] The policy resolution must begin with the sub statement issued by the most superior entity
 	// and end with the sub statement issued by the immediate superior of the trust chain subject.
-	for i, subStatement := range slices.Backward(subStatements) {
+	for i, subStatement := range slices.Backward(chain.subordinateStatements()) {
 		if subStatement.ExpiresAt < config.ExpiresAt {
 			config.ExpiresAt = subStatement.ExpiresAt
 		}
@@ -131,73 +126,49 @@ func (chain trustChain) resolve() (entityStatement, error) {
 				return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "max path length exceeded")
 			}
 
-			// [OpenID Fed 1.0 §6.2.2] Naming constraints apply to all entity identifiers from this point down to the subject.
-			if namingConstraints := constraints.NamingConstraints; namingConstraints != nil {
-				for j := range i + 1 {
-					entityID := subStatements[j].Subject
-					if namingConstraints.Permitted != nil && !slices.ContainsFunc(namingConstraints.Permitted, func(namespace string) bool {
-						return matchesNamespace(entityID, namespace)
-					}) {
-						return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "naming constraint not met")
-					}
-					if slices.ContainsFunc(namingConstraints.Excluded, func(namespace string) bool {
-						return matchesNamespace(entityID, namespace)
-					}) {
-						return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "naming constraint not met")
-					}
+			if permittedNamespaces, previousEntityID := constraints.NamingConstraints.Permitted, chain[i-1].Issuer; permittedNamespaces != nil {
+				if !slices.ContainsFunc(permittedNamespaces, func(namespace string) bool {
+					return strings.HasSuffix(previousEntityID, namespace)
+				}) {
+					return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "naming constraint not met")
 				}
 			}
 
-			// TODO: [OpenID Fed 1.0 §6.2.3] Handle allowed entity types.
+			if excludedNamespaces, previousEntityID := constraints.NamingConstraints.Excluded, chain[i-1].Issuer; excludedNamespaces != nil {
+				if slices.ContainsFunc(excludedNamespaces, func(namespace string) bool {
+					return strings.HasSuffix(previousEntityID, namespace)
+				}) {
+					return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "naming constraint not met")
+				}
+			}
 		}
 
 		if subStatement.MetadataPolicy == nil {
 			continue
 		}
 
-		policy, err = policy.Merge(*subStatement.MetadataPolicy)
+		policy, err = policy.merge(*subStatement.MetadataPolicy)
 		if err != nil {
 			return entityStatement{}, err
 		}
 
-		if err := policy.Validate(); err != nil {
+		if err := policy.validate(); err != nil {
 			return entityStatement{}, err
 		}
 	}
 
 	config.TrustAnchor = chain.trustAnchorConfig().Issuer
-	return policy.Apply(config)
-}
-
-// matchesNamespace checks if an entity ID matches a namespace constraint.
-func matchesNamespace(entityID, namespace string) bool {
-	entityURL, err := url.Parse(entityID)
-	if err != nil {
-		return false
-	}
-
-	namespaceURL, err := url.Parse(namespace)
-	if err != nil {
-		return false
-	}
-
-	// If namespace host starts with '.', it's a wildcard for subdomains.
-	if strings.HasPrefix(namespaceURL.Host, ".") {
-		return strings.HasSuffix(entityURL.Host, namespaceURL.Host)
-	}
-	return entityURL.Host == namespaceURL.Host
+	return policy.apply(config)
 }
 
 type federationAuthority struct {
-	FetchEndpoint                string              `json:"federation_fetch_endpoint,omitempty"`
-	FetchEndpointAuthMethods     []goidc.AuthnMethod `json:"federation_fetch_endpoint_auth_methods,omitempty"`
-	ListEndpoint                 string              `json:"federation_list_endpoint,omitempty"`
-	ResolveEndpoint              string              `json:"federation_resolve_endpoint,omitempty"`
-	TrustMarkStatusEndpoint      string              `json:"federation_trust_mark_status_endpoint,omitempty"`
-	TrustMarkListEndpoint        string              `json:"federation_trust_mark_list_endpoint,omitempty"`
-	TrustMarkEndpoint            string              `json:"federation_trust_mark_endpoint,omitempty"`
-	TrustMarkEndpointAuthMethods []goidc.AuthnMethod `json:"federation_trust_mark_endpoint_auth_methods,omitempty"`
-	HistoricalKeysEndpoint       string              `json:"federation_historical_keys_endpoint,omitempty"`
+	FetchEndpoint           string `json:"federation_fetch_endpoint,omitempty"`
+	ListEndpoint            string `json:"federation_list_endpoint,omitempty"`
+	ResolveEndpoint         string `json:"federation_resolve_endpoint,omitempty"`
+	TrustMarkStatusEndpoint string `json:"federation_trust_mark_status_endpoint,omitempty"`
+	TrustMarkListEndpoint   string `json:"federation_trust_mark_list_endpoint,omitempty"`
+	TrustMarkEndpoint       string `json:"federation_trust_mark_endpoint,omitempty"`
+	HistoricalKeysEndpoint  string `json:"federation_historical_keys_endpoint,omitempty"`
 	// EndpointAuthSigAlgValuesSupported are the algorithmsfor signing the JWT used for private_key_jwt when
 	// authenticating to federation endpoints.
 	EndpointAuthSigAlgValuesSupported []goidc.SignatureAlgorithm `json:"endpoint_auth_signing_alg_values_supported,omitempty"`
@@ -207,27 +178,15 @@ type federationAuthority struct {
 type trustMark struct {
 	Issuer     string `json:"iss"`
 	Subject    string `json:"sub"`
-	Type       string `json:"trust_mark_type"`
+	ID         string `json:"trust_mark_id"`
 	IssuedAt   int    `json:"iat"`
-	ExpiresAt  int    `json:"exp,omitempty"`
+	ExpiresAt  int    `json:"exp"`
 	Delegation string `json:"delegation"`
-	LogoURI    string `json:"logo_uri,omitempty"`
-	Reference  string `json:"ref,omitempty"`
-}
-
-type trustMarkInfo struct {
-	Type      goidc.TrustMark `json:"trust_mark_type"`
-	TrustMark string          `json:"trust_mark"`
 }
 
 type parseOptions struct {
-	jwks                 goidc.JSONWebKeySet
-	issuer               string
-	subject              string
-	explicitRegistration bool
-}
-
-type parseTrustMarkOptions struct {
+	jwks     goidc.JSONWebKeySet
+	issuer   string
 	subject  string
-	markType goidc.TrustMark
+	audience string
 }

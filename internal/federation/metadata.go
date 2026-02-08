@@ -13,31 +13,37 @@ type metadata struct {
 	OpenIDClient        *goidc.ClientMeta              `json:"openid_relying_party,omitempty"`
 }
 
-// Merge merges metadata from a subordinate statement (high) with metadata from
-// an entity configuration (low). Values from the subordinate statement take
-// precedence over values from the entity configuration.
-func (subordinate metadata) Merge(config metadata) (metadata, error) {
-	subordinate.OpenIDClient = mergeMetadata(subordinate.OpenIDClient, config.OpenIDClient)
-	return subordinate, nil
+func (high metadata) merge(low metadata) (metadata, error) {
+	if low.OpenIDClient != nil {
+		var highOpenIDClient goidc.ClientMeta
+		if high.OpenIDClient != nil {
+			highOpenIDClient = *high.OpenIDClient
+		}
+
+		result, err := mergeOpenIDClient(highOpenIDClient, *low.OpenIDClient)
+		if err != nil {
+			return metadata{}, err
+		}
+		high.OpenIDClient = &result
+	}
+
+	return high, nil
 }
 
-func mergeMetadata[T any](subordinate, config *T) *T {
-	// Per the federation spec, subordinate statements can only modify/restrict existing metadata, not create it.
-	if config == nil {
-		return nil
-	}
-	if subordinate == nil {
-		return config
-	}
-	subordinateVal := reflect.ValueOf(subordinate).Elem()
-	configVal := reflect.ValueOf(config).Elem()
+// mergeOpenIDClient merges two [goidc.ClientMeta]. Values from high take
+// precedence over low. If a field in high is zero, the value from low is used.
+func mergeOpenIDClient(high goidc.ClientMeta, low goidc.ClientMeta) (goidc.ClientMeta, error) {
+	highV := reflect.ValueOf(&high).Elem()
+	lowV := reflect.ValueOf(low)
 
-	for i := range subordinateVal.NumField() {
-		subordinateField := subordinateVal.Field(i)
-		if !subordinateField.IsZero() {
-			configVal.Field(i).Set(subordinateField)
+	for i := 0; i < highV.NumField(); i++ {
+		highField := highV.Field(i)
+		lowField := lowV.Field(i)
+
+		if highField.IsZero() && !lowField.IsZero() {
+			highField.Set(lowField)
 		}
 	}
 
-	return config
+	return high, nil
 }

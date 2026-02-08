@@ -30,8 +30,8 @@ type Configuration struct {
 	ResponseTypes              []goidc.ResponseType
 	ResponseModes              []goidc.ResponseMode
 	AuthnSessionTimeoutSecs    int
-	AuthnSessionGenerateIDFunc goidc.RandomStringFunc
-	GrantSessionIDFunc         goidc.RandomStringFunc
+	AuthnSessionGenerateIDFunc goidc.GenerateIDFunc
+	GrantSessionIDFunc         goidc.GenerateIDFunc
 	ACRs                       []goidc.ACR
 	DisplayValues              []goidc.DisplayValue
 	// Claims defines the user claims that can be returned in the userinfo endpoint or in ID tokens.
@@ -48,14 +48,13 @@ type Configuration struct {
 	// ClaimsParamIsEnabled informs the clients whether the server accepts
 	// the "claims" parameter.
 	// This will be published in the /.well-known/openid-configuration endpoint.
-	ClaimsParamIsEnabled          bool
-	RenderErrorFunc               goidc.RenderErrorFunc
-	NotifyErrorFunc               goidc.NotifyErrorFunc
-	AuthorizationCodeFunc         goidc.RandomStringFunc
-	AuthorizationCodeLifetimeSecs int
-	CallbackIDFunc                goidc.RandomStringFunc
+	ClaimsParamIsEnabled  bool
+	RenderErrorFunc       goidc.RenderErrorFunc
+	NotifyErrorFunc       goidc.NotifyErrorFunc
+	AuthorizationCodeFunc goidc.GenerateIDFunc
+	CallbackIDFunc        goidc.GenerateIDFunc
 
-	TokenAuthnMethods []goidc.AuthnMethod
+	TokenAuthnMethods []goidc.ClientAuthnType
 	TokenEndpoint     string
 	TokenOptionsFunc  goidc.TokenOptionsFunc
 	// TokenBindingIsRequired indicates that at least one mechanism of sender
@@ -93,7 +92,7 @@ type Configuration struct {
 
 	JWTLifetimeSecs   int
 	JWTLeewayTimeSecs int
-	JWTIDFunc         goidc.RandomStringFunc
+	JWTIDFunc         goidc.GenerateIDFunc
 
 	DCRIsEnabled                   bool
 	DCREndpoint                    string
@@ -104,12 +103,12 @@ type Configuration struct {
 
 	TokenIntrospectionIsEnabled           bool
 	IntrospectionEndpoint                 string
-	TokenIntrospectionAuthnMethods        []goidc.AuthnMethod
+	TokenIntrospectionAuthnMethods        []goidc.ClientAuthnType
 	IsClientAllowedTokenIntrospectionFunc goidc.IsClientAllowedTokenInstrospectionFunc
 
 	TokenRevocationIsEnabled           bool
 	TokenRevocationEndpoint            string
-	TokenRevocationAuthnMethods        []goidc.AuthnMethod
+	TokenRevocationAuthnMethods        []goidc.ClientAuthnType
 	IsClientAllowedTokenRevocationFunc goidc.IsClientAllowedFunc
 
 	ShouldIssueRefreshTokenFunc   goidc.ShouldIssueRefreshTokenFunc
@@ -149,8 +148,9 @@ type Configuration struct {
 	// PARAllowUnregisteredRedirectURI indicates whether the redirect URIs
 	// informed during PAR must be previously registered or not.
 	PARAllowUnregisteredRedirectURI bool
-	PARIDFunc                       goidc.RandomStringFunc
+	PARIDFunc                       goidc.GenerateIDFunc
 
+	CIBAIsEnabled                  bool
 	CIBAEndpoint                   string
 	CIBATokenDeliveryModels        []goidc.CIBATokenDeliveryMode
 	InitBackAuthFunc               goidc.InitBackAuthFunc
@@ -158,7 +158,7 @@ type Configuration struct {
 	CIBAUserCodeIsEnabled          bool
 	CIBADefaultSessionLifetimeSecs int
 	CIBAPollingIntervalSecs        int
-	CIBAAuthReqIDFunc              goidc.RandomStringFunc
+	CIBAAuthReqIDFunc              goidc.GenerateIDFunc
 
 	CIBAJARIsEnabled  bool
 	CIBAJARIsRequired bool
@@ -204,19 +204,14 @@ type Configuration struct {
 	OpenIDFedSignerFunc             goidc.SignerFunc
 	OpenIDFedAuthorityHints         []string
 	OpenIDFedTrustedAnchors         []string
-	OpenIDFedDefaultSigAlg          goidc.SignatureAlgorithm
-	OpenIDFedSigAlgs                []goidc.SignatureAlgorithm
+	OpenIDFedEntityStatementSigAlgs []goidc.SignatureAlgorithm
 	OpenIDFedTrustChainMaxDepth     int
 	OpenIDFedClientRegTypes         []goidc.ClientRegistrationType
 	OpenIDFedRequiredTrustMarksFunc goidc.RequiredTrustMarksFunc
-	// OpenIDFedTrustMarks is a map of trust mark type to the trust mark issuer.
-	OpenIDFedTrustMarks             map[goidc.TrustMark]string
-	OpenIDFedJWKSRepresentations    []goidc.JWKSRepresentation
+	OpenIDFedTrustMarkSigAlgs       []goidc.SignatureAlgorithm
+	OpenIDFedJWKSRepresentations    []goidc.OpenIDFedJWKSRepresentation
 	OpenIDFedSignedJWKSEndpoint     string
 	OpenIDFedSignedJWKSLifetimeSecs int
-	OpenIDFedOrganizationName       string
-	OpenIDFedHTTPClientFunc         goidc.HTTPClientFunc
-	OpenIDFedHandleClientFunc       goidc.HandleClientFunc
 	OpenIDFedClientFunc             func(ctx Context, id string) (*goidc.Client, error)
 	OpenIDFedEntityJWKSFunc         func(ctx Context, id string) (goidc.JSONWebKeySet, error)
 
@@ -225,7 +220,7 @@ type Configuration struct {
 	LogoutSessionManager        goidc.LogoutSessionManager
 	LogoutSessionTimeoutSecs    int
 	LogoutPolicies              []goidc.LogoutPolicy
-	LogoutSessionIDFunc         goidc.RandomStringFunc
+	LogoutSessionIDFunc         goidc.GenerateIDFunc
 	HandleDefaultPostLogoutFunc goidc.HandleDefaultPostLogoutFunc
 
 	SSFIsEnabled                           bool
@@ -239,20 +234,22 @@ type Configuration struct {
 	SSFIsStatusManagementEnabled           bool
 	SSFStatusEndpoint                      string
 	SSFIsSubjectManagementEnabled          bool
+	SSFEventStreamSubjectManager           goidc.SSFEventStreamSubjectManager
 	SSFAddSubjectEndpoint                  string
 	SSFRemoveSubjectEndpoint               string
 	SSFIsVerificationEnabled               bool
-	SSFScheduleVerificationEventFunc       goidc.SSFScheduleVerificationEventFunc
+	SSFEventStreamVerificationManager      goidc.SSFEventStreamVerificationManager
 	SSFVerificationEndpoint                string
 	SSFMinVerificationInterval             int
 	SSFCriticalSubjectMembers              []string
 	SSFAuthorizationSchemes                []goidc.SSFAuthorizationScheme
 	SSFDefaultSubjects                     goidc.SSFDefaultSubject
 	SSFJWKSFunc                            goidc.JWKSFunc
-	SSFDefaultSigAlg                       goidc.SignatureAlgorithm
 	SSFSignerFunc                          goidc.SignerFunc
+	SSFSignatureAlgorithm                  goidc.SignatureAlgorithm
 	SSFAuthenticatedReceiverFunc           goidc.SSFAuthenticatedReceiverFunc
-	SSFEventStreamIDFunc                   goidc.RandomStringFunc
+	SSFEventStreamIDFunc                   goidc.GenerateIDFunc
+	SSFJWTIDFunc                           goidc.GenerateIDFunc
 	SSFHTTPClientFunc                      goidc.HTTPClientFunc
 	SSFInactivityTimeoutSecs               int
 	SSFHandleExpiredEventStreamFunc        goidc.SSFHandleExpiredEventStreamFunc

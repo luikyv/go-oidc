@@ -12,11 +12,16 @@ type ClientManager interface {
 }
 
 type Client struct {
-	ID     string `json:"client_id"`
+	ID string `json:"client_id"`
+	// Secret is used when the client authenticates with client_secret_jwt,
+	// since the key used to sign the assertion is the same used to verify it.
 	Secret string `json:"client_secret,omitempty"`
+	// HashedSecret is the hash of the client secret for the client_secret_basic
+	// and client_secret_post authentication methods.
+	HashedSecret string `json:"hashed_secret,omitempty"`
 	// RegistrationToken is the plain text registration access token generated during
 	// dynamic client registration.
-	// Note: For security reasons, it is strongly recommended encrypt this value before storing it in a database.
+	// Note: For security reasons, it is strongly recommended to hash or encrypt this value before storing it in a database.
 	RegistrationToken  string `json:"registration_token,omitempty"`
 	CreatedAtTimestamp int    `json:"created_at,omitempty"`
 	ExpiresAtTimestamp int    `json:"expires_at,omitempty"`
@@ -24,21 +29,12 @@ type Client struct {
 	IsFederated                bool                   `json:"is_federated"`
 	FederationTrustAnchor      string                 `json:"federation_trust_anchor"`
 	FederationRegistrationType ClientRegistrationType `json:"federation_registration_type,omitempty"`
-	FederationTrustMarks       []TrustMark            `json:"federation_trust_marks,omitempty"`
-	cachedJWKS                 *JSONWebKeySet
+	FederationTrustMarks       []string               `json:"federation_trust_marks,omitempty"`
 	ClientMeta
 }
 
 func (c *Client) IsPublic() bool {
-	return c.TokenAuthnMethod == AuthnMethodNone
-}
-
-func (c *Client) CachedJWKS() *JSONWebKeySet {
-	return c.cachedJWKS
-}
-
-func (c *Client) CacheJWKS(jwks *JSONWebKeySet) {
-	c.cachedJWKS = jwks
+	return c.TokenAuthnMethod == ClientAuthnNone
 }
 
 type ClientMeta struct {
@@ -74,11 +70,11 @@ type ClientMeta struct {
 	JARMSigAlg                    SignatureAlgorithm         `json:"authorization_signed_response_alg,omitempty"`
 	JARMKeyEncAlg                 KeyEncryptionAlgorithm     `json:"authorization_encrypted_response_alg,omitempty"`
 	JARMContentEncAlg             ContentEncryptionAlgorithm `json:"authorization_encrypted_response_enc,omitempty"`
-	TokenAuthnMethod              AuthnMethod                `json:"token_endpoint_auth_method"`
+	TokenAuthnMethod              ClientAuthnType            `json:"token_endpoint_auth_method"`
 	TokenAuthnSigAlg              SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg,omitempty"`
-	TokenIntrospectionAuthnMethod AuthnMethod                `json:"introspection_endpoint_auth_method,omitempty"`
+	TokenIntrospectionAuthnMethod ClientAuthnType            `json:"introspection_endpoint_auth_method,omitempty"`
 	TokenIntrospectionAuthnSigAlg SignatureAlgorithm         `json:"introspection_endpoint_auth_signing_alg,omitempty"`
-	TokenRevocationAuthnMethod    AuthnMethod                `json:"revocation_endpoint_auth_method,omitempty"`
+	TokenRevocationAuthnMethod    ClientAuthnType            `json:"revocation_endpoint_auth_method,omitempty"`
 	TokenRevocationAuthnSigAlg    SignatureAlgorithm         `json:"revocation_endpoint_auth_signing_alg,omitempty"`
 	DPoPTokenBindingIsRequired    bool                       `json:"dpop_bound_access_tokens,omitempty"`
 	TLSSubDistinguishedName       string                     `json:"tls_client_auth_subject_dn,omitempty"`

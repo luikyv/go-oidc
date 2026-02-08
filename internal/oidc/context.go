@@ -79,14 +79,14 @@ func (ctx Context) ClientAuthnSigAlgs() []goidc.SignatureAlgorithm {
 	return append(ctx.PrivateKeyJWTSigAlgs, ctx.ClientSecretJWTSigAlgs...)
 }
 
-func (ctx Context) clientAuthnSigAlgs(methods []goidc.AuthnMethod) []goidc.SignatureAlgorithm {
+func (ctx Context) clientAuthnSigAlgs(methods []goidc.ClientAuthnType) []goidc.SignatureAlgorithm {
 	var sigAlgs []goidc.SignatureAlgorithm
 
-	if slices.Contains(methods, goidc.AuthnMethodPrivateKeyJWT) {
+	if slices.Contains(methods, goidc.ClientAuthnPrivateKeyJWT) {
 		sigAlgs = append(sigAlgs, ctx.PrivateKeyJWTSigAlgs...)
 	}
 
-	if slices.Contains(methods, goidc.AuthnMethodSecretJWT) {
+	if slices.Contains(methods, goidc.ClientAuthnSecretJWT) {
 		sigAlgs = append(sigAlgs, ctx.ClientSecretJWTSigAlgs...)
 	}
 
@@ -107,7 +107,7 @@ func (ctx Context) ValidateInitalAccessToken(token string) error {
 		return nil
 	}
 
-	return ctx.ValidateInitialAccessTokenFunc(ctx, token)
+	return ctx.ValidateInitialAccessTokenFunc(ctx.Request, token)
 }
 
 func (ctx Context) HandleDynamicClient(id string, c *goidc.ClientMeta) error {
@@ -232,28 +232,12 @@ func (ctx Context) ValidateBackAuth(session *goidc.AuthnSession) error {
 	return ctx.ValidateBackAuthFunc(ctx, session)
 }
 
-func (ctx Context) OpenIDFedRequiredTrustMarks(client *goidc.Client) []goidc.TrustMark {
+func (ctx Context) OpenIDFedRequiredTrustMarks(client *goidc.Client) []string {
 	if ctx.OpenIDFedRequiredTrustMarksFunc == nil {
 		return nil
 	}
 
 	return ctx.OpenIDFedRequiredTrustMarksFunc(ctx, client)
-}
-
-func (ctx Context) OpenIDFedHandleClient(client *goidc.Client) error {
-	if ctx.OpenIDFedHandleClientFunc == nil {
-		return nil
-	}
-
-	return ctx.OpenIDFedHandleClientFunc(ctx, client)
-}
-
-func (ctx Context) OpenIDFedHTTPClient() *http.Client {
-	if ctx.OpenIDFedHTTPClientFunc == nil {
-		return ctx.HTTPClient()
-	}
-
-	return ctx.OpenIDFedHTTPClientFunc(ctx)
 }
 
 func (ctx Context) HandleDefaultPostLogout(session *goidc.LogoutSession) error {
@@ -561,11 +545,22 @@ func (ctx Context) WriteHTML(html string, params any) error {
 	return tmpl.Execute(ctx.Response, params)
 }
 
-func (ctx Context) ShouldIssueRefreshToken(c *goidc.Client, gi goidc.GrantInfo) bool {
-	if ctx.ShouldIssueRefreshTokenFunc == nil {
-		return true
+func (ctx Context) UserInfoSigAlgsContainsNone() bool {
+	return slices.Contains(ctx.UserInfoSigAlgs, goidc.None)
+}
+
+func (ctx Context) IDTokenSigAlgsContainsNone() bool {
+	return slices.Contains(ctx.IDTokenSigAlgs, goidc.None)
+}
+
+func (ctx Context) ShouldIssueRefreshToken(client *goidc.Client, grantInfo goidc.GrantInfo) bool {
+	if ctx.ShouldIssueRefreshTokenFunc == nil ||
+		!slices.Contains(client.GrantTypes, goidc.GrantRefreshToken) ||
+		grantInfo.GrantType == goidc.GrantClientCredentials {
+		return false
 	}
-	return ctx.ShouldIssueRefreshTokenFunc(ctx, c, gi)
+
+	return ctx.ShouldIssueRefreshTokenFunc(ctx, client, grantInfo)
 }
 
 func (ctx Context) TokenOptions(grantInfo goidc.GrantInfo, client *goidc.Client) goidc.TokenOptions {
@@ -651,19 +646,6 @@ func (ctx Context) HandlePARSession(as *goidc.AuthnSession, client *goidc.Client
 	return ctx.HandlePARSessionFunc(ctx.Request, as, client)
 }
 
-func (ctx Context) ClientSecret() string {
-	// Client secret must be at least 64 characters, so that it can be also
-	// used for symmetric encryption during, for instance, authentication with
-	// client_secret_jwt.
-	// For client_secret_jwt, the highest algorithm accepted in this implementation
-	// is HS512 which requires a key of at least 512 bits (64 characters).
-	return strutil.Random(64)
-}
-
-func (ctx Context) RegistrationAccessToken() string {
-	return strutil.Random(50)
-}
-
 //---------------------------------------- context.Context ----------------------------------------//
 
 func (ctx Context) Context() context.Context {
@@ -692,12 +674,7 @@ func (ctx Context) Value(key any) any {
 //---------------------------------------- SSF ----------------------------------------//
 
 func (ctx Context) SSFJWKS() (goidc.JSONWebKeySet, error) {
-	jwks, err := ctx.SSFJWKSFunc(ctx)
-	if err != nil {
-		return goidc.JSONWebKeySet{}, fmt.Errorf("could not load the ssf jwks: %w", err)
-	}
-
-	return jwks, nil
+	return ctx.SSFJWKSFunc(ctx)
 }
 
 func (ctx Context) SSFPublicJWKS() (goidc.JSONWebKeySet, error) {
@@ -730,11 +707,11 @@ func (ctx Context) SSFDeleteEventStream(id string) error {
 }
 
 func (ctx Context) SSFAddSubject(id string, subject goidc.SSFSubject, opts goidc.SSFSubjectOptions) error {
-	return ctx.SSFEventStreamManager.AddSubject(ctx, id, subject, opts)
+	return ctx.SSFEventStreamSubjectManager.Add(ctx, id, subject, opts)
 }
 
 func (ctx Context) SSFRemoveSubject(id string, subject goidc.SSFSubject) error {
-	return ctx.SSFEventStreamManager.RemoveSubject(ctx, id, subject)
+	return ctx.SSFEventStreamSubjectManager.Remove(ctx, id, subject)
 }
 
 func (ctx Context) SSFEventStreamID() string {
@@ -753,34 +730,34 @@ func (ctx Context) SSFAuthenticatedReceiver() (goidc.SSFReceiver, error) {
 	return ctx.SSFAuthenticatedReceiverFunc(ctx)
 }
 
-func (ctx Context) SSFSign(claims any, opts *jose.SignerOptions) (string, error) {
-	jwks, err := ctx.SSFJWKS()
-	if err != nil {
-		return "", fmt.Errorf("could not load the ssf jwks: %w", err)
+func (ctx Context) SSFJWTID() string {
+	if ctx.SSFJWTIDFunc == nil {
+		return uuid.NewString()
 	}
 
-	jwk, err := jwks.KeyByAlg(string(ctx.SSFDefaultSigAlg))
-	if err != nil {
-		return "", fmt.Errorf("could not find a valid ssf signing jwk: %w", err)
-	}
+	return ctx.SSFJWTIDFunc(ctx)
+}
+
+func (ctx Context) SSFSign(claims any, opts *jose.SignerOptions) (string, error) {
 
 	if ctx.SSFSignerFunc == nil {
-		return joseutil.Sign(claims, jose.SigningKey{
-			Algorithm: jose.SignatureAlgorithm(jwk.Algorithm),
-			Key:       jwk,
-		}, opts)
+		jwk, err := ctx.SSFJWKByAlg(ctx.SSFSignatureAlgorithm)
+		if err != nil {
+			return "", fmt.Errorf("could not load the signing jwk: %w", err)
+		}
+		return joseutil.Sign(claims, jose.SigningKey{Algorithm: ctx.SSFSignatureAlgorithm, Key: jwk}, opts)
 	}
 
-	keyID, key, err := ctx.SSFSignerFunc(ctx, goidc.SignatureAlgorithm(jwk.Algorithm))
+	keyID, key, err := ctx.SSFSignerFunc(ctx, ctx.SSFSignatureAlgorithm)
 	if err != nil {
 		return "", fmt.Errorf("could not load the signer: %w", err)
 	}
 
 	return joseutil.Sign(claims, jose.SigningKey{
-		Algorithm: goidc.SignatureAlgorithm(jwk.Algorithm),
+		Algorithm: ctx.SSFSignatureAlgorithm,
 		Key: joseutil.OpaqueSigner{
 			ID:        keyID,
-			Algorithm: goidc.SignatureAlgorithm(jwk.Algorithm),
+			Algorithm: ctx.SSFSignatureAlgorithm,
 			Signer:    key,
 		},
 	}, opts)
@@ -812,10 +789,7 @@ func (ctx Context) SSFAcknowledgeErrors(streamID string, errs map[string]goidc.S
 }
 
 func (ctx Context) SSFScheduleVerificationEvent(streamID string, opts goidc.SSFStreamVerificationOptions) error {
-	if ctx.SSFScheduleVerificationEventFunc == nil {
-		return errors.New("schedule verification event function is not set")
-	}
-	return ctx.SSFScheduleVerificationEventFunc(ctx, streamID, opts)
+	return ctx.SSFEventStreamVerificationManager.Schedule(ctx, streamID, opts)
 }
 
 func (ctx Context) SSFHTTPClient() *http.Client {
@@ -849,6 +823,27 @@ func (ctx Context) PublicJWKS() (goidc.JSONWebKeySet, error) {
 	return jwks.Public(), nil
 }
 
+func (ctx Context) OpenIDFedJWKS() (goidc.JSONWebKeySet, error) {
+	return ctx.OpenIDFedJWKSFunc(ctx)
+}
+
+func (ctx Context) OpenIDFedPublicJWKS() (goidc.JSONWebKeySet, error) {
+	jwks, err := ctx.OpenIDFedJWKS()
+	if err != nil {
+		return goidc.JSONWebKeySet{}, err
+	}
+
+	return jwks.Public(), nil
+}
+
+func (ctx Context) OpenIDFedEntityJWKS(id string) (goidc.JSONWebKeySet, error) {
+	if ctx.OpenIDFedEntityJWKSFunc == nil {
+		return goidc.JSONWebKeySet{}, errors.New("fetch federation entity jwks function is not set")
+	}
+
+	return ctx.OpenIDFedEntityJWKSFunc(ctx, id)
+}
+
 func (ctx Context) SigAlgs() ([]goidc.SignatureAlgorithm, error) {
 	jwks, err := ctx.JWKS()
 	if err != nil {
@@ -857,7 +852,7 @@ func (ctx Context) SigAlgs() ([]goidc.SignatureAlgorithm, error) {
 
 	var algorithms []goidc.SignatureAlgorithm
 	for _, jwk := range jwks.Keys {
-		if joseutil.KeyUsage(jwk) == goidc.KeyUsageSignature {
+		if inferKeyUsage(jwk) == goidc.KeyUsageSignature {
 			algorithms = append(algorithms, goidc.SignatureAlgorithm(jwk.Algorithm))
 		}
 	}
@@ -946,7 +941,7 @@ func (ctx Context) Decrypt(
 		key = joseutil.OpaqueDecrypter{Algorithm: alg, Decrypter: decrypter}
 	} else {
 		jwk, err := ctx.JWK(keyID)
-		if err != nil || joseutil.KeyUsage(jwk) != goidc.KeyUsageEncryption {
+		if err != nil || inferKeyUsage(jwk) != goidc.KeyUsageEncryption {
 			return "", errors.New("invalid jwk used for encryption")
 		}
 		key = jwk
@@ -960,41 +955,14 @@ func (ctx Context) Decrypt(
 	return string(jws), nil
 }
 
-func (ctx Context) OpenIDFedJWKS() (goidc.JSONWebKeySet, error) {
-	return ctx.OpenIDFedJWKSFunc(ctx)
-}
-
-func (ctx Context) OpenIDFedPublicJWKS() (goidc.JSONWebKeySet, error) {
-	jwks, err := ctx.OpenIDFedJWKS()
-	if err != nil {
-		return goidc.JSONWebKeySet{}, err
-	}
-
-	return jwks.Public(), nil
-}
-
-func (ctx Context) OpenIDFedEntityJWKS(id string) (goidc.JSONWebKeySet, error) {
-	if ctx.OpenIDFedEntityJWKSFunc == nil {
-		return goidc.JSONWebKeySet{}, errors.New("fetch federation entity jwks function is not set")
-	}
-
-	return ctx.OpenIDFedEntityJWKSFunc(ctx, id)
-}
-
-func (ctx Context) OpenIDFedSign(claims any, opts *jose.SignerOptions, algs ...goidc.SignatureAlgorithm) (string, error) {
-	if len(algs) == 0 {
-		algs = []goidc.SignatureAlgorithm{ctx.OpenIDFedDefaultSigAlg}
-	}
+func (ctx Context) OpenIDFedSign(claims any, opts *jose.SignerOptions) (string, error) {
 
 	jwks, err := ctx.OpenIDFedJWKS()
 	if err != nil {
-		return "", fmt.Errorf("could not load the federation jwks: %w", err)
+		return "", fmt.Errorf("could not load the signing jwk: %w", err)
 	}
-
-	jwk, err := joseutil.KeyByAlgorithms(jwks, algs)
-	if err != nil {
-		return "", fmt.Errorf("could not find a valid federation signing jwk matching the algorithms: %w", err)
-	}
+	// TODO: Add config to pick the algorithm to find the right key.
+	jwk := jwks.Keys[0]
 
 	if ctx.OpenIDFedSignerFunc == nil {
 		return joseutil.Sign(claims, jose.SigningKey{
@@ -1016,4 +984,19 @@ func (ctx Context) OpenIDFedSign(claims any, opts *jose.SignerOptions, algs ...g
 			Signer:    key,
 		},
 	}, opts)
+}
+
+func inferKeyUsage(key goidc.JSONWebKey) goidc.KeyUsage {
+	if key.Use != "" {
+		return goidc.KeyUsage(key.Use)
+	}
+
+	switch key.Algorithm {
+	case "RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "PS256", "PS384", "PS512", "HS256", "HS384", "HS512":
+		return goidc.KeyUsageSignature
+	case "RSA1_5", "RSA_OAEP", "RSA_OAEP_256":
+		return goidc.KeyUsageEncryption
+	default:
+		return ""
+	}
 }

@@ -9,14 +9,12 @@ const (
 	ClientRegistrationTypeExplicit  ClientRegistrationType = "explicit"
 )
 
-type RequiredTrustMarksFunc func(context.Context, *Client) []TrustMark
+type RequiredTrustMarksFunc func(context.Context, *Client) []string
 
-type TrustMark string
-
-type JWKSRepresentation string
+type OpenIDFedJWKSRepresentation string
 
 const (
-	JWKSRepresentationInline    JWKSRepresentation = "jwks"
-	JWKSRepresentationURI       JWKSRepresentation = "jwk_uri"
-	JWKSRepresentationSignedURI JWKSRepresentation = "signed_jwks_uri"
+	OpenIDFedJWKSRepresentationInline    OpenIDFedJWKSRepresentation = "jwks"
+	OpenIDFedJWKSRepresentationURI       OpenIDFedJWKSRepresentation = "jwk_uri"
+	OpenIDFedJWKSRepresentationSignedURI OpenIDFedJWKSRepresentation = "signed_jwks_uri"
 )

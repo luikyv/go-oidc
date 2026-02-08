@@ -39,8 +39,8 @@ func Validate(ctx oidc.Context, meta *goidc.ClientMeta) error {
 		validateJAREncAlgs,
 		validateJARMSigAlg,
 		validateJARMEncAlgs,
-		validateJWKS,
-		validateJWKSURI,
+		validatePublicJWKS,
+		validatePublicJWKSURI,
 		validateAuthorizationDetailTypes,
 		validateSubjectIdentifierType,
 		validateSubIdentifierPairwise,
@@ -63,7 +63,8 @@ func Validate(ctx oidc.Context, meta *goidc.ClientMeta) error {
 func validateGrantTypes(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	for _, gt := range meta.GrantTypes {
 		if !slices.Contains(ctx.GrantTypes, gt) {
-			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "grant type not allowed")
+			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
+				"grant type not allowed")
 		}
 	}
 
@@ -71,7 +72,7 @@ func validateGrantTypes(ctx oidc.Context, meta *goidc.ClientMeta) error {
 }
 
 func validateClientCredentialsGrantType(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	if slices.Contains(meta.GrantTypes, goidc.GrantClientCredentials) && meta.TokenAuthnMethod == goidc.AuthnMethodNone {
+	if slices.Contains(meta.GrantTypes, goidc.GrantClientCredentials) && meta.TokenAuthnMethod == goidc.ClientAuthnNone {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "client_credentials grant type not allowed for a client with no authentication")
 	}
 
@@ -280,8 +281,8 @@ func validateSubIdentifierPairwise(ctx oidc.Context, meta *goidc.ClientMeta) err
 				"the 'jwks_uri' is required for CIBA with non-push delivery modes when using pairwise sub type")
 		}
 
-		jwksURIOwnershipIsGuaranteed := meta.TokenAuthnMethod == goidc.AuthnMethodPrivateKeyJWT
-		jwksURIOwnershipIsGuaranteed = jwksURIOwnershipIsGuaranteed || meta.TokenAuthnMethod == goidc.AuthnMethodSelfSignedTLS
+		jwksURIOwnershipIsGuaranteed := meta.TokenAuthnMethod == goidc.ClientAuthnPrivateKeyJWT
+		jwksURIOwnershipIsGuaranteed = jwksURIOwnershipIsGuaranteed || meta.TokenAuthnMethod == goidc.ClientAuthnSelfSignedTLS
 		jwksURIOwnershipIsGuaranteed = jwksURIOwnershipIsGuaranteed || meta.CIBAJARSigAlg != ""
 		if !jwksURIOwnershipIsGuaranteed {
 			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
@@ -387,25 +388,25 @@ func validateJARMSigAlg(ctx oidc.Context, meta *goidc.ClientMeta) error {
 }
 
 func validatePrivateKeyJWT(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	if !slices.Contains(AuthnMethods(ctx, meta), goidc.AuthnMethodPrivateKeyJWT) {
+	if !slices.Contains(AuthnMethods(ctx, meta), goidc.ClientAuthnPrivateKeyJWT) {
 		return nil
 	}
 
-	if meta.TokenAuthnMethod == goidc.AuthnMethodPrivateKeyJWT &&
+	if meta.TokenAuthnMethod == goidc.ClientAuthnPrivateKeyJWT &&
 		meta.TokenAuthnSigAlg != "" &&
 		!slices.Contains(ctx.PrivateKeyJWTSigAlgs, meta.TokenAuthnSigAlg) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"token_endpoint_auth_signing_alg not supported for private_key_jwt")
 	}
 
-	if meta.TokenIntrospectionAuthnMethod == goidc.AuthnMethodPrivateKeyJWT &&
+	if meta.TokenIntrospectionAuthnMethod == goidc.ClientAuthnPrivateKeyJWT &&
 		meta.TokenIntrospectionAuthnSigAlg != "" &&
 		!slices.Contains(ctx.PrivateKeyJWTSigAlgs, meta.TokenIntrospectionAuthnSigAlg) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"introspection_endpoint_auth_signing_alg not supported for private_key_jwt")
 	}
 
-	if meta.TokenRevocationAuthnMethod == goidc.AuthnMethodPrivateKeyJWT &&
+	if meta.TokenRevocationAuthnMethod == goidc.ClientAuthnPrivateKeyJWT &&
 		meta.TokenRevocationAuthnSigAlg != "" &&
 		!slices.Contains(ctx.PrivateKeyJWTSigAlgs, meta.TokenRevocationAuthnSigAlg) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
@@ -421,21 +422,21 @@ func validatePrivateKeyJWT(ctx oidc.Context, meta *goidc.ClientMeta) error {
 }
 
 func validateSecretJWT(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	if meta.TokenAuthnMethod == goidc.AuthnMethodSecretJWT &&
+	if meta.TokenAuthnMethod == goidc.ClientAuthnSecretJWT &&
 		meta.TokenAuthnSigAlg != "" &&
 		!slices.Contains(ctx.ClientSecretJWTSigAlgs, meta.TokenAuthnSigAlg) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"token_endpoint_auth_signing_alg not supported for client_secret_jwt")
 	}
 
-	if meta.TokenIntrospectionAuthnMethod == goidc.AuthnMethodSecretJWT &&
+	if meta.TokenIntrospectionAuthnMethod == goidc.ClientAuthnSecretJWT &&
 		meta.TokenIntrospectionAuthnSigAlg != "" &&
 		!slices.Contains(ctx.ClientSecretJWTSigAlgs, meta.TokenIntrospectionAuthnSigAlg) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"introspection_endpoint_auth_signing_alg not supported for client_secret_jwt")
 	}
 
-	if meta.TokenRevocationAuthnMethod == goidc.AuthnMethodSecretJWT &&
+	if meta.TokenRevocationAuthnMethod == goidc.ClientAuthnSecretJWT &&
 		meta.TokenRevocationAuthnSigAlg != "" &&
 		!slices.Contains(ctx.ClientSecretJWTSigAlgs, meta.TokenRevocationAuthnSigAlg) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
@@ -445,7 +446,7 @@ func validateSecretJWT(ctx oidc.Context, meta *goidc.ClientMeta) error {
 }
 
 func validateSelfSignedTLSAuthn(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	if !slices.Contains(AuthnMethods(ctx, meta), goidc.AuthnMethodSelfSignedTLS) {
+	if !slices.Contains(AuthnMethods(ctx, meta), goidc.ClientAuthnSelfSignedTLS) {
 		return nil
 	}
 
@@ -458,7 +459,7 @@ func validateSelfSignedTLSAuthn(ctx oidc.Context, meta *goidc.ClientMeta) error 
 }
 
 func validateTLSAuthn(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	if !slices.Contains(AuthnMethods(ctx, meta), goidc.AuthnMethodTLS) {
+	if !slices.Contains(AuthnMethods(ctx, meta), goidc.ClientAuthnTLS) {
 		return nil
 	}
 
@@ -584,7 +585,7 @@ func validateJAREncAlgs(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	return nil
 }
 
-func validateJWKS(ctx oidc.Context, meta *goidc.ClientMeta) error {
+func validatePublicJWKS(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if meta.JWKS == nil {
 		return nil
 	}
@@ -597,12 +598,9 @@ func validateJWKS(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	return nil
 }
 
-func validateJWKSURI(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	if meta.JWKSURI == "" {
-		return nil
-	}
-
-	return validateURL("jwks_uri", meta.JWKSURI)
+func validatePublicJWKSURI(ctx oidc.Context, meta *goidc.ClientMeta) error {
+	// TODO: validate the client jwks uri.
+	return nil
 }
 
 func validateAuthorizationDetailTypes(ctx oidc.Context, meta *goidc.ClientMeta) error {
@@ -648,7 +646,7 @@ func validateCIBAGrant(
 		return nil
 	}
 
-	if meta.TokenAuthnMethod == goidc.AuthnMethodNone {
+	if meta.TokenAuthnMethod == goidc.ClientAuthnNone {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"none authn method not allowed for ciba")
 	}

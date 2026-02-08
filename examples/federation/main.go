@@ -103,20 +103,18 @@ func main() {
 	clientFedURL, _ := url.Parse(ClientFedID)
 	trustAnchorFedURL, _ := url.Parse(TrustAnchorFedID)
 
-	// Create and configure the openid provider and a c.
-	c, clientJWKS := authutil.ClientPrivateKeyJWT("client_one")
-	c.ClientRegistrationTypes = []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeAutomatic, goidc.ClientRegistrationTypeExplicit}
+	// Create and configure the openid provider and a client.
+	client, clientJWKS := authutil.ClientPrivateKeyJWT("client_one")
 
 	op, err := provider.New(
 		goidc.ProfileOpenID,
 		OPFedID,
 		authutil.PrivateJWKSFunc(),
-		provider.WithOpenIDFederation(
+		provider.WithOpenIDFed(
 			func(ctx context.Context) (goidc.JSONWebKeySet, error) {
 				return opFedJWKS, nil
 			},
 			TrustAnchorFedID,
-			"https://localhost:8443/test/a/go-oidc/trust-anchor",
 		),
 		provider.WithOpenIDFedAuthorityHints(TrustAnchorFedID),
 		provider.WithOpenIDFedSignatureAlgs(goidc.RS256, goidc.ES256),
@@ -124,17 +122,15 @@ func main() {
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithIDTokenSignatureAlgs(goidc.RS256),
 		provider.WithTokenAuthnMethods(
-			goidc.AuthnMethodSecretBasic,
-			goidc.AuthnMethodSecretPost,
-			goidc.AuthnMethodPrivateKeyJWT,
+			goidc.ClientAuthnSecretBasic,
+			goidc.ClientAuthnSecretPost,
+			goidc.ClientAuthnPrivateKeyJWT,
 		),
 		provider.WithPrivateKeyJWTSignatureAlgs(goidc.RS256),
 		provider.WithAuthorizationCodeGrant(),
 		provider.WithImplicitGrant(),
-		provider.WithRefreshTokenGrant(),
-		provider.WithClientCredentialsGrant(),
+		provider.WithRefreshTokenGrant(authutil.IssueRefreshToken, 600),
 		provider.WithJAR(goidc.RS256, goidc.PS256),
-		provider.WithPAR(),
 		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.RS256)),
 		provider.WithHTTPClientFunc(httpClientFunc()),
@@ -161,7 +157,7 @@ func main() {
 			"iat": timeutil.TimestampNow(),
 			"exp": timeutil.TimestampNow() + 600,
 			"metadata": map[string]any{
-				"openid_relying_party": c.ClientMeta,
+				"openid_relying_party": client.ClientMeta,
 			},
 			"jwks":            clientFedJWKS.Public(),
 			"authority_hints": []string{TrustAnchorFedID},
@@ -303,7 +299,7 @@ func authReqURL(clientJWKS goidc.JSONWebKeySet) string {
 		"iat":           timeutil.TimestampNow(),
 		"exp":           timeutil.TimestampNow() + 600,
 		"client_id":     ClientFedID,
-		"redirect_uri":  "https://localhost/callback",
+		"redirect_uri":  "http://localhost/callback",
 		"scope":         "openid",
 		"response_type": "code id_token",
 		"nonce":         "random_nonce",

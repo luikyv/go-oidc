@@ -83,7 +83,7 @@ func TestFetchPublicJWKS(t *testing.T) {
 			t.Errorf("number of requests = %d, want 1. attempt %d", numberOfCalls, i+1)
 		}
 
-		if c.CachedJWKS() == nil {
+		if c.JWKS.Keys == nil {
 			t.Errorf("the jwks was not cached. attempt %d", i+1)
 		}
 	}
