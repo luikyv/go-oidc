@@ -208,10 +208,14 @@ type Configuration struct {
 	OpenIDFedTrustChainMaxDepth     int
 	OpenIDFedClientRegTypes         []goidc.ClientRegistrationType
 	OpenIDFedRequiredTrustMarksFunc goidc.RequiredTrustMarksFunc
+	// OpenIDFedTrustMarks is a map of trust mark type to the trust mark issuer.
+	OpenIDFedTrustMarks             map[string]string
 	OpenIDFedTrustMarkSigAlgs       []goidc.SignatureAlgorithm
 	OpenIDFedJWKSRepresentations    []goidc.OpenIDFedJWKSRepresentation
 	OpenIDFedSignedJWKSEndpoint     string
 	OpenIDFedSignedJWKSLifetimeSecs int
+	OpenIDFedOrganizationName       string
+	OpenIDFedHTTPClientFunc         goidc.HTTPClientFunc
 	OpenIDFedClientFunc             func(ctx Context, id string) (*goidc.Client, error)
 	OpenIDFedEntityJWKSFunc         func(ctx Context, id string) (goidc.JSONWebKeySet, error)
 

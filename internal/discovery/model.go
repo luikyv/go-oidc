@@ -63,6 +63,7 @@ type OpenIDConfiguration struct {
 	CodeChallengeMethods           []goidc.CodeChallengeMethod    `json:"code_challenge_methods_supported,omitempty"`
 	EndSessionEndpoint             string                         `json:"end_session_endpoint,omitempty"`
 	ClientRegistrationTypes        []goidc.ClientRegistrationType `json:"client_registration_types_supported"`
+	OrganizationName               string                         `json:"organization_name,omitempty"`
 	FederationRegistrationEndpoint string                         `json:"federation_registration_endpoint,omitempty"`
 	SignedJWKSEndpoint             string                         `json:"signed_jwks_uri,omitempty"`
 	JWKS                           *goidc.JSONWebKeySet           `json:"jwks,omitempty"`

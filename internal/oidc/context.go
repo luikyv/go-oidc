@@ -240,6 +240,14 @@ func (ctx Context) OpenIDFedRequiredTrustMarks(client *goidc.Client) []string {
 	return ctx.OpenIDFedRequiredTrustMarksFunc(ctx, client)
 }
 
+func (ctx Context) OpenIDFedHTTPClient() *http.Client {
+	if ctx.OpenIDFedHTTPClientFunc == nil {
+		return ctx.HTTPClient()
+	}
+
+	return ctx.OpenIDFedHTTPClientFunc(ctx)
+}
+
 func (ctx Context) HandleDefaultPostLogout(session *goidc.LogoutSession) error {
 	if ctx.HandleDefaultPostLogoutFunc == nil {
 		return errors.New("default post logout handler function is not defined")
