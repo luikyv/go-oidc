@@ -110,14 +110,15 @@ func main() {
 		goidc.ProfileOpenID,
 		OPFedID,
 		authutil.PrivateJWKSFunc(),
-		provider.WithOpenIDFederation(
+		provider.WithOpenIDFed(
 			func(ctx context.Context) (goidc.JSONWebKeySet, error) {
 				return opFedJWKS, nil
 			},
-			[]string{TrustAnchorFedID},
-			[]string{TrustAnchorFedID},
+			TrustAnchorFedID,
 		),
-		provider.WithOpenIDFederationSignatureAlgs(goidc.RS256, goidc.ES256),
+		provider.WithOpenIDFedAuthorityHints(TrustAnchorFedID),
+		provider.WithOpenIDFedSignatureAlgs(goidc.RS256, goidc.ES256),
+		provider.WithOpenIDFedClientRegistrationTypes(goidc.ClientRegistrationTypeAutomatic, goidc.ClientRegistrationTypeExplicit),
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithIDTokenSignatureAlgs(goidc.RS256),
 		provider.WithTokenAuthnMethods(

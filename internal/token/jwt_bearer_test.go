@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/luikyv/go-oidc/internal/clientutil"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -46,7 +46,7 @@ func TestHandleGrantCreation_JWTBearerGrant(t *testing.T) {
 	}
 	now := timeutil.TimestampNow()
 	wantedTokenClaims := map[string]any{
-		"iss":       ctx.Host,
+		"iss":       ctx.Issuer(),
 		"sub":       "random_subject",
 		"scope":     reqScopes,
 		"client_id": client.ID,
@@ -69,7 +69,7 @@ func TestHandleGrantCreation_JWTBearerGrant(t *testing.T) {
 		t.Fatalf("error parsing claims: %v", err)
 	}
 	wantedIDTokenClaims := map[string]any{
-		"iss": ctx.Host,
+		"iss": ctx.Issuer(),
 		"sub": "random_subject",
 		"aud": client.ID,
 		"exp": float64(grantSession.LastTokenExpiresAtTimestamp),
@@ -116,7 +116,7 @@ func TestHandleGrantCreation_JWTBearerGrant_NoClientIdentified(t *testing.T) {
 	}
 	now := timeutil.TimestampNow()
 	wantedTokenClaims := map[string]any{
-		"iss":   ctx.Host,
+		"iss":   ctx.Issuer(),
 		"sub":   "random_subject",
 		"scope": reqScopes,
 		"exp":   float64(grantSession.LastTokenExpiresAtTimestamp),
@@ -138,7 +138,7 @@ func TestHandleGrantCreation_JWTBearerGrant_NoClientIdentified(t *testing.T) {
 		t.Fatalf("error parsing claims: %v", err)
 	}
 	wantedIDTokenClaims := map[string]any{
-		"iss": ctx.Host,
+		"iss": ctx.Issuer(),
 		"sub": "random_subject",
 		"exp": float64(grantSession.LastTokenExpiresAtTimestamp),
 		"iat": float64(now),
@@ -202,7 +202,7 @@ func TestHandleGrantCreation_JWTBearerGrant_ClientAuthnIsRequired(t *testing.T) 
 	_, err := generateGrant(ctx, req)
 
 	// Then.
-	if !errors.Is(err, clientutil.ErrClientNotIdentified) {
+	if !errors.Is(err, client.ErrClientNotIdentified) {
 		t.Fatalf("error not as expected: %v", err)
 	}
 

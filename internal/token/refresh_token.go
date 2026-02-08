@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/luikyv/go-oidc/internal/clientutil"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -18,7 +18,7 @@ func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) 
 		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid refresh token")
 	}
 
-	client, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	c, err := client.Authenticated(ctx, client.TokenAuthnContext)
 	if err != nil {
 		return response{}, err
 	}
@@ -28,7 +28,7 @@ func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) 
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid refresh_token", err)
 	}
 
-	if err = validateRefreshTokenGrantRequest(ctx, req, client, grantSession); err != nil {
+	if err = validateRefreshTokenGrantRequest(ctx, req, c, grantSession); err != nil {
 		return response{}, err
 	}
 
@@ -36,12 +36,12 @@ func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) 
 		return response{}, err
 	}
 
-	token, err := Make(ctx, grantSession.GrantInfo, client)
+	token, err := Make(ctx, grantSession.GrantInfo, c)
 	if err != nil {
 		return response{}, fmt.Errorf("could not generate token during refresh token grant: %w", err)
 	}
 
-	return updateRefreshTokenGrantSession(ctx, grantSession, client, token)
+	return updateRefreshTokenGrantSession(ctx, grantSession, c, token)
 }
 
 func updateRefreshTokenGrantInfo(ctx oidc.Context, grantInfo *goidc.GrantInfo, req request) error {

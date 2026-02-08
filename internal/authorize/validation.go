@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikyv/go-oidc/internal/clientutil"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
@@ -394,7 +394,7 @@ func validateScopesAsOptional(ctx oidc.Context, params goidc.AuthorizationParame
 		return nil
 	}
 
-	if !clientutil.AreScopesAllowed(c, ctx.Scopes, params.Scopes) {
+	if !client.AreScopesAllowed(ctx, c, params.Scopes) {
 		return newRedirectionError(goidc.ErrorCodeInvalidScope, "invalid scope", params)
 	}
 

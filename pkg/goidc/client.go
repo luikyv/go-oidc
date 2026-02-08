@@ -2,10 +2,6 @@ package goidc
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"net/http"
 )
 
 // ClientManager gathers all the logic needed to manage clients.
@@ -15,7 +11,6 @@ type ClientManager interface {
 	Delete(ctx context.Context, id string) error
 }
 
-// Client contains all information about an OAuth client.
 type Client struct {
 	ID string `json:"client_id"`
 	// Secret is used when the client authenticates with client_secret_jwt,
@@ -32,65 +27,14 @@ type Client struct {
 	ExpiresAtTimestamp int    `json:"expires_at,omitempty"`
 
 	IsFederated                bool                   `json:"is_federated"`
-	TrustAnchor                string                 `json:"trust_anchor"`
+	FederationTrustAnchor      string                 `json:"federation_trust_anchor"`
 	FederationRegistrationType ClientRegistrationType `json:"federation_registration_type,omitempty"`
-	FederationTrustMarkIDs     []string               `json:"federation_trust_mark_ids,omitempty"`
+	FederationTrustMarks       []string               `json:"federation_trust_marks,omitempty"`
 	ClientMeta
 }
 
 func (c *Client) IsPublic() bool {
 	return c.TokenAuthnMethod == ClientAuthnNone
-}
-
-// FetchPublicJWKS fetches the client public JWKS either directly from the jwks
-// attribute or using jwks_uri.
-//
-// It also caches the keys if they are fetched from jwks_uri.
-func (c *Client) FetchPublicJWKS(httpClient *http.Client) (*JSONWebKeySet, error) {
-	if c.PublicJWKS != nil {
-		return c.PublicJWKS, nil
-	}
-
-	if c.PublicSignedJWKSURI != "" {
-		return c.fetchSignedJWKS(httpClient)
-	}
-
-	if c.PublicJWKSURI == "" {
-		return nil, errors.New("the client jwks was informed neither by value nor by reference")
-	}
-
-	jwks, err := c.fetchJWKS(httpClient)
-	if err != nil {
-		return nil, err
-	}
-	// Cache the client JWKS.
-	c.PublicJWKS = jwks
-
-	return jwks, err
-}
-
-func (c *Client) fetchJWKS(httpClient *http.Client) (*JSONWebKeySet, error) {
-	resp, err := httpClient.Get(c.PublicJWKSURI)
-	if err != nil {
-		return nil, WrapError(ErrorCodeInvalidClientMetadata, "could not fetch the client jwks", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, WrapError(ErrorCodeInvalidClientMetadata, fmt.Sprintf("fetching the client jwks resulted in %d", resp.StatusCode), err)
-	}
-
-	var jwks JSONWebKeySet
-	if err := json.NewDecoder(resp.Body).Decode(&jwks); err != nil {
-		return nil, WrapError(ErrorCodeInvalidClientMetadata, "could not parse the client jwks", err)
-	}
-
-	return &jwks, nil
-}
-
-// TODO.
-func (c *Client) fetchSignedJWKS(_ *http.Client) (*JSONWebKeySet, error) {
-	return nil, errors.ErrUnsupported
 }
 
 type ClientMeta struct {
@@ -105,8 +49,9 @@ type ClientMeta struct {
 	RequestURIs       []string        `json:"request_uris,omitempty"`
 	GrantTypes        []GrantType     `json:"grant_types"`
 	ResponseTypes     []ResponseType  `json:"response_types"`
-	PublicJWKSURI     string          `json:"jwks_uri,omitempty"`
-	PublicJWKS        *JSONWebKeySet  `json:"jwks,omitempty"`
+	JWKSURI           string          `json:"jwks_uri,omitempty"`
+	JWKS              *JSONWebKeySet  `json:"jwks,omitempty"`
+	SignedJWKSURI     string          `json:"signed_jwks_uri,omitempty"`
 	// ScopeIDs contains the scopes available to the client separeted by spaces.
 	ScopeIDs              string                     `json:"scope,omitempty"`
 	SubIdentifierType     SubIdentifierType          `json:"subject_type,omitempty"`
@@ -134,20 +79,25 @@ type ClientMeta struct {
 	DPoPTokenBindingIsRequired    bool                       `json:"dpop_bound_access_tokens,omitempty"`
 	TLSSubDistinguishedName       string                     `json:"tls_client_auth_subject_dn,omitempty"`
 	// TLSSubAlternativeName represents a DNS name.
-	TLSSubAlternativeName     string                `json:"tls_client_auth_san_dns,omitempty"`
-	TLSSubAlternativeNameIp   string                `json:"tls_client_auth_san_ip,omitempty"`
-	TLSTokenBindingIsRequired bool                  `json:"tls_client_certificate_bound_access_tokens,omitempty"`
-	AuthDetailTypes           []string              `json:"authorization_data_types,omitempty"`
-	DefaultMaxAgeSecs         *int                  `json:"default_max_age,omitempty"`
-	DefaultACRValues          string                `json:"default_acr_values,omitempty"`
-	PARIsRequired             bool                  `json:"require_pushed_authorization_requests,omitempty"`
-	CIBATokenDeliveryMode     CIBATokenDeliveryMode `json:"backchannel_token_delivery_mode,omitempty"`
-	CIBANotificationEndpoint  string                `json:"backchannel_client_notification_endpoint,omitempty"`
-	CIBAJARSigAlg             SignatureAlgorithm    `json:"backchannel_authentication_request_signing_alg,omitempty"`
-	CIBAUserCodeIsEnabled     bool                  `json:"backchannel_user_code_parameter,omitempty"`
-	PublicSignedJWKSURI       string                `json:"signed_jwks_uri,omitempty"`
-	OrganizationName          string                `json:"organization_name,omitempty"`
-	PostLogoutRedirectURIs    []string              `json:"post_logout_redirect_uris,omitempty"`
+	TLSSubAlternativeName     string                   `json:"tls_client_auth_san_dns,omitempty"`
+	TLSSubAlternativeNameIp   string                   `json:"tls_client_auth_san_ip,omitempty"`
+	TLSTokenBindingIsRequired bool                     `json:"tls_client_certificate_bound_access_tokens,omitempty"`
+	AuthDetailTypes           []string                 `json:"authorization_data_types,omitempty"`
+	DefaultMaxAgeSecs         *int                     `json:"default_max_age,omitempty"`
+	DefaultACRValues          string                   `json:"default_acr_values,omitempty"`
+	PARIsRequired             bool                     `json:"require_pushed_authorization_requests,omitempty"`
+	CIBATokenDeliveryMode     CIBATokenDeliveryMode    `json:"backchannel_token_delivery_mode,omitempty"`
+	CIBANotificationEndpoint  string                   `json:"backchannel_client_notification_endpoint,omitempty"`
+	CIBAJARSigAlg             SignatureAlgorithm       `json:"backchannel_authentication_request_signing_alg,omitempty"`
+	CIBAUserCodeIsEnabled     bool                     `json:"backchannel_user_code_parameter,omitempty"`
+	OrganizationName          string                   `json:"organization_name,omitempty"`
+	PostLogoutRedirectURIs    []string                 `json:"post_logout_redirect_uris,omitempty"`
+	ClientRegistrationTypes   []ClientRegistrationType `json:"client_registration_types,omitempty"`
+	DisplayName               string                   `json:"display_name,omitempty"`
+	Description               string                   `json:"description,omitempty"`
+	Keywords                  []string                 `json:"keywords,omitempty"`
+	InformationURI            string                   `json:"information_uri,omitempty"`
+	OrganizationURI           string                   `json:"organization_uri,omitempty"`
 	// CustomAttributes holds any additional dynamic attributes a client may
 	// provide during registration.
 	// These attributes allow clients to extend their metadata beyond the

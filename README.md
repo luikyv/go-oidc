@@ -28,7 +28,7 @@ This library implements the following specifications:
 * [FAPI 1.0 Security Profile 1.0 - Part 2: Advanced](https://openid.net/specs/openid-financial-api-part-2-1_0.html)
 * [FAPI 2.0 Security Profile](https://openid.net/specs/fapi-security-profile-2_0-final.html)
 * [OpenID Connect Client-Initiated Backchannel Authentication Flow - Core 1.0 (CIBA)](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0-final.html)
-* [OpenID Federation 1.0 - draft 42](https://openid.net/specs/openid-federation-1_0.html)
+* [OpenID Federation 1.0](https://openid.net/specs/openid-federation-1_0.html)
 * [OpenID Connect RP-Initiated Logout 1.0](https://openid.net/specs/openid-connect-rpinitiated-1_0.html)
 * [OpenID Shared Signals Framework Specification 1.0](https://openid.net/specs/openid-sharedsignals-framework-1_0.html)
 

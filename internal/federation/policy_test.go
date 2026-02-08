@@ -2,6 +2,9 @@ package federation
 
 import (
 	"testing"
+
+	"github.com/luikyv/go-oidc/internal/discovery"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func TestMetadataPolicy_Validate(t *testing.T) {
@@ -44,11 +47,11 @@ func TestMetadataPolicy_Apply(t *testing.T) {
 	}
 	statement := entityStatement{
 		Metadata: struct {
-			FederationAuthority *federationAuthority "json:\"federation_entity,omitempty\""
-			OpenIDProvider      *openIDProvider      "json:\"openid_provider,omitempty\""
-			OpenIDClient        *openIDClient        "json:\"openid_relying_party,omitempty\""
+			FederationAuthority *federationAuthority           "json:\"federation_entity,omitempty\""
+			OpenIDProvider      *discovery.OpenIDConfiguration "json:\"openid_provider,omitempty\""
+			OpenIDClient        *goidc.ClientMeta              "json:\"openid_relying_party,omitempty\""
 		}{
-			OpenIDClient: &openIDClient{},
+			OpenIDClient: &goidc.ClientMeta{},
 		},
 	}
 

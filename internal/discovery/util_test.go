@@ -63,16 +63,16 @@ func TestOIDCConfig(t *testing.T) {
 	ctx := oidc.Context{Configuration: config}
 
 	// When.
-	got := NewOIDCConfig(ctx)
+	got := NewOpenIDConfiguration(ctx)
 
 	// Then.
 	want := OpenIDConfiguration{
-		Issuer:                     ctx.Host,
-		ClientRegistrationEndpoint: ctx.Host + ctx.DCREndpoint,
-		AuthorizationEndpoint:      ctx.Host + ctx.AuthorizationEndpoint,
-		TokenEndpoint:              ctx.Host + ctx.TokenEndpoint,
-		UserinfoEndpoint:           ctx.Host + ctx.UserInfoEndpoint,
-		JWKSEndpoint:               ctx.Host + ctx.JWKSEndpoint,
+		Issuer:                     ctx.Issuer(),
+		ClientRegistrationEndpoint: ctx.Issuer() + ctx.DCREndpoint,
+		AuthorizationEndpoint:      ctx.Issuer() + ctx.AuthorizationEndpoint,
+		TokenEndpoint:              ctx.Issuer() + ctx.TokenEndpoint,
+		UserinfoEndpoint:           ctx.Issuer() + ctx.UserInfoEndpoint,
+		JWKSEndpoint:               ctx.Issuer() + ctx.JWKSEndpoint,
 		Scopes:                     []string{"openid", "email"},
 		TokenAuthnMethods:          ctx.TokenAuthnMethods,
 		TokenAuthnSigAlgs: []goidc.SignatureAlgorithm{
@@ -176,19 +176,19 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 	ctx := oidc.Context{Configuration: config}
 
 	// When.
-	got := NewOIDCConfig(ctx)
+	got := NewOpenIDConfiguration(ctx)
 
 	// Then.
 	want := OpenIDConfiguration{
-		Issuer:                     ctx.Host,
-		ClientRegistrationEndpoint: ctx.Host + ctx.DCREndpoint,
-		AuthorizationEndpoint:      ctx.Host + ctx.AuthorizationEndpoint,
-		TokenEndpoint:              ctx.Host + ctx.TokenEndpoint,
-		UserinfoEndpoint:           ctx.Host + ctx.UserInfoEndpoint,
-		JWKSEndpoint:               ctx.Host + ctx.JWKSEndpoint,
-		PAREndpoint:                ctx.Host + ctx.PAREndpoint,
-		TokenIntrospectionEndpoint: ctx.Host + ctx.IntrospectionEndpoint,
-		TokenRevocationEndpoint:    ctx.Host + ctx.TokenRevocationEndpoint,
+		Issuer:                     ctx.Issuer(),
+		ClientRegistrationEndpoint: ctx.Issuer() + ctx.DCREndpoint,
+		AuthorizationEndpoint:      ctx.Issuer() + ctx.AuthorizationEndpoint,
+		TokenEndpoint:              ctx.Issuer() + ctx.TokenEndpoint,
+		UserinfoEndpoint:           ctx.Issuer() + ctx.UserInfoEndpoint,
+		JWKSEndpoint:               ctx.Issuer() + ctx.JWKSEndpoint,
+		PAREndpoint:                ctx.Issuer() + ctx.PAREndpoint,
+		TokenIntrospectionEndpoint: ctx.Issuer() + ctx.IntrospectionEndpoint,
+		TokenRevocationEndpoint:    ctx.Issuer() + ctx.TokenRevocationEndpoint,
 		Scopes:                     []string{"openid", "email"},
 		TokenAuthnMethods:          ctx.TokenAuthnMethods,
 		TokenAuthnSigAlgs: []goidc.SignatureAlgorithm{

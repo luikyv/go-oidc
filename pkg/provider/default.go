@@ -37,6 +37,7 @@ const (
 	defaultEndpointCIBA                         = "/bc-authorize"
 	defaultEndpointOpenIDFederation             = "/.well-known/openid-federation"
 	defaultEndpointOpenIDFederationRegistration = "/federation/register"
+	defaultEndpointOpenIDFederationSignedJWKS   = "/signed-jwks"
 	defaultEndpointEndSession                   = "/logout"
 	defaultEndpointSSFJWKS                      = "/ssf/jwks"
 	defaultEndpointSSFConfiguration             = "/ssf/stream"

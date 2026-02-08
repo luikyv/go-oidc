@@ -1,4 +1,4 @@
-package dcr
+package client
 
 import (
 	"encoding/json"
@@ -230,8 +230,7 @@ func validateSubjectIdentifierType(ctx oidc.Context, meta *goidc.ClientMeta) err
 	}
 
 	if !slices.Contains(ctx.SubIdentifierTypes, meta.SubIdentifierType) {
-		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-			"subject_type not supported")
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "subject_type not supported")
 	}
 	return nil
 }
@@ -277,7 +276,7 @@ func validateSubIdentifierPairwise(ctx oidc.Context, meta *goidc.ClientMeta) err
 	//    - 'self_signed_tls_client_auth' for token authentication.
 	//    - Usage of signed request objects.
 	if slices.Contains(meta.GrantTypes, goidc.GrantCIBA) && meta.CIBATokenDeliveryMode != goidc.CIBATokenDeliveryModePush {
-		if meta.PublicJWKSURI == "" {
+		if meta.JWKSURI == "" {
 			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 				"the 'jwks_uri' is required for CIBA with non-push delivery modes when using pairwise sub type")
 		}
@@ -327,8 +326,8 @@ func validateSectorIdentifierURI(ctx oidc.Context, meta *goidc.ClientMeta) error
 	if slices.Contains(meta.GrantTypes, goidc.GrantCIBA) {
 		if meta.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePush {
 			wantedURIs = append(wantedURIs, meta.CIBANotificationEndpoint)
-		} else if meta.PublicJWKSURI != "" {
-			wantedURIs = append(wantedURIs, meta.PublicJWKSURI)
+		} else if meta.JWKSURI != "" {
+			wantedURIs = append(wantedURIs, meta.JWKSURI)
 		}
 	}
 
@@ -348,8 +347,7 @@ func validateIDTokenSigAlg(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	}
 
 	if !slices.Contains(ctx.IDTokenSigAlgs, meta.IDTokenSigAlg) {
-		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-			"id_token_signed_response_alg not supported")
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "id_token_signed_response_alg not supported")
 	}
 	return nil
 }
@@ -360,8 +358,7 @@ func validateUserInfoSigAlg(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	}
 
 	if !slices.Contains(ctx.UserInfoSigAlgs, meta.UserInfoSigAlg) {
-		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-			"id_token_signed_response_alg not supported")
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "id_token_signed_response_alg not supported")
 	}
 	return nil
 }
@@ -391,7 +388,7 @@ func validateJARMSigAlg(ctx oidc.Context, meta *goidc.ClientMeta) error {
 }
 
 func validatePrivateKeyJWT(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	if !slices.Contains(authnMethods(ctx, meta), goidc.ClientAuthnPrivateKeyJWT) {
+	if !slices.Contains(AuthnMethods(ctx, meta), goidc.ClientAuthnPrivateKeyJWT) {
 		return nil
 	}
 
@@ -416,7 +413,7 @@ func validatePrivateKeyJWT(ctx oidc.Context, meta *goidc.ClientMeta) error {
 			"revocation_endpoint_auth_signing_alg not supported for private_key_jwt")
 	}
 
-	if meta.PublicJWKS == nil && meta.PublicJWKSURI == "" {
+	if meta.JWKS == nil && meta.JWKSURI == "" {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"the jwks is required for private_key_jwt")
 	}
@@ -449,11 +446,11 @@ func validateSecretJWT(ctx oidc.Context, meta *goidc.ClientMeta) error {
 }
 
 func validateSelfSignedTLSAuthn(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	if !slices.Contains(authnMethods(ctx, meta), goidc.ClientAuthnSelfSignedTLS) {
+	if !slices.Contains(AuthnMethods(ctx, meta), goidc.ClientAuthnSelfSignedTLS) {
 		return nil
 	}
 
-	if meta.PublicJWKSURI == "" && meta.PublicJWKS == nil {
+	if meta.JWKSURI == "" && meta.JWKS == nil {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"jwks is required when authenticating with self signed certificates")
 	}
@@ -462,7 +459,7 @@ func validateSelfSignedTLSAuthn(ctx oidc.Context, meta *goidc.ClientMeta) error 
 }
 
 func validateTLSAuthn(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	if !slices.Contains(authnMethods(ctx, meta), goidc.ClientAuthnTLS) {
+	if !slices.Contains(AuthnMethods(ctx, meta), goidc.ClientAuthnTLS) {
 		return nil
 	}
 
@@ -589,10 +586,10 @@ func validateJAREncAlgs(ctx oidc.Context, meta *goidc.ClientMeta) error {
 }
 
 func validatePublicJWKS(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	if meta.PublicJWKS == nil {
+	if meta.JWKS == nil {
 		return nil
 	}
-	for _, jwk := range meta.PublicJWKS.Keys {
+	for _, jwk := range meta.JWKS.Keys {
 		if !jwk.IsPublic() || !jwk.Valid() {
 			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 				fmt.Sprintf("the key with ID: %s jwks is invalid", jwk.KeyID))

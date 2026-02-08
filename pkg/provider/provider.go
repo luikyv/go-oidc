@@ -153,18 +153,9 @@ func (op *Provider) SaveClient(ctx context.Context, client *goidc.Client) error 
 	return op.config.ClientManager.Save(ctx, client)
 }
 
-// Client retrieves a client based on its ID.
-// It first checks if the client is a static client configured within the provider.
-// If no matching static client is found, fallback to the ClientManager.
 func (op *Provider) Client(ctx context.Context, id string) (*goidc.Client, error) {
-	for _, staticClient := range op.config.StaticClients {
-		if staticClient.ID == id {
-			return staticClient, nil
-		}
-	}
-
-	// TODO: Federation missing.
-	return op.config.ClientManager.Client(ctx, id)
+	oidcCtx := oidc.NewContext(ctx, &op.config)
+	return oidcCtx.Client(id)
 }
 
 func (op *Provider) DeleteClient(ctx context.Context, id string) error {
@@ -401,14 +392,19 @@ func (op *Provider) setDefaults() error {
 	}
 
 	if op.config.OpenIDFedIsEnabled {
+		op.config.OpenIDFedClientFunc = federation.Client
+		op.config.OpenIDFedEntityJWKSFunc = federation.FetchEntityConfigurationJWKS
 		op.config.OpenIDFedEndpoint = nonZeroOrDefault(op.config.OpenIDFedEndpoint, defaultEndpointOpenIDFederation)
-		op.config.OpenIDFedRegisterClientFunc = federation.RegisterClient
 		op.config.OpenIDFedEntityStatementSigAlgs = nonZeroOrDefault(op.config.OpenIDFedEntityStatementSigAlgs, []goidc.SignatureAlgorithm{defaultOpenIDFedSigAlg})
 		op.config.OpenIDFedTrustMarkSigAlgs = nonZeroOrDefault(op.config.OpenIDFedTrustMarkSigAlgs, op.config.OpenIDFedEntityStatementSigAlgs)
 		op.config.OpenIDFedTrustChainMaxDepth = nonZeroOrDefault(op.config.OpenIDFedTrustChainMaxDepth, defaultOpenIDFedTrustChainMaxDepth)
 		op.config.OpenIDFedClientRegTypes = nonZeroOrDefault(op.config.OpenIDFedClientRegTypes, []goidc.ClientRegistrationType{defaultOpenIDFedRegType})
+		op.config.OpenIDFedJWKSRepresentations = nonZeroOrDefault(op.config.OpenIDFedJWKSRepresentations, []goidc.OpenIDFedJWKSRepresentation{goidc.OpenIDFedJWKSRepresentationURI})
 		if slices.Contains(op.config.OpenIDFedClientRegTypes, goidc.ClientRegistrationTypeExplicit) {
 			op.config.OpenIDFedRegistrationEndpoint = nonZeroOrDefault(op.config.OpenIDFedRegistrationEndpoint, defaultEndpointOpenIDFederationRegistration)
+		}
+		if slices.Contains(op.config.OpenIDFedJWKSRepresentations, goidc.OpenIDFedJWKSRepresentationSignedURI) {
+			op.config.OpenIDFedSignedJWKSEndpoint = nonZeroOrDefault(op.config.OpenIDFedSignedJWKSEndpoint, defaultEndpointOpenIDFederationSignedJWKS)
 		}
 	}
 

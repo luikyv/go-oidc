@@ -5,7 +5,7 @@ import (
 	"maps"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikyv/go-oidc/internal/clientutil"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -70,7 +70,7 @@ func idTokenClaims(
 
 	claims := map[string]any{
 		goidc.ClaimSubject:  ctx.ExportableSubject(opts.Subject, client),
-		goidc.ClaimIssuer:   ctx.Host,
+		goidc.ClaimIssuer:   ctx.Issuer(),
 		goidc.ClaimIssuedAt: now,
 		goidc.ClaimExpiry:   now + ctx.IDTokenLifetimeSecs,
 	}
@@ -106,7 +106,7 @@ func idTokenClaims(
 }
 
 func encryptIDToken(ctx oidc.Context, c *goidc.Client, userInfoJWT string) (string, error) {
-	jwk, err := clientutil.JWKByAlg(ctx, c, string(c.IDTokenKeyEncAlg))
+	jwk, err := client.JWKByAlg(ctx, c, string(c.IDTokenKeyEncAlg))
 	if err != nil {
 		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"could not encrypt the id token", err)
@@ -130,7 +130,7 @@ func makeJWTToken(ctx oidc.Context, grantInfo goidc.GrantInfo, opts goidc.TokenO
 	timestampNow := timeutil.TimestampNow()
 	claims := map[string]any{
 		goidc.ClaimTokenID:  jwtID,
-		goidc.ClaimIssuer:   ctx.Host,
+		goidc.ClaimIssuer:   ctx.Issuer(),
 		goidc.ClaimSubject:  grantInfo.Subject,
 		goidc.ClaimScope:    grantInfo.ActiveScopes,
 		goidc.ClaimIssuedAt: timestampNow,

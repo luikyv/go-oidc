@@ -1,7 +1,9 @@
 package federation
 
 import (
-	"github.com/luikyv/go-oidc/internal/discovery"
+	"slices"
+	"strings"
+
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -9,29 +11,33 @@ const (
 	contentTypeEntityStatementJWT      = "application/entity-statement+jwt"
 	contentTypeTrustChain              = "application/trust-chain+json"
 	contentTypeExplicitRegistrationJWT = "application/explicit-registration-response+jwt"
+	contentTypeJWKSJWT                 = "application/jwk-set+jwt"
 	jwtTypeEntityStatement             = "entity-statement+jwt"
 	jwtTypeTrustMark                   = "trust-mark+jwt"
 	jwtTypeTrustMarkDelegation         = "trust-mark-delegation+jwt"
 	jwtTypeExplicitRegistration        = "explicit-registration-response+jwt"
+	jwtTypeJWKS                        = "jwk-set+jwt"
 	federationEndpointPath             = "/.well-known/openid-federation"
 )
 
 type entityStatement struct {
-	Issuer         string              `json:"iss"`
-	Audience       string              `json:"aud,omitempty"`
-	Subject        string              `json:"sub"`
-	IssuedAt       int                 `json:"iat"`
-	ExpiresAt      int                 `json:"exp"`
-	JWKS           goidc.JSONWebKeySet `json:"jwks"`
-	AuthorityHints []string            `json:"authority_hints,omitempty"`
-	Metadata       struct {
-		FederationAuthority *federationAuthority `json:"federation_entity,omitempty"`
-		OpenIDProvider      *openIDProvider      `json:"openid_provider,omitempty"`
-		OpenIDClient        *openIDClient        `json:"openid_relying_party,omitempty"`
-	} `json:"metadata"`
-	MetadataPolicy *metadataPolicy `json:"metadata_policy,omitempty"`
+	Issuer                 string              `json:"iss"`
+	Audience               string              `json:"aud,omitempty"`
+	Subject                string              `json:"sub"`
+	IssuedAt               int                 `json:"iat"`
+	ExpiresAt              int                 `json:"exp"`
+	JWKS                   goidc.JSONWebKeySet `json:"jwks"`
+	AuthorityHints         []string            `json:"authority_hints,omitempty"`
+	TrustAnchorHints       []string            `json:"trust_anchor_hints,omitempty"`
+	Metadata               metadata            `json:"metadata"`
+	MetadataPolicy         *metadataPolicy     `json:"metadata_policy,omitempty"`
+	MetadataPolicyCritical []string            `json:"metadata_policy_crit,omitempty"`
+	Constraints            *constraints        `json:"constraints,omitempty"`
+	Critical               []string            `json:"crit,omitempty"`
+	// SourceEndpoint is the endpoint from which the subordinate statement was fetched.
+	SourceEndpoint string `json:"source_endpoint,omitempty"`
 	TrustMarks     []struct {
-		ID        string `json:"id"`
+		Type      string `json:"trust_mark_type"`
 		TrustMark string `json:"trust_mark"`
 	} `json:"trust_marks,omitempty"`
 	// TrustMarkIssuers may be used by a trust anchor to tell which combination
@@ -51,7 +57,7 @@ type entityStatement struct {
 		JWKS goidc.JSONWebKeySet `json:"jwks"`
 	} `json:"trust_mark_owners,omitempty"`
 	// TrustAnchor is the identifier of the trust anchor in the trust chain.
-	// This claim is specific to explicit registration responses; it is not a general entity statement claim.
+	// This claim is specific to explicit registration responses, it is not a general entity statement claim.
 	TrustAnchor string `json:"trust_anchor,omitempty"`
 	signed      string `json:"-"`
 }
@@ -60,13 +66,22 @@ func (s entityStatement) Signed() string {
 	return s.signed
 }
 
+type constraints struct {
+	MaxPathLength     *int `json:"max_path_length,omitempty"`
+	NamingConstraints struct {
+		Permitted []string `json:"permitted,omitempty"`
+		Excluded  []string `json:"excluded,omitempty"`
+	} `json:"naming_constraints"`
+	AllowedEntityTypes []string `json:"allowed_entity_types,omitempty"`
+}
+
 // trustChain represents a sequence of entity statements forming a trust chain.
-// A trust chain begins with an entity configuration that is the subject of the trust chain.
+// A trust chain begins (index 0) with an entity configuration that is the subject of the trust chain.
 // The trust chain has zero or more subordinate statements issued by intermediates
 // about their immediate subordinates, and includes the subordinate statement issued
 // by the trust anchor about the top-most Intermediate (if there are intermediates)
 // or the trust chain subject (if there are no intermediates).
-// The trust chain always ends with the Entity Configuration of the trust anchor.
+// The trust chain always ends with the entity configuration of the trust anchor (index len(tc)-1).
 type trustChain []entityStatement
 
 func (tc trustChain) subjectConfig() entityStatement {
@@ -77,52 +92,87 @@ func (tc trustChain) firstSubordinateStatement() entityStatement {
 	return tc[1]
 }
 
-func (tc trustChain) authorityConfig() entityStatement {
+func (tc trustChain) subordinateStatements() []entityStatement {
+	return tc[1 : len(tc)-1]
+}
+
+func (tc trustChain) trustAnchorConfig() entityStatement {
 	return tc[len(tc)-1]
 }
 
 // resolve processes a trust chain to determine the final entity statement.
 func (chain trustChain) resolve() (entityStatement, error) {
+	var err error
 
 	config := chain.subjectConfig()
-	var policy metadataPolicy
-	for _, authority := range chain[1:] {
+	// [OpenID Fed 1.0 §6.1.4.2] The resolution must start by applying the metadata in the first sub statement to the subject config.
+	config.Metadata, err = chain.firstSubordinateStatement().Metadata.merge(config.Metadata)
+	if err != nil {
+		return entityStatement{}, err
+	}
 
-		if authority.ExpiresAt < config.ExpiresAt {
-			config.ExpiresAt = authority.ExpiresAt
+	var policy metadataPolicy
+	// [OpenID Fed 1.0 §6.1.4.1] The policy resolution must begin with the sub statement issued by the most superior entity
+	// and end with the sub statement issued by the immediate superior of the trust chain subject.
+	for i, subStatement := range slices.Backward(chain.subordinateStatements()) {
+		if subStatement.ExpiresAt < config.ExpiresAt {
+			config.ExpiresAt = subStatement.ExpiresAt
 		}
 
-		if authority.MetadataPolicy == nil {
+		if constraints := subStatement.Constraints; constraints != nil {
+			// [OpenID Fed 1.0 §6.2.1] Check if the number of entities between the current entity the subject is greater than the max path length.
+			// A max path length of 0 means that there should be no intermediate entities between the current entity and the subject.
+			if maxPathLength, dist := constraints.MaxPathLength, i; maxPathLength != nil && dist > *maxPathLength {
+				return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "max path length exceeded")
+			}
+
+			if permittedNamespaces, previousEntityID := constraints.NamingConstraints.Permitted, chain[i-1].Issuer; permittedNamespaces != nil {
+				if !slices.ContainsFunc(permittedNamespaces, func(namespace string) bool {
+					return strings.HasSuffix(previousEntityID, namespace)
+				}) {
+					return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "naming constraint not met")
+				}
+			}
+
+			if excludedNamespaces, previousEntityID := constraints.NamingConstraints.Excluded, chain[i-1].Issuer; excludedNamespaces != nil {
+				if slices.ContainsFunc(excludedNamespaces, func(namespace string) bool {
+					return strings.HasSuffix(previousEntityID, namespace)
+				}) {
+					return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "naming constraint not met")
+				}
+			}
+		}
+
+		if subStatement.MetadataPolicy == nil {
 			continue
 		}
 
-		var err error
-		policy, err = authority.MetadataPolicy.merge(policy)
+		policy, err = policy.merge(*subStatement.MetadataPolicy)
 		if err != nil {
+			return entityStatement{}, err
+		}
+
+		if err := policy.validate(); err != nil {
 			return entityStatement{}, err
 		}
 	}
 
-	config.TrustAnchor = chain.authorityConfig().Subject
+	config.TrustAnchor = chain.trustAnchorConfig().Issuer
 	return policy.apply(config)
 }
 
-type openIDProvider struct {
-	ClientRegistrationTypes        []goidc.ClientRegistrationType `json:"client_registration_types_supported"`
-	FederationRegistrationEndpoint string                         `json:"federation_registration_endpoint,omitempty"`
-	discovery.OpenIDConfiguration
-}
-
-type openIDClient struct {
-	ClientRegistrationTypes []goidc.ClientRegistrationType `json:"client_registration_types"`
-	goidc.ClientMeta
-}
-
 type federationAuthority struct {
-	FetchEndpoint    string `json:"federation_fetch_endpoint"`
-	ListEndpoint     string `json:"federation_list_endpoint"`
-	ResolveEndpoint  string `json:"federation_resolve_endpoint"`
-	OrganizationName string `json:"organization_name"`
+	FetchEndpoint           string `json:"federation_fetch_endpoint,omitempty"`
+	ListEndpoint            string `json:"federation_list_endpoint,omitempty"`
+	ResolveEndpoint         string `json:"federation_resolve_endpoint,omitempty"`
+	TrustMarkStatusEndpoint string `json:"federation_trust_mark_status_endpoint,omitempty"`
+	TrustMarkListEndpoint   string `json:"federation_trust_mark_list_endpoint,omitempty"`
+	TrustMarkEndpoint       string `json:"federation_trust_mark_endpoint,omitempty"`
+	HistoricalKeysEndpoint  string `json:"federation_historical_keys_endpoint,omitempty"`
+	// EndpointAuthSigAlgValuesSupported are the algorithmsfor signing the JWT used for private_key_jwt when
+	// authenticating to federation endpoints.
+	EndpointAuthSigAlgValuesSupported []goidc.SignatureAlgorithm `json:"endpoint_auth_signing_alg_values_supported,omitempty"`
+	OrganizationName                  string                     `json:"organization_name,omitempty"`
 }
 
 type trustMark struct {
@@ -132,4 +182,11 @@ type trustMark struct {
 	IssuedAt   int    `json:"iat"`
 	ExpiresAt  int    `json:"exp"`
 	Delegation string `json:"delegation"`
+}
+
+type parseOptions struct {
+	jwks     goidc.JSONWebKeySet
+	issuer   string
+	subject  string
+	audience string
 }

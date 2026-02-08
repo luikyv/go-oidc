@@ -5,27 +5,27 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/luikyv/go-oidc/internal/clientutil"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func generateClientCredentialsGrant(ctx oidc.Context, req request) (response, error) {
-	client, oauthErr := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	c, oauthErr := client.Authenticated(ctx, client.TokenAuthnContext)
 	if oauthErr != nil {
 		return response{}, oauthErr
 	}
 
-	if oauthErr := validateClientCredentialsGrantRequest(ctx, req, client); oauthErr != nil {
+	if oauthErr := validateClientCredentialsGrantRequest(ctx, req, c); oauthErr != nil {
 		return response{}, oauthErr
 	}
 
-	grantInfo, err := clientCredentialsGrantInfo(ctx, client, req)
+	grantInfo, err := clientCredentialsGrantInfo(ctx, c, req)
 	if err != nil {
 		return response{}, err
 	}
 
-	token, err := Make(ctx, grantInfo, client)
+	token, err := Make(ctx, grantInfo, c)
 	if err != nil {
 		return response{}, fmt.Errorf("could not generate an access token for the client credentials grant: %w", err)
 	}
@@ -65,7 +65,7 @@ func validateClientCredentialsGrantRequest(ctx oidc.Context, req request, c *goi
 		return err
 	}
 
-	if !clientutil.AreScopesAllowed(c, ctx.Scopes, req.scopes) {
+	if !client.AreScopesAllowed(ctx, c, req.scopes) {
 		return goidc.NewError(goidc.ErrorCodeInvalidScope, "invalid scope")
 	}
 

@@ -35,7 +35,7 @@ func TestHandleGrantCreation_ClientCredentialsGrant(t *testing.T) {
 	}
 
 	wantedClaims := map[string]any{
-		"iss":       ctx.Host,
+		"iss":       ctx.Issuer(),
 		"sub":       client.ID,
 		"client_id": client.ID,
 		"scope":     req.scopes,
@@ -86,7 +86,7 @@ func TestHandleGrantCreation_ClientCredentialsGrant_ResourceIndicators(t *testin
 	}
 
 	wantedClaims := map[string]any{
-		"iss":       ctx.Host,
+		"iss":       ctx.Issuer(),
 		"sub":       client.ID,
 		"client_id": client.ID,
 		"scope":     req.scopes,

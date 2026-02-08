@@ -72,7 +72,7 @@ func TestGenerateGrant_AuthorizationCodeGrant(t *testing.T) {
 	}
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
-		"iss":       ctx.Host,
+		"iss":       ctx.Issuer(),
 		"sub":       session.Subject,
 		"client_id": client.ID,
 		"scope":     session.GrantedScopes,
@@ -166,7 +166,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails(t *testing.T) {
 	}
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
-		"iss":       ctx.Host,
+		"iss":       ctx.Issuer(),
 		"sub":       session.Subject,
 		"client_id": client.ID,
 		"scope":     session.GrantedScopes,
@@ -253,7 +253,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails_ClientRequestsSubset(t
 	}
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
-		"iss":       ctx.Host,
+		"iss":       ctx.Issuer(),
 		"sub":       session.Subject,
 		"client_id": client.ID,
 		"scope":     session.GrantedScopes,
@@ -316,7 +316,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_ResourceIndicators(t *testing.T) {
 	}
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
-		"iss":       ctx.Host,
+		"iss":       ctx.Issuer(),
 		"sub":       session.Subject,
 		"aud":       []any{"https://resource1.com", "https://resource2.com"},
 		"client_id": client.ID,
@@ -524,7 +524,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_MTLSBinding(t *testing.T) {
 	}
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
-		"iss":       ctx.Host,
+		"iss":       ctx.Issuer(),
 		"sub":       session.Subject,
 		"client_id": client.ID,
 		"scope":     session.GrantedScopes,

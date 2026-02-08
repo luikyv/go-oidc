@@ -30,7 +30,7 @@ func TestJARFromRequestObject(t *testing.T) {
 
 	client := &goidc.Client{
 		ClientMeta: goidc.ClientMeta{
-			PublicJWKS: &goidc.JSONWebKeySet{
+			JWKS: &goidc.JSONWebKeySet{
 				Keys: []goidc.JSONWebKey{privateJWK.Public()},
 			},
 		},
@@ -39,7 +39,7 @@ func TestJARFromRequestObject(t *testing.T) {
 	now := timeutil.TimestampNow()
 	claims := map[string]any{
 		goidc.ClaimIssuer:   client.ID,
-		goidc.ClaimAudience: ctx.Host,
+		goidc.ClaimAudience: ctx.Issuer(),
 		goidc.ClaimIssuedAt: now,
 		goidc.ClaimExpiry:   now + 10,
 		"client_id":         client.ID,
@@ -105,7 +105,7 @@ func TestJARFromRequestObject_JARByReference(t *testing.T) {
 
 	client := &goidc.Client{
 		ClientMeta: goidc.ClientMeta{
-			PublicJWKS: &goidc.JSONWebKeySet{
+			JWKS: &goidc.JSONWebKeySet{
 				Keys: []goidc.JSONWebKey{privateJWK.Public()},
 			},
 		},
@@ -114,7 +114,7 @@ func TestJARFromRequestObject_JARByReference(t *testing.T) {
 	now := timeutil.TimestampNow()
 	claims := map[string]any{
 		goidc.ClaimIssuer:   client.ID,
-		goidc.ClaimAudience: ctx.Host,
+		goidc.ClaimAudience: ctx.Issuer(),
 		goidc.ClaimIssuedAt: now,
 		goidc.ClaimExpiry:   now + 10,
 		"client_id":         client.ID,

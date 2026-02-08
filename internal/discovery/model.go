@@ -10,7 +10,7 @@ type OpenIDConfiguration struct {
 	AuthorizationEndpoint               string                             `json:"authorization_endpoint"`
 	TokenEndpoint                       string                             `json:"token_endpoint"`
 	UserinfoEndpoint                    string                             `json:"userinfo_endpoint"`
-	JWKSEndpoint                        string                             `json:"jwks_uri"`
+	JWKSEndpoint                        string                             `json:"jwks_uri,omitempty"`
 	PAREndpoint                         string                             `json:"pushed_authorization_request_endpoint,omitempty"`
 	PARIsRequired                       bool                               `json:"require_pushed_authorization_requests,omitempty"`
 	ResponseTypes                       []goidc.ResponseType               `json:"response_types_supported,omitempty"`
@@ -57,11 +57,15 @@ type OpenIDConfiguration struct {
 
 	MTLSConfig *openIDMTLSConfiguration `json:"mtls_endpoint_aliases,omitempty"`
 	// TLSBoundTokensIsEnabled signals support for certificate bound tokens.
-	TLSBoundTokensIsEnabled bool                        `json:"tls_client_certificate_bound_access_tokens,omitempty"`
-	ACRs                    []goidc.ACR                 `json:"acr_values_supported,omitempty"`
-	DisplayValues           []goidc.DisplayValue        `json:"display_values_supported,omitempty"`
-	CodeChallengeMethods    []goidc.CodeChallengeMethod `json:"code_challenge_methods_supported,omitempty"`
-	EndSessionEndpoint      string                      `json:"end_session_endpoint,omitempty"`
+	TLSBoundTokensIsEnabled        bool                           `json:"tls_client_certificate_bound_access_tokens,omitempty"`
+	ACRs                           []goidc.ACR                    `json:"acr_values_supported,omitempty"`
+	DisplayValues                  []goidc.DisplayValue           `json:"display_values_supported,omitempty"`
+	CodeChallengeMethods           []goidc.CodeChallengeMethod    `json:"code_challenge_methods_supported,omitempty"`
+	EndSessionEndpoint             string                         `json:"end_session_endpoint,omitempty"`
+	ClientRegistrationTypes        []goidc.ClientRegistrationType `json:"client_registration_types_supported"`
+	FederationRegistrationEndpoint string                         `json:"federation_registration_endpoint,omitempty"`
+	SignedJWKSEndpoint             string                         `json:"signed_jwks_uri,omitempty"`
+	JWKS                           *goidc.JSONWebKeySet           `json:"jwks,omitempty"`
 }
 
 type openIDMTLSConfiguration struct {

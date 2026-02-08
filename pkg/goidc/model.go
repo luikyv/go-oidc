@@ -727,15 +727,6 @@ type InitBackAuthFunc func(context.Context, *AuthnSession) error
 // returned, the session will be terminated.
 type ValidateBackAuthFunc func(context.Context, *AuthnSession) error
 
-type ClientRegistrationType string
-
-const (
-	ClientRegistrationTypeAutomatic ClientRegistrationType = "automatic"
-	ClientRegistrationTypeExplicit  ClientRegistrationType = "explicit"
-)
-
-type RequiredTrustMarksFunc func(context.Context, *Client) []string
-
 type HandleSessionFunc func(*http.Request, *AuthnSession, *Client) error
 
 type LogoutParameters struct {

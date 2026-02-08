@@ -141,8 +141,8 @@ func TestCreateStream(t *testing.T) {
 	if resp.ID == "" {
 		t.Error("stream ID should not be empty")
 	}
-	if resp.Issuer != ctx.Host {
-		t.Errorf("issuer = %s, want %s", resp.Issuer, ctx.Host)
+	if resp.Issuer != ctx.Issuer() {
+		t.Errorf("issuer = %s, want %s", resp.Issuer, ctx.Issuer())
 	}
 	if len(resp.Audience) != 1 || resp.Audience[0] != testReceiverID {
 		t.Errorf("audience = %v, want [%s]", resp.Audience, testReceiverID)

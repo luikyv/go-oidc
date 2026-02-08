@@ -70,7 +70,7 @@ func TestGenerateGrant_CIBAGrant(t *testing.T) {
 	}
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
-		"iss":       ctx.Host,
+		"iss":       ctx.Issuer(),
 		"sub":       session.Subject,
 		"client_id": client.ID,
 		"scope":     session.GrantedScopes,
@@ -221,7 +221,7 @@ func TestGenerateGrant_CIBAGrant_MTLSBinding(t *testing.T) {
 	}
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
-		"iss":       ctx.Host,
+		"iss":       ctx.Issuer(),
 		"sub":       session.Subject,
 		"client_id": client.ID,
 		"scope":     session.GrantedScopes,

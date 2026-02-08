@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -41,13 +40,13 @@ func (m *ClientManager) Client(_ context.Context, id string) (*goidc.Client, err
 
 	c, exists := m.Clients[id]
 	if !exists {
-		return nil, errors.New("entity not found")
+		return nil, goidc.ErrClientNotFound
 	}
 
 	// Make sure the content of jwks_uri is cleared from jwks when fetching the
 	// client from the in memory storaged.
-	if c.PublicJWKSURI != "" {
-		c.PublicJWKS = nil
+	if c.JWKSURI != "" {
+		c.JWKS = nil
 	}
 
 	return c, nil

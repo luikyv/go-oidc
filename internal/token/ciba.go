@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"slices"
 
-	"github.com/luikyv/go-oidc/internal/clientutil"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -139,7 +139,7 @@ func sendClientNotification(ctx oidc.Context, client *goidc.Client, session *goi
 }
 
 func generateCIBAGrant(ctx oidc.Context, req request) (response, error) {
-	client, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	c, err := client.Authenticated(ctx, client.TokenAuthnContext)
 	if err != nil {
 		return response{}, err
 	}
@@ -152,7 +152,7 @@ func generateCIBAGrant(ctx oidc.Context, req request) (response, error) {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid auth_req_id", err)
 	}
 
-	if err := validateCIBAGrantRequest(ctx, req, client, session); err != nil {
+	if err := validateCIBAGrantRequest(ctx, req, c, session); err != nil {
 		return response{}, err
 	}
 
@@ -161,12 +161,12 @@ func generateCIBAGrant(ctx oidc.Context, req request) (response, error) {
 		return response{}, err
 	}
 
-	token, err := Make(ctx, grantInfo, client)
+	token, err := Make(ctx, grantInfo, c)
 	if err != nil {
 		return response{}, fmt.Errorf("could not generate access token for the ciba grant: %w", err)
 	}
 
-	return generateCIBAGrantSession(ctx, client, grantInfo, token, session)
+	return generateCIBAGrantSession(ctx, c, grantInfo, token, session)
 }
 
 func cibaPushedGrantInfo(ctx oidc.Context, session *goidc.AuthnSession) (goidc.GrantInfo, error) {

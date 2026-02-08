@@ -4,6 +4,7 @@ import (
 	"crypto/subtle"
 	"slices"
 
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
@@ -22,7 +23,7 @@ func create(ctx oidc.Context, initialToken string, meta *goidc.ClientMeta) (resp
 		return response{}, err
 	}
 
-	if err := Validate(ctx, meta); err != nil {
+	if err := client.Validate(ctx, meta); err != nil {
 		return response{}, err
 	}
 
@@ -35,7 +36,7 @@ func create(ctx oidc.Context, initialToken string, meta *goidc.ClientMeta) (resp
 }
 
 func update(ctx oidc.Context, id, regToken string, meta *goidc.ClientMeta) (response, error) {
-	client, err := protected(ctx, id, regToken)
+	c, err := protected(ctx, id, regToken)
 	if err != nil {
 		return response{}, err
 	}
@@ -44,12 +45,12 @@ func update(ctx oidc.Context, id, regToken string, meta *goidc.ClientMeta) (resp
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid metadata", err)
 	}
 
-	if err := Validate(ctx, meta); err != nil {
+	if err := client.Validate(ctx, meta); err != nil {
 		return response{}, err
 	}
 
-	client.ClientMeta = *meta
-	return modifyAndSaveClient(ctx, client)
+	c.ClientMeta = *meta
+	return modifyAndSaveClient(ctx, c)
 }
 
 func fetch(ctx oidc.Context, id, regToken string) (response, error) {
@@ -126,13 +127,13 @@ func setRegistrationToken(ctx oidc.Context, client *goidc.Client) string {
 //
 // If a new secret is generated, it returns the plain secret; otherwise, it
 // returns an empty string.
-func setSecret(ctx oidc.Context, client *goidc.Client) string {
+func setSecret(ctx oidc.Context, c *goidc.Client) string {
 	var secret string
 	// Clear the client's secret and hashed secret to ensure it's only set when
 	// secret-based authentication is required.
-	client.Secret = ""
-	client.HashedSecret = ""
-	authnMethods := authnMethods(ctx, &client.ClientMeta)
+	c.Secret = ""
+	c.HashedSecret = ""
+	authnMethods := client.AuthnMethods(ctx, &c.ClientMeta)
 
 	// Check for client authentication methods that require a secret that must
 	// be store as a hash.
@@ -140,8 +141,8 @@ func setSecret(ctx oidc.Context, client *goidc.Client) string {
 		return method == goidc.ClientAuthnSecretBasic || method == goidc.ClientAuthnSecretPost
 	}) {
 		secretExpiresAt := 0
-		client.SecretExpiresAt = &secretExpiresAt
-		secret, client.HashedSecret = clientSecretAndHash()
+		c.SecretExpiresAt = &secretExpiresAt
+		secret, c.HashedSecret = clientSecretAndHash()
 	}
 
 	// Check for client authentication using secret JWT.
@@ -150,21 +151,10 @@ func setSecret(ctx oidc.Context, client *goidc.Client) string {
 		if secret == "" {
 			secret = clientSecret()
 		}
-		client.Secret = secret
+		c.Secret = secret
 	}
 
 	return secret
-}
-
-func authnMethods(ctx oidc.Context, meta *goidc.ClientMeta) []goidc.ClientAuthnType {
-	authnMethods := []goidc.ClientAuthnType{meta.TokenAuthnMethod}
-	if ctx.TokenIntrospectionIsEnabled {
-		authnMethods = append(authnMethods, meta.TokenIntrospectionAuthnMethod)
-	}
-	if ctx.TokenRevocationIsEnabled {
-		authnMethods = append(authnMethods, meta.TokenRevocationAuthnMethod)
-	}
-	return authnMethods
 }
 
 func registrationURI(ctx oidc.Context, id string) string {

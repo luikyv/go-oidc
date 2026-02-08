@@ -3,7 +3,7 @@ package userinfo
 import (
 	"fmt"
 
-	"github.com/luikyv/go-oidc/internal/clientutil"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
@@ -70,7 +70,7 @@ func userInfoResponse(
 		}, nil
 	}
 
-	userInfoClaims[goidc.ClaimIssuer] = ctx.Host
+	userInfoClaims[goidc.ClaimIssuer] = ctx.Issuer()
 	userInfoClaims[goidc.ClaimAudience] = client.ID
 
 	jwtUserInfoClaims, err := signUserInfoClaims(ctx, client, userInfoClaims)
@@ -121,15 +121,8 @@ func signUserInfoClaims(
 	return jws, nil
 }
 
-func encryptUserInfoJWT(
-	ctx oidc.Context,
-	c *goidc.Client,
-	userInfoJWT string,
-) (
-	string,
-	error,
-) {
-	jwk, err := clientutil.JWKByAlg(ctx, c, string(c.UserInfoKeyEncAlg))
+func encryptUserInfoJWT(ctx oidc.Context, c *goidc.Client, userInfoJWT string) (string, error) {
+	jwk, err := client.JWKByAlg(ctx, c, string(c.UserInfoKeyEncAlg))
 	if err != nil {
 		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"could not find a jwk to encrypt the user info response", err)

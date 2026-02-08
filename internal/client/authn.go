@@ -1,4 +1,4 @@
-package clientutil
+package client
 
 import (
 	"crypto"
@@ -302,7 +302,7 @@ func authenticateSelfSignedTLSCert(ctx oidc.Context, c *goidc.Client) error {
 }
 
 func jwkMatchingCert(ctx oidc.Context, c *goidc.Client, cert *x509.Certificate) (goidc.JSONWebKey, error) {
-	jwks, err := c.FetchPublicJWKS(ctx.HTTPClient())
+	jwks, err := JWKS(ctx, c)
 	if err != nil {
 		return goidc.JSONWebKey{}, fmt.Errorf("could not load the client JWKS: %w", err)
 	}

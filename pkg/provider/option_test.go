@@ -3042,7 +3042,7 @@ func TestWithCIBAGrant(t *testing.T) {
 	}
 }
 
-func TestWithOpenIDFederation(t *testing.T) {
+func TestWithOpenIDFed(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -3052,7 +3052,7 @@ func TestWithOpenIDFederation(t *testing.T) {
 	}
 
 	// When.
-	err := WithOpenIDFederation(jwksFunc, []string{"https://trust.anchor"}, []string{"https://authority.hint"})(p)
+	err := WithOpenIDFed(jwksFunc, "https://trust.anchor")(p)
 
 	// Then.
 	if err != nil {
@@ -3067,7 +3067,7 @@ func TestWithOpenIDFederation(t *testing.T) {
 		t.Error("OpenIDFedJWKSFunc cannot be nil")
 	}
 
-	if len(p.config.OpenIDFedTrustedAuthorities) != 1 || p.config.OpenIDFedTrustedAuthorities[0] != "https://trust.anchor" {
+	if len(p.config.OpenIDFedTrustedAnchors) != 1 || p.config.OpenIDFedTrustedAnchors[0] != "https://trust.anchor" {
 		t.Error("OpenIDFedTrustedAuthorities not set correctly")
 	}
 
@@ -3076,14 +3076,14 @@ func TestWithOpenIDFederation(t *testing.T) {
 	}
 }
 
-func TestWithOpenIDFederationSignatureAlgs(t *testing.T) {
+func TestWithOpenIDFedSignatureAlgs(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
 
 	// When.
-	err := WithOpenIDFederationSignatureAlgs(goidc.RS256, goidc.ES256)(p)
+	err := WithOpenIDFedSignatureAlgs(goidc.RS256, goidc.ES256)(p)
 
 	// Then.
 	if err != nil {
@@ -3100,7 +3100,7 @@ func TestWithOpenIDFederationSignatureAlgs(t *testing.T) {
 	}
 }
 
-func TestWithOpenIDFerationSignerFunc(t *testing.T) {
+func TestWithOpenIDFedSignerFunc(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -3110,7 +3110,7 @@ func TestWithOpenIDFerationSignerFunc(t *testing.T) {
 	}
 
 	// When.
-	err := WithOpenIDFerationSignerFunc(signerFunc)(p)
+	err := WithOpenIDFedSignerFunc(signerFunc)(p)
 
 	// Then.
 	if err != nil {
@@ -3122,7 +3122,7 @@ func TestWithOpenIDFerationSignerFunc(t *testing.T) {
 	}
 }
 
-func TestWithOpenIDFerationRequiredTrustMarksFunc(t *testing.T) {
+func TestWithOpenIDFedRequiredTrustMarksFunc(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -3132,7 +3132,7 @@ func TestWithOpenIDFerationRequiredTrustMarksFunc(t *testing.T) {
 	}
 
 	// When.
-	err := WithOpenIDFerationRequiredTrustMarksFunc(trustMarksFunc)(p)
+	err := WithOpenIDFedRequiredTrustMarksFunc(trustMarksFunc)(p)
 
 	// Then.
 	if err != nil {
@@ -3144,14 +3144,14 @@ func TestWithOpenIDFerationRequiredTrustMarksFunc(t *testing.T) {
 	}
 }
 
-func TestWithOpenIDFerationClientRegistrationTypes(t *testing.T) {
+func TestWithOpenIDFedClientRegistrationTypes(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
 
 	// When.
-	err := WithOpenIDFerationClientRegistrationTypes(goidc.ClientRegistrationTypeAutomatic)(p)
+	err := WithOpenIDFedClientRegistrationTypes(goidc.ClientRegistrationTypeAutomatic)(p)
 
 	// Then.
 	if err != nil {
@@ -3168,14 +3168,14 @@ func TestWithOpenIDFerationClientRegistrationTypes(t *testing.T) {
 	}
 }
 
-func TestWithOpenIDFerationRegistrationEndpoint(t *testing.T) {
+func TestWithOpenIDFedRegistrationEndpoint(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
 
 	// When.
-	err := WithOpenIDFerationRegistrationEndpoint("/federation/register")(p)
+	err := WithOpenIDFedRegistrationEndpoint("/federation/register")(p)
 
 	// Then.
 	if err != nil {
@@ -3192,14 +3192,14 @@ func TestWithOpenIDFerationRegistrationEndpoint(t *testing.T) {
 	}
 }
 
-func TestWithOpenIDFederationTrustChainMaxDepth(t *testing.T) {
+func TestWithOpenIDFedTrustChainMaxDepth(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
 
 	// When.
-	err := WithOpenIDFederationTrustChainMaxDepth(5)(p)
+	err := WithOpenIDFedTrustChainMaxDepth(5)(p)
 
 	// Then.
 	if err != nil {

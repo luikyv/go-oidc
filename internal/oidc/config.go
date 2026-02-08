@@ -203,13 +203,17 @@ type Configuration struct {
 	OpenIDFedJWKSFunc               goidc.JWKSFunc
 	OpenIDFedSignerFunc             goidc.SignerFunc
 	OpenIDFedAuthorityHints         []string
-	OpenIDFedTrustedAuthorities     []string
+	OpenIDFedTrustedAnchors         []string
 	OpenIDFedEntityStatementSigAlgs []goidc.SignatureAlgorithm
 	OpenIDFedTrustChainMaxDepth     int
-	OpenIDFedRegisterClientFunc     func(ctx Context, id string, hints []string) (*goidc.Client, error)
 	OpenIDFedClientRegTypes         []goidc.ClientRegistrationType
 	OpenIDFedRequiredTrustMarksFunc goidc.RequiredTrustMarksFunc
 	OpenIDFedTrustMarkSigAlgs       []goidc.SignatureAlgorithm
+	OpenIDFedJWKSRepresentations    []goidc.OpenIDFedJWKSRepresentation
+	OpenIDFedSignedJWKSEndpoint     string
+	OpenIDFedSignedJWKSLifetimeSecs int
+	OpenIDFedClientFunc             func(ctx Context, id string) (*goidc.Client, error)
+	OpenIDFedEntityJWKSFunc         func(ctx Context, id string) (goidc.JSONWebKeySet, error)
 
 	LogoutIsEnabled             bool
 	LogoutEndpoint              string

@@ -86,8 +86,8 @@ func Client(id string, scopes ...goidc.Scope) (*goidc.Client, goidc.JSONWebKeySe
 	return &goidc.Client{
 		ID: id,
 		ClientMeta: goidc.ClientMeta{
-			ScopeIDs:   strings.Join(scopesIDs, " "),
-			PublicJWKS: &publicJWKS,
+			ScopeIDs: strings.Join(scopesIDs, " "),
+			JWKS:     &publicJWKS,
 			GrantTypes: []goidc.GrantType{
 				goidc.GrantAuthorizationCode,
 				goidc.GrantRefreshToken,

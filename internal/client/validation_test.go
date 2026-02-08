@@ -1,4 +1,4 @@
-package dcr
+package client
 
 import (
 	"encoding/json"
@@ -103,8 +103,8 @@ func TestValidateRequest_JWKSRequiredForPrivateKeyJWT(t *testing.T) {
 	ctx := oidctest.NewContext(t)
 	client, _ := oidctest.NewClient(t)
 	client.TokenAuthnMethod = goidc.ClientAuthnPrivateKeyJWT
-	client.PublicJWKS = nil
-	client.PublicJWKSURI = ""
+	client.JWKS = nil
+	client.JWKSURI = ""
 
 	// When.
 	err := Validate(ctx, &client.ClientMeta)
@@ -129,8 +129,8 @@ func TestValidateRequest_JWKSRequiredForSelfSignedTLS(t *testing.T) {
 	ctx := oidctest.NewContext(t)
 	client, _ := oidctest.NewClient(t)
 	client.TokenAuthnMethod = goidc.ClientAuthnSelfSignedTLS
-	client.PublicJWKS = nil
-	client.PublicJWKSURI = ""
+	client.JWKS = nil
+	client.JWKSURI = ""
 
 	// When.
 	err := Validate(ctx, &client.ClientMeta)

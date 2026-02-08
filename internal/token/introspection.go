@@ -4,14 +4,14 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/luikyv/go-oidc/internal/clientutil"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func introspect(ctx oidc.Context, req queryRequest) (goidc.TokenInfo, error) {
-	c, err := clientutil.Authenticated(ctx, clientutil.TokenIntrospectionAuthnContext)
+	c, err := client.Authenticated(ctx, client.TokenIntrospectionAuthnContext)
 	if err != nil {
 		return goidc.TokenInfo{}, err
 	}

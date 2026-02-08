@@ -64,12 +64,12 @@ var (
 	}
 )
 
-func TestRegisterClient(t *testing.T) {
+func TestClient(t *testing.T) {
 	// Given.
 	ctx := setUp(t, nil)
 
 	// When.
-	client, err := RegisterClient(ctx, clientID, ctx.OpenIDFedAuthorityHints)
+	client, err := Client(ctx, clientID)
 
 	// Then.
 	if err != nil {
@@ -85,7 +85,7 @@ func TestRegisterClient(t *testing.T) {
 	}
 }
 
-func TestRegisterClient_TrustMark(t *testing.T) {
+func TestClient_TrustMark(t *testing.T) {
 	// Given.
 	ctx := setUp(t, nil)
 	ctx.OpenIDFedRequiredTrustMarksFunc = func(ctx context.Context, _ *goidc.Client) []string {
@@ -93,7 +93,7 @@ func TestRegisterClient_TrustMark(t *testing.T) {
 	}
 
 	// When.
-	client, err := RegisterClient(ctx, clientID, ctx.OpenIDFedAuthorityHints)
+	client, err := Client(ctx, clientID)
 
 	// Then.
 	if err != nil {
@@ -105,7 +105,7 @@ func TestRegisterClient_TrustMark(t *testing.T) {
 	}
 }
 
-func TestRegisterClient_InvalidTrustMarkSignature(t *testing.T) {
+func TestClient_InvalidTrustMarkSignature(t *testing.T) {
 	// Given.
 	responses := map[string]func() *http.Response{
 		clientID + "/.well-known/openid-federation": func() *http.Response {
@@ -148,7 +148,7 @@ func TestRegisterClient_InvalidTrustMarkSignature(t *testing.T) {
 	}
 
 	// When.
-	_, err := RegisterClient(ctx, clientID, ctx.OpenIDFedAuthorityHints)
+	_, err := Client(ctx, clientID)
 
 	// Then.
 	if err == nil {
@@ -156,7 +156,7 @@ func TestRegisterClient_InvalidTrustMarkSignature(t *testing.T) {
 	}
 }
 
-func TestRegisterClient_InvalidTrustMarkID(t *testing.T) {
+func TestClient_InvalidTrustMarkID(t *testing.T) {
 	// Given.
 	responses := map[string]func() *http.Response{
 		clientID + "/.well-known/openid-federation": func() *http.Response {
@@ -199,7 +199,7 @@ func TestRegisterClient_InvalidTrustMarkID(t *testing.T) {
 	}
 
 	// When.
-	_, err := RegisterClient(ctx, clientID, ctx.OpenIDFedAuthorityHints)
+	_, err := Client(ctx, clientID)
 
 	// Then.
 	if err == nil {
@@ -207,7 +207,7 @@ func TestRegisterClient_InvalidTrustMarkID(t *testing.T) {
 	}
 }
 
-func TestRegisterClient_InvalidMetadataPolicy(t *testing.T) {
+func TestClient_InvalidMetadataPolicy(t *testing.T) {
 	// Given.
 	responses := map[string]func() *http.Response{
 		intermediaryAuthorityID + "/fetch?sub=" + url.QueryEscape(clientID): func() *http.Response {
@@ -240,7 +240,7 @@ func TestRegisterClient_InvalidMetadataPolicy(t *testing.T) {
 	ctx := setUp(t, responses)
 
 	// When.
-	_, err := RegisterClient(ctx, clientID, ctx.OpenIDFedAuthorityHints)
+	_, err := Client(ctx, clientID)
 
 	// Then.
 	if err == nil {
@@ -248,7 +248,7 @@ func TestRegisterClient_InvalidMetadataPolicy(t *testing.T) {
 	}
 }
 
-func TestRegisterClient_CircularDependency(t *testing.T) {
+func TestClient_CircularDependency(t *testing.T) {
 	// Given.
 	intermediaryAuthorityID := "https://intermediary-authority.testfed.com"
 	responses := map[string]func() *http.Response{
@@ -278,7 +278,7 @@ func TestRegisterClient_CircularDependency(t *testing.T) {
 	ctx := setUp(t, responses)
 
 	// When.
-	_, err := RegisterClient(ctx, clientID, ctx.OpenIDFedAuthorityHints)
+	_, err := Client(ctx, clientID)
 
 	// Then.
 	if err == nil {
@@ -299,7 +299,7 @@ func TestExplicitRegistration_TrustChainProvided(t *testing.T) {
 	}
 
 	// When.
-	st, err := registerClientFromChainStatements(ctx, chainStatements)
+	st, err := registerExplicitlyWithChainStatements(ctx, chainStatements)
 
 	// Then.
 	if err != nil {
@@ -343,7 +343,7 @@ func TestExplicitRegistration_EntityConfigurationProvided(t *testing.T) {
 	}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
 
 	// When.
-	st, err := registerClientWithEntityConfiguration(ctx, entityConfig)
+	st, err := registerExplicitlyWithEntityConfiguration(ctx, entityConfig)
 
 	// Then.
 	if err != nil {
@@ -565,11 +565,12 @@ func setUp(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Co
 		return goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{opJWK}}, nil
 	}
 	ctx.OpenIDFedAuthorityHints = []string{trustAnchorID}
-	ctx.OpenIDFedTrustedAuthorities = []string{trustAnchorID}
+	ctx.OpenIDFedTrustedAnchors = []string{trustAnchorID}
 	ctx.OpenIDFedEntityStatementSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
 	ctx.OpenIDFedTrustChainMaxDepth = 5
-	ctx.OpenIDFedRegisterClientFunc = RegisterClient
+	ctx.OpenIDFedClientFunc = Client
 	ctx.OpenIDFedTrustMarkSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
+	ctx.OpenIDFedClientRegTypes = []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeAutomatic, goidc.ClientRegistrationTypeExplicit}
 	ctx.HTTPClientFunc = func(ctx context.Context) *http.Client {
 		return &http.Client{
 			Transport: &mockRoundTripper{

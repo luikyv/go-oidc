@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/luikyv/go-oidc/internal/clientutil"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -17,7 +17,7 @@ func generateAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid authorization code")
 	}
 
-	client, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	c, err := client.Authenticated(ctx, client.TokenAuthnContext)
 	if err != nil {
 		return response{}, err
 	}
@@ -27,7 +27,7 @@ func generateAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid authorization code", err)
 	}
 
-	if err := validateAuthCodeGrantRequest(ctx, req, client, as); err != nil {
+	if err := validateAuthCodeGrantRequest(ctx, req, c, as); err != nil {
 		return response{}, err
 	}
 
@@ -36,7 +36,7 @@ func generateAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 		return response{}, err
 	}
 
-	token, err := Make(ctx, grantInfo, client)
+	token, err := Make(ctx, grantInfo, c)
 	if err != nil {
 		return response{}, err
 	}
@@ -44,7 +44,7 @@ func generateAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 	grantSession := NewGrantSession(ctx, grantInfo, token)
 	grantSession.AuthCode = as.AuthCode
 	var refreshTkn string
-	if ctx.ShouldIssueRefreshToken(client, grantInfo) {
+	if ctx.ShouldIssueRefreshToken(c, grantInfo) {
 		refreshTkn = newRefreshToken()
 		grantSession.RefreshToken = refreshTkn
 		grantSession.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
@@ -65,7 +65,7 @@ func generateAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 
 	if strutil.ContainsOpenID(grantInfo.ActiveScopes) {
 		var err error
-		tokenResp.IDToken, err = MakeIDToken(ctx, client, newIDTokenOptions(grantInfo))
+		tokenResp.IDToken, err = MakeIDToken(ctx, c, newIDTokenOptions(grantInfo))
 		if err != nil {
 			return response{}, fmt.Errorf("could not generate id token for the authorization code grant: %w", err)
 		}

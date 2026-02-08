@@ -98,7 +98,7 @@ func TestInitAuth(t *testing.T) {
 	}
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
-		"iss":    ctx.Host,
+		"iss":    ctx.Issuer(),
 		"sub":    session.Subject,
 		"aud":    client.ID,
 		"exp":    float64(now + ctx.IDTokenLifetimeSecs),
@@ -123,14 +123,14 @@ func TestInitAuth_JAR(t *testing.T) {
 
 	privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
 	publicJWK := privateJWK.Public()
-	client.PublicJWKS = &goidc.JSONWebKeySet{
+	client.JWKS = &goidc.JSONWebKeySet{
 		Keys: []goidc.JSONWebKey{publicJWK},
 	}
 
 	now := timeutil.TimestampNow()
 	claims := map[string]any{
 		goidc.ClaimIssuer:   client.ID,
-		goidc.ClaimAudience: ctx.Host,
+		goidc.ClaimAudience: ctx.Issuer(),
 		goidc.ClaimIssuedAt: now,
 		goidc.ClaimExpiry:   now + 10,
 		"client_id":         client.ID,
@@ -249,7 +249,7 @@ func TestInitAuth_JARM(t *testing.T) {
 
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
-		"iss":  ctx.Host,
+		"iss":  ctx.Issuer(),
 		"aud":  client.ID,
 		"exp":  float64(now + ctx.JARMLifetimeSecs),
 		"iat":  float64(now),
