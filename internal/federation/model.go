@@ -1,6 +1,7 @@
 package federation
 
 import (
+	"net/url"
 	"slices"
 	"strings"
 
@@ -68,7 +69,7 @@ func (s entityStatement) Signed() string {
 
 type constraints struct {
 	MaxPathLength     *int `json:"max_path_length,omitempty"`
-	NamingConstraints struct {
+	NamingConstraints *struct {
 		Permitted []string `json:"permitted,omitempty"`
 		Excluded  []string `json:"excluded,omitempty"`
 	} `json:"naming_constraints"`
@@ -112,9 +113,10 @@ func (chain trustChain) resolve() (entityStatement, error) {
 	}
 
 	var policy metadataPolicy
+	subStatements := chain.subordinateStatements()
 	// [OpenID Fed 1.0 §6.1.4.1] The policy resolution must begin with the sub statement issued by the most superior entity
 	// and end with the sub statement issued by the immediate superior of the trust chain subject.
-	for i, subStatement := range slices.Backward(chain.subordinateStatements()) {
+	for i, subStatement := range slices.Backward(subStatements) {
 		if subStatement.ExpiresAt < config.ExpiresAt {
 			config.ExpiresAt = subStatement.ExpiresAt
 		}
@@ -126,21 +128,24 @@ func (chain trustChain) resolve() (entityStatement, error) {
 				return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "max path length exceeded")
 			}
 
-			if permittedNamespaces, previousEntityID := constraints.NamingConstraints.Permitted, chain[i-1].Issuer; permittedNamespaces != nil {
-				if !slices.ContainsFunc(permittedNamespaces, func(namespace string) bool {
-					return strings.HasSuffix(previousEntityID, namespace)
-				}) {
-					return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "naming constraint not met")
+			// [OpenID Fed 1.0 §6.2.2] Naming constraints apply to all entity identifiers from this point down to the subject.
+			if namingConstraints := constraints.NamingConstraints; namingConstraints != nil {
+				for j := range i + 1 {
+					entityID := subStatements[j].Subject
+					if namingConstraints.Permitted != nil && !slices.ContainsFunc(namingConstraints.Permitted, func(namespace string) bool {
+						return matchesNamespace(entityID, namespace)
+					}) {
+						return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "naming constraint not met")
+					}
+					if slices.ContainsFunc(namingConstraints.Excluded, func(namespace string) bool {
+						return matchesNamespace(entityID, namespace)
+					}) {
+						return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "naming constraint not met")
+					}
 				}
 			}
 
-			if excludedNamespaces, previousEntityID := constraints.NamingConstraints.Excluded, chain[i-1].Issuer; excludedNamespaces != nil {
-				if slices.ContainsFunc(excludedNamespaces, func(namespace string) bool {
-					return strings.HasSuffix(previousEntityID, namespace)
-				}) {
-					return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "naming constraint not met")
-				}
-			}
+			// TODO: [OpenID Fed 1.0 §6.2.3] Handle allowed entity types.
 		}
 
 		if subStatement.MetadataPolicy == nil {
@@ -159,6 +164,25 @@ func (chain trustChain) resolve() (entityStatement, error) {
 
 	config.TrustAnchor = chain.trustAnchorConfig().Issuer
 	return policy.apply(config)
+}
+
+// matchesNamespace checks if an entity ID matches a namespace constraint.
+func matchesNamespace(entityID, namespace string) bool {
+	entityURL, err := url.Parse(entityID)
+	if err != nil {
+		return false
+	}
+
+	namespaceURL, err := url.Parse(namespace)
+	if err != nil {
+		return false
+	}
+
+	// If namespace host starts with '.', it's a wildcard for subdomains.
+	if strings.HasPrefix(namespaceURL.Host, ".") {
+		return strings.HasSuffix(entityURL.Host, namespaceURL.Host)
+	}
+	return entityURL.Host == namespaceURL.Host
 }
 
 type federationAuthority struct {
