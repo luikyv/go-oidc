@@ -13,6 +13,7 @@ const (
 	contentTypeTrustChain              = "application/trust-chain+json"
 	contentTypeExplicitRegistrationJWT = "application/explicit-registration-response+jwt"
 	contentTypeJWKSJWT                 = "application/jwk-set+jwt"
+	contentTypeTrustMarkJWT            = "application/trust-mark+jwt"
 	jwtTypeEntityStatement             = "entity-statement+jwt"
 	jwtTypeTrustMark                   = "trust-mark+jwt"
 	jwtTypeTrustMarkDelegation         = "trust-mark-delegation+jwt"
@@ -36,11 +37,8 @@ type entityStatement struct {
 	Constraints            *constraints        `json:"constraints,omitempty"`
 	Critical               []string            `json:"crit,omitempty"`
 	// SourceEndpoint is the endpoint from which the subordinate statement was fetched.
-	SourceEndpoint string `json:"source_endpoint,omitempty"`
-	TrustMarks     []struct {
-		Type      string `json:"trust_mark_type"`
-		TrustMark string `json:"trust_mark"`
-	} `json:"trust_marks,omitempty"`
+	SourceEndpoint string          `json:"source_endpoint,omitempty"`
+	TrustMarks     []trustMarkInfo `json:"trust_marks,omitempty"`
 	// TrustMarkIssuers may be used by a trust anchor to tell which combination
 	// of trust mark identifiers and issuers are trusted by the federation.
 	// It is a JSON object with member names that are trust mark identifiers and
@@ -202,10 +200,17 @@ type federationAuthority struct {
 type trustMark struct {
 	Issuer     string `json:"iss"`
 	Subject    string `json:"sub"`
-	ID         string `json:"trust_mark_id"`
+	Type       string `json:"trust_mark_type"`
 	IssuedAt   int    `json:"iat"`
-	ExpiresAt  int    `json:"exp"`
+	ExpiresAt  int    `json:"exp,omitempty"`
 	Delegation string `json:"delegation"`
+	LogoURI    string `json:"logo_uri,omitempty"`
+	Reference  string `json:"ref,omitempty"`
+}
+
+type trustMarkInfo struct {
+	Type      string `json:"trust_mark_type"`
+	TrustMark string `json:"trust_mark"`
 }
 
 type parseOptions struct {

@@ -57,6 +57,7 @@ func newEntityConfiguration(ctx oidc.Context) (string, error) {
 		config.JWKSEndpoint = ""
 	}
 
+	config.OrganizationName = ctx.OpenIDFedOrganizationName
 	config.ClientRegistrationTypes = ctx.OpenIDFedClientRegTypes
 	if slices.Contains(ctx.OpenIDFedClientRegTypes, goidc.ClientRegistrationTypeExplicit) {
 		config.FederationRegistrationEndpoint = ctx.BaseURL() + ctx.OpenIDFedRegistrationEndpoint
@@ -72,6 +73,11 @@ func newEntityConfiguration(ctx oidc.Context) (string, error) {
 		config.JWKS = &jwks
 	}
 
+	trustMarks, err := fetchTrustMarks(ctx)
+	if err != nil {
+		return "", err
+	}
+
 	publicJWKS, err := ctx.OpenIDFedPublicJWKS()
 	if err != nil {
 		return "", err
@@ -85,6 +91,7 @@ func newEntityConfiguration(ctx oidc.Context) (string, error) {
 		JWKS:             publicJWKS,
 		AuthorityHints:   ctx.OpenIDFedAuthorityHints,
 		TrustAnchorHints: ctx.OpenIDFedTrustedAnchors,
+		TrustMarks:       trustMarks,
 	}
 	statement.Metadata.OpenIDProvider = &config
 
@@ -321,7 +328,7 @@ func fetchSubordinateStatement(ctx oidc.Context, sub string, authority entitySta
 }
 
 func fetchEntityStatement(ctx oidc.Context, uri string) (string, error) {
-	resp, err := ctx.HTTPClient().Get(uri)
+	resp, err := ctx.OpenIDFedHTTPClient().Get(uri)
 	if err != nil {
 		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not fetch the entity statement", err)
 	}
@@ -628,8 +635,16 @@ func validateTrustMark(ctx oidc.Context, config entityStatement, markType string
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("could not parse the trust mark for %s", markType), err)
 	}
 
+	if parsedTrustMark.Headers[0].KeyID == "" {
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "trust mark must contain a 'kid' header")
+	}
+
 	if parsedTrustMark.Headers[0].ExtraHeaders["typ"] != jwtTypeTrustMark {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid trust mark 'typ' header")
+	}
+
+	if parsedTrustMark.Headers[0].Algorithm == "" || parsedTrustMark.Headers[0].Algorithm == string(goidc.None) {
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid trust mark 'alg' header")
 	}
 
 	var mark trustMark
@@ -651,23 +666,22 @@ func validateTrustMark(ctx oidc.Context, config entityStatement, markType string
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("invalid 'iat' claim in the trust mark: %s", markType))
 	}
 
-	if mark.ID != markType {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("invalid 'trust_mark_id' claim in the trust mark: %s", markType))
+	if mark.Type != markType {
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("invalid 'trust_mark_type' claim in the trust mark: %s", markType))
 	}
 
-	if err := claims.Validate(jwt.Expected{
+	if err := claims.ValidateWithLeeway(jwt.Expected{
 		Issuer:  trustMarkIssuer.Subject,
 		Subject: config.Subject,
-	}); err != nil {
+	}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second); err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid trust mark", err)
 	}
 
-	trustMarkIssuers := chain.trustAnchorConfig().TrustMarkIssuers[markType]
-	if len(trustMarkIssuers) != 0 && !slices.Contains(trustMarkIssuers, trustMarkIssuer.Issuer) {
+	if trustMarkIssuers := chain.trustAnchorConfig().TrustMarkIssuers[markType]; len(trustMarkIssuers) != 0 && !slices.Contains(trustMarkIssuers, trustMarkIssuer.Issuer) {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("the entity %s is not allowed to issue trust marks for %s", mark.Issuer, markType))
 	}
 
-	// If the trust mark id appears in the trust_mark_owners claim of the trust anchor's
+	// If the trust mark type appears in the trust_mark_owners claim of the trust anchor's
 	// entity configuration, verify that the trust mark contains a valid delegation.
 	if trustMarkOwner, ok := chain.trustAnchorConfig().TrustMarkOwners[markType]; ok {
 		if mark.Delegation == "" {
@@ -679,33 +693,115 @@ func validateTrustMark(ctx oidc.Context, config entityStatement, markType string
 			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not parse the entity statement", err)
 		}
 
+		if parsedTrustMarkDelegation.Headers[0].KeyID == "" {
+			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "trust mark delegation must contain a 'kid' header")
+		}
+
 		if parsedTrustMarkDelegation.Headers[0].ExtraHeaders["typ"] != jwtTypeTrustMarkDelegation {
 			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid trust mark delegation 'typ' header")
 		}
 
+		if parsedTrustMarkDelegation.Headers[0].Algorithm == "" || parsedTrustMarkDelegation.Headers[0].Algorithm == string(goidc.None) {
+			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid trust mark delegation 'alg' header")
+		}
+
 		var markDelegation trustMark
-		var claims jwt.Claims
-		if err := parsedTrustMark.Claims(trustMarkOwner.JWKS.ToJOSE(), &markDelegation, &claims); err != nil {
+		var markDelegationclaims jwt.Claims
+		if err := parsedTrustMark.Claims(trustMarkOwner.JWKS.ToJOSE(), &markDelegation, &markDelegationclaims); err != nil {
 			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid trust mark delegation signature", err)
 		}
 
-		if claims.IssuedAt == nil {
+		if markDelegationclaims.IssuedAt == nil {
 			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid 'iat' claim in the trust mark delegation")
 		}
 
-		if claims.Expiry == nil {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid 'exp' claim in the trust mark delegation")
-		}
-
-		if err := claims.Validate(jwt.Expected{
+		if err := markDelegationclaims.ValidateWithLeeway(jwt.Expected{
 			Issuer:  trustMarkOwner.Subject,
 			Subject: mark.Issuer,
-		}); err != nil {
+		}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second); err != nil {
 			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid trust mark delegation", err)
+		}
+
+		if markDelegation.Type != markType {
+			return goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("invalid 'trust_mark_type' claim in the trust mark delegation: %s", markType))
 		}
 	}
 
 	return nil
+}
+
+func fetchTrustMarks(ctx oidc.Context) ([]trustMarkInfo, error) {
+	if len(ctx.OpenIDFedTrustMarks) == 0 {
+		return nil, nil
+	}
+
+	type result struct {
+		mark trustMarkInfo
+		err  error
+	}
+
+	resultCh := make(chan result, len(ctx.OpenIDFedTrustMarks))
+	for markType, issuerID := range ctx.OpenIDFedTrustMarks {
+		go func(markType, issuerID string) {
+			mark, err := fetchTrustMark(ctx, markType, issuerID)
+			resultCh <- result{mark: mark, err: err}
+		}(markType, issuerID)
+	}
+
+	marks := make([]trustMarkInfo, 0, len(ctx.OpenIDFedTrustMarks))
+	for range ctx.OpenIDFedTrustMarks {
+		res := <-resultCh
+		if res.err != nil {
+			return nil, res.err
+		}
+		marks = append(marks, res.mark)
+	}
+
+	return marks, nil
+}
+
+func fetchTrustMark(ctx oidc.Context, markType, issuerID string) (trustMarkInfo, error) {
+	issuer, err := fetchEntityConfiguration(ctx, issuerID)
+	if err != nil {
+		return trustMarkInfo{}, err
+	}
+
+	if issuer.Metadata.FederationAuthority == nil || issuer.Metadata.FederationAuthority.TrustMarkEndpoint == "" {
+		return trustMarkInfo{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("trust mark issuer %s has no trust mark endpoint", issuerID))
+	}
+
+	endpoint, err := url.Parse(issuer.Metadata.FederationAuthority.TrustMarkEndpoint)
+	if err != nil {
+		return trustMarkInfo{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid trust mark endpoint", err)
+	}
+	params := endpoint.Query()
+	params.Set("sub", ctx.Issuer())
+	params.Set("trust_mark_id", markType)
+	endpoint.RawQuery = params.Encode()
+
+	resp, err := ctx.OpenIDFedHTTPClient().Get(endpoint.String())
+	if err != nil {
+		return trustMarkInfo{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not fetch the trust mark", err)
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	if resp.StatusCode != http.StatusOK {
+		return trustMarkInfo{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("fetching the trust mark resulted in status %d", resp.StatusCode))
+	}
+
+	if mediaType, _, _ := mime.ParseMediaType(resp.Header.Get("Content-Type")); mediaType != contentTypeTrustMarkJWT {
+		return trustMarkInfo{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("fetching the trust mark resulted in content type %s which is invalid", resp.Header.Get("Content-Type")))
+	}
+
+	mark, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return trustMarkInfo{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not read the trust mark", err)
+	}
+
+	return trustMarkInfo{
+		Type:      markType,
+		TrustMark: string(mark),
+	}, nil
 }
 
 func signedJWKS(ctx oidc.Context) (string, error) {

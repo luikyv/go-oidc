@@ -1120,6 +1120,30 @@ func WithOpenIDFedSignedJWKSLifetimeSecs(lifetimeSecs int) Option {
 	}
 }
 
+func WithOpenIDFedOrganizationName(name string) Option {
+	return func(p *Provider) error {
+		p.config.OpenIDFedOrganizationName = name
+		return nil
+	}
+}
+
+func WithOpenIDFedHTTPClientFunc(f goidc.HTTPClientFunc) Option {
+	return func(p *Provider) error {
+		p.config.OpenIDFedHTTPClientFunc = f
+		return nil
+	}
+}
+
+func WithOpenIDFedTrustMark(markType string, issuer string) Option {
+	return func(p *Provider) error {
+		if p.config.OpenIDFedTrustMarks == nil {
+			p.config.OpenIDFedTrustMarks = make(map[string]string)
+		}
+		p.config.OpenIDFedTrustMarks[markType] = issuer
+		return nil
+	}
+}
+
 // WithLogout enables the [OpenID Connect RP-initiated logout flow](https://openid.net/specs/openid-connect-rpinitiated-1_0.html).
 // The default logout function is used to handle the logout when the flow is
 // completed when the client does not provide a post_logout_redirect_uri and
