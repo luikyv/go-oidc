@@ -18,6 +18,7 @@ type Client struct {
 	Secret string `json:"client_secret,omitempty"`
 	// HashedSecret is the hash of the client secret for the client_secret_basic
 	// and client_secret_post authentication methods.
+	// TODO: Should I remove this?
 	HashedSecret string `json:"hashed_secret,omitempty"`
 	// RegistrationToken is the plain text registration access token generated during
 	// dynamic client registration.
@@ -29,12 +30,21 @@ type Client struct {
 	IsFederated                bool                   `json:"is_federated"`
 	FederationTrustAnchor      string                 `json:"federation_trust_anchor"`
 	FederationRegistrationType ClientRegistrationType `json:"federation_registration_type,omitempty"`
-	FederationTrustMarks       []string               `json:"federation_trust_marks,omitempty"`
+	FederationTrustMarks       []TrustMark            `json:"federation_trust_marks,omitempty"`
+	cachedJWKS                 *JSONWebKeySet
 	ClientMeta
 }
 
 func (c *Client) IsPublic() bool {
-	return c.TokenAuthnMethod == ClientAuthnNone
+	return c.TokenAuthnMethod == AuthnMethodNone
+}
+
+func (c *Client) CachedJWKS() *JSONWebKeySet {
+	return c.cachedJWKS
+}
+
+func (c *Client) CacheJWKS(jwks *JSONWebKeySet) {
+	c.cachedJWKS = jwks
 }
 
 type ClientMeta struct {
@@ -70,11 +80,11 @@ type ClientMeta struct {
 	JARMSigAlg                    SignatureAlgorithm         `json:"authorization_signed_response_alg,omitempty"`
 	JARMKeyEncAlg                 KeyEncryptionAlgorithm     `json:"authorization_encrypted_response_alg,omitempty"`
 	JARMContentEncAlg             ContentEncryptionAlgorithm `json:"authorization_encrypted_response_enc,omitempty"`
-	TokenAuthnMethod              ClientAuthnType            `json:"token_endpoint_auth_method"`
+	TokenAuthnMethod              AuthnMethod                `json:"token_endpoint_auth_method"`
 	TokenAuthnSigAlg              SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg,omitempty"`
-	TokenIntrospectionAuthnMethod ClientAuthnType            `json:"introspection_endpoint_auth_method,omitempty"`
+	TokenIntrospectionAuthnMethod AuthnMethod                `json:"introspection_endpoint_auth_method,omitempty"`
 	TokenIntrospectionAuthnSigAlg SignatureAlgorithm         `json:"introspection_endpoint_auth_signing_alg,omitempty"`
-	TokenRevocationAuthnMethod    ClientAuthnType            `json:"revocation_endpoint_auth_method,omitempty"`
+	TokenRevocationAuthnMethod    AuthnMethod                `json:"revocation_endpoint_auth_method,omitempty"`
 	TokenRevocationAuthnSigAlg    SignatureAlgorithm         `json:"revocation_endpoint_auth_signing_alg,omitempty"`
 	DPoPTokenBindingIsRequired    bool                       `json:"dpop_bound_access_tokens,omitempty"`
 	TLSSubDistinguishedName       string                     `json:"tls_client_auth_subject_dn,omitempty"`

@@ -57,12 +57,17 @@ type entityStatement struct {
 	} `json:"trust_mark_owners,omitempty"`
 	// TrustAnchor is the identifier of the trust anchor in the trust chain.
 	// This claim is specific to explicit registration responses, it is not a general entity statement claim.
-	TrustAnchor string `json:"trust_anchor,omitempty"`
-	signed      string `json:"-"`
+	TrustAnchor      string     `json:"trust_anchor,omitempty"`
+	trustChainHeader trustChain `json:"-"`
+	signed           string     `json:"-"`
 }
 
 func (s entityStatement) Signed() string {
 	return s.signed
+}
+
+func (s entityStatement) TrustChainHeader() trustChain {
+	return s.trustChainHeader
 }
 
 type constraints struct {
@@ -105,7 +110,7 @@ func (chain trustChain) resolve() (entityStatement, error) {
 
 	config := chain.subjectConfig()
 	// [OpenID Fed 1.0 §6.1.4.2] The resolution must start by applying the metadata in the first sub statement to the subject config.
-	config.Metadata, err = chain.firstSubordinateStatement().Metadata.merge(config.Metadata)
+	config.Metadata, err = chain.firstSubordinateStatement().Metadata.Merge(config.Metadata)
 	if err != nil {
 		return entityStatement{}, err
 	}
@@ -150,18 +155,18 @@ func (chain trustChain) resolve() (entityStatement, error) {
 			continue
 		}
 
-		policy, err = policy.merge(*subStatement.MetadataPolicy)
+		policy, err = policy.Merge(*subStatement.MetadataPolicy)
 		if err != nil {
 			return entityStatement{}, err
 		}
 
-		if err := policy.validate(); err != nil {
+		if err := policy.Validate(); err != nil {
 			return entityStatement{}, err
 		}
 	}
 
 	config.TrustAnchor = chain.trustAnchorConfig().Issuer
-	return policy.apply(config)
+	return policy.Apply(config)
 }
 
 // matchesNamespace checks if an entity ID matches a namespace constraint.
@@ -184,13 +189,15 @@ func matchesNamespace(entityID, namespace string) bool {
 }
 
 type federationAuthority struct {
-	FetchEndpoint           string `json:"federation_fetch_endpoint,omitempty"`
-	ListEndpoint            string `json:"federation_list_endpoint,omitempty"`
-	ResolveEndpoint         string `json:"federation_resolve_endpoint,omitempty"`
-	TrustMarkStatusEndpoint string `json:"federation_trust_mark_status_endpoint,omitempty"`
-	TrustMarkListEndpoint   string `json:"federation_trust_mark_list_endpoint,omitempty"`
-	TrustMarkEndpoint       string `json:"federation_trust_mark_endpoint,omitempty"`
-	HistoricalKeysEndpoint  string `json:"federation_historical_keys_endpoint,omitempty"`
+	FetchEndpoint                string              `json:"federation_fetch_endpoint,omitempty"`
+	FetchEndpointAuthMethods     []goidc.AuthnMethod `json:"federation_fetch_endpoint_auth_methods,omitempty"`
+	ListEndpoint                 string              `json:"federation_list_endpoint,omitempty"`
+	ResolveEndpoint              string              `json:"federation_resolve_endpoint,omitempty"`
+	TrustMarkStatusEndpoint      string              `json:"federation_trust_mark_status_endpoint,omitempty"`
+	TrustMarkListEndpoint        string              `json:"federation_trust_mark_list_endpoint,omitempty"`
+	TrustMarkEndpoint            string              `json:"federation_trust_mark_endpoint,omitempty"`
+	TrustMarkEndpointAuthMethods []goidc.AuthnMethod `json:"federation_trust_mark_endpoint_auth_methods,omitempty"`
+	HistoricalKeysEndpoint       string              `json:"federation_historical_keys_endpoint,omitempty"`
 	// EndpointAuthSigAlgValuesSupported are the algorithmsfor signing the JWT used for private_key_jwt when
 	// authenticating to federation endpoints.
 	EndpointAuthSigAlgValuesSupported []goidc.SignatureAlgorithm `json:"endpoint_auth_signing_alg_values_supported,omitempty"`
@@ -209,13 +216,18 @@ type trustMark struct {
 }
 
 type trustMarkInfo struct {
-	Type      string `json:"trust_mark_type"`
-	TrustMark string `json:"trust_mark"`
+	Type      goidc.TrustMark `json:"trust_mark_type"`
+	TrustMark string          `json:"trust_mark"`
 }
 
 type parseOptions struct {
-	jwks     goidc.JSONWebKeySet
-	issuer   string
+	jwks                 goidc.JSONWebKeySet
+	issuer               string
+	subject              string
+	explicitRegistration bool
+}
+
+type parseTrustMarkOptions struct {
 	subject  string
-	audience string
+	markType goidc.TrustMark
 }

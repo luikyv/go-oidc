@@ -79,14 +79,14 @@ func (ctx Context) ClientAuthnSigAlgs() []goidc.SignatureAlgorithm {
 	return append(ctx.PrivateKeyJWTSigAlgs, ctx.ClientSecretJWTSigAlgs...)
 }
 
-func (ctx Context) clientAuthnSigAlgs(methods []goidc.ClientAuthnType) []goidc.SignatureAlgorithm {
+func (ctx Context) clientAuthnSigAlgs(methods []goidc.AuthnMethod) []goidc.SignatureAlgorithm {
 	var sigAlgs []goidc.SignatureAlgorithm
 
-	if slices.Contains(methods, goidc.ClientAuthnPrivateKeyJWT) {
+	if slices.Contains(methods, goidc.AuthnMethodPrivateKeyJWT) {
 		sigAlgs = append(sigAlgs, ctx.PrivateKeyJWTSigAlgs...)
 	}
 
-	if slices.Contains(methods, goidc.ClientAuthnSecretJWT) {
+	if slices.Contains(methods, goidc.AuthnMethodSecretJWT) {
 		sigAlgs = append(sigAlgs, ctx.ClientSecretJWTSigAlgs...)
 	}
 
@@ -107,7 +107,7 @@ func (ctx Context) ValidateInitalAccessToken(token string) error {
 		return nil
 	}
 
-	return ctx.ValidateInitialAccessTokenFunc(ctx.Request, token)
+	return ctx.ValidateInitialAccessTokenFunc(ctx, token)
 }
 
 func (ctx Context) HandleDynamicClient(id string, c *goidc.ClientMeta) error {
@@ -232,12 +232,20 @@ func (ctx Context) ValidateBackAuth(session *goidc.AuthnSession) error {
 	return ctx.ValidateBackAuthFunc(ctx, session)
 }
 
-func (ctx Context) OpenIDFedRequiredTrustMarks(client *goidc.Client) []string {
+func (ctx Context) OpenIDFedRequiredTrustMarks(client *goidc.Client) []goidc.TrustMark {
 	if ctx.OpenIDFedRequiredTrustMarksFunc == nil {
 		return nil
 	}
 
 	return ctx.OpenIDFedRequiredTrustMarksFunc(ctx, client)
+}
+
+func (ctx Context) OpenIDFedHandleClient(client *goidc.Client) error {
+	if ctx.OpenIDFedHandleClientFunc == nil {
+		return nil
+	}
+
+	return ctx.OpenIDFedHandleClientFunc(ctx, client)
 }
 
 func (ctx Context) OpenIDFedHTTPClient() *http.Client {
@@ -553,14 +561,6 @@ func (ctx Context) WriteHTML(html string, params any) error {
 	return tmpl.Execute(ctx.Response, params)
 }
 
-func (ctx Context) UserInfoSigAlgsContainsNone() bool {
-	return slices.Contains(ctx.UserInfoSigAlgs, goidc.None)
-}
-
-func (ctx Context) IDTokenSigAlgsContainsNone() bool {
-	return slices.Contains(ctx.IDTokenSigAlgs, goidc.None)
-}
-
 func (ctx Context) ShouldIssueRefreshToken(client *goidc.Client, grantInfo goidc.GrantInfo) bool {
 	if ctx.ShouldIssueRefreshTokenFunc == nil ||
 		!slices.Contains(client.GrantTypes, goidc.GrantRefreshToken) ||
@@ -682,7 +682,12 @@ func (ctx Context) Value(key any) any {
 //---------------------------------------- SSF ----------------------------------------//
 
 func (ctx Context) SSFJWKS() (goidc.JSONWebKeySet, error) {
-	return ctx.SSFJWKSFunc(ctx)
+	jwks, err := ctx.SSFJWKSFunc(ctx)
+	if err != nil {
+		return goidc.JSONWebKeySet{}, fmt.Errorf("could not load the ssf jwks: %w", err)
+	}
+
+	return jwks, nil
 }
 
 func (ctx Context) SSFPublicJWKS() (goidc.JSONWebKeySet, error) {
@@ -738,34 +743,34 @@ func (ctx Context) SSFAuthenticatedReceiver() (goidc.SSFReceiver, error) {
 	return ctx.SSFAuthenticatedReceiverFunc(ctx)
 }
 
-func (ctx Context) SSFJWTID() string {
-	if ctx.SSFJWTIDFunc == nil {
-		return uuid.NewString()
+func (ctx Context) SSFSign(claims any, opts *jose.SignerOptions) (string, error) {
+	jwks, err := ctx.SSFJWKS()
+	if err != nil {
+		return "", fmt.Errorf("could not load the ssf jwks: %w", err)
 	}
 
-	return ctx.SSFJWTIDFunc(ctx)
-}
-
-func (ctx Context) SSFSign(claims any, opts *jose.SignerOptions) (string, error) {
+	jwk, err := jwks.KeyByAlg(string(ctx.SSFDefaultSigAlg))
+	if err != nil {
+		return "", fmt.Errorf("could not find a valid ssf signing jwk: %w", err)
+	}
 
 	if ctx.SSFSignerFunc == nil {
-		jwk, err := ctx.SSFJWKByAlg(ctx.SSFSignatureAlgorithm)
-		if err != nil {
-			return "", fmt.Errorf("could not load the signing jwk: %w", err)
-		}
-		return joseutil.Sign(claims, jose.SigningKey{Algorithm: ctx.SSFSignatureAlgorithm, Key: jwk}, opts)
+		return joseutil.Sign(claims, jose.SigningKey{
+			Algorithm: jose.SignatureAlgorithm(jwk.Algorithm),
+			Key:       jwk,
+		}, opts)
 	}
 
-	keyID, key, err := ctx.SSFSignerFunc(ctx, ctx.SSFSignatureAlgorithm)
+	keyID, key, err := ctx.SSFSignerFunc(ctx, goidc.SignatureAlgorithm(jwk.Algorithm))
 	if err != nil {
 		return "", fmt.Errorf("could not load the signer: %w", err)
 	}
 
 	return joseutil.Sign(claims, jose.SigningKey{
-		Algorithm: ctx.SSFSignatureAlgorithm,
+		Algorithm: goidc.SignatureAlgorithm(jwk.Algorithm),
 		Key: joseutil.OpaqueSigner{
 			ID:        keyID,
-			Algorithm: ctx.SSFSignatureAlgorithm,
+			Algorithm: goidc.SignatureAlgorithm(jwk.Algorithm),
 			Signer:    key,
 		},
 	}, opts)
@@ -831,27 +836,6 @@ func (ctx Context) PublicJWKS() (goidc.JSONWebKeySet, error) {
 	return jwks.Public(), nil
 }
 
-func (ctx Context) OpenIDFedJWKS() (goidc.JSONWebKeySet, error) {
-	return ctx.OpenIDFedJWKSFunc(ctx)
-}
-
-func (ctx Context) OpenIDFedPublicJWKS() (goidc.JSONWebKeySet, error) {
-	jwks, err := ctx.OpenIDFedJWKS()
-	if err != nil {
-		return goidc.JSONWebKeySet{}, err
-	}
-
-	return jwks.Public(), nil
-}
-
-func (ctx Context) OpenIDFedEntityJWKS(id string) (goidc.JSONWebKeySet, error) {
-	if ctx.OpenIDFedEntityJWKSFunc == nil {
-		return goidc.JSONWebKeySet{}, errors.New("fetch federation entity jwks function is not set")
-	}
-
-	return ctx.OpenIDFedEntityJWKSFunc(ctx, id)
-}
-
 func (ctx Context) SigAlgs() ([]goidc.SignatureAlgorithm, error) {
 	jwks, err := ctx.JWKS()
 	if err != nil {
@@ -860,7 +844,7 @@ func (ctx Context) SigAlgs() ([]goidc.SignatureAlgorithm, error) {
 
 	var algorithms []goidc.SignatureAlgorithm
 	for _, jwk := range jwks.Keys {
-		if inferKeyUsage(jwk) == goidc.KeyUsageSignature {
+		if joseutil.KeyUsage(jwk) == goidc.KeyUsageSignature {
 			algorithms = append(algorithms, goidc.SignatureAlgorithm(jwk.Algorithm))
 		}
 	}
@@ -949,7 +933,7 @@ func (ctx Context) Decrypt(
 		key = joseutil.OpaqueDecrypter{Algorithm: alg, Decrypter: decrypter}
 	} else {
 		jwk, err := ctx.JWK(keyID)
-		if err != nil || inferKeyUsage(jwk) != goidc.KeyUsageEncryption {
+		if err != nil || joseutil.KeyUsage(jwk) != goidc.KeyUsageEncryption {
 			return "", errors.New("invalid jwk used for encryption")
 		}
 		key = jwk
@@ -963,14 +947,41 @@ func (ctx Context) Decrypt(
 	return string(jws), nil
 }
 
-func (ctx Context) OpenIDFedSign(claims any, opts *jose.SignerOptions) (string, error) {
+func (ctx Context) OpenIDFedJWKS() (goidc.JSONWebKeySet, error) {
+	return ctx.OpenIDFedJWKSFunc(ctx)
+}
+
+func (ctx Context) OpenIDFedPublicJWKS() (goidc.JSONWebKeySet, error) {
+	jwks, err := ctx.OpenIDFedJWKS()
+	if err != nil {
+		return goidc.JSONWebKeySet{}, err
+	}
+
+	return jwks.Public(), nil
+}
+
+func (ctx Context) OpenIDFedEntityJWKS(id string) (goidc.JSONWebKeySet, error) {
+	if ctx.OpenIDFedEntityJWKSFunc == nil {
+		return goidc.JSONWebKeySet{}, errors.New("fetch federation entity jwks function is not set")
+	}
+
+	return ctx.OpenIDFedEntityJWKSFunc(ctx, id)
+}
+
+func (ctx Context) OpenIDFedSign(claims any, opts *jose.SignerOptions, algs ...goidc.SignatureAlgorithm) (string, error) {
+	if len(algs) == 0 {
+		algs = []goidc.SignatureAlgorithm{ctx.OpenIDFedDefaultSigAlg}
+	}
 
 	jwks, err := ctx.OpenIDFedJWKS()
 	if err != nil {
-		return "", fmt.Errorf("could not load the signing jwk: %w", err)
+		return "", fmt.Errorf("could not load the federation jwks: %w", err)
 	}
-	// TODO: Add config to pick the algorithm to find the right key.
-	jwk := jwks.Keys[0]
+
+	jwk, err := joseutil.KeyByAlgorithms(jwks, algs)
+	if err != nil {
+		return "", fmt.Errorf("could not find a valid federation signing jwk matching the algorithms: %w", err)
+	}
 
 	if ctx.OpenIDFedSignerFunc == nil {
 		return joseutil.Sign(claims, jose.SigningKey{
@@ -992,19 +1003,4 @@ func (ctx Context) OpenIDFedSign(claims any, opts *jose.SignerOptions) (string, 
 			Signer:    key,
 		},
 	}, opts)
-}
-
-func inferKeyUsage(key goidc.JSONWebKey) goidc.KeyUsage {
-	if key.Use != "" {
-		return goidc.KeyUsage(key.Use)
-	}
-
-	switch key.Algorithm {
-	case "RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "PS256", "PS384", "PS512", "HS256", "HS384", "HS512":
-		return goidc.KeyUsageSignature
-	case "RSA1_5", "RSA_OAEP", "RSA_OAEP_256":
-		return goidc.KeyUsageEncryption
-	default:
-		return ""
-	}
 }

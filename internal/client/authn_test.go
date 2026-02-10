@@ -25,7 +25,7 @@ func TestAuthenticated_ClientNotFound(t *testing.T) {
 	c := &goidc.Client{
 		ID: "random_client_id",
 		ClientMeta: goidc.ClientMeta{
-			TokenAuthnMethod: goidc.ClientAuthnNone,
+			TokenAuthnMethod: goidc.AuthnMethodNone,
 		},
 	}
 	ctx.Request.PostForm = map[string][]string{"client_id": {c.ID}}
@@ -56,7 +56,7 @@ func TestAuthenticated_NoneAuthn(t *testing.T) {
 	c := &goidc.Client{
 		ID: "random_client_id",
 		ClientMeta: goidc.ClientMeta{
-			TokenAuthnMethod: goidc.ClientAuthnNone,
+			TokenAuthnMethod: goidc.AuthnMethodNone,
 		},
 	}
 	ctx.Request.PostForm = map[string][]string{"client_id": {c.ID}}
@@ -74,7 +74,7 @@ func TestAuthenticated_NoneAuthn(t *testing.T) {
 func TestAuthenticated_SecretPostAuthn(t *testing.T) {
 
 	// Given.
-	ctx, c, secret := setUpSecretAuthn(t, goidc.ClientAuthnSecretPost)
+	ctx, c, secret := setUpSecretAuthn(t, goidc.AuthnMethodSecretPost)
 	ctx.Request.PostForm = map[string][]string{
 		"client_id":     {c.ID},
 		"client_secret": {secret},
@@ -92,7 +92,7 @@ func TestAuthenticated_SecretPostAuthn(t *testing.T) {
 func TestAuthenticated_SecretPostAuthn_InvalidSecret(t *testing.T) {
 
 	// Given.
-	ctx, c, _ := setUpSecretAuthn(t, goidc.ClientAuthnSecretPost)
+	ctx, c, _ := setUpSecretAuthn(t, goidc.AuthnMethodSecretPost)
 	ctx.Request.PostForm = map[string][]string{
 		"client_id":     {c.ID},
 		"client_secret": {"invalid_secret"},
@@ -119,7 +119,7 @@ func TestAuthenticated_SecretPostAuthn_InvalidSecret(t *testing.T) {
 func TestAuthenticated_SecretPostAuthn_MissingSecret(t *testing.T) {
 
 	// Given.
-	ctx, c, _ := setUpSecretAuthn(t, goidc.ClientAuthnSecretPost)
+	ctx, c, _ := setUpSecretAuthn(t, goidc.AuthnMethodSecretPost)
 	ctx.Request.PostForm = map[string][]string{
 		"client_id": {c.ID},
 	}
@@ -147,7 +147,7 @@ func TestAuthenticated_SecretPostAuthn_MissingSecret(t *testing.T) {
 func TestAuthenticated_SecretPostAuthn_InvalidID(t *testing.T) {
 
 	// Given.
-	ctx, c, secret := setUpSecretAuthn(t, goidc.ClientAuthnSecretPost)
+	ctx, c, secret := setUpSecretAuthn(t, goidc.AuthnMethodSecretPost)
 	// The client ID is supposed to be the value of the param "client_id", but
 	// will be sent in the authorization header.
 	ctx.Request.SetBasicAuth(c.ID, secret)
@@ -176,7 +176,7 @@ func TestAuthenticated_SecretPostAuthn_InvalidID(t *testing.T) {
 func TestAuthenticated_BasicSecretAuthn(t *testing.T) {
 
 	// Given.
-	ctx, c, secret := setUpSecretAuthn(t, goidc.ClientAuthnSecretBasic)
+	ctx, c, secret := setUpSecretAuthn(t, goidc.AuthnMethodSecretBasic)
 	ctx.Request.SetBasicAuth(c.ID, secret)
 
 	// When.
@@ -191,7 +191,7 @@ func TestAuthenticated_BasicSecretAuthn(t *testing.T) {
 func TestAuthenticated_BasicSecretAuthn_InvalidSecret(t *testing.T) {
 
 	// Given.
-	ctx, c, _ := setUpSecretAuthn(t, goidc.ClientAuthnSecretBasic)
+	ctx, c, _ := setUpSecretAuthn(t, goidc.AuthnMethodSecretBasic)
 	ctx.Request.SetBasicAuth(c.ID, "invalid_secret")
 
 	// When.
@@ -215,7 +215,7 @@ func TestAuthenticated_BasicSecretAuthn_InvalidSecret(t *testing.T) {
 func TestAuthenticated_BasicSecretAuthn_MissingSecret(t *testing.T) {
 
 	// Given.
-	ctx, c, _ := setUpSecretAuthn(t, goidc.ClientAuthnSecretBasic)
+	ctx, c, _ := setUpSecretAuthn(t, goidc.AuthnMethodSecretBasic)
 	// Add the client ID to the request so it can be identified.
 	ctx.Request.PostForm = map[string][]string{
 		"client_id": {c.ID},
@@ -596,7 +596,7 @@ func TestAuthenticated_DifferentClientIDs(t *testing.T) {
 	c := &goidc.Client{
 		ID: "random_client_id",
 		ClientMeta: goidc.ClientMeta{
-			TokenAuthnMethod: goidc.ClientAuthnNone,
+			TokenAuthnMethod: goidc.AuthnMethodNone,
 		},
 	}
 
@@ -718,7 +718,7 @@ func TestAuthenticated_TLSAuthn_InvalidAlternativeName(t *testing.T) {
 	}
 }
 
-func setUpSecretAuthn(t *testing.T, secretAuthnMethod goidc.ClientAuthnType) (
+func setUpSecretAuthn(t *testing.T, secretAuthnMethod goidc.AuthnMethod) (
 	ctx oidc.Context,
 	client *goidc.Client,
 	secret string,
@@ -757,7 +757,7 @@ func setUpPrivateKeyJWTAuthn(t *testing.T) (
 	client = &goidc.Client{
 		ID: "random_client_id",
 		ClientMeta: goidc.ClientMeta{
-			TokenAuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
+			TokenAuthnMethod: goidc.AuthnMethodPrivateKeyJWT,
 			JWKS: &goidc.JSONWebKeySet{
 				Keys: []goidc.JSONWebKey{jwk.Public()},
 			},
@@ -786,7 +786,7 @@ func setUpClientSecretJWTAuthn(t *testing.T) (
 		ID:     "random_client_id",
 		Secret: secret,
 		ClientMeta: goidc.ClientMeta{
-			TokenAuthnMethod: goidc.ClientAuthnSecretJWT,
+			TokenAuthnMethod: goidc.AuthnMethodSecretJWT,
 		},
 	}
 	if err := ctx.SaveClient(client); err != nil {
@@ -815,7 +815,7 @@ func setUpTLSAuthn(t *testing.T) (
 	client = &goidc.Client{
 		ID: "random_client_id",
 		ClientMeta: goidc.ClientMeta{
-			TokenAuthnMethod: goidc.ClientAuthnTLS,
+			TokenAuthnMethod: goidc.AuthnMethodTLS,
 		},
 	}
 	if err := ctx.SaveClient(client); err != nil {

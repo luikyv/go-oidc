@@ -14,9 +14,9 @@ type metadataPolicy struct {
 	OpenIDClient *openIDClientMetadataPolicy `json:"openid_relying_party,omitempty"`
 }
 
-func (policy metadataPolicy) validate() error {
+func (policy metadataPolicy) Validate() error {
 	if policy.OpenIDClient != nil {
-		if err := policy.OpenIDClient.validate(); err != nil {
+		if err := policy.OpenIDClient.Validate(); err != nil {
 			return err
 		}
 	}
@@ -24,14 +24,14 @@ func (policy metadataPolicy) validate() error {
 	return nil
 }
 
-func (highPolicy metadataPolicy) merge(lowPolicy metadataPolicy) (metadataPolicy, error) {
+func (highPolicy metadataPolicy) Merge(lowPolicy metadataPolicy) (metadataPolicy, error) {
 	if lowPolicy.OpenIDClient != nil {
 		var highOpenIDClient openIDClientMetadataPolicy
 		if highPolicy.OpenIDClient != nil {
 			highOpenIDClient = *highPolicy.OpenIDClient
 		}
 
-		result, err := highOpenIDClient.merge(*lowPolicy.OpenIDClient)
+		result, err := highOpenIDClient.Merge(*lowPolicy.OpenIDClient)
 		if err != nil {
 			return metadataPolicy{}, err
 		}
@@ -42,15 +42,13 @@ func (highPolicy metadataPolicy) merge(lowPolicy metadataPolicy) (metadataPolicy
 	return highPolicy, nil
 }
 
-func (policy metadataPolicy) apply(statement entityStatement) (entityStatement, error) {
-	if statement.Metadata.OpenIDClient != nil && policy.OpenIDClient != nil {
-		clientPolicy := *policy.OpenIDClient
-		client := *statement.Metadata.OpenIDClient
-		client, err := clientPolicy.apply(client)
+func (policy metadataPolicy) Apply(statement entityStatement) (entityStatement, error) {
+	if original, policy := statement.Metadata.OpenIDClient, policy.OpenIDClient; original != nil && policy != nil {
+		modified, err := policy.Apply(*original)
 		if err != nil {
 			return entityStatement{}, err
 		}
-		statement.Metadata.OpenIDClient = &client
+		statement.Metadata.OpenIDClient = &modified
 	}
 
 	return statement, nil
@@ -85,11 +83,11 @@ type openIDClientMetadataPolicy struct {
 	JARMSigAlg                    metadataOperators[goidc.SignatureAlgorithm]         `json:"authorization_signed_response_alg"`
 	JARMKeyEncAlg                 metadataOperators[goidc.KeyEncryptionAlgorithm]     `json:"authorization_encrypted_response_alg"`
 	JARMContentEncAlg             metadataOperators[goidc.ContentEncryptionAlgorithm] `json:"authorization_encrypted_response_enc"`
-	TokenAuthnMethod              metadataOperators[goidc.ClientAuthnType]            `json:"token_endpoint_auth_method"`
+	TokenAuthnMethod              metadataOperators[goidc.AuthnMethod]                `json:"token_endpoint_auth_method"`
 	TokenAuthnSigAlg              metadataOperators[goidc.SignatureAlgorithm]         `json:"token_endpoint_auth_signing_alg"`
-	TokenIntrospectionAuthnMethod metadataOperators[goidc.ClientAuthnType]            `json:"introspection_endpoint_auth_method"`
+	TokenIntrospectionAuthnMethod metadataOperators[goidc.AuthnMethod]                `json:"introspection_endpoint_auth_method"`
 	TokenIntrospectionAuthnSigAlg metadataOperators[goidc.SignatureAlgorithm]         `json:"introspection_endpoint_auth_signing_alg"`
-	TokenRevocationAuthnMethod    metadataOperators[goidc.ClientAuthnType]            `json:"revocation_endpoint_auth_method"`
+	TokenRevocationAuthnMethod    metadataOperators[goidc.AuthnMethod]                `json:"revocation_endpoint_auth_method"`
 	TokenRevocationAuthnSigAlg    metadataOperators[goidc.SignatureAlgorithm]         `json:"revocation_endpoint_auth_signing_alg"`
 	DPoPTokenBindingIsRequired    metadataOperators[bool]                             `json:"dpop_bound_access_tokens"`
 	TLSSubDistinguishedName       metadataOperators[string]                           `json:"tls_client_auth_subject_dn"`
@@ -169,7 +167,7 @@ func jsonKeys(v any) []string {
 	return keys
 }
 
-func (p openIDClientMetadataPolicy) validate() error {
+func (p openIDClientMetadataPolicy) Validate() error {
 	v := reflect.ValueOf(p)
 	for i := 0; i < v.NumField(); i++ {
 		if v.Type().Field(i).Name == "CustomAttributes" {
@@ -177,7 +175,7 @@ func (p openIDClientMetadataPolicy) validate() error {
 		}
 
 		field := v.Field(i)
-		validateMethod := field.MethodByName("validate")
+		validateMethod := field.MethodByName("Validate")
 		if !validateMethod.IsValid() {
 			continue
 		}
@@ -189,7 +187,7 @@ func (p openIDClientMetadataPolicy) validate() error {
 	}
 
 	for _, ops := range p.CustomAttributes {
-		if err := ops.validate(); err != nil {
+		if err := ops.Validate(); err != nil {
 			return err
 		}
 	}
@@ -197,7 +195,7 @@ func (p openIDClientMetadataPolicy) validate() error {
 	return nil
 }
 
-func (high openIDClientMetadataPolicy) merge(low openIDClientMetadataPolicy) (openIDClientMetadataPolicy, error) {
+func (high openIDClientMetadataPolicy) Merge(low openIDClientMetadataPolicy) (openIDClientMetadataPolicy, error) {
 	highV := reflect.ValueOf(&high).Elem()
 	lowV := reflect.ValueOf(low)
 
@@ -209,7 +207,7 @@ func (high openIDClientMetadataPolicy) merge(low openIDClientMetadataPolicy) (op
 		highField := highV.Field(i)
 		lowField := lowV.Field(i)
 
-		mergeMethod := highField.MethodByName("merge")
+		mergeMethod := highField.MethodByName("Merge")
 		if !mergeMethod.IsValid() {
 			continue
 		}
@@ -223,7 +221,7 @@ func (high openIDClientMetadataPolicy) merge(low openIDClientMetadataPolicy) (op
 	}
 
 	for att, lowOps := range low.CustomAttributes {
-		ops, err := high.customAttribute(att).merge(lowOps)
+		ops, err := high.customAttribute(att).Merge(lowOps)
 		if err != nil {
 			return openIDClientMetadataPolicy{}, err
 		}
@@ -233,7 +231,7 @@ func (high openIDClientMetadataPolicy) merge(low openIDClientMetadataPolicy) (op
 	return high, nil
 }
 
-func (policy openIDClientMetadataPolicy) apply(c goidc.ClientMeta) (goidc.ClientMeta, error) {
+func (policy openIDClientMetadataPolicy) Apply(c goidc.ClientMeta) (goidc.ClientMeta, error) {
 	policyV := reflect.ValueOf(policy)
 	clientV := reflect.ValueOf(&c).Elem()
 
@@ -249,7 +247,7 @@ func (policy openIDClientMetadataPolicy) apply(c goidc.ClientMeta) (goidc.Client
 			continue
 		}
 
-		applyMethod := policyField.MethodByName("apply")
+		applyMethod := policyField.MethodByName("Apply")
 		if !applyMethod.IsValid() {
 			continue
 		}
@@ -264,14 +262,14 @@ func (policy openIDClientMetadataPolicy) apply(c goidc.ClientMeta) (goidc.Client
 
 	// Handle ScopeIDs specially ([]string in policy, space-separated string in client).
 	scopeIDs := strutil.SplitWithSpaces(c.ScopeIDs)
-	scopeIDs, err := policy.ScopeIDs.apply(scopeIDs)
+	scopeIDs, err := policy.ScopeIDs.Apply(scopeIDs)
 	if err != nil {
 		return goidc.ClientMeta{}, err
 	}
 	c.ScopeIDs = strings.Join(scopeIDs, " ")
 
 	for att, ops := range policy.CustomAttributes {
-		attValue, err := ops.apply(c.CustomAttribute(att))
+		attValue, err := ops.Apply(c.CustomAttribute(att))
 		if err != nil {
 			return goidc.ClientMeta{}, err
 		}

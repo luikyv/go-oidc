@@ -26,7 +26,7 @@ type OpenIDConfiguration struct {
 	UserInfoKeyEncAlgs                  []goidc.KeyEncryptionAlgorithm     `json:"userinfo_encryption_alg_values_supported,omitempty"`
 	UserInfoContentEncAlgs              []goidc.ContentEncryptionAlgorithm `json:"userinfo_encryption_enc_values_supported,omitempty"`
 	UserInfoSigAlgs                     []goidc.SignatureAlgorithm         `json:"userinfo_signing_alg_values_supported,omitempty"`
-	TokenAuthnMethods                   []goidc.ClientAuthnType            `json:"token_endpoint_auth_methods_supported,omitempty"`
+	TokenAuthnMethods                   []goidc.AuthnMethod                `json:"token_endpoint_auth_methods_supported,omitempty"`
 	TokenAuthnSigAlgs                   []goidc.SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg_values_supported,omitempty"`
 	JARIsEnabled                        bool                               `json:"request_parameter_supported,omitempty"`
 	JARIsRequired                       bool                               `json:"require_signed_request_object,omitempty"`
@@ -44,10 +44,10 @@ type OpenIDConfiguration struct {
 	AuthDetailTypesSupported            []string                           `json:"authorization_data_types_supported,omitempty"`
 	DPoPSigAlgs                         []goidc.SignatureAlgorithm         `json:"dpop_signing_alg_values_supported,omitempty"`
 	TokenIntrospectionEndpoint          string                             `json:"introspection_endpoint,omitempty"`
-	TokenIntrospectionAuthnMethods      []goidc.ClientAuthnType            `json:"introspection_endpoint_auth_methods_supported,omitempty"`
+	TokenIntrospectionAuthnMethods      []goidc.AuthnMethod                `json:"introspection_endpoint_auth_methods_supported,omitempty"`
 	TokenIntrospectionAuthnSigAlgs      []goidc.SignatureAlgorithm         `json:"introspection_endpoint_auth_signing_alg_values_supported,omitempty"`
 	TokenRevocationEndpoint             string                             `json:"revocation_endpoint,omitempty"`
-	TokenRevocationAuthnMethods         []goidc.ClientAuthnType            `json:"revocation_endpoint_auth_methods_supported,omitempty"`
+	TokenRevocationAuthnMethods         []goidc.AuthnMethod                `json:"revocation_endpoint_auth_methods_supported,omitempty"`
 	TokenRevocationAuthnSigAlgs         []goidc.SignatureAlgorithm         `json:"revocation_endpoint_auth_signing_alg_values_supported,omitempty"`
 
 	CIBATokenDeliveryModes []goidc.CIBATokenDeliveryMode `json:"backchannel_token_delivery_modes_supported,omitempty"`

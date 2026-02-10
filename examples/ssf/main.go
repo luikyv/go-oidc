@@ -32,7 +32,7 @@ func main() {
 		provider.WithScopes(scope),
 		provider.WithClientCredentialsGrant(),
 		provider.WithStaticClient(client),
-		provider.WithSSF(authutil.PrivateJWKSFunc(), func(ctx context.Context) (goidc.SSFReceiver, error) {
+		provider.WithSharedSignals(authutil.PrivateJWKSFunc(), func(ctx context.Context) (goidc.SSFReceiver, error) {
 			clientID := ctx.Value(ctxKeyClientID).(string)
 			if clientID == "" {
 				return goidc.SSFReceiver{}, errors.New("client id is required")

@@ -21,6 +21,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/examples/keys"
 	"github.com/luikyv/go-oidc/examples/ui"
+	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -66,7 +67,7 @@ func ClientPrivateKeyJWT(id string) (*goidc.Client, goidc.JSONWebKeySet) {
 func ClientSecretPost(id, secret string, scopes ...goidc.Scope) *goidc.Client {
 	client, _ := Client(id, scopes...)
 	client.TokenAuthnMethod = goidc.AuthnMethodSecretPost
-	client.Secret = secret
+	client.HashedSecret = hashutil.BCryptHash(secret)
 	return client
 }
 

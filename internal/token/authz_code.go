@@ -186,17 +186,9 @@ func authCodeGrantInfo(ctx oidc.Context, req request, as *goidc.AuthnSession) (g
 	return grantInfo, nil
 }
 
-// TODO: compareSlices is not covering all cases. What if s1 has duplicates?
 func compareSlices(s1, s2 []string) bool {
-	if len(s1) != len(s2) {
-		return false
-	}
-
-	for _, s := range s1 {
-		if !slices.Contains(s2, s) {
-			return false
-		}
-	}
-
-	return true
+	c1, c2 := slices.Clone(s1), slices.Clone(s2)
+	slices.Sort(c1)
+	slices.Sort(c2)
+	return slices.Equal(c1, c2)
 }
