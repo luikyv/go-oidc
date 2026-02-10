@@ -439,7 +439,106 @@ which would result in the metadata below
 
 To customize JARM content encryption algorithms, use `provider.WithJARMContentEncryptionAlgs`.
 
-### OpenID Shared Signals Framework Specification 1.0
+### OpenID Federation
+
+[OpenID Federation](https://openid.net/specs/openid-federation-1_0.html) enables trust relationships to be established dynamically through signed entity statements rather than pre-configured client registrations. The provider can participate in a federation as an OpenID Provider, allowing federated clients to authenticate without prior manual registration.
+
+To enable OpenID Federation:
+```go
+op, _ := provider.New(
+  ...,
+  provider.WithOpenIDFed(
+    // Federation JWKS function (separate from provider's signing keys).
+    func(_ context.Context) (goidc.JSONWebKeySet, error) {
+      return jwks, nil
+    },
+    // Trusted anchor entity IDs.
+    "https://trust-anchor.example.com",
+  ),
+  provider.WithOpenIDFedAuthorityHints("https://intermediate.example.com"),
+  ...,
+)
+```
+
+The provider exposes its entity configuration at `GET /.well-known/openid-federation`:
+```json
+{
+  "iss": "https://goidc.com",
+  "sub": "https://goidc.com",
+  "iat": 1234567890,
+  "exp": 1234568490,
+  "jwks": { "keys": [...] },
+  "authority_hints": ["https://intermediate.example.com"],
+  "metadata": {
+    "openid_provider": {
+      "issuer": "https://goidc.com",
+      "...": "..."
+    }
+  }
+}
+```
+
+#### Client Registration Types
+
+Federated clients can register using automatic or explicit registration:
+```go
+provider.WithOpenIDFedClientRegistrationTypes(
+  goidc.ClientRegistrationTypeAutomatic,  // Trust chain resolved automatically.
+  goidc.ClientRegistrationTypeExplicit,   // Client provides trust chain explicitly.
+)
+```
+
+With automatic registration, when a client makes a request, the provider resolves the trust chain by fetching entity configurations and subordinate statements from the federation. With explicit registration, the client provides the trust chain in the registration request.
+
+#### Trust Marks
+
+Trust marks are credentials that attest to certain properties of an entity. To require specific trust marks from clients:
+```go
+provider.WithOpenIDFedRequiredTrustMarksFunc(
+  func(_ *goidc.Client) []string {
+    return []string{"https://trust-anchor.example.com/marks/certified"}
+  },
+)
+```
+
+To include trust marks in the provider's own entity configuration:
+```go
+provider.WithOpenIDFedTrustMark(
+  "https://trust-anchor.example.com/marks/certified",
+  "https://trust-mark-issuer.example.com",
+)
+```
+
+#### JWKS Representations
+
+The provider can expose its JWKS in different formats as defined by the federation specification:
+```go
+provider.WithOpenIDFedJWKSRepresentations(
+  goidc.OpenIDFedJWKSRepresentationURI,       // Standard jwks_uri.
+  goidc.OpenIDFedJWKSRepresentationSignedURI, // Signed JWKS JWT.
+  goidc.OpenIDFedJWKSRepresentationInline,    // JWKS embedded in entity configuration.
+)
+```
+
+#### Additional Options
+
+```go
+// Set signature algorithms for entity statements.
+provider.WithOpenIDFedSignatureAlgs(goidc.RS256, goidc.PS256)
+
+// Set maximum trust chain depth.
+provider.WithOpenIDFedTrustChainMaxDepth(5)
+
+// Set organization name in metadata.
+provider.WithOpenIDFedOrganizationName("Example Organization")
+
+// Custom HTTP client for federation requests.
+provider.WithOpenIDFedHTTPClientFunc(func(_ context.Context) *http.Client {
+  return customHTTPClient
+})
+```
+
+### OpenID Shared Signals Framework Specification
 
 The [Shared Signals Framework (SSF)](https://openid.net/specs/openid-sharedsignals-framework-1_0.html) allows the provider to act as an SSF transmitter, publishing security events to receivers as signed JWTs called Security Event Tokens (SETs). go-oidc supports [CAEP](https://openid.net/specs/openid-caep-1_0.html) and [RISC](https://openid.net/specs/openid-risc-profile-specification-1_0.html) event types.
 

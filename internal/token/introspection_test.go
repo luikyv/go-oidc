@@ -110,7 +110,7 @@ func setUpIntrospection(t *testing.T) (ctx oidc.Context, client *goidc.Client) {
 	}
 
 	client, secret := oidctest.NewClient(t)
-	client.TokenIntrospectionAuthnMethod = goidc.ClientAuthnSecretPost
+	client.TokenIntrospectionAuthnMethod = goidc.AuthnMethodSecretPost
 	_ = ctx.SaveClient(client)
 
 	ctx.Request.PostForm = map[string][]string{

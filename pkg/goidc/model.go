@@ -99,16 +99,16 @@ func (rm ResponseMode) IsJSON() bool {
 	return rm == ResponseModeJSON || rm == ResponseModeJSONJWT
 }
 
-type ClientAuthnType string
+type AuthnMethod string
 
 const (
-	ClientAuthnNone          ClientAuthnType = "none"
-	ClientAuthnSecretBasic   ClientAuthnType = "client_secret_basic"
-	ClientAuthnSecretPost    ClientAuthnType = "client_secret_post"
-	ClientAuthnSecretJWT     ClientAuthnType = "client_secret_jwt"
-	ClientAuthnPrivateKeyJWT ClientAuthnType = "private_key_jwt"
-	ClientAuthnTLS           ClientAuthnType = "tls_client_auth"
-	ClientAuthnSelfSignedTLS ClientAuthnType = "self_signed_tls_client_auth"
+	AuthnMethodNone          AuthnMethod = "none"
+	AuthnMethodSecretBasic   AuthnMethod = "client_secret_basic"
+	AuthnMethodSecretPost    AuthnMethod = "client_secret_post"
+	AuthnMethodSecretJWT     AuthnMethod = "client_secret_jwt"
+	AuthnMethodPrivateKeyJWT AuthnMethod = "private_key_jwt"
+	AuthnMethodTLS           AuthnMethod = "tls_client_auth"
+	AuthnMethodSelfSignedTLS AuthnMethod = "self_signed_tls_client_auth"
 )
 
 type ClientAssertionType string
@@ -297,7 +297,7 @@ func ApplyMiddlewares(h http.Handler, middlewares ...MiddlewareFunc) http.Handle
 // It can be used to modify the client and perform custom validations.
 type HandleDynamicClientFunc func(r *http.Request, id string, meta *ClientMeta) error
 
-type ValidateInitialAccessTokenFunc func(*http.Request, string) error
+type ValidateInitialAccessTokenFunc func(context.Context, string) error
 
 type ClientIDFunc func(context.Context) string
 
@@ -802,3 +802,5 @@ func (steps logoutSteps) Logout(w http.ResponseWriter, r *http.Request, ls *Logo
 }
 
 type GenerateIDFunc func(context.Context) string
+
+type HandleClientFunc func(context.Context, *Client) error

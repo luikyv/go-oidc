@@ -1,7 +1,10 @@
 package discovery
 
 import (
+	"slices"
+
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func NewOpenIDConfiguration(ctx oidc.Context) OpenIDConfiguration {
@@ -103,7 +106,7 @@ func NewOpenIDConfiguration(ctx oidc.Context) OpenIDConfiguration {
 			config.MTLSConfig.TokenRevocationEndpoint = ctx.MTLSBaseURL() + ctx.TokenRevocationEndpoint
 		}
 
-		if ctx.CIBAIsEnabled {
+		if slices.Contains(ctx.GrantTypes, goidc.GrantCIBA) {
 			config.MTLSConfig.CIBAEndpoint = ctx.MTLSBaseURL() + ctx.CIBAEndpoint
 		}
 	}
@@ -122,7 +125,7 @@ func NewOpenIDConfiguration(ctx oidc.Context) OpenIDConfiguration {
 		config.CodeChallengeMethods = ctx.PKCEChallengeMethods
 	}
 
-	if ctx.CIBAIsEnabled {
+	if slices.Contains(ctx.GrantTypes, goidc.GrantCIBA) {
 		config.CIBAEndpoint = ctx.BaseURL() + ctx.CIBAEndpoint
 		config.CIBATokenDeliveryModes = ctx.CIBATokenDeliveryModels
 		config.CIBAUserCodeIsEnabled = ctx.CIBAUserCodeIsEnabled

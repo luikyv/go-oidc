@@ -44,7 +44,7 @@ type Provider struct {
 // needed, which can be retrieved using "jwksFunc".
 //
 // Default Settings:
-//   - All clients and sessions are stored in memory.
+//   - All entities (clients, sessions, etc.) are stored in memory.
 //   - ID tokens are signed using RS256. Ensure a JWK supporting RS256 is
 //     available in the server's JWKS.
 //     This algorithm can be overridden with [WithIDTokenSignatureAlgs].
@@ -283,9 +283,9 @@ func (op *Provider) PublishSSFVerificationEvent(ctx context.Context, streamID st
 }
 
 func (op *Provider) setDefaults() error {
-	op.config.IDTokenDefaultSigAlg = nonZeroOrDefault(op.config.IDTokenDefaultSigAlg, defaultIDTokenSigAlg)
+	op.config.IDTokenDefaultSigAlg = nonZeroOrDefault(op.config.IDTokenDefaultSigAlg, defaultAsymmetricSigAlg)
 
-	op.config.IDTokenSigAlgs = nonZeroOrDefault(op.config.IDTokenSigAlgs, []goidc.SignatureAlgorithm{defaultIDTokenSigAlg})
+	op.config.IDTokenSigAlgs = nonZeroOrDefault(op.config.IDTokenSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})
 
 	op.config.Scopes = nonZeroOrDefault(op.config.Scopes, []goidc.Scope{goidc.ScopeOpenID})
 
@@ -338,11 +338,11 @@ func (op *Provider) setDefaults() error {
 	authnMethods := op.config.TokenAuthnMethods
 	authnMethods = append(authnMethods, op.config.TokenIntrospectionAuthnMethods...)
 	authnMethods = append(authnMethods, op.config.TokenRevocationAuthnMethods...)
-	if slices.Contains(authnMethods, goidc.ClientAuthnPrivateKeyJWT) {
-		op.config.PrivateKeyJWTSigAlgs = nonZeroOrDefault(op.config.PrivateKeyJWTSigAlgs, []goidc.SignatureAlgorithm{defaultPrivateKeyJWTSigAlg})
+	if slices.Contains(authnMethods, goidc.AuthnMethodPrivateKeyJWT) {
+		op.config.PrivateKeyJWTSigAlgs = nonZeroOrDefault(op.config.PrivateKeyJWTSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})
 	}
-	if slices.Contains(authnMethods, goidc.ClientAuthnSecretJWT) {
-		op.config.ClientSecretJWTSigAlgs = nonZeroOrDefault(op.config.ClientSecretJWTSigAlgs, []goidc.SignatureAlgorithm{defaultSecretJWTSigAlg})
+	if slices.Contains(authnMethods, goidc.AuthnMethodSecretJWT) {
+		op.config.ClientSecretJWTSigAlgs = nonZeroOrDefault(op.config.ClientSecretJWTSigAlgs, []goidc.SignatureAlgorithm{defaultSymmetricSigAlg})
 	}
 
 	if op.config.DCRIsEnabled {
@@ -351,6 +351,7 @@ func (op *Provider) setDefaults() error {
 
 	if op.config.PARIsEnabled {
 		op.config.PAREndpoint = nonZeroOrDefault(op.config.PAREndpoint, defaultEndpointPushedAuthorizationRequest)
+		op.config.PARLifetimeSecs = nonZeroOrDefault(op.config.PARLifetimeSecs, defaultPARLifetimeSecs)
 	}
 
 	if op.config.JAREncIsEnabled {
@@ -387,23 +388,30 @@ func (op *Provider) setDefaults() error {
 		op.config.UserInfoContentEncAlgs = nonZeroOrDefault(op.config.UserInfoContentEncAlgs, []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
 	}
 
-	if op.config.CIBAIsEnabled {
+	if slices.Contains(op.config.GrantTypes, goidc.GrantCIBA) {
+		op.config.CIBATokenDeliveryModels = nonZeroOrDefault(op.config.CIBATokenDeliveryModels, []goidc.CIBATokenDeliveryMode{goidc.CIBATokenDeliveryModePoll})
 		op.config.CIBAEndpoint = nonZeroOrDefault(op.config.CIBAEndpoint, defaultEndpointCIBA)
+		op.config.CIBADefaultSessionLifetimeSecs = nonZeroOrDefault(op.config.CIBADefaultSessionLifetimeSecs, defaultCIBADefaultSessionLifetimeSecs)
+		op.config.CIBAPollingIntervalSecs = nonZeroOrDefault(op.config.CIBAPollingIntervalSecs, defaultCIBAPollingIntervalSecs)
+	}
+
+	if slices.Contains(op.config.GrantTypes, goidc.GrantRefreshToken) {
+		op.config.RefreshTokenLifetimeSecs = nonZeroOrDefault(op.config.RefreshTokenLifetimeSecs, defaultRefreshTokenLifetimeSecs)
 	}
 
 	if op.config.OpenIDFedIsEnabled {
 		op.config.OpenIDFedClientFunc = federation.Client
 		op.config.OpenIDFedEntityJWKSFunc = federation.FetchEntityConfigurationJWKS
 		op.config.OpenIDFedEndpoint = nonZeroOrDefault(op.config.OpenIDFedEndpoint, defaultEndpointOpenIDFederation)
-		op.config.OpenIDFedEntityStatementSigAlgs = nonZeroOrDefault(op.config.OpenIDFedEntityStatementSigAlgs, []goidc.SignatureAlgorithm{defaultOpenIDFedSigAlg})
-		op.config.OpenIDFedTrustMarkSigAlgs = nonZeroOrDefault(op.config.OpenIDFedTrustMarkSigAlgs, op.config.OpenIDFedEntityStatementSigAlgs)
+		op.config.OpenIDFedDefaultSigAlg = nonZeroOrDefault(op.config.OpenIDFedDefaultSigAlg, defaultAsymmetricSigAlg)
+		op.config.OpenIDFedSigAlgs = nonZeroOrDefault(op.config.OpenIDFedSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})
 		op.config.OpenIDFedTrustChainMaxDepth = nonZeroOrDefault(op.config.OpenIDFedTrustChainMaxDepth, defaultOpenIDFedTrustChainMaxDepth)
 		op.config.OpenIDFedClientRegTypes = nonZeroOrDefault(op.config.OpenIDFedClientRegTypes, []goidc.ClientRegistrationType{defaultOpenIDFedRegType})
-		op.config.OpenIDFedJWKSRepresentations = nonZeroOrDefault(op.config.OpenIDFedJWKSRepresentations, []goidc.OpenIDFedJWKSRepresentation{goidc.OpenIDFedJWKSRepresentationURI})
+		op.config.OpenIDFedJWKSRepresentations = nonZeroOrDefault(op.config.OpenIDFedJWKSRepresentations, []goidc.JWKSRepresentation{goidc.JWKSRepresentationURI})
 		if slices.Contains(op.config.OpenIDFedClientRegTypes, goidc.ClientRegistrationTypeExplicit) {
 			op.config.OpenIDFedRegistrationEndpoint = nonZeroOrDefault(op.config.OpenIDFedRegistrationEndpoint, defaultEndpointOpenIDFederationRegistration)
 		}
-		if slices.Contains(op.config.OpenIDFedJWKSRepresentations, goidc.OpenIDFedJWKSRepresentationSignedURI) {
+		if slices.Contains(op.config.OpenIDFedJWKSRepresentations, goidc.JWKSRepresentationSignedURI) {
 			op.config.OpenIDFedSignedJWKSEndpoint = nonZeroOrDefault(op.config.OpenIDFedSignedJWKSEndpoint, defaultEndpointOpenIDFederationSignedJWKS)
 		}
 	}
@@ -419,7 +427,6 @@ func (op *Provider) setDefaults() error {
 		op.config.SSFJWKSEndpoint = nonZeroOrDefault(op.config.SSFJWKSEndpoint, defaultEndpointSSFJWKS)
 		op.config.SSFConfigurationEndpoint = nonZeroOrDefault(op.config.SSFConfigurationEndpoint, defaultEndpointSSFConfiguration)
 		op.config.SSFEventStreamManager = nonZeroOrDefault(op.config.SSFEventStreamManager, goidc.SSFEventStreamManager(ssfManager))
-		op.config.SSFSignatureAlgorithm = nonZeroOrDefault(op.config.SSFSignatureAlgorithm, defaultSSFSigAlg)
 		if op.config.SSFIsStatusManagementEnabled {
 			op.config.SSFIsStatusManagementEnabled = true
 			op.config.SSFStatusEndpoint = nonZeroOrDefault(op.config.SSFStatusEndpoint, defaultEndpointSSFStatus)

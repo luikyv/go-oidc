@@ -54,7 +54,7 @@ type Configuration struct {
 	AuthorizationCodeFunc goidc.GenerateIDFunc
 	CallbackIDFunc        goidc.GenerateIDFunc
 
-	TokenAuthnMethods []goidc.ClientAuthnType
+	TokenAuthnMethods []goidc.AuthnMethod
 	TokenEndpoint     string
 	TokenOptionsFunc  goidc.TokenOptionsFunc
 	// TokenBindingIsRequired indicates that at least one mechanism of sender
@@ -103,12 +103,12 @@ type Configuration struct {
 
 	TokenIntrospectionIsEnabled           bool
 	IntrospectionEndpoint                 string
-	TokenIntrospectionAuthnMethods        []goidc.ClientAuthnType
+	TokenIntrospectionAuthnMethods        []goidc.AuthnMethod
 	IsClientAllowedTokenIntrospectionFunc goidc.IsClientAllowedTokenInstrospectionFunc
 
 	TokenRevocationIsEnabled           bool
 	TokenRevocationEndpoint            string
-	TokenRevocationAuthnMethods        []goidc.ClientAuthnType
+	TokenRevocationAuthnMethods        []goidc.AuthnMethod
 	IsClientAllowedTokenRevocationFunc goidc.IsClientAllowedFunc
 
 	ShouldIssueRefreshTokenFunc   goidc.ShouldIssueRefreshTokenFunc
@@ -150,7 +150,6 @@ type Configuration struct {
 	PARAllowUnregisteredRedirectURI bool
 	PARIDFunc                       goidc.GenerateIDFunc
 
-	CIBAIsEnabled                  bool
 	CIBAEndpoint                   string
 	CIBATokenDeliveryModels        []goidc.CIBATokenDeliveryMode
 	InitBackAuthFunc               goidc.InitBackAuthFunc
@@ -204,18 +203,19 @@ type Configuration struct {
 	OpenIDFedSignerFunc             goidc.SignerFunc
 	OpenIDFedAuthorityHints         []string
 	OpenIDFedTrustedAnchors         []string
-	OpenIDFedEntityStatementSigAlgs []goidc.SignatureAlgorithm
+	OpenIDFedDefaultSigAlg          goidc.SignatureAlgorithm
+	OpenIDFedSigAlgs                []goidc.SignatureAlgorithm
 	OpenIDFedTrustChainMaxDepth     int
 	OpenIDFedClientRegTypes         []goidc.ClientRegistrationType
 	OpenIDFedRequiredTrustMarksFunc goidc.RequiredTrustMarksFunc
 	// OpenIDFedTrustMarks is a map of trust mark type to the trust mark issuer.
-	OpenIDFedTrustMarks             map[string]string
-	OpenIDFedTrustMarkSigAlgs       []goidc.SignatureAlgorithm
-	OpenIDFedJWKSRepresentations    []goidc.OpenIDFedJWKSRepresentation
+	OpenIDFedTrustMarks             map[goidc.TrustMark]string
+	OpenIDFedJWKSRepresentations    []goidc.JWKSRepresentation
 	OpenIDFedSignedJWKSEndpoint     string
 	OpenIDFedSignedJWKSLifetimeSecs int
 	OpenIDFedOrganizationName       string
 	OpenIDFedHTTPClientFunc         goidc.HTTPClientFunc
+	OpenIDFedHandleClientFunc       goidc.HandleClientFunc
 	OpenIDFedClientFunc             func(ctx Context, id string) (*goidc.Client, error)
 	OpenIDFedEntityJWKSFunc         func(ctx Context, id string) (goidc.JSONWebKeySet, error)
 
@@ -249,11 +249,10 @@ type Configuration struct {
 	SSFAuthorizationSchemes                []goidc.SSFAuthorizationScheme
 	SSFDefaultSubjects                     goidc.SSFDefaultSubject
 	SSFJWKSFunc                            goidc.JWKSFunc
+	SSFDefaultSigAlg                       goidc.SignatureAlgorithm
 	SSFSignerFunc                          goidc.SignerFunc
-	SSFSignatureAlgorithm                  goidc.SignatureAlgorithm
 	SSFAuthenticatedReceiverFunc           goidc.SSFAuthenticatedReceiverFunc
 	SSFEventStreamIDFunc                   goidc.GenerateIDFunc
-	SSFJWTIDFunc                           goidc.GenerateIDFunc
 	SSFHTTPClientFunc                      goidc.HTTPClientFunc
 	SSFInactivityTimeoutSecs               int
 	SSFHandleExpiredEventStreamFunc        goidc.SSFHandleExpiredEventStreamFunc

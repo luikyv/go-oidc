@@ -32,7 +32,7 @@ func PublishEvent(ctx oidc.Context, streamID string, event goidc.SSFEvent) error
 
 	// Ensure the event has a JWTID.
 	if event.JWTID == "" {
-		event.JWTID = ctx.SSFJWTID()
+		event.JWTID = ctx.JWTID()
 	}
 
 	if event.Claims == nil {

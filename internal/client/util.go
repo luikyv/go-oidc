@@ -13,8 +13,8 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func AuthnMethods(ctx oidc.Context, meta *goidc.ClientMeta) []goidc.ClientAuthnType {
-	authnMethods := []goidc.ClientAuthnType{meta.TokenAuthnMethod}
+func AuthnMethods(ctx oidc.Context, meta *goidc.ClientMeta) []goidc.AuthnMethod {
+	authnMethods := []goidc.AuthnMethod{meta.TokenAuthnMethod}
 	if ctx.TokenIntrospectionIsEnabled {
 		authnMethods = append(authnMethods, meta.TokenIntrospectionAuthnMethod)
 	}
@@ -85,16 +85,14 @@ func JWKByAlg(ctx oidc.Context, c *goidc.Client, alg string) (goidc.JSONWebKey, 
 }
 
 // JWKS fetches the client public JWKS using the following priority:
-//  1. Directly from the jwks attribute if present.
-//  2. From signed_jwks_uri for federated clients (verified using the client's
-//     entity configuration keys).
-//  3. From jwks_uri as a fallback.
+//  1. From signed_jwks_uri for federated clients (verified using the client's entity configuration keys).
+//  2. From jwks_uri as a fallback.
+//  3. Directly from the jwks attribute if present.
 //
 // It also caches the keys if they are fetched.
-// TODO: Make sure the order is signed_jwks_uri, jwks_uri, jwks. Caching problem.
 func JWKS(ctx oidc.Context, c *goidc.Client) (*goidc.JSONWebKeySet, error) {
-	if c.JWKS != nil {
-		return c.JWKS, nil
+	if jwks := c.CachedJWKS(); jwks != nil {
+		return jwks, nil
 	}
 
 	if c.IsFederated && c.SignedJWKSURI != "" {
@@ -102,23 +100,23 @@ func JWKS(ctx oidc.Context, c *goidc.Client) (*goidc.JSONWebKeySet, error) {
 		if err != nil {
 			return nil, err
 		}
-		// Cache the client JWKS.
-		c.JWKS = jwks
+		c.CacheJWKS(jwks)
 		return jwks, nil
 	}
 
-	if c.JWKSURI == "" {
+	if c.JWKSURI != "" {
+		jwks, err := fetchJWKS(ctx, c)
+		if err != nil {
+			return nil, err
+		}
+		c.CacheJWKS(jwks)
+		return jwks, nil
+	}
+
+	if c.JWKS == nil {
 		return nil, errors.New("the client jwks was informed neither by value nor by reference")
 	}
-
-	jwks, err := fetchJWKS(ctx, c)
-	if err != nil {
-		return nil, err
-	}
-
-	// Cache the client JWKS.
-	c.JWKS = jwks
-	return jwks, err
+	return c.JWKS, nil
 }
 
 func fetchJWKS(ctx oidc.Context, c *goidc.Client) (*goidc.JSONWebKeySet, error) {
@@ -164,7 +162,7 @@ func fetchSignedJWKS(ctx oidc.Context, c *goidc.Client) (*goidc.JSONWebKeySet, e
 	}
 
 	// Parse and verify the signed JWKS using the entity configuration's keys.
-	parsedJWT, err := jwt.ParseSigned(string(signedJWKS), ctx.OpenIDFedEntityStatementSigAlgs)
+	parsedJWT, err := jwt.ParseSigned(string(signedJWKS), ctx.OpenIDFedSigAlgs)
 	if err != nil {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "could not parse the client signed jwks", err)
 	}

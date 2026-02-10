@@ -254,7 +254,6 @@ func setUpCIBAGrant(t testing.TB) (
 	t.Helper()
 
 	ctx = oidctest.NewContext(t)
-	ctx.CIBAIsEnabled = true
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
 		goidc.CIBATokenDeliveryModePoll, goidc.CIBATokenDeliveryModePing,

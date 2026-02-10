@@ -3,6 +3,7 @@ package token
 import (
 	"fmt"
 	"maps"
+	"slices"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/client"
@@ -38,7 +39,7 @@ func Make(ctx oidc.Context, grantInfo goidc.GrantInfo, client *goidc.Client) (To
 }
 
 func makeIDToken(ctx oidc.Context, client *goidc.Client, opts IDTokenOptions) (string, error) {
-	if ctx.IDTokenSigAlgsContainsNone() && client.IDTokenSigAlg == goidc.None {
+	if slices.Contains(ctx.IDTokenSigAlgs, goidc.None) && client.IDTokenSigAlg == goidc.None {
 		return makeUnsignedIDToken(ctx, client, opts), nil
 	}
 

@@ -38,6 +38,9 @@ const (
 	ErrorCodeUnknownUserID          ErrorCode = "unknown_user_id"
 	ErrorCodeTransactionFailed      ErrorCode = "transaction_failed"
 	ErrorCodeExpiredLoginHintToken  ErrorCode = "expired_login_hint_token"
+	ErrorCodeInvalidTrustAnchor     ErrorCode = "invalid_trust_anchor"
+	ErrorCodeInvalidTrustChain      ErrorCode = "invalid_trust_chain"
+	ErrorCodeInvalidMetadata        ErrorCode = "invalid_metadata"
 )
 
 func (c ErrorCode) StatusCode() int {

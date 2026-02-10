@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/storage"
@@ -523,7 +524,7 @@ func TestWithDCR(t *testing.T) {
 	var handleDCRFunc goidc.HandleDynamicClientFunc = func(*http.Request, string, *goidc.ClientMeta) error {
 		return nil
 	}
-	var validateInitialTokenFunc goidc.ValidateInitialAccessTokenFunc = func(*http.Request, string) error {
+	var validateInitialTokenFunc goidc.ValidateInitialAccessTokenFunc = func(context.Context, string) error {
 		return nil
 	}
 
@@ -626,16 +627,9 @@ func TestWithRefreshTokenGrant(t *testing.T) {
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
-	var shouldIssueRefreshTokenFunc goidc.ShouldIssueRefreshTokenFunc = func(
-		ctx context.Context,
-		c *goidc.Client,
-		gi goidc.GrantInfo,
-	) bool {
-		return false
-	}
 
 	// When.
-	err := WithRefreshTokenGrant(shouldIssueRefreshTokenFunc, 300)(p)
+	err := WithRefreshTokenGrant()(p)
 
 	// Then.
 	if err != nil {
@@ -644,10 +638,6 @@ func TestWithRefreshTokenGrant(t *testing.T) {
 
 	if !slices.Contains(p.config.GrantTypes, goidc.GrantRefreshToken) {
 		t.Error("refresh token grant is missing")
-	}
-
-	if p.config.ShouldIssueRefreshTokenFunc == nil {
-		t.Error("ValidateInitialAccessTokenFunc cannot be nil")
 	}
 }
 
@@ -797,7 +787,7 @@ func TestWithPAR(t *testing.T) {
 	}
 
 	// When.
-	err := WithPAR(nil, 60)(p)
+	err := WithPAR()(p)
 
 	// Then.
 	if err != nil {
@@ -806,8 +796,7 @@ func TestWithPAR(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			PARIsEnabled:    true,
-			PARLifetimeSecs: 60,
+			PARIsEnabled: true,
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -822,7 +811,7 @@ func TestWithPARRequired(t *testing.T) {
 	}
 
 	// When.
-	err := WithPARRequired(nil, 60)(p)
+	err := WithPARRequired()(p)
 
 	// Then.
 	if err != nil {
@@ -831,9 +820,8 @@ func TestWithPARRequired(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			PARIsEnabled:    true,
-			PARIsRequired:   true,
-			PARLifetimeSecs: 60,
+			PARIsEnabled:  true,
+			PARIsRequired: true,
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1515,7 +1503,7 @@ func TestWithIntrospection(t *testing.T) {
 	// When.
 	err := WithTokenIntrospection(
 		nil,
-		goidc.ClientAuthnSecretPost,
+		goidc.AuthnMethodSecretPost,
 	)(p)
 
 	// Then.
@@ -1526,7 +1514,7 @@ func TestWithIntrospection(t *testing.T) {
 	want := &Provider{
 		config: oidc.Configuration{
 			TokenIntrospectionIsEnabled:    true,
-			TokenIntrospectionAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnSecretPost},
+			TokenIntrospectionAuthnMethods: []goidc.AuthnMethod{goidc.AuthnMethodSecretPost},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1541,7 +1529,7 @@ func TestWithTokenRevocation(t *testing.T) {
 	}
 
 	// When.
-	err := WithTokenRevocation(nil, goidc.ClientAuthnNone)(p)
+	err := WithTokenRevocation(nil, goidc.AuthnMethodNone)(p)
 
 	// Then.
 	if err != nil {
@@ -1551,7 +1539,7 @@ func TestWithTokenRevocation(t *testing.T) {
 	want := &Provider{
 		config: oidc.Configuration{
 			TokenRevocationIsEnabled:    true,
-			TokenRevocationAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnNone},
+			TokenRevocationAuthnMethods: []goidc.AuthnMethod{goidc.AuthnMethodNone},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1730,7 +1718,7 @@ func TestWithStaticClient(t *testing.T) {
 			StaticClients: []*goidc.Client{c},
 		},
 	}
-	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
+	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{}), cmpopts.IgnoreUnexported(goidc.Client{})); diff != "" {
 		t.Error(diff)
 	}
 }
@@ -2553,7 +2541,7 @@ func TestWithSSF(t *testing.T) {
 	}
 
 	// When.
-	err := WithSSF(jwksFunc, receiverFunc)(p)
+	err := WithSharedSignals(jwksFunc, receiverFunc)(p)
 
 	// Then.
 	if err != nil {
@@ -2590,30 +2578,6 @@ func TestWithSSFEventTypes(t *testing.T) {
 	want := &Provider{
 		config: oidc.Configuration{
 			SSFEventsSupported: []goidc.SSFEventType{goidc.SSFEventTypeCAEPSessionRevoked},
-		},
-	}
-	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
-		t.Error(diff)
-	}
-}
-
-func TestWithSSFSignatureAlgorithm(t *testing.T) {
-	// Given.
-	p := &Provider{
-		config: oidc.Configuration{},
-	}
-
-	// When.
-	err := WithSSFSignatureAlgorithm(goidc.RS256)(p)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	want := &Provider{
-		config: oidc.Configuration{
-			SSFSignatureAlgorithm: goidc.RS256,
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -2965,7 +2929,7 @@ func TestWithTokenAuthnMethods(t *testing.T) {
 	}
 
 	// When.
-	err := WithTokenAuthnMethods(goidc.ClientAuthnPrivateKeyJWT, goidc.ClientAuthnSecretPost)(p)
+	err := WithTokenAuthnMethods(goidc.AuthnMethodPrivateKeyJWT, goidc.AuthnMethodSecretPost)(p)
 
 	// Then.
 	if err != nil {
@@ -2974,7 +2938,7 @@ func TestWithTokenAuthnMethods(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			TokenAuthnMethods: []goidc.ClientAuthnType{goidc.ClientAuthnPrivateKeyJWT, goidc.ClientAuthnSecretPost},
+			TokenAuthnMethods: []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT, goidc.AuthnMethodSecretPost},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -3014,15 +2978,11 @@ func TestWithCIBAGrant(t *testing.T) {
 	}
 
 	// When.
-	err := WithCIBAGrant(initFunc, validateFunc, goidc.CIBATokenDeliveryModePoll)(p)
+	err := WithCIBAGrant(initFunc, validateFunc)(p)
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if !p.config.CIBAIsEnabled {
-		t.Error("CIBAIsEnabled should be true")
 	}
 
 	if !slices.Contains(p.config.GrantTypes, goidc.GrantCIBA) {
@@ -3036,10 +2996,6 @@ func TestWithCIBAGrant(t *testing.T) {
 	if p.config.ValidateBackAuthFunc == nil {
 		t.Error("ValidateBackAuthFunc cannot be nil")
 	}
-
-	if !slices.Contains(p.config.CIBATokenDeliveryModels, goidc.CIBATokenDeliveryModePoll) {
-		t.Error("CIBATokenDeliveryModePoll should be present")
-	}
 }
 
 func TestWithOpenIDFed(t *testing.T) {
@@ -3052,7 +3008,7 @@ func TestWithOpenIDFed(t *testing.T) {
 	}
 
 	// When.
-	err := WithOpenIDFed(jwksFunc, "https://trust.anchor")(p)
+	err := WithOpenIDFederation(jwksFunc, "https://trust.anchor")(p)
 
 	// Then.
 	if err != nil {
@@ -3069,10 +3025,6 @@ func TestWithOpenIDFed(t *testing.T) {
 
 	if len(p.config.OpenIDFedTrustedAnchors) != 1 || p.config.OpenIDFedTrustedAnchors[0] != "https://trust.anchor" {
 		t.Error("OpenIDFedTrustedAuthorities not set correctly")
-	}
-
-	if len(p.config.OpenIDFedAuthorityHints) != 1 || p.config.OpenIDFedAuthorityHints[0] != "https://authority.hint" {
-		t.Error("OpenIDFedAuthorityHints not set correctly")
 	}
 }
 
@@ -3092,7 +3044,8 @@ func TestWithOpenIDFedSignatureAlgs(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			OpenIDFedEntityStatementSigAlgs: []goidc.SignatureAlgorithm{goidc.RS256, goidc.ES256},
+			OpenIDFedDefaultSigAlg: goidc.RS256,
+			OpenIDFedSigAlgs:       []goidc.SignatureAlgorithm{goidc.RS256, goidc.ES256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -3127,8 +3080,8 @@ func TestWithOpenIDFedRequiredTrustMarksFunc(t *testing.T) {
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
-	trustMarksFunc := func(ctx context.Context, client *goidc.Client) []string {
-		return []string{"https://trust.mark"}
+	trustMarksFunc := func(ctx context.Context, client *goidc.Client) []goidc.TrustMark {
+		return []goidc.TrustMark{"https://trust.mark"}
 	}
 
 	// When.

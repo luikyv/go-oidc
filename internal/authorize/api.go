@@ -2,6 +2,7 @@ package authorize
 
 import (
 	"net/http"
+	"slices"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -9,44 +10,28 @@ import (
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlewares ...goidc.MiddlewareFunc) {
 	if config.PARIsEnabled {
-		router.Handle(
-			"POST "+config.EndpointPrefix+config.PAREndpoint,
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerPush), middlewares...),
-		)
+		router.Handle("POST "+config.EndpointPrefix+config.PAREndpoint,
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerPush), middlewares...))
 	}
 
-	if config.CIBAIsEnabled {
-		router.Handle(
-			"POST "+config.EndpointPrefix+config.CIBAEndpoint,
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerCIBA), middlewares...),
-		)
+	if slices.Contains(config.GrantTypes, goidc.GrantCIBA) {
+		router.Handle("POST "+config.EndpointPrefix+config.CIBAEndpoint,
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerCIBA), middlewares...))
 	}
 
-	router.Handle(
-		"GET "+config.EndpointPrefix+config.AuthorizationEndpoint,
-		goidc.ApplyMiddlewares(oidc.Handler(config, handler), middlewares...),
-	)
-	router.Handle(
-		"POST "+config.EndpointPrefix+config.AuthorizationEndpoint,
-		goidc.ApplyMiddlewares(oidc.Handler(config, handler), middlewares...),
-	)
+	router.Handle("GET "+config.EndpointPrefix+config.AuthorizationEndpoint,
+		goidc.ApplyMiddlewares(oidc.Handler(config, handler), middlewares...))
+	router.Handle("POST "+config.EndpointPrefix+config.AuthorizationEndpoint,
+		goidc.ApplyMiddlewares(oidc.Handler(config, handler), middlewares...))
 
-	router.Handle(
-		"POST "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}",
-		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...),
-	)
-	router.Handle(
-		"GET "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}",
-		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...),
-	)
-	router.Handle(
-		"POST "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}/{callback_path...}",
-		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...),
-	)
-	router.Handle(
-		"GET "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}/{callback_path...}",
-		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...),
-	)
+	router.Handle("POST "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}",
+		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
+	router.Handle("GET "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}",
+		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
+	router.Handle("POST "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}/{callback_path...}",
+		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
+	router.Handle("GET "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}/{callback_path...}",
+		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
 }
 
 func handlerPush(ctx oidc.Context) {

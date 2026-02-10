@@ -137,8 +137,8 @@ func setSecret(ctx oidc.Context, c *goidc.Client) string {
 
 	// Check for client authentication methods that require a secret that must
 	// be store as a hash.
-	if slices.ContainsFunc(authnMethods, func(method goidc.ClientAuthnType) bool {
-		return method == goidc.ClientAuthnSecretBasic || method == goidc.ClientAuthnSecretPost
+	if slices.ContainsFunc(authnMethods, func(method goidc.AuthnMethod) bool {
+		return method == goidc.AuthnMethodSecretBasic || method == goidc.AuthnMethodSecretPost
 	}) {
 		secretExpiresAt := 0
 		c.SecretExpiresAt = &secretExpiresAt
@@ -146,7 +146,7 @@ func setSecret(ctx oidc.Context, c *goidc.Client) string {
 	}
 
 	// Check for client authentication using secret JWT.
-	if slices.Contains(authnMethods, goidc.ClientAuthnSecretJWT) {
+	if slices.Contains(authnMethods, goidc.AuthnMethodSecretJWT) {
 		// Use existing secret or generate a new one if not already set.
 		if secret == "" {
 			secret = clientSecret()

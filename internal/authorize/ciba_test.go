@@ -316,7 +316,7 @@ func setUpBackAuth(t *testing.T) (oidc.Context, *goidc.Client) {
 	t.Helper()
 
 	ctx := oidctest.NewContext(t)
-	ctx.CIBAIsEnabled = true
+	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
 		goidc.CIBATokenDeliveryModePoll, goidc.CIBATokenDeliveryModePing,
 		goidc.CIBATokenDeliveryModePush,

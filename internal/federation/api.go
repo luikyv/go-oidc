@@ -23,7 +23,7 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleExplicitRegistration), middlewares...))
 	}
 
-	if slices.Contains(config.OpenIDFedJWKSRepresentations, goidc.OpenIDFedJWKSRepresentationSignedURI) {
+	if slices.Contains(config.OpenIDFedJWKSRepresentations, goidc.JWKSRepresentationSignedURI) {
 		router.Handle("GET "+config.EndpointPrefix+config.OpenIDFedSignedJWKSEndpoint,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleSignedJWKS), middlewares...))
 	}

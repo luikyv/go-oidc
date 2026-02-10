@@ -7,7 +7,6 @@ const (
 	// response mode "form_post".
 	// The parameters that are usually sent to the client via redirect will be
 	// sent by posting a form to the client's redirect URI.
-	// TODO: Check if there's something missing.
 	formPostResponseTemplate string = `
 	<html>
 	<body onload="javascript:document.forms[0].submit()">

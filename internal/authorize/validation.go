@@ -16,8 +16,9 @@ import (
 
 // validateRequest validates the parameters sent in an authorization request.
 func validateRequest(ctx oidc.Context, req request, c *goidc.Client) error {
-	if c.IsFederated && c.FederationRegistrationType == goidc.ClientRegistrationTypeAutomatic {
-		return goidc.NewError(goidc.ErrorCodeAccessDenied, "asymmetric cryptography must be used to authenticate requests when using automatic registration")
+	if c.FederationRegistrationType == goidc.ClientRegistrationTypeAutomatic {
+		return goidc.NewError(goidc.ErrorCodeAccessDenied,
+			"asymmetric cryptography must be used to authenticate requests when using automatic registration")
 	}
 	return validateParams(ctx, req.AuthorizationParameters, c)
 }
@@ -101,11 +102,10 @@ func validatePushedRequestWithJAR(ctx oidc.Context, req request, jar request, c 
 }
 
 func validateSimplePushedRequest(ctx oidc.Context, req request, c *goidc.Client) error {
-	if c.IsFederated && c.FederationRegistrationType == goidc.ClientRegistrationTypeAutomatic {
-		if c.TokenAuthnMethod != goidc.ClientAuthnPrivateKeyJWT && c.TokenAuthnMethod != goidc.ClientAuthnSelfSignedTLS {
-			return goidc.NewError(goidc.ErrorCodeAccessDenied,
-				"asymmetric cryptography must be used to authenticate requests when using automatic registration")
-		}
+	if c.FederationRegistrationType == goidc.ClientRegistrationTypeAutomatic &&
+		c.TokenAuthnMethod != goidc.AuthnMethodPrivateKeyJWT && c.TokenAuthnMethod != goidc.AuthnMethodSelfSignedTLS {
+		return goidc.NewError(goidc.ErrorCodeAccessDenied,
+			"asymmetric cryptography must be used to authenticate requests when using automatic registration")
 	}
 	return validatePushedRequest(ctx, req, c)
 }

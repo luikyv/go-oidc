@@ -153,10 +153,7 @@ func WithCIBAEndpoint(endpoint string) Option {
 // well known endpoint response.
 // The default value for "claim_types_supported" is set to "normal".
 // To define other claim types, see [WithClaimTypes].
-func WithClaims(
-	claim string,
-	claims ...string,
-) Option {
+func WithClaims(claim string, claims ...string) Option {
 	claims = appendIfNotIn(claims, claim)
 	return func(p *Provider) error {
 		p.config.Claims = claims
@@ -168,10 +165,7 @@ func WithClaims(
 // WithClaimTypes defines the types supported for the user claims.
 // The values provided are published at "claim_types_supported".
 // To add support for claims, see [WithClaims].
-func WithClaimTypes(
-	claimType goidc.ClaimType,
-	claimTypes ...goidc.ClaimType,
-) Option {
+func WithClaimTypes(claimType goidc.ClaimType, claimTypes ...goidc.ClaimType) Option {
 	claimTypes = appendIfNotIn(claimTypes, claimType)
 	return func(p *Provider) error {
 		p.config.ClaimTypes = claimTypes
@@ -276,10 +270,7 @@ func WithIDTokenContentEncryptionAlgs(
 // default values (e.g. set the default scopes).
 // validateTokenFunc validates the initial access token if not nil.
 // To make registration access tokens rotate, see [WithDCRTokenRotation].
-func WithDCR(
-	handleFunc goidc.HandleDynamicClientFunc,
-	validateTokenFunc goidc.ValidateInitialAccessTokenFunc,
-) Option {
+func WithDCR(handleFunc goidc.HandleDynamicClientFunc, validateTokenFunc goidc.ValidateInitialAccessTokenFunc) Option {
 	return func(p *Provider) error {
 		p.config.DCRIsEnabled = true
 		p.config.HandleDynamicClientFunc = handleFunc
@@ -314,10 +305,22 @@ func WithClientCredentialsGrant() Option {
 }
 
 // WithRefreshTokenGrant makes available the refresh token grant.
-func WithRefreshTokenGrant(f goidc.ShouldIssueRefreshTokenFunc, lifetimeSecs int) Option {
+func WithRefreshTokenGrant() Option {
 	return func(p *Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantRefreshToken)
+		return nil
+	}
+}
+
+func WithRefreshTokenShouldIssueFunc(f goidc.ShouldIssueRefreshTokenFunc) Option {
+	return func(p *Provider) error {
 		p.config.ShouldIssueRefreshTokenFunc = f
+		return nil
+	}
+}
+
+func WithRefreshTokenLifetime(lifetimeSecs int) Option {
+	return func(p *Provider) error {
 		p.config.RefreshTokenLifetimeSecs = lifetimeSecs
 		return nil
 	}
@@ -333,20 +336,19 @@ func WithRefreshTokenRotation() Option {
 	}
 }
 
-func WithCIBAGrant(
-	initFunc goidc.InitBackAuthFunc,
-	validateFunc goidc.ValidateBackAuthFunc,
-	mode goidc.CIBATokenDeliveryMode,
-	modes ...goidc.CIBATokenDeliveryMode,
-) Option {
+func WithCIBAGrant(initFunc goidc.InitBackAuthFunc, validateFunc goidc.ValidateBackAuthFunc) Option {
 	return func(p *Provider) error {
-		p.config.CIBAIsEnabled = true
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantCIBA)
-		p.config.CIBATokenDeliveryModels = appendIfNotIn(modes, mode)
 		p.config.InitBackAuthFunc = initFunc
 		p.config.ValidateBackAuthFunc = validateFunc
-		p.config.CIBADefaultSessionLifetimeSecs = 60
-		p.config.CIBAPollingIntervalSecs = 5
+		return nil
+	}
+}
+
+func WithCIBADeliveryModes(mode goidc.CIBATokenDeliveryMode, modes ...goidc.CIBATokenDeliveryMode) Option {
+	modes = appendIfNotIn(modes, mode)
+	return func(p *Provider) error {
+		p.config.CIBATokenDeliveryModels = modes
 		return nil
 	}
 }
@@ -463,11 +465,23 @@ func WithScopes(scopes ...goidc.Scope) Option {
 
 // WithPAR allows authorization flows to start at the pushed authorization
 // request endpoint.
-func WithPAR(handleFunc goidc.HandleSessionFunc, lifetimeSecs int) Option {
+func WithPAR() Option {
 	return func(p *Provider) error {
 		p.config.PARIsEnabled = true
-		p.config.HandlePARSessionFunc = handleFunc
-		p.config.PARLifetimeSecs = lifetimeSecs
+		return nil
+	}
+}
+
+func WithPARHandleSessionFunc(f goidc.HandleSessionFunc) Option {
+	return func(p *Provider) error {
+		p.config.HandlePARSessionFunc = f
+		return nil
+	}
+}
+
+func WithPARLifetime(secs int) Option {
+	return func(p *Provider) error {
+		p.config.PARLifetimeSecs = secs
 		return nil
 	}
 }
@@ -475,10 +489,10 @@ func WithPAR(handleFunc goidc.HandleSessionFunc, lifetimeSecs int) Option {
 // WithPARRequired forces authorization flows to start at the pushed
 // authorization request endpoint.
 // For more info, see [WithPAR].
-func WithPARRequired(handleFunc goidc.HandleSessionFunc, lifetimeSecs int) Option {
+func WithPARRequired() Option {
 	return func(p *Provider) error {
 		p.config.PARIsRequired = true
-		return WithPAR(handleFunc, lifetimeSecs)(p)
+		return WithPAR()(p)
 	}
 }
 
@@ -757,7 +771,7 @@ func WithTokenBindingRequired() Option {
 	}
 }
 
-func WithTokenAuthnMethods(method goidc.ClientAuthnType, methods ...goidc.ClientAuthnType) Option {
+func WithTokenAuthnMethods(method goidc.AuthnMethod, methods ...goidc.AuthnMethod) Option {
 	methods = appendIfNotIn(methods, method)
 	return func(p *Provider) error {
 		p.config.TokenAuthnMethods = methods
@@ -768,8 +782,8 @@ func WithTokenAuthnMethods(method goidc.ClientAuthnType, methods ...goidc.Client
 // WithTokenIntrospection allows authorized clients to introspect tokens.
 func WithTokenIntrospection(
 	f goidc.IsClientAllowedTokenInstrospectionFunc,
-	method goidc.ClientAuthnType,
-	methods ...goidc.ClientAuthnType,
+	method goidc.AuthnMethod,
+	methods ...goidc.AuthnMethod,
 ) Option {
 	methods = appendIfNotIn(methods, method)
 	return func(p *Provider) error {
@@ -785,8 +799,8 @@ func WithTokenIntrospection(
 // for the token endpoint.
 func WithTokenRevocation(
 	f goidc.IsClientAllowedFunc,
-	method goidc.ClientAuthnType,
-	methods ...goidc.ClientAuthnType,
+	method goidc.AuthnMethod,
+	methods ...goidc.AuthnMethod,
 ) Option {
 	methods = appendIfNotIn(methods, method)
 	return func(p *Provider) error {
@@ -1004,7 +1018,7 @@ func WithErrorURI(uri string) Option {
 	}
 }
 
-// WithOpenIDFed enables OpenID Federation support, allowing the provider
+// WithOpenIDFederation enables OpenID Federation support, allowing the provider
 // to participate in a trust federation where trust relationships are established
 // through signed entity statements rather than pre-configured client registrations.
 //
@@ -1018,11 +1032,11 @@ func WithErrorURI(uri string) Option {
 // Defaults:
 //   - Client registration type: [goidc.ClientRegistrationTypeAutomatic] (see [WithOpenIDFerationClientRegistrationTypes])
 //   - Entity configuration endpoint: [defaultEndpointOpenIDFederation] (see [WithOpenIDFedRegistrationEndpoint])
-//   - Signature algorithm: [defaultOpenIDFedSigAlg] (see [WithOpenIDFedSignatureAlgs])
+//   - Signature algorithm: [defaultAsymmetricSigAlg] (see [WithOpenIDFedSignatureAlgs])
 //   - Trust chain max depth: [defaultOpenIDFedTrustChainMaxDepth] (see [WithOpenIDFedTrustChainMaxDepth])
 //
 // [OpenID Federation specification]: https://openid.net/specs/openid-federation-1_0.html.
-func WithOpenIDFed(jwksFunc goidc.JWKSFunc, anchor string, anchors ...string) Option {
+func WithOpenIDFederation(jwksFunc goidc.JWKSFunc, anchor string, anchors ...string) Option {
 	anchors = appendIfNotIn(anchors, anchor)
 	return func(p *Provider) error {
 		p.config.OpenIDFedIsEnabled = true
@@ -1032,6 +1046,10 @@ func WithOpenIDFed(jwksFunc goidc.JWKSFunc, anchor string, anchors ...string) Op
 	}
 }
 
+// WithOpenIDFedAuthorityHints sets the authority hints for the provider's entity configuration.
+// Authority hints are entity identifiers of immediate superiors that can issue subordinate
+// statements about this provider. These hints help relying parties discover trust paths
+// from this provider to a trusted anchor.
 func WithOpenIDFedAuthorityHints(hint string, hints ...string) Option {
 	hints = appendIfNotIn(hints, hint)
 	return func(p *Provider) error {
@@ -1041,7 +1059,7 @@ func WithOpenIDFedAuthorityHints(hint string, hints ...string) Option {
 }
 
 // WithOpenIDFerationClientRegistrationTypes sets the client registration types available for the OpenID Federation.
-// For more information, see [WithOpenIDFed].
+// For more information, see [WithOpenIDFederation].
 func WithOpenIDFedClientRegistrationTypes(typ goidc.ClientRegistrationType, types ...goidc.ClientRegistrationType) Option {
 	types = appendIfNotIn(types, typ)
 	return func(p *Provider) error {
@@ -1051,17 +1069,18 @@ func WithOpenIDFedClientRegistrationTypes(typ goidc.ClientRegistrationType, type
 }
 
 // WithOpenIDFedSignatureAlgs sets the signature algorithms accepted to parse entity statements and trust marks.
-// For more information, see [WithOpenIDFed].
-func WithOpenIDFedSignatureAlgs(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) Option {
-	algs = appendIfNotIn(algs, alg)
+// For more information, see [WithOpenIDFederation].
+func WithOpenIDFedSignatureAlgs(defaultAlg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) Option {
+	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p *Provider) error {
-		p.config.OpenIDFedEntityStatementSigAlgs = algs
+		p.config.OpenIDFedDefaultSigAlg = defaultAlg
+		p.config.OpenIDFedSigAlgs = algs
 		return nil
 	}
 }
 
-// WithOpenIDFedSignerFunc sets a custom signing function for signing the provider's entity configuration.
-// For more information, see [WithOpenIDFed].
+// WithOpenIDFedSignerFunc sets a custom signing function.
+// For more information, see [WithOpenIDFederation].
 func WithOpenIDFedSignerFunc(f goidc.SignerFunc) Option {
 	return func(p *Provider) error {
 		p.config.OpenIDFedSignerFunc = f
@@ -1070,7 +1089,7 @@ func WithOpenIDFedSignerFunc(f goidc.SignerFunc) Option {
 }
 
 // WithOpenIDFedRequiredTrustMarksFunc sets a custom function to determine the required trust marks for the OpenID Federation.
-// For more information, see [WithOpenIDFed].
+// For more information, see [WithOpenIDFederation].
 func WithOpenIDFedRequiredTrustMarksFunc(f goidc.RequiredTrustMarksFunc) Option {
 	return func(p *Provider) error {
 		p.config.OpenIDFedRequiredTrustMarksFunc = f
@@ -1079,7 +1098,7 @@ func WithOpenIDFedRequiredTrustMarksFunc(f goidc.RequiredTrustMarksFunc) Option 
 }
 
 // WithOpenIDFedRegistrationEndpoint sets the registration endpoint for the OpenID Federation.
-// For more information, see [WithOpenIDFed].
+// For more information, see [WithOpenIDFederation].
 func WithOpenIDFedRegistrationEndpoint(endpoint string) Option {
 	return func(p *Provider) error {
 		p.config.OpenIDFedRegistrationEndpoint = endpoint
@@ -1088,7 +1107,7 @@ func WithOpenIDFedRegistrationEndpoint(endpoint string) Option {
 }
 
 // WithOpenIDFedTrustChainMaxDepth sets the maximum depth of the trust chain for the OpenID Federation.
-// For more information, see [WithOpenIDFed].
+// For more information, see [WithOpenIDFederation].
 func WithOpenIDFedTrustChainMaxDepth(depth int) Option {
 	return func(p *Provider) error {
 		p.config.OpenIDFedTrustChainMaxDepth = depth
@@ -1098,7 +1117,7 @@ func WithOpenIDFedTrustChainMaxDepth(depth int) Option {
 
 // WithOpenIDFedJWKSRepresentations sets the JWKS representations available for the Federation OpenID Provider.
 // For more information, see [OpenID Fed §5.2.1].
-func WithOpenIDFedJWKSRepresentations(rep goidc.OpenIDFedJWKSRepresentation, reps ...goidc.OpenIDFedJWKSRepresentation) Option {
+func WithOpenIDFedJWKSRepresentations(rep goidc.JWKSRepresentation, reps ...goidc.JWKSRepresentation) Option {
 	reps = appendIfNotIn(reps, rep)
 	return func(p *Provider) error {
 		p.config.OpenIDFedJWKSRepresentations = reps
@@ -1106,6 +1125,10 @@ func WithOpenIDFedJWKSRepresentations(rep goidc.OpenIDFedJWKSRepresentation, rep
 	}
 }
 
+// WithOpenIDFedSignedJWKSEndpoint sets the endpoint path for the signed JWKS.
+// The signed JWKS is a JWT-wrapped representation of the provider's JWKS,
+// providing integrity protection. This is used when [goidc.OpenIDFedJWKSRepresentationSignedURI]
+// is enabled via [WithOpenIDFedJWKSRepresentations].
 func WithOpenIDFedSignedJWKSEndpoint(endpoint string) Option {
 	return func(p *Provider) error {
 		p.config.OpenIDFedSignedJWKSEndpoint = endpoint
@@ -1113,6 +1136,9 @@ func WithOpenIDFedSignedJWKSEndpoint(endpoint string) Option {
 	}
 }
 
+// WithOpenIDFedSignedJWKSLifetimeSecs sets the lifetime in seconds for signed JWKS JWTs.
+// After this duration, the signed JWKS expires and must be re-fetched.
+// If set to 0, the signed JWKS will not include an expiration claim.
 func WithOpenIDFedSignedJWKSLifetimeSecs(lifetimeSecs int) Option {
 	return func(p *Provider) error {
 		p.config.OpenIDFedSignedJWKSLifetimeSecs = lifetimeSecs
@@ -1120,6 +1146,8 @@ func WithOpenIDFedSignedJWKSLifetimeSecs(lifetimeSecs int) Option {
 	}
 }
 
+// WithOpenIDFedOrganizationName sets the human-readable organization name
+// that appears in the provider's entity configuration metadata.
 func WithOpenIDFedOrganizationName(name string) Option {
 	return func(p *Provider) error {
 		p.config.OpenIDFedOrganizationName = name
@@ -1127,6 +1155,9 @@ func WithOpenIDFedOrganizationName(name string) Option {
 	}
 }
 
+// WithOpenIDFedHTTPClientFunc sets a custom HTTP client function for federation operations.
+// This allows customization of HTTP requests made when fetching entity configurations,
+// subordinate statements, and trust marks from other federation entities.
 func WithOpenIDFedHTTPClientFunc(f goidc.HTTPClientFunc) Option {
 	return func(p *Provider) error {
 		p.config.OpenIDFedHTTPClientFunc = f
@@ -1134,10 +1165,26 @@ func WithOpenIDFedHTTPClientFunc(f goidc.HTTPClientFunc) Option {
 	}
 }
 
-func WithOpenIDFedTrustMark(markType string, issuer string) Option {
+// WithOpenIDFedHandleClientFunc sets a custom function to handle the client during federation registration.
+// See [WithOpenIDFederation].
+func WithOpenIDFedHandleClientFunc(f goidc.HandleClientFunc) Option {
+	return func(p *Provider) error {
+		p.config.OpenIDFedHandleClientFunc = f
+		return nil
+	}
+}
+
+// WithOpenIDFedTrustMark configures a trust mark that the provider will fetch and include
+// in its entity configuration. Trust marks are credentials issued by accreditation
+// authorities that attest to certain properties of the provider.
+//
+// Parameters:
+//   - markType: The trust mark identifier (e.g., "https://example.com/trust_marks/certified").
+//   - issuer: The entity identifier of the trust mark issuer.
+func WithOpenIDFedTrustMark(markType goidc.TrustMark, issuer string) Option {
 	return func(p *Provider) error {
 		if p.config.OpenIDFedTrustMarks == nil {
-			p.config.OpenIDFedTrustMarks = make(map[string]string)
+			p.config.OpenIDFedTrustMarks = make(map[goidc.TrustMark]string)
 		}
 		p.config.OpenIDFedTrustMarks[markType] = issuer
 		return nil
@@ -1215,7 +1262,7 @@ func WithCallbackIDFunc(f goidc.GenerateIDFunc) Option {
 	}
 }
 
-// WithSSF enables the Shared Signals Framework (SSF) support, allowing the provider
+// WithSharedSignals enables the Shared Signals Framework (SSF) support, allowing the provider
 // to act as an SSF transmitter that publishes security events to receivers (relying parties).
 // SSF enables real-time sharing of security-related signals such as session revocation,
 // credential changes, and other CAEP (Continuous Access Evaluation Protocol) events.
@@ -1230,14 +1277,14 @@ func WithCallbackIDFunc(f goidc.GenerateIDFunc) Option {
 //
 // Defaults:
 //   - Event stream manager: in-memory storage (see [WithSSFEventStreamManager])
-//   - Signature algorithm: [defaultSSFSigAlg]. The jwksFunc is supposed to have a key matching this algorithm.
+//   - Signature algorithm: [defaultAsymmetricSigAlg]. The jwksFunc is supposed to have a key matching this algorithm.
 //     See [WithSSFSignatureAlgorithm] to change the default.
 //   - Status management: disabled (see [WithSSFEventStreamStatusManagement])
 //   - Subject management: disabled (see [WithSSFEventStreamSubjectManagement])
 //   - Verification: disabled (see [WithSSFEventStreamVerification])
 //
 // [OpenID Shared Signals Framework specification]: https://openid.net/specs/openid-sharedsignals-framework-1_0.html
-func WithSSF(jwksFunc goidc.JWKSFunc, receiverFunc goidc.SSFAuthenticatedReceiverFunc) Option {
+func WithSharedSignals(jwksFunc goidc.JWKSFunc, receiverFunc goidc.SSFAuthenticatedReceiverFunc) Option {
 	return func(p *Provider) error {
 		p.config.SSFIsEnabled = true
 		p.config.SSFJWKSFunc = jwksFunc
@@ -1246,8 +1293,15 @@ func WithSSF(jwksFunc goidc.JWKSFunc, receiverFunc goidc.SSFAuthenticatedReceive
 	}
 }
 
+func WithSSFSignatureAlgorithm(alg goidc.SignatureAlgorithm) Option {
+	return func(p *Provider) error {
+		p.config.SSFDefaultSigAlg = alg
+		return nil
+	}
+}
+
 // WithSSFEventTypes sets the default event types supported by the SSF transmitter.
-// For more information, see [WithSSF].
+// For more information, see [WithSharedSignals].
 func WithSSFEventTypes(eventType goidc.SSFEventType, events ...goidc.SSFEventType) Option {
 	events = appendIfNotIn(events, eventType)
 	return func(p *Provider) error {
@@ -1259,7 +1313,7 @@ func WithSSFEventTypes(eventType goidc.SSFEventType, events ...goidc.SSFEventTyp
 // WithSSFEventStreamManager replaces the default in-memory event stream storage.
 // The event stream manager is responsible for persisting event stream configurations
 // created by receivers.
-// For more information, see [WithSSF].
+// For more information, see [WithSharedSignals].
 func WithSSFEventStreamManager(manager goidc.SSFEventStreamManager) Option {
 	return func(p *Provider) error {
 		p.config.SSFEventStreamManager = manager
@@ -1267,20 +1321,10 @@ func WithSSFEventStreamManager(manager goidc.SSFEventStreamManager) Option {
 	}
 }
 
-// WithSSFSignatureAlgorithm sets the algorithm used to sign Security Event Tokens (SETs).
-// The default is [defaultSSFSigAlg].
-// For more information, see [WithSSF].
-func WithSSFSignatureAlgorithm(alg goidc.SignatureAlgorithm) Option {
-	return func(p *Provider) error {
-		p.config.SSFSignatureAlgorithm = alg
-		return nil
-	}
-}
-
 // WithSSFDeliveryMethods sets the delivery methods supported by the SSF transmitter.
 // Supported methods are push (transmitter pushes events to receiver) and poll
 // (receiver polls transmitter for events).
-// For more information, see [WithSSF].
+// For more information, see [WithSharedSignals].
 func WithSSFDeliveryMethods(method goidc.SSFDeliveryMethod, methods ...goidc.SSFDeliveryMethod) Option {
 	methods = appendIfNotIn(methods, method)
 	return func(p *Provider) error {
@@ -1292,7 +1336,7 @@ func WithSSFDeliveryMethods(method goidc.SSFDeliveryMethod, methods ...goidc.SSF
 // WithSSFEventPollManager replaces the default in-memory poll event storage.
 // The poll manager is responsible for queuing events for receivers using the poll
 // delivery method and tracking acknowledgements.
-// For more information, see [WithSSF].
+// For more information, see [WithSharedSignals].
 func WithSSFEventPollManager(manager goidc.SSFEventPollManager) Option {
 	return func(p *Provider) error {
 		p.config.SSFEventPollManager = manager
@@ -1303,7 +1347,7 @@ func WithSSFEventPollManager(manager goidc.SSFEventPollManager) Option {
 // WithSSFEventStreamStatusManagement enables the stream status management API,
 // allowing receivers to read and update the status of their event streams
 // (e.g., enabled, paused, disabled).
-// For more information, see [WithSSF].
+// For more information, see [WithSharedSignals].
 func WithSSFEventStreamStatusManagement() Option {
 	return func(p *Provider) error {
 		p.config.SSFIsStatusManagementEnabled = true
@@ -1314,7 +1358,7 @@ func WithSSFEventStreamStatusManagement() Option {
 // WithSSFEventStreamSubjectManagement enables the subject management API,
 // allowing receivers to add or remove specific subjects they want to receive
 // events for on a given stream.
-// For more information, see [WithSSF].
+// For more information, see [WithSharedSignals].
 func WithSSFEventStreamSubjectManagement() Option {
 	return func(p *Provider) error {
 		p.config.SSFIsSubjectManagementEnabled = true
@@ -1362,7 +1406,7 @@ func WithSSFRemoveSubjectEndpoint(endpoint string) Option {
 // WithSSFEventStreamVerification enables the verification API, allowing receivers
 // to request verification events to confirm the stream is working correctly.
 // The transmitter responds by sending a verification event with an optional state value.
-// For more information, see [WithSSF].
+// For more information, see [WithSharedSignals].
 func WithSSFEventStreamVerification() Option {
 	return func(p *Provider) error {
 		p.config.SSFIsVerificationEnabled = true
@@ -1393,7 +1437,7 @@ func WithSSFMinVerificationInterval(secs int) Option {
 // WithSSFDefaultSubjects indicates how subjects are handled when a stream is created.
 // Use [goidc.SSFDefaultSubjectAll] when automatically including all subjects by default, or
 // [goidc.SSFDefaultSubjectNone] when requiring explicit subject registration via the subject management API.
-// For more information, see [WithSSF].
+// For more information, see [WithSharedSignals].
 func WithSSFDefaultSubjects(defaultSubjects goidc.SSFDefaultSubject) Option {
 	return func(p *Provider) error {
 		p.config.SSFDefaultSubjects = defaultSubjects
@@ -1402,7 +1446,7 @@ func WithSSFDefaultSubjects(defaultSubjects goidc.SSFDefaultSubject) Option {
 }
 
 // WithSSFCriticalSubjectMembers sets the subject identifier members that must be processed by the receiver.
-// For more information, see [WithSSF].
+// For more information, see [WithSharedSignals].
 func WithSSFCriticalSubjectMembers(sub string, subs ...string) Option {
 	subs = appendIfNotIn(subs, sub)
 	return func(p *Provider) error {
@@ -1414,7 +1458,7 @@ func WithSSFCriticalSubjectMembers(sub string, subs ...string) Option {
 // WithSSFAuthorizationSchemes sets the authorization schemes published in the SSF
 // configuration endpoint. This informs receivers how to authenticate when calling
 // the SSF APIs (e.g., Bearer tokens, OAuth 2.0).
-// For more information, see [WithSSF].
+// For more information, see [WithSharedSignals].
 func WithSSFAuthorizationSchemes(scheme goidc.SSFAuthorizationScheme, schemes ...goidc.SSFAuthorizationScheme) Option {
 	schemes = appendIfNotIn(schemes, scheme)
 	return func(p *Provider) error {
@@ -1425,7 +1469,7 @@ func WithSSFAuthorizationSchemes(scheme goidc.SSFAuthorizationScheme, schemes ..
 
 // WithSSFHTTPClientFunc sets a custom HTTP client factory for SSF push delivery.
 // This is used when the transmitter pushes events to receiver endpoints.
-// For more information, see [WithSSF].
+// For more information, see [WithSharedSignals].
 func WithSSFHTTPClientFunc(f goidc.HTTPClientFunc) Option {
 	return func(p *Provider) error {
 		p.config.SSFHTTPClientFunc = f
@@ -1436,7 +1480,7 @@ func WithSSFHTTPClientFunc(f goidc.HTTPClientFunc) Option {
 // WithSSFInactivityTimeoutSecs sets the inactivity timeout for event streams.
 // [SSF 1.0 §8.1.1] If a stream has no activity for this duration, the handleFunc
 // is called to handle the expired stream (e.g., pause or delete it).
-// For more information, see [WithSSF].
+// For more information, see [WithSharedSignals].
 func WithSSFInactivityTimeoutSecs(secs int, handleFunc goidc.SSFHandleExpiredEventStreamFunc) Option {
 	return func(p *Provider) error {
 		p.config.SSFInactivityTimeoutSecs = secs
@@ -1447,7 +1491,7 @@ func WithSSFInactivityTimeoutSecs(secs int, handleFunc goidc.SSFHandleExpiredEve
 
 // WithSSFMultipleStreamsPerReceiver controls whether a single receiver
 // can create multiple event streams.
-// For more information, see [WithSSF].
+// For more information, see [WithSharedSignals].
 func WithSSFMultipleStreamsPerReceiver() Option {
 	return func(p *Provider) error {
 		p.config.SSFMultipleStreamsPerReceiverIsEnabled = true

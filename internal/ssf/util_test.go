@@ -1884,8 +1884,8 @@ func setUp(t *testing.T) oidc.Context {
 	ctx.SSFDeliveryMethods = []goidc.SSFDeliveryMethod{goidc.SSFDeliveryMethodPush, goidc.SSFDeliveryMethodPoll}
 	ctx.SSFEventsSupported = []goidc.SSFEventType{goidc.SSFEventTypeCAEPSessionRevoked, goidc.SSFEventTypeCAEPCredentialChange}
 	ctx.SSFIsVerificationEnabled = true
-	ctx.SSFSignatureAlgorithm = goidc.PS256
 	ctx.SSFJWKSFunc = ctx.JWKSFunc
+	ctx.SSFDefaultSigAlg = goidc.PS256
 	ctx.SSFPollingEndpoint = "/ssf/poll"
 
 	return ctx

@@ -48,11 +48,7 @@ func JWT(ctx oidc.Context) (string, bool) {
 	return dpopJWTs[0], true
 }
 
-func ValidateJWT(
-	ctx oidc.Context,
-	dpopJWT string,
-	opts ValidationOptions,
-) error {
+func ValidateJWT(ctx oidc.Context, dpopJWT string, opts ValidationOptions) error {
 	parsedDPoPJWT, err := jwt.ParseSigned(dpopJWT, ctx.DPoPSigAlgs)
 	if err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid dpop jwt", err)

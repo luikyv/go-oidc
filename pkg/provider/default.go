@@ -9,21 +9,20 @@ import (
 const (
 	defaultStorageMaxSize = 100
 
-	defaultAuthnSessionTimeoutSecs  = 1800 // 30 minutes.
-	defaultIDTokenLifetimeSecs      = 600
-	defaultTokenLifetimeSecs        = 300
-	defaultJWTLifetimeSecs          = 600
-	defaultLogoutSessionTimeoutSecs = 1800 // 30 minutes.
+	defaultAuthnSessionTimeoutSecs        = 1800 // 30 minutes.
+	defaultIDTokenLifetimeSecs            = 600
+	defaultTokenLifetimeSecs              = 300
+	defaultJWTLifetimeSecs                = 600
+	defaultLogoutSessionTimeoutSecs       = 1800 // 30 minutes.
+	defaultPARLifetimeSecs                = 60   // 1 minute.
+	defaultRefreshTokenLifetimeSecs       = 600
+	defaultCIBADefaultSessionLifetimeSecs = 60
+	defaultCIBAPollingIntervalSecs        = 5
 
-	defaultIDTokenSigAlg       = goidc.RS256
-	defaultPrivateKeyJWTSigAlg = goidc.RS256
-	defaultSecretJWTSigAlg     = goidc.HS256
-
-	defaultOpenIDFedSigAlg             = goidc.RS256
+	defaultAsymmetricSigAlg            = goidc.RS256
+	defaultSymmetricSigAlg             = goidc.HS256
 	defaultOpenIDFedTrustChainMaxDepth = 5
 	defaultOpenIDFedRegType            = goidc.ClientRegistrationTypeAutomatic
-
-	defaultSSFSigAlg = goidc.RS256
 
 	defaultEndpointWellKnown                    = "/.well-known/openid-configuration"
 	defaultEndpointJSONWebKeySet                = "/jwks"

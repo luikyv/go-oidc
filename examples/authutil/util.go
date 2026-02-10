@@ -52,7 +52,7 @@ var (
 
 func ClientMTLS(id string) (*goidc.Client, goidc.JSONWebKeySet) {
 	client, jwks := Client(id)
-	client.TokenAuthnMethod = goidc.ClientAuthnTLS
+	client.TokenAuthnMethod = goidc.AuthnMethodTLS
 	client.TLSSubDistinguishedName = "CN=" + id
 
 	return client, jwks
@@ -60,13 +60,13 @@ func ClientMTLS(id string) (*goidc.Client, goidc.JSONWebKeySet) {
 
 func ClientPrivateKeyJWT(id string) (*goidc.Client, goidc.JSONWebKeySet) {
 	client, jwks := Client(id)
-	client.TokenAuthnMethod = goidc.ClientAuthnPrivateKeyJWT
+	client.TokenAuthnMethod = goidc.AuthnMethodPrivateKeyJWT
 	return client, jwks
 }
 
 func ClientSecretPost(id, secret string, scopes ...goidc.Scope) *goidc.Client {
 	client, _ := Client(id, scopes...)
-	client.TokenAuthnMethod = goidc.ClientAuthnSecretPost
+	client.TokenAuthnMethod = goidc.AuthnMethodSecretPost
 	client.HashedSecret = hashutil.BCryptHash(secret)
 	return client
 }
@@ -99,7 +99,7 @@ func Client(id string, scopes ...goidc.Scope) (*goidc.Client, goidc.JSONWebKeySe
 				goidc.ResponseTypeCodeAndIDToken,
 			},
 			RedirectURIs: []string{
-				"http://localhost/callback",
+				"https://localhost/callback",
 				"https://localhost.emobix.co.uk:8443/test/a/goidc/callback",
 				"https://localhost.emobix.co.uk:8443/test/a/goidc/callback?dummy1=lorem&dummy2=ipsum",
 			},
@@ -189,10 +189,6 @@ func DCRFunc(r *http.Request, _ string, meta *goidc.ClientMeta) error {
 	return nil
 }
 
-func ValidateInitialTokenFunc(r *http.Request, s string) error {
-	return nil
-}
-
 func TokenOptionsFunc(alg goidc.SignatureAlgorithm) goidc.TokenOptionsFunc {
 	return func(_ context.Context, grantInfo goidc.GrantInfo, _ *goidc.Client) goidc.TokenOptions {
 		opts := goidc.NewJWTTokenOptions(alg, 600)
@@ -223,10 +219,6 @@ func ClientCertFunc(r *http.Request) (*x509.Certificate, error) {
 	}
 
 	return clientCert, nil
-}
-
-func IssueRefreshToken(_ context.Context, client *goidc.Client, grantInfo goidc.GrantInfo) bool {
-	return true
 }
 
 func HTTPClient(_ context.Context) *http.Client {
