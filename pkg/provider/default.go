@@ -18,6 +18,7 @@ const (
 	defaultRefreshTokenLifetimeSecs       = 600
 	defaultCIBADefaultSessionLifetimeSecs = 60
 	defaultCIBAPollingIntervalSecs        = 5
+	defaultAuthorizationCodeLifetimeSecs  = 60
 
 	defaultAsymmetricSigAlg            = goidc.RS256
 	defaultSymmetricSigAlg             = goidc.HS256

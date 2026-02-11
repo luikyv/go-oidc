@@ -30,8 +30,8 @@ type Configuration struct {
 	ResponseTypes              []goidc.ResponseType
 	ResponseModes              []goidc.ResponseMode
 	AuthnSessionTimeoutSecs    int
-	AuthnSessionGenerateIDFunc goidc.GenerateIDFunc
-	GrantSessionIDFunc         goidc.GenerateIDFunc
+	AuthnSessionGenerateIDFunc goidc.RandomStringFunc
+	GrantSessionIDFunc         goidc.RandomStringFunc
 	ACRs                       []goidc.ACR
 	DisplayValues              []goidc.DisplayValue
 	// Claims defines the user claims that can be returned in the userinfo endpoint or in ID tokens.
@@ -48,11 +48,12 @@ type Configuration struct {
 	// ClaimsParamIsEnabled informs the clients whether the server accepts
 	// the "claims" parameter.
 	// This will be published in the /.well-known/openid-configuration endpoint.
-	ClaimsParamIsEnabled  bool
-	RenderErrorFunc       goidc.RenderErrorFunc
-	NotifyErrorFunc       goidc.NotifyErrorFunc
-	AuthorizationCodeFunc goidc.GenerateIDFunc
-	CallbackIDFunc        goidc.GenerateIDFunc
+	ClaimsParamIsEnabled          bool
+	RenderErrorFunc               goidc.RenderErrorFunc
+	NotifyErrorFunc               goidc.NotifyErrorFunc
+	AuthorizationCodeFunc         goidc.RandomStringFunc
+	AuthorizationCodeLifetimeSecs int
+	CallbackIDFunc                goidc.RandomStringFunc
 
 	TokenAuthnMethods []goidc.AuthnMethod
 	TokenEndpoint     string
@@ -92,7 +93,7 @@ type Configuration struct {
 
 	JWTLifetimeSecs   int
 	JWTLeewayTimeSecs int
-	JWTIDFunc         goidc.GenerateIDFunc
+	JWTIDFunc         goidc.RandomStringFunc
 
 	DCRIsEnabled                   bool
 	DCREndpoint                    string
@@ -148,7 +149,7 @@ type Configuration struct {
 	// PARAllowUnregisteredRedirectURI indicates whether the redirect URIs
 	// informed during PAR must be previously registered or not.
 	PARAllowUnregisteredRedirectURI bool
-	PARIDFunc                       goidc.GenerateIDFunc
+	PARIDFunc                       goidc.RandomStringFunc
 
 	CIBAEndpoint                   string
 	CIBATokenDeliveryModels        []goidc.CIBATokenDeliveryMode
@@ -157,7 +158,7 @@ type Configuration struct {
 	CIBAUserCodeIsEnabled          bool
 	CIBADefaultSessionLifetimeSecs int
 	CIBAPollingIntervalSecs        int
-	CIBAAuthReqIDFunc              goidc.GenerateIDFunc
+	CIBAAuthReqIDFunc              goidc.RandomStringFunc
 
 	CIBAJARIsEnabled  bool
 	CIBAJARIsRequired bool
@@ -224,7 +225,7 @@ type Configuration struct {
 	LogoutSessionManager        goidc.LogoutSessionManager
 	LogoutSessionTimeoutSecs    int
 	LogoutPolicies              []goidc.LogoutPolicy
-	LogoutSessionIDFunc         goidc.GenerateIDFunc
+	LogoutSessionIDFunc         goidc.RandomStringFunc
 	HandleDefaultPostLogoutFunc goidc.HandleDefaultPostLogoutFunc
 
 	SSFIsEnabled                           bool
@@ -238,11 +239,10 @@ type Configuration struct {
 	SSFIsStatusManagementEnabled           bool
 	SSFStatusEndpoint                      string
 	SSFIsSubjectManagementEnabled          bool
-	SSFEventStreamSubjectManager           goidc.SSFEventStreamSubjectManager
 	SSFAddSubjectEndpoint                  string
 	SSFRemoveSubjectEndpoint               string
 	SSFIsVerificationEnabled               bool
-	SSFEventStreamVerificationManager      goidc.SSFEventStreamVerificationManager
+	SSFScheduleVerificationEventFunc       goidc.SSFScheduleVerificationEventFunc
 	SSFVerificationEndpoint                string
 	SSFMinVerificationInterval             int
 	SSFCriticalSubjectMembers              []string
@@ -252,7 +252,7 @@ type Configuration struct {
 	SSFDefaultSigAlg                       goidc.SignatureAlgorithm
 	SSFSignerFunc                          goidc.SignerFunc
 	SSFAuthenticatedReceiverFunc           goidc.SSFAuthenticatedReceiverFunc
-	SSFEventStreamIDFunc                   goidc.GenerateIDFunc
+	SSFEventStreamIDFunc                   goidc.RandomStringFunc
 	SSFHTTPClientFunc                      goidc.HTTPClientFunc
 	SSFInactivityTimeoutSecs               int
 	SSFHandleExpiredEventStreamFunc        goidc.SSFHandleExpiredEventStreamFunc

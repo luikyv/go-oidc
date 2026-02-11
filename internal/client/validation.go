@@ -39,8 +39,8 @@ func Validate(ctx oidc.Context, meta *goidc.ClientMeta) error {
 		validateJAREncAlgs,
 		validateJARMSigAlg,
 		validateJARMEncAlgs,
-		validatePublicJWKS,
-		validatePublicJWKSURI,
+		validateJWKS,
+		validateJWKSURI,
 		validateAuthorizationDetailTypes,
 		validateSubjectIdentifierType,
 		validateSubIdentifierPairwise,
@@ -584,7 +584,7 @@ func validateJAREncAlgs(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	return nil
 }
 
-func validatePublicJWKS(ctx oidc.Context, meta *goidc.ClientMeta) error {
+func validateJWKS(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if meta.JWKS == nil {
 		return nil
 	}
@@ -597,9 +597,12 @@ func validatePublicJWKS(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	return nil
 }
 
-func validatePublicJWKSURI(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	// TODO: validate the client jwks uri.
-	return nil
+func validateJWKSURI(ctx oidc.Context, meta *goidc.ClientMeta) error {
+	if meta.JWKSURI == "" {
+		return nil
+	}
+
+	return validateURL("jwks_uri", meta.JWKSURI)
 }
 
 func validateAuthorizationDetailTypes(ctx oidc.Context, meta *goidc.ClientMeta) error {
