@@ -44,7 +44,7 @@ func generateAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 	grantSession := NewGrantSession(ctx, grantInfo, token)
 	grantSession.AuthCode = as.AuthCode
 	var refreshTkn string
-	if ctx.ShouldIssueRefreshToken(c, grantInfo) {
+	if shouldIssueRefreshToken(ctx, c, grantInfo) {
 		refreshTkn = newRefreshToken()
 		grantSession.RefreshToken = refreshTkn
 		grantSession.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
