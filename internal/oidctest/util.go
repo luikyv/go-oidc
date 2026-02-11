@@ -17,7 +17,6 @@ import (
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/storage"
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -29,10 +28,9 @@ func NewClient(t testing.TB) (client *goidc.Client, secret string) {
 	t.Helper()
 
 	secret = "test_secret"
-	hashedSecret, _ := bcrypt.GenerateFromPassword([]byte(secret), bcrypt.DefaultCost)
 	client = &goidc.Client{
-		ID:           "test_client",
-		HashedSecret: string(hashedSecret),
+		ID:     "test_client",
+		Secret: "test_secret",
 		ClientMeta: goidc.ClientMeta{
 			TokenAuthnMethod: goidc.AuthnMethodSecretPost,
 			RedirectURIs:     []string{"https://example.com/callback"},

@@ -12,17 +12,11 @@ type ClientManager interface {
 }
 
 type Client struct {
-	ID string `json:"client_id"`
-	// Secret is used when the client authenticates with client_secret_jwt,
-	// since the key used to sign the assertion is the same used to verify it.
+	ID     string `json:"client_id"`
 	Secret string `json:"client_secret,omitempty"`
-	// HashedSecret is the hash of the client secret for the client_secret_basic
-	// and client_secret_post authentication methods.
-	// TODO: Should I remove this?
-	HashedSecret string `json:"hashed_secret,omitempty"`
 	// RegistrationToken is the plain text registration access token generated during
 	// dynamic client registration.
-	// Note: For security reasons, it is strongly recommended to hash or encrypt this value before storing it in a database.
+	// Note: For security reasons, it is strongly recommended encrypt this value before storing it in a database.
 	RegistrationToken  string `json:"registration_token,omitempty"`
 	CreatedAtTimestamp int    `json:"created_at,omitempty"`
 	ExpiresAtTimestamp int    `json:"expires_at,omitempty"`

@@ -86,7 +86,7 @@ func TestEventManager_Delete(t *testing.T) {
 	// Given.
 	manager := NewEventManager(100)
 	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
-	_ = manager.Add(context.Background(), "stream_1", goidc.SSFSubject{Format: goidc.SSFSubjectFormatEmail, Email: "user@example.com"}, goidc.SSFSubjectOptions{})
+	_ = manager.AddSubject(context.Background(), "stream_1", goidc.SSFSubject{Format: goidc.SSFSubjectFormatEmail, Email: "user@example.com"}, goidc.SSFSubjectOptions{})
 	_ = manager.Save(context.Background(), "stream_1", goidc.SSFEvent{JWTID: "jti_1"})
 
 	// When.
@@ -136,7 +136,7 @@ func TestEventManager_AddAndRemoveSubject(t *testing.T) {
 	subject := goidc.SSFSubject{Format: goidc.SSFSubjectFormatEmail, Email: "user@example.com"}
 
 	// When - add subject.
-	err := manager.Add(context.Background(), "stream_1", subject, goidc.SSFSubjectOptions{})
+	err := manager.AddSubject(context.Background(), "stream_1", subject, goidc.SSFSubjectOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error adding subject: %v", err)
 	}
@@ -147,13 +147,13 @@ func TestEventManager_AddAndRemoveSubject(t *testing.T) {
 	}
 
 	// When - add same subject again (should not duplicate).
-	_ = manager.Add(context.Background(), "stream_1", subject, goidc.SSFSubjectOptions{})
+	_ = manager.AddSubject(context.Background(), "stream_1", subject, goidc.SSFSubjectOptions{})
 	if len(manager.streamSubjects["stream_1"]) != 1 {
 		t.Errorf("got %d subjects after duplicate add, want 1", len(manager.streamSubjects["stream_1"]))
 	}
 
 	// When - remove subject.
-	err = manager.Remove(context.Background(), "stream_1", subject)
+	err = manager.RemoveSubject(context.Background(), "stream_1", subject)
 	if err != nil {
 		t.Fatalf("unexpected error removing subject: %v", err)
 	}
@@ -313,7 +313,7 @@ func TestEventManager_Schedule_NoPublishFunc(t *testing.T) {
 	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
 
 	// When - no publish func, should return early without panic.
-	err := manager.Schedule(context.Background(), "stream_1", goidc.SSFStreamVerificationOptions{})
+	err := manager.ScheduleVerificationEvent(context.Background(), "stream_1", goidc.SSFStreamVerificationOptions{})
 
 	// Then.
 	if err != nil {

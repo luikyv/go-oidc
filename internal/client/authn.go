@@ -7,6 +7,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha1" //nolint:gosec
 	"crypto/sha256"
+	"crypto/subtle"
 	"crypto/x509"
 	"fmt"
 	"slices"
@@ -17,7 +18,6 @@ import (
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -122,16 +122,14 @@ func authenticateSecretBasic(ctx oidc.Context, c *goidc.Client) error {
 	return validateSecret(c, secret)
 }
 
-func validateSecret(client *goidc.Client, secret string) error {
-	err := bcrypt.CompareHashAndPassword([]byte(client.HashedSecret), []byte(secret))
-	if err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client secret", err)
+func validateSecret(c *goidc.Client, secret string) error {
+	if subtle.ConstantTimeCompare([]byte(c.Secret), []byte(secret)) != 1 {
+		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client secret")
 	}
 	return nil
 }
 
 func authenticatePrivateKeyJWT(ctx oidc.Context, client *goidc.Client, authnCtx AuthnContext) error {
-
 	assertion, err := assertion(ctx)
 	if err != nil {
 		return err

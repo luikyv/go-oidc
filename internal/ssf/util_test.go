@@ -942,7 +942,6 @@ func TestDeleteStream_NotFound(t *testing.T) {
 func TestAddSubject(t *testing.T) {
 	// Given.
 	ctx := setUp(t)
-	ctx.SSFEventStreamSubjectManager = NewEventManager(100)
 	stream := createTestStream(t, ctx, goidc.SSFDeliveryMethodPoll)
 
 	req := requestSubject{
@@ -962,7 +961,6 @@ func TestAddSubject(t *testing.T) {
 func TestAddSubject_WithVerified(t *testing.T) {
 	// Given.
 	ctx := setUp(t)
-	ctx.SSFEventStreamSubjectManager = NewEventManager(100)
 	stream := createTestStream(t, ctx, goidc.SSFDeliveryMethodPoll)
 
 	verified := false
@@ -984,7 +982,6 @@ func TestAddSubject_WithVerified(t *testing.T) {
 func TestAddSubject_InvalidSubject(t *testing.T) {
 	// Given.
 	ctx := setUp(t)
-	ctx.SSFEventStreamSubjectManager = NewEventManager(100)
 	stream := createTestStream(t, ctx, goidc.SSFDeliveryMethodPoll)
 
 	req := requestSubject{
@@ -1004,8 +1001,6 @@ func TestAddSubject_InvalidSubject(t *testing.T) {
 func TestRemoveSubject(t *testing.T) {
 	// Given.
 	ctx := setUp(t)
-	manager := NewEventManager(100)
-	ctx.SSFEventStreamSubjectManager = manager
 	stream := createTestStream(t, ctx, goidc.SSFDeliveryMethodPoll)
 
 	subject := goidc.SSFSubject{Format: goidc.SSFSubjectFormatEmail, Email: "user@example.com"}
@@ -1023,7 +1018,6 @@ func TestRemoveSubject(t *testing.T) {
 func TestRemoveSubject_InvalidSubject(t *testing.T) {
 	// Given.
 	ctx := setUp(t)
-	ctx.SSFEventStreamSubjectManager = NewEventManager(100)
 	stream := createTestStream(t, ctx, goidc.SSFDeliveryMethodPoll)
 
 	req := requestSubject{
@@ -1089,8 +1083,6 @@ func TestUpdateStreamStatus(t *testing.T) {
 func TestScheduleVerificationEvent(t *testing.T) {
 	// Given.
 	ctx := setUp(t)
-	manager := NewEventManager(100)
-	ctx.SSFEventStreamVerificationManager = manager
 	stream := createTestStream(t, ctx, goidc.SSFDeliveryMethodPoll)
 
 	req := requestVerificationEvent{
@@ -1110,9 +1102,7 @@ func TestScheduleVerificationEvent(t *testing.T) {
 func TestScheduleVerificationEvent_RateLimited(t *testing.T) {
 	// Given.
 	ctx := setUp(t)
-	ctx.SSFMinVerificationInterval = 60 // 60 seconds
-	manager := NewEventManager(100)
-	ctx.SSFEventStreamVerificationManager = manager
+	ctx.SSFMinVerificationInterval = 60
 	stream := createTestStream(t, ctx, goidc.SSFDeliveryMethodPoll)
 
 	req := requestVerificationEvent{
@@ -1135,7 +1125,6 @@ func TestScheduleVerificationEvent_RateLimited(t *testing.T) {
 
 func TestScheduleVerificationEvent_NotFound(t *testing.T) {
 	ctx := setUp(t)
-	ctx.SSFEventStreamVerificationManager = NewEventManager(100)
 
 	err := scheduleVerificationEvent(ctx, requestVerificationEvent{StreamID: "nonexistent"})
 	if err == nil {
@@ -1765,7 +1754,6 @@ func TestFetchStreams_Empty(t *testing.T) {
 func TestAddSubject_StreamNotFound(t *testing.T) {
 	// Given.
 	ctx := setUp(t)
-	ctx.SSFEventStreamSubjectManager = NewEventManager(100)
 
 	req := requestSubject{
 		StreamID: "nonexistent",
@@ -1784,7 +1772,6 @@ func TestAddSubject_StreamNotFound(t *testing.T) {
 func TestRemoveSubject_StreamNotFound(t *testing.T) {
 	// Given.
 	ctx := setUp(t)
-	ctx.SSFEventStreamSubjectManager = NewEventManager(100)
 
 	req := requestSubject{
 		StreamID: "nonexistent",
@@ -1881,6 +1868,7 @@ func setUp(t *testing.T) oidc.Context {
 	}
 	ctx.SSFEventStreamManager = manager
 	ctx.SSFEventPollManager = manager
+	ctx.SSFScheduleVerificationEventFunc = manager.ScheduleVerificationEvent
 	ctx.SSFDeliveryMethods = []goidc.SSFDeliveryMethod{goidc.SSFDeliveryMethodPush, goidc.SSFDeliveryMethodPoll}
 	ctx.SSFEventsSupported = []goidc.SSFEventType{goidc.SSFEventTypeCAEPSessionRevoked, goidc.SSFEventTypeCAEPCredentialChange}
 	ctx.SSFIsVerificationEnabled = true

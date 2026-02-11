@@ -654,6 +654,19 @@ func (ctx Context) HandlePARSession(as *goidc.AuthnSession, client *goidc.Client
 	return ctx.HandlePARSessionFunc(ctx.Request, as, client)
 }
 
+func (ctx Context) ClientSecret() string {
+	// Client secret must be at least 64 characters, so that it can be also
+	// used for symmetric encryption during, for instance, authentication with
+	// client_secret_jwt.
+	// For client_secret_jwt, the highest algorithm accepted in this implementation
+	// is HS512 which requires a key of at least 512 bits (64 characters).
+	return strutil.Random(64)
+}
+
+func (ctx Context) RegistrationAccessToken() string {
+	return strutil.Random(50)
+}
+
 //---------------------------------------- context.Context ----------------------------------------//
 
 func (ctx Context) Context() context.Context {
@@ -720,11 +733,11 @@ func (ctx Context) SSFDeleteEventStream(id string) error {
 }
 
 func (ctx Context) SSFAddSubject(id string, subject goidc.SSFSubject, opts goidc.SSFSubjectOptions) error {
-	return ctx.SSFEventStreamSubjectManager.Add(ctx, id, subject, opts)
+	return ctx.SSFEventStreamManager.AddSubject(ctx, id, subject, opts)
 }
 
 func (ctx Context) SSFRemoveSubject(id string, subject goidc.SSFSubject) error {
-	return ctx.SSFEventStreamSubjectManager.Remove(ctx, id, subject)
+	return ctx.SSFEventStreamManager.RemoveSubject(ctx, id, subject)
 }
 
 func (ctx Context) SSFEventStreamID() string {
@@ -802,7 +815,10 @@ func (ctx Context) SSFAcknowledgeErrors(streamID string, errs map[string]goidc.S
 }
 
 func (ctx Context) SSFScheduleVerificationEvent(streamID string, opts goidc.SSFStreamVerificationOptions) error {
-	return ctx.SSFEventStreamVerificationManager.Schedule(ctx, streamID, opts)
+	if ctx.SSFScheduleVerificationEventFunc == nil {
+		return errors.New("schedule verification event function is not set")
+	}
+	return ctx.SSFScheduleVerificationEventFunc(ctx, streamID, opts)
 }
 
 func (ctx Context) SSFHTTPClient() *http.Client {

@@ -276,7 +276,7 @@ func authorizeAuthnSession(ctx oidc.Context, session *goidc.AuthnSession) error 
 	}
 
 	session.AuthCode = ctx.AuthorizationCode()
-	session.ExpiresAtTimestamp = timeutil.TimestampNow() + authorizationCodeLifetimeSecs
+	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.AuthorizationCodeLifetimeSecs
 	// Make sure the session won't be reached anymore from the callback endpoint.
 	session.CallbackID = ""
 	// Make sure the session won't be reached anymore with the request URI.

@@ -2541,7 +2541,7 @@ func TestWithSSF(t *testing.T) {
 	}
 
 	// When.
-	err := WithSharedSignals(jwksFunc, receiverFunc)(p)
+	err := WithSSF(jwksFunc, receiverFunc)(p)
 
 	// Then.
 	if err != nil {
@@ -2736,7 +2736,7 @@ func TestWithSSFEventStreamVerification(t *testing.T) {
 	}
 
 	// When.
-	err := WithSSFEventStreamVerification()(p)
+	err := WithSSFEventStreamVerification(nil)(p)
 
 	// Then.
 	if err != nil {
@@ -3198,44 +3198,6 @@ func TestWithSSFEventPollManager(t *testing.T) {
 
 	// When.
 	err := WithSSFEventPollManager(manager)(p)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Manager is nil, so we just verify the option ran without error.
-}
-
-func TestWithSSFEventStreamSubjectManager(t *testing.T) {
-	// Given.
-	p := &Provider{
-		config: oidc.Configuration{},
-	}
-	// Use nil manager - the function just does assignment.
-	var manager goidc.SSFEventStreamSubjectManager
-
-	// When.
-	err := WithSSFEventStreamSubjectManager(manager)(p)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Manager is nil, so we just verify the option ran without error.
-}
-
-func TestWithSSFEventStreamVerificationManager(t *testing.T) {
-	// Given.
-	p := &Provider{
-		config: oidc.Configuration{},
-	}
-	// Use nil manager - the function just does assignment.
-	var manager goidc.SSFEventStreamVerificationManager
-
-	// When.
-	err := WithSSFEventStreamVerificationManager(manager)(p)
 
 	// Then.
 	if err != nil {

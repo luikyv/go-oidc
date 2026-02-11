@@ -32,7 +32,7 @@ func main() {
 		provider.WithScopes(scope),
 		provider.WithClientCredentialsGrant(),
 		provider.WithStaticClient(client),
-		provider.WithSharedSignals(authutil.PrivateJWKSFunc(), func(ctx context.Context) (goidc.SSFReceiver, error) {
+		provider.WithSSF(authutil.PrivateJWKSFunc(), func(ctx context.Context) (goidc.SSFReceiver, error) {
 			clientID := ctx.Value(ctxKeyClientID).(string)
 			if clientID == "" {
 				return goidc.SSFReceiver{}, errors.New("client id is required")
@@ -44,7 +44,7 @@ func main() {
 		provider.WithSSFDeliveryMethods(goidc.SSFDeliveryMethodPoll, goidc.SSFDeliveryMethodPush),
 		provider.WithSSFEventStreamStatusManagement(),
 		provider.WithSSFEventStreamSubjectManagement(),
-		provider.WithSSFEventStreamVerification(),
+		provider.WithSSFEventStreamVerification(nil),
 		provider.WithSSFMinVerificationInterval(5),
 		provider.WithSSFDefaultSubjects(goidc.SSFDefaultSubjectAll),
 		provider.WithSSFAuthorizationSchemes(goidc.SSFAuthorizationScheme{SpecificationURN: "urn:ietf:rfc:6749"}),

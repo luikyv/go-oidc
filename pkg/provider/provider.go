@@ -323,6 +323,7 @@ func (op *Provider) setDefaults() error {
 
 	if slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
 		op.config.ResponseTypes = append(op.config.ResponseTypes, goidc.ResponseTypeCode)
+		op.config.AuthorizationCodeLifetimeSecs = nonZeroOrDefault(op.config.AuthorizationCodeLifetimeSecs, defaultAuthorizationCodeLifetimeSecs)
 	}
 
 	if slices.Contains(op.config.GrantTypes, goidc.GrantImplicit) {
@@ -428,15 +429,12 @@ func (op *Provider) setDefaults() error {
 		op.config.SSFConfigurationEndpoint = nonZeroOrDefault(op.config.SSFConfigurationEndpoint, defaultEndpointSSFConfiguration)
 		op.config.SSFEventStreamManager = nonZeroOrDefault(op.config.SSFEventStreamManager, goidc.SSFEventStreamManager(ssfManager))
 		if op.config.SSFIsStatusManagementEnabled {
-			op.config.SSFIsStatusManagementEnabled = true
 			op.config.SSFStatusEndpoint = nonZeroOrDefault(op.config.SSFStatusEndpoint, defaultEndpointSSFStatus)
 			op.config.SSFEventStreamManager = nonZeroOrDefault(op.config.SSFEventStreamManager, goidc.SSFEventStreamManager(ssfManager))
 		}
 		if op.config.SSFIsSubjectManagementEnabled {
-			op.config.SSFIsSubjectManagementEnabled = true
 			op.config.SSFAddSubjectEndpoint = nonZeroOrDefault(op.config.SSFAddSubjectEndpoint, defaultEndpointSSFAddSubject)
 			op.config.SSFRemoveSubjectEndpoint = nonZeroOrDefault(op.config.SSFRemoveSubjectEndpoint, defaultEndpointSSFRemoveSubject)
-			op.config.SSFEventStreamSubjectManager = nonZeroOrDefault(op.config.SSFEventStreamSubjectManager, goidc.SSFEventStreamSubjectManager(ssfManager))
 		}
 		if slices.Contains(op.config.SSFDeliveryMethods, goidc.SSFDeliveryMethodPoll) {
 			op.config.SSFPollingEndpoint = nonZeroOrDefault(op.config.SSFPollingEndpoint, defaultEndpointSSFPolling)
@@ -444,7 +442,7 @@ func (op *Provider) setDefaults() error {
 		}
 		if op.config.SSFIsVerificationEnabled {
 			op.config.SSFVerificationEndpoint = nonZeroOrDefault(op.config.SSFVerificationEndpoint, defaultEndpointSSFVerification)
-			op.config.SSFEventStreamVerificationManager = nonZeroOrDefault(op.config.SSFEventStreamVerificationManager, goidc.SSFEventStreamVerificationManager(ssfManager))
+			op.config.SSFScheduleVerificationEventFunc = nonZeroOrDefault(op.config.SSFScheduleVerificationEventFunc, ssfManager.ScheduleVerificationEvent)
 		}
 	}
 
