@@ -146,7 +146,7 @@ func TestClient_InvalidTrustMarkSignature(t *testing.T) {
 	}
 	ctx := setUp(t, responses)
 	ctx.OpenIDFedRequiredTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
-		return []goidc.TrustMark{goidc.TrustMark(trustMarkCertification)}
+		return []goidc.TrustMark{trustMarkCertification}
 	}
 
 	// When.
@@ -199,7 +199,7 @@ func TestClient_InvalidTrustMarkID(t *testing.T) {
 	}
 	ctx := setUp(t, responses)
 	ctx.OpenIDFedRequiredTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
-		return []goidc.TrustMark{goidc.TrustMark(trustMarkCertification)}
+		return []goidc.TrustMark{trustMarkCertification}
 	}
 
 	// When.
