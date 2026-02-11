@@ -105,7 +105,7 @@ func main() {
 
 	// Create and configure the openid provider and a c.
 	c, clientJWKS := authutil.ClientPrivateKeyJWT("client_one")
-	c.ClientMeta.ClientRegistrationTypes = []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeAutomatic, goidc.ClientRegistrationTypeExplicit}
+	c.ClientRegistrationTypes = []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeAutomatic, goidc.ClientRegistrationTypeExplicit}
 
 	op, err := provider.New(
 		goidc.ProfileOpenID,
