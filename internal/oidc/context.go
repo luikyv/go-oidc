@@ -561,14 +561,11 @@ func (ctx Context) WriteHTML(html string, params any) error {
 	return tmpl.Execute(ctx.Response, params)
 }
 
-func (ctx Context) ShouldIssueRefreshToken(client *goidc.Client, grantInfo goidc.GrantInfo) bool {
-	if ctx.ShouldIssueRefreshTokenFunc == nil ||
-		!slices.Contains(client.GrantTypes, goidc.GrantRefreshToken) ||
-		grantInfo.GrantType == goidc.GrantClientCredentials {
-		return false
+func (ctx Context) ShouldIssueRefreshToken(c *goidc.Client, gi goidc.GrantInfo) bool {
+	if ctx.ShouldIssueRefreshTokenFunc == nil {
+		return true
 	}
-
-	return ctx.ShouldIssueRefreshTokenFunc(ctx, client, grantInfo)
+	return ctx.ShouldIssueRefreshTokenFunc(ctx, c, gi)
 }
 
 func (ctx Context) TokenOptions(grantInfo goidc.GrantInfo, client *goidc.Client) goidc.TokenOptions {

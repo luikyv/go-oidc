@@ -49,6 +49,7 @@ func TestGenerateGrant_AuthorizationCodeGrant(t *testing.T) {
 		CreatedAtTimestamp:          grantSession.CreatedAtTimestamp,
 		ExpiresAtTimestamp:          grantSession.ExpiresAtTimestamp,
 		AuthCode:                    session.AuthCode,
+		RefreshToken:                grantSession.RefreshToken,
 		GrantInfo: goidc.GrantInfo{
 			GrantType:     goidc.GrantAuthorizationCode,
 			Subject:       session.Subject,
@@ -141,6 +142,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails(t *testing.T) {
 		CreatedAtTimestamp:          grantSession.CreatedAtTimestamp,
 		ExpiresAtTimestamp:          grantSession.ExpiresAtTimestamp,
 		AuthCode:                    session.AuthCode,
+		RefreshToken:                grantSession.RefreshToken,
 		GrantInfo: goidc.GrantInfo{
 			GrantType:          goidc.GrantAuthorizationCode,
 			Subject:            session.Subject,

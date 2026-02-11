@@ -840,81 +840,23 @@ func TestShouldIssueRefreshToken(t *testing.T) {
 	should := ctx.ShouldIssueRefreshToken(client, grantInfo)
 
 	// Then.
-	if should {
-		t.Error("the default behavior is to return false")
+	if !should {
+		t.Error("the default behavior is to return true")
 	}
 
 	// Given.
 	ctx.ShouldIssueRefreshTokenFunc = func(ctx context.Context, c *goidc.Client, gi goidc.GrantInfo) bool {
-		return true
+		return false
 	}
-	client.GrantTypes = append(client.GrantTypes, goidc.GrantRefreshToken, goidc.GrantAuthorizationCode)
-	grantInfo.GrantType = goidc.GrantAuthorizationCode
 
 	// When.
 	should = ctx.ShouldIssueRefreshToken(client, grantInfo)
 
 	// Then.
-	if !should {
-		t.Error("the refresh token should be allowed")
-	}
-
-}
-
-func TestShouldIssueRefreshToken_RefreshTokenNotAllowed(t *testing.T) {
-
-	// Given.
-	ctx := oidc.Context{
-		Configuration: &oidc.Configuration{
-			ShouldIssueRefreshTokenFunc: func(ctx context.Context, c *goidc.Client, gi goidc.GrantInfo) bool {
-				return true
-			},
-		},
-	}
-	client := &goidc.Client{
-		ClientMeta: goidc.ClientMeta{
-			GrantTypes: []goidc.GrantType{goidc.GrantAuthorizationCode},
-		},
-	}
-	grantInfo := goidc.GrantInfo{
-		GrantType: goidc.GrantAuthorizationCode,
-	}
-
-	// When.
-	should := ctx.ShouldIssueRefreshToken(client, grantInfo)
-
-	// Then.
 	if should {
-		t.Error("the default behavior is to return false")
-	}
-}
-
-func TestShouldIssueRefreshToken_ClientCredentialsGrant(t *testing.T) {
-
-	// Given.
-	ctx := oidc.Context{
-		Configuration: &oidc.Configuration{
-			ShouldIssueRefreshTokenFunc: func(ctx context.Context, c *goidc.Client, gi goidc.GrantInfo) bool {
-				return true
-			},
-		},
-	}
-	client := &goidc.Client{
-		ClientMeta: goidc.ClientMeta{
-			GrantTypes: []goidc.GrantType{goidc.GrantRefreshToken, goidc.GrantClientCredentials},
-		},
-	}
-	grantInfo := goidc.GrantInfo{
-		GrantType: goidc.GrantClientCredentials,
+		t.Error("the refresh token should be not allowed")
 	}
 
-	// When.
-	should := ctx.ShouldIssueRefreshToken(client, grantInfo)
-
-	// Then.
-	if should {
-		t.Error("the default behavior is to return false")
-	}
 }
 
 func TestTokenOptions_JWT(t *testing.T) {

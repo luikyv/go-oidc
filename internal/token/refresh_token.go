@@ -185,38 +185,34 @@ func validateRefreshTokenGrantRequest(
 	return nil
 }
 
-func validateRefreshTokenBinding(
-	ctx oidc.Context,
-	client *goidc.Client,
-	confirmation goidc.TokenConfirmation,
-) error {
+func validateRefreshTokenBinding(ctx oidc.Context, c *goidc.Client, cnf goidc.TokenConfirmation) error {
 
 	// For public clients, tokens are bound to the mechanism specified when
 	// issuing the first token.
 	// In that case proof of possession is verified instead of token binding.
-	if client.IsPublic() {
+	if c.IsPublic() {
 		return nil
 	}
 
 	// If the refresh token was issued with DPoP, make sure the following token
 	// is bound with DPoP as well.
-	if confirmation.JWKThumbprint != "" {
+	if cnf.JWKThumbprint != "" {
 		// Note that a DPoP JWT for a different key can be used to bind the token.
 		opts := bindindValidationsOptions{}
 		opts.dpopIsRequired = true
-		if err := validateBindingDPoP(ctx, client, opts); err != nil {
+		if err := validateBindingDPoP(ctx, c, opts); err != nil {
 			return err
 		}
 	}
 
 	// If the refresh token was issued with TLS binding, make sure the following
 	// token is bound to the same tls certificate.
-	if confirmation.ClientCertThumbprint != "" {
+	if cnf.ClientCertThumbprint != "" {
 		opts := bindindValidationsOptions{
 			tlsIsRequired:     true,
-			tlsCertThumbprint: confirmation.ClientCertThumbprint,
+			tlsCertThumbprint: cnf.ClientCertThumbprint,
 		}
-		if err := validateBindingTLS(ctx, client, opts); err != nil {
+		if err := validateBindingTLS(ctx, c, opts); err != nil {
 			return err
 		}
 	}
@@ -224,15 +220,11 @@ func validateRefreshTokenBinding(
 	return nil
 }
 
-func validateRefreshTokenPoP(
-	ctx oidc.Context,
-	client *goidc.Client,
-	cnf goidc.TokenConfirmation,
-) error {
+func validateRefreshTokenPoP(ctx oidc.Context, c *goidc.Client, cnf goidc.TokenConfirmation) error {
 
 	// Proof of possession validation is not needed during the refresh token
 	// for confidential clients, as they are already authenticated.
-	if !client.IsPublic() {
+	if !c.IsPublic() {
 		return nil
 	}
 
@@ -241,4 +233,12 @@ func validateRefreshTokenPoP(
 
 func newRefreshToken() string {
 	return strutil.Random(goidc.RefreshTokenLength)
+}
+
+func shouldIssueRefreshToken(ctx oidc.Context, c *goidc.Client, gi goidc.GrantInfo) bool {
+	if !slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) || gi.GrantType == goidc.GrantClientCredentials {
+		return false
+	}
+
+	return ctx.ShouldIssueRefreshToken(c, gi)
 }

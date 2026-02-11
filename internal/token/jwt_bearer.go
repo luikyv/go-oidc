@@ -129,7 +129,7 @@ func generateJWTBearerGrantSession(
 
 	grantSession := NewGrantSession(ctx, grantInfo, token)
 	var refreshTkn string
-	if ctx.ShouldIssueRefreshToken(client, grantInfo) {
+	if shouldIssueRefreshToken(ctx, client, grantInfo) {
 		refreshTkn = newRefreshToken()
 		grantSession.RefreshToken = refreshTkn
 		grantSession.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
