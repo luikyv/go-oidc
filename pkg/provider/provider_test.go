@@ -171,6 +171,7 @@ func TestNew_WithOptions(t *testing.T) {
 			UserInfoKeyEncAlgs:             []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
 			UserInfoDefaultContentEncAlg:   goidc.A128CBC_HS256,
 			UserInfoContentEncAlgs:         []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256},
+			AuthorizationCodeLifetimeSecs:  60,
 		},
 		cmpopts.IgnoreFields(
 			oidc.Configuration{},
