@@ -12,36 +12,28 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 		return
 	}
 
-	router.Handle(
-		"GET "+config.EndpointPrefix+config.LogoutEndpoint,
-		goidc.ApplyMiddlewares(oidc.Handler(config, handle), middlewares...),
-	)
-	router.Handle(
-		"POST "+config.EndpointPrefix+config.LogoutEndpoint,
-		goidc.ApplyMiddlewares(oidc.Handler(config, handle), middlewares...),
-	)
+	router.Handle("GET "+config.EndpointPrefix+config.LogoutEndpoint,
+		goidc.ApplyMiddlewares(oidc.Handler(config, handle), middlewares...))
+	router.Handle("POST "+config.EndpointPrefix+config.LogoutEndpoint,
+		goidc.ApplyMiddlewares(oidc.Handler(config, handle), middlewares...))
 
-	router.Handle(
-		"POST "+config.EndpointPrefix+config.LogoutEndpoint+"/{callback}",
-		goidc.ApplyMiddlewares(oidc.Handler(config, handleCallback), middlewares...),
-	)
-	router.Handle(
-		"GET "+config.EndpointPrefix+config.LogoutEndpoint+"/{callback}",
-		goidc.ApplyMiddlewares(oidc.Handler(config, handleCallback), middlewares...),
-	)
-	router.Handle(
-		"POST "+config.EndpointPrefix+config.LogoutEndpoint+"/{callback}/{callback_path...}",
-		goidc.ApplyMiddlewares(oidc.Handler(config, handleCallback), middlewares...),
-	)
-	router.Handle(
-		"GET "+config.EndpointPrefix+config.LogoutEndpoint+"/{callback}/{callback_path...}",
-		goidc.ApplyMiddlewares(oidc.Handler(config, handleCallback), middlewares...),
-	)
+	router.Handle("POST "+config.EndpointPrefix+config.LogoutEndpoint+"/{callback}",
+		goidc.ApplyMiddlewares(oidc.Handler(config, handleCallback), middlewares...))
+	router.Handle("GET "+config.EndpointPrefix+config.LogoutEndpoint+"/{callback}",
+		goidc.ApplyMiddlewares(oidc.Handler(config, handleCallback), middlewares...))
+	router.Handle("POST "+config.EndpointPrefix+config.LogoutEndpoint+"/{callback}/{callback_path...}",
+		goidc.ApplyMiddlewares(oidc.Handler(config, handleCallback), middlewares...))
+	router.Handle("GET "+config.EndpointPrefix+config.LogoutEndpoint+"/{callback}/{callback_path...}",
+		goidc.ApplyMiddlewares(oidc.Handler(config, handleCallback), middlewares...))
 }
 
 func handle(ctx oidc.Context) {
 	var req request
 	if ctx.RequestMethod() == http.MethodPost {
+		if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/x-www-form-urlencoded" {
+			ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+			return
+		}
 		req = newFormRequest(ctx.Request)
 	} else {
 		req = newRequest(ctx.Request)

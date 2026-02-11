@@ -33,6 +33,11 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 }
 
 func handleCreate(ctx oidc.Context) {
+	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/json" {
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+		return
+	}
+
 	var req request
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
 		ctx.WriteError(goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not parse the request", err))
@@ -52,6 +57,11 @@ func handleCreate(ctx oidc.Context) {
 }
 
 func handleUpdate(ctx oidc.Context) {
+	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/json" {
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+		return
+	}
+
 	var req request
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
 		ctx.WriteError(goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not parse the request", err))

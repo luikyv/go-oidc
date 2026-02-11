@@ -75,6 +75,11 @@ func handleJWKS(ctx oidc.Context) {
 }
 
 func handleCreateStream(ctx oidc.Context) {
+	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/json" {
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+		return
+	}
+
 	var req request
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
 		ctx.WriteError(goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not parse the request", err))
@@ -93,6 +98,11 @@ func handleCreateStream(ctx oidc.Context) {
 }
 
 func handleUpdateStream(ctx oidc.Context) {
+	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/json" {
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+		return
+	}
+
 	var req request
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
 		ctx.WriteError(goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not parse the request", err))
@@ -111,6 +121,11 @@ func handleUpdateStream(ctx oidc.Context) {
 }
 
 func handlePatchStream(ctx oidc.Context) {
+	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/json" {
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+		return
+	}
+
 	var req request
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
 		ctx.WriteError(goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not parse the request", err))
@@ -188,6 +203,11 @@ func handleFetchStreamStatus(ctx oidc.Context) {
 }
 
 func handleUpdateStreamStatus(ctx oidc.Context) {
+	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/json" {
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+		return
+	}
+
 	var req requestStatus
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
 		ctx.WriteError(goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not parse the request", err))
@@ -206,6 +226,11 @@ func handleUpdateStreamStatus(ctx oidc.Context) {
 }
 
 func handleAddSubject(ctx oidc.Context) {
+	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/json" {
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+		return
+	}
+
 	var req requestSubject
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
 		ctx.WriteError(goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not parse the request", err))
@@ -221,6 +246,11 @@ func handleAddSubject(ctx oidc.Context) {
 }
 
 func handleRemoveSubject(ctx oidc.Context) {
+	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/json" {
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+		return
+	}
+
 	var req requestSubject
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
 		ctx.WriteError(goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not parse the request", err))
@@ -236,6 +266,11 @@ func handleRemoveSubject(ctx oidc.Context) {
 }
 
 func handlePollEvents(ctx oidc.Context) {
+	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/json" {
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+		return
+	}
+
 	var req requestPollEvents
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
 		ctx.WriteError(goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not parse the request", err))
@@ -255,6 +290,11 @@ func handlePollEvents(ctx oidc.Context) {
 }
 
 func handleCreateVerificationEvent(ctx oidc.Context) {
+	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/json" {
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+		return
+	}
+
 	var req requestVerificationEvent
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
 		ctx.WriteError(goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not parse the request", err))
