@@ -63,7 +63,7 @@ func validClaims(ctx oidc.Context, token string) (map[string]any, error) {
 	}
 
 	if err := claims.ValidateWithLeeway(jwt.Expected{
-		Issuer: ctx.Host,
+		Issuer: ctx.Issuer(),
 	}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second); err != nil {
 		return nil, goidc.WrapError(goidc.ErrorCodeAccessDenied, "invalid token", err)
 	}

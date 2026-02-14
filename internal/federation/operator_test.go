@@ -662,7 +662,7 @@ type testCaseMetadataOperatorsMerge[T any] struct {
 
 func (testCase testCaseMetadataOperatorsMerge[T]) runTest(t *testing.T) {
 	// When.
-	got, err := testCase.highOps.merge(testCase.lowOps)
+	got, err := testCase.highOps.Merge(testCase.lowOps)
 
 	// Then.
 	if testCase.wantErr {
@@ -1080,7 +1080,7 @@ type testCaseMetadataOperatorsApply[T any] struct {
 
 func (testCase testCaseMetadataOperatorsApply[T]) runTest(t *testing.T) {
 	// When.
-	got, err := testCase.ops.apply(testCase.field)
+	got, err := testCase.ops.Apply(testCase.field)
 
 	// Then.
 	if testCase.wantErr {
@@ -1105,4 +1105,232 @@ type testCaseInterface interface {
 
 func pointerOf[T any](t T) *T {
 	return &t
+}
+
+func TestMetadataOperators_Validate(t *testing.T) {
+	testCases := []struct {
+		name    string
+		ops     metadataOperators[int]
+		wantErr bool
+	}{
+		{
+			name:    "empty operators valid",
+			ops:     metadataOperators[int]{},
+			wantErr: false,
+		},
+		{
+			name: "value set valid",
+			ops: metadataOperators[int]{
+				Value: nullable[int]{Set: true, Value: 1},
+			},
+			wantErr: false,
+		},
+		{
+			name: "one_of valid",
+			ops: metadataOperators[int]{
+				OneOf: []int{1, 2, 3},
+			},
+			wantErr: false,
+		},
+		{
+			name: "value not in one_of invalid",
+			ops: metadataOperators[int]{
+				Value: nullable[int]{Set: true, Value: 5},
+				OneOf: []int{1, 2, 3},
+			},
+			wantErr: true,
+		},
+		{
+			name: "value cannot combine with one_of",
+			ops: metadataOperators[int]{
+				Value: nullable[int]{Set: true, Value: 2},
+				OneOf: []int{1, 2, 3},
+			},
+			wantErr: true, // value cannot be combined with other operators except essential
+		},
+		{
+			name: "default not in one_of invalid",
+			ops: metadataOperators[int]{
+				Default: 5,
+				OneOf:   []int{1, 2, 3},
+			},
+			wantErr: true,
+		},
+		{
+			name: "default in one_of valid",
+			ops: metadataOperators[int]{
+				Default: 2,
+				OneOf:   []int{1, 2, 3},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.ops.Validate()
+			if (err != nil) != tc.wantErr {
+				t.Errorf("validate() error = %v, wantErr %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestMetadataOperators_ValidateSlice(t *testing.T) {
+	testCases := []struct {
+		name    string
+		ops     metadataOperators[[]int]
+		wantErr bool
+	}{
+		{
+			name:    "empty operators valid",
+			ops:     metadataOperators[[]int]{},
+			wantErr: false,
+		},
+		{
+			name: "subset_of valid",
+			ops: metadataOperators[[]int]{
+				SubsetOf: []int{1, 2, 3},
+			},
+			wantErr: false,
+		},
+		{
+			name: "superset_of valid",
+			ops: metadataOperators[[]int]{
+				SupersetOf: []int{1, 2},
+			},
+			wantErr: false,
+		},
+		{
+			name: "value not subset_of invalid",
+			ops: metadataOperators[[]int]{
+				Value:    nullable[[]int]{Set: true, Value: []int{1, 5}},
+				SubsetOf: []int{1, 2, 3},
+			},
+			wantErr: true,
+		},
+		{
+			name: "value cannot combine with subset_of",
+			ops: metadataOperators[[]int]{
+				Value:    nullable[[]int]{Set: true, Value: []int{1, 2}},
+				SubsetOf: []int{1, 2, 3},
+			},
+			wantErr: true, // value cannot be combined with other operators except essential
+		},
+		{
+			name: "superset_of not subset_of invalid",
+			ops: metadataOperators[[]int]{
+				SubsetOf:   []int{1, 2},
+				SupersetOf: []int{1, 2, 3},
+			},
+			wantErr: true,
+		},
+		{
+			name: "superset_of is subset_of valid",
+			ops: metadataOperators[[]int]{
+				SubsetOf:   []int{1, 2, 3, 4},
+				SupersetOf: []int{1, 2},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.ops.Validate()
+			if (err != nil) != tc.wantErr {
+				t.Errorf("validate() error = %v, wantErr %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestMetadataOperators_ApplyEssential(t *testing.T) {
+	t.Run("essential true with zero value fails", func(t *testing.T) {
+		ops := metadataOperators[int]{Essential: true}
+		_, err := ops.Apply(0)
+		if err == nil {
+			t.Error("expected error for essential field with zero value")
+		}
+	})
+
+	t.Run("essential true with non-zero value passes", func(t *testing.T) {
+		ops := metadataOperators[int]{Essential: true}
+		result, err := ops.Apply(5)
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if result != 5 {
+			t.Errorf("result = %d, want 5", result)
+		}
+	})
+
+	t.Run("essential false with zero value passes", func(t *testing.T) {
+		ops := metadataOperators[int]{Essential: false}
+		result, err := ops.Apply(0)
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if result != 0 {
+			t.Errorf("result = %d, want 0", result)
+		}
+	})
+
+	t.Run("essential true with nil pointer fails", func(t *testing.T) {
+		ops := metadataOperators[*int]{Essential: true}
+		_, err := ops.Apply(nil)
+		if err == nil {
+			t.Error("expected error for essential field with nil pointer")
+		}
+	})
+
+	t.Run("essential true with non-nil pointer passes", func(t *testing.T) {
+		ops := metadataOperators[*int]{Essential: true}
+		val := 5
+		result, err := ops.Apply(&val)
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if *result != 5 {
+			t.Errorf("*result = %d, want 5", *result)
+		}
+	})
+
+	t.Run("essential true with empty string fails", func(t *testing.T) {
+		ops := metadataOperators[string]{Essential: true}
+		_, err := ops.Apply("")
+		if err == nil {
+			t.Error("expected error for essential field with empty string")
+		}
+	})
+
+	t.Run("essential true with non-empty string passes", func(t *testing.T) {
+		ops := metadataOperators[string]{Essential: true}
+		result, err := ops.Apply("value")
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if result != "value" {
+			t.Errorf("result = %q, want %q", result, "value")
+		}
+	})
+
+	t.Run("essential true with nil slice fails", func(t *testing.T) {
+		ops := metadataOperators[[]int]{Essential: true}
+		_, err := ops.Apply(nil)
+		if err == nil {
+			t.Error("expected error for essential field with nil slice")
+		}
+	})
+
+	t.Run("essential true with non-empty slice passes", func(t *testing.T) {
+		ops := metadataOperators[[]int]{Essential: true}
+		result, err := ops.Apply([]int{1, 2})
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if len(result) != 2 {
+			t.Errorf("len(result) = %d, want 2", len(result))
+		}
+	})
 }

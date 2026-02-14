@@ -29,7 +29,7 @@ func initAuth(ctx oidc.Context, req request) error {
 	if !slices.ContainsFunc(c.GrantTypes, func(gt goidc.GrantType) bool {
 		return gt == goidc.GrantAuthorizationCode || gt == goidc.GrantImplicit
 	}) {
-		return goidc.NewError(goidc.ErrorCodeInvalidClient, "client not allowed")
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "client not allowed", errors.New("client is missing grant type to call the authorization endpoint"))
 	}
 
 	as, err := initAuthnSession(ctx, req, c)
@@ -159,8 +159,7 @@ func authnSessionWithJAR(ctx oidc.Context, req request, client *goidc.Client) (*
 	case ctx.JARByReferenceIsEnabled && req.RequestURI != "":
 		jar, err = jarFromRequestURI(ctx, req.RequestURI, client)
 	default:
-		err = goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"request object is required")
+		err = goidc.NewError(goidc.ErrorCodeInvalidRequest, "request object is required")
 	}
 	if err != nil {
 		return nil, err
@@ -195,7 +194,7 @@ func authenticate(ctx oidc.Context, session *goidc.AuthnSession) error {
 	case goidc.StatusSuccess:
 		return finishFlowSuccessfully(ctx, session)
 	case goidc.StatusInProgress:
-		// TODO: Avoid saving if nothing changed.
+		// TODO: How to avoid saving if nothing changed?
 		return ctx.SaveAuthnSession(session)
 	default:
 		return finishFlowWithFailure(ctx, session, err)
@@ -277,7 +276,7 @@ func authorizeAuthnSession(ctx oidc.Context, session *goidc.AuthnSession) error 
 	}
 
 	session.AuthCode = ctx.AuthorizationCode()
-	session.ExpiresAtTimestamp = timeutil.TimestampNow() + authorizationCodeLifetimeSecs
+	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.AuthorizationCodeLifetimeSecs
 	// Make sure the session won't be reached anymore from the callback endpoint.
 	session.CallbackID = ""
 	// Make sure the session won't be reached anymore with the request URI.

@@ -40,7 +40,7 @@ func TestMakeIDToken(t *testing.T) {
 
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
-		"iss":          ctx.Host,
+		"iss":          ctx.Issuer(),
 		"sub":          idTokenOptions.Subject,
 		"aud":          client.ID,
 		"random_claim": "random_value",
@@ -85,7 +85,7 @@ func TestMakeIDToken_Unsigned(t *testing.T) {
 
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
-		"iss":          ctx.Host,
+		"iss":          ctx.Issuer(),
 		"sub":          idTokenOptions.Subject,
 		"aud":          client.ID,
 		"random_claim": "random_value",
@@ -133,7 +133,7 @@ func TestMakeIDToken_PairwiseSub(t *testing.T) {
 
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
-		"iss": ctx.Host,
+		"iss": ctx.Issuer(),
 		"sub": "example.com_random_subject",
 		"aud": client.ID,
 		"iat": float64(now),
@@ -179,7 +179,7 @@ func TestMakeToken_JWTToken(t *testing.T) {
 
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
-		"iss":          ctx.Host,
+		"iss":          ctx.Issuer(),
 		"sub":          grantInfo.Subject,
 		"client_id":    client.ID,
 		"scope":        grantInfo.GrantedScopes,

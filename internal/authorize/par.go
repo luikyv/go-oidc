@@ -1,7 +1,7 @@
 package authorize
 
 import (
-	"github.com/luikyv/go-oidc/internal/clientutil"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -11,7 +11,7 @@ import (
 
 func pushAuth(ctx oidc.Context, req request) (pushedResponse, error) {
 
-	c, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	c, err := client.Authenticated(ctx, client.TokenAuthnContext)
 	if err != nil {
 		return pushedResponse{}, err
 	}

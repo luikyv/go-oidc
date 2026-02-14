@@ -84,7 +84,7 @@ func (m *EventManager) Delete(_ context.Context, id string) error {
 	return nil
 }
 
-func (m *EventManager) Add(_ context.Context, streamID string, sub goidc.SSFSubject, _ goidc.SSFSubjectOptions) error {
+func (m *EventManager) AddSubject(_ context.Context, streamID string, sub goidc.SSFSubject, _ goidc.SSFSubjectOptions) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -97,7 +97,7 @@ func (m *EventManager) Add(_ context.Context, streamID string, sub goidc.SSFSubj
 	return nil
 }
 
-func (m *EventManager) Remove(_ context.Context, streamID string, sub goidc.SSFSubject) error {
+func (m *EventManager) RemoveSubject(_ context.Context, streamID string, sub goidc.SSFSubject) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.streamSubjects[streamID] = slices.DeleteFunc(m.streamSubjects[streamID], func(s goidc.SSFSubject) bool {
@@ -154,7 +154,7 @@ func (m *EventManager) AcknowledgeErrors(_ context.Context, streamID string, err
 	return nil
 }
 
-func (m *EventManager) Schedule(ctx context.Context, streamID string, opts goidc.SSFStreamVerificationOptions) error {
+func (m *EventManager) ScheduleVerificationEvent(ctx context.Context, streamID string, opts goidc.SSFStreamVerificationOptions) error {
 	oidcCtx, ok := ctx.(oidc.Context)
 	if !ok {
 		return nil

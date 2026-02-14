@@ -1,4 +1,4 @@
-package dcr
+package client
 
 import (
 	"encoding/json"
@@ -77,7 +77,7 @@ func TestValidateRequest_InvalidPrivateKeyJWTSigAlg(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	client, _ := oidctest.NewClient(t)
-	client.TokenAuthnMethod = goidc.ClientAuthnPrivateKeyJWT
+	client.TokenAuthnMethod = goidc.AuthnMethodPrivateKeyJWT
 	client.TokenAuthnSigAlg = "invalid_sig_alg"
 
 	// When.
@@ -102,9 +102,9 @@ func TestValidateRequest_JWKSRequiredForPrivateKeyJWT(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	client, _ := oidctest.NewClient(t)
-	client.TokenAuthnMethod = goidc.ClientAuthnPrivateKeyJWT
-	client.PublicJWKS = nil
-	client.PublicJWKSURI = ""
+	client.TokenAuthnMethod = goidc.AuthnMethodPrivateKeyJWT
+	client.JWKS = nil
+	client.JWKSURI = ""
 
 	// When.
 	err := Validate(ctx, &client.ClientMeta)
@@ -128,9 +128,9 @@ func TestValidateRequest_JWKSRequiredForSelfSignedTLS(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	client, _ := oidctest.NewClient(t)
-	client.TokenAuthnMethod = goidc.ClientAuthnSelfSignedTLS
-	client.PublicJWKS = nil
-	client.PublicJWKSURI = ""
+	client.TokenAuthnMethod = goidc.AuthnMethodSelfSignedTLS
+	client.JWKS = nil
+	client.JWKSURI = ""
 
 	// When.
 	err := Validate(ctx, &client.ClientMeta)
@@ -154,7 +154,7 @@ func TestValidateRequest_InvalidSecretJWTSigAlg(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	client, _ := oidctest.NewClient(t)
-	client.TokenAuthnMethod = goidc.ClientAuthnSecretJWT
+	client.TokenAuthnMethod = goidc.AuthnMethodSecretJWT
 	client.TokenAuthnSigAlg = "invalid_sig_alg"
 
 	// When.
@@ -179,7 +179,7 @@ func TestValidateRequest_ValidTLSAuthn(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	client, _ := oidctest.NewClient(t)
-	client.TokenAuthnMethod = goidc.ClientAuthnTLS
+	client.TokenAuthnMethod = goidc.AuthnMethodTLS
 	client.TLSSubDistinguishedName = "example"
 
 	// When.
@@ -195,7 +195,7 @@ func TestValidateRequest_NoSubIdentifierForTLSAuthn(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	client, _ := oidctest.NewClient(t)
-	client.TokenAuthnMethod = goidc.ClientAuthnTLS
+	client.TokenAuthnMethod = goidc.AuthnMethodTLS
 
 	// When.
 	err := Validate(ctx, &client.ClientMeta)
@@ -219,7 +219,7 @@ func TestValidateRequest_MoreThanOneSubIdentifierForTLSAuthn(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	client, _ := oidctest.NewClient(t)
-	client.TokenAuthnMethod = goidc.ClientAuthnTLS
+	client.TokenAuthnMethod = goidc.AuthnMethodTLS
 	client.TLSSubDistinguishedName = "example"
 	client.TLSSubAlternativeName = "example"
 
@@ -269,7 +269,7 @@ func TestValidateRequest_NoneAuthnInvalidForClientCredentials(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	client, _ := oidctest.NewClient(t)
-	client.TokenAuthnMethod = goidc.ClientAuthnNone
+	client.TokenAuthnMethod = goidc.AuthnMethodNone
 	client.GrantTypes = append(client.GrantTypes, goidc.GrantClientCredentials)
 
 	// When.
@@ -293,11 +293,11 @@ func TestValidateRequest_NoneAuthnInvalidForClientCredentials(t *testing.T) {
 func TestValidateRequest_InvalidAuthnForIntrospection(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.TokenIntrospectionAuthnMethods = []goidc.ClientAuthnType{
-		goidc.ClientAuthnSecretBasic,
+	ctx.TokenIntrospectionAuthnMethods = []goidc.AuthnMethod{
+		goidc.AuthnMethodSecretBasic,
 	}
 	client, _ := oidctest.NewClient(t)
-	client.TokenIntrospectionAuthnMethod = goidc.ClientAuthnSecretPost
+	client.TokenIntrospectionAuthnMethod = goidc.AuthnMethodSecretPost
 
 	// When.
 	err := Validate(ctx, &client.ClientMeta)
@@ -622,7 +622,6 @@ func TestValidateRequest_InvalidAuthDetails(t *testing.T) {
 func TestValidateRequest_ValidCIBAPing(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.CIBAIsEnabled = true
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
 		goidc.CIBATokenDeliveryModePing,
@@ -646,7 +645,6 @@ func TestValidateRequest_ValidCIBAPing(t *testing.T) {
 func TestValidateRequest_ValidCIBAPush(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.CIBAIsEnabled = true
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
 		goidc.CIBATokenDeliveryModePing,
@@ -670,7 +668,6 @@ func TestValidateRequest_ValidCIBAPush(t *testing.T) {
 func TestValidateRequest_ValidCIBAPoll(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.CIBAIsEnabled = true
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
 		goidc.CIBATokenDeliveryModePing,
@@ -693,7 +690,6 @@ func TestValidateRequest_ValidCIBAPoll(t *testing.T) {
 func TestValidateRequest_ValidCIBAJAR(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.CIBAIsEnabled = true
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
 		goidc.CIBATokenDeliveryModePing,
@@ -719,7 +715,6 @@ func TestValidateRequest_ValidCIBAJAR(t *testing.T) {
 func TestValidateRequest_InvalidCIBAJAR(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.CIBAIsEnabled = true
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
 		goidc.CIBATokenDeliveryModePing,
@@ -754,7 +749,6 @@ func TestValidateRequest_InvalidCIBAJAR(t *testing.T) {
 func TestValidateRequest_ValidCIBAUserCode(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.CIBAIsEnabled = true
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
 		goidc.CIBATokenDeliveryModePing,
@@ -779,7 +773,6 @@ func TestValidateRequest_ValidCIBAUserCode(t *testing.T) {
 func TestValidateRequest_InvalidCIBADeliveryMode(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.CIBAIsEnabled = true
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
 		goidc.CIBATokenDeliveryModePing,
@@ -811,7 +804,6 @@ func TestValidateRequest_InvalidCIBADeliveryMode(t *testing.T) {
 func TestValidateRequest_InvalidCIBAUserCode(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.CIBAIsEnabled = true
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
 		goidc.CIBATokenDeliveryModePing,

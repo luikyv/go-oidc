@@ -1,13 +1,11 @@
 package authorize
 
 const (
-	parRequestURIPrefix           string = "urn:ietf:params:oauth:request_uri:"
-	authorizationCodeLifetimeSecs int    = 60 // TODO: Make it a config.
+	parRequestURIPrefix string = "urn:ietf:params:oauth:request_uri:"
 	// formPostResponseTemplate is a HTML document intended to be used as the
 	// response mode "form_post".
 	// The parameters that are usually sent to the client via redirect will be
 	// sent by posting a form to the client's redirect URI.
-	// TODO: Check if there's something missing.
 	formPostResponseTemplate string = `
 	<html>
 	<body onload="javascript:document.forms[0].submit()">

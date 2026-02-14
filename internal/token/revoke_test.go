@@ -146,7 +146,7 @@ func setUpRevocation(t *testing.T) (ctx oidc.Context, client *goidc.Client) {
 	}
 
 	client, secret := oidctest.NewClient(t)
-	client.TokenRevocationAuthnMethod = goidc.ClientAuthnSecretPost
+	client.TokenRevocationAuthnMethod = goidc.AuthnMethodSecretPost
 	_ = ctx.SaveClient(client)
 
 	ctx.Request.PostForm = map[string][]string{

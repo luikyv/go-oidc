@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/luikyv/go-oidc/internal/clientutil"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
@@ -38,7 +38,7 @@ func redirectError(ctx oidc.Context, err error, c *goidc.Client) error {
 func redirectResponse(ctx oidc.Context, c *goidc.Client, params goidc.AuthorizationParameters, redirectParams response) error {
 
 	if ctx.IssuerRespParamIsEnabled {
-		redirectParams.issuer = ctx.Host
+		redirectParams.issuer = ctx.Issuer()
 	}
 
 	responseMode := responseMode(params)
@@ -111,7 +111,7 @@ func createJARMResponse(ctx oidc.Context, c *goidc.Client, redirectParams respon
 func signJARMResponse(ctx oidc.Context, client *goidc.Client, redirectParams response) (string, error) {
 	createdAtTimestamp := timeutil.TimestampNow()
 	claims := map[string]any{
-		goidc.ClaimIssuer:   ctx.Host,
+		goidc.ClaimIssuer:   ctx.Issuer(),
 		goidc.ClaimAudience: client.ID,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JARMLifetimeSecs,
@@ -131,14 +131,14 @@ func signJARMResponse(ctx oidc.Context, client *goidc.Client, redirectParams res
 	return resp, nil
 }
 
-func encryptJARMResponse(ctx oidc.Context, responseJWT string, client *goidc.Client) (string, error) {
-	jwk, err := clientutil.JWKByAlg(ctx, client, string(client.JARMKeyEncAlg))
+func encryptJARMResponse(ctx oidc.Context, responseJWT string, c *goidc.Client) (string, error) {
+	jwk, err := client.JWKByAlg(ctx, c, string(c.JARMKeyEncAlg))
 	if err != nil {
 		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"could not fetch the client encryption jwk for jarm", err)
 	}
 
-	contentEncAlg := client.JARMContentEncAlg
+	contentEncAlg := c.JARMContentEncAlg
 	if contentEncAlg == "" {
 		contentEncAlg = ctx.JARMDefaultContentEncAlg
 	}

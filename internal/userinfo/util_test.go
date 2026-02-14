@@ -73,7 +73,7 @@ func TestHandleUserInfoRequest_SignedResponse(t *testing.T) {
 	}
 
 	wantedClaims := map[string]any{
-		"iss":          ctx.Host,
+		"iss":          ctx.Issuer(),
 		"sub":          "random_subject",
 		"aud":          client.ID,
 		"random_claim": "random_value",
@@ -120,7 +120,7 @@ func TestHandleUserInfoRequest_UnsignedResponse(t *testing.T) {
 	}
 
 	wantedClaims := map[string]any{
-		"iss":          ctx.Host,
+		"iss":          ctx.Issuer(),
 		"sub":          "random_subject",
 		"aud":          client.ID,
 		"random_claim": "random_value",

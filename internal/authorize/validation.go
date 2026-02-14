@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikyv/go-oidc/internal/clientutil"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
@@ -16,8 +16,9 @@ import (
 
 // validateRequest validates the parameters sent in an authorization request.
 func validateRequest(ctx oidc.Context, req request, c *goidc.Client) error {
-	if c.IsFederated && c.FederationRegistrationType == goidc.ClientRegistrationTypeAutomatic {
-		return goidc.NewError(goidc.ErrorCodeAccessDenied, "asymmetric cryptography must be used to authenticate requests when using automatic registration")
+	if c.FederationRegistrationType == goidc.ClientRegistrationTypeAutomatic {
+		return goidc.NewError(goidc.ErrorCodeAccessDenied,
+			"asymmetric cryptography must be used to authenticate requests when using automatic registration")
 	}
 	return validateParams(ctx, req.AuthorizationParameters, c)
 }
@@ -101,11 +102,10 @@ func validatePushedRequestWithJAR(ctx oidc.Context, req request, jar request, c 
 }
 
 func validateSimplePushedRequest(ctx oidc.Context, req request, c *goidc.Client) error {
-	if c.IsFederated && c.FederationRegistrationType == goidc.ClientRegistrationTypeAutomatic {
-		if c.TokenAuthnMethod != goidc.ClientAuthnPrivateKeyJWT && c.TokenAuthnMethod != goidc.ClientAuthnSelfSignedTLS {
-			return goidc.NewError(goidc.ErrorCodeAccessDenied,
-				"asymmetric cryptography must be used to authenticate requests when using automatic registration")
-		}
+	if c.FederationRegistrationType == goidc.ClientRegistrationTypeAutomatic &&
+		c.TokenAuthnMethod != goidc.AuthnMethodPrivateKeyJWT && c.TokenAuthnMethod != goidc.AuthnMethodSelfSignedTLS {
+		return goidc.NewError(goidc.ErrorCodeAccessDenied,
+			"asymmetric cryptography must be used to authenticate requests when using automatic registration")
 	}
 	return validatePushedRequest(ctx, req, c)
 }
@@ -394,7 +394,7 @@ func validateScopesAsOptional(ctx oidc.Context, params goidc.AuthorizationParame
 		return nil
 	}
 
-	if !clientutil.AreScopesAllowed(c, ctx.Scopes, params.Scopes) {
+	if !client.AreScopesAllowed(ctx, c, params.Scopes) {
 		return newRedirectionError(goidc.ErrorCodeInvalidScope, "invalid scope", params)
 	}
 

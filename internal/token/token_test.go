@@ -110,7 +110,7 @@ func TestGenerateGrantWithDPoP(t *testing.T) {
 
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
-		"iss":       ctx.Host,
+		"iss":       ctx.Issuer(),
 		"sub":       client.ID,
 		"client_id": client.ID,
 		"scope":     "scope1",

@@ -44,7 +44,7 @@ func main() {
 		provider.WithSSFDeliveryMethods(goidc.SSFDeliveryMethodPoll, goidc.SSFDeliveryMethodPush),
 		provider.WithSSFEventStreamStatusManagement(),
 		provider.WithSSFEventStreamSubjectManagement(),
-		provider.WithSSFEventStreamVerification(),
+		provider.WithSSFEventStreamVerification(nil),
 		provider.WithSSFMinVerificationInterval(5),
 		provider.WithSSFDefaultSubjects(goidc.SSFDefaultSubjectAll),
 		provider.WithSSFAuthorizationSchemes(goidc.SSFAuthorizationScheme{SpecificationURN: "urn:ietf:rfc:6749"}),

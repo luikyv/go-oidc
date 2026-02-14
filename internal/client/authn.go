@@ -1,4 +1,4 @@
-package clientutil
+package client
 
 import (
 	"crypto"
@@ -7,6 +7,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha1" //nolint:gosec
 	"crypto/sha256"
+	"crypto/subtle"
 	"crypto/x509"
 	"fmt"
 	"slices"
@@ -17,14 +18,13 @@ import (
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"golang.org/x/crypto/bcrypt"
 )
 
 const (
-	idFormPostParam            = "client_id"
-	secretFormPostParam        = "client_secret"
-	assertionFormPostParam     = "client_assertion"
-	assertionTypeFormPostParam = "client_assertion_type"
+	formPostParamID            = "client_id"
+	formPostParamSecret        = "client_secret"
+	formPostParamAssertion     = "client_assertion"
+	formPostParamAssertionType = "client_assertion_type"
 )
 
 type AuthnContext string
@@ -61,19 +61,19 @@ func authenticate(ctx oidc.Context, client *goidc.Client, authnCtx AuthnContext)
 
 	method := authnMethod(client, authnCtx)
 	switch method {
-	case goidc.ClientAuthnNone:
+	case goidc.AuthnMethodNone:
 		return nil
-	case goidc.ClientAuthnSecretPost:
+	case goidc.AuthnMethodSecretPost:
 		return authenticateSecretPost(ctx, client)
-	case goidc.ClientAuthnSecretBasic:
+	case goidc.AuthnMethodSecretBasic:
 		return authenticateSecretBasic(ctx, client)
-	case goidc.ClientAuthnPrivateKeyJWT:
+	case goidc.AuthnMethodPrivateKeyJWT:
 		return authenticatePrivateKeyJWT(ctx, client, authnCtx)
-	case goidc.ClientAuthnSecretJWT:
+	case goidc.AuthnMethodSecretJWT:
 		return authenticateSecretJWT(ctx, client, authnCtx)
-	case goidc.ClientAuthnSelfSignedTLS:
+	case goidc.AuthnMethodSelfSignedTLS:
 		return authenticateSelfSignedTLSCert(ctx, client)
-	case goidc.ClientAuthnTLS:
+	case goidc.AuthnMethodTLS:
 		return authenticateTLSCert(ctx, client)
 	default:
 		return goidc.NewError(goidc.ErrorCodeInvalidClient,
@@ -85,7 +85,7 @@ func authenticate(ctx oidc.Context, client *goidc.Client, authnCtx AuthnContext)
 // the provided authentication context.
 // If the context-specific method is defined, it will be used. Otherwise, the
 // method for the token endpoint is returned.
-func authnMethod(client *goidc.Client, authnCtx AuthnContext) goidc.ClientAuthnType {
+func authnMethod(client *goidc.Client, authnCtx AuthnContext) goidc.AuthnMethod {
 	switch {
 	case authnCtx == TokenRevocationAuthnContext && client.TokenRevocationAuthnMethod != "":
 		return client.TokenRevocationAuthnMethod
@@ -98,11 +98,11 @@ func authnMethod(client *goidc.Client, authnCtx AuthnContext) goidc.ClientAuthnT
 
 func authenticateSecretPost(ctx oidc.Context, c *goidc.Client) error {
 
-	if c.ID != ctx.Request.PostFormValue(idFormPostParam) {
+	if c.ID != ctx.Request.PostFormValue(formPostParamID) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client id")
 	}
 
-	secret := ctx.Request.PostFormValue(secretFormPostParam)
+	secret := ctx.Request.PostFormValue(formPostParamSecret)
 	if secret == "" {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient, "client secret not informed")
 	}
@@ -122,16 +122,14 @@ func authenticateSecretBasic(ctx oidc.Context, c *goidc.Client) error {
 	return validateSecret(c, secret)
 }
 
-func validateSecret(client *goidc.Client, secret string) error {
-	err := bcrypt.CompareHashAndPassword([]byte(client.HashedSecret), []byte(secret))
-	if err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client secret", err)
+func validateSecret(c *goidc.Client, secret string) error {
+	if subtle.ConstantTimeCompare([]byte(c.Secret), []byte(secret)) != 1 {
+		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client secret")
 	}
 	return nil
 }
 
 func authenticatePrivateKeyJWT(ctx oidc.Context, client *goidc.Client, authnCtx AuthnContext) error {
-
 	assertion, err := assertion(ctx)
 	if err != nil {
 		return err
@@ -224,12 +222,12 @@ func authnSigAlgs(client *goidc.Client, authnCtx AuthnContext, defaultAlgs []goi
 }
 
 func assertion(ctx oidc.Context) (string, error) {
-	assertionType := ctx.Request.PostFormValue(assertionTypeFormPostParam)
+	assertionType := ctx.Request.PostFormValue(formPostParamAssertionType)
 	if assertionType != string(goidc.AssertionTypeJWTBearer) {
 		return "", goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid assertion_type")
 	}
 
-	assertion := ctx.Request.PostFormValue(assertionFormPostParam)
+	assertion := ctx.Request.PostFormValue(formPostParamAssertion)
 	if assertion == "" {
 		return "", goidc.NewError(goidc.ErrorCodeInvalidClient, "client_assertion not informed")
 	}
@@ -280,7 +278,7 @@ func areClaimsValid(ctx oidc.Context, claims jwt.Claims, client *goidc.Client, _
 }
 
 func authenticateSelfSignedTLSCert(ctx oidc.Context, c *goidc.Client) error {
-	if c.ID != ctx.Request.PostFormValue(idFormPostParam) {
+	if c.ID != ctx.Request.PostFormValue(formPostParamID) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client id")
 	}
 
@@ -302,7 +300,7 @@ func authenticateSelfSignedTLSCert(ctx oidc.Context, c *goidc.Client) error {
 }
 
 func jwkMatchingCert(ctx oidc.Context, c *goidc.Client, cert *x509.Certificate) (goidc.JSONWebKey, error) {
-	jwks, err := c.FetchPublicJWKS(ctx.HTTPClient())
+	jwks, err := JWKS(ctx, c)
 	if err != nil {
 		return goidc.JSONWebKey{}, fmt.Errorf("could not load the client JWKS: %w", err)
 	}
@@ -313,11 +311,11 @@ func jwkMatchingCert(ctx oidc.Context, c *goidc.Client, cert *x509.Certificate) 
 		}
 	}
 
-	return goidc.JSONWebKey{}, goidc.NewError(goidc.ErrorCodeInvalidClient, "could not find a JWK matching the client certificate")
+	return goidc.JSONWebKey{}, goidc.NewError(goidc.ErrorCodeInvalidClient, "could not find a jwk matching the client certificate")
 }
 
 func authenticateTLSCert(ctx oidc.Context, c *goidc.Client) error {
-	if c.ID != ctx.Request.PostFormValue(idFormPostParam) {
+	if c.ID != ctx.Request.PostFormValue(formPostParamID) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client id")
 	}
 
@@ -349,7 +347,7 @@ func authenticateTLSCert(ctx oidc.Context, c *goidc.Client) error {
 func extractID(ctx oidc.Context) (string, error) {
 	ids := []string{}
 
-	postID := ctx.Request.PostFormValue(idFormPostParam)
+	postID := ctx.Request.PostFormValue(formPostParamID)
 	if postID != "" {
 		ids = append(ids, postID)
 	}
@@ -359,7 +357,7 @@ func extractID(ctx oidc.Context) (string, error) {
 		ids = append(ids, basicID)
 	}
 
-	assertion := ctx.Request.PostFormValue(assertionFormPostParam)
+	assertion := ctx.Request.PostFormValue(formPostParamAssertion)
 	if assertion != "" {
 		assertionID, err := assertionClientID(assertion, ctx.ClientAuthnSigAlgs())
 		if err != nil {

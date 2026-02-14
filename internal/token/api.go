@@ -8,27 +8,26 @@ import (
 )
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlewares ...goidc.MiddlewareFunc) {
-	router.Handle(
-		"POST "+config.EndpointPrefix+config.TokenEndpoint,
-		goidc.ApplyMiddlewares(oidc.Handler(config, handleCreate), middlewares...),
-	)
+	router.Handle("POST "+config.EndpointPrefix+config.TokenEndpoint,
+		goidc.ApplyMiddlewares(oidc.Handler(config, handleCreate), middlewares...))
 
 	if config.TokenIntrospectionIsEnabled {
-		router.Handle(
-			"POST "+config.EndpointPrefix+config.IntrospectionEndpoint,
-			goidc.ApplyMiddlewares(oidc.Handler(config, handleIntrospection), middlewares...),
-		)
+		router.Handle("POST "+config.EndpointPrefix+config.IntrospectionEndpoint,
+			goidc.ApplyMiddlewares(oidc.Handler(config, handleIntrospection), middlewares...))
 	}
 
 	if config.TokenRevocationIsEnabled {
-		router.Handle(
-			"POST "+config.EndpointPrefix+config.TokenRevocationEndpoint,
-			goidc.ApplyMiddlewares(oidc.Handler(config, handleRevocation), middlewares...),
-		)
+		router.Handle("POST "+config.EndpointPrefix+config.TokenRevocationEndpoint,
+			goidc.ApplyMiddlewares(oidc.Handler(config, handleRevocation), middlewares...))
 	}
 }
 
 func handleCreate(ctx oidc.Context) {
+	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/x-www-form-urlencoded" {
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+		return
+	}
+
 	req := newRequest(ctx.Request)
 	tokenResp, err := generateGrant(ctx, req)
 	if err != nil {
@@ -42,6 +41,11 @@ func handleCreate(ctx oidc.Context) {
 }
 
 func handleIntrospection(ctx oidc.Context) {
+	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/x-www-form-urlencoded" {
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+		return
+	}
+
 	req := newQueryRequest(ctx.Request)
 	tokenInfo, err := introspect(ctx, req)
 	if err != nil {
@@ -55,6 +59,11 @@ func handleIntrospection(ctx oidc.Context) {
 }
 
 func handleRevocation(ctx oidc.Context) {
+	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/x-www-form-urlencoded" {
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+		return
+	}
+
 	req := newQueryRequest(ctx.Request)
 	err := revoke(ctx, req)
 	if err != nil {

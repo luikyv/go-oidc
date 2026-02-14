@@ -185,14 +185,14 @@ func TestInitBackAuth_WithJAR(t *testing.T) {
 	ctx.CIBAJARSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
 
 	privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
-	client.PublicJWKS = &goidc.JSONWebKeySet{
+	client.JWKS = &goidc.JSONWebKeySet{
 		Keys: []goidc.JSONWebKey{privateJWK.Public()},
 	}
 
 	now := timeutil.TimestampNow()
 	claims := map[string]any{
 		goidc.ClaimIssuer:           client.ID,
-		goidc.ClaimAudience:         ctx.Host,
+		goidc.ClaimAudience:         ctx.Issuer(),
 		goidc.ClaimIssuedAt:         now,
 		goidc.ClaimExpiry:           now + 10,
 		goidc.ClaimNotBefore:        now - 10,
@@ -316,7 +316,7 @@ func setUpBackAuth(t *testing.T) (oidc.Context, *goidc.Client) {
 	t.Helper()
 
 	ctx := oidctest.NewContext(t)
-	ctx.CIBAIsEnabled = true
+	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
 		goidc.CIBATokenDeliveryModePoll, goidc.CIBATokenDeliveryModePing,
 		goidc.CIBATokenDeliveryModePush,

@@ -17,7 +17,6 @@ import (
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/storage"
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -29,12 +28,11 @@ func NewClient(t testing.TB) (client *goidc.Client, secret string) {
 	t.Helper()
 
 	secret = "test_secret"
-	hashedSecret, _ := bcrypt.GenerateFromPassword([]byte(secret), bcrypt.DefaultCost)
 	client = &goidc.Client{
-		ID:           "test_client",
-		HashedSecret: string(hashedSecret),
+		ID:     "test_client",
+		Secret: "test_secret",
 		ClientMeta: goidc.ClientMeta{
-			TokenAuthnMethod: goidc.ClientAuthnSecretPost,
+			TokenAuthnMethod: goidc.AuthnMethodSecretPost,
 			RedirectURIs:     []string{"https://example.com/callback"},
 			ScopeIDs:         fmt.Sprintf("%s %s %s", Scope1.ID, Scope2.ID, goidc.ScopeOpenID.ID),
 			GrantTypes: []goidc.GrantType{
@@ -109,14 +107,14 @@ func NewContext(t testing.TB) oidc.Context {
 			}
 		},
 		AuthnSessionTimeoutSecs: 60,
-		TokenAuthnMethods: []goidc.ClientAuthnType{
-			goidc.ClientAuthnNone,
-			goidc.ClientAuthnSecretPost,
-			goidc.ClientAuthnSecretBasic,
-			goidc.ClientAuthnPrivateKeyJWT,
-			goidc.ClientAuthnSecretJWT,
-			goidc.ClientAuthnSelfSignedTLS,
-			goidc.ClientAuthnTLS,
+		TokenAuthnMethods: []goidc.AuthnMethod{
+			goidc.AuthnMethodNone,
+			goidc.AuthnMethodSecretPost,
+			goidc.AuthnMethodSecretBasic,
+			goidc.AuthnMethodPrivateKeyJWT,
+			goidc.AuthnMethodSecretJWT,
+			goidc.AuthnMethodSelfSignedTLS,
+			goidc.AuthnMethodTLS,
 		},
 		UserInfoDefaultSigAlg:    goidc.SignatureAlgorithm(jwk.Algorithm),
 		UserInfoSigAlgs:          []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(jwk.Algorithm)},

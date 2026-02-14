@@ -1,4 +1,4 @@
-package clientutil
+package client
 
 import "github.com/luikyv/go-oidc/pkg/goidc"
 

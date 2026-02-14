@@ -33,7 +33,7 @@ func TestTokenAuthnSigAlgs(t *testing.T) {
 		{
 			ctx: oidc.Context{
 				Configuration: &oidc.Configuration{
-					TokenAuthnMethods: []goidc.ClientAuthnType{},
+					TokenAuthnMethods: []goidc.AuthnMethod{},
 				},
 			},
 			sigAlgs: nil,
@@ -41,8 +41,8 @@ func TestTokenAuthnSigAlgs(t *testing.T) {
 		{
 			ctx: oidc.Context{
 				Configuration: &oidc.Configuration{
-					TokenAuthnMethods: []goidc.ClientAuthnType{
-						goidc.ClientAuthnPrivateKeyJWT,
+					TokenAuthnMethods: []goidc.AuthnMethod{
+						goidc.AuthnMethodPrivateKeyJWT,
 					},
 					PrivateKeyJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
 				},
@@ -52,8 +52,8 @@ func TestTokenAuthnSigAlgs(t *testing.T) {
 		{
 			ctx: oidc.Context{
 				Configuration: &oidc.Configuration{
-					TokenAuthnMethods: []goidc.ClientAuthnType{
-						goidc.ClientAuthnSecretJWT,
+					TokenAuthnMethods: []goidc.AuthnMethod{
+						goidc.AuthnMethodSecretJWT,
 					},
 					ClientSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
 				},
@@ -63,9 +63,9 @@ func TestTokenAuthnSigAlgs(t *testing.T) {
 		{
 			ctx: oidc.Context{
 				Configuration: &oidc.Configuration{
-					TokenAuthnMethods: []goidc.ClientAuthnType{
-						goidc.ClientAuthnPrivateKeyJWT,
-						goidc.ClientAuthnSecretJWT,
+					TokenAuthnMethods: []goidc.AuthnMethod{
+						goidc.AuthnMethodPrivateKeyJWT,
+						goidc.AuthnMethodSecretJWT,
 					},
 					PrivateKeyJWTSigAlgs:   []goidc.SignatureAlgorithm{goidc.PS256},
 					ClientSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
@@ -112,8 +112,8 @@ func TestIntrospectionClientAuthnSigAlgs(t *testing.T) {
 				Configuration: &oidc.Configuration{
 					PrivateKeyJWTSigAlgs:   []goidc.SignatureAlgorithm{goidc.PS256},
 					ClientSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
-					TokenIntrospectionAuthnMethods: []goidc.ClientAuthnType{
-						goidc.ClientAuthnPrivateKeyJWT,
+					TokenIntrospectionAuthnMethods: []goidc.AuthnMethod{
+						goidc.AuthnMethodPrivateKeyJWT,
 					},
 				},
 			},
@@ -124,8 +124,8 @@ func TestIntrospectionClientAuthnSigAlgs(t *testing.T) {
 				Configuration: &oidc.Configuration{
 					PrivateKeyJWTSigAlgs:   []goidc.SignatureAlgorithm{goidc.PS256},
 					ClientSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
-					TokenIntrospectionAuthnMethods: []goidc.ClientAuthnType{
-						goidc.ClientAuthnSecretJWT,
+					TokenIntrospectionAuthnMethods: []goidc.AuthnMethod{
+						goidc.AuthnMethodSecretJWT,
 					},
 				},
 			},
@@ -136,9 +136,9 @@ func TestIntrospectionClientAuthnSigAlgs(t *testing.T) {
 				Configuration: &oidc.Configuration{
 					PrivateKeyJWTSigAlgs:   []goidc.SignatureAlgorithm{goidc.PS256},
 					ClientSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
-					TokenIntrospectionAuthnMethods: []goidc.ClientAuthnType{
-						goidc.ClientAuthnPrivateKeyJWT,
-						goidc.ClientAuthnSecretJWT,
+					TokenIntrospectionAuthnMethods: []goidc.AuthnMethod{
+						goidc.AuthnMethodPrivateKeyJWT,
+						goidc.AuthnMethodSecretJWT,
 					},
 				},
 			},
@@ -168,7 +168,7 @@ func TestHandleDynamicClient(t *testing.T) {
 		Configuration: &oidc.Configuration{},
 	}
 	ctx.HandleDynamicClientFunc = func(r *http.Request, id string, meta *goidc.ClientMeta) error {
-		meta.TokenAuthnMethod = goidc.ClientAuthnNone
+		meta.TokenAuthnMethod = goidc.AuthnMethodNone
 		return nil
 	}
 	clientInfo := &goidc.ClientMeta{}
@@ -181,8 +181,8 @@ func TestHandleDynamicClient(t *testing.T) {
 		t.Errorf("no error was expected: %v", err)
 	}
 
-	if clientInfo.TokenAuthnMethod != goidc.ClientAuthnNone {
-		t.Errorf("AuthnMethod = %s, want %s", clientInfo.TokenAuthnMethod, goidc.ClientAuthnNone)
+	if clientInfo.TokenAuthnMethod != goidc.AuthnMethodNone {
+		t.Errorf("AuthnMethod = %s, want %s", clientInfo.TokenAuthnMethod, goidc.AuthnMethodNone)
 	}
 }
 
@@ -699,7 +699,7 @@ func TestValidateInitalAccessToken(t *testing.T) {
 	}
 
 	// Given.
-	ctx.ValidateInitialAccessTokenFunc = func(r *http.Request, s string) error {
+	ctx.ValidateInitialAccessTokenFunc = func(ctx context.Context, s string) error {
 		return errors.New("error")
 	}
 	// When.
@@ -840,81 +840,23 @@ func TestShouldIssueRefreshToken(t *testing.T) {
 	should := ctx.ShouldIssueRefreshToken(client, grantInfo)
 
 	// Then.
-	if should {
-		t.Error("the default behavior is to return false")
+	if !should {
+		t.Error("the default behavior is to return true")
 	}
 
 	// Given.
 	ctx.ShouldIssueRefreshTokenFunc = func(ctx context.Context, c *goidc.Client, gi goidc.GrantInfo) bool {
-		return true
+		return false
 	}
-	client.GrantTypes = append(client.GrantTypes, goidc.GrantRefreshToken, goidc.GrantAuthorizationCode)
-	grantInfo.GrantType = goidc.GrantAuthorizationCode
 
 	// When.
 	should = ctx.ShouldIssueRefreshToken(client, grantInfo)
 
 	// Then.
-	if !should {
-		t.Error("the refresh token should be allowed")
-	}
-
-}
-
-func TestShouldIssueRefreshToken_RefreshTokenNotAllowed(t *testing.T) {
-
-	// Given.
-	ctx := oidc.Context{
-		Configuration: &oidc.Configuration{
-			ShouldIssueRefreshTokenFunc: func(ctx context.Context, c *goidc.Client, gi goidc.GrantInfo) bool {
-				return true
-			},
-		},
-	}
-	client := &goidc.Client{
-		ClientMeta: goidc.ClientMeta{
-			GrantTypes: []goidc.GrantType{goidc.GrantAuthorizationCode},
-		},
-	}
-	grantInfo := goidc.GrantInfo{
-		GrantType: goidc.GrantAuthorizationCode,
-	}
-
-	// When.
-	should := ctx.ShouldIssueRefreshToken(client, grantInfo)
-
-	// Then.
 	if should {
-		t.Error("the default behavior is to return false")
-	}
-}
-
-func TestShouldIssueRefreshToken_ClientCredentialsGrant(t *testing.T) {
-
-	// Given.
-	ctx := oidc.Context{
-		Configuration: &oidc.Configuration{
-			ShouldIssueRefreshTokenFunc: func(ctx context.Context, c *goidc.Client, gi goidc.GrantInfo) bool {
-				return true
-			},
-		},
-	}
-	client := &goidc.Client{
-		ClientMeta: goidc.ClientMeta{
-			GrantTypes: []goidc.GrantType{goidc.GrantRefreshToken, goidc.GrantClientCredentials},
-		},
-	}
-	grantInfo := goidc.GrantInfo{
-		GrantType: goidc.GrantClientCredentials,
+		t.Error("the refresh token should be not allowed")
 	}
 
-	// When.
-	should := ctx.ShouldIssueRefreshToken(client, grantInfo)
-
-	// Then.
-	if should {
-		t.Error("the default behavior is to return false")
-	}
 }
 
 func TestTokenOptions_JWT(t *testing.T) {

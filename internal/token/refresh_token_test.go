@@ -40,7 +40,7 @@ func TestGenerateGrant_RefreshTokenGrant(t *testing.T) {
 
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
-		"iss":       ctx.Host,
+		"iss":       ctx.Issuer(),
 		"sub":       grantSession.Subject,
 		"client_id": client.ID,
 		"scope":     grantSession.GrantedScopes,
@@ -123,7 +123,7 @@ func TestGenerateGrant_RefreshTokenGrant_AuthDetails(t *testing.T) {
 
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
-		"iss":       ctx.Host,
+		"iss":       ctx.Issuer(),
 		"sub":       grantSession.Subject,
 		"client_id": client.ID,
 		"scope":     grantSession.GrantedScopes,
@@ -207,7 +207,7 @@ func TestGenerateGrant_RefreshTokenGrant_AuthDetails_ClientRequestsSubset(t *tes
 
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
-		"iss":       ctx.Host,
+		"iss":       ctx.Issuer(),
 		"sub":       grantSession.Subject,
 		"client_id": client.ID,
 		"scope":     grantSession.GrantedScopes,

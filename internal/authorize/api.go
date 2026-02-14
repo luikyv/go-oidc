@@ -2,6 +2,7 @@ package authorize
 
 import (
 	"net/http"
+	"slices"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -9,47 +10,35 @@ import (
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlewares ...goidc.MiddlewareFunc) {
 	if config.PARIsEnabled {
-		router.Handle(
-			"POST "+config.EndpointPrefix+config.PAREndpoint,
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerPush), middlewares...),
-		)
+		router.Handle("POST "+config.EndpointPrefix+config.PAREndpoint,
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerPush), middlewares...))
 	}
 
-	if config.CIBAIsEnabled {
-		router.Handle(
-			"POST "+config.EndpointPrefix+config.CIBAEndpoint,
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerCIBA), middlewares...),
-		)
+	if slices.Contains(config.GrantTypes, goidc.GrantCIBA) {
+		router.Handle("POST "+config.EndpointPrefix+config.CIBAEndpoint,
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerCIBA), middlewares...))
 	}
 
-	router.Handle(
-		"GET "+config.EndpointPrefix+config.AuthorizationEndpoint,
-		goidc.ApplyMiddlewares(oidc.Handler(config, handler), middlewares...),
-	)
-	router.Handle(
-		"POST "+config.EndpointPrefix+config.AuthorizationEndpoint,
-		goidc.ApplyMiddlewares(oidc.Handler(config, handler), middlewares...),
-	)
+	router.Handle("GET "+config.EndpointPrefix+config.AuthorizationEndpoint,
+		goidc.ApplyMiddlewares(oidc.Handler(config, handler), middlewares...))
+	router.Handle("POST "+config.EndpointPrefix+config.AuthorizationEndpoint,
+		goidc.ApplyMiddlewares(oidc.Handler(config, handler), middlewares...))
 
-	router.Handle(
-		"POST "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}",
-		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...),
-	)
-	router.Handle(
-		"GET "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}",
-		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...),
-	)
-	router.Handle(
-		"POST "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}/{callback_path...}",
-		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...),
-	)
-	router.Handle(
-		"GET "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}/{callback_path...}",
-		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...),
-	)
+	router.Handle("POST "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}",
+		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
+	router.Handle("GET "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}",
+		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
+	router.Handle("POST "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}/{callback_path...}",
+		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
+	router.Handle("GET "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}/{callback_path...}",
+		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
 }
 
 func handlerPush(ctx oidc.Context) {
+	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/x-www-form-urlencoded" {
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+		return
+	}
 
 	req := newFormRequest(ctx.Request)
 	resp, err := pushAuth(ctx, req)
@@ -66,6 +55,10 @@ func handlerPush(ctx oidc.Context) {
 func handler(ctx oidc.Context) {
 	var req request
 	if ctx.Request.Method == http.MethodPost {
+		if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/x-www-form-urlencoded" {
+			ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+			return
+		}
 		req = newFormRequest(ctx.Request)
 	} else {
 		req = newRequest(ctx.Request)
@@ -95,6 +88,10 @@ func handlerCallback(ctx oidc.Context) {
 }
 
 func handlerCIBA(ctx oidc.Context) {
+	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/x-www-form-urlencoded" {
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+		return
+	}
 
 	req := newFormRequest(ctx.Request)
 	resp, err := initBackAuth(ctx, req)

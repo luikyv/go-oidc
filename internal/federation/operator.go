@@ -17,17 +17,18 @@ type metadataOperators[T any] struct {
 	Essential  bool        `json:"essential"`
 }
 
-func (ops metadataOperators[T]) validate() error {
-	// TODO: Comment that this is the reverse order of application.
+func (ops metadataOperators[T]) Validate() error {
+	// Operators are validated in the reverse order of application (see apply method).
+	// This ensures that operators applied later can rely on constraints from earlier ones.
+	if err := ops.validateEssential(); err != nil {
+		return err
+	}
+
 	if err := ops.validateSupersetOf(); err != nil {
 		return err
 	}
 
 	if err := ops.validateSubsetOf(); err != nil {
-		return err
-	}
-
-	if err := ops.validateOneOf(); err != nil {
 		return err
 	}
 
@@ -72,15 +73,15 @@ func (ops metadataOperators[T]) validateAdd() error {
 	}
 
 	if ops.isOneOfSet() {
-		return errors.New("operator 'add' cannot be combined with 'oneOf'")
+		return errors.New("operator 'add' cannot be combined with 'one_of'")
 	}
 
 	if ops.isSubsetOfSet() && !isSubset(ops.Add, ops.SubsetOf) {
-		return fmt.Errorf("operator 'add' must be a subset of 'subsetOf'. add: %v, subsetOf: %v", ops.Add, ops.SubsetOf)
+		return fmt.Errorf("operator 'add' must be a subset of 'subset_of'. add: %v, subset_of: %v", ops.Add, ops.SubsetOf)
 	}
 
 	if ops.isSupersetOfSet() && !isSuperset(ops.Add, ops.SupersetOf) {
-		return fmt.Errorf("operator 'add' must be a superset of 'supersetOf'. add: %v, supersetOf: %v", ops.Add, ops.SubsetOf)
+		return fmt.Errorf("operator 'add' must be a superset of 'superset_of'. add: %v, superset_of: %v", ops.Add, ops.SupersetOf)
 	}
 
 	return nil
@@ -92,15 +93,15 @@ func (ops metadataOperators[T]) validateDefault() error {
 	}
 
 	if ops.isOneOfSet() && !deepContains(ops.OneOf, ops.Default) {
-		return fmt.Errorf("operator 'default' must be among the values of 'oneOf'. default: %v, oneOf: %v", ops.Default, ops.OneOf)
+		return fmt.Errorf("operator 'default' must be among the values of 'one_of'. default: %v, one_of: %v", ops.Default, ops.OneOf)
 	}
 
 	if ops.isSubsetOfSet() && !isSubset(ops.Default, ops.SubsetOf) {
-		return fmt.Errorf("operator 'default' must be a subset of 'subsetOf'. default: %v, subsetOf: %v", ops.Default, ops.SubsetOf)
+		return fmt.Errorf("operator 'default' must be a subset of 'subset_of'. default: %v, subset_of: %v", ops.Default, ops.SubsetOf)
 	}
 
 	if ops.isSupersetOfSet() && !isSuperset(ops.Default, ops.SupersetOf) {
-		return fmt.Errorf("operator 'default' must be a superset of 'supersetOf'. default: %v, superset: %v", ops.Default, ops.SupersetOf)
+		return fmt.Errorf("operator 'default' must be a superset of 'superset_of'. default: %v, superset_of: %v", ops.Default, ops.SupersetOf)
 	}
 
 	return nil
@@ -112,7 +113,7 @@ func (ops metadataOperators[T]) validateOneOf() error {
 	}
 
 	if ops.isSubsetOfSet() || ops.isSupersetOfSet() {
-		return errors.New("operator 'oneOf' cannot be combined with 'subsetOf' or 'supersetOf'")
+		return errors.New("operator 'one_of' cannot be combined with 'subset_of' or 'superset_of'")
 	}
 
 	return nil
@@ -124,11 +125,11 @@ func (ops metadataOperators[T]) validateSubsetOf() error {
 	}
 
 	if !isSlice(ops.SubsetOf) {
-		return fmt.Errorf("operator 'subsetOf' must be an array, but found %v", ops.SubsetOf)
+		return fmt.Errorf("operator 'subset_of' must be an array, but found %v", ops.SubsetOf)
 	}
 
 	if ops.isSupersetOfSet() && !isSuperset(ops.SubsetOf, ops.SupersetOf) {
-		return fmt.Errorf("operator 'subsetOf' must be a superset of 'supersetOf'. subsetOf: %v, supersetOf: %v", ops.SubsetOf, ops.SupersetOf)
+		return fmt.Errorf("operator 'subset_of' must be a superset of 'superset_of'. subset_of: %v, superset_of: %v", ops.SubsetOf, ops.SupersetOf)
 	}
 
 	return nil
@@ -140,13 +141,17 @@ func (ops metadataOperators[T]) validateSupersetOf() error {
 	}
 
 	if !isSlice(ops.SupersetOf) {
-		return fmt.Errorf("operator 'supersetOf' must be an array, but found %v", ops.SupersetOf)
+		return fmt.Errorf("operator 'superset_of' must be an array, but found %v", ops.SupersetOf)
 	}
 
 	return nil
 }
 
-func (ops metadataOperators[T]) apply(value T) (T, error) {
+func (ops metadataOperators[T]) validateEssential() error {
+	return nil
+}
+
+func (ops metadataOperators[T]) Apply(value T) (T, error) {
 	var zero T
 	var err error
 
@@ -223,7 +228,7 @@ func (ops metadataOperators[T]) applyOneOf(value T) (T, error) {
 
 	var zero T
 	if !deepContains(ops.OneOf, value) {
-		return zero, fmt.Errorf("value is not one of the values in 'oneOf'. value: %v, oneOf: %v", value, ops.OneOf)
+		return zero, fmt.Errorf("value is not one of the values in 'one_of'. value: %v, one_of: %v", value, ops.OneOf)
 	}
 
 	return value, nil
@@ -235,8 +240,9 @@ func (ops metadataOperators[T]) applySubsetOf(value T) (T, error) {
 	}
 
 	var zero T
+	// TODO: Should it return an error or the intersection of the two slices?
 	if !isSubset(value, ops.SubsetOf) {
-		return zero, fmt.Errorf("value is not a subset of the values in 'subsetOf'. value: %v, subsetOf: %v", value, ops.SubsetOf)
+		return zero, fmt.Errorf("value is not a subset of the values in 'subset_of'. value: %v, subset_of: %v", value, ops.SubsetOf)
 	}
 
 	return value, nil
@@ -249,7 +255,7 @@ func (ops metadataOperators[T]) applySupersetOf(value T) (T, error) {
 
 	var zero T
 	if !isSuperset(value, ops.SupersetOf) {
-		return zero, fmt.Errorf("value is not a superset of the values in 'supersetOf'. value: %v, supersetOf: %v", value, ops.SupersetOf)
+		return zero, fmt.Errorf("value is not a superset of the values in 'superset_of'. value: %v, superset_of: %v", value, ops.SupersetOf)
 	}
 
 	return value, nil
@@ -260,6 +266,7 @@ func (ops metadataOperators[T]) applyEssential(value T) (T, error) {
 		return value, nil
 	}
 
+	// TODO: What if value is an empty slice?
 	var zero T
 	if reflect.DeepEqual(value, zero) {
 		return zero, errors.New("value is essential but is not present")
@@ -268,7 +275,7 @@ func (ops metadataOperators[T]) applyEssential(value T) (T, error) {
 	return value, nil
 }
 
-func (highOps metadataOperators[T]) merge(lowOps metadataOperators[T]) (metadataOperators[T], error) {
+func (highOps metadataOperators[T]) Merge(lowOps metadataOperators[T]) (metadataOperators[T], error) {
 	var err error
 
 	highOps.Value, err = highOps.mergeValue(lowOps)
@@ -303,10 +310,6 @@ func (highOps metadataOperators[T]) merge(lowOps metadataOperators[T]) (metadata
 
 	highOps.Essential, err = highOps.mergeEssential(lowOps)
 	if err != nil {
-		return metadataOperators[T]{}, err
-	}
-
-	if err := highOps.validate(); err != nil {
 		return metadataOperators[T]{}, err
 	}
 
@@ -369,7 +372,7 @@ func (highOps metadataOperators[T]) mergeOneOf(lowOps metadataOperators[T]) ([]T
 
 	oneOf := intersectSlices(highOps.OneOf, lowOps.OneOf)
 	if len(oneOf) == 0 {
-		return nil, fmt.Errorf("cannot merge operator 'oneOf' %v, %v", highOps.OneOf, lowOps.OneOf)
+		return nil, fmt.Errorf("cannot merge operator 'one_of' %v, %v", highOps.OneOf, lowOps.OneOf)
 	}
 
 	return oneOf, nil
@@ -386,9 +389,8 @@ func (highOps metadataOperators[T]) mergeSubsetOf(lowOps metadataOperators[T]) (
 
 	subsetOf := intersectSlices(highOps.SubsetOf, lowOps.SubsetOf)
 	var zero T
-	// NOTE: This won't work if len(subsetOf) == 0.
 	if reflect.DeepEqual(subsetOf, zero) {
-		return zero, fmt.Errorf("cannot merge operator 'subsetOf' %v, %v", highOps.SubsetOf, lowOps.SubsetOf)
+		return zero, fmt.Errorf("cannot merge operator 'subset_of' %v, %v", highOps.SubsetOf, lowOps.SubsetOf)
 	}
 
 	return subsetOf, nil
@@ -487,7 +489,7 @@ func intersectSlices[T any](slice1, slice2 T) T {
 	v2 := reflect.ValueOf(slice2)
 	result := reflect.MakeSlice(v1.Type(), 0, 0)
 	// Use a map to track unique elements.
-	unique := make(map[interface{}]struct{})
+	unique := make(map[any]struct{})
 
 	for i := 0; i < v1.Len(); i++ {
 		elem := v1.Index(i).Interface()
@@ -525,7 +527,7 @@ func isSubset[T any](subset, superset T) bool {
 	supersetV := reflect.ValueOf(superset)
 
 	// Use a map to track elements in superset.
-	set := make(map[interface{}]struct{})
+	set := make(map[any]struct{})
 	for i := 0; i < supersetV.Len(); i++ {
 		set[supersetV.Index(i).Interface()] = struct{}{}
 	}

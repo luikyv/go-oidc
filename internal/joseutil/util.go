@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"regexp"
 
 	"github.com/go-jose/go-jose/v4"
@@ -164,4 +165,31 @@ func IsJWS(token string) bool {
 func IsJWE(token string) bool {
 	isJWS, _ := regexp.MatchString("(^[\\w-]+\\.[\\w-]+\\.[\\w-]+\\.[\\w-]+\\.[\\w-]+$)", token)
 	return isJWS
+}
+
+// KeyByAlgorithms returns the first JWK that matches the given algorithms.
+func KeyByAlgorithms(jwks goidc.JSONWebKeySet, algs []goidc.SignatureAlgorithm) (goidc.JSONWebKey, error) {
+	for _, alg := range algs {
+		jwk, err := jwks.KeyByAlg(string(alg))
+		if err != nil {
+			continue
+		}
+		return jwk, nil
+	}
+	return goidc.JSONWebKey{}, errors.New("could not find a valid jwk matching the algorithms")
+}
+
+func KeyUsage(key goidc.JSONWebKey) goidc.KeyUsage {
+	if key.Use != "" {
+		return goidc.KeyUsage(key.Use)
+	}
+
+	switch key.Algorithm {
+	case string(goidc.RS256), string(goidc.RS384), string(goidc.RS512), string(goidc.ES256), string(goidc.ES384), string(goidc.ES512), string(goidc.PS256), string(goidc.PS384), string(goidc.PS512), string(goidc.HS256), string(goidc.HS384), string(goidc.HS512):
+		return goidc.KeyUsageSignature
+	case string(goidc.RSA1_5), string(goidc.RSA_OAEP), string(goidc.RSA_OAEP_256):
+		return goidc.KeyUsageEncryption
+	default:
+		return ""
+	}
 }

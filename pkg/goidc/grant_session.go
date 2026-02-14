@@ -29,10 +29,10 @@ type GrantSession struct {
 	// TokenID is the id of the token issued for this grant.
 	// - For JWTs, it corresponds to the "jti" claim.
 	// - For opaque tokens, it is the token itself.
-	// Note: For security reasons, it is strongly recommended to hash or encrypt this value before storing it in a database.
+	// Note: For security reasons, it is strongly recommended to encrypt this value before storing it in a database.
 	TokenID string `json:"token_id"`
 	// RefreshToken, if present, is the plain text refresh token issued for this grant.
-	// Note: For security reasons, it is strongly recommended to hash or encrypt this value before storing it in a database.
+	// Note: For security reasons, it is strongly recommended to encrypt this value before storing it in a database.
 	RefreshToken string `json:"refresh_token,omitempty"`
 	// LastTokenExpiresAtTimestamp indicates the timestamp when the last issued
 	// token for this grant will expire.

@@ -1,4 +1,4 @@
-package clientutil_test
+package client_test
 
 import (
 	"crypto/x509"
@@ -9,12 +9,11 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikyv/go-oidc/internal/clientutil"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func TestAuthenticated_ClientNotFound(t *testing.T) {
@@ -25,13 +24,13 @@ func TestAuthenticated_ClientNotFound(t *testing.T) {
 	c := &goidc.Client{
 		ID: "random_client_id",
 		ClientMeta: goidc.ClientMeta{
-			TokenAuthnMethod: goidc.ClientAuthnNone,
+			TokenAuthnMethod: goidc.AuthnMethodNone,
 		},
 	}
 	ctx.Request.PostForm = map[string][]string{"client_id": {c.ID}}
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 
 	// Then.
 	if err == nil {
@@ -56,14 +55,14 @@ func TestAuthenticated_NoneAuthn(t *testing.T) {
 	c := &goidc.Client{
 		ID: "random_client_id",
 		ClientMeta: goidc.ClientMeta{
-			TokenAuthnMethod: goidc.ClientAuthnNone,
+			TokenAuthnMethod: goidc.AuthnMethodNone,
 		},
 	}
 	ctx.Request.PostForm = map[string][]string{"client_id": {c.ID}}
 	_ = ctx.SaveClient(c)
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 
 	// Then.
 	if err != nil {
@@ -74,14 +73,14 @@ func TestAuthenticated_NoneAuthn(t *testing.T) {
 func TestAuthenticated_SecretPostAuthn(t *testing.T) {
 
 	// Given.
-	ctx, client, secret := setUpSecretAuthn(t, goidc.ClientAuthnSecretPost)
+	ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretPost)
 	ctx.Request.PostForm = map[string][]string{
-		"client_id":     {client.ID},
-		"client_secret": {secret},
+		"client_id":     {c.ID},
+		"client_secret": {c.Secret},
 	}
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 
 	// Then.
 	if err != nil {
@@ -92,14 +91,14 @@ func TestAuthenticated_SecretPostAuthn(t *testing.T) {
 func TestAuthenticated_SecretPostAuthn_InvalidSecret(t *testing.T) {
 
 	// Given.
-	ctx, client, _ := setUpSecretAuthn(t, goidc.ClientAuthnSecretPost)
+	ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretPost)
 	ctx.Request.PostForm = map[string][]string{
-		"client_id":     {client.ID},
+		"client_id":     {c.ID},
 		"client_secret": {"invalid_secret"},
 	}
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 
 	// Then.
 	if err == nil {
@@ -119,13 +118,13 @@ func TestAuthenticated_SecretPostAuthn_InvalidSecret(t *testing.T) {
 func TestAuthenticated_SecretPostAuthn_MissingSecret(t *testing.T) {
 
 	// Given.
-	ctx, client, _ := setUpSecretAuthn(t, goidc.ClientAuthnSecretPost)
+	ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretPost)
 	ctx.Request.PostForm = map[string][]string{
-		"client_id": {client.ID},
+		"client_id": {c.ID},
 	}
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 
 	// Then.
 	if err == nil {
@@ -147,16 +146,16 @@ func TestAuthenticated_SecretPostAuthn_MissingSecret(t *testing.T) {
 func TestAuthenticated_SecretPostAuthn_InvalidID(t *testing.T) {
 
 	// Given.
-	ctx, client, secret := setUpSecretAuthn(t, goidc.ClientAuthnSecretPost)
+	ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretPost)
 	// The client ID is supposed to be the value of the param "client_id", but
 	// will be sent in the authorization header.
-	ctx.Request.SetBasicAuth(client.ID, secret)
+	ctx.Request.SetBasicAuth(c.ID, c.Secret)
 	ctx.Request.PostForm = map[string][]string{
 		"client_secret": {"invalid_secret"},
 	}
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 
 	// Then.
 	if err == nil {
@@ -176,11 +175,11 @@ func TestAuthenticated_SecretPostAuthn_InvalidID(t *testing.T) {
 func TestAuthenticated_BasicSecretAuthn(t *testing.T) {
 
 	// Given.
-	ctx, client, secret := setUpSecretAuthn(t, goidc.ClientAuthnSecretBasic)
-	ctx.Request.SetBasicAuth(client.ID, secret)
+	ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretBasic)
+	ctx.Request.SetBasicAuth(c.ID, c.Secret)
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 
 	// Then.
 	if err != nil {
@@ -191,11 +190,11 @@ func TestAuthenticated_BasicSecretAuthn(t *testing.T) {
 func TestAuthenticated_BasicSecretAuthn_InvalidSecret(t *testing.T) {
 
 	// Given.
-	ctx, client, _ := setUpSecretAuthn(t, goidc.ClientAuthnSecretBasic)
-	ctx.Request.SetBasicAuth(client.ID, "invalid_secret")
+	ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretBasic)
+	ctx.Request.SetBasicAuth(c.ID, "invalid_secret")
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 
 	// Then.
 	if err == nil {
@@ -215,14 +214,14 @@ func TestAuthenticated_BasicSecretAuthn_InvalidSecret(t *testing.T) {
 func TestAuthenticated_BasicSecretAuthn_MissingSecret(t *testing.T) {
 
 	// Given.
-	ctx, client, _ := setUpSecretAuthn(t, goidc.ClientAuthnSecretBasic)
+	ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretBasic)
 	// Add the client ID to the request so it can be identified.
 	ctx.Request.PostForm = map[string][]string{
-		"client_id": {client.ID},
+		"client_id": {c.ID},
 	}
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 
 	// Then.
 	if err == nil {
@@ -242,12 +241,12 @@ func TestAuthenticated_BasicSecretAuthn_MissingSecret(t *testing.T) {
 func TestAuthenticated_PrivateKeyJWT(t *testing.T) {
 
 	// Given.
-	ctx, client, jwk := setUpPrivateKeyJWTAuthn(t)
+	ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
 	createdAtTimestamp := timeutil.TimestampNow()
 	claims := map[string]any{
-		goidc.ClaimIssuer:   client.ID,
-		goidc.ClaimSubject:  client.ID,
-		goidc.ClaimAudience: ctx.Host,
+		goidc.ClaimIssuer:   c.ID,
+		goidc.ClaimSubject:  c.ID,
+		goidc.ClaimAudience: ctx.Issuer(),
 		goidc.ClaimIssuedAt: createdAtTimestamp,
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
 		goidc.ClaimTokenID:  "random_jti",
@@ -259,7 +258,7 @@ func TestAuthenticated_PrivateKeyJWT(t *testing.T) {
 	}
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 	// Then.
 	if err != nil {
 		t.Errorf("The client should be authenticated, but error was found: %v", err)
@@ -271,13 +270,13 @@ func TestAuthenticated_PrivateKeyJWT(t *testing.T) {
 func TestAuthenticated_PrivateKeyJWT_ClientInformedSigningAlgorithms(t *testing.T) {
 
 	// Given.
-	ctx, client, jwk := setUpPrivateKeyJWTAuthn(t)
-	client.TokenAuthnSigAlg = goidc.SignatureAlgorithm(jwk.Algorithm)
+	ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
+	c.TokenAuthnSigAlg = goidc.SignatureAlgorithm(jwk.Algorithm)
 	createdAtTimestamp := timeutil.TimestampNow()
 	claims := map[string]any{
-		goidc.ClaimIssuer:   client.ID,
-		goidc.ClaimSubject:  client.ID,
-		goidc.ClaimAudience: ctx.Host,
+		goidc.ClaimIssuer:   c.ID,
+		goidc.ClaimSubject:  c.ID,
+		goidc.ClaimAudience: ctx.Issuer(),
 		goidc.ClaimIssuedAt: createdAtTimestamp,
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
 		goidc.ClaimTokenID:  "random_jti",
@@ -289,7 +288,7 @@ func TestAuthenticated_PrivateKeyJWT_ClientInformedSigningAlgorithms(t *testing.
 	}
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 
 	// Then.
 	if err != nil {
@@ -304,13 +303,13 @@ func TestAuthenticated_PrivateKeyJWT_ClientInformedSigningAlgorithms_InvalidSign
 
 	// Given the client must sign assertions with PS256 and the signing JWK uses
 	// RS256.
-	ctx, client, jwk := setUpPrivateKeyJWTAuthn(t)
-	client.TokenAuthnSigAlg = goidc.PS256
+	ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
+	c.TokenAuthnSigAlg = goidc.PS256
 	createdAtTimestamp := timeutil.TimestampNow()
 	claims := map[string]any{
-		goidc.ClaimIssuer:   client.ID,
-		goidc.ClaimSubject:  client.ID,
-		goidc.ClaimAudience: ctx.Host,
+		goidc.ClaimIssuer:   c.ID,
+		goidc.ClaimSubject:  c.ID,
+		goidc.ClaimAudience: ctx.Issuer(),
 		goidc.ClaimIssuedAt: createdAtTimestamp,
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
 	}
@@ -321,7 +320,7 @@ func TestAuthenticated_PrivateKeyJWT_ClientInformedSigningAlgorithms_InvalidSign
 	}
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 
 	// Then.
 	if err == nil {
@@ -340,12 +339,12 @@ func TestAuthenticated_PrivateKeyJWT_ClientInformedSigningAlgorithms_InvalidSign
 
 func TestAuthenticated_PrivateKeyJWT_InvalidAudienceClaim(t *testing.T) {
 	// Given.
-	ctx, client, jwk := setUpPrivateKeyJWTAuthn(t)
+	ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
 	createdAtTimestamp := timeutil.TimestampNow()
 	// The "aud" claim is not included in the claims.
 	claims := map[string]any{
-		goidc.ClaimIssuer:   client.ID,
-		goidc.ClaimSubject:  client.ID,
+		goidc.ClaimIssuer:   c.ID,
+		goidc.ClaimSubject:  c.ID,
 		goidc.ClaimIssuedAt: createdAtTimestamp,
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
 	}
@@ -356,7 +355,7 @@ func TestAuthenticated_PrivateKeyJWT_InvalidAudienceClaim(t *testing.T) {
 	}
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 
 	// Then.
 	if err == nil {
@@ -375,13 +374,13 @@ func TestAuthenticated_PrivateKeyJWT_InvalidAudienceClaim(t *testing.T) {
 
 func TestAuthenticated_PrivateKeyJWT_InvalidExpiryClaim(t *testing.T) {
 	// Given.
-	ctx, client, jwk := setUpPrivateKeyJWTAuthn(t)
+	ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
 	createdAtTimestamp := timeutil.TimestampNow()
 	// The "exp" claim is not included in the claims.
 	claims := map[string]any{
-		goidc.ClaimIssuer:   client.ID,
-		goidc.ClaimSubject:  client.ID,
-		goidc.ClaimAudience: ctx.Host,
+		goidc.ClaimIssuer:   c.ID,
+		goidc.ClaimSubject:  c.ID,
+		goidc.ClaimAudience: ctx.Issuer(),
 		goidc.ClaimIssuedAt: createdAtTimestamp,
 	}
 
@@ -391,7 +390,7 @@ func TestAuthenticated_PrivateKeyJWT_InvalidExpiryClaim(t *testing.T) {
 	}
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 
 	// Then.
 	if err == nil {
@@ -412,13 +411,13 @@ func TestAuthenticated_PrivateKeyJWT_InvalidExpiryClaim(t *testing.T) {
 // signed with a key that doesn't belong to the client results in error.
 func TestAuthenticated_PrivateKeyJWT_CannotIdentifyJWK(t *testing.T) {
 	// Given.
-	ctx, client, jwk := setUpPrivateKeyJWTAuthn(t)
-	client.PublicJWKS = &goidc.JSONWebKeySet{}
+	ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
+	c.JWKS = &goidc.JSONWebKeySet{}
 	createdAtTimestamp := timeutil.TimestampNow()
 	claims := map[string]any{
-		goidc.ClaimIssuer:   client.ID,
-		goidc.ClaimSubject:  client.ID,
-		goidc.ClaimAudience: ctx.Host,
+		goidc.ClaimIssuer:   c.ID,
+		goidc.ClaimSubject:  c.ID,
+		goidc.ClaimAudience: ctx.Issuer(),
 		goidc.ClaimIssuedAt: createdAtTimestamp,
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
 	}
@@ -429,7 +428,7 @@ func TestAuthenticated_PrivateKeyJWT_CannotIdentifyJWK(t *testing.T) {
 	}
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 
 	// Then.
 	if err == nil {
@@ -451,12 +450,12 @@ func TestAuthenticated_PrivateKeyJWT_CannotIdentifyJWK(t *testing.T) {
 // keys results in error.
 func TestAuthenticated_PrivateKeyJWT_InvalidSigningKey(t *testing.T) {
 	// Given.
-	ctx, client, jwk := setUpPrivateKeyJWTAuthn(t)
+	ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
 	createdAtTimestamp := timeutil.TimestampNow()
 	claims := map[string]any{
-		goidc.ClaimIssuer:   client.ID,
-		goidc.ClaimSubject:  client.ID,
-		goidc.ClaimAudience: ctx.Host,
+		goidc.ClaimIssuer:   c.ID,
+		goidc.ClaimSubject:  c.ID,
+		goidc.ClaimAudience: ctx.Issuer(),
 		goidc.ClaimIssuedAt: createdAtTimestamp,
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
 	}
@@ -470,7 +469,7 @@ func TestAuthenticated_PrivateKeyJWT_InvalidSigningKey(t *testing.T) {
 	}
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 
 	// Then.
 	if err == nil {
@@ -491,16 +490,16 @@ func TestAuthenticated_PrivateKeyJWT_InvalidSigningKey(t *testing.T) {
 // assertion which is not a JWT will result in error.
 func TestAuthenticated_PrivateKeyJWT_InvalidAssertion(t *testing.T) {
 	// Given.
-	ctx, client, _ := setUpPrivateKeyJWTAuthn(t)
+	ctx, c, _ := setUpPrivateKeyJWTAuthn(t)
 	ctx.Request.PostForm = map[string][]string{
 		// Add the ID so the client can be identified.
-		"client_id":             {client.ID},
+		"client_id":             {c.ID},
 		"client_assertion":      {"invalid_assertion"},
 		"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
 	}
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 
 	// Then.
 	if err == nil {
@@ -519,12 +518,12 @@ func TestAuthenticated_PrivateKeyJWT_InvalidAssertion(t *testing.T) {
 
 func TestAuthenticated_PrivateKeyJWT_InvalidAssertionType(t *testing.T) {
 	// Given.
-	ctx, client, jwk := setUpPrivateKeyJWTAuthn(t)
+	ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
 	createdAtTimestamp := timeutil.TimestampNow()
 	claims := map[string]any{
-		goidc.ClaimIssuer:   client.ID,
-		goidc.ClaimSubject:  client.ID,
-		goidc.ClaimAudience: ctx.Host,
+		goidc.ClaimIssuer:   c.ID,
+		goidc.ClaimSubject:  c.ID,
+		goidc.ClaimAudience: ctx.Issuer(),
 		goidc.ClaimIssuedAt: createdAtTimestamp,
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
 	}
@@ -535,7 +534,7 @@ func TestAuthenticated_PrivateKeyJWT_InvalidAssertionType(t *testing.T) {
 	}
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 
 	// Then.
 	if err == nil {
@@ -555,12 +554,12 @@ func TestAuthenticated_PrivateKeyJWT_InvalidAssertionType(t *testing.T) {
 func TestAuthenticated_ClientSecretJWT(t *testing.T) {
 
 	// Given.
-	ctx, client, secret := setUpClientSecretJWTAuthn(t)
+	ctx, c, secret := setUpClientSecretJWTAuthn(t)
 	createdAtTimestamp := timeutil.TimestampNow()
 	claims := map[string]any{
-		goidc.ClaimIssuer:   client.ID,
-		goidc.ClaimSubject:  client.ID,
-		goidc.ClaimAudience: ctx.Host,
+		goidc.ClaimIssuer:   c.ID,
+		goidc.ClaimSubject:  c.ID,
+		goidc.ClaimAudience: ctx.Issuer(),
 		goidc.ClaimIssuedAt: createdAtTimestamp,
 		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
 		goidc.ClaimTokenID:  "random_jti",
@@ -576,7 +575,7 @@ func TestAuthenticated_ClientSecretJWT(t *testing.T) {
 	}
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 
 	// Then.
 	if err != nil {
@@ -596,7 +595,7 @@ func TestAuthenticated_DifferentClientIDs(t *testing.T) {
 	c := &goidc.Client{
 		ID: "random_client_id",
 		ClientMeta: goidc.ClientMeta{
-			TokenAuthnMethod: goidc.ClientAuthnNone,
+			TokenAuthnMethod: goidc.AuthnMethodNone,
 		},
 	}
 
@@ -613,7 +612,7 @@ func TestAuthenticated_DifferentClientIDs(t *testing.T) {
 	}
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 
 	// Then.
 	if err == nil {
@@ -633,14 +632,14 @@ func TestAuthenticated_DifferentClientIDs(t *testing.T) {
 func TestAuthenticated_TLSAuthn_DistinguishedName(t *testing.T) {
 
 	// Given.
-	ctx, client := setUpTLSAuthn(t)
-	client.TLSSubDistinguishedName = "CN=https://example.com"
+	ctx, c := setUpTLSAuthn(t)
+	c.TLSSubDistinguishedName = "CN=https://example.com"
 	ctx.Request.PostForm = map[string][]string{
-		"client_id": {client.ID},
+		"client_id": {c.ID},
 	}
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 	// Then.
 	if err != nil {
 		t.Errorf("The client should be authenticated, but error was found: %v", err)
@@ -650,14 +649,14 @@ func TestAuthenticated_TLSAuthn_DistinguishedName(t *testing.T) {
 func TestAuthenticated_TLSAuthn_InvalidDistinguishedName(t *testing.T) {
 
 	// Given.
-	ctx, client := setUpTLSAuthn(t)
-	client.TLSSubDistinguishedName = "invalid"
+	ctx, c := setUpTLSAuthn(t)
+	c.TLSSubDistinguishedName = "invalid"
 	ctx.Request.PostForm = map[string][]string{
-		"client_id": {client.ID},
+		"client_id": {c.ID},
 	}
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 
 	// Then.
 	if err == nil {
@@ -677,14 +676,14 @@ func TestAuthenticated_TLSAuthn_InvalidDistinguishedName(t *testing.T) {
 func TestAuthenticated_TLSAuthn_AlternativeName(t *testing.T) {
 
 	// Given.
-	ctx, client := setUpTLSAuthn(t)
-	client.TLSSubAlternativeName = "https://sub.example.com"
+	ctx, c := setUpTLSAuthn(t)
+	c.TLSSubAlternativeName = "https://sub.example.com"
 	ctx.Request.PostForm = map[string][]string{
-		"client_id": {client.ID},
+		"client_id": {c.ID},
 	}
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 	// Then.
 	if err != nil {
 		t.Errorf("The client should be authenticated, but error was found: %v", err)
@@ -694,14 +693,14 @@ func TestAuthenticated_TLSAuthn_AlternativeName(t *testing.T) {
 func TestAuthenticated_TLSAuthn_InvalidAlternativeName(t *testing.T) {
 
 	// Given.
-	ctx, client := setUpTLSAuthn(t)
-	client.TLSSubAlternativeName = "invalid"
+	ctx, c := setUpTLSAuthn(t)
+	c.TLSSubAlternativeName = "invalid"
 	ctx.Request.PostForm = map[string][]string{
-		"client_id": {client.ID},
+		"client_id": {c.ID},
 	}
 
 	// When.
-	_, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
 
 	// Then.
 	if err == nil {
@@ -718,35 +717,25 @@ func TestAuthenticated_TLSAuthn_InvalidAlternativeName(t *testing.T) {
 	}
 }
 
-func setUpSecretAuthn(t *testing.T, secretAuthnMethod goidc.ClientAuthnType) (
-	ctx oidc.Context,
-	client *goidc.Client,
-	secret string,
-) {
+func setUpSecretAuthn(t *testing.T, secretAuthnMethod goidc.AuthnMethod) (oidc.Context, *goidc.Client) {
 	t.Helper()
 
-	ctx = oidctest.NewContext(t)
-	secret = "password"
-	hashedClientSecret, _ := bcrypt.GenerateFromPassword([]byte(secret), 0)
-	client = &goidc.Client{
+	ctx := oidctest.NewContext(t)
+	c := &goidc.Client{
 		ID: "random_client_id",
 		ClientMeta: goidc.ClientMeta{
 			TokenAuthnMethod: secretAuthnMethod,
 		},
-		HashedSecret: string(hashedClientSecret),
+		Secret: "password",
 	}
-	if err := ctx.SaveClient(client); err != nil {
+	if err := ctx.SaveClient(c); err != nil {
 		t.Fatalf("error setting up secret authn: %v", err)
 	}
 
-	return ctx, client, secret
+	return ctx, c
 }
 
-func setUpPrivateKeyJWTAuthn(t *testing.T) (
-	ctx oidc.Context,
-	client *goidc.Client,
-	jwk goidc.JSONWebKey,
-) {
+func setUpPrivateKeyJWTAuthn(t *testing.T) (ctx oidc.Context, c *goidc.Client, jwk goidc.JSONWebKey) {
 	t.Helper()
 
 	ctx = oidctest.NewContext(t)
@@ -754,20 +743,20 @@ func setUpPrivateKeyJWTAuthn(t *testing.T) (
 	ctx.JWTLifetimeSecs = 60
 
 	jwk = oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
-	client = &goidc.Client{
+	c = &goidc.Client{
 		ID: "random_client_id",
 		ClientMeta: goidc.ClientMeta{
-			TokenAuthnMethod: goidc.ClientAuthnPrivateKeyJWT,
-			PublicJWKS: &goidc.JSONWebKeySet{
+			TokenAuthnMethod: goidc.AuthnMethodPrivateKeyJWT,
+			JWKS: &goidc.JSONWebKeySet{
 				Keys: []goidc.JSONWebKey{jwk.Public()},
 			},
 		},
 	}
-	if err := ctx.SaveClient(client); err != nil {
+	if err := ctx.SaveClient(c); err != nil {
 		t.Fatalf("error setting up private key jwt authn: %v", err)
 	}
 
-	return ctx, client, jwk
+	return ctx, c, jwk
 }
 
 func setUpClientSecretJWTAuthn(t *testing.T) (
@@ -786,7 +775,7 @@ func setUpClientSecretJWTAuthn(t *testing.T) (
 		ID:     "random_client_id",
 		Secret: secret,
 		ClientMeta: goidc.ClientMeta{
-			TokenAuthnMethod: goidc.ClientAuthnSecretJWT,
+			TokenAuthnMethod: goidc.AuthnMethodSecretJWT,
 		},
 	}
 	if err := ctx.SaveClient(client); err != nil {
@@ -815,7 +804,7 @@ func setUpTLSAuthn(t *testing.T) (
 	client = &goidc.Client{
 		ID: "random_client_id",
 		ClientMeta: goidc.ClientMeta{
-			TokenAuthnMethod: goidc.ClientAuthnTLS,
+			TokenAuthnMethod: goidc.AuthnMethodTLS,
 		},
 	}
 	if err := ctx.SaveClient(client); err != nil {

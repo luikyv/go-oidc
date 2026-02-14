@@ -11,13 +11,8 @@ type SSFEventStreamManager interface {
 	EventStream(context.Context, string) (*SSFEventStream, error)
 	EventStreams(ctx context.Context, receiverID string) ([]*SSFEventStream, error)
 	Delete(context.Context, string) error
-}
-
-// SSFEventStreamSubjectManager manages subjects associated with event streams.
-// Subjects define which entities (users, devices, sessions, etc.) an event stream applies to.
-type SSFEventStreamSubjectManager interface {
-	Add(ctx context.Context, streamID string, subject SSFSubject, opts SSFSubjectOptions) error
-	Remove(ctx context.Context, streamID string, sub SSFSubject) error
+	AddSubject(ctx context.Context, streamID string, subject SSFSubject, opts SSFSubjectOptions) error
+	RemoveSubject(ctx context.Context, streamID string, sub SSFSubject) error
 }
 
 // SSFEventPollManager manages event queuing and polling for poll-based delivery [RFC 8936].
@@ -34,11 +29,7 @@ type SSFEventPollManager interface {
 	AcknowledgeErrors(ctx context.Context, streamID string, errs map[string]SSFEventError, opts SSFAcknowledgementOptions) error
 }
 
-// SSFEventStreamVerificationManager manages the lifecycle of verification events for event streams.
-type SSFEventStreamVerificationManager interface {
-	// Schedule triggers a verification event for the given stream.
-	Schedule(ctx context.Context, streamID string, opts SSFStreamVerificationOptions) error
-}
+type SSFScheduleVerificationEventFunc func(context.Context, string, SSFStreamVerificationOptions) error
 
 // SSFEventStream represents a configured event stream between a transmitter and receiver.
 // See [SSF 1.0 §8.1.1] for the stream configuration schema.

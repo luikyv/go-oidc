@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikyv/go-oidc/internal/clientutil"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -17,12 +17,12 @@ import (
 
 // initBackAuth inits an authentication session for CIBA.
 func initBackAuth(ctx oidc.Context, req request) (cibaResponse, error) {
-	client, err := clientutil.Authenticated(ctx, clientutil.TokenAuthnContext)
+	c, err := client.Authenticated(ctx, client.TokenAuthnContext)
 	if err != nil {
 		return cibaResponse{}, err
 	}
 
-	session, err := cibaAuthnSession(ctx, req, client)
+	session, err := cibaAuthnSession(ctx, req, c)
 	if err != nil {
 		return cibaResponse{}, err
 	}
@@ -40,7 +40,7 @@ func initBackAuth(ctx oidc.Context, req request) (cibaResponse, error) {
 		ExpiresIn: session.ExpiresAtTimestamp - timeutil.TimestampNow(),
 	}
 
-	if client.CIBATokenDeliveryMode.IsPollableMode() {
+	if c.CIBATokenDeliveryMode.IsPollableMode() {
 		resp.Interval = ctx.CIBAPollingIntervalSecs
 	}
 
@@ -124,7 +124,7 @@ func cibaJARFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Clien
 	}
 
 	// Verify that the key ID belongs to the client.
-	jwk, err := clientutil.JWKByKeyID(ctx, c, parsedToken.Headers[0].KeyID)
+	jwk, err := client.JWKByKeyID(ctx, c, parsedToken.Headers[0].KeyID)
 	if err != nil {
 		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not fetch the client public key", err)
 	}
@@ -173,7 +173,7 @@ func validateCIBAJARClaims(ctx oidc.Context, claims jwt.Claims, client *goidc.Cl
 
 	if err := claims.ValidateWithLeeway(jwt.Expected{
 		Issuer:      client.ID,
-		AnyAudience: []string{ctx.Host},
+		AnyAudience: []string{ctx.Issuer()},
 	}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second); err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "the request object contains invalid claims", err)
 	}

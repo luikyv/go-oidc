@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikyv/go-oidc/internal/clientutil"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -24,30 +24,23 @@ func shouldUseJAR(ctx oidc.Context, req goidc.AuthorizationParameters, c *goidc.
 	if !ctx.JARIsEnabled {
 		return false
 	}
-
-	// JAR was informed either by value or reference.
-	jarWasInformed := req.RequestObject != "" || (ctx.JARByReferenceIsEnabled && req.RequestURI != "")
-	return ctx.JARIsRequired || c.JARIsRequired || jarWasInformed
+	return ctx.JARIsRequired || c.JARIsRequired || req.RequestObject != "" || (ctx.JARByReferenceIsEnabled && req.RequestURI != "")
 }
 
 func jarFromRequestURI(ctx oidc.Context, reqURI string, client *goidc.Client) (request, error) {
-	httpClient := ctx.HTTPClient()
-	resp, err := httpClient.Get(reqURI)
+	resp, err := ctx.HTTPClient().Get(reqURI)
 	if err != nil {
-		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest,
-			"invalid request uri", err)
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request uri", err)
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK {
-		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest,
-			"invalid request uri", err)
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request uri", err)
 	}
 
 	reqObject, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest,
-			"invalid request uri", err)
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request uri", err)
 	}
 
 	return jarFromRequestObject(ctx, string(reqObject), client)
@@ -114,7 +107,7 @@ func jarFromSignedRequestObject(ctx oidc.Context, reqObject string, c *goidc.Cli
 	}
 
 	// Verify that the key ID belongs to the client.
-	jwk, err := clientutil.JWKMatchingHeader(ctx, c, parsedToken.Headers[0])
+	jwk, err := client.JWKMatchingHeader(ctx, c, parsedToken.Headers[0])
 	if err != nil {
 		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
 			"could not fetch the client public key", err)
@@ -176,7 +169,7 @@ func validateClaims(ctx oidc.Context, claims jwt.Claims, client *goidc.Client) e
 
 	if err := claims.ValidateWithLeeway(jwt.Expected{
 		Issuer:      client.ID,
-		AnyAudience: []string{ctx.Host},
+		AnyAudience: []string{ctx.Issuer()},
 	}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second); err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
 			"the request object contains invalid claims", err)

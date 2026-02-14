@@ -47,6 +47,7 @@ func TestGenerateGrant_CIBAGrant(t *testing.T) {
 		LastTokenExpiresAtTimestamp: grantSession.LastTokenExpiresAtTimestamp,
 		CreatedAtTimestamp:          grantSession.CreatedAtTimestamp,
 		ExpiresAtTimestamp:          grantSession.ExpiresAtTimestamp,
+		RefreshToken:                grantSession.RefreshToken,
 		GrantInfo: goidc.GrantInfo{
 			GrantType:     goidc.GrantCIBA,
 			Subject:       session.Subject,
@@ -70,7 +71,7 @@ func TestGenerateGrant_CIBAGrant(t *testing.T) {
 	}
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
-		"iss":       ctx.Host,
+		"iss":       ctx.Issuer(),
 		"sub":       session.Subject,
 		"client_id": client.ID,
 		"scope":     session.GrantedScopes,
@@ -221,7 +222,7 @@ func TestGenerateGrant_CIBAGrant_MTLSBinding(t *testing.T) {
 	}
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
-		"iss":       ctx.Host,
+		"iss":       ctx.Issuer(),
 		"sub":       session.Subject,
 		"client_id": client.ID,
 		"scope":     session.GrantedScopes,
@@ -254,7 +255,6 @@ func setUpCIBAGrant(t testing.TB) (
 	t.Helper()
 
 	ctx = oidctest.NewContext(t)
-	ctx.CIBAIsEnabled = true
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
 		goidc.CIBATokenDeliveryModePoll, goidc.CIBATokenDeliveryModePing,

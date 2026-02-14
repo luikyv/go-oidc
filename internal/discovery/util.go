@@ -1,16 +1,19 @@
 package discovery
 
 import (
+	"slices"
+
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func NewOIDCConfig(ctx oidc.Context) OpenIDConfiguration {
+func NewOpenIDConfiguration(ctx oidc.Context) OpenIDConfiguration {
 	scopes := make([]string, len(ctx.Scopes))
 	for i, scope := range ctx.Scopes {
 		scopes[i] = scope.ID
 	}
 	config := OpenIDConfiguration{
-		Issuer:                       ctx.Host,
+		Issuer:                       ctx.Issuer(),
 		AuthorizationEndpoint:        ctx.BaseURL() + ctx.AuthorizationEndpoint,
 		TokenEndpoint:                ctx.BaseURL() + ctx.TokenEndpoint,
 		UserinfoEndpoint:             ctx.BaseURL() + ctx.UserInfoEndpoint,
@@ -103,7 +106,7 @@ func NewOIDCConfig(ctx oidc.Context) OpenIDConfiguration {
 			config.MTLSConfig.TokenRevocationEndpoint = ctx.MTLSBaseURL() + ctx.TokenRevocationEndpoint
 		}
 
-		if ctx.CIBAIsEnabled {
+		if slices.Contains(ctx.GrantTypes, goidc.GrantCIBA) {
 			config.MTLSConfig.CIBAEndpoint = ctx.MTLSBaseURL() + ctx.CIBAEndpoint
 		}
 	}
@@ -122,7 +125,7 @@ func NewOIDCConfig(ctx oidc.Context) OpenIDConfiguration {
 		config.CodeChallengeMethods = ctx.PKCEChallengeMethods
 	}
 
-	if ctx.CIBAIsEnabled {
+	if slices.Contains(ctx.GrantTypes, goidc.GrantCIBA) {
 		config.CIBAEndpoint = ctx.BaseURL() + ctx.CIBAEndpoint
 		config.CIBATokenDeliveryModes = ctx.CIBATokenDeliveryModels
 		config.CIBAUserCodeIsEnabled = ctx.CIBAUserCodeIsEnabled
