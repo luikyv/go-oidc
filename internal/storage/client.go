@@ -46,7 +46,7 @@ func (m *ClientManager) Client(_ context.Context, id string) (*goidc.Client, err
 	// Make sure the content of jwks_uri is cleared from jwks when fetching the
 	// client from the in memory storaged.
 	if c.JWKSURI != "" {
-		c.JWKS = nil
+		c.CacheJWKS(nil)
 	}
 
 	return c, nil
