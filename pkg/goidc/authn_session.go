@@ -68,11 +68,8 @@ type AuthnSession struct {
 	ClientCertThumbprint string `json:"client_cert_thumbprint,omitempty"`
 
 	// Storage allows storing additional information between interactions.
-	Storage                  map[string]any `json:"store,omitempty"`
-	AdditionalTokenClaims    map[string]any `json:"additional_token_claims,omitempty"`
-	AdditionalIDTokenClaims  map[string]any `json:"additional_id_token_claims,omitempty"`
-	AdditionalUserInfoClaims map[string]any `json:"additional_user_info_claims,omitempty"`
-	ExpiresAtTimestamp       int            `json:"expires_at"`
+	Storage            map[string]any `json:"store,omitempty"`
+	ExpiresAtTimestamp int            `json:"expires_at"`
 	CreatedAtTimestamp       int            `json:"created_at"`
 	IDTokenHintClaims        map[string]any `json:"id_token_hint_claims,omitempty"`
 	AuthorizationParameters
@@ -92,53 +89,6 @@ func (s *AuthnSession) StoreParameter(key string, value any) {
 
 func (s *AuthnSession) StoredParameter(key string) any {
 	return s.Storage[key]
-}
-
-func (s *AuthnSession) SetTokenClaim(claim string, value any) {
-	if s.AdditionalTokenClaims == nil {
-		s.AdditionalTokenClaims = make(map[string]any)
-	}
-	s.AdditionalTokenClaims[claim] = value
-}
-
-func (s *AuthnSession) SetIDTokenClaimACR(acr ACR) {
-	s.SetIDTokenClaim(ClaimACR, acr)
-}
-
-func (s *AuthnSession) SetIDTokenClaimAuthTime(authTime int) {
-	s.SetIDTokenClaim(ClaimAuthTime, authTime)
-}
-
-func (s *AuthnSession) SetIDTokenClaimAMR(amrs ...AMR) {
-	s.SetIDTokenClaim(ClaimAMR, amrs)
-}
-
-// SetIDTokenClaim sets a claim that will be accessible in the ID token.
-func (s *AuthnSession) SetIDTokenClaim(claim string, value any) {
-	if s.AdditionalIDTokenClaims == nil {
-		s.AdditionalIDTokenClaims = make(map[string]any)
-	}
-	s.AdditionalIDTokenClaims[claim] = value
-}
-
-func (s *AuthnSession) SetUserInfoClaimACR(acr ACR) {
-	s.SetUserInfoClaim(ClaimACR, acr)
-}
-
-func (s *AuthnSession) SetUserInfoClaimAuthTime(authTime int) {
-	s.SetUserInfoClaim(ClaimAuthTime, authTime)
-}
-
-func (s *AuthnSession) SetUserInfoClaimAMR(amrs ...AMR) {
-	s.SetUserInfoClaim(ClaimAMR, amrs)
-}
-
-// SetUserInfoClaim sets a claim that will be accessible via the user info endpoint.
-func (s *AuthnSession) SetUserInfoClaim(claim string, value any) {
-	if s.AdditionalUserInfoClaims == nil {
-		s.AdditionalUserInfoClaims = make(map[string]any)
-	}
-	s.AdditionalUserInfoClaims[claim] = value
 }
 
 // GrantScopes sets the scopes the client will have access to.

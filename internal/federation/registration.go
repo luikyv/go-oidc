@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikyv/go-oidc/internal/client"
+	"github.com/luikyv/go-oidc/internal/client/validation"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -108,7 +108,7 @@ func register(ctx oidc.Context, clientConfig entityStatement, regType goidc.Clie
 		return nil, err
 	}
 
-	if err := client.Validate(ctx, clientConfig.Metadata.OpenIDClient); err != nil {
+	if err := validation.Validate(ctx, clientConfig.Metadata.OpenIDClient); err != nil {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid client metadata", err)
 	}
 

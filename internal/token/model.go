@@ -5,22 +5,13 @@ import (
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/dpop"
-	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-type Token struct {
-	ID           string
-	Format       goidc.TokenFormat
-	Value        string
-	Type         goidc.TokenType
-	LifetimeSecs int
-}
 
 type IDTokenOptions struct {
-	Subject                 string
-	AdditionalIDTokenClaims map[string]any
+	Subject string
+	Nonce   string
 	// These values here below are intended to be hashed and placed in the ID token.
 	// Then, the ID token can be used as a detached signature for the implicit grant.
 	AccessToken       string
@@ -30,37 +21,37 @@ type IDTokenOptions struct {
 	AuthReqID         string
 }
 
-func newIDTokenOptions(grantInfo goidc.GrantInfo) IDTokenOptions {
+func newIDTokenOptions(grant *goidc.Grant) IDTokenOptions {
 	return IDTokenOptions{
-		Subject:                 grantInfo.Subject,
-		AdditionalIDTokenClaims: grantInfo.AdditionalIDTokenClaims,
+		Subject: grant.Subject,
+		Nonce:   grant.Nonce,
 	}
 }
 
 type request struct {
-	grantType         goidc.GrantType
-	scopes            string
-	authorizationCode string
-	redirectURI       string
-	refreshToken      string
-	codeVerifier      string
-	resources         goidc.Resources
-	authDetails       []goidc.AuthorizationDetail
-	assertion         string
-	authReqID         string
+	grantType    goidc.GrantType
+	scopes       string
+	code         string
+	redirectURI  string
+	refreshToken string
+	codeVerifier string
+	resources    goidc.Resources
+	authDetails  []goidc.AuthorizationDetail
+	assertion    string
+	authReqID    string
 }
 
 func newRequest(r *http.Request) request {
 	req := request{
-		grantType:         goidc.GrantType(r.PostFormValue("grant_type")),
-		scopes:            r.PostFormValue("scope"),
-		authorizationCode: r.PostFormValue("code"),
-		redirectURI:       r.PostFormValue("redirect_uri"),
-		refreshToken:      r.PostFormValue("refresh_token"),
-		codeVerifier:      r.PostFormValue("code_verifier"),
-		resources:         r.PostForm["resource"],
-		assertion:         r.PostFormValue("assertion"),
-		authReqID:         r.PostFormValue("auth_req_id"),
+		grantType:    goidc.GrantType(r.PostFormValue("grant_type")),
+		scopes:       r.PostFormValue("scope"),
+		code:         r.PostFormValue("code"),
+		redirectURI:  r.PostFormValue("redirect_uri"),
+		refreshToken: r.PostFormValue("refresh_token"),
+		codeVerifier: r.PostFormValue("code_verifier"),
+		resources:    r.PostForm["resource"],
+		assertion:    r.PostFormValue("assertion"),
+		authReqID:    r.PostFormValue("auth_req_id"),
 	}
 
 	if authDetails := r.PostFormValue("authorization_details"); authDetails != "" {
@@ -108,14 +99,10 @@ type bindindValidationsOptions struct {
 	dpop              dpop.ValidationOptions
 }
 
-func NewGrantSession(ctx oidc.Context, grantInfo goidc.GrantInfo, token Token) *goidc.GrantSession {
-	timestampNow := timeutil.TimestampNow()
-	return &goidc.GrantSession{
-		ID:                          ctx.GrantSessionID(),
-		TokenID:                     token.ID,
-		CreatedAtTimestamp:          timestampNow,
-		LastTokenExpiresAtTimestamp: timestampNow + token.LifetimeSecs,
-		ExpiresAtTimestamp:          timestampNow + token.LifetimeSecs,
-		GrantInfo:                   grantInfo,
+// tokenType derives the token type from PoP bindings.
+func tokenType(token *goidc.Token) goidc.TokenType {
+	if token.JWKThumbprint != "" {
+		return goidc.TokenTypeDPoP
 	}
+	return goidc.TokenTypeBearer
 }

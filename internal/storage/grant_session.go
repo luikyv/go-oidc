@@ -8,56 +8,56 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-type GrantSessionManager struct {
-	Sessions map[string]*goidc.GrantSession
+type GrantManager struct {
+	Sessions map[string]*goidc.Grant
 	mu       sync.RWMutex
 	maxSize  int
 }
 
-func NewGrantSessionManager(maxSize int) *GrantSessionManager {
-	return &GrantSessionManager{
-		Sessions: make(map[string]*goidc.GrantSession),
+func NewGrantManager(maxSize int) *GrantManager {
+	return &GrantManager{
+		Sessions: make(map[string]*goidc.Grant),
 		maxSize:  maxSize,
 	}
 }
 
-func (m *GrantSessionManager) Save(_ context.Context, grantSession *goidc.GrantSession) error {
+func (m *GrantManager) Save(_ context.Context, grant *goidc.Grant) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if len(m.Sessions) >= m.maxSize {
-		removeOldest(m.Sessions, func(gs *goidc.GrantSession) int {
+		removeOldest(m.Sessions, func(gs *goidc.Grant) int {
 			return gs.CreatedAtTimestamp
 		})
 	}
 
-	m.Sessions[grantSession.ID] = grantSession
+	m.Sessions[grant.ID] = grant
 	return nil
 }
 
-func (m *GrantSessionManager) SessionByTokenID(_ context.Context, tokenID string) (*goidc.GrantSession, error) {
-	grantSession, exists := m.firstSession(func(t *goidc.GrantSession) bool {
-		return t.TokenID == tokenID
-	})
+func (m *GrantManager) ByID(_ context.Context, id string) (*goidc.Grant, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	grant, exists := m.Sessions[id]
 	if !exists {
 		return nil, errors.New("entity not found")
 	}
-
-	return grantSession, nil
+	return grant, nil
 }
 
-func (m *GrantSessionManager) SessionByRefreshToken(_ context.Context, tkn string) (*goidc.GrantSession, error) {
-	grantSession, exists := m.firstSession(func(t *goidc.GrantSession) bool {
+func (m *GrantManager) SessionByRefreshToken(_ context.Context, tkn string) (*goidc.Grant, error) {
+	grant, exists := m.firstSession(func(t *goidc.Grant) bool {
 		return t.RefreshToken == tkn
 	})
 	if !exists {
 		return nil, errors.New("entity not found")
 	}
 
-	return grantSession, nil
+	return grant, nil
 }
 
-func (m *GrantSessionManager) Delete(_ context.Context, id string) error {
+func (m *GrantManager) Delete(_ context.Context, id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -65,8 +65,8 @@ func (m *GrantSessionManager) Delete(_ context.Context, id string) error {
 	return nil
 }
 
-func (m *GrantSessionManager) DeleteByAuthCode(ctx context.Context, code string) error {
-	grantSession, exists := m.firstSession(func(t *goidc.GrantSession) bool {
+func (m *GrantManager) DeleteByAuthCode(ctx context.Context, code string) error {
+	grant, exists := m.firstSession(func(t *goidc.Grant) bool {
 		return t.AuthCode == code
 	})
 
@@ -74,20 +74,20 @@ func (m *GrantSessionManager) DeleteByAuthCode(ctx context.Context, code string)
 		return nil
 	}
 
-	return m.Delete(ctx, grantSession.ID)
+	return m.Delete(ctx, grant.ID)
 }
 
-func (m *GrantSessionManager) firstSession(condition func(*goidc.GrantSession) bool) (*goidc.GrantSession, bool) {
+func (m *GrantManager) firstSession(condition func(*goidc.Grant) bool) (*goidc.Grant, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	// Convert the map to a slice of sessions.
-	grantSessions := make([]*goidc.GrantSession, 0, len(m.Sessions))
+	grants := make([]*goidc.Grant, 0, len(m.Sessions))
 	for _, t := range m.Sessions {
-		grantSessions = append(grantSessions, t)
+		grants = append(grants, t)
 	}
 
-	return findFirst(grantSessions, condition)
+	return findFirst(grants, condition)
 }
 
-var _ goidc.GrantSessionManager = NewGrantSessionManager(0)
+var _ goidc.GrantManager = NewGrantManager(0)

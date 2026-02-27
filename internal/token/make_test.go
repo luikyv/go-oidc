@@ -17,16 +17,17 @@ import (
 func TestMakeIDToken(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
+	ctx.IDTokenClaimsFunc = func(_ context.Context, _ *goidc.Grant) map[string]any {
+		return map[string]any{"random_claim": "random_value"}
+	}
 	client, _ := oidctest.NewClient(t)
+	grant := goidc.Grant{Subject: "random_subject", ClientID: client.ID}
 	idTokenOptions := token.IDTokenOptions{
 		Subject: "random_subject",
-		AdditionalIDTokenClaims: map[string]any{
-			"random_claim": "random_value",
-		},
 	}
 
 	// When.
-	idToken, err := token.MakeIDToken(ctx, client, idTokenOptions)
+	idToken, err := token.MakeIDToken(ctx, client, &grant, idTokenOptions)
 
 	// Then.
 	if err != nil {
@@ -60,18 +61,19 @@ func TestMakeIDToken_Unsigned(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	ctx.IDTokenSigAlgs = append(ctx.IDTokenSigAlgs, goidc.None)
+	ctx.IDTokenClaimsFunc = func(_ context.Context, _ *goidc.Grant) map[string]any {
+		return map[string]any{"random_claim": "random_value"}
+	}
 
 	client, _ := oidctest.NewClient(t)
 	client.IDTokenSigAlg = goidc.None
+	grant := goidc.Grant{Subject: "random_subject", ClientID: client.ID}
 	idTokenOptions := token.IDTokenOptions{
 		Subject: "random_subject",
-		AdditionalIDTokenClaims: map[string]any{
-			"random_claim": "random_value",
-		},
 	}
 
 	// When.
-	idToken, err := token.MakeIDToken(ctx, client, idTokenOptions)
+	idToken, err := token.MakeIDToken(ctx, client, &grant, idTokenOptions)
 
 	// Then.
 	if err != nil {
@@ -114,12 +116,13 @@ func TestMakeIDToken_PairwiseSub(t *testing.T) {
 	client.SubIdentifierType = goidc.SubIdentifierPairwise
 	client.SectorIdentifierURI = "https://example.com/redirect_uris.json"
 
+	grant := goidc.Grant{Subject: "random_subject", ClientID: client.ID}
 	idTokenOptions := token.IDTokenOptions{
 		Subject: "random_subject",
 	}
 
 	// When.
-	idToken, err := token.MakeIDToken(ctx, client, idTokenOptions)
+	idToken, err := token.MakeIDToken(ctx, client, &grant, idTokenOptions)
 
 	// Then.
 	if err != nil {
@@ -151,28 +154,49 @@ func TestMakeIDToken_PairwiseSub(t *testing.T) {
 func TestMakeToken_JWTToken(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	client, _ := oidctest.NewClient(t)
-	grantInfo := goidc.GrantInfo{
+	ctx.TokenClaimsFunc = func(_ context.Context, _ *goidc.Grant) map[string]any {
+		return map[string]any{"random_claim": "random_value"}
+	}
+	c, _ := oidctest.NewClient(t)
+	grant := goidc.Grant{
 		Subject:  "random_subject",
-		ClientID: client.ID,
-		AdditionalTokenClaims: map[string]any{
-			"random_claim": "random_value",
-		},
+		ClientID: c.ID,
+	}
+	opts := ctx.TokenOptions(&grant, c)
+	now2 := timeutil.TimestampNow()
+	tkn := &goidc.Token{
+		ID: func() string {
+			if opts.Format == goidc.TokenFormatJWT {
+				return ctx.JWTID()
+			}
+			return ctx.OpaqueToken()
+		}(),
+		GrantID:            grant.ID,
+		Subject:            grant.Subject,
+		ClientID:           grant.ClientID,
+		Scopes:             grant.Scopes,
+		AuthDetails:        grant.AuthDetails,
+		Resources:          grant.Resources,
+		JWKThumbprint:      grant.JWKThumbprint,
+		CreatedAtTimestamp: now2,
+		ExpiresAtTimestamp: now2 + opts.LifetimeSecs,
+		Format:             opts.Format,
+		SigAlg:             opts.JWTSigAlg,
 	}
 
 	// When.
-	token, err := token.Make(ctx, grantInfo, client)
+	tokenValue, err := token.Make(ctx, tkn, &grant)
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if token.Format != goidc.TokenFormatJWT {
-		t.Errorf("Format = %s, want %s", token.Format, goidc.TokenFormatJWT)
+	if tkn.Format != goidc.TokenFormatJWT {
+		t.Errorf("Format = %s, want %s", tkn.Format, goidc.TokenFormatJWT)
 	}
 
-	claims, err := oidctest.SafeClaims(token.Value, oidctest.PrivateJWKS(t, ctx).Keys[0])
+	claims, err := oidctest.SafeClaims(tokenValue, oidctest.PrivateJWKS(t, ctx).Keys[0])
 	if err != nil {
 		t.Fatalf("error parsing claims: %v", err)
 	}
@@ -180,9 +204,9 @@ func TestMakeToken_JWTToken(t *testing.T) {
 	now := timeutil.TimestampNow()
 	wantedClaims := map[string]any{
 		"iss":          ctx.Issuer(),
-		"sub":          grantInfo.Subject,
-		"client_id":    client.ID,
-		"scope":        grantInfo.GrantedScopes,
+		"sub":          grant.Subject,
+		"client_id":    c.ID,
+		"scope":        grant.Scopes,
 		"exp":          float64(now + 60),
 		"iat":          float64(now),
 		"random_claim": "random_value",
@@ -203,28 +227,39 @@ func TestMakeToken_JWTToken(t *testing.T) {
 func TestMakeToken_OpaqueToken(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.TokenOptionsFunc = func(_ context.Context, grantInfo goidc.GrantInfo, client *goidc.Client) goidc.TokenOptions {
-		return goidc.NewOpaqueTokenOptions(10, 60)
+	ctx.TokenOptionsFunc = func(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
+		return goidc.NewOpaqueTokenOptions(60)
 	}
-	grantInfo := goidc.GrantInfo{
+	grant := goidc.Grant{
 		Subject: "random_subject",
 	}
 	client := &goidc.Client{}
+	opaqueOpts := ctx.TokenOptions(&grant, client)
+	opaqueNow := timeutil.TimestampNow()
+	tkn := &goidc.Token{
+		ID: ctx.OpaqueToken(),
+		GrantID:            grant.ID,
+		Subject:            grant.Subject,
+		CreatedAtTimestamp: opaqueNow,
+		ExpiresAtTimestamp: opaqueNow + opaqueOpts.LifetimeSecs,
+		Format:             opaqueOpts.Format,
+		SigAlg:             opaqueOpts.JWTSigAlg,
+	}
 
 	// When.
-	token, err := token.Make(ctx, grantInfo, client)
+	tokenValue, err := token.Make(ctx, tkn, &grant)
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if token.Format != goidc.TokenFormatOpaque {
-		t.Errorf("Format = %s, want %s", token.Format, goidc.TokenFormatOpaque)
+	if tkn.Format != goidc.TokenFormatOpaque {
+		t.Errorf("Format = %s, want %s", tkn.Format, goidc.TokenFormatOpaque)
 	}
 
-	if token.ID != token.Value {
-		t.Errorf("ID = %s, want %s", token.ID, token.Value)
+	if tkn.ID != tokenValue {
+		t.Errorf("ID = %s, want %s", tkn.ID, tokenValue)
 	}
 }
 
@@ -233,33 +268,46 @@ func TestMakeToken_UnsignedJWTToken(t *testing.T) {
 	ctx := oidctest.NewContext(t)
 	ctx.TokenOptionsFunc = func(
 		_ context.Context,
-		grantInfo goidc.GrantInfo,
-		client *goidc.Client,
+		_ *goidc.Grant,
+		_ *goidc.Client,
 	) goidc.TokenOptions {
 		return goidc.NewJWTTokenOptions(goidc.None, 60)
 	}
+	ctx.TokenClaimsFunc = func(_ context.Context, _ *goidc.Grant) map[string]any {
+		return map[string]any{"random_claim": "random_value"}
+	}
 	client, _ := oidctest.NewClient(t)
-	grantInfo := goidc.GrantInfo{
+	grant := goidc.Grant{
 		Subject:  "random_subject",
 		ClientID: client.ID,
-		AdditionalTokenClaims: map[string]any{
-			"random_claim": "random_value",
-		},
+	}
+	unsignedOpts := ctx.TokenOptions(&grant, client)
+	unsignedNow := timeutil.TimestampNow()
+	tkn := &goidc.Token{
+		ID: ctx.JWTID(),
+		GrantID:            grant.ID,
+		Subject:            grant.Subject,
+		ClientID:           grant.ClientID,
+		Scopes:             grant.Scopes,
+		CreatedAtTimestamp: unsignedNow,
+		ExpiresAtTimestamp: unsignedNow + unsignedOpts.LifetimeSecs,
+		Format:             unsignedOpts.Format,
+		SigAlg:             unsignedOpts.JWTSigAlg,
 	}
 
 	// When.
-	token, err := token.Make(ctx, grantInfo, client)
+	tokenValue, err := token.Make(ctx, tkn, &grant)
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if token.Format != goidc.TokenFormatJWT {
-		t.Errorf("Format = %s, want %s", token.Format, goidc.TokenFormatJWT)
+	if tkn.Format != goidc.TokenFormatJWT {
+		t.Errorf("Format = %s, want %s", tkn.Format, goidc.TokenFormatJWT)
 	}
 
-	if !joseutil.IsUnsignedJWT(token.Value) {
-		t.Errorf("got %s, want unsigned", token.Value)
+	if !joseutil.IsUnsignedJWT(tokenValue) {
+		t.Errorf("got %s, want unsigned", tokenValue)
 	}
 }

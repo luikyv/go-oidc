@@ -7,52 +7,98 @@ import (
 
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func generateClientCredentialsGrant(ctx oidc.Context, req request) (response, error) {
-	c, oauthErr := client.Authenticated(ctx, client.TokenAuthnContext)
-	if oauthErr != nil {
-		return response{}, oauthErr
-	}
-
-	if oauthErr := validateClientCredentialsGrantRequest(ctx, req, c); oauthErr != nil {
-		return response{}, oauthErr
-	}
-
-	grantInfo, err := clientCredentialsGrantInfo(ctx, c, req)
+	c, err := client.Authenticated(ctx, client.TokenAuthnContext)
 	if err != nil {
 		return response{}, err
 	}
 
-	token, err := Make(ctx, grantInfo, c)
+	if err := validateClientCredentialsGrantRequest(ctx, req, c); err != nil {
+		return response{}, err
+	}
+
+	grant := &goidc.Grant{
+		ID:                 ctx.GrantID(),
+		CreatedAtTimestamp: timeutil.TimestampNow(),
+		Type:               goidc.GrantClientCredentials,
+		Subject:            c.ID,
+		ClientID:           c.ID,
+		Scopes: func() string {
+			scopes := []string{}
+			for s := range strings.SplitSeq(req.scopes, " ") {
+				if s != goidc.ScopeOpenID.ID {
+					scopes = append(scopes, s)
+				}
+			}
+			return strings.Join(scopes, " ")
+		}(),
+		Resources: func() goidc.Resources {
+			if ctx.ResourceIndicatorsIsEnabled && req.resources != nil {
+				return req.resources
+			}
+			return nil
+		}(),
+		AuthDetails: func() []goidc.AuthorizationDetail {
+			if ctx.AuthDetailsIsEnabled && req.authDetails != nil {
+				return req.authDetails
+			}
+			return nil
+		}(),
+		JWKThumbprint:        dpopThumbprint(ctx),
+		ClientCertThumbprint: tlsThumbprint(ctx),
+	}
+
+	if err := ctx.HandleGrant(grant); err != nil {
+		return response{}, err
+	}
+
+	opts := ctx.TokenOptions(grant, c)
+	now := timeutil.TimestampNow()
+	tkn := &goidc.Token{
+		ID: func() string {
+			if opts.Format == goidc.TokenFormatJWT {
+				return ctx.JWTID()
+			}
+			return ctx.OpaqueToken()
+		}(),
+		GrantID:              grant.ID,
+		Subject:              grant.Subject,
+		ClientID:             grant.ClientID,
+		Scopes:               grant.Scopes,
+		AuthDetails:          grant.AuthDetails,
+		Resources:            grant.Resources,
+		JWKThumbprint:        grant.JWKThumbprint,
+		ClientCertThumbprint: grant.ClientCertThumbprint,
+		CreatedAtTimestamp:   now,
+		ExpiresAtTimestamp:   now + opts.LifetimeSecs,
+		Format:               opts.Format,
+		SigAlg:               opts.JWTSigAlg,
+	}
+
+	tokenValue, err := Make(ctx, tkn, grant)
 	if err != nil {
 		return response{}, fmt.Errorf("could not generate an access token for the client credentials grant: %w", err)
 	}
 
-	_, err = generateClientCredentialsGrantSession(ctx, grantInfo, token)
-	if err != nil {
+	if err := ctx.SaveGrant(grant); err != nil {
 		return response{}, err
 	}
 
-	tokenResp := response{
-		AccessToken:          token.Value,
-		ExpiresIn:            token.LifetimeSecs,
-		TokenType:            token.Type,
-		AuthorizationDetails: grantInfo.ActiveAuthDetails,
-		Scopes:               grantInfo.ActiveScopes,
+	if err := ctx.SaveToken(tkn); err != nil {
+		return response{}, err
 	}
 
-	return tokenResp, nil
-}
-
-func generateClientCredentialsGrantSession(ctx oidc.Context, grantInfo goidc.GrantInfo, token Token) (*goidc.GrantSession, error) {
-
-	grantSession := NewGrantSession(ctx, grantInfo, token)
-	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return nil, err
-	}
-	return grantSession, nil
+	return response{
+		AccessToken:          tokenValue,
+		ExpiresIn:            tkn.LifetimeSecs(),
+		TokenType:            tokenType(tkn),
+		AuthorizationDetails: tkn.AuthDetails,
+		Scopes:               tkn.Scopes,
+	}, nil
 }
 
 func validateClientCredentialsGrantRequest(ctx oidc.Context, req request, c *goidc.Client) error {
@@ -78,39 +124,4 @@ func validateClientCredentialsGrantRequest(ctx oidc.Context, req request, c *goi
 	}
 
 	return nil
-}
-
-func clientCredentialsGrantInfo(ctx oidc.Context, client *goidc.Client, req request) (goidc.GrantInfo, error) {
-	scopes := []string{}
-	for s := range strings.SplitSeq(req.scopes, " ") {
-		if s != goidc.ScopeOpenID.ID {
-			scopes = append(scopes, s)
-		}
-	}
-
-	grantInfo := goidc.GrantInfo{
-		GrantType:     goidc.GrantClientCredentials,
-		ActiveScopes:  strings.Join(scopes, " "),
-		GrantedScopes: strings.Join(scopes, " "),
-		Subject:       client.ID,
-		ClientID:      client.ID,
-	}
-
-	if ctx.ResourceIndicatorsIsEnabled && req.resources != nil {
-		grantInfo.ActiveResources = req.resources
-		grantInfo.GrantedResources = req.resources
-	}
-
-	if ctx.AuthDetailsIsEnabled && req.authDetails != nil {
-		grantInfo.ActiveAuthDetails = req.authDetails
-		grantInfo.GrantedAuthDetails = req.authDetails
-	}
-
-	setPoP(ctx, &grantInfo)
-
-	if err := ctx.HandleGrant(&grantInfo); err != nil {
-		return goidc.GrantInfo{}, err
-	}
-
-	return grantInfo, nil
 }

@@ -5,10 +5,19 @@ import (
 	"fmt"
 
 	"github.com/luikyv/go-oidc/internal/client"
-	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
+
+func IntrospectionInfo(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
+	info, err := accessTokenInfo(ctx, tkn)
+	if err == nil {
+		return info, nil
+	}
+
+	return refreshTokenInfo(ctx, tkn)
+}
 
 func introspect(ctx oidc.Context, req queryRequest) (goidc.TokenInfo, error) {
 	c, err := client.Authenticated(ctx, client.TokenIntrospectionAuthnContext)
@@ -29,8 +38,7 @@ func introspect(ctx oidc.Context, req queryRequest) (goidc.TokenInfo, error) {
 	}
 
 	if !ctx.IsClientAllowedTokenIntrospection(c, tokenInfo) {
-		return goidc.TokenInfo{}, goidc.NewError(goidc.ErrorCodeAccessDenied,
-			"client not allowed to introspect the token")
+		return goidc.TokenInfo{}, goidc.NewError(goidc.ErrorCodeAccessDenied, "client not allowed to introspect the token")
 	}
 
 	return tokenInfo, nil
@@ -43,49 +51,40 @@ func validateIntrospectionRequest(req queryRequest) error {
 	return nil
 }
 
-func IntrospectionInfo(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
-
-	if joseutil.IsJWS(tkn) {
-		return accessTokenInfo(ctx, tkn)
-	}
-
-	if len(tkn) == goidc.RefreshTokenLength {
-		return refreshTokenInfo(ctx, tkn)
-	}
-
-	return accessTokenInfo(ctx, tkn)
-}
-
 func refreshTokenInfo(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
-	grantSession, err := ctx.GrantSessionByRefreshToken(tkn)
+	grant, err := ctx.GrantByRefreshToken(tkn)
 	if err != nil {
 		return goidc.TokenInfo{}, fmt.Errorf("token not found: %w", err)
 	}
 
-	if grantSession.IsExpired() {
+	if ctx.RefreshTokenLifetimeSecs > 0 && timeutil.TimestampNow() >= grant.CreatedAtTimestamp+ctx.RefreshTokenLifetimeSecs {
 		return goidc.TokenInfo{}, errors.New("token is expired")
 	}
 
 	var cnf *goidc.TokenConfirmation
-	if grantSession.JWKThumbprint != "" || grantSession.ClientCertThumbprint != "" {
+	if grant.JWKThumbprint != "" || grant.ClientCertThumbprint != "" {
 		cnf = &goidc.TokenConfirmation{
-			JWKThumbprint:        grantSession.JWKThumbprint,
-			ClientCertThumbprint: grantSession.ClientCertThumbprint,
+			JWKThumbprint:        grant.JWKThumbprint,
+			ClientCertThumbprint: grant.ClientCertThumbprint,
 		}
 	}
 
 	return goidc.TokenInfo{
-		GrantID:               grantSession.ID,
-		IsActive:              true,
-		Subject:               grantSession.Subject,
-		Type:                  goidc.TokenHintRefresh,
-		Scopes:                grantSession.GrantedScopes,
-		AuthorizationDetails:  grantSession.GrantedAuthDetails,
-		ClientID:              grantSession.ClientID,
-		ExpiresAtTimestamp:    grantSession.ExpiresAtTimestamp,
-		Confirmation:          cnf,
-		ResourceAudiences:     grantSession.GrantedResources,
-		AdditionalTokenClaims: grantSession.AdditionalTokenClaims,
+		GrantID:              grant.ID,
+		IsActive:             true,
+		Subject:              grant.Subject,
+		Type:                 goidc.TokenHintRefresh,
+		Scopes:               grant.Scopes,
+		AuthorizationDetails: grant.AuthDetails,
+		ClientID:             grant.ClientID,
+		ExpiresAtTimestamp: func() int {
+			if ctx.RefreshTokenLifetimeSecs > 0 {
+				return grant.CreatedAtTimestamp + ctx.RefreshTokenLifetimeSecs
+			}
+			return 0
+		}(),
+		Confirmation:      cnf,
+		ResourceAudiences: grant.Resources,
 	}, nil
 }
 
@@ -95,34 +94,33 @@ func accessTokenInfo(ctx oidc.Context, accessToken string) (goidc.TokenInfo, err
 		return goidc.TokenInfo{}, fmt.Errorf("invalid token: %w", err)
 	}
 
-	grantSession, err := ctx.GrantSessionByTokenID(id)
+	token, err := ctx.TokenByID(id)
 	if err != nil {
 		return goidc.TokenInfo{}, fmt.Errorf("token not found: %w", err)
 	}
 
-	if grantSession.HasLastTokenExpired() {
-		return goidc.TokenInfo{}, errors.New("token is expired")
+	if token.IsExpired() {
+		return goidc.TokenInfo{IsActive: false}, nil
 	}
 
 	var cnf *goidc.TokenConfirmation
-	if grantSession.JWKThumbprint != "" || grantSession.ClientCertThumbprint != "" {
+	if token.JWKThumbprint != "" || token.ClientCertThumbprint != "" {
 		cnf = &goidc.TokenConfirmation{
-			JWKThumbprint:        grantSession.JWKThumbprint,
-			ClientCertThumbprint: grantSession.ClientCertThumbprint,
+			JWKThumbprint:        token.JWKThumbprint,
+			ClientCertThumbprint: token.ClientCertThumbprint,
 		}
 	}
 
 	return goidc.TokenInfo{
-		GrantID:               grantSession.ID,
-		IsActive:              true,
-		Subject:               grantSession.Subject,
-		Type:                  goidc.TokenHintAccess,
-		Scopes:                grantSession.ActiveScopes,
-		AuthorizationDetails:  grantSession.ActiveAuthDetails,
-		ClientID:              grantSession.ClientID,
-		ExpiresAtTimestamp:    grantSession.LastTokenExpiresAtTimestamp,
-		Confirmation:          cnf,
-		ResourceAudiences:     grantSession.ActiveResources,
-		AdditionalTokenClaims: grantSession.AdditionalTokenClaims,
+		GrantID:              token.GrantID,
+		IsActive:             true,
+		Subject:              token.Subject,
+		Type:                 goidc.TokenHintAccess,
+		Scopes:               token.Scopes,
+		AuthorizationDetails: token.AuthDetails,
+		ClientID:             token.ClientID,
+		ExpiresAtTimestamp:   token.ExpiresAtTimestamp,
+		Confirmation:         cnf,
+		ResourceAudiences:    token.Resources,
 	}, nil
 }

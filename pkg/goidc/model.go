@@ -13,15 +13,6 @@ import (
 
 type JWKSFunc func(context.Context) (JSONWebKeySet, error)
 
-// RefreshTokenLength has an unusual value so to avoid refresh tokens and
-// opaque access token to be confused.
-// This happens since a refresh token is identified by its length during
-// introspection.
-// TODO: Let the client generate the refresh token.
-const RefreshTokenLength int = 99
-
-const DefaultOpaqueTokenLength int = 50
-
 type Profile string
 
 const (
@@ -366,18 +357,29 @@ type CheckJTIFunc func(context.Context, string) error
 // require this behavior is disabled.
 type HTTPClientFunc func(context.Context) *http.Client
 
-type ShouldIssueRefreshTokenFunc func(context.Context, *Client, GrantInfo) bool
+type ShouldIssueRefreshTokenFunc func(context.Context, *Client, *Grant) bool
 
 // TokenOptionsFunc defines a function that returns token configuration and is
 // executed when issuing access tokens.
-type TokenOptionsFunc func(context.Context, GrantInfo, *Client) TokenOptions
+type TokenOptionsFunc func(context.Context, *Grant, *Client) TokenOptions
+
+// IDTokenClaimsFunc defines a function that returns additional claims to include
+// in the ID token. It is called at ID token issuance time.
+type IDTokenClaimsFunc func(context.Context, *Grant) map[string]any
+
+// UserInfoClaimsFunc defines a function that returns additional claims to include
+// in the userinfo response. It is called when the userinfo endpoint is requested.
+type UserInfoClaimsFunc func(context.Context, *Grant) map[string]any
+
+// TokenClaimsFunc defines a function that returns additional claims to include
+// in JWT access tokens. It is called at access token issuance time.
+type TokenClaimsFunc func(context.Context, *Grant) map[string]any
 
 // TokenOptions defines a template for generating access tokens.
 type TokenOptions struct {
 	Format       TokenFormat
 	LifetimeSecs int
 	JWTSigAlg    SignatureAlgorithm
-	OpaqueLength int
 }
 
 func NewJWTTokenOptions(alg SignatureAlgorithm, lifetimeSecs int) TokenOptions {
@@ -388,11 +390,10 @@ func NewJWTTokenOptions(alg SignatureAlgorithm, lifetimeSecs int) TokenOptions {
 	}
 }
 
-func NewOpaqueTokenOptions(length int, lifetimeSecs int) TokenOptions {
+func NewOpaqueTokenOptions(lifetimeSecs int) TokenOptions {
 	return TokenOptions{
 		Format:       TokenFormatOpaque,
 		LifetimeSecs: lifetimeSecs,
-		OpaqueLength: length,
 	}
 }
 

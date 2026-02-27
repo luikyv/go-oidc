@@ -53,7 +53,7 @@ func TestHandleGrantCreation_ClientCredentialsGrant(t *testing.T) {
 		t.Error(diff)
 	}
 
-	grantSessions := oidctest.GrantSessions(t, ctx)
+	grantSessions := oidctest.Grants(t, ctx)
 	if len(grantSessions) != 1 {
 		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
 	}
@@ -105,7 +105,7 @@ func TestHandleGrantCreation_ClientCredentialsGrant_ResourceIndicators(t *testin
 		t.Error(diff)
 	}
 
-	grantSessions := oidctest.GrantSessions(t, ctx)
+	grantSessions := oidctest.Grants(t, ctx)
 	if len(grantSessions) != 1 {
 		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
 	}

@@ -52,6 +52,8 @@ const (
 	paramLogoURI           string = "logo_uri"
 	paramPolicyURI         string = "policy_uri"
 	paramTermsOfServiceURI string = "tos_uri"
+	paramIDTokenClaims     string = "id_token_claims"
+	paramUserInfoClaims    string = "userinfo_claims"
 
 	usernameFormParam string = "username"
 	passwordFormParam string = "password"
@@ -235,121 +237,120 @@ func (a authenticator) finishFlow(as *goidc.AuthnSession) (goidc.Status, error) 
 	as.GrantResources(as.Resources)
 	as.GrantAuthorizationDetails(as.AuthDetails)
 
-	as.SetIDTokenClaimAuthTime(as.Storage[paramAuthTime].(int))
-	as.SetIDTokenClaimACR(goidc.ACRMaceIncommonIAPSilver)
+	idTokenClaims := map[string]any{
+		goidc.ClaimAuthTime: as.Storage[paramAuthTime].(int),
+		goidc.ClaimACR:      string(goidc.ACRMaceIncommonIAPSilver),
+	}
+	userInfoClaims := map[string]any{}
 
 	// Add claims based on the claims parameter.
 	if as.Claims != nil {
 
 		// acr claim.
 		if acrClaim, ok := as.Claims.IDToken[goidc.ClaimACR]; ok {
-			as.SetIDTokenClaim(goidc.ClaimACR, acrClaim.Value)
+			idTokenClaims[goidc.ClaimACR] = acrClaim.Value
 		}
 		if acrClaim, ok := as.Claims.UserInfo[goidc.ClaimACR]; ok {
-			as.SetUserInfoClaim(goidc.ClaimACR, acrClaim.Value)
+			userInfoClaims[goidc.ClaimACR] = acrClaim.Value
 		}
 
 		// name claim.
 		if _, ok := as.Claims.IDToken[goidc.ClaimName]; ok {
-			as.SetIDTokenClaim(goidc.ClaimName, "John Michael Doe")
+			idTokenClaims[goidc.ClaimName] = "John Michael Doe"
 		}
 		if _, ok := as.Claims.UserInfo[goidc.ClaimName]; ok {
-			as.SetUserInfoClaim(goidc.ClaimName, "John Michael Doe")
+			userInfoClaims[goidc.ClaimName] = "John Michael Doe"
 		}
 
 		// email claim.
 		if _, ok := as.Claims.IDToken[goidc.ClaimEmail]; ok {
-			as.SetIDTokenClaim(goidc.ClaimEmail, "random@email.com")
+			idTokenClaims[goidc.ClaimEmail] = "random@email.com"
 		}
 		if _, ok := as.Claims.UserInfo[goidc.ClaimEmail]; ok {
-			as.SetUserInfoClaim(goidc.ClaimEmail, "random@email.com")
+			userInfoClaims[goidc.ClaimEmail] = "random@email.com"
 		}
 
 		// email_verified claim.
 		if _, ok := as.Claims.IDToken[goidc.ClaimEmailVerified]; ok {
-			as.SetIDTokenClaim(goidc.ClaimEmailVerified, true)
+			idTokenClaims[goidc.ClaimEmailVerified] = true
 		}
 		if _, ok := as.Claims.UserInfo[goidc.ClaimEmailVerified]; ok {
-			as.SetUserInfoClaim(goidc.ClaimEmailVerified, true)
+			userInfoClaims[goidc.ClaimEmailVerified] = true
 		}
 
 		// phone_number claim.
 		if _, ok := as.Claims.IDToken[goidc.ClaimPhoneNumber]; ok {
-			as.SetIDTokenClaim(goidc.ClaimPhoneNumber, "+00 00000000")
+			idTokenClaims[goidc.ClaimPhoneNumber] = "+00 00000000"
 		}
 		if _, ok := as.Claims.UserInfo[goidc.ClaimPhoneNumber]; ok {
-			as.SetUserInfoClaim(goidc.ClaimPhoneNumber, "+00 00000000")
+			userInfoClaims[goidc.ClaimPhoneNumber] = "+00 00000000"
 		}
 
 		// phone_number_verified claim.
 		if _, ok := as.Claims.IDToken[goidc.ClaimPhoneNumberVerified]; ok {
-			as.SetIDTokenClaim(goidc.ClaimPhoneNumberVerified, true)
+			idTokenClaims[goidc.ClaimPhoneNumberVerified] = true
 		}
 		if _, ok := as.Claims.UserInfo[goidc.ClaimPhoneNumberVerified]; ok {
-			as.SetUserInfoClaim(goidc.ClaimPhoneNumberVerified, true)
+			userInfoClaims[goidc.ClaimPhoneNumberVerified] = true
 		}
 
 		// address claim.
 		if _, ok := as.Claims.IDToken[goidc.ClaimAddress]; ok {
-			as.SetIDTokenClaim(goidc.ClaimAddress, map[string]any{
-				"street_address": "123 Main St, Suite 500",
-				"locality":       "Springfield",
-				"region":         "IL",
-				"postal_code":    "62701",
-				"country":        "USA",
-			})
+			idTokenClaims[goidc.ClaimAddress] = addressClaim()
 		}
 		if _, ok := as.Claims.UserInfo[goidc.ClaimAddress]; ok {
-			as.SetUserInfoClaim(goidc.ClaimAddress, map[string]any{
-				"street_address": "123 Main St, Suite 500",
-				"locality":       "Springfield",
-				"region":         "IL",
-				"postal_code":    "62701",
-				"country":        "USA",
-			})
+			userInfoClaims[goidc.ClaimAddress] = addressClaim()
 		}
 	}
 
 	// Add claims based on scope.
-	setClaimFunc := as.SetUserInfoClaim
+	// Scope-based claims go to id_token for implicit grant, userinfo otherwise.
+	scopeClaims := userInfoClaims
 	if as.ResponseType == goidc.ResponseTypeIDToken {
-		setClaimFunc = as.SetIDTokenClaim
+		scopeClaims = idTokenClaims
 	}
 	if strings.Contains(as.Scopes, goidc.ScopeEmail.ID) {
-		setClaimFunc(goidc.ClaimEmail, "random@email.com")
-		setClaimFunc(goidc.ClaimEmailVerified, true)
+		scopeClaims[goidc.ClaimEmail] = "random@email.com"
+		scopeClaims[goidc.ClaimEmailVerified] = true
 	}
 	if strings.Contains(as.Scopes, goidc.ScopePhone.ID) {
-		setClaimFunc(goidc.ClaimPhoneNumber, "+00 00000000")
-		setClaimFunc(goidc.ClaimPhoneNumberVerified, true)
+		scopeClaims[goidc.ClaimPhoneNumber] = "+00 00000000"
+		scopeClaims[goidc.ClaimPhoneNumberVerified] = true
 	}
 	if strings.Contains(as.Scopes, goidc.ScopeAddress.ID) {
-		setClaimFunc(goidc.ClaimAddress, map[string]any{
-			"street_address": "123 Main St, Suite 500",
-			"locality":       "Springfield",
-			"region":         "IL",
-			"postal_code":    "62701",
-			"country":        "USA",
-		})
+		scopeClaims[goidc.ClaimAddress] = addressClaim()
 	}
 	if strings.Contains(as.Scopes, goidc.ScopeProfile.ID) {
-		setClaimFunc(goidc.ClaimWebsite, "https://example.com")
-		setClaimFunc(goidc.ClaimZoneInfo, "America/Sao_Paulo")
-		setClaimFunc(goidc.ClaimBirthdate, "1990-01-01")
-		setClaimFunc(goidc.ClaimGender, "male")
-		setClaimFunc(goidc.ClaimProfile, "https://example.com/johndoe")
-		setClaimFunc(goidc.ClaimPreferredUsername, "johndoe")
-		setClaimFunc(goidc.ClaimGivenName, "John")
-		setClaimFunc(goidc.ClaimMiddleName, "Michael")
-		setClaimFunc(goidc.ClaimLocale, "en-US")
-		setClaimFunc(goidc.ClaimPicture, "https://example.com/johndoe/profile.jpg")
-		setClaimFunc(goidc.ClaimUpdatedAt, timeutil.TimestampNow())
-		setClaimFunc(goidc.ClaimName, "John Michael Doe")
-		setClaimFunc(goidc.ClaimNickname, "Johnny")
-		setClaimFunc(goidc.ClaimFamilyName, "Doe")
+		scopeClaims[goidc.ClaimWebsite] = "https://example.com"
+		scopeClaims[goidc.ClaimZoneInfo] = "America/Sao_Paulo"
+		scopeClaims[goidc.ClaimBirthdate] = "1990-01-01"
+		scopeClaims[goidc.ClaimGender] = "male"
+		scopeClaims[goidc.ClaimProfile] = "https://example.com/johndoe"
+		scopeClaims[goidc.ClaimPreferredUsername] = "johndoe"
+		scopeClaims[goidc.ClaimGivenName] = "John"
+		scopeClaims[goidc.ClaimMiddleName] = "Michael"
+		scopeClaims[goidc.ClaimLocale] = "en-US"
+		scopeClaims[goidc.ClaimPicture] = "https://example.com/johndoe/profile.jpg"
+		scopeClaims[goidc.ClaimUpdatedAt] = timeutil.TimestampNow()
+		scopeClaims[goidc.ClaimName] = "John Michael Doe"
+		scopeClaims[goidc.ClaimNickname] = "Johnny"
+		scopeClaims[goidc.ClaimFamilyName] = "Doe"
 	}
 
+	as.StoreParameter(paramIDTokenClaims, idTokenClaims)
+	as.StoreParameter(paramUserInfoClaims, userInfoClaims)
+
 	return goidc.StatusSuccess, nil
+}
+
+func addressClaim() map[string]any {
+	return map[string]any{
+		"street_address": "123 Main St, Suite 500",
+		"locality":       "Springfield",
+		"region":         "IL",
+		"postal_code":    "62701",
+		"country":        "USA",
+	}
 }
 
 func (a authenticator) renderPage(w http.ResponseWriter, tmplName string, as *goidc.AuthnSession) (goidc.Status, error) {

@@ -61,15 +61,21 @@ func validateTLSPoP(ctx oidc.Context, confirmation goidc.TokenConfirmation) erro
 	return nil
 }
 
-// setPoP adds the available pop mechanisms to the grant info.
-func setPoP(ctx oidc.Context, grantInfo *goidc.GrantInfo) {
-	dpopJWT, ok := dpop.JWT(ctx)
-	if ctx.DPoPIsEnabled && ok {
-		grantInfo.JWKThumbprint = dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)
+// dpopThumbprint returns the DPoP JWK thumbprint from the request context,
+// or an empty string if DPoP is not enabled or no DPoP JWT is present.
+func dpopThumbprint(ctx oidc.Context) string {
+	if dpopJWT, ok := dpop.JWT(ctx); ctx.DPoPIsEnabled && ok {
+		return dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)
 	}
+	return ""
+}
 
-	clientCert, err := ctx.ClientCert()
-	if ctx.MTLSTokenBindingIsEnabled && err == nil {
-		grantInfo.ClientCertThumbprint = hashutil.Thumbprint(string(clientCert.Raw))
+// tlsThumbprint returns the client certificate thumbprint from the request
+// context, or an empty string if mTLS token binding is not enabled or no
+// certificate is present.
+func tlsThumbprint(ctx oidc.Context) string {
+	if clientCert, err := ctx.ClientCert(); ctx.MTLSTokenBindingIsEnabled && err == nil {
+		return hashutil.Thumbprint(string(clientCert.Raw))
 	}
+	return ""
 }

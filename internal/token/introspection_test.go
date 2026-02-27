@@ -16,15 +16,15 @@ func TestIntrospect_OpaqueToken(t *testing.T) {
 	ctx, client := setUpIntrospection(t)
 
 	accessToken := "opaque_token"
-	grantSession := &goidc.GrantSession{
-		TokenID:                     accessToken,
-		LastTokenExpiresAtTimestamp: timeutil.TimestampNow() + 60,
-		GrantInfo: goidc.GrantInfo{
-			ActiveScopes: goidc.ScopeOpenID.ID,
-			ClientID:     client.ID,
-		},
+	now := timeutil.TimestampNow()
+	tokenEntity := &goidc.Token{
+		ID:                 accessToken,
+		GrantID:            "random_grant_id",
+		ClientID:           client.ID,
+		ExpiresAtTimestamp: now + 60,
+		Scopes:       goidc.ScopeOpenID.ID,
 	}
-	_ = ctx.SaveGrantSession(grantSession)
+	_ = ctx.SaveToken(tokenEntity)
 
 	tokenReq := queryRequest{
 		token: accessToken,
@@ -38,12 +38,12 @@ func TestIntrospect_OpaqueToken(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	now := timeutil.TimestampNow()
 	if tokenInfo.ExpiresAtTimestamp-(now+60) > 1 {
 		t.Errorf("ExpiresAtTimestamp = %d, want %d", tokenInfo.ExpiresAtTimestamp, now+60)
 	}
 
 	want := goidc.TokenInfo{
+		GrantID:            "random_grant_id",
 		IsActive:           true,
 		ClientID:           client.ID,
 		Scopes:             goidc.ScopeOpenID.ID,
@@ -58,18 +58,17 @@ func TestIntrospect_OpaqueToken(t *testing.T) {
 func TestIntrospect_RefreshToken(t *testing.T) {
 	// Given.
 	ctx, client := setUpIntrospection(t)
+	ctx.RefreshTokenLifetimeSecs = 60
 
-	expiryTime := timeutil.TimestampNow() + 60
-	refreshToken := strutil.Random(goidc.RefreshTokenLength)
-	grantSession := &goidc.GrantSession{
+	now := timeutil.TimestampNow()
+	refreshToken := strutil.Random(100)
+	grantSession := &goidc.Grant{
 		RefreshToken:       refreshToken,
-		ExpiresAtTimestamp: expiryTime,
-		GrantInfo: goidc.GrantInfo{
-			ClientID:      client.ID,
-			GrantedScopes: goidc.ScopeOpenID.ID,
-		},
+		CreatedAtTimestamp: now,
+		ClientID:           client.ID,
+		Scopes:             goidc.ScopeOpenID.ID,
 	}
-	_ = ctx.SaveGrantSession(grantSession)
+	_ = ctx.SaveGrant(grantSession)
 
 	tokenReq := queryRequest{
 		token: refreshToken,
@@ -83,7 +82,6 @@ func TestIntrospect_RefreshToken(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	now := timeutil.TimestampNow()
 	if tokenInfo.ExpiresAtTimestamp-(now+60) > 1 {
 		t.Errorf("ExpiresAtTimestamp = %d, want %d", tokenInfo.ExpiresAtTimestamp, now+60)
 	}

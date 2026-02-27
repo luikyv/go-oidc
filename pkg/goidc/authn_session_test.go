@@ -21,47 +21,6 @@ func TestSaveAndGetParameter_HappyPath(t *testing.T) {
 	}
 }
 
-func TestAddTokenClaim(t *testing.T) {
-	for i := 0; i < 2; i++ {
-		// Given.
-		session := goidc.AuthnSession{}
-		// When.
-		session.SetTokenClaim("random_claim", "random_value")
-		// Then.
-		if session.AdditionalTokenClaims["random_claim"] != "random_value" {
-			t.Errorf("AdditionalTokenClaims[\"random_claim\"] = %v, want %s",
-				session.AdditionalTokenClaims["random_claim"], "random_value")
-		}
-	}
-}
-
-func TestAddIDTokenClaim(t *testing.T) {
-	for i := 0; i < 2; i++ {
-		// Given.
-		session := goidc.AuthnSession{}
-		// When.
-		session.SetIDTokenClaim("random_claim", "random_value")
-		// Then.
-		if session.AdditionalIDTokenClaims["random_claim"] != "random_value" {
-			t.Errorf("AdditionalIDTokenClaims[\"random_claim\"] = %v, want %s",
-				session.AdditionalIDTokenClaims["random_claim"], "random_value")
-		}
-	}
-}
-
-func TestAddUserInfoClaim(t *testing.T) {
-	for i := 0; i < 2; i++ {
-		// Given.
-		session := goidc.AuthnSession{}
-		// When.
-		session.SetUserInfoClaim("random_claim", "random_value")
-		// Then.
-		if session.AdditionalUserInfoClaims["random_claim"] != "random_value" {
-			t.Errorf("AdditionalUserInfoClaims[\"random_claim\"] = %v, want %s",
-				session.AdditionalUserInfoClaims["random_claim"], "random_value")
-		}
-	}
-}
 
 func TestIsExpired(t *testing.T) {
 	// Given.

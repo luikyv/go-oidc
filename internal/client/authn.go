@@ -45,7 +45,7 @@ func Authenticated(ctx oidc.Context, authnCtx AuthnContext) (*goidc.Client, erro
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client", err)
 	}
 
-	client, err := ctx.Client(id)
+	client, err := Client(ctx, id)
 	if err != nil {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClient, "client not found", err)
 	}
@@ -76,8 +76,7 @@ func authenticate(ctx oidc.Context, client *goidc.Client, authnCtx AuthnContext)
 	case goidc.AuthnMethodTLS:
 		return authenticateTLSCert(ctx, client)
 	default:
-		return goidc.NewError(goidc.ErrorCodeInvalidClient,
-			fmt.Sprintf("invalid authentication method %s for %s request", method, authnCtx))
+		return goidc.NewError(goidc.ErrorCodeInvalidClient, fmt.Sprintf("invalid authentication method %s for %s request", method, authnCtx))
 	}
 }
 

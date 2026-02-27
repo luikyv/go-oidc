@@ -36,25 +36,19 @@ func TestGenerateGrant_CIBAGrant(t *testing.T) {
 		t.Fatalf("error generating the grant: %v", err)
 	}
 
-	grantSessions := oidctest.GrantSessions(t, ctx)
+	grantSessions := oidctest.Grants(t, ctx)
 	if len(grantSessions) != 1 {
 		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
 	}
 	grantSession := grantSessions[0]
-	wantedSession := goidc.GrantSession{
-		ID:                          grantSession.ID,
-		TokenID:                     grantSession.TokenID,
-		LastTokenExpiresAtTimestamp: grantSession.LastTokenExpiresAtTimestamp,
-		CreatedAtTimestamp:          grantSession.CreatedAtTimestamp,
-		ExpiresAtTimestamp:          grantSession.ExpiresAtTimestamp,
-		RefreshToken:                grantSession.RefreshToken,
-		GrantInfo: goidc.GrantInfo{
-			GrantType:     goidc.GrantCIBA,
-			Subject:       session.Subject,
-			ClientID:      session.ClientID,
-			ActiveScopes:  session.GrantedScopes,
-			GrantedScopes: session.GrantedScopes,
-		},
+	wantedSession := goidc.Grant{
+		ID:                 grantSession.ID,
+		CreatedAtTimestamp: grantSession.CreatedAtTimestamp,
+		RefreshToken:       grantSession.RefreshToken,
+		Type:          goidc.GrantCIBA,
+		Subject:            session.Subject,
+		ClientID:           session.ClientID,
+		Scopes:      session.GrantedScopes,
 	}
 	if diff := cmp.Diff(
 		*grantSession,
@@ -64,6 +58,12 @@ func TestGenerateGrant_CIBAGrant(t *testing.T) {
 	); diff != "" {
 		t.Error(diff)
 	}
+
+	tokens := oidctest.Tokens(t, ctx)
+	if len(tokens) != 1 {
+		t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+	}
+	tokenEntity := tokens[0]
 
 	claims, err := oidctest.SafeClaims(tokenResp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 	if err != nil {
@@ -75,9 +75,9 @@ func TestGenerateGrant_CIBAGrant(t *testing.T) {
 		"sub":       session.Subject,
 		"client_id": client.ID,
 		"scope":     session.GrantedScopes,
-		"exp":       float64(grantSession.LastTokenExpiresAtTimestamp),
+		"exp":       float64(tokenEntity.ExpiresAtTimestamp),
 		"iat":       float64(now),
-		"jti":       grantSession.TokenID,
+		"jti":       tokenEntity.ID,
 	}
 	if diff := cmp.Diff(
 		claims,
@@ -206,7 +206,7 @@ func TestGenerateGrant_CIBAGrant_MTLSBinding(t *testing.T) {
 		t.Fatalf("error generating the grant: %v", err)
 	}
 
-	grantSessions := oidctest.GrantSessions(t, ctx)
+	grantSessions := oidctest.Grants(t, ctx)
 	if len(grantSessions) != 1 {
 		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
 	}
@@ -215,6 +215,12 @@ func TestGenerateGrant_CIBAGrant_MTLSBinding(t *testing.T) {
 	if grantSession.ClientCertThumbprint == "" {
 		t.Fatalf("invalid certificate thumbprint")
 	}
+
+	tokens := oidctest.Tokens(t, ctx)
+	if len(tokens) != 1 {
+		t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+	}
+	tokenEntity := tokens[0]
 
 	claims, err := oidctest.SafeClaims(tokenResp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 	if err != nil {
@@ -226,11 +232,11 @@ func TestGenerateGrant_CIBAGrant_MTLSBinding(t *testing.T) {
 		"sub":       session.Subject,
 		"client_id": client.ID,
 		"scope":     session.GrantedScopes,
-		"exp":       float64(grantSession.LastTokenExpiresAtTimestamp),
+		"exp":       float64(tokenEntity.ExpiresAtTimestamp),
 		"iat":       float64(now),
-		"jti":       grantSession.TokenID,
+		"jti":       tokenEntity.ID,
 		"cnf": map[string]any{
-			"x5t#S256": grantSession.ClientCertThumbprint,
+			"x5t#S256": tokenEntity.ClientCertThumbprint,
 		},
 	}
 	if diff := cmp.Diff(

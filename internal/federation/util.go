@@ -22,10 +22,10 @@ import (
 
 func Client(ctx oidc.Context, id string) (*goidc.Client, error) {
 	if !slices.Contains(ctx.OpenIDFedClientRegTypes, goidc.ClientRegistrationTypeAutomatic) || !strutil.IsURL(id) {
-		return ctx.ClientManager.Client(ctx, id)
+		return ctx.Client(id)
 	}
 
-	c, err := ctx.ClientManager.Client(ctx, id)
+	c, err := ctx.Client(id)
 	if err != nil {
 		if errors.Is(err, goidc.ErrClientNotFound) {
 			return registerAutomatically(ctx, id)

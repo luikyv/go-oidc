@@ -43,8 +43,8 @@ func TestGenerateGrant_RefreshTokenGrant(t *testing.T) {
 		"iss":       ctx.Issuer(),
 		"sub":       grantSession.Subject,
 		"client_id": client.ID,
-		"scope":     grantSession.GrantedScopes,
-		"exp":       float64(grantSession.LastTokenExpiresAtTimestamp),
+		"scope":     grantSession.Scopes,
+		"exp":       float64(now + 60),
 		"iat":       float64(now),
 	}
 	if diff := cmp.Diff(
@@ -62,13 +62,17 @@ func TestGenerateGrant_RefreshTokenGrant(t *testing.T) {
 		t.Error("refresh token rotation is not enabled, so a new refresh token shouldn't be returned")
 	}
 
-	grantSessions := oidctest.GrantSessions(t, ctx)
+	grantSessions := oidctest.Grants(t, ctx)
 	if len(grantSessions) != 1 {
 		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
 	}
 
-	if grantSessions[0].TokenID != claims["jti"] {
-		t.Errorf("TokenID = %s, want %s", grantSessions[0].TokenID, claims["jti"])
+	tokens := oidctest.Tokens(t, ctx)
+	if len(tokens) != 1 {
+		t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+	}
+	if tokens[0].ID != claims["jti"] {
+		t.Errorf("Token.ID = %s, want %s", tokens[0].ID, claims["jti"])
 	}
 }
 
@@ -88,8 +92,7 @@ func TestGenerateGrant_RefreshTokenGrant_AuthDetails(t *testing.T) {
 			"random_claim": "random_value",
 		},
 	}
-	grantSession.ActiveAuthDetails = authDetails
-	grantSession.GrantedAuthDetails = authDetails
+	grantSession.AuthDetails = authDetails
 
 	req := request{
 		grantType:    goidc.GrantRefreshToken,
@@ -104,15 +107,21 @@ func TestGenerateGrant_RefreshTokenGrant_AuthDetails(t *testing.T) {
 		t.Fatalf("error generating the refresh token grant: %v", err)
 	}
 
-	grantSessions := oidctest.GrantSessions(t, ctx)
+	grantSessions := oidctest.Grants(t, ctx)
 	if len(grantSessions) != 1 {
 		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
 	}
 	grantSession = grantSessions[0]
-	if diff := cmp.Diff(grantSession.GrantedAuthDetails, authDetails); diff != "" {
+	if diff := cmp.Diff(grantSession.AuthDetails, authDetails); diff != "" {
 		t.Error(diff)
 	}
-	if diff := cmp.Diff(grantSession.ActiveAuthDetails, authDetails); diff != "" {
+
+	tokens := oidctest.Tokens(t, ctx)
+	if len(tokens) != 1 {
+		t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+	}
+	tokenEntity := tokens[0]
+	if diff := cmp.Diff(tokenEntity.AuthDetails, authDetails); diff != "" {
 		t.Error(diff)
 	}
 
@@ -126,10 +135,10 @@ func TestGenerateGrant_RefreshTokenGrant_AuthDetails(t *testing.T) {
 		"iss":       ctx.Issuer(),
 		"sub":       grantSession.Subject,
 		"client_id": client.ID,
-		"scope":     grantSession.GrantedScopes,
-		"exp":       float64(grantSession.LastTokenExpiresAtTimestamp),
+		"scope":     grantSession.Scopes,
+		"exp":       float64(tokenEntity.ExpiresAtTimestamp),
 		"iat":       float64(now),
-		"jti":       grantSession.TokenID,
+		"jti":       tokenEntity.ID,
 		"authorization_details": []any{
 			map[string]any{
 				"type":         "type1",
@@ -169,8 +178,7 @@ func TestGenerateGrant_RefreshTokenGrant_AuthDetails_ClientRequestsSubset(t *tes
 			"random_claim": "random_value",
 		},
 	}
-	grantSession.ActiveAuthDetails = authDetails
-	grantSession.GrantedAuthDetails = authDetails
+	grantSession.AuthDetails = authDetails
 
 	authDetailsSubSet := []goidc.AuthorizationDetail{
 		map[string]any{
@@ -192,11 +200,17 @@ func TestGenerateGrant_RefreshTokenGrant_AuthDetails_ClientRequestsSubset(t *tes
 		t.Fatalf("error generating the refresh token grant: %v", err)
 	}
 
-	grantSession = oidctest.GrantSessions(t, ctx)[0]
-	if diff := cmp.Diff(grantSession.GrantedAuthDetails, authDetails); diff != "" {
+	grantSession = oidctest.Grants(t, ctx)[0]
+	if diff := cmp.Diff(grantSession.AuthDetails, authDetails); diff != "" {
 		t.Error(diff)
 	}
-	if diff := cmp.Diff(grantSession.ActiveAuthDetails, authDetailsSubSet); diff != "" {
+
+	tokens := oidctest.Tokens(t, ctx)
+	if len(tokens) != 1 {
+		t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+	}
+	tokenEntity := tokens[0]
+	if diff := cmp.Diff(tokenEntity.AuthDetails, authDetailsSubSet); diff != "" {
 		t.Error(diff)
 	}
 
@@ -210,10 +224,10 @@ func TestGenerateGrant_RefreshTokenGrant_AuthDetails_ClientRequestsSubset(t *tes
 		"iss":       ctx.Issuer(),
 		"sub":       grantSession.Subject,
 		"client_id": client.ID,
-		"scope":     grantSession.GrantedScopes,
-		"exp":       float64(grantSession.LastTokenExpiresAtTimestamp),
+		"scope":     grantSession.Scopes,
+		"exp":       float64(tokenEntity.ExpiresAtTimestamp),
 		"iat":       float64(now),
-		"jti":       grantSession.TokenID,
+		"jti":       tokenEntity.ID,
 		"authorization_details": []any{
 			map[string]any{
 				"type":         "type1",
@@ -234,7 +248,8 @@ func TestGenerateGrant_ExpiredRefreshToken(t *testing.T) {
 
 	// When
 	ctx, _, grantSession := setUpRefreshTokenGrant(t)
-	grantSession.ExpiresAtTimestamp = timeutil.TimestampNow() - 10
+	grantSession.CreatedAtTimestamp = timeutil.TimestampNow() - 20
+	ctx.RefreshTokenLifetimeSecs = 10
 
 	req := request{
 		grantType:    goidc.GrantRefreshToken,
@@ -250,7 +265,7 @@ func TestGenerateGrant_ExpiredRefreshToken(t *testing.T) {
 	}
 }
 
-func setUpRefreshTokenGrant(t testing.TB) (ctx oidc.Context, client *goidc.Client, grantSession *goidc.GrantSession) {
+func setUpRefreshTokenGrant(t testing.TB) (ctx oidc.Context, client *goidc.Client, grantSession *goidc.Grant) {
 	t.Helper()
 
 	ctx = oidctest.NewContext(t)
@@ -265,17 +280,14 @@ func setUpRefreshTokenGrant(t testing.TB) (ctx oidc.Context, client *goidc.Clien
 	}
 
 	now := timeutil.TimestampNow()
-	grantSession = &goidc.GrantSession{
+	grantSession = &goidc.Grant{
 		RefreshToken:       testRefreshToken,
-		ExpiresAtTimestamp: now + 600,
-		GrantInfo: goidc.GrantInfo{
-			ActiveScopes:  client.ScopeIDs,
-			Subject:       "random_user",
-			ClientID:      client.ID,
-			GrantedScopes: client.ScopeIDs,
-		},
+		CreatedAtTimestamp: now,
+		Subject:                  "random_user",
+		ClientID:                 client.ID,
+		Scopes:                   client.ScopeIDs,
 	}
-	if err := ctx.SaveGrantSession(grantSession); err != nil {
+	if err := ctx.SaveGrant(grantSession); err != nil {
 		t.Errorf("error while creating the grant session: %v", err)
 	}
 

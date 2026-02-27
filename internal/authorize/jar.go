@@ -13,20 +13,6 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func shouldUseJARDuringPAR(ctx oidc.Context, req goidc.AuthorizationParameters, c *goidc.Client) bool {
-	if !ctx.JARIsEnabled {
-		return false
-	}
-	return ctx.JARIsRequired || c.JARIsRequired || req.RequestObject != ""
-}
-
-func shouldUseJAR(ctx oidc.Context, req goidc.AuthorizationParameters, c *goidc.Client) bool {
-	if !ctx.JARIsEnabled {
-		return false
-	}
-	return ctx.JARIsRequired || c.JARIsRequired || req.RequestObject != "" || (ctx.JARByReferenceIsEnabled && req.RequestURI != "")
-}
-
 func jarFromRequestURI(ctx oidc.Context, reqURI string, client *goidc.Client) (request, error) {
 	resp, err := ctx.HTTPClient().Get(reqURI)
 	if err != nil {

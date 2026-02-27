@@ -9,19 +9,20 @@ import (
 	"strings"
 
 	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/luikyv/go-oidc/internal/federation"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func AuthnMethods(ctx oidc.Context, meta *goidc.ClientMeta) []goidc.AuthnMethod {
-	authnMethods := []goidc.AuthnMethod{meta.TokenAuthnMethod}
-	if ctx.TokenIntrospectionIsEnabled {
-		authnMethods = append(authnMethods, meta.TokenIntrospectionAuthnMethod)
+func Client(ctx oidc.Context, id string) (*goidc.Client, error) {
+	if client := ctx.StaticClient(id); client != nil {
+		return client, nil
 	}
-	if ctx.TokenRevocationIsEnabled {
-		authnMethods = append(authnMethods, meta.TokenRevocationAuthnMethod)
+
+	if ctx.OpenIDFedIsEnabled {
+		return federation.Client(ctx, id)
 	}
-	return authnMethods
+	return ctx.Client(id)
 }
 
 func AreScopesAllowed(ctx oidc.Context, c *goidc.Client, requestedScopes string) bool {
@@ -57,8 +58,7 @@ func AreScopesAllowed(ctx oidc.Context, c *goidc.Client, requestedScopes string)
 func JWKByKeyID(ctx oidc.Context, c *goidc.Client, keyID string) (goidc.JSONWebKey, error) {
 	jwks, err := JWKS(ctx, c)
 	if err != nil {
-		return goidc.JSONWebKey{},
-			fmt.Errorf("could not find the jwk by key id: %w", err)
+		return goidc.JSONWebKey{}, fmt.Errorf("could not find the jwk by key id: %w", err)
 	}
 
 	key, err := jwks.Key(keyID)

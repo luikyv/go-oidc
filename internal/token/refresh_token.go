@@ -5,8 +5,6 @@ import (
 	"slices"
 
 	"github.com/luikyv/go-oidc/internal/client"
-	"github.com/luikyv/go-oidc/internal/dpop"
-	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -23,97 +21,98 @@ func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) 
 		return response{}, err
 	}
 
-	grantSession, err := ctx.GrantSessionByRefreshToken(req.refreshToken)
+	grant, err := ctx.GrantByRefreshToken(req.refreshToken)
 	if err != nil {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid refresh_token", err)
 	}
 
-	if err = validateRefreshTokenGrantRequest(ctx, req, c, grantSession); err != nil {
+	if err = validateRefreshTokenGrantRequest(ctx, req, c, grant); err != nil {
 		return response{}, err
 	}
 
-	if err := updateRefreshTokenGrantInfo(ctx, &grantSession.GrantInfo, req); err != nil {
+	var refreshToken string
+	if ctx.RefreshTokenRotationIsEnabled {
+		refreshToken = ctx.RefreshToken()
+		grant.RefreshToken = refreshToken
+	}
+	// Re-derive the token binding thumbprints from the current request.
+	// Only grants already bound to DPoP or TLS are updated; unbound grants stay unbound.
+	// The new values will match the originals during proof of possession (validation
+	// ensures this), but the explicit assignment keeps the intent clear.
+	if grant.JWKThumbprint != "" {
+		grant.JWKThumbprint = dpopThumbprint(ctx)
+	}
+	if grant.ClientCertThumbprint != "" {
+		grant.ClientCertThumbprint = tlsThumbprint(ctx)
+	}
+
+	if err := ctx.HandleGrant(grant); err != nil {
 		return response{}, err
 	}
 
-	token, err := Make(ctx, grantSession.GrantInfo, c)
+	opts := ctx.TokenOptions(grant, c)
+	now := timeutil.TimestampNow()
+	tkn := &goidc.Token{
+		ID: func() string {
+			if opts.Format == goidc.TokenFormatJWT {
+				return ctx.JWTID()
+			}
+			return ctx.OpaqueToken()
+		}(),
+		GrantID:  grant.ID,
+		Subject:  grant.Subject,
+		ClientID: grant.ClientID,
+		Scopes: func() string {
+			if req.scopes != "" {
+				return req.scopes
+			}
+			return grant.Scopes
+		}(),
+		AuthDetails: func() []goidc.AuthorizationDetail {
+			if ctx.AuthDetailsIsEnabled && req.authDetails != nil {
+				return req.authDetails
+			}
+			return grant.AuthDetails
+		}(),
+		Resources: func() goidc.Resources {
+			if ctx.ResourceIndicatorsIsEnabled && req.resources != nil {
+				return req.resources
+			}
+			return grant.Resources
+		}(),
+		JWKThumbprint:        grant.JWKThumbprint,
+		ClientCertThumbprint: grant.ClientCertThumbprint,
+		CreatedAtTimestamp:   now,
+		ExpiresAtTimestamp:   now + opts.LifetimeSecs,
+		Format:               opts.Format,
+		SigAlg:               opts.JWTSigAlg,
+	}
+
+	tokenValue, err := Make(ctx, tkn, grant)
 	if err != nil {
 		return response{}, fmt.Errorf("could not generate token during refresh token grant: %w", err)
 	}
 
-	return updateRefreshTokenGrantSession(ctx, grantSession, c, token)
-}
-
-func updateRefreshTokenGrantInfo(ctx oidc.Context, grantInfo *goidc.GrantInfo, req request) error {
-
-	grantInfo.GrantType = goidc.GrantRefreshToken
-
-	if req.scopes != "" {
-		grantInfo.ActiveScopes = req.scopes
-	} else {
-		grantInfo.ActiveScopes = grantInfo.GrantedScopes
+	if err := ctx.SaveGrant(grant); err != nil {
+		return response{}, err
 	}
 
-	if ctx.AuthDetailsIsEnabled {
-		if req.authDetails != nil {
-			grantInfo.ActiveAuthDetails = req.authDetails
-		} else {
-			grantInfo.ActiveAuthDetails = grantInfo.GrantedAuthDetails
-		}
-	}
-
-	if ctx.ResourceIndicatorsIsEnabled {
-		if req.resources != nil {
-			grantInfo.ActiveResources = req.resources
-		} else {
-			grantInfo.ActiveResources = grantInfo.GrantedResources
-		}
-	}
-
-	if err := ctx.HandleGrant(grantInfo); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func updateRefreshTokenGrantSession(
-	ctx oidc.Context,
-	grantSession *goidc.GrantSession,
-	client *goidc.Client,
-	token Token,
-) (
-	response,
-	error,
-) {
-
-	grantSession.LastTokenExpiresAtTimestamp = timeutil.TimestampNow() + token.LifetimeSecs
-	grantSession.TokenID = token.ID
-
-	var refreshToken string
-	if ctx.RefreshTokenRotationIsEnabled {
-		refreshToken = newRefreshToken()
-		grantSession.RefreshToken = refreshToken
-	}
-
-	updatePoPForRefreshedToken(ctx, &grantSession.GrantInfo)
-
-	if err := ctx.SaveGrantSession(grantSession); err != nil {
+	if err := ctx.SaveToken(tkn); err != nil {
 		return response{}, err
 	}
 
 	tokenResp := response{
-		AccessToken:          token.Value,
-		ExpiresIn:            token.LifetimeSecs,
-		TokenType:            token.Type,
-		Scopes:               grantSession.ActiveScopes,
-		AuthorizationDetails: grantSession.ActiveAuthDetails,
+		AccessToken:          tokenValue,
+		ExpiresIn:            tkn.LifetimeSecs(),
+		TokenType:            tokenType(tkn),
+		Scopes:               tkn.Scopes,
+		AuthorizationDetails: tkn.AuthDetails,
 		RefreshToken:         refreshToken,
 	}
 
-	if strutil.ContainsOpenID(grantSession.ActiveScopes) {
+	if strutil.ContainsOpenID(tkn.Scopes) {
 		var err error
-		tokenResp.IDToken, err = MakeIDToken(ctx, client, newIDTokenOptions(grantSession.GrantInfo))
+		tokenResp.IDToken, err = MakeIDToken(ctx, c, grant, newIDTokenOptions(grant))
 		if err != nil {
 			return response{}, fmt.Errorf("could not generate id token during refresh token grant: %w", err)
 		}
@@ -122,63 +121,41 @@ func updateRefreshTokenGrantSession(
 	return tokenResp, nil
 }
 
-// updatePoPForRefreshedToken updates the token binding mechanisms used when
-// issuing the initial access token. If the original access token was not bound
-// with DPoP or TLS, subsequent tokens will also not be bound to these mechanisms.
-func updatePoPForRefreshedToken(ctx oidc.Context, grantInfo *goidc.GrantInfo) {
-	dpopJWT, ok := dpop.JWT(ctx)
-	if grantInfo.JWKThumbprint != "" && ok {
-		grantInfo.JWKThumbprint = dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)
-	}
-
-	clientCert, err := ctx.ClientCert()
-	if grantInfo.ClientCertThumbprint != "" && err == nil {
-		grantInfo.ClientCertThumbprint = hashutil.Thumbprint(string(clientCert.Raw))
-	}
-}
-
-func validateRefreshTokenGrantRequest(
-	ctx oidc.Context,
-	req request,
-	client *goidc.Client,
-	grantSession *goidc.GrantSession,
-) error {
-
-	if !slices.Contains(client.GrantTypes, goidc.GrantRefreshToken) {
+func validateRefreshTokenGrantRequest(ctx oidc.Context, req request, c *goidc.Client, grant *goidc.Grant) error {
+	if !slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) {
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
 	}
 
-	if client.ID != grantSession.ClientID {
-		return goidc.NewError(goidc.ErrorCodeInvalidGrant,
-			"the refresh token was not issued to the client")
+	if c.ID != grant.ClientID {
+		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "the refresh token was not issued to the client")
 	}
 
-	if grantSession.IsExpired() {
-		_ = ctx.DeleteGrantSession(grantSession.ID)
+	if ctx.RefreshTokenLifetimeSecs > 0 && timeutil.TimestampNow() >= grant.CreatedAtTimestamp+ctx.RefreshTokenLifetimeSecs {
+		_ = ctx.DeleteGrant(grant.ID)
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "the refresh token is expired")
 	}
 
 	cnf := goidc.TokenConfirmation{
-		JWKThumbprint:        grantSession.JWKThumbprint,
-		ClientCertThumbprint: grantSession.ClientCertThumbprint,
+		JWKThumbprint:        grant.JWKThumbprint,
+		ClientCertThumbprint: grant.ClientCertThumbprint,
 	}
-	if err := validateRefreshTokenBinding(ctx, client, cnf); err != nil {
+	if err := validateRefreshTokenBinding(ctx, c, cnf); err != nil {
 		return err
 	}
 
-	if err := validateRefreshTokenPoP(ctx, client, cnf); err != nil {
+	if err := validateRefreshTokenPoP(ctx, c, cnf); err != nil {
 		return err
 	}
 
-	if !containsAllScopes(grantSession.GrantedScopes, req.scopes) {
+	if !containsAllScopes(grant.Scopes, req.scopes) {
 		return goidc.NewError(goidc.ErrorCodeInvalidScope, "invalid scope")
 	}
 
-	if err := validateResources(ctx, grantSession.GrantedResources, req); err != nil {
+	if err := validateResources(ctx, grant.Resources, req); err != nil {
 		return err
 	}
 
-	if err := validateAuthDetails(ctx, grantSession.GrantedAuthDetails, req); err != nil {
+	if err := validateAuthDetails(ctx, grant.AuthDetails, req); err != nil {
 		return err
 	}
 
@@ -186,7 +163,6 @@ func validateRefreshTokenGrantRequest(
 }
 
 func validateRefreshTokenBinding(ctx oidc.Context, c *goidc.Client, cnf goidc.TokenConfirmation) error {
-
 	// For public clients, tokens are bound to the mechanism specified when
 	// issuing the first token.
 	// In that case proof of possession is verified instead of token binding.
@@ -194,8 +170,7 @@ func validateRefreshTokenBinding(ctx oidc.Context, c *goidc.Client, cnf goidc.To
 		return nil
 	}
 
-	// If the refresh token was issued with DPoP, make sure the following token
-	// is bound with DPoP as well.
+	// If the refresh token was issued with DPoP, make sure the following token is bound with DPoP as well.
 	if cnf.JWKThumbprint != "" {
 		// Note that a DPoP JWT for a different key can be used to bind the token.
 		opts := bindindValidationsOptions{}
@@ -231,14 +206,8 @@ func validateRefreshTokenPoP(ctx oidc.Context, c *goidc.Client, cnf goidc.TokenC
 	return ValidatePoP(ctx, "", cnf)
 }
 
-func newRefreshToken() string {
-	return strutil.Random(goidc.RefreshTokenLength)
-}
-
-func shouldIssueRefreshToken(ctx oidc.Context, c *goidc.Client, gi goidc.GrantInfo) bool {
-	if !slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) || gi.GrantType == goidc.GrantClientCredentials {
-		return false
-	}
-
-	return ctx.ShouldIssueRefreshToken(c, gi)
+func shouldIssueRefreshToken(ctx oidc.Context, c *goidc.Client, grant *goidc.Grant) bool {
+	return slices.Contains(ctx.GrantTypes, goidc.GrantRefreshToken) &&
+		slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) &&
+		ctx.ShouldIssueRefreshToken(c, grant)
 }

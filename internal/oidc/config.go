@@ -7,7 +7,8 @@ import (
 type Configuration struct {
 	ClientManager       goidc.ClientManager
 	AuthnSessionManager goidc.AuthnSessionManager
-	GrantSessionManager goidc.GrantSessionManager
+	GrantManager goidc.GrantManager
+	TokenManager        goidc.TokenManager
 
 	Profile goidc.Profile
 	// Host is the domain where the server runs. This value will be used as the
@@ -23,6 +24,9 @@ type Configuration struct {
 	DecrypterFunc goidc.DecrypterFunc
 
 	HandleGrantFunc            goidc.HandleGrantFunc
+	IDTokenClaimsFunc          goidc.IDTokenClaimsFunc
+	UserInfoClaimsFunc         goidc.UserInfoClaimsFunc
+	TokenClaimsFunc            goidc.TokenClaimsFunc
 	Policies                   []goidc.AuthnPolicy
 	Scopes                     []goidc.Scope
 	OpenIDIsRequired           bool
@@ -31,7 +35,7 @@ type Configuration struct {
 	ResponseModes              []goidc.ResponseMode
 	AuthnSessionTimeoutSecs    int
 	AuthnSessionGenerateIDFunc goidc.RandomStringFunc
-	GrantSessionIDFunc         goidc.RandomStringFunc
+	GrantIDFunc         goidc.RandomStringFunc
 	ACRs                       []goidc.ACR
 	DisplayValues              []goidc.DisplayValue
 	// Claims defines the user claims that can be returned in the userinfo endpoint or in ID tokens.

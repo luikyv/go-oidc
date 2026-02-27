@@ -1,4 +1,4 @@
-package client
+package validation
 
 import (
 	"encoding/json"
@@ -41,6 +41,7 @@ func Validate(ctx oidc.Context, meta *goidc.ClientMeta) error {
 		validateJARMEncAlgs,
 		validateJWKS,
 		validateJWKSURI,
+		validateSignedJWKSURI,
 		validateAuthorizationDetailTypes,
 		validateSubjectIdentifierType,
 		validateSubIdentifierPairwise,
@@ -116,7 +117,6 @@ func validateRedirectURIS(ctx oidc.Context, meta *goidc.ClientMeta) error {
 }
 
 func validateRequestURIS(ctx oidc.Context, meta *goidc.ClientMeta) error {
-
 	if !ctx.JARByReferenceIsEnabled {
 		return nil
 	}
@@ -131,7 +131,6 @@ func validateRequestURIS(ctx oidc.Context, meta *goidc.ClientMeta) error {
 }
 
 func validateResponseTypes(ctx oidc.Context, meta *goidc.ClientMeta) error {
-
 	for _, rt := range meta.ResponseTypes {
 		if !slices.Contains(ctx.ResponseTypes, rt) {
 			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
@@ -143,7 +142,6 @@ func validateResponseTypes(ctx oidc.Context, meta *goidc.ClientMeta) error {
 }
 
 func validateImplicitResponseTypes(ctx oidc.Context, meta *goidc.ClientMeta) error {
-
 	if slices.Contains(meta.GrantTypes, goidc.GrantImplicit) {
 		return nil
 	}
@@ -159,7 +157,6 @@ func validateImplicitResponseTypes(ctx oidc.Context, meta *goidc.ClientMeta) err
 }
 
 func validateResponseTypeCode(ctx oidc.Context, meta *goidc.ClientMeta) error {
-
 	if slices.Contains(meta.GrantTypes, goidc.GrantAuthorizationCode) {
 		return nil
 	}
@@ -235,7 +232,6 @@ func validateSubjectIdentifierType(ctx oidc.Context, meta *goidc.ClientMeta) err
 }
 
 func validateSubIdentifierPairwise(ctx oidc.Context, meta *goidc.ClientMeta) error {
-
 	isPairwise := meta.SubIdentifierType == "" && ctx.DefaultSubIdentifierType == goidc.SubIdentifierPairwise
 	isPairwise = isPairwise || meta.SubIdentifierType == goidc.SubIdentifierPairwise
 	if !isPairwise {
@@ -387,57 +383,41 @@ func validateJARMSigAlg(ctx oidc.Context, meta *goidc.ClientMeta) error {
 }
 
 func validatePrivateKeyJWT(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	if !slices.Contains(AuthnMethods(ctx, meta), goidc.AuthnMethodPrivateKeyJWT) {
+	if !slices.Contains(authnMethods(ctx, meta), goidc.AuthnMethodPrivateKeyJWT) {
 		return nil
 	}
 
-	if meta.TokenAuthnMethod == goidc.AuthnMethodPrivateKeyJWT &&
-		meta.TokenAuthnSigAlg != "" &&
-		!slices.Contains(ctx.PrivateKeyJWTSigAlgs, meta.TokenAuthnSigAlg) {
-		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-			"token_endpoint_auth_signing_alg not supported for private_key_jwt")
+	if meta.TokenAuthnMethod == goidc.AuthnMethodPrivateKeyJWT && meta.TokenAuthnSigAlg != "" && !slices.Contains(ctx.PrivateKeyJWTSigAlgs, meta.TokenAuthnSigAlg) {
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "token_endpoint_auth_signing_alg not supported for private_key_jwt")
 	}
 
-	if meta.TokenIntrospectionAuthnMethod == goidc.AuthnMethodPrivateKeyJWT &&
-		meta.TokenIntrospectionAuthnSigAlg != "" &&
-		!slices.Contains(ctx.PrivateKeyJWTSigAlgs, meta.TokenIntrospectionAuthnSigAlg) {
-		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-			"introspection_endpoint_auth_signing_alg not supported for private_key_jwt")
+	if meta.TokenIntrospectionAuthnMethod == goidc.AuthnMethodPrivateKeyJWT && meta.TokenIntrospectionAuthnSigAlg != "" && !slices.Contains(ctx.PrivateKeyJWTSigAlgs, meta.TokenIntrospectionAuthnSigAlg) {
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "introspection_endpoint_auth_signing_alg not supported for private_key_jwt")
 	}
 
-	if meta.TokenRevocationAuthnMethod == goidc.AuthnMethodPrivateKeyJWT &&
-		meta.TokenRevocationAuthnSigAlg != "" &&
-		!slices.Contains(ctx.PrivateKeyJWTSigAlgs, meta.TokenRevocationAuthnSigAlg) {
-		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-			"revocation_endpoint_auth_signing_alg not supported for private_key_jwt")
+	if meta.TokenRevocationAuthnMethod == goidc.AuthnMethodPrivateKeyJWT && meta.TokenRevocationAuthnSigAlg != "" && !slices.Contains(ctx.PrivateKeyJWTSigAlgs, meta.TokenRevocationAuthnSigAlg) {
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "revocation_endpoint_auth_signing_alg not supported for private_key_jwt")
 	}
 
-	if meta.JWKS == nil && meta.JWKSURI == "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-			"the jwks is required for private_key_jwt")
+	if meta.JWKS == nil && meta.JWKSURI == "" && !(ctx.OpenIDFedIsEnabled && meta.SignedJWKSURI != "") {
+		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "the jwks is required for private_key_jwt")
 	}
 
 	return nil
 }
 
 func validateSecretJWT(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	if meta.TokenAuthnMethod == goidc.AuthnMethodSecretJWT &&
-		meta.TokenAuthnSigAlg != "" &&
-		!slices.Contains(ctx.ClientSecretJWTSigAlgs, meta.TokenAuthnSigAlg) {
+	if meta.TokenAuthnMethod == goidc.AuthnMethodSecretJWT && meta.TokenAuthnSigAlg != "" && !slices.Contains(ctx.ClientSecretJWTSigAlgs, meta.TokenAuthnSigAlg) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"token_endpoint_auth_signing_alg not supported for client_secret_jwt")
 	}
 
-	if meta.TokenIntrospectionAuthnMethod == goidc.AuthnMethodSecretJWT &&
-		meta.TokenIntrospectionAuthnSigAlg != "" &&
-		!slices.Contains(ctx.ClientSecretJWTSigAlgs, meta.TokenIntrospectionAuthnSigAlg) {
+	if meta.TokenIntrospectionAuthnMethod == goidc.AuthnMethodSecretJWT && meta.TokenIntrospectionAuthnSigAlg != "" && !slices.Contains(ctx.ClientSecretJWTSigAlgs, meta.TokenIntrospectionAuthnSigAlg) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"introspection_endpoint_auth_signing_alg not supported for client_secret_jwt")
 	}
 
-	if meta.TokenRevocationAuthnMethod == goidc.AuthnMethodSecretJWT &&
-		meta.TokenRevocationAuthnSigAlg != "" &&
-		!slices.Contains(ctx.ClientSecretJWTSigAlgs, meta.TokenRevocationAuthnSigAlg) {
+	if meta.TokenRevocationAuthnMethod == goidc.AuthnMethodSecretJWT && meta.TokenRevocationAuthnSigAlg != "" && !slices.Contains(ctx.ClientSecretJWTSigAlgs, meta.TokenRevocationAuthnSigAlg) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
 			"revocation_endpoint_auth_signing_alg not supported for client_secret_jwt")
 	}
@@ -445,7 +425,7 @@ func validateSecretJWT(ctx oidc.Context, meta *goidc.ClientMeta) error {
 }
 
 func validateSelfSignedTLSAuthn(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	if !slices.Contains(AuthnMethods(ctx, meta), goidc.AuthnMethodSelfSignedTLS) {
+	if !slices.Contains(authnMethods(ctx, meta), goidc.AuthnMethodSelfSignedTLS) {
 		return nil
 	}
 
@@ -458,7 +438,7 @@ func validateSelfSignedTLSAuthn(ctx oidc.Context, meta *goidc.ClientMeta) error 
 }
 
 func validateTLSAuthn(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	if !slices.Contains(AuthnMethods(ctx, meta), goidc.AuthnMethodTLS) {
+	if !slices.Contains(authnMethods(ctx, meta), goidc.AuthnMethodTLS) {
 		return nil
 	}
 
@@ -605,6 +585,14 @@ func validateJWKSURI(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	return validateURL("jwks_uri", meta.JWKSURI)
 }
 
+func validateSignedJWKSURI(ctx oidc.Context, meta *goidc.ClientMeta) error {
+	if meta.SignedJWKSURI == "" {
+		return nil
+	}
+
+	return validateURL("signed_jwks_uri", meta.SignedJWKSURI)
+}
+
 func validateAuthorizationDetailTypes(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	if !ctx.AuthDetailsIsEnabled || meta.AuthDetailTypes == nil {
 		return nil
@@ -612,8 +600,7 @@ func validateAuthorizationDetailTypes(ctx oidc.Context, meta *goidc.ClientMeta) 
 
 	for _, dt := range meta.AuthDetailTypes {
 		if !slices.Contains(ctx.AuthDetailTypes, dt) {
-			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-				"authorization detail type not supported")
+			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "authorization detail type not supported")
 		}
 	}
 
@@ -732,4 +719,15 @@ func validateCIBAJARAlgs(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	}
 
 	return nil
+}
+
+func authnMethods(ctx oidc.Context, meta *goidc.ClientMeta) []goidc.AuthnMethod {
+	methods := []goidc.AuthnMethod{meta.TokenAuthnMethod}
+	if ctx.TokenIntrospectionIsEnabled {
+		methods = append(methods, meta.TokenIntrospectionAuthnMethod)
+	}
+	if ctx.TokenRevocationIsEnabled {
+		methods = append(methods, meta.TokenRevocationAuthnMethod)
+	}
+	return methods
 }

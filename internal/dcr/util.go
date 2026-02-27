@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/luikyv/go-oidc/internal/client"
+	"github.com/luikyv/go-oidc/internal/client/validation"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -21,7 +22,7 @@ func create(ctx oidc.Context, initialToken string, meta *goidc.ClientMeta) (resp
 		return response{}, err
 	}
 
-	if err := client.Validate(ctx, meta); err != nil {
+	if err := validation.Validate(ctx, meta); err != nil {
 		return response{}, err
 	}
 
@@ -43,7 +44,7 @@ func update(ctx oidc.Context, id, regToken string, meta *goidc.ClientMeta) (resp
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid metadata", err)
 	}
 
-	if err := client.Validate(ctx, meta); err != nil {
+	if err := validation.Validate(ctx, meta); err != nil {
 		return response{}, err
 	}
 
@@ -129,11 +130,10 @@ func setSecret(ctx oidc.Context, c *goidc.Client) string {
 	// Clear the client's secret and hashed secret to ensure it's only set when
 	// secret-based authentication is required.
 	c.Secret = ""
-	authnMethods := client.AuthnMethods(ctx, &c.ClientMeta)
 
 	// Check for client authentication methods that require a secret that must
 	// be store as a hash.
-	if slices.ContainsFunc(authnMethods, func(method goidc.AuthnMethod) bool {
+	if slices.ContainsFunc(authnMethods(ctx, &c.ClientMeta), func(method goidc.AuthnMethod) bool {
 		return method == goidc.AuthnMethodSecretBasic || method == goidc.AuthnMethodSecretPost || method == goidc.AuthnMethodSecretJWT
 	}) {
 		secretExpiresAt := 0
@@ -151,7 +151,7 @@ func registrationURI(ctx oidc.Context, id string) string {
 // protected returns a client corresponding to the id informed if the
 // the registration access token is valid.
 func protected(ctx oidc.Context, id, regToken string) (*goidc.Client, error) {
-	c, err := ctx.Client(id)
+	c, err := client.Client(ctx, id)
 	if err != nil {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not find the client", err)
 	}
@@ -165,4 +165,15 @@ func protected(ctx oidc.Context, id, regToken string) (*goidc.Client, error) {
 
 func isRegistrationAccessTokenValid(c *goidc.Client, token string) bool {
 	return subtle.ConstantTimeCompare([]byte(token), []byte(c.RegistrationToken)) == 1
+}
+
+func authnMethods(ctx oidc.Context, meta *goidc.ClientMeta) []goidc.AuthnMethod {
+	authnMethods := []goidc.AuthnMethod{meta.TokenAuthnMethod}
+	if ctx.TokenIntrospectionIsEnabled {
+		authnMethods = append(authnMethods, meta.TokenIntrospectionAuthnMethod)
+	}
+	if ctx.TokenRevocationIsEnabled {
+		authnMethods = append(authnMethods, meta.TokenRevocationAuthnMethod)
+	}
+	return authnMethods
 }

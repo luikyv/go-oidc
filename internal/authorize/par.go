@@ -36,13 +36,14 @@ func pushAuth(ctx oidc.Context, req request) (pushedResponse, error) {
 }
 
 // pushedAuthnSession builds a new authentication session and saves it.
-func pushedAuthnSession(ctx oidc.Context, req request, client *goidc.Client) (*goidc.AuthnSession, error) {
+func pushedAuthnSession(ctx oidc.Context, req request, c *goidc.Client) (*goidc.AuthnSession, error) {
 	var session *goidc.AuthnSession
 	var err error
-	if shouldUseJARDuringPAR(ctx, req.AuthorizationParameters, client) {
-		session, err = pushedAuthnSessionWithJAR(ctx, req, client)
+	jar := ctx.JARIsEnabled && (ctx.JARIsRequired || c.JARIsRequired || req.RequestObject != "")
+	if jar {
+		session, err = pushedAuthnSessionWithJAR(ctx, req, c)
 	} else {
-		session, err = simplePushedAuthnSession(ctx, req, client)
+		session, err = simplePushedAuthnSession(ctx, req, c)
 	}
 	if err != nil {
 		return nil, err
@@ -66,10 +67,8 @@ func simplePushedAuthnSession(ctx oidc.Context, req request, client *goidc.Clien
 }
 
 func pushedAuthnSessionWithJAR(ctx oidc.Context, req request, client *goidc.Client) (*goidc.AuthnSession, error) {
-
 	if req.RequestObject == "" {
-		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"request object is required")
+		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "request object is required")
 	}
 
 	jar, err := jarFromRequestObject(ctx, req.RequestObject, client)

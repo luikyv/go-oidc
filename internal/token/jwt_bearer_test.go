@@ -34,11 +34,16 @@ func TestHandleGrantCreation_JWTBearerGrant(t *testing.T) {
 		t.Fatalf("error generating the authorization code grant: %v", err)
 	}
 
-	grantSessions := oidctest.GrantSessions(t, ctx)
+	grantSessions := oidctest.Grants(t, ctx)
 	if len(grantSessions) != 1 {
 		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
 	}
-	grantSession := grantSessions[0]
+
+	tokens := oidctest.Tokens(t, ctx)
+	if len(tokens) != 1 {
+		t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+	}
+	tokenEntity := tokens[0]
 
 	tokenClaims, err := oidctest.SafeClaims(tokenResp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 	if err != nil {
@@ -50,7 +55,7 @@ func TestHandleGrantCreation_JWTBearerGrant(t *testing.T) {
 		"sub":       "random_subject",
 		"scope":     reqScopes,
 		"client_id": client.ID,
-		"exp":       float64(grantSession.LastTokenExpiresAtTimestamp),
+		"exp":       float64(tokenEntity.ExpiresAtTimestamp),
 		"iat":       float64(now),
 	}
 	if diff := cmp.Diff(
@@ -72,7 +77,7 @@ func TestHandleGrantCreation_JWTBearerGrant(t *testing.T) {
 		"iss": ctx.Issuer(),
 		"sub": "random_subject",
 		"aud": client.ID,
-		"exp": float64(grantSession.LastTokenExpiresAtTimestamp),
+		"exp": float64(now + 60),
 		"iat": float64(now),
 	}
 	if diff := cmp.Diff(
@@ -104,11 +109,16 @@ func TestHandleGrantCreation_JWTBearerGrant_NoClientIdentified(t *testing.T) {
 		t.Fatalf("error generating the authorization code grant: %v", err)
 	}
 
-	grantSessions := oidctest.GrantSessions(t, ctx)
+	grantSessions := oidctest.Grants(t, ctx)
 	if len(grantSessions) != 1 {
 		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
 	}
-	grantSession := grantSessions[0]
+
+	tokens := oidctest.Tokens(t, ctx)
+	if len(tokens) != 1 {
+		t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+	}
+	tokenEntity := tokens[0]
 
 	tokenClaims, err := oidctest.SafeClaims(tokenResp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 	if err != nil {
@@ -119,7 +129,7 @@ func TestHandleGrantCreation_JWTBearerGrant_NoClientIdentified(t *testing.T) {
 		"iss":   ctx.Issuer(),
 		"sub":   "random_subject",
 		"scope": reqScopes,
-		"exp":   float64(grantSession.LastTokenExpiresAtTimestamp),
+		"exp":   float64(tokenEntity.ExpiresAtTimestamp),
 		"iat":   float64(now),
 	}
 	if diff := cmp.Diff(
@@ -140,7 +150,7 @@ func TestHandleGrantCreation_JWTBearerGrant_NoClientIdentified(t *testing.T) {
 	wantedIDTokenClaims := map[string]any{
 		"iss": ctx.Issuer(),
 		"sub": "random_subject",
-		"exp": float64(grantSession.LastTokenExpiresAtTimestamp),
+		"exp": float64(now + 60),
 		"iat": float64(now),
 	}
 	if diff := cmp.Diff(

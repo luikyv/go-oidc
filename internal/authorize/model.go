@@ -231,10 +231,7 @@ func newAuthnSession(ctx oidc.Context, params goidc.AuthorizationParameters, cli
 		ClientID:                 client.ID,
 		AuthorizationParameters:  params,
 		CreatedAtTimestamp:       timeutil.TimestampNow(),
-		Storage:                  make(map[string]any),
-		AdditionalTokenClaims:    make(map[string]any),
-		AdditionalIDTokenClaims:  map[string]any{},
-		AdditionalUserInfoClaims: map[string]any{},
+		Storage: make(map[string]any),
 	}
 }
 

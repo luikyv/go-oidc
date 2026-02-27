@@ -21,54 +21,139 @@ import (
 //   - "ping": A ping notification is sent to the client.
 //   - "push": The token response is sent directly to the client's notification endpoint.
 func NotifyCIBAGrant(ctx oidc.Context, authReqID string) error {
-	session, err := ctx.AuthnSessionByAuthReqID(authReqID)
+	as, err := ctx.AuthnSessionByAuthReqID(authReqID)
 	if err != nil {
 		return err
 	}
 
-	client, err := ctx.Client(session.ClientID)
+	c, err := client.Client(ctx,as.ClientID)
 	if err != nil {
 		return err
 	}
 
 	// The client is configured to poll, so no notification is sent.
-	if client.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePoll {
+	if c.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePoll {
 		return nil
 	}
 
 	resp := cibaResponse{
-		AuthReqID: session.CIBAAuthID,
+		AuthReqID: as.CIBAAuthID,
 	}
 	// The client is configured to receive a ping, so only the auth request id
 	// is sent.
-	if client.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePing {
-		return sendClientNotification(ctx, client, session, resp)
+	if c.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePing {
+		return sendClientNotification(ctx, c, as, resp)
 	}
 
 	// The client is configured to have the token information pushed, so it won't
 	// request the token endpoint later.
 	// In that case, the session can be deleted.
-	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
+	if err := ctx.DeleteAuthnSession(as.ID); err != nil {
 		return err
 	}
 
-	grantInfo, err := cibaPushedGrantInfo(ctx, session)
-	if err != nil {
+	// Build grant for push mode.
+	grant := &goidc.Grant{
+		ID:                   ctx.GrantID(),
+		CreatedAtTimestamp:   timeutil.TimestampNow(),
+		Type:                 goidc.GrantCIBA,
+		Subject:              as.Subject,
+		ClientID:             as.ClientID,
+		Scopes:               as.GrantedScopes,
+		JWKThumbprint:        as.JWKThumbprint,
+		ClientCertThumbprint: as.ClientCertThumbprint,
+		Store:                as.Storage,
+		AuthDetails: func() []goidc.AuthorizationDetail {
+			if ctx.AuthDetailsIsEnabled {
+				return as.GrantedAuthDetails
+			}
+			return nil
+		}(),
+		Resources: func() goidc.Resources {
+			if ctx.ResourceIndicatorsIsEnabled {
+				return as.GrantedResources
+			}
+			return nil
+		}(),
+	}
+
+	if err := ctx.HandleGrant(grant); err != nil {
 		return err
 	}
 
-	token, err := Make(ctx, grantInfo, client)
+	opts := ctx.TokenOptions(grant, c)
+	now := timeutil.TimestampNow()
+	tkn := &goidc.Token{
+		ID: func() string {
+			if opts.Format == goidc.TokenFormatJWT {
+				return ctx.JWTID()
+			}
+			return ctx.OpaqueToken()
+		}(),
+		GrantID:              grant.ID,
+		Subject:              grant.Subject,
+		ClientID:             grant.ClientID,
+		Scopes:               grant.Scopes,
+		AuthDetails:          grant.AuthDetails,
+		Resources:            grant.Resources,
+		JWKThumbprint:        grant.JWKThumbprint,
+		ClientCertThumbprint: grant.ClientCertThumbprint,
+		CreatedAtTimestamp:   now,
+		ExpiresAtTimestamp:   now + opts.LifetimeSecs,
+		Format:               opts.Format,
+		SigAlg:               opts.JWTSigAlg,
+	}
+
+	tokenValue, err := Make(ctx, tkn, grant)
 	if err != nil {
 		return fmt.Errorf("could not generate access token for the ciba grant: %w", err)
 	}
 
-	tokenResp, err := generateCIBAGrantSession(ctx, client, grantInfo, token, session)
-	if err != nil {
+	if shouldIssueRefreshToken(ctx, c, grant) {
+		grant.RefreshToken = ctx.RefreshToken()
+	}
+
+	if err := ctx.SaveGrant(grant); err != nil {
 		return err
 	}
 
-	resp.response = tokenResp
-	return sendClientNotification(ctx, client, session, resp)
+	if err := ctx.SaveToken(tkn); err != nil {
+		return err
+	}
+
+	resp.response = response{
+		AccessToken:  tokenValue,
+		ExpiresIn:    tkn.LifetimeSecs(),
+		TokenType:    tokenType(tkn),
+		RefreshToken: grant.RefreshToken,
+		Scopes: func() string {
+			if tkn.Scopes == as.GrantedScopes {
+				return ""
+			}
+			return tkn.Scopes
+		}(),
+		AuthorizationDetails: tkn.AuthDetails,
+		Resources: func() goidc.Resources {
+			if !ctx.ResourceIndicatorsIsEnabled || compareSlices(tkn.Resources, as.GrantedResources) {
+				return nil
+			}
+			return tkn.Resources
+		}(),
+	}
+	if strutil.ContainsOpenID(tkn.Scopes) {
+		idTokenOpts := newIDTokenOptions(grant)
+		if c.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePush {
+			idTokenOpts.AuthReqID = as.PushedAuthReqID
+			idTokenOpts.RefreshToken = grant.RefreshToken
+		}
+		idToken, err := MakeIDToken(ctx, c, grant, idTokenOpts)
+		if err != nil {
+			return fmt.Errorf("could not generate id token for the ciba grant: %w", err)
+		}
+		resp.IDToken = idToken
+	}
+
+	return sendClientNotification(ctx, c, as, resp)
 }
 
 // NotifyCIBAGrantFailure handles notifying a client that the user has denied access.
@@ -83,7 +168,7 @@ func NotifyCIBAGrantFailure(ctx oidc.Context, authReqID string, goidcErr goidc.E
 		return err
 	}
 
-	client, err := ctx.Client(session.ClientID)
+	client, err := client.Client(ctx,session.ClientID)
 	if err != nil {
 		return err
 	}
@@ -147,155 +232,123 @@ func generateCIBAGrant(ctx oidc.Context, req request) (response, error) {
 	if req.authReqID == "" {
 		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "auth_req_id is required")
 	}
-	session, err := ctx.AuthnSessionByAuthReqID(req.authReqID)
+	as, err := ctx.AuthnSessionByAuthReqID(req.authReqID)
 	if err != nil {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid auth_req_id", err)
 	}
 
-	if err := validateCIBAGrantRequest(ctx, req, c, session); err != nil {
+	if err := validateCIBAGrantRequest(ctx, req, c, as); err != nil {
 		return response{}, err
 	}
 
-	grantInfo, err := cibaGrantInfo(ctx, req, session)
-	if err != nil {
+	grant := &goidc.Grant{
+		ID:                 ctx.GrantID(),
+		CreatedAtTimestamp: timeutil.TimestampNow(),
+		Type:               goidc.GrantCIBA,
+		Subject:            as.Subject,
+		ClientID:           as.ClientID,
+		Scopes:             as.GrantedScopes,
+		Store:              as.Storage,
+		AuthDetails: func() []goidc.AuthorizationDetail {
+			if ctx.AuthDetailsIsEnabled {
+				return as.GrantedAuthDetails
+			}
+			return nil
+		}(),
+		Resources: func() goidc.Resources {
+			if ctx.ResourceIndicatorsIsEnabled {
+				return as.GrantedResources
+			}
+			return nil
+		}(),
+		JWKThumbprint:        dpopThumbprint(ctx),
+		ClientCertThumbprint: tlsThumbprint(ctx),
+	}
+	if shouldIssueRefreshToken(ctx, c, grant) {
+		grant.RefreshToken = ctx.RefreshToken()
+	}
+
+	if err := ctx.HandleGrant(grant); err != nil {
 		return response{}, err
 	}
 
-	token, err := Make(ctx, grantInfo, c)
+	opts := ctx.TokenOptions(grant, c)
+	now := timeutil.TimestampNow()
+	tkn := &goidc.Token{
+		ID: func() string {
+			if opts.Format == goidc.TokenFormatJWT {
+				return ctx.JWTID()
+			}
+			return ctx.OpaqueToken()
+		}(),
+		GrantID:  grant.ID,
+		Subject:  grant.Subject,
+		ClientID: grant.ClientID,
+		Scopes: func() string {
+			if req.scopes != "" {
+				return req.scopes
+			}
+			return grant.Scopes
+		}(),
+		AuthDetails: func() []goidc.AuthorizationDetail {
+			if ctx.AuthDetailsIsEnabled && req.authDetails != nil {
+				return req.authDetails
+			}
+			return grant.AuthDetails
+		}(),
+		Resources: func() goidc.Resources {
+			if ctx.ResourceIndicatorsIsEnabled && req.resources != nil {
+				return req.resources
+			}
+			return grant.Resources
+		}(),
+		JWKThumbprint:        grant.JWKThumbprint,
+		ClientCertThumbprint: grant.ClientCertThumbprint,
+		CreatedAtTimestamp:   now,
+		ExpiresAtTimestamp:   now + opts.LifetimeSecs,
+		Format:               opts.Format,
+		SigAlg:               opts.JWTSigAlg,
+	}
+
+	tokenValue, err := Make(ctx, tkn, grant)
 	if err != nil {
 		return response{}, fmt.Errorf("could not generate access token for the ciba grant: %w", err)
 	}
 
-	return generateCIBAGrantSession(ctx, c, grantInfo, token, session)
-}
-
-func cibaPushedGrantInfo(ctx oidc.Context, session *goidc.AuthnSession) (goidc.GrantInfo, error) {
-
-	grantInfo := goidc.GrantInfo{
-		GrantType:                goidc.GrantCIBA,
-		Subject:                  session.Subject,
-		ClientID:                 session.ClientID,
-		ActiveScopes:             session.GrantedScopes,
-		GrantedScopes:            session.GrantedScopes,
-		AdditionalIDTokenClaims:  session.AdditionalIDTokenClaims,
-		AdditionalUserInfoClaims: session.AdditionalUserInfoClaims,
-		AdditionalTokenClaims:    session.AdditionalTokenClaims,
-		JWKThumbprint:            session.JWKThumbprint,
-		ClientCertThumbprint:     session.ClientCertThumbprint,
-		Store:                    session.Storage,
+	if err := ctx.SaveGrant(grant); err != nil {
+		return response{}, err
 	}
 
-	if ctx.AuthDetailsIsEnabled {
-		grantInfo.GrantedAuthDetails = session.GrantedAuthDetails
-		grantInfo.ActiveAuthDetails = session.GrantedAuthDetails
-	}
-
-	if ctx.ResourceIndicatorsIsEnabled {
-		grantInfo.GrantedResources = session.GrantedResources
-		grantInfo.ActiveResources = session.GrantedResources
-	}
-
-	if err := ctx.HandleGrant(&grantInfo); err != nil {
-		return goidc.GrantInfo{}, err
-	}
-
-	return grantInfo, nil
-}
-
-func cibaGrantInfo(ctx oidc.Context, req request, session *goidc.AuthnSession) (goidc.GrantInfo, error) {
-
-	grantInfo := goidc.GrantInfo{
-		GrantType:                goidc.GrantCIBA,
-		Subject:                  session.Subject,
-		ClientID:                 session.ClientID,
-		ActiveScopes:             session.GrantedScopes,
-		GrantedScopes:            session.GrantedScopes,
-		AdditionalIDTokenClaims:  session.AdditionalIDTokenClaims,
-		AdditionalUserInfoClaims: session.AdditionalUserInfoClaims,
-		AdditionalTokenClaims:    session.AdditionalTokenClaims,
-		Store:                    session.Storage,
-	}
-
-	if req.scopes != "" {
-		grantInfo.ActiveScopes = req.scopes
-	}
-
-	if ctx.AuthDetailsIsEnabled {
-		grantInfo.GrantedAuthDetails = session.GrantedAuthDetails
-		grantInfo.ActiveAuthDetails = session.GrantedAuthDetails
-		if req.authDetails != nil {
-			grantInfo.ActiveAuthDetails = req.authDetails
-		}
-	}
-
-	if ctx.ResourceIndicatorsIsEnabled {
-		grantInfo.GrantedResources = session.GrantedResources
-		grantInfo.ActiveResources = session.GrantedResources
-		if req.resources != nil {
-			grantInfo.ActiveResources = req.resources
-		}
-	}
-
-	setPoP(ctx, &grantInfo)
-
-	if err := ctx.HandleGrant(&grantInfo); err != nil {
-		return goidc.GrantInfo{}, err
-	}
-
-	return grantInfo, nil
-}
-
-func generateCIBAGrantSession(
-	ctx oidc.Context,
-	client *goidc.Client,
-	grantInfo goidc.GrantInfo,
-	token Token,
-	session *goidc.AuthnSession,
-) (
-	response,
-	error,
-) {
-
-	grantSession := NewGrantSession(ctx, grantInfo, token)
-
-	var refreshTkn string
-	if shouldIssueRefreshToken(ctx, client, grantInfo) {
-		refreshTkn = newRefreshToken()
-		grantSession.RefreshToken = refreshTkn
-		grantSession.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
-	}
-
-	if err := ctx.SaveGrantSession(grantSession); err != nil {
+	if err := ctx.SaveToken(tkn); err != nil {
 		return response{}, err
 	}
 
 	resp := response{
-		AccessToken:          token.Value,
-		ExpiresIn:            token.LifetimeSecs,
-		TokenType:            token.Type,
-		RefreshToken:         refreshTkn,
-		AuthorizationDetails: grantInfo.ActiveAuthDetails,
+		AccessToken:          tokenValue,
+		ExpiresIn:            tkn.LifetimeSecs(),
+		TokenType:            tokenType(tkn),
+		RefreshToken:         grant.RefreshToken,
+		AuthorizationDetails: tkn.AuthDetails,
+		Scopes: func() string {
+			if tkn.Scopes == as.GrantedScopes {
+				return ""
+			}
+			return tkn.Scopes
+		}(),
+		Resources: func() goidc.Resources {
+			if !ctx.ResourceIndicatorsIsEnabled || compareSlices(tkn.Resources, as.GrantedResources) {
+				return nil
+			}
+			return tkn.Resources
+		}(),
 	}
-	if strutil.ContainsOpenID(grantInfo.ActiveScopes) {
+	if strutil.ContainsOpenID(tkn.Scopes) {
 		var err error
-		idTokenOpts := newIDTokenOptions(grantInfo)
-		if client.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePush {
-			idTokenOpts.AuthReqID = session.PushedAuthReqID
-			idTokenOpts.RefreshToken = refreshTkn
-		}
-		resp.IDToken, err = MakeIDToken(ctx, client, idTokenOpts)
+		idTokenOpts := newIDTokenOptions(grant)
+		resp.IDToken, err = MakeIDToken(ctx, c, grant, idTokenOpts)
 		if err != nil {
 			return response{}, fmt.Errorf("could not generate id token for the ciba grant: %w", err)
 		}
-	}
-
-	if grantInfo.ActiveScopes != session.Scopes {
-		resp.Scopes = grantInfo.ActiveScopes
-	}
-
-	if ctx.ResourceIndicatorsIsEnabled &&
-		!compareSlices(grantInfo.ActiveResources, session.Resources) {
-		resp.Resources = grantInfo.ActiveResources
 	}
 
 	return resp, nil
@@ -342,7 +395,7 @@ func validateCIBAGrantRequest(ctx oidc.Context, req request, c *goidc.Client, as
 }
 
 // validateBackAuth checks whether an authentication session is ready
-// to generate a grant session for CIBA.
+// to generate a grant for CIBA.
 func validateBackAuth(ctx oidc.Context, session *goidc.AuthnSession) error {
 	validationErr := ctx.ValidateBackAuth(session)
 	if validationErr == nil {

@@ -10,36 +10,45 @@ import (
 
 type Option func(p *Provider) error
 
-// WithClientStorage replaces the default client storage which keeps the clients
+// WithClientManager replaces the default client manager which keeps the clients
 // stored in memory.
-func WithClientStorage(storage goidc.ClientManager) Option {
+func WithClientManager(manager goidc.ClientManager) Option {
 	return func(p *Provider) error {
-		p.config.ClientManager = storage
+		p.config.ClientManager = manager
 		return nil
 	}
 }
 
-// WithAuthnSessionStorage replaces the default authn session storage which
+// WithAuthnSessionManager replaces the default authn session manager which
 // keeps the authn sessions stored in memory.
-func WithAuthnSessionStorage(storage goidc.AuthnSessionManager) Option {
+func WithAuthnSessionManager(manager goidc.AuthnSessionManager) Option {
 	return func(p *Provider) error {
-		p.config.AuthnSessionManager = storage
+		p.config.AuthnSessionManager = manager
 		return nil
 	}
 }
 
-// WithGrantSessionStorage replaces the default grant session storage which
-// keeps the authn sessions stored in memory.
-func WithGrantSessionStorage(storage goidc.GrantSessionManager) Option {
+// WithGrantManager replaces the default grant manager which
+// keeps the grants stored in memory.
+func WithGrantManager(manager goidc.GrantManager) Option {
 	return func(p *Provider) error {
-		p.config.GrantSessionManager = storage
+		p.config.GrantManager = manager
 		return nil
 	}
 }
 
-func WithGrantSessionIDFunc(f goidc.RandomStringFunc) Option {
+// WithTokenManager replaces the default token manager which keeps the tokens
+// stored in memory.
+func WithTokenManager(manager goidc.TokenManager) Option {
 	return func(p *Provider) error {
-		p.config.GrantSessionIDFunc = f
+		p.config.TokenManager = manager
+		return nil
+	}
+}
+
+func WithGrantIDFunc(f goidc.RandomStringFunc) Option {
+	return func(p *Provider) error {
+		p.config.GrantIDFunc = f
 		return nil
 	}
 }
@@ -424,6 +433,36 @@ func WithTokenOptions(tokenOpts goidc.TokenOptionsFunc) Option {
 func WithHandleGrantFunc(grantHandler goidc.HandleGrantFunc) Option {
 	return func(p *Provider) error {
 		p.config.HandleGrantFunc = grantHandler
+		return nil
+	}
+}
+
+// WithIDTokenClaims defines a function that returns additional claims to include
+// in ID tokens. It is called at ID token issuance time.
+// Use grant.Store to access data set during authentication.
+func WithIDTokenClaims(f goidc.IDTokenClaimsFunc) Option {
+	return func(p *Provider) error {
+		p.config.IDTokenClaimsFunc = f
+		return nil
+	}
+}
+
+// WithUserInfoClaims defines a function that returns additional claims to include
+// in the userinfo response. It is called when the userinfo endpoint is requested.
+// Use grant.Store to access data set during authentication.
+func WithUserInfoClaims(f goidc.UserInfoClaimsFunc) Option {
+	return func(p *Provider) error {
+		p.config.UserInfoClaimsFunc = f
+		return nil
+	}
+}
+
+// WithTokenClaims defines a function that returns additional claims to include
+// in JWT access tokens. It is called at access token issuance time.
+// Use grant.Store to access data set during authentication.
+func WithTokenClaims(f goidc.TokenClaimsFunc) Option {
+	return func(p *Provider) error {
+		p.config.TokenClaimsFunc = f
 		return nil
 	}
 }
