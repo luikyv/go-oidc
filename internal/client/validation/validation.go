@@ -392,7 +392,7 @@ func validatePrivateKeyJWT(ctx oidc.Context, meta *goidc.ClientMeta) error {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "revocation_endpoint_auth_signing_alg not supported for private_key_jwt")
 	}
 
-	if meta.JWKS == nil && meta.JWKSURI == "" && !(ctx.OpenIDFedIsEnabled && meta.SignedJWKSURI != "") {
+	if meta.JWKS == nil && meta.JWKSURI == "" && (!ctx.OpenIDFedIsEnabled || meta.SignedJWKSURI == "") {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "the jwks is required for private_key_jwt")
 	}
 
