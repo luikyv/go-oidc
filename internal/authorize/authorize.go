@@ -218,7 +218,7 @@ func finishFlow(ctx oidc.Context, session *goidc.AuthnSession) error {
 		ClientID: session.ClientID,
 		Scopes:   session.GrantedScopes,
 		Nonce:    session.Nonce,
-		Store:    session.Storage,
+		Store:    session.Store,
 		AuthDetails: func() []goidc.AuthorizationDetail {
 			if ctx.RichAuthorizationIsEnabled {
 				return session.GrantedAuthDetails

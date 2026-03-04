@@ -238,7 +238,7 @@ func (a authenticator) finishFlow(as *goidc.AuthnSession) (goidc.Status, error) 
 	as.GrantAuthorizationDetails(as.AuthDetails)
 
 	idTokenClaims := map[string]any{
-		goidc.ClaimAuthTime: as.Storage[paramAuthTime].(int),
+		goidc.ClaimAuthTime: as.Store[paramAuthTime].(int),
 		goidc.ClaimACR:      string(goidc.ACRMaceIncommonIAPSilver),
 	}
 	userInfoClaims := map[string]any{}

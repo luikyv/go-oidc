@@ -62,7 +62,7 @@ func NotifyCIBAGrant(ctx oidc.Context, authReqID string) error {
 		Scopes:               as.GrantedScopes,
 		JWKThumbprint:        as.JWKThumbprint,
 		ClientCertThumbprint: as.ClientCertThumbprint,
-		Store:                as.Storage,
+		Store:                as.Store,
 	}
 	if ctx.RichAuthorizationIsEnabled {
 		grant.AuthDetails = as.GrantedAuthDetails
@@ -82,9 +82,7 @@ func NotifyCIBAGrant(ctx oidc.Context, authReqID string) error {
 		return fmt.Errorf("could not generate access token for the ciba grant: %w", err)
 	}
 
-	if shouldIssueRefreshToken(ctx, c, grant) {
-		grant.RefreshToken = ctx.RefreshToken()
-	}
+	issueRefreshToken(ctx, c, grant)
 
 	if err := ctx.SaveGrant(grant); err != nil {
 		return err
@@ -215,7 +213,7 @@ func generateCIBAGrant(ctx oidc.Context, req request) (response, error) {
 		Subject:              as.Subject,
 		ClientID:             as.ClientID,
 		Scopes:               as.GrantedScopes,
-		Store:                as.Storage,
+		Store:                as.Store,
 		JWKThumbprint:        dpopThumbprint(ctx),
 		ClientCertThumbprint: tlsThumbprint(ctx),
 	}
@@ -225,13 +223,10 @@ func generateCIBAGrant(ctx oidc.Context, req request) (response, error) {
 	if ctx.ResourceIndicatorsIsEnabled {
 		grant.Resources = as.GrantedResources
 	}
-	if shouldIssueRefreshToken(ctx, c, grant) {
-		grant.RefreshToken = ctx.RefreshToken()
-	}
-
 	if err := ctx.HandleGrant(grant); err != nil {
 		return response{}, err
 	}
+	issueRefreshToken(ctx, c, grant)
 
 	tkn := newToken(ctx, grant, ctx.TokenOptions(grant, c))
 	narrowToken(ctx, tkn, req)

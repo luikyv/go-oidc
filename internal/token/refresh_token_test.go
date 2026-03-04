@@ -250,6 +250,7 @@ func TestGenerateGrant_ExpiredRefreshToken(t *testing.T) {
 	// When
 	ctx, _, grantSession := setUpRefreshTokenGrant(t)
 	grantSession.CreatedAtTimestamp = timeutil.TimestampNow() - 20
+	grantSession.ExpiresAtTimestamp = grantSession.CreatedAtTimestamp + 10
 	ctx.RefreshTokenLifetimeSecs = 10
 
 	req := request{
@@ -417,6 +418,58 @@ func TestGenerateGrant_RefreshTokenGrant_ClientLacksGrantType(t *testing.T) {
 
 	if oidcErr.Code != goidc.ErrorCodeUnauthorizedClient {
 		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeUnauthorizedClient)
+	}
+}
+
+func TestGenerateGrant_RefreshTokenGrant_MissingRefreshToken(t *testing.T) {
+	// Given.
+	ctx, _, _ := setUpRefreshTokenGrant(t)
+
+	req := request{
+		grantType:    goidc.GrantRefreshToken,
+		refreshToken: "",
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for missing refresh token")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeInvalidRequest {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRequest)
+	}
+}
+
+func TestGenerateGrant_RefreshTokenGrant_InvalidRefreshToken(t *testing.T) {
+	// Given.
+	ctx, _, _ := setUpRefreshTokenGrant(t)
+
+	req := request{
+		grantType:    goidc.GrantRefreshToken,
+		refreshToken: "nonexistent_token",
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for invalid refresh token")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeInvalidRequest {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRequest)
 	}
 }
 

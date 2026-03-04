@@ -12,6 +12,80 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
+func TestExtractID_OpaqueToken(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+
+	// When.
+	id, err := ExtractID(ctx, "opaque_token_value")
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if id != "opaque_token_value" {
+		t.Errorf("ID = %s, want opaque_token_value", id)
+	}
+}
+
+func TestExtractID_JWTToken(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	client, _ := oidctest.NewClient(t)
+	_ = ctx.SaveClient(client)
+
+	grant := &goidc.Grant{
+		ID:       "grant_id",
+		ClientID: client.ID,
+		Subject:  "user",
+	}
+	tkn := newToken(ctx, grant, ctx.TokenOptions(grant, client))
+	tokenValue, err := Make(ctx, tkn, grant)
+	if err != nil {
+		t.Fatalf("error making token: %v", err)
+	}
+
+	// When.
+	id, err := ExtractID(ctx, tokenValue)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if id != tkn.ID {
+		t.Errorf("ID = %s, want %s", id, tkn.ID)
+	}
+}
+
+func TestGenerateGrant_UnsupportedGrantType(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	client, secret := oidctest.NewClient(t)
+	_ = ctx.SaveClient(client)
+	ctx.Request.PostForm = map[string][]string{
+		"client_id":     {client.ID},
+		"client_secret": {secret},
+	}
+
+	// When.
+	_, err := generateGrant(ctx, request{
+		grantType: "urn:unsupported",
+	})
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for unsupported grant type")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeUnsupportedGrantType {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeUnsupportedGrantType)
+	}
+}
+
 func TestGenerateGrant_ClientNotFound(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)

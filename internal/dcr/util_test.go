@@ -3,6 +3,7 @@ package dcr
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -287,6 +288,116 @@ func TestDelete_ClientNotFound(t *testing.T) {
 	// Then.
 	if err == nil {
 		t.Fatal("expected error for non-existent client")
+	}
+}
+
+func TestCreate_HandleDynamicClientError(t *testing.T) {
+	// Given.
+	c, _ := oidctest.NewClient(t)
+	ctx := oidctest.NewContext(t)
+	ctx.HandleDynamicClientFunc = func(_ *http.Request, _ string, _ *goidc.ClientMeta) error {
+		return errors.New("handler error")
+	}
+
+	// When.
+	_, err := create(ctx, "", &c.ClientMeta)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error from HandleDynamicClient")
+	}
+}
+
+func TestCreate_SecretForSecretPost(t *testing.T) {
+	// Given.
+	c, _ := oidctest.NewClient(t)
+	ctx := oidctest.NewContext(t)
+	c.TokenAuthnMethod = goidc.AuthnMethodSecretPost
+
+	// When.
+	resp, err := create(ctx, "", &c.ClientMeta)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if resp.Secret == "" {
+		t.Error("expected a non-empty secret for secret_post authn method")
+	}
+}
+
+func TestCreate_SecretForIntrospectionAuthn(t *testing.T) {
+	// Given.
+	c, _ := oidctest.NewClient(t)
+	ctx := oidctest.NewContext(t)
+	ctx.TokenIntrospectionIsEnabled = true
+	ctx.TokenIntrospectionAuthnMethods = []goidc.AuthnMethod{goidc.AuthnMethodSecretBasic}
+	c.TokenAuthnMethod = goidc.AuthnMethodNone
+	c.TokenIntrospectionAuthnMethod = goidc.AuthnMethodSecretBasic
+	// Public clients cannot use client_credentials.
+	c.GrantTypes = []goidc.GrantType{goidc.GrantAuthorizationCode}
+	c.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeCode}
+
+	// When.
+	resp, err := create(ctx, "", &c.ClientMeta)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if resp.Secret == "" {
+		t.Error("expected a non-empty secret when introspection authn requires it")
+	}
+}
+
+func TestCreate_SecretForRevocationAuthn(t *testing.T) {
+	// Given.
+	c, _ := oidctest.NewClient(t)
+	ctx := oidctest.NewContext(t)
+	ctx.TokenRevocationIsEnabled = true
+	ctx.TokenRevocationAuthnMethods = []goidc.AuthnMethod{goidc.AuthnMethodSecretBasic}
+	c.TokenAuthnMethod = goidc.AuthnMethodNone
+	c.TokenRevocationAuthnMethod = goidc.AuthnMethodSecretBasic
+	// Public clients cannot use client_credentials.
+	c.GrantTypes = []goidc.GrantType{goidc.GrantAuthorizationCode}
+	c.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeCode}
+
+	// When.
+	resp, err := create(ctx, "", &c.ClientMeta)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if resp.Secret == "" {
+		t.Error("expected a non-empty secret when revocation authn requires it")
+	}
+}
+
+func TestUpdate_HandleDynamicClientError(t *testing.T) {
+	// Given.
+	ctx, client, regToken := setUp(t)
+	ctx.HandleDynamicClientFunc = func(_ *http.Request, _ string, _ *goidc.ClientMeta) error {
+		return errors.New("handler error")
+	}
+
+	// When.
+	_, err := update(ctx, client.ID, regToken, &client.ClientMeta)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error from HandleDynamicClient")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeInvalidClientMetadata {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClientMetadata)
 	}
 }
 

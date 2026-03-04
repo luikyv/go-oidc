@@ -3,6 +3,8 @@ package goidc
 import (
 	"context"
 	"net/http"
+
+	"github.com/luikyv/go-oidc/internal/timeutil"
 )
 
 // GrantManager contains all the logic needed to manage grants.
@@ -26,6 +28,7 @@ type Grant struct {
 	// Note: For security reasons, it is strongly recommended to encrypt this value before storing it in a database.
 	RefreshToken       string `json:"refresh_token,omitempty"`
 	CreatedAtTimestamp int    `json:"created_at"`
+	ExpiresAtTimestamp int    `json:"expires_at"`
 	// AuthCode is the authorization code used to generate this grant
 	// in case of authorization code grant type.
 	AuthCode string `json:"authorization_code,omitempty"`
@@ -51,6 +54,12 @@ type Grant struct {
 
 	// Store allows storing custom data within the grant.
 	Store map[string]any `json:"store,omitempty"`
+}
+
+// IsExpired returns whether the grant has expired.
+// A zero ExpiresAtTimestamp means the grant never expires.
+func (g *Grant) IsExpired() bool {
+	return g.ExpiresAtTimestamp > 0 && timeutil.TimestampNow() >= g.ExpiresAtTimestamp
 }
 
 type HandleGrantFunc func(*http.Request, *Grant) error

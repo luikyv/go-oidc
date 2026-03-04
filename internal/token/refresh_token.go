@@ -34,6 +34,7 @@ func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) 
 	if ctx.RefreshTokenRotationIsEnabled {
 		refreshToken = ctx.RefreshToken()
 		grant.RefreshToken = refreshToken
+		grant.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
 	// Re-derive the token binding thumbprints from the current request.
 	// Only grants already bound to DPoP or TLS are updated; unbound grants stay unbound.
@@ -86,7 +87,7 @@ func validateRefreshTokenGrantRequest(ctx oidc.Context, req request, c *goidc.Cl
 		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "the refresh token was not issued to the client")
 	}
 
-	if ctx.RefreshTokenLifetimeSecs > 0 && timeutil.TimestampNow() >= grant.CreatedAtTimestamp+ctx.RefreshTokenLifetimeSecs {
+	if grant.IsExpired() {
 		_ = ctx.DeleteGrant(grant.ID)
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "the refresh token is expired")
 	}
@@ -162,8 +163,19 @@ func validateRefreshTokenPoP(ctx oidc.Context, c *goidc.Client, cnf goidc.TokenC
 	return ValidatePoP(ctx, "", cnf)
 }
 
-func shouldIssueRefreshToken(ctx oidc.Context, c *goidc.Client, grant *goidc.Grant) bool {
-	return slices.Contains(ctx.GrantTypes, goidc.GrantRefreshToken) &&
-		slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) &&
-		ctx.ShouldIssueRefreshToken(c, grant)
+func issueRefreshToken(ctx oidc.Context, c *goidc.Client, grant *goidc.Grant) {
+	if !slices.Contains(ctx.GrantTypes, goidc.GrantRefreshToken) {
+		return
+	}
+
+	if !slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) {
+		return
+	}
+
+	if !ctx.ShouldIssueRefreshToken(c, grant) {
+		return
+	}
+
+	grant.RefreshToken = ctx.RefreshToken()
+	grant.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
 }

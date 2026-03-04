@@ -225,10 +225,11 @@ func TestIntrospect_RefreshTokenExpired(t *testing.T) {
 	now := timeutil.TimestampNow()
 	refreshToken := strutil.Random(100)
 	grantSession := &goidc.Grant{
-		RefreshToken:       refreshToken,
-		CreatedAtTimestamp: now - 20,
-		ClientID:           client.ID,
-		Scopes:             goidc.ScopeOpenID.ID,
+		RefreshToken:         refreshToken,
+		CreatedAtTimestamp:   now - 20,
+		ExpiresAtTimestamp:   now - 10,
+		ClientID:             client.ID,
+		Scopes:               goidc.ScopeOpenID.ID,
 	}
 	_ = ctx.SaveGrant(grantSession)
 
@@ -282,6 +283,94 @@ func TestIntrospect_RefreshTokenNoLifetime(t *testing.T) {
 
 	if tokenInfo.ExpiresAtTimestamp != 0 {
 		t.Errorf("ExpiresAtTimestamp = %d, want 0", tokenInfo.ExpiresAtTimestamp)
+	}
+}
+
+func TestIntrospect_MissingToken(t *testing.T) {
+	// Given.
+	ctx, _ := setUpIntrospection(t)
+
+	tokenReq := queryRequest{
+		token: "",
+	}
+
+	// When.
+	_, err := introspect(ctx, tokenReq)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for missing token")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeInvalidRequest {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRequest)
+	}
+}
+
+func TestIntrospect_RefreshTokenWithConfirmation(t *testing.T) {
+	// Given.
+	ctx, client := setUpIntrospection(t)
+
+	now := timeutil.TimestampNow()
+	refreshToken := strutil.Random(100)
+	grantSession := &goidc.Grant{
+		RefreshToken:         refreshToken,
+		CreatedAtTimestamp:   now,
+		ClientID:             client.ID,
+		Scopes:               goidc.ScopeOpenID.ID,
+		JWKThumbprint:        "dpop_thumbprint",
+		ClientCertThumbprint: "tls_thumbprint",
+	}
+	_ = ctx.SaveGrant(grantSession)
+
+	tokenReq := queryRequest{
+		token: refreshToken,
+	}
+
+	// When.
+	tokenInfo, err := introspect(ctx, tokenReq)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !tokenInfo.IsActive {
+		t.Fatal("token should be active")
+	}
+	if tokenInfo.Confirmation == nil {
+		t.Fatal("Confirmation should not be nil")
+	}
+	if tokenInfo.Confirmation.JWKThumbprint != "dpop_thumbprint" {
+		t.Errorf("JWKThumbprint = %s, want dpop_thumbprint", tokenInfo.Confirmation.JWKThumbprint)
+	}
+	if tokenInfo.Confirmation.ClientCertThumbprint != "tls_thumbprint" {
+		t.Errorf("ClientCertThumbprint = %s, want tls_thumbprint", tokenInfo.Confirmation.ClientCertThumbprint)
+	}
+}
+
+func TestIntrospect_TokenNotFound(t *testing.T) {
+	// Given.
+	ctx, _ := setUpIntrospection(t)
+
+	tokenReq := queryRequest{
+		token: "nonexistent_token",
+	}
+
+	// When.
+	tokenInfo, err := introspect(ctx, tokenReq)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if tokenInfo.IsActive {
+		t.Error("nonexistent token should not be active")
 	}
 }
 

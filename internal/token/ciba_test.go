@@ -44,6 +44,7 @@ func TestGenerateGrant_CIBAGrant(t *testing.T) {
 	wantedSession := goidc.Grant{
 		ID:                 grantSession.ID,
 		CreatedAtTimestamp: grantSession.CreatedAtTimestamp,
+		ExpiresAtTimestamp: grantSession.ExpiresAtTimestamp,
 		RefreshToken:       grantSession.RefreshToken,
 		Type:               goidc.GrantCIBA,
 		Subject:            session.Subject,

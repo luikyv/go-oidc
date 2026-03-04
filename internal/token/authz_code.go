@@ -48,7 +48,7 @@ func generateAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 		ClientID:             as.ClientID,
 		Scopes:               as.GrantedScopes,
 		Nonce:                as.Nonce,
-		Store:                as.Storage,
+		Store:                as.Store,
 		JWKThumbprint:        dpopThumbprint(ctx),
 		ClientCertThumbprint: tlsThumbprint(ctx),
 	}
@@ -58,13 +58,10 @@ func generateAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 	if ctx.ResourceIndicatorsIsEnabled {
 		grant.Resources = as.GrantedResources
 	}
-	if shouldIssueRefreshToken(ctx, c, grant) {
-		grant.RefreshToken = ctx.RefreshToken()
-	}
-
 	if err := ctx.HandleGrant(grant); err != nil {
 		return response{}, err
 	}
+	issueRefreshToken(ctx, c, grant)
 
 	tkn := newToken(ctx, grant, ctx.TokenOptions(grant, c))
 	narrowToken(ctx, tkn, req)

@@ -6,7 +6,6 @@ import (
 
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -60,7 +59,7 @@ func refreshTokenInfo(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
 		return goidc.TokenInfo{}, fmt.Errorf("token not found: %w", err)
 	}
 
-	if ctx.RefreshTokenLifetimeSecs > 0 && timeutil.TimestampNow() >= grant.CreatedAtTimestamp+ctx.RefreshTokenLifetimeSecs {
+	if grant.IsExpired() {
 		return goidc.TokenInfo{}, errors.New("token is expired")
 	}
 
@@ -80,14 +79,9 @@ func refreshTokenInfo(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
 		Scopes:               grant.Scopes,
 		AuthorizationDetails: grant.AuthDetails,
 		ClientID:             grant.ClientID,
-		ExpiresAtTimestamp: func() int {
-			if ctx.RefreshTokenLifetimeSecs > 0 {
-				return grant.CreatedAtTimestamp + ctx.RefreshTokenLifetimeSecs
-			}
-			return 0
-		}(),
-		Confirmation:      cnf,
-		ResourceAudiences: grant.Resources,
+		ExpiresAtTimestamp:   grant.ExpiresAtTimestamp,
+		Confirmation:         cnf,
+		ResourceAudiences:    grant.Resources,
 	}, nil
 }
 

@@ -152,6 +152,9 @@ func issueToken(ctx oidc.Context, grant *goidc.Grant, tkn *goidc.Token) (string,
 	if err != nil {
 		return "", err
 	}
+	if grant.ExpiresAtTimestamp == 0 {
+		grant.ExpiresAtTimestamp = tkn.ExpiresAtTimestamp
+	}
 	if err := ctx.SaveGrant(grant); err != nil {
 		return "", err
 	}

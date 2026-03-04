@@ -85,6 +85,112 @@ func TestIsPKCEValid_SHA256(t *testing.T) {
 	}
 }
 
+func TestValidateBindingRequirement_NotRequired(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.TokenBindingIsRequired = false
+
+	// When.
+	err := validateBindingRequirement(ctx)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateBindingRequirement_RequiredButNoBinding(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.TokenBindingIsRequired = true
+	ctx.DPoPIsEnabled = false
+	ctx.MTLSTokenBindingIsEnabled = false
+
+	// When.
+	err := validateBindingRequirement(ctx)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error when binding is required but no mechanism is available")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeInvalidRequest {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRequest)
+	}
+}
+
+func TestValidatePkce_CodeVerifierTooShort(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.PKCEIsEnabled = true
+	ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodSHA256
+
+	session := &goidc.AuthnSession{}
+	session.CodeChallenge = "some_challenge"
+	req := request{
+		codeVerifier: "short", // Less than 43 chars.
+	}
+
+	// When.
+	err := validatePkce(ctx, req, nil, session)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for code_verifier shorter than 43 characters")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeInvalidGrant {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidGrant)
+	}
+}
+
+func TestValidatePkce_Disabled(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.PKCEIsEnabled = false
+
+	// When.
+	err := validatePkce(ctx, request{codeVerifier: "anything"}, nil, &goidc.AuthnSession{})
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateScopes_InvalidScope(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	session := &goidc.AuthnSession{
+		GrantedScopes: "openid scope1",
+	}
+	req := request{scopes: "openid scope_not_granted"}
+
+	// When.
+	err := validateScopes(ctx, req, session)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for invalid scope")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeInvalidScope {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidScope)
+	}
+}
+
 func TestValidateResources_Disabled(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)

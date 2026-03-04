@@ -67,8 +67,8 @@ type AuthnSession struct {
 	// the client to generate the token.
 	ClientCertThumbprint string `json:"client_cert_thumbprint,omitempty"`
 
-	// Storage allows storing additional information between interactions.
-	Storage            map[string]any `json:"store,omitempty"`
+	// Store allows storing additional information between interactions.
+	Store              map[string]any `json:"store,omitempty"`
 	ExpiresAtTimestamp int            `json:"expires_at"`
 	CreatedAtTimestamp int            `json:"created_at"`
 	IDTokenHintClaims  map[string]any `json:"id_token_hint_claims,omitempty"`
@@ -81,14 +81,14 @@ func (s *AuthnSession) SetUserID(userID string) {
 }
 
 func (s *AuthnSession) StoreParameter(key string, value any) {
-	if s.Storage == nil {
-		s.Storage = make(map[string]any)
+	if s.Store == nil {
+		s.Store = make(map[string]any)
 	}
-	s.Storage[key] = value
+	s.Store[key] = value
 }
 
 func (s *AuthnSession) StoredParameter(key string) any {
-	return s.Storage[key]
+	return s.Store[key]
 }
 
 // GrantScopes sets the scopes the client will have access to.

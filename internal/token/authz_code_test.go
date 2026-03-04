@@ -45,6 +45,7 @@ func TestGenerateGrant_AuthorizationCodeGrant(t *testing.T) {
 	wantedSession := goidc.Grant{
 		ID:                 grantSession.ID,
 		CreatedAtTimestamp: grantSession.CreatedAtTimestamp,
+		ExpiresAtTimestamp: grantSession.ExpiresAtTimestamp,
 		AuthCode:           session.AuthCode,
 		RefreshToken:       grantSession.RefreshToken,
 		Type:               goidc.GrantAuthorizationCode,
@@ -138,6 +139,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails(t *testing.T) {
 	wantedSession := goidc.Grant{
 		ID:                 grantSession.ID,
 		CreatedAtTimestamp: grantSession.CreatedAtTimestamp,
+		ExpiresAtTimestamp: grantSession.ExpiresAtTimestamp,
 		AuthCode:           session.AuthCode,
 		RefreshToken:       grantSession.RefreshToken,
 		Type:               goidc.GrantAuthorizationCode,
@@ -559,6 +561,201 @@ func TestGenerateGrant_AuthorizationCodeGrant_MTLSBinding(t *testing.T) {
 	}
 }
 
+func TestGenerateGrant_AuthorizationCodeGrant_MissingCode(t *testing.T) {
+	// Given.
+	ctx, client, _ := setUpAuthzCodeGrant(t)
+
+	req := request{
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: client.RedirectURIs[0],
+		code:        "",
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for missing authorization code")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeInvalidRequest {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRequest)
+	}
+}
+
+func TestGenerateGrant_AuthorizationCodeGrant_ExpiredSession(t *testing.T) {
+	// Given.
+	ctx, client, session := setUpAuthzCodeGrant(t)
+	session.ExpiresAtTimestamp = timeutil.TimestampNow() - 10
+	_ = ctx.SaveAuthnSession(session)
+
+	req := request{
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: client.RedirectURIs[0],
+		code:        session.AuthCode,
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for expired authorization code")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeInvalidGrant {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidGrant)
+	}
+}
+
+func TestGenerateGrant_AuthorizationCodeGrant_WrongRedirectURI(t *testing.T) {
+	// Given.
+	ctx, _, session := setUpAuthzCodeGrant(t)
+
+	req := request{
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: "https://wrong.example.com/callback",
+		code:        session.AuthCode,
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for wrong redirect URI")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeInvalidGrant {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidGrant)
+	}
+}
+
+func TestGenerateGrant_AuthorizationCodeGrant_ClientMismatch(t *testing.T) {
+	// Given.
+	ctx, _, session := setUpAuthzCodeGrant(t)
+	session.ClientID = "different_client"
+	_ = ctx.SaveAuthnSession(session)
+
+	req := request{
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: session.RedirectURI,
+		code:        session.AuthCode,
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for client mismatch")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeInvalidGrant {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidGrant)
+	}
+}
+
+func TestGenerateGrant_AuthorizationCodeGrant_ClientLacksGrantType(t *testing.T) {
+	// Given.
+	ctx, client, session := setUpAuthzCodeGrant(t)
+	client.GrantTypes = []goidc.GrantType{goidc.GrantClientCredentials}
+	_ = ctx.SaveClient(client)
+
+	req := request{
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: client.RedirectURIs[0],
+		code:        session.AuthCode,
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error when client lacks authorization_code grant type")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeUnauthorizedClient {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeUnauthorizedClient)
+	}
+}
+
+func TestGenerateGrant_AuthorizationCodeGrant_ScopeNarrowing(t *testing.T) {
+	// Given.
+	ctx, client, session := setUpAuthzCodeGrant(t)
+	session.GrantedScopes = "openid " + oidctest.Scope1.ID
+	_ = ctx.SaveAuthnSession(session)
+
+	req := request{
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: client.RedirectURIs[0],
+		code:        session.AuthCode,
+		scopes:      goidc.ScopeOpenID.ID,
+	}
+
+	// When.
+	tokenResp, err := generateGrant(ctx, req)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if tokenResp.Scopes != goidc.ScopeOpenID.ID {
+		t.Errorf("Scopes = %s, want %s", tokenResp.Scopes, goidc.ScopeOpenID.ID)
+	}
+}
+
+func TestGenerateGrant_AuthorizationCodeGrant_InvalidScopeNarrowing(t *testing.T) {
+	// Given.
+	ctx, client, session := setUpAuthzCodeGrant(t)
+
+	req := request{
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: client.RedirectURIs[0],
+		code:        session.AuthCode,
+		scopes:      "scope_not_granted",
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for scope not in granted set")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeInvalidScope {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidScope)
+	}
+}
+
 func setUpAuthzCodeGrant(t testing.TB) (ctx oidc.Context, client *goidc.Client, session *goidc.AuthnSession) {
 	t.Helper()
 
@@ -586,7 +783,7 @@ func setUpAuthzCodeGrant(t testing.TB) (ctx oidc.Context, client *goidc.Client, 
 		Subject:            "user_id",
 		CreatedAtTimestamp: now,
 		ExpiresAtTimestamp: now + 60,
-		Storage:            make(map[string]any),
+		Store:              make(map[string]any),
 	}
 	if err := ctx.SaveAuthnSession(session); err != nil {
 		t.Errorf("error while creating the session: %v", err)

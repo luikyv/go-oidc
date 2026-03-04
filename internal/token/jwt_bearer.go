@@ -52,13 +52,10 @@ func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
 	if ctx.ResourceIndicatorsIsEnabled && req.resources != nil {
 		grant.Resources = req.resources
 	}
-	if shouldIssueRefreshToken(ctx, c, grant) {
-		grant.RefreshToken = ctx.RefreshToken()
-	}
-
 	if err := ctx.HandleGrant(grant); err != nil {
 		return response{}, err
 	}
+	issueRefreshToken(ctx, c, grant)
 
 	tkn := newToken(ctx, grant, ctx.TokenOptions(grant, c))
 
