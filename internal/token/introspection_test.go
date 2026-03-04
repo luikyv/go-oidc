@@ -225,11 +225,11 @@ func TestIntrospect_RefreshTokenExpired(t *testing.T) {
 	now := timeutil.TimestampNow()
 	refreshToken := strutil.Random(100)
 	grantSession := &goidc.Grant{
-		RefreshToken:         refreshToken,
-		CreatedAtTimestamp:   now - 20,
-		ExpiresAtTimestamp:   now - 10,
-		ClientID:             client.ID,
-		Scopes:               goidc.ScopeOpenID.ID,
+		RefreshToken:       refreshToken,
+		CreatedAtTimestamp: now - 20,
+		ExpiresAtTimestamp: now - 10,
+		ClientID:           client.ID,
+		Scopes:             goidc.ScopeOpenID.ID,
 	}
 	_ = ctx.SaveGrant(grantSession)
 

@@ -15,7 +15,7 @@ import (
 func TestHandleCreate(t *testing.T) {
 	// Given.
 	c, _ := oidctest.NewClient(t)
-	body, _ := json.Marshal(c.ClientMeta)
+	body, _ := json.Marshal(c.ClientMeta) //nolint:errchkjson
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/register", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -132,8 +132,11 @@ func TestHandleUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	c.ClientMeta.Name = "Updated Name"
-	body, _ := json.Marshal(c.ClientMeta)
+	c.Name = "Updated Name"
+	body, err := json.Marshal(c.ClientMeta)
+	if err != nil {
+		t.Fatal(err)
+	}
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPut, "/register/"+c.ID, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -168,7 +171,10 @@ func TestHandleUpdate_InvalidContentType(t *testing.T) {
 
 func TestHandleUpdate_NoToken(t *testing.T) {
 	// Given.
-	body, _ := json.Marshal(goidc.ClientMeta{})
+	body, err := json.Marshal(goidc.ClientMeta{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPut, "/register/some_id", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -243,7 +249,10 @@ func TestRegisterHandlers(t *testing.T) {
 	// Then — just verify no panic and routes are registered.
 	// We do a quick smoke test by sending a request.
 	c, _ := oidctest.NewClient(t)
-	body, _ := json.Marshal(c.ClientMeta)
+	body, err := json.Marshal(c.ClientMeta)
+	if err != nil {
+		t.Fatal(err)
+	}
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, ctx.EndpointPrefix+ctx.DCREndpoint, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")

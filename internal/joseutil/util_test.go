@@ -209,7 +209,7 @@ func TestKeyByAlgorithms(t *testing.T) {
 
 func TestKeyUsage(t *testing.T) {
 	testCases := []struct {
-		name  string
+		name string
 		key  goidc.JSONWebKey
 		want goidc.KeyUsage
 	}{
