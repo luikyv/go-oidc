@@ -45,10 +45,10 @@ func TestGenerateGrant_CIBAGrant(t *testing.T) {
 		ID:                 grantSession.ID,
 		CreatedAtTimestamp: grantSession.CreatedAtTimestamp,
 		RefreshToken:       grantSession.RefreshToken,
-		Type:          goidc.GrantCIBA,
+		Type:               goidc.GrantCIBA,
 		Subject:            session.Subject,
 		ClientID:           session.ClientID,
-		Scopes:      session.GrantedScopes,
+		Scopes:             session.GrantedScopes,
 	}
 	if diff := cmp.Diff(
 		*grantSession,

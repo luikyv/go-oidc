@@ -1,6 +1,8 @@
 package dcr
 
 import (
+	"context"
+	"errors"
 	"testing"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -138,6 +140,153 @@ func TestDeleteClient_InvalidToken(t *testing.T) {
 	// Then.
 	if err == nil {
 		t.Error("deleting the client with an invalid token should result in failure")
+	}
+}
+
+func TestCreate_InvalidInitialToken(t *testing.T) {
+	// Given.
+	c, _ := oidctest.NewClient(t)
+	ctx := oidctest.NewContext(t)
+	ctx.ValidateInitialAccessTokenFunc = func(_ context.Context, _ string) error {
+		return errors.New("invalid token")
+	}
+
+	// When.
+	_, err := create(ctx, "bad_token", &c.ClientMeta)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for invalid initial access token")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeAccessDenied {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeAccessDenied)
+	}
+}
+
+func TestCreate_SecretGeneration(t *testing.T) {
+	// Given.
+	c, _ := oidctest.NewClient(t)
+	ctx := oidctest.NewContext(t)
+	c.TokenAuthnMethod = goidc.AuthnMethodSecretBasic
+
+	// When.
+	resp, err := create(ctx, "", &c.ClientMeta)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if resp.Secret == "" {
+		t.Error("expected a non-empty secret for secret_basic authn method")
+	}
+}
+
+func TestCreate_NoSecretForPublicClient(t *testing.T) {
+	// Given.
+	c, _ := oidctest.NewClient(t)
+	ctx := oidctest.NewContext(t)
+	c.TokenAuthnMethod = goidc.AuthnMethodNone
+	// Public clients cannot use client_credentials.
+	c.GrantTypes = []goidc.GrantType{goidc.GrantAuthorizationCode}
+	c.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeCode}
+
+	// When.
+	resp, err := create(ctx, "", &c.ClientMeta)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if resp.Secret != "" {
+		t.Errorf("expected empty secret for public client, got %s", resp.Secret)
+	}
+}
+
+func TestUpdate_InvalidToken(t *testing.T) {
+	// Given.
+	ctx, client, _ := setUp(t)
+
+	// When.
+	_, err := update(ctx, client.ID, "wrong_token", &client.ClientMeta)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for invalid registration token")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeAccessDenied {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeAccessDenied)
+	}
+}
+
+func TestUpdate_ClientNotFound(t *testing.T) {
+	// Given.
+	ctx, _, regToken := setUp(t)
+
+	// When.
+	_, err := update(ctx, "nonexistent_client", regToken, &goidc.ClientMeta{})
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for non-existent client")
+	}
+}
+
+func TestFetch_ClientNotFound(t *testing.T) {
+	// Given.
+	ctx, _, regToken := setUp(t)
+
+	// When.
+	_, err := fetch(ctx, "nonexistent_client", regToken)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for non-existent client")
+	}
+}
+
+func TestCreate_SecretForSecretJWT(t *testing.T) {
+	// Given.
+	c, _ := oidctest.NewClient(t)
+	ctx := oidctest.NewContext(t)
+	c.TokenAuthnMethod = goidc.AuthnMethodSecretJWT
+
+	// When.
+	resp, err := create(ctx, "", &c.ClientMeta)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if resp.Secret == "" {
+		t.Error("expected a non-empty secret for secret_jwt authn method")
+	}
+}
+
+func TestDelete_ClientNotFound(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+
+	// When.
+	err := remove(ctx, "nonexistent_client", "some_token")
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for non-existent client")
 	}
 }
 

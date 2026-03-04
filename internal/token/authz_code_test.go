@@ -43,14 +43,14 @@ func TestGenerateGrant_AuthorizationCodeGrant(t *testing.T) {
 	}
 	grantSession := grantSessions[0]
 	wantedSession := goidc.Grant{
-		ID:                       grantSession.ID,
-		CreatedAtTimestamp:       grantSession.CreatedAtTimestamp,
-		AuthCode:                 session.AuthCode,
-		RefreshToken:             grantSession.RefreshToken,
-		Type:                     goidc.GrantAuthorizationCode,
-		Subject:                  session.Subject,
-		ClientID:                 session.ClientID,
-		Scopes:                   session.GrantedScopes,
+		ID:                 grantSession.ID,
+		CreatedAtTimestamp: grantSession.CreatedAtTimestamp,
+		AuthCode:           session.AuthCode,
+		RefreshToken:       grantSession.RefreshToken,
+		Type:               goidc.GrantAuthorizationCode,
+		Subject:            session.Subject,
+		ClientID:           session.ClientID,
+		Scopes:             session.GrantedScopes,
 	}
 	if diff := cmp.Diff(
 		*grantSession,
@@ -99,8 +99,8 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails(t *testing.T) {
 
 	// Given.
 	ctx, client, session := setUpAuthzCodeGrant(t)
-	ctx.AuthDetailsIsEnabled = true
-	ctx.AuthDetailTypes = []string{"type1", "type2"}
+	ctx.RichAuthorizationIsEnabled = true
+	ctx.AuthDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
 	ctx.CompareAuthDetailsFunc = func(granted, requested []goidc.AuthorizationDetail) error {
 		return nil
 	}
@@ -136,15 +136,15 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails(t *testing.T) {
 	}
 	grantSession := grantSessions[0]
 	wantedSession := goidc.Grant{
-		ID:                       grantSession.ID,
-		CreatedAtTimestamp:       grantSession.CreatedAtTimestamp,
-		AuthCode:                 session.AuthCode,
-		RefreshToken:             grantSession.RefreshToken,
-		Type:                     goidc.GrantAuthorizationCode,
-		Subject:                  session.Subject,
-		ClientID:                 session.ClientID,
-		Scopes:                   session.GrantedScopes,
-		AuthDetails:              authDetails,
+		ID:                 grantSession.ID,
+		CreatedAtTimestamp: grantSession.CreatedAtTimestamp,
+		AuthCode:           session.AuthCode,
+		RefreshToken:       grantSession.RefreshToken,
+		Type:               goidc.GrantAuthorizationCode,
+		Subject:            session.Subject,
+		ClientID:           session.ClientID,
+		Scopes:             session.GrantedScopes,
+		AuthDetails:        authDetails,
 	}
 	if diff := cmp.Diff(
 		*grantSession,
@@ -199,8 +199,8 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails_ClientRequestsSubset(t
 
 	// Given.
 	ctx, client, session := setUpAuthzCodeGrant(t)
-	ctx.AuthDetailsIsEnabled = true
-	ctx.AuthDetailTypes = []string{"type1", "type2"}
+	ctx.RichAuthorizationIsEnabled = true
+	ctx.AuthDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
 	ctx.CompareAuthDetailsFunc = func(granted, requested []goidc.AuthorizationDetail) error {
 		return nil
 	}
@@ -582,11 +582,11 @@ func setUpAuthzCodeGrant(t testing.TB) (ctx oidc.Context, client *goidc.Client, 
 			Scopes:      goidc.ScopeOpenID.ID,
 			RedirectURI: client.RedirectURIs[0],
 		},
-		AuthCode:              authorizationCode,
-		Subject:               "user_id",
-		CreatedAtTimestamp:    now,
-		ExpiresAtTimestamp:    now + 60,
-		Storage: make(map[string]any),
+		AuthCode:           authorizationCode,
+		Subject:            "user_id",
+		CreatedAtTimestamp: now,
+		ExpiresAtTimestamp: now + 60,
+		Storage:            make(map[string]any),
 	}
 	if err := ctx.SaveAuthnSession(session); err != nil {
 		t.Errorf("error while creating the session: %v", err)

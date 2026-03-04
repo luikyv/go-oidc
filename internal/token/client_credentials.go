@@ -1,7 +1,6 @@
 package token
 
 import (
-	"fmt"
 	"slices"
 	"strings"
 
@@ -21,74 +20,38 @@ func generateClientCredentialsGrant(ctx oidc.Context, req request) (response, er
 		return response{}, err
 	}
 
+	scopes := []string{}
+	for s := range strings.SplitSeq(req.scopes, " ") {
+		if s != goidc.ScopeOpenID.ID {
+			scopes = append(scopes, s)
+		}
+	}
+
 	grant := &goidc.Grant{
-		ID:                 ctx.GrantID(),
-		CreatedAtTimestamp: timeutil.TimestampNow(),
-		Type:               goidc.GrantClientCredentials,
-		Subject:            c.ID,
-		ClientID:           c.ID,
-		Scopes: func() string {
-			scopes := []string{}
-			for s := range strings.SplitSeq(req.scopes, " ") {
-				if s != goidc.ScopeOpenID.ID {
-					scopes = append(scopes, s)
-				}
-			}
-			return strings.Join(scopes, " ")
-		}(),
-		Resources: func() goidc.Resources {
-			if ctx.ResourceIndicatorsIsEnabled && req.resources != nil {
-				return req.resources
-			}
-			return nil
-		}(),
-		AuthDetails: func() []goidc.AuthorizationDetail {
-			if ctx.AuthDetailsIsEnabled && req.authDetails != nil {
-				return req.authDetails
-			}
-			return nil
-		}(),
+		ID:                   ctx.GrantID(),
+		CreatedAtTimestamp:   timeutil.TimestampNow(),
+		Type:                 goidc.GrantClientCredentials,
+		Subject:              c.ID,
+		ClientID:             c.ID,
+		Scopes:               strings.Join(scopes, " "),
 		JWKThumbprint:        dpopThumbprint(ctx),
 		ClientCertThumbprint: tlsThumbprint(ctx),
+	}
+	if ctx.ResourceIndicatorsIsEnabled && req.resources != nil {
+		grant.Resources = req.resources
+	}
+	if ctx.RichAuthorizationIsEnabled && req.authDetails != nil {
+		grant.AuthDetails = req.authDetails
 	}
 
 	if err := ctx.HandleGrant(grant); err != nil {
 		return response{}, err
 	}
 
-	opts := ctx.TokenOptions(grant, c)
-	now := timeutil.TimestampNow()
-	tkn := &goidc.Token{
-		ID: func() string {
-			if opts.Format == goidc.TokenFormatJWT {
-				return ctx.JWTID()
-			}
-			return ctx.OpaqueToken()
-		}(),
-		GrantID:              grant.ID,
-		Subject:              grant.Subject,
-		ClientID:             grant.ClientID,
-		Scopes:               grant.Scopes,
-		AuthDetails:          grant.AuthDetails,
-		Resources:            grant.Resources,
-		JWKThumbprint:        grant.JWKThumbprint,
-		ClientCertThumbprint: grant.ClientCertThumbprint,
-		CreatedAtTimestamp:   now,
-		ExpiresAtTimestamp:   now + opts.LifetimeSecs,
-		Format:               opts.Format,
-		SigAlg:               opts.JWTSigAlg,
-	}
+	tkn := newToken(ctx, grant, ctx.TokenOptions(grant, c))
 
-	tokenValue, err := Make(ctx, tkn, grant)
+	tokenValue, err := issueToken(ctx, grant, tkn)
 	if err != nil {
-		return response{}, fmt.Errorf("could not generate an access token for the client credentials grant: %w", err)
-	}
-
-	if err := ctx.SaveGrant(grant); err != nil {
-		return response{}, err
-	}
-
-	if err := ctx.SaveToken(tkn); err != nil {
 		return response{}, err
 	}
 

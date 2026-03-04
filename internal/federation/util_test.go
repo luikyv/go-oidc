@@ -362,7 +362,8 @@ func TestExplicitRegistration_EntityConfigurationProvided(t *testing.T) {
 		},
 		"metadata": map[string]any{
 			"openid_relying_party": map[string]any{
-				"client_registration_types": []string{"automatic", "explicit"},
+				"client_registration_types":  []string{"automatic", "explicit"},
+				"token_endpoint_auth_method": "client_secret_post",
 			},
 		},
 		"authority_hints": []string{intermediaryAuthorityID},
@@ -420,7 +421,8 @@ func setUp(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Co
 				},
 				"metadata": map[string]any{
 					"openid_relying_party": map[string]any{
-						"client_registration_types": []string{"automatic", "explicit"},
+						"client_registration_types":  []string{"automatic", "explicit"},
+						"token_endpoint_auth_method": "client_secret_post",
 					},
 				},
 				"authority_hints": []string{intermediaryAuthorityID},
@@ -1593,7 +1595,8 @@ func TestRegisterExplicitlyWithEntityConfiguration_WithTrustChainHeader(t *testi
 		},
 		"metadata": map[string]any{
 			"openid_relying_party": map[string]any{
-				"client_registration_types": []string{"automatic", "explicit"},
+				"client_registration_types":  []string{"automatic", "explicit"},
+				"token_endpoint_auth_method": "client_secret_post",
 			},
 		},
 		"authority_hints": []string{intermediaryAuthorityID},

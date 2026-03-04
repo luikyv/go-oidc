@@ -1,6 +1,7 @@
 package token
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -80,8 +81,8 @@ func TestGenerateGrant_RefreshTokenGrant_AuthDetails(t *testing.T) {
 
 	// Given.
 	ctx, client, grantSession := setUpRefreshTokenGrant(t)
-	ctx.AuthDetailsIsEnabled = true
-	ctx.AuthDetailTypes = []string{"type1", "type2"}
+	ctx.RichAuthorizationIsEnabled = true
+	ctx.AuthDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
 	authDetails := []goidc.AuthorizationDetail{
 		{
 			"type":         "type1",
@@ -163,8 +164,8 @@ func TestGenerateGrant_RefreshTokenGrant_AuthDetails_ClientRequestsSubset(t *tes
 
 	// Given.
 	ctx, client, grantSession := setUpRefreshTokenGrant(t)
-	ctx.AuthDetailsIsEnabled = true
-	ctx.AuthDetailTypes = []string{"type1", "type2"}
+	ctx.RichAuthorizationIsEnabled = true
+	ctx.AuthDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
 	ctx.CompareAuthDetailsFunc = func(granted, requested []goidc.AuthorizationDetail) error {
 		return nil
 	}
@@ -265,6 +266,160 @@ func TestGenerateGrant_ExpiredRefreshToken(t *testing.T) {
 	}
 }
 
+func TestGenerateGrant_RefreshTokenGrant_ScopeNarrowing(t *testing.T) {
+	// Given.
+	ctx, _, grantSession := setUpRefreshTokenGrant(t)
+
+	req := request{
+		grantType:    goidc.GrantRefreshToken,
+		refreshToken: testRefreshToken,
+		scopes:       goidc.ScopeOpenID.ID,
+	}
+
+	// When.
+	tokenResp, err := generateGrant(ctx, req)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if tokenResp.Scopes != goidc.ScopeOpenID.ID {
+		t.Errorf("Scopes = %s, want %s", tokenResp.Scopes, goidc.ScopeOpenID.ID)
+	}
+
+	// The grant should retain its original scopes.
+	grants := oidctest.Grants(t, ctx)
+	if len(grants) != 1 {
+		t.Fatalf("len(grants) = %d, want 1", len(grants))
+	}
+	if grants[0].Scopes != grantSession.Scopes {
+		t.Errorf("grant.Scopes = %s, want %s", grants[0].Scopes, grantSession.Scopes)
+	}
+}
+
+func TestGenerateGrant_RefreshTokenGrant_InvalidScope(t *testing.T) {
+	// Given.
+	ctx, _, _ := setUpRefreshTokenGrant(t)
+
+	req := request{
+		grantType:    goidc.GrantRefreshToken,
+		refreshToken: testRefreshToken,
+		scopes:       "not_granted_scope",
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for invalid scope")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeInvalidScope {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidScope)
+	}
+}
+
+func TestGenerateGrant_RefreshTokenGrant_TokenRotation(t *testing.T) {
+	// Given.
+	ctx, _, _ := setUpRefreshTokenGrant(t)
+	ctx.RefreshTokenRotationIsEnabled = true
+
+	req := request{
+		grantType:    goidc.GrantRefreshToken,
+		refreshToken: testRefreshToken,
+	}
+
+	// When.
+	tokenResp, err := generateGrant(ctx, req)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if tokenResp.RefreshToken == "" {
+		t.Error("expected a new refresh token when rotation is enabled")
+	}
+
+	if tokenResp.RefreshToken == testRefreshToken {
+		t.Error("rotated refresh token should differ from the original")
+	}
+
+	// The grant should have the new refresh token.
+	grants := oidctest.Grants(t, ctx)
+	if len(grants) != 1 {
+		t.Fatalf("len(grants) = %d, want 1", len(grants))
+	}
+	if grants[0].RefreshToken != tokenResp.RefreshToken {
+		t.Errorf("grant.RefreshToken = %s, want %s", grants[0].RefreshToken, tokenResp.RefreshToken)
+	}
+}
+
+func TestGenerateGrant_RefreshTokenGrant_ClientMismatch(t *testing.T) {
+	// Given.
+	ctx, _, grantSession := setUpRefreshTokenGrant(t)
+	grantSession.ClientID = "different_client"
+	_ = ctx.SaveGrant(grantSession)
+
+	req := request{
+		grantType:    goidc.GrantRefreshToken,
+		refreshToken: testRefreshToken,
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for client mismatch")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeInvalidGrant {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidGrant)
+	}
+}
+
+func TestGenerateGrant_RefreshTokenGrant_ClientLacksGrantType(t *testing.T) {
+	// Given.
+	ctx, client, _ := setUpRefreshTokenGrant(t)
+	client.GrantTypes = []goidc.GrantType{goidc.GrantAuthorizationCode}
+	_ = ctx.SaveClient(client)
+
+	req := request{
+		grantType:    goidc.GrantRefreshToken,
+		refreshToken: testRefreshToken,
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error when client lacks refresh_token grant type")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeUnauthorizedClient {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeUnauthorizedClient)
+	}
+}
+
 func setUpRefreshTokenGrant(t testing.TB) (ctx oidc.Context, client *goidc.Client, grantSession *goidc.Grant) {
 	t.Helper()
 
@@ -283,9 +438,9 @@ func setUpRefreshTokenGrant(t testing.TB) (ctx oidc.Context, client *goidc.Clien
 	grantSession = &goidc.Grant{
 		RefreshToken:       testRefreshToken,
 		CreatedAtTimestamp: now,
-		Subject:                  "random_user",
-		ClientID:                 client.ID,
-		Scopes:                   client.ScopeIDs,
+		Subject:            "random_user",
+		ClientID:           client.ID,
+		Scopes:             client.ScopeIDs,
 	}
 	if err := ctx.SaveGrant(grantSession); err != nil {
 		t.Errorf("error while creating the grant session: %v", err)

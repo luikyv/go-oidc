@@ -406,6 +406,96 @@ func TestContinueLogout(t *testing.T) {
 	}
 }
 
+func TestContinueLogout_SessionNotFound(t *testing.T) {
+	// Given.
+	ctx, _ := setUp(t)
+
+	// When.
+	err := continueLogout(ctx, "nonexistent_callback_id")
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for non-existent session")
+	}
+}
+
+func TestContinueLogout_SessionExpired(t *testing.T) {
+	// Given.
+	ctx, _ := setUp(t)
+	session := &goidc.LogoutSession{
+		ID:                 "expired_session",
+		CallbackID:         "expired_callback_id",
+		PolicyID:           "test_policy",
+		ExpiresAtTimestamp: timeutil.TimestampNow() - 60,
+		LogoutParameters: goidc.LogoutParameters{
+			PostLogoutRedirectURI: "https://rp.example.com/post_logout_redirect_uri",
+		},
+	}
+	if err := ctx.SaveLogoutSession(session); err != nil {
+		t.Fatalf("error saving logout session: %v", err)
+	}
+
+	// When.
+	err := continueLogout(ctx, session.CallbackID)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for expired session")
+	}
+}
+
+func TestInitLogout_NoPolicyAvailable(t *testing.T) {
+	// Given.
+	ctx, _ := setUp(t)
+	ctx.LogoutPolicies = []goidc.LogoutPolicy{
+		{
+			ID: "test_policy",
+			SetUp: func(r *http.Request, ls *goidc.LogoutSession) bool {
+				return false
+			},
+			Logout: func(w http.ResponseWriter, r *http.Request, ls *goidc.LogoutSession) (goidc.Status, error) {
+				return goidc.StatusSuccess, nil
+			},
+		},
+	}
+
+	req := request{}
+
+	// When.
+	err := initLogout(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error when no policy is available")
+	}
+}
+
+func TestInitLogout_WithPostLogoutRedirectURIAndState(t *testing.T) {
+	// Given.
+	ctx, client := setUp(t)
+
+	req := request{
+		ClientID: client.ID,
+		LogoutParameters: goidc.LogoutParameters{
+			PostLogoutRedirectURI: "https://rp.example.com/post_logout_redirect_uri",
+			State:                 "random_state",
+		},
+	}
+
+	// When.
+	err := initLogout(ctx, req)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("error finishing session: %v", err)
+	}
+
+	location := ctx.Response.Header().Get("Location")
+	if location != "https://rp.example.com/post_logout_redirect_uri?state=random_state" {
+		t.Errorf("invalid location header: got %q, want %q", location, "https://rp.example.com/post_logout_redirect_uri?state=random_state")
+	}
+}
+
 func setUp(t *testing.T) (oidc.Context, *goidc.Client) {
 	t.Helper()
 

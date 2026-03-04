@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -41,7 +40,7 @@ func (m *TokenManager) TokenByID(_ context.Context, id string) (*goidc.Token, er
 
 	token, exists := m.Tokens[id]
 	if !exists {
-		return nil, errors.New("entity not found")
+		return nil, goidc.ErrNotFound
 	}
 
 	return token, nil

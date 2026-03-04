@@ -46,8 +46,8 @@ func main() {
 		provider.WithRenderErrorFunc(authutil.RenderError()),
 		provider.WithCheckJTIFunc(authutil.CheckJTIFunc()),
 		provider.WithJWTLeewayTime(30),
-		provider.WithAuthorizationDetails(func(grantedDetails, requestedDetails []goidc.AuthorizationDetail) error {
-			grantedDetailTypes := make([]string, len(grantedDetails))
+		provider.WithRichAuthorization(func(grantedDetails, requestedDetails []goidc.AuthorizationDetail) error {
+			grantedDetailTypes := make([]goidc.AuthDetailType, len(grantedDetails))
 			for i, grantedDetail := range grantedDetails {
 				grantedDetailTypes[i] = grantedDetail.Type()
 			}

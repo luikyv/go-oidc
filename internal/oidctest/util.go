@@ -68,7 +68,7 @@ func NewContext(t testing.TB) oidc.Context {
 
 		ClientManager:       storage.NewClientManager(100),
 		AuthnSessionManager: storage.NewAuthnSessionManager(100),
-		GrantManager: storage.NewGrantManager(100),
+		GrantManager:        storage.NewGrantManager(100),
 		TokenManager:        storage.NewTokenManager(100),
 
 		Scopes: []goidc.Scope{goidc.ScopeOpenID, Scope1, Scope2},

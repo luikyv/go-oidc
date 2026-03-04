@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/luikyv/go-oidc/internal/dpop"
+	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
-
 
 type IDTokenOptions struct {
 	Subject string
@@ -96,7 +96,8 @@ type bindindValidationsOptions struct {
 	tlsIsRequired     bool
 	tlsCertThumbprint string
 	dpopIsRequired    bool
-	dpop              dpop.ValidationOptions
+	dpopJWKThumbprint string
+	// dpop              dpop.ValidationOptions
 }
 
 // tokenType derives the token type from PoP bindings.
@@ -105,4 +106,57 @@ func tokenType(token *goidc.Token) goidc.TokenType {
 		return goidc.TokenTypeDPoP
 	}
 	return goidc.TokenTypeBearer
+}
+
+// newToken builds a Token copying all common fields from the grant.
+func newToken(ctx oidc.Context, grant *goidc.Grant, opts goidc.TokenOptions) *goidc.Token {
+	now := timeutil.TimestampNow()
+	id := ctx.OpaqueToken()
+	if opts.Format == goidc.TokenFormatJWT {
+		id = ctx.JWTID()
+	}
+	return &goidc.Token{
+		ID:                   id,
+		GrantID:              grant.ID,
+		Subject:              grant.Subject,
+		ClientID:             grant.ClientID,
+		Scopes:               grant.Scopes,
+		AuthDetails:          grant.AuthDetails,
+		Resources:            grant.Resources,
+		JWKThumbprint:        grant.JWKThumbprint,
+		ClientCertThumbprint: grant.ClientCertThumbprint,
+		CreatedAtTimestamp:   now,
+		ExpiresAtTimestamp:   now + opts.LifetimeSecs,
+		Format:               opts.Format,
+		SigAlg:               opts.JWTSigAlg,
+	}
+}
+
+// narrowToken overrides token scopes, authorization details, and resources
+// with request-level values when present.
+func narrowToken(ctx oidc.Context, tkn *goidc.Token, req request) {
+	if req.scopes != "" {
+		tkn.Scopes = req.scopes
+	}
+	if ctx.RichAuthorizationIsEnabled && req.authDetails != nil {
+		tkn.AuthDetails = req.authDetails
+	}
+	if ctx.ResourceIndicatorsIsEnabled && req.resources != nil {
+		tkn.Resources = req.resources
+	}
+}
+
+// issueToken generates the access token value and persists the grant and token.
+func issueToken(ctx oidc.Context, grant *goidc.Grant, tkn *goidc.Token) (string, error) {
+	tokenValue, err := Make(ctx, tkn, grant)
+	if err != nil {
+		return "", err
+	}
+	if err := ctx.SaveGrant(grant); err != nil {
+		return "", err
+	}
+	if err := ctx.SaveToken(tkn); err != nil {
+		return "", err
+	}
+	return tokenValue, nil
 }

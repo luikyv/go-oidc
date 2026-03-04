@@ -31,7 +31,7 @@ func NewOpenIDConfiguration(ctx oidc.Context) OpenIDConfiguration {
 		TokenAuthnSigAlgs:            ctx.TokenAuthnSigAlgs(),
 		IssuerResponseParamIsEnabled: ctx.IssuerRespParamIsEnabled,
 		ClaimsParamIsEnabled:         ctx.ClaimsParamIsEnabled,
-		AuthDetailsIsEnabled:         ctx.AuthDetailsIsEnabled,
+		AuthDetailsIsEnabled:         ctx.RichAuthorizationIsEnabled,
 		AuthDetailTypesSupported:     ctx.AuthDetailTypes,
 		ACRs:                         ctx.ACRs,
 		DisplayValues:                ctx.DisplayValues,

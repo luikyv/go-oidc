@@ -11,30 +11,22 @@ import (
 )
 
 // ValidateBinding checks both DPoP and TLS binding for issuing a token.
-func ValidateBinding(
-	ctx oidc.Context,
-	client *goidc.Client,
-	opts *bindindValidationsOptions,
-) error {
+func ValidateBinding(ctx oidc.Context, c *goidc.Client, opts *bindindValidationsOptions) error {
 	if opts == nil {
 		opts = &bindindValidationsOptions{}
 	}
-	if err := validateBindingDPoP(ctx, client, *opts); err != nil {
+	if err := validateBindingDPoP(ctx, c, *opts); err != nil {
 		return err
 	}
 
-	if err := validateBindingTLS(ctx, client, *opts); err != nil {
+	if err := validateBindingTLS(ctx, c, *opts); err != nil {
 		return err
 	}
 
-	return validateBindingIsRequired(ctx)
+	return validateBindingRequirement(ctx)
 }
 
-func validateBindingDPoP(
-	ctx oidc.Context,
-	client *goidc.Client,
-	opts bindindValidationsOptions,
-) error {
+func validateBindingDPoP(ctx oidc.Context, c *goidc.Client, opts bindindValidationsOptions) error {
 
 	if !ctx.DPoPIsEnabled {
 		return nil
@@ -47,20 +39,18 @@ func validateBindingDPoP(
 		// 	* DPoP is required as a general configuration.
 		// 	* The client requires DPoP.
 		// 	* DPoP is required as a validation option.
-		if ctx.DPoPIsRequired || client.DPoPTokenBindingIsRequired || opts.dpopIsRequired {
+		if ctx.DPoPIsRequired || c.DPoPTokenBindingIsRequired || opts.dpopIsRequired {
 			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid dpop header")
 		}
 		return nil
 	}
 
-	return dpop.ValidateJWT(ctx, dpopJWT, opts.dpop)
+	return dpop.ValidateJWT(ctx, dpopJWT, dpop.ValidationOptions{
+		JWKThumbprint: opts.dpopJWKThumbprint,
+	})
 }
 
-func validateBindingTLS(
-	ctx oidc.Context,
-	client *goidc.Client,
-	opts bindindValidationsOptions,
-) error {
+func validateBindingTLS(ctx oidc.Context, c *goidc.Client, opts bindindValidationsOptions) error {
 	if !ctx.MTLSTokenBindingIsEnabled {
 		return nil
 	}
@@ -72,7 +62,7 @@ func validateBindingTLS(
 		// 	* TLS binding is required as a general configuration.
 		// 	* The client requires TLS binding.
 		// 	* TLS binding is required as a validation option.
-		if ctx.MTLSTokenBindingIsRequired || client.TLSTokenBindingIsRequired || opts.tlsIsRequired {
+		if ctx.MTLSTokenBindingIsRequired || c.TLSTokenBindingIsRequired || opts.tlsIsRequired {
 			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "client certificate is required", err)
 		}
 	}
@@ -84,7 +74,7 @@ func validateBindingTLS(
 	return nil
 }
 
-func validateBindingIsRequired(ctx oidc.Context) error {
+func validateBindingRequirement(ctx oidc.Context) error {
 	if !ctx.TokenBindingIsRequired {
 		return nil
 	}
@@ -102,37 +92,27 @@ func validateBindingIsRequired(ctx oidc.Context) error {
 	}
 
 	if !tokenWillBeBound {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"token binding is required either with dpop or tls")
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "token binding is required either with dpop or tls")
 	}
 
 	return nil
 }
 
-func validateResources(
-	ctx oidc.Context,
-	availableResources goidc.Resources,
-	req request,
-) error {
+func validateResources(ctx oidc.Context, availableResources goidc.Resources, req request) error {
 	if !ctx.ResourceIndicatorsIsEnabled {
 		return nil
 	}
 
 	for _, resource := range req.resources {
 		if !slices.Contains(availableResources, resource) {
-			return goidc.NewError(goidc.ErrorCodeInvalidTarget,
-				"the resource "+resource+" is invalid")
+			return goidc.NewError(goidc.ErrorCodeInvalidTarget, "the resource "+resource+" is invalid")
 		}
 	}
 
 	return nil
 }
 
-func validateAuthDetails(
-	ctx oidc.Context,
-	grantedDetails []goidc.AuthorizationDetail,
-	req request,
-) error {
+func validateAuthDetails(ctx oidc.Context, grantedDetails []goidc.AuthorizationDetail, req request) error {
 	if !shouldValidateAuthDetails(ctx, req) {
 		return nil
 	}
@@ -142,25 +122,20 @@ func validateAuthDetails(
 	}
 
 	if err := ctx.CompareAuthDetails(grantedDetails, req.authDetails); err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidAuthDetails,
-			"invalid authorization details", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization details", err)
 	}
 
 	return nil
 }
 
-func validateAuthDetailsTypes(
-	ctx oidc.Context,
-	req request,
-) error {
+func validateAuthDetailsTypes(ctx oidc.Context, req request) error {
 	if !shouldValidateAuthDetails(ctx, req) {
 		return nil
 	}
 
 	for _, detail := range req.authDetails {
 		if !slices.Contains(ctx.AuthDetailTypes, detail.Type()) {
-			return goidc.NewError(goidc.ErrorCodeInvalidAuthDetails,
-				"invalid authorization details")
+			return goidc.NewError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization details")
 		}
 	}
 
@@ -168,14 +143,10 @@ func validateAuthDetailsTypes(
 }
 
 func shouldValidateAuthDetails(ctx oidc.Context, req request) bool {
-	return ctx.AuthDetailsIsEnabled && req.authDetails != nil
+	return ctx.RichAuthorizationIsEnabled && req.authDetails != nil
 }
 
-func validateScopes(
-	_ oidc.Context,
-	req request,
-	session *goidc.AuthnSession,
-) error {
+func validateScopes(_ oidc.Context, req request, session *goidc.AuthnSession) error {
 	if !containsAllScopes(session.GrantedScopes, req.scopes) {
 		return goidc.NewError(goidc.ErrorCodeInvalidScope, "invalid scope")
 	}
@@ -195,14 +166,13 @@ func containsAllScopes(availableScopes string, requestedScopes string) bool {
 }
 
 func validatePkce(ctx oidc.Context, req request, _ *goidc.Client, session *goidc.AuthnSession) error {
-
 	if !ctx.PKCEIsEnabled {
 		return nil
 	}
 
 	if session.CodeChallenge == "" {
-		// RFC 9700. "...a token request containing a code_verifier parameter is
-		// accepted only if a code_challenge parameter was present in the authorization request..."
+		// [RFC 9700] a token request containing a code_verifier parameter is
+		// accepted only if a code_challenge parameter was present in the authorization request.
 		if req.codeVerifier != "" {
 			return goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid code_verifier")
 		}
@@ -214,8 +184,7 @@ func validatePkce(ctx oidc.Context, req request, _ *goidc.Client, session *goidc
 		codeChallengeMethod = ctx.PKCEDefaultChallengeMethod
 	}
 
-	// RFC 7636. "...with a minimum length of 43 characters and a maximum length
-	// of 128 characters."
+	// [RFC 7636] with a minimum length of 43 characters and a maximum length of 128 characters.
 	codeVerifierLengh := len(req.codeVerifier)
 	if codeVerifierLengh < 43 || codeVerifierLengh > 128 {
 		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid code_verifier")

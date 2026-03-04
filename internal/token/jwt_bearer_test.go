@@ -218,6 +218,129 @@ func TestHandleGrantCreation_JWTBearerGrant_ClientAuthnIsRequired(t *testing.T) 
 
 }
 
+func TestHandleGrantCreation_JWTBearerGrant_MissingAssertion(t *testing.T) {
+	// Given.
+	ctx, _ := setUpJWTBearerGrant(t, "random_subject")
+
+	req := request{
+		grantType: goidc.GrantJWTBearer,
+		scopes:    oidctest.Scope1.ID,
+		assertion: "",
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeInvalidGrant {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidGrant)
+	}
+}
+
+func TestHandleGrantCreation_JWTBearerGrant_InvalidScope(t *testing.T) {
+	// Given.
+	ctx, _ := setUpJWTBearerGrant(t, "random_subject")
+
+	req := request{
+		grantType: goidc.GrantJWTBearer,
+		scopes:    "unknown_scope",
+		assertion: "random_assertion",
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeInvalidScope {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidScope)
+	}
+}
+
+func TestHandleGrantCreation_JWTBearerGrant_ServerDoesNotSupportGrantType(t *testing.T) {
+	// Given.
+	ctx, _ := setUpJWTBearerGrant(t, "random_subject")
+	// Remove GrantJWTBearer from the server's supported grant types.
+	ctx.GrantTypes = []goidc.GrantType{goidc.GrantAuthorizationCode, goidc.GrantClientCredentials}
+
+	req := request{
+		grantType: goidc.GrantJWTBearer,
+		scopes:    oidctest.Scope1.ID,
+		assertion: "random_assertion",
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeUnsupportedGrantType {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeUnsupportedGrantType)
+	}
+}
+
+func TestHandleGrantCreation_JWTBearerGrant_AssertionHandlerError(t *testing.T) {
+	// Given.
+	ctx, _ := setUpJWTBearerGrant(t, "random_subject")
+	ctx.HandleJWTBearerGrantAssertionFunc = func(
+		r *http.Request,
+		assertion string,
+	) (
+		goidc.JWTBearerGrantInfo,
+		error,
+	) {
+		return goidc.JWTBearerGrantInfo{}, errors.New("assertion handler failed")
+	}
+
+	req := request{
+		grantType: goidc.GrantJWTBearer,
+		scopes:    oidctest.Scope1.ID,
+		assertion: "random_assertion",
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeInvalidGrant {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidGrant)
+	}
+}
+
 func setUpJWTBearerGrant(t *testing.T, sub string) (
 	ctx oidc.Context,
 	client *goidc.Client,

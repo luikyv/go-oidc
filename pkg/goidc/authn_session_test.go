@@ -21,7 +21,6 @@ func TestSaveAndGetParameter_HappyPath(t *testing.T) {
 	}
 }
 
-
 func TestIsExpired(t *testing.T) {
 	// Given.
 	now := timeutil.TimestampNow()

@@ -294,6 +294,7 @@ func TestValidateRequest_NoneAuthnInvalidForClientCredentials(t *testing.T) {
 func TestValidateRequest_InvalidAuthnForIntrospection(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
+	ctx.TokenIntrospectionIsEnabled = true
 	ctx.TokenIntrospectionAuthnMethods = []goidc.AuthnMethod{
 		goidc.AuthnMethodSecretBasic,
 	}
@@ -580,7 +581,7 @@ func TestValidateRequest_InvalidSubjectIdentifierType(t *testing.T) {
 func TestValidateRequest_ValidAuthDetails(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.AuthDetailsIsEnabled = true
+	ctx.RichAuthorizationIsEnabled = true
 	ctx.AuthDetailTypes = append(ctx.AuthDetailTypes, "type1")
 	client, _ := oidctest.NewClient(t)
 	client.AuthDetailTypes = append(client.AuthDetailTypes, "type1")
@@ -597,7 +598,7 @@ func TestValidateRequest_ValidAuthDetails(t *testing.T) {
 func TestValidateRequest_InvalidAuthDetails(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.AuthDetailsIsEnabled = true
+	ctx.RichAuthorizationIsEnabled = true
 	ctx.AuthDetailTypes = append(ctx.AuthDetailTypes, "type1")
 	client, _ := oidctest.NewClient(t)
 	client.AuthDetailTypes = append(client.AuthDetailTypes, "invalid")

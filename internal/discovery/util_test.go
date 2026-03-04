@@ -55,10 +55,10 @@ func TestOIDCConfig(t *testing.T) {
 			goidc.AuthnMethodPrivateKeyJWT,
 			goidc.AuthnMethodSecretJWT,
 		},
-		PrivateKeyJWTSigAlgs:   []goidc.SignatureAlgorithm{goidc.PS256},
-		ClientSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
-		AuthDetailsIsEnabled:   true,
-		AuthDetailTypes:        []string{"detail_type"},
+		PrivateKeyJWTSigAlgs:       []goidc.SignatureAlgorithm{goidc.PS256},
+		ClientSecretJWTSigAlgs:     []goidc.SignatureAlgorithm{goidc.HS256},
+		RichAuthorizationIsEnabled: true,
+		AuthDetailTypes:            []goidc.AuthDetailType{"detail_type"},
 	}
 	ctx := oidc.Context{Configuration: config}
 
@@ -92,8 +92,8 @@ func TestOIDCConfig(t *testing.T) {
 		SubIdentifierTypes:           ctx.SubIdentifierTypes,
 		IssuerResponseParamIsEnabled: ctx.IssuerRespParamIsEnabled,
 		ClaimsParamIsEnabled:         ctx.ClaimsParamIsEnabled,
-		AuthDetailsIsEnabled:         ctx.AuthDetailsIsEnabled,
-		AuthDetailTypesSupported:     []string{"detail_type"},
+		AuthDetailsIsEnabled:         ctx.RichAuthorizationIsEnabled,
+		AuthDetailTypesSupported:     []goidc.AuthDetailType{"detail_type"},
 		ACRs:                         []goidc.ACR{"0"},
 		DisplayValues: []goidc.DisplayValue{
 			goidc.DisplayValuePage,
@@ -158,8 +158,8 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		},
 		PrivateKeyJWTSigAlgs:           []goidc.SignatureAlgorithm{goidc.PS256},
 		ClientSecretJWTSigAlgs:         []goidc.SignatureAlgorithm{goidc.HS256},
-		AuthDetailsIsEnabled:           true,
-		AuthDetailTypes:                []string{"detail_type"},
+		RichAuthorizationIsEnabled:     true,
+		AuthDetailTypes:                []goidc.AuthDetailType{"detail_type"},
 		PARIsEnabled:                   true,
 		JARIsEnabled:                   true,
 		JARIsRequired:                  true,
@@ -216,8 +216,8 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		SubIdentifierTypes:           ctx.SubIdentifierTypes,
 		IssuerResponseParamIsEnabled: ctx.IssuerRespParamIsEnabled,
 		ClaimsParamIsEnabled:         ctx.ClaimsParamIsEnabled,
-		AuthDetailsIsEnabled:         ctx.AuthDetailsIsEnabled,
-		AuthDetailTypesSupported:     []string{"detail_type"},
+		AuthDetailsIsEnabled:         ctx.RichAuthorizationIsEnabled,
+		AuthDetailTypesSupported:     []goidc.AuthDetailType{"detail_type"},
 		ACRs:                         []goidc.ACR{"0"},
 		DisplayValues: []goidc.DisplayValue{
 			goidc.DisplayValuePage,

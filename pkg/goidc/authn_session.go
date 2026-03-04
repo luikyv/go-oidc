@@ -70,8 +70,8 @@ type AuthnSession struct {
 	// Storage allows storing additional information between interactions.
 	Storage            map[string]any `json:"store,omitempty"`
 	ExpiresAtTimestamp int            `json:"expires_at"`
-	CreatedAtTimestamp       int            `json:"created_at"`
-	IDTokenHintClaims        map[string]any `json:"id_token_hint_claims,omitempty"`
+	CreatedAtTimestamp int            `json:"created_at"`
+	IDTokenHintClaims  map[string]any `json:"id_token_hint_claims,omitempty"`
 	AuthorizationParameters
 }
 

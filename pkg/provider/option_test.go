@@ -1296,14 +1296,14 @@ func TestWithAuthorizationDetails(t *testing.T) {
 	}
 
 	// When.
-	err := WithAuthorizationDetails(compareDetailsFunc, "detail_type")(p)
+	err := WithRichAuthorization(compareDetailsFunc, "detail_type")(p)
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !p.config.AuthDetailsIsEnabled {
+	if !p.config.RichAuthorizationIsEnabled {
 		t.Errorf("auth details must be enabled")
 	}
 

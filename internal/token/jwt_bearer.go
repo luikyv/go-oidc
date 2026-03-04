@@ -39,21 +39,18 @@ func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
 	}
 
 	grant := &goidc.Grant{
-		ID:                 ctx.GrantID(),
-		CreatedAtTimestamp: timeutil.TimestampNow(),
-		Type:               goidc.GrantJWTBearer,
-		Subject:            info.Subject,
-		ClientID:           c.ID,
-		Scopes:             req.scopes,
-		Store:              info.Store,
-		Resources: func() goidc.Resources {
-			if ctx.ResourceIndicatorsIsEnabled && req.resources != nil {
-				return req.resources
-			}
-			return nil
-		}(),
+		ID:                   ctx.GrantID(),
+		CreatedAtTimestamp:   timeutil.TimestampNow(),
+		Type:                 goidc.GrantJWTBearer,
+		Subject:              info.Subject,
+		ClientID:             c.ID,
+		Scopes:               req.scopes,
+		Store:                info.Store,
 		JWKThumbprint:        dpopThumbprint(ctx),
 		ClientCertThumbprint: tlsThumbprint(ctx),
+	}
+	if ctx.ResourceIndicatorsIsEnabled && req.resources != nil {
+		grant.Resources = req.resources
 	}
 	if shouldIssueRefreshToken(ctx, c, grant) {
 		grant.RefreshToken = ctx.RefreshToken()
@@ -63,39 +60,10 @@ func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
 		return response{}, err
 	}
 
-	opts := ctx.TokenOptions(grant, c)
-	now := timeutil.TimestampNow()
-	tkn := &goidc.Token{
-		ID: func() string {
-			if opts.Format == goidc.TokenFormatJWT {
-				return ctx.JWTID()
-			}
-			return ctx.OpaqueToken()
-		}(),
-		GrantID:              grant.ID,
-		Subject:              grant.Subject,
-		ClientID:             grant.ClientID,
-		Scopes:               grant.Scopes,
-		AuthDetails:          grant.AuthDetails,
-		Resources:            grant.Resources,
-		JWKThumbprint:        grant.JWKThumbprint,
-		ClientCertThumbprint: grant.ClientCertThumbprint,
-		CreatedAtTimestamp:   now,
-		ExpiresAtTimestamp:   now + opts.LifetimeSecs,
-		Format:               opts.Format,
-		SigAlg:               opts.JWTSigAlg,
-	}
+	tkn := newToken(ctx, grant, ctx.TokenOptions(grant, c))
 
-	tokenValue, err := Make(ctx, tkn, grant)
+	tokenValue, err := issueToken(ctx, grant, tkn)
 	if err != nil {
-		return response{}, fmt.Errorf("could not generate an access token for the jwt bearer grant: %w", err)
-	}
-
-	if err := ctx.SaveGrant(grant); err != nil {
-		return response{}, err
-	}
-
-	if err := ctx.SaveToken(tkn); err != nil {
 		return response{}, err
 	}
 
@@ -108,7 +76,6 @@ func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
 	}
 
 	if strutil.ContainsOpenID(tkn.Scopes) {
-		var err error
 		tokenResp.IDToken, err = makeIDToken(ctx, c, grant, newIDTokenOptions(grant))
 		if err != nil {
 			return response{}, fmt.Errorf("could not generate id token for the jwt bearer grant: %w", err)
@@ -119,8 +86,7 @@ func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
 		tokenResp.Scopes = tkn.Scopes
 	}
 
-	if ctx.ResourceIndicatorsIsEnabled &&
-		!compareSlices(tkn.Resources, req.resources) {
+	if ctx.ResourceIndicatorsIsEnabled && !compareSlices(tkn.Resources, req.resources) {
 		tokenResp.Resources = tkn.Resources
 	}
 

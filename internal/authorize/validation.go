@@ -464,7 +464,7 @@ func validateResponseModeAsOptional(ctx oidc.Context, params goidc.Authorization
 }
 
 func validateAuthorizationDetailsAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) error {
-	if !ctx.AuthDetailsIsEnabled || params.AuthDetails == nil {
+	if !ctx.RichAuthorizationIsEnabled || params.AuthDetails == nil {
 		return nil
 	}
 
@@ -547,7 +547,7 @@ func isRequestURIAllowed(c *goidc.Client, requestURI string) bool {
 	return slices.Contains(c.RequestURIs, requestURI)
 }
 
-func isAuthDetailTypeAllowed(c *goidc.Client, authDetailType string) bool {
+func isAuthDetailTypeAllowed(c *goidc.Client, authDetailType goidc.AuthDetailType) bool {
 	// If the client didn't announce the authorization types it will use,
 	// consider any value valid.
 	if c.AuthDetailTypes == nil {

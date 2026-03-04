@@ -7,7 +7,7 @@ import (
 type Configuration struct {
 	ClientManager       goidc.ClientManager
 	AuthnSessionManager goidc.AuthnSessionManager
-	GrantManager goidc.GrantManager
+	GrantManager        goidc.GrantManager
 	TokenManager        goidc.TokenManager
 
 	Profile goidc.Profile
@@ -35,7 +35,7 @@ type Configuration struct {
 	ResponseModes              []goidc.ResponseMode
 	AuthnSessionTimeoutSecs    int
 	AuthnSessionGenerateIDFunc goidc.RandomStringFunc
-	GrantIDFunc         goidc.RandomStringFunc
+	GrantIDFunc                goidc.RandomStringFunc
 	ACRs                       []goidc.ACR
 	DisplayValues              []goidc.DisplayValue
 	// Claims defines the user claims that can be returned in the userinfo endpoint or in ID tokens.
@@ -183,9 +183,9 @@ type Configuration struct {
 	PKCEDefaultChallengeMethod goidc.CodeChallengeMethod
 	PKCEChallengeMethods       []goidc.CodeChallengeMethod
 
-	AuthDetailsIsEnabled   bool
-	AuthDetailTypes        []string
-	CompareAuthDetailsFunc goidc.CompareAuthDetailsFunc
+	RichAuthorizationIsEnabled bool
+	AuthDetailTypes            []goidc.AuthDetailType
+	CompareAuthDetailsFunc     goidc.CompareAuthDetailsFunc
 
 	ResourceIndicatorsIsEnabled bool
 	// ResourceIndicatorsIsRequired indicates that the resource parameter is

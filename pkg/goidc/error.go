@@ -6,9 +6,7 @@ import (
 	"net/http"
 )
 
-var (
-	ErrClientNotFound = errors.New("client not found")
-)
+var ErrNotFound = errors.New("not found")
 
 type ErrorCode string
 

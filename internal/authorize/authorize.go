@@ -20,7 +20,7 @@ func initAuth(ctx oidc.Context, req request) error {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client_id")
 	}
 
-	c, err := client.Client(ctx,req.ClientID)
+	c, err := client.Client(ctx, req.ClientID)
 	if err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client_id", err)
 	}
@@ -75,7 +75,7 @@ func continueAuth(ctx oidc.Context, callbackID string) error {
 	}
 
 	if oauthErr := authenticate(ctx, session); oauthErr != nil {
-		client, err := client.Client(ctx,session.ClientID)
+		client, err := client.Client(ctx, session.ClientID)
 		if err != nil {
 			return err
 		}
@@ -201,7 +201,7 @@ func finishFlowWithFailure(ctx oidc.Context, session *goidc.AuthnSession, err er
 }
 
 func finishFlow(ctx oidc.Context, session *goidc.AuthnSession) error {
-	c, err := client.Client(ctx,session.ClientID)
+	c, err := client.Client(ctx, session.ClientID)
 	if err != nil {
 		return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not load the client", session.AuthorizationParameters, err)
 	}
@@ -220,7 +220,7 @@ func finishFlow(ctx oidc.Context, session *goidc.AuthnSession) error {
 		Nonce:    session.Nonce,
 		Store:    session.Storage,
 		AuthDetails: func() []goidc.AuthorizationDetail {
-			if ctx.AuthDetailsIsEnabled {
+			if ctx.RichAuthorizationIsEnabled {
 				return session.GrantedAuthDetails
 			}
 			return nil

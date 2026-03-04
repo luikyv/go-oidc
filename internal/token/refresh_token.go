@@ -50,54 +50,11 @@ func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) 
 		return response{}, err
 	}
 
-	opts := ctx.TokenOptions(grant, c)
-	now := timeutil.TimestampNow()
-	tkn := &goidc.Token{
-		ID: func() string {
-			if opts.Format == goidc.TokenFormatJWT {
-				return ctx.JWTID()
-			}
-			return ctx.OpaqueToken()
-		}(),
-		GrantID:  grant.ID,
-		Subject:  grant.Subject,
-		ClientID: grant.ClientID,
-		Scopes: func() string {
-			if req.scopes != "" {
-				return req.scopes
-			}
-			return grant.Scopes
-		}(),
-		AuthDetails: func() []goidc.AuthorizationDetail {
-			if ctx.AuthDetailsIsEnabled && req.authDetails != nil {
-				return req.authDetails
-			}
-			return grant.AuthDetails
-		}(),
-		Resources: func() goidc.Resources {
-			if ctx.ResourceIndicatorsIsEnabled && req.resources != nil {
-				return req.resources
-			}
-			return grant.Resources
-		}(),
-		JWKThumbprint:        grant.JWKThumbprint,
-		ClientCertThumbprint: grant.ClientCertThumbprint,
-		CreatedAtTimestamp:   now,
-		ExpiresAtTimestamp:   now + opts.LifetimeSecs,
-		Format:               opts.Format,
-		SigAlg:               opts.JWTSigAlg,
-	}
+	tkn := newToken(ctx, grant, ctx.TokenOptions(grant, c))
+	narrowToken(ctx, tkn, req)
 
-	tokenValue, err := Make(ctx, tkn, grant)
+	tokenValue, err := issueToken(ctx, grant, tkn)
 	if err != nil {
-		return response{}, fmt.Errorf("could not generate token during refresh token grant: %w", err)
-	}
-
-	if err := ctx.SaveGrant(grant); err != nil {
-		return response{}, err
-	}
-
-	if err := ctx.SaveToken(tkn); err != nil {
 		return response{}, err
 	}
 
@@ -111,7 +68,6 @@ func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) 
 	}
 
 	if strutil.ContainsOpenID(tkn.Scopes) {
-		var err error
 		tokenResp.IDToken, err = MakeIDToken(ctx, c, grant, newIDTokenOptions(grant))
 		if err != nil {
 			return response{}, fmt.Errorf("could not generate id token during refresh token grant: %w", err)

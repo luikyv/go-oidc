@@ -15,6 +15,9 @@ func IntrospectionInfo(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
 	if err == nil {
 		return info, nil
 	}
+	if !errors.Is(err, goidc.ErrNotFound) {
+		return goidc.TokenInfo{}, err
+	}
 
 	return refreshTokenInfo(ctx, tkn)
 }

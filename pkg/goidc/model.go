@@ -630,13 +630,15 @@ type ClaimObjectInfo struct {
 	Values      []string `json:"values"`
 }
 
+type AuthDetailType string
+
 // AuthorizationDetail represents an authorization details as a map.
 // It is a map instead of a struct, because its fields vary a lot depending on
 // the use case.
 type AuthorizationDetail map[string]any
 
-func (d AuthorizationDetail) Type() string {
-	return d.string("type")
+func (d AuthorizationDetail) Type() AuthDetailType {
+	return AuthDetailType(d.string("type"))
 }
 
 func (d AuthorizationDetail) Identifier() string {

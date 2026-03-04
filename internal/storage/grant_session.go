@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -41,7 +40,7 @@ func (m *GrantManager) ByID(_ context.Context, id string) (*goidc.Grant, error) 
 
 	grant, exists := m.Sessions[id]
 	if !exists {
-		return nil, errors.New("entity not found")
+		return nil, goidc.ErrNotFound
 	}
 	return grant, nil
 }
@@ -51,7 +50,7 @@ func (m *GrantManager) SessionByRefreshToken(_ context.Context, tkn string) (*go
 		return t.RefreshToken == tkn
 	})
 	if !exists {
-		return nil, errors.New("entity not found")
+		return nil, goidc.ErrNotFound
 	}
 
 	return grant, nil

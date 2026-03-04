@@ -3,8 +3,10 @@ package token_test
 import (
 	"context"
 	"net/url"
+	"strings"
 	"testing"
 
+	"github.com/go-jose/go-jose/v4"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/luikyv/go-oidc/internal/joseutil"
@@ -237,7 +239,7 @@ func TestMakeToken_OpaqueToken(t *testing.T) {
 	opaqueOpts := ctx.TokenOptions(&grant, client)
 	opaqueNow := timeutil.TimestampNow()
 	tkn := &goidc.Token{
-		ID: ctx.OpaqueToken(),
+		ID:                 ctx.OpaqueToken(),
 		GrantID:            grant.ID,
 		Subject:            grant.Subject,
 		CreatedAtTimestamp: opaqueNow,
@@ -263,6 +265,136 @@ func TestMakeToken_OpaqueToken(t *testing.T) {
 	}
 }
 
+func TestMakeIDToken_Encrypted(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.IDTokenEncIsEnabled = true
+	ctx.IDTokenKeyEncAlgs = []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP_256}
+	ctx.IDTokenDefaultContentEncAlg = goidc.A128CBC_HS256
+	ctx.IDTokenContentEncAlgs = []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256}
+
+	encJWK := oidctest.PrivateRSAOAEP256JWK(t, "enc_key")
+	client, _ := oidctest.NewClient(t)
+	client.IDTokenKeyEncAlg = goidc.RSA_OAEP_256
+	client.JWKS = &goidc.JSONWebKeySet{
+		Keys: []goidc.JSONWebKey{encJWK.Public()},
+	}
+
+	grant := goidc.Grant{Subject: "random_subject", ClientID: client.ID}
+	idTokenOptions := token.IDTokenOptions{
+		Subject: "random_subject",
+	}
+
+	// When.
+	idToken, err := token.MakeIDToken(ctx, client, &grant, idTokenOptions)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// JWE compact serialization has 5 dot-separated parts.
+	parts := strings.Split(idToken, ".")
+	if len(parts) != 5 {
+		t.Fatalf("expected JWE with 5 parts, got %d", len(parts))
+	}
+
+	// Decrypt and verify inner claims.
+	jwe, err := jose.ParseEncrypted(
+		idToken,
+		[]goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP_256},
+		[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256},
+	)
+	if err != nil {
+		t.Fatalf("error parsing JWE: %v", err)
+	}
+
+	innerBytes, err := jwe.Decrypt(encJWK.Key)
+	if err != nil {
+		t.Fatalf("error decrypting JWE: %v", err)
+	}
+
+	// The inner content is a signed JWT; parse its claims.
+	claims, err := oidctest.SafeClaims(string(innerBytes), oidctest.PrivateJWKS(t, ctx).Keys[0])
+	if err != nil {
+		t.Fatalf("error parsing inner claims: %v", err)
+	}
+
+	now := timeutil.TimestampNow()
+	wantedClaims := map[string]any{
+		"iss": ctx.Issuer(),
+		"sub": "random_subject",
+		"aud": client.ID,
+		"iat": float64(now),
+		"exp": float64(now + ctx.IDTokenLifetimeSecs),
+	}
+	if diff := cmp.Diff(
+		claims,
+		wantedClaims,
+		cmpopts.EquateApprox(0, 1),
+	); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestMakeToken_JWTToken_WithConfirmation(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	c, _ := oidctest.NewClient(t)
+	grant := goidc.Grant{
+		Subject:              "random_subject",
+		ClientID:             c.ID,
+		JWKThumbprint:        "dpop_thumbprint",
+		ClientCertThumbprint: "tls_thumbprint",
+	}
+	opts := ctx.TokenOptions(&grant, c)
+	now2 := timeutil.TimestampNow()
+	tkn := &goidc.Token{
+		ID: func() string {
+			if opts.Format == goidc.TokenFormatJWT {
+				return ctx.JWTID()
+			}
+			return ctx.OpaqueToken()
+		}(),
+		GrantID:              grant.ID,
+		Subject:              grant.Subject,
+		ClientID:             grant.ClientID,
+		Scopes:               grant.Scopes,
+		JWKThumbprint:        grant.JWKThumbprint,
+		ClientCertThumbprint: grant.ClientCertThumbprint,
+		CreatedAtTimestamp:   now2,
+		ExpiresAtTimestamp:   now2 + opts.LifetimeSecs,
+		Format:               opts.Format,
+		SigAlg:               opts.JWTSigAlg,
+	}
+
+	// When.
+	tokenValue, err := token.Make(ctx, tkn, &grant)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	claims, err := oidctest.SafeClaims(tokenValue, oidctest.PrivateJWKS(t, ctx).Keys[0])
+	if err != nil {
+		t.Fatalf("error parsing claims: %v", err)
+	}
+
+	cnf, ok := claims["cnf"].(map[string]any)
+	if !ok {
+		t.Fatal("expected cnf claim in token")
+	}
+
+	if cnf["jkt"] != "dpop_thumbprint" {
+		t.Errorf("cnf.jkt = %v, want dpop_thumbprint", cnf["jkt"])
+	}
+
+	if cnf["x5t#S256"] != "tls_thumbprint" {
+		t.Errorf("cnf.x5t#S256 = %v, want tls_thumbprint", cnf["x5t#S256"])
+	}
+}
+
 func TestMakeToken_UnsignedJWTToken(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
@@ -284,7 +416,7 @@ func TestMakeToken_UnsignedJWTToken(t *testing.T) {
 	unsignedOpts := ctx.TokenOptions(&grant, client)
 	unsignedNow := timeutil.TimestampNow()
 	tkn := &goidc.Token{
-		ID: ctx.JWTID(),
+		ID:                 ctx.JWTID(),
 		GrantID:            grant.ID,
 		Subject:            grant.Subject,
 		ClientID:           grant.ClientID,

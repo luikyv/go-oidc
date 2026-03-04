@@ -731,17 +731,13 @@ func WithClaimsParameter() Option {
 	}
 }
 
-// WithAuthorizationDetails allows clients to make rich authorization requests.
-func WithAuthorizationDetails(
-	compareDetailsFunc goidc.CompareAuthDetailsFunc,
-	authDetailType string,
-	authDetailTypes ...string,
-) Option {
-	authDetailTypes = appendIfNotIn(authDetailTypes, authDetailType)
+// WithRichAuthorization allows clients to make rich authorization requests.
+func WithRichAuthorization(compareFunc goidc.CompareAuthDetailsFunc, typ goidc.AuthDetailType, types ...goidc.AuthDetailType) Option {
+	types = appendIfNotIn(types, typ)
 	return func(p *Provider) error {
-		p.config.AuthDetailsIsEnabled = true
-		p.config.CompareAuthDetailsFunc = compareDetailsFunc
-		p.config.AuthDetailTypes = authDetailTypes
+		p.config.RichAuthorizationIsEnabled = true
+		p.config.CompareAuthDetailsFunc = compareFunc
+		p.config.AuthDetailTypes = types
 		return nil
 	}
 }

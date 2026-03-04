@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -40,7 +39,7 @@ func (m *AuthnSessionManager) SessionByCallbackID(_ context.Context, callbackID 
 		return s.CallbackID == callbackID
 	})
 	if !exists {
-		return nil, errors.New("entity not found")
+		return nil, goidc.ErrNotFound
 	}
 
 	return session, nil
@@ -51,7 +50,7 @@ func (m *AuthnSessionManager) SessionByAuthCode(_ context.Context, authorization
 		return s.AuthCode == authorizationCode
 	})
 	if !exists {
-		return nil, errors.New("entity not found")
+		return nil, goidc.ErrNotFound
 	}
 
 	return session, nil
@@ -62,7 +61,7 @@ func (m *AuthnSessionManager) SessionByPushedAuthReqID(_ context.Context, reques
 		return s.PushedAuthReqID == requestURI
 	})
 	if !exists {
-		return nil, errors.New("entity not found")
+		return nil, goidc.ErrNotFound
 	}
 
 	return session, nil
@@ -73,7 +72,7 @@ func (m *AuthnSessionManager) SessionByCIBAAuthID(_ context.Context, id string) 
 		return s.CIBAAuthID == id
 	})
 	if !exists {
-		return nil, errors.New("entity not found")
+		return nil, goidc.ErrNotFound
 	}
 
 	return session, nil

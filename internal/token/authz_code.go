@@ -40,29 +40,23 @@ func generateAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 	}
 
 	grant := &goidc.Grant{
-		ID:                 ctx.GrantID(),
-		CreatedAtTimestamp: timeutil.TimestampNow(),
-		AuthCode:           as.AuthCode,
-		Type:               goidc.GrantAuthorizationCode,
-		Subject:            as.Subject,
-		ClientID:           as.ClientID,
-		Scopes:             as.GrantedScopes,
-		Nonce:              as.Nonce,
-		Store:              as.Storage,
-		AuthDetails: func() []goidc.AuthorizationDetail {
-			if ctx.AuthDetailsIsEnabled {
-				return as.GrantedAuthDetails
-			}
-			return nil
-		}(),
-		Resources: func() goidc.Resources {
-			if ctx.ResourceIndicatorsIsEnabled {
-				return as.GrantedResources
-			}
-			return nil
-		}(),
+		ID:                   ctx.GrantID(),
+		CreatedAtTimestamp:   timeutil.TimestampNow(),
+		AuthCode:             as.AuthCode,
+		Type:                 goidc.GrantAuthorizationCode,
+		Subject:              as.Subject,
+		ClientID:             as.ClientID,
+		Scopes:               as.GrantedScopes,
+		Nonce:                as.Nonce,
+		Store:                as.Storage,
 		JWKThumbprint:        dpopThumbprint(ctx),
 		ClientCertThumbprint: tlsThumbprint(ctx),
+	}
+	if ctx.RichAuthorizationIsEnabled {
+		grant.AuthDetails = as.GrantedAuthDetails
+	}
+	if ctx.ResourceIndicatorsIsEnabled {
+		grant.Resources = as.GrantedResources
 	}
 	if shouldIssueRefreshToken(ctx, c, grant) {
 		grant.RefreshToken = ctx.RefreshToken()
@@ -72,82 +66,32 @@ func generateAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 		return response{}, err
 	}
 
-	opts := ctx.TokenOptions(grant, c)
-	now := timeutil.TimestampNow()
-	tkn := &goidc.Token{
-		ID: func() string {
-			if opts.Format == goidc.TokenFormatJWT {
-				return ctx.JWTID()
-			}
-			return ctx.OpaqueToken()
-		}(),
-		GrantID:  grant.ID,
-		Subject:  grant.Subject,
-		ClientID: grant.ClientID,
-		Scopes: func() string {
-			if req.scopes != "" {
-				return req.scopes
-			}
-			return grant.Scopes
-		}(),
-		AuthDetails: func() []goidc.AuthorizationDetail {
-			if ctx.AuthDetailsIsEnabled && req.authDetails != nil {
-				return req.authDetails
-			}
-			return grant.AuthDetails
-		}(),
-		Resources: func() goidc.Resources {
-			if ctx.ResourceIndicatorsIsEnabled && req.resources != nil {
-				return req.resources
-			}
-			return grant.Resources
-		}(),
-		JWKThumbprint:        grant.JWKThumbprint,
-		ClientCertThumbprint: grant.ClientCertThumbprint,
-		CreatedAtTimestamp:   now,
-		ExpiresAtTimestamp:   now + opts.LifetimeSecs,
-		Format:               opts.Format,
-		SigAlg:               opts.JWTSigAlg,
-	}
+	tkn := newToken(ctx, grant, ctx.TokenOptions(grant, c))
+	narrowToken(ctx, tkn, req)
 
-	tokenValue, err := Make(ctx, tkn, grant)
+	tokenValue, err := issueToken(ctx, grant, tkn)
 	if err != nil {
 		return response{}, err
 	}
 
-	if err := ctx.SaveGrant(grant); err != nil {
-		return response{}, err
-	}
-
-	if err := ctx.SaveToken(tkn); err != nil {
-		return response{}, err
-	}
-
 	tokenResp := response{
-		AccessToken: tokenValue,
-		ExpiresIn:   tkn.LifetimeSecs(),
-		TokenType:   tokenType(tkn),
-		Scopes: func() string {
-			if tkn.Scopes == as.GrantedScopes {
-				return ""
-			}
-			return tkn.Scopes
-		}(),
-		Resources: func() goidc.Resources {
-			if !ctx.ResourceIndicatorsIsEnabled || compareSlices(tkn.Resources, as.GrantedResources) {
-				return nil
-			}
-			return tkn.Resources
-		}(),
+		AccessToken:          tokenValue,
+		ExpiresIn:            tkn.LifetimeSecs(),
+		TokenType:            tokenType(tkn),
 		RefreshToken:         grant.RefreshToken,
 		AuthorizationDetails: tkn.AuthDetails,
 	}
+	if tkn.Scopes != as.GrantedScopes {
+		tokenResp.Scopes = tkn.Scopes
+	}
+	if ctx.ResourceIndicatorsIsEnabled && !compareSlices(tkn.Resources, as.GrantedResources) {
+		tokenResp.Resources = tkn.Resources
+	}
 	if strutil.ContainsOpenID(tkn.Scopes) {
-		idToken, err := MakeIDToken(ctx, c, grant, newIDTokenOptions(grant))
+		tokenResp.IDToken, err = MakeIDToken(ctx, c, grant, newIDTokenOptions(grant))
 		if err != nil {
 			return response{}, fmt.Errorf("could not generate id token for the authorization code grant: %w", err)
 		}
-		tokenResp.IDToken = idToken
 	}
 
 	return tokenResp, nil
@@ -166,12 +110,12 @@ func validateAuthCodeGrantRequest(ctx oidc.Context, req request, c *goidc.Client
 		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "the authorization code is expired")
 	}
 
-	opts := bindindValidationsOptions{}
-	opts.tlsIsRequired = as.ClientCertThumbprint != ""
-	opts.tlsCertThumbprint = as.ClientCertThumbprint
-	opts.dpopIsRequired = as.JWKThumbprint != ""
-	opts.dpop.JWKThumbprint = as.JWKThumbprint
-	if err := ValidateBinding(ctx, c, &opts); err != nil {
+	if err := ValidateBinding(ctx, c, &bindindValidationsOptions{
+		tlsIsRequired:     as.ClientCertThumbprint != "",
+		tlsCertThumbprint: as.ClientCertThumbprint,
+		dpopIsRequired:    as.JWKThumbprint != "",
+		dpopJWKThumbprint: as.JWKThumbprint,
+	}); err != nil {
 		return err
 	}
 

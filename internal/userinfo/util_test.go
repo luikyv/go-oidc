@@ -187,6 +187,89 @@ func TestHandleUserInfoRequest_InvalidPoP(t *testing.T) {
 	}
 }
 
+func TestHandleUserInfoRequest_ExpiredToken(t *testing.T) {
+	// Given.
+	ctx, _, tokenEntity := setUp(t)
+	tokenEntity.ExpiresAtTimestamp = timeutil.TimestampNow() - 10
+
+	// When.
+	_, err := handleUserInfoRequest(ctx)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for expired token")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeAccessDenied {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeAccessDenied)
+	}
+}
+
+func TestHandleUserInfoRequest_MissingOpenIDScope(t *testing.T) {
+	// Given.
+	ctx, _, tokenEntity := setUp(t)
+	tokenEntity.Scopes = "scope1"
+
+	// When.
+	_, err := handleUserInfoRequest(ctx)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for missing openid scope")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeAccessDenied {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeAccessDenied)
+	}
+}
+
+func TestHandleUserInfoRequest_NoToken(t *testing.T) {
+	// Given.
+	ctx, _, _ := setUp(t)
+	ctx.Request.Header.Del("Authorization")
+
+	// When.
+	_, err := handleUserInfoRequest(ctx)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error when no token is provided")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeInvalidToken {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidToken)
+	}
+}
+
+func TestHandleUserInfoRequest_TokenNotFound(t *testing.T) {
+	// Given.
+	ctx, _, _ := setUp(t)
+	ctx.Request.Header.Set("Authorization", "Bearer nonexistent_token")
+
+	// When.
+	_, err := handleUserInfoRequest(ctx)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error when token is not found in storage")
+	}
+}
+
 func setUp(t *testing.T) (oidc.Context, *goidc.Client, *goidc.Token) {
 	t.Helper()
 

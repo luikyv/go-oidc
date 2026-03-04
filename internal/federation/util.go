@@ -27,7 +27,7 @@ func Client(ctx oidc.Context, id string) (*goidc.Client, error) {
 
 	c, err := ctx.Client(id)
 	if err != nil {
-		if errors.Is(err, goidc.ErrClientNotFound) {
+		if errors.Is(err, goidc.ErrNotFound) {
 			return registerAutomatically(ctx, id)
 		}
 		return nil, err

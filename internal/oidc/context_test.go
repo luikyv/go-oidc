@@ -868,7 +868,6 @@ func TestTokenOptions_JWT(t *testing.T) {
 	client := &goidc.Client{}
 	grant := &goidc.Grant{}
 
-
 	// When.
 	opts := ctx.TokenOptions(grant, client)
 
@@ -887,7 +886,6 @@ func TestTokenOptions_Opaque(t *testing.T) {
 	client := &goidc.Client{}
 	grant := &goidc.Grant{}
 
-
 	// When.
 	opts := ctx.TokenOptions(grant, client)
 
@@ -896,7 +894,6 @@ func TestTokenOptions_Opaque(t *testing.T) {
 		t.Errorf("got %s, want %s", opts.Format, goidc.TokenFormatOpaque)
 	}
 }
-
 
 func TestTokenOptions_JWTNotAllowedWhenPairwiseSubject(t *testing.T) {
 	// Given.
@@ -910,7 +907,6 @@ func TestTokenOptions_JWTNotAllowedWhenPairwiseSubject(t *testing.T) {
 		},
 	}
 	grant := &goidc.Grant{}
-
 
 	// When.
 	opts := ctx.TokenOptions(grant, client)
@@ -935,7 +931,6 @@ func TestTokenOptions_JWTIsAllowedForPairwiseSubjectWhenClientCredentials(t *tes
 	grant := &goidc.Grant{
 		Type: goidc.GrantClientCredentials,
 	}
-
 
 	// When.
 	opts := ctx.TokenOptions(grant, client)

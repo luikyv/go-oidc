@@ -254,7 +254,7 @@ op, _ := provider.New(
 
 Use `goidc.NewJWTTokenOptions` for JWT access tokens or `goidc.NewOpaqueTokenOptions` for opaque ones.
 
-Refresh tokens are always opaque with a fixed length of 99 characters. Avoid issuing opaque access tokens with the same length.
+Refresh tokens are always opaque.
 
 ## Scopes
 

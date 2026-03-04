@@ -38,7 +38,7 @@ func initLogout(ctx oidc.Context, req request) error {
 // If the client cannot be determined, it returns an empty client.
 func fetchClient(ctx oidc.Context, req request) (*goidc.Client, error) {
 	if req.ClientID != "" {
-		return client.Client(ctx,req.ClientID)
+		return client.Client(ctx, req.ClientID)
 	}
 
 	if req.IDTokenHint != "" {
@@ -64,7 +64,7 @@ func fetchClientFromIDTokenHint(ctx oidc.Context, idTokenHint string) (*goidc.Cl
 		return &goidc.Client{}, nil
 	}
 
-	return client.Client(ctx,claims.ClientID)
+	return client.Client(ctx, claims.ClientID)
 }
 
 func continueLogout(ctx oidc.Context, callbackID string) error {
