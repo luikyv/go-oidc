@@ -340,7 +340,7 @@ func LogoutPolicy() goidc.LogoutPolicy {
 			}
 
 			if !isTrue(logout) {
-				slog.Debug("user cancelled logout", "logout", logout)
+				slog.Debug("user cancelled logout")
 				return goidc.StatusFailure, errLogoutCancelled
 			}
 
