@@ -3,11 +3,127 @@ package token
 import (
 	"encoding/json"
 	"net/http"
+	"slices"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
+
+type GrantOptions struct {
+	AuthCode             string
+	Type                 goidc.GrantType
+	Subject              string
+	ClientID             string
+	Scopes               string
+	AuthDetails          []goidc.AuthorizationDetail
+	Resources            goidc.Resources
+	Nonce                string
+	JWKThumbprint        string
+	ClientCertThumbprint string
+	Store                map[string]any
+}
+
+func NewGrant(ctx oidc.Context, c *goidc.Client, opts GrantOptions) (*goidc.Grant, error) {
+	grant := &goidc.Grant{
+		ID:                   ctx.GrantID(),
+		AuthCode:             opts.AuthCode,
+		Type:                 opts.Type,
+		Subject:              opts.Subject,
+		ClientID:             opts.ClientID,
+		Scopes:               opts.Scopes,
+		Nonce:                opts.Nonce,
+		Store:                opts.Store,
+		JWKThumbprint:        opts.JWKThumbprint,
+		ClientCertThumbprint: opts.ClientCertThumbprint,
+		CreatedAtTimestamp:   timeutil.TimestampNow(),
+	}
+	if ctx.RichAuthorizationIsEnabled {
+		grant.AuthDetails = opts.AuthDetails
+	}
+	if ctx.ResourceIndicatorsIsEnabled {
+		grant.Resources = opts.Resources
+	}
+	if err := ctx.HandleGrant(grant); err != nil {
+		return nil, err
+	}
+
+	if slices.Contains(ctx.GrantTypes, goidc.GrantRefreshToken) &&
+		slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) &&
+		ctx.ShouldIssueRefreshToken(c, grant) &&
+		grant.Type != goidc.GrantClientCredentials && grant.Type != goidc.GrantImplicit {
+		grant.RefreshToken = ctx.RefreshToken()
+		grant.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
+	}
+
+	return grant, nil
+}
+
+type Options struct {
+	Scopes      string
+	AuthDetails []goidc.AuthorizationDetail
+	Resources   goidc.Resources
+}
+
+// Issue creates a new access token for the grant, persists both the grant and
+// token, and returns the token and its serialized value.
+func Issue(ctx oidc.Context, grant *goidc.Grant, c *goidc.Client, opts *Options) (*goidc.Token, string, error) {
+	if opts == nil {
+		opts = &Options{}
+	}
+
+	tknOpts := ctx.TokenOptions(grant, c)
+	now := timeutil.TimestampNow()
+	tkn := &goidc.Token{
+		GrantID:              grant.ID,
+		Subject:              grant.Subject,
+		ClientID:             grant.ClientID,
+		Scopes:               grant.Scopes,
+		AuthDetails:          grant.AuthDetails,
+		Resources:            grant.Resources,
+		JWKThumbprint:        grant.JWKThumbprint,
+		ClientCertThumbprint: grant.ClientCertThumbprint,
+		CreatedAtTimestamp:   now,
+		ExpiresAtTimestamp:   now + tknOpts.LifetimeSecs,
+		Format:               tknOpts.Format,
+		SigAlg:               tknOpts.JWTSigAlg,
+	}
+	if tknOpts.Format == goidc.TokenFormatOpaque {
+		tkn.ID = ctx.OpaqueToken()
+	} else {
+		tkn.ID = ctx.JWTID()
+	}
+	if tkn.JWKThumbprint != "" {
+		tkn.Type = goidc.TokenTypeDPoP
+	} else {
+		tkn.Type = goidc.TokenTypeBearer
+	}
+	if opts.Scopes != "" {
+		tkn.Scopes = opts.Scopes
+	}
+	if ctx.RichAuthorizationIsEnabled && opts.AuthDetails != nil {
+		tkn.AuthDetails = opts.AuthDetails
+	}
+	if ctx.ResourceIndicatorsIsEnabled && opts.Resources != nil {
+		tkn.Resources = opts.Resources
+	}
+
+	tokenValue, err := makeAccessToken(ctx, tkn, grant)
+	if err != nil {
+		return nil, "", err
+	}
+	if grant.ExpiresAtTimestamp == 0 {
+		grant.ExpiresAtTimestamp = tkn.ExpiresAtTimestamp
+	}
+	if err := ctx.SaveGrant(grant); err != nil {
+		return nil, "", err
+	}
+	if err := ctx.SaveToken(tkn); err != nil {
+		return nil, "", err
+	}
+
+	return tkn, tokenValue, nil
+}
 
 type IDTokenOptions struct {
 	Subject string
@@ -19,13 +135,7 @@ type IDTokenOptions struct {
 	State             string
 	RefreshToken      string
 	AuthReqID         string
-}
-
-func newIDTokenOptions(grant *goidc.Grant) IDTokenOptions {
-	return IDTokenOptions{
-		Subject: grant.Subject,
-		Nonce:   grant.Nonce,
-	}
+	Claims            map[string]any
 }
 
 type request struct {
@@ -98,68 +208,4 @@ type bindindValidationsOptions struct {
 	dpopIsRequired    bool
 	dpopJWKThumbprint string
 	// dpop              dpop.ValidationOptions
-}
-
-// tokenType derives the token type from PoP bindings.
-func tokenType(token *goidc.Token) goidc.TokenType {
-	if token.JWKThumbprint != "" {
-		return goidc.TokenTypeDPoP
-	}
-	return goidc.TokenTypeBearer
-}
-
-// newToken builds a Token copying all common fields from the grant.
-func newToken(ctx oidc.Context, grant *goidc.Grant, opts goidc.TokenOptions) *goidc.Token {
-	now := timeutil.TimestampNow()
-	id := ctx.OpaqueToken()
-	if opts.Format == goidc.TokenFormatJWT {
-		id = ctx.JWTID()
-	}
-	return &goidc.Token{
-		ID:                   id,
-		GrantID:              grant.ID,
-		Subject:              grant.Subject,
-		ClientID:             grant.ClientID,
-		Scopes:               grant.Scopes,
-		AuthDetails:          grant.AuthDetails,
-		Resources:            grant.Resources,
-		JWKThumbprint:        grant.JWKThumbprint,
-		ClientCertThumbprint: grant.ClientCertThumbprint,
-		CreatedAtTimestamp:   now,
-		ExpiresAtTimestamp:   now + opts.LifetimeSecs,
-		Format:               opts.Format,
-		SigAlg:               opts.JWTSigAlg,
-	}
-}
-
-// narrowToken overrides token scopes, authorization details, and resources
-// with request-level values when present.
-func narrowToken(ctx oidc.Context, tkn *goidc.Token, req request) {
-	if req.scopes != "" {
-		tkn.Scopes = req.scopes
-	}
-	if ctx.RichAuthorizationIsEnabled && req.authDetails != nil {
-		tkn.AuthDetails = req.authDetails
-	}
-	if ctx.ResourceIndicatorsIsEnabled && req.resources != nil {
-		tkn.Resources = req.resources
-	}
-}
-
-// issueToken generates the access token value and persists the grant and token.
-func issueToken(ctx oidc.Context, grant *goidc.Grant, tkn *goidc.Token) (string, error) {
-	tokenValue, err := Make(ctx, tkn, grant)
-	if err != nil {
-		return "", err
-	}
-	if grant.ExpiresAtTimestamp == 0 {
-		grant.ExpiresAtTimestamp = tkn.ExpiresAtTimestamp
-	}
-	if err := ctx.SaveGrant(grant); err != nil {
-		return "", err
-	}
-	if err := ctx.SaveToken(tkn); err != nil {
-		return "", err
-	}
-	return tokenValue, nil
 }

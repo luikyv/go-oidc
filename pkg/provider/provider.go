@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"reflect"
 	"slices"
@@ -269,42 +268,8 @@ func (op *Provider) MakeToken(ctx context.Context, grant *goidc.Grant) (string, 
 		grant.CreatedAtTimestamp = timeutil.TimestampNow()
 	}
 
-	opts := oidcCtx.TokenOptions(grant, c)
-	now := timeutil.TimestampNow()
-	tkn := &goidc.Token{
-		ID: func() string {
-			if opts.Format == goidc.TokenFormatJWT {
-				return oidcCtx.JWTID()
-			}
-			return oidcCtx.OpaqueToken()
-		}(),
-		GrantID:              grant.ID,
-		Subject:              grant.Subject,
-		ClientID:             grant.ClientID,
-		Scopes:               grant.Scopes,
-		AuthDetails:          grant.AuthDetails,
-		Resources:            grant.Resources,
-		JWKThumbprint:        grant.JWKThumbprint,
-		ClientCertThumbprint: grant.ClientCertThumbprint,
-		CreatedAtTimestamp:   now,
-		ExpiresAtTimestamp:   now + opts.LifetimeSecs,
-		Format:               opts.Format,
-		SigAlg:               opts.JWTSigAlg,
-	}
-	tokenValue, err := token.Make(oidcCtx, tkn, grant)
-	if err != nil {
-		return "", fmt.Errorf("could not generate a token: %w", err)
-	}
-
-	if err := oidcCtx.SaveGrant(grant); err != nil {
-		return "", fmt.Errorf("could not store the grant: %w", err)
-	}
-
-	if err := oidcCtx.SaveToken(tkn); err != nil {
-		return "", fmt.Errorf("could not store the token: %w", err)
-	}
-
-	return tokenValue, nil
+	_, tokenValue, err := token.Issue(oidcCtx, grant, c, nil)
+	return tokenValue, err
 }
 
 func (op *Provider) RevokeToken(ctx context.Context, tkn string) error {
@@ -449,8 +414,6 @@ func (op *Provider) setDefaults() error {
 	}
 
 	if op.config.OpenIDFedIsEnabled {
-		op.config.OpenIDFedClientFunc = federation.Client
-		op.config.OpenIDFedEntityJWKSFunc = federation.FetchEntityConfigurationJWKS
 		op.config.OpenIDFedEndpoint = nonZeroOrDefault(op.config.OpenIDFedEndpoint, defaultEndpointOpenIDFederation)
 		op.config.OpenIDFedDefaultSigAlg = nonZeroOrDefault(op.config.OpenIDFedDefaultSigAlg, defaultAsymmetricSigAlg)
 		op.config.OpenIDFedSigAlgs = nonZeroOrDefault(op.config.OpenIDFedSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})

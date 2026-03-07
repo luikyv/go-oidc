@@ -31,18 +31,17 @@ func TestExtractID_OpaqueToken(t *testing.T) {
 func TestExtractID_JWTToken(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	client, _ := oidctest.NewClient(t)
-	_ = ctx.SaveClient(client)
+	c, _ := oidctest.NewClient(t)
+	_ = ctx.SaveClient(c)
 
 	grant := &goidc.Grant{
 		ID:       "grant_id",
-		ClientID: client.ID,
+		ClientID: c.ID,
 		Subject:  "user",
 	}
-	tkn := newToken(ctx, grant, ctx.TokenOptions(grant, client))
-	tokenValue, err := Make(ctx, tkn, grant)
+	tkn, tokenValue, err := Issue(ctx, grant, c, nil)
 	if err != nil {
-		t.Fatalf("error making token: %v", err)
+		t.Fatalf("error issuing token: %v", err)
 	}
 
 	// When.

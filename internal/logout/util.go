@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
@@ -38,7 +37,7 @@ func initLogout(ctx oidc.Context, req request) error {
 // If the client cannot be determined, it returns an empty client.
 func fetchClient(ctx oidc.Context, req request) (*goidc.Client, error) {
 	if req.ClientID != "" {
-		return client.Client(ctx, req.ClientID)
+		return ctx.Client(req.ClientID)
 	}
 
 	if req.IDTokenHint != "" {
@@ -64,7 +63,7 @@ func fetchClientFromIDTokenHint(ctx oidc.Context, idTokenHint string) (*goidc.Cl
 		return &goidc.Client{}, nil
 	}
 
-	return client.Client(ctx, claims.ClientID)
+	return ctx.Client(claims.ClientID)
 }
 
 func continueLogout(ctx oidc.Context, callbackID string) error {

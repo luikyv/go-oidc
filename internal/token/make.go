@@ -14,22 +14,22 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func MakeIDToken(ctx oidc.Context, client *goidc.Client, grant *goidc.Grant, opts IDTokenOptions) (string, error) {
-	idToken, err := makeIDToken(ctx, client, grant, opts)
+func MakeIDToken(ctx oidc.Context, c *goidc.Client, opts IDTokenOptions) (string, error) {
+	idToken, err := makeIDToken(ctx, c, opts)
 	if err != nil {
 		return "", err
 	}
 
 	// If encryption is disabled, just return the signed ID token.
-	if !ctx.IDTokenEncIsEnabled || client.IDTokenKeyEncAlg == "" {
+	if !ctx.IDTokenEncIsEnabled || c.IDTokenKeyEncAlg == "" {
 		return idToken, nil
 	}
 
-	return encryptIDToken(ctx, client, idToken)
+	return encryptIDToken(ctx, c, idToken)
 }
 
-// Make generates an access token value. It returns the JWT or opaque string.
-func Make(ctx oidc.Context, tkn *goidc.Token, grant *goidc.Grant) (string, error) {
+// makeAccessToken generates an access token value. It returns the JWT or opaque string.
+func makeAccessToken(ctx oidc.Context, tkn *goidc.Token, grant *goidc.Grant) (string, error) {
 	if tkn.Format == goidc.TokenFormatOpaque {
 		return tkn.ID, nil
 	}
@@ -81,16 +81,16 @@ func Make(ctx oidc.Context, tkn *goidc.Token, grant *goidc.Grant) (string, error
 	return accessToken, nil
 }
 
-func makeIDToken(ctx oidc.Context, c *goidc.Client, grant *goidc.Grant, opts IDTokenOptions) (string, error) {
+func makeIDToken(ctx oidc.Context, c *goidc.Client, opts IDTokenOptions) (string, error) {
 	if slices.Contains(ctx.IDTokenSigAlgs, goidc.None) && c.IDTokenSigAlg == goidc.None {
-		return makeUnsignedIDToken(ctx, c, grant, opts), nil
+		return makeUnsignedIDToken(ctx, c, opts), nil
 	}
 
 	alg := ctx.IDTokenDefaultSigAlg
 	if c.IDTokenSigAlg != "" {
 		alg = c.IDTokenSigAlg
 	}
-	claims := idTokenClaims(ctx, c, grant, opts, alg)
+	claims := idTokenClaims(ctx, c, opts, alg)
 	idToken, err := ctx.Sign(claims, alg, nil)
 	if err != nil {
 		return "", fmt.Errorf("could not sign the id token: %w", err)
@@ -99,15 +99,14 @@ func makeIDToken(ctx oidc.Context, c *goidc.Client, grant *goidc.Grant, opts IDT
 	return idToken, nil
 }
 
-func makeUnsignedIDToken(ctx oidc.Context, c *goidc.Client, grant *goidc.Grant, opts IDTokenOptions) string {
-	claims := idTokenClaims(ctx, c, grant, opts, goidc.None)
+func makeUnsignedIDToken(ctx oidc.Context, c *goidc.Client, opts IDTokenOptions) string {
+	claims := idTokenClaims(ctx, c, opts, goidc.None)
 	return joseutil.Unsigned(claims)
 }
 
 func idTokenClaims(
 	ctx oidc.Context,
 	c *goidc.Client,
-	grant *goidc.Grant,
 	opts IDTokenOptions,
 	sigAlg goidc.SignatureAlgorithm,
 ) map[string]any {
@@ -149,7 +148,7 @@ func idTokenClaims(
 		claims[goidc.ClaimNonce] = opts.Nonce
 	}
 
-	maps.Copy(claims, ctx.IDTokenClaims(grant))
+	maps.Copy(claims, opts.Claims)
 
 	return claims
 }

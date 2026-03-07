@@ -7,7 +7,7 @@ import (
 )
 
 func revoke(ctx oidc.Context, req queryRequest) error {
-	c, err := client.Authenticated(ctx, client.TokenRevocationAuthnContext)
+	c, err := client.Authenticated(ctx, client.AuthnContextTokenRevocation)
 	if err != nil {
 		return err
 	}
@@ -18,7 +18,7 @@ func revoke(ctx oidc.Context, req queryRequest) error {
 
 	info, err := IntrospectionInfo(ctx, req.token)
 	// If the token was not found, is expired, etc., there's no point in revoking it.
-	if err != nil {
+	if err != nil || !info.IsActive {
 		return nil
 	}
 

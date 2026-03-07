@@ -234,6 +234,7 @@ func TestMakeToken(t *testing.T) {
 	wantedSession := goidc.Grant{
 		ID:                 grantSession.ID,
 		CreatedAtTimestamp: grantSession.CreatedAtTimestamp,
+		ExpiresAtTimestamp: grantSession.ExpiresAtTimestamp,
 		Type:               goidc.GrantClientCredentials,
 		Subject:            issuer,
 		ClientID:           issuer,

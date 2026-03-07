@@ -51,11 +51,11 @@ func handleExplicitRegistration(ctx oidc.Context) {
 			ctx.WriteError(fmt.Errorf("could not read the entity statement: %w", err))
 			return
 		}
-		entityStatement, regErr = registerExplicitlyWithEntityConfiguration(ctx, string(signedStatement))
+		entityStatement, regErr = registerEntityConfiguration(ctx, string(signedStatement))
 	case contentTypeTrustChain:
 		var chainStatements []string
 		_ = json.NewDecoder(ctx.Request.Body).Decode(&chainStatements)
-		entityStatement, regErr = registerExplicitlyWithChainStatements(ctx, chainStatements)
+		entityStatement, regErr = registerChainStatements(ctx, chainStatements)
 	default:
 		regErr = fmt.Errorf("unsupported content type: %s", ctx.Request.Header.Get("Content-Type"))
 	}

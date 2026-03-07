@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikyv/go-oidc/internal/client"
+	"github.com/luikyv/go-oidc/internal/federation"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -20,7 +20,33 @@ func initAuth(ctx oidc.Context, req request) error {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client_id")
 	}
 
-	c, err := client.Client(ctx, req.ClientID)
+	c, err := func() (*goidc.Client, error) {
+		if !ctx.OpenIDFedIsEnabled {
+			return ctx.Client(req.ClientID)
+		}
+
+		if !slices.Contains(ctx.OpenIDFedClientRegTypes, goidc.ClientRegistrationTypeAutomatic) {
+			return ctx.Client(req.ClientID)
+		}
+
+		if !strutil.IsURL(req.ClientID) {
+			return ctx.Client(req.ClientID)
+		}
+
+		c, err := ctx.Client(req.ClientID)
+		if err != nil {
+			if !errors.Is(err, goidc.ErrNotFound) {
+				return nil, err
+			}
+			return registerClient(ctx, req)
+		}
+
+		if c.ExpiresAtTimestamp != 0 && timeutil.TimestampNow() > c.ExpiresAtTimestamp {
+			return registerClient(ctx, req)
+		}
+
+		return c, nil
+	}()
 	if err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client_id", err)
 	}
@@ -33,7 +59,79 @@ func initAuth(ctx oidc.Context, req request) error {
 			errors.New("client is missing grant type to call the authorization endpoint"))
 	}
 
-	as, err := authnSession(ctx, req, c)
+	as, err := func() (*goidc.AuthnSession, error) {
+		par := ctx.PARIsEnabled &&
+			(ctx.PARIsRequired || c.PARIsRequired || strings.HasPrefix(req.RequestURI, parRequestURIPrefix))
+		if par {
+			if req.RequestURI == "" {
+				return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "request_uri is required")
+			}
+
+			session, err := ctx.AuthnSessionByRequestURI(req.RequestURI)
+			if err != nil {
+				return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid request_uri")
+			}
+
+			if err := validateRequestWithPAR(ctx, req, session, c); err != nil {
+				// If any of the parameters is invalid, we delete the session right away.
+				if dErr := ctx.DeleteAuthnSession(session.ID); dErr != nil {
+					return nil, dErr
+				}
+				return nil, err
+			}
+
+			// For FAPI, only the parameters sent during PAR are considered.
+			if ctx.Profile.IsFAPI() {
+				return session, nil
+			}
+
+			// For OIDC, the parameters sent in the authorization endpoint are merged
+			// with the ones sent during PAR.
+			session.AuthorizationParameters = mergeParams(session.AuthorizationParameters, req.AuthorizationParameters)
+			return session, nil
+		}
+
+		// The jar requirement comes after the par one, because the client may have sent the jar during par.
+		jar := ctx.JARIsEnabled &&
+			(ctx.JARIsRequired || c.JARIsRequired || req.RequestObject != "" || (ctx.JARByReferenceIsEnabled && req.RequestURI != ""))
+		if jar {
+			var jar request
+			switch {
+			case req.RequestObject != "":
+				jar, err = jarFromRequestObject(ctx, req.RequestObject, c)
+				if err != nil {
+					return nil, err
+				}
+			case ctx.JARByReferenceIsEnabled && req.RequestURI != "":
+				jar, err = jarFromRequestURI(ctx, req.RequestURI, c)
+				if err != nil {
+					return nil, err
+				}
+			default:
+				return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "request object is required")
+			}
+
+			if err := validateRequestWithJAR(ctx, req, jar, c); err != nil {
+				return nil, err
+			}
+
+			session := newAuthnSession(ctx, jar.AuthorizationParameters, c)
+			// For FAPI, only the parameters sent inside the JAR are considered.
+			if ctx.Profile.IsFAPI() {
+				return session, nil
+			}
+
+			// For OIDC, the parameters sent in the authorization endpoint are merged
+			// with the ones sent inside the JAR.
+			session.AuthorizationParameters = mergeParams(session.AuthorizationParameters, req.AuthorizationParameters)
+			return session, nil
+		}
+
+		if err := validateRequest(ctx, req, c); err != nil {
+			return nil, err
+		}
+		return newAuthnSession(ctx, req.AuthorizationParameters, c), nil
+	}()
 	if err != nil {
 		return redirectError(ctx, err, c)
 	}
@@ -75,7 +173,7 @@ func continueAuth(ctx oidc.Context, callbackID string) error {
 	}
 
 	if oauthErr := authenticate(ctx, session); oauthErr != nil {
-		client, err := client.Client(ctx, session.ClientID)
+		client, err := ctx.Client(session.ClientID)
 		if err != nil {
 			return err
 		}
@@ -83,91 +181,6 @@ func continueAuth(ctx oidc.Context, callbackID string) error {
 	}
 
 	return nil
-}
-
-func authnSession(ctx oidc.Context, req request, c *goidc.Client) (*goidc.AuthnSession, error) {
-
-	par := ctx.PARIsEnabled &&
-		(ctx.PARIsRequired || c.PARIsRequired || strings.HasPrefix(req.RequestURI, parRequestURIPrefix))
-	if par {
-		return authnSessionWithPAR(ctx, req, c)
-	}
-
-	// The jar requirement comes after the par one, because the client may have sent the jar during par.
-	jar := ctx.JARIsEnabled &&
-		(ctx.JARIsRequired || c.JARIsRequired || req.RequestObject != "" || (ctx.JARByReferenceIsEnabled && req.RequestURI != ""))
-	if jar {
-		return authnSessionWithJAR(ctx, req, c)
-	}
-
-	return simpleAuthnSession(ctx, req, c)
-}
-
-func authnSessionWithPAR(ctx oidc.Context, req request, c *goidc.Client) (*goidc.AuthnSession, error) {
-	if req.RequestURI == "" {
-		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "request_uri is required")
-	}
-
-	session, err := ctx.AuthnSessionByRequestURI(req.RequestURI)
-	if err != nil {
-		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid request_uri")
-	}
-
-	if err := validateRequestWithPAR(ctx, req, session, c); err != nil {
-		// If any of the parameters is invalid, we delete the session right away.
-		if dErr := ctx.DeleteAuthnSession(session.ID); dErr != nil {
-			return nil, dErr
-		}
-		return nil, err
-	}
-
-	// For FAPI, only the parameters sent during PAR are considered.
-	if ctx.Profile.IsFAPI() {
-		return session, nil
-	}
-
-	// For OIDC, the parameters sent in the authorization endpoint are merged
-	// with the ones sent during PAR.
-	session.AuthorizationParameters = mergeParams(session.AuthorizationParameters, req.AuthorizationParameters)
-	return session, nil
-}
-
-func authnSessionWithJAR(ctx oidc.Context, req request, c *goidc.Client) (*goidc.AuthnSession, error) {
-	var jar request
-	var err error
-	switch {
-	case req.RequestObject != "":
-		jar, err = jarFromRequestObject(ctx, req.RequestObject, c)
-	case ctx.JARByReferenceIsEnabled && req.RequestURI != "":
-		jar, err = jarFromRequestURI(ctx, req.RequestURI, c)
-	default:
-		err = goidc.NewError(goidc.ErrorCodeInvalidRequest, "request object is required")
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	if err := validateRequestWithJAR(ctx, req, jar, c); err != nil {
-		return nil, err
-	}
-
-	session := newAuthnSession(ctx, jar.AuthorizationParameters, c)
-	// For FAPI, only the parameters sent inside the JAR are considered.
-	if ctx.Profile.IsFAPI() {
-		return session, nil
-	}
-
-	// For OIDC, the parameters sent in the authorization endpoint are merged
-	// with the ones sent inside the JAR.
-	session.AuthorizationParameters = mergeParams(session.AuthorizationParameters, req.AuthorizationParameters)
-	return session, nil
-}
-
-func simpleAuthnSession(ctx oidc.Context, req request, c *goidc.Client) (*goidc.AuthnSession, error) {
-	if err := validateRequest(ctx, req, c); err != nil {
-		return nil, err
-	}
-	return newAuthnSession(ctx, req.AuthorizationParameters, c), nil
 }
 
 func authenticate(ctx oidc.Context, session *goidc.AuthnSession) error {
@@ -200,110 +213,63 @@ func finishFlowWithFailure(ctx oidc.Context, session *goidc.AuthnSession, err er
 	return newRedirectionError(goidc.ErrorCodeAccessDenied, "access denied", session.AuthorizationParameters)
 }
 
-func finishFlow(ctx oidc.Context, session *goidc.AuthnSession) error {
-	c, err := client.Client(ctx, session.ClientID)
+func finishFlow(ctx oidc.Context, as *goidc.AuthnSession) error {
+	c, err := ctx.Client(as.ClientID)
 	if err != nil {
-		return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not load the client", session.AuthorizationParameters, err)
+		return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not load the client", as.AuthorizationParameters, err)
 	}
 
-	if err := authorizeAuthnSession(ctx, session); err != nil {
+	if err := authorizeAuthnSession(ctx, as); err != nil {
 		return err
 	}
 
-	// Build the grant from the session upfront so it is available for both
-	// access token issuance and ID token claims callbacks.
-	grant := &goidc.Grant{
-		Type:     goidc.GrantImplicit,
-		Subject:  session.Subject,
-		ClientID: session.ClientID,
-		Scopes:   session.GrantedScopes,
-		Nonce:    session.Nonce,
-		Store:    session.Store,
-		AuthDetails: func() []goidc.AuthorizationDetail {
-			if ctx.RichAuthorizationIsEnabled {
-				return session.GrantedAuthDetails
-			}
-			return nil
-		}(),
-		Resources: func() goidc.Resources {
-			if ctx.ResourceIndicatorsIsEnabled {
-				return session.GrantedResources
-			}
-			return nil
-		}(),
-		JWKThumbprint: dpopThumbprint(ctx, session),
+	grant, err := token.NewGrant(ctx, c, token.GrantOptions{
+		Type:          goidc.GrantImplicit,
+		Subject:       as.Subject,
+		ClientID:      as.ClientID,
+		Scopes:        as.GrantedScopes,
+		Nonce:         as.Nonce,
+		AuthDetails:   as.GrantedAuthDetails,
+		Resources:     as.GrantedResources,
+		JWKThumbprint: dpopThumbprint(ctx, as),
+		Store:         as.Store,
+	})
+	if err != nil {
+		return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not generate the grant", as.AuthorizationParameters, err)
 	}
 
 	redirectParams := response{
-		authorizationCode: session.AuthCode,
-		state:             session.State,
+		authorizationCode: as.AuthCode,
+		state:             as.State,
 	}
-	if session.ResponseType.Contains(goidc.ResponseTypeToken) {
-		grant.ID = ctx.GrantID()
-		grant.CreatedAtTimestamp = timeutil.TimestampNow()
-
-		if err := ctx.HandleGrant(grant); err != nil {
-			return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not handle the grant", session.AuthorizationParameters, err)
-		}
-
-		opts := ctx.TokenOptions(grant, c)
-		now := timeutil.TimestampNow()
-		tkn := &goidc.Token{
-			ID: func() string {
-				if opts.Format == goidc.TokenFormatJWT {
-					return ctx.JWTID()
-				}
-				return ctx.OpaqueToken()
-			}(),
-			GrantID:              grant.ID,
-			Subject:              grant.Subject,
-			ClientID:             grant.ClientID,
-			Scopes:               grant.Scopes,
-			AuthDetails:          grant.AuthDetails,
-			Resources:            grant.Resources,
-			JWKThumbprint:        grant.JWKThumbprint,
-			ClientCertThumbprint: grant.ClientCertThumbprint,
-			CreatedAtTimestamp:   now,
-			ExpiresAtTimestamp:   now + opts.LifetimeSecs,
-			Format:               opts.Format,
-			SigAlg:               opts.JWTSigAlg,
-		}
-		tokenValue, err := token.Make(ctx, tkn, grant)
+	if as.ResponseType.Contains(goidc.ResponseTypeToken) {
+		tkn, tokenValue, err := token.Issue(ctx, grant, c, nil)
 		if err != nil {
-			return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not generate the access token", session.AuthorizationParameters, err)
+			return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not generate the access token", as.AuthorizationParameters, err)
 		}
-
 		redirectParams.accessToken = tokenValue
-		redirectParams.tokenType = tokenType(tkn)
-
-		if err := ctx.SaveGrant(grant); err != nil {
-			return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not save the grant", session.AuthorizationParameters, err)
-		}
-
-		if err := ctx.SaveToken(tkn); err != nil {
-			return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not save the token", session.AuthorizationParameters, err)
-		}
+		redirectParams.tokenType = tkn.Type
 	}
 
-	if strutil.ContainsOpenID(session.GrantedScopes) && session.ResponseType.Contains(goidc.ResponseTypeIDToken) {
-		idToken, err := token.MakeIDToken(ctx, c, grant, token.IDTokenOptions{
-			Subject:           session.Subject,
-			Nonce:             session.Nonce,
+	if strutil.ContainsOpenID(as.GrantedScopes) && as.ResponseType.Contains(goidc.ResponseTypeIDToken) {
+		idToken, err := token.MakeIDToken(ctx, c, token.IDTokenOptions{
+			Subject:           as.Subject,
+			Nonce:             as.Nonce,
 			AccessToken:       redirectParams.accessToken,
-			AuthorizationCode: session.AuthCode,
-			State:             session.State,
+			AuthorizationCode: as.AuthCode,
+			State:             as.State,
+			Claims:            ctx.IDTokenClaims(grant),
 		})
 		if err != nil {
-			return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not generate the id token", session.AuthorizationParameters, err)
+			return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not generate the id token", as.AuthorizationParameters, err)
 		}
 		redirectParams.idToken = idToken
 	}
 
-	return redirectResponse(ctx, c, session.AuthorizationParameters, redirectParams)
+	return redirectResponse(ctx, c, as.AuthorizationParameters, redirectParams)
 }
 
 func authorizeAuthnSession(ctx oidc.Context, session *goidc.AuthnSession) error {
-
 	if !session.ResponseType.Contains(goidc.ResponseTypeCode) {
 		// The client didn't request an authorization code to later exchange it
 		// for an access token, so we don't keep the session anymore.
@@ -335,9 +301,24 @@ func dpopThumbprint(ctx oidc.Context, as *goidc.AuthnSession) string {
 	// It could be an one-time self signed certificate the client wants to use for binding.
 }
 
-func tokenType(tkn *goidc.Token) goidc.TokenType {
-	if tkn.JWKThumbprint != "" {
-		return goidc.TokenTypeDPoP
+func registerClient(ctx oidc.Context, req request) (*goidc.Client, error) {
+	if req.RequestObject == "" {
+		return nil, goidc.NewError(goidc.ErrorCodeAccessDenied,
+			"asymmetric cryptography must be used to authenticate requests when using automatic registration")
 	}
-	return goidc.TokenTypeBearer
+
+	c, err := federation.Client(ctx, req.ClientID)
+	if err != nil {
+		return nil, err
+	}
+
+	if !slices.Contains(c.ClientRegistrationTypes, goidc.ClientRegistrationTypeAutomatic) {
+		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "the client is not registered for automatic registration")
+	}
+
+	if err := ctx.SaveClient(c); err != nil {
+		return nil, err
+	}
+
+	return c, nil
 }

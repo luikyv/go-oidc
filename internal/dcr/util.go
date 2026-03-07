@@ -4,8 +4,6 @@ import (
 	"crypto/subtle"
 	"slices"
 
-	"github.com/luikyv/go-oidc/internal/client"
-	"github.com/luikyv/go-oidc/internal/client/validation"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -22,7 +20,7 @@ func create(ctx oidc.Context, initialToken string, meta *goidc.ClientMeta) (resp
 		return response{}, err
 	}
 
-	if err := validation.Validate(ctx, meta); err != nil {
+	if err := Validate(ctx, meta); err != nil {
 		return response{}, err
 	}
 
@@ -44,7 +42,7 @@ func update(ctx oidc.Context, id, regToken string, meta *goidc.ClientMeta) (resp
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid metadata", err)
 	}
 
-	if err := validation.Validate(ctx, meta); err != nil {
+	if err := Validate(ctx, meta); err != nil {
 		return response{}, err
 	}
 
@@ -151,7 +149,7 @@ func registrationURI(ctx oidc.Context, id string) string {
 // protected returns a client corresponding to the id informed if the
 // the registration access token is valid.
 func protected(ctx oidc.Context, id, regToken string) (*goidc.Client, error) {
-	c, err := client.Client(ctx, id)
+	c, err := ctx.Client(id)
 	if err != nil {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not find the client", err)
 	}
@@ -165,15 +163,4 @@ func protected(ctx oidc.Context, id, regToken string) (*goidc.Client, error) {
 
 func isRegistrationAccessTokenValid(c *goidc.Client, token string) bool {
 	return subtle.ConstantTimeCompare([]byte(token), []byte(c.RegistrationToken)) == 1
-}
-
-func authnMethods(ctx oidc.Context, meta *goidc.ClientMeta) []goidc.AuthnMethod {
-	authnMethods := []goidc.AuthnMethod{meta.TokenAuthnMethod}
-	if ctx.TokenIntrospectionIsEnabled {
-		authnMethods = append(authnMethods, meta.TokenIntrospectionAuthnMethod)
-	}
-	if ctx.TokenRevocationIsEnabled {
-		authnMethods = append(authnMethods, meta.TokenRevocationAuthnMethod)
-	}
-	return authnMethods
 }

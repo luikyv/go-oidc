@@ -34,7 +34,7 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 		return response{}, err
 	}
 
-	c, err := client.Client(ctx, tokenEntity.ClientID)
+	c, err := ctx.Client(tokenEntity.ClientID)
 	if err != nil {
 		return response{}, err
 	}

@@ -337,16 +337,12 @@ func (ctx Context) SaveClient(client *goidc.Client) error {
 }
 
 func (ctx Context) Client(id string) (*goidc.Client, error) {
-	return ctx.ClientManager.Client(ctx, id)
-}
-
-func (ctx Context) StaticClient(id string) *goidc.Client {
 	for _, c := range ctx.StaticClients {
 		if c.ID == id {
-			return c
+			return c, nil
 		}
 	}
-	return nil
+	return ctx.ClientManager.Client(ctx, id)
 }
 
 func (ctx Context) DeleteClient(id string) error {
@@ -668,12 +664,12 @@ func (ctx Context) ExportableSubject(sub string, c *goidc.Client) string {
 	return ctx.GeneratePairwiseSubIDFunc(ctx, sub, c)
 }
 
-func (ctx Context) HandlePARSession(as *goidc.AuthnSession, c *goidc.Client) error {
-	if ctx.HandlePARSessionFunc == nil {
+func (ctx Context) PARHandleSession(as *goidc.AuthnSession, c *goidc.Client) error {
+	if ctx.PARHandleSessionFunc == nil {
 		return nil
 	}
 
-	return ctx.HandlePARSessionFunc(ctx.Request, as, c)
+	return ctx.PARHandleSessionFunc(ctx.Request, as, c)
 }
 
 func (ctx Context) ClientSecret() string {
@@ -996,14 +992,6 @@ func (ctx Context) OpenIDFedPublicJWKS() (goidc.JSONWebKeySet, error) {
 	}
 
 	return jwks.Public(), nil
-}
-
-func (ctx Context) OpenIDFedEntityJWKS(id string) (goidc.JSONWebKeySet, error) {
-	if ctx.OpenIDFedEntityJWKSFunc == nil {
-		return goidc.JSONWebKeySet{}, errors.New("fetch federation entity jwks function is not set")
-	}
-
-	return ctx.OpenIDFedEntityJWKSFunc(ctx, id)
 }
 
 func (ctx Context) OpenIDFedSign(claims any, opts *jose.SignerOptions, algs ...goidc.SignatureAlgorithm) (string, error) {

@@ -513,7 +513,7 @@ func WithPAR() Option {
 
 func WithPARHandleSessionFunc(f goidc.HandleSessionFunc) Option {
 	return func(p *Provider) error {
-		p.config.HandlePARSessionFunc = f
+		p.config.PARHandleSessionFunc = f
 		return nil
 	}
 }

@@ -26,7 +26,8 @@ type Token struct {
 	CreatedAtTimestamp   int                   `json:"created_at"`
 	ExpiresAtTimestamp   int                   `json:"expires_at"`
 	Format               TokenFormat           `json:"format"`
-	SigAlg               SignatureAlgorithm    `json:"signature_algorithm"`
+	Type                 TokenType             `json:"type"`
+	SigAlg               SignatureAlgorithm    `json:"signature_algorithm,omitempty"`
 	Scopes               string                `json:"scopes"`
 	AuthDetails          []AuthorizationDetail `json:"auth_details,omitempty"`
 	Resources            Resources             `json:"resources,omitempty"`

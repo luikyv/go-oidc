@@ -163,3 +163,29 @@ func validateClaims(ctx oidc.Context, claims jwt.Claims, client *goidc.Client) e
 
 	return nil
 }
+
+// jarTrustChain extracts the trust_chain header from a JAR request object.
+// Returns nil if parsing fails or the header is absent/malformed.
+func jarTrustChain(reqObject string, sigAlgs []goidc.SignatureAlgorithm) []string {
+	parsed, err := jwt.ParseSigned(reqObject, sigAlgs)
+	if err != nil || len(parsed.Headers) == 0 {
+		return nil
+	}
+	raw, ok := parsed.Headers[0].ExtraHeaders["trust_chain"]
+	if !ok {
+		return nil
+	}
+	items, ok := raw.([]any)
+	if !ok {
+		return nil
+	}
+	chain := make([]string, 0, len(items))
+	for _, v := range items {
+		s, ok := v.(string)
+		if !ok {
+			return nil
+		}
+		chain = append(chain, s)
+	}
+	return chain
+}

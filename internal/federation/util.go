@@ -13,28 +13,64 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/luikyv/go-oidc/internal/dcr"
 	"github.com/luikyv/go-oidc/internal/discovery"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func Client(ctx oidc.Context, id string) (*goidc.Client, error) {
-	if !slices.Contains(ctx.OpenIDFedClientRegTypes, goidc.ClientRegistrationTypeAutomatic) || !strutil.IsURL(id) {
-		return ctx.Client(id)
-	}
+type Options struct {
+	TrustChain []string
+}
 
-	c, err := ctx.Client(id)
+func Client(ctx oidc.Context, id string) (*goidc.Client, error) {
+	entityConfig, err := fetchEntityConfiguration(ctx, id)
 	if err != nil {
-		if errors.Is(err, goidc.ErrNotFound) {
-			return registerAutomatically(ctx, id)
-		}
 		return nil, err
 	}
 
-	if c.ExpiresAtTimestamp != 0 && timeutil.TimestampNow() > c.ExpiresAtTimestamp {
-		return registerAutomatically(ctx, id)
+	chain, err := buildTrustChain(ctx, entityConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return resolveClient(ctx, chain)
+}
+
+func resolveClient(ctx oidc.Context, chain trustChain) (*goidc.Client, error) {
+	config, err := chain.resolve()
+	if err != nil {
+		return nil, err
+	}
+
+	if config.Metadata.OpenIDClient == nil {
+		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "the entity is not an openid client")
+	}
+
+	if !slices.Contains(config.Metadata.OpenIDClient.ClientRegistrationTypes, goidc.ClientRegistrationTypeExplicit) {
+		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "the entity is not registered for explicit registration")
+	}
+
+	c := &goidc.Client{
+		ID:                    config.Subject,
+		FederationTrustAnchor: config.TrustAnchor,
+		CreatedAtTimestamp:    timeutil.TimestampNow(),
+		ExpiresAtTimestamp:    config.ExpiresAt,
+		ClientMeta:            *config.Metadata.OpenIDClient,
+	}
+
+	c.FederationTrustMarks, err = extractRequiredTrustMarks(ctx, config, c)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := ctx.OpenIDFedHandleClient(c); err != nil {
+		return nil, err
+	}
+
+	if err := dcr.Validate(ctx, config.Metadata.OpenIDClient); err != nil {
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid client metadata", err)
 	}
 
 	return c, nil

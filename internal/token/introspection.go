@@ -18,11 +18,20 @@ func IntrospectionInfo(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
 		return goidc.TokenInfo{}, err
 	}
 
-	return refreshTokenInfo(ctx, tkn)
+	// If the token is not found as an access token, try fetching it as a refresh token.
+	info, err = refreshTokenInfo(ctx, tkn)
+	if err == nil {
+		return info, nil
+	}
+	if !errors.Is(err, goidc.ErrNotFound) {
+		return goidc.TokenInfo{}, err
+	}
+
+	return goidc.TokenInfo{IsActive: false}, nil
 }
 
 func introspect(ctx oidc.Context, req queryRequest) (goidc.TokenInfo, error) {
-	c, err := client.Authenticated(ctx, client.TokenIntrospectionAuthnContext)
+	c, err := client.Authenticated(ctx, client.AuthnContextTokenIntrospection)
 	if err != nil {
 		return goidc.TokenInfo{}, err
 	}
@@ -60,7 +69,7 @@ func refreshTokenInfo(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
 	}
 
 	if grant.IsExpired() {
-		return goidc.TokenInfo{}, errors.New("token is expired")
+		return goidc.TokenInfo{IsActive: false}, nil
 	}
 
 	var cnf *goidc.TokenConfirmation

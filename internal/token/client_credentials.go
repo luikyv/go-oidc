@@ -6,12 +6,11 @@ import (
 
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func generateClientCredentialsGrant(ctx oidc.Context, req request) (response, error) {
-	c, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	c, err := client.Authenticated(ctx, client.AuthnContextToken)
 	if err != nil {
 		return response{}, err
 	}
@@ -27,30 +26,21 @@ func generateClientCredentialsGrant(ctx oidc.Context, req request) (response, er
 		}
 	}
 
-	grant := &goidc.Grant{
-		ID:                   ctx.GrantID(),
-		CreatedAtTimestamp:   timeutil.TimestampNow(),
+	grant, err := NewGrant(ctx, c, GrantOptions{
 		Type:                 goidc.GrantClientCredentials,
 		Subject:              c.ID,
 		ClientID:             c.ID,
 		Scopes:               strings.Join(scopes, " "),
+		AuthDetails:          req.authDetails,
+		Resources:            req.resources,
 		JWKThumbprint:        dpopThumbprint(ctx),
 		ClientCertThumbprint: tlsThumbprint(ctx),
-	}
-	if ctx.ResourceIndicatorsIsEnabled && req.resources != nil {
-		grant.Resources = req.resources
-	}
-	if ctx.RichAuthorizationIsEnabled && req.authDetails != nil {
-		grant.AuthDetails = req.authDetails
-	}
-
-	if err := ctx.HandleGrant(grant); err != nil {
+	})
+	if err != nil {
 		return response{}, err
 	}
 
-	tkn := newToken(ctx, grant, ctx.TokenOptions(grant, c))
-
-	tokenValue, err := issueToken(ctx, grant, tkn)
+	tkn, tokenValue, err := Issue(ctx, grant, c, nil)
 	if err != nil {
 		return response{}, err
 	}
@@ -58,7 +48,7 @@ func generateClientCredentialsGrant(ctx oidc.Context, req request) (response, er
 	return response{
 		AccessToken:          tokenValue,
 		ExpiresIn:            tkn.LifetimeSecs(),
-		TokenType:            tokenType(tkn),
+		TokenType:            tkn.Type,
 		AuthorizationDetails: tkn.AuthDetails,
 		Scopes:               tkn.Scopes,
 	}, nil

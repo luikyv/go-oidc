@@ -30,9 +30,9 @@ const (
 type AuthnContext string
 
 const (
-	TokenAuthnContext              AuthnContext = "token"
-	TokenIntrospectionAuthnContext AuthnContext = "token_introspection"
-	TokenRevocationAuthnContext    AuthnContext = "token_revocation"
+	AuthnContextToken              AuthnContext = "token"
+	AuthnContextTokenIntrospection AuthnContext = "token_introspection"
+	AuthnContextTokenRevocation    AuthnContext = "token_revocation"
 )
 
 // Authenticated fetches a client associated to the request and returns it
@@ -45,38 +45,37 @@ func Authenticated(ctx oidc.Context, authnCtx AuthnContext) (*goidc.Client, erro
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client", err)
 	}
 
-	client, err := Client(ctx, id)
+	c, err := ctx.Client(id)
 	if err != nil {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClient, "client not found", err)
 	}
 
-	if err := authenticate(ctx, client, authnCtx); err != nil {
+	if err := Authenticate(ctx, c, authnCtx); err != nil {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClient, "could not authenticate the client", err)
 	}
 
-	return client, nil
+	return c, nil
 }
 
-func authenticate(ctx oidc.Context, client *goidc.Client, authnCtx AuthnContext) error {
-
-	method := authnMethod(client, authnCtx)
+func Authenticate(ctx oidc.Context, c *goidc.Client, authnCtx AuthnContext) error {
+	method := authnMethod(c, authnCtx)
 	switch method {
 	case goidc.AuthnMethodNone:
 		return nil
 	case goidc.AuthnMethodSecretPost:
-		return authenticateSecretPost(ctx, client)
+		return authenticateSecretPost(ctx, c)
 	case goidc.AuthnMethodSecretBasic:
-		return authenticateSecretBasic(ctx, client)
+		return authenticateSecretBasic(ctx, c)
 	case goidc.AuthnMethodPrivateKeyJWT:
-		return authenticatePrivateKeyJWT(ctx, client, authnCtx)
+		return authenticatePrivateKeyJWT(ctx, c, authnCtx)
 	case goidc.AuthnMethodSecretJWT:
-		return authenticateSecretJWT(ctx, client, authnCtx)
+		return authenticateSecretJWT(ctx, c, authnCtx)
 	case goidc.AuthnMethodSelfSignedTLS:
-		return authenticateSelfSignedTLSCert(ctx, client)
+		return authenticateSelfSignedTLSCert(ctx, c)
 	case goidc.AuthnMethodTLS:
-		return authenticateTLSCert(ctx, client)
+		return authenticateTLSCert(ctx, c)
 	default:
-		return goidc.NewError(goidc.ErrorCodeInvalidClient, fmt.Sprintf("invalid authentication method %s for %s request", method, authnCtx))
+		return goidc.NewError(goidc.ErrorCodeInvalidClient, fmt.Sprintf("invalid authentication method %s for %s", method, authnCtx))
 	}
 }
 
@@ -84,14 +83,14 @@ func authenticate(ctx oidc.Context, client *goidc.Client, authnCtx AuthnContext)
 // the provided authentication context.
 // If the context-specific method is defined, it will be used. Otherwise, the
 // method for the token endpoint is returned.
-func authnMethod(client *goidc.Client, authnCtx AuthnContext) goidc.AuthnMethod {
+func authnMethod(c *goidc.Client, authnCtx AuthnContext) goidc.AuthnMethod {
 	switch {
-	case authnCtx == TokenRevocationAuthnContext && client.TokenRevocationAuthnMethod != "":
-		return client.TokenRevocationAuthnMethod
-	case authnCtx == TokenIntrospectionAuthnContext && client.TokenIntrospectionAuthnMethod != "":
-		return client.TokenIntrospectionAuthnMethod
+	case authnCtx == AuthnContextTokenRevocation && c.TokenRevocationAuthnMethod != "":
+		return c.TokenRevocationAuthnMethod
+	case authnCtx == AuthnContextTokenIntrospection && c.TokenIntrospectionAuthnMethod != "":
+		return c.TokenIntrospectionAuthnMethod
 	default:
-		return client.TokenAuthnMethod
+		return c.TokenAuthnMethod
 	}
 }
 
@@ -128,13 +127,13 @@ func validateSecret(c *goidc.Client, secret string) error {
 	return nil
 }
 
-func authenticatePrivateKeyJWT(ctx oidc.Context, client *goidc.Client, authnCtx AuthnContext) error {
+func authenticatePrivateKeyJWT(ctx oidc.Context, c *goidc.Client, authnCtx AuthnContext) error {
 	assertion, err := assertion(ctx)
 	if err != nil {
 		return err
 	}
 
-	sigAlgs := privateKeyJWTSigAlgs(ctx, client, authnCtx)
+	sigAlgs := authnSigAlgs(c, authnCtx, ctx.PrivateKeyJWTSigAlgs)
 	parsedAssertion, err := jwt.ParseSigned(assertion, sigAlgs)
 	if err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "could not parse the client assertion", err)
@@ -144,7 +143,7 @@ func authenticatePrivateKeyJWT(ctx oidc.Context, client *goidc.Client, authnCtx 
 		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client assertion header")
 	}
 
-	jwk, err := JWKMatchingHeader(ctx, client, parsedAssertion.Headers[0])
+	jwk, err := JWKMatchingHeader(ctx, c, parsedAssertion.Headers[0])
 	if err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client assertion", err)
 	}
@@ -158,11 +157,7 @@ func authenticatePrivateKeyJWT(ctx oidc.Context, client *goidc.Client, authnCtx 
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "could not parse the client assertion claims", err)
 	}
 
-	return areClaimsValid(ctx, claims, client, authnCtx)
-}
-
-func privateKeyJWTSigAlgs(ctx oidc.Context, client *goidc.Client, authnCtx AuthnContext) []goidc.SignatureAlgorithm {
-	return authnSigAlgs(client, authnCtx, ctx.PrivateKeyJWTSigAlgs)
+	return areClaimsValid(ctx, claims, c, authnCtx)
 }
 
 func JWKMatchingHeader(ctx oidc.Context, c *goidc.Client, header jose.Header) (goidc.JSONWebKey, error) {
@@ -181,13 +176,13 @@ func JWKMatchingHeader(ctx oidc.Context, c *goidc.Client, header jose.Header) (g
 	return jwk, nil
 }
 
-func authenticateSecretJWT(ctx oidc.Context, client *goidc.Client, authnCtx AuthnContext) error {
+func authenticateSecretJWT(ctx oidc.Context, c *goidc.Client, authnCtx AuthnContext) error {
 	assertion, err := assertion(ctx)
 	if err != nil {
 		return err
 	}
 
-	sigAlgs := secretJWTSigAlgs(ctx, client, authnCtx)
+	sigAlgs := authnSigAlgs(c, authnCtx, ctx.ClientSecretJWTSigAlgs)
 	parsedAssertion, err := jwt.ParseSigned(assertion, sigAlgs)
 	if err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient,
@@ -195,26 +190,22 @@ func authenticateSecretJWT(ctx oidc.Context, client *goidc.Client, authnCtx Auth
 	}
 
 	claims := jwt.Claims{}
-	if err := parsedAssertion.Claims([]byte(client.Secret), &claims); err != nil {
+	if err := parsedAssertion.Claims([]byte(c.Secret), &claims); err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient,
 			"could not parse the client assertion claims", err)
 	}
 
-	return areClaimsValid(ctx, claims, client, authnCtx)
+	return areClaimsValid(ctx, claims, c, authnCtx)
 }
 
-func secretJWTSigAlgs(ctx oidc.Context, client *goidc.Client, authnCtx AuthnContext) []goidc.SignatureAlgorithm {
-	return authnSigAlgs(client, authnCtx, ctx.ClientSecretJWTSigAlgs)
-}
-
-func authnSigAlgs(client *goidc.Client, authnCtx AuthnContext, defaultAlgs []goidc.SignatureAlgorithm) []goidc.SignatureAlgorithm {
+func authnSigAlgs(c *goidc.Client, authnCtx AuthnContext, defaultAlgs []goidc.SignatureAlgorithm) []goidc.SignatureAlgorithm {
 	switch {
-	case authnCtx == TokenAuthnContext && client.TokenAuthnSigAlg != "":
-		return []goidc.SignatureAlgorithm{client.TokenAuthnSigAlg}
-	case authnCtx == TokenIntrospectionAuthnContext && client.TokenIntrospectionAuthnMethod != "":
-		return []goidc.SignatureAlgorithm{client.TokenIntrospectionAuthnSigAlg}
-	case authnCtx == TokenRevocationAuthnContext && client.TokenRevocationAuthnSigAlg != "":
-		return []goidc.SignatureAlgorithm{client.TokenRevocationAuthnSigAlg}
+	case authnCtx == AuthnContextToken && c.TokenAuthnSigAlg != "":
+		return []goidc.SignatureAlgorithm{c.TokenAuthnSigAlg}
+	case authnCtx == AuthnContextTokenIntrospection && c.TokenIntrospectionAuthnMethod != "":
+		return []goidc.SignatureAlgorithm{c.TokenIntrospectionAuthnSigAlg}
+	case authnCtx == AuthnContextTokenRevocation && c.TokenRevocationAuthnSigAlg != "":
+		return []goidc.SignatureAlgorithm{c.TokenRevocationAuthnSigAlg}
 	default:
 		return defaultAlgs
 	}

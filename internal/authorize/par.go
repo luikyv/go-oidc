@@ -1,100 +1,158 @@
 package authorize
 
 import (
+	"errors"
+	"slices"
+
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/dpop"
+	"github.com/luikyv/go-oidc/internal/federation"
 	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func pushAuth(ctx oidc.Context, req request) (pushedResponse, error) {
+func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
+	// [RFC 9126 §2.1] The client_id is required.
+	if req.ClientID == "" {
+		return parResponse{}, goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client_id")
+	}
 
-	c, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	c, err := func() (*goidc.Client, error) {
+		if !ctx.OpenIDFedIsEnabled {
+			return client.Authenticated(ctx, client.AuthnContextToken)
+		}
+
+		if !slices.Contains(ctx.OpenIDFedClientRegTypes, goidc.ClientRegistrationTypeAutomatic) {
+			return client.Authenticated(ctx, client.AuthnContextToken)
+		}
+
+		if !strutil.IsURL(req.ClientID) {
+			return client.Authenticated(ctx, client.AuthnContextToken)
+		}
+
+		c, err := client.Authenticated(ctx, client.AuthnContextToken)
+		if err != nil {
+			if !errors.Is(err, goidc.ErrNotFound) {
+				return nil, err
+			}
+			return registerClientForPAR(ctx, req)
+		}
+
+		if c.ExpiresAtTimestamp != 0 && timeutil.TimestampNow() > c.ExpiresAtTimestamp {
+			return registerClientForPAR(ctx, req)
+		}
+
+		return c, nil
+	}()
 	if err != nil {
-		return pushedResponse{}, err
+		return parResponse{}, err
 	}
 
-	session, err := pushedAuthnSession(ctx, req, c)
+	as, err := func() (*goidc.AuthnSession, error) {
+		jar := ctx.JARIsEnabled && (ctx.JARIsRequired || c.JARIsRequired || req.RequestObject != "")
+		if jar {
+			if req.RequestObject == "" {
+				return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "request object is required")
+			}
+
+			jar, err := jarFromRequestObject(ctx, req.RequestObject, c)
+			if err != nil {
+				return nil, err
+			}
+
+			if err := validatePushedRequestWithJAR(ctx, req, jar, c); err != nil {
+				return nil, err
+			}
+
+			return &goidc.AuthnSession{
+				ID:                      ctx.AuthnSessionID(),
+				PushedAuthReqID:         parRequestURIPrefix + ctx.PARID(),
+				ClientID:                c.ID,
+				AuthorizationParameters: jar.AuthorizationParameters,
+				CreatedAtTimestamp:      timeutil.TimestampNow(),
+				ExpiresAtTimestamp:      timeutil.TimestampNow() + ctx.PARLifetimeSecs,
+				JWKThumbprint:           dpopThumbprintForPAR(ctx, req),
+				ClientCertThumbprint:    tlsThumbprint(ctx),
+				Store:                   make(map[string]any),
+			}, nil
+		}
+
+		if err := validateSimplePushedRequest(ctx, req, c); err != nil {
+			return nil, err
+		}
+
+		return &goidc.AuthnSession{
+			ID:                      ctx.AuthnSessionID(),
+			PushedAuthReqID:         parRequestURIPrefix + ctx.PARID(),
+			ClientID:                c.ID,
+			AuthorizationParameters: req.AuthorizationParameters,
+			CreatedAtTimestamp:      timeutil.TimestampNow(),
+			ExpiresAtTimestamp:      timeutil.TimestampNow() + ctx.PARLifetimeSecs,
+			JWKThumbprint:           dpopThumbprintForPAR(ctx, req),
+			ClientCertThumbprint:    tlsThumbprint(ctx),
+			Store:                   make(map[string]any),
+		}, nil
+	}()
 	if err != nil {
-		return pushedResponse{}, err
+		return parResponse{}, err
 	}
 
-	if err := ctx.HandlePARSession(session, c); err != nil {
-		return pushedResponse{}, err
+	if err := ctx.PARHandleSession(as, c); err != nil {
+		return parResponse{}, err
 	}
 
-	if err := ctx.SaveAuthnSession(session); err != nil {
-		return pushedResponse{}, err
+	if err := ctx.SaveAuthnSession(as); err != nil {
+		return parResponse{}, err
 	}
 
-	return pushedResponse{
-		RequestURI: session.PushedAuthReqID,
+	return parResponse{
+		RequestURI: as.PushedAuthReqID,
 		ExpiresIn:  ctx.PARLifetimeSecs,
 	}, nil
 }
 
-// pushedAuthnSession builds a new authentication session and saves it.
-func pushedAuthnSession(ctx oidc.Context, req request, c *goidc.Client) (*goidc.AuthnSession, error) {
-	var session *goidc.AuthnSession
-	var err error
-	jar := ctx.JARIsEnabled && (ctx.JARIsRequired || c.JARIsRequired || req.RequestObject != "")
-	if jar {
-		session, err = pushedAuthnSessionWithJAR(ctx, req, c)
-	} else {
-		session, err = simplePushedAuthnSession(ctx, req, c)
+func dpopThumbprintForPAR(ctx oidc.Context, req request) string {
+	if !ctx.DPoPIsEnabled {
+		return ""
 	}
+	if dpopJWT, ok := dpop.JWT(ctx); ctx.DPoPIsEnabled && ok {
+		return dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)
+	}
+	return req.AuthorizationParameters.DPoPJKT
+}
+
+func tlsThumbprint(ctx oidc.Context) string {
+	if clientCert, err := ctx.ClientCert(); ctx.MTLSTokenBindingIsEnabled && err == nil {
+		return hashutil.Thumbprint(string(clientCert.Raw))
+	}
+	return ""
+}
+
+func registerClientForPAR(ctx oidc.Context, req request) (*goidc.Client, error) {
+	c, err := federation.Client(ctx, req.ClientID)
 	if err != nil {
 		return nil, err
 	}
 
-	session.PushedAuthReqID = parRequestURIPrefix + ctx.PARID()
-	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.PARLifetimeSecs
+	if c.TokenAuthnMethod != goidc.AuthnMethodPrivateKeyJWT && c.TokenAuthnMethod != goidc.AuthnMethodSelfSignedTLS {
+		return nil, goidc.NewError(goidc.ErrorCodeAccessDenied,
+			"asymmetric cryptography must be used to authenticate requests when using automatic registration")
+	}
 
-	setPoPForPAR(ctx, session)
+	if !slices.Contains(c.ClientRegistrationTypes, goidc.ClientRegistrationTypeAutomatic) {
+		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "the client is not registered for automatic registration")
+	}
 
-	return session, nil
-}
-
-func simplePushedAuthnSession(ctx oidc.Context, req request, client *goidc.Client) (*goidc.AuthnSession, error) {
-	if err := validateSimplePushedRequest(ctx, req, client); err != nil {
+	if err := client.Authenticate(ctx, c, client.AuthnContextToken); err != nil {
 		return nil, err
 	}
 
-	session := newAuthnSession(ctx, req.AuthorizationParameters, client)
-	return session, nil
-}
-
-func pushedAuthnSessionWithJAR(ctx oidc.Context, req request, client *goidc.Client) (*goidc.AuthnSession, error) {
-	if req.RequestObject == "" {
-		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "request object is required")
-	}
-
-	jar, err := jarFromRequestObject(ctx, req.RequestObject, client)
-	if err != nil {
+	if err := ctx.SaveClient(c); err != nil {
 		return nil, err
 	}
 
-	if err := validatePushedRequestWithJAR(ctx, req, jar, client); err != nil {
-		return nil, err
-	}
-
-	session := newAuthnSession(ctx, jar.AuthorizationParameters, client)
-	return session, nil
-}
-
-func setPoPForPAR(ctx oidc.Context, session *goidc.AuthnSession) {
-	if ctx.DPoPIsEnabled {
-		session.JWKThumbprint = session.DPoPJKT
-		dpopJWT, ok := dpop.JWT(ctx)
-		if ok {
-			session.JWKThumbprint = dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)
-		}
-	}
-
-	clientCert, err := ctx.ClientCert()
-	if ctx.MTLSTokenBindingIsEnabled && err == nil {
-		session.ClientCertThumbprint = hashutil.Thumbprint(string(clientCert.Raw))
-	}
+	return c, nil
 }

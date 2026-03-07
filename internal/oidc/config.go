@@ -148,7 +148,7 @@ type Configuration struct {
 	// they were pushed.
 	PARIsRequired        bool
 	PAREndpoint          string
-	HandlePARSessionFunc goidc.HandleSessionFunc
+	PARHandleSessionFunc goidc.HandleSessionFunc
 	PARLifetimeSecs      int
 	// PARAllowUnregisteredRedirectURI indicates whether the redirect URIs
 	// informed during PAR must be previously registered or not.
@@ -221,8 +221,6 @@ type Configuration struct {
 	OpenIDFedOrganizationName       string
 	OpenIDFedHTTPClientFunc         goidc.HTTPClientFunc
 	OpenIDFedHandleClientFunc       goidc.HandleClientFunc
-	OpenIDFedClientFunc             func(ctx Context, id string) (*goidc.Client, error)
-	OpenIDFedEntityJWKSFunc         func(ctx Context, id string) (goidc.JSONWebKeySet, error)
 
 	LogoutIsEnabled             bool
 	LogoutEndpoint              string

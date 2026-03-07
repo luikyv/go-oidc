@@ -16,7 +16,7 @@ func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) 
 		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid refresh token")
 	}
 
-	c, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	c, err := client.Authenticated(ctx, client.AuthnContextToken)
 	if err != nil {
 		return response{}, err
 	}
@@ -51,10 +51,11 @@ func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) 
 		return response{}, err
 	}
 
-	tkn := newToken(ctx, grant, ctx.TokenOptions(grant, c))
-	narrowToken(ctx, tkn, req)
-
-	tokenValue, err := issueToken(ctx, grant, tkn)
+	tkn, tokenValue, err := Issue(ctx, grant, c, &Options{
+		Scopes:      req.scopes,
+		AuthDetails: req.authDetails,
+		Resources:   req.resources,
+	})
 	if err != nil {
 		return response{}, err
 	}
@@ -62,14 +63,18 @@ func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) 
 	tokenResp := response{
 		AccessToken:          tokenValue,
 		ExpiresIn:            tkn.LifetimeSecs(),
-		TokenType:            tokenType(tkn),
+		TokenType:            tkn.Type,
 		Scopes:               tkn.Scopes,
 		AuthorizationDetails: tkn.AuthDetails,
 		RefreshToken:         refreshToken,
 	}
 
 	if strutil.ContainsOpenID(tkn.Scopes) {
-		tokenResp.IDToken, err = MakeIDToken(ctx, c, grant, newIDTokenOptions(grant))
+		tokenResp.IDToken, err = MakeIDToken(ctx, c, IDTokenOptions{
+			Subject: grant.Subject,
+			Nonce:   grant.Nonce,
+			Claims:  ctx.IDTokenClaims(grant),
+		})
 		if err != nil {
 			return response{}, fmt.Errorf("could not generate id token during refresh token grant: %w", err)
 		}
@@ -153,7 +158,6 @@ func validateRefreshTokenBinding(ctx oidc.Context, c *goidc.Client, cnf goidc.To
 }
 
 func validateRefreshTokenPoP(ctx oidc.Context, c *goidc.Client, cnf goidc.TokenConfirmation) error {
-
 	// Proof of possession validation is not needed during the refresh token
 	// for confidential clients, as they are already authenticated.
 	if !c.IsPublic() {
@@ -161,21 +165,4 @@ func validateRefreshTokenPoP(ctx oidc.Context, c *goidc.Client, cnf goidc.TokenC
 	}
 
 	return ValidatePoP(ctx, "", cnf)
-}
-
-func issueRefreshToken(ctx oidc.Context, c *goidc.Client, grant *goidc.Grant) {
-	if !slices.Contains(ctx.GrantTypes, goidc.GrantRefreshToken) {
-		return
-	}
-
-	if !slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) {
-		return
-	}
-
-	if !ctx.ShouldIssueRefreshToken(c, grant) {
-		return
-	}
-
-	grant.RefreshToken = ctx.RefreshToken()
-	grant.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
 }

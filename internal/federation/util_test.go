@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/luikyv/go-oidc/internal/dcr"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -80,7 +81,7 @@ func TestClient(t *testing.T) {
 		t.Errorf("client.ID = %s, want %s", client.ID, clientID)
 	}
 
-	if !client.IsFederated {
+	if client.FederationTrustAnchor == "" {
 		t.Error("the client is from a federation")
 	}
 }
@@ -323,7 +324,7 @@ func TestExplicitRegistration_TrustChainProvided(t *testing.T) {
 	}
 
 	// When.
-	st, err := registerExplicitlyWithChainStatements(ctx, chainStatements)
+	st, err := registerChainStatements(ctx, chainStatements)
 
 	// Then.
 	if err != nil {
@@ -370,7 +371,7 @@ func TestExplicitRegistration_EntityConfigurationProvided(t *testing.T) {
 	}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
 
 	// When.
-	st, err := registerExplicitlyWithEntityConfiguration(ctx, entityConfig)
+	st, err := registerEntityConfiguration(ctx, entityConfig)
 
 	// Then.
 	if err != nil {
@@ -599,7 +600,6 @@ func setUp(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Co
 	ctx.OpenIDFedSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
 	ctx.OpenIDFedDefaultSigAlg = goidc.RS256
 	ctx.OpenIDFedTrustChainMaxDepth = 5
-	ctx.OpenIDFedClientFunc = Client
 	ctx.OpenIDFedClientRegTypes = []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeAutomatic, goidc.ClientRegistrationTypeExplicit}
 	ctx.HTTPClientFunc = func(ctx context.Context) *http.Client {
 		return &http.Client{
@@ -623,70 +623,6 @@ func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 		return f(), nil
 	}
 	return nil, errors.ErrUnsupported
-}
-
-func TestClient_NotAutomaticRegistration_ReturnsFromClientManager(t *testing.T) {
-	// Given: automatic registration not enabled.
-	ctx := setUp(t, nil)
-	ctx.OpenIDFedClientRegTypes = []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeExplicit}
-	existingClient := &goidc.Client{ID: "non-url-client"}
-	ctx.SaveClient(existingClient)
-
-	// When.
-	client, err := Client(ctx, "non-url-client")
-
-	// Then.
-	if err != nil {
-		t.Fatal(err)
-	}
-	if client.ID != "non-url-client" {
-		t.Errorf("client.ID = %s, want %s", client.ID, "non-url-client")
-	}
-}
-
-func TestClient_ExpiredClient_ReregistersAutomatically(t *testing.T) {
-	// Given: existing client is expired.
-	ctx := setUp(t, nil)
-	expiredClient := &goidc.Client{
-		ID:                 clientID,
-		ExpiresAtTimestamp: timeutil.TimestampNow() - 1000,
-	}
-	ctx.SaveClient(expiredClient)
-
-	// When.
-	client, err := Client(ctx, clientID)
-
-	// Then.
-	if err != nil {
-		t.Fatal(err)
-	}
-	if client.ID != clientID {
-		t.Errorf("client.ID = %s, want %s", client.ID, clientID)
-	}
-	if !client.IsFederated {
-		t.Error("client should be federated after re-registration")
-	}
-}
-
-func TestClient_NonExpiredClient_ReturnsExisting(t *testing.T) {
-	// Given: existing client is not expired.
-	ctx := setUp(t, nil)
-	existingClient := &goidc.Client{
-		ID:                 clientID,
-		ExpiresAtTimestamp: timeutil.TimestampNow() + 10000,
-	}
-	ctx.SaveClient(existingClient)
-
-	// When.
-	client, err := Client(ctx, clientID)
-
-	// Then.
-	if err != nil {
-		t.Fatal(err)
-	}
-	if client.IsFederated {
-		t.Error("existing client should be returned as-is, not re-registered")
-	}
 }
 
 func TestFetchEntityStatement_NonOKStatus(t *testing.T) {
@@ -1605,7 +1541,7 @@ func TestRegisterExplicitlyWithEntityConfiguration_WithTrustChainHeader(t *testi
 		WithHeader("trust_chain", chainStatements))
 
 	// When.
-	st, err := registerExplicitlyWithEntityConfiguration(ctx, entityConfig)
+	st, err := registerEntityConfiguration(ctx, entityConfig)
 
 	// Then.
 	if err != nil {
@@ -1640,7 +1576,7 @@ func TestRegisterExplicitlyWithEntityConfiguration_InvalidEntityConfiguration(t 
 	}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
 
 	// When.
-	_, err := registerExplicitlyWithEntityConfiguration(ctx, entityConfig)
+	_, err := registerEntityConfiguration(ctx, entityConfig)
 
 	// Then.
 	if err == nil {
@@ -1654,7 +1590,7 @@ func TestRegisterExplicitlyWithChainStatements_InvalidChain(t *testing.T) {
 	chainStatements := []string{"single_statement"}
 
 	// When.
-	_, err := registerExplicitlyWithChainStatements(ctx, chainStatements)
+	_, err := registerChainStatements(ctx, chainStatements)
 
 	// Then.
 	if err == nil {
@@ -2657,7 +2593,7 @@ func TestRegisterExplicitlyWithTrustChain_NoOpenIDClientMetadata(t *testing.T) {
 	}
 
 	// When.
-	_, err := registerExplicitlyWithTrustChain(ctx, invalidChain)
+	_, err := registerClientTrustChain(ctx, invalidChain)
 
 	// Then.
 	if err == nil {
@@ -2817,18 +2753,13 @@ func TestParseTrustChain_SubjectMismatch(t *testing.T) {
 func TestRegister_InvalidClientMetadata(t *testing.T) {
 	// Given: client with invalid metadata (invalid redirect_uris).
 	ctx := setUp(t, nil)
-	clientConfig := entityStatement{
-		Subject: clientID,
-		Metadata: metadata{
-			OpenIDClient: &goidc.ClientMeta{
-				ClientRegistrationTypes: []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeAutomatic},
-				RedirectURIs:            []string{"invalid-uri"}, // Invalid URI.
-			},
-		},
+	meta := &goidc.ClientMeta{
+		ClientRegistrationTypes: []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeAutomatic},
+		RedirectURIs:            []string{"invalid-uri"}, // Invalid URI.
 	}
 
 	// When.
-	_, err := register(ctx, clientConfig, goidc.ClientRegistrationTypeAutomatic)
+	err := dcr.Validate(ctx, meta)
 
 	// Then.
 	if err == nil {

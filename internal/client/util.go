@@ -14,15 +14,8 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func Client(ctx oidc.Context, id string) (*goidc.Client, error) {
-	if client := ctx.StaticClient(id); client != nil {
-		return client, nil
-	}
-
-	if ctx.OpenIDFedIsEnabled {
-		return federation.Client(ctx, id)
-	}
-	return ctx.Client(id)
+type Options struct {
+	TrustChain []string
 }
 
 func AreScopesAllowed(ctx oidc.Context, c *goidc.Client, requestedScopes string) bool {
@@ -95,7 +88,7 @@ func JWKS(ctx oidc.Context, c *goidc.Client) (*goidc.JSONWebKeySet, error) {
 		return jwks, nil
 	}
 
-	if c.IsFederated && c.SignedJWKSURI != "" {
+	if c.SignedJWKSURI != "" {
 		jwks, err := fetchSignedJWKS(ctx, c)
 		if err != nil {
 			return nil, err
@@ -140,7 +133,7 @@ func fetchJWKS(ctx oidc.Context, c *goidc.Client) (*goidc.JSONWebKeySet, error) 
 
 func fetchSignedJWKS(ctx oidc.Context, c *goidc.Client) (*goidc.JSONWebKeySet, error) {
 	// Fetch the client's entity configuration to get the verification keys.
-	entityJWKS, err := ctx.OpenIDFedEntityJWKS(c.ID)
+	entityJWKS, err := federation.FetchEntityConfigurationJWKS(ctx, c.ID)
 	if err != nil {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "could not fetch the client entity jwks", err)
 	}

@@ -19,17 +19,14 @@ import (
 func TestMakeIDToken(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.IDTokenClaimsFunc = func(_ context.Context, _ *goidc.Grant) map[string]any {
-		return map[string]any{"random_claim": "random_value"}
-	}
 	client, _ := oidctest.NewClient(t)
-	grant := goidc.Grant{Subject: "random_subject", ClientID: client.ID}
 	idTokenOptions := token.IDTokenOptions{
 		Subject: "random_subject",
+		Claims:  map[string]any{"random_claim": "random_value"},
 	}
 
 	// When.
-	idToken, err := token.MakeIDToken(ctx, client, &grant, idTokenOptions)
+	idToken, err := token.MakeIDToken(ctx, client, idTokenOptions)
 
 	// Then.
 	if err != nil {
@@ -63,19 +60,16 @@ func TestMakeIDToken_Unsigned(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	ctx.IDTokenSigAlgs = append(ctx.IDTokenSigAlgs, goidc.None)
-	ctx.IDTokenClaimsFunc = func(_ context.Context, _ *goidc.Grant) map[string]any {
-		return map[string]any{"random_claim": "random_value"}
-	}
 
-	client, _ := oidctest.NewClient(t)
-	client.IDTokenSigAlg = goidc.None
-	grant := goidc.Grant{Subject: "random_subject", ClientID: client.ID}
+	c, _ := oidctest.NewClient(t)
+	c.IDTokenSigAlg = goidc.None
 	idTokenOptions := token.IDTokenOptions{
 		Subject: "random_subject",
+		Claims:  map[string]any{"random_claim": "random_value"},
 	}
 
 	// When.
-	idToken, err := token.MakeIDToken(ctx, client, &grant, idTokenOptions)
+	idToken, err := token.MakeIDToken(ctx, c, idTokenOptions)
 
 	// Then.
 	if err != nil {
@@ -91,7 +85,7 @@ func TestMakeIDToken_Unsigned(t *testing.T) {
 	wantedClaims := map[string]any{
 		"iss":          ctx.Issuer(),
 		"sub":          idTokenOptions.Subject,
-		"aud":          client.ID,
+		"aud":          c.ID,
 		"random_claim": "random_value",
 		"iat":          float64(now),
 		"exp":          float64(now + ctx.IDTokenLifetimeSecs),
@@ -118,13 +112,12 @@ func TestMakeIDToken_PairwiseSub(t *testing.T) {
 	client.SubIdentifierType = goidc.SubIdentifierPairwise
 	client.SectorIdentifierURI = "https://example.com/redirect_uris.json"
 
-	grant := goidc.Grant{Subject: "random_subject", ClientID: client.ID}
 	idTokenOptions := token.IDTokenOptions{
 		Subject: "random_subject",
 	}
 
 	// When.
-	idToken, err := token.MakeIDToken(ctx, client, &grant, idTokenOptions)
+	idToken, err := token.MakeIDToken(ctx, client, idTokenOptions)
 
 	// Then.
 	if err != nil {
@@ -187,7 +180,7 @@ func TestMakeToken_JWTToken(t *testing.T) {
 	}
 
 	// When.
-	tokenValue, err := token.Make(ctx, tkn, &grant)
+	tokenValue, err := token.MakeAccessToken(ctx, tkn, &grant)
 
 	// Then.
 	if err != nil {
@@ -249,7 +242,7 @@ func TestMakeToken_OpaqueToken(t *testing.T) {
 	}
 
 	// When.
-	tokenValue, err := token.Make(ctx, tkn, &grant)
+	tokenValue, err := token.MakeAccessToken(ctx, tkn, &grant)
 
 	// Then.
 	if err != nil {
@@ -280,13 +273,12 @@ func TestMakeIDToken_Encrypted(t *testing.T) {
 		Keys: []goidc.JSONWebKey{encJWK.Public()},
 	}
 
-	grant := goidc.Grant{Subject: "random_subject", ClientID: client.ID}
 	idTokenOptions := token.IDTokenOptions{
 		Subject: "random_subject",
 	}
 
 	// When.
-	idToken, err := token.MakeIDToken(ctx, client, &grant, idTokenOptions)
+	idToken, err := token.MakeIDToken(ctx, client, idTokenOptions)
 
 	// Then.
 	if err != nil {
@@ -369,7 +361,7 @@ func TestMakeToken_JWTToken_WithConfirmation(t *testing.T) {
 	}
 
 	// When.
-	tokenValue, err := token.Make(ctx, tkn, &grant)
+	tokenValue, err := token.MakeAccessToken(ctx, tkn, &grant)
 
 	// Then.
 	if err != nil {
@@ -428,7 +420,7 @@ func TestMakeToken_UnsignedJWTToken(t *testing.T) {
 	}
 
 	// When.
-	tokenValue, err := token.Make(ctx, tkn, &grant)
+	tokenValue, err := token.MakeAccessToken(ctx, tkn, &grant)
 
 	// Then.
 	if err != nil {
