@@ -174,9 +174,7 @@ func (a authenticator) login(w http.ResponseWriter, r *http.Request, as *goidc.A
 		return goidc.StatusSuccess, nil
 	}
 
-	_ = r.ParseForm()
-
-	login := r.PostFormValue(loginFormParam)
+	login := r.PostFormValue(loginFormParam) //nolint:gosec
 	if login == "" {
 		return a.renderPage(w, "login.html", as)
 	}
@@ -185,8 +183,8 @@ func (a authenticator) login(w http.ResponseWriter, r *http.Request, as *goidc.A
 		return goidc.StatusFailure, errors.New("consent not granted")
 	}
 
-	username := r.PostFormValue(usernameFormParam)
-	password := r.PostFormValue(passwordFormParam)
+	username := r.PostFormValue(usernameFormParam) //nolint:gosec
+	password := r.PostFormValue(passwordFormParam) //nolint:gosec
 	if password != correctPassword {
 		return a.renderError(w, "login.html", as, fmt.Sprintf("invalid password, try '%s'", correctPassword))
 	}

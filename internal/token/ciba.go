@@ -88,6 +88,7 @@ func NotifyCIBAGrant(ctx oidc.Context, authReqID string) error {
 		idTokenOpts := IDTokenOptions{
 			Subject: grant.Subject,
 			Nonce:   grant.Nonce,
+			Claims:  ctx.IDTokenClaims(grant),
 		}
 		if c.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePush {
 			idTokenOpts.AuthReqID = as.PushedAuthReqID
@@ -229,6 +230,7 @@ func generateCIBAGrant(ctx oidc.Context, req request) (response, error) {
 		resp.IDToken, err = MakeIDToken(ctx, c, IDTokenOptions{
 			Subject: grant.Subject,
 			Nonce:   grant.Nonce,
+			Claims:  ctx.IDTokenClaims(grant),
 		})
 		if err != nil {
 			return response{}, fmt.Errorf("could not generate id token for the ciba grant: %w", err)
