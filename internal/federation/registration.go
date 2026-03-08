@@ -2,10 +2,12 @@ package federation
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/timeutil"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func registerEntityConfiguration(ctx oidc.Context, signedStatement string) (string, error) {
@@ -20,7 +22,7 @@ func registerEntityConfiguration(ctx oidc.Context, signedStatement string) (stri
 		// [OpenID Fed §12.2.2] The config in the trust chain header is only used to establish trust.
 		// The config that must be used for all other purposes is the subject's config.
 		chainHeader[0] = entityConfig
-		return registerClientTrustChain(ctx, chainHeader)
+		return registerClientExplicitly(ctx, chainHeader)
 	}
 
 	chain, err := buildTrustChain(ctx, entityConfig)
@@ -28,7 +30,7 @@ func registerEntityConfiguration(ctx oidc.Context, signedStatement string) (stri
 		return "", err
 	}
 
-	return registerClientTrustChain(ctx, chain)
+	return registerClientExplicitly(ctx, chain)
 }
 
 func registerChainStatements(ctx oidc.Context, chainStatements []string) (string, error) {
@@ -37,13 +39,17 @@ func registerChainStatements(ctx oidc.Context, chainStatements []string) (string
 		return "", err
 	}
 
-	return registerClientTrustChain(ctx, chain)
+	return registerClientExplicitly(ctx, chain)
 }
 
-func registerClientTrustChain(ctx oidc.Context, chain trustChain) (string, error) {
+func registerClientExplicitly(ctx oidc.Context, chain trustChain) (string, error) {
 	c, err := resolveClient(ctx, chain)
 	if err != nil {
 		return "", err
+	}
+
+	if !slices.Contains(c.ClientRegistrationTypes, goidc.ClientRegistrationTypeExplicit) {
+		return "", goidc.NewError(goidc.ErrorCodeInvalidRequest, "the entity is not registered for explicit registration")
 	}
 
 	if err := ctx.SaveClient(c); err != nil {

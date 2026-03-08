@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"mime"
 	"net/http"
 	"net/url"
@@ -20,11 +21,37 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
+func FetchEntityConfigurationJWKS(ctx oidc.Context, id string) (goidc.JSONWebKeySet, error) {
+	config, err := fetchEntityConfiguration(ctx, id)
+	if err != nil {
+		return goidc.JSONWebKeySet{}, err
+	}
+
+	return config.JWKS, nil
+}
+
 type Options struct {
 	TrustChain []string
 }
 
-func Client(ctx oidc.Context, id string) (*goidc.Client, error) {
+func Client(ctx oidc.Context, id string, opts *Options) (*goidc.Client, error) {
+	if opts == nil {
+		opts = &Options{}
+	}
+
+	if opts.TrustChain != nil {
+		chain, err := parseTrustChain(ctx, opts.TrustChain)
+		if err != nil {
+			return nil, err
+		}
+
+		if chain.subjectConfig().Subject != id {
+			return nil, goidc.NewError(goidc.ErrorCodeInvalidTrustChain, "the trust chain subject does not match the client id")
+		}
+
+		return resolveClient(ctx, chain)
+	}
+
 	entityConfig, err := fetchEntityConfiguration(ctx, id)
 	if err != nil {
 		return nil, err
@@ -46,10 +73,6 @@ func resolveClient(ctx oidc.Context, chain trustChain) (*goidc.Client, error) {
 
 	if config.Metadata.OpenIDClient == nil {
 		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "the entity is not an openid client")
-	}
-
-	if !slices.Contains(config.Metadata.OpenIDClient.ClientRegistrationTypes, goidc.ClientRegistrationTypeExplicit) {
-		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "the entity is not registered for explicit registration")
 	}
 
 	c := &goidc.Client{
@@ -74,15 +97,6 @@ func resolveClient(ctx oidc.Context, chain trustChain) (*goidc.Client, error) {
 	}
 
 	return c, nil
-}
-
-func FetchEntityConfigurationJWKS(ctx oidc.Context, id string) (goidc.JSONWebKeySet, error) {
-	config, err := fetchEntityConfiguration(ctx, id)
-	if err != nil {
-		return goidc.JSONWebKeySet{}, err
-	}
-
-	return config.JWKS, nil
 }
 
 func newEntityConfiguration(ctx oidc.Context) (string, error) {
@@ -197,18 +211,21 @@ func buildTrustChainFromConfig(ctx oidc.Context, entityConfig entityStatement, e
 
 	var errs error
 	for _, authorityID := range entityConfig.AuthorityHints {
+		branchMap := maps.Clone(entityMap)
 
-		if _, exists := entityMap[authorityID]; exists {
-			return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "circular dependency detected in trust chain for entity "+entityConfig.Subject, ErrCircularDependency)
+		if _, exists := branchMap[authorityID]; exists {
+			errs = errors.Join(errs, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "circular dependency detected in trust chain for entity "+entityConfig.Subject, ErrCircularDependency))
+			continue
 		}
-		entityMap[authorityID] = struct{}{}
+		branchMap[authorityID] = struct{}{}
 
 		authorityConfig, err := fetchAuthorityConfiguration(ctx, authorityID)
 		if err != nil {
-			return nil, err
+			errs = errors.Join(errs, err)
+			continue
 		}
 
-		chain, err := buildTrustChainBranch(ctx, entityConfig, authorityConfig, entityMap)
+		chain, err := buildTrustChainBranch(ctx, entityConfig, authorityConfig, branchMap)
 		if err == nil {
 			return chain, nil
 		}
@@ -285,7 +302,7 @@ func fetchSubordinateStatement(ctx oidc.Context, sub string, authority entitySta
 	}
 
 	fetchEndpoint := authority.Metadata.FederationAuthority.FetchEndpoint
-	if _, err := url.Parse(fetchEndpoint); err != nil {
+	if _, err := url.Parse(fetchEndpoint); fetchEndpoint == "" || err != nil {
 		return entityStatement{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("'federation_fetch_endpoint' of %s is not a valid uri", authority.Issuer), err)
 	}
 
@@ -636,28 +653,30 @@ func parseEntityStatement(ctx oidc.Context, signedStatement string, opts parseOp
 	return statement, nil
 }
 
-func extractRequiredTrustMarks(ctx oidc.Context, config entityStatement, c *goidc.Client) ([]goidc.TrustMark, error) {
-	trustMarks := ctx.OpenIDFedRequiredTrustMarks(c)
-	for _, requiredMark := range trustMarks {
+func extractRequiredTrustMarks(ctx oidc.Context, config entityStatement, c *goidc.Client) ([]string, error) {
+	trustMarkTypes := ctx.OpenIDFedRequiredTrustMarks(c)
+	trustMarks := make([]string, 0, len(trustMarkTypes))
+	for _, trustMarkType := range trustMarkTypes {
 
-		var signedMark string
+		var trustMark string
 		for _, mark := range config.TrustMarks {
-			if mark.Type == requiredMark {
-				signedMark = mark.TrustMark
+			if mark.Type == trustMarkType {
+				trustMark = mark.TrustMark
 				break
 			}
 		}
 
-		if signedMark == "" {
-			return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("the entity %s does not have the trust mark %s", config.Issuer, requiredMark))
+		if trustMark == "" {
+			return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("the entity %s does not have the trust mark %s", config.Issuer, trustMarkType))
 		}
 
-		if _, err := parseTrustMark(ctx, signedMark, parseTrustMarkOptions{
+		if _, err := parseTrustMark(ctx, trustMark, parseTrustMarkOptions{
 			subject:  config.Subject,
-			markType: requiredMark,
+			markType: trustMarkType,
 		}); err != nil {
 			return nil, err
 		}
+		trustMarks = append(trustMarks, trustMark)
 	}
 	return trustMarks, nil
 }

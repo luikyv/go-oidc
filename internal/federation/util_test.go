@@ -70,7 +70,7 @@ func TestClient(t *testing.T) {
 	ctx := setUp(t, nil)
 
 	// When.
-	client, err := Client(ctx, clientID)
+	client, err := Client(ctx, clientID, nil)
 
 	// Then.
 	if err != nil {
@@ -94,7 +94,7 @@ func TestClient_TrustMark(t *testing.T) {
 	}
 
 	// When.
-	client, err := Client(ctx, clientID)
+	client, err := Client(ctx, clientID, nil)
 
 	// Then.
 	if err != nil {
@@ -151,7 +151,7 @@ func TestClient_InvalidTrustMarkSignature(t *testing.T) {
 	}
 
 	// When.
-	_, err := Client(ctx, clientID)
+	_, err := Client(ctx, clientID, nil)
 
 	// Then.
 	if err == nil {
@@ -204,7 +204,7 @@ func TestClient_InvalidTrustMarkID(t *testing.T) {
 	}
 
 	// When.
-	_, err := Client(ctx, clientID)
+	_, err := Client(ctx, clientID, nil)
 
 	// Then.
 	if err == nil {
@@ -265,7 +265,7 @@ func TestClient_InvalidMetadataPolicy(t *testing.T) {
 	ctx := setUp(t, responses)
 
 	// When.
-	_, err := Client(ctx, clientID)
+	_, err := Client(ctx, clientID, nil)
 
 	// Then.
 	if err == nil {
@@ -303,7 +303,7 @@ func TestClient_CircularDependency(t *testing.T) {
 	ctx := setUp(t, responses)
 
 	// When.
-	_, err := Client(ctx, clientID)
+	_, err := Client(ctx, clientID, nil)
 
 	// Then.
 	if err == nil {
@@ -1431,7 +1431,7 @@ func TestBuildTrustChain_MaxDepthExceeded(t *testing.T) {
 	ctx.OpenIDFedTrustChainMaxDepth = 1 // Very low depth.
 
 	// When: client -> intermediary -> trust anchor (depth = 2).
-	_, err := Client(ctx, clientID)
+	_, err := Client(ctx, clientID, nil)
 
 	// Then.
 	if err == nil {
@@ -1467,7 +1467,7 @@ func TestRegister_NotOpenIDClient(t *testing.T) {
 	ctx := setUp(t, responses)
 
 	// When.
-	_, err := Client(ctx, clientID)
+	_, err := Client(ctx, clientID, nil)
 
 	// Then.
 	if err == nil {
@@ -1504,7 +1504,7 @@ func TestRegister_RegistrationTypeNotSupported(t *testing.T) {
 	ctx := setUp(t, responses)
 
 	// When.
-	_, err := Client(ctx, clientID)
+	_, err := Client(ctx, clientID, nil)
 
 	// Then.
 	if err == nil {
@@ -2167,7 +2167,7 @@ func TestClient_ClientManagerError(t *testing.T) {
 	ctx.OpenIDFedClientRegTypes = []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeExplicit}
 
 	// When.
-	_, err := Client(ctx, "non-url-client-that-does-not-exist")
+	_, err := Client(ctx, "non-url-client-that-does-not-exist", nil)
 
 	// Then.
 	if err == nil {
@@ -2593,7 +2593,7 @@ func TestRegisterExplicitlyWithTrustChain_NoOpenIDClientMetadata(t *testing.T) {
 	}
 
 	// When.
-	_, err := registerClientTrustChain(ctx, invalidChain)
+	_, err := registerClientExplicitly(ctx, invalidChain)
 
 	// Then.
 	if err == nil {

@@ -217,10 +217,7 @@ func (a authenticator) createUserSession(w http.ResponseWriter, as *goidc.AuthnS
 }
 
 func (a authenticator) grantConsent(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) {
-
-	_ = r.ParseForm()
-
-	consented := r.PostFormValue(consentFormParam)
+	consented := r.PostFormValue(consentFormParam) //nolint:gosec
 	if consented == "" {
 		return a.renderPage(w, "consent.html", as)
 	}

@@ -148,9 +148,12 @@ func validateClaims(ctx oidc.Context, claims jwt.Claims, client *goidc.Client) e
 
 	if claims.ID != "" {
 		if err := ctx.CheckJTI(claims.ID); err != nil {
-			return goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
-				"invalid jti claim", err)
+			return goidc.WrapError(goidc.ErrorCodeInvalidResquestObject, "invalid jti claim", err)
 		}
+	}
+
+	if claims.Subject != "" {
+		return goidc.NewError(goidc.ErrorCodeInvalidResquestObject, "subject is not allowed in the request object")
 	}
 
 	if err := claims.ValidateWithLeeway(jwt.Expected{
@@ -164,21 +167,30 @@ func validateClaims(ctx oidc.Context, claims jwt.Claims, client *goidc.Client) e
 	return nil
 }
 
-// jarTrustChain extracts the trust_chain header from a JAR request object.
-// Returns nil if parsing fails or the header is absent/malformed.
+// jarTrustChain extracts the trust_chain header or claim from a JAR request object.
+// Returns nil if parsing fails or the value is absent/malformed.
 func jarTrustChain(reqObject string, sigAlgs []goidc.SignatureAlgorithm) []string {
 	parsed, err := jwt.ParseSigned(reqObject, sigAlgs)
 	if err != nil || len(parsed.Headers) == 0 {
 		return nil
 	}
+
 	raw, ok := parsed.Headers[0].ExtraHeaders["trust_chain"]
 	if !ok {
-		return nil
+		var claims struct {
+			TrustChain []string `json:"trust_chain"`
+		}
+		if err := parsed.UnsafeClaimsWithoutVerification(&claims); err != nil {
+			return nil
+		}
+		return claims.TrustChain
 	}
+
 	items, ok := raw.([]any)
 	if !ok {
 		return nil
 	}
+
 	chain := make([]string, 0, len(items))
 	for _, v := range items {
 		s, ok := v.(string)
@@ -187,5 +199,6 @@ func jarTrustChain(reqObject string, sigAlgs []goidc.SignatureAlgorithm) []strin
 		}
 		chain = append(chain, s)
 	}
+
 	return chain
 }

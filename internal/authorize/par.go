@@ -15,6 +15,7 @@ import (
 )
 
 func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
+	var shouldRegisterClient bool
 	c, err := func() (*goidc.Client, error) {
 		if !ctx.OpenIDFedIsEnabled {
 			return client.Authenticated(ctx, client.AuthnContextToken)
@@ -38,11 +39,13 @@ func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 			if !errors.Is(err, goidc.ErrNotFound) {
 				return nil, err
 			}
-			return registerClientForPAR(ctx, id, req)
+			shouldRegisterClient = true
+			return federationClientForPAR(ctx, id, req)
 		}
 
 		if c.ExpiresAtTimestamp != 0 && timeutil.TimestampNow() > c.ExpiresAtTimestamp {
-			return registerClientForPAR(ctx, id, req)
+			shouldRegisterClient = true
+			return federationClientForPAR(ctx, id, req)
 		}
 
 		return c, nil
@@ -104,6 +107,12 @@ func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 		return parResponse{}, err
 	}
 
+	if shouldRegisterClient {
+		if err := ctx.SaveClient(c); err != nil {
+			return parResponse{}, err
+		}
+	}
+
 	if err := ctx.SaveAuthnSession(as); err != nil {
 		return parResponse{}, err
 	}
@@ -121,7 +130,7 @@ func dpopThumbprintForPAR(ctx oidc.Context, req request) string {
 	if dpopJWT, ok := dpop.JWT(ctx); ctx.DPoPIsEnabled && ok {
 		return dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)
 	}
-	return req.AuthorizationParameters.DPoPJKT
+	return req.DPoPJKT
 }
 
 func tlsThumbprint(ctx oidc.Context) string {
@@ -131,13 +140,23 @@ func tlsThumbprint(ctx oidc.Context) string {
 	return ""
 }
 
-func registerClientForPAR(ctx oidc.Context, id string, req request) (*goidc.Client, error) {
-	c, err := federation.Client(ctx, id)
+func federationClientForPAR(ctx oidc.Context, id string, req request) (*goidc.Client, error) {
+	var opts *federation.Options
+	if ctx.JARIsEnabled && req.RequestObject != "" {
+		opts = &federation.Options{
+			TrustChain: jarTrustChain(req.RequestObject, ctx.JARSigAlgs),
+		}
+	}
+
+	c, err := federation.Client(ctx, id, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	if req.RequestObject == "" && c.TokenAuthnMethod != goidc.AuthnMethodPrivateKeyJWT && c.TokenAuthnMethod != goidc.AuthnMethodSelfSignedTLS {
+	jwksIsUsed := ctx.JARIsEnabled && req.RequestObject != ""
+	jwksIsUsed = jwksIsUsed || c.TokenAuthnMethod == goidc.AuthnMethodPrivateKeyJWT
+	jwksIsUsed = jwksIsUsed || c.TokenAuthnMethod == goidc.AuthnMethodSelfSignedTLS
+	if !jwksIsUsed {
 		return nil, goidc.NewError(goidc.ErrorCodeAccessDenied,
 			"asymmetric cryptography must be used to authenticate requests when using automatic registration")
 	}
@@ -147,10 +166,6 @@ func registerClientForPAR(ctx oidc.Context, id string, req request) (*goidc.Clie
 	}
 
 	if err := client.Authenticate(ctx, c, client.AuthnContextToken); err != nil {
-		return nil, err
-	}
-
-	if err := ctx.SaveClient(c); err != nil {
 		return nil, err
 	}
 

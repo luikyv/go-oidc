@@ -326,7 +326,7 @@ func LogoutPolicy() goidc.LogoutPolicy {
 			return true
 		},
 		func(w http.ResponseWriter, r *http.Request, ls *goidc.LogoutSession) (goidc.Status, error) {
-			logout := r.PostFormValue("logout")
+			logout := r.PostFormValue("logout") //nolint:gosec
 			if logout == "" {
 				slog.Debug("rendering logout page")
 				if err := tmpl.ExecuteTemplate(w, "logout.html", LogoutPage{

@@ -33,39 +33,6 @@ Before writing any test, identify which specification sections govern the behavi
   // required (RFC 7636 §4.6).
   ```
 
-## Spec Reference Table
-
-| Package | Relevant Specs |
-|---|---|
-| `internal/authorize` | RFC 6749 §4.1–§4.2 (Authorization Endpoint), RFC 9126 (PAR), RFC 9101 (JAR), OpenID Connect Core §3 |
-| `internal/token` | RFC 6749 §5.1–§5.2 (Token Endpoint), RFC 7636 (PKCE), RFC 7523 (JWT Bearer), RFC 8693 (Token Exchange), OpenID Connect Core §3.1.3 (Token Endpoint), CIBA §10–§11 |
-| `internal/token` (introspection) | RFC 7662 (Token Introspection) |
-| `internal/token` (revocation) | RFC 7009 (Token Revocation) |
-| `internal/client` | RFC 6749 §2.3 (Client Authentication), RFC 7523 §2.2 (private_key_jwt), RFC 8705 §2 (mTLS) |
-| `internal/dcr` | RFC 7591 (Dynamic Client Registration), RFC 7592 (Client Management) |
-| `internal/authorize` (CIBA) | OpenID Connect CIBA §7–§8 |
-| `internal/federation` | OpenID Federation 1.0 |
-| `internal/dpop` | RFC 9449 (DPoP) |
-| `internal/userinfo` | OpenID Connect Core §5.3 (UserInfo Endpoint) |
-| `internal/discovery` | RFC 8414 (Authorization Server Metadata), OpenID Connect Discovery 1.0 |
-
-### Spec URLs for Fetching
-
-- RFC 6749: https://www.rfc-editor.org/rfc/rfc6749
-- RFC 7009: https://www.rfc-editor.org/rfc/rfc7009
-- RFC 7523: https://www.rfc-editor.org/rfc/rfc7523
-- RFC 7591: https://www.rfc-editor.org/rfc/rfc7591
-- RFC 7636: https://www.rfc-editor.org/rfc/rfc7636
-- RFC 7662: https://www.rfc-editor.org/rfc/rfc7662
-- RFC 8705: https://www.rfc-editor.org/rfc/rfc8705
-- RFC 9101: https://www.rfc-editor.org/rfc/rfc9101
-- RFC 9126: https://www.rfc-editor.org/rfc/rfc9126
-- RFC 9449: https://www.rfc-editor.org/rfc/rfc9449
-- OpenID Connect Core: https://openid.net/specs/openid-connect-core-1_0.html
-- OpenID Connect Discovery: https://openid.net/specs/openid-connect-discovery-1_0.html
-- CIBA: https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html
-- OpenID Federation: https://openid.net/specs/openid-federation-1_0.html
-
 ## Project Test Conventions
 
 ### Structure: Arrange-Act-Assert with Comments

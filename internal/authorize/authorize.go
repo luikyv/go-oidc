@@ -20,6 +20,7 @@ func initAuth(ctx oidc.Context, req request) error {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client_id")
 	}
 
+	var shouldRegisterClient bool
 	c, err := func() (*goidc.Client, error) {
 		if !ctx.OpenIDFedIsEnabled {
 			return ctx.Client(req.ClientID)
@@ -38,11 +39,13 @@ func initAuth(ctx oidc.Context, req request) error {
 			if !errors.Is(err, goidc.ErrNotFound) {
 				return nil, err
 			}
-			return registerClient(ctx, req)
+			shouldRegisterClient = true
+			return federationClient(ctx, req)
 		}
 
 		if c.ExpiresAtTimestamp != 0 && timeutil.TimestampNow() > c.ExpiresAtTimestamp {
-			return registerClient(ctx, req)
+			shouldRegisterClient = true
+			return federationClient(ctx, req)
 		}
 
 		return c, nil
@@ -148,6 +151,12 @@ func initAuth(ctx oidc.Context, req request) error {
 		// The ID token hint was already validated.
 		idToken, _ := jwt.ParseSigned(as.IDTokenHint, ctx.IDTokenSigAlgs)
 		_ = idToken.UnsafeClaimsWithoutVerification(&as.IDTokenHintClaims)
+	}
+
+	if shouldRegisterClient {
+		if err := ctx.SaveClient(c); err != nil {
+			return err
+		}
 	}
 
 	if err := authenticate(ctx, as); err != nil {
@@ -301,23 +310,22 @@ func dpopThumbprint(ctx oidc.Context, as *goidc.AuthnSession) string {
 	// It could be an one-time self signed certificate the client wants to use for binding.
 }
 
-func registerClient(ctx oidc.Context, req request) (*goidc.Client, error) {
-	if req.RequestObject == "" {
+func federationClient(ctx oidc.Context, req request) (*goidc.Client, error) {
+	jwksIsUsed := ctx.JARIsEnabled && req.RequestObject != ""
+	if !jwksIsUsed {
 		return nil, goidc.NewError(goidc.ErrorCodeAccessDenied,
 			"asymmetric cryptography must be used to authenticate requests when using automatic registration")
 	}
 
-	c, err := federation.Client(ctx, req.ClientID)
+	c, err := federation.Client(ctx, req.ClientID, &federation.Options{
+		TrustChain: jarTrustChain(req.RequestObject, ctx.JARSigAlgs),
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	if !slices.Contains(c.ClientRegistrationTypes, goidc.ClientRegistrationTypeAutomatic) {
 		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "the client is not registered for automatic registration")
-	}
-
-	if err := ctx.SaveClient(c); err != nil {
-		return nil, err
 	}
 
 	return c, nil

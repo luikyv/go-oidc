@@ -330,7 +330,7 @@ func authenticateTLSCert(ctx oidc.Context, c *goidc.Client) error {
 	return nil
 }
 
-// ExtractID extracts a client ID from the request.
+// ExtractID extracts a client ID from a authenticated request.
 // It looks to all places where an ID can be informed such as the basic
 // authentication header and the post form field 'client_id'.
 // If different client IDs are found in the request, it returns an error.
@@ -361,8 +361,10 @@ func ExtractID(ctx oidc.Context) (string, error) {
 	}
 
 	// All the client IDs present must be equal.
-	if !allEquals(ids) {
-		return "", goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client id")
+	for _, id := range ids {
+		if id != ids[0] {
+			return "", goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client id")
+		}
 	}
 
 	return ids[0], nil
@@ -395,31 +397,6 @@ func assertionClientID(assertion string, sigAlgs []goidc.SignatureAlgorithm) (st
 	}
 
 	return clientIDAsString, nil
-}
-
-// Return true only if all the elements in values are equal.
-func allEquals[T comparable](values []T) bool {
-	if len(values) == 0 {
-		return true
-	}
-
-	return all(
-		values,
-		func(value T) bool {
-			return value == values[0]
-		},
-	)
-}
-
-// Return true if all the elements in the slice respect the condition.
-func all[T any](slice []T, condition func(T) bool) bool {
-	for _, element := range slice {
-		if !condition(element) {
-			return false
-		}
-	}
-
-	return true
 }
 
 func comparePublicKeys(k1 any, k2 any) bool {

@@ -21,8 +21,8 @@ type Client struct {
 	CreatedAtTimestamp int    `json:"created_at,omitempty"`
 	ExpiresAtTimestamp int    `json:"expires_at,omitempty"`
 
-	FederationTrustAnchor string      `json:"federation_trust_anchor"`
-	FederationTrustMarks  []TrustMark `json:"federation_trust_marks,omitempty"`
+	FederationTrustAnchor string   `json:"federation_trust_anchor"`
+	FederationTrustMarks  []string `json:"federation_trust_marks,omitempty"`
 	cachedJWKS            *JSONWebKeySet
 	ClientMeta
 }
