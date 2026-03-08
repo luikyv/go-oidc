@@ -2,6 +2,7 @@ package authorize
 
 import (
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/luikyv/go-oidc/internal/oidctest"
@@ -306,6 +307,78 @@ func TestValidatePushedRequest(t *testing.T) {
 	// Then.
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+// TestValidatePushedRequest_UnregisteredRedirectURI verifies that when
+// PARAllowUnregisteredRedirectURI is enabled, the client's RedirectURIs are
+// not permanently mutated after validation.
+func TestValidatePushedRequest_UnregisteredRedirectURI(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.PARAllowUnregisteredRedirectURI = true
+	client, _ := oidctest.NewClient(t)
+	originalRedirectURIs := slices.Clone(client.RedirectURIs)
+
+	req := request{
+		ClientID: client.ID,
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  "https://unregistered.example.com/callback",
+			ResponseType: goidc.ResponseTypeCode,
+			State:        "random_state",
+		},
+	}
+
+	// When.
+	err := validatePushedRequest(ctx, req, client)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !slices.Equal(client.RedirectURIs, originalRedirectURIs) {
+		t.Errorf("RedirectURIs = %v, want %v", client.RedirectURIs, originalRedirectURIs)
+	}
+}
+
+// TestValidateRequest_PAR_UnregisteredRedirectURI verifies that when
+// PARAllowUnregisteredRedirectURI is enabled, the client's RedirectURIs are
+// not permanently mutated after validation with a PAR session.
+func TestValidateRequest_PAR_UnregisteredRedirectURI(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.PARAllowUnregisteredRedirectURI = true
+	client, _ := oidctest.NewClient(t)
+	originalRedirectURIs := slices.Clone(client.RedirectURIs)
+
+	session := &goidc.AuthnSession{
+		ClientID:           client.ID,
+		ExpiresAtTimestamp: timeutil.TimestampNow() + 10,
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			RedirectURI:  "https://unregistered.example.com/callback",
+			ResponseType: goidc.ResponseTypeCodeAndIDToken,
+		},
+	}
+	req := request{
+		ClientID: client.ID,
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			Scopes:       goidc.ScopeOpenID.ID,
+			Nonce:        "random_nonce",
+			ResponseType: goidc.ResponseTypeCodeAndIDToken,
+		},
+	}
+
+	// When.
+	err := validateRequestWithPAR(ctx, req, session, client)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !slices.Equal(client.RedirectURIs, originalRedirectURIs) {
+		t.Errorf("RedirectURIs = %v, want %v", client.RedirectURIs, originalRedirectURIs)
 	}
 }
 

@@ -30,9 +30,13 @@ func validateRequestWithPAR(ctx oidc.Context, req request, as *goidc.AuthnSessio
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "the request_uri is expired")
 	}
 
+	redirectURIs := slices.Clone(c.RedirectURIs)
 	if ctx.PARAllowUnregisteredRedirectURI && as.RedirectURI != "" {
 		c.RedirectURIs = append(c.RedirectURIs, as.RedirectURI)
 	}
+	defer func() {
+		c.RedirectURIs = redirectURIs
+	}()
 
 	return validateInWithOutParams(ctx, as.AuthorizationParameters, req.AuthorizationParameters, c)
 }
@@ -113,9 +117,13 @@ func validatePushedRequest(ctx oidc.Context, req request, c *goidc.Client) error
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "request_uri is not allowed during PAR")
 	}
 
+	redirectURIs := slices.Clone(c.RedirectURIs)
 	if ctx.PARAllowUnregisteredRedirectURI && req.RedirectURI != "" {
 		c.RedirectURIs = append(c.RedirectURIs, req.RedirectURI)
 	}
+	defer func() {
+		c.RedirectURIs = redirectURIs
+	}()
 
 	if ctx.Profile.IsFAPI() {
 		if err := validateParams(ctx, req.AuthorizationParameters, c); err != nil {
