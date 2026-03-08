@@ -15,11 +15,6 @@ import (
 )
 
 func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
-	// [RFC 9126 §2.1] The client_id is required.
-	if req.ClientID == "" {
-		return parResponse{}, goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client_id")
-	}
-
 	c, err := func() (*goidc.Client, error) {
 		if !ctx.OpenIDFedIsEnabled {
 			return client.Authenticated(ctx, client.AuthnContextToken)
@@ -29,7 +24,12 @@ func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 			return client.Authenticated(ctx, client.AuthnContextToken)
 		}
 
-		if !strutil.IsURL(req.ClientID) {
+		id, err := client.ExtractID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		if !strutil.IsURL(id) {
 			return client.Authenticated(ctx, client.AuthnContextToken)
 		}
 
@@ -38,11 +38,11 @@ func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 			if !errors.Is(err, goidc.ErrNotFound) {
 				return nil, err
 			}
-			return registerClientForPAR(ctx, req)
+			return registerClientForPAR(ctx, id, req)
 		}
 
 		if c.ExpiresAtTimestamp != 0 && timeutil.TimestampNow() > c.ExpiresAtTimestamp {
-			return registerClientForPAR(ctx, req)
+			return registerClientForPAR(ctx, id, req)
 		}
 
 		return c, nil
@@ -131,13 +131,13 @@ func tlsThumbprint(ctx oidc.Context) string {
 	return ""
 }
 
-func registerClientForPAR(ctx oidc.Context, req request) (*goidc.Client, error) {
-	c, err := federation.Client(ctx, req.ClientID)
+func registerClientForPAR(ctx oidc.Context, id string, req request) (*goidc.Client, error) {
+	c, err := federation.Client(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	if c.TokenAuthnMethod != goidc.AuthnMethodPrivateKeyJWT && c.TokenAuthnMethod != goidc.AuthnMethodSelfSignedTLS {
+	if req.RequestObject == "" && c.TokenAuthnMethod != goidc.AuthnMethodPrivateKeyJWT && c.TokenAuthnMethod != goidc.AuthnMethodSelfSignedTLS {
 		return nil, goidc.NewError(goidc.ErrorCodeAccessDenied,
 			"asymmetric cryptography must be used to authenticate requests when using automatic registration")
 	}

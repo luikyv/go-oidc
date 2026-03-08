@@ -40,7 +40,7 @@ const (
 // This function always returns in case of error an instance of [goidc.Error]
 // with error code as [goidc.ErrorCodeInvalidClient].
 func Authenticated(ctx oidc.Context, authnCtx AuthnContext) (*goidc.Client, error) {
-	id, err := extractID(ctx)
+	id, err := ExtractID(ctx)
 	if err != nil {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client", err)
 	}
@@ -330,11 +330,11 @@ func authenticateTLSCert(ctx oidc.Context, c *goidc.Client) error {
 	return nil
 }
 
-// extractID extracts a client ID from the request.
+// ExtractID extracts a client ID from the request.
 // It looks to all places where an ID can be informed such as the basic
 // authentication header and the post form field 'client_id'.
 // If different client IDs are found in the request, it returns an error.
-func extractID(ctx oidc.Context) (string, error) {
+func ExtractID(ctx oidc.Context) (string, error) {
 	ids := []string{}
 
 	postID := ctx.Request.PostFormValue(formPostParamID)
