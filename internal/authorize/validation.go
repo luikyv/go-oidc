@@ -16,10 +16,6 @@ import (
 
 // validateRequest validates the parameters sent in an authorization request.
 func validateRequest(ctx oidc.Context, req request, c *goidc.Client) error {
-	if c.FederationRegistrationType == goidc.ClientRegistrationTypeAutomatic {
-		return goidc.NewError(goidc.ErrorCodeAccessDenied,
-			"asymmetric cryptography must be used to authenticate requests when using automatic registration")
-	}
 	return validateParams(ctx, req.AuthorizationParameters, c)
 }
 
@@ -34,9 +30,13 @@ func validateRequestWithPAR(ctx oidc.Context, req request, as *goidc.AuthnSessio
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "the request_uri is expired")
 	}
 
+	redirectURIs := slices.Clone(c.RedirectURIs)
 	if ctx.PARAllowUnregisteredRedirectURI && as.RedirectURI != "" {
 		c.RedirectURIs = append(c.RedirectURIs, as.RedirectURI)
 	}
+	defer func() {
+		c.RedirectURIs = redirectURIs
+	}()
 
 	return validateInWithOutParams(ctx, as.AuthorizationParameters, req.AuthorizationParameters, c)
 }
@@ -102,11 +102,6 @@ func validatePushedRequestWithJAR(ctx oidc.Context, req request, jar request, c 
 }
 
 func validateSimplePushedRequest(ctx oidc.Context, req request, c *goidc.Client) error {
-	if c.FederationRegistrationType == goidc.ClientRegistrationTypeAutomatic &&
-		c.TokenAuthnMethod != goidc.AuthnMethodPrivateKeyJWT && c.TokenAuthnMethod != goidc.AuthnMethodSelfSignedTLS {
-		return goidc.NewError(goidc.ErrorCodeAccessDenied,
-			"asymmetric cryptography must be used to authenticate requests when using automatic registration")
-	}
 	return validatePushedRequest(ctx, req, c)
 }
 
@@ -118,14 +113,17 @@ func validateSimplePushedRequest(ctx oidc.Context, req request, c *goidc.Client)
 // optional, as any missing parameters can be provided later at the authorization
 // endpoint, where they will be merged.
 func validatePushedRequest(ctx oidc.Context, req request, c *goidc.Client) error {
-
 	if req.RequestURI != "" {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "request_uri is not allowed during PAR")
 	}
 
+	redirectURIs := slices.Clone(c.RedirectURIs)
 	if ctx.PARAllowUnregisteredRedirectURI && req.RedirectURI != "" {
 		c.RedirectURIs = append(c.RedirectURIs, req.RedirectURI)
 	}
+	defer func() {
+		c.RedirectURIs = redirectURIs
+	}()
 
 	if ctx.Profile.IsFAPI() {
 		if err := validateParams(ctx, req.AuthorizationParameters, c); err != nil {
@@ -464,7 +462,7 @@ func validateResponseModeAsOptional(ctx oidc.Context, params goidc.Authorization
 }
 
 func validateAuthorizationDetailsAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) error {
-	if !ctx.AuthDetailsIsEnabled || params.AuthDetails == nil {
+	if !ctx.RichAuthorizationIsEnabled || params.AuthDetails == nil {
 		return nil
 	}
 
@@ -547,7 +545,7 @@ func isRequestURIAllowed(c *goidc.Client, requestURI string) bool {
 	return slices.Contains(c.RequestURIs, requestURI)
 }
 
-func isAuthDetailTypeAllowed(c *goidc.Client, authDetailType string) bool {
+func isAuthDetailTypeAllowed(c *goidc.Client, authDetailType goidc.AuthDetailType) bool {
 	// If the client didn't announce the authorization types it will use,
 	// consider any value valid.
 	if c.AuthDetailTypes == nil {

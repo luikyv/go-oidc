@@ -31,12 +31,12 @@ func TestNewRequest(t *testing.T) {
 
 	// Then.
 	want := request{
-		grantType:         goidc.GrantAuthorizationCode,
-		scopes:            "openid",
-		authorizationCode: "random_code",
-		redirectURI:       "https://example.com",
-		refreshToken:      "random_refresh_token",
-		codeVerifier:      "random_code_verifier",
+		grantType:    goidc.GrantAuthorizationCode,
+		scopes:       "openid",
+		code:         "random_code",
+		redirectURI:  "https://example.com",
+		refreshToken: "random_refresh_token",
+		codeVerifier: "random_code_verifier",
 	}
 	if diff := cmp.Diff(tokenReq, want, cmp.AllowUnexported(request{})); diff != "" {
 		t.Error(diff)

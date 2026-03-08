@@ -24,9 +24,9 @@ func TestGenerateGrant_AuthorizationCodeGrant(t *testing.T) {
 	ctx, client, session := setUpAuthzCodeGrant(t)
 
 	req := request{
-		grantType:         goidc.GrantAuthorizationCode,
-		redirectURI:       client.RedirectURIs[0],
-		authorizationCode: session.AuthCode,
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: client.RedirectURIs[0],
+		code:        session.AuthCode,
 	}
 
 	// When.
@@ -37,26 +37,21 @@ func TestGenerateGrant_AuthorizationCodeGrant(t *testing.T) {
 		t.Fatalf("error generating the authorization code grant: %v", err)
 	}
 
-	grantSessions := oidctest.GrantSessions(t, ctx)
+	grantSessions := oidctest.Grants(t, ctx)
 	if len(grantSessions) != 1 {
 		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
 	}
 	grantSession := grantSessions[0]
-	wantedSession := goidc.GrantSession{
-		ID:                          grantSession.ID,
-		TokenID:                     grantSession.TokenID,
-		LastTokenExpiresAtTimestamp: grantSession.LastTokenExpiresAtTimestamp,
-		CreatedAtTimestamp:          grantSession.CreatedAtTimestamp,
-		ExpiresAtTimestamp:          grantSession.ExpiresAtTimestamp,
-		AuthCode:                    session.AuthCode,
-		RefreshToken:                grantSession.RefreshToken,
-		GrantInfo: goidc.GrantInfo{
-			GrantType:     goidc.GrantAuthorizationCode,
-			Subject:       session.Subject,
-			ClientID:      session.ClientID,
-			ActiveScopes:  session.GrantedScopes,
-			GrantedScopes: session.GrantedScopes,
-		},
+	wantedSession := goidc.Grant{
+		ID:                 grantSession.ID,
+		CreatedAtTimestamp: grantSession.CreatedAtTimestamp,
+		ExpiresAtTimestamp: grantSession.ExpiresAtTimestamp,
+		AuthCode:           session.AuthCode,
+		RefreshToken:       grantSession.RefreshToken,
+		Type:               goidc.GrantAuthorizationCode,
+		Subject:            session.Subject,
+		ClientID:           session.ClientID,
+		Scopes:             session.GrantedScopes,
 	}
 	if diff := cmp.Diff(
 		*grantSession,
@@ -66,6 +61,12 @@ func TestGenerateGrant_AuthorizationCodeGrant(t *testing.T) {
 	); diff != "" {
 		t.Error(diff)
 	}
+
+	tokens := oidctest.Tokens(t, ctx)
+	if len(tokens) != 1 {
+		t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+	}
+	tokenEntity := tokens[0]
 
 	claims, err := oidctest.SafeClaims(tokenResp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 	if err != nil {
@@ -77,9 +78,9 @@ func TestGenerateGrant_AuthorizationCodeGrant(t *testing.T) {
 		"sub":       session.Subject,
 		"client_id": client.ID,
 		"scope":     session.GrantedScopes,
-		"exp":       float64(grantSession.LastTokenExpiresAtTimestamp),
+		"exp":       float64(tokenEntity.ExpiresAtTimestamp),
 		"iat":       float64(now),
-		"jti":       grantSession.TokenID,
+		"jti":       tokenEntity.ID,
 	}
 	if diff := cmp.Diff(
 		claims,
@@ -99,8 +100,8 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails(t *testing.T) {
 
 	// Given.
 	ctx, client, session := setUpAuthzCodeGrant(t)
-	ctx.AuthDetailsIsEnabled = true
-	ctx.AuthDetailTypes = []string{"type1", "type2"}
+	ctx.RichAuthorizationIsEnabled = true
+	ctx.AuthDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
 	ctx.CompareAuthDetailsFunc = func(granted, requested []goidc.AuthorizationDetail) error {
 		return nil
 	}
@@ -117,9 +118,9 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails(t *testing.T) {
 	session.GrantedAuthDetails = authDetails
 
 	req := request{
-		grantType:         goidc.GrantAuthorizationCode,
-		redirectURI:       client.RedirectURIs[0],
-		authorizationCode: session.AuthCode,
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: client.RedirectURIs[0],
+		code:        session.AuthCode,
 	}
 
 	// When.
@@ -130,28 +131,22 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails(t *testing.T) {
 		t.Fatalf("error generating the authorization code grant: %v", err)
 	}
 
-	grantSessions := oidctest.GrantSessions(t, ctx)
+	grantSessions := oidctest.Grants(t, ctx)
 	if len(grantSessions) != 1 {
 		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
 	}
 	grantSession := grantSessions[0]
-	wantedSession := goidc.GrantSession{
-		ID:                          grantSession.ID,
-		TokenID:                     grantSession.TokenID,
-		LastTokenExpiresAtTimestamp: grantSession.LastTokenExpiresAtTimestamp,
-		CreatedAtTimestamp:          grantSession.CreatedAtTimestamp,
-		ExpiresAtTimestamp:          grantSession.ExpiresAtTimestamp,
-		AuthCode:                    session.AuthCode,
-		RefreshToken:                grantSession.RefreshToken,
-		GrantInfo: goidc.GrantInfo{
-			GrantType:          goidc.GrantAuthorizationCode,
-			Subject:            session.Subject,
-			ClientID:           session.ClientID,
-			ActiveScopes:       session.GrantedScopes,
-			GrantedScopes:      session.GrantedScopes,
-			ActiveAuthDetails:  authDetails,
-			GrantedAuthDetails: authDetails,
-		},
+	wantedSession := goidc.Grant{
+		ID:                 grantSession.ID,
+		CreatedAtTimestamp: grantSession.CreatedAtTimestamp,
+		ExpiresAtTimestamp: grantSession.ExpiresAtTimestamp,
+		AuthCode:           session.AuthCode,
+		RefreshToken:       grantSession.RefreshToken,
+		Type:               goidc.GrantAuthorizationCode,
+		Subject:            session.Subject,
+		ClientID:           session.ClientID,
+		Scopes:             session.GrantedScopes,
+		AuthDetails:        authDetails,
 	}
 	if diff := cmp.Diff(
 		*grantSession,
@@ -182,9 +177,8 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails(t *testing.T) {
 				"random_claim": "random_value",
 			},
 		},
-		"exp": float64(grantSession.LastTokenExpiresAtTimestamp),
+		"exp": float64(now + 60),
 		"iat": float64(now),
-		"jti": grantSession.TokenID,
 	}
 	if diff := cmp.Diff(
 		claims,
@@ -207,8 +201,8 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails_ClientRequestsSubset(t
 
 	// Given.
 	ctx, client, session := setUpAuthzCodeGrant(t)
-	ctx.AuthDetailsIsEnabled = true
-	ctx.AuthDetailTypes = []string{"type1", "type2"}
+	ctx.RichAuthorizationIsEnabled = true
+	ctx.AuthDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
 	ctx.CompareAuthDetailsFunc = func(granted, requested []goidc.AuthorizationDetail) error {
 		return nil
 	}
@@ -224,9 +218,9 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails_ClientRequestsSubset(t
 	}
 
 	req := request{
-		grantType:         goidc.GrantAuthorizationCode,
-		redirectURI:       client.RedirectURIs[0],
-		authorizationCode: session.AuthCode,
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: client.RedirectURIs[0],
+		code:        session.AuthCode,
 		authDetails: []goidc.AuthorizationDetail{
 			map[string]any{
 				"type":         "type1",
@@ -243,11 +237,16 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails_ClientRequestsSubset(t
 		t.Fatalf("error generating the authorization code grant: %v", err)
 	}
 
-	grantSessions := oidctest.GrantSessions(t, ctx)
+	grantSessions := oidctest.Grants(t, ctx)
 	if len(grantSessions) != 1 {
 		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
 	}
-	grantSession := grantSessions[0]
+
+	tokens := oidctest.Tokens(t, ctx)
+	if len(tokens) != 1 {
+		t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+	}
+	tokenEntity := tokens[0]
 
 	claims, err := oidctest.SafeClaims(tokenResp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 	if err != nil {
@@ -265,9 +264,9 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails_ClientRequestsSubset(t
 				"random_claim": "random_value",
 			},
 		},
-		"exp": float64(grantSession.LastTokenExpiresAtTimestamp),
+		"exp": float64(tokenEntity.ExpiresAtTimestamp),
 		"iat": float64(now),
-		"jti": grantSession.TokenID,
+		"jti": tokenEntity.ID,
 	}
 	if diff := cmp.Diff(
 		claims,
@@ -292,10 +291,10 @@ func TestGenerateGrant_AuthorizationCodeGrant_ResourceIndicators(t *testing.T) {
 	session.GrantedResources = []string{"https://resource1.com", "https://resource2.com", "https://resource3.com"}
 
 	req := request{
-		grantType:         goidc.GrantAuthorizationCode,
-		redirectURI:       client.RedirectURIs[0],
-		authorizationCode: session.AuthCode,
-		resources:         []string{"https://resource1.com", "https://resource2.com"},
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: client.RedirectURIs[0],
+		code:        session.AuthCode,
+		resources:   []string{"https://resource1.com", "https://resource2.com"},
 	}
 
 	// When.
@@ -306,11 +305,16 @@ func TestGenerateGrant_AuthorizationCodeGrant_ResourceIndicators(t *testing.T) {
 		t.Fatalf("error generating the authorization code grant: %v", err)
 	}
 
-	grantSessions := oidctest.GrantSessions(t, ctx)
+	grantSessions := oidctest.Grants(t, ctx)
 	if len(grantSessions) != 1 {
 		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
 	}
-	grantSession := grantSessions[0]
+
+	tokens := oidctest.Tokens(t, ctx)
+	if len(tokens) != 1 {
+		t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+	}
+	tokenEntity := tokens[0]
 
 	claims, err := oidctest.SafeClaims(tokenResp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 	if err != nil {
@@ -323,9 +327,9 @@ func TestGenerateGrant_AuthorizationCodeGrant_ResourceIndicators(t *testing.T) {
 		"aud":       []any{"https://resource1.com", "https://resource2.com"},
 		"client_id": client.ID,
 		"scope":     session.GrantedScopes,
-		"exp":       float64(grantSession.LastTokenExpiresAtTimestamp),
+		"exp":       float64(tokenEntity.ExpiresAtTimestamp),
 		"iat":       float64(now),
-		"jti":       grantSession.TokenID,
+		"jti":       tokenEntity.ID,
 	}
 	if diff := cmp.Diff(
 		claims,
@@ -346,15 +350,15 @@ func TestGenerateGrant_AuthorizationCodeGrant_CodeReuseInvalidatesGrant(t *testi
 	// Given.
 	ctx, client, session := setUpAuthzCodeGrant(t)
 	_ = ctx.DeleteAuthnSession(session.ID)
-	_ = ctx.SaveGrantSession(&goidc.GrantSession{
+	_ = ctx.SaveGrant(&goidc.Grant{
 		ID:       "random_id",
 		AuthCode: session.AuthCode,
 	})
 
 	req := request{
-		grantType:         goidc.GrantAuthorizationCode,
-		redirectURI:       client.RedirectURIs[0],
-		authorizationCode: session.AuthCode,
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: client.RedirectURIs[0],
+		code:        session.AuthCode,
 	}
 
 	// When.
@@ -374,7 +378,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_CodeReuseInvalidatesGrant(t *testi
 		t.Errorf("ErrorCode = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidGrant)
 	}
 
-	grantSessions := oidctest.GrantSessions(t, ctx)
+	grantSessions := oidctest.Grants(t, ctx)
 	if len(grantSessions) != 0 {
 		t.Errorf("len(grantSessions) = %d, want 0", len(grantSessions))
 	}
@@ -393,10 +397,10 @@ func TestGenerateGrant_AuthorizationCodeGrant_PKCE(t *testing.T) {
 	}
 
 	req := request{
-		grantType:         goidc.GrantAuthorizationCode,
-		redirectURI:       client.RedirectURIs[0],
-		authorizationCode: session.AuthCode,
-		codeVerifier:      "4ea55634198fb6a0c120d46b26359cf50ccea86fd03302b9bca9fa98",
+		grantType:    goidc.GrantAuthorizationCode,
+		redirectURI:  client.RedirectURIs[0],
+		code:         session.AuthCode,
+		codeVerifier: "4ea55634198fb6a0c120d46b26359cf50ccea86fd03302b9bca9fa98",
 	}
 
 	// When.
@@ -407,7 +411,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_PKCE(t *testing.T) {
 		t.Fatalf("error generating the authorization code grant: %v", err)
 	}
 
-	grantSessions := oidctest.GrantSessions(t, ctx)
+	grantSessions := oidctest.Grants(t, ctx)
 	if len(grantSessions) != 1 {
 		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
 	}
@@ -426,10 +430,10 @@ func TestGenerateGrant_AuthorizationCodeGrant_PKCEDowngradeIsMitigated(t *testin
 	ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodSHA256
 
 	req := request{
-		grantType:         goidc.GrantAuthorizationCode,
-		redirectURI:       client.RedirectURIs[0],
-		authorizationCode: session.AuthCode,
-		codeVerifier:      "4ea55634198fb6a0c120d46b26359cf50ccea86fd03302b9bca9fa98",
+		grantType:    goidc.GrantAuthorizationCode,
+		redirectURI:  client.RedirectURIs[0],
+		code:         session.AuthCode,
+		codeVerifier: "4ea55634198fb6a0c120d46b26359cf50ccea86fd03302b9bca9fa98",
 	}
 
 	// When.
@@ -497,9 +501,9 @@ func TestGenerateGrant_AuthorizationCodeGrant_MTLSBinding(t *testing.T) {
 	}
 
 	req := request{
-		grantType:         goidc.GrantAuthorizationCode,
-		redirectURI:       client.RedirectURIs[0],
-		authorizationCode: session.AuthCode,
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: client.RedirectURIs[0],
+		code:        session.AuthCode,
 	}
 
 	// When.
@@ -510,7 +514,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_MTLSBinding(t *testing.T) {
 		t.Fatalf("error generating the authorization code grant: %v", err)
 	}
 
-	grantSessions := oidctest.GrantSessions(t, ctx)
+	grantSessions := oidctest.Grants(t, ctx)
 	if len(grantSessions) != 1 {
 		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
 	}
@@ -519,6 +523,12 @@ func TestGenerateGrant_AuthorizationCodeGrant_MTLSBinding(t *testing.T) {
 	if grantSession.ClientCertThumbprint == "" {
 		t.Fatalf("invalid certificate thumbprint")
 	}
+
+	tokens := oidctest.Tokens(t, ctx)
+	if len(tokens) != 1 {
+		t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+	}
+	tokenEntity := tokens[0]
 
 	claims, err := oidctest.SafeClaims(tokenResp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 	if err != nil {
@@ -530,11 +540,11 @@ func TestGenerateGrant_AuthorizationCodeGrant_MTLSBinding(t *testing.T) {
 		"sub":       session.Subject,
 		"client_id": client.ID,
 		"scope":     session.GrantedScopes,
-		"exp":       float64(grantSession.LastTokenExpiresAtTimestamp),
+		"exp":       float64(tokenEntity.ExpiresAtTimestamp),
 		"iat":       float64(now),
-		"jti":       grantSession.TokenID,
+		"jti":       tokenEntity.ID,
 		"cnf": map[string]any{
-			"x5t#S256": grantSession.ClientCertThumbprint,
+			"x5t#S256": tokenEntity.ClientCertThumbprint,
 		},
 	}
 	if diff := cmp.Diff(
@@ -548,6 +558,201 @@ func TestGenerateGrant_AuthorizationCodeGrant_MTLSBinding(t *testing.T) {
 	authnSessions := oidctest.AuthnSessions(t, ctx)
 	if len(authnSessions) != 0 {
 		t.Errorf("len(authnSessions) = %d, want 0", len(authnSessions))
+	}
+}
+
+func TestGenerateGrant_AuthorizationCodeGrant_MissingCode(t *testing.T) {
+	// Given.
+	ctx, client, _ := setUpAuthzCodeGrant(t)
+
+	req := request{
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: client.RedirectURIs[0],
+		code:        "",
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for missing authorization code")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeInvalidRequest {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRequest)
+	}
+}
+
+func TestGenerateGrant_AuthorizationCodeGrant_ExpiredSession(t *testing.T) {
+	// Given.
+	ctx, client, session := setUpAuthzCodeGrant(t)
+	session.ExpiresAtTimestamp = timeutil.TimestampNow() - 10
+	_ = ctx.SaveAuthnSession(session)
+
+	req := request{
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: client.RedirectURIs[0],
+		code:        session.AuthCode,
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for expired authorization code")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeInvalidGrant {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidGrant)
+	}
+}
+
+func TestGenerateGrant_AuthorizationCodeGrant_WrongRedirectURI(t *testing.T) {
+	// Given.
+	ctx, _, session := setUpAuthzCodeGrant(t)
+
+	req := request{
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: "https://wrong.example.com/callback",
+		code:        session.AuthCode,
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for wrong redirect URI")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeInvalidGrant {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidGrant)
+	}
+}
+
+func TestGenerateGrant_AuthorizationCodeGrant_ClientMismatch(t *testing.T) {
+	// Given.
+	ctx, _, session := setUpAuthzCodeGrant(t)
+	session.ClientID = "different_client"
+	_ = ctx.SaveAuthnSession(session)
+
+	req := request{
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: session.RedirectURI,
+		code:        session.AuthCode,
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for client mismatch")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeInvalidGrant {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidGrant)
+	}
+}
+
+func TestGenerateGrant_AuthorizationCodeGrant_ClientLacksGrantType(t *testing.T) {
+	// Given.
+	ctx, client, session := setUpAuthzCodeGrant(t)
+	client.GrantTypes = []goidc.GrantType{goidc.GrantClientCredentials}
+	_ = ctx.SaveClient(client)
+
+	req := request{
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: client.RedirectURIs[0],
+		code:        session.AuthCode,
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error when client lacks authorization_code grant type")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeUnauthorizedClient {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeUnauthorizedClient)
+	}
+}
+
+func TestGenerateGrant_AuthorizationCodeGrant_ScopeNarrowing(t *testing.T) {
+	// Given.
+	ctx, client, session := setUpAuthzCodeGrant(t)
+	session.GrantedScopes = "openid " + oidctest.Scope1.ID
+	_ = ctx.SaveAuthnSession(session)
+
+	req := request{
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: client.RedirectURIs[0],
+		code:        session.AuthCode,
+		scopes:      goidc.ScopeOpenID.ID,
+	}
+
+	// When.
+	tokenResp, err := generateGrant(ctx, req)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if tokenResp.Scopes != goidc.ScopeOpenID.ID {
+		t.Errorf("Scopes = %s, want %s", tokenResp.Scopes, goidc.ScopeOpenID.ID)
+	}
+}
+
+func TestGenerateGrant_AuthorizationCodeGrant_InvalidScopeNarrowing(t *testing.T) {
+	// Given.
+	ctx, client, session := setUpAuthzCodeGrant(t)
+
+	req := request{
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: client.RedirectURIs[0],
+		code:        session.AuthCode,
+		scopes:      "scope_not_granted",
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for scope not in granted set")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeInvalidScope {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidScope)
 	}
 }
 
@@ -574,12 +779,11 @@ func setUpAuthzCodeGrant(t testing.TB) (ctx oidc.Context, client *goidc.Client, 
 			Scopes:      goidc.ScopeOpenID.ID,
 			RedirectURI: client.RedirectURIs[0],
 		},
-		AuthCode:              authorizationCode,
-		Subject:               "user_id",
-		CreatedAtTimestamp:    now,
-		ExpiresAtTimestamp:    now + 60,
-		Storage:               make(map[string]any),
-		AdditionalTokenClaims: make(map[string]any),
+		AuthCode:           authorizationCode,
+		Subject:            "user_id",
+		CreatedAtTimestamp: now,
+		ExpiresAtTimestamp: now + 60,
+		Store:              make(map[string]any),
 	}
 	if err := ctx.SaveAuthnSession(session); err != nil {
 		t.Errorf("error while creating the session: %v", err)

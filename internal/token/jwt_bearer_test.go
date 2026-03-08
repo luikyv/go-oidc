@@ -34,11 +34,16 @@ func TestHandleGrantCreation_JWTBearerGrant(t *testing.T) {
 		t.Fatalf("error generating the authorization code grant: %v", err)
 	}
 
-	grantSessions := oidctest.GrantSessions(t, ctx)
+	grantSessions := oidctest.Grants(t, ctx)
 	if len(grantSessions) != 1 {
 		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
 	}
-	grantSession := grantSessions[0]
+
+	tokens := oidctest.Tokens(t, ctx)
+	if len(tokens) != 1 {
+		t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+	}
+	tokenEntity := tokens[0]
 
 	tokenClaims, err := oidctest.SafeClaims(tokenResp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 	if err != nil {
@@ -50,7 +55,7 @@ func TestHandleGrantCreation_JWTBearerGrant(t *testing.T) {
 		"sub":       "random_subject",
 		"scope":     reqScopes,
 		"client_id": client.ID,
-		"exp":       float64(grantSession.LastTokenExpiresAtTimestamp),
+		"exp":       float64(tokenEntity.ExpiresAtTimestamp),
 		"iat":       float64(now),
 	}
 	if diff := cmp.Diff(
@@ -72,7 +77,7 @@ func TestHandleGrantCreation_JWTBearerGrant(t *testing.T) {
 		"iss": ctx.Issuer(),
 		"sub": "random_subject",
 		"aud": client.ID,
-		"exp": float64(grantSession.LastTokenExpiresAtTimestamp),
+		"exp": float64(now + 60),
 		"iat": float64(now),
 	}
 	if diff := cmp.Diff(
@@ -104,11 +109,16 @@ func TestHandleGrantCreation_JWTBearerGrant_NoClientIdentified(t *testing.T) {
 		t.Fatalf("error generating the authorization code grant: %v", err)
 	}
 
-	grantSessions := oidctest.GrantSessions(t, ctx)
+	grantSessions := oidctest.Grants(t, ctx)
 	if len(grantSessions) != 1 {
 		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
 	}
-	grantSession := grantSessions[0]
+
+	tokens := oidctest.Tokens(t, ctx)
+	if len(tokens) != 1 {
+		t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+	}
+	tokenEntity := tokens[0]
 
 	tokenClaims, err := oidctest.SafeClaims(tokenResp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 	if err != nil {
@@ -119,7 +129,7 @@ func TestHandleGrantCreation_JWTBearerGrant_NoClientIdentified(t *testing.T) {
 		"iss":   ctx.Issuer(),
 		"sub":   "random_subject",
 		"scope": reqScopes,
-		"exp":   float64(grantSession.LastTokenExpiresAtTimestamp),
+		"exp":   float64(tokenEntity.ExpiresAtTimestamp),
 		"iat":   float64(now),
 	}
 	if diff := cmp.Diff(
@@ -140,7 +150,7 @@ func TestHandleGrantCreation_JWTBearerGrant_NoClientIdentified(t *testing.T) {
 	wantedIDTokenClaims := map[string]any{
 		"iss": ctx.Issuer(),
 		"sub": "random_subject",
-		"exp": float64(grantSession.LastTokenExpiresAtTimestamp),
+		"exp": float64(now + 60),
 		"iat": float64(now),
 	}
 	if diff := cmp.Diff(
@@ -206,6 +216,129 @@ func TestHandleGrantCreation_JWTBearerGrant_ClientAuthnIsRequired(t *testing.T) 
 		t.Fatalf("error not as expected: %v", err)
 	}
 
+}
+
+func TestHandleGrantCreation_JWTBearerGrant_MissingAssertion(t *testing.T) {
+	// Given.
+	ctx, _ := setUpJWTBearerGrant(t, "random_subject")
+
+	req := request{
+		grantType: goidc.GrantJWTBearer,
+		scopes:    oidctest.Scope1.ID,
+		assertion: "",
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeInvalidGrant {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidGrant)
+	}
+}
+
+func TestHandleGrantCreation_JWTBearerGrant_InvalidScope(t *testing.T) {
+	// Given.
+	ctx, _ := setUpJWTBearerGrant(t, "random_subject")
+
+	req := request{
+		grantType: goidc.GrantJWTBearer,
+		scopes:    "unknown_scope",
+		assertion: "random_assertion",
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeInvalidScope {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidScope)
+	}
+}
+
+func TestHandleGrantCreation_JWTBearerGrant_ServerDoesNotSupportGrantType(t *testing.T) {
+	// Given.
+	ctx, _ := setUpJWTBearerGrant(t, "random_subject")
+	// Remove GrantJWTBearer from the server's supported grant types.
+	ctx.GrantTypes = []goidc.GrantType{goidc.GrantAuthorizationCode, goidc.GrantClientCredentials}
+
+	req := request{
+		grantType: goidc.GrantJWTBearer,
+		scopes:    oidctest.Scope1.ID,
+		assertion: "random_assertion",
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeUnsupportedGrantType {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeUnsupportedGrantType)
+	}
+}
+
+func TestHandleGrantCreation_JWTBearerGrant_AssertionHandlerError(t *testing.T) {
+	// Given.
+	ctx, _ := setUpJWTBearerGrant(t, "random_subject")
+	ctx.HandleJWTBearerGrantAssertionFunc = func(
+		r *http.Request,
+		assertion string,
+	) (
+		goidc.JWTBearerGrantInfo,
+		error,
+	) {
+		return goidc.JWTBearerGrantInfo{}, errors.New("assertion handler failed")
+	}
+
+	req := request{
+		grantType: goidc.GrantJWTBearer,
+		scopes:    oidctest.Scope1.ID,
+		assertion: "random_assertion",
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeInvalidGrant {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidGrant)
+	}
 }
 
 func setUpJWTBearerGrant(t *testing.T, sub string) (

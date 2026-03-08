@@ -48,8 +48,6 @@ const (
 	defaultEndpointSSFPolling                   = "/ssf/poll"
 )
 
-func defaultTokenOptionsFunc() goidc.TokenOptionsFunc {
-	return func(_ context.Context, grantInfo goidc.GrantInfo, _ *goidc.Client) goidc.TokenOptions {
-		return goidc.NewOpaqueTokenOptions(goidc.DefaultOpaqueTokenLength, defaultTokenLifetimeSecs)
-	}
+func defaultTokenOptionsFunc(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
+	return goidc.NewOpaqueTokenOptions(defaultTokenLifetimeSecs)
 }

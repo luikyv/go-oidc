@@ -4,7 +4,6 @@ import (
 	"crypto/subtle"
 	"slices"
 
-	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -21,7 +20,7 @@ func create(ctx oidc.Context, initialToken string, meta *goidc.ClientMeta) (resp
 		return response{}, err
 	}
 
-	if err := client.Validate(ctx, meta); err != nil {
+	if err := Validate(ctx, meta); err != nil {
 		return response{}, err
 	}
 
@@ -43,7 +42,7 @@ func update(ctx oidc.Context, id, regToken string, meta *goidc.ClientMeta) (resp
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid metadata", err)
 	}
 
-	if err := client.Validate(ctx, meta); err != nil {
+	if err := Validate(ctx, meta); err != nil {
 		return response{}, err
 	}
 
@@ -129,11 +128,10 @@ func setSecret(ctx oidc.Context, c *goidc.Client) string {
 	// Clear the client's secret and hashed secret to ensure it's only set when
 	// secret-based authentication is required.
 	c.Secret = ""
-	authnMethods := client.AuthnMethods(ctx, &c.ClientMeta)
 
 	// Check for client authentication methods that require a secret that must
 	// be store as a hash.
-	if slices.ContainsFunc(authnMethods, func(method goidc.AuthnMethod) bool {
+	if slices.ContainsFunc(authnMethods(ctx, &c.ClientMeta), func(method goidc.AuthnMethod) bool {
 		return method == goidc.AuthnMethodSecretBasic || method == goidc.AuthnMethodSecretPost || method == goidc.AuthnMethodSecretJWT
 	}) {
 		secretExpiresAt := 0

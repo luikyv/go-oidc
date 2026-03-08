@@ -170,8 +170,8 @@ func TestHandleUserInfoRequest_PairwiseSub(t *testing.T) {
 
 func TestHandleUserInfoRequest_InvalidPoP(t *testing.T) {
 	// Given.
-	ctx, _, grantSession := setUp(t)
-	grantSession.JWKThumbprint = "random_jkt"
+	ctx, _, tokenEntity := setUp(t)
+	tokenEntity.JWKThumbprint = "random_jkt"
 
 	// When.
 	_, err := handleUserInfoRequest(ctx)
@@ -187,7 +187,90 @@ func TestHandleUserInfoRequest_InvalidPoP(t *testing.T) {
 	}
 }
 
-func setUp(t *testing.T) (oidc.Context, *goidc.Client, *goidc.GrantSession) {
+func TestHandleUserInfoRequest_ExpiredToken(t *testing.T) {
+	// Given.
+	ctx, _, tokenEntity := setUp(t)
+	tokenEntity.ExpiresAtTimestamp = timeutil.TimestampNow() - 10
+
+	// When.
+	_, err := handleUserInfoRequest(ctx)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for expired token")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeAccessDenied {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeAccessDenied)
+	}
+}
+
+func TestHandleUserInfoRequest_MissingOpenIDScope(t *testing.T) {
+	// Given.
+	ctx, _, tokenEntity := setUp(t)
+	tokenEntity.Scopes = "scope1"
+
+	// When.
+	_, err := handleUserInfoRequest(ctx)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for missing openid scope")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeAccessDenied {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeAccessDenied)
+	}
+}
+
+func TestHandleUserInfoRequest_NoToken(t *testing.T) {
+	// Given.
+	ctx, _, _ := setUp(t)
+	ctx.Request.Header.Del("Authorization")
+
+	// When.
+	_, err := handleUserInfoRequest(ctx)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error when no token is provided")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeInvalidToken {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidToken)
+	}
+}
+
+func TestHandleUserInfoRequest_TokenNotFound(t *testing.T) {
+	// Given.
+	ctx, _, _ := setUp(t)
+	ctx.Request.Header.Set("Authorization", "Bearer nonexistent_token")
+
+	// When.
+	_, err := handleUserInfoRequest(ctx)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error when token is not found in storage")
+	}
+}
+
+func setUp(t *testing.T) (oidc.Context, *goidc.Client, *goidc.Token) {
 	t.Helper()
 
 	ctx := oidctest.NewContext(t)
@@ -197,27 +280,44 @@ func setUp(t *testing.T) (oidc.Context, *goidc.Client, *goidc.GrantSession) {
 		t.Fatalf("error saving the client during setup: %v", err)
 	}
 
-	token := "opaque_token"
+	tokenID := "opaque_token"
+	grantID := "random_grant_id"
 	now := timeutil.TimestampNow()
-	grantSession := &goidc.GrantSession{
-		TokenID:                     token,
-		CreatedAtTimestamp:          now,
-		ExpiresAtTimestamp:          now + 60,
-		LastTokenExpiresAtTimestamp: now + 60,
-		GrantInfo: goidc.GrantInfo{
-			ActiveScopes: goidc.ScopeOpenID.ID,
-			Subject:      "random_subject",
-			ClientID:     client.ID,
-			AdditionalUserInfoClaims: map[string]any{
+
+	grant := &goidc.Grant{
+		ID:                 grantID,
+		ClientID:           client.ID,
+		Subject:            "random_subject",
+		CreatedAtTimestamp: now,
+		Store: map[string]any{
+			"userinfo_claims": map[string]any{
 				"random_claim": "random_value",
 			},
 		},
 	}
-
-	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		t.Fatalf("error saving the grant session during setup: %v", err)
+	if err := ctx.SaveGrant(grant); err != nil {
+		t.Fatalf("error saving the grant during setup: %v", err)
 	}
-	ctx.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 
-	return ctx, client, grantSession
+	ctx.UserInfoClaimsFunc = func(_ context.Context, g *goidc.Grant) map[string]any {
+		claims, _ := g.Store["userinfo_claims"].(map[string]any)
+		return claims
+	}
+
+	tokenEntity := &goidc.Token{
+		ID:                 tokenID,
+		GrantID:            grantID,
+		ClientID:           client.ID,
+		Subject:            "random_subject",
+		CreatedAtTimestamp: now,
+		ExpiresAtTimestamp: now + 60,
+		Scopes:             goidc.ScopeOpenID.ID,
+	}
+
+	if err := ctx.SaveToken(tokenEntity); err != nil {
+		t.Fatalf("error saving the token during setup: %v", err)
+	}
+	ctx.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenID))
+
+	return ctx, client, tokenEntity
 }

@@ -5,22 +5,12 @@ import (
 	"slices"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func registerAutomatically(ctx oidc.Context, id string) (*goidc.Client, error) {
-	clientConfig, _, err := buildAndResolveTrustChain(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("could not resolve the trust chain for client %s: %w", id, err)
-	}
-
-	return register(ctx, clientConfig, goidc.ClientRegistrationTypeAutomatic)
-}
-
-func registerExplicitlyWithEntityConfiguration(ctx oidc.Context, signedStatement string) (string, error) {
+func registerEntityConfiguration(ctx oidc.Context, signedStatement string) (string, error) {
 	entityConfig, err := parseEntityConfiguration(ctx, signedStatement, &parseOptions{
 		explicitRegistration: true,
 	})
@@ -32,7 +22,7 @@ func registerExplicitlyWithEntityConfiguration(ctx oidc.Context, signedStatement
 		// [OpenID Fed §12.2.2] The config in the trust chain header is only used to establish trust.
 		// The config that must be used for all other purposes is the subject's config.
 		chainHeader[0] = entityConfig
-		return registerExplicitlyWithTrustChain(ctx, chainHeader)
+		return registerClientExplicitly(ctx, chainHeader)
 	}
 
 	chain, err := buildTrustChain(ctx, entityConfig)
@@ -40,80 +30,44 @@ func registerExplicitlyWithEntityConfiguration(ctx oidc.Context, signedStatement
 		return "", err
 	}
 
-	return registerExplicitlyWithTrustChain(ctx, chain)
+	return registerClientExplicitly(ctx, chain)
 }
 
-func registerExplicitlyWithChainStatements(ctx oidc.Context, chainStatements []string) (string, error) {
+func registerChainStatements(ctx oidc.Context, chainStatements []string) (string, error) {
 	chain, err := parseTrustChain(ctx, chainStatements)
 	if err != nil {
 		return "", err
 	}
 
-	return registerExplicitlyWithTrustChain(ctx, chain)
+	return registerClientExplicitly(ctx, chain)
 }
 
-func registerExplicitlyWithTrustChain(ctx oidc.Context, chain trustChain) (string, error) {
-	resolvedConfig, err := chain.resolve()
+func registerClientExplicitly(ctx oidc.Context, chain trustChain) (string, error) {
+	c, err := resolveClient(ctx, chain)
 	if err != nil {
 		return "", err
 	}
 
-	c, err := register(ctx, resolvedConfig, goidc.ClientRegistrationTypeExplicit)
-	if err != nil {
-		return "", err
+	if !slices.Contains(c.ClientRegistrationTypes, goidc.ClientRegistrationTypeExplicit) {
+		return "", goidc.NewError(goidc.ErrorCodeInvalidRequest, "the entity is not registered for explicit registration")
+	}
+
+	if err := ctx.SaveClient(c); err != nil {
+		return "", fmt.Errorf("could not save the federation client: %w", err)
 	}
 
 	now := timeutil.TimestampNow()
 	statement := entityStatement{
 		Issuer:         ctx.Issuer(),
-		Subject:        resolvedConfig.Subject,
-		Audience:       resolvedConfig.Subject,
-		IssuedAt:       timeutil.TimestampNow(),
+		Subject:        chain.subjectConfig().Subject,
+		Audience:       chain.subjectConfig().Subject,
+		IssuedAt:       now,
 		ExpiresAt:      now + 600,
-		JWKS:           resolvedConfig.JWKS,
+		JWKS:           chain.subjectConfig().JWKS,
 		AuthorityHints: []string{chain.firstSubordinateStatement().Issuer},
-		TrustAnchor:    resolvedConfig.TrustAnchor,
+		TrustAnchor:    c.FederationTrustAnchor,
 	}
 	statement.Metadata.OpenIDClient = &c.ClientMeta
 
 	return ctx.OpenIDFedSign(statement, (&jose.SignerOptions{}).WithType(jwtTypeExplicitRegistration))
-}
-
-func register(ctx oidc.Context, clientConfig entityStatement, regType goidc.ClientRegistrationType) (*goidc.Client, error) {
-	if clientConfig.Metadata.OpenIDClient == nil {
-		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "the entity is not an openid client")
-	}
-
-	if !slices.Contains(clientConfig.Metadata.OpenIDClient.ClientRegistrationTypes, regType) {
-		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, fmt.Sprintf("the entity %s is not registered for client registration type %s", clientConfig.Subject, regType))
-	}
-
-	c := &goidc.Client{
-		ID:                         clientConfig.Subject,
-		IsFederated:                true,
-		FederationTrustAnchor:      clientConfig.TrustAnchor,
-		FederationRegistrationType: regType,
-		CreatedAtTimestamp:         timeutil.TimestampNow(),
-		ExpiresAtTimestamp:         clientConfig.ExpiresAt,
-		ClientMeta:                 *clientConfig.Metadata.OpenIDClient,
-	}
-
-	trustMarks, err := extractRequiredTrustMarks(ctx, clientConfig, c)
-	if err != nil {
-		return nil, err
-	}
-	c.FederationTrustMarks = trustMarks
-
-	if err := ctx.OpenIDFedHandleClient(c); err != nil {
-		return nil, err
-	}
-
-	if err := client.Validate(ctx, clientConfig.Metadata.OpenIDClient); err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid client metadata", err)
-	}
-
-	if err := ctx.SaveClient(c); err != nil {
-		return nil, fmt.Errorf("could not save the federation client: %w", err)
-	}
-	return c, nil
 }

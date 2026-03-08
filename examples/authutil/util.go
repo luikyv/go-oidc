@@ -189,9 +189,23 @@ func DCRFunc(r *http.Request, _ string, meta *goidc.ClientMeta) error {
 }
 
 func TokenOptionsFunc(alg goidc.SignatureAlgorithm) goidc.TokenOptionsFunc {
-	return func(_ context.Context, grantInfo goidc.GrantInfo, _ *goidc.Client) goidc.TokenOptions {
+	return func(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
 		opts := goidc.NewJWTTokenOptions(alg, 600)
 		return opts
+	}
+}
+
+func IDTokenClaimsFunc() goidc.IDTokenClaimsFunc {
+	return func(_ context.Context, grant *goidc.Grant) map[string]any {
+		claims, _ := grant.Store[paramIDTokenClaims].(map[string]any)
+		return claims
+	}
+}
+
+func UserInfoClaimsFunc() goidc.UserInfoClaimsFunc {
+	return func(_ context.Context, grant *goidc.Grant) map[string]any {
+		claims, _ := grant.Store[paramUserInfoClaims].(map[string]any)
+		return claims
 	}
 }
 
@@ -312,7 +326,7 @@ func LogoutPolicy() goidc.LogoutPolicy {
 			return true
 		},
 		func(w http.ResponseWriter, r *http.Request, ls *goidc.LogoutSession) (goidc.Status, error) {
-			logout := r.PostFormValue("logout")
+			logout := r.PostFormValue("logout") //nolint:gosec
 			if logout == "" {
 				slog.Debug("rendering logout page")
 				if err := tmpl.ExecuteTemplate(w, "logout.html", LogoutPage{
@@ -326,7 +340,7 @@ func LogoutPolicy() goidc.LogoutPolicy {
 			}
 
 			if !isTrue(logout) {
-				slog.Debug("user cancelled logout", "logout", logout)
+				slog.Debug("user cancelled logout")
 				return goidc.StatusFailure, errLogoutCancelled
 			}
 

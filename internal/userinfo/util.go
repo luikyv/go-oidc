@@ -14,7 +14,7 @@ import (
 )
 
 func handleUserInfoRequest(ctx oidc.Context) (response, error) {
-
+	// TODO: Use the introspection endpoint to validate the token.
 	accessToken, _, ok := ctx.AuthorizationToken()
 	if !ok {
 		return response{}, goidc.NewError(goidc.ErrorCodeInvalidToken, "no token found")
@@ -25,22 +25,26 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 		return response{}, err
 	}
 
-	grantSession, err := ctx.GrantSessionByTokenID(tokenID)
+	tokenEntity, err := ctx.TokenByID(tokenID)
 	if err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest,
-			"invalid token", err)
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid token", err)
 	}
 
-	if err := validateRequest(ctx, grantSession, accessToken); err != nil {
+	if err := validateRequest(ctx, tokenEntity, accessToken); err != nil {
 		return response{}, err
 	}
 
-	client, err := ctx.Client(grantSession.ClientID)
+	c, err := ctx.Client(tokenEntity.ClientID)
 	if err != nil {
 		return response{}, err
 	}
 
-	resp, err := userInfoResponse(ctx, client, grantSession)
+	grant, err := ctx.GrantByID(tokenEntity.GrantID)
+	if err != nil {
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "grant not found", err)
+	}
+
+	resp, err := userInfoResponse(ctx, c, tokenEntity, grant)
 	if err != nil {
 		return response{}, err
 	}
@@ -48,12 +52,12 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 	return resp, nil
 }
 
-func userInfoResponse(ctx oidc.Context, c *goidc.Client, grantSession *goidc.GrantSession) (response, error) {
-	sub := ctx.ExportableSubject(grantSession.Subject, c)
+func userInfoResponse(ctx oidc.Context, c *goidc.Client, t *goidc.Token, grant *goidc.Grant) (response, error) {
+	sub := ctx.ExportableSubject(t.Subject, c)
 	userInfoClaims := map[string]any{
 		goidc.ClaimSubject: sub,
 	}
-	maps.Copy(userInfoClaims, grantSession.AdditionalUserInfoClaims)
+	maps.Copy(userInfoClaims, ctx.UserInfoClaims(grant))
 
 	// If the client doesn't require the user info to be signed,
 	// we'll just return the claims as a JSON object.
@@ -126,18 +130,18 @@ func encryptUserInfoJWT(ctx oidc.Context, c *goidc.Client, userInfoJWT string) (
 	return userInfoJWE, nil
 }
 
-func validateRequest(ctx oidc.Context, gs *goidc.GrantSession, tkn string) error {
-	if gs.HasLastTokenExpired() {
+func validateRequest(ctx oidc.Context, t *goidc.Token, tkn string) error {
+	if t.IsExpired() {
 		return goidc.NewError(goidc.ErrorCodeAccessDenied, "token expired")
 	}
 
-	if !strutil.ContainsOpenID(gs.ActiveScopes) {
+	if !strutil.ContainsOpenID(t.Scopes) {
 		return goidc.NewError(goidc.ErrorCodeAccessDenied, "invalid scope")
 	}
 
 	confirmation := goidc.TokenConfirmation{
-		JWKThumbprint:        gs.JWKThumbprint,
-		ClientCertThumbprint: gs.ClientCertThumbprint,
+		JWKThumbprint:        t.JWKThumbprint,
+		ClientCertThumbprint: t.ClientCertThumbprint,
 	}
 	if err := token.ValidatePoP(ctx, tkn, confirmation); err != nil {
 		return err

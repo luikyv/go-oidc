@@ -9,19 +9,13 @@ import (
 	"strings"
 
 	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/luikyv/go-oidc/internal/federation"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func AuthnMethods(ctx oidc.Context, meta *goidc.ClientMeta) []goidc.AuthnMethod {
-	authnMethods := []goidc.AuthnMethod{meta.TokenAuthnMethod}
-	if ctx.TokenIntrospectionIsEnabled {
-		authnMethods = append(authnMethods, meta.TokenIntrospectionAuthnMethod)
-	}
-	if ctx.TokenRevocationIsEnabled {
-		authnMethods = append(authnMethods, meta.TokenRevocationAuthnMethod)
-	}
-	return authnMethods
+type Options struct {
+	TrustChain []string
 }
 
 func AreScopesAllowed(ctx oidc.Context, c *goidc.Client, requestedScopes string) bool {
@@ -57,8 +51,7 @@ func AreScopesAllowed(ctx oidc.Context, c *goidc.Client, requestedScopes string)
 func JWKByKeyID(ctx oidc.Context, c *goidc.Client, keyID string) (goidc.JSONWebKey, error) {
 	jwks, err := JWKS(ctx, c)
 	if err != nil {
-		return goidc.JSONWebKey{},
-			fmt.Errorf("could not find the jwk by key id: %w", err)
+		return goidc.JSONWebKey{}, fmt.Errorf("could not find the jwk by key id: %w", err)
 	}
 
 	key, err := jwks.Key(keyID)
@@ -95,7 +88,7 @@ func JWKS(ctx oidc.Context, c *goidc.Client) (*goidc.JSONWebKeySet, error) {
 		return jwks, nil
 	}
 
-	if c.IsFederated && c.SignedJWKSURI != "" {
+	if c.SignedJWKSURI != "" {
 		jwks, err := fetchSignedJWKS(ctx, c)
 		if err != nil {
 			return nil, err
@@ -140,7 +133,7 @@ func fetchJWKS(ctx oidc.Context, c *goidc.Client) (*goidc.JSONWebKeySet, error) 
 
 func fetchSignedJWKS(ctx oidc.Context, c *goidc.Client) (*goidc.JSONWebKeySet, error) {
 	// Fetch the client's entity configuration to get the verification keys.
-	entityJWKS, err := ctx.OpenIDFedEntityJWKS(c.ID)
+	entityJWKS, err := federation.FetchEntityConfigurationJWKS(ctx, c.ID)
 	if err != nil {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "could not fetch the client entity jwks", err)
 	}

@@ -7,7 +7,8 @@ import (
 type Configuration struct {
 	ClientManager       goidc.ClientManager
 	AuthnSessionManager goidc.AuthnSessionManager
-	GrantSessionManager goidc.GrantSessionManager
+	GrantManager        goidc.GrantManager
+	TokenManager        goidc.TokenManager
 
 	Profile goidc.Profile
 	// Host is the domain where the server runs. This value will be used as the
@@ -23,6 +24,9 @@ type Configuration struct {
 	DecrypterFunc goidc.DecrypterFunc
 
 	HandleGrantFunc            goidc.HandleGrantFunc
+	IDTokenClaimsFunc          goidc.IDTokenClaimsFunc
+	UserInfoClaimsFunc         goidc.UserInfoClaimsFunc
+	TokenClaimsFunc            goidc.TokenClaimsFunc
 	Policies                   []goidc.AuthnPolicy
 	Scopes                     []goidc.Scope
 	OpenIDIsRequired           bool
@@ -31,7 +35,7 @@ type Configuration struct {
 	ResponseModes              []goidc.ResponseMode
 	AuthnSessionTimeoutSecs    int
 	AuthnSessionGenerateIDFunc goidc.RandomStringFunc
-	GrantSessionIDFunc         goidc.RandomStringFunc
+	GrantIDFunc                goidc.RandomStringFunc
 	ACRs                       []goidc.ACR
 	DisplayValues              []goidc.DisplayValue
 	// Claims defines the user claims that can be returned in the userinfo endpoint or in ID tokens.
@@ -144,7 +148,7 @@ type Configuration struct {
 	// they were pushed.
 	PARIsRequired        bool
 	PAREndpoint          string
-	HandlePARSessionFunc goidc.HandleSessionFunc
+	PARHandleSessionFunc goidc.HandleSessionFunc
 	PARLifetimeSecs      int
 	// PARAllowUnregisteredRedirectURI indicates whether the redirect URIs
 	// informed during PAR must be previously registered or not.
@@ -179,9 +183,9 @@ type Configuration struct {
 	PKCEDefaultChallengeMethod goidc.CodeChallengeMethod
 	PKCEChallengeMethods       []goidc.CodeChallengeMethod
 
-	AuthDetailsIsEnabled   bool
-	AuthDetailTypes        []string
-	CompareAuthDetailsFunc goidc.CompareAuthDetailsFunc
+	RichAuthorizationIsEnabled bool
+	AuthDetailTypes            []goidc.AuthDetailType
+	CompareAuthDetailsFunc     goidc.CompareAuthDetailsFunc
 
 	ResourceIndicatorsIsEnabled bool
 	// ResourceIndicatorsIsRequired indicates that the resource parameter is
@@ -217,8 +221,6 @@ type Configuration struct {
 	OpenIDFedOrganizationName       string
 	OpenIDFedHTTPClientFunc         goidc.HTTPClientFunc
 	OpenIDFedHandleClientFunc       goidc.HandleClientFunc
-	OpenIDFedClientFunc             func(ctx Context, id string) (*goidc.Client, error)
-	OpenIDFedEntityJWKSFunc         func(ctx Context, id string) (goidc.JSONWebKeySet, error)
 
 	LogoutIsEnabled             bool
 	LogoutEndpoint              string

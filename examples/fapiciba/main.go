@@ -38,6 +38,8 @@ func main() {
 		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
 		provider.WithACRs(authutil.ACRs[0], authutil.ACRs...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.PS256)),
+		provider.WithIDTokenClaims(authutil.IDTokenClaimsFunc()),
+		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
 		provider.WithCheckJTIFunc(authutil.CheckJTIFunc()),
@@ -95,7 +97,9 @@ func initBackAuthFunc() goidc.InitBackAuthFunc {
 		}
 
 		if as.ACRValues != "" {
-			as.SetIDTokenClaim(goidc.ClaimACR, as.ACRValues)
+			as.StoreParameter("id_token_claims", map[string]any{
+				goidc.ClaimACR: as.ACRValues,
+			})
 		}
 
 		return nil

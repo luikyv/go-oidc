@@ -1,4 +1,4 @@
-package client
+package dcr_test
 
 import (
 	"encoding/json"
@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/luikyv/go-oidc/internal/dcr"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -17,7 +18,7 @@ func TestValidateRequest_ValidClient(t *testing.T) {
 	client, _ := oidctest.NewClient(t)
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err != nil {
@@ -32,7 +33,7 @@ func TestValidateRequest_InvalidAuthnMethod(t *testing.T) {
 	client.TokenAuthnMethod = "invalid_authn"
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -56,7 +57,7 @@ func TestValidateRequest_InvalidScope(t *testing.T) {
 	client.ScopeIDs = "invalid_scope_id"
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -81,7 +82,7 @@ func TestValidateRequest_InvalidPrivateKeyJWTSigAlg(t *testing.T) {
 	client.TokenAuthnSigAlg = "invalid_sig_alg"
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -107,7 +108,7 @@ func TestValidateRequest_JWKSRequiredForPrivateKeyJWT(t *testing.T) {
 	client.JWKSURI = ""
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -133,7 +134,7 @@ func TestValidateRequest_JWKSRequiredForSelfSignedTLS(t *testing.T) {
 	client.JWKSURI = ""
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -158,7 +159,7 @@ func TestValidateRequest_InvalidSecretJWTSigAlg(t *testing.T) {
 	client.TokenAuthnSigAlg = "invalid_sig_alg"
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -183,7 +184,7 @@ func TestValidateRequest_ValidTLSAuthn(t *testing.T) {
 	client.TLSSubDistinguishedName = "example"
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err != nil {
@@ -198,7 +199,7 @@ func TestValidateRequest_NoSubIdentifierForTLSAuthn(t *testing.T) {
 	client.TokenAuthnMethod = goidc.AuthnMethodTLS
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -224,7 +225,7 @@ func TestValidateRequest_MoreThanOneSubIdentifierForTLSAuthn(t *testing.T) {
 	client.TLSSubAlternativeName = "example"
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -248,7 +249,7 @@ func TestValidateRequest_InvalidGrantType(t *testing.T) {
 	client.GrantTypes = append(client.GrantTypes, "invalid_grant")
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -273,7 +274,7 @@ func TestValidateRequest_NoneAuthnInvalidForClientCredentials(t *testing.T) {
 	client.GrantTypes = append(client.GrantTypes, goidc.GrantClientCredentials)
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -293,6 +294,7 @@ func TestValidateRequest_NoneAuthnInvalidForClientCredentials(t *testing.T) {
 func TestValidateRequest_InvalidAuthnForIntrospection(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
+	ctx.TokenIntrospectionIsEnabled = true
 	ctx.TokenIntrospectionAuthnMethods = []goidc.AuthnMethod{
 		goidc.AuthnMethodSecretBasic,
 	}
@@ -300,7 +302,7 @@ func TestValidateRequest_InvalidAuthnForIntrospection(t *testing.T) {
 	client.TokenIntrospectionAuthnMethod = goidc.AuthnMethodSecretPost
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -324,7 +326,7 @@ func TestValidateRequest_InvalidRedirectURI(t *testing.T) {
 	client.RedirectURIs = append(client.RedirectURIs, "invalid")
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -348,7 +350,7 @@ func TestValidateRequest_RedirectURIWithFragment(t *testing.T) {
 	client.RedirectURIs = append(client.RedirectURIs, "https://example.com?param=value#fragment")
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -372,7 +374,7 @@ func TestValidateRequest_InvalidResponseType(t *testing.T) {
 	client.ResponseTypes = append(client.ResponseTypes, "invalid")
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -397,7 +399,7 @@ func TestValidateRequest_ImplicitGrantRequiredForImplicitResponseType(t *testing
 	client.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeIDToken}
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -422,7 +424,7 @@ func TestValidateRequest_AuthzCodeGrantRequiredForCodeResponseType(t *testing.T)
 	client.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeCode}
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -446,7 +448,7 @@ func TestValidateRequest_ValidPublicSubjectIdentifierType(t *testing.T) {
 	client.SubIdentifierType = goidc.SubIdentifierPublic
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err != nil {
@@ -469,7 +471,7 @@ func TestValidateRequest_ValidPairwiseSubjectIdentifierType(t *testing.T) {
 	client.SectorIdentifierURI = server.URL
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err != nil {
@@ -486,7 +488,7 @@ func TestValidateRequest_ValidPairwiseSubjectIdentifierTypeWithNoSectorURI(t *te
 	client.RedirectURIs = []string{"https://example.com/test1", "https://example.com/test2"}
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err != nil {
@@ -503,7 +505,7 @@ func TestValidateRequest_InvalidPairwiseSubjectIdentifierNoSectorURIAndRedirectU
 	client.RedirectURIs = []string{"https://example1.com", "https://example.com2"}
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -535,7 +537,7 @@ func TestValidateRequest_InvalidRedirectURIsNotPresentWhenFetchingSectorIdentifi
 	client.SectorIdentifierURI = server.URL
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -559,7 +561,7 @@ func TestValidateRequest_InvalidSubjectIdentifierType(t *testing.T) {
 	client.SubIdentifierType = "invalid"
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -579,13 +581,13 @@ func TestValidateRequest_InvalidSubjectIdentifierType(t *testing.T) {
 func TestValidateRequest_ValidAuthDetails(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.AuthDetailsIsEnabled = true
+	ctx.RichAuthorizationIsEnabled = true
 	ctx.AuthDetailTypes = append(ctx.AuthDetailTypes, "type1")
 	client, _ := oidctest.NewClient(t)
 	client.AuthDetailTypes = append(client.AuthDetailTypes, "type1")
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err != nil {
@@ -596,13 +598,13 @@ func TestValidateRequest_ValidAuthDetails(t *testing.T) {
 func TestValidateRequest_InvalidAuthDetails(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.AuthDetailsIsEnabled = true
+	ctx.RichAuthorizationIsEnabled = true
 	ctx.AuthDetailTypes = append(ctx.AuthDetailTypes, "type1")
 	client, _ := oidctest.NewClient(t)
 	client.AuthDetailTypes = append(client.AuthDetailTypes, "invalid")
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -634,7 +636,7 @@ func TestValidateRequest_ValidCIBAPing(t *testing.T) {
 	client.CIBANotificationEndpoint = "https://example.com"
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err != nil {
@@ -657,7 +659,7 @@ func TestValidateRequest_ValidCIBAPush(t *testing.T) {
 	client.CIBANotificationEndpoint = "https://example.com"
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err != nil {
@@ -679,7 +681,7 @@ func TestValidateRequest_ValidCIBAPoll(t *testing.T) {
 	client.CIBATokenDeliveryMode = goidc.CIBATokenDeliveryModePoll
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err != nil {
@@ -704,7 +706,7 @@ func TestValidateRequest_ValidCIBAJAR(t *testing.T) {
 	client.CIBAJARSigAlg = goidc.RS256
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err != nil {
@@ -729,7 +731,7 @@ func TestValidateRequest_InvalidCIBAJAR(t *testing.T) {
 	client.CIBAJARSigAlg = goidc.PS256
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -762,7 +764,7 @@ func TestValidateRequest_ValidCIBAUserCode(t *testing.T) {
 	client.CIBAUserCodeIsEnabled = true
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err != nil {
@@ -784,7 +786,7 @@ func TestValidateRequest_InvalidCIBADeliveryMode(t *testing.T) {
 	client.CIBATokenDeliveryMode = "invalid_mode"
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -816,7 +818,7 @@ func TestValidateRequest_InvalidCIBAUserCode(t *testing.T) {
 	client.CIBAUserCodeIsEnabled = true
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -843,7 +845,7 @@ func TestValidateRequest_RFC8252_NativeAppLoopbackIPv4(t *testing.T) {
 	client.RedirectURIs = []string{"http://127.0.0.1/callback"}
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err != nil {
@@ -859,7 +861,7 @@ func TestValidateRequest_RFC8252_NativeAppLoopbackIPv6(t *testing.T) {
 	client.RedirectURIs = []string{"http://[::1]/callback"}
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err != nil {
@@ -875,7 +877,7 @@ func TestValidateRequest_RFC8252_NativeAppPrivateUseURIScheme(t *testing.T) {
 	client.RedirectURIs = []string{"com.example.app://callback"}
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err != nil {
@@ -891,7 +893,7 @@ func TestValidateRequest_RFC8252_WebAppLoopbackRejected(t *testing.T) {
 	client.RedirectURIs = []string{"http://127.0.0.1/callback"}
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {
@@ -916,7 +918,7 @@ func TestValidateRequest_RFC8252_NativeAppNonLoopbackHTTPRejected(t *testing.T) 
 	client.RedirectURIs = []string{"http://example.com/callback"}
 
 	// When.
-	err := Validate(ctx, &client.ClientMeta)
+	err := dcr.Validate(ctx, &client.ClientMeta)
 
 	// Then.
 	if err == nil {

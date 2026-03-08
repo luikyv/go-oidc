@@ -32,6 +32,10 @@ linters:
   settings:
     cyclop:
       max-complexity: 20
+    gosec:
+      excludes:
+        - G117
+        - G704
   exclusions:
     generated: strict
     rules:

@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"reflect"
 	"slices"
@@ -16,6 +15,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/ssf"
 	"github.com/luikyv/go-oidc/internal/storage"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/internal/userinfo"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -186,24 +186,36 @@ func (op *Provider) DeleteAuthnSession(ctx context.Context, id string) error {
 	return op.config.AuthnSessionManager.Delete(ctx, id)
 }
 
-func (op *Provider) SaveGrantSession(ctx context.Context, gs *goidc.GrantSession) error {
-	return op.config.GrantSessionManager.Save(ctx, gs)
+func (op *Provider) SaveGrant(ctx context.Context, gs *goidc.Grant) error {
+	return op.config.GrantManager.Save(ctx, gs)
 }
 
-func (op *Provider) GrantSessionByTokenID(ctx context.Context, id string) (*goidc.GrantSession, error) {
-	return op.config.GrantSessionManager.SessionByTokenID(ctx, id)
+func (op *Provider) GrantByRefreshToken(ctx context.Context, id string) (*goidc.Grant, error) {
+	return op.config.GrantManager.SessionByRefreshToken(ctx, id)
 }
 
-func (op *Provider) GrantSessionByRefreshToken(ctx context.Context, id string) (*goidc.GrantSession, error) {
-	return op.config.GrantSessionManager.SessionByRefreshToken(ctx, id)
+func (op *Provider) DeleteGrant(ctx context.Context, id string) error {
+	return op.config.GrantManager.Delete(ctx, id)
 }
 
-func (op *Provider) DeleteGrantSession(ctx context.Context, id string) error {
-	return op.config.GrantSessionManager.Delete(ctx, id)
+func (op *Provider) DeleteGrantByAuthCode(ctx context.Context, id string) error {
+	return op.config.GrantManager.DeleteByAuthCode(ctx, id)
 }
 
-func (op *Provider) DeleteGrantSessionByAuthCode(ctx context.Context, id string) error {
-	return op.config.GrantSessionManager.DeleteByAuthCode(ctx, id)
+func (op *Provider) SaveToken(ctx context.Context, t *goidc.Token) error {
+	return op.config.TokenManager.Save(ctx, t)
+}
+
+func (op *Provider) TokenByID(ctx context.Context, id string) (*goidc.Token, error) {
+	return op.config.TokenManager.TokenByID(ctx, id)
+}
+
+func (op *Provider) DeleteToken(ctx context.Context, id string) error {
+	return op.config.TokenManager.Delete(ctx, id)
+}
+
+func (op *Provider) DeleteTokensByGrantID(ctx context.Context, grantID string) error {
+	return op.config.TokenManager.DeleteByGrantID(ctx, grantID)
 }
 
 func (op *Provider) SaveLogoutSession(ctx context.Context, session *goidc.LogoutSession) error {
@@ -241,25 +253,23 @@ func (op *Provider) NotifyCIBAFailure(ctx context.Context, authReqID string, err
 	return token.NotifyCIBAGrantFailure(oidcCtx, authReqID, err)
 }
 
-// MakeToken generates a new access token based on the provided grant information
-// and stores the corresponding grant session.
+// MakeToken generates a new access token based on the provided grant
+// and stores the corresponding grant session and token.
 //
 // This function is intended for scenarios where a token is required for the provider itself.
-func (op *Provider) MakeToken(ctx context.Context, gi goidc.GrantInfo) (string, error) {
+func (op *Provider) MakeToken(ctx context.Context, grant *goidc.Grant) (string, error) {
 	oidcCtx := oidc.NewContext(ctx, &op.config)
-	client := &goidc.Client{ID: gi.ClientID}
+	c := &goidc.Client{ID: grant.ClientID}
 
-	tkn, err := token.Make(oidcCtx, gi, client)
-	if err != nil {
-		return "", fmt.Errorf("could not generate a token: %w", err)
+	if grant.ID == "" {
+		grant.ID = oidcCtx.GrantID()
+	}
+	if grant.CreatedAtTimestamp == 0 {
+		grant.CreatedAtTimestamp = timeutil.TimestampNow()
 	}
 
-	grantSession := token.NewGrantSession(oidcCtx, gi, tkn)
-	if err := oidcCtx.SaveGrantSession(grantSession); err != nil {
-		return "", fmt.Errorf("could not store the grant session: %w", err)
-	}
-
-	return tkn.Value, nil
+	_, tokenValue, err := token.Issue(oidcCtx, grant, c, nil)
+	return tokenValue, err
 }
 
 func (op *Provider) RevokeToken(ctx context.Context, tkn string) error {
@@ -268,7 +278,8 @@ func (op *Provider) RevokeToken(ctx context.Context, tkn string) error {
 	if err != nil {
 		return err
 	}
-	_ = oidcCtx.DeleteGrantSession(info.GrantID)
+	_ = oidcCtx.DeleteGrant(info.GrantID)
+	_ = oidcCtx.DeleteTokensByGrantID(info.GrantID)
 	return nil
 }
 
@@ -293,9 +304,11 @@ func (op *Provider) setDefaults() error {
 
 	op.config.AuthnSessionManager = nonZeroOrDefault(op.config.AuthnSessionManager, goidc.AuthnSessionManager(storage.NewAuthnSessionManager(defaultStorageMaxSize)))
 
-	op.config.GrantSessionManager = nonZeroOrDefault(op.config.GrantSessionManager, goidc.GrantSessionManager(storage.NewGrantSessionManager(defaultStorageMaxSize)))
+	op.config.GrantManager = nonZeroOrDefault(op.config.GrantManager, goidc.GrantManager(storage.NewGrantManager(defaultStorageMaxSize)))
 
-	op.config.TokenOptionsFunc = nonZeroOrDefault(op.config.TokenOptionsFunc, defaultTokenOptionsFunc())
+	op.config.TokenManager = nonZeroOrDefault(op.config.TokenManager, goidc.TokenManager(storage.NewTokenManager(defaultStorageMaxSize)))
+
+	op.config.TokenOptionsFunc = nonZeroOrDefault(op.config.TokenOptionsFunc, goidc.TokenOptionsFunc(defaultTokenOptionsFunc))
 
 	op.config.ResponseModes = []goidc.ResponseMode{goidc.ResponseModeQuery, goidc.ResponseModeFragment, goidc.ResponseModeFormPost}
 
@@ -401,8 +414,6 @@ func (op *Provider) setDefaults() error {
 	}
 
 	if op.config.OpenIDFedIsEnabled {
-		op.config.OpenIDFedClientFunc = federation.Client
-		op.config.OpenIDFedEntityJWKSFunc = federation.FetchEntityConfigurationJWKS
 		op.config.OpenIDFedEndpoint = nonZeroOrDefault(op.config.OpenIDFedEndpoint, defaultEndpointOpenIDFederation)
 		op.config.OpenIDFedDefaultSigAlg = nonZeroOrDefault(op.config.OpenIDFedDefaultSigAlg, defaultAsymmetricSigAlg)
 		op.config.OpenIDFedSigAlgs = nonZeroOrDefault(op.config.OpenIDFedSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})

@@ -17,7 +17,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func TestWithClientStorage(t *testing.T) {
+func TestWithClientManager(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -25,7 +25,7 @@ func TestWithClientStorage(t *testing.T) {
 	st := storage.NewClientManager(1)
 
 	// When.
-	err := WithClientStorage(st)(p)
+	err := WithClientManager(st)(p)
 
 	// Then.
 	if err != nil {
@@ -37,7 +37,7 @@ func TestWithClientStorage(t *testing.T) {
 	}
 }
 
-func TestWithAuthnSessionStorage(t *testing.T) {
+func TestWithAuthnSessionManager(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -45,7 +45,7 @@ func TestWithAuthnSessionStorage(t *testing.T) {
 	st := storage.NewAuthnSessionManager(1)
 
 	// When.
-	err := WithAuthnSessionStorage(st)(p)
+	err := WithAuthnSessionManager(st)(p)
 
 	// Then.
 	if err != nil {
@@ -57,23 +57,23 @@ func TestWithAuthnSessionStorage(t *testing.T) {
 	}
 }
 
-func TestWithGrantSessionStorage(t *testing.T) {
+func TestWithGrantManager(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
-	st := storage.NewGrantSessionManager(1)
+	st := storage.NewGrantManager(1)
 
 	// When.
-	err := WithGrantSessionStorage(st)(p)
+	err := WithGrantManager(st)(p)
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if p.config.GrantSessionManager != st {
-		t.Errorf("invalid session manager")
+	if p.config.GrantManager != st {
+		t.Errorf("invalid grant manager")
 	}
 }
 
@@ -696,10 +696,10 @@ func TestWithTokenOptions(t *testing.T) {
 	}
 	var tokenOpts goidc.TokenOptionsFunc = func(
 		_ context.Context,
-		grantInfo goidc.GrantInfo,
-		client *goidc.Client,
+		_ *goidc.Grant,
+		_ *goidc.Client,
 	) goidc.TokenOptions {
-		return goidc.NewOpaqueTokenOptions(10, 60)
+		return goidc.NewOpaqueTokenOptions(60)
 	}
 
 	// When.
@@ -720,7 +720,7 @@ func TestWithHandleGrantFunc(t *testing.T) {
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
-	var grantHandler goidc.HandleGrantFunc = func(r *http.Request, gi *goidc.GrantInfo) error {
+	var grantHandler goidc.HandleGrantFunc = func(_ *http.Request, _ *goidc.Grant) error {
 		return nil
 	}
 
@@ -1296,14 +1296,14 @@ func TestWithAuthorizationDetails(t *testing.T) {
 	}
 
 	// When.
-	err := WithAuthorizationDetails(compareDetailsFunc, "detail_type")(p)
+	err := WithRichAuthorization(compareDetailsFunc, "detail_type")(p)
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !p.config.AuthDetailsIsEnabled {
+	if !p.config.RichAuthorizationIsEnabled {
 		t.Errorf("auth details must be enabled")
 	}
 
@@ -1915,7 +1915,7 @@ func TestJWTBearerGrant(t *testing.T) {
 	}
 }
 
-func TestWithGrantSessionIDFunc(t *testing.T) {
+func TestWithGrantIDFunc(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -1923,15 +1923,15 @@ func TestWithGrantSessionIDFunc(t *testing.T) {
 	idFunc := func(context.Context) string { return "session_id" }
 
 	// When.
-	err := WithGrantSessionIDFunc(idFunc)(p)
+	err := WithGrantIDFunc(idFunc)(p)
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if p.config.GrantSessionIDFunc == nil {
-		t.Error("GrantSessionIDFunc cannot be nil")
+	if p.config.GrantIDFunc == nil {
+		t.Error("GrantIDFunc cannot be nil")
 	}
 }
 

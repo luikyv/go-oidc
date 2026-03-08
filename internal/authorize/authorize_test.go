@@ -66,9 +66,6 @@ func TestInitAuth(t *testing.T) {
 			ResponseMode: goidc.ResponseModeFragment,
 			Nonce:        "random_nonce",
 		},
-		AdditionalIDTokenClaims: map[string]any{
-			"nonce": "random_nonce",
-		},
 	}
 	if diff := cmp.Diff(*session, wantedSession, cmpopts.EquateEmpty()); diff != "" {
 		t.Error(diff)
@@ -325,9 +322,6 @@ func TestInitAuth_ResourceIndicator(t *testing.T) {
 			Nonce:        "random_nonce",
 			Resources:    []string{"https://resource1.com", "https://resource2.com"},
 		},
-		AdditionalIDTokenClaims: map[string]any{
-			"nonce": "random_nonce",
-		},
 	}
 	if diff := cmp.Diff(*session, wantedSession, cmpopts.EquateEmpty()); diff != "" {
 		t.Error(diff)
@@ -395,9 +389,6 @@ func TestInitAuth_IDTokenHint(t *testing.T) {
 			ResponseType: goidc.ResponseTypeCodeAndIDToken,
 			Nonce:        "random_nonce",
 			IDTokenHint:  idToken,
-		},
-		AdditionalIDTokenClaims: map[string]any{
-			"nonce": "random_nonce",
 		},
 	}
 	if diff := cmp.Diff(*session, wantedSession, cmpopts.EquateEmpty()); diff != "" {

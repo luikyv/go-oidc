@@ -1,6 +1,7 @@
 package token
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -53,7 +54,7 @@ func TestHandleGrantCreation_ClientCredentialsGrant(t *testing.T) {
 		t.Error(diff)
 	}
 
-	grantSessions := oidctest.GrantSessions(t, ctx)
+	grantSessions := oidctest.Grants(t, ctx)
 	if len(grantSessions) != 1 {
 		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
 	}
@@ -105,9 +106,120 @@ func TestHandleGrantCreation_ClientCredentialsGrant_ResourceIndicators(t *testin
 		t.Error(diff)
 	}
 
-	grantSessions := oidctest.GrantSessions(t, ctx)
+	grantSessions := oidctest.Grants(t, ctx)
 	if len(grantSessions) != 1 {
 		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
+	}
+}
+
+func TestHandleGrantCreation_ClientCredentialsGrant_OpenIDScopeFiltered(t *testing.T) {
+	// Given.
+	ctx, client := setUpClientCredentialsGrant(t)
+
+	req := request{
+		grantType: goidc.GrantClientCredentials,
+		scopes:    "openid " + oidctest.Scope1.ID,
+	}
+
+	// When.
+	tokenResp, err := generateGrant(ctx, req)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("error generating the client credentials grant: %v", err)
+	}
+
+	now := timeutil.TimestampNow()
+	claims, err := oidctest.SafeClaims(tokenResp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
+	if err != nil {
+		t.Fatalf("error parsing claims: %v", err)
+	}
+
+	// The openid scope should be stripped from client_credentials grants.
+	wantedClaims := map[string]any{
+		"iss":       ctx.Issuer(),
+		"sub":       client.ID,
+		"client_id": client.ID,
+		"scope":     oidctest.Scope1.ID,
+		"exp":       float64(now + 60),
+		"iat":       float64(now),
+	}
+	if diff := cmp.Diff(
+		claims,
+		wantedClaims,
+		cmpopts.IgnoreMapEntries(func(k string, _ any) bool {
+			return k == "jti"
+		}),
+		cmpopts.EquateApprox(0, 1),
+	); diff != "" {
+		t.Error(diff)
+	}
+
+	grantSessions := oidctest.Grants(t, ctx)
+	if len(grantSessions) != 1 {
+		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
+	}
+
+	if grantSessions[0].Scopes != oidctest.Scope1.ID {
+		t.Errorf("grant scopes = %s, want %s", grantSessions[0].Scopes, oidctest.Scope1.ID)
+	}
+}
+
+func TestHandleGrantCreation_ClientCredentialsGrant_ClientLacksGrantType(t *testing.T) {
+	// Given.
+	ctx, client := setUpClientCredentialsGrant(t)
+	client.GrantTypes = []goidc.GrantType{goidc.GrantAuthorizationCode}
+	if err := ctx.SaveClient(client); err != nil {
+		t.Fatalf("error saving client: %v", err)
+	}
+
+	req := request{
+		grantType: goidc.GrantClientCredentials,
+		scopes:    oidctest.Scope1.ID,
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeUnauthorizedClient {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeUnauthorizedClient)
+	}
+}
+
+func TestHandleGrantCreation_ClientCredentialsGrant_InvalidScope(t *testing.T) {
+	// Given.
+	ctx, _ := setUpClientCredentialsGrant(t)
+
+	req := request{
+		grantType: goidc.GrantClientCredentials,
+		scopes:    "unknown_scope",
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeInvalidScope {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidScope)
 	}
 }
 
