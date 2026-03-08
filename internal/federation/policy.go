@@ -94,7 +94,7 @@ type openIDClientMetadataPolicy struct {
 	TLSSubAlternativeName         metadataOperators[string]                           `json:"tls_client_auth_san_dns"`
 	TLSSubAlternativeNameIp       metadataOperators[string]                           `json:"tls_client_auth_san_ip"`
 	TLSTokenBindingIsRequired     metadataOperators[bool]                             `json:"tls_client_certificate_bound_access_tokens"`
-	AuthDetailTypes               metadataOperators[[]goidc.AuthDetailType]           `json:"authorization_data_types"`
+	AuthDetailTypes               metadataOperators[[]goidc.AuthDetailType]           `json:"authorization_details_types"`
 	DefaultMaxAgeSecs             metadataOperators[*int]                             `json:"default_max_age"`
 	DefaultACRValues              metadataOperators[string]                           `json:"default_acr_values"`
 	PARIsRequired                 metadataOperators[bool]                             `json:"require_pushed_authorization_requests"`

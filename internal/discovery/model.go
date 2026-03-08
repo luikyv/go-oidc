@@ -41,7 +41,7 @@ type OpenIDConfiguration struct {
 	IssuerResponseParamIsEnabled        bool                               `json:"authorization_response_iss_parameter_supported,omitempty"`
 	ClaimsParamIsEnabled                bool                               `json:"claims_parameter_supported,omitempty"`
 	AuthDetailsIsEnabled                bool                               `json:"authorization_details_supported,omitempty"`
-	AuthDetailTypesSupported            []goidc.AuthDetailType             `json:"authorization_data_types_supported,omitempty"`
+	AuthDetailTypesSupported            []goidc.AuthDetailType             `json:"authorization_details_types_supported,omitempty"`
 	DPoPSigAlgs                         []goidc.SignatureAlgorithm         `json:"dpop_signing_alg_values_supported,omitempty"`
 	TokenIntrospectionEndpoint          string                             `json:"introspection_endpoint,omitempty"`
 	TokenIntrospectionAuthnMethods      []goidc.AuthnMethod                `json:"introspection_endpoint_auth_methods_supported,omitempty"`
