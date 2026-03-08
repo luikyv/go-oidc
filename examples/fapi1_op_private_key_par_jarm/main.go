@@ -39,6 +39,8 @@ func main() {
 		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
 		provider.WithACRs(authutil.ACRs[0], authutil.ACRs...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.PS256)),
+		provider.WithIDTokenClaims(authutil.IDTokenClaimsFunc()),
+		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithPolicies(authutil.Policy()),
 		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),

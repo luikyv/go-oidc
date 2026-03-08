@@ -26,8 +26,11 @@ test-coverage:
 	@go tool cover -html="coverage.out" -o coverage.html
 	@echo "Total Coverage: `go tool cover -func=coverage.out | grep total | grep -Eo '[0-9]+\.[0-9]+'` %"
 
+install-lint:
+	@go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+
 lint:
-	@golangci-lint run ./pkg/... ./internal/...
+	@golangci-lint run ./pkg/... ./internal/... ./examples/...
 
 test-benchmark:
 	@go test -bench=. -benchmem ./pkg/... ./internal/...

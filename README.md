@@ -1,11 +1,13 @@
-# go-oidc - A Configurable OpenID Provider built in Go.
+# go-oidc
+
 [![Go Reference](https://pkg.go.dev/badge/github.com/luikyv/go-oidc.svg)](https://pkg.go.dev/github.com/luikyv/go-oidc)
 [![Go Report Card](https://goreportcard.com/badge/github.com/luikyv/go-oidc)](https://goreportcard.com/report/github.com/luikyv/go-oidc)
 [![License](https://img.shields.io/github/license/luikyv/go-oidc)](LICENSE)
 
-`go-oidc` is a Go module that provides a configurable Authorization Server with support for OpenID Connect and other standards.
+A configurable OpenID Connect Provider for Go.
 
-This library implements the following specifications:
+## Supported Specifications
+
 * [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html)
 * [OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html)
 * [`RFC 6749` - The OAuth 2.0 Authorization Framework](https://www.rfc-editor.org/rfc/rfc6749.html)
@@ -33,20 +35,22 @@ This library implements the following specifications:
 * [OpenID Shared Signals Framework Specification 1.0](https://openid.net/specs/openid-sharedsignals-framework-1_0.html)
 
 ## Certification
+
 Luiky Vasconcelos has certified that [go-oidc](https://pkg.go.dev/github.com/luikyv/go-oidc) conforms to the following profiles of the OpenID Connect™ protocol.
-* Basic OP,	Implicit OP, Hybrid OP, Config OP and Dynamic OP
+* Basic OP, Implicit OP, Hybrid OP, Config OP and Dynamic OP
 * FAPI 1.0
 * FAPI 2.0
 
 [<img src="http://openid.net/wordpress-content/uploads/2016/04/oid-l-certification-mark-l-rgb-150dpi-90mm.png" alt="OpenID Certification" width="200"/>](https://openid.net/certification/)
 
 ## Get Started
-To start using the `go-oidc` module in your project, install it with
+
+Install the module:
 ```
 go get github.com/luikyv/go-oidc@latest
 ```
 
-Once installed, you can instantiate an openid provider and run it as shown below.
+Create and run a provider:
 ```go
 key, _ := rsa.GenerateKey(rand.Reader, 2048)
 jwks := goidc.JSONWebKeySet{
@@ -64,97 +68,100 @@ op, _ := provider.New(
     return jwks, nil
   },
 )
-_ = op.Run(":80")
+op.Run(":80")
 ```
 
-You can then check the default configurations by accessing http://localhost/.well-known/openid-configuration.
+Verify the setup at http://localhost/.well-known/openid-configuration.
 
-## Documentation
+## Table of Contents
 
-### Running the Provider
+- [Running the Provider](#running-the-provider)
+- [Entities](#entities)
+- [Authentication Policies](#authentication-policies)
+- [Signing and Encryption](#signing-and-encryption)
+- [Tokens](#tokens)
+- [Scopes](#scopes)
+- [Dynamic Client Registration](#dynamic-client-registration-dcr)
+- [Mutual TLS](#mutual-tls-mtls)
+- [JAR](#jwt-secured-authorization-request-jar)
+- [JARM](#jwt-secured-authorization-response-mode-jarm)
+- [OpenID Federation](#openid-federation)
+- [Shared Signals Framework](#shared-signals-framework-ssf)
 
-After instantiating a new provider, the simplest way to run it is
+## Running the Provider
+
+The simplest way to run the provider:
 ```go
 op.Run(":80")
 ```
-For more flexibility, the provider can create an HTTP handler with all endpoints configured.
-The example below demonstrates running the provider under TLS:
 
+For more flexibility, use `op.Handler()` to get an `http.Handler` with all endpoints configured:
 ```go
 mux := http.NewServeMux()
 mux.Handle("/", op.Handler())
 
 server := &http.Server{
-	Addr:    ":443",
-	Handler: mux,
+  Addr:    ":443",
+  Handler: mux,
 }
-_ := server.ListenAndServeTLS(certFilePath, certKeyFilePath)
+server.ListenAndServeTLS(certFilePath, certKeyFilePath)
 ```
 
-### Storage
-go-oidc revolves around three entities: `goidc.Client`, `goidc.AuthnSession` and `goidc.GrantSession`.
+## Entities
 
-These entities are managed by implementations of `goidc.ClientManager`, `goidc.AuthnSessionManager` and `goidc.GrantSessionManager` respectively.
+go-oidc revolves around four entities: `goidc.Client`, `goidc.AuthnSession`, `goidc.Grant` and `goidc.Token`.
 
-By default, `provider.Provider` uses an in-memory implementation of these interfaces, meaning all stored entities are lost when the server shuts down.
+These entities are managed by implementations of `goidc.ClientManager`, `goidc.AuthnSessionManager`, `goidc.GrantManager` and `goidc.TokenManager` respectively.
 
-It is highly recommended to replace the default storage with custom implementations to ensure persistence.
-For more details, see `provider.WithClientStorage`, `provider.WithAuthnSessionStorage` and `provider.WithGrantSessionStorage`.
+By default, all entities are stored in memory and lost when the server shuts down. For production, replace the default managers with persistent implementations using `provider.WithClientManager`, `provider.WithAuthnSessionManager`, `provider.WithGrantManager` and `provider.WithTokenManager`.
 
-#### Client
-`goidc.Client` is the entity that interacts with the authorization server to request tokens and access protected resources.
+### Client
 
-It is always identified and queried by its ID.
+`goidc.Client` represents an OAuth 2.0 client that interacts with the authorization server to request tokens and access protected resources. It is always identified and queried by its ID.
 
-#### Authentication Session
-`goidc.AuthnSession` is a short-lived session that stores information about authorization requests.
+### Authentication Session
 
-It enables more advanced authentication flows by allowing interactions during the authentication process.
+`goidc.AuthnSession` is a short-lived session that tracks the state of an authorization request as it progresses through authentication.
 
-At any given time, `goidc.AuthnSession` will always have an ID and exactly one of the following identifiers, which serve as indexes for lookup operations:
-- Pushed Authorization Request ID – Created when the client submits a `POST /par` request. See [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).
-- Callback ID – Used when the authentication policy is still in progress.
-- Authorization Code – Set for the `authorization_code` grant type and when the authentication policy completes successfully, allowing the client to exchange it for a token.
-- Authentication Request ID – Used for Client-Initiated Backchannel Authentication. See [CIBA](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0-final.html).
+At any given time, `goidc.AuthnSession` has an ID and exactly one of the following lookup identifiers:
+- **Pushed Authorization Request ID** – Created during `POST /par`. See [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).
+- **Callback ID** – Present while the authentication policy is in progress.
+- **Authorization Code** – Set when authentication completes successfully with the `authorization_code` grant type.
+- **Authentication Request ID** – Used for CIBA. See [CIBA](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0-final.html).
 
-#### Grant Session
-`goidc.GrantSession` represents the access granted to a client by an entity, which can be either a user or the client itself.
+### Grant
 
-It holds information about the token issued and the entity who granted access.
+`goidc.Grant` represents what a user (or the client itself) has authorized: the subject, scopes, authorization details, resources, and proof-of-possession bindings (DPoP or mTLS).
 
-At any given time, `goidc.GrantSession` will always have an ID and a token ID for the currently active token. Additionally, it may contain the following identifiers, which serve as indexes for lookup and deletion operations:
-- Refresh Token - Present when the grant allows issuing a refresh token.
-- Authorization Code - Set when using the authorization_code grant type.
+It may contain the following lookup identifiers:
+- **Refresh Token** – Present when the grant allows refresh tokens.
+- **Authorization Code** – Present for the `authorization_code` grant type.
 
-After each refresh token request, the token ID is updated. The refresh token is updated only if refresh token rotation is enabled.
+### Token
 
-### Authentication Policies
+`goidc.Token` is the credential issued under a grant. It captures a snapshot of the active scopes, resources, and authorization details at the moment of issuance, which may be a subset of what the grant holds.
 
-For authorization requests (when grant types such as implicit and authorization_code are enabled) which start by default at `/authorize`, users are authenticated with an available `goidc.AuthnPolicy`.
+Each token has its own lifetime and is linked to its grant via `GrantID`. During a refresh token request, a new token is issued under the same grant. The refresh token on the grant is updated only if rotation is enabled.
 
-The policy manages user interactions and modifies the `goidc.AuthnSession` to determine how access and ID tokens are issued, including the information they contain. Refer to the fields of `goidc.AuthnSession` for details on what can be modified and how.
+## Authentication Policies
 
-The policy below includes a setup function that always returns `true`, meaning the authentication function will execute for all requests.
-If the setup function were to return `false`, the authentication function would not be evaluated.
+Authorization requests (starting at `/authorize` by default) are handled by `goidc.AuthnPolicy`. A policy has two parts:
 
-The authentication function renders an HTML page to collect the username and returns `goidc.StatusInProgress`, pausing the flow while awaiting user interaction.
+1. **Setup function** – Determines whether the policy applies to a given request. If it returns `false`, the policy is skipped.
+2. **Authentication function** – Handles user interaction and authentication.
 
-Authentication resumes when a request is made to `/authorize/{callback_id}`.
-For example, the HTML page could submit a form via `POST /authorize/{callback_id}` to continue the authentication process.
+The authentication function returns one of:
+- `goidc.StatusSuccess` – Authentication succeeded. The `Subject` field on the session must be set.
+- `goidc.StatusInProgress` – Awaiting user interaction. Authentication resumes when a request is made to `/authorize/{callback_id}` (the callback ID is available via `goidc.AuthnSession.CallbackID`).
+- `goidc.StatusFailure` (or an error) – Authentication failed, and the grant is denied.
 
-The **callback ID** is pre-populated in the authentication session and can be accessed via `goidc.AuthnSession.CallbackID`.
-Once the user is identified, the authentication process completes successfully by returning `goidc.StatusSuccess`.
-
-If the authentication function returns either `goidc.StatusFailure` or an error, the flow is stopped, and the grant is denied.
 ```go
 policy := goidc.NewPolicy(
   "main_policy",
-  // Setup function.
   func(_ *http.Request, _ *goidc.Client, _ *goidc.AuthnSession) bool {
     return true
   },
-  // Authentication function.
-  func(r http.ResponseWriter, w *http.Request, as *goidc.AuthnSession) (goidc.Status, error) {
+  func(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) {
     username := r.PostFormValue("username")
     if username == "" {
       renderHTMLPage(w)
@@ -170,25 +177,24 @@ policy := goidc.NewPolicy(
   },
 )
 
-op, err := provider.New(
+op, _ := provider.New(
   ...,
   provider.WithAuthorizationCodeGrant(),
-  provider.WithPolicy(policy),
+  provider.WithPolicies(policy),
   ...,
 )
 ```
 
-For a more complex example of a `goidc.AuthnPolicy`, check out the examples folder.
+For more examples, see the [`examples`](examples/) folder.
 
-### Signing and Encryption
+## Signing and Encryption
 
-When instantiating a new `provider.Provider`, a JWKS function must be informed. This function returns the keys that will be used as the authorization server's JSON Web Key Set (JWKS) for signing and encryption. Typically, it should return both private and public key material.
+When creating a `provider.Provider`, a JWKS function must be provided. This function returns the keys used for signing and encryption. It should typically return both private and public key material.
 
-The algorithms configured for the provider must have a corresponding JWK in the JWKS. Otherwise, an error will occur.
+Every algorithm configured for the provider must have a corresponding JWK in the JWKS.
 
 ```go
 key, _ := rsa.GenerateKey(rand.Reader, 2048)
-// JWKS with private and public information.
 jwks := goidc.JSONWebKeySet{
   Keys: []goidc.JSONWebKey{{
     KeyID:     "key_id",
@@ -200,17 +206,15 @@ jwks := goidc.JSONWebKeySet{
 op, _ := provider.New(
   goidc.ProfileOpenID,
   "http://localhost",
-  // JWKS function.
   func(_ context.Context) (goidc.JSONWebKeySet, error) {
     return jwks, nil
   },
 )
 ```
 
-If direct access to private keys is unavailable for the provider or granular control over signing is required, the JWKS function can be configured to return only public key material. In such cases, the `provider.WithSignerFunc` option must be added to handle signing operations.
+If direct access to private keys is unavailable or granular control over signing is needed, the JWKS function can return only public key material. In that case, `provider.WithSignerFunc` must be added:
 ```go
 key, _ := rsa.GenerateKey(rand.Reader, 2048)
-// JWKS with public information only.
 jwks := goidc.JSONWebKeySet{
   Keys: []goidc.JSONWebKey{{
     KeyID:     "key_id",
@@ -222,7 +226,6 @@ jwks := goidc.JSONWebKeySet{
 op, _ := provider.New(
   goidc.ProfileOpenID,
   "http://localhost",
-  // JWKS function.
   func(_ context.Context) (goidc.JSONWebKeySet, error) {
     return jwks, nil
   },
@@ -232,74 +235,62 @@ op, _ := provider.New(
 )
 ```
 
-Similarly, if server-side encryption (e.g., JAR encryption) is enabled, the `provider.WithDecrypterFunc` option must also be configured for decryption support.
+Similarly, if server-side decryption is needed (e.g., for encrypted JARs), configure `provider.WithDecrypterFunc`.
 
-For operations like signature verification, only the public key material is needed, which can be retrieved directly using the JWKS function.
+## Tokens
 
-### Tokens
+ID tokens are signed using **RS256** by default. Use `provider.WithIDTokenSignatureAlgs` to change the default or add additional algorithms.
 
-By default, ID tokens are signed using the **RS256** algorithm, so a corresponding JWK with this algorithm must be present in the server's JWKS. To modify this behavior, you can use the `provider.WithIDTokenSignatureAlgs` option to specify a default algorithm and additional signing algorithms.
-
-Regarding access tokens, the default behavior is to issue opaque tokens. However, this can be customized by providing a function that returns `goidc.TokenOptions`.
-You can create `goidc.TokenOptions` easily using:
-- `goidc.NewJWTTokenOptions`
-- `goidc.NewOpaqueTokenOptions`
-
-Here is an example of how to configure the token options:
+Access tokens are **opaque** by default. To customize this, provide a `goidc.TokenOptionsFunc`:
 ```go
 op, _ := provider.New(
   ...,
-  provider.WithTokenOptions(func(_ goidc.GrantInfo, _ *goidc.Client) goidc.TokenOptions {
-    // Access tokens are issued as JWTs with a lifetime of 600 seconds.
+  provider.WithTokenOptions(func(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
     return goidc.NewJWTTokenOptions(goidc.RS256, 600)
   }),
   ...,
 )
 ```
 
-In go-oidc, refresh tokens are always **opaque** and have a fixed length of 99 characters. Also, refresh and opaque access tokens are differentiated by their length. That being said, never issue opaque tokens with a length of 99 characters.
+Use `goidc.NewJWTTokenOptions` for JWT access tokens or `goidc.NewOpaqueTokenOptions` for opaque ones.
 
-### Scopes
+Refresh tokens are always opaque.
 
-go-oidc provides two functions for creating scopes.
+## Scopes
 
-`goidc.NewScope` creates a simple scope.
+`goidc.NewScope` creates a scope matched by exact string comparison:
 ```go
 scope := goidc.NewScope("openid")
 ```
 
-Whereas `goidc.NewDynamicScope` creates a more complex scope where validation logic goes beyond simple string matching.
+`goidc.NewDynamicScope` creates a scope with custom matching logic:
 ```go
 paymentScope := goidc.NewDynamicScope("payment", func(requestedScope string) bool {
-	return strings.HasPrefix(requestedScope, "payment:")
+  return strings.HasPrefix(requestedScope, "payment:")
 })
-// This results in true.
-paymentScope.Matches("payment:30")
+paymentScope.Matches("payment:30") // true
 ```
-Note that this dynamic scope  will appear as "payment" under "scopes_supported" in the `/.well-known/openid-configuration` endpoint response.
+Dynamic scopes appear by their base name (e.g., "payment") in `scopes_supported`.
 
-The example below shows how to add the scopes to the `provider.Provider`.
 ```go
 op, _ := provider.New(
   ...,
-  provider.WithScopes(goidc.ScopeOpenID, goidc.ScopeOfflineAccess)
+  provider.WithScopes(goidc.ScopeOpenID, goidc.ScopeOfflineAccess),
   ...,
 )
 ```
 
-### Dynamic Client Registration (DCR)
+## Dynamic Client Registration (DCR)
 
-Dynamic Client Registration (DCR) enables clients to be created and managed dynamically. This feature can be activated by adding the following option to the provider:
+DCR allows clients to register and update themselves dynamically:
 ```go
 op, _ := provider.New(
   ...,
   provider.WithDCR(
-    // Function to add custom logic during DCR.
-    func(r *http.Request, id string, meta *goidc.ClientMetaInfo) error {
+    func(r *http.Request, id string, meta *goidc.ClientMeta) error {
       return nil
     },
-    // Function to validate the initial access token.
-    func(r *http.Request, initialToken string) error {
+    func(_ context.Context, initialToken string) error {
       return nil
     },
   ),
@@ -307,43 +298,44 @@ op, _ := provider.New(
 )
 ```
 
-`goidc.HandleDynamicClientFunc` is executed first during requests to the DCR endpoint and also for every request to update an existing client.
-By default, the DCR endpoint is `/register`, and the Dynamic Client Management (DCM) endpoint is `/register/{client_id}`.
+The first function (`goidc.HandleDynamicClientFunc`) runs during registration and update requests. Use it for custom validation or to set default metadata values.
 
-### Mutual TLS (mTLS)
+The second function (`goidc.ValidateInitialAccessTokenFunc`) validates the initial access token during registration. Pass `nil` to skip validation.
 
-Mutual TLS (mTLS) is a security protocol that ensures both the client and server authenticate each other using TLS certificates. To enable it, configure your provider as follows:
+By default, the DCR endpoint is `/register` and the management endpoint is `/register/{client_id}`.
+
+To rotate the registration access token on each update request, add `provider.WithDCRTokenRotation()`.
+
+## Mutual TLS (mTLS)
+
+mTLS enables client authentication and certificate-bound access tokens via TLS certificates:
 ```go
 op, _ := provider.New(
   ...,
   provider.WithMTLS(
-    // mTLS host.
     "https://matls-go-oidc.com",
-    // Function to fetch the client certificate.
     func(r *http.Request) (*x509.Certificate, error) {
       ...
-    }
+    },
   ),
   ...,
 )
 ```
 
-All endpoints enabled for the provider will be listed under `mtls_endpoint_aliases` in the response of GET `/.well-known/openid-configuration`, using the provided mTLS host.
+All enabled endpoints are listed under `mtls_endpoint_aliases` in the discovery response:
 ```json
 {
-  "...": "...",
   "mtls_endpoint_aliases": {
-    "...": "...",
-    "token_endpoint": "https://matls-go-oidc.com/token",
+    "token_endpoint": "https://matls-go-oidc.com/token"
   }
 }
 ```
 
-Keep in mind that `goidc.ClientCertFunc` may be executed multiple times during a single request to the provider. If performance is a concern, consider caching the certificate to avoid redundant computations.
+The certificate function (`goidc.ClientCertFunc`) may be called multiple times per request. Consider caching the result if extraction is expensive.
 
-### JWT-Secured Authorization Request (JAR)
+## JWT-Secured Authorization Request (JAR)
 
-JAR, as defined in [RFC 9101](https://www.rfc-editor.org/rfc/rfc9101.html), allows clients to send authorization requests as signed and optionally encrypted JWTs (request objects) instead of URL query parameters.
+[JAR](https://www.rfc-editor.org/rfc/rfc9101.html) allows clients to send authorization requests as signed (and optionally encrypted) JWTs:
 ```go
 op, _ := provider.New(
   ...,
@@ -352,41 +344,24 @@ op, _ := provider.New(
 )
 ```
 
-This configures the supported signing algorithms, reflected in `/.well-known/openid-configuration`:
+This adds the following to the discovery response:
 ```json
 {
-  "...": "...",
   "request_parameter_supported": true,
   "request_object_signing_alg_values_supported": ["RS256", "PS256"]
 }
 ```
 
-To enable JAR encryption:
+To enable encryption:
 ```go
-op, _ := provider.New(
-  ...,
-  provider.WithJAR(goidc.RS256, goidc.PS256),
-  provider.WithJAREncryption(goidc.RSA_OAEP_256)
-  ...,
-)
+provider.WithJAREncryption(goidc.RSA_OAEP_256)
 ```
 
-which would result in the metadata below
-```json
-{
-  "...": "...",
-  "request_parameter_supported": true,
-  "request_object_signing_alg_values_supported": ["RS256", "PS256"],
-  "request_object_encryption_alg_values_supported": ["RSA_OAEP_256"],
-  "request_object_encryption_enc_values_supported": ["A128CBC_HS256"]
-}
-```
+To customize content encryption algorithms, use `provider.WithJARContentEncryptionAlgs`.
 
-To customize JAR content encryption algorithms, use `provider.WithJARContentEncryptionAlgs`.
+## JWT-Secured Authorization Response Mode (JARM)
 
-### JWT-Secured Authorization Response Mode (JARM)
-
-[JARM](https://openid.net/specs/oauth-v2-jarm.html) enhances OAuth 2.0 by returning authorization responses as signed and optionally encrypted JWTs. For this, it defines new response modes: `jwt`, `query.jwt`, `fragment.jwt` and `form_post.jwt`.
+[JARM](https://openid.net/specs/oauth-v2-jarm.html) returns authorization responses as signed (and optionally encrypted) JWTs, adding the response modes `jwt`, `query.jwt`, `fragment.jwt` and `form_post.jwt`:
 ```go
 op, _ := provider.New(
   ...,
@@ -395,64 +370,24 @@ op, _ := provider.New(
 )
 ```
 
-By including the option `provider.WithJARM`, the well known metadata is displayed as follows
-```json
-{
-  "...": "...",
-  "authorization_signing_alg_values_supported": ["RS256", "PS256"],
-  "response_modes_supported": [
-    "...",
-    "jwt",
-    "query.jwt",
-    "fragment.jwt",
-    "form_post.jwt",
-  ]
-}
+To enable encryption:
+```go
+provider.WithJARMEncryption(goidc.RSA_OAEP_256)
 ```
 
-To enable JARM encryption:
+To customize content encryption algorithms, use `provider.WithJARMContentEncryptionAlgs`.
+
+## OpenID Federation
+
+[OpenID Federation](https://openid.net/specs/openid-federation-1_0.html) establishes trust dynamically through signed entity statements, allowing federated clients to authenticate without prior manual registration.
+
 ```go
 op, _ := provider.New(
   ...,
-  provider.WithJAM(goidc.RS256, goidc.PS256),
-  provider.WithJARMEncryption(goidc.RSA_OAEP_256)
-  ...,
-)
-```
-
-which would result in the metadata below
-```json
-{
-  "...": "...",
-  "authorization_signing_alg_values_supported": ["RS256", "PS256"],
-  "response_modes_supported": [
-    "...",
-    "jwt",
-    "query.jwt",
-    "fragment.jwt",
-    "form_post.jwt",
-  ],
-  "authorization_encryption_alg_values_supported": ["RSA_OAEP_256"],
-  "authorization_encryption_enc_values_supported": ["A128CBC_HS256"]
-}
-```
-
-To customize JARM content encryption algorithms, use `provider.WithJARMContentEncryptionAlgs`.
-
-### OpenID Federation
-
-[OpenID Federation](https://openid.net/specs/openid-federation-1_0.html) enables trust relationships to be established dynamically through signed entity statements rather than pre-configured client registrations. The provider can participate in a federation as an OpenID Provider, allowing federated clients to authenticate without prior manual registration.
-
-To enable OpenID Federation:
-```go
-op, _ := provider.New(
-  ...,
-  provider.WithOpenIDFed(
-    // Federation JWKS function (separate from provider's signing keys).
+  provider.WithOpenIDFederation(
     func(_ context.Context) (goidc.JSONWebKeySet, error) {
-      return jwks, nil
+      return fedJWKS, nil
     },
-    // Trusted anchor entity IDs.
     "https://trust-anchor.example.com",
   ),
   provider.WithOpenIDFedAuthorityHints("https://intermediate.example.com"),
@@ -460,48 +395,32 @@ op, _ := provider.New(
 )
 ```
 
-The provider exposes its entity configuration at `GET /.well-known/openid-federation`:
-```json
-{
-  "iss": "https://goidc.com",
-  "sub": "https://goidc.com",
-  "iat": 1234567890,
-  "exp": 1234568490,
-  "jwks": { "keys": [...] },
-  "authority_hints": ["https://intermediate.example.com"],
-  "metadata": {
-    "openid_provider": {
-      "issuer": "https://goidc.com",
-      "...": "..."
-    }
-  }
-}
-```
+The entity configuration is exposed at `GET /.well-known/openid-federation`.
 
-#### Client Registration Types
+### Client Registration Types
 
-Federated clients can register using automatic or explicit registration:
+Federated clients can use automatic or explicit registration:
 ```go
 provider.WithOpenIDFedClientRegistrationTypes(
-  goidc.ClientRegistrationTypeAutomatic,  // Trust chain resolved automatically.
-  goidc.ClientRegistrationTypeExplicit,   // Client provides trust chain explicitly.
+  goidc.ClientRegistrationTypeAutomatic,
+  goidc.ClientRegistrationTypeExplicit,
 )
 ```
 
-With automatic registration, when a client makes a request, the provider resolves the trust chain by fetching entity configurations and subordinate statements from the federation. With explicit registration, the client provides the trust chain in the registration request.
+With **automatic** registration, the provider resolves the trust chain by fetching entity configurations and subordinate statements. With **explicit** registration, the client provides the trust chain directly.
 
-#### Trust Marks
+### Trust Marks
 
-Trust marks are credentials that attest to certain properties of an entity. To require specific trust marks from clients:
+Require specific trust marks from clients:
 ```go
 provider.WithOpenIDFedRequiredTrustMarksFunc(
-  func(_ *goidc.Client) []string {
-    return []string{"https://trust-anchor.example.com/marks/certified"}
+  func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
+    return []goidc.TrustMark{"https://trust-anchor.example.com/marks/certified"}
   },
 )
 ```
 
-To include trust marks in the provider's own entity configuration:
+Include trust marks in the provider's entity configuration:
 ```go
 provider.WithOpenIDFedTrustMark(
   "https://trust-anchor.example.com/marks/certified",
@@ -509,48 +428,28 @@ provider.WithOpenIDFedTrustMark(
 )
 ```
 
-#### JWKS Representations
-
-The provider can expose its JWKS in different formats as defined by the federation specification:
-```go
-provider.WithOpenIDFedJWKSRepresentations(
-  goidc.OpenIDFedJWKSRepresentationURI,       // Standard jwks_uri.
-  goidc.OpenIDFedJWKSRepresentationSignedURI, // Signed JWKS JWT.
-  goidc.OpenIDFedJWKSRepresentationInline,    // JWKS embedded in entity configuration.
-)
-```
-
-#### Additional Options
+### Additional Options
 
 ```go
-// Set signature algorithms for entity statements.
 provider.WithOpenIDFedSignatureAlgs(goidc.RS256, goidc.PS256)
-
-// Set maximum trust chain depth.
 provider.WithOpenIDFedTrustChainMaxDepth(5)
-
-// Set organization name in metadata.
 provider.WithOpenIDFedOrganizationName("Example Organization")
-
-// Custom HTTP client for federation requests.
 provider.WithOpenIDFedHTTPClientFunc(func(_ context.Context) *http.Client {
   return customHTTPClient
 })
 ```
 
-### OpenID Shared Signals Framework Specification
+## Shared Signals Framework (SSF)
 
-The [Shared Signals Framework (SSF)](https://openid.net/specs/openid-sharedsignals-framework-1_0.html) allows the provider to act as an SSF transmitter, publishing security events to receivers as signed JWTs called Security Event Tokens (SETs). go-oidc supports [CAEP](https://openid.net/specs/openid-caep-1_0.html) and [RISC](https://openid.net/specs/openid-risc-profile-specification-1_0.html) event types.
+The [Shared Signals Framework](https://openid.net/specs/openid-sharedsignals-framework-1_0.html) allows the provider to act as an SSF transmitter, publishing Security Event Tokens (SETs) to receivers. go-oidc supports [CAEP](https://openid.net/specs/openid-caep-1_0.html) and [RISC](https://openid.net/specs/openid-risc-profile-specification-1_0.html) event types.
 
 ```go
 op, _ := provider.New(
   ...,
   provider.WithSSF(
-    // JWKS for signing SETs.
     func(_ context.Context) (goidc.JSONWebKeySet, error) {
       return ssfJWKS, nil
     },
-    // Identifies the receiver from the authenticated request.
     func(ctx context.Context) (goidc.SSFReceiver, error) {
       return goidc.SSFReceiver{ID: "receiver"}, nil
     },
@@ -561,27 +460,11 @@ op, _ := provider.New(
 )
 ```
 
-The transmitter configuration is exposed at `GET /.well-known/ssf-configuration`:
-```json
-{
-  "issuer": "https://goidc.com",
-  "jwks_uri": "https://goidc.com/ssf/jwks",
-  "configuration_endpoint": "https://goidc.com/ssf/stream",
-  "delivery_methods_supported": ["urn:ietf:rfc:8935", "urn:ietf:rfc:8936"],
-  "...": "..."
-}
-```
+The transmitter configuration is exposed at `GET /.well-known/ssf-configuration`.
 
-The stream management endpoint at `configuration_endpoint` allows receivers to create, update, fetch and delete event streams. Push delivery ([RFC 8935](https://datatracker.ietf.org/doc/html/rfc8935)) sends SETs to a receiver-provided endpoint, while poll delivery ([RFC 8936](https://datatracker.ietf.org/doc/html/rfc8936)) allows receivers to fetch pending events from `/ssf/poll`.
+Push delivery ([RFC 8935](https://datatracker.ietf.org/doc/html/rfc8935)) sends SETs to a receiver-provided endpoint. Poll delivery ([RFC 8936](https://datatracker.ietf.org/doc/html/rfc8936)) lets receivers fetch pending events from `/ssf/poll`.
 
-To enable stream status management, subject management, and verification:
-```go
-provider.WithSSFEventStreamStatusManagement()   // Receivers can update stream status.
-provider.WithSSFEventStreamSubjectManagement()  // Receivers can add/remove subjects.
-provider.WithSSFEventStreamVerification()       // Receivers can request verification events.
-```
-
-To publish events to a stream:
+To publish events:
 ```go
 op.PublishSSFEvent(ctx, streamID, goidc.SSFEvent{
   Type: goidc.SSFEventTypeCAEPSessionRevoked,
@@ -592,6 +475,19 @@ op.PublishSSFEvent(ctx, streamID, goidc.SSFEvent{
 })
 ```
 
-By default, go-oidc uses in-memory storage. For production, replace with persistent implementations using `provider.WithSSFEventStreamManager`, `provider.WithSSFEventStreamSubjectManager`, `provider.WithSSFEventPollManager` and `provider.WithSSFEventStreamVerificationManager`.
+Additional options:
+```go
+// Allow receivers to update stream status (enabled/paused/disabled).
+provider.WithSSFEventStreamStatusManagement()
+// Allow receivers to add/remove subjects from a stream.
+provider.WithSSFEventStreamSubjectManagement()
+// Allow receivers to request verification events.
+provider.WithSSFEventStreamVerification(func(ctx context.Context, streamID string, opts goidc.SSFStreamVerificationOptions) error {
+  // Schedule the verification event for async delivery.
+  return nil
+})
+```
 
-For a complete example, see `examples/ssf`.
+For production, replace the in-memory SSF storage with persistent implementations using `provider.WithSSFEventStreamManager` and `provider.WithSSFEventPollManager`.
+
+For a complete example, see [`examples/ssf`](examples/ssf).

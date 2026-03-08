@@ -30,7 +30,7 @@ func TestAuthenticated_ClientNotFound(t *testing.T) {
 	ctx.Request.PostForm = map[string][]string{"client_id": {c.ID}}
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 
 	// Then.
 	if err == nil {
@@ -62,7 +62,7 @@ func TestAuthenticated_NoneAuthn(t *testing.T) {
 	_ = ctx.SaveClient(c)
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 
 	// Then.
 	if err != nil {
@@ -80,7 +80,7 @@ func TestAuthenticated_SecretPostAuthn(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 
 	// Then.
 	if err != nil {
@@ -98,7 +98,7 @@ func TestAuthenticated_SecretPostAuthn_InvalidSecret(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 
 	// Then.
 	if err == nil {
@@ -124,7 +124,7 @@ func TestAuthenticated_SecretPostAuthn_MissingSecret(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 
 	// Then.
 	if err == nil {
@@ -155,7 +155,7 @@ func TestAuthenticated_SecretPostAuthn_InvalidID(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 
 	// Then.
 	if err == nil {
@@ -179,7 +179,7 @@ func TestAuthenticated_BasicSecretAuthn(t *testing.T) {
 	ctx.Request.SetBasicAuth(c.ID, c.Secret)
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 
 	// Then.
 	if err != nil {
@@ -194,7 +194,7 @@ func TestAuthenticated_BasicSecretAuthn_InvalidSecret(t *testing.T) {
 	ctx.Request.SetBasicAuth(c.ID, "invalid_secret")
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 
 	// Then.
 	if err == nil {
@@ -221,7 +221,7 @@ func TestAuthenticated_BasicSecretAuthn_MissingSecret(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 
 	// Then.
 	if err == nil {
@@ -258,7 +258,7 @@ func TestAuthenticated_PrivateKeyJWT(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 	// Then.
 	if err != nil {
 		t.Errorf("The client should be authenticated, but error was found: %v", err)
@@ -288,7 +288,7 @@ func TestAuthenticated_PrivateKeyJWT_ClientInformedSigningAlgorithms(t *testing.
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 
 	// Then.
 	if err != nil {
@@ -320,7 +320,7 @@ func TestAuthenticated_PrivateKeyJWT_ClientInformedSigningAlgorithms_InvalidSign
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 
 	// Then.
 	if err == nil {
@@ -355,7 +355,7 @@ func TestAuthenticated_PrivateKeyJWT_InvalidAudienceClaim(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 
 	// Then.
 	if err == nil {
@@ -390,7 +390,7 @@ func TestAuthenticated_PrivateKeyJWT_InvalidExpiryClaim(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 
 	// Then.
 	if err == nil {
@@ -428,7 +428,7 @@ func TestAuthenticated_PrivateKeyJWT_CannotIdentifyJWK(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 
 	// Then.
 	if err == nil {
@@ -469,7 +469,7 @@ func TestAuthenticated_PrivateKeyJWT_InvalidSigningKey(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 
 	// Then.
 	if err == nil {
@@ -499,7 +499,7 @@ func TestAuthenticated_PrivateKeyJWT_InvalidAssertion(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 
 	// Then.
 	if err == nil {
@@ -534,7 +534,7 @@ func TestAuthenticated_PrivateKeyJWT_InvalidAssertionType(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 
 	// Then.
 	if err == nil {
@@ -575,7 +575,7 @@ func TestAuthenticated_ClientSecretJWT(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 
 	// Then.
 	if err != nil {
@@ -612,7 +612,7 @@ func TestAuthenticated_DifferentClientIDs(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 
 	// Then.
 	if err == nil {
@@ -639,7 +639,7 @@ func TestAuthenticated_TLSAuthn_DistinguishedName(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 	// Then.
 	if err != nil {
 		t.Errorf("The client should be authenticated, but error was found: %v", err)
@@ -656,7 +656,7 @@ func TestAuthenticated_TLSAuthn_InvalidDistinguishedName(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 
 	// Then.
 	if err == nil {
@@ -683,7 +683,7 @@ func TestAuthenticated_TLSAuthn_AlternativeName(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 	// Then.
 	if err != nil {
 		t.Errorf("The client should be authenticated, but error was found: %v", err)
@@ -700,7 +700,7 @@ func TestAuthenticated_TLSAuthn_InvalidAlternativeName(t *testing.T) {
 	}
 
 	// When.
-	_, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
 
 	// Then.
 	if err == nil {

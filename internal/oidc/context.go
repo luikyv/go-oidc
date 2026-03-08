@@ -280,12 +280,12 @@ func (ctx Context) AuthnSessionID() string {
 	return ctx.AuthnSessionGenerateIDFunc(ctx)
 }
 
-func (ctx Context) GrantSessionID() string {
-	if ctx.GrantSessionIDFunc == nil {
+func (ctx Context) GrantID() string {
+	if ctx.GrantIDFunc == nil {
 		return uuid.NewString()
 	}
 
-	return ctx.GrantSessionIDFunc(ctx)
+	return ctx.GrantIDFunc(ctx)
 }
 
 func (ctx Context) JWTID() string {
@@ -328,52 +328,57 @@ func (ctx Context) PARID() string {
 	return ctx.PARIDFunc(ctx)
 }
 
+func (ctx Context) OpaqueToken() string {
+	return strutil.Random(50)
+}
+
 func (ctx Context) SaveClient(client *goidc.Client) error {
 	return ctx.ClientManager.Save(ctx, client)
 }
 
 func (ctx Context) Client(id string) (*goidc.Client, error) {
-	if client := ctx.staticClient(id); client != nil {
-		return client, nil
-	}
-
-	if ctx.OpenIDFedIsEnabled {
-		return ctx.OpenIDFedClientFunc(ctx, id)
-	}
-	return ctx.ClientManager.Client(ctx, id)
-}
-
-func (ctx Context) staticClient(id string) *goidc.Client {
 	for _, c := range ctx.StaticClients {
 		if c.ID == id {
-			return c
+			return c, nil
 		}
 	}
-	return nil
+	return ctx.ClientManager.Client(ctx, id)
 }
 
 func (ctx Context) DeleteClient(id string) error {
 	return ctx.ClientManager.Delete(ctx, id)
 }
 
-func (ctx Context) SaveGrantSession(session *goidc.GrantSession) error {
-	return ctx.GrantSessionManager.Save(ctx, session)
+func (ctx Context) SaveGrant(grant *goidc.Grant) error {
+	return ctx.GrantManager.Save(ctx, grant)
 }
 
-func (ctx Context) GrantSessionByTokenID(id string) (*goidc.GrantSession, error) {
-	return ctx.GrantSessionManager.SessionByTokenID(ctx, id)
+func (ctx Context) SaveToken(token *goidc.Token) error {
+	return ctx.TokenManager.Save(ctx, token)
 }
 
-func (ctx Context) GrantSessionByRefreshToken(id string) (*goidc.GrantSession, error) {
-	return ctx.GrantSessionManager.SessionByRefreshToken(ctx, id)
+func (ctx Context) TokenByID(id string) (*goidc.Token, error) {
+	return ctx.TokenManager.TokenByID(ctx, id)
 }
 
-func (ctx Context) DeleteGrantSession(id string) error {
-	return ctx.GrantSessionManager.Delete(ctx, id)
+func (ctx Context) DeleteToken(id string) error {
+	return ctx.TokenManager.Delete(ctx, id)
 }
 
-func (ctx Context) DeleteGrantSessionByAuthorizationCode(code string) error {
-	return ctx.GrantSessionManager.DeleteByAuthCode(ctx, code)
+func (ctx Context) DeleteTokensByGrantID(grantID string) error {
+	return ctx.TokenManager.DeleteByGrantID(ctx, grantID)
+}
+
+func (ctx Context) GrantByRefreshToken(id string) (*goidc.Grant, error) {
+	return ctx.GrantManager.SessionByRefreshToken(ctx, id)
+}
+
+func (ctx Context) DeleteGrant(id string) error {
+	return ctx.GrantManager.Delete(ctx, id)
+}
+
+func (ctx Context) DeleteGrantByAuthorizationCode(code string) error {
+	return ctx.GrantManager.DeleteByAuthCode(ctx, code)
 }
 
 func (ctx Context) SaveAuthnSession(session *goidc.AuthnSession) error {
@@ -561,35 +566,26 @@ func (ctx Context) WriteHTML(html string, params any) error {
 	return tmpl.Execute(ctx.Response, params)
 }
 
-func (ctx Context) ShouldIssueRefreshToken(c *goidc.Client, gi goidc.GrantInfo) bool {
+func (ctx Context) ShouldIssueRefreshToken(c *goidc.Client, grant *goidc.Grant) bool {
 	if ctx.ShouldIssueRefreshTokenFunc == nil {
 		return true
 	}
-	return ctx.ShouldIssueRefreshTokenFunc(ctx, c, gi)
+	return ctx.ShouldIssueRefreshTokenFunc(ctx, c, grant)
 }
 
-func (ctx Context) TokenOptions(grantInfo goidc.GrantInfo, client *goidc.Client) goidc.TokenOptions {
+func (ctx Context) RefreshToken() string {
+	return strutil.Random(100)
+}
 
-	opts := ctx.TokenOptionsFunc(ctx, grantInfo, client)
-
-	if shouldSwitchToOpaque(ctx, grantInfo, client, opts) {
-		opts = goidc.NewOpaqueTokenOptions(goidc.DefaultOpaqueTokenLength, opts.LifetimeSecs)
+func (ctx Context) TokenOptions(grant *goidc.Grant, c *goidc.Client) goidc.TokenOptions {
+	opts := ctx.TokenOptionsFunc(ctx, grant, c)
+	if shouldSwitchToOpaque(ctx, grant, c, opts) {
+		opts = goidc.NewOpaqueTokenOptions(opts.LifetimeSecs)
 	}
-
-	// Opaque access tokens cannot be the same size of refresh tokens.
-	if opts.OpaqueLength == goidc.RefreshTokenLength {
-		opts.OpaqueLength++
-	}
-
 	return opts
 }
 
-func shouldSwitchToOpaque(
-	ctx Context,
-	grantInfo goidc.GrantInfo,
-	client *goidc.Client,
-	opts goidc.TokenOptions,
-) bool {
+func shouldSwitchToOpaque(ctx Context, grant *goidc.Grant, c *goidc.Client, opts goidc.TokenOptions) bool {
 
 	// There is no need to switch if the token is already opaque.
 	if opts.Format == goidc.TokenFormatOpaque {
@@ -599,22 +595,47 @@ func shouldSwitchToOpaque(
 	// Use an opaque token format if the subject identifier type is pairwise.
 	// This prevents potential information leakage that could occur if the JWT
 	// token was decoded by clients.
-	return ctx.shouldGeneratePairwiseSub(client) &&
+	return ctx.shouldGeneratePairwiseSub(c) &&
 		// The pairwise subject type doesn't apply for client credentials.
-		grantInfo.GrantType != goidc.GrantClientCredentials
+		grant.Type != goidc.GrantClientCredentials
 }
 
-func (ctx Context) shouldGeneratePairwiseSub(client *goidc.Client) bool {
-	return client.SubIdentifierType == goidc.SubIdentifierPairwise ||
-		(client.SubIdentifierType == "" && ctx.DefaultSubIdentifierType == goidc.SubIdentifierPairwise)
+func (ctx Context) shouldGeneratePairwiseSub(c *goidc.Client) bool {
+	return c.SubIdentifierType == goidc.SubIdentifierPairwise ||
+		(c.SubIdentifierType == "" && ctx.DefaultSubIdentifierType == goidc.SubIdentifierPairwise)
 }
 
-func (ctx Context) HandleGrant(grantInfo *goidc.GrantInfo) error {
+func (ctx Context) HandleGrant(grant *goidc.Grant) error {
 	if ctx.HandleGrantFunc == nil {
 		return nil
 	}
 
-	return ctx.HandleGrantFunc(ctx.Request, grantInfo)
+	return ctx.HandleGrantFunc(ctx.Request, grant)
+}
+
+func (ctx Context) GrantByID(id string) (*goidc.Grant, error) {
+	return ctx.GrantManager.ByID(ctx, id)
+}
+
+func (ctx Context) IDTokenClaims(grant *goidc.Grant) map[string]any {
+	if ctx.IDTokenClaimsFunc == nil {
+		return nil
+	}
+	return ctx.IDTokenClaimsFunc(ctx, grant)
+}
+
+func (ctx Context) UserInfoClaims(grant *goidc.Grant) map[string]any {
+	if ctx.UserInfoClaimsFunc == nil {
+		return nil
+	}
+	return ctx.UserInfoClaimsFunc(ctx, grant)
+}
+
+func (ctx Context) TokenClaims(grant *goidc.Grant) map[string]any {
+	if ctx.TokenClaimsFunc == nil {
+		return nil
+	}
+	return ctx.TokenClaimsFunc(ctx, grant)
 }
 
 func (ctx Context) HandleJWTBearerGrantAssertion(assertion string) (goidc.JWTBearerGrantInfo, error) {
@@ -635,20 +656,20 @@ func (ctx Context) HTTPClient() *http.Client {
 // If the subject identifier type is "public", it returns the provided subject.
 // If the subject identifier type is "pairwise", it generates a pairwise
 // identifier using the sector URI or a redirect URI.
-func (ctx Context) ExportableSubject(sub string, client *goidc.Client) string {
-	if ctx.GeneratePairwiseSubIDFunc == nil || !ctx.shouldGeneratePairwiseSub(client) {
+func (ctx Context) ExportableSubject(sub string, c *goidc.Client) string {
+	if ctx.GeneratePairwiseSubIDFunc == nil || !ctx.shouldGeneratePairwiseSub(c) {
 		return sub
 	}
 
-	return ctx.GeneratePairwiseSubIDFunc(ctx, sub, client)
+	return ctx.GeneratePairwiseSubIDFunc(ctx, sub, c)
 }
 
-func (ctx Context) HandlePARSession(as *goidc.AuthnSession, client *goidc.Client) error {
-	if ctx.HandlePARSessionFunc == nil {
+func (ctx Context) PARHandleSession(as *goidc.AuthnSession, c *goidc.Client) error {
+	if ctx.PARHandleSessionFunc == nil {
 		return nil
 	}
 
-	return ctx.HandlePARSessionFunc(ctx.Request, as, client)
+	return ctx.PARHandleSessionFunc(ctx.Request, as, c)
 }
 
 func (ctx Context) ClientSecret() string {
@@ -971,14 +992,6 @@ func (ctx Context) OpenIDFedPublicJWKS() (goidc.JSONWebKeySet, error) {
 	}
 
 	return jwks.Public(), nil
-}
-
-func (ctx Context) OpenIDFedEntityJWKS(id string) (goidc.JSONWebKeySet, error) {
-	if ctx.OpenIDFedEntityJWKSFunc == nil {
-		return goidc.JSONWebKeySet{}, errors.New("fetch federation entity jwks function is not set")
-	}
-
-	return ctx.OpenIDFedEntityJWKSFunc(ctx, id)
 }
 
 func (ctx Context) OpenIDFedSign(claims any, opts *jose.SignerOptions, algs ...goidc.SignatureAlgorithm) (string, error) {

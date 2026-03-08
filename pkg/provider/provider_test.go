@@ -56,7 +56,8 @@ func TestNew(t *testing.T) {
 			oidc.Configuration{},
 			"ClientManager",
 			"AuthnSessionManager",
-			"GrantSessionManager",
+			"GrantManager",
+			"TokenManager",
 			"JWKSFunc",
 			"TokenOptionsFunc",
 		),
@@ -177,7 +178,8 @@ func TestNew_WithOptions(t *testing.T) {
 			oidc.Configuration{},
 			"ClientManager",
 			"AuthnSessionManager",
-			"GrantSessionManager",
+			"GrantManager",
+			"TokenManager",
 			"JWKSFunc",
 			"TokenOptionsFunc",
 		),
@@ -202,47 +204,41 @@ func TestMakeToken(t *testing.T) {
 				Keys: []goidc.JSONWebKey{jwk},
 			}, nil
 		},
-		WithTokenOptions(func(_ context.Context, gi goidc.GrantInfo, c *goidc.Client) goidc.TokenOptions {
+		WithTokenOptions(func(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
 			return goidc.NewJWTTokenOptions(goidc.RS256, 60)
 		}),
 	)
 
 	ctx := context.Background()
 	oidcCtx := oidc.NewContext(ctx, &op.config)
-	grantInfo := goidc.GrantInfo{
-		GrantType:     goidc.GrantClientCredentials,
-		ClientID:      issuer,
-		Subject:       issuer,
-		ActiveScopes:  "openid",
-		GrantedScopes: "openid",
+	grant := &goidc.Grant{
+		Type:     goidc.GrantClientCredentials,
+		ClientID: issuer,
+		Subject:  issuer,
+		Scopes:   "openid",
 	}
 
 	// When.
-	tkn, err := op.MakeToken(ctx, grantInfo)
+	tkn, err := op.MakeToken(ctx, grant)
 
 	// Then.
 	if err != nil {
 		t.Error(err)
 	}
 
-	grantSessions := oidctest.GrantSessions(t, oidcCtx)
+	grantSessions := oidctest.Grants(t, oidcCtx)
 	if len(grantSessions) != 1 {
 		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
 	}
 	grantSession := grantSessions[0]
-	wantedSession := goidc.GrantSession{
-		ID:                          grantSession.ID,
-		TokenID:                     grantSession.TokenID,
-		LastTokenExpiresAtTimestamp: grantSession.LastTokenExpiresAtTimestamp,
-		CreatedAtTimestamp:          grantSession.CreatedAtTimestamp,
-		ExpiresAtTimestamp:          grantSession.ExpiresAtTimestamp,
-		GrantInfo: goidc.GrantInfo{
-			GrantType:     goidc.GrantClientCredentials,
-			Subject:       issuer,
-			ClientID:      issuer,
-			ActiveScopes:  "openid",
-			GrantedScopes: "openid",
-		},
+	wantedSession := goidc.Grant{
+		ID:                 grantSession.ID,
+		CreatedAtTimestamp: grantSession.CreatedAtTimestamp,
+		ExpiresAtTimestamp: grantSession.ExpiresAtTimestamp,
+		Type:               goidc.GrantClientCredentials,
+		Subject:            issuer,
+		ClientID:           issuer,
+		Scopes:             "openid",
 	}
 	if diff := cmp.Diff(
 		*grantSession,
@@ -263,7 +259,7 @@ func TestMakeToken(t *testing.T) {
 		"iss":       issuer,
 		"sub":       issuer,
 		"client_id": issuer,
-		"scope":     grantInfo.GrantedScopes,
+		"scope":     grant.Scopes,
 		"exp":       float64(now + 60),
 		"iat":       float64(now),
 	}

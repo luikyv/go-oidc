@@ -13,6 +13,273 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
+func TestOpaqueSigner(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	signer := joseutil.OpaqueSigner{
+		ID:        "test-key",
+		Algorithm: goidc.RS256,
+		Signer:    key,
+	}
+
+	t.Run("public", func(t *testing.T) {
+		pub := signer.Public()
+		if pub.KeyID != "test-key" {
+			t.Errorf("KeyID = %s, want test-key", pub.KeyID)
+		}
+		if pub.Algorithm != string(goidc.RS256) {
+			t.Errorf("Algorithm = %s, want RS256", pub.Algorithm)
+		}
+	})
+
+	t.Run("algs", func(t *testing.T) {
+		algs := signer.Algs()
+		if len(algs) != 1 || algs[0] != goidc.RS256 {
+			t.Errorf("Algs() = %v, want [RS256]", algs)
+		}
+	})
+
+	t.Run("sign_and_verify", func(t *testing.T) {
+		claims := map[string]any{"sub": "test"}
+		jws, err := joseutil.Sign(claims, jose.SigningKey{Algorithm: jose.RS256, Key: &joseutil.OpaqueSigner{
+			ID:        "test-key",
+			Algorithm: goidc.RS256,
+			Signer:    key,
+		}}, nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		parsed, err := jwt.ParseSigned(jws, []goidc.SignatureAlgorithm{goidc.RS256})
+		if err != nil {
+			t.Fatalf("unexpected error parsing JWS: %v", err)
+		}
+
+		var got map[string]any
+		if err := parsed.Claims(&key.PublicKey, &got); err != nil {
+			t.Fatalf("unexpected error extracting claims: %v", err)
+		}
+		if got["sub"] != "test" {
+			t.Errorf("sub = %v, want test", got["sub"])
+		}
+	})
+}
+
+func TestOpaqueSigner_PS256(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	claims := map[string]any{"sub": "test"}
+	jws, err := joseutil.Sign(claims, jose.SigningKey{Algorithm: jose.PS256, Key: &joseutil.OpaqueSigner{
+		ID:        "ps-key",
+		Algorithm: goidc.PS256,
+		Signer:    key,
+	}}, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	parsed, err := jwt.ParseSigned(jws, []goidc.SignatureAlgorithm{goidc.PS256})
+	if err != nil {
+		t.Fatalf("unexpected error parsing JWS: %v", err)
+	}
+
+	var got map[string]any
+	if err := parsed.Claims(&key.PublicKey, &got); err != nil {
+		t.Fatalf("unexpected error extracting claims: %v", err)
+	}
+	if got["sub"] != "test" {
+		t.Errorf("sub = %v, want test", got["sub"])
+	}
+}
+
+func TestOpaqueDecrypter_RSA_OAEP(t *testing.T) {
+	jwk := oidctest.PrivateRSAOAEPJWK(t, "dec-key")
+
+	encrypted, err := joseutil.Encrypt("secret-payload", jwk.Public(), goidc.A128CBC_HS256)
+	if err != nil {
+		t.Fatalf("unexpected error encrypting: %v", err)
+	}
+
+	rsaKey := jwk.Key.(*rsa.PrivateKey)
+	decrypter := &joseutil.OpaqueDecrypter{
+		Algorithm: goidc.RSA_OAEP,
+		Decrypter: rsaKey,
+	}
+
+	jwe, err := jose.ParseEncrypted(
+		encrypted,
+		[]goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+		[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256},
+	)
+	if err != nil {
+		t.Fatalf("unexpected error parsing JWE: %v", err)
+	}
+
+	decrypted, err := jwe.Decrypt(decrypter)
+	if err != nil {
+		t.Fatalf("unexpected error decrypting: %v", err)
+	}
+
+	if string(decrypted) != "secret-payload" {
+		t.Errorf("decrypted = %s, want secret-payload", decrypted)
+	}
+}
+
+func TestOpaqueDecrypter_RSA_OAEP_256(t *testing.T) {
+	jwk := oidctest.PrivateRSAOAEP256JWK(t, "dec-key-256")
+
+	encrypted, err := joseutil.Encrypt("secret-256", jwk.Public(), goidc.A128CBC_HS256)
+	if err != nil {
+		t.Fatalf("unexpected error encrypting: %v", err)
+	}
+
+	rsaKey := jwk.Key.(*rsa.PrivateKey)
+	decrypter := &joseutil.OpaqueDecrypter{
+		Algorithm: goidc.RSA_OAEP_256,
+		Decrypter: rsaKey,
+	}
+
+	jwe, err := jose.ParseEncrypted(
+		encrypted,
+		[]goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP_256},
+		[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256},
+	)
+	if err != nil {
+		t.Fatalf("unexpected error parsing JWE: %v", err)
+	}
+
+	decrypted, err := jwe.Decrypt(decrypter)
+	if err != nil {
+		t.Fatalf("unexpected error decrypting: %v", err)
+	}
+
+	if string(decrypted) != "secret-256" {
+		t.Errorf("decrypted = %s, want secret-256", decrypted)
+	}
+}
+
+func TestKeyByAlgorithms(t *testing.T) {
+	jwk1 := oidctest.PrivateRS256JWK(t, "rs256-key", goidc.KeyUsageSignature)
+	jwk2 := oidctest.PrivatePS256JWK(t, "ps256-key", goidc.KeyUsageSignature)
+	jwks := goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{jwk1, jwk2}}
+
+	t.Run("match_first", func(t *testing.T) {
+		got, err := joseutil.KeyByAlgorithms(jwks, []goidc.SignatureAlgorithm{goidc.RS256})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got.KeyID != "rs256-key" {
+			t.Errorf("KeyID = %s, want rs256-key", got.KeyID)
+		}
+	})
+
+	t.Run("match_second", func(t *testing.T) {
+		got, err := joseutil.KeyByAlgorithms(jwks, []goidc.SignatureAlgorithm{goidc.PS256})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got.KeyID != "ps256-key" {
+			t.Errorf("KeyID = %s, want ps256-key", got.KeyID)
+		}
+	})
+
+	t.Run("match_fallback", func(t *testing.T) {
+		got, err := joseutil.KeyByAlgorithms(jwks, []goidc.SignatureAlgorithm{goidc.ES256, goidc.PS256})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got.KeyID != "ps256-key" {
+			t.Errorf("KeyID = %s, want ps256-key", got.KeyID)
+		}
+	})
+
+	t.Run("no_match", func(t *testing.T) {
+		_, err := joseutil.KeyByAlgorithms(jwks, []goidc.SignatureAlgorithm{goidc.ES256})
+		if err == nil {
+			t.Error("expected error, got nil")
+		}
+	})
+}
+
+func TestKeyUsage(t *testing.T) {
+	testCases := []struct {
+		name string
+		key  goidc.JSONWebKey
+		want goidc.KeyUsage
+	}{
+		{
+			name: "explicit_sig_use",
+			key:  goidc.JSONWebKey{Use: "sig"},
+			want: goidc.KeyUsageSignature,
+		},
+		{
+			name: "explicit_enc_use",
+			key:  goidc.JSONWebKey{Use: "enc"},
+			want: goidc.KeyUsageEncryption,
+		},
+		{
+			name: "rs256_algorithm",
+			key:  goidc.JSONWebKey{Algorithm: string(goidc.RS256)},
+			want: goidc.KeyUsageSignature,
+		},
+		{
+			name: "es256_algorithm",
+			key:  goidc.JSONWebKey{Algorithm: string(goidc.ES256)},
+			want: goidc.KeyUsageSignature,
+		},
+		{
+			name: "ps256_algorithm",
+			key:  goidc.JSONWebKey{Algorithm: string(goidc.PS256)},
+			want: goidc.KeyUsageSignature,
+		},
+		{
+			name: "hs256_algorithm",
+			key:  goidc.JSONWebKey{Algorithm: string(goidc.HS256)},
+			want: goidc.KeyUsageSignature,
+		},
+		{
+			name: "rsa_oaep_algorithm",
+			key:  goidc.JSONWebKey{Algorithm: string(goidc.RSA_OAEP)},
+			want: goidc.KeyUsageEncryption,
+		},
+		{
+			name: "rsa_oaep_256_algorithm",
+			key:  goidc.JSONWebKey{Algorithm: string(goidc.RSA_OAEP_256)},
+			want: goidc.KeyUsageEncryption,
+		},
+		{
+			name: "rsa1_5_algorithm",
+			key:  goidc.JSONWebKey{Algorithm: string(goidc.RSA1_5)},
+			want: goidc.KeyUsageEncryption,
+		},
+		{
+			name: "unknown_algorithm",
+			key:  goidc.JSONWebKey{Algorithm: "unknown"},
+			want: "",
+		},
+		{
+			name: "explicit_use_overrides_algorithm",
+			key:  goidc.JSONWebKey{Use: "enc", Algorithm: string(goidc.RS256)},
+			want: goidc.KeyUsageEncryption,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := joseutil.KeyUsage(tc.key)
+			if got != tc.want {
+				t.Errorf("KeyUsage() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestSign(t *testing.T) {
 	// Given.
 	key, _ := rsa.GenerateKey(rand.Reader, 2048)

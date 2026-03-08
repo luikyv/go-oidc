@@ -834,10 +834,10 @@ func TestShouldIssueRefreshToken(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	client := &goidc.Client{}
-	grantInfo := goidc.GrantInfo{}
+	grant := &goidc.Grant{}
 
 	// When.
-	should := ctx.ShouldIssueRefreshToken(client, grantInfo)
+	should := ctx.ShouldIssueRefreshToken(client, grant)
 
 	// Then.
 	if !should {
@@ -845,12 +845,12 @@ func TestShouldIssueRefreshToken(t *testing.T) {
 	}
 
 	// Given.
-	ctx.ShouldIssueRefreshTokenFunc = func(ctx context.Context, c *goidc.Client, gi goidc.GrantInfo) bool {
+	ctx.ShouldIssueRefreshTokenFunc = func(_ context.Context, _ *goidc.Client, _ *goidc.Grant) bool {
 		return false
 	}
 
 	// When.
-	should = ctx.ShouldIssueRefreshToken(client, grantInfo)
+	should = ctx.ShouldIssueRefreshToken(client, grant)
 
 	// Then.
 	if should {
@@ -862,14 +862,14 @@ func TestShouldIssueRefreshToken(t *testing.T) {
 func TestTokenOptions_JWT(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.TokenOptionsFunc = func(_ context.Context, gi goidc.GrantInfo, c *goidc.Client) goidc.TokenOptions {
+	ctx.TokenOptionsFunc = func(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
 		return goidc.NewJWTTokenOptions("random_key_id", 600)
 	}
 	client := &goidc.Client{}
-	grantInfo := goidc.GrantInfo{}
+	grant := &goidc.Grant{}
 
 	// When.
-	opts := ctx.TokenOptions(grantInfo, client)
+	opts := ctx.TokenOptions(grant, client)
 
 	// Then.
 	if opts.Format != goidc.TokenFormatJWT {
@@ -880,47 +880,25 @@ func TestTokenOptions_JWT(t *testing.T) {
 func TestTokenOptions_Opaque(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.TokenOptionsFunc = func(_ context.Context, gi goidc.GrantInfo, c *goidc.Client) goidc.TokenOptions {
-		return goidc.NewOpaqueTokenOptions(30, 600)
+	ctx.TokenOptionsFunc = func(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
+		return goidc.NewOpaqueTokenOptions(600)
 	}
 	client := &goidc.Client{}
-	grantInfo := goidc.GrantInfo{}
+	grant := &goidc.Grant{}
 
 	// When.
-	opts := ctx.TokenOptions(grantInfo, client)
+	opts := ctx.TokenOptions(grant, client)
 
 	// Then.
 	if opts.Format != goidc.TokenFormatOpaque {
 		t.Errorf("got %s, want %s", opts.Format, goidc.TokenFormatOpaque)
-	}
-}
-
-func TestTokenOptions_OpaqueTokenCannotHaveRefreshTokenLength(t *testing.T) {
-	// Given.
-	ctx := oidctest.NewContext(t)
-	ctx.TokenOptionsFunc = func(_ context.Context, gi goidc.GrantInfo, c *goidc.Client) goidc.TokenOptions {
-		return goidc.NewOpaqueTokenOptions(goidc.RefreshTokenLength, 600)
-	}
-	client := &goidc.Client{}
-	grantInfo := goidc.GrantInfo{}
-
-	// When.
-	opts := ctx.TokenOptions(grantInfo, client)
-
-	// Then.
-	if opts.Format != goidc.TokenFormatOpaque {
-		t.Errorf("got %s, want %s", opts.Format, goidc.TokenFormatOpaque)
-	}
-
-	if opts.OpaqueLength == goidc.RefreshTokenLength {
-		t.Error("opaque tokens cannot have the same size as refresh tokens")
 	}
 }
 
 func TestTokenOptions_JWTNotAllowedWhenPairwiseSubject(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.TokenOptionsFunc = func(_ context.Context, gi goidc.GrantInfo, c *goidc.Client) goidc.TokenOptions {
+	ctx.TokenOptionsFunc = func(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
 		return goidc.NewJWTTokenOptions("random_key_id", 600)
 	}
 	client := &goidc.Client{
@@ -928,10 +906,10 @@ func TestTokenOptions_JWTNotAllowedWhenPairwiseSubject(t *testing.T) {
 			SubIdentifierType: goidc.SubIdentifierPairwise,
 		},
 	}
-	grantInfo := goidc.GrantInfo{}
+	grant := &goidc.Grant{}
 
 	// When.
-	opts := ctx.TokenOptions(grantInfo, client)
+	opts := ctx.TokenOptions(grant, client)
 
 	// Then.
 	if opts.Format != goidc.TokenFormatOpaque {
@@ -942,7 +920,7 @@ func TestTokenOptions_JWTNotAllowedWhenPairwiseSubject(t *testing.T) {
 func TestTokenOptions_JWTIsAllowedForPairwiseSubjectWhenClientCredentials(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.TokenOptionsFunc = func(_ context.Context, gi goidc.GrantInfo, c *goidc.Client) goidc.TokenOptions {
+	ctx.TokenOptionsFunc = func(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
 		return goidc.NewJWTTokenOptions("random_key_id", 600)
 	}
 	client := &goidc.Client{
@@ -950,12 +928,12 @@ func TestTokenOptions_JWTIsAllowedForPairwiseSubjectWhenClientCredentials(t *tes
 			SubIdentifierType: goidc.SubIdentifierPairwise,
 		},
 	}
-	grantInfo := goidc.GrantInfo{
-		GrantType: goidc.GrantClientCredentials,
+	grant := &goidc.Grant{
+		Type: goidc.GrantClientCredentials,
 	}
 
 	// When.
-	opts := ctx.TokenOptions(grantInfo, client)
+	opts := ctx.TokenOptions(grant, client)
 
 	// Then.
 	if opts.Format != goidc.TokenFormatJWT {
@@ -966,10 +944,10 @@ func TestTokenOptions_JWTIsAllowedForPairwiseSubjectWhenClientCredentials(t *tes
 func TestHandleGrant(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	grantInfo := goidc.GrantInfo{}
+	grant := &goidc.Grant{}
 
 	// When.
-	err := ctx.HandleGrant(&grantInfo)
+	err := ctx.HandleGrant(grant)
 
 	// Then.
 	if err != nil {
@@ -977,12 +955,12 @@ func TestHandleGrant(t *testing.T) {
 	}
 
 	// Given.
-	ctx.HandleGrantFunc = func(r *http.Request, gi *goidc.GrantInfo) error {
+	ctx.HandleGrantFunc = func(_ *http.Request, _ *goidc.Grant) error {
 		return errors.New("error")
 	}
 
 	// When.
-	err = ctx.HandleGrant(&grantInfo)
+	err = ctx.HandleGrant(grant)
 
 	// Then.
 	if err == nil {

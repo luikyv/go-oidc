@@ -40,7 +40,7 @@ func (m *ClientManager) Client(_ context.Context, id string) (*goidc.Client, err
 
 	c, exists := m.Clients[id]
 	if !exists {
-		return nil, goidc.ErrClientNotFound
+		return nil, goidc.ErrNotFound
 	}
 
 	// Make sure the content of jwks_uri is cleared from jwks when fetching the

@@ -7,98 +7,91 @@ import (
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
-	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func generateAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
-
-	if req.authorizationCode == "" {
+	if req.code == "" {
 		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid authorization code")
 	}
 
-	c, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	c, err := client.Authenticated(ctx, client.AuthnContextToken)
 	if err != nil {
 		return response{}, err
 	}
 
-	as, err := authnSession(ctx, req.authorizationCode)
+	as, err := ctx.AuthnSessionByAuthCode(req.code)
 	if err != nil {
+		// Invalidate any grant associated with the authorization code.
+		// This ensures that even if the code is compromised, the access token
+		// that it generated cannot be misused by a malicious client.
+		_ = ctx.DeleteGrantByAuthorizationCode(req.code)
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid authorization code", err)
+	}
+
+	// Delete the session to prevent reuse of the code.
+	if err := ctx.DeleteAuthnSession(as.ID); err != nil {
+		return response{}, err
 	}
 
 	if err := validateAuthCodeGrantRequest(ctx, req, c, as); err != nil {
 		return response{}, err
 	}
 
-	grantInfo, err := authCodeGrantInfo(ctx, req, as)
+	grant, err := NewGrant(ctx, c, GrantOptions{
+		AuthCode:             as.AuthCode,
+		Type:                 goidc.GrantAuthorizationCode,
+		Subject:              as.Subject,
+		ClientID:             as.ClientID,
+		Scopes:               as.GrantedScopes,
+		AuthDetails:          as.GrantedAuthDetails,
+		Resources:            as.GrantedResources,
+		Nonce:                as.Nonce,
+		Store:                as.Store,
+		JWKThumbprint:        dpopThumbprint(ctx),
+		ClientCertThumbprint: tlsThumbprint(ctx),
+	})
 	if err != nil {
 		return response{}, err
 	}
 
-	token, err := Make(ctx, grantInfo, c)
+	tkn, tokenValue, err := Issue(ctx, grant, c, &Options{
+		Scopes:      req.scopes,
+		AuthDetails: req.authDetails,
+		Resources:   req.resources,
+	})
 	if err != nil {
-		return response{}, err
-	}
-
-	grantSession := NewGrantSession(ctx, grantInfo, token)
-	grantSession.AuthCode = as.AuthCode
-	var refreshTkn string
-	if shouldIssueRefreshToken(ctx, c, grantInfo) {
-		refreshTkn = newRefreshToken()
-		grantSession.RefreshToken = refreshTkn
-		grantSession.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
-	}
-
-	if err := ctx.SaveGrantSession(grantSession); err != nil {
 		return response{}, err
 	}
 
 	tokenResp := response{
-		AccessToken:          token.Value,
-		ExpiresIn:            token.LifetimeSecs,
-		TokenType:            token.Type,
-		Scopes:               grantInfo.ActiveScopes,
-		RefreshToken:         refreshTkn,
-		AuthorizationDetails: grantInfo.ActiveAuthDetails,
+		AccessToken:          tokenValue,
+		ExpiresIn:            tkn.LifetimeSecs(),
+		TokenType:            tkn.Type,
+		RefreshToken:         grant.RefreshToken,
+		AuthorizationDetails: tkn.AuthDetails,
 	}
-
-	if strutil.ContainsOpenID(grantInfo.ActiveScopes) {
-		var err error
-		tokenResp.IDToken, err = MakeIDToken(ctx, c, newIDTokenOptions(grantInfo))
+	if tkn.Scopes != as.GrantedScopes {
+		tokenResp.Scopes = tkn.Scopes
+	}
+	if ctx.ResourceIndicatorsIsEnabled && !compareSlices(tkn.Resources, as.GrantedResources) {
+		tokenResp.Resources = tkn.Resources
+	}
+	if strutil.ContainsOpenID(tkn.Scopes) {
+		tokenResp.IDToken, err = MakeIDToken(ctx, c, IDTokenOptions{
+			Subject: grant.Subject,
+			Nonce:   grant.Nonce,
+			Claims:  ctx.IDTokenClaims(grant),
+		})
 		if err != nil {
 			return response{}, fmt.Errorf("could not generate id token for the authorization code grant: %w", err)
 		}
 	}
 
-	if ctx.ResourceIndicatorsIsEnabled && !compareSlices(grantInfo.ActiveResources, as.Resources) {
-		tokenResp.Resources = grantInfo.ActiveResources
-	}
-
 	return tokenResp, nil
 }
 
-// authnSession fetches an authentication session by searching for the authorization code.
-// If the session is found, it is deleted to prevent reuse of the code.
-func authnSession(ctx oidc.Context, authCode string) (*goidc.AuthnSession, error) {
-	session, err := ctx.AuthnSessionByAuthCode(authCode)
-	if err != nil {
-		// Invalidate any grant associated with the authorization code.
-		// This ensures that even if the code is compromised, the access token
-		// that it generated cannot be misused by a malicious client.
-		_ = ctx.DeleteGrantSessionByAuthorizationCode(authCode)
-		return nil, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid authorization code", err)
-	}
-
-	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-		return nil, err
-	}
-
-	return session, nil
-}
-
 func validateAuthCodeGrantRequest(ctx oidc.Context, req request, c *goidc.Client, as *goidc.AuthnSession) error {
-
 	if !slices.Contains(c.GrantTypes, goidc.GrantAuthorizationCode) {
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
 	}
@@ -111,12 +104,12 @@ func validateAuthCodeGrantRequest(ctx oidc.Context, req request, c *goidc.Client
 		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "the authorization code is expired")
 	}
 
-	opts := bindindValidationsOptions{}
-	opts.tlsIsRequired = as.ClientCertThumbprint != ""
-	opts.tlsCertThumbprint = as.ClientCertThumbprint
-	opts.dpopIsRequired = as.JWKThumbprint != ""
-	opts.dpop.JWKThumbprint = as.JWKThumbprint
-	if err := ValidateBinding(ctx, c, &opts); err != nil {
+	if err := ValidateBinding(ctx, c, &bindindValidationsOptions{
+		tlsIsRequired:     as.ClientCertThumbprint != "",
+		tlsCertThumbprint: as.ClientCertThumbprint,
+		dpopIsRequired:    as.JWKThumbprint != "",
+		dpopJWKThumbprint: as.JWKThumbprint,
+	}); err != nil {
 		return err
 	}
 
@@ -141,49 +134,6 @@ func validateAuthCodeGrantRequest(ctx oidc.Context, req request, c *goidc.Client
 	}
 
 	return nil
-}
-
-func authCodeGrantInfo(ctx oidc.Context, req request, as *goidc.AuthnSession) (goidc.GrantInfo, error) {
-
-	grantInfo := goidc.GrantInfo{
-		GrantType:                goidc.GrantAuthorizationCode,
-		Subject:                  as.Subject,
-		ClientID:                 as.ClientID,
-		ActiveScopes:             as.GrantedScopes,
-		GrantedScopes:            as.GrantedScopes,
-		AdditionalIDTokenClaims:  as.AdditionalIDTokenClaims,
-		AdditionalUserInfoClaims: as.AdditionalUserInfoClaims,
-		AdditionalTokenClaims:    as.AdditionalTokenClaims,
-		Store:                    as.Storage,
-	}
-
-	if req.scopes != "" {
-		grantInfo.ActiveScopes = req.scopes
-	}
-
-	if ctx.AuthDetailsIsEnabled {
-		grantInfo.GrantedAuthDetails = as.GrantedAuthDetails
-		grantInfo.ActiveAuthDetails = as.GrantedAuthDetails
-		if req.authDetails != nil {
-			grantInfo.ActiveAuthDetails = req.authDetails
-		}
-	}
-
-	if ctx.ResourceIndicatorsIsEnabled {
-		grantInfo.GrantedResources = as.GrantedResources
-		grantInfo.ActiveResources = as.GrantedResources
-		if req.resources != nil {
-			grantInfo.ActiveResources = req.resources
-		}
-	}
-
-	setPoP(ctx, &grantInfo)
-
-	if err := ctx.HandleGrant(&grantInfo); err != nil {
-		return goidc.GrantInfo{}, err
-	}
-
-	return grantInfo, nil
 }
 
 func compareSlices(s1, s2 []string) bool {

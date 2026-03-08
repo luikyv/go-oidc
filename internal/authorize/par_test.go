@@ -57,7 +57,7 @@ func TestPushAuth(t *testing.T) {
 		t.Error(diff)
 	}
 
-	wantedResp := pushedResponse{
+	wantedResp := parResponse{
 		RequestURI: session.PushedAuthReqID,
 		ExpiresIn:  ctx.PARLifetimeSecs,
 	}
@@ -127,7 +127,7 @@ func TestPushAuth_WithJAR(t *testing.T) {
 		t.Error(diff)
 	}
 
-	wantedResp := pushedResponse{
+	wantedResp := parResponse{
 		RequestURI: session.PushedAuthReqID,
 		ExpiresIn:  ctx.PARLifetimeSecs,
 	}

@@ -68,7 +68,8 @@ func NewContext(t testing.TB) oidc.Context {
 
 		ClientManager:       storage.NewClientManager(100),
 		AuthnSessionManager: storage.NewAuthnSessionManager(100),
-		GrantSessionManager: storage.NewGrantSessionManager(100),
+		GrantManager:        storage.NewGrantManager(100),
+		TokenManager:        storage.NewTokenManager(100),
 
 		Scopes: []goidc.Scope{goidc.ScopeOpenID, Scope1, Scope2},
 		JWKSFunc: func(ctx context.Context) (goidc.JSONWebKeySet, error) {
@@ -97,8 +98,8 @@ func NewContext(t testing.TB) oidc.Context {
 		},
 		TokenOptionsFunc: func(
 			_ context.Context,
-			grantInfo goidc.GrantInfo,
-			client *goidc.Client,
+			_ *goidc.Grant,
+			_ *goidc.Client,
 		) goidc.TokenOptions {
 			return goidc.TokenOptions{
 				JWTSigAlg:    goidc.SignatureAlgorithm(jwk.Algorithm),
@@ -174,13 +175,25 @@ func AuthnSessions(t testing.TB, ctx oidc.Context) []*goidc.AuthnSession {
 	return sessions
 }
 
-func GrantSessions(t *testing.T, ctx oidc.Context) []*goidc.GrantSession {
+func Grants(t *testing.T, ctx oidc.Context) []*goidc.Grant {
 	t.Helper()
 
-	manager, _ := ctx.GrantSessionManager.(*storage.GrantSessionManager)
-	tokens := make([]*goidc.GrantSession, 0, len(manager.Sessions))
-	for _, t := range manager.Sessions {
-		tokens = append(tokens, t)
+	manager, _ := ctx.GrantManager.(*storage.GrantManager)
+	grants := make([]*goidc.Grant, 0, len(manager.Sessions))
+	for _, g := range manager.Sessions {
+		grants = append(grants, g)
+	}
+
+	return grants
+}
+
+func Tokens(t *testing.T, ctx oidc.Context) []*goidc.Token {
+	t.Helper()
+
+	manager, _ := ctx.TokenManager.(*storage.TokenManager)
+	tokens := make([]*goidc.Token, 0, len(manager.Tokens))
+	for _, tkn := range manager.Tokens {
+		tokens = append(tokens, tkn)
 	}
 
 	return tokens

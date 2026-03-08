@@ -17,7 +17,7 @@ import (
 
 // initBackAuth inits an authentication session for CIBA.
 func initBackAuth(ctx oidc.Context, req request) (cibaResponse, error) {
-	c, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	c, err := client.Authenticated(ctx, client.AuthnContextToken)
 	if err != nil {
 		return cibaResponse{}, err
 	}

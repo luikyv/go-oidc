@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -42,7 +41,7 @@ func (m *LogoutSessionManager) SessionByCallbackID(_ context.Context, callbackID
 		return s.CallbackID == callbackID
 	})
 	if !exists {
-		return nil, errors.New("entity not found")
+		return nil, goidc.ErrNotFound
 	}
 
 	return session, nil

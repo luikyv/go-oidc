@@ -9,13 +9,12 @@ import (
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
-	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
 
-	c, err := client.Authenticated(ctx, client.TokenAuthnContext)
+	c, err := client.Authenticated(ctx, client.AuthnContextToken)
 	// Return an error for client authentication only if authentication is
 	// required or if the error is unrelated to client identification, such as
 	// when the client provides invalid credentials.
@@ -38,17 +37,53 @@ func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid assertion", err)
 	}
 
-	grantInfo, err := jwtBearerGrantInfo(ctx, req, info, c)
+	grant, err := NewGrant(ctx, c, GrantOptions{
+		Type:                 goidc.GrantJWTBearer,
+		Subject:              info.Subject,
+		ClientID:             c.ID,
+		Scopes:               req.scopes,
+		Resources:            req.resources,
+		Store:                info.Store,
+		JWKThumbprint:        dpopThumbprint(ctx),
+		ClientCertThumbprint: tlsThumbprint(ctx),
+	})
 	if err != nil {
 		return response{}, err
 	}
 
-	token, err := Make(ctx, grantInfo, c)
+	tkn, tokenValue, err := Issue(ctx, grant, c, nil)
 	if err != nil {
-		return response{}, fmt.Errorf("could not generate an access token for the jwt bearer grant: %w", err)
+		return response{}, err
 	}
 
-	return generateJWTBearerGrantSession(ctx, req, grantInfo, token, c)
+	tokenResp := response{
+		AccessToken:          tokenValue,
+		ExpiresIn:            tkn.LifetimeSecs(),
+		TokenType:            tkn.Type,
+		RefreshToken:         grant.RefreshToken,
+		AuthorizationDetails: tkn.AuthDetails,
+	}
+
+	if strutil.ContainsOpenID(tkn.Scopes) {
+		tokenResp.IDToken, err = makeIDToken(ctx, c, IDTokenOptions{
+			Subject: grant.Subject,
+			Nonce:   grant.Nonce,
+			Claims:  ctx.IDTokenClaims(grant),
+		})
+		if err != nil {
+			return response{}, fmt.Errorf("could not generate id token for the jwt bearer grant: %w", err)
+		}
+	}
+
+	if tkn.Scopes != req.scopes {
+		tokenResp.Scopes = tkn.Scopes
+	}
+
+	if ctx.ResourceIndicatorsIsEnabled && !compareSlices(tkn.Resources, req.resources) {
+		tokenResp.Resources = tkn.Resources
+	}
+
+	return tokenResp, nil
 }
 
 func validateJWTBearerGrantRequest(ctx oidc.Context, req request, c *goidc.Client) error {
@@ -81,90 +116,6 @@ func validateJWTBearerGrantRequest(ctx oidc.Context, req request, c *goidc.Clien
 	}
 
 	return nil
-}
-
-func jwtBearerGrantInfo(
-	ctx oidc.Context,
-	req request,
-	info goidc.JWTBearerGrantInfo,
-	client *goidc.Client,
-) (
-	goidc.GrantInfo,
-	error,
-) {
-
-	grantInfo := goidc.GrantInfo{
-		GrantType:     goidc.GrantClientCredentials,
-		ClientID:      client.ID,
-		ActiveScopes:  req.scopes,
-		GrantedScopes: req.scopes,
-		Subject:       info.Subject,
-		Store:         info.Store,
-	}
-
-	if ctx.ResourceIndicatorsIsEnabled && req.resources != nil {
-		grantInfo.ActiveResources = req.resources
-		grantInfo.GrantedResources = req.resources
-	}
-
-	setPoP(ctx, &grantInfo)
-
-	if err := ctx.HandleGrant(&grantInfo); err != nil {
-		return goidc.GrantInfo{}, err
-	}
-
-	return grantInfo, nil
-}
-
-func generateJWTBearerGrantSession(
-	ctx oidc.Context,
-	req request,
-	grantInfo goidc.GrantInfo,
-	token Token,
-	client *goidc.Client,
-) (
-	response,
-	error,
-) {
-
-	grantSession := NewGrantSession(ctx, grantInfo, token)
-	var refreshTkn string
-	if shouldIssueRefreshToken(ctx, client, grantInfo) {
-		refreshTkn = newRefreshToken()
-		grantSession.RefreshToken = refreshTkn
-		grantSession.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
-	}
-
-	if err := ctx.SaveGrantSession(grantSession); err != nil {
-		return response{}, err
-	}
-
-	tokenResp := response{
-		AccessToken:          token.Value,
-		ExpiresIn:            token.LifetimeSecs,
-		TokenType:            token.Type,
-		RefreshToken:         refreshTkn,
-		AuthorizationDetails: grantInfo.ActiveAuthDetails,
-	}
-
-	if strutil.ContainsOpenID(grantInfo.ActiveScopes) {
-		var err error
-		tokenResp.IDToken, err = makeIDToken(ctx, client, newIDTokenOptions(grantInfo))
-		if err != nil {
-			return response{}, fmt.Errorf("could not generate access id token for the authorization code grant: %w", err)
-		}
-	}
-
-	if grantInfo.ActiveScopes != req.scopes {
-		tokenResp.Scopes = grantInfo.ActiveScopes
-	}
-
-	if ctx.ResourceIndicatorsIsEnabled &&
-		!compareSlices(grantInfo.ActiveResources, req.resources) {
-		tokenResp.Resources = grantInfo.ActiveResources
-	}
-
-	return tokenResp, nil
 }
 
 // makeAnonymousClient creates a client that is authorized to use the JWT bearer

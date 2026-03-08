@@ -137,6 +137,8 @@ func main() {
 		provider.WithPAR(),
 		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.RS256)),
+		provider.WithIDTokenClaims(authutil.IDTokenClaimsFunc()),
+		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
 		provider.WithHTTPClientFunc(httpClientFunc()),
 		provider.WithPolicies(authutil.Policy()),
 		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),

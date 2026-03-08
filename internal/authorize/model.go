@@ -213,7 +213,7 @@ func newFormRequest(req *http.Request) request {
 	}
 }
 
-type pushedResponse struct {
+type parResponse struct {
 	RequestURI string `json:"request_uri"`
 	ExpiresIn  int    `json:"expires_in"`
 }
@@ -225,73 +225,42 @@ type cibaResponse struct {
 }
 
 // TODO: Should ask the expiry?
-func newAuthnSession(ctx oidc.Context, params goidc.AuthorizationParameters, client *goidc.Client) *goidc.AuthnSession {
+func newAuthnSession(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) *goidc.AuthnSession {
 	return &goidc.AuthnSession{
-		ID:                       ctx.AuthnSessionID(),
-		ClientID:                 client.ID,
-		AuthorizationParameters:  params,
-		CreatedAtTimestamp:       timeutil.TimestampNow(),
-		Storage:                  make(map[string]any),
-		AdditionalTokenClaims:    make(map[string]any),
-		AdditionalIDTokenClaims:  map[string]any{},
-		AdditionalUserInfoClaims: map[string]any{},
+		ID:                      ctx.AuthnSessionID(),
+		ClientID:                c.ID,
+		AuthorizationParameters: params,
+		CreatedAtTimestamp:      timeutil.TimestampNow(),
+		Store:                   make(map[string]any),
 	}
 }
 
-func mergeParams(
-	insideParams goidc.AuthorizationParameters,
-	outsideParams goidc.AuthorizationParameters,
-) goidc.AuthorizationParameters {
-	params := goidc.AuthorizationParameters{
-		RedirectURI: nonZeroOrDefault(insideParams.RedirectURI,
-			outsideParams.RedirectURI),
-		ResponseMode: nonZeroOrDefault(insideParams.ResponseMode,
-			outsideParams.ResponseMode),
-		ResponseType: nonZeroOrDefault(insideParams.ResponseType,
-			outsideParams.ResponseType),
-		Scopes: nonZeroOrDefault(insideParams.Scopes,
-			outsideParams.Scopes),
-		State: nonZeroOrDefault(insideParams.State,
-			outsideParams.State),
-		Nonce: nonZeroOrDefault(insideParams.Nonce,
-			outsideParams.Nonce),
-		CodeChallenge: nonZeroOrDefault(insideParams.CodeChallenge,
-			outsideParams.CodeChallenge),
-		CodeChallengeMethod: nonZeroOrDefault(insideParams.CodeChallengeMethod,
-			outsideParams.CodeChallengeMethod),
-		Prompt: nonZeroOrDefault(insideParams.Prompt,
-			outsideParams.Prompt),
-		MaxAuthnAgeSecs: nonZeroOrDefault(insideParams.MaxAuthnAgeSecs,
-			outsideParams.MaxAuthnAgeSecs),
-		Display: nonZeroOrDefault(insideParams.Display,
-			outsideParams.Display),
-		ACRValues: nonZeroOrDefault(insideParams.ACRValues,
-			outsideParams.ACRValues),
-		Claims: nonZeroOrDefault(insideParams.Claims,
-			outsideParams.Claims),
-		AuthDetails: nonZeroOrDefault(insideParams.AuthDetails,
-			outsideParams.AuthDetails),
-		Resources: nonZeroOrDefault(insideParams.Resources,
-			outsideParams.Resources),
-		DPoPJKT: nonZeroOrDefault(insideParams.DPoPJKT,
-			outsideParams.DPoPJKT),
-		LoginHint: nonZeroOrDefault(insideParams.LoginHint,
-			outsideParams.LoginHint),
-		LoginTokenHint: nonZeroOrDefault(insideParams.LoginTokenHint,
-			outsideParams.LoginTokenHint),
-		IDTokenHint: nonZeroOrDefault(insideParams.IDTokenHint,
-			outsideParams.IDTokenHint),
-		ClientNotificationToken: nonZeroOrDefault(insideParams.ClientNotificationToken,
-			outsideParams.ClientNotificationToken),
-		BindingMessage: nonZeroOrDefault(insideParams.BindingMessage,
-			outsideParams.BindingMessage),
-		UserCode: nonZeroOrDefault(insideParams.UserCode,
-			outsideParams.UserCode),
-		RequestedExpiry: nonZeroOrDefault(insideParams.RequestedExpiry,
-			outsideParams.RequestedExpiry),
+func mergeParams(inParams goidc.AuthorizationParameters, outParams goidc.AuthorizationParameters) goidc.AuthorizationParameters {
+	return goidc.AuthorizationParameters{
+		RedirectURI:             nonZeroOrDefault(inParams.RedirectURI, outParams.RedirectURI),
+		ResponseMode:            nonZeroOrDefault(inParams.ResponseMode, outParams.ResponseMode),
+		ResponseType:            nonZeroOrDefault(inParams.ResponseType, outParams.ResponseType),
+		Scopes:                  nonZeroOrDefault(inParams.Scopes, outParams.Scopes),
+		State:                   nonZeroOrDefault(inParams.State, outParams.State),
+		Nonce:                   nonZeroOrDefault(inParams.Nonce, outParams.Nonce),
+		CodeChallenge:           nonZeroOrDefault(inParams.CodeChallenge, outParams.CodeChallenge),
+		CodeChallengeMethod:     nonZeroOrDefault(inParams.CodeChallengeMethod, outParams.CodeChallengeMethod),
+		Prompt:                  nonZeroOrDefault(inParams.Prompt, outParams.Prompt),
+		MaxAuthnAgeSecs:         nonZeroOrDefault(inParams.MaxAuthnAgeSecs, outParams.MaxAuthnAgeSecs),
+		Display:                 nonZeroOrDefault(inParams.Display, outParams.Display),
+		ACRValues:               nonZeroOrDefault(inParams.ACRValues, outParams.ACRValues),
+		Claims:                  nonZeroOrDefault(inParams.Claims, outParams.Claims),
+		AuthDetails:             nonZeroOrDefault(inParams.AuthDetails, outParams.AuthDetails),
+		Resources:               nonZeroOrDefault(inParams.Resources, outParams.Resources),
+		DPoPJKT:                 nonZeroOrDefault(inParams.DPoPJKT, outParams.DPoPJKT),
+		LoginHint:               nonZeroOrDefault(inParams.LoginHint, outParams.LoginHint),
+		LoginTokenHint:          nonZeroOrDefault(inParams.LoginTokenHint, outParams.LoginTokenHint),
+		IDTokenHint:             nonZeroOrDefault(inParams.IDTokenHint, outParams.IDTokenHint),
+		ClientNotificationToken: nonZeroOrDefault(inParams.ClientNotificationToken, outParams.ClientNotificationToken),
+		BindingMessage:          nonZeroOrDefault(inParams.BindingMessage, outParams.BindingMessage),
+		UserCode:                nonZeroOrDefault(inParams.UserCode, outParams.UserCode),
+		RequestedExpiry:         nonZeroOrDefault(inParams.RequestedExpiry, outParams.RequestedExpiry),
 	}
-
-	return params
 }
 
 func nonZeroOrDefault[T any](s1 T, s2 T) T {

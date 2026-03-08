@@ -8,15 +8,15 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func TestSaveGrantSession(t *testing.T) {
+func TestSaveGrant(t *testing.T) {
 	// Given.
-	manager := storage.NewGrantSessionManager(1)
-	session := &goidc.GrantSession{
+	manager := storage.NewGrantManager(1)
+	grant := &goidc.Grant{
 		ID: "random_session_id",
 	}
 
 	// When.
-	err := manager.Save(context.Background(), session)
+	err := manager.Save(context.Background(), grant)
 
 	// Then.
 	for i := 0; i < 2; i++ {
@@ -30,35 +30,12 @@ func TestSaveGrantSession(t *testing.T) {
 	}
 }
 
-func TestGetGrantSessionByTokenID_HappyPath(t *testing.T) {
+func TestGrantByRefreshTokenID(t *testing.T) {
 	// Given.
-	manager := storage.NewGrantSessionManager(1)
-	sessionID := "random_session_id"
-	tokenID := "random_token_id"
-	manager.Sessions[sessionID] = &goidc.GrantSession{
-		ID:      sessionID,
-		TokenID: tokenID,
-	}
-
-	// When.
-	session, err := manager.SessionByTokenID(context.Background(), tokenID)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if session.ID != sessionID {
-		t.Errorf("ID = %s, want %s", session.ID, sessionID)
-	}
-}
-
-func TestGrantSessionByRefreshTokenID(t *testing.T) {
-	// Given.
-	manager := storage.NewGrantSessionManager(1)
+	manager := storage.NewGrantManager(1)
 	sessionID := "random_session_id"
 	refreshToken := "random_refresh_token"
-	manager.Sessions[sessionID] = &goidc.GrantSession{
+	manager.Sessions[sessionID] = &goidc.Grant{
 		ID:           sessionID,
 		RefreshToken: refreshToken,
 	}
@@ -76,11 +53,11 @@ func TestGrantSessionByRefreshTokenID(t *testing.T) {
 	}
 }
 
-func TestDeleteGrantSession(t *testing.T) {
+func TestDeleteGrant(t *testing.T) {
 	// Given.
-	manager := storage.NewGrantSessionManager(1)
+	manager := storage.NewGrantManager(1)
 	sessionID := "random_session_id"
-	manager.Sessions[sessionID] = &goidc.GrantSession{
+	manager.Sessions[sessionID] = &goidc.Grant{
 		ID: sessionID,
 	}
 
@@ -97,9 +74,9 @@ func TestDeleteGrantSession(t *testing.T) {
 	}
 }
 
-func TestDeleteAuthnGrantSession(t *testing.T) {
+func TestDeleteGrant_NotFound(t *testing.T) {
 	// Given.
-	manager := storage.NewGrantSessionManager(1)
+	manager := storage.NewGrantManager(1)
 	sessionID := "random_session_id"
 
 	// When.
