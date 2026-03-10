@@ -30,13 +30,9 @@ func validateRequestWithPAR(ctx oidc.Context, req request, as *goidc.AuthnSessio
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "the request_uri is expired")
 	}
 
-	redirectURIs := slices.Clone(c.RedirectURIs)
 	if ctx.PARAllowUnregisteredRedirectURI && as.RedirectURI != "" {
-		c.RedirectURIs = append(c.RedirectURIs, as.RedirectURI)
+		c = clientWithRedirectURI(c, as.RedirectURI)
 	}
-	defer func() {
-		c.RedirectURIs = redirectURIs
-	}()
 
 	return validateInWithOutParams(ctx, as.AuthorizationParameters, req.AuthorizationParameters, c)
 }
@@ -117,13 +113,9 @@ func validatePushedRequest(ctx oidc.Context, req request, c *goidc.Client) error
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "request_uri is not allowed during PAR")
 	}
 
-	redirectURIs := slices.Clone(c.RedirectURIs)
 	if ctx.PARAllowUnregisteredRedirectURI && req.RedirectURI != "" {
-		c.RedirectURIs = append(c.RedirectURIs, req.RedirectURI)
+		c = clientWithRedirectURI(c, req.RedirectURI)
 	}
-	defer func() {
-		c.RedirectURIs = redirectURIs
-	}()
 
 	if ctx.Profile.IsFAPI() {
 		if err := validateParams(ctx, req.AuthorizationParameters, c); err != nil {
@@ -392,7 +384,7 @@ func validateScopesAsOptional(ctx oidc.Context, params goidc.AuthorizationParame
 		return nil
 	}
 
-	if !client.AreScopesAllowed(ctx, c, params.Scopes) {
+	if !client.ValidateScopes(ctx, c, params.Scopes) {
 		return newRedirectionError(goidc.ErrorCodeInvalidScope, "invalid scope", params)
 	}
 
@@ -571,4 +563,11 @@ func validateCodeBindingDPoP(ctx oidc.Context, params goidc.AuthorizationParamet
 		// "dpop_jkt" is optional, but it must match the DPoP JWT if present.
 		JWKThumbprint: params.DPoPJKT,
 	})
+}
+
+// clientWithRedirectURI creates a copy of the client with the given redirect URI.
+func clientWithRedirectURI(c *goidc.Client, uri string) *goidc.Client {
+	copied := *c
+	copied.RedirectURIs = append(slices.Clone(c.RedirectURIs), uri)
+	return &copied
 }

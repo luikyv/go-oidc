@@ -82,36 +82,12 @@ func makeAccessToken(ctx oidc.Context, tkn *goidc.Token, grant *goidc.Grant) (st
 }
 
 func makeIDToken(ctx oidc.Context, c *goidc.Client, opts IDTokenOptions) (string, error) {
-	if slices.Contains(ctx.IDTokenSigAlgs, goidc.None) && c.IDTokenSigAlg == goidc.None {
-		return makeUnsignedIDToken(ctx, c, opts), nil
-	}
-
 	alg := ctx.IDTokenDefaultSigAlg
-	if c.IDTokenSigAlg != "" {
+	if c.IDTokenSigAlg != "" && slices.Contains(ctx.IDTokenSigAlgs, c.IDTokenSigAlg) {
 		alg = c.IDTokenSigAlg
 	}
-	claims := idTokenClaims(ctx, c, opts, alg)
-	idToken, err := ctx.Sign(claims, alg, nil)
-	if err != nil {
-		return "", fmt.Errorf("could not sign the id token: %w", err)
-	}
 
-	return idToken, nil
-}
-
-func makeUnsignedIDToken(ctx oidc.Context, c *goidc.Client, opts IDTokenOptions) string {
-	claims := idTokenClaims(ctx, c, opts, goidc.None)
-	return joseutil.Unsigned(claims)
-}
-
-func idTokenClaims(
-	ctx oidc.Context,
-	c *goidc.Client,
-	opts IDTokenOptions,
-	sigAlg goidc.SignatureAlgorithm,
-) map[string]any {
 	now := timeutil.TimestampNow()
-
 	claims := map[string]any{
 		goidc.ClaimSubject:  ctx.ExportableSubject(opts.Subject, c),
 		goidc.ClaimIssuer:   ctx.Issuer(),
@@ -124,24 +100,26 @@ func idTokenClaims(
 		claims[goidc.ClaimAudience] = c.ID
 	}
 
-	if opts.AccessToken != "" {
-		claims[goidc.ClaimAccessTokenHash] = hashutil.HalfHash(opts.AccessToken, sigAlg)
-	}
+	if alg != goidc.None {
+		if opts.AccessToken != "" {
+			claims[goidc.ClaimAccessTokenHash] = hashutil.HalfHash(opts.AccessToken, alg)
+		}
 
-	if opts.AuthorizationCode != "" {
-		claims[goidc.ClaimAuthzCodeHash] = hashutil.HalfHash(opts.AuthorizationCode, sigAlg)
-	}
+		if opts.AuthorizationCode != "" {
+			claims[goidc.ClaimAuthzCodeHash] = hashutil.HalfHash(opts.AuthorizationCode, alg)
+		}
 
-	if opts.State != "" {
-		claims[goidc.ClaimStateHash] = hashutil.HalfHash(opts.State, sigAlg)
-	}
+		if opts.State != "" {
+			claims[goidc.ClaimStateHash] = hashutil.HalfHash(opts.State, alg)
+		}
 
-	if opts.RefreshToken != "" {
-		claims[goidc.ClaimRefreshTokenHash] = hashutil.HalfHash(opts.RefreshToken, sigAlg)
-	}
+		if opts.RefreshToken != "" {
+			claims[goidc.ClaimRefreshTokenHash] = hashutil.HalfHash(opts.RefreshToken, alg)
+		}
 
-	if opts.AuthReqID != "" {
-		claims[goidc.ClaimAuthReqID] = hashutil.HalfHash(opts.AuthReqID, sigAlg)
+		if opts.AuthReqID != "" {
+			claims[goidc.ClaimAuthReqID] = hashutil.HalfHash(opts.AuthReqID, alg)
+		}
 	}
 
 	if opts.Nonce != "" {
@@ -150,25 +128,31 @@ func idTokenClaims(
 
 	maps.Copy(claims, opts.Claims)
 
-	return claims
+	if alg == goidc.None {
+		return joseutil.Unsigned(claims), nil
+	}
+	idToken, err := ctx.Sign(claims, alg, nil)
+	if err != nil {
+		return "", fmt.Errorf("could not sign the id token: %w", err)
+	}
+	return idToken, nil
 }
 
-func encryptIDToken(ctx oidc.Context, c *goidc.Client, userInfoJWT string) (string, error) {
+func encryptIDToken(ctx oidc.Context, c *goidc.Client, idToken string) (string, error) {
 	jwk, err := client.JWKByAlg(ctx, c, string(c.IDTokenKeyEncAlg))
 	if err != nil {
 		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"could not encrypt the id token", err)
 	}
 
-	contentEncAlg := c.IDTokenContentEncAlg
-	if contentEncAlg == "" {
-		contentEncAlg = ctx.IDTokenDefaultContentEncAlg
-	}
-	encIDToken, err := joseutil.Encrypt(userInfoJWT, jwk, contentEncAlg)
-	if err != nil {
-		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest,
-			"could not encrypt the id token", err)
+	contentEncAlg := ctx.IDTokenDefaultContentEncAlg
+	if c.IDTokenContentEncAlg != "" && slices.Contains(ctx.IDTokenContentEncAlgs, c.IDTokenContentEncAlg) {
+		contentEncAlg = c.IDTokenContentEncAlg
 	}
 
+	encIDToken, err := joseutil.Encrypt(idToken, jwk, contentEncAlg)
+	if err != nil {
+		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not encrypt the id token", err)
+	}
 	return encIDToken, nil
 }

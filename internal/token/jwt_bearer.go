@@ -103,7 +103,7 @@ func validateJWTBearerGrantRequest(ctx oidc.Context, req request, c *goidc.Clien
 		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid assertion")
 	}
 
-	if !client.AreScopesAllowed(ctx, c, req.scopes) {
+	if !client.ValidateScopes(ctx, c, req.scopes) {
 		return goidc.NewError(goidc.ErrorCodeInvalidScope, "invalid scope")
 	}
 
@@ -121,7 +121,6 @@ func validateJWTBearerGrantRequest(ctx oidc.Context, req request, c *goidc.Clien
 // makeAnonymousClient creates a client that is authorized to use the JWT bearer
 // grant for requests where a specific client is not identified.
 func makeAnonymousClient(ctx oidc.Context) *goidc.Client {
-
 	scopesIDs := make([]string, len(ctx.Scopes))
 	for i, scope := range ctx.Scopes {
 		scopesIDs[i] = scope.ID

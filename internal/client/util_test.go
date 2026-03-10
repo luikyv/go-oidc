@@ -39,7 +39,7 @@ func TestAreScopesAllowed(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("case %d", i),
 			func(t *testing.T) {
-				got := AreScopesAllowed(ctx, c, testCase.requestedScopes)
+				got := ValidateScopes(ctx, c, testCase.requestedScopes)
 				if got != testCase.want {
 					t.Errorf("AreScopesAllowed() = %t, want %t", got, testCase.want)
 				}

@@ -64,7 +64,7 @@ func validateClientCredentialsGrantRequest(ctx oidc.Context, req request, c *goi
 		return err
 	}
 
-	if !client.AreScopesAllowed(ctx, c, req.scopes) {
+	if !client.ValidateScopes(ctx, c, req.scopes) {
 		return goidc.NewError(goidc.ErrorCodeInvalidScope, "invalid scope")
 	}
 
