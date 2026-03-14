@@ -685,6 +685,7 @@ func (d AuthorizationDetail) string(key string) string {
 	return s
 }
 
+// TODO: Return a string instead of a struct.
 type HandleJWTBearerGrantAssertionFunc func(r *http.Request, assertion string) (JWTBearerGrantInfo, error)
 
 type JWTBearerGrantInfo struct {

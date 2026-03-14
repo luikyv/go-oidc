@@ -170,22 +170,3 @@ for _, tc := range testCases {
     })
 }
 ```
-
-### Available Test Helpers (`internal/oidctest`)
-
-| Function | Purpose |
-|---|---|
-| `NewContext(t)` | Creates in-memory `oidc.Context` with test JWK and managers |
-| `NewClient(t)` | Returns `(*goidc.Client, secret string)` pre-configured for testing |
-| `PrivateJWKS(t, ctx)` | Retrieves the server's private JWKS |
-| `AuthnSessions(t, ctx)` | Extracts all authn sessions from in-memory storage |
-| `Grants(t, ctx)` | Extracts all grants from in-memory storage |
-| `Tokens(t, ctx)` | Extracts all tokens from in-memory storage |
-| `Clients(t, ctx)` | Extracts all clients from in-memory storage |
-| `PrivateRS256JWK(t, keyID, usage)` | Generates RS256 test key |
-| `PrivatePS256JWK(t, keyID, usage)` | Generates PS256 test key |
-| `PrivateRSAOAEP256JWK(t, keyID)` | Generates RSA-OAEP-256 encryption key |
-| `SafeClaims(jws, jwk)` | Parses and verifies JWT claims |
-| `UnsafeClaims(jws, algs...)` | Parses JWT without verification |
-| `Sign(t, claims, jwk)` | Signs claims into a JWT string |
-| `SignWithOptions(t, claims, jwk, opts)` | Signs claims with custom signer options |

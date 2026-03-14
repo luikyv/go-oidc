@@ -9,7 +9,7 @@ import (
 // TokenManager contains all the logic needed to manage access tokens.
 type TokenManager interface {
 	Save(context.Context, *Token) error
-	TokenByID(context.Context, string) (*Token, error)
+	Token(context.Context, string) (*Token, error)
 	Delete(context.Context, string) error
 	// DeleteByGrantID deletes all tokens associated with the given grant
 	// session ID. This is used for cascade revocation when a grant is revoked.

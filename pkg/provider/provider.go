@@ -191,7 +191,7 @@ func (op *Provider) SaveGrant(ctx context.Context, gs *goidc.Grant) error {
 }
 
 func (op *Provider) GrantByRefreshToken(ctx context.Context, id string) (*goidc.Grant, error) {
-	return op.config.GrantManager.SessionByRefreshToken(ctx, id)
+	return op.config.GrantManager.GrantByRefreshToken(ctx, id)
 }
 
 func (op *Provider) DeleteGrant(ctx context.Context, id string) error {
@@ -207,7 +207,7 @@ func (op *Provider) SaveToken(ctx context.Context, t *goidc.Token) error {
 }
 
 func (op *Provider) TokenByID(ctx context.Context, id string) (*goidc.Token, error) {
-	return op.config.TokenManager.TokenByID(ctx, id)
+	return op.config.TokenManager.Token(ctx, id)
 }
 
 func (op *Provider) DeleteToken(ctx context.Context, id string) error {

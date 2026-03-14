@@ -25,7 +25,8 @@ func BCryptHash(s string) string {
 	return string(hashedS)
 }
 
-// TODO: How to handle the none algorithm?
+// HalfHash generates a half-hash of a given claim using the given algorithm.
+// [goidc.None] is not supported.
 func HalfHash(claim string, alg goidc.SignatureAlgorithm) string {
 	h := HashAlg(alg).New()
 	h.Write([]byte(claim))

@@ -65,6 +65,7 @@ func validateBindingTLS(ctx oidc.Context, c *goidc.Client, opts bindindValidatio
 		if ctx.MTLSTokenBindingIsRequired || c.TLSTokenBindingIsRequired || opts.tlsIsRequired {
 			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "client certificate is required", err)
 		}
+		return nil
 	}
 
 	if opts.tlsCertThumbprint != "" && opts.tlsCertThumbprint != hashutil.Thumbprint(string(cert.Raw)) {

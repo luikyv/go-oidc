@@ -59,8 +59,7 @@ func userInfoResponse(ctx oidc.Context, c *goidc.Client, t *goidc.Token, grant *
 	}
 	maps.Copy(userInfoClaims, ctx.UserInfoClaims(grant))
 
-	// If the client doesn't require the user info to be signed,
-	// we'll just return the claims as a JSON object.
+	// If the client doesn't require the user info to be signed, just return the claims as a JSON object.
 	if c.UserInfoSigAlg == "" {
 		return response{
 			claims: userInfoClaims,
@@ -75,8 +74,7 @@ func userInfoResponse(ctx oidc.Context, c *goidc.Client, t *goidc.Token, grant *
 		return response{}, err
 	}
 
-	// If the client doesn't require the user info to be encrypted,
-	// we'll just return the claims as a signed JWT.
+	// If the client doesn't require the user info to be encrypted, just return the claims as a signed JWT.
 	if !ctx.UserInfoEncIsEnabled || c.UserInfoKeyEncAlg == "" {
 		return response{
 			jwtClaims: jwtUserInfoClaims,
@@ -93,14 +91,13 @@ func userInfoResponse(ctx oidc.Context, c *goidc.Client, t *goidc.Token, grant *
 }
 
 func signUserInfoClaims(ctx oidc.Context, c *goidc.Client, claims map[string]any) (string, error) {
-
-	if slices.Contains(ctx.UserInfoSigAlgs, goidc.None) && c.UserInfoSigAlg == goidc.None {
-		return joseutil.Unsigned(claims), nil
+	alg := ctx.UserInfoDefaultSigAlg
+	if c.UserInfoSigAlg != "" && slices.Contains(ctx.UserInfoSigAlgs, c.UserInfoSigAlg) {
+		alg = c.UserInfoSigAlg
 	}
 
-	alg := ctx.UserInfoDefaultSigAlg
-	if c.UserInfoSigAlg != "" {
-		alg = c.UserInfoSigAlg
+	if alg == goidc.None {
+		return joseutil.Unsigned(claims), nil
 	}
 
 	jws, err := ctx.Sign(claims, alg, nil)
@@ -118,10 +115,11 @@ func encryptUserInfoJWT(ctx oidc.Context, c *goidc.Client, userInfoJWT string) (
 			"could not find a jwk to encrypt the user info response", err)
 	}
 
-	contentEncAlg := c.UserInfoContentEncAlg
-	if contentEncAlg == "" {
-		contentEncAlg = ctx.UserInfoDefaultContentEncAlg
+	contentEncAlg := ctx.UserInfoDefaultContentEncAlg
+	if c.UserInfoContentEncAlg != "" && slices.Contains(ctx.UserInfoContentEncAlgs, c.UserInfoContentEncAlg) {
+		contentEncAlg = c.UserInfoContentEncAlg
 	}
+
 	userInfoJWE, err := joseutil.Encrypt(userInfoJWT, jwk, contentEncAlg)
 	if err != nil {
 		return "", fmt.Errorf("could not encrypt the user info response: %w", err)

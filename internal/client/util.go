@@ -18,7 +18,7 @@ type Options struct {
 	TrustChain []string
 }
 
-func AreScopesAllowed(ctx oidc.Context, c *goidc.Client, requestedScopes string) bool {
+func ValidateScopes(ctx oidc.Context, c *goidc.Client, requestedScopes string) bool {
 	if requestedScopes == "" {
 		return true
 	}

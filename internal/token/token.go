@@ -1,6 +1,7 @@
 package token
 
 import (
+	"errors"
 	"slices"
 	"time"
 
@@ -25,7 +26,11 @@ func ExtractID(ctx oidc.Context, token string) (string, error) {
 
 	tokenID := claims[goidc.ClaimTokenID]
 	if tokenID == nil {
-		return "", goidc.NewError(goidc.ErrorCodeAccessDenied, "invalid token")
+		return "", goidc.WrapError(goidc.ErrorCodeAccessDenied, "invalid token", errors.New("token id was not found in the claims"))
+	}
+
+	if _, ok := tokenID.(string); !ok {
+		return "", goidc.WrapError(goidc.ErrorCodeAccessDenied, "invalid token", errors.New("token id is not a string"))
 	}
 
 	return tokenID.(string), nil

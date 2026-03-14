@@ -12,8 +12,8 @@ type ClientManager interface {
 }
 
 type Client struct {
-	ID     string `json:"client_id"`
-	Secret string `json:"client_secret,omitempty"`
+	ID     string `json:"id"`
+	Secret string `json:"secret,omitempty"`
 	// RegistrationToken is the plain text registration access token generated during
 	// dynamic client registration.
 	// Note: For security reasons, it is strongly recommended encrypt this value before storing it in a database.

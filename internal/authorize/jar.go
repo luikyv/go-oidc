@@ -1,6 +1,7 @@
 package authorize
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -21,7 +22,8 @@ func jarFromRequestURI(ctx oidc.Context, reqURI string, client *goidc.Client) (r
 	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK {
-		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request uri", err)
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request uri",
+			fmt.Errorf("request uri returned status code: %d", resp.StatusCode))
 	}
 
 	reqObject, err := io.ReadAll(resp.Body)
@@ -63,6 +65,7 @@ func signedRequestObjectFromEncrypted(ctx oidc.Context, reqObject string, client
 	return jws, nil
 }
 
+// TODO: Does this really work?
 func jarFromUnsignedRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client) (request, error) {
 	jarAlgorithms := jarAlgorithms(ctx, c)
 	parsedJWT, err := jwt.ParseSigned(reqObject, jarAlgorithms)

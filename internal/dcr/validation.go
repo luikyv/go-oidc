@@ -196,7 +196,7 @@ func validateTokenRevocation(ctx oidc.Context, meta *goidc.ClientMeta) error {
 
 	if !slices.Contains(ctx.TokenRevocationAuthnMethods, meta.TokenRevocationAuthnMethod) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata,
-			"token introspection authn method not allowed")
+			"token revocation authn method not allowed")
 	}
 	return nil
 }

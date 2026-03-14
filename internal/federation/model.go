@@ -147,8 +147,6 @@ func (chain trustChain) resolve() (entityStatement, error) {
 					}
 				}
 			}
-
-			// TODO: [OpenID Fed 1.0 §6.2.3] Handle allowed entity types.
 		}
 
 		if subStatement.MetadataPolicy == nil {
@@ -162,6 +160,18 @@ func (chain trustChain) resolve() (entityStatement, error) {
 
 		if err := policy.Validate(); err != nil {
 			return entityStatement{}, err
+		}
+	}
+
+	// [OpenID Fed 1.0 §6.2.3].
+	if constraints := chain.firstSubordinateStatement().Constraints; constraints != nil {
+		if allowedEntityTypes := constraints.AllowedEntityTypes; allowedEntityTypes != nil {
+			if !slices.Contains(allowedEntityTypes, "openid_relying_party") {
+				config.Metadata.OpenIDClient = nil
+			}
+			if !slices.Contains(allowedEntityTypes, "openid_provider") {
+				config.Metadata.OpenIDProvider = nil
+			}
 		}
 	}
 

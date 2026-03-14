@@ -202,7 +202,7 @@ func authnSigAlgs(c *goidc.Client, authnCtx AuthnContext, defaultAlgs []goidc.Si
 	switch {
 	case authnCtx == AuthnContextToken && c.TokenAuthnSigAlg != "":
 		return []goidc.SignatureAlgorithm{c.TokenAuthnSigAlg}
-	case authnCtx == AuthnContextTokenIntrospection && c.TokenIntrospectionAuthnMethod != "":
+	case authnCtx == AuthnContextTokenIntrospection && c.TokenIntrospectionAuthnSigAlg != "":
 		return []goidc.SignatureAlgorithm{c.TokenIntrospectionAuthnSigAlg}
 	case authnCtx == AuthnContextTokenRevocation && c.TokenRevocationAuthnSigAlg != "":
 		return []goidc.SignatureAlgorithm{c.TokenRevocationAuthnSigAlg}

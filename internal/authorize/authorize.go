@@ -228,86 +228,81 @@ func finishFlow(ctx oidc.Context, as *goidc.AuthnSession) error {
 		return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not load the client", as.AuthorizationParameters, err)
 	}
 
-	if err := authorizeAuthnSession(ctx, as); err != nil {
-		return err
-	}
-
-	grant, err := token.NewGrant(ctx, c, token.GrantOptions{
-		Type:          goidc.GrantImplicit,
-		Subject:       as.Subject,
-		ClientID:      as.ClientID,
-		Scopes:        as.GrantedScopes,
-		Nonce:         as.Nonce,
-		AuthDetails:   as.GrantedAuthDetails,
-		Resources:     as.GrantedResources,
-		JWKThumbprint: dpopThumbprint(ctx, as),
-		Store:         as.Store,
-	})
-	if err != nil {
-		return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not generate the grant", as.AuthorizationParameters, err)
+	if as.ResponseType.Contains(goidc.ResponseTypeCode) {
+		as.AuthCode = ctx.AuthorizationCode()
+		as.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.AuthorizationCodeLifetimeSecs
+		// Make sure the session won't be reached anymore from the callback endpoint.
+		as.CallbackID = ""
+		// Make sure the session won't be reached anymore with the request URI.
+		as.PushedAuthReqID = ""
+		if err := ctx.SaveAuthnSession(as); err != nil {
+			return err
+		}
+	} else {
+		// The client didn't request an auth code to later exchange for an access token.
+		if err := ctx.DeleteAuthnSession(as.ID); err != nil {
+			return err
+		}
 	}
 
 	redirectParams := response{
 		authorizationCode: as.AuthCode,
 		state:             as.State,
 	}
-	if as.ResponseType.Contains(goidc.ResponseTypeToken) {
-		tkn, tokenValue, err := token.Issue(ctx, grant, c, nil)
-		if err != nil {
-			return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not generate the access token", as.AuthorizationParameters, err)
-		}
-		redirectParams.accessToken = tokenValue
-		redirectParams.tokenType = tkn.Type
-	}
-
-	if strutil.ContainsOpenID(as.GrantedScopes) && as.ResponseType.Contains(goidc.ResponseTypeIDToken) {
-		idToken, err := token.MakeIDToken(ctx, c, token.IDTokenOptions{
-			Subject:           as.Subject,
-			Nonce:             as.Nonce,
-			AccessToken:       redirectParams.accessToken,
-			AuthorizationCode: as.AuthCode,
-			State:             as.State,
-			Claims:            ctx.IDTokenClaims(grant),
+	if as.ResponseType.IsImplicit() {
+		grant, err := token.NewGrant(ctx, c, token.GrantOptions{
+			Type:        goidc.GrantImplicit,
+			Subject:     as.Subject,
+			ClientID:    as.ClientID,
+			Scopes:      as.GrantedScopes,
+			Nonce:       as.Nonce,
+			AuthDetails: as.GrantedAuthDetails,
+			Resources:   as.GrantedResources,
+			JWKThumbprint: func() string {
+				if !ctx.DPoPIsEnabled {
+					return ""
+				}
+				// Default to the JWK thumbprint stored in the session (e.g., from a previous PAR).
+				// If not available, fallback to the thumbprint provided via the dpop_jkt parameter.
+				if as.JWKThumbprint != "" {
+					return as.JWKThumbprint
+				}
+				return as.DPoPJKT
+				// TODO: Should the token be bound with tls cert if the client used mtls during /par?
+				// It could be an one-time self signed certificate the client wants to use for binding.
+			}(),
+			Store: as.Store,
 		})
 		if err != nil {
-			return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not generate the id token", as.AuthorizationParameters, err)
+			return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not generate the grant", as.AuthorizationParameters, err)
 		}
-		redirectParams.idToken = idToken
+
+		if as.ResponseType.Contains(goidc.ResponseTypeToken) {
+			tkn, tokenValue, err := token.Issue(ctx, grant, c, nil)
+			if err != nil {
+				return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not generate the access token", as.AuthorizationParameters, err)
+			}
+			redirectParams.accessToken = tokenValue
+			redirectParams.tokenType = tkn.Type
+		}
+
+		if strutil.ContainsOpenID(as.GrantedScopes) && as.ResponseType.Contains(goidc.ResponseTypeIDToken) {
+			idToken, err := token.MakeIDToken(ctx, c, token.IDTokenOptions{
+				Subject:           as.Subject,
+				Nonce:             as.Nonce,
+				AccessToken:       redirectParams.accessToken,
+				AuthorizationCode: as.AuthCode,
+				State:             as.State,
+				Claims:            ctx.IDTokenClaims(grant),
+			})
+			if err != nil {
+				return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not generate the id token", as.AuthorizationParameters, err)
+			}
+			redirectParams.idToken = idToken
+		}
 	}
 
 	return redirectResponse(ctx, c, as.AuthorizationParameters, redirectParams)
-}
-
-func authorizeAuthnSession(ctx oidc.Context, session *goidc.AuthnSession) error {
-	if !session.ResponseType.Contains(goidc.ResponseTypeCode) {
-		// The client didn't request an authorization code to later exchange it
-		// for an access token, so we don't keep the session anymore.
-		return ctx.DeleteAuthnSession(session.ID)
-	}
-
-	session.AuthCode = ctx.AuthorizationCode()
-	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.AuthorizationCodeLifetimeSecs
-	// Make sure the session won't be reached anymore from the callback endpoint.
-	session.CallbackID = ""
-	// Make sure the session won't be reached anymore with the request URI.
-	session.PushedAuthReqID = ""
-
-	return ctx.SaveAuthnSession(session)
-}
-
-func dpopThumbprint(ctx oidc.Context, as *goidc.AuthnSession) string {
-	if !ctx.DPoPIsEnabled {
-		return ""
-	}
-
-	// Default to the JWK thumbprint stored in the session (e.g., from a previous PAR).
-	// If not available, fallback to the thumbprint provided via the dpop_jkt parameter.
-	if as.JWKThumbprint != "" {
-		return as.JWKThumbprint
-	}
-	return as.DPoPJKT
-	// TODO: Should the token be bound with tls cert if the client used mtls during /par?
-	// It could be an one-time self signed certificate the client wants to use for binding.
 }
 
 func federationClient(ctx oidc.Context, req request) (*goidc.Client, error) {

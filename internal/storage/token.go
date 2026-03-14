@@ -34,7 +34,7 @@ func (m *TokenManager) Save(_ context.Context, token *goidc.Token) error {
 	return nil
 }
 
-func (m *TokenManager) TokenByID(_ context.Context, id string) (*goidc.Token, error) {
+func (m *TokenManager) Token(_ context.Context, id string) (*goidc.Token, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
