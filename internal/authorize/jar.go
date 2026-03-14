@@ -65,6 +65,7 @@ func signedRequestObjectFromEncrypted(ctx oidc.Context, reqObject string, client
 	return jws, nil
 }
 
+// TODO: Does this really work?
 func jarFromUnsignedRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client) (request, error) {
 	jarAlgorithms := jarAlgorithms(ctx, c)
 	parsedJWT, err := jwt.ParseSigned(reqObject, jarAlgorithms)

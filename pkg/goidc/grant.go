@@ -10,8 +10,8 @@ import (
 // GrantManager contains all the logic needed to manage grants.
 type GrantManager interface {
 	Save(context.Context, *Grant) error
-	ByID(context.Context, string) (*Grant, error)
-	SessionByRefreshToken(context.Context, string) (*Grant, error)
+	Grant(context.Context, string) (*Grant, error)
+	GrantByRefreshToken(context.Context, string) (*Grant, error)
 	Delete(context.Context, string) error
 	// DeleteByAuthCode deletes a grant associated with the
 	// provided authorization code. This function is a security measure to prevent

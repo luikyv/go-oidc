@@ -5,7 +5,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"log"
 	"net/http"
 	"net/url"
@@ -35,7 +34,7 @@ func main() {
 		provider.WithSSF(authutil.PrivateJWKSFunc(), func(ctx context.Context) (goidc.SSFReceiver, error) {
 			clientID := ctx.Value(ctxKeyClientID).(string)
 			if clientID == "" {
-				return goidc.SSFReceiver{}, errors.New("client id is required")
+				return goidc.SSFReceiver{}, goidc.NewError(goidc.ErrorCodeInvalidClient, "client id is required")
 			}
 			return goidc.SSFReceiver{ID: clientID}, nil
 		}),

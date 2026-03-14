@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/joseutil"
@@ -41,7 +42,22 @@ func redirectResponse(ctx oidc.Context, c *goidc.Client, params goidc.Authorizat
 		redirectParams.issuer = ctx.Issuer()
 	}
 
-	responseMode := responseMode(params)
+	// [OAuth 2.0 Multiple Response Type Encoding Practices §5] Find the response mode based on the response type.
+	responseMode := func() goidc.ResponseMode {
+		if params.ResponseMode == "" {
+			if params.ResponseType.IsImplicit() {
+				return goidc.ResponseModeFragment
+			}
+			return goidc.ResponseModeQuery
+		}
+		if params.ResponseMode == goidc.ResponseModeJWT {
+			if params.ResponseType.IsImplicit() {
+				return goidc.ResponseModeFragmentJWT
+			}
+			return goidc.ResponseModeQueryJWT
+		}
+		return params.ResponseMode
+	}()
 	if responseMode.IsJARM() || c.JARMSigAlg != "" {
 		responseJWT, err := createJARMResponse(ctx, c, redirectParams)
 		if err != nil {
@@ -72,80 +88,45 @@ func redirectResponse(ctx oidc.Context, c *goidc.Client, params goidc.Authorizat
 	return nil
 }
 
-// responseMode returns the response mode based on the response type.
-// According to "5. Definitions of Multiple-Valued Response Type Combinations"
-// of https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#Combinations.
-// TODO: What if the response mode is not valid? The only func that calls it already
-// handles this, but it's better to handle it here.
-func responseMode(params goidc.AuthorizationParameters) goidc.ResponseMode {
-	if params.ResponseMode == "" {
-		if params.ResponseType.IsImplicit() {
-			return goidc.ResponseModeFragment
-		}
-		return goidc.ResponseModeQuery
-	}
-
-	if params.ResponseMode == goidc.ResponseModeJWT {
-		if params.ResponseType.IsImplicit() {
-			return goidc.ResponseModeFragmentJWT
-		}
-		return goidc.ResponseModeQueryJWT
-	}
-
-	return params.ResponseMode
-}
-
 func createJARMResponse(ctx oidc.Context, c *goidc.Client, redirectParams response) (string, error) {
-	responseJWT, err := signJARMResponse(ctx, c, redirectParams)
-	if err != nil {
-		return "", err
-	}
-
-	if !ctx.JARMEncIsEnabled || c.JARMKeyEncAlg == "" {
-		return responseJWT, nil
-	}
-
-	return encryptJARMResponse(ctx, responseJWT, c)
-}
-
-func signJARMResponse(ctx oidc.Context, client *goidc.Client, redirectParams response) (string, error) {
-	createdAtTimestamp := timeutil.TimestampNow()
+	now := timeutil.TimestampNow()
 	claims := map[string]any{
 		goidc.ClaimIssuer:   ctx.Issuer(),
-		goidc.ClaimAudience: client.ID,
-		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JARMLifetimeSecs,
+		goidc.ClaimAudience: c.ID,
+		goidc.ClaimIssuedAt: now,
+		goidc.ClaimExpiry:   now + ctx.JARMLifetimeSecs,
 	}
 	for k, v := range redirectParams.parameters() {
 		claims[k] = v
 	}
 
 	alg := ctx.JARMDefaultSigAlg
-	if client.JARMSigAlg != "" {
-		alg = client.JARMSigAlg
+	if slices.Contains(ctx.JARMSigAlgs, c.JARMSigAlg) && c.JARMSigAlg != "" {
+		alg = c.JARMSigAlg
 	}
-	resp, err := ctx.Sign(claims, alg, nil)
+	responseJWT, err := ctx.Sign(claims, alg, nil)
 	if err != nil {
 		return "", fmt.Errorf("could not sign the response object: %w", err)
 	}
-	return resp, nil
-}
 
-func encryptJARMResponse(ctx oidc.Context, responseJWT string, c *goidc.Client) (string, error) {
+	if !ctx.JARMEncIsEnabled || c.JARMKeyEncAlg == "" || !slices.Contains(ctx.JARMKeyEncAlgs, c.JARMKeyEncAlg) {
+		return responseJWT, nil
+	}
+
 	jwk, err := client.JWKByAlg(ctx, c, string(c.JARMKeyEncAlg))
 	if err != nil {
 		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest,
 			"could not fetch the client encryption jwk for jarm", err)
 	}
 
-	contentEncAlg := c.JARMContentEncAlg
-	if contentEncAlg == "" {
-		contentEncAlg = ctx.JARMDefaultContentEncAlg
+	contentEncAlg := ctx.JARMDefaultContentEncAlg
+	if slices.Contains(ctx.JARMContentEncAlgs, c.JARMContentEncAlg) && c.JARMContentEncAlg != "" {
+		contentEncAlg = c.JARMContentEncAlg
 	}
-	jwe, err := joseutil.Encrypt(responseJWT, jwk, contentEncAlg)
+	responseJWE, err := joseutil.Encrypt(responseJWT, jwk, contentEncAlg)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("could not encrypt the response object: %w", err)
 	}
 
-	return jwe, nil
+	return responseJWE, nil
 }

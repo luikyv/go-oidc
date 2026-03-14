@@ -358,7 +358,7 @@ func (ctx Context) SaveToken(token *goidc.Token) error {
 }
 
 func (ctx Context) TokenByID(id string) (*goidc.Token, error) {
-	return ctx.TokenManager.TokenByID(ctx, id)
+	return ctx.TokenManager.Token(ctx, id)
 }
 
 func (ctx Context) DeleteToken(id string) error {
@@ -370,7 +370,7 @@ func (ctx Context) DeleteTokensByGrantID(grantID string) error {
 }
 
 func (ctx Context) GrantByRefreshToken(id string) (*goidc.Grant, error) {
-	return ctx.GrantManager.SessionByRefreshToken(ctx, id)
+	return ctx.GrantManager.GrantByRefreshToken(ctx, id)
 }
 
 func (ctx Context) DeleteGrant(id string) error {
@@ -614,7 +614,7 @@ func (ctx Context) HandleGrant(grant *goidc.Grant) error {
 }
 
 func (ctx Context) GrantByID(id string) (*goidc.Grant, error) {
-	return ctx.GrantManager.ByID(ctx, id)
+	return ctx.GrantManager.Grant(ctx, id)
 }
 
 func (ctx Context) IDTokenClaims(grant *goidc.Grant) map[string]any {
