@@ -1,6 +1,7 @@
 package token
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -81,8 +82,8 @@ func TestGenerateGrant_RefreshTokenGrant_AuthDetails(t *testing.T) {
 
 	// Given.
 	ctx, client, grantSession := setUpRefreshTokenGrant(t)
-	ctx.RichAuthorizationIsEnabled = true
-	ctx.AuthDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
+	ctx.RARIsEnabled = true
+	ctx.RARDetailTypes = map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc{"type1": nil, "type2": nil}
 	authDetails := []goidc.AuthorizationDetail{
 		{
 			"type":         "type1",
@@ -164,9 +165,9 @@ func TestGenerateGrant_RefreshTokenGrant_AuthDetails_ClientRequestsSubset(t *tes
 
 	// Given.
 	ctx, client, grantSession := setUpRefreshTokenGrant(t)
-	ctx.RichAuthorizationIsEnabled = true
-	ctx.AuthDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
-	ctx.CompareAuthDetailsFunc = func(granted, requested []goidc.AuthorizationDetail) error {
+	ctx.RARIsEnabled = true
+	ctx.RARDetailTypes = map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc{"type1": nil, "type2": nil}
+	ctx.RARCompareDetailsFunc = func(_ context.Context, granted, requested []goidc.AuthorizationDetail) error {
 		return nil
 	}
 	authDetails := []goidc.AuthorizationDetail{

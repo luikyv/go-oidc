@@ -454,14 +454,26 @@ func validateResponseModeAsOptional(ctx oidc.Context, params goidc.Authorization
 }
 
 func validateAuthorizationDetailsAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) error {
-	if !ctx.RichAuthorizationIsEnabled || params.AuthDetails == nil {
+	if !ctx.RARIsEnabled || params.AuthDetails == nil {
 		return nil
 	}
 
-	for _, authDetail := range params.AuthDetails {
-		authDetailType := authDetail.Type()
-		if !slices.Contains(ctx.AuthDetailTypes, authDetailType) || !isAuthDetailTypeAllowed(c, authDetailType) {
-			return newRedirectionError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization detail type", params)
+	for _, detail := range params.AuthDetails {
+		typ := detail.Type()
+		if typ == "" {
+			return newRedirectionError(goidc.ErrorCodeInvalidAuthDetails, "authorization detail missing 'type'", params)
+		}
+
+		if _, ok := ctx.RARDetailTypes[typ]; !ok {
+			return newRedirectionError(goidc.ErrorCodeInvalidAuthDetails, "authorization detail type not allowed", params)
+		}
+
+		if c.AuthDetailTypes != nil && !slices.Contains(c.AuthDetailTypes, typ) {
+			return newRedirectionError(goidc.ErrorCodeInvalidAuthDetails, "authorization detail type not allowed", params)
+		}
+
+		if err := ctx.RARValidateDetail(detail, c); err != nil {
+			return err
 		}
 	}
 
@@ -469,7 +481,6 @@ func validateAuthorizationDetailsAsOptional(ctx oidc.Context, params goidc.Autho
 }
 
 func validateACRValuesAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, _ *goidc.Client) error {
-
 	if params.ACRValues == "" {
 		return nil
 	}
@@ -484,7 +495,6 @@ func validateACRValuesAsOptional(ctx oidc.Context, params goidc.AuthorizationPar
 }
 
 func validateResourcesAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, _ *goidc.Client) error {
-
 	if !ctx.ResourceIndicatorsIsEnabled || params.Resources == nil {
 		return nil
 	}
@@ -537,18 +547,7 @@ func isRequestURIAllowed(c *goidc.Client, requestURI string) bool {
 	return slices.Contains(c.RequestURIs, requestURI)
 }
 
-func isAuthDetailTypeAllowed(c *goidc.Client, authDetailType goidc.AuthDetailType) bool {
-	// If the client didn't announce the authorization types it will use,
-	// consider any value valid.
-	if c.AuthDetailTypes == nil {
-		return true
-	}
-
-	return slices.Contains(c.AuthDetailTypes, authDetailType)
-}
-
 func validateCodeBindingDPoP(ctx oidc.Context, params goidc.AuthorizationParameters) error {
-
 	if !ctx.DPoPIsEnabled {
 		return nil
 	}

@@ -211,11 +211,19 @@ func (ctx Context) AvailableLogoutPolicy(ls *goidc.LogoutSession) (policy goidc.
 	return goidc.LogoutPolicy{}, false
 }
 
-func (ctx Context) CompareAuthDetails(granted, requested []goidc.AuthorizationDetail) error {
-	if ctx.CompareAuthDetailsFunc == nil {
+func (ctx Context) RARValidateDetail(detail goidc.AuthorizationDetail, c *goidc.Client) error {
+	validate := ctx.RARDetailTypes[detail.Type()]
+	if validate == nil {
+		return errors.New("")
+	}
+	return validate(ctx, detail, c)
+}
+
+func (ctx Context) RARCompareAuthDetails(granted, requested []goidc.AuthorizationDetail) error {
+	if ctx.RARCompareDetailsFunc == nil {
 		return errors.New("auth details comparing function is not defined")
 	}
-	return ctx.CompareAuthDetailsFunc(granted, requested)
+	return ctx.RARCompareDetailsFunc(ctx, granted, requested)
 }
 
 func (ctx Context) InitBackAuth(session *goidc.AuthnSession) error {
@@ -639,7 +647,7 @@ func (ctx Context) TokenClaims(grant *goidc.Grant) map[string]any {
 }
 
 func (ctx Context) HandleJWTBearerGrantAssertion(assertion string) (goidc.JWTBearerGrantInfo, error) {
-	return ctx.HandleJWTBearerGrantAssertionFunc(ctx.Request, assertion)
+	return ctx.JWTBearerGrantHandleAssertionFunc(ctx.Request, assertion)
 }
 
 func (ctx Context) HTTPClient() *http.Client {

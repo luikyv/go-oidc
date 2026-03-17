@@ -269,7 +269,7 @@ func validateCIBAGrantRequest(ctx oidc.Context, req request, c *goidc.Client, as
 		return err
 	}
 
-	if err := validateAuthDetails(ctx, as.GrantedAuthDetails, req); err != nil {
+	if err := validateAuthDetails(ctx, req, c, as.GrantedAuthDetails); err != nil {
 		return err
 	}
 

@@ -1,6 +1,7 @@
 package token
 
 import (
+	"context"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"errors"
@@ -100,9 +101,9 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails(t *testing.T) {
 
 	// Given.
 	ctx, client, session := setUpAuthzCodeGrant(t)
-	ctx.RichAuthorizationIsEnabled = true
-	ctx.AuthDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
-	ctx.CompareAuthDetailsFunc = func(granted, requested []goidc.AuthorizationDetail) error {
+	ctx.RARIsEnabled = true
+	ctx.RARDetailTypes = map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc{"type1": nil, "type2": nil}
+	ctx.RARCompareDetailsFunc = func(_ context.Context, granted, requested []goidc.AuthorizationDetail) error {
 		return nil
 	}
 	authDetails := []goidc.AuthorizationDetail{
@@ -201,9 +202,9 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails_ClientRequestsSubset(t
 
 	// Given.
 	ctx, client, session := setUpAuthzCodeGrant(t)
-	ctx.RichAuthorizationIsEnabled = true
-	ctx.AuthDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
-	ctx.CompareAuthDetailsFunc = func(granted, requested []goidc.AuthorizationDetail) error {
+	ctx.RARIsEnabled = true
+	ctx.RARDetailTypes = map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc{"type1": nil, "type2": nil}
+	ctx.RARCompareDetailsFunc = func(_ context.Context, granted, requested []goidc.AuthorizationDetail) error {
 		return nil
 	}
 	session.GrantedAuthDetails = []goidc.AuthorizationDetail{

@@ -113,38 +113,32 @@ func validateResources(ctx oidc.Context, availableResources goidc.Resources, req
 	return nil
 }
 
-func validateAuthDetails(ctx oidc.Context, grantedDetails []goidc.AuthorizationDetail, req request) error {
-	if !shouldValidateAuthDetails(ctx, req) {
-		return nil
-	}
-
-	if err := validateAuthDetailsTypes(ctx, req); err != nil {
-		return err
-	}
-
-	if err := ctx.CompareAuthDetails(grantedDetails, req.authDetails); err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization details", err)
-	}
-
-	return nil
-}
-
-func validateAuthDetailsTypes(ctx oidc.Context, req request) error {
-	if !shouldValidateAuthDetails(ctx, req) {
+func validateAuthDetails(ctx oidc.Context, req request, c *goidc.Client, granted []goidc.AuthorizationDetail) error {
+	if !ctx.RARIsEnabled || req.authDetails != nil {
 		return nil
 	}
 
 	for _, detail := range req.authDetails {
-		if !slices.Contains(ctx.AuthDetailTypes, detail.Type()) {
-			return goidc.NewError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization details")
+		if _, ok := ctx.RARDetailTypes[detail.Type()]; !ok {
+			return goidc.NewError(goidc.ErrorCodeInvalidAuthDetails, "authorization detail not allowed")
+		}
+
+		if c.AuthDetailTypes != nil && !slices.Contains(c.AuthDetailTypes, detail.Type()) {
+			return goidc.NewError(goidc.ErrorCodeInvalidAuthDetails, "authorization detail not allowed")
+		}
+
+		if err := ctx.RARValidateDetail(detail, c); err != nil {
+			return err
+		}
+	}
+
+	if granted != nil {
+		if err := ctx.RARCompareAuthDetails(granted, req.authDetails); err != nil {
+			return goidc.WrapError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization details", err)
 		}
 	}
 
 	return nil
-}
-
-func shouldValidateAuthDetails(ctx oidc.Context, req request) bool {
-	return ctx.RichAuthorizationIsEnabled && req.authDetails != nil
 }
 
 func validateScopes(_ oidc.Context, req request, session *goidc.AuthnSession) error {

@@ -22,22 +22,65 @@ func initBackAuth(ctx oidc.Context, req request) (cibaResponse, error) {
 		return cibaResponse{}, err
 	}
 
-	session, err := cibaAuthnSession(ctx, req, c)
+	as, err := func() (*goidc.AuthnSession, error) {
+		jar := ctx.CIBAJARIsEnabled && (ctx.CIBAJARIsRequired || c.CIBAJARSigAlg != "" || req.RequestObject != "")
+		if jar {
+			if req.RequestObject == "" {
+				return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "request object is required")
+			}
+
+			jar, err := cibaJARFromRequestObject(ctx, req.RequestObject, c)
+			if err != nil {
+				return nil, err
+			}
+
+			if err := validateCIBARequest(ctx, jar, c); err != nil {
+				return nil, err
+			}
+
+			return newAuthnSession(ctx, jar.AuthorizationParameters, c), nil
+		}
+
+		if err := validateCIBARequest(ctx, req, c); err != nil {
+			return nil, err
+		}
+		return newAuthnSession(ctx, req.AuthorizationParameters, c), nil
+	}()
 	if err != nil {
 		return cibaResponse{}, err
 	}
 
-	if err := ctx.InitBackAuth(session); err != nil {
+	as.CIBAAuthID = ctx.CIBAAuthReqID()
+	as.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.CIBADefaultSessionLifetimeSecs
+	if as.IDTokenHint != "" {
+		// The ID token hint was already validated.
+		idToken, _ := jwt.ParseSigned(as.IDTokenHint, ctx.IDTokenSigAlgs)
+		_ = idToken.UnsafeClaimsWithoutVerification(&as.IDTokenHintClaims)
+	}
+
+	// Store binding information only for CIBA push mode.
+	// For other modes, binding occurs at the token endpoint.
+	if c.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePush {
+		if dpopJWT, ok := dpop.JWT(ctx); ctx.DPoPIsEnabled && ok {
+			as.JWKThumbprint = dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)
+		}
+
+		if cert, err := ctx.ClientCert(); ctx.MTLSTokenBindingIsEnabled && err == nil {
+			as.ClientCertThumbprint = hashutil.Thumbprint(string(cert.Raw))
+		}
+	}
+
+	if err := ctx.InitBackAuth(as); err != nil {
 		return cibaResponse{}, err
 	}
 
-	if err := ctx.SaveAuthnSession(session); err != nil {
+	if err := ctx.SaveAuthnSession(as); err != nil {
 		return cibaResponse{}, err
 	}
 
 	resp := cibaResponse{
-		AuthReqID: session.CIBAAuthID,
-		ExpiresIn: session.ExpiresAtTimestamp - timeutil.TimestampNow(),
+		AuthReqID: as.CIBAAuthID,
+		ExpiresIn: as.ExpiresAtTimestamp - timeutil.TimestampNow(),
 	}
 
 	if c.CIBATokenDeliveryMode.IsPollableMode() {
@@ -47,73 +90,13 @@ func initBackAuth(ctx oidc.Context, req request) (cibaResponse, error) {
 	return resp, nil
 }
 
-func cibaAuthnSession(ctx oidc.Context, req request, client *goidc.Client) (*goidc.AuthnSession, error) {
-	var session *goidc.AuthnSession
-	var err error
-	if shouldUseJARDuringCIBA(ctx, req.AuthorizationParameters, client) {
-		session, err = cibaAuthnSessionWithJAR(ctx, req, client)
-	} else {
-		session, err = simpleCIBAAuthnSession(ctx, req, client)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	session.CIBAAuthID = ctx.CIBAAuthReqID()
-	session.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.CIBADefaultSessionLifetimeSecs
-	if session.IDTokenHint != "" {
-		// The ID token hint was already validated.
-		idToken, _ := jwt.ParseSigned(session.IDTokenHint, ctx.IDTokenSigAlgs)
-		_ = idToken.UnsafeClaimsWithoutVerification(&session.IDTokenHintClaims)
-	}
-
-	// Store binding information only for CIBA push mode.
-	// For other modes, binding occurs at the token endpoint.
-	if client.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePush {
-		setPoPForCIBAPushMode(ctx, session)
-	}
-
-	return session, nil
-}
-
-func shouldUseJARDuringCIBA(ctx oidc.Context, req goidc.AuthorizationParameters, c *goidc.Client) bool {
-	if !ctx.CIBAJARIsEnabled {
-		return false
-	}
-	return ctx.CIBAJARIsRequired || c.CIBAJARSigAlg != "" || req.RequestObject != ""
-}
-
-func simpleCIBAAuthnSession(ctx oidc.Context, req request, client *goidc.Client) (*goidc.AuthnSession, error) {
-	if err := validateCIBARequest(ctx, req, client); err != nil {
-		return nil, err
-	}
-
-	session := newAuthnSession(ctx, req.AuthorizationParameters, client)
-	return session, nil
-}
-
-func cibaAuthnSessionWithJAR(ctx oidc.Context, req request, client *goidc.Client) (*goidc.AuthnSession, error) {
-
-	if req.RequestObject == "" {
-		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "request object is required")
-	}
-
-	jar, err := cibaJARFromRequestObject(ctx, req.RequestObject, client)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := validateCIBARequest(ctx, jar, client); err != nil {
-		return nil, err
-	}
-
-	session := newAuthnSession(ctx, jar.AuthorizationParameters, client)
-	return session, nil
-}
-
 func cibaJARFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client) (request, error) {
-	jarAlgorithms := cibaJARAlgorithms(ctx, c)
-	parsedToken, err := jwt.ParseSigned(reqObject, jarAlgorithms)
+	algs := ctx.CIBAJARSigAlgs
+	if c.CIBAJARSigAlg != "" {
+		algs = []goidc.SignatureAlgorithm{c.CIBAJARSigAlg}
+	}
+
+	parsedToken, err := jwt.ParseSigned(reqObject, algs)
 	if err != nil {
 		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request object", err)
 	}
@@ -181,13 +164,6 @@ func validateCIBAJARClaims(ctx oidc.Context, claims jwt.Claims, client *goidc.Cl
 	return nil
 }
 
-func cibaJARAlgorithms(ctx oidc.Context, client *goidc.Client) []goidc.SignatureAlgorithm {
-	if client.CIBAJARSigAlg != "" {
-		return []goidc.SignatureAlgorithm{client.CIBAJARSigAlg}
-	}
-	return ctx.CIBAJARSigAlgs
-}
-
 func validateCIBARequest(ctx oidc.Context, req request, client *goidc.Client) error {
 
 	if !slices.Contains(client.GrantTypes, goidc.GrantCIBA) {
@@ -249,16 +225,4 @@ func validateCIBAHints(_ oidc.Context, req request, _ *goidc.Client) error {
 	}
 
 	return nil
-}
-
-func setPoPForCIBAPushMode(ctx oidc.Context, session *goidc.AuthnSession) {
-	dpopJWT, ok := dpop.JWT(ctx)
-	if ctx.DPoPIsEnabled && ok {
-		session.JWKThumbprint = dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)
-	}
-
-	clientCert, err := ctx.ClientCert()
-	if ctx.MTLSTokenBindingIsEnabled && err == nil {
-		session.ClientCertThumbprint = hashutil.Thumbprint(string(clientCert.Raw))
-	}
 }

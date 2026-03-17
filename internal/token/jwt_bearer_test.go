@@ -307,7 +307,7 @@ func TestHandleGrantCreation_JWTBearerGrant_ServerDoesNotSupportGrantType(t *tes
 func TestHandleGrantCreation_JWTBearerGrant_AssertionHandlerError(t *testing.T) {
 	// Given.
 	ctx, _ := setUpJWTBearerGrant(t, "random_subject")
-	ctx.HandleJWTBearerGrantAssertionFunc = func(
+	ctx.JWTBearerGrantHandleAssertionFunc = func(
 		r *http.Request,
 		assertion string,
 	) (
@@ -349,7 +349,7 @@ func setUpJWTBearerGrant(t *testing.T, sub string) (
 
 	ctx = oidctest.NewContext(t)
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantJWTBearer)
-	ctx.HandleJWTBearerGrantAssertionFunc = func(
+	ctx.JWTBearerGrantHandleAssertionFunc = func(
 		r *http.Request,
 		assertion string,
 	) (

@@ -1289,29 +1289,19 @@ func TestWithAuthorizationDetails(t *testing.T) {
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
-	var compareDetailsFunc goidc.CompareAuthDetailsFunc = func(
-		granted, requested []goidc.AuthorizationDetail,
-	) error {
-		return nil
-	}
-
 	// When.
-	err := WithRichAuthorization(compareDetailsFunc, "detail_type")(p)
+	err := WithRAR(map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc{"detail_type": nil})(p)
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !p.config.RichAuthorizationIsEnabled {
+	if !p.config.RARIsEnabled {
 		t.Errorf("auth details must be enabled")
 	}
 
-	if p.config.CompareAuthDetailsFunc == nil {
-		t.Error("CompareAuthDetailsFunc cannot be nil")
-	}
-
-	if p.config.AuthDetailTypes == nil {
+	if p.config.RARDetailTypes == nil {
 		t.Error("auth detail types should be set")
 	}
 
@@ -1910,7 +1900,7 @@ func TestJWTBearerGrant(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if p.config.HandleJWTBearerGrantAssertionFunc == nil {
+	if p.config.JWTBearerGrantHandleAssertionFunc == nil {
 		t.Error("HandleJWTBearerGrantAssertionFunc cannot be nil")
 	}
 }

@@ -731,23 +731,32 @@ func WithClaimsParameter() Option {
 	}
 }
 
-// WithRichAuthorization allows clients to make rich authorization requests.
-func WithRichAuthorization(compareFunc goidc.CompareAuthDetailsFunc, typ goidc.AuthDetailType, types ...goidc.AuthDetailType) Option {
-	types = appendIfNotIn(types, typ)
+// WithRAR enables Rich Authorization Requests (RFC 9396).
+// types maps each supported authorization detail type to a validation function.
+func WithRAR(types map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc) Option {
 	return func(p *Provider) error {
-		p.config.RichAuthorizationIsEnabled = true
-		p.config.CompareAuthDetailsFunc = compareFunc
-		p.config.AuthDetailTypes = types
+		p.config.RARIsEnabled = true
+		p.config.RARDetailTypes = types
+		return nil
+	}
+}
+
+// WithRARCompareDetailsFunc sets the function used to validate that the
+// authorization details requested during authorization_code or refresh_token
+// grants are consistent with the originally granted ones.
+func WithRARCompareDetailsFunc(f goidc.CompareAuthDetailsFunc) Option {
+	return func(p *Provider) error {
+		p.config.RARCompareDetailsFunc = f
 		return nil
 	}
 }
 
 // WithMTLS allows requests to be established with mutual TLS.
-func WithMTLS(host string, clientCertFunc goidc.ClientCertFunc) Option {
+func WithMTLS(host string, f goidc.ClientCertFunc) Option {
 	return func(p *Provider) error {
 		p.config.MTLSIsEnabled = true
 		p.config.MTLSHost = host
-		p.config.ClientCertFunc = clientCertFunc
+		p.config.ClientCertFunc = f
 		return nil
 	}
 }
@@ -985,7 +994,7 @@ func WithHTTPClientFunc(f goidc.HTTPClientFunc) Option {
 func WithJWTBearerGrant(f goidc.HandleJWTBearerGrantAssertionFunc) Option {
 	return func(p *Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantJWTBearer)
-		p.config.HandleJWTBearerGrantAssertionFunc = f
+		p.config.JWTBearerGrantHandleAssertionFunc = f
 		return nil
 	}
 }
@@ -1205,19 +1214,15 @@ func WithOpenIDFedHandleClientFunc(f goidc.HandleClientFunc) Option {
 	}
 }
 
-// WithOpenIDFedTrustMark configures a trust mark that the provider will fetch and include
+// WithOpenIDFedTrustMark configures trust marks that the provider will fetch and include
 // in its entity configuration. Trust marks are credentials issued by accreditation
 // authorities that attest to certain properties of the provider.
 //
 // Parameters:
-//   - markType: The trust mark identifier (e.g., "https://example.com/trust_marks/certified").
-//   - issuer: The entity identifier of the trust mark issuer.
-func WithOpenIDFedTrustMark(markType goidc.TrustMark, issuer string) Option {
+//   - marks: A map of trust mark identifiers (e.g., "https://example.com/trust_marks/certified") to issuers.
+func WithOpenIDFedTrustMark(marks map[goidc.TrustMark]string) Option {
 	return func(p *Provider) error {
-		if p.config.OpenIDFedTrustMarks == nil {
-			p.config.OpenIDFedTrustMarks = make(map[goidc.TrustMark]string)
-		}
-		p.config.OpenIDFedTrustMarks[markType] = issuer
+		p.config.OpenIDFedTrustMarks = marks
 		return nil
 	}
 }

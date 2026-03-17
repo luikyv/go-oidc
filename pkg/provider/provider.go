@@ -457,6 +457,10 @@ func (op *Provider) setDefaults() error {
 		}
 	}
 
+	if op.config.RARIsEnabled {
+		op.config.RARCompareDetailsFunc = nonZeroOrDefault(op.config.RARCompareDetailsFunc, defaultCompareAuthDetailsFunc)
+	}
+
 	return nil
 }
 

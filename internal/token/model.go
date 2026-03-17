@@ -38,7 +38,7 @@ func NewGrant(ctx oidc.Context, c *goidc.Client, opts GrantOptions) (*goidc.Gran
 		ClientCertThumbprint: opts.ClientCertThumbprint,
 		CreatedAtTimestamp:   timeutil.TimestampNow(),
 	}
-	if ctx.RichAuthorizationIsEnabled {
+	if ctx.RARIsEnabled {
 		grant.AuthDetails = opts.AuthDetails
 	}
 	if ctx.ResourceIndicatorsIsEnabled {
@@ -101,7 +101,7 @@ func Issue(ctx oidc.Context, grant *goidc.Grant, c *goidc.Client, opts *Options)
 	if opts.Scopes != "" {
 		tkn.Scopes = opts.Scopes
 	}
-	if ctx.RichAuthorizationIsEnabled && opts.AuthDetails != nil {
+	if ctx.RARIsEnabled && opts.AuthDetails != nil {
 		tkn.AuthDetails = opts.AuthDetails
 	}
 	if ctx.ResourceIndicatorsIsEnabled && opts.Resources != nil {

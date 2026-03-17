@@ -632,57 +632,25 @@ type ClaimObjectInfo struct {
 
 type AuthDetailType string
 
+type ValidateAuthDetailFunc func(context.Context, AuthorizationDetail, *Client) error
+
+// CompareAuthDetailsFunc defines a function used in authorization_code and
+// refresh_token grant types to validate that the requested authorization details
+// are consistent with the granted ones.
+type CompareAuthDetailsFunc func(ctx context.Context, granted, requested []AuthorizationDetail) error
+
 // AuthorizationDetail represents an authorization details as a map.
 // It is a map instead of a struct, because its fields vary a lot depending on
 // the use case.
 type AuthorizationDetail map[string]any
 
 func (d AuthorizationDetail) Type() AuthDetailType {
-	return AuthDetailType(d.string("type"))
-}
-
-func (d AuthorizationDetail) Identifier() string {
-	return d.string("identifier")
-}
-
-func (d AuthorizationDetail) Locations() []string {
-	return d.stringSlice("locations")
-}
-
-func (d AuthorizationDetail) Actions() []string {
-	return d.stringSlice("actions")
-}
-
-func (d AuthorizationDetail) DataTypes() []string {
-	return d.stringSlice("datatypes")
-}
-
-func (d AuthorizationDetail) stringSlice(key string) []string {
-	value, ok := d[key]
-	if !ok {
-		return nil
-	}
-
-	slice, ok := value.([]string)
-	if !ok {
-		return nil
-	}
-
-	return slice
-}
-
-func (d AuthorizationDetail) string(key string) string {
-	value, ok := d[key]
+	value, ok := d["type"]
 	if !ok {
 		return ""
 	}
-
-	s, ok := value.(string)
-	if !ok {
-		return ""
-	}
-
-	return s
+	typ, _ := value.(string)
+	return AuthDetailType(typ)
 }
 
 // TODO: Return a string instead of a struct.
@@ -696,11 +664,6 @@ type JWTBearerGrantInfo struct {
 type IsClientAllowedFunc func(*Client) bool
 
 type IsClientAllowedTokenInstrospectionFunc func(*Client, TokenInfo) bool
-
-// CompareAuthDetailsFunc defines a function used in authorization_code and
-// refresh_token grant types to validate that the requested authorization details
-// are consistent with the granted ones.
-type CompareAuthDetailsFunc func(granted, requested []AuthorizationDetail) error
 
 type GeneratePairwiseSubIDFunc func(ctx context.Context, sub string, client *Client) string
 

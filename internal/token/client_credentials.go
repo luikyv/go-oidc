@@ -72,7 +72,7 @@ func validateClientCredentialsGrantRequest(ctx oidc.Context, req request, c *goi
 		return err
 	}
 
-	if err := validateAuthDetailsTypes(ctx, req); err != nil {
+	if err := validateAuthDetails(ctx, req, c, nil); err != nil {
 		return err
 	}
 

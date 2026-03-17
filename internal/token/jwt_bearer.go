@@ -111,7 +111,7 @@ func validateJWTBearerGrantRequest(ctx oidc.Context, req request, c *goidc.Clien
 		return err
 	}
 
-	if err := validateAuthDetailsTypes(ctx, req); err != nil {
+	if err := validateAuthDetails(ctx, req, c, nil); err != nil {
 		return err
 	}
 

@@ -377,6 +377,35 @@ provider.WithJARMEncryption(goidc.RSA_OAEP_256)
 
 To customize content encryption algorithms, use `provider.WithJARMContentEncryptionAlgs`.
 
+## Rich Authorization Requests
+
+[RAR](https://www.rfc-editor.org/rfc/rfc9396.html) allows clients to request fine-grained access using structured `authorization_details` objects. Each detail has a `type` field that maps to a registered handler.
+
+```go
+op, _ := provider.New(
+  ...,
+  provider.WithRAR(map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc{
+    "payment_initiation": func(ctx context.Context, detail goidc.AuthorizationDetail, c *goidc.Client) error {
+      // Validate the detail fields for this type.
+      if detail["creditor_account"] == nil {
+        return errors.New("creditor_account is required")
+      }
+      return nil
+    },
+  }),
+  ...,
+)
+```
+
+When using the `authorization_code` or `refresh_token` grant types, the client may request a subset of the originally granted authorization details. Provide `provider.WithRARCompareDetailsFunc` to enforce consistency between the granted and requested sets:
+
+```go
+provider.WithRARCompareDetailsFunc(func(ctx context.Context, granted, requested []goidc.AuthorizationDetail) error {
+  // Verify that every requested detail is consistent with the granted ones.
+  return nil
+})
+```
+
 ## OpenID Federation
 
 [OpenID Federation](https://openid.net/specs/openid-federation-1_0.html) establishes trust dynamically through signed entity statements, allowing federated clients to authenticate without prior manual registration.

@@ -117,7 +117,7 @@ func validateRefreshTokenGrantRequest(ctx oidc.Context, req request, c *goidc.Cl
 		return err
 	}
 
-	if err := validateAuthDetails(ctx, grant.AuthDetails, req); err != nil {
+	if err := validateAuthDetails(ctx, req, c, grant.AuthDetails); err != nil {
 		return err
 	}
 

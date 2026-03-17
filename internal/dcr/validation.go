@@ -580,12 +580,12 @@ func validateSignedJWKSURI(ctx oidc.Context, meta *goidc.ClientMeta) error {
 }
 
 func validateAuthorizationDetailTypes(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	if !ctx.RichAuthorizationIsEnabled || meta.AuthDetailTypes == nil {
+	if !ctx.RARIsEnabled || meta.AuthDetailTypes == nil {
 		return nil
 	}
 
 	for _, dt := range meta.AuthDetailTypes {
-		if !slices.Contains(ctx.AuthDetailTypes, dt) {
+		if _, ok := ctx.RARDetailTypes[dt]; !ok {
 			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "authorization detail type not supported")
 		}
 	}

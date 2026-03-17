@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"log"
 	"net/http"
@@ -46,19 +47,24 @@ func main() {
 		provider.WithRenderErrorFunc(authutil.RenderError()),
 		provider.WithCheckJTIFunc(authutil.CheckJTIFunc()),
 		provider.WithJWTLeewayTime(30),
-		provider.WithRichAuthorization(func(grantedDetails, requestedDetails []goidc.AuthorizationDetail) error {
-			grantedDetailTypes := make([]goidc.AuthDetailType, len(grantedDetails))
-			for i, grantedDetail := range grantedDetails {
+		provider.WithRAR(map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc{
+			"customer_information": func(ctx context.Context, ad goidc.AuthorizationDetail, c *goidc.Client) error {
+				return nil
+			},
+		}),
+		provider.WithRARCompareDetailsFunc(func(_ context.Context, granted, requested []goidc.AuthorizationDetail) error {
+			grantedDetailTypes := make([]goidc.AuthDetailType, len(granted))
+			for i, grantedDetail := range granted {
 				grantedDetailTypes[i] = grantedDetail.Type()
 			}
 
-			for _, requestedDetail := range requestedDetails {
+			for _, requestedDetail := range requested {
 				if !slices.Contains(grantedDetailTypes, requestedDetail.Type()) {
 					return goidc.NewError(goidc.ErrorCodeInvalidAuthDetails, "authorization details do not match")
 				}
 			}
 			return nil
-		}, "customer_information"),
+		}),
 	)
 	if err != nil {
 		log.Fatal(err)

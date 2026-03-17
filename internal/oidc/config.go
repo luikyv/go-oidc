@@ -183,9 +183,9 @@ type Configuration struct {
 	PKCEDefaultChallengeMethod goidc.CodeChallengeMethod
 	PKCEChallengeMethods       []goidc.CodeChallengeMethod
 
-	RichAuthorizationIsEnabled bool
-	AuthDetailTypes            []goidc.AuthDetailType
-	CompareAuthDetailsFunc     goidc.CompareAuthDetailsFunc
+	RARIsEnabled          bool
+	RARDetailTypes        map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc
+	RARCompareDetailsFunc goidc.CompareAuthDetailsFunc
 
 	ResourceIndicatorsIsEnabled bool
 	// ResourceIndicatorsIsRequired indicates that the resource parameter is
@@ -197,7 +197,7 @@ type Configuration struct {
 	CheckJTIFunc   goidc.CheckJTIFunc
 
 	JWTBearerGrantClientAuthnIsRequired bool
-	HandleJWTBearerGrantAssertionFunc   goidc.HandleJWTBearerGrantAssertionFunc
+	JWTBearerGrantHandleAssertionFunc   goidc.HandleJWTBearerGrantAssertionFunc
 
 	ErrorURI string
 

@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -50,4 +51,11 @@ const (
 
 func defaultTokenOptionsFunc(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
 	return goidc.NewOpaqueTokenOptions(defaultTokenLifetimeSecs)
+}
+
+func defaultCompareAuthDetailsFunc(_ context.Context, granted, request []goidc.AuthorizationDetail) error {
+	if !reflect.DeepEqual(granted, request) {
+		return goidc.NewError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization details")
+	}
+	return nil
 }

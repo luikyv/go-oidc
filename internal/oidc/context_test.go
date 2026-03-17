@@ -764,18 +764,18 @@ func TestCompareAuthDetails(t *testing.T) {
 		Configuration: &oidc.Configuration{},
 	}
 	// When.
-	err := ctx.CompareAuthDetails(nil, nil)
+	err := ctx.RARCompareAuthDetails(nil, nil)
 	// Then.
 	if err == nil {
 		t.Error("the default behavior is to return an error")
 	}
 
 	// Given.
-	ctx.CompareAuthDetailsFunc = func(granted, requested []goidc.AuthorizationDetail) error {
+	ctx.RARCompareDetailsFunc = func(_ context.Context, granted, requested []goidc.AuthorizationDetail) error {
 		return nil
 	}
 	// When.
-	err = ctx.CompareAuthDetails(nil, nil)
+	err = ctx.RARCompareAuthDetails(nil, nil)
 	// Then.
 	if err != nil {
 		t.Fatal("no error should be returned")
