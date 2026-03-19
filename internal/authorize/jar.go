@@ -163,8 +163,7 @@ func validateClaims(ctx oidc.Context, claims jwt.Claims, client *goidc.Client) e
 		Issuer:      client.ID,
 		AnyAudience: []string{ctx.Issuer()},
 	}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second); err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
-			"the request object contains invalid claims", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidResquestObject, "the request object contains invalid claims", err)
 	}
 
 	return nil
