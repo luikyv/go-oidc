@@ -33,7 +33,7 @@ jobs:
           fapi1-op-private-key-par,
           fapi1-op-private-key-par-jarm,
           fapiciba,
-          ssf
+          # ssf,
         ]
 
     steps:

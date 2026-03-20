@@ -1,6 +1,7 @@
 package authorize
 
 import (
+	"errors"
 	"net/url"
 	"slices"
 	"strings"
@@ -128,6 +129,10 @@ func validatePushedRequest(ctx oidc.Context, req request, c *goidc.Client) error
 	}
 
 	if ctx.Profile == goidc.ProfileFAPI1 {
+		if c.TokenAuthnMethod == goidc.AuthnMethodNone {
+			return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client", errors.New("public clients are not allowed use pushed authorization requests"))
+		}
+
 		if ctx.PKCEIsEnabled && req.CodeChallenge == "" {
 			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "code_challenge is required")
 		}

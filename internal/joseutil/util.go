@@ -92,16 +92,9 @@ func (o OpaqueDecrypter) DecryptKey(encryptedKey []byte, _ jose.Header) ([]byte,
 	return o.Decrypter.Decrypt(rand.Reader, encryptedKey, opts)
 }
 
-func Encrypt(
-	jws string,
-	jwk goidc.JSONWebKey,
-	cntAlg goidc.ContentEncryptionAlgorithm,
-) (
-	string,
-	error,
-) {
+func Encrypt(jws string, jwk goidc.JSONWebKey, alg goidc.ContentEncryptionAlgorithm) (string, error) {
 	encrypter, err := jose.NewEncrypter(
-		cntAlg,
+		alg,
 		jose.Recipient{
 			Algorithm: goidc.KeyEncryptionAlgorithm(jwk.Algorithm),
 			Key:       jwk.Key,
@@ -162,10 +155,7 @@ func IsUnsignedJWT(token string) bool {
 }
 
 func IsJWS(token string) bool {
-	isJWS, _ := regexp.MatchString(
-		"(^[\\w-]+\\.[\\w-]+\\.[\\w-]+$)",
-		token,
-	)
+	isJWS, _ := regexp.MatchString("(^[\\w-]+\\.[\\w-]+\\.[\\w-]+$)", token)
 	return isJWS
 }
 
@@ -192,7 +182,10 @@ func KeyUsage(key goidc.JSONWebKey) goidc.KeyUsage {
 	}
 
 	switch key.Algorithm {
-	case string(goidc.RS256), string(goidc.RS384), string(goidc.RS512), string(goidc.ES256), string(goidc.ES384), string(goidc.ES512), string(goidc.PS256), string(goidc.PS384), string(goidc.PS512), string(goidc.HS256), string(goidc.HS384), string(goidc.HS512):
+	case string(goidc.RS256), string(goidc.RS384), string(goidc.RS512),
+		string(goidc.ES256), string(goidc.ES384), string(goidc.ES512),
+		string(goidc.PS256), string(goidc.PS384), string(goidc.PS512),
+		string(goidc.HS256), string(goidc.HS384), string(goidc.HS512):
 		return goidc.KeyUsageSignature
 	case string(goidc.RSA1_5), string(goidc.RSA_OAEP), string(goidc.RSA_OAEP_256):
 		return goidc.KeyUsageEncryption

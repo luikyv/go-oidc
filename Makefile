@@ -18,11 +18,8 @@ setup-cs:
 	  python3 -m pip install -r conformance-suite/scripts/requirements.txt; \
 	fi
 
-test:
-	@go test ./pkg/... ./internal/...
-
 test-coverage:
-	@go test -coverprofile=coverage.out ./pkg/... ./internal/...
+	@go test -coverprofile=coverage.out $$(go list ./pkg/... ./internal/... | grep -v /internal/oidctest)
 	@go tool cover -html="coverage.out" -o coverage.html
 	@echo "Total Coverage: `go tool cover -func=coverage.out | grep total | grep -Eo '[0-9]+\.[0-9]+'` %"
 
@@ -34,10 +31,6 @@ lint:
 
 test-benchmark:
 	@go test -bench=. -benchmem ./pkg/... ./internal/...
-
-docs:
-	@echo "Docs available at http://localhost:6060/github.com/luikyv/go-oidc"
-	@pkgsite -http=:6060
 
 keys:
 	@openssl req -x509 -newkey rsa:2048 -keyout examples/keys/server.key -out examples/keys/server.crt -days 365 -nodes \

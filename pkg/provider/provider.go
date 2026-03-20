@@ -2,6 +2,8 @@ package provider
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"reflect"
 	"slices"
@@ -465,7 +467,74 @@ func (op *Provider) setDefaults() error {
 }
 
 func (op *Provider) validate() error {
-	return runValidations(op.config, validateTokenBinding)
+	if op.config.TokenBindingIsRequired && !op.config.DPoPIsEnabled && !op.config.MTLSTokenBindingIsEnabled {
+		return errors.New("either DPoP or TLS binding must be enabled if sender constraining tokens is required")
+	}
+
+	if op.config.Profile == goidc.ProfileFAPI1 {
+		for _, method := range op.config.TokenAuthnMethods {
+			if !slices.Contains([]goidc.AuthnMethod{
+				goidc.AuthnMethodPrivateKeyJWT,
+				goidc.AuthnMethodSecretJWT,
+				goidc.AuthnMethodTLS,
+				goidc.AuthnMethodNone,
+			}, method) {
+				return fmt.Errorf("[FAPI 1.0 5.2.2] %s is not a valid authentication method", method)
+			}
+		}
+	}
+
+	if op.config.Profile == goidc.ProfileFAPI2 {
+		if slices.Contains(op.config.GrantTypes, goidc.GrantImplicit) {
+			return errors.New("[FAPI 2.0 5.3.1] implicit grant is not allowed")
+		}
+
+		if !op.config.TokenBindingIsRequired {
+			return errors.New("[FAPI 2.0 5.3.1] sender-constrained access tokens must be required")
+		}
+
+		if !slices.Contains(op.config.TokenAuthnMethods, goidc.AuthnMethodPrivateKeyJWT) && !slices.Contains(op.config.TokenAuthnMethods, goidc.AuthnMethodTLS) {
+			return errors.New("[FAPI 2.0 5.3.1] only private_key_jwt or tls_client_auth are allowed")
+		}
+
+		for _, method := range op.config.TokenAuthnMethods {
+			if !slices.Contains([]goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT, goidc.AuthnMethodTLS}, method) {
+				return fmt.Errorf("[FAPI 2.0 5.3.1] %s is not a valid authentication method", method)
+			}
+		}
+
+		if op.config.AuthorizationCodeLifetimeSecs > 60 {
+			return errors.New("[FAPI 2.0 5.3.1] authorization code lifetime must be less than 60 seconds")
+		}
+
+		if !slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
+			return errors.New("[FAPI 2.0 5.3.1] authorization_code grant must be required")
+		}
+
+		if !op.config.PARIsRequired {
+			return errors.New("[FAPI 2.0 5.3.1] pushed authorization request must be required")
+		}
+
+		if !op.config.PKCEIsRequired {
+			return errors.New("[FAPI 2.0 5.3.1] pkce must be required")
+		}
+
+		if slices.ContainsFunc(op.config.PKCEChallengeMethods, func(method goidc.CodeChallengeMethod) bool {
+			return method != goidc.CodeChallengeMethodSHA256
+		}) {
+			return errors.New("[FAPI 2.0 5.3.1] only pkce S256 code challenge method must be available")
+		}
+
+		if !op.config.IssuerRespParamIsEnabled {
+			return errors.New("[FAPI 2.0 5.3.1] pkce must be enabled")
+		}
+
+		if op.config.PARLifetimeSecs > 600 {
+			return errors.New("[FAPI 2.0 5.3.1] par request_uri lifetime must be less than 600 seconds")
+		}
+	}
+
+	return nil
 }
 
 // nonZeroOrDefault returns the first argument "s1" if it is non-nil and non-zero.

@@ -626,8 +626,7 @@ func WithJARM(defaultAlg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgori
 	}
 }
 
-// WithJARM allows responses for authorization requests to be sent as encrypted
-// JWTs.
+// WithJARM allows responses for authorization requests to be sent as encrypted JWTs.
 // The default content encryption algorithm is A128CBC-HS256.
 // Clients can choose the encryption algorithms by setting the attributes
 // "authorization_encrypted_response_al" and "authorization_encrypted_response_enc".
