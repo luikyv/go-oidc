@@ -200,7 +200,7 @@ func generateCIBAGrant(ctx oidc.Context, req request) (response, error) {
 		return response{}, err
 	}
 
-	tkn, tokenValue, err := Issue(ctx, grant, c, &Options{
+	tkn, tokenValue, err := Issue(ctx, grant, c, &IssuanceOptions{
 		Scopes:      req.scopes,
 		AuthDetails: req.authDetails,
 		Resources:   req.resources,

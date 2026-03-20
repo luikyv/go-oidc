@@ -14,74 +14,73 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func MakeIDToken(ctx oidc.Context, c *goidc.Client, opts IDTokenOptions) (string, error) {
-	idToken, err := makeIDToken(ctx, c, opts)
-	if err != nil {
-		return "", err
-	}
-
-	// If encryption is disabled, just return the signed ID token.
-	if !ctx.IDTokenEncIsEnabled || c.IDTokenKeyEncAlg == "" {
-		return idToken, nil
-	}
-
-	return encryptIDToken(ctx, c, idToken)
+type IssuanceOptions struct {
+	Scopes      string
+	AuthDetails []goidc.AuthorizationDetail
+	Resources   goidc.Resources
 }
 
-// makeAccessToken generates an access token value. It returns the JWT or opaque string.
-func makeAccessToken(ctx oidc.Context, tkn *goidc.Token, grant *goidc.Grant) (string, error) {
-	if tkn.Format == goidc.TokenFormatOpaque {
-		return tkn.ID, nil
+// Issue creates a new access token for the grant, persists both the grant and
+// token, and returns the token and its serialized value.
+func Issue(ctx oidc.Context, grant *goidc.Grant, c *goidc.Client, opts *IssuanceOptions) (*goidc.Token, string, error) {
+	if opts == nil {
+		opts = &IssuanceOptions{}
 	}
 
+	tknOpts := ctx.TokenOptions(grant, c)
 	now := timeutil.TimestampNow()
-	claims := map[string]any{
-		goidc.ClaimTokenID:  tkn.ID,
-		goidc.ClaimIssuer:   ctx.Issuer(),
-		goidc.ClaimSubject:  tkn.Subject,
-		goidc.ClaimScope:    tkn.Scopes,
-		goidc.ClaimIssuedAt: now,
-		goidc.ClaimExpiry:   tkn.ExpiresAtTimestamp,
+	tkn := &goidc.Token{
+		GrantID:              grant.ID,
+		Subject:              grant.Subject,
+		ClientID:             grant.ClientID,
+		Scopes:               grant.Scopes,
+		AuthDetails:          grant.AuthDetails,
+		Resources:            grant.Resources,
+		JWKThumbprint:        grant.JWKThumbprint,
+		ClientCertThumbprint: grant.ClientCertThumbprint,
+		CreatedAtTimestamp:   now,
+		ExpiresAtTimestamp:   now + tknOpts.LifetimeSecs,
+		Format:               tknOpts.Format,
+		SigAlg:               tknOpts.JWTSigAlg,
 	}
-
-	if tkn.ClientID != "" {
-		claims[goidc.ClaimClientID] = tkn.ClientID
+	if tknOpts.Format == goidc.TokenFormatOpaque {
+		tkn.ID = ctx.OpaqueToken()
+	} else {
+		tkn.ID = ctx.JWTID()
 	}
-
-	if tkn.AuthDetails != nil {
-		claims[goidc.ClaimAuthDetails] = tkn.AuthDetails
-	}
-
-	if tkn.Resources != nil {
-		claims[goidc.ClaimAudience] = tkn.Resources
-	}
-
-	confirmation := make(map[string]string)
 	if tkn.JWKThumbprint != "" {
-		confirmation["jkt"] = tkn.JWKThumbprint
+		tkn.Type = goidc.TokenTypeDPoP
+	} else {
+		tkn.Type = goidc.TokenTypeBearer
 	}
-	if tkn.ClientCertThumbprint != "" {
-		confirmation["x5t#S256"] = tkn.ClientCertThumbprint
+	if opts.Scopes != "" {
+		tkn.Scopes = opts.Scopes
 	}
-	if len(confirmation) != 0 {
-		claims["cnf"] = confirmation
+	if ctx.RARIsEnabled && opts.AuthDetails != nil {
+		tkn.AuthDetails = opts.AuthDetails
+	}
+	if ctx.ResourceIndicatorsIsEnabled && opts.Resources != nil {
+		tkn.Resources = opts.Resources
 	}
 
-	maps.Copy(claims, ctx.TokenClaims(grant))
-
-	if tkn.SigAlg == goidc.None {
-		return joseutil.Unsigned(claims), nil
-	}
-
-	accessToken, err := ctx.Sign(claims, tkn.SigAlg, (&jose.SignerOptions{}).WithType("at+jwt"))
+	tokenValue, err := makeAccessToken(ctx, tkn, grant)
 	if err != nil {
-		return "", fmt.Errorf("could not sign the access token: %w", err)
+		return nil, "", err
+	}
+	if grant.ExpiresAtTimestamp == 0 {
+		grant.ExpiresAtTimestamp = tkn.ExpiresAtTimestamp
+	}
+	if err := ctx.SaveGrant(grant); err != nil {
+		return nil, "", err
+	}
+	if err := ctx.SaveToken(tkn); err != nil {
+		return nil, "", err
 	}
 
-	return accessToken, nil
+	return tkn, tokenValue, nil
 }
 
-func makeIDToken(ctx oidc.Context, c *goidc.Client, opts IDTokenOptions) (string, error) {
+func MakeIDToken(ctx oidc.Context, c *goidc.Client, opts IDTokenOptions) (string, error) {
 	alg := ctx.IDTokenDefaultSigAlg
 	if c.IDTokenSigAlg != "" && slices.Contains(ctx.IDTokenSigAlgs, c.IDTokenSigAlg) {
 		alg = c.IDTokenSigAlg
@@ -128,21 +127,19 @@ func makeIDToken(ctx oidc.Context, c *goidc.Client, opts IDTokenOptions) (string
 
 	maps.Copy(claims, opts.Claims)
 
-	if alg == goidc.None {
-		return joseutil.Unsigned(claims), nil
-	}
 	idToken, err := ctx.Sign(claims, alg, nil)
 	if err != nil {
 		return "", fmt.Errorf("could not sign the id token: %w", err)
 	}
-	return idToken, nil
-}
 
-func encryptIDToken(ctx oidc.Context, c *goidc.Client, idToken string) (string, error) {
+	// If encryption is disabled, just return the signed ID token.
+	if !ctx.IDTokenEncIsEnabled || c.IDTokenKeyEncAlg == "" {
+		return idToken, nil
+	}
+
 	jwk, err := client.JWKByAlg(ctx, c, string(c.IDTokenKeyEncAlg))
 	if err != nil {
-		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest,
-			"could not encrypt the id token", err)
+		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not encrypt the id token", err)
 	}
 
 	contentEncAlg := ctx.IDTokenDefaultContentEncAlg
@@ -155,4 +152,53 @@ func encryptIDToken(ctx oidc.Context, c *goidc.Client, idToken string) (string, 
 		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not encrypt the id token", err)
 	}
 	return encIDToken, nil
+}
+
+// makeAccessToken generates an access token value. It returns the JWT or opaque string.
+func makeAccessToken(ctx oidc.Context, tkn *goidc.Token, grant *goidc.Grant) (string, error) {
+	if tkn.Format == goidc.TokenFormatOpaque {
+		return tkn.ID, nil
+	}
+
+	now := timeutil.TimestampNow()
+	claims := map[string]any{
+		goidc.ClaimTokenID:  tkn.ID,
+		goidc.ClaimIssuer:   ctx.Issuer(),
+		goidc.ClaimSubject:  tkn.Subject,
+		goidc.ClaimScope:    tkn.Scopes,
+		goidc.ClaimIssuedAt: now,
+		goidc.ClaimExpiry:   tkn.ExpiresAtTimestamp,
+	}
+
+	if tkn.ClientID != "" {
+		claims[goidc.ClaimClientID] = tkn.ClientID
+	}
+
+	if tkn.AuthDetails != nil {
+		claims[goidc.ClaimAuthDetails] = tkn.AuthDetails
+	}
+
+	if tkn.Resources != nil {
+		claims[goidc.ClaimAudience] = tkn.Resources
+	}
+
+	confirmation := make(map[string]string)
+	if tkn.JWKThumbprint != "" {
+		confirmation["jkt"] = tkn.JWKThumbprint
+	}
+	if tkn.ClientCertThumbprint != "" {
+		confirmation["x5t#S256"] = tkn.ClientCertThumbprint
+	}
+	if len(confirmation) != 0 {
+		claims["cnf"] = confirmation
+	}
+
+	maps.Copy(claims, ctx.TokenClaims(grant))
+
+	accessToken, err := ctx.Sign(claims, tkn.SigAlg, (&jose.SignerOptions{}).WithType("at+jwt"))
+	if err != nil {
+		return "", fmt.Errorf("could not sign the access token: %w", err)
+	}
+
+	return accessToken, nil
 }

@@ -57,31 +57,91 @@ func TestContainsAllScopes(t *testing.T) {
 	}
 }
 
-func TestIsPKCEValid_Plain(t *testing.T) {
-	// Matching verifier.
-	if !isPKCEValid("my_verifier", "my_verifier", goidc.CodeChallengeMethodPlain) {
-		t.Error("expected valid PKCE for matching plain verifier")
-	}
+func TestValidatePKCE_Plain_Valid(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.PKCEIsEnabled = true
+	ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodPlain
+	ctx.PKCEChallengeMethods = []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodPlain}
 
-	// Non-matching verifier.
-	if isPKCEValid("my_verifier", "wrong_challenge", goidc.CodeChallengeMethodPlain) {
-		t.Error("expected invalid PKCE for non-matching plain verifier")
+	verifier := "0123456789abcdef0123456789abcdef0123456789a"
+	session := &goidc.AuthnSession{}
+	session.CodeChallenge = verifier
+	session.CodeChallengeMethod = goidc.CodeChallengeMethodPlain
+	req := request{codeVerifier: verifier}
+
+	// When.
+	err := validatePKCE(ctx, req, nil, session)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
-func TestIsPKCEValid_SHA256(t *testing.T) {
-	verifier := "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
-	// Pre-computed SHA256 challenge for this verifier.
-	challenge := "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+func TestValidatePKCE_Plain_Invalid(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.PKCEIsEnabled = true
+	ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodPlain
+	ctx.PKCEChallengeMethods = []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodPlain}
 
-	// Correct verifier.
-	if !isPKCEValid(verifier, challenge, goidc.CodeChallengeMethodSHA256) {
-		t.Error("expected valid PKCE for correct SHA256 verifier")
+	session := &goidc.AuthnSession{}
+	session.CodeChallenge = "0123456789abcdef0123456789abcdef0123456789a"
+	session.CodeChallengeMethod = goidc.CodeChallengeMethodPlain
+	req := request{codeVerifier: "0123456789abcdef0123456789abcdef0123456789b"}
+
+	// When.
+	err := validatePKCE(ctx, req, nil, session)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for mismatched plain verifier")
 	}
+}
 
-	// Incorrect verifier.
-	if isPKCEValid("wrong_verifier_value_here_0000000000000000000", challenge, goidc.CodeChallengeMethodSHA256) {
-		t.Error("expected invalid PKCE for incorrect SHA256 verifier")
+func TestValidatePKCE_SHA256_Valid(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.PKCEIsEnabled = true
+	ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodSHA256
+	ctx.PKCEChallengeMethods = []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodSHA256}
+
+	verifier := "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+	challenge := "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+	session := &goidc.AuthnSession{}
+	session.CodeChallenge = challenge
+	session.CodeChallengeMethod = goidc.CodeChallengeMethodSHA256
+	req := request{codeVerifier: verifier}
+
+	// When.
+	err := validatePKCE(ctx, req, nil, session)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidatePKCE_SHA256_Invalid(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.PKCEIsEnabled = true
+	ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodSHA256
+	ctx.PKCEChallengeMethods = []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodSHA256}
+
+	challenge := "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+	session := &goidc.AuthnSession{}
+	session.CodeChallenge = challenge
+	session.CodeChallengeMethod = goidc.CodeChallengeMethodSHA256
+	req := request{codeVerifier: "wrong_verifier_value_here_0000000000000000000"}
+
+	// When.
+	err := validatePKCE(ctx, req, nil, session)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for incorrect SHA256 verifier")
 	}
 }
 
@@ -136,7 +196,7 @@ func TestValidatePkce_CodeVerifierTooShort(t *testing.T) {
 	}
 
 	// When.
-	err := validatePkce(ctx, req, nil, session)
+	err := validatePKCE(ctx, req, nil, session)
 
 	// Then.
 	if err == nil {
@@ -158,7 +218,7 @@ func TestValidatePkce_Disabled(t *testing.T) {
 	ctx.PKCEIsEnabled = false
 
 	// When.
-	err := validatePkce(ctx, request{codeVerifier: "anything"}, nil, &goidc.AuthnSession{})
+	err := validatePKCE(ctx, request{codeVerifier: "anything"}, nil, &goidc.AuthnSession{})
 
 	// Then.
 	if err != nil {

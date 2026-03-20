@@ -214,7 +214,7 @@ func (ctx Context) AvailableLogoutPolicy(ls *goidc.LogoutSession) (policy goidc.
 func (ctx Context) RARValidateDetail(detail goidc.AuthorizationDetail, c *goidc.Client) error {
 	validate := ctx.RARDetailTypes[detail.Type()]
 	if validate == nil {
-		return errors.New("")
+		return fmt.Errorf("validator for auth detail %s was not provided", detail.Type())
 	}
 	return validate(ctx, detail, c)
 }
@@ -594,7 +594,6 @@ func (ctx Context) TokenOptions(grant *goidc.Grant, c *goidc.Client) goidc.Token
 }
 
 func shouldSwitchToOpaque(ctx Context, grant *goidc.Grant, c *goidc.Client, opts goidc.TokenOptions) bool {
-
 	// There is no need to switch if the token is already opaque.
 	if opts.Format == goidc.TokenFormatOpaque {
 		return false
@@ -923,6 +922,9 @@ func (ctx Context) JWKByAlg(alg goidc.SignatureAlgorithm) (goidc.JSONWebKey, err
 }
 
 func (ctx Context) Sign(claims any, alg goidc.SignatureAlgorithm, opts *jose.SignerOptions) (string, error) {
+	if alg == goidc.None {
+		return joseutil.Unsigned(claims, opts), nil
+	}
 
 	if ctx.SignerFunc == nil {
 		jwk, err := ctx.JWKByAlg(alg)

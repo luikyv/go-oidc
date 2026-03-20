@@ -1,6 +1,7 @@
 package token
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 
@@ -22,10 +23,12 @@ func generateAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 
 	as, err := ctx.AuthnSessionByAuthCode(req.code)
 	if err != nil {
-		// Invalidate any grant associated with the authorization code.
-		// This ensures that even if the code is compromised, the access token
-		// that it generated cannot be misused by a malicious client.
-		_ = ctx.DeleteGrantByAuthorizationCode(req.code)
+		if errors.Is(err, goidc.ErrNotFound) {
+			// Invalidate any grant associated with the authorization code.
+			// This ensures that even if the code is compromised, the access token
+			// that it generated cannot be misused by a malicious client.
+			_ = ctx.DeleteGrantByAuthorizationCode(req.code)
+		}
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid authorization code", err)
 	}
 
@@ -55,7 +58,7 @@ func generateAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 		return response{}, err
 	}
 
-	tkn, tokenValue, err := Issue(ctx, grant, c, &Options{
+	tkn, tokenValue, err := Issue(ctx, grant, c, &IssuanceOptions{
 		Scopes:      req.scopes,
 		AuthDetails: req.authDetails,
 		Resources:   req.resources,
@@ -100,7 +103,7 @@ func validateAuthCodeGrantRequest(ctx oidc.Context, req request, c *goidc.Client
 		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "the authorization code is expired")
 	}
 
-	if err := ValidateBinding(ctx, c, &bindindValidationsOptions{
+	if err := ValidateBinding(ctx, c, &bindindValidationOptions{
 		tlsIsRequired:     as.ClientCertThumbprint != "",
 		tlsCertThumbprint: as.ClientCertThumbprint,
 		dpopIsRequired:    as.JWKThumbprint != "",
@@ -109,11 +112,11 @@ func validateAuthCodeGrantRequest(ctx oidc.Context, req request, c *goidc.Client
 		return err
 	}
 
-	if as.RedirectURI != req.redirectURI {
+	if req.redirectURI != as.RedirectURI {
 		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid redirect_uri")
 	}
 
-	if err := validatePkce(ctx, req, c, as); err != nil {
+	if err := validatePKCE(ctx, req, c, as); err != nil {
 		return err
 	}
 

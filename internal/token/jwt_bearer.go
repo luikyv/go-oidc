@@ -67,7 +67,7 @@ func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
 	}
 
 	if strutil.ContainsOpenID(tkn.Scopes) {
-		tokenResp.IDToken, err = makeIDToken(ctx, c, IDTokenOptions{
+		tokenResp.IDToken, err = MakeIDToken(ctx, c, IDTokenOptions{
 			Subject: grant.Subject,
 			Nonce:   grant.Nonce,
 			Claims:  ctx.IDTokenClaims(grant),

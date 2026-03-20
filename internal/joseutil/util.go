@@ -126,10 +126,17 @@ func Encrypt(
 	return encContentString, nil
 }
 
-func Unsigned(claims map[string]any) string {
+func Unsigned(claims any, opts *jose.SignerOptions) string {
+	if opts == nil {
+		opts = &jose.SignerOptions{}
+	}
+	if _, ok := opts.ExtraHeaders[jose.HeaderType]; !ok {
+		opts = opts.WithType("JWT")
+	}
+
 	header := map[string]any{
 		"alg": goidc.None,
-		"typ": "JWT",
+		"typ": opts.ExtraHeaders[jose.HeaderType],
 	}
 	headerJSON, err := json.Marshal(header)
 	if err != nil {

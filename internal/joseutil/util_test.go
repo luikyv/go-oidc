@@ -323,7 +323,7 @@ func TestUnsigned(t *testing.T) {
 	}
 
 	// When.
-	unsignedJWT := joseutil.Unsigned(claims)
+	unsignedJWT := joseutil.Unsigned(claims, nil)
 
 	// Then.
 	want := "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJyYW5kb21fc3ViamVjdCJ9."

@@ -84,6 +84,9 @@ func TestGenerateGrant_RefreshTokenGrant_AuthDetails(t *testing.T) {
 	ctx, client, grantSession := setUpRefreshTokenGrant(t)
 	ctx.RARIsEnabled = true
 	ctx.RARDetailTypes = map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc{"type1": nil, "type2": nil}
+	ctx.RARCompareDetailsFunc = func(_ context.Context, _, _ []goidc.AuthorizationDetail) error {
+		return nil
+	}
 	authDetails := []goidc.AuthorizationDetail{
 		{
 			"type":         "type1",

@@ -204,7 +204,7 @@ func TestJARFromRequestObject_Unsigned(t *testing.T) {
 			},
 		},
 	}
-	requestObject := joseutil.Unsigned(claims)
+	requestObject := joseutil.Unsigned(claims, nil)
 
 	// When.
 	jar, err := jarFromRequestObject(ctx, requestObject, client)
