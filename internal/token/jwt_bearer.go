@@ -61,7 +61,9 @@ func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
 		ExpiresIn:            tkn.LifetimeSecs(),
 		TokenType:            tkn.Type,
 		RefreshToken:         grant.RefreshToken,
+		Scopes:               tkn.Scopes,
 		AuthorizationDetails: tkn.AuthDetails,
+		Resources:            tkn.Resources,
 	}
 
 	if strutil.ContainsOpenID(tkn.Scopes) {
@@ -73,14 +75,6 @@ func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
 		if err != nil {
 			return response{}, fmt.Errorf("could not generate id token for the jwt bearer grant: %w", err)
 		}
-	}
-
-	if tkn.Scopes != req.scopes {
-		tokenResp.Scopes = tkn.Scopes
-	}
-
-	if ctx.ResourceIndicatorsIsEnabled && !compareSlices(tkn.Resources, req.resources) {
-		tokenResp.Resources = tkn.Resources
 	}
 
 	return tokenResp, nil

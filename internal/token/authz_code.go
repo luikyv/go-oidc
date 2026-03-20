@@ -69,13 +69,9 @@ func generateAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 		ExpiresIn:            tkn.LifetimeSecs(),
 		TokenType:            tkn.Type,
 		RefreshToken:         grant.RefreshToken,
+		Scopes:               tkn.Scopes,
 		AuthorizationDetails: tkn.AuthDetails,
-	}
-	if tkn.Scopes != as.GrantedScopes {
-		tokenResp.Scopes = tkn.Scopes
-	}
-	if ctx.ResourceIndicatorsIsEnabled && !compareSlices(tkn.Resources, as.GrantedResources) {
-		tokenResp.Resources = tkn.Resources
+		Resources:            tkn.Resources,
 	}
 	if strutil.ContainsOpenID(tkn.Scopes) {
 		tokenResp.IDToken, err = MakeIDToken(ctx, c, IDTokenOptions{
@@ -134,11 +130,4 @@ func validateAuthCodeGrantRequest(ctx oidc.Context, req request, c *goidc.Client
 	}
 
 	return nil
-}
-
-func compareSlices(s1, s2 []string) bool {
-	c1, c2 := slices.Clone(s1), slices.Clone(s2)
-	slices.Sort(c1)
-	slices.Sort(c2)
-	return slices.Equal(c1, c2)
 }

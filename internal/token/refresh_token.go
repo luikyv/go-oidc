@@ -66,6 +66,7 @@ func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) 
 		TokenType:            tkn.Type,
 		Scopes:               tkn.Scopes,
 		AuthorizationDetails: tkn.AuthDetails,
+		Resources:            tkn.Resources,
 		RefreshToken:         refreshToken,
 	}
 

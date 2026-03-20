@@ -32,3 +32,4 @@ conformance-suite/
 *.zip
 *.bkp
 .DS_store
+main

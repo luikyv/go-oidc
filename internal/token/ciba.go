@@ -76,13 +76,9 @@ func NotifyCIBAGrant(ctx oidc.Context, authReqID string) error {
 		ExpiresIn:            tkn.LifetimeSecs(),
 		TokenType:            tkn.Type,
 		RefreshToken:         grant.RefreshToken,
+		Scopes:               tkn.Scopes,
 		AuthorizationDetails: tkn.AuthDetails,
-	}
-	if tkn.Scopes != as.GrantedScopes {
-		resp.Scopes = tkn.Scopes
-	}
-	if ctx.ResourceIndicatorsIsEnabled && !compareSlices(tkn.Resources, as.GrantedResources) {
-		resp.Resources = tkn.Resources
+		Resources:            tkn.Resources,
 	}
 	if strutil.ContainsOpenID(tkn.Scopes) {
 		idTokenOpts := IDTokenOptions{
@@ -218,13 +214,9 @@ func generateCIBAGrant(ctx oidc.Context, req request) (response, error) {
 		ExpiresIn:            tkn.LifetimeSecs(),
 		TokenType:            tkn.Type,
 		RefreshToken:         grant.RefreshToken,
+		Scopes:               tkn.Scopes,
 		AuthorizationDetails: tkn.AuthDetails,
-	}
-	if tkn.Scopes != as.GrantedScopes {
-		resp.Scopes = tkn.Scopes
-	}
-	if ctx.ResourceIndicatorsIsEnabled && !compareSlices(tkn.Resources, as.GrantedResources) {
-		resp.Resources = tkn.Resources
+		Resources:            tkn.Resources,
 	}
 	if strutil.ContainsOpenID(tkn.Scopes) {
 		resp.IDToken, err = MakeIDToken(ctx, c, IDTokenOptions{

@@ -50,6 +50,7 @@ func generateClientCredentialsGrant(ctx oidc.Context, req request) (response, er
 		ExpiresIn:            tkn.LifetimeSecs(),
 		TokenType:            tkn.Type,
 		AuthorizationDetails: tkn.AuthDetails,
+		Resources:            tkn.Resources,
 		Scopes:               tkn.Scopes,
 	}, nil
 }
