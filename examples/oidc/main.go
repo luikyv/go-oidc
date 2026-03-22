@@ -40,7 +40,7 @@ func main() {
 		provider.WithRefreshTokenGrant(),
 		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
 		provider.WithACRs(authutil.ACRs[0], authutil.ACRs...),
-		provider.WithDCR(authutil.DCRFunc, nil),
+		provider.WithDCR(authutil.DCRFunc),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.RS256)),
 		provider.WithIDTokenClaims(authutil.IDTokenClaimsFunc()),
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),

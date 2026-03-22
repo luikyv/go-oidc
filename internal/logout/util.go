@@ -192,6 +192,7 @@ func validateIDTokenHint(ctx oidc.Context, req request, _ *goidc.Client) error {
 func initLogoutSession(ctx oidc.Context, req request, c *goidc.Client) (*goidc.LogoutSession, error) {
 	session := &goidc.LogoutSession{
 		ID:                 ctx.LogoutSessionID(),
+		Status:             goidc.StatusInProgress,
 		ClientID:           c.ID,
 		CallbackID:         ctx.CallbackID(),
 		ExpiresAtTimestamp: timeutil.TimestampNow() + ctx.LogoutSessionTimeoutSecs,

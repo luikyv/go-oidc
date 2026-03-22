@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/luikyv/go-oidc/examples/authutil"
-	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 	"github.com/luikyv/go-oidc/pkg/provider"
 )
@@ -22,7 +21,7 @@ func main() {
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithIDTokenSignatureAlgs(goidc.PS256),
 		provider.WithUserInfoSignatureAlgs(goidc.PS256),
-		provider.WithCIBAGrant(initBackAuthFunc(), validateBackAuthFunc()),
+		provider.WithCIBAGrant(initBackAuthFunc()),
 		provider.WithCIBADeliveryModes(
 			goidc.CIBATokenDeliveryModePoll,
 			goidc.CIBATokenDeliveryModePing,
@@ -43,7 +42,7 @@ func main() {
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
 		provider.WithCheckJTIFunc(authutil.CheckJTIFunc()),
-		provider.WithDCR(authutil.DCRFunc, nil),
+		provider.WithDCR(authutil.DCRFunc),
 	)
 
 	// Set up the server.
@@ -80,41 +79,18 @@ func main() {
 	}
 }
 
-func initBackAuthFunc() goidc.InitBackAuthFunc {
-	return func(ctx context.Context, as *goidc.AuthnSession) error {
-
+func initBackAuthFunc() goidc.HandleSessionFunc {
+	return func(ctx context.Context, as *goidc.AuthnSession, c *goidc.Client) error {
 		if len(as.BindingMessage) > 10 {
-			return goidc.NewError(goidc.ErrorCodeInvalidBindingMessage,
-				"invalid binding message")
+			return goidc.NewError(goidc.ErrorCodeInvalidBindingMessage, "invalid binding message")
 		}
 
 		as.SetUserID(as.LoginHint)
-		as.StoreParameter("ready", false)
 		as.GrantScopes(as.Scopes)
-
-		if as.RequestedExpiry != nil {
-			as.ExpiresAtTimestamp = timeutil.TimestampNow() + *as.RequestedExpiry
-		}
-
 		if as.ACRValues != "" {
 			as.StoreParameter("id_token_claims", map[string]any{
 				goidc.ClaimACR: as.ACRValues,
 			})
-		}
-
-		return nil
-	}
-}
-
-func validateBackAuthFunc() goidc.ValidateBackAuthFunc {
-	return func(ctx context.Context, as *goidc.AuthnSession) error {
-		if as.StoredParameter("error") == true {
-			return goidc.NewError(goidc.ErrorCodeAccessDenied,
-				"access denied").WithStatusCode(http.StatusBadRequest)
-		}
-
-		if as.StoredParameter("ready") != true {
-			return goidc.NewError(goidc.ErrorCodeAuthPending, "not ready")
 		}
 
 		return nil
@@ -128,7 +104,7 @@ func cibaActionHandler(op *provider.Provider) http.HandlerFunc {
 
 		action := r.URL.Query().Get("type")
 		if action != "allow" {
-			authnSession.StoreParameter("error", true)
+			authnSession.Status = goidc.StatusFailure
 			_ = op.SaveAuthnSession(r.Context(), authnSession)
 			goidcErr := goidc.NewError(goidc.ErrorCodeAccessDenied, "access denied")
 			go func() {
@@ -139,7 +115,7 @@ func cibaActionHandler(op *provider.Provider) http.HandlerFunc {
 			return
 		}
 
-		authnSession.StoreParameter("ready", true)
+		authnSession.Status = goidc.StatusSuccess
 		_ = op.SaveAuthnSession(r.Context(), authnSession)
 		go func() {
 			if err := op.NotifyCIBASuccess(r.Context(), authReqID); err != nil {

@@ -42,6 +42,7 @@ func TestPushAuth(t *testing.T) {
 
 	wantedSession := goidc.AuthnSession{
 		ID:                 session.ID,
+		Status:             goidc.StatusInProgress,
 		PushedAuthReqID:    resp.RequestURI,
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
@@ -113,6 +114,7 @@ func TestPushAuth_WithJAR(t *testing.T) {
 
 	wantedSession := goidc.AuthnSession{
 		ID:                 session.ID,
+		Status:             goidc.StatusInProgress,
 		PushedAuthReqID:    resp.RequestURI,
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,

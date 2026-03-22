@@ -51,7 +51,11 @@ func initBackAuth(ctx oidc.Context, req request) (cibaResponse, error) {
 	}
 
 	as.CIBAAuthID = ctx.CIBAAuthReqID()
-	as.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.CIBADefaultSessionLifetimeSecs
+	exp := ctx.CIBADefaultSessionLifetimeSecs
+	if as.RequestedExpiry != nil {
+		exp = *as.RequestedExpiry
+	}
+	as.ExpiresAtTimestamp = timeutil.TimestampNow() + exp
 	if as.IDTokenHint != "" {
 		// The ID token hint was already validated.
 		idToken, _ := jwt.ParseSigned(as.IDTokenHint, ctx.IDTokenSigAlgs)
@@ -70,7 +74,7 @@ func initBackAuth(ctx oidc.Context, req request) (cibaResponse, error) {
 		}
 	}
 
-	if err := ctx.InitBackAuth(as); err != nil {
+	if err := ctx.CIBAHandleSession(as, c); err != nil {
 		return cibaResponse{}, err
 	}
 

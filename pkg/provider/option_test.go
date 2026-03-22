@@ -524,12 +524,9 @@ func TestWithDCR(t *testing.T) {
 	var handleDCRFunc goidc.HandleDynamicClientFunc = func(*http.Request, string, *goidc.ClientMeta) error {
 		return nil
 	}
-	var validateInitialTokenFunc goidc.ValidateInitialAccessTokenFunc = func(context.Context, string) error {
-		return nil
-	}
 
 	// When.
-	err := WithDCR(handleDCRFunc, validateInitialTokenFunc)(p)
+	err := WithDCR(handleDCRFunc)(p)
 
 	// Then.
 	if err != nil {
@@ -2960,15 +2957,12 @@ func TestWithCIBAGrant(t *testing.T) {
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
-	initFunc := func(ctx context.Context, as *goidc.AuthnSession) error {
-		return nil
-	}
-	validateFunc := func(ctx context.Context, as *goidc.AuthnSession) error {
+	initFunc := func(ctx context.Context, as *goidc.AuthnSession, c *goidc.Client) error {
 		return nil
 	}
 
 	// When.
-	err := WithCIBAGrant(initFunc, validateFunc)(p)
+	err := WithCIBAGrant(initFunc)(p)
 
 	// Then.
 	if err != nil {
@@ -2979,12 +2973,8 @@ func TestWithCIBAGrant(t *testing.T) {
 		t.Error("CIBA grant is missing")
 	}
 
-	if p.config.InitBackAuthFunc == nil {
-		t.Error("InitBackAuthFunc cannot be nil")
-	}
-
-	if p.config.ValidateBackAuthFunc == nil {
-		t.Error("ValidateBackAuthFunc cannot be nil")
+	if p.config.CIBAHandleSessionFunc == nil {
+		t.Error("CIBAHandleSessionFunc cannot be nil")
 	}
 }
 

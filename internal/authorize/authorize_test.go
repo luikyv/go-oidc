@@ -53,6 +53,7 @@ func TestInitAuth(t *testing.T) {
 
 	wantedSession := goidc.AuthnSession{
 		ID:                 session.ID,
+		Status:             goidc.StatusInProgress,
 		PolicyID:           ctx.Policies[0].ID,
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
@@ -176,6 +177,7 @@ func TestInitAuth_JAR(t *testing.T) {
 
 	wantedSession := goidc.AuthnSession{
 		ID:                 session.ID,
+		Status:             goidc.StatusInProgress,
 		PolicyID:           ctx.Policies[0].ID,
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
@@ -307,6 +309,7 @@ func TestInitAuth_ResourceIndicator(t *testing.T) {
 
 	wantedSession := goidc.AuthnSession{
 		ID:                 session.ID,
+		Status:             goidc.StatusInProgress,
 		PolicyID:           ctx.Policies[0].ID,
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
@@ -372,6 +375,7 @@ func TestInitAuth_IDTokenHint(t *testing.T) {
 
 	wantedSession := goidc.AuthnSession{
 		ID:                 session.ID,
+		Status:             goidc.StatusInProgress,
 		PolicyID:           ctx.Policies[0].ID,
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
@@ -647,6 +651,7 @@ func TestInitAuth_ShouldEndInProgress(t *testing.T) {
 
 	wantedSession := goidc.AuthnSession{
 		ID:                 session.ID,
+		Status:             goidc.StatusInProgress,
 		PolicyID:           ctx.Policies[0].ID,
 		CallbackID:         session.CallbackID,
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
@@ -677,6 +682,7 @@ func TestInitAuth_PAR(t *testing.T) {
 	_ = ctx.SaveAuthnSession(
 		&goidc.AuthnSession{
 			ID:              uuid.NewString(),
+			Status:          goidc.StatusInProgress,
 			PushedAuthReqID: requestURI,
 			AuthorizationParameters: goidc.AuthorizationParameters{
 				RequestURI:   requestURI,
@@ -719,6 +725,7 @@ func TestInitAuth_PAR(t *testing.T) {
 
 	wantedSession := goidc.AuthnSession{
 		ID:                 session.ID,
+		Status:             goidc.StatusInProgress,
 		PolicyID:           ctx.Policies[0].ID,
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,

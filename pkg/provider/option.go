@@ -246,14 +246,11 @@ func WithIDTokenLifetime(secs int) Option {
 // [WithIDTokenContentEncryptionAlgs].
 // Clients can choose the encryption algorithms for ID tokens by informing the
 // attributes "id_token_encrypted_response_alg" and "id_token_encrypted_response_enc".
-func WithIDTokenEncryption(
-	keyEncAlg goidc.KeyEncryptionAlgorithm,
-	keyEncAlgs ...goidc.KeyEncryptionAlgorithm,
-) Option {
-	keyEncAlgs = appendIfNotIn(keyEncAlgs, keyEncAlg)
+func WithIDTokenEncryption(alg goidc.KeyEncryptionAlgorithm, algs ...goidc.KeyEncryptionAlgorithm) Option {
+	algs = appendIfNotIn(algs, alg)
 	return func(p *Provider) error {
 		p.config.IDTokenEncIsEnabled = true
-		p.config.IDTokenKeyEncAlgs = keyEncAlgs
+		p.config.IDTokenKeyEncAlgs = algs
 		return nil
 	}
 }
@@ -261,10 +258,7 @@ func WithIDTokenEncryption(
 // WithIDTokenContentEncryptionAlgs overrides the default content encryption
 // algorithm which is A128CBC-HS256.
 // To enabled encryption of ID tokens, see [WithIDTokenEncryption].
-func WithIDTokenContentEncryptionAlgs(
-	defaultAlg goidc.ContentEncryptionAlgorithm,
-	algs ...goidc.ContentEncryptionAlgorithm,
-) Option {
+func WithIDTokenContentEncryptionAlgs(defaultAlg goidc.ContentEncryptionAlgorithm, algs ...goidc.ContentEncryptionAlgorithm) Option {
 	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p *Provider) error {
 		p.config.IDTokenDefaultContentEncAlg = defaultAlg
@@ -277,13 +271,18 @@ func WithIDTokenContentEncryptionAlgs(
 // handleFunc is executed during registration and update of the client to
 // perform custom validations (e.g. validate the initial access token) or set
 // default values (e.g. set the default scopes).
-// validateTokenFunc validates the initial access token if not nil.
 // To make registration access tokens rotate, see [WithDCRTokenRotation].
-func WithDCR(handleFunc goidc.HandleDynamicClientFunc, validateTokenFunc goidc.ValidateInitialAccessTokenFunc) Option {
+func WithDCR(handleFunc goidc.HandleDynamicClientFunc) Option {
 	return func(p *Provider) error {
 		p.config.DCRIsEnabled = true
 		p.config.HandleDynamicClientFunc = handleFunc
-		p.config.ValidateInitialAccessTokenFunc = validateTokenFunc
+		return nil
+	}
+}
+
+func WithDCRInitialTokenFunc(f goidc.ValidateInitialAccessTokenFunc) Option {
+	return func(p *Provider) error {
+		p.config.ValidateInitialAccessTokenFunc = f
 		return nil
 	}
 }
@@ -345,11 +344,10 @@ func WithRefreshTokenRotation() Option {
 	}
 }
 
-func WithCIBAGrant(initFunc goidc.InitBackAuthFunc, validateFunc goidc.ValidateBackAuthFunc) Option {
+func WithCIBAGrant(initFunc goidc.HandleSessionFunc) Option {
 	return func(p *Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantCIBA)
-		p.config.InitBackAuthFunc = initFunc
-		p.config.ValidateBackAuthFunc = validateFunc
+		p.config.CIBAHandleSessionFunc = initFunc
 		return nil
 	}
 }

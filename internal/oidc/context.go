@@ -56,7 +56,7 @@ func (ctx Context) IsClientAllowedTokenIntrospection(c *goidc.Client, info goidc
 		return false
 	}
 
-	return ctx.IsClientAllowedTokenIntrospectionFunc(c, info)
+	return ctx.IsClientAllowedTokenIntrospectionFunc(ctx, c, info)
 }
 
 func (ctx Context) TokenIntrospectionAuthnSigAlgs() []goidc.SignatureAlgorithm {
@@ -68,7 +68,7 @@ func (ctx Context) IsClientAllowedTokenRevocation(c *goidc.Client) bool {
 		return false
 	}
 
-	return ctx.IsClientAllowedTokenRevocationFunc(c)
+	return ctx.IsClientAllowedTokenRevocationFunc(ctx, c)
 }
 
 func (ctx Context) TokenRevocationAuthnSigAlgs() []goidc.SignatureAlgorithm {
@@ -226,18 +226,11 @@ func (ctx Context) RARCompareAuthDetails(granted, requested []goidc.Authorizatio
 	return ctx.RARCompareDetailsFunc(ctx, granted, requested)
 }
 
-func (ctx Context) InitBackAuth(session *goidc.AuthnSession) error {
-	if ctx.InitBackAuthFunc == nil {
+func (ctx Context) CIBAHandleSession(as *goidc.AuthnSession, c *goidc.Client) error {
+	if ctx.CIBAHandleSessionFunc == nil {
 		return errors.New("ciba init back auth function is not set")
 	}
-	return ctx.InitBackAuthFunc(ctx, session)
-}
-
-func (ctx Context) ValidateBackAuth(session *goidc.AuthnSession) error {
-	if ctx.ValidateBackAuthFunc == nil {
-		return errors.New("ciba validate back auth function is not set")
-	}
-	return ctx.ValidateBackAuthFunc(ctx, session)
+	return ctx.CIBAHandleSessionFunc(ctx, as, c)
 }
 
 func (ctx Context) OpenIDFedRequiredTrustMarks(client *goidc.Client) []goidc.TrustMark {
@@ -586,30 +579,7 @@ func (ctx Context) RefreshToken() string {
 }
 
 func (ctx Context) TokenOptions(grant *goidc.Grant, c *goidc.Client) goidc.TokenOptions {
-	opts := ctx.TokenOptionsFunc(ctx, grant, c)
-	if shouldSwitchToOpaque(ctx, grant, c, opts) {
-		opts = goidc.NewOpaqueTokenOptions(opts.LifetimeSecs)
-	}
-	return opts
-}
-
-func shouldSwitchToOpaque(ctx Context, grant *goidc.Grant, c *goidc.Client, opts goidc.TokenOptions) bool {
-	// There is no need to switch if the token is already opaque.
-	if opts.Format == goidc.TokenFormatOpaque {
-		return false
-	}
-
-	// Use an opaque token format if the subject identifier type is pairwise.
-	// This prevents potential information leakage that could occur if the JWT
-	// token was decoded by clients.
-	return ctx.shouldGeneratePairwiseSub(c) &&
-		// The pairwise subject type doesn't apply for client credentials.
-		grant.Type != goidc.GrantClientCredentials
-}
-
-func (ctx Context) shouldGeneratePairwiseSub(c *goidc.Client) bool {
-	return c.SubIdentifierType == goidc.SubIdentifierPairwise ||
-		(c.SubIdentifierType == "" && ctx.DefaultSubIdentifierType == goidc.SubIdentifierPairwise)
+	return ctx.TokenOptionsFunc(ctx, grant, c)
 }
 
 func (ctx Context) HandleGrant(grant *goidc.Grant) error {
@@ -657,14 +627,8 @@ func (ctx Context) HTTPClient() *http.Client {
 	return ctx.HTTPClientFunc(ctx)
 }
 
-// TODO.
-// ExportableSubject returns a subject identifier for the given client based on
-// its subject identifier type.
-// If the subject identifier type is "public", it returns the provided subject.
-// If the subject identifier type is "pairwise", it generates a pairwise
-// identifier using the sector URI or a redirect URI.
-func (ctx Context) ExportableSubject(sub string, c *goidc.Client) string {
-	if ctx.GeneratePairwiseSubIDFunc == nil || !ctx.shouldGeneratePairwiseSub(c) {
+func (ctx Context) PairwiseSubject(sub string, c *goidc.Client) string {
+	if ctx.GeneratePairwiseSubIDFunc == nil {
 		return sub
 	}
 
@@ -676,7 +640,7 @@ func (ctx Context) PARHandleSession(as *goidc.AuthnSession, c *goidc.Client) err
 		return nil
 	}
 
-	return ctx.PARHandleSessionFunc(ctx.Request, as, c)
+	return ctx.PARHandleSessionFunc(ctx, as, c)
 }
 
 func (ctx Context) ClientSecret() string {

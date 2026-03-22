@@ -1,6 +1,7 @@
 package token
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -155,7 +156,7 @@ func TestRevoke_TokenNotIssuedToClient(t *testing.T) {
 func TestRevoke_ClientNotAllowed(t *testing.T) {
 	// Given.
 	ctx, client := setUpRevocation(t)
-	ctx.IsClientAllowedTokenRevocationFunc = func(_ *goidc.Client) bool {
+	ctx.IsClientAllowedTokenRevocationFunc = func(_ context.Context, _ *goidc.Client) bool {
 		return false
 	}
 
@@ -288,7 +289,7 @@ func setUpRevocation(t *testing.T) (ctx oidc.Context, client *goidc.Client) {
 
 	ctx = oidctest.NewContext(t)
 	ctx.TokenRevocationIsEnabled = true
-	ctx.IsClientAllowedTokenRevocationFunc = func(c *goidc.Client) bool {
+	ctx.IsClientAllowedTokenRevocationFunc = func(_ context.Context, c *goidc.Client) bool {
 		return true
 	}
 

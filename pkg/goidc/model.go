@@ -445,6 +445,7 @@ func (steps authnSteps) Authenticate(w http.ResponseWriter, r *http.Request, as 
 		nextIdx := idx + 1
 		// Return success if the current step is the last step.
 		if nextIdx == len(steps) {
+			as.Status = StatusSuccess
 			return StatusSuccess, nil
 		}
 
@@ -661,9 +662,9 @@ type JWTBearerGrantInfo struct {
 	Store   map[string]any
 }
 
-type IsClientAllowedFunc func(*Client) bool
+type IsClientAllowedFunc func(context.Context, *Client) bool
 
-type IsClientAllowedTokenInstrospectionFunc func(*Client, TokenInfo) bool
+type IsClientAllowedTokenInstrospectionFunc func(context.Context, *Client, TokenInfo) bool
 
 type GeneratePairwiseSubIDFunc func(ctx context.Context, sub string, client *Client) string
 
@@ -683,18 +684,7 @@ func (mode CIBATokenDeliveryMode) IsPollableMode() bool {
 	return mode == CIBATokenDeliveryModePoll || mode == CIBATokenDeliveryModePing
 }
 
-// InitBackAuthFunc allows modifying the authn session when initializing the
-// CIBA process.
-// If an error is returned, the authentication flow will not be initiated.
-type InitBackAuthFunc func(context.Context, *AuthnSession) error
-
-// ValidateBackAuthFunc validates a CIBA session during a client's polling
-// request to the token endpoint.
-// If an error other than [ErrorCodeAuthPending] or [ErrorCodeSlowDown] is
-// returned, the session will be terminated.
-type ValidateBackAuthFunc func(context.Context, *AuthnSession) error
-
-type HandleSessionFunc func(*http.Request, *AuthnSession, *Client) error
+type HandleSessionFunc func(context.Context, *AuthnSession, *Client) error
 
 type LogoutParameters struct {
 	IDTokenHint           string `json:"id_token_hint,omitempty"`
@@ -757,6 +747,7 @@ func (steps logoutSteps) Logout(w http.ResponseWriter, r *http.Request, ls *Logo
 		nextIdx := idx + 1
 		// Return success if the current step is the last step.
 		if nextIdx == len(steps) {
+			ls.Status = StatusSuccess
 			return StatusSuccess, nil
 		}
 

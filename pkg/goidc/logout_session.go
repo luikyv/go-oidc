@@ -15,6 +15,7 @@ type LogoutSessionManager interface {
 
 type LogoutSession struct {
 	ID         string `json:"id"`
+	Status     Status `json:"status"`
 	ClientID   string `json:"client_id,omitempty"`
 	PolicyID   string `json:"policy_id,omitempty"`
 	CallbackID string `json:"callback_id,omitempty"`

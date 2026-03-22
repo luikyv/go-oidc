@@ -31,7 +31,8 @@ type AuthnSessionManager interface {
 // It can be interacted with so to implement more sophisticated user
 // authentication flows.
 type AuthnSession struct {
-	ID string `json:"id"`
+	ID     string `json:"id"`
+	Status Status `json:"status"`
 	// Subject is the user identifier.
 	//
 	// This value must be informed during the authentication flow.

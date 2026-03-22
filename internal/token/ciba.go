@@ -3,7 +3,6 @@ package token
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -185,6 +184,16 @@ func generateCIBAGrant(ctx oidc.Context, req request) (response, error) {
 		return response{}, err
 	}
 
+	switch as.Status {
+	case goidc.StatusSuccess:
+		_ = ctx.DeleteAuthnSession(as.ID)
+	case goidc.StatusInProgress:
+		return response{}, goidc.NewError(goidc.ErrorCodeAuthPending, "authorization pending")
+	default:
+		_ = ctx.DeleteAuthnSession(as.ID)
+		return response{}, goidc.NewError(goidc.ErrorCodeAccessDenied, "access denied")
+	}
+
 	grant, err := NewGrant(ctx, c, GrantOptions{
 		Type:                 goidc.GrantCIBA,
 		Subject:              as.Subject,
@@ -253,10 +262,6 @@ func validateCIBAGrantRequest(ctx oidc.Context, req request, c *goidc.Client, as
 		return err
 	}
 
-	if err := validateBackAuth(ctx, as); err != nil {
-		return err
-	}
-
 	if err := validateResources(ctx, as.GrantedResources, req); err != nil {
 		return err
 	}
@@ -270,32 +275,4 @@ func validateCIBAGrantRequest(ctx oidc.Context, req request, c *goidc.Client, as
 	}
 
 	return nil
-}
-
-// validateBackAuth checks whether an authentication session is ready
-// to generate a grant for CIBA.
-func validateBackAuth(ctx oidc.Context, session *goidc.AuthnSession) error {
-	validationErr := ctx.ValidateBackAuth(session)
-	if validationErr == nil {
-		// If validation succeeds, delete the session to prevent reuse.
-		return ctx.DeleteAuthnSession(session.ID)
-	}
-
-	// If validation fails with either an authorization_pending or slow_down error
-	// (indicating the client should retry later), return the specific error
-	// without further processing.
-	var goidcErr goidc.Error
-	if errors.As(validationErr, &goidcErr) && slices.Contains(
-		[]goidc.ErrorCode{goidc.ErrorCodeAuthPending, goidc.ErrorCodeSlowDown},
-		goidcErr.Code,
-	) {
-		return validationErr
-	}
-
-	// If validation fails for other reasons, delete the session to prevent reuse
-	// and return the validation error.
-	if err := ctx.DeleteAuthnSession(session.ID); err != nil {
-		return err
-	}
-	return validationErr
 }

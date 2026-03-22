@@ -44,7 +44,16 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "grant not found", err)
 	}
 
-	sub := ctx.ExportableSubject(grant.Subject, c)
+	subType := ctx.DefaultSubIdentifierType
+	if c.SubIdentifierType != "" && slices.Contains(ctx.SubIdentifierTypes, c.SubIdentifierType) {
+		subType = c.SubIdentifierType
+	}
+
+	sub := grant.Subject
+	if subType == goidc.SubIdentifierPairwise {
+		sub = ctx.PairwiseSubject(grant.Subject, c)
+	}
+
 	claims := map[string]any{
 		goidc.ClaimSubject: sub,
 	}

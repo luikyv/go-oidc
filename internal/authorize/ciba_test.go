@@ -46,6 +46,7 @@ func TestInitBackAuth_PingMode(t *testing.T) {
 
 	wantedSession := goidc.AuthnSession{
 		ID:                 session.ID,
+		Status:             goidc.StatusInProgress,
 		CIBAAuthID:         session.CIBAAuthID,
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
@@ -101,6 +102,7 @@ func TestInitBackAuth_PollMode(t *testing.T) {
 
 	wantedSession := goidc.AuthnSession{
 		ID:                 session.ID,
+		Status:             goidc.StatusInProgress,
 		CIBAAuthID:         session.CIBAAuthID,
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
@@ -156,6 +158,7 @@ func TestInitBackAuth_PushMode(t *testing.T) {
 
 	wantedSession := goidc.AuthnSession{
 		ID:                 session.ID,
+		Status:             goidc.StatusInProgress,
 		CIBAAuthID:         session.CIBAAuthID,
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
@@ -227,6 +230,7 @@ func TestInitBackAuth_WithJAR(t *testing.T) {
 
 	wantedSession := goidc.AuthnSession{
 		ID:                 session.ID,
+		Status:             goidc.StatusInProgress,
 		CIBAAuthID:         resp.AuthReqID,
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
@@ -254,7 +258,7 @@ func TestInitBackAuth_WithJAR(t *testing.T) {
 func TestInitBackAuth_Rejected(t *testing.T) {
 	// Given.
 	ctx, client := setUpBackAuth(t)
-	ctx.InitBackAuthFunc = func(ctx context.Context, as *goidc.AuthnSession) error {
+	ctx.CIBAHandleSessionFunc = func(ctx context.Context, as *goidc.AuthnSession, c *goidc.Client) error {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid request")
 	}
 
@@ -321,10 +325,7 @@ func setUpBackAuth(t *testing.T) (oidc.Context, *goidc.Client) {
 		goidc.CIBATokenDeliveryModePoll, goidc.CIBATokenDeliveryModePing,
 		goidc.CIBATokenDeliveryModePush,
 	}
-	ctx.InitBackAuthFunc = func(ctx context.Context, as *goidc.AuthnSession) error {
-		return nil
-	}
-	ctx.ValidateBackAuthFunc = func(ctx context.Context, as *goidc.AuthnSession) error {
+	ctx.CIBAHandleSessionFunc = func(ctx context.Context, as *goidc.AuthnSession, c *goidc.Client) error {
 		return nil
 	}
 	ctx.CIBAUserCodeIsEnabled = true

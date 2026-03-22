@@ -28,6 +28,16 @@ func Issue(ctx oidc.Context, grant *goidc.Grant, c *goidc.Client, opts *Issuance
 	}
 
 	tknOpts := ctx.TokenOptions(grant, c)
+	// Use an opaque token format if the subject identifier type is pairwise.
+	// This prevents potential information leakage that could occur if the JWT token was decoded by clients.
+	subType := ctx.DefaultSubIdentifierType
+	if c.SubIdentifierType != "" && slices.Contains(ctx.SubIdentifierTypes, c.SubIdentifierType) {
+		subType = c.SubIdentifierType
+	}
+	if tknOpts.Format == goidc.TokenFormatJWT && subType == goidc.SubIdentifierPairwise && grant.Type != goidc.GrantClientCredentials {
+		tknOpts = goidc.NewOpaqueTokenOptions(tknOpts.LifetimeSecs)
+	}
+
 	now := timeutil.TimestampNow()
 	tkn := &goidc.Token{
 		GrantID:              grant.ID,
@@ -86,9 +96,19 @@ func MakeIDToken(ctx oidc.Context, c *goidc.Client, opts IDTokenOptions) (string
 		alg = c.IDTokenSigAlg
 	}
 
+	subType := ctx.DefaultSubIdentifierType
+	if c.SubIdentifierType != "" && slices.Contains(ctx.SubIdentifierTypes, c.SubIdentifierType) {
+		subType = c.SubIdentifierType
+	}
+
+	sub := opts.Subject
+	if subType == goidc.SubIdentifierPairwise {
+		sub = ctx.PairwiseSubject(opts.Subject, c)
+	}
+
 	now := timeutil.TimestampNow()
 	claims := map[string]any{
-		goidc.ClaimSubject:  ctx.ExportableSubject(opts.Subject, c),
+		goidc.ClaimSubject:  sub,
 		goidc.ClaimIssuer:   ctx.Issuer(),
 		goidc.ClaimIssuedAt: now,
 		goidc.ClaimExpiry:   now + ctx.IDTokenLifetimeSecs,

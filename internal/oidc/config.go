@@ -157,8 +157,7 @@ type Configuration struct {
 
 	CIBAEndpoint                   string
 	CIBATokenDeliveryModels        []goidc.CIBATokenDeliveryMode
-	InitBackAuthFunc               goidc.InitBackAuthFunc
-	ValidateBackAuthFunc           goidc.ValidateBackAuthFunc
+	CIBAHandleSessionFunc          goidc.HandleSessionFunc
 	CIBAUserCodeIsEnabled          bool
 	CIBADefaultSessionLifetimeSecs int
 	CIBAPollingIntervalSecs        int
