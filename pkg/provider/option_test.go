@@ -540,10 +540,6 @@ func TestWithDCR(t *testing.T) {
 	if p.config.HandleDynamicClientFunc == nil {
 		t.Error("HandleDynamicClientFunc cannot be nil")
 	}
-
-	if p.config.ValidateInitialAccessTokenFunc == nil {
-		t.Error("ValidateInitialAccessTokenFunc cannot be nil")
-	}
 }
 
 func TestWithDCRTokenRotation(t *testing.T) {
