@@ -138,7 +138,7 @@ func validateAuthDetails(ctx oidc.Context, req request, c *goidc.Client, granted
 	}
 
 	if granted != nil {
-		if err := ctx.RARCompareAuthDetails(granted, req.authDetails); err != nil {
+		if err := ctx.RARCompareAuthDetails(req.authDetails, granted); err != nil {
 			return goidc.WrapError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization details", err)
 		}
 	}

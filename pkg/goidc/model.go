@@ -638,7 +638,7 @@ type ValidateAuthDetailFunc func(context.Context, AuthorizationDetail, *Client) 
 // CompareAuthDetailsFunc defines a function used in authorization_code and
 // refresh_token grant types to validate that the requested authorization details
 // are consistent with the granted ones.
-type CompareAuthDetailsFunc func(ctx context.Context, granted, requested []AuthorizationDetail) error
+type CompareAuthDetailsFunc func(ctx context.Context, requested, granted []AuthorizationDetail) error
 
 // AuthorizationDetail represents an authorization details as a map.
 // It is a map instead of a struct, because its fields vary a lot depending on

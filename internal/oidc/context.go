@@ -219,11 +219,11 @@ func (ctx Context) RARValidateDetail(detail goidc.AuthorizationDetail, c *goidc.
 	return validate(ctx, detail, c)
 }
 
-func (ctx Context) RARCompareAuthDetails(granted, requested []goidc.AuthorizationDetail) error {
+func (ctx Context) RARCompareAuthDetails(requested, granted []goidc.AuthorizationDetail) error {
 	if ctx.RARCompareDetailsFunc == nil {
 		return errors.New("auth details comparing function is not defined")
 	}
-	return ctx.RARCompareDetailsFunc(ctx, granted, requested)
+	return ctx.RARCompareDetailsFunc(ctx, requested, granted)
 }
 
 func (ctx Context) CIBAHandleSession(as *goidc.AuthnSession, c *goidc.Client) error {
