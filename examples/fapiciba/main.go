@@ -21,7 +21,8 @@ func main() {
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithIDTokenSignatureAlgs(goidc.PS256),
 		provider.WithUserInfoSignatureAlgs(goidc.PS256),
-		provider.WithCIBAGrant(initBackAuthFunc()),
+		provider.WithGrantTypes(goidc.GrantCIBA),
+		provider.WithCIBAHandleSessionFunc(initBackAuthFunc()),
 		provider.WithCIBADeliveryModes(
 			goidc.CIBATokenDeliveryModePoll,
 			goidc.CIBATokenDeliveryModePing,
@@ -33,7 +34,7 @@ func main() {
 		provider.WithTokenAuthnMethods(goidc.AuthnMethodPrivateKeyJWT, goidc.AuthnMethodTLS),
 		provider.WithPrivateKeyJWTSignatureAlgs(goidc.PS256),
 		provider.WithClaimsParameter(),
-		provider.WithRefreshTokenGrant(),
+		provider.WithGrantTypes(goidc.GrantRefreshToken),
 		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
 		provider.WithACRs(authutil.ACRs[0], authutil.ACRs...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.PS256)),
@@ -84,15 +85,6 @@ func initBackAuthFunc() goidc.HandleSessionFunc {
 		if len(as.BindingMessage) > 10 {
 			return goidc.NewError(goidc.ErrorCodeInvalidBindingMessage, "invalid binding message")
 		}
-
-		as.SetUserID(as.LoginHint)
-		as.GrantScopes(as.Scopes)
-		if as.ACRValues != "" {
-			as.StoreParameter("id_token_claims", map[string]any{
-				goidc.ClaimACR: as.ACRValues,
-			})
-		}
-
 		return nil
 	}
 }
@@ -100,12 +92,12 @@ func initBackAuthFunc() goidc.HandleSessionFunc {
 func cibaActionHandler(op *provider.Provider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		authReqID := r.URL.Query().Get("token")
-		authnSession, _ := op.AuthnSessionByCIBAAuthID(r.Context(), authReqID)
+		as, _ := op.AuthnSessionByCIBAAuthID(r.Context(), authReqID)
 
 		action := r.URL.Query().Get("type")
 		if action != "allow" {
-			authnSession.Status = goidc.StatusFailure
-			_ = op.SaveAuthnSession(r.Context(), authnSession)
+			as.Status = goidc.StatusFailure
+			_ = op.SaveAuthnSession(r.Context(), as)
 			goidcErr := goidc.NewError(goidc.ErrorCodeAccessDenied, "access denied")
 			go func() {
 				if err := op.NotifyCIBAFailure(r.Context(), authReqID, goidcErr); err != nil {
@@ -115,8 +107,15 @@ func cibaActionHandler(op *provider.Provider) http.HandlerFunc {
 			return
 		}
 
-		authnSession.Status = goidc.StatusSuccess
-		_ = op.SaveAuthnSession(r.Context(), authnSession)
+		as.Status = goidc.StatusSuccess
+		as.SetUserID(as.LoginHint)
+		as.GrantScopes(as.Scopes)
+		if as.ACRValues != "" {
+			as.StoreParameter("id_token_claims", map[string]any{
+				goidc.ClaimACR: as.ACRValues,
+			})
+		}
+		_ = op.SaveAuthnSession(r.Context(), as)
 		go func() {
 			if err := op.NotifyCIBASuccess(r.Context(), authReqID); err != nil {
 				log.Println(err)

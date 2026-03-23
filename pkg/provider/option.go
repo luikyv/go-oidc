@@ -147,8 +147,7 @@ func WithTokenRevocationEndpoint(endpoint string) Option {
 	}
 }
 
-// WithCIBAEndpoint overrides the default value for the CIBA endpoint which is
-// [defaultEndpointCIBA].
+// WithCIBAEndpoint overrides the default value for the CIBA endpoint which is [defaultEndpointCIBA].
 func WithCIBAEndpoint(endpoint string) Option {
 	return func(p *Provider) error {
 		p.config.CIBAEndpoint = endpoint
@@ -304,22 +303,6 @@ func WithDCRTokenRotation() Option {
 	}
 }
 
-// WithClientCredentialsGrant makes available the client credentials grant.
-func WithClientCredentialsGrant() Option {
-	return func(p *Provider) error {
-		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantClientCredentials)
-		return nil
-	}
-}
-
-// WithRefreshTokenGrant makes available the refresh token grant.
-func WithRefreshTokenGrant() Option {
-	return func(p *Provider) error {
-		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantRefreshToken)
-		return nil
-	}
-}
-
 func WithRefreshTokenShouldIssueFunc(f goidc.ShouldIssueRefreshTokenFunc) Option {
 	return func(p *Provider) error {
 		p.config.ShouldIssueRefreshTokenFunc = f
@@ -336,7 +319,7 @@ func WithRefreshTokenLifetime(lifetimeSecs int) Option {
 
 // WithRefreshTokenRotation causes a new refresh token to be issued each time
 // one is used. The one used during the request then becomes invalid.
-// To enable the refresh token grant, see [WithRefreshTokenGrant].
+// To enable the refresh token grant, see [WithGrantTypes].
 func WithRefreshTokenRotation() Option {
 	return func(p *Provider) error {
 		p.config.RefreshTokenRotationIsEnabled = true
@@ -344,10 +327,9 @@ func WithRefreshTokenRotation() Option {
 	}
 }
 
-func WithCIBAGrant(initFunc goidc.HandleSessionFunc) Option {
+func WithCIBAHandleSessionFunc(f goidc.HandleSessionFunc) Option {
 	return func(p *Provider) error {
-		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantCIBA)
-		p.config.CIBAHandleSessionFunc = initFunc
+		p.config.CIBAHandleSessionFunc = f
 		return nil
 	}
 }
@@ -465,20 +447,10 @@ func WithTokenClaims(f goidc.TokenClaimsFunc) Option {
 	}
 }
 
-// WithAuthorizationCodeGrant allows the authorization_code grant type and the
-// associated response types.
-func WithAuthorizationCodeGrant() Option {
+func WithGrantTypes(grant goidc.GrantType, grants ...goidc.GrantType) Option {
+	grants = appendIfNotIn(grants, grant)
 	return func(p *Provider) error {
-		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantAuthorizationCode)
-		return nil
-	}
-}
-
-// WithImplicitGrant allows the implicit grant type and the associated
-// response types.
-func WithImplicitGrant() Option {
-	return func(p *Provider) error {
-		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantImplicit)
+		p.config.GrantTypes = grants
 		return nil
 	}
 }
@@ -907,12 +879,13 @@ func WithAuthnSessionIDFunc(f goidc.RandomStringFunc) Option {
 	}
 }
 
-// WithStaticClient adds a static client to the provider.
+// WithStaticClients adds static clients to the provider.
 // The static clients are kept in memory only and are checked before consulting
 // the client manager.
-func WithStaticClient(client *goidc.Client) Option {
+func WithStaticClients(c *goidc.Client, cs ...*goidc.Client) Option {
+	cs = appendIfNotIn(cs, c)
 	return func(p *Provider) error {
-		p.config.StaticClients = append(p.config.StaticClients, client)
+		p.config.StaticClients = cs
 		return nil
 	}
 }
@@ -987,11 +960,10 @@ func WithHTTPClientFunc(f goidc.HTTPClientFunc) Option {
 	}
 }
 
-// WithJWTBearerGrant enables the JWT bearer grant type.
-func WithJWTBearerGrant(f goidc.HandleJWTBearerGrantAssertionFunc) Option {
+// WithJWTBearerHandleAssertionFunc sets the function to handle JWT bearer grant assertions.
+func WithJWTBearerHandleAssertionFunc(f goidc.JWTBearerHandleAssertionFunc) Option {
 	return func(p *Provider) error {
-		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantJWTBearer)
-		p.config.JWTBearerGrantHandleAssertionFunc = f
+		p.config.JWTBearerHandleAssertionFunc = f
 		return nil
 	}
 }
@@ -1000,7 +972,7 @@ func WithJWTBearerGrant(f goidc.HandleJWTBearerGrantAssertionFunc) Option {
 // for the jwt bearer grant type.
 func WithJWTBearerGrantClientAuthnRequired() Option {
 	return func(p *Provider) error {
-		p.config.JWTBearerGrantClientAuthnIsRequired = true
+		p.config.JWTBearerClientAuthnIsRequired = true
 		return nil
 	}
 }
@@ -1009,21 +981,21 @@ func WithJWTBearerGrantClientAuthnRequired() Option {
 //
 // If [goidc.SubIdentifierPairwise] is informed, the default behavior for
 // generating pairwise subjects is to keep the value as is.
-// This can be overridden with [WithGeneratePairwiseSubIDFunc].
+// This can be overridden with [WithPairwiseSubjectFunc].
 // Also, only opaque tokens are issued when pairwise IDs are applied to avoid
 // information leakage since the sub value is part of the token payload.
-func WithSubIdentifierTypes(defaultIDType goidc.SubIdentifierType, idTypes ...goidc.SubIdentifierType) Option {
-	idTypes = appendIfNotIn(idTypes, defaultIDType)
+func WithSubIdentifierTypes(defaultType goidc.SubIdentifierType, types ...goidc.SubIdentifierType) Option {
+	types = appendIfNotIn(types, defaultType)
 	return func(p *Provider) error {
-		p.config.DefaultSubIdentifierType = defaultIDType
-		p.config.SubIdentifierTypes = idTypes
+		p.config.DefaultSubIdentifierType = defaultType
+		p.config.SubIdentifierTypes = types
 		return nil
 	}
 }
 
-func WithGeneratePairwiseSubIDFunc(f goidc.GeneratePairwiseSubIDFunc) Option {
+func WithPairwiseSubjectFunc(f goidc.PairwiseSubjectFunc) Option {
 	return func(p *Provider) error {
-		p.config.GeneratePairwiseSubIDFunc = f
+		p.config.PairwiseSubjectFunc = f
 		return nil
 	}
 }

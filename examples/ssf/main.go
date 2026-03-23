@@ -29,8 +29,8 @@ func main() {
 	op, _ := provider.New(goidc.ProfileOpenID, authutil.Issuer, authutil.PrivateJWKSFunc())
 	_ = op.WithOptions(
 		provider.WithScopes(scope),
-		provider.WithClientCredentialsGrant(),
-		provider.WithStaticClient(client),
+		provider.WithGrantTypes(goidc.GrantClientCredentials),
+		provider.WithStaticClients(client),
 		provider.WithSSF(authutil.PrivateJWKSFunc(), func(ctx context.Context) (goidc.SSFReceiver, error) {
 			clientID := ctx.Value(ctxKeyClientID).(string)
 			if clientID == "" {

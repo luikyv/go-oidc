@@ -615,31 +615,31 @@ func (ctx Context) TokenClaims(grant *goidc.Grant) map[string]any {
 	return ctx.TokenClaimsFunc(ctx, grant)
 }
 
-func (ctx Context) HandleJWTBearerGrantAssertion(assertion string) (goidc.JWTBearerGrantInfo, error) {
-	return ctx.JWTBearerGrantHandleAssertionFunc(ctx.Request, assertion)
+func (ctx Context) JWTBearerHandleAssertion(assertion string) (string, error) {
+	if ctx.JWTBearerHandleAssertionFunc == nil {
+		return "", errors.New("jwt bearer handle assertion function was not provided")
+	}
+	return ctx.JWTBearerHandleAssertionFunc(ctx.Request, assertion)
 }
 
 func (ctx Context) HTTPClient() *http.Client {
 	if ctx.HTTPClientFunc == nil {
 		return http.DefaultClient
 	}
-
 	return ctx.HTTPClientFunc(ctx)
 }
 
 func (ctx Context) PairwiseSubject(sub string, c *goidc.Client) string {
-	if ctx.GeneratePairwiseSubIDFunc == nil {
+	if ctx.PairwiseSubjectFunc == nil {
 		return sub
 	}
-
-	return ctx.GeneratePairwiseSubIDFunc(ctx, sub, c)
+	return ctx.PairwiseSubjectFunc(ctx, sub, c)
 }
 
 func (ctx Context) PARHandleSession(as *goidc.AuthnSession, c *goidc.Client) error {
 	if ctx.PARHandleSessionFunc == nil {
 		return nil
 	}
-
 	return ctx.PARHandleSessionFunc(ctx, as, c)
 }
 

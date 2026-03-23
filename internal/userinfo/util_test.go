@@ -137,7 +137,7 @@ func TestHandleUserInfoRequest_PairwiseSub(t *testing.T) {
 	// Given.
 	ctx, client, _ := setUp(t)
 	ctx.SubIdentifierTypes = []goidc.SubIdentifierType{goidc.SubIdentifierPairwise}
-	ctx.GeneratePairwiseSubIDFunc = func(ctx context.Context, sub string, client *goidc.Client) string {
+	ctx.PairwiseSubjectFunc = func(ctx context.Context, sub string, client *goidc.Client) string {
 		parseURL, _ := url.Parse(client.SectorIdentifierURI)
 		return parseURL.Hostname() + "_" + sub
 	}

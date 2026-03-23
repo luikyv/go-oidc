@@ -560,7 +560,7 @@ func TestPairwiseSubject(t *testing.T) {
 	// Given.
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{
-			GeneratePairwiseSubIDFunc: func(ctx context.Context, sub string, client *goidc.Client) string {
+			PairwiseSubjectFunc: func(ctx context.Context, sub string, client *goidc.Client) string {
 				parseURL, _ := url.Parse(client.SectorIdentifierURI)
 				return parseURL.Hostname() + "_" + sub
 			},

@@ -40,12 +40,12 @@ type Configuration struct {
 	DisplayValues              []goidc.DisplayValue
 	// Claims defines the user claims that can be returned in the userinfo endpoint or in ID tokens.
 	// This will be published in the /.well-known/openid-configuration endpoint.
-	Claims                    []string
-	ClaimTypes                []goidc.ClaimType
-	DefaultSubIdentifierType  goidc.SubIdentifierType
-	SubIdentifierTypes        []goidc.SubIdentifierType
-	GeneratePairwiseSubIDFunc goidc.GeneratePairwiseSubIDFunc
-	StaticClients             []*goidc.Client
+	Claims                   []string
+	ClaimTypes               []goidc.ClaimType
+	DefaultSubIdentifierType goidc.SubIdentifierType
+	SubIdentifierTypes       []goidc.SubIdentifierType
+	PairwiseSubjectFunc      goidc.PairwiseSubjectFunc
+	StaticClients            []*goidc.Client
 	// IssuerRespParamIsEnabled indicates if the "iss" parameter will be
 	// returned when redirecting the user back to the client application.
 	IssuerRespParamIsEnabled bool
@@ -156,6 +156,7 @@ type Configuration struct {
 	PARIDFunc                       goidc.RandomStringFunc
 
 	CIBAEndpoint                   string
+	CIBAProfile                    goidc.CIBAProfile // TODO: Use this.
 	CIBATokenDeliveryModels        []goidc.CIBATokenDeliveryMode
 	CIBAHandleSessionFunc          goidc.HandleSessionFunc
 	CIBAUserCodeIsEnabled          bool
@@ -195,8 +196,8 @@ type Configuration struct {
 	HTTPClientFunc goidc.HTTPClientFunc
 	CheckJTIFunc   goidc.CheckJTIFunc
 
-	JWTBearerGrantClientAuthnIsRequired bool
-	JWTBearerGrantHandleAssertionFunc   goidc.HandleJWTBearerGrantAssertionFunc
+	JWTBearerClientAuthnIsRequired bool
+	JWTBearerHandleAssertionFunc   goidc.JWTBearerHandleAssertionFunc
 
 	ErrorURI string
 

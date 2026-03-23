@@ -18,7 +18,7 @@ func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
 	// Return an error for client authentication only if authentication is
 	// required or if the error is unrelated to client identification, such as
 	// when the client provides invalid credentials.
-	if err != nil && (ctx.JWTBearerGrantClientAuthnIsRequired || !errors.Is(err, client.ErrClientNotIdentified)) {
+	if err != nil && (ctx.JWTBearerClientAuthnIsRequired || !errors.Is(err, client.ErrClientNotIdentified)) {
 		return response{}, err
 	}
 
@@ -32,18 +32,17 @@ func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
 		return response{}, err
 	}
 
-	info, err := ctx.HandleJWTBearerGrantAssertion(req.assertion)
+	sub, err := ctx.JWTBearerHandleAssertion(req.assertion)
 	if err != nil {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid assertion", err)
 	}
 
 	grant, err := NewGrant(ctx, c, GrantOptions{
 		Type:                 goidc.GrantJWTBearer,
-		Subject:              info.Subject,
+		Subject:              sub,
 		ClientID:             c.ID,
 		Scopes:               req.scopes,
 		Resources:            req.resources,
-		Store:                info.Store,
 		JWKThumbprint:        dpopThumbprint(ctx),
 		ClientCertThumbprint: tlsThumbprint(ctx),
 	})

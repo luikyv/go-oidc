@@ -198,7 +198,7 @@ func TestHandleGrantCreation_JWTBearerGrant_InvalidCredentials(t *testing.T) {
 func TestHandleGrantCreation_JWTBearerGrant_ClientAuthnIsRequired(t *testing.T) {
 	// Given.
 	ctx, _ := setUpJWTBearerGrant(t, "random_subject")
-	ctx.JWTBearerGrantClientAuthnIsRequired = true
+	ctx.JWTBearerClientAuthnIsRequired = true
 	ctx.Request.PostForm = map[string][]string{}
 
 	reqScopes := strings.Join([]string{oidctest.Scope1.ID, goidc.ScopeOpenID.ID}, " ")
@@ -307,14 +307,14 @@ func TestHandleGrantCreation_JWTBearerGrant_ServerDoesNotSupportGrantType(t *tes
 func TestHandleGrantCreation_JWTBearerGrant_AssertionHandlerError(t *testing.T) {
 	// Given.
 	ctx, _ := setUpJWTBearerGrant(t, "random_subject")
-	ctx.JWTBearerGrantHandleAssertionFunc = func(
+	ctx.JWTBearerHandleAssertionFunc = func(
 		r *http.Request,
 		assertion string,
 	) (
-		goidc.JWTBearerGrantInfo,
+		string,
 		error,
 	) {
-		return goidc.JWTBearerGrantInfo{}, errors.New("assertion handler failed")
+		return "", errors.New("assertion handler failed")
 	}
 
 	req := request{
@@ -349,16 +349,14 @@ func setUpJWTBearerGrant(t *testing.T, sub string) (
 
 	ctx = oidctest.NewContext(t)
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantJWTBearer)
-	ctx.JWTBearerGrantHandleAssertionFunc = func(
+	ctx.JWTBearerHandleAssertionFunc = func(
 		r *http.Request,
 		assertion string,
 	) (
-		goidc.JWTBearerGrantInfo,
+		string,
 		error,
 	) {
-		return goidc.JWTBearerGrantInfo{
-			Subject: sub,
-		}, nil
+		return sub, nil
 	}
 
 	client, secret := oidctest.NewClient(t)

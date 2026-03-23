@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"runtime"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/luikyv/go-oidc/internal/authorize"
@@ -467,8 +469,16 @@ func (op *Provider) setDefaults() error {
 }
 
 func (op *Provider) validate() error {
+	if slices.Contains(op.config.SubIdentifierTypes, goidc.SubIdentifierPairwise) && op.config.PairwiseSubjectFunc == nil {
+		return fmt.Errorf("pairwise subject identifier type is enabled but the pairwise func is not set, see %s", funcName(WithPairwiseSubjectFunc))
+	}
+
+	if slices.Contains(op.config.GrantTypes, goidc.GrantJWTBearer) && op.config.JWTBearerHandleAssertionFunc == nil {
+		return fmt.Errorf("jwt bearer grant type is enabled but the assertion handler is not set, see %s", funcName(WithJWTBearerHandleAssertionFunc))
+	}
+
 	if op.config.TokenBindingIsRequired && !op.config.DPoPIsEnabled && !op.config.MTLSTokenBindingIsEnabled {
-		return errors.New("either DPoP or TLS binding must be enabled if sender constraining tokens is required")
+		return errors.New("either dpop or tls binding must be enabled if sender constraining tokens is required")
 	}
 
 	if op.config.Profile == goidc.ProfileFAPI1 {
@@ -555,4 +565,62 @@ func nonZeroOrDefault[T any](s1 T, s2 T) T {
 
 func isNil(i any) bool {
 	return i == nil
+}
+
+func funcName(f any) string {
+	parts := strings.Split(runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name(), "/")
+	return parts[len(parts)-1]
+}
+
+const (
+	defaultStorageMaxSize = 100
+
+	defaultAuthnSessionTimeoutSecs        = 1800 // 30 minutes.
+	defaultIDTokenLifetimeSecs            = 600
+	defaultTokenLifetimeSecs              = 300
+	defaultJWTLifetimeSecs                = 600
+	defaultLogoutSessionTimeoutSecs       = 1800 // 30 minutes.
+	defaultPARLifetimeSecs                = 60   // 1 minute.
+	defaultRefreshTokenLifetimeSecs       = 600
+	defaultCIBADefaultSessionLifetimeSecs = 60
+	defaultCIBAPollingIntervalSecs        = 5
+	defaultAuthorizationCodeLifetimeSecs  = 60
+
+	defaultAsymmetricSigAlg            = goidc.RS256
+	defaultSymmetricSigAlg             = goidc.HS256
+	defaultOpenIDFedTrustChainMaxDepth = 5
+	defaultOpenIDFedRegType            = goidc.ClientRegistrationTypeAutomatic
+
+	defaultEndpointWellKnown                    = "/.well-known/openid-configuration"
+	defaultEndpointJSONWebKeySet                = "/jwks"
+	defaultEndpointPushedAuthorizationRequest   = "/par"
+	defaultEndpointAuthorize                    = "/authorize"
+	defaultEndpointToken                        = "/token"
+	defaultEndpointUserInfo                     = "/userinfo"
+	defaultEndpointDynamicClient                = "/register"
+	defaultEndpointTokenIntrospection           = "/introspect"
+	defaultEndpointTokenRevocation              = "/revoke"
+	defaultEndpointCIBA                         = "/bc-authorize"
+	defaultEndpointOpenIDFederation             = "/.well-known/openid-federation"
+	defaultEndpointOpenIDFederationRegistration = "/federation/register"
+	defaultEndpointOpenIDFederationSignedJWKS   = "/signed-jwks"
+	defaultEndpointEndSession                   = "/logout"
+	defaultEndpointSSFJWKS                      = "/ssf/jwks"
+	defaultEndpointSSFConfiguration             = "/ssf/stream"
+	defaultEndpointSSFStatus                    = "/ssf/status"
+	defaultEndpointSSFAddSubject                = "/ssf/subject:add"
+	defaultEndpointSSFRemoveSubject             = "/ssf/subject:remove"
+	defaultEndpointSSFVerification              = "/ssf/verify"
+	defaultEndpointSSFPolling                   = "/ssf/poll"
+)
+
+func defaultTokenOptionsFunc(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
+	return goidc.NewOpaqueTokenOptions(defaultTokenLifetimeSecs)
+}
+
+func defaultCompareAuthDetailsFunc(_ context.Context, granted, request []goidc.AuthorizationDetail) error {
+	if !reflect.DeepEqual(granted, request) {
+		return goidc.NewError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization details")
+	}
+	return nil
 }

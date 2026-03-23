@@ -654,19 +654,20 @@ func (d AuthorizationDetail) Type() AuthDetailType {
 	return AuthDetailType(typ)
 }
 
-// TODO: Return a string instead of a struct.
-type HandleJWTBearerGrantAssertionFunc func(r *http.Request, assertion string) (JWTBearerGrantInfo, error)
-
-type JWTBearerGrantInfo struct {
-	Subject string
-	Store   map[string]any
-}
+type JWTBearerHandleAssertionFunc func(r *http.Request, assertion string) (sub string, err error)
 
 type IsClientAllowedFunc func(context.Context, *Client) bool
 
 type IsClientAllowedTokenInstrospectionFunc func(context.Context, *Client, TokenInfo) bool
 
-type GeneratePairwiseSubIDFunc func(ctx context.Context, sub string, client *Client) string
+type PairwiseSubjectFunc func(ctx context.Context, sub string, client *Client) string
+
+type CIBAProfile string
+
+const (
+	CIBAProfileOpenID Profile = "openid"
+	CIBAProfileFAPI   Profile = "fapi"
+)
 
 type CIBATokenDeliveryMode string
 
