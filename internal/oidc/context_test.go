@@ -745,7 +745,7 @@ func TestCompareAuthDetails(t *testing.T) {
 	}
 
 	// Given.
-	ctx.RARCompareDetailsFunc = func(_ context.Context, granted, requested []goidc.AuthorizationDetail) error {
+	ctx.RARCompareDetailsFunc = func(_ context.Context, granted, requested []goidc.AuthDetail) error {
 		return nil
 	}
 	// When.

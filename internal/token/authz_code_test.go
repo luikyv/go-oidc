@@ -102,10 +102,10 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails(t *testing.T) {
 	ctx, client, session := setUpAuthzCodeGrant(t)
 	ctx.RARIsEnabled = true
 	ctx.RARDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
-	ctx.RARCompareDetailsFunc = func(_ context.Context, granted, requested []goidc.AuthorizationDetail) error {
+	ctx.RARCompareDetailsFunc = func(_ context.Context, granted, requested []goidc.AuthDetail) error {
 		return nil
 	}
-	authDetails := []goidc.AuthorizationDetail{
+	authDetails := []goidc.AuthDetail{
 		{
 			"type":         "type1",
 			"random_claim": "random_value",
@@ -203,10 +203,10 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails_ClientRequestsSubset(t
 	ctx, client, session := setUpAuthzCodeGrant(t)
 	ctx.RARIsEnabled = true
 	ctx.RARDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
-	ctx.RARCompareDetailsFunc = func(_ context.Context, granted, requested []goidc.AuthorizationDetail) error {
+	ctx.RARCompareDetailsFunc = func(_ context.Context, granted, requested []goidc.AuthDetail) error {
 		return nil
 	}
-	session.GrantedAuthDetails = []goidc.AuthorizationDetail{
+	session.GrantedAuthDetails = []goidc.AuthDetail{
 		{
 			"type":         "type1",
 			"random_claim": "random_value",
@@ -221,7 +221,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails_ClientRequestsSubset(t
 		grantType:   goidc.GrantAuthorizationCode,
 		redirectURI: client.RedirectURIs[0],
 		code:        session.AuthCode,
-		authDetails: []goidc.AuthorizationDetail{
+		authDetails: []goidc.AuthDetail{
 			map[string]any{
 				"type":         "type1",
 				"random_claim": "random_value",

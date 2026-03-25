@@ -138,7 +138,7 @@ func newRequest(req *http.Request) request {
 	}
 
 	if authorizationDetails := req.URL.Query().Get("authorization_details"); authorizationDetails != "" {
-		var authorizationDetailsObject []goidc.AuthorizationDetail
+		var authorizationDetailsObject []goidc.AuthDetail
 		if err := json.Unmarshal([]byte(authorizationDetails), &authorizationDetailsObject); err == nil {
 			params.AuthDetails = authorizationDetailsObject
 		}
@@ -240,7 +240,7 @@ func newFormRequest(req *http.Request) request {
 	}
 
 	if authorizationDetails := req.PostFormValue("authorization_details"); authorizationDetails != "" {
-		var authorizationDetailsObject []goidc.AuthorizationDetail
+		var authorizationDetailsObject []goidc.AuthDetail
 		if err := json.Unmarshal([]byte(authorizationDetails), &authorizationDetailsObject); err == nil {
 			params.AuthDetails = authorizationDetailsObject
 		}

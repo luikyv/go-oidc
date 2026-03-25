@@ -213,22 +213,22 @@ func TestCIBATokenDeliveryModeIsPollableMode(t *testing.T) {
 func TestAuthorizationDetailType(t *testing.T) {
 	testCases := []struct {
 		name   string
-		detail goidc.AuthorizationDetail
+		detail goidc.AuthDetail
 		want   goidc.AuthDetailType
 	}{
 		{
 			"with type",
-			goidc.AuthorizationDetail{"type": "payment", "amount": 100},
+			goidc.AuthDetail{"type": "payment", "amount": 100},
 			"payment",
 		},
 		{
 			"missing type",
-			goidc.AuthorizationDetail{"amount": 100},
+			goidc.AuthDetail{"amount": 100},
 			"",
 		},
 		{
 			"non-string type",
-			goidc.AuthorizationDetail{"type": 123},
+			goidc.AuthDetail{"type": 123},
 			"",
 		},
 	}

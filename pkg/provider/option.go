@@ -710,10 +710,17 @@ func WithRAR(typ goidc.AuthDetailType, types ...goidc.AuthDetailType) Option {
 	}
 }
 
+func WithRARValidateDetailFunc(f goidc.RARValidateDetailFunc) Option {
+	return func(p *Provider) error {
+		p.config.RARValidateDetailFunc = f
+		return nil
+	}
+}
+
 // WithRARCompareDetailsFunc sets the function used to validate that the
 // authorization details requested during authorization_code or refresh_token
 // grants are consistent with the originally granted ones.
-func WithRARCompareDetailsFunc(f goidc.CompareAuthDetailsFunc) Option {
+func WithRARCompareDetailsFunc(f goidc.RARCompareDetailsFunc) Option {
 	return func(p *Provider) error {
 		p.config.RARCompareDetailsFunc = f
 		return nil

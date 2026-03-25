@@ -60,7 +60,7 @@ func TestMergeParams(t *testing.T) {
 	insideParams := goidc.AuthorizationParameters{
 		RedirectURI: "https:example1.com",
 		State:       "random_state",
-		AuthDetails: []goidc.AuthorizationDetail{},
+		AuthDetails: []goidc.AuthDetail{},
 	}
 	outsideParams := goidc.AuthorizationParameters{
 		RedirectURI: "https:example2.com",
@@ -75,7 +75,7 @@ func TestMergeParams(t *testing.T) {
 	want := goidc.AuthorizationParameters{
 		RedirectURI: "https:example1.com",
 		State:       "random_state",
-		AuthDetails: []goidc.AuthorizationDetail{},
+		AuthDetails: []goidc.AuthDetail{},
 		Nonce:       "random_nonce",
 		Claims:      &goidc.ClaimsObject{},
 	}
@@ -132,7 +132,7 @@ func setUpParams(t *testing.T) (url.Values, goidc.AuthorizationParameters) {
 				},
 			},
 		},
-		AuthDetails: []goidc.AuthorizationDetail{
+		AuthDetails: []goidc.AuthDetail{
 			map[string]any{
 				"key": "value",
 			},

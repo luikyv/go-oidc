@@ -1,6 +1,8 @@
 package oidc
 
 import (
+	"context"
+
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -185,7 +187,8 @@ type Configuration struct {
 
 	RARIsEnabled          bool
 	RARDetailTypes        []goidc.AuthDetailType
-	RARCompareDetailsFunc goidc.CompareAuthDetailsFunc
+	RARValidateDetailFunc func(context.Context, goidc.AuthDetail) error
+	RARCompareDetailsFunc goidc.RARCompareDetailsFunc
 
 	ResourceIndicatorsIsEnabled bool
 	// ResourceIndicatorsIsRequired indicates that the resource parameter is

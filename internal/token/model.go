@@ -16,7 +16,7 @@ type GrantOptions struct {
 	Subject              string
 	ClientID             string
 	Scopes               string
-	AuthDetails          []goidc.AuthorizationDetail
+	AuthDetails          []goidc.AuthDetail
 	Resources            goidc.Resources
 	Nonce                string
 	JWKThumbprint        string
@@ -80,7 +80,7 @@ type request struct {
 	refreshToken string
 	codeVerifier string
 	resources    goidc.Resources
-	authDetails  []goidc.AuthorizationDetail
+	authDetails  []goidc.AuthDetail
 	assertion    string
 	authReqID    string
 }
@@ -99,7 +99,7 @@ func newRequest(r *http.Request) request {
 	}
 
 	if authDetails := r.PostFormValue("authorization_details"); authDetails != "" {
-		var authDetailsObject []goidc.AuthorizationDetail
+		var authDetailsObject []goidc.AuthDetail
 		if err := json.Unmarshal([]byte(authDetails), &authDetailsObject); err == nil {
 			req.authDetails = authDetailsObject
 		}
@@ -109,14 +109,14 @@ func newRequest(r *http.Request) request {
 }
 
 type response struct {
-	AccessToken          string                      `json:"access_token,omitempty"`
-	IDToken              string                      `json:"id_token,omitempty"`
-	RefreshToken         string                      `json:"refresh_token,omitempty"`
-	ExpiresIn            int                         `json:"expires_in,omitempty"`
-	TokenType            goidc.TokenType             `json:"token_type,omitempty"`
-	Scopes               string                      `json:"scope,omitempty"`
-	AuthorizationDetails []goidc.AuthorizationDetail `json:"authorization_details,omitempty"`
-	Resources            goidc.Resources             `json:"resources,omitempty"`
+	AccessToken          string             `json:"access_token,omitempty"`
+	IDToken              string             `json:"id_token,omitempty"`
+	RefreshToken         string             `json:"refresh_token,omitempty"`
+	ExpiresIn            int                `json:"expires_in,omitempty"`
+	TokenType            goidc.TokenType    `json:"token_type,omitempty"`
+	Scopes               string             `json:"scope,omitempty"`
+	AuthorizationDetails []goidc.AuthDetail `json:"authorization_details,omitempty"`
+	Resources            goidc.Resources    `json:"resources,omitempty"`
 }
 
 type cibaResponse struct {

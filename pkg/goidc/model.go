@@ -494,17 +494,17 @@ type TokenConfirmation struct {
 
 type TokenInfo struct {
 	// GrantID is the ID of the grant session associated to token.
-	GrantID               string                `json:"-"`
-	IsActive              bool                  `json:"active"`
-	Type                  TokenTypeHint         `json:"token_type,omitempty"`
-	Scopes                string                `json:"scope,omitempty"`
-	AuthorizationDetails  []AuthorizationDetail `json:"authorization_details,omitempty"`
-	ResourceAudiences     Resources             `json:"aud,omitempty"`
-	ClientID              string                `json:"client_id,omitempty"`
-	Subject               string                `json:"sub,omitempty"`
-	ExpiresAtTimestamp    int                   `json:"exp,omitempty"`
-	Confirmation          *TokenConfirmation    `json:"cnf,omitempty"`
-	AdditionalTokenClaims map[string]any        `json:"-"`
+	GrantID               string             `json:"-"`
+	IsActive              bool               `json:"active"`
+	Type                  TokenTypeHint      `json:"token_type,omitempty"`
+	Scopes                string             `json:"scope,omitempty"`
+	AuthorizationDetails  []AuthDetail       `json:"authorization_details,omitempty"`
+	ResourceAudiences     Resources          `json:"aud,omitempty"`
+	ClientID              string             `json:"client_id,omitempty"`
+	Subject               string             `json:"sub,omitempty"`
+	ExpiresAtTimestamp    int                `json:"exp,omitempty"`
+	Confirmation          *TokenConfirmation `json:"cnf,omitempty"`
+	AdditionalTokenClaims map[string]any     `json:"-"`
 }
 
 func (ti TokenInfo) MarshalJSON() ([]byte, error) {
@@ -526,31 +526,31 @@ func (ti TokenInfo) MarshalJSON() ([]byte, error) {
 }
 
 type AuthorizationParameters struct {
-	RequestURI              string                `json:"request_uri,omitempty"`
-	RequestObject           string                `json:"request,omitempty"`
-	RedirectURI             string                `json:"redirect_uri,omitempty"`
-	ResponseMode            ResponseMode          `json:"response_mode,omitempty"`
-	ResponseType            ResponseType          `json:"response_type,omitempty"`
-	Scopes                  string                `json:"scope,omitempty"`
-	State                   string                `json:"state,omitempty"`
-	Nonce                   string                `json:"nonce,omitempty"`
-	CodeChallenge           string                `json:"code_challenge,omitempty"`
-	CodeChallengeMethod     CodeChallengeMethod   `json:"code_challenge_method,omitempty"`
-	Prompt                  PromptType            `json:"prompt,omitempty"`
-	MaxAuthnAgeSecs         *int                  `json:"max_age,omitempty"`
-	Display                 DisplayValue          `json:"display,omitempty"`
-	ACRValues               string                `json:"acr_values,omitempty"`
-	Claims                  *ClaimsObject         `json:"claims,omitempty"`
-	AuthDetails             []AuthorizationDetail `json:"authorization_details,omitempty"`
-	Resources               Resources             `json:"resource,omitempty"`
-	DPoPJKT                 string                `json:"dpop_jkt,omitempty"`
-	LoginHint               string                `json:"login_hint,omitempty"`
-	LoginTokenHint          string                `json:"login_hint_token,omitempty"`
-	IDTokenHint             string                `json:"id_token_hint,omitempty"`
-	ClientNotificationToken string                `json:"client_notification_token,omitempty"`
-	BindingMessage          string                `json:"binding_message,omitempty"`
-	UserCode                string                `json:"user_code,omitempty"`
-	RequestedExpiry         *int                  `json:"requested_expiry,omitempty"`
+	RequestURI              string              `json:"request_uri,omitempty"`
+	RequestObject           string              `json:"request,omitempty"`
+	RedirectURI             string              `json:"redirect_uri,omitempty"`
+	ResponseMode            ResponseMode        `json:"response_mode,omitempty"`
+	ResponseType            ResponseType        `json:"response_type,omitempty"`
+	Scopes                  string              `json:"scope,omitempty"`
+	State                   string              `json:"state,omitempty"`
+	Nonce                   string              `json:"nonce,omitempty"`
+	CodeChallenge           string              `json:"code_challenge,omitempty"`
+	CodeChallengeMethod     CodeChallengeMethod `json:"code_challenge_method,omitempty"`
+	Prompt                  PromptType          `json:"prompt,omitempty"`
+	MaxAuthnAgeSecs         *int                `json:"max_age,omitempty"`
+	Display                 DisplayValue        `json:"display,omitempty"`
+	ACRValues               string              `json:"acr_values,omitempty"`
+	Claims                  *ClaimsObject       `json:"claims,omitempty"`
+	AuthDetails             []AuthDetail        `json:"authorization_details,omitempty"`
+	Resources               Resources           `json:"resource,omitempty"`
+	DPoPJKT                 string              `json:"dpop_jkt,omitempty"`
+	LoginHint               string              `json:"login_hint,omitempty"`
+	LoginTokenHint          string              `json:"login_hint_token,omitempty"`
+	IDTokenHint             string              `json:"id_token_hint,omitempty"`
+	ClientNotificationToken string              `json:"client_notification_token,omitempty"`
+	BindingMessage          string              `json:"binding_message,omitempty"`
+	UserCode                string              `json:"user_code,omitempty"`
+	RequestedExpiry         *int                `json:"requested_expiry,omitempty"`
 }
 
 type Resources []string
@@ -633,17 +633,19 @@ type ClaimObjectInfo struct {
 
 type AuthDetailType string
 
-// CompareAuthDetailsFunc defines a function used in authorization_code and
+type RARValidateDetailFunc func(context.Context, AuthDetail) error
+
+// RARCompareDetailsFunc defines a function used in authorization_code and
 // refresh_token grant types to validate that the requested authorization details
 // are consistent with the granted ones.
-type CompareAuthDetailsFunc func(ctx context.Context, requested, granted []AuthorizationDetail) error
+type RARCompareDetailsFunc func(ctx context.Context, requested, granted []AuthDetail) error
 
-// AuthorizationDetail represents an authorization details as a map.
+// AuthDetail represents an authorization details as a map.
 // It is a map instead of a struct, because its fields vary a lot depending on
 // the use case.
-type AuthorizationDetail map[string]any
+type AuthDetail map[string]any
 
-func (d AuthorizationDetail) Type() AuthDetailType {
+func (d AuthDetail) Type() AuthDetailType {
 	value, ok := d["type"]
 	if !ok {
 		return ""

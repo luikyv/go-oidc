@@ -46,7 +46,7 @@ func main() {
 		provider.WithCheckJTIFunc(authutil.CheckJTIFunc()),
 		provider.WithJWTLeewayTime(30),
 		provider.WithRAR("customer_information"),
-		provider.WithRARCompareDetailsFunc(func(_ context.Context, granted, requested []goidc.AuthorizationDetail) error {
+		provider.WithRARCompareDetailsFunc(func(_ context.Context, granted, requested []goidc.AuthDetail) error {
 			grantedDetailTypes := make([]goidc.AuthDetailType, len(granted))
 			for i, grantedDetail := range granted {
 				grantedDetailTypes[i] = grantedDetail.Type()

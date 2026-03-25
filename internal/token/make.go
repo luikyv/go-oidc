@@ -16,7 +16,7 @@ import (
 
 type IssuanceOptions struct {
 	Scopes      string
-	AuthDetails []goidc.AuthorizationDetail
+	AuthDetails []goidc.AuthDetail
 	Resources   goidc.Resources
 }
 

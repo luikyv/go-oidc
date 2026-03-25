@@ -118,7 +118,7 @@ func validateResources(ctx oidc.Context, availableResources goidc.Resources, req
 // validateAuthDetails validates the auth details for the token request.
 // Parameters:
 //   - granted: The granted auth details. If nil, no auth details were previouly granted.
-func validateAuthDetails(ctx oidc.Context, req request, c *goidc.Client, granted []goidc.AuthorizationDetail) error {
+func validateAuthDetails(ctx oidc.Context, req request, c *goidc.Client, granted []goidc.AuthDetail) error {
 	if !ctx.RARIsEnabled || req.authDetails != nil {
 		return nil
 	}
@@ -130,6 +130,10 @@ func validateAuthDetails(ctx oidc.Context, req request, c *goidc.Client, granted
 
 		if c.AuthDetailTypes != nil && !slices.Contains(c.AuthDetailTypes, detail.Type()) {
 			return goidc.NewError(goidc.ErrorCodeInvalidAuthDetails, "authorization detail not allowed")
+		}
+
+		if err := ctx.RARValidateDetail(detail); err != nil {
+			return goidc.WrapError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization detail", err)
 		}
 	}
 

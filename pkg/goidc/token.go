@@ -19,20 +19,20 @@ type TokenManager interface {
 // Token represents an access token issued under a grant session.
 // Each token has its own lifecycle and active fields snapshotted at issuance.
 type Token struct {
-	ID                   string                `json:"id"`
-	GrantID              string                `json:"grant_id"`
-	ClientID             string                `json:"client_id"`
-	Subject              string                `json:"sub"`
-	CreatedAtTimestamp   int                   `json:"created_at"`
-	ExpiresAtTimestamp   int                   `json:"expires_at"`
-	Format               TokenFormat           `json:"format"`
-	Type                 TokenType             `json:"type"`
-	SigAlg               SignatureAlgorithm    `json:"signature_algorithm,omitempty"`
-	Scopes               string                `json:"scopes"`
-	AuthDetails          []AuthorizationDetail `json:"auth_details,omitempty"`
-	Resources            Resources             `json:"resources,omitempty"`
-	JWKThumbprint        string                `json:"jwk_thumbprint,omitempty"`
-	ClientCertThumbprint string                `json:"client_cert_thumbprint,omitempty"`
+	ID                   string             `json:"id"`
+	GrantID              string             `json:"grant_id"`
+	ClientID             string             `json:"client_id"`
+	Subject              string             `json:"sub"`
+	CreatedAtTimestamp   int                `json:"created_at"`
+	ExpiresAtTimestamp   int                `json:"expires_at"`
+	Format               TokenFormat        `json:"format"`
+	Type                 TokenType          `json:"type"`
+	SigAlg               SignatureAlgorithm `json:"signature_algorithm,omitempty"`
+	Scopes               string             `json:"scopes"`
+	AuthDetails          []AuthDetail       `json:"auth_details,omitempty"`
+	Resources            Resources          `json:"resources,omitempty"`
+	JWKThumbprint        string             `json:"jwk_thumbprint,omitempty"`
+	ClientCertThumbprint string             `json:"client_cert_thumbprint,omitempty"`
 }
 
 // LifetimeSecs returns the token's total lifetime in seconds.

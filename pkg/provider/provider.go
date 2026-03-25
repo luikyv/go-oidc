@@ -499,7 +499,7 @@ func (op *Provider) validate() error {
 			return errors.New("[FAPI 2.0 5.3.1] implicit grant is not allowed")
 		}
 
-		if !op.config.TokenBindingIsRequired {
+		if !op.config.TokenBindingIsRequired && !op.config.DPoPIsRequired && !op.config.MTLSTokenBindingIsRequired {
 			return errors.New("[FAPI 2.0 5.3.1] sender-constrained access tokens must be required")
 		}
 
@@ -618,7 +618,7 @@ func defaultTokenOptionsFunc(_ context.Context, _ *goidc.Grant, _ *goidc.Client)
 	return goidc.NewOpaqueTokenOptions(defaultTokenLifetimeSecs)
 }
 
-func defaultCompareAuthDetailsFunc(_ context.Context, granted, request []goidc.AuthorizationDetail) error {
+func defaultCompareAuthDetailsFunc(_ context.Context, granted, request []goidc.AuthDetail) error {
 	if !reflect.DeepEqual(granted, request) {
 		return goidc.NewError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization details")
 	}

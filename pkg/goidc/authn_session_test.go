@@ -90,7 +90,7 @@ func TestAuthnSessionGrantScopes(t *testing.T) {
 func TestAuthnSessionGrantAuthorizationDetails(t *testing.T) {
 	// Given.
 	session := goidc.AuthnSession{}
-	details := []goidc.AuthorizationDetail{
+	details := []goidc.AuthDetail{
 		{"type": "payment", "amount": 100},
 	}
 

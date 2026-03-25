@@ -261,6 +261,12 @@ func RenderError() goidc.RenderErrorFunc {
 
 }
 
+func PairwiseSubjectFunc() goidc.PairwiseSubjectFunc {
+	return func(_ context.Context, sub string, _ *goidc.Client) string {
+		return sub
+	}
+}
+
 func CheckJTIFunc() goidc.CheckJTIFunc {
 	jtiStore := make(map[string]struct{})
 	return func(ctx context.Context, jti string) error {

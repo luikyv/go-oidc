@@ -211,7 +211,14 @@ func (ctx Context) AvailableLogoutPolicy(ls *goidc.LogoutSession) (policy goidc.
 	return goidc.LogoutPolicy{}, false
 }
 
-func (ctx Context) RARCompareAuthDetails(requested, granted []goidc.AuthorizationDetail) error {
+func (ctx Context) RARValidateDetail(detail goidc.AuthDetail) error {
+	if ctx.RARValidateDetailFunc == nil {
+		return nil
+	}
+	return ctx.RARValidateDetailFunc(ctx, detail)
+}
+
+func (ctx Context) RARCompareAuthDetails(requested, granted []goidc.AuthDetail) error {
 	if ctx.RARCompareDetailsFunc == nil {
 		return errors.New("auth details comparing function is not defined")
 	}

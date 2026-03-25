@@ -476,6 +476,10 @@ func validateAuthorizationDetailsAsOptional(ctx oidc.Context, params goidc.Autho
 		if c.AuthDetailTypes != nil && !slices.Contains(c.AuthDetailTypes, typ) {
 			return newRedirectionError(goidc.ErrorCodeInvalidAuthDetails, "authorization detail type not allowed", params)
 		}
+
+		if err := ctx.RARValidateDetail(detail); err != nil {
+			return wrapRedirectionError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization detail", params, err)
+		}
 	}
 
 	return nil

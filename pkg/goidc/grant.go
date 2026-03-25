@@ -38,9 +38,9 @@ type Grant struct {
 	Subject  string `json:"sub"`
 	ClientID string `json:"client_id"`
 
-	Scopes      string                `json:"scopes"`
-	AuthDetails []AuthorizationDetail `json:"auth_details,omitempty"`
-	Resources   Resources             `json:"resources,omitempty"`
+	Scopes      string       `json:"scopes"`
+	AuthDetails []AuthDetail `json:"auth_details,omitempty"`
+	Resources   Resources    `json:"resources,omitempty"`
 
 	// Nonce is the nonce sent by the client in the authorization request.
 	// If present, it will be included in the ID token.
