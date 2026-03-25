@@ -175,9 +175,9 @@ func TestCIBATokenDeliveryModeIsNotificationMode(t *testing.T) {
 		mode goidc.CIBATokenDeliveryMode
 		want bool
 	}{
-		{goidc.CIBATokenDeliveryModePoll, false},
-		{goidc.CIBATokenDeliveryModePing, true},
-		{goidc.CIBATokenDeliveryModePush, true},
+		{goidc.CIBADeliveryModePoll, false},
+		{goidc.CIBADeliveryModePing, true},
+		{goidc.CIBADeliveryModePush, true},
 	}
 
 	for _, tc := range testCases {
@@ -196,9 +196,9 @@ func TestCIBATokenDeliveryModeIsPollableMode(t *testing.T) {
 		mode goidc.CIBATokenDeliveryMode
 		want bool
 	}{
-		{goidc.CIBATokenDeliveryModePoll, true},
-		{goidc.CIBATokenDeliveryModePing, true},
-		{goidc.CIBATokenDeliveryModePush, false},
+		{goidc.CIBADeliveryModePoll, true},
+		{goidc.CIBADeliveryModePing, true},
+		{goidc.CIBADeliveryModePush, false},
 	}
 
 	for _, tc := range testCases {

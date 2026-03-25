@@ -152,10 +152,10 @@ type Configuration struct {
 	PAREndpoint          string
 	PARHandleSessionFunc goidc.HandleSessionFunc
 	PARLifetimeSecs      int
-	// PARAllowUnregisteredRedirectURI indicates whether the redirect URIs
+	// PARUnregisteredRedirectURIIsEnabled indicates whether the redirect URIs
 	// informed during PAR must be previously registered or not.
-	PARAllowUnregisteredRedirectURI bool
-	PARIDFunc                       goidc.RandomStringFunc
+	PARUnregisteredRedirectURIIsEnabled bool
+	PARIDFunc                           goidc.RandomStringFunc
 
 	CIBAEndpoint                   string
 	CIBAProfile                    goidc.CIBAProfile // TODO: Use this.

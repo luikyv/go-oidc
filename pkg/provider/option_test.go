@@ -814,7 +814,7 @@ func TestWithUnregisteredRedirectURIsForPAR(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			PARAllowUnregisteredRedirectURI: true,
+			PARUnregisteredRedirectURIIsEnabled: true,
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1312,7 +1312,7 @@ func TestWithTLSCertTokenBinding(t *testing.T) {
 	}
 
 	// When.
-	err := WithTLSCertTokenBinding()(p)
+	err := WithTLSTokenBinding()(p)
 
 	// Then.
 	if err != nil {
@@ -1336,7 +1336,7 @@ func TestWithTLSCertTokenBindingRequired(t *testing.T) {
 	}
 
 	// When.
-	err := WithTLSCertTokenBindingRequired()(p)
+	err := WithTLSTokenBindingRequired()(p)
 
 	// Then.
 	if err != nil {

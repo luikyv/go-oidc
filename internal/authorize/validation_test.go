@@ -316,7 +316,7 @@ func TestValidatePushedRequest(t *testing.T) {
 func TestValidatePushedRequest_UnregisteredRedirectURI(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.PARAllowUnregisteredRedirectURI = true
+	ctx.PARUnregisteredRedirectURIIsEnabled = true
 	client, _ := oidctest.NewClient(t)
 	originalRedirectURIs := slices.Clone(client.RedirectURIs)
 
@@ -348,7 +348,7 @@ func TestValidatePushedRequest_UnregisteredRedirectURI(t *testing.T) {
 func TestValidateRequest_PAR_UnregisteredRedirectURI(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.PARAllowUnregisteredRedirectURI = true
+	ctx.PARUnregisteredRedirectURIIsEnabled = true
 	client, _ := oidctest.NewClient(t)
 	originalRedirectURIs := slices.Clone(client.RedirectURIs)
 

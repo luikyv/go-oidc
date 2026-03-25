@@ -665,24 +665,24 @@ type PairwiseSubjectFunc func(ctx context.Context, sub string, client *Client) s
 type CIBAProfile string
 
 const (
-	CIBAProfileOpenID Profile = "openid"
-	CIBAProfileFAPI   Profile = "fapi"
+	CIBAProfileOpenID CIBAProfile = "openid"
+	CIBAProfileFAPI   CIBAProfile = "fapi"
 )
 
 type CIBATokenDeliveryMode string
 
 const (
-	CIBATokenDeliveryModePoll CIBATokenDeliveryMode = "poll"
-	CIBATokenDeliveryModePing CIBATokenDeliveryMode = "ping"
-	CIBATokenDeliveryModePush CIBATokenDeliveryMode = "push"
+	CIBADeliveryModePoll CIBATokenDeliveryMode = "poll"
+	CIBADeliveryModePing CIBATokenDeliveryMode = "ping"
+	CIBADeliveryModePush CIBATokenDeliveryMode = "push"
 )
 
 func (mode CIBATokenDeliveryMode) IsNotificationMode() bool {
-	return mode == CIBATokenDeliveryModePing || mode == CIBATokenDeliveryModePush
+	return mode == CIBADeliveryModePing || mode == CIBADeliveryModePush
 }
 
 func (mode CIBATokenDeliveryMode) IsPollableMode() bool {
-	return mode == CIBATokenDeliveryModePoll || mode == CIBATokenDeliveryModePing
+	return mode == CIBADeliveryModePoll || mode == CIBADeliveryModePing
 }
 
 type HandleSessionFunc func(context.Context, *AuthnSession, *Client) error

@@ -327,6 +327,13 @@ func WithRefreshTokenRotation() Option {
 	}
 }
 
+func WithCIBAProfile(p goidc.CIBAProfile) Option {
+	return func(op *Provider) error {
+		op.config.CIBAProfile = p
+		return nil
+	}
+}
+
 func WithCIBAHandleSessionFunc(f goidc.HandleSessionFunc) Option {
 	return func(p *Provider) error {
 		p.config.CIBAHandleSessionFunc = f
@@ -510,7 +517,7 @@ func WithPARRequired() Option {
 // To enable pushed authorization request, see [WithPAR].
 func WithPARUnregisteredRedirectURIs() Option {
 	return func(p *Provider) error {
-		p.config.PARAllowUnregisteredRedirectURI = true
+		p.config.PARUnregisteredRedirectURIIsEnabled = true
 		return nil
 	}
 }
@@ -737,23 +744,23 @@ func WithMTLS(host string, f goidc.ClientCertFunc) Option {
 	}
 }
 
-// WithTLSCertTokenBinding makes requests to /token return tokens bound to the
+// WithTLSTokenBinding makes requests to /token return tokens bound to the
 // client certificate if any is sent.
 // To enable MTLS, see [WithMTLS].
-func WithTLSCertTokenBinding() Option {
+func WithTLSTokenBinding() Option {
 	return func(p *Provider) error {
 		p.config.MTLSTokenBindingIsEnabled = true
 		return nil
 	}
 }
 
-// WithTLSCertTokenBindingRequired makes requests to /token return tokens bound to the
+// WithTLSTokenBindingRequired makes requests to /token return tokens bound to the
 // client certificate.
-// For more info, see [WithTLSCertTokenBinding].
-func WithTLSCertTokenBindingRequired() Option {
+// For more info, see [WithTLSTokenBinding].
+func WithTLSTokenBindingRequired() Option {
 	return func(p *Provider) error {
 		p.config.MTLSTokenBindingIsRequired = true
-		return WithTLSCertTokenBinding()(p)
+		return WithTLSTokenBinding()(p)
 	}
 }
 
@@ -783,7 +790,7 @@ func WithDPoPRequired(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgor
 
 // WithTokenBindingRequired makes at least one sender constraining mechanism
 // (TLS or DPoP) be required in order to issue an access token to a client.
-// For more info, see [WithTLSCertTokenBinding] and [WithDPoP].
+// For more info, see [WithTLSTokenBinding] and [WithDPoP].
 func WithTokenBindingRequired() Option {
 	return func(p *Provider) error {
 		p.config.TokenBindingIsRequired = true

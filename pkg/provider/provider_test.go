@@ -92,7 +92,7 @@ func TestNew_WithOptions(t *testing.T) {
 		WithTokenIntrospection(nil, goidc.AuthnMethodPrivateKeyJWT),
 		WithTokenRevocation(nil, goidc.AuthnMethodPrivateKeyJWT),
 		WithCIBAHandleSessionFunc(nil),
-		WithCIBADeliveryModes(goidc.CIBATokenDeliveryModePoll),
+		WithCIBADeliveryModes(goidc.CIBADeliveryModePoll),
 		WithUserInfoSignatureAlgs(goidc.PS256),
 		WithUserInfoEncryption(goidc.RSA_OAEP),
 	)
@@ -163,7 +163,7 @@ func TestNew_WithOptions(t *testing.T) {
 			TokenRevocationIsEnabled:       true,
 			TokenRevocationAuthnMethods:    []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT},
 			TokenRevocationEndpoint:        defaultEndpointTokenRevocation,
-			CIBATokenDeliveryModels:        []goidc.CIBATokenDeliveryMode{goidc.CIBATokenDeliveryModePoll},
+			CIBATokenDeliveryModels:        []goidc.CIBATokenDeliveryMode{goidc.CIBADeliveryModePoll},
 			CIBAEndpoint:                   defaultEndpointCIBA,
 			CIBADefaultSessionLifetimeSecs: 60,
 			CIBAPollingIntervalSecs:        5,

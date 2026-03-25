@@ -30,7 +30,7 @@ func NotifyCIBAGrant(ctx oidc.Context, authReqID string) error {
 	}
 
 	// The client is configured to poll, so no notification is sent.
-	if c.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePoll {
+	if c.CIBATokenDeliveryMode == goidc.CIBADeliveryModePoll {
 		return nil
 	}
 
@@ -39,7 +39,7 @@ func NotifyCIBAGrant(ctx oidc.Context, authReqID string) error {
 	}
 	// The client is configured to receive a ping, so only the auth request id
 	// is sent.
-	if c.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePing {
+	if c.CIBATokenDeliveryMode == goidc.CIBADeliveryModePing {
 		return sendClientNotification(ctx, c, as, resp)
 	}
 
@@ -85,7 +85,7 @@ func NotifyCIBAGrant(ctx oidc.Context, authReqID string) error {
 			Nonce:   grant.Nonce,
 			Claims:  ctx.IDTokenClaims(grant),
 		}
-		if c.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePush {
+		if c.CIBATokenDeliveryMode == goidc.CIBADeliveryModePush {
 			idTokenOpts.AuthReqID = as.PushedAuthReqID
 			idTokenOpts.RefreshToken = grant.RefreshToken
 		}
@@ -116,7 +116,7 @@ func NotifyCIBAGrantFailure(ctx oidc.Context, authReqID string, goidcErr goidc.E
 		return err
 	}
 
-	if client.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePoll {
+	if client.CIBATokenDeliveryMode == goidc.CIBADeliveryModePoll {
 		return nil
 	}
 
@@ -126,7 +126,7 @@ func NotifyCIBAGrantFailure(ctx oidc.Context, authReqID string, goidcErr goidc.E
 	}{
 		AuthReqID: session.CIBAAuthID,
 	}
-	if client.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePing {
+	if client.CIBATokenDeliveryMode == goidc.CIBADeliveryModePing {
 		return sendClientNotification(ctx, client, session, resp)
 	}
 
@@ -246,7 +246,7 @@ func validateCIBAGrantRequest(ctx oidc.Context, req request, c *goidc.Client, as
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
 	}
 
-	if c.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePush {
+	if c.CIBATokenDeliveryMode == goidc.CIBADeliveryModePush {
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "the client is not authorized as it is configured in push mode")
 	}
 

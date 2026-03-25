@@ -266,8 +266,8 @@ func setUpCIBAGrant(t testing.TB) (
 	ctx = oidctest.NewContext(t)
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
-		goidc.CIBATokenDeliveryModePoll, goidc.CIBATokenDeliveryModePing,
-		goidc.CIBATokenDeliveryModePush,
+		goidc.CIBADeliveryModePoll, goidc.CIBADeliveryModePing,
+		goidc.CIBADeliveryModePush,
 	}
 	ctx.CIBAHandleSessionFunc = func(ctx context.Context, as *goidc.AuthnSession, c *goidc.Client) error {
 		return nil
@@ -278,7 +278,7 @@ func setUpCIBAGrant(t testing.TB) (
 
 	client, secret := oidctest.NewClient(t)
 	client.GrantTypes = append(client.GrantTypes, goidc.GrantCIBA)
-	client.CIBATokenDeliveryMode = goidc.CIBATokenDeliveryModePing
+	client.CIBATokenDeliveryMode = goidc.CIBADeliveryModePing
 	client.CIBANotificationEndpoint = "https://example.client.com/ciba"
 	if err := ctx.SaveClient(client); err != nil {
 		t.Errorf("error while creating the client: %v", err)

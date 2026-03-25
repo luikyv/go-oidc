@@ -407,7 +407,8 @@ func (op *Provider) setDefaults() error {
 	}
 
 	if slices.Contains(op.config.GrantTypes, goidc.GrantCIBA) {
-		op.config.CIBATokenDeliveryModels = nonZeroOrDefault(op.config.CIBATokenDeliveryModels, []goidc.CIBATokenDeliveryMode{goidc.CIBATokenDeliveryModePoll})
+		op.config.CIBAProfile = nonZeroOrDefault(op.config.CIBAProfile, goidc.CIBAProfileOpenID)
+		op.config.CIBATokenDeliveryModels = nonZeroOrDefault(op.config.CIBATokenDeliveryModels, []goidc.CIBATokenDeliveryMode{goidc.CIBADeliveryModePoll})
 		op.config.CIBAEndpoint = nonZeroOrDefault(op.config.CIBAEndpoint, defaultEndpointCIBA)
 		op.config.CIBADefaultSessionLifetimeSecs = nonZeroOrDefault(op.config.CIBADefaultSessionLifetimeSecs, defaultCIBADefaultSessionLifetimeSecs)
 		op.config.CIBAPollingIntervalSecs = nonZeroOrDefault(op.config.CIBAPollingIntervalSecs, defaultCIBAPollingIntervalSecs)

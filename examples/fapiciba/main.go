@@ -16,21 +16,18 @@ import (
 )
 
 func main() {
-	op, _ := provider.New(goidc.ProfileFAPI1, authutil.Issuer, authutil.PrivateJWKSFunc())
+	op, _ := provider.New(goidc.ProfileOpenID, authutil.Issuer, authutil.PrivateJWKSFunc())
 	_ = op.WithOptions(
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithIDTokenSignatureAlgs(goidc.PS256),
 		provider.WithUserInfoSignatureAlgs(goidc.PS256),
 		provider.WithGrantTypes(goidc.GrantCIBA),
+		provider.WithCIBAProfile(goidc.CIBAProfileFAPI),
 		provider.WithCIBAHandleSessionFunc(initBackAuthFunc()),
-		provider.WithCIBADeliveryModes(
-			goidc.CIBATokenDeliveryModePoll,
-			goidc.CIBATokenDeliveryModePing,
-			goidc.CIBATokenDeliveryModePush,
-		),
+		provider.WithCIBADeliveryModes(goidc.CIBADeliveryModePoll, goidc.CIBADeliveryModePing, goidc.CIBADeliveryModePush),
 		provider.WithCIBAJAR(goidc.PS256),
 		provider.WithMTLS(authutil.MTLSHost, authutil.ClientCertFunc),
-		provider.WithTLSCertTokenBindingRequired(),
+		provider.WithTLSTokenBindingRequired(),
 		provider.WithTokenAuthnMethods(goidc.AuthnMethodPrivateKeyJWT, goidc.AuthnMethodTLS),
 		provider.WithPrivateKeyJWTSignatureAlgs(goidc.PS256),
 		provider.WithClaimsParameter(),

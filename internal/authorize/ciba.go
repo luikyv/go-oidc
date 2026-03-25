@@ -64,7 +64,7 @@ func initBackAuth(ctx oidc.Context, req request) (cibaResponse, error) {
 
 	// Store binding information only for CIBA push mode.
 	// For other modes, binding occurs at the token endpoint.
-	if c.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePush {
+	if c.CIBATokenDeliveryMode == goidc.CIBADeliveryModePush {
 		if dpopJWT, ok := dpop.JWT(ctx); ctx.DPoPIsEnabled && ok {
 			as.JWKThumbprint = dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)
 		}
@@ -129,7 +129,7 @@ func cibaJARFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Clien
 	return jarReq, nil
 }
 
-func validateCIBAJARClaims(ctx oidc.Context, claims jwt.Claims, client *goidc.Client) error {
+func validateCIBAJARClaims(ctx oidc.Context, claims jwt.Claims, c *goidc.Client) error {
 	if claims.IssuedAt == nil {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "claim 'iat' is required in the request object")
 	}
@@ -159,7 +159,7 @@ func validateCIBAJARClaims(ctx oidc.Context, claims jwt.Claims, client *goidc.Cl
 	}
 
 	if err := claims.ValidateWithLeeway(jwt.Expected{
-		Issuer:      client.ID,
+		Issuer:      c.ID,
 		AnyAudience: []string{ctx.Issuer()},
 	}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second); err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "the request object contains invalid claims", err)
@@ -168,9 +168,8 @@ func validateCIBAJARClaims(ctx oidc.Context, claims jwt.Claims, client *goidc.Cl
 	return nil
 }
 
-func validateCIBARequest(ctx oidc.Context, req request, client *goidc.Client) error {
-
-	if !slices.Contains(client.GrantTypes, goidc.GrantCIBA) {
+func validateCIBARequest(ctx oidc.Context, req request, c *goidc.Client) error {
+	if !slices.Contains(c.GrantTypes, goidc.GrantCIBA) {
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "grant ciba not allowed")
 	}
 
@@ -178,7 +177,7 @@ func validateCIBARequest(ctx oidc.Context, req request, client *goidc.Client) er
 		return goidc.NewError(goidc.ErrorCodeInvalidScope, "scope openid is required")
 	}
 
-	if req.ClientNotificationToken == "" && client.CIBATokenDeliveryMode.IsNotificationMode() {
+	if req.ClientNotificationToken == "" && c.CIBATokenDeliveryMode.IsNotificationMode() {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "client_notification_token is required")
 	}
 
@@ -186,22 +185,22 @@ func validateCIBARequest(ctx oidc.Context, req request, client *goidc.Client) er
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "client_notification_token is too long")
 	}
 
-	if req.UserCode != "" && (!ctx.CIBAUserCodeIsEnabled || !client.CIBAUserCodeIsEnabled) {
+	if req.UserCode != "" && (!ctx.CIBAUserCodeIsEnabled || !c.CIBAUserCodeIsEnabled) {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "user_code is not allowed")
 	}
 
-	if err := validateCIBAHints(ctx, req, client); err != nil {
+	if err := validateCIBAHints(ctx, req, c); err != nil {
 		return err
 	}
 
-	if err := validateParamsAsOptionals(ctx, req.AuthorizationParameters, client); err != nil {
+	if err := validateParamsAsOptionals(ctx, req.AuthorizationParameters, c); err != nil {
 		return err
 	}
 
 	// Validate token binding rules only for CIBA push mode.
 	// For other modes, token binding occurs at the token endpoint.
-	if client.CIBATokenDeliveryMode == goidc.CIBATokenDeliveryModePush {
-		if err := token.ValidateBinding(ctx, client, nil); err != nil {
+	if c.CIBATokenDeliveryMode == goidc.CIBADeliveryModePush {
+		if err := token.ValidateBinding(ctx, c, nil); err != nil {
 			return err
 		}
 	}

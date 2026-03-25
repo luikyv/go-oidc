@@ -87,8 +87,7 @@ func jarFromSignedRequestObject(ctx oidc.Context, reqObject string, c *goidc.Cli
 	jarAlgorithms := jarAlgorithms(ctx, c)
 	parsedToken, err := jwt.ParseSigned(reqObject, jarAlgorithms)
 	if err != nil {
-		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
-			"invalid request object", err)
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject, "invalid request object", err)
 	}
 
 	if len(parsedToken.Headers) != 1 {

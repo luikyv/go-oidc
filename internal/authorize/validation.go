@@ -31,7 +31,7 @@ func validateRequestWithPAR(ctx oidc.Context, req request, as *goidc.AuthnSessio
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "the request_uri is expired")
 	}
 
-	if ctx.PARAllowUnregisteredRedirectURI && as.RedirectURI != "" {
+	if ctx.PARUnregisteredRedirectURIIsEnabled && as.RedirectURI != "" {
 		c = clientWithRedirectURI(c, as.RedirectURI)
 	}
 
@@ -114,7 +114,7 @@ func validatePushedRequest(ctx oidc.Context, req request, c *goidc.Client) error
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "request_uri is not allowed during PAR")
 	}
 
-	if ctx.PARAllowUnregisteredRedirectURI && req.RedirectURI != "" {
+	if ctx.PARUnregisteredRedirectURIIsEnabled && req.RedirectURI != "" {
 		c = clientWithRedirectURI(c, req.RedirectURI)
 	}
 

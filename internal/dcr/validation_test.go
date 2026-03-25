@@ -626,13 +626,13 @@ func TestValidateRequest_ValidCIBAPing(t *testing.T) {
 	ctx := oidctest.NewContext(t)
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
-		goidc.CIBATokenDeliveryModePing,
-		goidc.CIBATokenDeliveryModePoll,
-		goidc.CIBATokenDeliveryModePush,
+		goidc.CIBADeliveryModePing,
+		goidc.CIBADeliveryModePoll,
+		goidc.CIBADeliveryModePush,
 	}
 	client, _ := oidctest.NewClient(t)
 	client.GrantTypes = append(client.GrantTypes, goidc.GrantCIBA)
-	client.CIBATokenDeliveryMode = goidc.CIBATokenDeliveryModePing
+	client.CIBATokenDeliveryMode = goidc.CIBADeliveryModePing
 	client.CIBANotificationEndpoint = "https://example.com"
 
 	// When.
@@ -649,13 +649,13 @@ func TestValidateRequest_ValidCIBAPush(t *testing.T) {
 	ctx := oidctest.NewContext(t)
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
-		goidc.CIBATokenDeliveryModePing,
-		goidc.CIBATokenDeliveryModePoll,
-		goidc.CIBATokenDeliveryModePush,
+		goidc.CIBADeliveryModePing,
+		goidc.CIBADeliveryModePoll,
+		goidc.CIBADeliveryModePush,
 	}
 	client, _ := oidctest.NewClient(t)
 	client.GrantTypes = append(client.GrantTypes, goidc.GrantCIBA)
-	client.CIBATokenDeliveryMode = goidc.CIBATokenDeliveryModePush
+	client.CIBATokenDeliveryMode = goidc.CIBADeliveryModePush
 	client.CIBANotificationEndpoint = "https://example.com"
 
 	// When.
@@ -672,13 +672,13 @@ func TestValidateRequest_ValidCIBAPoll(t *testing.T) {
 	ctx := oidctest.NewContext(t)
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
-		goidc.CIBATokenDeliveryModePing,
-		goidc.CIBATokenDeliveryModePoll,
-		goidc.CIBATokenDeliveryModePush,
+		goidc.CIBADeliveryModePing,
+		goidc.CIBADeliveryModePoll,
+		goidc.CIBADeliveryModePush,
 	}
 	client, _ := oidctest.NewClient(t)
 	client.GrantTypes = append(client.GrantTypes, goidc.GrantCIBA)
-	client.CIBATokenDeliveryMode = goidc.CIBATokenDeliveryModePoll
+	client.CIBATokenDeliveryMode = goidc.CIBADeliveryModePoll
 
 	// When.
 	err := dcr.Validate(ctx, &client.ClientMeta)
@@ -694,15 +694,15 @@ func TestValidateRequest_ValidCIBAJAR(t *testing.T) {
 	ctx := oidctest.NewContext(t)
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
-		goidc.CIBATokenDeliveryModePing,
-		goidc.CIBATokenDeliveryModePoll,
-		goidc.CIBATokenDeliveryModePush,
+		goidc.CIBADeliveryModePing,
+		goidc.CIBADeliveryModePoll,
+		goidc.CIBADeliveryModePush,
 	}
 	ctx.CIBAJARIsEnabled = true
 	ctx.CIBAJARSigAlgs = append(ctx.CIBAJARSigAlgs, goidc.RS256)
 	client, _ := oidctest.NewClient(t)
 	client.GrantTypes = append(client.GrantTypes, goidc.GrantCIBA)
-	client.CIBATokenDeliveryMode = goidc.CIBATokenDeliveryModePoll
+	client.CIBATokenDeliveryMode = goidc.CIBADeliveryModePoll
 	client.CIBAJARSigAlg = goidc.RS256
 
 	// When.
@@ -719,15 +719,15 @@ func TestValidateRequest_InvalidCIBAJAR(t *testing.T) {
 	ctx := oidctest.NewContext(t)
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
-		goidc.CIBATokenDeliveryModePing,
-		goidc.CIBATokenDeliveryModePoll,
-		goidc.CIBATokenDeliveryModePush,
+		goidc.CIBADeliveryModePing,
+		goidc.CIBADeliveryModePoll,
+		goidc.CIBADeliveryModePush,
 	}
 	ctx.CIBAJARIsEnabled = true
 	ctx.CIBAJARSigAlgs = append(ctx.CIBAJARSigAlgs, goidc.RS256)
 	client, _ := oidctest.NewClient(t)
 	client.GrantTypes = append(client.GrantTypes, goidc.GrantCIBA)
-	client.CIBATokenDeliveryMode = goidc.CIBATokenDeliveryModePoll
+	client.CIBATokenDeliveryMode = goidc.CIBADeliveryModePoll
 	client.CIBAJARSigAlg = goidc.PS256
 
 	// When.
@@ -753,14 +753,14 @@ func TestValidateRequest_ValidCIBAUserCode(t *testing.T) {
 	ctx := oidctest.NewContext(t)
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
-		goidc.CIBATokenDeliveryModePing,
-		goidc.CIBATokenDeliveryModePoll,
-		goidc.CIBATokenDeliveryModePush,
+		goidc.CIBADeliveryModePing,
+		goidc.CIBADeliveryModePoll,
+		goidc.CIBADeliveryModePush,
 	}
 	ctx.CIBAUserCodeIsEnabled = true
 	client, _ := oidctest.NewClient(t)
 	client.GrantTypes = append(client.GrantTypes, goidc.GrantCIBA)
-	client.CIBATokenDeliveryMode = goidc.CIBATokenDeliveryModePoll
+	client.CIBATokenDeliveryMode = goidc.CIBADeliveryModePoll
 	client.CIBAUserCodeIsEnabled = true
 
 	// When.
@@ -777,9 +777,9 @@ func TestValidateRequest_InvalidCIBADeliveryMode(t *testing.T) {
 	ctx := oidctest.NewContext(t)
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
-		goidc.CIBATokenDeliveryModePing,
-		goidc.CIBATokenDeliveryModePoll,
-		goidc.CIBATokenDeliveryModePush,
+		goidc.CIBADeliveryModePing,
+		goidc.CIBADeliveryModePoll,
+		goidc.CIBADeliveryModePush,
 	}
 	client, _ := oidctest.NewClient(t)
 	client.GrantTypes = append(client.GrantTypes, goidc.GrantCIBA)
@@ -808,13 +808,13 @@ func TestValidateRequest_InvalidCIBAUserCode(t *testing.T) {
 	ctx := oidctest.NewContext(t)
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
-		goidc.CIBATokenDeliveryModePing,
-		goidc.CIBATokenDeliveryModePoll,
-		goidc.CIBATokenDeliveryModePush,
+		goidc.CIBADeliveryModePing,
+		goidc.CIBADeliveryModePoll,
+		goidc.CIBADeliveryModePush,
 	}
 	client, _ := oidctest.NewClient(t)
 	client.GrantTypes = append(client.GrantTypes, goidc.GrantCIBA)
-	client.CIBATokenDeliveryMode = goidc.CIBATokenDeliveryModePoll
+	client.CIBATokenDeliveryMode = goidc.CIBADeliveryModePoll
 	client.CIBAUserCodeIsEnabled = true
 
 	// When.
