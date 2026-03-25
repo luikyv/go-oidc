@@ -633,8 +633,6 @@ type ClaimObjectInfo struct {
 
 type AuthDetailType string
 
-type ValidateAuthDetailFunc func(context.Context, AuthorizationDetail, *Client) error
-
 // CompareAuthDetailsFunc defines a function used in authorization_code and
 // refresh_token grant types to validate that the requested authorization details
 // are consistent with the granted ones.

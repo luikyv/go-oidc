@@ -58,7 +58,7 @@ func TestOIDCConfig(t *testing.T) {
 		PrivateKeyJWTSigAlgs:   []goidc.SignatureAlgorithm{goidc.PS256},
 		ClientSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
 		RARIsEnabled:           true,
-		RARDetailTypes:         map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc{"detail_type": nil},
+		RARDetailTypes:         []goidc.AuthDetailType{"detail_type"},
 	}
 	ctx := oidc.Context{Configuration: config}
 
@@ -159,7 +159,7 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		PrivateKeyJWTSigAlgs:           []goidc.SignatureAlgorithm{goidc.PS256},
 		ClientSecretJWTSigAlgs:         []goidc.SignatureAlgorithm{goidc.HS256},
 		RARIsEnabled:                   true,
-		RARDetailTypes:                 map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc{"detail_type": nil},
+		RARDetailTypes:                 []goidc.AuthDetailType{"detail_type"},
 		PARIsEnabled:                   true,
 		JARIsEnabled:                   true,
 		JARIsRequired:                  true,

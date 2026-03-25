@@ -701,8 +701,8 @@ func WithClaimsParameter() Option {
 }
 
 // WithRAR enables Rich Authorization Requests (RFC 9396).
-// types maps each supported authorization detail type to a validation function.
-func WithRAR(types map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc) Option {
+func WithRAR(typ goidc.AuthDetailType, types ...goidc.AuthDetailType) Option {
+	types = appendIfNotIn(types, typ)
 	return func(p *Provider) error {
 		p.config.RARIsEnabled = true
 		p.config.RARDetailTypes = types

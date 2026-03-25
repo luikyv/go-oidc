@@ -83,7 +83,7 @@ func TestGenerateGrant_RefreshTokenGrant_AuthDetails(t *testing.T) {
 	// Given.
 	ctx, client, grantSession := setUpRefreshTokenGrant(t)
 	ctx.RARIsEnabled = true
-	ctx.RARDetailTypes = map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc{"type1": nil, "type2": nil}
+	ctx.RARDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
 	ctx.RARCompareDetailsFunc = func(_ context.Context, _, _ []goidc.AuthorizationDetail) error {
 		return nil
 	}
@@ -169,7 +169,7 @@ func TestGenerateGrant_RefreshTokenGrant_AuthDetails_ClientRequestsSubset(t *tes
 	// Given.
 	ctx, client, grantSession := setUpRefreshTokenGrant(t)
 	ctx.RARIsEnabled = true
-	ctx.RARDetailTypes = map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc{"type1": nil, "type2": nil}
+	ctx.RARDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
 	ctx.RARCompareDetailsFunc = func(_ context.Context, granted, requested []goidc.AuthorizationDetail) error {
 		return nil
 	}

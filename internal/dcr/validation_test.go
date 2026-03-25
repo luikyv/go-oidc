@@ -582,7 +582,7 @@ func TestValidateRequest_ValidAuthDetails(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	ctx.RARIsEnabled = true
-	ctx.RARDetailTypes = map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc{"type1": nil}
+	ctx.RARDetailTypes = []goidc.AuthDetailType{"type1"}
 	client, _ := oidctest.NewClient(t)
 	client.AuthDetailTypes = append(client.AuthDetailTypes, "type1")
 
@@ -599,7 +599,7 @@ func TestValidateRequest_InvalidAuthDetails(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	ctx.RARIsEnabled = true
-	ctx.RARDetailTypes = map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc{"type1": nil}
+	ctx.RARDetailTypes = []goidc.AuthDetailType{"type1"}
 	client, _ := oidctest.NewClient(t)
 	client.AuthDetailTypes = append(client.AuthDetailTypes, "invalid")
 

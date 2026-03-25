@@ -585,7 +585,7 @@ func validateAuthorizationDetailTypes(ctx oidc.Context, meta *goidc.ClientMeta) 
 	}
 
 	for _, dt := range meta.AuthDetailTypes {
-		if _, ok := ctx.RARDetailTypes[dt]; !ok {
+		if !slices.Contains(ctx.RARDetailTypes, dt) {
 			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "authorization detail type not supported")
 		}
 	}

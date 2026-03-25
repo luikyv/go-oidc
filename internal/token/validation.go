@@ -124,16 +124,12 @@ func validateAuthDetails(ctx oidc.Context, req request, c *goidc.Client, granted
 	}
 
 	for _, detail := range req.authDetails {
-		if _, ok := ctx.RARDetailTypes[detail.Type()]; !ok {
+		if !slices.Contains(ctx.RARDetailTypes, detail.Type()) {
 			return goidc.NewError(goidc.ErrorCodeInvalidAuthDetails, "authorization detail not allowed")
 		}
 
 		if c.AuthDetailTypes != nil && !slices.Contains(c.AuthDetailTypes, detail.Type()) {
 			return goidc.NewError(goidc.ErrorCodeInvalidAuthDetails, "authorization detail not allowed")
-		}
-
-		if err := ctx.RARValidateDetail(detail, c); err != nil {
-			return err
 		}
 	}
 

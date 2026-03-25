@@ -45,11 +45,7 @@ func main() {
 		provider.WithRenderErrorFunc(authutil.RenderError()),
 		provider.WithCheckJTIFunc(authutil.CheckJTIFunc()),
 		provider.WithJWTLeewayTime(30),
-		provider.WithRAR(map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc{
-			"customer_information": func(ctx context.Context, ad goidc.AuthorizationDetail, c *goidc.Client) error {
-				return nil
-			},
-		}),
+		provider.WithRAR("customer_information"),
 		provider.WithRARCompareDetailsFunc(func(_ context.Context, granted, requested []goidc.AuthorizationDetail) error {
 			grantedDetailTypes := make([]goidc.AuthDetailType, len(granted))
 			for i, grantedDetail := range granted {

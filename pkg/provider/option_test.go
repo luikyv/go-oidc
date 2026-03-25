@@ -1258,8 +1258,9 @@ func TestWithAuthorizationDetails(t *testing.T) {
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
+
 	// When.
-	err := WithRAR(map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc{"detail_type": nil})(p)
+	err := WithRAR("detail_type")(p)
 
 	// Then.
 	if err != nil {

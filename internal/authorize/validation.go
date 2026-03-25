@@ -469,16 +469,12 @@ func validateAuthorizationDetailsAsOptional(ctx oidc.Context, params goidc.Autho
 			return newRedirectionError(goidc.ErrorCodeInvalidAuthDetails, "authorization detail missing 'type'", params)
 		}
 
-		if _, ok := ctx.RARDetailTypes[typ]; !ok {
+		if !slices.Contains(ctx.RARDetailTypes, typ) {
 			return newRedirectionError(goidc.ErrorCodeInvalidAuthDetails, "authorization detail type not allowed", params)
 		}
 
 		if c.AuthDetailTypes != nil && !slices.Contains(c.AuthDetailTypes, typ) {
 			return newRedirectionError(goidc.ErrorCodeInvalidAuthDetails, "authorization detail type not allowed", params)
-		}
-
-		if err := ctx.RARValidateDetail(detail, c); err != nil {
-			return err
 		}
 	}
 

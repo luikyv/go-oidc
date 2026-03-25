@@ -184,7 +184,7 @@ type Configuration struct {
 	PKCEChallengeMethods       []goidc.CodeChallengeMethod
 
 	RARIsEnabled          bool
-	RARDetailTypes        map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc
+	RARDetailTypes        []goidc.AuthDetailType
 	RARCompareDetailsFunc goidc.CompareAuthDetailsFunc
 
 	ResourceIndicatorsIsEnabled bool

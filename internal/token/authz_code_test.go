@@ -101,7 +101,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails(t *testing.T) {
 	// Given.
 	ctx, client, session := setUpAuthzCodeGrant(t)
 	ctx.RARIsEnabled = true
-	ctx.RARDetailTypes = map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc{"type1": nil, "type2": nil}
+	ctx.RARDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
 	ctx.RARCompareDetailsFunc = func(_ context.Context, granted, requested []goidc.AuthorizationDetail) error {
 		return nil
 	}
@@ -202,7 +202,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails_ClientRequestsSubset(t
 	// Given.
 	ctx, client, session := setUpAuthzCodeGrant(t)
 	ctx.RARIsEnabled = true
-	ctx.RARDetailTypes = map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc{"type1": nil, "type2": nil}
+	ctx.RARDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
 	ctx.RARCompareDetailsFunc = func(_ context.Context, granted, requested []goidc.AuthorizationDetail) error {
 		return nil
 	}

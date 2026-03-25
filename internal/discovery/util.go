@@ -12,10 +12,7 @@ func NewOpenIDConfiguration(ctx oidc.Context) OpenIDConfiguration {
 	for i, scope := range ctx.Scopes {
 		scopes[i] = scope.ID
 	}
-	var detailTypes []goidc.AuthDetailType
-	for detailType, _ := range ctx.RARDetailTypes {
-		detailTypes = append(detailTypes, detailType)
-	}
+
 	config := OpenIDConfiguration{
 		Issuer:                       ctx.Issuer(),
 		AuthorizationEndpoint:        ctx.BaseURL() + ctx.AuthorizationEndpoint,
@@ -36,7 +33,7 @@ func NewOpenIDConfiguration(ctx oidc.Context) OpenIDConfiguration {
 		IssuerResponseParamIsEnabled: ctx.IssuerRespParamIsEnabled,
 		ClaimsParamIsEnabled:         ctx.ClaimsParamIsEnabled,
 		AuthDetailsIsEnabled:         ctx.RARIsEnabled,
-		AuthDetailTypesSupported:     detailTypes,
+		AuthDetailTypesSupported:     ctx.RARDetailTypes,
 		ACRs:                         ctx.ACRs,
 		DisplayValues:                ctx.DisplayValues,
 	}
