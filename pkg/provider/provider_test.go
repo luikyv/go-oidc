@@ -163,6 +163,7 @@ func TestNew_WithOptions(t *testing.T) {
 			TokenRevocationIsEnabled:       true,
 			TokenRevocationAuthnMethods:    []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT},
 			TokenRevocationEndpoint:        defaultEndpointTokenRevocation,
+			CIBAProfile:                    goidc.CIBAProfileOpenID,
 			CIBATokenDeliveryModels:        []goidc.CIBATokenDeliveryMode{goidc.CIBADeliveryModePoll},
 			CIBAEndpoint:                   defaultEndpointCIBA,
 			CIBADefaultSessionLifetimeSecs: 60,
