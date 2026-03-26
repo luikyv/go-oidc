@@ -191,7 +191,7 @@ func generateCIBAGrant(ctx oidc.Context, req request) (response, error) {
 		return response{}, goidc.NewError(goidc.ErrorCodeAuthPending, "authorization pending")
 	default:
 		_ = ctx.DeleteAuthnSession(as.ID)
-		return response{}, goidc.NewError(goidc.ErrorCodeAccessDenied, "access denied")
+		return response{}, goidc.NewError(goidc.ErrorCodeAccessDenied, "access denied").WithStatusCode(http.StatusBadRequest)
 	}
 
 	grant, err := NewGrant(ctx, c, GrantOptions{
