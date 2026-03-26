@@ -179,7 +179,7 @@ func (a authenticator) login(w http.ResponseWriter, r *http.Request, as *goidc.A
 		return a.renderPage(w, "login.html", as)
 	}
 
-	if !isTrue(login) {
+	if login != "true" {
 		return goidc.StatusFailure, errors.New("consent not granted")
 	}
 
@@ -220,7 +220,7 @@ func (a authenticator) grantConsent(w http.ResponseWriter, r *http.Request, as *
 		return a.renderPage(w, "consent.html", as)
 	}
 
-	if !isTrue(consented) {
+	if consented != "true" {
 		return goidc.StatusFailure, errors.New("consent not granted")
 	}
 

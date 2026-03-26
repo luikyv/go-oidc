@@ -1,8 +1,8 @@
 package token
 
 import (
+	"context"
 	"errors"
-	"net/http"
 	"strings"
 	"testing"
 
@@ -307,13 +307,7 @@ func TestHandleGrantCreation_JWTBearerGrant_ServerDoesNotSupportGrantType(t *tes
 func TestHandleGrantCreation_JWTBearerGrant_AssertionHandlerError(t *testing.T) {
 	// Given.
 	ctx, _ := setUpJWTBearerGrant(t, "random_subject")
-	ctx.JWTBearerHandleAssertionFunc = func(
-		r *http.Request,
-		assertion string,
-	) (
-		string,
-		error,
-	) {
+	ctx.JWTBearerHandleAssertionFunc = func(context.Context, string) (string, error) {
 		return "", errors.New("assertion handler failed")
 	}
 
@@ -349,13 +343,7 @@ func setUpJWTBearerGrant(t *testing.T, sub string) (
 
 	ctx = oidctest.NewContext(t)
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantJWTBearer)
-	ctx.JWTBearerHandleAssertionFunc = func(
-		r *http.Request,
-		assertion string,
-	) (
-		string,
-		error,
-	) {
+	ctx.JWTBearerHandleAssertionFunc = func(context.Context, string) (string, error) {
 		return sub, nil
 	}
 

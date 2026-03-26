@@ -167,7 +167,7 @@ func TestHandleDynamicClient(t *testing.T) {
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{},
 	}
-	ctx.HandleDynamicClientFunc = func(r *http.Request, id string, meta *goidc.ClientMeta) error {
+	ctx.DCRHandleClientFunc = func(_ context.Context, id string, meta *goidc.ClientMeta) error {
 		meta.TokenAuthnMethod = goidc.AuthnMethodNone
 		return nil
 	}
@@ -646,7 +646,7 @@ func TestClientCert(t *testing.T) {
 	}
 
 	// Given.
-	ctx.ClientCertFunc = func(r *http.Request) (*x509.Certificate, error) {
+	ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
 		return &x509.Certificate{}, nil
 	}
 	// When.
@@ -673,7 +673,7 @@ func TestValidateInitalAccessToken(t *testing.T) {
 	}
 
 	// Given.
-	ctx.ValidateInitialAccessTokenFunc = func(ctx context.Context, s string) error {
+	ctx.DCRValidateInitialTokenFunc = func(ctx context.Context, s string) error {
 		return errors.New("error")
 	}
 	// When.
@@ -823,7 +823,7 @@ func TestHandleGrant(t *testing.T) {
 	}
 
 	// Given.
-	ctx.HandleGrantFunc = func(_ *http.Request, _ *goidc.Grant) error {
+	ctx.HandleGrantFunc = func(context.Context, *goidc.Grant) error {
 		return errors.New("error")
 	}
 

@@ -100,7 +100,7 @@ func (op *Provider) Handler(middlewares ...goidc.MiddlewareFunc) http.Handler {
 }
 
 func (op Provider) RegisterRoutes(mux *http.ServeMux, middlewares ...goidc.MiddlewareFunc) {
-	middlewares = append(middlewares, goidc.CacheControlMiddleware)
+	middlewares = append(middlewares, cacheControlMiddleware)
 	discovery.RegisterHandlers(mux, &op.config, middlewares...)
 	token.RegisterHandlers(mux, &op.config, middlewares...)
 	authorize.RegisterHandlers(mux, &op.config, middlewares...)
@@ -624,4 +624,14 @@ func defaultCompareAuthDetailsFunc(_ context.Context, granted, request []goidc.A
 		return goidc.NewError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization details")
 	}
 	return nil
+}
+
+func cacheControlMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Avoid caching.
+		w.Header().Set("Cache-Control", "no-cache, no-store")
+		w.Header().Set("Pragma", "no-cache")
+
+		next.ServeHTTP(w, r)
+	})
 }

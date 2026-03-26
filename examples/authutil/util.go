@@ -7,14 +7,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"html/template"
 	"log"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"slices"
 	"strings"
 
@@ -30,6 +28,12 @@ const (
 	MTLSHost                 string = "https://matls-auth.localhost"
 	headerClientCert         string = "X-Client-Cert"
 	headerXFAPIInteractionID        = "X-Fapi-Interaction-Id"
+)
+
+type ContextKey string
+
+const (
+	ContextKeyClientCert ContextKey = "client_cert"
 )
 
 var (
@@ -174,7 +178,7 @@ func ClientCACertPool() *x509.CertPool {
 	return caPool
 }
 
-func DCRFunc(r *http.Request, _ string, meta *goidc.ClientMeta) error {
+func DCRFunc(_ context.Context, _ string, meta *goidc.ClientMeta) error {
 	s := make([]string, len(Scopes))
 	for i, scope := range Scopes {
 		s[i] = scope.ID
@@ -209,28 +213,11 @@ func UserInfoClaimsFunc() goidc.UserInfoClaimsFunc {
 	}
 }
 
-func ClientCertFunc(r *http.Request) (*x509.Certificate, error) {
-	rawClientCert := r.Header.Get(headerClientCert)
-	if rawClientCert == "" {
-		return nil, errors.New("the client certificate was not informed")
+func ClientCertFunc(ctx context.Context) (*x509.Certificate, error) {
+	clientCert, ok := ctx.Value(ContextKeyClientCert).(*x509.Certificate)
+	if !ok {
+		return nil, errors.New("the client certificate is not in the context")
 	}
-
-	// Apply URL decoding.
-	rawClientCert, err := url.QueryUnescape(rawClientCert)
-	if err != nil {
-		return nil, fmt.Errorf("could not url decode the client certificate: %w", err)
-	}
-
-	clientCertPEM, _ := pem.Decode([]byte(rawClientCert))
-	if clientCertPEM == nil {
-		return nil, errors.New("could not decode the client certificate")
-	}
-
-	clientCert, err := x509.ParseCertificate(clientCertPEM.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse the client certificate: %w", err)
-	}
-
 	return clientCert, nil
 }
 
@@ -286,15 +273,10 @@ func ClientCertMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		pemBlock := &pem.Block{
-			Type:  "CERTIFICATE",
-			Bytes: r.TLS.PeerCertificates[0].Raw,
-		}
-		pemBytes := pem.EncodeToMemory(pemBlock)
+		ctx := r.Context()
+		ctx = context.WithValue(ctx, ContextKeyClientCert, r.TLS.PeerCertificates[0])
 
-		encodedPem := url.QueryEscape(string(pemBytes))
-		r.Header.Set(headerClientCert, encodedPem)
-
+		r = r.WithContext(ctx)
 		next.ServeHTTP(w, r)
 	})
 }
@@ -345,7 +327,7 @@ func LogoutPolicy() goidc.LogoutPolicy {
 				return goidc.StatusInProgress, nil
 			}
 
-			if !isTrue(logout) {
+			if logout != "true" {
 				slog.Debug("user cancelled logout")
 				return goidc.StatusFailure, errLogoutCancelled
 			}
@@ -370,8 +352,4 @@ func HandleLogout() goidc.HandleDefaultPostLogoutFunc {
 		}
 		return nil
 	}
-}
-
-func isTrue(s string) bool {
-	return s == "true"
 }

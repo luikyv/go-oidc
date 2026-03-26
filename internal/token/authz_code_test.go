@@ -6,7 +6,6 @@ import (
 	"crypto/x509/pkix"
 	"errors"
 	"math/big"
-	"net/http"
 	"testing"
 	"time"
 
@@ -535,7 +534,7 @@ func TestGenerateGrant_AuthorizationCodeGrant_MTLSBinding(t *testing.T) {
 	// Given.
 	ctx, client, session := setUpAuthzCodeGrant(t)
 	ctx.MTLSTokenBindingIsEnabled = true
-	ctx.ClientCertFunc = func(r *http.Request) (*x509.Certificate, error) {
+	ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
 		return &x509.Certificate{
 			SerialNumber: big.NewInt(time.Now().UnixNano()),
 			Subject: pkix.Name{

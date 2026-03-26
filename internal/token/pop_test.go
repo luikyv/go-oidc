@@ -1,9 +1,9 @@
 package token
 
 import (
+	"context"
 	"crypto/x509"
 	"errors"
-	"net/http"
 	"testing"
 
 	"github.com/luikyv/go-oidc/internal/hashutil"
@@ -42,7 +42,7 @@ func TestValidateTLSPoP_NoThumbprint(t *testing.T) {
 func TestValidateTLSPoP_NoCert(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.ClientCertFunc = func(r *http.Request) (*x509.Certificate, error) {
+	ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
 		return nil, errors.New("no cert")
 	}
 	cnf := goidc.TokenConfirmation{
@@ -71,7 +71,7 @@ func TestValidateTLSPoP_ThumbprintMismatch(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	certRaw := []byte("test_cert_raw_data")
-	ctx.ClientCertFunc = func(r *http.Request) (*x509.Certificate, error) {
+	ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
 		return &x509.Certificate{Raw: certRaw}, nil
 	}
 	cnf := goidc.TokenConfirmation{
@@ -100,7 +100,7 @@ func TestValidateTLSPoP_ValidCert(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	certRaw := []byte("test_cert_raw_data")
-	ctx.ClientCertFunc = func(r *http.Request) (*x509.Certificate, error) {
+	ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
 		return &x509.Certificate{Raw: certRaw}, nil
 	}
 	cnf := goidc.TokenConfirmation{

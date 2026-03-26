@@ -267,21 +267,24 @@ func WithIDTokenContentEncryptionAlgs(defaultAlg goidc.ContentEncryptionAlgorith
 }
 
 // WithDCR allows clients to be registered dynamically.
-// handleFunc is executed during registration and update of the client to
-// perform custom validations (e.g. validate the initial access token) or set
-// default values (e.g. set the default scopes).
 // To make registration access tokens rotate, see [WithDCRTokenRotation].
-func WithDCR(handleFunc goidc.HandleDynamicClientFunc) Option {
+func WithDCR() Option {
 	return func(p *Provider) error {
 		p.config.DCRIsEnabled = true
-		p.config.HandleDynamicClientFunc = handleFunc
 		return nil
 	}
 }
 
-func WithDCRInitialTokenFunc(f goidc.ValidateInitialAccessTokenFunc) Option {
+func WithDCRHandleClientFunc(f goidc.DCRHandleClientFunc) Option {
 	return func(p *Provider) error {
-		p.config.ValidateInitialAccessTokenFunc = f
+		p.config.DCRHandleClientFunc = f
+		return nil
+	}
+}
+
+func WithDCRValidateInitialTokenFunc(f goidc.DCRValidateInitialTokenFunc) Option {
+	return func(p *Provider) error {
+		p.config.DCRValidateInitialTokenFunc = f
 		return nil
 	}
 }

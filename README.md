@@ -286,21 +286,14 @@ DCR allows clients to register and update themselves dynamically:
 ```go
 op, _ := provider.New(
   ...,
-  provider.WithDCR(
-    func(r *http.Request, id string, meta *goidc.ClientMeta) error {
-      return nil
-    },
-    func(_ context.Context, initialToken string) error {
-      return nil
-    },
-  ),
+  provider.WithDCR(),
   ...,
 )
 ```
 
-The first function (`goidc.HandleDynamicClientFunc`) runs during registration and update requests. Use it for custom validation or to set default metadata values.
+Use `provider.WithDCRHandleClientFunc` to run custom logic during registration and update requests, such as validation or setting default metadata values.
 
-The second function (`goidc.ValidateInitialAccessTokenFunc`) validates the initial access token during registration. Pass `nil` to skip validation.
+Use `provider.WithDCRValidateInitialTokenFunc` (`goidc.DCRValidateInitialTokenFunc`) to validate the initial access token during registration. Omit this option to skip validation.
 
 By default, the DCR endpoint is `/register` and the management endpoint is `/register/{client_id}`.
 
@@ -314,7 +307,7 @@ op, _ := provider.New(
   ...,
   provider.WithMTLS(
     "https://matls-go-oidc.com",
-    func(r *http.Request) (*x509.Certificate, error) {
+    func(context.Context) (*x509.Certificate, error) {
       ...
     },
   ),
@@ -384,15 +377,7 @@ To customize content encryption algorithms, use `provider.WithJARMContentEncrypt
 ```go
 op, _ := provider.New(
   ...,
-  provider.WithRAR(map[goidc.AuthDetailType]goidc.ValidateAuthDetailFunc{
-    "payment_initiation": func(ctx context.Context, detail goidc.AuthorizationDetail, c *goidc.Client) error {
-      // Validate the detail fields for this type.
-      if detail["creditor_account"] == nil {
-        return errors.New("creditor_account is required")
-      }
-      return nil
-    },
-  }),
+  provider.WithRAR("payment_initiation"),
   ...,
 )
 ```

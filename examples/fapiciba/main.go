@@ -39,7 +39,8 @@ func main() {
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
 		provider.WithCheckJTIFunc(authutil.CheckJTIFunc()),
-		provider.WithDCR(authutil.DCRFunc),
+		provider.WithDCR(),
+		provider.WithDCRHandleClientFunc(authutil.DCRFunc),
 	)
 
 	// Set up the server.

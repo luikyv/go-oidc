@@ -3,7 +3,6 @@ package dcr
 import (
 	"context"
 	"errors"
-	"net/http"
 	"testing"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -148,7 +147,7 @@ func TestCreate_InvalidInitialToken(t *testing.T) {
 	// Given.
 	c, _ := oidctest.NewClient(t)
 	ctx := oidctest.NewContext(t)
-	ctx.ValidateInitialAccessTokenFunc = func(_ context.Context, _ string) error {
+	ctx.DCRValidateInitialTokenFunc = func(_ context.Context, _ string) error {
 		return errors.New("invalid token")
 	}
 
@@ -295,7 +294,7 @@ func TestCreate_HandleDynamicClientError(t *testing.T) {
 	// Given.
 	c, _ := oidctest.NewClient(t)
 	ctx := oidctest.NewContext(t)
-	ctx.HandleDynamicClientFunc = func(_ *http.Request, _ string, _ *goidc.ClientMeta) error {
+	ctx.DCRHandleClientFunc = func(_ context.Context, _ string, _ *goidc.ClientMeta) error {
 		return errors.New("handler error")
 	}
 
@@ -380,7 +379,7 @@ func TestCreate_SecretForRevocationAuthn(t *testing.T) {
 func TestUpdate_HandleDynamicClientError(t *testing.T) {
 	// Given.
 	ctx, client, regToken := setUp(t)
-	ctx.HandleDynamicClientFunc = func(_ *http.Request, _ string, _ *goidc.ClientMeta) error {
+	ctx.DCRHandleClientFunc = func(_ context.Context, _ string, _ *goidc.ClientMeta) error {
 		return errors.New("handler error")
 	}
 

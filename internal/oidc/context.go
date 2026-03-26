@@ -99,23 +99,23 @@ func (ctx Context) ClientCert() (*x509.Certificate, error) {
 		return nil, errors.New("the client certificate function was not defined")
 	}
 
-	return ctx.ClientCertFunc(ctx.Request)
+	return ctx.ClientCertFunc(ctx)
 }
 
 func (ctx Context) ValidateInitalAccessToken(token string) error {
-	if ctx.ValidateInitialAccessTokenFunc == nil {
+	if ctx.DCRValidateInitialTokenFunc == nil {
 		return nil
 	}
 
-	return ctx.ValidateInitialAccessTokenFunc(ctx, token)
+	return ctx.DCRValidateInitialTokenFunc(ctx, token)
 }
 
 func (ctx Context) HandleDynamicClient(id string, c *goidc.ClientMeta) error {
-	if ctx.HandleDynamicClientFunc == nil {
+	if ctx.DCRHandleClientFunc == nil {
 		return nil
 	}
 
-	return ctx.HandleDynamicClientFunc(ctx.Request, id, c)
+	return ctx.DCRHandleClientFunc(ctx, id, c)
 }
 
 func (ctx Context) ClientID() string {
@@ -586,7 +586,7 @@ func (ctx Context) HandleGrant(grant *goidc.Grant) error {
 		return nil
 	}
 
-	return ctx.HandleGrantFunc(ctx.Request, grant)
+	return ctx.HandleGrantFunc(ctx, grant)
 }
 
 func (ctx Context) GrantByID(id string) (*goidc.Grant, error) {
@@ -618,7 +618,7 @@ func (ctx Context) JWTBearerHandleAssertion(assertion string) (string, error) {
 	if ctx.JWTBearerHandleAssertionFunc == nil {
 		return "", errors.New("jwt bearer handle assertion function was not provided")
 	}
-	return ctx.JWTBearerHandleAssertionFunc(ctx.Request, assertion)
+	return ctx.JWTBearerHandleAssertionFunc(ctx, assertion)
 }
 
 func (ctx Context) HTTPClient() *http.Client {

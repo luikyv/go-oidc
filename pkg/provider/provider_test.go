@@ -84,7 +84,7 @@ func TestNew_WithOptions(t *testing.T) {
 		jwksFunc,
 		WithGrantTypes(goidc.GrantAuthorizationCode, goidc.GrantImplicit, goidc.GrantCIBA),
 		WithTokenAuthnMethods(goidc.AuthnMethodPrivateKeyJWT, goidc.AuthnMethodSecretJWT),
-		WithDCR(nil),
+		WithDCR(),
 		WithPAR(),
 		WithJAR(goidc.RS256),
 		WithJAREncryption(goidc.RSA_OAEP),

@@ -1,10 +1,10 @@
 package client_test
 
 import (
+	"context"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"errors"
-	"net/http"
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
@@ -792,7 +792,7 @@ func setUpTLSAuthn(t *testing.T) (
 	t.Helper()
 
 	ctx = oidctest.NewContext(t)
-	ctx.ClientCertFunc = func(r *http.Request) (*x509.Certificate, error) {
+	ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
 		return &x509.Certificate{
 			Subject: pkix.Name{
 				CommonName: "https://example.com",

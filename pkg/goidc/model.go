@@ -272,7 +272,7 @@ const (
 // ClientCertFunc fetches the client certificate during mTLS connections.
 // It may be executed multiple times during a single request to the provider.
 // Consider caching the certificate to avoid redundant computations.
-type ClientCertFunc func(*http.Request) (*x509.Certificate, error)
+type ClientCertFunc func(context.Context) (*x509.Certificate, error)
 
 type MiddlewareFunc func(next http.Handler) http.Handler
 
@@ -283,12 +283,11 @@ func ApplyMiddlewares(h http.Handler, middlewares ...MiddlewareFunc) http.Handle
 	return h
 }
 
-// HandleDynamicClientFunc defines a function that will be executed during DCR
-// and DCM.
+// DCRHandleClientFunc defines a function that will be executed during DCR and DCM.
 // It can be used to modify the client and perform custom validations.
-type HandleDynamicClientFunc func(r *http.Request, id string, meta *ClientMeta) error
+type DCRHandleClientFunc func(ctx context.Context, id string, meta *ClientMeta) error
 
-type ValidateInitialAccessTokenFunc func(context.Context, string) error
+type DCRValidateInitialTokenFunc func(context.Context, string) error
 
 type ClientIDFunc func(context.Context) string
 
@@ -654,7 +653,7 @@ func (d AuthDetail) Type() AuthDetailType {
 	return AuthDetailType(typ)
 }
 
-type JWTBearerHandleAssertionFunc func(r *http.Request, assertion string) (sub string, err error)
+type JWTBearerHandleAssertionFunc func(context.Context, string) (sub string, err error)
 
 type IsClientAllowedFunc func(context.Context, *Client) bool
 

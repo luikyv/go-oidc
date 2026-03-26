@@ -520,12 +520,9 @@ func TestWithDCR(t *testing.T) {
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
-	var handleDCRFunc goidc.HandleDynamicClientFunc = func(*http.Request, string, *goidc.ClientMeta) error {
-		return nil
-	}
 
 	// When.
-	err := WithDCR(handleDCRFunc)(p)
+	err := WithDCR()(p)
 
 	// Then.
 	if err != nil {
@@ -534,10 +531,6 @@ func TestWithDCR(t *testing.T) {
 
 	if !p.config.DCRIsEnabled {
 		t.Error("DCRIsEnabled cannot be false")
-	}
-
-	if p.config.HandleDynamicClientFunc == nil {
-		t.Error("HandleDynamicClientFunc cannot be nil")
 	}
 }
 
@@ -689,7 +682,7 @@ func TestWithHandleGrantFunc(t *testing.T) {
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
-	var grantHandler goidc.HandleGrantFunc = func(_ *http.Request, _ *goidc.Grant) error {
+	var grantHandler goidc.HandleGrantFunc = func(context.Context, *goidc.Grant) error {
 		return nil
 	}
 
@@ -1282,9 +1275,7 @@ func TestWithMTLS(t *testing.T) {
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
-	var clientCertFunc goidc.ClientCertFunc = func(
-		r *http.Request,
-	) (*x509.Certificate, error) {
+	var clientCertFunc goidc.ClientCertFunc = func(_ context.Context) (*x509.Certificate, error) {
 		return nil, nil
 	}
 
@@ -1862,7 +1853,7 @@ func TestJWTBearerGrant(t *testing.T) {
 	}
 
 	// When.
-	err := WithJWTBearerHandleAssertionFunc(func(r *http.Request, assertion string) (string, error) {
+	err := WithJWTBearerHandleAssertionFunc(func(_ context.Context, assertion string) (string, error) {
 		return "", nil
 	})(p)
 

@@ -101,12 +101,12 @@ type Configuration struct {
 	JWTLeewayTimeSecs int
 	JWTIDFunc         goidc.RandomStringFunc
 
-	DCRIsEnabled                   bool
-	DCREndpoint                    string
-	DCRTokenRotationIsEnabled      bool
-	HandleDynamicClientFunc        goidc.HandleDynamicClientFunc
-	ValidateInitialAccessTokenFunc goidc.ValidateInitialAccessTokenFunc
-	ClientIDFunc                   goidc.ClientIDFunc
+	DCRIsEnabled                bool
+	DCREndpoint                 string
+	DCRTokenRotationIsEnabled   bool
+	DCRHandleClientFunc         goidc.DCRHandleClientFunc
+	DCRValidateInitialTokenFunc goidc.DCRValidateInitialTokenFunc
+	ClientIDFunc                goidc.ClientIDFunc
 
 	TokenIntrospectionIsEnabled           bool
 	IntrospectionEndpoint                 string

@@ -2,7 +2,6 @@ package goidc
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/timeutil"
 )
@@ -62,4 +61,4 @@ func (g *Grant) IsExpired() bool {
 	return g.ExpiresAtTimestamp > 0 && timeutil.TimestampNow() >= g.ExpiresAtTimestamp
 }
 
-type HandleGrantFunc func(*http.Request, *Grant) error
+type HandleGrantFunc func(context.Context, *Grant) error
