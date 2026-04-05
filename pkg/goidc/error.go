@@ -69,6 +69,13 @@ func NewError(code ErrorCode, desc string) Error {
 	}
 }
 
+func Errorf(code ErrorCode, format string, args ...any) Error {
+	return Error{
+		Code:        code,
+		Description: fmt.Sprintf(format, args...),
+	}
+}
+
 func (err Error) WithURI(uri string) Error {
 	err.URI = uri
 	return err

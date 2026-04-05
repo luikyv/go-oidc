@@ -2,16 +2,17 @@ package authorize
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
+	"github.com/luikyv/go-oidc/internal/vc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -286,7 +287,7 @@ func validateParamsAsOptionals(ctx oidc.Context, params goidc.AuthorizationParam
 		return err
 	}
 
-	if err := validateAuthorizationDetailsAsOptional(ctx, params, c); err != nil {
+	if err := validateAuthDetailsAsOptional(ctx, params, c); err != nil {
 		return err
 	}
 
@@ -296,6 +297,14 @@ func validateParamsAsOptionals(ctx oidc.Context, params goidc.AuthorizationParam
 
 	if err := validateResourcesAsOptional(ctx, params, c); err != nil {
 		return err
+	}
+
+	if _, _, err := vc.Resolve(ctx, vc.Request{
+		Scopes:    params.Scopes,
+		Details:   params.AuthDetails,
+		Resources: params.Resources,
+	}); err != nil {
+		return newRedirectionError(goidc.ErrorCodeInvalidRequest, err.Error(), params)
 	}
 
 	if err := validateIDTokenHintAsOptional(ctx, params, c); err != nil {
@@ -339,7 +348,7 @@ func validateRedirectURIAsOptional(_ oidc.Context, params goidc.AuthorizationPar
 	return nil
 }
 
-func validateRequestURIAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, client *goidc.Client) error {
+func validateRequestURIAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) error {
 	if params.RequestURI == "" || strings.HasPrefix(params.RequestURI, parRequestURIPrefix) {
 		return nil
 	}
@@ -348,7 +357,7 @@ func validateRequestURIAsOptional(ctx oidc.Context, params goidc.AuthorizationPa
 		return goidc.NewError(goidc.ErrorCodeRequestURINotSupported, "request_uri is not supported")
 	}
 
-	if ctx.JARRequestURIRegistrationIsRequired && !isRequestURIAllowed(client, params.RequestURI) {
+	if ctx.JARRequestURIRegistrationIsRequired && !slices.Contains(c.RequestURIs, params.RequestURI) {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "request_uri not allowed")
 	}
 
@@ -384,13 +393,19 @@ func validateDisplayValueAsOptional(ctx oidc.Context, params goidc.Authorization
 }
 
 func validateScopesAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) error {
-
 	if params.Scopes == "" {
 		return nil
 	}
 
-	if !client.ValidateScopes(ctx, c, params.Scopes) {
-		return newRedirectionError(goidc.ErrorCodeInvalidScope, "invalid scope", params)
+	for _, s := range strutil.SplitWithSpaces(params.Scopes) {
+		scope, ok := ctx.Scope(s)
+		if !ok {
+			return wrapRedirectionError(goidc.ErrorCodeInvalidScope, "invalid scope", params, fmt.Errorf("scope %s does not match any available scope", s))
+		}
+
+		if !strings.Contains(c.ScopeIDs, scope.ID) {
+			return wrapRedirectionError(goidc.ErrorCodeInvalidScope, "invalid scope", params, fmt.Errorf("scope %s is not allowed for the client", s))
+		}
 	}
 
 	if ctx.OpenIDIsRequired && !strutil.ContainsOpenID(params.Scopes) {
@@ -458,7 +473,7 @@ func validateResponseModeAsOptional(ctx oidc.Context, params goidc.Authorization
 	return nil
 }
 
-func validateAuthorizationDetailsAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) error {
+func validateAuthDetailsAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) error {
 	if !ctx.RARIsEnabled || params.AuthDetails == nil {
 		return nil
 	}
@@ -546,10 +561,6 @@ func validateIDTokenHintAsOptional(ctx oidc.Context, params goidc.AuthorizationP
 	}
 
 	return nil
-}
-
-func isRequestURIAllowed(c *goidc.Client, requestURI string) bool {
-	return slices.Contains(c.RequestURIs, requestURI)
 }
 
 func validateCodeBindingDPoP(ctx oidc.Context, params goidc.AuthorizationParameters) error {

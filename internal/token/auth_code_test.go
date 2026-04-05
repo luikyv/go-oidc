@@ -14,6 +14,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
+	"github.com/luikyv/go-oidc/internal/vc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -800,6 +801,251 @@ func TestGenerateGrant_AuthorizationCodeGrant_InvalidScopeNarrowing(t *testing.T
 	}
 	if oidcErr.Code != goidc.ErrorCodeInvalidScope {
 		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidScope)
+	}
+}
+
+func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails_SameIssuer(t *testing.T) {
+	// Given.
+	ctx, client, session := setUpAuthzCodeGrant(t)
+	ctx.RARIsEnabled = true
+	ctx.VCIsEnabled = true
+	ctx.RARDetailTypes = []goidc.AuthDetailType{goidc.AuthDetailTypeOpenIDCredential}
+	ctx.RARCompareDetailsFunc = func(_ context.Context, _, _ []goidc.AuthDetail) error {
+		return nil
+	}
+	ctx.VCIssuers = []goidc.VCIssuer{
+		{
+			ID: "https://issuer1.example.com",
+			Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
+				"cred1": {Scope: goidc.NewScope("vc_scope1")},
+				"cred2": {Scope: goidc.NewScope("vc_scope2")},
+			},
+		},
+	}
+	session.GrantedAuthDetails = []goidc.AuthDetail{
+		{
+			"type":                        string(goidc.AuthDetailTypeOpenIDCredential),
+			"credential_configuration_id": "cred1",
+			"locations":                   []any{"https://issuer1.example.com"},
+		},
+		{
+			"type":                        string(goidc.AuthDetailTypeOpenIDCredential),
+			"credential_configuration_id": "cred2",
+			"locations":                   []any{"https://issuer1.example.com"},
+		},
+	}
+
+	req := request{
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: client.RedirectURIs[0],
+		code:        session.AuthCode,
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails_DifferentIssuers(t *testing.T) {
+	// Given.
+	ctx, client, session := setUpAuthzCodeGrant(t)
+	ctx.RARIsEnabled = true
+	ctx.VCIsEnabled = true
+	ctx.RARDetailTypes = []goidc.AuthDetailType{goidc.AuthDetailTypeOpenIDCredential}
+	ctx.RARCompareDetailsFunc = func(_ context.Context, _, _ []goidc.AuthDetail) error {
+		return nil
+	}
+	ctx.VCIssuers = []goidc.VCIssuer{
+		{
+			ID: "https://issuer1.example.com",
+			Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
+				"cred1": {Scope: goidc.NewScope("vc_scope1")},
+			},
+		},
+		{
+			ID: "https://issuer2.example.com",
+			Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
+				"cred2": {Scope: goidc.NewScope("vc_scope2")},
+			},
+		},
+	}
+	session.GrantedAuthDetails = []goidc.AuthDetail{
+		{
+			"type":                        string(goidc.AuthDetailTypeOpenIDCredential),
+			"credential_configuration_id": "cred1",
+			"locations":                   []any{"https://issuer1.example.com"},
+		},
+		{
+			"type":                        string(goidc.AuthDetailTypeOpenIDCredential),
+			"credential_configuration_id": "cred2",
+			"locations":                   []any{"https://issuer2.example.com"},
+		},
+	}
+
+	req := request{
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: client.RedirectURIs[0],
+		code:        session.AuthCode,
+	}
+
+	// When.
+	_, err := generateGrant(ctx, req)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error when auth details reference different issuers")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeInvalidAuthDetails {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidAuthDetails)
+	}
+}
+
+func TestResolveVCIssuer_SingleIssuerConfigured(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.VCIsEnabled = true
+	ctx.VCIssuers = []goidc.VCIssuer{
+		{
+			ID: "https://issuer.example.com",
+			Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
+				"cred1": {Scope: goidc.NewScope("vc_scope1")},
+			},
+		},
+	}
+
+	// When.
+	issuer, _, err := vc.Resolve(ctx, vc.Request{
+		Scopes: "vc_scope1",
+	})
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if issuer.ID != "https://issuer.example.com" {
+		t.Errorf("issuer.ID = %s, want https://issuer.example.com", issuer.ID)
+	}
+}
+
+func TestResolveVCIssuer_MultipleIssuers_ResourceIndicator(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.VCIsEnabled = true
+	ctx.ResourceIndicatorsIsEnabled = true
+	ctx.VCIssuers = []goidc.VCIssuer{
+		{
+			ID: "https://issuer1.example.com",
+			Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
+				"cred1": {Scope: goidc.NewScope("vc_scope1")},
+			},
+		},
+		{
+			ID: "https://issuer2.example.com",
+			Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
+				"cred2": {Scope: goidc.NewScope("vc_scope2")},
+			},
+		},
+	}
+
+	// When.
+	issuer, _, err := vc.Resolve(ctx, vc.Request{
+		Scopes:    "vc_scope2",
+		Resources: goidc.Resources{"https://issuer2.example.com"},
+	})
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if issuer.ID != "https://issuer2.example.com" {
+		t.Errorf("issuer.ID = %s, want https://issuer2.example.com", issuer.ID)
+	}
+}
+
+func TestResolveVCIssuer_MultipleIssuers_ScopesConflict(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.VCIsEnabled = true
+	ctx.VCIssuers = []goidc.VCIssuer{
+		{
+			ID: "https://issuer1.example.com",
+			Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
+				"cred1": {Scope: goidc.NewScope("vc_scope1")},
+			},
+		},
+		{
+			ID: "https://issuer2.example.com",
+			Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
+				"cred2": {Scope: goidc.NewScope("vc_scope2")},
+			},
+		},
+	}
+
+	// When.
+	_, _, err := vc.Resolve(ctx, vc.Request{
+		Scopes: "vc_scope1 vc_scope2",
+	})
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error when scopes reference different issuers")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeInvalidScope {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidScope)
+	}
+}
+
+func TestResolveVCIssuer_AuthDetailsLocations(t *testing.T) {
+	// Given.
+	ctx := oidctest.NewContext(t)
+	ctx.VCIsEnabled = true
+	ctx.RARIsEnabled = true
+	ctx.VCIssuers = []goidc.VCIssuer{
+		{
+			ID: "https://issuer1.example.com",
+			Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
+				"cred1": {},
+			},
+		},
+		{
+			ID: "https://issuer2.example.com",
+			Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
+				"cred2": {},
+			},
+		},
+	}
+
+	// When.
+	issuer, _, err := vc.Resolve(ctx, vc.Request{
+		Details: []goidc.AuthDetail{
+			{
+				"type":                        string(goidc.AuthDetailTypeOpenIDCredential),
+				"credential_configuration_id": "cred1",
+				"locations":                   []any{"https://issuer1.example.com"},
+			},
+		},
+	})
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if issuer.ID != "https://issuer1.example.com" {
+		t.Errorf("issuer.ID = %s, want https://issuer1.example.com", issuer.ID)
 	}
 }
 

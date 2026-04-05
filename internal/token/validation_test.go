@@ -8,55 +8,6 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func TestContainsAllScopes(t *testing.T) {
-	testCases := []struct {
-		name      string
-		available string
-		requested string
-		want      bool
-	}{
-		{
-			name:      "empty requested",
-			available: "scope1 scope2",
-			requested: "",
-			want:      true,
-		},
-		{
-			name:      "subset",
-			available: "scope1 scope2 scope3",
-			requested: "scope1 scope2",
-			want:      true,
-		},
-		{
-			name:      "exact match",
-			available: "scope1 scope2",
-			requested: "scope1 scope2",
-			want:      true,
-		},
-		{
-			name:      "superset",
-			available: "scope1",
-			requested: "scope1 scope2",
-			want:      false,
-		},
-		{
-			name:      "disjoint",
-			available: "scope1 scope2",
-			requested: "scope3 scope4",
-			want:      false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := containsAllScopes(tc.available, tc.requested)
-			if got != tc.want {
-				t.Errorf("containsAllScopes(%q, %q) = %v, want %v", tc.available, tc.requested, got, tc.want)
-			}
-		})
-	}
-}
-
 func TestValidatePKCE_Plain_Valid(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
@@ -229,13 +180,11 @@ func TestValidatePkce_Disabled(t *testing.T) {
 func TestValidateScopes_InvalidScope(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	session := &goidc.AuthnSession{
-		GrantedScopes: "openid scope1",
-	}
+	c, _ := oidctest.NewClient(t)
 	req := request{scopes: "openid scope_not_granted"}
 
 	// When.
-	err := validateScopes(ctx, req, session)
+	err := validateScopes(ctx, req, c, "openid scope1")
 
 	// Then.
 	if err == nil {
@@ -260,7 +209,7 @@ func TestValidateResources_Disabled(t *testing.T) {
 	}
 
 	// When.
-	err := validateResources(ctx, nil, req)
+	err := validateResources(ctx, req, nil)
 
 	// Then.
 	if err != nil {
@@ -272,13 +221,13 @@ func TestValidateResources_ValidResource(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	ctx.ResourceIndicatorsIsEnabled = true
-	available := goidc.Resources{"https://resource.com", "https://other.com"}
+	granted := goidc.Resources{"https://resource.com", "https://other.com"}
 	req := request{
 		resources: []string{"https://resource.com"},
 	}
 
 	// When.
-	err := validateResources(ctx, available, req)
+	err := validateResources(ctx, req, granted)
 
 	// Then.
 	if err != nil {
@@ -290,13 +239,13 @@ func TestValidateResources_InvalidResource(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	ctx.ResourceIndicatorsIsEnabled = true
-	available := goidc.Resources{"https://resource.com"}
+	granted := goidc.Resources{"https://resource.com"}
 	req := request{
 		resources: []string{"https://unknown.com"},
 	}
 
 	// When.
-	err := validateResources(ctx, available, req)
+	err := validateResources(ctx, req, granted)
 
 	// Then.
 	if err == nil {

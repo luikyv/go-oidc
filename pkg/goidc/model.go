@@ -34,6 +34,7 @@ const (
 	GrantImplicit          GrantType = "implicit"
 	GrantJWTBearer         GrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer" //nolint:gosec
 	GrantCIBA              GrantType = "urn:openid:params:grant-type:ciba"
+	GrantPreAuthorizedCode GrantType = "urn:ietf:params:oauth:grant-type:pre-authorized_code"
 )
 
 type ResponseType string
@@ -555,6 +556,7 @@ type AuthorizationParameters struct {
 	BindingMessage          string              `json:"binding_message,omitempty"`
 	UserCode                string              `json:"user_code,omitempty"`
 	RequestedExpiry         *int                `json:"requested_expiry,omitempty"`
+	IssuerState             string              `json:"issuer_state,omitempty"`
 }
 
 type Resources []string
@@ -637,6 +639,10 @@ type ClaimObjectInfo struct {
 
 type AuthDetailType string
 
+const (
+	AuthDetailTypeOpenIDCredential AuthDetailType = "openid_credential"
+)
+
 type RARValidateDetailFunc func(context.Context, AuthDetail) error
 
 // RARCompareDetailsFunc defines a function used in authorization_code and
@@ -656,6 +662,24 @@ func (d AuthDetail) Type() AuthDetailType {
 	}
 	typ, _ := value.(string)
 	return AuthDetailType(typ)
+}
+
+func (d AuthDetail) Locations() []string {
+	value, ok := d["locations"]
+	if !ok {
+		return nil
+	}
+	rawLocs, ok := value.([]any)
+	if !ok {
+		return nil
+	}
+	var locs []string
+	for _, rawLoc := range rawLocs {
+		if loc, ok := rawLoc.(string); ok {
+			locs = append(locs, loc)
+		}
+	}
+	return locs
 }
 
 type JWTBearerHandleAssertionFunc func(context.Context, string) (sub string, err error)
@@ -764,6 +788,6 @@ func (steps logoutSteps) Logout(w http.ResponseWriter, r *http.Request, ls *Logo
 	return StatusFailure, errors.New("invalid policy, access denied")
 }
 
-type RandomStringFunc func(context.Context) string
+type RandomFunc func(context.Context) string
 
 type HandleClientFunc func(context.Context, *Client) error

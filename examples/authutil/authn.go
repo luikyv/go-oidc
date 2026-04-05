@@ -21,16 +21,18 @@ func Policy() goidc.AuthnPolicy {
 		"main",
 		func(r *http.Request, c *goidc.Client, as *goidc.AuthnSession) bool {
 			// The flow starts at the login step.
-			as.StoreParameter(paramStepID, stepIDLoadUser)
+			as.Store = map[string]any{
+				paramStepID: stepIDLoadUser,
+			}
 
 			if c.LogoURI != "" {
-				as.StoreParameter(paramLogoURI, c.LogoURI)
+				as.Store[paramLogoURI] = c.LogoURI
 			}
 			if c.PolicyURI != "" {
-				as.StoreParameter(paramPolicyURI, c.PolicyURI)
+				as.Store[paramPolicyURI] = c.PolicyURI
 			}
 			if c.TermsOfServiceURI != "" {
-				as.StoreParameter(paramTermsOfServiceURI, c.TermsOfServiceURI)
+				as.Store[paramTermsOfServiceURI] = c.TermsOfServiceURI
 			}
 
 			return true
@@ -90,35 +92,35 @@ type authenticator struct {
 
 func (a authenticator) authenticate(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) {
 
-	if as.StoredParameter(paramStepID) == stepIDLoadUser {
+	if as.Store[paramStepID] == stepIDLoadUser {
 		if status, err := a.loadUser(r, as); status != goidc.StatusSuccess {
 			return status, err
 		}
-		as.StoreParameter(paramStepID, stepIDLogin)
+		as.Store[paramStepID] = stepIDLogin
 	}
 
-	if as.StoredParameter(paramStepID) == stepIDLogin {
+	if as.Store[paramStepID] == stepIDLogin {
 		if status, err := a.login(w, r, as); status != goidc.StatusSuccess {
 			return status, err
 		}
-		as.StoreParameter(paramStepID, stepIDCreateSession)
+		as.Store[paramStepID] = stepIDCreateSession
 	}
 
-	if as.StoredParameter(paramStepID) == stepIDCreateSession {
+	if as.Store[paramStepID] == stepIDCreateSession {
 		if status, err := a.createUserSession(w, as); status != goidc.StatusSuccess {
 			return status, err
 		}
-		as.StoreParameter(paramStepID, stepIDConsent)
+		as.Store[paramStepID] = stepIDConsent
 	}
 
-	if as.StoredParameter(paramStepID) == stepIDConsent {
+	if as.Store[paramStepID] == stepIDConsent {
 		if status, err := a.grantConsent(w, r, as); status != goidc.StatusSuccess {
 			return status, err
 		}
-		as.StoreParameter(paramStepID, stepIDFinishFlow)
+		as.Store[paramStepID] = stepIDFinishFlow
 	}
 
-	if as.StoredParameter(paramStepID) == stepIDFinishFlow {
+	if as.Store[paramStepID] == stepIDFinishFlow {
 		return a.finishFlow(as)
 	}
 
@@ -130,7 +132,7 @@ func (a authenticator) loadUser(r *http.Request, as *goidc.AuthnSession) (goidc.
 	// Never do this in production, it's just an example.
 	if as.IDTokenHintClaims != nil {
 		as.Subject = as.IDTokenHintClaims[goidc.ClaimSubject].(string)
-		as.StoreParameter(paramAuthTime, as.IDTokenHintClaims[goidc.ClaimAuthTime])
+		as.Store[paramAuthTime] = as.IDTokenHintClaims[goidc.ClaimAuthTime]
 	}
 
 	cookie, err := r.Cookie(cookieUserSessionID)
@@ -143,9 +145,9 @@ func (a authenticator) loadUser(r *http.Request, as *goidc.AuthnSession) (goidc.
 		return goidc.StatusSuccess, nil
 	}
 
-	as.SetUserID(session.Subject)
-	as.StoreParameter(paramAuthTime, session.AuthTime)
-	as.StoreParameter(paramUserSessionID, session.ID)
+	as.Subject = session.Subject
+	as.Store[paramAuthTime] = session.AuthTime
+	as.Store[paramUserSessionID] = session.ID
 	return goidc.StatusSuccess, nil
 }
 
@@ -165,7 +167,7 @@ func (a authenticator) login(w http.ResponseWriter, r *http.Request, as *goidc.A
 	// If the max age is exceeded or 'auth_time' is unavailable, force re-authentication.
 	if as.MaxAuthnAgeSecs != nil {
 		maxAgeSecs := *as.MaxAuthnAgeSecs
-		authTime := as.StoredParameter(paramAuthTime)
+		authTime := as.Store[paramAuthTime]
 		if authTime == nil || timeutil.TimestampNow() > authTime.(int)+maxAgeSecs {
 			mustAuthenticate = true
 		}
@@ -189,20 +191,20 @@ func (a authenticator) login(w http.ResponseWriter, r *http.Request, as *goidc.A
 		return a.renderError(w, "login.html", as, fmt.Sprintf("invalid password, try '%s'", correctPassword))
 	}
 
-	as.SetUserID(username)
-	as.StoreParameter(paramAuthTime, timeutil.TimestampNow())
+	as.Subject = username
+	as.Store[paramAuthTime] = timeutil.TimestampNow()
 	return goidc.StatusSuccess, nil
 }
 
 func (a authenticator) createUserSession(w http.ResponseWriter, as *goidc.AuthnSession) (goidc.Status, error) {
 	sessionID := uuid.NewString()
-	if id := as.StoredParameter(paramUserSessionID); id != nil {
+	if id, ok := as.Store[paramUserSessionID]; ok && id != nil {
 		sessionID = id.(string)
 	}
 	userSessionStore[sessionID] = userSession{
 		ID:       sessionID,
 		Subject:  as.Subject,
-		AuthTime: as.StoredParameter(paramAuthTime).(int),
+		AuthTime: as.Store[paramAuthTime].(int),
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     cookieUserSessionID,
@@ -228,9 +230,9 @@ func (a authenticator) grantConsent(w http.ResponseWriter, r *http.Request, as *
 }
 
 func (a authenticator) finishFlow(as *goidc.AuthnSession) (goidc.Status, error) {
-	as.GrantScopes(as.Scopes)
-	as.GrantResources(as.Resources)
-	as.GrantAuthorizationDetails(as.AuthDetails)
+	as.GrantedScopes = as.Scopes
+	as.GrantedResources = as.Resources
+	as.GrantedAuthDetails = as.AuthDetails
 
 	idTokenClaims := map[string]any{
 		goidc.ClaimAuthTime: as.Store[paramAuthTime].(int),
@@ -332,8 +334,8 @@ func (a authenticator) finishFlow(as *goidc.AuthnSession) (goidc.Status, error) 
 		scopeClaims[goidc.ClaimFamilyName] = "Doe"
 	}
 
-	as.StoreParameter(paramIDTokenClaims, idTokenClaims)
-	as.StoreParameter(paramUserInfoClaims, userInfoClaims)
+	as.Store[paramIDTokenClaims] = idTokenClaims
+	as.Store[paramUserInfoClaims] = userInfoClaims
 
 	return goidc.StatusSuccess, nil
 }
@@ -357,18 +359,15 @@ func (a authenticator) renderPage(w http.ResponseWriter, tmplName string, as *go
 		Session:    mapify(as),
 	}
 
-	logoURI := as.StoredParameter(paramLogoURI)
-	if logoURI != nil {
+	if logoURI, ok := as.Store[paramLogoURI]; ok {
 		params.LogoURI = logoURI.(string)
 	}
 
-	policyURI := as.StoredParameter(paramPolicyURI)
-	if policyURI != nil {
+	if policyURI, ok := as.Store[paramPolicyURI]; ok {
 		params.PolicyURI = policyURI.(string)
 	}
 
-	termsOfService := as.StoredParameter(paramTermsOfServiceURI)
-	if termsOfService != nil {
+	if termsOfService, ok := as.Store[paramTermsOfServiceURI]; ok {
 		params.TermsOfServiceURI = termsOfService.(string)
 	}
 
@@ -387,18 +386,15 @@ func (a authenticator) renderError(w http.ResponseWriter, tmplName string, as *g
 		Error:      err,
 	}
 
-	logoURI := as.StoredParameter(paramLogoURI)
-	if logoURI != nil {
+	if logoURI, ok := as.Store[paramLogoURI]; ok {
 		params.LogoURI = logoURI.(string)
 	}
 
-	policyURI := as.StoredParameter(paramPolicyURI)
-	if policyURI != nil {
+	if policyURI, ok := as.Store[paramPolicyURI]; ok {
 		params.PolicyURI = policyURI.(string)
 	}
 
-	termsOfService := as.StoredParameter(paramTermsOfServiceURI)
-	if termsOfService != nil {
+	if termsOfService, ok := as.Store[paramTermsOfServiceURI]; ok {
 		params.TermsOfServiceURI = termsOfService.(string)
 	}
 

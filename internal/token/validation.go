@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/hashutil"
@@ -101,14 +102,18 @@ func validateBindingRequirement(ctx oidc.Context) error {
 	return nil
 }
 
-func validateResources(ctx oidc.Context, availableResources goidc.Resources, req request) error {
+func validateResources(ctx oidc.Context, req request, granted goidc.Resources) error {
 	if !ctx.ResourceIndicatorsIsEnabled {
 		return nil
 	}
 
-	for _, resource := range req.resources {
-		if !slices.Contains(availableResources, resource) {
-			return goidc.NewError(goidc.ErrorCodeInvalidTarget, "the resource "+resource+" is invalid")
+	for _, r := range req.resources {
+		if !slices.Contains(ctx.Resources, r) {
+			return goidc.NewError(goidc.ErrorCodeInvalidTarget, "the resource "+r+" is invalid")
+		}
+
+		if granted != nil && !slices.Contains(granted, r) {
+			return goidc.NewError(goidc.ErrorCodeInvalidTarget, "the resource "+r+" is invalid")
 		}
 	}
 
@@ -119,7 +124,7 @@ func validateResources(ctx oidc.Context, availableResources goidc.Resources, req
 // Parameters:
 //   - granted: The granted auth details. If nil, no auth details were previouly granted.
 func validateAuthDetails(ctx oidc.Context, req request, c *goidc.Client, granted []goidc.AuthDetail) error {
-	if !ctx.RARIsEnabled || req.authDetails != nil {
+	if !ctx.RARIsEnabled || req.authDetails == nil {
 		return nil
 	}
 
@@ -146,23 +151,27 @@ func validateAuthDetails(ctx oidc.Context, req request, c *goidc.Client, granted
 	return nil
 }
 
-func validateScopes(_ oidc.Context, req request, session *goidc.AuthnSession) error {
-	if !containsAllScopes(session.GrantedScopes, req.scopes) {
-		return goidc.NewError(goidc.ErrorCodeInvalidScope, "invalid scope")
+func validateScopes(ctx oidc.Context, req request, c *goidc.Client, granted string) error {
+	if req.scopes == "" {
+		return nil
 	}
 
-	return nil
-}
+	for _, s := range strutil.SplitWithSpaces(req.scopes) {
+		scope, ok := ctx.Scope(s)
+		if !ok {
+			return goidc.WrapError(goidc.ErrorCodeInvalidScope, "invalid scope", fmt.Errorf("scope %s does not match any available scope", s))
+		}
 
-func containsAllScopes(availableScopes string, requestedScopes string) bool {
-	scopeSlice := strutil.SplitWithSpaces(availableScopes)
-	for _, e := range strutil.SplitWithSpaces(requestedScopes) {
-		if !slices.Contains(scopeSlice, e) {
-			return false
+		if !strings.Contains(c.ScopeIDs, scope.ID) {
+			return goidc.WrapError(goidc.ErrorCodeInvalidScope, "invalid scope", fmt.Errorf("scope %s is not allowed for the client", s))
+		}
+
+		if granted != "" && !slices.Contains(strutil.SplitWithSpaces(granted), s) {
+			return goidc.WrapError(goidc.ErrorCodeInvalidScope, "invalid scope", fmt.Errorf("scope %s is not granted", s))
 		}
 	}
 
-	return true
+	return nil
 }
 
 func validatePKCE(ctx oidc.Context, req request, _ *goidc.Client, as *goidc.AuthnSession) error {

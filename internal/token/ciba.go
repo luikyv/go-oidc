@@ -262,7 +262,7 @@ func validateCIBAGrantRequest(ctx oidc.Context, req request, c *goidc.Client, as
 		return err
 	}
 
-	if err := validateResources(ctx, as.GrantedResources, req); err != nil {
+	if err := validateResources(ctx, req, as.GrantedResources); err != nil {
 		return err
 	}
 
@@ -270,7 +270,7 @@ func validateCIBAGrantRequest(ctx oidc.Context, req request, c *goidc.Client, as
 		return err
 	}
 
-	if err := validateScopes(ctx, req, as); err != nil {
+	if err := validateScopes(ctx, req, c, as.GrantedScopes); err != nil {
 		return err
 	}
 

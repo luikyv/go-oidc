@@ -46,7 +46,7 @@ func WithTokenManager(manager goidc.TokenManager) Option {
 	}
 }
 
-func WithGrantIDFunc(f goidc.RandomStringFunc) Option {
+func WithGrantIDFunc(f goidc.RandomFunc) Option {
 	return func(p *Provider) error {
 		p.config.GrantIDFunc = f
 		return nil
@@ -396,7 +396,7 @@ func WithCIBALifetime(secs int) Option {
 	}
 }
 
-func WithCIBAAuthReqIDFunc(f goidc.RandomStringFunc) Option {
+func WithCIBAAuthReqIDFunc(f goidc.RandomFunc) Option {
 	return func(p *Provider) error {
 		p.config.CIBAAuthReqIDFunc = f
 		return nil
@@ -427,16 +427,25 @@ func WithTokenOptions(tokenOpts goidc.TokenOptionsFunc) Option {
 // WithHandleGrantFunc defines a function executed everytime a new grant is created.
 // It can be used to perform validations or change the grant information before
 // issuing a new access token.
-func WithHandleGrantFunc(grantHandler goidc.HandleGrantFunc) Option {
+func WithHandleGrantFunc(f goidc.HandleGrantFunc) Option {
 	return func(p *Provider) error {
-		p.config.HandleGrantFunc = grantHandler
+		p.config.HandleGrantFunc = f
+		return nil
+	}
+}
+
+// WithHandleTokenFunc defines a function executed everytime a new token is created.
+// It can be used to perform validations or change the token information before
+// issuing it.
+func WithHandleTokenFunc(f goidc.HandleTokenFunc) Option {
+	return func(p *Provider) error {
+		p.config.HandleTokenFunc = f
 		return nil
 	}
 }
 
 // WithIDTokenClaims defines a function that returns additional claims to include
 // in ID tokens. It is called at ID token issuance time.
-// Use grant.Store to access data set during authentication.
 func WithIDTokenClaims(f goidc.IDTokenClaimsFunc) Option {
 	return func(p *Provider) error {
 		p.config.IDTokenClaimsFunc = f
@@ -446,7 +455,6 @@ func WithIDTokenClaims(f goidc.IDTokenClaimsFunc) Option {
 
 // WithUserInfoClaims defines a function that returns additional claims to include
 // in the userinfo response. It is called when the userinfo endpoint is requested.
-// Use grant.Store to access data set during authentication.
 func WithUserInfoClaims(f goidc.UserInfoClaimsFunc) Option {
 	return func(p *Provider) error {
 		p.config.UserInfoClaimsFunc = f
@@ -456,7 +464,6 @@ func WithUserInfoClaims(f goidc.UserInfoClaimsFunc) Option {
 
 // WithTokenClaims defines a function that returns additional claims to include
 // in JWT access tokens. It is called at access token issuance time.
-// Use grant.Store to access data set during authentication.
 func WithTokenClaims(f goidc.TokenClaimsFunc) Option {
 	return func(p *Provider) error {
 		p.config.TokenClaimsFunc = f
@@ -532,7 +539,7 @@ func WithPARUnregisteredRedirectURIs() Option {
 	}
 }
 
-func WithPARIDFunc(f goidc.RandomStringFunc) Option {
+func WithPARIDFunc(f goidc.RandomFunc) Option {
 	return func(p *Provider) error {
 		p.config.PARIDFunc = f
 		return nil
@@ -896,7 +903,7 @@ func WithAuthnSessionTimeout(secs int) Option {
 	}
 }
 
-func WithAuthnSessionIDFunc(f goidc.RandomStringFunc) Option {
+func WithAuthnSessionIDFunc(f goidc.RandomFunc) Option {
 	return func(p *Provider) error {
 		p.config.AuthnSessionGenerateIDFunc = f
 		return nil
@@ -1263,21 +1270,21 @@ func WithLogoutEndpoint(endpoint string) Option {
 	}
 }
 
-func WithLogoutSessionIDFunc(f goidc.RandomStringFunc) Option {
+func WithLogoutSessionIDFunc(f goidc.RandomFunc) Option {
 	return func(p *Provider) error {
 		p.config.LogoutSessionIDFunc = f
 		return nil
 	}
 }
 
-func WithJWTIDFunc(f goidc.RandomStringFunc) Option {
+func WithJWTIDFunc(f goidc.RandomFunc) Option {
 	return func(p *Provider) error {
 		p.config.JWTIDFunc = f
 		return nil
 	}
 }
 
-func WithAuthorizationCodeFunc(f goidc.RandomStringFunc) Option {
+func WithAuthorizationCodeFunc(f goidc.RandomFunc) Option {
 	return func(p *Provider) error {
 		p.config.AuthorizationCodeFunc = f
 		return nil
@@ -1291,7 +1298,7 @@ func WithAuthorizationCodeLifetime(secs int) Option {
 	}
 }
 
-func WithCallbackIDFunc(f goidc.RandomStringFunc) Option {
+func WithCallbackIDFunc(f goidc.RandomFunc) Option {
 	return func(p *Provider) error {
 		p.config.CallbackIDFunc = f
 		return nil
@@ -1513,6 +1520,14 @@ func WithSSFInactivityTimeoutSecs(secs int, handleFunc goidc.SSFHandleExpiredEve
 func WithSSFMultipleStreamsPerReceiver() Option {
 	return func(p *Provider) error {
 		p.config.SSFMultipleStreamsPerReceiverIsEnabled = true
+		return nil
+	}
+}
+
+func WithCredentialIssuers(issuers ...goidc.VCIssuer) Option {
+	return func(p *Provider) error {
+		p.config.VCIsEnabled = true
+		p.config.VCIssuers = issuers
 		return nil
 	}
 }

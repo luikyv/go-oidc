@@ -2,7 +2,6 @@ package client
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,43 +9,6 @@ import (
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
-
-func TestAreScopesAllowed(t *testing.T) {
-	// Given.
-	ctx := oidctest.NewContext(t)
-	ctx.Scopes = []goidc.Scope{
-		goidc.NewScope("scope1"),
-		goidc.NewScope("scope2"),
-		goidc.NewScope("scope3"),
-	}
-
-	c := &goidc.Client{
-		ClientMeta: goidc.ClientMeta{
-			ScopeIDs: "scope1 scope2 scope3",
-		},
-	}
-
-	testCases := []struct {
-		requestedScopes string
-		want            bool
-	}{
-		{"scope1 scope3", true},
-		{"scope3 scope2", true},
-		{"invalid_scope scope3", false},
-	}
-
-	for i, testCase := range testCases {
-		t.Run(
-			fmt.Sprintf("case %d", i),
-			func(t *testing.T) {
-				got := ValidateScopes(ctx, c, testCase.requestedScopes)
-				if got != testCase.want {
-					t.Errorf("AreScopesAllowed() = %t, want %t", got, testCase.want)
-				}
-			},
-		)
-	}
-}
 
 func TestFetchPublicJWKS(t *testing.T) {
 

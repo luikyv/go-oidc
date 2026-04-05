@@ -267,13 +267,9 @@ func TestInitAuth_ResourceIndicator(t *testing.T) {
 	ctx, client := setUpAuth(t)
 	ctx.ResourceIndicatorsIsEnabled = true
 	ctx.Resources = []string{"https://resource1.com", "https://resource2.com"}
-	ctx.Policies[0].Authenticate = func(
-		w http.ResponseWriter,
-		r *http.Request,
-		as *goidc.AuthnSession,
-	) (goidc.Status, error) {
-		as.GrantScopes(as.Scopes)
-		as.GrantResources([]string{"https://resource1.com"})
+	ctx.Policies[0].Authenticate = func(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) {
+		as.GrantedScopes = as.Scopes
+		as.GrantedResources = []string{"https://resource1.com"}
 		return goidc.StatusSuccess, nil
 	}
 
@@ -814,7 +810,7 @@ func setUpAuth(t *testing.T) (oidc.Context, *goidc.Client) {
 			return true
 		},
 		func(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) {
-			as.GrantScopes(as.Scopes)
+			as.GrantedScopes = as.Scopes
 			return goidc.StatusSuccess, nil
 		},
 	)

@@ -76,14 +76,19 @@ func resolveClient(ctx oidc.Context, chain trustChain) (*goidc.Client, error) {
 	}
 
 	c := &goidc.Client{
-		ID:                    config.Subject,
-		FederationTrustAnchor: config.TrustAnchor,
-		CreatedAtTimestamp:    timeutil.TimestampNow(),
-		ExpiresAtTimestamp:    config.ExpiresAt,
-		ClientMeta:            *config.Metadata.OpenIDClient,
+		ID:                config.Subject,
+		CreatedAtTimestamp: timeutil.TimestampNow(),
+		ExpiresAtTimestamp: config.ExpiresAt,
+		ClientMeta:        *config.Metadata.OpenIDClient,
+		Federation: &struct {
+			TrustAnchor string   `json:"trust_anchor"`
+			TrustMarks  []string `json:"trust_marks,omitempty"`
+		}{
+			TrustAnchor: config.TrustAnchor,
+		},
 	}
 
-	c.FederationTrustMarks, err = extractRequiredTrustMarks(ctx, config, c)
+	c.Federation.TrustMarks, err = extractRequiredTrustMarks(ctx, config, c)
 	if err != nil {
 		return nil, err
 	}

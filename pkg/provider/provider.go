@@ -22,6 +22,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/internal/userinfo"
+	"github.com/luikyv/go-oidc/internal/vc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -109,6 +110,7 @@ func (op Provider) RegisterRoutes(mux *http.ServeMux, middlewares ...goidc.Middl
 	federation.RegisterHandlers(mux, &op.config, middlewares...)
 	logout.RegisterHandlers(mux, &op.config, middlewares...)
 	ssf.RegisterHandlers(mux, &op.config, middlewares...)
+	vc.RegisterHandlers(mux, &op.config, middlewares...)
 }
 
 func (op *Provider) Run(address string, middlewares ...goidc.MiddlewareFunc) error {

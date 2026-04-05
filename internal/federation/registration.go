@@ -65,7 +65,7 @@ func registerClientExplicitly(ctx oidc.Context, chain trustChain) (string, error
 		ExpiresAt:      now + 600,
 		JWKS:           chain.subjectConfig().JWKS,
 		AuthorityHints: []string{chain.firstSubordinateStatement().Issuer},
-		TrustAnchor:    c.FederationTrustAnchor,
+		TrustAnchor:    c.Federation.TrustAnchor,
 	}
 	statement.Metadata.OpenIDClient = &c.ClientMeta
 

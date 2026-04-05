@@ -110,11 +110,11 @@ func validateRefreshTokenGrantRequest(ctx oidc.Context, req request, c *goidc.Cl
 		return err
 	}
 
-	if !containsAllScopes(grant.Scopes, req.scopes) {
-		return goidc.NewError(goidc.ErrorCodeInvalidScope, "invalid scope")
+	if err := validateScopes(ctx, req, c, grant.Scopes); err != nil {
+		return err
 	}
 
-	if err := validateResources(ctx, grant.Resources, req); err != nil {
+	if err := validateResources(ctx, req, grant.Resources); err != nil {
 		return err
 	}
 

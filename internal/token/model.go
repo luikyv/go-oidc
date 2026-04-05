@@ -12,6 +12,7 @@ import (
 
 type GrantOptions struct {
 	AuthCode             string
+	PreAuthCode          string
 	Type                 goidc.GrantType
 	Subject              string
 	ClientID             string
@@ -28,6 +29,7 @@ func NewGrant(ctx oidc.Context, c *goidc.Client, opts GrantOptions) (*goidc.Gran
 	grant := &goidc.Grant{
 		ID:                   ctx.GrantID(),
 		AuthCode:             opts.AuthCode,
+		PreAuthCode:          opts.PreAuthCode,
 		Type:                 opts.Type,
 		Subject:              opts.Subject,
 		ClientID:             opts.ClientID,
@@ -48,10 +50,8 @@ func NewGrant(ctx oidc.Context, c *goidc.Client, opts GrantOptions) (*goidc.Gran
 		return nil, err
 	}
 
-	if slices.Contains(ctx.GrantTypes, goidc.GrantRefreshToken) &&
-		slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) &&
-		ctx.ShouldIssueRefreshToken(c, grant) &&
-		grant.Type != goidc.GrantClientCredentials && grant.Type != goidc.GrantImplicit {
+	if slices.Contains(ctx.GrantTypes, goidc.GrantRefreshToken) && slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) &&
+		ctx.ShouldIssueRefreshToken(c, grant) && grant.Type != goidc.GrantClientCredentials && grant.Type != goidc.GrantImplicit {
 		grant.RefreshToken = ctx.RefreshToken()
 		grant.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
@@ -83,6 +83,8 @@ type request struct {
 	authDetails  []goidc.AuthDetail
 	assertion    string
 	authReqID    string
+	preAuthCode  string
+	txCode       string
 }
 
 func newRequest(r *http.Request) request {
@@ -96,6 +98,8 @@ func newRequest(r *http.Request) request {
 		resources:    r.PostForm["resource"],
 		assertion:    r.PostFormValue("assertion"),
 		authReqID:    r.PostFormValue("auth_req_id"),
+		preAuthCode:  r.PostFormValue("pre-authorized_code"),
+		txCode:       r.PostFormValue("tx_code"),
 	}
 
 	if authDetails := r.PostFormValue("authorization_details"); authDetails != "" {

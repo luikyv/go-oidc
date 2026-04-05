@@ -15,9 +15,7 @@ func NewOpenIDConfiguration(ctx oidc.Context) OpenIDConfiguration {
 
 	config := OpenIDConfiguration{
 		Issuer:                       ctx.Issuer(),
-		AuthorizationEndpoint:        ctx.BaseURL() + ctx.AuthorizationEndpoint,
 		TokenEndpoint:                ctx.BaseURL() + ctx.TokenEndpoint,
-		UserinfoEndpoint:             ctx.BaseURL() + ctx.UserInfoEndpoint,
 		JWKSEndpoint:                 ctx.BaseURL() + ctx.JWKSEndpoint,
 		ResponseTypes:                ctx.ResponseTypes,
 		ResponseModes:                ctx.ResponseModes,
@@ -36,6 +34,11 @@ func NewOpenIDConfiguration(ctx oidc.Context) OpenIDConfiguration {
 		AuthDetailTypesSupported:     ctx.RARDetailTypes,
 		ACRs:                         ctx.ACRs,
 		DisplayValues:                ctx.DisplayValues,
+	}
+
+	if slices.Contains(config.GrantTypes, goidc.GrantAuthorizationCode) || slices.Contains(config.GrantTypes, goidc.GrantImplicit) {
+		config.AuthorizationEndpoint = ctx.BaseURL() + ctx.AuthorizationEndpoint
+		config.UserInfoEndpoint = ctx.BaseURL() + ctx.UserInfoEndpoint
 	}
 
 	if ctx.PARIsEnabled {

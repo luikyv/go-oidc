@@ -20,10 +20,11 @@ type Client struct {
 	RegistrationToken  string `json:"registration_token,omitempty"`
 	CreatedAtTimestamp int    `json:"created_at,omitempty"`
 	ExpiresAtTimestamp int    `json:"expires_at,omitempty"`
-
-	FederationTrustAnchor string   `json:"federation_trust_anchor"`
-	FederationTrustMarks  []string `json:"federation_trust_marks,omitempty"`
-	cachedJWKS            *JSONWebKeySet
+	Federation         *struct {
+		TrustAnchor string   `json:"trust_anchor"`
+		TrustMarks  []string `json:"trust_marks,omitempty"`
+	} `json:"federation,omitempty"`
+	cachedJWKS *JSONWebKeySet
 	ClientMeta
 }
 
@@ -100,6 +101,7 @@ type ClientMeta struct {
 	Keywords                  []string                 `json:"keywords,omitempty"`
 	InformationURI            string                   `json:"information_uri,omitempty"`
 	OrganizationURI           string                   `json:"organization_uri,omitempty"`
+	CredentialOfferEndpoint   string                   `json:"credential_offer_endpoint,omitempty"`
 	// CustomAttributes holds any additional dynamic attributes a client may
 	// provide during registration.
 	// These attributes allow clients to extend their metadata beyond the
@@ -109,15 +111,4 @@ type ClientMeta struct {
 	// These additional fields are flattened in the DCR response, meaning
 	// they are merged directly into the JSON response alongside standard fields.
 	CustomAttributes map[string]any `json:"custom_attributes,omitempty"`
-}
-
-func (c *ClientMeta) SetCustomAttribute(key string, value any) {
-	if c.CustomAttributes == nil {
-		c.CustomAttributes = make(map[string]any)
-	}
-	c.CustomAttributes[key] = value
-}
-
-func (c *ClientMeta) CustomAttribute(key string) any {
-	return c.CustomAttributes[key]
 }

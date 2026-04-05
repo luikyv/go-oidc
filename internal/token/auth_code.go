@@ -8,6 +8,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
+	"github.com/luikyv/go-oidc/internal/vc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -120,7 +121,7 @@ func validateAuthCodeGrantRequest(ctx oidc.Context, req request, c *goidc.Client
 		return err
 	}
 
-	if err := validateResources(ctx, as.GrantedResources, req); err != nil {
+	if err := validateResources(ctx, req, as.GrantedResources); err != nil {
 		return err
 	}
 
@@ -128,7 +129,15 @@ func validateAuthCodeGrantRequest(ctx oidc.Context, req request, c *goidc.Client
 		return err
 	}
 
-	if err := validateScopes(ctx, req, as); err != nil {
+	if _, _, err := vc.Resolve(ctx, vc.Request{
+		Scopes:    as.GrantedScopes,
+		Details:   as.GrantedAuthDetails,
+		Resources: as.GrantedResources,
+	}); err != nil {
+		return err
+	}
+
+	if err := validateScopes(ctx, req, c, as.GrantedScopes); err != nil {
 		return err
 	}
 

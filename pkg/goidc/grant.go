@@ -31,6 +31,9 @@ type Grant struct {
 	// AuthCode is the authorization code used to generate this grant
 	// in case of authorization code grant type.
 	AuthCode string `json:"authorization_code,omitempty"`
+	// PreAuthCode is the pre-authorized code used to generate this grant
+	// in case of pre-authorized code grant type.
+	PreAuthCode string `json:"pre_authorized_code,omitempty"`
 
 	Type GrantType `json:"grant_type"`
 	// Subject is the ID of the user or client associated with the grant.

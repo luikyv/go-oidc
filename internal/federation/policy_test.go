@@ -240,8 +240,8 @@ func TestOpenIDClientMetadataPolicy_Apply_WithCustomAttributes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if result.CustomAttribute("custom_field") != "custom_value" {
-		t.Errorf("custom_field = %v, want 'custom_value'", result.CustomAttribute("custom_field"))
+	if result.CustomAttributes["custom_field"] != "custom_value" {
+		t.Errorf("custom_field = %v, want 'custom_value'", result.CustomAttributes["custom_field"])
 	}
 }
 

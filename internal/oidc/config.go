@@ -26,6 +26,7 @@ type Configuration struct {
 	DecrypterFunc goidc.DecrypterFunc
 
 	HandleGrantFunc            goidc.HandleGrantFunc
+	HandleTokenFunc            goidc.HandleTokenFunc
 	IDTokenClaimsFunc          goidc.IDTokenClaimsFunc
 	UserInfoClaimsFunc         goidc.UserInfoClaimsFunc
 	TokenClaimsFunc            goidc.TokenClaimsFunc
@@ -36,8 +37,8 @@ type Configuration struct {
 	ResponseTypes              []goidc.ResponseType
 	ResponseModes              []goidc.ResponseMode
 	AuthnSessionTimeoutSecs    int
-	AuthnSessionGenerateIDFunc goidc.RandomStringFunc
-	GrantIDFunc                goidc.RandomStringFunc
+	AuthnSessionGenerateIDFunc goidc.RandomFunc
+	GrantIDFunc                goidc.RandomFunc
 	ACRs                       []goidc.ACR
 	DisplayValues              []goidc.DisplayValue
 	// Claims defines the user claims that can be returned in the userinfo endpoint or in ID tokens.
@@ -57,9 +58,9 @@ type Configuration struct {
 	ClaimsParamIsEnabled          bool
 	RenderErrorFunc               goidc.RenderErrorFunc
 	NotifyErrorFunc               goidc.NotifyErrorFunc
-	AuthorizationCodeFunc         goidc.RandomStringFunc
+	AuthorizationCodeFunc         goidc.RandomFunc
 	AuthorizationCodeLifetimeSecs int
-	CallbackIDFunc                goidc.RandomStringFunc
+	CallbackIDFunc                goidc.RandomFunc
 
 	TokenAuthnMethods []goidc.AuthnMethod
 	TokenEndpoint     string
@@ -99,7 +100,7 @@ type Configuration struct {
 
 	JWTLifetimeSecs   int
 	JWTLeewayTimeSecs int
-	JWTIDFunc         goidc.RandomStringFunc
+	JWTIDFunc         goidc.RandomFunc
 
 	DCRIsEnabled                  bool
 	DCREndpoint                   string
@@ -156,7 +157,7 @@ type Configuration struct {
 	// PARUnregisteredRedirectURIIsEnabled indicates whether the redirect URIs
 	// informed during PAR must be previously registered or not.
 	PARUnregisteredRedirectURIIsEnabled bool
-	PARIDFunc                           goidc.RandomStringFunc
+	PARIDFunc                           goidc.RandomFunc
 
 	CIBAEndpoint                   string
 	CIBAProfile                    goidc.CIBAProfile // TODO: Use this.
@@ -165,7 +166,7 @@ type Configuration struct {
 	CIBAUserCodeIsEnabled          bool
 	CIBADefaultSessionLifetimeSecs int
 	CIBAPollingIntervalSecs        int
-	CIBAAuthReqIDFunc              goidc.RandomStringFunc
+	CIBAAuthReqIDFunc              goidc.RandomFunc
 
 	CIBAJARIsEnabled  bool
 	CIBAJARIsRequired bool
@@ -231,7 +232,7 @@ type Configuration struct {
 	LogoutSessionManager        goidc.LogoutSessionManager
 	LogoutSessionTimeoutSecs    int
 	LogoutPolicies              []goidc.LogoutPolicy
-	LogoutSessionIDFunc         goidc.RandomStringFunc
+	LogoutSessionIDFunc         goidc.RandomFunc
 	HandleDefaultPostLogoutFunc goidc.HandleDefaultPostLogoutFunc
 
 	SSFIsEnabled                           bool
@@ -258,9 +259,18 @@ type Configuration struct {
 	SSFDefaultSigAlg                       goidc.SignatureAlgorithm
 	SSFSignerFunc                          goidc.SignerFunc
 	SSFAuthenticatedReceiverFunc           goidc.SSFAuthenticatedReceiverFunc
-	SSFEventStreamIDFunc                   goidc.RandomStringFunc
+	SSFEventStreamIDFunc                   goidc.RandomFunc
 	SSFHTTPClientFunc                      goidc.HTTPClientFunc
 	SSFInactivityTimeoutSecs               int
 	SSFHandleExpiredEventStreamFunc        goidc.SSFHandleExpiredEventStreamFunc
 	SSFMultipleStreamsPerReceiverIsEnabled bool
+
+	VCIsEnabled                           bool
+	VCIssuers                             []goidc.VCIssuer
+	VCOfferEndpoint                       string
+	VCOfferIDFunc                         goidc.RandomFunc
+	VCIssuerStateFunc                     goidc.RandomFunc
+	VCManager                             goidc.VCManager
+	VCHandlePreAuthCodeFunc               goidc.VCHandlePreAuthCodeFunc
+	VCPreAuthCodeAnonymousAccessIsEnabled bool
 }

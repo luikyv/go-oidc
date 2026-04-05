@@ -12,6 +12,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/internal/token"
+	"github.com/luikyv/go-oidc/internal/vc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -153,9 +154,29 @@ func initAuth(ctx oidc.Context, req request) error {
 		_ = idToken.UnsafeClaimsWithoutVerification(&as.IDTokenHintClaims)
 	}
 
+	if ctx.VCIsEnabled {
+		issuer, configIDs, err := vc.Resolve(ctx, vc.Request{
+			Scopes:    as.Scopes,
+			Details:   as.AuthDetails,
+			Resources: as.Resources,
+		})
+		if err != nil {
+			return redirectError(ctx, err, c)
+		}
+		if len(configIDs) > 0 {
+			as.VCInfo = &struct {
+				Issuer           string                    `json:"issuer"`
+				ConfigurationIDs []goidc.VCConfigurationID `json:"configuration_ids"`
+			}{
+				Issuer:           issuer.ID,
+				ConfigurationIDs: configIDs,
+			}
+		}
+	}
+
 	if shouldRegisterClient {
 		if err := ctx.SaveClient(c); err != nil {
-			return err
+			return redirectError(ctx, err, c)
 		}
 	}
 
@@ -192,16 +213,16 @@ func continueAuth(ctx oidc.Context, callbackID string) error {
 	return nil
 }
 
-func authenticate(ctx oidc.Context, session *goidc.AuthnSession) error {
-	policy := ctx.Policy(session.PolicyID)
-	switch status, err := policy.Authenticate(ctx.Response, ctx.Request, session); status {
+func authenticate(ctx oidc.Context, as *goidc.AuthnSession) error {
+	policy := ctx.Policy(as.PolicyID)
+	switch status, err := policy.Authenticate(ctx.Response, ctx.Request, as); status {
 	case goidc.StatusSuccess:
-		return finishFlow(ctx, session)
+		return finishFlow(ctx, as)
 	case goidc.StatusInProgress:
 		// TODO: How to avoid saving if nothing changed?
-		return ctx.SaveAuthnSession(session)
+		return ctx.SaveAuthnSession(as)
 	default:
-		return finishFlowWithFailure(ctx, session, err)
+		return finishFlowWithFailure(ctx, as, err)
 	}
 }
 

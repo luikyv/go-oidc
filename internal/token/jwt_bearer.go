@@ -25,7 +25,16 @@ func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
 	// If the requesting entity is not identified, use a mock client with the
 	// required settings to proceed with the execution.
 	if c == nil {
-		c = makeAnonymousClient(ctx)
+		scopesIDs := make([]string, len(ctx.Scopes))
+		for i, scope := range ctx.Scopes {
+			scopesIDs[i] = scope.ID
+		}
+		c = &goidc.Client{
+			ClientMeta: goidc.ClientMeta{
+				GrantTypes: []goidc.GrantType{goidc.GrantJWTBearer},
+				ScopeIDs:   strings.Join(scopesIDs, " "),
+			},
+		}
 	}
 
 	if err := validateJWTBearerGrantRequest(ctx, req, c); err != nil {
@@ -96,11 +105,11 @@ func validateJWTBearerGrantRequest(ctx oidc.Context, req request, c *goidc.Clien
 		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid assertion")
 	}
 
-	if !client.ValidateScopes(ctx, c, req.scopes) {
-		return goidc.NewError(goidc.ErrorCodeInvalidScope, "invalid scope")
+	if err := validateScopes(ctx, req, c, ""); err != nil {
+		return err
 	}
 
-	if err := validateResources(ctx, ctx.Resources, req); err != nil {
+	if err := validateResources(ctx, req, ctx.Resources); err != nil {
 		return err
 	}
 
@@ -109,22 +118,4 @@ func validateJWTBearerGrantRequest(ctx oidc.Context, req request, c *goidc.Clien
 	}
 
 	return nil
-}
-
-// makeAnonymousClient creates a client that is authorized to use the JWT bearer
-// grant for requests where a specific client is not identified.
-func makeAnonymousClient(ctx oidc.Context) *goidc.Client {
-	scopesIDs := make([]string, len(ctx.Scopes))
-	for i, scope := range ctx.Scopes {
-		scopesIDs[i] = scope.ID
-	}
-
-	return &goidc.Client{
-		ClientMeta: goidc.ClientMeta{
-			GrantTypes: []goidc.GrantType{
-				goidc.GrantJWTBearer,
-			},
-			ScopeIDs: strings.Join(scopesIDs, " "),
-		},
-	}
 }

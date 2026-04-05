@@ -9,7 +9,7 @@ type OpenIDConfiguration struct {
 	ClientRegistrationEndpoint          string                             `json:"registration_endpoint,omitempty"`
 	AuthorizationEndpoint               string                             `json:"authorization_endpoint"`
 	TokenEndpoint                       string                             `json:"token_endpoint"`
-	UserinfoEndpoint                    string                             `json:"userinfo_endpoint"`
+	UserInfoEndpoint                    string                             `json:"userinfo_endpoint"`
 	JWKSEndpoint                        string                             `json:"jwks_uri,omitempty"`
 	PAREndpoint                         string                             `json:"pushed_authorization_request_endpoint,omitempty"`
 	PARIsRequired                       bool                               `json:"require_pushed_authorization_requests,omitempty"`
@@ -67,6 +67,8 @@ type OpenIDConfiguration struct {
 	FederationRegistrationEndpoint string                         `json:"federation_registration_endpoint,omitempty"`
 	SignedJWKSEndpoint             string                         `json:"signed_jwks_uri,omitempty"`
 	JWKS                           *goidc.JSONWebKeySet           `json:"jwks,omitempty"`
+
+	PreAuthCodeAnonymousAccess bool `json:"pre-authorized_grant_anonymous_access_supported,omitempty"`
 }
 
 type openIDMTLSConfiguration struct {

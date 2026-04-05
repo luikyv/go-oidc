@@ -44,3 +44,5 @@ func (t *Token) LifetimeSecs() int {
 func (t *Token) IsExpired() bool {
 	return timeutil.TimestampNow() >= t.ExpiresAtTimestamp
 }
+
+type HandleTokenFunc func(context.Context, *Token, *Grant) error

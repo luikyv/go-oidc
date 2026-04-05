@@ -81,7 +81,7 @@ func TestClient(t *testing.T) {
 		t.Errorf("client.ID = %s, want %s", client.ID, clientID)
 	}
 
-	if client.FederationTrustAnchor == "" {
+	if client.Federation == nil || client.Federation.TrustAnchor == "" {
 		t.Error("the client is from a federation")
 	}
 }

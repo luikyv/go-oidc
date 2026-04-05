@@ -111,6 +111,7 @@ type openIDClientMetadataPolicy struct {
 	Keywords                      metadataOperators[[]string]                         `json:"keywords"`
 	InformationURI                metadataOperators[string]                           `json:"information_uri"`
 	OrganizationURI               metadataOperators[string]                           `json:"organization_uri"`
+	CredentialOfferEndpoint       metadataOperators[string]                           `json:"credential_offer_endpoint"`
 	CustomAttributes              map[string]metadataOperators[any]                   `json:"custom_attributes"`
 }
 
@@ -268,12 +269,15 @@ func (policy openIDClientMetadataPolicy) Apply(c goidc.ClientMeta) (goidc.Client
 	}
 	c.ScopeIDs = strings.Join(scopeIDs, " ")
 
+	if c.CustomAttributes == nil {
+		c.CustomAttributes = make(map[string]any)
+	}
 	for att, ops := range policy.CustomAttributes {
-		attValue, err := ops.Apply(c.CustomAttribute(att))
+		attValue, err := ops.Apply(c.CustomAttributes[att])
 		if err != nil {
 			return goidc.ClientMeta{}, err
 		}
-		c.SetCustomAttribute(att, attValue)
+		c.CustomAttributes[att] = attValue
 	}
 
 	return c, nil
