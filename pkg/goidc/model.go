@@ -495,7 +495,7 @@ type TokenInfo struct {
 	// GrantID is the ID of the grant session associated to token.
 	GrantID               string             `json:"-"`
 	IsActive              bool               `json:"active"`
-	Type                  TokenTypeHint      `json:"token_type,omitempty"`
+	Type                  TokenType          `json:"token_type,omitempty"`
 	Scopes                string             `json:"scope,omitempty"`
 	AuthorizationDetails  []AuthDetail       `json:"authorization_details,omitempty"`
 	ResourceAudiences     Resources          `json:"aud,omitempty"`

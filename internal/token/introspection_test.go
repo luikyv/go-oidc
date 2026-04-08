@@ -25,6 +25,7 @@ func TestIntrospect_OpaqueToken(t *testing.T) {
 		ClientID:           client.ID,
 		ExpiresAtTimestamp: now + 60,
 		Scopes:             goidc.ScopeOpenID.ID,
+		Type:               goidc.TokenTypeBearer,
 	}
 	_ = ctx.SaveToken(tokenEntity)
 
@@ -50,7 +51,7 @@ func TestIntrospect_OpaqueToken(t *testing.T) {
 		ClientID:           client.ID,
 		Scopes:             goidc.ScopeOpenID.ID,
 		ExpiresAtTimestamp: tokenInfo.ExpiresAtTimestamp,
-		Type:               goidc.TokenHintAccess,
+		Type:               goidc.TokenTypeBearer,
 	}
 	if diff := cmp.Diff(tokenInfo, want); diff != "" {
 		t.Error(diff)
@@ -93,7 +94,7 @@ func TestIntrospect_RefreshToken(t *testing.T) {
 		ClientID:           client.ID,
 		Scopes:             goidc.ScopeOpenID.ID,
 		ExpiresAtTimestamp: tokenInfo.ExpiresAtTimestamp,
-		Type:               goidc.TokenHintRefresh,
+		Type:               goidc.TokenTypeBearer,
 	}
 	if diff := cmp.Diff(tokenInfo, want); diff != "" {
 		t.Error(diff)
@@ -372,6 +373,36 @@ func TestIntrospect_TokenNotFound(t *testing.T) {
 
 	if tokenInfo.IsActive {
 		t.Error("nonexistent token should not be active")
+	}
+}
+
+func TestIntrospect_DPoPToken(t *testing.T) {
+	// Given.
+	ctx, client := setUpIntrospection(t)
+
+	accessToken := "dpop_token"
+	now := timeutil.TimestampNow()
+	tokenEntity := &goidc.Token{
+		ID:                 accessToken,
+		GrantID:            "dpop_grant_id",
+		ClientID:           client.ID,
+		ExpiresAtTimestamp: now + 60,
+		Scopes:             goidc.ScopeOpenID.ID,
+		Type:               goidc.TokenTypeDPoP,
+	}
+	_ = ctx.SaveToken(tokenEntity)
+
+	tokenReq := queryRequest{token: accessToken}
+
+	// When.
+	tokenInfo, err := introspect(ctx, tokenReq)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if tokenInfo.Type != goidc.TokenTypeDPoP {
+		t.Errorf("Type = %s, want %s", tokenInfo.Type, goidc.TokenTypeDPoP)
 	}
 }
 
