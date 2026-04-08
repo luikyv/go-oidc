@@ -493,14 +493,14 @@ type TokenConfirmation struct {
 
 type TokenInfo struct {
 	// GrantID is the ID of the grant session associated to token.
-	GrantID               string             `json:"-"`
-	IsActive              bool               `json:"active"`
-	Type                  TokenType          `json:"token_type,omitempty"`
-	Scopes                string             `json:"scope,omitempty"`
-	AuthorizationDetails  []AuthDetail       `json:"authorization_details,omitempty"`
-	ResourceAudiences     Resources          `json:"aud,omitempty"`
-	ClientID              string             `json:"client_id,omitempty"`
-	Subject               string             `json:"sub,omitempty"`
+	GrantID              string       `json:"-"`
+	IsActive             bool         `json:"active"`
+	Type                 TokenType    `json:"token_type,omitempty"`
+	Scopes               string       `json:"scope,omitempty"`
+	AuthorizationDetails []AuthDetail `json:"authorization_details,omitempty"`
+	ResourceAudiences    Resources    `json:"aud,omitempty"`
+	ClientID             string       `json:"client_id,omitempty"`
+	Subject              string       `json:"sub,omitempty"`
 	// Username is a human-readable identifier for the resource owner (RFC 7662 §2.2).
 	// Populate via AdditionalTokenClaims if the authorization server can resolve it.
 	Username              string             `json:"username,omitempty"`
@@ -513,7 +513,6 @@ type TokenInfo struct {
 }
 
 func (ti TokenInfo) MarshalJSON() ([]byte, error) {
-
 	type tokenInfo TokenInfo
 	attributesBytes, err := json.Marshal(tokenInfo(ti))
 	if err != nil {
