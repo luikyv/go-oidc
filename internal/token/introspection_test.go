@@ -2,6 +2,7 @@ package token
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -449,6 +450,21 @@ func TestIntrospect_ClientNotAllowed_UnknownToken(t *testing.T) {
 	}
 	if tokenInfo.IsActive {
 		t.Error("unknown token must not be active")
+	}
+}
+
+func TestIntrospect_InactiveTokenJSON(t *testing.T) {
+	// Verify RFC 7662 §2.2: inactive token response MUST NOT include other
+	// fields. We marshal TokenInfo{IsActive:false} and check the JSON.
+	info := goidc.TokenInfo{IsActive: false}
+	b, err := json.Marshal(info)
+	if err != nil {
+		t.Fatalf("unexpected marshal error: %v", err)
+	}
+	got := string(b)
+	want := `{"active":false}`
+	if got != want {
+		t.Errorf("inactive TokenInfo JSON = %s, want %s", got, want)
 	}
 }
 
