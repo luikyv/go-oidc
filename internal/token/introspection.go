@@ -45,10 +45,10 @@ func introspect(ctx oidc.Context, req queryRequest) (goidc.TokenInfo, error) {
 	// field is_active as false.
 	tokenInfo, err := IntrospectionInfo(ctx, req.token)
 	if err != nil {
-		ctx.NotifyError(err)
+		return goidc.TokenInfo{}, err
 	}
 
-	if !ctx.IsClientAllowedTokenIntrospection(c, tokenInfo) {
+	if tokenInfo.IsActive && !ctx.IsClientAllowedTokenIntrospection(c, tokenInfo) {
 		return goidc.TokenInfo{}, goidc.NewError(goidc.ErrorCodeAccessDenied, "client not allowed to introspect the token")
 	}
 

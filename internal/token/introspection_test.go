@@ -406,6 +406,27 @@ func TestIntrospect_DPoPToken(t *testing.T) {
 	}
 }
 
+func TestIntrospect_ClientNotAllowed_UnknownToken(t *testing.T) {
+	// Given.
+	ctx, _ := setUpIntrospection(t)
+	ctx.IsClientAllowedTokenIntrospectionFunc = func(_ context.Context, _ *goidc.Client, _ goidc.TokenInfo) bool {
+		return false
+	}
+
+	tokenReq := queryRequest{token: "nonexistent_token"}
+
+	// When.
+	tokenInfo, err := introspect(ctx, tokenReq)
+
+	// Then: unknown token → 200 {active:false}, NOT an access_denied error.
+	if err != nil {
+		t.Fatalf("expected no error for unknown token with restrictive client, got: %v", err)
+	}
+	if tokenInfo.IsActive {
+		t.Error("unknown token must not be active")
+	}
+}
+
 func setUpIntrospection(t *testing.T) (ctx oidc.Context, client *goidc.Client) {
 	t.Helper()
 
