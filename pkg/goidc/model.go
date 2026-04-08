@@ -501,6 +501,9 @@ type TokenInfo struct {
 	ResourceAudiences     Resources          `json:"aud,omitempty"`
 	ClientID              string             `json:"client_id,omitempty"`
 	Subject               string             `json:"sub,omitempty"`
+	Issuer                string             `json:"iss,omitempty"`
+	IssuedAtTimestamp     int                `json:"iat,omitempty"`
+	NotBeforeTimestamp    int                `json:"nbf,omitempty"`
 	ExpiresAtTimestamp    int                `json:"exp,omitempty"`
 	Confirmation          *TokenConfirmation `json:"cnf,omitempty"`
 	AdditionalTokenClaims map[string]any     `json:"-"`

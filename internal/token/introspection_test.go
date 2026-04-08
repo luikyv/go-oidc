@@ -23,6 +23,7 @@ func TestIntrospect_OpaqueToken(t *testing.T) {
 		ID:                 accessToken,
 		GrantID:            "random_grant_id",
 		ClientID:           client.ID,
+		CreatedAtTimestamp: now,
 		ExpiresAtTimestamp: now + 60,
 		Scopes:             goidc.ScopeOpenID.ID,
 		Type:               goidc.TokenTypeBearer,
@@ -44,6 +45,15 @@ func TestIntrospect_OpaqueToken(t *testing.T) {
 	if tokenInfo.ExpiresAtTimestamp-(now+60) > 1 {
 		t.Errorf("ExpiresAtTimestamp = %d, want %d", tokenInfo.ExpiresAtTimestamp, now+60)
 	}
+	if tokenInfo.IssuedAtTimestamp == 0 {
+		t.Error("IssuedAtTimestamp must be set for active tokens")
+	}
+	if tokenInfo.NotBeforeTimestamp == 0 {
+		t.Error("NotBeforeTimestamp must be set for active tokens")
+	}
+	if tokenInfo.Issuer == "" {
+		t.Error("Issuer must be set for active tokens")
+	}
 
 	want := goidc.TokenInfo{
 		GrantID:            "random_grant_id",
@@ -52,6 +62,9 @@ func TestIntrospect_OpaqueToken(t *testing.T) {
 		Scopes:             goidc.ScopeOpenID.ID,
 		ExpiresAtTimestamp: tokenInfo.ExpiresAtTimestamp,
 		Type:               goidc.TokenTypeBearer,
+		Issuer:             "https://example.com",
+		IssuedAtTimestamp:  tokenInfo.IssuedAtTimestamp,
+		NotBeforeTimestamp: tokenInfo.NotBeforeTimestamp,
 	}
 	if diff := cmp.Diff(tokenInfo, want); diff != "" {
 		t.Error(diff)
@@ -88,6 +101,15 @@ func TestIntrospect_RefreshToken(t *testing.T) {
 	if tokenInfo.ExpiresAtTimestamp-(now+60) > 1 {
 		t.Errorf("ExpiresAtTimestamp = %d, want %d", tokenInfo.ExpiresAtTimestamp, now+60)
 	}
+	if tokenInfo.IssuedAtTimestamp == 0 {
+		t.Error("IssuedAtTimestamp must be set for active tokens")
+	}
+	if tokenInfo.NotBeforeTimestamp == 0 {
+		t.Error("NotBeforeTimestamp must be set for active tokens")
+	}
+	if tokenInfo.Issuer == "" {
+		t.Error("Issuer must be set for active tokens")
+	}
 
 	want := goidc.TokenInfo{
 		IsActive:           true,
@@ -95,6 +117,9 @@ func TestIntrospect_RefreshToken(t *testing.T) {
 		Scopes:             goidc.ScopeOpenID.ID,
 		ExpiresAtTimestamp: tokenInfo.ExpiresAtTimestamp,
 		Type:               goidc.TokenTypeBearer,
+		Issuer:             "https://example.com",
+		IssuedAtTimestamp:  tokenInfo.IssuedAtTimestamp,
+		NotBeforeTimestamp: tokenInfo.NotBeforeTimestamp,
 	}
 	if diff := cmp.Diff(tokenInfo, want); diff != "" {
 		t.Error(diff)
