@@ -1,4 +1,4 @@
-package dcr
+package client
 
 import (
 	"encoding/json"
@@ -95,7 +95,7 @@ func validateRedirectURIS(ctx oidc.Context, meta *goidc.ClientMeta) error {
 			// RFC 8252: Native apps can use http loopback or private-use URI schemes.
 			switch parsedURI.Scheme {
 			case "http": // Loopback interface redirection.
-				if ctx.DCRAllowLocalhostRedirectURIs && parsedURI.Hostname() == "localhost" {
+				if ctx.LocalhostRedirectURIIsEnabled && parsedURI.Hostname() == "localhost" {
 					continue
 				} else if !strings.HasPrefix(parsedURI.Host, "127.") && parsedURI.Hostname() != "::1" {
 					return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "http redirect uris for native apps must use loopback addresses")
@@ -378,7 +378,7 @@ func validateJARMSigAlg(ctx oidc.Context, meta *goidc.ClientMeta) error {
 }
 
 func validatePrivateKeyJWT(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	if !slices.Contains(authnMethods(ctx, meta), goidc.AuthnMethodPrivateKeyJWT) {
+	if !slices.Contains(AuthnMethods(ctx, meta), goidc.AuthnMethodPrivateKeyJWT) {
 		return nil
 	}
 
@@ -420,7 +420,7 @@ func validateSecretJWT(ctx oidc.Context, meta *goidc.ClientMeta) error {
 }
 
 func validateSelfSignedTLSAuthn(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	if !slices.Contains(authnMethods(ctx, meta), goidc.AuthnMethodSelfSignedTLS) {
+	if !slices.Contains(AuthnMethods(ctx, meta), goidc.AuthnMethodSelfSignedTLS) {
 		return nil
 	}
 
@@ -433,7 +433,7 @@ func validateSelfSignedTLSAuthn(ctx oidc.Context, meta *goidc.ClientMeta) error 
 }
 
 func validateTLSAuthn(ctx oidc.Context, meta *goidc.ClientMeta) error {
-	if !slices.Contains(authnMethods(ctx, meta), goidc.AuthnMethodTLS) {
+	if !slices.Contains(AuthnMethods(ctx, meta), goidc.AuthnMethodTLS) {
 		return nil
 	}
 
@@ -704,7 +704,7 @@ func validateCIBAJARAlgs(ctx oidc.Context, meta *goidc.ClientMeta) error {
 	return nil
 }
 
-func authnMethods(ctx oidc.Context, meta *goidc.ClientMeta) []goidc.AuthnMethod {
+func AuthnMethods(ctx oidc.Context, meta *goidc.ClientMeta) []goidc.AuthnMethod {
 	methods := []goidc.AuthnMethod{meta.TokenAuthnMethod}
 	if ctx.TokenIntrospectionIsEnabled {
 		methods = append(methods, meta.TokenIntrospectionAuthnMethod)

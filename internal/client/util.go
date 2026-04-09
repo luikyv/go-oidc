@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikyv/go-oidc/internal/federation"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -102,7 +101,7 @@ func fetchJWKS(ctx oidc.Context, c *goidc.Client) (*goidc.JSONWebKeySet, error) 
 
 func fetchSignedJWKS(ctx oidc.Context, c *goidc.Client) (*goidc.JSONWebKeySet, error) {
 	// Fetch the client's entity configuration to get the verification keys.
-	entityJWKS, err := federation.FetchEntityConfigurationJWKS(ctx, c.ID)
+	entityJWKS, err := ctx.OpenIDFedEntityJWKS(c.ID)
 	if err != nil {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "could not fetch the client entity jwks", err)
 	}

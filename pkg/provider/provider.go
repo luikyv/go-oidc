@@ -427,6 +427,7 @@ func (op *Provider) setDefaults() error {
 		op.config.OpenIDFedTrustChainMaxDepth = nonZeroOrDefault(op.config.OpenIDFedTrustChainMaxDepth, defaultOpenIDFedTrustChainMaxDepth)
 		op.config.OpenIDFedClientRegTypes = nonZeroOrDefault(op.config.OpenIDFedClientRegTypes, []goidc.ClientRegistrationType{defaultOpenIDFedRegType})
 		op.config.OpenIDFedJWKSRepresentations = nonZeroOrDefault(op.config.OpenIDFedJWKSRepresentations, []goidc.JWKSRepresentation{goidc.JWKSRepresentationURI})
+		op.config.OpenIDFedEntityJWKSFunc = federation.FetchEntityConfigurationJWKS
 		if slices.Contains(op.config.OpenIDFedClientRegTypes, goidc.ClientRegistrationTypeExplicit) {
 			op.config.OpenIDFedRegistrationEndpoint = nonZeroOrDefault(op.config.OpenIDFedRegistrationEndpoint, defaultEndpointOpenIDFederationRegistration)
 		}
@@ -474,10 +475,6 @@ func (op *Provider) setDefaults() error {
 func (op *Provider) validate() error {
 	if slices.Contains(op.config.SubIdentifierTypes, goidc.SubIdentifierPairwise) && op.config.PairwiseSubjectFunc == nil {
 		return fmt.Errorf("pairwise subject identifier type is enabled but the pairwise func is not set, see %s", funcName(WithPairwiseSubjectFunc))
-	}
-
-	if slices.Contains(op.config.GrantTypes, goidc.GrantJWTBearer) && op.config.JWTBearerHandleAssertionFunc == nil {
-		return fmt.Errorf("jwt bearer grant type is enabled but the assertion handler is not set, see %s", funcName(WithJWTBearerHandleAssertionFunc))
 	}
 
 	if op.config.TokenBindingIsRequired && !op.config.DPoPIsEnabled && !op.config.MTLSTokenBindingIsEnabled {

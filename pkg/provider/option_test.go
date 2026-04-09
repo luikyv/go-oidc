@@ -5,6 +5,7 @@ import (
 	"crypto"
 	"crypto/x509"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 
@@ -558,14 +559,14 @@ func TestWithDCRTokenRotation(t *testing.T) {
 	}
 }
 
-func TestWithDCRAllowLocalhostRedirectURIs(t *testing.T) {
+func TestWithLocalhostRedirectURIs(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
 
 	// When.
-	err := WithDCRAllowLocalhostRedirectURIs()(p)
+	err := WithLocalhostRedirectURIs()(p)
 
 	// Then.
 	if err != nil {
@@ -574,7 +575,7 @@ func TestWithDCRAllowLocalhostRedirectURIs(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			DCRAllowLocalhostRedirectURIs: true,
+			LocalhostRedirectURIIsEnabled: true,
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -603,14 +604,14 @@ func TestWithClientIDFunc(t *testing.T) {
 	}
 }
 
-func TestWithGrantTypes(t *testing.T) {
+func TestWithAuthorizationCodeGrant(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
 
 	// When.
-	err := WithGrantTypes(goidc.GrantAuthorizationCode, goidc.GrantRefreshToken)(p)
+	err := WithAuthorizationCodeGrant()(p)
 
 	// Then.
 	if err != nil {
@@ -619,7 +620,104 @@ func TestWithGrantTypes(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			GrantTypes: []goidc.GrantType{goidc.GrantAuthorizationCode, goidc.GrantRefreshToken},
+			GrantTypes: []goidc.GrantType{goidc.GrantAuthorizationCode},
+		},
+	}
+	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithRefreshTokenGrant(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+
+	// When.
+	err := WithRefreshTokenGrant()(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := &Provider{
+		config: oidc.Configuration{
+			GrantTypes: []goidc.GrantType{goidc.GrantRefreshToken},
+		},
+	}
+	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithClientCredentialsGrant(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+
+	// When.
+	err := WithClientCredentialsGrant()(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := &Provider{
+		config: oidc.Configuration{
+			GrantTypes: []goidc.GrantType{goidc.GrantClientCredentials},
+		},
+	}
+	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithCIBAGrant(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+
+	// When.
+	err := WithCIBAGrant(goidc.CIBAProfileOpenID)(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := &Provider{
+		config: oidc.Configuration{
+			GrantTypes:  []goidc.GrantType{goidc.GrantCIBA},
+			CIBAProfile: goidc.CIBAProfileOpenID,
+		},
+	}
+	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithPreAuthorizedCodeGrant(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+
+	// When.
+	err := WithPreAuthorizedCodeGrant()(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := &Provider{
+		config: oidc.Configuration{
+			GrantTypes: []goidc.GrantType{goidc.GrantPreAuthorizedCode},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -723,14 +821,14 @@ func TestWithHandleGrantFunc(t *testing.T) {
 	}
 }
 
-func TestWithGrantTypes_Implicit(t *testing.T) {
+func TestWithImplicitGrant(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
 
 	// When.
-	err := WithGrantTypes(goidc.GrantImplicit)(p)
+	err := WithImplicitGrant()(p)
 
 	// Then.
 	if err != nil {
@@ -1870,20 +1968,24 @@ func TestWithHTTPClientFunc(t *testing.T) {
 	}
 }
 
-func TestJWTBearerGrant(t *testing.T) {
+func TestWithJWTBearerGrant(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
 
 	// When.
-	err := WithJWTBearerHandleAssertionFunc(func(_ context.Context, assertion string) (string, error) {
+	err := WithJWTBearerGrant(func(_ context.Context, assertion string) (string, error) {
 		return "", nil
 	})(p)
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !slices.Contains(p.config.GrantTypes, goidc.GrantJWTBearer) {
+		t.Error("GrantJWTBearer should be in GrantTypes")
 	}
 
 	if p.config.JWTBearerHandleAssertionFunc == nil {

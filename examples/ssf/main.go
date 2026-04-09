@@ -29,7 +29,7 @@ func main() {
 	op, _ := provider.New(goidc.ProfileOpenID, authutil.Issuer, authutil.PrivateJWKSFunc())
 	_ = op.WithOptions(
 		provider.WithScopes(scope),
-		provider.WithGrantTypes(goidc.GrantClientCredentials),
+		provider.WithClientCredentialsGrant(),
 		provider.WithStaticClients(client),
 		provider.WithSSF(authutil.PrivateJWKSFunc(), func(ctx context.Context) (goidc.SSFReceiver, error) {
 			clientID := ctx.Value(ctxKeyClientID).(string)

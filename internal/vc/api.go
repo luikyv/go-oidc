@@ -14,7 +14,7 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 
 func handleOffer(ctx oidc.Context) {
 	id := ctx.Request.PathValue("id")
-	offer, err := fetchOffer(ctx, id)
+	offer, err := offer(ctx, id)
 	if err != nil {
 		if errors.Is(err, goidc.ErrNotFound) {
 			ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "offer not found").WithStatusCode(http.StatusNotFound))

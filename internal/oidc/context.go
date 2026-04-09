@@ -249,6 +249,10 @@ func (ctx Context) OpenIDFedRequiredTrustMarks(client *goidc.Client) []goidc.Tru
 	return ctx.OpenIDFedRequiredTrustMarksFunc(ctx, client)
 }
 
+func (ctx Context) OpenIDFedEntityJWKS(id string) (goidc.JSONWebKeySet, error) {
+	return ctx.OpenIDFedEntityJWKSFunc(ctx, id)
+}
+
 func (ctx Context) OpenIDFedHandleClient(client *goidc.Client) error {
 	if ctx.OpenIDFedHandleClientFunc == nil {
 		return nil

@@ -107,7 +107,7 @@ type Configuration struct {
 	DCRTokenRotationIsEnabled     bool
 	DCRHandleClientFunc           goidc.DCRHandleClientFunc
 	DCRValidateInitialTokenFunc   goidc.DCRValidateInitialTokenFunc
-	DCRAllowLocalhostRedirectURIs bool
+	LocalhostRedirectURIIsEnabled bool
 	ClientIDFunc                  goidc.ClientIDFunc
 
 	TokenIntrospectionIsEnabled           bool
@@ -226,6 +226,7 @@ type Configuration struct {
 	OpenIDFedOrganizationName       string
 	OpenIDFedHTTPClientFunc         goidc.HTTPClientFunc
 	OpenIDFedHandleClientFunc       goidc.HandleClientFunc
+	OpenIDFedEntityJWKSFunc         func(ctx Context, id string) (goidc.JSONWebKeySet, error)
 
 	LogoutIsEnabled             bool
 	LogoutEndpoint              string

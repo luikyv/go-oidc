@@ -14,7 +14,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
-	"github.com/luikyv/go-oidc/internal/dcr"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/discovery"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -97,7 +97,7 @@ func resolveClient(ctx oidc.Context, chain trustChain) (*goidc.Client, error) {
 		return nil, err
 	}
 
-	if err := dcr.Validate(ctx, config.Metadata.OpenIDClient); err != nil {
+	if err := client.Validate(ctx, config.Metadata.OpenIDClient); err != nil {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid client metadata", err)
 	}
 

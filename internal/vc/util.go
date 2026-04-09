@@ -125,7 +125,7 @@ type offerResponse struct {
 	Grants           goidc.VCOfferGrants       `json:"grants,omitzero"`
 }
 
-func fetchOffer(ctx oidc.Context, id string) (offerResponse, error) {
+func offer(ctx oidc.Context, id string) (offerResponse, error) {
 	offer, err := ctx.VCOffer(id)
 	if err != nil {
 		return offerResponse{}, err

@@ -289,9 +289,9 @@ func WithDCRValidateInitialTokenFunc(f goidc.DCRValidateInitialTokenFunc) Option
 	}
 }
 
-func WithDCRAllowLocalhostRedirectURIs() Option {
+func WithLocalhostRedirectURIs() Option {
 	return func(p *Provider) error {
-		p.config.DCRAllowLocalhostRedirectURIs = true
+		p.config.LocalhostRedirectURIIsEnabled = true
 		return nil
 	}
 }
@@ -329,17 +329,10 @@ func WithRefreshTokenLifetime(lifetimeSecs int) Option {
 
 // WithRefreshTokenRotation causes a new refresh token to be issued each time
 // one is used. The one used during the request then becomes invalid.
-// To enable the refresh token grant, see [WithGrantTypes].
+// To enable the refresh token grant, see [WithRefreshTokenGrant].
 func WithRefreshTokenRotation() Option {
 	return func(p *Provider) error {
 		p.config.RefreshTokenRotationIsEnabled = true
-		return nil
-	}
-}
-
-func WithCIBAProfile(p goidc.CIBAProfile) Option {
-	return func(op *Provider) error {
-		op.config.CIBAProfile = p
 		return nil
 	}
 }
@@ -471,10 +464,53 @@ func WithTokenClaims(f goidc.TokenClaimsFunc) Option {
 	}
 }
 
-func WithGrantTypes(grant goidc.GrantType, grants ...goidc.GrantType) Option {
-	grants = appendIfNotIn(grants, grant)
+func WithAuthorizationCodeGrant() Option {
 	return func(p *Provider) error {
-		p.config.GrantTypes = grants
+		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantAuthorizationCode)
+		return nil
+	}
+}
+
+func WithImplicitGrant() Option {
+	return func(p *Provider) error {
+		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantImplicit)
+		return nil
+	}
+}
+
+func WithRefreshTokenGrant() Option {
+	return func(p *Provider) error {
+		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantRefreshToken)
+		return nil
+	}
+}
+
+func WithClientCredentialsGrant() Option {
+	return func(p *Provider) error {
+		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantClientCredentials)
+		return nil
+	}
+}
+
+func WithJWTBearerGrant(f goidc.JWTBearerHandleAssertionFunc) Option {
+	return func(p *Provider) error {
+		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantJWTBearer)
+		p.config.JWTBearerHandleAssertionFunc = f
+		return nil
+	}
+}
+
+func WithCIBAGrant(profile goidc.CIBAProfile) Option {
+	return func(p *Provider) error {
+		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantCIBA)
+		p.config.CIBAProfile = profile
+		return nil
+	}
+}
+
+func WithPreAuthorizedCodeGrant() Option {
+	return func(p *Provider) error {
+		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantPreAuthorizedCode)
 		return nil
 	}
 }
@@ -991,13 +1027,6 @@ func WithHTTPClientFunc(f goidc.HTTPClientFunc) Option {
 	}
 }
 
-// WithJWTBearerHandleAssertionFunc sets the function to handle JWT bearer grant assertions.
-func WithJWTBearerHandleAssertionFunc(f goidc.JWTBearerHandleAssertionFunc) Option {
-	return func(p *Provider) error {
-		p.config.JWTBearerHandleAssertionFunc = f
-		return nil
-	}
-}
 
 // WithJWTBearerGrantClientAuthnRequired makes client authentication required
 // for the jwt bearer grant type.
@@ -1539,3 +1568,4 @@ func appendIfNotIn[T comparable](values []T, value T) []T {
 	}
 	return values
 }
+

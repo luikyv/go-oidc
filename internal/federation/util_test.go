@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikyv/go-oidc/internal/dcr"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -2759,7 +2759,7 @@ func TestRegister_InvalidClientMetadata(t *testing.T) {
 	}
 
 	// When.
-	err := dcr.Validate(ctx, meta)
+	err := client.Validate(ctx, meta)
 
 	// Then.
 	if err == nil {
