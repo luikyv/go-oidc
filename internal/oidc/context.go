@@ -579,6 +579,11 @@ func (ctx Context) WriteHTML(html string, params any) error {
 	return tmpl.Execute(ctx.Response, params)
 }
 
+func (ctx Context) MediaType() string {
+	ct := ctx.Request.Header.Get("Content-Type")
+	return strings.ToLower(strings.TrimSpace(strings.Split(ct, ";")[0]))
+}
+
 func (ctx Context) ShouldIssueRefreshToken(c *goidc.Client, grant *goidc.Grant) bool {
 	if ctx.ShouldIssueRefreshTokenFunc == nil {
 		return true
@@ -628,11 +633,11 @@ func (ctx Context) UserInfoClaims(grant *goidc.Grant) map[string]any {
 	return ctx.UserInfoClaimsFunc(ctx, grant)
 }
 
-func (ctx Context) TokenClaims(grant *goidc.Grant) map[string]any {
+func (ctx Context) TokenClaims(tkn *goidc.Token, grant *goidc.Grant) map[string]any {
 	if ctx.TokenClaimsFunc == nil {
 		return nil
 	}
-	return ctx.TokenClaimsFunc(ctx, grant)
+	return ctx.TokenClaimsFunc(ctx, tkn, grant)
 }
 
 func (ctx Context) JWTBearerHandleAssertion(assertion string) (string, error) {

@@ -46,7 +46,7 @@ func TestValidateTLSPoP_NoCert(t *testing.T) {
 		return nil, errors.New("no cert")
 	}
 	cnf := goidc.TokenConfirmation{
-		ClientCertThumbprint: "random_thumbprint",
+		CertThumbprint: "random_thumbprint",
 	}
 
 	// When.
@@ -75,7 +75,7 @@ func TestValidateTLSPoP_ThumbprintMismatch(t *testing.T) {
 		return &x509.Certificate{Raw: certRaw}, nil
 	}
 	cnf := goidc.TokenConfirmation{
-		ClientCertThumbprint: "wrong_thumbprint",
+		CertThumbprint: "wrong_thumbprint",
 	}
 
 	// When.
@@ -104,7 +104,7 @@ func TestValidateTLSPoP_ValidCert(t *testing.T) {
 		return &x509.Certificate{Raw: certRaw}, nil
 	}
 	cnf := goidc.TokenConfirmation{
-		ClientCertThumbprint: hashutil.Thumbprint(string(certRaw)),
+		CertThumbprint: hashutil.Thumbprint(string(certRaw)),
 	}
 
 	// When.

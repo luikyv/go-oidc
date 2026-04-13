@@ -150,7 +150,7 @@ func TestMakeIDToken_PairwiseSub(t *testing.T) {
 func TestMakeToken_JWTToken(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.TokenClaimsFunc = func(_ context.Context, _ *goidc.Grant) map[string]any {
+	ctx.TokenClaimsFunc = func(_ context.Context, _ *goidc.Token, _ *goidc.Grant) map[string]any {
 		return map[string]any{"random_claim": "random_value"}
 	}
 	c, _ := oidctest.NewClient(t)
@@ -335,10 +335,10 @@ func TestMakeToken_JWTToken_WithConfirmation(t *testing.T) {
 	ctx := oidctest.NewContext(t)
 	c, _ := oidctest.NewClient(t)
 	grant := goidc.Grant{
-		Subject:              "random_subject",
-		ClientID:             c.ID,
-		JWKThumbprint:        "dpop_thumbprint",
-		ClientCertThumbprint: "tls_thumbprint",
+		Subject:        "random_subject",
+		ClientID:       c.ID,
+		JWKThumbprint:  "dpop_thumbprint",
+		CertThumbprint: "tls_thumbprint",
 	}
 	opts := ctx.TokenOptions(&grant, c)
 	now2 := timeutil.TimestampNow()
@@ -349,16 +349,16 @@ func TestMakeToken_JWTToken_WithConfirmation(t *testing.T) {
 			}
 			return ctx.OpaqueToken()
 		}(),
-		GrantID:              grant.ID,
-		Subject:              grant.Subject,
-		ClientID:             grant.ClientID,
-		Scopes:               grant.Scopes,
-		JWKThumbprint:        grant.JWKThumbprint,
-		ClientCertThumbprint: grant.ClientCertThumbprint,
-		CreatedAtTimestamp:   now2,
-		ExpiresAtTimestamp:   now2 + opts.LifetimeSecs,
-		Format:               opts.Format,
-		SigAlg:               opts.JWTSigAlg,
+		GrantID:            grant.ID,
+		Subject:            grant.Subject,
+		ClientID:           grant.ClientID,
+		Scopes:             grant.Scopes,
+		JWKThumbprint:      grant.JWKThumbprint,
+		CertThumbprint:     grant.CertThumbprint,
+		CreatedAtTimestamp: now2,
+		ExpiresAtTimestamp: now2 + opts.LifetimeSecs,
+		Format:             opts.Format,
+		SigAlg:             opts.JWTSigAlg,
 	}
 
 	// When.
@@ -398,7 +398,7 @@ func TestMakeToken_UnsignedJWTToken(t *testing.T) {
 	) goidc.TokenOptions {
 		return goidc.NewJWTTokenOptions(goidc.None, 60)
 	}
-	ctx.TokenClaimsFunc = func(_ context.Context, _ *goidc.Grant) map[string]any {
+	ctx.TokenClaimsFunc = func(_ context.Context, _ *goidc.Token, _ *goidc.Grant) map[string]any {
 		return map[string]any{"random_claim": "random_value"}
 	}
 	client, _ := oidctest.NewClient(t)

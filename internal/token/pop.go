@@ -43,7 +43,7 @@ func validateDPoP(ctx oidc.Context, token string, confirmation goidc.TokenConfir
 // prove the client's possession of the access token with TLS binding if
 // applicable.
 func validateTLSPoP(ctx oidc.Context, confirmation goidc.TokenConfirmation) error {
-	if confirmation.ClientCertThumbprint == "" {
+	if confirmation.CertThumbprint == "" {
 		return nil
 	}
 
@@ -53,7 +53,7 @@ func validateTLSPoP(ctx oidc.Context, confirmation goidc.TokenConfirmation) erro
 			"the client certificate is required", err)
 	}
 
-	if confirmation.ClientCertThumbprint != hashutil.Thumbprint(string(clientCert.Raw)) {
+	if confirmation.CertThumbprint != hashutil.Thumbprint(string(clientCert.Raw)) {
 		return goidc.NewError(goidc.ErrorCodeInvalidToken,
 			"invalid client certificate")
 	}

@@ -33,7 +33,7 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 }
 
 func handleCreate(ctx oidc.Context) {
-	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/json" {
+	if mediaType := ctx.MediaType(); mediaType != "" && mediaType != "application/json" {
 		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
 		return
 	}
@@ -57,7 +57,7 @@ func handleCreate(ctx oidc.Context) {
 }
 
 func handleUpdate(ctx oidc.Context) {
-	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/json" {
+	if mediaType := ctx.MediaType(); mediaType != "" && mediaType != "application/json" {
 		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
 		return
 	}

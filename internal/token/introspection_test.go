@@ -166,13 +166,13 @@ func TestIntrospect_TokenWithConfirmation(t *testing.T) {
 	accessToken := "opaque_token"
 	now := timeutil.TimestampNow()
 	tokenEntity := &goidc.Token{
-		ID:                   accessToken,
-		GrantID:              "random_grant_id",
-		ClientID:             client.ID,
-		ExpiresAtTimestamp:   now + 60,
-		Scopes:               goidc.ScopeOpenID.ID,
-		JWKThumbprint:        "thumbprint_jwk",
-		ClientCertThumbprint: "thumbprint_cert",
+		ID:                 accessToken,
+		GrantID:            "random_grant_id",
+		ClientID:           client.ID,
+		ExpiresAtTimestamp: now + 60,
+		Scopes:             goidc.ScopeOpenID.ID,
+		JWKThumbprint:      "thumbprint_jwk",
+		CertThumbprint:     "thumbprint_cert",
 	}
 	_ = ctx.SaveToken(tokenEntity)
 
@@ -200,8 +200,8 @@ func TestIntrospect_TokenWithConfirmation(t *testing.T) {
 		t.Errorf("JWKThumbprint = %s, want thumbprint_jwk", tokenInfo.Confirmation.JWKThumbprint)
 	}
 
-	if tokenInfo.Confirmation.ClientCertThumbprint != "thumbprint_cert" {
-		t.Errorf("ClientCertThumbprint = %s, want thumbprint_cert", tokenInfo.Confirmation.ClientCertThumbprint)
+	if tokenInfo.Confirmation.CertThumbprint != "thumbprint_cert" {
+		t.Errorf("ClientCertThumbprint = %s, want thumbprint_cert", tokenInfo.Confirmation.CertThumbprint)
 	}
 }
 
@@ -346,12 +346,12 @@ func TestIntrospect_RefreshTokenWithConfirmation(t *testing.T) {
 	now := timeutil.TimestampNow()
 	refreshToken := strutil.Random(100)
 	grantSession := &goidc.Grant{
-		RefreshToken:         refreshToken,
-		CreatedAtTimestamp:   now,
-		ClientID:             client.ID,
-		Scopes:               goidc.ScopeOpenID.ID,
-		JWKThumbprint:        "dpop_thumbprint",
-		ClientCertThumbprint: "tls_thumbprint",
+		RefreshToken:       refreshToken,
+		CreatedAtTimestamp: now,
+		ClientID:           client.ID,
+		Scopes:             goidc.ScopeOpenID.ID,
+		JWKThumbprint:      "dpop_thumbprint",
+		CertThumbprint:     "tls_thumbprint",
 	}
 	_ = ctx.SaveGrant(grantSession)
 
@@ -376,8 +376,8 @@ func TestIntrospect_RefreshTokenWithConfirmation(t *testing.T) {
 	if tokenInfo.Confirmation.JWKThumbprint != "dpop_thumbprint" {
 		t.Errorf("JWKThumbprint = %s, want dpop_thumbprint", tokenInfo.Confirmation.JWKThumbprint)
 	}
-	if tokenInfo.Confirmation.ClientCertThumbprint != "tls_thumbprint" {
-		t.Errorf("ClientCertThumbprint = %s, want tls_thumbprint", tokenInfo.Confirmation.ClientCertThumbprint)
+	if tokenInfo.Confirmation.CertThumbprint != "tls_thumbprint" {
+		t.Errorf("ClientCertThumbprint = %s, want tls_thumbprint", tokenInfo.Confirmation.CertThumbprint)
 	}
 }
 

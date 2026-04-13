@@ -50,9 +50,8 @@ type Grant struct {
 
 	// JWKThumbprint stores the thumbprint of the JWK provided via DPoP.
 	JWKThumbprint string `json:"jwk_thumbprint,omitempty"`
-	// ClientCertThumbprint contains the thumbprint of the certificate used by
-	// the client to generate the token.
-	ClientCertThumbprint string `json:"client_cert_thumbprint,omitempty"`
+	// CertThumbprint contains the thumbprint of the certificate used to generate the token.
+	CertThumbprint string `json:"cert_thumbprint,omitempty"`
 
 	// Store allows storing custom data within the grant.
 	Store map[string]any `json:"store,omitempty"`

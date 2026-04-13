@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/json"
-	"errors"
 	"maps"
 	"net/http"
 	"slices"
@@ -373,7 +372,7 @@ type UserInfoClaimsFunc func(context.Context, *Grant) map[string]any
 
 // TokenClaimsFunc defines a function that returns additional claims to include
 // in JWT access tokens. It is called at access token issuance time.
-type TokenClaimsFunc func(context.Context, *Grant) map[string]any
+type TokenClaimsFunc func(context.Context, *Token, *Grant) map[string]any
 
 // TokenOptions defines a template for generating access tokens.
 type TokenOptions struct {
@@ -411,52 +410,6 @@ func NewOpaqueTokenOptions(lifetimeSecs int) TokenOptions {
 // The flow can be resumed at the callback endpoint with the session callback ID.
 type AuthnFunc func(http.ResponseWriter, *http.Request, *AuthnSession) (Status, error)
 
-type AuthnStep struct {
-	ID        string
-	AuthnFunc AuthnFunc
-}
-
-func NewAuthnStep(id string, authnFunc AuthnFunc) AuthnStep {
-	return AuthnStep{
-		ID:        id,
-		AuthnFunc: authnFunc,
-	}
-}
-
-type authnSteps []AuthnStep
-
-func (steps authnSteps) Authenticate(w http.ResponseWriter, r *http.Request, as *AuthnSession) (Status, error) {
-	// Initialize the step ID with the first step if not set.
-	if as.StepID == "" {
-		as.StepID = steps[0].ID
-	}
-
-	for idx, step := range steps {
-		if as.StepID != step.ID {
-			continue
-		}
-
-		// Execute the step function and early return if it ends in progress or failure.
-		if status, err := step.AuthnFunc(w, r, as); status != StatusSuccess || err != nil {
-			return status, err
-		}
-
-		// The current step succeeded, update the step ID to the next step.
-		nextIdx := idx + 1
-		// Return success if the current step is the last step.
-		if nextIdx == len(steps) {
-			as.Status = StatusSuccess
-			return StatusSuccess, nil
-		}
-
-		// Update the step ID to the next step.
-		// Note that the next value of step.ID will match the updated as.StepID.
-		as.StepID = steps[nextIdx].ID
-	}
-
-	return StatusFailure, errors.New("invalid policy, access denied")
-}
-
 // SetUpAuthnFunc is responsible for initiating the authentication session.
 // It returns true when the policy is ready to execute and false for when the
 // policy should be skipped.
@@ -480,38 +433,31 @@ func NewPolicy(id string, setUpFunc SetUpAuthnFunc, authnFunc AuthnFunc) AuthnPo
 	}
 }
 
-// NewPolicyWithSteps creates an authentication policy composed of a sequence of steps.
-// When a step succeeds, the session is updated to point to the next step.
-// Once the final step succeeds, the authentication flow completes with success.
-func NewPolicyWithSteps(id string, setUpFunc SetUpAuthnFunc, steps ...AuthnStep) AuthnPolicy {
-	return NewPolicy(id, setUpFunc, authnSteps(steps).Authenticate)
-}
-
 type TokenConfirmation struct {
-	JWKThumbprint        string `json:"jkt,omitempty"`
-	ClientCertThumbprint string `json:"x5t#S256,omitempty"`
+	JWKThumbprint  string `json:"jkt,omitempty"`
+	CertThumbprint string `json:"x5t#S256,omitempty"`
 }
 
 type TokenInfo struct {
 	// GrantID is the ID of the grant session associated to token.
-	GrantID              string       `json:"-"`
-	IsActive             bool         `json:"active"`
-	Type                 TokenType    `json:"token_type,omitempty"`
-	Scopes               string       `json:"scope,omitempty"`
-	AuthorizationDetails []AuthDetail `json:"authorization_details,omitempty"`
-	ResourceAudiences    Resources    `json:"aud,omitempty"`
-	ClientID             string       `json:"client_id,omitempty"`
-	Subject              string       `json:"sub,omitempty"`
+	GrantID           string       `json:"-"`
+	IsActive          bool         `json:"active"`
+	Type              TokenType    `json:"token_type,omitempty"`
+	Scopes            string       `json:"scope,omitempty"`
+	AuthDetails       []AuthDetail `json:"authorization_details,omitempty"`
+	ResourceAudiences Resources    `json:"aud,omitempty"`
+	ClientID          string       `json:"client_id,omitempty"`
+	Subject           string       `json:"sub,omitempty"`
 	// Username is a human-readable identifier for the resource owner (RFC 7662 §2.2).
 	// Populate via AdditionalTokenClaims if the authorization server can resolve it.
 	// TODO: Fill it with grant.Username.
-	Username              string             `json:"username,omitempty"`
-	Issuer                string             `json:"iss,omitempty"`
-	IssuedAtTimestamp     int                `json:"iat,omitempty"`
-	NotBeforeTimestamp    int                `json:"nbf,omitempty"`
-	ExpiresAtTimestamp    int                `json:"exp,omitempty"`
-	Confirmation          *TokenConfirmation `json:"cnf,omitempty"`
-	AdditionalTokenClaims map[string]any     `json:"-"`
+	Username           string             `json:"username,omitempty"`
+	Issuer             string             `json:"iss,omitempty"`
+	IssuedAtTimestamp  int                `json:"iat,omitempty"`
+	NotBeforeTimestamp int                `json:"nbf,omitempty"`
+	ExpiresAtTimestamp int                `json:"exp,omitempty"`
+	Confirmation       *TokenConfirmation `json:"cnf,omitempty"`
+	AdditionalClaims   map[string]any     `json:"-"`
 }
 
 func (ti TokenInfo) MarshalJSON() ([]byte, error) {
@@ -526,7 +472,7 @@ func (ti TokenInfo) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	// Inline the additional claims.
-	maps.Copy(rawValues, ti.AdditionalTokenClaims)
+	maps.Copy(rawValues, ti.AdditionalClaims)
 
 	return json.Marshal(rawValues)
 }
@@ -744,49 +690,6 @@ func NewLogoutPolicy(id string, setUpFunc SetUpLogoutFunc, logoutFunc LogoutFunc
 		SetUp:  setUpFunc,
 		Logout: logoutFunc,
 	}
-}
-
-func NewLogoutPolicyWithSteps(id string, setUpFunc SetUpLogoutFunc, steps ...LogoutStep) LogoutPolicy {
-	return NewLogoutPolicy(id, setUpFunc, logoutSteps(steps).Logout)
-}
-
-type LogoutStep struct {
-	ID     string
-	Logout LogoutFunc
-}
-
-type logoutSteps []LogoutStep
-
-func (steps logoutSteps) Logout(w http.ResponseWriter, r *http.Request, ls *LogoutSession) (Status, error) {
-	// Initialize the step ID with the first step if not set.
-	if ls.StepID == "" {
-		ls.StepID = steps[0].ID
-	}
-
-	for idx, step := range steps {
-		if ls.StepID != step.ID {
-			continue
-		}
-
-		// Execute the step function and early return if it ends in progress or failure.
-		if status, err := step.Logout(w, r, ls); status != StatusSuccess || err != nil {
-			return status, err
-		}
-
-		// The current step succeeded, update the step ID to the next step.
-		nextIdx := idx + 1
-		// Return success if the current step is the last step.
-		if nextIdx == len(steps) {
-			ls.Status = StatusSuccess
-			return StatusSuccess, nil
-		}
-
-		// Update the step ID to the next step.
-		// Note that the next value of step.ID will match the updated as.StepID.
-		ls.StepID = steps[nextIdx].ID
-	}
-
-	return StatusFailure, errors.New("invalid policy, access denied")
 }
 
 type RandomFunc func(context.Context) string

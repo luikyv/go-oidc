@@ -73,27 +73,27 @@ func refreshTokenInfo(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
 	}
 
 	var cnf *goidc.TokenConfirmation
-	if grant.JWKThumbprint != "" || grant.ClientCertThumbprint != "" {
+	if grant.JWKThumbprint != "" || grant.CertThumbprint != "" {
 		cnf = &goidc.TokenConfirmation{
-			JWKThumbprint:        grant.JWKThumbprint,
-			ClientCertThumbprint: grant.ClientCertThumbprint,
+			JWKThumbprint:  grant.JWKThumbprint,
+			CertThumbprint: grant.CertThumbprint,
 		}
 	}
 
 	return goidc.TokenInfo{
-		GrantID:              grant.ID,
-		IsActive:             true,
-		Issuer:               ctx.Issuer(),
-		Subject:              grant.Subject,
-		Type:                 goidc.TokenTypeBearer,
-		Scopes:               grant.Scopes,
-		AuthorizationDetails: grant.AuthDetails,
-		ClientID:             grant.ClientID,
-		IssuedAtTimestamp:    grant.CreatedAtTimestamp,
-		NotBeforeTimestamp:   grant.CreatedAtTimestamp,
-		ExpiresAtTimestamp:   grant.ExpiresAtTimestamp,
-		Confirmation:         cnf,
-		ResourceAudiences:    grant.Resources,
+		GrantID:            grant.ID,
+		IsActive:           true,
+		Issuer:             ctx.Issuer(),
+		Subject:            grant.Subject,
+		Type:               goidc.TokenTypeBearer,
+		Scopes:             grant.Scopes,
+		AuthDetails:        grant.AuthDetails,
+		ClientID:           grant.ClientID,
+		IssuedAtTimestamp:  grant.CreatedAtTimestamp,
+		NotBeforeTimestamp: grant.CreatedAtTimestamp,
+		ExpiresAtTimestamp: grant.ExpiresAtTimestamp,
+		Confirmation:       cnf,
+		ResourceAudiences:  grant.Resources,
 	}, nil
 }
 
@@ -103,36 +103,46 @@ func accessTokenInfo(ctx oidc.Context, accessToken string) (goidc.TokenInfo, err
 		return goidc.TokenInfo{}, fmt.Errorf("invalid token: %w", err)
 	}
 
-	token, err := ctx.TokenByID(id)
+	tkn, err := ctx.TokenByID(id)
 	if err != nil {
-		return goidc.TokenInfo{}, fmt.Errorf("token not found: %w", err)
+		return goidc.TokenInfo{}, fmt.Errorf("error fetching token: %w", err)
 	}
 
-	if token.IsExpired() {
+	if tkn.IsExpired() {
+		return goidc.TokenInfo{IsActive: false}, nil
+	}
+
+	grant, err := ctx.GrantByID(tkn.GrantID)
+	if err != nil {
+		return goidc.TokenInfo{}, fmt.Errorf("error fetching grant: %w", err)
+	}
+
+	if grant.IsExpired() {
 		return goidc.TokenInfo{IsActive: false}, nil
 	}
 
 	var cnf *goidc.TokenConfirmation
-	if token.JWKThumbprint != "" || token.ClientCertThumbprint != "" {
+	if tkn.JWKThumbprint != "" || tkn.CertThumbprint != "" {
 		cnf = &goidc.TokenConfirmation{
-			JWKThumbprint:        token.JWKThumbprint,
-			ClientCertThumbprint: token.ClientCertThumbprint,
+			JWKThumbprint:  tkn.JWKThumbprint,
+			CertThumbprint: tkn.CertThumbprint,
 		}
 	}
 
 	return goidc.TokenInfo{
-		GrantID:              token.GrantID,
-		IsActive:             true,
-		Issuer:               ctx.Issuer(),
-		Subject:              token.Subject,
-		Type:                 token.Type,
-		Scopes:               token.Scopes,
-		AuthorizationDetails: token.AuthDetails,
-		ClientID:             token.ClientID,
-		IssuedAtTimestamp:    token.CreatedAtTimestamp,
-		NotBeforeTimestamp:   token.CreatedAtTimestamp,
-		ExpiresAtTimestamp:   token.ExpiresAtTimestamp,
-		Confirmation:         cnf,
-		ResourceAudiences:    token.Resources,
+		GrantID:            tkn.GrantID,
+		IsActive:           true,
+		Issuer:             ctx.Issuer(),
+		Subject:            tkn.Subject,
+		Type:               tkn.Type,
+		Scopes:             tkn.Scopes,
+		AuthDetails:        tkn.AuthDetails,
+		ClientID:           tkn.ClientID,
+		IssuedAtTimestamp:  tkn.CreatedAtTimestamp,
+		NotBeforeTimestamp: tkn.CreatedAtTimestamp,
+		ExpiresAtTimestamp: tkn.ExpiresAtTimestamp,
+		Confirmation:       cnf,
+		ResourceAudiences:  tkn.Resources,
+		AdditionalClaims:   ctx.TokenClaims(tkn, grant),
 	}, nil
 }

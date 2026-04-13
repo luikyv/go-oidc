@@ -21,7 +21,7 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 
 func handle(ctx oidc.Context) {
 	if ctx.Request.Method == http.MethodPost {
-		if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/x-www-form-urlencoded" {
+		if mediaType := ctx.MediaType(); mediaType != "" && mediaType != "application/x-www-form-urlencoded" {
 			ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
 			return
 		}

@@ -75,7 +75,7 @@ func handleJWKS(ctx oidc.Context) {
 }
 
 func handleCreateStream(ctx oidc.Context) {
-	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/json" {
+	if mediaType := ctx.MediaType(); mediaType != "" && mediaType != "application/json" {
 		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
 		return
 	}
@@ -98,7 +98,7 @@ func handleCreateStream(ctx oidc.Context) {
 }
 
 func handleUpdateStream(ctx oidc.Context) {
-	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/json" {
+	if mediaType := ctx.MediaType(); mediaType != "" && mediaType != "application/json" {
 		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
 		return
 	}
@@ -121,7 +121,7 @@ func handleUpdateStream(ctx oidc.Context) {
 }
 
 func handlePatchStream(ctx oidc.Context) {
-	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/json" {
+	if mediaType := ctx.MediaType(); mediaType != "" && mediaType != "application/json" {
 		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
 		return
 	}
@@ -203,7 +203,7 @@ func handleFetchStreamStatus(ctx oidc.Context) {
 }
 
 func handleUpdateStreamStatus(ctx oidc.Context) {
-	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/json" {
+	if mediaType := ctx.MediaType(); mediaType != "" && mediaType != "application/json" {
 		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
 		return
 	}
@@ -226,7 +226,7 @@ func handleUpdateStreamStatus(ctx oidc.Context) {
 }
 
 func handleAddSubject(ctx oidc.Context) {
-	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/json" {
+	if mediaType := ctx.MediaType(); mediaType != "" && mediaType != "application/json" {
 		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
 		return
 	}
@@ -246,7 +246,7 @@ func handleAddSubject(ctx oidc.Context) {
 }
 
 func handleRemoveSubject(ctx oidc.Context) {
-	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/json" {
+	if mediaType := ctx.MediaType(); mediaType != "" && mediaType != "application/json" {
 		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
 		return
 	}
@@ -266,7 +266,7 @@ func handleRemoveSubject(ctx oidc.Context) {
 }
 
 func handlePollEvents(ctx oidc.Context) {
-	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/json" {
+	if mediaType := ctx.MediaType(); mediaType != "" && mediaType != "application/json" {
 		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
 		return
 	}
@@ -290,7 +290,7 @@ func handlePollEvents(ctx oidc.Context) {
 }
 
 func handleCreateVerificationEvent(ctx oidc.Context) {
-	if contentType := ctx.Request.Header.Get("Content-Type"); contentType != "" && contentType != "application/json" {
+	if mediaType := ctx.MediaType(); mediaType != "" && mediaType != "application/json" {
 		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
 		return
 	}

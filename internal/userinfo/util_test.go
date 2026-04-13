@@ -190,7 +190,7 @@ func TestHandleUserInfoRequest_InvalidPoP(t *testing.T) {
 func TestHandleUserInfoRequest_TLSBoundToken_NoCert(t *testing.T) {
 	// Given.
 	ctx, _, tokenEntity := setUp(t)
-	tokenEntity.ClientCertThumbprint = "random_thumbprint"
+	tokenEntity.CertThumbprint = "random_thumbprint"
 
 	// When.
 	_, err := handleUserInfoRequest(ctx)

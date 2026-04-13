@@ -43,8 +43,8 @@ func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) 
 	if grant.JWKThumbprint != "" {
 		grant.JWKThumbprint = dpopThumbprint(ctx)
 	}
-	if grant.ClientCertThumbprint != "" {
-		grant.ClientCertThumbprint = tlsThumbprint(ctx)
+	if grant.CertThumbprint != "" {
+		grant.CertThumbprint = tlsThumbprint(ctx)
 	}
 
 	if err := ctx.HandleGrant(grant); err != nil {
@@ -99,8 +99,8 @@ func validateRefreshTokenGrantRequest(ctx oidc.Context, req request, c *goidc.Cl
 	}
 
 	cnf := goidc.TokenConfirmation{
-		JWKThumbprint:        grant.JWKThumbprint,
-		ClientCertThumbprint: grant.ClientCertThumbprint,
+		JWKThumbprint:  grant.JWKThumbprint,
+		CertThumbprint: grant.CertThumbprint,
 	}
 	if err := validateRefreshTokenBinding(ctx, c, cnf); err != nil {
 		return err
@@ -145,10 +145,10 @@ func validateRefreshTokenBinding(ctx oidc.Context, c *goidc.Client, cnf goidc.To
 
 	// If the refresh token was issued with TLS binding, make sure the following
 	// token is bound to the same tls certificate.
-	if cnf.ClientCertThumbprint != "" {
+	if cnf.CertThumbprint != "" {
 		opts := bindindValidationOptions{
 			tlsIsRequired:     true,
-			tlsCertThumbprint: cnf.ClientCertThumbprint,
+			tlsCertThumbprint: cnf.CertThumbprint,
 		}
 		if err := validateBindingTLS(ctx, c, opts); err != nil {
 			return err

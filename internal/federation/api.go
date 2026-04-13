@@ -44,7 +44,8 @@ func handleFetchStatement(ctx oidc.Context) {
 func handleExplicitRegistration(ctx oidc.Context) {
 	var entityStatement string
 	var regErr error
-	switch ctx.Request.Header.Get("Content-Type") {
+	mediaType := ctx.MediaType()
+	switch mediaType {
 	case contentTypeEntityStatementJWT:
 		signedStatement, err := io.ReadAll(ctx.Request.Body)
 		if err != nil {
@@ -57,7 +58,7 @@ func handleExplicitRegistration(ctx oidc.Context) {
 		_ = json.NewDecoder(ctx.Request.Body).Decode(&chainStatements)
 		entityStatement, regErr = registerChainStatements(ctx, chainStatements)
 	default:
-		regErr = fmt.Errorf("unsupported content type: %s", ctx.Request.Header.Get("Content-Type"))
+		regErr = fmt.Errorf("unsupported content type: %s", mediaType)
 	}
 
 	if regErr != nil {

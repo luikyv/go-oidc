@@ -27,18 +27,18 @@ type GrantOptions struct {
 
 func NewGrant(ctx oidc.Context, c *goidc.Client, opts GrantOptions) (*goidc.Grant, error) {
 	grant := &goidc.Grant{
-		ID:                   ctx.GrantID(),
-		AuthCode:             opts.AuthCode,
-		PreAuthCode:          opts.PreAuthCode,
-		Type:                 opts.Type,
-		Subject:              opts.Subject,
-		ClientID:             opts.ClientID,
-		Scopes:               opts.Scopes,
-		Nonce:                opts.Nonce,
-		Store:                opts.Store,
-		JWKThumbprint:        opts.JWKThumbprint,
-		ClientCertThumbprint: opts.ClientCertThumbprint,
-		CreatedAtTimestamp:   timeutil.TimestampNow(),
+		ID:                 ctx.GrantID(),
+		AuthCode:           opts.AuthCode,
+		PreAuthCode:        opts.PreAuthCode,
+		Type:               opts.Type,
+		Subject:            opts.Subject,
+		ClientID:           opts.ClientID,
+		Scopes:             opts.Scopes,
+		Nonce:              opts.Nonce,
+		Store:              opts.Store,
+		JWKThumbprint:      opts.JWKThumbprint,
+		CertThumbprint:     opts.ClientCertThumbprint,
+		CreatedAtTimestamp: timeutil.TimestampNow(),
 	}
 	if ctx.RARIsEnabled {
 		grant.AuthDetails = opts.AuthDetails

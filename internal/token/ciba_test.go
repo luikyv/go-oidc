@@ -214,7 +214,7 @@ func TestGenerateGrant_CIBAGrant_MTLSBinding(t *testing.T) {
 	}
 	grantSession := grantSessions[0]
 
-	if grantSession.ClientCertThumbprint == "" {
+	if grantSession.CertThumbprint == "" {
 		t.Fatalf("invalid certificate thumbprint")
 	}
 
@@ -238,7 +238,7 @@ func TestGenerateGrant_CIBAGrant_MTLSBinding(t *testing.T) {
 		"iat":       float64(now),
 		"jti":       tokenEntity.ID,
 		"cnf": map[string]any{
-			"x5t#S256": tokenEntity.ClientCertThumbprint,
+			"x5t#S256": tokenEntity.CertThumbprint,
 		},
 	}
 	if diff := cmp.Diff(

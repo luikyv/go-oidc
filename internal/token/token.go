@@ -68,18 +68,18 @@ func Issue(ctx oidc.Context, grant *goidc.Grant, c *goidc.Client, opts *Issuance
 
 	now := timeutil.TimestampNow()
 	tkn := &goidc.Token{
-		GrantID:              grant.ID,
-		Subject:              grant.Subject,
-		ClientID:             grant.ClientID,
-		Scopes:               grant.Scopes,
-		AuthDetails:          grant.AuthDetails,
-		Resources:            grant.Resources,
-		JWKThumbprint:        grant.JWKThumbprint,
-		ClientCertThumbprint: grant.ClientCertThumbprint,
-		CreatedAtTimestamp:   now,
-		ExpiresAtTimestamp:   now + tknOpts.LifetimeSecs,
-		Format:               tknOpts.Format,
-		SigAlg:               tknOpts.JWTSigAlg,
+		GrantID:            grant.ID,
+		Subject:            grant.Subject,
+		ClientID:           grant.ClientID,
+		Scopes:             grant.Scopes,
+		AuthDetails:        grant.AuthDetails,
+		Resources:          grant.Resources,
+		JWKThumbprint:      grant.JWKThumbprint,
+		CertThumbprint:     grant.CertThumbprint,
+		CreatedAtTimestamp: now,
+		ExpiresAtTimestamp: now + tknOpts.LifetimeSecs,
+		Format:             tknOpts.Format,
+		SigAlg:             tknOpts.JWTSigAlg,
 	}
 	if tknOpts.Format == goidc.TokenFormatOpaque {
 		tkn.ID = ctx.OpaqueToken()
@@ -237,14 +237,14 @@ func makeAccessToken(ctx oidc.Context, tkn *goidc.Token, grant *goidc.Grant) (st
 	if tkn.JWKThumbprint != "" {
 		confirmation["jkt"] = tkn.JWKThumbprint
 	}
-	if tkn.ClientCertThumbprint != "" {
-		confirmation["x5t#S256"] = tkn.ClientCertThumbprint
+	if tkn.CertThumbprint != "" {
+		confirmation["x5t#S256"] = tkn.CertThumbprint
 	}
 	if len(confirmation) != 0 {
 		claims["cnf"] = confirmation
 	}
 
-	maps.Copy(claims, ctx.TokenClaims(grant))
+	maps.Copy(claims, ctx.TokenClaims(tkn, grant))
 
 	accessToken, err := ctx.Sign(claims, tkn.SigAlg, (&jose.SignerOptions{}).WithType("at+jwt"))
 	if err != nil {
