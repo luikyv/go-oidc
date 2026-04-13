@@ -29,6 +29,11 @@ func TestIntrospect_OpaqueToken(t *testing.T) {
 		Scopes:             goidc.ScopeOpenID.ID,
 		Type:               goidc.TokenTypeBearer,
 	}
+	_ = ctx.SaveGrant(&goidc.Grant{
+		ID:                 tokenEntity.GrantID,
+		CreatedAtTimestamp: now,
+		ClientID:           client.ID,
+	})
 	_ = ctx.SaveToken(tokenEntity)
 
 	tokenReq := queryRequest{
@@ -169,11 +174,17 @@ func TestIntrospect_TokenWithConfirmation(t *testing.T) {
 		ID:                 accessToken,
 		GrantID:            "random_grant_id",
 		ClientID:           client.ID,
+		CreatedAtTimestamp: now,
 		ExpiresAtTimestamp: now + 60,
 		Scopes:             goidc.ScopeOpenID.ID,
 		JWKThumbprint:      "thumbprint_jwk",
 		CertThumbprint:     "thumbprint_cert",
 	}
+	_ = ctx.SaveGrant(&goidc.Grant{
+		ID:                 tokenEntity.GrantID,
+		CreatedAtTimestamp: now,
+		ClientID:           client.ID,
+	})
 	_ = ctx.SaveToken(tokenEntity)
 
 	tokenReq := queryRequest{
@@ -218,9 +229,15 @@ func TestIntrospect_ClientNotAllowed(t *testing.T) {
 		ID:                 accessToken,
 		GrantID:            "random_grant_id",
 		ClientID:           client.ID,
+		CreatedAtTimestamp: now,
 		ExpiresAtTimestamp: now + 60,
 		Scopes:             goidc.ScopeOpenID.ID,
 	}
+	_ = ctx.SaveGrant(&goidc.Grant{
+		ID:                 tokenEntity.GrantID,
+		CreatedAtTimestamp: now,
+		ClientID:           client.ID,
+	})
 	_ = ctx.SaveToken(tokenEntity)
 
 	tokenReq := queryRequest{
@@ -412,10 +429,16 @@ func TestIntrospect_DPoPToken(t *testing.T) {
 		ID:                 accessToken,
 		GrantID:            "dpop_grant_id",
 		ClientID:           client.ID,
+		CreatedAtTimestamp: now,
 		ExpiresAtTimestamp: now + 60,
 		Scopes:             goidc.ScopeOpenID.ID,
 		Type:               goidc.TokenTypeDPoP,
 	}
+	_ = ctx.SaveGrant(&goidc.Grant{
+		ID:                 tokenEntity.GrantID,
+		CreatedAtTimestamp: now,
+		ClientID:           client.ID,
+	})
 	_ = ctx.SaveToken(tokenEntity)
 
 	tokenReq := queryRequest{token: accessToken}

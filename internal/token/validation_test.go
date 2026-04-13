@@ -221,6 +221,7 @@ func TestValidateResources_ValidResource(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	ctx.ResourceIndicatorsIsEnabled = true
+	ctx.Resources = []string{"https://resource.com", "https://other.com"}
 	granted := goidc.Resources{"https://resource.com", "https://other.com"}
 	req := request{
 		resources: []string{"https://resource.com"},

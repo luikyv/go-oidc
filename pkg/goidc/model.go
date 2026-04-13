@@ -587,7 +587,7 @@ type ClaimObjectInfo struct {
 type AuthDetailType string
 
 const (
-	AuthDetailTypeOpenIDCredential AuthDetailType = "openid_credential"
+	AuthDetailTypeOpenIDCredential AuthDetailType = "openid_credential" //nolint:gosec
 )
 
 type RARValidateDetailFunc func(context.Context, AuthDetail) error

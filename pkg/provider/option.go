@@ -1027,7 +1027,6 @@ func WithHTTPClientFunc(f goidc.HTTPClientFunc) Option {
 	}
 }
 
-
 // WithJWTBearerGrantClientAuthnRequired makes client authentication required
 // for the jwt bearer grant type.
 func WithJWTBearerGrantClientAuthnRequired() Option {
@@ -1568,4 +1567,3 @@ func appendIfNotIn[T comparable](values []T, value T) []T {
 	}
 	return values
 }
-
