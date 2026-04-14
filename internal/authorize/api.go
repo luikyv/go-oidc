@@ -19,21 +19,19 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 			goidc.ApplyMiddlewares(oidc.Handler(config, handlerCIBA), middlewares...))
 	}
 
-	if slices.Contains(config.GrantTypes, goidc.GrantAuthorizationCode) || slices.Contains(config.GrantTypes, goidc.GrantImplicit) {
-		router.Handle("GET "+config.EndpointPrefix+config.AuthorizationEndpoint,
-			goidc.ApplyMiddlewares(oidc.Handler(config, handler), middlewares...))
-		router.Handle("POST "+config.EndpointPrefix+config.AuthorizationEndpoint,
-			goidc.ApplyMiddlewares(oidc.Handler(config, handler), middlewares...))
+	router.Handle("GET "+config.EndpointPrefix+config.AuthorizationEndpoint,
+		goidc.ApplyMiddlewares(oidc.Handler(config, handler), middlewares...))
+	router.Handle("POST "+config.EndpointPrefix+config.AuthorizationEndpoint,
+		goidc.ApplyMiddlewares(oidc.Handler(config, handler), middlewares...))
 
-		router.Handle("POST "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}",
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
-		router.Handle("GET "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}",
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
-		router.Handle("POST "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}/{callback_path...}",
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
-		router.Handle("GET "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}/{callback_path...}",
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
-	}
+	router.Handle("POST "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}",
+		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
+	router.Handle("GET "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}",
+		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
+	router.Handle("POST "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}/{callback_path...}",
+		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
+	router.Handle("GET "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}/{callback_path...}",
+		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
 
 }
 
