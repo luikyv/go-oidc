@@ -227,8 +227,9 @@ func TestHandleUserInfoRequest_ExpiredToken(t *testing.T) {
 		t.Fatalf("expected goidc.Error, got %v", err)
 	}
 
-	if oidcErr.Code != goidc.ErrorCodeAccessDenied {
-		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeAccessDenied)
+	// RFC 6750 §3.1: inactive/expired tokens return invalid_token (401).
+	if oidcErr.Code != goidc.ErrorCodeInvalidToken {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidToken)
 	}
 }
 
