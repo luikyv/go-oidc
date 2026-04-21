@@ -457,7 +457,7 @@ func TestGenerateGrant_RefreshTokenGrant_InvalidRefreshToken(t *testing.T) {
 
 	req := request{
 		grantType:    goidc.GrantRefreshToken,
-		refreshToken: "nonexistent_token",
+		refreshToken: "invalid_refresh_token",
 	}
 
 	// When.
@@ -472,8 +472,8 @@ func TestGenerateGrant_RefreshTokenGrant_InvalidRefreshToken(t *testing.T) {
 	if !errors.As(err, &oidcErr) {
 		t.Fatalf("expected goidc.Error, got %v", err)
 	}
-	if oidcErr.Code != goidc.ErrorCodeInvalidRequest {
-		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRequest)
+	if oidcErr.Code != goidc.ErrorCodeInvalidGrant {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidGrant)
 	}
 }
 

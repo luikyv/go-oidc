@@ -24,7 +24,7 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 
 func handleCreate(ctx oidc.Context) {
 	if mediaType := ctx.MediaType(); mediaType != "" && mediaType != "application/x-www-form-urlencoded" {
-		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type"))
 		return
 	}
 
@@ -42,7 +42,7 @@ func handleCreate(ctx oidc.Context) {
 
 func handleIntrospection(ctx oidc.Context) {
 	if mediaType := ctx.MediaType(); mediaType != "" && mediaType != "application/x-www-form-urlencoded" {
-		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type"))
 		return
 	}
 
@@ -60,7 +60,7 @@ func handleIntrospection(ctx oidc.Context) {
 
 func handleRevocation(ctx oidc.Context) {
 	if mediaType := ctx.MediaType(); mediaType != "" && mediaType != "application/x-www-form-urlencoded" {
-		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type"))
 		return
 	}
 
