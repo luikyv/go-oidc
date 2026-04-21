@@ -7,6 +7,10 @@ import (
 )
 
 func revoke(ctx oidc.Context, req queryRequest) error {
+	if req.token == "" {
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "token parameter is required")
+	}
+
 	c, err := client.Authenticated(ctx, client.AuthnContextTokenRevocation)
 	if err != nil {
 		return err
