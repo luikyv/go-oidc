@@ -77,6 +77,43 @@ func TestIntrospect_OpaqueToken(t *testing.T) {
 	}
 }
 
+func TestIntrospect_OpaqueToken_IncludesUsername(t *testing.T) {
+	ctx, client := setUpIntrospection(t)
+
+	accessToken := "opaque_token"
+	now := timeutil.TimestampNow()
+	tokenEntity := &goidc.Token{
+		ID:                 accessToken,
+		GrantID:            "random_grant_id",
+		ClientID:           client.ID,
+		CreatedAtTimestamp: now,
+		ExpiresAtTimestamp: now + 60,
+		Scopes:             goidc.ScopeOpenID.ID,
+		Type:               goidc.TokenTypeBearer,
+	}
+	_ = ctx.SaveGrant(&goidc.Grant{
+		ID:                 tokenEntity.GrantID,
+		CreatedAtTimestamp: now,
+		ClientID:           client.ID,
+		Username:           "alice",
+	})
+	_ = ctx.SaveToken(tokenEntity)
+
+	tokenReq := queryRequest{
+		token: accessToken,
+	}
+
+	tokenInfo, err := introspect(ctx, tokenReq)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if tokenInfo.Username != "alice" {
+		t.Errorf("Username = %q, want %q", tokenInfo.Username, "alice")
+	}
+}
+
 func TestIntrospect_RefreshToken(t *testing.T) {
 	// Given.
 	ctx, client := setUpIntrospection(t)

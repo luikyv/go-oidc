@@ -134,6 +134,7 @@ func accessTokenInfo(ctx oidc.Context, accessToken string) (goidc.TokenInfo, err
 		IsActive:           true,
 		Issuer:             ctx.Issuer(),
 		Subject:            tkn.Subject,
+		Username:           grant.Username,
 		Type:               tkn.Type,
 		Scopes:             tkn.Scopes,
 		AuthDetails:        tkn.AuthDetails,
