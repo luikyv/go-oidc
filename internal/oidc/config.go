@@ -65,6 +65,10 @@ type Configuration struct {
 	TokenAuthnMethods []goidc.AuthnMethod
 	TokenEndpoint     string
 	TokenOptionsFunc  goidc.TokenOptionsFunc
+	// ClientSecretVerifierFunc replaces the default subtle.ConstantTimeCompare
+	// used to validate client_secret_basic and client_secret_post.
+	// When nil, the default constant-time compare is used.
+	ClientSecretVerifierFunc goidc.ClientSecretVerifierFunc
 	// TokenBindingIsRequired indicates that at least one mechanism of sender
 	// contraining tokens is required, either DPoP or client TLS.
 	TokenBindingIsRequired bool

@@ -104,7 +104,7 @@ func authenticateSecretPost(ctx oidc.Context, c *goidc.Client) error {
 	if secret == "" {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient, "client secret not informed")
 	}
-	return validateSecret(c, secret)
+	return validateSecret(ctx, c, secret)
 }
 
 func authenticateSecretBasic(ctx oidc.Context, c *goidc.Client) error {
@@ -117,10 +117,21 @@ func authenticateSecretBasic(ctx oidc.Context, c *goidc.Client) error {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client id")
 	}
 
-	return validateSecret(c, secret)
+	return validateSecret(ctx, c, secret)
 }
 
-func validateSecret(c *goidc.Client, secret string) error {
+// validateSecret compares the presented secret against c.Secret.
+// When ctx.ClientSecretVerifierFunc is set, it delegates to that
+// function so callers can store secrets hashed at rest (bcrypt, argon2,
+// HSM, etc.). Otherwise it falls back to the default constant-time
+// compare which requires c.Secret to hold plaintext.
+func validateSecret(ctx oidc.Context, c *goidc.Client, secret string) error {
+	if ctx.ClientSecretVerifierFunc != nil {
+		if err := ctx.ClientSecretVerifierFunc(ctx.Context(), c.Secret, secret); err != nil {
+			return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client secret", err)
+		}
+		return nil
+	}
 	if subtle.ConstantTimeCompare([]byte(c.Secret), []byte(secret)) != 1 {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client secret")
 	}

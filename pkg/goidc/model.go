@@ -297,6 +297,18 @@ type RenderErrorFunc func(http.ResponseWriter, *http.Request, error) error
 
 type NotifyErrorFunc func(context.Context, error)
 
+// ClientSecretVerifierFunc compares a stored client secret against a
+// presented secret and returns nil when they match.
+// The library passes Client.Secret as stored without interpretation, so
+// implementations can use plaintext compare, bcrypt or argon2 hashes,
+// HSM-backed compare, etc.
+// Implementations must use constant-time comparison to prevent timing
+// attacks.
+// This function is used for client_secret_basic and client_secret_post
+// authentication. It is not used for client_secret_jwt, which reads
+// Client.Secret directly as the HMAC signing key per RFC 7523 §2.2.
+type ClientSecretVerifierFunc func(ctx context.Context, stored, presented string) error
+
 var (
 	ScopeOpenID        = NewScope("openid")
 	ScopeProfile       = NewScope("profile")
