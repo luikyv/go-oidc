@@ -23,7 +23,7 @@ func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) 
 
 	grant, err := ctx.GrantByRefreshToken(req.refreshToken)
 	if err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid refresh_token", err)
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid refresh_token", err)
 	}
 
 	if err = validateRefreshTokenGrantRequest(ctx, req, c, grant); err != nil {
