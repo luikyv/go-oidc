@@ -21,7 +21,11 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 
 	tokenInfo, err := token.IntrospectionInfo(ctx, accessToken)
 	if err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid token", err)
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidToken, "invalid token", err)
+	}
+
+	if !tokenInfo.IsActive {
+		return response{}, goidc.NewError(goidc.ErrorCodeInvalidToken, "invalid token")
 	}
 
 	if !strutil.ContainsOpenID(tokenInfo.Scopes) {
