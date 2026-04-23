@@ -162,6 +162,17 @@ func (ctx Context) NotifyError(err error) {
 	ctx.NotifyErrorFunc(ctx, err)
 }
 
+// VerifyClientSecret compares a stored client secret against a presented
+// one using the configured VerifyClientSecretFunc. The provider sets a
+// default constant-time plaintext comparer in setDefaults, so this func
+// is expected to be non-nil at request time.
+func (ctx Context) VerifyClientSecret(stored, presented string) error {
+	if ctx.VerifyClientSecretFunc == nil {
+		return errors.New("client secret verifier function must be set")
+	}
+	return ctx.VerifyClientSecretFunc(ctx, stored, presented)
+}
+
 func (ctx Context) Issuer() string {
 	return ctx.Host
 }

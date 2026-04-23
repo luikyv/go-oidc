@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"net/http"
@@ -316,6 +317,8 @@ func (op *Provider) setDefaults() error {
 
 	op.config.TokenOptionsFunc = nonZeroOrDefault(op.config.TokenOptionsFunc, goidc.TokenOptionsFunc(defaultTokenOptionsFunc))
 
+	op.config.VerifyClientSecretFunc = nonZeroOrDefault(op.config.VerifyClientSecretFunc, goidc.VerifyClientSecretFunc(defaultVerifyClientSecretFunc))
+
 	op.config.ResponseModes = []goidc.ResponseMode{goidc.ResponseModeQuery, goidc.ResponseModeFragment, goidc.ResponseModeFormPost}
 
 	op.config.DefaultSubIdentifierType = nonZeroOrDefault(op.config.DefaultSubIdentifierType, goidc.SubIdentifierPublic)
@@ -616,6 +619,17 @@ const (
 
 func defaultTokenOptionsFunc(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
 	return goidc.NewOpaqueTokenOptions(defaultTokenLifetimeSecs)
+}
+
+// defaultVerifyClientSecretFunc is the default verifier used for
+// client_secret_basic and client_secret_post when the caller does not
+// supply one via WithVerifyClientSecretFunc. It treats Client.Secret as
+// plaintext and uses a constant-time compare to avoid timing attacks.
+func defaultVerifyClientSecretFunc(_ context.Context, stored, presented string) error {
+	if subtle.ConstantTimeCompare([]byte(stored), []byte(presented)) != 1 {
+		return errors.New("invalid client secret")
+	}
+	return nil
 }
 
 func defaultCompareAuthDetailsFunc(_ context.Context, granted, request []goidc.AuthDetail) error {

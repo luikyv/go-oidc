@@ -7,7 +7,6 @@ import (
 	"crypto/rsa"
 	"crypto/sha1" //nolint:gosec
 	"crypto/sha256"
-	"crypto/subtle"
 	"crypto/x509"
 	"fmt"
 	"slices"
@@ -104,7 +103,10 @@ func authenticateSecretPost(ctx oidc.Context, c *goidc.Client) error {
 	if secret == "" {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient, "client secret not informed")
 	}
-	return validateSecret(ctx, c, secret)
+	if err := ctx.VerifyClientSecret(c.Secret, secret); err != nil {
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client secret", err)
+	}
+	return nil
 }
 
 func authenticateSecretBasic(ctx oidc.Context, c *goidc.Client) error {
@@ -117,23 +119,8 @@ func authenticateSecretBasic(ctx oidc.Context, c *goidc.Client) error {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client id")
 	}
 
-	return validateSecret(ctx, c, secret)
-}
-
-// validateSecret compares the presented secret against c.Secret.
-// When ctx.VerifyClientSecretFunc is set, it delegates to that
-// function so callers can store secrets hashed at rest (bcrypt, argon2,
-// HSM, etc.). Otherwise it falls back to the default constant-time
-// compare which requires c.Secret to hold plaintext.
-func validateSecret(ctx oidc.Context, c *goidc.Client, secret string) error {
-	if ctx.VerifyClientSecretFunc != nil {
-		if err := ctx.VerifyClientSecretFunc(ctx.Context(), c.Secret, secret); err != nil {
-			return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client secret", err)
-		}
-		return nil
-	}
-	if subtle.ConstantTimeCompare([]byte(c.Secret), []byte(secret)) != 1 {
-		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client secret")
+	if err := ctx.VerifyClientSecret(c.Secret, secret); err != nil {
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client secret", err)
 	}
 	return nil
 }

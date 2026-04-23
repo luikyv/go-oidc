@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/subtle"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -106,6 +108,12 @@ func NewContext(t testing.TB) oidc.Context {
 				LifetimeSecs: 60,
 				Format:       goidc.TokenFormatJWT,
 			}
+		},
+		VerifyClientSecretFunc: func(_ context.Context, stored, presented string) error {
+			if subtle.ConstantTimeCompare([]byte(stored), []byte(presented)) != 1 {
+				return errors.New("invalid client secret")
+			}
+			return nil
 		},
 		AuthnSessionTimeoutSecs: 60,
 		TokenAuthnMethods: []goidc.AuthnMethod{
