@@ -162,6 +162,13 @@ func (ctx Context) NotifyError(err error) {
 	ctx.NotifyErrorFunc(ctx, err)
 }
 
+func (ctx Context) VerifyClientSecret(stored, presented string) error {
+	if ctx.VerifyClientSecretFunc == nil {
+		return errors.New("client secret verifier function must be set")
+	}
+	return ctx.VerifyClientSecretFunc(ctx, stored, presented)
+}
+
 func (ctx Context) Issuer() string {
 	return ctx.Host
 }

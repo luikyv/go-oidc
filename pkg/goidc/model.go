@@ -297,6 +297,8 @@ type RenderErrorFunc func(http.ResponseWriter, *http.Request, error) error
 
 type NotifyErrorFunc func(context.Context, error)
 
+type VerifyClientSecretFunc func(ctx context.Context, stored, presented string) error
+
 var (
 	ScopeOpenID        = NewScope("openid")
 	ScopeProfile       = NewScope("profile")

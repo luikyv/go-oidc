@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"net/http"
@@ -316,6 +317,8 @@ func (op *Provider) setDefaults() error {
 
 	op.config.TokenOptionsFunc = nonZeroOrDefault(op.config.TokenOptionsFunc, goidc.TokenOptionsFunc(defaultTokenOptionsFunc))
 
+	op.config.VerifyClientSecretFunc = nonZeroOrDefault(op.config.VerifyClientSecretFunc, goidc.VerifyClientSecretFunc(defaultVerifyClientSecretFunc))
+
 	op.config.ResponseModes = []goidc.ResponseMode{goidc.ResponseModeQuery, goidc.ResponseModeFragment, goidc.ResponseModeFormPost}
 
 	op.config.DefaultSubIdentifierType = nonZeroOrDefault(op.config.DefaultSubIdentifierType, goidc.SubIdentifierPublic)
@@ -616,6 +619,13 @@ const (
 
 func defaultTokenOptionsFunc(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
 	return goidc.NewOpaqueTokenOptions(defaultTokenLifetimeSecs)
+}
+
+func defaultVerifyClientSecretFunc(_ context.Context, stored, presented string) error {
+	if subtle.ConstantTimeCompare([]byte(stored), []byte(presented)) != 1 {
+		return errors.New("invalid client secret")
+	}
+	return nil
 }
 
 func defaultCompareAuthDetailsFunc(_ context.Context, granted, request []goidc.AuthDetail) error {

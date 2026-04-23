@@ -60,6 +60,7 @@ func TestNew(t *testing.T) {
 			"TokenManager",
 			"JWKSFunc",
 			"TokenOptionsFunc",
+			"VerifyClientSecretFunc",
 		),
 		cmpopts.IgnoreFields(
 			goidc.Scope{},
@@ -184,6 +185,7 @@ func TestNew_WithOptions(t *testing.T) {
 			"TokenManager",
 			"JWKSFunc",
 			"TokenOptionsFunc",
+			"VerifyClientSecretFunc",
 		),
 		cmpopts.IgnoreFields(
 			goidc.Scope{},

@@ -62,9 +62,10 @@ type Configuration struct {
 	AuthorizationCodeLifetimeSecs int
 	CallbackIDFunc                goidc.RandomFunc
 
-	TokenAuthnMethods []goidc.AuthnMethod
-	TokenEndpoint     string
-	TokenOptionsFunc  goidc.TokenOptionsFunc
+	TokenAuthnMethods      []goidc.AuthnMethod
+	TokenEndpoint          string
+	TokenOptionsFunc       goidc.TokenOptionsFunc
+	VerifyClientSecretFunc goidc.VerifyClientSecretFunc
 	// TokenBindingIsRequired indicates that at least one mechanism of sender
 	// contraining tokens is required, either DPoP or client TLS.
 	TokenBindingIsRequired bool
