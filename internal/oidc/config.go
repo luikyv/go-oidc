@@ -62,12 +62,9 @@ type Configuration struct {
 	AuthorizationCodeLifetimeSecs int
 	CallbackIDFunc                goidc.RandomFunc
 
-	TokenAuthnMethods []goidc.AuthnMethod
-	TokenEndpoint     string
-	TokenOptionsFunc  goidc.TokenOptionsFunc
-	// VerifyClientSecretFunc replaces the default subtle.ConstantTimeCompare
-	// used to validate client_secret_basic and client_secret_post.
-	// When nil, the default constant-time compare is used.
+	TokenAuthnMethods      []goidc.AuthnMethod
+	TokenEndpoint          string
+	TokenOptionsFunc       goidc.TokenOptionsFunc
 	VerifyClientSecretFunc goidc.VerifyClientSecretFunc
 	// TokenBindingIsRequired indicates that at least one mechanism of sender
 	// contraining tokens is required, either DPoP or client TLS.

@@ -621,10 +621,6 @@ func defaultTokenOptionsFunc(_ context.Context, _ *goidc.Grant, _ *goidc.Client)
 	return goidc.NewOpaqueTokenOptions(defaultTokenLifetimeSecs)
 }
 
-// defaultVerifyClientSecretFunc is the default verifier used for
-// client_secret_basic and client_secret_post when the caller does not
-// supply one via WithVerifyClientSecretFunc. It treats Client.Secret as
-// plaintext and uses a constant-time compare to avoid timing attacks.
 func defaultVerifyClientSecretFunc(_ context.Context, stored, presented string) error {
 	if subtle.ConstantTimeCompare([]byte(stored), []byte(presented)) != 1 {
 		return errors.New("invalid client secret")
