@@ -986,7 +986,7 @@ func WithNotifyErrorFunc(f goidc.NotifyErrorFunc) Option {
 	}
 }
 
-// WithClientSecretVerifierFunc replaces the default constant-time compare
+// WithVerifyClientSecretFunc replaces the default constant-time compare
 // used to validate client_secret_basic and client_secret_post.
 // This enables callers to store client secrets hashed at rest (bcrypt,
 // argon2, HSM, etc.) by supplying a verifier that compares the hash.
@@ -996,9 +996,9 @@ func WithNotifyErrorFunc(f goidc.NotifyErrorFunc) Option {
 // is treated as plaintext.
 // client_secret_jwt is unaffected: it reads Client.Secret directly as the
 // HMAC signing key per RFC 7523 §2.2.
-func WithClientSecretVerifierFunc(f goidc.ClientSecretVerifierFunc) Option {
+func WithVerifyClientSecretFunc(f goidc.VerifyClientSecretFunc) Option {
 	return func(p *Provider) error {
-		p.config.ClientSecretVerifierFunc = f
+		p.config.VerifyClientSecretFunc = f
 		return nil
 	}
 }

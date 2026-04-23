@@ -31,7 +31,7 @@ func TestAuthenticated_SecretPost_CustomVerifier_Success(t *testing.T) {
 	}
 
 	var called bool
-	ctx.ClientSecretVerifierFunc = func(_ context.Context, stored, presented string) error {
+	ctx.VerifyClientSecretFunc = func(_ context.Context, stored, presented string) error {
 		called = true
 		if stored != hashedAtRest {
 			t.Errorf("verifier received stored = %q, want %q", stored, hashedAtRest)
@@ -79,7 +79,7 @@ func TestAuthenticated_SecretPost_CustomVerifier_Failure(t *testing.T) {
 	}
 
 	verifierErr := errors.New("mismatch")
-	ctx.ClientSecretVerifierFunc = func(_ context.Context, _, _ string) error {
+	ctx.VerifyClientSecretFunc = func(_ context.Context, _, _ string) error {
 		return verifierErr
 	}
 
@@ -130,7 +130,7 @@ func TestAuthenticated_SecretBasic_CustomVerifier_Success(t *testing.T) {
 	}
 
 	var called bool
-	ctx.ClientSecretVerifierFunc = func(_ context.Context, _, _ string) error {
+	ctx.VerifyClientSecretFunc = func(_ context.Context, _, _ string) error {
 		called = true
 		return nil
 	}
