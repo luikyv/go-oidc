@@ -20,12 +20,7 @@ type Request struct {
 // Resolve validates all VC signals (auth details, scopes, resources) for
 // internal consistency, then resolves the VC issuer and credential
 // configuration IDs.
-// If VC is disabled, it returns a zero issuer, nil slice, and nil error.
 func Resolve(ctx oidc.Context, req Request) (goidc.VCIssuer, []goidc.VCConfigurationID, error) {
-	if !ctx.VCIsEnabled {
-		return goidc.VCIssuer{}, nil, nil
-	}
-
 	var issuer goidc.VCIssuer
 	credentials := make(map[goidc.VCConfigurationID]struct{})
 
