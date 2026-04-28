@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -27,9 +28,8 @@ func (r *request) UnmarshalJSON(data []byte) error {
 	}
 
 	info.CustomAttributes = make(map[string]any)
-	knownKeys := jsonKeys(info)
 	for key, value := range allFields {
-		if !slices.Contains(knownKeys, key) {
+		if !slices.Contains(client.JSONFields, key) {
 			info.CustomAttributes[key] = value
 		}
 	}
@@ -65,7 +65,6 @@ type response struct {
 }
 
 func (resp response) MarshalJSON() ([]byte, error) {
-
 	// Define a new type to avoid recursion while marshaling.
 	type auxResponse response
 	attributesBytes, err := json.Marshal(auxResponse(resp))
