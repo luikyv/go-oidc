@@ -36,7 +36,11 @@ type AuthnSession struct {
 	// Subject is the user identifier.
 	//
 	// This value must be informed during the authentication flow.
-	Subject  string `json:"sub"`
+	Subject string `json:"sub"`
+	// [RFC 7662 §2.2] Username is a human-readable identifier for the resource owner.
+	// When set during the authentication flow, it is propagated to the resulting
+	// grant and returned in the introspection response.
+	Username string `json:"username,omitempty"`
 	ClientID string `json:"client_id"`
 	// PushedAuthReqID is the id generated during /par used to fetch the session
 	// during calls to /authorize.

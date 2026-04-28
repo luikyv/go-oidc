@@ -15,6 +15,7 @@ type GrantOptions struct {
 	PreAuthCode          string
 	Type                 goidc.GrantType
 	Subject              string
+	Username             string
 	ClientID             string
 	Scopes               string
 	AuthDetails          []goidc.AuthDetail
@@ -32,6 +33,7 @@ func NewGrant(ctx oidc.Context, c *goidc.Client, opts GrantOptions) (*goidc.Gran
 		PreAuthCode:        opts.PreAuthCode,
 		Type:               opts.Type,
 		Subject:            opts.Subject,
+		Username:           opts.Username,
 		ClientID:           opts.ClientID,
 		Scopes:             opts.Scopes,
 		Nonce:              opts.Nonce,

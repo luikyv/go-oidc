@@ -93,6 +93,35 @@ func TestGenerateGrant_CIBAGrant(t *testing.T) {
 	}
 }
 
+func TestGenerateGrant_CIBAGrant_PropagatesUsername(t *testing.T) {
+
+	// Given.
+	ctx, _, session := setUpCIBAGrant(t)
+	session.Username = "alice"
+	if err := ctx.SaveAuthnSession(session); err != nil {
+		t.Fatalf("error while updating the session: %v", err)
+	}
+
+	req := request{
+		grantType: goidc.GrantCIBA,
+		authReqID: session.CIBAAuthID,
+	}
+
+	// When.
+	if _, err := generateGrant(ctx, req); err != nil {
+		t.Fatalf("error generating the grant: %v", err)
+	}
+
+	// Then.
+	grants := oidctest.Grants(t, ctx)
+	if len(grants) != 1 {
+		t.Fatalf("len(grants) = %d, want 1", len(grants))
+	}
+	if grants[0].Username != "alice" {
+		t.Errorf("grant.Username = %q, want %q", grants[0].Username, "alice")
+	}
+}
+
 // TestGenerateGrant_CIBAGrant_AuthPending validates that when a CIBA poll request
 // is made to the token endpoint for an ongoing authentication process, the
 // "authorization_pending" error is returned as expected.

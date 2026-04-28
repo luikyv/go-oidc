@@ -450,9 +450,8 @@ type TokenInfo struct {
 	ResourceAudiences Resources    `json:"aud,omitempty"`
 	ClientID          string       `json:"client_id,omitempty"`
 	Subject           string       `json:"sub,omitempty"`
-	// Username is a human-readable identifier for the resource owner (RFC 7662 §2.2).
+	// [RFC 7662 §2.2] Username is a human-readable identifier for the resource owner.
 	// Populate via AdditionalTokenClaims if the authorization server can resolve it.
-	// TODO: Fill it with grant.Username.
 	Username           string             `json:"username,omitempty"`
 	Issuer             string             `json:"iss,omitempty"`
 	IssuedAtTimestamp  int                `json:"iat,omitempty"`

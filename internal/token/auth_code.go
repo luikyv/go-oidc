@@ -46,6 +46,7 @@ func generateAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 		AuthCode:             as.AuthCode,
 		Type:                 goidc.GrantAuthorizationCode,
 		Subject:              as.Subject,
+		Username:             as.Username,
 		ClientID:             as.ClientID,
 		Scopes:               as.GrantedScopes,
 		AuthDetails:          as.GrantedAuthDetails,
