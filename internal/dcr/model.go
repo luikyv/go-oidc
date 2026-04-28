@@ -3,9 +3,7 @@ package dcr
 import (
 	"encoding/json"
 	"maps"
-	"reflect"
 	"slices"
-	"strings"
 
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -37,23 +35,6 @@ func (r *request) UnmarshalJSON(data []byte) error {
 	r.ClientMeta = &info
 
 	return nil
-}
-
-// jsonKeys returns a slice of JSON field names for a given struct.
-func jsonKeys(v any) []string {
-	var keys []string
-	val := reflect.ValueOf(v)
-	typ := val.Type()
-
-	for i := 0; i < val.NumField(); i++ {
-		field := typ.Field(i)
-		tag := field.Tag.Get("json")
-
-		if tag != "" && tag != "-" {
-			keys = append(keys, strings.Split(tag, ",")[0])
-		}
-	}
-	return keys
 }
 
 type response struct {
