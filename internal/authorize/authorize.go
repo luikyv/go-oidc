@@ -274,6 +274,7 @@ func finishFlow(ctx oidc.Context, as *goidc.AuthnSession) error {
 		grant, err := token.NewGrant(ctx, c, token.GrantOptions{
 			Type:        goidc.GrantImplicit,
 			Subject:     as.Subject,
+			Username:    as.Username,
 			ClientID:    as.ClientID,
 			Scopes:      as.GrantedScopes,
 			Nonce:       as.Nonce,

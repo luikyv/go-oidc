@@ -96,6 +96,36 @@ func TestGenerateGrant_AuthorizationCodeGrant(t *testing.T) {
 	}
 }
 
+func TestGenerateGrant_AuthorizationCodeGrant_PropagatesUsername(t *testing.T) {
+
+	// Given.
+	ctx, client, session := setUpAuthzCodeGrant(t)
+	session.Username = "alice"
+	if err := ctx.SaveAuthnSession(session); err != nil {
+		t.Fatalf("error while updating the session: %v", err)
+	}
+
+	req := request{
+		grantType:   goidc.GrantAuthorizationCode,
+		redirectURI: client.RedirectURIs[0],
+		code:        session.AuthCode,
+	}
+
+	// When.
+	if _, err := generateGrant(ctx, req); err != nil {
+		t.Fatalf("error generating the authorization code grant: %v", err)
+	}
+
+	// Then.
+	grants := oidctest.Grants(t, ctx)
+	if len(grants) != 1 {
+		t.Fatalf("len(grants) = %d, want 1", len(grants))
+	}
+	if grants[0].Username != "alice" {
+		t.Errorf("grant.Username = %q, want %q", grants[0].Username, "alice")
+	}
+}
+
 func TestGenerateGrant_AuthorizationCodeGrant_AuthDetails(t *testing.T) {
 
 	// Given.

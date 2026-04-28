@@ -39,6 +39,9 @@ type Grant struct {
 	// Subject is the ID of the user or client associated with the grant.
 	Subject  string `json:"sub"`
 	ClientID string `json:"client_id"`
+	// [RFC 7662 §2.2] Username is a human-readable identifier for the resource owner.
+	// Populated via HandleGrantFunc or by resource-owner password grant.
+	Username string `json:"username,omitempty"`
 
 	Scopes      string       `json:"scopes"`
 	AuthDetails []AuthDetail `json:"auth_details,omitempty"`

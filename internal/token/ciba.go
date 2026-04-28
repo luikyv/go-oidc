@@ -53,6 +53,7 @@ func NotifyCIBAGrant(ctx oidc.Context, authReqID string) error {
 	grant, err := NewGrant(ctx, c, GrantOptions{
 		Type:                 goidc.GrantCIBA,
 		Subject:              as.Subject,
+		Username:             as.Username,
 		ClientID:             as.ClientID,
 		Scopes:               as.GrantedScopes,
 		AuthDetails:          as.GrantedAuthDetails,
@@ -197,6 +198,7 @@ func generateCIBAGrant(ctx oidc.Context, req request) (response, error) {
 	grant, err := NewGrant(ctx, c, GrantOptions{
 		Type:                 goidc.GrantCIBA,
 		Subject:              as.Subject,
+		Username:             as.Username,
 		ClientID:             as.ClientID,
 		Scopes:               as.GrantedScopes,
 		AuthDetails:          as.GrantedAuthDetails,
