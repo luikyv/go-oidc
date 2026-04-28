@@ -129,15 +129,27 @@ func validateAuthCodeGrantRequest(ctx oidc.Context, req request, c *goidc.Client
 		return err
 	}
 
+	if err := validateVerifiableCredentials(ctx, as); err != nil {
+		return err
+	}
+
+	if err := validateScopes(ctx, req, c, as.GrantedScopes); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateVerifiableCredentials(ctx oidc.Context, as *goidc.AuthnSession) error {
+	if !ctx.VCIsEnabled {
+		return nil
+	}
+
 	if _, _, err := vc.Resolve(ctx, vc.Request{
 		Scopes:    as.GrantedScopes,
 		Details:   as.GrantedAuthDetails,
 		Resources: as.GrantedResources,
 	}); err != nil {
-		return err
-	}
-
-	if err := validateScopes(ctx, req, c, as.GrantedScopes); err != nil {
 		return err
 	}
 

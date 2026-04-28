@@ -1,6 +1,7 @@
 package federation
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -378,21 +379,31 @@ func TestOpenIDClientMetadataPolicy_Merge_Operators(t *testing.T) {
 	}
 }
 
-func TestJSONKeys(t *testing.T) {
-	// Given.
-	type testStruct struct {
-		Field1 string `json:"field_one"`
-		Field2 int    `json:"field_two,omitempty"`
-		Field3 bool   `json:"-"`
-		Field4 string // No json tag.
+func TestOpenIDClientMetadataPolicy_UnmarshalJSON_CustomAttributes(t *testing.T) {
+	data := []byte(`{
+		"client_name": {"one_of": ["example"]},
+		"post_logout_redirect_uris": {"add": ["https://client.example.com/logout/callback"]},
+		"custom_field": {}
+	}`)
+
+	var policy openIDClientMetadataPolicy
+	if err := json.Unmarshal(data, &policy); err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	v := testStruct{}
 
-	// When.
-	keys := jsonKeys(v)
+	if len(policy.Name.OneOf) != 1 || policy.Name.OneOf[0] != "example" {
+		t.Fatalf("unexpected client_name one_of: %+v", policy.Name.OneOf)
+	}
 
-	// Then.
-	if len(keys) != 2 {
-		t.Errorf("expected 2 keys, got %d: %v", len(keys), keys)
+	if len(policy.PostLogoutRedirectURIs.Add) != 1 {
+		t.Fatalf("unexpected post_logout_redirect_uris add: %+v", policy.PostLogoutRedirectURIs.Add)
+	}
+
+	if _, ok := policy.CustomAttributes["custom_field"]; !ok {
+		t.Fatal("expected custom_field to be captured as custom attribute")
+	}
+
+	if _, ok := policy.CustomAttributes["client_name"]; ok {
+		t.Fatal("client_name should not be captured as custom attribute")
 	}
 }
