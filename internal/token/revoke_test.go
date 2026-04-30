@@ -251,6 +251,50 @@ func TestRevoke_RefreshTokenDeletesTokens(t *testing.T) {
 	}
 }
 
+// TestRevoke_MissingToken verifies that the revocation endpoint rejects
+// requests without the REQUIRED token parameter with invalid_request, per
+// [RFC 7009 §2.1] (token is REQUIRED) and [RFC 6749 §5.2] (invalid_request
+// is the error code for missing required parameters).
+func TestRevoke_MissingToken(t *testing.T) {
+	// Given.
+	ctx, client := setUpRevocation(t)
+
+	now := timeutil.TimestampNow()
+	grantSession := &goidc.Grant{
+		ID:                 "random_grant_id",
+		CreatedAtTimestamp: now,
+		ClientID:           client.ID,
+	}
+	_ = ctx.SaveGrant(grantSession)
+
+	tokenReq := queryRequest{
+		token: "",
+	}
+
+	// When.
+	err := revoke(ctx, tokenReq)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error for missing token parameter")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeInvalidRequest {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRequest)
+	}
+
+	// The unrelated grant must remain untouched.
+	grantSessions := oidctest.Grants(t, ctx)
+	if len(grantSessions) != 1 {
+		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
+	}
+}
+
 func TestRevoke_ExpiredToken(t *testing.T) {
 	// Given.
 	ctx, _ := setUpRevocation(t)
