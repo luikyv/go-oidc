@@ -91,7 +91,7 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 			return err
 		}
 
-		tokenAuthnSigAlgs := append(ctx.TokenAuthnPrivateKeyJWTSigAlgs, ctx.TokenAuthnSecretJWTSigAlgs...)
+		tokenAuthnSigAlgs := slices.Concat(ctx.TokenAuthnPrivateKeyJWTSigAlgs, ctx.TokenAuthnSecretJWTSigAlgs)
 		c.TokenAuthnSigAlg, err = resolveChoice(c.TokenAuthnSigAlgs, c.TokenAuthnSigAlg, tokenAuthnSigAlgs, "token_endpoint_auth_signing_alg_values_supported")
 		if err != nil {
 			return err
