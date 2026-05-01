@@ -53,7 +53,7 @@ func NewGrant(ctx oidc.Context, c *goidc.Client, opts GrantOptions) (*goidc.Gran
 	}
 
 	if slices.Contains(ctx.GrantTypes, goidc.GrantRefreshToken) && slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) &&
-		ctx.ShouldIssueRefreshToken(c, grant) && grant.Type != goidc.GrantClientCredentials && grant.Type != goidc.GrantImplicit {
+		ctx.RefreshTokenShouldIssue(c, grant) && grant.Type != goidc.GrantClientCredentials && grant.Type != goidc.GrantImplicit {
 		grant.RefreshToken = ctx.RefreshToken()
 		grant.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}

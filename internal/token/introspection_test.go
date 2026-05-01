@@ -256,7 +256,7 @@ func TestIntrospect_TokenWithConfirmation(t *testing.T) {
 func TestIntrospect_ClientNotAllowed(t *testing.T) {
 	// Given.
 	ctx, client := setUpIntrospection(t)
-	ctx.IsClientAllowedTokenIntrospectionFunc = func(_ context.Context, _ *goidc.Client, _ goidc.TokenInfo) bool {
+	ctx.TokenIntrospectionIsClientAllowedFunc = func(_ context.Context, _ *goidc.Client, _ goidc.TokenInfo) bool {
 		return false
 	}
 
@@ -495,7 +495,7 @@ func TestIntrospect_DPoPToken(t *testing.T) {
 func TestIntrospect_ClientNotAllowed_UnknownToken(t *testing.T) {
 	// Given.
 	ctx, _ := setUpIntrospection(t)
-	ctx.IsClientAllowedTokenIntrospectionFunc = func(_ context.Context, _ *goidc.Client, _ goidc.TokenInfo) bool {
+	ctx.TokenIntrospectionIsClientAllowedFunc = func(_ context.Context, _ *goidc.Client, _ goidc.TokenInfo) bool {
 		return false
 	}
 
@@ -533,7 +533,7 @@ func setUpIntrospection(t *testing.T) (ctx oidc.Context, client *goidc.Client) {
 
 	ctx = oidctest.NewContext(t)
 	ctx.TokenIntrospectionIsEnabled = true
-	ctx.IsClientAllowedTokenIntrospectionFunc = func(_ context.Context, _ *goidc.Client, _ goidc.TokenInfo) bool {
+	ctx.TokenIntrospectionIsClientAllowedFunc = func(_ context.Context, _ *goidc.Client, _ goidc.TokenInfo) bool {
 		return true
 	}
 

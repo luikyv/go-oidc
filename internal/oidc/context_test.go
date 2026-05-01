@@ -44,7 +44,7 @@ func TestTokenAuthnSigAlgs(t *testing.T) {
 					TokenAuthnMethods: []goidc.AuthnMethod{
 						goidc.AuthnMethodPrivateKeyJWT,
 					},
-					PrivateKeyJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
+					TokenAuthnPrivateKeyJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
 				},
 			},
 			sigAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
@@ -55,7 +55,7 @@ func TestTokenAuthnSigAlgs(t *testing.T) {
 					TokenAuthnMethods: []goidc.AuthnMethod{
 						goidc.AuthnMethodSecretJWT,
 					},
-					ClientSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
+					TokenAuthnSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
 				},
 			},
 			sigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
@@ -67,8 +67,8 @@ func TestTokenAuthnSigAlgs(t *testing.T) {
 						goidc.AuthnMethodPrivateKeyJWT,
 						goidc.AuthnMethodSecretJWT,
 					},
-					PrivateKeyJWTSigAlgs:   []goidc.SignatureAlgorithm{goidc.PS256},
-					ClientSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
+					TokenAuthnPrivateKeyJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
+					TokenAuthnSecretJWTSigAlgs:     []goidc.SignatureAlgorithm{goidc.HS256},
 				},
 			},
 			sigAlgs: []goidc.SignatureAlgorithm{goidc.PS256, goidc.HS256},
@@ -85,77 +85,6 @@ func TestTokenAuthnSigAlgs(t *testing.T) {
 				// Then.
 				if !cmp.Equal(sigAlgs, testCase.sigAlgs, cmpopts.EquateEmpty()) {
 					t.Errorf("ClientAuthnSigAlgs() = %v, want %v", sigAlgs, testCase.sigAlgs)
-				}
-			},
-		)
-	}
-}
-
-func TestIntrospectionClientAuthnSigAlgs(t *testing.T) {
-
-	// Given.
-	testCases := []struct {
-		ctx     oidc.Context
-		sigAlgs []goidc.SignatureAlgorithm
-	}{
-		{
-			ctx: oidc.Context{
-				Configuration: &oidc.Configuration{
-					PrivateKeyJWTSigAlgs:   []goidc.SignatureAlgorithm{goidc.PS256},
-					ClientSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
-				},
-			},
-			sigAlgs: nil,
-		},
-		{
-			ctx: oidc.Context{
-				Configuration: &oidc.Configuration{
-					PrivateKeyJWTSigAlgs:   []goidc.SignatureAlgorithm{goidc.PS256},
-					ClientSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
-					TokenIntrospectionAuthnMethods: []goidc.AuthnMethod{
-						goidc.AuthnMethodPrivateKeyJWT,
-					},
-				},
-			},
-			sigAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
-		},
-		{
-			ctx: oidc.Context{
-				Configuration: &oidc.Configuration{
-					PrivateKeyJWTSigAlgs:   []goidc.SignatureAlgorithm{goidc.PS256},
-					ClientSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
-					TokenIntrospectionAuthnMethods: []goidc.AuthnMethod{
-						goidc.AuthnMethodSecretJWT,
-					},
-				},
-			},
-			sigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
-		},
-		{
-			ctx: oidc.Context{
-				Configuration: &oidc.Configuration{
-					PrivateKeyJWTSigAlgs:   []goidc.SignatureAlgorithm{goidc.PS256},
-					ClientSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
-					TokenIntrospectionAuthnMethods: []goidc.AuthnMethod{
-						goidc.AuthnMethodPrivateKeyJWT,
-						goidc.AuthnMethodSecretJWT,
-					},
-				},
-			},
-			sigAlgs: []goidc.SignatureAlgorithm{goidc.PS256, goidc.HS256},
-		},
-	}
-
-	for i, testCase := range testCases {
-		t.Run(
-			fmt.Sprintf("case %d", i),
-			func(t *testing.T) {
-				// When.
-				sigAlgs := testCase.ctx.TokenIntrospectionAuthnSigAlgs()
-
-				// Then.
-				if !cmp.Equal(sigAlgs, testCase.sigAlgs, cmpopts.EquateEmpty()) {
-					t.Errorf("IntrospectionClientAuthnSigAlgs() = %v, want %v", sigAlgs, testCase.sigAlgs)
 				}
 			},
 		)
@@ -590,18 +519,18 @@ func TestIsClientAllowedTokenIntrospection(t *testing.T) {
 	client := &goidc.Client{}
 	info := goidc.TokenInfo{}
 	// When.
-	isAllowed := ctx.IsClientAllowedTokenIntrospection(client, info)
+	isAllowed := ctx.TokenIntrospectionIsClientAllowed(client, info)
 	// Then.
 	if isAllowed {
 		t.Error("the default behavior should be to not allow introspection")
 	}
 
 	// Given.
-	ctx.IsClientAllowedTokenIntrospectionFunc = func(_ context.Context, c *goidc.Client, _ goidc.TokenInfo) bool {
+	ctx.TokenIntrospectionIsClientAllowedFunc = func(_ context.Context, c *goidc.Client, _ goidc.TokenInfo) bool {
 		return true
 	}
 	// When.
-	isAllowed = ctx.IsClientAllowedTokenIntrospection(client, info)
+	isAllowed = ctx.TokenIntrospectionIsClientAllowed(client, info)
 	// Then.
 	if !isAllowed {
 		t.Errorf("got %t, want %t", isAllowed, true)
@@ -615,18 +544,18 @@ func TestIsClientAllowedTokenRevocationFunc(t *testing.T) {
 	}
 	client := &goidc.Client{}
 	// When.
-	isAllowed := ctx.IsClientAllowedTokenRevocation(client)
+	isAllowed := ctx.TokenRevocationIsClientAllowed(client)
 	// Then.
 	if isAllowed {
 		t.Error("the default behavior should be to not allow revocation")
 	}
 
 	// Given.
-	ctx.IsClientAllowedTokenRevocationFunc = func(_ context.Context, c *goidc.Client) bool {
+	ctx.TokenRevocationIsClientAllowedFunc = func(_ context.Context, c *goidc.Client) bool {
 		return true
 	}
 	// When.
-	isAllowed = ctx.IsClientAllowedTokenRevocation(client)
+	isAllowed = ctx.TokenRevocationIsClientAllowed(client)
 	// Then.
 	if !isAllowed {
 		t.Errorf("got %t, want %t", isAllowed, true)
@@ -787,7 +716,7 @@ func TestShouldIssueRefreshToken(t *testing.T) {
 	grant := &goidc.Grant{}
 
 	// When.
-	should := ctx.ShouldIssueRefreshToken(client, grant)
+	should := ctx.RefreshTokenShouldIssue(client, grant)
 
 	// Then.
 	if !should {
@@ -795,12 +724,12 @@ func TestShouldIssueRefreshToken(t *testing.T) {
 	}
 
 	// Given.
-	ctx.ShouldIssueRefreshTokenFunc = func(_ context.Context, _ *goidc.Client, _ *goidc.Grant) bool {
+	ctx.RefreshTokenShouldIssueFunc = func(_ context.Context, _ *goidc.Client, _ *goidc.Grant) bool {
 		return false
 	}
 
 	// When.
-	should = ctx.ShouldIssueRefreshToken(client, grant)
+	should = ctx.RefreshTokenShouldIssue(client, grant)
 
 	// Then.
 	if should {

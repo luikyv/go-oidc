@@ -12,7 +12,7 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 		goidc.ApplyMiddlewares(oidc.Handler(config, handleCreate), middlewares...))
 
 	if config.TokenIntrospectionIsEnabled {
-		router.Handle("POST "+config.EndpointPrefix+config.IntrospectionEndpoint,
+		router.Handle("POST "+config.EndpointPrefix+config.TokenIntrospectionEndpoint,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleIntrospection), middlewares...))
 	}
 

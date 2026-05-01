@@ -48,7 +48,7 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "grant not found", err)
 	}
 
-	subType := ctx.DefaultSubIdentifierType
+	subType := ctx.SubIdentifierTypeDefault
 	if c.SubIdentifierType != "" && slices.Contains(ctx.SubIdentifierTypes, c.SubIdentifierType) {
 		subType = c.SubIdentifierType
 	}

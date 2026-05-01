@@ -601,7 +601,7 @@ func TestAuthenticated_DifferentClientIDs(t *testing.T) {
 
 	ctx := oidctest.NewContext(t)
 	_ = ctx.SaveClient(c)
-	ctx.PrivateKeyJWTSigAlgs = []goidc.SignatureAlgorithm{goidc.PS256}
+	ctx.TokenAuthnPrivateKeyJWTSigAlgs = []goidc.SignatureAlgorithm{goidc.PS256}
 
 	ctx.Request.PostForm = map[string][]string{
 		"client_id": {c.ID},
@@ -739,7 +739,7 @@ func setUpPrivateKeyJWTAuthn(t *testing.T) (ctx oidc.Context, c *goidc.Client, j
 	t.Helper()
 
 	ctx = oidctest.NewContext(t)
-	ctx.PrivateKeyJWTSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256, goidc.PS256}
+	ctx.TokenAuthnPrivateKeyJWTSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256, goidc.PS256}
 	ctx.JWTLifetimeSecs = 60
 
 	jwk = oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
@@ -767,7 +767,7 @@ func setUpClientSecretJWTAuthn(t *testing.T) (
 	t.Helper()
 
 	ctx = oidctest.NewContext(t)
-	ctx.ClientSecretJWTSigAlgs = []goidc.SignatureAlgorithm{goidc.HS256}
+	ctx.TokenAuthnSecretJWTSigAlgs = []goidc.SignatureAlgorithm{goidc.HS256}
 	ctx.JWTLifetimeSecs = 60
 
 	secret = "random_password12345678910111213"

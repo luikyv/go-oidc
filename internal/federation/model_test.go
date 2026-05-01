@@ -3,7 +3,8 @@ package federation
 import (
 	"testing"
 
-	"github.com/luikyv/go-oidc/pkg/goidc"
+	"github.com/luikyv/go-oidc/internal/client"
+	"github.com/luikyv/go-oidc/internal/oidctest"
 )
 
 func TestMatchesNamespace(t *testing.T) {
@@ -127,7 +128,7 @@ func TestTrustChain_Resolve_MaxPathLength(t *testing.T) {
 			Issuer:  "https://client.example.com",
 			Subject: "https://client.example.com",
 			Metadata: metadata{
-				OpenIDClient: &goidc.ClientMeta{},
+				OpenIDClient: &client.Client{},
 			},
 			ExpiresAt: 9999999999,
 		},
@@ -147,7 +148,7 @@ func TestTrustChain_Resolve_MaxPathLength(t *testing.T) {
 	}
 
 	// With max_path_length=0 and 1 subordinate statement, it should pass
-	_, err := chain.resolve()
+	_, err := chain.resolve(oidctest.NewContext(t))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -160,7 +161,7 @@ func TestTrustChain_Resolve_MaxPathLengthExceeded(t *testing.T) {
 			Issuer:  "https://client.example.com",
 			Subject: "https://client.example.com",
 			Metadata: metadata{
-				OpenIDClient: &goidc.ClientMeta{},
+				OpenIDClient: &client.Client{},
 			},
 			ExpiresAt: 9999999999,
 		},
@@ -184,7 +185,7 @@ func TestTrustChain_Resolve_MaxPathLengthExceeded(t *testing.T) {
 		},
 	}
 
-	_, err := chain.resolve()
+	_, err := chain.resolve(oidctest.NewContext(t))
 	if err == nil {
 		t.Fatal("expected error for max path length exceeded")
 	}
@@ -196,7 +197,7 @@ func TestTrustChain_Resolve_NamingConstraintsPermitted(t *testing.T) {
 			Issuer:  "https://client.example.com",
 			Subject: "https://client.example.com",
 			Metadata: metadata{
-				OpenIDClient: &goidc.ClientMeta{},
+				OpenIDClient: &client.Client{},
 			},
 			ExpiresAt: 9999999999,
 		},
@@ -224,7 +225,7 @@ func TestTrustChain_Resolve_NamingConstraintsPermitted(t *testing.T) {
 	// Let's use exact match
 	chain[1].Constraints.NamingConstraints.Permitted = []string{"https://client.example.com"}
 
-	_, err := chain.resolve()
+	_, err := chain.resolve(oidctest.NewContext(t))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -236,7 +237,7 @@ func TestTrustChain_Resolve_NamingConstraintsNotPermitted(t *testing.T) {
 			Issuer:  "https://client.example.com",
 			Subject: "https://client.example.com",
 			Metadata: metadata{
-				OpenIDClient: &goidc.ClientMeta{},
+				OpenIDClient: &client.Client{},
 			},
 			ExpiresAt: 9999999999,
 		},
@@ -260,7 +261,7 @@ func TestTrustChain_Resolve_NamingConstraintsNotPermitted(t *testing.T) {
 		},
 	}
 
-	_, err := chain.resolve()
+	_, err := chain.resolve(oidctest.NewContext(t))
 	if err == nil {
 		t.Fatal("expected error for naming constraint not met")
 	}
@@ -272,7 +273,7 @@ func TestTrustChain_Resolve_NamingConstraintsExcluded(t *testing.T) {
 			Issuer:  "https://client.example.com",
 			Subject: "https://client.example.com",
 			Metadata: metadata{
-				OpenIDClient: &goidc.ClientMeta{},
+				OpenIDClient: &client.Client{},
 			},
 			ExpiresAt: 9999999999,
 		},
@@ -296,7 +297,7 @@ func TestTrustChain_Resolve_NamingConstraintsExcluded(t *testing.T) {
 		},
 	}
 
-	_, err := chain.resolve()
+	_, err := chain.resolve(oidctest.NewContext(t))
 	if err == nil {
 		t.Fatal("expected error for naming constraint excluded")
 	}
@@ -309,7 +310,7 @@ func TestTrustChain_Resolve_ExpiresAtPropagation(t *testing.T) {
 			Subject:   "https://client.example.com",
 			ExpiresAt: 1000,
 			Metadata: metadata{
-				OpenIDClient: &goidc.ClientMeta{},
+				OpenIDClient: &client.Client{},
 			},
 		},
 		{
@@ -324,7 +325,7 @@ func TestTrustChain_Resolve_ExpiresAtPropagation(t *testing.T) {
 		},
 	}
 
-	resolved, err := chain.resolve()
+	resolved, err := chain.resolve(oidctest.NewContext(t))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

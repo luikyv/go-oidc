@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/go-jose/go-jose/v4"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -66,8 +67,10 @@ func registerClientExplicitly(ctx oidc.Context, chain trustChain) (string, error
 		JWKS:           chain.subjectConfig().JWKS,
 		AuthorityHints: []string{chain.firstSubordinateStatement().Issuer},
 		TrustAnchor:    c.Federation.TrustAnchor,
+		Metadata: metadata{
+			OpenIDClient: &client.Client{ClientMeta: c.ClientMeta},
+		},
 	}
-	statement.Metadata.OpenIDClient = &c.ClientMeta
 
 	return ctx.OpenIDFedSign(statement, (&jose.SignerOptions{}).WithType(jwtTypeExplicitRegistration))
 }

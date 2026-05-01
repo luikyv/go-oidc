@@ -2,7 +2,6 @@ package dcr
 
 import (
 	"crypto/subtle"
-	"slices"
 
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -10,44 +9,44 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func create(ctx oidc.Context, initialToken string, meta *goidc.ClientMeta) (response, error) {
+func create(ctx oidc.Context, initialToken string, req *client.Client) (response, error) {
 
 	if err := ctx.ValidateInitalAccessToken(initialToken); err != nil {
 		return response{}, goidc.WrapError(goidc.ErrorCodeAccessDenied, "invalid token", err)
 	}
 
-	id := ctx.ClientID()
-	if err := ctx.HandleDynamicClient(id, meta); err != nil {
+	if err := client.Resolve(ctx, req); err != nil {
 		return response{}, err
 	}
 
-	if err := client.Validate(ctx, meta); err != nil {
+	id := ctx.ClientID()
+	if err := ctx.HandleDynamicClient(id, &req.ClientMeta); err != nil {
 		return response{}, err
 	}
 
 	c := &goidc.Client{
 		ID:                 id,
 		CreatedAtTimestamp: timeutil.TimestampNow(),
-		ClientMeta:         *meta,
+		ClientMeta:         req.ClientMeta,
 	}
 	return modifyAndSaveClient(ctx, c)
 }
 
-func update(ctx oidc.Context, id, regToken string, meta *goidc.ClientMeta) (response, error) {
+func update(ctx oidc.Context, id, regToken string, req *client.Client) (response, error) {
 	c, err := protected(ctx, id, regToken)
 	if err != nil {
 		return response{}, err
 	}
 
-	if err := ctx.HandleDynamicClient(id, meta); err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid metadata", err)
-	}
-
-	if err := client.Validate(ctx, meta); err != nil {
+	if err := client.Resolve(ctx, req); err != nil {
 		return response{}, err
 	}
 
-	c.ClientMeta = *meta
+	if err := ctx.HandleDynamicClient(id, &req.ClientMeta); err != nil {
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid metadata", err)
+	}
+
+	c.ClientMeta = req.ClientMeta
 	return modifyAndSaveClient(ctx, c)
 }
 
@@ -132,9 +131,7 @@ func setSecret(ctx oidc.Context, c *goidc.Client) string {
 
 	// Check for client authentication methods that require a secret that must
 	// be store as a hash.
-	if slices.ContainsFunc(client.AuthnMethods(ctx, &c.ClientMeta), func(method goidc.AuthnMethod) bool {
-		return method == goidc.AuthnMethodSecretBasic || method == goidc.AuthnMethodSecretPost || method == goidc.AuthnMethodSecretJWT
-	}) {
+	if method := c.TokenAuthnMethod; method == goidc.AuthnMethodSecretBasic || method == goidc.AuthnMethodSecretPost || method == goidc.AuthnMethodSecretJWT {
 		secretExpiresAt := 0
 		c.SecretExpiresAt = &secretExpiresAt
 		c.Secret = ctx.ClientSecret()

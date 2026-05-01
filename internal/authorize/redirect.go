@@ -100,7 +100,7 @@ func createJARMResponse(ctx oidc.Context, c *goidc.Client, redirectParams respon
 		claims[k] = v
 	}
 
-	alg := ctx.JARMDefaultSigAlg
+	alg := ctx.JARMSigAlgDefault
 	if slices.Contains(ctx.JARMSigAlgs, c.JARMSigAlg) && c.JARMSigAlg != "" {
 		alg = c.JARMSigAlg
 	}
@@ -119,7 +119,7 @@ func createJARMResponse(ctx oidc.Context, c *goidc.Client, redirectParams respon
 			"could not fetch the client encryption jwk for jarm", err)
 	}
 
-	contentEncAlg := ctx.JARMDefaultContentEncAlg
+	contentEncAlg := ctx.JARMContentEncAlgDefault
 	if slices.Contains(ctx.JARMContentEncAlgs, c.JARMContentEncAlg) && c.JARMContentEncAlg != "" {
 		contentEncAlg = c.JARMContentEncAlg
 	}

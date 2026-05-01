@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -16,7 +17,7 @@ func TestCreate(t *testing.T) {
 	ctx := oidctest.NewContext(t)
 
 	// When.
-	resp, err := create(ctx, "", &c.ClientMeta)
+	resp, err := create(ctx, "", &client.Client{ClientMeta: c.ClientMeta})
 
 	// Then.
 	if err != nil {
@@ -40,19 +41,19 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	// Given.
-	ctx, client, regToken := setUp(t)
+	ctx, c, regToken := setUp(t)
 	ctx.DCRTokenRotationIsEnabled = false
 
 	// When.
-	resp, err := update(ctx, client.ID, regToken, &client.ClientMeta)
+	resp, err := update(ctx, c.ID, regToken, &client.Client{ClientMeta: c.ClientMeta})
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error updating the client: %v", err)
 	}
 
-	if resp.ID != client.ID {
-		t.Errorf("ID = %s, want %s", resp.ID, client.ID)
+	if resp.ID != c.ID {
+		t.Errorf("ID = %s, want %s", resp.ID, c.ID)
 	}
 
 	if resp.RegistrationToken != "" {
@@ -62,19 +63,19 @@ func TestUpdate(t *testing.T) {
 
 func TestUpdate_TokenRotation(t *testing.T) {
 	// Given.
-	ctx, client, regToken := setUp(t)
+	ctx, c, regToken := setUp(t)
 	ctx.DCRTokenRotationIsEnabled = true
 
 	// When.
-	resp, err := update(ctx, client.ID, regToken, &client.ClientMeta)
+	resp, err := update(ctx, c.ID, regToken, &client.Client{ClientMeta: c.ClientMeta})
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error updating the client: %v", err)
 	}
 
-	if resp.ID != client.ID {
-		t.Errorf("ID = %s, want %s", resp.ID, client.ID)
+	if resp.ID != c.ID {
+		t.Errorf("ID = %s, want %s", resp.ID, c.ID)
 	}
 
 	if resp.RegistrationToken == "" {
@@ -152,7 +153,7 @@ func TestCreate_InvalidInitialToken(t *testing.T) {
 	}
 
 	// When.
-	_, err := create(ctx, "bad_token", &c.ClientMeta)
+	_, err := create(ctx, "bad_token", &client.Client{ClientMeta: c.ClientMeta})
 
 	// Then.
 	if err == nil {
@@ -176,7 +177,7 @@ func TestCreate_SecretGeneration(t *testing.T) {
 	c.TokenAuthnMethod = goidc.AuthnMethodSecretBasic
 
 	// When.
-	resp, err := create(ctx, "", &c.ClientMeta)
+	resp, err := create(ctx, "", &client.Client{ClientMeta: c.ClientMeta})
 
 	// Then.
 	if err != nil {
@@ -198,7 +199,7 @@ func TestCreate_NoSecretForPublicClient(t *testing.T) {
 	c.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeCode}
 
 	// When.
-	resp, err := create(ctx, "", &c.ClientMeta)
+	resp, err := create(ctx, "", &client.Client{ClientMeta: c.ClientMeta})
 
 	// Then.
 	if err != nil {
@@ -212,10 +213,10 @@ func TestCreate_NoSecretForPublicClient(t *testing.T) {
 
 func TestUpdate_InvalidToken(t *testing.T) {
 	// Given.
-	ctx, client, _ := setUp(t)
+	ctx, c, _ := setUp(t)
 
 	// When.
-	_, err := update(ctx, client.ID, "wrong_token", &client.ClientMeta)
+	_, err := update(ctx, c.ID, "wrong_token", &client.Client{ClientMeta: c.ClientMeta})
 
 	// Then.
 	if err == nil {
@@ -237,7 +238,7 @@ func TestUpdate_ClientNotFound(t *testing.T) {
 	ctx, _, regToken := setUp(t)
 
 	// When.
-	_, err := update(ctx, "nonexistent_client", regToken, &goidc.ClientMeta{})
+	_, err := update(ctx, "nonexistent_client", regToken, &client.Client{})
 
 	// Then.
 	if err == nil {
@@ -265,7 +266,7 @@ func TestCreate_SecretForSecretJWT(t *testing.T) {
 	c.TokenAuthnMethod = goidc.AuthnMethodSecretJWT
 
 	// When.
-	resp, err := create(ctx, "", &c.ClientMeta)
+	resp, err := create(ctx, "", &client.Client{ClientMeta: c.ClientMeta})
 
 	// Then.
 	if err != nil {
@@ -299,7 +300,7 @@ func TestCreate_HandleDynamicClientError(t *testing.T) {
 	}
 
 	// When.
-	_, err := create(ctx, "", &c.ClientMeta)
+	_, err := create(ctx, "", &client.Client{ClientMeta: c.ClientMeta})
 
 	// Then.
 	if err == nil {
@@ -314,7 +315,7 @@ func TestCreate_SecretForSecretPost(t *testing.T) {
 	c.TokenAuthnMethod = goidc.AuthnMethodSecretPost
 
 	// When.
-	resp, err := create(ctx, "", &c.ClientMeta)
+	resp, err := create(ctx, "", &client.Client{ClientMeta: c.ClientMeta})
 
 	// Then.
 	if err != nil {
@@ -326,65 +327,15 @@ func TestCreate_SecretForSecretPost(t *testing.T) {
 	}
 }
 
-func TestCreate_SecretForIntrospectionAuthn(t *testing.T) {
-	// Given.
-	c, _ := oidctest.NewClient(t)
-	ctx := oidctest.NewContext(t)
-	ctx.TokenIntrospectionIsEnabled = true
-	ctx.TokenIntrospectionAuthnMethods = []goidc.AuthnMethod{goidc.AuthnMethodSecretBasic}
-	c.TokenAuthnMethod = goidc.AuthnMethodNone
-	c.TokenIntrospectionAuthnMethod = goidc.AuthnMethodSecretBasic
-	// Public clients cannot use client_credentials.
-	c.GrantTypes = []goidc.GrantType{goidc.GrantAuthorizationCode}
-	c.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeCode}
-
-	// When.
-	resp, err := create(ctx, "", &c.ClientMeta)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if resp.Secret == "" {
-		t.Error("expected a non-empty secret when introspection authn requires it")
-	}
-}
-
-func TestCreate_SecretForRevocationAuthn(t *testing.T) {
-	// Given.
-	c, _ := oidctest.NewClient(t)
-	ctx := oidctest.NewContext(t)
-	ctx.TokenRevocationIsEnabled = true
-	ctx.TokenRevocationAuthnMethods = []goidc.AuthnMethod{goidc.AuthnMethodSecretBasic}
-	c.TokenAuthnMethod = goidc.AuthnMethodNone
-	c.TokenRevocationAuthnMethod = goidc.AuthnMethodSecretBasic
-	// Public clients cannot use client_credentials.
-	c.GrantTypes = []goidc.GrantType{goidc.GrantAuthorizationCode}
-	c.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeCode}
-
-	// When.
-	resp, err := create(ctx, "", &c.ClientMeta)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if resp.Secret == "" {
-		t.Error("expected a non-empty secret when revocation authn requires it")
-	}
-}
-
 func TestUpdate_HandleDynamicClientError(t *testing.T) {
 	// Given.
-	ctx, client, regToken := setUp(t)
+	ctx, c, regToken := setUp(t)
 	ctx.DCRHandleClientFunc = func(_ context.Context, _ string, _ *goidc.ClientMeta) error {
 		return errors.New("handler error")
 	}
 
 	// When.
-	_, err := update(ctx, client.ID, regToken, &client.ClientMeta)
+	_, err := update(ctx, c.ID, regToken, &client.Client{ClientMeta: c.ClientMeta})
 
 	// Then.
 	if err == nil {

@@ -200,7 +200,7 @@ func TestInitAuth_JARM(t *testing.T) {
 	ctx, client := setUpAuth(t)
 	ctx.JARMIsEnabled = true
 	ctx.JARMLifetimeSecs = 60
-	ctx.JARMDefaultSigAlg = goidc.SignatureAlgorithm(oidctest.PrivateJWKS(t, ctx).Keys[0].Algorithm)
+	ctx.JARMSigAlgDefault = goidc.SignatureAlgorithm(oidctest.PrivateJWKS(t, ctx).Keys[0].Algorithm)
 	ctx.ResponseModes = append(ctx.ResponseModes, goidc.ResponseModeJWT)
 
 	req := request{

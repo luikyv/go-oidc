@@ -358,7 +358,7 @@ type CheckJTIFunc func(context.Context, string) error
 // require this behavior is disabled.
 type HTTPClientFunc func(context.Context) *http.Client
 
-type ShouldIssueRefreshTokenFunc func(context.Context, *Client, *Grant) bool
+type RefreshTokenShouldIssueFunc func(context.Context, *Client, *Grant) bool
 
 // TokenOptionsFunc defines a function that returns token configuration and is
 // executed when issuing access tokens.

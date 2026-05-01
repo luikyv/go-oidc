@@ -48,7 +48,7 @@ func introspect(ctx oidc.Context, req queryRequest) (goidc.TokenInfo, error) {
 		return goidc.TokenInfo{}, err
 	}
 
-	if tokenInfo.IsActive && !ctx.IsClientAllowedTokenIntrospection(c, tokenInfo) {
+	if tokenInfo.IsActive && !ctx.TokenIntrospectionIsClientAllowed(c, tokenInfo) {
 		return goidc.TokenInfo{}, goidc.NewError(goidc.ErrorCodeAccessDenied, "client not allowed to introspect the token")
 	}
 

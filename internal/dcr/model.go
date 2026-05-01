@@ -10,7 +10,7 @@ import (
 )
 
 type request struct {
-	*goidc.ClientMeta
+	*client.Client
 }
 
 func (r *request) UnmarshalJSON(data []byte) error {
@@ -20,19 +20,19 @@ func (r *request) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	var info goidc.ClientMeta
-	if err := json.Unmarshal(data, &info); err != nil {
+	var c client.Client
+	if err := json.Unmarshal(data, &c); err != nil {
 		return err
 	}
 
-	info.CustomAttributes = make(map[string]any)
+	c.CustomAttributes = make(map[string]any)
 	for key, value := range allFields {
 		if !slices.Contains(client.JSONFields, key) {
-			info.CustomAttributes[key] = value
+			c.CustomAttributes[key] = value
 		}
 	}
 
-	r.ClientMeta = &info
+	r.Client = &c
 
 	return nil
 }
