@@ -16,7 +16,7 @@ func revoke(ctx oidc.Context, req queryRequest) error {
 		return err
 	}
 
-	if !ctx.IsClientAllowedTokenRevocation(c) {
+	if !ctx.TokenRevocationIsClientAllowed(c) {
 		return goidc.NewError(goidc.ErrorCodeAccessDenied, "client not allowed to revoke tokens")
 	}
 

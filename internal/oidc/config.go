@@ -45,7 +45,7 @@ type Configuration struct {
 	// This will be published in the /.well-known/openid-configuration endpoint.
 	Claims                   []string
 	ClaimTypes               []goidc.ClaimType
-	DefaultSubIdentifierType goidc.SubIdentifierType
+	SubIdentifierTypeDefault goidc.SubIdentifierType
 	SubIdentifierTypes       []goidc.SubIdentifierType
 	PairwiseSubjectFunc      goidc.PairwiseSubjectFunc
 	StaticClients            []*goidc.Client
@@ -62,10 +62,13 @@ type Configuration struct {
 	AuthorizationCodeLifetimeSecs int
 	CallbackIDFunc                goidc.RandomFunc
 
-	TokenAuthnMethods      []goidc.AuthnMethod
-	TokenEndpoint          string
-	TokenOptionsFunc       goidc.TokenOptionsFunc
-	VerifyClientSecretFunc goidc.VerifyClientSecretFunc
+	TokenAuthnMethodDefault        goidc.AuthnMethod
+	TokenAuthnMethods              []goidc.AuthnMethod
+	TokenAuthnPrivateKeyJWTSigAlgs []goidc.SignatureAlgorithm
+	TokenAuthnSecretJWTSigAlgs     []goidc.SignatureAlgorithm
+	TokenEndpoint                  string
+	TokenOptionsFunc               goidc.TokenOptionsFunc
+	VerifyClientSecretFunc         goidc.VerifyClientSecretFunc
 	// TokenBindingIsRequired indicates that at least one mechanism of sender
 	// contraining tokens is required, either DPoP or client TLS.
 	TokenBindingIsRequired bool
@@ -92,16 +95,11 @@ type Configuration struct {
 	// IDTokenLifetimeSecs defines the expiry time of ID tokens.
 	IDTokenLifetimeSecs int
 
-	// PrivateKeyJWTSigAlgs contains algorithms accepted for signing
-	// client assertions during private_key_jwt.
-	PrivateKeyJWTSigAlgs []goidc.SignatureAlgorithm
-	// ClientSecretJWTSigAlgs constains algorithms accepted for
-	// signing client assertions during client_secret_jwt.
-	ClientSecretJWTSigAlgs []goidc.SignatureAlgorithm
-
 	JWTLifetimeSecs   int
 	JWTLeewayTimeSecs int
 	JWTIDFunc         goidc.RandomFunc
+
+	RPMetadataChoicesIsEnabled bool
 
 	DCRIsEnabled                  bool
 	DCREndpoint                   string
@@ -112,27 +110,25 @@ type Configuration struct {
 	ClientIDFunc                  goidc.ClientIDFunc
 
 	TokenIntrospectionIsEnabled           bool
-	IntrospectionEndpoint                 string
-	TokenIntrospectionAuthnMethods        []goidc.AuthnMethod
-	IsClientAllowedTokenIntrospectionFunc goidc.IsClientAllowedTokenInstrospectionFunc
+	TokenIntrospectionEndpoint            string
+	TokenIntrospectionIsClientAllowedFunc goidc.IsClientAllowedTokenInstrospectionFunc
 
 	TokenRevocationIsEnabled           bool
 	TokenRevocationEndpoint            string
-	TokenRevocationAuthnMethods        []goidc.AuthnMethod
-	IsClientAllowedTokenRevocationFunc goidc.IsClientAllowedFunc
+	TokenRevocationIsClientAllowedFunc goidc.IsClientAllowedFunc
 
-	ShouldIssueRefreshTokenFunc   goidc.ShouldIssueRefreshTokenFunc
+	RefreshTokenShouldIssueFunc   goidc.RefreshTokenShouldIssueFunc
 	RefreshTokenRotationIsEnabled bool
 	RefreshTokenLifetimeSecs      int
 
 	JARMIsEnabled     bool
-	JARMDefaultSigAlg goidc.SignatureAlgorithm
+	JARMSigAlgDefault goidc.SignatureAlgorithm
 	JARMSigAlgs       []goidc.SignatureAlgorithm
 	// JARMLifetimeSecs defines how long response objects are valid for.
 	JARMLifetimeSecs         int
 	JARMEncIsEnabled         bool
 	JARMKeyEncAlgs           []goidc.KeyEncryptionAlgorithm
-	JARMDefaultContentEncAlg goidc.ContentEncryptionAlgorithm
+	JARMContentEncAlgDefault goidc.ContentEncryptionAlgorithm
 	JARMContentEncAlgs       []goidc.ContentEncryptionAlgorithm
 
 	JARIsEnabled  bool

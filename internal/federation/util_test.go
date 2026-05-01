@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -2747,22 +2746,5 @@ func TestParseTrustChain_SubjectMismatch(t *testing.T) {
 	// Then.
 	if err == nil {
 		t.Fatal("error expected when entity config is signed with unauthorized key")
-	}
-}
-
-func TestRegister_InvalidClientMetadata(t *testing.T) {
-	// Given: client with invalid metadata (invalid redirect_uris).
-	ctx := setUp(t, nil)
-	meta := &goidc.ClientMeta{
-		ClientRegistrationTypes: []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeAutomatic},
-		RedirectURIs:            []string{"invalid-uri"}, // Invalid URI.
-	}
-
-	// When.
-	err := client.Validate(ctx, meta)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected when client metadata is invalid")
 	}
 }

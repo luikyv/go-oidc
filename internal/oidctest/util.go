@@ -26,6 +26,8 @@ var (
 	Scope2 = goidc.NewScope("scope2")
 )
 
+func PointerOf[T any](v T) *T { return &v }
+
 func NewClient(t testing.TB) (client *goidc.Client, secret string) {
 	t.Helper()
 
@@ -125,21 +127,21 @@ func NewContext(t testing.TB) oidc.Context {
 			goidc.AuthnMethodSelfSignedTLS,
 			goidc.AuthnMethodTLS,
 		},
-		UserInfoDefaultSigAlg:    goidc.SignatureAlgorithm(jwk.Algorithm),
-		UserInfoSigAlgs:          []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(jwk.Algorithm)},
-		IDTokenDefaultSigAlg:     goidc.SignatureAlgorithm(jwk.Algorithm),
-		IDTokenSigAlgs:           []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(jwk.Algorithm)},
-		WellKnownEndpoint:        "/.well-known/openid-configuration",
-		JWKSEndpoint:             "/jwks",
-		TokenEndpoint:            "/token",
-		AuthorizationEndpoint:    "/authorize",
-		PAREndpoint:              "/par",
-		DCREndpoint:              "/register",
-		UserInfoEndpoint:         "/userinfo",
-		IntrospectionEndpoint:    "/introspect",
-		JWTLifetimeSecs:          600,
-		IDTokenLifetimeSecs:      60,
-		DefaultSubIdentifierType: goidc.SubIdentifierPublic,
+		UserInfoDefaultSigAlg:      goidc.SignatureAlgorithm(jwk.Algorithm),
+		UserInfoSigAlgs:            []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(jwk.Algorithm)},
+		IDTokenDefaultSigAlg:       goidc.SignatureAlgorithm(jwk.Algorithm),
+		IDTokenSigAlgs:             []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(jwk.Algorithm)},
+		WellKnownEndpoint:          "/.well-known/openid-configuration",
+		JWKSEndpoint:               "/jwks",
+		TokenEndpoint:              "/token",
+		AuthorizationEndpoint:      "/authorize",
+		PAREndpoint:                "/par",
+		DCREndpoint:                "/register",
+		UserInfoEndpoint:           "/userinfo",
+		TokenIntrospectionEndpoint: "/introspect",
+		JWTLifetimeSecs:            600,
+		IDTokenLifetimeSecs:        60,
+		SubIdentifierTypeDefault:   goidc.SubIdentifierPublic,
 		SubIdentifierTypes: []goidc.SubIdentifierType{
 			goidc.SubIdentifierPublic,
 		},

@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -105,7 +106,7 @@ func (tc trustChain) trustAnchorConfig() entityStatement {
 }
 
 // resolve processes a trust chain to determine the final entity statement.
-func (chain trustChain) resolve() (entityStatement, error) {
+func (chain trustChain) resolve(ctx oidc.Context) (entityStatement, error) {
 	var err error
 
 	config := chain.subjectConfig()
@@ -176,7 +177,7 @@ func (chain trustChain) resolve() (entityStatement, error) {
 	}
 
 	config.TrustAnchor = chain.trustAnchorConfig().Issuer
-	return policy.Apply(config)
+	return policy.Apply(ctx, config)
 }
 
 // matchesNamespace checks if an entity ID matches a namespace constraint.

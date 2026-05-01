@@ -1,5 +1,7 @@
 package client
 
+import "github.com/luikyv/go-oidc/pkg/goidc"
+
 var JSONFields = []string{
 	"client_name",
 	"client_secret_expires_at",
@@ -59,4 +61,43 @@ var JSONFields = []string{
 	"information_uri",
 	"organization_uri",
 	"credential_offer_endpoint",
+	"subject_types_supported",
+	"id_token_signing_alg_values_supported",
+	"id_token_encryption_alg_values_supported",
+	"id_token_encryption_enc_values_supported",
+	"userinfo_signing_alg_values_supported",
+	"userinfo_encryption_alg_values_supported",
+	"userinfo_encryption_enc_values_supported",
+	"request_object_signing_alg_values_supported",
+	"request_object_encryption_alg_values_supported",
+	"request_object_encryption_enc_values_supported",
+	"token_endpoint_auth_methods_supported",
+	"token_endpoint_auth_signing_alg_values_supported",
+	"backchannel_authentication_request_signing_alg_values_supported",
+	"authorization_signing_alg_values_supported",
+	"authorization_encryption_alg_values_supported",
+	"authorization_encryption_enc_values_supported",
+}
+
+type Client struct {
+	SubIdentifierTypes     []goidc.SubIdentifierType          `json:"subject_types_supported,omitempty"`
+	IDTokenSigAlgs         []goidc.SignatureAlgorithm         `json:"id_token_signing_alg_values_supported,omitempty"`
+	IDTokenKeyEncAlgs      []goidc.KeyEncryptionAlgorithm     `json:"id_token_encryption_alg_values_supported,omitempty"`
+	IDTokenContentEncAlgs  []goidc.ContentEncryptionAlgorithm `json:"id_token_encryption_enc_values_supported,omitempty"`
+	UserInfoSigAlgs        []goidc.SignatureAlgorithm         `json:"userinfo_signing_alg_values_supported,omitempty"`
+	UserInfoKeyEncAlgs     []goidc.KeyEncryptionAlgorithm     `json:"userinfo_encryption_alg_values_supported,omitempty"`
+	UserInfoContentEncAlgs []goidc.ContentEncryptionAlgorithm `json:"userinfo_encryption_enc_values_supported,omitempty"`
+	JARSigAlgs             []goidc.SignatureAlgorithm         `json:"request_object_signing_alg_values_supported,omitempty"`
+	JARKeyEncAlgs          []goidc.KeyEncryptionAlgorithm     `json:"request_object_encryption_alg_values_supported,omitempty"`
+	JARContentEncAlgs      []goidc.ContentEncryptionAlgorithm `json:"request_object_encryption_enc_values_supported,omitempty"`
+	TokenAuthnMethods      []goidc.AuthnMethod                `json:"token_endpoint_auth_methods_supported,omitempty"`
+	TokenAuthnSigAlgs      []goidc.SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg_values_supported,omitempty"`
+	CIBAJARSigAlgs         []goidc.SignatureAlgorithm         `json:"backchannel_authentication_request_signing_alg_values_supported,omitempty"`
+	JARMSigAlgs            []goidc.SignatureAlgorithm         `json:"authorization_signing_alg_values_supported,omitempty"`
+	JARMKeyEncAlgs         []goidc.KeyEncryptionAlgorithm     `json:"authorization_encryption_alg_values_supported,omitempty"`
+	JARMContentEncAlgs     []goidc.ContentEncryptionAlgorithm `json:"authorization_encryption_enc_values_supported,omitempty"`
+	// `json:"introspection_signing_alg_values_supported,omitempty"`
+	// `json:"introspection_encryption_alg_values_supported,omitempty"`
+	// `json:"introspection_encryption_enc_values_supported,omitempty"`
+	goidc.ClientMeta
 }

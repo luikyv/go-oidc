@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -127,12 +128,14 @@ func TestRequestUnmarshalJSON(t *testing.T) {
 				"custom_field_2": 123
 			}`),
 			request{
-				&goidc.ClientMeta{
-					Name:    "Test Client",
-					LogoURI: "https://example.com/logo.png",
-					CustomAttributes: map[string]any{
-						"custom_field_1": "Value 1",
-						"custom_field_2": 123.0,
+				&client.Client{
+					ClientMeta: goidc.ClientMeta{
+						Name:    "Test Client",
+						LogoURI: "https://example.com/logo.png",
+						CustomAttributes: map[string]any{
+							"custom_field_1": "Value 1",
+							"custom_field_2": 123.0,
+						},
 					},
 				},
 			},

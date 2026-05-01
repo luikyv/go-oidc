@@ -33,6 +33,7 @@ A configurable OpenID Connect Provider for Go.
 * [OpenID Federation 1.0](https://openid.net/specs/openid-federation-1_0.html)
 * [OpenID Connect RP-Initiated Logout 1.0](https://openid.net/specs/openid-connect-rpinitiated-1_0.html)
 * [OpenID Shared Signals Framework Specification 1.0](https://openid.net/specs/openid-sharedsignals-framework-1_0.html)
+* [OpenID Connect Relying Party Metadata Choices 1.0](https://openid.net/specs/openid-connect-rp-metadata-choices-1_0-final.html)
 
 ## Certification
 
@@ -82,6 +83,7 @@ Verify the setup at http://localhost/.well-known/openid-configuration.
 - [Tokens](#tokens)
 - [Scopes](#scopes)
 - [Dynamic Client Registration](#dynamic-client-registration-dcr)
+- [RP Metadata Choices](#rp-metadata-choices)
 - [Mutual TLS](#mutual-tls-mtls)
 - [JAR](#jwt-secured-authorization-request-jar)
 - [JARM](#jwt-secured-authorization-response-mode-jarm)
@@ -298,6 +300,40 @@ Use `provider.WithDCRValidateInitialTokenFunc` (`goidc.DCRValidateInitialTokenFu
 By default, the DCR endpoint is `/register` and the management endpoint is `/register/{client_id}`.
 
 To rotate the registration access token on each update request, add `provider.WithDCRTokenRotation()`.
+
+## RP Metadata Choices
+
+The [RP Metadata Choices extension](https://openid.net/specs/openid-connect-rp-metadata-choices-1_0-final.html) allows clients to advertise priority-ordered lists of preferred algorithms and methods during registration. The server resolves each list to the best mutually supported value.
+
+```go
+op, _ := provider.New(
+  ...,
+  provider.WithDCR(),
+  provider.WithRPMetadataChoices(),
+  ...,
+)
+```
+
+A client may include a priority list alongside (or instead of) a single value. For example:
+
+```json
+{
+  "redirect_uris": ["https://client.example.com/callback"],
+  "id_token_signing_alg_values_supported": ["PS256", "RS256", "ES256"]
+}
+```
+
+The server selects the first value from the list it supports and returns the resolved value in the registration response:
+
+```json
+{
+  "client_id": "s6BhdRkqt3",
+  "redirect_uris": ["https://client.example.com/callback"],
+  "id_token_signed_response_alg": "PS256"
+}
+```
+
+If the client also provides the singular field, it must be present in the priority list.
 
 ## Mutual TLS (mTLS)
 

@@ -57,49 +57,33 @@ func (ctx Context) Scope(s string) (goidc.Scope, bool) {
 }
 
 func (ctx Context) TokenAuthnSigAlgs() []goidc.SignatureAlgorithm {
-	return ctx.clientAuthnSigAlgs(ctx.TokenAuthnMethods)
-}
-
-func (ctx Context) IsClientAllowedTokenIntrospection(c *goidc.Client, info goidc.TokenInfo) bool {
-	if ctx.IsClientAllowedTokenIntrospectionFunc == nil {
-		return false
-	}
-
-	return ctx.IsClientAllowedTokenIntrospectionFunc(ctx, c, info)
-}
-
-func (ctx Context) TokenIntrospectionAuthnSigAlgs() []goidc.SignatureAlgorithm {
-	return ctx.clientAuthnSigAlgs(ctx.TokenIntrospectionAuthnMethods)
-}
-
-func (ctx Context) IsClientAllowedTokenRevocation(c *goidc.Client) bool {
-	if ctx.IsClientAllowedTokenRevocationFunc == nil {
-		return false
-	}
-
-	return ctx.IsClientAllowedTokenRevocationFunc(ctx, c)
-}
-
-func (ctx Context) TokenRevocationAuthnSigAlgs() []goidc.SignatureAlgorithm {
-	return ctx.clientAuthnSigAlgs(ctx.TokenRevocationAuthnMethods)
-}
-
-func (ctx Context) ClientAuthnSigAlgs() []goidc.SignatureAlgorithm {
-	return append(ctx.PrivateKeyJWTSigAlgs, ctx.ClientSecretJWTSigAlgs...)
-}
-
-func (ctx Context) clientAuthnSigAlgs(methods []goidc.AuthnMethod) []goidc.SignatureAlgorithm {
 	var sigAlgs []goidc.SignatureAlgorithm
 
-	if slices.Contains(methods, goidc.AuthnMethodPrivateKeyJWT) {
-		sigAlgs = append(sigAlgs, ctx.PrivateKeyJWTSigAlgs...)
+	if slices.Contains(ctx.TokenAuthnMethods, goidc.AuthnMethodPrivateKeyJWT) {
+		sigAlgs = append(sigAlgs, ctx.TokenAuthnPrivateKeyJWTSigAlgs...)
 	}
 
-	if slices.Contains(methods, goidc.AuthnMethodSecretJWT) {
-		sigAlgs = append(sigAlgs, ctx.ClientSecretJWTSigAlgs...)
+	if slices.Contains(ctx.TokenAuthnMethods, goidc.AuthnMethodSecretJWT) {
+		sigAlgs = append(sigAlgs, ctx.TokenAuthnSecretJWTSigAlgs...)
 	}
 
 	return sigAlgs
+}
+
+func (ctx Context) TokenIntrospectionIsClientAllowed(c *goidc.Client, info goidc.TokenInfo) bool {
+	if ctx.TokenIntrospectionIsClientAllowedFunc == nil {
+		return false
+	}
+
+	return ctx.TokenIntrospectionIsClientAllowedFunc(ctx, c, info)
+}
+
+func (ctx Context) TokenRevocationIsClientAllowed(c *goidc.Client) bool {
+	if ctx.TokenRevocationIsClientAllowedFunc == nil {
+		return false
+	}
+
+	return ctx.TokenRevocationIsClientAllowedFunc(ctx, c)
 }
 
 func (ctx Context) ClientCert() (*x509.Certificate, error) {
@@ -591,11 +575,11 @@ func (ctx Context) MediaType() string {
 	return strings.ToLower(strings.TrimSpace(strings.Split(ct, ";")[0]))
 }
 
-func (ctx Context) ShouldIssueRefreshToken(c *goidc.Client, grant *goidc.Grant) bool {
-	if ctx.ShouldIssueRefreshTokenFunc == nil {
+func (ctx Context) RefreshTokenShouldIssue(c *goidc.Client, grant *goidc.Grant) bool {
+	if ctx.RefreshTokenShouldIssueFunc == nil {
 		return true
 	}
-	return ctx.ShouldIssueRefreshTokenFunc(ctx, c, grant)
+	return ctx.RefreshTokenShouldIssueFunc(ctx, c, grant)
 }
 
 func (ctx Context) RefreshToken() string {

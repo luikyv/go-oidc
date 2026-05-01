@@ -132,7 +132,7 @@ func WithUserInfoEndpoint(endpoint string) Option {
 // To enable token introspection, see [WithTokenIntrospection].
 func WithTokenIntrospectionEndpoint(endpoint string) Option {
 	return func(p *Provider) error {
-		p.config.IntrospectionEndpoint = endpoint
+		p.config.TokenIntrospectionEndpoint = endpoint
 		return nil
 	}
 }
@@ -275,6 +275,18 @@ func WithDCR() Option {
 	}
 }
 
+// WithRPMetadataChoices enables support for the RP Metadata Choices extension,
+// allowing clients to advertise priority lists for algorithm and method preferences
+// during registration. The server selects the best supported value from each list.
+//
+// See https://openid.net/specs/openid-connect-rp-metadata-choices-1_0-final.html.
+func WithRPMetadataChoices() Option {
+	return func(p *Provider) error {
+		p.config.RPMetadataChoicesIsEnabled = true
+		return nil
+	}
+}
+
 func WithDCRHandleClientFunc(f goidc.DCRHandleClientFunc) Option {
 	return func(p *Provider) error {
 		p.config.DCRHandleClientFunc = f
@@ -313,9 +325,9 @@ func WithDCRTokenRotation() Option {
 	}
 }
 
-func WithRefreshTokenShouldIssueFunc(f goidc.ShouldIssueRefreshTokenFunc) Option {
+func WithRefreshTokenShouldIssueFunc(f goidc.RefreshTokenShouldIssueFunc) Option {
 	return func(p *Provider) error {
-		p.config.ShouldIssueRefreshTokenFunc = f
+		p.config.RefreshTokenShouldIssueFunc = f
 		return nil
 	}
 }
@@ -606,6 +618,7 @@ func WithJARRequired(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgori
 	}
 }
 
+// TODO: Split this.
 func WithJARByReference(requireReqURIRegistration bool) Option {
 	return func(p *Provider) error {
 		p.config.JARByReferenceIsEnabled = true
@@ -650,7 +663,7 @@ func WithJARM(defaultAlg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgori
 			return errors.New("'none' algorithm is not allowed for JARM")
 		}
 		p.config.JARMIsEnabled = true
-		p.config.JARMDefaultSigAlg = defaultAlg
+		p.config.JARMSigAlgDefault = defaultAlg
 		p.config.JARMSigAlgs = algs
 		return nil
 	}
@@ -676,7 +689,7 @@ func WithJARMEncryption(alg goidc.KeyEncryptionAlgorithm, algs ...goidc.KeyEncry
 func WithJARMContentEncryptionAlgs(defaultAlg goidc.ContentEncryptionAlgorithm, algs ...goidc.ContentEncryptionAlgorithm) Option {
 	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p *Provider) error {
-		p.config.JARMDefaultContentEncAlg = defaultAlg
+		p.config.JARMContentEncAlgDefault = defaultAlg
 		p.config.JARMContentEncAlgs = algs
 		return nil
 	}
@@ -699,7 +712,7 @@ func WithPrivateKeyJWTSignatureAlgs(alg goidc.SignatureAlgorithm, algs ...goidc.
 			}
 		}
 
-		p.config.PrivateKeyJWTSigAlgs = algs
+		p.config.TokenAuthnPrivateKeyJWTSigAlgs = algs
 		return nil
 	}
 }
@@ -720,7 +733,7 @@ func WithSecretJWTSignatureAlgs(alg goidc.SignatureAlgorithm, algs ...goidc.Sign
 			}
 		}
 
-		p.config.ClientSecretJWTSigAlgs = algs
+		p.config.TokenAuthnSecretJWTSigAlgs = algs
 		return nil
 	}
 }
@@ -851,38 +864,29 @@ func WithTokenBindingRequired() Option {
 	}
 }
 
-func WithTokenAuthnMethods(method goidc.AuthnMethod, methods ...goidc.AuthnMethod) Option {
-	methods = appendIfNotIn(methods, method)
+func WithTokenAuthnMethods(defaultMethod goidc.AuthnMethod, methods ...goidc.AuthnMethod) Option {
+	methods = appendIfNotIn(methods, defaultMethod)
 	return func(p *Provider) error {
+		p.config.TokenAuthnMethodDefault = defaultMethod
 		p.config.TokenAuthnMethods = methods
 		return nil
 	}
 }
 
 // WithTokenIntrospection allows authorized clients to introspect tokens.
-func WithTokenIntrospection(
-	f goidc.IsClientAllowedTokenInstrospectionFunc,
-	method goidc.AuthnMethod,
-	methods ...goidc.AuthnMethod,
-) Option {
-	methods = appendIfNotIn(methods, method)
+func WithTokenIntrospection(f goidc.IsClientAllowedTokenInstrospectionFunc) Option {
 	return func(p *Provider) error {
 		p.config.TokenIntrospectionIsEnabled = true
-		p.config.IsClientAllowedTokenIntrospectionFunc = f
-		p.config.TokenIntrospectionAuthnMethods = methods
+		p.config.TokenIntrospectionIsClientAllowedFunc = f
 		return nil
 	}
 }
 
 // WithTokenRevocation allows clients to revoke tokens.
-// If no authentication methods are specified, default to using the values set
-// for the token endpoint.
-func WithTokenRevocation(f goidc.IsClientAllowedFunc, method goidc.AuthnMethod, methods ...goidc.AuthnMethod) Option {
-	methods = appendIfNotIn(methods, method)
+func WithTokenRevocation(f goidc.IsClientAllowedFunc) Option {
 	return func(p *Provider) error {
 		p.config.TokenRevocationIsEnabled = true
-		p.config.IsClientAllowedTokenRevocationFunc = f
-		p.config.TokenRevocationAuthnMethods = methods
+		p.config.TokenRevocationIsClientAllowedFunc = f
 		return nil
 	}
 }
@@ -1063,7 +1067,7 @@ func WithJWTBearerGrantClientAuthnRequired() Option {
 func WithSubIdentifierTypes(defaultType goidc.SubIdentifierType, types ...goidc.SubIdentifierType) Option {
 	types = appendIfNotIn(types, defaultType)
 	return func(p *Provider) error {
-		p.config.DefaultSubIdentifierType = defaultType
+		p.config.SubIdentifierTypeDefault = defaultType
 		p.config.SubIdentifierTypes = types
 		return nil
 	}

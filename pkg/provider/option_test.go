@@ -261,7 +261,7 @@ func TestWithIntrospectionEndpoint(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			IntrospectionEndpoint: "/introspect",
+			TokenIntrospectionEndpoint: "/introspect",
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1079,7 +1079,7 @@ func TestWithJARM(t *testing.T) {
 	want := &Provider{
 		config: oidc.Configuration{
 			JARMIsEnabled:     true,
-			JARMDefaultSigAlg: goidc.RS256,
+			JARMSigAlgDefault: goidc.RS256,
 			JARMSigAlgs:       []goidc.SignatureAlgorithm{goidc.RS256},
 		},
 	}
@@ -1154,7 +1154,7 @@ func TestWithJARMContentEncryptionAlgs(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			JARMDefaultContentEncAlg: goidc.A128GCM,
+			JARMContentEncAlgDefault: goidc.A128GCM,
 			JARMContentEncAlgs:       []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
 		},
 	}
@@ -1237,7 +1237,7 @@ func TestWithSecretJWTSignatureAlgs(t *testing.T) {
 				if err != nil {
 					t.Fatalf("unexpected error: %v", err)
 				}
-				if diff := cmp.Diff(p.config.ClientSecretJWTSigAlgs, tc.expectedAlgs); diff != "" {
+				if diff := cmp.Diff(p.config.TokenAuthnSecretJWTSigAlgs, tc.expectedAlgs); diff != "" {
 					t.Error(diff)
 				}
 			}
@@ -1312,7 +1312,7 @@ func TestWithPrivateKeyJWTSignatureAlgs(t *testing.T) {
 				if err != nil {
 					t.Fatalf("unexpected error: %v", err)
 				}
-				if diff := cmp.Diff(p.config.PrivateKeyJWTSigAlgs, tc.expectedAlgs); diff != "" {
+				if diff := cmp.Diff(p.config.TokenAuthnPrivateKeyJWTSigAlgs, tc.expectedAlgs); diff != "" {
 					t.Error(diff)
 				}
 			}
@@ -1574,10 +1574,7 @@ func TestWithIntrospection(t *testing.T) {
 	}
 
 	// When.
-	err := WithTokenIntrospection(
-		nil,
-		goidc.AuthnMethodSecretPost,
-	)(p)
+	err := WithTokenIntrospection(nil)(p)
 
 	// Then.
 	if err != nil {
@@ -1586,8 +1583,7 @@ func TestWithIntrospection(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			TokenIntrospectionIsEnabled:    true,
-			TokenIntrospectionAuthnMethods: []goidc.AuthnMethod{goidc.AuthnMethodSecretPost},
+			TokenIntrospectionIsEnabled: true,
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1602,7 +1598,7 @@ func TestWithTokenRevocation(t *testing.T) {
 	}
 
 	// When.
-	err := WithTokenRevocation(nil, goidc.AuthnMethodNone)(p)
+	err := WithTokenRevocation(nil)(p)
 
 	// Then.
 	if err != nil {
@@ -1611,8 +1607,7 @@ func TestWithTokenRevocation(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			TokenRevocationIsEnabled:    true,
-			TokenRevocationAuthnMethods: []goidc.AuthnMethod{goidc.AuthnMethodNone},
+			TokenRevocationIsEnabled: true,
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -2313,7 +2308,7 @@ func TestWithSubIdentifierTypes(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			DefaultSubIdentifierType: goidc.SubIdentifierPairwise,
+			SubIdentifierTypeDefault: goidc.SubIdentifierPairwise,
 			SubIdentifierTypes:       []goidc.SubIdentifierType{goidc.SubIdentifierPairwise},
 		},
 	}
@@ -3016,7 +3011,8 @@ func TestWithTokenAuthnMethods(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			TokenAuthnMethods: []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT, goidc.AuthnMethodSecretPost},
+			TokenAuthnMethodDefault: goidc.AuthnMethodPrivateKeyJWT,
+			TokenAuthnMethods:       []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT, goidc.AuthnMethodSecretPost},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {

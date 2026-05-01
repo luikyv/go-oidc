@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/luikyv/go-oidc/internal/client"
+	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -47,12 +49,12 @@ func TestMetadataPolicy_Apply(t *testing.T) {
 	}
 	statement := entityStatement{
 		Metadata: metadata{
-			OpenIDClient: &goidc.ClientMeta{},
+			OpenIDClient: &client.Client{},
 		},
 	}
 
 	// When.
-	_, err := policy.Apply(statement)
+	_, err := policy.Apply(oidctest.NewContext(t), statement)
 
 	// Then.
 	if err != nil {
@@ -70,10 +72,10 @@ func TestMetadataPolicy_Apply_EssentialMissing(t *testing.T) {
 	}
 	statement := entityStatement{
 		Metadata: metadata{
-			OpenIDClient: &goidc.ClientMeta{},
+			OpenIDClient: &client.Client{},
 		},
 	}
-	_, err := policy.Apply(statement)
+	_, err := policy.Apply(oidctest.NewContext(t), statement)
 	if err == nil {
 		t.Fatal("error expected: essential field TokenAuthnMethod is not set")
 	}
@@ -152,7 +154,7 @@ func TestMetadataPolicy_Apply_NilOpenIDClientMetadata(t *testing.T) {
 	}
 
 	// When.
-	result, err := policy.Apply(statement)
+	result, err := policy.Apply(oidctest.NewContext(t), statement)
 
 	// Then: no error because there's nothing to apply to.
 	if err != nil {
@@ -210,12 +212,12 @@ func TestOpenIDClientMetadataPolicy_Apply_WithScopeIDs(t *testing.T) {
 			SupersetOf: []string{"openid"},
 		},
 	}
-	client := goidc.ClientMeta{
+	c := client.Client{ClientMeta: goidc.ClientMeta{
 		ScopeIDs: "openid profile",
-	}
+	}}
 
 	// When.
-	result, err := policy.Apply(client)
+	result, err := policy.Apply(c)
 
 	// Then.
 	if err != nil {
@@ -232,10 +234,10 @@ func TestOpenIDClientMetadataPolicy_Apply_WithCustomAttributes(t *testing.T) {
 	policy.setCustomAttribute("custom_field", metadataOperators[any]{
 		Value: nullable[any]{Set: true, Value: "custom_value"},
 	})
-	client := goidc.ClientMeta{}
+	c := client.Client{}
 
 	// When.
-	result, err := policy.Apply(client)
+	result, err := policy.Apply(c)
 
 	// Then.
 	if err != nil {
@@ -253,12 +255,12 @@ func TestOpenIDClientMetadataPolicy_Apply_WithValue(t *testing.T) {
 			Value: nullable[goidc.AuthnMethod]{Set: true, Value: goidc.AuthnMethodPrivateKeyJWT},
 		},
 	}
-	client := goidc.ClientMeta{
+	c := client.Client{ClientMeta: goidc.ClientMeta{
 		TokenAuthnMethod: goidc.AuthnMethodSecretBasic,
-	}
+	}}
 
 	// When.
-	result, err := policy.Apply(client)
+	result, err := policy.Apply(c)
 
 	// Then.
 	if err != nil {
@@ -276,12 +278,12 @@ func TestOpenIDClientMetadataPolicy_Apply_WithDefault(t *testing.T) {
 			Default: goidc.AuthnMethodPrivateKeyJWT,
 		},
 	}
-	client := goidc.ClientMeta{
+	c := client.Client{
 		// TokenAuthnMethod is zero value.
 	}
 
 	// When.
-	result, err := policy.Apply(client)
+	result, err := policy.Apply(c)
 
 	// Then.
 	if err != nil {
@@ -299,12 +301,12 @@ func TestOpenIDClientMetadataPolicy_Apply_OneOf_Failure(t *testing.T) {
 			OneOf: []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT, goidc.AuthnMethodSecretBasic},
 		},
 	}
-	client := goidc.ClientMeta{
+	c := client.Client{ClientMeta: goidc.ClientMeta{
 		TokenAuthnMethod: goidc.AuthnMethodSecretPost,
-	}
+	}}
 
 	// When.
-	_, err := policy.Apply(client)
+	_, err := policy.Apply(c)
 
 	// Then.
 	if err == nil {
@@ -319,12 +321,12 @@ func TestOpenIDClientMetadataPolicy_Apply_Add(t *testing.T) {
 			Add: []goidc.GrantType{goidc.GrantRefreshToken},
 		},
 	}
-	client := goidc.ClientMeta{
+	c := client.Client{ClientMeta: goidc.ClientMeta{
 		GrantTypes: []goidc.GrantType{goidc.GrantAuthorizationCode},
-	}
+	}}
 
 	// When.
-	result, err := policy.Apply(client)
+	result, err := policy.Apply(c)
 
 	// Then.
 	if err != nil {

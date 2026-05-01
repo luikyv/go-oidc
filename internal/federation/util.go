@@ -66,7 +66,7 @@ func Client(ctx oidc.Context, id string, opts *Options) (*goidc.Client, error) {
 }
 
 func resolveClient(ctx oidc.Context, chain trustChain) (*goidc.Client, error) {
-	config, err := chain.resolve()
+	config, err := chain.resolve(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -75,11 +75,15 @@ func resolveClient(ctx oidc.Context, chain trustChain) (*goidc.Client, error) {
 		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "the entity is not an openid client")
 	}
 
+	if err := client.Resolve(ctx, config.Metadata.OpenIDClient); err != nil {
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid client metadata", err)
+	}
+
 	c := &goidc.Client{
 		ID:                 config.Subject,
 		CreatedAtTimestamp: timeutil.TimestampNow(),
 		ExpiresAtTimestamp: config.ExpiresAt,
-		ClientMeta:         *config.Metadata.OpenIDClient,
+		ClientMeta:         config.Metadata.OpenIDClient.ClientMeta,
 		Federation: &struct {
 			TrustAnchor string   `json:"trust_anchor"`
 			TrustMarks  []string `json:"trust_marks,omitempty"`
@@ -95,10 +99,6 @@ func resolveClient(ctx oidc.Context, chain trustChain) (*goidc.Client, error) {
 
 	if err := ctx.OpenIDFedHandleClient(c); err != nil {
 		return nil, err
-	}
-
-	if err := client.Validate(ctx, config.Metadata.OpenIDClient); err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid client metadata", err)
 	}
 
 	return c, nil
@@ -189,7 +189,7 @@ func buildAndResolveTrustChain(ctx oidc.Context, id string) (entityStatement, tr
 		return entityStatement{}, nil, err
 	}
 
-	config, err := chain.resolve()
+	config, err := chain.resolve(ctx)
 	if err != nil {
 		return entityStatement{}, nil, err
 	}

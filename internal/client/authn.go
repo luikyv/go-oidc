@@ -36,8 +36,6 @@ const (
 
 // Authenticated fetches a client associated to the request and returns it
 // if the client is authenticated according to its authentication method.
-// This function always returns in case of error an instance of [goidc.Error]
-// with error code as [goidc.ErrorCodeInvalidClient].
 func Authenticated(ctx oidc.Context, authnCtx AuthnContext) (*goidc.Client, error) {
 	id, err := ExtractID(ctx)
 	if err != nil {
@@ -57,8 +55,7 @@ func Authenticated(ctx oidc.Context, authnCtx AuthnContext) (*goidc.Client, erro
 }
 
 func Authenticate(ctx oidc.Context, c *goidc.Client, authnCtx AuthnContext) error {
-	method := authnMethod(c, authnCtx)
-	switch method {
+	switch c.TokenAuthnMethod {
 	case goidc.AuthnMethodNone:
 		return nil
 	case goidc.AuthnMethodSecretPost:
@@ -74,27 +71,11 @@ func Authenticate(ctx oidc.Context, c *goidc.Client, authnCtx AuthnContext) erro
 	case goidc.AuthnMethodTLS:
 		return authenticateTLSCert(ctx, c)
 	default:
-		return goidc.NewError(goidc.ErrorCodeInvalidClient, fmt.Sprintf("invalid authentication method %s for %s", method, authnCtx))
-	}
-}
-
-// authnMethod returns the appropriate client authentication method based on
-// the provided authentication context.
-// If the context-specific method is defined, it will be used. Otherwise, the
-// method for the token endpoint is returned.
-func authnMethod(c *goidc.Client, authnCtx AuthnContext) goidc.AuthnMethod {
-	switch {
-	case authnCtx == AuthnContextTokenRevocation && c.TokenRevocationAuthnMethod != "":
-		return c.TokenRevocationAuthnMethod
-	case authnCtx == AuthnContextTokenIntrospection && c.TokenIntrospectionAuthnMethod != "":
-		return c.TokenIntrospectionAuthnMethod
-	default:
-		return c.TokenAuthnMethod
+		return goidc.Errorf(goidc.ErrorCodeInvalidClient, "invalid authentication method")
 	}
 }
 
 func authenticateSecretPost(ctx oidc.Context, c *goidc.Client) error {
-
 	if c.ID != ctx.Request.PostFormValue(formPostParamID) {
 		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client id")
 	}
@@ -131,7 +112,7 @@ func authenticatePrivateKeyJWT(ctx oidc.Context, c *goidc.Client, authnCtx Authn
 		return err
 	}
 
-	sigAlgs := authnSigAlgs(c, authnCtx, ctx.PrivateKeyJWTSigAlgs)
+	sigAlgs := authnSigAlgs(c, authnCtx, ctx.TokenAuthnPrivateKeyJWTSigAlgs)
 	parsedAssertion, err := jwt.ParseSigned(assertion, sigAlgs)
 	if err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "could not parse the client assertion", err)
@@ -180,7 +161,7 @@ func authenticateSecretJWT(ctx oidc.Context, c *goidc.Client, authnCtx AuthnCont
 		return err
 	}
 
-	sigAlgs := authnSigAlgs(c, authnCtx, ctx.ClientSecretJWTSigAlgs)
+	sigAlgs := authnSigAlgs(c, authnCtx, ctx.TokenAuthnSecretJWTSigAlgs)
 	parsedAssertion, err := jwt.ParseSigned(assertion, sigAlgs)
 	if err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient,
@@ -196,16 +177,16 @@ func authenticateSecretJWT(ctx oidc.Context, c *goidc.Client, authnCtx AuthnCont
 	return areClaimsValid(ctx, claims, c, authnCtx)
 }
 
-func authnSigAlgs(c *goidc.Client, authnCtx AuthnContext, defaultAlgs []goidc.SignatureAlgorithm) []goidc.SignatureAlgorithm {
+func authnSigAlgs(c *goidc.Client, authnCtx AuthnContext, algs []goidc.SignatureAlgorithm) []goidc.SignatureAlgorithm {
 	switch {
-	case authnCtx == AuthnContextToken && c.TokenAuthnSigAlg != "":
+	case authnCtx == AuthnContextToken && c.TokenAuthnSigAlg != "" && slices.Contains(algs, c.TokenAuthnSigAlg):
 		return []goidc.SignatureAlgorithm{c.TokenAuthnSigAlg}
-	case authnCtx == AuthnContextTokenIntrospection && c.TokenIntrospectionAuthnSigAlg != "":
+	case authnCtx == AuthnContextTokenIntrospection && c.TokenIntrospectionAuthnSigAlg != "" && slices.Contains(algs, c.TokenIntrospectionAuthnSigAlg):
 		return []goidc.SignatureAlgorithm{c.TokenIntrospectionAuthnSigAlg}
-	case authnCtx == AuthnContextTokenRevocation && c.TokenRevocationAuthnSigAlg != "":
+	case authnCtx == AuthnContextTokenRevocation && c.TokenRevocationAuthnSigAlg != "" && slices.Contains(algs, c.TokenRevocationAuthnSigAlg):
 		return []goidc.SignatureAlgorithm{c.TokenRevocationAuthnSigAlg}
 	default:
-		return defaultAlgs
+		return algs
 	}
 }
 
@@ -347,7 +328,7 @@ func ExtractID(ctx oidc.Context) (string, error) {
 
 	assertion := ctx.Request.PostFormValue(formPostParamAssertion)
 	if assertion != "" {
-		assertionID, err := assertionClientID(assertion, ctx.ClientAuthnSigAlgs())
+		assertionID, err := assertionClientID(assertion, ctx.TokenAuthnSigAlgs())
 		if err != nil {
 			return "", err
 		}

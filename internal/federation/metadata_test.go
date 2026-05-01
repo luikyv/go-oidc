@@ -3,6 +3,7 @@ package federation
 import (
 	"testing"
 
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -12,11 +13,11 @@ func TestMetadata_Merge_SubordinateHasNoClientMetadata(t *testing.T) {
 		OpenIDClient: nil,
 	}
 	entityConfig := metadata{
-		OpenIDClient: &goidc.ClientMeta{
+		OpenIDClient: &client.Client{ClientMeta: goidc.ClientMeta{
 			GrantTypes:    []goidc.GrantType{goidc.GrantAuthorizationCode, goidc.GrantRefreshToken},
 			ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCode},
 			RedirectURIs:  []string{"https://client.example.com/callback"},
-		},
+		}},
 	}
 
 	// When.
@@ -47,16 +48,16 @@ func TestMetadata_Merge_SubordinateHasNoClientMetadata(t *testing.T) {
 func TestMetadata_Merge_SubordinateOverridesEntityConfig(t *testing.T) {
 	// Given: subordinate statement overrides some fields from entity config.
 	subordinate := metadata{
-		OpenIDClient: &goidc.ClientMeta{
+		OpenIDClient: &client.Client{ClientMeta: goidc.ClientMeta{
 			TokenAuthnMethod: goidc.AuthnMethodPrivateKeyJWT,
-		},
+		}},
 	}
 	entityConfig := metadata{
-		OpenIDClient: &goidc.ClientMeta{
+		OpenIDClient: &client.Client{ClientMeta: goidc.ClientMeta{
 			GrantTypes:       []goidc.GrantType{goidc.GrantAuthorizationCode},
 			TokenAuthnMethod: goidc.AuthnMethodSecretBasic,
 			RedirectURIs:     []string{"https://client.example.com/callback"},
-		},
+		}},
 	}
 
 	// When.
@@ -107,9 +108,9 @@ func TestMetadata_Merge_BothHaveNoClientMetadata(t *testing.T) {
 func TestMetadata_Merge_OnlySubordinateHasClientMetadata(t *testing.T) {
 	// Given: only subordinate has client metadata.
 	subordinate := metadata{
-		OpenIDClient: &goidc.ClientMeta{
+		OpenIDClient: &client.Client{ClientMeta: goidc.ClientMeta{
 			GrantTypes: []goidc.GrantType{goidc.GrantClientCredentials},
-		},
+		}},
 	}
 	entityConfig := metadata{
 		OpenIDClient: nil,
@@ -136,7 +137,7 @@ func TestMetadata_Merge_PreservesAllEntityConfigFields(t *testing.T) {
 		OpenIDClient: nil,
 	}
 	entityConfig := metadata{
-		OpenIDClient: &goidc.ClientMeta{
+		OpenIDClient: &client.Client{ClientMeta: goidc.ClientMeta{
 			Name:              "Test Client",
 			GrantTypes:        []goidc.GrantType{goidc.GrantAuthorizationCode, goidc.GrantRefreshToken},
 			ResponseTypes:     []goidc.ResponseType{goidc.ResponseTypeCode},
@@ -152,7 +153,7 @@ func TestMetadata_Merge_PreservesAllEntityConfigFields(t *testing.T) {
 			PARIsRequired:     true,
 			SubIdentifierType: goidc.SubIdentifierPublic,
 			DefaultMaxAgeSecs: ptr(3600),
-		},
+		}},
 	}
 
 	// When.

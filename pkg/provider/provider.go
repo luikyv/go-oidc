@@ -321,8 +321,7 @@ func (op *Provider) setDefaults() error {
 
 	op.config.ResponseModes = []goidc.ResponseMode{goidc.ResponseModeQuery, goidc.ResponseModeFragment, goidc.ResponseModeFormPost}
 
-	op.config.DefaultSubIdentifierType = nonZeroOrDefault(op.config.DefaultSubIdentifierType, goidc.SubIdentifierPublic)
-
+	op.config.SubIdentifierTypeDefault = nonZeroOrDefault(op.config.SubIdentifierTypeDefault, goidc.SubIdentifierPublic)
 	op.config.SubIdentifierTypes = nonZeroOrDefault(op.config.SubIdentifierTypes, []goidc.SubIdentifierType{goidc.SubIdentifierPublic})
 
 	op.config.ClaimTypes = nonZeroOrDefault(op.config.ClaimTypes, []goidc.ClaimType{goidc.ClaimTypeNormal})
@@ -358,14 +357,13 @@ func (op *Provider) setDefaults() error {
 			goidc.ResponseTypeCodeAndToken, goidc.ResponseTypeCodeAndIDTokenAndToken)
 	}
 
-	authnMethods := op.config.TokenAuthnMethods
-	authnMethods = append(authnMethods, op.config.TokenIntrospectionAuthnMethods...)
-	authnMethods = append(authnMethods, op.config.TokenRevocationAuthnMethods...)
-	if slices.Contains(authnMethods, goidc.AuthnMethodPrivateKeyJWT) {
-		op.config.PrivateKeyJWTSigAlgs = nonZeroOrDefault(op.config.PrivateKeyJWTSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})
+	op.config.TokenAuthnMethods = nonZeroOrDefault(op.config.TokenAuthnMethods, []goidc.AuthnMethod{goidc.AuthnMethodSecretPost})
+	op.config.TokenAuthnMethodDefault = nonZeroOrDefault(op.config.TokenAuthnMethodDefault, goidc.AuthnMethodSecretPost)
+	if slices.Contains(op.config.TokenAuthnMethods, goidc.AuthnMethodPrivateKeyJWT) {
+		op.config.TokenAuthnPrivateKeyJWTSigAlgs = nonZeroOrDefault(op.config.TokenAuthnPrivateKeyJWTSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})
 	}
-	if slices.Contains(authnMethods, goidc.AuthnMethodSecretJWT) {
-		op.config.ClientSecretJWTSigAlgs = nonZeroOrDefault(op.config.ClientSecretJWTSigAlgs, []goidc.SignatureAlgorithm{defaultSymmetricSigAlg})
+	if slices.Contains(op.config.TokenAuthnMethods, goidc.AuthnMethodSecretJWT) {
+		op.config.TokenAuthnSecretJWTSigAlgs = nonZeroOrDefault(op.config.TokenAuthnSecretJWTSigAlgs, []goidc.SignatureAlgorithm{defaultSymmetricSigAlg})
 	}
 
 	if op.config.DCRIsEnabled {
@@ -388,13 +386,13 @@ func (op *Provider) setDefaults() error {
 	}
 
 	if op.config.JARMEncIsEnabled {
-		op.config.JARMDefaultContentEncAlg = nonZeroOrDefault(op.config.JARMDefaultContentEncAlg, goidc.A128CBC_HS256)
+		op.config.JARMContentEncAlgDefault = nonZeroOrDefault(op.config.JARMContentEncAlgDefault, goidc.A128CBC_HS256)
 		op.config.JARMContentEncAlgs = nonZeroOrDefault(op.config.JARMContentEncAlgs,
 			[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
 	}
 
 	if op.config.TokenIntrospectionIsEnabled {
-		op.config.IntrospectionEndpoint = nonZeroOrDefault(op.config.IntrospectionEndpoint, defaultEndpointTokenIntrospection)
+		op.config.TokenIntrospectionEndpoint = nonZeroOrDefault(op.config.TokenIntrospectionEndpoint, defaultEndpointTokenIntrospection)
 	}
 
 	if op.config.TokenRevocationIsEnabled {
@@ -478,6 +476,12 @@ func (op *Provider) setDefaults() error {
 func (op *Provider) validate() error {
 	if slices.Contains(op.config.SubIdentifierTypes, goidc.SubIdentifierPairwise) && op.config.PairwiseSubjectFunc == nil {
 		return fmt.Errorf("pairwise subject identifier type is enabled but the pairwise func is not set, see %s", funcName(WithPairwiseSubjectFunc))
+	}
+
+	if !op.config.MTLSIsEnabled && slices.ContainsFunc(op.config.TokenAuthnMethods, func(method goidc.AuthnMethod) bool {
+		return method == goidc.AuthnMethodTLS || method == goidc.AuthnMethodSelfSignedTLS
+	}) {
+		return errors.New("mtls must be enabled for tls_client_aut or self_signed_tls_client_auth")
 	}
 
 	if op.config.TokenBindingIsRequired && !op.config.DPoPIsEnabled && !op.config.MTLSTokenBindingIsEnabled {

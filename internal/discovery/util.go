@@ -72,15 +72,15 @@ func NewOpenIDConfiguration(ctx oidc.Context) OpenIDConfiguration {
 	}
 
 	if ctx.TokenIntrospectionIsEnabled {
-		config.TokenIntrospectionEndpoint = ctx.BaseURL() + ctx.IntrospectionEndpoint
-		config.TokenIntrospectionAuthnMethods = ctx.TokenIntrospectionAuthnMethods
-		config.TokenIntrospectionAuthnSigAlgs = ctx.TokenIntrospectionAuthnSigAlgs()
+		config.TokenIntrospectionEndpoint = ctx.BaseURL() + ctx.TokenIntrospectionEndpoint
+		config.TokenIntrospectionAuthnMethods = ctx.TokenAuthnMethods
+		config.TokenIntrospectionAuthnSigAlgs = ctx.TokenAuthnSigAlgs()
 	}
 
 	if ctx.TokenRevocationIsEnabled {
 		config.TokenRevocationEndpoint = ctx.BaseURL() + ctx.TokenRevocationEndpoint
-		config.TokenRevocationAuthnMethods = ctx.TokenRevocationAuthnMethods
-		config.TokenRevocationAuthnSigAlgs = ctx.TokenRevocationAuthnSigAlgs()
+		config.TokenRevocationAuthnMethods = ctx.TokenAuthnMethods
+		config.TokenRevocationAuthnSigAlgs = ctx.TokenAuthnSigAlgs()
 	}
 
 	if ctx.MTLSIsEnabled {
@@ -100,7 +100,7 @@ func NewOpenIDConfiguration(ctx oidc.Context) OpenIDConfiguration {
 		}
 
 		if ctx.TokenIntrospectionIsEnabled {
-			config.MTLSConfig.TokenIntrospectionEndpoint = ctx.MTLSBaseURL() + ctx.IntrospectionEndpoint
+			config.MTLSConfig.TokenIntrospectionEndpoint = ctx.MTLSBaseURL() + ctx.TokenIntrospectionEndpoint
 		}
 
 		if ctx.TokenRevocationIsEnabled {
