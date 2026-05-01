@@ -367,11 +367,7 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 	}
 
 	if ctx.JARMIsEnabled {
-		if c.JARMSigAlg == "" {
-			c.JARMSigAlg = ctx.JARMSigAlgDefault
-		}
-
-		if !slices.Contains(ctx.JARMSigAlgs, c.JARMSigAlg) {
+		if c.JARMSigAlg != "" && !slices.Contains(ctx.JARMSigAlgs, c.JARMSigAlg) {
 			return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "authorization_signed_response_alg %s is not allowed", c.JARMSigAlg)
 		}
 
