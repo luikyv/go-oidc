@@ -373,7 +373,7 @@ func (ctx Context) DeleteTokensByGrantID(grantID string) error {
 }
 
 func (ctx Context) GrantByRefreshToken(id string) (*goidc.Grant, error) {
-	return ctx.GrantManager.GrantByRefreshToken(ctx, id)
+	return ctx.GrantByRefreshTokenFunc(ctx, id)
 }
 
 func (ctx Context) DeleteGrant(id string) error {
@@ -381,7 +381,7 @@ func (ctx Context) DeleteGrant(id string) error {
 }
 
 func (ctx Context) DeleteGrantByAuthorizationCode(code string) error {
-	return ctx.GrantManager.DeleteByAuthCode(ctx, code)
+	return ctx.DeleteGrantByAuthCodeFunc(ctx, code)
 }
 
 func (ctx Context) SaveAuthnSession(session *goidc.AuthnSession) error {
@@ -408,15 +408,15 @@ func (ctx Context) AuthnSessionByCallbackID(id string) (*goidc.AuthnSession, err
 }
 
 func (ctx Context) AuthnSessionByAuthCode(code string) (*goidc.AuthnSession, error) {
-	return ctx.AuthnSessionManager.SessionByAuthCode(ctx, code)
+	return ctx.AuthnSessionByAuthCodeFunc(ctx, code)
 }
 
 func (ctx Context) AuthnSessionByRequestURI(uri string) (*goidc.AuthnSession, error) {
-	return ctx.AuthnSessionManager.SessionByPARID(ctx, uri)
+	return ctx.AuthnSessionByPARIDFunc(ctx, uri)
 }
 
 func (ctx Context) AuthnSessionByAuthReqID(id string) (*goidc.AuthnSession, error) {
-	return ctx.AuthnSessionManager.SessionByCIBAID(ctx, id)
+	return ctx.AuthnSessionByCIBAIDFunc(ctx, id)
 }
 
 func (ctx Context) DeleteAuthnSession(id string) error {

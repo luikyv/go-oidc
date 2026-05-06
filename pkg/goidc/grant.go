@@ -10,14 +10,12 @@ import (
 type GrantManager interface {
 	Save(context.Context, *Grant) error
 	Grant(context.Context, string) (*Grant, error)
-	GrantByRefreshToken(context.Context, string) (*Grant, error)
 	Delete(context.Context, string) error
-	// DeleteByAuthCode deletes a grant associated with the
-	// provided authorization code. This function is a security measure to prevent
-	// the reuse of authorization codes, mitigating potential replay attacks.
-	// It is an optional, but recommended, behavior to enhance security.
-	DeleteByAuthCode(context.Context, string) error
 }
+
+type GrantByRefreshTokenFunc func(context.Context, string) (*Grant, error)
+
+type DeleteGrantByAuthCodeFunc func(context.Context, string) error
 
 // Grant represents the granted access an entity (a user or the client
 // itself) gave to a client.

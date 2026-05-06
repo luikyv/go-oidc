@@ -7,10 +7,15 @@ import (
 )
 
 type Configuration struct {
-	ClientManager       goidc.ClientManager
-	AuthnSessionManager goidc.AuthnSessionManager
-	GrantManager        goidc.GrantManager
-	TokenManager        goidc.TokenManager
+	ClientManager              goidc.ClientManager
+	AuthnSessionManager        goidc.AuthnSessionManager
+	AuthnSessionByAuthCodeFunc goidc.AuthnSessionByAuthCodeFunc
+	AuthnSessionByPARIDFunc    goidc.AuthnSessionByPARIDFunc
+	AuthnSessionByCIBAIDFunc   goidc.AuthnSessionByCIBAIDFunc
+	GrantManager               goidc.GrantManager
+	GrantByRefreshTokenFunc    goidc.GrantByRefreshTokenFunc
+	DeleteGrantByAuthCodeFunc  goidc.DeleteGrantByAuthCodeFunc
+	TokenManager               goidc.TokenManager
 
 	Profile goidc.Profile
 	// Host is the domain where the server runs. This value will be used as the

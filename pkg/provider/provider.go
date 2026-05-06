@@ -28,7 +28,8 @@ import (
 )
 
 type Provider struct {
-	config oidc.Configuration
+	config                     oidc.Configuration
+	profileValidationIsEnabled bool
 }
 
 // New creates a new openid provider.
@@ -79,11 +80,79 @@ func (op *Provider) WithOptions(opts ...Option) error {
 		}
 	}
 
+	if err := op.validate(); err != nil {
+		return err
+	}
+
 	if err := op.setDefaults(); err != nil {
 		return err
 	}
 
-	return op.validate()
+	if !op.profileValidationIsEnabled {
+		return nil
+	}
+
+	return op.validateProfile()
+}
+
+func (op *Provider) validate() error {
+	if slices.Contains(op.config.SubIdentifierTypes, goidc.SubIdentifierPairwise) && op.config.PairwiseSubjectFunc == nil {
+		return fmt.Errorf("pairwise subject identifier type is enabled but the pairwise func is not set, see %s", funcName(WithPairwiseSubjectFunc))
+	}
+
+	if !op.config.MTLSIsEnabled && slices.ContainsFunc(op.config.TokenAuthnMethods, func(method goidc.AuthnMethod) bool {
+		return method == goidc.AuthnMethodTLS || method == goidc.AuthnMethodSelfSignedTLS
+	}) {
+		return errors.New("mtls must be enabled for tls_client_aut or self_signed_tls_client_auth")
+	}
+
+	if op.config.TokenBindingIsRequired && !op.config.DPoPIsEnabled && !op.config.MTLSTokenBindingIsEnabled {
+		return errors.New("either dpop or tls binding must be enabled if sender constraining tokens is required")
+	}
+
+	if slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
+		if op.config.AuthnSessionManager != nil && op.config.AuthnSessionByAuthCodeFunc == nil {
+			return fmt.Errorf("custom AuthnSessionManager provided but AuthnSessionByAuthCodeFunc is nil; provide both or neither via %s", funcName(WithAuthorizationCodeGrant))
+		}
+		if op.config.AuthnSessionManager == nil && op.config.AuthnSessionByAuthCodeFunc != nil {
+			return fmt.Errorf("custom AuthnSessionByAuthCodeFunc provided but no custom AuthnSessionManager; provide both or neither via %s", funcName(WithAuthorizationCodeGrant))
+		}
+		if op.config.GrantManager != nil && op.config.DeleteGrantByAuthCodeFunc == nil {
+			return fmt.Errorf("custom GrantManager provided but DeleteGrantByAuthCodeFunc is nil; provide both or neither via %s", funcName(WithAuthorizationCodeGrant))
+		}
+		if op.config.GrantManager == nil && op.config.DeleteGrantByAuthCodeFunc != nil {
+			return fmt.Errorf("custom DeleteGrantByAuthCodeFunc provided but no custom GrantManager; provide both or neither via %s", funcName(WithAuthorizationCodeGrant))
+		}
+	}
+
+	if op.config.PARIsEnabled {
+		if op.config.AuthnSessionManager != nil && op.config.AuthnSessionByPARIDFunc == nil {
+			return fmt.Errorf("custom AuthnSessionManager provided but AuthnSessionByPARIDFunc is nil; provide both or neither via %s", funcName(WithPAR))
+		}
+		if op.config.AuthnSessionManager == nil && op.config.AuthnSessionByPARIDFunc != nil {
+			return fmt.Errorf("custom AuthnSessionByPARIDFunc provided but no custom AuthnSessionManager; provide both or neither via %s", funcName(WithPAR))
+		}
+	}
+
+	if slices.Contains(op.config.GrantTypes, goidc.GrantCIBA) {
+		if op.config.AuthnSessionManager != nil && op.config.AuthnSessionByCIBAIDFunc == nil {
+			return fmt.Errorf("custom AuthnSessionManager provided but AuthnSessionByCIBAIDFunc is nil; provide both or neither via %s", funcName(WithCIBAGrant))
+		}
+		if op.config.AuthnSessionManager == nil && op.config.AuthnSessionByCIBAIDFunc != nil {
+			return fmt.Errorf("custom AuthnSessionByCIBAIDFunc provided but no custom AuthnSessionManager; provide both or neither via %s", funcName(WithCIBAGrant))
+		}
+	}
+
+	if slices.Contains(op.config.GrantTypes, goidc.GrantRefreshToken) {
+		if op.config.GrantManager != nil && op.config.GrantByRefreshTokenFunc == nil {
+			return fmt.Errorf("custom GrantManager provided but GrantByRefreshTokenFunc is nil; provide both or neither via %s", funcName(WithRefreshTokenGrant))
+		}
+		if op.config.GrantManager == nil && op.config.GrantByRefreshTokenFunc != nil {
+			return fmt.Errorf("custom GrantByRefreshTokenFunc provided but no custom GrantManager; provide both or neither via %s", funcName(WithRefreshTokenGrant))
+		}
+	}
+
+	return nil
 }
 
 func (op *Provider) Issuer() string {
@@ -178,15 +247,15 @@ func (op *Provider) AuthnSessionByCallbackID(ctx context.Context, callbackID str
 }
 
 func (op *Provider) AuthnSessionByAuthCode(ctx context.Context, authCode string) (*goidc.AuthnSession, error) {
-	return op.config.AuthnSessionManager.SessionByAuthCode(ctx, authCode)
+	return op.config.AuthnSessionByAuthCodeFunc(ctx, authCode)
 }
 
 func (op *Provider) AuthnSessionByPushedAuthReqID(ctx context.Context, id string) (*goidc.AuthnSession, error) {
-	return op.config.AuthnSessionManager.SessionByPARID(ctx, id)
+	return op.config.AuthnSessionByPARIDFunc(ctx, id)
 }
 
 func (op *Provider) AuthnSessionByCIBAAuthID(ctx context.Context, id string) (*goidc.AuthnSession, error) {
-	return op.config.AuthnSessionManager.SessionByCIBAID(ctx, id)
+	return op.config.AuthnSessionByCIBAIDFunc(ctx, id)
 }
 
 func (op *Provider) DeleteAuthnSession(ctx context.Context, id string) error {
@@ -198,7 +267,7 @@ func (op *Provider) SaveGrant(ctx context.Context, gs *goidc.Grant) error {
 }
 
 func (op *Provider) GrantByRefreshToken(ctx context.Context, id string) (*goidc.Grant, error) {
-	return op.config.GrantManager.GrantByRefreshToken(ctx, id)
+	return op.config.GrantByRefreshTokenFunc(ctx, id)
 }
 
 func (op *Provider) DeleteGrant(ctx context.Context, id string) error {
@@ -206,7 +275,7 @@ func (op *Provider) DeleteGrant(ctx context.Context, id string) error {
 }
 
 func (op *Provider) DeleteGrantByAuthCode(ctx context.Context, id string) error {
-	return op.config.GrantManager.DeleteByAuthCode(ctx, id)
+	return op.config.DeleteGrantByAuthCodeFunc(ctx, id)
 }
 
 func (op *Provider) SaveToken(ctx context.Context, t *goidc.Token) error {
@@ -301,6 +370,9 @@ func (op *Provider) PublishSSFVerificationEvent(ctx context.Context, streamID st
 }
 
 func (op *Provider) setDefaults() error {
+	sessionManager := storage.NewAuthnSessionManager(defaultStorageMaxSize)
+	grantManager := storage.NewGrantManager(defaultStorageMaxSize)
+
 	op.config.IDTokenDefaultSigAlg = nonZeroOrDefault(op.config.IDTokenDefaultSigAlg, defaultAsymmetricSigAlg)
 
 	op.config.IDTokenSigAlgs = nonZeroOrDefault(op.config.IDTokenSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})
@@ -309,9 +381,9 @@ func (op *Provider) setDefaults() error {
 
 	op.config.ClientManager = nonZeroOrDefault(op.config.ClientManager, goidc.ClientManager(storage.NewClientManager(defaultStorageMaxSize)))
 
-	op.config.AuthnSessionManager = nonZeroOrDefault(op.config.AuthnSessionManager, goidc.AuthnSessionManager(storage.NewAuthnSessionManager(defaultStorageMaxSize)))
+	op.config.AuthnSessionManager = nonZeroOrDefault(op.config.AuthnSessionManager, goidc.AuthnSessionManager(sessionManager))
 
-	op.config.GrantManager = nonZeroOrDefault(op.config.GrantManager, goidc.GrantManager(storage.NewGrantManager(defaultStorageMaxSize)))
+	op.config.GrantManager = nonZeroOrDefault(op.config.GrantManager, goidc.GrantManager(grantManager))
 
 	op.config.TokenManager = nonZeroOrDefault(op.config.TokenManager, goidc.TokenManager(storage.NewTokenManager(defaultStorageMaxSize)))
 
@@ -343,6 +415,8 @@ func (op *Provider) setDefaults() error {
 	op.config.JWTLifetimeSecs = nonZeroOrDefault(op.config.JWTLifetimeSecs, defaultJWTLifetimeSecs)
 
 	if slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
+		op.config.AuthnSessionByAuthCodeFunc = nonZeroOrDefault(op.config.AuthnSessionByAuthCodeFunc, sessionManager.SessionByAuthCode)
+		op.config.DeleteGrantByAuthCodeFunc = nonZeroOrDefault(op.config.DeleteGrantByAuthCodeFunc, grantManager.DeleteByAuthCode)
 		op.config.ResponseTypes = append(op.config.ResponseTypes, goidc.ResponseTypeCode)
 		op.config.AuthorizationCodeLifetimeSecs = nonZeroOrDefault(op.config.AuthorizationCodeLifetimeSecs, defaultAuthorizationCodeLifetimeSecs)
 	}
@@ -371,6 +445,7 @@ func (op *Provider) setDefaults() error {
 	}
 
 	if op.config.PARIsEnabled {
+		op.config.AuthnSessionByPARIDFunc = nonZeroOrDefault(op.config.AuthnSessionByPARIDFunc, sessionManager.SessionByPARID)
 		op.config.PAREndpoint = nonZeroOrDefault(op.config.PAREndpoint, defaultEndpointPushedAuthorizationRequest)
 		op.config.PARLifetimeSecs = nonZeroOrDefault(op.config.PARLifetimeSecs, defaultPARLifetimeSecs)
 	}
@@ -410,6 +485,7 @@ func (op *Provider) setDefaults() error {
 	}
 
 	if slices.Contains(op.config.GrantTypes, goidc.GrantCIBA) {
+		op.config.AuthnSessionByCIBAIDFunc = nonZeroOrDefault(op.config.AuthnSessionByCIBAIDFunc, sessionManager.SessionByCIBAID)
 		op.config.CIBAProfile = nonZeroOrDefault(op.config.CIBAProfile, goidc.CIBAProfileOpenID)
 		op.config.CIBATokenDeliveryModels = nonZeroOrDefault(op.config.CIBATokenDeliveryModels, []goidc.CIBATokenDeliveryMode{goidc.CIBADeliveryModePoll})
 		op.config.CIBAEndpoint = nonZeroOrDefault(op.config.CIBAEndpoint, defaultEndpointCIBA)
@@ -418,6 +494,7 @@ func (op *Provider) setDefaults() error {
 	}
 
 	if slices.Contains(op.config.GrantTypes, goidc.GrantRefreshToken) {
+		op.config.GrantByRefreshTokenFunc = nonZeroOrDefault(op.config.GrantByRefreshTokenFunc, grantManager.GrantByRefreshToken)
 		op.config.RefreshTokenLifetimeSecs = nonZeroOrDefault(op.config.RefreshTokenLifetimeSecs, defaultRefreshTokenLifetimeSecs)
 	}
 
@@ -473,21 +550,7 @@ func (op *Provider) setDefaults() error {
 	return nil
 }
 
-func (op *Provider) validate() error {
-	if slices.Contains(op.config.SubIdentifierTypes, goidc.SubIdentifierPairwise) && op.config.PairwiseSubjectFunc == nil {
-		return fmt.Errorf("pairwise subject identifier type is enabled but the pairwise func is not set, see %s", funcName(WithPairwiseSubjectFunc))
-	}
-
-	if !op.config.MTLSIsEnabled && slices.ContainsFunc(op.config.TokenAuthnMethods, func(method goidc.AuthnMethod) bool {
-		return method == goidc.AuthnMethodTLS || method == goidc.AuthnMethodSelfSignedTLS
-	}) {
-		return errors.New("mtls must be enabled for tls_client_aut or self_signed_tls_client_auth")
-	}
-
-	if op.config.TokenBindingIsRequired && !op.config.DPoPIsEnabled && !op.config.MTLSTokenBindingIsEnabled {
-		return errors.New("either dpop or tls binding must be enabled if sender constraining tokens is required")
-	}
-
+func (op *Provider) validateProfile() error {
 	if op.config.Profile == goidc.ProfileFAPI1 {
 		for _, method := range op.config.TokenAuthnMethods {
 			if !slices.Contains([]goidc.AuthnMethod{

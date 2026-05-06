@@ -1,6 +1,8 @@
 package token
 
 import (
+	"errors"
+
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -17,7 +19,7 @@ func revoke(ctx oidc.Context, req queryRequest) error {
 	}
 
 	if !ctx.TokenRevocationIsClientAllowed(c) {
-		return goidc.NewError(goidc.ErrorCodeAccessDenied, "client not allowed to revoke tokens")
+		return goidc.WrapError(goidc.ErrorCodeAccessDenied, "could not revoke token", errors.New("client not allowed to revoke tokens"))
 	}
 
 	info, err := IntrospectionInfo(ctx, req.token)
@@ -27,7 +29,7 @@ func revoke(ctx oidc.Context, req queryRequest) error {
 	}
 
 	if c.ID != info.ClientID {
-		return goidc.NewError(goidc.ErrorCodeAccessDenied, "token was not issued for this client")
+		return goidc.WrapError(goidc.ErrorCodeAccessDenied, "could not revoke token", errors.New("token was not issued for this client"))
 	}
 
 	_ = ctx.DeleteGrant(info.GrantID)

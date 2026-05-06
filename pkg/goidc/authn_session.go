@@ -11,20 +11,14 @@ import (
 type AuthnSessionManager interface {
 	Save(ctx context.Context, session *AuthnSession) error
 	SessionByCallbackID(ctx context.Context, callbackID string) (*AuthnSession, error)
-	// SessionByAuthCode fetches an authn session by the code created during the
-	// authorization code flow.
-	// If authorization code is not enabled, this function can be left empty.
-	SessionByAuthCode(ctx context.Context, authorizationCode string) (*AuthnSession, error)
-	// SessionByPARID fetches an authn session by the request URI created
-	// during PAR.
-	// If PAR is not enabled, this function can be left empty.
-	SessionByPARID(ctx context.Context, id string) (*AuthnSession, error) // TODO: Should I remove this from here?
-	// SessionByCIBAID fetches an authn session by the auth request ID created
-	// during CIBA.
-	// If CIBA is not enabled, this function can be left empty.
-	SessionByCIBAID(ctx context.Context, id string) (*AuthnSession, error)
 	Delete(ctx context.Context, id string) error
 }
+
+type AuthnSessionByAuthCodeFunc func(context.Context, string) (*AuthnSession, error)
+
+type AuthnSessionByPARIDFunc func(context.Context, string) (*AuthnSession, error)
+
+type AuthnSessionByCIBAIDFunc func(context.Context, string) (*AuthnSession, error)
 
 // AuthnSession is a short lived session that holds information about
 // authorization requests.

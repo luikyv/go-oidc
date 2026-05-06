@@ -10,6 +10,13 @@ import (
 
 type Option func(p *Provider) error
 
+func WithProfileValidation() Option {
+	return func(p *Provider) error {
+		p.profileValidationIsEnabled = true
+		return nil
+	}
+}
+
 // WithClientManager replaces the default client manager which keeps the clients
 // stored in memory.
 func WithClientManager(manager goidc.ClientManager) Option {
@@ -476,9 +483,11 @@ func WithTokenClaims(f goidc.TokenClaimsFunc) Option {
 	}
 }
 
-func WithAuthorizationCodeGrant() Option {
+func WithAuthorizationCodeGrant(sessionFunc goidc.AuthnSessionByAuthCodeFunc, grantFunc goidc.DeleteGrantByAuthCodeFunc) Option {
 	return func(p *Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantAuthorizationCode)
+		p.config.AuthnSessionByAuthCodeFunc = sessionFunc
+		p.config.DeleteGrantByAuthCodeFunc = grantFunc
 		return nil
 	}
 }
@@ -490,9 +499,10 @@ func WithImplicitGrant() Option {
 	}
 }
 
-func WithRefreshTokenGrant() Option {
+func WithRefreshTokenGrant(grantFunc goidc.GrantByRefreshTokenFunc) Option {
 	return func(p *Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantRefreshToken)
+		p.config.GrantByRefreshTokenFunc = grantFunc
 		return nil
 	}
 }
@@ -512,10 +522,11 @@ func WithJWTBearerGrant(f goidc.JWTBearerHandleAssertionFunc) Option {
 	}
 }
 
-func WithCIBAGrant(profile goidc.CIBAProfile) Option {
+func WithCIBAGrant(profile goidc.CIBAProfile, sessionFunc goidc.AuthnSessionByCIBAIDFunc) Option {
 	return func(p *Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantCIBA)
 		p.config.CIBAProfile = profile
+		p.config.AuthnSessionByCIBAIDFunc = sessionFunc
 		return nil
 	}
 }
@@ -546,9 +557,10 @@ func WithScopes(scopes ...goidc.Scope) Option {
 
 // WithPAR allows authorization flows to start at the pushed authorization
 // request endpoint.
-func WithPAR() Option {
+func WithPAR(sessionFunc goidc.AuthnSessionByPARIDFunc) Option {
 	return func(p *Provider) error {
 		p.config.PARIsEnabled = true
+		p.config.AuthnSessionByPARIDFunc = sessionFunc
 		return nil
 	}
 }
@@ -570,10 +582,10 @@ func WithPARLifetime(secs int) Option {
 // WithPARRequired forces authorization flows to start at the pushed
 // authorization request endpoint.
 // For more info, see [WithPAR].
-func WithPARRequired() Option {
+func WithPARRequired(sessionFunc goidc.AuthnSessionByPARIDFunc) Option {
 	return func(p *Provider) error {
 		p.config.PARIsRequired = true
-		return WithPAR()(p)
+		return WithPAR(sessionFunc)(p)
 	}
 }
 
