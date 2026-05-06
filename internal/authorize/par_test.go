@@ -43,7 +43,7 @@ func TestPushAuth(t *testing.T) {
 	wantedSession := goidc.AuthnSession{
 		ID:                 session.ID,
 		Status:             goidc.StatusInProgress,
-		PushedAuthReqID:    resp.RequestURI,
+		PARID:              resp.RequestURI,
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
 		ClientID:           client.ID,
@@ -59,7 +59,7 @@ func TestPushAuth(t *testing.T) {
 	}
 
 	wantedResp := parResponse{
-		RequestURI: session.PushedAuthReqID,
+		RequestURI: session.PARID,
 		ExpiresIn:  ctx.PARLifetimeSecs,
 	}
 	if diff := cmp.Diff(resp, wantedResp); diff != "" {
@@ -115,7 +115,7 @@ func TestPushAuth_WithJAR(t *testing.T) {
 	wantedSession := goidc.AuthnSession{
 		ID:                 session.ID,
 		Status:             goidc.StatusInProgress,
-		PushedAuthReqID:    resp.RequestURI,
+		PARID:              resp.RequestURI,
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
 		ClientID:           client.ID,
@@ -130,7 +130,7 @@ func TestPushAuth_WithJAR(t *testing.T) {
 	}
 
 	wantedResp := parResponse{
-		RequestURI: session.PushedAuthReqID,
+		RequestURI: session.PARID,
 		ExpiresIn:  ctx.PARLifetimeSecs,
 	}
 	if diff := cmp.Diff(resp, wantedResp); diff != "" {

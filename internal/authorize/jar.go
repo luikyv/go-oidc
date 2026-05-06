@@ -1,6 +1,7 @@
 package authorize
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -149,7 +150,7 @@ func validateClaims(ctx oidc.Context, claims jwt.Claims, client *goidc.Client) e
 	}
 
 	if claims.ID != "" {
-		if err := ctx.CheckJTI(claims.ID); err != nil {
+		if err := ctx.CheckJTI(claims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
 			return goidc.WrapError(goidc.ErrorCodeInvalidResquestObject, "invalid jti claim", err)
 		}
 	}

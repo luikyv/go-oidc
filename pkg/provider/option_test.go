@@ -1850,21 +1850,21 @@ func TestWithNotifyErrorFunc(t *testing.T) {
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
-	var handleErrorFunc goidc.NotifyErrorFunc = func(
+	var handleErrorFunc goidc.HandleErrorFunc = func(
 		ctx context.Context,
 		err error,
 	) {
 	}
 
 	// When.
-	err := WithNotifyErrorFunc(handleErrorFunc)(p)
+	err := WithHandleErrorFunc(handleErrorFunc)(p)
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if p.config.NotifyErrorFunc == nil {
+	if p.config.HandleErrorFunc == nil {
 		t.Error("HandleErrorFunc cannot be nil")
 	}
 }

@@ -35,7 +35,7 @@ func NotifyCIBAGrant(ctx oidc.Context, authReqID string) error {
 	}
 
 	resp := cibaResponse{
-		AuthReqID: as.CIBAAuthID,
+		AuthReqID: as.CIBAID,
 	}
 	// The client is configured to receive a ping, so only the auth request id
 	// is sent.
@@ -87,7 +87,7 @@ func NotifyCIBAGrant(ctx oidc.Context, authReqID string) error {
 			Claims:  ctx.IDTokenClaims(grant),
 		}
 		if c.CIBATokenDeliveryMode == goidc.CIBADeliveryModePush {
-			idTokenOpts.AuthReqID = as.PushedAuthReqID
+			idTokenOpts.AuthReqID = as.PARID
 			idTokenOpts.RefreshToken = grant.RefreshToken
 		}
 		idToken, err := MakeIDToken(ctx, c, idTokenOpts)
@@ -125,7 +125,7 @@ func NotifyCIBAGrantFailure(ctx oidc.Context, authReqID string, goidcErr goidc.E
 		AuthReqID string `json:"auth_req_id,omitempty"`
 		goidc.Error
 	}{
-		AuthReqID: session.CIBAAuthID,
+		AuthReqID: session.CIBAID,
 	}
 	if client.CIBATokenDeliveryMode == goidc.CIBADeliveryModePing {
 		return sendClientNotification(ctx, client, session, resp)

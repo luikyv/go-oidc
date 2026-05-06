@@ -40,14 +40,14 @@ func TestInitBackAuth_PingMode(t *testing.T) {
 	}
 
 	session := sessions[0]
-	if session.CIBAAuthID == "" {
+	if session.CIBAID == "" {
 		t.Fatalf("auth req id cannot be null")
 	}
 
 	wantedSession := goidc.AuthnSession{
 		ID:                 session.ID,
 		Status:             goidc.StatusInProgress,
-		CIBAAuthID:         session.CIBAAuthID,
+		CIBAID:             session.CIBAID,
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
 		ClientID:           client.ID,
@@ -61,7 +61,7 @@ func TestInitBackAuth_PingMode(t *testing.T) {
 	}
 
 	wantedResp := cibaResponse{
-		AuthReqID: session.CIBAAuthID,
+		AuthReqID: session.CIBAID,
 		ExpiresIn: ctx.CIBADefaultSessionLifetimeSecs,
 		Interval:  ctx.CIBAPollingIntervalSecs,
 	}
@@ -96,14 +96,14 @@ func TestInitBackAuth_PollMode(t *testing.T) {
 	}
 
 	session := sessions[0]
-	if session.CIBAAuthID == "" {
+	if session.CIBAID == "" {
 		t.Fatalf("auth req id cannot be null")
 	}
 
 	wantedSession := goidc.AuthnSession{
 		ID:                 session.ID,
 		Status:             goidc.StatusInProgress,
-		CIBAAuthID:         session.CIBAAuthID,
+		CIBAID:             session.CIBAID,
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
 		ClientID:           client.ID,
@@ -116,7 +116,7 @@ func TestInitBackAuth_PollMode(t *testing.T) {
 	}
 
 	wantedResp := cibaResponse{
-		AuthReqID: session.CIBAAuthID,
+		AuthReqID: session.CIBAID,
 		ExpiresIn: ctx.CIBADefaultSessionLifetimeSecs,
 		Interval:  ctx.CIBAPollingIntervalSecs,
 	}
@@ -152,14 +152,14 @@ func TestInitBackAuth_PushMode(t *testing.T) {
 	}
 
 	session := sessions[0]
-	if session.CIBAAuthID == "" {
+	if session.CIBAID == "" {
 		t.Fatalf("auth req id cannot be null")
 	}
 
 	wantedSession := goidc.AuthnSession{
 		ID:                 session.ID,
 		Status:             goidc.StatusInProgress,
-		CIBAAuthID:         session.CIBAAuthID,
+		CIBAID:             session.CIBAID,
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
 		ClientID:           client.ID,
@@ -173,7 +173,7 @@ func TestInitBackAuth_PushMode(t *testing.T) {
 	}
 
 	wantedResp := cibaResponse{
-		AuthReqID: session.CIBAAuthID,
+		AuthReqID: session.CIBAID,
 		ExpiresIn: ctx.CIBADefaultSessionLifetimeSecs,
 	}
 	if diff := cmp.Diff(resp, wantedResp); diff != "" {
@@ -231,7 +231,7 @@ func TestInitBackAuth_WithJAR(t *testing.T) {
 	wantedSession := goidc.AuthnSession{
 		ID:                 session.ID,
 		Status:             goidc.StatusInProgress,
-		CIBAAuthID:         resp.AuthReqID,
+		CIBAID:             resp.AuthReqID,
 		ExpiresAtTimestamp: session.ExpiresAtTimestamp,
 		CreatedAtTimestamp: session.CreatedAtTimestamp,
 		ClientID:           client.ID,
@@ -246,7 +246,7 @@ func TestInitBackAuth_WithJAR(t *testing.T) {
 	}
 
 	wantedResp := cibaResponse{
-		AuthReqID: session.CIBAAuthID,
+		AuthReqID: session.CIBAID,
 		ExpiresIn: ctx.CIBADefaultSessionLifetimeSecs,
 		Interval:  ctx.CIBAPollingIntervalSecs,
 	}

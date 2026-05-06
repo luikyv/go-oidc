@@ -15,14 +15,14 @@ type AuthnSessionManager interface {
 	// authorization code flow.
 	// If authorization code is not enabled, this function can be left empty.
 	SessionByAuthCode(ctx context.Context, authorizationCode string) (*AuthnSession, error)
-	// SessionByPushedAuthReqID fetches an authn session by the request URI created
+	// SessionByPARID fetches an authn session by the request URI created
 	// during PAR.
 	// If PAR is not enabled, this function can be left empty.
-	SessionByPushedAuthReqID(ctx context.Context, id string) (*AuthnSession, error)
-	// SessionByCIBAAuthID fetches an authn session by the auth request ID created
+	SessionByPARID(ctx context.Context, id string) (*AuthnSession, error) // TODO: Should I remove this from here?
+	// SessionByCIBAID fetches an authn session by the auth request ID created
 	// during CIBA.
 	// If CIBA is not enabled, this function can be left empty.
-	SessionByCIBAAuthID(ctx context.Context, id string) (*AuthnSession, error)
+	SessionByCIBAID(ctx context.Context, id string) (*AuthnSession, error)
 	Delete(ctx context.Context, id string) error
 }
 
@@ -42,15 +42,15 @@ type AuthnSession struct {
 	// grant and returned in the introspection response.
 	Username string `json:"username,omitempty"`
 	ClientID string `json:"client_id"`
-	// PushedAuthReqID is the id generated during /par used to fetch the session
+	// PARID is the id generated during /par used to fetch the session
 	// during calls to /authorize.
 	//
 	// This value will be returned as the request_uri of the /par response.
-	PushedAuthReqID string `json:"pushed_auth_req_id,omitempty"`
+	PARID string `json:"par_id,omitempty"`
 	// CallbackID is the id used to fetch the authentication session after user
 	// interaction during calls to the callback endpoint.
 	CallbackID string `json:"callback_id,omitempty"`
-	CIBAAuthID string `json:"ciba_auth_req_id,omitempty"`
+	CIBAID     string `json:"ciba_id,omitempty"`
 	AuthCode   string `json:"auth_code,omitempty"`
 	// PolicyID is the id of the autentication policy used to authenticate
 	// the user.

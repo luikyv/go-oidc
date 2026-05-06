@@ -3,6 +3,7 @@ package dpop
 import (
 	"crypto"
 	"encoding/base64"
+	"errors"
 	"net/http"
 	"slices"
 	"time"
@@ -85,7 +86,7 @@ func ValidateJWT(ctx oidc.Context, dpopJWT string, opts ValidationOptions) error
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid jti claim")
 	}
 
-	if err := ctx.CheckJTI(claims.ID); err != nil {
+	if err := ctx.CheckJTI(claims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid jti claim", err)
 	}
 

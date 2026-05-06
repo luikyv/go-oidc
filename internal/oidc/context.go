@@ -113,7 +113,7 @@ func (ctx Context) HandleDynamicClient(id string, c *goidc.ClientMeta) error {
 
 func (ctx Context) ClientID() string {
 	if ctx.ClientIDFunc == nil {
-		return "dc-" + strutil.Random(30)
+		return uuid.NewString()
 	}
 
 	return ctx.ClientIDFunc(ctx)
@@ -134,16 +134,15 @@ func (ctx Context) RenderError(err error) error {
 		return err
 	}
 
-	ctx.NotifyError(err)
+	ctx.HandleError(err)
 	return ctx.RenderErrorFunc(ctx.Response, ctx.Request, err)
 }
 
-func (ctx Context) NotifyError(err error) {
-	if ctx.NotifyErrorFunc == nil {
+func (ctx Context) HandleError(err error) {
+	if ctx.HandleErrorFunc == nil {
 		return
 	}
-
-	ctx.NotifyErrorFunc(ctx, err)
+	ctx.HandleErrorFunc(ctx, err)
 }
 
 func (ctx Context) VerifyClientSecret(stored, presented string) error {
@@ -387,13 +386,13 @@ func (ctx Context) DeleteGrantByAuthorizationCode(code string) error {
 
 func (ctx Context) SaveAuthnSession(session *goidc.AuthnSession) error {
 	numberOfIndexes := 0
-	if session.CallbackID != "" || session.PushedAuthReqID != "" {
+	if session.CallbackID != "" || session.PARID != "" {
 		numberOfIndexes++
 	}
 	if session.AuthCode != "" {
 		numberOfIndexes++
 	}
-	if session.CIBAAuthID != "" {
+	if session.CIBAID != "" {
 		numberOfIndexes++
 	}
 
@@ -413,11 +412,11 @@ func (ctx Context) AuthnSessionByAuthCode(code string) (*goidc.AuthnSession, err
 }
 
 func (ctx Context) AuthnSessionByRequestURI(uri string) (*goidc.AuthnSession, error) {
-	return ctx.AuthnSessionManager.SessionByPushedAuthReqID(ctx, uri)
+	return ctx.AuthnSessionManager.SessionByPARID(ctx, uri)
 }
 
 func (ctx Context) AuthnSessionByAuthReqID(id string) (*goidc.AuthnSession, error) {
-	return ctx.AuthnSessionManager.SessionByCIBAAuthID(ctx, id)
+	return ctx.AuthnSessionManager.SessionByCIBAID(ctx, id)
 }
 
 func (ctx Context) DeleteAuthnSession(id string) error {
@@ -539,7 +538,7 @@ func (ctx Context) WriteJWTWithType(token string, status int, contentType string
 
 func (ctx Context) WriteError(err error) {
 
-	ctx.NotifyError(err)
+	ctx.HandleError(err)
 
 	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {

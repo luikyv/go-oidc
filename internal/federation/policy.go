@@ -7,7 +7,6 @@ import (
 
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -992,7 +991,7 @@ func (policy openIDClientMetadataPolicy) Apply(c client.Client) (client.Client, 
 	}
 	c.JWKS = jwks
 
-	scopeIDs := strutil.SplitWithSpaces(c.ScopeIDs)
+	scopeIDs := strings.Fields(c.ScopeIDs)
 	scopeIDs, err = policy.ScopeIDs.Apply(scopeIDs)
 	if err != nil {
 		return client.Client{}, err

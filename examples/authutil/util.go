@@ -26,7 +26,6 @@ const (
 	Port                     string = ":443"
 	Issuer                   string = "https://auth.localhost"
 	MTLSHost                 string = "https://matls-auth.localhost"
-	headerClientCert         string = "X-Client-Cert"
 	headerXFAPIInteractionID        = "X-Fapi-Interaction-Id"
 )
 
@@ -232,7 +231,7 @@ func HTTPClient(_ context.Context) *http.Client {
 	}
 }
 
-func ErrorLoggingFunc(ctx context.Context, err error) {
+func HandleError(ctx context.Context, err error) {
 	log.Printf("error: %s\n", err.Error())
 }
 

@@ -27,7 +27,7 @@ func main() {
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithPolicies(authutil.Policy()),
-		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
+		provider.WithHandleErrorFunc(authutil.HandleError),
 		provider.WithRenderErrorFunc(authutil.RenderError()),
 	)
 	if err != nil {
@@ -49,7 +49,7 @@ func main() {
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithPolicies(authutil.Policy()),
-		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
+		provider.WithHandleErrorFunc(authutil.HandleError),
 		provider.WithRenderErrorFunc(authutil.RenderError()),
 	)
 	if err != nil {

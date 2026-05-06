@@ -8,6 +8,7 @@ import (
 	"crypto/sha1" //nolint:gosec
 	"crypto/sha256"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -218,7 +219,7 @@ func areClaimsValid(ctx oidc.Context, claims jwt.Claims, client *goidc.Client, _
 		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid audience claim")
 	}
 
-	if err := ctx.CheckJTI(claims.ID); err != nil {
+	if err := ctx.CheckJTI(claims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid jti claim", err)
 	}
 

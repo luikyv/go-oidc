@@ -62,7 +62,7 @@ type OpenIDConfiguration struct {
 	DisplayValues                  []goidc.DisplayValue           `json:"display_values_supported,omitempty"`
 	CodeChallengeMethods           []goidc.CodeChallengeMethod    `json:"code_challenge_methods_supported,omitempty"`
 	EndSessionEndpoint             string                         `json:"end_session_endpoint,omitempty"`
-	ClientRegistrationTypes        []goidc.ClientRegistrationType `json:"client_registration_types_supported"`
+	ClientRegistrationTypes        []goidc.ClientRegistrationType `json:"client_registration_types_supported,omitempty"`
 	OrganizationName               string                         `json:"organization_name,omitempty"`
 	FederationRegistrationEndpoint string                         `json:"federation_registration_endpoint,omitempty"`
 	SignedJWKSEndpoint             string                         `json:"signed_jwks_uri,omitempty"`

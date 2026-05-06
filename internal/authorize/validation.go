@@ -393,7 +393,7 @@ func validateScopesAsOptional(ctx oidc.Context, params goidc.AuthorizationParame
 		return nil
 	}
 
-	for _, s := range strutil.SplitWithSpaces(params.Scopes) {
+	for _, s := range strings.Fields(params.Scopes) {
 		scope, ok := ctx.Scope(s)
 		if !ok {
 			return wrapRedirectionError(goidc.ErrorCodeInvalidScope, "invalid scope", params, fmt.Errorf("scope %s does not match any available scope", s))
@@ -501,7 +501,7 @@ func validateACRValuesAsOptional(ctx oidc.Context, params goidc.AuthorizationPar
 		return nil
 	}
 
-	for _, acr := range strutil.SplitWithSpaces(params.ACRValues) {
+	for acr := range strings.FieldsSeq(params.ACRValues) {
 		if !slices.Contains(ctx.ACRs, goidc.ACR(acr)) {
 			return newRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid acr value", params)
 		}

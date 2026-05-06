@@ -20,7 +20,7 @@ func redirectError(ctx oidc.Context, err error, c *goidc.Client) error {
 		return err
 	}
 
-	ctx.NotifyError(err)
+	ctx.HandleError(err)
 
 	redirectParams := response{
 		errorCode:        redirectErr.Code(),

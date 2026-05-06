@@ -82,12 +82,12 @@ func TestAuthnSessionByReferenceID(t *testing.T) {
 	sessionID := "random_session_id"
 	requestURI := "random_request_uri"
 	manager.Sessions[sessionID] = &goidc.AuthnSession{
-		ID:              sessionID,
-		PushedAuthReqID: requestURI,
+		ID:    sessionID,
+		PARID: requestURI,
 	}
 
 	// When.
-	session, err := manager.SessionByPushedAuthReqID(context.Background(), requestURI)
+	session, err := manager.SessionByPARID(context.Background(), requestURI)
 
 	// Then.
 	if err != nil {

@@ -134,7 +134,7 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 		}
 	}
 
-	for _, scopeID := range strutil.SplitWithSpaces(c.ScopeIDs) {
+	for _, scopeID := range strings.Fields(c.ScopeIDs) {
 		if !slices.ContainsFunc(ctx.Scopes, func(s goidc.Scope) bool { return s.ID == scopeID }) {
 			return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "scope %s is not allowed", scopeID)
 		}

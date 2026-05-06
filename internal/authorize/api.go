@@ -81,8 +81,7 @@ func handlerCallback(ctx oidc.Context) {
 		return
 	}
 
-	err = ctx.RenderError(err)
-	if err != nil {
+	if err := ctx.RenderError(err); err != nil {
 		ctx.WriteError(err)
 	}
 

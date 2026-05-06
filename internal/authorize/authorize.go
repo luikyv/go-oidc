@@ -255,7 +255,7 @@ func finishFlow(ctx oidc.Context, as *goidc.AuthnSession) error {
 		// Make sure the session won't be reached anymore from the callback endpoint.
 		as.CallbackID = ""
 		// Make sure the session won't be reached anymore with the request URI.
-		as.PushedAuthReqID = ""
+		as.PARID = ""
 		if err := ctx.SaveAuthnSession(as); err != nil {
 			return err
 		}

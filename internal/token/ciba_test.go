@@ -24,7 +24,7 @@ func TestGenerateGrant_CIBAGrant(t *testing.T) {
 
 	req := request{
 		grantType: goidc.GrantCIBA,
-		authReqID: session.CIBAAuthID,
+		authReqID: session.CIBAID,
 	}
 
 	// When.
@@ -104,7 +104,7 @@ func TestGenerateGrant_CIBAGrant_PropagatesUsername(t *testing.T) {
 
 	req := request{
 		grantType: goidc.GrantCIBA,
-		authReqID: session.CIBAAuthID,
+		authReqID: session.CIBAID,
 	}
 
 	// When.
@@ -136,7 +136,7 @@ func TestGenerateGrant_CIBAGrant_AuthPending(t *testing.T) {
 
 	req := request{
 		grantType: goidc.GrantCIBA,
-		authReqID: session.CIBAAuthID,
+		authReqID: session.CIBAID,
 	}
 
 	// When.
@@ -177,7 +177,7 @@ func TestGenerateGrant_CIBAGrant_InvalidAuthSession(t *testing.T) {
 
 	req := request{
 		grantType: goidc.GrantCIBA,
-		authReqID: session.CIBAAuthID,
+		authReqID: session.CIBAID,
 	}
 
 	// When.
@@ -226,7 +226,7 @@ func TestGenerateGrant_CIBAGrant_MTLSBinding(t *testing.T) {
 
 	req := request{
 		grantType: goidc.GrantCIBA,
-		authReqID: session.CIBAAuthID,
+		authReqID: session.CIBAID,
 	}
 
 	// When.
@@ -325,7 +325,7 @@ func setUpCIBAGrant(t testing.TB) (
 		AuthorizationParameters: goidc.AuthorizationParameters{
 			Scopes: goidc.ScopeOpenID.ID,
 		},
-		CIBAAuthID:         authReqID,
+		CIBAID:             authReqID,
 		Subject:            "user_id",
 		CreatedAtTimestamp: now,
 		ExpiresAtTimestamp: now + 60,

@@ -7,7 +7,6 @@ import (
 
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/vc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -101,7 +100,7 @@ func generatePreAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 		details = append(details, detail)
 	}
 
-	for _, scope := range strutil.SplitWithSpaces(req.scopes) {
+	for _, scope := range strings.Fields(req.scopes) {
 		isVCScope := false
 		for _, config := range issuer.Configurations {
 			if config.Scope.ID == scope {

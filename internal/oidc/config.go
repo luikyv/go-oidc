@@ -57,7 +57,7 @@ type Configuration struct {
 	// This will be published in the /.well-known/openid-configuration endpoint.
 	ClaimsParamIsEnabled          bool
 	RenderErrorFunc               goidc.RenderErrorFunc
-	NotifyErrorFunc               goidc.NotifyErrorFunc
+	HandleErrorFunc               goidc.HandleErrorFunc
 	AuthorizationCodeFunc         goidc.RandomFunc
 	AuthorizationCodeLifetimeSecs int
 	CallbackIDFunc                goidc.RandomFunc

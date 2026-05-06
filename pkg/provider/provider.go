@@ -182,11 +182,11 @@ func (op *Provider) AuthnSessionByAuthCode(ctx context.Context, authCode string)
 }
 
 func (op *Provider) AuthnSessionByPushedAuthReqID(ctx context.Context, id string) (*goidc.AuthnSession, error) {
-	return op.config.AuthnSessionManager.SessionByPushedAuthReqID(ctx, id)
+	return op.config.AuthnSessionManager.SessionByPARID(ctx, id)
 }
 
 func (op *Provider) AuthnSessionByCIBAAuthID(ctx context.Context, id string) (*goidc.AuthnSession, error) {
-	return op.config.AuthnSessionManager.SessionByCIBAAuthID(ctx, id)
+	return op.config.AuthnSessionManager.SessionByCIBAID(ctx, id)
 }
 
 func (op *Provider) DeleteAuthnSession(ctx context.Context, id string) error {

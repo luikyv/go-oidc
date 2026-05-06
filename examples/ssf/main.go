@@ -52,7 +52,7 @@ func main() {
 			stream.StatusReason = "stream has expired"
 			return nil
 		}),
-		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
+		provider.WithHandleErrorFunc(authutil.HandleError),
 		provider.WithSSFHTTPClientFunc(authutil.HTTPClient),
 	)
 

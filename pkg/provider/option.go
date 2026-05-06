@@ -981,11 +981,11 @@ func WithRenderErrorFunc(render goidc.RenderErrorFunc) Option {
 	}
 }
 
-// WithNotifyErrorFunc defines a handler to be executed when an error happens.
+// WithHandleErrorFunc defines a handler to be executed when an error happens.
 // For instance, this can be used to log information about the error.
-func WithNotifyErrorFunc(f goidc.NotifyErrorFunc) Option {
+func WithHandleErrorFunc(f goidc.HandleErrorFunc) Option {
 	return func(p *Provider) error {
-		p.config.NotifyErrorFunc = f
+		p.config.HandleErrorFunc = f
 		return nil
 	}
 }

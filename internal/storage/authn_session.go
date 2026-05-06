@@ -56,9 +56,9 @@ func (m *AuthnSessionManager) SessionByAuthCode(_ context.Context, authorization
 	return session, nil
 }
 
-func (m *AuthnSessionManager) SessionByPushedAuthReqID(_ context.Context, requestURI string) (*goidc.AuthnSession, error) {
+func (m *AuthnSessionManager) SessionByPARID(_ context.Context, requestURI string) (*goidc.AuthnSession, error) {
 	session, exists := m.firstSession(func(s *goidc.AuthnSession) bool {
-		return s.PushedAuthReqID == requestURI
+		return s.PARID == requestURI
 	})
 	if !exists {
 		return nil, goidc.ErrNotFound
@@ -67,9 +67,9 @@ func (m *AuthnSessionManager) SessionByPushedAuthReqID(_ context.Context, reques
 	return session, nil
 }
 
-func (m *AuthnSessionManager) SessionByCIBAAuthID(_ context.Context, id string) (*goidc.AuthnSession, error) {
+func (m *AuthnSessionManager) SessionByCIBAID(_ context.Context, id string) (*goidc.AuthnSession, error) {
 	session, exists := m.firstSession(func(s *goidc.AuthnSession) bool {
-		return s.CIBAAuthID == id
+		return s.CIBAID == id
 	})
 	if !exists {
 		return nil, goidc.ErrNotFound

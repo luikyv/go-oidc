@@ -9,7 +9,6 @@ import (
 	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -156,7 +155,7 @@ func validateScopes(ctx oidc.Context, req request, c *goidc.Client, granted stri
 		return nil
 	}
 
-	for _, s := range strutil.SplitWithSpaces(req.scopes) {
+	for _, s := range strings.Fields(req.scopes) {
 		scope, ok := ctx.Scope(s)
 		if !ok {
 			return goidc.WrapError(goidc.ErrorCodeInvalidScope, "invalid scope", fmt.Errorf("scope %s does not match any available scope", s))
@@ -166,7 +165,7 @@ func validateScopes(ctx oidc.Context, req request, c *goidc.Client, granted stri
 			return goidc.WrapError(goidc.ErrorCodeInvalidScope, "invalid scope", fmt.Errorf("scope %s is not allowed for the client", s))
 		}
 
-		if granted != "" && !slices.Contains(strutil.SplitWithSpaces(granted), s) {
+		if granted != "" && !slices.Contains(strings.Fields(granted), s) {
 			return goidc.WrapError(goidc.ErrorCodeInvalidScope, "invalid scope", fmt.Errorf("scope %s is not granted", s))
 		}
 	}

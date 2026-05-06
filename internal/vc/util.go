@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -73,7 +73,7 @@ func Resolve(ctx oidc.Context, req Request) (goidc.VCIssuer, []goidc.VCConfigura
 	}
 
 	if req.Scopes != "" {
-		for _, s := range strutil.SplitWithSpaces(req.Scopes) {
+		for _, s := range strings.Fields(req.Scopes) {
 			for _, iss := range ctx.VCIssuers {
 				for configID, config := range iss.Configurations {
 					if config.Scope.ID != "" && config.Scope.ID == s {

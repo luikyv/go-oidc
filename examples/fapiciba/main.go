@@ -37,7 +37,7 @@ func main() {
 		provider.WithIDTokenClaims(authutil.IDTokenClaimsFunc()),
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
-		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
+		provider.WithHandleErrorFunc(authutil.HandleError),
 		provider.WithCheckJTIFunc(authutil.CheckJTIFunc()),
 		provider.WithDCR(),
 		provider.WithDCRHandleClientFunc(authutil.DCRFunc),

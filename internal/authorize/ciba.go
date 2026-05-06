@@ -1,6 +1,7 @@
 package authorize
 
 import (
+	"errors"
 	"slices"
 	"time"
 
@@ -50,7 +51,7 @@ func initBackAuth(ctx oidc.Context, req request) (cibaResponse, error) {
 		return cibaResponse{}, err
 	}
 
-	as.CIBAAuthID = ctx.CIBAAuthReqID()
+	as.CIBAID = ctx.CIBAAuthReqID()
 	exp := ctx.CIBADefaultSessionLifetimeSecs
 	if as.RequestedExpiry != nil {
 		exp = *as.RequestedExpiry
@@ -83,7 +84,7 @@ func initBackAuth(ctx oidc.Context, req request) (cibaResponse, error) {
 	}
 
 	resp := cibaResponse{
-		AuthReqID: as.CIBAAuthID,
+		AuthReqID: as.CIBAID,
 		ExpiresIn: as.ExpiresAtTimestamp - timeutil.TimestampNow(),
 	}
 
@@ -154,7 +155,7 @@ func validateCIBAJARClaims(ctx oidc.Context, claims jwt.Claims, c *goidc.Client)
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "claim 'jti' is required in the request object")
 	}
 
-	if err := ctx.CheckJTI(claims.ID); err != nil {
+	if err := ctx.CheckJTI(claims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid jti claim", err)
 	}
 

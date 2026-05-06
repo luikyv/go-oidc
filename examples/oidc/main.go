@@ -47,7 +47,7 @@ func main() {
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithPolicies(authutil.Policy()),
-		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
+		provider.WithHandleErrorFunc(authutil.HandleError),
 		provider.WithRenderErrorFunc(authutil.RenderError()),
 		provider.WithDisplayValues(authutil.DisplayValues[0], authutil.DisplayValues...),
 		provider.WithSubIdentifierTypes(goidc.SubIdentifierPublic, goidc.SubIdentifierPairwise),

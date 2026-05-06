@@ -295,7 +295,7 @@ type ClientIDFunc func(context.Context) string
 // during the authorization request cannot be handled.
 type RenderErrorFunc func(http.ResponseWriter, *http.Request, error) error
 
-type NotifyErrorFunc func(context.Context, error)
+type HandleErrorFunc func(context.Context, error)
 
 type VerifyClientSecretFunc func(ctx context.Context, stored, presented string) error
 
