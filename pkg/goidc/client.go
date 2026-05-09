@@ -1,16 +1,5 @@
 package goidc
 
-import (
-	"context"
-)
-
-// ClientManager gathers all the logic needed to manage clients.
-type ClientManager interface {
-	Save(ctx context.Context, client *Client) error
-	Client(ctx context.Context, id string) (*Client, error)
-	Delete(ctx context.Context, id string) error
-}
-
 type Client struct {
 	ID     string `json:"id"`
 	Secret string `json:"secret,omitempty"`

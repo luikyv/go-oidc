@@ -611,7 +611,7 @@ func TestWithAuthorizationCodeGrant(t *testing.T) {
 	}
 
 	// When.
-	err := WithAuthorizationCodeGrant(nil, nil)(p)
+	err := WithAuthorizationCodeGrant()(p)
 
 	// Then.
 	if err != nil {
@@ -635,7 +635,7 @@ func TestWithRefreshTokenGrant(t *testing.T) {
 	}
 
 	// When.
-	err := WithRefreshTokenGrant(nil)(p)
+	err := WithRefreshTokenGrant()(p)
 
 	// Then.
 	if err != nil {
@@ -683,7 +683,7 @@ func TestWithCIBAGrant(t *testing.T) {
 	}
 
 	// When.
-	err := WithCIBAGrant(goidc.CIBAProfileOpenID, nil)(p)
+	err := WithCIBAGrant(goidc.CIBAProfileOpenID)(p)
 
 	// Then.
 	if err != nil {
@@ -871,7 +871,7 @@ func TestWithPAR(t *testing.T) {
 	}
 
 	// When.
-	err := WithPAR(nil)(p)
+	err := WithPAR()(p)
 
 	// Then.
 	if err != nil {
@@ -895,7 +895,7 @@ func TestWithPARRequired(t *testing.T) {
 	}
 
 	// When.
-	err := WithPARRequired(nil)(p)
+	err := WithPARRequired()(p)
 
 	// Then.
 	if err != nil {

@@ -6,16 +6,15 @@ import (
 	"github.com/luikyv/go-oidc/internal/timeutil"
 )
 
-// GrantManager contains all the logic needed to manage grants.
+// GrantManager stores grants.
 type GrantManager interface {
 	Save(context.Context, *Grant) error
 	Grant(context.Context, string) (*Grant, error)
 	Delete(context.Context, string) error
+	GrantByRefreshToken(context.Context, string) (*Grant, error)
+	DeleteByAuthCode(context.Context, string) error
+	DeleteByDeviceCode(context.Context, string) error
 }
-
-type GrantByRefreshTokenFunc func(context.Context, string) (*Grant, error)
-
-type DeleteGrantByAuthCodeFunc func(context.Context, string) error
 
 // Grant represents the granted access an entity (a user or the client
 // itself) gave to a client.
@@ -32,6 +31,7 @@ type Grant struct {
 	// PreAuthCode is the pre-authorized code used to generate this grant
 	// in case of pre-authorized code grant type.
 	PreAuthCode string `json:"pre_authorized_code,omitempty"`
+	DeviceCode  string `json:"device_code,omitempty"`
 
 	Type GrantType `json:"grant_type"`
 	// Subject is the ID of the user or client associated with the grant.

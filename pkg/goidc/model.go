@@ -10,6 +10,21 @@ import (
 	"strings"
 )
 
+// ClientManager stores clients.
+type ClientManager interface {
+	Save(context.Context, *Client) error
+	Client(context.Context, string) (*Client, error)
+	Delete(context.Context, string) error
+}
+
+// TokenManager stores access tokens.
+type TokenManager interface {
+	Save(context.Context, *Token) error
+	Token(context.Context, string) (*Token, error)
+	Delete(context.Context, string) error
+	DeleteByGrantID(context.Context, string) error
+}
+
 type JWKSFunc func(context.Context) (JSONWebKeySet, error)
 
 type Profile string
@@ -34,6 +49,7 @@ const (
 	GrantJWTBearer         GrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer" //nolint:gosec
 	GrantCIBA              GrantType = "urn:openid:params:grant-type:ciba"
 	GrantPreAuthorizedCode GrantType = "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+	GrantDeviceCode        GrantType = "urn:ietf:params:oauth:grant-type:device_code"
 )
 
 type ResponseType string
@@ -696,3 +712,5 @@ func NewLogoutPolicy(id string, setUpFunc SetUpLogoutFunc, logoutFunc LogoutFunc
 type RandomFunc func(context.Context) string
 
 type HandleClientFunc func(context.Context, *Client) error
+
+type DeviceAuthPromptUserCodeFunc func(http.ResponseWriter, *http.Request) error

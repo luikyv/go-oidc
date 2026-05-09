@@ -71,7 +71,7 @@ func initAuth(ctx oidc.Context, req request) error {
 				return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "request_uri is required")
 			}
 
-			session, err := ctx.AuthnSessionByRequestURI(req.RequestURI)
+			session, err := ctx.AuthnSessionByPARID(req.RequestURI)
 			if err != nil {
 				return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid request_uri")
 			}
@@ -219,7 +219,6 @@ func authenticate(ctx oidc.Context, as *goidc.AuthnSession) error {
 	case goidc.StatusSuccess:
 		return finishFlow(ctx, as)
 	case goidc.StatusInProgress:
-		// TODO: How to avoid saving if nothing changed?
 		return ctx.SaveAuthnSession(as)
 	default:
 		return finishFlowWithFailure(ctx, as, err)

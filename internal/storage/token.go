@@ -54,6 +54,8 @@ func (m *TokenManager) Delete(_ context.Context, id string) error {
 	return nil
 }
 
+var _ goidc.TokenManager = NewTokenManager(0)
+
 func (m *TokenManager) DeleteByGrantID(_ context.Context, grantID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -67,4 +69,3 @@ func (m *TokenManager) DeleteByGrantID(_ context.Context, grantID string) error 
 	return nil
 }
 
-var _ goidc.TokenManager = NewTokenManager(0)

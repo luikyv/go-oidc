@@ -2,9 +2,11 @@ package provider
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/subtle"
 	"errors"
 	"fmt"
+	"math/big"
 	"net/http"
 	"reflect"
 	"runtime"
@@ -20,6 +22,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/ssf"
 	"github.com/luikyv/go-oidc/internal/storage"
+	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/internal/userinfo"
@@ -108,48 +111,6 @@ func (op *Provider) validate() error {
 
 	if op.config.TokenBindingIsRequired && !op.config.DPoPIsEnabled && !op.config.MTLSTokenBindingIsEnabled {
 		return errors.New("either dpop or tls binding must be enabled if sender constraining tokens is required")
-	}
-
-	if slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
-		if op.config.AuthnSessionManager != nil && op.config.AuthnSessionByAuthCodeFunc == nil {
-			return fmt.Errorf("custom AuthnSessionManager provided but AuthnSessionByAuthCodeFunc is nil; provide both or neither via %s", funcName(WithAuthorizationCodeGrant))
-		}
-		if op.config.AuthnSessionManager == nil && op.config.AuthnSessionByAuthCodeFunc != nil {
-			return fmt.Errorf("custom AuthnSessionByAuthCodeFunc provided but no custom AuthnSessionManager; provide both or neither via %s", funcName(WithAuthorizationCodeGrant))
-		}
-		if op.config.GrantManager != nil && op.config.DeleteGrantByAuthCodeFunc == nil {
-			return fmt.Errorf("custom GrantManager provided but DeleteGrantByAuthCodeFunc is nil; provide both or neither via %s", funcName(WithAuthorizationCodeGrant))
-		}
-		if op.config.GrantManager == nil && op.config.DeleteGrantByAuthCodeFunc != nil {
-			return fmt.Errorf("custom DeleteGrantByAuthCodeFunc provided but no custom GrantManager; provide both or neither via %s", funcName(WithAuthorizationCodeGrant))
-		}
-	}
-
-	if op.config.PARIsEnabled {
-		if op.config.AuthnSessionManager != nil && op.config.AuthnSessionByPARIDFunc == nil {
-			return fmt.Errorf("custom AuthnSessionManager provided but AuthnSessionByPARIDFunc is nil; provide both or neither via %s", funcName(WithPAR))
-		}
-		if op.config.AuthnSessionManager == nil && op.config.AuthnSessionByPARIDFunc != nil {
-			return fmt.Errorf("custom AuthnSessionByPARIDFunc provided but no custom AuthnSessionManager; provide both or neither via %s", funcName(WithPAR))
-		}
-	}
-
-	if slices.Contains(op.config.GrantTypes, goidc.GrantCIBA) {
-		if op.config.AuthnSessionManager != nil && op.config.AuthnSessionByCIBAIDFunc == nil {
-			return fmt.Errorf("custom AuthnSessionManager provided but AuthnSessionByCIBAIDFunc is nil; provide both or neither via %s", funcName(WithCIBAGrant))
-		}
-		if op.config.AuthnSessionManager == nil && op.config.AuthnSessionByCIBAIDFunc != nil {
-			return fmt.Errorf("custom AuthnSessionByCIBAIDFunc provided but no custom AuthnSessionManager; provide both or neither via %s", funcName(WithCIBAGrant))
-		}
-	}
-
-	if slices.Contains(op.config.GrantTypes, goidc.GrantRefreshToken) {
-		if op.config.GrantManager != nil && op.config.GrantByRefreshTokenFunc == nil {
-			return fmt.Errorf("custom GrantManager provided but GrantByRefreshTokenFunc is nil; provide both or neither via %s", funcName(WithRefreshTokenGrant))
-		}
-		if op.config.GrantManager == nil && op.config.GrantByRefreshTokenFunc != nil {
-			return fmt.Errorf("custom GrantByRefreshTokenFunc provided but no custom GrantManager; provide both or neither via %s", funcName(WithRefreshTokenGrant))
-		}
 	}
 
 	return nil
@@ -247,15 +208,15 @@ func (op *Provider) AuthnSessionByCallbackID(ctx context.Context, callbackID str
 }
 
 func (op *Provider) AuthnSessionByAuthCode(ctx context.Context, authCode string) (*goidc.AuthnSession, error) {
-	return op.config.AuthnSessionByAuthCodeFunc(ctx, authCode)
+	return op.config.AuthnSessionManager.SessionByAuthCode(ctx, authCode)
 }
 
 func (op *Provider) AuthnSessionByPushedAuthReqID(ctx context.Context, id string) (*goidc.AuthnSession, error) {
-	return op.config.AuthnSessionByPARIDFunc(ctx, id)
+	return op.config.AuthnSessionManager.SessionByPARID(ctx, id)
 }
 
 func (op *Provider) AuthnSessionByCIBAAuthID(ctx context.Context, id string) (*goidc.AuthnSession, error) {
-	return op.config.AuthnSessionByCIBAIDFunc(ctx, id)
+	return op.config.AuthnSessionManager.SessionByCIBAID(ctx, id)
 }
 
 func (op *Provider) DeleteAuthnSession(ctx context.Context, id string) error {
@@ -267,7 +228,7 @@ func (op *Provider) SaveGrant(ctx context.Context, gs *goidc.Grant) error {
 }
 
 func (op *Provider) GrantByRefreshToken(ctx context.Context, id string) (*goidc.Grant, error) {
-	return op.config.GrantByRefreshTokenFunc(ctx, id)
+	return op.config.GrantManager.GrantByRefreshToken(ctx, id)
 }
 
 func (op *Provider) DeleteGrant(ctx context.Context, id string) error {
@@ -275,7 +236,7 @@ func (op *Provider) DeleteGrant(ctx context.Context, id string) error {
 }
 
 func (op *Provider) DeleteGrantByAuthCode(ctx context.Context, id string) error {
-	return op.config.DeleteGrantByAuthCodeFunc(ctx, id)
+	return op.config.GrantManager.DeleteByAuthCode(ctx, id)
 }
 
 func (op *Provider) SaveToken(ctx context.Context, t *goidc.Token) error {
@@ -370,9 +331,6 @@ func (op *Provider) PublishSSFVerificationEvent(ctx context.Context, streamID st
 }
 
 func (op *Provider) setDefaults() error {
-	sessionManager := storage.NewAuthnSessionManager(defaultStorageMaxSize)
-	grantManager := storage.NewGrantManager(defaultStorageMaxSize)
-
 	op.config.IDTokenDefaultSigAlg = nonZeroOrDefault(op.config.IDTokenDefaultSigAlg, defaultAsymmetricSigAlg)
 
 	op.config.IDTokenSigAlgs = nonZeroOrDefault(op.config.IDTokenSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})
@@ -381,9 +339,9 @@ func (op *Provider) setDefaults() error {
 
 	op.config.ClientManager = nonZeroOrDefault(op.config.ClientManager, goidc.ClientManager(storage.NewClientManager(defaultStorageMaxSize)))
 
-	op.config.AuthnSessionManager = nonZeroOrDefault(op.config.AuthnSessionManager, goidc.AuthnSessionManager(sessionManager))
+	op.config.AuthnSessionManager = nonZeroOrDefault(op.config.AuthnSessionManager, goidc.AuthnSessionManager(storage.NewAuthnSessionManager(defaultStorageMaxSize)))
 
-	op.config.GrantManager = nonZeroOrDefault(op.config.GrantManager, goidc.GrantManager(grantManager))
+	op.config.GrantManager = nonZeroOrDefault(op.config.GrantManager, goidc.GrantManager(storage.NewGrantManager(defaultStorageMaxSize)))
 
 	op.config.TokenManager = nonZeroOrDefault(op.config.TokenManager, goidc.TokenManager(storage.NewTokenManager(defaultStorageMaxSize)))
 
@@ -415,8 +373,6 @@ func (op *Provider) setDefaults() error {
 	op.config.JWTLifetimeSecs = nonZeroOrDefault(op.config.JWTLifetimeSecs, defaultJWTLifetimeSecs)
 
 	if slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
-		op.config.AuthnSessionByAuthCodeFunc = nonZeroOrDefault(op.config.AuthnSessionByAuthCodeFunc, sessionManager.SessionByAuthCode)
-		op.config.DeleteGrantByAuthCodeFunc = nonZeroOrDefault(op.config.DeleteGrantByAuthCodeFunc, grantManager.DeleteByAuthCode)
 		op.config.ResponseTypes = append(op.config.ResponseTypes, goidc.ResponseTypeCode)
 		op.config.AuthorizationCodeLifetimeSecs = nonZeroOrDefault(op.config.AuthorizationCodeLifetimeSecs, defaultAuthorizationCodeLifetimeSecs)
 	}
@@ -445,7 +401,6 @@ func (op *Provider) setDefaults() error {
 	}
 
 	if op.config.PARIsEnabled {
-		op.config.AuthnSessionByPARIDFunc = nonZeroOrDefault(op.config.AuthnSessionByPARIDFunc, sessionManager.SessionByPARID)
 		op.config.PAREndpoint = nonZeroOrDefault(op.config.PAREndpoint, defaultEndpointPushedAuthorizationRequest)
 		op.config.PARLifetimeSecs = nonZeroOrDefault(op.config.PARLifetimeSecs, defaultPARLifetimeSecs)
 	}
@@ -485,7 +440,6 @@ func (op *Provider) setDefaults() error {
 	}
 
 	if slices.Contains(op.config.GrantTypes, goidc.GrantCIBA) {
-		op.config.AuthnSessionByCIBAIDFunc = nonZeroOrDefault(op.config.AuthnSessionByCIBAIDFunc, sessionManager.SessionByCIBAID)
 		op.config.CIBAProfile = nonZeroOrDefault(op.config.CIBAProfile, goidc.CIBAProfileOpenID)
 		op.config.CIBATokenDeliveryModels = nonZeroOrDefault(op.config.CIBATokenDeliveryModels, []goidc.CIBATokenDeliveryMode{goidc.CIBADeliveryModePoll})
 		op.config.CIBAEndpoint = nonZeroOrDefault(op.config.CIBAEndpoint, defaultEndpointCIBA)
@@ -494,8 +448,16 @@ func (op *Provider) setDefaults() error {
 	}
 
 	if slices.Contains(op.config.GrantTypes, goidc.GrantRefreshToken) {
-		op.config.GrantByRefreshTokenFunc = nonZeroOrDefault(op.config.GrantByRefreshTokenFunc, grantManager.GrantByRefreshToken)
 		op.config.RefreshTokenLifetimeSecs = nonZeroOrDefault(op.config.RefreshTokenLifetimeSecs, defaultRefreshTokenLifetimeSecs)
+	}
+
+	if op.config.DeviceAuthIsEnabled {
+		op.config.DeviceAuthEndpoint = nonZeroOrDefault(op.config.DeviceAuthEndpoint, defaultEndpointDeviceAuthorization)
+		op.config.DeviceAuthDeviceEndpoint = nonZeroOrDefault(op.config.DeviceAuthDeviceEndpoint, defaultEndpointDevice)
+		op.config.DeviceAuthLifetimeSecs = nonZeroOrDefault(op.config.DeviceAuthLifetimeSecs, defaultDeviceAuthLifetimeSecs)
+		op.config.DeviceAuthPollingIntervalSecs = nonZeroOrDefault(op.config.DeviceAuthPollingIntervalSecs, defaultDeviceAuthPollingIntervalSecs)
+		op.config.DeviceAuthGenerateDeviceCodeFunc = nonZeroOrDefault(op.config.DeviceAuthGenerateDeviceCodeFunc, defaultGenerateDeviceCodeFunc())
+		op.config.DeviceAuthGenerateUserCodeFunc = nonZeroOrDefault(op.config.DeviceAuthGenerateUserCodeFunc, defaultGenerateUserCodeFunc())
 	}
 
 	if op.config.OpenIDFedIsEnabled {
@@ -652,8 +614,10 @@ const (
 	defaultLogoutSessionTimeoutSecs       = 1800 // 30 minutes.
 	defaultPARLifetimeSecs                = 60   // 1 minute.
 	defaultRefreshTokenLifetimeSecs       = 600
-	defaultCIBADefaultSessionLifetimeSecs = 60
-	defaultCIBAPollingIntervalSecs        = 5
+	defaultCIBADefaultSessionLifetimeSecs  = 60
+	defaultCIBAPollingIntervalSecs         = 5
+	defaultDeviceAuthLifetimeSecs          = 300 // 5 minutes.
+	defaultDeviceAuthPollingIntervalSecs   = 5
 	defaultAuthorizationCodeLifetimeSecs  = 60
 
 	defaultAsymmetricSigAlg            = goidc.RS256
@@ -682,6 +646,8 @@ const (
 	defaultEndpointSSFRemoveSubject             = "/ssf/subject:remove"
 	defaultEndpointSSFVerification              = "/ssf/verify"
 	defaultEndpointSSFPolling                   = "/ssf/poll"
+	defaultEndpointDeviceAuthorization          = "/device_authorization"
+	defaultEndpointDevice                       = "/device"
 )
 
 func defaultTokenOptionsFunc(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
@@ -700,6 +666,30 @@ func defaultCompareAuthDetailsFunc(_ context.Context, granted, request []goidc.A
 		return goidc.NewError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization details")
 	}
 	return nil
+}
+
+func defaultGenerateDeviceCodeFunc() goidc.RandomFunc {
+	return func(_ context.Context) string {
+		return strutil.Random(30)
+	}
+}
+
+func defaultGenerateUserCodeFunc() goidc.RandomFunc {
+	// [RFC 8628 §6.1].
+	charset := "BCDFGHJKLMNPQRSTVWXZ"
+	length := 8
+	return func(_ context.Context) string {
+		result := strings.Builder{}
+		charsetLength := big.NewInt(int64(length))
+		for range length {
+			n, err := rand.Int(rand.Reader, charsetLength)
+			if err != nil {
+				panic(err)
+			}
+			result.WriteByte(charset[n.Int64()])
+		}
+		return result.String()
+	}
 }
 
 func cacheControlMiddleware(next http.Handler) http.Handler {

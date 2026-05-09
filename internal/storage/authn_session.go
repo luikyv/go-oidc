@@ -78,6 +78,28 @@ func (m *AuthnSessionManager) SessionByCIBAID(_ context.Context, id string) (*go
 	return session, nil
 }
 
+func (m *AuthnSessionManager) SessionByDeviceCode(_ context.Context, code string) (*goidc.AuthnSession, error) {
+	session, exists := m.firstSession(func(s *goidc.AuthnSession) bool {
+		return s.DeviceCode == code
+	})
+	if !exists {
+		return nil, goidc.ErrNotFound
+	}
+
+	return session, nil
+}
+
+func (m *AuthnSessionManager) SessionByUserCode(_ context.Context, code string) (*goidc.AuthnSession, error) {
+	session, exists := m.firstSession(func(s *goidc.AuthnSession) bool {
+		return s.UserCode == code
+	})
+	if !exists {
+		return nil, goidc.ErrNotFound
+	}
+
+	return session, nil
+}
+
 func (m *AuthnSessionManager) Delete(_ context.Context, id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -85,6 +107,8 @@ func (m *AuthnSessionManager) Delete(_ context.Context, id string) error {
 	delete(m.Sessions, id)
 	return nil
 }
+
+var _ goidc.AuthnSessionManager = NewAuthnSessionManager(0)
 
 func (m *AuthnSessionManager) firstSession(condition func(*goidc.AuthnSession) bool) (*goidc.AuthnSession, bool) {
 	m.mu.RLock()
@@ -99,4 +123,3 @@ func (m *AuthnSessionManager) firstSession(condition func(*goidc.AuthnSession) b
 	return findFirst(sessions, condition)
 }
 
-var _ goidc.AuthnSessionManager = NewAuthnSessionManager(0)

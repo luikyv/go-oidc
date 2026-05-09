@@ -19,7 +19,7 @@ import (
 //   - "ping": A ping notification is sent to the client.
 //   - "push": The token response is sent directly to the client's notification endpoint.
 func NotifyCIBAGrant(ctx oidc.Context, authReqID string) error {
-	as, err := ctx.AuthnSessionByAuthReqID(authReqID)
+	as, err := ctx.AuthnSessionByCIBAID(authReqID)
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func NotifyCIBAGrant(ctx oidc.Context, authReqID string) error {
 //   - "push": The token failure response is sent directly to the client's
 //     notification endpoint.
 func NotifyCIBAGrantFailure(ctx oidc.Context, authReqID string, goidcErr goidc.Error) error {
-	session, err := ctx.AuthnSessionByAuthReqID(authReqID)
+	session, err := ctx.AuthnSessionByCIBAID(authReqID)
 	if err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func generateCIBAGrant(ctx oidc.Context, req request) (response, error) {
 	if req.authReqID == "" {
 		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "auth_req_id is required")
 	}
-	as, err := ctx.AuthnSessionByAuthReqID(req.authReqID)
+	as, err := ctx.AuthnSessionByCIBAID(req.authReqID)
 	if err != nil {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid auth_req_id", err)
 	}

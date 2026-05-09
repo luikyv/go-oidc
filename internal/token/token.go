@@ -313,6 +313,8 @@ func generateGrant(ctx oidc.Context, req request) (tokenResp response, err error
 		return generateCIBAGrant(ctx, req)
 	case goidc.GrantPreAuthorizedCode:
 		return generatePreAuthCodeGrant(ctx, req)
+	case goidc.GrantDeviceCode:
+		return generateDeviceCodeGrant(ctx, req)
 	default:
 		return response{}, goidc.NewError(goidc.ErrorCodeUnsupportedGrantType, "unsupported grant type")
 	}

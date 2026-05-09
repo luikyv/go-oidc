@@ -6,16 +6,6 @@ import (
 	"github.com/luikyv/go-oidc/internal/timeutil"
 )
 
-// TokenManager contains all the logic needed to manage access tokens.
-type TokenManager interface {
-	Save(context.Context, *Token) error
-	Token(context.Context, string) (*Token, error)
-	Delete(context.Context, string) error
-	// DeleteByGrantID deletes all tokens associated with the given grant
-	// session ID. This is used for cascade revocation when a grant is revoked.
-	DeleteByGrantID(context.Context, string) error
-}
-
 // Token represents an access token issued under a grant session.
 // Each token has its own lifecycle and active fields snapshotted at issuance.
 type Token struct {

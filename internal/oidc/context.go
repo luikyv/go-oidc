@@ -331,6 +331,30 @@ func (ctx Context) PARID() string {
 	return ctx.PARIDFunc(ctx)
 }
 
+func (ctx Context) DeviceCode() string {
+	if ctx.DeviceAuthGenerateDeviceCodeFunc == nil {
+		panic("DeviceAuthGenerateDeviceCodeFunc cannot be nil")
+	}
+
+	return ctx.DeviceAuthGenerateDeviceCodeFunc(ctx)
+}
+
+func (ctx Context) DeviceUserCode() string {
+	if ctx.DeviceAuthGenerateUserCodeFunc == nil {
+		panic("DeviceAuthGenerateUserCodeFunc cannot be nil")
+	}
+
+	return ctx.DeviceAuthGenerateUserCodeFunc(ctx)
+}
+
+func (ctx Context) DeviceAuthPromptUserCode() error {
+	if ctx.DeviceAuthPromptUserCodeFunc == nil {
+		panic("DeviceAuthPromptUserCodeFunc cannot be nil")
+	}
+
+	return ctx.DeviceAuthPromptUserCodeFunc(ctx.Response, ctx.Request)
+}
+
 func (ctx Context) OpaqueToken() string {
 	return strutil.Random(50)
 }
@@ -373,7 +397,7 @@ func (ctx Context) DeleteTokensByGrantID(grantID string) error {
 }
 
 func (ctx Context) GrantByRefreshToken(id string) (*goidc.Grant, error) {
-	return ctx.GrantByRefreshTokenFunc(ctx, id)
+	return ctx.GrantManager.GrantByRefreshToken(ctx, id)
 }
 
 func (ctx Context) DeleteGrant(id string) error {
@@ -381,25 +405,14 @@ func (ctx Context) DeleteGrant(id string) error {
 }
 
 func (ctx Context) DeleteGrantByAuthorizationCode(code string) error {
-	return ctx.DeleteGrantByAuthCodeFunc(ctx, code)
+	return ctx.GrantManager.DeleteByAuthCode(ctx, code)
+}
+
+func (ctx Context) DeleteGrantSessionByDeviceCode(code string) error {
+	return ctx.GrantManager.DeleteByDeviceCode(ctx, code)
 }
 
 func (ctx Context) SaveAuthnSession(session *goidc.AuthnSession) error {
-	numberOfIndexes := 0
-	if session.CallbackID != "" || session.PARID != "" {
-		numberOfIndexes++
-	}
-	if session.AuthCode != "" {
-		numberOfIndexes++
-	}
-	if session.CIBAID != "" {
-		numberOfIndexes++
-	}
-
-	if numberOfIndexes != 1 {
-		return errors.New("invalid authn session indexing")
-	}
-
 	return ctx.AuthnSessionManager.Save(ctx, session)
 }
 
@@ -408,15 +421,23 @@ func (ctx Context) AuthnSessionByCallbackID(id string) (*goidc.AuthnSession, err
 }
 
 func (ctx Context) AuthnSessionByAuthCode(code string) (*goidc.AuthnSession, error) {
-	return ctx.AuthnSessionByAuthCodeFunc(ctx, code)
+	return ctx.AuthnSessionManager.SessionByAuthCode(ctx, code)
 }
 
-func (ctx Context) AuthnSessionByRequestURI(uri string) (*goidc.AuthnSession, error) {
-	return ctx.AuthnSessionByPARIDFunc(ctx, uri)
+func (ctx Context) AuthnSessionByPARID(uri string) (*goidc.AuthnSession, error) {
+	return ctx.AuthnSessionManager.SessionByPARID(ctx, uri)
 }
 
-func (ctx Context) AuthnSessionByAuthReqID(id string) (*goidc.AuthnSession, error) {
-	return ctx.AuthnSessionByCIBAIDFunc(ctx, id)
+func (ctx Context) AuthnSessionByCIBAID(id string) (*goidc.AuthnSession, error) {
+	return ctx.AuthnSessionManager.SessionByCIBAID(ctx, id)
+}
+
+func (ctx Context) AuthnSessionByDeviceCode(code string) (*goidc.AuthnSession, error) {
+	return ctx.AuthnSessionManager.SessionByDeviceCode(ctx, code)
+}
+
+func (ctx Context) AuthnSessionByUserCode(code string) (*goidc.AuthnSession, error) {
+	return ctx.AuthnSessionManager.SessionByUserCode(ctx, code)
 }
 
 func (ctx Context) DeleteAuthnSession(id string) error {
@@ -608,6 +629,7 @@ func (ctx Context) HandleToken(tkn *goidc.Token, grant *goidc.Grant) error {
 func (ctx Context) GrantByID(id string) (*goidc.Grant, error) {
 	return ctx.GrantManager.Grant(ctx, id)
 }
+
 
 func (ctx Context) IDTokenClaims(grant *goidc.Grant) map[string]any {
 	if ctx.IDTokenClaimsFunc == nil {

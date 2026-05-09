@@ -52,6 +52,8 @@ func (m *ClientManager) Client(_ context.Context, id string) (*goidc.Client, err
 	return c, nil
 }
 
+var _ goidc.ClientManager = NewClientManager(0)
+
 func (m *ClientManager) Delete(_ context.Context, id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -60,4 +62,3 @@ func (m *ClientManager) Delete(_ context.Context, id string) error {
 	return nil
 }
 
-var _ goidc.ClientManager = NewClientManager(0)

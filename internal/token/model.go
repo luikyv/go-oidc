@@ -11,8 +11,6 @@ import (
 )
 
 type GrantOptions struct {
-	AuthCode             string
-	PreAuthCode          string
 	Type                 goidc.GrantType
 	Subject              string
 	Username             string
@@ -21,6 +19,9 @@ type GrantOptions struct {
 	AuthDetails          []goidc.AuthDetail
 	Resources            goidc.Resources
 	Nonce                string
+	AuthCode             string
+	PreAuthCode          string
+	DeviceCode           string
 	JWKThumbprint        string
 	ClientCertThumbprint string
 	Store                map[string]any
@@ -31,6 +32,7 @@ func NewGrant(ctx oidc.Context, c *goidc.Client, opts GrantOptions) (*goidc.Gran
 		ID:                 ctx.GrantID(),
 		AuthCode:           opts.AuthCode,
 		PreAuthCode:        opts.PreAuthCode,
+		DeviceCode:         opts.DeviceCode,
 		Type:               opts.Type,
 		Subject:            opts.Subject,
 		Username:           opts.Username,
@@ -87,6 +89,7 @@ type request struct {
 	authReqID    string
 	preAuthCode  string
 	txCode       string
+	deviceCode   string
 }
 
 func newRequest(r *http.Request) request {
@@ -102,6 +105,7 @@ func newRequest(r *http.Request) request {
 		authReqID:    r.PostFormValue("auth_req_id"),
 		preAuthCode:  r.PostFormValue("pre-authorized_code"),
 		txCode:       r.PostFormValue("tx_code"),
+		deviceCode:   r.PostFormValue("device_code"),
 	}
 
 	if authDetails := r.PostFormValue("authorization_details"); authDetails != "" {

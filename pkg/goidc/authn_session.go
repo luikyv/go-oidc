@@ -6,19 +6,17 @@ import (
 	"github.com/luikyv/go-oidc/internal/timeutil"
 )
 
-// AuthnSessionManager contains all the logic needed to manage authentication
-// sessions.
+// AuthnSessionManager stores authentication sessions.
 type AuthnSessionManager interface {
-	Save(ctx context.Context, session *AuthnSession) error
-	SessionByCallbackID(ctx context.Context, callbackID string) (*AuthnSession, error)
-	Delete(ctx context.Context, id string) error
+	Save(context.Context, *AuthnSession) error
+	SessionByCallbackID(context.Context, string) (*AuthnSession, error)
+	SessionByAuthCode(context.Context, string) (*AuthnSession, error)
+	SessionByPARID(context.Context, string) (*AuthnSession, error)
+	SessionByCIBAID(context.Context, string) (*AuthnSession, error)
+	SessionByDeviceCode(context.Context, string) (*AuthnSession, error)
+	SessionByUserCode(context.Context, string) (*AuthnSession, error)
+	Delete(context.Context, string) error
 }
-
-type AuthnSessionByAuthCodeFunc func(context.Context, string) (*AuthnSession, error)
-
-type AuthnSessionByPARIDFunc func(context.Context, string) (*AuthnSession, error)
-
-type AuthnSessionByCIBAIDFunc func(context.Context, string) (*AuthnSession, error)
 
 // AuthnSession is a short lived session that holds information about
 // authorization requests.
@@ -46,6 +44,8 @@ type AuthnSession struct {
 	CallbackID string `json:"callback_id,omitempty"`
 	CIBAID     string `json:"ciba_id,omitempty"`
 	AuthCode   string `json:"auth_code,omitempty"`
+	DeviceCode string `json:"device_code,omitempty"`
+	UserCode   string `json:"user_code,omitempty"`
 	// PolicyID is the id of the autentication policy used to authenticate
 	// the user.
 	PolicyID string `json:"policy_id,omitempty"`

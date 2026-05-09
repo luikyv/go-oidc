@@ -76,6 +76,20 @@ func (m *GrantManager) DeleteByAuthCode(ctx context.Context, code string) error 
 	return m.Delete(ctx, grant.ID)
 }
 
+func (m *GrantManager) DeleteByDeviceCode(ctx context.Context, code string) error {
+	grantSession, exists := m.firstSession(func(t *goidc.Grant) bool {
+		return t.DeviceCode == code
+	})
+
+	if !exists {
+		return nil
+	}
+
+	return m.Delete(ctx, grantSession.ID)
+}
+
+var _ goidc.GrantManager = NewGrantManager(0)
+
 func (m *GrantManager) firstSession(condition func(*goidc.Grant) bool) (*goidc.Grant, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -89,4 +103,3 @@ func (m *GrantManager) firstSession(condition func(*goidc.Grant) bool) (*goidc.G
 	return findFirst(grants, condition)
 }
 
-var _ goidc.GrantManager = NewGrantManager(0)

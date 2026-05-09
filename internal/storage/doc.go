@@ -1,7 +1,7 @@
-// Package storage provides the default implementations of the storage
-// interfaces [goidc.ClientManager], [goidc.AuthnSessionManager] and
-// [goidc.GrantSessionManager].
+// Package storage provides the default in-memory implementation of the storage
+// interfaces defined in [goidc], including [goidc.Manager], [goidc.AuthCodeManager],
+// [goidc.RefreshTokenManager], [goidc.PARManager], [goidc.CIBAManager], and
+// [goidc.DeviceGrantManager].
 //
-// The implementations store entities in memory so when the server restarts all
-// of them are lost.
+// All entities are stored in memory, so they are lost when the server restarts.
 package storage
