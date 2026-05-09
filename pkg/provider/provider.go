@@ -614,10 +614,10 @@ const (
 	defaultLogoutSessionTimeoutSecs       = 1800 // 30 minutes.
 	defaultPARLifetimeSecs                = 60   // 1 minute.
 	defaultRefreshTokenLifetimeSecs       = 600
-	defaultCIBADefaultSessionLifetimeSecs  = 60
-	defaultCIBAPollingIntervalSecs         = 5
-	defaultDeviceAuthLifetimeSecs          = 300 // 5 minutes.
-	defaultDeviceAuthPollingIntervalSecs   = 5
+	defaultCIBADefaultSessionLifetimeSecs = 60
+	defaultCIBAPollingIntervalSecs        = 5
+	defaultDeviceAuthLifetimeSecs         = 300 // 5 minutes.
+	defaultDeviceAuthPollingIntervalSecs  = 5
 	defaultAuthorizationCodeLifetimeSecs  = 60
 
 	defaultAsymmetricSigAlg            = goidc.RS256

@@ -75,8 +75,7 @@ func startDeviceAuth(ctx oidc.Context, userCode string) error {
 	as, err := ctx.AuthnSessionByUserCode(userCode)
 	if err != nil {
 		if errors.Is(err, goidc.ErrNotFound) {
-			// TODO: This should ask for the user code again.
-			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not load the session", err)
+			return ctx.DeviceAuthPromptUserCode()
 		}
 		return goidc.WrapError(goidc.ErrorCodeInternalError, "could not load the session", err)
 	}

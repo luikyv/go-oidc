@@ -6,7 +6,6 @@ import (
 	"github.com/luikyv/go-oidc/internal/timeutil"
 )
 
-// GrantManager stores grants.
 type GrantManager interface {
 	Save(context.Context, *Grant) error
 	Grant(context.Context, string) (*Grant, error)
@@ -16,8 +15,7 @@ type GrantManager interface {
 	DeleteByDeviceCode(context.Context, string) error
 }
 
-// Grant represents the granted access an entity (a user or the client
-// itself) gave to a client.
+// Grant represents the granted access an entity (a user or the client itself) gave to a client.
 type Grant struct {
 	ID string `json:"id"`
 	// RefreshToken, if present, is the plain text refresh token issued for this grant.
