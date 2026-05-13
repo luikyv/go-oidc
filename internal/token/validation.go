@@ -173,12 +173,12 @@ func validateScopes(ctx oidc.Context, req request, c *goidc.Client, granted stri
 	return nil
 }
 
-func validatePKCE(ctx oidc.Context, req request, _ *goidc.Client, as *goidc.AuthnSession) error {
+func validatePKCE(ctx oidc.Context, req request, grant *goidc.Grant) error {
 	if !ctx.PKCEIsEnabled {
 		return nil
 	}
 
-	if as.CodeChallenge == "" {
+	if grant.AuthParams.CodeChallenge == "" {
 		// [RFC 9700] a token request containing a code_verifier parameter is
 		// accepted only if a code_challenge parameter was present in the authorization request.
 		if req.codeVerifier != "" {
@@ -194,11 +194,11 @@ func validatePKCE(ctx oidc.Context, req request, _ *goidc.Client, as *goidc.Auth
 	}
 
 	method := ctx.PKCEDefaultChallengeMethod
-	if as.CodeChallengeMethod != "" && slices.Contains(ctx.PKCEChallengeMethods, as.CodeChallengeMethod) {
-		method = as.CodeChallengeMethod
+	if grant.AuthParams.CodeChallengeMethod != "" && slices.Contains(ctx.PKCEChallengeMethods, grant.AuthParams.CodeChallengeMethod) {
+		method = grant.AuthParams.CodeChallengeMethod
 	}
 
-	switch verifier, challenge := req.codeVerifier, as.CodeChallenge; method {
+	switch verifier, challenge := req.codeVerifier, grant.AuthParams.CodeChallenge; method {
 	case goidc.CodeChallengeMethodPlain:
 		if verifier != challenge {
 			return goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid code_verifier")

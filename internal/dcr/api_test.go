@@ -76,9 +76,7 @@ func TestHandleGet(t *testing.T) {
 	c, _ := oidctest.NewClient(t)
 	c.RegistrationToken = regToken
 	ctx := oidctest.NewContext(t)
-	if err := ctx.SaveClient(c); err != nil {
-		t.Fatal(err)
-	}
+	ctx.StaticClients = append(ctx.StaticClients, c)
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/register/"+c.ID, nil)
@@ -128,9 +126,7 @@ func TestHandleUpdate(t *testing.T) {
 	c, _ := oidctest.NewClient(t)
 	c.RegistrationToken = regToken
 	ctx := oidctest.NewContext(t)
-	if err := ctx.SaveClient(c); err != nil {
-		t.Fatal(err)
-	}
+	ctx.StaticClients = append(ctx.StaticClients, c)
 
 	c.Name = "Updated Name"
 	body, err := json.Marshal(c.ClientMeta)
@@ -199,9 +195,7 @@ func TestHandleDelete(t *testing.T) {
 	c, _ := oidctest.NewClient(t)
 	c.RegistrationToken = regToken
 	ctx := oidctest.NewContext(t)
-	if err := ctx.SaveClient(c); err != nil {
-		t.Fatal(err)
-	}
+	ctx.StaticClients = append(ctx.StaticClients, c)
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodDelete, "/register/"+c.ID, nil)

@@ -51,7 +51,6 @@ func TestAuthenticated_NoneAuthn(t *testing.T) {
 
 	// Given.
 	ctx := oidctest.NewContext(t)
-
 	c := &goidc.Client{
 		ID: "random_client_id",
 		ClientMeta: goidc.ClientMeta{
@@ -59,7 +58,7 @@ func TestAuthenticated_NoneAuthn(t *testing.T) {
 		},
 	}
 	ctx.Request.PostForm = map[string][]string{"client_id": {c.ID}}
-	_ = ctx.SaveClient(c)
+	ctx.StaticClients = append(ctx.StaticClients, c)
 
 	// When.
 	_, err := client.Authenticated(ctx, client.AuthnContextToken)
@@ -600,7 +599,7 @@ func TestAuthenticated_DifferentClientIDs(t *testing.T) {
 	}
 
 	ctx := oidctest.NewContext(t)
-	_ = ctx.SaveClient(c)
+	ctx.StaticClients = append(ctx.StaticClients, c)
 	ctx.TokenAuthnPrivateKeyJWTSigAlgs = []goidc.SignatureAlgorithm{goidc.PS256}
 
 	ctx.Request.PostForm = map[string][]string{
@@ -728,9 +727,7 @@ func setUpSecretAuthn(t *testing.T, secretAuthnMethod goidc.AuthnMethod) (oidc.C
 		},
 		Secret: "password",
 	}
-	if err := ctx.SaveClient(c); err != nil {
-		t.Fatalf("error setting up secret authn: %v", err)
-	}
+	ctx.StaticClients = append(ctx.StaticClients, c)
 
 	return ctx, c
 }
@@ -752,16 +749,14 @@ func setUpPrivateKeyJWTAuthn(t *testing.T) (ctx oidc.Context, c *goidc.Client, j
 			},
 		},
 	}
-	if err := ctx.SaveClient(c); err != nil {
-		t.Fatalf("error setting up private key jwt authn: %v", err)
-	}
+	ctx.StaticClients = append(ctx.StaticClients, c)
 
 	return ctx, c, jwk
 }
 
 func setUpClientSecretJWTAuthn(t *testing.T) (
 	ctx oidc.Context,
-	client *goidc.Client,
+	c *goidc.Client,
 	secret string,
 ) {
 	t.Helper()
@@ -771,23 +766,21 @@ func setUpClientSecretJWTAuthn(t *testing.T) (
 	ctx.JWTLifetimeSecs = 60
 
 	secret = "random_password12345678910111213"
-	client = &goidc.Client{
+	c = &goidc.Client{
 		ID:     "random_client_id",
 		Secret: secret,
 		ClientMeta: goidc.ClientMeta{
 			TokenAuthnMethod: goidc.AuthnMethodSecretJWT,
 		},
 	}
-	if err := ctx.SaveClient(client); err != nil {
-		t.Fatalf("error setting up secret jwt authn: %v", err)
-	}
+	ctx.StaticClients = append(ctx.StaticClients, c)
 
-	return ctx, client, secret
+	return ctx, c, secret
 }
 
 func setUpTLSAuthn(t *testing.T) (
 	ctx oidc.Context,
-	client *goidc.Client,
+	c *goidc.Client,
 ) {
 	t.Helper()
 
@@ -801,17 +794,15 @@ func setUpTLSAuthn(t *testing.T) (
 		}, nil
 	}
 
-	client = &goidc.Client{
+	c = &goidc.Client{
 		ID: "random_client_id",
 		ClientMeta: goidc.ClientMeta{
 			TokenAuthnMethod: goidc.AuthnMethodTLS,
 		},
 	}
-	if err := ctx.SaveClient(client); err != nil {
-		t.Fatalf("error setting up tls authn: %v", err)
-	}
+	ctx.StaticClients = append(ctx.StaticClients, c)
 
-	return ctx, client
+	return ctx, c
 }
 
 func TestAuthenticated_SecretPost_CustomVerifier_Success(t *testing.T) {
@@ -828,9 +819,7 @@ func TestAuthenticated_SecretPost_CustomVerifier_Success(t *testing.T) {
 		},
 		Secret: hashedAtRest,
 	}
-	if err := ctx.SaveClient(c); err != nil {
-		t.Fatalf("error saving client: %v", err)
-	}
+	ctx.StaticClients = append(ctx.StaticClients, c)
 
 	var called bool
 	ctx.VerifyClientSecretFunc = func(_ context.Context, stored, presented string) error {
@@ -873,9 +862,7 @@ func TestAuthenticated_SecretPost_CustomVerifier_Failure(t *testing.T) {
 		},
 		Secret: "stored",
 	}
-	if err := ctx.SaveClient(c); err != nil {
-		t.Fatalf("error saving client: %v", err)
-	}
+	ctx.StaticClients = append(ctx.StaticClients, c)
 
 	verifierErr := errors.New("mismatch")
 	ctx.VerifyClientSecretFunc = func(_ context.Context, _, _ string) error {
@@ -922,9 +909,7 @@ func TestAuthenticated_SecretBasic_CustomVerifier_Success(t *testing.T) {
 		},
 		Secret: "stored",
 	}
-	if err := ctx.SaveClient(c); err != nil {
-		t.Fatalf("error saving client: %v", err)
-	}
+	ctx.StaticClients = append(ctx.StaticClients, c)
 
 	var called bool
 	ctx.VerifyClientSecretFunc = func(_ context.Context, _, _ string) error {

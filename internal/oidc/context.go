@@ -56,6 +56,22 @@ func (ctx Context) Scope(s string) (goidc.Scope, bool) {
 	return goidc.Scope{}, false
 }
 
+func (ctx Context) AuthSaveSession(as *goidc.AuthnSession) error {
+	return ctx.AuthManager.SaveSession(ctx, as)
+}
+
+func (ctx Context) AuthSession(id string) (*goidc.AuthnSession, error) {
+	return ctx.AuthManager.Session(ctx, id)
+}
+
+func (ctx Context) AuthDeleteSession(id string) error {
+	return ctx.AuthManager.DeleteSession(ctx, id)
+}
+
+func (ctx Context) GrantByAuthCode(code string) (*goidc.Grant, error) {
+	return ctx.AuthManager.GrantByAuthCode(ctx, code)
+}
+
 func (ctx Context) TokenAuthnSigAlgs() []goidc.SignatureAlgorithm {
 	var sigAlgs []goidc.SignatureAlgorithm
 
@@ -87,12 +103,23 @@ func (ctx Context) TokenRevocationIsClientAllowed(c *goidc.Client) bool {
 }
 
 func (ctx Context) ClientCert() (*x509.Certificate, error) {
-
 	if ctx.ClientCertFunc == nil {
 		return nil, errors.New("the client certificate function was not defined")
 	}
 
 	return ctx.ClientCertFunc(ctx)
+}
+
+func (ctx Context) DCRSaveClient(client *goidc.Client) error {
+	return ctx.DCRManager.SaveClient(ctx, client)
+}
+
+func (ctx Context) DCRClient(id string) (*goidc.Client, error) {
+	return ctx.DCRManager.Client(ctx, id)
+}
+
+func (ctx Context) DCRDeleteClient(id string) error {
+	return ctx.DCRManager.DeleteClient(ctx, id)
 }
 
 func (ctx Context) ValidateInitalAccessToken(token string) error {
@@ -178,7 +205,11 @@ func (ctx Context) Policy(id string) goidc.AuthnPolicy {
 			return policy
 		}
 	}
-	return goidc.AuthnPolicy{}
+	return goidc.AuthnPolicy{
+		Authenticate: func(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession, c *goidc.Client) (goidc.Status, error) {
+			return goidc.StatusFailure, goidc.ErrNotFound
+		},
+	}
 }
 
 func (ctx Context) LogoutPolicy(id string) goidc.LogoutPolicy {
@@ -190,9 +221,9 @@ func (ctx Context) LogoutPolicy(id string) goidc.LogoutPolicy {
 	return goidc.LogoutPolicy{}
 }
 
-func (ctx Context) AvailablePolicy(c *goidc.Client, as *goidc.AuthnSession) (policy goidc.AuthnPolicy, ok bool) {
+func (ctx Context) AvailablePolicy(as *goidc.AuthnSession, c *goidc.Client) (policy goidc.AuthnPolicy, ok bool) {
 	for _, policy = range ctx.Policies {
-		if ok = policy.SetUp(ctx.Request, c, as); ok {
+		if ok = policy.SetUp(ctx.Request, as, c); ok {
 			return policy, true
 		}
 	}
@@ -224,11 +255,35 @@ func (ctx Context) RARCompareAuthDetails(requested, granted []goidc.AuthDetail) 
 	return ctx.RARCompareDetailsFunc(ctx, requested, granted)
 }
 
+func (ctx Context) CIBASaveSession(session *goidc.AuthnSession) error {
+	return ctx.CIBAManager.SaveSession(ctx, session)
+}
+
+func (ctx Context) CIBASession(id string) (*goidc.AuthnSession, error) {
+	return ctx.CIBAManager.Session(ctx, id)
+}
+
+func (ctx Context) CIBADeleteSession(id string) error {
+	return ctx.CIBAManager.DeleteSession(ctx, id)
+}
+
+func (ctx Context) GrantByAuthReqID(id string) (*goidc.Grant, error) {
+	return ctx.CIBAManager.GrantByAuthReqID(ctx, id)
+}
+
 func (ctx Context) CIBAHandleSession(as *goidc.AuthnSession, c *goidc.Client) error {
 	if ctx.CIBAHandleSessionFunc == nil {
 		return errors.New("ciba init back auth function is not set")
 	}
 	return ctx.CIBAHandleSessionFunc(ctx, as, c)
+}
+
+func (ctx Context) OpenIDFedSaveClient(client *goidc.Client) error {
+	return ctx.OpenIDFedManager.SaveClient(ctx, client)
+}
+
+func (ctx Context) OpenIDFedClient(id string) (*goidc.Client, error) {
+	return ctx.OpenIDFedManager.Client(ctx, id)
 }
 
 func (ctx Context) OpenIDFedRequiredTrustMarks(client *goidc.Client) []goidc.TrustMark {
@@ -299,43 +354,31 @@ func (ctx Context) JWTID() string {
 	return ctx.JWTIDFunc(ctx)
 }
 
-func (ctx Context) AuthorizationCode() string {
-	if ctx.AuthorizationCodeFunc == nil {
-		return strutil.Random(30)
-	}
-
-	return ctx.AuthorizationCodeFunc(ctx)
+func (ctx Context) AuthCode() string {
+	return ctx.AuthCodeFunc(ctx)
 }
 
-func (ctx Context) CallbackID() string {
-	if ctx.CallbackIDFunc == nil {
-		return strutil.Random(30)
-	}
-
-	return ctx.CallbackIDFunc(ctx)
+func (ctx Context) DeviceSaveSession(as *goidc.AuthnSession) error {
+	return ctx.DeviceAuthManager.SaveSession(ctx, as)
 }
 
-func (ctx Context) CIBAAuthReqID() string {
-	if ctx.CIBAAuthReqIDFunc == nil {
-		return strutil.Random(50)
-	}
-
-	return ctx.CIBAAuthReqIDFunc(ctx)
+func (ctx Context) DeviceSession(id string) (*goidc.AuthnSession, error) {
+	return ctx.DeviceAuthManager.Session(ctx, id)
 }
 
-func (ctx Context) PARID() string {
-	if ctx.PARIDFunc == nil {
-		return strutil.Random(30)
-	}
+func (ctx Context) DeviceSessionByUserCode(code string) (*goidc.AuthnSession, error) {
+	return ctx.DeviceAuthManager.SessionByUserCode(ctx, code)
+}
 
-	return ctx.PARIDFunc(ctx)
+func (ctx Context) DeviceDeleteSession(id string) error {
+	return ctx.DeviceAuthManager.DeleteSession(ctx, id)
+}
+
+func (ctx Context) GrantByDeviceCode(code string) (*goidc.Grant, error) {
+	return ctx.DeviceAuthManager.GrantByDeviceCode(ctx, code)
 }
 
 func (ctx Context) DeviceCode() string {
-	if ctx.DeviceAuthGenerateDeviceCodeFunc == nil {
-		panic("DeviceAuthGenerateDeviceCodeFunc cannot be nil")
-	}
-
 	return ctx.DeviceAuthGenerateDeviceCodeFunc(ctx)
 }
 
@@ -348,112 +391,43 @@ func (ctx Context) DeviceUserCode() string {
 }
 
 func (ctx Context) DeviceAuthPromptUserCode() error {
-	if ctx.DeviceAuthPromptUserCodeFunc == nil {
-		panic("DeviceAuthPromptUserCodeFunc cannot be nil")
-	}
-
 	return ctx.DeviceAuthPromptUserCodeFunc(ctx.Response, ctx.Request)
+}
+
+func (ctx Context) DeviceAuthRenderConfirmation() error {
+	return ctx.DeviceAuthRenderConfirmationFunc(ctx.Response, ctx.Request)
 }
 
 func (ctx Context) OpaqueToken() string {
 	return strutil.Random(50)
 }
 
-func (ctx Context) SaveClient(client *goidc.Client) error {
-	return ctx.ClientManager.Save(ctx, client)
-}
-
-func (ctx Context) Client(id string) (*goidc.Client, error) {
-	for _, c := range ctx.StaticClients {
-		if c.ID == id {
-			return c, nil
-		}
-	}
-	return ctx.ClientManager.Client(ctx, id)
-}
-
-func (ctx Context) DeleteClient(id string) error {
-	return ctx.ClientManager.Delete(ctx, id)
-}
-
 func (ctx Context) SaveGrant(grant *goidc.Grant) error {
-	return ctx.GrantManager.Save(ctx, grant)
+	return ctx.GrantManager.SaveGrant(ctx, grant)
 }
 
 func (ctx Context) SaveToken(token *goidc.Token) error {
-	return ctx.TokenManager.Save(ctx, token)
+	return ctx.GrantManager.SaveToken(ctx, token)
 }
 
 func (ctx Context) TokenByID(id string) (*goidc.Token, error) {
-	return ctx.TokenManager.Token(ctx, id)
+	return ctx.GrantManager.Token(ctx, id)
 }
 
-func (ctx Context) DeleteToken(id string) error {
-	return ctx.TokenManager.Delete(ctx, id)
-}
-
-func (ctx Context) DeleteTokensByGrantID(grantID string) error {
-	return ctx.TokenManager.DeleteByGrantID(ctx, grantID)
-}
-
-func (ctx Context) GrantByRefreshToken(id string) (*goidc.Grant, error) {
-	return ctx.GrantManager.GrantByRefreshToken(ctx, id)
-}
-
-func (ctx Context) DeleteGrant(id string) error {
-	return ctx.GrantManager.Delete(ctx, id)
-}
-
-func (ctx Context) DeleteGrantByAuthorizationCode(code string) error {
-	return ctx.GrantManager.DeleteByAuthCode(ctx, code)
-}
-
-func (ctx Context) DeleteGrantSessionByDeviceCode(code string) error {
-	return ctx.GrantManager.DeleteByDeviceCode(ctx, code)
-}
-
-func (ctx Context) SaveAuthnSession(session *goidc.AuthnSession) error {
-	return ctx.AuthnSessionManager.Save(ctx, session)
-}
-
-func (ctx Context) AuthnSessionByCallbackID(id string) (*goidc.AuthnSession, error) {
-	return ctx.AuthnSessionManager.SessionByCallbackID(ctx, id)
-}
-
-func (ctx Context) AuthnSessionByAuthCode(code string) (*goidc.AuthnSession, error) {
-	return ctx.AuthnSessionManager.SessionByAuthCode(ctx, code)
-}
-
-func (ctx Context) AuthnSessionByPARID(uri string) (*goidc.AuthnSession, error) {
-	return ctx.AuthnSessionManager.SessionByPARID(ctx, uri)
-}
-
-func (ctx Context) AuthnSessionByCIBAID(id string) (*goidc.AuthnSession, error) {
-	return ctx.AuthnSessionManager.SessionByCIBAID(ctx, id)
-}
-
-func (ctx Context) AuthnSessionByDeviceCode(code string) (*goidc.AuthnSession, error) {
-	return ctx.AuthnSessionManager.SessionByDeviceCode(ctx, code)
-}
-
-func (ctx Context) AuthnSessionByUserCode(code string) (*goidc.AuthnSession, error) {
-	return ctx.AuthnSessionManager.SessionByUserCode(ctx, code)
-}
-
-func (ctx Context) DeleteAuthnSession(id string) error {
-	return ctx.AuthnSessionManager.Delete(ctx, id)
+func (ctx Context) DeleteTokenByGrantID(grantID string) error {
+	return ctx.GrantManager.DeleteTokenByGrantID(ctx, grantID)
 }
 
 func (ctx Context) SaveLogoutSession(session *goidc.LogoutSession) error {
-	return ctx.LogoutSessionManager.Save(ctx, session)
+	return ctx.LogoutSessionManager.SaveLogoutSession(ctx, session)
 }
 
-func (ctx Context) LogoutSessionByCallbackID(id string) (*goidc.LogoutSession, error) {
-	return ctx.LogoutSessionManager.SessionByCallbackID(ctx, id)
+func (ctx Context) LogoutSession(id string) (*goidc.LogoutSession, error) {
+	return ctx.LogoutSessionManager.LogoutSession(ctx, id)
 }
 
 func (ctx Context) DeleteLogoutSession(id string) error {
-	return ctx.LogoutSessionManager.Delete(ctx, id)
+	return ctx.LogoutSessionManager.DeleteLogoutSession(ctx, id)
 }
 
 //---------------------------------------- HTTP Utils ----------------------------------------//
@@ -558,7 +532,6 @@ func (ctx Context) WriteJWTWithType(token string, status int, contentType string
 }
 
 func (ctx Context) WriteError(err error) {
-
 	ctx.HandleError(err)
 
 	var oidcErr goidc.Error
@@ -593,6 +566,10 @@ func (ctx Context) WriteHTML(html string, params any) error {
 func (ctx Context) MediaType() string {
 	ct := ctx.Request.Header.Get("Content-Type")
 	return strings.ToLower(strings.TrimSpace(strings.Split(ct, ";")[0]))
+}
+
+func (ctx Context) RefreshGrantByRefreshToken(tkn string) (*goidc.Grant, error) {
+	return ctx.RefreshTokenManager.GrantByRefreshToken(ctx, tkn)
 }
 
 func (ctx Context) RefreshTokenShouldIssue(c *goidc.Client, grant *goidc.Grant) bool {
@@ -630,6 +607,9 @@ func (ctx Context) GrantByID(id string) (*goidc.Grant, error) {
 	return ctx.GrantManager.Grant(ctx, id)
 }
 
+func (ctx Context) DeleteGrant(id string) error {
+	return ctx.GrantManager.DeleteGrant(ctx, id)
+}
 
 func (ctx Context) IDTokenClaims(grant *goidc.Grant) map[string]any {
 	if ctx.IDTokenClaimsFunc == nil {

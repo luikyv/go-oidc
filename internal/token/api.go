@@ -29,7 +29,7 @@ func handleCreate(ctx oidc.Context) {
 	}
 
 	req := newRequest(ctx.Request)
-	tokenResp, err := generateGrant(ctx, req)
+	tokenResp, err := generateToken(ctx, req)
 	if err != nil {
 		ctx.WriteError(err)
 		return

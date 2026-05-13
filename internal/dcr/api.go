@@ -45,7 +45,7 @@ func handleCreate(ctx oidc.Context) {
 	}
 
 	initialToken, _ := ctx.BearerToken()
-	resp, err := create(ctx, initialToken, req.Client)
+	resp, err := create(ctx, initialToken, req.Meta)
 	if err != nil {
 		ctx.WriteError(err)
 		return
@@ -75,7 +75,7 @@ func handleUpdate(ctx oidc.Context) {
 	}
 
 	id := ctx.Request.PathValue("client_id")
-	resp, err := update(ctx, id, regToken, req.Client)
+	resp, err := update(ctx, id, regToken, req.Meta)
 	if err != nil {
 		ctx.WriteError(err)
 		return

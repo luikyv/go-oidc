@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
@@ -37,7 +38,7 @@ func initLogout(ctx oidc.Context, req request) error {
 // If the client cannot be determined, it returns an empty client.
 func fetchClient(ctx oidc.Context, req request) (*goidc.Client, error) {
 	if req.ClientID != "" {
-		return ctx.Client(req.ClientID)
+		return client.Client(ctx, req.ClientID)
 	}
 
 	if req.IDTokenHint != "" {
@@ -63,11 +64,11 @@ func fetchClientFromIDTokenHint(ctx oidc.Context, idTokenHint string) (*goidc.Cl
 		return &goidc.Client{}, nil
 	}
 
-	return ctx.Client(claims.ClientID)
+	return client.Client(ctx, claims.ClientID)
 }
 
-func continueLogout(ctx oidc.Context, callbackID string) error {
-	session, err := ctx.LogoutSessionByCallbackID(callbackID)
+func continueLogout(ctx oidc.Context, id string) error {
+	session, err := ctx.LogoutSession(id)
 	if err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not load the session", err)
 	}
@@ -145,7 +146,6 @@ func validatePostLogoutRedirectURI(_ oidc.Context, req request, c *goidc.Client)
 }
 
 func validateIDTokenHint(ctx oidc.Context, req request, _ *goidc.Client) error {
-
 	if req.IDTokenHint == "" {
 		return nil
 	}
@@ -191,13 +191,12 @@ func validateIDTokenHint(ctx oidc.Context, req request, _ *goidc.Client) error {
 
 func initLogoutSession(ctx oidc.Context, req request, c *goidc.Client) (*goidc.LogoutSession, error) {
 	session := &goidc.LogoutSession{
-		ID:                 ctx.LogoutSessionID(),
-		Status:             goidc.StatusInProgress,
-		ClientID:           c.ID,
-		CallbackID:         ctx.CallbackID(),
-		ExpiresAtTimestamp: timeutil.TimestampNow() + ctx.LogoutSessionTimeoutSecs,
-		CreatedAtTimestamp: timeutil.TimestampNow(),
-		LogoutParameters:   req.LogoutParameters,
+		ID:               ctx.LogoutSessionID(),
+		Status:           goidc.StatusInProgress,
+		ClientID:         c.ID,
+		ExpiresAt:        timeutil.TimestampNow() + ctx.LogoutSessionTimeoutSecs,
+		CreatedAt:        timeutil.TimestampNow(),
+		LogoutParameters: req.LogoutParameters,
 	}
 
 	policy, ok := ctx.AvailableLogoutPolicy(session)

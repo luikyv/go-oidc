@@ -1,30 +1,15 @@
 package goidc
 
 import (
-	"context"
-
 	"github.com/luikyv/go-oidc/internal/timeutil"
 )
-
-// AuthnSessionManager stores authentication sessions.
-type AuthnSessionManager interface {
-	Save(context.Context, *AuthnSession) error
-	SessionByCallbackID(context.Context, string) (*AuthnSession, error)
-	SessionByAuthCode(context.Context, string) (*AuthnSession, error)
-	SessionByPARID(context.Context, string) (*AuthnSession, error)
-	SessionByCIBAID(context.Context, string) (*AuthnSession, error)
-	SessionByDeviceCode(context.Context, string) (*AuthnSession, error)
-	SessionByUserCode(context.Context, string) (*AuthnSession, error)
-	Delete(context.Context, string) error
-}
 
 // AuthnSession is a short lived session that holds information about
 // authorization requests.
 // It can be interacted with so to implement more sophisticated user
 // authentication flows.
 type AuthnSession struct {
-	ID     string `json:"id"`
-	Status Status `json:"status"`
+	ID string `json:"id"`
 	// Subject is the user identifier.
 	//
 	// This value must be informed during the authentication flow.
@@ -32,18 +17,8 @@ type AuthnSession struct {
 	// [RFC 7662 §2.2] Username is a human-readable identifier for the resource owner.
 	// When set during the authentication flow, it is propagated to the resulting
 	// grant and returned in the introspection response.
-	Username string `json:"username,omitempty"`
-	ClientID string `json:"client_id"`
-	// PARID is the id generated during /par used to fetch the session
-	// during calls to /authorize.
-	//
-	// This value will be returned as the request_uri of the /par response.
-	PARID string `json:"par_id,omitempty"`
-	// CallbackID is the id used to fetch the authentication session after user
-	// interaction during calls to the callback endpoint.
-	CallbackID string `json:"callback_id,omitempty"`
-	CIBAID     string `json:"ciba_id,omitempty"`
-	AuthCode   string `json:"auth_code,omitempty"`
+	Username   string `json:"username,omitempty"`
+	ClientID   string `json:"client_id"`
 	DeviceCode string `json:"device_code,omitempty"`
 	UserCode   string `json:"user_code,omitempty"`
 	// PolicyID is the id of the autentication policy used to authenticate
@@ -64,11 +39,11 @@ type AuthnSession struct {
 	ClientCertThumbprint string `json:"client_cert_thumbprint,omitempty"`
 
 	// Store allows storing additional information between interactions.
-	Store              map[string]any `json:"store,omitempty"`
-	ExpiresAtTimestamp int            `json:"expires_at"`
-	CreatedAtTimestamp int            `json:"created_at"`
-	IDTokenHintClaims  map[string]any `json:"id_token_hint_claims,omitempty"`
-	VCInfo             *struct {
+	Store             map[string]any `json:"store,omitempty"`
+	ExpiresAt         int            `json:"expires_at"`
+	CreatedAt         int            `json:"created_at"`
+	IDTokenHintClaims map[string]any `json:"id_token_hint_claims,omitempty"`
+	VCInfo            *struct {
 		Issuer           string              `json:"issuer"`
 		ConfigurationIDs []VCConfigurationID `json:"configuration_ids"`
 	} `json:"vc_info,omitempty"`
@@ -76,5 +51,5 @@ type AuthnSession struct {
 }
 
 func (s *AuthnSession) IsExpired() bool {
-	return timeutil.TimestampNow() >= s.ExpiresAtTimestamp
+	return timeutil.TimestampNow() >= s.ExpiresAt
 }

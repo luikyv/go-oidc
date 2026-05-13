@@ -24,7 +24,7 @@ func TestGrantIsExpired(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Given.
-			grant := goidc.Grant{ExpiresAtTimestamp: tc.expiresAt}
+			grant := goidc.Grant{ExpiresAt: tc.expiresAt}
 
 			// When.
 			got := grant.IsExpired()
@@ -53,7 +53,7 @@ func TestTokenIsExpired(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Given.
-			token := goidc.Token{ExpiresAtTimestamp: tc.expiresAt}
+			token := goidc.Token{ExpiresAt: tc.expiresAt}
 
 			// When.
 			got := token.IsExpired()
@@ -69,8 +69,8 @@ func TestTokenIsExpired(t *testing.T) {
 func TestTokenLifetimeSecs(t *testing.T) {
 	// Given.
 	token := goidc.Token{
-		CreatedAtTimestamp: 1000,
-		ExpiresAtTimestamp: 4600,
+		CreatedAt: 1000,
+		ExpiresAt: 4600,
 	}
 
 	// When.

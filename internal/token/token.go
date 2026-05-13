@@ -20,14 +20,41 @@ import (
 // ExtractID returns the ID of an access token.
 // If it's a JWT, the ID is the the "jti" claim. Otherwise, the token is
 // considered opaque and its ID is the thumbprint of the token.
-func ExtractID(ctx oidc.Context, token string) (string, error) {
-	if !joseutil.IsJWS(token) {
-		return token, nil
+func ExtractID(ctx oidc.Context, tkn string) (string, error) {
+	if !joseutil.IsJWS(tkn) {
+		return tkn, nil
 	}
 
-	claims, err := validClaims(ctx, token)
+	algs, err := ctx.SigAlgs()
 	if err != nil {
 		return "", err
+	}
+
+	parsedToken, err := jwt.ParseSigned(tkn, algs)
+	if err != nil {
+		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not parse the token", err)
+	}
+
+	if len(parsedToken.Headers) != 1 || parsedToken.Headers[0].KeyID == "" {
+		return "", goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid header kid")
+	}
+
+	keyID := parsedToken.Headers[0].KeyID
+	publicKey, err := ctx.PublicJWK(keyID)
+	if err != nil || publicKey.Use != string(goidc.KeyUsageSignature) {
+		return "", goidc.WrapError(goidc.ErrorCodeAccessDenied, "invalid token", err)
+	}
+
+	var jwtClaims jwt.Claims
+	var claims map[string]any
+	if err := parsedToken.Claims(publicKey.Key, &jwtClaims, &claims); err != nil {
+		return "", goidc.WrapError(goidc.ErrorCodeAccessDenied, "invalid token", err)
+	}
+
+	if err := jwtClaims.ValidateWithLeeway(jwt.Expected{
+		Issuer: ctx.Issuer(),
+	}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second); err != nil {
+		return "", goidc.WrapError(goidc.ErrorCodeAccessDenied, "invalid token", err)
 	}
 
 	tokenID := claims[goidc.ClaimTokenID]
@@ -62,24 +89,24 @@ func Issue(ctx oidc.Context, grant *goidc.Grant, c *goidc.Client, opts *Issuance
 	if c.SubIdentifierType != "" && slices.Contains(ctx.SubIdentifierTypes, c.SubIdentifierType) {
 		subType = c.SubIdentifierType
 	}
-	if tknOpts.Format == goidc.TokenFormatJWT && subType == goidc.SubIdentifierPairwise && grant.Type != goidc.GrantClientCredentials {
+	if tknOpts.Format == goidc.TokenFormatJWT && subType == goidc.SubIdentifierPairwise && grant.Subject != grant.ClientID {
 		tknOpts = goidc.NewOpaqueTokenOptions(tknOpts.LifetimeSecs)
 	}
 
 	now := timeutil.TimestampNow()
 	tkn := &goidc.Token{
-		GrantID:            grant.ID,
-		Subject:            grant.Subject,
-		ClientID:           grant.ClientID,
-		Scopes:             grant.Scopes,
-		AuthDetails:        grant.AuthDetails,
-		Resources:          grant.Resources,
-		JWKThumbprint:      grant.JWKThumbprint,
-		CertThumbprint:     grant.CertThumbprint,
-		CreatedAtTimestamp: now,
-		ExpiresAtTimestamp: now + tknOpts.LifetimeSecs,
-		Format:             tknOpts.Format,
-		SigAlg:             tknOpts.JWTSigAlg,
+		GrantID:        grant.ID,
+		Subject:        grant.Subject,
+		ClientID:       grant.ClientID,
+		Scopes:         grant.Scopes,
+		AuthDetails:    grant.AuthDetails,
+		Resources:      grant.Resources,
+		JWKThumbprint:  grant.JWKThumbprint,
+		CertThumbprint: grant.CertThumbprint,
+		CreatedAt:      now,
+		ExpiresAt:      now + tknOpts.LifetimeSecs,
+		Format:         tknOpts.Format,
+		SigAlg:         tknOpts.JWTSigAlg,
 	}
 	if tknOpts.Format == goidc.TokenFormatOpaque {
 		tkn.ID = ctx.OpaqueToken()
@@ -105,13 +132,7 @@ func Issue(ctx oidc.Context, grant *goidc.Grant, c *goidc.Client, opts *Issuance
 	if err != nil {
 		return nil, "", err
 	}
-	if grant.ExpiresAtTimestamp == 0 {
-		grant.ExpiresAtTimestamp = tkn.ExpiresAtTimestamp
-	}
 	if err := ctx.HandleToken(tkn, grant); err != nil {
-		return nil, "", err
-	}
-	if err := ctx.SaveGrant(grant); err != nil {
 		return nil, "", err
 	}
 	if err := ctx.SaveToken(tkn); err != nil {
@@ -218,7 +239,7 @@ func makeAccessToken(ctx oidc.Context, tkn *goidc.Token, grant *goidc.Grant) (st
 		goidc.ClaimSubject:  tkn.Subject,
 		goidc.ClaimScope:    tkn.Scopes,
 		goidc.ClaimIssuedAt: now,
-		goidc.ClaimExpiry:   tkn.ExpiresAtTimestamp,
+		goidc.ClaimExpiry:   tkn.ExpiresAt,
 	}
 
 	if tkn.ClientID != "" {
@@ -254,62 +275,22 @@ func makeAccessToken(ctx oidc.Context, tkn *goidc.Token, grant *goidc.Grant) (st
 	return accessToken, nil
 }
 
-// validClaims verifies a token and returns its claims.
-func validClaims(ctx oidc.Context, token string) (map[string]any, error) {
-	algs, err := ctx.SigAlgs()
-	if err != nil {
-		return nil, err
-	}
-
-	parsedToken, err := jwt.ParseSigned(token, algs)
-	if err != nil {
-		// If the token is not a valid JWT, we'll treat it as an opaque token.
-		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest,
-			"could not parse the token", err)
-	}
-
-	if len(parsedToken.Headers) != 1 || parsedToken.Headers[0].KeyID == "" {
-		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid header kid")
-	}
-
-	keyID := parsedToken.Headers[0].KeyID
-	publicKey, err := ctx.PublicJWK(keyID)
-	if err != nil || publicKey.Use != string(goidc.KeyUsageSignature) {
-		return nil, goidc.WrapError(goidc.ErrorCodeAccessDenied, "invalid token", err)
-	}
-
-	var claims jwt.Claims
-	var rawClaims map[string]any
-	if err := parsedToken.Claims(publicKey.Key, &claims, &rawClaims); err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeAccessDenied,
-			"invalid token", err)
-	}
-
-	if err := claims.ValidateWithLeeway(jwt.Expected{
-		Issuer: ctx.Issuer(),
-	}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second); err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeAccessDenied, "invalid token", err)
-	}
-
-	return rawClaims, nil
-}
-
-func generateGrant(ctx oidc.Context, req request) (tokenResp response, err error) {
+func generateToken(ctx oidc.Context, req request) (response, error) {
 	if !slices.Contains(ctx.GrantTypes, req.grantType) {
 		return response{}, goidc.NewError(goidc.ErrorCodeUnsupportedGrantType, "unsupported grant type")
 	}
 
 	switch req.grantType {
 	case goidc.GrantClientCredentials:
-		return generateClientCredentialsGrant(ctx, req)
+		return generateClientCredentialsGrantToken(ctx, req)
 	case goidc.GrantAuthorizationCode:
-		return generateAuthCodeGrant(ctx, req)
+		return generateAuthCodeGrantToken(ctx, req)
 	case goidc.GrantRefreshToken:
 		return generateRefreshTokenGrant(ctx, req)
 	case goidc.GrantJWTBearer:
 		return generateJWTBearerGrant(ctx, req)
 	case goidc.GrantCIBA:
-		return generateCIBAGrant(ctx, req)
+		return generateCIBAGrantToken(ctx, req)
 	case goidc.GrantPreAuthorizedCode:
 		return generatePreAuthCodeGrant(ctx, req)
 	case goidc.GrantDeviceCode:

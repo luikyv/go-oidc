@@ -43,7 +43,7 @@ func Authenticated(ctx oidc.Context, authnCtx AuthnContext) (*goidc.Client, erro
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client", err)
 	}
 
-	c, err := ctx.Client(id)
+	c, err := Client(ctx, id)
 	if err != nil {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClient, "client not found", err)
 	}

@@ -12,7 +12,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func Resolve(ctx oidc.Context, c *Client) (err error) {
+func Resolve(ctx oidc.Context, c *Meta) (err error) {
 	if ctx.RPMetadataChoicesIsEnabled {
 		c.SubIdentifierType, err = resolveChoice(c.SubIdentifierTypes, c.SubIdentifierType, ctx.SubIdentifierTypes, "subject_types_supported")
 		if err != nil {

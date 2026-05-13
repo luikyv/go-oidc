@@ -10,6 +10,13 @@ import (
 
 type Option func(p *Provider) error
 
+func WithProfile(profile goidc.Profile) Option {
+	return func(p *Provider) error {
+		p.config.Profile = profile
+		return nil
+	}
+}
+
 func WithProfileValidation() Option {
 	return func(p *Provider) error {
 		p.profileValidationIsEnabled = true
@@ -17,38 +24,11 @@ func WithProfileValidation() Option {
 	}
 }
 
-// WithClientManager replaces the default client manager which keeps the clients
-// stored in memory.
-func WithClientManager(manager goidc.ClientManager) Option {
+func WithAuthCodeGrant(manager goidc.AuthManager, rts ...goidc.ResponseType) Option {
 	return func(p *Provider) error {
-		p.config.ClientManager = manager
-		return nil
-	}
-}
-
-// WithAuthnSessionManager replaces the default authn session manager which
-// keeps the authn sessions stored in memory.
-func WithAuthnSessionManager(manager goidc.AuthnSessionManager) Option {
-	return func(p *Provider) error {
-		p.config.AuthnSessionManager = manager
-		return nil
-	}
-}
-
-// WithGrantManager replaces the default grant manager which
-// keeps the grants stored in memory.
-func WithGrantManager(manager goidc.GrantManager) Option {
-	return func(p *Provider) error {
-		p.config.GrantManager = manager
-		return nil
-	}
-}
-
-// WithTokenManager replaces the default token manager which keeps the tokens
-// stored in memory.
-func WithTokenManager(manager goidc.TokenManager) Option {
-	return func(p *Provider) error {
-		p.config.TokenManager = manager
+		p.config.AuthManager = manager
+		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantAuthorizationCode)
+		p.config.ResponseTypes = append(p.config.ResponseTypes, rts...)
 		return nil
 	}
 }
@@ -150,14 +130,6 @@ func WithTokenIntrospectionEndpoint(endpoint string) Option {
 func WithTokenRevocationEndpoint(endpoint string) Option {
 	return func(p *Provider) error {
 		p.config.TokenRevocationEndpoint = endpoint
-		return nil
-	}
-}
-
-// WithCIBAEndpoint overrides the default value for the CIBA endpoint which is [defaultEndpointCIBA].
-func WithCIBAEndpoint(endpoint string) Option {
-	return func(p *Provider) error {
-		p.config.CIBAEndpoint = endpoint
 		return nil
 	}
 }
@@ -275,9 +247,10 @@ func WithIDTokenContentEncryptionAlgs(defaultAlg goidc.ContentEncryptionAlgorith
 
 // WithDCR allows clients to be registered dynamically.
 // To make registration access tokens rotate, see [WithDCRTokenRotation].
-func WithDCR() Option {
+func WithDCR(manager goidc.DCRManager) Option {
 	return func(p *Provider) error {
 		p.config.DCRIsEnabled = true
+		p.config.DCRManager = manager
 		return nil
 	}
 }
@@ -356,6 +329,29 @@ func WithRefreshTokenRotation() Option {
 	}
 }
 
+func WithCIBAGrant(manager goidc.CIBAManager) Option {
+	return func(p *Provider) error {
+		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantCIBA)
+		p.config.CIBAManager = manager
+		return nil
+	}
+}
+
+func WithCIBAProfile(profile goidc.CIBAProfile) Option {
+	return func(p *Provider) error {
+		p.config.CIBAProfile = profile
+		return nil
+	}
+}
+
+// WithCIBAEndpoint overrides the default value for the CIBA endpoint which is [defaultEndpointCIBA].
+func WithCIBAEndpoint(endpoint string) Option {
+	return func(p *Provider) error {
+		p.config.CIBAEndpoint = endpoint
+		return nil
+	}
+}
+
 func WithCIBAHandleSessionFunc(f goidc.HandleSessionFunc) Option {
 	return func(p *Provider) error {
 		p.config.CIBAHandleSessionFunc = f
@@ -404,13 +400,6 @@ func WithCIBAPollingInterval(interval int) Option {
 func WithCIBALifetime(secs int) Option {
 	return func(p *Provider) error {
 		p.config.CIBADefaultSessionLifetimeSecs = secs
-		return nil
-	}
-}
-
-func WithCIBAAuthReqIDFunc(f goidc.RandomFunc) Option {
-	return func(p *Provider) error {
-		p.config.CIBAAuthReqIDFunc = f
 		return nil
 	}
 }
@@ -483,22 +472,9 @@ func WithTokenClaims(f goidc.TokenClaimsFunc) Option {
 	}
 }
 
-func WithAuthorizationCodeGrant() Option {
+func WithRefreshTokenGrant(manager goidc.RefreshTokenManager) Option {
 	return func(p *Provider) error {
-		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantAuthorizationCode)
-		return nil
-	}
-}
-
-func WithImplicitGrant() Option {
-	return func(p *Provider) error {
-		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantImplicit)
-		return nil
-	}
-}
-
-func WithRefreshTokenGrant() Option {
-	return func(p *Provider) error {
+		p.config.RefreshTokenManager = manager
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantRefreshToken)
 		return nil
 	}
@@ -519,14 +495,6 @@ func WithJWTBearerGrant(f goidc.JWTBearerHandleAssertionFunc) Option {
 	}
 }
 
-func WithCIBAGrant(profile goidc.CIBAProfile) Option {
-	return func(p *Provider) error {
-		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantCIBA)
-		p.config.CIBAProfile = profile
-		return nil
-	}
-}
-
 func WithPreAuthorizedCodeGrant() Option {
 	return func(p *Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantPreAuthorizedCode)
@@ -534,10 +502,10 @@ func WithPreAuthorizedCodeGrant() Option {
 	}
 }
 
-func WithDeviceGrant(promptFunc goidc.DeviceAuthPromptUserCodeFunc) Option {
+func WithDeviceGrant(manager goidc.DeviceAuthManager, promptFunc goidc.RenderFunc) Option {
 	return func(p *Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantDeviceCode)
-		p.config.DeviceAuthIsEnabled = true
+		p.config.DeviceAuthManager = manager
 		p.config.DeviceAuthPromptUserCodeFunc = promptFunc
 		return nil
 	}
@@ -569,6 +537,16 @@ func WithPAR() Option {
 	}
 }
 
+// WithPARRequired forces authorization flows to start at the pushed
+// authorization request endpoint.
+// For more info, see [WithPAR].
+func WithPARRequired() Option {
+	return func(p *Provider) error {
+		p.config.PARIsRequired = true
+		return WithPAR()(p)
+	}
+}
+
 func WithPARHandleSessionFunc(f goidc.HandleSessionFunc) Option {
 	return func(p *Provider) error {
 		p.config.PARHandleSessionFunc = f
@@ -583,29 +561,12 @@ func WithPARLifetime(secs int) Option {
 	}
 }
 
-// WithPARRequired forces authorization flows to start at the pushed
-// authorization request endpoint.
-// For more info, see [WithPAR].
-func WithPARRequired() Option {
-	return func(p *Provider) error {
-		p.config.PARIsRequired = true
-		return WithPAR()(p)
-	}
-}
-
 // WithPARUnregisteredRedirectURIs allows clients to inform unregistered
 // redirect URIs during requests to pushed authorization endpoint.
 // To enable pushed authorization request, see [WithPAR].
 func WithPARUnregisteredRedirectURIs() Option {
 	return func(p *Provider) error {
 		p.config.PARUnregisteredRedirectURIIsEnabled = true
-		return nil
-	}
-}
-
-func WithPARIDFunc(f goidc.RandomFunc) Option {
-	return func(p *Provider) error {
-		p.config.PARIDFunc = f
 		return nil
 	}
 }
@@ -949,12 +910,12 @@ func WithDisplayValues(value goidc.DisplayValue, values ...goidc.DisplayValue) O
 	}
 }
 
-// WithAuthnSessionTimeout sets the user authentication session lifetime.
+// WithAuthTimeout sets the user authentication session lifetime.
 // This defines how long an authorization request may last.
 // The default is [defaultAuthnSessionTimeoutSecs].
-func WithAuthnSessionTimeout(secs int) Option {
+func WithAuthTimeout(secs int) Option {
 	return func(p *Provider) error {
-		p.config.AuthnSessionTimeoutSecs = secs
+		p.config.AuthTimeoutSecs = secs
 		return nil
 	}
 }
@@ -1141,10 +1102,11 @@ func WithErrorURI(uri string) Option {
 //   - Trust chain max depth: [defaultOpenIDFedTrustChainMaxDepth] (see [WithOpenIDFedTrustChainMaxDepth])
 //
 // [OpenID Federation specification]: https://openid.net/specs/openid-federation-1_0.html.
-func WithOpenIDFederation(jwksFunc goidc.JWKSFunc, anchor string, anchors ...string) Option {
+func WithOpenIDFederation(manager goidc.OpenIDFedManager, jwksFunc goidc.JWKSFunc, anchor string, anchors ...string) Option {
 	anchors = appendIfNotIn(anchors, anchor)
 	return func(p *Provider) error {
 		p.config.OpenIDFedIsEnabled = true
+		p.config.OpenIDFedManager = manager
 		p.config.OpenIDFedJWKSFunc = jwksFunc
 		p.config.OpenIDFedTrustedAnchors = anchors
 		return nil
@@ -1349,23 +1311,16 @@ func WithJWTIDFunc(f goidc.RandomFunc) Option {
 	}
 }
 
-func WithAuthorizationCodeFunc(f goidc.RandomFunc) Option {
+func WithAuthCodeFunc(f goidc.RandomFunc) Option {
 	return func(p *Provider) error {
-		p.config.AuthorizationCodeFunc = f
+		p.config.AuthCodeFunc = f
 		return nil
 	}
 }
 
-func WithAuthorizationCodeLifetime(secs int) Option {
+func WithAuthCodeLifetime(secs int) Option {
 	return func(p *Provider) error {
-		p.config.AuthorizationCodeLifetimeSecs = secs
-		return nil
-	}
-}
-
-func WithCallbackIDFunc(f goidc.RandomFunc) Option {
-	return func(p *Provider) error {
-		p.config.CallbackIDFunc = f
+		p.config.AuthCodeLifetimeSecs = secs
 		return nil
 	}
 }

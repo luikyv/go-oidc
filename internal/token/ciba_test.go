@@ -3,11 +3,8 @@ package token
 import (
 	"context"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"errors"
-	"math/big"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -17,322 +14,487 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func TestGenerateGrant_CIBAGrant(t *testing.T) {
+func TestGenerateCIBAGrantToken(t *testing.T) {
+	setup := func(t testing.TB) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+		t.Helper()
 
-	// Given.
-	ctx, client, session := setUpCIBAGrant(t)
+		c, secret := oidctest.NewClient(t)
+		ctx := oidctest.NewContext(t)
+		ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 
-	req := request{
-		grantType: goidc.GrantCIBA,
-		authReqID: session.CIBAID,
-	}
+		c.GrantTypes = append(c.GrantTypes, goidc.GrantCIBA)
+		c.CIBATokenDeliveryMode = goidc.CIBADeliveryModePoll
+		ctx.StaticClients = append(ctx.StaticClients, c)
+		ctx.Request.PostForm = map[string][]string{
+			"client_id":     {c.ID},
+			"client_secret": {secret},
+		}
 
-	// When.
-	tokenResp, err := generateGrant(ctx, req)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("error generating the grant: %v", err)
-	}
-
-	grantSessions := oidctest.Grants(t, ctx)
-	if len(grantSessions) != 1 {
-		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
-	}
-	grantSession := grantSessions[0]
-	wantedSession := goidc.Grant{
-		ID:                 grantSession.ID,
-		CreatedAtTimestamp: grantSession.CreatedAtTimestamp,
-		ExpiresAtTimestamp: grantSession.ExpiresAtTimestamp,
-		RefreshToken:       grantSession.RefreshToken,
-		Type:               goidc.GrantCIBA,
-		Subject:            session.Subject,
-		ClientID:           session.ClientID,
-		Scopes:             session.GrantedScopes,
-	}
-	if diff := cmp.Diff(
-		*grantSession,
-		wantedSession,
-		cmpopts.EquateApprox(0, 1),
-		cmpopts.EquateEmpty(),
-	); diff != "" {
-		t.Error(diff)
-	}
-
-	tokens := oidctest.Tokens(t, ctx)
-	if len(tokens) != 1 {
-		t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-	}
-	tokenEntity := tokens[0]
-
-	claims, err := oidctest.SafeClaims(tokenResp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
-	if err != nil {
-		t.Fatalf("error parsing claims: %v", err)
-	}
-	now := timeutil.TimestampNow()
-	wantedClaims := map[string]any{
-		"iss":       ctx.Issuer(),
-		"sub":       session.Subject,
-		"client_id": client.ID,
-		"scope":     session.GrantedScopes,
-		"exp":       float64(tokenEntity.ExpiresAtTimestamp),
-		"iat":       float64(now),
-		"jti":       tokenEntity.ID,
-	}
-	if diff := cmp.Diff(
-		claims,
-		wantedClaims,
-		cmpopts.EquateApprox(0, 1),
-	); diff != "" {
-		t.Error(diff)
-	}
-
-	authnSessions := oidctest.AuthnSessions(t, ctx)
-	if len(authnSessions) != 0 {
-		t.Errorf("len(authnSessions) = %d, want 0", len(authnSessions))
-	}
-}
-
-func TestGenerateGrant_CIBAGrant_PropagatesUsername(t *testing.T) {
-
-	// Given.
-	ctx, _, session := setUpCIBAGrant(t)
-	session.Username = "alice"
-	if err := ctx.SaveAuthnSession(session); err != nil {
-		t.Fatalf("error while updating the session: %v", err)
-	}
-
-	req := request{
-		grantType: goidc.GrantCIBA,
-		authReqID: session.CIBAID,
-	}
-
-	// When.
-	if _, err := generateGrant(ctx, req); err != nil {
-		t.Fatalf("error generating the grant: %v", err)
-	}
-
-	// Then.
-	grants := oidctest.Grants(t, ctx)
-	if len(grants) != 1 {
-		t.Fatalf("len(grants) = %d, want 1", len(grants))
-	}
-	if grants[0].Username != "alice" {
-		t.Errorf("grant.Username = %q, want %q", grants[0].Username, "alice")
-	}
-}
-
-// TestGenerateGrant_CIBAGrant_AuthPending validates that when a CIBA poll request
-// is made to the token endpoint for an ongoing authentication process, the
-// "authorization_pending" error is returned as expected.
-func TestGenerateGrant_CIBAGrant_AuthPending(t *testing.T) {
-
-	// Given.
-	ctx, _, session := setUpCIBAGrant(t)
-	session.Status = goidc.StatusInProgress
-	if err := ctx.SaveAuthnSession(session); err != nil {
-		t.Fatal(err)
-	}
-
-	req := request{
-		grantType: goidc.GrantCIBA,
-		authReqID: session.CIBAID,
-	}
-
-	// When.
-	_, err := generateGrant(ctx, req)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error did not happen", err)
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatal("invalid error type")
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeAuthPending {
-		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeAuthPending)
-	}
-
-	authnSessions := oidctest.AuthnSessions(t, ctx)
-	if len(authnSessions) != 1 {
-		t.Errorf("len(authnSessions) = %d, want 1", len(authnSessions))
-	}
-}
-
-// TestGenerateGrant_CIBAGrant_InvalidAuthSession ensures that when a CIBA poll
-// request is made to the token endpoint with an invalid or unauthorized
-// authentication session, the "access_denied" error is returned. This verifies
-// that a failed authentication process result in a rejected request.
-func TestGenerateGrant_CIBAGrant_InvalidAuthSession(t *testing.T) {
-
-	// Given.
-	ctx, _, session := setUpCIBAGrant(t)
-	session.Status = goidc.StatusFailure
-	if err := ctx.SaveAuthnSession(session); err != nil {
-		t.Fatal(err)
-	}
-
-	req := request{
-		grantType: goidc.GrantCIBA,
-		authReqID: session.CIBAID,
-	}
-
-	// When.
-	_, err := generateGrant(ctx, req)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error did not happen", err)
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatal("invalid error type")
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeAccessDenied {
-		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeAccessDenied)
-	}
-
-	authnSessions := oidctest.AuthnSessions(t, ctx)
-	if len(authnSessions) != 0 {
-		t.Errorf("len(authnSessions) = %d, want 0", len(authnSessions))
-	}
-}
-
-// TestGenerateGrant_CIBAGrant_MTLSBinding verifies that a successful CIBA request
-// to the token endpoint when mTLS is enabled results in a token bound to the
-// client's certificate.
-func TestGenerateGrant_CIBAGrant_MTLSBinding(t *testing.T) {
-
-	// Given.
-	ctx, client, session := setUpCIBAGrant(t)
-	ctx.MTLSTokenBindingIsEnabled = true
-	ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
-		return &x509.Certificate{
-			SerialNumber: big.NewInt(time.Now().UnixNano()),
-			Subject: pkix.Name{
-				CommonName: "random",
+		now := timeutil.TimestampNow()
+		grant := &goidc.Grant{
+			ClientID:  c.ID,
+			Scopes:    goidc.ScopeOpenID.ID,
+			AuthReqID: "random_auth_req_id",
+			Subject:   "user_id",
+			AuthParams: goidc.AuthorizationParameters{
+				Scopes: goidc.ScopeOpenID.ID,
+				Nonce:  "random_nonce",
 			},
-			NotBefore:   time.Now(),
-			NotAfter:    time.Now().Add(365 * 24 * time.Hour),
-			KeyUsage:    x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-			ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-		}, nil
+			CreatedAt: now,
+			Store:     make(map[string]any),
+		}
+		if err := ctx.SaveGrant(grant); err != nil {
+			t.Fatalf("error while creating the grant: %v", err)
+		}
+
+		req := request{
+			grantType: goidc.GrantCIBA,
+			authReqID: grant.AuthReqID,
+		}
+
+		return ctx, req, c, grant
 	}
 
-	req := request{
-		grantType: goidc.GrantCIBA,
-		authReqID: session.CIBAID,
-	}
+	tests := []struct {
+		name     string
+		setup    func() (oidc.Context, request, *goidc.Client, *goidc.Grant)
+		wantErr  goidc.ErrorCode
+		validate func(*testing.T, oidc.Context, response, *goidc.Client, *goidc.Grant)
+	}{
+		{
+			name: "happy path",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				return setup(t)
+			},
+			validate: func(t *testing.T, ctx oidc.Context, resp response, _ *goidc.Client, _ *goidc.Grant) {
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				grant := grants[0]
+				if grant.AuthReqIDConsumedAt == 0 {
+					t.Fatal("expected auth request id to be marked as consumed")
+				}
 
-	// When.
-	tokenResp, err := generateGrant(ctx, req)
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 1 {
+					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+				}
+				token := tokens[0]
 
-	// Then.
-	if err != nil {
-		t.Fatalf("error generating the grant: %v", err)
-	}
+				claims, err := oidctest.SafeClaims(resp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
+				if err != nil {
+					t.Fatalf("error parsing claims: %v", err)
+				}
+				wantClaims := map[string]any{
+					"iss":       ctx.Issuer(),
+					"sub":       grant.Subject,
+					"client_id": grant.ClientID,
+					"scope":     grant.Scopes,
+					"exp":       float64(token.ExpiresAt),
+					"iat":       float64(token.CreatedAt),
+					"jti":       token.ID,
+				}
+				if diff := cmp.Diff(claims, wantClaims, cmpopts.EquateApprox(0, 1)); diff != "" {
+					t.Error(diff)
+				}
+				if resp.RefreshToken != grant.RefreshToken {
+					t.Errorf("RefreshToken = %q, want %q", resp.RefreshToken, grant.RefreshToken)
+				}
+				if resp.IDToken == "" {
+					t.Fatal("expected id token")
+				}
+			},
+		},
+		{
+			name: "propagates username",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				grant.Username = "alice"
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("error while updating the grant: %v", err)
+				}
+				return ctx, req, c, grant
+			},
+			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].Username != "alice" {
+					t.Errorf("grant.Username = %q, want %q", grants[0].Username, "alice")
+				}
+			},
+		},
+		{
+			name: "auth details",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				ctx.RARIsEnabled = true
+				ctx.RARDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
+				ctx.RARCompareDetailsFunc = func(_ context.Context, _, _ []goidc.AuthDetail) error {
+					return nil
+				}
+				grant.AuthDetails = []goidc.AuthDetail{
+					{
+						"type":         "type1",
+						"random_claim": "random_value",
+					},
+					{
+						"type":         "type2",
+						"random_claim": "random_value",
+					},
+				}
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("error while updating the grant: %v", err)
+				}
+				return ctx, req, c, grant
+			},
+			validate: func(t *testing.T, ctx oidc.Context, resp response, _ *goidc.Client, g *goidc.Grant) {
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 1 {
+					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+				}
+				token := tokens[0]
+				if diff := cmp.Diff(token.AuthDetails, g.AuthDetails); diff != "" {
+					t.Error(diff)
+				}
 
-	grantSessions := oidctest.Grants(t, ctx)
-	if len(grantSessions) != 1 {
-		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
-	}
-	grantSession := grantSessions[0]
+				claims, err := oidctest.SafeClaims(resp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
+				if err != nil {
+					t.Fatalf("error parsing claims: %v", err)
+				}
+				wantAuthDetails := []any{
+					map[string]any{
+						"type":         "type1",
+						"random_claim": "random_value",
+					},
+					map[string]any{
+						"type":         "type2",
+						"random_claim": "random_value",
+					},
+				}
+				if diff := cmp.Diff(claims["authorization_details"], wantAuthDetails); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+		{
+			name: "auth details subset",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				ctx.RARIsEnabled = true
+				ctx.RARDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
+				ctx.RARCompareDetailsFunc = func(_ context.Context, _, _ []goidc.AuthDetail) error {
+					return nil
+				}
+				grant.AuthDetails = []goidc.AuthDetail{
+					{
+						"type":         "type1",
+						"random_claim": "random_value",
+					},
+					{
+						"type":         "type2",
+						"random_claim": "random_value",
+					},
+				}
+				req.authDetails = []goidc.AuthDetail{
+					{
+						"type":         "type1",
+						"random_claim": "random_value",
+					},
+				}
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("error while updating the grant: %v", err)
+				}
+				return ctx, req, c, grant
+			},
+			validate: func(t *testing.T, ctx oidc.Context, resp response, _ *goidc.Client, _ *goidc.Grant) {
+				wantAuthDetails := []goidc.AuthDetail{
+					{
+						"type":         "type1",
+						"random_claim": "random_value",
+					},
+				}
 
-	if grantSession.CertThumbprint == "" {
-		t.Fatalf("invalid certificate thumbprint")
-	}
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 1 {
+					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+				}
+				token := tokens[0]
+				if diff := cmp.Diff(token.AuthDetails, wantAuthDetails); diff != "" {
+					t.Error(diff)
+				}
+				if diff := cmp.Diff(resp.AuthorizationDetails, wantAuthDetails); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+		{
+			name: "resource indicators subset",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				ctx.ResourceIndicatorsIsEnabled = true
+				ctx.Resources = []string{"https://resource1.com", "https://resource2.com", "https://resource3.com"}
+				grant.Resources = []string{"https://resource1.com", "https://resource2.com", "https://resource3.com"}
+				req.resources = []string{"https://resource1.com", "https://resource2.com"}
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("error while updating the grant: %v", err)
+				}
+				return ctx, req, c, grant
+			},
+			validate: func(t *testing.T, ctx oidc.Context, resp response, _ *goidc.Client, _ *goidc.Grant) {
+				wantResources := goidc.Resources{"https://resource1.com", "https://resource2.com"}
 
-	tokens := oidctest.Tokens(t, ctx)
-	if len(tokens) != 1 {
-		t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-	}
-	tokenEntity := tokens[0]
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 1 {
+					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+				}
+				token := tokens[0]
+				if diff := cmp.Diff(token.Resources, wantResources); diff != "" {
+					t.Error(diff)
+				}
+				if diff := cmp.Diff(resp.Resources, wantResources); diff != "" {
+					t.Error(diff)
+				}
 
-	claims, err := oidctest.SafeClaims(tokenResp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
-	if err != nil {
-		t.Fatalf("error parsing claims: %v", err)
-	}
-	now := timeutil.TimestampNow()
-	wantedClaims := map[string]any{
-		"iss":       ctx.Issuer(),
-		"sub":       session.Subject,
-		"client_id": client.ID,
-		"scope":     session.GrantedScopes,
-		"exp":       float64(tokenEntity.ExpiresAtTimestamp),
-		"iat":       float64(now),
-		"jti":       tokenEntity.ID,
-		"cnf": map[string]any{
-			"x5t#S256": tokenEntity.CertThumbprint,
+				claims, err := oidctest.SafeClaims(resp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
+				if err != nil {
+					t.Fatalf("error parsing claims: %v", err)
+				}
+				wantAud := []any{"https://resource1.com", "https://resource2.com"}
+				if diff := cmp.Diff(claims["aud"], wantAud); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+		{
+			name: "consumed auth req id",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				grant.AuthReqIDConsumedAt = timeutil.TimestampNow()
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("error while updating the grant: %v", err)
+				}
+				return ctx, req, c, grant
+			},
+			wantErr: goidc.ErrorCodeInvalidGrant,
+			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 0 {
+					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
+				}
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 0 {
+					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				}
+			},
+		},
+		{
+			name: "mtls binding",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				ctx.MTLSTokenBindingIsEnabled = true
+				ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
+					return &x509.Certificate{Raw: []byte("test_client_cert")}, nil
+				}
+				return ctx, req, c, grant
+			},
+			validate: func(t *testing.T, ctx oidc.Context, resp response, _ *goidc.Client, _ *goidc.Grant) {
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				grant := grants[0]
+				if grant.CertThumbprint == "" {
+					t.Fatal("expected certificate thumbprint to be set on grant")
+				}
+
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 1 {
+					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+				}
+				token := tokens[0]
+
+				claims, err := oidctest.SafeClaims(resp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
+				if err != nil {
+					t.Fatalf("error parsing claims: %v", err)
+				}
+				wantConfirmation := map[string]any{
+					"x5t#S256": token.CertThumbprint,
+				}
+				if diff := cmp.Diff(claims["cnf"], wantConfirmation); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+		{
+			name: "missing auth req id",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				req.authReqID = ""
+				return ctx, req, c, grant
+			},
+			wantErr: goidc.ErrorCodeInvalidRequest,
+			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 0 {
+					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
+				}
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+			},
+		},
+		{
+			name: "invalid client auth",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				ctx.Request.PostForm = map[string][]string{
+					"client_id":     {c.ID},
+					"client_secret": {"invalid_secret"},
+				}
+				return ctx, req, c, grant
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 0 {
+					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
+				}
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+			},
+		},
+		{
+			name: "push mode unauthorized",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				c.CIBATokenDeliveryMode = goidc.CIBADeliveryModePush
+				return ctx, req, c, grant
+			},
+			wantErr: goidc.ErrorCodeUnauthorizedClient,
+			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 0 {
+					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
+				}
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 0 {
+					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				}
+			},
+		},
+		{
+			name: "client mismatch",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				grant.ClientID = "different_client"
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("error while updating the grant: %v", err)
+				}
+				return ctx, req, c, grant
+			},
+			wantErr: goidc.ErrorCodeInvalidGrant,
+			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 0 {
+					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
+				}
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 0 {
+					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				}
+			},
+		},
+		{
+			name: "client lacks grant type",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				c.GrantTypes = []goidc.GrantType{goidc.GrantAuthorizationCode}
+				return ctx, req, c, grant
+			},
+			wantErr: goidc.ErrorCodeUnauthorizedClient,
+			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 0 {
+					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
+				}
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 0 {
+					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				}
+			},
+		},
+		{
+			name: "scope narrowing",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				grant.Scopes = "openid " + oidctest.Scope1.ID
+				req.scopes = goidc.ScopeOpenID.ID
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("error while updating the grant: %v", err)
+				}
+				return ctx, req, c, grant
+			},
+			validate: func(t *testing.T, ctx oidc.Context, resp response, _ *goidc.Client, _ *goidc.Grant) {
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 1 {
+					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+				}
+				token := tokens[0]
+				if resp.Scopes != goidc.ScopeOpenID.ID {
+					t.Errorf("resp.Scopes = %q, want %q", resp.Scopes, goidc.ScopeOpenID.ID)
+				}
+				if token.Scopes != goidc.ScopeOpenID.ID {
+					t.Errorf("token.Scopes = %q, want %q", token.Scopes, goidc.ScopeOpenID.ID)
+				}
+			},
+		},
+		{
+			name: "invalid scope narrowing",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				req.scopes = "scope_not_granted"
+				return ctx, req, c, grant
+			},
+			wantErr: goidc.ErrorCodeInvalidScope,
+			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 0 {
+					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
+				}
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 0 {
+					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				}
+			},
 		},
 	}
-	if diff := cmp.Diff(
-		claims,
-		wantedClaims,
-		cmpopts.EquateApprox(0, 1),
-	); diff != "" {
-		t.Error(diff)
-	}
 
-	authnSessions := oidctest.AuthnSessions(t, ctx)
-	if len(authnSessions) != 0 {
-		t.Errorf("len(authnSessions) = %d, want 0", len(authnSessions))
-	}
-}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx, req, c, grant := test.setup()
 
-func setUpCIBAGrant(t testing.TB) (
-	ctx oidc.Context,
-	client *goidc.Client,
-	session *goidc.AuthnSession,
-) {
-	t.Helper()
+			resp, err := generateToken(ctx, req)
 
-	ctx = oidctest.NewContext(t)
-	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
-	ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
-		goidc.CIBADeliveryModePoll, goidc.CIBADeliveryModePing,
-		goidc.CIBADeliveryModePush,
-	}
-	ctx.CIBAHandleSessionFunc = func(ctx context.Context, as *goidc.AuthnSession, c *goidc.Client) error {
-		return nil
-	}
-	ctx.CIBAUserCodeIsEnabled = true
-	ctx.CIBADefaultSessionLifetimeSecs = 60
-	ctx.CIBAPollingIntervalSecs = 5
+			if gotErr, wantErr := err != nil, test.wantErr != ""; gotErr != wantErr {
+				t.Fatalf("got err=%v, wantErr=%v", err, test.wantErr)
+			}
 
-	client, secret := oidctest.NewClient(t)
-	client.GrantTypes = append(client.GrantTypes, goidc.GrantCIBA)
-	client.CIBATokenDeliveryMode = goidc.CIBADeliveryModePing
-	client.CIBANotificationEndpoint = "https://example.client.com/ciba"
-	if err := ctx.SaveClient(client); err != nil {
-		t.Errorf("error while creating the client: %v", err)
-	}
-	ctx.Request.PostForm = map[string][]string{
-		"client_id":     {client.ID},
-		"client_secret": {secret},
-	}
+			if test.wantErr != "" {
+				var oidcErr goidc.Error
+				if !errors.As(err, &oidcErr) || oidcErr.Code != test.wantErr {
+					t.Fatalf("got %v, want error code %s", err, test.wantErr)
+				}
+			}
 
-	now := timeutil.TimestampNow()
-	authReqID := "random_auth_req_id"
-	session = &goidc.AuthnSession{
-		ClientID:      client.ID,
-		Status:        goidc.StatusSuccess,
-		GrantedScopes: goidc.ScopeOpenID.ID,
-		AuthorizationParameters: goidc.AuthorizationParameters{
-			Scopes: goidc.ScopeOpenID.ID,
-		},
-		CIBAID:             authReqID,
-		Subject:            "user_id",
-		CreatedAtTimestamp: now,
-		ExpiresAtTimestamp: now + 60,
+			if test.validate != nil {
+				test.validate(t, ctx, resp, c, grant)
+			}
+		})
 	}
-	if err := ctx.SaveAuthnSession(session); err != nil {
-		t.Errorf("error while creating the session: %v", err)
-	}
-
-	return ctx, client, session
 }

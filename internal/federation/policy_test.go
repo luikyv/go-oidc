@@ -49,7 +49,7 @@ func TestMetadataPolicy_Apply(t *testing.T) {
 	}
 	statement := entityStatement{
 		Metadata: metadata{
-			OpenIDClient: &client.Client{},
+			OpenIDClient: &client.Meta{},
 		},
 	}
 
@@ -72,7 +72,7 @@ func TestMetadataPolicy_Apply_EssentialMissing(t *testing.T) {
 	}
 	statement := entityStatement{
 		Metadata: metadata{
-			OpenIDClient: &client.Client{},
+			OpenIDClient: &client.Meta{},
 		},
 	}
 	_, err := policy.Apply(oidctest.NewContext(t), statement)
@@ -212,7 +212,7 @@ func TestOpenIDClientMetadataPolicy_Apply_WithScopeIDs(t *testing.T) {
 			SupersetOf: []string{"openid"},
 		},
 	}
-	c := client.Client{ClientMeta: goidc.ClientMeta{
+	c := client.Meta{ClientMeta: goidc.ClientMeta{
 		ScopeIDs: "openid profile",
 	}}
 
@@ -234,7 +234,7 @@ func TestOpenIDClientMetadataPolicy_Apply_WithCustomAttributes(t *testing.T) {
 	policy.setCustomAttribute("custom_field", metadataOperators[any]{
 		Value: nullable[any]{Set: true, Value: "custom_value"},
 	})
-	c := client.Client{}
+	c := client.Meta{}
 
 	// When.
 	result, err := policy.Apply(c)
@@ -255,7 +255,7 @@ func TestOpenIDClientMetadataPolicy_Apply_WithValue(t *testing.T) {
 			Value: nullable[goidc.AuthnMethod]{Set: true, Value: goidc.AuthnMethodPrivateKeyJWT},
 		},
 	}
-	c := client.Client{ClientMeta: goidc.ClientMeta{
+	c := client.Meta{ClientMeta: goidc.ClientMeta{
 		TokenAuthnMethod: goidc.AuthnMethodSecretBasic,
 	}}
 
@@ -278,7 +278,7 @@ func TestOpenIDClientMetadataPolicy_Apply_WithDefault(t *testing.T) {
 			Default: goidc.AuthnMethodPrivateKeyJWT,
 		},
 	}
-	c := client.Client{
+	c := client.Meta{
 		// TokenAuthnMethod is zero value.
 	}
 
@@ -301,7 +301,7 @@ func TestOpenIDClientMetadataPolicy_Apply_OneOf_Failure(t *testing.T) {
 			OneOf: []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT, goidc.AuthnMethodSecretBasic},
 		},
 	}
-	c := client.Client{ClientMeta: goidc.ClientMeta{
+	c := client.Meta{ClientMeta: goidc.ClientMeta{
 		TokenAuthnMethod: goidc.AuthnMethodSecretPost,
 	}}
 
@@ -321,7 +321,7 @@ func TestOpenIDClientMetadataPolicy_Apply_Add(t *testing.T) {
 			Add: []goidc.GrantType{goidc.GrantRefreshToken},
 		},
 	}
-	c := client.Client{ClientMeta: goidc.ClientMeta{
+	c := client.Meta{ClientMeta: goidc.ClientMeta{
 		GrantTypes: []goidc.GrantType{goidc.GrantAuthorizationCode},
 	}}
 

@@ -21,7 +21,7 @@ func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) 
 		return response{}, err
 	}
 
-	grant, err := ctx.GrantByRefreshToken(req.refreshToken)
+	grant, err := ctx.RefreshGrantByRefreshToken(req.refreshToken)
 	if err != nil {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid refresh_token", err)
 	}
@@ -34,7 +34,7 @@ func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) 
 	if ctx.RefreshTokenRotationIsEnabled {
 		refreshToken = ctx.RefreshToken()
 		grant.RefreshToken = refreshToken
-		grant.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
+		grant.ExpiresAt = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
 	// Re-derive the token binding thumbprints from the current request.
 	// Only grants already bound to DPoP or TLS are updated; unbound grants stay unbound.
@@ -46,8 +46,7 @@ func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) 
 	if grant.CertThumbprint != "" {
 		grant.CertThumbprint = tlsThumbprint(ctx)
 	}
-
-	if err := ctx.HandleGrant(grant); err != nil {
+	if err := ctx.SaveGrant(grant); err != nil {
 		return response{}, err
 	}
 
@@ -73,7 +72,7 @@ func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) 
 	if strutil.ContainsOpenID(tkn.Scopes) {
 		tokenResp.IDToken, err = MakeIDToken(ctx, c, IDTokenOptions{
 			Subject: grant.Subject,
-			Nonce:   grant.Nonce,
+			Nonce:   grant.AuthParams.Nonce,
 			Claims:  ctx.IDTokenClaims(grant),
 		})
 		if err != nil {
@@ -94,7 +93,6 @@ func validateRefreshTokenGrantRequest(ctx oidc.Context, req request, c *goidc.Cl
 	}
 
 	if grant.IsExpired() {
-		_ = ctx.DeleteGrant(grant.ID)
 		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "the refresh token is expired")
 	}
 

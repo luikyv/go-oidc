@@ -33,6 +33,6 @@ func revoke(ctx oidc.Context, req queryRequest) error {
 	}
 
 	_ = ctx.DeleteGrant(info.GrantID)
-	_ = ctx.DeleteTokensByGrantID(info.GrantID)
+	_ = ctx.DeleteTokenByGrantID(info.GrantID)
 	return nil
 }

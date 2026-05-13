@@ -918,443 +918,443 @@ func (high openIDClientMetadataPolicy) Merge(low openIDClientMetadataPolicy) (op
 	return high, nil
 }
 
-func (policy openIDClientMetadataPolicy) Apply(c client.Client) (client.Client, error) {
+func (policy openIDClientMetadataPolicy) Apply(c client.Meta) (client.Meta, error) {
 	name, err := policy.Name.Apply(c.Name)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.Name = name
 
 	applicationType, err := policy.ApplicationType.Apply(c.ApplicationType)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.ApplicationType = applicationType
 
 	logoURI, err := policy.LogoURI.Apply(c.LogoURI)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.LogoURI = logoURI
 
 	contacts, err := policy.Contacts.Apply(c.Contacts)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.Contacts = contacts
 
 	policyURI, err := policy.PolicyURI.Apply(c.PolicyURI)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.PolicyURI = policyURI
 
 	termsOfServiceURI, err := policy.TermsOfServiceURI.Apply(c.TermsOfServiceURI)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.TermsOfServiceURI = termsOfServiceURI
 
 	redirectURIs, err := policy.RedirectURIs.Apply(c.RedirectURIs)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.RedirectURIs = redirectURIs
 
 	requestURIs, err := policy.RequestURIs.Apply(c.RequestURIs)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.RequestURIs = requestURIs
 
 	grantTypes, err := policy.GrantTypes.Apply(c.GrantTypes)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.GrantTypes = grantTypes
 
 	responseTypes, err := policy.ResponseTypes.Apply(c.ResponseTypes)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.ResponseTypes = responseTypes
 
 	jwksURI, err := policy.JWKSURI.Apply(c.JWKSURI)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.JWKSURI = jwksURI
 
 	jwks, err := policy.JWKS.Apply(c.JWKS)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.JWKS = jwks
 
 	scopeIDs := strings.Fields(c.ScopeIDs)
 	scopeIDs, err = policy.ScopeIDs.Apply(scopeIDs)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.ScopeIDs = strings.Join(scopeIDs, " ")
 
 	subIdentifierType, err := policy.SubIdentifierType.Apply(c.SubIdentifierType)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.SubIdentifierType = subIdentifierType
 
 	sectorIdentifierURI, err := policy.SectorIdentifierURI.Apply(c.SectorIdentifierURI)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.SectorIdentifierURI = sectorIdentifierURI
 
 	idTokenSigAlg, err := policy.IDTokenSigAlg.Apply(c.IDTokenSigAlg)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.IDTokenSigAlg = idTokenSigAlg
 
 	idTokenKeyEncAlg, err := policy.IDTokenKeyEncAlg.Apply(c.IDTokenKeyEncAlg)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.IDTokenKeyEncAlg = idTokenKeyEncAlg
 
 	idTokenContentEncAlg, err := policy.IDTokenContentEncAlg.Apply(c.IDTokenContentEncAlg)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.IDTokenContentEncAlg = idTokenContentEncAlg
 
 	userInfoSigAlg, err := policy.UserInfoSigAlg.Apply(c.UserInfoSigAlg)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.UserInfoSigAlg = userInfoSigAlg
 
 	userInfoKeyEncAlg, err := policy.UserInfoKeyEncAlg.Apply(c.UserInfoKeyEncAlg)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.UserInfoKeyEncAlg = userInfoKeyEncAlg
 
 	userInfoContentEncAlg, err := policy.UserInfoContentEncAlg.Apply(c.UserInfoContentEncAlg)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.UserInfoContentEncAlg = userInfoContentEncAlg
 
 	jarIsRequired, err := policy.JARIsRequired.Apply(c.JARIsRequired)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.JARIsRequired = jarIsRequired
 
 	jarSigAlg, err := policy.JARSigAlg.Apply(c.JARSigAlg)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.JARSigAlg = jarSigAlg
 
 	jarKeyEncAlg, err := policy.JARKeyEncAlg.Apply(c.JARKeyEncAlg)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.JARKeyEncAlg = jarKeyEncAlg
 
 	jarContentEncAlg, err := policy.JARContentEncAlg.Apply(c.JARContentEncAlg)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.JARContentEncAlg = jarContentEncAlg
 
 	jarmSigAlg, err := policy.JARMSigAlg.Apply(c.JARMSigAlg)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.JARMSigAlg = jarmSigAlg
 
 	jarmKeyEncAlg, err := policy.JARMKeyEncAlg.Apply(c.JARMKeyEncAlg)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.JARMKeyEncAlg = jarmKeyEncAlg
 
 	jarmContentEncAlg, err := policy.JARMContentEncAlg.Apply(c.JARMContentEncAlg)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.JARMContentEncAlg = jarmContentEncAlg
 
 	tokenAuthnMethod, err := policy.TokenAuthnMethod.Apply(c.TokenAuthnMethod)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.TokenAuthnMethod = tokenAuthnMethod
 
 	tokenAuthnSigAlg, err := policy.TokenAuthnSigAlg.Apply(c.TokenAuthnSigAlg)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.TokenAuthnSigAlg = tokenAuthnSigAlg
 
 	tokenIntrospectionAuthnMethod, err := policy.TokenIntrospectionAuthnMethod.Apply(c.TokenIntrospectionAuthnMethod)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.TokenIntrospectionAuthnMethod = tokenIntrospectionAuthnMethod
 
 	tokenIntrospectionAuthnSigAlg, err := policy.TokenIntrospectionAuthnSigAlg.Apply(c.TokenIntrospectionAuthnSigAlg)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.TokenIntrospectionAuthnSigAlg = tokenIntrospectionAuthnSigAlg
 
 	tokenRevocationAuthnMethod, err := policy.TokenRevocationAuthnMethod.Apply(c.TokenRevocationAuthnMethod)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.TokenRevocationAuthnMethod = tokenRevocationAuthnMethod
 
 	tokenRevocationAuthnSigAlg, err := policy.TokenRevocationAuthnSigAlg.Apply(c.TokenRevocationAuthnSigAlg)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.TokenRevocationAuthnSigAlg = tokenRevocationAuthnSigAlg
 
 	dPoPTokenBindingIsRequired, err := policy.DPoPTokenBindingIsRequired.Apply(c.DPoPTokenBindingIsRequired)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.DPoPTokenBindingIsRequired = dPoPTokenBindingIsRequired
 
 	tlsSubDistinguishedName, err := policy.TLSSubDistinguishedName.Apply(c.TLSSubDistinguishedName)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.TLSSubDistinguishedName = tlsSubDistinguishedName
 
 	tlsSubAlternativeName, err := policy.TLSSubAlternativeName.Apply(c.TLSSubAlternativeName)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.TLSSubAlternativeName = tlsSubAlternativeName
 
 	tlsSubAlternativeNameIp, err := policy.TLSSubAlternativeNameIp.Apply(c.TLSSubAlternativeNameIp)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.TLSSubAlternativeNameIp = tlsSubAlternativeNameIp
 
 	tlsTokenBindingIsRequired, err := policy.TLSTokenBindingIsRequired.Apply(c.TLSTokenBindingIsRequired)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.TLSTokenBindingIsRequired = tlsTokenBindingIsRequired
 
 	authDetailTypes, err := policy.AuthDetailTypes.Apply(c.AuthDetailTypes)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.AuthDetailTypes = authDetailTypes
 
 	defaultMaxAgeSecs, err := policy.DefaultMaxAgeSecs.Apply(c.DefaultMaxAgeSecs)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.DefaultMaxAgeSecs = defaultMaxAgeSecs
 
 	defaultACRValues, err := policy.DefaultACRValues.Apply(c.DefaultACRValues)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.DefaultACRValues = defaultACRValues
 
 	parIsRequired, err := policy.PARIsRequired.Apply(c.PARIsRequired)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.PARIsRequired = parIsRequired
 
 	cibaTokenDeliveryMode, err := policy.CIBATokenDeliveryMode.Apply(c.CIBATokenDeliveryMode)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.CIBATokenDeliveryMode = cibaTokenDeliveryMode
 
 	cibaNotificationEndpoint, err := policy.CIBANotificationEndpoint.Apply(c.CIBANotificationEndpoint)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.CIBANotificationEndpoint = cibaNotificationEndpoint
 
 	cibaJARSigAlg, err := policy.CIBAJARSigAlg.Apply(c.CIBAJARSigAlg)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.CIBAJARSigAlg = cibaJARSigAlg
 
 	cibaUserCodeIsEnabled, err := policy.CIBAUserCodeIsEnabled.Apply(c.CIBAUserCodeIsEnabled)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.CIBAUserCodeIsEnabled = cibaUserCodeIsEnabled
 
 	signedJWKSURI, err := policy.SignedJWKSURI.Apply(c.SignedJWKSURI)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.SignedJWKSURI = signedJWKSURI
 
 	organizationName, err := policy.OrganizationName.Apply(c.OrganizationName)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.OrganizationName = organizationName
 
 	clientRegistrationTypes, err := policy.ClientRegistrationTypes.Apply(c.ClientRegistrationTypes)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.ClientRegistrationTypes = clientRegistrationTypes
 
 	postLogoutRedirectURIs, err := policy.PostLogoutRedirectURIs.Apply(c.PostLogoutRedirectURIs)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.PostLogoutRedirectURIs = postLogoutRedirectURIs
 
 	displayName, err := policy.DisplayName.Apply(c.DisplayName)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.DisplayName = displayName
 
 	description, err := policy.Description.Apply(c.Description)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.Description = description
 
 	keywords, err := policy.Keywords.Apply(c.Keywords)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.Keywords = keywords
 
 	informationURI, err := policy.InformationURI.Apply(c.InformationURI)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.InformationURI = informationURI
 
 	organizationURI, err := policy.OrganizationURI.Apply(c.OrganizationURI)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.OrganizationURI = organizationURI
 
 	credentialOfferEndpoint, err := policy.CredentialOfferEndpoint.Apply(c.CredentialOfferEndpoint)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.CredentialOfferEndpoint = credentialOfferEndpoint
 
 	subIdentifierTypes, err := policy.SubIdentifierTypes.Apply(c.SubIdentifierTypes)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.SubIdentifierTypes = subIdentifierTypes
 
 	idTokenSigAlgs, err := policy.IDTokenSigAlgs.Apply(c.IDTokenSigAlgs)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.IDTokenSigAlgs = idTokenSigAlgs
 
 	idTokenKeyEncAlgs, err := policy.IDTokenKeyEncAlgs.Apply(c.IDTokenKeyEncAlgs)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.IDTokenKeyEncAlgs = idTokenKeyEncAlgs
 
 	idTokenContentEncAlgs, err := policy.IDTokenContentEncAlgs.Apply(c.IDTokenContentEncAlgs)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.IDTokenContentEncAlgs = idTokenContentEncAlgs
 
 	userInfoSigAlgs, err := policy.UserInfoSigAlgs.Apply(c.UserInfoSigAlgs)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.UserInfoSigAlgs = userInfoSigAlgs
 
 	userInfoKeyEncAlgs, err := policy.UserInfoKeyEncAlgs.Apply(c.UserInfoKeyEncAlgs)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.UserInfoKeyEncAlgs = userInfoKeyEncAlgs
 
 	userInfoContentEncAlgs, err := policy.UserInfoContentEncAlgs.Apply(c.UserInfoContentEncAlgs)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.UserInfoContentEncAlgs = userInfoContentEncAlgs
 
 	jarSigAlgs, err := policy.JARSigAlgs.Apply(c.JARSigAlgs)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.JARSigAlgs = jarSigAlgs
 
 	jarKeyEncAlgs, err := policy.JARKeyEncAlgs.Apply(c.JARKeyEncAlgs)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.JARKeyEncAlgs = jarKeyEncAlgs
 
 	jarContentEncAlgs, err := policy.JARContentEncAlgs.Apply(c.JARContentEncAlgs)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.JARContentEncAlgs = jarContentEncAlgs
 
 	tokenAuthnMethods, err := policy.TokenAuthnMethods.Apply(c.TokenAuthnMethods)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.TokenAuthnMethods = tokenAuthnMethods
 
 	tokenAuthnSigAlgs, err := policy.TokenAuthnSigAlgs.Apply(c.TokenAuthnSigAlgs)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.TokenAuthnSigAlgs = tokenAuthnSigAlgs
 
 	cibaJARSigAlgs, err := policy.CIBAJARSigAlgs.Apply(c.CIBAJARSigAlgs)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.CIBAJARSigAlgs = cibaJARSigAlgs
 
 	jarmSigAlgs, err := policy.JARMSigAlgs.Apply(c.JARMSigAlgs)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.JARMSigAlgs = jarmSigAlgs
 
 	jarmKeyEncAlgs, err := policy.JARMKeyEncAlgs.Apply(c.JARMKeyEncAlgs)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.JARMKeyEncAlgs = jarmKeyEncAlgs
 
 	jarmContentEncAlgs, err := policy.JARMContentEncAlgs.Apply(c.JARMContentEncAlgs)
 	if err != nil {
-		return client.Client{}, err
+		return client.Meta{}, err
 	}
 	c.JARMContentEncAlgs = jarmContentEncAlgs
 
@@ -1364,7 +1364,7 @@ func (policy openIDClientMetadataPolicy) Apply(c client.Client) (client.Client, 
 	for att, ops := range policy.CustomAttributes {
 		attValue, err := ops.Apply(c.CustomAttributes[att])
 		if err != nil {
-			return client.Client{}, err
+			return client.Meta{}, err
 		}
 		c.CustomAttributes[att] = attValue
 	}

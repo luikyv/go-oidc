@@ -10,19 +10,50 @@ import (
 	"strings"
 )
 
-// ClientManager stores clients.
-type ClientManager interface {
-	Save(context.Context, *Client) error
-	Client(context.Context, string) (*Client, error)
-	Delete(context.Context, string) error
+type GrantManager interface {
+	SaveGrant(context.Context, *Grant) error
+	Grant(context.Context, string) (*Grant, error)
+	DeleteGrant(context.Context, string) error
+	SaveToken(context.Context, *Token) error
+	Token(context.Context, string) (*Token, error)
+	DeleteTokenByGrantID(context.Context, string) error
 }
 
-// TokenManager stores access tokens.
-type TokenManager interface {
-	Save(context.Context, *Token) error
-	Token(context.Context, string) (*Token, error)
-	Delete(context.Context, string) error
-	DeleteByGrantID(context.Context, string) error
+type AuthManager interface {
+	SaveSession(context.Context, *AuthnSession) error
+	Session(context.Context, string) (*AuthnSession, error)
+	DeleteSession(context.Context, string) error
+	GrantByAuthCode(context.Context, string) (*Grant, error)
+}
+
+type DCRManager interface {
+	SaveClient(context.Context, *Client) error
+	Client(context.Context, string) (*Client, error)
+	DeleteClient(context.Context, string) error
+}
+
+type OpenIDFedManager interface {
+	SaveClient(context.Context, *Client) error
+	Client(context.Context, string) (*Client, error)
+}
+
+type RefreshTokenManager interface {
+	GrantByRefreshToken(context.Context, string) (*Grant, error)
+}
+
+type CIBAManager interface {
+	SaveSession(context.Context, *AuthnSession) error
+	Session(context.Context, string) (*AuthnSession, error)
+	DeleteSession(context.Context, string) error
+	GrantByAuthReqID(context.Context, string) (*Grant, error)
+}
+
+type DeviceAuthManager interface {
+	SaveSession(context.Context, *AuthnSession) error
+	Session(context.Context, string) (*AuthnSession, error)
+	SessionByUserCode(context.Context, string) (*AuthnSession, error)
+	DeleteSession(context.Context, string) error
+	GrantByDeviceCode(context.Context, string) (*Grant, error)
 }
 
 type JWKSFunc func(context.Context) (JSONWebKeySet, error)
@@ -426,12 +457,12 @@ func NewOpaqueTokenOptions(lifetimeSecs int) TokenOptions {
 // with the user via the user agent can happen, e.g. an HTML page is rendered to
 // to gather user credentials.
 // The flow can be resumed at the callback endpoint with the session callback ID.
-type AuthnFunc func(http.ResponseWriter, *http.Request, *AuthnSession) (Status, error)
+type AuthnFunc func(http.ResponseWriter, *http.Request, *AuthnSession, *Client) (Status, error)
 
 // SetUpAuthnFunc is responsible for initiating the authentication session.
 // It returns true when the policy is ready to execute and false for when the
 // policy should be skipped.
-type SetUpAuthnFunc func(*http.Request, *Client, *AuthnSession) bool
+type SetUpAuthnFunc func(*http.Request, *AuthnSession, *Client) bool
 
 // AuthnPolicy holds information on how to set up an authentication session and
 // authenticate users.
@@ -457,7 +488,7 @@ type TokenConfirmation struct {
 }
 
 type TokenInfo struct {
-	// GrantID is the ID of the grant session associated to token.
+	// GrantID is the ID of the grant associated to token.
 	GrantID           string       `json:"-"`
 	IsActive          bool         `json:"active"`
 	Type              TokenType    `json:"token_type,omitempty"`
@@ -467,14 +498,13 @@ type TokenInfo struct {
 	ClientID          string       `json:"client_id,omitempty"`
 	Subject           string       `json:"sub,omitempty"`
 	// [RFC 7662 §2.2] Username is a human-readable identifier for the resource owner.
-	// Populate via AdditionalTokenClaims if the authorization server can resolve it.
-	Username           string             `json:"username,omitempty"`
-	Issuer             string             `json:"iss,omitempty"`
-	IssuedAtTimestamp  int                `json:"iat,omitempty"`
-	NotBeforeTimestamp int                `json:"nbf,omitempty"`
-	ExpiresAtTimestamp int                `json:"exp,omitempty"`
-	Confirmation       *TokenConfirmation `json:"cnf,omitempty"`
-	AdditionalClaims   map[string]any     `json:"-"`
+	Username         string             `json:"username,omitempty"`
+	Issuer           string             `json:"iss,omitempty"`
+	IssuedAt         int                `json:"iat,omitempty"`
+	NotBefore        int                `json:"nbf,omitempty"`
+	ExpiresAt        int                `json:"exp,omitempty"`
+	Confirmation     *TokenConfirmation `json:"cnf,omitempty"`
+	AdditionalClaims map[string]any     `json:"-"`
 }
 
 func (ti TokenInfo) MarshalJSON() ([]byte, error) {
@@ -713,4 +743,4 @@ type RandomFunc func(context.Context) string
 
 type HandleClientFunc func(context.Context, *Client) error
 
-type DeviceAuthPromptUserCodeFunc func(http.ResponseWriter, *http.Request) error
+type RenderFunc func(http.ResponseWriter, *http.Request) error

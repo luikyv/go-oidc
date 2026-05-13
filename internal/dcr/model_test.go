@@ -128,7 +128,7 @@ func TestRequestUnmarshalJSON(t *testing.T) {
 				"custom_field_2": 123
 			}`),
 			request{
-				&client.Client{
+				&client.Meta{
 					ClientMeta: goidc.ClientMeta{
 						Name:    "Test Client",
 						LogoURI: "https://example.com/logo.png",

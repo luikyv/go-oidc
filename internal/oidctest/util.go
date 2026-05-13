@@ -65,15 +65,19 @@ func NewContext(t testing.TB) oidc.Context {
 
 	keyID := "test_server_key"
 	jwk := PrivatePS256JWK(t, keyID, goidc.KeyUsageSignature)
+	manager := storage.NewManager(100)
 
 	config := &oidc.Configuration{
 		Profile: goidc.ProfileOpenID,
 		Host:    "https://example.com",
 
-		ClientManager:       storage.NewClientManager(100),
-		AuthnSessionManager: storage.NewAuthnSessionManager(100),
-		GrantManager:        storage.NewGrantManager(100),
-		TokenManager:        storage.NewTokenManager(100),
+		AuthManager:          manager,
+		DCRManager:           manager,
+		CIBAManager:          manager,
+		DeviceAuthManager:    manager,
+		RefreshTokenManager:  manager,
+		GrantManager:         manager,
+		LogoutSessionManager: manager,
 
 		Scopes: []goidc.Scope{goidc.ScopeOpenID, Scope1, Scope2},
 		JWKSFunc: func(ctx context.Context) (goidc.JSONWebKeySet, error) {
@@ -117,7 +121,7 @@ func NewContext(t testing.TB) oidc.Context {
 			}
 			return nil
 		},
-		AuthnSessionTimeoutSecs: 60,
+		AuthTimeoutSecs: 60,
 		TokenAuthnMethods: []goidc.AuthnMethod{
 			goidc.AuthnMethodNone,
 			goidc.AuthnMethodSecretPost,
@@ -173,12 +177,18 @@ func PrivateJWKS(t testing.TB, ctx oidc.Context) goidc.JSONWebKeySet {
 	return jwks
 }
 
+func Manager(t testing.TB, ctx oidc.Context) *storage.Manager {
+	t.Helper()
+	m, _ := ctx.GrantManager.(*storage.Manager)
+	return m
+}
+
 func AuthnSessions(t testing.TB, ctx oidc.Context) []*goidc.AuthnSession {
 	t.Helper()
 
-	sessionManager, _ := ctx.AuthnSessionManager.(*storage.AuthnSessionManager)
-	sessions := make([]*goidc.AuthnSession, 0, len(sessionManager.Sessions))
-	for _, s := range sessionManager.Sessions {
+	m := Manager(t, ctx)
+	sessions := make([]*goidc.AuthnSession, 0, len(m.Sessions))
+	for _, s := range m.Sessions {
 		sessions = append(sessions, s)
 	}
 
@@ -188,9 +198,9 @@ func AuthnSessions(t testing.TB, ctx oidc.Context) []*goidc.AuthnSession {
 func Grants(t *testing.T, ctx oidc.Context) []*goidc.Grant {
 	t.Helper()
 
-	manager, _ := ctx.GrantManager.(*storage.GrantManager)
-	grants := make([]*goidc.Grant, 0, len(manager.Sessions))
-	for _, g := range manager.Sessions {
+	m := Manager(t, ctx)
+	grants := make([]*goidc.Grant, 0, len(m.Grants))
+	for _, g := range m.Grants {
 		grants = append(grants, g)
 	}
 
@@ -200,9 +210,9 @@ func Grants(t *testing.T, ctx oidc.Context) []*goidc.Grant {
 func Tokens(t *testing.T, ctx oidc.Context) []*goidc.Token {
 	t.Helper()
 
-	manager, _ := ctx.TokenManager.(*storage.TokenManager)
-	tokens := make([]*goidc.Token, 0, len(manager.Tokens))
-	for _, tkn := range manager.Tokens {
+	m := Manager(t, ctx)
+	tokens := make([]*goidc.Token, 0, len(m.Tokens))
+	for _, tkn := range m.Tokens {
 		tokens = append(tokens, tkn)
 	}
 
@@ -212,9 +222,9 @@ func Tokens(t *testing.T, ctx oidc.Context) []*goidc.Token {
 func Clients(t *testing.T, ctx oidc.Context) []*goidc.Client {
 	t.Helper()
 
-	manager, _ := ctx.ClientManager.(*storage.ClientManager)
-	clients := make([]*goidc.Client, 0, len(manager.Clients))
-	for _, c := range manager.Clients {
+	m := Manager(t, ctx)
+	clients := make([]*goidc.Client, 0, len(m.Clients))
+	for _, c := range m.Clients {
 		clients = append(clients, c)
 	}
 

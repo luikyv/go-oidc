@@ -9,8 +9,27 @@ import (
 
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
+
+func Client(ctx oidc.Context, id string) (*goidc.Client, error) {
+	for _, c := range ctx.StaticClients {
+		if c.ID == id {
+			return c, nil
+		}
+	}
+
+	if ctx.OpenIDFedIsEnabled && strutil.IsURL(id) {
+		return ctx.OpenIDFedClient(id)
+	}
+
+	if ctx.DCRIsEnabled {
+		return ctx.DCRClient(id)
+	}
+
+	return nil, goidc.ErrNotFound
+}
 
 type Options struct {
 	TrustChain []string

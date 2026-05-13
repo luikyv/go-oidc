@@ -128,7 +128,7 @@ func TestTrustChain_Resolve_MaxPathLength(t *testing.T) {
 			Issuer:  "https://client.example.com",
 			Subject: "https://client.example.com",
 			Metadata: metadata{
-				OpenIDClient: &client.Client{},
+				OpenIDClient: &client.Meta{},
 			},
 			ExpiresAt: 9999999999,
 		},
@@ -161,7 +161,7 @@ func TestTrustChain_Resolve_MaxPathLengthExceeded(t *testing.T) {
 			Issuer:  "https://client.example.com",
 			Subject: "https://client.example.com",
 			Metadata: metadata{
-				OpenIDClient: &client.Client{},
+				OpenIDClient: &client.Meta{},
 			},
 			ExpiresAt: 9999999999,
 		},
@@ -197,7 +197,7 @@ func TestTrustChain_Resolve_NamingConstraintsPermitted(t *testing.T) {
 			Issuer:  "https://client.example.com",
 			Subject: "https://client.example.com",
 			Metadata: metadata{
-				OpenIDClient: &client.Client{},
+				OpenIDClient: &client.Meta{},
 			},
 			ExpiresAt: 9999999999,
 		},
@@ -237,7 +237,7 @@ func TestTrustChain_Resolve_NamingConstraintsNotPermitted(t *testing.T) {
 			Issuer:  "https://client.example.com",
 			Subject: "https://client.example.com",
 			Metadata: metadata{
-				OpenIDClient: &client.Client{},
+				OpenIDClient: &client.Meta{},
 			},
 			ExpiresAt: 9999999999,
 		},
@@ -273,7 +273,7 @@ func TestTrustChain_Resolve_NamingConstraintsExcluded(t *testing.T) {
 			Issuer:  "https://client.example.com",
 			Subject: "https://client.example.com",
 			Metadata: metadata{
-				OpenIDClient: &client.Client{},
+				OpenIDClient: &client.Meta{},
 			},
 			ExpiresAt: 9999999999,
 		},
@@ -310,7 +310,7 @@ func TestTrustChain_Resolve_ExpiresAtPropagation(t *testing.T) {
 			Subject:   "https://client.example.com",
 			ExpiresAt: 1000,
 			Metadata: metadata{
-				OpenIDClient: &client.Client{},
+				OpenIDClient: &client.Meta{},
 			},
 		},
 		{
