@@ -1076,7 +1076,8 @@ func TestScopeAndHandler(t *testing.T) {
 }
 
 func TestContextMethods(t *testing.T) {
-	key := struct{}{}
+	type contextKey struct{}
+	key := contextKey{}
 	parent, cancel := context.WithCancel(context.WithValue(context.Background(), key, "value"))
 	t.Cleanup(cancel)
 
