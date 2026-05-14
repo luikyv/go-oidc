@@ -13,7 +13,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func generateAuthCodeGrantToken(ctx oidc.Context, req request) (response, error) {
+func generateAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 	c, err := client.Authenticated(ctx, client.AuthnContextToken)
 	if err != nil {
 		return response{}, err
@@ -117,6 +117,7 @@ func generateAuthCodeGrantToken(ctx oidc.Context, req request) (response, error)
 	}()
 	if err != nil {
 		_ = ctx.DeleteGrant(grant.ID)
+		_ = ctx.DeleteTokenByGrantID(grant.ID)
 		return response{}, err
 	}
 	return resp, nil

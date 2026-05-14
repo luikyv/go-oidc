@@ -411,6 +411,9 @@ type RefreshTokenShouldIssueFunc func(context.Context, *Client, *Grant) bool
 // executed when issuing access tokens.
 type TokenOptionsFunc func(context.Context, *Grant, *Client) TokenOptions
 
+// OpaqueTokenFunc defines how opaque access token identifiers are generated.
+type OpaqueTokenFunc func(context.Context, *Grant) string
+
 // IDTokenClaimsFunc defines a function that returns additional claims to include
 // in the ID token. It is called at ID token issuance time.
 type IDTokenClaimsFunc func(context.Context, *Grant) map[string]any

@@ -23,6 +23,7 @@ A configurable OpenID Connect Provider for Go.
 * [`RFC 9449` - OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://www.rfc-editor.org/rfc/rfc9449.html)
 * [`RFC 9396` - OAuth 2.0 Rich Authorization Requests (RAR)](https://www.rfc-editor.org/rfc/rfc9396.html)
 * [`RFC 8707` - Resource Indicators for OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc8707)
+* [`RFC 8628` - OAuth 2.0 Device Authorization Grant](https://www.rfc-editor.org/rfc/rfc8628.html)
 * [`RFC 7662` - OAuth 2.0 Token Introspection](https://www.rfc-editor.org/rfc/rfc7662.html)
 * [`RFC 7009` - OAuth 2.0 Token Revocation](https://www.rfc-editor.org/rfc/rfc7009.html)
 * [`RFC 8252` - OAuth 2.0 for Native Apps](https://www.rfc-editor.org/rfc/rfc8252.html)
@@ -63,8 +64,8 @@ jwks := goidc.JSONWebKeySet{
 }
 
 op, _ := provider.New(
-  goidc.ProfileOpenID,
   "http://localhost",
+  nil,
   func(_ context.Context) (goidc.JSONWebKeySet, error) {
     return jwks, nil
   },
@@ -77,16 +78,23 @@ Verify the setup at http://localhost/.well-known/openid-configuration.
 ## Table of Contents
 
 - [Running the Provider](#running-the-provider)
-- [Entities](#entities)
+- [Grants](#grants)
+- [Tokens](#tokens)
+- [Authorization Code and Implicit Grants](#authorization-code-and-implicit-grants)
+- [Refresh Token Grant](#refresh-token-grant)
+- [Client Credentials Grant](#client-credentials-grant)
+- [Client-Initiated Backchannel Authentication (CIBA)](#client-initiated-backchannel-authentication-ciba)
+- [Device Code Grant](#device-code-grant)
+- [Pushed Authorization Requests (PAR)](#pushed-authorization-requests-par)
 - [Authentication Policies](#authentication-policies)
 - [Signing and Encryption](#signing-and-encryption)
-- [Tokens](#tokens)
 - [Scopes](#scopes)
 - [Dynamic Client Registration](#dynamic-client-registration-dcr)
 - [RP Metadata Choices](#rp-metadata-choices)
 - [Mutual TLS](#mutual-tls-mtls)
-- [JAR](#jwt-secured-authorization-request-jar)
-- [JARM](#jwt-secured-authorization-response-mode-jarm)
+- [JWT-Secured Authorization Requests (JAR)](#jwt-secured-authorization-request-jar)
+- [JWT-Secured Authorization Response Mode (JARM)](#jwt-secured-authorization-response-mode-jarm)
+- [Rich Authorization Requests (RAR)](#rich-authorization-requests)
 - [OpenID Federation](#openid-federation)
 - [Shared Signals Framework](#shared-signals-framework-ssf)
 
@@ -109,61 +117,350 @@ server := &http.Server{
 server.ListenAndServeTLS(certFilePath, certKeyFilePath)
 ```
 
-## Entities
+## Grants
 
-go-oidc revolves around four entities: `goidc.Client`, `goidc.AuthnSession`, `goidc.Grant` and `goidc.Token`.
+`goidc.Grant` represents what was authorized after the user grants access, or
+after the client is authorized directly in non-user flows such as
+`client_credentials`.
 
-These entities are managed by implementations of `goidc.ClientManager`, `goidc.AuthnSessionManager`, `goidc.GrantManager` and `goidc.TokenManager` respectively.
+It is the canonical record of the authorization state. A grant may contain:
 
-By default, all entities are stored in memory and lost when the server shuts down. For production, replace the default managers with persistent implementations using `provider.WithClientManager`, `provider.WithAuthnSessionManager`, `provider.WithGrantManager` and `provider.WithTokenManager`.
+- the subject and optional username
+- the client ID
+- granted scopes
+- authorization details
+- resource indicators
+- proof-of-possession bindings such as DPoP or mTLS thumbprints
+- flow-specific identifiers such as authorization code, refresh token, device code, or `auth_req_id`
 
-### Client
+A grant is created after the authorization step succeeds. For example:
 
-`goidc.Client` represents an OAuth 2.0 client that interacts with the authorization server to request tokens and access protected resources. It is always identified and queried by its ID.
+- in the authorization code flow, it is created when the user completes authentication and consent
+- in CIBA or device flows, it is created when the pending interaction is approved
+- in `client_credentials`, it is created directly from the validated token request
 
-### Authentication Session
+`goidc.Token` is derived from a grant. Tokens can narrow scopes, resources, or
+authorization details, but they always originate from one grant through
+`Token.GrantID`.
 
-`goidc.AuthnSession` is a short-lived session that tracks the state of an authorization request as it progresses through authentication.
+This means one grant can produce multiple tokens over time, especially when:
 
-At any given time, `goidc.AuthnSession` has an ID and exactly one of the following lookup identifiers:
-- **Pushed Authorization Request ID** – Created during `POST /par`. See [RFC 9126](https://www.rfc-editor.org/rfc/rfc9126.html).
-- **Callback ID** – Present while the authentication policy is in progress.
-- **Authorization Code** – Set when authentication completes successfully with the `authorization_code` grant type.
-- **Authentication Request ID** – Used for CIBA. See [CIBA](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0-final.html).
+- refresh tokens are enabled
+- the client narrows scopes or resources on subsequent token requests
+- the same authorization is redeemed more than once through allowed flows
 
-### Grant
+In practice, `goidc.Grant` is the long-lived authorization state, while
+`goidc.Token` is one issued credential under that state.
 
-`goidc.Grant` represents what a user (or the client itself) has authorized: the subject, scopes, authorization details, resources, and proof-of-possession bindings (DPoP or mTLS).
+## Tokens
 
-It may contain the following lookup identifiers:
-- **Refresh Token** – Present when the grant allows refresh tokens.
-- **Authorization Code** – Present for the `authorization_code` grant type.
+`goidc.Token` represents one issued access token.
 
-### Token
+Access tokens are opaque by default. If you configure JWT access tokens, the
+serialized token value may become self-contained, but go-oidc still creates and
+stores a `goidc.Token` record for it.
 
-`goidc.Token` is the credential issued under a grant. It captures a snapshot of the active scopes, resources, and authorization details at the moment of issuance, which may be a subset of what the grant holds.
+The access token format and lifetime are controlled by
+`provider.WithTokenOptions(...)`. This option receives the current
+`goidc.Grant` and `goidc.Client` and returns a `goidc.TokenOptions` value for
+that issuance.
 
-Each token has its own lifetime and is linked to its grant via `GrantID`. During a refresh token request, a new token is issued under the same grant. The refresh token on the grant is updated only if rotation is enabled.
+For example, to issue JWT access tokens:
+
+```go
+op, _ := provider.New(
+  "http://localhost",
+  manager,
+  jwksFunc,
+  provider.WithTokenOptions(func(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
+    return goidc.NewJWTTokenOptions(goidc.RS256, 600)
+  }),
+)
+```
+
+Use `goidc.NewOpaqueTokenOptions(...)` to keep opaque access tokens, or
+`goidc.NewJWTTokenOptions(...)` to issue JWT access tokens.
+
+It is created from a `goidc.Grant` and captures the exact authorization state
+attached to that token at issuance time. A token may therefore contain:
+
+- its own ID
+- the associated `GrantID`
+- the subject and client ID
+- the active scopes for that token
+- authorization details
+- resource indicators
+- proof-of-possession bindings such as DPoP or mTLS thumbprints
+- issuance and expiration timestamps
+- token format and token type
+
+A token is not the same thing as a grant. The grant is the durable record of
+what was authorized; the token is one credential issued under that record.
+Because of that, the token may hold a subset of the grant data. For example, a
+refresh token request can issue a new access token with narrower scopes or
+resources while keeping the same underlying grant.
+
+Each token has its own lifetime. When a new token is issued from the same
+grant, the previous token is not implicitly the same logical credential; it is
+a distinct `goidc.Token` with its own ID, timestamps, and confirmation data.
+
+This is true for both opaque and JWT access tokens: the runtime token value may
+be different, but the server-side token metadata is always persisted through the
+configured token manager.
+
+## Authorization Code and Implicit Grants
+
+The authorization code, implicit, and hybrid flows are enabled through
+`provider.WithAuthCodeGrant(...)`.
+
+This option does two things:
+
+- enables the `authorization_code` grant
+- registers the response types accepted at the authorization endpoint
+
+The response types you pass determine which flows are available:
+
+- `goidc.ResponseTypeCode` enables the authorization code flow
+- `goidc.ResponseTypeToken` or `goidc.ResponseTypeIDToken` enable implicit flows
+- combined response types such as `goidc.ResponseTypeCodeAndIDToken` enable hybrid flows
+
+Example with only authorization code:
+
+```go
+manager := storage.NewManager(1000)
+
+op, _ := provider.New(
+  "http://localhost",
+  manager,
+  jwksFunc,
+  provider.WithAuthCodeGrant(manager, goidc.ResponseTypeCode),
+)
+```
+
+Example with authorization code, implicit, and hybrid response types:
+
+```go
+manager := storage.NewManager(1000)
+
+op, _ := provider.New(
+  "http://localhost",
+  manager,
+  jwksFunc,
+  provider.WithAuthCodeGrant(
+    manager,
+    goidc.ResponseTypeCode,
+    goidc.ResponseTypeToken,
+    goidc.ResponseTypeIDToken,
+    goidc.ResponseTypeCodeAndToken,
+    goidc.ResponseTypeCodeAndIDToken,
+  ),
+)
+```
+
+If you also want refresh tokens, enable them separately with
+`provider.WithRefreshTokenGrant(...)`.
+
+## Refresh Token Grant
+
+The refresh token grant is enabled with `provider.WithRefreshTokenGrant(...)`.
+
+```go
+manager := storage.NewManager(1000)
+
+op, _ := provider.New(
+  "http://localhost",
+  manager,
+  jwksFunc,
+  provider.WithAuthCodeGrant(manager, goidc.ResponseTypeCode),
+  provider.WithRefreshTokenGrant(manager),
+)
+```
+
+When this grant is enabled, `goidc.Grant` may carry a refresh token. Later,
+when the client calls the token endpoint with `grant_type=refresh_token`, the
+provider loads that existing grant, validates the request, and issues a new
+`goidc.Token` under the same grant.
+
+This means the refresh token grant does not create a new authorization. It
+reuses an existing one.
+
+By default, the same refresh token remains associated with the grant until it
+expires. To rotate refresh tokens on each use, add
+`provider.WithRefreshTokenRotation()`.
+
+You can also customize the refresh token lifetime with
+`provider.WithRefreshTokenLifetime(...)`.
+
+## Client Credentials Grant
+
+The client credentials grant is enabled with
+`provider.WithClientCredentialsGrant()`.
+
+```go
+op, _ := provider.New(
+  "http://localhost",
+  manager,
+  jwksFunc,
+  provider.WithClientCredentialsGrant(),
+)
+```
+
+This flow does not involve an end-user, an authentication session, or consent
+screen. The client authenticates directly at the token endpoint and, if the
+request is valid, the provider creates a `goidc.Grant` and issues a
+`goidc.Token` for the client itself.
+
+In this case, the grant represents what the client was authorized to access,
+not what a user delegated. The resulting token is therefore tied to the client
+rather than to a user authentication event.
+
+## [Client-Initiated Backchannel Authentication (CIBA)](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0-final.html)
+
+CIBA is enabled with `provider.WithCIBAGrant(...)`.
+
+```go
+op, _ := provider.New(
+  "http://localhost",
+  manager,
+  jwksFunc,
+  provider.WithCIBAGrant(
+    manager,
+    goidc.CIBADeliveryModePoll,
+    goidc.CIBADeliveryModePing,
+    goidc.CIBADeliveryModePush,
+  ),
+)
+```
+
+In this flow, the client starts authentication through the backchannel
+authentication endpoint and receives an `auth_req_id`. At that point, there is
+still no `goidc.Grant`. The provider stores a pending `goidc.AuthnSession`
+associated with that `auth_req_id`.
+
+Later, when the user approves or denies the request, the provider resolves that
+pending session:
+
+- if access is granted, the session becomes a `goidc.Grant`
+- if access is denied, the provider notifies the client according to the
+  configured delivery mode
+- if the client polls the token endpoint before completion, the request returns
+  `authorization_pending`
+
+Once approved, the client exchanges the `auth_req_id` at the token endpoint
+using the CIBA grant type and receives tokens derived from the newly created
+grant.
+
+The delivery modes available to clients are configured directly on
+`provider.WithCIBAGrant(...)`.
+
+## [Device Code Grant](https://www.rfc-editor.org/rfc/rfc8628.html)
+
+The device code grant is enabled with `provider.WithDeviceGrant(...)`.
+
+```go
+manager := storage.NewManager(1000)
+
+op, _ := provider.New(
+  "http://localhost",
+  manager,
+  jwksFunc,
+  provider.WithDeviceGrant(
+    manager,
+    promptUserCodePage,
+    confirmationPage,
+  ),
+)
+```
+
+This flow starts at the device authorization endpoint. After the client is
+validated, the provider creates a pending `goidc.AuthnSession` containing a
+`device_code` and a `user_code`.
+
+The user then visits the device verification endpoint and enters the
+`user_code`. From there, the configured authentication policy runs against that
+pending session:
+
+- if authentication succeeds, the session becomes a `goidc.Grant`
+- if authentication is still in progress, the session is persisted and can be
+  resumed
+- if authentication fails, the session is deleted and the request is denied
+
+Later, the client exchanges the `device_code` at the token endpoint using the
+device code grant type and receives tokens derived from the resulting grant.
+
+`WithDeviceGrant(...)` also requires two render functions:
+
+- one to prompt the user for the `user_code`
+- one to render the confirmation page after successful authorization
+
+## [Pushed Authorization Requests (PAR)](https://www.rfc-editor.org/rfc/rfc9126.html)
+
+PAR is enabled with `provider.WithPAR()` and can be made mandatory with
+`provider.WithPARRequired()`.
+
+```go
+op, _ := provider.New(
+  "http://localhost",
+  manager,
+  jwksFunc,
+  provider.WithAuthCodeGrant(manager, goidc.ResponseTypeCode),
+  provider.WithPAR(),
+)
+```
+
+When the client calls the PAR endpoint, the provider validates the pushed
+request and stores it as a short-lived `goidc.AuthnSession`. The response
+contains a `request_uri` that identifies that stored session.
+
+Later, the client calls the authorization endpoint with that `request_uri`.
+At that point, go-oidc loads the stored session and continues the authorization
+flow from it.
+
+In practice, PAR changes where the authorization parameters are validated and
+persisted:
+
+- the initial validation happens at the PAR endpoint
+- the resulting `request_uri` points to the stored authorization session
+- the later authorization request reuses that stored state instead of starting
+  from scratch
+
+If JAR is also enabled, the pushed request may carry the request object and the
+stored session will reflect the validated JAR content.
+
+The PAR endpoint lifetime can be customized with `provider.WithPARLifetime(...)`.
 
 ## Authentication Policies
 
-Authorization requests (starting at `/authorize` by default) are handled by `goidc.AuthnPolicy`. A policy has two parts:
+Authorization requests (starting at `/authorize` by default) are handled by
+`goidc.AuthnPolicy`.
 
-1. **Setup function** – Determines whether the policy applies to a given request. If it returns `false`, the policy is skipped.
-2. **Authentication function** – Handles user interaction and authentication.
+Each policy has two parts:
+
+1. `SetUp`: decides whether the policy applies to the current request and
+   session.
+2. `Authenticate`: performs the user interaction and authentication work.
+
+When a request reaches the authorization endpoint, go-oidc creates or loads a
+`goidc.AuthnSession`, selects the first policy whose `SetUp` function returns
+`true`, and then calls `Authenticate`.
 
 The authentication function returns one of:
-- `goidc.StatusSuccess` – Authentication succeeded. The `Subject` field on the session must be set.
-- `goidc.StatusInProgress` – Awaiting user interaction. Authentication resumes when a request is made to `/authorize/{callback_id}` (the callback ID is available via `goidc.AuthnSession.CallbackID`).
-- `goidc.StatusFailure` (or an error) – Authentication failed, and the grant is denied.
+
+- `goidc.StatusSuccess`: authentication succeeded. The session must contain the
+  data needed to create the grant, especially `Subject`.
+- `goidc.StatusInProgress`: the flow is suspended and the session is persisted.
+  The user agent can then continue the flow by calling
+  `/authorize/{session_id}`.
+- `goidc.StatusFailure` or an error: authentication fails and the
+  authorization request is denied.
 
 ```go
 policy := goidc.NewPolicy(
   "main_policy",
-  func(_ *http.Request, _ *goidc.Client, _ *goidc.AuthnSession) bool {
+  func(_ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) bool {
     return true
   },
-  func(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) {
+  func(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession, _ *goidc.Client) (goidc.Status, error) {
     username := r.PostFormValue("username")
     if username == "" {
       renderHTMLPage(w)
@@ -181,7 +478,7 @@ policy := goidc.NewPolicy(
 
 op, _ := provider.New(
   ...,
-  provider.WithAuthorizationCodeGrant(),
+  provider.WithAuthCodeGrant(manager, goidc.ResponseTypeCode),
   provider.WithPolicies(policy),
   ...,
 )
@@ -239,8 +536,6 @@ op, _ := provider.New(
 
 Similarly, if server-side decryption is needed (e.g., for encrypted JARs), configure `provider.WithDecrypterFunc`.
 
-## Tokens
-
 ID tokens are signed using **RS256** by default. Use `provider.WithIDTokenSignatureAlgs` to change the default or add additional algorithms.
 
 Access tokens are **opaque** by default. To customize this, provide a `goidc.TokenOptionsFunc`:
@@ -282,7 +577,7 @@ op, _ := provider.New(
 )
 ```
 
-## Dynamic Client Registration (DCR)
+## [Dynamic Client Registration (DCR)](https://www.rfc-editor.org/rfc/rfc7591.html)
 
 DCR allows clients to register and update themselves dynamically:
 ```go
@@ -301,9 +596,9 @@ By default, the DCR endpoint is `/register` and the management endpoint is `/reg
 
 To rotate the registration access token on each update request, add `provider.WithDCRTokenRotation()`.
 
-## RP Metadata Choices
+## [RP Metadata Choices](https://openid.net/specs/openid-connect-rp-metadata-choices-1_0-final.html)
 
-The [RP Metadata Choices extension](https://openid.net/specs/openid-connect-rp-metadata-choices-1_0-final.html) allows clients to advertise priority-ordered lists of preferred algorithms and methods during registration. The server resolves each list to the best mutually supported value.
+The RP Metadata Choices extension allows clients to advertise priority-ordered lists of preferred algorithms and methods during registration. The server resolves each list to the best mutually supported value.
 
 ```go
 op, _ := provider.New(
@@ -362,9 +657,9 @@ All enabled endpoints are listed under `mtls_endpoint_aliases` in the discovery 
 
 The certificate function (`goidc.ClientCertFunc`) may be called multiple times per request. Consider caching the result if extraction is expensive.
 
-## JWT-Secured Authorization Request (JAR)
+## [JWT-Secured Authorization Request (JAR)](https://www.rfc-editor.org/rfc/rfc9101.html)
 
-[JAR](https://www.rfc-editor.org/rfc/rfc9101.html) allows clients to send authorization requests as signed (and optionally encrypted) JWTs:
+JAR allows clients to send authorization requests as signed (and optionally encrypted) JWTs:
 ```go
 op, _ := provider.New(
   ...,
@@ -388,9 +683,9 @@ provider.WithJAREncryption(goidc.RSA_OAEP_256)
 
 To customize content encryption algorithms, use `provider.WithJARContentEncryptionAlgs`.
 
-## JWT-Secured Authorization Response Mode (JARM)
+## [JWT-Secured Authorization Response Mode (JARM)](https://openid.net/specs/oauth-v2-jarm.html)
 
-[JARM](https://openid.net/specs/oauth-v2-jarm.html) returns authorization responses as signed (and optionally encrypted) JWTs, adding the response modes `jwt`, `query.jwt`, `fragment.jwt` and `form_post.jwt`:
+JARM returns authorization responses as signed (and optionally encrypted) JWTs, adding the response modes `jwt`, `query.jwt`, `fragment.jwt` and `form_post.jwt`:
 ```go
 op, _ := provider.New(
   ...,
@@ -406,9 +701,9 @@ provider.WithJARMEncryption(goidc.RSA_OAEP_256)
 
 To customize content encryption algorithms, use `provider.WithJARMContentEncryptionAlgs`.
 
-## Rich Authorization Requests
+## [Rich Authorization Requests (RAR)](https://www.rfc-editor.org/rfc/rfc9396.html)
 
-[RAR](https://www.rfc-editor.org/rfc/rfc9396.html) allows clients to request fine-grained access using structured `authorization_details` objects. Each detail has a `type` field that maps to a registered handler.
+RAR allows clients to request fine-grained access using structured `authorization_details` objects. Each detail has a `type` field that maps to a registered handler.
 
 ```go
 op, _ := provider.New(
@@ -421,13 +716,13 @@ op, _ := provider.New(
 When using the `authorization_code` or `refresh_token` grant types, the client may request a subset of the originally granted authorization details. Provide `provider.WithRARCompareDetailsFunc` to enforce consistency between the granted and requested sets:
 
 ```go
-provider.WithRARCompareDetailsFunc(func(ctx context.Context, granted, requested []goidc.AuthorizationDetail) error {
+provider.WithRARCompareDetailsFunc(func(ctx context.Context, requested, granted []goidc.AuthDetail) error {
   // Verify that every requested detail is consistent with the granted ones.
   return nil
 })
 ```
 
-## OpenID Federation
+## [OpenID Federation](https://openid.net/specs/openid-federation-1_0.html)
 
 [OpenID Federation](https://openid.net/specs/openid-federation-1_0.html) establishes trust dynamically through signed entity statements, allowing federated clients to authenticate without prior manual registration.
 

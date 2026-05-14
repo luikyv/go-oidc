@@ -65,8 +65,7 @@ func initAuth(ctx oidc.Context, req request) error {
 	}
 
 	as, err := func() (*goidc.AuthnSession, error) {
-		par := ctx.PARIsEnabled &&
-			(ctx.PARIsRequired || c.PARIsRequired || strings.HasPrefix(req.RequestURI, parRequestURIPrefix))
+		par := ctx.PARIsEnabled && (ctx.PARIsRequired || c.PARIsRequired || strings.HasPrefix(req.RequestURI, parRequestURIPrefix))
 		if par {
 			if req.RequestURI == "" {
 				return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "request_uri is required")
@@ -97,8 +96,7 @@ func initAuth(ctx oidc.Context, req request) error {
 		}
 
 		// The jar requirement comes after the par one, because the client may have sent the jar during par.
-		jar := ctx.JARIsEnabled &&
-			(ctx.JARIsRequired || c.JARIsRequired || req.RequestObject != "" || (ctx.JARByReferenceIsEnabled && req.RequestURI != ""))
+		jar := ctx.JARIsEnabled && (ctx.JARIsRequired || c.JARIsRequired || req.RequestObject != "" || (ctx.JARByReferenceIsEnabled && req.RequestURI != ""))
 		if jar {
 			var jar request
 			switch {
@@ -197,6 +195,7 @@ func continueAuth(ctx oidc.Context, id string) error {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "session timeout")
 	}
 
+	// TODO: Review this.
 	if as.ResponseMode.IsJSON() && ctx.RequestMethod() != http.MethodPost {
 		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid request method for json response mode")
 	}

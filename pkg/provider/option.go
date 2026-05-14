@@ -10,6 +10,10 @@ import (
 
 type Option func(p *Provider) error
 
+// WithProfile adjusts the server's behavior for non-configurable settings,
+// ensuring compliance with the associated specification. Depending on
+// the profile selected, the server may modify its operations to meet specific
+// requirements dictated by the corresponding standards or protocols.
 func WithProfile(profile goidc.Profile) Option {
 	return func(p *Provider) error {
 		p.config.Profile = profile
@@ -24,6 +28,19 @@ func WithProfileValidation() Option {
 	}
 }
 
+// WithAuthCodeGrant enables the authorization endpoint flows backed by
+// authentication sessions.
+//
+// It always enables the `authorization_code` grant type and registers the
+// response types accepted at the authorization endpoint.
+//
+// The response types determine which flows are available:
+//   - `code` enables the authorization code flow
+//   - `token` and `id_token` enable implicit flows
+//   - combined response types such as `code id_token` enable hybrid flows
+//
+// If any implicit or hybrid response type is informed, the provider also adds
+// the implicit grant type internally.
 func WithAuthCodeGrant(manager goidc.AuthManager, rts ...goidc.ResponseType) Option {
 	return func(p *Provider) error {
 		p.config.AuthManager = manager
@@ -36,6 +53,13 @@ func WithAuthCodeGrant(manager goidc.AuthManager, rts ...goidc.ResponseType) Opt
 func WithGrantIDFunc(f goidc.RandomFunc) Option {
 	return func(p *Provider) error {
 		p.config.GrantIDFunc = f
+		return nil
+	}
+}
+
+func WithOpaqueTokenFunc(f goidc.OpaqueTokenFunc) Option {
+	return func(p *Provider) error {
+		p.config.OpaqueTokenFunc = f
 		return nil
 	}
 }
@@ -290,7 +314,7 @@ func WithLocalhostRedirectURIs() Option {
 
 func WithClientIDFunc(f goidc.ClientIDFunc) Option {
 	return func(p *Provider) error {
-		p.config.ClientIDFunc = f
+		p.config.DCRClientIDFunc = f
 		return nil
 	}
 }
@@ -312,6 +336,13 @@ func WithRefreshTokenShouldIssueFunc(f goidc.RefreshTokenShouldIssueFunc) Option
 	}
 }
 
+func WithRefreshTokenFunc(f goidc.RandomFunc) Option {
+	return func(p *Provider) error {
+		p.config.RefreshTokenFunc = f
+		return nil
+	}
+}
+
 func WithRefreshTokenLifetime(lifetimeSecs int) Option {
 	return func(p *Provider) error {
 		p.config.RefreshTokenLifetimeSecs = lifetimeSecs
@@ -329,10 +360,17 @@ func WithRefreshTokenRotation() Option {
 	}
 }
 
-func WithCIBAGrant(manager goidc.CIBAManager) Option {
+// WithCIBAGrant enables the CIBA grant type and configures the delivery modes
+// clients are allowed to use.
+//
+// The manager is used to persist pending CIBA sessions and grants resolved from
+// them.
+func WithCIBAGrant(manager goidc.CIBAManager, mode goidc.CIBATokenDeliveryMode, modes ...goidc.CIBATokenDeliveryMode) Option {
+	modes = appendIfNotIn(modes, mode)
 	return func(p *Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantCIBA)
 		p.config.CIBAManager = manager
+		p.config.CIBATokenDeliveryModels = modes
 		return nil
 	}
 }
@@ -355,14 +393,6 @@ func WithCIBAEndpoint(endpoint string) Option {
 func WithCIBAHandleSessionFunc(f goidc.HandleSessionFunc) Option {
 	return func(p *Provider) error {
 		p.config.CIBAHandleSessionFunc = f
-		return nil
-	}
-}
-
-func WithCIBADeliveryModes(mode goidc.CIBATokenDeliveryMode, modes ...goidc.CIBATokenDeliveryMode) Option {
-	modes = appendIfNotIn(modes, mode)
-	return func(p *Provider) error {
-		p.config.CIBATokenDeliveryModels = modes
 		return nil
 	}
 }
@@ -413,7 +443,10 @@ func WithOpenIDScopeRequired() Option {
 	}
 }
 
-// WithTokenOptions configures the way access tokens are issued by the provider.
+// WithTokenOptions configures how access tokens are issued by the provider.
+//
+// It is called for each issuance and can choose, for example, the token format
+// (opaque or JWT) and token lifetime based on the grant and client.
 //
 // If pairwise subject identifiers are enabled and applicable to the subject,
 // the token will be issued as an opaque token, even when the token option is set
@@ -472,6 +505,13 @@ func WithTokenClaims(f goidc.TokenClaimsFunc) Option {
 	}
 }
 
+// WithRefreshTokenGrant enables the `refresh_token` grant type.
+//
+// Refresh token requests do not create a new authorization. Instead, they load
+// an existing grant by its refresh token and issue a new access token under the
+// same grant.
+//
+// The manager is used to resolve grants by refresh token.
 func WithRefreshTokenGrant(manager goidc.RefreshTokenManager) Option {
 	return func(p *Provider) error {
 		p.config.RefreshTokenManager = manager
@@ -480,6 +520,11 @@ func WithRefreshTokenGrant(manager goidc.RefreshTokenManager) Option {
 	}
 }
 
+// WithClientCredentialsGrant enables the `client_credentials` grant type.
+//
+// This flow does not involve an end-user or an authentication session. The
+// client authenticates directly at the token endpoint and receives a token for
+// itself.
 func WithClientCredentialsGrant() Option {
 	return func(p *Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantClientCredentials)
@@ -502,11 +547,12 @@ func WithPreAuthorizedCodeGrant() Option {
 	}
 }
 
-func WithDeviceGrant(manager goidc.DeviceAuthManager, promptFunc goidc.RenderFunc) Option {
+func WithDeviceGrant(manager goidc.DeviceAuthManager, promptFunc goidc.RenderFunc, confirmationFunc goidc.RenderFunc) Option {
 	return func(p *Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantDeviceCode)
 		p.config.DeviceAuthManager = manager
 		p.config.DeviceAuthPromptUserCodeFunc = promptFunc
+		p.config.DeviceAuthRenderConfirmationFunc = confirmationFunc
 		return nil
 	}
 }
@@ -922,7 +968,7 @@ func WithAuthTimeout(secs int) Option {
 
 func WithAuthnSessionIDFunc(f goidc.RandomFunc) Option {
 	return func(p *Provider) error {
-		p.config.AuthnSessionGenerateIDFunc = f
+		p.config.AuthSessionIDFunc = f
 		return nil
 	}
 }

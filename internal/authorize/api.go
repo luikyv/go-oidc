@@ -9,20 +9,23 @@ import (
 )
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlewares ...goidc.MiddlewareFunc) {
+	if slices.ContainsFunc(config.GrantTypes, func(gt goidc.GrantType) bool {
+		return gt == goidc.GrantAuthorizationCode || gt == goidc.GrantImplicit
+	}) {
+		router.Handle("GET "+config.EndpointPrefix+config.AuthorizationEndpoint,
+			goidc.ApplyMiddlewares(oidc.Handler(config, handler), middlewares...))
+		router.Handle("POST "+config.EndpointPrefix+config.AuthorizationEndpoint,
+			goidc.ApplyMiddlewares(oidc.Handler(config, handler), middlewares...))
 
-	router.Handle("GET "+config.EndpointPrefix+config.AuthorizationEndpoint,
-		goidc.ApplyMiddlewares(oidc.Handler(config, handler), middlewares...))
-	router.Handle("POST "+config.EndpointPrefix+config.AuthorizationEndpoint,
-		goidc.ApplyMiddlewares(oidc.Handler(config, handler), middlewares...))
-
-	router.Handle("POST "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}",
-		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
-	router.Handle("GET "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}",
-		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
-	router.Handle("POST "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}/{callback_path...}",
-		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
-	router.Handle("GET "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}/{callback_path...}",
-		goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
+		router.Handle("POST "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}",
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
+		router.Handle("GET "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}",
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
+		router.Handle("POST "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}/{callback_path...}",
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
+		router.Handle("GET "+config.EndpointPrefix+config.AuthorizationEndpoint+"/{callback}/{callback_path...}",
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
+	}
 
 	if config.PARIsEnabled {
 		router.Handle("POST "+config.EndpointPrefix+config.PAREndpoint,
@@ -36,22 +39,22 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 
 	if slices.Contains(config.GrantTypes, goidc.GrantDeviceCode) {
 		router.Handle("POST "+config.EndpointPrefix+config.DeviceAuthEndpoint,
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDeviceAuth), middlewares...))
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDeviceInitAuth), middlewares...))
+
 		router.Handle("GET "+config.EndpointPrefix+config.DeviceAuthDeviceEndpoint,
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDevice), middlewares...))
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDeviceStartAuth), middlewares...))
 		router.Handle("POST "+config.EndpointPrefix+config.DeviceAuthDeviceEndpoint,
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDevice), middlewares...))
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDeviceStartAuth), middlewares...))
 
 		router.Handle("POST "+config.EndpointPrefix+config.DeviceAuthDeviceEndpoint+"/{callback}",
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDevice), middlewares...))
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDeviceCallback), middlewares...))
 		router.Handle("GET "+config.EndpointPrefix+config.DeviceAuthDeviceEndpoint+"/{callback}",
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDevice), middlewares...))
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDeviceCallback), middlewares...))
 		router.Handle("POST "+config.EndpointPrefix+config.DeviceAuthDeviceEndpoint+"/{callback}/{callback_path...}",
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDevice), middlewares...))
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDeviceCallback), middlewares...))
 		router.Handle("GET "+config.EndpointPrefix+config.DeviceAuthDeviceEndpoint+"/{callback}/{callback_path...}",
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDevice), middlewares...))
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDeviceCallback), middlewares...))
 	}
-
 }
 
 func handlerPAR(ctx oidc.Context) {
@@ -103,7 +106,6 @@ func handlerCallback(ctx oidc.Context) {
 	if err := ctx.RenderError(err); err != nil {
 		ctx.WriteError(err)
 	}
-
 }
 
 func handlerCIBA(ctx oidc.Context) {
@@ -124,7 +126,7 @@ func handlerCIBA(ctx oidc.Context) {
 	}
 }
 
-func handlerDeviceAuth(ctx oidc.Context) {
+func handlerDeviceInitAuth(ctx oidc.Context) {
 	req := newFormRequest(ctx.Request)
 	resp, err := initDeviceAuth(ctx, req)
 	if err != nil {
@@ -137,7 +139,7 @@ func handlerDeviceAuth(ctx oidc.Context) {
 	}
 }
 
-func handlerDevice(ctx oidc.Context) {
+func handlerDeviceStartAuth(ctx oidc.Context) {
 	var userCode string
 	if ctx.Request.Method == http.MethodPost {
 		userCode = ctx.Request.PostFormValue("user_code")
@@ -152,6 +154,18 @@ func handlerDevice(ctx oidc.Context) {
 
 	err = ctx.RenderError(err)
 	if err != nil {
+		ctx.WriteError(err)
+	}
+}
+
+func handlerDeviceCallback(ctx oidc.Context) {
+	callbackID := ctx.Request.PathValue("callback")
+	err := continueDeviceAuth(ctx, callbackID)
+	if err == nil {
+		return
+	}
+
+	if err := ctx.RenderError(err); err != nil {
 		ctx.WriteError(err)
 	}
 }

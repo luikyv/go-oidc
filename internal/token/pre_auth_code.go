@@ -100,7 +100,7 @@ func generatePreAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 		details = append(details, detail)
 	}
 
-	for _, scope := range strings.Fields(req.scopes) {
+	for scope := range strings.FieldsSeq(req.scopes) {
 		isVCScope := false
 		for _, config := range issuer.Configurations {
 			if config.Scope.ID == scope {

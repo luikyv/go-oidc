@@ -109,7 +109,7 @@ func Issue(ctx oidc.Context, grant *goidc.Grant, c *goidc.Client, opts *Issuance
 		SigAlg:         tknOpts.JWTSigAlg,
 	}
 	if tknOpts.Format == goidc.TokenFormatOpaque {
-		tkn.ID = ctx.OpaqueToken()
+		tkn.ID = ctx.OpaqueToken(grant)
 	} else {
 		tkn.ID = ctx.JWTID()
 	}
@@ -282,19 +282,19 @@ func generateToken(ctx oidc.Context, req request) (response, error) {
 
 	switch req.grantType {
 	case goidc.GrantClientCredentials:
-		return generateClientCredentialsGrantToken(ctx, req)
+		return generateClientCredentialsToken(ctx, req)
 	case goidc.GrantAuthorizationCode:
-		return generateAuthCodeGrantToken(ctx, req)
+		return generateAuthCodeToken(ctx, req)
 	case goidc.GrantRefreshToken:
-		return generateRefreshTokenGrant(ctx, req)
+		return generateRefreshToken(ctx, req)
 	case goidc.GrantJWTBearer:
-		return generateJWTBearerGrant(ctx, req)
+		return generateJWTBearerToken(ctx, req)
 	case goidc.GrantCIBA:
-		return generateCIBAGrantToken(ctx, req)
+		return generateCIBAToken(ctx, req)
 	case goidc.GrantPreAuthorizedCode:
 		return generatePreAuthCodeGrant(ctx, req)
 	case goidc.GrantDeviceCode:
-		return generateDeviceCodeGrant(ctx, req)
+		return generateDeviceCodeToken(ctx, req)
 	default:
 		return response{}, goidc.NewError(goidc.ErrorCodeUnsupportedGrantType, "unsupported grant type")
 	}

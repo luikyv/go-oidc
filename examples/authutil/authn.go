@@ -19,7 +19,7 @@ func Policy() goidc.AuthnPolicy {
 	authenticator := authenticator{tmpl: tmpl}
 	return goidc.NewPolicy(
 		"main",
-		func(r *http.Request, c *goidc.Client, as *goidc.AuthnSession) bool {
+		func(r *http.Request, as *goidc.AuthnSession, c *goidc.Client) bool {
 			// The flow starts at the login step.
 			as.Store = map[string]any{
 				paramStepID: stepIDLoadUser,
@@ -90,7 +90,7 @@ type authenticator struct {
 	tmpl *template.Template
 }
 
-func (a authenticator) authenticate(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) {
+func (a authenticator) authenticate(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession, _ *goidc.Client) (goidc.Status, error) {
 
 	if as.Store[paramStepID] == stepIDLoadUser {
 		if status, err := a.loadUser(r, as); status != goidc.StatusSuccess {
@@ -356,7 +356,7 @@ func (a authenticator) renderPage(w http.ResponseWriter, tmplName string, as *go
 	params := authnPage{
 		Subject:    as.Subject,
 		BaseURL:    Issuer,
-		CallbackID: as.CallbackID,
+		CallbackID: as.ID,
 		Session:    mapify(as),
 	}
 
@@ -382,7 +382,7 @@ func (a authenticator) renderError(w http.ResponseWriter, tmplName string, as *g
 	params := authnPage{
 		Subject:    as.Subject,
 		BaseURL:    Issuer,
-		CallbackID: as.CallbackID,
+		CallbackID: as.ID,
 		Session:    mapify(as),
 		Error:      err,
 	}

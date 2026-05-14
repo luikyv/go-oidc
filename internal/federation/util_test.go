@@ -65,340 +65,450 @@ var (
 )
 
 func TestClient(t *testing.T) {
-	// Given.
-	ctx := setUp(t, nil)
-
-	// When.
-	client, err := Client(ctx, clientID, nil)
-
-	// Then.
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if client.ID != clientID {
-		t.Errorf("client.ID = %s, want %s", client.ID, clientID)
-	}
-
-	if client.Federation == nil || client.Federation.TrustAnchor == "" {
-		t.Error("the client is from a federation")
-	}
-}
-
-func TestClient_TrustMark(t *testing.T) {
-	// Given.
-	ctx := setUp(t, nil)
-	ctx.OpenIDFedRequiredTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
-		return []goidc.TrustMark{trustMarkCertification}
-	}
-
-	// When.
-	client, err := Client(ctx, clientID, nil)
-
-	// Then.
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if client.ID != clientID {
-		t.Errorf("client.ID = %s, want %s", client.ID, clientID)
-	}
-}
-
-func TestClient_InvalidTrustMarkSignature(t *testing.T) {
-	// Given.
-	responses := map[string]func() *http.Response{
-		clientID + "/.well-known/openid-federation": func() *http.Response {
-			st := oidctest.SignWithOptions(t, map[string]any{
-				"iss": clientID,
-				"sub": clientID,
-				"iat": timeutil.TimestampNow(),
-				"exp": timeutil.TimestampNow() + 600,
-				"jwks": jose.JSONWebKeySet{
-					Keys: []jose.JSONWebKey{clientJWK.Public()},
-				},
-				"metadata": map[string]any{
-					"openid_relying_party": map[string]any{
-						"client_registration_types": []string{"automatic", "explicit"},
-					},
-				},
-				"authority_hints": []string{trustAnchorID},
-				"trust_marks": []any{
-					map[string]any{
-						"trust_mark_type": trustMarkCertification,
-						"trust_mark": oidctest.SignWithOptions(t, map[string]any{
-							"trust_mark_type": trustMarkCertification,
-							"iss":             trustMarkIssuerID,
-							"sub":             clientID,
-							"iat":             timeutil.TimestampNow(),
-						}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeTrustMark)),
-					},
-				},
-			}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-			return &http.Response{
-				StatusCode: 200,
-				Header: http.Header{
-					"Content-Type": []string{contentTypeEntityStatementJWT},
-				},
-				Body: io.NopCloser(bytes.NewBufferString(st)),
-			}
-		},
-	}
-	ctx := setUp(t, responses)
-	ctx.OpenIDFedRequiredTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
-		return []goidc.TrustMark{trustMarkCertification}
-	}
-
-	// When.
-	_, err := Client(ctx, clientID, nil)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error is expected")
-	}
-}
-
-func TestClient_InvalidTrustMarkID(t *testing.T) {
-	// Given.
-	responses := map[string]func() *http.Response{
-		clientID + "/.well-known/openid-federation": func() *http.Response {
-			st := oidctest.SignWithOptions(t, map[string]any{
-				"iss": clientID,
-				"sub": clientID,
-				"iat": timeutil.TimestampNow(),
-				"exp": timeutil.TimestampNow() + 600,
-				"jwks": jose.JSONWebKeySet{
-					Keys: []jose.JSONWebKey{clientJWK.Public()},
-				},
-				"metadata": map[string]any{
-					"openid_relying_party": map[string]any{
-						"client_registration_types": []string{"automatic", "explicit"},
-					},
-				},
-				"authority_hints": []string{trustAnchorID},
-				"trust_marks": []any{
-					map[string]any{
-						"trust_mark_type": trustMarkCertification,
-						"trust_mark": oidctest.SignWithOptions(t, map[string]any{
-							"trust_mark_type": "random_trust_mark_id",
-							"iss":             trustMarkIssuerID,
-							"sub":             clientID,
-							"iat":             timeutil.TimestampNow(),
-						}, trustMarkIssuerJWK, (&jose.SignerOptions{}).WithType(jwtTypeTrustMark)),
-					},
-				},
-			}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-			return &http.Response{
-				StatusCode: 200,
-				Header: http.Header{
-					"Content-Type": []string{contentTypeEntityStatementJWT},
-				},
-				Body: io.NopCloser(bytes.NewBufferString(st)),
-			}
-		},
-	}
-	ctx := setUp(t, responses)
-	ctx.OpenIDFedRequiredTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
-		return []goidc.TrustMark{trustMarkCertification}
-	}
-
-	// When.
-	_, err := Client(ctx, clientID, nil)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error is expected")
-	}
-}
-
-func TestClient_InvalidMetadataPolicy(t *testing.T) {
-	// Given: metadata policy requires essential token_endpoint_auth_method but client doesn't have it.
-	responses := map[string]func() *http.Response{
-		trustAnchorID + "/fetch?sub=" + url.QueryEscape(clientID): func() *http.Response {
-			st := oidctest.SignWithOptions(t, map[string]any{
-				"iss": trustAnchorID,
-				"sub": clientID,
-				"iat": timeutil.TimestampNow(),
-				"exp": timeutil.TimestampNow() + 600,
-				"jwks": jose.JSONWebKeySet{
-					Keys: []jose.JSONWebKey{clientJWK.Public()},
-				},
-				"metadata_policy": map[string]any{
-					"openid_relying_party": map[string]any{
-						"token_endpoint_auth_method": map[string]any{
-							"essential": true,
-						},
-					},
-				},
-			}, trustAnchorJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-			return &http.Response{
-				StatusCode: 200,
-				Header:     http.Header{"Content-Type": []string{contentTypeEntityStatementJWT}},
-				Body:       io.NopCloser(bytes.NewBufferString(st)),
-			}
-		},
-		clientID + "/.well-known/openid-federation": func() *http.Response {
-			st := oidctest.SignWithOptions(t, map[string]any{
-				"iss": clientID,
-				"sub": clientID,
-				"iat": timeutil.TimestampNow(),
-				"exp": timeutil.TimestampNow() + 600,
-				"jwks": jose.JSONWebKeySet{
-					Keys: []jose.JSONWebKey{clientJWK.Public()},
-				},
-				"metadata": map[string]any{
-					"openid_relying_party": map[string]any{
-						"client_registration_types": []string{"automatic", "explicit"},
-						// No token_endpoint_auth_method.
-					},
-				},
-				"authority_hints": []string{trustAnchorID},
-			}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-			return &http.Response{
-				StatusCode: 200,
-				Header:     http.Header{"Content-Type": []string{contentTypeEntityStatementJWT}},
-				Body:       io.NopCloser(bytes.NewBufferString(st)),
-			}
-		},
-	}
-	ctx := setUp(t, responses)
-
-	// When.
-	_, err := Client(ctx, clientID, nil)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error is expected: essential field TokenAuthnMethod is not set")
-	}
-}
-
-func TestClient_CircularDependency(t *testing.T) {
-	// Given.
-	intermediaryAuthorityID := "https://intermediary-authority.testfed.com"
-	responses := map[string]func() *http.Response{
-		intermediaryAuthorityID + "/.well-known/openid-federation": func() *http.Response {
-			st := oidctest.SignWithOptions(t, map[string]any{
-				"iss": intermediaryAuthorityID,
-				"sub": intermediaryAuthorityID,
-				"iat": timeutil.TimestampNow(),
-				"exp": timeutil.TimestampNow() + 600,
-				"jwks": jose.JSONWebKeySet{
-					Keys: []jose.JSONWebKey{intermediaryAuthorityJWK.Public()},
-				},
-				"metadata": map[string]any{
-					"federation_entity": map[string]any{
-						"federation_fetch_endpoint": intermediaryAuthorityID + "/fetch",
-					},
-				},
-				"authority_hints": []string{intermediaryAuthorityID},
-			}, intermediaryAuthorityJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-			return &http.Response{
-				StatusCode: 200,
-				Header:     http.Header{"Content-Type": []string{contentTypeEntityStatementJWT}},
-				Body:       io.NopCloser(bytes.NewBufferString(st)),
-			}
-		},
-	}
-	ctx := setUp(t, responses)
-
-	// When.
-	_, err := Client(ctx, clientID, nil)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error is expected")
-	}
-
-	if !errors.Is(err, ErrCircularDependency) {
-		t.Fatalf("error due to circular dependency is expected, got %v", err)
-	}
-}
-
-func TestExplicitRegistration_TrustChainProvided(t *testing.T) {
-	// Given.
-	ctx, chain := setUpWithChain(t, nil)
-	chainStatements := make([]string, len(chain))
-	for i, st := range chain {
-		chainStatements[i] = st.Signed()
-	}
-
-	// When.
-	st, err := registerChainStatements(ctx, chainStatements)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	claims, err := oidctest.SafeClaims(st, opJWK)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if claims["iss"] != ctx.Issuer() {
-		t.Errorf("claims.iss = %s, want %s", claims["iss"], ctx.Issuer())
-	}
-
-	if claims["sub"] != clientID {
-		t.Errorf("claims.sub = %s, want %s", claims["sub"], clientID)
-	}
-
-	if claims["trust_anchor"] != trustAnchorID {
-		t.Errorf("claims.trust_anchor = %s, want %s", claims["trust_anchor"], trustAnchorID)
-	}
-}
-
-func TestExplicitRegistration_EntityConfigurationProvided(t *testing.T) {
-	// Given.
-	ctx := setUp(t, nil)
-	entityConfig := oidctest.SignWithOptions(t, map[string]any{
-		"iss": clientID,
-		"sub": clientID,
-		"aud": ctx.Issuer(),
-		"iat": timeutil.TimestampNow(),
-		"exp": timeutil.TimestampNow() + 600,
-		"jwks": jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{clientJWK.Public()},
-		},
-		"metadata": map[string]any{
-			"openid_relying_party": map[string]any{
-				"client_registration_types":  []string{"automatic", "explicit"},
-				"token_endpoint_auth_method": "client_secret_post",
+	tests := []struct {
+		name     string
+		clientID string
+		setup    func(*testing.T) oidc.Context
+		validate func(*testing.T, *goidc.Client, error)
+	}{
+		{
+			name:     "happy path",
+			clientID: clientID,
+			setup: func(t *testing.T) oidc.Context {
+				return setup(t, nil)
+			},
+			validate: func(t *testing.T, c *goidc.Client, err error) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if c.ID != clientID {
+					t.Errorf("client.ID = %s, want %s", c.ID, clientID)
+				}
+				if c.Federation == nil || c.Federation.TrustAnchor == "" {
+					t.Error("the client is from a federation")
+				}
 			},
 		},
-		"authority_hints": []string{intermediaryAuthorityID},
-	}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-
-	// When.
-	st, err := registerEntityConfiguration(ctx, entityConfig)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		{
+			name:     "required trust mark",
+			clientID: clientID,
+			setup: func(t *testing.T) oidc.Context {
+				ctx := setup(t, nil)
+				ctx.OpenIDFedRequiredTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
+					return []goidc.TrustMark{trustMarkCertification}
+				}
+				return ctx
+			},
+			validate: func(t *testing.T, client *goidc.Client, err error) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if client.ID != clientID {
+					t.Errorf("client.ID = %s, want %s", client.ID, clientID)
+				}
+			},
+		},
+		{
+			name:     "invalid trust mark signature",
+			clientID: clientID,
+			setup: func(t *testing.T) oidc.Context {
+				responses := map[string]func() *http.Response{
+					clientID + "/.well-known/openid-federation": func() *http.Response {
+						st := oidctest.SignWithOptions(t, map[string]any{
+							"iss":  clientID,
+							"sub":  clientID,
+							"iat":  timeutil.TimestampNow(),
+							"exp":  timeutil.TimestampNow() + 600,
+							"jwks": jose.JSONWebKeySet{Keys: []jose.JSONWebKey{clientJWK.Public()}},
+							"metadata": map[string]any{
+								"openid_relying_party": map[string]any{
+									"client_registration_types": []string{"automatic", "explicit"},
+								},
+							},
+							"authority_hints": []string{trustAnchorID},
+							"trust_marks": []any{
+								map[string]any{
+									"trust_mark_type": trustMarkCertification,
+									"trust_mark": oidctest.SignWithOptions(t, map[string]any{
+										"trust_mark_type": trustMarkCertification,
+										"iss":             trustMarkIssuerID,
+										"sub":             clientID,
+										"iat":             timeutil.TimestampNow(),
+									}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeTrustMark)),
+								},
+							},
+						}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+						return &http.Response{
+							StatusCode: 200,
+							Header:     http.Header{"Content-Type": []string{contentTypeEntityStatementJWT}},
+							Body:       io.NopCloser(bytes.NewBufferString(st)),
+						}
+					},
+				}
+				ctx := setup(t, responses)
+				ctx.OpenIDFedRequiredTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
+					return []goidc.TrustMark{trustMarkCertification}
+				}
+				return ctx
+			},
+			validate: func(t *testing.T, _ *goidc.Client, err error) {
+				if err == nil {
+					t.Fatal("error is expected")
+				}
+			},
+		},
+		{
+			name:     "invalid trust mark id",
+			clientID: clientID,
+			setup: func(t *testing.T) oidc.Context {
+				responses := map[string]func() *http.Response{
+					clientID + "/.well-known/openid-federation": func() *http.Response {
+						st := oidctest.SignWithOptions(t, map[string]any{
+							"iss":  clientID,
+							"sub":  clientID,
+							"iat":  timeutil.TimestampNow(),
+							"exp":  timeutil.TimestampNow() + 600,
+							"jwks": jose.JSONWebKeySet{Keys: []jose.JSONWebKey{clientJWK.Public()}},
+							"metadata": map[string]any{
+								"openid_relying_party": map[string]any{
+									"client_registration_types": []string{"automatic", "explicit"},
+								},
+							},
+							"authority_hints": []string{trustAnchorID},
+							"trust_marks": []any{
+								map[string]any{
+									"trust_mark_type": trustMarkCertification,
+									"trust_mark": oidctest.SignWithOptions(t, map[string]any{
+										"trust_mark_type": "random_trust_mark_id",
+										"iss":             trustMarkIssuerID,
+										"sub":             clientID,
+										"iat":             timeutil.TimestampNow(),
+									}, trustMarkIssuerJWK, (&jose.SignerOptions{}).WithType(jwtTypeTrustMark)),
+								},
+							},
+						}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+						return &http.Response{
+							StatusCode: 200,
+							Header:     http.Header{"Content-Type": []string{contentTypeEntityStatementJWT}},
+							Body:       io.NopCloser(bytes.NewBufferString(st)),
+						}
+					},
+				}
+				ctx := setup(t, responses)
+				ctx.OpenIDFedRequiredTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
+					return []goidc.TrustMark{trustMarkCertification}
+				}
+				return ctx
+			},
+			validate: func(t *testing.T, _ *goidc.Client, err error) {
+				if err == nil {
+					t.Fatal("error is expected")
+				}
+			},
+		},
+		{
+			name:     "invalid metadata policy",
+			clientID: clientID,
+			setup: func(t *testing.T) oidc.Context {
+				responses := map[string]func() *http.Response{
+					trustAnchorID + "/fetch?sub=" + url.QueryEscape(clientID): func() *http.Response {
+						st := oidctest.SignWithOptions(t, map[string]any{
+							"iss":  trustAnchorID,
+							"sub":  clientID,
+							"iat":  timeutil.TimestampNow(),
+							"exp":  timeutil.TimestampNow() + 600,
+							"jwks": jose.JSONWebKeySet{Keys: []jose.JSONWebKey{clientJWK.Public()}},
+							"metadata_policy": map[string]any{
+								"openid_relying_party": map[string]any{
+									"token_endpoint_auth_method": map[string]any{"essential": true},
+								},
+							},
+						}, trustAnchorJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+						return &http.Response{
+							StatusCode: 200,
+							Header:     http.Header{"Content-Type": []string{contentTypeEntityStatementJWT}},
+							Body:       io.NopCloser(bytes.NewBufferString(st)),
+						}
+					},
+					clientID + "/.well-known/openid-federation": func() *http.Response {
+						st := oidctest.SignWithOptions(t, map[string]any{
+							"iss":  clientID,
+							"sub":  clientID,
+							"iat":  timeutil.TimestampNow(),
+							"exp":  timeutil.TimestampNow() + 600,
+							"jwks": jose.JSONWebKeySet{Keys: []jose.JSONWebKey{clientJWK.Public()}},
+							"metadata": map[string]any{
+								"openid_relying_party": map[string]any{
+									"client_registration_types": []string{"automatic", "explicit"},
+								},
+							},
+							"authority_hints": []string{trustAnchorID},
+						}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+						return &http.Response{
+							StatusCode: 200,
+							Header:     http.Header{"Content-Type": []string{contentTypeEntityStatementJWT}},
+							Body:       io.NopCloser(bytes.NewBufferString(st)),
+						}
+					},
+				}
+				return setup(t, responses)
+			},
+			validate: func(t *testing.T, _ *goidc.Client, err error) {
+				if err == nil {
+					t.Fatal("error is expected: essential field TokenAuthnMethod is not set")
+				}
+			},
+		},
+		{
+			name:     "circular dependency",
+			clientID: clientID,
+			setup: func(t *testing.T) oidc.Context {
+				responses := map[string]func() *http.Response{
+					intermediaryAuthorityID + "/.well-known/openid-federation": func() *http.Response {
+						st := oidctest.SignWithOptions(t, map[string]any{
+							"iss":  intermediaryAuthorityID,
+							"sub":  intermediaryAuthorityID,
+							"iat":  timeutil.TimestampNow(),
+							"exp":  timeutil.TimestampNow() + 600,
+							"jwks": jose.JSONWebKeySet{Keys: []jose.JSONWebKey{intermediaryAuthorityJWK.Public()}},
+							"metadata": map[string]any{
+								"federation_entity": map[string]any{
+									"federation_fetch_endpoint": intermediaryAuthorityID + "/fetch",
+								},
+							},
+							"authority_hints": []string{intermediaryAuthorityID},
+						}, intermediaryAuthorityJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+						return &http.Response{
+							StatusCode: 200,
+							Header:     http.Header{"Content-Type": []string{contentTypeEntityStatementJWT}},
+							Body:       io.NopCloser(bytes.NewBufferString(st)),
+						}
+					},
+				}
+				return setup(t, responses)
+			},
+			validate: func(t *testing.T, _ *goidc.Client, err error) {
+				if err == nil {
+					t.Fatal("error is expected")
+				}
+				if !errors.Is(err, ErrCircularDependency) {
+					t.Fatalf("error due to circular dependency is expected, got %v", err)
+				}
+			},
+		},
+		{
+			name:     "client manager error",
+			clientID: "non-url-client-that-does-not-exist",
+			setup: func(t *testing.T) oidc.Context {
+				ctx := setup(t, nil)
+				ctx.OpenIDFedClientRegTypes = []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeExplicit}
+				return ctx
+			},
+			validate: func(t *testing.T, _ *goidc.Client, err error) {
+				if err == nil {
+					t.Fatal("error expected when client is not found and automatic registration is disabled")
+				}
+			},
+		},
+		{
+			name:     "not openid client",
+			clientID: clientID,
+			setup: func(t *testing.T) oidc.Context {
+				responses := map[string]func() *http.Response{
+					clientID + "/.well-known/openid-federation": func() *http.Response {
+						st := oidctest.SignWithOptions(t, map[string]any{
+							"iss": clientID,
+							"sub": clientID,
+							"iat": timeutil.TimestampNow(),
+							"exp": timeutil.TimestampNow() + 600,
+							"jwks": jose.JSONWebKeySet{
+								Keys: []jose.JSONWebKey{clientJWK.Public()},
+							},
+							"metadata": map[string]any{
+								"federation_entity": map[string]any{},
+							},
+							"authority_hints": []string{trustAnchorID},
+						}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+						return &http.Response{
+							StatusCode: 200,
+							Header:     http.Header{"Content-Type": []string{contentTypeEntityStatementJWT}},
+							Body:       io.NopCloser(bytes.NewBufferString(st)),
+						}
+					},
+				}
+				return setup(t, responses)
+			},
+			validate: func(t *testing.T, _ *goidc.Client, err error) {
+				if err == nil {
+					t.Fatal("error expected when entity is not an openid client")
+				}
+			},
+		},
+		{
+			name:     "registration type not supported",
+			clientID: clientID,
+			setup: func(t *testing.T) oidc.Context {
+				responses := map[string]func() *http.Response{
+					clientID + "/.well-known/openid-federation": func() *http.Response {
+						st := oidctest.SignWithOptions(t, map[string]any{
+							"iss": clientID,
+							"sub": clientID,
+							"iat": timeutil.TimestampNow(),
+							"exp": timeutil.TimestampNow() + 600,
+							"jwks": jose.JSONWebKeySet{
+								Keys: []jose.JSONWebKey{clientJWK.Public()},
+							},
+							"metadata": map[string]any{
+								"openid_relying_party": map[string]any{
+									"client_registration_types": []string{"explicit"},
+								},
+							},
+							"authority_hints": []string{trustAnchorID},
+						}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+						return &http.Response{
+							StatusCode: 200,
+							Header:     http.Header{"Content-Type": []string{contentTypeEntityStatementJWT}},
+							Body:       io.NopCloser(bytes.NewBufferString(st)),
+						}
+					},
+				}
+				return setup(t, responses)
+			},
+			validate: func(t *testing.T, _ *goidc.Client, err error) {
+				if err == nil {
+					t.Fatal("error expected when client does not support automatic registration")
+				}
+			},
+		},
 	}
 
-	claims, err := oidctest.SafeClaims(st, opJWK)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Given.
+			ctx := test.setup(t)
+
+			// When.
+			client, err := Client(ctx, test.clientID, nil)
+
+			// Then.
+			test.validate(t, client, err)
+		})
+	}
+}
+
+func TestExplicitRegistration(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func(*testing.T) (oidc.Context, func(oidc.Context) (string, error))
+	}{
+		{
+			name: "trust chain provided",
+			setup: func(t *testing.T) (oidc.Context, func(oidc.Context) (string, error)) {
+				ctx, chain := setUpWithChain(t, nil)
+				return ctx, func(ctx oidc.Context) (string, error) {
+					chainStatements := make([]string, len(chain))
+					for i, st := range chain {
+						chainStatements[i] = st.Signed()
+					}
+					return registerChainStatements(ctx, chainStatements)
+				}
+			},
+		},
+		{
+			name: "entity configuration provided",
+			setup: func(t *testing.T) (oidc.Context, func(oidc.Context) (string, error)) {
+				ctx := setup(t, nil)
+				entityConfig := oidctest.SignWithOptions(t, map[string]any{
+					"iss": clientID,
+					"sub": clientID,
+					"aud": ctx.Issuer(),
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{clientJWK.Public()},
+					},
+					"metadata": map[string]any{
+						"openid_relying_party": map[string]any{
+							"client_registration_types":  []string{"automatic", "explicit"},
+							"token_endpoint_auth_method": "client_secret_post",
+						},
+					},
+					"authority_hints": []string{intermediaryAuthorityID},
+				}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return ctx, func(ctx oidc.Context) (string, error) {
+					return registerEntityConfiguration(ctx, entityConfig)
+				}
+			},
+		},
+		{
+			name: "entity configuration with trust chain header",
+			setup: func(t *testing.T) (oidc.Context, func(oidc.Context) (string, error)) {
+				ctx, chain := setUpWithChain(t, nil)
+				chainStatements := make([]any, len(chain))
+				for i, st := range chain {
+					chainStatements[i] = st.Signed()
+				}
+				entityConfig := oidctest.SignWithOptions(t, map[string]any{
+					"iss": clientID,
+					"sub": clientID,
+					"aud": ctx.Issuer(),
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{clientJWK.Public()},
+					},
+					"metadata": map[string]any{
+						"openid_relying_party": map[string]any{
+							"client_registration_types":  []string{"automatic", "explicit"},
+							"token_endpoint_auth_method": "client_secret_post",
+						},
+					},
+					"authority_hints": []string{intermediaryAuthorityID},
+				}, clientJWK, (&jose.SignerOptions{}).
+					WithType(jwtTypeEntityStatement).
+					WithHeader("trust_chain", chainStatements))
+				return ctx, func(ctx oidc.Context) (string, error) {
+					return registerEntityConfiguration(ctx, entityConfig)
+				}
+			},
+		},
 	}
 
-	if claims["iss"] != ctx.Issuer() {
-		t.Errorf("claims.iss = %s, want %s", claims["iss"], ctx.Issuer())
-	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Given.
+			ctx, action := test.setup(t)
 
-	if claims["sub"] != clientID {
-		t.Errorf("claims.sub = %s, want %s", claims["sub"], clientID)
-	}
+			// When.
+			st, err := action(ctx)
 
-	if claims["trust_anchor"] != trustAnchorID {
-		t.Errorf("claims.trust_anchor = %s, want %s", claims["trust_anchor"], trustAnchorID)
+			// Then.
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			claims, err := oidctest.SafeClaims(st, opJWK)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if claims["iss"] != ctx.Issuer() {
+				t.Errorf("claims.iss = %s, want %s", claims["iss"], ctx.Issuer())
+			}
+			if claims["sub"] != clientID {
+				t.Errorf("claims.sub = %s, want %s", claims["sub"], clientID)
+			}
+			if claims["trust_anchor"] != trustAnchorID {
+				t.Errorf("claims.trust_anchor = %s, want %s", claims["trust_anchor"], trustAnchorID)
+			}
+		})
 	}
 }
 
 func setUpWithChain(t *testing.T, overrideResps map[string]func() *http.Response) (oidc.Context, trustChain) {
 	t.Helper()
 
-	ctx := setUp(t, overrideResps)
+	ctx := setup(t, overrideResps)
 	_, chain, err := buildAndResolveTrustChain(ctx, clientID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -406,7 +516,7 @@ func setUpWithChain(t *testing.T, overrideResps map[string]func() *http.Response
 	return ctx, chain
 }
 
-func setUp(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Context {
+func setup(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Context {
 	t.Helper()
 
 	responses := map[string]func() *http.Response{
@@ -590,6 +700,7 @@ func setUp(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Co
 
 	ctx := oidctest.NewContext(t)
 	ctx.OpenIDFedIsEnabled = true
+	ctx.OpenIDFedManager = ctx.GrantManager.(goidc.OpenIDFedManager)
 	ctx.OpenIDFedEndpoint = "/.well-known/openid-federation"
 	ctx.OpenIDFedJWKSFunc = func(ctx context.Context) (goidc.JSONWebKeySet, error) {
 		return goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{opJWK}}, nil
@@ -624,590 +735,774 @@ func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	return nil, errors.ErrUnsupported
 }
 
-func TestFetchEntityStatement_NonOKStatus(t *testing.T) {
-	// Given.
-	responses := map[string]func() *http.Response{
-		clientID + "/.well-known/openid-federation": func() *http.Response {
-			return &http.Response{
-				StatusCode: 404,
-				Body:       io.NopCloser(bytes.NewBufferString("")),
+func TestFetchEntityStatement(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func(*testing.T) oidc.Context
+	}{
+		{
+			name: "non ok status",
+			setup: func(t *testing.T) oidc.Context {
+				responses := map[string]func() *http.Response{
+					clientID + "/.well-known/openid-federation": func() *http.Response {
+						return &http.Response{
+							StatusCode: 404,
+							Body:       io.NopCloser(bytes.NewBufferString("")),
+						}
+					},
+				}
+				return setup(t, responses)
+			},
+		},
+		{
+			name: "invalid content type",
+			setup: func(t *testing.T) oidc.Context {
+				responses := map[string]func() *http.Response{
+					clientID + "/.well-known/openid-federation": func() *http.Response {
+						return &http.Response{
+							StatusCode: 200,
+							Header:     http.Header{"Content-Type": []string{"application/json"}},
+							Body:       io.NopCloser(bytes.NewBufferString("{}")),
+						}
+					},
+				}
+				return setup(t, responses)
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Given.
+			ctx := test.setup(t)
+
+			// When.
+			_, err := fetchEntityConfiguration(ctx, clientID)
+
+			// Then.
+			if err == nil {
+				t.Fatal("error expected")
 			}
-		},
-	}
-	ctx := setUp(t, responses)
-
-	// When.
-	_, err := fetchEntityConfiguration(ctx, clientID)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected for non-200 status")
+		})
 	}
 }
 
-func TestFetchEntityStatement_InvalidContentType(t *testing.T) {
-	// Given.
-	responses := map[string]func() *http.Response{
-		clientID + "/.well-known/openid-federation": func() *http.Response {
-			return &http.Response{
-				StatusCode: 200,
-				Header: http.Header{
-					"Content-Type": []string{"application/json"},
-				},
-				Body: io.NopCloser(bytes.NewBufferString("{}")),
+func TestParseEntityConfiguration(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func(*testing.T) (oidc.Context, string)
+	}{
+		{
+			name: "empty authority hints",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss":             clientID,
+					"sub":             clientID,
+					"iat":             timeutil.TimestampNow(),
+					"exp":             timeutil.TimestampNow() + 600,
+					"jwks":            jose.JSONWebKeySet{Keys: []jose.JSONWebKey{clientJWK.Public()}},
+					"authority_hints": []string{},
+				}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), signedStatement
+			},
+		},
+		{
+			name: "empty trust anchor hints",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss":                clientID,
+					"sub":                clientID,
+					"iat":                timeutil.TimestampNow(),
+					"exp":                timeutil.TimestampNow() + 600,
+					"jwks":               jose.JSONWebKeySet{Keys: []jose.JSONWebKey{clientJWK.Public()}},
+					"authority_hints":    []string{trustAnchorID},
+					"trust_anchor_hints": []string{},
+				}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), signedStatement
+			},
+		},
+		{
+			name: "with metadata policy",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss":             clientID,
+					"sub":             clientID,
+					"iat":             timeutil.TimestampNow(),
+					"exp":             timeutil.TimestampNow() + 600,
+					"jwks":            jose.JSONWebKeySet{Keys: []jose.JSONWebKey{clientJWK.Public()}},
+					"authority_hints": []string{trustAnchorID},
+					"metadata_policy": map[string]any{},
+				}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), signedStatement
+			},
+		},
+		{
+			name: "with metadata policy critical",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss":                  clientID,
+					"sub":                  clientID,
+					"iat":                  timeutil.TimestampNow(),
+					"exp":                  timeutil.TimestampNow() + 600,
+					"jwks":                 jose.JSONWebKeySet{Keys: []jose.JSONWebKey{clientJWK.Public()}},
+					"authority_hints":      []string{trustAnchorID},
+					"metadata_policy_crit": []string{"custom_operator"},
+				}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), signedStatement
+			},
+		},
+		{
+			name: "with constraints",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss":             clientID,
+					"sub":             clientID,
+					"iat":             timeutil.TimestampNow(),
+					"exp":             timeutil.TimestampNow() + 600,
+					"jwks":            jose.JSONWebKeySet{Keys: []jose.JSONWebKey{clientJWK.Public()}},
+					"authority_hints": []string{trustAnchorID},
+					"constraints": map[string]any{
+						"max_path_length": 0,
+					},
+				}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), signedStatement
+			},
+		},
+		{
+			name: "with source endpoint",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss":             clientID,
+					"sub":             clientID,
+					"iat":             timeutil.TimestampNow(),
+					"exp":             timeutil.TimestampNow() + 600,
+					"jwks":            jose.JSONWebKeySet{Keys: []jose.JSONWebKey{clientJWK.Public()}},
+					"authority_hints": []string{trustAnchorID},
+					"source_endpoint": "https://example.com/source",
+				}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), signedStatement
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Given.
+			ctx, signedStatement := test.setup(t)
+
+			// When.
+			_, err := parseEntityConfiguration(ctx, signedStatement, nil)
+
+			// Then.
+			if err == nil {
+				t.Fatal("error expected")
 			}
-		},
-	}
-	ctx := setUp(t, responses)
-
-	// When.
-	_, err := fetchEntityConfiguration(ctx, clientID)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected for invalid content type")
+		})
 	}
 }
 
-func TestParseEntityConfiguration_EmptyAuthorityHints(t *testing.T) {
-	// Given.
-	signedStatement := oidctest.SignWithOptions(t, map[string]any{
-		"iss": clientID,
-		"sub": clientID,
-		"iat": timeutil.TimestampNow(),
-		"exp": timeutil.TimestampNow() + 600,
-		"jwks": jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{clientJWK.Public()},
+func TestParseEntityStatement(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup func(*testing.T) (oidc.Context, string)
+	}{
+		{
+			name: "missing kid header",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss":  clientID,
+					"sub":  clientID,
+					"iat":  timeutil.TimestampNow(),
+					"exp":  timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{Keys: []jose.JSONWebKey{clientJWK.Public()}},
+				}, goidc.JSONWebKey{
+					Key:       clientKey,
+					Algorithm: "RS256",
+				}, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), signedStatement
+			},
 		},
-		"authority_hints": []string{}, // Empty array is invalid.
-	}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+		{
+			name: "invalid typ header",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss":  clientID,
+					"sub":  clientID,
+					"iat":  timeutil.TimestampNow(),
+					"exp":  timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{Keys: []jose.JSONWebKey{clientJWK.Public()}},
+				}, clientJWK, (&jose.SignerOptions{}).WithType("JWT"))
+				return setup(t, nil), signedStatement
+			},
+		},
+		{
+			name: "missing jwks",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss": clientID,
+					"sub": clientID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+				}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), signedStatement
+			},
+		},
+		{
+			name: "with trust anchor claim",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss":          clientID,
+					"sub":          clientID,
+					"iat":          timeutil.TimestampNow(),
+					"exp":          timeutil.TimestampNow() + 600,
+					"jwks":         jose.JSONWebKeySet{Keys: []jose.JSONWebKey{clientJWK.Public()}},
+					"trust_anchor": trustAnchorID,
+				}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), signedStatement
+			},
+		},
+		{
+			name: "missing iat",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss":  clientID,
+					"sub":  clientID,
+					"exp":  timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{Keys: []jose.JSONWebKey{clientJWK.Public()}},
+				}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), signedStatement
+			},
+		},
+		{
+			name: "missing exp",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss":  clientID,
+					"sub":  clientID,
+					"iat":  timeutil.TimestampNow(),
+					"jwks": jose.JSONWebKeySet{Keys: []jose.JSONWebKey{clientJWK.Public()}},
+				}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), signedStatement
+			},
+		},
+		{
+			name: "expired statement",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss":  clientID,
+					"sub":  clientID,
+					"iat":  timeutil.TimestampNow() - 1000,
+					"exp":  timeutil.TimestampNow() - 500,
+					"jwks": jose.JSONWebKeySet{Keys: []jose.JSONWebKey{clientJWK.Public()}},
+				}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), signedStatement
+			},
+		},
+		{
+			name: "audience not allowed",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss":  clientID,
+					"sub":  clientID,
+					"iat":  timeutil.TimestampNow(),
+					"exp":  timeutil.TimestampNow() + 600,
+					"aud":  []string{"https://audience.example.com"},
+					"jwks": jose.JSONWebKeySet{Keys: []jose.JSONWebKey{clientJWK.Public()}},
+				}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), signedStatement
+			},
+		},
+		{
+			name: "none algorithm",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss": clientID,
+					"sub": clientID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{clientJWK.Public()},
+					},
+				}, goidc.JSONWebKey{
+					KeyID:     "test_key",
+					Key:       clientKey,
+					Algorithm: "none",
+				}, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), signedStatement
+			},
+		},
+		{
+			name: "peer trust chain header not allowed",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss": clientID,
+					"sub": clientID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{clientJWK.Public()},
+					},
+					"authority_hints": []string{trustAnchorID},
+				}, clientJWK, (&jose.SignerOptions{}).
+					WithType(jwtTypeEntityStatement).
+					WithHeader("peer_trust_chain", []string{"some_chain"}))
+				return setup(t, nil), signedStatement
+			},
+		},
+		{
+			name: "trust chain header not allowed without explicit registration",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss": clientID,
+					"sub": clientID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{clientJWK.Public()},
+					},
+					"authority_hints": []string{trustAnchorID},
+				}, clientJWK, (&jose.SignerOptions{}).
+					WithType(jwtTypeEntityStatement).
+					WithHeader("trust_chain", []string{"some_chain"}))
+				return setup(t, nil), signedStatement
+			},
+		},
+	}
 
-	ctx := setUp(t, nil)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Given.
+			ctx, signedStatement := test.setup(t)
 
-	// When.
-	_, err := parseEntityConfiguration(ctx, signedStatement, nil)
+			// When.
+			_, err := parseEntityConfiguration(ctx, signedStatement, nil)
 
-	// Then.
-	if err == nil {
-		t.Fatal("error expected for empty authority_hints")
+			// Then.
+			if err == nil {
+				t.Fatal("error expected")
+			}
+		})
 	}
 }
 
-func TestParseEntityConfiguration_EmptyTrustAnchorHints(t *testing.T) {
-	// Given.
-	signedStatement := oidctest.SignWithOptions(t, map[string]any{
-		"iss": clientID,
-		"sub": clientID,
-		"iat": timeutil.TimestampNow(),
-		"exp": timeutil.TimestampNow() + 600,
-		"jwks": jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{clientJWK.Public()},
+func TestParseSubordinateStatement(t *testing.T) {
+	tests := []struct {
+		name   string
+		setup  func(*testing.T) (oidc.Context, string)
+		assert func(*testing.T, entityStatement, error)
+	}{
+		{
+			name: "with authority hints",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss": intermediaryAuthorityID,
+					"sub": clientID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{clientJWK.Public()},
+					},
+					"authority_hints": []string{trustAnchorID},
+				}, intermediaryAuthorityJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), signedStatement
+			},
+			assert: func(t *testing.T, _ entityStatement, err error) {
+				if err == nil {
+					t.Fatal("error expected when subordinate statement has authority_hints")
+				}
+			},
 		},
-		"authority_hints":    []string{trustAnchorID},
-		"trust_anchor_hints": []string{}, // Empty array is invalid.
-	}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+		{
+			name: "with trust anchor hints",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss": intermediaryAuthorityID,
+					"sub": clientID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{clientJWK.Public()},
+					},
+					"trust_anchor_hints": []string{trustAnchorID},
+				}, intermediaryAuthorityJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), signedStatement
+			},
+			assert: func(t *testing.T, _ entityStatement, err error) {
+				if err == nil {
+					t.Fatal("error expected when subordinate statement has trust_anchor_hints")
+				}
+			},
+		},
+		{
+			name: "with trust marks",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss": intermediaryAuthorityID,
+					"sub": clientID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{clientJWK.Public()},
+					},
+					"trust_marks": []any{},
+				}, intermediaryAuthorityJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), signedStatement
+			},
+			assert: func(t *testing.T, _ entityStatement, err error) {
+				if err == nil {
+					t.Fatal("error expected when subordinate statement has trust_marks")
+				}
+			},
+		},
+		{
+			name: "with trust mark issuers",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss": intermediaryAuthorityID,
+					"sub": clientID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{clientJWK.Public()},
+					},
+					"trust_mark_issuers": map[string]any{},
+				}, intermediaryAuthorityJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), signedStatement
+			},
+			assert: func(t *testing.T, _ entityStatement, err error) {
+				if err == nil {
+					t.Fatal("error expected when subordinate statement has trust_mark_issuers")
+				}
+			},
+		},
+		{
+			name: "with trust mark owners",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss": intermediaryAuthorityID,
+					"sub": clientID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{clientJWK.Public()},
+					},
+					"trust_mark_owners": map[string]any{},
+				}, intermediaryAuthorityJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), signedStatement
+			},
+			assert: func(t *testing.T, _ entityStatement, err error) {
+				if err == nil {
+					t.Fatal("error expected when subordinate statement has trust_mark_owners")
+				}
+			},
+		},
+		{
+			name: "with invalid metadata policy",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss": intermediaryAuthorityID,
+					"sub": clientID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{clientJWK.Public()},
+					},
+					"metadata_policy": map[string]any{
+						"openid_relying_party": map[string]any{
+							"token_endpoint_auth_method": map[string]any{
+								"value":  "private_key_jwt",
+								"one_of": []string{"client_secret_basic"},
+							},
+						},
+					},
+				}, intermediaryAuthorityJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), signedStatement
+			},
+			assert: func(t *testing.T, _ entityStatement, err error) {
+				if err == nil {
+					t.Fatal("error expected when subordinate statement has invalid metadata policy")
+				}
+			},
+		},
+		{
+			name: "with source endpoint",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				signedStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss": intermediaryAuthorityID,
+					"sub": clientID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{clientJWK.Public()},
+					},
+					"source_endpoint": "https://authority.example.com/fetch",
+				}, intermediaryAuthorityJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), signedStatement
+			},
+			assert: func(t *testing.T, st entityStatement, err error) {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if st.SourceEndpoint != "https://authority.example.com/fetch" {
+					t.Errorf("st.SourceEndpoint = %s, want %s", st.SourceEndpoint, "https://authority.example.com/fetch")
+				}
+			},
+		},
+	}
 
-	ctx := setUp(t, nil)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Given.
+			ctx, signedStatement := test.setup(t)
 
-	// When.
-	_, err := parseEntityConfiguration(ctx, signedStatement, nil)
+			// When.
+			st, err := parseSubordinateStatement(ctx, signedStatement, parseOptions{
+				jwks:    goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{intermediaryAuthorityJWK.Public()}},
+				issuer:  intermediaryAuthorityID,
+				subject: clientID,
+			})
 
-	// Then.
-	if err == nil {
-		t.Fatal("error expected for empty trust_anchor_hints")
+			// Then.
+			test.assert(t, st, err)
+		})
 	}
 }
 
-func TestParseEntityConfiguration_WithMetadataPolicy(t *testing.T) {
-	// Given.
-	signedStatement := oidctest.SignWithOptions(t, map[string]any{
-		"iss": clientID,
-		"sub": clientID,
-		"iat": timeutil.TimestampNow(),
-		"exp": timeutil.TimestampNow() + 600,
-		"jwks": jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{clientJWK.Public()},
+func TestParseTrustChain(t *testing.T) {
+	tests := []struct {
+		name   string
+		setup  func(*testing.T) (oidc.Context, []string)
+		assert func(*testing.T, trustChain, error)
+	}{
+		{
+			name: "too short",
+			setup: func(t *testing.T) (oidc.Context, []string) {
+				return setup(t, nil), []string{"single_statement"}
+			},
+			assert: func(t *testing.T, _ trustChain, err error) {
+				if err == nil {
+					t.Fatal("error expected for trust chain with only one statement")
+				}
+			},
 		},
-		"authority_hints": []string{trustAnchorID},
-		"metadata_policy": map[string]any{}, // Not allowed in entity configuration.
-	}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-
-	ctx := setUp(t, nil)
-
-	// When.
-	_, err := parseEntityConfiguration(ctx, signedStatement, nil)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected when entity configuration has metadata_policy")
-	}
-}
-
-func TestParseEntityConfiguration_WithMetadataPolicyCritical(t *testing.T) {
-	// Given.
-	signedStatement := oidctest.SignWithOptions(t, map[string]any{
-		"iss": clientID,
-		"sub": clientID,
-		"iat": timeutil.TimestampNow(),
-		"exp": timeutil.TimestampNow() + 600,
-		"jwks": jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{clientJWK.Public()},
+		{
+			name: "untrusted anchor",
+			setup: func(t *testing.T) (oidc.Context, []string) {
+				untrustedAnchorID := "https://untrusted-anchor.testfed.com"
+				untrustedAnchorKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+				untrustedAnchorJWK := goidc.JSONWebKey{
+					KeyID:     "untrusted_key",
+					Key:       untrustedAnchorKey,
+					Algorithm: "RS256",
+				}
+				entityConfig := oidctest.SignWithOptions(t, map[string]any{
+					"iss": clientID,
+					"sub": clientID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{clientJWK.Public()},
+					},
+					"authority_hints": []string{untrustedAnchorID},
+				}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				anchorConfig := oidctest.SignWithOptions(t, map[string]any{
+					"iss": untrustedAnchorID,
+					"sub": untrustedAnchorID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{untrustedAnchorJWK.Public()},
+					},
+				}, untrustedAnchorJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), []string{entityConfig, anchorConfig}
+			},
+			assert: func(t *testing.T, _ trustChain, err error) {
+				if err == nil {
+					t.Fatal("error expected for untrusted trust anchor")
+				}
+			},
 		},
-		"authority_hints":      []string{trustAnchorID},
-		"metadata_policy_crit": []string{"custom_operator"},
-	}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-
-	ctx := setUp(t, nil)
-
-	// When.
-	_, err := parseEntityConfiguration(ctx, signedStatement, nil)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected when entity configuration has metadata_policy_crit")
-	}
-}
-
-func TestParseEntityConfiguration_WithConstraints(t *testing.T) {
-	// Given.
-	signedStatement := oidctest.SignWithOptions(t, map[string]any{
-		"iss": clientID,
-		"sub": clientID,
-		"iat": timeutil.TimestampNow(),
-		"exp": timeutil.TimestampNow() + 600,
-		"jwks": jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{clientJWK.Public()},
+		{
+			name: "invalid last statement",
+			setup: func(t *testing.T) (oidc.Context, []string) {
+				entityConfig := oidctest.SignWithOptions(t, map[string]any{
+					"iss": clientID,
+					"sub": clientID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{clientJWK.Public()},
+					},
+				}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), []string{entityConfig, "invalid_jwt_token"}
+			},
+			assert: func(t *testing.T, _ trustChain, err error) {
+				if err == nil {
+					t.Fatal("error expected for unparseable last statement in trust chain")
+				}
+			},
 		},
-		"authority_hints": []string{trustAnchorID},
-		"constraints": map[string]any{
-			"max_path_length": 0,
+		{
+			name: "with trust anchor config in chain",
+			setup: func(t *testing.T) (oidc.Context, []string) {
+				entityConfig := oidctest.SignWithOptions(t, map[string]any{
+					"iss": clientID,
+					"sub": clientID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{clientJWK.Public()},
+					},
+					"authority_hints": []string{trustAnchorID},
+				}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				subordinateStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss": trustAnchorID,
+					"sub": clientID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{clientJWK.Public()},
+					},
+				}, trustAnchorJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				trustAnchorConfig := oidctest.SignWithOptions(t, map[string]any{
+					"iss": trustAnchorID,
+					"sub": trustAnchorID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{trustAnchorJWK.Public()},
+					},
+					"metadata": map[string]any{
+						"federation_entity": map[string]any{
+							"federation_fetch_endpoint": trustAnchorID + "/fetch",
+						},
+					},
+				}, trustAnchorJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), []string{entityConfig, subordinateStatement, trustAnchorConfig}
+			},
+			assert: func(t *testing.T, chain trustChain, err error) {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if len(chain) != 3 {
+					t.Errorf("chain length = %d, want 3", len(chain))
+				}
+			},
 		},
-	}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-
-	ctx := setUp(t, nil)
-
-	// When.
-	_, err := parseEntityConfiguration(ctx, signedStatement, nil)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected when entity configuration has constraints")
-	}
-}
-
-func TestParseEntityConfiguration_WithSourceEndpoint(t *testing.T) {
-	// Given.
-	signedStatement := oidctest.SignWithOptions(t, map[string]any{
-		"iss": clientID,
-		"sub": clientID,
-		"iat": timeutil.TimestampNow(),
-		"exp": timeutil.TimestampNow() + 600,
-		"jwks": jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{clientJWK.Public()},
+		{
+			name: "invalid subordinate statement",
+			setup: func(t *testing.T) (oidc.Context, []string) {
+				entityConfig := oidctest.SignWithOptions(t, map[string]any{
+					"iss": clientID,
+					"sub": clientID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{clientJWK.Public()},
+					},
+					"authority_hints": []string{trustAnchorID},
+				}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				invalidSubStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss": trustAnchorID,
+					"sub": clientID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{clientJWK.Public()},
+					},
+					"authority_hints": []string{"some_hint"},
+				}, trustAnchorJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				trustAnchorConfig := oidctest.SignWithOptions(t, map[string]any{
+					"iss": trustAnchorID,
+					"sub": trustAnchorID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{trustAnchorJWK.Public()},
+					},
+					"metadata": map[string]any{
+						"federation_entity": map[string]any{
+							"federation_fetch_endpoint": trustAnchorID + "/fetch",
+						},
+					},
+				}, trustAnchorJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), []string{entityConfig, invalidSubStatement, trustAnchorConfig}
+			},
+			assert: func(t *testing.T, _ trustChain, err error) {
+				if err == nil {
+					t.Fatal("error expected for invalid subordinate statement in trust chain")
+				}
+			},
 		},
-		"authority_hints": []string{trustAnchorID},
-		"source_endpoint": "https://example.com/source",
-	}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-
-	ctx := setUp(t, nil)
-
-	// When.
-	_, err := parseEntityConfiguration(ctx, signedStatement, nil)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected when entity configuration has source_endpoint")
-	}
-}
-
-func TestParseEntityStatement_MissingKidHeader(t *testing.T) {
-	// Given.
-	signedStatement := oidctest.SignWithOptions(t, map[string]any{
-		"iss": clientID,
-		"sub": clientID,
-		"iat": timeutil.TimestampNow(),
-		"exp": timeutil.TimestampNow() + 600,
-		"jwks": jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{clientJWK.Public()},
+		{
+			name: "subject mismatch",
+			setup: func(t *testing.T) (oidc.Context, []string) {
+				wrongKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+				wrongJWK := goidc.JSONWebKey{
+					KeyID:     "wrong_key",
+					Key:       wrongKey,
+					Algorithm: "RS256",
+				}
+				entityConfig := oidctest.SignWithOptions(t, map[string]any{
+					"iss": clientID,
+					"sub": clientID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{wrongJWK.Public()},
+					},
+					"authority_hints": []string{trustAnchorID},
+				}, wrongJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				subordinateStatement := oidctest.SignWithOptions(t, map[string]any{
+					"iss": trustAnchorID,
+					"sub": clientID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{clientJWK.Public()},
+					},
+				}, trustAnchorJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				trustAnchorConfig := oidctest.SignWithOptions(t, map[string]any{
+					"iss": trustAnchorID,
+					"sub": trustAnchorID,
+					"iat": timeutil.TimestampNow(),
+					"exp": timeutil.TimestampNow() + 600,
+					"jwks": jose.JSONWebKeySet{
+						Keys: []jose.JSONWebKey{trustAnchorJWK.Public()},
+					},
+					"metadata": map[string]any{
+						"federation_entity": map[string]any{
+							"federation_fetch_endpoint": trustAnchorID + "/fetch",
+						},
+					},
+				}, trustAnchorJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+				return setup(t, nil), []string{entityConfig, subordinateStatement, trustAnchorConfig}
+			},
+			assert: func(t *testing.T, _ trustChain, err error) {
+				if err == nil {
+					t.Fatal("error expected when entity config is signed with unauthorized key")
+				}
+			},
 		},
-	}, goidc.JSONWebKey{
-		Key:       clientKey,
-		Algorithm: "RS256",
-		// No KeyID.
-	}, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-
-	ctx := setUp(t, nil)
-
-	// When.
-	_, err := parseEntityConfiguration(ctx, signedStatement, nil)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected for missing kid header")
-	}
-}
-
-func TestParseEntityStatement_InvalidTypHeader(t *testing.T) {
-	// Given.
-	signedStatement := oidctest.SignWithOptions(t, map[string]any{
-		"iss": clientID,
-		"sub": clientID,
-		"iat": timeutil.TimestampNow(),
-		"exp": timeutil.TimestampNow() + 600,
-		"jwks": jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{clientJWK.Public()},
-		},
-	}, clientJWK, (&jose.SignerOptions{}).WithType("JWT")) // Wrong type.
-
-	ctx := setUp(t, nil)
-
-	// When.
-	_, err := parseEntityConfiguration(ctx, signedStatement, nil)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected for invalid typ header")
-	}
-}
-
-func TestParseEntityStatement_MissingJWKS(t *testing.T) {
-	// Given.
-	signedStatement := oidctest.SignWithOptions(t, map[string]any{
-		"iss": clientID,
-		"sub": clientID,
-		"iat": timeutil.TimestampNow(),
-		"exp": timeutil.TimestampNow() + 600,
-		// Missing jwks.
-	}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-
-	ctx := setUp(t, nil)
-
-	// When.
-	_, err := parseEntityConfiguration(ctx, signedStatement, nil)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected for missing jwks claim")
-	}
-}
-
-func TestParseEntityStatement_WithTrustAnchorClaim(t *testing.T) {
-	// Given.
-	signedStatement := oidctest.SignWithOptions(t, map[string]any{
-		"iss": clientID,
-		"sub": clientID,
-		"iat": timeutil.TimestampNow(),
-		"exp": timeutil.TimestampNow() + 600,
-		"jwks": jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{clientJWK.Public()},
-		},
-		"trust_anchor": trustAnchorID, // Not allowed in entity statements.
-	}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-
-	ctx := setUp(t, nil)
-
-	// When.
-	_, err := parseEntityConfiguration(ctx, signedStatement, nil)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected when entity statement has trust_anchor claim")
-	}
-}
-
-func TestParseEntityStatement_MissingIat(t *testing.T) {
-	// Given.
-	signedStatement := oidctest.SignWithOptions(t, map[string]any{
-		"iss": clientID,
-		"sub": clientID,
-		// Missing iat.
-		"exp": timeutil.TimestampNow() + 600,
-		"jwks": jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{clientJWK.Public()},
-		},
-	}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-
-	ctx := setUp(t, nil)
-
-	// When.
-	_, err := parseEntityConfiguration(ctx, signedStatement, nil)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected for missing iat claim")
-	}
-}
-
-func TestParseEntityStatement_MissingExp(t *testing.T) {
-	// Given.
-	signedStatement := oidctest.SignWithOptions(t, map[string]any{
-		"iss": clientID,
-		"sub": clientID,
-		"iat": timeutil.TimestampNow(),
-		// Missing exp.
-		"jwks": jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{clientJWK.Public()},
-		},
-	}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-
-	ctx := setUp(t, nil)
-
-	// When.
-	_, err := parseEntityConfiguration(ctx, signedStatement, nil)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected for missing exp claim")
-	}
-}
-
-func TestParseEntityStatement_ExpiredStatement(t *testing.T) {
-	// Given.
-	signedStatement := oidctest.SignWithOptions(t, map[string]any{
-		"iss": clientID,
-		"sub": clientID,
-		"iat": timeutil.TimestampNow() - 1000,
-		"exp": timeutil.TimestampNow() - 500, // Expired.
-		"jwks": jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{clientJWK.Public()},
-		},
-	}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-
-	ctx := setUp(t, nil)
-
-	// When.
-	_, err := parseEntityConfiguration(ctx, signedStatement, nil)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected for expired statement")
-	}
-}
-
-func TestParseEntityStatement_AudienceNotAllowed(t *testing.T) {
-	// Given.
-	signedStatement := oidctest.SignWithOptions(t, map[string]any{
-		"iss": clientID,
-		"sub": clientID,
-		"iat": timeutil.TimestampNow(),
-		"exp": timeutil.TimestampNow() + 600,
-		"aud": []string{"https://audience.example.com"},
-		"jwks": jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{clientJWK.Public()},
-		},
-	}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-
-	ctx := setUp(t, nil)
-
-	// When.
-	_, err := parseEntityConfiguration(ctx, signedStatement, nil)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected when aud claim is present in entity statement")
-	}
-}
-
-func TestParseSubordinateStatement_WithAuthorityHints(t *testing.T) {
-	// Given.
-	signedStatement := oidctest.SignWithOptions(t, map[string]any{
-		"iss": intermediaryAuthorityID,
-		"sub": clientID,
-		"iat": timeutil.TimestampNow(),
-		"exp": timeutil.TimestampNow() + 600,
-		"jwks": jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{clientJWK.Public()},
-		},
-		"authority_hints": []string{trustAnchorID}, // Not allowed in subordinate statements.
-	}, intermediaryAuthorityJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-
-	ctx := setUp(t, nil)
-
-	// When.
-	_, err := parseSubordinateStatement(ctx, signedStatement, parseOptions{
-		jwks:    goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{intermediaryAuthorityJWK}},
-		issuer:  intermediaryAuthorityID,
-		subject: clientID,
-	})
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected when subordinate statement has authority_hints")
-	}
-}
-
-func TestParseSubordinateStatement_WithTrustAnchorHints(t *testing.T) {
-	// Given.
-	signedStatement := oidctest.SignWithOptions(t, map[string]any{
-		"iss": intermediaryAuthorityID,
-		"sub": clientID,
-		"iat": timeutil.TimestampNow(),
-		"exp": timeutil.TimestampNow() + 600,
-		"jwks": jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{clientJWK.Public()},
-		},
-		"trust_anchor_hints": []string{trustAnchorID}, // Not allowed in subordinate statements.
-	}, intermediaryAuthorityJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-
-	ctx := setUp(t, nil)
-
-	// When.
-	_, err := parseSubordinateStatement(ctx, signedStatement, parseOptions{
-		jwks:    goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{intermediaryAuthorityJWK}},
-		issuer:  intermediaryAuthorityID,
-		subject: clientID,
-	})
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected when subordinate statement has trust_anchor_hints")
-	}
-}
-
-func TestParseSubordinateStatement_WithTrustMarks(t *testing.T) {
-	// Given.
-	signedStatement := oidctest.SignWithOptions(t, map[string]any{
-		"iss": intermediaryAuthorityID,
-		"sub": clientID,
-		"iat": timeutil.TimestampNow(),
-		"exp": timeutil.TimestampNow() + 600,
-		"jwks": jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{clientJWK.Public()},
-		},
-		"trust_marks": []any{}, // Not allowed in subordinate statements.
-	}, intermediaryAuthorityJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-
-	ctx := setUp(t, nil)
-
-	// When.
-	_, err := parseSubordinateStatement(ctx, signedStatement, parseOptions{
-		jwks:    goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{intermediaryAuthorityJWK}},
-		issuer:  intermediaryAuthorityID,
-		subject: clientID,
-	})
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected when subordinate statement has trust_marks")
-	}
-}
-
-func TestParseSubordinateStatement_WithTrustMarkIssuers(t *testing.T) {
-	// Given.
-	signedStatement := oidctest.SignWithOptions(t, map[string]any{
-		"iss": intermediaryAuthorityID,
-		"sub": clientID,
-		"iat": timeutil.TimestampNow(),
-		"exp": timeutil.TimestampNow() + 600,
-		"jwks": jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{clientJWK.Public()},
-		},
-		"trust_mark_issuers": map[string]any{}, // Not allowed in subordinate statements.
-	}, intermediaryAuthorityJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-
-	ctx := setUp(t, nil)
-
-	// When.
-	_, err := parseSubordinateStatement(ctx, signedStatement, parseOptions{
-		jwks:    goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{intermediaryAuthorityJWK}},
-		issuer:  intermediaryAuthorityID,
-		subject: clientID,
-	})
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected when subordinate statement has trust_mark_issuers")
-	}
-}
-
-func TestParseSubordinateStatement_WithTrustMarkOwners(t *testing.T) {
-	// Given.
-	signedStatement := oidctest.SignWithOptions(t, map[string]any{
-		"iss": intermediaryAuthorityID,
-		"sub": clientID,
-		"iat": timeutil.TimestampNow(),
-		"exp": timeutil.TimestampNow() + 600,
-		"jwks": jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{clientJWK.Public()},
-		},
-		"trust_mark_owners": map[string]any{}, // Not allowed in subordinate statements.
-	}, intermediaryAuthorityJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
-
-	ctx := setUp(t, nil)
-
-	// When.
-	_, err := parseSubordinateStatement(ctx, signedStatement, parseOptions{
-		jwks:    goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{intermediaryAuthorityJWK}},
-		issuer:  intermediaryAuthorityID,
-		subject: clientID,
-	})
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected when subordinate statement has trust_mark_owners")
-	}
-}
-
-func TestParseTrustChain_TooShort(t *testing.T) {
-	// Given.
-	ctx := setUp(t, nil)
-	chainStatements := []string{"single_statement"}
-
-	// When.
-	_, err := parseTrustChain(ctx, chainStatements)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected for trust chain with only one statement")
-	}
-}
-
-func TestParseTrustChain_UntrustedAnchor(t *testing.T) {
-	// Given.
-	untrustedAnchorID := "https://untrusted-anchor.testfed.com"
-	untrustedAnchorKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	untrustedAnchorJWK := goidc.JSONWebKey{
-		KeyID:     "untrusted_key",
-		Key:       untrustedAnchorKey,
-		Algorithm: "RS256",
 	}
 
-	entityConfig := oidctest.SignWithOptions(t, map[string]any{
-		"iss": clientID,
-		"sub": clientID,
-		"iat": timeutil.TimestampNow(),
-		"exp": timeutil.TimestampNow() + 600,
-		"jwks": jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{clientJWK.Public()},
-		},
-		"authority_hints": []string{untrustedAnchorID},
-	}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Given.
+			ctx, chainStatements := test.setup(t)
 
-	anchorConfig := oidctest.SignWithOptions(t, map[string]any{
-		"iss": untrustedAnchorID,
-		"sub": untrustedAnchorID,
-		"iat": timeutil.TimestampNow(),
-		"exp": timeutil.TimestampNow() + 600,
-		"jwks": jose.JSONWebKeySet{
-			Keys: []jose.JSONWebKey{untrustedAnchorJWK.Public()},
-		},
-	}, untrustedAnchorJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+			// When.
+			chain, err := parseTrustChain(ctx, chainStatements)
 
-	ctx := setUp(t, nil)
-	chainStatements := []string{entityConfig, anchorConfig}
-
-	// When.
-	_, err := parseTrustChain(ctx, chainStatements)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected for untrusted trust anchor")
+			// Then.
+			test.assert(t, chain, err)
+		})
 	}
 }
 
 func TestParseTrustMark_MissingKidHeader(t *testing.T) {
 	// Given.
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 	signedMark := oidctest.SignWithOptions(t, map[string]any{
 		"trust_mark_type": trustMarkCertification,
 		"iss":             trustMarkIssuerID,
@@ -1233,7 +1528,7 @@ func TestParseTrustMark_MissingKidHeader(t *testing.T) {
 
 func TestParseTrustMark_InvalidTypHeader(t *testing.T) {
 	// Given.
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 	signedMark := oidctest.SignWithOptions(t, map[string]any{
 		"trust_mark_type": trustMarkCertification,
 		"iss":             trustMarkIssuerID,
@@ -1255,7 +1550,7 @@ func TestParseTrustMark_InvalidTypHeader(t *testing.T) {
 
 func TestParseTrustMark_MissingIat(t *testing.T) {
 	// Given.
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 	signedMark := oidctest.SignWithOptions(t, map[string]any{
 		"trust_mark_type": trustMarkCertification,
 		"iss":             trustMarkIssuerID,
@@ -1277,7 +1572,7 @@ func TestParseTrustMark_MissingIat(t *testing.T) {
 
 func TestParseTrustMark_WrongSubject(t *testing.T) {
 	// Given.
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 	wrongSubject := "https://wrong-subject.example.com"
 	signedMark := oidctest.SignWithOptions(t, map[string]any{
 		"trust_mark_type": trustMarkCertification,
@@ -1347,7 +1642,7 @@ func TestParseTrustMark_UnauthorizedIssuer(t *testing.T) {
 		},
 	}
 
-	ctx := setUp(t, responses)
+	ctx := setup(t, responses)
 	signedMark := oidctest.SignWithOptions(t, map[string]any{
 		"trust_mark_type": trustMarkCertification,
 		"iss":             unauthorizedIssuerID, // Not in trust_mark_issuers list.
@@ -1367,74 +1662,160 @@ func TestParseTrustMark_UnauthorizedIssuer(t *testing.T) {
 	}
 }
 
-func TestFetchSubordinateStatement_NotFederationAuthority(t *testing.T) {
-	// Given: authority without federation_entity metadata.
-	ctx := setUp(t, nil)
-	authority := entityStatement{
-		Issuer: intermediaryAuthorityID,
-		Metadata: metadata{
-			FederationAuthority: nil, // Not a federation authority.
+func TestFetchSubordinateStatement(t *testing.T) {
+	tests := []struct {
+		name   string
+		setup  func(*testing.T) (oidc.Context, entityStatement)
+		assert func(*testing.T, entityStatement, error)
+	}{
+		{
+			name: "not federation authority",
+			setup: func(t *testing.T) (oidc.Context, entityStatement) {
+				return setup(t, nil), entityStatement{
+					Issuer: intermediaryAuthorityID,
+					Metadata: metadata{
+						FederationAuthority: nil,
+					},
+				}
+			},
+			assert: func(t *testing.T, _ entityStatement, err error) {
+				if err == nil {
+					t.Fatal("error expected when authority is not a federation authority")
+				}
+			},
 		},
-	}
-
-	// When.
-	_, err := fetchSubordinateStatement(ctx, clientID, authority)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected when authority is not a federation authority")
-	}
-}
-
-func TestFetchSubordinateStatement_InvalidFetchEndpoint(t *testing.T) {
-	// Given.
-	ctx := setUp(t, nil)
-	authority := entityStatement{
-		Issuer: intermediaryAuthorityID,
-		Metadata: metadata{
-			FederationAuthority: &federationAuthority{
-				FetchEndpoint: "://invalid-url",
+		{
+			name: "invalid fetch endpoint",
+			setup: func(t *testing.T) (oidc.Context, entityStatement) {
+				return setup(t, nil), entityStatement{
+					Issuer: intermediaryAuthorityID,
+					Metadata: metadata{
+						FederationAuthority: &federationAuthority{
+							FetchEndpoint: "://invalid-url",
+						},
+					},
+				}
+			},
+			assert: func(t *testing.T, _ entityStatement, err error) {
+				if err == nil {
+					t.Fatal("error expected when fetch endpoint is invalid")
+				}
+			},
+		},
+		{
+			name: "with private key jwt",
+			setup: func(t *testing.T) (oidc.Context, entityStatement) {
+				responses := map[string]func() *http.Response{
+					intermediaryAuthorityID + "/fetch": func() *http.Response {
+						st := oidctest.SignWithOptions(t, map[string]any{
+							"iss": intermediaryAuthorityID,
+							"sub": clientID,
+							"iat": timeutil.TimestampNow(),
+							"exp": timeutil.TimestampNow() + 600,
+							"jwks": jose.JSONWebKeySet{
+								Keys: []jose.JSONWebKey{clientJWK.Public()},
+							},
+						}, intermediaryAuthorityJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
+						return &http.Response{
+							StatusCode: 200,
+							Header:     http.Header{"Content-Type": []string{contentTypeEntityStatementJWT}},
+							Body:       io.NopCloser(bytes.NewBufferString(st)),
+						}
+					},
+				}
+				ctx := setup(t, responses)
+				authority := entityStatement{
+					Issuer: intermediaryAuthorityID,
+					JWKS:   goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{intermediaryAuthorityJWK.Public()}},
+					Metadata: metadata{
+						FederationAuthority: &federationAuthority{
+							FetchEndpoint:                     intermediaryAuthorityID + "/fetch",
+							FetchEndpointAuthMethods:          []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT},
+							EndpointAuthSigAlgValuesSupported: []goidc.SignatureAlgorithm{goidc.RS256},
+						},
+					},
+				}
+				return ctx, authority
+			},
+			assert: func(t *testing.T, st entityStatement, err error) {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if st.Subject != clientID {
+					t.Errorf("st.Subject = %s, want %s", st.Subject, clientID)
+				}
 			},
 		},
 	}
 
-	// When.
-	_, err := fetchSubordinateStatement(ctx, clientID, authority)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Given.
+			ctx, authority := test.setup(t)
 
-	// Then.
-	if err == nil {
-		t.Fatal("error expected when fetch endpoint is invalid")
+			// When.
+			st, err := fetchSubordinateStatement(ctx, clientID, authority)
+
+			// Then.
+			test.assert(t, st, err)
+		})
 	}
 }
 
-func TestBuildTrustChain_NoAuthorityHints(t *testing.T) {
-	// Given.
-	ctx := setUp(t, nil)
-	entityConfig := entityStatement{
-		Subject:        clientID,
-		AuthorityHints: nil, // No authority hints.
+func TestBuildTrustChain(t *testing.T) {
+	tests := []struct {
+		name   string
+		setup  func(*testing.T) (oidc.Context, entityStatement, bool)
+		assert func(*testing.T, trustChain, error)
+	}{
+		{
+			name: "no authority hints",
+			setup: func(t *testing.T) (oidc.Context, entityStatement, bool) {
+				return setup(t, nil), entityStatement{
+					Subject:        clientID,
+					AuthorityHints: nil,
+				}, false
+			},
+			assert: func(t *testing.T, _ trustChain, err error) {
+				if err == nil {
+					t.Fatal("error expected when entity has no authority hints")
+				}
+			},
+		},
+		{
+			name: "max depth exceeded",
+			setup: func(t *testing.T) (oidc.Context, entityStatement, bool) {
+				ctx := setup(t, nil)
+				ctx.OpenIDFedTrustChainMaxDepth = 1
+				return ctx, entityStatement{}, true
+			},
+			assert: func(t *testing.T, _ trustChain, err error) {
+				if err == nil {
+					t.Fatal("error expected when trust chain depth is exceeded")
+				}
+			},
+		},
 	}
 
-	// When.
-	_, err := buildTrustChain(ctx, entityConfig)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Given.
+			ctx, entityConfig, callClient := test.setup(t)
 
-	// Then.
-	if err == nil {
-		t.Fatal("error expected when entity has no authority hints")
-	}
-}
+			// When.
+			var (
+				chain trustChain
+				err   error
+			)
+			if callClient {
+				_, err = Client(ctx, clientID, nil)
+			} else {
+				chain, err = buildTrustChain(ctx, entityConfig)
+			}
 
-func TestBuildTrustChain_MaxDepthExceeded(t *testing.T) {
-	// Given.
-	ctx := setUp(t, nil)
-	ctx.OpenIDFedTrustChainMaxDepth = 1 // Very low depth.
-
-	// When: client -> intermediary -> trust anchor (depth = 2).
-	_, err := Client(ctx, clientID, nil)
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected when trust chain depth is exceeded")
+			// Then.
+			test.assert(t, chain, err)
+		})
 	}
 }
 
@@ -1463,7 +1844,7 @@ func TestRegister_NotOpenIDClient(t *testing.T) {
 			}
 		},
 	}
-	ctx := setUp(t, responses)
+	ctx := setup(t, responses)
 
 	// When.
 	_, err := Client(ctx, clientID, nil)
@@ -1500,7 +1881,7 @@ func TestRegister_RegistrationTypeNotSupported(t *testing.T) {
 			}
 		},
 	}
-	ctx := setUp(t, responses)
+	ctx := setup(t, responses)
 
 	// When.
 	_, err := Client(ctx, clientID, nil)
@@ -1567,7 +1948,7 @@ func TestRegisterExplicitlyWithEntityConfiguration_WithTrustChainHeader(t *testi
 
 func TestRegisterExplicitlyWithEntityConfiguration_InvalidEntityConfiguration(t *testing.T) {
 	// Given: invalid entity configuration (missing required fields).
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 	entityConfig := oidctest.SignWithOptions(t, map[string]any{
 		"iss": clientID,
 		"sub": clientID,
@@ -1585,7 +1966,7 @@ func TestRegisterExplicitlyWithEntityConfiguration_InvalidEntityConfiguration(t 
 
 func TestRegisterExplicitlyWithChainStatements_InvalidChain(t *testing.T) {
 	// Given: invalid chain (too short).
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 	chainStatements := []string{"single_statement"}
 
 	// When.
@@ -1598,193 +1979,210 @@ func TestRegisterExplicitlyWithChainStatements_InvalidChain(t *testing.T) {
 }
 
 func TestFetchEntityConfigurationJWKS(t *testing.T) {
-	// Given.
-	ctx := setUp(t, nil)
-
-	// When.
-	jwks, err := FetchEntityConfigurationJWKS(ctx, clientID)
-
-	// Then.
-	if err != nil {
-		t.Fatal(err)
+	tests := []struct {
+		name   string
+		setup  func(*testing.T) (oidc.Context, string)
+		assert func(*testing.T, goidc.JSONWebKeySet, error)
+	}{
+		{
+			name: "success",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				return setup(t, nil), clientID
+			},
+			assert: func(t *testing.T, jwks goidc.JSONWebKeySet, err error) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(jwks.Keys) == 0 {
+					t.Error("expected at least one key in JWKS")
+				}
+			},
+		},
+		{
+			name: "invalid entity",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				return setup(t, nil), "https://nonexistent.example.com"
+			},
+			assert: func(t *testing.T, _ goidc.JSONWebKeySet, err error) {
+				if err == nil {
+					t.Fatal("error expected for nonexistent entity")
+				}
+			},
+		},
 	}
 
-	if len(jwks.Keys) == 0 {
-		t.Error("expected at least one key in JWKS")
-	}
-}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Given.
+			ctx, entityID := test.setup(t)
 
-func TestFetchEntityConfigurationJWKS_InvalidEntity(t *testing.T) {
-	// Given.
-	ctx := setUp(t, nil)
+			// When.
+			jwks, err := FetchEntityConfigurationJWKS(ctx, entityID)
 
-	// When.
-	_, err := FetchEntityConfigurationJWKS(ctx, "https://nonexistent.example.com")
-
-	// Then.
-	if err == nil {
-		t.Fatal("error expected for nonexistent entity")
+			// Then.
+			test.assert(t, jwks, err)
+		})
 	}
 }
 
 func TestNewEntityConfiguration(t *testing.T) {
-	// Given.
-	ctx := setUp(t, nil)
-	ctx.OpenIDFedJWKSRepresentations = []goidc.JWKSRepresentation{
-		goidc.JWKSRepresentationURI,
+	tests := []struct {
+		name   string
+		setup  func(*testing.T) oidc.Context
+		assert func(*testing.T, oidc.Context, map[string]any)
+	}{
+		{
+			name: "jwks uri",
+			setup: func(t *testing.T) oidc.Context {
+				ctx := setup(t, nil)
+				ctx.OpenIDFedJWKSRepresentations = []goidc.JWKSRepresentation{
+					goidc.JWKSRepresentationURI,
+				}
+				return ctx
+			},
+			assert: func(t *testing.T, ctx oidc.Context, claims map[string]any) {
+				if claims["iss"] != ctx.Issuer() {
+					t.Errorf("claims.iss = %s, want %s", claims["iss"], ctx.Issuer())
+				}
+				if claims["sub"] != ctx.Issuer() {
+					t.Errorf("claims.sub = %s, want %s", claims["sub"], ctx.Issuer())
+				}
+			},
+		},
+		{
+			name: "signed jwks",
+			setup: func(t *testing.T) oidc.Context {
+				ctx := setup(t, nil)
+				ctx.OpenIDFedJWKSRepresentations = []goidc.JWKSRepresentation{
+					goidc.JWKSRepresentationSignedURI,
+				}
+				ctx.OpenIDFedSignedJWKSEndpoint = "/signed-jwks"
+				return ctx
+			},
+			assert: func(t *testing.T, _ oidc.Context, claims map[string]any) {
+				metadata, ok := claims["metadata"].(map[string]any)
+				if !ok {
+					t.Fatal("metadata claim expected")
+				}
+				opMetadata, ok := metadata["openid_provider"].(map[string]any)
+				if !ok {
+					t.Fatal("openid_provider metadata expected")
+				}
+				if opMetadata["signed_jwks_uri"] == nil {
+					t.Error("signed_jwks_uri expected in openid_provider metadata")
+				}
+			},
+		},
+		{
+			name: "inline jwks",
+			setup: func(t *testing.T) oidc.Context {
+				ctx := setup(t, nil)
+				ctx.OpenIDFedJWKSRepresentations = []goidc.JWKSRepresentation{
+					goidc.JWKSRepresentationInline,
+				}
+				return ctx
+			},
+			assert: func(t *testing.T, _ oidc.Context, claims map[string]any) {
+				metadata, ok := claims["metadata"].(map[string]any)
+				if !ok {
+					t.Fatal("metadata claim expected")
+				}
+				opMetadata, ok := metadata["openid_provider"].(map[string]any)
+				if !ok {
+					t.Fatal("openid_provider metadata expected")
+				}
+				if opMetadata["jwks"] == nil {
+					t.Error("jwks expected in openid_provider metadata")
+				}
+			},
+		},
 	}
 
-	// When.
-	st, err := newEntityConfiguration(ctx)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Given.
+			ctx := test.setup(t)
 
-	// Then.
-	if err != nil {
-		t.Fatal(err)
-	}
+			// When.
+			st, err := newEntityConfiguration(ctx)
 
-	claims, err := oidctest.SafeClaims(st, opJWK)
-	if err != nil {
-		t.Fatalf("unexpected error parsing entity configuration: %v", err)
-	}
-
-	if claims["iss"] != ctx.Issuer() {
-		t.Errorf("claims.iss = %s, want %s", claims["iss"], ctx.Issuer())
-	}
-
-	if claims["sub"] != ctx.Issuer() {
-		t.Errorf("claims.sub = %s, want %s", claims["sub"], ctx.Issuer())
-	}
-}
-
-func TestNewEntityConfiguration_WithSignedJWKS(t *testing.T) {
-	// Given.
-	ctx := setUp(t, nil)
-	ctx.OpenIDFedJWKSRepresentations = []goidc.JWKSRepresentation{
-		goidc.JWKSRepresentationSignedURI,
-	}
-	ctx.OpenIDFedSignedJWKSEndpoint = "/signed-jwks"
-
-	// When.
-	st, err := newEntityConfiguration(ctx)
-
-	// Then.
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	claims, err := oidctest.SafeClaims(st, opJWK)
-	if err != nil {
-		t.Fatalf("unexpected error parsing entity configuration: %v", err)
-	}
-
-	metadata, ok := claims["metadata"].(map[string]any)
-	if !ok {
-		t.Fatal("metadata claim expected")
-	}
-
-	opMetadata, ok := metadata["openid_provider"].(map[string]any)
-	if !ok {
-		t.Fatal("openid_provider metadata expected")
-	}
-
-	if opMetadata["signed_jwks_uri"] == nil {
-		t.Error("signed_jwks_uri expected in openid_provider metadata")
-	}
-}
-
-func TestNewEntityConfiguration_WithInlineJWKS(t *testing.T) {
-	// Given.
-	ctx := setUp(t, nil)
-	ctx.OpenIDFedJWKSRepresentations = []goidc.JWKSRepresentation{
-		goidc.JWKSRepresentationInline,
-	}
-
-	// When.
-	st, err := newEntityConfiguration(ctx)
-
-	// Then.
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	claims, err := oidctest.SafeClaims(st, opJWK)
-	if err != nil {
-		t.Fatalf("unexpected error parsing entity configuration: %v", err)
-	}
-
-	metadata, ok := claims["metadata"].(map[string]any)
-	if !ok {
-		t.Fatal("metadata claim expected")
-	}
-
-	opMetadata, ok := metadata["openid_provider"].(map[string]any)
-	if !ok {
-		t.Fatal("openid_provider metadata expected")
-	}
-
-	if opMetadata["jwks"] == nil {
-		t.Error("jwks expected in openid_provider metadata")
+			// Then.
+			if err != nil {
+				t.Fatal(err)
+			}
+			claims, err := oidctest.SafeClaims(st, opJWK)
+			if err != nil {
+				t.Fatalf("unexpected error parsing entity configuration: %v", err)
+			}
+			test.assert(t, ctx, claims)
+		})
 	}
 }
 
 func TestSignedJWKS(t *testing.T) {
-	// Given.
-	ctx := setUp(t, nil)
-	ctx.OpenIDFedSignedJWKSLifetimeSecs = 3600
-
-	// When.
-	st, err := signedJWKS(ctx)
-
-	// Then.
-	if err != nil {
-		t.Fatal(err)
+	tests := []struct {
+		name   string
+		setup  func(*testing.T) oidc.Context
+		assert func(*testing.T, oidc.Context, map[string]any)
+	}{
+		{
+			name: "with expiration",
+			setup: func(t *testing.T) oidc.Context {
+				ctx := setup(t, nil)
+				ctx.OpenIDFedSignedJWKSLifetimeSecs = 3600
+				return ctx
+			},
+			assert: func(t *testing.T, ctx oidc.Context, claims map[string]any) {
+				if claims["iss"] != ctx.Issuer() {
+					t.Errorf("claims.iss = %s, want %s", claims["iss"], ctx.Issuer())
+				}
+				if claims["keys"] == nil {
+					t.Error("keys claim expected in signed JWKS")
+				}
+				if claims["exp"] == nil {
+					t.Error("exp claim expected when lifetime is set")
+				}
+			},
+		},
+		{
+			name: "no expiration",
+			setup: func(t *testing.T) oidc.Context {
+				ctx := setup(t, nil)
+				ctx.OpenIDFedSignedJWKSLifetimeSecs = 0
+				return ctx
+			},
+			assert: func(t *testing.T, _ oidc.Context, claims map[string]any) {
+				if exp, ok := claims["exp"].(float64); ok && exp > 0 {
+					t.Error("exp claim should not be set when lifetime is 0")
+				}
+			},
+		},
 	}
 
-	claims, err := oidctest.SafeClaims(st, opJWK)
-	if err != nil {
-		t.Fatalf("unexpected error parsing signed JWKS: %v", err)
-	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Given.
+			ctx := test.setup(t)
 
-	if claims["iss"] != ctx.Issuer() {
-		t.Errorf("claims.iss = %s, want %s", claims["iss"], ctx.Issuer())
-	}
+			// When.
+			st, err := signedJWKS(ctx)
 
-	if claims["keys"] == nil {
-		t.Error("keys claim expected in signed JWKS")
-	}
-
-	if claims["exp"] == nil {
-		t.Error("exp claim expected when lifetime is set")
-	}
-}
-
-func TestSignedJWKS_NoExpiration(t *testing.T) {
-	// Given.
-	ctx := setUp(t, nil)
-	ctx.OpenIDFedSignedJWKSLifetimeSecs = 0 // No expiration.
-
-	// When.
-	st, err := signedJWKS(ctx)
-
-	// Then.
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	claims, err := oidctest.SafeClaims(st, opJWK)
-	if err != nil {
-		t.Fatalf("unexpected error parsing signed JWKS: %v", err)
-	}
-
-	// When lifetime is 0, exp should be 0 (or omitted).
-	if exp, ok := claims["exp"].(float64); ok && exp > 0 {
-		t.Error("exp claim should not be set when lifetime is 0")
+			// Then.
+			if err != nil {
+				t.Fatal(err)
+			}
+			claims, err := oidctest.SafeClaims(st, opJWK)
+			if err != nil {
+				t.Fatalf("unexpected error parsing signed JWKS: %v", err)
+			}
+			test.assert(t, ctx, claims)
+		})
 	}
 }
 
 func TestPrivateKeyJWTRequest(t *testing.T) {
 	// Given.
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 	authority := entityStatement{
 		Issuer: trustAnchorID,
 		Metadata: metadata{
@@ -1813,7 +2211,7 @@ func TestPrivateKeyJWTRequest(t *testing.T) {
 
 func TestUnauthenticatedRequest(t *testing.T) {
 	// Given.
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 
 	// When.
 	req, err := unauthenticatedRequest(ctx, "https://example.com/endpoint", url.Values{"param": {"value"}})
@@ -1834,7 +2232,7 @@ func TestUnauthenticatedRequest(t *testing.T) {
 
 func TestUnauthenticatedRequest_InvalidURI(t *testing.T) {
 	// Given.
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 
 	// When.
 	_, err := unauthenticatedRequest(ctx, "://invalid-uri", nil)
@@ -1847,7 +2245,7 @@ func TestUnauthenticatedRequest_InvalidURI(t *testing.T) {
 
 func TestParseTrustMark_InvalidAlgHeader(t *testing.T) {
 	// Given.
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 	signedMark := oidctest.SignWithOptions(t, map[string]any{
 		"trust_mark_type": trustMarkCertification,
 		"iss":             trustMarkIssuerID,
@@ -1887,7 +2285,7 @@ func TestParseEntityStatement_NoneAlgorithm(t *testing.T) {
 		Algorithm: "none",
 	}, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
 
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 
 	// When.
 	_, err := parseEntityConfiguration(ctx, signedStatement, nil)
@@ -1913,7 +2311,7 @@ func TestParseEntityStatement_PeerTrustChainHeaderNotAllowed(t *testing.T) {
 		WithType(jwtTypeEntityStatement).
 		WithHeader("peer_trust_chain", []string{"some_chain"}))
 
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 
 	// When.
 	_, err := parseEntityConfiguration(ctx, signedStatement, nil)
@@ -1939,7 +2337,7 @@ func TestParseEntityStatement_TrustChainHeaderNotAllowedWithoutExplicitRegistrat
 		WithType(jwtTypeEntityStatement).
 		WithHeader("trust_chain", []string{"some_chain"}))
 
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 
 	// When: parsing without explicitRegistration flag.
 	_, err := parseEntityConfiguration(ctx, signedStatement, nil)
@@ -1966,7 +2364,7 @@ func TestParseAuthorityConfiguration_NotFederationAuthority(t *testing.T) {
 		"authority_hints": []string{trustAnchorID},
 	}, clientJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
 
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 
 	// When.
 	_, err := parseAuthorityConfiguration(ctx, signedStatement)
@@ -1997,7 +2395,7 @@ func TestParseSubordinateStatement_WithInvalidMetadataPolicy(t *testing.T) {
 		},
 	}, intermediaryAuthorityJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
 
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 
 	// When.
 	_, err := parseSubordinateStatement(ctx, signedStatement, parseOptions{
@@ -2014,7 +2412,7 @@ func TestParseSubordinateStatement_WithInvalidMetadataPolicy(t *testing.T) {
 
 func TestExtractRequiredTrustMarks_MissingRequiredMark(t *testing.T) {
 	// Given.
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 	ctx.OpenIDFedRequiredTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
 		return []goidc.TrustMark{goidc.TrustMark("https://non-existent.trust-mark.com/certification")}
 	}
@@ -2037,7 +2435,7 @@ func TestExtractRequiredTrustMarks_MissingRequiredMark(t *testing.T) {
 
 func TestParseTrustChain_InvalidLastStatement(t *testing.T) {
 	// Given: trust chain with unparseable last statement.
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 	entityConfig := oidctest.SignWithOptions(t, map[string]any{
 		"iss": clientID,
 		"sub": clientID,
@@ -2061,7 +2459,7 @@ func TestParseTrustChain_InvalidLastStatement(t *testing.T) {
 
 func TestParseTrustChain_WithTrustAnchorConfigInChain(t *testing.T) {
 	// Given: trust chain where the trust anchor config is included.
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 
 	entityConfig := oidctest.SignWithOptions(t, map[string]any{
 		"iss": clientID,
@@ -2134,7 +2532,7 @@ func TestFetchSubordinateStatement_WithPrivateKeyJWT(t *testing.T) {
 			}
 		},
 	}
-	ctx := setUp(t, responses)
+	ctx := setup(t, responses)
 	authority := entityStatement{
 		Issuer: intermediaryAuthorityID,
 		JWKS:   goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{intermediaryAuthorityJWK.Public()}},
@@ -2162,7 +2560,7 @@ func TestFetchSubordinateStatement_WithPrivateKeyJWT(t *testing.T) {
 
 func TestClient_ClientManagerError(t *testing.T) {
 	// Given: non-URL client ID with automatic registration disabled.
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 	ctx.OpenIDFedClientRegTypes = []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeExplicit}
 
 	// When.
@@ -2187,7 +2585,7 @@ func TestParseSubordinateStatement_WithSourceEndpoint(t *testing.T) {
 		"source_endpoint": "https://authority.example.com/fetch",
 	}, intermediaryAuthorityJWK, (&jose.SignerOptions{}).WithType(jwtTypeEntityStatement))
 
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 
 	// When.
 	st, err := parseSubordinateStatement(ctx, signedStatement, parseOptions{
@@ -2256,7 +2654,7 @@ func TestParseTrustMark_WithDelegation(t *testing.T) {
 		},
 	}
 
-	ctx := setUp(t, responses)
+	ctx := setup(t, responses)
 	signedMark := oidctest.SignWithOptions(t, map[string]any{
 		"trust_mark_type": trustMarkCertification,
 		"iss":             trustMarkIssuerID,
@@ -2324,7 +2722,7 @@ func TestParseTrustMark_MissingDelegationWhenRequired(t *testing.T) {
 		},
 	}
 
-	ctx := setUp(t, responses)
+	ctx := setup(t, responses)
 	signedMark := oidctest.SignWithOptions(t, map[string]any{
 		"trust_mark_type": trustMarkCertification,
 		"iss":             trustMarkIssuerID,
@@ -2399,7 +2797,7 @@ func TestParseTrustMark_InvalidDelegationKidHeader(t *testing.T) {
 		},
 	}
 
-	ctx := setUp(t, responses)
+	ctx := setup(t, responses)
 	signedMark := oidctest.SignWithOptions(t, map[string]any{
 		"trust_mark_type": trustMarkCertification,
 		"iss":             trustMarkIssuerID,
@@ -2470,7 +2868,7 @@ func TestParseTrustMark_InvalidDelegationType(t *testing.T) {
 		},
 	}
 
-	ctx := setUp(t, responses)
+	ctx := setup(t, responses)
 	signedMark := oidctest.SignWithOptions(t, map[string]any{
 		"trust_mark_type": trustMarkCertification,
 		"iss":             trustMarkIssuerID,
@@ -2541,7 +2939,7 @@ func TestParseTrustMark_DelegationWrongMarkType(t *testing.T) {
 		},
 	}
 
-	ctx := setUp(t, responses)
+	ctx := setup(t, responses)
 	signedMark := oidctest.SignWithOptions(t, map[string]any{
 		"trust_mark_type": trustMarkCertification,
 		"iss":             trustMarkIssuerID,
@@ -2564,7 +2962,7 @@ func TestParseTrustMark_DelegationWrongMarkType(t *testing.T) {
 
 func TestRegisterExplicitlyWithTrustChain_NoOpenIDClientMetadata(t *testing.T) {
 	// Given: a valid chain structure but without openid_relying_party metadata.
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 
 	// Create a minimal valid chain with 2 elements (config + subordinate statement).
 	invalidChain := trustChain{
@@ -2624,7 +3022,7 @@ func TestFetchTrustMark_IssuerNotFederationAuthority(t *testing.T) {
 			}
 		},
 	}
-	ctx := setUp(t, responses)
+	ctx := setup(t, responses)
 	ctx.OpenIDFedTrustMarks = map[goidc.TrustMark]string{
 		trustMarkCertification: trustMarkIssuerID,
 	}
@@ -2640,7 +3038,7 @@ func TestFetchTrustMark_IssuerNotFederationAuthority(t *testing.T) {
 
 func TestParseTrustChain_InvalidSubordinateStatement(t *testing.T) {
 	// Given: trust chain with invalid subordinate statement.
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 
 	entityConfig := oidctest.SignWithOptions(t, map[string]any{
 		"iss": clientID,
@@ -2693,7 +3091,7 @@ func TestParseTrustChain_InvalidSubordinateStatement(t *testing.T) {
 
 func TestParseTrustChain_SubjectMismatch(t *testing.T) {
 	// Given: trust chain where entity config is signed with unauthorized key.
-	ctx := setUp(t, nil)
+	ctx := setup(t, nil)
 
 	wrongKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	wrongJWK := goidc.JSONWebKey{

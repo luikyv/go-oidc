@@ -26,7 +26,7 @@ func IntrospectionInfo(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
 			return goidc.TokenInfo{IsActive: false}, nil
 		}
 
-		grant, err := ctx.GrantByID(token.GrantID)
+		grant, err := ctx.Grant(token.GrantID)
 		if err != nil {
 			return goidc.TokenInfo{}, fmt.Errorf("error fetching grant: %w", err)
 		}

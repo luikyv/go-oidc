@@ -96,6 +96,17 @@ func continueDeviceAuth(ctx oidc.Context, id string) error {
 }
 
 func authenticateDevice(ctx oidc.Context, as *goidc.AuthnSession) error {
+	// If the policy ID is missing, the callback endpoint was accessed without
+	// first going through the device endpoint. This indicates an invalid
+	// or incomplete device flow, so the session must be deleted and an
+	// error returned.
+	if as.PolicyID == "" {
+		if err := ctx.DeviceDeleteSession(as.ID); err != nil {
+			return goidc.WrapError(goidc.ErrorCodeInternalError, "internal error", err)
+		}
+		return goidc.WrapError(goidc.ErrorCodeInternalError, "internal error", errors.New("the policy id is not set in the session"))
+	}
+
 	c, err := client.Client(ctx, as.ClientID)
 	if err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInternalError, "could not load client", err)
@@ -125,9 +136,9 @@ func authenticateDevice(ctx oidc.Context, as *goidc.AuthnSession) error {
 
 		return ctx.DeviceAuthRenderConfirmation()
 	case goidc.StatusInProgress:
-		return ctx.AuthSaveSession(as)
+		return ctx.DeviceSaveSession(as)
 	default:
-		if err := ctx.AuthDeleteSession(as.ID); err != nil {
+		if err := ctx.DeviceDeleteSession(as.ID); err != nil {
 			return goidc.WrapError(goidc.ErrorCodeInternalError, "internal error", err)
 		}
 

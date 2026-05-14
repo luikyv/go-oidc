@@ -18,6 +18,7 @@ type Configuration struct {
 	AuthTimeoutSecs      int
 	AuthCodeFunc         goidc.RandomFunc
 	AuthCodeLifetimeSecs int
+	AuthSessionIDFunc    goidc.RandomFunc
 
 	// JWKSFunc retrieves the server's JWKS.
 	// The returned JWKS must include private keys if SignFunc or DecryptFunc
@@ -27,21 +28,20 @@ type Configuration struct {
 	SignerFunc    goidc.SignerFunc
 	DecrypterFunc goidc.DecrypterFunc
 
-	HandleGrantFunc            goidc.HandleGrantFunc
-	HandleTokenFunc            goidc.HandleTokenFunc
-	IDTokenClaimsFunc          goidc.IDTokenClaimsFunc
-	UserInfoClaimsFunc         goidc.UserInfoClaimsFunc
-	TokenClaimsFunc            goidc.TokenClaimsFunc
-	Policies                   []goidc.AuthnPolicy
-	Scopes                     []goidc.Scope
-	OpenIDIsRequired           bool
-	GrantTypes                 []goidc.GrantType
-	ResponseTypes              []goidc.ResponseType
-	ResponseModes              []goidc.ResponseMode
-	AuthnSessionGenerateIDFunc goidc.RandomFunc
-	GrantIDFunc                goidc.RandomFunc
-	ACRs                       []goidc.ACR
-	DisplayValues              []goidc.DisplayValue
+	HandleGrantFunc    goidc.HandleGrantFunc
+	HandleTokenFunc    goidc.HandleTokenFunc
+	IDTokenClaimsFunc  goidc.IDTokenClaimsFunc
+	UserInfoClaimsFunc goidc.UserInfoClaimsFunc
+	TokenClaimsFunc    goidc.TokenClaimsFunc
+	Policies           []goidc.AuthnPolicy
+	Scopes             []goidc.Scope
+	OpenIDIsRequired   bool
+	GrantTypes         []goidc.GrantType
+	ResponseTypes      []goidc.ResponseType
+	ResponseModes      []goidc.ResponseMode
+	GrantIDFunc        goidc.RandomFunc
+	ACRs               []goidc.ACR
+	DisplayValues      []goidc.DisplayValue
 	// Claims defines the user claims that can be returned in the userinfo endpoint or in ID tokens.
 	// This will be published in the /.well-known/openid-configuration endpoint.
 	Claims                   []string
@@ -65,6 +65,7 @@ type Configuration struct {
 	TokenAuthnPrivateKeyJWTSigAlgs []goidc.SignatureAlgorithm
 	TokenAuthnSecretJWTSigAlgs     []goidc.SignatureAlgorithm
 	TokenEndpoint                  string
+	OpaqueTokenFunc                goidc.OpaqueTokenFunc
 	TokenOptionsFunc               goidc.TokenOptionsFunc
 	VerifyClientSecretFunc         goidc.VerifyClientSecretFunc
 	// TokenBindingIsRequired indicates that at least one mechanism of sender
@@ -106,7 +107,7 @@ type Configuration struct {
 	DCRHandleClientFunc           goidc.DCRHandleClientFunc
 	DCRValidateInitialTokenFunc   goidc.DCRValidateInitialTokenFunc
 	LocalhostRedirectURIIsEnabled bool
-	ClientIDFunc                  goidc.ClientIDFunc
+	DCRClientIDFunc               goidc.ClientIDFunc
 
 	TokenIntrospectionIsEnabled           bool
 	TokenIntrospectionEndpoint            string
@@ -117,6 +118,7 @@ type Configuration struct {
 	TokenRevocationIsClientAllowedFunc goidc.IsClientAllowedFunc
 
 	RefreshTokenManager           goidc.RefreshTokenManager
+	RefreshTokenFunc              goidc.RandomFunc
 	RefreshTokenShouldIssueFunc   goidc.RefreshTokenShouldIssueFunc
 	RefreshTokenRotationIsEnabled bool
 	RefreshTokenLifetimeSecs      int

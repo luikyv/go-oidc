@@ -14,12 +14,13 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func TestGenerateAuthCodeGrantToken(t *testing.T) {
+func TestGenerateAuthCodeToken(t *testing.T) {
 	setup := func(t testing.TB) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 		t.Helper()
 
 		c, secret := oidctest.NewClient(t)
 		ctx := oidctest.NewContext(t)
+		ctx.AuthManager = oidctest.Manager(t, ctx)
 		ctx.StaticClients = append(ctx.StaticClients, c)
 		ctx.Request.PostForm = map[string][]string{
 			"client_id":     {c.ID},

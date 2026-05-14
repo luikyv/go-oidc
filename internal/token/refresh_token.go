@@ -11,7 +11,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) {
+func generateRefreshToken(ctx oidc.Context, req request) (response, error) {
 	if req.refreshToken == "" {
 		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid refresh token")
 	}
@@ -26,7 +26,39 @@ func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) 
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid refresh_token", err)
 	}
 
-	if err = validateRefreshTokenGrantRequest(ctx, req, c, grant); err != nil {
+	if !slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) {
+		return response{}, goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
+	}
+
+	if c.ID != grant.ClientID {
+		return response{}, goidc.NewError(goidc.ErrorCodeInvalidGrant, "the refresh token was not issued to the client")
+	}
+
+	if grant.IsExpired() {
+		return response{}, goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "the refresh token is expired")
+	}
+
+	cnf := goidc.TokenConfirmation{
+		JWKThumbprint:  grant.JWKThumbprint,
+		CertThumbprint: grant.CertThumbprint,
+	}
+	if err := validateRefreshTokenBinding(ctx, c, cnf); err != nil {
+		return response{}, err
+	}
+
+	if err := validateRefreshTokenPoP(ctx, c, cnf); err != nil {
+		return response{}, err
+	}
+
+	if err := validateScopes(ctx, req, c, grant.Scopes); err != nil {
+		return response{}, err
+	}
+
+	if err := validateResources(ctx, req, grant.Resources); err != nil {
+		return response{}, err
+	}
+
+	if err := validateAuthDetails(ctx, req, c, grant.AuthDetails); err != nil {
 		return response{}, err
 	}
 
@@ -81,46 +113,6 @@ func generateRefreshTokenGrant(ctx oidc.Context, req request) (response, error) 
 	}
 
 	return tokenResp, nil
-}
-
-func validateRefreshTokenGrantRequest(ctx oidc.Context, req request, c *goidc.Client, grant *goidc.Grant) error {
-	if !slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) {
-		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
-	}
-
-	if c.ID != grant.ClientID {
-		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "the refresh token was not issued to the client")
-	}
-
-	if grant.IsExpired() {
-		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "the refresh token is expired")
-	}
-
-	cnf := goidc.TokenConfirmation{
-		JWKThumbprint:  grant.JWKThumbprint,
-		CertThumbprint: grant.CertThumbprint,
-	}
-	if err := validateRefreshTokenBinding(ctx, c, cnf); err != nil {
-		return err
-	}
-
-	if err := validateRefreshTokenPoP(ctx, c, cnf); err != nil {
-		return err
-	}
-
-	if err := validateScopes(ctx, req, c, grant.Scopes); err != nil {
-		return err
-	}
-
-	if err := validateResources(ctx, req, grant.Resources); err != nil {
-		return err
-	}
-
-	if err := validateAuthDetails(ctx, req, c, grant.AuthDetails); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func validateRefreshTokenBinding(ctx oidc.Context, c *goidc.Client, cnf goidc.TokenConfirmation) error {

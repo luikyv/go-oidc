@@ -15,6 +15,7 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/storage"
@@ -68,18 +69,10 @@ func NewContext(t testing.TB) oidc.Context {
 	manager := storage.NewManager(100)
 
 	config := &oidc.Configuration{
-		Profile: goidc.ProfileOpenID,
-		Host:    "https://example.com",
-
-		AuthManager:          manager,
-		DCRManager:           manager,
-		CIBAManager:          manager,
-		DeviceAuthManager:    manager,
-		RefreshTokenManager:  manager,
-		GrantManager:         manager,
-		LogoutSessionManager: manager,
-
-		Scopes: []goidc.Scope{goidc.ScopeOpenID, Scope1, Scope2},
+		Profile:      goidc.ProfileOpenID,
+		Host:         "https://example.com",
+		GrantManager: manager,
+		Scopes:       []goidc.Scope{goidc.ScopeOpenID, Scope1, Scope2},
 		JWKSFunc: func(ctx context.Context) (goidc.JSONWebKeySet, error) {
 			return goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{jwk}}, nil
 		},
@@ -103,6 +96,12 @@ func NewContext(t testing.TB) oidc.Context {
 			goidc.ResponseModeQuery,
 			goidc.ResponseModeFragment,
 			goidc.ResponseModeFormPost,
+		},
+		OpaqueTokenFunc: func(context.Context, *goidc.Grant) string {
+			return uuid.NewString()
+		},
+		RefreshTokenFunc: func(context.Context) string {
+			return uuid.NewString()
 		},
 		TokenOptionsFunc: func(
 			_ context.Context,
@@ -144,8 +143,14 @@ func NewContext(t testing.TB) oidc.Context {
 		UserInfoEndpoint:           "/userinfo",
 		TokenIntrospectionEndpoint: "/introspect",
 		JWTLifetimeSecs:            600,
-		IDTokenLifetimeSecs:        60,
-		SubIdentifierTypeDefault:   goidc.SubIdentifierPublic,
+		GrantIDFunc: func(context.Context) string {
+			return uuid.NewString()
+		},
+		JWTIDFunc: func(context.Context) string {
+			return uuid.NewString()
+		},
+		IDTokenLifetimeSecs:      60,
+		SubIdentifierTypeDefault: goidc.SubIdentifierPublic,
 		SubIdentifierTypes: []goidc.SubIdentifierType{
 			goidc.SubIdentifierPublic,
 		},

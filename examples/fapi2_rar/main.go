@@ -26,7 +26,7 @@ func main() {
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithIDTokenSignatureAlgs(goidc.PS256),
 		provider.WithUserInfoSignatureAlgs(goidc.PS256),
-		provider.WithPARRequired(nil),
+		provider.WithPARRequired(),
 		provider.WithTokenAuthnMethods(goidc.AuthnMethodPrivateKeyJWT),
 		provider.WithPrivateKeyJWTSignatureAlgs(goidc.PS256),
 		provider.WithDPoPRequired(goidc.PS256, goidc.ES256),
@@ -48,7 +48,7 @@ func main() {
 		provider.WithCheckJTIFunc(authutil.CheckJTIFunc()),
 		provider.WithJWTLeewayTime(30),
 		provider.WithRAR("customer_information"),
-		provider.WithRARCompareDetailsFunc(func(_ context.Context, granted, requested []goidc.AuthDetail) error {
+		provider.WithRARCompareDetailsFunc(func(_ context.Context, requested, granted []goidc.AuthDetail) error {
 			grantedDetailTypes := make([]goidc.AuthDetailType, len(granted))
 			for i, grantedDetail := range granted {
 				grantedDetailTypes[i] = grantedDetail.Type()

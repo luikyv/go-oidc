@@ -15,7 +15,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func TestGenerateJWTBearerGrant(t *testing.T) {
+func TestGenerateJWTBearerToken(t *testing.T) {
 	setup := func(t testing.TB, sub string) (oidc.Context, request, *goidc.Client) {
 		t.Helper()
 

@@ -43,7 +43,7 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 		return response{}, err
 	}
 
-	grant, err := ctx.GrantByID(tokenInfo.GrantID)
+	grant, err := ctx.Grant(tokenInfo.GrantID)
 	if err != nil {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "grant not found", err)
 	}

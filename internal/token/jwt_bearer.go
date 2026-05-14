@@ -12,7 +12,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
+func generateJWTBearerToken(ctx oidc.Context, req request) (response, error) {
 	c, err := client.Authenticated(ctx, client.AuthnContextToken)
 	// Return an error for client authentication only if authentication is
 	// required or if the error is unrelated to client identification, such as

@@ -235,7 +235,7 @@ func HandleError(ctx context.Context, err error) {
 	log.Printf("error: %s\n", err.Error())
 }
 
-func RenderError() goidc.RenderFunc {
+func RenderError() goidc.RenderErrorFunc {
 	tmpl := template.Must(template.ParseFS(ui.FS, "*.html"))
 	return func(w http.ResponseWriter, r *http.Request, err error) error {
 		w.WriteHeader(http.StatusOK)
@@ -318,7 +318,7 @@ func LogoutPolicy() goidc.LogoutPolicy {
 				slog.Debug("rendering logout page")
 				if err := tmpl.ExecuteTemplate(w, "logout.html", LogoutPage{
 					BaseURL:    Issuer,
-					CallbackID: ls.CallbackID,
+					CallbackID: ls.ID,
 					Session:    mapify(ls),
 				}); err != nil {
 					return goidc.StatusFailure, err

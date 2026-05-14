@@ -14,7 +14,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/authorize"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/dcr"
 	"github.com/luikyv/go-oidc/internal/discovery"
 	"github.com/luikyv/go-oidc/internal/federation"
@@ -37,11 +39,6 @@ type Provider struct {
 
 // New creates a new openid provider.
 //
-// The parameter "profile" adjusts the server's behavior for non-configurable
-// settings, ensuring compliance with the associated specification. Depending on
-// the profile selected, the server may modify its operations to meet specific
-// requirements dictated by the corresponding standards or protocols.
-//
 // The "jwksFunc" parameter provides the server's JSON Web Key Set (JWKS),
 // used for signing, decryption, and exposure via the JWKS endpoint.
 // Typically, it should return both private and public key material.
@@ -54,8 +51,7 @@ type Provider struct {
 // needed, which can be retrieved using "jwksFunc".
 //
 // Default Settings:
-//   - All entities (clients, sessions, etc.) are stored in memory.
-//   - ID tokens are signed using RS256. Ensure a JWK supporting RS256 is
+//   - ID tokens are signed using [defaultAsymmetricSigAlg]. Ensure a JWK supporting RS256 is
 //     available in the server's JWKS.
 //     This algorithm can be overridden with [WithIDTokenSignatureAlgs].
 //   - Access tokens are issued as opaque tokens.
@@ -112,6 +108,10 @@ func (op *Provider) validate() error {
 		return errors.New("either dpop or tls binding must be enabled if sender constraining tokens is required")
 	}
 
+	if op.config.PARIsEnabled && !slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
+		return errors.New("par cannot be enabled without authorization code grant")
+	}
+
 	return nil
 }
 
@@ -150,6 +150,10 @@ func (op *Provider) Run(address string, middlewares ...goidc.MiddlewareFunc) err
 		ReadTimeout: 5 * time.Second,
 	}
 	return server.ListenAndServe()
+}
+
+func (op *Provider) Client(ctx context.Context, id string) (*goidc.Client, error) {
+	return client.Client(oidc.NewContext(ctx, &op.config), id)
 }
 
 func (op *Provider) TokenInfo(ctx context.Context, tkn string) (goidc.TokenInfo, error) {
@@ -274,6 +278,9 @@ func (op *Provider) setDefaults() error {
 
 	op.config.Scopes = nonZeroOrDefault(op.config.Scopes, []goidc.Scope{goidc.ScopeOpenID})
 
+	op.config.OpaqueTokenFunc = nonZeroOrDefault(op.config.OpaqueTokenFunc, defaultOpaqueTokenFunc)
+	op.config.RefreshTokenFunc = nonZeroOrDefault(op.config.RefreshTokenFunc, defaultRefreshTokenFunc)
+	op.config.HTTPClientFunc = nonZeroOrDefault(op.config.HTTPClientFunc, defaultHTTPClientFunc)
 	op.config.TokenOptionsFunc = nonZeroOrDefault(op.config.TokenOptionsFunc, goidc.TokenOptionsFunc(defaultTokenOptionsFunc))
 
 	op.config.VerifyClientSecretFunc = nonZeroOrDefault(op.config.VerifyClientSecretFunc, goidc.VerifyClientSecretFunc(defaultVerifyClientSecretFunc))
@@ -284,8 +291,6 @@ func (op *Provider) setDefaults() error {
 	op.config.SubIdentifierTypes = nonZeroOrDefault(op.config.SubIdentifierTypes, []goidc.SubIdentifierType{goidc.SubIdentifierPublic})
 
 	op.config.ClaimTypes = nonZeroOrDefault(op.config.ClaimTypes, []goidc.ClaimType{goidc.ClaimTypeNormal})
-
-	op.config.AuthTimeoutSecs = nonZeroOrDefault(op.config.AuthTimeoutSecs, defaultAuthnSessionTimeoutSecs)
 
 	op.config.IDTokenLifetimeSecs = nonZeroOrDefault(op.config.IDTokenLifetimeSecs, defaultIDTokenLifetimeSecs)
 
@@ -300,10 +305,14 @@ func (op *Provider) setDefaults() error {
 	op.config.UserInfoEndpoint = nonZeroOrDefault(op.config.UserInfoEndpoint, defaultEndpointUserInfo)
 
 	op.config.JWTLifetimeSecs = nonZeroOrDefault(op.config.JWTLifetimeSecs, defaultJWTLifetimeSecs)
+	op.config.GrantIDFunc = nonZeroOrDefault(op.config.GrantIDFunc, defaultGrantIDFunc)
+	op.config.JWTIDFunc = nonZeroOrDefault(op.config.JWTIDFunc, defaultJWTIDFunc)
 
 	if slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
 		op.config.AuthManager = nonZeroOrDefault(op.config.AuthManager, goidc.AuthManager(manager))
 		op.config.ResponseTypes = appendIfNotIn(op.config.ResponseTypes, goidc.ResponseTypeCode)
+		op.config.AuthSessionIDFunc = nonZeroOrDefault(op.config.AuthCodeFunc, defaultSessionIDFunc)
+		op.config.AuthTimeoutSecs = nonZeroOrDefault(op.config.AuthTimeoutSecs, defaultAuthnSessionTimeoutSecs)
 		op.config.AuthCodeLifetimeSecs = nonZeroOrDefault(op.config.AuthCodeLifetimeSecs, defaultAuthorizationCodeLifetimeSecs)
 		op.config.AuthCodeFunc = nonZeroOrDefault(op.config.AuthCodeFunc, defaultAuthCodeFunc)
 		if slices.ContainsFunc(op.config.ResponseTypes, func(rt goidc.ResponseType) bool {
@@ -325,6 +334,7 @@ func (op *Provider) setDefaults() error {
 	if op.config.DCRIsEnabled {
 		op.config.DCRManager = nonZeroOrDefault(op.config.DCRManager, goidc.DCRManager(manager))
 		op.config.DCREndpoint = nonZeroOrDefault(op.config.DCREndpoint, defaultEndpointDynamicClient)
+		op.config.DCRClientIDFunc = nonZeroOrDefault(op.config.DCRClientIDFunc, defaultClientIDFunc)
 	}
 
 	if op.config.PARIsEnabled {
@@ -411,6 +421,7 @@ func (op *Provider) setDefaults() error {
 		op.config.LogoutSessionManager = nonZeroOrDefault(op.config.LogoutSessionManager, goidc.LogoutSessionManager(manager))
 		op.config.LogoutEndpoint = nonZeroOrDefault(op.config.LogoutEndpoint, defaultEndpointEndSession)
 		op.config.LogoutSessionTimeoutSecs = nonZeroOrDefault(op.config.LogoutSessionTimeoutSecs, defaultLogoutSessionTimeoutSecs)
+		op.config.LogoutSessionIDFunc = nonZeroOrDefault(op.config.LogoutSessionIDFunc, defaultSessionIDFunc)
 	}
 
 	if op.config.SSFIsEnabled {
@@ -585,6 +596,18 @@ func defaultTokenOptionsFunc(_ context.Context, _ *goidc.Grant, _ *goidc.Client)
 	return goidc.NewOpaqueTokenOptions(defaultTokenLifetimeSecs)
 }
 
+func defaultOpaqueTokenFunc(_ context.Context, _ *goidc.Grant) string {
+	return strutil.Random(50)
+}
+
+func defaultRefreshTokenFunc(_ context.Context) string {
+	return strutil.Random(100)
+}
+
+func defaultHTTPClientFunc(_ context.Context) *http.Client {
+	return http.DefaultClient
+}
+
 func defaultAuthCodeFunc(_ context.Context) string {
 	return strutil.Random(30)
 }
@@ -596,8 +619,8 @@ func defaultVerifyClientSecretFunc(_ context.Context, stored, presented string) 
 	return nil
 }
 
-func defaultCompareAuthDetailsFunc(_ context.Context, granted, request []goidc.AuthDetail) error {
-	if !reflect.DeepEqual(granted, request) {
+func defaultCompareAuthDetailsFunc(_ context.Context, requested, granted []goidc.AuthDetail) error {
+	if !reflect.DeepEqual(requested, granted) {
 		return goidc.NewError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization details")
 	}
 	return nil
@@ -625,6 +648,22 @@ func defaultGenerateUserCodeFunc() goidc.RandomFunc {
 		}
 		return result.String()
 	}
+}
+
+func defaultClientIDFunc(ctx context.Context) string {
+	return uuid.NewString()
+}
+
+func defaultGrantIDFunc(_ context.Context) string {
+	return uuid.NewString()
+}
+
+func defaultJWTIDFunc(_ context.Context) string {
+	return uuid.NewString()
+}
+
+func defaultSessionIDFunc(_ context.Context) string {
+	return uuid.NewString()
 }
 
 func cacheControlMiddleware(next http.Handler) http.Handler {

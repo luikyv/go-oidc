@@ -49,9 +49,10 @@ func handle(ctx oidc.Context) {
 
 func handleCallback(ctx oidc.Context) {
 	callbackID := ctx.Request.PathValue("callback")
-	err := continueLogout(ctx, callbackID)
-	if err != nil {
-		ctx.WriteError(err)
+	if err := continueLogout(ctx, callbackID); err != nil {
+		if err := ctx.RenderError(err); err != nil {
+			ctx.WriteError(err)
+		}
 		return
 	}
 }

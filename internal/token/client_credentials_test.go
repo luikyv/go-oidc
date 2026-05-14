@@ -13,7 +13,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func TestGenerateClientCredentialsGrantToken(t *testing.T) {
+func TestGenerateClientCredentialsToken(t *testing.T) {
 	setup := func(t testing.TB) (oidc.Context, request, *goidc.Client) {
 		t.Helper()
 
@@ -374,19 +374,32 @@ func TestGenerateClientCredentialsGrantToken(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			// Given.
 			ctx, req, c := test.setup()
 
+			// When.
 			resp, err := generateToken(ctx, req)
 
-			if gotErr, wantErr := err != nil, test.wantErr != ""; gotErr != wantErr {
-				t.Fatalf("got err=%v, wantErr=%v", err, test.wantErr)
-			}
-
+			// Then.
 			if test.wantErr != "" {
+				if err == nil {
+					t.Fatalf("got no error, wantErr=%v", test.wantErr)
+				}
+
 				var oidcErr goidc.Error
 				if !errors.As(err, &oidcErr) || oidcErr.Code != test.wantErr {
 					t.Fatalf("got %v, want error code %s", err, test.wantErr)
 				}
+
+				if test.validate != nil {
+					test.validate(t, ctx, resp, c)
+				}
+
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error %v", err)
 			}
 
 			if test.validate != nil {

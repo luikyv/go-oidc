@@ -9,7 +9,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func generateClientCredentialsGrantToken(ctx oidc.Context, req request) (response, error) {
+func generateClientCredentialsToken(ctx oidc.Context, req request) (response, error) {
 	c, err := client.Authenticated(ctx, client.AuthnContextToken)
 	if err != nil {
 		return response{}, err
