@@ -55,6 +55,7 @@ func initBackAuth(ctx oidc.Context, req request) (cibaResponse, error) {
 	if as.RequestedExpiry != nil {
 		exp = *as.RequestedExpiry
 	}
+	as.AuthReqID = ctx.CIBAID()
 	as.ExpiresAt = timeutil.TimestampNow() + exp
 	if as.IDTokenHint != "" {
 		// The ID token hint was already validated.
@@ -83,7 +84,7 @@ func initBackAuth(ctx oidc.Context, req request) (cibaResponse, error) {
 	}
 
 	resp := cibaResponse{
-		AuthReqID: as.ID,
+		AuthReqID: as.AuthReqID,
 		ExpiresIn: as.ExpiresAt - timeutil.TimestampNow(),
 	}
 

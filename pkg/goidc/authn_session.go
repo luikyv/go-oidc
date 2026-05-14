@@ -17,10 +17,21 @@ type AuthnSession struct {
 	// [RFC 7662 §2.2] Username is a human-readable identifier for the resource owner.
 	// When set during the authentication flow, it is propagated to the resulting
 	// grant and returned in the introspection response.
-	Username   string `json:"username,omitempty"`
-	ClientID   string `json:"client_id"`
-	DeviceCode string `json:"device_code,omitempty"`
-	UserCode   string `json:"user_code,omitempty"`
+	Username        string `json:"username,omitempty"`
+	ClientID        string `json:"client_id"`
+	// PushedAuthReqID is populated when the session is created from a pushed
+	// authorization request (PAR). It is the handle returned as request_uri.
+	PushedAuthReqID string `json:"pushed_auth_req_id,omitempty"`
+	// AuthReqID is populated when the session is created for a CIBA request.
+	// It is the handle returned to the client for later token polling or
+	// notification correlation.
+	AuthReqID       string `json:"auth_req_id,omitempty"`
+	// DeviceCode is populated when the session is created by the device
+	// authorization endpoint. It is later redeemed at the token endpoint.
+	DeviceCode      string `json:"device_code,omitempty"`
+	// UserCode is populated for device authorization flows when a user-facing
+	// verification code is issued for manual entry at the verification endpoint.
+	UserCode        string `json:"user_code,omitempty"`
 	// PolicyID is the id of the autentication policy used to authenticate
 	// the user.
 	PolicyID string `json:"policy_id,omitempty"`

@@ -246,16 +246,17 @@ func TestStartDeviceAuth(t *testing.T) {
 				}
 				grant := grants[0]
 				wantGrant := goidc.Grant{
-					ID:           grant.ID,
-					CreatedAt:    grant.CreatedAt,
-					ExpiresAt:    grant.ExpiresAt,
-					RefreshToken: grant.RefreshToken,
-					Subject:      "random_subject",
-					Username:     "random_username",
-					ClientID:     client.ID,
-					Scopes:       client.ScopeIDs,
-					DeviceCode:   "random_device_code",
-					Store:        grant.Store,
+					ID:                    grant.ID,
+					CreatedAt:             grant.CreatedAt,
+					RefreshToken:          grant.RefreshToken,
+					RefreshTokenExpiresAt: grant.RefreshTokenExpiresAt,
+					Subject:               "random_subject",
+					Username:              "random_username",
+					ClientID:              client.ID,
+					Scopes:                client.ScopeIDs,
+					DeviceCode:            "random_device_code",
+					DeviceCodeExpiresAt:   grant.DeviceCodeExpiresAt,
+					Store:                 grant.Store,
 					AuthParams: goidc.AuthorizationParameters{
 						Scopes: client.ScopeIDs,
 					},
@@ -466,7 +467,7 @@ func setUpDevice(t *testing.T) (oidc.Context, *goidc.Client) {
 	ctx.GrantIDFunc = func(context.Context) string {
 		return "random_grant_id"
 	}
-	ctx.DeviceAuthGenerateDeviceCodeFunc = func(context.Context) string {
+	ctx.DeviceCodeFunc = func(context.Context) string {
 		return "random_device_code"
 	}
 	ctx.DeviceAuthGenerateUserCodeFunc = func(context.Context) string {

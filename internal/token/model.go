@@ -19,9 +19,12 @@ type GrantOptions struct {
 	Resources            goidc.Resources
 	Nonce                string
 	AuthCode             string
+	AuthCodeExpiresAt    int
 	PreAuthCode          string
 	DeviceCode           string
-	CIBAID               string
+	DeviceCodeExpiresAt  int
+	AuthReqID            string
+	AuthReqIDExpiresAt   int
 	JWKThumbprint        string
 	ClientCertThumbprint string
 	AuthParams           goidc.AuthorizationParameters
@@ -30,20 +33,23 @@ type GrantOptions struct {
 
 func NewGrant(ctx oidc.Context, c *goidc.Client, opts GrantOptions) (*goidc.Grant, error) {
 	grant := &goidc.Grant{
-		ID:             ctx.GrantID(),
-		AuthCode:       opts.AuthCode,
-		PreAuthCode:    opts.PreAuthCode,
-		DeviceCode:     opts.DeviceCode,
-		AuthReqID:      opts.CIBAID,
-		Subject:        opts.Subject,
-		Username:       opts.Username,
-		ClientID:       opts.ClientID,
-		Scopes:         opts.Scopes,
-		Store:          opts.Store,
-		JWKThumbprint:  opts.JWKThumbprint,
-		CertThumbprint: opts.ClientCertThumbprint,
-		AuthParams:     opts.AuthParams,
-		CreatedAt:      timeutil.TimestampNow(),
+		ID:                  ctx.GrantID(),
+		AuthCode:            opts.AuthCode,
+		AuthCodeExpiresAt:   opts.AuthCodeExpiresAt,
+		PreAuthCode:         opts.PreAuthCode,
+		DeviceCode:          opts.DeviceCode,
+		DeviceCodeExpiresAt: opts.DeviceCodeExpiresAt,
+		AuthReqID:           opts.AuthReqID,
+		AuthReqIDExpiresAt:  opts.AuthReqIDExpiresAt,
+		Subject:             opts.Subject,
+		Username:            opts.Username,
+		ClientID:            opts.ClientID,
+		Scopes:              opts.Scopes,
+		Store:               opts.Store,
+		JWKThumbprint:       opts.JWKThumbprint,
+		CertThumbprint:      opts.ClientCertThumbprint,
+		AuthParams:          opts.AuthParams,
+		CreatedAt:           timeutil.TimestampNow(),
 	}
 	if ctx.RARIsEnabled {
 		grant.AuthDetails = opts.AuthDetails
@@ -58,7 +64,7 @@ func NewGrant(ctx oidc.Context, c *goidc.Client, opts GrantOptions) (*goidc.Gran
 	if slices.Contains(ctx.GrantTypes, goidc.GrantRefreshToken) && slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) &&
 		ctx.RefreshTokenShouldIssue(c, grant) && opts.Subject != c.ID {
 		grant.RefreshToken = ctx.RefreshToken()
-		grant.ExpiresAt = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
+		grant.RefreshTokenExpiresAt = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
 
 	if err := ctx.SaveGrant(grant); err != nil {

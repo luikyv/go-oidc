@@ -113,9 +113,10 @@ type Configuration struct {
 	TokenIntrospectionEndpoint            string
 	TokenIntrospectionIsClientAllowedFunc goidc.IsClientAllowedTokenInstrospectionFunc
 
-	TokenRevocationIsEnabled           bool
-	TokenRevocationEndpoint            string
-	TokenRevocationIsClientAllowedFunc goidc.IsClientAllowedFunc
+	TokenRevocationIsEnabled                         bool
+	TokenRevocationEndpoint                          string
+	TokenRevocationIsClientAllowedFunc               goidc.IsClientAllowedFunc
+	TokenRevocationDeleteGrantOnAccessTokenIsEnabled bool
 
 	RefreshTokenManager           goidc.RefreshTokenManager
 	RefreshTokenFunc              goidc.RandomFunc
@@ -150,6 +151,8 @@ type Configuration struct {
 	// PARIsRequired indicates that authorization requests can only be made if
 	// they were pushed.
 	PARIsRequired        bool
+	PARManager           goidc.PARManager
+	PARIDFunc            goidc.RandomFunc
 	PAREndpoint          string
 	PARHandleSessionFunc goidc.HandleSessionFunc
 	PARLifetimeSecs      int
@@ -161,6 +164,7 @@ type Configuration struct {
 	CIBAManager                    goidc.CIBAManager
 	CIBAProfile                    goidc.CIBAProfile // TODO: Use this.
 	CIBATokenDeliveryModels        []goidc.CIBATokenDeliveryMode
+	CIBAIDFunc                     goidc.RandomFunc
 	CIBAHandleSessionFunc          goidc.HandleSessionFunc
 	CIBAUserCodeIsEnabled          bool
 	CIBADefaultSessionLifetimeSecs int
@@ -280,7 +284,7 @@ type Configuration struct {
 	DeviceAuthVerificationURICompleteIsEnabled bool
 	DeviceAuthLifetimeSecs                     int
 	DeviceAuthPollingIntervalSecs              int
-	DeviceAuthGenerateDeviceCodeFunc           goidc.RandomFunc
+	DeviceCodeFunc                             goidc.RandomFunc
 	DeviceAuthGenerateUserCodeFunc             goidc.RandomFunc
 	DeviceAuthPromptUserCodeFunc               goidc.RenderFunc
 	DeviceAuthRenderConfirmationFunc           goidc.RenderFunc

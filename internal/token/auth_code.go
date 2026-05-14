@@ -41,7 +41,7 @@ func generateAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("the authorization code was not issued to the client"))
 		}
 
-		if timeutil.TimestampNow() > grant.CreatedAt+ctx.AuthCodeLifetimeSecs {
+		if timeutil.TimestampNow() > grant.AuthCodeExpiresAt {
 			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("the auth code is expired"))
 		}
 

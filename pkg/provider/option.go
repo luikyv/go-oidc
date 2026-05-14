@@ -57,6 +57,20 @@ func WithGrantIDFunc(f goidc.RandomFunc) Option {
 	}
 }
 
+func WithPARIDFunc(f goidc.RandomFunc) Option {
+	return func(p *Provider) error {
+		p.config.PARIDFunc = f
+		return nil
+	}
+}
+
+func WithCIBAIDFunc(f goidc.RandomFunc) Option {
+	return func(p *Provider) error {
+		p.config.CIBAIDFunc = f
+		return nil
+	}
+}
+
 func WithOpaqueTokenFunc(f goidc.OpaqueTokenFunc) Option {
 	return func(p *Provider) error {
 		p.config.OpaqueTokenFunc = f
@@ -339,6 +353,13 @@ func WithRefreshTokenShouldIssueFunc(f goidc.RefreshTokenShouldIssueFunc) Option
 func WithRefreshTokenFunc(f goidc.RandomFunc) Option {
 	return func(p *Provider) error {
 		p.config.RefreshTokenFunc = f
+		return nil
+	}
+}
+
+func WithDeviceCodeFunc(f goidc.RandomFunc) Option {
+	return func(p *Provider) error {
+		p.config.DeviceCodeFunc = f
 		return nil
 	}
 }
@@ -896,7 +917,16 @@ func WithTokenAuthnMethods(defaultMethod goidc.AuthnMethod, methods ...goidc.Aut
 	}
 }
 
-// WithTokenIntrospection allows authorized clients to introspect tokens.
+// WithTokenIntrospection enables the token introspection endpoint.
+//
+// The client calling the endpoint must authenticate first. For each
+// introspection request, the provided function receives the authenticated
+// client and the resolved token and must return whether that client is
+// allowed to introspect it.
+//
+// If the function allows the request, the provider returns the introspection
+// response derived from the stored token state. If the token is unknown,
+// expired, or otherwise inactive, the endpoint returns an inactive response.
 func WithTokenIntrospection(f goidc.IsClientAllowedTokenInstrospectionFunc) Option {
 	return func(p *Provider) error {
 		p.config.TokenIntrospectionIsEnabled = true
@@ -906,10 +936,24 @@ func WithTokenIntrospection(f goidc.IsClientAllowedTokenInstrospectionFunc) Opti
 }
 
 // WithTokenRevocation allows clients to revoke tokens.
+//
+// Refresh token revocation always invalidates the underlying grant and related
+// access tokens. Access token revocation deletes only the presented access
+// token unless [WithTokenRevocationDeleteGrantOnAccessToken] is also enabled.
 func WithTokenRevocation(f goidc.IsClientAllowedFunc) Option {
 	return func(p *Provider) error {
 		p.config.TokenRevocationIsEnabled = true
 		p.config.TokenRevocationIsClientAllowedFunc = f
+		return nil
+	}
+}
+
+// WithTokenRevocationDeleteGrantOnAccessToken makes access token revocation
+// invalidate the underlying grant and all related tokens instead of deleting
+// only the presented access token.
+func WithTokenRevocationDeleteGrantOnAccessToken() Option {
+	return func(p *Provider) error {
+		p.config.TokenRevocationDeleteGrantOnAccessTokenIsEnabled = true
 		return nil
 	}
 }

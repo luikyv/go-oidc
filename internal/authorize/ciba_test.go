@@ -22,6 +22,9 @@ func TestInitBackAuth(t *testing.T) {
 		ctx.AuthSessionIDFunc = func(_ context.Context) string {
 			return "random_authn_session_id"
 		}
+		ctx.CIBAIDFunc = func(_ context.Context) string {
+			return "random_auth_req_id"
+		}
 		ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
 		ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
 			goidc.CIBADeliveryModePoll,
@@ -78,6 +81,7 @@ func TestInitBackAuth(t *testing.T) {
 
 				wantSession := goidc.AuthnSession{
 					ID:        session.ID,
+					AuthReqID: session.AuthReqID,
 					ClientID:  client.ID,
 					ExpiresAt: session.ExpiresAt,
 					CreatedAt: session.CreatedAt,
@@ -92,7 +96,7 @@ func TestInitBackAuth(t *testing.T) {
 				}
 
 				wantResp := cibaResponse{
-					AuthReqID: session.ID,
+					AuthReqID: session.AuthReqID,
 					ExpiresIn: session.ExpiresAt - session.CreatedAt,
 					Interval:  ctx.CIBAPollingIntervalSecs,
 				}
@@ -123,6 +127,7 @@ func TestInitBackAuth(t *testing.T) {
 
 				wantSession := goidc.AuthnSession{
 					ID:        session.ID,
+					AuthReqID: session.AuthReqID,
 					ClientID:  client.ID,
 					ExpiresAt: session.ExpiresAt,
 					CreatedAt: session.CreatedAt,
@@ -136,7 +141,7 @@ func TestInitBackAuth(t *testing.T) {
 				}
 
 				wantResp := cibaResponse{
-					AuthReqID: session.ID,
+					AuthReqID: session.AuthReqID,
 					ExpiresIn: session.ExpiresAt - session.CreatedAt,
 					Interval:  ctx.CIBAPollingIntervalSecs,
 				}
@@ -168,6 +173,7 @@ func TestInitBackAuth(t *testing.T) {
 
 				wantSession := goidc.AuthnSession{
 					ID:        session.ID,
+					AuthReqID: session.AuthReqID,
 					ClientID:  client.ID,
 					ExpiresAt: session.ExpiresAt,
 					CreatedAt: session.CreatedAt,
@@ -182,7 +188,7 @@ func TestInitBackAuth(t *testing.T) {
 				}
 
 				wantResp := cibaResponse{
-					AuthReqID: session.ID,
+					AuthReqID: session.AuthReqID,
 					ExpiresIn: session.ExpiresAt - session.CreatedAt,
 				}
 				if diff := cmp.Diff(resp, wantResp); diff != "" {
@@ -233,6 +239,7 @@ func TestInitBackAuth(t *testing.T) {
 
 				wantSession := goidc.AuthnSession{
 					ID:        session.ID,
+					AuthReqID: session.AuthReqID,
 					ClientID:  client.ID,
 					ExpiresAt: session.ExpiresAt,
 					CreatedAt: session.CreatedAt,
@@ -248,7 +255,7 @@ func TestInitBackAuth(t *testing.T) {
 				}
 
 				wantResp := cibaResponse{
-					AuthReqID: session.ID,
+					AuthReqID: session.AuthReqID,
 					ExpiresIn: session.ExpiresAt - session.CreatedAt,
 					Interval:  ctx.CIBAPollingIntervalSecs,
 				}

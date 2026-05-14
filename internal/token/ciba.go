@@ -15,15 +15,19 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-// NotifyCIBAGrant handles notifying a client that the user has granted access.
+// GrantCIBARequest handles the successful resolution of a CIBA request.
 // The behavior varies based on the client's token delivery mode:
 //   - "poll": No notification is sent, and no additional processing occurs.
 //   - "ping": A ping notification is sent to the client.
 //   - "push": The token response is sent directly to the client's notification endpoint.
-func NotifyCIBAGrant(ctx oidc.Context, authReqID string) error {
-	as, err := ctx.CIBASession(authReqID)
+func GrantCIBARequest(ctx oidc.Context, authReqID string) error {
+	as, err := ctx.CIBASessionByAuthReqID(authReqID)
 	if err != nil {
 		return err
+	}
+
+	if as.IsExpired() {
+		return DenyCIBARequest(ctx, authReqID, goidc.NewError(goidc.ErrorCodeExpiredToken, "auth_req_id expired"))
 	}
 
 	if err := ctx.CIBADeleteSession(as.ID); err != nil {
@@ -38,7 +42,8 @@ func NotifyCIBAGrant(ctx oidc.Context, authReqID string) error {
 	grant, err := NewGrant(ctx, c, GrantOptions{
 		Subject:              as.Subject,
 		Username:             as.Username,
-		CIBAID:               authReqID,
+		AuthReqID:            authReqID,
+		AuthReqIDExpiresAt:   as.ExpiresAt,
 		ClientID:             as.ClientID,
 		Scopes:               as.GrantedScopes,
 		AuthDetails:          as.GrantedAuthDetails,
@@ -99,18 +104,18 @@ func NotifyCIBAGrant(ctx oidc.Context, authReqID string) error {
 	return sendClientNotification(ctx, c, as, resp)
 }
 
-// NotifyCIBAGrantFailure handles notifying a client that the user has denied access.
+// DenyCIBARequest handles denying a CIBA request.
 // The behavior varies based on the client's token delivery mode:
 //   - "poll": No notification is sent, and no additional processing occurs.
 //   - "ping": A ping notification is sent to the client.
 //   - "push": The token failure response is sent directly to the client's
 //     notification endpoint.
-func NotifyCIBAGrantFailure(ctx oidc.Context, authReqID string, goidcErr goidc.Error) error {
-	as, err := ctx.CIBASession(authReqID)
+func DenyCIBARequest(ctx oidc.Context, authReqID string, goidcErr goidc.Error) error {
+	as, err := ctx.CIBASessionByAuthReqID(authReqID)
 	if err != nil {
 		return err
 	}
-	_ = ctx.CIBADeleteSession(authReqID)
+	_ = ctx.CIBADeleteSession(as.ID)
 
 	c, err := client.Client(ctx, as.ClientID)
 	if err != nil {
@@ -125,7 +130,7 @@ func NotifyCIBAGrantFailure(ctx oidc.Context, authReqID string, goidcErr goidc.E
 		AuthReqID string `json:"auth_req_id,omitempty"`
 		goidc.Error
 	}{
-		AuthReqID: as.ID,
+		AuthReqID: as.AuthReqID,
 	}
 	if c.CIBATokenDeliveryMode == goidc.CIBADeliveryModePing {
 		return sendClientNotification(ctx, c, as, resp)
@@ -180,10 +185,10 @@ func generateCIBAToken(ctx oidc.Context, req request) (response, error) {
 	grant, err := ctx.GrantByAuthReqID(req.authReqID)
 	if err != nil {
 		if !errors.Is(err, goidc.ErrNotFound) {
-			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid auth_req_id", err)
+			return response{}, err
 		}
 
-		as, sessionErr := ctx.CIBASession(req.authReqID)
+		as, sessionErr := ctx.CIBASessionByAuthReqID(req.authReqID)
 		if sessionErr != nil {
 			if errors.Is(sessionErr, goidc.ErrNotFound) {
 				return response{}, goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid auth_req_id")
@@ -199,6 +204,10 @@ func generateCIBAToken(ctx oidc.Context, req request) (response, error) {
 	}
 
 	resp, err := func() (response, error) {
+		if timeutil.TimestampNow() >= grant.AuthReqIDExpiresAt {
+			return response{}, goidc.NewError(goidc.ErrorCodeExpiredToken, "auth_req_id expired")
+		}
+
 		if grant.AuthReqIDConsumedAt != 0 {
 			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid auth_req_id", err)
 		}

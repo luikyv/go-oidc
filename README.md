@@ -87,14 +87,18 @@ Verify the setup at http://localhost/.well-known/openid-configuration.
 - [Device Code Grant](#device-code-grant)
 - [Pushed Authorization Requests (PAR)](#pushed-authorization-requests-par)
 - [Authentication Policies](#authentication-policies)
+- [Token Introspection](#token-introspection)
+- [Token Revocation](#token-revocation)
 - [Signing and Encryption](#signing-and-encryption)
 - [Scopes](#scopes)
 - [Dynamic Client Registration](#dynamic-client-registration-dcr)
 - [RP Metadata Choices](#rp-metadata-choices)
+- [DPoP](#dpop)
 - [Mutual TLS](#mutual-tls-mtls)
 - [JWT-Secured Authorization Requests (JAR)](#jwt-secured-authorization-request-jar)
 - [JWT-Secured Authorization Response Mode (JARM)](#jwt-secured-authorization-response-mode-jarm)
 - [Rich Authorization Requests (RAR)](#rich-authorization-requests)
+- [Resource Indicators](#resource-indicators)
 - [OpenID Federation](#openid-federation)
 - [Shared Signals Framework](#shared-signals-framework-ssf)
 
@@ -486,6 +490,73 @@ op, _ := provider.New(
 
 For more examples, see the [`examples`](examples/) folder.
 
+## [Token Introspection](https://www.rfc-editor.org/rfc/rfc7662.html)
+
+Token introspection is enabled with `provider.WithTokenIntrospection(...)`.
+
+```go
+op, _ := provider.New(
+  "http://localhost",
+  manager,
+  jwksFunc,
+  provider.WithTokenIntrospection(func(_ context.Context, c *goidc.Client, token *goidc.Token) bool {
+    return true
+  }),
+)
+```
+
+This enables the introspection endpoint, which is `/introspect` by default.
+The client must authenticate to that endpoint. For each introspection request,
+the function passed to `WithTokenIntrospection(...)` is called with the
+authenticated client and the resolved token and must return whether that client
+is allowed to introspect it.
+
+In this implementation, access token introspection is backed by the persisted
+`goidc.Token` record, even when the access token itself is issued as a JWT.
+Refresh token introspection resolves the corresponding `goidc.Grant`, so the
+server can report whether that refresh token is still active.
+
+If the token does not exist, is expired, or is otherwise inactive, the endpoint
+returns an inactive introspection response instead of an OAuth error.
+
+Use `provider.WithTokenIntrospectionEndpoint(...)` to override the default
+endpoint path.
+
+## [Token Revocation](https://www.rfc-editor.org/rfc/rfc7009.html)
+
+Token revocation is enabled with `provider.WithTokenRevocation(...)`.
+
+```go
+op, _ := provider.New(
+  "http://localhost",
+  manager,
+  jwksFunc,
+  provider.WithTokenRevocation(func(_ context.Context, c *goidc.Client) bool {
+    return true
+  }),
+)
+```
+
+This enables the revocation endpoint, which is `/revoke` by default. The client
+must authenticate to that endpoint. For each revocation request, the function
+passed to `WithTokenRevocation(...)` is called with the authenticated client
+and must return whether that client is allowed to use the revocation endpoint.
+
+In this implementation, refresh token revocation is grant-based. If the
+refresh token is active and belongs to the authenticated client, the provider
+deletes the underlying `goidc.Grant` and all stored `goidc.Token` records
+associated with that grant.
+
+Access token revocation deletes only the presented access token by default.
+Use `provider.WithTokenRevocationDeleteGrantOnAccessToken()` if you want
+access token revocation to also delete the underlying grant and related tokens.
+
+If the token does not exist, is already inactive, or cannot be found, the
+revocation request still succeeds without exposing token state.
+
+Use `provider.WithTokenRevocationEndpoint(...)` to override the default
+endpoint path.
+
 ## Signing and Encryption
 
 When creating a `provider.Provider`, a JWKS function must be provided. This function returns the keys used for signing and encryption. It should typically return both private and public key material.
@@ -630,6 +701,34 @@ The server selects the first value from the list it supports and returns the res
 
 If the client also provides the singular field, it must be present in the priority list.
 
+## [DPoP](https://www.rfc-editor.org/rfc/rfc9449.html)
+
+DPoP is enabled with `provider.WithDPoP(...)` and can be made mandatory with
+`provider.WithDPoPRequired(...)`.
+
+```go
+op, _ := provider.New(
+  ...,
+  provider.WithDPoP(goidc.ES256),
+  ...,
+)
+```
+
+When a valid DPoP proof is sent, go-oidc binds the resulting grant and tokens
+to the proof key thumbprint. Tokens issued under that binding are exposed as
+`DPoP` tokens instead of bearer tokens.
+
+When a bound token is used later, the client must send a matching DPoP proof
+again. The server validates the DPoP JWT and checks that it proves possession
+of the key associated with the token.
+
+DPoP can participate in multiple stages of the flow depending on what is
+enabled:
+
+- authorization requests, including PAR
+- token issuance
+- token usage and proof-of-possession validation
+
 ## Mutual TLS (mTLS)
 
 mTLS enables client authentication and certificate-bound access tokens via TLS certificates:
@@ -721,6 +820,37 @@ provider.WithRARCompareDetailsFunc(func(ctx context.Context, requested, granted 
   return nil
 })
 ```
+
+## [Resource Indicators](https://datatracker.ietf.org/doc/html/rfc8707)
+
+Resource Indicators are enabled with `provider.WithResourceIndicators(...)`.
+
+```go
+op, _ := provider.New(
+  ...,
+  provider.WithResourceIndicators(
+    "https://api.example.com",
+    "https://ledger.example.com",
+  ),
+  ...,
+)
+```
+
+This allows clients to send the `resource` parameter in authorization and token
+requests. The configured values are the only resource indicators the provider
+accepts.
+
+When enabled, the granted resources are carried in the resulting
+`goidc.AuthnSession`, `goidc.Grant`, and `goidc.Token`. Access token responses
+also return the selected resources.
+
+When using `authorization_code`, `refresh_token`, `device_code`, or CIBA token
+requests, the client may ask for a subset of the originally granted resources.
+The provider rejects resources that were not granted or that are not part of
+the configured allowed list.
+
+Use `provider.WithResourceIndicatorsRequired(...)` if every authorization
+request must include a `resource` parameter.
 
 ## [OpenID Federation](https://openid.net/specs/openid-federation-1_0.html)
 

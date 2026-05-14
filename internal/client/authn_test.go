@@ -2,6 +2,7 @@ package client_test
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"errors"
@@ -16,703 +17,614 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func TestAuthenticated_ClientNotFound(t *testing.T) {
-
-	// Given.
-	ctx := oidctest.NewContext(t)
-
-	c := &goidc.Client{
-		ID: "random_client_id",
-		ClientMeta: goidc.ClientMeta{
-			TokenAuthnMethod: goidc.AuthnMethodNone,
+func TestAuthenticated(t *testing.T) {
+	tests := []struct {
+		name         string
+		setup        func(*testing.T) (oidc.Context, func(*testing.T))
+		wantClientID string
+		wantErr      goidc.ErrorCode
+	}{
+		{
+			name: "client not found",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx := oidctest.NewContext(t)
+				ctx.Request.PostForm = map[string][]string{"client_id": {"random_client_id"}}
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
 		},
-	}
-	ctx.Request.PostForm = map[string][]string{"client_id": {c.ID}}
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-
-	// Then.
-	if err == nil {
-		t.Fatal("The client should not be found")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatal("invalid error type")
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
-	}
-}
-
-func TestAuthenticated_NoneAuthn(t *testing.T) {
-
-	// Given.
-	ctx := oidctest.NewContext(t)
-	c := &goidc.Client{
-		ID: "random_client_id",
-		ClientMeta: goidc.ClientMeta{
-			TokenAuthnMethod: goidc.AuthnMethodNone,
+		{
+			name: "none authn",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx := oidctest.NewContext(t)
+				c := &goidc.Client{
+					ID: "random_client_id",
+					ClientMeta: goidc.ClientMeta{
+						TokenAuthnMethod: goidc.AuthnMethodNone,
+					},
+				}
+				ctx.Request.PostForm = map[string][]string{"client_id": {c.ID}}
+				ctx.StaticClients = append(ctx.StaticClients, c)
+				return ctx, nil
+			},
+			wantClientID: "random_client_id",
 		},
-	}
-	ctx.Request.PostForm = map[string][]string{"client_id": {c.ID}}
-	ctx.StaticClients = append(ctx.StaticClients, c)
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-
-	// Then.
-	if err != nil {
-		t.Errorf("The client should be authenticated, but error was found: %v", err)
-	}
-}
-
-func TestAuthenticated_SecretPostAuthn(t *testing.T) {
-
-	// Given.
-	ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretPost)
-	ctx.Request.PostForm = map[string][]string{
-		"client_id":     {c.ID},
-		"client_secret": {c.Secret},
-	}
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-
-	// Then.
-	if err != nil {
-		t.Errorf("The client should be authenticated, but error was found: %v", err)
-	}
-}
-
-func TestAuthenticated_SecretPostAuthn_InvalidSecret(t *testing.T) {
-
-	// Given.
-	ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretPost)
-	ctx.Request.PostForm = map[string][]string{
-		"client_id":     {c.ID},
-		"client_secret": {"invalid_secret"},
-	}
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-
-	// Then.
-	if err == nil {
-		t.Fatal("The client should not be authenticated")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatal("invalid error type")
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
-	}
-}
-
-func TestAuthenticated_SecretPostAuthn_MissingSecret(t *testing.T) {
-
-	// Given.
-	ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretPost)
-	ctx.Request.PostForm = map[string][]string{
-		"client_id": {c.ID},
-	}
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-
-	// Then.
-	if err == nil {
-		t.Fatal("The client should not be authenticated")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatal("invalid error type")
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
-	}
-}
-
-// TestAuthenticated_SecretPostAuthn_InvalidID tests that the form parameter
-// "client_id" is equal to the ID of the authenticated client.
-func TestAuthenticated_SecretPostAuthn_InvalidID(t *testing.T) {
-
-	// Given.
-	ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretPost)
-	// The client ID is supposed to be the value of the param "client_id", but
-	// will be sent in the authorization header.
-	ctx.Request.SetBasicAuth(c.ID, c.Secret)
-	ctx.Request.PostForm = map[string][]string{
-		"client_secret": {"invalid_secret"},
-	}
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-
-	// Then.
-	if err == nil {
-		t.Fatal("The client should not be authenticated")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatal("invalid error type")
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
-	}
-}
-
-func TestAuthenticated_BasicSecretAuthn(t *testing.T) {
-
-	// Given.
-	ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretBasic)
-	ctx.Request.SetBasicAuth(c.ID, c.Secret)
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-
-	// Then.
-	if err != nil {
-		t.Errorf("The client should be authenticated, but error was found: %v", err)
-	}
-}
-
-func TestAuthenticated_BasicSecretAuthn_InvalidSecret(t *testing.T) {
-
-	// Given.
-	ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretBasic)
-	ctx.Request.SetBasicAuth(c.ID, "invalid_secret")
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-
-	// Then.
-	if err == nil {
-		t.Fatal("The client should not be authenticated")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatal("invalid error type")
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
-	}
-}
-
-func TestAuthenticated_BasicSecretAuthn_MissingSecret(t *testing.T) {
-
-	// Given.
-	ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretBasic)
-	// Add the client ID to the request so it can be identified.
-	ctx.Request.PostForm = map[string][]string{
-		"client_id": {c.ID},
-	}
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-
-	// Then.
-	if err == nil {
-		t.Fatal("The client should not be authenticated")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatal("invalid error type")
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
-	}
-}
-
-func TestAuthenticated_PrivateKeyJWT(t *testing.T) {
-
-	// Given.
-	ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
-	createdAtTimestamp := timeutil.TimestampNow()
-	claims := map[string]any{
-		goidc.ClaimIssuer:   c.ID,
-		goidc.ClaimSubject:  c.ID,
-		goidc.ClaimAudience: ctx.Issuer(),
-		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
-		goidc.ClaimTokenID:  "random_jti",
-	}
-
-	ctx.Request.PostForm = map[string][]string{
-		"client_assertion":      {oidctest.Sign(t, claims, jwk)},
-		"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
-	}
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-	// Then.
-	if err != nil {
-		t.Errorf("The client should be authenticated, but error was found: %v", err)
-	}
-}
-
-// TestAuthenticated_PrivateKeyJWT_ClientInformedSigningAlgorithms tests that a
-// client can sign an assertion with its authentication algorithm.
-func TestAuthenticated_PrivateKeyJWT_ClientInformedSigningAlgorithms(t *testing.T) {
-
-	// Given.
-	ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
-	c.TokenAuthnSigAlg = goidc.SignatureAlgorithm(jwk.Algorithm)
-	createdAtTimestamp := timeutil.TimestampNow()
-	claims := map[string]any{
-		goidc.ClaimIssuer:   c.ID,
-		goidc.ClaimSubject:  c.ID,
-		goidc.ClaimAudience: ctx.Issuer(),
-		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
-		goidc.ClaimTokenID:  "random_jti",
-	}
-
-	ctx.Request.PostForm = map[string][]string{
-		"client_assertion":      {oidctest.Sign(t, claims, jwk)},
-		"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
-	}
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-
-	// Then.
-	if err != nil {
-		t.Errorf("The client should be authenticated, but error was found: %v", err)
-	}
-}
-
-// TestAuthenticated_PrivateKeyJWT_ClientInformedSigningAlgorithms_InvalidSignature
-// tests that an assertion signed with an algorithm different from the client's
-// authentication algorithm will result in failure.
-func TestAuthenticated_PrivateKeyJWT_ClientInformedSigningAlgorithms_InvalidSignature(t *testing.T) {
-
-	// Given the client must sign assertions with PS256 and the signing JWK uses
-	// RS256.
-	ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
-	c.TokenAuthnSigAlg = goidc.PS256
-	createdAtTimestamp := timeutil.TimestampNow()
-	claims := map[string]any{
-		goidc.ClaimIssuer:   c.ID,
-		goidc.ClaimSubject:  c.ID,
-		goidc.ClaimAudience: ctx.Issuer(),
-		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
-	}
-
-	ctx.Request.PostForm = map[string][]string{
-		"client_assertion":      {oidctest.Sign(t, claims, jwk)},
-		"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
-	}
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-
-	// Then.
-	if err == nil {
-		t.Fatal("The client should not be authenticated")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatal("invalid error type")
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
-	}
-}
-
-func TestAuthenticated_PrivateKeyJWT_InvalidAudienceClaim(t *testing.T) {
-	// Given.
-	ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
-	createdAtTimestamp := timeutil.TimestampNow()
-	// The "aud" claim is not included in the claims.
-	claims := map[string]any{
-		goidc.ClaimIssuer:   c.ID,
-		goidc.ClaimSubject:  c.ID,
-		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
-	}
-
-	ctx.Request.PostForm = map[string][]string{
-		"client_assertion":      {oidctest.Sign(t, claims, jwk)},
-		"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
-	}
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-
-	// Then.
-	if err == nil {
-		t.Fatal("The client should not be authenticated")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatal("invalid error type")
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
-	}
-}
-
-func TestAuthenticated_PrivateKeyJWT_InvalidExpiryClaim(t *testing.T) {
-	// Given.
-	ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
-	createdAtTimestamp := timeutil.TimestampNow()
-	// The "exp" claim is not included in the claims.
-	claims := map[string]any{
-		goidc.ClaimIssuer:   c.ID,
-		goidc.ClaimSubject:  c.ID,
-		goidc.ClaimAudience: ctx.Issuer(),
-		goidc.ClaimIssuedAt: createdAtTimestamp,
-	}
-
-	ctx.Request.PostForm = map[string][]string{
-		"client_assertion":      {oidctest.Sign(t, claims, jwk)},
-		"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
-	}
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-
-	// Then.
-	if err == nil {
-		t.Fatal("The client should not be authenticated")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatal("invalid error type")
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
-	}
-}
-
-// TestAuthenticated_PrivateKeyJWT_CannotIdentifyJWK tests that an assertion
-// signed with a key that doesn't belong to the client results in error.
-func TestAuthenticated_PrivateKeyJWT_CannotIdentifyJWK(t *testing.T) {
-	// Given.
-	ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
-	c.JWKS = &goidc.JSONWebKeySet{}
-	createdAtTimestamp := timeutil.TimestampNow()
-	claims := map[string]any{
-		goidc.ClaimIssuer:   c.ID,
-		goidc.ClaimSubject:  c.ID,
-		goidc.ClaimAudience: ctx.Issuer(),
-		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
-	}
-
-	ctx.Request.PostForm = map[string][]string{
-		"client_assertion":      {oidctest.Sign(t, claims, jwk)},
-		"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
-	}
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-
-	// Then.
-	if err == nil {
-		t.Fatal("The client should not be authenticated")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatal("invalid error type")
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
-	}
-}
-
-// TestAuthenticated_PrivateKeyJWT_InvalidSigningKey tests that an assertion
-// signed with an unauthorized key that has the same ID of one of the client's
-// keys results in error.
-func TestAuthenticated_PrivateKeyJWT_InvalidSigningKey(t *testing.T) {
-	// Given.
-	ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
-	createdAtTimestamp := timeutil.TimestampNow()
-	claims := map[string]any{
-		goidc.ClaimIssuer:   c.ID,
-		goidc.ClaimSubject:  c.ID,
-		goidc.ClaimAudience: ctx.Issuer(),
-		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
-	}
-
-	invalidJWK := oidctest.PrivateRS256JWK(t, jwk.KeyID, goidc.KeyUsageSignature)
-	ctx.Request.PostForm = map[string][]string{
-		"client_assertion": {
-			oidctest.Sign(t, claims, invalidJWK),
+		{
+			name: "secret post authn",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretPost)
+				ctx.Request.PostForm = map[string][]string{
+					"client_id":     {c.ID},
+					"client_secret": {c.Secret},
+				}
+				return ctx, nil
+			},
+			wantClientID: "random_client_id",
 		},
-		"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
-	}
+		{
+			name: "secret post authn invalid secret",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretPost)
+				ctx.Request.PostForm = map[string][]string{
+					"client_id":     {c.ID},
+					"client_secret": {"invalid_secret"},
+				}
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "secret post authn missing secret",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretPost)
+				ctx.Request.PostForm = map[string][]string{
+					"client_id": {c.ID},
+				}
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "secret post authn invalid id",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretPost)
+				ctx.Request.SetBasicAuth(c.ID, c.Secret)
+				ctx.Request.PostForm = map[string][]string{
+					"client_secret": {"invalid_secret"},
+				}
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "basic secret authn",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretBasic)
+				ctx.Request.SetBasicAuth(c.ID, c.Secret)
+				return ctx, nil
+			},
+			wantClientID: "random_client_id",
+		},
+		{
+			name: "basic secret authn invalid secret",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretBasic)
+				ctx.Request.SetBasicAuth(c.ID, "invalid_secret")
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "basic secret authn missing secret",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretBasic)
+				ctx.Request.PostForm = map[string][]string{
+					"client_id": {c.ID},
+				}
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "client secret jwt",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, secret := setUpClientSecretJWTAuthn(t)
+				now := timeutil.TimestampNow()
+				claims := map[string]any{
+					goidc.ClaimIssuer:   c.ID,
+					goidc.ClaimSubject:  c.ID,
+					goidc.ClaimAudience: ctx.Issuer(),
+					goidc.ClaimIssuedAt: now,
+					goidc.ClaimExpiry:   now + ctx.JWTLifetimeSecs - 10,
+					goidc.ClaimTokenID:  "random_jti",
+				}
+				signer, err := jose.NewSigner(
+					jose.SigningKey{Algorithm: goidc.HS256, Key: []byte(secret)},
+					(&jose.SignerOptions{}).WithType("jwt"),
+				)
+				if err != nil {
+					t.Fatalf("could not create signer: %v", err)
+				}
+				assertion, err := jwt.Signed(signer).Claims(claims).Serialize()
+				if err != nil {
+					t.Fatalf("could not create assertion: %v", err)
+				}
+				ctx.Request.PostForm = map[string][]string{
+					"client_assertion":      {assertion},
+					"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
+				}
+				return ctx, nil
+			},
+			wantClientID: "random_client_id",
+		},
+		{
+			name: "private key jwt success",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
+				now := timeutil.TimestampNow()
+				claims := map[string]any{
+					goidc.ClaimIssuer:   c.ID,
+					goidc.ClaimSubject:  c.ID,
+					goidc.ClaimAudience: ctx.Issuer(),
+					goidc.ClaimIssuedAt: now,
+					goidc.ClaimExpiry:   now + ctx.JWTLifetimeSecs - 10,
+					goidc.ClaimTokenID:  "random_jti",
+				}
+				ctx.Request.PostForm = map[string][]string{
+					"client_assertion":      {oidctest.Sign(t, claims, jwk)},
+					"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
+				}
+				return ctx, nil
+			},
+			wantClientID: "random_client_id",
+		},
+		{
+			name: "private key jwt client informed signing algorithm",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
+				c.TokenAuthnSigAlg = goidc.SignatureAlgorithm(jwk.Algorithm)
+				now := timeutil.TimestampNow()
+				claims := map[string]any{
+					goidc.ClaimIssuer:   c.ID,
+					goidc.ClaimSubject:  c.ID,
+					goidc.ClaimAudience: ctx.Issuer(),
+					goidc.ClaimIssuedAt: now,
+					goidc.ClaimExpiry:   now + ctx.JWTLifetimeSecs - 10,
+					goidc.ClaimTokenID:  "random_jti",
+				}
+				ctx.Request.PostForm = map[string][]string{
+					"client_assertion":      {oidctest.Sign(t, claims, jwk)},
+					"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
+				}
+				return ctx, nil
+			},
+			wantClientID: "random_client_id",
+		},
+		{
+			name: "private key jwt client informed signing algorithm invalid signature",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
+				c.TokenAuthnSigAlg = goidc.PS256
+				now := timeutil.TimestampNow()
+				claims := map[string]any{
+					goidc.ClaimIssuer:   c.ID,
+					goidc.ClaimSubject:  c.ID,
+					goidc.ClaimAudience: ctx.Issuer(),
+					goidc.ClaimIssuedAt: now,
+					goidc.ClaimExpiry:   now + ctx.JWTLifetimeSecs - 10,
+				}
+				ctx.Request.PostForm = map[string][]string{
+					"client_assertion":      {oidctest.Sign(t, claims, jwk)},
+					"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
+				}
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "private key jwt invalid audience claim",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
+				now := timeutil.TimestampNow()
+				claims := map[string]any{
+					goidc.ClaimIssuer:   c.ID,
+					goidc.ClaimSubject:  c.ID,
+					goidc.ClaimIssuedAt: now,
+					goidc.ClaimExpiry:   now + ctx.JWTLifetimeSecs - 10,
+				}
+				ctx.Request.PostForm = map[string][]string{
+					"client_assertion":      {oidctest.Sign(t, claims, jwk)},
+					"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
+				}
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "private key jwt invalid expiry claim",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
+				now := timeutil.TimestampNow()
+				claims := map[string]any{
+					goidc.ClaimIssuer:   c.ID,
+					goidc.ClaimSubject:  c.ID,
+					goidc.ClaimAudience: ctx.Issuer(),
+					goidc.ClaimIssuedAt: now,
+				}
+				ctx.Request.PostForm = map[string][]string{
+					"client_assertion":      {oidctest.Sign(t, claims, jwk)},
+					"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
+				}
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "private key jwt cannot identify jwk",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
+				c.JWKS = &goidc.JSONWebKeySet{}
+				now := timeutil.TimestampNow()
+				claims := map[string]any{
+					goidc.ClaimIssuer:   c.ID,
+					goidc.ClaimSubject:  c.ID,
+					goidc.ClaimAudience: ctx.Issuer(),
+					goidc.ClaimIssuedAt: now,
+					goidc.ClaimExpiry:   now + ctx.JWTLifetimeSecs - 10,
+				}
+				ctx.Request.PostForm = map[string][]string{
+					"client_assertion":      {oidctest.Sign(t, claims, jwk)},
+					"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
+				}
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "private key jwt invalid signing key",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
+				now := timeutil.TimestampNow()
+				claims := map[string]any{
+					goidc.ClaimIssuer:   c.ID,
+					goidc.ClaimSubject:  c.ID,
+					goidc.ClaimAudience: ctx.Issuer(),
+					goidc.ClaimIssuedAt: now,
+					goidc.ClaimExpiry:   now + ctx.JWTLifetimeSecs - 10,
+				}
+				invalidJWK := oidctest.PrivateRS256JWK(t, jwk.KeyID, goidc.KeyUsageSignature)
+				ctx.Request.PostForm = map[string][]string{
+					"client_assertion":      {oidctest.Sign(t, claims, invalidJWK)},
+					"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
+				}
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "private key jwt invalid assertion",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, _ := setUpPrivateKeyJWTAuthn(t)
+				ctx.Request.PostForm = map[string][]string{
+					"client_id":             {c.ID},
+					"client_assertion":      {"invalid_assertion"},
+					"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
+				}
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "private key jwt invalid assertion type",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
+				now := timeutil.TimestampNow()
+				claims := map[string]any{
+					goidc.ClaimIssuer:   c.ID,
+					goidc.ClaimSubject:  c.ID,
+					goidc.ClaimAudience: ctx.Issuer(),
+					goidc.ClaimIssuedAt: now,
+					goidc.ClaimExpiry:   now + ctx.JWTLifetimeSecs - 10,
+				}
+				ctx.Request.PostForm = map[string][]string{
+					"client_assertion":      {oidctest.Sign(t, claims, jwk)},
+					"client_assertion_type": {"invalid_assertion_type"},
+				}
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "different client ids",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				c := &goidc.Client{
+					ID: "random_client_id",
+					ClientMeta: goidc.ClientMeta{
+						TokenAuthnMethod: goidc.AuthnMethodNone,
+					},
+				}
+				ctx := oidctest.NewContext(t)
+				ctx.StaticClients = append(ctx.StaticClients, c)
+				ctx.TokenAuthnPrivateKeyJWTSigAlgs = []goidc.SignatureAlgorithm{goidc.PS256}
+				ctx.Request.PostForm = map[string][]string{
+					"client_id":             {c.ID},
+					"client_assertion":      {"eyJhbGciOiJQUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJpbnZhbGlkX2NsaWVudF9pZCIsInN1YiI6ImludmFsaWRfY2xpZW50X2lkIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.Nog3Y_jeWO0dugsTKCxLx_vGcCbE6kRHzo7wAvfnKe7_uCW9UB1f-WhX4fMKXvJ8v-bScuyx2pTgy4C6ie0ZAcOn_XESblpr_0epoUF2ibdR5DGPKcrPs-S8jp8yvBOxbUmq0jyU9V5H33052h5gBsEAcYXnM150S-ch_1ISL1EgDiZrOm9lYhisp7Jp_mqUZx3OXjfWruz4d6oLe5FeCg7NsB5PpT_N26VZ6Qxt9x6OKUvphRHN1niETkf3_1uTr8CltHesfFl4NnaXSP5f7QStg9JKIpjgJnl-LeQe2C4tM8yHCTENxgHX4oTzrfiEfdN3TwoHDFNszcXnnAUQCg"},
+					"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
+				}
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "secret post custom verifier success",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx := oidctest.NewContext(t)
+				const hashedAtRest = "stored-hash-value"
+				const presentedPlaintext = "hunter2"
 
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
+				c := &goidc.Client{
+					ID: "random_client_id",
+					ClientMeta: goidc.ClientMeta{
+						TokenAuthnMethod: goidc.AuthnMethodSecretPost,
+					},
+					Secret: hashedAtRest,
+				}
+				ctx.StaticClients = append(ctx.StaticClients, c)
 
-	// Then.
-	if err == nil {
-		t.Fatal("The client should not be authenticated")
-	}
+				var called bool
+				ctx.VerifyClientSecretFunc = func(_ context.Context, stored, presented string) error {
+					called = true
+					if stored != hashedAtRest {
+						t.Errorf("stored = %q, want %q", stored, hashedAtRest)
+					}
+					if presented != presentedPlaintext {
+						t.Errorf("presented = %q, want %q", presented, presentedPlaintext)
+					}
+					return nil
+				}
 
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatal("invalid error type")
-	}
+				ctx.Request.PostForm = map[string][]string{
+					"client_id":     {c.ID},
+					"client_secret": {presentedPlaintext},
+				}
 
-	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
-	}
-}
+				return ctx, func(t *testing.T) {
+					if !called {
+						t.Fatal("the custom verifier was not called")
+					}
+				}
+			},
+			wantClientID: "random_client_id",
+		},
+		{
+			name: "secret post custom verifier failure",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx := oidctest.NewContext(t)
+				c := &goidc.Client{
+					ID: "random_client_id",
+					ClientMeta: goidc.ClientMeta{
+						TokenAuthnMethod: goidc.AuthnMethodSecretPost,
+					},
+					Secret: "stored",
+				}
+				ctx.StaticClients = append(ctx.StaticClients, c)
 
-// TestAuthenticated_PrivateKeyJWT_InvalidAssertion tests that a client
-// assertion which is not a JWT will result in error.
-func TestAuthenticated_PrivateKeyJWT_InvalidAssertion(t *testing.T) {
-	// Given.
-	ctx, c, _ := setUpPrivateKeyJWTAuthn(t)
-	ctx.Request.PostForm = map[string][]string{
-		// Add the ID so the client can be identified.
-		"client_id":             {c.ID},
-		"client_assertion":      {"invalid_assertion"},
-		"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
-	}
+				verifierErr := errors.New("mismatch")
+				ctx.VerifyClientSecretFunc = func(_ context.Context, _, _ string) error {
+					return verifierErr
+				}
 
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
+				ctx.Request.PostForm = map[string][]string{
+					"client_id":     {c.ID},
+					"client_secret": {"presented"},
+				}
 
-	// Then.
-	if err == nil {
-		t.Fatal("The client should not be authenticated")
-	}
+				return ctx, func(t *testing.T) {
+					got, err := client.Authenticated(ctx, client.AuthnContextToken)
+					if got != nil {
+						t.Fatalf("client = %v, want nil", got)
+					}
+					if !errors.Is(err, verifierErr) {
+						t.Fatalf("error = %v, want wrapped %v", err, verifierErr)
+					}
+				}
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "basic secret custom verifier success",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx := oidctest.NewContext(t)
+				c := &goidc.Client{
+					ID: "random_client_id",
+					ClientMeta: goidc.ClientMeta{
+						TokenAuthnMethod: goidc.AuthnMethodSecretBasic,
+					},
+					Secret: "stored",
+				}
+				ctx.StaticClients = append(ctx.StaticClients, c)
 
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatal("invalid error type")
-	}
+				var called bool
+				ctx.VerifyClientSecretFunc = func(_ context.Context, _, _ string) error {
+					called = true
+					return nil
+				}
 
-	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
-	}
-}
+				ctx.Request.SetBasicAuth(c.ID, "presented")
 
-func TestAuthenticated_PrivateKeyJWT_InvalidAssertionType(t *testing.T) {
-	// Given.
-	ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
-	createdAtTimestamp := timeutil.TimestampNow()
-	claims := map[string]any{
-		goidc.ClaimIssuer:   c.ID,
-		goidc.ClaimSubject:  c.ID,
-		goidc.ClaimAudience: ctx.Issuer(),
-		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
-	}
-
-	ctx.Request.PostForm = map[string][]string{
-		"client_assertion":      {oidctest.Sign(t, claims, jwk)},
-		"client_assertion_type": {"invalid_assertion_type"},
-	}
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-
-	// Then.
-	if err == nil {
-		t.Fatal("The client should not be authenticated")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatal("invalid error type")
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
-	}
-}
-
-func TestAuthenticated_ClientSecretJWT(t *testing.T) {
-
-	// Given.
-	ctx, c, secret := setUpClientSecretJWTAuthn(t)
-	createdAtTimestamp := timeutil.TimestampNow()
-	claims := map[string]any{
-		goidc.ClaimIssuer:   c.ID,
-		goidc.ClaimSubject:  c.ID,
-		goidc.ClaimAudience: ctx.Issuer(),
-		goidc.ClaimIssuedAt: createdAtTimestamp,
-		goidc.ClaimExpiry:   createdAtTimestamp + ctx.JWTLifetimeSecs - 10,
-		goidc.ClaimTokenID:  "random_jti",
-	}
-	signer, _ := jose.NewSigner(
-		jose.SigningKey{Algorithm: goidc.HS256, Key: []byte(secret)},
-		(&jose.SignerOptions{}).WithType("jwt"),
-	)
-	assertion, _ := jwt.Signed(signer).Claims(claims).Serialize()
-	ctx.Request.PostForm = map[string][]string{
-		"client_assertion":      {assertion},
-		"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
-	}
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-
-	// Then.
-	if err != nil {
-		t.Errorf("The client should be authenticated, but error was found: %v", err)
-	}
-
-}
-
-// TestAuthenticated_DifferentClientIDs tests that when different client IDs are
-// sent in the request, the client won't be authenticated.
-// For instance, the form parameter "client_id" could have value "client_one"
-// and the issuer of the parameter "client_assertion" could have value
-// "client_two". In that case, the client must not be authenticate.
-func TestAuthenticated_DifferentClientIDs(t *testing.T) {
-
-	// When.
-	c := &goidc.Client{
-		ID: "random_client_id",
-		ClientMeta: goidc.ClientMeta{
-			TokenAuthnMethod: goidc.AuthnMethodNone,
+				return ctx, func(t *testing.T) {
+					if !called {
+						t.Fatal("the custom verifier was not called for client_secret_basic")
+					}
+				}
+			},
+			wantClientID: "random_client_id",
+		},
+		{
+			name: "tls distinguished name",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c := setUpTLSAuthn(t)
+				c.TLSSubDistinguishedName = "CN=https://example.com"
+				ctx.Request.PostForm = map[string][]string{
+					"client_id": {c.ID},
+				}
+				return ctx, nil
+			},
+			wantClientID: "random_client_id",
+		},
+		{
+			name: "tls invalid distinguished name",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c := setUpTLSAuthn(t)
+				c.TLSSubDistinguishedName = "invalid"
+				ctx.Request.PostForm = map[string][]string{
+					"client_id": {c.ID},
+				}
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "tls alternative name",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c := setUpTLSAuthn(t)
+				c.TLSSubAlternativeName = "https://sub.example.com"
+				ctx.Request.PostForm = map[string][]string{
+					"client_id": {c.ID},
+				}
+				return ctx, nil
+			},
+			wantClientID: "random_client_id",
+		},
+		{
+			name: "tls invalid alternative name",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c := setUpTLSAuthn(t)
+				c.TLSSubAlternativeName = "invalid"
+				ctx.Request.PostForm = map[string][]string{
+					"client_id": {c.ID},
+				}
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "self signed tls",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, cert := setUpSelfSignedTLSAuthn(t)
+				ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
+					return cert, nil
+				}
+				ctx.Request.PostForm = map[string][]string{
+					"client_id": {c.ID},
+				}
+				return ctx, nil
+			},
+			wantClientID: "random_client_id",
+		},
+		{
+			name: "self signed tls invalid client id",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, _, cert := setUpSelfSignedTLSAuthn(t)
+				ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
+					return cert, nil
+				}
+				ctx.Request.PostForm = map[string][]string{
+					"client_id": {"invalid_client_id"},
+				}
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "self signed tls missing certificate",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, _ := setUpSelfSignedTLSAuthn(t)
+				certErr := errors.New("no client cert")
+				ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
+					return nil, certErr
+				}
+				ctx.Request.PostForm = map[string][]string{
+					"client_id": {c.ID},
+				}
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "self signed tls no matching jwk",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, cert := setUpSelfSignedTLSAuthn(t)
+				otherJWK := oidctest.PrivateRS256JWK(t, "other_key", goidc.KeyUsageSignature)
+				c.JWKS = &goidc.JSONWebKeySet{
+					Keys: []goidc.JSONWebKey{otherJWK.Public()},
+				}
+				ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
+					return cert, nil
+				}
+				ctx.Request.PostForm = map[string][]string{
+					"client_id": {c.ID},
+				}
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "self signed tls mismatched public key",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, cert := setUpSelfSignedTLSAuthn(t)
+				privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
+				mismatchedJWK := privateJWK.Public()
+				sum := sha256.Sum256(cert.Raw)
+				mismatchedJWK.CertificateThumbprintSHA256 = sum[:]
+				c.JWKS = &goidc.JSONWebKeySet{
+					Keys: []goidc.JSONWebKey{mismatchedJWK},
+				}
+				ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
+					return cert, nil
+				}
+				ctx.Request.PostForm = map[string][]string{
+					"client_id": {c.ID},
+				}
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
 		},
 	}
 
-	ctx := oidctest.NewContext(t)
-	ctx.StaticClients = append(ctx.StaticClients, c)
-	ctx.TokenAuthnPrivateKeyJWTSigAlgs = []goidc.SignatureAlgorithm{goidc.PS256}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx, validate := test.setup(t)
 
-	ctx.Request.PostForm = map[string][]string{
-		"client_id": {c.ID},
-		// The issuer claim should be the client ID, so this assertion has issuer as "invalid_client_id",
-		// so the unhappy path can be tested.
-		"client_assertion":      {"eyJhbGciOiJQUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJpbnZhbGlkX2NsaWVudF9pZCIsInN1YiI6ImludmFsaWRfY2xpZW50X2lkIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.Nog3Y_jeWO0dugsTKCxLx_vGcCbE6kRHzo7wAvfnKe7_uCW9UB1f-WhX4fMKXvJ8v-bScuyx2pTgy4C6ie0ZAcOn_XESblpr_0epoUF2ibdR5DGPKcrPs-S8jp8yvBOxbUmq0jyU9V5H33052h5gBsEAcYXnM150S-ch_1ISL1EgDiZrOm9lYhisp7Jp_mqUZx3OXjfWruz4d6oLe5FeCg7NsB5PpT_N26VZ6Qxt9x6OKUvphRHN1niETkf3_1uTr8CltHesfFl4NnaXSP5f7QStg9JKIpjgJnl-LeQe2C4tM8yHCTENxgHX4oTzrfiEfdN3TwoHDFNszcXnnAUQCg"},
-		"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
-	}
+			got, err := client.Authenticated(ctx, client.AuthnContextToken)
 
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
+			if test.wantErr != "" {
+				if err == nil {
+					t.Fatalf("expected error %q", test.wantErr)
+				}
+				var oidcErr goidc.Error
+				if !errors.As(err, &oidcErr) {
+					t.Fatalf("invalid error type: %T", err)
+				}
+				if oidcErr.Code != test.wantErr {
+					t.Fatalf("error code = %s, want %s", oidcErr.Code, test.wantErr)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if got == nil {
+					t.Fatal("expected authenticated client")
+				}
+				if got.ID != test.wantClientID {
+					t.Fatalf("client ID = %q, want %q", got.ID, test.wantClientID)
+				}
+			}
 
-	// Then.
-	if err == nil {
-		t.Fatal("The client should not be authenticated")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatal("invalid error type")
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
-	}
-}
-
-func TestAuthenticated_TLSAuthn_DistinguishedName(t *testing.T) {
-
-	// Given.
-	ctx, c := setUpTLSAuthn(t)
-	c.TLSSubDistinguishedName = "CN=https://example.com"
-	ctx.Request.PostForm = map[string][]string{
-		"client_id": {c.ID},
-	}
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-	// Then.
-	if err != nil {
-		t.Errorf("The client should be authenticated, but error was found: %v", err)
-	}
-}
-
-func TestAuthenticated_TLSAuthn_InvalidDistinguishedName(t *testing.T) {
-
-	// Given.
-	ctx, c := setUpTLSAuthn(t)
-	c.TLSSubDistinguishedName = "invalid"
-	ctx.Request.PostForm = map[string][]string{
-		"client_id": {c.ID},
-	}
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-
-	// Then.
-	if err == nil {
-		t.Fatal("The client should not be authenticated")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatal("invalid error type")
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
-	}
-}
-
-func TestAuthenticated_TLSAuthn_AlternativeName(t *testing.T) {
-
-	// Given.
-	ctx, c := setUpTLSAuthn(t)
-	c.TLSSubAlternativeName = "https://sub.example.com"
-	ctx.Request.PostForm = map[string][]string{
-		"client_id": {c.ID},
-	}
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-	// Then.
-	if err != nil {
-		t.Errorf("The client should be authenticated, but error was found: %v", err)
-	}
-}
-
-func TestAuthenticated_TLSAuthn_InvalidAlternativeName(t *testing.T) {
-
-	// Given.
-	ctx, c := setUpTLSAuthn(t)
-	c.TLSSubAlternativeName = "invalid"
-	ctx.Request.PostForm = map[string][]string{
-		"client_id": {c.ID},
-	}
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-
-	// Then.
-	if err == nil {
-		t.Fatal("The client should not be authenticated")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatal("invalid error type")
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
+			if validate != nil {
+				validate(t)
+			}
+		})
 	}
 }
 
@@ -805,128 +717,29 @@ func setUpTLSAuthn(t *testing.T) (
 	return ctx, c
 }
 
-func TestAuthenticated_SecretPost_CustomVerifier_Success(t *testing.T) {
+func setUpSelfSignedTLSAuthn(t *testing.T) (oidc.Context, *goidc.Client, *x509.Certificate) {
+	t.Helper()
 
-	// Given.
 	ctx := oidctest.NewContext(t)
-	const hashedAtRest = "stored-hash-value"
-	const presentedPlaintext = "hunter2"
+	jwk := oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
+	cert := &x509.Certificate{
+		Raw:       []byte("random_self_signed_cert"),
+		PublicKey: jwk.Public().Key,
+	}
+	sum := sha256.Sum256(cert.Raw)
+	publicJWK := jwk.Public()
+	publicJWK.CertificateThumbprintSHA256 = sum[:]
 
 	c := &goidc.Client{
 		ID: "random_client_id",
 		ClientMeta: goidc.ClientMeta{
-			TokenAuthnMethod: goidc.AuthnMethodSecretPost,
+			TokenAuthnMethod: goidc.AuthnMethodSelfSignedTLS,
+			JWKS: &goidc.JSONWebKeySet{
+				Keys: []goidc.JSONWebKey{publicJWK},
+			},
 		},
-		Secret: hashedAtRest,
 	}
 	ctx.StaticClients = append(ctx.StaticClients, c)
 
-	var called bool
-	ctx.VerifyClientSecretFunc = func(_ context.Context, stored, presented string) error {
-		called = true
-		if stored != hashedAtRest {
-			t.Errorf("verifier received stored = %q, want %q", stored, hashedAtRest)
-		}
-		if presented != presentedPlaintext {
-			t.Errorf("verifier received presented = %q, want %q", presented, presentedPlaintext)
-		}
-		return nil
-	}
-
-	ctx.Request.PostForm = map[string][]string{
-		"client_id":     {c.ID},
-		"client_secret": {presentedPlaintext},
-	}
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-
-	// Then.
-	if err != nil {
-		t.Errorf("The client should be authenticated, but error was found: %v", err)
-	}
-	if !called {
-		t.Error("the custom verifier was not called")
-	}
-}
-
-func TestAuthenticated_SecretPost_CustomVerifier_Failure(t *testing.T) {
-
-	// Given.
-	ctx := oidctest.NewContext(t)
-
-	c := &goidc.Client{
-		ID: "random_client_id",
-		ClientMeta: goidc.ClientMeta{
-			TokenAuthnMethod: goidc.AuthnMethodSecretPost,
-		},
-		Secret: "stored",
-	}
-	ctx.StaticClients = append(ctx.StaticClients, c)
-
-	verifierErr := errors.New("mismatch")
-	ctx.VerifyClientSecretFunc = func(_ context.Context, _, _ string) error {
-		return verifierErr
-	}
-
-	ctx.Request.PostForm = map[string][]string{
-		"client_id":     {c.ID},
-		"client_secret": {"presented"},
-	}
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-
-	// Then.
-	if err == nil {
-		t.Fatal("The client should not be authenticated")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatal("invalid error type")
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeInvalidClient {
-		t.Errorf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClient)
-	}
-
-	if !errors.Is(err, verifierErr) {
-		t.Errorf("verifier error not wrapped into the returned error: want %v, got %v",
-			verifierErr, err)
-	}
-}
-
-func TestAuthenticated_SecretBasic_CustomVerifier_Success(t *testing.T) {
-
-	// Given.
-	ctx := oidctest.NewContext(t)
-
-	c := &goidc.Client{
-		ID: "random_client_id",
-		ClientMeta: goidc.ClientMeta{
-			TokenAuthnMethod: goidc.AuthnMethodSecretBasic,
-		},
-		Secret: "stored",
-	}
-	ctx.StaticClients = append(ctx.StaticClients, c)
-
-	var called bool
-	ctx.VerifyClientSecretFunc = func(_ context.Context, _, _ string) error {
-		called = true
-		return nil
-	}
-
-	ctx.Request.SetBasicAuth(c.ID, "presented")
-
-	// When.
-	_, err := client.Authenticated(ctx, client.AuthnContextToken)
-
-	// Then.
-	if err != nil {
-		t.Errorf("The client should be authenticated, but error was found: %v", err)
-	}
-	if !called {
-		t.Error("the custom verifier was not called for client_secret_basic")
-	}
+	return ctx, c, cert
 }

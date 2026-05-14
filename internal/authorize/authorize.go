@@ -71,7 +71,7 @@ func initAuth(ctx oidc.Context, req request) error {
 				return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "request_uri is required")
 			}
 
-			as, err := ctx.AuthSession(strings.TrimPrefix(req.RequestURI, parRequestURIPrefix))
+			as, err := ctx.PARSessionByPushedAuthReqID(strings.TrimPrefix(req.RequestURI, parRequestURIPrefix))
 			if err != nil {
 				return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid request_uri")
 			}
@@ -256,6 +256,12 @@ func authenticate(ctx oidc.Context, as *goidc.AuthnSession, c *goidc.Client) err
 					return ""
 				}
 				return ctx.AuthCode()
+			}(),
+			AuthCodeExpiresAt: func() int {
+				if !as.ResponseType.Contains(goidc.ResponseTypeCode) {
+					return 0
+				}
+				return timeutil.TimestampNow() + ctx.AuthCodeLifetimeSecs
 			}(),
 			AuthParams: as.AuthorizationParameters,
 			Store:      as.Store,

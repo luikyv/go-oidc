@@ -6,11 +6,13 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/go-jose/go-jose/v4/jwt"
@@ -19,6 +21,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
+	"github.com/luikyv/go-oidc/internal/storage"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -193,6 +196,52 @@ func TestAvailablePolicy(t *testing.T) {
 			test.validate(t, policy, ok)
 		})
 	}
+}
+
+func TestLogoutPolicyHelpers(t *testing.T) {
+	t.Run("logout policy by id", func(t *testing.T) {
+		ctx := newContext()
+		ctx.LogoutPolicies = []goidc.LogoutPolicy{
+			goidc.NewLogoutPolicy("logout_1", nil, nil),
+		}
+
+		policy := ctx.LogoutPolicy("logout_1")
+		if policy.ID != "logout_1" {
+			t.Fatalf("LogoutPolicy().ID = %q, want %q", policy.ID, "logout_1")
+		}
+	})
+
+	t.Run("missing logout policy returns not found behavior", func(t *testing.T) {
+		ctx := newContext()
+		policy := ctx.LogoutPolicy("missing")
+		status, err := policy.Logout(nil, nil, nil)
+		if status != goidc.StatusFailure {
+			t.Fatalf("LogoutPolicy().Logout() status = %q, want %q", status, goidc.StatusFailure)
+		}
+		if !errors.Is(err, goidc.ErrNotFound) {
+			t.Fatalf("LogoutPolicy().Logout() error = %v, want %v", err, goidc.ErrNotFound)
+		}
+	})
+
+	t.Run("available logout policy", func(t *testing.T) {
+		ctx := newContext()
+		ctx.LogoutPolicies = []goidc.LogoutPolicy{
+			goidc.NewLogoutPolicy("unavailable", func(_ *http.Request, _ *goidc.LogoutSession) bool {
+				return false
+			}, nil),
+			goidc.NewLogoutPolicy("available", func(_ *http.Request, _ *goidc.LogoutSession) bool {
+				return true
+			}, nil),
+		}
+
+		policy, ok := ctx.AvailableLogoutPolicy(&goidc.LogoutSession{})
+		if !ok {
+			t.Fatal("AvailableLogoutPolicy() = false, want true")
+		}
+		if policy.ID != "available" {
+			t.Fatalf("AvailableLogoutPolicy().ID = %q, want %q", policy.ID, "available")
+		}
+	})
 }
 
 func TestBaseURL(t *testing.T) {
@@ -616,12 +665,21 @@ func TestTokenAndPolicyHooks(t *testing.T) {
 			name: "generated values delegate to funcs",
 			run: func(t *testing.T, ctx oidc.Context) {
 				grant := &goidc.Grant{ID: "grant_id"}
+				ctx.PARIDFunc = func(context.Context) string { return "par" }
+				ctx.CIBAIDFunc = func(context.Context) string { return "auth_req" }
 				ctx.GrantIDFunc = func(context.Context) string { return "grant" }
 				ctx.JWTIDFunc = func(context.Context) string { return "jwt" }
 				ctx.AuthCodeFunc = func(context.Context) string { return "code" }
 				ctx.RefreshTokenFunc = func(context.Context) string { return "refresh" }
+				ctx.DeviceCodeFunc = func(context.Context) string { return "device" }
 				ctx.OpaqueTokenFunc = func(context.Context, *goidc.Grant) string { return "opaque_" + grant.ID }
 
+				if got := ctx.PARID(); got != "par" {
+					t.Fatalf("PARID() = %q, want %q", got, "par")
+				}
+				if got := ctx.CIBAID(); got != "auth_req" {
+					t.Fatalf("CIBAID() = %q, want %q", got, "auth_req")
+				}
 				if got := ctx.GrantID(); got != "grant" {
 					t.Fatalf("GrantID() = %q, want %q", got, "grant")
 				}
@@ -633,6 +691,9 @@ func TestTokenAndPolicyHooks(t *testing.T) {
 				}
 				if got := ctx.RefreshToken(); got != "refresh" {
 					t.Fatalf("RefreshToken() = %q, want %q", got, "refresh")
+				}
+				if got := ctx.DeviceCode(); got != "device" {
+					t.Fatalf("DeviceCode() = %q, want %q", got, "device")
 				}
 				if got := ctx.OpaqueToken(grant); got != "opaque_grant_id" {
 					t.Fatalf("OpaqueToken() = %q, want %q", got, "opaque_grant_id")
@@ -646,6 +707,833 @@ func TestTokenAndPolicyHooks(t *testing.T) {
 			test.run(t, oidctest.NewContext(t))
 		})
 	}
+}
+
+func TestManagerDelegates(t *testing.T) {
+	t.Run("auth and par sessions", func(t *testing.T) {
+		ctx := oidctest.NewContext(t)
+		manager := storage.NewManager(100)
+		ctx.AuthManager = manager
+		ctx.PARManager = manager
+
+		session := &goidc.AuthnSession{
+			ID:              "session_id",
+			PushedAuthReqID: "par_id",
+			CreatedAt:       1,
+		}
+		if err := ctx.AuthSaveSession(session); err != nil {
+			t.Fatalf("AuthSaveSession() error = %v", err)
+		}
+
+		got, err := ctx.AuthSession(session.ID)
+		if err != nil {
+			t.Fatalf("AuthSession() error = %v", err)
+		}
+		if got.ID != session.ID {
+			t.Fatalf("AuthSession().ID = %q, want %q", got.ID, session.ID)
+		}
+
+		got, err = ctx.PARSessionByPushedAuthReqID(session.PushedAuthReqID)
+		if err != nil {
+			t.Fatalf("PARSessionByPushedAuthReqID() error = %v", err)
+		}
+		if got.PushedAuthReqID != session.PushedAuthReqID {
+			t.Fatalf("PARSessionByPushedAuthReqID() = %q, want %q", got.PushedAuthReqID, session.PushedAuthReqID)
+		}
+
+		if err := ctx.AuthDeleteSession(session.ID); err != nil {
+			t.Fatalf("AuthDeleteSession() error = %v", err)
+		}
+		if _, err := ctx.AuthSession(session.ID); !errors.Is(err, goidc.ErrNotFound) {
+			t.Fatalf("AuthSession() error = %v, want %v", err, goidc.ErrNotFound)
+		}
+	})
+
+	t.Run("ciba sessions and grants", func(t *testing.T) {
+		ctx := oidctest.NewContext(t)
+		manager := storage.NewManager(100)
+		ctx.CIBAManager = manager
+		ctx.GrantManager = manager
+
+		session := &goidc.AuthnSession{
+			ID:        "ciba_session",
+			AuthReqID: "auth_req_id",
+			CreatedAt: 1,
+		}
+		if err := ctx.CIBASaveSession(session); err != nil {
+			t.Fatalf("CIBASaveSession() error = %v", err)
+		}
+
+		gotSession, err := ctx.CIBASession(session.ID)
+		if err != nil {
+			t.Fatalf("CIBASession() error = %v", err)
+		}
+		if gotSession.ID != session.ID {
+			t.Fatalf("CIBASession().ID = %q, want %q", gotSession.ID, session.ID)
+		}
+
+		gotSession, err = ctx.CIBASessionByAuthReqID(session.AuthReqID)
+		if err != nil {
+			t.Fatalf("CIBASessionByAuthReqID() error = %v", err)
+		}
+		if gotSession.AuthReqID != session.AuthReqID {
+			t.Fatalf("CIBASessionByAuthReqID() = %q, want %q", gotSession.AuthReqID, session.AuthReqID)
+		}
+
+		grant := &goidc.Grant{
+			ID:        "grant_id",
+			AuthReqID: session.AuthReqID,
+			CreatedAt: 1,
+		}
+		if err := ctx.SaveGrant(grant); err != nil {
+			t.Fatalf("SaveGrant() error = %v", err)
+		}
+		gotGrant, err := ctx.GrantByAuthReqID(session.AuthReqID)
+		if err != nil {
+			t.Fatalf("GrantByAuthReqID() error = %v", err)
+		}
+		if gotGrant.ID != grant.ID {
+			t.Fatalf("GrantByAuthReqID().ID = %q, want %q", gotGrant.ID, grant.ID)
+		}
+
+		if err := ctx.CIBADeleteSession(session.ID); err != nil {
+			t.Fatalf("CIBADeleteSession() error = %v", err)
+		}
+		if _, err := ctx.CIBASession(session.ID); !errors.Is(err, goidc.ErrNotFound) {
+			t.Fatalf("CIBASession() error = %v, want %v", err, goidc.ErrNotFound)
+		}
+	})
+
+	t.Run("device sessions and grants", func(t *testing.T) {
+		ctx := oidctest.NewContext(t)
+		manager := storage.NewManager(100)
+		ctx.DeviceAuthManager = manager
+		ctx.GrantManager = manager
+
+		session := &goidc.AuthnSession{
+			ID:         "device_session",
+			DeviceCode: "device_code",
+			UserCode:   "user_code",
+			CreatedAt:  1,
+		}
+		if err := ctx.DeviceSaveSession(session); err != nil {
+			t.Fatalf("DeviceSaveSession() error = %v", err)
+		}
+
+		gotSession, err := ctx.DeviceSession(session.ID)
+		if err != nil {
+			t.Fatalf("DeviceSession() error = %v", err)
+		}
+		if gotSession.ID != session.ID {
+			t.Fatalf("DeviceSession().ID = %q, want %q", gotSession.ID, session.ID)
+		}
+
+		gotSession, err = ctx.DeviceSessionByUserCode(session.UserCode)
+		if err != nil {
+			t.Fatalf("DeviceSessionByUserCode() error = %v", err)
+		}
+		if gotSession.UserCode != session.UserCode {
+			t.Fatalf("DeviceSessionByUserCode() = %q, want %q", gotSession.UserCode, session.UserCode)
+		}
+
+		gotSession, err = ctx.DeviceSessionByDeviceCode(session.DeviceCode)
+		if err != nil {
+			t.Fatalf("DeviceSessionByDeviceCode() error = %v", err)
+		}
+		if gotSession.DeviceCode != session.DeviceCode {
+			t.Fatalf("DeviceSessionByDeviceCode() = %q, want %q", gotSession.DeviceCode, session.DeviceCode)
+		}
+
+		grant := &goidc.Grant{
+			ID:         "grant_id",
+			DeviceCode: session.DeviceCode,
+			CreatedAt:  1,
+		}
+		if err := ctx.SaveGrant(grant); err != nil {
+			t.Fatalf("SaveGrant() error = %v", err)
+		}
+		gotGrant, err := ctx.GrantByDeviceCode(session.DeviceCode)
+		if err != nil {
+			t.Fatalf("GrantByDeviceCode() error = %v", err)
+		}
+		if gotGrant.ID != grant.ID {
+			t.Fatalf("GrantByDeviceCode().ID = %q, want %q", gotGrant.ID, grant.ID)
+		}
+
+		if err := ctx.DeviceDeleteSession(session.ID); err != nil {
+			t.Fatalf("DeviceDeleteSession() error = %v", err)
+		}
+		if _, err := ctx.DeviceSession(session.ID); !errors.Is(err, goidc.ErrNotFound) {
+			t.Fatalf("DeviceSession() error = %v, want %v", err, goidc.ErrNotFound)
+		}
+	})
+
+	t.Run("dcr clients", func(t *testing.T) {
+		ctx := oidctest.NewContext(t)
+		manager := storage.NewManager(100)
+		ctx.DCRManager = manager
+
+		client := &goidc.Client{ID: "dcr_client"}
+		if err := ctx.DCRSaveClient(client); err != nil {
+			t.Fatalf("DCRSaveClient() error = %v", err)
+		}
+
+		got, err := ctx.DCRClient(client.ID)
+		if err != nil {
+			t.Fatalf("DCRClient() error = %v", err)
+		}
+		if got.ID != client.ID {
+			t.Fatalf("DCRClient().ID = %q, want %q", got.ID, client.ID)
+		}
+
+		if err := ctx.DCRDeleteClient(client.ID); err != nil {
+			t.Fatalf("DCRDeleteClient() error = %v", err)
+		}
+		if _, err := ctx.DCRClient(client.ID); !errors.Is(err, goidc.ErrNotFound) {
+			t.Fatalf("DCRClient() error = %v, want %v", err, goidc.ErrNotFound)
+		}
+	})
+
+	t.Run("openid federation clients", func(t *testing.T) {
+		ctx := oidctest.NewContext(t)
+		manager := storage.NewManager(100)
+		ctx.OpenIDFedManager = manager
+
+		client := &goidc.Client{ID: "https://client.example.com"}
+		if err := ctx.OpenIDFedSaveClient(client); err != nil {
+			t.Fatalf("OpenIDFedSaveClient() error = %v", err)
+		}
+
+		got, err := ctx.OpenIDFedClient(client.ID)
+		if err != nil {
+			t.Fatalf("OpenIDFedClient() error = %v", err)
+		}
+		if got.ID != client.ID {
+			t.Fatalf("OpenIDFedClient().ID = %q, want %q", got.ID, client.ID)
+		}
+	})
+
+	t.Run("tokens and grants", func(t *testing.T) {
+		ctx := oidctest.NewContext(t)
+		manager := storage.NewManager(100)
+		ctx.GrantManager = manager
+		ctx.RefreshTokenManager = manager
+
+		grant := &goidc.Grant{
+			ID:           "grant_id",
+			RefreshToken: "refresh_token",
+			CreatedAt:    1,
+		}
+		if err := ctx.SaveGrant(grant); err != nil {
+			t.Fatalf("SaveGrant() error = %v", err)
+		}
+
+		gotGrant, err := ctx.Grant(grant.ID)
+		if err != nil {
+			t.Fatalf("Grant() error = %v", err)
+		}
+		if gotGrant.ID != grant.ID {
+			t.Fatalf("Grant().ID = %q, want %q", gotGrant.ID, grant.ID)
+		}
+
+		gotGrant, err = ctx.RefreshGrantByRefreshToken(grant.RefreshToken)
+		if err != nil {
+			t.Fatalf("RefreshGrantByRefreshToken() error = %v", err)
+		}
+		if gotGrant.ID != grant.ID {
+			t.Fatalf("RefreshGrantByRefreshToken().ID = %q, want %q", gotGrant.ID, grant.ID)
+		}
+
+		token := &goidc.Token{ID: "token_id", GrantID: grant.ID}
+		if err := ctx.SaveToken(token); err != nil {
+			t.Fatalf("SaveToken() error = %v", err)
+		}
+
+		gotToken, err := ctx.Token(token.ID)
+		if err != nil {
+			t.Fatalf("Token() error = %v", err)
+		}
+		if gotToken.ID != token.ID {
+			t.Fatalf("Token().ID = %q, want %q", gotToken.ID, token.ID)
+		}
+
+		if err := ctx.DeleteToken(token.ID); err != nil {
+			t.Fatalf("DeleteToken() error = %v", err)
+		}
+		if _, err := ctx.Token(token.ID); !errors.Is(err, goidc.ErrNotFound) {
+			t.Fatalf("Token() error = %v, want %v", err, goidc.ErrNotFound)
+		}
+
+		token = &goidc.Token{ID: "token2", GrantID: grant.ID}
+		if err := ctx.SaveToken(token); err != nil {
+			t.Fatalf("SaveToken() error = %v", err)
+		}
+		if err := ctx.DeleteTokenByGrantID(grant.ID); err != nil {
+			t.Fatalf("DeleteTokenByGrantID() error = %v", err)
+		}
+		if _, err := ctx.Token(token.ID); !errors.Is(err, goidc.ErrNotFound) {
+			t.Fatalf("Token() error = %v, want %v", err, goidc.ErrNotFound)
+		}
+
+		if err := ctx.DeleteGrant(grant.ID); err != nil {
+			t.Fatalf("DeleteGrant() error = %v", err)
+		}
+		if _, err := ctx.Grant(grant.ID); !errors.Is(err, goidc.ErrNotFound) {
+			t.Fatalf("Grant() error = %v, want %v", err, goidc.ErrNotFound)
+		}
+	})
+
+	t.Run("logout sessions", func(t *testing.T) {
+		ctx := oidctest.NewContext(t)
+		manager := storage.NewManager(100)
+		ctx.LogoutSessionManager = manager
+
+		session := &goidc.LogoutSession{ID: "logout_session", CreatedAt: 1}
+		if err := ctx.SaveLogoutSession(session); err != nil {
+			t.Fatalf("SaveLogoutSession() error = %v", err)
+		}
+
+		got, err := ctx.LogoutSession(session.ID)
+		if err != nil {
+			t.Fatalf("LogoutSession() error = %v", err)
+		}
+		if got.ID != session.ID {
+			t.Fatalf("LogoutSession().ID = %q, want %q", got.ID, session.ID)
+		}
+
+		if err := ctx.DeleteLogoutSession(session.ID); err != nil {
+			t.Fatalf("DeleteLogoutSession() error = %v", err)
+		}
+		if _, err := ctx.LogoutSession(session.ID); !errors.Is(err, goidc.ErrNotFound) {
+			t.Fatalf("LogoutSession() error = %v, want %v", err, goidc.ErrNotFound)
+		}
+	})
+}
+
+func TestHTTPClientFallbacks(t *testing.T) {
+	ctx := newContext()
+	baseClient := &http.Client{}
+	ctx.HTTPClientFunc = func(context.Context) *http.Client {
+		return baseClient
+	}
+
+	if got := ctx.HTTPClient(); got != baseClient {
+		t.Fatal("HTTPClient() did not return the configured client")
+	}
+	if got := ctx.OpenIDFedHTTPClient(); got != baseClient {
+		t.Fatal("OpenIDFedHTTPClient() did not fall back to HTTPClient()")
+	}
+
+	customFedClient := &http.Client{}
+	ctx.OpenIDFedHTTPClientFunc = func(context.Context) *http.Client {
+		return customFedClient
+	}
+	if got := ctx.OpenIDFedHTTPClient(); got != customFedClient {
+		t.Fatal("OpenIDFedHTTPClient() did not return the configured federation client")
+	}
+}
+
+func TestScopeAndHandler(t *testing.T) {
+	t.Run("scope matches", func(t *testing.T) {
+		ctx := newContext()
+		ctx.Scopes = []goidc.Scope{goidc.NewScope("scope1"), goidc.NewScope(goidc.ScopeOpenID.ID)}
+
+		scope, ok := ctx.Scope("scope1")
+		if !ok {
+			t.Fatal("Scope() = false, want true")
+		}
+		if scope.ID != "scope1" {
+			t.Fatalf("Scope().ID = %q, want %q", scope.ID, "scope1")
+		}
+
+		if _, ok := ctx.Scope("missing"); ok {
+			t.Fatal("Scope() found unexpected scope")
+		}
+	})
+
+	t.Run("handler wraps request in oidc context", func(t *testing.T) {
+		config := &oidc.Configuration{}
+		called := false
+		handler := oidc.Handler(config, func(ctx oidc.Context) {
+			called = true
+			if ctx.Configuration != config {
+				t.Fatal("Handler() did not pass the configuration through")
+			}
+			ctx.WriteStatus(http.StatusNoContent)
+		})
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/token", nil)
+		handler(rec, req)
+
+		if !called {
+			t.Fatal("Handler() did not execute")
+		}
+		if rec.Code != http.StatusNoContent {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusNoContent)
+		}
+	})
+}
+
+func TestContextMethods(t *testing.T) {
+	key := struct{}{}
+	parent, cancel := context.WithCancel(context.WithValue(context.Background(), key, "value"))
+	t.Cleanup(cancel)
+
+	ctx := oidc.NewContext(parent, &oidc.Configuration{})
+
+	if got := ctx.Value(key); got != "value" {
+		t.Fatalf("Value() = %v, want %q", got, "value")
+	}
+	if _, ok := ctx.Deadline(); ok {
+		t.Fatal("Deadline() ok = true, want false")
+	}
+	if ctx.Err() != nil {
+		t.Fatalf("Err() = %v, want nil before cancel", ctx.Err())
+	}
+
+	cancel()
+	select {
+	case <-ctx.Done():
+	default:
+		t.Fatal("Done() channel was not closed after cancel")
+	}
+	if !errors.Is(ctx.Err(), context.Canceled) {
+		t.Fatalf("Err() = %v, want %v", ctx.Err(), context.Canceled)
+	}
+
+	t.Run("falls back to request context", func(t *testing.T) {
+		reqCtx, cancel := context.WithCancel(context.Background())
+		t.Cleanup(cancel)
+
+		ctx := oidc.Context{
+			Configuration: &oidc.Configuration{},
+			Request:       httptest.NewRequest(http.MethodGet, "https://example.com", nil).WithContext(reqCtx),
+			Response:      httptest.NewRecorder(),
+		}
+		if got := ctx.Context(); got != reqCtx {
+			t.Fatal("Context() did not fall back to the request context")
+		}
+	})
+}
+
+func TestSimpleHelpers(t *testing.T) {
+	t.Run("grant by auth code", func(t *testing.T) {
+		ctx := oidctest.NewContext(t)
+		manager := storage.NewManager(100)
+		ctx.AuthManager = manager
+		ctx.GrantManager = manager
+
+		grant := &goidc.Grant{ID: "grant_id", AuthCode: "auth_code", CreatedAt: 1}
+		if err := ctx.SaveGrant(grant); err != nil {
+			t.Fatalf("SaveGrant() error = %v", err)
+		}
+
+		got, err := ctx.GrantByAuthCode(grant.AuthCode)
+		if err != nil {
+			t.Fatalf("GrantByAuthCode() error = %v", err)
+		}
+		if got.ID != grant.ID {
+			t.Fatalf("GrantByAuthCode().ID = %q, want %q", got.ID, grant.ID)
+		}
+	})
+
+	t.Run("delegates and hooks", func(t *testing.T) {
+		ctx := oidctest.NewContext(t)
+		client := &goidc.Client{ID: "client_id"}
+		grant := &goidc.Grant{ID: "grant_id"}
+		token := &goidc.Token{ID: "token_id"}
+		logoutSession := &goidc.LogoutSession{ID: "logout_id"}
+		authSession := &goidc.AuthnSession{ID: "auth_session_id"}
+		authDetail := goidc.AuthDetail{"type": "payment"}
+
+		ctx.DCRClientIDFunc = func(context.Context) string { return "dynamic_client_id" }
+		if got := ctx.ClientID(); got != "dynamic_client_id" {
+			t.Fatalf("ClientID() = %q, want %q", got, "dynamic_client_id")
+		}
+
+		calledVerify := false
+		ctx.VerifyClientSecretFunc = func(_ context.Context, stored, presented string) error {
+			calledVerify = true
+			if stored != "stored" || presented != "presented" {
+				t.Fatalf("VerifyClientSecret() got %q/%q", stored, presented)
+			}
+			return nil
+		}
+		if err := ctx.VerifyClientSecret("stored", "presented"); err != nil {
+			t.Fatalf("VerifyClientSecret() error = %v", err)
+		}
+		if !calledVerify {
+			t.Fatal("VerifyClientSecret() did not call VerifyClientSecretFunc")
+		}
+
+		ctx.Host = "https://example.com"
+		ctx.MTLSHost = "https://mtls.example.com"
+		ctx.TokenEndpoint = "/token"
+		ctx.Request = httptest.NewRequest(http.MethodPost, "/path?query=1", nil)
+		if got := ctx.TokenURL(); got != "https://example.com/token" {
+			t.Fatalf("TokenURL() = %q, want %q", got, "https://example.com/token")
+		}
+		if got := ctx.TokenMTLSURL(); got != "https://mtls.example.com/token" {
+			t.Fatalf("TokenMTLSURL() = %q, want %q", got, "https://mtls.example.com/token")
+		}
+		if got := ctx.RequestURL(); got != "https://example.com/path?query=1" {
+			t.Fatalf("RequestURL() = %q, want %q", got, "https://example.com/path?query=1")
+		}
+		if got := ctx.RequestMTLSURL(); got != "https://mtls.example.com/path?query=1" {
+			t.Fatalf("RequestMTLSURL() = %q, want %q", got, "https://mtls.example.com/path?query=1")
+		}
+		if got := ctx.RequestMethod(); got != http.MethodPost {
+			t.Fatalf("RequestMethod() = %q, want %q", got, http.MethodPost)
+		}
+
+		if err := ctx.RARValidateDetail(authDetail); err != nil {
+			t.Fatalf("RARValidateDetail() default error = %v", err)
+		}
+		ctx.RARValidateDetailFunc = func(_ context.Context, got goidc.AuthDetail) error {
+			if got["type"] != authDetail["type"] {
+				t.Fatalf("RARValidateDetail() detail = %v, want %v", got["type"], authDetail["type"])
+			}
+			return errors.New("invalid detail")
+		}
+		if err := ctx.RARValidateDetail(authDetail); err == nil {
+			t.Fatal("RARValidateDetail() error = nil, want non-nil")
+		}
+
+		if got := ctx.OpenIDFedRequiredTrustMarks(client); got != nil {
+			t.Fatalf("OpenIDFedRequiredTrustMarks() = %v, want nil", got)
+		}
+		trustMarks := []goidc.TrustMark{"mark"}
+		ctx.OpenIDFedRequiredTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
+			return trustMarks
+		}
+		if diff := cmp.Diff(trustMarks, ctx.OpenIDFedRequiredTrustMarks(client)); diff != "" {
+			t.Fatal(diff)
+		}
+
+		fedKey := oidctest.PrivatePS256JWK(t, "fed_key", goidc.KeyUsageSignature)
+		fedJWKS := goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{fedKey.Public()}}
+		ctx.OpenIDFedEntityJWKSFunc = func(_ oidc.Context, id string) (goidc.JSONWebKeySet, error) {
+			if id != client.ID {
+				t.Fatalf("OpenIDFedEntityJWKS() id = %q, want %q", id, client.ID)
+			}
+			return fedJWKS, nil
+		}
+		gotJWKS, err := ctx.OpenIDFedEntityJWKS(client.ID)
+		if err != nil {
+			t.Fatalf("OpenIDFedEntityJWKS() error = %v", err)
+		}
+		if diff := cmp.Diff(fedJWKS, gotJWKS); diff != "" {
+			t.Fatal(diff)
+		}
+
+		if err := ctx.OpenIDFedHandleClient(client); err != nil {
+			t.Fatalf("OpenIDFedHandleClient() default error = %v", err)
+		}
+		ctx.OpenIDFedHandleClientFunc = func(_ context.Context, got *goidc.Client) error {
+			if got.ID != client.ID {
+				t.Fatalf("OpenIDFedHandleClient() client = %q, want %q", got.ID, client.ID)
+			}
+			return errors.New("fed handle error")
+		}
+		if err := ctx.OpenIDFedHandleClient(client); err == nil {
+			t.Fatal("OpenIDFedHandleClient() error = nil, want non-nil")
+		}
+
+		calledDefaultPostLogout := false
+		ctx.HandleDefaultPostLogoutFunc = func(_ http.ResponseWriter, _ *http.Request, got *goidc.LogoutSession) error {
+			calledDefaultPostLogout = true
+			if got.ID != logoutSession.ID {
+				t.Fatalf("HandleDefaultPostLogout() session = %q, want %q", got.ID, logoutSession.ID)
+			}
+			return nil
+		}
+		if err := ctx.HandleDefaultPostLogout(logoutSession); err != nil {
+			t.Fatalf("HandleDefaultPostLogout() error = %v", err)
+		}
+		if !calledDefaultPostLogout {
+			t.Fatal("HandleDefaultPostLogout() did not call HandleDefaultPostLogoutFunc")
+		}
+
+		ctx.LogoutSessionIDFunc = func(context.Context) string { return "logout_session_id" }
+		ctx.AuthSessionIDFunc = func(context.Context) string { return "authn_session_id" }
+		ctx.DeviceAuthGenerateUserCodeFunc = func(context.Context) string { return "user_code" }
+		if got := ctx.LogoutSessionID(); got != "logout_session_id" {
+			t.Fatalf("LogoutSessionID() = %q, want %q", got, "logout_session_id")
+		}
+		if got := ctx.AuthnSessionID(); got != "authn_session_id" {
+			t.Fatalf("AuthnSessionID() = %q, want %q", got, "authn_session_id")
+		}
+		if got := ctx.DeviceUserCode(); got != "user_code" {
+			t.Fatalf("DeviceUserCode() = %q, want %q", got, "user_code")
+		}
+
+		calledPrompt := false
+		ctx.DeviceAuthPromptUserCodeFunc = func(_ http.ResponseWriter, _ *http.Request) error {
+			calledPrompt = true
+			return nil
+		}
+		if err := ctx.DeviceAuthPromptUserCode(); err != nil {
+			t.Fatalf("DeviceAuthPromptUserCode() error = %v", err)
+		}
+		if !calledPrompt {
+			t.Fatal("DeviceAuthPromptUserCode() did not call DeviceAuthPromptUserCodeFunc")
+		}
+
+		calledConfirmation := false
+		ctx.DeviceAuthRenderConfirmationFunc = func(_ http.ResponseWriter, _ *http.Request) error {
+			calledConfirmation = true
+			return nil
+		}
+		if err := ctx.DeviceAuthRenderConfirmation(); err != nil {
+			t.Fatalf("DeviceAuthRenderConfirmation() error = %v", err)
+		}
+		if !calledConfirmation {
+			t.Fatal("DeviceAuthRenderConfirmation() did not call DeviceAuthRenderConfirmationFunc")
+		}
+
+		opts := goidc.TokenOptions{LifetimeSecs: 123, Format: goidc.TokenFormatJWT}
+		ctx.TokenOptionsFunc = func(_ context.Context, gotGrant *goidc.Grant, gotClient *goidc.Client) goidc.TokenOptions {
+			if gotGrant.ID != grant.ID || gotClient.ID != client.ID {
+				t.Fatal("TokenOptions() received unexpected grant or client")
+			}
+			return opts
+		}
+		if diff := cmp.Diff(opts, ctx.TokenOptions(grant, client)); diff != "" {
+			t.Fatal(diff)
+		}
+
+		if err := ctx.HandleToken(token, grant); err != nil {
+			t.Fatalf("HandleToken() default error = %v", err)
+		}
+		ctx.HandleTokenFunc = func(_ context.Context, gotToken *goidc.Token, gotGrant *goidc.Grant) error {
+			if gotToken.ID != token.ID || gotGrant.ID != grant.ID {
+				t.Fatal("HandleToken() received unexpected token or grant")
+			}
+			return errors.New("handle token error")
+		}
+		if err := ctx.HandleToken(token, grant); err == nil {
+			t.Fatal("HandleToken() error = nil, want non-nil")
+		}
+
+		idClaims := map[string]any{"sub": "subject"}
+		userInfoClaims := map[string]any{"name": "user"}
+		tokenClaims := map[string]any{"scope": "openid"}
+		ctx.IDTokenClaimsFunc = func(_ context.Context, got *goidc.Grant) map[string]any {
+			if got.ID != grant.ID {
+				t.Fatal("IDTokenClaims() received unexpected grant")
+			}
+			return idClaims
+		}
+		ctx.UserInfoClaimsFunc = func(_ context.Context, got *goidc.Grant) map[string]any {
+			if got.ID != grant.ID {
+				t.Fatal("UserInfoClaims() received unexpected grant")
+			}
+			return userInfoClaims
+		}
+		ctx.TokenClaimsFunc = func(_ context.Context, gotToken *goidc.Token, gotGrant *goidc.Grant) map[string]any {
+			if gotToken.ID != token.ID || gotGrant.ID != grant.ID {
+				t.Fatal("TokenClaims() received unexpected token or grant")
+			}
+			return tokenClaims
+		}
+		if diff := cmp.Diff(idClaims, ctx.IDTokenClaims(grant)); diff != "" {
+			t.Fatal(diff)
+		}
+		if diff := cmp.Diff(userInfoClaims, ctx.UserInfoClaims(grant)); diff != "" {
+			t.Fatal(diff)
+		}
+		if diff := cmp.Diff(tokenClaims, ctx.TokenClaims(token, grant)); diff != "" {
+			t.Fatal(diff)
+		}
+
+		ctx.JWTBearerHandleAssertionFunc = func(_ context.Context, assertion string) (string, error) {
+			if assertion != "assertion" {
+				t.Fatalf("JWTBearerHandleAssertion() assertion = %q, want %q", assertion, "assertion")
+			}
+			return "subject", nil
+		}
+		if got, err := ctx.JWTBearerHandleAssertion("assertion"); err != nil || got != "subject" {
+			t.Fatalf("JWTBearerHandleAssertion() = %q, %v; want %q, nil", got, err, "subject")
+		}
+
+		if err := ctx.PARHandleSession(authSession, client); err != nil {
+			t.Fatalf("PARHandleSession() default error = %v", err)
+		}
+		ctx.PARHandleSessionFunc = func(_ context.Context, gotSession *goidc.AuthnSession, gotClient *goidc.Client) error {
+			if gotSession.ID != authSession.ID || gotClient.ID != client.ID {
+				t.Fatal("PARHandleSession() received unexpected session or client")
+			}
+			return errors.New("par handle error")
+		}
+		if err := ctx.PARHandleSession(authSession, client); err == nil {
+			t.Fatal("PARHandleSession() error = nil, want non-nil")
+		}
+
+		if got := ctx.ClientSecret(); len(got) != 64 {
+			t.Fatalf("len(ClientSecret()) = %d, want 64", len(got))
+		}
+		if got := ctx.RegistrationAccessToken(); len(got) != 50 {
+			t.Fatalf("len(RegistrationAccessToken()) = %d, want 50", len(got))
+		}
+	})
+}
+
+func TestHTTPResponses(t *testing.T) {
+	t.Run("write status", func(t *testing.T) {
+		ctx := newContext()
+		rec := httptest.NewRecorder()
+		ctx.Response = rec
+		ctx.WriteStatus(http.StatusAccepted)
+		if rec.Code != http.StatusAccepted {
+			t.Fatalf("WriteStatus() status = %d, want %d", rec.Code, http.StatusAccepted)
+		}
+	})
+
+	t.Run("write json", func(t *testing.T) {
+		ctx := newContext()
+		rec := httptest.NewRecorder()
+		ctx.Response = rec
+		if err := ctx.Write(map[string]string{"key": "value"}, http.StatusCreated); err != nil {
+			t.Fatalf("Write() error = %v", err)
+		}
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("Write() status = %d, want %d", rec.Code, http.StatusCreated)
+		}
+		if got := rec.Header().Get("Content-Type"); got != "application/json" {
+			t.Fatalf("Write() content type = %q, want %q", got, "application/json")
+		}
+		var body map[string]string
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("json.Unmarshal() error = %v", err)
+		}
+		if body["key"] != "value" {
+			t.Fatalf("body[key] = %q, want %q", body["key"], "value")
+		}
+	})
+
+	t.Run("write jwt", func(t *testing.T) {
+		ctx := newContext()
+		rec := httptest.NewRecorder()
+		ctx.Response = rec
+		if err := ctx.WriteJWT("token", http.StatusOK); err != nil {
+			t.Fatalf("WriteJWT() error = %v", err)
+		}
+		if rec.Body.String() != "token" {
+			t.Fatalf("WriteJWT() body = %q, want %q", rec.Body.String(), "token")
+		}
+		if got := rec.Header().Get("Content-Type"); got != "application/jwt" {
+			t.Fatalf("WriteJWT() content type = %q, want %q", got, "application/jwt")
+		}
+	})
+
+	t.Run("write jwt with custom type", func(t *testing.T) {
+		ctx := newContext()
+		rec := httptest.NewRecorder()
+		ctx.Response = rec
+		if err := ctx.WriteJWTWithType("token", http.StatusAccepted, "application/test+jwt"); err != nil {
+			t.Fatalf("WriteJWTWithType() error = %v", err)
+		}
+		if got := rec.Header().Get("Content-Type"); got != "application/test+jwt" {
+			t.Fatalf("WriteJWTWithType() content type = %q, want %q", got, "application/test+jwt")
+		}
+	})
+
+	t.Run("write error uses oidc error", func(t *testing.T) {
+		ctx := newContext()
+		rec := httptest.NewRecorder()
+		ctx.Response = rec
+		ctx.ErrorURI = "https://example.com/errors"
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid request"))
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("WriteError() status = %d, want %d", rec.Code, http.StatusBadRequest)
+		}
+		body := rec.Body.String()
+		if !strings.Contains(body, `"error":"invalid_request"`) {
+			t.Fatalf("WriteError() body = %q, want invalid_request", body)
+		}
+		if !strings.Contains(body, `"error_uri":"https://example.com/errors"`) {
+			t.Fatalf("WriteError() body = %q, want error_uri", body)
+		}
+	})
+
+	t.Run("write error wraps non oidc error", func(t *testing.T) {
+		ctx := newContext()
+		rec := httptest.NewRecorder()
+		ctx.Response = rec
+		ctx.WriteError(errors.New("boom"))
+		if rec.Code != http.StatusInternalServerError {
+			t.Fatalf("WriteError() status = %d, want %d", rec.Code, http.StatusInternalServerError)
+		}
+		if !strings.Contains(rec.Body.String(), `"error":"internal_error"`) {
+			t.Fatalf("WriteError() body = %q, want internal_error", rec.Body.String())
+		}
+	})
+
+	t.Run("redirect", func(t *testing.T) {
+		ctx := newContext()
+		rec := httptest.NewRecorder()
+		ctx.Response = rec
+		ctx.Redirect("https://example.com/callback")
+		if rec.Code != http.StatusSeeOther {
+			t.Fatalf("Redirect() status = %d, want %d", rec.Code, http.StatusSeeOther)
+		}
+		if got := rec.Header().Get("Location"); got != "https://example.com/callback" {
+			t.Fatalf("Redirect() location = %q, want %q", got, "https://example.com/callback")
+		}
+	})
+
+	t.Run("write html", func(t *testing.T) {
+		ctx := newContext()
+		rec := httptest.NewRecorder()
+		ctx.Response = rec
+		if err := ctx.WriteHTML("<p>{{.Value}}</p>", map[string]string{"Value": "hello"}); err != nil {
+			t.Fatalf("WriteHTML() error = %v", err)
+		}
+		if got := rec.Header().Get("Content-Type"); got != "text/html" {
+			t.Fatalf("WriteHTML() content type = %q, want %q", got, "text/html")
+		}
+		if rec.Body.String() != "<p>hello</p>" {
+			t.Fatalf("WriteHTML() body = %q, want %q", rec.Body.String(), "<p>hello</p>")
+		}
+	})
+
+	t.Run("media type", func(t *testing.T) {
+		ctx := newContext()
+		ctx.Request.Header.Set("Content-Type", "Application/JSON; charset=utf-8")
+		if got := ctx.MediaType(); got != "application/json" {
+			t.Fatalf("MediaType() = %q, want %q", got, "application/json")
+		}
+	})
+}
+
+func TestOpenIDFedJWKSHelpers(t *testing.T) {
+	ctx := newContext()
+	signingKey := oidctest.PrivatePS256JWK(t, "fed_signing_key", goidc.KeyUsageSignature)
+	ctx.OpenIDFedJWKSFunc = func(context.Context) (goidc.JSONWebKeySet, error) {
+		return goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}, nil
+	}
+	ctx.OpenIDFedDefaultSigAlg = goidc.PS256
+
+	t.Run("jwks", func(t *testing.T) {
+		jwks, err := ctx.OpenIDFedJWKS()
+		if err != nil {
+			t.Fatalf("OpenIDFedJWKS() error = %v", err)
+		}
+		if len(jwks.Keys) != 1 || jwks.Keys[0].KeyID != signingKey.KeyID {
+			t.Fatal("OpenIDFedJWKS() returned unexpected keys")
+		}
+	})
+
+	t.Run("public jwks", func(t *testing.T) {
+		jwks, err := ctx.OpenIDFedPublicJWKS()
+		if err != nil {
+			t.Fatalf("OpenIDFedPublicJWKS() error = %v", err)
+		}
+		if len(jwks.Keys) != 1 || !jwks.Keys[0].IsPublic() {
+			t.Fatal("OpenIDFedPublicJWKS() returned unexpected keys")
+		}
+	})
 }
 
 func TestSign(t *testing.T) {

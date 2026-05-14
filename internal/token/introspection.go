@@ -7,17 +7,18 @@ import (
 
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func IntrospectionInfo(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
+func Introspect(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
 	info, err := func() (goidc.TokenInfo, error) {
 		id, err := ExtractID(ctx, tkn)
 		if err != nil {
 			return goidc.TokenInfo{IsActive: false}, nil
 		}
 
-		token, err := ctx.TokenByID(id)
+		token, err := ctx.Token(id)
 		if err != nil {
 			return goidc.TokenInfo{}, fmt.Errorf("error fetching token: %w", err)
 		}
@@ -29,10 +30,6 @@ func IntrospectionInfo(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
 		grant, err := ctx.Grant(token.GrantID)
 		if err != nil {
 			return goidc.TokenInfo{}, fmt.Errorf("error fetching grant: %w", err)
-		}
-
-		if grant.IsExpired() {
-			return goidc.TokenInfo{IsActive: false}, nil
 		}
 
 		var cnf *goidc.TokenConfirmation
@@ -78,7 +75,7 @@ func IntrospectionInfo(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
 			return goidc.TokenInfo{}, fmt.Errorf("token not found: %w", err)
 		}
 
-		if grant.IsExpired() {
+		if timeutil.TimestampNow() > grant.RefreshTokenExpiresAt {
 			return goidc.TokenInfo{IsActive: false}, nil
 		}
 
@@ -101,7 +98,7 @@ func IntrospectionInfo(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
 			ClientID:          grant.ClientID,
 			IssuedAt:          grant.CreatedAt,
 			NotBefore:         grant.CreatedAt,
-			ExpiresAt:         grant.ExpiresAt,
+			ExpiresAt:         grant.RefreshTokenExpiresAt,
 			Confirmation:      cnf,
 			ResourceAudiences: grant.Resources,
 		}, nil
@@ -129,7 +126,7 @@ func introspect(ctx oidc.Context, req queryRequest) (goidc.TokenInfo, error) {
 	// The information of an invalid token must not be sent as an error.
 	// It will be returned as the default value of [goidc.TokenInfo] with the
 	// field is_active as false.
-	info, err := IntrospectionInfo(ctx, req.token)
+	info, err := Introspect(ctx, req.token)
 	if err != nil {
 		return goidc.TokenInfo{}, err
 	}

@@ -16,6 +16,7 @@ type GrantManager interface {
 	DeleteGrant(context.Context, string) error
 	SaveToken(context.Context, *Token) error
 	Token(context.Context, string) (*Token, error)
+	DeleteToken(context.Context, string) error
 	DeleteTokenByGrantID(context.Context, string) error
 }
 
@@ -24,6 +25,10 @@ type AuthManager interface {
 	Session(context.Context, string) (*AuthnSession, error)
 	DeleteSession(context.Context, string) error
 	GrantByAuthCode(context.Context, string) (*Grant, error)
+}
+
+type PARManager interface {
+	SessionByPushedAuthReqID(context.Context, string) (*AuthnSession, error)
 }
 
 type DCRManager interface {
@@ -44,6 +49,7 @@ type RefreshTokenManager interface {
 type CIBAManager interface {
 	SaveSession(context.Context, *AuthnSession) error
 	Session(context.Context, string) (*AuthnSession, error)
+	SessionByAuthReqID(context.Context, string) (*AuthnSession, error)
 	DeleteSession(context.Context, string) error
 	GrantByAuthReqID(context.Context, string) (*Grant, error)
 }
@@ -52,6 +58,7 @@ type DeviceAuthManager interface {
 	SaveSession(context.Context, *AuthnSession) error
 	Session(context.Context, string) (*AuthnSession, error)
 	SessionByUserCode(context.Context, string) (*AuthnSession, error)
+	SessionByDeviceCode(context.Context, string) (*AuthnSession, error)
 	DeleteSession(context.Context, string) error
 	GrantByDeviceCode(context.Context, string) (*Grant, error)
 }

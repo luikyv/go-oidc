@@ -19,7 +19,7 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 		return response{}, goidc.NewError(goidc.ErrorCodeInvalidToken, "no token found")
 	}
 
-	tokenInfo, err := token.IntrospectionInfo(ctx, accessToken)
+	tokenInfo, err := token.Introspect(ctx, accessToken)
 	if err != nil {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidToken, "invalid token", err)
 	}

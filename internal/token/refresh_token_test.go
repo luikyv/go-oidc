@@ -34,12 +34,13 @@ func TestGenerateRefreshToken(t *testing.T) {
 
 		now := timeutil.TimestampNow()
 		grant := &goidc.Grant{
-			RefreshToken: testRefreshToken,
-			CreatedAt:    now,
-			Subject:      "random_user",
-			ClientID:     c.ID,
-			Scopes:       c.ScopeIDs,
-			Store:        make(map[string]any),
+			RefreshToken:          testRefreshToken,
+			RefreshTokenExpiresAt: now + 60,
+			CreatedAt:             now,
+			Subject:               "random_user",
+			ClientID:              c.ID,
+			Scopes:                c.ScopeIDs,
+			Store:                 make(map[string]any),
 		}
 		if err := ctx.SaveGrant(grant); err != nil {
 			t.Fatalf("error while creating the grant: %v", err)
@@ -249,7 +250,7 @@ func TestGenerateRefreshToken(t *testing.T) {
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
 				grant.CreatedAt = timeutil.TimestampNow() - 20
-				grant.ExpiresAt = grant.CreatedAt + 10
+				grant.RefreshTokenExpiresAt = grant.CreatedAt + 10
 				if err := ctx.SaveGrant(grant); err != nil {
 					t.Fatalf("error while updating the grant: %v", err)
 				}

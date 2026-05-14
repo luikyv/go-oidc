@@ -133,11 +133,12 @@ func TestIntrospect(t *testing.T) {
 				now := timeutil.TimestampNow()
 				refreshToken := strutil.Random(100)
 				grant := &goidc.Grant{
-					ID:           "random_grant_id",
-					RefreshToken: refreshToken,
-					CreatedAt:    now,
-					ClientID:     c.ID,
-					Scopes:       goidc.ScopeOpenID.ID,
+					ID:                    "random_grant_id",
+					RefreshToken:          refreshToken,
+					RefreshTokenExpiresAt: now + 60,
+					CreatedAt:             now,
+					ClientID:              c.ID,
+					Scopes:                goidc.ScopeOpenID.ID,
 				}
 				_ = ctx.SaveGrant(grant)
 
@@ -267,12 +268,12 @@ func TestIntrospect(t *testing.T) {
 				now := timeutil.TimestampNow()
 				refreshToken := strutil.Random(100)
 				grant := &goidc.Grant{
-					ID:           "random_grant_id",
-					RefreshToken: refreshToken,
-					CreatedAt:    now - 20,
-					ExpiresAt:    now - 10,
-					ClientID:     c.ID,
-					Scopes:       goidc.ScopeOpenID.ID,
+					ID:                    "random_grant_id",
+					RefreshToken:          refreshToken,
+					RefreshTokenExpiresAt: now - 10,
+					CreatedAt:             now - 20,
+					ClientID:              c.ID,
+					Scopes:                goidc.ScopeOpenID.ID,
 				}
 				_ = ctx.SaveGrant(grant)
 
@@ -282,34 +283,6 @@ func TestIntrospect(t *testing.T) {
 			validate: func(t *testing.T, info goidc.TokenInfo, _ oidc.Context, _ *goidc.Client) {
 				if info.IsActive {
 					t.Fatal("expired refresh token should not be active")
-				}
-			},
-		},
-		{
-			name: "refresh token no lifetime",
-			setup: func() (oidc.Context, queryRequest, *goidc.Client) {
-				ctx, req, c := setup(t)
-
-				now := timeutil.TimestampNow()
-				refreshToken := strutil.Random(100)
-				grant := &goidc.Grant{
-					ID:           "random_grant_id",
-					RefreshToken: refreshToken,
-					CreatedAt:    now,
-					ClientID:     c.ID,
-					Scopes:       goidc.ScopeOpenID.ID,
-				}
-				_ = ctx.SaveGrant(grant)
-
-				req.token = refreshToken
-				return ctx, req, c
-			},
-			validate: func(t *testing.T, info goidc.TokenInfo, _ oidc.Context, _ *goidc.Client) {
-				if !info.IsActive {
-					t.Fatal("refresh token with no lifetime should be active")
-				}
-				if info.ExpiresAt != 0 {
-					t.Errorf("ExpiresAt = %d, want 0", info.ExpiresAt)
 				}
 			},
 		},
@@ -330,13 +303,14 @@ func TestIntrospect(t *testing.T) {
 				now := timeutil.TimestampNow()
 				refreshToken := strutil.Random(100)
 				grant := &goidc.Grant{
-					ID:             "random_grant_id",
-					RefreshToken:   refreshToken,
-					CreatedAt:      now,
-					ClientID:       c.ID,
-					Scopes:         goidc.ScopeOpenID.ID,
-					JWKThumbprint:  "dpop_thumbprint",
-					CertThumbprint: "tls_thumbprint",
+					ID:                    "random_grant_id",
+					RefreshToken:          refreshToken,
+					RefreshTokenExpiresAt: now + 60,
+					CreatedAt:             now,
+					ClientID:              c.ID,
+					Scopes:                goidc.ScopeOpenID.ID,
+					JWKThumbprint:         "dpop_thumbprint",
+					CertThumbprint:        "tls_thumbprint",
 				}
 				_ = ctx.SaveGrant(grant)
 
@@ -420,10 +394,13 @@ func TestIntrospect(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			// Given.
 			ctx, req, c := test.setup()
 
+			// When.
 			info, err := introspect(ctx, req)
 
+			// Then.
 			if gotErr, wantErr := err != nil, test.wantErr != ""; gotErr != wantErr {
 				t.Fatalf("got err=%v, wantErr=%v", err, test.wantErr)
 			}

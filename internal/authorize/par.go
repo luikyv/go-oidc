@@ -72,6 +72,7 @@ func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 
 			return &goidc.AuthnSession{
 				ID:                      ctx.AuthnSessionID(),
+				PushedAuthReqID:         ctx.PARID(),
 				ClientID:                c.ID,
 				AuthorizationParameters: jar.AuthorizationParameters,
 				CreatedAt:               timeutil.TimestampNow(),
@@ -88,6 +89,7 @@ func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 
 		return &goidc.AuthnSession{
 			ID:                      ctx.AuthnSessionID(),
+			PushedAuthReqID:         ctx.PARID(),
 			ClientID:                c.ID,
 			AuthorizationParameters: req.AuthorizationParameters,
 			CreatedAt:               timeutil.TimestampNow(),
@@ -116,7 +118,7 @@ func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 	}
 
 	return parResponse{
-		RequestURI: parRequestURIPrefix + as.ID,
+		RequestURI: parRequestURIPrefix + as.PushedAuthReqID,
 		ExpiresIn:  ctx.PARLifetimeSecs,
 	}, nil
 }

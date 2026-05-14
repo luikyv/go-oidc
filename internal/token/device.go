@@ -24,10 +24,30 @@ func generateDeviceCodeToken(ctx oidc.Context, req request) (response, error) {
 
 	grant, err := ctx.GrantByDeviceCode(req.deviceCode)
 	if err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid device code", err)
+		if !errors.Is(err, goidc.ErrNotFound) {
+			return response{}, err
+		}
+
+		as, sessionErr := ctx.DeviceSessionByDeviceCode(req.deviceCode)
+		if sessionErr != nil {
+			if errors.Is(sessionErr, goidc.ErrNotFound) {
+				return response{}, goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid device code")
+			}
+			return response{}, sessionErr
+		}
+		if as.IsExpired() {
+			_ = ctx.DeviceDeleteSession(as.ID)
+			return response{}, goidc.NewError(goidc.ErrorCodeExpiredToken, "device code expired")
+		}
+		// The session exists so it's still in progress.
+		return response{}, goidc.NewError(goidc.ErrorCodeAuthPending, "authentication pending")
 	}
 
 	resp, err := func() (response, error) {
+		if timeutil.TimestampNow() >= grant.DeviceCodeExpiresAt {
+			return response{}, goidc.NewError(goidc.ErrorCodeExpiredToken, "device code expired")
+		}
+
 		if grant.DeviceCodeConsumedAt != 0 {
 			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid device code", errors.New("device code already used"))
 		}

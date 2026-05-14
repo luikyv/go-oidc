@@ -10,6 +10,7 @@ import (
 var _ goidc.AuthManager = &Manager{}
 var _ goidc.DCRManager = &Manager{}
 var _ goidc.OpenIDFedManager = &Manager{}
+var _ goidc.PARManager = &Manager{}
 var _ goidc.CIBAManager = &Manager{}
 var _ goidc.DeviceAuthManager = &Manager{}
 var _ goidc.RefreshTokenManager = &Manager{}
@@ -69,6 +70,28 @@ func (m *Manager) Session(_ context.Context, id string) (*goidc.AuthnSession, er
 func (m *Manager) SessionByDeviceCode(_ context.Context, code string) (*goidc.AuthnSession, error) {
 	as, exists := m.firstSession(func(s *goidc.AuthnSession) bool {
 		return s.DeviceCode == code
+	})
+	if !exists {
+		return nil, goidc.ErrNotFound
+	}
+
+	return as, nil
+}
+
+func (m *Manager) SessionByPushedAuthReqID(_ context.Context, id string) (*goidc.AuthnSession, error) {
+	as, exists := m.firstSession(func(s *goidc.AuthnSession) bool {
+		return s.PushedAuthReqID == id
+	})
+	if !exists {
+		return nil, goidc.ErrNotFound
+	}
+
+	return as, nil
+}
+
+func (m *Manager) SessionByAuthReqID(_ context.Context, id string) (*goidc.AuthnSession, error) {
+	as, exists := m.firstSession(func(s *goidc.AuthnSession) bool {
+		return s.AuthReqID == id
 	})
 	if !exists {
 		return nil, goidc.ErrNotFound

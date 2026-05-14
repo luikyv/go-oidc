@@ -36,10 +36,11 @@ func TestGenerateCIBAToken(t *testing.T) {
 		}
 
 		grant := &goidc.Grant{
-			ClientID:  c.ID,
-			Scopes:    goidc.ScopeOpenID.ID,
-			AuthReqID: "random_auth_req_id",
-			Subject:   "user_id",
+			ClientID:           c.ID,
+			Scopes:             goidc.ScopeOpenID.ID,
+			AuthReqID:          "random_auth_req_id",
+			AuthReqIDExpiresAt: timeutil.TimestampNow() + 60,
+			Subject:            "user_id",
 			AuthParams: goidc.AuthorizationParameters{
 				Scopes: goidc.ScopeOpenID.ID,
 				Nonce:  "random_nonce",
@@ -305,6 +306,32 @@ func TestGenerateCIBAToken(t *testing.T) {
 			},
 		},
 		{
+			name: "expired token when issued grant auth req id is expired",
+			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, c, grant := setup(t)
+				grant.AuthReqIDExpiresAt = timeutil.TimestampNow() - 60
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("error while updating the grant: %v", err)
+				}
+				req := request{
+					grantType: goidc.GrantCIBA,
+					authReqID: grant.AuthReqID,
+				}
+				return ctx, req, c, grant
+			},
+			wantErr: goidc.ErrorCodeExpiredToken,
+			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 0 {
+					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
+				}
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 0 {
+					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				}
+			},
+		},
+		{
 			name: "consumed auth req id",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, c, grant := setup(t)
@@ -380,7 +407,8 @@ func TestGenerateCIBAToken(t *testing.T) {
 					t.Fatalf("DeleteGrant() error = %v", err)
 				}
 				session := &goidc.AuthnSession{
-					ID:            grant.AuthReqID,
+					ID:            "random_ciba_session_id",
+					AuthReqID:     grant.AuthReqID,
 					ClientID:      c.ID,
 					GrantedScopes: grant.Scopes,
 					AuthorizationParameters: goidc.AuthorizationParameters{
@@ -418,7 +446,8 @@ func TestGenerateCIBAToken(t *testing.T) {
 					t.Fatalf("DeleteGrant() error = %v", err)
 				}
 				session := &goidc.AuthnSession{
-					ID:            grant.AuthReqID,
+					ID:            "random_ciba_session_id",
+					AuthReqID:     grant.AuthReqID,
 					ClientID:      c.ID,
 					GrantedScopes: grant.Scopes,
 					AuthorizationParameters: goidc.AuthorizationParameters{
@@ -446,8 +475,8 @@ func TestGenerateCIBAToken(t *testing.T) {
 				if len(grants) != 0 {
 					t.Fatalf("len(grants) = %d, want 0", len(grants))
 				}
-				if _, err := ctx.CIBASession(grant.AuthReqID); !errors.Is(err, goidc.ErrNotFound) {
-					t.Fatalf("CIBASession() error = %v, want %v", err, goidc.ErrNotFound)
+				if _, err := ctx.CIBASessionByAuthReqID(grant.AuthReqID); !errors.Is(err, goidc.ErrNotFound) {
+					t.Fatalf("CIBASessionByAuthReqID() error = %v, want %v", err, goidc.ErrNotFound)
 				}
 			},
 		},
@@ -673,7 +702,7 @@ func TestGenerateCIBAToken(t *testing.T) {
 	}
 }
 
-func TestNotifyCIBAGrant(t *testing.T) {
+func TestGrantCIBARequest(t *testing.T) {
 	tests := []struct {
 		name     string
 		mode     goidc.CIBATokenDeliveryMode
@@ -741,7 +770,8 @@ func TestNotifyCIBAGrant(t *testing.T) {
 			ctx.StaticClients = append(ctx.StaticClients, client)
 
 			session := &goidc.AuthnSession{
-				ID:            "auth_req_id",
+				ID:            "random_ciba_session_id",
+				AuthReqID:     "auth_req_id",
 				ClientID:      client.ID,
 				Subject:       "subject",
 				Username:      "username",
@@ -758,8 +788,16 @@ func TestNotifyCIBAGrant(t *testing.T) {
 				t.Fatalf("CIBASaveSession() error = %v", err)
 			}
 
-			if err := NotifyCIBAGrant(ctx, session.ID); err != nil {
-				t.Fatalf("NotifyCIBAGrant() error = %v", err)
+			if err := GrantCIBARequest(ctx, session.AuthReqID); err != nil {
+				t.Fatalf("GrantCIBARequest() error = %v", err)
+			}
+
+			grants := oidctest.Grants(t, ctx)
+			if len(grants) != 1 {
+				t.Fatalf("len(grants) = %d, want 1", len(grants))
+			}
+			if grants[0].AuthReqIDExpiresAt != session.ExpiresAt {
+				t.Fatalf("grant.AuthReqIDExpiresAt = %d, want %d", grants[0].AuthReqIDExpiresAt, session.ExpiresAt)
 			}
 
 			test.validate(t, ctx, manager, gotBody, gotHeader)
@@ -767,7 +805,7 @@ func TestNotifyCIBAGrant(t *testing.T) {
 	}
 }
 
-func TestNotifyCIBAGrantFailure(t *testing.T) {
+func TestDenyCIBARequest(t *testing.T) {
 	tests := []struct {
 		name     string
 		mode     goidc.CIBATokenDeliveryMode
@@ -817,8 +855,9 @@ func TestNotifyCIBAGrantFailure(t *testing.T) {
 			ctx.StaticClients = append(ctx.StaticClients, client)
 
 			session := &goidc.AuthnSession{
-				ID:       "auth_req_id",
-				ClientID: client.ID,
+				ID:        "random_ciba_session_id",
+				AuthReqID: "auth_req_id",
+				ClientID:  client.ID,
 				AuthorizationParameters: goidc.AuthorizationParameters{
 					ClientNotificationToken: "notification_token",
 				},
@@ -830,8 +869,8 @@ func TestNotifyCIBAGrantFailure(t *testing.T) {
 			}
 
 			oidcErr := goidc.NewError(goidc.ErrorCodeAccessDenied, "denied")
-			if err := NotifyCIBAGrantFailure(ctx, session.ID, oidcErr); err != nil {
-				t.Fatalf("NotifyCIBAGrantFailure() error = %v", err)
+			if err := DenyCIBARequest(ctx, session.AuthReqID, oidcErr); err != nil {
+				t.Fatalf("DenyCIBARequest() error = %v", err)
 			}
 
 			_, err := ctx.CIBASession(session.ID)
@@ -839,7 +878,7 @@ func TestNotifyCIBAGrantFailure(t *testing.T) {
 				t.Fatal("expected session deletion")
 			}
 			if test.validate != nil {
-				test.validate(t, gotBody, oidcErr, session.ID)
+				test.validate(t, gotBody, oidcErr, session.AuthReqID)
 			}
 		})
 	}

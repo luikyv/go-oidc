@@ -34,7 +34,7 @@ func generateRefreshToken(ctx oidc.Context, req request) (response, error) {
 		return response{}, goidc.NewError(goidc.ErrorCodeInvalidGrant, "the refresh token was not issued to the client")
 	}
 
-	if grant.IsExpired() {
+	if timeutil.TimestampNow() > grant.RefreshTokenExpiresAt {
 		return response{}, goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "the refresh token is expired")
 	}
 
@@ -66,7 +66,7 @@ func generateRefreshToken(ctx oidc.Context, req request) (response, error) {
 	if ctx.RefreshTokenRotationIsEnabled {
 		refreshToken = ctx.RefreshToken()
 		grant.RefreshToken = refreshToken
-		grant.ExpiresAt = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
+		grant.RefreshTokenExpiresAt = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
 	}
 	// Re-derive the token binding thumbprints from the current request.
 	// Only grants already bound to DPoP or TLS are updated; unbound grants stay unbound.

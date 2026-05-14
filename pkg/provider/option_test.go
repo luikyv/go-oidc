@@ -616,6 +616,26 @@ func TestWithRefreshTokenFunc(t *testing.T) {
 	}
 }
 
+func TestWithDeviceCodeFunc(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+	codeFunc := func(context.Context) string { return "device_code" }
+
+	// When.
+	err := WithDeviceCodeFunc(codeFunc)(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if p.config.DeviceCodeFunc == nil {
+		t.Error("DeviceCodeFunc cannot be nil")
+	}
+}
+
 func TestWithClientCredentialsGrant(t *testing.T) {
 	// Given.
 	p := &Provider{
@@ -1557,6 +1577,25 @@ func TestWithTokenRevocation(t *testing.T) {
 	}
 }
 
+func TestWithTokenRevocationDeleteGrantOnAccessToken(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+
+	// When.
+	err := WithTokenRevocationDeleteGrantOnAccessToken()(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !p.config.TokenRevocationDeleteGrantOnAccessTokenIsEnabled {
+		t.Error("TokenRevocationDeleteGrantOnAccessTokenIsEnabled should be true")
+	}
+}
+
 func TestWithPKCE(t *testing.T) {
 	// Given.
 	p := &Provider{
@@ -1947,6 +1986,46 @@ func TestWithGrantIDFunc(t *testing.T) {
 
 	if p.config.GrantIDFunc == nil {
 		t.Error("GrantIDFunc cannot be nil")
+	}
+}
+
+func TestWithPARIDFunc(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+	idFunc := func(context.Context) string { return "par_id" }
+
+	// When.
+	err := WithPARIDFunc(idFunc)(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if p.config.PARIDFunc == nil {
+		t.Error("PARIDFunc cannot be nil")
+	}
+}
+
+func TestWithCIBAIDFunc(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+	idFunc := func(context.Context) string { return "auth_req_id" }
+
+	// When.
+	err := WithCIBAIDFunc(idFunc)(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if p.config.CIBAIDFunc == nil {
+		t.Error("CIBAIDFunc cannot be nil")
 	}
 }
 

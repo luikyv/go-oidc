@@ -89,22 +89,18 @@ func initBackAuthFunc() goidc.HandleSessionFunc {
 func cibaActionHandler(op *provider.Provider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		authReqID := r.URL.Query().Get("token")
-		as, _ := op.CIBAManager().SessionByCIBAID(r.Context(), authReqID)
-
 		action := r.URL.Query().Get("type")
 		if action != "allow" {
-			as.Status = goidc.StatusFailure
-			_ = op.CIBAManager().SaveSession(r.Context(), as)
 			goidcErr := goidc.NewError(goidc.ErrorCodeAccessDenied, "access denied")
 			go func() {
-				if err := op.NotifyCIBAFailure(r.Context(), authReqID, goidcErr); err != nil {
+				if err := op.DenyCIBARequest(r.Context(), authReqID, goidcErr); err != nil {
 					log.Println(err)
 				}
 			}()
 			return
 		}
 
-		as.Status = goidc.StatusSuccess
+		as, _ := op.CIBAManager().Session(r.Context(), authReqID)
 		as.Subject = as.LoginHint
 		as.GrantedScopes = as.Scopes
 		if as.ACRValues != "" {
@@ -113,8 +109,9 @@ func cibaActionHandler(op *provider.Provider) http.HandlerFunc {
 			}}
 		}
 		_ = op.CIBAManager().SaveSession(r.Context(), as)
+
 		go func() {
-			if err := op.NotifyCIBASuccess(r.Context(), authReqID); err != nil {
+			if err := op.GrantCIBARequest(r.Context(), authReqID); err != nil {
 				log.Println(err)
 			}
 		}()

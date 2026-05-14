@@ -24,7 +24,7 @@ func main() {
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithIDTokenSignatureAlgs(goidc.PS256),
 		provider.WithUserInfoSignatureAlgs(goidc.PS256),
-		provider.WithPARRequired(nil),
+		provider.WithPARRequired(),
 		provider.WithTokenAuthnMethods(goidc.AuthnMethodPrivateKeyJWT),
 		provider.WithPrivateKeyJWTSignatureAlgs(goidc.PS256),
 		provider.WithDPoPRequired(goidc.PS256, goidc.ES256),

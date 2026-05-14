@@ -21,6 +21,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 		c, secret := oidctest.NewClient(t)
 		ctx := oidctest.NewContext(t)
 		ctx.AuthManager = oidctest.Manager(t, ctx)
+		ctx.AuthCodeLifetimeSecs = 60
 		ctx.StaticClients = append(ctx.StaticClients, c)
 		ctx.Request.PostForm = map[string][]string{
 			"client_id":     {c.ID},
@@ -35,10 +36,11 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 				Scopes:      goidc.ScopeOpenID.ID,
 				RedirectURI: c.RedirectURIs[0],
 			},
-			AuthCode:  "random_authz_code",
-			Subject:   "user_id",
-			CreatedAt: now,
-			Store:     make(map[string]any),
+			AuthCode:          "random_authz_code",
+			AuthCodeExpiresAt: now + ctx.AuthCodeLifetimeSecs,
+			Subject:           "user_id",
+			CreatedAt:         now,
+			Store:             make(map[string]any),
 		}
 		if err := ctx.SaveGrant(grant); err != nil {
 			t.Errorf("error while creating the session: %v", err)
@@ -623,7 +625,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "expired auth code",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				grant.CreatedAt = timeutil.TimestampNow() - ctx.AuthCodeLifetimeSecs - 10
+				grant.AuthCodeExpiresAt = timeutil.TimestampNow() - 10
 				if err := ctx.SaveGrant(grant); err != nil {
 					t.Fatalf("error while updating the grant: %v", err)
 				}

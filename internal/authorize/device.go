@@ -78,6 +78,9 @@ func startDeviceAuth(ctx oidc.Context, userCode string) error {
 		}
 		return goidc.WrapError(goidc.ErrorCodeInternalError, "could not load the session", err)
 	}
+	if as.IsExpired() {
+		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "session timeout")
+	}
 
 	return authenticateDevice(ctx, as)
 }
@@ -119,16 +122,17 @@ func authenticateDevice(ctx oidc.Context, as *goidc.AuthnSession) error {
 		}
 
 		_, err = token.NewGrant(ctx, c, token.GrantOptions{
-			Subject:     as.Subject,
-			Username:    as.Username,
-			ClientID:    as.ClientID,
-			Scopes:      as.GrantedScopes,
-			Nonce:       as.Nonce,
-			AuthDetails: as.GrantedAuthDetails,
-			Resources:   as.GrantedResources,
-			DeviceCode:  as.DeviceCode,
-			AuthParams:  as.AuthorizationParameters,
-			Store:       as.Store,
+			Subject:             as.Subject,
+			Username:            as.Username,
+			ClientID:            as.ClientID,
+			Scopes:              as.GrantedScopes,
+			Nonce:               as.Nonce,
+			AuthDetails:         as.GrantedAuthDetails,
+			Resources:           as.GrantedResources,
+			DeviceCode:          as.DeviceCode,
+			DeviceCodeExpiresAt: as.ExpiresAt,
+			AuthParams:          as.AuthorizationParameters,
+			Store:               as.Store,
 		})
 		if err != nil {
 			return goidc.WrapError(goidc.ErrorCodeInternalError, "could not generate the grant", err)

@@ -82,9 +82,7 @@ func (op *Provider) WithOptions(opts ...Option) error {
 		return err
 	}
 
-	if err := op.setDefaults(); err != nil {
-		return err
-	}
+	op.setDefaults()
 
 	if !op.profileValidationIsEnabled {
 		return nil
@@ -158,7 +156,7 @@ func (op *Provider) Client(ctx context.Context, id string) (*goidc.Client, error
 
 func (op *Provider) TokenInfo(ctx context.Context, tkn string) (goidc.TokenInfo, error) {
 	oidcCtx := oidc.NewContext(ctx, &op.config)
-	return token.IntrospectionInfo(oidcCtx, tkn)
+	return token.Introspect(oidcCtx, tkn)
 }
 
 // TokenInfoFromRequest processes a request to retrieve information about an access token.
@@ -174,7 +172,7 @@ func (op *Provider) TokenInfoFromRequest(r *http.Request) (string, goidc.TokenIn
 		return "", goidc.TokenInfo{}, goidc.NewError(goidc.ErrorCodeInvalidToken, "no token found")
 	}
 
-	info, err := token.IntrospectionInfo(ctx, accessToken)
+	info, err := token.Introspect(ctx, accessToken)
 	if err != nil {
 		return "", goidc.TokenInfo{}, err
 	}
@@ -189,27 +187,30 @@ func (op *Provider) TokenInfoFromRequest(r *http.Request) (string, goidc.TokenIn
 	return accessToken, info, nil
 }
 
-// NotifyCIBASuccess notifies a client that the user has granted access.
+// GrantCIBARequest resolves an approved CIBA request into a grant and notifies
+// the client according to the delivery mode for which the auth request ID was
+// issued.
 // The behavior varies based on the client's token delivery mode for which the
 // auth request ID was issued:
 //   - "poll": No notification is sent, and no additional processing occurs.
 //     There is no need to call this function for this mode.
 //   - "ping": A ping notification is sent to the client.
 //   - "push": The token response is sent directly to the client's notification endpoint.
-func (op *Provider) NotifyCIBASuccess(ctx context.Context, authReqID string) error {
+func (op *Provider) GrantCIBARequest(ctx context.Context, authReqID string) error {
 	oidcCtx := oidc.NewContext(ctx, &op.config)
-	return token.NotifyCIBAGrant(oidcCtx, authReqID)
+	return token.GrantCIBARequest(oidcCtx, authReqID)
 }
 
-// NotifyCIBAGrantFailure notifies a client that the user has denied access.
+// DenyCIBARequest denies a CIBA request and notifies the client according to
+// the delivery mode for which the auth request ID was issued.
 // The behavior varies based on the client's token delivery mode:
 //   - "poll": No notification is sent, and no additional processing occurs.
 //   - "ping": A ping notification is sent to the client.
 //   - "push": The token failure response is sent directly to the client's
 //     notification endpoint.
-func (op *Provider) NotifyCIBAFailure(ctx context.Context, authReqID string, err goidc.Error) error {
+func (op *Provider) DenyCIBARequest(ctx context.Context, authReqID string, err goidc.Error) error {
 	oidcCtx := oidc.NewContext(ctx, &op.config)
-	return token.NotifyCIBAGrantFailure(oidcCtx, authReqID, err)
+	return token.DenyCIBARequest(oidcCtx, authReqID, err)
 }
 
 // MakeToken generates a new access token based on the provided grant
@@ -246,7 +247,7 @@ func (op *Provider) CIBAManager() goidc.CIBAManager {
 
 func (op *Provider) RevokeToken(ctx context.Context, tkn string) error {
 	oidcCtx := oidc.NewContext(ctx, &op.config)
-	info, err := token.IntrospectionInfo(oidcCtx, tkn)
+	info, err := token.Introspect(oidcCtx, tkn)
 	if err != nil {
 		return err
 	}
@@ -265,7 +266,7 @@ func (op *Provider) PublishSSFVerificationEvent(ctx context.Context, streamID st
 	return ssf.PublishEvent(oidcCtx, streamID, goidc.NewSSFVerificationEvent(streamID, opts))
 }
 
-func (op *Provider) setDefaults() error {
+func (op *Provider) setDefaults() {
 	manager := storage.NewManager(defaultStorageMaxSize)
 
 	op.config.GrantManager = nonZeroOrDefault(op.config.GrantManager, goidc.GrantManager(manager))
@@ -279,7 +280,7 @@ func (op *Provider) setDefaults() error {
 	op.config.Scopes = nonZeroOrDefault(op.config.Scopes, []goidc.Scope{goidc.ScopeOpenID})
 
 	op.config.OpaqueTokenFunc = nonZeroOrDefault(op.config.OpaqueTokenFunc, defaultOpaqueTokenFunc)
-	op.config.RefreshTokenFunc = nonZeroOrDefault(op.config.RefreshTokenFunc, defaultRefreshTokenFunc)
+
 	op.config.HTTPClientFunc = nonZeroOrDefault(op.config.HTTPClientFunc, defaultHTTPClientFunc)
 	op.config.TokenOptionsFunc = nonZeroOrDefault(op.config.TokenOptionsFunc, goidc.TokenOptionsFunc(defaultTokenOptionsFunc))
 
@@ -338,6 +339,8 @@ func (op *Provider) setDefaults() error {
 	}
 
 	if op.config.PARIsEnabled {
+		op.config.PARManager = nonZeroOrDefault(op.config.PARManager, goidc.PARManager(manager))
+		op.config.PARIDFunc = nonZeroOrDefault(op.config.PARIDFunc, defaultPARIDFunc)
 		op.config.PAREndpoint = nonZeroOrDefault(op.config.PAREndpoint, defaultEndpointPushedAuthorizationRequest)
 		op.config.PARLifetimeSecs = nonZeroOrDefault(op.config.PARLifetimeSecs, defaultPARLifetimeSecs)
 	}
@@ -380,6 +383,7 @@ func (op *Provider) setDefaults() error {
 		op.config.CIBAProfile = nonZeroOrDefault(op.config.CIBAProfile, goidc.CIBAProfileOpenID)
 		op.config.CIBAManager = nonZeroOrDefault(op.config.CIBAManager, goidc.CIBAManager(manager))
 		op.config.CIBATokenDeliveryModels = nonZeroOrDefault(op.config.CIBATokenDeliveryModels, []goidc.CIBATokenDeliveryMode{goidc.CIBADeliveryModePoll})
+		op.config.CIBAIDFunc = nonZeroOrDefault(op.config.CIBAIDFunc, defaultCIBAIDFunc)
 		op.config.CIBAEndpoint = nonZeroOrDefault(op.config.CIBAEndpoint, defaultEndpointCIBA)
 		op.config.CIBADefaultSessionLifetimeSecs = nonZeroOrDefault(op.config.CIBADefaultSessionLifetimeSecs, defaultCIBADefaultSessionLifetimeSecs)
 		op.config.CIBAPollingIntervalSecs = nonZeroOrDefault(op.config.CIBAPollingIntervalSecs, defaultCIBAPollingIntervalSecs)
@@ -388,6 +392,7 @@ func (op *Provider) setDefaults() error {
 	if slices.Contains(op.config.GrantTypes, goidc.GrantRefreshToken) {
 		op.config.RefreshTokenManager = nonZeroOrDefault(op.config.RefreshTokenManager, goidc.RefreshTokenManager(manager))
 		op.config.RefreshTokenLifetimeSecs = nonZeroOrDefault(op.config.RefreshTokenLifetimeSecs, defaultRefreshTokenLifetimeSecs)
+		op.config.RefreshTokenFunc = nonZeroOrDefault(op.config.RefreshTokenFunc, defaultRefreshTokenFunc)
 	}
 
 	if slices.Contains(op.config.GrantTypes, goidc.GrantDeviceCode) {
@@ -396,7 +401,7 @@ func (op *Provider) setDefaults() error {
 		op.config.DeviceAuthDeviceEndpoint = nonZeroOrDefault(op.config.DeviceAuthDeviceEndpoint, defaultEndpointDevice)
 		op.config.DeviceAuthLifetimeSecs = nonZeroOrDefault(op.config.DeviceAuthLifetimeSecs, defaultDeviceAuthLifetimeSecs)
 		op.config.DeviceAuthPollingIntervalSecs = nonZeroOrDefault(op.config.DeviceAuthPollingIntervalSecs, defaultDeviceAuthPollingIntervalSecs)
-		op.config.DeviceAuthGenerateDeviceCodeFunc = nonZeroOrDefault(op.config.DeviceAuthGenerateDeviceCodeFunc, defaultGenerateDeviceCodeFunc())
+		op.config.DeviceCodeFunc = nonZeroOrDefault(op.config.DeviceCodeFunc, defaultDeviceCodeFunc)
 		op.config.DeviceAuthGenerateUserCodeFunc = nonZeroOrDefault(op.config.DeviceAuthGenerateUserCodeFunc, defaultGenerateUserCodeFunc())
 	}
 
@@ -451,7 +456,6 @@ func (op *Provider) setDefaults() error {
 		op.config.RARCompareDetailsFunc = nonZeroOrDefault(op.config.RARCompareDetailsFunc, defaultCompareAuthDetailsFunc)
 	}
 
-	return nil
 }
 
 func (op *Provider) validateProfile() error {
@@ -612,6 +616,18 @@ func defaultAuthCodeFunc(_ context.Context) string {
 	return strutil.Random(30)
 }
 
+func defaultPARIDFunc(_ context.Context) string {
+	return strutil.Random(30)
+}
+
+func defaultCIBAIDFunc(_ context.Context) string {
+	return uuid.NewString()
+}
+
+func defaultDeviceCodeFunc(_ context.Context) string {
+	return strutil.Random(30)
+}
+
 func defaultVerifyClientSecretFunc(_ context.Context, stored, presented string) error {
 	if subtle.ConstantTimeCompare([]byte(stored), []byte(presented)) != 1 {
 		return errors.New("invalid client secret")
@@ -624,12 +640,6 @@ func defaultCompareAuthDetailsFunc(_ context.Context, requested, granted []goidc
 		return goidc.NewError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization details")
 	}
 	return nil
-}
-
-func defaultGenerateDeviceCodeFunc() goidc.RandomFunc {
-	return func(_ context.Context) string {
-		return strutil.Random(30)
-	}
 }
 
 func defaultGenerateUserCodeFunc() goidc.RandomFunc {

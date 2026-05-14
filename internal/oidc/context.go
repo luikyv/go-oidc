@@ -257,6 +257,10 @@ func (ctx Context) CIBASession(id string) (*goidc.AuthnSession, error) {
 	return ctx.CIBAManager.Session(ctx, id)
 }
 
+func (ctx Context) CIBASessionByAuthReqID(id string) (*goidc.AuthnSession, error) {
+	return ctx.CIBAManager.SessionByAuthReqID(ctx, id)
+}
+
 func (ctx Context) CIBADeleteSession(id string) error {
 	return ctx.CIBAManager.DeleteSession(ctx, id)
 }
@@ -317,6 +321,14 @@ func (ctx Context) AuthnSessionID() string {
 	return ctx.AuthSessionIDFunc(ctx)
 }
 
+func (ctx Context) PARID() string {
+	return ctx.PARIDFunc(ctx)
+}
+
+func (ctx Context) CIBAID() string {
+	return ctx.CIBAIDFunc(ctx)
+}
+
 func (ctx Context) GrantID() string {
 	return ctx.GrantIDFunc(ctx)
 }
@@ -341,6 +353,10 @@ func (ctx Context) DeviceSessionByUserCode(code string) (*goidc.AuthnSession, er
 	return ctx.DeviceAuthManager.SessionByUserCode(ctx, code)
 }
 
+func (ctx Context) DeviceSessionByDeviceCode(code string) (*goidc.AuthnSession, error) {
+	return ctx.DeviceAuthManager.SessionByDeviceCode(ctx, code)
+}
+
 func (ctx Context) DeviceDeleteSession(id string) error {
 	return ctx.DeviceAuthManager.DeleteSession(ctx, id)
 }
@@ -350,7 +366,7 @@ func (ctx Context) GrantByDeviceCode(code string) (*goidc.Grant, error) {
 }
 
 func (ctx Context) DeviceCode() string {
-	return ctx.DeviceAuthGenerateDeviceCodeFunc(ctx)
+	return ctx.DeviceCodeFunc(ctx)
 }
 
 func (ctx Context) DeviceUserCode() string {
@@ -377,8 +393,12 @@ func (ctx Context) SaveToken(token *goidc.Token) error {
 	return ctx.GrantManager.SaveToken(ctx, token)
 }
 
-func (ctx Context) TokenByID(id string) (*goidc.Token, error) {
+func (ctx Context) Token(id string) (*goidc.Token, error) {
 	return ctx.GrantManager.Token(ctx, id)
+}
+
+func (ctx Context) DeleteToken(id string) error {
+	return ctx.GrantManager.DeleteToken(ctx, id)
 }
 
 func (ctx Context) DeleteTokenByGrantID(grantID string) error {
@@ -619,6 +639,10 @@ func (ctx Context) PARHandleSession(as *goidc.AuthnSession, c *goidc.Client) err
 		return nil
 	}
 	return ctx.PARHandleSessionFunc(ctx, as, c)
+}
+
+func (ctx Context) PARSessionByPushedAuthReqID(id string) (*goidc.AuthnSession, error) {
+	return ctx.PARManager.SessionByPushedAuthReqID(ctx, id)
 }
 
 func (ctx Context) ClientSecret() string {

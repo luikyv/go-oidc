@@ -146,7 +146,16 @@ func NewContext(t testing.TB) oidc.Context {
 		GrantIDFunc: func(context.Context) string {
 			return uuid.NewString()
 		},
+		PARIDFunc: func(context.Context) string {
+			return uuid.NewString()
+		},
+		CIBAIDFunc: func(context.Context) string {
+			return uuid.NewString()
+		},
 		JWTIDFunc: func(context.Context) string {
+			return uuid.NewString()
+		},
+		DeviceCodeFunc: func(context.Context) string {
 			return uuid.NewString()
 		},
 		IDTokenLifetimeSecs:      60,
