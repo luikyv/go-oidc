@@ -399,8 +399,8 @@ device code grant type and receives tokens derived from the resulting grant.
 
 ## [Pushed Authorization Requests (PAR)](https://www.rfc-editor.org/rfc/rfc9126.html)
 
-PAR is enabled with `provider.WithPAR()` and can be made mandatory with
-`provider.WithPARRequired()`.
+PAR is enabled with `provider.WithPAR(manager)` and can be made mandatory with
+`provider.WithPARRequired(manager)`.
 
 ```go
 op, _ := provider.New(
@@ -408,7 +408,7 @@ op, _ := provider.New(
   manager,
   jwksFunc,
   provider.WithAuthCodeGrant(manager, goidc.ResponseTypeCode),
-  provider.WithPAR(),
+  provider.WithPAR(manager),
 )
 ```
 

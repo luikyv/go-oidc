@@ -31,7 +31,7 @@ func main() {
 		provider.WithTokenAuthnMethods(goidc.AuthnMethodPrivateKeyJWT),
 		provider.WithPrivateKeyJWTSignatureAlgs(goidc.PS256),
 		provider.WithJARM(goidc.PS256),
-		provider.WithPARRequired(),
+		provider.WithPARRequired(nil),
 		provider.WithClaimsParameter(),
 		provider.WithPKCE(goidc.CodeChallengeMethodSHA256),
 		provider.WithAuthCodeGrant(nil, goidc.ResponseTypeCode, goidc.ResponseTypeCodeAndIDToken),

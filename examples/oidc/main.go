@@ -22,7 +22,7 @@ func main() {
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithIDTokenSignatureAlgs(goidc.RS256, goidc.None),
 		provider.WithUserInfoSignatureAlgs(goidc.RS256, goidc.None),
-		provider.WithPAR(),
+		provider.WithPAR(nil),
 		provider.WithJAR(goidc.RS256, goidc.None),
 		provider.WithJARByReference(false),
 		provider.WithJARM(goidc.RS256),

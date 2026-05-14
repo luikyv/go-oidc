@@ -833,12 +833,13 @@ func TestWithScopes(t *testing.T) {
 
 func TestWithPAR(t *testing.T) {
 	// Given.
+	manager := storage.NewManager(100)
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
 
 	// When.
-	err := WithPAR()(p)
+	err := WithPAR(manager)(p)
 
 	// Then.
 	if err != nil {
@@ -848,16 +849,20 @@ func TestWithPAR(t *testing.T) {
 	if !p.config.PARIsEnabled {
 		t.Error("PARIsEnabled should be true")
 	}
+	if p.config.PARManager != manager {
+		t.Error("PARManager should match the configured manager")
+	}
 }
 
 func TestWithPARRequired(t *testing.T) {
 	// Given.
+	manager := storage.NewManager(100)
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
 
 	// When.
-	err := WithPARRequired()(p)
+	err := WithPARRequired(manager)(p)
 
 	// Then.
 	if err != nil {
@@ -870,6 +875,9 @@ func TestWithPARRequired(t *testing.T) {
 
 	if !p.config.PARIsRequired {
 		t.Error("PARIsRequired should be true")
+	}
+	if p.config.PARManager != manager {
+		t.Error("PARManager should match the configured manager")
 	}
 }
 

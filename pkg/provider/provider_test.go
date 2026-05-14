@@ -77,7 +77,7 @@ func TestNew(t *testing.T) {
 					WithCIBAGrant(manager, goidc.CIBADeliveryModePoll),
 					WithTokenAuthnMethods(goidc.AuthnMethodPrivateKeyJWT, goidc.AuthnMethodSecretJWT),
 					WithDCR(manager),
-					WithPAR(),
+					WithPAR(manager),
 					WithJAR(goidc.RS256),
 					WithJAREncryption(goidc.RSA_OAEP),
 					WithJARM(goidc.RS256),

@@ -597,9 +597,13 @@ func WithScopes(scopes ...goidc.Scope) Option {
 
 // WithPAR allows authorization flows to start at the pushed authorization
 // request endpoint.
-func WithPAR() Option {
+//
+// The manager stores the pushed authorization request session that will later
+// be resolved by `request_uri` at the authorization endpoint.
+func WithPAR(manager goidc.PARManager) Option {
 	return func(p *Provider) error {
 		p.config.PARIsEnabled = true
+		p.config.PARManager = manager
 		return nil
 	}
 }
@@ -607,10 +611,10 @@ func WithPAR() Option {
 // WithPARRequired forces authorization flows to start at the pushed
 // authorization request endpoint.
 // For more info, see [WithPAR].
-func WithPARRequired() Option {
+func WithPARRequired(manager goidc.PARManager) Option {
 	return func(p *Provider) error {
 		p.config.PARIsRequired = true
-		return WithPAR()(p)
+		return WithPAR(manager)(p)
 	}
 }
 
