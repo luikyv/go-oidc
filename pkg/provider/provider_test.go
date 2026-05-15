@@ -57,6 +57,7 @@ func TestNew(t *testing.T) {
 			ignores: []string{
 				"GrantManager",
 				"JWKSFunc",
+				"AuthSessionIDFunc",
 				"GrantIDFunc",
 				"JWTIDFunc",
 				"OpaqueTokenFunc",

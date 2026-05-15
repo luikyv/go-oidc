@@ -6,11 +6,11 @@ import (
 	"github.com/luikyv/go-oidc/internal/timeutil"
 )
 
-// LogoutSessionManager contains all the logic needed to manage logout sessions.
-type LogoutSessionManager interface {
-	SaveLogoutSession(ctx context.Context, session *LogoutSession) error
-	LogoutSession(ctx context.Context, callbackID string) (*LogoutSession, error)
-	DeleteLogoutSession(ctx context.Context, id string) error
+// LogoutManager contains all the logic needed to manage logout sessions.
+type LogoutManager interface {
+	SaveLogoutSession(context.Context, *LogoutSession) error
+	LogoutSession(context.Context, string) (*LogoutSession, error)
+	DeleteLogoutSession(context.Context, string) error
 }
 
 type LogoutSession struct {

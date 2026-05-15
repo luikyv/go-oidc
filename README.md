@@ -83,10 +83,12 @@ Verify the setup at http://localhost/.well-known/openid-configuration.
 - [Authorization Code and Implicit Grants](#authorization-code-and-implicit-grants)
 - [Refresh Token Grant](#refresh-token-grant)
 - [Client Credentials Grant](#client-credentials-grant)
+- [JWT Bearer Grant](#jwt-bearer-grant)
 - [Client-Initiated Backchannel Authentication (CIBA)](#client-initiated-backchannel-authentication-ciba)
 - [Device Code Grant](#device-code-grant)
 - [Pushed Authorization Requests (PAR)](#pushed-authorization-requests-par)
 - [Authentication Policies](#authentication-policies)
+- [Logout](#logout)
 - [Token Introspection](#token-introspection)
 - [Token Revocation](#token-revocation)
 - [Signing and Encryption](#signing-and-encryption)
@@ -318,6 +320,37 @@ In this case, the grant represents what the client was authorized to access,
 not what a user delegated. The resulting token is therefore tied to the client
 rather than to a user authentication event.
 
+## [JWT Bearer Grant](https://www.rfc-editor.org/rfc/rfc7523.html)
+
+The JWT bearer grant is enabled with `provider.WithJWTBearerGrant(...)`.
+
+```go
+op, _ := provider.New(
+  "http://localhost",
+  manager,
+  jwksFunc,
+  provider.WithJWTBearerGrant(func(ctx context.Context, assertion string) (string, error) {
+    return "subject", nil
+  }),
+)
+```
+
+This enables the `urn:ietf:params:oauth:grant-type:jwt-bearer` grant type.
+When a token request uses that grant, go-oidc delegates assertion handling to
+the function passed to `WithJWTBearerGrant(...)`.
+
+That function receives the raw assertion and must validate it according to your
+deployment rules. It returns the subject represented by the assertion, or an
+error if the assertion is invalid.
+
+If the assertion is accepted, the provider creates a `goidc.Grant` for that
+subject and issues a `goidc.Token` from it. This makes the JWT bearer grant a
+direct token flow, similar to `client_credentials`, but driven by an external
+assertion instead of a client-only authorization.
+
+Use `provider.WithJWTBearerGrantClientAuthnRequired()` if the client must also
+authenticate in addition to presenting the bearer assertion.
+
 ## [Client-Initiated Backchannel Authentication (CIBA)](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0-final.html)
 
 CIBA is enabled with `provider.WithCIBAGrant(...)`.
@@ -489,6 +522,56 @@ op, _ := provider.New(
 ```
 
 For more examples, see the [`examples`](examples/) folder.
+
+## [Logout](https://openid.net/specs/openid-connect-rpinitiated-1_0.html)
+
+RP-initiated logout is enabled with `provider.WithLogout(...)`.
+
+```go
+logoutPolicy := goidc.NewLogoutPolicy(
+  "main_logout_policy",
+  func(_ *http.Request, _ *goidc.LogoutSession, _ *goidc.Client) bool {
+    return true
+  },
+  func(w http.ResponseWriter, _ *http.Request, _ *goidc.LogoutSession, _ *goidc.Client) (goidc.Status, error) {
+    w.WriteHeader(http.StatusNoContent)
+    return goidc.StatusSuccess, nil
+  },
+)
+
+op, _ := provider.New(
+  "http://localhost",
+  manager,
+  jwksFunc,
+  provider.WithLogout(manager, func(w http.ResponseWriter, _ *http.Request, _ *goidc.LogoutSession) error {
+    w.WriteHeader(http.StatusNoContent)
+    return nil
+  }),
+  provider.WithLogoutPolicies(logoutPolicy),
+)
+```
+
+This enables the logout endpoint, which is `/logout` by default. A logout
+request may identify the relying party with `client_id` or `id_token_hint`,
+and may also include `post_logout_redirect_uri` and `state`.
+
+When a logout request is accepted, go-oidc creates a `goidc.LogoutSession`,
+selects the first matching `goidc.LogoutPolicy` configured through
+`provider.WithLogoutPolicies(...)`, and runs it. Like authentication policies,
+a logout policy can complete immediately or return `goidc.StatusInProgress`
+and resume later through the stored logout session.
+
+On success, go-oidc:
+
+- redirects to `post_logout_redirect_uri` when one was provided and validated
+- includes `state` on that redirect when present
+- otherwise calls the default post-logout handler passed to `WithLogout(...)`
+
+The first argument to `provider.WithLogout(...)` is the logout session manager
+used to store pending logout sessions. Use
+`provider.WithLogoutSessionTimeoutSecs(...)` to control how long a pending
+logout session remains valid, and `provider.WithLogoutEndpoint(...)` to
+override the default endpoint path.
 
 ## [Token Introspection](https://www.rfc-editor.org/rfc/rfc7662.html)
 

@@ -2481,12 +2481,13 @@ func TestWithLogout(t *testing.T) {
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
+	manager := storage.NewManager(10)
 	handleFunc := func(w http.ResponseWriter, r *http.Request, ls *goidc.LogoutSession) error {
 		return nil
 	}
 
 	// When.
-	err := WithLogout(handleFunc)(p)
+	err := WithLogout(manager, handleFunc)(p)
 
 	// Then.
 	if err != nil {
@@ -2497,28 +2498,44 @@ func TestWithLogout(t *testing.T) {
 		t.Error("LogoutIsEnabled should be true")
 	}
 
+	if p.config.LogoutSessionManager != manager {
+		t.Error("invalid logout session manager")
+	}
+
 	if p.config.HandleDefaultPostLogoutFunc == nil {
 		t.Error("HandleDefaultPostLogoutFunc cannot be nil")
 	}
 }
 
-func TestWithLogoutSessionManager(t *testing.T) {
+func TestWithLogoutPolicies(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
-	manager := storage.NewManager(10)
+	policy := goidc.NewLogoutPolicy(
+		"policy",
+		func(_ *http.Request, _ *goidc.LogoutSession) bool {
+			return true
+		},
+		func(_ http.ResponseWriter, _ *http.Request, _ *goidc.LogoutSession) (goidc.Status, error) {
+			return goidc.StatusSuccess, nil
+		},
+	)
 
 	// When.
-	err := WithLogoutSessionManager(manager)(p)
+	err := WithLogoutPolicies(policy)(p)
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if p.config.LogoutSessionManager != manager {
-		t.Error("invalid logout session manager")
+	if len(p.config.LogoutPolicies) != 1 {
+		t.Fatalf("got %d logout policies, want 1", len(p.config.LogoutPolicies))
+	}
+
+	if p.config.LogoutPolicies[0].ID != policy.ID {
+		t.Fatalf("got logout policy %q, want %q", p.config.LogoutPolicies[0].ID, policy.ID)
 	}
 }
 

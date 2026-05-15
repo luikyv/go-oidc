@@ -553,6 +553,16 @@ func WithClientCredentialsGrant() Option {
 	}
 }
 
+// WithJWTBearerGrant enables the `urn:ietf:params:oauth:grant-type:jwt-bearer`
+// grant type.
+//
+// The handler receives the raw assertion from the token request and must
+// validate it according to the deployment rules. If the assertion is accepted,
+// it returns the subject represented by that assertion so the provider can
+// create a grant and issue a token from it.
+//
+// To also require client authentication on JWT bearer token requests, see
+// [WithJWTBearerGrantClientAuthnRequired].
 func WithJWTBearerGrant(f goidc.JWTBearerHandleAssertionFunc) Option {
 	return func(p *Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantJWTBearer)
@@ -1349,26 +1359,26 @@ func WithOpenIDFedTrustMark(marks map[goidc.TrustMark]string) Option {
 }
 
 // WithLogout enables the [OpenID Connect RP-initiated logout flow](https://openid.net/specs/openid-connect-rpinitiated-1_0.html).
-// The default logout function is used to handle the logout when the flow is
-// completed when the client does not provide a post_logout_redirect_uri and
-// the logout policies are used to determine the logout flow to be executed.
-// By default, the logout sessions are stored in memory and are not persisted.
-// See [WithLogoutSessionManager] to change the storage mechanism.
-// The default logout session timeout is [defaultLogoutSessionTimeoutSecs].
-func WithLogout(handleFunc goidc.HandleDefaultPostLogoutFunc, logoutPolicies ...goidc.LogoutPolicy) Option {
+// The manager stores pending logout sessions while the flow is in progress.
+// The default logout function is used when the flow is completed and the client
+// does not provide a post_logout_redirect_uri. Use [WithLogoutPolicies] to
+// configure which logout flows will be executed. The default logout session
+// timeout is [defaultLogoutSessionTimeoutSecs].
+func WithLogout(manager goidc.LogoutManager, handleFunc goidc.HandleDefaultPostLogoutFunc) Option {
 	return func(p *Provider) error {
 		p.config.LogoutIsEnabled = true
+		p.config.LogoutSessionManager = manager
 		p.config.HandleDefaultPostLogoutFunc = handleFunc
-		p.config.LogoutPolicies = logoutPolicies
 		return nil
 	}
 }
 
-// WithLogoutSessionManager sets the logout session manager.
-// For more information, see [WithLogout].
-func WithLogoutSessionManager(manager goidc.LogoutSessionManager) Option {
+// WithLogoutPolicies configures the logout policies that are evaluated for each
+// RP-initiated logout request. The first policy whose setup function matches is
+// used to execute the logout flow.
+func WithLogoutPolicies(logoutPolicies ...goidc.LogoutPolicy) Option {
 	return func(p *Provider) error {
-		p.config.LogoutSessionManager = manager
+		p.config.LogoutPolicies = logoutPolicies
 		return nil
 	}
 }

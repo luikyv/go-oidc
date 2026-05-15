@@ -308,11 +308,11 @@ func (op *Provider) setDefaults() {
 	op.config.JWTLifetimeSecs = nonZeroOrDefault(op.config.JWTLifetimeSecs, defaultJWTLifetimeSecs)
 	op.config.GrantIDFunc = nonZeroOrDefault(op.config.GrantIDFunc, defaultGrantIDFunc)
 	op.config.JWTIDFunc = nonZeroOrDefault(op.config.JWTIDFunc, defaultJWTIDFunc)
+	op.config.AuthSessionIDFunc = nonZeroOrDefault(op.config.AuthSessionIDFunc, defaultSessionIDFunc)
 
 	if slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
 		op.config.AuthManager = nonZeroOrDefault(op.config.AuthManager, goidc.AuthManager(manager))
 		op.config.ResponseTypes = appendIfNotIn(op.config.ResponseTypes, goidc.ResponseTypeCode)
-		op.config.AuthSessionIDFunc = nonZeroOrDefault(op.config.AuthCodeFunc, defaultSessionIDFunc)
 		op.config.AuthTimeoutSecs = nonZeroOrDefault(op.config.AuthTimeoutSecs, defaultAuthnSessionTimeoutSecs)
 		op.config.AuthCodeLifetimeSecs = nonZeroOrDefault(op.config.AuthCodeLifetimeSecs, defaultAuthorizationCodeLifetimeSecs)
 		op.config.AuthCodeFunc = nonZeroOrDefault(op.config.AuthCodeFunc, defaultAuthCodeFunc)
@@ -423,7 +423,7 @@ func (op *Provider) setDefaults() {
 	}
 
 	if op.config.LogoutIsEnabled {
-		op.config.LogoutSessionManager = nonZeroOrDefault(op.config.LogoutSessionManager, goidc.LogoutSessionManager(manager))
+		op.config.LogoutSessionManager = nonZeroOrDefault(op.config.LogoutSessionManager, goidc.LogoutManager(manager))
 		op.config.LogoutEndpoint = nonZeroOrDefault(op.config.LogoutEndpoint, defaultEndpointEndSession)
 		op.config.LogoutSessionTimeoutSecs = nonZeroOrDefault(op.config.LogoutSessionTimeoutSecs, defaultLogoutSessionTimeoutSecs)
 		op.config.LogoutSessionIDFunc = nonZeroOrDefault(op.config.LogoutSessionIDFunc, defaultSessionIDFunc)

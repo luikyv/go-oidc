@@ -15,7 +15,7 @@ var _ goidc.CIBAManager = &Manager{}
 var _ goidc.DeviceAuthManager = &Manager{}
 var _ goidc.RefreshTokenManager = &Manager{}
 var _ goidc.GrantManager = &Manager{}
-var _ goidc.LogoutSessionManager = &Manager{}
+var _ goidc.LogoutManager = &Manager{}
 
 type Manager struct {
 	Sessions       map[string]*goidc.AuthnSession
