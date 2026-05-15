@@ -423,7 +423,7 @@ func (op *Provider) setDefaults() {
 	}
 
 	if op.config.LogoutIsEnabled {
-		op.config.LogoutSessionManager = nonZeroOrDefault(op.config.LogoutSessionManager, goidc.LogoutManager(manager))
+		op.config.LogoutManager = nonZeroOrDefault(op.config.LogoutManager, goidc.LogoutManager(manager))
 		op.config.LogoutEndpoint = nonZeroOrDefault(op.config.LogoutEndpoint, defaultEndpointEndSession)
 		op.config.LogoutSessionTimeoutSecs = nonZeroOrDefault(op.config.LogoutSessionTimeoutSecs, defaultLogoutSessionTimeoutSecs)
 		op.config.LogoutSessionIDFunc = nonZeroOrDefault(op.config.LogoutSessionIDFunc, defaultSessionIDFunc)

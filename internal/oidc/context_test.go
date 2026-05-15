@@ -986,7 +986,7 @@ func TestManagerDelegates(t *testing.T) {
 	t.Run("logout sessions", func(t *testing.T) {
 		ctx := oidctest.NewContext(t)
 		manager := storage.NewManager(100)
-		ctx.LogoutSessionManager = manager
+		ctx.LogoutManager = manager
 
 		session := &goidc.LogoutSession{ID: "logout_session", CreatedAt: 1}
 		if err := ctx.SaveLogoutSession(session); err != nil {

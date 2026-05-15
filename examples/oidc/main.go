@@ -60,7 +60,7 @@ func main() {
 		provider.WithDisplayValues(authutil.DisplayValues[0], authutil.DisplayValues...),
 		provider.WithSubIdentifierTypes(goidc.SubIdentifierPublic, goidc.SubIdentifierPairwise),
 		provider.WithPairwiseSubjectFunc(authutil.PairwiseSubjectFunc()),
-		provider.WithLogout(manager, authutil.HandleLogout()),
+		provider.WithLogout(nil, authutil.HandleLogout()),
 		provider.WithLogoutPolicies(authutil.LogoutPolicy()),
 	)
 	if err != nil {

@@ -2498,7 +2498,7 @@ func TestWithLogout(t *testing.T) {
 		t.Error("LogoutIsEnabled should be true")
 	}
 
-	if p.config.LogoutSessionManager != manager {
+	if p.config.LogoutManager != manager {
 		t.Error("invalid logout session manager")
 	}
 

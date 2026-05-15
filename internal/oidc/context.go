@@ -406,15 +406,15 @@ func (ctx Context) DeleteTokenByGrantID(grantID string) error {
 }
 
 func (ctx Context) SaveLogoutSession(session *goidc.LogoutSession) error {
-	return ctx.LogoutSessionManager.SaveLogoutSession(ctx, session)
+	return ctx.LogoutManager.SaveLogoutSession(ctx, session)
 }
 
 func (ctx Context) LogoutSession(id string) (*goidc.LogoutSession, error) {
-	return ctx.LogoutSessionManager.LogoutSession(ctx, id)
+	return ctx.LogoutManager.LogoutSession(ctx, id)
 }
 
 func (ctx Context) DeleteLogoutSession(id string) error {
-	return ctx.LogoutSessionManager.DeleteLogoutSession(ctx, id)
+	return ctx.LogoutManager.DeleteLogoutSession(ctx, id)
 }
 
 //---------------------------------------- HTTP Utils ----------------------------------------//

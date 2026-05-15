@@ -1367,7 +1367,7 @@ func WithOpenIDFedTrustMark(marks map[goidc.TrustMark]string) Option {
 func WithLogout(manager goidc.LogoutManager, handleFunc goidc.HandleDefaultPostLogoutFunc) Option {
 	return func(p *Provider) error {
 		p.config.LogoutIsEnabled = true
-		p.config.LogoutSessionManager = manager
+		p.config.LogoutManager = manager
 		p.config.HandleDefaultPostLogoutFunc = handleFunc
 		return nil
 	}

@@ -479,7 +479,7 @@ func setup(t *testing.T) (oidc.Context, *goidc.Client) {
 	t.Helper()
 
 	ctx := oidctest.NewContext(t)
-	ctx.LogoutSessionManager = oidctest.Manager(t, ctx)
+	ctx.LogoutManager = oidctest.Manager(t, ctx)
 	ctx.LogoutSessionIDFunc = func(context.Context) string {
 		return "random_logout_session_id"
 	}
@@ -508,7 +508,7 @@ func setup(t *testing.T) (oidc.Context, *goidc.Client) {
 func logoutSessions(t testing.TB, ctx oidc.Context) []*goidc.LogoutSession {
 	t.Helper()
 
-	sessionManager, _ := ctx.LogoutSessionManager.(*storage.Manager)
+	sessionManager, _ := ctx.LogoutManager.(*storage.Manager)
 	sessions := make([]*goidc.LogoutSession, 0, len(sessionManager.LogoutSessions))
 	for _, s := range sessionManager.LogoutSessions {
 		sessions = append(sessions, s)

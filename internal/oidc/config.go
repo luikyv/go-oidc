@@ -233,7 +233,7 @@ type Configuration struct {
 
 	LogoutIsEnabled             bool
 	LogoutEndpoint              string
-	LogoutSessionManager        goidc.LogoutManager
+	LogoutManager               goidc.LogoutManager
 	LogoutSessionTimeoutSecs    int
 	LogoutPolicies              []goidc.LogoutPolicy
 	LogoutSessionIDFunc         goidc.RandomFunc
